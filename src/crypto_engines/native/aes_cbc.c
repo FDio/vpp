@@ -46,11 +46,11 @@ aes_ops_enc_aes_cbc_hmac (vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops,
       i = 0;
       while (n_left && i < CRYPTO_NATIVE_AES_CBC_ENC_VEC_SIZE)
 	{
-	  vnet_crypto_key_t *key = vnet_crypto_get_key (ops[0]->key_index);
+	  vnet_crypto_op_keys_t *keys = (vnet_crypto_op_keys_t *) ops[0]->keys;
 	  clib_sha2_hmac_init (
 	    &ctx[i], type,
-	    (clib_sha2_hmac_key_data_t *) cm->key_data[key->index_integ]);
-	  key_indices[i] = key->index_crypto;
+	    (clib_sha2_hmac_key_data_t *) cm->key_data[keys->integ->index]);
+	  key_indices[i] = keys->crypto->index;
 	  plaintext[i] = ops[0]->src;
 	  ciphertext[i] = ops[0]->dst;
 	  oplen[i] = ops[0]->len;
@@ -82,9 +82,9 @@ aes_ops_hmac_dec_aes_cbc (vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops,
   crypto_native_main_t *cm = &crypto_native_main;
   int rounds = AES_KEY_ROUNDS (ks);
   vnet_crypto_op_t *op = ops[0];
-  vnet_crypto_key_t *key = vnet_crypto_get_key (op->key_index);
+  vnet_crypto_op_keys_t *keys = (vnet_crypto_op_keys_t *) op->keys;
   aes_cbc_key_data_t *kd =
-    (aes_cbc_key_data_t *) cm->key_data[key->index_crypto];
+    (aes_cbc_key_data_t *) cm->key_data[keys->crypto->index];
   clib_sha2_hmac_ctx_t ctx;
   u8 buffer[64];
   u32 n_left = n_ops, n_fail = 0;
@@ -93,7 +93,8 @@ aes_ops_hmac_dec_aes_cbc (vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops,
 
 decrypt:
   clib_sha2_hmac_init (
-    &ctx, type, (clib_sha2_hmac_key_data_t *) cm->key_data[key->index_integ]);
+    &ctx, type,
+    (clib_sha2_hmac_key_data_t *) cm->key_data[keys->integ->index]);
   clib_sha2_hmac_update (&ctx, op->integ_src, op->integ_len);
   clib_sha2_hmac_final (&ctx, buffer);
 
@@ -120,8 +121,8 @@ decrypt:
   if (--n_left)
     {
       op += 1;
-      key = vnet_crypto_get_key (op->key_index);
-      kd = (aes_cbc_key_data_t *) cm->key_data[key->index_crypto];
+      vnet_crypto_op_keys_t *keys = (vnet_crypto_op_keys_t *) op->keys;
+      kd = (aes_cbc_key_data_t *) cm->key_data[keys->crypto->index];
       goto decrypt;
     }
 
@@ -145,8 +146,8 @@ aes_ops_enc_aes_cbc (vlib_main_t * vm, vnet_crypto_op_t * ops[],
       i = 0;
       while (n_left && i < CRYPTO_NATIVE_AES_CBC_ENC_VEC_SIZE)
 	{
-	  vnet_crypto_key_t *key = vnet_crypto_get_key (ops[0]->key_index);
-	  key_indices[i] = key->is_link ? key->index_crypto : key->index;
+	  vnet_crypto_op_keys_t *keys = (vnet_crypto_op_keys_t *) ops[0]->keys;
+	  key_indices[i] = keys->crypto->index;
 	  plaintext[i] = ops[0]->src;
 	  ciphertext[i] = ops[0]->dst;
 	  oplen[i] = ops[0]->len;
@@ -172,7 +173,9 @@ aes_ops_dec_aes_cbc (vlib_main_t * vm, vnet_crypto_op_t * ops[],
   crypto_native_main_t *cm = &crypto_native_main;
   int rounds = AES_KEY_ROUNDS (ks);
   vnet_crypto_op_t *op = ops[0];
-  aes_cbc_key_data_t *kd = (aes_cbc_key_data_t *) cm->key_data[op->key_index];
+  vnet_crypto_op_keys_t *keys = (vnet_crypto_op_keys_t *) op->keys;
+  aes_cbc_key_data_t *kd =
+    (aes_cbc_key_data_t *) cm->key_data[keys->crypto->index];
   u32 n_left = n_ops;
 
   ASSERT (n_ops >= 1);
@@ -193,7 +196,8 @@ decrypt:
   if (--n_left)
     {
       op += 1;
-      kd = (aes_cbc_key_data_t *) cm->key_data[op->key_index];
+      vnet_crypto_op_keys_t *keys = (vnet_crypto_op_keys_t *) op->keys;
+      kd = (aes_cbc_key_data_t *) cm->key_data[keys->crypto->index];
       goto decrypt;
     }
 

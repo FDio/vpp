@@ -189,7 +189,8 @@ ipsecmb_ops_hmac_inline (vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops,
       for (i = 0; i < n; i++, ops_index++)
 	{
 	  vnet_crypto_op_t *op = ops[ops_index];
-	  const u8 *kd = (u8 *) imbm->key_data[op->key_index];
+	  vnet_crypto_op_keys_t *keys = (vnet_crypto_op_keys_t *) op->keys;
+	  const u8 *kd = (u8 *) imbm->key_data[keys->integ->index];
 
 	  job = &ptd->burst_jobs[i];
 
@@ -238,7 +239,8 @@ ipsecmb_ops_hmac_inline (vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops,
   for (i = 0; i < n_ops; i++)
     {
       vnet_crypto_op_t *op = ops[i];
-      u8 *kd = (u8 *) imbm->key_data[op->key_index];
+      vnet_crypto_op_keys_t *keys = (vnet_crypto_op_keys_t *) op->keys;
+      u8 *kd = (u8 *) imbm->key_data[keys->integ->index];
 
       job = IMB_GET_NEXT_JOB (ptd->mgr);
 
@@ -317,7 +319,8 @@ ipsecmb_ops_aes_cipher_inline (vlib_main_t *vm, vnet_crypto_op_t *ops[],
 	{
 	  ipsecmb_aes_key_data_t *kd;
 	  vnet_crypto_op_t *op = ops[ops_index++];
-	  kd = (ipsecmb_aes_key_data_t *) imbm->key_data[op->key_index];
+	  vnet_crypto_op_keys_t *keys = (vnet_crypto_op_keys_t *) op->keys;
+	  kd = (ipsecmb_aes_key_data_t *) imbm->key_data[keys->crypto->index];
 
 	  job = &ptd->burst_jobs[i];
 
@@ -365,7 +368,8 @@ ipsecmb_ops_aes_cipher_inline (vlib_main_t *vm, vnet_crypto_op_t *ops[],
     {
       ipsecmb_aes_key_data_t *kd;
       vnet_crypto_op_t *op = ops[i];
-      kd = (ipsecmb_aes_key_data_t *) imbm->key_data[op->key_index];
+      vnet_crypto_op_keys_t *keys = (vnet_crypto_op_keys_t *) op->keys;
+      kd = (ipsecmb_aes_key_data_t *) imbm->key_data[keys->crypto->index];
 
       job = IMB_GET_NEXT_JOB (ptd->mgr);
 
@@ -448,9 +452,9 @@ ipsecmb_ops_aes_enc_cipher_hmac_inline (
       for (i = 0; i < n; i++, ops_index++)
 	{
 	  vnet_crypto_op_t *op = ops[ops_index];
-	  vnet_crypto_key_t *key = vnet_crypto_get_key (op->key_index);
+	  vnet_crypto_op_keys_t *keys = (vnet_crypto_op_keys_t *) op->keys;
 	  ipsecmb_aes_key_data_t *kd =
-	    (ipsecmb_aes_key_data_t *) imbm->key_data[key->index_crypto];
+	    (ipsecmb_aes_key_data_t *) imbm->key_data[keys->crypto->index];
 
 	  job = &ptd->burst_jobs[i];
 
@@ -468,7 +472,7 @@ ipsecmb_ops_aes_enc_cipher_hmac_inline (
 
 	  job->user_data = op;
 
-	  const u8 *hkd = (u8 *) imbm->key_data[key->index_integ];
+	  const u8 *hkd = (u8 *) imbm->key_data[keys->integ->index];
 
 	  job = &ptd->burst_jobs[n + i];
 
@@ -543,8 +547,8 @@ ipsecmb_ops_aes_dec_cipher_hmac_inline (
       for (i = 0; i < n; i++, ops_index++)
 	{
 	  vnet_crypto_op_t *op = ops[ops_index];
-	  vnet_crypto_key_t *key = vnet_crypto_get_key (op->key_index);
-	  const u8 *hkd = (u8 *) imbm->key_data[key->index_integ];
+	  vnet_crypto_op_keys_t *keys = (vnet_crypto_op_keys_t *) op->keys;
+	  const u8 *hkd = (u8 *) imbm->key_data[keys->integ->index];
 
 	  job = &ptd->burst_jobs[i];
 
@@ -559,7 +563,7 @@ ipsecmb_ops_aes_dec_cipher_hmac_inline (
 	  job->user_data = op;
 
 	  ipsecmb_aes_key_data_t *kd =
-	    (ipsecmb_aes_key_data_t *) imbm->key_data[key->index_crypto];
+	    (ipsecmb_aes_key_data_t *) imbm->key_data[keys->crypto->index];
 
 	  job = &ptd->burst_jobs[n + i];
 
@@ -631,9 +635,9 @@ ipsecmb_ops_aes_enc_cipher_hmac_inline (
   for (i = 0; i < n_ops; i++)
     {
       vnet_crypto_op_t *op = ops[i];
-      vnet_crypto_key_t *key = vnet_crypto_get_key (op->key_index);
+      vnet_crypto_op_keys_t *keys = (vnet_crypto_op_keys_t *) op->keys;
       ipsecmb_aes_key_data_t *kd =
-	(ipsecmb_aes_key_data_t *) imbm->key_data[key->index_crypto];
+	(ipsecmb_aes_key_data_t *) imbm->key_data[keys->crypto->index];
 
       job = IMB_GET_NEXT_JOB (ptd->mgr);
 
@@ -733,9 +737,9 @@ ipsecmb_ops_aes_dec_cipher_hmac_inline (
   for (i = 0; i < n_ops; i++)
     {
       vnet_crypto_op_t *op = ops[i];
-      vnet_crypto_key_t *key = vnet_crypto_get_key (op->key_index);
+      vnet_crypto_op_keys_t *keys = (vnet_crypto_op_keys_t *) op->keys;
 
-      u8 *hkd = (u8 *) imbm->key_data[key->index_integ];
+      u8 *hkd = (u8 *) imbm->key_data[keys->integ->index];
       job = IMB_GET_NEXT_JOB (ptd->mgr);
 
       job->src = op->integ_src;
@@ -770,7 +774,7 @@ ipsecmb_ops_aes_dec_cipher_hmac_inline (
 	}
 
       ipsecmb_aes_key_data_t *kd =
-	(ipsecmb_aes_key_data_t *) imbm->key_data[key->index_crypto];
+	(ipsecmb_aes_key_data_t *) imbm->key_data[keys->crypto->index];
 
       job = IMB_GET_NEXT_JOB (ptd->mgr);
 
@@ -876,6 +880,7 @@ ipsecmb_ops_gcm (vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks,
       struct gcm_key_data *kd;
       struct gcm_context_data ctx;
       vnet_crypto_op_t *op = ops[i];
+      vnet_crypto_op_keys_t *keys = (vnet_crypto_op_keys_t *) op->keys;
       u8 scratch[64], *tag = a.is_dec ? scratch : op->tag;
       u32 taglen = 16, aadlen = a.aadlen;
 
@@ -885,7 +890,7 @@ ipsecmb_ops_gcm (vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks,
 	  taglen = op->tag_len;
 	}
 
-      kd = (struct gcm_key_data *) imbm->key_data[op->key_index];
+      kd = (struct gcm_key_data *) imbm->key_data[keys->crypto->index];
       if (a.chained)
 	{
 	  ASSERT (op->flags & VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS);
@@ -1023,14 +1028,13 @@ ipsecmb_ops_chacha_poly (vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops,
   for (i = 0; i < n_ops; i++)
     {
       vnet_crypto_op_t *op = ops[i];
+      vnet_crypto_op_keys_t *keys = (vnet_crypto_op_keys_t *) op->keys;
 
       job = IMB_GET_NEXT_JOB (m);
-      if (last_key_index != op->key_index)
+      if (last_key_index != keys->crypto->index)
 	{
-	  vnet_crypto_key_t *kd = vnet_crypto_get_key (op->key_index);
-
-	  key = kd->data;
-	  last_key_index = op->key_index;
+	  key = keys->crypto->data;
+	  last_key_index = keys->crypto->index;
 	}
 
       job->cipher_direction = dir;
@@ -1117,18 +1121,17 @@ foreach_chacha_poly_fixed_aad_lengths
       for (i = 0; i < n_ops; i++)
 	{
 	  vnet_crypto_op_t *op = ops[i];
+	  vnet_crypto_op_keys_t *keys = (vnet_crypto_op_keys_t *) op->keys;
 	  struct chacha20_poly1305_context_data ctx;
 	  vnet_crypto_op_chunk_t *chp;
 	  u32 j;
 
 	  ASSERT (op->flags & VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS);
 
-	  if (last_key_index != op->key_index)
+	  if (last_key_index != keys->crypto->index)
 	    {
-	      vnet_crypto_key_t *kd = vnet_crypto_get_key (op->key_index);
-
-	      key = kd->data;
-	      last_key_index = op->key_index;
+	      key = keys->crypto->data;
+	      last_key_index = keys->crypto->index;
 	    }
 
 	  IMB_CHACHA20_POLY1305_INIT (m, key, &ctx, op->iv, op->aad,
@@ -1153,6 +1156,7 @@ foreach_chacha_poly_fixed_aad_lengths
       for (i = 0; i < n_ops; i++)
 	{
 	  vnet_crypto_op_t *op = ops[i];
+	  vnet_crypto_op_keys_t *keys = (vnet_crypto_op_keys_t *) op->keys;
 	  struct chacha20_poly1305_context_data ctx;
 	  vnet_crypto_op_chunk_t *chp;
 	  u8 scratch[16];
@@ -1160,12 +1164,10 @@ foreach_chacha_poly_fixed_aad_lengths
 
 	  ASSERT (op->flags & VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS);
 
-	  if (last_key_index != op->key_index)
+	  if (last_key_index != keys->crypto->index)
 	    {
-	      vnet_crypto_key_t *kd = vnet_crypto_get_key (op->key_index);
-
-	      key = kd->data;
-	      last_key_index = op->key_index;
+	      key = keys->crypto->data;
+	      last_key_index = keys->crypto->index;
 	    }
 
 	  IMB_CHACHA20_POLY1305_INIT (m, key, &ctx, op->iv, op->aad,
@@ -1244,10 +1246,6 @@ foreach_chacha_poly_fixed_aad_lengths
   ipsecmb_alg_data_t *ad = imbm->alg_data + key->alg;
   u32 i;
   void *kd;
-
-  /** TODO: add linked alg support **/
-  if (key->is_link)
-    return;
 
   if (kop == VNET_CRYPTO_KEY_OP_DEL)
     {

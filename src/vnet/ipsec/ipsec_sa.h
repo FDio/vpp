@@ -162,7 +162,7 @@ typedef struct
   u32 salt;
   u64 seq64;
   u16 async_op_id;
-  vnet_crypto_key_index_t key_index;
+  vnet_crypto_op_keys_t keys;
   vnet_crypto_op_t op_tmpl_single;
   vnet_crypto_op_t op_tmpl_chained;
   u32 anti_replay_window_size;
@@ -215,7 +215,7 @@ typedef struct ipsec_sa_outb_rt_t_
   u64 seq64;
   dpo_id_t dpo;
   clib_pcg64i_random_t iv_prng;
-  vnet_crypto_key_index_t key_index;
+  vnet_crypto_op_keys_t keys;
   union
   {
     ip4_header_t ip4_hdr;
@@ -249,9 +249,7 @@ typedef struct
   u32 stat_index;
   vnet_crypto_alg_t integ_calg;
   vnet_crypto_alg_t crypto_calg;
-  u32 crypto_sync_key_index;
-  u32 integ_sync_key_index;
-  u32 linked_key_index;
+  vnet_crypto_op_keys_t keys;
 
   /* elements with u16 size */
   u16 crypto_sync_enc_op_id;

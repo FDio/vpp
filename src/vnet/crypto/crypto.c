@@ -384,38 +384,45 @@ vnet_crypto_register_key_handler (vlib_main_t *vm, u32 engine_index,
 }
 
 static vnet_crypto_key_t *
-vnet_crypoto_key_alloc (u32 length)
+vnet_crypto_key_alloc_per_thread (vlib_main_t *vm, u16 length)
 {
   vnet_crypto_main_t *cm = &crypto_main;
-  u8 expected = 0;
-  vnet_crypto_key_t *k, **kp;
-  u32 alloc_sz = sizeof (vnet_crypto_key_t) + round_pow2 (length, 16);
+  vnet_crypto_key_t *key;
+  u32 key_index, range_start, range_end;
 
-  while (!__atomic_compare_exchange_n (&cm->keys_lock, &expected, 1, 0,
-				       __ATOMIC_ACQUIRE, __ATOMIC_RELAXED))
+  range_start = vm->thread_index * cm->keys_per_thread;
+  range_end = range_start + cm->keys_per_thread;
+
+  key_index = clib_bitmap_next_set (cm->keys_free_bitmap, range_start);
+
+  if (PREDICT_FALSE (key_index == ~0 || key_index >= range_end))
     {
-      while (__atomic_load_n (&cm->keys_lock, __ATOMIC_RELAXED))
-	CLIB_PAUSE ();
-      expected = 0;
+      clib_warning ("thread %u crypto keys exhausted (range %u-%u)",
+		    vm->thread_index, range_start, range_end - 1);
+      return NULL;
     }
 
-  pool_get (cm->keys, kp);
+  /* NO ATOMIC — thread writes only to its own uword element bitmap */
+  cm->keys_free_bitmap = clib_bitmap_set (cm->keys_free_bitmap, key_index, 0);
 
-  __atomic_store_n (&cm->keys_lock, 0, __ATOMIC_RELEASE);
+  /* Get pointer to slot in arena */
+  key = (vnet_crypto_key_t *)((u8 *)cm->keys_arena_base + key_index * cm->data_per_key);
 
-  k = clib_mem_alloc_aligned (alloc_sz, alignof (vnet_crypto_key_t));
-  kp[0] = k;
-  *k = (vnet_crypto_key_t){
-    .index = kp - cm->keys,
-    .length = length,
-  };
+  /* Initialization */
+  clib_memset (key, 0, sizeof (vnet_crypto_key_t));
+  key->index = key_index;
+  key->length = length;
+  
 
-  return k;
+  log_debug ("thread %u allocated key slot %u (local offset %u)",
+	     vm->thread_index, key_index, key_index - range_start);
+
+  return key;
 }
 
-u32
-vnet_crypto_key_add (vlib_main_t * vm, vnet_crypto_alg_t alg, u8 * data,
-		     u16 length)
+vnet_crypto_key_t *
+vnet_crypto_key_add_obj (vlib_main_t *vm, vnet_crypto_alg_t alg, u8 *data,
+			 u16 length)
 {
   vnet_crypto_main_t *cm = &crypto_main;
   vnet_crypto_engine_t *engine;
@@ -425,46 +432,85 @@ vnet_crypto_key_add (vlib_main_t * vm, vnet_crypto_alg_t alg, u8 * data,
   ASSERT (alg != 0);
 
   if (length == 0)
-    return ~0;
+    return NULL;
 
-  if (ad->variable_key_length == 0)
-    {
-      if (ad->key_length == 0)
-	return ~0;
+  if (!ad->variable_key_length &&
+      (ad->key_length == 0 || ad->key_length != length))
+    return NULL;
 
-      if (ad->key_length != length)
-	return ~0;
-    }
+  key = vnet_crypto_key_alloc_per_thread (vm, length);
+  if (!key)
+    return NULL;
 
-  key = vnet_crypoto_key_alloc (length);
   key->alg = alg;
-
   clib_memcpy (key->data, data, length);
+
   vec_foreach (engine, cm->engines)
     if (engine->key_op_handler)
       engine->key_op_handler (VNET_CRYPTO_KEY_OP_ADD, key->index);
-  return key->index;
+
+  return key;
+}
+
+u32
+vnet_crypto_key_add (vlib_main_t *vm, vnet_crypto_alg_t alg, u8 *data,
+		     u16 length)
+{
+  vnet_crypto_key_t *key = vnet_crypto_key_add_obj (vm, alg, data, length);
+  return key ? key->index : ~0;
 }
 
 void
-vnet_crypto_key_del (vlib_main_t * vm, vnet_crypto_key_index_t index)
+vnet_crypto_key_del_obj (vlib_main_t *vm, vnet_crypto_key_t *key)
 {
   vnet_crypto_main_t *cm = &crypto_main;
   vnet_crypto_engine_t *engine;
-  vnet_crypto_key_t *key = cm->keys[index];
-  u32 sz = sizeof (vnet_crypto_key_t) + round_pow2 (key->length, 16);
+  u32 key_index = ((u8 *)key - (u8 *)cm->keys_arena_base) / cm->data_per_key;
+  u32 key_owner_thread = key_index / cm->keys_per_thread;
+
+  /* Check if slot is actually allocated (bit=0 means busy) */
+  if (clib_bitmap_get (cm->keys_free_bitmap, key_index))
+    {
+      log_notice ("key at offset %u already free or invalid", key_index);
+      return;
+    }
 
   vec_foreach (engine, cm->engines)
     if (engine->key_op_handler)
-      engine->key_op_handler (VNET_CRYPTO_KEY_OP_DEL, index);
+      engine->key_op_handler (VNET_CRYPTO_KEY_OP_DEL, key_index);
 
-  clib_memset (key, 0xfe, sz);
-  clib_mem_free (key);
-  pool_put_index (cm->keys, index);
+  key->alg = VNET_CRYPTO_ALG_NONE;
+  key->index = ~0;
+  key->length = 0;
+
+  if (key_owner_thread == vm->thread_index)
+    {
+      /* NO LOCK — this is our range, no one else is writing here */
+      cm->keys_free_bitmap =
+	clib_bitmap_set (cm->keys_free_bitmap, key_index, 1);
+
+      log_debug ("key %u deleted by owner thread %u", key_index,
+		 vm->thread_index);
+    }
+  else
+    {
+      /* Key is owned by another thread — NOT updating bitmap */
+      /* Slot remains "leaked", but prevents reuse */
+      log_debug (
+	"key %u deleted by non-owner thread %u (owner=%u) - slot not freed",
+	key_index, vm->thread_index, key_owner_thread);
+    }
 }
 
 void
-vnet_crypto_key_update (vlib_main_t *vm, vnet_crypto_key_index_t index)
+vnet_crypto_key_del (vlib_main_t *vm, vnet_crypto_key_index_t index)
+{
+  vnet_crypto_key_t *key = vnet_crypto_get_key (index);
+  vnet_crypto_key_del_obj (vm, key);
+}
+
+void
+vnet_crypto_key_update (vnet_crypto_key_index_t index)
 {
   vnet_crypto_main_t *cm = &crypto_main;
   vnet_crypto_engine_t *engine;
@@ -492,36 +538,6 @@ vnet_crypto_ops_from_alg (vnet_crypto_alg_t alg)
 {
   vnet_crypto_main_t *cm = &crypto_main;
   return cm->algs[alg].op_by_type;
-}
-
-u32
-vnet_crypto_key_add_linked (vlib_main_t * vm,
-			    vnet_crypto_key_index_t index_crypto,
-			    vnet_crypto_key_index_t index_integ)
-{
-  vnet_crypto_main_t *cm = &crypto_main;
-  vnet_crypto_engine_t *engine;
-  vnet_crypto_key_t *key_crypto, *key_integ, *key;
-  vnet_crypto_alg_t linked_alg;
-
-  key_crypto = cm->keys[index_crypto];
-  key_integ = cm->keys[index_integ];
-
-  linked_alg = vnet_crypto_link_algs (key_crypto->alg, key_integ->alg);
-  if (linked_alg == ~0)
-    return ~0;
-
-  key = vnet_crypoto_key_alloc (0);
-  key->is_link = 1;
-  key->index_crypto = index_crypto;
-  key->index_integ = index_integ;
-  key->alg = linked_alg;
-
-  vec_foreach (engine, cm->engines)
-    if (engine->key_op_handler)
-      engine->key_op_handler (VNET_CRYPTO_KEY_OP_ADD, key->index);
-
-  return key->index;
 }
 
 u32
@@ -723,6 +739,34 @@ vnet_crypto_init (vlib_main_t * vm)
   vec_validate_aligned (cm->threads, tm->n_vlib_mains, CLIB_CACHE_LINE_BYTES);
   vec_foreach (ct, cm->threads)
     pool_init_fixed (ct->frame_pool, VNET_CRYPTO_FRAME_POOL_SIZE);
+
+  /* NEW: Memory arena init */
+  cm->keys_arena_max_keys = VNET_CRYPTO_KEY_NUM_INITIAL;
+  cm->keys_per_thread = VNET_CRYPTO_KEY_NUM_INITIAL / tm->n_vlib_mains;
+  cm->data_per_key =
+    round_pow2 (sizeof (vnet_crypto_key_t), CLIB_CACHE_LINE_BYTES) + CLIB_LOG2_CACHE_LINE_BYTES;
+  u32 arena_size = cm->keys_arena_max_keys * cm->data_per_key;
+
+  cm->keys_arena_base =
+    clib_mem_alloc_aligned (arena_size, CLIB_CACHE_LINE_BYTES);
+  if (!cm->keys_arena_base)
+    return clib_error_return (0, "Failed to allocate crypto keys arena");
+
+  clib_memset (cm->keys_arena_base, 0, arena_size);
+
+  /* NEW: Init bitmap — ALL SLOTS ARE FREE (all bits = 1) */
+  clib_bitmap_alloc (cm->keys_free_bitmap, cm->keys_arena_max_keys);
+
+  /* Set all bits = 1 (free) */
+  cm->keys_free_bitmap =
+    clib_bitmap_set_region (cm->keys_free_bitmap, 0, /* start bit */
+			    1,			     /* value = 1 (free) */
+			    cm->keys_arena_max_keys  /* n_bits */
+    );
+  cm->num_threads = tm->n_vlib_mains;
+
+  log_debug ("crypto keys arena: %u MB for %u keys (all free)",
+	     arena_size / (1024 * 1024), cm->keys_arena_max_keys);
 
   FOREACH_ARRAY_ELT (e, cm->algs)
     if (e->name)
