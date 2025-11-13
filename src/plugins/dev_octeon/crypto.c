@@ -57,38 +57,17 @@ oct_crypto_session_alloc (vlib_main_t *vm, u8 type)
 
 static_always_inline i32
 oct_crypto_session_create (vlib_main_t *vm, vnet_crypto_key_index_t key_index,
-			   int op_type)
+			   vnet_crypto_alg_t alg, int op_type)
 {
-  oct_crypto_main_t *ocm = &oct_crypto_main;
-  oct_crypto_sess_t *session;
-  vnet_crypto_key_t *key;
-  oct_crypto_key_t *ckey;
-  oct_crypto_dev_t *ocd;
+  vnet_crypto_main_t *cm = &crypto_main;
+  oct_crypto_sess_t *session = NULL;
 
-  ocd = ocm->crypto_dev[op_type];
-
-  key = vnet_crypto_get_key (key_index);
-
-  if (key->is_link)
+  // TODO: Handle linked keys without vnet_crypto_key object
+  if (!cm->algs[alg].is_link)
     {
-      /*
-       * Read crypto or integ key session. And map link key index to same.
-       */
-      if (key->index_crypto != UINT32_MAX)
-	{
-	  ckey = vec_elt_at_index (ocm->keys[op_type], key->index_crypto);
-	  session = ckey->sess;
-	}
-      else if (key->index_integ != UINT32_MAX)
-	{
-	  ckey = vec_elt_at_index (ocm->keys[op_type], key->index_integ);
-	  session = ckey->sess;
-	}
-      else
-	return -1;
-    }
-  else
-    {
+      oct_crypto_main_t *ocm = &oct_crypto_main;
+      oct_crypto_dev_t *ocd = ocm->crypto_dev[op_type];
+
       session = oct_crypto_session_alloc (vm, op_type);
       if (session == NULL)
 	return -1;
@@ -155,7 +134,8 @@ oct_crypto_key_del_handler (vlib_main_t *vm, vnet_crypto_key_index_t key_index)
 }
 
 void
-oct_crypto_key_add_handler (vlib_main_t *vm, vnet_crypto_key_index_t key_index)
+oct_crypto_key_add_handler (vlib_main_t *vm, vnet_crypto_key_index_t key_index,
+			    vnet_crypto_alg_t alg)
 {
   oct_crypto_main_t *ocm = &oct_crypto_main;
   oct_crypto_key_t *ckey;
@@ -165,7 +145,7 @@ oct_crypto_key_add_handler (vlib_main_t *vm, vnet_crypto_key_index_t key_index)
   ckey = vec_elt_at_index (ocm->keys[VNET_CRYPTO_OP_TYPE_ENCRYPT], key_index);
   if (ckey->sess == NULL)
     {
-      if (oct_crypto_session_create (vm, key_index,
+      if (oct_crypto_session_create (vm, key_index, alg,
 				     VNET_CRYPTO_OP_TYPE_ENCRYPT))
 	{
 	  log_err (ocd->dev, "Unable to create crypto session");
@@ -177,7 +157,7 @@ oct_crypto_key_add_handler (vlib_main_t *vm, vnet_crypto_key_index_t key_index)
   ckey = vec_elt_at_index (ocm->keys[VNET_CRYPTO_OP_TYPE_DECRYPT], key_index);
   if (ckey->sess == NULL)
     {
-      if (oct_crypto_session_create (vm, key_index,
+      if (oct_crypto_session_create (vm, key_index, alg,
 				     VNET_CRYPTO_OP_TYPE_DECRYPT))
 	{
 	  log_err (ocd->dev, "Unable to create crypto session");
@@ -187,16 +167,18 @@ oct_crypto_key_add_handler (vlib_main_t *vm, vnet_crypto_key_index_t key_index)
 }
 
 void
-oct_crypto_key_handler (vnet_crypto_key_op_t kop, vnet_crypto_key_index_t idx)
+oct_crypto_key_handler (vnet_crypto_key_op_t kop, void *key_data,
+			vnet_crypto_alg_t alg, const u8 *data, u16 length)
 {
   oct_crypto_main_t *ocm = &oct_crypto_main;
+  vnet_crypto_key_index_t idx = (vnet_crypto_key_index_t) key_data;
 
   if (kop == VNET_CRYPTO_KEY_OP_DEL)
     {
       oct_crypto_key_del_handler (vlib_get_main (), idx);
       return;
     }
-  oct_crypto_key_add_handler (vlib_get_main (), idx);
+  oct_crypto_key_add_handler (vlib_get_main (), idx, alg);
 
   ocm->started = 1;
 }
@@ -1188,18 +1170,18 @@ oct_cpt_inst_w7_get (oct_crypto_sess_t *sess, struct roc_cpt *roc_cpt)
 
 static_always_inline i32
 oct_crypto_link_session_update (vlib_main_t *vm, oct_crypto_sess_t *sess,
-				u32 key_index, u8 type)
+				u32 key_index, vnet_crypto_alg_t alg, u8 type)
 {
   vnet_crypto_key_t *crypto_key, *auth_key;
   roc_se_cipher_type enc_type = 0;
   roc_se_auth_type auth_type = 0;
-  vnet_crypto_key_t *key;
+  // vnet_crypto_key_t *key;
   u32 digest_len = ~0;
   i32 rv = 0;
 
-  key = vnet_crypto_get_key (key_index);
+  // key = vnet_crypto_get_key (key_index);
 
-  switch (key->alg)
+  switch (alg)
     {
     case VNET_CRYPTO_ALG_AES_128_CBC_SHA1_TAG12:
     case VNET_CRYPTO_ALG_AES_192_CBC_SHA1_TAG12:
@@ -1303,7 +1285,7 @@ oct_crypto_link_session_update (vlib_main_t *vm, oct_crypto_sess_t *sess,
       break;
     default:
       clib_warning (
-	"Cryptodev: Undefined link algo %u specified. Key index %u", key->alg,
+	"Cryptodev: Undefined link algo %u specified. Key index %u", alg,
 	key_index);
       return -1;
     }
@@ -1316,26 +1298,28 @@ oct_crypto_link_session_update (vlib_main_t *vm, oct_crypto_sess_t *sess,
   sess->iv_length = 16;
   sess->cpt_op = type;
 
-  crypto_key = vnet_crypto_get_key (key->index_crypto);
-  rv = roc_se_ciph_key_set (&sess->cpt_ctx, enc_type, crypto_key->data,
-			    crypto_key->length);
-  if (rv)
-    {
-      clib_warning ("Cryptodev: Error in setting cipher key for enc type %u",
-		    enc_type);
-      return -1;
-    }
+  // TODO: Support separate keys
+  // crypto_key = vnet_crypto_get_key (key->index_crypto);
+  // rv = roc_se_ciph_key_set (&sess->cpt_ctx, enc_type, crypto_key->data,
+  // 		    crypto_key->length);
+  // if (rv)
+  //   {
+  //     clib_warning ("Cryptodev: Error in setting cipher key for enc type
+  //     %u",
+  // 	    enc_type);
+  //     return -1;
+  //   }
 
-  auth_key = vnet_crypto_get_key (key->index_integ);
+  // auth_key = vnet_crypto_get_key (key->index_integ);
 
-  rv = roc_se_auth_key_set (&sess->cpt_ctx, auth_type, auth_key->data,
-			    auth_key->length, digest_len);
-  if (rv)
-    {
-      clib_warning ("Cryptodev: Error in setting auth key for auth type %u",
-		    auth_type);
-      return -1;
-    }
+  // rv = roc_se_auth_key_set (&sess->cpt_ctx, auth_type, auth_key->data,
+  // 		    auth_key->length, digest_len);
+  // if (rv)
+  //   {
+  //     clib_warning ("Cryptodev: Error in setting auth key for auth type %u",
+  // 	    auth_type);
+  //     return -1;
+  //   }
 
   sess->cpt_ctx.template_w4.s.opcode_major = ROC_SE_MAJOR_OP_FC;
 
@@ -1349,15 +1333,15 @@ oct_crypto_link_session_update (vlib_main_t *vm, oct_crypto_sess_t *sess,
 
 static_always_inline i32
 oct_crypto_aead_session_update (vlib_main_t *vm, oct_crypto_sess_t *sess,
-				u32 key_index, u8 type)
+				u32 key_index, vnet_crypto_alg_t alg, u8 type)
 {
-  vnet_crypto_key_t *key = vnet_crypto_get_key (key_index);
+  // vnet_crypto_key_t *key = vnet_crypto_get_key (key_index);
   roc_se_cipher_type enc_type = 0;
   roc_se_auth_type auth_type = 0;
   u32 digest_len = 16;
   i32 rv = 0;
 
-  switch (key->alg)
+  switch (alg)
     {
     case VNET_CRYPTO_ALG_AES_128_GCM:
     case VNET_CRYPTO_ALG_AES_192_GCM:
@@ -1373,29 +1357,31 @@ oct_crypto_aead_session_update (vlib_main_t *vm, oct_crypto_sess_t *sess,
       break;
     default:
       clib_warning (
-	"Cryptodev: Undefined cipher algo %u specified. Key index %u",
-	key->alg, key_index);
+	"Cryptodev: Undefined cipher algo %u specified. Key index %u", alg,
+	key_index);
       return -1;
     }
 
   sess->cpt_ctx.mac_len = digest_len;
   sess->cpt_op = type;
 
-  rv = roc_se_ciph_key_set (&sess->cpt_ctx, enc_type, key->data, key->length);
-  if (rv)
-    {
-      clib_warning ("Cryptodev: Error in setting cipher key for enc type %u",
-		    enc_type);
-      return -1;
-    }
+  // TODO: Support key setting
+  // rv = roc_se_ciph_key_set (&sess->cpt_ctx, enc_type, key->data,
+  // key->length); if (rv)
+  //   {
+  //     clib_warning ("Cryptodev: Error in setting cipher key for enc type
+  //     %u",
+  // 	    enc_type);
+  //     return -1;
+  //   }
 
-  rv = roc_se_auth_key_set (&sess->cpt_ctx, auth_type, NULL, 0, digest_len);
-  if (rv)
-    {
-      clib_warning ("Cryptodev: Error in setting auth key for auth type %u",
-		    auth_type);
-      return -1;
-    }
+  // rv = roc_se_auth_key_set (&sess->cpt_ctx, auth_type, NULL, 0, digest_len);
+  // if (rv)
+  //   {
+  //     clib_warning ("Cryptodev: Error in setting auth key for auth type %u",
+  // 	    auth_type);
+  //     return -1;
+  //   }
 
   sess->cpt_ctx.template_w4.s.opcode_major = ROC_SE_MAJOR_OP_FC;
 
@@ -1412,21 +1398,22 @@ oct_crypto_aead_session_update (vlib_main_t *vm, oct_crypto_sess_t *sess,
 
 static_always_inline i32
 oct_crypto_session_init (vlib_main_t *vm, oct_crypto_sess_t *session,
-			 vnet_crypto_key_index_t key_index, int op_type)
+			 vnet_crypto_key_index_t key_index,
+			 vnet_crypto_op_id_t op_id, int op_type)
 {
   oct_crypto_main_t *ocm = &oct_crypto_main;
-  vnet_crypto_key_t *key;
+  vnet_crypto_main_t *cm = &crypto_main;
+  vnet_crypto_alg_t alg = cm->opt_data[op_id].alg;
+  // vnet_crypto_key_t *key;
   oct_crypto_dev_t *ocd;
   i32 rv = 0;
 
   ocd = ocm->crypto_dev[op_type];
 
-  key = vnet_crypto_get_key (key_index);
-
-  if (key->is_link)
-    rv = oct_crypto_link_session_update (vm, session, key_index, op_type);
+  if (cm->algs[alg].is_link)
+    rv = oct_crypto_link_session_update (vm, session, key_index, alg, op_type);
   else
-    rv = oct_crypto_aead_session_update (vm, session, key_index, op_type);
+    rv = oct_crypto_aead_session_update (vm, session, key_index, alg, op_type);
 
   if (rv)
     {
@@ -1651,7 +1638,8 @@ oct_crypto_enqueue_enc_dec (vlib_main_t *vm, vnet_crypto_async_frame_t *frame,
       sess = key->sess;
 
       if (PREDICT_FALSE (!sess->initialised))
-	ret = oct_crypto_session_init (vm, sess, elts->key_index, type);
+	ret =
+	  oct_crypto_session_init (vm, sess, elts->key_index, frame->op, type);
       if (ret)
 	{
 	  oct_crypto_update_frame_error_status (

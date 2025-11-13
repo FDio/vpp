@@ -28,6 +28,7 @@ typedef struct vnet_crypto_engine_registration
   int prio;
   u32 version;
   u32 per_thread_data_sz;
+  u32 stride;
   u32 num_threads;
   void *per_thread_data;
   vnet_crypto_engine_init_fn_t *init_fn;
