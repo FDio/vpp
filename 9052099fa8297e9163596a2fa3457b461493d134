@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7d8cc767_ec5c79c2",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1371,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-11-13T19:51:27Z",
+      "side": 1,
+      "message": "Let\u0027s move this to `vnet_connect` after we update the endpoint",
+      "revId": "9052099fa8297e9163596a2fa3457b461493d134",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
