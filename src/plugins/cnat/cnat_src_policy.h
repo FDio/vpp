@@ -16,7 +16,6 @@
 #ifndef __CNAT_SRC_POLICY_H__
 #define __CNAT_SRC_POLICY_H__
 
-// #include <vnet/udp/udp.h>
 #include <cnat/cnat_types.h>
 #include <cnat/cnat_session.h>
 #include <cnat/cnat_translation.h>
@@ -46,10 +45,8 @@ typedef struct cnat_src_port_allocator_
 } cnat_src_port_allocator_t;
 
 /* function to use to compute source (IP, port) for a new session to a vip */
-typedef cnat_source_policy_errors_t (*cnat_vip_source_policy_t)
-  (vlib_main_t * vm, vlib_buffer_t * b, cnat_session_t * session,
-   u32 * rsession_flags, const cnat_translation_t * ct,
-   cnat_node_ctx_t * ctx);
+typedef cnat_source_policy_errors_t (*cnat_vip_source_policy_t) (
+  ip_protocol_t iproto, u16 *sport);
 
 typedef struct cnat_src_policy_main_
 {
@@ -57,14 +54,17 @@ typedef struct cnat_src_policy_main_
   cnat_vip_source_policy_t default_policy;
 
   /* Per proto source ports allocator for snat */
-  cnat_src_port_allocator_t *src_ports;
+  cnat_src_port_allocator_t (*src_ports)[CNAT_N_SPORT_PROTO];
 } cnat_src_policy_main_t;
 
 extern cnat_src_policy_main_t cnat_src_policy_main;
 
 void cnat_register_vip_src_policy (cnat_vip_source_policy_t fp);
-int cnat_allocate_port (u16 * port, ip_protocol_t iproto);
-void cnat_free_port (u16 port, ip_protocol_t iproto);
+int cnat_allocate_port (u32 fib_index, u16 *port, ip_protocol_t iproto);
+void cnat_free_port (u32 fib_index, u16 port, ip_protocol_t iproto);
+
+void cnat_init_port_allocator (u32 fib_index);
+void cnat_free_port_allocator (u32 fib_index);
 
 /*
  * fd.io coding-style-patch-verification: ON
