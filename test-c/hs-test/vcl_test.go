@@ -100,9 +100,6 @@ func testXEchoVclServer(s *VethsSuite, proto string) {
 }
 
 func testVclEcho(s *VethsSuite, proto string, extraArgs ...string) {
-	ctx, cancel := context.WithCancel(context.Background())
-	var wg sync.WaitGroup
-	defer cancel()
 	extras := ""
 	if len(extraArgs) > 0 {
 		extras = strings.Join(extraArgs, " ")
@@ -114,28 +111,25 @@ func testVclEcho(s *VethsSuite, proto string, extraArgs ...string) {
 
 	srvAppCont.CreateFile("/vcl.conf", getVclConfig(srvVppCont))
 	srvAppCont.AddEnvVar("VCL_CONFIG", "/vcl.conf")
-	vclSrvCmd := fmt.Sprintf("vcl_test_server -p %s -B %s %s", proto, serverVethAddress, s.Ports.Port1)
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		defer GinkgoRecover()
-		o, oErr, err := srvAppCont.ExecLineBuffered(ctx, true, vclSrvCmd)
-		s.Log(o)
-		s.Log(oErr)
-		s.AssertNil(err, o+oErr)
-	}()
+	vclSrvCmd := fmt.Sprintf("sh -c \"vcl_test_server -p %s -B %s %s > %s/vcl_test_server.log 2>&1\"",
+		proto, serverVethAddress, s.Ports.Port1, srvAppCont.GetContainerWorkDir())
 
-	time.Sleep(time.Millisecond * 500)
+	srvAppCont.ExecServer(true, vclSrvCmd)
+
 	echoClnContainer := s.GetTransientContainerByName("client-app")
 	echoClnContainer.CreateFile("/vcl.conf", getVclConfig(echoClnContainer))
 
-	testClientCommand := "vcl_test_client " + extras + "-p " + proto + " " + serverVethAddress + " " + s.Ports.Port1
+	testClientCommand := "vcl_test_client -X " + extras + "-p " + proto + " " + serverVethAddress + " " + s.Ports.Port1
 	echoClnContainer.AddEnvVar("VCL_CONFIG", "/vcl.conf")
+
 	o, err := echoClnContainer.Exec(true, testClientCommand)
-	cancel()
-	wg.Wait()
-	s.Log(o)
+	s.Log("****** Client output:\n%s\n******", o)
+
+	oSrv, errSrv := srvAppCont.Exec(false, "cat %s/vcl_test_server.log", srvAppCont.GetContainerWorkDir())
+	s.Log("****** Server output:\n%s\n******", oSrv)
+
 	s.AssertNil(err, o)
+	s.AssertNil(errSrv, oSrv)
 }
 
 func VclEchoTcpTest(s *VethsSuite) {
@@ -173,7 +167,8 @@ func testRetryAttach(s *VethsSuite, proto string) {
 	echoSrvContainer.CreateFile("/vcl.conf", getVclConfig(echoSrvContainer))
 	echoSrvContainer.AddEnvVar("VCL_CONFIG", "/vcl.conf")
 
-	vclSrvCmd := fmt.Sprintf("vcl_test_server -p %s %s", proto, s.Ports.Port1)
+	vclSrvCmd := fmt.Sprintf("sh -c \"vcl_test_server -p %s %s > %s/vcl_test_server.log 2>&1\"",
+		proto, s.Ports.Port1, echoSrvContainer.GetContainerWorkDir())
 	echoSrvContainer.ExecServer(true, vclSrvCmd)
 
 	s.Log("This whole test case can take around 3 minutes to run. Please be patient.")
@@ -199,9 +194,15 @@ func testRetryAttach(s *VethsSuite, proto string) {
 	time.Sleep(30 * time.Second) // Wait a moment for the re-attachment to happen
 
 	s.Log("... Running second echo client test, after disconnect and re-attachment.")
+	testClientCommand += " -X"
 	o, err = echoClnContainer.Exec(true, testClientCommand)
-	s.Log(o)
+	s.Log("****** Client output:\n%s\n******", o)
+
+	oSrv, errSrv := echoSrvContainer.Exec(false, "cat %s/vcl_test_server.log", echoSrvContainer.GetContainerWorkDir())
+	s.Log("****** Server output:\n%s\n******", oSrv)
+
 	s.AssertNil(err, o)
+	s.AssertNil(errSrv, oSrv)
 	s.Log("Done.")
 }
 
