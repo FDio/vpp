@@ -25,15 +25,15 @@ aes_ops_enc_aes_ctr_hmac (vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops,
 
 next:
   {
-    vnet_crypto_key_t *key = vnet_crypto_get_key (op->key_index);
-    kd = (aes_ctr_key_data_t *) cm->key_data[key->index_crypto];
+    vnet_crypto_op_keys_t *keys = (vnet_crypto_op_keys_t *) op->keys;
+    kd = (aes_ctr_key_data_t *) cm->key_data[keys->crypto->index];
 
     clib_aes_ctr_init (&ctx, kd, op->iv, ks);
     clib_aes_ctr_transform (&ctx, op->src, op->dst, op->len, ks);
 
     clib_sha2_hmac_init (
       &h_ctx, type,
-      (clib_sha2_hmac_key_data_t *) cm->key_data[key->index_integ]);
+      (clib_sha2_hmac_key_data_t *) cm->key_data[keys->integ->index]);
     clib_sha2_hmac_update (&h_ctx, op->integ_src, op->integ_len);
     clib_sha2_hmac_final (&h_ctx, buffer);
     clib_memcpy_fast (op->digest, buffer, op->digest_len);
@@ -64,8 +64,8 @@ aes_ops_enc_aes_ctr_hmac_chained (vlib_main_t *vm, vnet_crypto_op_t *ops[],
 
 next:
   {
-    vnet_crypto_key_t *key = vnet_crypto_get_key (op->key_index);
-    kd = (aes_ctr_key_data_t *) cm->key_data[key->index_crypto];
+    vnet_crypto_op_keys_t *keys = (vnet_crypto_op_keys_t *) op->keys;
+    kd = (aes_ctr_key_data_t *) cm->key_data[keys->crypto->index];
 
     clib_aes_ctr_init (&ctx, kd, op->iv, ks);
 
@@ -75,7 +75,7 @@ next:
 
     clib_sha2_hmac_init (
       &h_ctx, type,
-      (clib_sha2_hmac_key_data_t *) cm->key_data[key->index_integ]);
+      (clib_sha2_hmac_key_data_t *) cm->key_data[keys->integ->index]);
 
     chp = chunks + op->integ_chunk_index;
     for (int j = 0; j < op->integ_n_chunks; j++, chp++)
@@ -108,11 +108,11 @@ aes_ops_dec_aes_ctr_hmac (vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops,
 
 next:
   {
-    vnet_crypto_key_t *key = vnet_crypto_get_key (op->key_index);
+    vnet_crypto_op_keys_t *keys = (vnet_crypto_op_keys_t *) op->keys;
 
     clib_sha2_hmac_init (
       &h_ctx, type,
-      (clib_sha2_hmac_key_data_t *) cm->key_data[key->index_integ]);
+      (clib_sha2_hmac_key_data_t *) cm->key_data[keys->integ->index]);
     clib_sha2_hmac_update (&h_ctx, op->integ_src, op->integ_len);
     clib_sha2_hmac_final (&h_ctx, buffer);
 
@@ -123,7 +123,7 @@ next:
       }
     else
       {
-	kd = (aes_ctr_key_data_t *) cm->key_data[key->index_crypto];
+	kd = (aes_ctr_key_data_t *) cm->key_data[keys->crypto->index];
 	clib_aes_ctr_init (&ctx, kd, op->iv, ks);
 	clib_aes_ctr_transform (&ctx, op->src, op->dst, op->len, ks);
 
@@ -154,12 +154,11 @@ aes_ops_dec_aes_ctr_hmac_chained (vlib_main_t *vm, vnet_crypto_op_t *ops[],
 
 next:
   {
-    vnet_crypto_key_t *key = vnet_crypto_get_key (op->key_index);
+    vnet_crypto_op_keys_t *keys = (vnet_crypto_op_keys_t *) op->keys;
 
     clib_sha2_hmac_init (
       &h_ctx, type,
-      (clib_sha2_hmac_key_data_t *) cm->key_data[key->index_integ]);
-
+      (clib_sha2_hmac_key_data_t *) cm->key_data[keys->integ->index]);
     vnet_crypto_op_chunk_t *chp = chunks + op->integ_chunk_index;
     for (int j = 0; j < op->integ_n_chunks; j++, chp++)
       clib_sha2_hmac_update (&h_ctx, chp->src, chp->len);
@@ -172,7 +171,7 @@ next:
       }
     else
       {
-	kd = (aes_ctr_key_data_t *) cm->key_data[key->index_crypto];
+	kd = (aes_ctr_key_data_t *) cm->key_data[keys->crypto->index];
 	clib_aes_ctr_init (&ctx, kd, op->iv, ks);
 
 	vnet_crypto_op_chunk_t *chp = chunks + op->chunk_index;
@@ -198,12 +197,13 @@ aes_ops_aes_ctr (vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops,
 {
   crypto_native_main_t *cm = &crypto_native_main;
   vnet_crypto_op_t *op = ops[0];
+  vnet_crypto_op_keys_t *keys = (vnet_crypto_op_keys_t *) op->keys;
   aes_ctr_key_data_t *kd;
   aes_ctr_ctx_t ctx;
   u32 n_left = n_ops;
 
 next:
-  kd = (aes_ctr_key_data_t *) cm->key_data[op->key_index];
+  kd = (aes_ctr_key_data_t *) cm->key_data[keys->crypto->index];
 
   clib_aes_ctr_init (&ctx, kd, op->iv, ks);
   if (op->flags & VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS)
@@ -220,6 +220,7 @@ next:
   if (--n_left)
     {
       op += 1;
+      keys = (vnet_crypto_op_keys_t *) op->keys;
       goto next;
     }
 

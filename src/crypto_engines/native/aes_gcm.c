@@ -31,11 +31,12 @@ aes_ops_enc_aes_gcm (vnet_crypto_op_t *ops[], u32 n_ops, aes_key_size_t ks,
 {
   crypto_native_main_t *cm = &crypto_native_main;
   vnet_crypto_op_t *op = ops[0];
+  vnet_crypto_op_keys_t *keys = (vnet_crypto_op_keys_t *) op->keys;
   aes_gcm_key_data_t *kd;
   u32 n_left = n_ops;
 
 next:
-  kd = (aes_gcm_key_data_t *) cm->key_data[op->key_index];
+  kd = (aes_gcm_key_data_t *) cm->key_data[keys->crypto->index];
   aes_gcm (op->src, op->dst, op->aad, (u8 *) op->iv, op->tag, op->len,
 	   fixed ? aad_len : op->aad_len, fixed ? 16 : op->tag_len, kd,
 	   AES_KEY_ROUNDS (ks), AES_GCM_OP_ENCRYPT);
@@ -44,6 +45,7 @@ next:
   if (--n_left)
     {
       op += 1;
+      keys = (vnet_crypto_op_keys_t *) op->keys;
       goto next;
     }
 
@@ -56,12 +58,13 @@ aes_ops_dec_aes_gcm (vnet_crypto_op_t *ops[], u32 n_ops, aes_key_size_t ks,
 {
   crypto_native_main_t *cm = &crypto_native_main;
   vnet_crypto_op_t *op = ops[0];
+  vnet_crypto_op_keys_t *keys = (vnet_crypto_op_keys_t *) op->keys;
   aes_gcm_key_data_t *kd;
   u32 n_left = n_ops;
   int rv;
 
 next:
-  kd = (aes_gcm_key_data_t *) cm->key_data[op->key_index];
+  kd = (aes_gcm_key_data_t *) cm->key_data[keys->crypto->index];
   rv = aes_gcm (op->src, op->dst, op->aad, (u8 *) op->iv, op->tag, op->len,
 		fixed ? aad_len : op->aad_len, fixed ? 16 : op->tag_len, kd,
 		AES_KEY_ROUNDS (ks), AES_GCM_OP_DECRYPT);
@@ -79,6 +82,7 @@ next:
   if (--n_left)
     {
       op += 1;
+      keys = (vnet_crypto_op_keys_t *) op->keys;
       goto next;
     }
 

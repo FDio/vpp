@@ -507,8 +507,8 @@ always_inline void
 wg_prepare_sync_dec_op (vlib_main_t *vm, wg_per_thread_data_t *ptd,
 			vlib_buffer_t *b, vlib_buffer_t *lb,
 			vnet_crypto_op_t **crypto_ops, u8 *src, u32 src_len,
-			u8 *dst, u8 *aad, u32 aad_len,
-			vnet_crypto_key_index_t key_index, u32 bi, u8 *iv)
+			u8 *dst, u8 *aad, u32 aad_len, uword keys, u32 bi,
+			u8 *iv)
 {
   vnet_crypto_op_t _op, *op = &_op;
   u8 src_[] = {};
@@ -518,7 +518,7 @@ wg_prepare_sync_dec_op (vlib_main_t *vm, wg_per_thread_data_t *ptd,
 
   op->tag_len = NOISE_AUTHTAG_LEN;
   op->tag = vlib_buffer_get_tail (lb) - NOISE_AUTHTAG_LEN;
-  op->key_index = key_index;
+  op->keys = keys;
   op->aad = aad;
   op->aad_len = aad_len;
   op->iv = iv;
@@ -543,7 +543,7 @@ wg_prepare_sync_dec_op (vlib_main_t *vm, wg_per_thread_data_t *ptd,
 
 static_always_inline void
 wg_input_add_to_frame (vlib_main_t *vm, vnet_crypto_async_frame_t *f,
-		       u32 key_index, u32 crypto_len, i16 crypto_start_offset,
+		       uword keys, u32 crypto_len, i16 crypto_start_offset,
 		       u32 buffer_index, u16 next_node, u8 *iv, u8 *tag,
 		       u8 flags)
 {
@@ -555,7 +555,7 @@ wg_input_add_to_frame (vlib_main_t *vm, vnet_crypto_async_frame_t *f,
   index = f->n_elts;
   fe = &f->elts[index];
   f->n_elts++;
-  fe->key_index = key_index;
+  fe->keys = keys;
   fe->crypto_total_length = crypto_len;
   fe->crypto_start_offset = crypto_start_offset;
   fe->iv = iv;
@@ -617,14 +617,14 @@ wg_input_process (vlib_main_t *vm, wg_per_thread_data_t *ptd,
 	  vec_add1 (ptd->async_frames, *async_frame);
 	}
 
-      wg_input_add_to_frame (vm, *async_frame, kp->kp_recv_index, srclen_total,
-			     src - b->data, buf_idx, async_next_node, iv, tag,
-			     flags);
+      wg_input_add_to_frame (vm, *async_frame, (uword) &kp->kp_recv,
+			     srclen_total, src - b->data, buf_idx,
+			     async_next_node, iv, tag, flags);
     }
   else
     {
       wg_prepare_sync_dec_op (vm, ptd, b, lb, crypto_ops, src, srclen, dst,
-			      NULL, 0, kp->kp_recv_index, from_idx, iv);
+			      NULL, 0, (uword) &kp->kp_recv, from_idx, iv);
     }
 
   /* If we've received the handshake confirming data packet then move the
