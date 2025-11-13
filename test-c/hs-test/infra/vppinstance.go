@@ -262,7 +262,7 @@ func (vpp *VppInstance) Stop() {
 	}
 }
 
-func (vpp *VppInstance) Vppctl(command string, arguments ...any) string {
+func (vpp *VppInstance) Vppctl(command any, arguments ...any) string {
 	defer func() {
 		if r := recover(); r != nil {
 			fmt.Printf("\n*******************************************************************************\n"+
@@ -271,7 +271,13 @@ func (vpp *VppInstance) Vppctl(command string, arguments ...any) string {
 		}
 	}()
 
-	vppCliCommand := fmt.Sprintf(command, arguments...)
+	var vppCliCommand string
+	if len(arguments) > 0 {
+		vppCliCommand = fmt.Sprintf(fmt.Sprint(command), arguments...)
+	} else {
+		vppCliCommand = fmt.Sprint(command)
+	}
+
 	containerExecCommand := fmt.Sprintf("docker exec --detach=false %[1]s vppctl -s %[2]s %[3]s",
 		vpp.Container.Name, vpp.getCliSocket(), vppCliCommand)
 	vpp.getSuite().Log(containerExecCommand)

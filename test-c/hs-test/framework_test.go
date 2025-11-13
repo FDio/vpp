@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -30,6 +31,7 @@ var _ = ReportAfterSuite("VPP version under test", func(report Report) {
 })
 
 func TestHst(t *testing.T) {
+	fmt.Println("Go version: " + runtime.Version())
 	// if we're debugging/running a coverage build and timeout isn't overridden,
 	// set test timeout to 30 minutes. Also impacts AssertChannelClosed()
 	if (*IsVppDebug || *IsCoverage || *PerfTesting) && *Timeout == 5 {
