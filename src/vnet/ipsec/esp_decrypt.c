@@ -499,13 +499,17 @@ esp_decrypt_prepare_sync_op (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
   vnet_crypto_op_t **ops;
   vnet_crypto_op_t _op, *op = &_op;
   const u8 esp_sz = sizeof (esp_header_t);
-  const vnet_crypto_op_t *tmpl_single = &irt->op_tmpl_single;
-  const vnet_crypto_op_t *tmpl_chained = &irt->op_tmpl_chained;
+  vnet_crypto_op_t *tmpl_single = &irt->op_tmpl_single;
+  vnet_crypto_op_t *tmpl_chained = &irt->op_tmpl_chained;
+  tmpl_single->keys = (uword) vnet_crypto_get_active_engine_key_data (
+    irt->key, irt->op_id, VNET_CRYPTO_HANDLER_TYPE_SIMPLE);
+  tmpl_chained->keys = (uword) vnet_crypto_get_active_engine_key_data (
+    irt->key, irt->op_id, VNET_CRYPTO_HANDLER_TYPE_CHAINED);
 
-  if (irt->key_index == ~0 || !irt->op_id)
+  if (!irt->key || !irt->op_id)
     return ESP_DECRYPT_ERROR_RX_PKTS;
 
-  *op = *tmpl_single;
+  *op = pd->is_chain ? *tmpl_chained : *tmpl_single;
   op->user_data = index;
 
   if (irt->integ_icv_size && !irt->is_aead)
@@ -515,8 +519,6 @@ esp_decrypt_prepare_sync_op (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
 
       if (pd->is_chain)
 	{
-	  *op = *tmpl_chained;
-	  op->user_data = index;
 	  ops = &ptd->chained_crypto_ops;
 	  integ_len = pd->current_length;
 	}
@@ -548,6 +550,7 @@ esp_decrypt_prepare_sync_op (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
 		  ops = &ptd->crypto_ops;
 		  len = b->current_length;
 		  op->integ_len = (u16) integ_len;
+		  op->keys = tmpl_single->keys;
 		  goto out_integ;
 		}
 	    }
@@ -653,7 +656,8 @@ esp_decrypt_prepare_async_frame (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
   esp_decrypt_packet_data_t *async_pd = &(esp_post_data (b))->decrypt_data;
   esp_decrypt_packet_data2_t *async_pd2 = esp_post_data2 (b);
   u8 *tag = payload + len, *iv = payload + esp_sz, *aad = 0;
-  const u32 key_index = irt->key_index;
+  uword keys = (uword) vnet_crypto_get_active_engine_key_data (
+    irt->key, irt->op_id, VNET_CRYPTO_HANDLER_TYPE_SIMPLE);
   u32 crypto_len, integ_len = 0;
   i16 crypto_start_offset, integ_start_offset = 0;
   u8 flags = 0;
@@ -702,6 +706,8 @@ esp_decrypt_prepare_async_frame (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
 	    tag = vlib_buffer_get_tail (pd2->lb) - icv_sz;
 
 	  flags |= VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS;
+	  keys = (uword) vnet_crypto_get_active_engine_key_data (
+	    irt->key, irt->op_id, VNET_CRYPTO_HANDLER_TYPE_CHAINED);
 	  if (esp_decrypt_chain_integ (vm, ptd, pd, pd2, irt, b, icv_sz,
 				       payload, pd->current_length, &tag, 0,
 				       &integ_len) < 0)
@@ -756,7 +762,8 @@ out:
     {
       /* buffer is chained */
       flags |= VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS;
-
+      keys = (uword) vnet_crypto_get_active_engine_key_data (
+	irt->key, irt->op_id, VNET_CRYPTO_HANDLER_TYPE_CHAINED);
       crypto_len =
 	esp_decrypt_chain_crypto (vm, ptd, pd, pd2, irt, b, icv_sz, payload,
 				  len - pd->iv_sz + pd->icv_sz, &tag, 0);
@@ -768,7 +775,7 @@ out:
   /* for AEAD integ_len - crypto_len will be negative, it is ok since it
    * is ignored by the engine. */
   vnet_crypto_async_add_to_frame (
-    vm, f, key_index, crypto_len, integ_len - crypto_len, crypto_start_offset,
+    vm, f, keys, crypto_len, integ_len - crypto_len, crypto_start_offset,
     integ_start_offset, bi, async_next, iv, tag, aad, flags);
 
   return (ESP_DECRYPT_ERROR_RX_PKTS);

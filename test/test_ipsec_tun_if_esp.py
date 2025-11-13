@@ -1085,7 +1085,7 @@ class TestIpsec4TunIfEspAll(TemplateIpsec4TunProtect, TemplateIpsec, IpsecTun4):
         """IPSEC tunnel all algos"""
 
         # foreach VPP crypto engine
-        engines = ["ia32", "ipsecmb", "openssl"]
+        engines = ["native", "ipsecmb", "openssl"]
 
         # foreach crypto algorithm
         algos = [
