@@ -378,7 +378,7 @@ retry:
 #define NOT_FOUND_ERROR "<html><head><title>Document not found</title></head><body><h1>404 - Document not found</h1></body></html>"
 
 static void
-http_handler (FILE *stream, u8 **patterns, u8 v2)
+http_handler (FILE *stream, u8 **patterns, u8 v2, u8 *stats_segment_name)
 {
   char status[80] = { 0 };
   if (fgets (status, sizeof (status) - 1, stream) == 0)
@@ -430,7 +430,15 @@ http_handler (FILE *stream, u8 **patterns, u8 v2)
       return;
     }
   fputs ("HTTP/1.0 200 OK\r\nContent-Type: text/plain\r\n\r\n", stream);
+  int rv = stat_segment_connect ((char *) stats_segment_name);
+  if (rv)
+    {
+      fformat (stderr, "Couldn't connect to vpp, does %s exist?\n",
+	       stats_segment_name);
+      return;
+    }
   dump_metrics (stream, patterns, v2);
+  stat_segment_disconnect ();
 }
 
 static int
@@ -537,6 +545,7 @@ main (int argc, char **argv)
 	       stat_segment_name);
       exit (1);
     }
+  stat_segment_disconnect ();
 
   int fd = start_listen (port);
   if (fd < 0)
@@ -555,6 +564,7 @@ main (int argc, char **argv)
 	{
 	  struct sockaddr_in6 clientaddr = { 0 };
 	  char address[INET6_ADDRSTRLEN];
+	  memset (address, 0, sizeof (address));
 	  socklen_t addrlen;
 	  getpeername (conn_sock, (struct sockaddr *) &clientaddr, &addrlen);
 	  if (inet_ntop
@@ -573,11 +583,10 @@ main (int argc, char **argv)
 	  continue;
 	}
       /* Single reader at the moment */
-      http_handler (stream, patterns, v2);
+      http_handler (stream, patterns, v2, stat_segment_name);
       fclose (stream);
     }
 
-  stat_segment_disconnect ();
   close (fd);
 
   exit (0);
