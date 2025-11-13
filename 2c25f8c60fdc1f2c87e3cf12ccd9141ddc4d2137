@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b425698f_bb6f4316",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 8
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-11-13T21:37:39Z",
+      "side": 1,
+      "message": "Probably test will pass now although it probably shouldn\u0027t because some of the udp connections break, probably because of linux migrating flows between tap queues after 4-5s. \n\nWe might have to consider using software rss, or vpp as a bridge ..",
+      "revId": "2c25f8c60fdc1f2c87e3cf12ccd9141ddc4d2137",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
