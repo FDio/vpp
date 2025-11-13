@@ -190,7 +190,8 @@ void oct_crypto_key_del_handler (vlib_main_t *vm,
 				 vnet_crypto_key_index_t key_index);
 
 void oct_crypto_key_add_handler (vlib_main_t *vm,
-				 vnet_crypto_key_index_t key_index);
+				 vnet_crypto_key_index_t key_index,
+				 vnet_crypto_alg_t alg);
 
 void oct_crypto_key_handler (vnet_crypto_key_op_t kop,
 			     vnet_crypto_key_index_t idx);
