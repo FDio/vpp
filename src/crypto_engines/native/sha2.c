@@ -4,7 +4,33 @@
 
 #include <vlib/vlib.h>
 #include <vnet/plugin/plugin.h>
-#include <native/sha2.h>
+#include <vppinfra/crypto/sha2.h>
+#include <vnet/crypto/crypto.h>
+#include <native/crypto_native.h>
+
+static int
+sha2_probe ()
+{
+#if defined(__x86_64__)
+#if defined(__SHA__) && defined(__AVX512F__)
+  if (clib_cpu_supports_sha () && clib_cpu_supports_avx512f ())
+    return 30;
+#elif defined(__SHA__) && defined(__AVX2__)
+  if (clib_cpu_supports_sha () && clib_cpu_supports_avx2 ())
+    return 20;
+#elif defined(__SHA__)
+  if (clib_cpu_supports_sha ())
+    return 10;
+#endif
+
+#elif defined(__aarch64__)
+#if defined(__ARM_FEATURE_SHA2)
+  if (clib_cpu_supports_sha2 ())
+    return 10;
+#endif
+#endif
+  return -1;
+}
 
 static_always_inline u32
 crypto_native_ops_hash_sha2 (vlib_main_t *vm, vnet_crypto_op_t *ops[],
@@ -38,15 +64,118 @@ next:
   return n_ops;
 }
 
-static void *
-sha2_key_add (vnet_crypto_key_t *key, clib_sha2_type_t type)
+static_always_inline u32
+crypto_native_ops_hmac_sha2 (vlib_main_t *vm, vnet_crypto_op_t *ops[],
+			     u32 n_ops, vnet_crypto_op_chunk_t *chunks,
+			     clib_sha2_type_t type)
 {
-  clib_sha2_hmac_key_data_t *kd;
+  crypto_native_main_t *cm = &crypto_native_main;
+  const u32 thrd_stride = vm->thread_index * cm->stride;
+  vnet_crypto_op_t *op = ops[0];
+  u32 n_left = n_ops;
+  clib_sha2_hmac_ctx_t ctx;
+  u8 buffer[64];
+  u32 sz, n_fail = 0;
 
-  kd = clib_mem_alloc_aligned (sizeof (*kd), CLIB_CACHE_LINE_BYTES);
-  clib_sha2_hmac_key_data (type, key->data, key->length, kd);
+  for (; n_left; n_left--, op++)
+    {
+      crypto_native_per_thread_data_t *ptd =
+	(crypto_native_per_thread_data_t *) ((u8 *) op->keys + thrd_stride);
 
-  return kd;
+      clib_sha2_hmac_init (&ctx, type,
+			   (clib_sha2_hmac_key_data_t *) ptd->hmac_key_data);
+      if (op->flags & VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS)
+	{
+	  vnet_crypto_op_chunk_t *chp = chunks + op->integ_chunk_index;
+	  for (int j = 0; j < op->integ_n_chunks; j++, chp++)
+	    clib_sha2_hmac_update (&ctx, chp->src, chp->len);
+	}
+      else
+	clib_sha2_hmac_update (&ctx, op->integ_src, op->integ_len);
+
+      clib_sha2_hmac_final (&ctx, buffer);
+
+      if (op->digest_len)
+	{
+	  sz = op->digest_len;
+	  if (op->flags & VNET_CRYPTO_OP_FLAG_HMAC_CHECK)
+	    {
+	      if ((memcmp (op->digest, buffer, sz)))
+		{
+		  n_fail++;
+		  op->status = VNET_CRYPTO_OP_STATUS_FAIL_BAD_HMAC;
+		  continue;
+		}
+	    }
+	  else
+	    clib_memcpy_fast (op->digest, buffer, sz);
+	}
+      else
+	{
+	  sz = clib_sha2_variants[type].digest_size;
+	  if (op->flags & VNET_CRYPTO_OP_FLAG_HMAC_CHECK)
+	    {
+	      if ((memcmp (op->digest, buffer, sz)))
+		{
+		  n_fail++;
+		  op->status = VNET_CRYPTO_OP_STATUS_FAIL_BAD_HMAC;
+		  continue;
+		}
+	    }
+	  else
+	    clib_memcpy_fast (op->digest, buffer, sz);
+	}
+
+      op->status = VNET_CRYPTO_OP_STATUS_COMPLETED;
+    }
+
+  return n_ops - n_fail;
+}
+
+static void
+sha2_key_handler (vnet_crypto_key_op_t kop,
+		  crypto_native_per_thread_data_t *ptd, const u8 *data,
+		  u16 length, clib_sha2_type_t type)
+{
+  crypto_native_main_t *cm = &crypto_native_main;
+
+  if (kop == VNET_CRYPTO_KEY_OP_DEL)
+    {
+      for (u32 i = 0; i < cm->num_threads;
+	   i++, ptd = (crypto_native_per_thread_data_t *) ((u8 *) ptd +
+							   cm->stride))
+	{
+	  if (ptd->hmac_key_data)
+	    clib_mem_free_s (ptd->hmac_key_data);
+
+	  ptd->hmac_key_data = 0;
+	}
+    }
+  else if (kop == VNET_CRYPTO_KEY_OP_MODIFY)
+    {
+      for (u32 i = 0; i < cm->num_threads;
+	   i++, ptd = (crypto_native_per_thread_data_t *) ((u8 *) ptd +
+							   cm->stride))
+	{
+	  if (ptd->hmac_key_data)
+	    clib_mem_free_s (ptd->hmac_key_data);
+
+	  ptd->hmac_key_data = clib_mem_alloc_aligned (
+	    sizeof (clib_sha2_hmac_key_data_t), CLIB_CACHE_LINE_BYTES);
+	  clib_sha2_hmac_key_data (type, data, length, ptd->hmac_key_data);
+	}
+    }
+  else if (kop == VNET_CRYPTO_KEY_OP_ADD)
+    {
+      for (u32 i = 0; i < cm->num_threads;
+	   i++, ptd = (crypto_native_per_thread_data_t *) ((u8 *) ptd +
+							   cm->stride))
+	{
+	  ptd->hmac_key_data = clib_mem_alloc_aligned (
+	    sizeof (clib_sha2_hmac_key_data_t), CLIB_CACHE_LINE_BYTES);
+	  clib_sha2_hmac_key_data (type, data, length, ptd->hmac_key_data);
+	}
+    }
 }
 
 #define _(b)                                                                  \
@@ -78,9 +207,11 @@ sha2_key_add (vnet_crypto_key_t *key, clib_sha2_type_t type)
 					CLIB_SHA2_##b);                       \
   }                                                                           \
                                                                               \
-  static void *sha2_##b##_key_add (vnet_crypto_key_t *k)                      \
+  static void sha2_##b##_key_handler (vnet_crypto_key_op_t kop,               \
+				      crypto_native_per_thread_data_t *ptd,   \
+				      const u8 *data, u16 length)             \
   {                                                                           \
-    return sha2_key_add (k, CLIB_SHA2_##b);                                   \
+    sha2_key_handler (kop, ptd, data, length, CLIB_SHA2_##b);                 \
   }                                                                           \
                                                                               \
   CRYPTO_NATIVE_OP_HANDLER (crypto_native_hash_sha##b) = {                    \
@@ -97,7 +228,7 @@ sha2_key_add (vnet_crypto_key_t *key, clib_sha2_type_t type)
   };                                                                          \
   CRYPTO_NATIVE_KEY_HANDLER (crypto_native_hmac_sha##b) = {                   \
     .alg_id = VNET_CRYPTO_ALG_HMAC_SHA##b,                                    \
-    .key_fn = sha2_##b##_key_add,                                             \
+    .key_fn = sha2_##b##_key_handler,                                         \
     .probe = sha2_probe,                                                      \
   };
 
