@@ -1795,7 +1795,8 @@ METHOD (kernel_ipsec_t, del_sa, status_t, private_kernel_vpp_ipsec_t *this,
     {
       DBG1 (DBG_KNL, "SA not found");
       rv = NOT_FOUND;
-      goto error;
+      this->mutex->unlock (this->mutex);
+      return rv;
     }
   mp = vl_msg_api_alloc (sizeof (*mp));
   memset (mp, 0, sizeof (*mp));
