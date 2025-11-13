@@ -89,8 +89,8 @@ typedef struct noise_keypair
   int kp_is_initiator;
   uint32_t kp_local_index;
   uint32_t kp_remote_index;
-  vnet_crypto_key_index_t kp_send_index;
-  vnet_crypto_key_index_t kp_recv_index;
+  vnet_crypto_op_keys_t kp_send;
+  vnet_crypto_op_keys_t kp_recv;
   f64 kp_birthdate;
   noise_counter_t kp_ctr;
 } noise_keypair_t;
@@ -267,8 +267,8 @@ noise_remote_keypair_free (vlib_main_t *vm, noise_remote_t *r,
   if (*kp)
     {
       u->u_index_drop (vm, (*kp)->kp_local_index);
-      vnet_crypto_key_del (vm, (*kp)->kp_send_index);
-      vnet_crypto_key_del (vm, (*kp)->kp_recv_index);
+      vnet_crypto_key_del_obj (vm, (*kp)->kp_send.crypto);
+      vnet_crypto_key_del_obj (vm, (*kp)->kp_recv.crypto);
       clib_mem_free (*kp);
     }
 }

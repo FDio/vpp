@@ -2710,7 +2710,7 @@ update_map_register_auth_data (map_register_hdr_t * map_reg_hdr,
   MREG_KEY_ID (map_reg_hdr) = clib_host_to_net_u16 (key_id);
   MREG_AUTH_DATA_LEN (map_reg_hdr) = clib_host_to_net_u16 (auth_data_len);
   vnet_crypto_op_t _op, *op = &_op;
-  vnet_crypto_key_index_t ki;
+  vnet_crypto_op_keys_t keys = { .integ = NULL };
 
   vnet_crypto_op_init (op, lisp_key_type_to_crypto_op (key_id));
   op->len = msg_len;
@@ -2719,14 +2719,13 @@ update_map_register_auth_data (map_register_hdr_t * map_reg_hdr,
   op->digest_len = 0;
   op->iv = 0;
 
-  ki = vnet_crypto_key_add (lcm->vlib_main,
-			    lisp_key_type_to_crypto_alg (key_id), key,
-			    vec_len (key));
+  keys.crypto = vnet_crypto_key_add_obj (
+    lcm->vlib_main, lisp_key_type_to_crypto_alg (key_id), key, vec_len (key));
 
-  op->key_index = ki;
+  op->keys = (uword) &keys;
 
   vnet_crypto_process_ops (lcm->vlib_main, op, 1);
-  vnet_crypto_key_del (lcm->vlib_main, ki);
+  vnet_crypto_key_del_obj (lcm->vlib_main, keys.crypto);
 
   return 0;
 }
@@ -3881,7 +3880,7 @@ is_auth_data_valid (map_notify_hdr_t * h, u32 msg_len,
   u16 auth_data_len;
   int result;
   vnet_crypto_op_t _op, *op = &_op;
-  vnet_crypto_key_index_t ki;
+  vnet_crypto_op_keys_t keys = { .integ = NULL };
   u8 out[EVP_MAX_MD_SIZE] = { 0, };
 
   auth_data_len = auth_data_len_by_key_id (key_id);
@@ -3905,14 +3904,12 @@ is_auth_data_valid (map_notify_hdr_t * h, u32 msg_len,
   op->digest_len = 0;
   op->iv = 0;
 
-  ki = vnet_crypto_key_add (lcm->vlib_main,
-			    lisp_key_type_to_crypto_alg (key_id), key,
-			    vec_len (key));
+  keys.crypto = vnet_crypto_key_add_obj (
+    lcm->vlib_main, lisp_key_type_to_crypto_alg (key_id), key, vec_len (key));
 
-  op->key_index = ki;
-
+  op->keys = (uword) &keys;
   vnet_crypto_process_ops (lcm->vlib_main, op, 1);
-  vnet_crypto_key_del (lcm->vlib_main, ki);
+  vnet_crypto_key_del_obj (lcm->vlib_main, keys.crypto);
 
   result = memcmp (out, auth_data, auth_data_len);
 

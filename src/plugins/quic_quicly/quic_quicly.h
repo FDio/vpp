@@ -55,7 +55,7 @@ typedef struct quic_quicly_main_
 {
   quic_main_t *qm;
   ptls_cipher_suite_t ***quic_ciphers;
-  u32 *per_thread_crypto_key_indices;
+  vnet_crypto_op_keys_t *per_thread_crypto_keys;
   clib_bihash_16_8_t connection_hash; /**< quic connection id -> conn handle */
   /* to handle packets that do not use the server generated CID, src CID ->
    * conn handle, NOTE: we use only connected UDP for now */
