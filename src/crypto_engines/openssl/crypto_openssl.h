@@ -5,9 +5,9 @@
 #ifndef __crypto_openssl_h__
 #define __crypto_openssl_h__
 
-typedef void *(crypto_openssl_ctx_fn_t) (vnet_crypto_key_t *key,
-					 vnet_crypto_key_op_t kop,
-					 vnet_crypto_key_index_t idx);
+typedef void (crypto_openssl_ctx_fn_t) (vnet_crypto_key_op_t kop,
+					void *key_data, vnet_crypto_alg_t alg,
+					const u8 *data, u16 length);
 
 typedef struct
 {
