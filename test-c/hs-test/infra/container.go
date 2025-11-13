@@ -13,7 +13,6 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/cilium/cilium/pkg/sysctl"
 	containerTypes "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/image"
@@ -350,7 +349,8 @@ func (c *Container) getVolumesAsSlice() []string {
 		volumeSlice = append(volumeSlice, fmt.Sprintf("%s:%s", *VppSourceFileDir, *VppSourceFileDir))
 	}
 
-	core_pattern, err := sysctl.Read("kernel.core_pattern")
+	core_pattern_byte, err := os.ReadFile("/proc/sys/kernel/core_pattern")
+	core_pattern := string(core_pattern_byte)
 	if err == nil {
 		if len(core_pattern) > 0 && core_pattern[0] != '|' {
 			index := strings.LastIndex(core_pattern, "/")
@@ -469,9 +469,14 @@ func (c *Container) GetFile(sourceFileName, targetFileName string) error {
  * Executes in detached mode so that the started application can continue to run
  * without blocking execution of test
  */
-func (c *Container) ExecServer(useEnvVars bool, command string, arguments ...any) {
+func (c *Container) ExecServer(useEnvVars bool, command any, arguments ...any) {
 	var envVars string
-	serverCommand := fmt.Sprintf(command, arguments...)
+	var serverCommand string
+	if len(arguments) > 0 {
+		serverCommand = fmt.Sprintf(fmt.Sprint(command), arguments...)
+	} else {
+		serverCommand = fmt.Sprint(command)
+	}
 	if useEnvVars {
 		envVars = c.getEnvVarsAsCliOption()
 	} else {
@@ -483,9 +488,14 @@ func (c *Container) ExecServer(useEnvVars bool, command string, arguments ...any
 	c.Suite.AssertNil(exechelper.Run(containerExecCommand))
 }
 
-func (c *Container) Exec(useEnvVars bool, command string, arguments ...any) (string, error) {
+func (c *Container) Exec(useEnvVars bool, command any, arguments ...any) (string, error) {
 	var envVars string
-	serverCommand := fmt.Sprintf(command, arguments...)
+	var serverCommand string
+	if len(arguments) > 0 {
+		serverCommand = fmt.Sprintf(fmt.Sprint(command), arguments...)
+	} else {
+		serverCommand = fmt.Sprint(command)
+	}
 	if useEnvVars {
 		envVars = c.getEnvVarsAsCliOption()
 	} else {
@@ -499,11 +509,16 @@ func (c *Container) Exec(useEnvVars bool, command string, arguments ...any) (str
 }
 
 // Returns outputBuffer.String(), errorBuffer.String(), error. Runs commands with 'stdbuf -oL'.
-func (c *Container) ExecLineBuffered(ctx context.Context, useEnvVars bool, command string, arguments ...any) (string, string, error) {
+func (c *Container) ExecLineBuffered(ctx context.Context, useEnvVars bool, command any, arguments ...any) (string, string, error) {
 	var envVars string
 	outputBuffer := bytes.NewBuffer([]byte{})
 	errBuffer := bytes.NewBuffer([]byte{})
-	serverCommand := fmt.Sprintf(command, arguments...)
+	var serverCommand string
+	if len(arguments) > 0 {
+		serverCommand = fmt.Sprintf(fmt.Sprint(command), arguments...)
+	} else {
+		serverCommand = fmt.Sprint(command)
+	}
 	if useEnvVars {
 		envVars = c.getEnvVarsAsCliOption()
 	} else {
@@ -525,9 +540,14 @@ func (c *Container) ExecLineBuffered(ctx context.Context, useEnvVars bool, comma
 	return outputBuffer.String(), errBuffer.String(), err
 }
 
-func (c *Container) ExecContext(ctx context.Context, useEnvVars bool, command string, arguments ...any) (string, error) {
+func (c *Container) ExecContext(ctx context.Context, useEnvVars bool, command any, arguments ...any) (string, error) {
 	var envVars string
-	serverCommand := fmt.Sprintf(command, arguments...)
+	var serverCommand string
+	if len(arguments) > 0 {
+		serverCommand = fmt.Sprintf(fmt.Sprint(command), arguments...)
+	} else {
+		serverCommand = fmt.Sprint(command)
+	}
 	if useEnvVars {
 		envVars = c.getEnvVarsAsCliOption()
 	} else {

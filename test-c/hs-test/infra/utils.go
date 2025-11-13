@@ -452,9 +452,9 @@ func (s *HstSuite) Log(log any, arg ...any) {
 	} else {
 		logStr = fmt.Sprintf(fmt.Sprint(log), arg...)
 	}
-	logs := strings.Split(logStr, "\n")
+	logs := strings.SplitSeq(logStr, "\n")
 
-	for _, line := range logs {
+	for line := range logs {
 		s.Logger.Println(line)
 	}
 	if *IsVerbose {
