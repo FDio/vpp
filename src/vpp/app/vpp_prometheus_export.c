@@ -347,19 +347,19 @@ print_metric_v2 (FILE *stream, stat_segment_data_t *res)
 }
 
 static void
-dump_metrics (FILE *stream, u8 **patterns, u8 v2)
+dump_metrics (FILE *stream, u8 **patterns, u8 v2, stat_client_main_t *shm)
 {
   stat_segment_data_t *res;
   int i;
   static u32 *stats = 0;
 
 retry:
-  res = stat_segment_dump (stats);
+  res = stat_segment_dump_r (stats, shm);
   if (res == 0)
     { /* Memory layout has changed */
       if (stats)
 	vec_free (stats);
-      stats = stat_segment_ls (patterns);
+      stats = stat_segment_ls_r (patterns, shm);
       goto retry;
     }
 
@@ -378,7 +378,7 @@ retry:
 #define NOT_FOUND_ERROR "<html><head><title>Document not found</title></head><body><h1>404 - Document not found</h1></body></html>"
 
 static void
-http_handler (FILE *stream, u8 **patterns, u8 v2)
+http_handler (FILE *stream, u8 **patterns, u8 v2, u8 *stats_segment_name)
 {
   char status[80] = { 0 };
   if (fgets (status, sizeof (status) - 1, stream) == 0)
@@ -430,7 +430,16 @@ http_handler (FILE *stream, u8 **patterns, u8 v2)
       return;
     }
   fputs ("HTTP/1.0 200 OK\r\nContent-Type: text/plain\r\n\r\n", stream);
-  dump_metrics (stream, patterns, v2);
+  stat_client_main_t shm;
+  int rv = stat_segment_connect_r ((char *) stats_segment_name, &shm);
+  if (rv)
+    {
+      fformat (stderr, "Couldn't connect to vpp, does %s exist?\n",
+	       stats_segment_name);
+      return;
+    }
+  dump_metrics (stream, patterns, v2, &shm);
+  stat_segment_disconnect_r (&shm);
 }
 
 static int
@@ -529,15 +538,15 @@ main (int argc, char **argv)
       fformat (stderr, usage, argv[0]);
       exit (1);
     }
-
-  rv = stat_segment_connect ((char *) stat_segment_name);
+  stat_client_main_t shm;
+  rv = stat_segment_connect_r ((char *) stat_segment_name, &shm);
   if (rv)
     {
       fformat (stderr, "Couldn't connect to vpp, does %s exist?\n",
 	       stat_segment_name);
       exit (1);
     }
-
+  stat_segment_disconnect_r (&shm);
   int fd = start_listen (port);
   if (fd < 0)
     {
@@ -555,6 +564,7 @@ main (int argc, char **argv)
 	{
 	  struct sockaddr_in6 clientaddr = { 0 };
 	  char address[INET6_ADDRSTRLEN];
+	  memset (address, 0, sizeof (address));
 	  socklen_t addrlen;
 	  getpeername (conn_sock, (struct sockaddr *) &clientaddr, &addrlen);
 	  if (inet_ntop
@@ -573,11 +583,10 @@ main (int argc, char **argv)
 	  continue;
 	}
       /* Single reader at the moment */
-      http_handler (stream, patterns, v2);
+      http_handler (stream, patterns, v2, stat_segment_name);
       fclose (stream);
     }
 
-  stat_segment_disconnect ();
   close (fd);
 
   exit (0);
