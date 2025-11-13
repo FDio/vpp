@@ -1177,6 +1177,7 @@ class TestIpsec4TunIfEspAll(TemplateIpsec4TunProtect, TemplateIpsec, IpsecTun4):
 
         for engine in engines:
             self.vapi.cli("set crypto handler all %s" % engine)
+            self.vapi.cli("show crypto handlers")
 
             #
             # loop through each of the algorithms
