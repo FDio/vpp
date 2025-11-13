@@ -502,7 +502,7 @@ esp_decrypt_prepare_sync_op (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
   const vnet_crypto_op_t *tmpl_single = &irt->op_tmpl_single;
   const vnet_crypto_op_t *tmpl_chained = &irt->op_tmpl_chained;
 
-  if (irt->key_index == ~0 || !irt->op_id)
+  if (!irt->key || !irt->op_id)
     return ESP_DECRYPT_ERROR_RX_PKTS;
 
   *op = *tmpl_single;
@@ -653,7 +653,7 @@ esp_decrypt_prepare_async_frame (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
   esp_decrypt_packet_data_t *async_pd = &(esp_post_data (b))->decrypt_data;
   esp_decrypt_packet_data2_t *async_pd2 = esp_post_data2 (b);
   u8 *tag = payload + len, *iv = payload + esp_sz, *aad = 0;
-  const u32 key_index = irt->key_index;
+  uword keys = (uword) irt->key;
   u32 crypto_len, integ_len = 0;
   i16 crypto_start_offset, integ_start_offset = 0;
   u8 flags = 0;
@@ -767,9 +767,9 @@ out:
 
   /* for AEAD integ_len - crypto_len will be negative, it is ok since it
    * is ignored by the engine. */
-  vnet_crypto_async_add_to_frame (
-    vm, f, key_index, crypto_len, integ_len - crypto_len, crypto_start_offset,
-    integ_start_offset, bi, async_next, iv, tag, aad, flags);
+  vnet_crypto_async_add_to_frame (vm, f, keys, crypto_len, integ_len - crypto_len,
+				  crypto_start_offset, integ_start_offset, bi, async_next, iv, tag,
+				  aad, flags);
 
   return (ESP_DECRYPT_ERROR_RX_PKTS);
 }
