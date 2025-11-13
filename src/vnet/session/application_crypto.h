@@ -22,7 +22,6 @@ typedef struct app_certkey_int_
 
 typedef struct certificate_
 {
-  u32 *app_interests; /**< vec of application index asking for deletion cb */
   u32 cert_key_index; /**< index in cert & key pool */
   u8 *key;	      /**< PEM encoded key */
   u8 *cert;	      /**< PEM encoded cert */
@@ -190,7 +189,6 @@ app_crypto_get_int_ca_trust (app_crypto_ca_trust_t *ct,
 			     clib_thread_index_t thread_index);
 
 int vnet_app_add_cert_key_pair (vnet_app_add_cert_key_pair_args_t *a);
-int vnet_app_add_cert_key_interest (u32 index, u32 app_index);
 int vnet_app_del_cert_key_pair (u32 index);
 
 static inline app_certkey_int_ctx_t *

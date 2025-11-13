@@ -67,9 +67,6 @@ typedef struct session_cb_vft_
   /** Direct TX callback for built-in application */
   int (*builtin_app_tx_callback) (session_t * session);
 
-  /** Cert and key pair delete notification */
-  int (*app_cert_key_pair_delete_callback) (app_cert_key_pair_t * ckpair);
-
   /** Delegate fifo-tuning-logic to application */
   int (*fifo_tuning_callback) (session_t * s, svm_fifo_t * f,
 			       session_ft_action_t act, u32 bytes);
@@ -271,8 +268,6 @@ session_error_t vnet_disconnect_session (vnet_disconnect_args_t *a);
 
 int vnet_app_add_cert_key_pair (vnet_app_add_cert_key_pair_args_t * a);
 int vnet_app_del_cert_key_pair (u32 index);
-/** Ask for app cb on pair deletion */
-int vnet_app_add_cert_key_interest (u32 index, u32 app_index);
 
 uword unformat_vnet_uri (unformat_input_t *input, va_list *args);
 
