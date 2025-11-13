@@ -121,9 +121,15 @@ add_vpp_executable(vpp_get_stats
 )
 
 add_vpp_executable(vpp_prometheus_export
-  SOURCES app/vpp_prometheus_export.c
+  SOURCES app/vpp_prometheus_export.c app/dump_metrics.c
   LINK_LIBRARIES vppapiclient vppinfra svm vlibmemoryclient ${EPOLL_LIB}
   DEPENDS api_headers
+)
+
+add_vpp_executable(vpp_prometheus_push
+   SOURCES app/vpp_prometheus_push.c app/dump_metrics.c
+   LINK_LIBRARIES vppapiclient vppinfra svm vlibmemoryclient ssl crypto ${EPOLL_LIB}
+   DEPENDS api_headers
 )
 
 install(FILES conf/startup.conf DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/vpp COMPONENT vpp)
