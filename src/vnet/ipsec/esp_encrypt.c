@@ -371,7 +371,8 @@ esp_prepare_async_frame (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
   esp_post_data_t *post = esp_post_data (b);
   u8 *tag, *iv, *aad = 0;
   u8 flag = 0;
-  const u32 key_index = ort->key_index;
+  uword keys = (uword) vnet_crypto_get_active_engine_key_data (
+    ort->key, ort->op_id, VNET_CRYPTO_HANDLER_TYPE_SIMPLE);
   i16 crypto_start_offset, integ_start_offset;
   u16 crypto_total_len, integ_total_len;
 
@@ -425,6 +426,8 @@ esp_prepare_async_frame (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
     {
       /* chain */
       flag |= VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS;
+      keys = (uword) vnet_crypto_get_active_engine_key_data (
+	ort->key, ort->op_id, VNET_CRYPTO_HANDLER_TYPE_CHAINED);
       tag = vlib_buffer_get_tail (lb) - icv_sz;
       crypto_total_len = esp_encrypt_chain_crypto (
 	vm, ptd, b, lb, icv_sz, b->data + crypto_start_offset,
@@ -451,7 +454,7 @@ esp_prepare_async_frame (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
     }
 
   /* this always succeeds because we know the frame is not full */
-  vnet_crypto_async_add_to_frame (vm, async_frame, key_index, crypto_total_len,
+  vnet_crypto_async_add_to_frame (vm, async_frame, keys, crypto_total_len,
 				  integ_total_len - crypto_total_len,
 				  crypto_start_offset, integ_start_offset, bi,
 				  async_next, iv, tag, aad, flag);
@@ -916,6 +919,8 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      ops = &((ipsec_per_thread_data_t *) ptd)->chained_crypto_ops;
 	      vec_add2_aligned (ops[0], op, 1, CLIB_CACHE_LINE_BYTES);
 	      *op = ort->op_tmpl_chained;
+	      op->keys = (uword) vnet_crypto_get_active_engine_key_data (
+		ort->key, ort->op_id, VNET_CRYPTO_HANDLER_TYPE_CHAINED);
 	      esp_prepare_sync_op_chained (op, ort, vm, ptd, b, lb, payload,
 					   payload_len, hdr_len, esp);
 	    }
@@ -924,6 +929,8 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      ops = &((ipsec_per_thread_data_t *) ptd)->crypto_ops;
 	      vec_add2_aligned (ops[0], op, 1, CLIB_CACHE_LINE_BYTES);
 	      *op = ort->op_tmpl_single;
+	      op->keys = (uword) vnet_crypto_get_active_engine_key_data (
+		ort->key, ort->op_id, VNET_CRYPTO_HANDLER_TYPE_SIMPLE);
 	      esp_prepare_sync_op (op, ort, vm, ptd, b, lb, payload,
 				   payload_len, hdr_len, esp);
 	    }
