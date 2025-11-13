@@ -23,6 +23,8 @@ from vpp_papi import VppEnum
 
 N_PKTS = 15
 N_REMOTE_HOSTS = 3
+N_SESSIONS_MAX = 256
+N_SESSIONS_PER_VRF = 200
 
 SRC = 0
 DST = 1
@@ -38,16 +40,20 @@ class CnatCommonTestCase(VppTestCase):
     extra_vpp_config = [
         "cnat",
         "{",
-        "session-db-buckets",
-        "64",
         "session-cleanup-timeout",
         "0.1",
         "session-max-age",
-        "1",
+        "10",
         "tcp-max-age",
-        "1",
+        "10",
         "scanner",
         "off",
+        "session-max",
+        f"{N_SESSIONS_MAX}",
+        "session-max-per-vrf",
+        f"{N_SESSIONS_PER_VRF}",
+        "session-log2-pool-size",
+        "0",
         "}",
     ]
 
@@ -484,7 +490,7 @@ class TestCNatTranslation(CnatCommonTestCase):
         # all disapper
         #
         self.vapi.cli("test cnat scanner on")
-        self.virtual_sleep(2)
+        self.virtual_sleep(20)
         sessions = self.vapi.cnat_session_dump()
         self.assertEqual(len(sessions), 0)
         self.vapi.cli("test cnat scanner off")
@@ -696,8 +702,8 @@ class TestCNatSourceNAT(CnatCommonTestCase):
 
     def _enable_disable_snat(self, is_enable=True):
         self.vapi.cnat_set_snat_addresses(
-            snat_ip4=self.pg2.remote_hosts[0].ip4,
-            snat_ip6=self.pg2.remote_hosts[0].ip6,
+            snat_ip4=self.pg2.remote_hosts[0].ip4 if is_enable else None,
+            snat_ip6=self.pg2.remote_hosts[0].ip6 if is_enable else None,
             sw_if_index=INVALID_INDEX,
         )
         self.vapi.feature_enable_disable(
@@ -713,21 +719,22 @@ class TestCNatSourceNAT(CnatCommonTestCase):
             sw_if_index=self.pg0.sw_if_index,
         )
 
-        policie_tbls = VppEnum.vl_api_cnat_snat_policy_table_t
-        self.vapi.cnat_set_snat_policy(
-            policy=VppEnum.vl_api_cnat_snat_policies_t.CNAT_POLICY_IF_PFX
-        )
-        for i in self.pg_interfaces:
-            self.vapi.cnat_snat_policy_add_del_if(
-                sw_if_index=i.sw_if_index,
-                is_add=1 if is_enable else 0,
-                table=policie_tbls.CNAT_POLICY_INCLUDE_V6,
+        if is_enable:
+            policie_tbls = VppEnum.vl_api_cnat_snat_policy_table_t
+            self.vapi.cnat_set_snat_policy(
+                policy=VppEnum.vl_api_cnat_snat_policies_t.CNAT_POLICY_IF_PFX
             )
-            self.vapi.cnat_snat_policy_add_del_if(
-                sw_if_index=i.sw_if_index,
-                is_add=1 if is_enable else 0,
-                table=policie_tbls.CNAT_POLICY_INCLUDE_V4,
-            )
+            for i in self.pg_interfaces:
+                self.vapi.cnat_snat_policy_add_del_if(
+                    sw_if_index=i.sw_if_index,
+                    is_add=1 if is_enable else 0,
+                    table=policie_tbls.CNAT_POLICY_INCLUDE_V6,
+                )
+                self.vapi.cnat_snat_policy_add_del_if(
+                    sw_if_index=i.sw_if_index,
+                    is_add=1 if is_enable else 0,
+                    table=policie_tbls.CNAT_POLICY_INCLUDE_V4,
+                )
 
     def setUp(self):
         super(TestCNatSourceNAT, self).setUp()
@@ -747,7 +754,7 @@ class TestCNatSourceNAT(CnatCommonTestCase):
         self._enable_disable_snat(is_enable=True)
 
     def tearDown(self):
-        self._enable_disable_snat(is_enable=True)
+        self._enable_disable_snat(is_enable=False)
 
         self.vapi.cnat_session_purge()
         for i in self.pg_interfaces:
@@ -776,6 +783,18 @@ class TestCNatSourceNAT(CnatCommonTestCase):
         ctx.cnat_send(self.pg0, 0, 0xFEED, self.pg1, 0, 8)
         ctx.cnat_expect(self.pg2, 0, None, self.pg1, 0, 8)
         ctx.cnat_send_return().cnat_expect_return()
+        # check for unknown return session
+        # expire all sessions and send return: this should be dropped as
+        # unknown return session
+        node = "/err/ip%d-cnat-return/unknown session" % (6 if is_v6 else 4)
+        self.vapi.cnat_session_purge()
+        err = self.statistics.get_err_counter(node)
+        try:
+            ctx.cnat_send_return()
+        except:
+            pass
+        err = self.statistics.get_err_counter(node) - err
+        self.assertEqual(err, N_PKTS)
 
     def sourcenat_test_icmp_traceroute_conf(self, is_v6=False):
         # IPv4 ICMP
@@ -939,6 +958,59 @@ class TestCNatSourceNAT(CnatCommonTestCase):
         ctx.cnat_send(self.pg0, 0, 1234, self.pg1, 1, 6661)
         ctx.cnat_expect(self.pg2, 0, None, self.pg1, 1, 6661)
         ctx.cnat_send_icmp_return_error().cnat_expect_icmp_error_return()
+
+        self.vapi.cnat_session_purge()
+
+    def test_snat_limit(self):
+        """CNAT Source Nat sessions limit"""
+        # this tests both hitting max-session and max-session-per-vrf, as we
+        # have 1 vrf for ipv4 and a different one for ipv6
+
+        n_pkts = N_SESSIONS_MAX + 10
+        p4 = [
+            (
+                Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+                / IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4)
+                / UDP(sport=4000, dport=5000 + i)
+                / Raw("\xa5" * 100)
+            )
+            for i in range(n_pkts)
+        ]
+        p6 = [
+            (
+                Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+                / IPv6(src=self.pg0.remote_ip6, dst=self.pg1.remote_ip6)
+                / UDP(sport=4000, dport=5000 + i)
+                / Raw("\xa5" * 100)
+            )
+            for i in range(n_pkts)
+        ]
+
+        # start from a clean state...
+        self.vapi.cnat_session_purge()
+        node4 = "/err/cnat-snat-ip4/session allocation failure"
+        node6 = "/err/cnat-snat-ip6/session allocation failure"
+        err4 = self.statistics.get_err_counter(node4)
+        err6 = self.statistics.get_err_counter(node6)
+
+        # when sending IPv4 traffic, we can send up to N_SESSIONS_PER_VRF
+        # packets
+        self.send_and_expect(self.pg0, p4, self.pg1, n_rx=N_SESSIONS_PER_VRF)
+        # when sending IPv6 traffic, we can only send up to N_SESSIONS_MAX-1 as
+        # IPv4 traffic already consumed sessions, and session 0 is always
+        # pre-allocated
+        self.send_and_expect(
+            self.pg0, p6, self.pg1, n_rx=N_SESSIONS_MAX - N_SESSIONS_PER_VRF - 1
+        )
+        self.vapi.cnat_session_purge()
+        # once everything expired, sessions should go through again
+        self.send_and_expect(self.pg0, p4[-10:] + p6[-10:], self.pg1)
+
+        # make sure we record drops as session alloc failures
+        err4 = self.statistics.get_err_counter(node4) - err4
+        err6 = self.statistics.get_err_counter(node6) - err6
+        self.assertEqual(err4, n_pkts - N_SESSIONS_PER_VRF)
+        self.assertEqual(err6, n_pkts - N_SESSIONS_MAX + N_SESSIONS_PER_VRF + 1)
 
         self.vapi.cnat_session_purge()
 
