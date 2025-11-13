@@ -541,13 +541,14 @@ func (vpp *VppInstance) CreateTap(tap *NetInterface, IPv6 bool, tapId uint32) er
 			ipAddressPeer = tap.Peer.Ip4Address
 		}
 
-		vppCliConfig := fmt.Sprintf("create tap id %d host-if-name %s %s num-rx-queues %d %s\n"+
+		vppCliConfig := fmt.Sprintf("create tap id %d host-if-name %s %s num-rx-queues %d num-tx-queues %d %s\n"+
 			"set int ip addr tap%d %s\n"+
 			"set int state tap%d up\n",
 			tapId,
 			tap.name,
 			ipAddress,
 			numRxQueues,
+			numRxQueues+1,
 			flagsCli,
 			tapId,
 			ipAddressPeer,
@@ -567,6 +568,7 @@ func (vpp *VppInstance) CreateTap(tap *NetInterface, IPv6 bool, tapId uint32) er
 		HostIP6PrefixSet: true,
 		HostIP6Prefix:    tap.Ip6AddressWithPrefix(),
 		NumRxQueues:      numRxQueues,
+		NumTxQueues:      numRxQueues + 1,
 		TapFlags:         tapv2.TapFlags(tapFlags),
 	}
 
