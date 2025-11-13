@@ -34,7 +34,8 @@ typedef struct http3_stream_ctx_
   http3_stream_type_t stream_type;
   http3_frame_header_t fh;
   http3_req_flags_t flags;
-  void (*tranport_rx_cb) (struct http3_stream_ctx_ *sctx, http_conn_t *stream);
+  void (*transport_rx_cb) (struct http3_stream_ctx_ *sctx,
+			   http_conn_t *stream);
 } http3_stream_ctx_t;
 
 #define foreach_http3_conn_flags                                              \
@@ -813,7 +814,7 @@ http3_stream_transport_rx_unknown_type (http3_stream_ctx_t *sctx,
 	}
       h3c->peer_ctrl_stream_sctx_index =
 	((http_req_handle_t) sctx->base.hr_req_handle).req_index;
-      sctx->tranport_rx_cb = http3_stream_transport_rx_ctrl;
+      sctx->transport_rx_cb = http3_stream_transport_rx_ctrl;
       break;
     case HTTP3_STREAM_TYPE_DECODER:
       if (h3c->peer_decoder_stream_sctx_index != SESSION_INVALID_INDEX)
@@ -823,7 +824,7 @@ http3_stream_transport_rx_unknown_type (http3_stream_ctx_t *sctx,
 	}
       h3c->peer_decoder_stream_sctx_index =
 	((http_req_handle_t) sctx->base.hr_req_handle).req_index;
-      sctx->tranport_rx_cb = http3_stream_transport_rx_drain;
+      sctx->transport_rx_cb = http3_stream_transport_rx_drain;
       break;
     case HTTP3_STREAM_TYPE_ENCODER:
       if (h3c->peer_encoder_stream_sctx_index != SESSION_INVALID_INDEX)
@@ -833,14 +834,14 @@ http3_stream_transport_rx_unknown_type (http3_stream_ctx_t *sctx,
 	}
       h3c->peer_encoder_stream_sctx_index =
 	((http_req_handle_t) sctx->base.hr_req_handle).req_index;
-      sctx->tranport_rx_cb = http3_stream_transport_rx_drain;
+      sctx->transport_rx_cb = http3_stream_transport_rx_drain;
       break;
     default:
-      sctx->tranport_rx_cb = http3_stream_transport_rx_drain;
+      sctx->transport_rx_cb = http3_stream_transport_rx_drain;
       break;
     }
 
-  sctx->tranport_rx_cb (sctx, stream);
+  sctx->transport_rx_cb (sctx, stream);
 }
 
 static void
@@ -1199,9 +1200,18 @@ static void
 http3_app_rx_evt_callback (http_conn_t *stream, u32 req_index,
 			   clib_thread_index_t thread_index)
 {
+  http3_stream_ctx_t *sctx;
+
   HTTP_DBG (1, "stream [%u]%x sctx %x", stream->c_thread_index,
 	    stream->hc_hc_index, req_index);
-  /* FIXME: */
+
+  ASSERT (http_conn_is_stream (stream));
+
+  sctx = http3_stream_ctx_get (req_index, thread_index);
+  sctx->transport_rx_cb (sctx, stream);
+
+  /* reset http connection expiration timer */
+  http_conn_timer_update (stream);
 }
 
 static void
@@ -1241,7 +1251,7 @@ http3_transport_rx_callback (http_conn_t *stream)
 			       stream->c_thread_index);
   HTTP_DBG (1, "stream [%u]%x sctx %x", stream->c_thread_index,
 	    stream->hc_hc_index, pointer_to_uword (stream->opaque));
-  sctx->tranport_rx_cb (sctx, stream);
+  sctx->transport_rx_cb (sctx, stream);
 
   /* reset http connection expiration timer */
   http_conn_timer_update (stream);
@@ -1297,7 +1307,7 @@ http3_transport_stream_accept_callback (http_conn_t *stream)
   if (stream->flags & HTTP_CONN_F_BIDIRECTIONAL_STREAM)
     {
       sctx->stream_type = HTTP3_STREAM_TYPE_REQUEST;
-      sctx->tranport_rx_cb = http3_stream_transport_rx_req_server;
+      sctx->transport_rx_cb = http3_stream_transport_rx_req_server;
       HTTP_DBG (1, "new req stream accepted [%u]%x", sctx->base.c_thread_index,
 		((http_req_handle_t) sctx->base.hr_req_handle).req_index);
       if (http_conn_accept_request (stream, &sctx->base))
@@ -1312,7 +1322,7 @@ http3_transport_stream_accept_callback (http_conn_t *stream)
     }
   else
     {
-      sctx->tranport_rx_cb = http3_stream_transport_rx_unknown_type;
+      sctx->transport_rx_cb = http3_stream_transport_rx_unknown_type;
       HTTP_DBG (1, "new unidirectional stream accepted [%u]%x",
 		sctx->base.c_thread_index,
 		((http_req_handle_t) sctx->base.hr_req_handle).req_index);
