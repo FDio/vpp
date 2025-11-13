@@ -35,8 +35,10 @@ crypto_native_ops_hmac_sha2 (vlib_main_t *vm, vnet_crypto_op_t *ops[],
 
   for (; n_left; n_left--, op++)
     {
+      vnet_crypto_op_keys_t *keys = (vnet_crypto_op_keys_t *) op->keys;
       clib_sha2_hmac_init (
-	&ctx, type, (clib_sha2_hmac_key_data_t *) cm->key_data[op->key_index]);
+	&ctx, type,
+	(clib_sha2_hmac_key_data_t *) cm->key_data[keys->integ->index]);
       if (op->flags & VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS)
 	{
 	  vnet_crypto_op_chunk_t *chp = chunks + op->integ_chunk_index;

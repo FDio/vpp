@@ -142,9 +142,9 @@ openssl_ops_enc_cbc_hmac (vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops)
       int out_len = 0;
       unsigned int hmac_out_len = 0;
 
-      vnet_crypto_key_t *key = vnet_crypto_get_key (op->key_index);
-      enc_ctx = ptd->evp_cipher_enc_ctx[key->index_crypto];
-      hmac_ctx = ptd->hmac_ctx[key->index_integ];
+      vnet_crypto_op_keys_t *keys = (vnet_crypto_op_keys_t *) op->keys;
+      enc_ctx = ptd->evp_cipher_enc_ctx[keys->crypto->index];
+      hmac_ctx = ptd->hmac_ctx[keys->integ->index];
       EVP_EncryptInit_ex (enc_ctx, NULL, NULL, NULL, op->iv);
       HMAC_Init_ex (hmac_ctx, NULL, 0, NULL, NULL);
 
@@ -175,9 +175,9 @@ openssl_ops_hmac_dec_cbc (vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops)
       int out_len = 0;
       unsigned int hmac_out_len = 0;
 
-      vnet_crypto_key_t *key = vnet_crypto_get_key (op->key_index);
-      hmac_ctx = ptd->hmac_ctx[key->index_integ];
-      dec_ctx = ptd->evp_cipher_dec_ctx[key->index_crypto];
+      vnet_crypto_op_keys_t *keys = (vnet_crypto_op_keys_t *) op->keys;
+      hmac_ctx = ptd->hmac_ctx[keys->integ->index];
+      dec_ctx = ptd->evp_cipher_dec_ctx[keys->crypto->index];
       HMAC_Init_ex (hmac_ctx, NULL, 0, NULL, NULL);
       EVP_DecryptInit_ex (dec_ctx, NULL, NULL, NULL, op->iv);
 
@@ -216,9 +216,9 @@ openssl_ops_enc_cbc_hmac_chained (vlib_main_t *vm, vnet_crypto_op_t *ops[],
       int out_len = 0;
       unsigned int hmac_out_len = 0;
 
-      vnet_crypto_key_t *key = vnet_crypto_get_key (op->key_index);
-      enc_ctx = ptd->evp_cipher_enc_ctx[key->index_crypto];
-      hmac_ctx = ptd->hmac_ctx[key->index_integ];
+      vnet_crypto_op_keys_t *keys = (vnet_crypto_op_keys_t *) op->keys;
+      enc_ctx = ptd->evp_cipher_enc_ctx[keys->crypto->index];
+      hmac_ctx = ptd->hmac_ctx[keys->integ->index];
       EVP_EncryptInit_ex (enc_ctx, NULL, NULL, NULL, op->iv);
       HMAC_Init_ex (hmac_ctx, NULL, 0, NULL, NULL);
 
@@ -275,9 +275,9 @@ openssl_ops_hmac_dec_cbc_chained (vlib_main_t *vm, vnet_crypto_op_t *ops[],
       int out_len = 0;
       unsigned int hmac_out_len = 0;
 
-      vnet_crypto_key_t *key = vnet_crypto_get_key (op->key_index);
-      hmac_ctx = ptd->hmac_ctx[key->index_integ];
-      dec_ctx = ptd->evp_cipher_dec_ctx[key->index_crypto];
+      vnet_crypto_op_keys_t *keys = (vnet_crypto_op_keys_t *) op->keys;
+      hmac_ctx = ptd->hmac_ctx[keys->integ->index];
+      dec_ctx = ptd->evp_cipher_dec_ctx[keys->crypto->index];
       HMAC_Init_ex (hmac_ctx, NULL, 0, NULL, NULL);
       EVP_DecryptInit_ex (dec_ctx, NULL, NULL, NULL, op->iv);
 
@@ -335,9 +335,10 @@ openssl_ops_enc_cbc (vlib_main_t *vm, vnet_crypto_op_t *ops[],
   for (i = 0; i < n_ops; i++)
     {
       vnet_crypto_op_t *op = ops[i];
+      vnet_crypto_op_keys_t *keys = (vnet_crypto_op_keys_t *) op->keys;
       int out_len = 0;
 
-      ctx = ptd->evp_cipher_enc_ctx[op->key_index];
+      ctx = ptd->evp_cipher_enc_ctx[keys->crypto->index];
       EVP_EncryptInit_ex (ctx, NULL, NULL, NULL, op->iv);
 
       if (op->flags & VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS)
@@ -389,9 +390,10 @@ openssl_ops_dec_cbc (vlib_main_t *vm, vnet_crypto_op_t *ops[],
   for (i = 0; i < n_ops; i++)
     {
       vnet_crypto_op_t *op = ops[i];
+      vnet_crypto_op_keys_t *keys = (vnet_crypto_op_keys_t *) op->keys;
       int out_len = 0;
 
-      ctx = ptd->evp_cipher_dec_ctx[op->key_index];
+      ctx = ptd->evp_cipher_dec_ctx[keys->crypto->index];
       EVP_DecryptInit_ex (ctx, NULL, NULL, NULL, op->iv);
 
       if (op->flags & VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS)
@@ -442,6 +444,7 @@ openssl_ops_enc_aead (vlib_main_t *vm, vnet_crypto_op_t *ops[],
   for (i = 0; i < n_ops; i++)
     {
       vnet_crypto_op_t *op = ops[i];
+      vnet_crypto_op_keys_t *keys = (vnet_crypto_op_keys_t *) op->keys;
       int len = 0;
       u32 taglen = 16;
 
@@ -456,7 +459,7 @@ openssl_ops_enc_aead (vlib_main_t *vm, vnet_crypto_op_t *ops[],
 			 STORE);
 	}
 
-      ctx = ptd->evp_cipher_enc_ctx[op->key_index];
+      ctx = ptd->evp_cipher_enc_ctx[keys->crypto->index];
       EVP_EncryptInit_ex (ctx, 0, 0, NULL, op->iv);
       if (!fixed)
 	{
@@ -526,6 +529,7 @@ openssl_ops_dec_aead (vlib_main_t *vm, vnet_crypto_op_t *ops[],
   for (i = 0; i < n_ops; i++)
     {
       vnet_crypto_op_t *op = ops[i];
+      vnet_crypto_op_keys_t *keys = (vnet_crypto_op_keys_t *) op->keys;
       int len = 0;
       u32 taglen = 16;
 
@@ -534,7 +538,7 @@ openssl_ops_dec_aead (vlib_main_t *vm, vnet_crypto_op_t *ops[],
 	  taglen = op->tag_len;
 	  aadlen = op->aad_len;
 	}
-      ctx = ptd->evp_cipher_dec_ctx[op->key_index];
+      ctx = ptd->evp_cipher_dec_ctx[keys->crypto->index];
       EVP_DecryptInit_ex (ctx, 0, 0, NULL, op->iv);
       if (op->aad_len)
 	EVP_DecryptUpdate (ctx, 0, &len, op->aad, aadlen);
@@ -643,10 +647,11 @@ openssl_ops_hmac (vlib_main_t * vm, vnet_crypto_op_t * ops[],
   for (i = 0; i < n_ops; i++)
     {
       vnet_crypto_op_t *op = ops[i];
+      vnet_crypto_op_keys_t *keys = (vnet_crypto_op_keys_t *) op->keys;
       unsigned int out_len = 0;
       size_t sz = op->digest_len ? op->digest_len : EVP_MD_size (md);
 
-      ctx = ptd->hmac_ctx[op->key_index];
+      ctx = ptd->hmac_ctx[keys->integ->index];
       HMAC_Init_ex (ctx, NULL, 0, NULL, NULL);
       if (op->flags & VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS)
 	{
@@ -791,10 +796,6 @@ crypto_openssl_key_handler (vnet_crypto_key_op_t kop,
 {
   vnet_crypto_key_t *key = vnet_crypto_get_key (idx);
   crypto_openssl_main_t *cm = &crypto_openssl_main;
-
-  /** TODO: add linked alg support **/
-  if (key->is_link)
-    return;
 
   if (cm->ctx_fn[key->alg] == 0)
     return;

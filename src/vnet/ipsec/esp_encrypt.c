@@ -382,7 +382,7 @@ esp_prepare_async_frame (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
   esp_post_data_t *post = esp_post_data (b);
   u8 *tag, *iv, *aad = 0;
   u8 flag = 0;
-  const u32 key_index = ort->key_index;
+  const uword keys = (uword) &ort->keys;
   i16 crypto_start_offset, integ_start_offset;
   u16 crypto_total_len, integ_total_len;
 
@@ -462,7 +462,7 @@ esp_prepare_async_frame (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
     }
 
   /* this always succeeds because we know the frame is not full */
-  vnet_crypto_async_add_to_frame (vm, async_frame, key_index, crypto_total_len,
+  vnet_crypto_async_add_to_frame (vm, async_frame, keys, crypto_total_len,
 				  integ_total_len - crypto_total_len,
 				  crypto_start_offset, integ_start_offset, bi,
 				  async_next, iv, tag, aad, flag);
