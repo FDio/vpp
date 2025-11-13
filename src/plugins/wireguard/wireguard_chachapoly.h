@@ -13,8 +13,7 @@
 
 bool wg_chacha20poly1305_calc (vlib_main_t *vm, u8 *src, u32 src_len, u8 *dst,
 			       u8 *aad, u32 aad_len, u64 nonce,
-			       vnet_crypto_op_id_t op_id,
-			       vnet_crypto_key_index_t key_index);
+			       vnet_crypto_op_id_t op_id, uword keys);
 
 void wg_xchacha20poly1305_encrypt (vlib_main_t *vm, u8 *src, u32 src_len,
 				   u8 *dst, u8 *aad, u32 aad_len,

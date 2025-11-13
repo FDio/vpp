@@ -143,7 +143,7 @@ wg_prepare_sync_enc_op (vlib_main_t *vm, wg_per_thread_data_t *ptd,
 			vlib_buffer_t *b, vlib_buffer_t *lb,
 			vnet_crypto_op_t **crypto_ops, u8 *src, u32 src_len,
 			u8 *dst, u8 *aad, u32 aad_len, u64 nonce,
-			vnet_crypto_key_index_t key_index, u32 bi, u8 *iv)
+			vnet_crypto_key_t *keys, u32 bi, u8 *iv)
 {
   vnet_crypto_op_t _op, *op = &_op;
   u8 src_[] = {};
@@ -156,7 +156,6 @@ wg_prepare_sync_enc_op (vlib_main_t *vm, wg_per_thread_data_t *ptd,
 
   op->tag_len = NOISE_AUTHTAG_LEN;
   op->tag = vlib_buffer_get_tail (lb) - NOISE_AUTHTAG_LEN;
-  op->key_index = key_index;
   op->aad = aad;
   op->aad_len = aad_len;
   op->iv = iv;
@@ -166,11 +165,13 @@ wg_prepare_sync_enc_op (vlib_main_t *vm, wg_per_thread_data_t *ptd,
     {
       /* Chained buffers */
       op->flags |= VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS;
+      op->keys = (uword) keys;
       op->chunk_index = vec_len (ptd->chunks);
       wg_output_chain_crypto (vm, ptd, b, lb, src, src_len, &op->n_chunks);
     }
   else
     {
+      op->keys = (uword) keys;
       op->src = !src ? src_ : src;
       op->len = src_len;
       op->dst = dst;
@@ -236,7 +237,7 @@ wg_output_process_ops (vlib_main_t *vm, vlib_node_runtime_t *node,
 
 static_always_inline void
 wg_output_tun_add_to_frame (vlib_main_t *vm, vnet_crypto_async_frame_t *f,
-			    u32 key_index, u32 crypto_len,
+			    uword keys, u32 crypto_len,
 			    i16 crypto_start_offset, u32 buffer_index,
 			    u16 next_node, u8 *iv, u8 *tag, u8 flags)
 {
@@ -248,7 +249,7 @@ wg_output_tun_add_to_frame (vlib_main_t *vm, vnet_crypto_async_frame_t *f,
   index = f->n_elts;
   fe = &f->elts[index];
   f->n_elts++;
-  fe->key_index = key_index;
+  fe->keys = keys;
   fe->crypto_total_length = crypto_len;
   fe->crypto_start_offset = crypto_start_offset;
   fe->iv = iv;
@@ -290,7 +291,7 @@ wg_output_tun_process (vlib_main_t *vm, wg_per_thread_data_t *ptd,
   *r_idx = kp->kp_remote_index;
 
   wg_prepare_sync_enc_op (vm, ptd, b, lb, crypto_ops, src, srclen, dst, NULL,
-			  0, *nonce, kp->kp_send_index, bi, iv);
+			  0, *nonce, kp->kp_send, bi, iv);
 
   /* If our values are still within tolerances, but we are approaching
    * the tolerances, we notify the caller with ESTALE that they should
@@ -320,6 +321,7 @@ wg_add_to_async_frame (vlib_main_t *vm, wg_per_thread_data_t *ptd,
 {
   wg_post_data_t *post = wg_post_data (b);
   u8 flag = 0;
+  uword keys;
   u8 *tag;
   noise_keypair_t *kp;
 
@@ -364,12 +366,19 @@ wg_add_to_async_frame (vlib_main_t *vm, wg_per_thread_data_t *ptd,
     }
 
   if (b != lb)
-    flag |= VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS;
+    {
+      flag |= VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS;
+      keys = (uword) kp->kp_send;
+    }
+  else
+    {
+      keys = (uword) kp->kp_send;
+    }
 
   tag = vlib_buffer_get_tail (lb) - NOISE_AUTHTAG_LEN;
 
   /* this always succeeds because we know the frame is not full */
-  wg_output_tun_add_to_frame (vm, *async_frame, kp->kp_send_index, payload_len,
+  wg_output_tun_add_to_frame (vm, *async_frame, keys, payload_len,
 			      payload - b->data, bi, async_next, iv, tag,
 			      flag);
 
