@@ -1016,6 +1016,156 @@ class TestCNatSourceNAT(CnatCommonTestCase):
 
 
 @unittest.skipIf("cnat" in config.excluded_plugins, "Exclude CNAT plugin tests")
+class TestCNatSpecial(CnatCommonTestCase):
+    """CNat Special"""
+
+    @classmethod
+    def setUpClass(self):
+        super(TestCNatSpecial, self).setUpClass()
+
+    @classmethod
+    def tearDownClass(self):
+        super(TestCNatSpecial, self).tearDownClass()
+
+    def setUp(self):
+        super(TestCNatSpecial, self).setUp()
+        # Create pg interfaces
+        self.create_pg_interfaces(range(2))
+        # Create two tables
+        self.vapi.ip_table_add_del(is_add=1, table={"table_id": 1})
+        self.vapi.ip_table_add_del(is_add=1, table={"table_id": 2})
+
+        self.pg0.set_table_ip4(1)
+        self.pg1.set_table_ip4(2)
+
+        # Configure pg0
+        self.pg0.local_ip4 = "192.168.1.1"
+        self.pg0.local_ip4_prefix_len = 24
+        self.pg0.config_ip4()
+        self.pg0.resolve_arp()
+
+        # Configure pg1
+        self.pg1.local_ip4 = "10.0.0.1"
+        self.pg1.local_ip4_prefix_len = 24
+        self.pg1.config_ip4()
+        self.pg1.resolve_arp()
+
+        self.vapi.ip_neighbor_add_del(
+            self.pg0.sw_if_index, "00:00:00:01:02:03", "192.168.1.2"
+        )
+        self.vapi.ip_neighbor_add_del(
+            self.pg0.sw_if_index, "00:00:00:04:05:06", "192.168.1.100"
+        )
+        self.vapi.ip_neighbor_add_del(
+            self.pg1.sw_if_index, "00:00:00:07:08:09", "10.0.0.2"
+        )
+
+        self.pg0.admin_up()
+        self.pg1.admin_up()
+
+    def tearDown(self):
+        # Disable feature
+        self.vapi.feature_enable_disable(
+            enable=0,
+            feature_name="cnat-snat-ip4",
+            sw_if_index=self.pg0.sw_if_index,
+            arc_name="ip4-unicast",
+        )
+
+        # Clean up interfaces
+        self.pg0.unconfig_ip4()
+        self.pg1.unconfig_ip4()
+        self.pg0.set_table_ip4(0)
+        self.pg1.set_table_ip4(0)
+        self.pg0.admin_down()
+        self.pg1.admin_down()
+        super(TestCNatSpecial, self).tearDown()
+
+    def test_cnat_special(self):
+        """CNat Special"""
+
+        # Add routes for table 1 and 2 to lookup in each other
+        self.vapi.cli("ip route add table 1 0.0.0.0/0 via lookup in table 2")
+        self.vapi.cli("ip route add table 2 0.0.0.0/0 via lookup in table 1")
+        # src PAT packets coming from pg0 to 100.64.0.1/32
+        self.vapi.cli("set cnat snat-policy addr 100.64.0.1 fib 1 rfib 2")
+        self.vapi.cli("set cnat snat-policy prefix 192.168.10.0/24 rw 10.0.0.0 fib 1")
+
+        # self.vapi.cli("set cnat snat-policy prefix 192.168.1.2/32 rw 1.2.3.4 src fib 1")
+        # self.vapi.cli("set cnat snat-policy prefix 10.0.0.0/24 rw 192.168.10.0 fib 2")
+        self.vapi.cli("set cnat snat-policy dnat fib 1")
+
+        # Enable feature on pg0
+        self.vapi.feature_enable_disable(
+            enable=1,
+            feature_name="cnat-snat-ip4",
+            sw_if_index=self.pg0.sw_if_index,
+            arc_name="ip4-unicast",
+        )
+
+        p_in = (
+            Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+            / IP(src="192.168.1.100", dst="192.168.10.2")
+            / UDP(sport=23456, dport=443)
+            / Raw("\xa5" * 64)
+        )
+
+        rxs = self.send_and_expect(self.pg0, p_in, self.pg1)
+
+        for rx in rxs:
+            self.assertEqual(rx[IP].src, "100.64.0.1")
+            self.assertEqual(rx[IP].dst, "10.0.0.2")
+            self.assertEqual(rx[UDP].sport, 23456)
+            self.assertEqual(rx[UDP].dport, 443)
+
+        p_return = (
+            Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac)
+            / IP(src="10.0.0.2", dst="100.64.0.1")
+            / UDP(sport=443, dport=23456)
+            / Raw("\xa5" * 64)
+        )
+
+        rxs = self.send_and_expect(self.pg1, p_return, self.pg0)
+
+        for rx in rxs:
+            self.assertEqual(rx[IP].src, "192.168.10.2")
+            self.assertEqual(rx[IP].dst, "192.168.1.100")
+            self.assertEqual(rx[UDP].sport, 443)
+            self.assertEqual(rx[UDP].dport, 23456)
+
+        self.vapi.cli("set cnat snat-policy prefix 192.168.1.2/32 rw 1.2.3.4 src fib 1")
+
+        app_in = (
+            Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+            / IP(src="192.168.1.2", dst="192.168.10.2")
+            / UDP(sport=3000, dport=3001)
+            / Raw("\xa5" * 64)
+        )
+
+        rxs = self.send_and_expect(self.pg0, app_in, self.pg1)
+        for rx in rxs:
+            self.assertEqual(rx[IP].src, "1.2.3.4")
+            self.assertEqual(rx[IP].dst, "10.0.0.2")
+            self.assertEqual(rx[UDP].sport, 3000)
+            self.assertEqual(rx[UDP].dport, 3001)
+
+        app_return = (
+            Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac)
+            / IP(src="10.0.0.2", dst="1.2.3.4")
+            / UDP(sport=3001, dport=3000)
+            / Raw("\xa5" * 64)
+        )
+
+        rxs = self.send_and_expect(self.pg1, app_return, self.pg0)
+        for rx in rxs:
+            rx.show()
+            self.assertEqual(rx[IP].src, "192.168.10.2")
+            self.assertEqual(rx[IP].dst, "192.168.1.2")
+            self.assertEqual(rx[UDP].sport, 3001)
+            self.assertEqual(rx[UDP].dport, 3000)
+
+
+@unittest.skipIf("cnat" in config.excluded_plugins, "Exclude CNAT plugin tests")
 class TestCNatDHCP(CnatCommonTestCase):
     """CNat DHCP"""
 
