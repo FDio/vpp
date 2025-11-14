@@ -51,6 +51,23 @@
       "parentUuid": "ca03dfef_ba8d6971",
       "revId": "ea5814266c2f126150ac525e4a9da213d9a0cdfc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7e442eb8_d65ca060",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-11-14T17:21:32Z",
+      "side": 1,
+      "message": "I think this should help with host stack because currently big time jumps result in first clib_time_now_internal returning an unexpected value, which potentially trips the timer wheels that rely on it, and second in re-synchronization. With this we should avoid the former.\n\nIt\u0027d be great if we can add some tests and move forward with the patch!",
+      "revId": "ea5814266c2f126150ac525e4a9da213d9a0cdfc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
