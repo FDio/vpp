@@ -73,15 +73,6 @@ typedef struct app_ca_trust_add_args_
   u32 index;
 } app_ca_trust_add_args_t;
 
-typedef struct crypto_ctx_
-{
-  u32 ctx_index;     /**< index in crypto context pool */
-  u32 n_subscribers; /**< refcount of sessions using said context */
-  u32 ckpair_index;  /**< certificate & key */
-  u8 crypto_engine;
-  void *data; /**< protocol specific data */
-} crypto_context_t;
-
 typedef union
 {
   struct

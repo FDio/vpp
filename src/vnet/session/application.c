@@ -1821,16 +1821,6 @@ application_format_connects (application_t * app, int verbose)
 }
 
 u8 *
-format_crypto_context (u8 * s, va_list * args)
-{
-  crypto_context_t *crctx = va_arg (*args, crypto_context_t *);
-  s = format (s, "[0x%x][sub%d,ckpair%x]", crctx->ctx_index,
-	      crctx->n_subscribers, crctx->ckpair_index);
-  s = format (s, "[engine:%U]", format_crypto_engine, crctx->crypto_engine);
-  return s;
-}
-
-u8 *
 format_application (u8 * s, va_list * args)
 {
   application_t *app = va_arg (*args, application_t *);
