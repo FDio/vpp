@@ -6,12 +6,16 @@ import (
 	"strings"
 	"time"
 
+	"github.com/edwarnicke/exechelper"
+
 	. "fd.io/hs-test/infra"
 	. "github.com/onsi/ginkgo/v2"
 )
 
 func init() {
-	RegisterH3Tests(Http3GetTest, Http3DownloadTest, Http3PostTest, Http3UploadTest)
+	RegisterH3Tests(Http3GetTest, Http3DownloadTest, Http3PostTest, Http3UploadTest, Http3ClientGetRepeatTest,
+		Http3ClientGetMultiplexingTest)
+	RegisterVethTests(Http3CliTest)
 }
 
 func Http3GetTest(s *Http3Suite) {
@@ -113,4 +117,69 @@ func Http3UploadTest(s *Http3Suite) {
 	_, log := s.RunCurlContainer(s.Containers.Curl, args)
 	s.Log(vpp.Vppctl("show session verbose 2"))
 	s.AssertContains(log, "HTTP/3 200")
+}
+
+func Http3CliTest(s *VethsSuite) {
+	uri := "https://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1
+	serverVpp := s.Containers.ServerVpp.VppInstance
+	clientVpp := s.Containers.ClientVpp.VppInstance
+	s.Log(serverVpp.Vppctl("http cli server http3-enabled listener add uri " + uri))
+	o := clientVpp.Vppctl("http cli client http3 uri " + uri + "/show/version")
+	s.Log(o)
+	s.AssertContains(o, "<html>", "<html> not found in the result!")
+	s.AssertContains(o, "</html>", "</html> not found in the result!")
+}
+
+func Http3ClientGetRepeatTest(s *Http3Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	serverAddress := s.HostAddr() + ":" + s.Ports.Port1
+
+	s.StartNginx()
+
+	uri := "https://" + serverAddress + "/64B"
+	cmd := fmt.Sprintf("http client http3 repeat %d uri %s", 10, uri)
+	o := vpp.Vppctl(cmd)
+	s.Log(o)
+	s.Log(vpp.Vppctl("show session verbose 2"))
+	s.AssertContains(o, "10 request(s)")
+	s.AssertNotContains(o, "error")
+	o = vpp.Vppctl("show http stats")
+	s.Log(o)
+	s.AssertContains(o, "1 connections established")
+	s.AssertContains(o, "1 application streams opened")
+	s.AssertContains(o, "1 application streams closed")
+	s.AssertContains(o, "10 requests sent")
+	s.AssertContains(o, "10 responses received")
+
+	logPath := s.Containers.Nginx.GetHostWorkDir() + "/" + s.Containers.Nginx.Name + "-access.log"
+	logContents, err := exechelper.Output("cat " + logPath)
+	s.AssertNil(err)
+	s.AssertContains(string(logContents), "conn_reqs=10")
+}
+
+func Http3ClientGetMultiplexingTest(s *Http3Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	serverAddress := s.HostAddr() + ":" + s.Ports.Port1
+
+	s.StartNginx()
+
+	uri := "https://" + serverAddress + "/httpTestFile"
+	cmd := fmt.Sprintf("http client http3 streams %d repeat %d uri %s", 10, 20, uri)
+	o := vpp.Vppctl(cmd)
+	s.Log(o)
+	s.Log(vpp.Vppctl("show session verbose 2"))
+	s.AssertContains(o, "20 request(s)")
+	s.AssertNotContains(o, "error")
+	o = vpp.Vppctl("show http stats")
+	s.Log(o)
+	s.AssertContains(o, "1 connections established")
+	s.AssertContains(o, "10 application streams opened")
+	s.AssertContains(o, "10 application streams closed")
+	s.AssertContains(o, "20 requests sent")
+	s.AssertContains(o, "20 responses received")
+
+	logPath := s.Containers.Nginx.GetHostWorkDir() + "/" + s.Containers.Nginx.Name + "-access.log"
+	logContents, err := exechelper.Output("cat " + logPath)
+	s.AssertNil(err)
+	s.AssertContains(string(logContents), "conn_reqs=20")
 }
