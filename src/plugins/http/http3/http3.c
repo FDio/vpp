@@ -1235,9 +1235,23 @@ http3_app_reset_callback (http_conn_t *stream, u32 req_index,
 static int
 http3_transport_connected_callback (http_conn_t *hc)
 {
+  http3_conn_ctx_t *h3c;
+  http3_stream_ctx_t *sctx;
+  u32 hc_index = hc->hc_hc_index;
+  clib_thread_index_t thread_index = hc->c_thread_index;
+
   HTTP_DBG (1, "hc [%u]%x", hc->c_thread_index, hc->hc_hc_index);
-  /* FIXME: */
-  return 0;
+  h3c = http3_conn_ctx_alloc (hc);
+  h3c->flags |= HTTP3_CONN_F_EXPECT_PEER_SETTINGS;
+  http3_conn_init (hc_index, thread_index, h3c);
+  sctx = http3_stream_ctx_alloc (hc, 1);
+  sctx->stream_type = HTTP3_STREAM_TYPE_REQUEST;
+  sctx->transport_rx_cb = http3_stream_transport_rx_req_server;
+  http_req_state_change (&sctx->base, HTTP_REQ_STATE_WAIT_APP_METHOD);
+  http_stats_connections_established_inc (thread_index);
+  http_stats_app_streams_opened_inc (thread_index);
+
+  return http_conn_established (hc, &sctx->base, hc->hc_pa_app_api_ctx);
 }
 
 static void

@@ -12,6 +12,7 @@ import (
 
 func init() {
 	RegisterH3Tests(Http3GetTest, Http3DownloadTest, Http3PostTest, Http3UploadTest)
+	RegisterVethTests(Http3CliTest)
 }
 
 func Http3GetTest(s *Http3Suite) {
@@ -113,4 +114,15 @@ func Http3UploadTest(s *Http3Suite) {
 	_, log := s.RunCurlContainer(s.Containers.Curl, args)
 	s.Log(vpp.Vppctl("show session verbose 2"))
 	s.AssertContains(log, "HTTP/3 200")
+}
+
+func Http3CliTest(s *VethsSuite) {
+	uri := "https://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1
+	serverVpp := s.Containers.ServerVpp.VppInstance
+	clientVpp := s.Containers.ClientVpp.VppInstance
+	s.Log(serverVpp.Vppctl("http cli server http3-enabled listener add uri " + uri))
+	o := clientVpp.Vppctl("http cli client http3 uri " + uri + "/show/version")
+	s.Log(o)
+	s.AssertContains(o, "<html>", "<html> not found in the result!")
+	s.AssertContains(o, "</html>", "</html> not found in the result!")
 }
