@@ -1855,7 +1855,7 @@ http_test_qpack (vlib_main_t *vm)
   req_control_data.authority_len = vec_len (authority);
   req_control_data.user_agent_len = 0;
   req_control_data.content_len = HPACK_ENCODER_SKIP_CONTENT_LEN;
-  u8 expected6[] = "\x00\x00\xD1\xD7\xC1\x80\x8C\xF1\xE3\xC2\xE5\xF2\x3A\x6B"
+  u8 expected6[] = "\x00\x00\xD1\xD7\xC1\x50\x8C\xF1\xE3\xC2\xE5\xF2\x3A\x6B"
 		   "\xA0\xAB\x90\xF4\xFF";
   _qpack_serialize_request (0, 0, &req_control_data, &buf);
   HTTP_TEST ((vec_len (buf) == (sizeof (expected6) - 1) &&
@@ -1880,7 +1880,7 @@ http_test_qpack (vlib_main_t *vm)
   http_add_custom_header (&headers_ctx, http_token_lit ("sandwich"),
 			  http_token_lit ("spam"));
   u8 expected7[] =
-    "\x00\x00\xCF\x80\x8B\x2F\x91\xD3\x5D\x05\x5C\xF6\x4D\x70\x22\x67\x5F\x50"
+    "\x00\x00\xCF\x50\x8B\x2F\x91\xD3\x5D\x05\x5C\xF6\x4D\x70\x22\x67\x5F\x50"
     "\x8B\x9D\x29\xAD\x4B\x6A\x32\x54\x49\x50\x94\x7f\x2E\x40\xEA\x93\xC1\x89"
     "\x3F\x83\x45\x63\xA7";
   _qpack_serialize_request (headers_buf, headers_ctx.tail_offset,

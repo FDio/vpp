@@ -1257,7 +1257,7 @@ qpack_encode_path (u8 *dst, u8 *path, u32 path_len)
       orig_len = vec_len (dst);
       vec_add2 (dst, a, path_len + 1 + HPACK_ENCODED_INT_MAX_LEN);
       b = a;
-      *b++ = 0x81;
+      *b++ = 0x51;
       b = qpack_encode_string (b, path, path_len, 8);
       actual_size = b - a;
       vec_set_len (dst, orig_len + actual_size);
@@ -1275,7 +1275,7 @@ qpack_encode_authority (u8 *dst, u8 *authority, u32 authority_len)
   orig_len = vec_len (dst);
   vec_add2 (dst, a, authority_len + 1 + HPACK_ENCODED_INT_MAX_LEN);
   b = a;
-  *b++ = 0x80;
+  *b++ = 0x50;
   b = qpack_encode_string (b, authority, authority_len, 8);
   actual_size = b - a;
   vec_set_len (dst, orig_len + actual_size);

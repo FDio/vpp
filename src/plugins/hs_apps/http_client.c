@@ -846,6 +846,9 @@ hc_connect ()
 	case HTTP_VERSION_2:
 	  ext_cfg->crypto.alpn_protos[0] = TLS_ALPN_PROTO_HTTP_2;
 	  break;
+	case HTTP_VERSION_3:
+	  ext_cfg->crypto.alpn_protos[0] = TLS_ALPN_PROTO_HTTP_3;
+	  break;
 	default:
 	  break;
 	}
@@ -1202,6 +1205,8 @@ hc_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	hcm->http_version = HTTP_VERSION_1;
       else if (unformat (line_input, "http2"))
 	hcm->http_version = HTTP_VERSION_2;
+      else if (unformat (line_input, "http3"))
+	hcm->http_version = HTTP_VERSION_3;
       else
 	{
 	  err = clib_error_return (0, "unknown input `%U'",
@@ -1274,6 +1279,12 @@ hc_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	clib_error_return (0, "URI parse error: %U", format_session_error, rv);
       goto done;
     }
+  if (hcm->http_version == HTTP_VERSION_3 &&
+      !(hcm->connect_sep.flags & SESSION_ENDPT_CFG_F_SECURE))
+    {
+      err = clib_error_return (0, "http/3 requested for non-https uri");
+      goto done;
+    }
 
   if (hcm->duration >= hcm->timeout)
     {
@@ -1321,7 +1332,7 @@ VLIB_CLI_COMMAND (hc_command, static) = {
     "[timeout <seconds> (default = 10)] [repeat <count> | duration <seconds>] "
     "[sessions <# of sessions>] [appns <app-ns> secret <appns-secret>] "
     "[fifo-size <nM|G>] [private-segment-size <nM|G>] [prealloc-fifos <n>]"
-    "[max-body-size <nM|G>] [http1|http2]",
+    "[max-body-size <nM|G>] [http1|http2|http3]",
   .function = hc_command_fn,
   .is_mp_safe = 1,
 };

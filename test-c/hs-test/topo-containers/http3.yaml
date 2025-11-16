@@ -1,0 +1,26 @@
+---
+volumes:
+  - volume: &shared-vol
+      host-dir: "$HST_VOLUME_DIR/shared"
+
+containers:
+  - name: "vpp"
+    volumes:
+      - <<: *shared-vol
+        container-dir: "/tmp/vpp"
+        is-default-work-dir: true
+
+  - name: "curl"
+    image: "hs-test/curl"
+    is-optional: true
+    run-detached: false
+
+  - name: "nginx"
+    volumes:
+      - <<: *shared-vol
+        container-dir: "/tmp/nginx"
+        is-default-work-dir: true
+      - host-dir: $HST_DIR/resources/cert
+        container-dir: "/etc/nginx/ssl"
+    image: "hs-test/nginx-server"
+    is-optional: true
