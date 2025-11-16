@@ -1119,6 +1119,7 @@ http_connect_connection (session_endpoint_cfg_t *sep)
 	case TLS_ALPN_PROTO_HTTP_3:
 	  HTTP_DBG (1, "app want to use http/3");
 	  cargs->sep.transport_proto = TRANSPORT_PROTO_QUIC;
+	  hc->version = HTTP_VERSION_3;
 	  break;
 	case TLS_ALPN_PROTO_NONE:
 	  HTTP_DBG (1,
@@ -1179,7 +1180,7 @@ http_connect_stream (u64 parent_handle, u32 *req_index)
     }
 
   rh.as_u32 = hs->connection_index;
-  if (rh.version != HTTP_VERSION_2)
+  if (rh.version < HTTP_VERSION_2)
     {
       HTTP_DBG (1, "%U multiplexing not supported", format_http_version,
 		rh.version);
