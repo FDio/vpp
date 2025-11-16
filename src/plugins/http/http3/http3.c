@@ -849,7 +849,7 @@ http3_stream_transport_rx_req_server (http3_stream_ctx_t *sctx,
 				      http_conn_t *stream)
 {
   http3_error_t err;
-  http_sm_result_t res;
+  http_sm_result_t res = HTTP_SM_CONTINUE;
 
   do
     {
