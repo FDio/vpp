@@ -111,6 +111,18 @@ func (s *VethsSuite) SetupClientVpp() {
 	s.AssertNotEqual(0, idx)
 }
 
+func (s *VethsSuite) TeardownTest() {
+	defer s.HstSuite.TeardownTest()
+	clientVpp := s.Containers.ClientVpp.VppInstance
+	serverVpp := s.Containers.ServerVpp.VppInstance
+	if CurrentSpecReport().Failed() {
+		s.Log(clientVpp.Vppctl("show session verbose 2"))
+		s.Log(clientVpp.Vppctl("show error"))
+		s.Log(serverVpp.Vppctl("show session verbose 2"))
+		s.Log(serverVpp.Vppctl("show error"))
+	}
+}
+
 var _ = Describe("VethsSuite", Ordered, ContinueOnFailure, Label("Veth"), func() {
 	var s VethsSuite
 	BeforeAll(func() {

@@ -6,12 +6,16 @@ import (
 	"strings"
 	"time"
 
+	"github.com/edwarnicke/exechelper"
+
 	. "fd.io/hs-test/infra"
 	. "github.com/onsi/ginkgo/v2"
 )
 
 func init() {
-	RegisterH3Tests(Http3GetTest, Http3DownloadTest, Http3PostTest, Http3UploadTest)
+	RegisterH3Tests(Http3GetTest, Http3DownloadTest, Http3PostTest, Http3UploadTest, Http3ClientGetRepeatTest,
+		Http3ClientGetMultiplexingTest)
+	RegisterVethTests(Http3CliTest, Http3ClientPostTest, Http3ClientPostPtrTest)
 }
 
 func Http3GetTest(s *Http3Suite) {
@@ -30,7 +34,7 @@ func Http3GetTest(s *Http3Suite) {
 	udpCleanupDone := false
 	quicCleanupDone := false
 	httpCleanupDone := false
-	for nTries := 0; nTries < 5; nTries++ {
+	for range 5 {
 		o := vpp.Vppctl("show session verbose 2")
 		if !strings.Contains(o, "[U] "+serverAddress+"->10.") {
 			udpCleanupDone = true
@@ -58,8 +62,8 @@ func Http3GetTest(s *Http3Suite) {
 	s.AssertContains(o, "1 responses sent")
 	ctrlStreamsOpened := 0
 	ctrlStreamsClosed := 0
-	lines := strings.Split(o, "\n")
-	for _, line := range lines {
+	lines := strings.SplitSeq(o, "\n")
+	for line := range lines {
 		if strings.Contains(line, "control streams opened") {
 			tmp := strings.Split(line, " ")
 			ctrlStreamsOpened, _ = strconv.Atoi(tmp[1])
@@ -113,4 +117,123 @@ func Http3UploadTest(s *Http3Suite) {
 	_, log := s.RunCurlContainer(s.Containers.Curl, args)
 	s.Log(vpp.Vppctl("show session verbose 2"))
 	s.AssertContains(log, "HTTP/3 200")
+}
+
+func Http3CliTest(s *VethsSuite) {
+	uri := "https://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1
+	serverVpp := s.Containers.ServerVpp.VppInstance
+	clientVpp := s.Containers.ClientVpp.VppInstance
+	s.Log(serverVpp.Vppctl("http cli server http3-enabled listener add uri " + uri))
+	o := clientVpp.Vppctl("http cli client http3 uri " + uri + "/show/version")
+	s.Log(o)
+	s.AssertContains(o, "<html>", "<html> not found in the result!")
+	s.AssertContains(o, "</html>", "</html> not found in the result!")
+}
+
+func Http3ClientGetRepeatTest(s *Http3Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	serverAddress := s.HostAddr() + ":" + s.Ports.Port1
+
+	s.StartNginx()
+
+	uri := "https://" + serverAddress + "/64B"
+	cmd := fmt.Sprintf("http client http3 repeat %d uri %s", 10, uri)
+	o := vpp.Vppctl(cmd)
+	s.Log(o)
+	s.Log(vpp.Vppctl("show session verbose 2"))
+	s.AssertContains(o, "10 request(s)")
+	s.AssertNotContains(o, "error")
+	o = vpp.Vppctl("show http stats")
+	s.Log(o)
+	s.AssertContains(o, "1 connections established")
+	s.AssertContains(o, "1 application streams opened")
+	s.AssertContains(o, "1 application streams closed")
+	s.AssertContains(o, "10 requests sent")
+	s.AssertContains(o, "10 responses received")
+
+	logPath := s.Containers.Nginx.GetHostWorkDir() + "/" + s.Containers.Nginx.Name + "-access.log"
+	logContents, err := exechelper.Output("cat " + logPath)
+	s.AssertNil(err)
+	s.AssertContains(string(logContents), "conn_reqs=10")
+}
+
+func Http3ClientGetMultiplexingTest(s *Http3Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	serverAddress := s.HostAddr() + ":" + s.Ports.Port1
+
+	s.StartNginx()
+
+	uri := "https://" + serverAddress + "/httpTestFile"
+	cmd := fmt.Sprintf("http client http3 streams %d repeat %d uri %s", 10, 20, uri)
+	o := vpp.Vppctl(cmd)
+	s.Log(o)
+	s.AssertContains(o, "20 request(s)")
+	s.AssertNotContains(o, "error")
+	o = vpp.Vppctl("show http stats")
+	s.Log(o)
+	s.AssertContains(o, "1 connections established")
+	s.AssertContains(o, "10 application streams opened")
+	s.AssertContains(o, "10 application streams closed")
+	s.AssertContains(o, "20 requests sent")
+	s.AssertContains(o, "20 responses received")
+
+	logPath := s.Containers.Nginx.GetHostWorkDir() + "/" + s.Containers.Nginx.Name
+	logContents, err := exechelper.Output("cat " + logPath + "-access.log")
+	s.AssertNil(err)
+	s.AssertContains(string(logContents), "conn_reqs=20")
+	logContents, err = exechelper.Output("cat " + logPath + "-error.log")
+	s.AssertNil(err)
+	s.AssertNotContains(string(logContents), "client closed connection while waiting for request")
+
+	/* test session cleanup */
+	udpCleanupDone := false
+	quicCleanupDone := false
+	httpCleanupDone := false
+	for range 5 {
+		o := vpp.Vppctl("show session verbose 2")
+		if !strings.Contains(o, "[U]") {
+			udpCleanupDone = true
+		}
+		if !strings.Contains(o, "[Q]") {
+			quicCleanupDone = true
+		}
+		if !strings.Contains(o, "[H3]") {
+			httpCleanupDone = true
+		}
+		if httpCleanupDone && udpCleanupDone && quicCleanupDone {
+			break
+		}
+		time.Sleep(1 * time.Second)
+	}
+	s.Log(vpp.Vppctl("show session verbose 2"))
+	s.AssertEqual(true, udpCleanupDone, "UDP session not cleaned up")
+	s.AssertEqual(true, quicCleanupDone, "QUIC not cleaned up")
+	s.AssertEqual(true, httpCleanupDone, "HTTP/3 not cleaned up")
+}
+
+func http3ClientPostFile(s *VethsSuite, usePtr bool) {
+	uri := "https://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1
+	serverVpp := s.Containers.ServerVpp.VppInstance
+	clientVpp := s.Containers.ClientVpp.VppInstance
+	s.Log(serverVpp.Vppctl("http tps no-zc h3 uri " + uri))
+
+	fileName := "/tmp/test_file.txt"
+	s.Log(clientVpp.Container.Exec(false, "fallocate -l 10M "+fileName))
+	s.Log(clientVpp.Container.Exec(false, "ls -la "+fileName))
+
+	cmd := "http client post http3 verbose uri " + uri + "/test_file_10M file " + fileName
+	if usePtr {
+		cmd += " use-ptr"
+	}
+	o := clientVpp.Vppctl(cmd)
+	s.Log(o)
+	s.AssertContains(o, "HTTP/3 200 OK")
+}
+
+func Http3ClientPostTest(s *VethsSuite) {
+	http3ClientPostFile(s, false)
+}
+
+func Http3ClientPostPtrTest(s *VethsSuite) {
+	http3ClientPostFile(s, true)
 }
