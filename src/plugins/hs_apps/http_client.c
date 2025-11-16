@@ -257,7 +257,7 @@ hc_connect_streams (u64 parent_handle, u32 parent_index)
       rv = vnet_connect_stream (a);
       if (rv)
 	{
-	  clib_warning (0, "connect returned: %U", format_session_error, rv);
+	  clib_warning ("connect returned: %U", format_session_error, rv);
 	  if (rv == SESSION_E_MAX_STREAMS_HIT)
 	    vlib_process_signal_event_mt (
 	      vlib_get_main (), hcm->cli_node_index, HC_MAX_STREAMS_HIT, 0);
@@ -400,7 +400,7 @@ hc_session_connected_callback (u32 app_index, u32 ho_index, session_t *s,
     return -1;
 
   http_version = http_session_get_version (s);
-  if (http_version == HTTP_VERSION_2 && hcm->max_streams > 1)
+  if (http_version >= HTTP_VERSION_2 && hcm->max_streams > 1)
     {
       ASSERT (hc_session->session_flags & HC_S_FLAG_IS_PARENT);
       HTTP_DBG (1, "parent connected, going to open %u streams",
@@ -651,7 +651,8 @@ done:
 	  if (hc_session->stats.elapsed_time >= hcm->duration &&
 	      hc_session->stats.request_count >= hc_session->stats.max_req)
 	    {
-	      HTTP_DBG (1, "repeat done");
+	      HTTP_DBG (1, "hc_session [%u]%u repeat done",
+			hc_session->thread_index, hc_session->session_index);
 	      if (hc_session->session_flags & HC_S_FLAG_IS_PARENT)
 		{
 		  /* parent must be closed last */
@@ -674,7 +675,8 @@ done:
 	    }
 	  else
 	    {
-	      HTTP_DBG (1, "doing another repeat");
+	      HTTP_DBG (1, "hc_session [%u]%u doing another repeat",
+			hc_session->thread_index, hc_session->session_index);
 	      send_err = hc_request (s, wrk, hc_session);
 	      if (send_err)
 		clib_warning ("failed to send request, error %d", send_err);
@@ -845,6 +847,9 @@ hc_connect ()
 	  break;
 	case HTTP_VERSION_2:
 	  ext_cfg->crypto.alpn_protos[0] = TLS_ALPN_PROTO_HTTP_2;
+	  break;
+	case HTTP_VERSION_3:
+	  ext_cfg->crypto.alpn_protos[0] = TLS_ALPN_PROTO_HTTP_3;
 	  break;
 	default:
 	  break;
@@ -1206,6 +1211,8 @@ hc_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	hcm->http_version = HTTP_VERSION_1;
       else if (unformat (line_input, "http2"))
 	hcm->http_version = HTTP_VERSION_2;
+      else if (unformat (line_input, "http3"))
+	hcm->http_version = HTTP_VERSION_3;
       else
 	{
 	  err = clib_error_return (0, "unknown input `%U'",
@@ -1278,6 +1285,12 @@ hc_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	clib_error_return (0, "URI parse error: %U", format_session_error, rv);
       goto done;
     }
+  if (hcm->http_version == HTTP_VERSION_3 &&
+      !(hcm->connect_sep.flags & SESSION_ENDPT_CFG_F_SECURE))
+    {
+      err = clib_error_return (0, "http/3 requested for non-https uri");
+      goto done;
+    }
 
   if (hcm->duration >= hcm->timeout)
     {
@@ -1325,7 +1338,7 @@ VLIB_CLI_COMMAND (hc_command, static) = {
     "[timeout <seconds> (default = 10)] [repeat <count> | duration <seconds>] "
     "[sessions <# of sessions>] [appns <app-ns> secret <appns-secret>] "
     "[fifo-size <nM|G>] [private-segment-size <nM|G>] [prealloc-fifos <n>]"
-    "[max-body-size <nM|G>] [http1|http2]",
+    "[max-body-size <nM|G>] [http1|http2|http3]",
   .function = hc_command_fn,
   .is_mp_safe = 1,
 };
