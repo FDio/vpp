@@ -467,10 +467,7 @@ hsi_intercept_proto (transport_proto_t proto, u8 is_ip4, u8 is_enable)
     }
   else
     {
-      if (proto == TRANSPORT_PROTO_TCP)
-	hm->intercept_listeners[!is_ip4][proto] = SESSION_INVALID_HANDLE;
-      else
-	hm->intercept_listeners[!is_ip4][proto] = SESSION_INVALID_HANDLE;
+      hm->intercept_listeners[!is_ip4][proto] = SESSION_INVALID_HANDLE;
       hm->intercept_type &= ~hsi_intercept_proto_flag (proto, is_ip4);
     }
 }
