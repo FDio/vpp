@@ -132,7 +132,6 @@ format_http_conn_flags (u8 *s, va_list *args)
     s = format (s, "%s", http_conn_flags_str[i]);
 
   return s;
-  return s;
 }
 
 u8 *
