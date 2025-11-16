@@ -18,11 +18,13 @@ type Http3Suite struct {
 		Tap *NetInterface
 	}
 	Containers struct {
-		Vpp  *Container
-		Curl *Container
+		Vpp   *Container
+		Curl  *Container
+		Nginx *Container
 	}
 	Ports struct {
 		Port1 string
+		Port2 string
 	}
 }
 
@@ -39,11 +41,13 @@ func RegisterH3MWTests(tests ...func(s *Http3Suite)) {
 func (s *Http3Suite) SetupSuite() {
 	s.HstSuite.SetupSuite()
 	s.LoadNetworkTopology("tap")
-	s.LoadContainerTopology("single")
+	s.LoadContainerTopology("http3")
 	s.Interfaces.Tap = s.GetInterfaceByName("htaphost")
 	s.Containers.Vpp = s.GetContainerByName("vpp")
 	s.Containers.Curl = s.GetContainerByName("curl")
+	s.Containers.Nginx = s.GetContainerByName("nginx")
 	s.Ports.Port1 = s.GeneratePort()
+	s.Ports.Port2 = s.GeneratePort()
 }
 
 func (s *Http3Suite) SetupTest() {
@@ -74,7 +78,29 @@ func (s *Http3Suite) TeardownTest() {
 		s.Log(vpp.Vppctl("show error"))
 		s.Log(vpp.Vppctl("show http stats"))
 		s.Log(vpp.Vppctl("show quic"))
+		s.CollectNginxLogs(s.Containers.Nginx)
 	}
+}
+
+func (s *Http3Suite) StartNginx() {
+	s.AssertNil(s.Containers.Nginx.Create())
+	nginxSettings := struct {
+		LogPrefix string
+		Address   string
+		PortSsl   string
+		Port      string
+	}{
+		LogPrefix: s.Containers.Nginx.Name,
+		Address:   s.HostAddr(),
+		PortSsl:   s.Ports.Port1,
+		Port:      s.Ports.Port2,
+	}
+	s.Containers.Nginx.CreateConfigFromTemplate(
+		"/nginx.conf",
+		"./resources/nginx/nginx_masque.conf",
+		nginxSettings,
+	)
+	s.AssertNil(s.Containers.Nginx.Start())
 }
 
 func (s *Http3Suite) VppAddr() string {
