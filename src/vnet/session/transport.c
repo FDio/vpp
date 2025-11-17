@@ -395,8 +395,6 @@ transport_icmp_dest_unreachable (vlib_main_t *vm, vlib_node_runtime_t *node,
 					      icmp0->type, icmp0->code);
 		  break;
 		default:
-		  if (CLIB_DEBUG > 0)
-		    clib_warning ("transport handler unimplemented!");
 		  break;
 		}
 	    }

@@ -452,9 +452,10 @@ quic_udp_session_cleanup_callback (session_t *udp_session,
 }
 
 static void
-quic_udp_session_reset_callback (session_t * s)
+quic_udp_session_reset_callback (session_t *ts)
 {
-  clib_warning ("UDP session reset???");
+  quic_ctx_t *ctx = quic_ctx_get (ts->opaque, ts->thread_index);
+  quic_eng_transport_closed (ctx);
 }
 
 static void
