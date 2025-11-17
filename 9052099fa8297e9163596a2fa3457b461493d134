@@ -16,6 +16,24 @@
       "message": "Let\u0027s move this to `vnet_connect` after we update the endpoint",
       "revId": "9052099fa8297e9163596a2fa3457b461493d134",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d4d0c2c7_1957641b",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1371,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-11-17T09:49:16Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "7d8cc767_ec5c79c2",
+      "revId": "9052099fa8297e9163596a2fa3457b461493d134",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
