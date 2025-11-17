@@ -228,6 +228,7 @@ http2_conn_ctx_free (http_conn_t *hc)
   h2c = http2_conn_ctx_get_w_thread (hc);
   HTTP_DBG (1, "h2c [%u]%x", hc->c_thread_index, h2c - wrk->conn_pool);
   ASSERT (h2c->parent_req_index == SESSION_INVALID_INDEX);
+  ASSERT (!clib_llist_elt_is_linked (h2c, sched_list));
   ASSERT (h2c->req_num == 0);
   pool_put_index (wrk->req_pool, h2c->new_tx_streams);
   pool_put_index (wrk->req_pool, h2c->old_tx_streams);
@@ -3065,6 +3066,7 @@ static void
 http2_app_reset_callback (http_conn_t *hc, u32 req_index,
 			  clib_thread_index_t thread_index)
 {
+  http2_worker_ctx_t *wrk = http2_get_worker (hc->c_thread_index);
   http2_conn_ctx_t *h2c;
   http2_req_t *req;
 
@@ -3078,13 +3080,15 @@ http2_app_reset_callback (http_conn_t *hc, u32 req_index,
 						 HTTP2_ERROR_INTERNAL_ERROR,
 			   0);
   session_transport_delete_notify (&req->base.connection);
+  h2c = http2_conn_ctx_get_w_thread (hc);
   if (req->flags & HTTP2_REQ_F_IS_PARENT)
     {
       HTTP_DBG (1, "app closed parent, closing connection");
       http_disconnect_transport (hc);
+      if (clib_llist_elt_is_linked (h2c, sched_list))
+	clib_llist_remove (wrk->conn_pool, sched_list, h2c);
       http_stats_connections_reset_by_app_inc (thread_index);
     }
-  h2c = http2_conn_ctx_get_w_thread (hc);
   http2_conn_free_req (h2c, req, hc->c_thread_index);
 }
 
