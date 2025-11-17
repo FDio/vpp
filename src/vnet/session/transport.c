@@ -339,73 +339,6 @@ transport_proto_from_ip_proto (u8 ip_proto)
     }
 }
 
-/* 4 bytes of ICMP header & 4 reserved */
-#define ICMP_HEADER_SIZE 8
-
-static uword
-transport_icmp_dest_unreachable (vlib_main_t *vm, vlib_node_runtime_t *node,
-				 vlib_frame_t *frame)
-{
-  u32 next_index, n_left_from, *from, *to_next;
-
-  from = vlib_frame_vector_args (frame);
-  n_left_from = frame->n_vectors;
-
-  vlib_node_increment_counter (vm, node->node_index, 0, n_left_from);
-
-  next_index = node->cached_next_index;
-
-  while (n_left_from > 0)
-    {
-      u32 n_left_to_next;
-      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
-
-      while (n_left_from > 0 && n_left_to_next > 0)
-	{
-	  u32 bi0;
-	  u16 *src_port, *dst_port;
-	  vlib_buffer_t *b0;
-	  icmp46_header_t *icmp0;
-	  ip4_header_t *ip0, *ip1;
-	  session_t *s0;
-
-	  bi0 = from[0];
-	  b0 = vlib_get_buffer (vm, bi0);
-	  from += 1;
-	  n_left_from -= 1;
-	  ip0 = vlib_buffer_get_current (b0);
-	  icmp0 = ip4_next_header (ip0);
-
-	  vlib_buffer_advance (b0, ip4_header_bytes (ip0) + ICMP_HEADER_SIZE);
-	  ip1 = vlib_buffer_get_current (b0);
-	  src_port = (u16 *) ip4_next_header (ip1);
-	  dst_port = src_port + 1;
-	  s0 = session_lookup_safe4 (
-	    vnet_buffer (b0)->ip.fib_index, &ip0->dst_address,
-	    &ip0->src_address, *src_port, *dst_port,
-	    transport_proto_from_ip_proto (ip1->protocol));
-	  if (s0)
-	    {
-	      /* direct calls here since vft used only for N to S notifications
-	       */
-	      switch (session_get_transport_proto (s0))
-		{
-		case TRANSPORT_PROTO_UDP:
-		  udp_connection_handle_icmp (session_get_transport (s0),
-					      icmp0->type, icmp0->code);
-		  break;
-		default:
-		  if (CLIB_DEBUG > 0)
-		    clib_warning ("transport handler unimplemented!");
-		  break;
-		}
-	    }
-	}
-      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
-    }
-  return frame->n_vectors;
-};
-
 #define foreach_transport_icmp_dest_unreachable_error                         \
   _ (RECEIVED, received, WARN, "received ICMPs")
 
@@ -415,17 +348,87 @@ static vlib_error_desc_t transport_icmp_unreach_error[] = {
 #undef _
 };
 
+enum _transport_icmp_unreach_error
+{
+#define _(f, n, s, d) TRANSPORT_ICMP_UNREACH_ERROR_##f,
+  foreach_transport_icmp_dest_unreachable_error
+#undef _
+};
+
+/* 4 bytes of ICMP header & 4 reserved */
+#define ICMP_HEADER_SIZE 8
+
+static uword
+transport_icmp_dest_unreachable (vlib_main_t *vm, vlib_node_runtime_t *node,
+				 vlib_frame_t *frame)
+{
+  u32 n_left_from, *from;
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
+
+  from = vlib_frame_vector_args (frame);
+  n_left_from = frame->n_vectors;
+  vlib_get_buffers (vm, from, bufs, n_left_from);
+
+  b = bufs;
+
+  vlib_node_increment_counter (
+    vm, node->node_index, TRANSPORT_ICMP_UNREACH_ERROR_RECEIVED, n_left_from);
+
+  while (n_left_from > 0)
+    {
+      u16 *src_port, *dst_port;
+      icmp46_header_t *icmp0;
+      ip4_header_t *ip0, *ip1;
+      session_t *s0;
+
+      if (n_left_from > 1)
+	{
+	  vlib_prefetch_buffer_header (b[1], LOAD);
+	  CLIB_PREFETCH (b[1]->data, CLIB_CACHE_LINE_BYTES, LOAD);
+	}
+
+      ip0 = vlib_buffer_get_current (b[0]);
+      icmp0 = ip4_next_header (ip0);
+
+      vlib_buffer_advance (b[0], ip4_header_bytes (ip0) + ICMP_HEADER_SIZE);
+      ip1 = vlib_buffer_get_current (b[0]);
+      src_port = (u16 *) ip4_next_header (ip1);
+      dst_port = src_port + 1;
+      s0 = session_lookup_safe4 (
+	vnet_buffer (b[0])->ip.fib_index, &ip0->dst_address, &ip0->src_address,
+	*src_port, *dst_port, transport_proto_from_ip_proto (ip1->protocol));
+      if (s0)
+	{
+	  /* direct calls here since vft used only for N to S notifications
+	   */
+	  switch (session_get_transport_proto (s0))
+	    {
+	    case TRANSPORT_PROTO_UDP:
+	      udp_connection_handle_icmp (session_get_transport (s0),
+					  icmp0->type, icmp0->code);
+	      break;
+	    default:
+	      if (CLIB_DEBUG > 0)
+		clib_warning ("transport handler unimplemented!");
+	      break;
+	    }
+	}
+
+      b += 1;
+      n_left_from -= 1;
+    }
+
+  vlib_buffer_free (vm, from, frame->n_vectors);
+
+  return frame->n_vectors;
+}
+
 VLIB_REGISTER_NODE (transport_icmp_dest_unreachable_node) = {
   .function = transport_icmp_dest_unreachable,
   .name = "transport-icmp-dest-unreachable",
   .vector_size = sizeof (u32),
-
-  .n_next_nodes = 1,
-  .next_nodes = {
-    [0] = "ip4-drop",
-  },
   .error_counters = transport_icmp_unreach_error,
-  .n_errors = ARRAY_LEN(transport_icmp_unreach_error),
+  .n_errors = ARRAY_LEN (transport_icmp_unreach_error),
 };
 
 /**
