@@ -544,7 +544,7 @@ udp_connection_icmp_cleanup_rpc (void *args)
   if (!uc)
     return;
 
-  session_transport_closing_notify (&uc->connection);
+  session_transport_reset_notify (&uc->connection);
   session_transport_closed_notify (&uc->connection);
   udp_connection_program_cleanup (uc);
 }
