@@ -364,6 +364,7 @@ transport_icmp_dest_unreachable (vlib_main_t *vm, vlib_node_runtime_t *node,
 
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
+
 	  u32 bi0;
 	  u16 *src_port, *dst_port;
 	  vlib_buffer_t *b0;
@@ -371,10 +372,12 @@ transport_icmp_dest_unreachable (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  ip4_header_t *ip0, *ip1;
 	  transport_connection_t *tc;
 
-	  bi0 = from[0];
-	  b0 = vlib_get_buffer (vm, bi0);
+	  bi0 = to_next[0] = from[0];
 	  from += 1;
 	  n_left_from -= 1;
+	  to_next += 1;
+	  n_left_to_next -= 1;
+	  b0 = vlib_get_buffer (vm, bi0);
 	  ip0 = vlib_buffer_get_current (b0);
 	  icmp0 = ip4_next_header (ip0);
 
@@ -401,6 +404,8 @@ transport_icmp_dest_unreachable (vlib_main_t *vm, vlib_node_runtime_t *node,
 		  break;
 		}
 	    }
+	  vlib_validate_buffer_enqueue_x1 (vm, node, node->cached_next_index,
+					   to_next, n_left_to_next, bi0, 0);
 	}
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
