@@ -16,6 +16,23 @@
       "message": "perftest-2n-emr nic_*ANDdrv_avfAND1cANDethip4udp-nat44ed-h65536-p63-s4128768*",
       "revId": "670127a19ed4328659cbe05058beb9e0b6d13612",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4b54c8cb_027c79f5",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2025-11-18T15:49:11Z",
+      "side": 1,
+      "message": "\u003e vpp-csit-verify-perf-master-ubuntu2404-x86_64-2n-emr/24/ : SUCCESS (skipped)\n\nOne of typical regressions is reverted by this.",
+      "revId": "670127a19ed4328659cbe05058beb9e0b6d13612",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
