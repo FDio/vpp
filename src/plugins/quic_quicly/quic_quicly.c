@@ -855,7 +855,7 @@ quic_quicly_connection_migrate (quic_ctx_t *ctx)
   clib_bihash_add_del_16_8 (&quic_quicly_main.connection_hash, &kv,
 			    1 /* is_add */);
   new_ctx->timer_handle = QUIC_TIMER_HANDLE_INVALID;
-  next_timeout = quicly_get_first_timeout (ctx->conn);
+  next_timeout = quicly_get_first_timeout (new_ctx->conn);
 
   quic_update_timer (quic_wrk_ctx_get (quic_quicly_main.qm, thread_index),
 		     new_ctx, next_timeout);
