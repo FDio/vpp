@@ -7,16 +7,14 @@ VPP_DIR=$(pwd)
 VPP_DIR=${VPP_DIR%test-c*}
 reg_name='kind-registry'
 reg_port='5000'
-BASE=${BASE:-"master"}
+BASE=${BASE:-"origin/master"}
+TAG=${TAG:-"kt-master"}
 echo "CALICOVPP_DIR=$CALICOVPP_DIR"
 
 export CALICO_NETWORK_CONFIG=${CALICO_NETWORK_CONFIG:-"mtu: 9000"}
-export CALICOVPP_VERSION="${CALICOVPP_VERSION:-latest}"
 export TIGERA_VERSION="${TIGERA_VERSION:-master}"
-echo "CALICOVPP_VERSION=$CALICOVPP_VERSION" > kubernetes/.vars
 export DOCKER_BUILD_PROXY=$HTTP_PROXY
 
-envsubst < kubernetes/kind-calicovpp-config-template.yaml > kubernetes/kind-calicovpp-config.yaml
 kind_config=$(cat kubernetes/kind-config.yaml)
 kind_config=$(cat <<EOF
 $kind_config
@@ -86,27 +84,49 @@ push_release_to_registry() {
   done
 }
 
-cherry_pick() {
-  make -C $CALICOVPP_DIR cherry-vpp FORCE=y BASE=$BASE
+push_tag_to_registry() {
+  for component in vpp agent multinet-monitor; do
+    docker image tag docker.io/calicovpp/$component:$TAG localhost:5000/calicovpp/$component:$TAG
+	  docker push localhost:5000/calicovpp/$component:$TAG
+  done
 }
 
-build_load_start_cni() {
-  make -C $CALICOVPP_DIR image-kind TAG=latest
-  kubectl create --save-config -f kubernetes/kind-calicovpp-config.yaml
-}
-
-setup_master() {
+build_calicovpp() {
   if [ ! -d "$CALICOVPP_DIR" ]; then
       git clone https://github.com/projectcalico/vpp-dataplane.git $CALICOVPP_DIR
   else
       echo "Repo found, resetting"
       cd $CALICOVPP_DIR
       git reset --hard origin/master
+      git fetch --tags --force
       git pull
-      cd $CALICOVPP_DIR/vpp-manager/vpp_build
-      git reset --hard origin/master
+      cd vpp-manager
+      rm vpp*.tar || true
+      make clean-vpp
+      if [[ -d "$CALICOVPP_DIR/vpp-manager/vpp_build" ]]; then
+        cd $CALICOVPP_DIR/vpp-manager/vpp_build
+        make wipe || true
+        make wipe-release || true
+        git reset --hard origin/master
+        git fetch --tags --force
+        git pull
+      fi
+
       cd $VPP_DIR/test-c/kube-test
   fi
+  make -C $CALICOVPP_DIR/vpp-manager vpp BASE=$BASE
+  make -C $CALICOVPP_DIR dev TAG=$TAG
+  make -C $CALICOVPP_DIR image-kind TAG=$TAG
+}
+
+start_cni() {
+  kubectl create --save-config -f kubernetes/kind-calicovpp-config.yaml
+}
+
+setup_master() {
+  export CALICOVPP_VERSION=${CALICOVPP_VERSION:-"kt-master"}
+  echo "CALICOVPP_VERSION=$CALICOVPP_VERSION" > kubernetes/.vars
+  envsubst < kubernetes/kind-calicovpp-config-template.yaml > kubernetes/kind-calicovpp-config.yaml
 
   echo -e "$kind_config" | kind create cluster --config=-
   kubectl apply -f kubernetes/registry.yaml
@@ -115,18 +135,25 @@ setup_master() {
   kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/$TIGERA_VERSION/manifests/tigera-operator.yaml
   while [[ "$(kubectl api-resources --api-group=operator.tigera.io | grep Installation)" == "" ]]; do echo "waiting for Installation kubectl resource"; sleep 2; done
 
-  cherry_pick
-  build_load_start_cni
+  build_calicovpp
+  push_tag_to_registry
+  start_cni
 }
 
 rebuild_master() {
-  echo "Shutting down pods may take some time, timeout is set to 1m."
-  timeout 1m kubectl delete -f kubernetes/kind-calicovpp-config.yaml || true
-  cherry_pick
-  build_load_start_cni
+  export CALICOVPP_VERSION=${CALICOVPP_VERSION:-"kt-master"}
+  echo "CALICOVPP_VERSION=$CALICOVPP_VERSION" > kubernetes/.vars
+  envsubst < kubernetes/kind-calicovpp-config-template.yaml > kubernetes/kind-calicovpp-config.yaml
+  build_calicovpp
+  push_tag_to_registry
+  start_cni || true
+  kubectl rollout restart -n calico-vpp-dataplane ds/calico-vpp-node
 }
 
 setup_release() {
+  export CALICOVPP_VERSION="${CALICOVPP_VERSION:-"latest"}"
+  echo "CALICOVPP_VERSION=$CALICOVPP_VERSION" > kubernetes/.vars
+  envsubst < kubernetes/kind-calicovpp-config-template.yaml > kubernetes/kind-calicovpp-config.yaml
   echo "CALICOVPP_VERSION=$CALICOVPP_VERSION"
   echo "TIGERA_VERSION=$TIGERA_VERSION"
   echo -e "$kind_config" | kind create cluster --config=-
