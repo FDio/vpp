@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b86bad1f_e9835ff4",
+        "filename": "src/vnet/dev/port.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 619,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2025-11-18T13:21:30Z",
+      "side": 1,
+      "message": "This will put next RX queue on the main thread, which is a change of default behavior (when the new queue-per-thread is not used)...",
+      "range": {
+        "startLine": 619,
+        "startChar": 29,
+        "endLine": 619,
+        "endChar": 30
+      },
+      "revId": "0cea6395a9cc768c644c46962fd83dacdcef71f5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}

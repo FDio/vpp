@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "71a16258_13cab6d6",
+        "filename": "src/vnet/dev/queue.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 64,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2025-11-18T13:21:30Z",
+      "side": 0,
+      "message": "... previously, the main thread got skipped.",
+      "range": {
+        "startLine": 64,
+        "startChar": 28,
+        "endLine": 64,
+        "endChar": 29
+      },
+      "revId": "d264f3cbe95898068a660c1054f3a6ec5987e14b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
