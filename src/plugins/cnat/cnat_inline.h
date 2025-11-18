@@ -17,124 +17,221 @@
 #ifndef __CNAT_INLINE_H__
 #define __CNAT_INLINE_H__
 
+#include <cnat/cnat_session.h>
 #include <cnat/cnat_types.h>
+#include <cnat/cnat_bihash.h>
+#include "cnat_log.h"
 
-always_inline int
-cnat_ts_is_free_index (u32 index)
+#include <vnet/ip/ip4_inlines.h>
+#include <vnet/ip/ip6_inlines.h>
+
+always_inline cnat_timestamp_t *
+cnat_timestamp_get_if_exists (u32 index)
 {
-  u32 pidx = index >> (32 - CNAT_TS_MPOOL_BITS);
-  index = index & (0xffffffff >> CNAT_TS_MPOOL_BITS);
-  return pool_is_free_index (cnat_timestamps.ts_pools[pidx], index);
+  cnat_timestamp_mpool_t *ctm = &cnat_timestamps;
+  u32 log2_pool_sz = ctm->log2_pool_sz;
+  u32 pidx = index >> log2_pool_sz;
+  cnat_timestamp_t *ts = 0;
+
+  index = index & ((1 << log2_pool_sz) - 1);
+
+  clib_rwlock_reader_lock (&ctm->ts_lock);
+  if (!pool_is_free_index (vec_elt (ctm->ts_pools, pidx), index))
+    ts = pool_elt_at_index (vec_elt (ctm->ts_pools, pidx), index);
+  clib_rwlock_reader_unlock (&ctm->ts_lock);
+
+  return ts;
 }
 
 always_inline cnat_timestamp_t *
 cnat_timestamp_get (u32 index)
 {
-  /* 6 top bits for choosing pool */
-  u32 pidx = index >> (32 - CNAT_TS_MPOOL_BITS);
-  index = index & (0xffffffff >> CNAT_TS_MPOOL_BITS);
-  return pool_elt_at_index (cnat_timestamps.ts_pools[pidx], index);
-}
+  cnat_timestamp_mpool_t *ctm = &cnat_timestamps;
+  u32 log2_pool_sz = ctm->log2_pool_sz;
+  u32 pidx = index >> log2_pool_sz;
+  cnat_timestamp_t *ts;
 
-always_inline cnat_timestamp_t *
-cnat_timestamp_get_if_valid (u32 index)
-{
-  /* 6 top bits for choosing pool */
-  u32 pidx = index >> (32 - CNAT_TS_MPOOL_BITS);
-  index = index & (0xffffffff >> CNAT_TS_MPOOL_BITS);
-  if (pidx >= cnat_timestamps.next_empty_pool_idx)
-    return (NULL);
-  if (pool_is_free_index (cnat_timestamps.ts_pools[pidx], index))
-    return (NULL);
-  return pool_elt_at_index (cnat_timestamps.ts_pools[pidx], index);
+  index = index & ((1 << log2_pool_sz) - 1);
+
+  clib_rwlock_reader_lock (&ctm->ts_lock);
+  ts = pool_elt_at_index (vec_elt (ctm->ts_pools, pidx), index);
+  clib_rwlock_reader_unlock (&ctm->ts_lock);
+
+  return ts;
 }
 
 always_inline index_t
-cnat_timestamp_alloc ()
+cnat_timestamp_alloc (u32 fib_index, bool is_v6)
 {
+  cnat_timestamp_mpool_t *ctm = &cnat_timestamps;
+  int *sessions_per_vrf =
+    is_v6 ? ctm->sessions_per_vrf_ip6 : ctm->sessions_per_vrf_ip4;
+  u32 log2_pool_sz = ctm->log2_pool_sz;
+  u32 pool_sz = 1 << log2_pool_sz;
+  cnat_timestamp_t *pool;
   cnat_timestamp_t *ts;
-  u32 index, pool_sz;
-  uword pidx;
+  u32 index;
+  u32 pidx;
 
-  clib_spinlock_lock (&cnat_timestamps.ts_lock);
-  pidx = clib_bitmap_first_set (cnat_timestamps.ts_free);
-  pool_sz = 1 << (CNAT_TS_BASE_SIZE + pidx);
-  ASSERT (pidx <= cnat_timestamps.next_empty_pool_idx);
-  if (pidx == cnat_timestamps.next_empty_pool_idx)
-    pool_init_fixed (
-      cnat_timestamps.ts_pools[cnat_timestamps.next_empty_pool_idx++],
-      pool_sz);
-  pool_get (cnat_timestamps.ts_pools[pidx], ts);
-  if (pool_elts (cnat_timestamps.ts_pools[pidx]) == pool_sz)
-    clib_bitmap_set (cnat_timestamps.ts_free, pidx, 0);
-  clib_spinlock_unlock (&cnat_timestamps.ts_lock);
+  clib_rwlock_writer_lock (&ctm->ts_lock);
 
-  index = (u32) pidx << (32 - CNAT_TS_MPOOL_BITS);
-  return index | (ts - cnat_timestamps.ts_pools[pidx]);
+  if (PREDICT_FALSE (vec_elt (sessions_per_vrf, fib_index) <= 0))
+    goto err; /* too many sessions... */
+
+  pidx = clib_bitmap_first_set (ctm->ts_free);
+  if (PREDICT_FALSE (pidx >= vec_len (ctm->ts_pools)))
+    {
+      pidx = vec_len (ctm->ts_pools);
+      if (pidx >= ctm->pool_max)
+	goto err; /* too many sessions... */
+      /* add a new pool */
+      vec_validate (ctm->ts_pools, pidx);
+      pool_init_fixed (vec_elt (ctm->ts_pools, pidx), pool_sz);
+      ctm->ts_free = clib_bitmap_set (ctm->ts_free, pidx, 1);
+    }
+
+  pool = vec_elt (ctm->ts_pools, pidx);
+  pool_get (pool, ts);
+  index = ts - pool;
+
+  if (PREDICT_FALSE (pool_elts (pool) == pool_sz))
+    ctm->ts_free = clib_bitmap_set (ctm->ts_free, pidx, 0); /* pool is full */
+
+  vec_elt (sessions_per_vrf, fib_index)--;
+
+  clib_rwlock_writer_unlock (&ctm->ts_lock);
+
+  clib_memset_u8 (ts, 0, sizeof (*ts));
+
+  ts->fib_index = fib_index;
+  ASSERT ((u64) index + (pidx << log2_pool_sz) <= CLIB_U32_MAX);
+  return index + (pidx << log2_pool_sz);
+
+err:
+  clib_rwlock_writer_unlock (&ctm->ts_lock);
+  return INDEX_INVALID;
 }
 
 always_inline void
-cnat_timestamp_destroy (u32 index)
+cnat_timestamp_destroy (u32 index, bool is_v6)
 {
-  u32 pidx = index >> (32 - CNAT_TS_MPOOL_BITS);
-  index = index & (0xffffffff >> CNAT_TS_MPOOL_BITS);
-  clib_spinlock_lock (&cnat_timestamps.ts_lock);
-  pool_put_index (cnat_timestamps.ts_pools[pidx], index);
-  clib_bitmap_set (cnat_timestamps.ts_free, pidx, 1);
-  clib_spinlock_unlock (&cnat_timestamps.ts_lock);
+  cnat_timestamp_mpool_t *ctm = &cnat_timestamps;
+  int *sessions_per_vrf =
+    is_v6 ? ctm->sessions_per_vrf_ip6 : ctm->sessions_per_vrf_ip4;
+  u32 log2_pool_sz = ctm->log2_pool_sz;
+  u32 pidx = index >> log2_pool_sz;
+  cnat_timestamp_t *pool;
+  cnat_timestamp_t *ts;
+
+  index = index & ((1 << log2_pool_sz) - 1);
+
+  clib_rwlock_writer_lock (&ctm->ts_lock);
+  pool = vec_elt (ctm->ts_pools, pidx);
+  ts = pool_elt_at_index (pool, index);
+  vec_elt (sessions_per_vrf, ts->fib_index)++;
+  pool_put (pool, ts);
+  ctm->ts_free = clib_bitmap_set (ctm->ts_free, pidx, 1);
+  clib_rwlock_writer_unlock (&ctm->ts_lock);
 }
 
-always_inline u32
-cnat_timestamp_new (f64 t)
+always_inline index_t
+cnat_timestamp_new (u32 t, u32 fib_index, bool is_v6)
 {
-  index_t index = cnat_timestamp_alloc ();
+  index_t index = cnat_timestamp_alloc (fib_index, is_v6);
+  if (PREDICT_FALSE (INDEX_INVALID == index))
+    return INDEX_INVALID; /* alloc failure */
   cnat_timestamp_t *ts = cnat_timestamp_get (index);
   ts->last_seen = t;
   ts->lifetime = cnat_main.session_max_age;
-  ts->refcnt = CNAT_TIMESTAMP_INIT_REFCNT;
+  /* Initial number of timestamps for a session
+   * this will be incremented when adding the reverse
+   * session in cnat_rsession_create */
+  ts->ts_session_refcnt = 1;
   return index;
 }
 
-always_inline void
-cnat_timestamp_inc_refcnt (u32 index)
-{
-  cnat_timestamp_t *ts = cnat_timestamp_get (index);
-  clib_atomic_add_fetch (&ts->refcnt, 1);
-}
-
-always_inline void
-cnat_timestamp_update (u32 index, f64 t)
+always_inline cnat_timestamp_t *
+cnat_timestamp_update (u32 index, u32 t)
 {
   cnat_timestamp_t *ts = cnat_timestamp_get (index);
   ts->last_seen = t;
+  return ts;
 }
 
-always_inline void
-cnat_timestamp_set_lifetime (u32 index, u16 lifetime)
-{
-  cnat_timestamp_t *ts = cnat_timestamp_get (index);
-  ts->lifetime = lifetime;
-}
-
-always_inline f64
+always_inline u32
 cnat_timestamp_exp (u32 index)
 {
-  f64 t;
-  cnat_timestamp_t *ts = cnat_timestamp_get_if_valid (index);
-  if (NULL == ts)
-    return -1;
-  t = ts->last_seen + (f64) ts->lifetime;
-  return t;
+  cnat_timestamp_t *ts = cnat_timestamp_get (index);
+  return ts->last_seen + ts->lifetime;
 }
 
 always_inline void
-cnat_timestamp_free (u32 index)
+cnat_timestamp_rewrite_free (cnat_timestamp_rewrite_t *rw)
 {
-  cnat_timestamp_t *ts = cnat_timestamp_get_if_valid (index);
-  if (NULL == ts)
-    return;
-  if (0 == clib_atomic_sub_fetch (&ts->refcnt, 1))
-    cnat_timestamp_destroy (index);
+  if (rw->cts_flags & CNAT_TS_RW_FLAG_HAS_ALLOCATED_PORT)
+    cnat_free_port_cb (rw->fib_index, rw->tuple.port[VLIB_RX],
+		       rw->tuple.iproto);
+}
+
+always_inline void
+cnat_timestamp_free (u32 index, bool is_v6)
+{
+  cnat_timestamp_t *ts = cnat_timestamp_get (index);
+  ASSERT (ts);
+  if (0 == clib_atomic_sub_fetch (&ts->ts_session_refcnt, 1))
+    {
+      for (int i = 0; i < CNAT_N_LOCATIONS * VLIB_N_DIR; i++)
+	if (ts->ts_rw_bm & (1 << i))
+	  cnat_timestamp_rewrite_free (&ts->cts_rewrites[i]);
+
+      cnat_timestamp_destroy (index, is_v6);
+    }
+}
+
+static_always_inline void
+cnat_lookup_create_or_return (vlib_buffer_t *b, int rv, cnat_bihash_kv_t *bkey,
+			      cnat_bihash_kv_t *bvalue, u32 now, u64 hash,
+			      bool is_v6, bool alloc_if_not_found)
+{
+  vnet_buffer2 (b)->session.flags = 0;
+  cnat_session_t *session = (cnat_session_t *) bvalue;
+  if (rv)
+    {
+      if (!alloc_if_not_found)
+	goto err;
+      cnat_session_t *ksession = (cnat_session_t *) bkey;
+      index_t session_index =
+	cnat_timestamp_new (now, ksession->key.fib_index, is_v6);
+      ASSERT (
+	(session_index < CNAT_MAX_SESSIONS || INDEX_INVALID == session_index));
+      if (PREDICT_FALSE (session_index >= CNAT_MAX_SESSIONS))
+	goto err; /* too many sessions */
+      ksession->value.cs_session_index = session_index;
+      ksession->value.cs_flags = 0;
+      cnat_bihash_add_del_hash (&cnat_session_db, bkey, hash, 1 /* add */);
+      vnet_buffer2 (b)->session.generic_flow_id =
+	ksession->value.cs_session_index;
+      vnet_buffer2 (b)->session.state = CNAT_LOOKUP_IS_NEW;
+      cnat_log_session_create (ksession);
+    }
+  else if (session->key.cs_5tuple.iproto != 0)
+    {
+      vnet_buffer2 (b)->session.generic_flow_id =
+	session->value.cs_session_index;
+      vnet_buffer2 (b)->session.state =
+	session->value.cs_flags & CNAT_SESSION_IS_RETURN ?
+	  CNAT_LOOKUP_IS_RETURN :
+	  CNAT_LOOKUP_IS_OK;
+      cnat_timestamp_update (session->value.cs_session_index, now);
+    }
+  else
+    goto err;
+
+  return;
+
+err:
+  vnet_buffer2 (b)->session.generic_flow_id = 0;
+  vnet_buffer2 (b)->session.state = CNAT_LOOKUP_IS_ERR;
 }
 
 /*
