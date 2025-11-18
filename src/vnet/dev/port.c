@@ -662,7 +662,7 @@ vnet_dev_port_if_create (vlib_main_t *vm, vnet_dev_port_t *port, void *ptr)
 	    {
 	      ti = dm->next_rx_queue_thread++;
 	      if (dm->next_rx_queue_thread >= n_threads)
-		dm->next_rx_queue_thread = 0;
+		dm->next_rx_queue_thread = 1;
 	    }
 	  else
 	    ti = i;
