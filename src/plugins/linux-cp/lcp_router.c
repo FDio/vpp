@@ -1570,9 +1570,33 @@ const nl_vft_t lcp_router_vft = {
 };
 
 static void
+lcp_router_cleanup_iface (u32 sw_if_index)
+{
+  lcp_router_table_t *nlt;
+  u32 *sw_if_index_to_bool = NULL;
+
+  vec_validate_init_empty (sw_if_index_to_bool, sw_if_index, false);
+  sw_if_index_to_bool[sw_if_index] = true;
+
+  pool_foreach (nlt, lcp_router_table_pool)
+    {
+      lcp_router_table_flush (nlt, sw_if_index_to_bool, lcp_rt_fib_src);
+
+      if (nlt->nlt_refs == 0)
+	continue;
+
+      lcp_router_table_flush (nlt, sw_if_index_to_bool,
+			      lcp_rt_fib_src_dynamic);
+    }
+
+  vec_free (sw_if_index_to_bool);
+}
+
+static void
 lcp_lcp_router_interface_del_cb (lcp_itf_pair_t *lip)
 {
   lcp_router_ip6_mroutes_add_del (lip->lip_phy_sw_if_index, 0);
+  lcp_router_cleanup_iface (lip->lip_phy_sw_if_index);
 }
 
 static clib_error_t *
