@@ -126,7 +126,9 @@ vcl_send_session_connect_stream (vcl_worker_t *wrk, vcl_session_t *s)
   session_connect_msg_t *mp;
   svm_msg_q_t *mq;
 
-  mq = vcl_worker_ctrl_mq (wrk);
+  /* streams are connected on parent's vpp worker */
+  mq = s->vpp_evt_q;
+
   app_alloc_ctrl_evt_to_vpp (mq, app_evt, SESSION_CTRL_EVT_CONNECT_STREAM);
   mp = (session_connect_msg_t *) app_evt->evt->data;
   memset (mp, 0, sizeof (*mp));
@@ -2171,6 +2173,7 @@ vppcom_session_stream_connect (uint32_t session_handle,
     }
 
   session->parent_handle = parent_session->vpp_handle;
+  session->vpp_evt_q = parent_session->vpp_evt_q;
 
   VDBG (0, "session handle %u: connecting to session %u [0x%llx]",
 	session_handle, parent_session_handle, parent_session->vpp_handle);
