@@ -2,6 +2,7 @@
  * Copyright(c) 2022 Cisco Systems, Inc.
  */
 
+#include "vlib/stats/shared.h"
 #include <vlib/vlib.h>
 #include <vlib/stats/stats.h>
 
@@ -183,9 +184,9 @@ vlib_stats_remove_entry (u32 entry_index)
       }
       break;
 
+    case STAT_DIR_TYPE_GAUGE:
     case STAT_DIR_TYPE_SCALAR_INDEX:
     case STAT_DIR_TYPE_SYMLINK:
-    case STAT_DIR_TYPE_GAUGE:
       break;
     default:
       ASSERT (0);
