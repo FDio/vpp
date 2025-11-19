@@ -300,6 +300,7 @@ ct_accept_one (clib_thread_index_t thread_index, u32 ho_index)
   clib_memcpy (&sct->c_lcl_ip, &cct->c_rmt_ip, sizeof (cct->c_rmt_ip));
   sct->client_wrk = cct->client_wrk;
   sct->c_proto = TRANSPORT_PROTO_CT;
+  sct->c_flags |= TRANSPORT_CONNECTION_F_NO_LOOKUP;
   sct->client_opaque = cct->client_opaque;
   sct->actual_tp = cct->actual_tp;
 
@@ -639,11 +640,8 @@ ct_session_postponed_cleanup (ct_connection_t *ct)
       else
 	session_transport_closing_notify (&peer_ct->connection);
     }
-  /*
-   * Comment out session_transport_closed_notify. It caused an error spit out
-   * in session delete due to session_lookup_del_session returns an error.
-   * session_transport_closed_notify (&ct->connection);
-   */
+
+  session_transport_closed_notify (&ct->connection);
   session_transport_delete_request (&ct->connection, ct_connection_free);
 }
 
