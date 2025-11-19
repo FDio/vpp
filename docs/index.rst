@@ -80,6 +80,7 @@ For more details click on the links below or press next.
     developer/build-run-debug/index
     developer/corearchitecture/index
     developer/corefeatures/index
+    developer/lua/index
     developer/plugindoc/index
     developer/plugins/index
     developer/devicedrivers/index
