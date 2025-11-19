@@ -563,10 +563,14 @@ quic_quicly_on_receive (quicly_stream_t *stream, size_t off, const void *src,
 		stream_session->thread_index, f, len, rlen, off, max_enq);
       stream_data->app_rx_data_len += rlen;
       QUIC_ASSERT (rlen >= len);
-      app_wrk = app_worker_get_if_valid (stream_session->app_wrk_index);
-      if (PREDICT_TRUE (app_wrk != 0))
+      if (!(stream_session->flags & SESSION_F_RX_EVT))
 	{
-	  app_worker_rx_notify (app_wrk, stream_session);
+	  app_wrk = app_worker_get_if_valid (stream_session->app_wrk_index);
+	  if (PREDICT_TRUE (app_wrk != 0))
+	    {
+	      stream_session->flags |= SESSION_F_RX_EVT;
+	      app_worker_rx_notify (app_wrk, stream_session);
+	    }
 	}
       quic_quicly_ack_rx_data (stream_session);
     }
