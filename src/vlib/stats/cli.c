@@ -29,6 +29,10 @@ format_stat_dir_entry (u8 *s, va_list *args)
       type_name = "ScalarPtr";
       break;
 
+    case STAT_DIR_TYPE_GAUGE:
+      type_name = "Gauge";
+      break;
+
     case STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE:
     case STAT_DIR_TYPE_COUNTER_VECTOR_COMBINED:
       type_name = "CMainPtr";
