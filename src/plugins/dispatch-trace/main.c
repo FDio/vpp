@@ -272,7 +272,7 @@ vlib_pcap_dispatch_trace_configure (vlib_pcap_dispatch_trace_args_t *a)
 	  tm->trace_enable = 1;
 	  if (vlib_node_set_dispatch_wrapper (this_vlib_main,
 					      dispatch_pcap_trace))
-	    clib_warning (0, "Dispatch wrapper already in use on thread %u",
+	    clib_warning ("Dispatch wrapper already in use on thread %u",
 			  this_vlib_main->thread_index);
 	}
       vec_add1 (dtm->dispatch_buffer_trace_nodes, a->buffer_trace_node_index);
