@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "302a7eeb_8a0aacd3",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2025-11-19T19:17:40Z",
+      "side": 1,
+      "message": "you\u0027ve copied the existing server-based code 1:1 into the push based code, which will become a maintenance nightmare. You should factor out the common parts into their own *.[ch] file, and then include them in the *_export.c and *_push.c\n\nAlternatively, keep the *_export.c file and add a flag --push which switches between listening on ip:port/metrics (the default) and closing listen port and pushing to http/https endpoint instead. Your call.",
+      "revId": "7e624f07de7c0d9f131469ac583919391b1596e4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
