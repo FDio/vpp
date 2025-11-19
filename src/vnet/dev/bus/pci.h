@@ -98,5 +98,6 @@ vnet_dev_get_pci_n_msi_interrupts (vnet_dev_t *dev)
 {
   return vnet_dev_get_bus_pci_device_data (dev)->n_msi_int;
 }
+format_function_t format_vnet_dev_pci_device_addr;
 
 #endif /* _VNET_DEV_PCI_H_ */

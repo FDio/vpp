@@ -706,8 +706,8 @@ format_dev_pci_device_info (u8 *s, va_list *args)
   return s;
 }
 
-static u8 *
-format_dev_pci_device_addr (u8 *s, va_list *args)
+u8 *
+format_vnet_dev_pci_device_addr (u8 *s, va_list *args)
 {
   vnet_dev_t *dev = va_arg (*args, vnet_dev_t *);
   vnet_dev_bus_pci_device_data_t *pdd = vnet_dev_get_bus_pci_device_data (dev);
@@ -725,6 +725,6 @@ VNET_DEV_REGISTER_BUS (pci) = {
     .dma_mem_alloc_fn = vnet_dev_bus_pci_dma_mem_alloc,
     .dma_mem_free_fn = vnet_dev_bus_pci_dma_mem_free,
     .format_device_info = format_dev_pci_device_info,
-    .format_device_addr = format_dev_pci_device_addr,
+    .format_device_addr = format_vnet_dev_pci_device_addr,
   },
 };

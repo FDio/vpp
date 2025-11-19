@@ -131,6 +131,10 @@ add_vpp_plugin(dpdk
   SOURCES
   buffer.c
   main.c
+  dev/init.c
+  dev/port.c
+  dev/rx_node.c
+  dev/tx_node.c
   device/cli.c
   device/common.c
   device/device.c

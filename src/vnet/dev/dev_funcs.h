@@ -72,6 +72,18 @@ vnet_dev_port_get_sec_if_by_index (vnet_dev_port_t *p, u32 index)
   return *pool_elt_at_index (p->interfaces->secondary_interfaces, index);
 }
 
+static_always_inline u16
+vnet_dev_port_get_num_rx_queues (vnet_dev_port_t *port)
+{
+  return pool_elts (port->rx_queues);
+}
+
+static_always_inline u16
+vnet_dev_port_get_num_tx_queues (vnet_dev_port_t *port)
+{
+  return pool_elts (port->tx_queues);
+}
+
 static_always_inline vnet_dev_port_t *
 vnet_dev_get_port_from_dev_instance (u32 dev_instance)
 {
