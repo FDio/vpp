@@ -8,6 +8,7 @@
 
 #include <sys/time.h>
 #include <vppinfra/types.h>
+#include <vppinfra/format.h>
 
 #define foreach_vlib_log_level	\
   _(EMERG, emerg)		\
@@ -88,6 +89,7 @@ typedef struct
 {
   vlib_log_entry_t *entries;
   vlib_log_class_data_t *classes;
+  uword *class_index_by_name;
   int size, next, count;
   u8 lock;
 
@@ -125,8 +127,12 @@ void vlib_log (vlib_log_level_t level, vlib_log_class_t class, char *fmt,
 void vlib_log_va (vlib_log_level_t level, vlib_log_class_t class, char *fmt,
 		  va_list *va);
 int last_log_entry ();
-u8 *format_vlib_log_class (u8 * s, va_list * args);
-u8 *format_vlib_log_level (u8 * s, va_list * args);
+format_function_t format_vlib_log_class;
+format_function_t format_vlib_log_level;
+unformat_function_t unformat_vlib_log_level;
+#define VLIB_LOG_INVALID_CLASS ((vlib_log_class_t) ~0)
+vlib_log_class_t vlib_log_get_class_by_name (char *class, char *subclass);
+void vlib_log_clear (vlib_log_main_t *lm);
 
 #define vlib_log_emerg(...) vlib_log(VLIB_LOG_LEVEL_EMERG, __VA_ARGS__)
 #define vlib_log_alert(...) vlib_log(VLIB_LOG_LEVEL_ALERT, __VA_ARGS__)

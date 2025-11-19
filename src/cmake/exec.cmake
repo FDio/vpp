@@ -15,9 +15,14 @@ macro(add_vpp_executable exec)
   cmake_parse_arguments(ARG
     "ENABLE_EXPORTS;NO_INSTALL"
     ""
-    "SOURCES;LINK_LIBRARIES;DEPENDS"
+    "SOURCES;LINK_LIBRARIES;DEPENDS;LUA_SOURCES"
     ${ARGN}
   )
+
+  if(ARG_LUA_SOURCES AND VPP_LUA_AVAILABLE AND TARGET vlua)
+    list(APPEND ARG_SOURCES ${ARG_LUA_SOURCES})
+    list(APPEND ARG_LINK_LIBRARIES vlua)
+  endif()
 
   add_executable(${exec} ${ARG_SOURCES})
   target_compile_options(${exec} PUBLIC ${VPP_DEFAULT_MARCH_FLAGS})
@@ -34,4 +39,3 @@ macro(add_vpp_executable exec)
     install(TARGETS ${exec} DESTINATION ${VPP_RUNTIME_DIR})
   endif()
 endmacro()
-

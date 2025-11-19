@@ -334,7 +334,14 @@ vlib_log_register_class_internal (char *class, char *subclass, u32 limit)
     length += 1 + vec_len (s->name);
   if (length > lm->max_class_name_length)
     lm->max_class_name_length = length;
-  return (c->index << 16) | (s->index);
+  vlib_log_class_t class_id = (c->index << 16) | (s->index);
+
+  if (lm->class_index_by_name == 0)
+    lm->class_index_by_name = hash_create_string (0, sizeof (uword));
+  u8 *key = format (0, "%s/%s%c", class, subclass ? subclass : "", 0);
+  hash_set_mem (lm->class_index_by_name, key, class_id);
+
+  return class_id;
 }
 
 vlib_log_class_t
@@ -350,6 +357,48 @@ vlib_log_register_class_rate_limit (char *class, char *subclass, u32 limit)
   return vlib_log_register_class_internal (class, subclass, limit);
 }
 
+vlib_log_class_t
+vlib_log_get_class_by_name (char *class, char *subclass)
+{
+  vlib_log_main_t *lm = &log_main;
+
+  if (!class)
+    return VLIB_LOG_INVALID_CLASS;
+
+  if (lm->class_index_by_name == 0)
+    return VLIB_LOG_INVALID_CLASS;
+
+  u8 *key = format (0, "%s/%s%c", class, subclass ? subclass : "", 0);
+  uword *value = hash_get_mem (lm->class_index_by_name, key);
+  vec_free (key);
+  if (value)
+    return (vlib_log_class_t) value[0];
+  return VLIB_LOG_INVALID_CLASS;
+}
+
+void
+vlib_log_clear (vlib_log_main_t *lm)
+{
+  vlib_log_entry_t *e;
+  int i, count;
+
+  if (!lm)
+    return;
+
+  CLIB_SPINLOCK_LOCK (lm->lock);
+  i = last_log_entry ();
+  count = lm->count;
+  while (count--)
+    {
+      e = vec_elt_at_index (lm->entries, i);
+      vec_free (e->string);
+      i = (i + 1) % lm->size;
+    }
+
+  lm->count = 0;
+  lm->next = 0;
+  CLIB_SPINLOCK_UNLOCK (lm->lock);
+}
 
 u8 *
 format_vlib_log_level (u8 * s, va_list * args)
@@ -493,27 +542,10 @@ static clib_error_t *
 clear_log (vlib_main_t * vm,
 	   unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  clib_error_t *error = 0;
   vlib_log_main_t *lm = &log_main;
-  vlib_log_entry_t *e;
-  int i = last_log_entry ();
-  int count;
-
-  CLIB_SPINLOCK_LOCK (lm->lock);
-  count = lm->count;
-  while (count--)
-    {
-      e = vec_elt_at_index (lm->entries, i);
-      vec_free (e->string);
-      i = (i + 1) % lm->size;
-    }
-
-  lm->count = 0;
-  lm->next = 0;
-  CLIB_SPINLOCK_UNLOCK (lm->lock);
-
+  vlib_log_clear (lm);
   vlib_log_info (log_log.class, "log cleared");
-  return error;
+  return 0;
 }
 
 VLIB_CLI_COMMAND (cli_clear_log, static) = {
@@ -522,8 +554,8 @@ VLIB_CLI_COMMAND (cli_clear_log, static) = {
   .function = clear_log,
 };
 
-static uword
-unformat_vlib_log_level (unformat_input_t * input, va_list * args)
+uword
+unformat_vlib_log_level (unformat_input_t *input, va_list *args)
 {
   vlib_log_level_t *level = va_arg (*args, vlib_log_level_t *);
   u8 *level_str = NULL;

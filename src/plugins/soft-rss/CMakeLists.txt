@@ -8,6 +8,9 @@ add_vpp_plugin(soft_rss
   INSTALL_HEADERS
   export.h
 
+  LUA_SOURCES
+  lua.c
+
   MULTIARCH_SOURCES
   node.c
 )

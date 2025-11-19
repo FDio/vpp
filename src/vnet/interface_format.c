@@ -774,6 +774,24 @@ unformat_vnet_hw_interface (unformat_input_t * input, va_list * args)
 			im->hw_interface_by_name, hw_if_index);
 }
 
+u32
+vnet_get_sw_if_index_by_name (vnet_main_t *vnm, char *fmt, ...)
+{
+  va_list va;
+  unformat_input_t in;
+  u8 *s;
+  u32 sw_if_index = CLIB_U32_MAX;
+
+  va_start (va, fmt);
+  s = va_format (0, fmt, &va);
+  va_end (va);
+
+  unformat_init_vector (&in, s);
+  unformat_user (&in, unformat_vnet_sw_interface, vnm, &sw_if_index);
+  unformat_free (&in);
+  return sw_if_index;
+}
+
 uword
 unformat_vnet_sw_interface (unformat_input_t * input, va_list * args)
 {

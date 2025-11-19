@@ -73,6 +73,10 @@ endif()
 
 set(VLIB_LIBS vppinfra svm ${CMAKE_DL_LIBS} ${EPOLL_LIB})
 
+if (NOT DEFINED VPP_LUA_AVAILABLE)
+  set(VPP_LUA_AVAILABLE FALSE)
+endif()
+
 vpp_find_path(LIBIBERTY_INCLUDE_DIR libiberty/demangle.h)
 vpp_find_library(LIBIBERTY_LIB NAMES iberty libiberty)
 
@@ -84,8 +88,7 @@ else()
   message(WARNING "libiberty not found - stack trace demangle disabled")
 endif()
 
-add_vpp_library(vlib
-  SOURCES
+set(VLIB_SOURCES
   buffer.c
   buffer_funcs.c
   cli.c
@@ -126,6 +129,14 @@ add_vpp_library(vlib
   dma/dma.c
   dma/cli.c
   ${PLATFORM_SOURCES}
+)
+
+add_vpp_library(vlib
+  SOURCES
+    ${VLIB_SOURCES}
+  LUA_SOURCES
+    lua/cli.c
+    lua/log.c
 
   MULTIARCH_SOURCES
   buffer_funcs.c

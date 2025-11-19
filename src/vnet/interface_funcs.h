@@ -559,4 +559,6 @@ vnet_hw_if_unset_caps (vnet_main_t *vnm, u32 hw_if_index,
   vnet_hw_if_change_caps (vnm, hw_if_index, &cc);
 }
 
+u32 vnet_get_sw_if_index_by_name (vnet_main_t *vnm, char *fmt, ...);
+
 #endif /* included_vnet_interface_funcs_h */

@@ -60,6 +60,12 @@ list(APPEND VNET_SOURCES
   misc.c
 )
 
+list(APPEND VNET_LUA_SOURCES
+  interface/lua.c
+  ethernet/lua.c
+  ip/ipv4_lua.c
+)
+
 list(APPEND VNET_MULTIARCH_SOURCES
   interface_output.c
   interface_stats.c
@@ -1443,6 +1449,7 @@ list (APPEND VNET_MULTIARCH_SOURCES
 add_vpp_library(vnet
   SOURCES ${VNET_SOURCES}
   MULTIARCH_SOURCES ${VNET_MULTIARCH_SOURCES}
+  LUA_SOURCES ${VNET_LUA_SOURCES}
   INSTALL_HEADERS ${VNET_HEADERS}
   API_FILES ${VNET_API_FILES}
   LINK_LIBRARIES vppinfra svm vlibapi vlibmemory vlib

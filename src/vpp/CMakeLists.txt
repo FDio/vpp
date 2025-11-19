@@ -90,6 +90,7 @@ endif()
 add_vpp_executable(vpp
   ENABLE_EXPORTS
   SOURCES ${VPP_SOURCES}
+  LUA_SOURCES lua/vpp.c lua/node.c lua/cli.c
   LINK_LIBRARIES svm vlibapi vlib vppinfra vlibmemory vnet Threads::Threads ${CMAKE_DL_LIBS} ${EPOLL_LIB}
   DEPENDS vpp_version_h api_headers
 )
