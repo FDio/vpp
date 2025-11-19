@@ -15,11 +15,16 @@ macro(add_vpp_library lib)
   cmake_parse_arguments(ARG
     "LTO"
     "COMPONENT"
-    "SOURCES;MULTIARCH_SOURCES;API_FILES;LINK_LIBRARIES;INSTALL_HEADERS;DEPENDS"
+    "SOURCES;MULTIARCH_SOURCES;API_FILES;LINK_LIBRARIES;INSTALL_HEADERS;DEPENDS;LUA_SOURCES"
     ${ARGN}
   )
 
   set (lo ${lib}_objs)
+  if(ARG_LUA_SOURCES AND VPP_LUA_AVAILABLE AND TARGET vlua)
+    list(APPEND ARG_SOURCES ${ARG_LUA_SOURCES})
+    list(APPEND ARG_LINK_LIBRARIES vlua)
+  endif()
+
   add_library(${lo} OBJECT ${ARG_SOURCES})
   set_target_properties(${lo} PROPERTIES POSITION_INDEPENDENT_CODE ON)
   target_compile_options(${lo} PUBLIC ${VPP_DEFAULT_MARCH_FLAGS})
