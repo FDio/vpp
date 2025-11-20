@@ -355,23 +355,6 @@ session_program_cleanup (session_t *s)
   session_cleanup_notify (s, SESSION_CLEANUP_SESSION);
 }
 
-/**
- * Cleans up session and lookup table.
- *
- * Transport connection must still be valid.
- */
-static void
-session_delete (session_t * s)
-{
-  int rv;
-
-  /* Delete from the main lookup table. */
-  if ((rv = session_lookup_del_session (s)))
-    clib_warning ("session %u hash delete rv %d", s->session_index, rv);
-
-  session_program_cleanup (s);
-}
-
 void
 session_cleanup_half_open (session_handle_t ho_handle)
 {
@@ -1010,15 +993,17 @@ session_transport_delete_notify (transport_connection_t * tc)
     case SESSION_STATE_TRANSPORT_DELETED:
       break;
     case SESSION_STATE_CLOSED:
-      session_cleanup_notify (s, SESSION_CLEANUP_TRANSPORT);
+      session_lookup_del_session (s);
       session_set_state (s, SESSION_STATE_TRANSPORT_DELETED);
-      session_delete (s);
+      session_cleanup_notify (s, SESSION_CLEANUP_TRANSPORT);
+      session_program_cleanup (s);
       break;
     default:
       clib_warning ("session %u state %u", s->session_index, s->session_state);
+      session_lookup_del_session (s);
       session_set_state (s, SESSION_STATE_TRANSPORT_DELETED);
       session_cleanup_notify (s, SESSION_CLEANUP_TRANSPORT);
-      session_delete (s);
+      session_program_cleanup (s);
       break;
     }
 }
@@ -1082,15 +1067,17 @@ session_transport_delete_request (transport_connection_t *tc,
       transport_cleanup_cb (cb_fn, tc);
       break;
     case SESSION_STATE_CLOSED:
-      session_cleanup_notify_custom (s, SESSION_CLEANUP_TRANSPORT, cb_fn);
+      session_lookup_del_session (s);
       session_set_state (s, SESSION_STATE_TRANSPORT_DELETED);
-      session_delete (s);
+      session_cleanup_notify_custom (s, SESSION_CLEANUP_TRANSPORT, cb_fn);
+      session_program_cleanup (s);
       break;
     default:
       clib_warning ("session %u state %u", s->session_index, s->session_state);
+      session_lookup_del_session (s);
       session_set_state (s, SESSION_STATE_TRANSPORT_DELETED);
       session_cleanup_notify_custom (s, SESSION_CLEANUP_TRANSPORT, cb_fn);
-      session_delete (s);
+      session_program_cleanup (s);
       break;
     }
 }
