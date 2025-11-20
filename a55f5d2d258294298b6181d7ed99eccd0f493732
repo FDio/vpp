@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6a8bf1d5_4d74a1e3",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1388
+      },
+      "writtenOn": "2025-11-20T07:37:02Z",
+      "side": 1,
+      "message": "Hello Vratko, could you please run csit vhost performance test on this patch?",
+      "revId": "a55f5d2d258294298b6181d7ed99eccd0f493732",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
