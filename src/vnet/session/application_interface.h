@@ -758,23 +758,18 @@ app_recv_dgram_raw (svm_fifo_t * f, u8 * buf, u32 len,
   u32 max_deq;
   int rv;
 
-  max_deq = svm_fifo_max_dequeue_cons (f);
-  if (max_deq <= sizeof (session_dgram_hdr_t))
-    {
-      if (clear_evt)
-	svm_fifo_unset_event (f);
-      return 0;
-    }
-
   if (clear_evt)
     svm_fifo_unset_event (f);
+
+  max_deq = svm_fifo_max_dequeue_cons (f);
+  if (max_deq <= sizeof (session_dgram_hdr_t))
+    return 0;
 
   svm_fifo_peek (f, 0, sizeof (ph), (u8 *) & ph);
   ASSERT (ph.data_length >= ph.data_offset);
 
   /* Check if we have the full dgram */
-  if (max_deq < (ph.data_length + SESSION_CONN_HDR_LEN)
-      && len >= ph.data_length)
+  if (max_deq < (ph.data_length + SESSION_CONN_HDR_LEN))
     return 0;
 
   svm_fifo_peek (f, sizeof (ph), sizeof (*at), (u8 *) at);
