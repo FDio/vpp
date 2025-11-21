@@ -95,6 +95,8 @@ quic_engine_type_str (quic_engine_type_t engine_type)
 }
 extern vlib_node_registration_t quic_input_node;
 
+typedef i64 quic_stream_id_t;
+
 typedef enum
 {
 #define quic_error(f, n, s, d) QUIC_ERROR_##f,
@@ -392,13 +394,15 @@ typedef struct quic_engine_vft_
   void (*connection_migrate) (quic_ctx_t *ctx);
   void (*connection_get_stats) (void *conn, quic_stats_t *conn_stats);
   int (*udp_session_rx_packets) (session_t *udp_session);
-  void (*ack_rx_data) (session_t *stream_session);
+  void (*app_rx_evt) (session_t *stream_session);
   u64 (*stream_tx) (quic_ctx_t *ctx, session_t *stream_session);
   int (*send_packets) (quic_ctx_t *ctx);
   u8 *(*format_connection_stats) (u8 *s, va_list *args);
   u8 *(*format_stream_stats) (u8 *s, va_list *args);
-  i64 (*stream_get_stream_id) (quic_ctx_t *ctx);
+  quic_stream_id_t (*stream_get_stream_id) (quic_ctx_t *ctx);
   void (*proto_on_close) (u32 ctx_index, clib_thread_index_t thread_index);
+  void (*proto_on_half_close) (u32 ctx_index,
+			       clib_thread_index_t thread_index);
   void (*transport_closed) (quic_ctx_t *ctx);
 } quic_engine_vft_t;
 

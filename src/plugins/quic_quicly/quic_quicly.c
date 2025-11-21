@@ -383,8 +383,12 @@ quic_quicly_on_stream_destroy (quicly_stream_t *stream, int err)
   quic_ctx_t *sctx =
     quic_quicly_get_quic_ctx (stream_data->ctx_id, stream_data->thread_index);
 
-  QUIC_DBG (2, "DESTROYED_STREAM: session 0x%lx (%U)",
-	    sctx->udp_session_handle, quic_quicly_format_err, err);
+  QUIC_DBG (
+    2,
+    "DESTROYED_STREAM: stream_session handle 0x%lx, sctx_index %u, "
+    "thread %u, err %U",
+    session_handle (session_get (sctx->c_s_index, sctx->c_thread_index)),
+    sctx->c_c_index, sctx->c_thread_index, quic_quicly_format_err, err);
 
   session_transport_closing_notify (&sctx->connection);
   session_transport_delete_notify (&sctx->connection);
@@ -471,7 +475,7 @@ quic_quicly_on_stop_sending (quicly_stream_t *stream, int err)
 }
 
 static void
-quic_quicly_ack_rx_data (session_t *stream_session)
+quic_quicly_app_rx_evt (session_t *stream_session)
 {
   u32 max_deq;
   quic_ctx_t *sctx;
@@ -482,16 +486,19 @@ quic_quicly_ack_rx_data (session_t *stream_session)
   sctx = quic_quicly_get_quic_ctx (stream_session->connection_index,
 				   stream_session->thread_index);
   QUIC_ASSERT (quic_ctx_is_stream (sctx));
-  stream = sctx->stream;
-  stream_data = (quic_stream_data_t *) stream->data;
 
   f = stream_session->rx_fifo;
   max_deq = svm_fifo_max_dequeue (f);
 
+  stream = sctx->stream;
+  stream_data = (quic_stream_data_t *) stream->data;
   QUIC_ASSERT (stream_data->app_rx_data_len >= max_deq);
   quicly_stream_sync_recvbuf (stream, stream_data->app_rx_data_len - max_deq);
-  QUIC_DBG (3, "Acking %u bytes", stream_data->app_rx_data_len - max_deq);
+  QUIC_DBG (3, "stream sync recvbuf: %u bytes",
+	    stream_data->app_rx_data_len - max_deq);
   stream_data->app_rx_data_len = max_deq;
+  /* Need to send packets (MAX_STREAM_DATA may never be sent otherwise) */
+  quic_quicly_send_packets (sctx);
 }
 
 static void
@@ -573,7 +580,6 @@ quic_quicly_on_receive (quicly_stream_t *stream, size_t off, const void *src,
 	      app_worker_rx_notify (app_wrk, stream_session);
 	    }
 	}
-      quic_quicly_ack_rx_data (stream_session);
     }
   else
     {
@@ -1000,6 +1006,48 @@ quic_quicly_proto_on_close (u32 ctx_index, clib_thread_index_t thread_index)
     }
 }
 
+static void
+quic_quicly_proto_on_half_close (u32 ctx_index,
+				 clib_thread_index_t thread_index)
+{
+  session_t *stream_session;
+  quic_ctx_t *ctx;
+  quicly_stream_t *stream;
+  int err;
+
+  ctx = quic_quicly_get_quic_ctx_if_valid (ctx_index, thread_index);
+  if (!ctx)
+    {
+      return;
+    }
+  if (!quic_ctx_is_stream (ctx))
+    {
+      QUIC_DBG (1, "Trying to half-close connection");
+      return;
+    }
+  stream = ctx->stream;
+  if (!quicly_stream_has_send_side (quicly_is_client (stream->conn),
+				    stream->stream_id))
+    {
+      QUIC_DBG (1, "Trying to half-close stream without send side");
+      return;
+    }
+  ASSERT (quicly_sendstate_is_open (&stream->sendstate));
+  stream_session = session_get (ctx->c_s_index, ctx->c_thread_index);
+  quicly_sendstate_shutdown (&stream->sendstate,
+			     ctx->bytes_written +
+			       svm_fifo_max_dequeue (stream_session->tx_fifo));
+  err = quicly_stream_sync_sendbuf (stream, 1);
+  if (err)
+    {
+      QUIC_DBG (1,
+		"sendstate_shutdown failed for stream session %lu, error: %U",
+		session_handle (stream_session), quic_quicly_format_err, err);
+      quicly_reset_stream (stream, QUICLY_TRANSPORT_ERROR_INTERNAL);
+    }
+  quic_quicly_send_packets (ctx);
+}
+
 /*
  * Returns 0 if a matching connection is found and is on the right thread.
  * Otherwise returns -1.
@@ -1333,10 +1381,12 @@ quic_quicly_connect (quic_ctx_t *ctx, u32 ctx_index,
   return (ret);
 }
 
-static i64
-quic_quicly_stream_get_stream_id (quic_ctx_t *ctx)
+static quic_stream_id_t
+quic_quicly_stream_get_stream_id (quic_ctx_t *sctx)
 {
-  quicly_stream_t *stream = (quicly_stream_t *) ctx->stream;
+  quicly_stream_t *stream;
+
+  stream = (quicly_stream_t *) sctx->stream;
 
   return stream->stream_id;
 }
@@ -1344,11 +1394,13 @@ quic_quicly_stream_get_stream_id (quic_ctx_t *ctx)
 static u8 *
 quic_quicly_format_stream_stats (u8 *s, va_list *args)
 {
-  quic_ctx_t *ctx = va_arg (*args, quic_ctx_t *);
-  quicly_stream_t *stream = (quicly_stream_t *) ctx->stream;
+  quic_ctx_t *sctx = va_arg (*args, quic_ctx_t *);
+  quicly_stream_t *stream;
 
+  stream = (quicly_stream_t *) sctx->stream;
   s = format (s, " snd-wnd %lu rcv-wnd %lu\n",
 	      stream->_send_aux.max_stream_data, stream->_recv_aux.window);
+
   return s;
 }
 
@@ -1760,13 +1812,14 @@ const static quic_engine_vft_t quic_quicly_engine_vft = {
   .connection_migrate = quic_quicly_connection_migrate,
   .connection_get_stats = quic_quicly_connection_get_stats,
   .udp_session_rx_packets = quic_quicly_udp_session_rx_packets,
-  .ack_rx_data = quic_quicly_ack_rx_data,
+  .app_rx_evt = quic_quicly_app_rx_evt,
   .stream_tx = quic_quicly_stream_tx,
   .send_packets = quic_quicly_send_packets,
   .format_connection_stats = quic_quicly_format_connection_stats,
   .format_stream_stats = quic_quicly_format_stream_stats,
   .stream_get_stream_id = quic_quicly_stream_get_stream_id,
   .proto_on_close = quic_quicly_proto_on_close,
+  .proto_on_half_close = quic_quicly_proto_on_half_close,
   .transport_closed = quic_quicly_transport_closed,
 };
 
