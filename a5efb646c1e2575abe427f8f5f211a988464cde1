@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2b170939_3e622872",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2025-11-21T13:52:06Z",
+      "side": 1,
+      "message": "@mohsin, now that this story is addressed, should we abandon this patch ?",
+      "revId": "a5efb646c1e2575abe427f8f5f211a988464cde1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
