@@ -40,6 +40,7 @@ FORCE_BUILD?=true
 help:
 	@echo "Make targets:"
 	@echo " test                     - run kube-test (requires a running cluster)"
+	@echo " test-bm                  - run kube-test without building kube-test images (bare-metal testing)"
 	@echo " build                    - build test infra"
 	@echo " build-debug              - build test infra (vpp debug image)"
 	@echo " cluster-help             - print info about KinD cluster setup (perf testing)"
@@ -102,6 +103,15 @@ test: .deps.ok .build.ok
 		--ginkgo_timeout=$(GINKGO_TIMEOUT); \
 		./script/compress.sh $$?
 
+.PHONY: test-bm
+test-bm: FORCE_BUILD=false
+test-bm: .deps.ok
+	@bash ./kube_test.sh --persist=$(PERSIST) --verbose=$(VERBOSE) \
+		--test=$(TEST) --repeat=$(REPEAT) --skip=$(SKIP) \
+		--no_color=$(NO_COLOR) --timeout=$(TIMEOUT) \
+		--ginkgo_timeout=$(GINKGO_TIMEOUT); \
+		./script/compress.sh $$?
+
 .PHONY: cluster-help
 cluster-help:
 	@bash ./script/setup-cluster.sh help
@@ -140,7 +150,7 @@ build-debug: .deps.ok build-vpp-debug
 install-kube-deps: .deps.ok
 	-@if ! command -v kind >/dev/null 2>&1; then \
 		echo "Installing KinD"; \
-		go install sigs.k8s.io/kind@v0.29.0; \
+		go install sigs.k8s.io/kind@v0.30.0; \
 		echo "Creating symlink from '$(HOME)/go/bin/kind' to '/usr/bin/kind'"; \
 		sudo ln -s $(HOME)/go/bin/kind /usr/bin/kind; \
 	else \
