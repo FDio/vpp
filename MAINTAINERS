@@ -432,6 +432,11 @@ I:	drivers
 M:	Damjan Marion <damarion@cisco.com>
 F:	src/drivers
 
+Marvel Scalable mGig NICs Device driver
+I:	atlantic
+M:	Damjan Marion <dmarion@me.com>
+F:	src/drivers/atlantic/
+
 IAVF Device driver
 I:	iavf
 M:	Damjan Marion <damarion@cisco.com>
