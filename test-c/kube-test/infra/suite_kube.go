@@ -9,9 +9,6 @@ import (
 	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
-
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/clientcmd"
 )
 
 type KubeSuite struct {
@@ -55,23 +52,6 @@ func (s *KubeSuite) SetupTest() {
 
 func (s *KubeSuite) SetupSuite() {
 	s.BaseSuite.SetupSuite()
-
-	s.CurrentlyRunning = make(map[string]*Pod)
-	s.LoadPodConfigs()
-	s.initPods()
-
-	var err error
-	s.Config, err = clientcmd.BuildConfigFromFlags("", Kubeconfig)
-	s.AssertNil(err)
-
-	s.ClientSet, err = kubernetes.NewForConfig(s.Config)
-	s.AssertNil(err)
-
-	if !imagesLoaded {
-		s.loadDockerImages()
-		s.createNamespace(s.Namespace)
-		imagesLoaded = true
-	}
 }
 
 func (s *KubeSuite) TeardownTest() {

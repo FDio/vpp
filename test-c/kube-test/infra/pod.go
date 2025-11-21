@@ -105,6 +105,7 @@ func newPod(suite *BaseSuite, input PodYaml) (*Pod, error) {
 	return pod, nil
 }
 
+// TODO: per suite initialization
 func (s *BaseSuite) initPods() {
 	s.Pods.Ab = s.getPodsByName("ab")
 	s.Pods.ClientGeneric = s.getPodsByName("client-generic")

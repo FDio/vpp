@@ -18,6 +18,7 @@ import (
 
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 var IsCoverage = flag.Bool("coverage", false, "use coverage run config")
@@ -84,6 +85,23 @@ func (s *BaseSuite) SetupSuite() {
 	s.Log("[* SUITE SETUP]")
 	Ppid = fmt.Sprint(os.Getppid())
 	Ppid = Ppid[:len(Ppid)-1]
+
+	s.CurrentlyRunning = make(map[string]*Pod)
+	s.LoadPodConfigs()
+	s.initPods()
+
+	var err error
+	s.Config, err = clientcmd.BuildConfigFromFlags("", Kubeconfig)
+	s.AssertNil(err)
+
+	s.ClientSet, err = kubernetes.NewForConfig(s.Config)
+	s.AssertNil(err)
+
+	if !imagesLoaded {
+		s.loadDockerImages()
+		s.createNamespace(s.Namespace)
+		imagesLoaded = true
+	}
 }
 
 func (s *BaseSuite) TeardownTest() {

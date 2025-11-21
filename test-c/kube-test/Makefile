@@ -140,7 +140,7 @@ build-debug: .deps.ok build-vpp-debug
 install-kube-deps: .deps.ok
 	-@if ! command -v kind >/dev/null 2>&1; then \
 		echo "Installing KinD"; \
-		go install sigs.k8s.io/kind@v0.29.0; \
+		go install sigs.k8s.io/kind@v0.30.0; \
 		echo "Creating symlink from '$(HOME)/go/bin/kind' to '/usr/bin/kind'"; \
 		sudo ln -s $(HOME)/go/bin/kind /usr/bin/kind; \
 	else \
