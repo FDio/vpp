@@ -196,7 +196,7 @@ quic_eng_udp_session_rx_packets (session_t *udp_session)
 }
 
 static_always_inline void
-quic_eng_ack_rx_data (session_t *stream_session)
+quic_eng_app_rx_evt (session_t *stream_session)
 {
   quic_main_t *qm = &quic_main;
 
@@ -205,13 +205,13 @@ quic_eng_ack_rx_data (session_t *stream_session)
       QUIC_DBG (1, "No QUIC engine is available\n");
       return;
     }
-  if (PREDICT_FALSE (!quic_engine_vfts[qm->engine_type].ack_rx_data))
+  if (PREDICT_FALSE (!quic_engine_vfts[qm->engine_type].app_rx_evt))
     {
-      QUIC_DBG (1, "ack_rx_data() not available for %s engine\n",
+      QUIC_DBG (1, "app_rx_evt() not available for %s engine\n",
 		quic_engine_type_str (qm->engine_type));
       return;
     }
-  quic_engine_vfts[qm->engine_type].ack_rx_data (stream_session);
+  quic_engine_vfts[qm->engine_type].app_rx_evt (stream_session);
 }
 
 static_always_inline int

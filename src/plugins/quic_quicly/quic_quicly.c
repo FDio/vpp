@@ -379,19 +379,37 @@ get_stream_session_and_ctx_from_stream (quicly_stream_t *stream,
 static void
 quic_quicly_on_stream_destroy (quicly_stream_t *stream, int err)
 {
+  session_t *stream_session;
   quic_stream_data_t *stream_data = (quic_stream_data_t *) stream->data;
   quic_ctx_t *sctx =
     quic_quicly_get_quic_ctx (stream_data->ctx_id, stream_data->thread_index);
 
-  QUIC_DBG (2, "DESTROYED_STREAM: session 0x%lx (%U)",
-	    sctx->udp_session_handle, quic_quicly_format_err, err);
+  stream_session = session_get (sctx->c_s_index, stream_data->thread_index);
+  clib_mem_free (stream->data);
+  if (err == 0 && svm_fifo_max_dequeue_prod (stream_session->rx_fifo))
+    {
+      QUIC_DBG (
+	2,
+	"DESTROYED_STREAM: stream_session handle 0x%lx, sctx_index %u, "
+	"thread %u, app has unread data postponing cleanup",
+	session_handle (session_get (sctx->c_s_index, sctx->c_thread_index)),
+	sctx->c_c_index, sctx->c_thread_index, quic_quicly_format_err, err);
+      sctx->stream = 0;
+      sctx->is_destroyed = 1;
+      return;
+    }
+
+  QUIC_DBG (
+    2,
+    "DESTROYED_STREAM: stream_session handle 0x%lx, sctx_index %u, "
+    "thread %u, err %U",
+    session_handle (session_get (sctx->c_s_index, sctx->c_thread_index)),
+    sctx->c_c_index, sctx->c_thread_index, quic_quicly_format_err, err);
 
   session_transport_closing_notify (&sctx->connection);
   session_transport_delete_notify (&sctx->connection);
-
   quic_increment_counter (quic_quicly_main.qm, QUIC_ERROR_CLOSED_STREAM, 1);
   quic_ctx_free (quic_quicly_main.qm, sctx);
-  clib_mem_free (stream->data);
 }
 
 static void
@@ -471,7 +489,7 @@ quic_quicly_on_stop_sending (quicly_stream_t *stream, int err)
 }
 
 static void
-quic_quicly_ack_rx_data (session_t *stream_session)
+quic_quicly_app_rx_evt (session_t *stream_session)
 {
   u32 max_deq;
   quic_ctx_t *sctx;
@@ -482,16 +500,32 @@ quic_quicly_ack_rx_data (session_t *stream_session)
   sctx = quic_quicly_get_quic_ctx (stream_session->connection_index,
 				   stream_session->thread_index);
   QUIC_ASSERT (quic_ctx_is_stream (sctx));
-  stream = sctx->stream;
-  stream_data = (quic_stream_data_t *) stream->data;
 
   f = stream_session->rx_fifo;
   max_deq = svm_fifo_max_dequeue (f);
 
-  QUIC_ASSERT (stream_data->app_rx_data_len >= max_deq);
-  quicly_stream_sync_recvbuf (stream, stream_data->app_rx_data_len - max_deq);
-  QUIC_DBG (3, "Acking %u bytes", stream_data->app_rx_data_len - max_deq);
-  stream_data->app_rx_data_len = max_deq;
+  if (!sctx->is_destroyed)
+    {
+      stream = sctx->stream;
+      stream_data = (quic_stream_data_t *) stream->data;
+      QUIC_ASSERT (stream_data->app_rx_data_len >= max_deq);
+      quicly_stream_sync_recvbuf (stream,
+				  stream_data->app_rx_data_len - max_deq);
+      QUIC_DBG (3, "Acking %u bytes", stream_data->app_rx_data_len - max_deq);
+      stream_data->app_rx_data_len = max_deq;
+      /* Need to send packets (MAX_STREAM_DATA may never be sent otherwise) */
+      quic_quicly_send_packets (sctx);
+    }
+  else if (max_deq == 0)
+    {
+      QUIC_DBG (2, "app read all data deleting: sctx_index %u thread %u",
+		sctx->c_c_index, sctx->c_thread_index);
+      session_transport_closing_notify (&sctx->connection);
+      session_transport_delete_notify (&sctx->connection);
+      quic_increment_counter (quic_quicly_main.qm, QUIC_ERROR_CLOSED_STREAM,
+			      1);
+      quic_ctx_free (quic_quicly_main.qm, sctx);
+    }
 }
 
 static void
@@ -573,7 +607,6 @@ quic_quicly_on_receive (quicly_stream_t *stream, size_t off, const void *src,
 	      app_worker_rx_notify (app_wrk, stream_session);
 	    }
 	}
-      quic_quicly_ack_rx_data (stream_session);
     }
   else
     {
@@ -947,6 +980,8 @@ quic_quicly_proto_on_close (u32 ctx_index, clib_thread_index_t thread_index)
 #endif
   if (quic_ctx_is_stream (ctx))
     {
+      if (ctx->is_destroyed)
+	return;
       quicly_stream_t *stream = ctx->stream;
       if (!quicly_stream_has_send_side (quicly_is_client (stream->conn),
 					stream->stream_id))
@@ -1334,9 +1369,14 @@ quic_quicly_connect (quic_ctx_t *ctx, u32 ctx_index,
 }
 
 static i64
-quic_quicly_stream_get_stream_id (quic_ctx_t *ctx)
+quic_quicly_stream_get_stream_id (quic_ctx_t *sctx)
 {
-  quicly_stream_t *stream = (quicly_stream_t *) ctx->stream;
+  quicly_stream_t *stream;
+
+  if (sctx->is_destroyed)
+    return INT64_MAX;
+
+  stream = (quicly_stream_t *) sctx->stream;
 
   return stream->stream_id;
 }
@@ -1344,11 +1384,18 @@ quic_quicly_stream_get_stream_id (quic_ctx_t *ctx)
 static u8 *
 quic_quicly_format_stream_stats (u8 *s, va_list *args)
 {
-  quic_ctx_t *ctx = va_arg (*args, quic_ctx_t *);
-  quicly_stream_t *stream = (quicly_stream_t *) ctx->stream;
+  quic_ctx_t *sctx = va_arg (*args, quic_ctx_t *);
+  quicly_stream_t *stream;
 
-  s = format (s, " snd-wnd %lu rcv-wnd %lu\n",
-	      stream->_send_aux.max_stream_data, stream->_recv_aux.window);
+  if (sctx->is_destroyed)
+    s = format (s, " destroyed\n");
+  else
+    {
+      stream = (quicly_stream_t *) sctx->stream;
+      s = format (s, " snd-wnd %lu rcv-wnd %lu\n",
+		  stream->_send_aux.max_stream_data, stream->_recv_aux.window);
+    }
+
   return s;
 }
 
@@ -1464,6 +1511,7 @@ quic_quicly_stream_tx (quic_ctx_t *ctx, session_t *stream_session)
   quicly_stream_t *stream;
   u32 max_deq;
 
+  ASSERT (ctx->is_destroyed == 0);
   stream = ctx->stream;
   if (!quicly_sendstate_is_open (&stream->sendstate))
     {
@@ -1760,7 +1808,7 @@ const static quic_engine_vft_t quic_quicly_engine_vft = {
   .connection_migrate = quic_quicly_connection_migrate,
   .connection_get_stats = quic_quicly_connection_get_stats,
   .udp_session_rx_packets = quic_quicly_udp_session_rx_packets,
-  .ack_rx_data = quic_quicly_ack_rx_data,
+  .app_rx_evt = quic_quicly_app_rx_evt,
   .stream_tx = quic_quicly_stream_tx,
   .send_packets = quic_quicly_send_packets,
   .format_connection_stats = quic_quicly_format_connection_stats,
