@@ -105,14 +105,6 @@ func newPod(suite *BaseSuite, input PodYaml) (*Pod, error) {
 	return pod, nil
 }
 
-func (s *BaseSuite) initPods() {
-	s.Pods.Ab = s.getPodsByName("ab")
-	s.Pods.ClientGeneric = s.getPodsByName("client-generic")
-	s.Pods.ServerGeneric = s.getPodsByName("server-generic")
-	s.Pods.Nginx = s.getPodsByName("nginx-ldp")
-	s.Pods.NginxProxy = s.getPodsByName("nginx-proxy")
-}
-
 func (s *BaseSuite) getPodsByName(podName string) *Pod {
 	return s.AllPods[podName+Ppid]
 }

@@ -567,6 +567,7 @@ kbps
 keepalives
 keychain
 kflows
+KinD
 KMG
 kni
 KOC
