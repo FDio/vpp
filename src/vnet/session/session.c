@@ -953,9 +953,7 @@ session_transport_delete_notify (transport_connection_t * tc)
 {
   session_t *s;
 
-  /* App might've been removed already */
-  if (!(s = session_get_if_valid (tc->s_index, tc->thread_index)))
-    return;
+  s = session_get (tc->s_index, tc->thread_index);
 
   switch (s->session_state)
     {
@@ -1022,12 +1020,7 @@ session_transport_delete_request (transport_connection_t *tc,
 {
   session_t *s;
 
-  /* App might've been removed already */
-  if (!(s = session_get_if_valid (tc->s_index, tc->thread_index)))
-    {
-      transport_cleanup_cb (cb_fn, tc);
-      return;
-    }
+  s = session_get (tc->s_index, tc->thread_index);
 
   switch (s->session_state)
     {
