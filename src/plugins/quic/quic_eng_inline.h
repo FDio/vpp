@@ -196,7 +196,7 @@ quic_eng_udp_session_rx_packets (session_t *udp_session)
 }
 
 static_always_inline void
-quic_eng_ack_rx_data (session_t *stream_session)
+quic_eng_app_rx_evt (session_t *stream_session)
 {
   quic_main_t *qm = &quic_main;
 
@@ -205,13 +205,13 @@ quic_eng_ack_rx_data (session_t *stream_session)
       QUIC_DBG (1, "No QUIC engine is available\n");
       return;
     }
-  if (PREDICT_FALSE (!quic_engine_vfts[qm->engine_type].ack_rx_data))
+  if (PREDICT_FALSE (!quic_engine_vfts[qm->engine_type].app_rx_evt))
     {
-      QUIC_DBG (1, "ack_rx_data() not available for %s engine\n",
+      QUIC_DBG (1, "app_rx_evt() not available for %s engine\n",
 		quic_engine_type_str (qm->engine_type));
       return;
     }
-  quic_engine_vfts[qm->engine_type].ack_rx_data (stream_session);
+  quic_engine_vfts[qm->engine_type].app_rx_evt (stream_session);
 }
 
 static_always_inline int
@@ -291,7 +291,7 @@ quic_eng_format_stream_stats (u8 *s, va_list *args)
   return (quic_engine_vfts[qm->engine_type].format_stream_stats (s, args));
 }
 
-static_always_inline i64
+static_always_inline quic_stream_id_t
 quic_eng_stream_get_stream_id (quic_ctx_t *ctx)
 {
   quic_main_t *qm = &quic_main;
@@ -328,6 +328,26 @@ quic_eng_proto_on_close (u32 ctx_index, u32 thread_index)
       return;
     }
   quic_engine_vfts[qm->engine_type].proto_on_close (ctx_index, thread_index);
+}
+
+static_always_inline void
+quic_eng_proto_on_half_close (u32 ctx_index, u32 thread_index)
+{
+  quic_main_t *qm = &quic_main;
+
+  if (PREDICT_FALSE (qm->engine_type == QUIC_ENGINE_NONE))
+    {
+      QUIC_DBG (1, "No QUIC engine is available\n");
+      return;
+    }
+  if (PREDICT_FALSE (!quic_engine_vfts[qm->engine_type].proto_on_half_close))
+    {
+      QUIC_DBG (1, "proto_on_half_close() not available for %s engine\n",
+		quic_engine_type_str (qm->engine_type));
+      return;
+    }
+  quic_engine_vfts[qm->engine_type].proto_on_half_close (ctx_index,
+							 thread_index);
 }
 
 #endif /* __included_quic_eng_inline_h__ */
