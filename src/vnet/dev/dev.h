@@ -266,6 +266,7 @@ typedef struct
   vnet_dev_port_op_no_rv_t *deinit;
   vnet_dev_port_op_no_rv_t *free;
   vnet_dev_port_op_no_rv_t *clear_counters;
+  vnet_dev_port_op_t *cable_diag;
   vnet_dev_port_op_with_ptr_t *add_sec_if;
   vnet_dev_port_op_with_ptr_t *del_sec_if;
   format_function_t *format_status;

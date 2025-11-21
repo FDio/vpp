@@ -479,8 +479,7 @@ device_set_rss_key_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
     }
 
   if (sw_if_index_set == device_id_set)
-    return clib_error_return (
-      0, "please specify either interface name or port id");
+    return clib_error_return (0, "please specify either interface name or device id");
 
   if (sw_if_index_set)
     {
@@ -513,5 +512,68 @@ VLIB_CLI_COMMAND (device_set_rss_key_cmd, static) = {
   .short_help = "device set-rss-key [<intf>] [port <port-id>] [dev "
 		"<device-id>] [key <rss-key>]",
   .function = device_set_rss_key_cmd_fn,
+  .is_mp_safe = 1,
+};
+
+static clib_error_t *
+device_cable_diag_cmd_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
+{
+  vnet_dev_device_id_t device_id = {};
+  vnet_dev_port_t *port;
+  vnet_dev_rv_t rv;
+  u32 sw_if_index, port_id;
+  int device_id_set = 0;
+  int sw_if_index_set = 0;
+  int port_id_set = 0;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "port %u", &port_id))
+	port_id_set = 1;
+      else if (unformat (input, "dev %U", unformat_c_string_array, &device_id, sizeof (device_id)))
+	device_id_set = 1;
+      else if (unformat (input, "%U", unformat_vnet_sw_interface, vnet_get_main (), &sw_if_index))
+	sw_if_index_set = 1;
+      else
+	return clib_error_return (0, "unknown input `%U'", format_unformat_error, input);
+    }
+
+  if (sw_if_index_set == device_id_set)
+    return clib_error_return (0, "please specify either interface name or port id");
+
+  if (sw_if_index_set)
+    {
+      port = vnet_dev_get_port_from_sw_if_index (sw_if_index);
+      if (port == 0)
+	return clib_error_return (0, "unsupported interface");
+    }
+  else
+    {
+      vnet_dev_t *dev;
+
+      if (!port_id_set)
+	return clib_error_return (0, "please specify port id");
+      dev = vnet_dev_by_id (device_id);
+      if (!dev)
+	return clib_error_return (0, "please specify valid device id");
+      port = vnet_dev_get_port_by_id (dev, port_id);
+      if (!port)
+	return clib_error_return (0, "invalid port id");
+    }
+
+  if (port->port_ops.cable_diag == 0)
+    return clib_error_return (0, "cable diagnostics not supported");
+
+  rv = port->port_ops.cable_diag (vm, port);
+  if (rv != VNET_DEV_OK)
+    return clib_error_return (0, "cable diagnostics failed: %U", format_vnet_dev_rv, rv);
+
+  return 0;
+}
+
+VLIB_CLI_COMMAND (device_cable_diag_cmd, static) = {
+  .path = "device cable-diag",
+  .short_help = "device cable-diag [<intf>] [port <port-id>] [dev <device-id>]",
+  .function = device_cable_diag_cmd_fn,
   .is_mp_safe = 1,
 };
