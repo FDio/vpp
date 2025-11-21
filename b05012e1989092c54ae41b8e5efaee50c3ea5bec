@@ -1,6 +1,7 @@
 {
   "comments": [
     {
+      "unresolved": true,
       "key": {
         "uuid": "b57867ee_ca14a0b7",
         "filename": "src/vnet/ip/ip4_forward.c",
@@ -14,10 +15,10 @@
       "side": 1,
       "message": "rd_sw_if_index is not always set to a valid value. an example would be for \u0027ip route 1.1.1.1/32 via local\u0027",
       "revId": "b05012e1989092c54ae41b8e5efaee50c3ea5bec",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": true,
       "key": {
         "uuid": "33c8eb29_3804f700",
         "filename": "src/vnet/ip/ip4_forward.c",
@@ -32,10 +33,10 @@
       "message": "Ok... but then it should be 0 no ? Or gibberish ?",
       "parentUuid": "b57867ee_ca14a0b7",
       "revId": "b05012e1989092c54ae41b8e5efaee50c3ea5bec",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": true,
       "key": {
         "uuid": "c600b25d_f15f0cc8",
         "filename": "src/vnet/tcp/tcp_inlines.h",
@@ -49,10 +50,10 @@
       "side": 1,
       "message": "ip.rx_sw_if_index could be 0. what does it mean to overwrite a valid rx interface with a bogus one?",
       "revId": "b05012e1989092c54ae41b8e5efaee50c3ea5bec",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": true,
       "key": {
         "uuid": "df82a485_b8bfe928",
         "filename": "src/vnet/tcp/tcp_inlines.h",
@@ -67,8 +68,25 @@
       "message": "Imho an information TCP - and the hoststack in general - needs is \u0027on which local interface did this packet end up on\u0027 rather than \u0027were did it come from in the first place\u0027.\naka in the hoststack we are on the other side of the loopback (and so we get a new sw_if_index[RX])\nSo if we can make the bogus sw_if_index[VLIB_RX] be 0, it would still be somewhat valid, just telling the hoststack that the packet was handed to it because of a `via local` route.\n\nBut this is definitely debatable, we might want to keep the old sw_if_index[RX] for other things, if we happen to see use-cases.",
       "parentUuid": "c600b25d_f15f0cc8",
       "revId": "b05012e1989092c54ae41b8e5efaee50c3ea5bec",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f99f4a60_ec14d739",
+        "filename": "src/vnet/tcp/tcp_inlines.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 242,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2025-11-21T13:49:48Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "df82a485_b8bfe928",
+      "revId": "b05012e1989092c54ae41b8e5efaee50c3ea5bec",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
