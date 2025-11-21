@@ -531,16 +531,11 @@ quic_del_segment_callback (u32 client_index, u64 seg_handle)
 static int
 quic_custom_app_rx_callback (transport_connection_t * tc)
 {
-  quic_ctx_t *ctx;
   session_t *stream_session = session_get (tc->s_index, tc->thread_index);
   QUIC_DBG (3, "Received app READ notification");
-  quic_eng_ack_rx_data (stream_session);
+  quic_eng_app_rx_evt (stream_session);
   svm_fifo_reset_has_deq_ntf (stream_session->rx_fifo);
 
-  /* Need to send packets (acks may never be sent otherwise) */
-  ctx = quic_ctx_get (stream_session->connection_index,
-		      stream_session->thread_index);
-  quic_eng_send_packets (ctx);
   return 0;
 }
 
@@ -564,7 +559,6 @@ quic_custom_tx_callback (void *s, transport_send_params_t * sp)
     }
 
   QUIC_DBG (3, "Stream TX event");
-  quic_eng_ack_rx_data (stream_session);
   if (PREDICT_FALSE (!quic_eng_stream_tx (ctx, stream_session)))
     return 0;
 

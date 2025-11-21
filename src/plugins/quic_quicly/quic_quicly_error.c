@@ -10,7 +10,7 @@
 u8 *
 quic_quicly_format_err (u8 *s, va_list *args)
 {
-  u64 code = va_arg (*args, u64);
+  int code = va_arg (*args, int);
   switch (code)
     {
     case 0:

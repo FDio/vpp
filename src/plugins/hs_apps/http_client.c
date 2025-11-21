@@ -877,6 +877,10 @@ hc_get_req_stats (vlib_main_t *vm)
 	{
 	  pool_foreach (hc_session, wrk->sessions)
 	    {
+	      vlib_cli_output (
+		vm, "session %u: %u resquests completed, %u bytes to receive",
+		hc_session->session_index, hc_session->stats.request_count,
+		hc_session->to_recv);
 	      hc_stats.request_count += hc_session->stats.request_count;
 	      hc_session->stats.request_count = 0;
 	      if (hc_stats.elapsed_time < hc_session->stats.elapsed_time)
