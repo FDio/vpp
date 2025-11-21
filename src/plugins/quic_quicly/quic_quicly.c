@@ -91,7 +91,8 @@ quic_quicly_connection_delete (quic_ctx_t *ctx)
 
   quic_disconnect_transport (ctx, qm->app_index);
   quicly_free (conn);
-  session_transport_delete_notify (&ctx->connection);
+  if (ctx->c_s_index != QUIC_SESSION_INVALID)
+    session_transport_delete_notify (&ctx->connection);
 }
 
 static void
