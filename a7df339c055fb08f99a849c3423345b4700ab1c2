@@ -20,6 +20,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "17b323d9_424037ff",
+        "filename": "src/vnet/ip-neighbor/ip_neighbor.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1258,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2025-11-21T13:57:55Z",
+      "side": 1,
+      "message": "Good point, actually the enum is even clearer",
+      "parentUuid": "b3b58ed8_c72eb50b",
+      "revId": "a7df339c055fb08f99a849c3423345b4700ab1c2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "83271db5_789e4bef",
         "filename": "src/vnet/ip-neighbor/ip_neighbor.c",
         "patchSetId": 2
@@ -31,6 +49,24 @@
       "writtenOn": "2025-11-06T22:39:53Z",
       "side": 1,
       "message": "IMHO if the arguments require comments, then the names aren\u0027t expressive enough.\nperhaps an enum argument, IP_NBR_FLUSH_FLAG_NONE and IP_NBR_FLUSH_FLAG_INCLUDE_STATIC.\nbut it\u0027s a preference, so ignore if you like.",
+      "revId": "a7df339c055fb08f99a849c3423345b4700ab1c2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a92beb93_1e982fee",
+        "filename": "src/vnet/ip-neighbor/ip_neighbor.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1356,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2025-11-21T13:57:55Z",
+      "side": 1,
+      "message": "Agreed, changed it",
+      "parentUuid": "83271db5_789e4bef",
       "revId": "a7df339c055fb08f99a849c3423345b4700ab1c2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
