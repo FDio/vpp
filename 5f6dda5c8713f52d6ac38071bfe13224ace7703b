@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6f94bc67_16a9898c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-11-21T20:09:32Z",
+      "side": 1,
+      "message": "the feature in the commit message should be \u0027vpp\u0027 not \u0027docs\u0027",
+      "revId": "5f6dda5c8713f52d6ac38071bfe13224ace7703b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
