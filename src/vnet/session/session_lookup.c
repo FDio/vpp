@@ -616,7 +616,13 @@ session_lookup_local_endpoint (u32 table_index, session_endpoint_t * sep)
 	    session_rules_table_lookup4 (st->srtg_handle, sep->transport_proto,
 					 &lcl4, &sep->ip.ip4, 0, sep->port);
 	  if (session_lookup_action_index_is_valid (ai))
-	    return session_lookup_action_to_handle (ai);
+	    {
+	      if (ai == SESSION_RULES_TABLE_ACTION_DROP)
+		return SESSION_DROP_HANDLE;
+	      session_t *ls = session_lookup_action_to_session (
+		ai, FIB_PROTOCOL_IP4, sep->transport_proto);
+	      return ls ? ls->handle : SESSION_INVALID_HANDLE;
+	    }
 	}
 
       /*
@@ -664,7 +670,13 @@ session_lookup_local_endpoint (u32 table_index, session_endpoint_t * sep)
 	    session_rules_table_lookup6 (st->srtg_handle, sep->transport_proto,
 					 &lcl6, &sep->ip.ip6, 0, sep->port);
 	  if (session_lookup_action_index_is_valid (ai))
-	    return session_lookup_action_to_handle (ai);
+	    {
+	      if (ai == SESSION_RULES_TABLE_ACTION_DROP)
+		return SESSION_DROP_HANDLE;
+	      session_t *ls = session_lookup_action_to_session (
+		ai, FIB_PROTOCOL_IP6, sep->transport_proto);
+	      return ls ? ls->handle : SESSION_INVALID_HANDLE;
+	    }
 	}
 
       make_v6_listener_kv (&kv6, &sep->ip.ip6, sep->port,
