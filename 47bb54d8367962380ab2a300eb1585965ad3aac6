@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f2f12da9_92cf42c9",
+        "filename": "src/plugins/quic_quicly/quic_quicly.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 389,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-11-22T19:44:35Z",
+      "side": 1,
+      "message": "If there\u0027s no data in quicly, shouldn\u0027t we be sending a closing notify? That is, there\u0027s no more data to be enqueued into fifo.\n\nAlso, if there\u0027s no data in quicly, remind me, what happens if transport is deleted? Session, and fifos, in theory should not be deleted until app confirms close.",
+      "revId": "47bb54d8367962380ab2a300eb1585965ad3aac6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5327f273_31458191",
+        "filename": "src/plugins/quic_quicly/quic_quicly.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1377,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-11-22T19:44:35Z",
+      "side": 1,
+      "message": "Let\u0027s #define this. I\u0027m surprised this function returns i64 as opposed to u64",
+      "revId": "47bb54d8367962380ab2a300eb1585965ad3aac6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
