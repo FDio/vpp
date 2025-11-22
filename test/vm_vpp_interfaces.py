@@ -495,17 +495,24 @@ class TestVPPInterfacesQemu:
                 # Setup namespace routing
                 if ip_version == 4:
                     add_namespace_route(
-                        self.client_namespace, "0.0.0.0/0", vpp_client_nexthop
+                        self.client_namespace,
+                        "0.0.0.0/0",
+                        vpp_client_nexthop,
+                        # do not fail if the route already exists
+                        check=False,
                     )
                     add_namespace_route(
-                        self.server_namespace, "0.0.0.0/0", vpp_server_nexthop
+                        self.server_namespace,
+                        "0.0.0.0/0",
+                        vpp_server_nexthop,
+                        check=False,
                     )
                 else:
                     add_namespace_route(
-                        self.client_namespace, "::/0", vpp_client_nexthop
+                        self.client_namespace, "::/0", vpp_client_nexthop, check=False
                     )
                     add_namespace_route(
-                        self.server_namespace, "::/0", vpp_server_nexthop
+                        self.server_namespace, "::/0", vpp_server_nexthop, check=False
                     )
         else:
             # connect: ingress tap & memif & egress tap and memif interfaces
