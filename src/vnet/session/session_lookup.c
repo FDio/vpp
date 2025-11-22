@@ -544,7 +544,11 @@ session_lookup_endpoint_listener (u32 table_index, session_endpoint_t * sep,
 	    session_rules_table_lookup4 (st->srtg_handle, sep->transport_proto,
 					 &lcl4, &sep->ip.ip4, 0, sep->port);
 	  if (session_lookup_action_index_is_valid (ai))
-	    return session_lookup_action_to_handle (ai);
+	    {
+	      session_t *ls = session_lookup_action_to_session (
+		ai, FIB_PROTOCOL_IP4, sep->transport_proto);
+	      return ls ? ls->handle : SESSION_INVALID_HANDLE;
+	    }
 	}
     }
   else
@@ -567,7 +571,11 @@ session_lookup_endpoint_listener (u32 table_index, session_endpoint_t * sep,
 	    session_rules_table_lookup6 (st->srtg_handle, sep->transport_proto,
 					 &lcl6, &sep->ip.ip6, 0, sep->port);
 	  if (session_lookup_action_index_is_valid (ai))
-	    return session_lookup_action_to_handle (ai);
+	    {
+	      session_t *ls = session_lookup_action_to_session (
+		ai, FIB_PROTOCOL_IP6, sep->transport_proto);
+	      return ls ? ls->handle : SESSION_INVALID_HANDLE;
+	    }
 	}
     }
   return SESSION_INVALID_HANDLE;
