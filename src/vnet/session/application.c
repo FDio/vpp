@@ -955,16 +955,16 @@ application_detach_process (application_t * app, u32 api_client_index)
   APP_DBG ("Detaching for app %v index %u api client index %u", app->name,
 	   app->app_index, api_client_index);
 
-  pool_foreach (wrk_map, app->worker_maps)  {
-    app_wrk = app_worker_get (wrk_map->wrk_index);
-    if (app_wrk->api_client_index == api_client_index)
-      vec_add1 (wrks, app_wrk->wrk_index);
-  }
+  pool_foreach (wrk_map, app->worker_maps)
+    {
+      app_wrk = app_worker_get (wrk_map->wrk_index);
+      if (app_wrk->api_client_index == api_client_index)
+	vec_add1 (wrks, app_wrk->wrk_index);
+    }
 
   if (!vec_len (wrks))
     {
-      clib_warning ("no workers for app %u api_index %u", app->app_index,
-		    api_client_index);
+      application_free (app);
       return;
     }
 
