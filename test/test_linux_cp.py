@@ -18,7 +18,10 @@ from scapy.contrib.lldp import (
 from util import reassemble4
 from vpp_object import VppObject
 from framework import VppTestCase
-from asfframework import VppTestRunner
+from asfframework import (
+    VppTestRunner,
+    get_testcase_dirname,
+)
 from vpp_ipip_tun_interface import VppIpIpTunInterface
 from template_ipsec import (
     TemplateIpsec,
@@ -30,6 +33,16 @@ from template_ipsec import (
 )
 from test_ipsec_tun_if_esp import TemplateIpsecItf4
 from config import config
+from vpp_ip_route import FibPathType
+from vpp_qemu_utils import (
+    add_namespace_route,
+    add_namespace_multipath_route,
+    NextHop,
+    create_namespace,
+    delete_all_namespaces,
+    set_interface_up,
+    set_interface_down,
+)
 
 
 class VppLcpPair(VppObject):
@@ -561,5 +574,182 @@ class TestLinuxCPEthertype(VppTestCase):
         self.send_lldp_packet(self.host, self.phy, expect_copy=True)
 
 
-if __name__ == "__main__":
-    unittest.main(testRunner=VppTestRunner)
+CLIB_U32_MAX = 4294967295
+
+
+@unittest.skipIf(config.skip_netns_tests, "netns not available or disabled from cli")
+class TestLinuxCPRoutes(VppTestCase):
+    """Linux CP Routes"""
+
+    extra_vpp_plugin_config = [
+        "plugin",
+        "linux_cp_plugin.so",
+        "{",
+        "enable",
+        "}",
+        "plugin",
+        "linux_nl_plugin.so",
+        "{",
+        "enable",
+        "}",
+    ]
+
+    @classmethod
+    def setUpNetNS(cls):
+        # The namespace must be set up before VPP starts
+        cls.ns_history_name = (
+            f"{config.tmp_dir}/{get_testcase_dirname(cls.__name__)}/history_ns.txt"
+        )
+        delete_all_namespaces(cls.ns_history_name)
+
+        cls.ns_name = create_namespace(cls.ns_history_name)
+        cls.vpp_cmdline.extend(
+            [
+                "linux-cp",
+                "{",
+                "default",
+                "netns",
+                cls.ns_name,
+                "lcp-sync",
+                "}",
+            ]
+        )
+
+    @classmethod
+    def attach_vpp(cls):
+        cls.setUpNetNS()
+        super(TestLinuxCPRoutes, cls).attach_vpp()
+
+    @classmethod
+    def run_vpp(cls):
+        cls.setUpNetNS()
+        super(TestLinuxCPRoutes, cls).run_vpp()
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestLinuxCPRoutes, cls).setUpClass()
+        cls.create_loopback_interfaces(2)
+
+        cls.vapi.cli(f"lcp create loop0 host-if hloop0 netns {cls.ns_name}")
+        cls.vapi.cli(f"lcp create loop1 host-if hloop1 netns {cls.ns_name}")
+
+        cls.vapi.cli("set int ip address loop0 10.10.1.2/24")
+        cls.vapi.cli("set int ip address loop1 10.20.1.2/24")
+
+        for lo in cls.lo_interfaces:
+            lo.admin_up()
+
+    @classmethod
+    def tearDownClass(cls):
+        delete_all_namespaces(cls.ns_history_name)
+        super(TestLinuxCPRoutes, cls).tearDownClass()
+
+    def route_lookup(self, prefix):
+        return self.vapi.api(
+            self.vapi.papi.ip_route_lookup,
+            {
+                "table_id": 0,
+                "exact": False,
+                "prefix": prefix,
+            },
+        )
+
+    def get_paths(self, prefix):
+        result = []
+        route = self.route_lookup(prefix).route
+        for path in route.paths:
+            d = dict(type=path.type)
+            if path.sw_if_index != CLIB_U32_MAX:
+                d["sw_if_index"] = path.sw_if_index
+            if str(path.nh.address.ip4) != "0.0.0.0":
+                d["ip4"] = str(path.nh.address.ip4)
+            result.append(d)
+        return result
+
+    def verify_paths(self, prefix, *expected_paths):
+        for i in range(0, 20):
+            paths = self.get_paths(prefix)
+            if paths == list(expected_paths):
+                break
+            self.sleep(0.1)
+        else:
+            self.assertEqual(paths, expected_paths)
+
+    def test_linux_cp_route(self):
+        """Linux CP Route"""
+        add_namespace_route(self.ns_name, "default", dev="hloop0", gw_ip="10.10.1.1")
+        add_namespace_route(
+            self.ns_name, "192.168.100.0/24", dev="hloop1", gw_ip="10.20.1.1"
+        )
+
+        self.verify_paths(
+            "192.168.1.1/32",
+            dict(
+                type=FibPathType.FIB_PATH_TYPE_NORMAL,
+                sw_if_index=self.lo_interfaces[0].sw_if_index,
+                ip4="10.10.1.1",
+            ),
+        )
+        self.verify_paths(
+            "192.168.100.1/32",
+            dict(
+                type=FibPathType.FIB_PATH_TYPE_NORMAL,
+                sw_if_index=self.lo_interfaces[1].sw_if_index,
+                ip4="10.20.1.1",
+            ),
+        )
+
+        set_interface_down(self.ns_name, "hloop0")
+
+        self.verify_paths("192.168.1.1/32", dict(type=FibPathType.FIB_PATH_TYPE_DROP))
+        self.verify_paths(
+            "192.168.100.1/32",
+            dict(
+                type=FibPathType.FIB_PATH_TYPE_NORMAL,
+                sw_if_index=self.lo_interfaces[1].sw_if_index,
+                ip4="10.20.1.1",
+            ),
+        )
+
+        set_interface_down(self.ns_name, "hloop1")
+
+        self.verify_paths("192.168.1.1/32", dict(type=FibPathType.FIB_PATH_TYPE_DROP))
+        self.verify_paths("192.168.100.1/32", dict(type=FibPathType.FIB_PATH_TYPE_DROP))
+
+        set_interface_up(self.ns_name, "hloop0")
+        set_interface_up(self.ns_name, "hloop1")
+
+    def test_linux_cp_multipath_route(self):
+        """Linux CP Multipath Route"""
+        add_namespace_multipath_route(
+            self.ns_name,
+            "default",
+            NextHop(gw_ip="10.10.1.1", dev="hloop0"),
+            NextHop(gw_ip="10.20.1.1", dev="hloop1"),
+        )
+        self.verify_paths(
+            "192.168.1.1/32",
+            dict(
+                type=FibPathType.FIB_PATH_TYPE_NORMAL,
+                sw_if_index=self.lo_interfaces[0].sw_if_index,
+                ip4="10.10.1.1",
+            ),
+            dict(
+                type=FibPathType.FIB_PATH_TYPE_NORMAL,
+                sw_if_index=self.lo_interfaces[1].sw_if_index,
+                ip4="10.20.1.1",
+            ),
+        )
+        set_interface_down(self.ns_name, "hloop0")
+        self.verify_paths(
+            "192.168.1.1/32",
+            dict(
+                type=FibPathType.FIB_PATH_TYPE_NORMAL,
+                sw_if_index=self.lo_interfaces[1].sw_if_index,
+                ip4="10.20.1.1",
+            ),
+        )
+        set_interface_down(self.ns_name, "hloop1")
+        self.verify_paths("192.168.1.1/32", dict(type=FibPathType.FIB_PATH_TYPE_DROP))
+        set_interface_up(self.ns_name, "hloop0")
+        set_interface_up(self.ns_name, "hloop1")

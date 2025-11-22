@@ -82,21 +82,61 @@ def create_namespace(history_file, ns=None):
         return ns
 
 
-def add_namespace_route(ns, prefix, gw_ip):
+def add_namespace_route(ns, prefix, gw_ip=None, dev=None):
     """Add a route to a namespace.
     arguments:
     ns -- namespace string value
     prefix -- NETWORK/MASK or "default"
     gw_ip -- Gateway IP
+    dev -- Output Device
     """
     with lock:
         try:
-            subprocess.run(
-                ["ip", "netns", "exec", ns, "ip", "route", "add", prefix, "via", gw_ip],
-                capture_output=True,
-            )
+            cmd = ["ip", "netns", "exec", ns, "ip", "route", "add", prefix]
+            if gw_ip is not None:
+                cmd += ["via", gw_ip]
+            if dev is not None:
+                cmd += ["dev", dev]
+            subprocess.run(cmd, capture_output=True, check=True)
         except subprocess.CalledProcessError as e:
-            raise Exception("Error adding route to namespace:", e.output)
+            raise Exception(
+                f"Error adding route to namespace: {e.stderr.decode()}"
+            ) from e
+
+
+class NextHop:
+    def __init__(self, gw_ip=None, dev=None):
+        if gw_ip is None and dev is None:
+            raise Exception("must specify either gw_ip or dev, or both")
+        self.gw_ip = gw_ip
+        self.dev = dev
+
+    def args(self):
+        r = ["nexthop"]
+        if self.gw_ip is not None:
+            r += ["via", self.gw_ip]
+        if self.dev is not None:
+            r += ["dev", self.dev]
+        return r
+
+
+def add_namespace_multipath_route(ns, prefix, *next_hops):
+    """Add a multipath route to a namespace.
+    arguments:
+    ns -- namespace string value
+    prefix -- NETWORK/MASK or "default"
+    next_hops - a list of NextHop objects
+    """
+    with lock:
+        try:
+            cmd = ["ip", "netns", "exec", ns, "ip", "route", "add", prefix]
+            for next_hop in next_hops:
+                cmd += next_hop.args()
+            subprocess.run(cmd, capture_output=True, check=True)
+        except subprocess.CalledProcessError as e:
+            raise Exception(
+                f"Error adding route to namespace: {e.stderr.decode()}"
+            ) from e
 
 
 def delete_all_host_interfaces(history_file):
@@ -272,6 +312,28 @@ def set_interface_mtu(namespace, interface, mtu, logger):
                 raise Exception(
                     f"Failed to set MTU on interface {interface} in namespace {namespace} after {retries} attempts"
                 )
+
+
+def set_interface_up(namespace, interface):
+    """Set interface state to up."""
+    args = ["ip", "link", "set", "up", "dev", interface]
+    if namespace:
+        args = ["ip", "netns", "exec", namespace] + args
+    with lock:
+        result = subprocess.run(args, capture_output=True)
+        if result.returncode != 0:
+            raise Exception(f"Failed to set interface {interface} up state.")
+
+
+def set_interface_down(namespace, interface):
+    """Set interface state to down."""
+    args = ["ip", "link", "set", "down", "dev", interface]
+    if namespace:
+        args = ["ip", "netns", "exec", namespace] + args
+    with lock:
+        result = subprocess.run(args, capture_output=True)
+        if result.returncode != 0:
+            raise Exception(f"Failed to set interface {interface} down state.")
 
 
 def enable_interface_gso(namespace, interface):
