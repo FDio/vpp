@@ -20,6 +20,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "062aa3cf_74b528b6",
+        "filename": "src/plugins/quic_quicly/quic_quicly.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 389,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-11-22T20:36:27Z",
+      "side": 1,
+      "message": "problem with client app is that you need to close stream session when you finished request (close sending), which set fin flag in last chunk of data, and continue only receiving data. you need to do same as server but in this case you are closing stream as whole",
+      "parentUuid": "f2f12da9_92cf42c9",
+      "revId": "47bb54d8367962380ab2a300eb1585965ad3aac6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "5327f273_31458191",
         "filename": "src/plugins/quic_quicly/quic_quicly.c",
         "patchSetId": 3
@@ -31,6 +49,24 @@
       "writtenOn": "2025-11-22T19:44:35Z",
       "side": 1,
       "message": "Let\u0027s #define this. I\u0027m surprised this function returns i64 as opposed to u64",
+      "revId": "47bb54d8367962380ab2a300eb1585965ad3aac6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "fa1fff5b_d10efb65",
+        "filename": "src/plugins/quic_quicly/quic_quicly.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1377,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-11-22T20:36:27Z",
+      "side": 1,
+      "message": "stream id is 62bits, quicly define it as int64",
+      "parentUuid": "5327f273_31458191",
       "revId": "47bb54d8367962380ab2a300eb1585965ad3aac6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
