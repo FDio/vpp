@@ -38,6 +38,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "4b922350_c07db2ae",
+        "filename": "src/plugins/quic_quicly/quic_quicly.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 389,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-11-22T21:44:39Z",
+      "side": 1,
+      "message": "Should we distinguish between half-close and close then? That is, if tx closed, we should still provide the closing/delete notifications. Since session doesn\u0027t migrate to closing state on half-close it shouldn\u0027t be cleaned up until rx is also closed. \n\nLet\u0027s talk Monday :)",
+      "parentUuid": "062aa3cf_74b528b6",
+      "revId": "47bb54d8367962380ab2a300eb1585965ad3aac6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "5327f273_31458191",
         "filename": "src/plugins/quic_quicly/quic_quicly.c",
         "patchSetId": 3
