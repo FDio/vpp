@@ -1858,7 +1858,7 @@ fib_table_assert_empty (const fib_table_t *fib_table)
     if (vec_len(feis))
     {
         vec_foreach (fei, feis)
-            clib_error ("%U", format_fib_entry, *fei, FIB_ENTRY_FORMAT_DETAIL);
+            clib_warning ("%U", format_fib_entry, *fei, FIB_ENTRY_FORMAT_DETAIL);
     }
 
     ASSERT(0);
