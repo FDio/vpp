@@ -176,9 +176,10 @@ u8 *format_lb_vip (u8 * s, va_list * args)
           || (vip->type == LB_VIP_TYPE_IP6_NAT6))
     {
       s = format (s, " type:%s port:%u target_port:%u",
-         (vip->encap_args.srv_type == LB_SRV_TYPE_CLUSTERIP)?"clusterip":
-             "nodeport",
-         ntohs(vip->port), ntohs(vip->encap_args.target_port));
+		  (vip->encap_args.srv_type == LB_SRV_TYPE_CLUSTERIP) ?
+		    "clusterip" :
+		    "nodeport",
+		  vip->port, ntohs (vip->encap_args.target_port));
     }
 
   return s;
@@ -227,11 +228,11 @@ u8 *format_lb_vip_detailed (u8 * s, va_list * args)
   else if ((vip->type == LB_VIP_TYPE_IP4_NAT4)
           || (vip->type == LB_VIP_TYPE_IP6_NAT6))
     {
-      s = format (s, "%U  type:%s port:%u target_port:%u",
-         format_white_space, indent,
-         (vip->encap_args.srv_type == LB_SRV_TYPE_CLUSTERIP)?"clusterip":
-             "nodeport",
-         ntohs(vip->port), ntohs(vip->encap_args.target_port));
+      s = format (
+	s, "%U  type:%s port:%u target_port:%u", format_white_space, indent,
+	(vip->encap_args.srv_type == LB_SRV_TYPE_CLUSTERIP) ? "clusterip" :
+							      "nodeport",
+	vip->port, ntohs (vip->encap_args.target_port));
     }
 
   //Print counters
