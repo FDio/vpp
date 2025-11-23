@@ -56,6 +56,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "3ef50176_fea506a5",
+        "filename": "src/plugins/quic_quicly/quic_quicly.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 389,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-11-23T06:31:25Z",
+      "side": 1,
+      "message": "agree, we should use vnet_shutdown instead of vnet_disconnect in this case",
+      "parentUuid": "4b922350_c07db2ae",
+      "revId": "47bb54d8367962380ab2a300eb1585965ad3aac6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "5327f273_31458191",
         "filename": "src/plugins/quic_quicly/quic_quicly.c",
         "patchSetId": 3
