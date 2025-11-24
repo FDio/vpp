@@ -1764,6 +1764,81 @@ class TestIPv6Reassembly(VppTestCase):
         self.send_and_assert_no_replies(self.src_if, frags)
         self.vapi.ip_local_reass_enable_disable(enable_ip6=True)
 
+    def _get_buffers_used(self):
+        r = self.vapi.cli_return_response("show buffers")
+        self.assertTrue(r.retval == 0)
+        return int(r.reply.strip().split("\n")[-1].split()[-1])
+
+    def test_invalid_overlap(self):
+        """invalid overlapping fragments"""
+        error_cnt_str = (
+            "/err/ip6-full-reassembly-feature/reass_overlapping_fragment"
+        )
+        error_cnt = self.statistics.get_err_counter(error_cnt_str)
+        bufs_before = self._get_buffers_used()
+
+        # For each pair: frag1 starts a reassembly (range [0,199]), frag2
+        # has the same id and offset but shorter payload (range [0,191]),
+        # reliably triggering REASS_OVERLAPPING_FRAGMENT. 
+        num_pairs = 50
+        fragments = []
+        for i in range(num_pairs):
+            frag1 = (
+                Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac)
+                / IPv6(src=self.src_if.remote_ip6, dst=self.dst_if.remote_ip6)
+                / IPv6ExtHdrFragment(id=i, nh=17, offset=0, m=1)
+                / Raw(b"X" * 200)
+            )
+            frag2 = (
+                Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac)
+                / IPv6(src=self.src_if.remote_ip6, dst=self.dst_if.remote_ip6)
+                / IPv6ExtHdrFragment(id=i, nh=17, offset=0, m=1)
+                / Raw(b"Y" * 192)
+            )
+            fragments.extend([frag1, frag2])
+        
+        self.send_and_assert_no_replies(self.src_if, fragments)
+        self.assert_error_counter_equal(error_cnt_str, error_cnt + num_pairs)
+
+        bufs_after = self._get_buffers_used()
+        self.assertGreaterEqual(
+            bufs_before,
+            bufs_after,
+            "Buffer leak detected: %d used before, %d after"
+            % (bufs_before, bufs_after),
+        )
+
+    def test_invalid_frag_len(self):
+        """invalid fragment length"""
+        error_cnt_str = (
+            "/err/ip6-full-reassembly-feature/reass_invalid_frag_len"
+        )
+        error_cnt = self.statistics.get_err_counter(error_cnt_str)
+        bufs_before = self._get_buffers_used()
+
+        # Each fragment has a fragment header but no payload after it, so
+        # fragment_length == 0, triggering REASS_INVALID_FRAG_LEN. 
+        num_frags = 50
+        fragments = []
+        for i in range(num_frags):
+            frag = (
+                Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac)
+                / IPv6(src=self.src_if.remote_ip6, dst=self.dst_if.remote_ip6)
+                / IPv6ExtHdrFragment(id=i, nh=17, offset=0, m=1)
+            )
+            fragments.append(frag)
+
+        self.send_and_assert_no_replies(self.src_if, fragments)
+        self.assert_error_counter_equal(error_cnt_str, error_cnt + num_frags)
+
+        bufs_after = self._get_buffers_used()
+        self.assertGreaterEqual(
+            bufs_before,
+            bufs_after,
+            "Buffer leak detected: %d used before, %d after"
+            % (bufs_before, bufs_after),
+        )
+
 
 class TestIPv6MWReassembly(VppTestCase):
     """IPv6 Reassembly (multiple workers)"""
