@@ -1367,7 +1367,13 @@ ip6_full_reassembly_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 		  ip6_full_reass_drop_all (vm, node, reass, &n_left_to_next,
 					   &to_next);
 		  ip6_full_reass_free (rm, rt, reass);
-		  goto next_packet;
+
+		  /* If reass update failed and buffer wasn't sanitized, drop
+		   * it */
+		  if (bi0 != ~0)
+		    goto skip_reass;
+		  else
+		    goto next_packet;
 		  break;
 		}
 	    }
