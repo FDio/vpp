@@ -1236,8 +1236,8 @@ ethernet_config (vlib_main_t * vm, unformat_input_t * input)
     {
       if (unformat (input, "default-mtu %u", &em->default_mtu))
 	{
-	  if (em->default_mtu < 64 || em->default_mtu > 9000)
-	    return clib_error_return (0, "default MTU must be >=64, <=9000");
+	  if (em->default_mtu < 64 || em->default_mtu > 9152)
+	    return clib_error_return (0, "default MTU must be >=64, <=9152");
 	}
       else
 	{
