@@ -50,6 +50,24 @@
       "message": "\u003e vpp-csit-verify-perf-master-ubuntu2404-x86_64-2n-zn2/10/ : FAILURE (skipped)\n\nThis confirms small (1-3%) regression on 2n-zn2 ip6 tests. Maybe expected considering the nature if this change, but it is interesting other testbeds were not affected.",
       "revId": "e17834d1f1a5f11568dbff287d28ed2f11c7d423",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "153b0066_a6208cf0",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3045
+      },
+      "writtenOn": "2025-11-24T13:45:22Z",
+      "side": 1,
+      "message": "Looking at csit.fd.io/trending it seems other tests like ip6scale are affected on similar level. I would expect nat to be affected even more, but looks like there are no such tests to confirm this.\n\nFor now there are no way around this.\n\nI experiment with solution which would require only single acquire atomic per lookup. But there are problems with its integration due to existing shared memory support of bihash. I will try to prepare options for discussion later. But for now it seems that only sane way is to do 2 version of bihash - one with shared memory support and other without it. I suspect there are not that much users of it anyways.",
+      "parentUuid": "80675f65_de5531f3",
+      "revId": "e17834d1f1a5f11568dbff287d28ed2f11c7d423",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ],
   "submitRequirementResults": [
