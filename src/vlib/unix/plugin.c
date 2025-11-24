@@ -365,14 +365,14 @@ process_reg:
 
   if (reg->early_init)
     {
-      clib_error_t *(*ei) (vlib_main_t *);
+      clib_error_t *(*ei) (vlib_main_t *, void *);
       void *h;
 
       h = dlsym (pi->handle, reg->early_init);
       if (h)
 	{
 	  ei = h;
-	  error = (*ei) (pm->vlib_main);
+	  error = (*ei) (pm->vlib_main, pi->handle);
 	  if (error)
 	    {
 	      u8 *err = format (0, "%s: %U%c", pi->name,
