@@ -16,6 +16,23 @@
       "message": "perftest-2n-emr mrrANDnic_intel-e810cqANDdrv_vfio_pciAND1cAND78bANDethip6-ip6* #generate-all",
       "revId": "b25f204f7e5f53af24cc491321ec4906a3b273b0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b6981212_a46c5a32",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2025-11-24T14:35:41Z",
+      "side": 1,
+      "message": "\u003e vpp-csit-verify-perf-master-ubuntu2404-x86_64-2n-emr/25/ : FAILURE (skipped)\n\nMostly regressions, one surprising progression. Not sure how significant. The regressions are perhaps expected considering the nature if this change, but it is interesting ARM and AMD testbeds were not affected.",
+      "revId": "b25f204f7e5f53af24cc491321ec4906a3b273b0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
