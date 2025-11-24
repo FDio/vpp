@@ -215,6 +215,12 @@ classify_and_dispatch (l2input_main_t * msm, vlib_buffer_t * b0, u16 * next0)
   /* save for next feature graph nodes */
   vnet_buffer (b0)->l2.feature_bitmap = feature_bitmap;
 
+  /* force drop if feature_bitmap is 0 */
+  if (PREDICT_FALSE (feature_bitmap == 0))
+    {
+      feature_bitmap = L2INPUT_FEAT_DROP;
+    }
+
   /* Determine the next node */
   *next0 = feat_bitmap_get_next_node_index (msm->feat_next_node_index,
 					    feature_bitmap);
