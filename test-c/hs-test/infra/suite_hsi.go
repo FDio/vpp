@@ -72,10 +72,12 @@ func (s *HsiSuite) SetupTest() {
 	s.AssertNotNil(vpp, fmt.Sprint(err))
 
 	s.AssertNil(vpp.Start())
-	idx, err := vpp.createAfPacket(s.Interfaces.Client, false)
+	numCpus := uint16(len(s.Containers.Vpp.AllocatedCpus))
+	numWorkers := uint16(max(numCpus-1, 1))
+	idx, err := vpp.createAfPacket(s.Interfaces.Client, false, WithNumRxQueues(numWorkers), WithNumTxQueues(numCpus))
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertNotEqual(0, idx)
-	idx, err = vpp.createAfPacket(s.Interfaces.Server, false)
+	idx, err = vpp.createAfPacket(s.Interfaces.Server, false, WithNumRxQueues(numWorkers), WithNumTxQueues(numCpus))
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertNotEqual(0, idx)
 
