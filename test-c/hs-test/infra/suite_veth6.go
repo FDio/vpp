@@ -88,7 +88,9 @@ func (s *Veths6Suite) SetupServerVpp() {
 	serverVpp := s.Containers.ServerVpp.VppInstance
 	s.AssertNil(serverVpp.Start())
 
-	idx, err := serverVpp.createAfPacket(s.Interfaces.Server, true)
+	numCpus := uint16(len(s.Containers.ServerVpp.AllocatedCpus))
+	numWorkers := uint16(max(numCpus-1, 1))
+	idx, err := serverVpp.createAfPacket(s.Interfaces.Server, true, WithNumRxQueues(numWorkers), WithNumTxQueues(numCpus))
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertNotEqual(0, idx)
 }
@@ -97,7 +99,9 @@ func (s *Veths6Suite) SetupClientVpp() {
 	clientVpp := s.GetContainerByName("client-vpp").VppInstance
 	s.AssertNil(clientVpp.Start())
 
-	idx, err := clientVpp.createAfPacket(s.Interfaces.Client, true)
+	numCpus := uint16(len(s.Containers.ClientVpp.AllocatedCpus))
+	numWorkers := uint16(max(numCpus-1, 1))
+	idx, err := clientVpp.createAfPacket(s.Interfaces.Client, true, WithNumRxQueues(numWorkers), WithNumTxQueues(numCpus))
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertNotEqual(0, idx)
 }
