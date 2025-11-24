@@ -1352,13 +1352,20 @@ ip6_full_reassembly_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 		}
 	      if (~0 != counter)
 		{
-		  vlib_node_increment_counter (vm, node->node_index, counter,
-					       1);
 		  ip6_full_reass_drop_all (vm, node, reass, &n_left_to_next,
 					   &to_next);
 		  ip6_full_reass_free (rm, rt, reass);
-		  goto next_packet;
-		  break;
+
+		  if (bi0 != ~0)
+		    {
+		      next0 = IP6_FULL_REASSEMBLY_NEXT_DROP;
+		      error0 = counter;
+		    }
+		  else
+		    {
+		      vlib_node_increment_counter (vm, node->node_index, counter, 1);
+		      goto next_packet;
+		    }
 		}
 	    }
 	  else
