@@ -16,6 +16,23 @@
       "message": "perftest-3n-emr mrrANDnic_intel-e810cqANDdrv_vfio_pciAND1cAND*gtpu?w-ip4base !64b !imix #generate-all",
       "revId": "29de5278806d316af5cd03d880a58f328972faca",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d3fde972_b0842041",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2025-11-24T13:40:01Z",
+      "side": 1,
+      "message": "\u003e vpp-csit-verify-perf-master-ubuntu2404-x86_64-3n-emr/74/ : SUCCESS (skipped)\n\nAs expected, this has no impact on CSIT tests as it does not use this config option yet. Real verification will be with [1] (once that is ready).\n\n[1] 44210: feat(jumbo): Set large enough MTU for sw interfaces | https://gerrit.fd.io/r/c/csit/+/44210",
+      "revId": "29de5278806d316af5cd03d880a58f328972faca",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
