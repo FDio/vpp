@@ -638,34 +638,6 @@ static session_cb_vft_t quic_app_cb_vft = {
   .session_cleanup_callback = quic_udp_session_cleanup_callback,
 };
 
-static clib_error_t *quic_enable (vlib_main_t *vm, u8 is_en);
-
-static transport_proto_vft_t quic_proto = {
-  .enable = quic_enable,
-  .connect = quic_connect_connection,
-  .connect_stream = quic_connect_stream,
-  .close = quic_proto_on_close,
-  .start_listen = quic_start_listen,
-  .stop_listen = quic_stop_listen,
-  .get_connection = quic_connection_get,
-  .get_listener = quic_listener_get,
-  .update_time = quic_update_time,
-  .app_rx_evt = quic_custom_app_rx_callback,
-  .custom_tx = quic_custom_tx_callback,
-  .format_connection = format_quic_connection,
-  .format_half_open = format_quic_half_open,
-  .format_listener = format_quic_listener,
-  .get_transport_endpoint = quic_get_transport_endpoint,
-  .get_transport_listener_endpoint = quic_get_transport_listener_endpoint,
-  .get_alpn_selected = quic_get_alpn_selected,
-  .transport_options = {
-    .name = "quic",
-    .short_name = "Q",
-    .tx_type = TRANSPORT_TX_INTERNAL,
-    .service_type = TRANSPORT_SERVICE_APP,
-  },
-};
-
 static clib_error_t *
 quic_app_enable (quic_main_t *qm, u8 is_en)
 {
@@ -739,11 +711,6 @@ quic_enable (vlib_main_t *vm, u8 is_en)
       return clib_error_return (0, "No QUIC engine plugin enabled");
     }
 
-  transport_register_protocol (TRANSPORT_PROTO_QUIC, &quic_proto,
-			       FIB_PROTOCOL_IP4, ~0);
-  transport_register_protocol (TRANSPORT_PROTO_QUIC, &quic_proto,
-			       FIB_PROTOCOL_IP6, ~0);
-
   if ((err = quic_app_enable (qm, is_en)))
     return err;
 
@@ -775,6 +742,32 @@ quic_enable (vlib_main_t *vm, u8 is_en)
   qm->engine_is_initialized[qm->engine_type] = 1;
   return 0;
 }
+
+static transport_proto_vft_t quic_proto = {
+  .enable = quic_enable,
+  .connect = quic_connect_connection,
+  .connect_stream = quic_connect_stream,
+  .close = quic_proto_on_close,
+  .start_listen = quic_start_listen,
+  .stop_listen = quic_stop_listen,
+  .get_connection = quic_connection_get,
+  .get_listener = quic_listener_get,
+  .update_time = quic_update_time,
+  .app_rx_evt = quic_custom_app_rx_callback,
+  .custom_tx = quic_custom_tx_callback,
+  .format_connection = format_quic_connection,
+  .format_half_open = format_quic_half_open,
+  .format_listener = format_quic_listener,
+  .get_transport_endpoint = quic_get_transport_endpoint,
+  .get_transport_listener_endpoint = quic_get_transport_listener_endpoint,
+  .get_alpn_selected = quic_get_alpn_selected,
+  .transport_options = {
+    .name = "quic",
+    .short_name = "Q",
+    .tx_type = TRANSPORT_TX_INTERNAL,
+    .service_type = TRANSPORT_SERVICE_APP,
+  },
+};
 
 void
 quic_update_fifo_size ()
