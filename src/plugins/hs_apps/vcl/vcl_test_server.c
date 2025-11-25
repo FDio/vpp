@@ -753,7 +753,8 @@ vts_worker_loop (void *arg)
 
 	  if (!wrk->wrk_index && conn->fd == vsm->ctrl->fd)
 	    {
-	      rx_bytes = conn->read (conn, conn->rxbuf, conn->rxbuf_size);
+	      rx_bytes =
+		vppcom_session_read (conn->fd, conn->rxbuf, conn->rxbuf_size);
 	      rx_cfg = (hs_test_cfg_t *) conn->rxbuf;
 	      if (rx_cfg->magic == HS_TEST_CFG_CTRL_MAGIC)
 		{
