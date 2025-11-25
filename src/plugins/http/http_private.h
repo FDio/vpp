@@ -913,7 +913,6 @@ http_conn_accept_request (http_conn_t *hc, http_req_t *req)
   as = session_alloc (hc->c_thread_index);
   HTTP_DBG (1, "allocated session 0x%lx", session_handle (as));
   req->c_s_index = as->session_index;
-  as->app_wrk_index = hc->hc_pa_wrk_index;
   as->connection_index = req->hr_req_handle;
   as->session_state = SESSION_STATE_ACCEPTING;
   asl = listen_session_get_from_handle (hc->hc_pa_session_handle);

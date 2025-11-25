@@ -240,7 +240,6 @@ tls_notify_app_accept (tls_ctx_t * ctx)
   app_session->session_state = SESSION_STATE_ACCEPTING;
   app_session->session_type = app_listener->session_type;
   app_session->listener_handle = listen_session_get_handle (app_listener);
-  app_session->app_wrk_index = ctx->parent_app_wrk_index;
   app_session->connection_index = ctx->tls_ctx_handle;
   ctx->c_s_index = app_session->session_index;
 
