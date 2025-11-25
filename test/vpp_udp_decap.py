@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-  UDP decap objects
+UDP decap objects
 """
 
 from vpp_object import VppObject

@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""ACL plugin Test Case HLD:
-"""
+"""ACL plugin Test Case HLD:"""
 
 import unittest
 import random

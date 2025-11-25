@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-""" VAPI test """
+"""VAPI test"""
 
 import unittest
 import os

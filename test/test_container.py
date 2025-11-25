@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-""" Container integration tests """
+"""Container integration tests"""
 
 import unittest
 from config import config
