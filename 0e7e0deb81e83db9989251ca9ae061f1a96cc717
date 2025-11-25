@@ -24,6 +24,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "cb422b77_b35eb9a1",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 627,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2025-11-25T14:24:49Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "e56dca18_cabf2ce6",
+      "range": {
+        "startLine": 627,
+        "startChar": 5,
+        "endLine": 627,
+        "endChar": 19
+      },
+      "revId": "0e7e0deb81e83db9989251ca9ae061f1a96cc717",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "3755309b_d4bff652",
@@ -37,6 +61,30 @@
       "writtenOn": "2025-11-21T16:16:03Z",
       "side": 1,
       "message": "this is probably unreachable since you check status code before calling function",
+      "range": {
+        "startLine": 684,
+        "startChar": 0,
+        "endLine": 690,
+        "endChar": 19
+      },
+      "revId": "0e7e0deb81e83db9989251ca9ae061f1a96cc717",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c9087b20_cc441440",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 690,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2025-11-25T14:24:49Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3755309b_d4bff652",
       "range": {
         "startLine": 684,
         "startChar": 0,
@@ -70,6 +118,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "0ff3094b_2e83d10d",
+        "filename": "src/plugins/http/http.h",
+        "patchSetId": 9
+      },
+      "lineNbr": 1458,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2025-11-25T14:24:49Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9c25cf99_430950e4",
+      "range": {
+        "startLine": 1457,
+        "startChar": 5,
+        "endLine": 1458,
+        "endChar": 22
+      },
+      "revId": "0e7e0deb81e83db9989251ca9ae061f1a96cc717",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "166f03cf_946e7cbd",
@@ -93,6 +165,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "20d6e600_fffe238e",
+        "filename": "src/plugins/http/http.h",
+        "patchSetId": 9
+      },
+      "lineNbr": 1495,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2025-11-25T14:24:49Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "166f03cf_946e7cbd",
+      "range": {
+        "startLine": 1472,
+        "startChar": 6,
+        "endLine": 1495,
+        "endChar": 2
+      },
+      "revId": "0e7e0deb81e83db9989251ca9ae061f1a96cc717",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "9e6d6098_7df81578",
@@ -106,6 +202,24 @@
       "writtenOn": "2025-11-21T16:16:03Z",
       "side": 1,
       "message": "do we still need changes here?",
+      "revId": "0e7e0deb81e83db9989251ca9ae061f1a96cc717",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "cf71fd6d_89f16624",
+        "filename": "src/vnet/session/application_interface.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 157,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2025-11-25T14:24:49Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9e6d6098_7df81578",
       "revId": "0e7e0deb81e83db9989251ca9ae061f1a96cc717",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
