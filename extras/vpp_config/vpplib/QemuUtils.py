@@ -285,7 +285,7 @@ class QemuUtils(object):
     def _qemu_qga_flush(self):
         """Flush the QGA parser state"""
         qga_cmd = (
-            '(printf "\xFF"; sleep 1) | '
+            '(printf "\xff"; sleep 1) | '
             "sudo -S socat - UNIX-CONNECT:" + self._qga_sock
         )
         # TODO: probably need something else

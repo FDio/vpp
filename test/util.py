@@ -1,4 +1,4 @@
-""" test framework utilities """
+"""test framework utilities"""
 
 import ipaddress
 import logging

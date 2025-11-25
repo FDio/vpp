@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-""" L2BD ARP term Test """
+"""L2BD ARP term Test"""
 
 import unittest
 

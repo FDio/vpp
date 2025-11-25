@@ -1,4 +1,4 @@
-""" VRF Status codes """
+"""VRF Status codes"""
 
 from util import NumericConstant
 

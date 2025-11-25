@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-""" Vpp HTTP tests """
+"""Vpp HTTP tests"""
 
 import unittest
 import http.client

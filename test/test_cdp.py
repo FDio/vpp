@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-""" CDP tests """
+"""CDP tests"""
 
 from scapy.packet import Packet
 from scapy.all import ShortField, StrField

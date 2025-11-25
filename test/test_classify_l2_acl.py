@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-""" Classifier-based L2 ACL Test Case HLD:
-"""
+"""Classifier-based L2 ACL Test Case HLD:"""
 
 import unittest
 import random

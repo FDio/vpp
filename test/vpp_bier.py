@@ -1,5 +1,5 @@
 """
-  BIER Tables and Routes
+BIER Tables and Routes
 """
 
 import socket
