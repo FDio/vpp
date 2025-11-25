@@ -94,14 +94,14 @@ vtc_cfg_sync (vcl_test_session_t * ts)
       vtinf ("(fd %d): Sending config to server.", ts->fd);
       hs_test_cfg_dump (&ts->cfg, 1 /* is_client */);
     }
-  tx_bytes = ts->write (ts, &ts->cfg, sizeof (ts->cfg));
+  tx_bytes = vppcom_session_write (ts->fd, &ts->cfg, sizeof (ts->cfg));
   if (tx_bytes < 0)
     {
       vtwrn ("(fd %d): write test cfg failed (%d)!", ts->fd, tx_bytes);
       return tx_bytes;
     }
 
-  rx_bytes = ts->read (ts, ts->rxbuf, sizeof (hs_test_cfg_t));
+  rx_bytes = vppcom_session_read (ts->fd, ts->rxbuf, sizeof (hs_test_cfg_t));
   if (rx_bytes < 0)
     return rx_bytes;
 
