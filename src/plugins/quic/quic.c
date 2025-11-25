@@ -733,19 +733,16 @@ quic_enable (vlib_main_t *vm, u8 is_en)
     quic_get_engine_type (QUIC_ENGINE_QUICLY, QUIC_ENGINE_OPENSSL);
   if (qm->engine_type == QUIC_ENGINE_NONE)
     {
-      /* Prevent crash in transport layer callbacks with no quic engine */
-      quic_proto.connect = 0;
-      quic_proto.start_listen = 0;
-      transport_register_protocol (TRANSPORT_PROTO_QUIC, &quic_proto,
-				   FIB_PROTOCOL_IP4, ~0);
-      transport_register_protocol (TRANSPORT_PROTO_QUIC, &quic_proto,
-				   FIB_PROTOCOL_IP6, ~0);
-
       clib_warning (
 	"ERROR: NO QUIC ENGINE PLUGIN ENABLED!"
 	"\nEnable a quic engine plugin in the startup configuration.");
       return clib_error_return (0, "No QUIC engine plugin enabled");
     }
+
+  transport_register_protocol (TRANSPORT_PROTO_QUIC, &quic_proto,
+			       FIB_PROTOCOL_IP4, ~0);
+  transport_register_protocol (TRANSPORT_PROTO_QUIC, &quic_proto,
+			       FIB_PROTOCOL_IP6, ~0);
 
   if ((err = quic_app_enable (qm, is_en)))
     return err;
