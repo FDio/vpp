@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-""" Wg tests """
+"""Wg tests"""
 
 import datetime
 import base64

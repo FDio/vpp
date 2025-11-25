@@ -1,7 +1,7 @@
 """
-  SRv6 LocalSIDs
+SRv6 LocalSIDs
 
-  object abstractions for representing SRv6 localSIDs in VPP
+object abstractions for representing SRv6 localSIDs in VPP
 """
 
 from vpp_object import VppObject

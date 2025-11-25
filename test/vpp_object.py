@@ -1,4 +1,4 @@
-""" abstract vpp object and object registry """
+"""abstract vpp object and object registry"""
 
 import abc
 

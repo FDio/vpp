@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-""" Vpp VCL tests """
+"""Vpp VCL tests"""
 
 import unittest
 import os

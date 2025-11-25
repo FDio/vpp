@@ -1,7 +1,7 @@
 """
-  IP Routes
+IP Routes
 
-  object abstractions for representing IP routes in VPP
+object abstractions for representing IP routes in VPP
 """
 
 from vpp_object import VppObject

@@ -1,5 +1,5 @@
 """
-  IP Types
+IP Types
 
 """
 

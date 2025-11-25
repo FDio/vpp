@@ -431,12 +431,10 @@ class IpsecTra4(object):
         self.send_and_expect(self.tra_if, pkts, self.tra_if, n_rx=n_rx)
         # this packet is one before the wrap
         pkts = [
-            (
-                Ether(src=self.tra_if.remote_mac, dst=self.tra_if.local_mac)
-                / p.scapy_tra_sa.encrypt(
-                    IP(src=self.tra_if.remote_ip4, dst=self.tra_if.local_ip4) / ICMP(),
-                    seq_num=203,
-                )
+            Ether(src=self.tra_if.remote_mac, dst=self.tra_if.local_mac)
+            / p.scapy_tra_sa.encrypt(
+                IP(src=self.tra_if.remote_ip4, dst=self.tra_if.local_ip4) / ICMP(),
+                seq_num=203,
             )
         ]
         recv_pkts = self.send_and_expect(self.tra_if, pkts, self.tra_if)
@@ -471,24 +469,20 @@ class IpsecTra4(object):
 
         # move the window over half way to a wrap
         pkts = [
-            (
-                Ether(src=self.tra_if.remote_mac, dst=self.tra_if.local_mac)
-                / p.scapy_tra_sa.encrypt(
-                    IP(src=self.tra_if.remote_ip4, dst=self.tra_if.local_ip4) / ICMP(),
-                    seq_num=0x80000001,
-                )
+            Ether(src=self.tra_if.remote_mac, dst=self.tra_if.local_mac)
+            / p.scapy_tra_sa.encrypt(
+                IP(src=self.tra_if.remote_ip4, dst=self.tra_if.local_ip4) / ICMP(),
+                seq_num=0x80000001,
             )
         ]
         recv_pkts = self.send_and_expect(self.tra_if, pkts, self.tra_if)
 
         # anti-replay will drop old packets, no anti-replay will not
         pkts = [
-            (
-                Ether(src=self.tra_if.remote_mac, dst=self.tra_if.local_mac)
-                / p.scapy_tra_sa.encrypt(
-                    IP(src=self.tra_if.remote_ip4, dst=self.tra_if.local_ip4) / ICMP(),
-                    seq_num=0x44000001,
-                )
+            Ether(src=self.tra_if.remote_mac, dst=self.tra_if.local_mac)
+            / p.scapy_tra_sa.encrypt(
+                IP(src=self.tra_if.remote_ip4, dst=self.tra_if.local_ip4) / ICMP(),
+                seq_num=0x44000001,
             )
         ]
 
@@ -507,13 +501,10 @@ class IpsecTra4(object):
 
             # send a packet that wraps the window for both AR and no AR
             pkts = [
-                (
-                    Ether(src=self.tra_if.remote_mac, dst=self.tra_if.local_mac)
-                    / p.scapy_tra_sa.encrypt(
-                        IP(src=self.tra_if.remote_ip4, dst=self.tra_if.local_ip4)
-                        / ICMP(),
-                        seq_num=0x100000005,
-                    )
+                Ether(src=self.tra_if.remote_mac, dst=self.tra_if.local_mac)
+                / p.scapy_tra_sa.encrypt(
+                    IP(src=self.tra_if.remote_ip4, dst=self.tra_if.local_ip4) / ICMP(),
+                    seq_num=0x100000005,
                 )
             ]
 
@@ -523,13 +514,10 @@ class IpsecTra4(object):
 
             # move the window forward to half way to the next wrap
             pkts = [
-                (
-                    Ether(src=self.tra_if.remote_mac, dst=self.tra_if.local_mac)
-                    / p.scapy_tra_sa.encrypt(
-                        IP(src=self.tra_if.remote_ip4, dst=self.tra_if.local_ip4)
-                        / ICMP(),
-                        seq_num=0x180000005,
-                    )
+                Ether(src=self.tra_if.remote_mac, dst=self.tra_if.local_mac)
+                / p.scapy_tra_sa.encrypt(
+                    IP(src=self.tra_if.remote_ip4, dst=self.tra_if.local_ip4) / ICMP(),
+                    seq_num=0x180000005,
                 )
             ]
 
@@ -539,13 +527,10 @@ class IpsecTra4(object):
             #  - AR: out of window and dropped
             #  - non-AR: accepted
             pkts = [
-                (
-                    Ether(src=self.tra_if.remote_mac, dst=self.tra_if.local_mac)
-                    / p.scapy_tra_sa.encrypt(
-                        IP(src=self.tra_if.remote_ip4, dst=self.tra_if.local_ip4)
-                        / ICMP(),
-                        seq_num=0x170000005,
-                    )
+                Ether(src=self.tra_if.remote_mac, dst=self.tra_if.local_mac)
+                / p.scapy_tra_sa.encrypt(
+                    IP(src=self.tra_if.remote_ip4, dst=self.tra_if.local_ip4) / ICMP(),
+                    seq_num=0x170000005,
                 )
             ]
 
@@ -559,13 +544,10 @@ class IpsecTra4(object):
             #  - non-AR: considered a wrap, but since it's not a wrap
             #    it won't decrpyt and so will be dropped
             pkts = [
-                (
-                    Ether(src=self.tra_if.remote_mac, dst=self.tra_if.local_mac)
-                    / p.scapy_tra_sa.encrypt(
-                        IP(src=self.tra_if.remote_ip4, dst=self.tra_if.local_ip4)
-                        / ICMP(),
-                        seq_num=0x130000005,
-                    )
+                Ether(src=self.tra_if.remote_mac, dst=self.tra_if.local_mac)
+                / p.scapy_tra_sa.encrypt(
+                    IP(src=self.tra_if.remote_ip4, dst=self.tra_if.local_ip4) / ICMP(),
+                    seq_num=0x130000005,
                 )
             ]
 
@@ -577,13 +559,10 @@ class IpsecTra4(object):
             #  - non-AR: not considered a wrap, so won't decrypt
             p.scapy_tra_sa.seq_num = 0x260000005
             pkts = [
-                (
-                    Ether(src=self.tra_if.remote_mac, dst=self.tra_if.local_mac)
-                    / p.scapy_tra_sa.encrypt(
-                        IP(src=self.tra_if.remote_ip4, dst=self.tra_if.local_ip4)
-                        / ICMP(),
-                        seq_num=0x260000005,
-                    )
+                Ether(src=self.tra_if.remote_mac, dst=self.tra_if.local_mac)
+                / p.scapy_tra_sa.encrypt(
+                    IP(src=self.tra_if.remote_ip4, dst=self.tra_if.local_ip4) / ICMP(),
+                    seq_num=0x260000005,
                 )
             ]
             if ar_on:
@@ -622,13 +601,11 @@ class IpsecTra4(object):
                 self.send_and_expect(self.tra_if, pkts, self.tra_if)
 
                 pkts = [
-                    (
-                        Ether(src=self.tra_if.remote_mac, dst=self.tra_if.local_mac)
-                        / p.scapy_tra_sa.encrypt(
-                            IP(src=self.tra_if.remote_ip4, dst=self.tra_if.local_ip4)
-                            / ICMP(),
-                            seq_num=0x260000005,
-                        )
+                    Ether(src=self.tra_if.remote_mac, dst=self.tra_if.local_mac)
+                    / p.scapy_tra_sa.encrypt(
+                        IP(src=self.tra_if.remote_ip4, dst=self.tra_if.local_ip4)
+                        / ICMP(),
+                        seq_num=0x260000005,
                     )
                 ]
                 self.send_and_expect(self.tra_if, pkts, self.tra_if)
