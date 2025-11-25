@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-  TEIB objects
+TEIB objects
 """
 
 from vpp_object import VppObject

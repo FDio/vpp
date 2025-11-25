@@ -1,7 +1,7 @@
 """
-  QoS
+QoS
 
-  object abstractions for representing QoS config VPP
+object abstractions for representing QoS config VPP
 """
 
 from vpp_object import VppObject

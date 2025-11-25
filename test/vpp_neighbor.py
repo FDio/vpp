@@ -1,7 +1,7 @@
 """
-  Neighbour Entries
+Neighbour Entries
 
-  object abstractions for ARP and ND
+object abstractions for ARP and ND
 """
 
 from ipaddress import ip_address

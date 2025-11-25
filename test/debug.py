@@ -1,4 +1,4 @@
-""" debug utilities """
+"""debug utilities"""
 
 import os
 import pexpect

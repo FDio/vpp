@@ -1,4 +1,4 @@
-""" BFD protocol implementation """
+"""BFD protocol implementation"""
 
 from random import randint
 from socket import AF_INET, AF_INET6, inet_pton

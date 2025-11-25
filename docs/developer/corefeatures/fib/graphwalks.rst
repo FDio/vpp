@@ -14,7 +14,7 @@ When a child resolves via a parent it does so knowing the type of that parent. T
 child to parent relationship is thus fully known to the child, and hence a forward
 walk of the graph (from child to parent) is trivial. However, a parent does not choose
 its children, it does not even choose the type. All object types that form part of the
-FIB control plane graph all inherit from a single base class; *fib_node_t*. A *fib_node_t*
+FIB control plane graph all inherit [#f14]_ from a single base class; *fib_node_t*. A *fib_node_t*
 identifies the object's index and its associated virtual function table provides the
 parent a mechanism to visit that object during the walk. The reason for a back-walk
 is to inform all children that the state of the parent has changed in some way, and

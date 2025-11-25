@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-""" ACL plugin extended stateful tests """
+"""ACL plugin extended stateful tests"""
 
 import unittest
 from config import config

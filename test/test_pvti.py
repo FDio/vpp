@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-""" PVTI tests """
+"""PVTI tests"""
 
 import datetime
 import base64
