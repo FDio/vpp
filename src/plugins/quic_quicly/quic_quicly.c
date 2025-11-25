@@ -1088,7 +1088,6 @@ quic_quicly_on_quic_session_accepted (quic_ctx_t *ctx)
 
   lctx = quic_quicly_get_quic_ctx (ctx->listener_ctx_id, 0);
 
-  quic_session->app_wrk_index = lctx->parent_app_wrk_id;
   quic_session->connection_index = ctx->c_c_index;
   quic_session->session_type =
     session_type_from_proto_and_ip (TRANSPORT_PROTO_QUIC, ctx->udp_is_ip4);
@@ -1128,6 +1127,7 @@ quic_quicly_on_quic_session_accepted (quic_ctx_t *ctx)
       return;
     }
 
+  ctx->parent_app_wrk_id = quic_session->app_wrk_index;
   ctx->conn_state = QUIC_CONN_STATE_READY;
 }
 

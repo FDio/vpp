@@ -1365,7 +1365,7 @@ http_start_listen (u32 app_listener_index, transport_endpoint_cfg_t *tep)
 
   /* Grab application listener and link to http listener */
   app_listener = listen_session_get (app_listener_index);
-  lhc->hc_pa_wrk_index = sep->app_wrk_index;
+  lhc->hc_pa_wrk_index = SESSION_INVALID_INDEX;
   lhc->hc_pa_session_handle = listen_session_get_handle (app_listener);
   lhc->c_s_index = app_listener_index;
   lhc->c_flags |= TRANSPORT_CONNECTION_F_NO_LOOKUP;

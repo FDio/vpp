@@ -276,7 +276,7 @@ quic_start_listen (u32 quic_listen_session_index,
   lctx->c_is_ip4 = args->sep.is_ip4;
   lctx->c_fib_index = args->sep.fib_index;
   lctx->c_proto = TRANSPORT_PROTO_QUIC;
-  lctx->parent_app_wrk_id = sep->app_wrk_index;
+  lctx->parent_app_wrk_id = SESSION_INVALID_INDEX;
   lctx->parent_app_id = app_wrk->app_index;
   lctx->udp_session_handle = udp_handle;
   lctx->c_s_index = quic_listen_session_index;
@@ -499,7 +499,6 @@ quic_udp_session_accepted_callback (session_t * udp_session)
 		       udp_listen_session->thread_index);
   ctx->udp_is_ip4 = lctx->c_is_ip4;
   ctx->parent_app_id = lctx->parent_app_id;
-  ctx->parent_app_wrk_id = lctx->parent_app_wrk_id;
   ctx->timer_handle = QUIC_TIMER_HANDLE_INVALID;
   ctx->conn_state = QUIC_CONN_STATE_OPENED;
   ctx->c_flags |= TRANSPORT_CONNECTION_F_NO_LOOKUP;
