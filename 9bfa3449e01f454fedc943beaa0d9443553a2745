@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f3eb2ef0_012b7d4b",
+        "filename": "src/vnet/session/application.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 1443,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-11-25T07:18:49Z",
+      "side": 1,
+      "message": "Just realized that this sort of check will block session layer from allocating lookup tables for overlays that have not proactively created the fibs. That\u0027s not an option at this point, given existing consumers. \n\nLet\u0027s mark patch as wip while we try to figure out if there are ways around this.",
+      "revId": "9bfa3449e01f454fedc943beaa0d9443553a2745",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
