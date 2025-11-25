@@ -1190,18 +1190,27 @@ void
 transport_enable_disable (vlib_main_t * vm, u8 is_en)
 {
   transport_proto_vft_t *vft;
+
   vec_foreach (vft, tp_vfts)
   {
     if (vft->enable)
       if ((vft->enable) (vm, is_en) != 0)
-	  continue;
+	  {
+	    /* Remove transports that failed to initialize */
+	    if (is_en)
+	      *vft = (transport_proto_vft_t){};
+	    continue;
+	  }
 
     if (vft->update_time)
       session_register_update_time_fn (vft->update_time, is_en);
   }
+
   if (is_en)
-  ip4_icmp_register_type (vlib_get_main (), ICMP4_destination_unreachable,
-			  transport_icmp_dest_unreachable_node.index);
+  {
+    ip4_icmp_register_type (vlib_get_main (), ICMP4_destination_unreachable,
+			    transport_icmp_dest_unreachable_node.index);
+  }
 }
 
 void
