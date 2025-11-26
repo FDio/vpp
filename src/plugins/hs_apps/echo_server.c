@@ -347,7 +347,14 @@ echo_server_builtin_server_rx_callback_no_echo (session_t * s)
     return echo_server_rx_ctrl_callback (s);
 
   svm_fifo_t *rx_fifo = s->rx_fifo;
-  svm_fifo_dequeue_drop (rx_fifo, svm_fifo_max_dequeue_cons (rx_fifo));
+  int rv =
+    svm_fifo_dequeue_drop (rx_fifo, svm_fifo_max_dequeue_cons (rx_fifo));
+  if (rv > 0 && svm_fifo_needs_deq_ntf (rx_fifo, rv))
+    {
+      svm_fifo_clear_deq_ntf (rx_fifo);
+      session_program_transport_io_evt (s->handle, SESSION_IO_EVT_RX);
+    }
+
   return 0;
 }
 
