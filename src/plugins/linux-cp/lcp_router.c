@@ -929,6 +929,69 @@ lcp_router_table_k2f (uint32_t k)
   return k;
 }
 
+static void
+lcp_router_table_add_del_special_routes (lcp_router_table_t *nlt, u8 is_add)
+{
+  if (FIB_PROTOCOL_IP4 == nlt->nlt_proto)
+    {
+      /* Set the all 1s address in this table to punt */
+      if (is_add)
+	fib_table_entry_special_add (nlt->nlt_fib_index, &pfx_all1s,
+				     lcp_rt_fib_src, FIB_ENTRY_FLAG_LOCAL);
+      else
+	fib_table_entry_special_remove (nlt->nlt_fib_index, &pfx_all1s,
+					lcp_rt_fib_src);
+
+      const fib_route_path_t path = {
+	.frp_proto = DPO_PROTO_IP4,
+	.frp_addr = zero_addr,
+	.frp_sw_if_index = ~0,
+	.frp_fib_index = ~0,
+	.frp_weight = 1,
+	.frp_mitf_flags = MFIB_ITF_FLAG_FORWARD,
+	.frp_flags = FIB_ROUTE_PATH_LOCAL,
+      };
+      int ii;
+
+      for (ii = 0; ii < ARRAY_LEN (ip4_specials); ii++)
+	{
+	  if (is_add)
+	    mfib_table_entry_path_update (
+	      nlt->nlt_mfib_index, &ip4_specials[ii], MFIB_SOURCE_PLUGIN_LOW,
+	      MFIB_ENTRY_FLAG_NONE, &path);
+	  else
+	    mfib_table_entry_path_remove (nlt->nlt_mfib_index,
+					  &ip4_specials[ii],
+					  MFIB_SOURCE_PLUGIN_LOW, &path);
+	}
+    }
+  else if (FIB_PROTOCOL_IP6 == nlt->nlt_proto)
+    {
+      const fib_route_path_t path = {
+	.frp_proto = DPO_PROTO_IP6,
+	.frp_addr = zero_addr,
+	.frp_sw_if_index = ~0,
+	.frp_fib_index = ~0,
+	.frp_weight = 1,
+	.frp_mitf_flags = MFIB_ITF_FLAG_FORWARD,
+	.frp_flags = FIB_ROUTE_PATH_LOCAL,
+      };
+      int ii;
+
+      for (ii = 0; ii < ARRAY_LEN (ip6_specials); ii++)
+	{
+	  if (is_add)
+	    mfib_table_entry_path_update (
+	      nlt->nlt_mfib_index, &ip6_specials[ii], MFIB_SOURCE_PLUGIN_LOW,
+	      MFIB_ENTRY_FLAG_NONE, &path);
+	  else
+	    mfib_table_entry_path_remove (nlt->nlt_mfib_index,
+					  &ip6_specials[ii],
+					  MFIB_SOURCE_PLUGIN_LOW, &path);
+	}
+    }
+}
+
 static lcp_router_table_t *
 lcp_router_table_add_or_lock (uint32_t id, fib_protocol_t fproto)
 {
@@ -952,50 +1015,7 @@ lcp_router_table_add_or_lock (uint32_t id, fib_protocol_t fproto)
       hash_set (lcp_router_table_db[fproto], nlt->nlt_id,
 		nlt - lcp_router_table_pool);
 
-      if (FIB_PROTOCOL_IP4 == fproto)
-	{
-	  /* Set the all 1s address in this table to punt */
-	  fib_table_entry_special_add (nlt->nlt_fib_index, &pfx_all1s,
-				       lcp_rt_fib_src, FIB_ENTRY_FLAG_LOCAL);
-
-	  const fib_route_path_t path = {
-	    .frp_proto = DPO_PROTO_IP4,
-	    .frp_addr = zero_addr,
-	    .frp_sw_if_index = ~0,
-	    .frp_fib_index = ~0,
-	    .frp_weight = 1,
-	    .frp_mitf_flags = MFIB_ITF_FLAG_FORWARD,
-	    .frp_flags = FIB_ROUTE_PATH_LOCAL,
-	  };
-	  int ii;
-
-	  for (ii = 0; ii < ARRAY_LEN (ip4_specials); ii++)
-	    {
-	      mfib_table_entry_path_update (
-		nlt->nlt_mfib_index, &ip4_specials[ii], MFIB_SOURCE_PLUGIN_LOW,
-		MFIB_ENTRY_FLAG_NONE, &path);
-	    }
-	}
-      else if (FIB_PROTOCOL_IP6 == fproto)
-	{
-	  const fib_route_path_t path = {
-	    .frp_proto = DPO_PROTO_IP6,
-	    .frp_addr = zero_addr,
-	    .frp_sw_if_index = ~0,
-	    .frp_fib_index = ~0,
-	    .frp_weight = 1,
-	    .frp_mitf_flags = MFIB_ITF_FLAG_FORWARD,
-	    .frp_flags = FIB_ROUTE_PATH_LOCAL,
-	  };
-	  int ii;
-
-	  for (ii = 0; ii < ARRAY_LEN (ip6_specials); ii++)
-	    {
-	      mfib_table_entry_path_update (
-		nlt->nlt_mfib_index, &ip6_specials[ii], MFIB_SOURCE_PLUGIN_LOW,
-		MFIB_ENTRY_FLAG_NONE, &path);
-	    }
-	}
+      lcp_router_table_add_del_special_routes (nlt, 1);
     }
 
   nlt->nlt_refs++;
@@ -1010,14 +1030,11 @@ lcp_router_table_unlock (lcp_router_table_t *nlt)
 
   if (0 == nlt->nlt_refs)
     {
-      if (FIB_PROTOCOL_IP4 == nlt->nlt_proto)
-	{
-	  /* Set the all 1s address in this table to punt */
-	  fib_table_entry_special_remove (nlt->nlt_fib_index, &pfx_all1s,
-					  lcp_rt_fib_src);
-	}
+      lcp_router_table_add_del_special_routes (nlt, 0);
 
       fib_table_unlock (nlt->nlt_fib_index, nlt->nlt_proto, lcp_rt_fib_src);
+      mfib_table_unlock (nlt->nlt_mfib_index, nlt->nlt_proto,
+			 MFIB_SOURCE_PLUGIN_LOW);
 
       hash_unset (lcp_router_table_db[nlt->nlt_proto], nlt->nlt_id);
       pool_put (lcp_router_table_pool, nlt);
