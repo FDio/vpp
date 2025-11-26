@@ -850,6 +850,17 @@ http_io_ts_after_read (http_conn_t *hc, u8 clear_evt)
 }
 
 always_inline void
+http_io_ts_program_rx_evt (http_conn_t *hc, u32 n_last_deq)
+{
+  session_t *ts = session_get_from_handle (hc->hc_tc_session_handle);
+  if (svm_fifo_needs_deq_ntf (ts->rx_fifo, n_last_deq))
+    {
+      svm_fifo_clear_deq_ntf (ts->rx_fifo);
+      session_program_transport_io_evt (ts->handle, SESSION_IO_EVT_RX);
+    }
+}
+
+always_inline void
 http_io_ts_write (http_conn_t *hc, u8 *data, u32 len,
 		  transport_send_params_t *sp)
 {

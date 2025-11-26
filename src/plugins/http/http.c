@@ -760,14 +760,14 @@ http_ts_connected_callback (u32 http_app_index, u32 ho_hc_index, session_t *ts,
   HTTP_DBG (1, "half-open hc index %x, hc [%u]%x", ts->thread_index,
 	    ho_hc_index, new_hc_index);
 
+  http_conn_timer_start (hc);
+
   if ((rv = http_vfts[hc->version].transport_connected_callback (hc)))
     {
       clib_warning ("transport_connected_callback failed, rv=%d", rv);
       __atomic_fetch_or (&ho_hc->flags, HTTP_CONN_F_HO_DONE, __ATOMIC_RELEASE);
       return rv;
     }
-
-  http_conn_timer_start (hc);
 
   return 0;
 }

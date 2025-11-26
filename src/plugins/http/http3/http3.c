@@ -34,8 +34,7 @@ typedef struct http3_stream_ctx_
   http3_stream_type_t stream_type;
   http3_frame_header_t fh;
   http3_req_flags_t flags;
-  void (*transport_rx_cb) (struct http3_stream_ctx_ *sctx,
-			   http_conn_t *stream);
+  u32 (*transport_rx_cb) (struct http3_stream_ctx_ *sctx, http_conn_t *stream);
 } http3_stream_ctx_t;
 
 #define foreach_http3_conn_flags                                              \
@@ -276,7 +275,7 @@ http3_conn_init (u32 parent_index, clib_thread_index_t thread_index,
 static http_sm_result_t
 http3_req_state_wait_app_reply (http_conn_t *stream, http3_stream_ctx_t *sctx,
 				transport_send_params_t *sp,
-				http3_error_t *error)
+				http3_error_t *error, u32 *n_deq)
 {
   http_msg_t msg;
   hpack_response_control_data_t control_data;
@@ -337,7 +336,7 @@ static http_sm_result_t
 http3_req_state_app_io_more_data (http_conn_t *stream,
 				  http3_stream_ctx_t *sctx,
 				  transport_send_params_t *sp,
-				  http3_error_t *error)
+				  http3_error_t *error, u32 *n_deq)
 {
   http_buffer_t *hb = &sctx->base.tx_buf;
   u32 max_write, n_read, n_segs, n_written;
@@ -393,7 +392,7 @@ static http_sm_result_t
 http3_req_state_wait_transport_method (http_conn_t *stream,
 				       http3_stream_ctx_t *sctx,
 				       transport_send_params_t *sp,
-				       http3_error_t *error)
+				       http3_error_t *error, u32 *n_deq)
 {
   http3_conn_ctx_t *h3c;
   hpack_request_control_data_t control_data;
@@ -407,6 +406,7 @@ http3_req_state_wait_transport_method (http_conn_t *stream,
     {
       HTTP_DBG (1, "headers frame incomplete");
       *error = HTTP3_ERROR_INCOMPLETE;
+      *n_deq = 0;
       return HTTP_SM_ERROR;
     }
 
@@ -415,6 +415,7 @@ http3_req_state_wait_transport_method (http_conn_t *stream,
   rx_buf = http_get_rx_buf (stream);
   vec_validate (rx_buf, sctx->fh.length - 1);
   http_io_ts_read (stream, rx_buf, sctx->fh.length, 0);
+  *n_deq = sctx->fh.length;
 
   h3c = http3_conn_ctx_get (sctx->h3c_index, stream->c_thread_index);
   *error = qpack_parse_request (rx_buf, sctx->fh.length, wrk->header_list,
@@ -535,10 +536,11 @@ static http_sm_result_t
 http3_req_state_transport_io_more_data (http_conn_t *stream,
 					http3_stream_ctx_t *sctx,
 					transport_send_params_t *sp,
-					http3_error_t *error)
+					http3_error_t *error, u32 *n_deq)
 {
   u32 max_enq, max_deq, n_written, n_segs = 2;
   svm_fifo_seg_t segs[n_segs];
+  http_sm_result_t res = HTTP_SM_CONTINUE;
 
   max_deq = http_io_ts_max_read (stream);
   if (max_deq == 0)
@@ -553,6 +555,7 @@ http3_req_state_transport_io_more_data (http_conn_t *stream,
       HTTP_DBG (1, "received more data than expected, fh.len %lu to_recv %lu",
 		sctx->fh.length, sctx->base.to_recv);
       *error = HTTP3_ERROR_GENERAL_PROTOCOL_ERROR;
+      *n_deq = 0;
       return HTTP_SM_ERROR;
     }
 
@@ -561,6 +564,7 @@ http3_req_state_transport_io_more_data (http_conn_t *stream,
     {
       HTTP_DBG (1, "app's rx fifo full");
       http_io_as_add_want_deq_ntf (&sctx->base);
+      *n_deq = 0;
       return HTTP_SM_STOP;
     }
 
@@ -570,15 +574,23 @@ http3_req_state_transport_io_more_data (http_conn_t *stream,
   sctx->base.to_recv -= n_written;
   sctx->fh.length -= n_written;
   http_io_ts_drain (stream, n_written);
+  *n_deq = n_written;
+  HTTP_DBG (2, "written %lu to recv %lu", n_written, sctx->base.to_recv);
 
   if (sctx->base.to_recv == 0)
-    http_req_state_change (&sctx->base, HTTP_REQ_STATE_WAIT_APP_REPLY);
+    {
+      http_req_state_change (&sctx->base, HTTP_REQ_STATE_WAIT_APP_REPLY);
+      res = HTTP_SM_STOP;
+    }
   http_app_worker_rx_notify (&sctx->base);
 
-  if (sctx->fh.length > 0)
-    return HTTP_SM_STOP;
+  if (max_deq > n_written)
+    {
+      http_io_as_add_want_deq_ntf (&sctx->base);
+      res = HTTP_SM_STOP;
+    }
 
-  return HTTP_SM_CONTINUE;
+  return res;
 }
 
 /*************************/
@@ -588,7 +600,8 @@ http3_req_state_transport_io_more_data (http_conn_t *stream,
 typedef http_sm_result_t (*http3_sm_handler) (http_conn_t *hc,
 					      http3_stream_ctx_t *sctx,
 					      transport_send_params_t *sp,
-					      http3_error_t *error);
+					      http3_error_t *error,
+					      u32 *n_deq);
 
 static http3_sm_handler tx_state_funcs[HTTP_REQ_N_STATES] = {
   0, /* idle */
@@ -629,7 +642,7 @@ http3_req_run_tx_state_machine (http_conn_t *stream, http3_stream_ctx_t *sctx,
 
   do
     {
-      res = tx_state_funcs[sctx->base.state](stream, sctx, sp, &error);
+      res = tx_state_funcs[sctx->base.state](stream, sctx, sp, &error, 0);
       if (res == HTTP_SM_ERROR)
 	{
 	  HTTP_DBG (1, "protocol error %U", format_http3_error, error);
@@ -733,32 +746,34 @@ http3_stream_read_settings (http3_stream_ctx_t *sctx, http_conn_t *stream,
   return 0;
 }
 
-static void
+static u32
 http3_stream_transport_rx_drain (CLIB_UNUSED (http3_stream_ctx_t *sctx),
 				 http_conn_t *stream)
 {
+  u32 n_deq = http_io_ts_max_read (stream);
   http_io_ts_drain_all (stream);
+  return n_deq;
 }
 
-static void
+static u32
 http3_stream_transport_rx_ctrl (http3_stream_ctx_t *sctx, http_conn_t *stream)
 {
-  u32 to_deq;
+  u32 to_deq, max_deq;
 
-  to_deq = http_io_ts_max_read (stream);
+  max_deq = to_deq = http_io_ts_max_read (stream);
   while (to_deq)
     {
       http3_frame_header_t fh = {};
       if (PREDICT_FALSE (
 	    http3_stream_read_frame_header (sctx, stream, &to_deq, &fh)))
-	return;
+	goto done;
       switch (fh.type)
 	{
 	case HTTP3_FRAME_TYPE_SETTINGS:
 	  HTTP_DBG (1, "settings received");
 	  if (PREDICT_FALSE (
 		http3_stream_read_settings (sctx, stream, &to_deq, &fh)))
-	    return;
+	    goto done;
 	  break;
 	case HTTP3_FRAME_TYPE_GOAWAY:
 	  HTTP_DBG (1, "goaway received");
@@ -773,9 +788,11 @@ http3_stream_transport_rx_ctrl (http3_stream_ctx_t *sctx, http_conn_t *stream)
 	  break;
 	}
     }
+done:
+  return max_deq - to_deq;
 }
 
-static void
+static u32
 http3_stream_transport_rx_unknown_type (http3_stream_ctx_t *sctx,
 					http_conn_t *stream)
 {
@@ -794,7 +811,7 @@ http3_stream_transport_rx_unknown_type (http3_stream_ctx_t *sctx,
   if (stream_type == HTTP_INVALID_VARINT)
     {
       /*FIXME:*/
-      return;
+      return 0;
     }
   http_io_ts_drain (stream, p - rx_buf);
   sctx->stream_type = stream_type;
@@ -810,7 +827,7 @@ http3_stream_transport_rx_unknown_type (http3_stream_ctx_t *sctx,
       if (h3c->peer_ctrl_stream_sctx_index != SESSION_INVALID_INDEX)
 	{
 	  /*FIXME:*/
-	  return;
+	  return 0;
 	}
       h3c->peer_ctrl_stream_sctx_index =
 	((http_req_handle_t) sctx->base.hr_req_handle).req_index;
@@ -820,7 +837,7 @@ http3_stream_transport_rx_unknown_type (http3_stream_ctx_t *sctx,
       if (h3c->peer_decoder_stream_sctx_index != SESSION_INVALID_INDEX)
 	{
 	  /*FIXME:*/
-	  return;
+	  return 0;
 	}
       h3c->peer_decoder_stream_sctx_index =
 	((http_req_handle_t) sctx->base.hr_req_handle).req_index;
@@ -830,7 +847,7 @@ http3_stream_transport_rx_unknown_type (http3_stream_ctx_t *sctx,
       if (h3c->peer_encoder_stream_sctx_index != SESSION_INVALID_INDEX)
 	{
 	  /*FIXME:*/
-	  return;
+	  return 0;
 	}
       h3c->peer_encoder_stream_sctx_index =
 	((http_req_handle_t) sctx->base.hr_req_handle).req_index;
@@ -841,24 +858,22 @@ http3_stream_transport_rx_unknown_type (http3_stream_ctx_t *sctx,
       break;
     }
 
-  sctx->transport_rx_cb (sctx, stream);
+  return sctx->transport_rx_cb (sctx, stream);
 }
 
-static void
+static u32
 http3_stream_transport_rx_req_server (http3_stream_ctx_t *sctx,
 				      http_conn_t *stream)
 {
   http3_error_t err;
   http_sm_result_t res = HTTP_SM_CONTINUE;
+  u32 max_deq, left_deq, n_deq;
+
+  max_deq = http_io_ts_max_read (stream);
+  left_deq = max_deq;
 
   do
     {
-      if (http_io_ts_max_read (stream) == 0)
-	{
-	  HTTP_DBG (1, "nothing to deq");
-	  return;
-	}
-
       if (sctx->fh.length == 0)
 	{
 	  err = http3_stream_peek_frame_header (sctx, stream);
@@ -868,6 +883,7 @@ http3_stream_transport_rx_req_server (http3_stream_ctx_t *sctx,
 	      goto error;
 	    }
 	  http3_stream_drop_frame_header (sctx, stream);
+	  left_deq -= sctx->fh.header_len;
 	}
 
       switch (sctx->fh.type)
@@ -877,7 +893,7 @@ http3_stream_transport_rx_req_server (http3_stream_ctx_t *sctx,
 	  if (sctx->base.state != HTTP_REQ_STATE_WAIT_TRANSPORT_METHOD)
 	    {
 	      /* FIXME: connection error */
-	      return;
+	      goto error;
 	    }
 	  break;
 	case HTTP3_FRAME_TYPE_DATA:
@@ -885,7 +901,7 @@ http3_stream_transport_rx_req_server (http3_stream_ctx_t *sctx,
 	  if (sctx->base.state != HTTP_REQ_STATE_TRANSPORT_IO_MORE_DATA)
 	    {
 	      /* FIXME: connection error */
-	      return;
+	      goto error;
 	    }
 	  break;
 	default:
@@ -895,16 +911,20 @@ http3_stream_transport_rx_req_server (http3_stream_ctx_t *sctx,
 	  continue;
 	}
 
-      res = rx_state_funcs[sctx->base.state](stream, sctx, 0, &err);
+      res = rx_state_funcs[sctx->base.state](stream, sctx, 0, &err, &n_deq);
+      left_deq -= n_deq;
     }
-  while (res == HTTP_SM_CONTINUE);
+  while (res == HTTP_SM_CONTINUE && left_deq);
 
   if (res == HTTP_SM_ERROR)
     {
     error:
       /* FIXME: error */
-      return;
+      if (err != HTTP3_ERROR_INCOMPLETE)
+	clib_warning ("FIXME: rx error");
     }
+
+  return max_deq - left_deq;
 }
 
 /*****************/
@@ -1201,6 +1221,7 @@ http3_app_rx_evt_callback (http_conn_t *stream, u32 req_index,
 			   clib_thread_index_t thread_index)
 {
   http3_stream_ctx_t *sctx;
+  u32 n_deq;
 
   HTTP_DBG (1, "stream [%u]%x sctx %x", stream->c_thread_index,
 	    stream->hc_hc_index, req_index);
@@ -1208,7 +1229,8 @@ http3_app_rx_evt_callback (http_conn_t *stream, u32 req_index,
   ASSERT (http_conn_is_stream (stream));
 
   sctx = http3_stream_ctx_get (req_index, thread_index);
-  sctx->transport_rx_cb (sctx, stream);
+  n_deq = sctx->transport_rx_cb (sctx, stream);
+  http_io_ts_program_rx_evt (stream, n_deq);
 
   /* reset http connection expiration timer */
   http_conn_timer_update (stream);
@@ -1244,6 +1266,7 @@ static void
 http3_transport_rx_callback (http_conn_t *stream)
 {
   http3_stream_ctx_t *sctx;
+  u32 n_deq;
 
   ASSERT (http_conn_is_stream (stream));
 
@@ -1251,7 +1274,8 @@ http3_transport_rx_callback (http_conn_t *stream)
 			       stream->c_thread_index);
   HTTP_DBG (1, "stream [%u]%x sctx %x", stream->c_thread_index,
 	    stream->hc_hc_index, pointer_to_uword (stream->opaque));
-  sctx->transport_rx_cb (sctx, stream);
+  n_deq = sctx->transport_rx_cb (sctx, stream);
+  http_io_ts_program_rx_evt (stream, n_deq);
 
   /* reset http connection expiration timer */
   http_conn_timer_update (stream);
