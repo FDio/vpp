@@ -1275,6 +1275,19 @@ lcp_router_route_del (struct rtnl_route *rr)
 
   lcp_router_route_mk_prefix (rr, &pfx);
   entry_flags = lcp_router_route_mk_entry_flags (rtype, table_id, rproto);
+
+  /* Skip any kernel routes and IPv6 LL or multicast routes */
+  if (rproto == RTPROT_KERNEL ||
+      (FIB_PROTOCOL_IP6 == pfx.fp_proto &&
+       (ip6_address_is_multicast (&pfx.fp_addr.ip6) ||
+  ip6_address_is_link_local_unicast (&pfx.fp_addr.ip6))))
+    {
+      LCP_ROUTER_DBG ("route skip: %d:%U %U", rtnl_route_get_table (rr),
+          format_fib_prefix, &pfx, format_fib_entry_flags,
+          entry_flags);
+      return;
+    }
+
   nlt = lcp_router_table_find (lcp_router_table_k2f (table_id), pfx.fp_proto);
 
   LCP_ROUTER_DBG ("route del: %d:%U %U", rtnl_route_get_table (rr),
@@ -1312,11 +1325,11 @@ lcp_router_route_del (struct rtnl_route *rr)
 	  fib_table_entry_path_remove2 (nlt->nlt_fib_index, &pfx, fib_src,
 					np.paths);
 	}
+
+    lcp_router_table_unlock (nlt);
     }
 
   vec_free (np.paths);
-
-  lcp_router_table_unlock (nlt);
 }
 
 static fib_route_path_t *
@@ -1359,7 +1372,6 @@ lcp_router_route_add (struct rtnl_route *rr, int is_replace)
   lcp_router_route_mk_prefix (rr, &pfx);
   entry_flags = lcp_router_route_mk_entry_flags (rtype, table_id, rproto);
 
-  nlt = lcp_router_table_add_or_lock (table_id, pfx.fp_proto);
   /* Skip any kernel routes and IPv6 LL or multicast routes */
   if (rproto == RTPROT_KERNEL ||
       (FIB_PROTOCOL_IP6 == pfx.fp_proto &&
@@ -1387,6 +1399,8 @@ lcp_router_route_add (struct rtnl_route *rr, int is_replace)
 
   if (0 != vec_len (np.paths))
     {
+      nlt = lcp_router_table_add_or_lock (table_id, pfx.fp_proto);
+
       if (rtype == RTN_MULTICAST)
 	{
 	  /* it's not clear to me how linux expresses the RPF paramters
@@ -1570,9 +1584,78 @@ const nl_vft_t lcp_router_vft = {
 };
 
 static void
-lcp_lcp_router_interface_del_cb (lcp_itf_pair_t *lip)
+lcp_router_interface_add_cb (lcp_itf_pair_t *lip)
 {
+  u32 table_id;
+  fib_protocol_t proto;
+
+  FOR_EACH_FIB_IP_PROTOCOL (proto)
+  {
+    table_id =
+      fib_table_get_table_id_for_sw_if_index (proto, lip->lip_phy_sw_if_index);
+    lcp_router_table_add_or_lock (table_id, proto);
+  }
+}
+
+static void
+lcp_router_interface_del_cb (lcp_itf_pair_t *lip)
+{
+  u32 table_id;
+  fib_protocol_t proto;
+  lcp_router_table_t *nlt;
+
+  lcp_router_ip4_mroutes_add_del (lip->lip_phy_sw_if_index, 0);
   lcp_router_ip6_mroutes_add_del (lip->lip_phy_sw_if_index, 0);
+
+  FOR_EACH_FIB_IP_PROTOCOL (proto)
+  {
+    table_id =
+      fib_table_get_table_id_for_sw_if_index (proto, lip->lip_phy_sw_if_index);
+    nlt = lcp_router_table_find (table_id, proto);
+    if (nlt)
+      lcp_router_table_unlock (nlt);
+  }
+}
+
+static void
+lcp_router_table_bind (u32 sw_if_index, fib_protocol_t fproto,
+		       u32 new_fib_index, u32 old_fib_index)
+{
+  u32 new_table_id, old_table_id;
+  lcp_router_table_t *nlt;
+
+  if (INDEX_INVALID == lcp_itf_pair_find_by_phy (sw_if_index))
+    return;
+
+  new_table_id = fib_table_get_table_id (new_fib_index, fproto);
+  if (new_table_id != ~0)
+    {
+      lcp_router_table_add_or_lock (new_table_id, fproto);
+    }
+
+  old_table_id = fib_table_get_table_id (old_fib_index, fproto);
+  if (old_table_id != ~0)
+    {
+      nlt = lcp_router_table_find (old_table_id, fproto);
+      if (nlt)
+	lcp_router_table_unlock (nlt);
+    }
+}
+
+static void
+lcp_router_table_bind_v4 (ip4_main_t *im, uword opaque, u32 sw_if_index,
+			  u32 new_fib_index, u32 old_fib_index)
+{
+  lcp_router_table_bind (sw_if_index, FIB_PROTOCOL_IP4, new_fib_index,
+			 old_fib_index);
+}
+
+static void
+lcp_router_table_bind_v6 (ip6_main_t *im, uword opaque, u32 sw_if_index,
+			  u32 new_fib_index, u32 old_fib_index)
+{
+  lcp_router_table_bind (sw_if_index, FIB_PROTOCOL_IP6, new_fib_index,
+			 old_fib_index);
 }
 
 static clib_error_t *
@@ -1583,10 +1666,14 @@ lcp_router_init (vlib_main_t *vm)
   nl_register_vft (&lcp_router_vft);
 
   lcp_itf_pair_vft_t lcp_router_interface_del_vft = {
-    .pair_del_fn = lcp_lcp_router_interface_del_cb,
+    .pair_add_fn = lcp_router_interface_add_cb,
+    .pair_del_fn = lcp_router_interface_del_cb,
   };
 
   lcp_itf_pair_register_vft (&lcp_router_interface_del_vft);
+
+  VNET_SW_INTERFACE_TABLE_BIND_V4_CB (lcp_router_table_bind_v4);
+  VNET_SW_INTERFACE_TABLE_BIND_V6_CB (lcp_router_table_bind_v6);
 
   /*
    * allocate 2 route sources. The low priority source will be for
