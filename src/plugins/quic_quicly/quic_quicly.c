@@ -573,7 +573,6 @@ quic_quicly_on_receive (quicly_stream_t *stream, size_t off, const void *src,
 	      app_worker_rx_notify (app_wrk, stream_session);
 	    }
 	}
-      quic_quicly_ack_rx_data (stream_session);
     }
   else
     {

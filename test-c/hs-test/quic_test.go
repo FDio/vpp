@@ -1,11 +1,14 @@
 package main
 
 import (
+	"regexp"
+
 	. "fd.io/hs-test/infra"
 )
 
 func init() {
-	RegisterVethTests(QuicAlpnMatchTest, QuicAlpnOverlapMatchTest, QuicAlpnServerPriorityMatchTest, QuicAlpnMismatchTest, QuicAlpnEmptyServerListTest, QuicAlpnEmptyClientListTest)
+	RegisterVethTests(QuicAlpnMatchTest, QuicAlpnOverlapMatchTest, QuicAlpnServerPriorityMatchTest, QuicAlpnMismatchTest,
+		QuicAlpnEmptyServerListTest, QuicAlpnEmptyClientListTest, QuicBuiltinEchoTest)
 }
 
 func QuicAlpnMatchTest(s *VethsSuite) {
@@ -98,4 +101,26 @@ func QuicAlpnEmptyClientListTest(s *VethsSuite) {
 	s.AssertNotContains(o, "timeout")
 	// no alpn negotiation
 	s.AssertContains(o, "ALPN selected: none")
+}
+
+func QuicBuiltinEchoTest(s *VethsSuite) {
+	regex := regexp.MustCompile(`(\d+\.\d)-(\d+.\d)\s+(\d+\.\d+)M\s+0\s+\d+\.\d+Mb/s\s+(\d?\.\d+)ms`)
+	serverVpp := s.Containers.ServerVpp.VppInstance
+	clientVpp := s.Containers.ClientVpp.VppInstance
+
+	s.Log(serverVpp.Vppctl("test echo server " +
+		" uri quic://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1))
+
+	o := clientVpp.Vppctl("test echo client run-time 30 report-interval verbose" +
+		" uri quic://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1)
+	s.Log(o)
+	s.AssertContains(o, "Test started")
+	s.AssertContains(o, "Test finished")
+	if regex.MatchString(o) {
+		matches := regex.FindAllStringSubmatch(o, -1)
+		// check if all intervals have non-zero TX bytes
+		s.AssertEqual(30, len(matches))
+	} else {
+		s.AssertEmpty("invalid echo test client output")
+	}
 }
