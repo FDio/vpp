@@ -120,8 +120,8 @@ quic_quicly_notify_app_connect_failed (quic_ctx_t *ctx, session_error_t err)
 static void
 quic_quicly_connection_closed (quic_ctx_t *ctx)
 {
-  QUIC_DBG (2, "QUIC connection %u/%u closed", ctx->c_thread_index,
-	    ctx->c_c_index);
+  QUIC_DBG (2, "QUIC connection %u/%u closed, state %d", ctx->c_thread_index,
+	    ctx->c_c_index, ctx->conn_state);
 
   switch (ctx->conn_state)
     {
@@ -573,7 +573,6 @@ quic_quicly_on_receive (quicly_stream_t *stream, size_t off, const void *src,
 	      app_worker_rx_notify (app_wrk, stream_session);
 	    }
 	}
-      quic_quicly_ack_rx_data (stream_session);
     }
   else
     {
@@ -952,6 +951,8 @@ quic_quicly_proto_on_close (u32 ctx_index, clib_thread_index_t thread_index)
       if (!quicly_stream_has_send_side (quicly_is_client (stream->conn),
 					stream->stream_id))
 	{
+	  QUIC_ERR ("stream doesn't have send side: ctx_index %u, thread %u",
+		    ctx_index, thread_index);
 	  return;
 	}
       quicly_sendstate_shutdown (
@@ -1486,6 +1487,7 @@ quic_quicly_stream_tx (quic_ctx_t *ctx, session_t *stream_session)
       return 0;
     }
   stream_data->app_tx_data_len = max_deq;
+
   return quicly_stream_sync_sendbuf (stream, 1);
 }
 

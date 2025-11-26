@@ -563,7 +563,6 @@ quic_custom_tx_callback (void *s, transport_send_params_t * sp)
     }
 
   QUIC_DBG (3, "Stream TX event");
-  quic_eng_ack_rx_data (stream_session);
   if (PREDICT_FALSE (!quic_eng_stream_tx (ctx, stream_session)))
     return 0;
 
