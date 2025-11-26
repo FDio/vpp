@@ -255,14 +255,22 @@ send_data_chunk (ec_main_t *ecm, ec_session_t *es)
 }
 
 static void
-receive_data_chunk (ec_worker_t *wrk, ec_session_t *es)
+receive_data_chunk (session_t *s)
 {
   ec_main_t *ecm = &ec_main;
-  svm_fifo_t *rx_fifo = es->rx_fifo;
+  ec_session_t *es;
+  ec_worker_t *wrk;
+  svm_fifo_t *rx_fifo;
   session_dgram_pre_hdr_t ph;
   int n_read, i;
-  u8 *rx_buf_start = wrk->rx_buf;
-  u32 test_buf_offset = es->bytes_received;
+  u8 *rx_buf_start;
+  u32 test_buf_offset;
+
+  wrk = ec_worker_get (s->thread_index);
+  es = ec_session_get (wrk, s->opaque);
+  rx_fifo = es->rx_fifo;
+  rx_buf_start = wrk->rx_buf;
+  test_buf_offset = es->bytes_received;
 
   if (ecm->include_buffer_offset)
     {
@@ -357,6 +365,11 @@ receive_data_chunk (ec_worker_t *wrk, ec_session_t *es)
 	}
       es->bytes_to_receive -= n_read;
       es->bytes_received += n_read;
+      if (svm_fifo_needs_deq_ntf (rx_fifo, n_read))
+	{
+	  svm_fifo_clear_deq_ntf (rx_fifo);
+	  session_program_transport_io_evt (s->handle, SESSION_IO_EVT_RX);
+	}
     }
 }
 
@@ -732,7 +745,7 @@ quic_ec_session_connected_callback (u32 app_index, u32 api_context,
   ASSERT (s->listener_handle == SESSION_INVALID_HANDLE);
   ASSERT (!(s->flags & SESSION_F_STREAM));
 
-  ec_dbg ("QUIC Connection handle %d", session_handle (s));
+  ec_dbg ("QUIC Connection handle %lu", session_handle (s));
 
   clib_memset (a, 0, sizeof (*a));
   a->app_index = ecm->app_index;
@@ -743,18 +756,18 @@ quic_ec_session_connected_callback (u32 app_index, u32 api_context,
 
   for (stream_n = 0; stream_n < ecm->quic_streams; stream_n++)
     {
-      ec_dbg ("QUIC opening stream %d", stream_n);
+      ec_dbg ("QUIC opening stream #%d", stream_n);
       es = ec_session_alloc (wrk);
       a->api_context = es->session_index;
       if ((rv = vnet_connect_stream (a)))
 	{
-	  clib_error ("Stream session %d opening failed: %U", stream_n,
-		      format_session_error, rv);
+	  ec_err ("Stream session #%d opening failed: %U", stream_n,
+		  format_session_error, rv);
 	  ecm->run_test = EC_EXITING;
 	  signal_evt_to_cli (EC_CLI_CONNECTS_FAILED);
 	  return -1;
 	}
-      ec_dbg ("QUIC stream %d connected", stream_n);
+      ec_dbg ("QUIC stream #%d connected handle %u", stream_n, a->sh);
       stream_session = session_get_from_handle (a->sh);
       hs_test_app_session_init (es, stream_session);
       es->bytes_to_send = ecm->bytes_to_send;
@@ -997,8 +1010,6 @@ static int
 ec_session_rx_callback (session_t *s)
 {
   ec_main_t *ecm = &ec_main;
-  ec_worker_t *wrk;
-  ec_session_t *es;
 
   if (PREDICT_FALSE (s->opaque == HS_CTRL_HANDLE))
     return ec_ctrl_session_rx_callback (s);
@@ -1009,10 +1020,7 @@ ec_session_rx_callback (session_t *s)
       return -1;
     }
 
-  wrk = ec_worker_get (s->thread_index);
-  es = ec_session_get (wrk, s->opaque);
-
-  receive_data_chunk (wrk, es);
+  receive_data_chunk (s);
 
   if (svm_fifo_max_dequeue_cons (s->rx_fifo))
     session_enqueue_notify (s);
