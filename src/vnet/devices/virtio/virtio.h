@@ -1,18 +1,6 @@
 /*
- *------------------------------------------------------------------
- * Copyright (c) 2017 Cisco and/or its affiliates.
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at:
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *------------------------------------------------------------------
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2017-2025 Cisco and/or its affiliates.
  */
 
 #ifndef _VNET_DEVICES_VIRTIO_VIRTIO_H_
@@ -125,9 +113,6 @@ typedef union
   u32 as_u32;
 } pci_addr_t;
 
-/* forward declaration */
-typedef struct _virtio_pci_func virtio_pci_func_t;
-
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
@@ -201,7 +186,6 @@ typedef struct
       pci_addr_t pci_addr;
       u32 bar_id;
       u32 notify_off_multiplier;
-      u32 is_modern;
       u16 common_offset;
       u16 notify_offset;
       u16 device_offset;
@@ -212,7 +196,6 @@ typedef struct
       u8 status;
     };
   };
-  const virtio_pci_func_t *virtio_pci_func;
   int is_packed;
   u8 consistent_qp : 1;
 } virtio_if_t;
@@ -245,12 +228,8 @@ extern void virtio_show (vlib_main_t *vm, u32 *hw_if_indices, u8 show_descr,
 			 virtio_if_type_t type);
 extern void virtio_set_packet_coalesce (virtio_if_t * vif);
 clib_error_t *virtio_set_packet_buffering (virtio_if_t * vif, u16 size);
-extern void virtio_pci_legacy_notify_queue (vlib_main_t * vm,
-					    virtio_if_t * vif, u16 queue_id,
-					    u16 queue_notify_offset);
-extern void virtio_pci_modern_notify_queue (vlib_main_t * vm,
-					    virtio_if_t * vif, u16 queue_id,
-					    u16 queue_notify_offset);
+extern void virtio_pci_notify_queue (vlib_main_t *vm, virtio_if_t *vif,
+				     u16 queue_id, u16 queue_notify_offset);
 extern void virtio_pre_input_node_enable (vlib_main_t *vm, virtio_if_t *vif);
 extern void virtio_pre_input_node_disable (vlib_main_t *vm, virtio_if_t *vif);
 
@@ -262,12 +241,8 @@ virtio_kick (vlib_main_t *vm, vnet_virtio_vring_t *vring, virtio_if_t *vif)
 {
   if (vif->type == VIRTIO_IF_TYPE_PCI)
     {
-      if (vif->is_modern)
-	virtio_pci_modern_notify_queue (vm, vif, vring->queue_id,
-					vring->queue_notify_offset);
-      else
-	virtio_pci_legacy_notify_queue (vm, vif, vring->queue_id,
-					vring->queue_notify_offset);
+      virtio_pci_notify_queue (vm, vif, vring->queue_id,
+			       vring->queue_notify_offset);
     }
   else
     {
@@ -351,11 +326,3 @@ vnet_virtio_vring_size (u16 queue_size, u32 align)
 };
 
 #endif /* _VNET_DEVICES_VIRTIO_VIRTIO_H_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
