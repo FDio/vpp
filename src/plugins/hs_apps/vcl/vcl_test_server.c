@@ -676,7 +676,7 @@ static void *
 vts_worker_loop (void *arg)
 {
   struct epoll_event ep_evts[VCL_TEST_CFG_MAX_EPOLL_EVENTS];
-  vcl_test_server_main_t *vsm = &vcl_server_main;
+  volatile vcl_test_server_main_t *vsm = &vcl_server_main;
   vcl_test_server_worker_t *wrk = arg;
   vcl_test_session_t *conn;
   int i, rx_bytes, num_ev;
@@ -711,6 +711,7 @@ vts_worker_loop (void *arg)
 		{
 		  vtinf ("ctrl session went away");
 		  vsm->ctrl = 0;
+		  vts_wrk_cleanup_all (wrk);
 		}
 	      vts_session_cleanup (conn);
 	      wrk->nfds--;
@@ -733,7 +734,20 @@ vts_worker_loop (void *arg)
 	    }
 
 	  /* at this point ctrl session must be valid */
-	  ASSERT (vsm->ctrl);
+	  if (!vsm->ctrl)
+	    {
+	      if (ep_evts[i].data.fd < 0)
+		vtwrn ("no ctrl session available, dropping event!");
+	      else
+		{
+		  /* shouldn't be able to reach this, all conns should be
+		   * killed on ctrl session close or test end */
+		  vtwrn ("no ctrl session available, closing connection!");
+		  vts_session_cleanup (conn);
+		  wrk->nfds--;
+		}
+	      continue;
+	    }
 
 	  if (ep_evts[i].data.u32 == VCL_TEST_DATA_LISTENER)
 	    {
