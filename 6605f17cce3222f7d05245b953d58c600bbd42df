@@ -16,6 +16,24 @@
       "message": "Let\u0027s move this in a vcl format function?",
       "revId": "6605f17cce3222f7d05245b953d58c600bbd42df",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bc1dfba9_1b982c84",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 2043,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-11-27T18:59:28Z",
+      "side": 1,
+      "message": "is it fine to have two format functions? one for accepted and second for connected sessions, not sure if there is universal way how to distinguish stream session from connection, we don\u0027t have stream flag as in session layer",
+      "parentUuid": "5de6516b_70b8967a",
+      "revId": "6605f17cce3222f7d05245b953d58c600bbd42df",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
