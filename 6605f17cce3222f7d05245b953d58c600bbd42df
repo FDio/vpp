@@ -34,6 +34,24 @@
       "parentUuid": "5de6516b_70b8967a",
       "revId": "6605f17cce3222f7d05245b953d58c600bbd42df",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bff0916e_ce02b641",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 2043,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-11-27T20:17:27Z",
+      "side": 1,
+      "message": "we can add stream flag, but we should also be able to use multiple functions and then just select the format function in VDBG call",
+      "parentUuid": "bc1dfba9_1b982c84",
+      "revId": "6605f17cce3222f7d05245b953d58c600bbd42df",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
