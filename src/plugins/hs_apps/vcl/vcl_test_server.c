@@ -711,9 +711,13 @@ vts_worker_loop (void *arg)
 		{
 		  vtinf ("ctrl session went away");
 		  vsm->ctrl = 0;
+		  vts_wrk_cleanup_all (wrk);
 		}
-	      vts_session_cleanup (conn);
-	      wrk->nfds--;
+	      else
+		{
+		  vts_session_cleanup (conn);
+		  wrk->nfds--;
+		}
 	      continue;
 	    }
 
@@ -733,7 +737,20 @@ vts_worker_loop (void *arg)
 	    }
 
 	  /* at this point ctrl session must be valid */
-	  ASSERT (vsm->ctrl);
+	  if (!vsm->ctrl)
+	    {
+	      if (ep_evts[i].data.fd < 0)
+		vtwrn ("no ctrl session available, dropping event!");
+	      else
+		{
+		  /* shouldn't be able to reach this, all conns should be
+		   * killed on ctrl session close or test end */
+		  vtwrn ("no ctrl session available, closing connection!");
+		  vts_session_cleanup (conn);
+		  wrk->nfds--;
+		}
+	      continue;
+	    }
 
 	  if (ep_evts[i].data.u32 == VCL_TEST_DATA_LISTENER)
 	    {
