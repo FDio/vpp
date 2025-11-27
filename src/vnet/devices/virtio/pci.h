@@ -1,20 +1,9 @@
 /*
- * Copyright (c) 2018 Cisco and/or its affiliates.
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at:
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2018-2025 Cisco and/or its affiliates.
  */
 
-#ifndef __included_virtio_pci_h__
-#define __included_virtio_pci_h__
+#pragma once
 
 /* VirtIO ABI version, this must match exactly. */
 #define VIRTIO_PCI_ABI_VERSION 0
@@ -235,47 +224,6 @@ typedef struct
   u8 data[1024];
 } virtio_ctrl_msg_t;
 
-typedef struct _virtio_pci_func
-{
-  void (*read_config) (vlib_main_t * vm, virtio_if_t * vif, void *dst,
-		       int len, u32 addr);
-  void (*write_config) (vlib_main_t * vm, virtio_if_t * vif, void *src,
-			int len, u32 addr);
-
-    u64 (*get_device_features) (vlib_main_t * vm, virtio_if_t * vif);
-    u64 (*get_driver_features) (vlib_main_t * vm, virtio_if_t * vif);
-  void (*set_driver_features) (vlib_main_t * vm, virtio_if_t * vif,
-			       u64 features);
-
-    u8 (*get_status) (vlib_main_t * vm, virtio_if_t * vif);
-  void (*set_status) (vlib_main_t * vm, virtio_if_t * vif, u8 status);
-    u8 (*device_reset) (vlib_main_t * vm, virtio_if_t * vif);
-
-    u8 (*get_isr) (vlib_main_t * vm, virtio_if_t * vif);
-
-    u16 (*get_queue_size) (vlib_main_t * vm, virtio_if_t * vif, u16 queue_id);
-  void (*set_queue_size) (vlib_main_t * vm, virtio_if_t * vif, u16 queue_id,
-			  u16 queue_size);
-  u8 (*setup_queue) (vlib_main_t *vm, virtio_if_t *vif, u16 queue_id,
-		     vnet_virtio_vring_t *vring);
-  void (*del_queue) (vlib_main_t * vm, virtio_if_t * vif, u16 queue_id);
-    u16 (*get_queue_notify_off) (vlib_main_t * vm, virtio_if_t * vif,
-				 u16 queue_id);
-  void (*notify_queue) (vlib_main_t * vm, virtio_if_t * vif, u16 queue_id,
-			u16 queue_notify_offset);
-
-    u16 (*set_config_irq) (vlib_main_t * vm, virtio_if_t * vif, u16 vec);
-    u16 (*set_queue_irq) (vlib_main_t * vm, virtio_if_t * vif, u16 vec,
-			  u16 queue_id);
-
-  void (*get_mac) (vlib_main_t * vm, virtio_if_t * vif);
-  void (*set_mac) (vlib_main_t * vm, virtio_if_t * vif);
-    u16 (*get_device_status) (vlib_main_t * vm, virtio_if_t * vif);
-    u16 (*get_max_queue_pairs) (vlib_main_t * vm, virtio_if_t * vif);
-    u16 (*get_mtu) (vlib_main_t * vm, virtio_if_t * vif);
-  void (*device_debug_config_space) (vlib_main_t * vm, virtio_if_t * vif);
-} virtio_pci_func_t;
-
 #define foreach_virtio_flags                                                  \
   _ (GSO, 0)                                                                  \
   _ (CSUM_OFFLOAD, 1)                                                         \
@@ -320,22 +268,43 @@ typedef struct
   u8 *if_name;
 } virtio_pci_create_if_args_t;
 
-extern const virtio_pci_func_t virtio_pci_legacy_func;
-extern const virtio_pci_func_t virtio_pci_modern_func;
+void virtio_pci_read_config (vlib_main_t *vm, virtio_if_t *vif, void *dst,
+			     int len, u32 addr);
+void virtio_pci_write_config (vlib_main_t *vm, virtio_if_t *vif, void *src,
+			      int len, u32 addr);
+u64 virtio_pci_get_device_features (vlib_main_t *vm, virtio_if_t *vif);
+u64 virtio_pci_get_driver_features (vlib_main_t *vm, virtio_if_t *vif);
+void virtio_pci_set_driver_features (vlib_main_t *vm, virtio_if_t *vif,
+				     u64 features);
+u8 virtio_pci_get_status (vlib_main_t *vm, virtio_if_t *vif);
+void virtio_pci_set_status (vlib_main_t *vm, virtio_if_t *vif, u8 status);
+u8 virtio_pci_device_reset (vlib_main_t *vm, virtio_if_t *vif);
+u8 virtio_pci_get_isr (vlib_main_t *vm, virtio_if_t *vif);
+u16 virtio_pci_get_queue_size (vlib_main_t *vm, virtio_if_t *vif,
+			       u16 queue_id);
+void virtio_pci_set_queue_size (vlib_main_t *vm, virtio_if_t *vif,
+				u16 queue_id, u16 queue_size);
+u8 virtio_pci_setup_queue (vlib_main_t *vm, virtio_if_t *vif, u16 queue_id,
+			   vnet_virtio_vring_t *vring);
+void virtio_pci_del_queue (vlib_main_t *vm, virtio_if_t *vif, u16 queue_id);
+u16 virtio_pci_get_queue_notify_off (vlib_main_t *vm, virtio_if_t *vif,
+				     u16 queue_id);
+u16 virtio_pci_set_config_irq (vlib_main_t *vm, virtio_if_t *vif, u16 vec);
+u16 virtio_pci_set_queue_irq (vlib_main_t *vm, virtio_if_t *vif, u16 vec,
+			      u16 queue_id);
+u32 virtio_pci_get_mac (vlib_main_t *vm, virtio_if_t *vif);
+void virtio_pci_set_mac (vlib_main_t *vm, virtio_if_t *vif);
+u16 virtio_pci_get_device_status (vlib_main_t *vm, virtio_if_t *vif);
+u16 virtio_pci_get_max_virtqueue_pairs (vlib_main_t *vm, virtio_if_t *vif);
+u16 virtio_pci_get_mtu (vlib_main_t *vm, virtio_if_t *vif);
+void virtio_pci_notify_queue (vlib_main_t *vm, virtio_if_t *vif, u16 queue_id,
+			      u16 queue_notify_offset);
 
 extern void device_status (vlib_main_t * vm, virtio_if_t * vif);
 void virtio_pci_create_if (vlib_main_t * vm,
 			   virtio_pci_create_if_args_t * args);
 int virtio_pci_delete_if (vlib_main_t * vm, virtio_if_t * ad);
-int virtio_pci_enable_disable_offloads (vlib_main_t * vm, virtio_if_t * vif,
+int virtio_pci_enable_disable_offloads (vlib_main_t *vm, virtio_if_t *vif,
 					int gso_enabled,
 					int checksum_offload_enabled,
 					int offloads_disabled);
-#endif /* __included_virtio_pci_h__ */
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
