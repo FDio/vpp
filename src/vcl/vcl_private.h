@@ -942,6 +942,8 @@ const char *vcl_session_state_str (vcl_session_state_t state);
 u8 *vcl_format_ip4_address (u8 *s, va_list *args);
 u8 *vcl_format_ip6_address (u8 *s, va_list *args);
 u8 *vcl_format_ip46_address (u8 *s, va_list *args);
+u8 *vcl_format_accepted_session (u8 *s, va_list *args);
+u8 *vcl_format_connected_session (u8 *s, va_list *args);
 
 /*
  * Heap management
