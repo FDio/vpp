@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "582e8830_4ced5c01",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 198
+      },
+      "writtenOn": "2025-11-27T14:09:04Z",
+      "side": 1,
+      "message": "I manually verified this fix and the crashes I was seeing are now gone",
+      "revId": "e10fbec0a6bf75e49de2bcacb5ddda97862c12a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
