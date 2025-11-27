@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5de6516b_70b8967a",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 2043,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-11-27T18:46:35Z",
+      "side": 1,
+      "message": "Let\u0027s move this in a vcl format function?",
+      "revId": "6605f17cce3222f7d05245b953d58c600bbd42df",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
