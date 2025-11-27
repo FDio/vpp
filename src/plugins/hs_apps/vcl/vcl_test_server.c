@@ -676,7 +676,7 @@ static void *
 vts_worker_loop (void *arg)
 {
   struct epoll_event ep_evts[VCL_TEST_CFG_MAX_EPOLL_EVENTS];
-  vcl_test_server_main_t *vsm = &vcl_server_main;
+  volatile vcl_test_server_main_t *vsm = &vcl_server_main;
   vcl_test_server_worker_t *wrk = arg;
   vcl_test_session_t *conn;
   int i, rx_bytes, num_ev;
@@ -733,7 +733,11 @@ vts_worker_loop (void *arg)
 	    }
 
 	  /* at this point ctrl session must be valid */
-	  ASSERT (vsm->ctrl);
+	  if (!vsm->ctrl)
+	    {
+	      vtwrn ("no ctrl session available, dropping event!");
+	      continue;
+	    }
 
 	  if (ep_evts[i].data.u32 == VCL_TEST_DATA_LISTENER)
 	    {
