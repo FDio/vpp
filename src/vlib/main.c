@@ -1465,6 +1465,8 @@ process_expired_timers (u32 *v)
       else if (e.type == VLIB_TW_EVENT_T_SCHED_NODE)
 	{
 	  vec_add1 (nm->sched_node_pending, e.index);
+	  vlib_node_runtime_t *nr = vlib_node_get_runtime (vm, e.index);
+	  nr->stop_timer_handle_plus_1 = CLIB_U32_MAX;
 	}
       else
 	ASSERT (0);
@@ -1596,7 +1598,13 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
 		  vlib_node_runtime_t *n;
 		  n = vec_elt_at_index (nm->nodes_by_type[nt], int_num);
 		  if (n->stop_timer_handle_plus_1)
-		  vlib_node_unschedule (vm, n->node_index);
+		    {
+		      /* CLIB_U32_MAX means just expired */
+		      if (n->stop_timer_handle_plus_1 == CLIB_U32_MAX)
+			n->stop_timer_handle_plus_1 = 0;
+		      else
+			vlib_node_unschedule (vm, n->node_index);
+		    }
 		  cpu_time_now = dispatch_node (
 		    vm, n, nt,
 		    /* frame */ 0, VLIB_NODE_DISPATCH_REASON_INTERRUPT,
@@ -1615,14 +1623,14 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
 		{
 		  vlib_node_runtime_t *nr =
 		    vlib_node_get_runtime (vm, n->index);
-		  if (nr->stop_timer_handle_plus_1)
-		  {
-		    nr->stop_timer_handle_plus_1 = 0;
-		    cpu_time_now = dispatch_node (
-		      vm, nr, VLIB_NODE_TYPE_SCHED,
-		      /* frame */ 0, VLIB_NODE_DISPATCH_REASON_SCHED,
-		      cpu_time_now);
-		  }
+		  if (nr->stop_timer_handle_plus_1 == CLIB_U32_MAX)
+		    {
+		      nr->stop_timer_handle_plus_1 = 0;
+		      cpu_time_now = dispatch_node (
+			vm, nr, VLIB_NODE_TYPE_SCHED,
+			/* frame */ 0, VLIB_NODE_DISPATCH_REASON_SCHED,
+			cpu_time_now);
+		    }
 		}
 	    }
 	  vec_reset_length (nm->sched_node_pending);
