@@ -702,9 +702,13 @@ vts_worker_loop (void *arg)
 		{
 		  vtinf ("ctrl session went away");
 		  vsm->ctrl = 0;
+		  vts_wrk_cleanup_all (wrk);
 		}
-	      vts_session_cleanup (conn);
-	      wrk->nfds--;
+	      else
+		{
+		  vts_session_cleanup (conn);
+		  wrk->nfds--;
+		}
 	      continue;
 	    }
 
@@ -723,8 +727,9 @@ vts_worker_loop (void *arg)
 	      continue;
 	    }
 
-	  /* at this point ctrl session must be valid */
-	  ASSERT (vsm->ctrl);
+	  /* drop event if we don't have ctrl session in place first */
+	  if (!vsm->ctrl)
+	    continue;
 
 	  if (ep_evts[i].data.u32 == VCL_TEST_DATA_LISTENER)
 	    {
