@@ -494,22 +494,13 @@ vcl_session_connected_handler (vcl_worker_t * wrk,
   clib_memcpy_fast (&session->transport.lcl_ip, &mp->lcl.ip,
 		    sizeof (session->transport.lcl_ip));
   session->transport.lcl_port = mp->lcl.port;
-
+  VDBG (0, "%U connected", vcl_format_connected_session, session);
   /* Application closed session before connect reply */
   if (vcl_session_has_attr (session, VCL_SESS_ATTR_NONBLOCK)
       && session->session_state == VCL_STATE_CLOSED)
     vcl_send_session_disconnect (wrk, session);
   else
     session->session_state = VCL_STATE_READY;
-
-  VDBG (0, "session %u [0x%llx] connected local: %U:%u remote %U:%u",
-	session->session_index, session->vpp_handle, vcl_format_ip46_address,
-	&session->transport.lcl_ip,
-	session->transport.is_ip4 ? IP46_TYPE_IP4 : IP46_TYPE_IP6,
-	clib_net_to_host_u16 (session->transport.lcl_port),
-	vcl_format_ip46_address, &session->transport.rmt_ip,
-	session->transport.is_ip4 ? IP46_TYPE_IP4 : IP46_TYPE_IP6,
-	clib_net_to_host_u16 (session->transport.rmt_port));
 
   return session_index;
 }
@@ -2030,17 +2021,7 @@ handle:
 			  sizeof (ip6_address_t));
     }
 
-  VDBG (0,
-	"listener %u [0x%llx] accepted %u [0x%llx] peer: %U:%u "
-	"local: %U:%u",
-	ls_handle, ls->vpp_handle, client_session_index,
-	client_session->vpp_handle, vcl_format_ip46_address,
-	&client_session->transport.rmt_ip,
-	client_session->transport.is_ip4 ? IP46_TYPE_IP4 : IP46_TYPE_IP6,
-	clib_net_to_host_u16 (client_session->transport.rmt_port),
-	vcl_format_ip46_address, &client_session->transport.lcl_ip,
-	client_session->transport.is_ip4 ? IP46_TYPE_IP4 : IP46_TYPE_IP6,
-	clib_net_to_host_u16 (client_session->transport.lcl_port));
+  VDBG (0, "accepted %U", vcl_format_accepted_session, client_session, ls);
   vcl_evt (VCL_EVT_ACCEPT, client_session, ls, session_index);
 
   /*
