@@ -72,6 +72,7 @@ plugins {
   plugin nsim_plugin.so { enable }
   plugin mactime_plugin.so { enable }
   plugin arping_plugin.so { enable }
+  plugin tap_plugin.so { enable }
 }
 
 logging {
