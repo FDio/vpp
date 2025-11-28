@@ -19,8 +19,8 @@ typedef enum
 
 static_always_inline void
 virtio_refill_vring_split (vlib_main_t *vm, virtio_if_t *vif,
-			   virtio_if_type_t type, vnet_virtio_vring_t *vring,
-			   const int hdr_sz, u32 node_index)
+			   vnet_virtio_vring_t *vring, const int hdr_sz,
+			   u32 node_index)
 {
   u16 used, next, avail, n_slots, n_refill;
   u16 sz = vring->queue_size;
@@ -61,9 +61,7 @@ more:
        */
       b->current_data = -hdr_sz;
       clib_memset (vlib_buffer_get_current (b), 0, hdr_sz);
-      d->addr = ((type == VIRTIO_IF_TYPE_PCI) ?
-		   vlib_buffer_get_current_pa (vm, b) :
-		   pointer_to_uword (vlib_buffer_get_current (b)));
+      d->addr = vlib_buffer_get_current_pa (vm, b);
       d->len = vlib_buffer_get_default_data_size (vm) + hdr_sz;
       d->flags = VRING_DESC_F_WRITE;
       vring->avail->ring[avail & mask] = next;
@@ -85,8 +83,8 @@ more:
 
 static_always_inline void
 virtio_refill_vring_packed (vlib_main_t *vm, virtio_if_t *vif,
-			    virtio_if_type_t type, vnet_virtio_vring_t *vring,
-			    const int hdr_sz, u32 node_index)
+			    vnet_virtio_vring_t *vring, const int hdr_sz,
+			    u32 node_index)
 {
   u16 used, next, n_slots, n_refill, flags = 0, first_desc_flags;
   u16 sz = vring->queue_size;
@@ -124,9 +122,7 @@ more:
        */
       b->current_data = -hdr_sz;
       clib_memset (vlib_buffer_get_current (b), 0, hdr_sz);
-      d->addr = ((type == VIRTIO_IF_TYPE_PCI) ?
-		   vlib_buffer_get_current_pa (vm, b) :
-		   pointer_to_uword (vlib_buffer_get_current (b)));
+      d->addr = vlib_buffer_get_current_pa (vm, b);
       d->len = vlib_buffer_get_default_data_size (vm) + hdr_sz;
 
       if (vring->avail_wrap_counter)

@@ -33,8 +33,7 @@
 #include <vnet/adj/adj_mcast.h>
 #include <vnet/udp/udp.h>
 #include <vnet/tcp/tcp.h>
-#include <vnet/devices/tap/tap.h>
-#include <vnet/devices/virtio/virtio.h>
+#include <tap/tap.h>
 #include <vnet/devices/netlink.h>
 #include <vlibapi/api_helper_macros.h>
 #include <vnet/ipsec/ipsec_punt.h>
@@ -1023,16 +1022,13 @@ lcp_itf_pair_create (u32 phy_sw_if_index, u8 *host_if_name,
 	.rx_ring_sz = 256,
 	.tx_ring_sz = 256,
 	.host_if_name = host_if_name,
-	.host_namespace = 0,
-	.rv = 0,
-	.error = NULL,
+	.tap_flags = host_if_type == LCP_ITF_HOST_TUN ? TAP_FLAG_TUN : 0,
       };
       ethernet_interface_t *ei;
       u32 host_sw_mtu_size;
 
-      if (host_if_type == LCP_ITF_HOST_TUN)
-	args.tap_flags |= TAP_FLAG_TUN;
-      else
+      /* align with public TAP flag bit for TUN */
+      if (host_if_type != LCP_ITF_HOST_TUN)
 	{
 	  ei = pool_elt_at_index (ethernet_main.interfaces, hw->hw_instance);
 	  mac_address_copy (&args.host_mac_addr, &ei->address.mac);
@@ -1071,13 +1067,6 @@ lcp_itf_pair_create (u32 phy_sw_if_index, u8 *host_if_name,
       vnet_sw_interface_set_mtu (vnm, args.sw_if_index, host_sw_mtu_size);
 
       /*
-       * get the hw and ethernet of the tap
-       */
-      hw = vnet_get_sup_hw_interface (vnm, args.sw_if_index);
-      virtio_main_t *mm = &virtio_main;
-      virtio_if_t *vif = pool_elt_at_index (mm->interfaces, hw->dev_instance);
-
-      /*
        * Leave the TAP permanently up on the VPP side.
        * This TAP will be shared by many sub-interface.
        * Therefore we can't use it to manage admin state.
@@ -1089,7 +1078,7 @@ lcp_itf_pair_create (u32 phy_sw_if_index, u8 *host_if_name,
 	  ei->flags |= ETHERNET_INTERFACE_FLAG_STATUS_L3;
 	}
 
-      vif_index = vif->ifindex;
+      vif_index = tap_get_ifindex (vm, args.sw_if_index);
       host_sw_if_index = args.sw_if_index;
     }
 
