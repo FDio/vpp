@@ -6,6 +6,20 @@ Getting a Patch Reviewed
 
 This section describes how to get FD.io VPP sources reviewed and merged.
 
+Review Guidelines
+=================
+
+Rewievers have limited time to review patches. In order to help them, please consider the following guidelines:
+ - make sure your patch is clear and concise. If your patch is large, consider breaking it into smaller patches.
+ - add the relevant maintainers as reviewer in gerrit. You can look at the `MAINTAINERS <https://git.fd.io/vpp/tree/MAINTAINERS>`_ file.
+ - make sure to answer any question or comment from the reviewers in a timely manner.
+
+If your patch is not reviewed within a reasonable time, consider reaching out to the `VPP mailing list <https://lists.fd.io/g/vpp>`_ asking for a review.
+
+There is an auto-abandon policy for patches that have not seen any activity for 6 months.
+Such patches will be automatically abandoned by a bot.
+Please consider this as a nudge for you to refresh and restore it, and ask for a review again.
+
 Setup
 ========
 
