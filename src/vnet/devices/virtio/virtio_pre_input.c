@@ -11,8 +11,7 @@
 
 static_always_inline uword
 virtio_pre_input_inline (vlib_main_t *vm, vnet_virtio_vring_t *txq_vring,
-			 vnet_hw_if_tx_queue_t *txq, u8 packet_coalesce,
-			 u8 packet_buffering)
+			 vnet_hw_if_tx_queue_t *txq, u8 packet_buffering)
 {
   if (txq->shared_queue)
     {
@@ -20,10 +19,7 @@ virtio_pre_input_inline (vlib_main_t *vm, vnet_virtio_vring_t *txq_vring,
 	{
 	  if (virtio_txq_is_scheduled (txq_vring))
 	    goto unlock;
-	  if (packet_coalesce)
-	    vnet_gro_flow_table_schedule_node_on_dispatcher (
-	      vm, txq, txq_vring->flow_table);
-	  else if (packet_buffering)
+	  if (packet_buffering)
 	    virtio_vring_buffering_schedule_node_on_dispatcher (
 	      vm, txq, txq_vring->buffering);
 	  virtio_txq_set_scheduled (txq_vring);
@@ -33,10 +29,7 @@ virtio_pre_input_inline (vlib_main_t *vm, vnet_virtio_vring_t *txq_vring,
     }
   else
     {
-      if (packet_coalesce)
-	vnet_gro_flow_table_schedule_node_on_dispatcher (
-	  vm, txq, txq_vring->flow_table);
-      else if (packet_buffering)
+      if (packet_buffering)
 	virtio_vring_buffering_schedule_node_on_dispatcher (
 	  vm, txq, txq_vring->buffering);
     }
@@ -53,7 +46,7 @@ virtio_pre_input (vlib_main_t *vm, vlib_node_runtime_t *node,
 
   pool_foreach (vif, vim->interfaces)
     {
-      if (vif->packet_coalesce || vif->packet_buffering)
+      if (vif->packet_buffering)
 	{
 	  vnet_virtio_vring_t *txq_vring;
 	  vec_foreach (txq_vring, vif->txq_vrings)
@@ -62,7 +55,6 @@ virtio_pre_input (vlib_main_t *vm, vlib_node_runtime_t *node,
 		vnet_hw_if_get_tx_queue (vnm, txq_vring->queue_index);
 	      if (clib_bitmap_get (txq->threads, vm->thread_index) == 1)
 		virtio_pre_input_inline (vm, txq_vring, txq,
-					 vif->packet_coalesce,
 					 vif->packet_buffering);
 	    }
 	}
@@ -106,7 +98,7 @@ void
 virtio_pre_input_node_enable (vlib_main_t *vm, virtio_if_t *vif)
 {
   virtio_main_t *vim = &virtio_main;
-  if (vif->packet_coalesce || vif->packet_buffering)
+  if (vif->packet_buffering)
     {
       vim->gro_or_buffering_if_count++;
       if (vim->gro_or_buffering_if_count == 1)
@@ -124,7 +116,7 @@ void
 virtio_pre_input_node_disable (vlib_main_t *vm, virtio_if_t *vif)
 {
   virtio_main_t *vim = &virtio_main;
-  if (vif->packet_coalesce || vif->packet_buffering)
+  if (vif->packet_buffering)
     {
       if (vim->gro_or_buffering_if_count > 0)
 	vim->gro_or_buffering_if_count--;
