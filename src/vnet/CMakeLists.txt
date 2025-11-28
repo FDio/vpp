@@ -932,18 +932,10 @@ list(APPEND VNET_API_FILES
 if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
 list(APPEND VNET_SOURCES
   dev/bus/platform.c
-  devices/tap/cli.c
-  devices/tap/tap.c
-  devices/tap/tapv2_api.c
 )
 
 list(APPEND VNET_HEADERS
   dev/bus/platform.h
-  devices/tap/tap.h
-)
-
-list(APPEND VNET_API_FILES
-  devices/tap/tapv2.api
 )
 endif()
 

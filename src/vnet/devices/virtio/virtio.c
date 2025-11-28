@@ -36,19 +36,6 @@ virtio_main_t virtio_main;
       goto error;                                                             \
     }
 
-static clib_error_t *
-call_read_ready (clib_file_t * uf)
-{
-  vnet_main_t *vnm = vnet_get_main ();
-  u64 b;
-
-  CLIB_UNUSED (ssize_t size) = read (uf->file_descriptor, &b, sizeof (b));
-  vnet_hw_if_rx_queue_set_int_pending (vnm, uf->private_data);
-
-  return 0;
-}
-
-
 clib_error_t *
 virtio_vring_init (vlib_main_t * vm, virtio_if_t * vif, u16 idx, u16 sz)
 {
@@ -185,11 +172,10 @@ virtio_set_packet_coalesce (virtio_if_t * vif)
   vnet_virtio_vring_t *vring;
   vif->packet_coalesce = 1;
   vec_foreach (vring, vif->txq_vrings)
-  {
-    gro_flow_table_init (&vring->flow_table,
-			 vif->type & (VIRTIO_IF_TYPE_TAP |
-				      VIRTIO_IF_TYPE_PCI), hw->tx_node_index);
-  }
+    {
+      gro_flow_table_init (&vring->flow_table, 1 /* is_l2 */,
+			   hw->tx_node_index);
+    }
 }
 
 clib_error_t *
@@ -218,13 +204,11 @@ virtio_vring_fill (vlib_main_t *vm, virtio_if_t *vif,
 		   vnet_virtio_vring_t *vring)
 {
   if (vif->is_packed)
-    virtio_refill_vring_packed (vm, vif, vif->type, vring,
-				vif->virtio_net_hdr_sz,
-				virtio_input_node.index);
+  virtio_refill_vring_packed (vm, vif, vring, vif->virtio_net_hdr_sz,
+			      virtio_input_node.index);
   else
-    virtio_refill_vring_split (vm, vif, vif->type, vring,
-			       vif->virtio_net_hdr_sz,
-			       virtio_input_node.index);
+  virtio_refill_vring_split (vm, vif, vring, vif->virtio_net_hdr_sz,
+			     virtio_input_node.index);
 }
 
 void
@@ -243,32 +227,16 @@ virtio_vring_set_rx_queues (vlib_main_t *vm, virtio_if_t *vif)
 	VNET_HW_IF_RXQ_THREAD_ANY);
       vring->buffer_pool_index = vlib_buffer_pool_get_default_for_numa (
 	vm, vnet_hw_if_get_rx_queue_numa_node (vnm, vring->queue_index));
-      if (vif->type == VIRTIO_IF_TYPE_TAP || vif->type == VIRTIO_IF_TYPE_TUN)
-	{
-
-	  clib_file_t f = {
-	    .read_function = call_read_ready,
-	    .flags = UNIX_FILE_EVENT_EDGE_TRIGGERED,
-	    .file_descriptor = vring->call_fd,
-	    .private_data = vring->queue_index,
-	    .description = format (0, "%U vring %u", format_virtio_device_name,
-				   vif->dev_instance, vring->queue_id),
-	  };
-
-	  vring->call_file_index = clib_file_add (&file_main, &f);
-	  vnet_hw_if_set_rx_queue_file_index (vnm, vring->queue_index,
-					      vring->call_file_index);
-	}
-      else if ((vif->type == VIRTIO_IF_TYPE_PCI) && (vif->support_int_mode) &&
-	       (vif->msix_enabled == VIRTIO_MSIX_ENABLED))
-	{
-	  u32 file_index;
-	  file_index =
-	    vlib_pci_get_msix_file_index (vm, vif->pci_dev_handle, i + 1);
-	  vnet_hw_if_set_rx_queue_file_index (vnm, vring->queue_index,
-					      file_index);
-	  i++;
-	}
+      if ((vif->support_int_mode) &&
+	  (vif->msix_enabled == VIRTIO_MSIX_ENABLED))
+      {
+	u32 file_index;
+	file_index =
+	  vlib_pci_get_msix_file_index (vm, vif->pci_dev_handle, i + 1);
+	vnet_hw_if_set_rx_queue_file_index (vnm, vring->queue_index,
+					    file_index);
+	i++;
+      }
       vnet_hw_if_set_rx_queue_mode (vnm, vring->queue_index,
 				    VNET_HW_IF_RX_MODE_POLLING);
       vring->mode = VNET_HW_IF_RX_MODE_POLLING;
@@ -319,8 +287,7 @@ virtio_set_net_hdr_size (virtio_if_t * vif)
 }
 
 inline void
-virtio_show (vlib_main_t *vm, u32 *hw_if_indices, u8 show_descr,
-	     virtio_if_type_t type)
+virtio_show (vlib_main_t *vm, u32 *hw_if_indices, u8 show_descr)
 {
   u32 i, j, hw_if_index;
   virtio_if_t *vif;
@@ -357,48 +324,18 @@ virtio_show (vlib_main_t *vm, u32 *hw_if_indices, u8 show_descr,
       vnet_hw_interface_t *hi =
 	vnet_get_hw_interface (vnm, hw_if_indices[hw_if_index]);
       vif = pool_elt_at_index (mm->interfaces, hi->dev_instance);
-      if (vif->type != type)
-	continue;
       vlib_cli_output (vm, "Interface: %U (ifindex %d)",
 		       format_vnet_hw_if_index_name, vnm,
 		       hw_if_indices[hw_if_index], vif->hw_if_index);
-      if (type == VIRTIO_IF_TYPE_PCI)
-	{
-	  vlib_cli_output (vm, "  PCI Address: %U", format_vlib_pci_addr,
-			   &vif->pci_addr);
-	}
-      if (type & (VIRTIO_IF_TYPE_TAP | VIRTIO_IF_TYPE_TUN))
-	{
-	  u8 *str = 0;
-	  if (vif->host_if_name)
-	    vlib_cli_output (vm, "  name \"%s\"", vif->host_if_name);
-	  if (vif->net_ns)
-	    vlib_cli_output (vm, "  host-ns \"%s\"", vif->net_ns);
-	  if (vif->host_mtu_size)
-	    vlib_cli_output (vm, "  host-mtu-size \"%d\"",
-			     vif->host_mtu_size);
-	  if (type == VIRTIO_IF_TYPE_TAP)
-	    vlib_cli_output (vm, "  host-mac-addr: %U",
-			     format_ethernet_address, vif->host_mac_addr);
-	  vlib_cli_output (vm, "  host-carrier-up: %u", vif->host_carrier_up);
-
-	  vec_foreach_index (i, vif->vhost_fds)
-	    str = format (str, " %d", vif->vhost_fds[i]);
-	  vlib_cli_output (vm, "  vhost-fds%v", str);
-	  vec_free (str);
-	  vec_foreach_index (i, vif->tap_fds)
-	    str = format (str, " %d", vif->tap_fds[i]);
-	  vlib_cli_output (vm, "  tap-fds%v", str);
-	  vec_free (str);
-	}
+      vlib_cli_output (vm, "  PCI Address: %U", format_vlib_pci_addr,
+		       &vif->pci_addr);
       vlib_cli_output (vm, "  gso-enabled %d", vif->gso_enabled);
       vlib_cli_output (vm, "  csum-enabled %d", vif->csum_offload_enabled);
       vlib_cli_output (vm, "  packet-coalesce %d", vif->packet_coalesce);
       vlib_cli_output (vm, "  packet-buffering %d", vif->packet_buffering);
       vlib_cli_output (vm, "  rss-enabled %d", vif->rss_enabled);
-      if (type & (VIRTIO_IF_TYPE_TAP | VIRTIO_IF_TYPE_PCI))
-	vlib_cli_output (vm, "  Mac Address: %U", format_ethernet_address,
-			 vif->mac_addr);
+      vlib_cli_output (vm, "  Mac Address: %U", format_ethernet_address,
+		       vif->mac_addr);
       vlib_cli_output (vm, "  Device instance: %u", vif->dev_instance);
       vlib_cli_output (vm, "  flags 0x%x", vif->flags);
       flag_entry = (struct feat_struct *) &flags_array;
@@ -409,10 +346,7 @@ virtio_show (vlib_main_t *vm, u32 *hw_if_indices, u8 show_descr,
 			     flag_entry->bit);
 	  flag_entry++;
 	}
-      if (type == VIRTIO_IF_TYPE_PCI)
-	{
-	  device_status (vm, vif);
-	}
+      device_status (vm, vif);
       vlib_cli_output (vm, "  features 0x%lx", vif->features);
       feat_entry = (struct feat_struct *) &feat_array;
       while (feat_entry->str)
@@ -433,7 +367,7 @@ virtio_show (vlib_main_t *vm, u32 *hw_if_indices, u8 show_descr,
 	}
       vlib_cli_output (vm, "  Number of RX Virtqueue  %u", vif->num_rxqs);
       vlib_cli_output (vm, "  Number of TX Virtqueue  %u", vif->num_txqs);
-      if (type == VIRTIO_IF_TYPE_PCI && vif->cxq_vring != NULL &&
+      if (vif->cxq_vring != NULL &&
 	  vif->features & VIRTIO_FEATURE (VIRTIO_NET_F_CTRL_VQ))
 	vlib_cli_output (vm, "  Number of CTRL Virtqueue 1");
       vec_foreach_index (i, vif->rxq_vrings)
@@ -458,15 +392,11 @@ virtio_show (vlib_main_t *vm, u32 *hw_if_indices, u8 show_descr,
 			     vring->used_wrap_counter);
 	  }
 	else
-	  vlib_cli_output (vm,
-			   "    avail.flags 0x%x avail.idx %d used.flags 0x%x used.idx %d",
-			   vring->avail->flags, vring->avail->idx,
-			   vring->used->flags, vring->used->idx);
-	if (type & (VIRTIO_IF_TYPE_TAP | VIRTIO_IF_TYPE_TUN))
-	  {
-	    vlib_cli_output (vm, "    kickfd %d, callfd %d", vring->kick_fd,
-			     vring->call_fd);
-	  }
+	  vlib_cli_output (
+	    vm,
+	    "    avail.flags 0x%x avail.idx %d used.flags 0x%x used.idx %d",
+	    vring->avail->flags, vring->avail->idx, vring->used->flags,
+	    vring->used->idx);
 	if (show_descr)
 	  {
 	    vlib_cli_output (vm, "\n  descriptor table:\n");
@@ -520,15 +450,11 @@ virtio_show (vlib_main_t *vm, u32 *hw_if_indices, u8 show_descr,
 			     vring->used_wrap_counter);
 	  }
 	else
-	  vlib_cli_output (vm,
-			   "    avail.flags 0x%x avail.idx %d used.flags 0x%x used.idx %d",
-			   vring->avail->flags, vring->avail->idx,
-			   vring->used->flags, vring->used->idx);
-	if (type & (VIRTIO_IF_TYPE_TAP | VIRTIO_IF_TYPE_TUN))
-	  {
-	    vlib_cli_output (vm, "    kickfd %d, callfd %d", vring->kick_fd,
-			     vring->call_fd);
-	  }
+	  vlib_cli_output (
+	    vm,
+	    "    avail.flags 0x%x avail.idx %d used.flags 0x%x used.idx %d",
+	    vring->avail->flags, vring->avail->idx, vring->used->flags,
+	    vring->used->idx);
 	if (vring->flow_table)
 	  {
 	    vlib_cli_output (vm, "    %U", gro_flow_table_format,
@@ -570,66 +496,64 @@ virtio_show (vlib_main_t *vm, u32 *hw_if_indices, u8 show_descr,
 	      }
 	  }
       }
-      if (type == VIRTIO_IF_TYPE_PCI && vif->cxq_vring != NULL &&
+      if (vif->cxq_vring != NULL &&
 	  vif->features & VIRTIO_FEATURE (VIRTIO_NET_F_CTRL_VQ))
-	{
-	  vring = vif->cxq_vring;
-	  vlib_cli_output (vm, "  Virtqueue (CTRL) %d", vring->queue_id);
-	  vlib_cli_output (
-	    vm, "    qsz %d, last_used_idx %d, desc_next %d, desc_in_use %d",
-	    vring->queue_size, vring->last_used_idx, vring->desc_next,
-	    vring->desc_in_use);
-	  if (vif->is_packed)
-	    {
-	      vlib_cli_output (vm,
-			       "    driver_event.flags 0x%x driver_event.off_wrap %d device_event.flags 0x%x device_event.off_wrap %d",
-			       vring->driver_event->flags,
-			       vring->driver_event->off_wrap,
-			       vring->device_event->flags,
-			       vring->device_event->off_wrap);
-	      vlib_cli_output (vm,
-			       "    avail wrap counter %d, used wrap counter %d",
-			       vring->avail_wrap_counter,
-			       vring->used_wrap_counter);
-	    }
-	  else
-	    {
-	      vlib_cli_output (vm,
-			       "    avail.flags 0x%x avail.idx %d used.flags 0x%x used.idx %d",
-			       vring->avail->flags, vring->avail->idx,
-			       vring->used->flags, vring->used->idx);
-	    }
-	  if (show_descr)
-	    {
-	      vlib_cli_output (vm, "\n  descriptor table:\n");
-	      vlib_cli_output (vm,
-			       "   id          addr         len  flags  next/id      user_addr\n");
-	      vlib_cli_output (vm,
-			       "  ===== ================== ===== ====== ======== ==================\n");
-	      for (j = 0; j < vring->queue_size; j++)
-		{
-		  if (vif->is_packed)
-		    {
-		      vnet_virtio_vring_packed_desc_t *desc =
-			&vring->packed_desc[j];
-		      vlib_cli_output (vm,
-				       "  %-5d 0x%016lx %-5d 0x%04x %-8d 0x%016lx\n",
-				       j, desc->addr,
-				       desc->len,
-				       desc->flags, desc->id, desc->addr);
-		    }
-		  else
-		    {
-		      vnet_virtio_vring_desc_t *desc = &vring->desc[j];
-		      vlib_cli_output (vm,
-				       "  %-5d 0x%016lx %-5d 0x%04x %-8d 0x%016lx\n",
-				       j, desc->addr,
-				       desc->len,
-				       desc->flags, desc->next, desc->addr);
-		    }
-		}
-	    }
-	}
+      {
+	vring = vif->cxq_vring;
+	vlib_cli_output (vm, "  Virtqueue (CTRL) %d", vring->queue_id);
+	vlib_cli_output (
+	  vm, "    qsz %d, last_used_idx %d, desc_next %d, desc_in_use %d",
+	  vring->queue_size, vring->last_used_idx, vring->desc_next,
+	  vring->desc_in_use);
+	if (vif->is_packed)
+	  {
+	    vlib_cli_output (
+	      vm,
+	      "    driver_event.flags 0x%x driver_event.off_wrap %d "
+	      "device_event.flags 0x%x device_event.off_wrap %d",
+	      vring->driver_event->flags, vring->driver_event->off_wrap,
+	      vring->device_event->flags, vring->device_event->off_wrap);
+	    vlib_cli_output (
+	      vm, "    avail wrap counter %d, used wrap counter %d",
+	      vring->avail_wrap_counter, vring->used_wrap_counter);
+	  }
+	else
+	  {
+	    vlib_cli_output (
+	      vm,
+	      "    avail.flags 0x%x avail.idx %d used.flags 0x%x used.idx %d",
+	      vring->avail->flags, vring->avail->idx, vring->used->flags,
+	      vring->used->idx);
+	  }
+	if (show_descr)
+	  {
+	    vlib_cli_output (vm, "\n  descriptor table:\n");
+	    vlib_cli_output (vm, "   id          addr         len  flags  "
+				 "next/id      user_addr\n");
+	    vlib_cli_output (vm, "  ===== ================== ===== ====== "
+				 "======== ==================\n");
+	    for (j = 0; j < vring->queue_size; j++)
+	      {
+		if (vif->is_packed)
+		  {
+		    vnet_virtio_vring_packed_desc_t *desc =
+		      &vring->packed_desc[j];
+		    vlib_cli_output (
+		      vm, "  %-5d 0x%016lx %-5d 0x%04x %-8d 0x%016lx\n", j,
+		      desc->addr, desc->len, desc->flags, desc->id,
+		      desc->addr);
+		  }
+		else
+		  {
+		    vnet_virtio_vring_desc_t *desc = &vring->desc[j];
+		    vlib_cli_output (
+		      vm, "  %-5d 0x%016lx %-5d 0x%04x %-8d 0x%016lx\n", j,
+		      desc->addr, desc->len, desc->flags, desc->next,
+		      desc->addr);
+		  }
+	      }
+	  }
+      }
     }
 
 }

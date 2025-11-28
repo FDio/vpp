@@ -1,18 +1,6 @@
 /*
- *------------------------------------------------------------------
- * Copyright (c) 2016 Cisco and/or its affiliates.
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at:
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *------------------------------------------------------------------
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2016-2025 Cisco and/or its affiliates.
  */
 #include <stdint.h>
 #include <net/if.h>
@@ -25,9 +13,192 @@
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/ip/format.h>
-#include <vnet/devices/virtio/virtio.h>
-#include <vnet/devices/tap/tap.h>
+#include <tap/internal.h>
 
+static void
+tap_show (vlib_main_t *vm, u32 *hw_if_indices, u8 show_descr, int is_tun)
+{
+  u32 i, j, hw_if_index;
+  tap_if_t *tif;
+  vnet_main_t *vnm = &vnet_main;
+  tap_main_t *tm = &tap_main;
+  vnet_virtio_vring_t *vring;
+  struct feat_struct
+  {
+    u8 bit;
+    char *str;
+  };
+  struct feat_struct *feat_entry;
+
+  static struct feat_struct feat_array[] = {
+#define _(s, b)                                                               \
+  {                                                                           \
+    .str = #s,                                                                \
+    .bit = b,                                                                 \
+  },
+    foreach_virtio_net_features
+#undef _
+    { .str = NULL }
+  };
+
+  struct feat_struct *flag_entry;
+  static struct feat_struct flags_array[] = {
+#define _(b, e, s)                                                            \
+  {                                                                           \
+    .bit = b,                                                                 \
+    .str = s,                                                                 \
+  },
+    foreach_virtio_if_flag
+#undef _
+    { .str = NULL }
+  };
+
+  if (!hw_if_indices)
+    return;
+
+  for (hw_if_index = 0; hw_if_index < vec_len (hw_if_indices); hw_if_index++)
+    {
+      vnet_hw_interface_t *hi =
+	vnet_get_hw_interface (vnm, hw_if_indices[hw_if_index]);
+      tif = pool_elt_at_index (tm->interfaces, hi->dev_instance);
+      vlib_cli_output (vm, "Interface: %U (ifindex %d)",
+		       format_vnet_hw_if_index_name, vnm,
+		       hw_if_indices[hw_if_index], tif->hw_if_index);
+      u8 *str = 0;
+      if (tif->host_if_name)
+	vlib_cli_output (vm, "  name \"%s\"", tif->host_if_name);
+      if (tif->net_ns)
+	vlib_cli_output (vm, "  host-ns \"%s\"", tif->net_ns);
+      if (tif->host_mtu_size)
+	vlib_cli_output (vm, "  host-mtu-size \"%d\"", tif->host_mtu_size);
+      if (!is_tun)
+	vlib_cli_output (vm, "  host-mac-addr: %U", format_ethernet_address,
+			 tif->host_mac_addr);
+      vlib_cli_output (vm, "  host-carrier-up: %u", tif->host_carrier_up);
+
+      vec_foreach_index (i, tif->vhost_fds)
+	str = format (str, " %d", tif->vhost_fds[i]);
+      vlib_cli_output (vm, "  vhost-fds%v", str);
+      vec_free (str);
+      vec_foreach_index (i, tif->tap_fds)
+	str = format (str, " %d", tif->tap_fds[i]);
+      vlib_cli_output (vm, "  tap-fds%v", str);
+      vec_free (str);
+
+      vlib_cli_output (vm, "  gso-enabled %d", tif->gso_enabled);
+      vlib_cli_output (vm, "  csum-enabled %d", tif->csum_offload_enabled);
+      vlib_cli_output (vm, "  packet-coalesce %d", tif->packet_coalesce);
+      vlib_cli_output (vm, "  packet-buffering %d", tif->packet_buffering);
+      vlib_cli_output (vm, "  rss-enabled %d", tif->rss_enabled);
+      if (!is_tun)
+	vlib_cli_output (vm, "  Mac Address: %U", format_ethernet_address,
+			 tif->mac_addr);
+      vlib_cli_output (vm, "  Device instance: %u", tif->dev_instance);
+      vlib_cli_output (vm, "  flags 0x%x", tif->flags);
+      flag_entry = (struct feat_struct *) &flags_array;
+      while (flag_entry->str)
+	{
+	  if (tif->flags & (1ULL << flag_entry->bit))
+	    vlib_cli_output (vm, "    %s (%d)", flag_entry->str,
+			     flag_entry->bit);
+	  flag_entry++;
+	}
+      vlib_cli_output (vm, "  features 0x%lx", tif->features);
+      feat_entry = (struct feat_struct *) &feat_array;
+      while (feat_entry->str)
+	{
+	  if (tif->features & (1ULL << feat_entry->bit))
+	    vlib_cli_output (vm, "    %s (%d)", feat_entry->str,
+			     feat_entry->bit);
+	  feat_entry++;
+	}
+      vlib_cli_output (vm, "  remote-features 0x%lx", tif->remote_features);
+      feat_entry = (struct feat_struct *) &feat_array;
+      while (feat_entry->str)
+	{
+	  if (tif->remote_features & (1ULL << feat_entry->bit))
+	    vlib_cli_output (vm, "    %s (%d)", feat_entry->str,
+			     feat_entry->bit);
+	  feat_entry++;
+	}
+      vlib_cli_output (vm, "  Number of RX Virtqueue  %u", tif->num_rxqs);
+      vlib_cli_output (vm, "  Number of TX Virtqueue  %u", tif->num_txqs);
+      vec_foreach_index (i, tif->rxq_vrings)
+	{
+	  vring = vec_elt_at_index (tif->rxq_vrings, i);
+	  vlib_cli_output (vm, "  Virtqueue (RX) %d", vring->queue_id);
+	  vlib_cli_output (
+	    vm, "    qsz %d, last_used_idx %d, desc_next %d, desc_in_use %d",
+	    vring->queue_size, vring->last_used_idx, vring->desc_next,
+	    vring->desc_in_use);
+	  vlib_cli_output (
+	    vm,
+	    "    avail.flags 0x%x avail.idx %d used.flags 0x%x used.idx %d",
+	    vring->avail->flags, vring->avail->idx, vring->used->flags,
+	    vring->used->idx);
+	  vlib_cli_output (vm, "    kickfd %d, callfd %d", vring->kick_fd,
+			   vring->call_fd);
+	  if (show_descr)
+	    {
+	      vlib_cli_output (vm, "\n  descriptor table:\n");
+	      vlib_cli_output (vm, "   id          addr         len  flags  "
+				   "next/id      user_addr\n");
+	      vlib_cli_output (vm, "  ===== ================== ===== ====== "
+				   "======= ==================\n");
+	      for (j = 0; j < vring->queue_size; j++)
+		{
+		  vnet_virtio_vring_desc_t *desc = &vring->desc[j];
+		  vlib_cli_output (
+		    vm, "  %-5d 0x%016lx %-5d 0x%04x %-8d 0x%016lx\n", j,
+		    desc->addr, desc->len, desc->flags, desc->next,
+		    desc->addr);
+		}
+	    }
+	}
+      vec_foreach_index (i, tif->txq_vrings)
+	{
+	  vring = vec_elt_at_index (tif->txq_vrings, i);
+	  vlib_cli_output (vm, "  Virtqueue (TX) %d", vring->queue_id);
+	  vlib_cli_output (
+	    vm, "    qsz %d, last_used_idx %d, desc_next %d, desc_in_use %d",
+	    vring->queue_size, vring->last_used_idx, vring->desc_next,
+	    vring->desc_in_use);
+	  vlib_cli_output (
+	    vm,
+	    "    avail.flags 0x%x avail.idx %d used.flags 0x%x used.idx %d",
+	    vring->avail->flags, vring->avail->idx, vring->used->flags,
+	    vring->used->idx);
+	  vlib_cli_output (vm, "    kickfd %d, callfd %d", vring->kick_fd,
+			   vring->call_fd);
+	  if (vring->flow_table)
+	    {
+	      vlib_cli_output (vm, "    %U", gro_flow_table_format,
+			       vring->flow_table);
+	    }
+	  if (tif->packet_buffering)
+	    {
+	      vlib_cli_output (vm, "    %U", tap_vring_buffering_format,
+			       vring->buffering);
+	    }
+	  if (show_descr)
+	    {
+	      vlib_cli_output (vm, "\n  descriptor table:\n");
+	      vlib_cli_output (vm, "   id          addr         len  flags  "
+				   "next/id      user_addr\n");
+	      vlib_cli_output (vm, "  ===== ================== ===== ====== "
+				   "======== ==================\n");
+	      for (j = 0; j < vring->queue_size; j++)
+		{
+		  vnet_virtio_vring_desc_t *desc = &vring->desc[j];
+		  vlib_cli_output (
+		    vm, "  %-5d 0x%016lx %-5d 0x%04x %-8d 0x%016lx\n", j,
+		    desc->addr, desc->len, desc->flags, desc->next,
+		    desc->addr);
+		}
+	    }
+	}
+    }
+}
 static clib_error_t *
 tap_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 		       vlib_cli_command_t * cmd)
@@ -275,8 +446,8 @@ static clib_error_t *
 tap_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
 		     vlib_cli_command_t * cmd)
 {
-  virtio_main_t *mm = &virtio_main;
-  virtio_if_t *vif;
+  tap_main_t *tm = &tap_main;
+  tap_if_t *tif;
   vnet_main_t *vnm = vnet_get_main ();
   int show_descr = 0;
   clib_error_t *error = 0;
@@ -299,11 +470,11 @@ tap_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   if (vec_len (hw_if_indices) == 0)
     {
-      pool_foreach (vif, mm->interfaces)
-	  vec_add1 (hw_if_indices, vif->hw_if_index);
+      pool_foreach (tif, tm->interfaces)
+	vec_add1 (hw_if_indices, tif->hw_if_index);
     }
 
-  virtio_show (vm, hw_if_indices, show_descr, VIRTIO_IF_TYPE_TAP);
+  tap_show (vm, hw_if_indices, show_descr, 0);
 
 done:
   vec_free (hw_if_indices);
@@ -320,8 +491,8 @@ static clib_error_t *
 tun_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
 		     vlib_cli_command_t * cmd)
 {
-  virtio_main_t *mm = &virtio_main;
-  virtio_if_t *vif;
+  tap_main_t *tm = &tap_main;
+  tap_if_t *tif;
   vnet_main_t *vnm = vnet_get_main ();
   int show_descr = 0;
   clib_error_t *error = 0;
@@ -344,11 +515,11 @@ tun_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   if (vec_len (hw_if_indices) == 0)
     {
-      pool_foreach (vif, mm->interfaces)
-          vec_add1 (hw_if_indices, vif->hw_if_index);
+      pool_foreach (tif, tm->interfaces)
+	vec_add1 (hw_if_indices, tif->hw_if_index);
     }
 
-  virtio_show (vm, hw_if_indices, show_descr, VIRTIO_IF_TYPE_TUN);
+  tap_show (vm, hw_if_indices, show_descr, 1);
 
 done:
   vec_free (hw_if_indices);
@@ -361,18 +532,10 @@ VLIB_CLI_COMMAND (tun_show_command, static) = {
   .function = tun_show_command_fn,
 };
 
-clib_error_t *
-tap_cli_init (vlib_main_t * vm)
+static clib_error_t *
+tap_cli_init (vlib_main_t *vm)
 {
   return 0;
 }
 
 VLIB_INIT_FUNCTION (tap_cli_init);
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

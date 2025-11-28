@@ -1,20 +1,6 @@
 /*
- *------------------------------------------------------------------
- * tap_api.c - vnet tap device driver API support
- *
- * Copyright (c) 2017 Cisco and/or its affiliates.
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at:
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *------------------------------------------------------------------
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2017-2025 Cisco and/or its affiliates.
  */
 
 #include <vnet/vnet.h>
@@ -26,11 +12,11 @@
 #include <vnet/ip/ip.h>
 #include <vnet/ethernet/ethernet_types_api.h>
 #include <vnet/ip/ip_types_api.h>
-#include <vnet/devices/tap/tap.h>
+#include <tap/internal.h>
 
 #include <vnet/format_fns.h>
-#include <vnet/devices/tap/tapv2.api_enum.h>
-#include <vnet/devices/tap/tapv2.api_types.h>
+#include <tap/tapv2.api_enum.h>
+#include <tap/tapv2.api_types.h>
 
 #define REPLY_MSG_ID_BASE tap_main.msg_id_base
 #include <vlibapi/api_helper_macros.h>
@@ -109,7 +95,7 @@ vl_api_tap_create_v3_t_handler (vl_api_tap_create_v3_t *mp)
       ap->host_mtu_set = 1;
     }
 
-  ap->tap_flags = mp->tap_flags;
+  ap->tap_flags = (int) mp->tap_flags;
 
   tap_create_if (vm, ap);
 
@@ -352,7 +338,7 @@ vl_api_sw_interface_tap_v2_dump_t_handler (vl_api_sw_interface_tap_v2_dump_t *
   vec_free (tapifs);
 }
 
-#include <vnet/devices/tap/tapv2.api.c>
+#include <tap/tapv2.api.c>
 static clib_error_t *
 tapv2_api_hookup (vlib_main_t * vm)
 {
@@ -365,11 +351,3 @@ tapv2_api_hookup (vlib_main_t * vm)
 }
 
 VLIB_API_INIT_FUNCTION (tapv2_api_hookup);
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
