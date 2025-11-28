@@ -28,6 +28,8 @@ const containerTopologyDir string = "topo-containers/"
 const HttpCapsuleTypeDatagram = uint64(0)
 const iperfLogFileName = "iperf.log"
 const redisLogFileName = "redis-server.log"
+const vclTestSrvFilename = "vcl_test_server.log"
+const vclTestClnFilename = "vcl_test_client.log"
 const h2loadLogFileName = "h2load.tsv"
 
 type Stanza struct {
@@ -249,6 +251,36 @@ func (s *HstSuite) H2loadLogFileName(h2loadContainer *Container) string {
 func (s *HstSuite) CollectH2loadLogs(h2loadContainer *Container) {
 	targetDir := h2loadContainer.Suite.getLogDirPath()
 	source := h2loadContainer.GetHostWorkDir() + "/" + h2loadContainer.Name + "-" + h2loadLogFileName
+	cmd := exec.Command("cp", "-t", targetDir, source)
+	s.Log(cmd.String())
+	err := cmd.Run()
+	if err != nil {
+		s.Log(fmt.Sprint(err))
+	}
+}
+
+func (s *HstSuite) VclTestSrvLogFileName(vclTestSrvContainer *Container) string {
+	return vclTestSrvContainer.GetContainerWorkDir() + "/" + vclTestSrvFilename
+}
+
+func (s *HstSuite) CollectVclTestSrvLogs(vclTestSrvContainer *Container) {
+	targetDir := vclTestSrvContainer.Suite.getLogDirPath()
+	source := vclTestSrvContainer.GetHostWorkDir() + "/" + vclTestSrvFilename
+	cmd := exec.Command("cp", "-t", targetDir, source)
+	s.Log(cmd.String())
+	err := cmd.Run()
+	if err != nil {
+		s.Log(fmt.Sprint(err))
+	}
+}
+
+func (s *HstSuite) VclTestClnLogFileName(vclTestClnContainer *Container) string {
+	return vclTestClnContainer.GetContainerWorkDir() + "/" + vclTestClnFilename
+}
+
+func (s *HstSuite) CollectVclTestClnLogs(vclTestClnContainer *Container) {
+	targetDir := vclTestClnContainer.Suite.getLogDirPath()
+	source := vclTestClnContainer.GetHostWorkDir() + "/" + vclTestClnFilename
 	cmd := exec.Command("cp", "-t", targetDir, source)
 	s.Log(cmd.String())
 	err := cmd.Run()
