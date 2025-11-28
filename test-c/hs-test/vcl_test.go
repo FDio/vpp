@@ -111,21 +111,22 @@ func testVclEcho(s *VethsSuite, proto string, extraArgs ...string) {
 
 	srvAppCont.CreateFile("/vcl.conf", getVclConfig(srvVppCont))
 	srvAppCont.AddEnvVar("VCL_CONFIG", "/vcl.conf")
-	vclSrvCmd := fmt.Sprintf("sh -c \"vcl_test_server -p %s -B %s %s > %s/vcl_test_server.log 2>&1\"",
-		proto, serverVethAddress, s.Ports.Port1, srvAppCont.GetContainerWorkDir())
+	vclSrvCmd := fmt.Sprintf("sh -c \"stdbuf -oL -eL vcl_test_server -p %s -B %s %s > %s 2>&1\"",
+		proto, serverVethAddress, s.Ports.Port1, s.VclTestSrvLogFileName(srvAppCont))
 
 	srvAppCont.ExecServer(true, vclSrvCmd)
 
 	echoClnContainer := s.GetTransientContainerByName("client-app")
 	echoClnContainer.CreateFile("/vcl.conf", getVclConfig(echoClnContainer))
 
-	testClientCommand := "vcl_test_client -X " + extras + "-p " + proto + " " + serverVethAddress + " " + s.Ports.Port1
+	testClientCommand := fmt.Sprintf("sh -c \"stdbuf -oL -eL vcl_test_client -X %s-p %s %s %s 2>&1 | tee %s\"",
+		extras, proto, serverVethAddress, s.Ports.Port1, s.VclTestClnLogFileName(echoClnContainer))
 	echoClnContainer.AddEnvVar("VCL_CONFIG", "/vcl.conf")
 
 	o, err := echoClnContainer.Exec(true, testClientCommand)
 	s.Log("****** Client output:\n%s\n******", o)
 
-	oSrv, errSrv := srvAppCont.Exec(false, "cat %s/vcl_test_server.log", srvAppCont.GetContainerWorkDir())
+	oSrv, errSrv := srvAppCont.Exec(false, "cat %s", s.VclTestSrvLogFileName(srvAppCont))
 	s.Log("****** Server output:\n%s\n******", oSrv)
 
 	s.AssertNil(err, o)

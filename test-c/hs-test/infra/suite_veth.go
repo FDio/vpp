@@ -93,6 +93,20 @@ func (s *VethsSuite) SetupTest() {
 	}
 }
 
+func (s *VethsSuite) TeardownTest() {
+	defer s.HstSuite.TeardownTest()
+	clientVpp := s.Containers.ClientVpp.VppInstance
+	serverVpp := s.Containers.ServerVpp.VppInstance
+	if CurrentSpecReport().Failed() {
+		s.CollectVclTestSrvLogs(s.Containers.ServerApp)
+		s.CollectVclTestClnLogs(s.Containers.ClientApp)
+		s.Log(clientVpp.Vppctl("show session verbose 2"))
+		s.Log(clientVpp.Vppctl("show error"))
+		s.Log(serverVpp.Vppctl("show session verbose 2"))
+		s.Log(serverVpp.Vppctl("show error"))
+	}
+}
+
 func (s *VethsSuite) SetupServerVpp() {
 	serverVpp := s.Containers.ServerVpp.VppInstance
 	s.AssertNil(serverVpp.Start())
