@@ -2045,6 +2045,8 @@ def generate_c_test2_boilerplate(services, defines, module, stream):
     )
     # write('__attribute__((constructor))')
     write("clib_error_t *\n")
+    write("vat2_register_plugin (void);\n")
+    write("clib_error_t *\n")
     write("vat2_register_plugin (void) {\n")
     for s in services:
         if s.reply not in define_hash:
