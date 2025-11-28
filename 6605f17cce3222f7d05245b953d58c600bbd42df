@@ -52,6 +52,24 @@
       "parentUuid": "bc1dfba9_1b982c84",
       "revId": "6605f17cce3222f7d05245b953d58c600bbd42df",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b6cb2917_3d70d98b",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 2043,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-11-28T16:51:43Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "bff0916e_ce02b641",
+      "revId": "6605f17cce3222f7d05245b953d58c600bbd42df",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
