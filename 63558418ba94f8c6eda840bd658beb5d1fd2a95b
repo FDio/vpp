@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cd5be0b4_cf22e7b0",
+        "filename": "src/plugins/linux-cp/lcp_router.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1599,
+      "author": {
+        "id": 3240
+      },
+      "writtenOn": "2025-11-28T03:22:25Z",
+      "side": 1,
+      "message": "Wouldn\u0027t del-dynamic-on-link-down/del-static-on-link-down linux-cp parameters achieve the same result? I.e. https://github.com/FDio/vpp/blob/c857da7415d31ea838159b0eb36751516c5cf84f/src/plugins/linux-cp/lcp_router.c#L516 this comment",
+      "revId": "63558418ba94f8c6eda840bd658beb5d1fd2a95b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
