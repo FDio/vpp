@@ -90,6 +90,13 @@ clib_spinlock_free (clib_spinlock_t * p)
       }                                                                       \
   }
 
+#define CLIB_SPINLOCK_TRYLOCK(x)                                              \
+  ({                                                                          \
+    typeof (x) __free = 0;                                                    \
+    __atomic_compare_exchange_n (&(x), &__free, 1, 0, __ATOMIC_ACQUIRE,       \
+				 __ATOMIC_RELAXED);                           \
+  })
+
 #define CLIB_SPINLOCK_UNLOCK(x) __atomic_store_n (&(x), 0, __ATOMIC_RELEASE)
 
 static_always_inline void
@@ -102,10 +109,10 @@ clib_spinlock_lock (clib_spinlock_t * p)
 static_always_inline int
 clib_spinlock_trylock (clib_spinlock_t * p)
 {
-  if (PREDICT_FALSE (CLIB_SPINLOCK_IS_LOCKED (p)))
-    return 0;
-  clib_spinlock_lock (p);
-  return 1;
+  int rv = CLIB_SPINLOCK_TRYLOCK ((*p)->lock);
+  if (rv)
+    CLIB_LOCK_DBG (p);
+  return rv;
 }
 
 static_always_inline void

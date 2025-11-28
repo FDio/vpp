@@ -117,11 +117,11 @@ F:	src/plugins/af_packet
 
 VNET TAP Drivers
 I:	tap
-Y:	src/vnet/devices/tap/FEATURE.yaml
+Y:	src/plugins/tap/FEATURE.yaml
 M:	Damjan Marion <damarion@cisco.com>
 M:	Steven Luong <sluong@cisco.com>
 M:	Mohsin Kazmi <mohsin.kazmi14@gmail.com>
-F:	src/vnet/devices/tap/
+F:	src/plugins/tap/
 
 VNET Vhost User Driver
 I:	vhost
