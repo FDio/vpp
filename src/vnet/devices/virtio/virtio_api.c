@@ -204,12 +204,9 @@ static void
     return;
 
   pool_foreach (vif, vmx->interfaces)
-  {
-    if (vif->type == VIRTIO_IF_TYPE_PCI)
-      {
-	virtio_pci_send_sw_interface_details (am, reg, vif, mp->context);
-      }
-  }
+    {
+      virtio_pci_send_sw_interface_details (am, reg, vif, mp->context);
+    }
 }
 
 #include <vnet/devices/virtio/virtio.api.c>

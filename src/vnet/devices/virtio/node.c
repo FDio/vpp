@@ -50,44 +50,28 @@ format_virtio_input_trace (u8 * s, va_list * args)
 
 static_always_inline void
 virtio_needs_csum (vlib_buffer_t *b0, vnet_virtio_net_hdr_v1_t *hdr,
-		   u8 *l4_proto, u8 *l4_hdr_sz, virtio_if_type_t type)
+		   u8 *l4_proto, u8 *l4_hdr_sz)
 {
   if (hdr->flags & VIRTIO_NET_HDR_F_NEEDS_CSUM)
     {
       u16 ethertype = 0, l2hdr_sz = 0;
       vnet_buffer_oflags_t oflags = 0;
 
-      if (type == VIRTIO_IF_TYPE_TUN)
-	{
-	  switch (b0->data[0] & 0xf0)
-	    {
-	    case 0x40:
-	      ethertype = ETHERNET_TYPE_IP4;
-	      break;
-	    case 0x60:
-	      ethertype = ETHERNET_TYPE_IP6;
-	      break;
-	    }
-	}
-      else
-	{
-	  ethernet_header_t *eh = (ethernet_header_t *) b0->data;
-	  ethertype = clib_net_to_host_u16 (eh->type);
-	  l2hdr_sz = sizeof (ethernet_header_t);
+      ethernet_header_t *eh = (ethernet_header_t *) b0->data;
+      ethertype = clib_net_to_host_u16 (eh->type);
+      l2hdr_sz = sizeof (ethernet_header_t);
 
-	  if (ethernet_frame_is_tagged (ethertype))
-	    {
-	      ethernet_vlan_header_t *vlan =
-		(ethernet_vlan_header_t *) (eh + 1);
+      if (ethernet_frame_is_tagged (ethertype))
+	{
+	  ethernet_vlan_header_t *vlan = (ethernet_vlan_header_t *) (eh + 1);
 
+	  ethertype = clib_net_to_host_u16 (vlan->type);
+	  l2hdr_sz += sizeof (*vlan);
+	  if (ethertype == ETHERNET_TYPE_VLAN)
+	    {
+	      vlan++;
 	      ethertype = clib_net_to_host_u16 (vlan->type);
 	      l2hdr_sz += sizeof (*vlan);
-	      if (ethertype == ETHERNET_TYPE_VLAN)
-		{
-		  vlan++;
-		  ethertype = clib_net_to_host_u16 (vlan->type);
-		  l2hdr_sz += sizeof (*vlan);
-		}
 	    }
 	}
 
@@ -233,8 +217,7 @@ virtio_device_input_ethernet (vlib_main_t *vm, vlib_node_runtime_t *node,
 static_always_inline uword
 virtio_device_input_gso_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 				vlib_frame_t *frame, virtio_if_t *vif,
-				vnet_virtio_vring_t *vring,
-				virtio_if_type_t type, int gso_enabled,
+				vnet_virtio_vring_t *vring, int gso_enabled,
 				int checksum_offload_enabled, int packed)
 {
   vnet_main_t *vnm = vnet_get_main ();
@@ -268,19 +251,11 @@ virtio_device_input_gso_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 			1);
     }
 
-  if (type == VIRTIO_IF_TYPE_TUN)
-    {
-      next_index = VNET_DEVICE_INPUT_NEXT_IP4_INPUT;
-    }
-  else
-    {
-      next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
-      if (PREDICT_FALSE (vif->per_interface_next_index != ~0))
-	next_index = vif->per_interface_next_index;
+  next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
+  if (PREDICT_FALSE (vif->per_interface_next_index != ~0))
+    next_index = vif->per_interface_next_index;
 
-      /* only for l2, redirect if feature path enabled */
-      vnet_feature_start_device_input (vif->sw_if_index, &next_index, &bt);
-    }
+  vnet_feature_start_device_input (vif->sw_if_index, &next_index, &bt);
 
   while (n_left)
     {
@@ -320,7 +295,7 @@ virtio_device_input_gso_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  b0->current_length = len;
 
 	  if (checksum_offload_enabled)
-	    virtio_needs_csum (b0, hdr, &l4_proto, &l4_hdr_sz, type);
+	    virtio_needs_csum (b0, hdr, &l4_proto, &l4_hdr_sz);
 
 	  if (gso_enabled)
 	    fill_gso_buffer_flags (b0, hdr, l4_proto, l4_hdr_sz);
@@ -361,31 +336,10 @@ virtio_device_input_gso_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      len += b0->total_length_not_including_first_buffer;
 	    }
 
-	  if (type == VIRTIO_IF_TYPE_TUN)
-	    {
-	      switch (b0->data[0] & 0xf0)
-		{
-		case 0x40:
-		  next0 = VNET_DEVICE_INPUT_NEXT_IP4_INPUT;
-		  break;
-		case 0x60:
-		  next0 = VNET_DEVICE_INPUT_NEXT_IP6_INPUT;
-		  break;
-		default:
-		  next0 = VNET_DEVICE_INPUT_NEXT_DROP;
-		  break;
-		}
-
-	      if (PREDICT_FALSE (vif->per_interface_next_index != ~0))
-		next0 = vif->per_interface_next_index;
-	    }
-	  else
-	    {
-	      /* copy feature arc data from template */
-	      b0->current_config_index = bt.current_config_index;
-	      vnet_buffer (b0)->feature_arc_index =
-		vnet_buffer (&bt)->feature_arc_index;
-	    }
+	  /* copy feature arc data from template */
+	  b0->current_config_index = bt.current_config_index;
+	  vnet_buffer (b0)->feature_arc_index =
+	    vnet_buffer (&bt)->feature_arc_index;
 
 	  /* trace */
 	  if (PREDICT_FALSE (n_trace > 0 && vlib_trace_buffer (vm, node, next0, b0,	/* follow_chain */
@@ -408,11 +362,8 @@ virtio_device_input_gso_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  n_left--;
 	  increment_last (last, packed, vring);
 
-	  /* only tun interfaces may have different next index */
-	  if (type == VIRTIO_IF_TYPE_TUN)
-	    vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
-					     n_left_to_next, bi0, next0);
-
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, next0);
 	  /* next packet */
 	  n_rx_packets++;
 	  n_rx_bytes += len;
@@ -433,9 +384,8 @@ virtio_device_input_gso_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 }
 
 static_always_inline uword
-virtio_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
-			    vlib_frame_t * frame, virtio_if_t * vif, u16 qid,
-			    virtio_if_type_t type)
+virtio_device_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+			    vlib_frame_t *frame, virtio_if_t *vif, u16 qid)
 {
   vnet_virtio_vring_t *vring = vec_elt_at_index (vif->rxq_vrings, qid);
   const int hdr_sz = vif->virtio_net_hdr_sz;
@@ -444,38 +394,30 @@ virtio_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   if (vif->is_packed)
     {
       if (vif->gso_enabled)
-	rv =
-	  virtio_device_input_gso_inline (vm, node, frame, vif, vring, type,
-					  1, 1, 1);
+	rv = virtio_device_input_gso_inline (vm, node, frame, vif, vring, 1, 1,
+					     1);
       else if (vif->csum_offload_enabled)
-	rv =
-	  virtio_device_input_gso_inline (vm, node, frame, vif, vring, type,
-					  0, 1, 1);
+	rv = virtio_device_input_gso_inline (vm, node, frame, vif, vring, 0, 1,
+					     1);
       else
-	rv =
-	  virtio_device_input_gso_inline (vm, node, frame, vif, vring, type,
-					  0, 0, 1);
+	rv = virtio_device_input_gso_inline (vm, node, frame, vif, vring, 0, 0,
+					     1);
 
-      virtio_refill_vring_packed (vm, vif, type, vring, hdr_sz,
-				  node->node_index);
+      virtio_refill_vring_packed (vm, vif, vring, hdr_sz, node->node_index);
     }
   else
     {
       if (vif->gso_enabled)
-	rv =
-	  virtio_device_input_gso_inline (vm, node, frame, vif, vring, type,
-					  1, 1, 0);
+	rv = virtio_device_input_gso_inline (vm, node, frame, vif, vring, 1, 1,
+					     0);
       else if (vif->csum_offload_enabled)
-	rv =
-	  virtio_device_input_gso_inline (vm, node, frame, vif, vring, type,
-					  0, 1, 0);
+	rv = virtio_device_input_gso_inline (vm, node, frame, vif, vring, 0, 1,
+					     0);
       else
-	rv =
-	  virtio_device_input_gso_inline (vm, node, frame, vif, vring, type,
-					  0, 0, 0);
+	rv = virtio_device_input_gso_inline (vm, node, frame, vif, vring, 0, 0,
+					     0);
 
-      virtio_refill_vring_split (vm, vif, type, vring, hdr_sz,
-				 node->node_index);
+      virtio_refill_vring_split (vm, vif, vring, hdr_sz, node->node_index);
     }
   return rv;
 }
@@ -495,15 +437,8 @@ VLIB_NODE_FN (virtio_input_node) (vlib_main_t * vm,
       vif = vec_elt_at_index (vim->interfaces, p->dev_instance);
       if (vif->flags & VIRTIO_IF_FLAG_ADMIN_UP)
 	{
-	  if (vif->type == VIRTIO_IF_TYPE_TAP)
-	    n_rx += virtio_device_input_inline (
-	      vm, node, frame, vif, p->queue_id, VIRTIO_IF_TYPE_TAP);
-	  else if (vif->type == VIRTIO_IF_TYPE_PCI)
-	    n_rx += virtio_device_input_inline (
-	      vm, node, frame, vif, p->queue_id, VIRTIO_IF_TYPE_PCI);
-	  else if (vif->type == VIRTIO_IF_TYPE_TUN)
-	    n_rx += virtio_device_input_inline (
-	      vm, node, frame, vif, p->queue_id, VIRTIO_IF_TYPE_TUN);
+	  n_rx +=
+	    virtio_device_input_inline (vm, node, frame, vif, p->queue_id);
 	}
     }
 
