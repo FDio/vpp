@@ -1,18 +1,6 @@
 /*
- *------------------------------------------------------------------
- * Copyright (c) 2017 Cisco and/or its affiliates.
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at:
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *------------------------------------------------------------------
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2017-2025 Cisco and/or its affiliates.
  */
 
 #define _GNU_SOURCE
@@ -40,8 +28,7 @@
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/devices/netlink.h>
-#include <vnet/devices/virtio/virtio.h>
-#include <vnet/devices/tap/tap.h>
+#include <tap/internal.h>
 
 tap_main_t tap_main;
 
@@ -88,21 +75,21 @@ virtio_eth_set_max_frame_size (vnet_main_t *vnm, vnet_hw_interface_t *hi,
 #define TAP_MAX_INSTANCE 8192
 
 static void
-tap_free (vlib_main_t * vm, virtio_if_t * vif)
+tap_free (vlib_main_t *vm, tap_virtio_if_t *vif)
 {
-  virtio_main_t *mm = &virtio_main;
+  tap_virtio_main_t *mm = &tap_virtio_main;
   tap_main_t *tm = &tap_main;
   clib_error_t *err = 0;
   int i;
 
-  virtio_pre_input_node_disable (vm, vif);
+  tap_virtio_pre_input_node_disable (vm, vif);
 
   vec_foreach_index (i, vif->vhost_fds) if (vif->vhost_fds[i] != -1)
     close (vif->vhost_fds[i]);
   vec_foreach_index (i, vif->rxq_vrings)
-    virtio_vring_free_rx (vm, vif, RX_QUEUE (i));
+    tap_virtio_vring_free_rx (vm, vif, RX_QUEUE (i));
   vec_foreach_index (i, vif->txq_vrings)
-    virtio_vring_free_tx (vm, vif, TX_QUEUE (i));
+    tap_virtio_vring_free_tx (vm, vif, TX_QUEUE (i));
 
   if (vif->tap_fds)
     {
@@ -127,13 +114,13 @@ error:
   pool_put (mm->interfaces, vif);
 }
 
-void
-tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
+__clib_export void
+tap_create_if (vlib_main_t *vm, tap_create_if_args_t *args)
 {
   vlib_thread_main_t *thm = vlib_get_thread_main ();
   vlib_physmem_main_t *vpm = &vm->physmem_main;
   vnet_main_t *vnm = vnet_get_main ();
-  virtio_main_t *vim = &virtio_main;
+  tap_virtio_main_t *vim = &tap_virtio_main;
   tap_main_t *tm = &tap_main;
   vnet_sw_interface_t *sw;
   vnet_hw_interface_t *hw;
@@ -144,7 +131,7 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   struct ifreq get_ifr = {.ifr_flags = 0 };
   size_t hdrsz;
   vhost_memory_t *vhost_mem = 0;
-  virtio_if_t *vif = 0;
+  tap_virtio_if_t *vif = 0;
   clib_error_t *err = 0;
   unsigned int tap_features;
   int tfd = -1, qfd = -1, vfd = -1, nfd = -1;
@@ -379,14 +366,14 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
 	  goto error;
 	}
       vec_add1 (vif->vhost_fds, vfd);
-      virtio_log_debug (vif, "open vhost-net fd %d qpair %u", vfd, i);
+      tap_virtio_log_debug (vif, "open vhost-net fd %d qpair %u", vfd, i);
       _IOCTL (vfd, VHOST_SET_OWNER, 0);
-      virtio_log_debug (vif, "VHOST_SET_OWNER: fd %u", vfd);
+      tap_virtio_log_debug (vif, "VHOST_SET_OWNER: fd %u", vfd);
     }
 
   _IOCTL (vif->vhost_fds[0], VHOST_GET_FEATURES, &vif->remote_features);
-  virtio_log_debug (vif, "VHOST_GET_FEATURES: features 0x%lx",
-		    vif->remote_features);
+  tap_virtio_log_debug (vif, "VHOST_GET_FEATURES: features 0x%lx",
+			vif->remote_features);
 
   if ((vif->remote_features & VIRTIO_FEATURE (VIRTIO_NET_F_MRG_RXBUF)) == 0)
     {
@@ -417,7 +404,7 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   vif->features |= VIRTIO_FEATURE (VIRTIO_F_VERSION_1);
   vif->features |= VIRTIO_FEATURE (VIRTIO_RING_F_INDIRECT_DESC);
 
-  virtio_set_net_hdr_size (vif);
+  tap_virtio_set_net_hdr_size (vif);
 
   if (vif->type == VIRTIO_IF_TYPE_TAP)
     {
@@ -532,17 +519,15 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
 
   for (i = 0; i < num_vhost_queues; i++)
     {
-      if (i < vif->num_rxqs && (args->error =
-				virtio_vring_init (vm, vif, RX_QUEUE (i),
-						   args->rx_ring_sz)))
+      if (i < vif->num_rxqs && (args->error = tap_virtio_vring_init (
+				  vm, vif, RX_QUEUE (i), args->rx_ring_sz)))
 	{
 	  args->rv = VNET_API_ERROR_INIT_FAILED;
 	  goto error;
 	}
 
-      if (i < vif->num_txqs && (args->error =
-				virtio_vring_init (vm, vif, TX_QUEUE (i),
-						   args->tx_ring_sz)))
+      if (i < vif->num_txqs && (args->error = tap_virtio_vring_init (
+				  vm, vif, TX_QUEUE (i), args->tx_ring_sz)))
 	{
 	  args->rv = VNET_API_ERROR_INIT_FAILED;
 	  goto error;
@@ -560,21 +545,21 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
     vhost_mem->regions[0].guest_phys_addr;
 
   for (i = 0; i < vhost_mem->nregions; i++)
-    virtio_log_debug (vif, "memtable region %u memory_size 0x%lx "
-		      "guest_phys_addr 0x%lx userspace_addr 0x%lx", i,
-		      vhost_mem->regions[0].memory_size,
-		      vhost_mem->regions[0].guest_phys_addr,
-		      vhost_mem->regions[0].userspace_addr);
-
+    tap_virtio_log_debug (vif,
+			  "memtable region %u memory_size 0x%lx "
+			  "guest_phys_addr 0x%lx userspace_addr 0x%lx",
+			  i, vhost_mem->regions[0].memory_size,
+			  vhost_mem->regions[0].guest_phys_addr,
+			  vhost_mem->regions[0].userspace_addr);
 
   for (i = 0; i < num_vhost_queues; i++)
     {
       int fd = vif->vhost_fds[i];
       _IOCTL (fd, VHOST_SET_FEATURES, &vif->features);
-      virtio_log_debug (vif, "VHOST_SET_FEATURES: fd %u features 0x%lx",
-			fd, vif->features);
+      tap_virtio_log_debug (vif, "VHOST_SET_FEATURES: fd %u features 0x%lx",
+			    fd, vif->features);
       _IOCTL (fd, VHOST_SET_MEM_TABLE, vhost_mem);
-      virtio_log_debug (vif, "VHOST_SET_MEM_TABLE: fd %u", fd);
+      tap_virtio_log_debug (vif, "VHOST_SET_MEM_TABLE: fd %u", fd);
     }
 
   /* finish initializing queue pair */
@@ -602,8 +587,8 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
 
       addr.index = state.index = file.index = vring->queue_id & 1;
       state.num = vring->queue_size;
-      virtio_log_debug (vif, "VHOST_SET_VRING_NUM fd %d index %u num %u", fd,
-			state.index, state.num);
+      tap_virtio_log_debug (vif, "VHOST_SET_VRING_NUM fd %d index %u num %u",
+			    fd, state.index, state.num);
       _IOCTL (fd, VHOST_SET_VRING_NUM, &state);
 
       addr.flags = 0;
@@ -611,26 +596,30 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
       addr.avail_user_addr = pointer_to_uword (vring->avail);
       addr.used_user_addr = pointer_to_uword (vring->used);
 
-      virtio_log_debug (vif, "VHOST_SET_VRING_ADDR fd %d index %u flags 0x%x "
-			"desc_user_addr 0x%lx avail_user_addr 0x%lx "
-			"used_user_addr 0x%lx", fd, addr.index,
-			addr.flags, addr.desc_user_addr, addr.avail_user_addr,
-			addr.used_user_addr);
+      tap_virtio_log_debug (vif,
+			    "VHOST_SET_VRING_ADDR fd %d index %u flags 0x%x "
+			    "desc_user_addr 0x%lx avail_user_addr 0x%lx "
+			    "used_user_addr 0x%lx",
+			    fd, addr.index, addr.flags, addr.desc_user_addr,
+			    addr.avail_user_addr, addr.used_user_addr);
       _IOCTL (fd, VHOST_SET_VRING_ADDR, &addr);
 
       file.fd = vring->call_fd;
-      virtio_log_debug (vif, "VHOST_SET_VRING_CALL fd %d index %u call_fd %d",
-			fd, file.index, file.fd);
+      tap_virtio_log_debug (vif,
+			    "VHOST_SET_VRING_CALL fd %d index %u call_fd %d",
+			    fd, file.index, file.fd);
       _IOCTL (fd, VHOST_SET_VRING_CALL, &file);
 
       file.fd = vring->kick_fd;
-      virtio_log_debug (vif, "VHOST_SET_VRING_KICK fd %d index %u kick_fd %d",
-			fd, file.index, file.fd);
+      tap_virtio_log_debug (vif,
+			    "VHOST_SET_VRING_KICK fd %d index %u kick_fd %d",
+			    fd, file.index, file.fd);
       _IOCTL (fd, VHOST_SET_VRING_KICK, &file);
 
       file.fd = vif->tap_fds[qp % vif->num_rxqs];
-      virtio_log_debug (vif, "VHOST_NET_SET_BACKEND fd %d index %u tap_fd %d",
-			fd, file.index, file.fd);
+      tap_virtio_log_debug (vif,
+			    "VHOST_NET_SET_BACKEND fd %d index %u tap_fd %d",
+			    fd, file.index, file.fd);
       _IOCTL (fd, VHOST_NET_SET_BACKEND, &file);
     }
 
@@ -660,7 +649,7 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
     {
       vnet_eth_interface_registration_t eir = {};
 
-      eir.dev_class_index = virtio_device_class.index;
+      eir.dev_class_index = tap_virtio_device_class.index;
       eir.dev_instance = vif->dev_instance;
       eir.address = vif->mac_addr;
       eir.cb.flag_change = virtio_eth_flag_change;
@@ -669,11 +658,10 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
     }
   else
     {
-      vif->hw_if_index = vnet_register_interface
-	(vnm, virtio_device_class.index,
-	 vif->dev_instance /* device instance */ ,
-	 tun_device_hw_interface_class.index, vif->dev_instance);
-
+      vif->hw_if_index = vnet_register_interface (
+	vnm, tap_virtio_device_class.index,
+	vif->dev_instance /* device instance */,
+	tun_device_hw_interface_class.index, vif->dev_instance);
     }
   tm->tap_ids = clib_bitmap_set (tm->tap_ids, vif->id, 1);
   sw = vnet_get_hw_sw_interface (vnm, vif->hw_if_index);
@@ -696,7 +684,7 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   if ((args->tap_flags & TAP_FLAG_GSO)
       && (args->tap_flags & TAP_FLAG_GRO_COALESCE))
     {
-      virtio_set_packet_coalesce (vif);
+      tap_virtio_set_packet_coalesce (vif);
     }
   if (vif->type == VIRTIO_IF_TYPE_TUN)
     {
@@ -707,9 +695,9 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
     }
 
   vnet_hw_if_change_caps (vnm, vif->hw_if_index, &cc);
-  virtio_pre_input_node_enable (vm, vif);
-  virtio_vring_set_rx_queues (vm, vif);
-  virtio_vring_set_tx_queues (vm, vif);
+  tap_virtio_pre_input_node_enable (vm, vif);
+  tap_virtio_vring_set_rx_queues (vm, vif);
+  tap_virtio_vring_set_tx_queues (vm, vif);
 
   vif->per_interface_next_index = ~0;
   vnet_hw_interface_set_flags (vnm, vif->hw_if_index,
@@ -746,16 +734,16 @@ done:
     close (nfd);
 }
 
-int
-tap_delete_if (vlib_main_t * vm, u32 sw_if_index)
+__clib_export int
+tap_delete_if (vlib_main_t *vm, u32 sw_if_index)
 {
   vnet_main_t *vnm = vnet_get_main ();
-  virtio_main_t *mm = &virtio_main;
-  virtio_if_t *vif;
+  tap_virtio_main_t *mm = &tap_virtio_main;
+  tap_virtio_if_t *vif;
   vnet_hw_interface_t *hw;
 
   hw = vnet_get_sup_hw_interface_api_visible_or_null (vnm, sw_if_index);
-  if (hw == NULL || virtio_device_class.index != hw->dev_class_index)
+  if (hw == NULL || tap_virtio_device_class.index != hw->dev_class_index)
     return VNET_API_ERROR_INVALID_SW_IF_INDEX;
 
   vif = pool_elt_at_index (mm->interfaces, hw->dev_instance);
@@ -783,8 +771,8 @@ tap_csum_offload_enable_disable (vlib_main_t * vm, u32 sw_if_index,
 				 int enable_disable)
 {
   vnet_main_t *vnm = vnet_get_main ();
-  virtio_main_t *mm = &virtio_main;
-  virtio_if_t *vif;
+  tap_virtio_main_t *mm = &tap_virtio_main;
+  tap_virtio_if_t *vif;
   vnet_hw_interface_t *hw;
   vnet_hw_if_caps_change_t cc;
   clib_error_t *err = 0;
@@ -792,7 +780,7 @@ tap_csum_offload_enable_disable (vlib_main_t * vm, u32 sw_if_index,
 
   hw = vnet_get_sup_hw_interface_api_visible_or_null (vnm, sw_if_index);
 
-  if (hw == NULL || virtio_device_class.index != hw->dev_class_index)
+  if (hw == NULL || tap_virtio_device_class.index != hw->dev_class_index)
     return VNET_API_ERROR_INVALID_SW_IF_INDEX;
 
   vif = pool_elt_at_index (mm->interfaces, hw->dev_instance);
@@ -833,8 +821,8 @@ tap_gso_enable_disable (vlib_main_t * vm, u32 sw_if_index, int enable_disable,
 			int is_packet_coalesce)
 {
   vnet_main_t *vnm = vnet_get_main ();
-  virtio_main_t *mm = &virtio_main;
-  virtio_if_t *vif;
+  tap_virtio_main_t *mm = &tap_virtio_main;
+  tap_virtio_if_t *vif;
   vnet_hw_interface_t *hw;
   vnet_hw_if_caps_change_t cc;
   clib_error_t *err = 0;
@@ -842,7 +830,7 @@ tap_gso_enable_disable (vlib_main_t * vm, u32 sw_if_index, int enable_disable,
 
   hw = vnet_get_sup_hw_interface_api_visible_or_null (vnm, sw_if_index);
 
-  if (hw == NULL || virtio_device_class.index != hw->dev_class_index)
+  if (hw == NULL || tap_virtio_device_class.index != hw->dev_class_index)
     return VNET_API_ERROR_INVALID_SW_IF_INDEX;
 
   vif = pool_elt_at_index (mm->interfaces, hw->dev_instance);
@@ -861,7 +849,7 @@ tap_gso_enable_disable (vlib_main_t * vm, u32 sw_if_index, int enable_disable,
       vif->gso_enabled = 1;
       vif->csum_offload_enabled = 1;
       if (is_packet_coalesce)
-	virtio_set_packet_coalesce (vif);
+	tap_virtio_set_packet_coalesce (vif);
     }
   else
     {
@@ -886,8 +874,8 @@ int
 tap_dump_ifs (tap_interface_details_t ** out_tapids)
 {
   vnet_main_t *vnm = vnet_get_main ();
-  virtio_main_t *mm = &virtio_main;
-  virtio_if_t *vif;
+  tap_virtio_main_t *mm = &tap_virtio_main;
+  tap_virtio_if_t *vif;
   vnet_virtio_vring_t *vring;
   vnet_hw_interface_t *hi;
   tap_interface_details_t *r_tapids = NULL;
@@ -949,15 +937,15 @@ tap_dump_ifs (tap_interface_details_t ** out_tapids)
  * If the kernel we're building against does not have support for the
  * TUNSETCARRIER ioctl command, do nothing.
  */
-int
+__clib_export int
 tap_set_carrier (u32 hw_if_index, u32 carrier_up)
 {
   int ret = 0;
 #ifdef TUNSETCARRIER
   vnet_main_t *vnm = vnet_get_main ();
   vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, hw_if_index);
-  virtio_main_t *mm = &virtio_main;
-  virtio_if_t *vif;
+  tap_virtio_main_t *mm = &tap_virtio_main;
+  tap_virtio_if_t *vif;
   int *fd;
 
   vif = pool_elt_at_index (mm->interfaces, hi->dev_instance);
@@ -997,13 +985,13 @@ tap_mtu_config (vlib_main_t * vm, unformat_input_t * input)
 /*
  * Set host tap/tun interface speed in Mbps.
  */
-int
+__clib_export int
 tap_set_speed (u32 hw_if_index, u32 speed)
 {
   vnet_main_t *vnm = vnet_get_main ();
   vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, hw_if_index);
-  virtio_main_t *mm = &virtio_main;
-  virtio_if_t *vif;
+  tap_virtio_main_t *mm = &tap_virtio_main;
+  tap_virtio_if_t *vif;
   int old_netns_fd = -1;
   int nfd = -1;
   int ctl_fd = -1;
@@ -1073,6 +1061,36 @@ done:
   return ret;
 }
 
+__clib_export unsigned int
+tap_get_ifindex (vlib_main_t *vm, u32 sw_if_index)
+{
+  tap_virtio_main_t *vim = &tap_virtio_main;
+  tap_virtio_if_t *vif;
+
+  pool_foreach (vif, vim->interfaces)
+    {
+      if (vif->sw_if_index == sw_if_index)
+	return vif->ifindex;
+    }
+
+  return ~0;
+}
+
+__clib_export int
+tap_is_tun (vlib_main_t *vm, u32 sw_if_index)
+{
+  tap_virtio_main_t *vim = &tap_virtio_main;
+  tap_virtio_if_t *vif;
+
+  pool_foreach (vif, vim->interfaces)
+    {
+      if (vif->sw_if_index == sw_if_index)
+	return (vif->type == VIRTIO_IF_TYPE_TUN);
+    }
+
+  return 0;
+}
+
 /* tap { host-mtu <size> } configuration. */
 VLIB_CONFIG_FUNCTION (tap_mtu_config, "tap");
 
@@ -1091,11 +1109,3 @@ tap_init (vlib_main_t * vm)
 }
 
 VLIB_INIT_FUNCTION (tap_init);
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

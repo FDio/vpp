@@ -1,18 +1,6 @@
 /*
- *------------------------------------------------------------------
- * Copyright (c) 2016 Cisco and/or its affiliates.
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at:
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *------------------------------------------------------------------
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2016-2025 Cisco and/or its affiliates.
  */
 #include <stdint.h>
 #include <net/if.h>
@@ -25,8 +13,7 @@
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/ip/format.h>
-#include <vnet/devices/virtio/virtio.h>
-#include <vnet/devices/tap/tap.h>
+#include <tap/internal.h>
 
 static clib_error_t *
 tap_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
@@ -275,8 +262,8 @@ static clib_error_t *
 tap_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
 		     vlib_cli_command_t * cmd)
 {
-  virtio_main_t *mm = &virtio_main;
-  virtio_if_t *vif;
+  tap_virtio_main_t *mm = &tap_virtio_main;
+  tap_virtio_if_t *vif;
   vnet_main_t *vnm = vnet_get_main ();
   int show_descr = 0;
   clib_error_t *error = 0;
@@ -303,7 +290,7 @@ tap_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	  vec_add1 (hw_if_indices, vif->hw_if_index);
     }
 
-  virtio_show (vm, hw_if_indices, show_descr, VIRTIO_IF_TYPE_TAP);
+  tap_virtio_show (vm, hw_if_indices, show_descr, VIRTIO_IF_TYPE_TAP);
 
 done:
   vec_free (hw_if_indices);
@@ -320,8 +307,8 @@ static clib_error_t *
 tun_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
 		     vlib_cli_command_t * cmd)
 {
-  virtio_main_t *mm = &virtio_main;
-  virtio_if_t *vif;
+  tap_virtio_main_t *mm = &tap_virtio_main;
+  tap_virtio_if_t *vif;
   vnet_main_t *vnm = vnet_get_main ();
   int show_descr = 0;
   clib_error_t *error = 0;
@@ -348,7 +335,7 @@ tun_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
           vec_add1 (hw_if_indices, vif->hw_if_index);
     }
 
-  virtio_show (vm, hw_if_indices, show_descr, VIRTIO_IF_TYPE_TUN);
+  tap_virtio_show (vm, hw_if_indices, show_descr, VIRTIO_IF_TYPE_TUN);
 
 done:
   vec_free (hw_if_indices);
@@ -361,18 +348,10 @@ VLIB_CLI_COMMAND (tun_show_command, static) = {
   .function = tun_show_command_fn,
 };
 
-clib_error_t *
-tap_cli_init (vlib_main_t * vm)
+static clib_error_t *
+tap_cli_init (vlib_main_t *vm)
 {
   return 0;
 }
 
 VLIB_INIT_FUNCTION (tap_cli_init);
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

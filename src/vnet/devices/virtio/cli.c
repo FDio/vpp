@@ -230,7 +230,7 @@ show_virtio_pci_fn (vlib_main_t * vm, unformat_input_t * input,
 	vec_add1 (hw_if_indices, vif->hw_if_index);
     }
 
-  virtio_show (vm, hw_if_indices, show_descr, VIRTIO_IF_TYPE_PCI);
+  virtio_show (vm, hw_if_indices, show_descr);
 
 done:
   vec_free (hw_if_indices);
