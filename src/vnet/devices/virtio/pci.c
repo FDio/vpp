@@ -1398,7 +1398,6 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
   vif->pci_dev_handle = h;
   vlib_pci_set_private_data (vm, h, vif->dev_instance);
   vif->numa_node = vlib_pci_get_numa_node (vm, h);
-  vif->type = VIRTIO_IF_TYPE_PCI;
 
   if (args->if_name)
     CLIB_SWAP (args->if_name, vif->initial_if_name);
@@ -1569,9 +1568,6 @@ virtio_pci_delete_if (vlib_main_t * vm, virtio_if_t * vif)
   virtio_main_t *vim = &virtio_main;
   u32 i = 0;
 
-  if (vif->type != VIRTIO_IF_TYPE_PCI)
-    return VNET_API_ERROR_INVALID_INTERFACE;
-
   vlib_pci_intr_disable (vm, vif->pci_dev_handle);
 
   for (i = 0; i < vif->max_queue_pairs; i++)
@@ -1652,9 +1648,6 @@ virtio_pci_enable_disable_offloads (vlib_main_t * vm, virtio_if_t * vif,
 				    int checksum_offload_enabled,
 				    int offloads_disabled)
 {
-  if (vif->type != VIRTIO_IF_TYPE_PCI)
-    return VNET_API_ERROR_INVALID_INTERFACE;
-
   if (gso_enabled)
     virtio_pci_offloads (vm, vif, 1, 0);
   else if (checksum_offload_enabled)
