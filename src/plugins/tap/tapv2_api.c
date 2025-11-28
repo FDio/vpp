@@ -1,20 +1,6 @@
 /*
- *------------------------------------------------------------------
- * tap_api.c - vnet tap device driver API support
- *
- * Copyright (c) 2017 Cisco and/or its affiliates.
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at:
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *------------------------------------------------------------------
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2017-2025 Cisco and/or its affiliates.
  */
 
 #include <vnet/vnet.h>
@@ -26,11 +12,11 @@
 #include <vnet/ip/ip.h>
 #include <vnet/ethernet/ethernet_types_api.h>
 #include <vnet/ip/ip_types_api.h>
-#include <vnet/devices/tap/tap.h>
+#include <tap/internal.h>
 
 #include <vnet/format_fns.h>
-#include <vnet/devices/tap/tapv2.api_enum.h>
-#include <vnet/devices/tap/tapv2.api_types.h>
+#include <tap/tapv2.api_enum.h>
+#include <tap/tapv2.api_types.h>
 
 #define REPLY_MSG_ID_BASE tap_main.msg_id_base
 #include <vlibapi/api_helper_macros.h>
@@ -109,7 +95,7 @@ vl_api_tap_create_v3_t_handler (vl_api_tap_create_v3_t *mp)
       ap->host_mtu_set = 1;
     }
 
-  ap->tap_flags = mp->tap_flags;
+  ap->tap_flags = (int) mp->tap_flags;
 
   tap_create_if (vm, ap);
 
@@ -130,7 +116,7 @@ vl_api_tap_create_v3_t_handler (vl_api_tap_create_v3_t *mp)
 }
 
 static void
-vl_api_tap_create_v2_t_handler (vl_api_tap_create_v2_t * mp)
+vl_api_tap_create_v2_t_handler (vl_api_tap_create_v2_t *mp)
 {
   vl_api_registration_t *reg;
   reg = vl_api_client_index_to_registration (mp->client_index);
@@ -153,7 +139,7 @@ vl_api_tap_create_v2_t_handler (vl_api_tap_create_v2_t * mp)
     }
   ap->rx_ring_sz = ntohs (mp->rx_ring_sz);
   ap->tx_ring_sz = ntohs (mp->tx_ring_sz);
-  ap->sw_if_index = (u32) ~ 0;
+  ap->sw_if_index = (u32) ~0;
   ap->num_rx_queues = 1;
   ap->num_tx_queues = 1;
 
@@ -206,27 +192,26 @@ vl_api_tap_create_v2_t_handler (vl_api_tap_create_v2_t * mp)
 
   STATIC_ASSERT (((int) TAP_API_FLAG_GSO == (int) TAP_FLAG_GSO),
 		 "tap gso api flag mismatch");
-  STATIC_ASSERT (((int) TAP_API_FLAG_CSUM_OFFLOAD ==
-		  (int) TAP_FLAG_CSUM_OFFLOAD),
-		 "tap checksum offload api flag mismatch");
+  STATIC_ASSERT (
+    ((int) TAP_API_FLAG_CSUM_OFFLOAD == (int) TAP_FLAG_CSUM_OFFLOAD),
+    "tap checksum offload api flag mismatch");
   STATIC_ASSERT (((int) TAP_API_FLAG_PERSIST == (int) TAP_FLAG_PERSIST),
 		 "tap persist api flag mismatch");
   STATIC_ASSERT (((int) TAP_API_FLAG_ATTACH == (int) TAP_FLAG_ATTACH),
 		 "tap attach api flag mismatch");
   STATIC_ASSERT (((int) TAP_API_FLAG_TUN == (int) TAP_FLAG_TUN),
 		 "tap tun api flag mismatch");
-  STATIC_ASSERT (((int) TAP_API_FLAG_GRO_COALESCE ==
-		  (int) TAP_FLAG_GRO_COALESCE),
-		 "tap gro coalesce api flag mismatch");
+  STATIC_ASSERT (
+    ((int) TAP_API_FLAG_GRO_COALESCE == (int) TAP_FLAG_GRO_COALESCE),
+    "tap gro coalesce api flag mismatch");
   STATIC_ASSERT (((int) TAP_API_FLAG_PACKED == (int) TAP_FLAG_PACKED),
 		 "tap packed api flag mismatch");
-  STATIC_ASSERT (((int) TAP_API_FLAG_IN_ORDER ==
-		  (int) TAP_FLAG_IN_ORDER), "tap in-order api flag mismatch");
+  STATIC_ASSERT (((int) TAP_API_FLAG_IN_ORDER == (int) TAP_FLAG_IN_ORDER),
+		 "tap in-order api flag mismatch");
 
   ap->tap_flags = ntohl (mp->tap_flags);
 
   tap_create_if (vm, ap);
-
 
   /* If a tag was supplied... */
   if (vl_api_string_len (&mp->tag))
@@ -246,11 +231,10 @@ vl_api_tap_create_v2_t_handler (vl_api_tap_create_v2_t * mp)
   vec_free (ap->host_if_name);
   vec_free (ap->host_namespace);
   vec_free (ap->host_bridge);
-
 }
 
 static void
-vl_api_tap_delete_v2_t_handler (vl_api_tap_delete_v2_t * mp)
+vl_api_tap_delete_v2_t_handler (vl_api_tap_delete_v2_t *mp)
 {
   vl_api_registration_t *reg;
   reg = vl_api_client_index_to_registration (mp->client_index);
@@ -278,9 +262,8 @@ vl_api_tap_delete_v2_t_handler (vl_api_tap_delete_v2_t * mp)
 }
 
 static void
-tap_send_sw_interface_details (vpe_api_main_t * am,
-			       vl_api_registration_t * reg,
-			       tap_interface_details_t * tap_if, u32 context)
+tap_send_sw_interface_details (vpe_api_main_t *am, vl_api_registration_t *reg,
+			       tap_interface_details_t *tap_if, u32 context)
 {
   vl_api_sw_interface_tap_v2_details_t *mp;
   mp = vl_msg_api_alloc (sizeof (*mp));
@@ -320,8 +303,8 @@ tap_send_sw_interface_details (vpe_api_main_t * am,
 }
 
 static void
-vl_api_sw_interface_tap_v2_dump_t_handler (vl_api_sw_interface_tap_v2_dump_t *
-					   mp)
+vl_api_sw_interface_tap_v2_dump_t_handler (
+  vl_api_sw_interface_tap_v2_dump_t *mp)
 {
   int rv;
   vpe_api_main_t *am = &vpe_api_main;
@@ -343,18 +326,18 @@ vl_api_sw_interface_tap_v2_dump_t_handler (vl_api_sw_interface_tap_v2_dump_t *
     return;
 
   vec_foreach (tap_if, tapifs)
-  {
-    if ((filter_sw_if_index == ~0)
-	|| (tap_if->sw_if_index == filter_sw_if_index))
-      tap_send_sw_interface_details (am, reg, tap_if, mp->context);
-  }
+    {
+      if ((filter_sw_if_index == ~0) ||
+	  (tap_if->sw_if_index == filter_sw_if_index))
+	tap_send_sw_interface_details (am, reg, tap_if, mp->context);
+    }
   BAD_SW_IF_INDEX_LABEL;
   vec_free (tapifs);
 }
 
-#include <vnet/devices/tap/tapv2.api.c>
+#include <tap/tapv2.api.c>
 static clib_error_t *
-tapv2_api_hookup (vlib_main_t * vm)
+tapv2_api_hookup (vlib_main_t *vm)
 {
   /*
    * Set up the (msg_name, crc, message-id) table
@@ -365,11 +348,3 @@ tapv2_api_hookup (vlib_main_t * vm)
 }
 
 VLIB_API_INIT_FUNCTION (tapv2_api_hookup);
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
