@@ -96,7 +96,7 @@ ip4_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u16 mtu,
 {
   vlib_buffer_t *from_b;
   ip4_header_t *ip4;
-  u16 len, max, rem, ip_frag_id, ip_frag_offset, head_bytes;
+  u16 len, max, rem, ip_frag_id, ip_frag_offset, head_bytes, headroom;
   u8 *org_from_packet, more;
 
   from_b = vlib_get_buffer (vm, from_bi);
@@ -114,7 +114,9 @@ ip4_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u16 mtu,
 
   rem = clib_net_to_host_u16 (ip4->length) - sizeof (ip4_header_t);
   head_bytes = sizeof (ip4_header_t) + l2unfragmentablesize;
-  max = (clib_min (mtu, vlib_buffer_get_default_data_size (vm)) - head_bytes) &
+  headroom = (from_b->current_data + 7) & ~0x7;
+  max = (clib_min (mtu, vlib_buffer_get_default_data_size (vm)) - head_bytes -
+	 headroom) &
 	~0x7;
 
   if (rem >
@@ -175,7 +177,7 @@ ip4_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u16 mtu,
 
       /* Make sure we have as much space for headers as the original and copy
        * ip4 header */
-      to_data = vlib_buffer_make_headroom (to_b, org_from_b->current_data);
+      to_data = vlib_buffer_make_headroom (to_b, headroom);
       clib_memcpy_fast (to_data, org_from_packet, head_bytes);
       to_ip4 = (ip4_header_t *) (to_data + l2unfragmentablesize);
       to_data = (void *) (to_ip4 + 1);
