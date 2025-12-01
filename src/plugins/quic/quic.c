@@ -177,6 +177,7 @@ quic_connect_stream (transport_endpoint_cfg_t *tep, session_t *stream_session,
   sctx->c_c_index = sctx_index;
   sctx->c_flags |= TRANSPORT_CONNECTION_F_NO_LOOKUP;
   sctx->flags |= QUIC_F_IS_STREAM;
+  sctx->udp_session_handle = qctx->udp_session_handle;
 
   if (!(conn = qctx->conn))
     return SESSION_E_UNKNOWN;
