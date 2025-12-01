@@ -704,6 +704,8 @@ quic_quicly_on_stream_open (quicly_stream_open_t *self,
   sctx->c_flags |= TRANSPORT_CONNECTION_F_NO_LOOKUP;
   sctx->flags |= QUIC_F_IS_STREAM;
   sctx->crypto_context_index = qctx->crypto_context_index;
+  sctx->udp_session_handle = qctx->udp_session_handle;
+
   if (quicly_stream_is_unidirectional (stream->stream_id))
     stream_session->flags |= SESSION_F_UNIDIRECTIONAL;
 
@@ -713,7 +715,6 @@ quic_quicly_on_stream_open (quicly_stream_open_t *self,
   stream_data->app_rx_data_len = 0;
   stream_data->app_tx_data_len = 0;
 
-  sctx->c_s_index = stream_session->session_index;
   stream_session->session_state = SESSION_STATE_CREATED;
   stream_session->app_wrk_index = sctx->parent_app_wrk_id;
   stream_session->connection_index = sctx->c_c_index;
