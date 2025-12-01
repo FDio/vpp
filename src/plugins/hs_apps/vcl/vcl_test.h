@@ -336,7 +336,7 @@ vcl_test_read (vcl_test_session_t *ts, void *buf, uint32_t nbytes)
 	    }
 
 	  vterr ("vppcom_session_read()", -errno);
-	  break;
+	  return -1;
 	}
 
       rx_bytes = rv;

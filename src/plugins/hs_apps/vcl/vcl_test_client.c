@@ -355,6 +355,14 @@ vtc_worker_connect_sessions_select (vcl_test_client_worker_t *wrk)
   return 0;
 }
 
+static void
+vtc_abort_test ()
+{
+  vcl_test_client_main_t *vtcm = &vcl_client_main;
+  vtcm->test_running = 0;
+  exit (1);
+}
+
 static int
 vtc_worker_run_select (vcl_test_client_worker_t *wrk)
 {
@@ -403,7 +411,11 @@ vtc_worker_run_select (vcl_test_client_worker_t *wrk)
 	    {
 	      rv = ts->read (ts, ts->rxbuf, ts->rxbuf_size);
 	      if (rv < 0)
-		break;
+		{
+		  vtwrn ("vppcom_test_read (%d) failed -- aborting test",
+			 ts->fd);
+		  vtc_abort_test ();
+		}
 	    }
 
 	  if (FD_ISSET (vppcom_session_index (ts->fd), wfdset) &&
@@ -414,7 +426,7 @@ vtc_worker_run_select (vcl_test_client_worker_t *wrk)
 		{
 		  vtwrn ("vppcom_test_write (%d) failed -- aborting test",
 			 ts->fd);
-		  break;
+		  vtc_abort_test ();
 		}
 	      if (vcm->incremental_stats)
 		vtc_inc_stats_check (ts);
