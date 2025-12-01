@@ -1,0 +1,178 @@
+name: vpp-checkstyle
+
+# yamllint disable-line rule:truthy
+on:
+  workflow_dispatch:
+    inputs:
+      GERRIT_BRANCH:
+        description: "Branch that change is against"
+        required: true
+        type: string
+      GERRIT_CHANGE_ID:
+        description: "The ID for the change"
+        required: true
+        type: string
+      GERRIT_CHANGE_NUMBER:
+        description: "The Gerrit number"
+        required: true
+        type: string
+      GERRIT_CHANGE_URL:
+        description: "URL to the change"
+        required: true
+        type: string
+      GERRIT_EVENT_TYPE:
+        description: "Type of Gerrit event"
+        required: true
+        type: string
+      GERRIT_PATCHSET_NUMBER:
+        description: "The patch number for the change"
+        required: true
+        type: string
+      GERRIT_PATCHSET_REVISION:
+        description: "The revision sha"
+        required: true
+        type: string
+      GERRIT_PROJECT:
+        description: "Project in Gerrit"
+        required: true
+        type: string
+      GERRIT_REFSPEC:
+        description: "Gerrit refspec of change"
+        required: true
+        type: string
+
+env:
+  GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
+  GERRIT_CHANGE_ID: ${{ inputs.GERRIT_CHANGE_ID }}
+  GERRIT_CHANGE_NUMBER: ${{ inputs.GERRIT_CHANGE_NUMBER }}
+  GERRIT_CHANGE_URL: ${{ inputs.GERRIT_CHANGE_URL }}
+  GERRIT_EVENT_TYPE: ${{ inputs.GERRIT_EVENT_TYPE }}
+  GERRIT_PATCHSET_NUMBER: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
+  GERRIT_PATCHSET_REVISION: ${{ inputs.GERRIT_PATCHSET_REVISION }}
+  GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
+  GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
+
+defaults:
+  run:
+    shell: bash
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  # yamllint disable-line rule:line-length
+  group: required-${{ github.workflow }}-rel-ubuntu2404-x86_64-${{ inputs.GERRIT_CHANGE_NUMBER }}-${{ inputs.GERRIT_PATCHSET_NUMBER }}
+  cancel-in-progress: true
+
+jobs:
+  vpp-checkstyle:
+    name: ${{ github.workflow }}-${{ inputs.GERRIT_BRANCH }}-rel-ubuntu2404-x86_64
+    if: ${{ inputs.GERRIT_EVENT_TYPE == 'patchset-created' }}
+    runs-on:
+      - self-hosted
+      - nomad
+      - fdio:arch=x86_64
+      - fdio:class=builder
+      - fdio:namespace=sandbox
+      - fdio:os=ubuntu2404
+
+    env:
+      WORKSPACE: /scratch/docker-build/vpp
+      TUI_LINE: "*******************************************************************"
+
+    steps:
+      - name: Setup Environment
+        id: setup-executor-env
+        # yamllint disable-line rule:line-length
+        uses: fdio/.github/.github/actions/setup-executor-env@b728d1589228e2891a4241a1bba362d76895c225
+
+      - name: "Show Nomad Dockerfile"
+        # yamllint disable-line rule:line-length
+        uses: fdio/.github/.github/actions/show-nomad-dockerfile@b728d1589228e2891a4241a1bba362d76895c225
+
+      - name: Checkpoint VPP Gerrit Environment Variables
+        # yamllint disable-line rule:line-length
+        uses: fdio/.github/.github/actions/gerrit-env-vars-checkpoint@b728d1589228e2891a4241a1bba362d76895c225
+
+      - name: Checkout VPP Gerrit Change
+        uses: fdio/vpp/.github/actions/vpp-checkout-gerrit-change@master
+        with:
+          WORKSPACE: ${{ env.WORKSPACE }}
+          GERRIT_BRANCH: ${{ env.GERRIT_BRANCH }}
+          GERRIT_REFSPEC: ${{ env.GERRIT_REFSPEC }}
+          TUI_LINE: ${{ env.TUI_LINE }}
+
+      - name: Run Checkstyle Scripts
+        run: |
+          set -euxo pipefail
+          cd $WORKSPACE
+          BUILD_EXT_DIR="build/external"
+          MATRIX_FILE="$BUILD_EXT_DIR/mlx_rdma_dpdk_matrix.txt"
+          PKGS_DIR="$BUILD_EXT_DIR/packages"
+
+          if git show --stat | grep -q "$MATRIX_FILE" ; then
+              RDMA_CORE_VERSION="$(grep rdma-core_version $PKGS_DIR/rdma-core.mk | grep -v '(' | mawk '{print $3}')"
+              DPDK_VERSION="$(grep dpdk_version $PKGS_DIR/dpdk.mk | grep -v '(' | mawk '{print $3}')"
+              CURRENT_MATRIX="rdma=$RDMA_CORE_VERSION dpdk=$DPDK_VERSION"
+              if grep -q "$CURRENT_MATRIX" "$MATRIX_FILE"; then
+                  echo -e "$TUI_LINE\n* DPDK/RDMA-CORE matrix file update successfully verified\n$TUI_LINE"
+              else
+                  echo -e "$TUI_LINE\n* ERROR: 'rdma=$RDMA_CORE_VERSION dpdk=$DPDK_VERSION' not found in $MATRIX_FILE!\n$TUI_LINE"
+                  exit 1
+              fi
+          fi
+
+          make UNATTENDED=yes checkstyle
+
+      - name: Run Test Checkstyle Scripts
+        run: |
+          set -euxo pipefail
+          cd $WORKSPACE
+          make test-checkstyle
+
+      - name: Run API Checkstyle Scripts
+        run: |
+          set -euxo pipefail
+          cd $WORKSPACE
+          VPP_CRC_CHECKER="extras/scripts/crcchecker.py"
+          VPP_CRC_CHECKER_CMD="$VPP_CRC_CHECKER --check-patchset"
+
+          # API checker complains if the git repo is not clean.
+          # Help diagnosing those issues easier
+          git --no-pager diff
+          echo "Running $VPP_CRC_CHECKER_CMD"
+          if $VPP_CRC_CHECKER_CMD; then
+              echo "API check successful"
+          else
+              RET_CODE=$?
+              echo "API check failed: ret code $RET_CODE; please read https://wiki.fd.io/view/VPP/ApiChangeProcess and discuss with ayourtch@gmail.com if unsure how to proceed"
+              echo "::error file=.ci/scripts/vpp/crcchecker.py,line=1::API check FAILED for $GITHUB_REF. See run: https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+              exit $RET_CODE
+          fi
+
+      - name: Run Commit Message Checkstyle
+        run: |
+          set -euxo pipefail
+          cd $WORKSPACE
+          echo "Running extras/scripts/check_commit_msg.sh"
+          extras/scripts/check_commit_msg.sh
+
+      - name: Run Docs Spell
+        run: |
+          set -euxo pipefail
+          cd $WORKSPACE
+          make docs-spell
+
+      - name: Archive Checkstyle Logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vpp-checkstyle-logs-${{ inputs.GERRIT_BRANCH }}-rel-ubuntu2404-x86_64-${{ env.GERRIT_CHANGE_NUMBER }}-${{ env.GERRIT_PATCHSET_NUMBER }}
+          path: logs/
+
+      - name: Report Success
+        if: success()
+        run: |
+          echo "VPP Checkstyle passed for Gerrit Refspec: $GERRIT_REFSPEC, Gerrit Change URL: $GERRIT_CHANGE_URL"
+          echo "::notice::VPP Checkstyle workflow completed successfully! Workflow ID: ${{ github.run_id }}, Name: ${{ github.workflow }}, Branch: $GERRIT_BRANCH, Change: $GERRIT_CHANGE_NUMBER, Patchset: $GERRIT_PATCHSET_NUMBER"
