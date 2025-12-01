@@ -631,3 +631,7 @@ func IsKilledError(err error) bool {
 	}
 	return false
 }
+
+func WrapCmdWithLineBuffering(cmd string) string {
+	return fmt.Sprintf("sh -c \"stdbuf -oL -eL %s\"", cmd)
+}

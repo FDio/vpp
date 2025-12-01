@@ -227,6 +227,7 @@ vts_test_cmd (vcl_test_server_worker_t *wrk, vcl_test_session_t *conn,
 	  if (tc->is_open)
 	    {
 	      vts_session_cleanup (tc);
+	      wrk->nfds--;
 	      continue;
 	    }
 	  /* Only relevant if all connections previously closed */
