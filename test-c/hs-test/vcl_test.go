@@ -168,9 +168,9 @@ func testRetryAttach(s *VethsSuite, proto string) {
 	echoSrvContainer.CreateFile("/vcl.conf", getVclConfig(echoSrvContainer))
 	echoSrvContainer.AddEnvVar("VCL_CONFIG", "/vcl.conf")
 
-	vclSrvCmd := fmt.Sprintf("sh -c \"vcl_test_server -p %s %s > %s/vcl_test_server.log 2>&1\"",
-		proto, s.Ports.Port1, echoSrvContainer.GetContainerWorkDir())
-	echoSrvContainer.ExecServer(true, vclSrvCmd)
+	vclSrvCmd := fmt.Sprintf("vcl_test_server -p %s %s > %s 2>&1",
+		proto, s.Ports.Port1, s.VclTestSrvLogFileName(echoSrvContainer))
+	echoSrvContainer.ExecServer(true, WrapCmdWithLineBuffering(vclSrvCmd))
 
 	s.Log("This whole test case can take around 3 minutes to run. Please be patient.")
 	s.Log("... Running first echo client test, before disconnect.")
@@ -180,7 +180,7 @@ func testRetryAttach(s *VethsSuite, proto string) {
 
 	testClientCommand := "vcl_test_client -U -p " + proto + " " + serverVethAddress + " " + s.Ports.Port1
 	echoClnContainer.AddEnvVar("VCL_CONFIG", "/vcl.conf")
-	o, err := echoClnContainer.Exec(true, testClientCommand)
+	o, err := echoClnContainer.Exec(true, WrapCmdWithLineBuffering(testClientCommand))
 	s.AssertNil(err)
 	s.Log(o)
 	s.Log("... First test ended. Stopping VPP server now.")
@@ -196,10 +196,10 @@ func testRetryAttach(s *VethsSuite, proto string) {
 
 	s.Log("... Running second echo client test, after disconnect and re-attachment.")
 	testClientCommand += " -X"
-	o, err = echoClnContainer.Exec(true, testClientCommand)
+	o, err = echoClnContainer.Exec(true, WrapCmdWithLineBuffering(testClientCommand))
 	s.Log("****** Client output:\n%s\n******", o)
 
-	oSrv, errSrv := echoSrvContainer.Exec(false, "cat %s/vcl_test_server.log", echoSrvContainer.GetContainerWorkDir())
+	oSrv, errSrv := echoSrvContainer.Exec(false, "cat %s", s.VclTestSrvLogFileName(echoSrvContainer))
 	s.Log("****** Server output:\n%s\n******", oSrv)
 
 	s.AssertNil(err, o)
