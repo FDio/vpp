@@ -737,7 +737,7 @@ vt_quic_close (vcl_test_session_t *ts)
 {
   int listener_fd = vppcom_session_listener (ts->fd);
 
-  if ((vppcom_session_n_accepted (listener_fd) == 0) &
+  if ((vppcom_session_n_accepted (listener_fd) == 0) &&
       vppcom_session_is_connectable_listener (listener_fd))
     {
       vtinf ("Connected Listener fd %x has no more sessions", listener_fd);
