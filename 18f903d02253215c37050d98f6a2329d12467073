@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "aa462767_6ddb43bc",
+        "filename": "src/plugins/hs_apps/vcl/vcl_test_server.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 679,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-12-01T19:13:37Z",
+      "side": 1,
+      "message": "Is this needed?",
+      "revId": "18f903d02253215c37050d98f6a2329d12467073",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
