@@ -37,6 +37,8 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#include <vnet/ethernet/ethernet.h>
+
 #ifndef included_vnet_interface_funcs_h
 #define included_vnet_interface_funcs_h
 
@@ -320,7 +322,8 @@ vnet_sw_interface_get_mtu (vnet_main_t * vnm, u32 sw_if_index, vnet_mtu_t af)
   u32 mtu;
   mtu = sw->mtu[af] > 0 ? sw->mtu[af] : sw->mtu[VNET_MTU_L3];
   if (mtu == 0)
-    return 9000;		/* $$$ Deal with interface-types not setting MTU */
+    /* Zero is a convenience for interfaces not sensitive to MTU. */
+    return ethernet_main.default_mtu;
   return mtu;
 }
 
