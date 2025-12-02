@@ -470,8 +470,8 @@ vnet_gre_tunnel_add (vnet_gre_tunnel_add_del_args_t *a, u32 outer_fib_index,
       hi->min_frame_size = hi->frame_overhead + 64;
     }
 
-  /* Standard default gre MTU. */
   vnet_sw_interface_set_mtu (vnm, sw_if_index, 9000);
+  /* TODO: Apply zero to always use current default MTU from ethernet main. */
 
   /*
    * source the FIB entry for the tunnel's destination

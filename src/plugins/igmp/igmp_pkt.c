@@ -17,6 +17,7 @@
 
 #include <igmp/igmp_pkt.h>
 #include <vnet/fib/fib_sas.h>
+#include <vnet/ethernet/ethernet.h>
 
 static void
 vlib_buffer_append (vlib_buffer_t * b, uword l)

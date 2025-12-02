@@ -323,6 +323,7 @@ sixrd_add_tunnel (ip6_address_t * ip6_prefix, u8 ip6_prefix_len,
   t->user_instance = t_idx;
 
   vnet_sw_interface_set_mtu (vnet_get_main (), t->sw_if_index, 1480);
+  /* TODO: Apply zero to always use current default MTU from ethernet main. */
   vnet_set_interface_l3_output_node (gm->vlib_main, hi->sw_if_index,
 				     (u8 *) "tunnel-output");
 

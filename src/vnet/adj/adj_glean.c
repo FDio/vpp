@@ -15,6 +15,7 @@
 
 #include <vnet/adj/adj.h>
 #include <vnet/adj/adj_internal.h>
+#include <vnet/ethernet/ethernet.h>
 #include <vnet/fib/fib_walk.h>
 
 /*

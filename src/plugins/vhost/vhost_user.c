@@ -1688,6 +1688,7 @@ vhost_user_create_if (vnet_main_t * vnm, vlib_main_t * vm,
 
   vhost_user_vui_init (vnm, vui, server_sock_fd, args, &sw_if_idx);
   vnet_sw_interface_set_mtu (vnm, vui->sw_if_index, 9000);
+  /* TODO: Apply zero to always use current default MTU from ethernet main. */
   vhost_user_rx_thread_placement (vui, 1);
 
   if (args->renumber)
