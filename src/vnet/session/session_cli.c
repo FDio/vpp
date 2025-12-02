@@ -488,6 +488,8 @@ session_tree_insert_node (session_tree_t *st, u32 parent_index,
   else
     {
       uword *pip = hash_get (st->session_index_to_node, parent_index);
+      if (!pip)
+	return;
 
       parent = pool_elt_at_index (st->nodes, *pip);
       node->depth = parent->depth + 1;
