@@ -194,7 +194,7 @@ jobs:
           echo "::notice::VPP Checkstyle workflow completed successfully! Workflow ID: ${{ github.run_id }}, Name: ${{ github.workflow }}, Branch: $GERRIT_BRANCH, Change: $GERRIT_CHANGE_NUMBER, Patchset: $GERRIT_PATCHSET_NUMBER"
 
   vote:
-    if: ${{ never() }}
+    if: false  # disable voting during pre-production testing
     needs: vpp-checkstyle
     runs-on: ubuntu-latest
     steps:
