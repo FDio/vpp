@@ -910,6 +910,9 @@ vnet_register_interface (vnet_main_t * vnm,
   hw->hw_instance = hw_instance;
 
   hw->max_rate_bits_per_sec = 0;
+  /* Most software interfaces do not care about MTU,
+   * zero here allows users to change the default value later.
+   */
   vnet_sw_interface_set_mtu (vnm, hw->sw_if_index, 0);
 
   if (dev_class->tx_function == 0 && dev_class->tx_fn_registrations == 0)

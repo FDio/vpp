@@ -347,8 +347,8 @@ create_simulated_srp_interfaces (vlib_main_t * vm,
 
   hi->min_packet_bytes = 40 + 16;
 
-  /* Standard default ethernet MTU. */
   vnet_sw_interface_set_mtu (vnm, sw_if_index, 1500);
+  /* TODO: Apply zero to always use current default MTU from ethernet main. */
 
   vec_free (hi->hw_address);
   vec_add (hi->hw_address, address, sizeof (address));

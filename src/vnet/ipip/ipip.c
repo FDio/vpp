@@ -824,8 +824,8 @@ ipip_add_tunnel (ipip_transport_t transport,
 
   hi->min_frame_size = hi->frame_overhead + 64;
 
-  /* Standard default ipip MTU. */
   vnet_sw_interface_set_mtu (vnm, sw_if_index, 9000);
+  /* TODO: Apply zero to always use current default MTU from ethernet main. */
   vnet_set_interface_l3_output_node (gm->vlib_main, sw_if_index,
 				     (u8 *) "tunnel-output");
 

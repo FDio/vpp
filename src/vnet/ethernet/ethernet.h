@@ -572,6 +572,18 @@ vnet_get_ethernet_main (void)
   return &ethernet_main;
 }
 
+always_inline u32
+vnet_sw_interface_get_mtu (vnet_main_t *vnm, u32 sw_if_index, vnet_mtu_t af)
+{
+  vnet_sw_interface_t *sw = vnet_get_sw_interface (vnm, sw_if_index);
+  u32 mtu;
+  mtu = sw->mtu[af] > 0 ? sw->mtu[af] : sw->mtu[VNET_MTU_L3];
+  if (mtu == 0)
+    /* Zero is a convenience for interfaces not sensitive to MTU. */
+    return vnet_get_ethernet_main ()->default_mtu;
+  return mtu;
+}
+
 typedef struct
 {
   u32 dev_class_index;
