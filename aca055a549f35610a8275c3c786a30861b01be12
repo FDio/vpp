@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d88e8854_fd617cdf",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 14
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2025-12-02T14:57:16Z",
+      "side": 1,
+      "message": "Ready to review, the matching CSIT change is https://gerrit.fd.io/r/c/csit/+/44239/14",
+      "revId": "aca055a549f35610a8275c3c786a30861b01be12",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
