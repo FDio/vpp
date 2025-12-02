@@ -1,0 +1,25 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2025 Cisco and/or its affiliates.
+ */
+
+option version = "1.0.0";
+
+/** \brief Change the default MTU value for new software interfaces
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param mtu - new default MTU value to use when creating sw interfaces
+    @retval VNET_API_ERROR_INVALID_VALUE on mtu value too low
+*/
+autoendian autoreply define ethernet_set_default_sw_mtu
+{
+  u32 client_index;
+  u32 context;
+  u16 mtu;
+};
+
+/*
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

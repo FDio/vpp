@@ -313,17 +313,6 @@ vnet_hw_interface_get_mtu (vnet_main_t * vnm, u32 hw_if_index)
   return hw->max_frame_size - hw->frame_overhead;
 }
 
-always_inline u32
-vnet_sw_interface_get_mtu (vnet_main_t * vnm, u32 sw_if_index, vnet_mtu_t af)
-{
-  vnet_sw_interface_t *sw = vnet_get_sw_interface (vnm, sw_if_index);
-  u32 mtu;
-  mtu = sw->mtu[af] > 0 ? sw->mtu[af] : sw->mtu[VNET_MTU_L3];
-  if (mtu == 0)
-    return 9000;		/* $$$ Deal with interface-types not setting MTU */
-  return mtu;
-}
-
 always_inline uword
 vnet_hw_interface_is_link_up (vnet_main_t * vnm, u32 hw_if_index)
 {

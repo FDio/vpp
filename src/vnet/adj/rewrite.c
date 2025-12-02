@@ -38,6 +38,7 @@
  */
 
 #include <vnet/vnet.h>
+#include <vnet/ethernet/ethernet.h>
 #include <vnet/ip/lookup.h>
 
 u8 *
