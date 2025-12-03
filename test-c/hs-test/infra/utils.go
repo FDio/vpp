@@ -349,16 +349,16 @@ func (s *HstSuite) StartIperfClient(finished chan error, clientAddress, serverAd
 		finished <- errors.New("iperf client error")
 	}()
 
-	c := []string{"iperf3", "-c", serverAddress, "-B", clientAddress, "-J", "-l", "1460", "-b", "10g", "-p", serverPort}
+	c := []string{"iperf3", "-c", serverAddress, "-B", clientAddress, "-l", "1460", "-b", "10g", "-p", serverPort}
 	c = append(c, args...)
 	cmd := CommandInNetns(c, netNs)
 	s.Log(cmd)
 	o, err := cmd.CombinedOutput()
 	if err != nil {
-		finished <- fmt.Errorf("iperf client error: '%v\n\n%s'", err, o)
+		finished <- fmt.Errorf("iperf client error: '%v\n\n%s'", err, string(o))
 		return
 	}
-	s.Log(o)
+	s.Log(string(o))
 	finished <- nil
 }
 
