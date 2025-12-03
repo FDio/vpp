@@ -530,16 +530,12 @@ quic_del_segment_callback (u32 client_index, u64 seg_handle)
 static int
 quic_custom_app_rx_callback (transport_connection_t * tc)
 {
-  quic_ctx_t *ctx;
   session_t *stream_session = session_get (tc->s_index, tc->thread_index);
-  QUIC_DBG (3, "Received app READ notification");
-  quic_eng_ack_rx_data (stream_session);
-  svm_fifo_reset_has_deq_ntf (stream_session->rx_fifo);
 
-  /* Need to send packets (acks may never be sent otherwise) */
-  ctx = quic_ctx_get (stream_session->connection_index,
-		      stream_session->thread_index);
-  quic_eng_send_packets (ctx);
+  QUIC_DBG (3, "Received app READ notification");
+  svm_fifo_reset_has_deq_ntf (stream_session->rx_fifo);
+  quic_eng_ack_rx_data (stream_session);
+
   return 0;
 }
 
@@ -559,22 +555,38 @@ quic_custom_tx_callback (void *s, transport_send_params_t * sp)
       QUIC_DBG (1, "NOT a stream: ctx_index %u, thread %u",
 		stream_session->connection_index,
 		stream_session->thread_index);
-      goto tx_end; /* Most probably a reschedule */
+      /* Most probably a reschedule */
+      quic_eng_send_packets (ctx);
+      return 0;
     }
 
   QUIC_DBG (3, "Stream TX event");
-  quic_eng_ack_rx_data (stream_session);
-  if (PREDICT_FALSE (!quic_eng_stream_tx (ctx, stream_session)))
+//   quic_eng_ack_rx_data (stream_session);
+
+  /* Add stream to engine tx scheduler. Scheduler decides when stream is to
+   * send and how much.
+   * TODO(fcoras): refactor to deschedule stream session */
+  if (quic_eng_stream_tx (ctx, stream_session))
     return 0;
 
-tx_end:
-  return quic_eng_send_packets (ctx);
+  /* Failed to schedule, probably no new data availabe. Try to send.
+   * NOTE: streams do end up stuck without this at times */
+//   quic_eng_send_packets (ctx);
+  return 0;
 }
 
 static int
 quic_udp_session_rx_callback (session_t * udp_session)
 {
   return quic_eng_udp_session_rx_packets (udp_session);
+}
+
+static int
+quic_udp_session_tx_callback (session_t *udp_session)
+{
+  quic_ctx_t *ctx;
+  ctx = quic_ctx_get (udp_session->opaque, udp_session->thread_index);
+  return quic_eng_send_packets (ctx);
 }
 
 always_inline void
@@ -635,6 +647,7 @@ static session_cb_vft_t quic_app_cb_vft = {
   .add_segment_callback = quic_add_segment_callback,
   .del_segment_callback = quic_del_segment_callback,
   .builtin_app_rx_callback = quic_udp_session_rx_callback,
+  .builtin_app_tx_callback = quic_udp_session_tx_callback,
   .session_cleanup_callback = quic_udp_session_cleanup_callback,
 };
 

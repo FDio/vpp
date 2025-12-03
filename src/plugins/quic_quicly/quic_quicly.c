@@ -158,6 +158,16 @@ quic_quicly_connection_closed (quic_ctx_t *ctx)
     }
 }
 
+static void
+quic_quicly_reschedule_ctx (quic_ctx_t *ctx)
+{
+  int64_t next_timeout = quicly_get_first_timeout (ctx->conn);
+  QUIC_ASSERT (!quic_ctx_is_stream (ctx));
+  quic_update_timer (
+    quic_wrk_ctx_get (quic_quicly_main.qm, ctx->c_thread_index), ctx,
+    next_timeout);
+}
+
 static int
 quic_quicly_send_datagram (session_t *udp_session, struct iovec *packet,
 			   ip46_address_t *rmt_ip, u16 rmt_port)
@@ -259,11 +269,11 @@ quic_quicly_send_packets (quic_ctx_t *ctx)
   u32 n_sent = 0;
   int err = 0;
   quicly_address_t quicly_rmt_ip, quicly_lcl_ip;
-  int64_t next_timeout;
 
   /* We have sctx, get qctx */
   if (quic_ctx_is_stream (ctx))
     {
+        // ASSERT (0);
       ctx = quic_quicly_get_quic_ctx (ctx->quic_connection_ctx_id,
 				      ctx->c_thread_index);
     }
@@ -282,49 +292,50 @@ quic_quicly_send_packets (quic_ctx_t *ctx)
       return 0;
     }
 
-  do
+//   do
+//     {
+  /* TODO : quicly can assert it can send min_packets up to 2 */
+  max_packets = quic_quicly_sendable_packet_count (udp_session);
+  if (max_packets < 2)
     {
-      /* TODO : quicly can assert it can send min_packets up to 2 */
-      max_packets = quic_quicly_sendable_packet_count (udp_session);
-      if (max_packets < 2)
-	{
-	  break;
-	}
-
-      num_packets = max_packets;
-      QUIC_DBG (3, "num_packets %u, packets %p, buf %p, buf_size %u",
-		num_packets, packets, buf, sizeof (buf));
-      if ((err = quicly_send (conn, &quicly_rmt_ip, &quicly_lcl_ip, packets,
-			      &num_packets, buf, sizeof (buf))))
-	{
-	  goto quicly_error;
-	}
-      if (num_packets > 0)
-	{
-	  quic_quicly_addr_to_ip46_addr (&quicly_rmt_ip, &ctx->rmt_ip,
-					 &ctx->rmt_port);
-	  for (i = 0; i != num_packets; ++i)
-	    {
-	      if ((err = quic_quicly_send_datagram (
-		     udp_session, &packets[i], &ctx->rmt_ip, ctx->rmt_port)))
-		{
-		  goto quicly_error;
-		}
-	    }
-	  n_sent += num_packets;
-	}
+      svm_fifo_add_want_deq_ntf (udp_session->tx_fifo,
+				 SVM_FIFO_WANT_DEQ_NOTIF);
+      return 0;
     }
-  while (num_packets > 0 && num_packets == max_packets);
 
-  quic_quicly_set_udp_tx_evt (udp_session);
+  num_packets = max_packets;
+  QUIC_DBG (3, "num_packets %u, packets %p, buf %p, buf_size %u", num_packets,
+	    packets, buf, sizeof (buf));
+  if ((err = quicly_send (conn, &quicly_rmt_ip, &quicly_lcl_ip, packets,
+			  &num_packets, buf, sizeof (buf))))
+    {
+      goto quicly_error;
+    }
+  if (num_packets > 0)
+    {
+      quic_quicly_addr_to_ip46_addr (&quicly_rmt_ip, &ctx->rmt_ip,
+				     &ctx->rmt_port);
+      for (i = 0; i != num_packets; ++i)
+	{
+	  if ((err = quic_quicly_send_datagram (udp_session, &packets[i],
+						&ctx->rmt_ip, ctx->rmt_port)))
+	    {
+	      goto quicly_error;
+	    }
+	}
+      n_sent += num_packets;
+    }
+//     }
+//   while (num_packets > 0 && num_packets == max_packets);
+
+  if (n_sent)
+    quic_quicly_set_udp_tx_evt (udp_session);
 
   QUIC_DBG (3, "%u[TX] %u[RX]", svm_fifo_max_dequeue (udp_session->tx_fifo),
 	    svm_fifo_max_dequeue (udp_session->rx_fifo));
 
-  next_timeout = quicly_get_first_timeout (conn);
-  quic_update_timer (
-    quic_wrk_ctx_get (quic_quicly_main.qm, ctx->c_thread_index), ctx,
-    next_timeout);
+  quic_quicly_reschedule_ctx (ctx);
+
   return n_sent;
 
 quicly_error:
@@ -344,6 +355,8 @@ quic_quicly_timer_expired (u32 conn_index)
 
   ctx = quic_quicly_get_quic_ctx (conn_index, vlib_get_thread_index ());
   ctx->timer_handle = QUIC_TIMER_HANDLE_INVALID;
+//   clib_warning ("timer expired for conn %u ctx %u", conn_index, ctx->c_c_index);
+//   quic_quicly_reschedule_ctx (ctx);
   quic_quicly_send_packets (ctx);
 }
 
@@ -445,6 +458,7 @@ quic_quicly_fifo_egress_emit (quicly_stream_t *stream, size_t off, void *dst,
     {
       *wrote_all = 1;
       *len = deq_max - off;
+      ctx->flags |= QUIC_F_STREAM_DESCHEDULED;
     }
   QUIC_ASSERT (*len > 0);
 
@@ -492,6 +506,15 @@ quic_quicly_ack_rx_data (session_t *stream_session)
   quicly_stream_sync_recvbuf (stream, stream_data->app_rx_data_len - max_deq);
   QUIC_DBG (3, "Acking %u bytes", stream_data->app_rx_data_len - max_deq);
   stream_data->app_rx_data_len = max_deq;
+
+  /* Need to send packets (acks may never be sent otherwise) */
+//   quic_quicly_send_packets (sctx);
+  if (sctx->flags & QUIC_F_STREAM_DESCHEDULED)
+    {
+      quic_quicly_reschedule_ctx (quic_quicly_get_quic_ctx (
+	sctx->quic_connection_ctx_id, sctx->c_thread_index));
+      sctx->flags &= ~QUIC_F_STREAM_DESCHEDULED;
+    }
 }
 
 static void
@@ -573,7 +596,7 @@ quic_quicly_on_receive (quicly_stream_t *stream, size_t off, const void *src,
 	      app_worker_rx_notify (app_wrk, stream_session);
 	    }
 	}
-      quic_quicly_ack_rx_data (stream_session);
+//       quic_quicly_ack_rx_data (stream_session);
     }
   else
     {
@@ -832,7 +855,6 @@ quic_quicly_connection_migrate (quic_ctx_t *ctx)
   quicly_conn_t *conn;
   quicly_context_t *quicly_context;
   session_t *udp_session;
-  int64_t next_timeout;
 
   new_ctx_index = quic_ctx_alloc (quic_quicly_main.qm, thread_index);
   new_ctx = quic_quicly_get_quic_ctx (new_ctx_index, thread_index);
@@ -861,10 +883,8 @@ quic_quicly_connection_migrate (quic_ctx_t *ctx)
   clib_bihash_add_del_16_8 (&quic_quicly_main.connection_hash, &kv,
 			    1 /* is_add */);
   new_ctx->timer_handle = QUIC_TIMER_HANDLE_INVALID;
-  next_timeout = quicly_get_first_timeout (new_ctx->conn);
 
-  quic_update_timer (quic_wrk_ctx_get (quic_quicly_main.qm, thread_index),
-		     new_ctx, next_timeout);
+  quic_quicly_reschedule_ctx (new_ctx);
 
   /*  Trigger write on this connection if necessary */
   udp_session = session_get_from_handle (new_ctx->udp_session_handle);
@@ -1486,7 +1506,18 @@ quic_quicly_stream_tx (quic_ctx_t *ctx, session_t *stream_session)
       return 0;
     }
   stream_data->app_tx_data_len = max_deq;
-  return quicly_stream_sync_sendbuf (stream, 1);
+
+  if (!quicly_stream_sync_sendbuf (stream, 1))
+    return 0;
+
+  if (ctx->flags & QUIC_F_STREAM_DESCHEDULED)
+    {
+      quic_quicly_reschedule_ctx (quic_quicly_get_quic_ctx (
+	ctx->quic_connection_ctx_id, ctx->c_thread_index));
+      ctx->flags &= ~QUIC_F_STREAM_DESCHEDULED;
+    }
+
+  return 1;
 }
 
 static void
@@ -1727,8 +1758,12 @@ rx_start:
 		     * necessarily the last in the batch */
 	}
       if (ctx != prev_ctx)
+	// quic_quicly_reschedule_ctx (ctx);
 	{
-	  quic_quicly_send_packets (ctx);
+	  if (!quic_ctx_is_stream (ctx))
+	    quic_quicly_send_packets (ctx);
+	  else
+	    quic_quicly_reschedule_ctx (ctx);
 	}
     }
 
