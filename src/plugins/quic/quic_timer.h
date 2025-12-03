@@ -39,9 +39,15 @@ quic_update_timer (quic_worker_ctx_t *wc, quic_ctx_t *ctx,
   session_t *quic_session;
   int rv;
 
+  ASSERT (!quic_ctx_is_stream (ctx));
   /*  This timeout is in ms which is the unit of our timer */
   next_interval = next_timeout - wc->time_now;
-
+  //   if (next_interval > 30000)
+  //   if (ctx->c_c_index < 5)
+  //     clib_warning ("c %u s %u next_timeout %ld next_interval %ld",
+  //     ctx->c_c_index, ctx->c_s_index, next_timeout,
+  // 		  next_interval);
+  next_interval = next_interval > 10000 ? 1 : next_interval;
   if (next_timeout == 0 || next_interval <= 0)
     {
       if (ctx->c_s_index == QUIC_SESSION_INVALID)
@@ -72,6 +78,7 @@ quic_update_timer (quic_worker_ctx_t *wc, quic_ctx_t *ctx,
 
   if (ctx->timer_handle == QUIC_TIMER_HANDLE_INVALID)
     {
+      //       clib_warning ("no timer for c %u", ctx->c_c_index);
       if (next_timeout == INT64_MAX)
 	{
 	  QUIC_DBG (4, "timer for ctx %u already stopped", ctx->c_c_index);
