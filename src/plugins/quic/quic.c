@@ -559,16 +559,24 @@ quic_custom_tx_callback (void *s, transport_send_params_t * sp)
       QUIC_DBG (1, "NOT a stream: ctx_index %u, thread %u",
 		stream_session->connection_index,
 		stream_session->thread_index);
-      goto tx_end; /* Most probably a reschedule */
+      /* Most probably a reschedule */
+      quic_eng_send_packets (ctx);
+      return 0;
     }
 
   QUIC_DBG (3, "Stream TX event");
   quic_eng_ack_rx_data (stream_session);
-  if (PREDICT_FALSE (!quic_eng_stream_tx (ctx, stream_session)))
+
+  /* Add stream to engine tx scheduler. Scheduler decides when stream is to
+   * send and how much.
+   * TODO(fcoras): refactor to deschedule stream session */
+  if (quic_eng_stream_tx (ctx, stream_session))
     return 0;
 
-tx_end:
-  return quic_eng_send_packets (ctx);
+  /* Failed to schedule, probably no new data availabe. Try to send.
+   * NOTE: streams do end up stuck without this at times */
+  quic_eng_send_packets (ctx);
+  return 0;
 }
 
 static int
