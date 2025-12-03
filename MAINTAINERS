@@ -226,7 +226,9 @@ F:      src/vnet/sfdp/
 Plugin StateFul Data Plane Services
 I:      sfdp_services
 M:      Mohammed Hawari <mohammed@hawari.fr>
+M:      Mohsin Kazmi <mohsin.kazmi14@gmail.com>
 F:      src/plugins/sfdp_services
+F:      src/plugins/sfdp_services/snort
 
 Plugin - Crypto - native
 I:	crypto-native
