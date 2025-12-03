@@ -518,15 +518,19 @@ openssl_ctx_write_dtls (tls_ctx_t *ctx, session_t *app_session,
   u8 *buf;
 
   us = session_get_from_handle (ctx->tls_session_handle);
-  to_deq = svm_fifo_max_dequeue_cons (app_session->tx_fifo);
   buf = om->tx_bufs[ctx->c_thread_index];
+  to_deq = svm_fifo_max_dequeue_cons (app_session->tx_fifo);
 
   while (to_deq > 0)
     {
       /* Peeking only pre-header dgram because the session is connected */
       rv = svm_fifo_peek (app_session->tx_fifo, 0, sizeof (hdr), (u8 *) &hdr);
-      ASSERT (rv == sizeof (hdr) && hdr.data_length < vec_len (buf));
+      ASSERT (rv == sizeof (hdr));
+      if (hdr.data_length + SESSION_CONN_HDR_LEN > to_deq)
+	goto done;
       ASSERT (to_deq >= hdr.data_length + SESSION_CONN_HDR_LEN);
+      svm_fifo_dequeue_drop (app_session->tx_fifo, SESSION_CONN_HDR_LEN);
+      to_deq -= SESSION_CONN_HDR_LEN;
 
       dgram_sz = hdr.data_length + SESSION_CONN_HDR_LEN;
       enq_max = dgram_sz + TLSO_CTRL_BYTES;
@@ -538,17 +542,21 @@ openssl_ctx_write_dtls (tls_ctx_t *ctx, session_t *app_session,
 	  sp->flags |= TRANSPORT_SND_F_DESCHED;
 	  goto done;
 	}
+      /* Write out the datagram, maybe in parts if it's too big for ossl
+       * buffers */
+      while (hdr.data_length > 0)
+	{
+	  rv =
+	    svm_fifo_dequeue (app_session->tx_fifo,
+			      clib_min (hdr.data_length, vec_len (buf)), buf);
+	  wrote = SSL_write (oc->ssl, buf, rv);
+	  ASSERT (wrote > 0);
 
-      rv = svm_fifo_peek (app_session->tx_fifo, SESSION_CONN_HDR_LEN,
-			  hdr.data_length, buf);
-      ASSERT (rv == hdr.data_length);
-      svm_fifo_dequeue_drop (app_session->tx_fifo, dgram_sz);
-
-      wrote = SSL_write (oc->ssl, buf, rv);
-      ASSERT (wrote > 0);
-
-      read += rv;
-      to_deq -= dgram_sz;
+	  read += rv;
+	  to_deq -= rv;
+	  hdr.data_length -= rv;
+	}
+      ASSERT (0 == hdr.data_length);
     }
 
 done:
