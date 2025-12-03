@@ -515,10 +515,18 @@ openssl_ctx_write_dtls (tls_ctx_t *ctx, session_t *app_session,
     {
       /* Peeking only pre-header dgram because the session is connected */
       rv = svm_fifo_peek (app_session->tx_fifo, 0, sizeof (hdr), (u8 *) &hdr);
-      ASSERT (rv == sizeof (hdr) && hdr.data_length < vec_len (buf));
-      ASSERT (to_deq >= hdr.data_length + SESSION_CONN_HDR_LEN);
+      ASSERT (rv == sizeof (hdr));
+      if (PREDICT_FALSE(to_deq < hdr.data_length + SESSION_CONN_HDR_LEN))
+	goto done;
 
       dgram_sz = hdr.data_length + SESSION_CONN_HDR_LEN;
+      if (hdr.data_length > DTLSO_MAX_BUFSIZE)
+	{
+	  svm_fifo_dequeue_drop (app_session->tx_fifo, dgram_sz);
+    to_deq -= dgram_sz;
+	  continue;
+	}
+      ASSERT (hdr.data_length < vec_len (buf));
       enq_max = dgram_sz + TLSO_CTRL_BYTES;
       if (svm_fifo_max_enqueue_prod (us->tx_fifo) < enq_max ||
 	  svm_fifo_provision_chunks (us->tx_fifo, 0, 0, enq_max))
@@ -1690,8 +1698,8 @@ tls_openssl_init (vlib_main_t * vm)
 
   for (i = 0; i < num_threads; i++)
     {
-      vec_validate (om->rx_bufs[i], DTLSO_MAX_DGRAM);
-      vec_validate (om->tx_bufs[i], DTLSO_MAX_DGRAM);
+      vec_validate (om->rx_bufs[i], DTLSO_MAX_BUFSIZE);
+      vec_validate (om->tx_bufs[i], DTLSO_MAX_BUFSIZE);
     }
   tls_register_engine (&openssl_engine, CRYPTO_ENGINE_OPENSSL);
 
