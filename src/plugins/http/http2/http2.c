@@ -15,7 +15,6 @@
 /* connection-level flow control window kind of mirrors TCP flow control */
 /* TODO: configurable? */
 #define HTTP2_CONNECTION_WINDOW_SIZE (10 << 20)
-#define HTTP2_CONNECT_UDP_FIFO_THRESH (2 << 10)
 
 #define foreach_http2_stream_state                                            \
   _ (IDLE, "IDLE")                                                            \
@@ -598,7 +597,7 @@ http2_req_get_win_increment (http2_req_t *req, http_conn_t *hc)
   increment = http_io_as_max_write (&req->base) - req->our_window;
   /* keep some space for dgram headers */
   if (req->base.is_tunnel && hc->udp_tunnel_mode == HTTP_UDP_TUNNEL_DGRAM)
-    increment -= clib_min (increment, HTTP2_CONNECT_UDP_FIFO_THRESH);
+    increment = increment >> 1;
   HTTP_DBG (1, "stream %u window increment %u", req->stream_id, increment);
   return increment;
 }
