@@ -445,6 +445,7 @@ quic_quicly_fifo_egress_emit (quicly_stream_t *stream, size_t off, void *dst,
     {
       *wrote_all = 1;
       *len = deq_max - off;
+      ctx->flags |= QUIC_F_STREAM_DESCHEDULED;
     }
   QUIC_ASSERT (*len > 0);
 
@@ -1463,7 +1464,7 @@ quic_quicly_stream_tx (quic_ctx_t *ctx, session_t *stream_session)
 {
   quic_stream_data_t *stream_data;
   quicly_stream_t *stream;
-  u32 max_deq;
+  u32 max_deq, need_reschedule;
 
   stream = ctx->stream;
   if (!quicly_sendstate_is_open (&stream->sendstate))
@@ -1486,7 +1487,21 @@ quic_quicly_stream_tx (quic_ctx_t *ctx, session_t *stream_session)
       return 0;
     }
   stream_data->app_tx_data_len = max_deq;
-  return quicly_stream_sync_sendbuf (stream, 1);
+
+  need_reschedule = ctx->flags & QUIC_F_STREAM_DESCHEDULED;
+  if (!quicly_stream_sync_sendbuf (stream, 1))
+    return 0;
+
+  if (need_reschedule)
+    {
+      int64_t next_timeout = quicly_get_first_timeout (ctx->conn);
+      quic_update_timer (
+	quic_wrk_ctx_get (quic_quicly_main.qm, ctx->c_thread_index), ctx,
+	next_timeout);
+      ctx->flags &= ~QUIC_F_STREAM_DESCHEDULED;
+    }
+
+  return 1;
 }
 
 static void

@@ -128,6 +128,7 @@ typedef enum quic_ctx_flags_
 {
   QUIC_F_IS_STREAM = (1 << 0),
   QUIC_F_IS_LISTENER = (1 << 1),
+  QUIC_F_STREAM_DESCHEDULED = (1 << 2),
 } quic_ctx_flags_t;
 
 typedef enum quic_cc_type
