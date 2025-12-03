@@ -1581,7 +1581,7 @@ quic_quicly_on_quic_session_connected (quic_ctx_t *ctx)
   svm_fifo_init_ooo_lookup (quic_session->rx_fifo, 0 /* ooo enq */);
   svm_fifo_init_ooo_lookup (quic_session->tx_fifo, 1 /* ooo deq */);
 
-  quic_session->session_state = SESSION_STATE_CONNECTING;
+  session_set_state (quic_session, SESSION_STATE_READY);
   if ((rv = app_worker_connect_notify (app_wrk, quic_session, SESSION_E_NONE,
 				       ctx->client_opaque)))
     {

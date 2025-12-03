@@ -178,6 +178,7 @@ quic_connect_stream (transport_endpoint_cfg_t *tep, session_t *stream_session,
   sctx->c_flags |= TRANSPORT_CONNECTION_F_NO_LOOKUP;
   sctx->flags |= QUIC_F_IS_STREAM;
   sctx->udp_session_handle = qctx->udp_session_handle;
+  sctx->crypto_context_index = qctx->crypto_context_index;
 
   if (!(conn = qctx->conn))
     return SESSION_E_UNKNOWN;
@@ -195,8 +196,6 @@ quic_connect_stream (transport_endpoint_cfg_t *tep, session_t *stream_session,
   quic_increment_counter (qm, QUIC_ERROR_OPENED_STREAM, 1);
 
   sctx->stream = stream;
-  sctx->crypto_context_index = qctx->crypto_context_index;
-  sctx->c_s_index = stream_session->session_index;
   stream_data->ctx_id = sctx->c_c_index;
   stream_data->thread_index = sctx->c_thread_index;
   stream_data->app_rx_data_len = 0;
