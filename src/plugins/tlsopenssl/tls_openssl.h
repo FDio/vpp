@@ -17,6 +17,7 @@
 #define TLSO_MIN_ENQ_SPACE (1 << 16)
 
 #define DTLSO_MAX_DGRAM 2000
+#define DTLSO_MAX_BUFSIZE 16 << 10
 
 #define ossl_check_err_is_fatal(_ssl, _rv)                                    \
   if (PREDICT_FALSE (_rv < 0 && SSL_get_error (_ssl, _rv) == SSL_ERROR_SSL))  \

@@ -17,7 +17,8 @@ func init() {
 		XEchoVclServerTcpTest, VclEchoTcpTest, VclEchoUdpTest, VclHttpPostTest, VclClUdpDscpTest,
 		VclQuicBidirectionalStreamTest, VclQuicUnidirectionalStreamClientResetTest,
 		VclQuicUnidirectionalStreamServerResetTest, VclQuicBidirectionalStreamClientResetTest,
-		VclQuicBidirectionalStreamServerResetTest, VclQuicClientCloseConnectionTest, VclQuicServerCloseConnectionTest)
+		VclQuicBidirectionalStreamServerResetTest, VclQuicClientCloseConnectionTest, VclQuicServerCloseConnectionTest,
+		VclDtlsOverMTUTest)
 	RegisterSoloVethTests(VclRetryAttachTest)
 	RegisterVethMWTests(VclQuicUnidirectionalStreamsMWTest)
 }
@@ -277,6 +278,31 @@ func VclQuicServerCloseConnectionTest(s *VethsSuite) {
 
 func VclHttpPostTest(s *VethsSuite) {
 	testVclEcho(s, "http")
+}
+
+func VclDtlsOverMTUTest(s *VethsSuite) {
+	s.SetupAppContainers()
+	srvVppCont := s.Containers.ServerVpp
+	srvAppCont := s.Containers.ServerApp
+	serverVethAddress := s.Interfaces.Server.Ip4AddressString()
+
+	srvAppCont.CreateFile("/vcl.conf", getVclConfig(srvVppCont))
+	srvAppCont.AddEnvVar("VCL_CONFIG", "/vcl.conf")
+	vclSrvCmd := fmt.Sprintf("vcl_test_server -p dtls -B %s %s > %s 2>&1",
+		serverVethAddress, s.Ports.Port1, VclTestSrvLogFileName(srvAppCont))
+	srvAppCont.ExecServer(true, WrapCmdWithLineBuffering(vclSrvCmd))
+	srvVppCont.VppInstance.WaitForApp("vcl_test_server", 3)
+
+	echoClnContainer := s.GetTransientContainerByName("client-app")
+	echoClnContainer.CreateFile("/vcl.conf", getVclConfig(echoClnContainer))
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	defer cancel()
+	testClientCommand := fmt.Sprintf("vcl_test_client -p dtls -N 1 -b 8192 %s %s 2>&1 | tee %s",
+		serverVethAddress, s.Ports.Port1, VclTestClnLogFileName(echoClnContainer))
+	echoClnContainer.AddEnvVar("VCL_CONFIG", "/vcl.conf")
+	_, err := echoClnContainer.ExecContext(ctx, true, WrapCmdWithLineBuffering(testClientCommand))
+	AssertNil(err)
 }
 
 // solo because binding server to an IP makes the test fail in the CI
