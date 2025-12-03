@@ -120,7 +120,7 @@ func testVclEcho(s *VethsSuite, proto string, extraArgs ...string) {
 	echoClnContainer := s.GetTransientContainerByName("client-app")
 	echoClnContainer.CreateFile("/vcl.conf", getVclConfig(echoClnContainer))
 
-	testClientCommand := fmt.Sprintf("vcl_test_client -X %s-p %s %s %s 2>&1 | tee %s",
+	testClientCommand := fmt.Sprintf("vcl_test_client -X -S %s-p %s %s %s 2>&1 | tee %s",
 		extras, proto, serverVethAddress, s.Ports.Port1, s.VclTestClnLogFileName(echoClnContainer))
 	echoClnContainer.AddEnvVar("VCL_CONFIG", "/vcl.conf")
 
