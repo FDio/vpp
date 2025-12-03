@@ -13,7 +13,7 @@ import (
 
 func init() {
 	RegisterVethTests(XEchoVclClientUdpTest, XEchoVclClientTcpTest, XEchoVclServerUdpTest, VclQuicUnidirectionalStreamTest,
-		XEchoVclServerTcpTest, VclEchoTcpTest, VclEchoUdpTest, VclHttpPostTest, VclClUdpDscpTest)
+		XEchoVclServerTcpTest, VclEchoTcpTest, VclEchoUdpTest, VclHttpPostTest, VclClUdpDscpTest, VclDtlsOverMTUTest)
 	RegisterSoloVethTests(VclRetryAttachTest)
 	RegisterVethMWTests(VclQuicUnidirectionalStreamsMWTest)
 }
@@ -158,6 +158,27 @@ func VclQuicUnidirectionalStreamsMWTest(s *VethsSuite) {
 
 func VclHttpPostTest(s *VethsSuite) {
 	testVclEcho(s, "http")
+}
+
+func VclDtlsOverMTUTest(s *VethsSuite) {
+	srvVppCont := s.Containers.ServerVpp
+	srvAppCont := s.Containers.ServerApp
+	serverVethAddress := s.Interfaces.Server.Ip4AddressString()
+
+	srvAppCont.CreateFile("/vcl.conf", getVclConfig(srvVppCont))
+	srvAppCont.AddEnvVar("VCL_CONFIG", "/vcl.conf")
+	vclSrvCmd := fmt.Sprintf("vcl_test_server -p dtls -B %s %s", serverVethAddress, s.Ports.Port1)
+	srvAppCont.ExecServer(true, vclSrvCmd)
+
+	echoClnContainer := s.GetTransientContainerByName("client-app")
+	echoClnContainer.CreateFile("/vcl.conf", getVclConfig(echoClnContainer))
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	defer cancel()
+	testClientCommand := "vcl_test_client -p dtls -N 1 -b 8192 " + serverVethAddress + " " + s.Ports.Port1
+	echoClnContainer.AddEnvVar("VCL_CONFIG", "/vcl.conf")
+	_, err := echoClnContainer.ExecContext(ctx, true, testClientCommand)
+	AssertNil(err)
 }
 
 // solo because binding server to an IP makes the test fail in the CI
