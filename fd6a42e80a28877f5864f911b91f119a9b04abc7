@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e5e23db9_df45d37e",
+        "filename": "src/plugins/tap/tap.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 373,
+      "author": {
+        "id": 198
+      },
+      "writtenOn": "2025-12-03T13:15:25Z",
+      "side": 1,
+      "message": "This looks incorrect",
+      "range": {
+        "startLine": 373,
+        "startChar": 2,
+        "endLine": 373,
+        "endChar": 28
+      },
+      "revId": "fd6a42e80a28877f5864f911b91f119a9b04abc7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
