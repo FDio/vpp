@@ -6,10 +6,12 @@
 /build-root/install-*/
 /build-root/tools
 /build-root/dpdk-includes/
+/build-root/dpdk_mlx_default.sh
 /build-root/packages-vpp/
 /build-root/path_setup
 /build-root/deb/debian/vpp-plugins/
 /build-root/deb/.pybuild/
+/build-root/debs
 /build-root/*.buildinfo
 /build-root/*.deb
 /build-root/*.rpm
@@ -135,6 +137,9 @@ compile_commands.json
 # extras gomemif build files
 /extras/gomemif/bazel*
 
+# extras libmemif build files
+/extras/libmemif
+
 # vpptop build files
 /extras/vpptop/build/*
 
@@ -156,6 +161,7 @@ compile_commands.json
 /test-c/hs-test/.go_cache/
 
 # kube-test
+calicovppversion
 /test-c/kube-test/vpp-data
 /test-c/kube-test/.build.ok
 /test-c/kube-test/.last_ppid

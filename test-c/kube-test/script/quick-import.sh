@@ -7,7 +7,7 @@ VPP_DIR=${VPP_DIR%test-c*}
 # Tag of built CalicoVPP images.
 # CALICOVPP_VERSION should be the same as TAG when running kube-test
 TAG=${TAG:-"kt-master"}
-BASE=${BASE:-"origin/master"}
+BASE=${BASE:-"HEAD"}
 
 if [ "$1" = "" ]; then
     echo "This script will build, save and import images to both nodes.
@@ -23,7 +23,29 @@ fi
 remote_user="${1%%:*}"
 remote_path="${1#*:}"
 
-set -xe
+restore_repo() {
+  git reset --hard HEAD
+  git stash pop
+}
+
+build_calicovpp () {
+  if [ ! -d "$CALICOVPP_DIR" ]; then
+      git clone https://github.com/projectcalico/vpp-dataplane.git $CALICOVPP_DIR
+    else
+      echo "Repo found, resetting"
+      cd $CALICOVPP_DIR
+      git reset --hard origin/master
+      git fetch --tags --force
+      git pull
+      cd $VPP_DIR/test-c/kube-test
+  fi
+
+  make -C $CALICOVPP_DIR/vpp-manager vpp VPP_DIR=$VPP_DIR BASE=$BASE && \
+  make -C $CALICOVPP_DIR dev TAG=$TAG && \
+  make -C $CALICOVPP_DIR image TAG=$TAG
+}
+
+set -x
 
 if [ "$2" = "kt" ] || [ "$2" = "" ]; then
     make build
@@ -34,32 +56,13 @@ if [ "$2" = "kt" ] || [ "$2" = "" ]; then
 fi
 
 if [ "$2" = "cv" ] || [ "$2" = "" ]; then
-    if [ ! -d "$CALICOVPP_DIR" ]; then
-      git clone https://github.com/projectcalico/vpp-dataplane.git $CALICOVPP_DIR
-    else
-      echo "Repo found, resetting"
-      cd $CALICOVPP_DIR
-      git reset --hard origin/master
-      git fetch --tags --force
-      git pull
-      cd vpp-manager
-      rm vpp*.tar || true
-      make clean-vpp
-      if [[ -d "$CALICOVPP_DIR/vpp-manager/vpp_build" ]]; then
-        cd $CALICOVPP_DIR/vpp-manager/vpp_build
-        make wipe || true
-        make wipe-release || true
-        git reset --hard origin/master
-        git fetch --tags --force
-        git pull
-      fi
+    if ! build_calicovpp; then
+      echo "*** Build failed ***"
+      restore_repo
+      exit 1
+    fi
 
-      cd $VPP_DIR/test-c/kube-test
-  fi
-
-	make -C $CALICOVPP_DIR/vpp-manager vpp BASE=$BASE
-    make -C $CALICOVPP_DIR dev TAG=$TAG
-    make -C $CALICOVPP_DIR image TAG=$TAG
+    restore_repo
     docker save -o calicovpp-images.tar docker.io/calicovpp/vpp:$TAG docker.io/calicovpp/agent:$TAG docker.io/calicovpp/multinet-monitor:$TAG
     sudo ctr -n k8s.io images import calicovpp-images.tar
     scp calicovpp-images.tar $1
