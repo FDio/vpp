@@ -82,17 +82,15 @@ func testXEchoVclServer(s *VethsSuite, proto string) {
 	srvAppCont.CreateFile("/vcl.conf", getVclConfig(srvVppCont))
 	srvAppCont.AddEnvVar("VCL_CONFIG", "/vcl.conf")
 	vclSrvCmd := fmt.Sprintf("vcl_test_server -p %s -B %s %s", proto, serverVethAddress, s.Ports.Port1)
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		defer GinkgoRecover()
 		o, oErr, err := srvAppCont.ExecLineBuffered(ctx, true, vclSrvCmd)
 		s.Log(o)
 		s.Log(oErr)
 		s.AssertNil(err, o+oErr)
-	}()
+	})
 
-	time.Sleep(time.Millisecond * 500)
+	srvVppCont.VppInstance.WaitForApp("vcl_test_server", 3)
 	clientVpp := s.Containers.ClientVpp.VppInstance
 	o := clientVpp.Vppctl("test echo client uri %s://%s/%s fifo-size 64k verbose bytes 2m", proto, serverVethAddress, s.Ports.Port1)
 	cancel()
@@ -117,6 +115,7 @@ func testVclEcho(s *VethsSuite, proto string, extraArgs ...string) {
 		proto, serverVethAddress, s.Ports.Port1, s.VclTestSrvLogFileName(srvAppCont))
 
 	srvAppCont.ExecServer(true, WrapCmdWithLineBuffering(vclSrvCmd))
+	srvVppCont.VppInstance.WaitForApp("vcl_test_server", 3)
 
 	echoClnContainer := s.GetTransientContainerByName("client-app")
 	echoClnContainer.CreateFile("/vcl.conf", getVclConfig(echoClnContainer))
@@ -174,6 +173,7 @@ func testRetryAttach(s *VethsSuite, proto string) {
 	vclSrvCmd := fmt.Sprintf("vcl_test_server -p %s %s > %s 2>&1",
 		proto, s.Ports.Port1, s.VclTestSrvLogFileName(echoSrvContainer))
 	echoSrvContainer.ExecServer(true, WrapCmdWithLineBuffering(vclSrvCmd))
+	srvVppContainer.VppInstance.WaitForApp("vcl_test_server", 3)
 
 	s.Log("This whole test case can take around 3 minutes to run. Please be patient.")
 	s.Log("... Running first echo client test, before disconnect.")
@@ -224,6 +224,7 @@ func VclClUdpDscpTest(s *VethsSuite) {
 	// DSCP 40 - Class selector 5 - Signalling
 	vclSrvCmd := fmt.Sprintf("vcl_test_cl_udp -s %s -d 40", serverVethAddress)
 	srvAppCont.ExecServer(true, vclSrvCmd)
+	srvVppCont.VppInstance.WaitForApp("vcl_test_cl_udp", 3)
 
 	cliVppCont := s.Containers.ClientVpp
 	cliAppCont := s.Containers.ClientApp
