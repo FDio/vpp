@@ -721,9 +721,15 @@ vt_quic_accept (int listen_fd, vcl_test_session_t *ts)
   client_fd = vppcom_session_accept (listen_fd, &ts->endpt, 0);
   if (client_fd < 0)
     {
-      vterr ("vppcom_session_accept()", client_fd);
+      if (client_fd != VPPCOM_EAGAIN)
+	vterr ("vppcom_session_accept()", client_fd);
       return client_fd;
     }
+
+  uint32_t flags = O_NONBLOCK, flen;
+  flen = sizeof (flags);
+  vppcom_session_attr (client_fd, VPPCOM_ATTR_SET_FLAGS, &flags, &flen);
+
   ts->fd = client_fd;
   ts->is_open = 1;
   ts->read = vcl_test_read;
