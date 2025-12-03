@@ -7,7 +7,8 @@ VPP_DIR=$(pwd)
 VPP_DIR=${VPP_DIR%test-c*}
 reg_name='kind-registry'
 reg_port='5000'
-BASE=${BASE:-"origin/master"}
+COMMIT_HASH=$(git rev-parse HEAD)
+BASE=${BASE:-"$COMMIT_HASH"}
 
 # TAG "kt-master" (kube-test master) is only used when setting up a master cluster.
 # "kt-master" is then written to .vars, from where kube-test parses it
@@ -73,6 +74,12 @@ help() {
   echo -e "\nTo shut down the cluster, use 'kind delete cluster'"
 }
 
+done_message() {
+  green "  Done. Please wait for the cluster to come fully online before running tests.
+  Use 'watch kubectl get pods -A' to monitor cluster status.
+  To delete the cluster, use 'kind delete cluster'"
+}
+
 push_calico_to_registry() {
   for component in pod2daemon-flexvol cni node typha apiserver csi kube-controllers node-driver-registrar; do
     docker pull docker.io/calico/$component:$TIGERA_VERSION
@@ -105,22 +112,11 @@ build_calicovpp() {
       git reset --hard origin/master
       git fetch --tags --force
       git pull
-      cd vpp-manager
-      rm vpp*.tar || true
-      make clean-vpp
-      if [[ -d "$CALICOVPP_DIR/vpp-manager/vpp_build" ]]; then
-        cd $CALICOVPP_DIR/vpp-manager/vpp_build
-        make wipe || true
-        make wipe-release || true
-        git reset --hard origin/master
-        git fetch --tags --force
-        git pull
-      fi
-
       cd $VPP_DIR/test-c/kube-test
   fi
-  make -C $CALICOVPP_DIR/vpp-manager vpp BASE=$BASE
-  make -C $CALICOVPP_DIR dev TAG=$TAG
+
+  make -C $CALICOVPP_DIR/vpp-manager vpp VPP_DIR=$VPP_DIR BASE=$BASE && \
+  make -C $CALICOVPP_DIR dev TAG=$TAG && \
   make -C $CALICOVPP_DIR image-kind TAG=$TAG
 }
 
@@ -128,7 +124,15 @@ start_cni() {
   kubectl create --save-config -f kubernetes/kind-calicovpp-config.yaml
 }
 
+restore_repo() {
+  git reset --hard $COMMIT_HASH
+  git stash pop
+}
+
 setup_master() {
+  git stash -u && git stash apply
+  # delete CMakeCache so compiler is re-detected (should avoid compilation errors)
+  rm $VPP_DIR/build-root/build-vpp*/vpp/CMakeCache.txt || true
   export CALICOVPP_VERSION=${CALICOVPP_VERSION:-"kt-master"}
   echo "CALICOVPP_VERSION=$CALICOVPP_VERSION" > kubernetes/.vars
   envsubst < kubernetes/kind-calicovpp-config-template.yaml > kubernetes/kind-calicovpp-config.yaml
@@ -140,19 +144,34 @@ setup_master() {
   kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/$TIGERA_VERSION/manifests/tigera-operator.yaml
   while [[ "$(kubectl api-resources --api-group=operator.tigera.io | grep Installation)" == "" ]]; do echo "waiting for Installation kubectl resource"; sleep 2; done
 
-  build_calicovpp
+  if ! build_calicovpp; then
+    echo -e "\e[31m*** Build failed. Restoring repo. Try running 'make -C ../.. wipe' and 'make -C ../.. wipe-release' ***\e[0m"
+    restore_repo
+    exit 1
+  fi
+
   push_tag_to_registry
   start_cni
+  restore_repo
+  done_message
 }
 
 rebuild_master() {
+  git stash -u && git stash apply
+  rm $VPP_DIR/build-root/build-vpp*/vpp/CMakeCache.txt || true
   export CALICOVPP_VERSION=${CALICOVPP_VERSION:-"kt-master"}
   echo "CALICOVPP_VERSION=$CALICOVPP_VERSION" > kubernetes/.vars
   envsubst < kubernetes/kind-calicovpp-config-template.yaml > kubernetes/kind-calicovpp-config.yaml
-  build_calicovpp
+  if ! build_calicovpp; then
+    red "*** Build failed. Restoring repo. Try running 'make -C ../.. wipe' and 'make -C ../.. wipe-release' ***"
+    restore_repo
+    exit 1
+  fi
   push_tag_to_registry
   start_cni || true
+  restore_repo
   kubectl rollout restart -n calico-vpp-dataplane ds/calico-vpp-node
+  done_message
 }
 
 setup_release() {
@@ -171,13 +190,11 @@ setup_release() {
   while [[ "$(kubectl api-resources --api-group=operator.tigera.io | grep Installation)" == "" ]]; do echo "waiting for Installation kubectl resource"; sleep 2; done
 
   kubectl create --save-config -f kubernetes/kind-calicovpp-config.yaml
-
-  echo "Done. Please wait for the cluster to come fully online before running tests."
-  echo "Use 'watch kubectl get pods -A' to monitor cluster status."
-  echo "To delete the cluster, use 'kind delete cluster'"
+  done_message
 }
 
 red () { printf "\e[0;31m$1\e[0m\n" >&2 ; }
+green () { printf "\e[0;32m$1\e[0m\n" >&2 ; }
 
 case "$COMMAND" in
   master-cluster)
