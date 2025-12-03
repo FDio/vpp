@@ -33,6 +33,23 @@
       "message": "recheck",
       "revId": "0e09786d44aa59db334f10a89944ac0cd56b8c6d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2575f31b_1cf08a17",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2025-12-03T11:34:17Z",
+      "side": 1,
+      "message": "Hello Neale,\n\nSome time ago we started to use our control plane to install some routes but found out that in case linux-cp plugin install their own - it wins and we cannot dump the clear our routes in this case as the dump logic iterates over \"contributing\" fib path-lists. I tried to address this issue in the patch.\n\nDo you mind reviewing it? I tried to keep thing minimalistic, so please let me know if you don\u0027t want to touch existing API and/or expose it as a different one.\n\nThanks you",
+      "revId": "0e09786d44aa59db334f10a89944ac0cd56b8c6d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
