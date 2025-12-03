@@ -39,9 +39,9 @@ quic_update_timer (quic_worker_ctx_t *wc, quic_ctx_t *ctx,
   session_t *quic_session;
   int rv;
 
+  ASSERT (!quic_ctx_is_stream (ctx));
   /*  This timeout is in ms which is the unit of our timer */
   next_interval = next_timeout - wc->time_now;
-
   if (next_timeout == 0 || next_interval <= 0)
     {
       if (ctx->c_s_index == QUIC_SESSION_INVALID)
