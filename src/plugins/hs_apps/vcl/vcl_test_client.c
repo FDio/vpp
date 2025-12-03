@@ -315,6 +315,7 @@ vtc_session_check_is_done (vcl_test_session_t *ts, uint8_t check_rx)
     {
       clock_gettime (CLOCK_REALTIME, &ts->stats.stop);
       ts->is_done = 1;
+      vtinf ("session %u done", ts->session_index);
       return 1;
     }
   return 0;
