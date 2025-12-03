@@ -126,6 +126,7 @@ func ldPreloadIperfCutThru(s *NoTopoSuite, extraClientArgs string) float64 {
 	cmd := fmt.Sprintf("sh -c \"iperf3 -4 -s --one-off -B %s -p %s --logfile %s\"",
 		serverAddress, s.Ports.CutThru, s.IperfLogFileName(s.Containers.ServerApp))
 	s.Containers.ServerApp.ExecServer(true, cmd)
+	s.Containers.Vpp.VppInstance.WaitForApp("iperf", 3)
 
 	// check for sessions during test run
 	go func() {

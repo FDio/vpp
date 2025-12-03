@@ -1525,7 +1525,7 @@ func HttpStaticRedirectTest(s *Http1Suite) {
 	_, err = conn.Read(reply)
 	s.AssertNil(err, fmt.Sprint(err))
 	s.Log(string(reply))
-	expectedLocation := fmt.Sprintf("Location: http://example.com/index.html")
+	expectedLocation := "Location: http://example.com/index.html"
 	s.AssertContains(string(reply), expectedLocation)
 }
 

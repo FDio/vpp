@@ -102,6 +102,7 @@ func ldPreloadIperf(s *LdpSuite, extraClientArgs string, isReorder bool) float64
 	cmd := fmt.Sprintf("sh -c \"iperf3 -4 -s --one-off -B %s -p %s --logfile %s\"",
 		serverAddress, s.Ports.Port1, s.IperfLogFileName(s.Containers.ServerApp))
 	s.Containers.ServerApp.ExecServer(true, cmd)
+	s.Containers.ServerVpp.VppInstance.WaitForApp("iperf", 3)
 
 	cmd = fmt.Sprintf("iperf3 -c %s -B %s -l 1460 -p %s %s", serverAddress, clientBindAddress, s.Ports.Port1, extraClientArgs)
 	o, err := s.Containers.ClientApp.ExecContext(ctx, true, cmd)

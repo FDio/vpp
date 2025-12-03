@@ -322,7 +322,7 @@ func (vpp *VppInstance) GetSessionStat(stat string) int {
 
 func (vpp *VppInstance) WaitForApp(appName string, timeout int) {
 	vpp.getSuite().Log("waiting for app " + appName)
-	for i := 0; i < timeout; i++ {
+	for range timeout {
 		o := vpp.Vppctl("show app")
 		if strings.Contains(o, appName) {
 			return
