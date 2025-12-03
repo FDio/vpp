@@ -104,6 +104,7 @@ typedef struct
   _ (tunnels_reset_by_client, "tunnels reset by client")                      \
   _ (tunnels_reset_by_target, "tunnels reset by target")                      \
   _ (max_streams_hit, "max streams hit")                                      \
+  _ (http_conns_reset_by_server, "http connections reset by server")          \
   _ (target_unreachable, "target unreachable")                                \
   _ (client_closed_before_stream_opened, "client closed before stream "       \
 					 "opened")                            \
@@ -1208,6 +1209,7 @@ hcpc_http_session_reset_callback (session_t *s)
     {
       hcpc_http_connection_closed (ps);
       clib_spinlock_unlock_if_init (&hcpcm->sessions_lock);
+      hcpc_worker_stats_inc (s->thread_index, http_conns_reset_by_server, 1);
       return;
     }
   ps->state = HCPC_SESSION_CLOSED;
