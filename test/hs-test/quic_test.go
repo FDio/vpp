@@ -104,7 +104,6 @@ func QuicAlpnEmptyClientListTest(s *VethsSuite) {
 }
 
 func QuicBuiltinEchoTest(s *VethsSuite) {
-	s.Skip("Unstable, need another patch")
 	regex := regexp.MustCompile(`(\d+\.\d)-(\d+.\d)\s+(\d+\.\d+)[KMG]\s+0\s+\d+\.\d+[KMG]b/s\s+(\d?\.\d+)ms`)
 	serverVpp := s.Containers.ServerVpp.VppInstance
 	clientVpp := s.Containers.ClientVpp.VppInstance
