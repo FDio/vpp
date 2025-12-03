@@ -40,6 +40,11 @@ on:
         description: "Gerrit refspec of change"
         required: true
         type: string
+      FDIO_NAMESPACE:
+        description: "Executor Namespace (prod|sandbox)"
+        required: false
+        type: string
+        default: prod
 
 env:
   GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
@@ -90,7 +95,7 @@ jobs:
       - nomad
       - fdio:arch=x86_64
       - fdio:class=builder
-      - fdio:namespace=sandbox
+      - fdio:namespace=${{ inputs.FDIO_NAMESPACE }}
       - fdio:os=ubuntu2404
 
     env:
@@ -211,4 +216,4 @@ jobs:
           gerrit-change-number: ${{ inputs.GERRIT_CHANGE_NUMBER }}
           gerrit-patchset-number: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
           vote-type: ${{ env.WORKFLOW_CONCLUSION }}
-          comment-only: true  # Do not vote on gerrit change
+          comment-only: true  # Do not add vote to gerrit change
