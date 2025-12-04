@@ -150,15 +150,15 @@ compile_commands.json
 **/test-run-*-*-*
 
 # host stack test framework
-/test-c/hs-test/vpp-data
-/test-c/hs-test/hs-test
-/test-c/hs-test/http_server
-/test-c/hs-test/.build.ok
-/test-c/hs-test/.build.cov.ok
-/test-c/hs-test/.last_hst_ppid
-/test-c/hs-test/summary/
-/test-c/hs-test/.last_state_hash
-/test-c/hs-test/.go_cache/
+/test/hs-test/vpp-data
+/test/hs-test/hs-test
+/test/hs-test/http_server
+/test/hs-test/.build.ok
+/test/hs-test/.build.cov.ok
+/test/hs-test/.last_hst_ppid
+/test/hs-test/summary/
+/test/hs-test/.last_state_hash
+/test/hs-test/.go_cache/
 
 # kube-test
 calicovppversion
