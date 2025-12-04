@@ -16,6 +16,24 @@
       "message": "rpc :-)",
       "revId": "09450988438fada425b9203dc688e647156c0008",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1c16de10_f170af77",
+        "filename": "src/plugins/hs_apps/proxy.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 315,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-12-04T14:01:48Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9b0dd569_543e2c2a",
+      "revId": "09450988438fada425b9203dc688e647156c0008",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
