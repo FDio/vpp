@@ -446,6 +446,15 @@ hcpc_timer_update (hcpc_session_t *ps)
 }
 
 static void
+hcpc_reset_session_rpc (void *handlep)
+{
+  session_t *s;
+
+  s = session_get_from_handle (pointer_to_uword (handlep));
+  session_reset (s);
+}
+
+static void
 hcpc_session_postponed_free_rpc (void *arg)
 {
   uword session_index = pointer_to_uword (arg);
@@ -891,8 +900,10 @@ hcpc_open_http_stream (u32 session_index)
 	    ps->intercept.tx_fifo->master_thread_index;
 	  if (ps->intercept.session_handle != SESSION_INVALID_HANDLE)
 	    {
-	      session_reset (
-		session_get_from_handle (ps->intercept.session_handle));
+	      session_send_rpc_evt_to_thread_force (
+		session_thread_from_handle (ps->intercept.session_handle),
+		hcpc_reset_session_rpc,
+		uword_to_pointer (ps->intercept.session_handle, void *));
 	      ps->intercept_diconnected = 1;
 	    }
 	  else
@@ -1217,7 +1228,10 @@ hcpc_http_session_reset_callback (session_t *s)
   if (!ps->intercept_diconnected &&
       ps->intercept.session_handle != SESSION_INVALID_HANDLE)
     {
-      session_reset (session_get_from_handle (ps->intercept.session_handle));
+      session_send_rpc_evt_to_thread_force (
+	session_thread_from_handle (ps->intercept.session_handle),
+	hcpc_reset_session_rpc,
+	uword_to_pointer (ps->intercept.session_handle, void *));
       ps->intercept_diconnected = 1;
     }
   clib_spinlock_unlock_if_init (&hcpcm->sessions_lock);
@@ -1277,8 +1291,10 @@ hcpc_http_rx_callback (session_t *s)
 	  if (!ps->intercept_diconnected)
 	    {
 	      if (ps->intercept.session_handle != SESSION_INVALID_HANDLE)
-		session_reset (
-		  session_get_from_handle (ps->intercept.session_handle));
+		session_send_rpc_evt_to_thread_force (
+		  session_thread_from_handle (ps->intercept.session_handle),
+		  hcpc_reset_session_rpc,
+		  uword_to_pointer (ps->intercept.session_handle, void *));
 	      ps->intercept_diconnected = 1;
 	    }
 	  else
@@ -1558,7 +1574,10 @@ hcpc_intercept_session_reset_callback (session_t *s)
   if (!ps->http_disconnected &&
       ps->http.session_handle != SESSION_INVALID_HANDLE)
     {
-      session_reset (session_get_from_handle (ps->http.session_handle));
+      session_send_rpc_evt_to_thread_force (
+	session_thread_from_handle (ps->http.session_handle),
+	hcpc_reset_session_rpc,
+	uword_to_pointer (ps->http.session_handle, void *));
       ps->http_disconnected = 1;
     }
   clib_spinlock_unlock_if_init (&hcpcm->sessions_lock);
