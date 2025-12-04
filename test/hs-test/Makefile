@@ -1,6 +1,6 @@
 export HS_ROOT=$(CURDIR)
 
-# sets WS_ROOT if called from test-c/hs-test
+# sets WS_ROOT if called from test/hs-test
 ifeq ($(WS_ROOT),)
 export WS_ROOT=$(HS_ROOT)/../..
 endif
