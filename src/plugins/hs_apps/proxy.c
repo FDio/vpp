@@ -312,6 +312,15 @@ proxy_try_close_session (session_t * s, int is_active_open)
 }
 
 static void
+proxy_do_reset_rpc (void *handlep)
+{
+  session_t *s;
+
+  s = session_get_from_handle (pointer_to_uword (handlep));
+  session_reset (s);
+}
+
+static void
 proxy_reset_session (session_t *s, int is_active_open)
 {
   proxy_main_t *pm = &proxy_main;
@@ -336,6 +345,10 @@ proxy_reset_session (session_t *s, int is_active_open)
       if (!ps->po_disconnected)
 	{
 	  ASSERT (ps->po.session_handle != SESSION_INVALID_HANDLE);
+	  session_send_rpc_evt_to_thread_force (
+	    session_thread_from_handle (ps->po.session_handle),
+	    proxy_do_reset_rpc,
+	    uword_to_pointer (ps->po.session_handle, void *));
 	  session_reset (session_get_from_handle (ps->po.session_handle));
 	  ps->po_disconnected = 1;
 	}
@@ -347,7 +360,10 @@ proxy_reset_session (session_t *s, int is_active_open)
       if (!ps->ao_disconnected)
 	{
 	  if (ps->ao.session_handle != SESSION_INVALID_HANDLE)
-	    session_reset (session_get_from_handle (ps->ao.session_handle));
+	    session_send_rpc_evt_to_thread_force (
+	      session_thread_from_handle (ps->ao.session_handle),
+	      proxy_do_reset_rpc,
+	      uword_to_pointer (ps->ao.session_handle, void *));
 	  ps->ao_disconnected = 1;
 	}
     }
