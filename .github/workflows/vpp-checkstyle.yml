@@ -43,7 +43,10 @@ on:
       FDIO_NAMESPACE:
         description: "Executor Namespace (prod|sandbox)"
         required: false
-        type: string
+        type: choice
+        options:
+          - sandbox
+          - prod
         default: prod
 
 env:
@@ -56,6 +59,7 @@ env:
   GERRIT_PATCHSET_REVISION: ${{ inputs.GERRIT_PATCHSET_REVISION }}
   GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
   GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
+  FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
 
 defaults:
   run:
