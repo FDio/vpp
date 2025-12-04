@@ -29,7 +29,7 @@ var _ = ReportAfterSuite("VPP version under test", func(report Report) {
 func TestKube(t *testing.T) {
 	TestTimeout = time.Minute * time.Duration(*Timeout)
 
-	// creates a file with PPID, used for 'make cleanup-kube'
+	// creates a file with PPID, used for 'make cleanup-kt'
 	Ppid = fmt.Sprint(os.Getppid())
 	Ppid = Ppid[:len(Ppid)-1]
 	f, _ := os.Create(".last_ppid")
@@ -58,7 +58,7 @@ func TestKube(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "kube-test")
 	if *IsPersistent {
-		fmt.Println("\033[36m" + "Use 'make cleanup-kube' to remove pods " +
+		fmt.Println("\033[36m" + "Use 'make cleanup-kt' to remove pods " +
 			"and namespaces. \nPPID: " + Ppid + "\033[0m")
 	}
 	// deleting the namespace here since we use the same namespace for every suite

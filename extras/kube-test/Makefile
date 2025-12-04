@@ -49,7 +49,7 @@ help:
 	@echo " release-cluster          - setup KinD cluster for performance testing (latest CalicoVPP release)"
 	@echo " checkstyle-go            - check style of .go source files"
 	@echo " fixstyle-go              - format .go source files"
-	@echo " cleanup-kube             - removes all kubernetes pods and namespaces from last test run"
+	@echo " cleanup-kt               - removes all kubernetes pods and namespaces from last test run"
 	@echo " list-tests               - list all tests"
 	@echo " install-deps             - install software dependencies"
 	@echo " install-kube-deps        - install software dependencies for kind cluster"
@@ -223,8 +223,8 @@ fixstyle-go:
 	@echo "Fixstyle done."
 	@echo "*******************************************************************"
 
-.PHONY: cleanup-kube
-cleanup-kube:
+.PHONY: cleanup-kt
+cleanup-kt:
 	@if [ ! -f ".last_ppid" ]; then \
 		echo "'.last_ppid' file does not exist."; \
 		exit 1; \
