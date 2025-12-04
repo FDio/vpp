@@ -919,7 +919,7 @@ Kube test framework
 I:	kube-test
 M:	Florin Coras <fcoras@cisco.com>
 M:	Adrian Villin <avillin@cisco.com>
-F:	test-c/kube-test
+F:	extras/kube-test
 
 THE REST
 I:	misc

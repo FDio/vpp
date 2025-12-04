@@ -841,9 +841,9 @@ go-api-files: json-api-files
 cleanup-hst:
 	$(MAKE) -C test/hs-test cleanup-hst
 
-.PHONY: cleanup-perf
-cleanup-perf:
-	$(MAKE) -C test-c/kube-test cleanup-perf
+.PHONY: cleanup-kt
+cleanup-kt:
+	$(MAKE) -C extras/kube-test cleanup-kt
 
 .PHONY: ctags
 ctags: ctags.files
@@ -890,12 +890,12 @@ checkstyle-python:
 .PHONY: checkstyle-go
 checkstyle-go:
 	@$(MAKE) -C test/hs-test checkstyle-go
-	@$(MAKE) -C test/kube-test checkstyle-go
+	@$(MAKE) -C extras/kube-test checkstyle-go
 
 .PHONY: fixstyle-go
 fixstyle-go:
 	@$(MAKE) -C test/hs-test fixstyle-go
-	@$(MAKE) -C test/kube-test fixstyle-go
+	@$(MAKE) -C extras/kube-test fixstyle-go
 
 .PHONY: checkstyle-all
 checkstyle-all: checkstyle-commit checkstyle checkstyle-python docs-spell checkstyle-go

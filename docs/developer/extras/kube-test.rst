@@ -1,1 +1,1 @@
-../../../test-c/kube-test/README.rst
+../../../extras/kube-test/README.rst
