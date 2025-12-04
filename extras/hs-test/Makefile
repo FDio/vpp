@@ -1,3 +1,3 @@
 # Temp redirect
 %:
-	$(MAKE) -C ../../test-c/hs-test/ -f Makefile $@
+	$(MAKE) -C ../../test/hs-test/ -f Makefile $@

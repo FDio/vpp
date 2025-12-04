@@ -1,1 +1,1 @@
-../../../test-c/hs-test/README.rst
+../../../test/hs-test/README.rst

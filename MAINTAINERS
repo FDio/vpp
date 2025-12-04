@@ -913,7 +913,7 @@ I:	hs-test
 M:	Florin Coras <fcoras@cisco.com>
 M:	Matus Fabian <matfabia@cisco.com>
 M:	Adrian Villin <avillin@cisco.com>
-F:	test-c/hs-test
+F:	test/hs-test
 
 Kube test framework
 I:	kube-test
