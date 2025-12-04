@@ -843,7 +843,7 @@ cleanup-hst:
 
 .PHONY: cleanup-perf
 cleanup-perf:
-	$(MAKE) -C test-c/kube-test cleanup-perf
+	$(MAKE) -C extras/kube-test cleanup-perf
 
 .PHONY: ctags
 ctags: ctags.files
