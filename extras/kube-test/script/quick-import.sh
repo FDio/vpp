@@ -2,7 +2,7 @@
 
 CALICOVPP_DIR=${CALICOVPP_DIR:-"$HOME/vpp-dataplane"}
 VPP_DIR=$(pwd)
-VPP_DIR=${VPP_DIR%test-c*}
+VPP_DIR=${VPP_DIR%extras*}
 COMMIT_HASH=$(git rev-parse HEAD)
 STASH_SAVED=0
 
@@ -48,7 +48,7 @@ build_calicovpp() {
       git reset --hard origin/master
       git fetch --tags --force
       git pull
-      cd $VPP_DIR/test-c/kube-test
+      cd $VPP_DIR/extras/kube-test
   fi
 
   make -C $CALICOVPP_DIR/vpp-manager vpp VPP_DIR=$VPP_DIR BASE=$BASE && \

@@ -162,17 +162,17 @@ compile_commands.json
 
 # kube-test
 calicovppversion
-/test-c/kube-test/vpp-data
-/test-c/kube-test/.build.ok
-/test-c/kube-test/.last_ppid
-/test-c/kube-test/summary/
-/test-c/kube-test/.last_state_hash
-/test-c/kube-test/.kube_deps.ok
-/test-c/kube-test/kubernetes/baremetal-calicovpp-config.yaml
-/test-c/kube-test/kubernetes/kind-calicovpp-config.yaml
-/test-c/kube-test/kubernetes/pod-definitions.yaml
-/test-c/kube-test/kubernetes/.vars
-/test-c/kube-test/*.tar
+/extras/kube-test/vpp-data
+/extras/kube-test/.build.ok
+/extras/kube-test/.last_ppid
+/extras/kube-test/summary/
+/extras/kube-test/.last_state_hash
+/extras/kube-test/.kube_deps.ok
+/extras/kube-test/kubernetes/baremetal-calicovpp-config.yaml
+/extras/kube-test/kubernetes/kind-calicovpp-config.yaml
+/extras/kube-test/kubernetes/pod-definitions.yaml
+/extras/kube-test/kubernetes/.vars
+/extras/kube-test/*.tar
 
 # ./configure
 /CMakeFiles
