@@ -462,8 +462,24 @@ func (s *HstSuite) WaitForCoreDump() bool {
 				var binPath, libPath string
 				if strings.Contains(core.binPath, "vpp") {
 					binPath = fmt.Sprintf("../../build-root/build-vpp%s-native/vpp/bin/vpp", debug)
-					libPath = fmt.Sprintf("build-root/build-vpp%s-native/vpp/lib/%s-linux-gnu/vpp_plugins", debug, archStr)
-
+					libPath = fmt.Sprintf("build-root/build-vpp%s-native/vpp/lib/%s-linux-gnu/vpp_plugins",
+						debug, archStr)
+				} else if strings.Contains(core.binPath, "vcl_test_client") {
+					binPath = fmt.Sprintf("../../build-root/build-vpp%s-native/vpp/bin/vcl_test_client", debug)
+					libPath = fmt.Sprintf("build-root/build-vpp%s-native/vpp/lib/%s-linux-gnu/vpp_plugins",
+						debug, archStr)
+				} else if strings.Contains(core.binPath, "vcl_test_server") {
+					binPath = fmt.Sprintf("../../build-root/build-vpp%s-native/vpp/bin/vcl_test_server", debug)
+					libPath = fmt.Sprintf("build-root/build-vpp%s-native/vpp/lib/%s-linux-gnu/vpp_plugins",
+						debug, archStr)
+				} else if strings.Contains(core.binPath, "vcl_test_cl_udp") {
+					binPath = fmt.Sprintf("../../build-root/build-vpp%s-native/vpp/bin/vcl_test_cl_udp", debug)
+					libPath = fmt.Sprintf("build-root/build-vpp%s-native/vpp/lib/%s-linux-gnu/vpp_plugins",
+						debug, archStr)
+				} else if strings.Contains(core.binPath, "vpp_echo") {
+					binPath = fmt.Sprintf("../../build-root/build-vpp%s-native/vpp/bin/vpp_echo", debug)
+					libPath = fmt.Sprintf("build-root/build-vpp%s-native/vpp/lib/%s-linux-gnu/vpp_plugins",
+						debug, archStr)
 				} else {
 					binPath = core.binPath
 					// this was most likely LDP and we want symbol table
