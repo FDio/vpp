@@ -204,7 +204,9 @@ jobs:
 
   vote:
     if: ${{ always() }}
-    needs: verify-checkstyle
+    needs:
+      - notify-start
+      - verify-checkstyle
     runs-on: ubuntu-latest
     steps:
       - name: Get conclusion
