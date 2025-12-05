@@ -1,4 +1,4 @@
-name: vpp-vfy-arm-drvrs
+name: vpp-verify-arm-drivers
 
 on:
   workflow_run:
@@ -53,9 +53,10 @@ jobs:
             echo "FDIO_NAMESPACE=${FDIO_NAMESPACE}"
           } >> "$GITHUB_OUTPUT"
 
-  vpp-vfy-arm-drvrs:
+  verify-arm-drivers:
     name: ${{ github.workflow }}-master-rel-ubuntu2404-aarch64
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    needs: restore-gerrit-env
     runs-on:
       - self-hosted
       - nomad
@@ -146,7 +147,7 @@ jobs:
     if: ${{ always() }}
     needs:
       - restore-gerrit-env
-      - vpp-vfy-arm-drvrs
+      - verify-arm-drivers
     runs-on: ubuntu-latest
     env:
       GERRIT_CHANGE_NUMBER: ${{ needs.restore-gerrit-env.outputs.GERRIT_CHANGE_NUMBER }}

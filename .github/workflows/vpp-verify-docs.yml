@@ -1,5 +1,4 @@
-
-name: vpp-csit-vfy-api
+name: vpp-verify-docs
 
 on:
   workflow_run:
@@ -54,8 +53,7 @@ jobs:
             echo "FDIO_NAMESPACE=${FDIO_NAMESPACE}"
           } >> "$GITHUB_OUTPUT"
 
-  vpp-csit-vfy-api:
-    # yamllint disable-line rule:line-length
+  vpp-verify-docs:
     name: ${{ github.workflow }}-${{ github.event.workflow_run.head_branch }}-rel-ubuntu2404-x86_64
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     needs: restore-gerrit-env
@@ -69,7 +67,6 @@ jobs:
 
     env:
       WORKSPACE: /scratch/docker-build/vpp
-      CSIT_DIR: /scratch/docker-build/csit
       GERRIT_BRANCH: ${{ needs.restore-gerrit-env.outputs.GERRIT_BRANCH }}
       GERRIT_CHANGE_URL: ${{ needs.restore-gerrit-env.outputs.GERRIT_CHANGE_URL }}
       GERRIT_PROJECT: ${{ needs.restore-gerrit-env.outputs.GERRIT_PROJECT }}
@@ -87,12 +84,11 @@ jobs:
         # yamllint disable-line rule:line-length
         uses: fdio/.github/.github/actions/setup-executor-env@b728d1589228e2891a4241a1bba362d76895c225
 
-      - name: "Show Nomad Dockerfile"
+      - name: Show Nomad Dockerfile
         # yamllint disable-line rule:line-length
         uses: fdio/.github/.github/actions/show-nomad-dockerfile@b728d1589228e2891a4241a1bba362d76895c225
 
       - name: Checkout VPP Gerrit Change
-        # yamllint disable-line rule:line-length
         uses: fdio/vpp/.github/actions/vpp-checkout-gerrit-change@3cadd680be3814d9737a341c0b563f3441157a7c
         with:
           WORKSPACE: ${{ env.WORKSPACE }}
@@ -100,32 +96,31 @@ jobs:
           GERRIT_REFSPEC: ${{ env.GERRIT_REFSPEC }}
           TUI_LINE: ${{ env.TUI_LINE }}
 
-      - name: Run CSIT check_crc.sh
+      - name: Make Docs
         run: |
-          set -euxo pipefail
-
-          # Checkout CSIT HEAD
-          cd $CSIT_DIR
-          git checkout HEAD
-
-          # Run check_crc.sh from CSIT
+          set -euo pipefail
           cd $WORKSPACE
-          # TODO: fix csit bash scripts to not rely on CSIT_DIR being inside WORKSPACE
-          NEW_CSIT_DIR="$WORKSPACE/$(basename $CSIT_DIR)"
-          mv $CSIT_DIR $NEW_CSIT_DIR
-          csit_entry_dir="$NEW_CSIT_DIR/resources/libraries/bash/entry"
-          source "${csit_entry_dir}/with_oper_for_vpp.sh" "check_crc.sh"
+          make docs
+
+      - name: Upload Documentation Artifacts
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: vpp-verify-docs-${{ env.GERRIT_BRANCH }}-rel-ubuntu2404-x86_64-${{ env.GERRIT_CHANGE_NUMBER }}-${{ env.GERRIT_PATCHSET_NUMBER }}
+          path: ${{ env.WORKSPACE }}/build-root/docs/
+          retention-days: 7
 
       - name: Report Success
         if: success()
         run: |
-          echo "VPP CSIT API Check passed for Gerrit Refspec: $GERRIT_REFSPEC, Gerrit Change URL: $GERRIT_CHANGE_URL"
+          echo "VPP Verify Docs passed for Gerrit Refspec: $GERRIT_REFSPEC, Gerrit Change URL: $GERRIT_CHANGE_URL"
+          echo "::notice::VPP Verify Docs workflow completed successfully! Workflow ID: ${{ github.run_id }}, Name: ${{ github.workflow }}, Branch: $GERRIT_BRANCH, Change: $GERRIT_CHANGE_NUMBER, Patchset: $GERRIT_PATCHSET_NUMBER"
 
   vote:
     if: ${{ always() }}
     needs:
       - restore-gerrit-env
-      - vpp-csit-vfy-api
+      - vpp-verify-docs
     runs-on: ubuntu-latest
     env:
       GERRIT_CHANGE_NUMBER: ${{ needs.restore-gerrit-env.outputs.GERRIT_CHANGE_NUMBER }}

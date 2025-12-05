@@ -1,4 +1,4 @@
-name: vpp-vfy-mktst
+name: vpp-verify-maketest
 
 on:
   workflow_run:
@@ -53,7 +53,7 @@ jobs:
             echo "FDIO_NAMESPACE=${FDIO_NAMESPACE}"
           } >> "$GITHUB_OUTPUT"
 
-  vpp-vfy-mktst:
+  verify-maketest:
     name: ${{ github.workflow }}-${{ github.event.workflow_run.head_branch }}-${{ matrix.build_type }}-${{ matrix.os }}-${{ matrix.executor_arch }}
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     needs: restore-gerrit-env
@@ -178,7 +178,7 @@ jobs:
     if: ${{ always() }}
     needs:
       - restore-gerrit-env
-      - vpp-vfy-mktst
+      - verify-maketest
     runs-on: ubuntu-latest
     env:
       GERRIT_CHANGE_NUMBER: ${{ needs.restore-gerrit-env.outputs.GERRIT_CHANGE_NUMBER }}

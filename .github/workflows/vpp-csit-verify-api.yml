@@ -1,0 +1,147 @@
+
+name: vpp-csit-verify-api
+
+on:
+  workflow_run:
+    workflows: ["vpp-verify-checkstyle"]
+    types:
+      - completed
+
+defaults:
+  run:
+    shell: bash
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: required-${{ github.workflow }}-${{ github.event.workflow_run.head_branch }}
+  cancel-in-progress: true
+
+jobs:
+  restore-gerrit-env:
+    name: Restore VPP Gerrit Environment Variables
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    outputs:
+      GERRIT_BRANCH: ${{ steps.export-gerrit-env.outputs.GERRIT_BRANCH }}
+      GERRIT_CHANGE_URL: ${{ steps.export-gerrit-env.outputs.GERRIT_CHANGE_URL }}
+      GERRIT_PROJECT: ${{ steps.export-gerrit-env.outputs.GERRIT_PROJECT }}
+      GERRIT_REFSPEC: ${{ steps.export-gerrit-env.outputs.GERRIT_REFSPEC }}
+      GERRIT_CHANGE_NUMBER: ${{ steps.export-gerrit-env.outputs.GERRIT_CHANGE_NUMBER }}
+      GERRIT_PATCHSET_NUMBER: ${{ steps.export-gerrit-env.outputs.GERRIT_PATCHSET_NUMBER }}
+      FDIO_NAMESPACE: ${{ steps.export-gerrit-env.outputs.FDIO_NAMESPACE }}
+
+    steps:
+      - name: Restore VPP Gerrit Environment Variables
+        id: restore-gerrit-env
+        # yamllint disable-line rule:line-length
+        uses: fdio/.github/.github/actions/gerrit-env-vars-restore@a28ad9abc70855292df1ea0d59829e814e78c2f4
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Export Gerrit Environment Variables
+        id: export-gerrit-env
+        run: |
+          {
+            echo "GERRIT_BRANCH=${GERRIT_BRANCH}"
+            echo "GERRIT_CHANGE_URL=${GERRIT_CHANGE_URL}"
+            echo "GERRIT_PROJECT=${GERRIT_PROJECT}"
+            echo "GERRIT_REFSPEC=${GERRIT_REFSPEC}"
+            echo "GERRIT_CHANGE_NUMBER=${GERRIT_CHANGE_NUMBER}"
+            echo "GERRIT_PATCHSET_NUMBER=${GERRIT_PATCHSET_NUMBER}"
+            echo "FDIO_NAMESPACE=${FDIO_NAMESPACE}"
+          } >> "$GITHUB_OUTPUT"
+
+  csit-verify-api:
+    # yamllint disable-line rule:line-length
+    name: ${{ github.workflow }}-${{ github.event.workflow_run.head_branch }}-rel-ubuntu2404-x86_64
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    needs: restore-gerrit-env
+    runs-on:
+      - self-hosted
+      - nomad
+      - fdio:arch=x86_64
+      - fdio:class=builder
+      - fdio:namespace=${{ needs.restore-gerrit-env.outputs.FDIO_NAMESPACE || 'prod' }}
+      - fdio:os=ubuntu2404
+
+    env:
+      WORKSPACE: /scratch/docker-build/vpp
+      CSIT_DIR: /scratch/docker-build/csit
+      GERRIT_BRANCH: ${{ needs.restore-gerrit-env.outputs.GERRIT_BRANCH }}
+      GERRIT_CHANGE_URL: ${{ needs.restore-gerrit-env.outputs.GERRIT_CHANGE_URL }}
+      GERRIT_PROJECT: ${{ needs.restore-gerrit-env.outputs.GERRIT_PROJECT }}
+      GERRIT_REFSPEC: ${{ needs.restore-gerrit-env.outputs.GERRIT_REFSPEC }}
+      GERRIT_CHANGE_NUMBER: ${{ needs.restore-gerrit-env.outputs.GERRIT_CHANGE_NUMBER }}
+      GERRIT_PATCHSET_NUMBER: ${{ needs.restore-gerrit-env.outputs.GERRIT_PATCHSET_NUMBER }}
+      FDIO_NAMESPACE: ${{ needs.restore-gerrit-env.outputs.FDIO_NAMESPACE }}
+      TUI_LINE: "*******************************************************************"
+
+    steps:
+      - name: Actions Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Environment
+        # yamllint disable-line rule:line-length
+        uses: fdio/.github/.github/actions/setup-executor-env@b728d1589228e2891a4241a1bba362d76895c225
+
+      - name: "Show Nomad Dockerfile"
+        # yamllint disable-line rule:line-length
+        uses: fdio/.github/.github/actions/show-nomad-dockerfile@b728d1589228e2891a4241a1bba362d76895c225
+
+      - name: Checkout VPP Gerrit Change
+        # yamllint disable-line rule:line-length
+        uses: fdio/vpp/.github/actions/vpp-checkout-gerrit-change@3cadd680be3814d9737a341c0b563f3441157a7c
+        with:
+          WORKSPACE: ${{ env.WORKSPACE }}
+          GERRIT_BRANCH: ${{ env.GERRIT_BRANCH }}
+          GERRIT_REFSPEC: ${{ env.GERRIT_REFSPEC }}
+          TUI_LINE: ${{ env.TUI_LINE }}
+
+      - name: Run CSIT check_crc.sh
+        run: |
+          set -euxo pipefail
+
+          # Checkout CSIT HEAD
+          cd $CSIT_DIR
+          git checkout HEAD
+
+          # Run check_crc.sh from CSIT
+          cd $WORKSPACE
+          # TODO: fix csit bash scripts to not rely on CSIT_DIR being inside WORKSPACE
+          NEW_CSIT_DIR="$WORKSPACE/$(basename $CSIT_DIR)"
+          mv $CSIT_DIR $NEW_CSIT_DIR
+          csit_entry_dir="$NEW_CSIT_DIR/resources/libraries/bash/entry"
+          source "${csit_entry_dir}/with_oper_for_vpp.sh" "check_crc.sh"
+
+      - name: Report Success
+        if: success()
+        run: |
+          echo "VPP CSIT API Check passed for Gerrit Refspec: $GERRIT_REFSPEC, Gerrit Change URL: $GERRIT_CHANGE_URL"
+
+  vote:
+    if: ${{ always() }}
+    needs:
+      - restore-gerrit-env
+      - csit-verify-api
+    runs-on: ubuntu-latest
+    env:
+      GERRIT_CHANGE_NUMBER: ${{ needs.restore-gerrit-env.outputs.GERRIT_CHANGE_NUMBER }}
+      GERRIT_PATCHSET_NUMBER: ${{ needs.restore-gerrit-env.outputs.GERRIT_PATCHSET_NUMBER }}
+    steps:
+      - name: Get conclusion
+        uses: im-open/workflow-conclusion@e4f7c4980600fbe0818173e30931d3550801b992 # v2.2.3
+      - name: Set vote
+        # yamllint disable-line rule:line-length
+        uses: lfreleng-actions/gerrit-review-action@537251ec667665b386f70b330b05446e3fc29087 # v0.9
+        with:
+          host: ${{ vars.GERRIT_SERVER }}
+          username: ${{ vars.GERRIT_SSH_USER }}
+          key: ${{ secrets.GERRIT_SSH_PRIVKEY }}
+          known_hosts: ${{ vars.GERRIT_KNOWN_HOSTS }}
+          gerrit-change-number: ${{ env.GERRIT_CHANGE_NUMBER }}
+          gerrit-patchset-number: ${{ env.GERRIT_PATCHSET_NUMBER }}
+          vote-type: ${{ env.WORKFLOW_CONCLUSION }}
+          comment-only: true  # Do not add vote to gerrit change
