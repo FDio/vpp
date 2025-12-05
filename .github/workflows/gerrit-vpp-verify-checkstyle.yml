@@ -79,7 +79,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Notify workflow start
-        uses: lfit/gerrit-review-action@v0.4
+        uses: lfit/gerrit-review-action@v0.9
         with:
           host: ${{ vars.GERRIT_SERVER }}
           username: ${{ vars.GERRIT_SSH_REQUIRED_USER }}
@@ -212,7 +212,7 @@ jobs:
       - name: Get conclusion
         uses: im-open/workflow-conclusion@e4f7c4980600fbe0818173e30931d3550801b992 # v2.2.3
       - name: Set vote
-        uses: lfit/gerrit-review-action@v0.4
+        uses: lfit/gerrit-review-action@v0.9
         with:
           host: ${{ vars.GERRIT_SERVER }}
           username: ${{ vars.GERRIT_SSH_USER }}
