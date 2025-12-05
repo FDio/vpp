@@ -61,7 +61,7 @@ jobs:
       - nomad
       - fdio:arch=aarch64
       - fdio:class=builder
-      - fdio:namespace=dev
+      - fdio:namespace=${{ needs.restore-gerrit-env.outputs.FDIO_NAMESPACE || 'prod' }}
       - fdio:os=ubuntu2404
 
     env:
