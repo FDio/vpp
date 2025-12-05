@@ -1170,12 +1170,12 @@ Number of entries in the global logging buffer. Defaults to 512.
 
    size 512
 
-nthrottle-time <n>
+unthrottle-time <n>
 ^^^^^^^^^^^^^^^^^^
 
 Set the global value for the time to wait (in seconds) before resuming
 logging of a log subclass that exceeded the per-subclass message-per-second
-threshold.  Defaults to 3.
+threshold.  Defaults to 3. Set to -1 to disable completely.
 
 .. code-block:: console
 
