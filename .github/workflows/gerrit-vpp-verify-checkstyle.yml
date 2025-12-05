@@ -1,4 +1,4 @@
-name: vpp-checkstyle
+name: gerrit-vpp-verify-checkstyle
 
 # yamllint disable-line rule:truthy
 on:
@@ -75,24 +75,23 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  clear-vote:
+  notify-start:
     runs-on: ubuntu-latest
     steps:
-      - name: Clear votes
-        # yamllint disable-line rule:line-length
-        uses: lfit/gerrit-review-action@9627b9a144f2a2cad70707ddfae87c87dce60729  # v0.8
+      - name: Notify workflow start
+        uses: lfit/gerrit-review-action@v0.9
         with:
           host: ${{ vars.GERRIT_SERVER }}
-          username: ${{ vars.GERRIT_SSH_USER }}
-          key: ${{ secrets.GERRIT_SSH_PRIVKEY }}
+          username: ${{ vars.GERRIT_SSH_REQUIRED_USER }}
+          key: ${{ secrets.GERRIT_SSH_REQUIRED_PRIVKEY }}
           known_hosts: ${{ vars.GERRIT_KNOWN_HOSTS }}
-          gerrit-change-number: ${{ inputs.GERRIT_CHANGE_NUMBER }}
-          gerrit-patchset-number: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
+          gerrit-change-number: ${{ github.event.inputs.GERRIT_CHANGE_NUMBER }}
+          gerrit-patchset-number: ${{ github.event.inputs.GERRIT_PATCHSET_NUMBER }}
           vote-type: clear
+          comment-only: true
 
   vpp-checkstyle:
-    needs: clear-vote
-    name: ${{ github.workflow }}-${{ inputs.GERRIT_BRANCH }}-rel-ubuntu2404-x86_64
+    name: ${{ github.workflow }}-${{ github.event.inputs.GERRIT_BRANCH }}-rel-ubuntu2404-x86_64
     if: ${{ inputs.GERRIT_EVENT_TYPE == 'patchset-created' }}
     runs-on:
       - self-hosted
@@ -205,7 +204,9 @@ jobs:
 
   vote:
     if: ${{ always() }}
-    needs: vpp-checkstyle
+    needs:
+      - notify-start
+      - vpp-checkstyle
     runs-on: ubuntu-latest
     steps:
       - name: Get conclusion
