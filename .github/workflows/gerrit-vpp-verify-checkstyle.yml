@@ -79,7 +79,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Notify workflow start
-        uses: lfit/gerrit-review-action@v0.9
+        uses: lfit/gerrit-review-action@v0.4
         with:
           host: ${{ vars.GERRIT_SERVER }}
           username: ${{ vars.GERRIT_SSH_REQUIRED_USER }}
@@ -92,6 +92,7 @@ jobs:
 
   verify-checkstyle:
     name: ${{ github.workflow }}-${{ inputs.GERRIT_BRANCH }}-rel-ubuntu2404-x86_64
+    needs: notify-start
     runs-on:
       - self-hosted
       - nomad
@@ -203,16 +204,13 @@ jobs:
 
   vote:
     if: ${{ always() }}
-    needs:
-      - notify-start
-      - verify-checkstyle
+    needs: verify-checkstyle
     runs-on: ubuntu-latest
     steps:
       - name: Get conclusion
         uses: im-open/workflow-conclusion@e4f7c4980600fbe0818173e30931d3550801b992 # v2.2.3
       - name: Set vote
-        # yamllint disable-line rule:line-length
-        uses: lfreleng-actions/gerrit-review-action@537251ec667665b386f70b330b05446e3fc29087 # v0.9
+        uses: lfit/gerrit-review-action@v0.4
         with:
           host: ${{ vars.GERRIT_SERVER }}
           username: ${{ vars.GERRIT_SSH_USER }}
