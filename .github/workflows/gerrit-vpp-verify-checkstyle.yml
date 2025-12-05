@@ -1,4 +1,4 @@
-name: gerrit-vpp-verify-checkstyle
+name: vpp-verify-checkstyle
 
 # yamllint disable-line rule:truthy
 on:
@@ -90,9 +90,8 @@ jobs:
           vote-type: clear
           comment-only: true
 
-  vpp-checkstyle:
-    name: ${{ github.workflow }}-${{ github.event.inputs.GERRIT_BRANCH }}-rel-ubuntu2404-x86_64
-    if: ${{ inputs.GERRIT_EVENT_TYPE == 'patchset-created' }}
+  verify-checkstyle:
+    name: ${{ github.workflow }}-${{ inputs.GERRIT_BRANCH }}-rel-ubuntu2404-x86_64
     runs-on:
       - self-hosted
       - nomad
@@ -206,7 +205,7 @@ jobs:
     if: ${{ always() }}
     needs:
       - notify-start
-      - vpp-checkstyle
+      - verify-checkstyle
     runs-on: ubuntu-latest
     steps:
       - name: Get conclusion
