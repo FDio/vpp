@@ -921,13 +921,6 @@ M:	Florin Coras <fcoras@cisco.com>
 M:	Adrian Villin <avillin@cisco.com>
 F:	test-c/kube-test
 
-THE REST
-I:	misc
-M:	vpp-dev Mailing List <vpp-dev@fd.io>
-C:	Missing Maintainer
-F:	*
-F:	*/
-
 Netmap
 I:	netmap
 M:	Tom Jones <thj@freebsd.org>
@@ -954,3 +947,15 @@ I:	sasc
 M:	Ole Troan <otroan@employees.org>
 M:	Mohammed Hawari <mohammed@hawari.fr>
 F:	src/plugins/sasc/
+
+GitHub Actions
+I: gha
+M: Dave Wallace <dwallacelf@gmail.com>
+F: .github/
+
+THE REST
+I:	misc
+M:	vpp-dev Mailing List <vpp-dev@fd.io>
+C:	Missing Maintainer
+F:	*
+F:	*/
