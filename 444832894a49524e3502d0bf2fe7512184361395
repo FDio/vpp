@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "093e4710_ee23f1e1",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-12-05T19:37:19Z",
+      "side": 1,
+      "message": "verified by non-voting gha vpp verify checkstyle workflow",
+      "revId": "444832894a49524e3502d0bf2fe7512184361395",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
