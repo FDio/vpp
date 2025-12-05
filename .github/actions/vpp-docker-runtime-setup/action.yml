@@ -1,0 +1,39 @@
+---
+name: "🛠️ VPP Docker runtime setup"
+description: |
+  This GitHub Action sets up the Docker runtime environment for VPP.
+
+inputs:
+  WORKSPACE:
+    description: "Workspace directory where VPP is located"
+    required: true
+    type: string
+  SHM_SIZE:
+    description: "Size of /dev/shm to set for VPP Docker runtime"
+    required: true
+    type: string
+  TUI_LINE:
+    description: "Delimiter line for TUI output"
+    required: false
+    default: "*******************************************************************"
+    type: string
+
+runs:
+  using: "composite"
+  steps:
+    - name: Setup Docker VPP Runtime Environment for 'make test'
+      shell: bash
+      env:
+        WORKSPACE: ${{ inputs.WORKSPACE }}
+        SHM_SIZE: ${{ inputs.SHM_SIZE }}
+        TUI_LINE: ${{ inputs.TUI_LINE }}
+      run: |
+        set -euo pipefail
+
+        # for 4 cores:
+        # framework.VppTestCase.MIN_REQ_SHM + (num_cores * framework.VppTestCase.SHM_PER_PROCESS)
+        # 1073741824 == 1024M (1073741824 >> 20)
+        # for 16 cores, empirical evidence shows that 2048M is enough
+        echo "$TUI_LINE"
+        sudo mount -o remount /dev/shm -o size=$SHM_SIZE || true
+        echo -e "/dev/shm remounted with size='$SHM_SIZE'\n$TUI_LINE\n"

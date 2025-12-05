@@ -1,0 +1,123 @@
+---
+name: "🛠️ Build VPP image"
+description: |
+  This GitHub Action builds the VPP Docker image.
+
+inputs:
+  WORKSPACE:
+    description: "Workspace directory where VPP is located"
+    required: true
+    type: string
+  MAKE_PARALLEL_JOBS:
+    description: "Number of parallel jobs for 'make' (overrides MAKE_PARALLEL_JOBS)"
+    required: false
+    default: "16"
+    type: string
+  BUILD_TYPE:
+    description: "Type of build: debug (dbg) or release (rel)"
+    required: true
+    type: string
+  BUILD_HST:
+    description: "Build VPP for HostStack Test (HST) framework"
+    required: false
+    default: "false"
+    type: string
+  USE_GCC:
+    description: "Use GCC as the compiler"
+    required: false
+    default: "false"
+    type: string
+  TUI_LINE:
+    description: "Delimiter line for TUI output"
+    required: false
+    default: "*******************************************************************"
+    type: string
+
+runs:
+  using: "composite"
+  steps:
+    - name: Build VPP
+      shell: bash
+      env:
+        WORKSPACE: ${{ inputs.WORKSPACE }}
+        MAKE_PARALLEL_JOBS: ${{ inputs.MAKE_PARALLEL_JOBS }}
+        BUILD_TYPE: ${{ inputs.BUILD_TYPE }}
+        BUILD_HST: ${{ inputs.BUILD_HST }}
+        USE_GCC: ${{ inputs.USE_GCC }}
+        TUI_LINE: ${{ inputs.TUI_LINE }}
+      run: |
+        set -euo pipefail
+        cd "${WORKSPACE}"
+
+        if [ "$USE_GCC" == "true" ] ; then
+            BUILD_RESULT="(GCC) "
+        else
+            BUILD_RESULT=""
+        fi
+        BUILD_RESULT+="SUCCESSFULLY COMPLETED"
+        BUILD_ERROR=""
+        RETVAL="0"
+
+        build_vpp() {
+            echo "Building VPP. Number of cores for build set with" \
+                  "MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS}."
+            if [ -f extras/scripts/build_static_vppctl.sh ]; then
+                if ! extras/scripts/build_static_vppctl.sh ; then
+                    BUILD_ERROR="FAILED 'extras/scripts/build_static_vppctl.sh'"
+                    return
+                fi
+            fi
+            if [ "$BUILD_TYPE" == "dbg" ] ; then
+                if [ "$USE_GCC" == "true" ] ; then
+                    if ! make UNATTENDED=yes CC=gcc MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS} build ; then
+                        BUILD_ERROR="FAILED 'make UNATTENDED=yes CC=gcc MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS} build'"
+                        return
+                    fi
+                else
+                    if ! make UNATTENDED=yes MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS} build ; then
+                        BUILD_ERROR="FAILED 'make UNATTENDED=yes MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS} build'"
+                        return
+                    fi
+                fi
+            elif [ "$USE_GCC" == "true" ] ; then
+                if ! make UNATTENDED=yes CC=gcc MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS} pkg-verify ; then
+                    BUILD_ERROR="FAILED 'make UNATTENDED=yes CC=gcc MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS} pkg-verify'"
+                    return
+                fi
+            else
+              if ! make UNATTENDED=yes MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS} pkg-verify ; then
+                  BUILD_ERROR="FAILED 'make UNATTENDED=yes MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS} pkg-verify'"
+                  return
+              fi
+            fi
+        }
+
+        build_hst_vpp() {
+            echo "Building VPP. Number of cores for build set with" \
+                  "MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS}."
+
+            if [ "$BUILD_TYPE" == "dbg" ] ; then
+                if ! make UNATTENDED=yes MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS} build ; then
+                    BUILD_ERROR="FAILED HST BUILD 'make UNATTENDED=yes MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS} build'"
+                    return
+                fi
+            else
+              if ! make UNATTENDED=yes MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS} build-release ; then
+                  BUILD_ERROR="FAILED HST BUILD 'make UNATTENDED=yes MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS} build-release'"
+                  return
+              fi
+            fi
+        }
+
+        echo "$TUI_LINE"
+        if [ "$BUILD_HST" == "true" ] ; then
+            build_hst_vpp
+        else
+            build_vpp
+        fi
+        if [ -n "${BUILD_ERROR}" ] ; then
+            BUILD_RESULT="${BUILD_ERROR}"
+            RETVAL="1"
+        fi
+        echo -e "\n$TUI_LINE\n* VPP ${OS_ID^^}-${OS_VERSION_ID}-${OS_ARCH^^} BUILD $BUILD_RESULT\n$TUI_LINE\n"
+        exit $RETVAL
