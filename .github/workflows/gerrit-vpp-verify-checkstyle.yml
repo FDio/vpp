@@ -192,7 +192,7 @@ jobs:
 
       - name: Archive Checkstyle Logs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: vpp-checkstyle-logs-${{ inputs.GERRIT_BRANCH }}-rel-ubuntu2404-x86_64-${{ env.GERRIT_CHANGE_NUMBER }}-${{ env.GERRIT_PATCHSET_NUMBER }}
           path: logs/
