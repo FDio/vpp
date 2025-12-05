@@ -2,7 +2,7 @@ name: vpp-vfy-arm-drvrs
 
 on:
   workflow_run:
-    workflows: ["vpp-checkstyle"]
+    workflows: ["vpp-verify-checkstyle"]
     types:
       - completed
 
