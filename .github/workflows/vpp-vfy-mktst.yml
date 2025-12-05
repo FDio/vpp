@@ -1,5 +1,4 @@
-
-name: vpp-csit-vfy-api
+name: vpp-vfy-mktst
 
 on:
   workflow_run:
@@ -16,7 +15,7 @@ permissions:
   actions: read
 
 concurrency:
-  group: required-${{ github.workflow }}-${{ github.event.workflow_run.head_branch }}
+  group: required-${{ github.workflow }}-${{ github.event.workflow_run.head_branch }}-${{ github.event.workflow_run.id }}
   cancel-in-progress: true
 
 jobs:
@@ -54,22 +53,47 @@ jobs:
             echo "FDIO_NAMESPACE=${FDIO_NAMESPACE}"
           } >> "$GITHUB_OUTPUT"
 
-  vpp-csit-vfy-api:
-    # yamllint disable-line rule:line-length
-    name: ${{ github.workflow }}-${{ github.event.workflow_run.head_branch }}-rel-ubuntu2404-x86_64
+  vpp-vfy-mktst:
+    name: ${{ github.workflow }}-${{ github.event.workflow_run.head_branch }}-${{ matrix.build_type }}-${{ matrix.os }}-${{ matrix.executor_arch }}
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     needs: restore-gerrit-env
     runs-on:
       - self-hosted
       - nomad
-      - fdio:arch=x86_64
+      - fdio:arch=${{ matrix.executor_arch }}
       - fdio:class=builder
       - fdio:namespace=${{ needs.restore-gerrit-env.outputs.FDIO_NAMESPACE || 'prod' }}
-      - fdio:os=ubuntu2404
+      - fdio:os=${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ['ubuntu2404', 'ubuntu2204', 'debian12']
+        executor_arch: ['x86_64', 'aarch64']
+        build_type: ['dbg', 'rel']
+        exclude:
+          # Exclude debian12 on aarch64 for all builds
+          - os: 'debian12'
+            executor_arch: 'aarch64'
+          # Exclude non-ubuntu2204 OS for debug builds
+          - build_type: 'dbg'
+            os: 'ubuntu2404'
+          - build_type: 'dbg'
+            os: 'debian12'
+          # Exclude aarch64 architecture for debug builds
+          - build_type: 'dbg'
+            executor_arch: 'aarch64'
 
     env:
       WORKSPACE: /scratch/docker-build/vpp
-      CSIT_DIR: /scratch/docker-build/csit
+      CCACHE_DIR: /scratch/ccache/${{ matrix.os }}-${{ matrix.executor_arch }}
+      MAKE_PARALLEL_JOBS: 16
+      TEST_JOBS: 16
+      TEST_RETRIES: 3
+      MAKE_TEST_OS: ${{ matrix.os == 'ubuntu2204' && 'ubuntu-22.04' || 'ubuntu-24.04'  }}
+      MAKE_TEST_MULTIWORKER_OS: 'debian-12'
+      VPPAPIGEN_TEST_OS: ${{ matrix.os == 'ubuntu2204' && 'ubuntu-22.04' || 'ubuntu-24.04' }}
+      SHM_SIZE: ${{ matrix.executor_arch == 'aarch64' && '4096M' || '2048M' }}
       GERRIT_BRANCH: ${{ needs.restore-gerrit-env.outputs.GERRIT_BRANCH }}
       GERRIT_CHANGE_URL: ${{ needs.restore-gerrit-env.outputs.GERRIT_CHANGE_URL }}
       GERRIT_PROJECT: ${{ needs.restore-gerrit-env.outputs.GERRIT_PROJECT }}
@@ -87,7 +111,7 @@ jobs:
         # yamllint disable-line rule:line-length
         uses: fdio/.github/.github/actions/setup-executor-env@b728d1589228e2891a4241a1bba362d76895c225
 
-      - name: "Show Nomad Dockerfile"
+      - name: Show Nomad Dockerfile
         # yamllint disable-line rule:line-length
         uses: fdio/.github/.github/actions/show-nomad-dockerfile@b728d1589228e2891a4241a1bba362d76895c225
 
@@ -100,30 +124,59 @@ jobs:
           GERRIT_REFSPEC: ${{ env.GERRIT_REFSPEC }}
           TUI_LINE: ${{ env.TUI_LINE }}
 
-      - name: Run CSIT check_crc.sh
-        run: |
-          set -euxo pipefail
+      - name: Install VPP dependencies
+        # yamllint disable-line rule:line-length
+        uses: fdio/vpp/.github/actions/vpp-install-deps@65b82eea995c117c3502cb904a227d1e6e562fe3
+        with:
+          WORKSPACE: ${{ env.WORKSPACE }}
+          TUI_LINE: ${{ env.TUI_LINE }}
 
-          # Checkout CSIT HEAD
-          cd $CSIT_DIR
-          git checkout HEAD
+      - name: Install VPP external dependencies
+        # yamllint disable-line rule:line-length
+        uses: fdio/vpp/.github/actions/vpp-install-ext-deps@65b82eea995c117c3502cb904a227d1e6e562fe3
+        with:
+          WORKSPACE: ${{ env.WORKSPACE }}
+          TUI_LINE: ${{ env.TUI_LINE }}
 
-          # Run check_crc.sh from CSIT
-          cd $WORKSPACE
-          # TODO: fix csit bash scripts to not rely on CSIT_DIR being inside WORKSPACE
-          NEW_CSIT_DIR="$WORKSPACE/$(basename $CSIT_DIR)"
-          mv $CSIT_DIR $NEW_CSIT_DIR
-          csit_entry_dir="$NEW_CSIT_DIR/resources/libraries/bash/entry"
-          source "${csit_entry_dir}/with_oper_for_vpp.sh" "check_crc.sh"
+      - name: Build VPP
+        # yamllint disable-line rule:line-length
+        uses: fdio/vpp/.github/actions/vpp-build@65b82eea995c117c3502cb904a227d1e6e562fe3
+        with:
+          WORKSPACE: ${{ env.WORKSPACE }}
+          MAKE_PARALLEL_JOBS: ${{ env.MAKE_PARALLEL_JOBS }}
+          BUILD_TYPE: ${{ matrix['build_type'] }}
+          TUI_LINE: ${{ env.TUI_LINE }}
+
+      - name: Setup Docker VPP Runtime Environment for 'make test'
+        # yamllint disable-line rule:line-length
+        uses: fdio/vpp/.github/actions/vpp-docker-runtime-setup@65b82eea995c117c3502cb904a227d1e6e562fe3
+        with:
+          WORKSPACE: ${{ env.WORKSPACE }}
+          SHM_SIZE: ${{ env.SHM_SIZE }}
+          TUI_LINE: ${{ env.TUI_LINE }}
+
+      - name: VPP Make Test
+        # yamllint disable-line rule:line-length
+        uses: fdio/vpp/.github/actions/vpp-make-test@65b82eea995c117c3502cb904a227d1e6e562fe3
+        timeout-minutes: 90
+        with:
+          WORKSPACE: ${{ env.WORKSPACE }}
+          TEST_JOBS: ${{ env.TEST_JOBS }}
+          TEST_RETRIES: ${{ env.TEST_RETRIES }}
+          MAKE_TEST_OS: ${{ env.MAKE_TEST_OS }}
+          MAKE_TEST_MULTIWORKER_OS: ${{ env.MAKE_TEST_MULTIWORKER_OS }}
+          VPPAPIGEN_TEST_OS: ${{ env.VPPAPIGEN_TEST_OS }}
+          TUI_LINE: ${{ env.TUI_LINE }}
 
       - name: Report Success
         if: success()
         run: |
-          echo "VPP CSIT API Check passed for Gerrit Refspec: $GERRIT_REFSPEC, Gerrit Change URL: $GERRIT_CHANGE_URL"
+          echo "VPP Verify Make Test passed for Gerrit Refspec: $GERRIT_REFSPEC, Gerrit Change URL: $GERRIT_CHANGE_URL"
+          echo "::notice::VPP Verify Make Test workflow completed successfully! Workflow ID: ${{ github.run_id }}, Name: ${{ github.workflow }}, Branch: $GERRIT_BRANCH, Change: $GERRIT_CHANGE_NUMBER, Patchset: $GERRIT_PATCHSET_NUMBER"
 
   vote:
     if: ${{ always() }}
-    needs: vpp-csit-vfy-api
+    needs: vpp-vfy-mktst
     runs-on: ubuntu-latest
     steps:
       - name: Get conclusion
