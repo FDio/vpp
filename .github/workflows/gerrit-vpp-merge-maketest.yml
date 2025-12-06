@@ -1,0 +1,229 @@
+name: vpp-merge-maketest
+
+on:
+  workflow_dispatch:
+    inputs:
+      GERRIT_BRANCH:
+        description: "Branch that change is against"
+        required: true
+        type: string
+      GERRIT_CHANGE_ID:
+        description: "The ID for the change"
+        required: true
+        type: string
+      GERRIT_CHANGE_NUMBER:
+        description: "The Gerrit number"
+        required: true
+        type: string
+      GERRIT_CHANGE_URL:
+        description: "URL to the change"
+        required: true
+        type: string
+      GERRIT_EVENT_TYPE:
+        description: "Type of Gerrit event"
+        required: true
+        type: string
+      GERRIT_PATCHSET_NUMBER:
+        description: "The patch number for the change"
+        required: true
+        type: string
+      GERRIT_PATCHSET_REVISION:
+        description: "The revision sha"
+        required: true
+        type: string
+      GERRIT_PROJECT:
+        description: "Project in Gerrit"
+        required: true
+        type: string
+      GERRIT_REFSPEC:
+        description: "Gerrit refspec of change"
+        required: true
+        type: string
+      FDIO_NAMESPACE:
+        description: "Executor Namespace (prod|sandbox)"
+        required: false
+        type: choice
+        options:
+          - sandbox
+          - prod
+        default: prod
+
+env:
+  GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
+  GERRIT_CHANGE_ID: ${{ inputs.GERRIT_CHANGE_ID }}
+  GERRIT_CHANGE_NUMBER: ${{ inputs.GERRIT_CHANGE_NUMBER }}
+  GERRIT_CHANGE_URL: ${{ inputs.GERRIT_CHANGE_URL }}
+  GERRIT_EVENT_TYPE: ${{ inputs.GERRIT_EVENT_TYPE }}
+  GERRIT_PATCHSET_NUMBER: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
+  GERRIT_PATCHSET_REVISION: ${{ inputs.GERRIT_PATCHSET_REVISION }}
+  GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
+  GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
+  FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
+
+defaults:
+  run:
+    shell: bash
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  # yamllint disable-line rule:line-length
+  group: required-${{ github.workflow }}-rel-ubuntu2404-x86_64-${{ inputs.GERRIT_CHANGE_NUMBER }}-${{ inputs.GERRIT_PATCHSET_NUMBER }}
+  cancel-in-progress: true
+
+jobs:
+  notify-start:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify workflow start
+        # yamllint disable-line rule:line-length
+        uses: lfreleng-actions/gerrit-review-action@537251ec667665b386f70b330b05446e3fc29087 # v0.9
+        with:
+          host: ${{ vars.GERRIT_SERVER }}
+          username: ${{ vars.GERRIT_SSH_REQUIRED_USER }}
+          key: ${{ secrets.GERRIT_SSH_REQUIRED_PRIVKEY }}
+          known_hosts: ${{ vars.GERRIT_KNOWN_HOSTS }}
+          gerrit-change-number: ${{ github.event.inputs.GERRIT_CHANGE_NUMBER }}
+          gerrit-patchset-number: ${{ github.event.inputs.GERRIT_PATCHSET_NUMBER }}
+          vote-type: clear
+          comment-only: true
+
+  merge-maketest:
+    name: ${{ github.workflow }}-${{ inputs.GERRIT_BRANCH }}-${{ matrix.build_type }}-${{ matrix.os }}-${{ matrix.executor_arch }}
+    if: ${{ inputs.GERRIT_EVENT_TYPE == 'change-merged' }}
+    runs-on:
+      - self-hosted
+      - nomad
+      - fdio:arch=${{ matrix.executor_arch }}
+      - fdio:class=builder
+      - fdio:namespace=${{ inputs.FDIO_NAMESPACE }}
+      - fdio:os=${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ['ubuntu2404', 'ubuntu2204', 'debian12']
+        executor_arch: ['x86_64', 'aarch64']
+        build_type: ['rel']
+        exclude:
+          # Exclude debian12 on aarch64 for all builds
+          - os: 'debian12'
+            executor_arch: 'aarch64'
+
+    env:
+      WORKSPACE: /scratch/docker-build/vpp
+      CCACHE_DIR: /scratch/ccache/${{ matrix.os }}-${{ matrix.executor_arch }}
+      BUILD_TYPE: ${{ matrix.build_type }}
+      MAKE_PARALLEL_JOBS: 16
+      TEST_JOBS: 16
+      TEST_RETRIES: 3
+      MAKE_TEST_OS: ${{ matrix.os == 'ubuntu2204' && 'ubuntu-22.04' || 'ubuntu-24.04'  }}
+      MAKE_TEST_MULTIWORKER_OS: 'debian-12'
+      VPPAPIGEN_TEST_OS: ${{ matrix.os == 'ubuntu2204' && 'ubuntu-22.04' || 'ubuntu-24.04' }}
+      SHM_SIZE: ${{ matrix.executor_arch == 'aarch64' && '4096M' || '2048M' }}
+      GERRIT_BRANCH: ${{ needs.restore-gerrit-env.outputs.GERRIT_BRANCH }}
+      GERRIT_CHANGE_URL: ${{ needs.restore-gerrit-env.outputs.GERRIT_CHANGE_URL }}
+      GERRIT_PROJECT: ${{ needs.restore-gerrit-env.outputs.GERRIT_PROJECT }}
+      GERRIT_REFSPEC: ${{ needs.restore-gerrit-env.outputs.GERRIT_REFSPEC }}
+      GERRIT_CHANGE_NUMBER: ${{ needs.restore-gerrit-env.outputs.GERRIT_CHANGE_NUMBER }}
+      GERRIT_PATCHSET_NUMBER: ${{ needs.restore-gerrit-env.outputs.GERRIT_PATCHSET_NUMBER }}
+      FDIO_NAMESPACE: ${{ needs.restore-gerrit-env.outputs.FDIO_NAMESPACE }}
+      TUI_LINE: "*******************************************************************"
+
+    steps:
+      - name: Actions Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Environment
+        # yamllint disable-line rule:line-length
+        uses: fdio/.github/.github/actions/setup-executor-env@b728d1589228e2891a4241a1bba362d76895c225
+
+      - name: Show Nomad Dockerfile
+        # yamllint disable-line rule:line-length
+        uses: fdio/.github/.github/actions/show-nomad-dockerfile@b728d1589228e2891a4241a1bba362d76895c225
+
+      - name: Checkout VPP Gerrit Change
+        # yamllint disable-line rule:line-length
+        uses: fdio/vpp/.github/actions/vpp-checkout-gerrit-change@3cadd680be3814d9737a341c0b563f3441157a7c
+        with:
+          WORKSPACE: ${{ env.WORKSPACE }}
+          GERRIT_BRANCH: ${{ env.GERRIT_BRANCH }}
+          GERRIT_REFSPEC: ${{ env.GERRIT_REFSPEC }}
+          TUI_LINE: ${{ env.TUI_LINE }}
+
+      - name: Install VPP dependencies
+        # yamllint disable-line rule:line-length
+        uses: fdio/vpp/.github/actions/vpp-install-deps@f9e0f384d665800c8e580da853e26558dd6d2668
+        with:
+          WORKSPACE: ${{ env.WORKSPACE }}
+          TUI_LINE: ${{ env.TUI_LINE }}
+
+      - name: Install VPP external dependencies
+        # yamllint disable-line rule:line-length
+        uses: fdio/vpp/.github/actions/vpp-install-ext-deps@f9e0f384d665800c8e580da853e26558dd6d2668
+        with:
+          WORKSPACE: ${{ env.WORKSPACE }}
+          TUI_LINE: ${{ env.TUI_LINE }}
+
+      - name: Build VPP
+        # yamllint disable-line rule:line-length
+        uses: fdio/vpp/.github/actions/vpp-build@f9e0f384d665800c8e580da853e26558dd6d2668
+        with:
+          WORKSPACE: ${{ env.WORKSPACE }}
+          MAKE_PARALLEL_JOBS: ${{ env.MAKE_PARALLEL_JOBS }}
+          BUILD_TYPE: ${{ env.BUILD_TYPE }}
+          TUI_LINE: ${{ env.TUI_LINE }}
+
+      - name: Setup Docker VPP Runtime Environment for 'make test'
+        # yamllint disable-line rule:line-length
+        uses: fdio/vpp/.github/actions/vpp-docker-runtime-setup@f9e0f384d665800c8e580da853e26558dd6d2668
+        with:
+          WORKSPACE: ${{ env.WORKSPACE }}
+          SHM_SIZE: ${{ env.SHM_SIZE }}
+          TUI_LINE: ${{ env.TUI_LINE }}
+
+      - name: VPP Make Test
+        # yamllint disable-line rule:line-length
+        uses: fdio/vpp/.github/actions/vpp-make-test@f9e0f384d665800c8e580da853e26558dd6d2668
+        timeout-minutes: 90
+        with:
+          WORKSPACE: ${{ env.WORKSPACE }}
+          TEST_JOBS: ${{ env.TEST_JOBS }}
+          TEST_RETRIES: ${{ env.TEST_RETRIES }}
+          MAKE_TEST_OS: ${{ env.MAKE_TEST_OS }}
+          MAKE_TEST_MULTIWORKER_OS: ${{ env.MAKE_TEST_MULTIWORKER_OS }}
+          VPPAPIGEN_TEST_OS: ${{ env.VPPAPIGEN_TEST_OS }}
+          TUI_LINE: ${{ env.TUI_LINE }}
+
+      - name: Report Success
+        if: success()
+        run: |
+          echo "VPP Merge Make Test passed for Gerrit Refspec: $GERRIT_REFSPEC, Gerrit Change URL: $GERRIT_CHANGE_URL"
+          echo "::notice::VPP Merge Make Test workflow completed successfully! Workflow ID: ${{ github.run_id }}, Name: ${{ github.workflow }}, Branch: $GERRIT_BRANCH, Change: $GERRIT_CHANGE_NUMBER, Patchset: $GERRIT_PATCHSET_NUMBER"
+
+  vote:
+    if: ${{ always() }}
+    needs:
+      - restore-gerrit-env
+      - merge-maketest
+    runs-on: ubuntu-latest
+    env:
+      GERRIT_CHANGE_NUMBER: ${{ needs.restore-gerrit-env.outputs.GERRIT_CHANGE_NUMBER }}
+      GERRIT_PATCHSET_NUMBER: ${{ needs.restore-gerrit-env.outputs.GERRIT_PATCHSET_NUMBER }}
+    steps:
+      - name: Get conclusion
+        uses: im-open/workflow-conclusion@e4f7c4980600fbe0818173e30931d3550801b992 # v2.2.3
+      - name: Set vote
+        # yamllint disable-line rule:line-length
+        uses: lfreleng-actions/gerrit-review-action@537251ec667665b386f70b330b05446e3fc29087 # v0.9
+        with:
+          host: ${{ vars.GERRIT_SERVER }}
+          username: ${{ vars.GERRIT_SSH_USER }}
+          key: ${{ secrets.GERRIT_SSH_PRIVKEY }}
+          known_hosts: ${{ vars.GERRIT_KNOWN_HOSTS }}
+          gerrit-change-number: ${{ env.GERRIT_CHANGE_NUMBER }}
+          gerrit-patchset-number: ${{ env.GERRIT_PATCHSET_NUMBER }}
+          vote-type: ${{ env.WORKFLOW_CONCLUSION }}
+          comment-only: true  # Do not add vote to gerrit change
