@@ -206,7 +206,7 @@ jobs:
   vote:
     if: ${{ always() }}
     needs:
-      - restore-gerrit-env
+      - notify-start
       - merge-maketest
     runs-on: ubuntu-latest
     env:
