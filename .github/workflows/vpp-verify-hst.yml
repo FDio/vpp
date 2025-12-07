@@ -62,7 +62,7 @@ jobs:
       - nomad
       - fdio:arch=${{ matrix.executor_arch }}
       - fdio:class=hst
-      - fdio:namespace=dev
+      - fdio:namespace=${{ needs.restore-gerrit-env.outputs.FDIO_NAMESPACE || 'prod' }}
       - fdio:os=${{ matrix.os }}
 
     # TODO: modify the self-hosted agent to ensure hst class workflows are placed on nomad clients
