@@ -744,7 +744,8 @@ vts_worker_loop (void *arg)
 	    }
 	  else if (vppcom_session_is_connectable_listener (conn->fd))
 	    {
-	      vts_accept_client (wrk, conn->fd);
+	      while (vts_accept_client (wrk, conn->fd))
+		;
 	      continue;
 	    }
 
