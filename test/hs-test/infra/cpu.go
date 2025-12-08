@@ -47,16 +47,16 @@ func (c *CpuAllocatorT) Allocate(nCpus int, offset int) (*CpuContext, error) {
 		if c.suite.SkipIfNotEnoguhCpus {
 			c.suite.Skip("skipping: " + msg)
 		}
-		err := fmt.Errorf(msg)
+		err := fmt.Errorf("%s", msg)
 		return nil, err
 	}
 
 	if NumaAwareCpuAlloc {
 		if len(c.numa0) > maxCpu {
-			c.suite.Log("Allocating CPUs from numa #0")
+			Log("Allocating CPUs from numa #0")
 			cpuCtx.cpus = c.numa0[minCpu : minCpu+nCpus]
 		} else if len(c.numa1) > maxCpu {
-			c.suite.Log("Allocating CPUs from numa #1")
+			Log("Allocating CPUs from numa #1")
 			cpuCtx.cpus = c.numa1[minCpu : minCpu+nCpus]
 		} else {
 			err := fmt.Errorf("could not allocate %d CPUs; not enough CPUs in either numa node", nCpus)
