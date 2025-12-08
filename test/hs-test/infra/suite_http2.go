@@ -73,7 +73,7 @@ func (s *Http2Suite) SetupSuite() {
 	s.Ports.Port2 = s.GeneratePort()
 	var err error
 	s.Ports.Port1AsInt, err = strconv.Atoi(s.Ports.Port1)
-	s.AssertNil(err)
+	AssertNil(err)
 }
 
 func (s *Http2Suite) SetupTest() {
@@ -87,8 +87,8 @@ func (s *Http2Suite) SetupTest() {
 
 	vpp, _ := s.Containers.Vpp.newVppInstance(s.Containers.Vpp.AllocatedCpus, memoryConfig, sessionConfig)
 
-	s.AssertNil(vpp.Start())
-	s.AssertNil(vpp.CreateTap(s.Interfaces.Tap, false, 1), "failed to create tap interface")
+	AssertNil(vpp.Start())
+	AssertNil(vpp.CreateTap(s.Interfaces.Tap, false, 1), "failed to create tap interface")
 
 	if *DryRun {
 		s.LogStartedContainers()
@@ -100,9 +100,9 @@ func (s *Http2Suite) TeardownTest() {
 	defer s.HstSuite.TeardownTest()
 	vpp := s.Containers.Vpp.VppInstance
 	if CurrentSpecReport().Failed() {
-		s.Log(vpp.Vppctl("show session verbose 2"))
-		s.Log(vpp.Vppctl("show error"))
-		s.Log(vpp.Vppctl("show http stats"))
+		Log(vpp.Vppctl("show session verbose 2"))
+		Log(vpp.Vppctl("show error"))
+		Log(vpp.Vppctl("show http stats"))
 	}
 }
 
@@ -115,7 +115,7 @@ func (s *Http2Suite) HostAddr() string {
 }
 
 func (s *Http2Suite) CreateNginxServer() {
-	s.AssertNil(s.Containers.NginxServer.Create())
+	AssertNil(s.Containers.NginxServer.Create())
 	nginxSettings := struct {
 		LogPrefix string
 		Address   string
@@ -160,7 +160,7 @@ var _ = Describe("Http2Suite", Ordered, ContinueOnFailure, Label("HTTP", "HTTP2"
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, func(ctx SpecContext) {
-				s.Log(testName + ": BEGIN")
+				Log(testName + ": BEGIN")
 				test(&s)
 			}, SpecTimeout(TestTimeout))
 		}
@@ -189,7 +189,7 @@ var _ = Describe("Http2SoloSuite", Ordered, ContinueOnFailure, Serial, Label("HT
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, func(ctx SpecContext) {
-				s.Log(testName + ": BEGIN")
+				Log(testName + ": BEGIN")
 				test(&s)
 			}, SpecTimeout(TestTimeout))
 		}
@@ -218,7 +218,7 @@ var _ = Describe("Http2MWSuite", Ordered, ContinueOnFailure, Serial, Label("HTTP
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, func(ctx SpecContext) {
-				s.Log(testName + ": BEGIN")
+				Log(testName + ": BEGIN")
 				test(&s)
 			}, SpecTimeout(TestTimeout))
 		}
@@ -431,11 +431,11 @@ var _ = Describe("H2SpecSuite", Ordered, ContinueOnFailure, Label("HTTP", "HTTP2
 			test := test
 			testName := "http2_test.go/h2spec_" + strings.ReplaceAll(test.desc, "/", "_")
 			It(testName, func(ctx SpecContext) {
-				s.Log(testName + ": BEGIN")
+				Log(testName + ": BEGIN")
 				vpp := s.Containers.Vpp.VppInstance
 				serverAddress := s.VppAddr()
-				s.Log(vpp.Vppctl("http static server uri tls://" + serverAddress + "/" + s.Ports.Port1 + " url-handlers debug 2 fifo-size 16k"))
-				s.Log(vpp.Vppctl("test-url-handler enable"))
+				Log(vpp.Vppctl("http static server uri tls://" + serverAddress + "/" + s.Ports.Port1 + " url-handlers debug 2 fifo-size 16k"))
+				Log(vpp.Vppctl("test-url-handler enable"))
 				conf := &config.Config{
 					Host:         serverAddress,
 					Port:         s.Ports.Port1AsInt,
@@ -476,8 +476,8 @@ var _ = Describe("H2SpecSuite", Ordered, ContinueOnFailure, Label("HTTP", "HTTP2
 				w.Close()
 				os.Stdout = oldStdout
 				o := <-oChan
-				s.Log(o)
-				s.AssertEqual(0, tg.FailedCount)
+				Log(o)
+				AssertEqual(0, tg.FailedCount)
 			}, SpecTimeout(TestTimeout))
 		}
 	}
@@ -487,13 +487,13 @@ func h2specdVerifyResult(s Http2Suite, nExecuted int) bool {
 	client := NewHttpClient(time.Second*5, false)
 	uri := fmt.Sprintf("http://%s:%d/report", s.HostAddr(), h2specdReportPort)
 	req, err := http.NewRequest("GET", uri, nil)
-	s.AssertNil(err, fmt.Sprint(err))
+	AssertNil(err, fmt.Sprint(err))
 	resp, err := client.Do(req)
-	s.AssertNil(err, fmt.Sprint(err))
+	AssertNil(err, fmt.Sprint(err))
 	defer resp.Body.Close()
 	report, err := io.ReadAll(resp.Body)
-	s.AssertContains(string(report), "0 failed")
-	s.AssertNil(err)
+	AssertContains(string(report), "0 failed")
+	AssertNil(err)
 	expected := fmt.Sprintf("<div>%d tests, %d passed", nExecuted, nExecuted)
 	return strings.Contains(string(report), expected)
 }
@@ -588,7 +588,7 @@ var _ = Describe("H2SpecClientSuite", Ordered, Serial, Label("HTTP", "HTTP2", "H
 		test := test
 		testName := "http2_test.go/h2spec_" + strings.ReplaceAll(test.desc, "/", "_")
 		It(testName, func(ctx SpecContext) {
-			s.Log(testName + ": BEGIN")
+			Log(testName + ": BEGIN")
 			nExecuted++
 			serverAddress := s.HostAddr()
 			wd, _ := os.Getwd()
@@ -614,7 +614,7 @@ var _ = Describe("H2SpecClientSuite", Ordered, Serial, Label("HTTP", "HTTP2", "H
 			go h2spec.RunClientSpec(conf)
 
 			cmd := fmt.Sprintf("http client timeout 5 %s uri https://%s:%d/", test.clientExtraArgs, serverAddress, h2specdFromPort+test.portOffset)
-			s.Log(s.Containers.Vpp.VppInstance.Vppctl(cmd))
+			Log(s.Containers.Vpp.VppInstance.Vppctl(cmd))
 
 			oChan := make(chan string)
 			go func() {
@@ -627,7 +627,7 @@ var _ = Describe("H2SpecClientSuite", Ordered, Serial, Label("HTTP", "HTTP2", "H
 			w.Close()
 			os.Stdout = oldStdout
 			o := <-oChan
-			s.Log(o)
+			Log(o)
 
 			//read report
 			for nTries := 0; nTries < 30; nTries++ {

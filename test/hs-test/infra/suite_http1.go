@@ -64,15 +64,15 @@ func (s *Http1Suite) SetupTest() {
 
 	if strings.Contains(CurrentSpecReport().LeafNodeText, "InterruptMode") {
 		sessionConfig.Append("use-private-rx-mqs").Close()
-		s.Log("**********************INTERRUPT MODE**********************")
+		Log("**********************INTERRUPT MODE**********************")
 	} else {
 		sessionConfig.Close()
 	}
 
 	vpp, _ := s.Containers.Vpp.newVppInstance(s.Containers.Vpp.AllocatedCpus, sessionConfig)
 
-	s.AssertNil(vpp.Start())
-	s.AssertNil(vpp.CreateTap(s.Interfaces.Tap, false, 1), "failed to create tap interface")
+	AssertNil(vpp.Start())
+	AssertNil(vpp.CreateTap(s.Interfaces.Tap, false, 1), "failed to create tap interface")
 
 	if *DryRun {
 		s.LogStartedContainers()
@@ -84,15 +84,15 @@ func (s *Http1Suite) TeardownTest() {
 	defer s.HstSuite.TeardownTest()
 	vpp := s.Containers.Vpp.VppInstance
 	if CurrentSpecReport().Failed() {
-		s.Log(vpp.Vppctl("show session verbose 2"))
-		s.Log(vpp.Vppctl("show error"))
-		s.Log(vpp.Vppctl("show http stats"))
+		Log(vpp.Vppctl("show session verbose 2"))
+		Log(vpp.Vppctl("show error"))
+		Log(vpp.Vppctl("show http stats"))
 	}
 }
 
 // Creates container and config.
 func (s *Http1Suite) CreateNginxServer() {
-	s.AssertNil(s.Containers.NginxServer.Create())
+	AssertNil(s.Containers.NginxServer.Create())
 	nginxSettings := struct {
 		LogPrefix string
 		Address   string
@@ -149,7 +149,7 @@ var _ = Describe("Http1Suite", Ordered, ContinueOnFailure, Label("HTTP", "HTTP1"
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, func(ctx SpecContext) {
-				s.Log(testName + ": BEGIN")
+				Log(testName + ": BEGIN")
 				test(&s)
 			}, SpecTimeout(TestTimeout))
 		}
@@ -178,7 +178,7 @@ var _ = Describe("Http1SuiteSolo", Ordered, ContinueOnFailure, Serial, Label("HT
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, func(ctx SpecContext) {
-				s.Log(testName + ": BEGIN")
+				Log(testName + ": BEGIN")
 				test(&s)
 			}, SpecTimeout(TestTimeout))
 		}
@@ -207,7 +207,7 @@ var _ = Describe("Http1MWSuite", Ordered, ContinueOnFailure, Serial, Label("HTTP
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, func(ctx SpecContext) {
-				s.Log(testName + ": BEGIN")
+				Log(testName + ": BEGIN")
 				test(&s)
 			}, SpecTimeout(TestTimeout))
 		}
