@@ -129,6 +129,9 @@ case "${i}" in
         ginkgo_args="$ginkgo_args --label-filter="$label" -v"
         args="$args -verbose"
         ;;
+    --host_ppid=*)
+        args="$args -host_ppid ${i#*=}"
+        ;;
 esac
 done
 
@@ -184,7 +187,6 @@ if [ -n "${BUILD_NUMBER}" ]; then
 fi
 
 mkdir -p .go_cache
-make build-go
 
 mkdir -p summary
 rm -f summary/*
