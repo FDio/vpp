@@ -16,6 +16,24 @@
       "message": "is it possible to write some test?",
       "revId": "7b0f45f976f082aafb50805b299a424d78484576",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b69e74f8_1c3c1ae1",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-12-08T14:55:42Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "31615370_f3d3b15e",
+      "revId": "7b0f45f976f082aafb50805b299a424d78484576",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
