@@ -54,41 +54,41 @@ func redisCutThru(s *NoTopoSuite) {
 	cmd := fmt.Sprintf("redis-server --daemonize yes --protected-mode no --save \"\" --bind %s --loglevel notice --logfile %s",
 		serverAddress, s.RedisServerLogFileName(s.Containers.Vpp))
 	o, err := s.Containers.ServerApp.Exec(true, cmd)
-	s.AssertNil(err)
+	AssertNil(err)
 
 	// check for sessions during test run
 	go func() {
 		defer GinkgoRecover()
 		time.Sleep(time.Second * 2)
 		o = s.Containers.Vpp.VppInstance.Vppctl("show session verbose proto ct")
-		s.Log(o)
+		Log(o)
 		if !strings.Contains(strings.ToLower(o), "[ct:t]") {
 			cancel()
-			s.AssertContains(o, "[CT:T]")
+			AssertContains(o, "[CT:T]")
 		}
 	}()
 
 	cmd = fmt.Sprintf("redis-benchmark -q --threads %d -h %s", 1, serverAddress)
 	o, err = s.Containers.ClientApp.ExecContext(ctx, true, cmd)
-	s.Log(o)
-	s.AssertNil(err)
+	Log(o)
+	AssertNil(err)
 }
 
 func LdpIperfTcpCutThruTest(s *NoTopoSuite) {
-	s.AssertGreaterEqualUnlessCoverageBuild(ldPreloadIperfCutThru(s, ""), 100)
+	AssertGreaterEqualUnlessCoverageBuild(ldPreloadIperfCutThru(s, ""), 100)
 }
 
 func LdpIperfTcpCutThruMWTest(s *NoTopoSuite) {
 	s.CpusPerVppContainer = 3
 	s.CpusPerContainer = 3
 	s.SetupTest()
-	s.AssertGreaterEqualUnlessCoverageBuild(ldPreloadIperfCutThru(s, ""), 100)
+	AssertGreaterEqualUnlessCoverageBuild(ldPreloadIperfCutThru(s, ""), 100)
 }
 
 // hangs
 func LdpIperfUdpCutThruTest(s *NoTopoSuite) {
 	s.Skip("Broken")
-	s.AssertGreaterEqualUnlessCoverageBuild(ldPreloadIperfCutThru(s, "-u -b 10g"), 100)
+	AssertGreaterEqualUnlessCoverageBuild(ldPreloadIperfCutThru(s, "-u -b 10g"), 100)
 }
 
 // hangs
@@ -96,7 +96,7 @@ func LdpIperfUdpCutThruMWTest(s *NoTopoSuite) {
 	s.Skip("Broken")
 	s.CpusPerVppContainer = 3
 	s.SetupTest()
-	s.AssertGreaterEqualUnlessCoverageBuild(ldPreloadIperfCutThru(s, "-u -b 10g"), 100)
+	AssertGreaterEqualUnlessCoverageBuild(ldPreloadIperfCutThru(s, "-u -b 10g"), 100)
 }
 
 // only runs iperf for 5s
@@ -133,10 +133,10 @@ func ldPreloadIperfCutThru(s *NoTopoSuite, extraClientArgs string) float64 {
 		defer GinkgoRecover()
 		time.Sleep(time.Second * 2)
 		o := s.Containers.Vpp.VppInstance.Vppctl("show session verbose")
-		s.Log(o)
+		Log(o)
 		if !(strings.Contains(strings.ToLower(o), "[ct:t]") || strings.Contains(strings.ToLower(o), "[ct:u]")) {
 			cancel()
-			s.AssertNil(fmt.Errorf("[CT:T] or [CT:U] not found in output"))
+			AssertNil(fmt.Errorf("[CT:T] or [CT:U] not found in output"))
 		}
 	}()
 
@@ -145,12 +145,12 @@ func ldPreloadIperfCutThru(s *NoTopoSuite, extraClientArgs string) float64 {
 	o, err := s.Containers.ClientApp.ExecContext(ctx, true, cmd)
 
 	fileLog, _ := s.Containers.ServerApp.Exec(false, "cat "+s.IperfLogFileName(s.Containers.ServerApp))
-	s.Log("*** Server logs: \n%s\n***", fileLog)
+	Log("*** Server logs: \n%s\n***", fileLog)
 
-	s.Log(o)
-	s.AssertNil(err, o)
+	Log(o)
+	AssertNil(err, o)
 	result, err := ParseIperfText(o)
-	s.AssertNil(err)
+	AssertNil(err)
 
 	return result.BitrateMbps
 }

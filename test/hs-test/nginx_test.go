@@ -34,17 +34,17 @@ func NginxHttp3Test(s *NoTopoSuite) {
 	s.Containers.Curl.ExtraRunningArgs = args
 	s.Containers.Curl.Run()
 	body, stats := s.Containers.Curl.GetOutput()
-	s.Log(body)
-	s.Log(stats)
-	s.AssertNotContains(stats, "refused")
-	s.AssertContains(stats, "100")
-	s.AssertContains(body, "<http>", "<http> not found in the result!")
+	Log(body)
+	Log(stats)
+	AssertNotContains(stats, "refused")
+	AssertContains(stats, "100")
+	AssertContains(body, "<http>", "<http> not found in the result!")
 
 	// check worker crash
 	logPath := s.Containers.NginxHttp3.GetHostWorkDir() + "/" + s.Containers.NginxHttp3.Name + "-error.log"
 	logContents, err := exechelper.Output("cat " + logPath)
-	s.AssertNil(err)
-	s.AssertNotContains(string(logContents), "signal 17 (SIGCHLD) received from")
+	AssertNil(err)
+	AssertNotContains(string(logContents), "signal 17 (SIGCHLD) received from")
 }
 
 func NginxAsServerTest(s *NoTopoSuite) {
@@ -66,7 +66,7 @@ func NginxAsServerTest(s *NoTopoSuite) {
 		defer GinkgoRecover()
 		s.StartWget(finished, serverAddress, s.Ports.NginxServer, query, "")
 	}()
-	s.AssertNil(<-finished)
+	AssertNil(<-finished)
 }
 
 func parseString(s, pattern string) string {
@@ -104,23 +104,23 @@ func runNginxPerf(s *NoTopoSuite, mode, ab_or_wrk string, multiThreadWorkers boo
 		args += " -r"
 		args += " http://" + serverAddress + "/64B.json"
 		s.Containers.Ab.ExtraRunningArgs = args
-		s.Log("Test might take up to 2 minutes to finish. Please wait")
+		Log("Test might take up to 2 minutes to finish. Please wait")
 		s.Containers.Ab.Run()
 		o, err := s.Containers.Ab.GetOutput()
 		rps := parseString(o, "Requests per second:")
-		s.Log(rps)
-		s.AssertContains(err, "Finished "+fmt.Sprint(nRequests))
+		Log(rps)
+		AssertContains(err, "Finished "+fmt.Sprint(nRequests))
 	} else {
 		args := fmt.Sprintf("-c %d -t 2 -d 30 http://%s/64B.json", nClients,
 			serverAddress)
 		s.Containers.Wrk.ExtraRunningArgs = args
 		s.Containers.Wrk.Run()
-		s.Log("Please wait for 30s, test is running.")
+		Log("Please wait for 30s, test is running.")
 		o, err := s.Containers.Wrk.GetOutput()
 		rps := parseString(o, "requests")
-		s.Log(rps)
-		s.Log(err)
-		s.AssertEmpty(err, "err: '%s', output: '%s'", err, o)
+		Log(rps)
+		Log(err)
+		AssertEmpty(err, "err: '%s', output: '%s'", err, o)
 	}
 	return nil
 }
@@ -130,11 +130,11 @@ func NginxPerfCpsInterruptModeTest(s *NoTopoSuite) {
 }
 
 func NginxPerfCpsMultiThreadTest(s *NoTopoSuite) {
-	s.AssertNil(runNginxPerf(s, "cps", "ab", true))
+	AssertNil(runNginxPerf(s, "cps", "ab", true))
 }
 
 func NginxPerfCpsTest(s *NoTopoSuite) {
-	s.AssertNil(runNginxPerf(s, "cps", "ab", false))
+	AssertNil(runNginxPerf(s, "cps", "ab", false))
 }
 
 func NginxPerfRpsInterruptModeTest(s *NoTopoSuite) {
@@ -142,11 +142,11 @@ func NginxPerfRpsInterruptModeTest(s *NoTopoSuite) {
 }
 
 func NginxPerfRpsMultiThreadTest(s *NoTopoSuite) {
-	s.AssertNil(runNginxPerf(s, "rps", "ab", true))
+	AssertNil(runNginxPerf(s, "rps", "ab", true))
 }
 
 func NginxPerfRpsTest(s *NoTopoSuite) {
-	s.AssertNil(runNginxPerf(s, "rps", "ab", false))
+	AssertNil(runNginxPerf(s, "rps", "ab", false))
 }
 
 func NginxPerfWrkInterruptModeTest(s *NoTopoSuite) {
@@ -154,7 +154,7 @@ func NginxPerfWrkInterruptModeTest(s *NoTopoSuite) {
 }
 
 func NginxPerfWrkTest(s *NoTopoSuite) {
-	s.AssertNil(runNginxPerf(s, "", "wrk", false))
+	AssertNil(runNginxPerf(s, "", "wrk", false))
 }
 
 func runNginxPerf6(s *NoTopo6Suite, mode, ab_or_wrk string, multiThreadWorkers bool) error {
@@ -181,27 +181,27 @@ func runNginxPerf6(s *NoTopo6Suite, mode, ab_or_wrk string, multiThreadWorkers b
 		args += " -r"
 		args += " http://" + serverAddress + "/64B.json"
 		s.Containers.Ab.ExtraRunningArgs = args
-		s.Log("Test might take up to 2 minutes to finish. Please wait")
+		Log("Test might take up to 2 minutes to finish. Please wait")
 		s.Containers.Ab.Run()
 		o, err := s.Containers.Ab.GetOutput()
 		rps := parseString(o, "Requests per second:")
-		s.Log(rps)
-		s.AssertContains(err, "Finished "+fmt.Sprint(nRequests))
+		Log(rps)
+		AssertContains(err, "Finished "+fmt.Sprint(nRequests))
 	} else {
 		args := fmt.Sprintf("-c %d -t 2 -d 30 http://%s/64B.json", nClients,
 			serverAddress)
 		s.Containers.Wrk.ExtraRunningArgs = args
 		s.Containers.Wrk.Run()
-		s.Log("Please wait for 30s, test is running.")
+		Log("Please wait for 30s, test is running.")
 		o, err := s.Containers.Wrk.GetOutput()
 		rps := parseString(o, "requests")
-		s.Log(rps)
-		s.Log(err)
-		s.AssertEmpty(err, "err: '%s', output: '%s'", err, o)
+		Log(rps)
+		Log(err)
+		AssertEmpty(err, "err: '%s', output: '%s'", err, o)
 	}
 	return nil
 }
 
 func NginxPerfRps6Test(s *NoTopo6Suite) {
-	s.AssertNil(runNginxPerf6(s, "rps", "ab", false))
+	AssertNil(runNginxPerf6(s, "rps", "ab", false))
 }

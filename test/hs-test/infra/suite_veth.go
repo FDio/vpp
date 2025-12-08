@@ -69,7 +69,7 @@ func (s *VethsSuite) SetupTest() {
 
 	if strings.Contains(CurrentSpecReport().LeafNodeText, "InterruptMode") {
 		sessionConfig.Append("use-private-rx-mqs").Close()
-		s.Log("**********************INTERRUPT MODE**********************")
+		Log("**********************INTERRUPT MODE**********************")
 	} else {
 		sessionConfig.Close()
 	}
@@ -79,11 +79,11 @@ func (s *VethsSuite) SetupTest() {
 
 	// ... For server
 	serverVpp, err := s.Containers.ServerVpp.newVppInstance(s.Containers.ServerVpp.AllocatedCpus, sessionConfig)
-	s.AssertNotNil(serverVpp, fmt.Sprint(err))
+	AssertNotNil(serverVpp, fmt.Sprint(err))
 
 	// ... For client
 	clientVpp, err := s.Containers.ClientVpp.newVppInstance(s.Containers.ClientVpp.AllocatedCpus, sessionConfig, httpConfig)
-	s.AssertNotNil(clientVpp, fmt.Sprint(err))
+	AssertNotNil(clientVpp, fmt.Sprint(err))
 
 	s.SetupServerVpp()
 	s.SetupClientVpp()
@@ -100,29 +100,29 @@ func (s *VethsSuite) TeardownTest() {
 	if CurrentSpecReport().Failed() {
 		s.CollectVclTestSrvLogs(s.Containers.ServerApp)
 		s.CollectVclTestClnLogs(s.Containers.ClientApp)
-		s.Log(clientVpp.Vppctl("show session verbose 2"))
-		s.Log(clientVpp.Vppctl("show error"))
-		s.Log(serverVpp.Vppctl("show session verbose 2"))
-		s.Log(serverVpp.Vppctl("show error"))
+		Log(clientVpp.Vppctl("show session verbose 2"))
+		Log(clientVpp.Vppctl("show error"))
+		Log(serverVpp.Vppctl("show session verbose 2"))
+		Log(serverVpp.Vppctl("show error"))
 	}
 }
 
 func (s *VethsSuite) SetupServerVpp() {
 	serverVpp := s.Containers.ServerVpp.VppInstance
-	s.AssertNil(serverVpp.Start())
+	AssertNil(serverVpp.Start())
 
 	idx, err := serverVpp.createAfPacket(s.Interfaces.Server, false)
-	s.AssertNil(err, fmt.Sprint(err))
-	s.AssertNotEqual(0, idx)
+	AssertNil(err, fmt.Sprint(err))
+	AssertNotEqual(0, idx)
 }
 
 func (s *VethsSuite) SetupClientVpp() {
 	clientVpp := s.GetContainerByName("client-vpp").VppInstance
-	s.AssertNil(clientVpp.Start())
+	AssertNil(clientVpp.Start())
 
 	idx, err := clientVpp.createAfPacket(s.Interfaces.Client, false)
-	s.AssertNil(err, fmt.Sprint(err))
-	s.AssertNotEqual(0, idx)
+	AssertNil(err, fmt.Sprint(err))
+	AssertNotEqual(0, idx)
 }
 
 var _ = Describe("VethsSuite", Ordered, ContinueOnFailure, Label("Veth"), func() {
@@ -149,7 +149,7 @@ var _ = Describe("VethsSuite", Ordered, ContinueOnFailure, Label("Veth"), func()
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, func(ctx SpecContext) {
-				s.Log(testName + ": BEGIN")
+				Log(testName + ": BEGIN")
 				test(&s)
 			}, SpecTimeout(TestTimeout))
 		}
@@ -179,7 +179,7 @@ var _ = Describe("VethsSuiteSolo", Ordered, ContinueOnFailure, Serial, Label("Ve
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, func(ctx SpecContext) {
-				s.Log(testName + ": BEGIN")
+				Log(testName + ": BEGIN")
 				test(&s)
 			}, SpecTimeout(TestTimeout))
 		}
@@ -209,7 +209,7 @@ var _ = Describe("VethsSuiteMW", Ordered, ContinueOnFailure, Serial, func() {
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, Label("SOLO", "VPP Multi-Worker"), func(ctx SpecContext) {
-				s.Log(testName + ": BEGIN")
+				Log(testName + ": BEGIN")
 				test(&s)
 			}, SpecTimeout(TestTimeout))
 		}

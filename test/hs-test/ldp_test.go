@@ -20,33 +20,33 @@ func init() {
 func LdpIperfUdpMWTest(s *LdpSuite) {
 	s.CpusPerVppContainer = 3
 	s.SetupTest()
-	s.AssertGreaterEqualUnlessCoverageBuild(ldPreloadIperf(s, "-u -b 1g -P 5", false), 50)
+	AssertGreaterEqualUnlessCoverageBuild(ldPreloadIperf(s, "-u -b 1g -P 5", false), 50)
 }
 
 func LdpIperfUdpVppInterruptModeTest(s *LdpSuite) {
-	s.AssertGreaterEqualUnlessCoverageBuild(ldPreloadIperf(s, "-u -b 1g", false), 100)
+	AssertGreaterEqualUnlessCoverageBuild(ldPreloadIperf(s, "-u -b 1g", false), 100)
 }
 
 func ldpIperfTcpReorder(s *LdpSuite, netInterface *NetInterface, extraIperfArgs string) {
 	cmd := exec.Command("tc", "qdisc", "del", "dev", netInterface.Name(),
 		"root")
-	s.Log("defer '%s'", cmd.String())
+	Log("defer '%s'", cmd.String())
 	defer cmd.Run()
 
 	// "10% of packets (with a correlation of 50%) will get sent immediately, others will be delayed by 10ms"
 	// https://www.man7.org/linux/man-pages/man8/tc-netem.8.html
 	cmd = exec.Command("tc", "qdisc", "add", "dev", netInterface.Name(),
 		"root", "netem", "delay", "10ms", "reorder", "10%", "50%")
-	s.Log(cmd.String())
+	Log(cmd.String())
 	o, err := cmd.CombinedOutput()
-	s.AssertNil(err, string(o))
+	AssertNil(err, string(o))
 
 	delete(s.Containers.ClientApp.EnvVars, "VCL_CONFIG")
 	delete(s.Containers.ClientApp.EnvVars, "LD_PRELOAD")
 	delete(s.Containers.ClientApp.EnvVars, "VCL_DEBUG")
 	delete(s.Containers.ClientApp.EnvVars, "LDP_DEBUG")
 
-	s.AssertGreaterEqualUnlessCoverageBuild(ldPreloadIperf(s, extraIperfArgs, true), 20)
+	AssertGreaterEqualUnlessCoverageBuild(ldPreloadIperf(s, extraIperfArgs, true), 20)
 }
 
 func LdpIperfTcpReorderTest(s *LdpSuite) {
@@ -75,15 +75,15 @@ func LdpIperfTlsTcpTest(s *LdpSuite) {
 		c.AddEnvVar("LDP_TLS_CERT_FILE", "/crt.crt")
 		c.AddEnvVar("LDP_TLS_KEY_FILE", "/key.key")
 	}
-	s.AssertGreaterEqualUnlessCoverageBuild(ldPreloadIperf(s, "", false), 100)
+	AssertGreaterEqualUnlessCoverageBuild(ldPreloadIperf(s, "", false), 100)
 }
 
 func LdpIperfTcpTest(s *LdpSuite) {
-	s.AssertGreaterEqualUnlessCoverageBuild(ldPreloadIperf(s, "", false), 100)
+	AssertGreaterEqualUnlessCoverageBuild(ldPreloadIperf(s, "", false), 100)
 }
 
 func LdpIperfUdpTest(s *LdpSuite) {
-	s.AssertGreaterEqualUnlessCoverageBuild(ldPreloadIperf(s, "-u -b 1g", false), 100)
+	AssertGreaterEqualUnlessCoverageBuild(ldPreloadIperf(s, "-u -b 1g", false), 100)
 }
 
 func ldPreloadIperf(s *LdpSuite, extraClientArgs string, isReorder bool) float64 {
@@ -108,12 +108,12 @@ func ldPreloadIperf(s *LdpSuite, extraClientArgs string, isReorder bool) float64
 	o, err := s.Containers.ClientApp.ExecContext(ctx, true, cmd)
 
 	fileLog, _ := s.Containers.ServerApp.Exec(false, "cat "+s.IperfLogFileName(s.Containers.ServerApp))
-	s.Log("*** Server logs: \n%s\n***", fileLog)
+	Log("*** Server logs: \n%s\n***", fileLog)
 
-	s.Log(o)
-	s.AssertNil(err, o)
+	Log(o)
+	AssertNil(err, o)
 	result, err := ParseIperfText(o)
-	s.AssertNil(err)
+	AssertNil(err)
 	return result.BitrateMbps
 }
 
@@ -142,7 +142,7 @@ func RedisBenchmarkTest(s *LdpSuite) {
 	}()
 
 	err := <-runningSrv
-	s.AssertNil(err)
+	AssertNil(err)
 
 	go func() {
 		defer GinkgoRecover()
@@ -156,6 +156,6 @@ func RedisBenchmarkTest(s *LdpSuite) {
 	}()
 
 	// 4.5 minutes
-	s.AssertChannelClosed(time.Second*270, clnCh)
-	s.Log(string(<-clnRes))
+	AssertChannelClosed(time.Second*270, clnCh)
+	Log(string(<-clnRes))
 }

@@ -82,10 +82,10 @@ func (s *EnvoyProxySuite) SetupTest() {
 		Append("event-queue-length 100000")
 
 	vpp, err := s.Containers.Vpp.newVppInstance(s.Containers.Vpp.AllocatedCpus, sessionConfig)
-	s.AssertNotNil(vpp, fmt.Sprint(err))
+	AssertNotNil(vpp, fmt.Sprint(err))
 
 	// nginx HTTP server
-	s.AssertNil(s.Containers.NginxServerTransient.Create())
+	AssertNil(s.Containers.NginxServerTransient.Create())
 	nginxSettings := struct {
 		LogPrefix string
 		Address   string
@@ -108,7 +108,7 @@ func (s *EnvoyProxySuite) SetupTest() {
 	)
 
 	// Envoy
-	s.AssertNil(s.Containers.EnvoyProxy.Create())
+	AssertNil(s.Containers.EnvoyProxy.Create())
 
 	envoySettings := struct {
 		LogPrefix      string
@@ -131,11 +131,11 @@ func (s *EnvoyProxySuite) SetupTest() {
 		envoySettings,
 	)
 
-	s.AssertNil(vpp.Start())
+	AssertNil(vpp.Start())
 	// wait for VPP to start
 	time.Sleep(time.Second * 1)
-	s.AssertNil(vpp.CreateTap(s.Interfaces.Client, false, 1))
-	s.AssertNil(vpp.CreateTap(s.Interfaces.Server, false, 2))
+	AssertNil(vpp.CreateTap(s.Interfaces.Client, false, 1))
+	AssertNil(vpp.CreateTap(s.Interfaces.Server, false, 2))
 	s.Containers.Vpp.Exec(false, "chmod 777 -R %s", s.Containers.Vpp.GetContainerWorkDir())
 
 	// Add Ipv4 ARP entry for nginx HTTP server, otherwise first request fail (HTTP error 503)
@@ -147,13 +147,13 @@ func (s *EnvoyProxySuite) SetupTest() {
 	if *DryRun {
 		vpp.AppendToCliConfig(arp)
 		s.LogStartedContainers()
-		s.Log("%s* Proxy IP used in tests: %s:%d%s", Colors.pur, s.ProxyAddr(), s.Ports.Proxy, Colors.rst)
+		Log("%s* Proxy IP used in tests: %s:%d%s", Colors.pur, s.ProxyAddr(), s.Ports.Proxy, Colors.rst)
 		s.Skip("Dry run mode = true")
 	}
 
 	s.Containers.Vpp.VppInstance.Vppctl(arp)
-	s.AssertNil(s.Containers.NginxServerTransient.Start())
-	s.AssertNil(s.Containers.EnvoyProxy.Start())
+	AssertNil(s.Containers.NginxServerTransient.Start())
+	AssertNil(s.Containers.EnvoyProxy.Start())
 	// give envoy some time to start
 	time.Sleep(time.Second * 2)
 }
@@ -173,16 +173,16 @@ func (s *EnvoyProxySuite) ProxyAddr() string {
 func (s *EnvoyProxySuite) CurlDownloadResource(uri string) {
 	args := fmt.Sprintf("-w @/tmp/write_out_download --max-time %d --insecure --noproxy '*' --remote-name --output-dir /tmp %s", s.maxTimeout, uri)
 	writeOut, log := s.RunCurlContainer(s.Containers.Curl, args)
-	s.AssertContains(writeOut, "GET response code: 200")
-	s.AssertNotContains(log, "bytes remaining to read")
-	s.AssertNotContains(log, "Operation timed out")
+	AssertContains(writeOut, "GET response code: 200")
+	AssertNotContains(log, "bytes remaining to read")
+	AssertNotContains(log, "Operation timed out")
 }
 
 func (s *EnvoyProxySuite) CurlUploadResource(uri, file string) {
 	args := fmt.Sprintf("-w @/tmp/write_out_upload --max-time %d --insecure --noproxy '*' -T %s %s", s.maxTimeout, file, uri)
 	writeOut, log := s.RunCurlContainer(s.Containers.Curl, args)
-	s.AssertContains(writeOut, "PUT response code: 201")
-	s.AssertNotContains(log, "Operation timed out")
+	AssertContains(writeOut, "PUT response code: 201")
+	AssertNotContains(log, "Operation timed out")
 }
 
 var _ = Describe("EnvoyProxySuite", Ordered, ContinueOnFailure, Label("Envoy", "Proxy", "VCL"), func() {
@@ -207,7 +207,7 @@ var _ = Describe("EnvoyProxySuite", Ordered, ContinueOnFailure, Label("Envoy", "
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, func(ctx SpecContext) {
-				s.Log(testName + ": BEGIN")
+				Log(testName + ": BEGIN")
 				test(&s)
 			}, SpecTimeout(TestTimeout))
 		}
@@ -236,7 +236,7 @@ var _ = Describe("EnvoyProxySuiteSolo", Ordered, ContinueOnFailure, Label("Envoy
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, func(ctx SpecContext) {
-				s.Log(testName + ": BEGIN")
+				Log(testName + ": BEGIN")
 				test(&s)
 			}, SpecTimeout(TestTimeout))
 		}

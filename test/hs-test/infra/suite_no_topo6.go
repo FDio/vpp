@@ -69,15 +69,15 @@ func (s *NoTopo6Suite) SetupTest() {
 
 	if strings.Contains(CurrentSpecReport().LeafNodeText, "InterruptMode") {
 		sessionConfig.Append("use-private-rx-mqs").Close()
-		s.Log("**********************INTERRUPT MODE**********************")
+		Log("**********************INTERRUPT MODE**********************")
 	} else {
 		sessionConfig.Close()
 	}
 
 	vpp, _ := s.Containers.Vpp.newVppInstance(s.Containers.Vpp.AllocatedCpus, sessionConfig)
 
-	s.AssertNil(vpp.Start())
-	s.AssertNil(vpp.CreateTap(s.Interfaces.Tap, true, 1), "failed to create tap interface")
+	AssertNil(vpp.Start())
+	AssertNil(vpp.CreateTap(s.Interfaces.Tap, true, 1), "failed to create tap interface")
 
 	if *DryRun {
 		s.LogStartedContainers()
@@ -115,7 +115,7 @@ func (s *NoTopo6Suite) CreateNginxConfig(container *Container, multiThreadWorker
 
 // Creates container and config.
 func (s *NoTopo6Suite) CreateNginxServer() {
-	s.AssertNil(s.Containers.NginxServer.Create())
+	AssertNil(s.Containers.NginxServer.Create())
 	nginxSettings := struct {
 		LogPrefix string
 		Address   string
@@ -159,7 +159,7 @@ func (s *NoTopo6Suite) AddNginxVclConfig(multiThreadWorkers bool) {
 	}
 
 	err := vclConf.Close().SaveToFile(vclFileName)
-	s.AssertNil(err, fmt.Sprint(err))
+	AssertNil(err, fmt.Sprint(err))
 }
 
 func (s *NoTopo6Suite) VppAddr() string {
@@ -209,7 +209,7 @@ var _ = Describe("NoTopo6Suite", Ordered, ContinueOnFailure, Label("Generic", "I
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, func(ctx SpecContext) {
-				s.Log(testName + ": BEGIN")
+				Log(testName + ": BEGIN")
 				test(&s)
 			}, SpecTimeout(TestTimeout))
 		}
@@ -238,7 +238,7 @@ var _ = Describe("NoTopo6SuiteSolo", Ordered, ContinueOnFailure, Serial, Label("
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, func(ctx SpecContext) {
-				s.Log(testName + ": BEGIN")
+				Log(testName + ": BEGIN")
 				test(&s)
 			}, SpecTimeout(TestTimeout))
 		}

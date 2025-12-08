@@ -54,13 +54,13 @@ func testXEchoVclClient(s *VethsSuite, proto string) {
 
 	testClientCommand := fmt.Sprintf("vcl_test_client -N 100 -p %s %s %s 2>&1 | tee %s",
 		proto, s.Interfaces.Server.Ip4AddressString(), s.Ports.Port1, s.VclTestClnLogFileName(echoClnContainer))
-	s.Log(testClientCommand)
+	Log(testClientCommand)
 	echoClnContainer.AddEnvVar("VCL_CONFIG", "/vcl.conf")
 	o, err := echoClnContainer.Exec(true, WrapCmdWithLineBuffering(testClientCommand))
-	s.AssertNil(err)
-	s.AssertNotContains(o, "aborting test")
-	s.Log(o)
-	s.AssertContains(o, "CLIENT RESULTS")
+	AssertNil(err)
+	AssertNotContains(o, "aborting test")
+	Log(o)
+	AssertContains(o, "CLIENT RESULTS")
 }
 
 func XEchoVclServerUdpTest(s *VethsSuite) {
@@ -85,9 +85,9 @@ func testXEchoVclServer(s *VethsSuite, proto string) {
 	wg.Go(func() {
 		defer GinkgoRecover()
 		o, oErr, err := srvAppCont.ExecLineBuffered(ctx, true, vclSrvCmd)
-		s.Log(o)
-		s.Log(oErr)
-		s.AssertNil(err, o+oErr)
+		Log(o)
+		Log(oErr)
+		AssertNil(err, o+oErr)
 	})
 
 	srvVppCont.VppInstance.WaitForApp("vcl_test_server", 3)
@@ -95,8 +95,8 @@ func testXEchoVclServer(s *VethsSuite, proto string) {
 	o := clientVpp.Vppctl("test echo client uri %s://%s/%s fifo-size 64k verbose bytes 2m", proto, serverVethAddress, s.Ports.Port1)
 	cancel()
 	wg.Wait()
-	s.Log(o)
-	s.AssertContains(o, "Test finished at")
+	Log(o)
+	AssertContains(o, "Test finished at")
 }
 
 func testVclEcho(s *VethsSuite, proto string, extraArgs ...string) {
@@ -125,14 +125,14 @@ func testVclEcho(s *VethsSuite, proto string, extraArgs ...string) {
 	echoClnContainer.AddEnvVar("VCL_CONFIG", "/vcl.conf")
 
 	o, err := echoClnContainer.Exec(true, WrapCmdWithLineBuffering(testClientCommand))
-	s.Log("****** Client output:\n%s\n******", o)
+	Log("****** Client output:\n%s\n******", o)
 
 	oSrv, errSrv := srvAppCont.Exec(false, "cat %s", s.VclTestSrvLogFileName(srvAppCont))
-	s.Log("****** Server output:\n%s\n******", oSrv)
+	Log("****** Server output:\n%s\n******", oSrv)
 
-	s.AssertNil(err, o)
-	s.AssertNotContains(o, "aborting test")
-	s.AssertNil(errSrv, oSrv)
+	AssertNil(err, o)
+	AssertNotContains(o, "aborting test")
+	AssertNil(errSrv, oSrv)
 }
 
 func VclEchoTcpTest(s *VethsSuite) {
@@ -175,8 +175,8 @@ func testRetryAttach(s *VethsSuite, proto string) {
 	echoSrvContainer.ExecServer(true, WrapCmdWithLineBuffering(vclSrvCmd))
 	srvVppContainer.VppInstance.WaitForApp("vcl_test_server", 3)
 
-	s.Log("This whole test case can take around 3 minutes to run. Please be patient.")
-	s.Log("... Running first echo client test, before disconnect.")
+	Log("This whole test case can take around 3 minutes to run. Please be patient.")
+	Log("... Running first echo client test, before disconnect.")
 
 	echoClnContainer := s.GetTransientContainerByName("client-app")
 	echoClnContainer.CreateFile("/vcl.conf", getVclConfig(echoClnContainer))
@@ -185,10 +185,10 @@ func testRetryAttach(s *VethsSuite, proto string) {
 		proto, serverVethAddress, s.Ports.Port1, s.VclTestClnLogFileName(echoClnContainer))
 	echoClnContainer.AddEnvVar("VCL_CONFIG", "/vcl.conf")
 	o, err := echoClnContainer.Exec(true, WrapCmdWithLineBuffering(testClientCommand))
-	s.AssertNil(err)
-	s.AssertNotContains(o, "aborting test")
-	s.Log(o)
-	s.Log("... First test ended. Stopping VPP server now.")
+	AssertNil(err)
+	AssertNotContains(o, "aborting test")
+	Log(o)
+	Log("... First test ended. Stopping VPP server now.")
 
 	// Stop server-vpp-instance, start it again and then run vcl-test-client once more
 	srvVppContainer.VppInstance.Disconnect()
@@ -196,22 +196,22 @@ func testRetryAttach(s *VethsSuite, proto string) {
 
 	s.SetupServerVpp()
 
-	s.Log("... VPP server is starting again, so waiting for a bit.")
+	Log("... VPP server is starting again, so waiting for a bit.")
 	time.Sleep(30 * time.Second) // Wait a moment for the re-attachment to happen
 
-	s.Log("... Running second echo client test, after disconnect and re-attachment.")
+	Log("... Running second echo client test, after disconnect and re-attachment.")
 	testClientCommand = fmt.Sprintf("vcl_test_client -U -X -p %s %s %s 2>&1 | tee %s",
 		proto, serverVethAddress, s.Ports.Port1, s.VclTestClnLogFileName(echoClnContainer))
 	o, err = echoClnContainer.Exec(true, WrapCmdWithLineBuffering(testClientCommand))
-	s.Log("****** Client output:\n%s\n******", o)
+	Log("****** Client output:\n%s\n******", o)
 
 	oSrv, errSrv := echoSrvContainer.Exec(false, "cat %s", s.VclTestSrvLogFileName(echoSrvContainer))
-	s.Log("****** Server output:\n%s\n******", oSrv)
+	Log("****** Server output:\n%s\n******", oSrv)
 
-	s.AssertNil(err, o)
-	s.AssertNotContains(o, "aborting test")
-	s.AssertNil(errSrv, oSrv)
-	s.Log("Done.")
+	AssertNil(err, o)
+	AssertNotContains(o, "aborting test")
+	AssertNil(errSrv, oSrv)
+	Log("Done.")
 }
 
 func VclClUdpDscpTest(s *VethsSuite) {
@@ -238,10 +238,10 @@ func VclClUdpDscpTest(s *VethsSuite) {
 	// DSCP 16 - Class selector 2 - Network operations
 	cliSrvCmd := fmt.Sprintf("vcl_test_cl_udp -c %s -d 16", serverVethAddress)
 	o, err := cliAppCont.Exec(true, cliSrvCmd)
-	s.AssertNil(err, o)
+	AssertNil(err, o)
 
 	o = srvVppCont.VppInstance.Vppctl("show trace")
-	s.AssertContains(o, "dscp CS2")
+	AssertContains(o, "dscp CS2")
 	o = cliVppCont.VppInstance.Vppctl("show trace")
-	s.AssertContains(o, "dscp CS5")
+	AssertContains(o, "dscp CS5")
 }

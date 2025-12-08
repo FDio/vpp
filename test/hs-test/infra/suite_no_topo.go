@@ -81,15 +81,15 @@ func (s *NoTopoSuite) SetupTest() {
 
 	if strings.Contains(CurrentSpecReport().LeafNodeText, "InterruptMode") {
 		sessionConfig.Append("use-private-rx-mqs").Close()
-		s.Log("**********************INTERRUPT MODE**********************")
+		Log("**********************INTERRUPT MODE**********************")
 	} else {
 		sessionConfig.Close()
 	}
 
 	vpp, _ := s.Containers.Vpp.newVppInstance(s.Containers.Vpp.AllocatedCpus, sessionConfig)
 
-	s.AssertNil(vpp.Start())
-	s.AssertNil(vpp.CreateTap(s.Interfaces.Tap, false, 1), "failed to create tap interface")
+	AssertNil(vpp.Start())
+	AssertNil(vpp.CreateTap(s.Interfaces.Tap, false, 1), "failed to create tap interface")
 
 	if *DryRun {
 		s.LogStartedContainers()
@@ -127,7 +127,7 @@ func (s *NoTopoSuite) CreateNginxConfig(container *Container, multiThreadWorkers
 
 // Creates container and config.
 func (s *NoTopoSuite) CreateNginxServer() {
-	s.AssertNil(s.Containers.NginxServer.Create())
+	AssertNil(s.Containers.NginxServer.Create())
 	nginxSettings := struct {
 		LogPrefix string
 		Address   string
@@ -171,7 +171,7 @@ func (s *NoTopoSuite) AddNginxVclConfig(multiThreadWorkers bool) {
 	}
 
 	err := vclConf.Close().SaveToFile(vclFileName)
-	s.AssertNil(err, fmt.Sprint(err))
+	AssertNil(err, fmt.Sprint(err))
 }
 
 func (s *NoTopoSuite) VppAddr() string {
@@ -218,7 +218,7 @@ func (s *NoTopoSuite) CreateGenericVclConfig(container *Container) {
 		Append("use-mq-eventfd").
 		Append(appSocketApi).Close().
 		SaveToFile(vclFileName)
-	s.AssertNil(err, fmt.Sprint(err))
+	AssertNil(err, fmt.Sprint(err))
 }
 
 var _ = Describe("NoTopoSuite", Ordered, ContinueOnFailure, Label("Generic"), func() {
@@ -243,7 +243,7 @@ var _ = Describe("NoTopoSuite", Ordered, ContinueOnFailure, Label("Generic"), fu
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, func(ctx SpecContext) {
-				s.Log(testName + ": BEGIN")
+				Log(testName + ": BEGIN")
 				test(&s)
 			}, SpecTimeout(TestTimeout))
 		}
@@ -272,7 +272,7 @@ var _ = Describe("NoTopoSuiteSolo", Ordered, ContinueOnFailure, Serial, Label("G
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, func(ctx SpecContext) {
-				s.Log(testName + ": BEGIN")
+				Log(testName + ": BEGIN")
 				test(&s)
 			}, SpecTimeout(TestTimeout))
 		}
@@ -301,7 +301,7 @@ var _ = Describe("NoTopoMWSuite", Ordered, ContinueOnFailure, Serial, Label("Gen
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, func(ctx SpecContext) {
-				s.Log(testName + ": BEGIN")
+				Log(testName + ": BEGIN")
 				test(&s)
 			}, SpecTimeout(TestTimeout))
 		}

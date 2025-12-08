@@ -69,27 +69,27 @@ func (s *HsiSuite) SetupTest() {
 	s.HstSuite.SetupTest()
 
 	vpp, err := s.Containers.Vpp.newVppInstance(s.Containers.Vpp.AllocatedCpus)
-	s.AssertNotNil(vpp, fmt.Sprint(err))
+	AssertNotNil(vpp, fmt.Sprint(err))
 
-	s.AssertNil(vpp.Start())
+	AssertNil(vpp.Start())
 	numCpus := uint16(len(s.Containers.Vpp.AllocatedCpus))
 	numWorkers := uint16(max(numCpus-1, 1))
 	idx, err := vpp.createAfPacket(s.Interfaces.Client, false, WithNumRxQueues(numWorkers), WithNumTxQueues(numCpus))
-	s.AssertNil(err, fmt.Sprint(err))
-	s.AssertNotEqual(0, idx)
+	AssertNil(err, fmt.Sprint(err))
+	AssertNotEqual(0, idx)
 	idx, err = vpp.createAfPacket(s.Interfaces.Server, false, WithNumRxQueues(numWorkers), WithNumTxQueues(numCpus))
-	s.AssertNil(err, fmt.Sprint(err))
-	s.AssertNotEqual(0, idx)
+	AssertNil(err, fmt.Sprint(err))
+	AssertNotEqual(0, idx)
 
-	s.Log(vpp.Vppctl("set interface feature host-" + s.Interfaces.Client.Name() + " hsi4-in arc ip4-unicast"))
-	s.Log(vpp.Vppctl("set interface feature host-" + s.Interfaces.Server.Name() + " hsi4-in arc ip4-unicast"))
+	Log(vpp.Vppctl("set interface feature host-" + s.Interfaces.Client.Name() + " hsi4-in arc ip4-unicast"))
+	Log(vpp.Vppctl("set interface feature host-" + s.Interfaces.Server.Name() + " hsi4-in arc ip4-unicast"))
 
 	// let the host know howto get to the server
 	cmd := exec.Command("ip", "netns", "exec", s.NetNamespaces.Client, "ip", "route", "add",
 		s.ServerAddr(), "via", s.Interfaces.Client.Ip4AddressString())
-	s.Log(cmd.String())
+	Log(cmd.String())
 	_, err = cmd.CombinedOutput()
-	s.AssertNil(err, fmt.Sprint(err))
+	AssertNil(err, fmt.Sprint(err))
 
 	if *DryRun {
 		s.LogStartedContainers()
@@ -101,14 +101,14 @@ func (s *HsiSuite) TeardownTest() {
 	defer s.HstSuite.TeardownTest()
 	vpp := s.Containers.Vpp.VppInstance
 	if CurrentSpecReport().Failed() {
-		s.Log(vpp.Vppctl("show session verbose 2"))
-		s.Log(vpp.Vppctl("show error"))
+		Log(vpp.Vppctl("show session verbose 2"))
+		Log(vpp.Vppctl("show error"))
 		s.CollectNginxLogs(s.Containers.NginxServerTransient)
 	}
 }
 
 func (s *HsiSuite) SetupNginxServer() {
-	s.AssertNil(s.Containers.NginxServerTransient.Create())
+	AssertNil(s.Containers.NginxServerTransient.Create())
 	nginxSettings := struct {
 		LogPrefix string
 		Address   string
@@ -129,7 +129,7 @@ func (s *HsiSuite) SetupNginxServer() {
 		"./resources/nginx/nginx_server.conf",
 		nginxSettings,
 	)
-	s.AssertNil(s.Containers.NginxServerTransient.Start())
+	AssertNil(s.Containers.NginxServerTransient.Start())
 }
 
 func (s *HsiSuite) ServerAddr() string {
@@ -158,7 +158,7 @@ var _ = Describe("HsiSuite", Ordered, ContinueOnFailure, Label("HSI"), func() {
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, func(ctx SpecContext) {
-				s.Log(testName + ": BEGIN")
+				Log(testName + ": BEGIN")
 				test(&s)
 			}, SpecTimeout(TestTimeout))
 		}
@@ -187,7 +187,7 @@ var _ = Describe("HsiSoloSuite", Ordered, ContinueOnFailure, Serial, Label("HSI"
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, func(ctx SpecContext) {
-				s.Log(testName + ": BEGIN")
+				Log(testName + ": BEGIN")
 				test(&s)
 			}, SpecTimeout(TestTimeout))
 		}
@@ -216,7 +216,7 @@ var _ = Describe("HsiMWSuite", Ordered, ContinueOnFailure, Serial, Label("HSI", 
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, func(ctx SpecContext) {
-				s.Log(testName + ": BEGIN")
+				Log(testName + ": BEGIN")
 				test(&s)
 			}, SpecTimeout(TestTimeout))
 		}

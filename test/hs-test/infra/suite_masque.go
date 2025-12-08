@@ -80,55 +80,55 @@ func (s *MasqueSuite) SetupTest() {
 
 	// vpp masque proxy client
 	clientVpp, err := s.Containers.VppClient.newVppInstance(s.Containers.VppClient.AllocatedCpus, memoryConfig)
-	s.AssertNotNil(clientVpp, fmt.Sprint(err))
-	s.AssertNil(clientVpp.Start())
+	AssertNotNil(clientVpp, fmt.Sprint(err))
+	AssertNil(clientVpp.Start())
 	numCpus := uint16(len(s.Containers.VppClient.AllocatedCpus))
 	numWorkers := uint16(max(numCpus-1, 1))
 	idx, err := clientVpp.createAfPacket(s.Interfaces.Client, false, WithNumRxQueues(numWorkers), WithNumTxQueues(numCpus))
-	s.AssertNil(err, fmt.Sprint(err))
-	s.AssertNotEqual(0, idx)
+	AssertNil(err, fmt.Sprint(err))
+	AssertNotEqual(0, idx)
 	idx, err = clientVpp.createAfPacket(s.Interfaces.TunnelClient, false, WithNumRxQueues(numWorkers), WithNumTxQueues(numCpus))
-	s.AssertNil(err, fmt.Sprint(err))
-	s.AssertNotEqual(0, idx)
+	AssertNil(err, fmt.Sprint(err))
+	AssertNotEqual(0, idx)
 
 	// vpp masque proxy server
 	serverVpp, err := s.Containers.VppServer.newVppInstance(s.Containers.VppServer.AllocatedCpus, memoryConfig)
-	s.AssertNotNil(serverVpp, fmt.Sprint(err))
-	s.AssertNil(serverVpp.Start())
+	AssertNotNil(serverVpp, fmt.Sprint(err))
+	AssertNil(serverVpp.Start())
 	numCpus = uint16(len(s.Containers.VppServer.AllocatedCpus))
 	numWorkers = uint16(max(numCpus-1, 1))
 	idx, err = serverVpp.createAfPacket(s.Interfaces.TunnelServer, false, WithNumRxQueues(numWorkers), WithNumTxQueues(numCpus))
-	s.AssertNil(err, fmt.Sprint(err))
-	s.AssertNotEqual(0, idx)
+	AssertNil(err, fmt.Sprint(err))
+	AssertNotEqual(0, idx)
 	idx, err = serverVpp.createAfPacket(s.Interfaces.Server, false, WithNumRxQueues(numWorkers), WithNumTxQueues(numCpus))
-	s.AssertNil(err, fmt.Sprint(err))
-	s.AssertNotEqual(0, idx)
+	AssertNil(err, fmt.Sprint(err))
+	AssertNotEqual(0, idx)
 	proxyCmd := fmt.Sprintf("test proxy server fifo-size 512k server-uri https://%s:%s", s.ProxyAddr(), s.Ports.Proxy)
-	s.Log(serverVpp.Vppctl(proxyCmd))
+	Log(serverVpp.Vppctl(proxyCmd))
 
 	// let the client know howto get to the server (must be created here after vpp interface)
 	cmd := exec.Command("ip", "netns", "exec", s.NetNamespaces.Client, "ip", "route", "add",
 		s.NginxAddr(), "via", s.Interfaces.Client.Ip4AddressString())
-	s.Log(cmd.String())
+	Log(cmd.String())
 	o, err := cmd.CombinedOutput()
-	s.Log(string(o))
-	s.AssertNil(err, fmt.Sprint(err))
+	Log(string(o))
+	AssertNil(err, fmt.Sprint(err))
 
 	arp := fmt.Sprintf("set ip neighbor host-%s %s %s",
 		s.Interfaces.TunnelClient.Name(),
 		s.ProxyAddr(),
 		s.Interfaces.TunnelServer.HwAddress)
-	s.Log(clientVpp.Vppctl(arp))
+	Log(clientVpp.Vppctl(arp))
 	arp = fmt.Sprintf("set ip neighbor host-%s %s %s",
 		s.Interfaces.Client.Name(),
 		s.Interfaces.Client.Peer.Ip4AddressString(),
 		s.Interfaces.Client.Peer.HwAddress)
-	s.Log(clientVpp.Vppctl(arp))
+	Log(clientVpp.Vppctl(arp))
 	arp = fmt.Sprintf("set ip neighbor host-%s %s %s",
 		s.Interfaces.Server.Name(),
 		s.NginxAddr(),
 		s.Interfaces.Server.Peer.HwAddress)
-	s.Log(serverVpp.Vppctl(arp))
+	Log(serverVpp.Vppctl(arp))
 
 	if *DryRun {
 		s.LogStartedContainers()
@@ -141,24 +141,24 @@ func (s *MasqueSuite) TeardownTest() {
 	// delete route
 	cmd := exec.Command("ip", "netns", "exec", s.NetNamespaces.Client, "ip", "route", "del",
 		s.NginxAddr(), "via", s.Interfaces.Client.Ip4AddressString())
-	s.Log(cmd.String())
+	Log(cmd.String())
 	o, err := cmd.CombinedOutput()
-	s.Log(string(o))
-	s.AssertNil(err, fmt.Sprint(err))
+	Log(string(o))
+	AssertNil(err, fmt.Sprint(err))
 	clientVpp := s.Containers.VppClient.VppInstance
 	serverVpp := s.Containers.VppServer.VppInstance
 	if CurrentSpecReport().Failed() {
 		s.CollectNginxLogs(s.Containers.NginxServer)
 		s.CollectIperfLogs(s.Containers.IperfServer)
-		s.Log(clientVpp.Vppctl("show session verbose 2"))
-		s.Log(clientVpp.Vppctl("show error"))
-		s.Log(clientVpp.Vppctl("show http connect proxy client listeners sessions stats"))
-		s.Log(clientVpp.Vppctl("show http stats"))
-		s.Log(clientVpp.Vppctl("show tcp stats"))
-		s.Log(serverVpp.Vppctl("show session verbose 2"))
-		s.Log(serverVpp.Vppctl("show error"))
-		s.Log(serverVpp.Vppctl("show http stats"))
-		s.Log(serverVpp.Vppctl("show tcp stats"))
+		Log(clientVpp.Vppctl("show session verbose 2"))
+		Log(clientVpp.Vppctl("show error"))
+		Log(clientVpp.Vppctl("show http connect proxy client listeners sessions stats"))
+		Log(clientVpp.Vppctl("show http stats"))
+		Log(clientVpp.Vppctl("show tcp stats"))
+		Log(serverVpp.Vppctl("show session verbose 2"))
+		Log(serverVpp.Vppctl("show error"))
+		Log(serverVpp.Vppctl("show http stats"))
+		Log(serverVpp.Vppctl("show tcp stats"))
 	}
 }
 
@@ -170,7 +170,7 @@ func (s *MasqueSuite) ProxyClientConnect(proto, port string, extraArgs ...string
 	vpp := s.Containers.VppClient.VppInstance
 	cmd := fmt.Sprintf("http connect proxy client enable server-uri https://%s:%s listener %s://0.0.0.0:%s interface host-%s %s",
 		s.ProxyAddr(), s.Ports.Proxy, proto, port, s.Interfaces.Client.Name(), extras)
-	s.Log(vpp.Vppctl(cmd))
+	Log(vpp.Vppctl(cmd))
 
 	connected := false
 	for nTries := 0; nTries < 10; nTries++ {
@@ -181,11 +181,11 @@ func (s *MasqueSuite) ProxyClientConnect(proto, port string, extraArgs ...string
 		}
 		time.Sleep(1 * time.Second)
 	}
-	vpp.Container.Suite.AssertEqual(connected, true, "client not connected to the server")
+	AssertEqual(connected, true, "client not connected to the server")
 }
 
 func (s *MasqueSuite) StartNginxServer() {
-	s.AssertNil(s.Containers.NginxServer.Create())
+	AssertNil(s.Containers.NginxServer.Create())
 	nginxSettings := struct {
 		LogPrefix string
 		Address   string
@@ -202,7 +202,7 @@ func (s *MasqueSuite) StartNginxServer() {
 		"./resources/nginx/nginx_masque.conf",
 		nginxSettings,
 	)
-	s.AssertNil(s.Containers.NginxServer.Start())
+	AssertNil(s.Containers.NginxServer.Start())
 }
 
 func (s *MasqueSuite) NginxAddr() string {
@@ -235,7 +235,7 @@ var _ = Describe("MasqueSuite", Ordered, ContinueOnFailure, Label("Masque", "Pro
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, func(ctx SpecContext) {
-				s.Log(testName + ": BEGIN")
+				Log(testName + ": BEGIN")
 				test(&s)
 			}, SpecTimeout(TestTimeout))
 		}
@@ -264,7 +264,7 @@ var _ = Describe("MasqueSoloSuite", Ordered, ContinueOnFailure, Serial, Label("M
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, func(ctx SpecContext) {
-				s.Log(testName + ": BEGIN")
+				Log(testName + ": BEGIN")
 				test(&s)
 			}, SpecTimeout(TestTimeout))
 		}
@@ -293,7 +293,7 @@ var _ = Describe("MasqueMWSuite", Ordered, ContinueOnFailure, Serial, Label("Mas
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, func(ctx SpecContext) {
-				s.Log(testName + ": BEGIN")
+				Log(testName + ": BEGIN")
 				test(&s)
 			}, SpecTimeout(TestTimeout))
 		}
