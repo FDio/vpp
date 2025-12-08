@@ -63,18 +63,18 @@ func (s *Veths6Suite) SetupTest() {
 
 	if strings.Contains(CurrentSpecReport().LeafNodeText, "InterruptMode") {
 		sessionConfig.Append("use-private-rx-mqs").Close()
-		s.Log("**********************INTERRUPT MODE**********************")
+		Log("**********************INTERRUPT MODE**********************")
 	} else {
 		sessionConfig.Close()
 	}
 
 	// ... For server
 	serverVpp, err := s.Containers.ServerVpp.newVppInstance(s.Containers.ServerVpp.AllocatedCpus, sessionConfig)
-	s.AssertNotNil(serverVpp, fmt.Sprint(err))
+	AssertNotNil(serverVpp, fmt.Sprint(err))
 
 	// ... For client
 	clientVpp, err := s.Containers.ClientVpp.newVppInstance(s.Containers.ClientVpp.AllocatedCpus, sessionConfig)
-	s.AssertNotNil(clientVpp, fmt.Sprint(err))
+	AssertNotNil(clientVpp, fmt.Sprint(err))
 
 	s.SetupServerVpp()
 	s.SetupClientVpp()
@@ -86,24 +86,24 @@ func (s *Veths6Suite) SetupTest() {
 
 func (s *Veths6Suite) SetupServerVpp() {
 	serverVpp := s.Containers.ServerVpp.VppInstance
-	s.AssertNil(serverVpp.Start())
+	AssertNil(serverVpp.Start())
 
 	numCpus := uint16(len(s.Containers.ServerVpp.AllocatedCpus))
 	numWorkers := uint16(max(numCpus-1, 1))
 	idx, err := serverVpp.createAfPacket(s.Interfaces.Server, true, WithNumRxQueues(numWorkers), WithNumTxQueues(numCpus))
-	s.AssertNil(err, fmt.Sprint(err))
-	s.AssertNotEqual(0, idx)
+	AssertNil(err, fmt.Sprint(err))
+	AssertNotEqual(0, idx)
 }
 
 func (s *Veths6Suite) SetupClientVpp() {
 	clientVpp := s.GetContainerByName("client-vpp").VppInstance
-	s.AssertNil(clientVpp.Start())
+	AssertNil(clientVpp.Start())
 
 	numCpus := uint16(len(s.Containers.ClientVpp.AllocatedCpus))
 	numWorkers := uint16(max(numCpus-1, 1))
 	idx, err := clientVpp.createAfPacket(s.Interfaces.Client, true, WithNumRxQueues(numWorkers), WithNumTxQueues(numCpus))
-	s.AssertNil(err, fmt.Sprint(err))
-	s.AssertNotEqual(0, idx)
+	AssertNil(err, fmt.Sprint(err))
+	AssertNotEqual(0, idx)
 }
 
 var _ = Describe("Veths6Suite", Ordered, ContinueOnFailure, Label("Veth", "IPv6"), func() {
@@ -130,7 +130,7 @@ var _ = Describe("Veths6Suite", Ordered, ContinueOnFailure, Label("Veth", "IPv6"
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, func(ctx SpecContext) {
-				s.Log(testName + ": BEGIN")
+				Log(testName + ": BEGIN")
 				test(&s)
 			}, SpecTimeout(TestTimeout))
 		}
@@ -160,7 +160,7 @@ var _ = Describe("Veths6SuiteSolo", Ordered, ContinueOnFailure, Serial, Label("V
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, func(ctx SpecContext) {
-				s.Log(testName + ": BEGIN")
+				Log(testName + ": BEGIN")
 				test(&s)
 			}, SpecTimeout(TestTimeout))
 		}

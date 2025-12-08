@@ -22,7 +22,7 @@ type (
 
 	NetConfig interface {
 		configure() error
-		unconfigure()
+		unconfigure() error
 		Name() string
 		Type() string
 	}
@@ -216,13 +216,10 @@ func (n *NetInterface) configureAddress() error {
 
 func (n *NetInterface) configure() error {
 	cmd := ipCommandMap[n.Type()](n)
+	Log(cmd.String())
 	_, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("creating interface '%v' failed: %v", n.Name(), err)
-	}
-
-	if err := n.configureUpState(); err != nil {
-		return err
 	}
 
 	if err := n.configureMultiQueue(); err != nil {
@@ -234,6 +231,10 @@ func (n *NetInterface) configure() error {
 	}
 
 	if err := n.configureAddress(); err != nil {
+		return err
+	}
+
+	if err := n.configureUpState(); err != nil {
 		return err
 	}
 
@@ -259,8 +260,12 @@ func (n *NetInterface) configure() error {
 	return nil
 }
 
-func (n *NetInterface) unconfigure() {
-	delLink(n.name)
+func (n *NetInterface) unconfigure() error {
+	// taps are non-persistent - they are removed when VPP exits
+	if n.Type() == Tap {
+		return nil
+	}
+	return delLink(n.name)
 }
 
 func (n *NetInterface) Name() string {
@@ -320,8 +325,8 @@ func (ns *NetworkNamespace) configure() error {
 	return addDelNetns(ns.name, true)
 }
 
-func (ns *NetworkNamespace) unconfigure() {
-	addDelNetns(ns.name, false)
+func (ns *NetworkNamespace) unconfigure() error {
+	return addDelNetns(ns.name, false)
 }
 
 func newBridge(cfg NetDevConfig) (NetworkBridge, error) {
@@ -343,8 +348,8 @@ func (b *NetworkBridge) configure() error {
 	return addBridge(b.name, b.Interfaces, b.NetworkNamespace)
 }
 
-func (b *NetworkBridge) unconfigure() {
-	delBridge(b.name, b.NetworkNamespace)
+func (b *NetworkBridge) unconfigure() error {
+	return delBridge(b.name, b.NetworkNamespace)
 }
 
 func delBridge(brName, ns string) error {
@@ -369,9 +374,10 @@ func setDevDown(dev, ns string) error {
 	return setDevUpDown(dev, ns, false)
 }
 
-func delLink(ifName string) {
+func delLink(ifName string) error {
 	cmd := exec.Command("ip", "link", "del", ifName)
-	cmd.Run()
+	Log(cmd.String())
+	return cmd.Run()
 }
 
 func setDevUpDown(dev, ns string, isUp bool) error {
@@ -383,6 +389,7 @@ func setDevUpDown(dev, ns string, isUp bool) error {
 	}
 	c := []string{"ip", "link", "set", "dev", dev, op}
 	cmd := appendNetns(c, ns)
+	Log(cmd.String())
 	err := cmd.Run()
 	if err != nil {
 		return fmt.Errorf("error bringing %s device %s! (cmd: '%s')", dev, op, cmd)
@@ -398,6 +405,7 @@ func addDelNetns(name string, isAdd bool) error {
 		op = "del"
 	}
 	cmd := exec.Command("ip", "netns", op, name)
+	Log(cmd.String())
 	_, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("add/del netns failed (cmd: '%s')", cmd)
@@ -407,6 +415,7 @@ func addDelNetns(name string, isAdd bool) error {
 
 func linkSetNetns(ifName, ns string) error {
 	cmd := exec.Command("ip", "link", "set", "dev", ifName, "up", "netns", ns)
+	Log(cmd.String())
 	err := cmd.Run()
 	if err != nil {
 		return fmt.Errorf("error setting device '%s' to netns '%s: %v", ifName, ns, err)
@@ -416,7 +425,7 @@ func linkSetNetns(ifName, ns string) error {
 
 func linkSetMultiQueue(ifName string) error {
 	cmd := exec.Command("ethtool", "-L", ifName, "rx", "4", "tx", "4")
-	fmt.Println("configuring multiqueue for interface:", cmd.String())
+	Log("configuring multiqueue for interface: %s", cmd.String())
 	err := cmd.Run()
 	if err != nil {
 		return fmt.Errorf("error configuring multiqueue '%s: %v", ifName, err)
@@ -450,6 +459,7 @@ func addDelBridge(brName, ns string, isAdd bool) error {
 	}
 	var c = []string{"brctl", op, brName}
 	cmd := appendNetns(c, ns)
+	Log(cmd.String())
 	err := cmd.Run()
 	if err != nil {
 		s := fmt.Sprintf("%s %s failed! err: '%s'", op, brName, err)
@@ -467,6 +477,7 @@ func addBridge(brName string, ifs []string, ns string) error {
 	for _, v := range ifs {
 		c := []string{"brctl", "addif", brName, v}
 		cmd := appendNetns(c, ns)
+		Log(cmd.String())
 		err = cmd.Run()
 		if err != nil {
 			return fmt.Errorf("error adding %s to bridge %s: %s", v, brName, err)

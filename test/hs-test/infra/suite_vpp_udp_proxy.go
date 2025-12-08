@@ -72,11 +72,11 @@ func (s *VppUdpProxySuite) SetupTest() {
 	var memoryConfig Stanza
 	memoryConfig.NewStanza("memory").Append("main-heap-size 2G")
 	vpp, err := s.Containers.VppProxy.newVppInstance(s.Containers.VppProxy.AllocatedCpus, memoryConfig)
-	s.AssertNotNil(vpp, fmt.Sprint(err))
+	AssertNotNil(vpp, fmt.Sprint(err))
 
-	s.AssertNil(vpp.Start())
-	s.AssertNil(vpp.CreateTap(s.Interfaces.Client, false, 1))
-	s.AssertNil(vpp.CreateTap(s.Interfaces.Server, false, 2))
+	AssertNil(vpp.Start())
+	AssertNil(vpp.CreateTap(s.Interfaces.Client, false, 1))
+	AssertNil(vpp.CreateTap(s.Interfaces.Server, false, 2))
 
 	arp := fmt.Sprintf("set ip neighbor %s %s %s",
 		s.Interfaces.Server.Peer.Name(),
@@ -99,8 +99,8 @@ func (s *VppUdpProxySuite) TeardownTest() {
 	defer s.HstSuite.TeardownTest()
 	vpp := s.Containers.VppProxy.VppInstance
 	if CurrentSpecReport().Failed() {
-		s.Log(vpp.Vppctl("show session verbose 2"))
-		s.Log(vpp.Vppctl("show error"))
+		Log(vpp.Vppctl("show session verbose 2"))
+		Log(vpp.Vppctl("show error"))
 	}
 }
 
@@ -164,7 +164,7 @@ var _ = Describe("VppUdpProxySuite", Ordered, ContinueOnFailure, Label("Proxy", 
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, func(ctx SpecContext) {
-				s.Log(testName + ": BEGIN")
+				Log(testName + ": BEGIN")
 				test(&s)
 			}, SpecTimeout(TestTimeout))
 		}
@@ -193,7 +193,7 @@ var _ = Describe("VppUdpProxySuiteSolo", Ordered, ContinueOnFailure, Serial, Lab
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, func(ctx SpecContext) {
-				s.Log(testName + ": BEGIN")
+				Log(testName + ": BEGIN")
 				test(&s)
 			}, SpecTimeout(TestTimeout))
 		}
@@ -222,7 +222,7 @@ var _ = Describe("VppUdpProxyMWSuite", Ordered, ContinueOnFailure, Serial, Label
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, func(ctx SpecContext) {
-				s.Log(testName + ": BEGIN")
+				Log(testName + ": BEGIN")
 				test(&s)
 			}, SpecTimeout(TestTimeout))
 		}
@@ -260,17 +260,17 @@ var _ = Describe("H2SpecUdpProxySuite", Ordered, ContinueOnFailure, Label("HTTP"
 		test := test
 		testName := "proxy_test.go/h2spec_" + strings.ReplaceAll(test.desc, "/", "_")
 		It(testName, func(ctx SpecContext) {
-			s.Log(testName + ": BEGIN")
+			Log(testName + ": BEGIN")
 			vppProxy := s.Containers.VppProxy.VppInstance
-			remoteServerConn := s.StartUdpEchoServer(s.ServerAddr(), s.Ports.Server)
+			remoteServerConn := StartUdpEchoServer(s.ServerAddr(), s.Ports.Server)
 			defer remoteServerConn.Close()
 			// this one will open TCP tunnel too
 			if strings.Contains(test.desc, "extras/3.1/5") {
-				remoteTcpServerConn := s.StartTcpEchoServer(s.ServerAddr(), s.Ports.Server)
+				remoteTcpServerConn := StartTcpEchoServer(s.ServerAddr(), s.Ports.Server)
 				defer remoteTcpServerConn.Close()
 			}
 			cmd := fmt.Sprintf("test proxy server fifo-size 512k server-uri https://%s/%d", s.VppProxyAddr(), s.Ports.Proxy)
-			s.Log(vppProxy.Vppctl(cmd))
+			Log(vppProxy.Vppctl(cmd))
 			path := fmt.Sprintf("/.well-known/masque/udp/%s/%d/", s.ServerAddr(), s.Ports.Server)
 			conf := &config.Config{
 				Host:         s.VppProxyAddr(),
@@ -302,8 +302,8 @@ var _ = Describe("H2SpecUdpProxySuite", Ordered, ContinueOnFailure, Label("HTTP"
 			w.Close()
 			os.Stdout = oldStdout
 			o := <-oChan
-			s.Log(o)
-			s.AssertEqual(0, tg.FailedCount)
+			Log(o)
+			AssertEqual(0, tg.FailedCount)
 		}, SpecTimeout(TestTimeout))
 	}
 })
