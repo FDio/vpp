@@ -189,7 +189,13 @@ typedef enum
   VPPCOM_ATTR_GET_EXT_ENDPT,
   VPPCOM_ATTR_GET_COOKIE,
   VPPCOM_ATTR_SET_COOKIE,
+  VPPCOM_ATTR_GET_STREAM_FLAGS,
+  VPPCOM_ATTR_SET_STREAM_FLAGS,
 } vppcom_attr_op_t;
+
+typedef enum {
+  VPPCOM_STREAM_F_UNIDIRECTIONAL = 1 << 0,
+} vppcom_stream_flags_t;
 
 typedef struct _vcl_poll
 {
