@@ -180,8 +180,6 @@ DPDK_MESON_ARGS = \
 	--libdir lib \
 	--prefix $(dpdk_install_dir) \
 	-Dtests=false \
-	-Dc_args="-I$(dpdk_root_dir)/$(dpdk_install_dir)/include" \
-	-Dc_link_args="-L$(dpdk_root_dir)/$(dpdk_install_dir)/lib" \
 	-Denable_driver_sdk=true \
 	"-Ddisable_drivers=$(DPDK_DRIVERS_DISABLED)" \
 	"-Ddisable_libs=$(DPDK_LIBS_DISABLED)" \
@@ -203,7 +201,10 @@ define dpdk_config_cmds
 	source ../dpdk-meson-venv/bin/activate && \
 	(if ! ls $(PIP_DOWNLOAD_DIR)meson* ; then pip3 download -d $(PIP_DOWNLOAD_DIR) -f $(DL_CACHE_DIR) meson==0.57.2 setuptools wheel pyelftools; fi) && \
 	pip3 install --no-index --find-links=$(PIP_DOWNLOAD_DIR) meson==0.57.2 pyelftools && \
-	meson setup $(dpdk_src_dir) $(dpdk_build_dir) $(DPDK_MESON_ARGS) | tee $(dpdk_config_log) && \
+	PKG_CONFIG_PATH=$(dpdk_install_dir)/lib/pkgconfig meson setup $(dpdk_src_dir) \
+		$(dpdk_build_dir) \
+		$(DPDK_MESON_ARGS) \
+			| tee $(dpdk_config_log) && \
 	deactivate && \
 	echo "DPDK post meson configuration" && \
 	echo "Altering rte_build_config.h" && \
@@ -226,7 +227,7 @@ define dpdk_install_cmds
 	cd $(dpdk_build_dir) && \
 	source ../dpdk-meson-venv/bin/activate && \
 	meson install && \
-	cd $(dpdk_root_dir)/$(dpdk_install_dir)/lib && \
+	cd $(dpdk_install_dir)/lib && \
 	echo "GROUP ( $$(ls librte*.a ) )" > libdpdk.a && \
 	rm -rf librte*.so librte*.so.* dpdk/*/librte*.so dpdk/*/librte*.so.* && \
 	deactivate
