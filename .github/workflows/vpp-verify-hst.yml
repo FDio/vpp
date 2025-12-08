@@ -87,7 +87,7 @@ jobs:
 
     env:
       WORKSPACE: /scratch/docker-build/vpp
-      HS_TEST_DIR: /scratch/docker-build/vpp/test-c/hs-test
+      HS_TEST_DIR: /scratch/docker-build/vpp/test/hs-test
       CCACHE_DIR: /scratch/ccache/${{ matrix.os }}-${{ matrix.executor_arch }}
       MAKE_PARALLEL_JOBS: 16
       TEST_JOBS: 16
