@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"net/http"
 	"net/http/httputil"
@@ -32,6 +33,9 @@ const vclTestSrvFilename = "vcl_test_server.log"
 const vclTestClnFilename = "vcl_test_client.log"
 const h2loadLogFileName = "h2load.tsv"
 
+var Logger *log.Logger
+var LogFile *os.File
+
 type Stanza struct {
 	content string
 	pad     int
@@ -49,6 +53,11 @@ type JsonResult struct {
 	Desc      string
 	ErrOutput string
 	StdOutput string
+}
+
+// initialize a default logger
+func init() {
+	CreateLogger()
 }
 
 func AssertFileSize(f1, f2 string) error {
@@ -166,14 +175,14 @@ RunCurlContainer execute curl command with given args.
 Container with name "curl" must be available.
 Curl runs in verbose mode and progress meter switch off by default.
 */
-func (s *HstSuite) RunCurlContainer(curlCont *Container, args string) (string, string) {
+func RunCurlContainer(curlCont *Container, args string) (string, string) {
 	cmd := fmt.Sprintf("curl -v -s %s", args)
-	s.Log(cmd)
+	Log(cmd)
 	curlCont.ExtraRunningArgs = cmd
 	curlCont.Run()
 	stdout, stderr := curlCont.GetOutput()
-	s.Log(stderr)
-	s.Log(stdout)
+	Log(stderr)
+	Log(stdout)
 	return stdout, stderr
 }
 
@@ -182,136 +191,123 @@ CollectNginxLogs save access and error logs to the test execution directory.
 Nginx logging need to be set following way:
 
   - error_log <default-work-dir>/{{.LogPrefix}}-error.log;
-  - access_log <default-work-dir>/{{.LogPrefix}}-access.log;
+  - access_log <default-work-dir>/{{.LogPrefix}}-accesLog;
 
 where LogPrefix is set to nginxContainer.Name
 */
-func (s *HstSuite) CollectNginxLogs(nginxContainer *Container) {
+func CollectNginxLogs(nginxContainer *Container) {
 	targetDir := nginxContainer.Suite.getLogDirPath()
 	source := nginxContainer.GetHostWorkDir() + "/" + nginxContainer.Name + "-"
-	cmd := exec.Command("cp", "-t", targetDir, source+"error.log", source+"access.log")
-	s.Log(cmd.String())
+	cmd := exec.Command("cp", "-t", targetDir, source+"error.log", source+"accesLog")
+	Log(cmd.String())
 	err := cmd.Run()
 	if err != nil {
-		s.Log(fmt.Sprint(err))
+		Log(fmt.Sprint(err))
 	}
 }
 
 /*
 CollectEnvoyLogs save access logs to the test execution directory.
 Envoy access log path need to be set following way:
-<default-work-dir>/{{.LogPrefix}}-access.log
+<default-work-dir>/{{.LogPrefix}}-accesLog
 where LogPrefix is set to envoyContainer.Name
 */
-func (s *HstSuite) CollectEnvoyLogs(envoyContainer *Container) {
+func CollectEnvoyLogs(envoyContainer *Container) {
 	targetDir := envoyContainer.Suite.getLogDirPath()
 	source := envoyContainer.GetHostWorkDir() + "/" + envoyContainer.Name + "-"
-	cmd := exec.Command("cp", "-t", targetDir, source+"access.log")
-	s.Log(cmd.String())
+	cmd := exec.Command("cp", "-t", targetDir, source+"accesLog")
+	Log(cmd.String())
 	err := cmd.Run()
 	if err != nil {
-		s.Log(fmt.Sprint(err))
+		Log(fmt.Sprint(err))
 	}
 }
 
-func (s *HstSuite) IperfLogFileName(serverContainer *Container) string {
+func IperfLogFileName(serverContainer *Container) string {
 	return serverContainer.GetContainerWorkDir() + "/" + serverContainer.Name + "-" + iperfLogFileName
 }
 
-func (s *HstSuite) CollectIperfLogs(serverContainer *Container) {
+func CollectIperfLogs(serverContainer *Container) {
 	targetDir := serverContainer.Suite.getLogDirPath()
 	source := serverContainer.GetHostWorkDir() + "/" + serverContainer.Name + "-" + iperfLogFileName
 	cmd := exec.Command("cp", "-t", targetDir, source)
-	s.Log(cmd.String())
+	Log(cmd.String())
 	err := cmd.Run()
 	if err != nil {
-		s.Log(fmt.Sprint(err))
+		Log(fmt.Sprint(err))
 	}
 }
 
-func (s *HstSuite) RedisServerLogFileName(serverContainer *Container) string {
+func RedisServerLogFileName(serverContainer *Container) string {
 	return serverContainer.GetContainerWorkDir() + "/" + serverContainer.Name + "-" + redisLogFileName
 }
 
-func (s *HstSuite) CollectRedisServerLogs(serverContainer *Container) {
+func CollectRedisServerLogs(serverContainer *Container) {
 	targetDir := serverContainer.Suite.getLogDirPath()
 	source := serverContainer.GetHostWorkDir() + "/" + serverContainer.Name + "-" + redisLogFileName
 	cmd := exec.Command("cp", "-t", targetDir, source)
-	s.Log(cmd.String())
+	Log(cmd.String())
 	err := cmd.Run()
 	if err != nil {
-		s.Log(fmt.Sprint(err))
+		Log(fmt.Sprint(err))
 	}
 }
 
-func (s *HstSuite) H2loadLogFileName(h2loadContainer *Container) string {
+func H2loadLogFileName(h2loadContainer *Container) string {
 	return h2loadContainer.GetContainerWorkDir() + "/" + h2loadContainer.Name + "-" + h2loadLogFileName
 }
 
-func (s *HstSuite) CollectH2loadLogs(h2loadContainer *Container) {
+func CollectH2loadLogs(h2loadContainer *Container) {
 	targetDir := h2loadContainer.Suite.getLogDirPath()
 	source := h2loadContainer.GetHostWorkDir() + "/" + h2loadContainer.Name + "-" + h2loadLogFileName
 	cmd := exec.Command("cp", "-t", targetDir, source)
-	s.Log(cmd.String())
+	Log(cmd.String())
 	err := cmd.Run()
 	if err != nil {
-		s.Log(fmt.Sprint(err))
+		Log(fmt.Sprint(err))
 	}
 }
 
-func (s *HstSuite) VclTestSrvLogFileName(vclTestSrvContainer *Container) string {
+func VclTestSrvLogFileName(vclTestSrvContainer *Container) string {
 	return vclTestSrvContainer.GetContainerWorkDir() + "/" + vclTestSrvFilename
 }
 
-func (s *HstSuite) CollectVclTestSrvLogs(vclTestSrvContainer *Container) {
+func CollectVclTestSrvLogs(vclTestSrvContainer *Container) {
 	targetDir := vclTestSrvContainer.Suite.getLogDirPath()
 	source := vclTestSrvContainer.GetHostWorkDir() + "/" + vclTestSrvFilename
 	cmd := exec.Command("cp", "-t", targetDir, source)
-	s.Log(cmd.String())
+	Log(cmd.String())
 	err := cmd.Run()
 	if err != nil {
-		s.Log(fmt.Sprint(err))
+		Log(fmt.Sprint(err))
 	}
 }
 
-func (s *HstSuite) VclTestClnLogFileName(vclTestClnContainer *Container) string {
+func VclTestClnLogFileName(vclTestClnContainer *Container) string {
 	return vclTestClnContainer.GetContainerWorkDir() + "/" + vclTestClnFilename
 }
 
-func (s *HstSuite) CollectVclTestClnLogs(vclTestClnContainer *Container) {
+func CollectVclTestClnLogs(vclTestClnContainer *Container) {
 	targetDir := vclTestClnContainer.Suite.getLogDirPath()
 	source := vclTestClnContainer.GetHostWorkDir() + "/" + vclTestClnFilename
 	cmd := exec.Command("cp", "-t", targetDir, source)
-	s.Log(cmd.String())
+	Log(cmd.String())
 	err := cmd.Run()
 	if err != nil {
-		s.Log(fmt.Sprint(err))
+		Log(fmt.Sprint(err))
 	}
 }
 
-func (s *HstSuite) StartHttpServer(running chan struct{}, done chan struct{}, addressPort, netNs string) {
-	cmd := CommandInNetns([]string{"./http_server", addressPort, s.Ppid, s.ProcessIndex}, netNs)
-	err := cmd.Start()
-	s.Log(cmd)
-	if err != nil {
-		s.Log("Failed to start http server: " + fmt.Sprint(err))
-		return
-	}
-	running <- struct{}{}
-	<-done
-	cmd.Process.Kill()
-}
-
-func (s *HstSuite) StartWget(finished chan error, server_ip, port, query, netNs string) {
+func StartWget(finished chan error, server_ip, port, query, netNs string) {
 	defer func() {
 		finished <- errors.New("wget error")
 	}()
 
 	cmd := CommandInNetns([]string{"wget", "--timeout=10", "--no-proxy", "--tries=5", "-O", "/dev/null", server_ip + ":" + port + "/" + query},
 		netNs)
-	s.Log(cmd)
+	Log(cmd)
 	o, err := cmd.CombinedOutput()
-	s.Log(string(o))
+	Log(string(o))
 	if err != nil {
 		finished <- fmt.Errorf("wget error: '%v\n\n%s'", err, o)
 		return
@@ -322,7 +318,7 @@ func (s *HstSuite) StartWget(finished chan error, server_ip, port, query, netNs 
 	finished <- nil
 }
 
-func (s *HstSuite) StartCurl(finished chan error, uri, netNs, expectedRespCode string, timeout int, args []string) {
+func StartCurl(finished chan error, uri, netNs, expectedRespCode string, timeout int, args []string) {
 	defer func() {
 		finished <- errors.New("curl error")
 	}()
@@ -331,9 +327,9 @@ func (s *HstSuite) StartCurl(finished chan error, uri, netNs, expectedRespCode s
 	c = append(c, args...)
 	c = append(c, uri)
 	cmd := CommandInNetns(c, netNs)
-	s.Log(cmd)
+	Log(cmd)
 	o, err := cmd.CombinedOutput()
-	s.Log(string(o))
+	Log(string(o))
 	if err != nil {
 		finished <- fmt.Errorf("curl error: '%v\n\n%s'", err, o)
 		return
@@ -344,7 +340,7 @@ func (s *HstSuite) StartCurl(finished chan error, uri, netNs, expectedRespCode s
 	finished <- nil
 }
 
-func (s *HstSuite) StartIperfClient(finished chan error, clientAddress, serverAddress, serverPort, netNs string, args []string) {
+func StartIperfClient(finished chan error, clientAddress, serverAddress, serverPort, netNs string, args []string) {
 	defer func() {
 		finished <- errors.New("iperf client error")
 	}()
@@ -352,21 +348,21 @@ func (s *HstSuite) StartIperfClient(finished chan error, clientAddress, serverAd
 	c := []string{"iperf3", "-c", serverAddress, "-B", clientAddress, "-l", "1460", "-b", "10g", "-p", serverPort}
 	c = append(c, args...)
 	cmd := CommandInNetns(c, netNs)
-	s.Log(cmd)
+	Log(cmd)
 	o, err := cmd.CombinedOutput()
 	if err != nil {
 		finished <- fmt.Errorf("iperf client error: '%v\n\n%s'", err, string(o))
 		return
 	}
-	s.Log(string(o))
+	Log(string(o))
 	finished <- nil
 }
 
 // Start a server app. 'processName' is used to check whether the app started correctly.
-func (s *HstSuite) StartServerApp(c *Container, processName string, cmd string,
+func StartServerApp(c *Container, processName string, cmd string,
 	running chan error, done chan struct{}) {
 
-	s.Log("starting server")
+	Log("starting server")
 	c.ExecServer(true, cmd)
 	cmd2 := exec.Command("docker", "exec", c.Name, "pidof", processName)
 	err := cmd2.Run()
@@ -380,35 +376,35 @@ func (s *HstSuite) StartServerApp(c *Container, processName string, cmd string,
 	<-done
 }
 
-func (s *HstSuite) StartClientApp(c *Container, cmd string,
+func StartClientApp(c *Container, cmd string,
 	clnCh chan error, clnRes chan []byte) {
 	defer func() {
 		close(clnCh)
 		close(clnRes)
 	}()
 
-	s.Log("starting client app, please wait")
+	Log("starting client app, please wait")
 	cmd2 := exec.Command("/bin/sh", "-c", "docker exec "+c.getEnvVarsAsCliOption()+" "+
 		c.Name+" "+cmd)
-	s.Log(cmd2)
+	Log(cmd2)
 	o, err := cmd2.CombinedOutput()
 
 	if err != nil {
-		s.Log(err)
-		s.Log(string(o))
+		Log(err)
+		Log(string(o))
 		clnRes <- nil
 		clnCh <- fmt.Errorf("failed to start client app '%s'", err)
-		s.AssertNil(err, fmt.Sprint(err))
+		AssertNil(err, fmt.Sprint(err))
 	} else {
 		clnRes <- o
 	}
 }
 
-func (s *HstSuite) GetCoreProcessName(file string) (string, bool) {
+func GetCoreProcessName(file string) (string, bool) {
 	cmd := fmt.Sprintf("file -b %s", file)
 	output, err := exechelper.Output(cmd)
 	if err != nil {
-		s.Log(fmt.Sprint(err))
+		Log(fmt.Sprint(err))
 		return "", false
 	}
 	outputStr := string(output)
@@ -425,9 +421,9 @@ func (s *HstSuite) GetCoreProcessName(file string) (string, bool) {
 	return "", false
 }
 
-func (s *HstSuite) StartTcpEchoServer(addr string, port int) *net.TCPListener {
+func StartTcpEchoServer(addr string, port int) *net.TCPListener {
 	listener, err := net.ListenTCP("tcp", &net.TCPAddr{IP: net.ParseIP(addr), Port: port})
-	s.AssertNil(err, fmt.Sprint(err))
+	AssertNil(err, fmt.Sprint(err))
 	go func() {
 		for {
 			conn, err := listener.Accept()
@@ -437,13 +433,13 @@ func (s *HstSuite) StartTcpEchoServer(addr string, port int) *net.TCPListener {
 			go handleConn(conn)
 		}
 	}()
-	s.Log("* started tcp echo server " + addr + ":" + strconv.Itoa(port))
+	Log("* started tcp echo server " + addr + ":" + strconv.Itoa(port))
 	return listener
 }
 
-func (s *HstSuite) StartUdpEchoServer(addr string, port int) *net.UDPConn {
+func StartUdpEchoServer(addr string, port int) *net.UDPConn {
 	conn, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.ParseIP(addr), Port: port})
-	s.AssertNil(err, fmt.Sprint(err))
+	AssertNil(err, fmt.Sprint(err))
 	go func() {
 		for {
 			b := make([]byte, 1500)
@@ -456,12 +452,12 @@ func (s *HstSuite) StartUdpEchoServer(addr string, port int) *net.UDPConn {
 			}
 		}
 	}()
-	s.Log("* started udp echo server " + addr + ":" + strconv.Itoa(port))
+	Log("* started udp echo server " + addr + ":" + strconv.Itoa(port))
 	return conn
 }
 
 // Parses transfer speed ("NBps full-duplex")
-func (s *HstSuite) ParseEchoClientTransfer(stats string) (uint64, error) {
+func ParseEchoClientTransfer(stats string) (uint64, error) {
 	pattern := regexp.MustCompile(`(?i)(\d+)\s+bytes/second\s+(?:half|full)-duplex`)
 	match := pattern.FindStringSubmatch(stats)
 	if len(match) == 0 {
@@ -474,9 +470,26 @@ func (s *HstSuite) ParseEchoClientTransfer(stats string) (uint64, error) {
 	return uVal, nil
 }
 
+func CreateLogger() {
+	var suiteName string
+	var err error
+
+	if len(CurrentSpecReport().ContainerHierarchyTexts) == 0 {
+		suiteName = "Init"
+	} else {
+		suiteName = CurrentSpecReport().ContainerHierarchyTexts[0]
+	}
+
+	LogFile, err = os.Create("summary/" + suiteName + ".log")
+	if err != nil {
+		Fail("Unable to create log file.")
+	}
+	Logger = log.New(io.Writer(LogFile), "", log.LstdFlags)
+}
+
 // Logs to files by default, logs to stdout when VERBOSE=true with GinkgoWriter
 // to keep console tidy
-func (s *HstSuite) Log(log any, arg ...any) {
+func Log(log any, arg ...any) {
 	var logStr string
 	if len(arg) == 0 {
 		logStr = fmt.Sprint(log)
@@ -486,7 +499,7 @@ func (s *HstSuite) Log(log any, arg ...any) {
 	logs := strings.SplitSeq(logStr, "\n")
 
 	for line := range logs {
-		s.Logger.Println(line)
+		Logger.Println(line)
 	}
 	if *IsVerbose {
 		GinkgoWriter.Println(logStr)
@@ -506,7 +519,7 @@ func TestCounterFunc() {
 		return
 	}
 	testCounter++
-	fmt.Printf("Test counter: %d/%d (%.2f%%)\n"+
+	Log("\nTest counter: %d/%d (%.2f%%)\n"+
 		"Time elapsed: %.2fs\n",
 		testCounter, TestsThatWillRun, float64(testCounter)/float64(TestsThatWillRun)*100, time.Since(startTime).Seconds())
 }
@@ -634,4 +647,8 @@ func IsKilledError(err error) bool {
 
 func WrapCmdWithLineBuffering(cmd string) string {
 	return fmt.Sprintf("sh -c \"stdbuf -oL -eL %s\"", cmd)
+}
+
+func GetCurrentTestName() string {
+	return strings.Split(CurrentSpecReport().LeafNodeText, "/")[1]
 }
