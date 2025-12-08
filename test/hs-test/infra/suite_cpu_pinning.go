@@ -45,7 +45,7 @@ func (s *CpuPinningSuite) SetupTest() {
 
 	s.HstSuite.SetupTest()
 	vpp, err := s.Containers.Vpp.newVppInstance(s.Containers.Vpp.AllocatedCpus)
-	s.AssertNotNil(vpp, fmt.Sprint(err))
+	AssertNotNil(vpp, fmt.Sprint(err))
 
 	if *DryRun {
 		s.LogStartedContainers()
@@ -83,7 +83,7 @@ var _ = Describe("CpuPinningSuite", Ordered, ContinueOnFailure, Label("CpuPinnin
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, func(ctx SpecContext) {
-				s.Log(testName + ": BEGIN")
+				Log(testName + ": BEGIN")
 				test(&s)
 			}, SpecTimeout(TestTimeout))
 		}
@@ -112,7 +112,7 @@ var _ = Describe("CpuPinningSuiteSolo", Ordered, ContinueOnFailure, Serial, Labe
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, func(ctx SpecContext) {
-				s.Log(testName + ": BEGIN")
+				Log(testName + ": BEGIN")
 				test(&s)
 			}, SpecTimeout(TestTimeout))
 		}

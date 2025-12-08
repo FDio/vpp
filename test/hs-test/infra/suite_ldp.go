@@ -68,18 +68,18 @@ func (s *LdpSuite) SetupTest() {
 
 	if strings.Contains(CurrentSpecReport().LeafNodeText, "InterruptMode") {
 		sessionConfig.Append("use-private-rx-mqs").Close()
-		s.Log("**********************INTERRUPT MODE**********************")
+		Log("**********************INTERRUPT MODE**********************")
 	} else {
 		sessionConfig.Close()
 	}
 
 	// ... For server
 	serverVpp, err := s.Containers.ServerVpp.newVppInstance(s.Containers.ServerVpp.AllocatedCpus, sessionConfig)
-	s.AssertNotNil(serverVpp, fmt.Sprint(err))
+	AssertNotNil(serverVpp, fmt.Sprint(err))
 
 	// ... For client
 	clientVpp, err := s.Containers.ClientVpp.newVppInstance(s.Containers.ClientVpp.AllocatedCpus, sessionConfig)
-	s.AssertNotNil(clientVpp, fmt.Sprint(err))
+	AssertNotNil(clientVpp, fmt.Sprint(err))
 
 	for _, container := range s.StartedContainers {
 		container.AddEnvVar("VCL_CONFIG", container.GetContainerWorkDir()+"/vcl.conf")
@@ -97,36 +97,36 @@ func (s *LdpSuite) SetupTest() {
 		s.Interfaces.Server.Peer.Name(),
 		s.Interfaces.Client.Peer.Ip4AddressString(),
 		s.Interfaces.Client.HwAddress)
-	s.Log(serverVpp.Vppctl(arp))
+	Log(serverVpp.Vppctl(arp))
 
 	arp = fmt.Sprintf("set ip neighbor %s %s %s",
 		s.Interfaces.Client.Peer.Name(),
 		s.Interfaces.Server.Peer.Ip4AddressString(),
 		s.Interfaces.Server.HwAddress)
-	s.Log(clientVpp.Vppctl(arp))
+	Log(clientVpp.Vppctl(arp))
 
 	_, ipNet, err := net.ParseCIDR(s.Interfaces.Client.Ip4Address)
-	s.AssertNil(err)
+	AssertNil(err)
 	route := fmt.Sprintf("ip route add %s via %s %s",
 		ipNet.String(),
 		s.Interfaces.Server.Ip4AddressString(),
 		s.Interfaces.Server.Peer.name)
-	s.Log(serverVpp.Vppctl(route))
+	Log(serverVpp.Vppctl(route))
 
 	_, ipNet, err = net.ParseCIDR(s.Interfaces.Server.Ip4Address)
-	s.AssertNil(err)
+	AssertNil(err)
 	route = fmt.Sprintf("ip route add %s via %s %s",
 		ipNet.String(),
 		s.Interfaces.Client.Ip4AddressString(),
 		s.Interfaces.Client.Peer.name)
-	s.Log(clientVpp.Vppctl(route))
+	Log(clientVpp.Vppctl(route))
 
 	if *DryRun {
 		s.LogStartedContainers()
-		s.Log("\n%s* LD_PRELOAD and VCL_CONFIG server/client paths:", Colors.grn)
-		s.Log("LD_PRELOAD=/usr/lib/libvcl_ldpreload.so")
-		s.Log("VCL_CONFIG=%s/vcl.conf", s.Containers.ServerVpp.GetContainerWorkDir())
-		s.Log("VCL_CONFIG=%s/vcl.conf%s\n", s.Containers.ClientVpp.GetContainerWorkDir(), Colors.rst)
+		Log("\n%s* LD_PRELOAD and VCL_CONFIG server/client paths:", Colors.grn)
+		Log("LD_PRELOAD=/usr/lib/libvcl_ldpreload.so")
+		Log("VCL_CONFIG=%s/vcl.conf", s.Containers.ServerVpp.GetContainerWorkDir())
+		Log("VCL_CONFIG=%s/vcl.conf%s\n", s.Containers.ClientVpp.GetContainerWorkDir(), Colors.rst)
 		s.Skip("Dry run mode = true")
 	}
 }
@@ -134,10 +134,10 @@ func (s *LdpSuite) SetupTest() {
 func (s *LdpSuite) TeardownTest() {
 	defer s.HstSuite.TeardownTest()
 	if CurrentSpecReport().Failed() {
-		s.CollectIperfLogs(s.Containers.ServerApp)
-		s.CollectRedisServerLogs(s.Containers.ServerApp)
-		s.Log(s.Containers.ServerVpp.VppInstance.Vppctl("show error verbose"))
-		s.Log(s.Containers.ClientVpp.VppInstance.Vppctl("show error verbose"))
+		CollectIperfLogs(s.Containers.ServerApp)
+		CollectRedisServerLogs(s.Containers.ServerApp)
+		Log(s.Containers.ServerVpp.VppInstance.Vppctl("show error verbose"))
+		Log(s.Containers.ClientVpp.VppInstance.Vppctl("show error verbose"))
 	}
 
 	for _, container := range s.StartedContainers {
@@ -161,23 +161,23 @@ func (s *LdpSuite) CreateVclConfig(container *Container) {
 		Append("use-mq-eventfd").
 		Append(appSocketApi).Close().
 		SaveToFile(vclFileName)
-	s.AssertNil(err, fmt.Sprint(err))
+	AssertNil(err, fmt.Sprint(err))
 }
 
 func (s *LdpSuite) SetupServerVpp(serverContainer *Container) {
 	serverVpp := serverContainer.VppInstance
-	s.AssertNil(serverVpp.Start())
+	AssertNil(serverVpp.Start())
 
 	err := serverVpp.CreateTap(s.Interfaces.Server, false, 1)
-	s.AssertNil(err, fmt.Sprint(err))
+	AssertNil(err, fmt.Sprint(err))
 }
 
 func (s *LdpSuite) setupClientVpp(clientContainer *Container) {
 	clientVpp := clientContainer.VppInstance
-	s.AssertNil(clientVpp.Start())
+	AssertNil(clientVpp.Start())
 
 	err := clientVpp.CreateTap(s.Interfaces.Client, false, 2)
-	s.AssertNil(err, fmt.Sprint(err))
+	AssertNil(err, fmt.Sprint(err))
 }
 
 var _ = Describe("LdpSuite", Ordered, ContinueOnFailure, Label("LDP", "VCL"), func() {
@@ -204,7 +204,7 @@ var _ = Describe("LdpSuite", Ordered, ContinueOnFailure, Label("LDP", "VCL"), fu
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, func(ctx SpecContext) {
-				s.Log(testName + ": BEGIN")
+				Log(testName + ": BEGIN")
 				test(&s)
 			}, SpecTimeout(TestTimeout))
 		}
@@ -234,7 +234,7 @@ var _ = Describe("LdpSuiteSolo", Ordered, ContinueOnFailure, Serial, Label("LDP"
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, func(ctx SpecContext) {
-				s.Log(testName + ": BEGIN")
+				Log(testName + ": BEGIN")
 				test(&s)
 			}, SpecTimeout(TestTimeout))
 		}
@@ -264,7 +264,7 @@ var _ = Describe("LdpMWSuite", Ordered, ContinueOnFailure, Serial, Label("LDP", 
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, Label("SOLO", "VPP Multi-Worker"), func(ctx SpecContext) {
-				s.Log(testName + ": BEGIN")
+				Log(testName + ": BEGIN")
 				test(&s)
 			}, SpecTimeout(TestTimeout))
 		}
