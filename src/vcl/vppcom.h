@@ -179,7 +179,13 @@ typedef enum
   VPPCOM_ATTR_GET_EXT_ENDPT,
   VPPCOM_ATTR_GET_COOKIE,
   VPPCOM_ATTR_SET_COOKIE,
+  VPPCOM_ATTR_GET_STREAM_FLAGS,
+  VPPCOM_ATTR_SET_STREAM_FLAGS,
 } vppcom_attr_op_t;
+
+typedef enum {
+  VPPCOM_STREAM_F_UNIDIRECTIONAL = 1 << 0,
+} vppcom_stream_flags_t;
 
 typedef struct _vcl_poll
 {
@@ -296,6 +302,7 @@ extern void vppcom_session_free_segments (uint32_t session_handle,
 extern int vppcom_add_cert_key_pair (vppcom_cert_key_pair_t *ckpair);
 extern int vppcom_del_cert_key_pair (uint32_t ckpair_index);
 extern int vppcom_unformat_proto (uint8_t * proto, char *proto_str);
+extern int vppcom_session_is_stream (uint32_t session_handle);
 extern int vppcom_session_is_connectable_listener (uint32_t session_handle);
 extern int vppcom_session_listener (uint32_t session_handle);
 extern int vppcom_session_n_accepted (uint32_t session_handle);
