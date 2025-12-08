@@ -472,48 +472,31 @@ vnet_buffer_get_opaque (vlib_buffer_t *b)
 #define VNET_BUFFER_OPAQUE_SIZE                                               \
   (sizeof (vnet_buffer ((vlib_buffer_t *) 0)->unused))
 
-/* Full cache line (64 bytes) of additional space */
+/* 56 bytes of additional space */
 typedef struct
 {
-  /**
-   * QoS marking data that needs to persist from the recording nodes
-   * (nominally in the ingress path) to the marking node (in the
-   * egress path)
-   */
-  struct
+  union
   {
-    u8 bits;
-    u8 source;
-  } qos;
-
-  u8 loop_counter;
-  u8 pad[5]; /* unused */
-
-  /**
-   * The L4 payload size set on input on GSO enabled interfaces
-   * when we receive a GSO packet (a chain of buffers with the first one
-   * having GSO bit set), and needs to persist all the way to the interface-output,
-   * in case the egress interface is not GSO-enabled - then we need to perform
-   * the segmentation, and use this value to cut the payload appropriately.
-   */
-  struct
-  {
-    u16 gso_size;
-    /* size of L4 prototol header */
-    u16 gso_l4_hdr_sz;
-    i16 outer_l3_hdr_offset;
-    i16 outer_l4_hdr_offset;
-  };
-
-  struct
-  {
-    u32 arc_next;
-    union
+    struct
     {
-      u32 cached_session_index;
-      u32 cached_dst_nat_session_index;
-    };
-  } nat;
+      u32 arc_next;
+      union
+      {
+	u32 cached_session_index;
+	u32 cached_dst_nat_session_index;
+      };
+    } nat;
+
+    /* cnat session */
+    struct
+    {
+      u64 generic_flow_id : 24; /* unique identifier for the flow */
+      u64 rrw_next_index : 24; /* next adj-index to be used for reverse flow */
+      u64 rrw_next_node : 8;   /* next-node to be used for reverse flow */
+      u64 state : 4;	       /* new flow / return / etc... */
+      u64 flags : 4;	       /* session flags to set */
+    } session;
+  };
 
   struct
   {
@@ -530,7 +513,35 @@ typedef struct
     } reass;
   } ip;
 
-  u32 unused[5];
+  /**
+   * The L4 payload size set on input on GSO enabled interfaces
+   * when we receive a GSO packet (a chain of buffers with the first one
+   * having GSO bit set), and needs to persist all the way to the
+   * interface-output, in case the egress interface is not GSO-enabled - then
+   * we need to perform the segmentation, and use this value to cut the payload
+   * appropriately.
+   */
+  u16 gso_size;
+  /* size of L4 prototol header */
+  u16 gso_l4_hdr_sz;
+  i16 outer_l3_hdr_offset;
+  i16 outer_l4_hdr_offset;
+
+  /**
+   * QoS marking data that needs to persist from the recording nodes
+   * (nominally in the ingress path) to the marking node (in the
+   * egress path)
+   */
+  struct
+  {
+    u8 bits;
+    u8 source;
+  } qos;
+
+  u8 loop_counter;
+
+  u8 unused8;
+  u32 unused[6];
 } vnet_buffer_opaque2_t;
 
 #define vnet_buffer2(b) ((vnet_buffer_opaque2_t *) (b)->opaque2)
