@@ -137,6 +137,12 @@ typedef enum vcl_session_flags_
   VCL_SESSION_F_LISTEN_NO_MQ = 1 << 10,
 } __clib_packed vcl_session_flags_t;
 
+typedef enum
+{
+  VCL_SESSION_VPP_F_STREAM = 1 << 0,
+  VCL_SESSION_VPP_F_UNIDIRECTIONAL = 1 << 1,
+} vppcom_vpp_flags_t;
+
 typedef enum vcl_worker_wait_
 {
   VCL_WRK_WAIT_CTRL,
@@ -172,6 +178,7 @@ typedef struct vcl_session_
 
   transport_endpt_ext_cfg_t *ext_config;
   u8 dscp;
+  u8 vpp_flags;
 
   i32 vpp_error;
 
@@ -677,6 +684,24 @@ static inline void
 vcl_session_clear_attr (vcl_session_t * s, u8 attr)
 {
   s->attributes &= ~(1 << attr);
+}
+
+static inline u8
+vcl_session_has_vpp_flag (vcl_session_t *s, u8 flag)
+{
+  return (s->vpp_flags & flag) ? 1 : 0;
+}
+
+static inline void
+vcl_session_set_vpp_flag (vcl_session_t *s, u8 flag)
+{
+  s->vpp_flags |= flag;
+}
+
+static inline void
+vcl_session_clear_vpp_flag (vcl_session_t *s, u8 flag)
+{
+  s->vpp_flags &= ~flag;
 }
 
 static inline transport_endpt_attr_t *
