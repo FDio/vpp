@@ -1,0 +1,113 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5a49ff1b_0dbcc8c6",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 16
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2025-12-08T10:42:49Z",
+      "side": 1,
+      "message": "Thanks Damjan for doing the rework.",
+      "revId": "114a11835073c4b3b1881501d914d9cd920ca7f4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "72449876_ac971c8b",
+        "filename": "src/plugins/tap/tx_node.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 317,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2025-12-08T10:42:49Z",
+      "side": 1,
+      "message": "Shouldn\u0027t it be \u0027break\u0027 instead of \u0027continue\u0027?",
+      "range": {
+        "startLine": 317,
+        "startChar": 4,
+        "endLine": 317,
+        "endChar": 13
+      },
+      "revId": "114a11835073c4b3b1881501d914d9cd920ca7f4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "94fe249f_3cbd034d",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 351,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2025-12-08T10:42:49Z",
+      "side": 1,
+      "message": "Please remove this too.",
+      "range": {
+        "startLine": 351,
+        "startChar": 3,
+        "endLine": 351,
+        "endChar": 18
+      },
+      "revId": "114a11835073c4b3b1881501d914d9cd920ca7f4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bbe8b6ad_6b418816",
+        "filename": "src/vnet/devices/virtio/node.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 263,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2025-12-08T10:42:49Z",
+      "side": 1,
+      "message": "We can remove next0 as use of next_index is enough. Virtio input node will enqueue packets to single next node.",
+      "range": {
+        "startLine": 263,
+        "startChar": 6,
+        "endLine": 263,
+        "endChar": 29
+      },
+      "revId": "114a11835073c4b3b1881501d914d9cd920ca7f4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f76b484c_85d40eb0",
+        "filename": "src/vnet/devices/virtio/node.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 366,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2025-12-08T10:42:49Z",
+      "side": 1,
+      "message": "Please remove this too. virtio_input will enqueue packets to single next node.",
+      "range": {
+        "startLine": 365,
+        "startChar": 3,
+        "endLine": 366,
+        "endChar": 36
+      },
+      "revId": "114a11835073c4b3b1881501d914d9cd920ca7f4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
