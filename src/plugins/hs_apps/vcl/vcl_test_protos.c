@@ -643,6 +643,14 @@ vt_quic_connect (vcl_test_session_t *ts, vppcom_endpt_t *endpt)
       return ts->fd;
     }
 
+  if (vt->cfg.test == HS_TEST_TYPE_UNI)
+    {
+      flags = VPPCOM_STREAM_F_UNIDIRECTIONAL;
+      flen = sizeof (flags);
+      vppcom_session_attr (ts->fd, VPPCOM_ATTR_SET_STREAM_FLAGS, &flags,
+			   &flen);
+    }
+
   /* Choose qession to use for stream */
   tq = &wrk->qsessions[ts->session_index / vt->cfg.num_test_sessions_perq];
 
@@ -707,6 +715,7 @@ static int
 vt_quic_accept (int listen_fd, vcl_test_session_t *ts)
 {
   int client_fd;
+  uint32_t flags, flen;
 
   client_fd = vppcom_session_accept (listen_fd, &ts->endpt, 0);
   if (client_fd < 0)
@@ -716,8 +725,22 @@ vt_quic_accept (int listen_fd, vcl_test_session_t *ts)
       return client_fd;
     }
 
-  uint32_t flags = O_NONBLOCK, flen;
+  if (vppcom_session_is_stream (client_fd))
+    {
+      flen = sizeof (flags);
+      vppcom_session_attr (client_fd, VPPCOM_ATTR_GET_STREAM_FLAGS, &flags,
+			   &flen);
+      if (ts->cfg.test == HS_TEST_TYPE_UNI &&
+	  !(flags & VPPCOM_STREAM_F_UNIDIRECTIONAL))
+	{
+	  vtwrn ("expected unidirectional stream");
+	  vppcom_session_close (client_fd);
+	  return VPPCOM_EINVAL;
+	}
+    }
+
   flen = sizeof (flags);
+  flags = O_NONBLOCK;
   vppcom_session_attr (client_fd, VPPCOM_ATTR_SET_FLAGS, &flags, &flen);
 
   ts->fd = client_fd;
