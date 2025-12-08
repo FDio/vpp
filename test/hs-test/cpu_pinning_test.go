@@ -21,7 +21,7 @@ e.g. 'cpu {main-core 37 corelist-workers 38-39 skip-cores 1}' will not behave as
 
 func DefaultCpuConfigurationTest(s *CpuPinningSuite) {
 	vpp := s.Containers.Vpp.VppInstance
-	s.AssertNil(vpp.Start())
+	AssertNil(vpp.Start())
 }
 
 // cpu {} (main thread is pinned on CPU that VPP launches on)
@@ -37,7 +37,7 @@ func MainThreadOnlyNoPinningTest(s *CpuPinningSuite) {
 	vpp := s.Containers.Vpp.VppInstance
 	vpp.CpuConfig = vppCpuConfig
 
-	s.AssertNil(vpp.Start())
+	AssertNil(vpp.Start())
 }
 
 // cpu {main-core x}
@@ -53,7 +53,7 @@ func MainThreadOnlyTest(s *CpuPinningSuite) {
 	vpp := s.Containers.Vpp.VppInstance
 	vpp.CpuConfig = vppCpuConfig
 
-	s.AssertNil(vpp.Start())
+	AssertNil(vpp.Start())
 }
 
 // cpu {main-core x corelist-workers y}
@@ -69,7 +69,7 @@ func CorelistWorkersTest(s *CpuPinningSuite) {
 	vpp := s.Containers.Vpp.VppInstance
 	vpp.CpuConfig = vppCpuConfig
 
-	s.AssertNil(vpp.Start())
+	AssertNil(vpp.Start())
 }
 
 // cpu {main-core x relative}
@@ -85,7 +85,7 @@ func RelativeMainThreadOnlyTest(s *CpuPinningSuite) {
 	vpp := s.Containers.Vpp.VppInstance
 	vpp.CpuConfig = vppCpuConfig
 
-	s.AssertNil(vpp.Start())
+	AssertNil(vpp.Start())
 }
 
 // cpu {main-core x workers y relative}
@@ -101,7 +101,7 @@ func RelativeAutoWorkersTest(s *CpuPinningSuite) {
 	vpp := s.Containers.Vpp.VppInstance
 	vpp.CpuConfig = vppCpuConfig
 
-	s.AssertNil(vpp.Start())
+	AssertNil(vpp.Start())
 }
 
 // cpu {main-core x workers y skip-cores z relative}
@@ -117,7 +117,7 @@ func RelativeAutoWorkersSkipCoresTest(s *CpuPinningSuite) {
 	vpp := s.Containers.Vpp.VppInstance
 	vpp.CpuConfig = vppCpuConfig
 
-	s.AssertNil(vpp.Start())
+	AssertNil(vpp.Start())
 }
 
 // cpu {main-core x corelist-workers y relative}
@@ -133,7 +133,7 @@ func RelativeCorelistWorkersTest(s *CpuPinningSuite) {
 	vpp := s.Containers.Vpp.VppInstance
 	vpp.CpuConfig = vppCpuConfig
 
-	s.AssertNil(vpp.Start())
+	AssertNil(vpp.Start())
 }
 
 // cpu {main-core x corelist-workers y skip-cores z relative}
@@ -149,5 +149,5 @@ func RelativeCorelistWorkersSkipCoresTest(s *CpuPinningSuite) {
 	vpp := s.Containers.Vpp.VppInstance
 	vpp.CpuConfig = vppCpuConfig
 
-	s.AssertNil(vpp.Start())
+	AssertNil(vpp.Start())
 }

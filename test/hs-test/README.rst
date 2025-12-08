@@ -21,6 +21,8 @@ Anatomy of a test case
 
 * Install hs-test dependencies with ``make install-deps``
 * Root privileges are required to run tests as it uses Linux ``ip`` command for configuring topology
+* Set the core pattern so it doesn't contain a pipe. Ubuntu uses ``Apport`` by default, which isn't supported, and therefore hs-test will not detect core dumps.
+  (e.g. ``echo "/var/crash/core-%e-%p-%t" | sudo tee /proc/sys/kernel/core_pattern``)
 * Tests use *hs-test*'s own docker image, they are rebuilt automatically when needed, you can run ``make build[-debug]`` to do so or use ``FORCE_BUILD=true`` make parameter
 
 **Action flow when running a test case**:
@@ -91,8 +93,8 @@ Set your desired core counts using ``s.CpusPerContainer`` and/or ``s.CpusPerVppC
                 serverVethAddress := s.Interfaces.Server.Ip4AddressString()
 
                 result := clientVpp.Vppctl("ping " + serverVethAddress)
-                s.AssertNotNil(result)
-                s.Log(result)
+                AssertNotNil(result)
+                Log(result)
         }
 
 
@@ -238,7 +240,7 @@ Modifying the framework
         			funcValue := runtime.FuncForPC(pc)
         			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
         			It(testName, func(ctx SpecContext) {
-        				s.Log(testName + ": BEGIN")
+        				Log(testName + ": BEGIN")
         				test(&s)
         			}, SpecTimeout(TestTimeout))
         		}
@@ -259,7 +261,7 @@ Modifying the framework
                 var _ = Describe("MySuiteSolo", Ordered, ContinueOnFailure, Serial, func() {
                         ...
                         It(testName, Label("SOLO"), func(ctx SpecContext) {
-                                s.Log(testName + ": BEGIN")
+                                Log(testName + ": BEGIN")
 			        test(&s)
 		        }, SpecTimeout(TestTimeout))
                 })
@@ -323,7 +325,6 @@ test run time it is not advisable to use aforementioned skip methods and instead
 * Standalone programs ``wget``, ``iperf3`` - since these are downloaded when Docker image is made,
   they are reasonably up-to-date automatically
 * Programs in Docker images  - ``envoyproxy/envoy-contrib`` and ``nginx``
-* ``http_server`` - homegrown application that listens on specified port and sends a test file in response
 * Non-standard Go libraries - see ``extras/hs-test/go.mod``
 
 Generally, these will be updated on a per-need basis, for example when a bug is discovered
@@ -387,10 +388,10 @@ You can do it by test like following:
     	vpp.Disconnect()  // no goVPP less noise
     	vpp.EnableMemoryTrace()  // enable memory traces
     	traces1, err := vpp.GetMemoryTrace()  // get first sample
-    	s.AssertNil(err, fmt.Sprint(err))
+    	AssertNil(err, fmt.Sprint(err))
     	vpp.Vppctl("test mem-leak")  // execute some action
     	traces2, err := vpp.GetMemoryTrace()  // get second sample
-    	s.AssertNil(err, fmt.Sprint(err))
+    	AssertNil(err, fmt.Sprint(err))
     	vpp.MemLeakCheck(traces1, traces2)  // compare samples and generate report
     }
 

@@ -11,8 +11,8 @@ func init() {
 func runUnitTest(s *NoTopoSuite, vppCmd string) {
 	vpp := s.Containers.Vpp.VppInstance
 	o := vpp.Vppctl(vppCmd)
-	s.Log(o)
-	s.AssertContains(o, "SUCCESS")
+	Log(o)
+	AssertContains(o, "SUCCESS")
 }
 
 func HttpUnitTest(s *NoTopoSuite) {
