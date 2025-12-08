@@ -10,8 +10,7 @@ VERSION = $(shell dpkg-parsechangelog | sed -nr '/^Version:/s/Version: //p')
 BASE_VER = $(word 1, $(subst -, ,$(VERSION)))
 
 export BUILD_DIR=$(CURDIR)/_build
-export INSTALL_DIR=/opt/vpp/external/$(shell uname -m)/
-export DESTDIR=$(CURDIR)/debian/tmp
+export INSTALL_DIR=$(CURDIR)/debian/tmp/opt/vpp/external/$(shell uname -m)/
 
 MAKE_ARGS=-C ..
 
@@ -27,12 +26,8 @@ override_dh_auto_configure:
 
 override_dh_install:
 	make $(MAKE_ARGS) install
-	@mkdir -p $(DESTDIR)/$(INSTALL_DIR)
-	@mkdir -p $(DESTDIR)/etc/ld.so.conf.d/
-	@echo "$(INSTALL_DIR)/lib" > $(DESTDIR)/etc/ld.so.conf.d/vpp.conf
-	@echo "$(INSTALL_DIR)/lib64" >> $(DESTDIR)/etc/ld.so.conf.d/vpp.conf
-	dh_install -p$(PKG) --autodest /etc
+	@mkdir -p $(INSTALL_DIR)
 	dh_install -p$(PKG) --autodest /opt
 
 override_dh_shlibdeps:
-	dh_shlibdeps -l$(DESTDIR)/$(INSTALL_DIR)lib/:$(DESTDIR)/$(INSTALL_DIR)lib64/
+	dh_shlibdeps -l$(INSTALL_DIR)lib/:$(INSTALL_DIR)lib64
