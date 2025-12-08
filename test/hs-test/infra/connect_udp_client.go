@@ -58,7 +58,7 @@ func (c *ConnectUdpClient) Dial(proxyAddress, targetUri string) error {
 	}
 
 	if c.log {
-		c.suite.Log("* Connected to proxy")
+		Log("* Connected to proxy")
 	}
 
 	conn.SetDeadline(time.Now().Add(c.timeout))
@@ -74,7 +74,7 @@ func (c *ConnectUdpClient) Dial(proxyAddress, targetUri string) error {
 	}
 
 	if c.log {
-		c.suite.Log(DumpHttpResp(resp, true))
+		Log(DumpHttpResp(resp, true))
 	}
 
 	if resp.StatusCode != http.StatusSwitchingProtocols {
@@ -86,7 +86,7 @@ func (c *ConnectUdpClient) Dial(proxyAddress, targetUri string) error {
 	}
 
 	if c.log {
-		c.suite.Log("* CONNECT-UDP tunnel established")
+		Log("* CONNECT-UDP tunnel established")
 	}
 	c.Conn = conn
 	return nil

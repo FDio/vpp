@@ -141,9 +141,9 @@ func (c *Container) getContainerArguments() string {
 
 func (c *Container) PullDockerImage(name string, ctx context.Context) {
 	// "func (*Client) ImagePull" doesn't work, returns "No such image"
-	c.Suite.Log("Pulling image: " + name)
+	Log("Pulling image: " + name)
 	_, err := exechelper.CombinedOutput("docker pull " + name)
-	c.Suite.AssertNil(err)
+	AssertNil(err)
 }
 
 // Creates a container
@@ -152,7 +152,7 @@ func (c *Container) Create() error {
 
 	var sliceOfImageNames []string
 	images, err := c.Suite.Docker.ImageList(c.ctx, image.ListOptions{})
-	c.Suite.AssertNil(err)
+	AssertNil(err)
 
 	for _, image := range images {
 		if len(image.RepoTags) == 0 {
@@ -211,7 +211,7 @@ func (c *Container) Create() error {
 func (c *Container) allocateCpus() {
 	c.Suite.StartedContainers = append(c.Suite.StartedContainers, c)
 	c.AllocatedCpus = c.Suite.AllocateCpus(c.Name)
-	c.Suite.Log("Allocated CPUs " + fmt.Sprint(c.AllocatedCpus) + " to container " + c.Name)
+	Log("Allocated CPUs " + fmt.Sprint(c.AllocatedCpus) + " to container " + c.Name)
 }
 
 // Starts a container
@@ -224,7 +224,7 @@ func (c *Container) Start() error {
 		if err == nil {
 			break
 		}
-		c.Suite.Log("Error while starting " + c.Name + ". Retrying...")
+		Log("Error while starting " + c.Name + ". Retrying...")
 		time.Sleep(1 * time.Second)
 	}
 	if nTries >= 5 {
@@ -243,9 +243,9 @@ func (c *Container) Start() error {
 		return err
 	}
 
-	c.Suite.Log("Container '%s': %s", c.Name, containers[0].Status)
+	Log("Container '%s': %s", c.Name, containers[0].Status)
 	if !(strings.Contains(strings.ToLower(containers[0].Status), "up") || strings.Contains(strings.ToLower(containers[0].Status), "exited (0)")) {
-		c.Suite.Log("Container details: " + fmt.Sprint(containers[0]))
+		Log("Container details: " + fmt.Sprint(containers[0]))
 		return fmt.Errorf("Container %s exited: '%s'", c.Name, containers[0].Status)
 	}
 
@@ -257,21 +257,21 @@ func (c *Container) GetOutput() (string, string) {
 	statusCh, errCh := c.Suite.Docker.ContainerWait(c.ctx, c.ID, containerTypes.WaitConditionNotRunning)
 	select {
 	case err := <-errCh:
-		c.Suite.AssertNil(err)
+		AssertNil(err)
 	case <-statusCh:
 	}
 
 	// Get the logs from the container
 	logOptions := containerTypes.LogsOptions{ShowStdout: true, ShowStderr: true}
 	logReader, err := c.Suite.Docker.ContainerLogs(c.ctx, c.ID, logOptions)
-	c.Suite.AssertNil(err)
+	AssertNil(err)
 	defer logReader.Close()
 
 	var stdoutBuf, stderrBuf bytes.Buffer
 
 	// Use stdcopy.StdCopy to demultiplex the multiplexed stream
 	_, err = stdcopy.StdCopy(&stdoutBuf, &stderrBuf, logReader)
-	c.Suite.AssertNil(err)
+	AssertNil(err)
 
 	stdout := stdoutBuf.String()
 	stderr := stderrBuf.String()
@@ -290,7 +290,7 @@ func (c *Container) prepareCommand() (string, error) {
 
 	cmd += " " + c.getContainerArguments()
 
-	c.Suite.Log(cmd)
+	Log(cmd)
 	return cmd, nil
 }
 
@@ -306,12 +306,12 @@ func (c *Container) CombinedOutput() (string, error) {
 
 // Creates and starts a container
 func (c *Container) Run() {
-	c.Suite.AssertNil(c.Create())
-	c.Suite.AssertNil(c.Start())
+	AssertNil(c.Create())
+	AssertNil(c.Start())
 }
 
 func (c *Container) createVolumePaths() {
-	workingVolumeDir := LogDir + c.Suite.GetCurrentTestName() + VolumeDir
+	workingVolumeDir := LogDir + GetCurrentTestName() + VolumeDir
 	workDirReplacer := strings.NewReplacer("$HST_DIR", workDir)
 	volDirReplacer := strings.NewReplacer("$HST_VOLUME_DIR", workingVolumeDir)
 
@@ -336,7 +336,7 @@ func (c *Container) addVolume(hostDir string, containerDir string, isDefaultWork
 	volume.IsDefaultWorkDir = isDefaultWorkDir
 	c.Volumes[hostDir] = volume
 	if volume.IsDefaultWorkDir && len(volume.HostDir)+len(defaultApiSocketFilePath) > 108 {
-		c.Suite.Log("**************************************************************\n" +
+		Log("**************************************************************\n" +
 			"Default api socket file path exceeds 108 bytes. Test may fail.\n" +
 			"**************************************************************")
 	}
@@ -355,16 +355,16 @@ func (c *Container) getVolumesAsSlice() []string {
 		if len(core_pattern) > 0 && core_pattern[0] != '|' {
 			index := strings.LastIndex(core_pattern, "/")
 			if index == -1 {
-				c.Suite.Log("'core_pattern' isn't set to an absolute path. Core dump check will not work.")
+				Log("'core_pattern' isn't set to an absolute path. Core dump check will not work.")
 			} else {
 				core_pattern = core_pattern[:index]
 				volumeSlice = append(volumeSlice, c.Suite.getLogDirPath()+":"+core_pattern)
 			}
 		} else {
-			c.Suite.Log(fmt.Sprintf("core_pattern \"%s\" starts with pipe, ignoring", core_pattern))
+			Log("core_pattern \"%s\" starts with pipe, ignoring", core_pattern)
 		}
 	} else {
-		c.Suite.Log(err)
+		Log(err)
 	}
 
 	if len(c.Volumes) > 0 {
@@ -484,8 +484,8 @@ func (c *Container) ExecServer(useEnvVars bool, command any, arguments ...any) {
 	}
 	containerExecCommand := fmt.Sprintf("docker exec -d %s %s %s", envVars, c.Name, serverCommand)
 	ginkgo.GinkgoHelper()
-	c.Suite.Log(containerExecCommand)
-	c.Suite.AssertNil(exechelper.Run(containerExecCommand))
+	Log(containerExecCommand)
+	AssertNil(exechelper.Run(containerExecCommand))
 }
 
 func (c *Container) Exec(useEnvVars bool, command any, arguments ...any) (string, error) {
@@ -503,7 +503,7 @@ func (c *Container) Exec(useEnvVars bool, command any, arguments ...any) (string
 	}
 	containerExecCommand := fmt.Sprintf("docker exec %s %s %s", envVars, c.Name, serverCommand)
 	ginkgo.GinkgoHelper()
-	c.Suite.Log(containerExecCommand)
+	Log(containerExecCommand)
 	byteOutput, err := exechelper.CombinedOutput(containerExecCommand)
 	return string(byteOutput), err
 }
@@ -527,13 +527,13 @@ func (c *Container) ExecLineBuffered(ctx context.Context, useEnvVars bool, comma
 
 	containerExecCommand := fmt.Sprintf("docker exec %s %s stdbuf -oL %s", envVars, c.Name, serverCommand)
 	ginkgo.GinkgoHelper()
-	c.Suite.Log(containerExecCommand)
+	Log(containerExecCommand)
 	err := exechelper.Run(containerExecCommand, exechelper.WithContext(ctx),
 		exechelper.WithStdout(outputBuffer), exechelper.WithStderr(errBuffer))
 
 	// ignore SIGKILL errors
 	if IsKilledError(err) {
-		c.Suite.Log("'%v' error ignored (context cancelled)", err)
+		Log("'%v' error ignored (context cancelled)", err)
 		err = nil
 	}
 
@@ -555,12 +555,12 @@ func (c *Container) ExecContext(ctx context.Context, useEnvVars bool, command an
 	}
 	containerExecCommand := fmt.Sprintf("docker exec %s %s %s", envVars, c.Name, serverCommand)
 	ginkgo.GinkgoHelper()
-	c.Suite.Log(containerExecCommand)
+	Log(containerExecCommand)
 	byteOutput, err := exechelper.CombinedOutput(containerExecCommand, exechelper.WithContext(ctx))
 
 	// ignore SIGKILL errors
 	if IsKilledError(err) {
-		c.Suite.Log("'%v' error ignored (context cancelled)", err)
+		Log("'%v' error ignored (context cancelled)", err)
 		err = nil
 	}
 
@@ -572,13 +572,13 @@ func (c *Container) saveLogs() {
 
 	logs, err := c.log(0)
 	if err != nil {
-		c.Suite.Log(err)
+		Log(err)
 		return
 	}
 
 	f, err := os.Create(testLogFilePath)
 	if err != nil {
-		c.Suite.Log(err)
+		Log(err)
 		return
 	}
 	defer f.Close()
@@ -596,7 +596,7 @@ func (c *Container) log(maxLines int) (string, error) {
 
 	out, err := c.Suite.Docker.ContainerLogs(c.ctx, c.ID, logOptions)
 	if err != nil {
-		c.Suite.Log(err)
+		Log(err)
 		return "", err
 	}
 	defer out.Close()
@@ -605,7 +605,7 @@ func (c *Container) log(maxLines int) (string, error) {
 
 	_, err = stdcopy.StdCopy(&stdoutBuf, &stderrBuf, out)
 	if err != nil {
-		c.Suite.Log(err)
+		Log(err)
 	}
 
 	stdout := stdoutBuf.String()
@@ -629,7 +629,7 @@ func (c *Container) stop() error {
 	timeout := 0
 	c.VppInstance = nil
 	c.saveLogs()
-	c.Suite.Log("Stopping container " + c.Name)
+	Log("Stopping container " + c.Name)
 	if c.Suite.CoverageRun {
 		timeout = 3
 	}
@@ -650,16 +650,16 @@ func (c *Container) CreateConfigFromTemplate(targetConfigName string, templateNa
 	template := template.Must(template.ParseFiles(templateName))
 
 	f, err := os.CreateTemp(LogDir, "hst-config")
-	c.Suite.AssertNil(err, err)
+	AssertNil(err, err)
 	defer os.Remove(f.Name())
 
 	err = template.Execute(f, values)
-	c.Suite.AssertNil(err, err)
+	AssertNil(err, err)
 
 	err = f.Close()
-	c.Suite.AssertNil(err, err)
+	AssertNil(err, err)
 
-	c.Suite.AssertNil(c.copy(f.Name(), targetConfigName))
+	AssertNil(c.copy(f.Name(), targetConfigName))
 }
 
 func init() {

@@ -184,7 +184,6 @@ if [ -n "${BUILD_NUMBER}" ]; then
 fi
 
 mkdir -p .go_cache
-make build-go
 
 mkdir -p summary
 rm -f summary/*

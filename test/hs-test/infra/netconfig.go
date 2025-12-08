@@ -416,7 +416,7 @@ func linkSetNetns(ifName, ns string) error {
 
 func linkSetMultiQueue(ifName string) error {
 	cmd := exec.Command("ethtool", "-L", ifName, "rx", "4", "tx", "4")
-	fmt.Println("configuring multiqueue for interface:", cmd.String())
+	Log("configuring multiqueue for interface: %s", cmd.String())
 	err := cmd.Run()
 	if err != nil {
 		return fmt.Errorf("error configuring multiqueue '%s: %v", ifName, err)
