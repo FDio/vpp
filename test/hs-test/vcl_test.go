@@ -12,10 +12,10 @@ import (
 )
 
 func init() {
-	RegisterVethTests(XEchoVclClientUdpTest, XEchoVclClientTcpTest, XEchoVclServerUdpTest, VclEchoQuicTest,
+	RegisterVethTests(XEchoVclClientUdpTest, XEchoVclClientTcpTest, XEchoVclServerUdpTest, VclQuicUnidirectionalStreamTest,
 		XEchoVclServerTcpTest, VclEchoTcpTest, VclEchoUdpTest, VclHttpPostTest, VclClUdpDscpTest)
 	RegisterSoloVethTests(VclRetryAttachTest)
-	RegisterVethMWTests(VclEchoQuicMWTest)
+	RegisterVethMWTests(VclQuicUnidirectionalStreamsMWTest)
 }
 
 func getVclConfig(c *Container, ns_id_optional ...string) string {
@@ -99,7 +99,7 @@ func testXEchoVclServer(s *VethsSuite, proto string) {
 	AssertContains(o, "Test finished at")
 }
 
-func testVclEcho(s *VethsSuite, proto string, extraArgs ...string) {
+func testVclEcho(s *VethsSuite, proto string, extraArgs ...string) (string, string) {
 	extras := ""
 	if len(extraArgs) > 0 {
 		extras = strings.Join(extraArgs, " ")
@@ -133,6 +133,7 @@ func testVclEcho(s *VethsSuite, proto string, extraArgs ...string) {
 	AssertNil(err, o)
 	AssertNotContains(o, "aborting test")
 	AssertNil(errSrv, oSrv)
+	return o, oSrv
 }
 
 func VclEchoTcpTest(s *VethsSuite) {
@@ -143,14 +144,16 @@ func VclEchoUdpTest(s *VethsSuite) {
 	testVclEcho(s, "udp")
 }
 
-func VclEchoQuicTest(s *VethsSuite) {
-	testVclEcho(s, "quic", "-N 1000")
+func VclQuicUnidirectionalStreamTest(s *VethsSuite) {
+	_, oSrv := testVclEcho(s, "quic", "-N 1000")
+	AssertNotContains(oSrv, "ERROR: expected unidirectional stream")
 }
 
-func VclEchoQuicMWTest(s *VethsSuite) {
+func VclQuicUnidirectionalStreamsMWTest(s *VethsSuite) {
 	s.CpusPerVppContainer = 3
 	s.SetupTest()
-	testVclEcho(s, "quic", "-s 20 -q 10 -N 1000")
+	_, oSrv := testVclEcho(s, "quic", "-s 20 -q 10 -N 1000")
+	AssertNotContains(oSrv, "ERROR: expected unidirectional stream")
 }
 
 func VclHttpPostTest(s *VethsSuite) {
