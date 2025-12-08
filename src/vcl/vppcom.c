@@ -126,6 +126,8 @@ vcl_send_session_connect_stream (vcl_worker_t *wrk, vcl_session_t *s)
   mp->wrk_index = wrk->vpp_wrk_index;
   mp->parent_handle = s->parent_handle;
   mp->proto = s->session_type;
+  if (vcl_session_has_vpp_flag (s, VCL_SESSION_VPP_F_UNIDIRECTIONAL))
+    mp->flags = TRANSPORT_CFG_F_UNIDIRECTIONAL;
   if (s->ext_config)
     vcl_msg_add_ext_config (s, &mp->ext_config);
   app_send_ctrl_evt_to_vpp (mq, app_evt);
@@ -393,6 +395,13 @@ vcl_session_accepted_handler (vcl_worker_t * wrk, session_accepted_msg_t * mp,
   if (session->is_dgram)
     session->flags |= (listen_session->flags & VCL_SESSION_F_CONNECTED);
   session->listener_index = listen_session->session_index;
+
+  session->vpp_flags |=
+    mp->flags & SESSION_F_STREAM ? VCL_SESSION_VPP_F_STREAM : 0;
+  session->vpp_flags |= mp->flags & SESSION_F_UNIDIRECTIONAL ?
+			  VCL_SESSION_VPP_F_UNIDIRECTIONAL :
+			  0;
+
   listen_session->n_accepted_sessions++;
 
   vcl_evt (VCL_EVT_ACCEPT, session, listen_session, session_index);
@@ -2120,6 +2129,8 @@ vppcom_session_stream_connect (uint32_t session_handle,
   parent_session = vcl_session_get_w_handle (wrk, parent_session_handle);
   if (!parent_session)
     return VPPCOM_EBADFD;
+
+  vcl_session_set_vpp_flag (session, VCL_SESSION_VPP_F_STREAM);
 
   session_index = session->session_index;
   parent_session_index = parent_session->session_index;
@@ -4587,6 +4598,44 @@ vppcom_session_attr (uint32_t session_handle, uint32_t op,
 	rv = VPPCOM_EINVAL;
       break;
 
+    case VPPCOM_ATTR_GET_STREAM_FLAGS:
+      if (PREDICT_TRUE (buffer && buflen && (*buflen >= sizeof (*flags))))
+	{
+	  *flags = (vcl_session_has_vpp_flag (
+		      session, VCL_SESSION_VPP_F_UNIDIRECTIONAL) ?
+		      VPPCOM_STREAM_F_UNIDIRECTIONAL :
+		      0);
+	  *buflen = sizeof (*flags);
+	  VDBG (2,
+		"VPPCOM_ATTR_GET_STREAM_FLAGS: sh %u, flags = 0x%08x, "
+		"is_unidirectional = %u",
+		session_handle, *flags,
+		vcl_session_has_vpp_flag (session,
+					  VCL_SESSION_VPP_F_UNIDIRECTIONAL));
+	}
+      else
+	rv = VPPCOM_EINVAL;
+      break;
+    case VPPCOM_ATTR_SET_STREAM_FLAGS:
+      if (PREDICT_TRUE (buffer && buflen && (*buflen == sizeof (*flags))))
+	{
+	  if (*flags & VPPCOM_STREAM_F_UNIDIRECTIONAL)
+	    vcl_session_set_vpp_flag (session,
+				      VCL_SESSION_VPP_F_UNIDIRECTIONAL);
+	  else
+	    vcl_session_clear_vpp_flag (session,
+					VCL_SESSION_VPP_F_UNIDIRECTIONAL);
+
+	  VDBG (2,
+		"VPPCOM_ATTR_SET_STREAM_FLAGS: sh %u, flags = 0x%08x,"
+		" is_unidirectional = %u",
+		session_handle, *flags,
+		vcl_session_has_vpp_flag (session,
+					  VCL_SESSION_VPP_F_UNIDIRECTIONAL));
+	}
+      else
+	rv = VPPCOM_EINVAL;
+      break;
     default:
       rv = VPPCOM_EINVAL;
       break;
@@ -4880,13 +4929,24 @@ vppcom_worker_mqs_epfd (void)
 }
 
 int
-vppcom_session_is_connectable_listener (uint32_t session_handle)
+vppcom_session_is_stream (uint32_t session_handle)
 {
   vcl_session_t *session;
   vcl_worker_t *wrk = vcl_worker_get_current ();
   session = vcl_session_get_w_handle (wrk, session_handle);
   if (!session)
     return VPPCOM_EBADFD;
+  return vcl_session_has_vpp_flag (session, VCL_SESSION_VPP_F_STREAM);
+}
+
+int
+vppcom_session_is_connectable_listener (uint32_t session_handle)
+{
+  vcl_session_t *session;
+  vcl_worker_t *wrk = vcl_worker_get_current ();
+  session = vcl_session_get_w_handle (wrk, session_handle);
+  if (!session)
+    return 0;
   return vcl_session_is_connectable_listener (wrk, session);
 }
 
