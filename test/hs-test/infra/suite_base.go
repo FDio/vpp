@@ -4,8 +4,6 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
-	"io"
-	"log"
 	"net/http"
 	"net/http/httputil"
 	"os"
@@ -45,10 +43,12 @@ var IsVppDebug = flag.Bool("debug", false, "attach gdb to vpp")
 var DryRun = flag.Bool("dryrun", false, "set up containers but don't run tests")
 var Timeout = flag.Int("timeout", 5, "test timeout override (in minutes)")
 var PerfTesting = flag.Bool("perf", false, "perf test flag")
+var HostPpid = flag.Int("host_ppid", os.Getppid(), "automatically set in Makefile")
 var NumaAwareCpuAlloc bool
 var TestTimeout time.Duration
 var RunningInCi bool
 var TestsThatWillRun int
+var Ppid string
 
 const (
 	LogDir    string = "/tmp/hs-test/"
@@ -56,10 +56,7 @@ const (
 )
 
 type HstSuite struct {
-	Ppid                string
 	ProcessIndex        string
-	Logger              *log.Logger
-	LogFile             *os.File
 	AllContainers       map[string]*Container
 	StartedContainers   []*Container
 	NetConfigs          []NetConfig
@@ -75,6 +72,7 @@ type HstSuite struct {
 	CoverageRun         bool
 	numOfNewPorts       int
 	SkipIfNotEnoguhCpus bool
+	Ports               struct{}
 }
 
 type colors struct {
@@ -193,7 +191,7 @@ func (s StringerStruct) String() string {
 
 func (s *HstSuite) getLogDirPath() string {
 	testId := s.GetTestId()
-	testName := s.GetCurrentTestName()
+	testName := GetCurrentTestName()
 	logDirPath := LogDir + testName + "/" + testId + "/"
 
 	cmd := exec.Command("mkdir", "-p", logDirPath)
@@ -207,8 +205,8 @@ func (s *HstSuite) getLogDirPath() string {
 func (s *HstSuite) newDockerClient() {
 	var err error
 	s.Docker, err = client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	s.AssertNil(err)
-	s.Log("docker client created")
+	AssertNil(err)
+	Log("docker client created")
 }
 
 func (s *HstSuite) AllocateCpus(containerName string) []int {
@@ -227,7 +225,7 @@ func (s *HstSuite) AllocateCpus(containerName string) []int {
 		cpuCtx, err = s.CpuAllocator.Allocate(s.CpusPerContainer, s.CpuAllocator.lastCpu)
 	}
 
-	s.AssertNil(err)
+	AssertNil(err)
 	s.AddCpuContext(cpuCtx)
 	return cpuCtx.cpus
 }
@@ -240,26 +238,13 @@ func (s *HstSuite) Skip(args string) {
 	Skip(args)
 }
 
-func (s *HstSuite) CreateLogger() {
-	suiteName := s.GetCurrentSuiteName()
-	var err error
-	s.LogFile, err = os.Create("summary/" + suiteName + ".log")
-	if err != nil {
-		Fail("Unable to create log file.")
-	}
-	s.Logger = log.New(io.Writer(s.LogFile), "", log.LstdFlags)
-}
-
 func (s *HstSuite) SetupSuite() {
 	RegisterFailHandler(func(message string, callerSkip ...int) {
 		s.HstFail()
 		Fail(message, callerSkip...)
 	})
-	s.CreateLogger()
-	s.Log("[* SUITE SETUP]")
-	s.Ppid = fmt.Sprint(os.Getppid())
-	// remove last number so we have space to prepend a process index (interfaces have a char limit)
-	s.Ppid = s.Ppid[:len(s.Ppid)-1]
+	CreateLogger()
+	Log("[* SUITE SETUP]")
 	s.ProcessIndex = fmt.Sprint(GinkgoParallelProcess())
 	s.newDockerClient()
 
@@ -275,10 +260,12 @@ func (s *HstSuite) SetupSuite() {
 }
 
 func (s *HstSuite) TeardownSuite() {
+	defer LogFile.Close()
+	defer s.Docker.Close()
 	if *IsPersistent || *DryRun {
 		s.Skip("Skipping suite teardown")
 	}
-	s.Log("[* SUITE TEARDOWN]")
+	Log("[* SUITE TEARDOWN]")
 	// allow ports to be reused by removing them from reservedPorts slice
 	reservedPorts = reservedPorts[:len(reservedPorts)-s.numOfNewPorts]
 	if s.Ip4AddrAllocator != nil {
@@ -288,14 +275,12 @@ func (s *HstSuite) TeardownSuite() {
 	if s.Ip6AddrAllocator != nil {
 		s.Ip6AddrAllocator.DeleteIpAddresses()
 	}
-	defer s.LogFile.Close()
-	defer s.Docker.Close()
 	s.UnconfigureNetworkTopology()
 }
 
 func (s *HstSuite) SetupTest() {
 	TestCounterFunc()
-	s.Log("[* TEST SETUP]")
+	Log("[* TEST SETUP]")
 	// doesn't impact MW/solo tests
 	s.CpuAllocator.lastCpu = (GinkgoParallelProcess() - 1) * 4
 	s.StartedContainers = s.StartedContainers[:0]
@@ -307,7 +292,7 @@ func (s *HstSuite) TeardownTest() {
 	if *IsPersistent || *DryRun {
 		s.Skip("Skipping test teardown")
 	}
-	s.Log("[* TEST TEARDOWN]")
+	Log("[* TEST TEARDOWN]")
 	s.SkipIfNotEnoguhCpus = false
 	// reset to defaults
 	s.CpusPerContainer = *NConfiguredCpus
@@ -366,22 +351,22 @@ func (s *HstSuite) LogVppInstance(container *Container, maxLines int) {
 		}
 	}
 
-	s.Log("vvvvvvvvvvvvvvv " + container.Name + " [VPP instance]:")
+	Log("vvvvvvvvvvvvvvv " + container.Name + " [VPP instance]:")
 	for _, line := range lines {
-		s.Log(line)
+		Log(line)
 	}
-	s.Log("^^^^^^^^^^^^^^^\n\n")
+	Log("^^^^^^^^^^^^^^^\n\n")
 }
 
 func (s *HstSuite) HstFail() {
 	for _, container := range s.StartedContainers {
 		out, err := container.log(20)
 		if err != nil {
-			s.Log("An error occured while obtaining '" + container.Name + "' container logs: " + fmt.Sprint(err))
-			s.Log("The container might not be running - check logs in " + s.getLogDirPath())
+			Log("An error occured while obtaining '" + container.Name + "' container logs: " + fmt.Sprint(err))
+			Log("The container might not be running - check logs in " + s.getLogDirPath())
 			continue
 		}
-		s.Log("\nvvvvvvvvvvvvvvv " +
+		Log("\nvvvvvvvvvvvvvvv " +
 			container.Name + ":\n" +
 			out +
 			"^^^^^^^^^^^^^^^\n\n")
@@ -416,18 +401,18 @@ func (s *HstSuite) WaitForCoreDump() bool {
 	var coreFiles []coreInfo
 	dir, err := os.Open(s.getLogDirPath())
 	if err != nil {
-		s.Log(err)
+		Log(err)
 		return false
 	}
 	defer dir.Close()
 
 	files, err := dir.Readdirnames(0)
 	if err != nil {
-		s.Log(err)
+		Log(err)
 		return false
 	}
 	for _, file := range files {
-		coreBin, isCore := s.GetCoreProcessName(s.getLogDirPath() + file)
+		coreBin, isCore := GetCoreProcessName(s.getLogDirPath() + file)
 		if isCore {
 			coreFiles = append(coreFiles, coreInfo{file, coreBin})
 		}
@@ -442,15 +427,15 @@ func (s *HstSuite) WaitForCoreDump() bool {
 	archStr := strings.TrimSpace(string(arch))
 	for _, core := range coreFiles {
 		corePath := s.getLogDirPath() + core.file
-		s.Log(fmt.Sprintf("WAITING FOR CORE DUMP (%s)", corePath))
+		Log(fmt.Sprintf("WAITING FOR CORE DUMP (%s)", corePath))
 		for i := waitTime; i <= timeout; i += waitTime {
 			fileInfo, err := os.Stat(corePath)
 			if err != nil {
-				s.Log("Error while reading file info: " + fmt.Sprint(err))
+				Log("Error while reading file info: " + fmt.Sprint(err))
 				return true
 			}
 			currSize := fileInfo.Size()
-			s.Log(fmt.Sprintf("Waiting %ds/%ds...", i, timeout))
+			Log(fmt.Sprintf("Waiting %ds/%ds...", i, timeout))
 			time.Sleep(time.Duration(waitTime) * time.Second)
 			fileInfo, _ = os.Stat(corePath)
 
@@ -486,7 +471,7 @@ func (s *HstSuite) WaitForCoreDump() bool {
 					libPath = fmt.Sprintf("build-root/build-vpp%s-native/vpp/lib/%s-linux-gnu", debug, archStr)
 				}
 				cmd := fmt.Sprintf("sudo gdb %s -c %s -ex 'set solib-search-path %s/%s' -ex 'bt full' -batch", binPath, corePath, *VppSourceFileDir, libPath)
-				s.Log(cmd)
+				Log(cmd)
 				output, _ := exechelper.Output(cmd)
 				if strings.Contains(core.binPath, "vpp") {
 					AddReportEntry("VPP Backtrace", StringerStruct{Label: string(output)})
@@ -495,19 +480,19 @@ func (s *HstSuite) WaitForCoreDump() bool {
 				}
 				f, err := os.OpenFile(s.getLogDirPath()+"backtrace.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, os.FileMode(0644))
 				if err != nil {
-					s.Log("Error opening backtrace.log: " + fmt.Sprint(err))
+					Log("Error opening backtrace.log: " + fmt.Sprint(err))
 				} else {
 					if _, err := f.Write(output); err != nil {
-						s.Log("Error writing backtrace.log: " + fmt.Sprint(err))
+						Log("Error writing backtrace.log: " + fmt.Sprint(err))
 					}
 					f.Close()
 				}
 				if RunningInCi {
 					err = os.Remove(corePath)
 					if err == nil {
-						s.Log("removed " + corePath)
+						Log("removed " + corePath)
 					} else {
-						s.Log(err)
+						Log(err)
 					}
 				}
 				break
@@ -521,23 +506,23 @@ func (s *HstSuite) ResetContainers() {
 	s.CpuAllocator.lastCpu = 0
 	for _, container := range s.StartedContainers {
 		container.stop()
-		s.Log("Removing container " + container.Name)
+		Log("Removing container " + container.Name)
 		if err := s.Docker.ContainerRemove(container.ctx, container.ID, containerTypes.RemoveOptions{RemoveVolumes: true, Force: true}); err != nil {
-			s.Log(err)
+			Log(err)
 		}
 	}
 }
 
 func (s *HstSuite) GetNetNamespaceByName(name string) string {
-	return s.ProcessIndex + name + s.Ppid
+	return s.ProcessIndex + name + Ppid
 }
 
 func (s *HstSuite) GetInterfaceByName(name string) *NetInterface {
-	return s.NetInterfaces[s.ProcessIndex+name+s.Ppid]
+	return s.NetInterfaces[s.ProcessIndex+name+Ppid]
 }
 
 func (s *HstSuite) GetContainerByName(name string) *Container {
-	return s.AllContainers[s.ProcessIndex+name+s.Ppid]
+	return s.AllContainers[s.ProcessIndex+name+Ppid]
 }
 
 /*
@@ -545,7 +530,7 @@ func (s *HstSuite) GetContainerByName(name string) *Container {
  * are not able to modify the original container and affect other tests by doing that
  */
 func (s *HstSuite) GetTransientContainerByName(name string) *Container {
-	containerCopy := *s.AllContainers[s.ProcessIndex+name+s.Ppid]
+	containerCopy := *s.AllContainers[s.ProcessIndex+name+Ppid]
 	return &containerCopy
 }
 
@@ -564,7 +549,7 @@ func (s *HstSuite) LoadContainerTopology(topologyName string) {
 	for _, elem := range yamlTopo.Containers {
 		newContainer, err := newContainer(s, elem)
 		newContainer.Suite = s
-		newContainer.Name = newContainer.Suite.ProcessIndex + newContainer.Name + newContainer.Suite.Ppid
+		newContainer.Name = newContainer.Suite.ProcessIndex + newContainer.Name + Ppid
 		if err != nil {
 			Fail("container config error: " + fmt.Sprint(err))
 		}
@@ -572,9 +557,9 @@ func (s *HstSuite) LoadContainerTopology(topologyName string) {
 	}
 
 	if *DryRun {
-		s.Log(Colors.pur + "* Containers used by this suite (some might already be running):" + Colors.rst)
+		Log(Colors.pur + "* Containers used by this suite (some might already be running):" + Colors.rst)
 		for name := range s.AllContainers {
-			s.Log("%sdocker start %s && docker exec -it %s bash%s", Colors.pur, name, name, Colors.rst)
+			Log("%sdocker start %s && docker exec -it %s bash%s", Colors.pur, name, name, Colors.rst)
 		}
 	}
 }
@@ -601,26 +586,26 @@ func (s *HstSuite) LoadNetworkTopology(topologyName string) {
 			elem["ipv6"] = false
 		}
 		if _, ok := elem["name"]; ok {
-			elem["name"] = s.ProcessIndex + elem["name"].(string) + s.Ppid
+			elem["name"] = s.ProcessIndex + elem["name"].(string) + Ppid
 		}
 
 		if peer, ok := elem["peer"].(NetDevConfig); ok {
 			if peer["name"].(string) != "" {
-				peer["name"] = s.ProcessIndex + peer["name"].(string) + s.Ppid
+				peer["name"] = s.ProcessIndex + peer["name"].(string) + Ppid
 			}
 			if _, ok := peer["netns"]; ok {
-				peer["netns"] = s.ProcessIndex + peer["netns"].(string) + s.Ppid
+				peer["netns"] = s.ProcessIndex + peer["netns"].(string) + Ppid
 			}
 		}
 
 		if _, ok := elem["netns"]; ok {
-			elem["netns"] = s.ProcessIndex + elem["netns"].(string) + s.Ppid
+			elem["netns"] = s.ProcessIndex + elem["netns"].(string) + Ppid
 		}
 
 		if _, ok := elem["interfaces"]; ok {
-			interfaceCount := len(elem["interfaces"].([]interface{}))
-			for i := 0; i < interfaceCount; i++ {
-				elem["interfaces"].([]interface{})[i] = s.ProcessIndex + elem["interfaces"].([]interface{})[i].(string) + s.Ppid
+			interfaceCount := len(elem["interfaces"].([]any))
+			for i := range interfaceCount {
+				elem["interfaces"].([]any)[i] = s.ProcessIndex + elem["interfaces"].([]any)[i].(string) + Ppid
 			}
 		}
 
@@ -672,7 +657,7 @@ func (s *HstSuite) ConfigureNetworkTopology(topologyName string) {
 	}
 
 	for _, nc := range s.NetConfigs {
-		s.Log(nc.Name())
+		Log(nc.Name())
 		if err := nc.configure(); err != nil {
 			Fail("Network config error: " + fmt.Sprint(err))
 		}
@@ -680,20 +665,28 @@ func (s *HstSuite) ConfigureNetworkTopology(topologyName string) {
 }
 
 func (s *HstSuite) UnconfigureNetworkTopology() {
+	var err error
 	for _, nc := range s.NetConfigs {
-		nc.unconfigure()
+		err = nc.unconfigure()
+		if err != nil && nc.Type() == Tap {
+			err = fmt.Errorf("%v (Taps are removed by VPP)", err)
+		}
+		Log("Interface: %s | Type: %s | Error: %v", nc.Name(), nc.Type(), err)
+		if nc.Type() == Veth {
+			AssertNil(err)
+		}
 	}
 }
 
 func (s *HstSuite) LogStartedContainers() {
-	s.Log("%s* Started containers:%s", Colors.grn, Colors.rst)
+	Log("%s* Started containers:%s", Colors.grn, Colors.rst)
 	for _, container := range s.StartedContainers {
-		s.Log(Colors.grn + container.Name + Colors.rst)
+		Log(Colors.grn + container.Name + Colors.rst)
 	}
 }
 
 func (s *HstSuite) GetTestId() string {
-	testName := s.GetCurrentTestName()
+	testName := GetCurrentTestName()
 
 	if s.TestIds == nil {
 		s.TestIds = map[string]string{}
@@ -706,18 +699,10 @@ func (s *HstSuite) GetTestId() string {
 	return s.TestIds[testName]
 }
 
-func (s *HstSuite) GetCurrentTestName() string {
-	return strings.Split(CurrentSpecReport().LeafNodeText, "/")[1]
-}
-
-func (s *HstSuite) GetCurrentSuiteName() string {
-	return CurrentSpecReport().ContainerHierarchyTexts[0]
-}
-
 // Returns last 3 digits of PID + Ginkgo process index as the 4th digit. If the port is in the 'reservedPorts' slice,
 // increment port number by ten and check again. Generates a new port after each use.
 func (s *HstSuite) GeneratePort() string {
-	port := s.Ppid
+	port := Ppid
 	var err error
 	var portInt int
 	for len(port) < 3 {
@@ -727,19 +712,19 @@ func (s *HstSuite) GeneratePort() string {
 	port = strings.TrimLeft(port, "0")
 	for slices.Contains(reservedPorts, port) {
 		portInt, err = strconv.Atoi(port)
-		s.AssertNil(err)
+		AssertNil(err)
 		portInt += 10
 		port = fmt.Sprintf("%d", portInt)
 	}
 	reservedPorts = append(reservedPorts, port)
 	s.numOfNewPorts++
-	s.Log("generated port " + port)
+	Log("generated port " + port)
 	return port
 }
 
 func (s *HstSuite) GeneratePortAsInt() uint16 {
 	port, err := strconv.Atoi(s.GeneratePort())
-	s.AssertNil(err)
+	AssertNil(err)
 	return uint16(port)
 }
 
@@ -752,12 +737,12 @@ Note that if running in parallel Gomega returns from Sample when spins up all sa
 You can record multiple named measurements (float64 or duration) within passed-in callback.
 runBenchmark then produces report to show statistical distribution of measurements.
 */
-func (s *HstSuite) RunBenchmark(name string, samplesNum, parallelNum int, callback func(s *HstSuite, e *gmeasure.Experiment, data interface{}), data interface{}) {
+func (s *HstSuite) RunBenchmark(name string, samplesNum, parallelNum int, callback func(e *gmeasure.Experiment, data any), data any) {
 	experiment := gmeasure.NewExperiment(name)
 
 	experiment.Sample(func(idx int) {
 		defer GinkgoRecover()
-		callback(s, experiment, data)
+		callback(experiment, data)
 	}, gmeasure.SamplingConfig{N: samplesNum, NumParallel: parallelNum})
 	AddReportEntry(experiment.Name, experiment)
 }
@@ -771,7 +756,7 @@ func (s *HstSuite) LogHttpReq(body bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		dump, err := httputil.DumpRequest(req, body)
 		if err == nil {
-			s.Log("\n> Received request (" + req.RemoteAddr + "):\n" +
+			Log("\n> Received request (" + req.RemoteAddr + "):\n" +
 				string(dump) +
 				"\n------------------------------\n")
 		}

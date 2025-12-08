@@ -73,13 +73,13 @@ func (s *NginxProxySuite) SetupTest() {
 		Append("use-app-socket-api")
 
 	vpp, err := s.Containers.Vpp.newVppInstance(s.Containers.Vpp.AllocatedCpus, sessionConfig)
-	s.AssertNotNil(vpp, fmt.Sprint(err))
+	AssertNotNil(vpp, fmt.Sprint(err))
 
 	// nginx proxy
-	s.AssertNil(s.Containers.NginxProxy.Create())
+	AssertNil(s.Containers.NginxProxy.Create())
 
 	// nginx HTTP server
-	s.AssertNil(s.Containers.NginxServerTransient.Create())
+	AssertNil(s.Containers.NginxServerTransient.Create())
 	nginxSettings := struct {
 		LogPrefix string
 		Address   string
@@ -101,24 +101,24 @@ func (s *NginxProxySuite) SetupTest() {
 		nginxSettings,
 	)
 
-	s.AssertNil(vpp.Start())
-	s.AssertNil(vpp.CreateTap(s.Interfaces.Client, false, 1))
-	s.AssertNil(vpp.CreateTap(s.Interfaces.Server, false, 2))
+	AssertNil(vpp.Start())
+	AssertNil(vpp.CreateTap(s.Interfaces.Client, false, 1))
+	AssertNil(vpp.CreateTap(s.Interfaces.Server, false, 2))
 
 	if *DryRun {
 		s.LogStartedContainers()
-		s.Log("%s* Proxy IP used in tests: %s:%d%s", Colors.pur, s.ProxyAddr(), s.ProxyPort(), Colors.rst)
+		Log("%s* Proxy IP used in tests: %s:%d%s", Colors.pur, s.ProxyAddr(), s.ProxyPort(), Colors.rst)
 		s.Skip("Dry run mode = true")
 	}
 
-	s.AssertNil(s.Containers.NginxServerTransient.Start())
+	AssertNil(s.Containers.NginxServerTransient.Start())
 }
 
 func (s *NginxProxySuite) TeardownTest() {
 	defer s.HstSuite.TeardownTest()
 	if CurrentSpecReport().Failed() {
-		s.CollectNginxLogs(s.Containers.NginxProxy)
-		s.CollectNginxLogs(s.Containers.NginxServerTransient)
+		CollectNginxLogs(s.Containers.NginxProxy)
+		CollectNginxLogs(s.Containers.NginxServerTransient)
 	}
 }
 
@@ -165,10 +165,10 @@ func (s *NginxProxySuite) ProxyAddr() string {
 
 func (s *NginxProxySuite) CurlDownloadResource(uri string) {
 	args := fmt.Sprintf("-w @/tmp/write_out_download --max-time %d --insecure --noproxy '*' --remote-name --output-dir /tmp %s", s.maxTimeout, uri)
-	writeOut, log := s.RunCurlContainer(s.Containers.Curl, args)
-	s.AssertContains(writeOut, "GET response code: 200")
-	s.AssertNotContains(log, "bytes remaining to read")
-	s.AssertNotContains(log, "Operation timed out")
+	writeOut, log := RunCurlContainer(s.Containers.Curl, args)
+	AssertContains(writeOut, "GET response code: 200")
+	AssertNotContains(log, "bytes remaining to read")
+	AssertNotContains(log, "Operation timed out")
 }
 
 func (s *NginxProxySuite) AddVclConfig(container *Container, multiThreadWorkers bool) {
@@ -193,7 +193,7 @@ func (s *NginxProxySuite) AddVclConfig(container *Container, multiThreadWorkers 
 	}
 
 	err := vclConf.Close().SaveToFile(vclFileName)
-	s.AssertNil(err, fmt.Sprint(err))
+	AssertNil(err, fmt.Sprint(err))
 }
 
 var _ = Describe("NginxProxySuite", Ordered, ContinueOnFailure, Label("Nginx", "Proxy", "LDP", "VCL"), func() {
@@ -218,7 +218,7 @@ var _ = Describe("NginxProxySuite", Ordered, ContinueOnFailure, Label("Nginx", "
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, func(ctx SpecContext) {
-				s.Log(testName + ": BEGIN")
+				Log(testName + ": BEGIN")
 				test(&s)
 			}, SpecTimeout(TestTimeout))
 		}
@@ -247,7 +247,7 @@ var _ = Describe("NginxProxySuiteSolo", Ordered, ContinueOnFailure, Serial, Labe
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, func(ctx SpecContext) {
-				s.Log(testName + ": BEGIN")
+				Log(testName + ": BEGIN")
 				test(&s)
 			}, SpecTimeout(TestTimeout))
 		}
