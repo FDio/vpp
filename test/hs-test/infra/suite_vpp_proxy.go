@@ -89,11 +89,11 @@ func (s *VppProxySuite) SetupTest() {
 	var memoryConfig Stanza
 	memoryConfig.NewStanza("memory").Append("main-heap-size 2G")
 	vpp, err := s.Containers.VppProxy.newVppInstance(s.Containers.VppProxy.AllocatedCpus, memoryConfig)
-	s.AssertNotNil(vpp, fmt.Sprint(err))
+	AssertNotNil(vpp, fmt.Sprint(err))
 
-	s.AssertNil(vpp.Start())
-	s.AssertNil(vpp.CreateTap(s.Interfaces.Client, false, 1))
-	s.AssertNil(vpp.CreateTap(s.Interfaces.Server, false, 2))
+	AssertNil(vpp.Start())
+	AssertNil(vpp.CreateTap(s.Interfaces.Client, false, 1))
+	AssertNil(vpp.CreateTap(s.Interfaces.Server, false, 2))
 
 	if *DryRun {
 		s.LogStartedContainers()
@@ -105,15 +105,15 @@ func (s *VppProxySuite) TeardownTest() {
 	defer s.HstSuite.TeardownTest()
 	vpp := s.Containers.VppProxy.VppInstance
 	if CurrentSpecReport().Failed() {
-		s.Log(vpp.Vppctl("show session verbose 2"))
-		s.Log(vpp.Vppctl("show error"))
-		s.CollectNginxLogs(s.Containers.NginxServerTransient)
-		s.CollectIperfLogs(s.Containers.IperfS)
+		Log(vpp.Vppctl("show session verbose 2"))
+		Log(vpp.Vppctl("show error"))
+		CollectNginxLogs(s.Containers.NginxServerTransient)
+		CollectIperfLogs(s.Containers.IperfS)
 	}
 }
 
 func (s *VppProxySuite) SetupNginxServer() {
-	s.AssertNil(s.Containers.NginxServerTransient.Create())
+	AssertNil(s.Containers.NginxServerTransient.Create())
 	nginxSettings := struct {
 		LogPrefix string
 		Address   string
@@ -134,7 +134,7 @@ func (s *VppProxySuite) SetupNginxServer() {
 		"./resources/nginx/nginx_server.conf",
 		nginxSettings,
 	)
-	s.AssertNil(s.Containers.NginxServerTransient.Start())
+	AssertNil(s.Containers.NginxServerTransient.Start())
 }
 
 func (s *VppProxySuite) ConfigureVppProxy(proto string, proxyPort uint16) {
@@ -148,7 +148,7 @@ func (s *VppProxySuite) ConfigureVppProxy(proto string, proxyPort uint16) {
 	}
 
 	output := vppProxy.Vppctl(cmd)
-	s.Log("proxy configured: " + output)
+	Log("proxy configured: " + output)
 }
 
 func (s *VppProxySuite) ServerAddr() string {
@@ -165,29 +165,29 @@ func (s *VppProxySuite) ClientAddr() string {
 
 func (s *VppProxySuite) CurlRequest(targetUri string) (string, string) {
 	args := fmt.Sprintf("--insecure --noproxy '*' %s", targetUri)
-	body, log := s.RunCurlContainer(s.Containers.Curl, args)
+	body, log := RunCurlContainer(s.Containers.Curl, args)
 	return body, log
 }
 
 func (s *VppProxySuite) CurlRequestViaTunnel(targetUri string, proxyUri string) (string, string) {
 	args := fmt.Sprintf("--max-time %d --insecure -p -x %s %s", s.maxTimeout, proxyUri, targetUri)
-	body, log := s.RunCurlContainer(s.Containers.Curl, args)
+	body, log := RunCurlContainer(s.Containers.Curl, args)
 	return body, log
 }
 
 func (s *VppProxySuite) CurlDownloadResource(uri string) {
 	args := fmt.Sprintf("-w @/tmp/write_out_download --max-time %d --insecure --noproxy '*' --remote-name --output-dir /tmp %s", s.maxTimeout, uri)
-	writeOut, log := s.RunCurlContainer(s.Containers.Curl, args)
-	s.AssertContains(writeOut, "GET response code: 200")
-	s.AssertNotContains(log, "bytes remaining to read")
-	s.AssertNotContains(log, "Operation timed out")
+	writeOut, log := RunCurlContainer(s.Containers.Curl, args)
+	AssertContains(writeOut, "GET response code: 200")
+	AssertNotContains(log, "bytes remaining to read")
+	AssertNotContains(log, "Operation timed out")
 }
 
 func (s *VppProxySuite) CurlUploadResource(uri, file string) {
 	args := fmt.Sprintf("-w @/tmp/write_out_upload --max-time %d --insecure --noproxy '*' -T %s %s", s.maxTimeout, file, uri)
-	writeOut, log := s.RunCurlContainer(s.Containers.Curl, args)
-	s.AssertContains(writeOut, "PUT response code: 201")
-	s.AssertNotContains(log, "Operation timed out")
+	writeOut, log := RunCurlContainer(s.Containers.Curl, args)
+	AssertContains(writeOut, "PUT response code: 201")
+	AssertNotContains(log, "Operation timed out")
 }
 
 func (s *VppProxySuite) CurlDownloadResourceViaTunnel(uri string, proxyUri string, extraArgs ...string) (string, string) {
@@ -197,17 +197,17 @@ func (s *VppProxySuite) CurlDownloadResourceViaTunnel(uri string, proxyUri strin
 		extras += " "
 	}
 	args := fmt.Sprintf("%s-w @/tmp/write_out_download_connect --max-time %d --insecure --proxy-insecure -p -x %s --remote-name --output-dir /tmp %s", extras, s.maxTimeout, proxyUri, uri)
-	writeOut, log := s.RunCurlContainer(s.Containers.Curl, args)
+	writeOut, log := RunCurlContainer(s.Containers.Curl, args)
 	if strings.Contains(extras, "proxy-http2") {
 		// in case of h2 connect response code is 000 in write out
-		s.AssertContains(log, "CONNECT tunnel established, response 200")
+		AssertContains(log, "CONNECT tunnel established, response 200")
 	} else {
-		s.AssertContains(writeOut, "CONNECT response code: 200")
+		AssertContains(writeOut, "CONNECT response code: 200")
 	}
-	s.AssertContains(writeOut, "GET response code: 200")
-	s.AssertNotContains(log, "bytes remaining to read")
-	s.AssertNotContains(log, "Operation timed out")
-	s.AssertNotContains(log, "Upgrade:")
+	AssertContains(writeOut, "GET response code: 200")
+	AssertNotContains(log, "bytes remaining to read")
+	AssertNotContains(log, "Operation timed out")
+	AssertNotContains(log, "Upgrade:")
 	return writeOut, log
 }
 
@@ -218,16 +218,16 @@ func (s *VppProxySuite) CurlUploadResourceViaTunnel(uri, proxyUri, file string, 
 		extras += " "
 	}
 	args := fmt.Sprintf("%s-w @/tmp/write_out_upload_connect --max-time %d --insecure --proxy-insecure -p -x %s -T %s %s", extras, s.maxTimeout, proxyUri, file, uri)
-	writeOut, log := s.RunCurlContainer(s.Containers.Curl, args)
+	writeOut, log := RunCurlContainer(s.Containers.Curl, args)
 	if strings.Contains(extras, "proxy-http2") {
 		// in case of h2 connect response code is 000 in write out
-		s.AssertContains(log, "CONNECT tunnel established, response 200")
+		AssertContains(log, "CONNECT tunnel established, response 200")
 	} else {
-		s.AssertContains(writeOut, "CONNECT response code: 200")
+		AssertContains(writeOut, "CONNECT response code: 200")
 	}
-	s.AssertContains(writeOut, "PUT response code: 201")
-	s.AssertNotContains(log, "Operation timed out")
-	s.AssertNotContains(log, "Upgrade:")
+	AssertContains(writeOut, "PUT response code: 201")
+	AssertNotContains(log, "Operation timed out")
+	AssertNotContains(log, "Upgrade:")
 	return writeOut, log
 }
 
@@ -268,7 +268,7 @@ var _ = Describe("VppProxySuite", Ordered, ContinueOnFailure, Label("VPPproxy", 
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, func(ctx SpecContext) {
-				s.Log(testName + ": BEGIN")
+				Log(testName + ": BEGIN")
 				test(&s)
 			}, SpecTimeout(TestTimeout))
 		}
@@ -297,7 +297,7 @@ var _ = Describe("VppProxySuiteSolo", Ordered, ContinueOnFailure, Serial, Label(
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, func(ctx SpecContext) {
-				s.Log(testName + ": BEGIN")
+				Log(testName + ": BEGIN")
 				test(&s)
 			}, SpecTimeout(TestTimeout))
 		}
@@ -326,7 +326,7 @@ var _ = Describe("VppProxyMWSuite", Ordered, ContinueOnFailure, Serial, Label("V
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, func(ctx SpecContext) {
-				s.Log(testName + ": BEGIN")
+				Log(testName + ": BEGIN")
 				test(&s)
 			}, SpecTimeout(TestTimeout))
 		}
@@ -362,7 +362,7 @@ var _ = Describe("H2SpecProxySuite", Ordered, ContinueOnFailure, Label("HTTP", "
 		test := test
 		testName := "proxy_test.go/h2spec_" + strings.ReplaceAll(test.desc, "/", "_")
 		It(testName, func(ctx SpecContext) {
-			s.Log(testName + ": BEGIN")
+			Log(testName + ": BEGIN")
 			s.SetupNginxServer()
 			s.ConfigureVppProxy("https", s.Ports.Proxy)
 			path := fmt.Sprintf("%s:%d", s.ServerAddr(), s.Ports.Server)
@@ -396,8 +396,8 @@ var _ = Describe("H2SpecProxySuite", Ordered, ContinueOnFailure, Label("HTTP", "
 			w.Close()
 			os.Stdout = oldStdout
 			o := <-oChan
-			s.Log(o)
-			s.AssertEqual(0, tg.FailedCount)
+			Log(o)
+			AssertEqual(0, tg.FailedCount)
 		}, SpecTimeout(TestTimeout))
 	}
 })

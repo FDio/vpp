@@ -104,7 +104,6 @@ help:
 	@echo " build                    - build test infra"
 	@echo " build-cov                - coverage build of VPP and Docker images"
 	@echo " build-debug              - build test infra (vpp debug image)"
-	@echo " build-go                 - just build golang files"
 	@echo " checkstyle-go            - check style of .go source files"
 	@echo " fixstyle-go              - format .go source files"
 	@echo " cleanup-hst              - removes all docker containers and namespaces from last test run"
@@ -216,11 +215,6 @@ test-leak: .deps.ok .build_debug.ok
 		-e BUILD_NUMBER=$(BUILD_NUMBER) $(DOCKER_VOLUMES) --name ginkgo hs-test/ginkgo \
 		.$(HS_ROOT)/hs_test.sh --test=$(TEST) --debug_build=true --leak_check=true --vppsrc=$(VPPSRC) --timeout=$(TIMEOUT) \
 		--ginkgo_timeout=$(GINKGO_TIMEOUT) --vpp_cpus=$(VPP_CPUS) --hs_root=$(HS_ROOT) --label="$(LABEL)";
-
-# this is executed in a container by hs-test.sh
-.PHONY: build-go
-build-go:
-	go build --buildvcs=false ./tools/http_server
 
 .PHONY: build
 build: .deps.ok build-vpp-release
