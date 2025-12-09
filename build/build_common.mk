@@ -21,6 +21,7 @@ DL_CACHE_DIR = $(HOME)/Downloads
 MAKE_ARGS ?= -j
 BUILD_DIR        ?= $(CURDIR)/_build
 INSTALL_DIR      ?= $(CURDIR)/_install
+ROOT_DIR 		 ?= $(DESTDIR)
 DOWNLOAD_DIR     ?= $(CURDIR)/downloads
 PKG_VERSION ?= $(shell git describe --abbrev=0 --match 'v[0-9]*' | cut -d- -f1 | cut -dv -f2 | cut -d. -f1,2)
 SOURCE_DATE_EPOCH ?= $(shell git log -1 --pretty=%ct .)
@@ -33,6 +34,7 @@ endif	# FreeBSD
 
 B := $(BUILD_DIR)
 I := $(INSTALL_DIR)
+R := $(ROOT_DIR)
 D := $(DOWNLOAD_DIR)
 ifeq ($(WORKSPACE),)
 L := $(B)
