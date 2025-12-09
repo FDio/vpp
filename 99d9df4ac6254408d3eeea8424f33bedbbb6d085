@@ -51,6 +51,24 @@
       "parentUuid": "f95ae170_89576c55",
       "revId": "99d9df4ac6254408d3eeea8424f33bedbbb6d085",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "753a7fc1_9992e89d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-12-09T03:35:51Z",
+      "side": 1,
+      "message": "Thanks for looking into this Mohammad.  44303 is an incomplete fix (see my comment there), so I\u0027d prefer to merge this revert.\n\nAfterwards, please push a new gerrit change and we\u0027ll start over again.",
+      "parentUuid": "c3b9b5d5_f90af53d",
+      "revId": "99d9df4ac6254408d3eeea8424f33bedbbb6d085",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
