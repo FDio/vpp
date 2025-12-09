@@ -1216,6 +1216,7 @@ hcpc_http_session_reset_callback (session_t *s)
   HCPC_DBG ("session [%u]", s->opaque);
   clib_spinlock_lock_if_init (&hcpcm->sessions_lock);
   ps = hcpc_session_get (s->opaque);
+  ASSERT (ps);
   if (ps->flags & HCPC_SESSION_F_IS_PARENT)
     {
       hcpc_http_connection_closed (ps);
