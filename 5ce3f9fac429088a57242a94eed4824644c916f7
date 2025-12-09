@@ -34,6 +34,24 @@
       "parentUuid": "45ce0f39_462c0646",
       "revId": "5ce3f9fac429088a57242a94eed4824644c916f7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d561f224_123b862a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3189
+      },
+      "writtenOn": "2025-12-09T21:58:58Z",
+      "side": 1,
+      "message": "i also found that the dpdk build was wrong i change it back to pkgconfig\nthe main problem for this was after updating the pkgconfig path those path was not working for the build because they were on debain/tmp\ni use PKG_CONFIG_SYSROOT_DIR to set a default sysroot so when dpdk use debain/tmp pkgconfig we not get any error in linking\n\ni also check the size of vpp-ext-deb size before and after this patch and it\u0027s not changed\n\nll /home/mahdi255/nemati/vpp/build/external/vpp-ext-deps_26.02-*.deb\n-rw-r--r-- 1 mahdi255 mahdi255 76M Dec  9 04:14 /home/mahdi255/nemati/vpp/build/external/vpp-ext-deps_26.02-3_amd64.deb -\u003e original\n-rw-r--r-- 1 mahdi255 mahdi255 85M Dec  9 14:00 /home/mahdi255/nemati/vpp/build/external/vpp-ext-deps_26.02-4_amd64.deb -\u003e reverted patch\n-rw-r--r-- 1 mahdi255 mahdi255 76M Dec 10 00:39 /home/mahdi255/nemati/vpp/build/external/vpp-ext-deps_26.02-5_amd64.deb -\u003e new patch",
+      "parentUuid": "9133adab_14915cfc",
+      "revId": "5ce3f9fac429088a57242a94eed4824644c916f7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }

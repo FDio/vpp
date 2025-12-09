@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ff5357c0_2b05fbe8",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3189
+      },
+      "writtenOn": "2025-12-09T21:58:58Z",
+      "side": 1,
+      "message": "hi, can you check if it\u0027s ok\nI fixed the problem that the reverted patch caused\n\n1. fixing the make install-ext-deps\n2. fixing dpdk build",
+      "revId": "2ad0e66f2c37755b3869043c5c5176555c926d3c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
