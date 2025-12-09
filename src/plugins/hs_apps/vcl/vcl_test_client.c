@@ -53,6 +53,7 @@ struct vtc_worker_
   pthread_t thread_handle;
   vtc_worker_run_fn *wrk_run_fn;
   hs_test_cfg_t cfg;
+  struct timespec old_stats_stop;
 };
 
 typedef struct
@@ -279,18 +280,48 @@ vtc_worker_sessions_exit (vcl_test_client_worker_t * wrk)
 }
 
 static void
-vtc_inc_stats_check (vcl_test_session_t *ts)
+vtc_worker_inc_stats_check (vcl_test_client_worker_t *wrk,
+			    vcl_test_session_t *ts)
 {
+  struct timespec now;
+  uint32_t i, n_print = 0;
+  uint64_t total_bytes = 0;
+  double duration, total_rate;
+
   /* Avoid checking time too often because of syscall cost */
   if (ts->stats.tx_bytes - ts->old_stats.tx_bytes < 1 << 20)
     return;
 
-  clock_gettime (CLOCK_REALTIME, &ts->stats.stop);
-  if (vcl_test_time_diff (&ts->old_stats.stop, &ts->stats.stop) > 1)
+  clock_gettime (CLOCK_REALTIME, &now);
+  if (vcl_test_time_diff (&wrk->old_stats_stop, &now) < 1)
+    return;
+
+  for (i = 0; i < wrk->cfg.num_test_sessions; i++)
     {
-      vcl_test_stats_dump_inc (ts, 0 /* is_rx */);
-      ts->old_stats = ts->stats;
+      ts = &wrk->sessions[i];
+      if (ts->is_done)
+	continue;
+
+      ts->stats.stop = now;
+      if (vcl_test_time_diff (&ts->old_stats.stop, &ts->stats.stop) > 1)
+	{
+	  vcl_test_stats_dump_inc (ts, 0 /* is_rx */);
+	  total_bytes += ts->stats.tx_bytes - ts->old_stats.tx_bytes;
+	  ts->old_stats = ts->stats;
+	  n_print++;
+	}
     }
+
+  if (n_print > 1)
+    {
+      duration = vcl_test_time_diff (&wrk->old_stats_stop, &now);
+      total_rate = (double) total_bytes * 8 / duration / 1e9;
+      printf ("Sum: Sent %lu Mbytes in %.2lf seconds %.2lf Gbps\n",
+	      (uint64_t) (total_bytes / 1e6), duration, total_rate);
+      printf ("-------------------------------------------------\n");
+    }
+
+  wrk->old_stats_stop = now;
 }
 
 static void
@@ -429,7 +460,7 @@ vtc_worker_run_select (vcl_test_client_worker_t *wrk)
 		  vtc_abort_test ();
 		}
 	      if (vcm->incremental_stats)
-		vtc_inc_stats_check (ts);
+		vtc_worker_inc_stats_check (wrk, ts);
 	    }
 	  if (vtc_session_check_is_done (ts, check_rx))
 	    n_active_sessions -= 1;
@@ -620,7 +651,7 @@ vtc_worker_run_epoll (vcl_test_client_worker_t *wrk)
       if (rv > 0)
 	{
 	  if (vcm->incremental_stats)
-	    vtc_inc_stats_check (ts);
+	    vtc_worker_inc_stats_check (wrk, ts);
 	  if (vtc_session_check_is_done (ts, check_rx))
 	    n_active_sessions -= 1;
 	}
