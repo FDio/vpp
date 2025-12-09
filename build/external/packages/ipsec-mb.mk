@@ -30,15 +30,19 @@ define  ipsec-mb_build_cmds
 	  SAFE_PARAM=n \
 	  SAFE_LOOKUP=n \
 	  SAFE_DATA=n \
-	  PREFIX=$(ipsec-mb_install_dir) \
+	  PREFIX=$(ipsec-mb_root_dir)/$(ipsec-mb_install_dir) \
 	  EXTRA_CFLAGS="-g -msse4.2" > $(ipsec-mb_build_log)
 endef
 
 define  ipsec-mb_install_cmds
-	@mkdir -p $(ipsec-mb_install_dir)/include
-	@mkdir -p $(ipsec-mb_install_dir)/lib
-	@cp $(ipsec-mb_src_dir)/lib/intel-ipsec-mb.h $(ipsec-mb_install_dir)/include
-	@cp $(ipsec-mb_src_dir)/lib/libIPSec_MB.a $(ipsec-mb_install_dir)/lib
+	@$(MAKE) -C $(ipsec-mb_src_dir)/lib install \
+		V=1 \
+		NOLDCONFIG=y \
+		SHARED=n \
+		SAFE_PARAM=n \
+		SAFE_LOOKUP=n \
+		SAFE_DATA=n \
+		PREFIX=$(ipsec-mb_root_dir)/$(ipsec-mb_install_dir) >> $(ipsec-mb_install_log)
 endef
 
 $(eval $(call package,ipsec-mb))

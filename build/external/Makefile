@@ -29,7 +29,7 @@ include packages/dpdk.mk
 
 .PHONY: clean
 clean:
-	@rm -rf $(B) $(I)
+	@rm -rf $(B) $(R)/$(I)
 
 .PHONY: install
 ifeq ($(shell uname), FreeBSD)
