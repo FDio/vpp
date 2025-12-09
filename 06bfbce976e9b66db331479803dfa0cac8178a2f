@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "63c47ad9_159153db",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2025-12-09T16:25:03Z",
+      "side": 1,
+      "message": "csit-2n-icx-perftest mrrANDnic_*AND1cANDethip?-ip?base",
+      "revId": "06bfbce976e9b66db331479803dfa0cac8178a2f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
