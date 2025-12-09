@@ -21,11 +21,11 @@ DPDK_MLX_IBV_LINK            ?= static
 # On most of the systems, default value for max lcores is 128
 DPDK_MAX_LCORES              ?=
 
-dpdk_version                 ?= 25.07
+dpdk_version                 ?= 25.11
 dpdk_base_url                ?= http://fast.dpdk.org/rel
 dpdk_tarball                 := dpdk-$(dpdk_version).tar.xz
 
-dpdk_tarball_sha256sum_25.07 := 6886cbedc350bb8cbef347d10367d6259e36435627fbb27d578adbdc0d3b410d
+dpdk_tarball_sha256sum_25.11 := 52e90d2a531ef3ded0283bd91abc94980698f1f6471fa09658a0217cf6609526
 
 dpdk_tarball_sha256sum       := $(dpdk_tarball_sha256sum_$(dpdk_version))
 dpdk_url                     := $(dpdk_base_url)/$(dpdk_tarball)
