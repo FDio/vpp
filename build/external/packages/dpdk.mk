@@ -201,7 +201,9 @@ define dpdk_config_cmds
 	source ../dpdk-meson-venv/bin/activate && \
 	(if ! ls $(PIP_DOWNLOAD_DIR)meson* ; then pip3 download -d $(PIP_DOWNLOAD_DIR) -f $(DL_CACHE_DIR) meson==0.57.2 setuptools wheel pyelftools; fi) && \
 	pip3 install --no-index --find-links=$(PIP_DOWNLOAD_DIR) meson==0.57.2 pyelftools && \
-	PKG_CONFIG_PATH=$(dpdk_install_dir)/lib/pkgconfig meson setup $(dpdk_src_dir) \
+	PKG_CONFIG_PATH=$(dpdk_root_dir)/$(dpdk_install_dir)/lib/pkgconfig \
+	PKG_CONFIG_SYSROOT_DIR=$(dpdk_root_dir) \
+	meson setup $(dpdk_src_dir) \
 		$(dpdk_build_dir) \
 		$(DPDK_MESON_ARGS) \
 			| tee $(dpdk_config_log) && \
@@ -227,7 +229,7 @@ define dpdk_install_cmds
 	cd $(dpdk_build_dir) && \
 	source ../dpdk-meson-venv/bin/activate && \
 	meson install && \
-	cd $(dpdk_install_dir)/lib && \
+	cd $(dpdk_root_dir)/$(dpdk_install_dir)/lib && \
 	echo "GROUP ( $$(ls librte*.a ) )" > libdpdk.a && \
 	rm -rf librte*.so librte*.so.* dpdk/*/librte*.so dpdk/*/librte*.so.* && \
 	deactivate
