@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "99d9df4ac6254408d3eeea8424f33bedbbb6d085",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f95ae170_89576c55",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3189
+      },
+      "writtenOn": "2025-12-09T00:00:48Z",
+      "side": 1,
+      "message": "hi\nI see the problem\nI think by removing line \n-DCMAKE_INSTALL_SYSCONFDIR\u003d/etc/vpp\nfrom rdma core the problem should solve because all mlx5 and other drivers are here and in vpp ext deb after fix pkgconfig the path for thess configs have been changed",
+      "revId": "99d9df4ac6254408d3eeea8424f33bedbbb6d085",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
