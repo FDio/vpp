@@ -43,6 +43,30 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "93f952df_2014ca40",
+        "filename": "src/plugins/tap/tx_node.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 317,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2025-12-09T18:15:54Z",
+      "side": 1,
+      "message": "why do you think so, we drop this buffer, but next may be ok",
+      "parentUuid": "72449876_ac971c8b",
+      "range": {
+        "startLine": 317,
+        "startChar": 4,
+        "endLine": 317,
+        "endChar": 13
+      },
+      "revId": "114a11835073c4b3b1881501d914d9cd920ca7f4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "94fe249f_3cbd034d",
         "filename": "src/vnet/devices/virtio/device.c",
         "patchSetId": 16
@@ -54,6 +78,30 @@
       "writtenOn": "2025-12-08T10:42:49Z",
       "side": 1,
       "message": "Please remove this too.",
+      "range": {
+        "startLine": 351,
+        "startChar": 3,
+        "endLine": 351,
+        "endChar": 18
+      },
+      "revId": "114a11835073c4b3b1881501d914d9cd920ca7f4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "42d9e613_2b11fb4c",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 351,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2025-12-09T18:15:54Z",
+      "side": 1,
+      "message": "This should be done in separate patch, intentionally I didn\u0027t want to do functional changes in remaining virtio code.",
+      "parentUuid": "94fe249f_3cbd034d",
       "range": {
         "startLine": 351,
         "startChar": 3,
@@ -89,6 +137,30 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "e8f06d97_dbc31938",
+        "filename": "src/vnet/devices/virtio/node.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 263,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2025-12-09T18:15:54Z",
+      "side": 1,
+      "message": "This should be done in separate patch, intentionally I didn\u0027t want to do functional changes in remaining virtio code.",
+      "parentUuid": "bbe8b6ad_6b418816",
+      "range": {
+        "startLine": 263,
+        "startChar": 6,
+        "endLine": 263,
+        "endChar": 29
+      },
+      "revId": "114a11835073c4b3b1881501d914d9cd920ca7f4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "f76b484c_85d40eb0",
         "filename": "src/vnet/devices/virtio/node.c",
         "patchSetId": 16
@@ -100,6 +172,30 @@
       "writtenOn": "2025-12-08T10:42:49Z",
       "side": 1,
       "message": "Please remove this too. virtio_input will enqueue packets to single next node.",
+      "range": {
+        "startLine": 365,
+        "startChar": 3,
+        "endLine": 366,
+        "endChar": 36
+      },
+      "revId": "114a11835073c4b3b1881501d914d9cd920ca7f4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1a9646b2_1b6e4796",
+        "filename": "src/vnet/devices/virtio/node.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 366,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2025-12-09T18:15:54Z",
+      "side": 1,
+      "message": "This should be done in separate patch, intentionally I didn\u0027t want to do functional changes in remaining virtio code.",
+      "parentUuid": "f76b484c_85d40eb0",
       "range": {
         "startLine": 365,
         "startChar": 3,
