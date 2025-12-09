@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "19e54581_222cfc6f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3189
+      },
+      "writtenOn": "2025-12-09T10:39:43Z",
+      "side": 1,
+      "message": "dpdk \u0026 rdma-core update",
+      "revId": "1288a7b815d82e41fb4ddf4055508d279a111db1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
