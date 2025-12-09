@@ -3,7 +3,7 @@ index e5dff3c43..ffd0a6476 100644
 --- a/build/external/Makefile
 +++ b/build/external/Makefile
 @@ -45,10 +45,10 @@ clean:
- 	@rm -rf $(B) $(I)
+ 	@rm -rf $(B) $(R)/$(I)
  
  .PHONY: install
 -install: dpdk-install rdma-core-install quicly-install
