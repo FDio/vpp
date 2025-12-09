@@ -65,7 +65,8 @@ jobs:
           git show --stat
 
       - name: Install VPP dependencies
-        uses: pmikus/vpp/.github/actions/vpp-install-deps@master
+        # yamllint disable-line rule:line-length
+        uses: fdio/vpp/.github/actions/vpp-install-ext-deps@f9e0f384d665800c8e580da853e26558dd6d2668
         with:
           WORKSPACE: ${{ env.WORKSPACE }}
           TUI_LINE: ${{ env.TUI_LINE }}
