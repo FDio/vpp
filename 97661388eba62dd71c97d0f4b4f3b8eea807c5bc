@@ -22,6 +22,30 @@
       },
       "revId": "97661388eba62dd71c97d0f4b4f3b8eea807c5bc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b7664e69_cedb2d36",
+        "filename": "test/hs-test/vcl_test.go",
+        "patchSetId": 3
+      },
+      "lineNbr": 160,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-12-09T15:40:55Z",
+      "side": 1,
+      "message": "It was supposed to be \"over\" :D\nThanks for the catch",
+      "parentUuid": "5b271d7a_68b26c71",
+      "range": {
+        "startLine": 160,
+        "startChar": 5,
+        "endLine": 160,
+        "endChar": 23
+      },
+      "revId": "97661388eba62dd71c97d0f4b4f3b8eea807c5bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
