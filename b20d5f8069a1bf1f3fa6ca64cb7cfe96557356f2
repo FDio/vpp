@@ -69,6 +69,24 @@
       "parentUuid": "17db0587_e7e0989a",
       "revId": "b20d5f8069a1bf1f3fa6ca64cb7cfe96557356f2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bc22364e_2b28c3e7",
+        "filename": "src/plugins/hs_apps/vcl/vcl_test_server.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 739,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-12-09T17:42:07Z",
+      "side": 1,
+      "message": "If ctrl goes away, we have no knowledge of test state as it is stored inside vsm-\u003ectrl.cfg.\nAt this point, the test is failed and stopped. Any dangling connections should be cleared.",
+      "parentUuid": "0b955a51_18a206e6",
+      "revId": "b20d5f8069a1bf1f3fa6ca64cb7cfe96557356f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
