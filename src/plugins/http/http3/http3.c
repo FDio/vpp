@@ -893,6 +893,7 @@ http3_stream_transport_rx_req_server (http3_stream_ctx_t *sctx,
 	  if (sctx->base.state != HTTP_REQ_STATE_WAIT_TRANSPORT_METHOD)
 	    {
 	      /* FIXME: connection error */
+	      err = HTTP3_ERROR_INTERNAL_ERROR;
 	      goto error;
 	    }
 	  break;
@@ -901,6 +902,7 @@ http3_stream_transport_rx_req_server (http3_stream_ctx_t *sctx,
 	  if (sctx->base.state != HTTP_REQ_STATE_TRANSPORT_IO_MORE_DATA)
 	    {
 	      /* FIXME: connection error */
+	      err = HTTP3_ERROR_INTERNAL_ERROR;
 	      goto error;
 	    }
 	  break;
