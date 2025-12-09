@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "32bf93b0_8a2f4bc0",
+        "filename": "test/hs-test/README.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-12-09T12:18:59Z",
+      "side": 1,
+      "message": "/var/crash/core-%e-%p-%t or something without vpp since this is global",
+      "range": {
+        "startLine": 25,
+        "startChar": 16,
+        "endLine": 25,
+        "endChar": 42
+      },
+      "revId": "b2883067b47e7135394978ee8fe8d16fb16baf57",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f9f92b3a_8ace3736",
+        "filename": "test/hs-test/http1_test.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 54,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-12-09T12:18:59Z",
+      "side": 1,
+      "message": "this can be removed",
+      "range": {
+        "startLine": 54,
+        "startChar": 27,
+        "endLine": 54,
+        "endChar": 38
+      },
+      "revId": "b2883067b47e7135394978ee8fe8d16fb16baf57",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2d91635a_a73f95ba",
+        "filename": "test/hs-test/http1_test.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 95,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-12-09T12:18:59Z",
+      "side": 1,
+      "message": "this can be removed",
+      "range": {
+        "startLine": 95,
+        "startChar": 25,
+        "endLine": 95,
+        "endChar": 36
+      },
+      "revId": "b2883067b47e7135394978ee8fe8d16fb16baf57",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2d8c6f2a_41f228fb",
+        "filename": "test/hs-test/infra/utils.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 178,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-12-09T12:18:59Z",
+      "side": 1,
+      "message": "do we need this now (including all below)?",
+      "range": {
+        "startLine": 178,
+        "startChar": 5,
+        "endLine": 178,
+        "endChar": 18
+      },
+      "revId": "b2883067b47e7135394978ee8fe8d16fb16baf57",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
