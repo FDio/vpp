@@ -1491,6 +1491,13 @@ ec_print_final_stats (vlib_main_t *vm, f64 total_delta)
 	  transfer_type);
 }
 
+static u8
+ec_transport_proto_is_cless ()
+{
+  return (ec_main.transport_proto == TRANSPORT_PROTO_UDP ||
+	  ec_main.transport_proto == TRANSPORT_PROTO_SRTP);
+}
+
 static clib_error_t *
 ec_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	       vlib_cli_command_t *cmd)
@@ -1672,7 +1679,7 @@ parse_config:
       goto stop_test;
 
     case EC_CLI_CONNECTS_DONE:
-      if (ecm->transport_proto == TRANSPORT_PROTO_TCP)
+      if (!ec_transport_proto_is_cless ())
 	{
 	  delta = vlib_time_now (vm) - ecm->syn_start_time;
 	  if (delta != 0.0)
