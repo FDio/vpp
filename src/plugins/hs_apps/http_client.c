@@ -38,6 +38,7 @@ typedef struct
   u32 session_index;
   clib_thread_index_t thread_index;
   u64 to_recv;
+  http_status_code_t sc;
   u8 session_flags;
   hc_stats_t stats;
   u64 data_offset;
@@ -564,7 +565,7 @@ hc_session_reset_callback (session_t *s)
 
 static int
 hc_redirect (session_t *s, hc_worker_t *wrk, hc_session_t *hc_session,
-	     http_msg_t msg)
+	     http_status_code_t sc)
 {
   hc_main_t *hcm = &hc_main;
   http_location_t http_location;
@@ -593,7 +594,7 @@ hc_redirect (session_t *s, hc_worker_t *wrk, hc_session_t *hc_session,
 
   /* 301 - 303 */
   if (hcm->req_method == HTTP_REQ_POST &&
-      (msg.code >= HTTP_STATUS_MOVED && msg.code <= HTTP_STATUS_SEE_OTHER))
+      (sc >= HTTP_STATUS_MOVED && sc <= HTTP_STATUS_SEE_OTHER))
     {
       hc_http_header_t *header;
       hcm->req_method = HTTP_REQ_GET;
@@ -739,6 +740,8 @@ hc_rx_callback (session_t *s)
       HTTP_DBG (1, "hc_session_index[%u]%u %U content-length: %lu",
 		s->thread_index, s->opaque, format_http_status_code, msg.code,
 		msg.data.body_len);
+
+      hc_session->sc = msg.code;
 
       if (msg.data.headers_len)
 	{
@@ -899,14 +902,14 @@ done:
 	}
       else if (hcm->allow_redirect)
 	{
-	  switch (msg.code)
+	  switch (hc_session->sc)
 	    {
 	    case HTTP_STATUS_MOVED:
 	    case HTTP_STATUS_FOUND:
 	    case HTTP_STATUS_SEE_OTHER:
 	    case HTTP_STATUS_TEMPORARY_REDIRECT:
 	    case HTTP_STATUS_PERMANENT_REDIRECT:
-	      send_err = hc_redirect (s, wrk, hc_session, msg);
+	      send_err = hc_redirect (s, wrk, hc_session, hc_session->sc);
 	      if (send_err)
 		clib_warning ("redirect failed, error %d", send_err);
 	      break;
