@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "45ce0f39_462c0646",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-12-09T03:29:33Z",
+      "side": 1,
+      "message": "This patch still fails when \u0027make install-ext-deps\u0027 is run when a previous version is installed on the system.  This works on stable/2510 and stable/2506.\n\nFor example, create stable/2506 branch, run \u0027make install-ext-deps\u0027, then switch back to master and run \u0027make install-ext-deps\u0027 again.  The build then fails:\n\n---- %\u003c ----\nrm: cannot remove \u0027/opt/vpp/external/x86_64/include/rte_pmd_i40e.h\u0027: Permission denied\nrm: cannot remove \u0027/opt/vpp/external/x86_64/include/rte_ring_rts.h\u0027: Permission denied\nrm: cannot remove \u0027/opt/vpp/external/x86_64/include/rte_pmd_dpaax_qdma.h\u0027: Permission denied\n...\n---- %\u003c ----\n\nThis works if stable/2510 branch \u0027make install-ext-deps\u0027 is run after stable2506 branch.",
+      "revId": "5ce3f9fac429088a57242a94eed4824644c916f7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
