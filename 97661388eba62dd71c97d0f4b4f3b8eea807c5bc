@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5b271d7a_68b26c71",
+        "filename": "test/hs-test/vcl_test.go",
+        "patchSetId": 3
+      },
+      "lineNbr": 160,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-12-09T15:10:52Z",
+      "side": 1,
+      "message": "why it has Post in name?",
+      "range": {
+        "startLine": 160,
+        "startChar": 5,
+        "endLine": 160,
+        "endChar": 23
+      },
+      "revId": "97661388eba62dd71c97d0f4b4f3b8eea807c5bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
