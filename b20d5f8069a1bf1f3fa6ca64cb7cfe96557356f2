@@ -87,6 +87,24 @@
       "parentUuid": "0b955a51_18a206e6",
       "revId": "b20d5f8069a1bf1f3fa6ca64cb7cfe96557356f2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1d8374e7_170784fe",
+        "filename": "src/plugins/hs_apps/vcl/vcl_test_server.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 739,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-12-09T22:24:51Z",
+      "side": 1,
+      "message": "Test should fail and sessions should be cleaned up on line 714. We should break the loop so the ASSERT on this line could theoretically stay here if we make sure that any read/write error on the control session aborts the test.\n\nIf we can\u0027t do that we should just avoid processing any events, i.e., just continue (no logging, because there could be lots of events), assuming that at the end of event processing loop we\u0027ll exit the test.",
+      "parentUuid": "bc22364e_2b28c3e7",
+      "revId": "b20d5f8069a1bf1f3fa6ca64cb7cfe96557356f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }

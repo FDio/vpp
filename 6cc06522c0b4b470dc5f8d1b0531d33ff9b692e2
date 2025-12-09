@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "01a0e08b_91fb69bd",
+        "filename": "src/plugins/hs_apps/vcl/vcl_test_server.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 679,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-12-09T22:24:51Z",
+      "side": 1,
+      "message": "Do we really need to keep this volatile?",
+      "revId": "6cc06522c0b4b470dc5f8d1b0531d33ff9b692e2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
