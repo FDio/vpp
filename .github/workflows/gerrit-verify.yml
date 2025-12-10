@@ -126,7 +126,7 @@ jobs:
     needs:
       - notify-start
       - verify-checkstyle
-    if: ${{ needs.verify-checkstyle.result == 'success' }}
+    if: ${{ !failure() && !cancelled() }}
     uses: fdio/vpp/.github/workflows/vpp-verify-docs.yml@master
     with:
       GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
