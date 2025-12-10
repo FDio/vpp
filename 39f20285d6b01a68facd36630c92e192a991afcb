@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f1ba9c0d_00eb8364",
+        "filename": "test/hs-test/infra/suite_base.go",
+        "patchSetId": 6
+      },
+      "lineNbr": 673,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-12-10T13:38:30Z",
+      "side": 1,
+      "message": "can we move this to:\nfunc (n *NetInterface) unconfigure()\nand not calling delLink there if tap",
+      "range": {
+        "startLine": 671,
+        "startChar": 2,
+        "endLine": 673,
+        "endChar": 3
+      },
+      "revId": "39f20285d6b01a68facd36630c92e192a991afcb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8c91116a_4528d925",
+        "filename": "test/hs-test/infra/suite_base.go",
+        "patchSetId": 6
+      },
+      "lineNbr": 677,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-12-10T13:38:30Z",
+      "side": 1,
+      "message": "we should assert on all failures (namespaces, bridges, ...) and stop testing because it might affect next suite/test setup",
+      "range": {
+        "startLine": 675,
+        "startChar": 0,
+        "endLine": 677,
+        "endChar": 3
+      },
+      "revId": "39f20285d6b01a68facd36630c92e192a991afcb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
