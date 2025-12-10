@@ -89,7 +89,7 @@ permissions:
 
 jobs:
   verify-hst:
-    name: ${{ github.workflow }}-${{ inputs.GERRIT_BRANCH}}-${{ inputs.FDIO_NAMESPACE}}-${{ github.job }}
+    name: verify-hst-${{ inputs.GERRIT_BRANCH }}-${{ inputs.GERRIT_PATCHSET_NUMBER }}-${{ inputs.GERRIT_PATCHSET_REVISION }}-${{ inputs.FDIO_NAMESPACE }}
     runs-on:
       - self-hosted
       - nomad

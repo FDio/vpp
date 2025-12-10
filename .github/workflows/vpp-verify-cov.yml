@@ -31,7 +31,7 @@ concurrency:
 
 jobs:
   verify-cov:
-    name: ${{ github.workflow }}-${{ inputs.GERRIT_BRANCH}}-${{ inputs.FDIO_NAMESPACE}}-${{ github.job }}
+    name: verify-cov-master-HEAD-${{ inputs.FDIO_NAMESPACE }}
     runs-on:
       - self-hosted
       - nomad

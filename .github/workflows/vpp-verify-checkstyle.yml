@@ -114,7 +114,7 @@ permissions:
 
 jobs:
   verify-checkstyle:
-    name: ${{ github.workflow }}-${{ inputs.GERRIT_BRANCH}}-${{ inputs.FDIO_NAMESPACE}}-${{ github.job }}
+    name: verify-checkstyle-${{ inputs.GERRIT_BRANCH }}-${{ inputs.GERRIT_PATCHSET_NUMBER }}-${{ inputs.GERRIT_PATCHSET_REVISION }}-${{ inputs.FDIO_NAMESPACE }}
     runs-on:
       - self-hosted
       - nomad
