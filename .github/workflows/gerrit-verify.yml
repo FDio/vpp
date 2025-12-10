@@ -143,7 +143,7 @@ jobs:
     needs:
       - notify-start
       - verify-checkstyle
-    if: ${{ needs.verify-checkstyle.result == 'success' || needs.verify-checkstyle.result == 'skipped' }}
+    if: ${{ needs.verify-checkstyle.result == 'success' }}
     uses: fdio/vpp/.github/workflows/vpp-csit-verify-api.yml@master
     with:
       GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
