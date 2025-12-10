@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6387a1e9_4d7b190a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 17
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 198
+      },
+      "writtenOn": "2025-12-10T12:18:53Z",
+      "side": 1,
+      "message": "I tested patchset 17 on arm and it resolved the memory issues I was seeing",
+      "revId": "a85eaa38cb186f2ebda35ce88e4911443e65fd77",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
