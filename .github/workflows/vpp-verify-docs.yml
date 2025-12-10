@@ -89,8 +89,7 @@ permissions:
 
 jobs:
   vpp-verify-docs:
-    name: ${{ github.workflow }}-${{ github.event_name == 'workflow_call' && inputs.GERRIT_BRANCH || github.event.workflow_run.head_branch }}-rel-ubuntu2404-x86_64
-    if: ${{ github.event_name == 'workflow_call' || (github.event.workflow_run.event == 'workflow_dispatch' && github.event.workflow_run.conclusion == 'success') }}
+    name: verify-docs
     runs-on:
       - self-hosted
       - nomad

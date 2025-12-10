@@ -95,15 +95,6 @@ jobs:
       FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
     secrets: inherit
 
-  debug-checkstyle:
-    needs:
-      - notify-start
-      - verify-checkstyle
-    runs-on: ubuntu-latest
-    if: always()
-    steps:
-      - run: echo "Checkstyle result = ${{ needs.verify-checkstyle.result}}"
-
   verify-maketest:
     name: Run vpp-verify-maketest
     needs:
@@ -126,7 +117,7 @@ jobs:
     needs:
       - notify-start
       - verify-checkstyle
-    if: ${{ !failure() && !cancelled() }}
+    if: ${{ needs.verify-checkstyle.result == 'success' }}
     uses: fdio/vpp/.github/workflows/vpp-verify-docs.yml@master
     with:
       GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
