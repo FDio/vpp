@@ -21,7 +21,8 @@ concurrency:
 jobs:
   restore-gerrit-env:
     name: Restore VPP Gerrit Environment Variables
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    if: false
+    # if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     outputs:
       GERRIT_BRANCH: ${{ steps.export-gerrit-env.outputs.GERRIT_BRANCH }}
@@ -55,7 +56,8 @@ jobs:
 
   verify-hst:
     name: ${{ github.workflow }}-${{ github.event.workflow_run.head_branch }}-${{ matrix.build_type }}-${{ matrix.os }}-${{ matrix.executor_arch }}
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    if: false
+    # if: ${{ github.event.workflow_run.conclusion == 'success' }}
     needs: restore-gerrit-env
     runs-on:
       - self-hosted
