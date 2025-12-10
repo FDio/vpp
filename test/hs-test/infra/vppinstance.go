@@ -526,7 +526,6 @@ func (vpp *VppInstance) addAppNamespace(
 
 func (vpp *VppInstance) CreateTap(tap *NetInterface, IPv6 bool, tapId uint32) error {
 	numRxQueues := uint16(max(1, vpp.CpuConfig.NumWorkers))
-	tapFlags := Consistent_qp
 
 	if *DryRun {
 		flagsCli := "consistent-qp"
@@ -559,86 +558,125 @@ func (vpp *VppInstance) CreateTap(tap *NetInterface, IPv6 bool, tapId uint32) er
 		return nil
 	}
 
-	createTapReq := &tapv2.TapCreateV3{
-		ID:               tapId,
-		HostIfNameSet:    true,
-		HostIfName:       tap.Name(),
-		HostIP4PrefixSet: true,
-		HostIP4Prefix:    tap.Ip4AddressWithPrefix(),
-		HostIP6PrefixSet: true,
-		HostIP6Prefix:    tap.Ip6AddressWithPrefix(),
-		NumRxQueues:      numRxQueues,
-		NumTxQueues:      numRxQueues + 1,
-		TapFlags:         tapv2.TapFlags(tapFlags),
-	}
-
+	// Temporarly create tap interface using CLI while tap APIs are updated
 	vpp.getSuite().Log("create tap interface " + tap.Name() + " num-rx-queues " + strconv.Itoa(int(numRxQueues)))
-	// Create tap interface
-	if err := vpp.ApiStream.SendMsg(createTapReq); err != nil {
-		return err
-	}
-	replymsg, err := vpp.ApiStream.RecvMsg()
-	if err != nil {
-		return err
-	}
-	reply := replymsg.(*tapv2.TapCreateV3Reply)
-	if err = api.RetvalToVPPApiError(reply.Retval); err != nil {
-		return err
-	}
-	tap.Peer.Index = reply.SwIfIndex
 
-	// Get name and mac
-	if err := vpp.ApiStream.SendMsg(&interfaces.SwInterfaceDump{
-		SwIfIndex: reply.SwIfIndex,
-	}); err != nil {
-		return err
+	tapCliConfig := fmt.Sprintf("create tap id %d host-if-name %s host-ip4-addr %s num-rx-queues %d num-tx-queues %d consistent-qp",
+		tapId, tap.Name(), tap.Ip4Address, numRxQueues, numRxQueues+1)
+	if IPv6 {
+		tapCliConfig = fmt.Sprintf("%s host-ip6-addr %s", tapCliConfig, tap.Ip6Address)
 	}
-	replymsg, err = vpp.ApiStream.RecvMsg()
-	if err != nil {
-		return err
-	}
-	ifDetails := replymsg.(*interfaces.SwInterfaceDetails)
-	tap.Peer.name = ifDetails.InterfaceName
-	tap.Peer.HwAddress = ifDetails.L2Address
+	tap.Peer.name = vpp.Vppctl(tapCliConfig)
+	vpp.Vppctl("set int ip addr tap%d %s", tapId, tap.Peer.AddressWithPrefix(IPv6))
 
-	// Add address
-	addAddressReq := &interfaces.SwInterfaceAddDelAddress{
-		IsAdd:     true,
-		SwIfIndex: reply.SwIfIndex,
-		Prefix:    tap.Peer.AddressWithPrefix(IPv6),
+	// Parse "show hardware" output to get interface index and MAC address
+	hwOutput := vpp.Vppctl("show hardware %s", tap.Peer.name)
+	lines := strings.Split(hwOutput, "\n")
+	if len(lines) > 0 {
+		// First line format: "tap0                               2     up   tap0"
+		fields := strings.Fields(lines[0])
+		if len(fields) >= 2 {
+			if idx, err := strconv.ParseUint(fields[1], 10, 32); err == nil {
+				tap.Peer.Index = interface_types.InterfaceIndex(idx)
+			}
+		}
 	}
+	// Look for "Ethernet address" line
+	for _, line := range lines {
+		if strings.Contains(line, "Ethernet address") {
+			fields := strings.Fields(line)
+			if len(fields) >= 3 {
+				tap.Peer.HwAddress, _ = ethernet_types.ParseMacAddress(fields[2])
+			}
+			break
+		}
+	}
+	vpp.Vppctl("set int state tap%d up", tapId)
 
-	vpp.getSuite().Log("tap interface " + tap.Name() + " add address " + tap.Peer.Ip4Address)
-	if err := vpp.ApiStream.SendMsg(addAddressReq); err != nil {
-		return err
-	}
-	replymsg, err = vpp.ApiStream.RecvMsg()
-	if err != nil {
-		return err
-	}
-	reply2 := replymsg.(*interfaces.SwInterfaceAddDelAddressReply)
-	if err = api.RetvalToVPPApiError(reply2.Retval); err != nil {
-		return err
-	}
+	/*
+		tapFlags := Consistent_qp
 
-	// Set interface to up
-	upReq := &interfaces.SwInterfaceSetFlags{
-		SwIfIndex: reply.SwIfIndex,
-		Flags:     interface_types.IF_STATUS_API_FLAG_ADMIN_UP,
-	}
+		// Commented out API-based implementation
+		createTapReq := &tapv2.TapCreateV3{
+			ID:               tapId,
+			HostIfNameSet:    true,
+			HostIfName:       tap.Name(),
+			HostIP4PrefixSet: true,
+			HostIP4Prefix:    tap.Ip4AddressWithPrefix(),
+			HostIP6PrefixSet: true,
+			HostIP6Prefix:    tap.Ip6AddressWithPrefix(),
+			NumRxQueues:      numRxQueues,
+			NumTxQueues:      numRxQueues + 1,
+			TapFlags:         tapv2.TapFlags(tapFlags),
+		}
 
-	vpp.getSuite().Log("set tap interface " + tap.Name() + " up")
-	if err := vpp.ApiStream.SendMsg(upReq); err != nil {
-		return err
-	}
-	replymsg, err = vpp.ApiStream.RecvMsg()
-	if err != nil {
-		return err
-	}
-	reply3 := replymsg.(*interfaces.SwInterfaceSetFlagsReply)
-	if err = api.RetvalToVPPApiError(reply3.Retval); err != nil {
-		return err
-	}
+		// Create tap interface
+		if err := vpp.ApiStream.SendMsg(createTapReq); err != nil {
+			return err
+		}
+		replymsg, err := vpp.ApiStream.RecvMsg()
+		if err != nil {
+			return err
+		}
+		reply := replymsg.(*tapv2.TapCreateV3Reply)
+		if err = api.RetvalToVPPApiError(reply.Retval); err != nil {
+			return err
+		}
+		tap.Peer.Index = reply.SwIfIndex
+
+		// Get name and mac
+		if err := vpp.ApiStream.SendMsg(&interfaces.SwInterfaceDump{
+			SwIfIndex: reply.SwIfIndex,
+		}); err != nil {
+			return err
+		}
+		replymsg, err = vpp.ApiStream.RecvMsg()
+		if err != nil {
+			return err
+		}
+		ifDetails := replymsg.(*interfaces.SwInterfaceDetails)
+		tap.Peer.name = ifDetails.InterfaceName
+		tap.Peer.HwAddress = ifDetails.L2Address
+
+		// Add address
+		addAddressReq := &interfaces.SwInterfaceAddDelAddress{
+			IsAdd:     true,
+			SwIfIndex: reply.SwIfIndex,
+			Prefix:    tap.Peer.AddressWithPrefix(IPv6),
+		}
+
+		vpp.getSuite().Log("tap interface " + tap.Name() + " add address " + tap.Peer.Ip4Address)
+		if err := vpp.ApiStream.SendMsg(addAddressReq); err != nil {
+			return err
+		}
+		replymsg, err = vpp.ApiStream.RecvMsg()
+		if err != nil {
+			return err
+		}
+		reply2 := replymsg.(*interfaces.SwInterfaceAddDelAddressReply)
+		if err = api.RetvalToVPPApiError(reply2.Retval); err != nil {
+			return err
+		}
+
+		// Set interface to up
+		upReq := &interfaces.SwInterfaceSetFlags{
+			SwIfIndex: reply.SwIfIndex,
+			Flags:     interface_types.IF_STATUS_API_FLAG_ADMIN_UP,
+		}
+
+		vpp.getSuite().Log("set tap interface " + tap.Name() + " up")
+		if err := vpp.ApiStream.SendMsg(upReq); err != nil {
+			return err
+		}
+		replymsg, err = vpp.ApiStream.RecvMsg()
+		if err != nil {
+			return err
+		}
+		reply3 := replymsg.(*interfaces.SwInterfaceSetFlagsReply)
+		if err = api.RetvalToVPPApiError(reply3.Retval); err != nil {
+			return err
+		}
+	*/
 
 	// Get host mac
 	netIntf, err := net.InterfaceByName(tap.Name())
