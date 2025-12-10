@@ -16,6 +16,7 @@ sasc_interface_input_enable_command_fn(vlib_main_t *vm, unformat_input_t *input,
     clib_error_t *err = 0;
     u32 sw_if_index = ~0, tenant_id = ~0;
     bool output_arc = false;
+    bool is_enabled = true; /* enable feature by default */
 
     if (!unformat_user(input, unformat_line_input, line_input))
         return 0;
@@ -27,18 +28,27 @@ sasc_interface_input_enable_command_fn(vlib_main_t *vm, unformat_input_t *input,
             ;
         else if (unformat(line_input, "output"))
             output_arc = true;
+        else if (unformat(line_input, "enable"))
+            is_enabled = true;
+        else if (unformat(line_input, "disable"))
+            is_enabled = false;
         else {
             err = unformat_parse_error(line_input);
             goto done;
         }
     }
-    if (sw_if_index == ~0 || tenant_id == ~0) {
-        err = clib_error_return(0, "missing arguments");
+    if (sw_if_index == ~0) {
+        err = clib_error_return(0, "no valid interface provided");
         goto done;
     }
-    int rv = sasc_interface_input_enable_disable(sw_if_index, tenant_id, output_arc, true);
+
+    if (is_enabled && tenant_id == ~0) {
+        err = clib_error_return(0, "cannot enable without valid tenant_id");
+        goto done;
+    }
+    int rv = sasc_interface_input_enable_disable(sw_if_index, tenant_id, output_arc, is_enabled);
     if (rv != 0) {
-        err = clib_error_return(0, "could not enable interface");
+        err = clib_error_return(0, "error when enabling/disabling sasc on interface");
     }
 
 done:
@@ -48,7 +58,7 @@ done:
 
 VLIB_CLI_COMMAND(sasc_interface_input_enable_command, static) = {
     .path = "set sasc ingress interface",
-    .short_help = "set sasc ingress interface <interface> tenant <tenant-id> [output]",
+    .short_help = "set sasc ingress interface <interface> [enable|disable] [tenant <tenant-id>] [output]",
     .function = sasc_interface_input_enable_command_fn,
 };
 
