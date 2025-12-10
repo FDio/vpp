@@ -120,7 +120,6 @@ concurrency:
 jobs:
   verify-checkstyle:
     name: ${{ github.workflow }}-${{ inputs.GERRIT_BRANCH }}-rel-ubuntu2404-x86_64
-    needs: notify-start
     runs-on:
       - self-hosted
       - nomad
