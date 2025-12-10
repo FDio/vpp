@@ -95,6 +95,15 @@ jobs:
       FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
     secrets: inherit
 
+  debug-checkstyle:
+    needs:
+      - notify-start
+      - verify-checkstyle
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - run: echo "Checkstyle result = ${{ needs.verify-checkstyle.result}}"
+
   verify-maketest:
     name: Run vpp-verify-maketest
     needs:
