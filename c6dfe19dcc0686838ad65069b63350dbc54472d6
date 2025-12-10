@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "18f3c6a2_d5342e4d",
+        "filename": "src/vnet/devices/virtio/virtio.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 136,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2025-12-10T20:10:28Z",
+      "side": 0,
+      "message": "I think this routine was used by tap only and it is no longer used. Should we remove it?",
+      "revId": "c6dfe19dcc0686838ad65069b63350dbc54472d6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "15d3f3e1_a4645070",
+        "filename": "src/vnet/devices/virtio/virtio.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 158,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2025-12-10T20:10:28Z",
+      "side": 0,
+      "message": "Same here.",
+      "revId": "c6dfe19dcc0686838ad65069b63350dbc54472d6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6517a1b4_8809206c",
+        "filename": "src/vnet/devices/virtio/virtio.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 181,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2025-12-10T20:10:28Z",
+      "side": 0,
+      "message": "same here",
+      "revId": "c6dfe19dcc0686838ad65069b63350dbc54472d6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
