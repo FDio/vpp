@@ -67,6 +67,30 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "39342b7f_67ae2463",
+        "filename": "src/plugins/tap/tx_node.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 317,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2025-12-10T12:04:41Z",
+      "side": 1,
+      "message": "Right! The inner while loop should be exited because it is iterating over the buffer chain of the current packet, which will be dropped. The outer while loop will give us the next packet.",
+      "parentUuid": "93f952df_2014ca40",
+      "range": {
+        "startLine": 317,
+        "startChar": 4,
+        "endLine": 317,
+        "endChar": 13
+      },
+      "revId": "114a11835073c4b3b1881501d914d9cd920ca7f4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "94fe249f_3cbd034d",
         "filename": "src/vnet/devices/virtio/device.c",
         "patchSetId": 16
@@ -102,6 +126,30 @@
       "side": 1,
       "message": "This should be done in separate patch, intentionally I didn\u0027t want to do functional changes in remaining virtio code.",
       "parentUuid": "94fe249f_3cbd034d",
+      "range": {
+        "startLine": 351,
+        "startChar": 3,
+        "endLine": 351,
+        "endChar": 18
+      },
+      "revId": "114a11835073c4b3b1881501d914d9cd920ca7f4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3a547492_3a7b39af",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 351,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2025-12-10T12:04:41Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "42d9e613_2b11fb4c",
       "range": {
         "startLine": 351,
         "startChar": 3,
@@ -159,6 +207,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "8ce997e9_32135b31",
+        "filename": "src/vnet/devices/virtio/node.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 263,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2025-12-10T12:04:41Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "e8f06d97_dbc31938",
+      "range": {
+        "startLine": 263,
+        "startChar": 6,
+        "endLine": 263,
+        "endChar": 29
+      },
+      "revId": "114a11835073c4b3b1881501d914d9cd920ca7f4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "f76b484c_85d40eb0",
@@ -196,6 +268,30 @@
       "side": 1,
       "message": "This should be done in separate patch, intentionally I didn\u0027t want to do functional changes in remaining virtio code.",
       "parentUuid": "f76b484c_85d40eb0",
+      "range": {
+        "startLine": 365,
+        "startChar": 3,
+        "endLine": 366,
+        "endChar": 36
+      },
+      "revId": "114a11835073c4b3b1881501d914d9cd920ca7f4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f9204ad9_3b39b2b1",
+        "filename": "src/vnet/devices/virtio/node.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 366,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2025-12-10T12:04:41Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "1a9646b2_1b6e4796",
       "range": {
         "startLine": 365,
         "startChar": 3,
