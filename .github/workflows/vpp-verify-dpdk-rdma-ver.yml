@@ -31,7 +31,7 @@ concurrency:
 
 jobs:
   verify-dpdk-rdma-version:
-    name: verify-dpdk-rdma-version-master-HEAD-${{ inputs.FDIO_NAMESPACE }}
+    name: verify-dpdk-rdma-version-master-${{ inputs.FDIO_NAMESPACE }}
     runs-on:
       - self-hosted
       - nomad
