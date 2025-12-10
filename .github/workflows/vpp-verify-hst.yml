@@ -87,10 +87,6 @@ permissions:
   contents: read
   actions: read
 
-concurrency:
-  group: required-${{ github.workflow }}-${{ github.event_name == 'workflow_call' && format('{0}-{1}', inputs.GERRIT_CHANGE_NUMBER, inputs.GERRIT_PATCHSET_NUMBER) || github.event.workflow_run.id }}
-  cancel-in-progress: true
-
 jobs:
   verify-hst:
     name: ${{ github.workflow }}-${{ github.event_name == 'workflow_call' && inputs.GERRIT_BRANCH || github.event.workflow_run.head_branch }}-${{ matrix.build_type }}-${{ matrix.os }}-${{ matrix.executor_arch }}

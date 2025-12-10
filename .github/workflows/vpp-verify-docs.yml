@@ -87,10 +87,6 @@ permissions:
   contents: read
   actions: read
 
-concurrency:
-  group: required-${{ github.workflow }}-${{ github.event_name == 'workflow_call' && format('{0}-{1}', inputs.GERRIT_CHANGE_NUMBER, inputs.GERRIT_PATCHSET_NUMBER) || github.event.workflow_run.head_branch }}
-  cancel-in-progress: true
-
 jobs:
   vpp-verify-docs:
     name: ${{ github.workflow }}-${{ github.event_name == 'workflow_call' && inputs.GERRIT_BRANCH || github.event.workflow_run.head_branch }}-rel-ubuntu2404-x86_64
