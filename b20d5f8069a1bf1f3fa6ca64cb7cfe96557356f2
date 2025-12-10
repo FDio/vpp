@@ -105,6 +105,24 @@
       "parentUuid": "bc22364e_2b28c3e7",
       "revId": "b20d5f8069a1bf1f3fa6ca64cb7cfe96557356f2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "57e9c008_fe70e253",
+        "filename": "src/plugins/hs_apps/vcl/vcl_test_server.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 739,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-12-10T14:17:39Z",
+      "side": 1,
+      "message": "Regarding the 2nd paragraph, I don\u0027t think we can avoid the worker evt processing loop entirely, as it\u0027s also responsible for accepting new ctrl sessions.\nRight now (assuming the test is stopped) we can receive an event, check if it\u0027s a new ctrl session or just a bogus data packet and await more events.",
+      "parentUuid": "1d8374e7_170784fe",
+      "revId": "b20d5f8069a1bf1f3fa6ca64cb7cfe96557356f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
