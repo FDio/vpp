@@ -31,13 +31,13 @@ concurrency:
 
 jobs:
   verify-dpdk-rdma-version:
-    name: ${{ github.workflow }}-ubuntu2404-x86_64
+    name: ${{ github.workflow }}-${{ inputs.GERRIT_BRANCH}}-${{ inputs.FDIO_NAMESPACE}}
     runs-on:
       - self-hosted
       - nomad
       - fdio:arch=x86_64
       - fdio:class=builder
-      - fdio:namespace=${{ inputs.FDIO_NAMESPACE }}
+      - fdio:namespace=${{ inputs.FDIO_NAMESPACE || 'prod' }}
       - fdio:os=ubuntu2404
 
     env:
