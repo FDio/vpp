@@ -57,7 +57,7 @@ permissions:
   actions: read
 
 concurrency:
-  group: required-${{ github.workflow }}-${{ inputs.GERRIT_CHANGE_NUMBER }}-${{ inputs.GERRIT_PATCHSET_NUMBER }}
+  group: ${{ github.workflow }}-${{ inputs.GERRIT_CHANGE_NUMBER }}-${{ inputs.GERRIT_PATCHSET_NUMBER }}
   cancel-in-progress: true
 
 jobs:
