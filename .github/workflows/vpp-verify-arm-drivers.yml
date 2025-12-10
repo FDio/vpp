@@ -89,8 +89,7 @@ permissions:
 
 jobs:
   verify-arm-drivers:
-    name: ${{ github.workflow }}-master-rel-ubuntu2404-aarch64
-    if: ${{ github.event_name == 'workflow_call' || (github.event.workflow_run.event == 'workflow_dispatch' && github.event.workflow_run.conclusion == 'success') }}
+    name: ${{ github.workflow }}-${{ inputs.GERRIT_BRANCH}}-${{ inputs.FDIO_NAMESPACE}}-${{ github.job }}
     runs-on:
       - self-hosted
       - nomad

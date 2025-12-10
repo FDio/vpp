@@ -89,7 +89,7 @@ permissions:
 
 jobs:
   vpp-verify-docs:
-    name: verify-docs
+    name: ${{ github.workflow }}-${{ inputs.GERRIT_BRANCH}}-${{ inputs.FDIO_NAMESPACE}}-${{ github.job }}
     runs-on:
       - self-hosted
       - nomad
