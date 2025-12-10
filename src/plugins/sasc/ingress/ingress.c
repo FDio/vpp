@@ -4,6 +4,8 @@
 #include <vlib/vlib.h>
 #include <sasc/sasc.h>
 #include "ingress.h"
+#include "vppinfra/pool.h"
+#include "vppinfra/vec_bootstrap.h"
 #include <vnet/vnet.h>
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
@@ -26,11 +28,19 @@ sasc_interface_input_enable_disable(u32 sw_if_index, u32 tenant_idx, bool output
         if (!tenant)
             return -1;
 
-        vec_validate_init_empty(sasc_ingress->tenant_idx_by_sw_if_idx[dir], sw_if_index, 0xFFFF);
+        vec_validate_init_empty(sasc_ingress->tenant_idx_by_sw_if_idx[dir], sw_if_index, UINT16_MAX);
 
         config = vec_elt_at_index(sasc_ingress->tenant_idx_by_sw_if_idx[dir], sw_if_index);
         config[0] = tenant_idx;
+    } else if (sw_if_index < vec_len(sasc_ingress->tenant_idx_by_sw_if_idx[dir])) {
+        /* check if provided sw_if_index is wihtin expected range */
+        if (sw_if_index < vec_len(sasc_ingress->tenant_idx_by_sw_if_idx[dir]))
+            return -1;
+
+        config = vec_elt_at_index(sasc_ingress->tenant_idx_by_sw_if_idx[dir], sw_if_index);
+        config[0] = UINT16_MAX;
     }
+
     if (output_arc)
         return vnet_feature_enable_disable("ip4-output", "sasc-input-out", sw_if_index, is_enable, 0, 0);
     else
