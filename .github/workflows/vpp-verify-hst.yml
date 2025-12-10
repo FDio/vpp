@@ -96,7 +96,6 @@ jobs:
     name: ${{ github.workflow }}-${{ github.event_name == 'workflow_call' && inputs.GERRIT_BRANCH || github.event.workflow_run.head_branch }}-${{ matrix.build_type }}-${{ matrix.os }}-${{ matrix.executor_arch }}
     if: false
     # if: ${{ github.event_name == 'workflow_call' || (github.event.workflow_run.event == 'workflow_dispatch' && github.event.workflow_run.conclusion == 'success') }}
-    needs: restore-gerrit-env
     runs-on:
       - self-hosted
       - nomad
