@@ -395,25 +395,51 @@ quic_quicly_fifo_egress_shift (quicly_stream_t *stream, size_t delta)
 {
   quic_stream_data_t *stream_data;
   session_t *stream_session;
-  quic_ctx_t *ctx;
+  quic_ctx_t *sctx;
   svm_fifo_t *f;
-  u32 rv;
+  u32 rv, max_deq;
 
   stream_data = (quic_stream_data_t *) stream->data;
-  stream_session = get_stream_session_and_ctx_from_stream (stream, &ctx);
+  stream_session = get_stream_session_and_ctx_from_stream (stream, &sctx);
   f = stream_session->tx_fifo;
 
   QUIC_ASSERT (stream_data->app_tx_data_len >= delta);
-  stream_data->app_tx_data_len -= delta;
-  ctx->bytes_written += delta;
+  sctx->bytes_written += delta;
   rv = svm_fifo_dequeue_drop (f, delta);
   QUIC_ASSERT (rv == delta);
+
   if (svm_fifo_needs_deq_ntf (f, delta))
     session_dequeue_notify (stream_session);
 
-  rv = quicly_stream_sync_sendbuf (
-    stream, svm_fifo_max_dequeue (f) > stream_data->app_tx_data_len ? 1 : 0);
-  QUIC_ASSERT (!rv);
+  max_deq = svm_fifo_max_dequeue (f);
+  if (max_deq)
+    {
+      if (max_deq > stream_data->app_tx_data_len - delta)
+	{
+	  rv = quicly_stream_sync_sendbuf (stream, 1);
+	  QUIC_ASSERT (!rv);
+	  quic_quicly_reschedule_ctx (quic_quicly_get_quic_ctx (
+	    sctx->quic_connection_ctx_id, sctx->c_thread_index));
+	}
+      stream_data->app_tx_data_len = max_deq;
+    }
+  else
+    {
+      ASSERT (sctx->flags & QUIC_F_STREAM_TX_DRAINED);
+      /* All data drained and acked, clear fifo flag to allow new events from
+       * app. Then check if we need to reschedule as session layer would */
+      svm_fifo_unset_event (f);
+      if (svm_fifo_max_dequeue (f))
+	if (svm_fifo_set_event (f))
+	  {
+	    /* New data added as we cleared the flag, reschedule ctx */
+	    sctx->flags &= ~QUIC_F_STREAM_TX_DRAINED;
+	    stream_data->app_tx_data_len = svm_fifo_max_dequeue (f);
+	    rv = quicly_stream_sync_sendbuf (stream, 1);
+	    quic_quicly_reschedule_ctx (quic_quicly_get_quic_ctx (
+	      sctx->quic_connection_ctx_id, sctx->c_thread_index));
+	  }
+    }
 }
 
 static void
@@ -442,7 +468,7 @@ quic_quicly_fifo_egress_emit (quicly_stream_t *stream, size_t off, void *dst,
     {
       *wrote_all = 1;
       *len = deq_max - off;
-      ctx->flags |= QUIC_F_STREAM_DESCHEDULED;
+      ctx->flags |= QUIC_F_STREAM_TX_DRAINED;
     }
   QUIC_ASSERT (*len > 0);
 
@@ -492,11 +518,10 @@ quic_quicly_ack_rx_data (session_t *stream_session)
   stream_data->app_rx_data_len = max_deq;
 
   /* Need to send packets (acks may never be sent otherwise) */
-  if (sctx->flags & QUIC_F_STREAM_DESCHEDULED)
+  if (sctx->flags & QUIC_F_STREAM_TX_DRAINED)
     {
       quic_quicly_reschedule_ctx (quic_quicly_get_quic_ctx (
 	sctx->quic_connection_ctx_id, sctx->c_thread_index));
-      sctx->flags &= ~QUIC_F_STREAM_DESCHEDULED;
     }
 }
 
@@ -1480,27 +1505,23 @@ quic_quicly_stream_tx (quic_ctx_t *ctx, session_t *stream_session)
   stream_data = (quic_stream_data_t *) stream->data;
   max_deq = svm_fifo_max_dequeue (stream_session->tx_fifo);
   QUIC_ASSERT (max_deq >= stream_data->app_tx_data_len);
+
+  /* Spurious send, nothing else to do */
   if (max_deq == stream_data->app_tx_data_len)
     {
-      QUIC_DBG (3,
-		"No data: max_deq %d, app_tx_data_len %d, ctx_index "
-		"%u, thread %u",
-		max_deq, stream_data->app_tx_data_len,
-		stream_session->connection_index,
-		stream_session->thread_index);
+      QUIC_DBG (3, "No new data: %u max_deq %d", stream_session->session_index,
+		max_deq);
       return 0;
     }
-  stream_data->app_tx_data_len = max_deq;
 
+  stream_data->app_tx_data_len = max_deq;
   int rv = quicly_stream_sync_sendbuf (stream, 1);
   ASSERT (!rv);
 
-  if (ctx->flags & QUIC_F_STREAM_DESCHEDULED)
-    {
-      quic_quicly_reschedule_ctx (quic_quicly_get_quic_ctx (
-	ctx->quic_connection_ctx_id, ctx->c_thread_index));
-      ctx->flags &= ~QUIC_F_STREAM_DESCHEDULED;
-    }
+  /* Just in case engine is waiting for new app data */
+  quic_quicly_reschedule_ctx (quic_quicly_get_quic_ctx (
+    ctx->quic_connection_ctx_id, ctx->c_thread_index));
+  ctx->flags &= ~QUIC_F_STREAM_TX_DRAINED;
 
   return 1;
 }
