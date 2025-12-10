@@ -32,10 +32,52 @@ on:
         required: false
         type: string
         default: prod
-  workflow_run:
-    workflows: ["vpp-verify-checkstyle"]
-    types:
-      - completed
+  workflow_dispatch:
+    inputs:
+      GERRIT_BRANCH:
+        description: "Branch that change is against"
+        required: true
+        type: string
+      GERRIT_CHANGE_ID:
+        description: "The ID for the change"
+        required: true
+        type: string
+      GERRIT_CHANGE_NUMBER:
+        description: "The Gerrit number"
+        required: true
+        type: string
+      GERRIT_CHANGE_URL:
+        description: "URL to the change"
+        required: true
+        type: string
+      GERRIT_EVENT_TYPE:
+        description: "Type of Gerrit event"
+        required: true
+        type: string
+      GERRIT_PATCHSET_NUMBER:
+        description: "The patch number for the change"
+        required: true
+        type: string
+      GERRIT_PATCHSET_REVISION:
+        description: "The revision sha"
+        required: true
+        type: string
+      GERRIT_PROJECT:
+        description: "Project in Gerrit"
+        required: true
+        type: string
+      GERRIT_REFSPEC:
+        description: "Gerrit refspec of change"
+        required: true
+        type: string
+      FDIO_NAMESPACE:
+        description: "Executor Namespace (prod|sandbox)"
+        required: false
+        type: choice
+        options:
+          - sandbox
+          - prod
+        default: prod
 
 defaults:
   run:
@@ -109,18 +151,18 @@ jobs:
       - nomad
       - fdio:arch=x86_64
       - fdio:class=builder
-      - fdio:namespace=${{ needs.restore-gerrit-env.outputs.FDIO_NAMESPACE || 'prod' }}
+      - fdio:namespace=${{ inputs.FDIO_NAMESPACE || 'prod' }}
       - fdio:os=ubuntu2404
 
     env:
       WORKSPACE: /scratch/docker-build/vpp
-      GERRIT_BRANCH: ${{ needs.restore-gerrit-env.outputs.GERRIT_BRANCH }}
-      GERRIT_CHANGE_URL: ${{ needs.restore-gerrit-env.outputs.GERRIT_CHANGE_URL }}
-      GERRIT_PROJECT: ${{ needs.restore-gerrit-env.outputs.GERRIT_PROJECT }}
-      GERRIT_REFSPEC: ${{ needs.restore-gerrit-env.outputs.GERRIT_REFSPEC }}
-      GERRIT_CHANGE_NUMBER: ${{ needs.restore-gerrit-env.outputs.GERRIT_CHANGE_NUMBER }}
-      GERRIT_PATCHSET_NUMBER: ${{ needs.restore-gerrit-env.outputs.GERRIT_PATCHSET_NUMBER }}
-      FDIO_NAMESPACE: ${{ needs.restore-gerrit-env.outputs.FDIO_NAMESPACE }}
+      GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
+      GERRIT_CHANGE_URL: ${{ inputs.GERRIT_CHANGE_URL }}
+      GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
+      GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
+      GERRIT_CHANGE_NUMBER: ${{ inputs.GERRIT_CHANGE_NUMBER }}
+      GERRIT_PATCHSET_NUMBER: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
+      FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
       TUI_LINE: "*******************************************************************"
 
     steps:

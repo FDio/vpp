@@ -80,7 +80,7 @@ jobs:
   verify-checkstyle:
     name: Run vpp-verify-checkstyle
     needs: notify-start
-    uses: fdio/github/workflows/gerrit-vpp-verify-checkstyle.yml
+    uses: fdio/vpp/.github/workflows/vpp-verify-checkstyle.yml@master
     with:
       GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
       GERRIT_CHANGE_ID: ${{ inputs.GERRIT_CHANGE_ID }}
@@ -98,7 +98,7 @@ jobs:
     name: Run vpp-verify-maketest
     needs: verify-checkstyle
     if: ${{ needs.verify-checkstyle.result == 'success' }}
-    uses: fdio/github/workflows/vpp-verify-maketest.yml
+    uses: fdio/vpp/.github/workflows/vpp-verify-maketest.yml@master
     with:
       GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
       GERRIT_CHANGE_URL: ${{ inputs.GERRIT_CHANGE_URL }}
@@ -113,7 +113,7 @@ jobs:
     name: Run vpp-verify-docs
     needs: verify-checkstyle
     if: ${{ needs.verify-checkstyle.result == 'success' }}
-    uses: fdio/github/workflows/vpp-verify-docs.yml
+    uses: fdio/vpp/.github/workflows/vpp-verify-docs.yml@master
     with:
       GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
       GERRIT_CHANGE_URL: ${{ inputs.GERRIT_CHANGE_URL }}
@@ -128,7 +128,7 @@ jobs:
     name: Run vpp-csit-verify-api
     needs: verify-checkstyle
     if: ${{ needs.verify-checkstyle.result == 'success' }}
-    uses: fdio/github/workflows/vpp-csit-verify-api.yml
+    uses: fdio/vpp/.github/workflows/vpp-csit-verify-api.yml@master
     with:
       GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
       GERRIT_CHANGE_URL: ${{ inputs.GERRIT_CHANGE_URL }}
@@ -143,7 +143,7 @@ jobs:
     name: Run vpp-verify-arm-drivers
     needs: verify-checkstyle
     if: ${{ needs.verify-checkstyle.result == 'success' }}
-    uses: fdio/github/workflows/vpp-verify-arm-drivers.yml
+    uses: fdio/vpp/.github/workflows/vpp-verify-arm-drivers.yml@master
     with:
       GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
       GERRIT_CHANGE_URL: ${{ inputs.GERRIT_CHANGE_URL }}
@@ -158,7 +158,7 @@ jobs:
     name: Run vpp-verify-hst
     needs: verify-checkstyle
     if: ${{ needs.verify-checkstyle.result == 'success' }}
-    uses: fdio/github/workflows/vpp-verify-hst.yml
+    uses: fdio/vpp/.github/workflows/vpp-verify-hst.yml@master
     with:
       GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
       GERRIT_CHANGE_URL: ${{ inputs.GERRIT_CHANGE_URL }}
