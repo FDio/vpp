@@ -167,28 +167,3 @@ jobs:
         if: success()
         run: |
           echo "VPP CSIT API Check passed for Gerrit Refspec: $GERRIT_REFSPEC, Gerrit Change URL: $GERRIT_CHANGE_URL"
-
-  vote:
-    if: ${{ always() }}
-    needs:
-      - restore-gerrit-env
-      - csit-verify-api
-    runs-on: ubuntu-latest
-    env:
-      GERRIT_CHANGE_NUMBER: ${{ needs.restore-gerrit-env.outputs.GERRIT_CHANGE_NUMBER }}
-      GERRIT_PATCHSET_NUMBER: ${{ needs.restore-gerrit-env.outputs.GERRIT_PATCHSET_NUMBER }}
-    steps:
-      - name: Get conclusion
-        uses: im-open/workflow-conclusion@e4f7c4980600fbe0818173e30931d3550801b992 # v2.2.3
-      - name: Set vote
-        # yamllint disable-line rule:line-length
-        uses: lfreleng-actions/gerrit-review-action@537251ec667665b386f70b330b05446e3fc29087 # v0.9
-        with:
-          host: ${{ vars.GERRIT_SERVER }}
-          username: ${{ vars.GERRIT_SSH_USER }}
-          key: ${{ secrets.GERRIT_SSH_PRIVKEY }}
-          known_hosts: ${{ vars.GERRIT_KNOWN_HOSTS }}
-          gerrit-change-number: ${{ env.GERRIT_CHANGE_NUMBER }}
-          gerrit-patchset-number: ${{ env.GERRIT_PATCHSET_NUMBER }}
-          vote-type: ${{ env.WORKFLOW_CONCLUSION }}
-          comment-only: true  # Do not add vote to gerrit change
