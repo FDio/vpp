@@ -114,7 +114,7 @@ permissions:
 
 jobs:
   verify-checkstyle:
-    name: ${{ github.workflow }}-${{ inputs.GERRIT_BRANCH }}-rel-ubuntu2404-x86_64
+    name: ${{ github.workflow }}-${{ inputs.GERRIT_BRANCH}}-${{ inputs.FDIO_NAMESPACE}}-${{ github.job }}
     runs-on:
       - self-hosted
       - nomad
