@@ -1,0 +1,213 @@
+name: gerrit-verify
+
+on:
+  workflow_dispatch:
+    inputs:
+      GERRIT_BRANCH:
+        description: "Branch that change is against"
+        required: true
+        type: string
+      GERRIT_CHANGE_ID:
+        description: "The ID for the change"
+        required: true
+        type: string
+      GERRIT_CHANGE_NUMBER:
+        description: "The Gerrit number"
+        required: true
+        type: string
+      GERRIT_CHANGE_URL:
+        description: "URL to the change"
+        required: true
+        type: string
+      GERRIT_EVENT_TYPE:
+        description: "Type of Gerrit event"
+        required: true
+        type: string
+      GERRIT_PATCHSET_NUMBER:
+        description: "The patch number for the change"
+        required: true
+        type: string
+      GERRIT_PATCHSET_REVISION:
+        description: "The revision sha"
+        required: true
+        type: string
+      GERRIT_PROJECT:
+        description: "Project in Gerrit"
+        required: true
+        type: string
+      GERRIT_REFSPEC:
+        description: "Gerrit refspec of change"
+        required: true
+        type: string
+      FDIO_NAMESPACE:
+        description: "Executor Namespace (prod|sandbox)"
+        required: false
+        type: choice
+        options:
+          - sandbox
+          - prod
+        default: prod
+
+defaults:
+  run:
+    shell: bash
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: required-${{ github.workflow }}-${{ inputs.GERRIT_CHANGE_NUMBER }}-${{ inputs.GERRIT_PATCHSET_NUMBER }}
+  cancel-in-progress: true
+
+jobs:
+  notify-start:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clear Gerrit vote
+        # yamllint disable-line rule:line-length
+        uses: lfreleng-actions/gerrit-review-action@537251ec667665b386f70b330b05446e3fc29087 # v0.9
+        with:
+          host: ${{ vars.GERRIT_SERVER }}
+          username: ${{ vars.GERRIT_SSH_REQUIRED_USER }}
+          key: ${{ secrets.GERRIT_SSH_REQUIRED_PRIVKEY }}
+          known_hosts: ${{ vars.GERRIT_KNOWN_HOSTS }}
+          gerrit-change-number: ${{ inputs.GERRIT_CHANGE_NUMBER }}
+          gerrit-patchset-number: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
+          vote-type: clear
+          comment-only: true
+
+  verify-checkstyle:
+    name: Run vpp-verify-checkstyle
+    needs: notify-start
+    uses: ./.github/workflows/gerrit-vpp-verify-checkstyle.yml
+    with:
+      GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
+      GERRIT_CHANGE_ID: ${{ inputs.GERRIT_CHANGE_ID }}
+      GERRIT_CHANGE_NUMBER: ${{ inputs.GERRIT_CHANGE_NUMBER }}
+      GERRIT_CHANGE_URL: ${{ inputs.GERRIT_CHANGE_URL }}
+      GERRIT_EVENT_TYPE: ${{ inputs.GERRIT_EVENT_TYPE }}
+      GERRIT_PATCHSET_NUMBER: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
+      GERRIT_PATCHSET_REVISION: ${{ inputs.GERRIT_PATCHSET_REVISION }}
+      GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
+      GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
+      FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
+    secrets: inherit
+
+  verify-maketest:
+    name: Run vpp-verify-maketest
+    needs: verify-checkstyle
+    if: ${{ needs.verify-checkstyle.result == 'success' }}
+    uses: ./.github/workflows/vpp-verify-maketest.yml
+    with:
+      GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
+      GERRIT_CHANGE_URL: ${{ inputs.GERRIT_CHANGE_URL }}
+      GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
+      GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
+      GERRIT_CHANGE_NUMBER: ${{ inputs.GERRIT_CHANGE_NUMBER }}
+      GERRIT_PATCHSET_NUMBER: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
+      FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
+    secrets: inherit
+
+  verify-docs:
+    name: Run vpp-verify-docs
+    needs: verify-checkstyle
+    if: ${{ needs.verify-checkstyle.result == 'success' }}
+    uses: ./.github/workflows/vpp-verify-docs.yml
+    with:
+      GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
+      GERRIT_CHANGE_URL: ${{ inputs.GERRIT_CHANGE_URL }}
+      GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
+      GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
+      GERRIT_CHANGE_NUMBER: ${{ inputs.GERRIT_CHANGE_NUMBER }}
+      GERRIT_PATCHSET_NUMBER: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
+      FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
+    secrets: inherit
+
+  verify-csit-api:
+    name: Run vpp-csit-verify-api
+    needs: verify-checkstyle
+    if: ${{ needs.verify-checkstyle.result == 'success' }}
+    uses: ./.github/workflows/vpp-csit-verify-api.yml
+    with:
+      GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
+      GERRIT_CHANGE_URL: ${{ inputs.GERRIT_CHANGE_URL }}
+      GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
+      GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
+      GERRIT_CHANGE_NUMBER: ${{ inputs.GERRIT_CHANGE_NUMBER }}
+      GERRIT_PATCHSET_NUMBER: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
+      FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
+    secrets: inherit
+
+  verify-arm-drivers:
+    name: Run vpp-verify-arm-drivers
+    needs: verify-checkstyle
+    if: ${{ needs.verify-checkstyle.result == 'success' }}
+    uses: ./.github/workflows/vpp-verify-arm-drivers.yml
+    with:
+      GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
+      GERRIT_CHANGE_URL: ${{ inputs.GERRIT_CHANGE_URL }}
+      GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
+      GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
+      GERRIT_CHANGE_NUMBER: ${{ inputs.GERRIT_CHANGE_NUMBER }}
+      GERRIT_PATCHSET_NUMBER: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
+      FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
+    secrets: inherit
+
+  verify-hst:
+    name: Run vpp-verify-hst
+    needs: verify-checkstyle
+    if: ${{ needs.verify-checkstyle.result == 'success' }}
+    uses: ./.github/workflows/vpp-verify-hst.yml
+    with:
+      GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
+      GERRIT_CHANGE_URL: ${{ inputs.GERRIT_CHANGE_URL }}
+      GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
+      GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
+      GERRIT_CHANGE_NUMBER: ${{ inputs.GERRIT_CHANGE_NUMBER }}
+      GERRIT_PATCHSET_NUMBER: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
+      FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
+    secrets: inherit
+
+  final-vote:
+    if: ${{ always() }}
+    needs:
+      - notify-start
+      - verify-checkstyle
+      - verify-maketest
+      - verify-docs
+      - verify-csit-api
+      - verify-arm-drivers
+      - verify-hst
+    runs-on: ubuntu-latest
+    env:
+      GERRIT_CHANGE_NUMBER: ${{ inputs.GERRIT_CHANGE_NUMBER }}
+      GERRIT_PATCHSET_NUMBER: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
+    steps:
+      - name: Collect workflow results
+        id: overall
+        run: |
+          set -euxo pipefail
+          if [[ "${{ needs.verify-checkstyle.result }}" == "success" && \
+                "${{ needs.verify-maketest.result }}" == "success" && \
+                "${{ needs.verify-docs.result }}" == "success" && \
+                "${{ needs.verify-csit-api.result }}" == "success" && \
+                "${{ needs.verify-arm-drivers.result }}" == "success" && \
+                "${{ needs.verify-hst.result }}" == "success" ]]; then
+            echo "result=success" >> "$GITHUB_OUTPUT"
+          else
+            echo "result=failure" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set aggregated Gerrit vote
+        # yamllint disable-line rule:line-length
+        uses: lfreleng-actions/gerrit-review-action@537251ec667665b386f70b330b05446e3fc29087 # v0.9
+        with:
+          host: ${{ vars.GERRIT_SERVER }}
+          username: ${{ vars.GERRIT_SSH_USER }}
+          key: ${{ secrets.GERRIT_SSH_PRIVKEY }}
+          known_hosts: ${{ vars.GERRIT_KNOWN_HOSTS }}
+          gerrit-change-number: ${{ env.GERRIT_CHANGE_NUMBER }}
+          gerrit-patchset-number: ${{ env.GERRIT_PATCHSET_NUMBER }}
+          vote-type: ${{ steps.overall.outputs.result }}
+          comment-only: false

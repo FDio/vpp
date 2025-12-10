@@ -1,6 +1,37 @@
 name: vpp-verify-maketest
 
 on:
+  workflow_call:
+    inputs:
+      GERRIT_BRANCH:
+        description: "Branch that change is against"
+        required: true
+        type: string
+      GERRIT_CHANGE_URL:
+        description: "URL to the change"
+        required: true
+        type: string
+      GERRIT_PROJECT:
+        description: "Project in Gerrit"
+        required: true
+        type: string
+      GERRIT_REFSPEC:
+        description: "Gerrit refspec of change"
+        required: true
+        type: string
+      GERRIT_CHANGE_NUMBER:
+        description: "The Gerrit number"
+        required: true
+        type: string
+      GERRIT_PATCHSET_NUMBER:
+        description: "The patch number for the change"
+        required: true
+        type: string
+      FDIO_NAMESPACE:
+        description: "Executor Namespace (prod|sandbox)"
+        required: false
+        type: string
+        default: prod
   workflow_run:
     workflows: ["vpp-verify-checkstyle"]
     types:
@@ -15,26 +46,41 @@ permissions:
   actions: read
 
 concurrency:
-  group: required-${{ github.workflow }}-${{ github.event.workflow_run.head_branch }}-${{ github.event.workflow_run.id }}
+  group: required-${{ github.workflow }}-${{ github.event_name == 'workflow_call' && format('{0}-{1}', inputs.GERRIT_CHANGE_NUMBER, inputs.GERRIT_PATCHSET_NUMBER) || github.event.workflow_run.id }}
   cancel-in-progress: true
 
 jobs:
   restore-gerrit-env:
     name: Restore VPP Gerrit Environment Variables
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event_name == 'workflow_call' || (github.event.workflow_run.event == 'workflow_dispatch' && github.event.workflow_run.conclusion == 'success') }}
     runs-on: ubuntu-latest
     outputs:
-      GERRIT_BRANCH: ${{ steps.export-gerrit-env.outputs.GERRIT_BRANCH }}
-      GERRIT_CHANGE_URL: ${{ steps.export-gerrit-env.outputs.GERRIT_CHANGE_URL }}
-      GERRIT_PROJECT: ${{ steps.export-gerrit-env.outputs.GERRIT_PROJECT }}
-      GERRIT_REFSPEC: ${{ steps.export-gerrit-env.outputs.GERRIT_REFSPEC }}
-      GERRIT_CHANGE_NUMBER: ${{ steps.export-gerrit-env.outputs.GERRIT_CHANGE_NUMBER }}
-      GERRIT_PATCHSET_NUMBER: ${{ steps.export-gerrit-env.outputs.GERRIT_PATCHSET_NUMBER }}
-      FDIO_NAMESPACE: ${{ steps.export-gerrit-env.outputs.FDIO_NAMESPACE }}
+      GERRIT_BRANCH: ${{ steps.from-inputs.outputs.GERRIT_BRANCH || steps.export-gerrit-env.outputs.GERRIT_BRANCH }}
+      GERRIT_CHANGE_URL: ${{ steps.from-inputs.outputs.GERRIT_CHANGE_URL || steps.export-gerrit-env.outputs.GERRIT_CHANGE_URL }}
+      GERRIT_PROJECT: ${{ steps.from-inputs.outputs.GERRIT_PROJECT || steps.export-gerrit-env.outputs.GERRIT_PROJECT }}
+      GERRIT_REFSPEC: ${{ steps.from-inputs.outputs.GERRIT_REFSPEC || steps.export-gerrit-env.outputs.GERRIT_REFSPEC }}
+      GERRIT_CHANGE_NUMBER: ${{ steps.from-inputs.outputs.GERRIT_CHANGE_NUMBER || steps.export-gerrit-env.outputs.GERRIT_CHANGE_NUMBER }}
+      GERRIT_PATCHSET_NUMBER: ${{ steps.from-inputs.outputs.GERRIT_PATCHSET_NUMBER || steps.export-gerrit-env.outputs.GERRIT_PATCHSET_NUMBER }}
+      FDIO_NAMESPACE: ${{ steps.from-inputs.outputs.FDIO_NAMESPACE || steps.export-gerrit-env.outputs.FDIO_NAMESPACE }}
 
     steps:
+      - name: Capture workflow_call inputs
+        id: from-inputs
+        if: ${{ github.event_name == 'workflow_call' }}
+        run: |
+          {
+            echo "GERRIT_BRANCH=${{ inputs.GERRIT_BRANCH }}"
+            echo "GERRIT_CHANGE_URL=${{ inputs.GERRIT_CHANGE_URL }}"
+            echo "GERRIT_PROJECT=${{ inputs.GERRIT_PROJECT }}"
+            echo "GERRIT_REFSPEC=${{ inputs.GERRIT_REFSPEC }}"
+            echo "GERRIT_CHANGE_NUMBER=${{ inputs.GERRIT_CHANGE_NUMBER }}"
+            echo "GERRIT_PATCHSET_NUMBER=${{ inputs.GERRIT_PATCHSET_NUMBER }}"
+            echo "FDIO_NAMESPACE=${{ inputs.FDIO_NAMESPACE || 'prod' }}"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Restore VPP Gerrit Environment Variables
         id: restore-gerrit-env
+        if: ${{ github.event_name != 'workflow_call' }}
         # yamllint disable-line rule:line-length
         uses: fdio/.github/.github/actions/gerrit-env-vars-restore@a28ad9abc70855292df1ea0d59829e814e78c2f4
         with:
@@ -42,6 +88,7 @@ jobs:
 
       - name: Export Gerrit Environment Variables
         id: export-gerrit-env
+        if: ${{ github.event_name != 'workflow_call' }}
         run: |
           {
             echo "GERRIT_BRANCH=${GERRIT_BRANCH}"
@@ -54,8 +101,8 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
   verify-maketest:
-    name: ${{ github.workflow }}-${{ github.event.workflow_run.head_branch }}-${{ matrix.build_type }}-${{ matrix.os }}-${{ matrix.executor_arch }}
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    name: ${{ github.workflow }}-${{ github.event_name == 'workflow_call' && inputs.GERRIT_BRANCH || github.event.workflow_run.head_branch }}-${{ matrix.build_type }}-${{ matrix.os }}-${{ matrix.executor_arch }}
+    if: ${{ github.event_name == 'workflow_call' || (github.event.workflow_run.event == 'workflow_dispatch' && github.event.workflow_run.conclusion == 'success') }}
     needs: restore-gerrit-env
     runs-on:
       - self-hosted
