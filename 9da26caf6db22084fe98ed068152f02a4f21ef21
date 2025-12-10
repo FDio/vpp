@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e6f8bb03_7d832f19",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2025-12-10T17:04:29Z",
+      "side": 1,
+      "message": "The linux-cp part looks good. And it\u0027s awesome that you added some basic unit tests for linux-cp route handling.\n\nAdding Dave Wallace as reviewer. Dave can you review the changes to vm_vpp_interfaces.py and vpp_qemu_utils.py?",
+      "revId": "9da26caf6db22084fe98ed068152f02a4f21ef21",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
