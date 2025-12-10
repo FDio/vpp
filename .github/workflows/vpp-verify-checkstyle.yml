@@ -114,7 +114,7 @@ permissions:
 
 jobs:
   verify-checkstyle:
-    name: verify-checkstyle-${{ inputs.GERRIT_BRANCH }}-${{ inputs.GERRIT_PATCHSET_NUMBER }}-${{ inputs.GERRIT_PATCHSET_REVISION }}-${{ inputs.FDIO_NAMESPACE }}
+    name: verify-checkstyle-${{ inputs.GERRIT_BRANCH }}-${{ inputs.FDIO_NAMESPACE }}
     runs-on:
       - self-hosted
       - nomad
@@ -132,6 +132,11 @@ jobs:
         id: setup-executor-env
         # yamllint disable-line rule:line-length
         uses: fdio/.github/.github/actions/setup-executor-env@b728d1589228e2891a4241a1bba362d76895c225
+
+      - name: Show Environment
+        run: |
+          set -euxo pipefail
+          env
 
       - name: "Show Nomad Dockerfile"
         # yamllint disable-line rule:line-length
