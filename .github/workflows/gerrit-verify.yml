@@ -79,7 +79,8 @@ jobs:
 
   verify-checkstyle:
     name: Run vpp-verify-checkstyle
-    needs: notify-start
+    needs:
+      - notify-start
     uses: fdio/vpp/.github/workflows/vpp-verify-checkstyle.yml@master
     with:
       GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
@@ -96,7 +97,9 @@ jobs:
 
   verify-maketest:
     name: Run vpp-verify-maketest
-    needs: verify-checkstyle
+    needs:
+      - notify-start
+      - verify-checkstyle
     if: ${{ needs.verify-checkstyle.result == 'success' }}
     uses: fdio/vpp/.github/workflows/vpp-verify-maketest.yml@master
     with:
@@ -111,7 +114,9 @@ jobs:
 
   verify-docs:
     name: Run vpp-verify-docs
-    needs: verify-checkstyle
+    needs:
+      - notify-start
+      - verify-checkstyle
     if: ${{ needs.verify-checkstyle.result == 'success' }}
     uses: fdio/vpp/.github/workflows/vpp-verify-docs.yml@master
     with:
@@ -126,7 +131,9 @@ jobs:
 
   verify-csit-api:
     name: Run vpp-csit-verify-api
-    needs: verify-checkstyle
+    needs:
+      - notify-start
+      - verify-checkstyle
     if: ${{ needs.verify-checkstyle.result == 'success' }}
     uses: fdio/vpp/.github/workflows/vpp-csit-verify-api.yml@master
     with:
@@ -141,7 +148,9 @@ jobs:
 
   verify-arm-drivers:
     name: Run vpp-verify-arm-drivers
-    needs: verify-checkstyle
+    needs:
+      - notify-start
+      - verify-checkstyle
     if: ${{ needs.verify-checkstyle.result == 'success' }}
     uses: fdio/vpp/.github/workflows/vpp-verify-arm-drivers.yml@master
     with:
@@ -156,7 +165,9 @@ jobs:
 
   verify-hst:
     name: Run vpp-verify-hst
-    needs: verify-checkstyle
+    needs:
+      - notify-start
+      - verify-checkstyle
     if: ${{ needs.verify-checkstyle.result == 'success' }}
     uses: fdio/vpp/.github/workflows/vpp-verify-hst.yml@master
     with:
@@ -188,7 +199,8 @@ jobs:
         id: overall
         run: |
           set -euxo pipefail
-          if [[ "${{ needs.verify-checkstyle.result }}" == "success" && \
+          if [[ "${{ needs.notify-start.result }}" == "success" && \
+                "${{ needs.verify-checkstyle.result }}" == "success" && \
                 "${{ needs.verify-maketest.result }}" == "success" && \
                 "${{ needs.verify-docs.result }}" == "success" && \
                 "${{ needs.verify-csit-api.result }}" == "success" && \
