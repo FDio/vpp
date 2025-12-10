@@ -563,10 +563,10 @@ quic_custom_tx_callback (void *s, transport_send_params_t * sp)
 
   QUIC_DBG (3, "Stream TX event");
 
-  /* Add stream to engine tx scheduler. Scheduler decides when stream is to
-   * send and how much.
-   * TODO(fcoras): refactor to deschedule stream session */
-  quic_eng_stream_tx (ctx, stream_session);
+  /* Add stream to engine tx scheduler. This decides when stream is to send and
+   * how much. If successful deschedule from session layer scheduler */
+  if (quic_eng_stream_tx (ctx, stream_session))
+    sp->flags |= TRANSPORT_SND_F_DESCHED;
 
   return 0;
 }
