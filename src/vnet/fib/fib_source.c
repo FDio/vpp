@@ -196,6 +196,8 @@ fib_source_show (vlib_main_t * vm,
 	if (unformat (input, "prio")   ||
 	    unformat (input, "priority"))
             vec_sort_with_function(fsrs, fib_source_reg_cmp_for_sort);
+        else
+          break;
     }
     vec_foreach(fsr, fsrs)
     {
