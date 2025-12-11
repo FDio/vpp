@@ -13,7 +13,8 @@ import (
 
 func init() {
 	RegisterVethTests(XEchoVclClientUdpTest, XEchoVclClientTcpTest, XEchoVclServerUdpTest, VclQuicUnidirectionalStreamTest,
-		XEchoVclServerTcpTest, VclEchoTcpTest, VclEchoUdpTest, VclHttpPostTest, VclClUdpDscpTest)
+		XEchoVclServerTcpTest, VclEchoTcpTest, VclEchoUdpTest, VclHttpPostTest, VclClUdpDscpTest,
+		VclQuicBidirectionalStreamTest)
 	RegisterSoloVethTests(VclRetryAttachTest)
 	RegisterVethMWTests(VclQuicUnidirectionalStreamsMWTest)
 }
@@ -154,6 +155,10 @@ func VclQuicUnidirectionalStreamsMWTest(s *VethsSuite) {
 	s.SetupTest()
 	_, oSrv := testVclEcho(s, "quic", "-s 20 -q 10 -N 1000")
 	AssertNotContains(oSrv, "ERROR: expected unidirectional stream")
+}
+
+func VclQuicBidirectionalStreamTest(s *VethsSuite) {
+	testVclEcho(s, "quic", "-B -N 1000")
 }
 
 func VclHttpPostTest(s *VethsSuite) {
