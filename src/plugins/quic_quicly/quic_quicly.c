@@ -1020,12 +1020,11 @@ quic_quicly_proto_on_close (u32 ctx_index, clib_thread_index_t thread_index)
     {
       return;
     }
+  ctx->flags |= QUIC_F_APP_CLOSED;
   session_t *stream_session =
     session_get (ctx->c_s_index, ctx->c_thread_index);
-#if QUIC_DEBUG >= 2
-  clib_warning ("Closing session 0x%lx ctx_index %u",
-		session_handle (stream_session), ctx->c_c_index);
-#endif
+  QUIC_DBG (2, "App closing session 0x%lx ctx_index %u",
+	    session_handle (stream_session), ctx->c_c_index);
   if (quic_ctx_is_stream (ctx))
     {
       quicly_stream_t *stream = ctx->stream;
@@ -1081,6 +1080,50 @@ quic_quicly_proto_on_close (u32 ctx_index, clib_thread_index_t thread_index)
       QUIC_ERR ("Trying to close conn in state %d", ctx->conn_state);
       break;
     }
+}
+
+static void
+quic_quicly_proto_on_half_close (u32 ctx_index,
+				 clib_thread_index_t thread_index)
+{
+  session_t *stream_session;
+  quic_ctx_t *ctx;
+  quicly_stream_t *stream;
+
+  ctx = quic_quicly_get_quic_ctx_if_valid (ctx_index, thread_index);
+  if (!ctx)
+    {
+      return;
+    }
+  QUIC_DBG (2, "App half-closing session 0x%lx ctx_index %u",
+	    session_handle (stream_session), ctx->c_c_index);
+  if (!quic_ctx_is_stream (ctx))
+    {
+      QUIC_ERR ("Trying to half-close connection");
+      return;
+    }
+  stream = ctx->stream;
+  if (!quicly_stream_has_send_side (quicly_is_client (stream->conn),
+				    stream->stream_id))
+    {
+      QUIC_ERR ("Trying to half-close stream without send side");
+      return;
+    }
+  if (quicly_sendstate_is_open (&stream->sendstate))
+    {
+      QUIC_DBG (2, "send side already closed");
+      return;
+    }
+
+  ctx->flags |= QUIC_F_STREAM_TX_CLOSED;
+
+  stream_session = session_get (ctx->c_s_index, ctx->c_thread_index);
+  quicly_sendstate_shutdown (&stream->sendstate,
+			     ctx->bytes_written +
+			       svm_fifo_max_dequeue (stream_session->tx_fifo));
+  quicly_stream_sync_sendbuf (stream, 1);
+  quic_quicly_reschedule_ctx (quic_quicly_get_quic_ctx (
+    ctx->quic_connection_ctx_id, ctx->c_thread_index));
 }
 
 /*
@@ -1154,6 +1197,16 @@ conn_found:
 }
 
 static void
+quic_quicly_conn_app_init_failed (quic_ctx_t *ctx, const char *reason_phrase)
+{
+  ctx->flags |= QUIC_F_NO_APP_SESSION;
+  /* use 0 as error code because we can't pass quic transport error codes to
+   * quicly */
+  quicly_close (ctx->conn, 0, reason_phrase);
+  quic_quicly_reschedule_ctx (ctx);
+}
+
+static void
 quic_quicly_on_quic_session_accepted (quic_ctx_t *ctx)
 {
   session_t *quic_session;
@@ -1193,7 +1246,7 @@ quic_quicly_on_quic_session_accepted (quic_ctx_t *ctx)
   if (rv)
     {
       QUIC_ERR ("Accept connection: failed to allocate fifos");
-      quic_quicly_proto_on_close (ctx->c_c_index, ctx->c_thread_index);
+      quic_quicly_conn_app_init_failed (ctx, "failed to allocate fifos");
       return;
     }
 
@@ -1206,7 +1259,7 @@ quic_quicly_on_quic_session_accepted (quic_ctx_t *ctx)
   if (rv)
     {
       QUIC_ERR ("Accept connection: failed to notify accept worker app");
-      quic_quicly_proto_on_close (ctx->c_c_index, ctx->c_thread_index);
+      quic_quicly_conn_app_init_failed (ctx, "failed to notify app worker");
       return;
     }
 
@@ -1551,9 +1604,9 @@ quic_quicly_stream_tx (quic_ctx_t *ctx, session_t *stream_session)
   u32 max_deq;
 
   stream = ctx->stream;
-  if (!quicly_sendstate_is_open (&stream->sendstate))
+  if (quicly_sendstate_is_fully_inflight (&stream->sendstate))
     {
-      QUIC_ERR ("Warning: tried to send on closed stream");
+      QUIC_ERR ("tried to send on tx-closed stream");
       return 0;
     }
 
@@ -1628,6 +1681,63 @@ quic_quicly_engine_init (quic_main_t *qm)
     }
 }
 
+<<<<<<< PATCH SET (bf9f32 quic: stream half-close support)
+static void
+quic_quicly_on_quic_session_connected (quic_ctx_t *ctx)
+{
+  session_t *quic_session;
+  app_worker_t *app_wrk;
+  clib_thread_index_t thread_index = ctx->c_thread_index;
+  int rv;
+
+  quic_session = session_alloc (thread_index);
+
+  QUIC_DBG (2, "Allocated quic session 0x%lx", session_handle (quic_session));
+  ctx->c_s_index = quic_session->session_index;
+  quic_session->app_wrk_index = ctx->parent_app_wrk_id;
+  quic_session->connection_index = ctx->c_c_index;
+  quic_session->listener_handle = SESSION_INVALID_HANDLE;
+  quic_session->session_type =
+    session_type_from_proto_and_ip (TRANSPORT_PROTO_QUIC, ctx->udp_is_ip4);
+
+  if (ctx->alpn_protos[0])
+    {
+      const char *proto =
+	ptls_get_negotiated_protocol (quicly_get_tls (ctx->conn));
+      if (proto)
+	{
+	  QUIC_DBG (2, "alpn proto selected %s", proto);
+	  tls_alpn_proto_id_t id = { .base = (u8 *) proto,
+				     .len = strlen (proto) };
+	  ctx->alpn_selected = tls_alpn_proto_by_str (&id);
+	}
+    }
+
+  /* If quic session connected fails, immediatly close connection */
+  app_wrk = app_worker_get (ctx->parent_app_wrk_id);
+  if ((rv = app_worker_init_connected (app_wrk, quic_session)))
+    {
+      QUIC_ERR ("failed to app_worker_init_connected");
+      app_worker_connect_notify (app_wrk, NULL, rv, ctx->client_opaque);
+      quic_quicly_conn_app_init_failed (ctx, "failed to allocate fifos");
+      return;
+    }
+
+  svm_fifo_init_ooo_lookup (quic_session->rx_fifo, 0 /* ooo enq */);
+  svm_fifo_init_ooo_lookup (quic_session->tx_fifo, 1 /* ooo deq */);
+
+  session_set_state (quic_session, SESSION_STATE_READY);
+  if ((rv = app_worker_connect_notify (app_wrk, quic_session, SESSION_E_NONE,
+				       ctx->client_opaque)))
+    {
+      QUIC_ERR ("failed to notify app %d", rv);
+      quic_quicly_conn_app_init_failed (ctx, "failed to notify app worker");
+      return;
+    }
+}
+
+=======
+>>>>>>> BASE      (08ae1f vcl: support for unidirectional streams)
 void
 quic_quicly_check_quic_session_connected (quic_ctx_t *ctx)
 {
@@ -1810,6 +1920,7 @@ const static quic_engine_vft_t quic_quicly_engine_vft = {
   .format_stream_stats = quic_quicly_format_stream_stats,
   .stream_get_stream_id = quic_quicly_stream_get_stream_id,
   .proto_on_close = quic_quicly_proto_on_close,
+  .proto_on_half_close = quic_quicly_proto_on_half_close,
   .transport_closed = quic_quicly_transport_closed,
 };
 
