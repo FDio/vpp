@@ -135,16 +135,20 @@ jobs:
           cd $WORKSPACE
           make docs
 
-      - name: Upload Documentation Artifacts
-        if: always()
-        uses: actions/upload-artifact@v5
-        with:
-          name: vpp-verify-docs-${{ env.GERRIT_BRANCH }}-rel-ubuntu2404-x86_64-${{ env.GERRIT_CHANGE_NUMBER }}-${{ env.GERRIT_PATCHSET_NUMBER }}
-          path: ${{ env.WORKSPACE }}/build-root/docs/
-          retention-days: 7
+      # TODO: Upload Docs to S3
+      # - name: Upload Documentation Artifacts
+      #   if: always()
+      #   uses: actions/upload-artifact@v5
+      #   with:
+      #     name: vpp-verify-docs-${{ env.GERRIT_BRANCH }}-rel-ubuntu2404-x86_64-${{ env.GERRIT_CHANGE_NUMBER }}-${{ env.GERRIT_PATCHSET_NUMBER }}
+      #     path: ${{ env.WORKSPACE }}/build-root/docs/
+      #     retention-days: 7
 
       - name: Report Success
         if: success()
         run: |
-          echo "VPP Verify Docs passed for Gerrit Refspec: $GERRIT_REFSPEC, Gerrit Change URL: $GERRIT_CHANGE_URL"
-          echo "::notice::VPP Verify Docs workflow completed successfully! Workflow ID: ${{ github.run_id }}, Name: ${{ github.workflow }}, Branch: $GERRIT_BRANCH, Change: $GERRIT_CHANGE_NUMBER, Patchset: $GERRIT_PATCHSET_NUMBER"
+          echo "::notice::VPP Verify Docs workflow completed successfully!"
+          echo "Workflow ID: ${{ github.run_id }}"
+          echo "Name: ${{ github.workflow }}"
+          echo "Branch: $GERRIT_BRANCH, Change: $GERRIT_CHANGE_NUMBER, Patchset: $GERRIT_PATCHSET_NUMBER"
+          echo "Gerrit Refspec: $GERRIT_REFSPEC, Gerrit Change URL: $GERRIT_CHANGE_URL"

@@ -68,31 +68,9 @@ permissions:
   contents: read
   actions: read
 
-concurrency:
-  # yamllint disable-line rule:line-length
-  group: required-${{ github.workflow }}-rel-ubuntu2404-x86_64-${{ inputs.GERRIT_CHANGE_NUMBER }}-${{ inputs.GERRIT_PATCHSET_NUMBER }}
-  cancel-in-progress: true
-
 jobs:
-  notify-start:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Notify workflow start
-        # yamllint disable-line rule:line-length
-        uses: lfreleng-actions/gerrit-review-action@537251ec667665b386f70b330b05446e3fc29087 # v0.9
-        with:
-          host: ${{ vars.GERRIT_SERVER }}
-          username: ${{ vars.GERRIT_SSH_REQUIRED_USER }}
-          key: ${{ secrets.GERRIT_SSH_REQUIRED_PRIVKEY }}
-          known_hosts: ${{ vars.GERRIT_KNOWN_HOSTS }}
-          gerrit-change-number: ${{ github.event.inputs.GERRIT_CHANGE_NUMBER }}
-          gerrit-patchset-number: ${{ github.event.inputs.GERRIT_PATCHSET_NUMBER }}
-          vote-type: clear
-          comment-only: true
-
   merge-maketest:
-    name: ${{ github.workflow }}-${{ inputs.GERRIT_BRANCH }}-${{ matrix.build_type }}-${{ matrix.os }}-${{ matrix.executor_arch }}
-    if: ${{ inputs.GERRIT_EVENT_TYPE == 'change-merged' }}
+    name: merge-maketest-${{ inputs.GERRIT_BRANCH }}-${{ inputs.FDIO_NAMESPACE }}
     runs-on:
       - self-hosted
       - nomad
@@ -200,5 +178,8 @@ jobs:
       - name: Report Success
         if: success()
         run: |
-          echo "VPP Merge Make Test passed for Gerrit Refspec: $GERRIT_REFSPEC, Gerrit Change URL: $GERRIT_CHANGE_URL"
-          echo "::notice::VPP Merge Make Test workflow completed successfully! Workflow ID: ${{ github.run_id }}, Name: ${{ github.workflow }}, Branch: $GERRIT_BRANCH, Change: $GERRIT_CHANGE_NUMBER, Patchset: $GERRIT_PATCHSET_NUMBER"
+          echo "::notice::VPP Merge Maketest workflow completed successfully!"
+          echo "Workflow ID: ${{ github.run_id }}"
+          echo "Name: ${{ github.workflow }}"
+          echo "Branch: $GERRIT_BRANCH, Change: $GERRIT_CHANGE_NUMBER, Patchset: $GERRIT_PATCHSET_NUMBER"
+          echo "Gerrit Refspec: $GERRIT_REFSPEC, Gerrit Change URL: $GERRIT_CHANGE_URL"

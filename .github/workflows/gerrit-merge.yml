@@ -1,0 +1,91 @@
+name: gerrit-merge
+
+on:
+  workflow_dispatch:
+    inputs:
+      GERRIT_BRANCH:
+        description: "Branch that change is against"
+        required: true
+        type: string
+      GERRIT_CHANGE_ID:
+        description: "The ID for the change"
+        required: true
+        type: string
+      GERRIT_CHANGE_NUMBER:
+        description: "The Gerrit number"
+        required: true
+        type: string
+      GERRIT_CHANGE_URL:
+        description: "URL to the change"
+        required: true
+        type: string
+      GERRIT_EVENT_TYPE:
+        description: "Type of Gerrit event"
+        required: true
+        type: string
+      GERRIT_PATCHSET_NUMBER:
+        description: "The patch number for the change"
+        required: true
+        type: string
+      GERRIT_PATCHSET_REVISION:
+        description: "The revision sha"
+        required: true
+        type: string
+      GERRIT_PROJECT:
+        description: "Project in Gerrit"
+        required: true
+        type: string
+      GERRIT_REFSPEC:
+        description: "Gerrit refspec of change"
+        required: true
+        type: string
+      FDIO_NAMESPACE:
+        description: "Executor Namespace (prod|sandbox)"
+        required: false
+        type: choice
+        options:
+          - sandbox
+          - prod
+        default: prod
+
+defaults:
+  run:
+    shell: bash
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ inputs.GERRIT_CHANGE_NUMBER }}-${{ inputs.GERRIT_PATCHSET_NUMBER }}
+  cancel-in-progress: true
+
+jobs:
+  merge-docs:
+    name: Run vpp-merge-docs
+    uses: fdio/vpp/.github/workflows/vpp-merge-docs.yml@master
+    with:
+      GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
+      GERRIT_CHANGE_ID: ${{ inputs.GERRIT_CHANGE_ID }}
+      GERRIT_CHANGE_NUMBER: ${{ inputs.GERRIT_CHANGE_NUMBER }}
+      GERRIT_CHANGE_URL: ${{ inputs.GERRIT_CHANGE_URL }}
+      GERRIT_EVENT_TYPE: ${{ inputs.GERRIT_EVENT_TYPE }}
+      GERRIT_PATCHSET_NUMBER: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
+      GERRIT_PATCHSET_REVISION: ${{ inputs.GERRIT_PATCHSET_REVISION }}
+      GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
+      GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
+      FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
+    secrets: inherit
+
+  merge-maketest:
+    name: Run vpp-merge-maketest
+    uses: fdio/vpp/.github/workflows/vpp-merge-maketest.yml@master
+    with:
+      GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
+      GERRIT_CHANGE_URL: ${{ inputs.GERRIT_CHANGE_URL }}
+      GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
+      GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
+      GERRIT_CHANGE_NUMBER: ${{ inputs.GERRIT_CHANGE_NUMBER }}
+      GERRIT_PATCHSET_NUMBER: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
+      FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
+    secrets: inherit
