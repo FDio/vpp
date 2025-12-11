@@ -5,7 +5,7 @@
 #include "sasc.h"
 #include "service.h"
 #include "sasc_funcs.h"
-#include "counter.h"
+#include "vppinfra/pool.h"
 
 sasc_main_t sasc_main;
 #define MAX_SASC_SESSIONS 1024 * 128 // TODO: Make this configurable
@@ -315,36 +315,37 @@ sasc_icmp_type_to_error_type(u8 icmp_type, u8 icmp_code) {
     }
 }
 clib_error_t *
-sasc_tenant_add_del(sasc_main_t *sasc, u32 tenant_idx, u32 context_id, u32 forward_chain_id, u32 reverse_chain_id,
-                    u32 miss_chain_id, u32 icmp_error_chain_id, bool is_add) {
+sasc_tenant_add(sasc_main_t *sasc, u32 *tenant_idx_set, u32 context_id, u32 forward_chain_id, u32 reverse_chain_id,
+                u32 miss_chain_id, u32 icmp_error_chain_id) {
+    sasc_tenant_t *tenant;
     clib_error_t *err = 0;
-    sasc_tenant_t *tenant = sasc_tenant_at_index(sasc, tenant_idx);
 
-    if (is_add) {
-        if (tenant_idx >= CLIB_U16_MAX)
-            return clib_error_return(0, "Can't create tenant with id %d. Maximum limit reached %d", tenant_idx,
-                                     CLIB_U16_MAX);
+    if (pool_elts(sasc->tenants) >= CLIB_U16_MAX)
+        return clib_error_return(0, "Can't create tenant. Maximum tenant limit reached %d", CLIB_U16_MAX);
 
-        if (tenant) {
-            return clib_error_return(0, "Can't create tenant with id %d. Already exists", tenant_idx);
-        }
+    pool_get(sasc->tenants, tenant);
+    *tenant_idx_set = tenant - sasc->tenants;
 
-        pool_get(sasc->tenants, tenant);
-        tenant_idx = tenant - sasc->tenants;
+    tenant->service_chains[SASC_SERVICE_CHAIN_FORWARD] = forward_chain_id;
+    tenant->service_chains[SASC_SERVICE_CHAIN_REVERSE] = reverse_chain_id;
+    tenant->service_chains[SASC_SERVICE_CHAIN_MISS] = miss_chain_id;
+    tenant->service_chains[SASC_SERVICE_CHAIN_ICMP_ERROR] = icmp_error_chain_id;
+    tenant->context_id = context_id;
 
-        tenant->service_chains[SASC_SERVICE_CHAIN_FORWARD] = forward_chain_id;
-        tenant->service_chains[SASC_SERVICE_CHAIN_REVERSE] = reverse_chain_id;
-        tenant->service_chains[SASC_SERVICE_CHAIN_MISS] = miss_chain_id;
-        tenant->service_chains[SASC_SERVICE_CHAIN_ICMP_ERROR] = icmp_error_chain_id;
-        tenant->context_id = context_id;
+    sasc_tenant_add_del_notify(*tenant_idx_set, true /* is_add */);
+    return err;
+}
 
-    } else {
-        if (!tenant) {
-            return clib_error_return(0, "Can't delete tenant with id %d. Not found", tenant_idx);
-        }
-        pool_put_index(sasc->tenants, tenant_idx);
+clib_error_t *
+sasc_tenant_del(sasc_main_t *sasc, u32 tenant_idx_del) {
+    clib_error_t *err = 0;
+    sasc_tenant_t *tenant = sasc_tenant_at_index(sasc, tenant_idx_del);
+    if (!tenant) {
+        return clib_error_return(0, "Can't delete tenant with id %d. Not found", tenant_idx_del);
     }
-    sasc_tenant_add_del_notify(tenant_idx, is_add);
+
+    pool_put_index(sasc->tenants, tenant_idx_del);
+    sasc_tenant_add_del_notify(tenant_idx_del, false /* is_add */);
     return err;
 }
 
