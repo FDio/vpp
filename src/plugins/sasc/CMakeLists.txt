@@ -62,6 +62,9 @@ add_vpp_plugin(sasc
   API_FILES
   sasc.api
 
+  API_TEST_SOURCES
+  sasc_test.c
+
   LINK_LIBRARIES
   ${LIBCBOR_LIB}
 )
