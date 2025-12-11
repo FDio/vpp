@@ -95,6 +95,7 @@ jobs:
       - nomad
       - fdio:arch=${{ matrix.executor_arch }}
       - fdio:class=hst
+      - fdio:size=hst
       - fdio:namespace=${{ inputs.FDIO_NAMESPACE || 'prod' }}
       - fdio:os=${{ matrix.os }}
 
