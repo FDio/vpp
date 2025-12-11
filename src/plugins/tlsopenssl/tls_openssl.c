@@ -425,9 +425,12 @@ void
 openssl_confirm_app_close (tls_ctx_t *ctx)
 {
   openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
-  int rv = SSL_shutdown (oc->ssl);
-  if (rv < 0)
-    (void) SSL_get_error (oc->ssl, rv);
+  if (ctx->tls_type == TRANSPORT_PROTO_TLS)
+    {
+      int rv = SSL_shutdown (oc->ssl);
+      if (rv < 0)
+	(void) SSL_get_error (oc->ssl, rv);
+    }
   if (ctx->flags & TLS_CONN_F_SHUTDOWN_TRANSPORT)
     tls_shutdown_transport (ctx);
   else
@@ -670,7 +673,12 @@ openssl_ctx_read_dtls (tls_ctx_t *ctx, session_t *us)
     }
 
 done:
-
+  if (us->session_state >= SESSION_STATE_APP_CLOSED)
+    {
+      rv = SSL_shutdown (oc->ssl);
+      if (rv < 0)
+	(void) SSL_get_error (oc->ssl, rv);
+    }
   /* If handshake just completed, session may still be in accepting state */
   if (app_session->session_state >= SESSION_STATE_READY)
     tls_notify_app_enqueue (ctx, app_session);
