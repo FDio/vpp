@@ -1,3 +1,12 @@
+/* SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2025 Cisco Systems, Inc.
+ */
+
+option version = "0.0.1";
+
+import "vnet/ip/ip_types.api";
+import "vnet/interface_types.api";
+
 counters sasc_lookup {
   miss {
     severity error;
@@ -59,4 +68,327 @@ counters sasc_handoff {
     units "packets";
     description "no session";
   };
+};
+
+enum sasc_service_chain_type : u8
+{
+  SASC_API_SERVICE_CHAIN_FORWARD = 0,
+  SASC_API_SERVICE_CHAIN_REVERSE = 1,
+  SASC_API_SERVICE_CHAIN_MISS = 2,
+  SASC_API_SERVICE_CHAIN_ICMP_ERROR = 3,
+};
+
+/** \brief Enable or disable SASC on an interface
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - interface index
+    @param tenant_idx - tenant index to associate with the interface
+    @param is_output - true for output (egress) arc, false for input (ingress) arc
+    @param is_enable - true to enable, false to disable
+*/
+autoreply define sasc_interface_enable_disable
+{
+  u32 client_index;
+  u32 context;
+
+  vl_api_interface_index_t sw_if_index;
+  u32 tenant_idx;
+  bool is_output;
+  bool is_enable;
+};
+
+
+/** \brief SASC ingress interface details
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - software interface index
+    @param tenant_id - tenant ID assigned to this interface
+    @param is_output - true if SASC is enabled on output for this interface
+*/
+define sasc_interface_details
+{
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+  u32 tenant_id;
+  bool is_output;
+};
+
+/** \brief Dump SASC ingress interfaces
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - software interface index to query (0xFFFFFFFF for all)
+*/
+define sasc_interface_dump
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index [default=0xFFFFFFFF];
+};
+
+
+/** \brief Set services for a service chain
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param chain_id - service chain ID
+    @param n_services - number of services in the chain
+    @param services - array of service indices
+*/
+autoreply define sasc_set_services
+{
+  u32 client_index;
+  u32 context;
+
+  u32 chain_id;
+  u32 n_services;
+  u32 services[n_services];
+};
+
+/** \brief Add tenant
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param context_id - context ID
+    @param forward_chain_id - forward service chain ID
+    @param reverse_chain_id - reverse service chain ID
+    @param miss_chain_id - miss service chain ID
+    @param icmp_error_chain_id - ICMP error service chain ID
+*/
+
+define sasc_tenant_add
+{
+  u32 client_index;
+  u32 context;
+
+  u32 context_id;
+  u32 forward_chain_id;
+  u32 reverse_chain_id;
+  u32 miss_chain_id;
+  u32 icmp_error_chain_id;
+};
+
+define sasc_tenant_add_reply
+{
+  u32 context;
+  i32 retval;
+  u32 tenant_idx;
+};
+
+/** \brief Delete tenant
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param tenant_idx - tenant index
+*/
+
+autoreply define sasc_tenant_del
+{
+  u32 client_index;
+  u32 context;
+  u32 tenant_idx;
+};
+
+/** \brief Set session timeout values
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param fsol_timeout - FSOL state timeout
+    @param established_timeout - established state timeout
+    @param time_wait_timeout - time wait state timeout
+    @param tcp_transitory_timeout - TCP transitory state timeout
+    @param tcp_fast_transitory_timeout - TCP fast transitory state timeout
+    @param tcp_established_timeout - TCP established state timeout
+*/
+autoreply define sasc_set_timeout
+{
+  u32 client_index;
+  u32 context;
+
+  u32 fsol_timeout;
+  u32 established_timeout;
+  u32 time_wait_timeout;
+  u32 tcp_transitory_timeout;
+  u32 tcp_fast_transitory_timeout;
+  u32 tcp_established_timeout;
+};
+
+/** \brief Clear all sessions
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+autoreply define sasc_session_clear
+{
+  u32 client_index;
+  u32 context;
+};
+
+enum sasc_session_state : u8
+{
+  SASC_API_SESSION_STATE_FSOL = 0,
+  SASC_API_SESSION_STATE_ESTABLISHED = 1,
+  SASC_API_SESSION_STATE_TIME_WAIT = 2,
+  SASC_API_SESSION_STATE_TCP_TRANSITORY = 3,
+  SASC_API_SESSION_STATE_TCP_FAST_TRANSITORY = 4,
+  SASC_API_SESSION_STATE_TCP_ESTABLISHED = 5,
+  SASC_API_SESSION_STATE_STATIC = 6,
+  SASC_API_SESSION_STATE_EXPIRED = 7,
+};
+
+typedef sasc_session_key
+{
+  u32 context_id;
+  vl_api_address_t src;
+  u16 sport;
+  vl_api_address_t dst;
+  u16 dport;
+};
+
+/** \brief Dump all sessions
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define sasc_session_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Session details in response to sasc_session_dump
+    @param context - sender context, to match reply w/ request
+    @param session_index - session index
+    @param tenant_idx - tenant index
+    @param protocol - IP protocol
+    @param state - session state
+    @param remaining_time - remaining time before session expires
+    @param forward_chain_id - forward service chain ID
+    @param reverse_chain_id - reverse service chain ID
+    @param bytes_forward - bytes in forward direction
+    @param bytes_reverse - bytes in reverse direction
+    @param pkts_forward - packets in forward direction
+    @param pkts_reverse - packets in reverse direction
+    @param forward_key - forward session key
+    @param reverse_key - reverse session key
+*/
+define sasc_session_details
+{
+  u32 context;
+
+  u32 session_index;
+  u16 tenant_idx;
+  vl_api_ip_proto_t protocol;
+  vl_api_sasc_session_state_t state;
+  f64 remaining_time;
+  u16 forward_chain_id;
+  u16 reverse_chain_id;
+  u64 bytes_forward;
+  u64 bytes_reverse;
+  u32 pkts_forward;
+  u32 pkts_reverse;
+  vl_api_sasc_session_key_t forward_key;
+  vl_api_sasc_session_key_t reverse_key;
+};
+
+/** \brief Dump all tenants
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define sasc_tenant_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Tenant details in response to sasc_tenant_dump
+    @param context - sender context, to match reply w/ request
+    @param tenant_idx - tenant index
+    @param context_id - context ID
+    @param forward_chain_id - forward service chain ID
+    @param reverse_chain_id - reverse service chain ID
+    @param miss_chain_id - miss service chain ID
+    @param icmp_error_chain_id - ICMP error service chain ID
+*/
+define sasc_tenant_details
+{
+  u32 context;
+
+  u32 tenant_idx;
+  u32 context_id;
+  u32 forward_chain_id;
+  u32 reverse_chain_id;
+  u32 miss_chain_id;
+  u32 icmp_error_chain_id;
+};
+
+/** \brief Dump all available services
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define sasc_service_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Service details in response to sasc_service_dump
+    @param context - sender context, to match reply w/ request
+    @param service_index - service index
+    @param name - service name
+*/
+define sasc_service_details
+{
+  u32 context;
+
+  u32 service_index;
+  string name[32];
+};
+
+/** \brief Dump all service chains
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define sasc_service_chain_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Service chain details in response to sasc_service_chain_dump
+    @param context - sender context, to match reply w/ request
+    @param chain_id - service chain ID
+    @param n_services - number of services in the chain
+    @param services - array of service indices
+*/
+define sasc_service_chain_details
+{
+  u32 context;
+
+  u32 chain_id;
+  u32 n_services;
+  u32 services[n_services];
+};
+
+/** \brief Get SASC summary information
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define sasc_summary
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief SASC summary reply
+    @param context - sender context, to match reply w/ request
+    @param retval - return value
+    @param max_sessions - maximum number of sessions
+    @param active_sessions - number of active sessions
+    @param active_tenants - number of active tenants
+    @param session_hash_memory - memory used by session hash table
+    @param session_table_memory - memory used by session table
+*/
+define sasc_summary_reply
+{
+  u32 context;
+  i32 retval;
+
+  u32 max_sessions;
+  u32 active_sessions;
+  u32 active_tenants;
+  u64 session_hash_memory;
+  u64 session_table_memory;
 };
