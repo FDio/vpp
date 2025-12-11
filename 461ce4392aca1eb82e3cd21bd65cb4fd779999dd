@@ -16,6 +16,24 @@
       "message": "Always 0? The old code is doing this. \n     vring-\u003ebuffer_pool_index \u003d vlib_buffer_pool_get_default_for_numa (\n\tvm, vnet_hw_if_get_rx_queue_numa_node (vnm, vring-\u003equeue_index));",
       "revId": "461ce4392aca1eb82e3cd21bd65cb4fd779999dd",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9eaa9f24_82e778e1",
+        "filename": "src/plugins/tap/tap.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 140,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2025-12-11T14:15:22Z",
+      "side": 1,
+      "message": "yes, intentionally, tap interface doesn\u0027t have numa locality",
+      "parentUuid": "6aec4de1_0175afcd",
+      "revId": "461ce4392aca1eb82e3cd21bd65cb4fd779999dd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
