@@ -118,7 +118,7 @@ quic_eng_format_stream_stats (u8 *s, va_list *args)
   return (quic_engine_vfts[qm->engine_type].format_stream_stats (s, args));
 }
 
-static_always_inline i64
+static_always_inline quic_stream_id_t
 quic_eng_stream_get_stream_id (quic_ctx_t *ctx)
 {
   quic_main_t *qm = &quic_main;
@@ -130,6 +130,14 @@ quic_eng_proto_on_close (u32 ctx_index, u32 thread_index)
 {
   quic_main_t *qm = &quic_main;
   quic_engine_vfts[qm->engine_type].proto_on_close (ctx_index, thread_index);
+}
+
+static_always_inline void
+quic_eng_proto_on_half_close (u32 ctx_index, u32 thread_index)
+{
+  quic_main_t *qm = &quic_main;
+  quic_engine_vfts[qm->engine_type].proto_on_half_close (ctx_index,
+							 thread_index);
 }
 
 #endif /* __included_quic_eng_inline_h__ */

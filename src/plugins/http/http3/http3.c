@@ -1308,7 +1308,21 @@ http3_transport_close_callback (http_conn_t *hc)
 static void
 http3_transport_reset_callback (http_conn_t *hc)
 {
+  http3_conn_ctx_t *h3c;
+  http3_stream_ctx_t *parent_sctx;
+
   HTTP_DBG (1, "hc [%u]%x", hc->c_thread_index, hc->hc_hc_index);
+  h3c = http3_conn_ctx_get (pointer_to_uword (hc->opaque), hc->c_thread_index);
+  if (h3c->parent_sctx_index != SESSION_INVALID_INDEX)
+    {
+      parent_sctx =
+	http3_stream_ctx_get (h3c->parent_sctx_index, hc->c_thread_index);
+      session_transport_reset_notify (&parent_sctx->base.connection);
+    }
+  h3c->our_ctrl_stream_hc_index = SESSION_INVALID_INDEX;
+  h3c->peer_ctrl_stream_sctx_index = SESSION_INVALID_INDEX;
+  h3c->peer_decoder_stream_sctx_index = SESSION_INVALID_INDEX;
+  h3c->peer_encoder_stream_sctx_index = SESSION_INVALID_INDEX;
 }
 
 static void
@@ -1366,17 +1380,24 @@ http3_transport_stream_close_callback (http_conn_t *stream)
 	    stream->hc_hc_index, pointer_to_uword (stream->opaque));
   if (stream->state != HTTP_CONN_STATE_CLOSED)
     {
-      /* we don't allocate sctx for unidirectional streams initiated by us */
-      if (pointer_to_uword (stream->opaque) == SESSION_INVALID_INDEX)
+      if (stream->flags & HTTP_CONN_F_UNIDIRECTIONAL_STREAM)
 	{
-	  http_close_transport_stream (stream);
-	  http_stats_ctrl_streams_closed_inc (stream->c_thread_index);
-	  return;
+	  /* we don't allocate sctx for unidirectional streams initiated by us
+	   */
+	  if (pointer_to_uword (stream->opaque) == SESSION_INVALID_INDEX)
+	    {
+	      http_close_transport_stream (stream);
+	      http_stats_ctrl_streams_closed_inc (stream->c_thread_index);
+	      return;
+	    }
+	  sctx = http3_stream_ctx_get (pointer_to_uword (stream->opaque),
+				       stream->c_thread_index);
+	  http3_stream_close (stream, sctx);
 	}
-
-      sctx = http3_stream_ctx_get (pointer_to_uword (stream->opaque),
-				   stream->c_thread_index);
-      http3_stream_close (stream, sctx);
+      else
+	{
+	  stream->state = HTTP_CONN_STATE_HALF_CLOSED;
+	}
     }
 }
 
