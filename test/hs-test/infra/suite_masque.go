@@ -114,17 +114,17 @@ func (s *MasqueSuite) SetupTest() {
 	Log(string(o))
 	AssertNil(err, fmt.Sprint(err))
 
-	arp := fmt.Sprintf("set ip neighbor host-%s %s %s",
-		s.Interfaces.TunnelClient.Name(),
+	arp := fmt.Sprintf("set ip neighbor %s %s %s",
+		s.Interfaces.TunnelClient.VppName(),
 		s.ProxyAddr(),
 		s.Interfaces.TunnelServer.HwAddress)
 	Log(clientVpp.Vppctl(arp))
-	arp = fmt.Sprintf("set ip neighbor host-%s %s %s",
-		s.Interfaces.Client.Name(),
+	arp = fmt.Sprintf("set ip neighbor %s %s %s",
+		s.Interfaces.Client.VppName(),
 		s.Interfaces.Client.Peer.Ip4AddressString(),
 		s.Interfaces.Client.Peer.HwAddress)
 	Log(clientVpp.Vppctl(arp))
-	arp = fmt.Sprintf("set ip neighbor host-%s %s %s",
+	arp = fmt.Sprintf("set ip neighbor %s %s %s",
 		s.Interfaces.Server.Name(),
 		s.NginxAddr(),
 		s.Interfaces.Server.Peer.HwAddress)
@@ -168,8 +168,8 @@ func (s *MasqueSuite) ProxyClientConnect(proto, port string, extraArgs ...string
 		extras = strings.Join(extraArgs, " ")
 	}
 	vpp := s.Containers.VppClient.VppInstance
-	cmd := fmt.Sprintf("http connect proxy client enable server-uri https://%s:%s listener %s://0.0.0.0:%s interface host-%s %s",
-		s.ProxyAddr(), s.Ports.Proxy, proto, port, s.Interfaces.Client.Name(), extras)
+	cmd := fmt.Sprintf("http connect proxy client enable server-uri https://%s:%s listener %s://0.0.0.0:%s interface %s %s",
+		s.ProxyAddr(), s.Ports.Proxy, proto, port, s.Interfaces.Client.VppName(), extras)
 	Log(vpp.Vppctl(cmd))
 
 	connected := false

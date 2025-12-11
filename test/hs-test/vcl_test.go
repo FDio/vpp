@@ -230,7 +230,7 @@ func VclClUdpDscpTest(s *VethsSuite) {
 	cliAppCont := s.Containers.ClientApp
 	cliAppCont.CreateFile("/vcl.conf", getVclConfig(cliVppCont))
 	cliAppCont.AddEnvVar("VCL_CONFIG", "/vcl.conf")
-	cliVppCont.VppInstance.Vppctl("arping %s host-%s", serverVethAddress, s.Interfaces.Client.Name())
+	cliVppCont.VppInstance.Vppctl("arping %s %s", serverVethAddress, s.Interfaces.Client.VppName())
 
 	cliVppCont.VppInstance.Vppctl("trace add af-packet-input 10")
 	srvVppCont.VppInstance.Vppctl("trace add af-packet-input 10")
