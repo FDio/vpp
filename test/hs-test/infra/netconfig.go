@@ -43,6 +43,7 @@ type (
 		NetworkNamespace string
 		NetworkNumber    int
 		Peer             *NetInterface
+		vppName          string
 	}
 
 	NetworkNamespace struct {
@@ -273,6 +274,10 @@ func (n *NetInterface) unconfigure() error {
 
 func (n *NetInterface) Name() string {
 	return n.name
+}
+
+func (n *NetInterface) VppName() string {
+	return n.vppName
 }
 
 func (n *NetInterface) Type() string {

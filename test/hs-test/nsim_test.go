@@ -16,7 +16,7 @@ func NsimLossTest(s *VethsSuite) {
 	clientVpp := s.Containers.ClientVpp.VppInstance
 
 	Log(clientVpp.Vppctl("set nsim poll-main-thread delay 0.01 ms bandwidth 40 gbit packet-size 1400 drop-fraction 0.1"))
-	Log(clientVpp.Vppctl("nsim output-feature enable-disable host-" + s.Interfaces.Client.Name()))
+	Log(clientVpp.Vppctl("nsim output-feature enable-disable " + s.Interfaces.Client.VppName()))
 	o := clientVpp.Vppctl("show nsim")
 	AssertNotContains(o, "nsim not enabled")
 	o = clientVpp.Vppctl("ping " + s.Interfaces.Server.Ip4AddressString() + " repeat 10000 interval 0.0001")

@@ -349,6 +349,7 @@ func WithNumTxQueues(numTxQueues uint16) AfPacketOption {
 func (vpp *VppInstance) createAfPacket(veth *NetInterface, IPv6 bool, opts ...AfPacketOption) (interface_types.InterfaceIndex, error) {
 	var ipAddress string
 	var err error
+	veth.vppName = "host-" + veth.Name()
 
 	if *DryRun {
 		if IPv6 {
@@ -366,11 +367,11 @@ func (vpp *VppInstance) createAfPacket(veth *NetInterface, IPv6 bool, opts ...Af
 
 		vppCliConfig := fmt.Sprintf(
 			"create host-interface name %s\n"+
-				"set int state host-%s up\n"+
-				"set int ip addr host-%s %s\n",
+				"set int state %s up\n"+
+				"set int ip addr %s %s\n",
 			veth.Name(),
-			veth.Name(),
-			veth.Name(), ipAddress)
+			veth.VppName(),
+			veth.VppName(), ipAddress)
 		vpp.AppendToCliConfig(vppCliConfig)
 		Log("%s* Interface added:\n%s%s", Colors.grn, vppCliConfig, Colors.rst)
 		return 1, nil

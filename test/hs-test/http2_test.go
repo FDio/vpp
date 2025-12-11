@@ -211,7 +211,7 @@ func http2ClientPostFormTest(s *VethsSuite, usePtr bool) {
 	uri := "http://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1
 	o := s.Containers.ServerVpp.VppInstance.Vppctl("http static server uri " + uri + " url-handlers debug")
 	Log(o)
-	cmd := "http client post http2 verbose uri " + uri + "/interface_stats.json data host-" + s.Interfaces.Server.Name()
+	cmd := "http client post http2 verbose uri " + uri + "/interface_stats.json data " + s.Interfaces.Server.VppName()
 	if usePtr {
 		cmd += " use-ptr"
 	}
