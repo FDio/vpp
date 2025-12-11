@@ -224,6 +224,12 @@ quic_proto_on_close (u32 ctx_index, clib_thread_index_t thread_index)
   quic_eng_proto_on_close (ctx_index, thread_index);
 }
 
+static void
+quic_proto_on_half_close (u32 ctx_index, clib_thread_index_t thread_index)
+{
+  quic_eng_proto_on_half_close (ctx_index, thread_index);
+}
+
 static u32
 quic_start_listen (u32 quic_listen_session_index,
 		   transport_endpoint_cfg_t *tep)
@@ -435,6 +441,9 @@ static void
 quic_udp_session_disconnect_callback (session_t *ts)
 {
   quic_ctx_t *ctx = quic_ctx_get (ts->opaque, ts->thread_index);
+  QUIC_DBG (2, "UDP session closed: udp_handle %lx, ctx_index %u, thread %u",
+	    session_handle (ts), ctx->c_c_index, ctx->c_thread_index);
+  ctx->conn_state = QUIC_CONN_STATE_TRANSPORT_CLOSED;
   quic_eng_transport_closed (ctx);
 }
 
@@ -552,16 +561,10 @@ quic_custom_tx_callback (void *s, transport_send_params_t * sp)
   session_t *stream_session = (session_t *) s;
   quic_ctx_t *ctx;
 
-  if (PREDICT_FALSE
-      (stream_session->session_state >= SESSION_STATE_TRANSPORT_CLOSING))
-    return 0;
   ctx = quic_ctx_get (stream_session->connection_index,
 		      stream_session->thread_index);
   if (PREDICT_FALSE (!quic_ctx_is_stream (ctx)))
     {
-      QUIC_DBG (1, "NOT a stream: ctx_index %u, thread %u",
-		stream_session->connection_index,
-		stream_session->thread_index);
       /* this is invoked from quic_update_timer when we need to send
        * immediately */
       quic_eng_send_packets (ctx);
@@ -771,6 +774,7 @@ static transport_proto_vft_t quic_proto = {
   .connect = quic_connect_connection,
   .connect_stream = quic_connect_stream,
   .close = quic_proto_on_close,
+  .half_close = quic_proto_on_half_close,
   .start_listen = quic_start_listen,
   .stop_listen = quic_stop_listen,
   .get_connection = quic_connection_get,
