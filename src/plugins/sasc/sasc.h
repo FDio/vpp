@@ -259,8 +259,9 @@ uword unformat_sasc_service(unformat_input_t *input, va_list *args);
 int sasc_set_services(u32 chain_id, u32 *services);
 int sasc_build_effective_service_chains(sasc_main_t *sasc);
 int sasc_build_next_indices_from_effective_chains(sasc_main_t *sasc);
-clib_error_t *sasc_tenant_add_del(sasc_main_t *sasc, u32 tenant_idx, u32 context_id, u32 forward_chain_id,
-                                  u32 reverse_chain_id, u32 miss_chain_id, u32 icmp_error_chain_id, bool is_add);
+clib_error_t *sasc_tenant_add(sasc_main_t *sasc, u32 *tenant_idx_set, u32 context_id, u32 forward_chain_id,
+                              u32 reverse_chain_id, u32 miss_chain_id, u32 icmp_error_chain_id);
+clib_error_t *sasc_tenant_del(sasc_main_t *sasc, u32 tenant_idx_del);
 u32 sasc_ingress_node_index(sasc_ingress_node_index_t index);
 int sasc_set_timeout(sasc_main_t *sasc, u32 timeouts[]);
 int sasc_tenant_add_del_cb_register(sasc_tenant_add_del_cb_t callback);

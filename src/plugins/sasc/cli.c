@@ -109,6 +109,39 @@ VLIB_CLI_COMMAND(show_sasc_service_chains_command, static) = {
 };
 
 static clib_error_t *
+sasc_tenant_del_command_fn(vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd) {
+    unformat_input_t line_input_, *line_input = &line_input_;
+    clib_error_t *err = 0;
+    sasc_main_t *sasc = &sasc_main;
+    u32 tenant_idx = ~0;
+
+    if (!unformat_user(input, unformat_line_input, line_input))
+        return 0;
+    while (unformat_check_input(line_input) != UNFORMAT_END_OF_INPUT) {
+        if (unformat(line_input, "%d", &tenant_idx))
+            ;
+        else {
+            err = unformat_parse_error(line_input);
+            goto done;
+        }
+    }
+    if (tenant_idx == ~0) {
+        err = clib_error_return(0, "missing tenant index");
+        goto done;
+    }
+    err = sasc_tenant_del(sasc, tenant_idx);
+done:
+    unformat_free(line_input);
+    return err;
+}
+
+VLIB_CLI_COMMAND(dsasc_tenant_del_command, static) = {
+    .path = "delete sasc tenant",
+    .short_help = "delete sasc tenant <tenant-index>",
+    .function = sasc_tenant_del_command_fn,
+};
+
+static clib_error_t *
 sasc_tenant_add_command_fn(vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd) {
     unformat_input_t line_input_, *line_input = &line_input_;
     clib_error_t *err = 0;
@@ -120,9 +153,7 @@ sasc_tenant_add_command_fn(vlib_main_t *vm, unformat_input_t *input, vlib_cli_co
     if (!unformat_user(input, unformat_line_input, line_input))
         return 0;
     while (unformat_check_input(line_input) != UNFORMAT_END_OF_INPUT) {
-        if (unformat(line_input, "%d", &tenant_idx))
-            ;
-        else if (unformat(line_input, "context %d", &context_id))
+        if (unformat(line_input, "context %d", &context_id))
             ;
 #define _(n, str)                                                                                                      \
     else if (unformat(line_input, str " %d", &chain_ids[SASC_SERVICE_CHAIN_##n])) {                                    \
@@ -135,15 +166,11 @@ sasc_tenant_add_command_fn(vlib_main_t *vm, unformat_input_t *input, vlib_cli_co
             goto done;
         }
     }
-    if (tenant_idx == ~0) {
-        err = clib_error_return(0, "missing tenant index");
-        goto done;
-    }
     if (context_id == ~0)
         context_id = 0;
-    err = sasc_tenant_add_del(sasc, tenant_idx, context_id, chain_ids[SASC_SERVICE_CHAIN_FORWARD],
-                              chain_ids[SASC_SERVICE_CHAIN_REVERSE], chain_ids[SASC_SERVICE_CHAIN_MISS],
-                              chain_ids[SASC_SERVICE_CHAIN_ICMP_ERROR], true);
+    err = sasc_tenant_add(sasc, &tenant_idx, context_id, chain_ids[SASC_SERVICE_CHAIN_FORWARD],
+                          chain_ids[SASC_SERVICE_CHAIN_REVERSE], chain_ids[SASC_SERVICE_CHAIN_MISS],
+                          chain_ids[SASC_SERVICE_CHAIN_ICMP_ERROR]);
 done:
     unformat_free(line_input);
     return err;
@@ -151,7 +178,7 @@ done:
 
 VLIB_CLI_COMMAND(sasc_tenant_add_del_command, static) = {
     .path = "set sasc tenant",
-    .short_help = "set sasc tenant <tenant-index> context <context-id> forward <service-chain-id> reverse "
+    .short_help = "set sasc tenant context <context-id> forward <service-chain-id> reverse "
                   "<service-chain-id> miss <service-chain-id> icmp-error <service-chain-id>",
     .function = sasc_tenant_add_command_fn,
 };
