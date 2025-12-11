@@ -95,22 +95,77 @@ quic_quicly_connection_delete (quic_ctx_t *ctx)
     session_transport_delete_notify (&ctx->connection);
 }
 
-static void
-quic_quicly_notify_app_connect_failed (quic_ctx_t *ctx, session_error_t err)
+static int
+quic_quicly_notify_app_connected (quic_ctx_t *ctx, session_error_t err)
 {
+  session_t *app_session;
   app_worker_t *app_wrk;
-  int rv;
 
-  app_wrk = app_worker_get (ctx->parent_app_wrk_id);
+  app_wrk = app_worker_get_if_valid (ctx->parent_app_wrk_id);
   if (!app_wrk)
     {
-      QUIC_DBG (2, "no app worker: ctx_index %u, thread %u", ctx->c_c_index,
-		ctx->c_thread_index);
-      return;
+      ctx->flags |= QUIC_F_NO_APP_SESSION;
+      return -1;
     }
-  if ((rv = app_worker_connect_notify (app_wrk, 0, err, ctx->client_opaque)))
-    QUIC_ERR ("failed to notify app: err %d, ctx_index %u, thread %u", rv,
-	      ctx->c_c_index, ctx->c_thread_index);
+
+  if (err)
+    {
+      ctx->flags |= QUIC_F_NO_APP_SESSION;
+      goto send_reply;
+    }
+
+  /* Cleanup half-open session as we don't get notification from udp */
+  session_half_open_delete_notify (&ctx->connection);
+
+  app_session = session_alloc (ctx->c_thread_index);
+  app_session->session_state = SESSION_STATE_CREATED;
+  app_session->session_type =
+    session_type_from_proto_and_ip (TRANSPORT_PROTO_QUIC, ctx->udp_is_ip4);
+  app_session->listener_handle = SESSION_INVALID_HANDLE;
+  app_session->app_wrk_index = ctx->parent_app_wrk_id;
+  app_session->opaque = ctx->client_opaque;
+  app_session->connection_index = ctx->c_c_index;
+  ctx->c_s_index = app_session->session_index;
+
+  if (ctx->alpn_protos[0])
+    {
+      const char *proto =
+	ptls_get_negotiated_protocol (quicly_get_tls (ctx->conn));
+      if (proto)
+	{
+	  QUIC_DBG (2, "alpn proto selected %s", proto);
+	  tls_alpn_proto_id_t id = { .base = (u8 *) proto,
+				     .len = strlen (proto) };
+	  ctx->alpn_selected = tls_alpn_proto_by_str (&id);
+	}
+    }
+
+  if ((err = app_worker_init_connected (app_wrk, app_session)))
+    {
+      QUIC_ERR ("failed to app_worker_init_connected");
+      app_worker_connect_notify (app_wrk, 0, err, ctx->client_opaque);
+      ctx->flags |= QUIC_F_NO_APP_SESSION;
+      session_free (app_session);
+      return -1;
+    }
+
+  svm_fifo_init_ooo_lookup (app_session->rx_fifo, 0 /* ooo enq */);
+  svm_fifo_init_ooo_lookup (app_session->tx_fifo, 1 /* ooo deq */);
+
+  session_set_state (app_session, SESSION_STATE_READY);
+  if ((err = app_worker_connect_notify (app_wrk, app_session, SESSION_E_NONE,
+					ctx->client_opaque)))
+    {
+      QUIC_ERR ("failed to notify app %d", err);
+      session_free (session_get (ctx->c_s_index, ctx->c_thread_index));
+      ctx->flags |= QUIC_F_NO_APP_SESSION;
+      return -1;
+    }
+
+  return 0;
+
+send_reply:
+  return app_worker_connect_notify (app_wrk, 0, err, ctx->client_opaque);
 }
 
 /**
@@ -145,7 +200,7 @@ quic_quicly_connection_closed (quic_ctx_t *ctx)
       break;
     case QUIC_CONN_STATE_HANDSHAKE:
       /* handshake failed notify app that connect failed */
-      quic_quicly_notify_app_connect_failed (ctx, SESSION_E_TLS_HANDSHAKE);
+      quic_quicly_notify_app_connected (ctx, SESSION_E_TLS_HANDSHAKE);
       quic_quicly_connection_delete (ctx);
       break;
     case QUIC_CONN_STATE_OPENED:
@@ -1573,61 +1628,6 @@ quic_quicly_engine_init (quic_main_t *qm)
     }
 }
 
-static void
-quic_quicly_on_quic_session_connected (quic_ctx_t *ctx)
-{
-  session_t *quic_session;
-  app_worker_t *app_wrk;
-  u32 ctx_id = ctx->c_c_index;
-  clib_thread_index_t thread_index = ctx->c_thread_index;
-  int rv;
-
-  quic_session = session_alloc (thread_index);
-
-  QUIC_DBG (2, "Allocated quic session 0x%lx", session_handle (quic_session));
-  ctx->c_s_index = quic_session->session_index;
-  quic_session->app_wrk_index = ctx->parent_app_wrk_id;
-  quic_session->connection_index = ctx->c_c_index;
-  quic_session->listener_handle = SESSION_INVALID_HANDLE;
-  quic_session->session_type =
-    session_type_from_proto_and_ip (TRANSPORT_PROTO_QUIC, ctx->udp_is_ip4);
-
-  if (ctx->alpn_protos[0])
-    {
-      const char *proto =
-	ptls_get_negotiated_protocol (quicly_get_tls (ctx->conn));
-      if (proto)
-	{
-	  QUIC_DBG (2, "alpn proto selected %s", proto);
-	  tls_alpn_proto_id_t id = { .base = (u8 *) proto,
-				     .len = strlen (proto) };
-	  ctx->alpn_selected = tls_alpn_proto_by_str (&id);
-	}
-    }
-
-  /* If quic session connected fails, immediatly close connection */
-  app_wrk = app_worker_get (ctx->parent_app_wrk_id);
-  if ((rv = app_worker_init_connected (app_wrk, quic_session)))
-    {
-      QUIC_ERR ("failed to app_worker_init_connected");
-      quic_quicly_proto_on_close (ctx_id, thread_index);
-      app_worker_connect_notify (app_wrk, NULL, rv, ctx->client_opaque);
-      return;
-    }
-
-  svm_fifo_init_ooo_lookup (quic_session->rx_fifo, 0 /* ooo enq */);
-  svm_fifo_init_ooo_lookup (quic_session->tx_fifo, 1 /* ooo deq */);
-
-  session_set_state (quic_session, SESSION_STATE_READY);
-  if ((rv = app_worker_connect_notify (app_wrk, quic_session, SESSION_E_NONE,
-				       ctx->client_opaque)))
-    {
-      QUIC_ERR ("failed to notify app %d", rv);
-      quic_quicly_proto_on_close (ctx_id, thread_index);
-      return;
-    }
-}
-
 void
 quic_quicly_check_quic_session_connected (quic_ctx_t *ctx)
 {
@@ -1646,7 +1646,10 @@ quic_quicly_check_quic_session_connected (quic_ctx_t *ctx)
 
   ctx->conn_state = QUIC_CONN_STATE_READY;
   if (session_connected == QUIC_SESSION_CONNECTED_CLIENT)
-    quic_quicly_on_quic_session_connected (ctx);
+    {
+      if (quic_quicly_notify_app_connected (ctx, SESSION_E_NONE))
+	quic_quicly_proto_on_close (ctx->c_c_index, ctx->c_thread_index);
+    }
   else
     quic_quicly_on_quic_session_accepted (ctx);
 }
