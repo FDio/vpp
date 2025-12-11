@@ -132,4 +132,12 @@ quic_eng_proto_on_close (u32 ctx_index, u32 thread_index)
   quic_engine_vfts[qm->engine_type].proto_on_close (ctx_index, thread_index);
 }
 
+static_always_inline void
+quic_eng_proto_on_half_close (u32 ctx_index, u32 thread_index)
+{
+  quic_main_t *qm = &quic_main;
+  quic_engine_vfts[qm->engine_type].proto_on_half_close (ctx_index,
+							 thread_index);
+}
+
 #endif /* __included_quic_eng_inline_h__ */
