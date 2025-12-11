@@ -123,5 +123,6 @@ jobs:
       - name: Report Success
         if: success()
         run: |
-          echo "VPP Verify Coverage passed"
-          echo "::notice::VPP Verify Coverage workflow completed successfully! Workflow ID: ${{ github.run_id }}, Name: ${{ github.workflow }}, Branch: master, Git commit: HEAD"
+          echo "::notice::VPP Coverage workflow completed successfully!"
+          echo "Workflow ID: ${{ github.run_id }}"
+          echo "Name: ${{ github.workflow }}"

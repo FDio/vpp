@@ -93,5 +93,6 @@ jobs:
       - name: Report Success
         if: success()
         run: |
-          echo "VPP Verify DPDK RDMA Version passed"
-          echo "::notice::VPP Verify DPDK RDMA Version workflow completed successfully! Workflow ID: ${{ github.run_id }}, Name: ${{ github.workflow }}, Branch: master, Git commit: HEAD"
+          echo "::notice::VPP DPDK RDMA Version workflow completed successfully!"
+          echo "Workflow ID: ${{ github.run_id }}"
+          echo "Name: ${{ github.workflow }}"

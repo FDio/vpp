@@ -204,5 +204,8 @@ jobs:
       - name: Report Success
         if: success()
         run: |
-          echo "VPP Verify Make Test passed for Gerrit Refspec: $GERRIT_REFSPEC, Gerrit Change URL: $GERRIT_CHANGE_URL"
-          echo "::notice::VPP Verify Make Test workflow completed successfully! Workflow ID: ${{ github.run_id }}, Name: ${{ github.workflow }}, Branch: $GERRIT_BRANCH, Change: $GERRIT_CHANGE_NUMBER, Patchset: $GERRIT_PATCHSET_NUMBER"
+          echo "::notice::VPP Verify Maketest workflow completed successfully!"
+          echo "Workflow ID: ${{ github.run_id }}"
+          echo "Name: ${{ github.workflow }}"
+          echo "Branch: $GERRIT_BRANCH, Change: $GERRIT_CHANGE_NUMBER, Patchset: $GERRIT_PATCHSET_NUMBER"
+          echo "Gerrit Refspec: $GERRIT_REFSPEC, Gerrit Change URL: $GERRIT_CHANGE_URL"
