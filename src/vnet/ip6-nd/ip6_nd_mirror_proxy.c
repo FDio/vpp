@@ -151,9 +151,36 @@ ip6_nd_proxy_unicast (vlib_main_t *vm, vlib_node_runtime_t *node,
 
 	      if (FIB_NODE_INDEX_INVALID != fei)
 		{
-		  *next0 = ICMP6_NEIGHBOR_SOLICITATION_NEXT_REPLY;
-		  icmp6_send_neighbor_advertisement (
-		    vm, b0, ip6, icmp6_nsa, icmp6_nd_ell_addr, sw_if_index0);
+		  if (type0 == ICMP6_neighbor_solicitation)
+		    {
+		      /* Respond with a NA as in IPv6 ND (RFC 4861,
+		       * Sections 7.2.3 and 7.2.4), i.e. send a unicast NA back
+		       * to the soliciting node for the target address.
+		       */
+		      *next0 = ICMP6_NEIGHBOR_SOLICITATION_NEXT_REPLY;
+		      icmp6_send_neighbor_advertisement (
+			vm, b0, ip6, icmp6_nsa, icmp6_nd_ell_addr,
+			sw_if_index0);
+		    }
+		  else /* type0 == ICMP6_neighbor_advertisement */
+		    {
+		      /* Update the Neighbor Cache entry with the advertise
+		       * link- layer address and let normal IP/ND processing
+		       * continue as in IPv6 ND (RFC 4861, Section 7.2.5).
+		       */
+		      ip_neighbor_learn_t
+			learn = { .sw_if_index = sw_if_index0,
+				  .ip = {
+				    .version = AF_IP6,
+				    .ip.ip6 = icmp6_nsa->target_address,
+				  } };
+		      clib_memcpy (&learn.mac,
+				   icmp6_nd_ell_addr->ethernet_address,
+				   sizeof (learn.mac));
+
+		      ip_neighbor_learn_dp (&learn);
+		      /* Let packet continue to normal IP processing */
+		    }
 		}
 	    }
 	  if (b0->flags & VLIB_BUFFER_IS_TRACED)
