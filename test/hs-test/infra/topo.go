@@ -4,9 +4,9 @@ import (
 	"fmt"
 )
 
-type NetDevConfig map[string]interface{}
-type ContainerConfig map[string]interface{}
-type VolumeConfig map[string]interface{}
+type NetDevConfig map[string]any
+type ContainerConfig map[string]any
+type VolumeConfig map[string]any
 
 type YamlTopology struct {
 	Devices    []NetDevConfig    `yaml:"devices"`

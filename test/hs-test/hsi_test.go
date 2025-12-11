@@ -15,8 +15,8 @@ func init() {
 func HsiTransparentProxyTest(s *HsiSuite) {
 	s.SetupNginxServer()
 	vpp := s.Containers.Vpp.VppInstance
-	Log(vpp.Vppctl("set interface feature host-" + s.Interfaces.Client.Name() + " hsi4-in arc ip4-unicast"))
-	Log(vpp.Vppctl("set interface feature host-" + s.Interfaces.Server.Name() + " hsi4-in arc ip4-unicast"))
+	Log(vpp.Vppctl("set interface feature " + s.Interfaces.Client.VppName() + " hsi4-in arc ip4-unicast"))
+	Log(vpp.Vppctl("set interface feature " + s.Interfaces.Server.VppName() + " hsi4-in arc ip4-unicast"))
 	Log(vpp.Vppctl("test proxy server server-uri tcp://0.0.0.0:%d client-uri tcp://%s:%d",
 		s.Ports.Server, s.ServerAddr(), s.Ports.Server))
 

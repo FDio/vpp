@@ -227,7 +227,7 @@ func EchoBuiltinTestbytesTest(s *VethsSuite) {
 
 	// Add loss of packets with Network Delay Simulator
 	clientVpp.Vppctl("set nsim poll-main-thread delay 0.1 ms bandwidth 10 mbps packet-size 1460 packets-per-drop 125")
-	clientVpp.Vppctl("nsim output-feature enable-disable host-" + s.Interfaces.Client.Name())
+	clientVpp.Vppctl("nsim output-feature enable-disable " + s.Interfaces.Client.VppName())
 
 	o := clientVpp.Vppctl("test echo client echo-bytes test-bytes verbose bytes 32k test-timeout 1 uri" +
 		" udp://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1)
@@ -263,7 +263,7 @@ func TcpWithLossTest(s *VethsSuite) {
 	serverVpp := s.Containers.ServerVpp.VppInstance
 
 	Log(clientVpp.Vppctl("set nsim poll-main-thread delay 10 ms bandwidth 40 gbit"))
-	Log(clientVpp.Vppctl("nsim output-feature enable-disable host-" + s.Interfaces.Client.Name()))
+	Log(clientVpp.Vppctl("nsim output-feature enable-disable " + s.Interfaces.Client.VppName()))
 
 	Log("  * running TcpWithoutLoss")
 	output := tcpWithoutLoss(s)
@@ -280,7 +280,7 @@ func TcpWithLossTest(s *VethsSuite) {
 	// Add loss of packets with Network Delay Simulator
 	Log(clientVpp.Vppctl("set nsim poll-main-thread delay 10 ms bandwidth 40 gbit" +
 		" packet-size 1400 drop-fraction 0.033"))
-	Log(clientVpp.Vppctl("nsim output-feature enable-disable host-" + s.Interfaces.Client.Name()))
+	Log(clientVpp.Vppctl("nsim output-feature enable-disable " + s.Interfaces.Client.VppName()))
 
 	Log("  * running TcpWithLoss")
 	output = tcpWithoutLoss(s)
@@ -288,7 +288,7 @@ func TcpWithLossTest(s *VethsSuite) {
 	withLoss, err := ParseEchoClientTransfer(output)
 	AssertNil(err)
 
-	Log("\nBaseline:  %.2f bytes/s\nWith loss: %.2f bytes/s", baseline, withLoss)
+	Log("\nBaseline:  %d bytes/s\nWith loss: %d bytes/s", baseline, withLoss)
 	AssertGreaterEqualUnlessCoverageBuild(baseline, withLoss)
 	AssertGreaterEqualUnlessCoverageBuild(withLoss, uint64(float64(baseline)*0.15))
 }
@@ -315,7 +315,7 @@ func TcpWithLoss6Test(s *Veths6Suite) {
 	clientVpp := s.Containers.ClientVpp.VppInstance
 	serverVpp := s.Containers.ServerVpp.VppInstance
 	Log(clientVpp.Vppctl("set nsim poll-main-thread delay 10 ms bandwidth 40 gbit"))
-	Log(clientVpp.Vppctl("nsim output-feature enable-disable host-" + s.Interfaces.Client.Name()))
+	Log(clientVpp.Vppctl("nsim output-feature enable-disable " + s.Interfaces.Client.VppName()))
 
 	Log("  * running TcpWithoutLoss")
 	output := tcpWithoutLoss6(s)
@@ -333,7 +333,7 @@ func TcpWithLoss6Test(s *Veths6Suite) {
 	Log(clientVpp.Vppctl("set nsim poll-main-thread delay 10 ms bandwidth 40 gbit" +
 		" packet-size 1400 drop-fraction 0.033"))
 
-	Log(clientVpp.Vppctl("nsim output-feature enable-disable host-" + s.Interfaces.Client.Name()))
+	Log(clientVpp.Vppctl("nsim output-feature enable-disable " + s.Interfaces.Client.VppName()))
 
 	Log("  * running TcpWithLoss")
 	output = tcpWithoutLoss6(s)
@@ -341,7 +341,7 @@ func TcpWithLoss6Test(s *Veths6Suite) {
 	withLoss, err := ParseEchoClientTransfer(output)
 	AssertNil(err)
 
-	Log("\nBaseline:  %.2f bytes/s\nWith loss: %.2f bytes/s", baseline, withLoss)
+	Log("\nBaseline:  %d bytes/s\nWith loss: %d bytes/s", baseline, withLoss)
 	AssertGreaterEqualUnlessCoverageBuild(baseline, withLoss)
 	AssertGreaterEqualUnlessCoverageBuild(withLoss, uint64(float64(baseline)*0.15))
 }

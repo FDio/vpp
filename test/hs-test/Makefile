@@ -285,6 +285,7 @@ cleanup-hst:
 	@echo "Removing docker containers:"
 	@# "-" ignores errors
 	@-sudo docker rm $$(sudo docker stop $$(sudo docker ps -a -q --filter "name=$$(cat .last_hst_ppid)") -t 0)
+	@-sudo docker rm -f ginkgo
 	@echo "****************************"
 	@echo "Removing IP address files:"
 	@find . -type f -regextype egrep -regex '.*[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' -exec sudo rm -v {} \;
