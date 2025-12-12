@@ -164,7 +164,7 @@ var _ = Describe("VppUdpProxySuite", Ordered, ContinueOnFailure, Label("Proxy", 
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, func(ctx SpecContext) {
-				Log(testName + ": BEGIN")
+				Log("[* TEST BEGIN]: " + testName)
 				test(&s)
 			}, SpecTimeout(TestTimeout))
 		}
@@ -193,7 +193,7 @@ var _ = Describe("VppUdpProxySuiteSolo", Ordered, ContinueOnFailure, Serial, Lab
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, func(ctx SpecContext) {
-				Log(testName + ": BEGIN")
+				Log("[* TEST BEGIN]: " + testName)
 				test(&s)
 			}, SpecTimeout(TestTimeout))
 		}
@@ -222,7 +222,7 @@ var _ = Describe("VppUdpProxyMWSuite", Ordered, ContinueOnFailure, Serial, Label
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, func(ctx SpecContext) {
-				Log(testName + ": BEGIN")
+				Log("[* TEST BEGIN]: " + testName)
 				test(&s)
 			}, SpecTimeout(TestTimeout))
 		}
@@ -260,7 +260,7 @@ var _ = Describe("H2SpecUdpProxySuite", Ordered, ContinueOnFailure, Label("HTTP"
 		test := test
 		testName := "proxy_test.go/h2spec_" + strings.ReplaceAll(test.desc, "/", "_")
 		It(testName, func(ctx SpecContext) {
-			Log(testName + ": BEGIN")
+			Log("[* TEST BEGIN]: " + testName)
 			vppProxy := s.Containers.VppProxy.VppInstance
 			remoteServerConn := StartUdpEchoServer(s.ServerAddr(), s.Ports.Server)
 			defer remoteServerConn.Close()

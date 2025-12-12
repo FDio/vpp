@@ -240,7 +240,7 @@ Modifying the framework
         			funcValue := runtime.FuncForPC(pc)
         			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
         			It(testName, func(ctx SpecContext) {
-        				Log(testName + ": BEGIN")
+        				Log("[* TEST BEGIN]: " + testName)
         				test(&s)
         			}, SpecTimeout(TestTimeout))
         		}
@@ -261,7 +261,7 @@ Modifying the framework
                 var _ = Describe("MySuiteSolo", Ordered, ContinueOnFailure, Serial, func() {
                         ...
                         It(testName, Label("SOLO"), func(ctx SpecContext) {
-                                Log(testName + ": BEGIN")
+                                Log("[* TEST BEGIN]: " + testName)
 			        test(&s)
 		        }, SpecTimeout(TestTimeout))
                 })

@@ -268,7 +268,7 @@ var _ = Describe("VppProxySuite", Ordered, ContinueOnFailure, Label("VPPproxy", 
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, func(ctx SpecContext) {
-				Log(testName + ": BEGIN")
+				Log("[* TEST BEGIN]: " + testName)
 				test(&s)
 			}, SpecTimeout(TestTimeout))
 		}
@@ -297,7 +297,7 @@ var _ = Describe("VppProxySuiteSolo", Ordered, ContinueOnFailure, Serial, Label(
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, func(ctx SpecContext) {
-				Log(testName + ": BEGIN")
+				Log("[* TEST BEGIN]: " + testName)
 				test(&s)
 			}, SpecTimeout(TestTimeout))
 		}
@@ -326,7 +326,7 @@ var _ = Describe("VppProxyMWSuite", Ordered, ContinueOnFailure, Serial, Label("V
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, func(ctx SpecContext) {
-				Log(testName + ": BEGIN")
+				Log("[* TEST BEGIN]: " + testName)
 				test(&s)
 			}, SpecTimeout(TestTimeout))
 		}
@@ -362,7 +362,7 @@ var _ = Describe("H2SpecProxySuite", Ordered, ContinueOnFailure, Label("HTTP", "
 		test := test
 		testName := "proxy_test.go/h2spec_" + strings.ReplaceAll(test.desc, "/", "_")
 		It(testName, func(ctx SpecContext) {
-			Log(testName + ": BEGIN")
+			Log("[* TEST BEGIN]: " + testName)
 			s.SetupNginxServer()
 			s.ConfigureVppProxy("https", s.Ports.Proxy)
 			path := fmt.Sprintf("%s:%d", s.ServerAddr(), s.Ports.Server)
