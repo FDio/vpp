@@ -17,9 +17,9 @@ sfdp_api_direction (vl_api_sfdp_session_direction_t dir)
     case SFDP_API_FORWARD:
       return SFDP_FLOW_FORWARD;
     case SFDP_API_REVERSE:
-      return SFDP_API_REVERSE;
+      return SFDP_FLOW_REVERSE;
     }
-  return SFDP_FLOW_FORWARD;
+  abort();
 }
 
 static_always_inline vl_api_sfdp_session_type_t
