@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8503ea12_b0c2dbe5",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2025-12-12T13:36:45Z",
+      "side": 1,
+      "message": "Finally this works with CSIT: https://logs.fd.io/vex-yul-rot-jenkins-1/vpp-csit-verify-perf-master-ubuntu2404-x86_64-2n-icx/123/csit_current/0/log.html.gz#s1-s1-s1-s1-s1-t1-k3-k1-k2-k1-k1-k1",
+      "revId": "d4af89f81a58144d601680b7af12b74ef5fde096",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
