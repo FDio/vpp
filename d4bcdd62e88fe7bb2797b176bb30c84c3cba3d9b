@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2ee8a273_0396864b",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 528,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-12-12T00:10:55Z",
+      "side": 0,
+      "message": "We should make sure dgrams fit. That is, if we get dgrams larger than `vec_len (buf)`, we can 1) either on the spot grow the buffer (these cannot be more than 64kB) or 2) refuse to send. If we want 2) we should offer knobs to configure default buffer size. Let\u0027s go with 1) for now.",
+      "range": {
+        "startLine": 528,
+        "startChar": 36,
+        "endLine": 528,
+        "endChar": 67
+      },
+      "revId": "d4bcdd62e88fe7bb2797b176bb30c84c3cba3d9b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f79edf4f_1db5afd9",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 542,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-12-12T00:10:55Z",
+      "side": 0,
+      "message": "This should be fine as is, if buffer is large enough. Problem is what happens when udp layer (session_node actually) tries to generate dgram. Either udp mss allows for it and then ip layer should fragment in rewrite, if interface mtu asks for it. Otherwise everything should be dropped. \n\nThe test you added should be good for this, but we may have to reduce interface mtu because by default even taps are 9k.",
+      "revId": "d4bcdd62e88fe7bb2797b176bb30c84c3cba3d9b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
