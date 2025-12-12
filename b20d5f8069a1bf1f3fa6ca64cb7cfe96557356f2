@@ -123,6 +123,24 @@
       "parentUuid": "1d8374e7_170784fe",
       "revId": "b20d5f8069a1bf1f3fa6ca64cb7cfe96557356f2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a0cf3eac_92a77b8e",
+        "filename": "src/plugins/hs_apps/vcl/vcl_test_server.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 739,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-12-12T00:20:21Z",
+      "side": 1,
+      "message": "The accept is on line 728. Tests were mostly fine asserting that by this point we had a ctrl session, hope is that with a bit more logic we can either remove the assert (maybe 714 is what we were missing) or ignore events when there\u0027s no control session and continue.",
+      "parentUuid": "57e9c008_fe70e253",
+      "revId": "b20d5f8069a1bf1f3fa6ca64cb7cfe96557356f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
