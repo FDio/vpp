@@ -33,6 +33,24 @@
       "message": "you didn\u0027t set it for tap interface, in this case it is same as name, but one will be surprised why it return empty string. on the other hand if we use VppName for both and we change interface type in topology you don\u0027t need to update every vpp cli cmd in tests",
       "revId": "ed33fbb15805fa4eeb83a284a16c37740acef3c3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1c5324cf_93923be0",
+        "filename": "test/hs-test/infra/netconfig.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 46,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2025-12-12T08:45:49Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "1e2a9692_92cb71a5",
+      "revId": "ed33fbb15805fa4eeb83a284a16c37740acef3c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
