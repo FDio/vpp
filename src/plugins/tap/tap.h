@@ -23,7 +23,7 @@
   _ (IN_ORDER, 7)                                                             \
   _ (CONSISTENT_QP, 8)
 
-typedef enum
+typedef enum : u16
 {
 #define _(a, b) TAP_FLAG_##a = (1 << b),
   foreach_tapv2_flags
