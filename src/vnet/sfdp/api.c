@@ -37,7 +37,7 @@ vl_api_sfdp_set_services_t_handler (vl_api_sfdp_set_services_t *mp)
   u32 tenant_id = clib_net_to_host_u32 (mp->tenant_id);
   sfdp_bitmap_t bitmap = 0;
   u8 idx = 0;
-  u8 dir = sfdp_api_direction (mp->dir);
+  sfdp_flow_direction_t dir = sfdp_api_direction (mp->dir);
   int rv;
   for (uword i = 0; i < mp->n_services; i++)
     {
