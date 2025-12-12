@@ -26,6 +26,30 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "f354b4d8_48980363",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 528,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-12-12T14:45:05Z",
+      "side": 0,
+      "message": "Sure. Why the 64k limit though? \nSSL_read has the 16k record size limit, but I don\u0027t see anything like that for SSL_write.",
+      "parentUuid": "2ee8a273_0396864b",
+      "range": {
+        "startLine": 528,
+        "startChar": 36,
+        "endLine": 528,
+        "endChar": 67
+      },
+      "revId": "d4bcdd62e88fe7bb2797b176bb30c84c3cba3d9b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "f79edf4f_1db5afd9",
         "filename": "src/plugins/tlsopenssl/tls_openssl.c",
         "patchSetId": 4
@@ -37,6 +61,24 @@
       "writtenOn": "2025-12-12T00:10:55Z",
       "side": 0,
       "message": "This should be fine as is, if buffer is large enough. Problem is what happens when udp layer (session_node actually) tries to generate dgram. Either udp mss allows for it and then ip layer should fragment in rewrite, if interface mtu asks for it. Otherwise everything should be dropped. \n\nThe test you added should be good for this, but we may have to reduce interface mtu because by default even taps are 9k.",
+      "revId": "d4bcdd62e88fe7bb2797b176bb30c84c3cba3d9b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "123b242b_5aeac05e",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 542,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-12-12T14:45:05Z",
+      "side": 0,
+      "message": "Yeah, if we\u0027re to resize buffers instead, then this doesn\u0027t make sense.\n\nAnd about testing, we\u0027re over veth, so default MTU is 1500 bytes - we should be fine in that regard.",
+      "parentUuid": "f79edf4f_1db5afd9",
       "revId": "d4bcdd62e88fe7bb2797b176bb30c84c3cba3d9b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
