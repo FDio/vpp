@@ -282,8 +282,11 @@ sfdp_tenant_add_del (sfdp_main_t *sfdp, u32 tenant_id, u32 context_id,
 
 clib_error_t *
 sfdp_set_services (sfdp_main_t *sfdp, u32 tenant_id, sfdp_bitmap_t bitmap,
-		   u8 direction)
+		   sfdp_flow_direction_t direction)
 {
+  if (direction < SFDP_FLOW_FORWARD || direction > SFDP_FLOW_REVERSE)
+    return clib_error_return (0, "Invalid direction: %d", direction);
+
   sfdp_init_main_if_needed (sfdp);
   clib_bihash_kv_8_8_t kv = { .key = tenant_id, .value = 0 };
   sfdp_tenant_t *tenant;

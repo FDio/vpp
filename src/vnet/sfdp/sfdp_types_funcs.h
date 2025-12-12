@@ -9,7 +9,8 @@
 #include <vnet/sfdp/sfdp_types.api_types.h>
 #include <vnet/sfdp/sfdp_types.api_enum.h>
 #include <vnet/ip/ip_types_api.h>
-static_always_inline u8
+
+static_always_inline sfdp_flow_direction_t
 sfdp_api_direction (vl_api_sfdp_session_direction_t dir)
 {
   switch (dir)
@@ -17,9 +18,9 @@ sfdp_api_direction (vl_api_sfdp_session_direction_t dir)
     case SFDP_API_FORWARD:
       return SFDP_FLOW_FORWARD;
     case SFDP_API_REVERSE:
-      return SFDP_API_REVERSE;
+      return SFDP_FLOW_REVERSE;
     }
-  return SFDP_FLOW_FORWARD;
+  return SFDP_FLOW_DIRECTION_INVALID;
 }
 
 static_always_inline vl_api_sfdp_session_type_t
