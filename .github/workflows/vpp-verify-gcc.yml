@@ -101,7 +101,8 @@ permissions:
 
 jobs:
   verify-gcc:
-    name: verify-gcc-${{ inputs.GERRIT_BRANCH }}-${{ inputs.FDIO_NAMESPACE }}
+    # yamllint disable-line rule:line-length
+    name: ${{ inputs.GERRIT_CHANGE_NUMBER }}/${{ inputs.GERRIT_PATCHSET_NUMBER}}__${{ inputs.GERRIT_BRANCH }}__${{ inputs.FDIO_NAMESPACE }}
     runs-on:
       - self-hosted
       - nomad

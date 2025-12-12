@@ -91,7 +91,8 @@ jobs:
           comment-only: true
 
   merge-docs:
-    name: ${{ github.workflow }}-${{ inputs.GERRIT_BRANCH }}-rel-ubuntu2404-x86_64
+    # yamllint disable-line rule:line-length
+    name: ${{ inputs.GERRIT_CHANGE_NUMBER }}/${{ inputs.GERRIT_PATCHSET_NUMBER}}__${{ inputs.GERRIT_BRANCH }}__${{ inputs.FDIO_NAMESPACE }}
     needs: notify-start
     runs-on:
       - self-hosted

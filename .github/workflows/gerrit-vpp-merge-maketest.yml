@@ -91,7 +91,8 @@ jobs:
           comment-only: true
 
   merge-maketest:
-    name: ${{ github.workflow }}-${{ inputs.GERRIT_BRANCH }}-${{ matrix.build_type }}-${{ matrix.os }}-${{ matrix.executor_arch }}
+    # yamllint disable-line rule:line-length
+    name: ${{ inputs.GERRIT_CHANGE_NUMBER }}/${{ inputs.GERRIT_PATCHSET_NUMBER}}__${{ inputs.GERRIT_BRANCH }}__${{ inputs.FDIO_NAMESPACE }}
     if: ${{ inputs.GERRIT_EVENT_TYPE == 'change-merged' }}
     runs-on:
       - self-hosted
