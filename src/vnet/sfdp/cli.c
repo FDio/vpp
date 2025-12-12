@@ -71,7 +71,7 @@ sfdp_set_services_command_fn (vlib_main_t *vm, unformat_input_t *input,
   sfdp_main_t *sfdp = &sfdp_main;
   u32 tenant_id = ~0;
   sfdp_bitmap_t bitmap = 0;
-  u8 direction = ~0;
+  sfdp_flow_direction_t direction = SFDP_FLOW_DIRECTION_INVALID;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -97,7 +97,7 @@ sfdp_set_services_command_fn (vlib_main_t *vm, unformat_input_t *input,
       err = clib_error_return (0, "missing tenant id");
       goto done;
     }
-  if (direction == (u8) ~0)
+  if (direction == SFDP_FLOW_DIRECTION_INVALID)
     {
       err = clib_error_return (0, "missing direction");
       goto done;

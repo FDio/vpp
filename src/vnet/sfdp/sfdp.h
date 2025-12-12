@@ -113,12 +113,13 @@ typedef enum
     SFDP_TENANT_DATA_N_COUNTER
 } sfdp_tenant_data_counter_index_t;
 
-enum
+typedef enum : ptrdiff_t
 {
+  SFDP_FLOW_DIRECTION_INVALID = -1,
   SFDP_FLOW_FORWARD = 0,
   SFDP_FLOW_REVERSE = 1,
   SFDP_FLOW_F_B_N = 2
-};
+} sfdp_flow_direction_t;
 
 enum
 {
@@ -126,6 +127,7 @@ enum
   SFDP_SESSION_KEY_SECONDARY,
   SFDP_SESSION_N_KEY
 };
+
 /* Flags to determine key validity in the session */
 #define foreach_sfdp_session_key_flag                                         \
   _ (PRIMARY_VALID_IP4, 0x1, "primary-valid-ip4")                             \
@@ -644,10 +646,10 @@ sfdp_session_from_flow_index (u32 flow_index)
   return flow_index >> 1;
 }
 
-static_always_inline u32
+static_always_inline sfdp_flow_direction_t
 sfdp_direction_from_flow_index (u32 flow_index)
 {
-  return (flow_index & 0x1);
+  return (sfdp_flow_direction_t) (flow_index & 0x1);
 }
 
 static_always_inline sfdp_tenant_t *
@@ -853,7 +855,8 @@ int sfdp_create_session_with_scope_index (vlib_main_t *vm, vlib_buffer_t *b,
 clib_error_t *sfdp_tenant_add_del (sfdp_main_t *sfdp, u32 tenant_id,
 				   u32 context_id, u8 is_del);
 clib_error_t *sfdp_set_services (sfdp_main_t *sfdp, u32 tenant_id,
-				 sfdp_bitmap_t bitmap, u8 direction);
+				 sfdp_bitmap_t bitmap,
+				 sfdp_flow_direction_t direction);
 clib_error_t *sfdp_set_timeout (sfdp_main_t *sfdp, u32 tenant_id,
 				u32 timeout_idx, u32 timeout_val);
 
