@@ -160,7 +160,7 @@ var _ = Describe("Http2Suite", Ordered, ContinueOnFailure, Label("HTTP", "HTTP2"
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, func(ctx SpecContext) {
-				Log(testName + ": BEGIN")
+				Log("[* TEST BEGIN]: " + testName)
 				test(&s)
 			}, SpecTimeout(TestTimeout))
 		}
@@ -189,7 +189,7 @@ var _ = Describe("Http2SoloSuite", Ordered, ContinueOnFailure, Serial, Label("HT
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, func(ctx SpecContext) {
-				Log(testName + ": BEGIN")
+				Log("[* TEST BEGIN]: " + testName)
 				test(&s)
 			}, SpecTimeout(TestTimeout))
 		}
@@ -218,7 +218,7 @@ var _ = Describe("Http2MWSuite", Ordered, ContinueOnFailure, Serial, Label("HTTP
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, func(ctx SpecContext) {
-				Log(testName + ": BEGIN")
+				Log("[* TEST BEGIN]: " + testName)
 				test(&s)
 			}, SpecTimeout(TestTimeout))
 		}
@@ -431,7 +431,7 @@ var _ = Describe("H2SpecSuite", Ordered, ContinueOnFailure, Label("HTTP", "HTTP2
 			test := test
 			testName := "http2_test.go/h2spec_" + strings.ReplaceAll(test.desc, "/", "_")
 			It(testName, func(ctx SpecContext) {
-				Log(testName + ": BEGIN")
+				Log("[* TEST BEGIN]: " + testName)
 				vpp := s.Containers.Vpp.VppInstance
 				serverAddress := s.VppAddr()
 				Log(vpp.Vppctl("http static server uri tls://" + serverAddress + "/" + s.Ports.Port1 + " url-handlers debug 2 fifo-size 16k"))
@@ -588,7 +588,7 @@ var _ = Describe("H2SpecClientSuite", Ordered, Serial, Label("HTTP", "HTTP2", "H
 		test := test
 		testName := "http2_test.go/h2spec_" + strings.ReplaceAll(test.desc, "/", "_")
 		It(testName, func(ctx SpecContext) {
-			Log(testName + ": BEGIN")
+			Log("[* TEST BEGIN]: " + testName)
 			nExecuted++
 			serverAddress := s.HostAddr()
 			wd, _ := os.Getwd()

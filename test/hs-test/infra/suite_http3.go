@@ -107,7 +107,7 @@ var _ = Describe("Http3Suite", Ordered, ContinueOnFailure, Label("HTTP", "HTTP3"
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, func(ctx SpecContext) {
-				Log(testName + ": BEGIN")
+				Log("[* TEST BEGIN]: " + testName)
 				test(&s)
 			}, SpecTimeout(TestTimeout))
 		}
@@ -136,7 +136,7 @@ var _ = Describe("Http3SoloSuite", Ordered, ContinueOnFailure, Serial, Label("HT
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, func(ctx SpecContext) {
-				Log(testName + ": BEGIN")
+				Log("[* TEST BEGIN]: " + testName)
 				test(&s)
 			}, SpecTimeout(TestTimeout))
 		}
@@ -165,7 +165,7 @@ var _ = Describe("Http3MWSuite", Ordered, ContinueOnFailure, Serial, Label("HTTP
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, func(ctx SpecContext) {
-				Log(testName + ": BEGIN")
+				Log("[* TEST BEGIN]: " + testName)
 				test(&s)
 			}, SpecTimeout(TestTimeout))
 		}

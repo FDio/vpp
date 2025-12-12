@@ -235,7 +235,7 @@ var _ = Describe("MasqueSuite", Ordered, ContinueOnFailure, Label("Masque", "Pro
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, func(ctx SpecContext) {
-				Log(testName + ": BEGIN")
+				Log("[* TEST BEGIN]: " + testName)
 				test(&s)
 			}, SpecTimeout(TestTimeout))
 		}
@@ -264,7 +264,7 @@ var _ = Describe("MasqueSoloSuite", Ordered, ContinueOnFailure, Serial, Label("M
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, func(ctx SpecContext) {
-				Log(testName + ": BEGIN")
+				Log("[* TEST BEGIN]: " + testName)
 				test(&s)
 			}, SpecTimeout(TestTimeout))
 		}
@@ -293,7 +293,7 @@ var _ = Describe("MasqueMWSuite", Ordered, ContinueOnFailure, Serial, Label("Mas
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, func(ctx SpecContext) {
-				Log(testName + ": BEGIN")
+				Log("[* TEST BEGIN]: " + testName)
 				test(&s)
 			}, SpecTimeout(TestTimeout))
 		}

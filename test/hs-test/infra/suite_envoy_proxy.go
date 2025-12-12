@@ -207,7 +207,7 @@ var _ = Describe("EnvoyProxySuite", Ordered, ContinueOnFailure, Label("Envoy", "
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, func(ctx SpecContext) {
-				Log(testName + ": BEGIN")
+				Log("[* TEST BEGIN]: " + testName)
 				test(&s)
 			}, SpecTimeout(TestTimeout))
 		}
@@ -236,7 +236,7 @@ var _ = Describe("EnvoyProxySuiteSolo", Ordered, ContinueOnFailure, Label("Envoy
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, func(ctx SpecContext) {
-				Log(testName + ": BEGIN")
+				Log("[* TEST BEGIN]: " + testName)
 				test(&s)
 			}, SpecTimeout(TestTimeout))
 		}
