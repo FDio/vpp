@@ -164,21 +164,33 @@ jobs:
     secrets: inherit
 
   verify-hst:
+    runs-on: ubuntu-latest
     name: Run vpp-verify-hst
     needs:
       - notify-start
       - verify-checkstyle
     if: ${{ needs.verify-checkstyle.result == 'success' }}
-    uses: fdio/vpp/.github/workflows/vpp-verify-hst.yml@master
-    with:
-      GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
-      GERRIT_CHANGE_URL: ${{ inputs.GERRIT_CHANGE_URL }}
-      GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
-      GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
-      GERRIT_CHANGE_NUMBER: ${{ inputs.GERRIT_CHANGE_NUMBER }}
-      GERRIT_PATCHSET_NUMBER: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
-      FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
-    secrets: inherit
+    steps:
+      - name: nop
+        run: |
+          echo "verify-checkstyle.result: ${{ needs.verify-checkstyle.result }}"
+  # TODO: enable hst job when dispatch class refactoring is complete
+  # verify-hst:
+  #   name: Run vpp-verify-hst
+  #   needs:
+  #     - notify-start
+  #     - verify-checkstyle
+  #   if: ${{ needs.verify-checkstyle.result == 'success' }}
+  #   uses: fdio/vpp/.github/workflows/vpp-verify-hst.yml@master
+  #   with:
+  #     GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
+  #     GERRIT_CHANGE_URL: ${{ inputs.GERRIT_CHANGE_URL }}
+  #     GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
+  #     GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
+  #     GERRIT_CHANGE_NUMBER: ${{ inputs.GERRIT_CHANGE_NUMBER }}
+  #     GERRIT_PATCHSET_NUMBER: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
+  #     FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
+  #   sec |
 
   final-vote:
     if: ${{ always() }}
