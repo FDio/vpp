@@ -121,6 +121,24 @@ if [ ${line_count} -gt 0 ] ; then
     exit 1
 fi
 
+added_files=$(git diff ${GIT_DIFF_ARGS} --diff-filter=A --name-only -- \
+    ${GIT_DIFF_EXCLUDE_LIST[@]} \
+    '*.c' '*.h' '*.cmake' '*.py' 'CMakeLists.txt')
+
+if [ -n "${added_files}" ] ; then
+    for f in ${added_files} ; do
+	if ! grep -q "SPDX-License-Identifier:" "${f}" ; then
+	    echo
+	    echo "*******************************************************************"
+	    echo "* CHECKSTYLE FAILED"
+	    echo "* Missing 'SPDX-License-Identifier:' in new file: ${f}"
+	    echo "*******************************************************************"
+	    rm ${in}
+	    exit 1
+	fi
+    done
+fi
+
 line_count=$(sed -n '/^+.*fd\.io coding-style-patch-verification:/p' ${in} | wc -l)
 if [ ${line_count} -gt 0 ] ; then
     echo

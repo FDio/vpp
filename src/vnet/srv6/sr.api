@@ -374,10 +374,3 @@ define sr_steering_pol_details
   vl_api_interface_index_t sw_if_index;
   vl_api_ip6_address_t bsid;
 };
-
-/*
- * fd.io coding-style-patch-verification: OFF
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
