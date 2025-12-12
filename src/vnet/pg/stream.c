@@ -713,12 +713,3 @@ pg_stream_change (pg_main_t * pg, pg_stream_t * s)
 
   s->last_increment_packet_size = s->min_packet_bytes;
 }
-
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

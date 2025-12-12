@@ -80,11 +80,3 @@ uword ip4_sv_reass_custom_register_next_node (uword node_index);
 uword ip4_sv_reass_custom_context_register_next_node (uword node_index);
 
 #endif /* __included_ip4_sv_reass_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

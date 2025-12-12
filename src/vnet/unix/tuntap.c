@@ -1017,15 +1017,6 @@ tuntap_init (vlib_main_t * vm)
   return 0;
 }
 
-VLIB_INIT_FUNCTION (tuntap_init) =
-{
-  .runs_after = VLIB_INITS("ip4_init"),
+VLIB_INIT_FUNCTION (tuntap_init) = {
+  .runs_after = VLIB_INITS ("ip4_init"),
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

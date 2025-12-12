@@ -399,11 +399,3 @@ vlib_increment_log2_histogram_bin (vlib_log2_histogram_main_t *hm,
 }
 
 #endif /* included_vlib_counter_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

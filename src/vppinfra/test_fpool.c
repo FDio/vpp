@@ -59,11 +59,3 @@ main (int argc, char *argv[])
   pool_free (tp);
   return 0;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -478,11 +478,3 @@ tcp_options_write (u8 * data, tcp_options_t * opts)
 }
 
 #endif /* included_tcp_packet_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

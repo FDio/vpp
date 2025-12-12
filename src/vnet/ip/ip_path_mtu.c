@@ -885,11 +885,3 @@ VLIB_CLI_COMMAND (show_fib_entry, static) = {
   .function = show_ip_pmtu_command,
   .short_help = "show ip path MTU",
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

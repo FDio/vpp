@@ -326,11 +326,3 @@ u32 vnet_lisp_gpe_add_nsh_iface (lisp_gpe_main_t * lgm);
 void vnet_lisp_gpe_del_nsh_iface (lisp_gpe_main_t * lgm);
 
 #endif /* included_vnet_lisp_gpe_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

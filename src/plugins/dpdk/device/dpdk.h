@@ -475,11 +475,3 @@ void dpdk_buffer_poison_trajectory_all (void);
 #endif
 
 #endif /* __included_dpdk_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -125,11 +125,3 @@ wg_if_dec_handshake_num (wg_if_t *wgi)
 }
 
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

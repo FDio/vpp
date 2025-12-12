@@ -402,11 +402,3 @@ VLIB_CLI_COMMAND (cli_clear_node_counters, static) = {
   .short_help = "Clear node counters",
   .function = clear_error_counters,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

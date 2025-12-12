@@ -79,11 +79,3 @@ extern u8 *lisp_gpe_tunnel_build_rewrite (const lisp_gpe_tunnel_t * lgt,
 extern u8 *format_lisp_gpe_tunnel (u8 * s, va_list * args);
 
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

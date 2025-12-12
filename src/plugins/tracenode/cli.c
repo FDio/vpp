@@ -62,11 +62,3 @@ VLIB_CLI_COMMAND (tracenode_feature, static) = {
   .short_help = "tracenode feature <intfc> [disable] [pcap]",
   .function = tracenode_feature_cmd_fn,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

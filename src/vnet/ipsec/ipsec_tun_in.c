@@ -437,11 +437,3 @@ VLIB_REGISTER_NODE (ipsec6_tun_input_node) = {
   .error_counters = ipsec_tun_error_counters,
   .sibling_of = "device-input",
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

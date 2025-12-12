@@ -185,16 +185,6 @@ UNITTEST_REGISTER_CRYPTO_TEST (rfc_2202_md5_tc7_chained) = {
   .key = TEST_DATA (md5_tc6_key),
   .digest = TEST_DATA (md5_tc7_digest),
   .is_chained = 1,
-  .pt_chunks = {
-    TEST_DATA_CHUNK (md5_tc7_data, 0, 40),
-    TEST_DATA_CHUNK (md5_tc7_data, 40, 33)
-  },
+  .pt_chunks = { TEST_DATA_CHUNK (md5_tc7_data, 0, 40),
+		 TEST_DATA_CHUNK (md5_tc7_data, 40, 33) },
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

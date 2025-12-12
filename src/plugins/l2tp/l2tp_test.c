@@ -303,11 +303,3 @@ api_sw_if_l2tpv3_tunnel_dump (vat_main_t * vam)
 }
 
 #include <l2tp/l2tp.api_test.c>
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -688,14 +688,6 @@ VLIB_INIT_FUNCTION (tls_mbedtls_init) =
 };
 
 VLIB_PLUGIN_REGISTER () = {
-    .version = VPP_BUILD_VER,
-    .description = "Transport Layer Security (TLS) Engine, Mbedtls Based",
+  .version = VPP_BUILD_VER,
+  .description = "Transport Layer Security (TLS) Engine, Mbedtls Based",
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

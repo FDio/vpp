@@ -154,16 +154,7 @@ VNET_FEATURE_INIT (ip4_tx_urpf_loose_feat, static) =
   .node_name = "ip4-tx-urpf-loose",
 };
 
-VNET_FEATURE_INIT (ip4_tx_urpf_strict_feat, static) =
-{
+VNET_FEATURE_INIT (ip4_tx_urpf_strict_feat, static) = {
   .arc_name = "ip4-output",
   .node_name = "ip4-tx-urpf-strict",
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

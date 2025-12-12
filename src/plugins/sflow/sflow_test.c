@@ -415,11 +415,3 @@ api_sflow_interface_dump (vat_main_t *vam)
  * and that the data plane plugin processes
  */
 #include <sflow/sflow.api_test.c>
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

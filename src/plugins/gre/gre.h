@@ -446,11 +446,3 @@ gre_mk_sn_key (const gre_tunnel_t *gt, gre_sn_key_t *key)
 }
 
 #endif /* included_gre_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

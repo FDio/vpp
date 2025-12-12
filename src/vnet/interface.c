@@ -1950,11 +1950,3 @@ VLIB_CLI_COMMAND (collect_detailed_interface_stats_command, static) = {
   .short_help = "interface collect detailed-stats <enable|disable>",
   .function = collect_detailed_interface_stats_cli,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

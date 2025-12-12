@@ -124,11 +124,3 @@ proxy_worker_get (clib_thread_index_t thread_index)
 }
 
 #endif /* __included_proxy_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -364,11 +364,3 @@ VLIB_REGISTER_NODE (ct6_in2out_node) =
   .unformat_buffer = unformat_ethernet_header,
 };
 #endif /* CLIB_MARCH_VARIANT */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

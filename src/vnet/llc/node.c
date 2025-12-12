@@ -321,11 +321,3 @@ llc_register_input_protocol (vlib_main_t * vm,
 
   lm->input_next_by_protocol[protocol] = pi->next_index;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -34,11 +34,3 @@ clib_error_t *vnet_netlink_add_ip4_route (void *dst, u8 dst_len, void *gw);
 clib_error_t *vnet_netlink_add_ip6_route (void *dst, u8 dst_len, void *gw);
 
 #endif /* included_vnet_device_netlink_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

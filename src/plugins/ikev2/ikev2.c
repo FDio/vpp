@@ -5709,14 +5709,6 @@ ikev2_lazy_init (ikev2_main_t *km)
 }
 
 VLIB_PLUGIN_REGISTER () = {
-    .version = VPP_BUILD_VER,
-    .description = "Internet Key Exchange (IKEv2) Protocol",
+  .version = VPP_BUILD_VER,
+  .description = "Internet Key Exchange (IKEv2) Protocol",
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -1210,11 +1210,3 @@ unformat_u16 (unformat_input_t *input, va_list *args)
   *d = tmp;
   return 1;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

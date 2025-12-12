@@ -1019,11 +1019,3 @@ app_worker_format_connects (app_worker_t * app_wrk, int verbose)
   sm = segment_manager_get (app_wrk->connects_seg_manager);
   segment_manager_format_sessions (sm, verbose);
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

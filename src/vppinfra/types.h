@@ -216,11 +216,3 @@ typedef u8 clib_numa_node_index_t;
 #define CLIB_INVALID_THREAD_INDEX CLIB_U16_MAX
 
 #endif /* included_clib_types_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

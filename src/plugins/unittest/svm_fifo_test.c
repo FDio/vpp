@@ -2875,17 +2875,8 @@ done:
   return 0;
 }
 
-VLIB_CLI_COMMAND (svm_fifo_test_command, static) =
-{
+VLIB_CLI_COMMAND (svm_fifo_test_command, static) = {
   .path = "test svm fifo",
   .short_help = "internal svm fifo unit tests",
   .function = svm_fifo_test,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

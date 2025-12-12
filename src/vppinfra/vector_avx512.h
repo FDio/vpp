@@ -606,10 +606,3 @@ u8x64_store_partial (u8x64 r, u8 *data, uword n)
 }
 
 #endif /* included_vector_avx512_h */
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

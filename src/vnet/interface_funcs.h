@@ -592,11 +592,3 @@ vnet_hw_if_unset_caps (vnet_main_t *vnm, u32 hw_if_index,
 }
 
 #endif /* included_vnet_interface_funcs_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

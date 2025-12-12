@@ -796,11 +796,3 @@ VLIB_CLI_COMMAND (show_session_sdl_command, static) = {
   .function = show_session_sdl_command_fn,
   .is_mp_safe = 1,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

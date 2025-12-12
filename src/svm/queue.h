@@ -133,11 +133,3 @@ void svm_queue_set_consumer_event_fd (svm_queue_t * q, int fd);
 typedef svm_queue_t unix_shared_memory_queue_t;
 
 #endif /* included_svm_queue_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

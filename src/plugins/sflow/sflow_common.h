@@ -41,11 +41,3 @@ typedef enum
 } sflow_direction_t;
 
 #endif /* __included_sflow_common_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

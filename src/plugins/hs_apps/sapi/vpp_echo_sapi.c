@@ -320,11 +320,3 @@ echo_sapi_del_cert_key (echo_main_t *em)
   em->state = STATE_CLEANED_CERT_KEY;
   return 0;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -765,11 +765,3 @@ ipsec_sa_assign_thread (u16 thread_id)
 }
 
 #endif /* __IPSEC_SPD_SA_H__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

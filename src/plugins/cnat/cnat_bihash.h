@@ -119,11 +119,3 @@ typedef clib_bihash_40_56_t cnat_bihash_t;
 #define cnat_bihash_prefetch_data   clib_bihash_prefetch_data_40_56
 
 #endif /* __included_bihash_40_56_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

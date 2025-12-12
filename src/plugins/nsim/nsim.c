@@ -829,17 +829,8 @@ show_nsim_command_fn (vlib_main_t * vm,
  * @cliexcmd{show nsim}
 ?*/
 
-VLIB_CLI_COMMAND (show_nsim_command, static) =
-{
+VLIB_CLI_COMMAND (show_nsim_command, static) = {
   .path = "show nsim",
   .short_help = "Display network delay simulator configuration",
   .function = show_nsim_command_fn,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

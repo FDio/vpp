@@ -624,11 +624,3 @@ vl_socket_client_recv_fd_msg (int fds[], int n_fds, u32 wait)
 {
   return vl_socket_client_recv_fd_msg2 (socket_client_ctx, fds, n_fds, wait);
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -264,10 +264,3 @@ extern session_rules_table_group_t *srtg_instance_alloc (session_table_t *st,
 extern void srtg_instance_free (session_table_t *st);
 
 #endif /* SRC_VNET_SESSION_SESSION_RULES_TABLE_H_ */
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

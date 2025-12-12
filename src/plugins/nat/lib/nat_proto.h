@@ -67,10 +67,3 @@ u8 *format_nat_protocol (u8 *s, va_list *args);
 uword unformat_nat_protocol (unformat_input_t *input, va_list *args);
 
 #endif /* included_nat_proto_h__ */
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

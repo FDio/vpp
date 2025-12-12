@@ -239,11 +239,3 @@ vlib_trace_frame_buffers_only (vlib_main_t * vm,
 			       uword n_buffer_data_bytes_in_trace);
 
 #endif /* included_vlib_trace_funcs_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

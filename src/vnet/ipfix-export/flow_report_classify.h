@@ -123,11 +123,3 @@ vlib_frame_t *ipfix_classify_send_flows (flow_report_main_t *frm,
 					 u32 *to_next, u32 node_index);
 
 #endif /* __included_flow_report_classify_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

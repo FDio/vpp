@@ -514,11 +514,3 @@ ioam_analyse_init_data (ioam_analyser_data_t * data)
 }
 
 #endif /* PLUGINS_IOAM_PLUGIN_IOAM_ANALYSE_IOAM_ANALYSE_H_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

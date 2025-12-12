@@ -244,11 +244,3 @@ cnat_get_main ()
 }
 
 VLIB_EARLY_CONFIG_FUNCTION (cnat_config, "cnat");
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -761,11 +761,3 @@ VLIB_CLI_COMMAND (pipe_delete_interface_command, static) = {
   .short_help = "pipe delete <interface>",
   .function = delete_pipe_interfaces,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

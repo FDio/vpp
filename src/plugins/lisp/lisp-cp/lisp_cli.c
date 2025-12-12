@@ -1532,15 +1532,7 @@ lisp_show_petr_command_fn (vlib_main_t * vm,
 }
 
 VLIB_CLI_COMMAND (lisp_show_petr_command) = {
-    .path = "show lisp petr",
-    .short_help = "Show petr",
-    .function = lisp_show_petr_command_fn,
+  .path = "show lisp petr",
+  .short_help = "Show petr",
+  .function = lisp_show_petr_command_fn,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

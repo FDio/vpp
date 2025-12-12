@@ -433,11 +433,3 @@ format_ip6_frag_hdr (u8 * s, va_list * args)
 	    clib_net_to_host_u32 (h->identification));
   return s;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

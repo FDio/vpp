@@ -192,10 +192,3 @@
 	       nat_elog_fmt_arg, nat_elog_val1)
 
 #endif /* included_nat_lib_h__ */
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

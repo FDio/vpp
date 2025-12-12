@@ -102,11 +102,3 @@ ah_calc_icv_padding_len (u8 icv_size, int is_ipv6)
 }
 
 #endif /* __AH_H__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

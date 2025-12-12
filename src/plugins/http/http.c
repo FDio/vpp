@@ -1920,11 +1920,3 @@ VLIB_PLUGIN_REGISTER () = {
   .description = "Hypertext Transfer Protocol (HTTP)",
   .default_disabled = 0,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -134,17 +134,8 @@ done:
   return error;
 }
 
-VLIB_CLI_COMMAND (tcp_debug_command, static) =
-{
+VLIB_CLI_COMMAND (tcp_debug_command, static) = {
   .path = "tcp debug",
   .short_help = "tcp [show] [debug group <N> level <N>]",
   .function = tcp_debug_fn,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

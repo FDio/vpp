@@ -142,11 +142,3 @@ extern u8 *format_ethernet_arp_opcode (u8 * s, va_list * va);
 extern u8 *format_ethernet_arp_hardware_type (u8 * s, va_list * va);
 
 #endif /* included_ethernet_arp_packet_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

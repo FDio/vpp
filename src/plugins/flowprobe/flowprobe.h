@@ -170,11 +170,3 @@ void flowprobe_flush_callback_l2 (void);
 u8 *format_flowprobe_entry (u8 * s, va_list * args);
 
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -1100,11 +1100,3 @@ vl_api_get_elog_trace_api_messages (void)
 
   return am->elog_trace_api_messages;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

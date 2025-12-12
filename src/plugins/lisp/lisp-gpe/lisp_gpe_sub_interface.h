@@ -145,13 +145,4 @@ lisp_gpe_sub_interface_find_ip4 (const ip4_address_t * addr, u32 vni)
 
   return (INDEX_INVALID);
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
-
 #endif

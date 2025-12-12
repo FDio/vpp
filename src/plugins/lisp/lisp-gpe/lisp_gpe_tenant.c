@@ -316,12 +316,3 @@ VLIB_CLI_COMMAND (lisp_gpe_tenant_command) = {
   .short_help = "show gpe tenant",
   .function = lisp_gpe_tenant_show,
 };
-
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

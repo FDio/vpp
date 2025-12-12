@@ -83,11 +83,3 @@ int policer_input (u32 policer_index, u32 sw_if_index, vlib_dir_t dir,
 		   bool apply);
 
 #endif /* __included_policer_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

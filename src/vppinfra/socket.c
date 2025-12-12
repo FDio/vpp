@@ -785,11 +785,3 @@ close_client:
   close (client->fd);
   return err;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

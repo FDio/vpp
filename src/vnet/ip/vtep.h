@@ -167,11 +167,3 @@ vtep6_check (vtep_table_t * t, vlib_buffer_t * b0, ip6_header_t * ip60,
   return VTEP_CHECK_PASS;
 }
 #endif /* included_ip_vtep_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

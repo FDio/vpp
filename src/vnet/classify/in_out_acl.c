@@ -394,15 +394,7 @@ VLIB_CLI_COMMAND (show_inacl_command, static) = {
     .function = show_inacl_command_fn,
 };
 VLIB_CLI_COMMAND (show_outacl_command, static) = {
-    .path = "show outacl",
-    .short_help = "show outacl type [ip4|ip6|l2]",
-    .function = show_outacl_command_fn,
+  .path = "show outacl",
+  .short_help = "show outacl type [ip4|ip6|l2]",
+  .function = show_outacl_command_fn,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

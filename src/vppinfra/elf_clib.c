@@ -386,11 +386,3 @@ format_clib_elf_symbol_with_address (u8 * s, va_list * args)
 
   return s;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

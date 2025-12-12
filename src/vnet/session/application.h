@@ -430,11 +430,3 @@ app_worker_application_is_builtin (app_worker_t *app_wrk)
 }
 
 #endif /* SRC_VNET_SESSION_APPLICATION_H_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -231,13 +231,4 @@ do {								\
   fformat (stdout, "%U\n", format_clib_mem_usage, _usage, 0);	\
 } while (0)
 
-
 #endif /* included_test_vec_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

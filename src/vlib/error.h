@@ -84,11 +84,3 @@ void vlib_unregister_errors (struct vlib_main_t *vm, u32 node_index);
 unformat_function_t unformat_vlib_error;
 
 #endif /* included_vlib_error_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

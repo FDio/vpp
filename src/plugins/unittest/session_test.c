@@ -2971,11 +2971,3 @@ VLIB_CLI_COMMAND (session_test_command, static) = {
   .short_help = "internal session unit tests",
   .function = session_test,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

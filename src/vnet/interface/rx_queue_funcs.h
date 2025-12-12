@@ -126,11 +126,3 @@ vnet_hw_if_rxq_cmp_cli_api (vnet_hw_if_rx_queue_t **a,
   ASSERT (0);
   return ~0;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

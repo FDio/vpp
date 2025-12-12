@@ -177,11 +177,3 @@ secure_zero_memory (void *v, size_t n)
 }
 
 #endif //__included_crypto_blake2_impl_h__
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

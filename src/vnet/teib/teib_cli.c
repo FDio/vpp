@@ -176,11 +176,3 @@ VLIB_CLI_COMMAND (teib_show_command, static) = {
   .short_help = "show teib",
   .function = teib_show,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

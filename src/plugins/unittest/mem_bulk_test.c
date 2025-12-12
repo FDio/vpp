@@ -135,11 +135,3 @@ VLIB_CLI_COMMAND (mem_bulk_test_command, static) = {
   .short_help = "internal membulk unit tests",
   .function = mem_bulk_test,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

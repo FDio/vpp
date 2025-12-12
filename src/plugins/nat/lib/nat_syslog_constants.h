@@ -53,10 +53,3 @@
 #define IATYP_IPV6 "IPv6"
 
 #endif /* __included_nat_syslog_constants_h__ */
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

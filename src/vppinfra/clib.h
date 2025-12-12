@@ -395,11 +395,3 @@ void qsort (void *base, uword n, uword size,
 
 #include <vppinfra/byte_order.h>
 #endif /* included_clib_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

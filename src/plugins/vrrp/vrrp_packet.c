@@ -772,12 +772,3 @@ vrrp_vr_multicast_group_join (vrrp_vr_t * vr)
 
   return f->n_vectors;
 }
-
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

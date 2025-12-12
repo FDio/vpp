@@ -161,11 +161,3 @@ typedef struct qos_pol_hw_params_st_
 int pol_logical_2_physical (const qos_pol_cfg_params_st *cfg, policer_t *phys);
 
 #endif /* __included_xlate_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

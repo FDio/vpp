@@ -257,11 +257,3 @@ void TW (tw_search_trace) (TWT (tw_timer_wheel) * tw, u32 handle);
 void TW (tw_timer_trace) (TWT (tw_timer_wheel) * tw, u32 timer_id,
 			  u32 pool_index, u32 handle);
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

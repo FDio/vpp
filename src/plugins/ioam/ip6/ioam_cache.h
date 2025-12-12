@@ -899,11 +899,3 @@ ip6_ioam_ts_cache_cleanup_rewrite (void)
   return (0);
 }
 #endif /* __included_ioam_cache_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

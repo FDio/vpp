@@ -1293,11 +1293,3 @@ VLIB_REGISTER_NODE (nat_ha_handoff_node) = {
     [0] = "error-drop",
   },
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -357,11 +357,3 @@ vnet_dns_create_resolver_process (vlib_main_t * vm, dns_main_t * dm)
     (vm, "dns-resolver-process",
      dns_resolver_process, 16 /* log2_n_stack_bytes */ );
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

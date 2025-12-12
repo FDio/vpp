@@ -658,12 +658,3 @@ acl_fa_find_session_with_hash (acl_main_t * am, int is_ip6, u32 sw_if_index0,
     }
   return res;
 }
-
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

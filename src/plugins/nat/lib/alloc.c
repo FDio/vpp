@@ -248,11 +248,3 @@ nat_free_ip4_addr_and_port (nat_ip4_pool_t * pool,
     }
   return 0;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

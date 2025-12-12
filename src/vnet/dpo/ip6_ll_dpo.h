@@ -26,13 +26,4 @@
 extern const dpo_id_t *ip6_ll_dpo_get (void);
 
 extern void ip6_ll_dpo_module_init (void);
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
-
 #endif

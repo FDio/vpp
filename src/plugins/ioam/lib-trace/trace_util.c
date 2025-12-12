@@ -185,17 +185,8 @@ show_trace_profile_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-VLIB_CLI_COMMAND (show_trace_profile_command, static) =
-{
-.path = "show ioam-trace profile",
-.short_help = "show ioam-trace profile",
-.function = show_trace_profile_command_fn,
+VLIB_CLI_COMMAND (show_trace_profile_command, static) = {
+  .path = "show ioam-trace profile",
+  .short_help = "show ioam-trace profile",
+  .function = show_trace_profile_command_fn,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -140,11 +140,3 @@ static const char test_ca_crl[] =
 static const u32 test_ca_crl_len = sizeof (test_ca_crl);
 
 #endif /* SRC_VNET_TLS_TLS_TEST_H_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -146,11 +146,3 @@ u8 *cdp_input_format_trace (u8 * s, va_list * args);
 void vnet_cdp_create_periodic_process (cdp_main_t * cmp);
 
 #endif /* __included_cdp_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

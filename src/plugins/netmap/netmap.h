@@ -155,12 +155,3 @@ nm_ring_space (struct netmap_ring *ring)
   return ret;
 }
 #endif
-
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

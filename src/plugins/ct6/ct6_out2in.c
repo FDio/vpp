@@ -265,11 +265,3 @@ VLIB_REGISTER_NODE (ct6_out2in_node) =
   },
 };
 #endif /* CLIB_MARCH_VARIANT */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

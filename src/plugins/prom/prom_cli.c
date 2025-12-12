@@ -143,11 +143,3 @@ VLIB_CLI_COMMAND (prom_enable_command, static) = {
 		"[stat-patterns <patterns>...]",
   .function = prom_command_fn,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

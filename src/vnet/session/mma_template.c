@@ -267,11 +267,3 @@ RT (mma_rules_table_del_rule) (RTT (mma_rules_table) * srt,
     }
   return MMA_TABLE_INVALID_INDEX;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -525,11 +525,3 @@ echo_proto_cb_vft_t quic_echo_proto_cb_vft = {
 };
 
 ECHO_REGISTER_PROTO (TRANSPORT_PROTO_QUIC, quic_echo_proto_cb_vft);
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

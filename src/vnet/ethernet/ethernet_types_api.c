@@ -27,11 +27,3 @@ mac_address_encode (const mac_address_t * in, u8 * out)
 {
   clib_memcpy_fast (out, in->bytes, 6);
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

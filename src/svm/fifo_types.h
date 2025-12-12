@@ -213,11 +213,3 @@ fs_chunk_sptr (fifo_segment_header_t *fsh, svm_fifo_chunk_t *c)
 }
 
 #endif /* SRC_SVM_FIFO_TYPES_H_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

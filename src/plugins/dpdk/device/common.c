@@ -578,11 +578,3 @@ dpdk_read_eeprom (vnet_main_t *vnm, vnet_hw_interface_t *hi,
   (*eeprom)->eeprom_type = mi.type;
   return 0;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -340,13 +340,3 @@ VLIB_REGISTER_NODE (vxlan_gpe_pop_ioam_v4_node) = {
 #undef _
   },
 };
-
-
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

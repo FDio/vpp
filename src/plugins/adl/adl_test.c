@@ -143,11 +143,3 @@ api_adl_allowlist_enable_disable (vat_main_t * vam)
  * and that the data plane plugin processes
  */
 #include <adl/adl.api_test.c>
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

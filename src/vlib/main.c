@@ -2129,11 +2129,3 @@ vlib_exit_with_status (vlib_main_t *vm, int status)
   vm->main_loop_exit_status = status;
   __atomic_store_n (&vm->main_loop_exit_now, 1, __ATOMIC_RELEASE);
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

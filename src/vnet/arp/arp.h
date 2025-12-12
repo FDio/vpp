@@ -50,11 +50,3 @@ typedef walk_rc_t (proxy_arp_intf_walk_t) (u32 sw_if_index, void *data);
 extern void proxy_arp_intfc_walk (proxy_arp_intf_walk_t cb, void *data);
 
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

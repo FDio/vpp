@@ -172,11 +172,3 @@ stat_segment_access_end (stat_segment_access_t * sa, stat_client_main_t * sm)
 }
 
 #endif /* included_stat_client_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

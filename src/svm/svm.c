@@ -1319,11 +1319,3 @@ svm_client_scan (const char *root_path)
 
   vec_free (a);
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -40,11 +40,3 @@ extern handoffdemo_main_t handoffdemo_main;
 extern vlib_node_registration_t handoffdemo_node_1, handoffdemo_node_2;
 
 #endif /* __included_handoffdemo_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

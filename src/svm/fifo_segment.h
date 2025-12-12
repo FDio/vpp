@@ -340,11 +340,3 @@ format_function_t format_fifo_segment;
 format_function_t format_fifo_segment_type;
 
 #endif /* __included_fifo_segment_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

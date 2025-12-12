@@ -114,11 +114,3 @@ ipfix_collector_get_client (u16 set_id)
 }
 
 #endif /* PLUGINS_IPFIXCOLLECTOR_PLUGIN_IPFIXCOLLECTOR_IPFIXCOLLECTOR_H_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

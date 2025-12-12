@@ -512,11 +512,3 @@ unformat_function_t unformat_nat_protocol;
 clib_error_t *nat64_api_hookup (vlib_main_t * vm);
 
 #endif /* __included_nat64_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -1725,11 +1725,3 @@ VLIB_REGISTER_NODE (nat_pre_in2out_output_node) = {
   .type = VLIB_NODE_TYPE_INTERNAL,
   .n_errors = 0,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

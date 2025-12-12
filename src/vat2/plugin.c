@@ -185,12 +185,4 @@ vat2_load_plugins (u8 *path, char *filter, int *loaded)
 }
 
 #define QUOTE_(x) #x
-#define QUOTE(x) QUOTE_(x)
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
+#define QUOTE(x)  QUOTE_ (x)

@@ -481,11 +481,3 @@ ct6_config (vlib_main_t * vm, unformat_input_t * input)
 }
 
 VLIB_CONFIG_FUNCTION (ct6_config, "ct6");
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

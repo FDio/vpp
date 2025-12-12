@@ -95,11 +95,3 @@ vnet_is_packet_traced_inline (vlib_buffer_t * b,
     }
   /* NOTREACHED */
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

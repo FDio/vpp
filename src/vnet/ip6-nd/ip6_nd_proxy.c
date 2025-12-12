@@ -115,17 +115,8 @@ set_ip6_nd_proxy_cmd (vlib_main_t * vm,
   return error;
 }
 
-VLIB_CLI_COMMAND (set_ip6_nd_proxy_command, static) =
-{
+VLIB_CLI_COMMAND (set_ip6_nd_proxy_command, static) = {
   .path = "set ip6 nd proxy",
   .short_help = "set ip6 nd proxy <interface> [del] <host-ip>",
   .function = set_ip6_nd_proxy_cmd,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

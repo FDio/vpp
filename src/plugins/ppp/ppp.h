@@ -110,11 +110,3 @@ __clib_export void ppp_register_input_protocol (vlib_main_t *vm,
 						u32 node_index);
 
 #endif /* included_ppp_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

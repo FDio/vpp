@@ -109,13 +109,4 @@ nsh_md2_ioam_encap_decap_ioam_v4_one_inline (vlib_main_t * vm,
   return;
 }
 
-
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

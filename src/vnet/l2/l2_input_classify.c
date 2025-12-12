@@ -642,15 +642,7 @@ int_l2_input_classify_command_fn (vlib_main_t * vm,
 VLIB_CLI_COMMAND (int_l2_input_classify_cli, static) = {
   .path = "set interface l2 input classify",
   .short_help =
-  "set interface l2 input classify intfc <interface-name> [ip4-table <n>]\n"
-  "  [ip6-table <n>] [other-table <n>]",
+    "set interface l2 input classify intfc <interface-name> [ip4-table <n>]\n"
+    "  [ip6-table <n>] [other-table <n>]",
   .function = int_l2_input_classify_command_fn,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

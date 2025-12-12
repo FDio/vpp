@@ -782,11 +782,3 @@ vlib_unix_main (int argc, char *argv[], u8 *startup_config)
 			      VLIB_THREAD_STACK_SIZE));
   return i;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -1046,11 +1046,3 @@ mc_socket_main_init (mc_socket_main_t * msm, char **intfc_probe_list,
 
   return error;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -423,12 +423,3 @@ isaac_init (isaac_t *ctx, uword *seeds)
     }
 }
 #endif /* uword_bits == 64 */
-
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

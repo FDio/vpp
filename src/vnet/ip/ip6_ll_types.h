@@ -34,14 +34,5 @@ typedef struct ip6_ll_prefix_t_
   ip6_address_t ilp_addr;
 } ip6_ll_prefix_t;
 
-extern u8 *format_ip6_ll_prefix (u8 * s, va_list * args);
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
-
+extern u8 *format_ip6_ll_prefix (u8 *s, va_list *args);
 #endif

@@ -22,11 +22,3 @@
 #include "tw_timer_4t_3w_4sl_ov.h"
 #include "tw_timer_template.c"
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

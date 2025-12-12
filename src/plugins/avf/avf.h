@@ -497,11 +497,3 @@ typedef enum
 } avf_tx_func_error_t;
 
 #endif /* AVF_H */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

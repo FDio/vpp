@@ -403,11 +403,3 @@ vrrp_vr_priority (vrrp_vr_t * vr)
 }
 
 #endif /* __included_vrrp_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

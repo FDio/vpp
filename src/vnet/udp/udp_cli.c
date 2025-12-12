@@ -411,11 +411,3 @@ VLIB_CLI_COMMAND (show_udp_transport_ports_cmd, static) = {
   .short_help = "show udp transport ports [ip4|ip6] [<port>]",
   .is_mp_safe = 1,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -126,11 +126,3 @@ typedef enum lisp_gpe_adjacency_format_flags_t_
 extern u8 *format_lisp_gpe_adjacency (u8 * s, va_list * args);
 
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

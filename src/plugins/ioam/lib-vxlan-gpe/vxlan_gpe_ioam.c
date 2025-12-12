@@ -747,11 +747,3 @@ vxlan_gpe_ioam_interface_init (void)
     fib_node_register_new_type ("vxlan-gpe", &vxlan_gpe_ioam_vft);
   return;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

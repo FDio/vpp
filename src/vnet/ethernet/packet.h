@@ -202,11 +202,3 @@ typedef CLIB_PACKED (struct
 }) ethernet_pbb_header_packed_t;
 
 #endif /* included_ethernet_packet_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

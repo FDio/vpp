@@ -148,11 +148,3 @@ u8 *format_svm_region (u8 * s, va_list * args);
 svm_region_t *svm_get_root_rp (void);
 
 #endif /* __included_svm_common_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

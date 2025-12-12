@@ -110,11 +110,3 @@ VLIB_CLI_COMMAND (test_elog_command, static) = {
   .short_help = "test elog sample",
   .function = test_elog_command_fn,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

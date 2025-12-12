@@ -90,11 +90,3 @@ http_conn_timer_update (http_conn_t *hc)
 }
 
 #endif /* SRC_PLUGINS_HTTP_HTTP_TIMER_H_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -155,11 +155,3 @@ static void __vnet_dhcp6_reply_event_function_deinit_##f (void)           \
 }
 
 #endif /* included_vnet_dhcp6_client_dp_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

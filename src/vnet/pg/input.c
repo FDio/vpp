@@ -1998,12 +1998,3 @@ VLIB_CLI_COMMAND (enable_streams_cli, static) = {
   .short_help = "packet-generator mac-filter <INTERFACE> <on|off>",
   .function = pg_input_mac_filter_cfg,
 };
-
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

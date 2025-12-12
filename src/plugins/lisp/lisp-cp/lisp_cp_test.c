@@ -2039,11 +2039,3 @@ api_lisp_get_map_request_itr_rlocs (vat_main_t * vam)
 
 #define vat_plugin_register vat_plugin_register_cp
 #include <lisp/lisp-cp/lisp.api_test.c>
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

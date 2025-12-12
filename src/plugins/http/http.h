@@ -1826,11 +1826,3 @@ http_encap_udp_payload_datagram (u8 *buf, u64 payload_len)
 }
 
 #endif /* SRC_PLUGINS_HTTP_HTTP_H_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

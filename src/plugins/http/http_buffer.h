@@ -79,11 +79,3 @@ http_buffer_bytes_left (http_buffer_t *hb)
 }
 
 #endif /* SRC_PLUGINS_HTTP_HTTP_BUFFER_H_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

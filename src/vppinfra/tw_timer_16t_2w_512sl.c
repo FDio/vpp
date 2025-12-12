@@ -16,11 +16,3 @@
 #include <vppinfra/error.h>
 #include "tw_timer_16t_2w_512sl.h"
 #include "tw_timer_template.c"
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

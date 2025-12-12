@@ -181,11 +181,3 @@ unformat_pg_payload (unformat_input_t * input, va_list * args)
 
   return 1;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

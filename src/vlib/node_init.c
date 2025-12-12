@@ -110,11 +110,3 @@ vlib_node_config (vlib_main_t *vm, unformat_input_t *input)
 }
 
 VLIB_CONFIG_FUNCTION (vlib_node_config, "node");
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

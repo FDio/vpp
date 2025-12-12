@@ -21,11 +21,3 @@ int load_bio_certificate_chain (ptls_context_t * ctx, const char *cert_data);
 int load_bio_private_key (ptls_context_t * ctx, const char *pk_data);
 
 #endif /* __included_certs_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

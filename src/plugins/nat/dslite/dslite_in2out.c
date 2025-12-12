@@ -501,11 +501,3 @@ VLIB_REGISTER_NODE (dslite_in2out_slowpath_node) = {
     [DSLITE_IN2OUT_NEXT_SLOWPATH] = "dslite-in2out-slowpath",
   },
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -266,17 +266,9 @@ VLIB_CLI_COMMAND (qos_egress_map_update_command, static) = {
  * @cliexpar
  * @cliexcmd{show qos egress map}
  ?*/
-VLIB_CLI_COMMAND (qos_egress_map_show_command, static) = {
-  .path = "show qos egress map",
-  .short_help = "show qos egress map id %d",
-  .function = qos_egress_map_show,
-  .is_mp_safe = 1,
-};
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
+  VLIB_CLI_COMMAND (qos_egress_map_show_command, static) = {
+    .path = "show qos egress map",
+    .short_help = "show qos egress map id %d",
+    .function = qos_egress_map_show,
+    .is_mp_safe = 1,
+  };

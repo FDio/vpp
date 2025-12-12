@@ -114,10 +114,3 @@ nat_calc_bihash_buckets (u32 n_elts)
 }
 
 #endif /* included_nat_lib_h__ */
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

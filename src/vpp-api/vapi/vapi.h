@@ -323,11 +323,3 @@ void vapi_stop_rx_thread (vapi_ctx_t ctx);
 #endif
 
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

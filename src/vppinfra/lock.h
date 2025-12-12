@@ -223,11 +223,3 @@ clib_rwlock_writer_unlock (clib_rwlock_t * p)
 }
 
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

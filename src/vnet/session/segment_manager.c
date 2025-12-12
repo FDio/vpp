@@ -1702,11 +1702,3 @@ segment_manager_alloc_session_fifos_ct (session_t *s, segment_manager_t *sm,
 
   return 0;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

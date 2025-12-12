@@ -214,11 +214,3 @@ clib_socket_close (clib_socket_t * sock)
 void clib_socket_tx_add_formatted (clib_socket_t * s, char *fmt, ...);
 
 #endif /* _clib_included_socket_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -371,11 +371,3 @@ VLIB_REGISTER_NODE (l2_ip_qos_record_node) = {
     [0] = "error-drop",
   },
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

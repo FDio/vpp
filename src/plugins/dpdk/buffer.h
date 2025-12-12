@@ -27,10 +27,3 @@ clib_error_t *dpdk_buffer_pools_create (vlib_main_t * vm);
 #endif /* include_dpdk_buffer_h */
 
 /** @endcond */
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

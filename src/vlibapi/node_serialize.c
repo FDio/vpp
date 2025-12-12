@@ -333,11 +333,3 @@ VLIB_CLI_COMMAND (test_node_serialize_node, static) = {
     .function = test_node_serialize_command_fn,
 };
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

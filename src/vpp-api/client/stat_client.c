@@ -565,11 +565,3 @@ stat_segment_version (void)
   stat_client_main_t *sm = &stat_client_main;
   return stat_segment_version_r (sm);
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

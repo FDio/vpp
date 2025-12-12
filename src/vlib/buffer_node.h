@@ -474,11 +474,3 @@ vlib_buffer_enqueue_to_thread_with_aux (vlib_main_t *vm,
 }
 
 #endif /* included_vlib_buffer_node_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

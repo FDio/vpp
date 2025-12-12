@@ -35,11 +35,3 @@ bool key_to_base64 (const u8 * src, size_t src_len, u8 * out);
 bool key_from_base64 (const u8 * src, size_t src_len, u8 * out);
 
 #endif /* __included_wg_convert_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

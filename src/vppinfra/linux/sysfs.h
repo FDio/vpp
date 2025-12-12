@@ -37,11 +37,3 @@ clib_error_t *clib_sysfs_prealloc_hugepages (int numa_node,
 uword *clib_sysfs_read_bitmap (char *fmt, ...);
 
 #endif /* included_linux_sysfs_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

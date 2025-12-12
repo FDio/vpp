@@ -264,11 +264,3 @@ vnet_hw_if_generate_rxq_int_poll_vector (vlib_main_t *vm,
     }
   return rt->rxq_vector_int;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

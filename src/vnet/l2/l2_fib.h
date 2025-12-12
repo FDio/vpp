@@ -456,11 +456,3 @@ u8 *format_vnet_sw_if_index_name_with_NA (u8 * s, va_list * args);
 BVT (clib_bihash) * get_mac_table (void);
 
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

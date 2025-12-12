@@ -205,11 +205,3 @@ autoreply define cnat_set_snat_policy
   u32 context;
   vl_api_cnat_snat_policies_t policy;
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

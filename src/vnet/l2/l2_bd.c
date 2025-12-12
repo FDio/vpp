@@ -1611,11 +1611,3 @@ bd_get_unused_id (void)
 
   return ~0;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -16,12 +16,3 @@
 #include <lisp/lisp-cp/control.h>
 
 lisp_cp_main_t lisp_control_main;
-
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

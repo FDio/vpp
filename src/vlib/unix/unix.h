@@ -172,11 +172,3 @@ clib_error_t *vlib_unix_validate_runtime_file (unix_main_t * um,
 					       u8 ** full_path);
 
 #endif /* included_unix_unix_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

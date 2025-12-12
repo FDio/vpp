@@ -906,11 +906,3 @@ main (int argc, char **argv)
 
   return vsm->worker_fails;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

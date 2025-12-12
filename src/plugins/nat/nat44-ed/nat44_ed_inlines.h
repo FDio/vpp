@@ -849,11 +849,3 @@ nat44_ed_is_unk_proto (u8 proto)
 }
 
 #endif /* __included_nat44_ed_inlines_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

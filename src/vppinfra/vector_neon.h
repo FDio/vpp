@@ -381,11 +381,3 @@ u32x4_shuffle_dynamic (u32x4 v, u32x4 i)
   return (u32x4) vqtbl1q_u8 ((u8x16) v, new_mask);
 }
 #endif /* included_vector_neon_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -81,11 +81,3 @@ int tcp_bt_is_sane (tcp_byte_tracker_t * bt);
 format_function_t format_tcp_bt;
 
 #endif /* SRC_VNET_TCP_TCP_BT_H_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

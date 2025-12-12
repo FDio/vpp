@@ -379,11 +379,3 @@ VLIB_REGISTER_NODE (session_input_node) = {
   .type = VLIB_NODE_TYPE_INPUT,
   .state = VLIB_NODE_STATE_DISABLED,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

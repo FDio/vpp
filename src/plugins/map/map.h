@@ -501,10 +501,3 @@ ip6_map_ip4_lookup_bypass (vlib_buffer_t * p0, ip4_header_t * ip)
 }
 
 #endif
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

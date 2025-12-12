@@ -289,11 +289,3 @@ VLIB_CLI_COMMAND (qos_record_show_command, static) = {
   .function = qos_record_show,
   .is_mp_safe = 1,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

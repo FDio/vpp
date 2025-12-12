@@ -136,13 +136,4 @@ cnat_timestamp_free (u32 index)
   if (0 == clib_atomic_sub_fetch (&ts->refcnt, 1))
     cnat_timestamp_destroy (index);
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
-
 #endif

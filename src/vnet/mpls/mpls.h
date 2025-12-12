@@ -99,11 +99,3 @@ void mpls_table_create (u32 table_id, u8 is_api, const u8 * name);
 void mpls_table_delete (u32 table_id, u8 is_api);
 
 #endif /* included_vnet_mpls_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -244,11 +244,3 @@ VLIB_REGISTER_NODE (udp6_output_node) =
   .format_buffer = format_udp_header,
   .format_trace = format_udp_tx_trace,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

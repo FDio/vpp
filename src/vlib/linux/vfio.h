@@ -53,11 +53,3 @@ format_function_t format_vfio_region_info;
 format_function_t format_vfio_irq_set;
 
 #endif /* included_vlib_linux_vfio_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

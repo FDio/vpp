@@ -64,11 +64,3 @@ typedef enum
 } l2_mac_age_process_event_t;
 
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

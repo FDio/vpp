@@ -242,11 +242,3 @@ api_http_static_enable_v5 (vat_main_t *vam)
 }
 
 #include <http_static/http_static.api_test.c>
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

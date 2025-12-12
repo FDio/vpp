@@ -238,17 +238,8 @@ VNET_FEATURE_INIT (l3xc_ip4_feat, static) =
   .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa"),
 };
 
-VNET_FEATURE_INIT (l3xc_ip6_feat, static) =
-{
+VNET_FEATURE_INIT (l3xc_ip6_feat, static) = {
   .arc_name = "ip6-unicast",
   .node_name = "l3xc-input-ip6",
   .runs_after = VNET_FEATURES ("acl-plugin-in-ip6-fa"),
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

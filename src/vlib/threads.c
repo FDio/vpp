@@ -1752,11 +1752,3 @@ vlib_get_thread_main_not_inline (void)
 {
   return vlib_get_thread_main ();
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

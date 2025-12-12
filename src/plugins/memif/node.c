@@ -1372,13 +1372,3 @@ VLIB_REGISTER_NODE (memif_input_node) = {
   .n_errors = MEMIF_INPUT_N_ERROR,
   .error_counters = memif_input_error_counters,
 };
-
-
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

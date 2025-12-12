@@ -581,11 +581,3 @@ vppcom_cfg (vcl_cfg_t *vcl_cfg)
 		getpid ());
     }
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

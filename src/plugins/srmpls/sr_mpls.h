@@ -169,9 +169,3 @@ extern void internal_label_lock (ip46_address_t endpoint, u32 color);
 extern void internal_label_unlock (ip46_address_t endpoint, u32 color);
 
 #endif /* included_vnet_sr_mpls_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables: eval: (c-set-style "gnu") End:
- */

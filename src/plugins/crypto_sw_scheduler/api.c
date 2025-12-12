@@ -67,11 +67,3 @@ crypto_sw_scheduler_api_init (vlib_main_t * vm)
 
   return 0;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

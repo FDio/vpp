@@ -373,11 +373,3 @@ wg_send_handshake_cookie (vlib_main_t *vm, u32 sender_index,
 
   return true;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

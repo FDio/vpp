@@ -437,11 +437,3 @@ VLIB_CLI_COMMAND (show_ip4_arp_command, static) = {
   .function = show_ip4_arp,
   .short_help = "show ip arp",
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

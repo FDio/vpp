@@ -1096,11 +1096,3 @@ VNET_FEATURE_INIT (lcp_arp_host_arp_feat, static) = {
   .node_name = "linux-cp-arp-host",
   .runs_before = VNET_FEATURES ("arp-reply"),
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

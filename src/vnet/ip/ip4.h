@@ -285,11 +285,3 @@ vlib_buffer_get_ip4_fib_index (vlib_buffer_t * b)
 }
 
 #endif /* included_ip_ip4_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

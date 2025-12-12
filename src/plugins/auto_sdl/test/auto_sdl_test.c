@@ -260,11 +260,3 @@ VLIB_PLUGIN_REGISTER () = {
   .description = "Auto SDL - Unit Test",
   .default_disabled = 1,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

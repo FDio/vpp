@@ -51,11 +51,3 @@ uword ip4_full_reass_custom_register_next_node (uword node_index);
 void ip4_local_full_reass_enable_disable (int enable);
 int ip4_local_full_reass_enabled ();
 #endif /* __included_ip4_full_reass_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

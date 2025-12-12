@@ -160,11 +160,3 @@ vnet_flow_disable (vnet_main_t * vnm, u32 flow_index, u32 hw_if_index)
   hash_unset (f->private_data, hw_if_index);
   return 0;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

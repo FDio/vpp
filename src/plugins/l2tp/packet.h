@@ -32,11 +32,3 @@ typedef CLIB_PACKED (struct
 }) l2tpv3_header_t;
 
 #endif /* __included_l2tp_packet_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

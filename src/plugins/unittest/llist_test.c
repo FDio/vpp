@@ -329,17 +329,8 @@ done:
   return 0;
 }
 
-VLIB_CLI_COMMAND (llist_test_command, static) =
-{
+VLIB_CLI_COMMAND (llist_test_command, static) = {
   .path = "test llist",
   .short_help = "internal llist unit tests",
   .function = llist_test,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

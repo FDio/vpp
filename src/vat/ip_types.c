@@ -523,11 +523,3 @@ ip6_mask_to_preflen (ip6_address_t * mask)
     return 64 - log2_first_set (clib_net_to_host_u64 (mask->as_u64[0]));
   return 0;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

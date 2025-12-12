@@ -151,11 +151,3 @@ gid_dict_foreach_l2_arp_ndp_entry (gid_dictionary_t * db,
 				   cb, void *ht);
 
 #endif /* VNET_LISP_GPE_GID_DICTIONARY_H_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

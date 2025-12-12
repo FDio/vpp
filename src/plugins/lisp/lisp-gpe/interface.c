@@ -921,11 +921,3 @@ VLIB_CLI_COMMAND (add_del_lisp_gpe_iface_command, static) = {
   .short_help = "gpe iface add/del vni <vni> vrf <vrf>",
   .function = lisp_gpe_add_del_iface_command_fn,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

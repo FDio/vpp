@@ -69,11 +69,3 @@ nat_dpo_module_init (void)
 {
   nat_dpo_type = dpo_register_new_type (&nat_dpo_vft, nat_nodes);
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

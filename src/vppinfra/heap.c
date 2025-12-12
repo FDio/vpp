@@ -823,11 +823,3 @@ heap_validate (void *v)
 
   vec_free (free_map);
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

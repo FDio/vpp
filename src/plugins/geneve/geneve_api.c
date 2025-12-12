@@ -244,14 +244,6 @@ VLIB_API_INIT_FUNCTION (geneve_api_hookup);
 #include <vpp/app/version.h>
 
 VLIB_PLUGIN_REGISTER () = {
-    .version = VPP_BUILD_VER,
-    .description = "GENEVE Tunnels",
+  .version = VPP_BUILD_VER,
+  .description = "GENEVE Tunnels",
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

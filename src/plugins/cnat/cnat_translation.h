@@ -271,13 +271,4 @@ cnat_find_translation (index_t cti, u16 port, ip_protocol_t proto)
 
   return (NULL);
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
-
 #endif

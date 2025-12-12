@@ -45,11 +45,3 @@ typedef struct
 extern tracedump_main_t tracedump_main;
 
 #endif /* __included_tracedump_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

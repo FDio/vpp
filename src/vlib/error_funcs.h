@@ -80,11 +80,3 @@ vlib_error_drop_buffers (vlib_main_t * vm,
 			 u32 error_node, u32 error_code);
 
 #endif /* included_vlib_error_funcs_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

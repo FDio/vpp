@@ -1508,11 +1508,3 @@ exit_on_error:
   vec_free (em->available_proto_cb_vft);
   exit (em->has_failed);
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

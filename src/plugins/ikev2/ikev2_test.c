@@ -1710,11 +1710,3 @@ api_ikev2_initiate_rekey_child_sa (vat_main_t * vam)
 }
 
 #include <ikev2/ikev2.api_test.c>
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -104,11 +104,3 @@ icmp6_send_neighbor_advertisement (
 }
 
 #endif /* included_ip6_nd_inline_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -32,11 +32,3 @@ typedef enum
 #undef vl_msg_id
 
 #endif /* __VL_MSG_ENUM_H__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

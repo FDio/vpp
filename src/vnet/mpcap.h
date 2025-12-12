@@ -103,11 +103,3 @@ mpcap_add_buffer (mpcap_main_t * pm,
   clib_spinlock_unlock_if_init (&pm->lock);
 }
 #endif /* included_vnet_mpcap_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

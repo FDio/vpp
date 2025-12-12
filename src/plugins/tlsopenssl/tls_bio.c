@@ -178,11 +178,3 @@ BIO_new_tls (session_handle_t sh)
   BIO_set_init (b, 1);
   return b;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

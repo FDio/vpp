@@ -279,11 +279,3 @@ format_function_t format_vlib_pci_vpd;
 format_function_t format_vlib_pci_log;
 
 #endif /* included_vlib_pci_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

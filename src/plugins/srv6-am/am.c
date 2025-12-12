@@ -239,11 +239,3 @@ VLIB_PLUGIN_REGISTER () = {
   .version = VPP_BUILD_VER,
   .description = "Masquerading Segment Routing for IPv6 (SRv6) Proxy",
 };
-
-/*
-* fd.io coding-style-patch-verification: ON
-*
-* Local Variables:
-* eval: (c-set-style "gnu")
-* End:
-*/

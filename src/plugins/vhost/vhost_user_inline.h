@@ -484,11 +484,3 @@ vhost_user_advance_last_used_idx (vhost_user_vring_t * vring)
 }
 
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

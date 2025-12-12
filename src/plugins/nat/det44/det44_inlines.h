@@ -116,11 +116,3 @@ det44_translate (vlib_node_runtime_t * node, u32 sw_if_index0,
 }
 
 #endif /* __included_det44_inlines_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

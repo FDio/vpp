@@ -121,11 +121,3 @@ extern void tunnel_build_v4_hdr (const tunnel_t *t, ip_protocol_t next_proto,
 				 ip4_header_t *ip);
 
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

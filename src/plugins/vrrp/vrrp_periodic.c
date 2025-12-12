@@ -228,11 +228,3 @@ VLIB_REGISTER_NODE (vrrp_periodic_node) = {
   .name = "vrrp-periodic-process",
   .process_log2_n_stack_bytes = 17,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

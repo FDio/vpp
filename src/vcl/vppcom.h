@@ -365,11 +365,3 @@ extern int vppcom_worker_is_detached (void);
 /* clang-format on */
 
 #endif /* included_vppcom_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

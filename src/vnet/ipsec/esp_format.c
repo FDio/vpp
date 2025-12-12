@@ -29,11 +29,3 @@ format_esp_header (u8 * s, va_list * args)
 	      spi, spi, clib_net_to_host_u32 (esp->seq));
   return s;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -634,11 +634,3 @@ ip_set (ip46_address_t *dst, void *src, u8 is_ip4)
     clib_memcpy_fast (&dst->ip6, (ip6_address_t *) src,
 		      sizeof (ip6_address_t));
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

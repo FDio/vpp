@@ -27,11 +27,3 @@ extern void mac_address_decode (const u8 * in, mac_address_t * out);
 extern void mac_address_encode (const mac_address_t * in, u8 * out);
 
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

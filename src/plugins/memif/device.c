@@ -811,12 +811,3 @@ VNET_DEVICE_CLASS (memif_device_class) = {
   .admin_up_down_function = memif_interface_admin_up_down,
   .rx_mode_change_function = memif_interface_rx_mode_change,
 };
-
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

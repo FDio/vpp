@@ -60,11 +60,3 @@ wg_index_table_lookup (const wg_index_table_t * table, u32 key)
   p = hash_get (table->hash, key);
   return (u32 *) p;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

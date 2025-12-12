@@ -123,13 +123,4 @@ void *svmdb_local_find_or_add_vec_variable (svmdb_client_t * client,
 int svmdb_local_serialize_strings (svmdb_client_t * client, char *filename);
 int svmdb_local_unserialize_strings (svmdb_client_t * client, char *filename);
 
-
 #endif /* __included_svmdb_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

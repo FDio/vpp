@@ -449,12 +449,3 @@ clib_error_t *ikev2_set_sleep_interval (f64 interval);
 f64 ikev2_get_sleep_interval ();
 
 #endif /* __included_ikev2_h__ */
-
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

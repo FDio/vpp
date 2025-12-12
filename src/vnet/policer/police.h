@@ -216,11 +216,3 @@ vnet_police_packet (policer_t *policer, u32 packet_length,
 }
 
 #endif // __POLICE_H__
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

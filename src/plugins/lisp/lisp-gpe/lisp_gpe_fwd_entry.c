@@ -1573,11 +1573,3 @@ vnet_lisp_gpe_get_fwd_stats (vnet_lisp_gpe_add_del_fwd_entry_args_t * a,
 }
 
 VLIB_INIT_FUNCTION (lisp_gpe_fwd_entry_init);
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

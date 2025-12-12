@@ -23,11 +23,3 @@ extern int rd_cp_set_address_autoconfig (u32 sw_if_index,
 					 u8 install_default_routes);
 
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

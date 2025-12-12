@@ -579,11 +579,3 @@ main (int argc, char **argv)
   vl_client_disconnect_from_vlib ();
   exit (0);
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

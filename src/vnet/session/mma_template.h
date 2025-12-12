@@ -80,11 +80,3 @@ u32
 RT (mma_rules_table_rule_index) (RTT (mma_rules_table) * srt,
 				 RTT (mma_rule) * sr);
 #endif /* SRC_VNET_SESSION_MMA_TEMPLATE_H_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

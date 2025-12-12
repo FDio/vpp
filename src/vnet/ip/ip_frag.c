@@ -538,11 +538,3 @@ VLIB_REGISTER_NODE (ip6_frag_node) = {
 		  [IP_FRAG_NEXT_ICMP_ERROR] = "error-drop",
 		  [IP_FRAG_NEXT_DROP] = "ip6-drop" },
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -92,12 +92,4 @@
 #define WARN_OFF_CLANG(x)
 #define WARN_ON_CLANG(x)
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
 #endif /* __included_warnings_h__ */

@@ -119,11 +119,3 @@ dslite_dpo_module_init (void)
   dslite_ce_dpo_type = dpo_register_new_type (&dslite_ce_dpo_vft,
 					      dslite_ce_nodes);
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

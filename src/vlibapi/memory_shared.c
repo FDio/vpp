@@ -805,11 +805,3 @@ vl_msg_api_send_shmem_nolock (svm_queue_t * q, u8 * elem)
   (void) svm_queue_add_nolock (q, elem);
   VL_MSG_API_POISON (msg);
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

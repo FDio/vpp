@@ -409,11 +409,3 @@ VLIB_CLI_COMMAND (urpf_accept_command, static) = {
   .function = urpf_cli_accept,
   .short_help = "urpf-accept [table <table-id>] [add|del] <PREFIX>",
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

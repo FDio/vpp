@@ -182,11 +182,3 @@ unformat_function_t unformat_snap_header;
 unformat_function_t unformat_pg_snap_header;
 
 #endif /* included_snap_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

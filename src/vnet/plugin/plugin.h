@@ -22,11 +22,3 @@
 #include <vlib/unix/plugin.h>
 
 #endif /* included_vnet_plugin_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

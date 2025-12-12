@@ -488,16 +488,7 @@ VLIB_INIT_FUNCTION (igmp_init) =
 {
   .runs_after = VLIB_INITS("ip4_lookup_init"),
 };
-VLIB_PLUGIN_REGISTER () =
-{
+VLIB_PLUGIN_REGISTER () = {
   .version = VPP_BUILD_VER,
   .description = "Internet Group Management Protocol (IGMP)",
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

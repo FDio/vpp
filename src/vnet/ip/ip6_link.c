@@ -804,17 +804,8 @@ disable_ip6_interface_cmd (vlib_main_t * vm,
  * Example of how disable IPv6 on a given interface:
  * @cliexcmd{disable ip6 interface GigabitEthernet2/0/0}
 ?*/
-VLIB_CLI_COMMAND (disable_ip6_interface_command, static) =
-{
+VLIB_CLI_COMMAND (disable_ip6_interface_command, static) = {
   .path = "disable ip6 interface",
   .function = disable_ip6_interface_cmd,
   .short_help = "disable ip6 interface <interface>",
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

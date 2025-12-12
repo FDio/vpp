@@ -625,11 +625,3 @@ do {                                                                           \
 } while(0)
 
 #endif /* __included_ioam_export_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

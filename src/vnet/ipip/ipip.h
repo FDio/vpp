@@ -169,11 +169,3 @@ void ipip_mk_key_i (ipip_transport_t transport,
 		    u32 fib_index, ipip_tunnel_key_t * key);
 
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

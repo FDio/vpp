@@ -544,11 +544,3 @@ vnet_buffer_set_ext_hdr_size() \
 }
 
 #endif /* included_vlib_buffer_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -1186,11 +1186,3 @@ VLIB_CLI_COMMAND (dhcpv6_proxy_address_show_command, static) = {
   .short_help = "show dhcpv6 link-address interface <interface>",
   .function = dhcpv6_link_address_show_command_fn,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

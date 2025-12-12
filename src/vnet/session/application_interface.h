@@ -982,11 +982,3 @@ session_endpoint_free_ext_cfgs (session_endpoint_cfg_t *sep_ext)
 }
 
 #endif /* __included_uri_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

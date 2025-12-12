@@ -337,11 +337,3 @@ manual_setup_message_id_table (vat_main_t * vam)
 #define VL_API_TRACE_DUMP_REPLY_T_HANDLER
 
 #include <tracedump/tracedump.api_test.c>
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

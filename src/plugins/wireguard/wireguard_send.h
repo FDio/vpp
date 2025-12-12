@@ -44,11 +44,3 @@ ip4_header_set_len_w_chksum (ip4_header_t * ip4, u16 len)
 }
 
 #endif /* __included_wg_send_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

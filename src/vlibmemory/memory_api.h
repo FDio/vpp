@@ -85,11 +85,3 @@ vl_msg_api_handle_is_valid (u32 handle, u32 restarts)
   while (0)
 
 #endif /* SRC_VLIBMEMORY_MEMORY_API_H_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

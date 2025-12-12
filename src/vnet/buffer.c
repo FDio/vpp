@@ -93,11 +93,3 @@ format_vnet_buffer (u8 *s, va_list *args)
   vlib_buffer_t *b = va_arg (*args, vlib_buffer_t *);
   return format_vnet_buffer_internal (s, b, 0 /* no_chain */);
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

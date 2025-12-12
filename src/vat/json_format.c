@@ -294,11 +294,3 @@ vat_json_free (vat_json_node_t * node)
       break;
     }
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

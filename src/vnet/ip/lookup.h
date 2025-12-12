@@ -179,10 +179,3 @@ void ip_lookup_init (ip_lookup_main_t * lm, u32 ip_lookup_node_index);
 bool fib_prefix_validate (const fib_prefix_t *prefix);
 
 #endif /* included_ip_lookup_h */
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

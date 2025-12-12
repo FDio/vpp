@@ -172,11 +172,3 @@ VLIB_REGISTER_NODE (feat_bitmap_drop_node,static) = {
     [FEAT_BITMAP_DROP_NEXT_DROP]  = "error-drop",
   },
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

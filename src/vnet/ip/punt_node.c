@@ -663,11 +663,3 @@ VLIB_REGISTER_NODE (punt_socket_rx_node) =
   },
  .format_trace = format_punt_trace,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

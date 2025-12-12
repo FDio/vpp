@@ -602,11 +602,3 @@ vnet_buffer_offload_flags_clear (vlib_buffer_t *b, vnet_buffer_oflags_t oflags)
 }
 
 #endif /* included_vnet_buffer_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

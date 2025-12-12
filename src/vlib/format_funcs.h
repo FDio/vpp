@@ -74,11 +74,3 @@ uword unformat_vlib_tmpfile (unformat_input_t * input, va_list * args);
 #define FORMAT_VLIB_HEADER_NO_RECURSION (~0)
 
 #endif /* included_vlib_format_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

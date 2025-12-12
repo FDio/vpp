@@ -149,11 +149,3 @@ extern u32 igmp_group_index (const igmp_group_t * g);
 extern igmp_group_t *igmp_group_get (u32 index);
 
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

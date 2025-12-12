@@ -308,11 +308,3 @@ do {                                                                 \
   while (0)
 
 #endif /* included_callback_data_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -572,11 +572,3 @@ VLIB_CLI_COMMAND (udp_encap_show_command, static) = {
   .function = udp_encap_show,
   .is_mp_safe = 1,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

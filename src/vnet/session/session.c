@@ -2396,11 +2396,3 @@ session_config_fn (vlib_main_t * vm, unformat_input_t * input)
 }
 
 VLIB_CONFIG_FUNCTION (session_config_fn, "session");
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -165,17 +165,8 @@ test_time_range_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-VLIB_CLI_COMMAND (test_time_range_command, static) =
-{
+VLIB_CLI_COMMAND (test_time_range_command, static) = {
   .path = "test time-range",
   .short_help = "test time-range",
   .function = test_time_range_command_fn,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

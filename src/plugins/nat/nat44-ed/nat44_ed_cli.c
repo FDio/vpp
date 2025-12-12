@@ -2357,11 +2357,3 @@ VLIB_CLI_COMMAND (snat_forwarding_set_command, static) = {
   .short_help = "nat44 forwarding enable|disable",
   .function = snat_forwarding_set_command_fn,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

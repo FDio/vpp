@@ -135,11 +135,3 @@ void vlib_lex_reset (vlib_lex_main_t * lm, u8 * input_vector);
 format_function_t format_vlib_lex_token;
 
 #endif /* included_vlib_lex_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

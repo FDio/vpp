@@ -390,11 +390,3 @@ vnet_feature_is_enabled (const char *arc_name, const char *feature_node_name,
 			 u32 sw_if_index);
 
 #endif /* included_feature_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

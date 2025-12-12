@@ -325,11 +325,3 @@ blake2s (void *out, size_t outlen, const void *in, size_t inlen,
   blake2s_final (S, out, outlen);
   return 0;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

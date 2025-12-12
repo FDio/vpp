@@ -413,10 +413,3 @@ extern session_dbg_main_t session_dbg_main;
 void session_debug_init (void);
 
 #endif /* SRC_VNET_SESSION_SESSION_DEBUG_H_ */
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

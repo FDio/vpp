@@ -272,11 +272,3 @@ format_function_t format_vnet_rewrite;
 serialize_function_t serialize_vnet_rewrite, unserialize_vnet_rewrite;
 
 #endif /* included_vnet_rewrite_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

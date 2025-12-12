@@ -2896,12 +2896,3 @@ ldp_destructor (void)
     fprintf (stderr, "%s:%d: LDP<%d>: LDP destructor: done!\n",
 	     __func__, __LINE__, getpid ());
 }
-
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

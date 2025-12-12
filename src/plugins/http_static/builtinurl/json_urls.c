@@ -175,11 +175,3 @@ hss_builtinurl_json_handlers_init (void)
   hss_register_url_handler (handle_get_interface_stats, "interface_stats.json",
 			    HTTP_REQ_POST);
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

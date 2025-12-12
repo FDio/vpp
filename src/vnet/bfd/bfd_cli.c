@@ -993,11 +993,3 @@ VLIB_CLI_COMMAND (bfd_cli_udp_del_echo_source_cmd, static) = {
   .short_help = "bfd udp echo-source del",
   .function = bfd_cli_udp_del_echo_source,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

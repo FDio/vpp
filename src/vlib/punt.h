@@ -113,11 +113,3 @@ extern u16 **punt_dp_db;
 extern vlib_combined_counter_main_t punt_counters;
 
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

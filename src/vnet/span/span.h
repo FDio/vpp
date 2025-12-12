@@ -67,13 +67,5 @@ typedef struct
 
 #endif /* __span_h__ */
 
-int
-span_add_delete_entry (vlib_main_t * vm, u32 src_sw_if_index,
-		       u32 dst_sw_if_index, u8 state, span_feat_t sf);
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
+int span_add_delete_entry (vlib_main_t *vm, u32 src_sw_if_index,
+			   u32 dst_sw_if_index, u8 state, span_feat_t sf);

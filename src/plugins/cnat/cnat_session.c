@@ -330,11 +330,3 @@ VLIB_CLI_COMMAND (cnat_timestamp_show_cmd, static) = {
   .short_help = "show cnat timestamp [verbose]",
   .is_mp_safe = 1,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

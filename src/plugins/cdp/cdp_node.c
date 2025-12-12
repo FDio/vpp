@@ -207,11 +207,3 @@ vnet_cdp_create_periodic_process (cdp_main_t * cmp)
     (cmp->vlib_main, "cdp-process",
      cdp_process, 16 /* log2_n_stack_bytes */ );
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

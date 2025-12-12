@@ -987,15 +987,7 @@ set_async_mode_command_fn (vlib_main_t * vm, unformat_input_t * input,
 }
 
 VLIB_CLI_COMMAND (set_async_mode_command, static) = {
-    .path = "set ipsec async mode",
-    .short_help = "set ipsec async mode on|off",
-    .function = set_async_mode_command_fn,
+  .path = "set ipsec async mode",
+  .short_help = "set ipsec async mode on|off",
+  .function = set_async_mode_command_fn,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

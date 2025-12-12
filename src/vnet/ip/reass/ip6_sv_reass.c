@@ -1688,11 +1688,3 @@ ip6_sv_reass_extended_unlock (vlib_buffer_t *b)
   clib_spinlock_unlock (&per_thread->lock);
 }
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

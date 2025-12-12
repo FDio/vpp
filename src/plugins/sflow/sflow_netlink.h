@@ -120,11 +120,3 @@ void sflow_netlink_read (SFLOWNL *nl);
 #define SFNLA_DATA(nla)	   ((void *) (((char *) (nla)) + SFNLA_LENGTH (0)))
 #define SFNLA_PAYLOAD(nla) ((int) ((nla)->nla_len) - SFNLA_LENGTH (0))
 #endif /* __included_sflow_netlink_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

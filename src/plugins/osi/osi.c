@@ -189,11 +189,3 @@ osi_init (vlib_main_t * vm)
 VLIB_INIT_FUNCTION (osi_init) = {
   .init_order = VLIB_INITS ("llc_init", "osi_init", "snap_init"),
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

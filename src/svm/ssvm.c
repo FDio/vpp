@@ -463,11 +463,3 @@ ssvm_name (const ssvm_private_t * ssvm)
 {
   return ssvm->sh->name;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

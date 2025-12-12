@@ -92,13 +92,4 @@ extern int abf_itf_detach (fib_protocol_t fproto,
 typedef int (*abf_itf_attach_walk_cb_t) (index_t aii, void *ctx0);
 
 extern void abf_itf_attach_walk (abf_itf_attach_walk_cb_t cb, void *ctx);
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
-
 #endif

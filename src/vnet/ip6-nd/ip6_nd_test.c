@@ -383,11 +383,3 @@ vl_api_sw_interface_ip6nd_ra_details_t_handler (
 }
 
 #include <ip6-nd/ip6_nd.api_test.c>
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

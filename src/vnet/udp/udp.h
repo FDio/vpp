@@ -251,14 +251,5 @@ format_function_t format_udp_connection;
 unformat_function_t unformat_udp_header;
 unformat_function_t unformat_udp_port;
 
-void udp_punt_unknown (vlib_main_t * vm, u8 is_ip4, u8 is_add);
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
-
+void udp_punt_unknown (vlib_main_t *vm, u8 is_ip4, u8 is_add);
 #endif /* __included_udp_h__ */

@@ -152,11 +152,3 @@ session_table_t *session_table_get_for_fib_index (u32 fib_proto,
 						  u32 fib_index);
 
 #endif /* SRC_VNET_SESSION_SESSION_LOOKUP_H_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

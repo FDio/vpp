@@ -1453,11 +1453,3 @@ static const vcl_test_proto_vft_t vcl_test_http = {
 };
 
 VCL_TEST_REGISTER_PROTO (VPPCOM_PROTO_HTTP, vcl_test_http);
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

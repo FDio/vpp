@@ -416,18 +416,9 @@ ip4_punt_redirect_show_cmd (vlib_main_t * vm,
  * @cliexpar
  * @cliexcmd{set ip punt redierect}
  ?*/
-VLIB_CLI_COMMAND (show_ip4_punt_redirect_command, static) =
-{
+VLIB_CLI_COMMAND (show_ip4_punt_redirect_command, static) = {
   .path = "show ip punt redirect",
   .function = ip4_punt_redirect_show_cmd,
   .short_help = "show ip punt redirect",
   .is_mp_safe = 1,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

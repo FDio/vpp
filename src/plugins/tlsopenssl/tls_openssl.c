@@ -1791,14 +1791,6 @@ VLIB_CLI_COMMAND (tls_openssl_set_tls, static) = {
 };
 
 VLIB_PLUGIN_REGISTER () = {
-    .version = VPP_BUILD_VER,
-    .description = "Transport Layer Security (TLS) Engine, OpenSSL Based",
+  .version = VPP_BUILD_VER,
+  .description = "Transport Layer Security (TLS) Engine, OpenSSL Based",
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

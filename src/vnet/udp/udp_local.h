@@ -78,11 +78,3 @@ void udp_unregister_dst_port (vlib_main_t * vm,
 u8 udp_is_valid_dst_port (udp_dst_port_t dst_port, u8 is_ip4);
 
 #endif /* SRC_VNET_UDP_UDP_LOCAL_H_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -114,11 +114,3 @@ vlib_physmem_last_error (struct vlib_main_t * vm)
 }
 
 #endif /* included_vlib_physmem_funcs_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

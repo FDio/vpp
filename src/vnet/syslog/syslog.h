@@ -217,11 +217,3 @@ syslog_severity_filter_block (syslog_severity_t s)
 }
 
 #endif /* __included_syslog_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

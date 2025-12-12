@@ -617,11 +617,3 @@ VLIB_CLI_COMMAND (show_nsh_entry_command, static) = {
   .path = "show nsh entry",
   .function = show_nsh_entry_command_fn,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

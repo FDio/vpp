@@ -309,11 +309,3 @@ typedef enum vcl_dbg_evt_
 #endif
 
 #endif /* SRC_VCL_VCL_DEBUG_H_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

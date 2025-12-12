@@ -48,11 +48,3 @@ lisp_msg_parse_itr_rlocs (vlib_buffer_t * b, gid_address_t ** rlocs,
 			  u8 rloc_count);
 
 #endif /* VNET_LISP_GPE_LISP_MSG_BUILDER_H_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

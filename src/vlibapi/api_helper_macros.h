@@ -739,11 +739,3 @@ typedef struct
 extern vpe_api_main_t vpe_api_main;
 
 #endif /* __api_helper_macros_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

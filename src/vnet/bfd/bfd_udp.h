@@ -106,11 +106,3 @@ void bfd_udp_get_echo_source (int *is_set, u32 * sw_if_index,
 			      int *have_usable_ip6, ip6_address_t * ip6);
 
 #endif /* __included_bfd_udp_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

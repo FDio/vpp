@@ -271,18 +271,8 @@ VLIB_REGISTER_NODE (acl_out_nonip_node) =
   }
 };
 
-VNET_FEATURE_INIT (acl_out_l2_nonip_fa_feature, static) =
-{
+VNET_FEATURE_INIT (acl_out_l2_nonip_fa_feature, static) = {
   .arc_name = "l2-output-nonip",
   .node_name = "acl-plugin-out-nonip-l2",
   .runs_before = VNET_FEATURES ("l2-output-feat-arc-end"),
 };
-
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

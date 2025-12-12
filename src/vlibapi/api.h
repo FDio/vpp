@@ -151,10 +151,3 @@ format_function_t format_vl_api_msg_text;
 format_function_t format_vl_api_msg_json;
 
 #endif /* included_api_h */
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -21,11 +21,3 @@
 extern ptls_cipher_suite_t *ptls_vpp_crypto_cipher_suites[];
 
 #endif /* __included_pico_vpp_crypto_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

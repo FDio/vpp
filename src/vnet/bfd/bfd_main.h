@@ -498,11 +498,3 @@ typedef enum
 } bfd_tx_next_t;
 
 #endif /* __included_bfd_main_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

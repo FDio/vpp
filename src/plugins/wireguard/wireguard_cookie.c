@@ -359,11 +359,3 @@ ratelimit_allow (ratelimit_t *rl, ip46_address_t *ip)
 
   return true;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -304,11 +304,3 @@ ip_udp_encap_two (vlib_main_t *vm, vlib_buffer_t *b0, vlib_buffer_t *b1,
 }
 
 #endif /* SRC_VNET_UDP_UDP_INLINES_H_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

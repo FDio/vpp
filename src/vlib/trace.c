@@ -741,10 +741,3 @@ VLIB_CLI_COMMAND (set_trace_filter_function_cli, static) = {
   .short_help = "set trace filter function <func_name>",
   .function = set_trace_filter_function,
 };
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -470,11 +470,3 @@ sflow_netlink_read (SFLOWNL *nl)
 	}
     }
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

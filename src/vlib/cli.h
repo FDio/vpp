@@ -212,11 +212,3 @@ uword unformat_vlib_cli_sub_input (unformat_input_t * i, va_list * args);
 u8 **vlib_cli_get_possible_completions (u8 * input_str);
 
 #endif /* included_vlib_cli_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

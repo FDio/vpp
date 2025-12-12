@@ -172,11 +172,3 @@ typedef CLIB_PACKED (struct
 		     }) ethernet_marker_pdu_t;
 
 #endif /* __included_lacp_protocol_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

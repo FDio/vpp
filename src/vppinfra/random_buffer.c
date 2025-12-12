@@ -76,11 +76,3 @@ clib_random_buffer_init (clib_random_buffer_t * b, uword seed)
       isaac_init (&b->ctx[i], s);
     }
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

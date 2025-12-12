@@ -230,15 +230,7 @@ show_policer_classify_command_fn (vlib_main_t * vm,
 }
 
 VLIB_CLI_COMMAND (show_policer_classify_command, static) = {
-    .path = "show classify policer",
-    .short_help = "show classify policer type [ip4|ip6|l2]",
-    .function = show_policer_classify_command_fn,
+  .path = "show classify policer",
+  .short_help = "show classify policer type [ip4|ip6|l2]",
+  .function = show_policer_classify_command_fn,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

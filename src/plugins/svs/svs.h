@@ -41,13 +41,4 @@ typedef walk_rc_t (*svs_walk_fn_t) (fib_protocol_t fproto, u32 table_id,
 				    u32 sw_if_index, void *ctx);
 
 extern void svs_walk (svs_walk_fn_t fn, void *ctx);
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
-
 #endif

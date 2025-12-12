@@ -107,11 +107,3 @@ lacp_init_tx_machine (vlib_main_t * vm, member_if_t * mif)
   lacp_machine_dispatch (&lacp_tx_machine, vm, mif, LACP_TX_EVENT_BEGIN,
 			 &mif->tx_state);
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

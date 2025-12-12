@@ -404,11 +404,3 @@ VNET_FEATURE_INIT (ip6_multicast_nd_proxy_node, static) = {
   .node_name = "ip6-multicast-nd-proxy",
   .runs_before = VNET_FEATURES ("ip6-mfib-forward-lookup"),
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

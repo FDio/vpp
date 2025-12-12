@@ -80,11 +80,3 @@ svm_pop_heap (void *oldheap)
 }
 
 #endif /* __included_svm_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

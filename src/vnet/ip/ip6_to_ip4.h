@@ -527,11 +527,3 @@ icmp6_to_icmp (vlib_main_t * vm, vlib_buffer_t * p,
 }
 
 #endif /* __included_ip6_to_ip4_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

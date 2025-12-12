@@ -63,11 +63,3 @@ ct_connection_t *ct_connection_get (u32 ct_index,
 				    clib_thread_index_t thread_index);
 
 #endif /* SRC_VNET_SESSION_APPLICATION_LOCAL_H_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

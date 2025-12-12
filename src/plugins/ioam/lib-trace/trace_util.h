@@ -244,11 +244,3 @@ int ip6_trace_profile_cleanup (void);
 #define TSP_NANOSECONDS          3
 
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

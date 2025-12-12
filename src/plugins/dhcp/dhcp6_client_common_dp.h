@@ -84,11 +84,3 @@ static const ip6_address_t all_dhcp6_relay_agents_and_servers = {
 };
 
 #endif /* included_vnet_dhcp6_client_common_dp_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -92,13 +92,4 @@ extern void ip6_ll_table_entry_delete (const ip6_ll_prefix_t * prefix);
  * @brief For use in the data plane. Get the underlying ip6 FIB
  */
 extern u32 ip6_ll_fib_get (u32 sw_if_index);
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
-
 #endif

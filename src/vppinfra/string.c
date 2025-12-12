@@ -472,11 +472,3 @@ strstr_s (char *s1, rsize_t s1max, const char *s2, rsize_t s2max,
 {
   return strstr_s_inline (s1, s1max, s2, s2max, substring);
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

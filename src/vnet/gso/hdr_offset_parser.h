@@ -479,11 +479,3 @@ vnet_generic_header_offset_parser (vlib_buffer_t * b0,
 }
 
 #endif /* included_hdr_offset_parser_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -945,13 +945,3 @@ VLIB_REGISTER_NODE (acl_fa_session_cleaner_process_node, static) = {
   .n_next_nodes = 0,
   .next_nodes = {},
 };
-
-
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

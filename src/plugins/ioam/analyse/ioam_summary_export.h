@@ -76,11 +76,3 @@ u16 ioam_analyse_add_ipfix_record (flow_report_t * fr,
 				   u16 src_port, u16 dst_port);
 
 #endif /* __included_ip6_ioam_flow_report_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

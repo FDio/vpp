@@ -675,10 +675,3 @@ is_sm_switch_address (u32 f)
   vlib_log (VLIB_LOG_LEVEL_DEBUG, nat44_ei_main.log_class, __VA_ARGS__)
 
 #endif /* __included_nat44_ei_h__ */
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

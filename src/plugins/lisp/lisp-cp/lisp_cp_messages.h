@@ -634,11 +634,3 @@ typedef struct
 } __attribute__ ((__packed__)) lisp_nsh_hdr_t;
 
 #endif /* VNET_LISP_GPE_LISP_CP_MESSAGES_H_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

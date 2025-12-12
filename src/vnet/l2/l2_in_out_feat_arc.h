@@ -52,11 +52,3 @@ extern vlib_node_registration_t l2_out_feat_arc_node;
 extern vlib_node_registration_t l2_in_feat_arc_node;
 
 #endif /* __included_vnet_in_out_feat_arc_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

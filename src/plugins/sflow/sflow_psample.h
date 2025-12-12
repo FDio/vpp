@@ -90,11 +90,3 @@ bool SFLOWPS_set_attr (SFLOWPS *pst, EnumSFLOWPSAttributes field, void *buf,
 int SFLOWPS_send (SFLOWPS *pst);
 
 #endif /* __included_sflow_psample_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

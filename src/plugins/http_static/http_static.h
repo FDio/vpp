@@ -250,11 +250,3 @@ hss_session_t *hss_session_get (clib_thread_index_t thread_index,
 				u32 hs_index);
 
 #endif /* __included_http_static_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

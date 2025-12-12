@@ -35,11 +35,3 @@ vat_plugin_register (vat_main_t * vam)
 
   return NULL;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

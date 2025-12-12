@@ -1000,11 +1000,3 @@ VLIB_PLUGIN_REGISTER () = {
   .description = "Secure Real-time Transport Protocol (SRTP)",
   .default_disabled = 1,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

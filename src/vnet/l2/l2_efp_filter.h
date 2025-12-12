@@ -25,11 +25,3 @@
 extern vlib_node_registration_t l2_efp_filter_node;
 
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

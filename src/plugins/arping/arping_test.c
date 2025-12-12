@@ -168,11 +168,3 @@ vl_api_arping_acd_reply_t_handler (vl_api_arping_reply_t *mp)
 }
 
 #include <arping/arping.api_test.c>
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

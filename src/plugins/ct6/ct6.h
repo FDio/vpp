@@ -167,11 +167,3 @@ ct6_update_session_hit (ct6_main_t * cmp, ct6_session_t * s0, f64 now)
 }
 
 #endif /* __included_ct6_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

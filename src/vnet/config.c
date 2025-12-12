@@ -457,11 +457,3 @@ vnet_config_del_feature (vlib_main_t * vm,
     = new - cm->config_pool;
   return new->config_string_heap_index + 1;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -315,11 +315,3 @@ VLIB_CLI_COMMAND (test_linearize_speed_command, static) = {
   .short_help = "test chained-buffer-linearization speed",
   .function = test_linearize_speed_fn,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

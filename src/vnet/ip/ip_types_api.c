@@ -324,11 +324,3 @@ ip_mprefix_decode (const vl_api_mprefix_t * in, mfib_prefix_t * out)
   if (!ip46_address_is_zero (&out->fp_src_addr))
     out->fp_len = (out->fp_proto == FIB_PROTOCOL_IP6 ? 256 : 64);
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

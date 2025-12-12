@@ -121,11 +121,3 @@ VLIB_REGISTER_NODE (dslite_ce_encap_node) = {
     [DSLITE_CE_ENCAP_NEXT_IP6_LOOKUP] = "ip6-lookup",
   },
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

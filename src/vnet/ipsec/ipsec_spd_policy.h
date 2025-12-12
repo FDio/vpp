@@ -245,11 +245,3 @@ ipsec_policy_is_equal (ipsec_policy_t *p1, ipsec_policy_t *p2)
 }
 
 #endif /* __IPSEC_SPD_POLICY_H__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

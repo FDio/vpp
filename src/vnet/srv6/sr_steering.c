@@ -543,17 +543,8 @@ sr_steering_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (sr_steering_init);
 
-VNET_FEATURE_INIT (sr_pl_rewrite_encaps_l2, static) =
-{
+VNET_FEATURE_INIT (sr_pl_rewrite_encaps_l2, static) = {
   .arc_name = "device-input",
   .node_name = "sr-pl-rewrite-encaps-l2",
   .runs_before = VNET_FEATURES ("ethernet-input"),
 };
-
-/*
-* fd.io coding-style-patch-verification: ON
-*
-* Local Variables:
-* eval: (c-set-style "gnu")
-* End:
-*/

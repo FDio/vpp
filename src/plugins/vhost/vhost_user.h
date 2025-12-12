@@ -378,11 +378,3 @@ extern vlib_node_registration_t vhost_user_input_node;
 extern vhost_user_main_t vhost_user_main;
 
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

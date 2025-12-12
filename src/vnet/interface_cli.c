@@ -2816,11 +2816,3 @@ VLIB_CLI_COMMAND (cmd_show_interface_transceiver, static) = {
 		"[eeprom] [verbose]",
   .function = show_interface_transceiver,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

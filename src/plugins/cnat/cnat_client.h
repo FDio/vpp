@@ -194,13 +194,4 @@ cnat_client_uncnt_session (cnat_client_t * cc)
   cnat_client_t *ccp = cnat_client_get (cc->parent_cci);
   return clib_atomic_sub_fetch (&ccp->session_refcnt, 1);
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
-
 #endif

@@ -698,11 +698,3 @@ VLIB_CLI_COMMAND (lisp_test_nsh_command, static) = {
 };
 
 VLIB_INIT_FUNCTION (lisp_gpe_init);
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

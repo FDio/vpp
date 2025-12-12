@@ -211,11 +211,3 @@ static _PARSE_TYPE_REGISTRATION_DATA(n) = {     \
 };
 
 #endif /* included_vlib_parse_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

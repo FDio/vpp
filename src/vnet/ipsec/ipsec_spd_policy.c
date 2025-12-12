@@ -928,11 +928,3 @@ ipsec_fp_add_del_policy (void *fp_spd, ipsec_policy_t *policy, int is_add,
   else
     return ipsec_fp_ip4_del_policy (im, (ipsec_spd_fp_t *) fp_spd, policy);
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

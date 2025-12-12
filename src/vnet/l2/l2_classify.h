@@ -102,11 +102,3 @@ int vnet_l2_output_classify_set_tables (u32 sw_if_index, u32 ip4_table_index,
 					u32 other_table_index);
 
 #endif /* __included_vnet_l2_input_classify_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -1471,17 +1471,8 @@ cleanup:
  * decode table with the current image, to establish API differences.
  *
 ?*/
-VLIB_CLI_COMMAND (dump_api_table_file, static) =
-{
+VLIB_CLI_COMMAND (dump_api_table_file, static) = {
   .path = "show api dump",
   .short_help = "show api dump file <filename> [numeric | compare-current]",
   .function = dump_api_table_file_command_fn,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

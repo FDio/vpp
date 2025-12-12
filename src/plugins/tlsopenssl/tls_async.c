@@ -1116,18 +1116,9 @@ tls_async_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 
 VLIB_INIT_FUNCTION (tls_async_init);
 
-VLIB_REGISTER_NODE (tls_async_process_node,static) = {
-    .function = tls_async_process,
-    .type = VLIB_NODE_TYPE_INPUT,
-    .name = "tls-async-process",
-    .state = VLIB_NODE_STATE_DISABLED,
+VLIB_REGISTER_NODE (tls_async_process_node, static) = {
+  .function = tls_async_process,
+  .type = VLIB_NODE_TYPE_INPUT,
+  .name = "tls-async-process",
+  .state = VLIB_NODE_STATE_DISABLED,
 };
-
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

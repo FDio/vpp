@@ -422,12 +422,3 @@ VLIB_REGISTER_NODE (vxlan_gpe_encap_node) = {
     [VXLAN_GPE_ENCAP_NEXT_DROP] = "error-drop",
   },
 };
-
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -130,11 +130,3 @@ VLIB_CLI_COMMAND (test_mem_leak_command, static) = {
   .short_help = "leak some memory",
   .function = test_mem_leak_command_fn,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

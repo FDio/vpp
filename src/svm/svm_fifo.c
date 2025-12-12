@@ -1659,10 +1659,3 @@ format_svm_fifo (u8 * s, va_list * args)
 }
 
 #endif
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

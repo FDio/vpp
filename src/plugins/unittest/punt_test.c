@@ -378,17 +378,8 @@ punt_test (vlib_main_t * vm,
   return (NULL);
 }
 
-VLIB_CLI_COMMAND (test_fib_command, static) =
-{
+VLIB_CLI_COMMAND (test_fib_command, static) = {
   .path = "test punt",
   .short_help = "punt unit tests - DO NOT RUN ON A LIVE SYSTEM",
   .function = punt_test,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

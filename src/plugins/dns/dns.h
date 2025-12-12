@@ -232,11 +232,3 @@ extern int dns_resolve_name (u8 *name, dns_cache_entry_t **ep,
 			     dns_pending_request_t *t0,
 			     dns_resolve_name_t *rn);
 #endif /* included_dns_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

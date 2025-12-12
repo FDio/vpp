@@ -182,11 +182,3 @@ vlib_unix_validate_runtime_file (unix_main_t * um,
   *full_path = fp;
   return error;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

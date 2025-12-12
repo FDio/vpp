@@ -26,11 +26,3 @@ extern int direction_decode (vl_api_direction_t _dir, vlib_dir_t * out);
 extern vl_api_direction_t direction_encode (vlib_dir_t dir);
 
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -438,11 +438,3 @@ lisp_get_petr_mapping (lisp_cp_main_t * lcm)
 }
 
 #endif /* VNET_CONTROL_H_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

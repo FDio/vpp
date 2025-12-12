@@ -695,11 +695,3 @@ nat64_db_free_out_addr (u32 thread_index,
   vec_free (ste_to_be_free);
   db->addr_free = 0;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -195,11 +195,3 @@ snap_init (vlib_main_t * vm)
 VLIB_INIT_FUNCTION (snap_init) = {
   .runs_after = VLIB_INITS ("llc_init"),
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

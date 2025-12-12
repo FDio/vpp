@@ -2045,10 +2045,3 @@ vapi_stop_rx_thread (vapi_ctx_t ctx)
 
   vl_client_stop_rx_thread (ctx->vl_input_queue);
 }
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

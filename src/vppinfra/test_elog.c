@@ -370,11 +370,3 @@ he (void *v)
 {
   return (hash_elts (v));
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

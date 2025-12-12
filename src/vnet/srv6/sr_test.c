@@ -208,11 +208,3 @@ api_sr_localsid_add_del (vat_main_t *vam)
 #include <vnet/srv6/sr.api_test.c>
 
 VAT_REGISTER_FEATURE_FUNCTION (vat_sr_plugin_register);
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

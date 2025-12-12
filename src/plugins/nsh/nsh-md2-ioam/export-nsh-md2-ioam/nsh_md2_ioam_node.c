@@ -129,8 +129,7 @@ nsh_md2_ioam_export_node_fn (vlib_main_t * vm,
 /*
  * Node for iOAM export
  */
-VLIB_REGISTER_NODE (nsh_md2_ioam_export_node) =
-{
+VLIB_REGISTER_NODE (nsh_md2_ioam_export_node) = {
   .function = nsh_md2_ioam_export_node_fn,
   .name = "nsh-md2-ioam-export",
   .vector_size = sizeof (u32),
@@ -139,15 +138,6 @@ VLIB_REGISTER_NODE (nsh_md2_ioam_export_node) =
   .n_errors = ARRAY_LEN (export_error_strings),
   .error_strings = export_error_strings,
   .n_next_nodes = EXPORT_N_NEXT,
-    /* edit / add dispositions here */
-    .next_nodes =
-  {[EXPORT_NEXT_NSH_MD2_IOAM_INPUT] = "nsh-pop"},
+  /* edit / add dispositions here */
+  .next_nodes = { [EXPORT_NEXT_NSH_MD2_IOAM_INPUT] = "nsh-pop" },
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

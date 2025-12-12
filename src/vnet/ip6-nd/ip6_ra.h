@@ -179,11 +179,3 @@ extern void ip6_ra_update_secondary_radv_info (ip6_address_t * address,
 					       u32 preferred_time);
 extern u8 ip6_ra_adv_enabled (u32 sw_if_index);
 #endif /* included_ip6_neighbor_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

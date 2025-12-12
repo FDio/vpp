@@ -347,13 +347,4 @@ extern int ppoll (struct pollfd *__fds, nfds_t __nfds,
 		  const struct timespec *__timeout, const __sigset_t * __ss);
 #endif
 
-
 #endif /* included_ldp_glibc_socket_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

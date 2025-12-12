@@ -730,11 +730,3 @@ unformat_function_t unformat_hash_string;
 int test_hash_main (unformat_input_t * input);
 
 #endif /* included_hash_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

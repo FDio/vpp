@@ -1606,11 +1606,3 @@ lcp_router_init (vlib_main_t *vm)
 VLIB_INIT_FUNCTION (lcp_router_init) = {
   .runs_before = VLIB_INITS ("lcp_nl_init"),
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

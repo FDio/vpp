@@ -62,11 +62,3 @@ typedef walk_rc_t (*pipe_cb_fn_t) (u32 parent_sw_if_index,
 extern void pipe_walk (pipe_cb_fn_t fn, void *ctx);
 
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

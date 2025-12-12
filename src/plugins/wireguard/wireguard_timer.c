@@ -450,13 +450,3 @@ wg_feature_init (wg_main_t * wmp)
 			     WG_START_EVENT, 0);
   wmp->feature_init = 1;
 }
-
-
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

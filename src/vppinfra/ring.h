@@ -128,11 +128,3 @@ clib_ring_get_first_inline (ring, sizeof(ring[0]), 1)
 clib_ring_get_first_inline (ring, sizeof(ring[0]), 0)
 
 #endif /* included_ring_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -1015,11 +1015,3 @@ VLIB_REGISTER_NODE (srv6_ad6_flow_rewrite_node) = {
       [SRV6_AD_FLOW_REWRITE_NEXT_ERROR] = "error-drop",
   },
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -305,18 +305,8 @@ VLIB_REGISTER_NODE (dhcp_client_detect_node) = {
   },
 };
 
-VNET_FEATURE_INIT (ip4_dvr_reinject_feat_node, static) =
-{
+VNET_FEATURE_INIT (ip4_dvr_reinject_feat_node, static) = {
   .arc_name = "ip4-unicast",
   .node_name = "ip4-dhcp-client-detect",
   .runs_before = VNET_FEATURES ("ip4-not-enabled"),
 };
-
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

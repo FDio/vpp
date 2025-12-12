@@ -586,11 +586,3 @@ VLIB_CLI_COMMAND (lisp_add_placeholder_nsh_node_command, static) = {
 };
 
 VLIB_INIT_FUNCTION (gpe_decap_init);
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

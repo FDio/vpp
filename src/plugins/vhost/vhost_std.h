@@ -59,11 +59,3 @@ typedef struct
 } vhost_user_log_t;
 
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

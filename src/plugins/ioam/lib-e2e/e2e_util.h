@@ -25,11 +25,3 @@ typedef CLIB_PACKED(struct {
 }) ioam_e2e_packet_t;
 
 #endif /* PLUGINS_IOAM_PLUGIN_IOAM_LIB_E2E_E2E_UTIL_H_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

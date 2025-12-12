@@ -78,11 +78,3 @@ enum direction:u8
   RX = 0,
   TX,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -282,11 +282,3 @@ VLIB_REGISTER_NODE (dslite_out2in_node) = {
     [DSLITE_OUT2IN_NEXT_IP6_LOOKUP] = "ip6-lookup",
   },
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

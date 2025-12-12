@@ -86,11 +86,3 @@ int os_get_cpu_phys_core_id (int cpu);
 u8 *os_get_exec_path ();
 
 #endif /* included_clib_unix_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -1562,11 +1562,3 @@ vlib_frame_bitmap_find_first_set (uword *bmp)
 					 _tmp = clear_lowest_set_bit (_tmp)))
 
 #endif /* included_vlib_node_funcs_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

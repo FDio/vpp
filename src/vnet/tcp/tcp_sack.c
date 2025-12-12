@@ -642,11 +642,3 @@ tcp_sack_list_bytes (tcp_connection_t * tc)
     bytes += tc->snd_sacks[i].end - tc->snd_sacks[i].start;
   return bytes;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -697,11 +697,3 @@ ip6_ext_header_find (vlib_main_t *vm, vlib_buffer_t *b, ip6_header_t *ip,
 }
 
 #endif /* included_ip6_packet_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

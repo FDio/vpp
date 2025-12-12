@@ -413,11 +413,3 @@ snat_det_ses_close (snat_det_map_t * dm, snat_det_session_t * ses)
 clib_error_t *det44_api_hookup (vlib_main_t * vm);
 
 #endif /* __included_det44_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

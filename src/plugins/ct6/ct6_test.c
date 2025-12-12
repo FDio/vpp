@@ -91,11 +91,3 @@ api_ct6_enable_disable (vat_main_t * vam)
 }
 
 #include <ct6/ct6.api_test.c>
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

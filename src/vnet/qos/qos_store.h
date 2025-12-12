@@ -29,11 +29,3 @@ typedef walk_rc_t (*qos_store_walk_cb_t) (u32 sw_if_index,
 void qos_store_walk (qos_store_walk_cb_t fn, void *c);
 
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

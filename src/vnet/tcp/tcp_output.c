@@ -2507,11 +2507,3 @@ VLIB_REGISTER_NODE (tcp6_reset_node) = {
   },
   .format_trace = format_tcp_tx_trace,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

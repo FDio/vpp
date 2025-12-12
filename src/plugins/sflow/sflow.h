@@ -257,11 +257,3 @@ sflow_next_random_skip (sflow_per_thread_data_t *sfwk)
 }
 
 #endif /* __included_sflow_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -78,11 +78,3 @@ typedef struct teib_vft_t_
 extern void teib_register (const teib_vft_t * vft);
 
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

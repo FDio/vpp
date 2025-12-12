@@ -236,11 +236,3 @@ main (int argc, char **argv)
   unformat_free (&i);
   return ret;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

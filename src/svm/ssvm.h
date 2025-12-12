@@ -202,11 +202,3 @@ ssvm_segment_type_t ssvm_type (const ssvm_private_t * ssvm);
 u8 *ssvm_name (const ssvm_private_t * ssvm);
 
 #endif /* __included_ssvm_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

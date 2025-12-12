@@ -154,11 +154,3 @@ void igmp_event (igmp_filter_mode_t filter,
 		 const ip46_address_t * saddr, const ip46_address_t * gaddr);
 
 #endif /* _IGMP_H_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

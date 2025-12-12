@@ -468,11 +468,3 @@ u8 *format_clib_mem_bulk (u8 *s, va_list *args);
 #include <vppinfra/error.h>	/* clib_panic */
 
 #endif /* _included_clib_mem_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

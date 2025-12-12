@@ -349,10 +349,3 @@ VLIB_INIT_FUNCTION (span_init);
 #endif /* CLIB_MARCH_VARIANT */
 
 #undef span_node_defs
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

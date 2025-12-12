@@ -363,11 +363,3 @@ u32 nat64_db_st_entry_get_index (nat64_db_t * db, nat64_db_st_entry_t * ste);
 nat64_db_st_entry_t *nat64_db_st_entry_by_index (nat64_db_t * db,
 						 u8 proto, u32 ste_index);
 #endif /* __included_nat64_db_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

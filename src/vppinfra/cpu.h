@@ -506,11 +506,3 @@ format_function_t format_cpu_uarch;
 format_function_t format_cpu_model_name;
 format_function_t format_cpu_flags;
 format_function_t format_march_variant;
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

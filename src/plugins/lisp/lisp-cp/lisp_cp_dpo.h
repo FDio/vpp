@@ -35,11 +35,3 @@ extern const dpo_id_t *lisp_cp_dpo_get (dpo_proto_t proto);
 extern void lisp_cp_dpo_module_init (void);
 
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

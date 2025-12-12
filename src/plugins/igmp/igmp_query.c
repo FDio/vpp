@@ -298,12 +298,3 @@ igmp_handle_query (const igmp_query_args_t * args)
 	}
     }
 }
-
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

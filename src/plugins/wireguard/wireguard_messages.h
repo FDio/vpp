@@ -94,11 +94,3 @@ typedef struct message_data
     (noise_encrypted_len(plain_len) + sizeof(message_data_t))
 
 #endif /* __included_wg_messages_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

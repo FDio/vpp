@@ -1000,11 +1000,3 @@ main (int argc, char **argv)
   close (ctrl->fd);
   return (scm->af_unix_echo_tx == scm->af_unix_echo_rx) ? 0 : -1;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

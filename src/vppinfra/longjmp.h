@@ -119,11 +119,3 @@ uword clib_calljmp (uword (*func) (uword func_arg),
 		    uword func_arg, void *stack);
 
 #endif /* included_clib_longjmp_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

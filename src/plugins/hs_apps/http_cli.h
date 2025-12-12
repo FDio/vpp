@@ -17,11 +17,3 @@ const char *html_header_template = "<html><head><title>%v</title></head>"
 				   "<body><pre>";
 
 const char *html_footer = "</pre></body></html>\r\n";
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

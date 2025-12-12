@@ -36,11 +36,3 @@ typedef enum
 } igmp_error_t;
 
 #endif /* IGMP_ERROR_H */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

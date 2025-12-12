@@ -341,11 +341,3 @@ urpf_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame,
 }
 
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

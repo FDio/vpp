@@ -1312,11 +1312,3 @@ VLIB_REGISTER_NODE (vxlan4_flow_input_node) = {
   },
 };
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

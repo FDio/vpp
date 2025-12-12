@@ -357,11 +357,3 @@ format_function_t format_flow_actions;
 format_function_t format_flow_enabled_hw;
 
 #endif /* included_vnet_flow_flow_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -1386,13 +1386,5 @@ VLIB_CLI_COMMAND (show_source_and_port_range_check, static) = {
   .path = "show ip source-and-port-range-check",
   .function = show_source_and_port_range_check_fn,
   .short_help =
-  "show ip source-and-port-range-check vrf <table-id> <ip-addr> [port <n>]",
+    "show ip source-and-port-range-check vrf <table-id> <ip-addr> [port <n>]",
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

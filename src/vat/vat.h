@@ -320,11 +320,3 @@ api_unformat_sw_if_index (unformat_input_t *input, va_list *args)
 #endif /* VPP_API_TEST_BUILTIN */
 
 #endif /* __included_vat_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

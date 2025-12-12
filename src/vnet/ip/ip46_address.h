@@ -160,11 +160,3 @@ extern void ip6_address_increment (ip6_address_t * i);
 extern void ip46_address_increment (ip46_type_t type, ip46_address_t * ip);
 
 #endif /* included_ip46_address_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -139,11 +139,3 @@ VLIB_REGISTER_NODE (ip4_options_node) = {
   .format_buffer = format_ip4_header,
   .format_trace = format_ip4_options_trace,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

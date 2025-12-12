@@ -404,11 +404,3 @@ VNET_FEATURE_INIT (cnat_out_ip6_feature, static) = {
   .runs_before = VNET_FEATURES ("gso-ip6"),
   .runs_after = VNET_FEATURES ("acl-plugin-out-ip6-fa"),
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

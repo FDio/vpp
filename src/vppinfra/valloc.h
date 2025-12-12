@@ -61,11 +61,3 @@ uword clib_valloc_alloc (clib_valloc_main_t * vam, uword size,
 			 int os_out_of_memory_on_failure);
 
 #endif /* included_valloc_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

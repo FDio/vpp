@@ -492,11 +492,3 @@ ah_decrypt_init (vlib_main_t *vm)
 VLIB_INIT_FUNCTION (ah_decrypt_init);
 
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

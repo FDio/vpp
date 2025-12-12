@@ -295,11 +295,3 @@ int dhcp4_proxy_set_server (ip46_address_t * addr,
 			    u32 rx_table_id, u32 server_table_id, int is_del);
 
 #endif /* included_dhcp_proxy_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

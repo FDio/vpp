@@ -39,11 +39,3 @@ format_function_t format_vlib_vmbus_addr;
 unformat_function_t unformat_vlib_vmbus_addr;
 clib_error_t *vlib_vmbus_bind_to_uio (vlib_vmbus_addr_t * addr);
 #endif /* included_vlib_vmbus_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

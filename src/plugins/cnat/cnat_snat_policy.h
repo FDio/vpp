@@ -88,13 +88,4 @@ extern int cnat_snat_policy_add_del_if (u32 sw_if_index, u8 is_add,
 					cnat_snat_interface_map_type_t table);
 
 int cnat_search_snat_prefix (ip46_address_t *addr, ip_address_family_t af);
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
-
 #endif

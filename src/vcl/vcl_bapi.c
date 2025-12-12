@@ -778,11 +778,3 @@ vcl_bapi_worker_set (void)
     }
   return -1;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

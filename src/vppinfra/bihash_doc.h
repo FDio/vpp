@@ -272,14 +272,5 @@ typedef int (*clib_bihash_foreach_key_value_pair_cb) (clib_bihash_kv * kv,
  * @param arg - arbitrary second argument passed to the callback function
  * First argument is the (key,value) pair to visit
  */
-void clib_bihash_foreach_key_value_pair (clib_bihash * h,
-					 clib_bihash_foreach_key_value_pair_cb
-					 * callback, void *arg);
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
+void clib_bihash_foreach_key_value_pair (
+  clib_bihash *h, clib_bihash_foreach_key_value_pair_cb *callback, void *arg);

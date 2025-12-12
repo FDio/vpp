@@ -168,11 +168,3 @@ typedef CLIB_PACKED (struct {
 #define ERSPAN_HDR2 0x1000180000000000ul
 
 #endif /* included_vnet_gre_packet_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -125,11 +125,3 @@ api_udp_ping_export (vat_main_t * vam)
 /* Override generated plugin register symbol */
 #define vat_plugin_register udp_ping_vat_plugin_register
 #include <ioam/udp-ping/udp_ping.api_test.c>
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

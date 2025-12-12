@@ -270,12 +270,3 @@ u32 l2pbb_get (vlib_main_t * vlib_main,
 	       ethernet_header_t * eth_hdr, u16 * b_vlanid, u32 * i_sid);
 
 #endif /* included_vnet_l2_vtr_h */
-
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

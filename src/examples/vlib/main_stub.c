@@ -394,11 +394,3 @@ VLIB_CLI_COMMAND (bar_command3, static) = {
 };
 
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

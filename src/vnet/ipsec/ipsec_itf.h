@@ -114,13 +114,4 @@ extern u32 ipsec_itf_count (void);
 
 typedef walk_rc_t (*ipsec_itf_walk_cb_t) (ipsec_itf_t *itf, void *ctx);
 extern void ipsec_itf_walk (ipsec_itf_walk_cb_t cd, void *ctx);
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
-
 #endif

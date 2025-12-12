@@ -173,11 +173,3 @@ VLIB_CLI_COMMAND (test_checksum, static) =
 };
 
 #endif /* CLIB_DEBUG */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

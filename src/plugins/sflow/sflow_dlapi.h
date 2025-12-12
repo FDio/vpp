@@ -24,10 +24,3 @@
 #define SFLOW_LCP_LIB		     "linux_cp_plugin.so"
 #define SFLOW_LCP_SYM_GET_VIF_BY_PHY "lcp_itf_pair_get_vif_index_by_phy"
 #endif /* __included_sflow_dyn_api_h__ */
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -35,11 +35,3 @@ pci_address_encode (const vlib_pci_addr_t * in, vl_api_pci_address_t * out)
   out->slot = in->slot;
   out->function = in->function;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

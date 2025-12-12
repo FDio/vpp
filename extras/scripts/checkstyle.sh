@@ -121,6 +121,18 @@ if [ ${line_count} -gt 0 ] ; then
     exit 1
 fi
 
+line_count=$(sed -n '/^+.*fd\.io coding-style-patch-verification:/p' ${in} | wc -l)
+if [ ${line_count} -gt 0 ] ; then
+    echo
+    echo "*******************************************************************"
+    echo "* CHECKSTYLE FAILED"
+    echo "* use of 'fd.io coding-style-patch-verification' footer is"
+    echo "* deprecated and should be removed"
+    echo "*******************************************************************"
+    rm ${in}
+    exit 1
+fi
+
 out=$(mktemp)
 
 cat ${in} | ${CLANG_FORMAT_DIFF} ${CLANG_FORMAT_DIFF_ARGS} > ${out}

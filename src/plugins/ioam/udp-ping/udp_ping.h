@@ -131,11 +131,3 @@ ip46_udp_ping_set_flow (ip46_address_t src, ip46_address_t dst,
 clib_error_t *udp_ping_flow_create (u8 del);
 
 #endif /* PLUGINS_IOAM_PLUGIN_IOAM_UDP_PING_UDP_PING_H_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

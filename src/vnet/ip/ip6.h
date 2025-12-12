@@ -332,11 +332,3 @@ vlib_buffer_get_ip6_fib_index (vlib_buffer_t * b)
     vec_elt (ip6_main.fib_index_by_sw_if_index, sw_if_index) : fib_index;
 }
 #endif /* included_ip_ip6_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

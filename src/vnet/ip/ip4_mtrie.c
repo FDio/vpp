@@ -865,11 +865,3 @@ ip4_mtrie_pool_alloc (uword size)
 {
   pool_alloc_aligned (ip4_ply_pool, size, CLIB_CACHE_LINE_BYTES);
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

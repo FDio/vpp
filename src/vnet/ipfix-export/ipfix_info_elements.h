@@ -433,11 +433,3 @@ typedef enum
 } ipfix_info_element_id_t;
 
 #endif /* __included_ipfix_info_elements_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

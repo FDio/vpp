@@ -76,11 +76,3 @@ clib_xxhash (u64 key)
 }
 
 #endif /* __included_xxhash_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

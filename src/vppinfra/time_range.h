@@ -116,12 +116,3 @@ clib_timebase_is_leap_year (u32 year)
 }
 
 #endif /* included_time_range_h */
-
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

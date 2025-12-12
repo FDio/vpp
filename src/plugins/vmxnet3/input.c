@@ -491,12 +491,3 @@ VLIB_REGISTER_NODE (vmxnet3_input_node) = {
   .error_strings = vmxnet3_input_error_strings,
 };
 #endif
-
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

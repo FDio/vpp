@@ -492,11 +492,3 @@ void BV (clib_bihash_foreach_key_value_pair)
 }
 
 /** @endcond */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -171,11 +171,3 @@ ipsec_sad_flags_encode (const ipsec_sa_t * sa)
 
   return clib_host_to_net_u32 (flags);
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

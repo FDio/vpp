@@ -106,13 +106,4 @@ typedef int (*abf_policy_walk_cb_t) (index_t index, void *ctx);
  */
 extern void abf_policy_walk (abf_policy_walk_cb_t cb, void *ctx);
 
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
-
 #endif

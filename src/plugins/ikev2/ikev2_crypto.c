@@ -1142,13 +1142,3 @@ ikev2_crypto_init (ikev2_main_t * km)
   tr->type = IKEV2_TRANSFORM_TYPE_ESN;
   tr->esn_type = IKEV2_TRANSFORM_ESN_TYPE_NO_ESN;
 }
-
-
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

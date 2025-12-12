@@ -617,11 +617,3 @@ vnet_l2_feature_enable_disable (const char *arc_name, const char *node_name,
 
 VLIB_INIT_FUNCTION (l2_in_out_feat_arc_init);
 #endif /* CLIB_MARCH_VARIANT */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

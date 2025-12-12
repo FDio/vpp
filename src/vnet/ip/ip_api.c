@@ -2190,11 +2190,3 @@ ip_api_hookup (vlib_main_t * vm)
 }
 
 VLIB_API_INIT_FUNCTION (ip_api_hookup);
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

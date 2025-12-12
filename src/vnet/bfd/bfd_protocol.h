@@ -192,11 +192,3 @@ typedef enum
 const char *bfd_state_string (bfd_state_e state);
 
 #endif /* __included_bfd_protocol_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

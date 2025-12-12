@@ -231,11 +231,3 @@ format_vlib_thread_name_and_index (u8 * s, va_list * args)
   return format (s, "%U (%u)", format_vlib_thread_name, thread_index,
 		 thread_index);
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

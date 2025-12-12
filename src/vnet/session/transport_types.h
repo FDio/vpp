@@ -433,11 +433,3 @@ transport_service_type_t transport_protocol_service_type (transport_proto_t);
 transport_tx_fn_type_t transport_protocol_tx_fn_type (transport_proto_t tp);
 
 #endif /* VNET_VNET_URI_TRANSPORT_TYPES_H_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

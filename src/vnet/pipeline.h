@@ -338,11 +338,3 @@ dispatch_pipeline (vlib_main_t * vm,
   return frame->n_vectors;
 }
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

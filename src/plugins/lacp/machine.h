@@ -47,11 +47,3 @@ extern int lacp_machine_dispatch (lacp_machine_t * machine, vlib_main_t * vm,
 				  member_if_t * mif, int event, int *state);
 
 #endif /* __LACP_MACHINE_H__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

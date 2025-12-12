@@ -38,11 +38,3 @@ bool wg_xchacha20poly1305_decrypt (vlib_main_t *vm, u8 *src, u32 src_len,
 				   u8 key[CHACHA20POLY1305_KEY_SIZE]);
 
 #endif /* __included_wg_chachapoly_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

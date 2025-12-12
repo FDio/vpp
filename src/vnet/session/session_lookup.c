@@ -2049,11 +2049,3 @@ session_lookup_table_cleanup (u32 fib_proto, u32 fib_index, u32 ns_index)
 	  vec_del1 (st->appns_index, i);
       }
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

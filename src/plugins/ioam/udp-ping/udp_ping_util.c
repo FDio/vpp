@@ -320,11 +320,3 @@ udp_ping_send_ip6_pak (vlib_main_t * vm, ip46_udp_ping_flow * flow)
   flow->udp_data.next_send_time =
     vlib_time_now (vm) + flow->udp_data.interval;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -316,11 +316,3 @@ VNET_REGISTER_HASH_FUNCTION (hash_eth_l34, static) = {
   .priority = 50,
   .function[VNET_HASH_FN_TYPE_ETHERNET] = hash_eth_l34,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

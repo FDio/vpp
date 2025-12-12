@@ -146,11 +146,3 @@ UNITTEST_REGISTER_CRYPTO_TEST (nist_aes256_incr2) = {
   .key.length = 32,
   .plaintext_incremental = 1056,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

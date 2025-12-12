@@ -65,11 +65,3 @@ unformat_af_xdp_create_if_args (unformat_input_t * input, va_list * vargs)
   unformat_free (line_input);
   return ret;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

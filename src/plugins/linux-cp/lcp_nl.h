@@ -151,11 +151,3 @@ extern int lcp_nl_drain_messages (void);
 extern void lcp_nl_set_buffer_size (u32 buf_size);
 extern void lcp_nl_set_batch_size (u32 batch_size);
 extern void lcp_nl_set_batch_delay (u32 batch_delay_ms);
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

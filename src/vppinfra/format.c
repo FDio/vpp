@@ -844,11 +844,3 @@ format_c_string (u8 *s, const char *fmt, ...)
   vec_add1 (s, '\0');
   return (char *) s;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

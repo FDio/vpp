@@ -401,11 +401,3 @@ VLIB_REGISTER_NODE (ip6_add_from_cache_hbh_node) =
 #undef _
   },
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

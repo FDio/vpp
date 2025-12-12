@@ -111,11 +111,3 @@ VLIB_CLI_COMMAND (monitor_interface_command, static) = {
   .function = monitor_interface_command_fn,
   .is_mp_safe = 1,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

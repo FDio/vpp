@@ -82,11 +82,3 @@ typedef enum
 extern vlib_node_registration_t l2_xcrw_node;
 
 #endif /* __included_l2_xcrw_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

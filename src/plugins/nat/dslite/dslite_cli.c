@@ -388,12 +388,3 @@ VLIB_CLI_COMMAND (dslite_show_sessions, static) = {
   .short_help = "show dslite sessions",
   .function = dslite_show_sessions_command_fn,
 };
-
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

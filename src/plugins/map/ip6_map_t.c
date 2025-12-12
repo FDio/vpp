@@ -776,11 +776,3 @@ VLIB_REGISTER_NODE(ip6_map_t_node) = {
     [IP6_MAPT_NEXT_ICMP] = "ip6-icmp-error",
   },
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

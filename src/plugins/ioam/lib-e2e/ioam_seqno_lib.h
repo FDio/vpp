@@ -192,11 +192,3 @@ void ioam_seqno_init_data (ioam_seqno_data * data);
 void ioam_seqno_init_rx_info (seqno_rx_info * data);
 
 #endif /* PLUGINS_IOAM_PLUGIN_IOAM_LIB_E2E_IOAM_SEQNO_LIB_H_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -664,17 +664,9 @@ VLIB_REGISTER_NODE (l2_rw_node) = {
   .vector_size = sizeof (u32),
   .format_trace = format_l2_rw_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
-  .n_errors = ARRAY_LEN(l2_rw_error_strings),
+  .n_errors = ARRAY_LEN (l2_rw_error_strings),
   .error_strings = l2_rw_error_strings,
   .runtime_data_bytes = 0,
   .n_next_nodes = L2_RW_N_NEXT,
-  .next_nodes = { [L2_RW_NEXT_DROP]  = "error-drop"},
+  .next_nodes = { [L2_RW_NEXT_DROP] = "error-drop" },
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

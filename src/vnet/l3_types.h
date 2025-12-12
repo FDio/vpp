@@ -49,11 +49,3 @@ typedef enum
 } vnet_l3_packet_type_t;
 
 #endif /* included_vnet_l3_types_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

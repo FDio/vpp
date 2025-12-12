@@ -3181,11 +3181,3 @@ VLIB_REGISTER_NODE (srv6_t_m_gtp4_dt) =
   [SRV6_T_M_GTP4_DT_NEXT_LOOKUP4] = "ip4-lookup",
   [SRV6_T_M_GTP4_DT_NEXT_LOOKUP6] = "ip6-lookup",}
 ,};
-
-/*
-* fd.io coding-style-patch-verification: ON
-*
-* Local Variables:
-* eval: (c-set-style "gnu")
-* End:
-*/

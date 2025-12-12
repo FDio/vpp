@@ -231,15 +231,6 @@ VLIB_API_INIT_FUNCTION (l2tp_api_hookup);
 #include <vpp/app/version.h>
 
 VLIB_PLUGIN_REGISTER () = {
-    .version = VPP_BUILD_VER,
-    .description = "Layer 2 Tunneling Protocol v3 (L2TP)",
+  .version = VPP_BUILD_VER,
+  .description = "Layer 2 Tunneling Protocol v3 (L2TP)",
 };
-
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

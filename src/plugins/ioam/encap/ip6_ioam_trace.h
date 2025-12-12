@@ -39,11 +39,3 @@ ip6_hbh_ioam_trace_reset_bit (ioam_trace_option_t * trace, u8 trace_bit)
 }
 
 #endif /* PLUGINS_IOAM_PLUGIN_IOAM_ENCAP_IP6_IOAM_TRACE_H_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

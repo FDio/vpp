@@ -48,11 +48,3 @@ void clib_macro_free (clib_macro_main_t * mm);
 format_function_t format_clib_macro_main;
 
 #endif /* included_macros_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -2424,11 +2424,3 @@ VLIB_REGISTER_NODE (nat44_ei_hairpinning_node) = {
     [NAT44_EI_HAIRPIN_NEXT_HANDOFF] = "nat44-ei-hairpinning-handoff",
   },
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

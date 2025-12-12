@@ -66,11 +66,3 @@ ip46_address_increment (ip46_type_t type, ip46_address_t * ip)
   else
     ip6_address_increment (&ip->ip6);
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

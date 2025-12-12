@@ -1081,13 +1081,3 @@ VLIB_REGISTER_NODE (rdma_input_node) = {
   .n_errors = RDMA_INPUT_N_ERROR,
   .error_strings = rdma_input_error_strings,
 };
-
-
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

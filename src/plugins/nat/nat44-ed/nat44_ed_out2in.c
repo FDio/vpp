@@ -1371,12 +1371,4 @@ VLIB_REGISTER_NODE (nat_pre_out2in_node) = {
   .format_trace = format_nat_pre_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
   .n_errors = 0,
- };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
+};

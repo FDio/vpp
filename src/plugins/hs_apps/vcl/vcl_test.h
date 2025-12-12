@@ -473,11 +473,3 @@ dump_help (void)
 }
 
 #endif /* __vcl_test_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -126,12 +126,3 @@ clib_error_t *mc_socket_main_init (mc_socket_main_t * msm,
 				   char **intfc_probe_list,
 				   int n_intfcs_to_probe);
 #endif /* __included_mc_socket_h__ */
-
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

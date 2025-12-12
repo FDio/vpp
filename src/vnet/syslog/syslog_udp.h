@@ -27,11 +27,3 @@
 void syslog_add_udp_transport (vlib_main_t * vm, u32 bi);
 
 #endif /* __included_syslog_udp_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

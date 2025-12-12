@@ -4144,10 +4144,3 @@ nat44_original_dst_lookup (ip4_address_t *i2o_src, u16 i2o_src_port,
     }
   return;
 }
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

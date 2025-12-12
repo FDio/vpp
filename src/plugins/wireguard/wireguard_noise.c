@@ -758,11 +758,3 @@ noise_tai64n_now (uint8_t output[NOISE_TIMESTAMP_LEN])
   clib_memcpy (output, &sec, sizeof (sec));
   clib_memcpy (output + sizeof (sec), &nsec, sizeof (nsec));
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

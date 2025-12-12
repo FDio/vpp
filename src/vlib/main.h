@@ -504,11 +504,3 @@ elog_main_t *vlib_get_elog_main_not_inline ();
 void vlib_update_elog_main (elog_main_t *elog_main);
 
 #endif /* included_vlib_main_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

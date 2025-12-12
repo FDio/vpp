@@ -154,11 +154,3 @@ extern void ip_copy (ip46_address_t *dst, ip46_address_t *src, u8 is_ip4);
 extern void ip_set (ip46_address_t *dst, void *src, u8 is_ip4);
 
 #endif /* __IP_TYPES_H__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

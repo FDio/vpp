@@ -240,11 +240,3 @@ ipsec_set_interface_spd (vlib_main_t * vm, u32 sw_if_index, u32 spd_id,
 
   return 0;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -333,11 +333,3 @@ static void vl_api_sw_vmxnet3_interface_details_t_handler
 }
 
 #include <vmxnet3/vmxnet3.api_test.c>
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

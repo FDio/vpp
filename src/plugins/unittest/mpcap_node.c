@@ -248,11 +248,3 @@ mpcap_node_init (vlib_main_t *vm)
 VLIB_INIT_FUNCTION (mpcap_node_init);
 
 #endif /* CLIB_MARCH_VARIANT */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

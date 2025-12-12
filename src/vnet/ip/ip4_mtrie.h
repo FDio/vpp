@@ -269,11 +269,3 @@ ip4_mtrie_8_lookup_step_one (const ip4_mtrie_8_t *m,
 }
 
 #endif /* included_ip_ip4_fib_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

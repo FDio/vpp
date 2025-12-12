@@ -33,11 +33,3 @@ typedef int (*ip_container_proxy_cb_t) (const fib_prefix_t * pfx,
 void ip_container_proxy_walk (ip_container_proxy_cb_t cb, void *ctx);
 
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

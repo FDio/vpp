@@ -1254,11 +1254,3 @@ transport_init (void)
   foreach_tls_alpn_protos
 #undef _
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

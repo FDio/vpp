@@ -387,11 +387,3 @@ VLIB_REGISTER_NODE (l2input_node) = {
        [L2INPUT_NEXT_DROP]  = "error-drop",
   },
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

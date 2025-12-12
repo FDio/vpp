@@ -468,11 +468,3 @@ ip4_multicast_ethernet_address (u8 * ethernet_address,
 }
 
 #endif /* included_ip4_packet_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

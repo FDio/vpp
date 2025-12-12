@@ -1190,11 +1190,3 @@ vl_set_memory_region_name (const char *name)
   api_main_t *am = vlibapi_get_main ();
   am->region_name = name;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

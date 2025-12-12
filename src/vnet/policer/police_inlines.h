@@ -180,11 +180,3 @@ policer_handoff (vlib_main_t *vm, vlib_node_runtime_t *node,
   return n_enq;
 }
 #endif // __POLICE_INLINES_H__
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

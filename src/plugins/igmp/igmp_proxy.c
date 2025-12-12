@@ -380,13 +380,4 @@ igmp_proxy_device_merge_config (igmp_config_t * config, u8 block)
     }));
 
   igmp_pkt_report_v3_send (&br);
-
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

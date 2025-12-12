@@ -46,11 +46,3 @@ typedef struct
 #define HBH_OPTION_TYPE_IOAM_EDGE_TO_EDGE 29
 
 #endif /* __included_ip6_hop_by_hop_packet_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

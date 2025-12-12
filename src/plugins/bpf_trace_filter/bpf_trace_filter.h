@@ -32,11 +32,3 @@ clib_error_t *bpf_trace_filter_set_unset (const char *bpf_expr, u8 is_del,
 					  u8 optimize);
 u8 *format_bpf_trace_filter (u8 *s, va_list *a);
 #endif /* _BPF_TRACE_FILTER_H_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

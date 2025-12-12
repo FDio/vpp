@@ -26,11 +26,3 @@ u8 *format_nat_dpo (u8 *s, va_list *args);
 void nat_dpo_module_init (void);
 
 #endif /* __included_nat_dpo_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

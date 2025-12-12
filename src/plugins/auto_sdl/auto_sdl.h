@@ -97,10 +97,3 @@ auto_sdl_plugin_exports_init (auto_sdl_plugin_methods_t *m)
 }
 
 #endif /* __AUTO_SDL_H__ */
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

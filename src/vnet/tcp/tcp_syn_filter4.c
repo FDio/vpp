@@ -528,11 +528,3 @@ VLIB_CLI_COMMAND (sr_content_command, static) =
   .function = syn_filter_enable_disable_command_fn,
 };
 #endif /* CLIB_MARCH_VARIANT */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

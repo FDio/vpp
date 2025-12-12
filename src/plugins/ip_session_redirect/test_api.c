@@ -259,11 +259,3 @@ err:
 }
 
 #include "ip_session_redirect.api_test.c"
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

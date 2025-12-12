@@ -426,15 +426,6 @@ ioam_flow_report_init (vlib_main_t * vm)
   return 0;
 }
 
-VLIB_INIT_FUNCTION (ioam_flow_report_init) =
-{
-  .runs_after = VLIB_INITS("flow_report_init"),
+VLIB_INIT_FUNCTION (ioam_flow_report_init) = {
+  .runs_after = VLIB_INITS ("flow_report_init"),
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

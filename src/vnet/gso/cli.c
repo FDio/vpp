@@ -81,11 +81,3 @@ VLIB_CLI_COMMAND (set_interface_feature_gso_command, static) = {
   .short_help = "set interface feature gso <intfc> [enable | disable]",
   .function = set_interface_feature_gso_command_fn,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

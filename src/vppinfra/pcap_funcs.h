@@ -55,11 +55,3 @@ pcap_add_packet (pcap_main_t * pm,
 }
 
 #endif /* included_vppinfra_pcap_funcs_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

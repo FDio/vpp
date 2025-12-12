@@ -353,11 +353,3 @@ unix_sleep (f64 dt)
 #endif
 
 #endif /* included_time_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

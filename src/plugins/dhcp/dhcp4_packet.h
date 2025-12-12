@@ -74,11 +74,3 @@ typedef enum dhcp_packet_option_t_
 #define DHCP_MAGIC (clib_host_to_net_u32(0x63825363))
 
 #endif /* included_vnet_dhcp4_packet_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

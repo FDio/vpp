@@ -80,11 +80,3 @@ typedef u32 vlib_log_class_t;
 #include <vlib/buffer_node.h>
 
 #endif /* included_vlib_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

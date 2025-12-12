@@ -323,11 +323,3 @@ VLIB_REGISTER_NODE (nat44_ei_out2in_worker_handoff_node) = {
   .n_errors = ARRAY_LEN (nat44_ei_handoff_error_strings),
   .error_strings = nat44_ei_handoff_error_strings,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

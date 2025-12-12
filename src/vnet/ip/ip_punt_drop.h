@@ -467,11 +467,3 @@ ip_drop_or_punt (vlib_main_t * vm,
 }
 
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -243,13 +243,4 @@ typedef CLIB_PACKED (struct
 		     u8 message[0];
 		     }) dhcpv6_status_t;
 
-
 #endif /* included_vnet_dhcp6_packet_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

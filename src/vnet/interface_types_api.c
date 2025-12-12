@@ -39,11 +39,3 @@ direction_encode (vlib_dir_t dir)
 {
   return (vl_api_direction_t) dir;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

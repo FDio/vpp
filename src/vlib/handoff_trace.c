@@ -113,13 +113,3 @@ vlib_add_handoff_trace (vlib_main_t * vm, vlib_buffer_t * b)
   t->prev_trace_index = prev_trace_index;
   return 1;
 }
-
-
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

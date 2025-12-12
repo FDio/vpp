@@ -178,12 +178,3 @@ VLIB_REGISTER_NODE (nsh_md2_ioam_encap_transit_node) = {
   },
 
 };
-
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

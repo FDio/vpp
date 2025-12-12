@@ -120,11 +120,3 @@ extern vnet_main_t vnet_main;
 #include <vnet/global_funcs.h>
 
 #endif /* included_vnet_vnet_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

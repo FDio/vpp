@@ -72,11 +72,3 @@ void hss_cache_free (hss_cache_t *hc);
 u8 *format_hss_cache (u8 *s, va_list *args);
 
 #endif /* SRC_PLUGINS_HTTP_STATIC_HTTP_CACHE_H_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

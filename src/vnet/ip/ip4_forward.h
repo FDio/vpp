@@ -372,11 +372,3 @@ ip4_lookup_inline (vlib_main_t * vm,
 }
 
 #endif /* __included_ip4_forward_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

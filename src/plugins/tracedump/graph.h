@@ -24,12 +24,3 @@ typedef struct
 } graph_main_t;
 
 extern graph_main_t graph_main;
-
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

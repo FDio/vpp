@@ -2284,18 +2284,9 @@ session_queue_pre_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   return session_queue_node_fn (vm, node, frame);
 }
 
-VLIB_REGISTER_NODE (session_queue_pre_input_node) =
-{
+VLIB_REGISTER_NODE (session_queue_pre_input_node) = {
   .function = session_queue_pre_input_inline,
   .type = VLIB_NODE_TYPE_PRE_INPUT,
   .name = "session-queue-main",
   .state = VLIB_NODE_STATE_DISABLED,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

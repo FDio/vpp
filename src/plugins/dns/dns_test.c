@@ -251,11 +251,3 @@ api_dns_name_server_add_del (vat_main_t * vam)
 }
 
 #include <dns/dns.api_test.c>
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -72,13 +72,4 @@ lcp_adj_lkup (const u8 *rewrite, u8 len, u32 sw_if_index)
 
   return (ADJ_INDEX_INVALID);
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
-
 #endif

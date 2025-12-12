@@ -107,11 +107,3 @@ api_tls_openssl_set_engine (vat_main_t * vam)
 }
 
 #include <tlsopenssl/tls_openssl.api_test.c>
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

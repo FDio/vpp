@@ -138,11 +138,3 @@ int l2tpv3_interface_enable_disable (vnet_main_t * vnm,
 				     u32 sw_if_index, int enable_disable);
 
 #endif /* __included_l2tp_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

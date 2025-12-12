@@ -233,11 +233,3 @@ lacp_create_periodic_process (void)
     vlib_process_create (lm->vlib_main, "lacp-process", lacp_process,
 			 16 /* log2_n_stack_bytes */ );
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

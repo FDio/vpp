@@ -1345,11 +1345,3 @@ VLIB_REGISTER_NODE (nat44_ei_out2in_node) = {
     [NAT44_EI_OUT2IN_NEXT_ICMP_ERROR] = "ip4-icmp-error",
   },
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

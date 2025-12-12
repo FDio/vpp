@@ -91,11 +91,3 @@ VLIB_PLUGIN_REGISTER () = {
   .description = "Linux Control Plane - Unit Test",
   .default_disabled = 1,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

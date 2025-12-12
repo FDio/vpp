@@ -284,12 +284,3 @@ VLIB_REGISTER_NODE (netmap_input_node) = {
   .error_strings = netmap_input_error_strings,
 };
 /* *INDENT-ON* */
-
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

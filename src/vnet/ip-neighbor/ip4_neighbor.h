@@ -83,11 +83,3 @@ ip4_neighbor_probe (vlib_main_t *vm, vnet_main_t *vnm,
 }
 
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

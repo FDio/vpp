@@ -2583,11 +2583,3 @@ vhost_user_unmap_all (void)
 	unmap_all_mem_regions (vui);
     }
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

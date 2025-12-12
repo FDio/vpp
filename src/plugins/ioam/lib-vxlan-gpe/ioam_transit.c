@@ -172,12 +172,3 @@ VLIB_REGISTER_NODE (vxlan_gpe_transit_ioam_node) = {
   },
 
 };
-
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

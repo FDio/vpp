@@ -3019,11 +3019,3 @@ UNITTEST_REGISTER_CRYPTO_TEST (aes_gmac256_aad720_tc14) = {
   .tag = TEST_DATA_STR (
     "\x9e\x12\x0b\x01\x89\x9f\xe2\xcb\x3e\x3a\x0b\x0c\x05\x04\x59\x40"),
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

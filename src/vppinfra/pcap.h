@@ -196,11 +196,3 @@ typedef struct
 #define PCAP_DEF_PKT_TO_CAPTURE (100)
 
 #endif /* included_vppinfra_pcap_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

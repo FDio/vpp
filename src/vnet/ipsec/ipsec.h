@@ -406,11 +406,3 @@ extern clib_error_t *ipsec_register_next_header (vlib_main_t *vm,
 #include <vnet/ipsec/ipsec_funcs.h>
 
 #endif /* __IPSEC_H__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

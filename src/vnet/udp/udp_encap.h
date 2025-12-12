@@ -143,13 +143,4 @@ udp_encap_get (index_t uei)
 {
   return (pool_elt_at_index (udp_encap_pool, uei));
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
-
 #endif

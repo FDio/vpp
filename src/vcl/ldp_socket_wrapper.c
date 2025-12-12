@@ -925,11 +925,3 @@ swrap_destructor (void)
       dlclose (swrap.libc.socket_handle);
     }
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -277,11 +277,3 @@ VLIB_CLI_COMMAND (show_ip_container_command, static) = {
   .short_help = "show ip container <address> <interface>",
   .is_mp_safe = 1,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

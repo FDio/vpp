@@ -69,11 +69,3 @@ extern bool ip6_link_delegate_update (u32 sw_if_index,
 				      ip6_link_delegate_id_t id, index_t ii);
 extern void ip6_link_delegate_remove (u32 sw_if_index,
 				      ip6_link_delegate_id_t id, index_t ii);
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

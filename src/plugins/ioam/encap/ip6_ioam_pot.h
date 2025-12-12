@@ -28,11 +28,3 @@ typedef CLIB_PACKED (struct {
 }) ioam_pot_option_t;
 
 #endif /* PLUGINS_IOAM_PLUGIN_IOAM_ENCAP_IP6_IOAM_POT_H_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

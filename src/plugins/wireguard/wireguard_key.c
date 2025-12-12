@@ -115,11 +115,3 @@ key_from_base64 (const u8 * src, size_t src_len, u8 * out)
     return false;
   return true;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

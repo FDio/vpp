@@ -385,11 +385,3 @@ hdlc_register_input_protocol (vlib_main_t * vm,
   for (i = 1; i < vec_len (rt->next_by_protocol); i++)
     rt->sparse_index_by_next_index[rt->next_by_protocol[i]] = i;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

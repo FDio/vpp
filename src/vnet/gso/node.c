@@ -894,11 +894,3 @@ VNET_FEATURE_INIT (gso_ip6_node, static) = {
   .node_name = "gso-ip6",
   .runs_before = VNET_FEATURES ("ipsec6-output-feature"),
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

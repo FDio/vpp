@@ -482,11 +482,3 @@ bond_hw_interface_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
 }
 
 VNET_HW_INTERFACE_LINK_UP_DOWN_FUNCTION (bond_hw_interface_up_down);
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

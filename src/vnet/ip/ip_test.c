@@ -1627,11 +1627,3 @@ vl_api_ip_details_t_handler (vl_api_ip_details_t *mp)
 }
 
 #include <vnet/ip/ip.api_test.c>
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -927,16 +927,6 @@ ethernet_arp_init (vlib_main_t * vm)
   return 0;
 }
 
-VLIB_INIT_FUNCTION (ethernet_arp_init) =
-{
-  .runs_after = VLIB_INITS("ethernet_init",
-                           "ip_neighbor_init"),
+VLIB_INIT_FUNCTION (ethernet_arp_init) = {
+  .runs_after = VLIB_INITS ("ethernet_init", "ip_neighbor_init"),
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -204,11 +204,3 @@ typedef enum
 } af_xdp_tx_func_error_t;
 
 #endif /* _AF_XDP_H_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

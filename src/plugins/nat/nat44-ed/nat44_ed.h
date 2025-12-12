@@ -971,10 +971,3 @@ nat_translation_error_e nat_6t_flow_buf_translate_o2i (
   nat_6t_flow_t *f, ip_protocol_t proto, int is_output_feature);
 
 #endif /* __included_nat44_ed_h__ */
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

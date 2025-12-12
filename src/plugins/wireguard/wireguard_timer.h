@@ -72,11 +72,3 @@ wg_birthdate_has_expired_opt (f64 birthday_seconds, f64 expiration_seconds,
 }
 
 #endif /* __included_wg_timer_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

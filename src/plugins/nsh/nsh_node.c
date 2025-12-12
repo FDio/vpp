@@ -977,11 +977,3 @@ VLIB_REGISTER_NODE (nsh_aware_vnf_proxy_node) =
 #undef _
   },
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

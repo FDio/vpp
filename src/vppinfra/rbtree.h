@@ -103,11 +103,3 @@ rb_node_parent (rb_tree_t * rt, rb_node_t * n)
 }
 
 #endif /* SRC_VPPINFRA_RBTREE_H_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

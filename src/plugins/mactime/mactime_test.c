@@ -431,11 +431,3 @@ vl_api_mactime_details_t_handler (vl_api_mactime_details_t * mp)
 }
 
 #include <mactime/mactime.api_test.c>
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -482,11 +482,3 @@ typedef struct
 } virtchnl_vlan_setting_t;
 
 #endif /* AVF_VIRTCHNL_H */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

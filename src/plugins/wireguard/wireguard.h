@@ -123,11 +123,3 @@ void wg_set_async_mode (u32 is_enabled);
 void wg_secure_zero_memory (void *v, size_t n);
 
 #endif /* __included_wg_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

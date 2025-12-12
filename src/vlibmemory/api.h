@@ -163,11 +163,3 @@ void sockclnt_close_index (u32 index);
 void vl_client_msg_api_send (vl_api_registration_t * cm, u8 * elem);
 
 #endif /* included_vlibmemory_api_common_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

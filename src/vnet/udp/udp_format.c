@@ -98,11 +98,3 @@ unformat_udp_port (unformat_input_t * input, va_list * args)
     }
   return 0;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

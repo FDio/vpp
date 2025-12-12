@@ -99,13 +99,4 @@ tcp_cc_algorithm_t *tcp_cc_algo_get (tcp_cc_algorithm_type_e type);
 void newreno_rcv_cong_ack (tcp_connection_t * tc, tcp_cc_ack_t ack_type,
 			   tcp_rate_sample_t * rs);
 
-
 #endif /* SRC_VNET_TCP_TCP_CC_H_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

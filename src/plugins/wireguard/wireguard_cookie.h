@@ -114,11 +114,3 @@ cookie_checker_validate_macs (vlib_main_t *vm, cookie_checker_t *,
 			      ip46_address_t *ip, u16 udp_port);
 
 #endif /* __included_wg_cookie_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

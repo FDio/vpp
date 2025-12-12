@@ -865,11 +865,3 @@ typedef struct
 } frame_queue_nelt_counter_t;
 
 #endif /* included_vlib_node_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

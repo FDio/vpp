@@ -456,11 +456,3 @@ vnet_netlink_del_ip6_addr (int ifindex, void *addr, int pfx_len)
     err = clib_error_return (0, "del ip6 addr %U", format_clib_error, err);
   return err;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

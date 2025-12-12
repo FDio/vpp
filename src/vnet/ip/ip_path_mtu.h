@@ -119,11 +119,3 @@ ip_path_mtu_get (index_t index)
 {
   return (pool_elt_at_index (ip_pmtu_pool, index));
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

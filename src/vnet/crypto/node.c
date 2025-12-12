@@ -202,11 +202,3 @@ VLIB_REGISTER_NODE (crypto_dispatch_node) = {
 #undef _
   },
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

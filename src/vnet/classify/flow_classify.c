@@ -214,15 +214,7 @@ show_flow_classify_command_fn (vlib_main_t * vm,
 }
 
 VLIB_CLI_COMMAND (show_flow_classify_command, static) = {
-    .path = "show classify flow",
-    .short_help = "show classify flow type [ip4|ip6]",
-    .function = show_flow_classify_command_fn,
+  .path = "show classify flow",
+  .short_help = "show classify flow type [ip4|ip6]",
+  .function = show_flow_classify_command_fn,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

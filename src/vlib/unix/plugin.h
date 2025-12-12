@@ -181,11 +181,3 @@ u8 *vlib_get_vat_plugin_path (void);
  })
 
 #endif /* __included_plugin_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

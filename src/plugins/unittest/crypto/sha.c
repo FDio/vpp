@@ -82,11 +82,3 @@ UNITTEST_REGISTER_CRYPTO_TEST (nist_sha512_tc1) = {
   .plaintext = TEST_DATA (sha_data),
   .digest = TEST_DATA (sha512_digest),
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -413,11 +413,3 @@ vlibapi_set_main (api_main_t * am)
 }
 
 #endif /* included_api_common_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

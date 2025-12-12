@@ -199,11 +199,3 @@ format_function_t format_sfp_encoding;
 format_function_t format_sfp_connector;
 
 #endif /* included_vnet_optics_sfp_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -53,11 +53,3 @@ vnet_is_packet_pcaped (vnet_pcap_t *pp, vlib_buffer_t *b, u32 sw_if_index)
 
   return 1;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

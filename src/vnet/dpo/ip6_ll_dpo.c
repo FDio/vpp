@@ -211,11 +211,3 @@ ip6_ll_dpo_module_init (void)
 {
   dpo_register (DPO_IP6_LL, &ip6_ll_vft, ip6_ll_nodes);
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

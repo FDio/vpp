@@ -110,11 +110,3 @@ typedef struct srtp_main_
 } srtp_main_t;
 
 #endif /* SRC_PLUGINS_SRTP_SRTP_H_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -205,11 +205,3 @@ VNET_FEATURE_INIT (cnat_snat_ip6_node, static) = {
   .arc_name = "ip6-unicast",
   .node_name = "cnat-snat-ip6",
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

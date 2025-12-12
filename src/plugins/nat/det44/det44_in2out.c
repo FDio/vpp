@@ -1027,11 +1027,3 @@ VLIB_REGISTER_NODE (det44_in2out_node) = {
     [DET44_IN2OUT_NEXT_ICMP_ERROR] = "ip4-icmp-error",
   },
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

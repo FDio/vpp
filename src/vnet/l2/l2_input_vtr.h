@@ -43,12 +43,3 @@ typedef struct
 extern l2_invtr_main_t l2_invtr_main;
 
 #endif /* included_vnet_l2_input_vtr_h */
-
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

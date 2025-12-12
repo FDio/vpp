@@ -365,11 +365,3 @@ dhcp_proxy_set_vss (fib_protocol_t proto,
 
   return (rc);
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

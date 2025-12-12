@@ -161,11 +161,3 @@ vpe_api_get_build_date (void)
 {
   return VPP_BUILD_DATE;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

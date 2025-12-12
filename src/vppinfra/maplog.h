@@ -163,11 +163,3 @@ clib_maplog_get_entry (clib_maplog_main_t * mm)
 }
 
 #endif /* __included_maplog_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -126,11 +126,3 @@ typedef CLIB_PACKED (struct {
 }) lldp_ttl_tlv_t;
 
 #endif /* __included_lldp_protocol_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

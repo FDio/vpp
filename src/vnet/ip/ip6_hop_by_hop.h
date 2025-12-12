@@ -274,11 +274,3 @@ ip6_hbh_get_option (ip6_hop_by_hop_header_t * hbh0, u8 option_to_search)
 }
 
 #endif /* __included_ip6_hop_by_hop_ioam_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

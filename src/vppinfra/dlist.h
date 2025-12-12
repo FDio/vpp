@@ -146,11 +146,3 @@ clib_dlist_remove_tail (dlist_elt_t * pool, u32 head_index)
 }
 
 #endif /* included_dlist_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -1106,7 +1106,6 @@ VLIB_NODE_FN (ipsec6_input_node) (vlib_main_t * vm,
   return from_frame->n_vectors;
 }
 
-
 VLIB_REGISTER_NODE (ipsec6_input_node) = {
   .name = "ipsec6-input-feature",
   .vector_size = sizeof (u32),
@@ -1121,11 +1120,3 @@ VLIB_REGISTER_NODE (ipsec6_input_node) = {
 #undef _
   },
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -23,11 +23,3 @@
 #include <vnet/session/mma_template.h>
 
 #endif /* SRC_VNET_SESSION_MMA_TABLE_16_H_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

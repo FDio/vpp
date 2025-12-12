@@ -474,17 +474,8 @@ show_metadata_command_fn (vlib_main_t * vm,
  * @cliexend
 ?*/
 
-VLIB_CLI_COMMAND (show_metadata_command, static) =
-{
+VLIB_CLI_COMMAND (show_metadata_command, static) = {
   .path = "show buffer metadata",
   .short_help = "show buffer metadata",
   .function = show_metadata_command_fn,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

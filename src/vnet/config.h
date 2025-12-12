@@ -180,11 +180,3 @@ u8 *vnet_config_format_features (vlib_main_t * vm,
 				 u32 config_index, u8 * s);
 
 #endif /* included_vnet_config_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

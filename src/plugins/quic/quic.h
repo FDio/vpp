@@ -417,11 +417,3 @@ u8 *format_quic_half_open (u8 *s, va_list *args);
 u8 *format_quic_connection (u8 *s, va_list *args);
 
 #endif /* __included_quic_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -190,11 +190,3 @@ load_bio_private_key (ptls_context_t * ctx, const char *pk_data)
   ctx->sign_certificate = &sc.super;
   return 0;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

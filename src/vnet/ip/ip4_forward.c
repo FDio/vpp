@@ -2931,18 +2931,8 @@ set_ip_classify_command_fn (vlib_main_t * vm,
  * Example of how to assign a classification table to an interface:
  * @cliexcmd{set ip classify intfc GigabitEthernet2/0/0 table-index 1}
 ?*/
-VLIB_CLI_COMMAND (set_ip_classify_command, static) =
-{
-    .path = "set ip classify",
-    .short_help =
-    "set ip classify intfc <interface> table-index <classify-idx>",
-    .function = set_ip_classify_command_fn,
+VLIB_CLI_COMMAND (set_ip_classify_command, static) = {
+  .path = "set ip classify",
+  .short_help = "set ip classify intfc <interface> table-index <classify-idx>",
+  .function = set_ip_classify_command_fn,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

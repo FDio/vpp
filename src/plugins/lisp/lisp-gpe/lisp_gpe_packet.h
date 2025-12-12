@@ -139,11 +139,3 @@ typedef enum
 } lisp_gpe_next_protocol_e;
 
 #endif /* included_lisp_gpe_packet_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

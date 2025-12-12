@@ -874,11 +874,3 @@ TW (tw_timer_first_expires_in_ticks) (TWT (tw_timer_wheel) * tw)
 }
 
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

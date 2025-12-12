@@ -170,11 +170,3 @@ random_string (u32 * seed, uword len)
 f64 clib_chisquare (u64 * values);
 
 #endif /* included_random_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

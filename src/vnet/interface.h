@@ -1158,11 +1158,3 @@ extern vlib_node_registration_t vnet_interface_output_node;
 extern vlib_node_registration_t vnet_interface_output_arc_end_node;
 
 #endif /* included_vnet_interface_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -279,11 +279,3 @@ ip_interface_address_sweep (void)
   vnet_sw_interface_walk (vnet_get_main (),
 			  ip_interface_address_sweep_one_interface, NULL);
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

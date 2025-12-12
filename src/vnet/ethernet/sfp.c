@@ -273,11 +273,3 @@ sfp_eeprom_diagnostics (vlib_main_t *vm, vnet_interface_eeprom_t *eeprom,
       vlib_cli_output (vm, "  Module Diagnostics: not availalbe");
     }
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

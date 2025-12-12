@@ -245,11 +245,3 @@ nat_session_get_timeout (nat_timeouts_t *timeouts, nat_protocol_t proto,
 }
 
 #endif /* __included_nat44_ei_inlines_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

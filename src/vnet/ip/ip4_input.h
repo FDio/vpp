@@ -325,13 +325,4 @@ ip4_input_check_x1 (vlib_main_t * vm,
       p0->error = error_node->errors[error0];
     }
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
-
 #endif

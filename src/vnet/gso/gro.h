@@ -285,11 +285,3 @@ gro_flow_table_format (u8 * s, va_list * args)
   return s;
 }
 #endif /* included_gro_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -288,11 +288,3 @@ format_ip_ecn (u8 * s, va_list * va)
 
   return (format (s, "unknown"));
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -322,11 +322,3 @@ pppoe_update_1 (BVT (clib_bihash) * table,
 
 }
 #endif /* _PPPOE_H */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

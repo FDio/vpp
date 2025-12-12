@@ -235,11 +235,3 @@ vnet_geneve_hdr_1word_hton (geneve_header_t * h)
 }
 
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -175,11 +175,3 @@ graph_api_hookup_shim (vlib_main_t * vm)
 }
 
 VLIB_API_INIT_FUNCTION (graph_api_hookup_shim);
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

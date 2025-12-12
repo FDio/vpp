@@ -399,11 +399,3 @@ VNET_FEATURE_INIT (mssc_ip6_out_feat, static) = {
   .arc_name = "ip6-output",
   .node_name = "tcp-mss-clamping-ip6-out",
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -185,11 +185,3 @@ ipsec_tun_protect_get_sa_out (adj_index_t ai)
 
   return (ipsec_tun_protect_sa_by_adj_index[ai]);
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

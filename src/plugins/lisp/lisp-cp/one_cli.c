@@ -2225,15 +2225,7 @@ lisp_show_one_modes_command_fn (vlib_main_t * vm,
 }
 
 VLIB_CLI_COMMAND (one_cp_show_one_modes_modes_command) = {
-    .path = "show one modes",
-    .short_help = "show one modes",
-    .function = lisp_show_one_modes_command_fn,
+  .path = "show one modes",
+  .short_help = "show one modes",
+  .function = lisp_show_one_modes_command_fn,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

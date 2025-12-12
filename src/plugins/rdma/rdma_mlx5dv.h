@@ -160,13 +160,4 @@ mlx5_get_bits (void *start, int offset, int first, int last)
   return value;
 }
 
-
 #endif /* RDMA_MLX5DV_H */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

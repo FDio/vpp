@@ -312,11 +312,3 @@ http_buffer_init (http_buffer_t *hb, http_buffer_type_t type, svm_fifo_t *f,
   hb->type = type;
   hb->vft->init (hb, f, data_len);
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

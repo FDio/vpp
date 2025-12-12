@@ -231,11 +231,3 @@ vlib_validate_log2_histogram (vlib_log2_histogram_main_t *hm, u32 num_bins)
       c[0] = hm->min_exp;
     }
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

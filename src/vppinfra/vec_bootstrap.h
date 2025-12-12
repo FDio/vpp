@@ -245,11 +245,3 @@ _vec_set_len (void *v, uword len, uword elt_sz)
 	 __ep < __end; __ep++, (e) = __ep < __end ? *__ep : (e))
 
 #endif /* included_clib_vec_bootstrap_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

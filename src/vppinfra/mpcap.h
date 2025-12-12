@@ -163,11 +163,3 @@ clib_error_t *mpcap_close (mpcap_main_t * pm);
 clib_error_t *mpcap_map (mpcap_main_t * pm);
 
 #endif /* included_vppinfra_mpcap_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

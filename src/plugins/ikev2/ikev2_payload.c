@@ -617,11 +617,3 @@ ikev2_find_ike_notify_payload (ike_header_t * ike, u32 msg_type)
     }
   return 0;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -400,11 +400,3 @@ void transport_update_pacer_time (clib_thread_index_t thread_index,
 				  clib_time_type_t now);
 
 #endif /* SRC_VNET_SESSION_TRANSPORT_H_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

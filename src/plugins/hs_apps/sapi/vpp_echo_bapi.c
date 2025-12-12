@@ -628,11 +628,3 @@ echo_api_hookup (echo_main_t * em)
   foreach_quic_echo_msg;
 #undef _
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

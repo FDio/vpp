@@ -38,11 +38,3 @@ typedef struct
 extern fateshare_main_t fateshare_main;
 
 #endif /* __included_fateshare_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

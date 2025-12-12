@@ -29,11 +29,3 @@ throttle_init (throttle_t *t, u32 n_threads, u32 buckets, f64 time)
   for (i = 0; i < n_threads; i++)
     clib_bitmap_alloc (t->bitmaps[i], t->buckets);
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

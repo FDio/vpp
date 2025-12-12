@@ -225,11 +225,3 @@ vat_plugin_init (vat_main_t * vam)
 
   return vat_load_new_plugins (pm);
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

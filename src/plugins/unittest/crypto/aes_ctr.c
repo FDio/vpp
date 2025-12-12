@@ -100,11 +100,3 @@ UNITTEST_REGISTER_CRYPTO_TEST (nist_aes256_ctr_tc1) = {
   .plaintext = TEST_DATA (tc1_plaintext),
   .ciphertext = TEST_DATA (tc1_256_ciphertext),
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

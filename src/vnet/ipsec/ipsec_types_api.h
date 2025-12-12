@@ -43,11 +43,3 @@ extern vl_api_ipsec_sad_flags_t ipsec_sad_flags_encode (const ipsec_sa_t *
 							sa);
 
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

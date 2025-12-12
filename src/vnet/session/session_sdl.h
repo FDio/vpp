@@ -63,10 +63,3 @@ int session_sdl_register_callbacks (session_sdl_callback_fn_t cb);
 void session_sdl_deregister_callbacks (session_sdl_callback_fn_t cb);
 
 #endif /* SRC_VNET_SESSION_SESSION_SDL_H_ */
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

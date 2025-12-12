@@ -22,11 +22,3 @@ BIO *BIO_new_tls (session_handle_t sh);
 BIO *BIO_new_dtls (session_handle_t sh);
 
 #endif /* SRC_PLUGINS_TLSOPENSSL_TLS_BIO_H_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

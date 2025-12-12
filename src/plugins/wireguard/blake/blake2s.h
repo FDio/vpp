@@ -80,11 +80,3 @@ int blake2s (void *out, size_t outlen, const void *in, size_t inlen,
 	     const void *key, size_t keylen);
 
 #endif /* __included_crypto_blake2s_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

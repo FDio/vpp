@@ -45,11 +45,3 @@ vtep_addr_unref (vtep_table_t * t, u32 fib_index, ip46_address_t * ip)
     hash_unset_mem_free (&t->vtep6, &key6);
   return 0;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

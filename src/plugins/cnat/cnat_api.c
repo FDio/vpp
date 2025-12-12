@@ -388,14 +388,6 @@ cnat_api_init (vlib_main_t * vm)
 VLIB_INIT_FUNCTION (cnat_api_init);
 
 VLIB_PLUGIN_REGISTER () = {
-    .version = VPP_BUILD_VER,
-    .description = "CNat Translate",
+  .version = VPP_BUILD_VER,
+  .description = "CNat Translate",
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

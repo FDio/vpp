@@ -92,11 +92,3 @@ nat_random_port (u32 *random_seed, u16 min, u16 max)
 }
 
 #endif /* __included_lib_nat_inlines_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

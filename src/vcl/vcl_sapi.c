@@ -466,11 +466,3 @@ vcl_sapi_del_cert_key_pair (u32 ckpair_index)
 
   return 0;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -50,11 +50,3 @@ typedef struct
 } ip6_ipsec_config_t;
 
 #endif /* __IPSEC_IO_H__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

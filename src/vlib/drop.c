@@ -270,17 +270,9 @@ VLIB_REGISTER_NODE (error_drop_node) = {
 
 VLIB_REGISTER_NODE (error_punt_node) = {
   .name = "punt",
-  .flags = (VLIB_NODE_FLAG_FRAME_NO_FREE_AFTER_DISPATCH
-	    | VLIB_NODE_FLAG_IS_PUNT),
+  .flags = (VLIB_NODE_FLAG_FRAME_NO_FREE_AFTER_DISPATCH |
+	    VLIB_NODE_FLAG_IS_PUNT),
   .vector_size = sizeof (u32),
   .format_trace = format_error_trace,
   .validate_frame = validate_error_frame,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

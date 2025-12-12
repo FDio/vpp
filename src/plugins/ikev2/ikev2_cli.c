@@ -900,11 +900,3 @@ VLIB_CLI_COMMAND (ikev2_set_log_level_command, static) = {
   .function = ikev2_set_log_level_command_fn,
   .short_help = "ikev2 set logging level <0-5>",
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -177,11 +177,3 @@ u8 *format_dslite_trace (u8 * s, va_list * args);
 u8 *format_dslite_ce_trace (u8 * s, va_list * args);
 
 #endif /* __included_dslite_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

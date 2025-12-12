@@ -294,11 +294,3 @@ vlib_buffer_get_ip_fib_index (vlib_buffer_t * b, u8 is_ip4)
 }
 
 #endif /* included_ip_main_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

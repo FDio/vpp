@@ -194,12 +194,4 @@ u32 af_packet_get_if_capabilities (u8 *host_if_name);
 
 format_function_t format_af_packet_device_name;
 
-#define MIN(x,y) (((x)<(y))?(x):(y))
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
+#define MIN(x, y) (((x) < (y)) ? (x) : (y))

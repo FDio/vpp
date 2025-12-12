@@ -338,11 +338,3 @@ VLIB_REGISTER_NODE (srv6_am_rewrite_node) = {
       [SRV6_AM_REWRITE_NEXT_ERROR] = "error-drop",
   },
 };
-
-/*
-* fd.io coding-style-patch-verification: ON
-*
-* Local Variables:
-* eval: (c-set-style "gnu")
-* End:
-*/

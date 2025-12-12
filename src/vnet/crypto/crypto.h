@@ -662,11 +662,3 @@ vnet_crypto_async_frame_is_full (const vnet_crypto_async_frame_t *f)
 }
 
 #endif /* included_vnet_crypto_crypto_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

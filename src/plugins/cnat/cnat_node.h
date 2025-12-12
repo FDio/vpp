@@ -1164,13 +1164,4 @@ cnat_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
   return frame->n_vectors;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
-
 #endif

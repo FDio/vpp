@@ -106,11 +106,3 @@ VNET_DEVICE_CLASS_TX_FN (bvi_device_class) (vlib_main_t * vm,
 
   return frame->n_vectors;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -505,12 +505,3 @@ VLIB_REGISTER_NODE (analyse_node_remote) =
     [ANALYSE_NEXT_IP4_DROP] = "ip4-drop",
   },
 };
-
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

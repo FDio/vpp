@@ -553,11 +553,3 @@ typedef enum session_error_
 #define SESSION_ERROR_NEW_SEG_NO_SPACE SESSION_E_SEG_NO_SPACE2
 
 #endif /* SRC_VNET_SESSION_SESSION_TYPES_H_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

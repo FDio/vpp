@@ -32,18 +32,8 @@ vxlan_gpe_ioam_export_process (vlib_main_t * vm,
 				      vxlan_gpe_ioam_export_process_node.index));
 }
 
-
-VLIB_REGISTER_NODE (vxlan_gpe_ioam_export_process_node, static) =
-{
- .function = vxlan_gpe_ioam_export_process,
- .type = VLIB_NODE_TYPE_PROCESS,
- .name = "vxlan-gpe-ioam-export-process",
+VLIB_REGISTER_NODE (vxlan_gpe_ioam_export_process_node, static) = {
+  .function = vxlan_gpe_ioam_export_process,
+  .type = VLIB_NODE_TYPE_PROCESS,
+  .name = "vxlan-gpe-ioam-export-process",
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

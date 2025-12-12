@@ -2080,11 +2080,3 @@ VLIB_CLI_COMMAND (nat44_ei_forwarding_set_command, static) = {
   .short_help = "nat44 ei forwarding enable|disable",
   .function = nat44_ei_forwarding_set_command_fn,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -121,11 +121,3 @@ clib_random_buffer_get_data (clib_random_buffer_t * b, uword n_bytes)
 WARN_ON(array-bounds)
 
 #endif /* included_clib_random_buffer_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

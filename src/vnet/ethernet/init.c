@@ -122,11 +122,3 @@ ethernet_get_main (vlib_main_t * vm)
 {
   return &ethernet_main;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

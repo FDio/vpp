@@ -49,11 +49,3 @@ void lacp_tx_debug_func (member_if_t * mif, int event, int state,
 #define LACP_ACTION_TRANSMIT LACP_ACTION_ROUTINE(lacp_tx_action_transmit)
 
 #endif /* __LACP_TX_MACHINE_H__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

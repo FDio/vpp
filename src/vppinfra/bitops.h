@@ -383,11 +383,3 @@ u32_is_bit_set (u32 v, u8 bit_index)
 #else
 #warning "already included"
 #endif /* included_clib_bitops_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

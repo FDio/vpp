@@ -919,11 +919,3 @@ void *idpf_alloc_dma_mem (vlib_main_t *vm, idpf_device_t *id,
 void idpf_free_dma_mem (idpf_device_t *id, idpf_dma_mem_t *mem);
 
 #endif /* IDPF_H */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

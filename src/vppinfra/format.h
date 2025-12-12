@@ -378,11 +378,3 @@ int test_vec_main (unformat_input_t * input);
 char *format_c_string (u8 *s, const char *fmt, ...);
 
 #endif /* included_format_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

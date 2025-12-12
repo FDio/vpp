@@ -266,11 +266,3 @@ VLIB_REGISTER_NODE (wg6_output_tun_handoff) =
     [0] = "error-drop",
   },
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

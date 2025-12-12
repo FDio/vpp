@@ -643,11 +643,3 @@ u32 classify_lookup_chain (u32 table_index,
 			   u8 * mask, u32 n_skip, u32 n_match);
 
 #endif /* __included_vnet_classify_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

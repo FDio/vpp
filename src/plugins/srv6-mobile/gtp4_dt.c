@@ -201,11 +201,3 @@ VNET_FEATURE_INIT (srv6_t_m_gtp4_dt, static) =
 };
 
 VLIB_INIT_FUNCTION (srv6_t_m_gtp4_dt_init);
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

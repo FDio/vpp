@@ -2349,11 +2349,3 @@ bfd_auth_del_key (u32 conf_key_id)
 }
 
 bfd_main_t bfd_main;
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

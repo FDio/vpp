@@ -97,11 +97,3 @@ void mactime_url_init (vlib_main_t * vm);
 #define MACTIME_EVENT_PERIODIC_ENABLE_DISABLE 3
 
 #endif /* __included_mactime_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

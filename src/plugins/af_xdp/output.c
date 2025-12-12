@@ -280,11 +280,3 @@ VNET_DEVICE_CLASS_TX_FN (af_xdp_device_class) (vlib_main_t * vm,
 
   return n;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

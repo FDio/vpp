@@ -3353,11 +3353,3 @@ VLIB_CLI_COMMAND (test_classify_command, static) = {
     .function = test_classify_command_fn,
 };
 #endif /* TEST_CODE */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

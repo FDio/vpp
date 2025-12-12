@@ -78,11 +78,3 @@ static __clib_unused void * __clib_unused_##f = f;
   _VNET_IP_TABLE_FUNCTION_DECL(f,ip_table_add_del)
 
 #endif /* included_ip_table_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

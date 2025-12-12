@@ -827,16 +827,8 @@ admin_up_down_process (vlib_main_t * vm,
 }
 
 VLIB_REGISTER_NODE (admin_up_down_process_node) = {
-    .function = admin_up_down_process,
-    .type = VLIB_NODE_TYPE_PROCESS,
-    .name = "admin-up-down-process",
-    .process_log2_n_stack_bytes = 17,  // 256KB
+  .function = admin_up_down_process,
+  .type = VLIB_NODE_TYPE_PROCESS,
+  .name = "admin-up-down-process",
+  .process_log2_n_stack_bytes = 17, // 256KB
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

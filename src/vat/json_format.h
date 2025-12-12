@@ -248,11 +248,3 @@ vat_json_object_get_element (vat_json_node_t * json, const char *name)
 }
 
 #endif /* __JSON_FORMAT_H__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -349,11 +349,3 @@ session_node_lookup_fifo_event (svm_fifo_t * f, session_event_t * e)
 done:
   return found;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

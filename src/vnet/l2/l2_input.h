@@ -361,12 +361,3 @@ vnet_l2_compute_flow_hash (vlib_buffer_t * b)
 }
 
 #endif
-
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

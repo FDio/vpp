@@ -502,11 +502,3 @@ os_get_exec_path ()
   vec_add (rv, tmp, sz);
   return rv;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

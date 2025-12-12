@@ -270,11 +270,3 @@ void vnet_ipfix_exp_send_buffer (vlib_main_t *vm, ipfix_exporter_t *exp,
 				 vlib_buffer_t *b0);
 
 #endif /* __included_vnet_flow_report_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

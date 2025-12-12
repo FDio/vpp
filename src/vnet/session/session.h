@@ -1254,11 +1254,3 @@ session_rule_table_is_enabled (void)
 }
 
 #endif /* __included_session_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

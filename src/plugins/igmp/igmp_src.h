@@ -85,11 +85,3 @@ extern void igmp_src_blocked (igmp_src_t * src);
 extern u8 *format_igmp_src (u8 * s, va_list * args);
 
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

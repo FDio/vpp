@@ -71,11 +71,3 @@ void isaac_init (isaac_t * ctx, uword * results);
 int test_isaac_main (unformat_input_t * input);
 
 #endif /* included_random_isaac_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

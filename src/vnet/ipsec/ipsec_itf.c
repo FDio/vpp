@@ -504,17 +504,8 @@ ipsec_interface_show (vlib_main_t * vm,
 /**
  * show IPSEC tunnel protection hash tables
  */
-VLIB_CLI_COMMAND (ipsec_interface_show_node, static) =
-{
+VLIB_CLI_COMMAND (ipsec_interface_show_node, static) = {
   .path = "show ipsec interface",
   .function = ipsec_interface_show,
-  .short_help =  "show ipsec interface",
+  .short_help = "show ipsec interface",
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

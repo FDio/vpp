@@ -354,11 +354,3 @@ VLIB_REGISTER_NODE(ip4_map_node) = {
     [IP4_MAP_NEXT_DROP] = "error-drop",
   },
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

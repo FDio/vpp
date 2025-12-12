@@ -519,11 +519,3 @@ typedef struct
 pg_output_trace_t;
 
 #endif /* included_vlib_pg_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

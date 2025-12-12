@@ -385,11 +385,3 @@ VLIB_CLI_COMMAND (test_ipsec_command, static) = {
   .short_help = "test ipsec sa <ID> seq-num <VALUE>",
   .function = test_ipsec_command_fn,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

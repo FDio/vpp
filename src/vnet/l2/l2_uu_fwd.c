@@ -227,11 +227,3 @@ VLIB_REGISTER_NODE (l2_uu_fwd_node) = {
         [L2_UU_FWD_NEXT_L2_OUTPUT] = "l2-output",
   },
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

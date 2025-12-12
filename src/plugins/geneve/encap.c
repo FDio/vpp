@@ -569,11 +569,3 @@ VLIB_REGISTER_NODE (geneve6_encap_node) = {
         [GENEVE_ENCAP_NEXT_DROP] = "error-drop",
   },
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -219,11 +219,3 @@ lacp_init_ptx_machine (vlib_main_t * vm, member_if_t * mif)
   lacp_machine_dispatch (&lacp_ptx_machine, vm, mif,
 			 LACP_PTX_EVENT_NO_PERIODIC, &mif->ptx_state);
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

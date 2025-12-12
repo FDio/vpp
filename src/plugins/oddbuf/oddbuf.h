@@ -49,11 +49,3 @@ extern oddbuf_main_t oddbuf_main;
 extern vlib_node_registration_t oddbuf_node;
 
 #endif /* __included_oddbuf_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

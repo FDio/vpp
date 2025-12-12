@@ -32,18 +32,8 @@ nsh_md2_ioam_export_process (vlib_main_t * vm,
 				      nsh_md2_ioam_export_process_node.index));
 }
 
-
-VLIB_REGISTER_NODE (nsh_md2_ioam_export_process_node, static) =
-{
- .function = nsh_md2_ioam_export_process,
- .type = VLIB_NODE_TYPE_PROCESS,
- .name = "nsh-md2-ioam-export-process",
+VLIB_REGISTER_NODE (nsh_md2_ioam_export_process_node, static) = {
+  .function = nsh_md2_ioam_export_process,
+  .type = VLIB_NODE_TYPE_PROCESS,
+  .name = "nsh-md2-ioam-export-process",
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

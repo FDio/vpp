@@ -145,11 +145,3 @@ format_function_t format_timing_wheel;
 void timing_wheel_validate (timing_wheel_t * w);
 
 #endif /* included_clib_timing_wheel_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

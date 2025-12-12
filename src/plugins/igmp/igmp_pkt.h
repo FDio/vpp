@@ -68,11 +68,3 @@ extern void igmp_pkt_query_v3_add_group (igmp_pkt_build_query_t * bq,
 extern void igmp_pkt_query_v3_send (igmp_pkt_build_query_t * bq);
 
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

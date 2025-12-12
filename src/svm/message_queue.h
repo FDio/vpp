@@ -459,11 +459,3 @@ svm_msg_q_get_eventfd (svm_msg_q_t *mq)
 }
 
 #endif /* SRC_SVM_MESSAGE_QUEUE_H_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

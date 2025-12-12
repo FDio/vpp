@@ -28,14 +28,4 @@ trace_profile_find (void)
   return (&(sm->profile));
 }
 
-
-
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

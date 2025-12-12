@@ -122,16 +122,7 @@ cdp_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (cdp_init);
 
-VLIB_PLUGIN_REGISTER () =
-{
+VLIB_PLUGIN_REGISTER () = {
   .version = VPP_BUILD_VER,
   .description = "Cisco Discovery Protocol (CDP)",
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -143,11 +143,3 @@ format_vnet_crypto_async_op (u8 * s, va_list * args)
 		 format_vnet_crypto_async_alg, otd->alg);
 }
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

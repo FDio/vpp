@@ -473,11 +473,3 @@ tcp_get_connection_from_transport (transport_connection_t * tconn)
 typedef tw_timer_wheel_tcp_twsl_t tcp_timer_wheel_t;
 
 #endif /* SRC_VNET_TCP_TCP_TYPES_H_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -317,11 +317,3 @@ UNITTEST_REGISTER_CRYPTO_TEST (aes_gcm256_inc5) = {
   .aad.length = 20,
   .tag.length = 16,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

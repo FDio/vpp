@@ -271,11 +271,3 @@ clib_sysfs_read_bitmap (char *fmt, ...)
     }
   return r;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

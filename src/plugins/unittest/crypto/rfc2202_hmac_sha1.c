@@ -222,11 +222,3 @@ UNITTEST_REGISTER_CRYPTO_TEST (rfc_2202_sha1_tc7_inc) = {
   .key.length = 80,
   .digest.length = 12,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

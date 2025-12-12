@@ -28,11 +28,3 @@
 extern void ip_neighbor_learn_dp (const ip_neighbor_learn_t * l);
 
 #endif /* __INCLUDE_IP_NEIGHBOR_H__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

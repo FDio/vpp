@@ -2378,11 +2378,3 @@ vls_register_vcl_worker (void)
 {
   vls_mt_add ();
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

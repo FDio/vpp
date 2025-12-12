@@ -87,11 +87,3 @@ vl_api_registration_t *vl_socket_api_client_handle_to_registration (u32 idx);
 u8 vl_socket_api_registration_handle_is_valid (u32 reg_index);
 
 #endif /* SRC_VLIBMEMORY_SOCKET_API_H_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

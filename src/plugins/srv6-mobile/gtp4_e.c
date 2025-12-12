@@ -216,11 +216,3 @@ VLIB_PLUGIN_REGISTER () = {
   .version = VPP_BUILD_VER,
   .description = "SRv6 GTP Endpoint Functions",
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

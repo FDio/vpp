@@ -193,11 +193,3 @@ typedef int (*dhcp_client_walk_cb_t) (const dhcp_client_t * client,
 extern void dhcp_client_walk (dhcp_client_walk_cb_t cb, void *ctx);
 
 #endif /* included_dhcp_client_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

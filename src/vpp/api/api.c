@@ -396,11 +396,3 @@ get_unformat_vnet_sw_interface (void)
 {
   return (void *) &unformat_vnet_sw_interface;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -81,10 +81,3 @@ sfdp_nat_api_hookup (vlib_main_t *vm)
   return 0;
 }
 VLIB_API_INIT_FUNCTION (sfdp_nat_api_hookup);
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

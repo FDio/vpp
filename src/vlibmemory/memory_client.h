@@ -78,11 +78,3 @@ vlibapi_set_memory_client_main (memory_client_main_t * mm)
 }
 
 #endif /* SRC_VLIBMEMORY_MEMORY_CLIENT_H_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

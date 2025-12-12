@@ -289,11 +289,3 @@ VLIB_CLI_COMMAND (set_significant_error_command, static) = {
   .short_help = "set significant error <counter-index-nnn> [disable]",
   .function = set_significant_error_command_fn,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

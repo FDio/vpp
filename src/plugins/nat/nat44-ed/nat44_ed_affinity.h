@@ -140,11 +140,3 @@ void nat_affinity_unlock (ip4_address_t client_addr,
 			  u16 service_port);
 
 #endif /* __included_nat44_ed_affinity_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

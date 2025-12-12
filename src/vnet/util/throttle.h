@@ -67,11 +67,3 @@ throttle_check (throttle_t *t, clib_thread_index_t thread_index, u64 hash,
 }
 
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

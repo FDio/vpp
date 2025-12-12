@@ -3504,11 +3504,3 @@ VLIB_REGISTER_NODE (nat44_ei_handoff_classify_node) = {
     [NAT44_EI_CLASSIFY_NEXT_DROP] = "error-drop",
   },
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

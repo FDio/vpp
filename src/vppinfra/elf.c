@@ -2028,11 +2028,3 @@ elf_delete_segment_with_type (elf_main_t * em,
 }
 
 #endif /* CLIB_UNIX */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

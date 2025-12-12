@@ -143,11 +143,3 @@ int set_ip_source_and_port_range_check (vlib_main_t * vm,
 					u32 sw_if_index, u32 is_add);
 
 #endif /* included ip_source_and_port_range_check_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

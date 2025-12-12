@@ -231,11 +231,3 @@ tunnel_decap_fixup_mplso4 (tunnel_encap_decap_flags_t flags,
 }
 
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

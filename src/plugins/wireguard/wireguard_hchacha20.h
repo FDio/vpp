@@ -80,11 +80,3 @@ hchacha20 (u32 derived_key[8], const u8 nonce[16], const u8 key[32])
 }
 
 #endif /* __included_wg_hchacha20_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

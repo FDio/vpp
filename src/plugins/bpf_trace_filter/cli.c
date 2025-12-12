@@ -89,11 +89,3 @@ VLIB_CLI_COMMAND (show_bpf_trace_filter, static) = {
   .short_help = "show bpf trace filter",
   .function = show_bpf_trace_filter_command_fn,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

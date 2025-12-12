@@ -77,13 +77,4 @@ extern void lisp_gpe_tenant_l2_iface_unlock (u32 vni);
 extern const lisp_gpe_tenant_t *lisp_gpe_tenant_get (u32 index);
 
 extern void lisp_gpe_tenant_flush (void);
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
-
 #endif

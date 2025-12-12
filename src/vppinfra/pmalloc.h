@@ -150,13 +150,4 @@ clib_pmalloc_get_pa (clib_pmalloc_main_t * pm, void *va)
   return pointer_to_uword (va) - pm->lookup_table[index];
 }
 
-
 #endif /* included_palloc_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

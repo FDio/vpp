@@ -65,13 +65,4 @@ extern cnat_src_policy_main_t cnat_src_policy_main;
 void cnat_register_vip_src_policy (cnat_vip_source_policy_t fp);
 int cnat_allocate_port (u16 * port, ip_protocol_t iproto);
 void cnat_free_port (u16 port, ip_protocol_t iproto);
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
-
 #endif

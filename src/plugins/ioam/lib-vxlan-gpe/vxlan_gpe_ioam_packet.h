@@ -48,14 +48,4 @@ typedef struct
   u8 length;
 } vxlan_gpe_ioam_option_t;
 
-
 #endif
-
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -482,11 +482,3 @@ ip6_trace_profile_setup (void)
 
   return (0);
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

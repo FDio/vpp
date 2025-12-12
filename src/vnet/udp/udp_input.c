@@ -490,11 +490,3 @@ VLIB_REGISTER_NODE (udp6_input_nolookup_node) =
 #undef _
   },
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

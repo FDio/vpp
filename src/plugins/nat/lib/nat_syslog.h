@@ -53,10 +53,3 @@ void nat_syslog_nat64_sdel (u32 sfibix, ip6_address_t * isaddr, u16 isport,
 			    nat_protocol_t proto);
 
 #endif /* __included_nat_syslog_h__ */
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

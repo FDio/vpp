@@ -146,11 +146,3 @@ void lldp_schedule_intf (lldp_main_t * lm, lldp_intf_t * n);
 void lldp_unschedule_intf (lldp_main_t * lm, lldp_intf_t * n);
 
 #endif /* __included_lldp_node_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

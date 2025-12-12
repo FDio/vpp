@@ -259,16 +259,6 @@ ip_neighbor_watch_init (vlib_main_t * vm)
   return (NULL);
 }
 
-VLIB_INIT_FUNCTION (ip_neighbor_watch_init) =
-{
-  .runs_after = VLIB_INITS("ip_neighbor_init"),
+VLIB_INIT_FUNCTION (ip_neighbor_watch_init) = {
+  .runs_after = VLIB_INITS ("ip_neighbor_init"),
 };
-
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

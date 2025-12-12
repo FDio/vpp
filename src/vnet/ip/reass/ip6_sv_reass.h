@@ -78,11 +78,3 @@ int ip6_sv_reass_enable_disable_with_refcnt (u32 sw_if_index, int is_enable);
 uword ip6_sv_reass_custom_context_register_next_node (uword node_index);
 
 #endif /* __included_ip6_sv_reass_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

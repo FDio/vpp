@@ -393,17 +393,7 @@ VLIB_CLI_COMMAND (adl_allowlist_command, static) =
    .function = adl_allowlist_enable_disable_command_fn,
 };
 
-VLIB_PLUGIN_REGISTER () =
-{
+VLIB_PLUGIN_REGISTER () = {
   .version = VPP_BUILD_VER,
   .description = "Allow/deny list plugin",
 };
-
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

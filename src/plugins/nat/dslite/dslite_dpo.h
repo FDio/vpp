@@ -28,11 +28,3 @@ u8 *format_dslite_ce_dpo (u8 * s, va_list * args);
 void dslite_dpo_module_init (void);
 
 #endif /* __included_dslite_dpo_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

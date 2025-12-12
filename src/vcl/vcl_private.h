@@ -952,11 +952,3 @@ void vcl_heap_alloc (void);
 void vcl_cfg_parse_heapsize (char *conf_fname);
 
 #endif /* SRC_VCL_VCL_PRIVATE_H_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

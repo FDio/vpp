@@ -1486,11 +1486,3 @@ VLIB_REGISTER_NODE (vhost_user_input_node) = {
   .n_errors = VHOST_USER_INPUT_FUNC_N_ERROR,
   .error_strings = vhost_user_input_func_error_strings,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

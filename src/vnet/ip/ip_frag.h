@@ -73,11 +73,3 @@ extern ip_frag_error_t ip6_frag_do_fragment (vlib_main_t * vm,
 					     u16 encapsize, u32 ** buffer);
 
 #endif /* ifndef IP_FRAG_H */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

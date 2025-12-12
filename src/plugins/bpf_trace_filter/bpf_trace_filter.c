@@ -103,10 +103,3 @@ VLIB_REGISTER_TRACE_FILTER_FUNCTION (bpf_trace_filter_fn, static) = {
 
 VLIB_INIT_FUNCTION (bpf_trace_filter_init);
 bpf_trace_filter_main_t bpf_trace_filter_main;
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

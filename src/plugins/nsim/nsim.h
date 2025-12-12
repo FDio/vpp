@@ -126,11 +126,3 @@ extern vlib_node_registration_t nsim_node;
 extern vlib_node_registration_t nsim_input_node;
 
 #endif /* __included_nsim_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

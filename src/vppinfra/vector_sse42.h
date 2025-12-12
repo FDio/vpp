@@ -657,11 +657,3 @@ u32x4_shuffle_dynamic (u32x4 v, u32x4 indices)
 }
 
 #endif /* included_vector_sse2_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

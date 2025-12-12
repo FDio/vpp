@@ -96,11 +96,3 @@ extern u8 *format_ipsec_out_spd_flow_cache (u8 *s, va_list *args);
 extern u8 *format_ipsec_in_spd_flow_cache (u8 *s, va_list *args);
 
 #endif /* __IPSEC_SPD_H__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

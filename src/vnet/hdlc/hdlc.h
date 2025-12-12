@@ -110,11 +110,3 @@ hdlc_register_input_protocol (vlib_main_t * vm,
 			      hdlc_protocol_t protocol, u32 node_index);
 
 #endif /* included_hdlc_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -102,11 +102,3 @@ lacp_selection_logic (vlib_main_t *vm, member_if_t *mif)
 out:
   return lacp_set_port_selected (vm, bif, mif);
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

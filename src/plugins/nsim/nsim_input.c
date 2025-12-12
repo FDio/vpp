@@ -141,11 +141,3 @@ VLIB_REGISTER_NODE (nsim_input_node) =
   .error_strings = nsim_tx_error_strings,
 };
 #endif /* CLIB_MARCH_VARIANT */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

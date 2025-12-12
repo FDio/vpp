@@ -110,11 +110,3 @@ typedef struct
 #define VXLAN_GPE_VERSION 0x0
 
 #endif /* included_vxlan_gpe_packet_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

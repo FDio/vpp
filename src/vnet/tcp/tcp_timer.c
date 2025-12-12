@@ -24,11 +24,3 @@ tcp_timer_initialize_wheel (tcp_timer_wheel_t * tw,
   tw_timer_wheel_init_tcp_twsl (tw, expired_timer_cb, TCP_TIMER_TICK, ~0);
   tw->last_run_time = now;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

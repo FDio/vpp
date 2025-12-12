@@ -1268,12 +1268,3 @@ VLIB_REGISTER_NODE (wg6_input_post_node) = {
   .n_errors = ARRAY_LEN (wg_input_error_strings),
   .error_strings = wg_input_error_strings,
 };
-
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

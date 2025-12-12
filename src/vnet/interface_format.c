@@ -887,11 +887,3 @@ unformat_vnet_hw_interface_flags (unformat_input_t * input, va_list * args)
   *result = flags;
   return 1;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

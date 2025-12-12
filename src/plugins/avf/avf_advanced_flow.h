@@ -1438,11 +1438,3 @@ int avf_flow_error_set (struct avf_flow_error *error, int code,
 char *avf_fdir_prgm_error_decode (int err_no);
 
 #endif /* _AVF_ADVANCED_FLOW_H_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

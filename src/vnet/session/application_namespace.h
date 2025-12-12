@@ -165,11 +165,3 @@ u8 appns_sapi_enabled (void);
 int appns_sapi_enable_disable (int is_enable);
 
 #endif /* SRC_VNET_SESSION_APPLICATION_NAMESPACE_H_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

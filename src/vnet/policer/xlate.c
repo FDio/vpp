@@ -1300,11 +1300,3 @@ pol_physical_2_logical (policer_t *phys, qos_pol_cfg_params_st *cfg)
 
   return 0;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

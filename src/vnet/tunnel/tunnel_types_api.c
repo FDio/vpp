@@ -162,11 +162,3 @@ tunnel_encode (const tunnel_t *in, vl_api_tunnel_t *out)
   out->dscp = ip_dscp_encode (in->t_dscp);
   out->hop_limit = in->t_hop_limit;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

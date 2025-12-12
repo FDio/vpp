@@ -816,11 +816,3 @@ session_rule_table_deregister_engine (const session_rt_engine_vft_t *vft)
 
   return 0;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

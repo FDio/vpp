@@ -345,11 +345,3 @@ do {									\
 } while (0)
 
 #endif /* SRC_VPPINFRA_CLIB_LLIST_H_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

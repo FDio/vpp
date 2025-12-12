@@ -274,11 +274,3 @@ noise_remote_keypair_free (vlib_main_t *vm, noise_remote_t *r,
 }
 
 #endif /* __included_wg_noise_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

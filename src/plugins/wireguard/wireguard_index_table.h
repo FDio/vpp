@@ -30,11 +30,3 @@ void wg_index_table_del (vlib_main_t *vm, wg_index_table_t *table, u32 key);
 u32 *wg_index_table_lookup (const wg_index_table_t * table, u32 key);
 
 #endif //__included_wg_index_table_h__
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

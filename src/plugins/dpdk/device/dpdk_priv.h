@@ -233,11 +233,3 @@ dpdk_update_counters (dpdk_device_t * xd, f64 now)
 #define RTE_ETH_RSS_UDP			    ETH_RSS_UDP
 #define RTE_ETH_RSS_TCP			    ETH_RSS_TCP
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

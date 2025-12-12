@@ -136,11 +136,3 @@ const char *clib_elf_symbol_name (clib_elf_symbol_t *result);
 format_function_t format_clib_elf_symbol, format_clib_elf_symbol_with_address;
 
 #endif /* included_clib_elf_self_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

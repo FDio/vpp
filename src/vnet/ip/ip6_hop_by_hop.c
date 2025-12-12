@@ -1456,10 +1456,3 @@ vnet_register_ioam_end_of_path_callback (void *cb)
 }
 
 #endif /* CLIB_MARCH_VARIANT */
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

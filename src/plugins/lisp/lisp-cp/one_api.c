@@ -1642,14 +1642,6 @@ VLIB_API_INIT_FUNCTION (one_api_hookup);
 #include <vpp/app/version.h>
 
 VLIB_PLUGIN_REGISTER () = {
-    .version = VPP_BUILD_VER,
-    .description = "Locator ID Separation Protocol (LISP)",
+  .version = VPP_BUILD_VER,
+  .description = "Locator ID Separation Protocol (LISP)",
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

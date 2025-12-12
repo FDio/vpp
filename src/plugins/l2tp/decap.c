@@ -287,11 +287,3 @@ VLIB_REGISTER_NODE (l2t_decap_local_node) = {
     [L2T_DECAP_NEXT_DROP] = "error-drop",
   },
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

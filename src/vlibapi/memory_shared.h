@@ -137,11 +137,3 @@ void vl_init_shmem (svm_region_t * vlib_rp, vl_api_shm_elem_config_t * config,
 		    int is_vlib, int is_private_region);
 
 #endif /* SRC_VLIBMEMORY_MEMORY_SHARED_H_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

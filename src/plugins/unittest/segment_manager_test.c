@@ -777,18 +777,9 @@ done:
   return 0;
 }
 
-VLIB_CLI_COMMAND (tcp_test_command, static) =
-{
+VLIB_CLI_COMMAND (tcp_test_command, static) = {
   .path = "test segment-manager",
   .short_help = "test segment manager [pressure_levels_1]"
-                "[pressure_level_2][alloc][fifo_ops][prealloc_hdrs][all]",
+		"[pressure_level_2][alloc][fifo_ops][prealloc_hdrs][all]",
   .function = segment_manager_test,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

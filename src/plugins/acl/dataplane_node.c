@@ -969,12 +969,3 @@ VNET_FEATURE_INIT (acl_out_ip4_fa_feature, static) = {
   .node_name = "acl-plugin-out-ip4-fa",
   .runs_before = VNET_FEATURES ("ip4-dvr-reinject", "interface-output"),
 };
-
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

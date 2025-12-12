@@ -300,11 +300,3 @@ esp_async_recycle_failed_submit (vlib_main_t *vm, vnet_crypto_async_frame_t *f,
 }
 
 #endif /* __ESP_H__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

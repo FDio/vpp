@@ -1413,11 +1413,3 @@ VLIB_CLI_COMMAND (string_test_command, static) = {
     "strtok_s |  clib_strtok | strnlen_s | clib_strnlen | strstr_s ]",
   .function = string_test_command_fn,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -424,11 +424,3 @@ ip6_sr_compute_rewrite_string_insert (ip6_address_t * sl)
 }
 
 #endif /* included_vnet_sr_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

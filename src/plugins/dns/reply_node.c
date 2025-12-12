@@ -215,11 +215,3 @@ VLIB_REGISTER_NODE (dns46_reply_node) =
     [DNS46_REPLY_NEXT_PUNT] = "error-punt",
   },
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

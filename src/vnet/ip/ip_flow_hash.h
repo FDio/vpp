@@ -68,11 +68,3 @@ int ip_flow_hash_set (ip_address_family_t af, u32 table_id,
 void ip_flow_hash_router_id_set (u32 router_id);
 
 #endif /* __IP_TYPES_H__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

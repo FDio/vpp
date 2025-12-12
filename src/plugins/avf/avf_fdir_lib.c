@@ -899,11 +899,3 @@ avf_fdir_prgm_error_decode (int err_no)
 
   return s;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

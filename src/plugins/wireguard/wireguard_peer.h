@@ -214,11 +214,3 @@ wg_peer_can_send (wg_peer_t *peer)
 }
 
 #endif // __included_wg_peer_h__
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

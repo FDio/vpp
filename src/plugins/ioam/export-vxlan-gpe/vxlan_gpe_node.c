@@ -144,8 +144,7 @@ vxlan_gpe_export_node_fn (vlib_main_t * vm,
 /*
  * Node for VXLAN-GPE export
  */
-VLIB_REGISTER_NODE (vxlan_export_node) =
-{
+VLIB_REGISTER_NODE (vxlan_export_node) = {
   .function = vxlan_gpe_export_node_fn,
   .name = "vxlan-gpe-ioam-export",
   .vector_size = sizeof (u32),
@@ -154,15 +153,6 @@ VLIB_REGISTER_NODE (vxlan_export_node) =
   .n_errors = ARRAY_LEN (export_error_strings),
   .error_strings = export_error_strings,
   .n_next_nodes = EXPORT_N_NEXT,
-    /* edit / add dispositions here */
-    .next_nodes =
-  {[EXPORT_NEXT_VXLAN_GPE_INPUT] = "vxlan-gpe-pop-ioam-v4"},
+  /* edit / add dispositions here */
+  .next_nodes = { [EXPORT_NEXT_VXLAN_GPE_INPUT] = "vxlan-gpe-pop-ioam-v4" },
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

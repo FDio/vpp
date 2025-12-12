@@ -108,11 +108,3 @@ http_timers_init (vlib_main_t *vm, http_conn_timeout_fn *rpc_cb,
 
   http_timers_set_state (vm, true);
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -182,11 +182,3 @@ lcp_get_default_num_queues (u8 is_tx)
 
   return lcpm->num_rx_queues ?: vlib_num_workers ();
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -892,11 +892,3 @@ svm_fifo_set_deq_thresh (svm_fifo_t *f, u32 thresh)
 }
 
 #endif /* __included_ssvm_fifo_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

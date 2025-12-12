@@ -176,11 +176,3 @@ typedef struct
 } memif_ring_t;
 
 #endif /* _MEMIF_H_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

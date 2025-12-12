@@ -52,11 +52,3 @@ int vat_plugin_init (vat_main_t * vam);
 int vat_load_new_plugins (plugin_main_t * pm);
 
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

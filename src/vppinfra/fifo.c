@@ -126,11 +126,3 @@ _clib_fifo_resize (void *v_old, uword n_new_elts, uword align, uword elt_bytes)
 
   return v_new;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

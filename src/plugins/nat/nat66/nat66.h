@@ -120,11 +120,3 @@ int nat66_plugin_enable (u32 outside_vrf);
 int nat66_plugin_disable ();
 
 #endif /* __included_nat66_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

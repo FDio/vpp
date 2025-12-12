@@ -108,13 +108,4 @@ l3xc_get (u32 index)
 
 extern vlib_node_registration_t l3xc_ip4_node;
 extern vlib_node_registration_t l3xc_ip6_node;
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
-
 #endif

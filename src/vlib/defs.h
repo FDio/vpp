@@ -80,11 +80,3 @@ typedef enum
 } vlib_enable_or_disable_t;
 
 #endif /* included_vlib_defs_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

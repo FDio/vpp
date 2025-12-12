@@ -220,11 +220,3 @@ int vnet_geneve_add_del_tunnel
 
 void vnet_int_geneve_bypass_mode (u32 sw_if_index, u8 is_ip6, u8 is_enable);
 #endif /* included_vnet_geneve_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -223,11 +223,3 @@ l2tp_encap_init (vlib_main_t * vm)
   rt->cached_session_index = (u32) ~ 0;
 }
 #endif /* CLIB_MARCH_VARIANT */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

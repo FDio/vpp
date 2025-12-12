@@ -299,11 +299,3 @@ VLIB_PLUGIN_REGISTER () = {
 		 "them if they quit",
   .default_disabled = 1,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

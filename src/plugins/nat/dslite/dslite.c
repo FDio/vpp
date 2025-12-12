@@ -279,16 +279,7 @@ format_dslite_ce_trace (u8 * s, va_list * args)
 
 VLIB_INIT_FUNCTION (dslite_init);
 
-VLIB_PLUGIN_REGISTER () =
-{
+VLIB_PLUGIN_REGISTER () = {
   .version = VPP_BUILD_VER,
   .description = "Dual-Stack Lite",
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -118,11 +118,3 @@ void tcp_timer_initialize_wheel (tcp_timer_wheel_t * tw,
 				 void (*expired_timer_cb) (u32 *), f64 now);
 
 #endif /* __included_tcp_timer_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

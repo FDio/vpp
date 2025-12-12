@@ -353,10 +353,3 @@ foreach_vlib_module_reference
 #undef _
 #define VLIB_INITS(...)  (char*[]) { __VA_ARGS__, 0}
 #endif /* included_vlib_init_h */
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

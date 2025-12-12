@@ -486,12 +486,3 @@ out:
   vec_free (header_filename);
   return rv;
 }
-
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

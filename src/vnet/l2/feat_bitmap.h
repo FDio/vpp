@@ -100,11 +100,3 @@ vnet_l2_feature_next (vlib_buffer_t * b, u32 * next_nodes, u32 feat_bit)
 }
 
 #endif /* included_vnet_l2_feat_bitmap_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

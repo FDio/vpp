@@ -520,11 +520,3 @@ igmp_pkt_build_query_init (igmp_pkt_build_query_t * bq, u32 sw_if_index)
   clib_memset (bq, 0, sizeof (*bq));
   bq->base.sw_if_index = sw_if_index;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

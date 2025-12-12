@@ -43,11 +43,3 @@ typedef struct
 #define MACTIME_DEVICE_FLAG_DROP_UDP_10001      (1<<5)
 
 #endif /* included_mactime_device_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

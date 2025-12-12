@@ -1599,17 +1599,8 @@ done:
   return 0;
 }
 
-VLIB_CLI_COMMAND (tcp_test_command, static) =
-{
+VLIB_CLI_COMMAND (tcp_test_command, static) = {
   .path = "test tcp",
   .short_help = "internal tcp unit tests",
   .function = tcp_test,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -31,13 +31,3 @@ void icmp6_error_set_vnet_buffer (vlib_buffer_t * b, u8 type, u8 code,
 extern vlib_node_registration_t ip6_icmp_input_node;
 
 #endif /* included_vnet_icmp6_h */
-
-
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

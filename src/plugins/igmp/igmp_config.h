@@ -128,11 +128,3 @@ extern igmp_group_t *igmp_group_lookup (igmp_config_t * config,
 extern u8 *format_igmp_config (u8 * s, va_list * args);
 
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

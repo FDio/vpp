@@ -305,11 +305,3 @@ do {						\
 } while (0)
 
 #endif /* included_fifo_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

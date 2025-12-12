@@ -129,11 +129,3 @@ main (int argc, char **argv)
   fclose (ofp);
   exit (0);
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

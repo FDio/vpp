@@ -680,12 +680,3 @@ VLIB_CLI_COMMAND (show_init_function, static) = {
   .short_help = "show init-function [init | enter | exit][verbose [nn]]",
   .function = show_init_function_command_fn,
 };
-
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -315,11 +315,3 @@ format_nat44_ed_tcp_state (u8 *s, va_list *args)
     }
   return s;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

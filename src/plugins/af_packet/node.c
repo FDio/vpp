@@ -821,12 +821,3 @@ VLIB_REGISTER_NODE (af_packet_input_node) = {
   .n_errors = AF_PACKET_INPUT_N_ERROR,
   .error_strings = af_packet_input_error_strings,
 };
-
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

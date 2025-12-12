@@ -471,11 +471,3 @@ VLIB_CLI_COMMAND (int_flood_cli, static) = {
   .short_help = "set interface l2 flood <interface> [disable]",
   .function = int_flood,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -25,11 +25,3 @@ VLIB_PLUGIN_REGISTER () = {
     "Intel Infrastructure Data Path Function (IDPF) Device Driver",
   .default_disabled = 1,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -578,13 +578,3 @@ VLIB_REGISTER_NODE (avf_input_node) = {
   .error_strings = avf_input_error_strings,
   .flags = VLIB_NODE_FLAG_TRACE_SUPPORTED,
 };
-
-
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

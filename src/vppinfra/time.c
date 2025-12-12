@@ -357,11 +357,3 @@ format_clib_time (u8 * s, va_list * args)
 	      error, c->clocks_per_second);
   return (s);
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

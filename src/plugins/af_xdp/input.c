@@ -367,11 +367,3 @@ VLIB_REGISTER_NODE (af_xdp_input_node) = {
   .error_strings = af_xdp_input_error_strings,
   .flags = VLIB_NODE_FLAG_TRACE_SUPPORTED,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

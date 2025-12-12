@@ -593,11 +593,3 @@ format_det_map_ses (u8 * s, va_list * args)
 
   return s;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

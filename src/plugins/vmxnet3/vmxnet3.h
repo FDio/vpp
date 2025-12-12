@@ -795,10 +795,3 @@ vmxnet3_rxq_refill_ring1 (vlib_main_t * vm, vmxnet3_device_t * vd,
 }
 
 #endif /* __included_vmnet_vmnet_h__ */
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

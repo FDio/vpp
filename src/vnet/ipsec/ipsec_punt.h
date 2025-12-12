@@ -36,11 +36,3 @@ extern u8 *format_ipsec_punt_reason (u8 * s, va_list * args);
 extern vlib_punt_reason_t ipsec_punt_reason[IPSEC_PUNT_N_REASONS];
 
 #endif /* __IPSEC_SPD_H__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

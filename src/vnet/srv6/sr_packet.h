@@ -174,12 +174,5 @@ typedef struct
   u16 session_id;
   u16 seq_num;
 } __attribute__ ((packed)) ip6_sr_pt_tlv_t;
-/*
-* fd.io coding-style-patch-verification: ON
-*
-* Local Variables:
-* eval: (c-set-style "gnu")
-* End:
-*/
 
 #endif /* included_vnet_sr_packet_h */

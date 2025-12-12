@@ -621,11 +621,3 @@ echo_session_print_stats (echo_main_t * em, echo_session_t * session)
 	    (session->bytes_received * 8.0) / deltat / 1e9,
 	    (session->bytes_sent * 8.0) / deltat / 1e9);
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

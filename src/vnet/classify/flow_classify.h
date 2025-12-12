@@ -52,11 +52,3 @@ int vnet_set_flow_classify_intfc (vlib_main_t * vm, u32 sw_if_index,
 				  u32 is_add);
 
 #endif /* __included_vnet_flow_classify_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

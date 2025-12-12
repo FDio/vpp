@@ -117,8 +117,3 @@ autoreply define sr_mpls_policy_assign_endpoint_color
   vl_api_address_t endpoint;
   u32 color;
 };
-
-/*
- * fd.io coding-style-patch-verification: ON Local Variables: eval:
- * (c-set-style "gnu") End:
- */

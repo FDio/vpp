@@ -568,11 +568,3 @@ char *format_one_elog_event (void *em_arg, void *ep_arg);
 #endif /* CLIB_UNIX */
 
 #endif /* included_clib_elog_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

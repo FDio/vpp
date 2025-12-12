@@ -74,11 +74,3 @@ ioam_seqno_init_rx_info (seqno_rx_info * data)
   data->rx_packets = 0;
   return;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

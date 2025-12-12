@@ -25,13 +25,4 @@ void *pkt_push_udp_and_ip (vlib_main_t * vm, vlib_buffer_t * b, u16 sp,
 			   u16 dp, ip_address_t * sip, ip_address_t * dip,
 			   u8 cksum_offload);
 
-void *pkt_push_ecm_hdr (vlib_buffer_t * b);
-
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
+void *pkt_push_ecm_hdr (vlib_buffer_t *b);

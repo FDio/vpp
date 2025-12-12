@@ -461,16 +461,8 @@ VLIB_CLI_COMMAND(create_sixrd_tunnel_command, static) = {
                   "[security-check]",
     .function = create_sixrd_tunnel_command_fn,
 };
-VLIB_CLI_COMMAND(delete_sixrd_tunnel_command, static) = {
-    .path = "delete 6rd tunnel",
-    .short_help = "delete 6rd tunnel sw_if_index <sw_if_index>",
-    .function = delete_sixrd_tunnel_command_fn,
+VLIB_CLI_COMMAND (delete_sixrd_tunnel_command, static) = {
+  .path = "delete 6rd tunnel",
+  .short_help = "delete 6rd tunnel sw_if_index <sw_if_index>",
+  .function = delete_sixrd_tunnel_command_fn,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

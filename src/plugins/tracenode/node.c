@@ -131,11 +131,3 @@ VNET_FEATURE_INIT (pcap_filtering6, static) = {
   .runs_after = VNET_FEATURES ("ip6-full-reassembly-feature",
 			       "ip6-sv-reassembly-feature"),
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

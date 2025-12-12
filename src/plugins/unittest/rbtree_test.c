@@ -238,17 +238,8 @@ done:
   return 0;
 }
 
-VLIB_CLI_COMMAND (rbtree_test_command, static) =
-{
+VLIB_CLI_COMMAND (rbtree_test_command, static) = {
   .path = "test rbtree",
   .short_help = "internal rbtree unit tests",
   .function = rbtree_test,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

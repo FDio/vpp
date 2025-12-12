@@ -240,11 +240,3 @@ vnet_connect_uri (vnet_connect_args_t *a)
     return rv;
   return 0;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -637,11 +637,3 @@ static inline int BV (clib_bihash_search_inline_2)
 #endif /* __included_bihash_template_h__ */
 
 /** @endcond */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

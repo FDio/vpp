@@ -1469,11 +1469,3 @@ VNET_FEATURE_ARC_INIT (interface_drop, static) = {
 VNET_FEATURE_INIT (drop, static) = { .arc_name = "error-drop",
 				     .node_name = "drop",
 				     .runs_before = 0 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

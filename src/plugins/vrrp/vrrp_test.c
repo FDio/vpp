@@ -892,10 +892,3 @@ api_want_vrrp_vr_events (vat_main_t * vam)
 }
 
 #include <vrrp/vrrp.api_test.c>
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

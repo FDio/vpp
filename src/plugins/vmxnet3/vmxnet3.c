@@ -963,13 +963,4 @@ vmxnet3_delete_if (vlib_main_t * vm, vmxnet3_device_t * vd)
   clib_error_free (vd->error);
   clib_memset (vd, 0, sizeof (*vd));
   pool_put (vmxm->devices, vd);
-
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

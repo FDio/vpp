@@ -989,10 +989,3 @@ if (TCP_DEBUG_CC > 1)							\
 #endif
 
 #endif /* SRC_VNET_TCP_TCP_DEBUG_H_ */
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

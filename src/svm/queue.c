@@ -497,11 +497,3 @@ svm_queue_set_consumer_event_fd (svm_queue_t * q, int fd)
 {
   q->consumer_evtfd = fd;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

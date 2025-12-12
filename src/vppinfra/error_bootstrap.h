@@ -130,11 +130,3 @@ do {						\
 } while (0)
 
 #endif /* included_error_bootstrap_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

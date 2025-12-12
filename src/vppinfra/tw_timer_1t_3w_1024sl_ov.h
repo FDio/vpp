@@ -43,11 +43,3 @@
 #include <vppinfra/tw_timer_template.h>
 
 #endif /* __included_tw_timer_1t_3w_1024sl_ov_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

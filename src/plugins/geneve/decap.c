@@ -1283,11 +1283,3 @@ VLIB_REGISTER_NODE (ip6_geneve_bypass_node) =
   .format_buffer = format_ip6_header,
   .format_trace = format_ip6_forward_next_trace,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

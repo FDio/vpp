@@ -5077,11 +5077,3 @@ vppcom_worker_is_detached (void)
 
   return wrk->api_client_handle == ~0;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

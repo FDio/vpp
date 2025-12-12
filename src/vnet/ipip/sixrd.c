@@ -506,11 +506,3 @@ sixrd_init (vlib_main_t * vm)
 }
 
 VLIB_INIT_FUNCTION (sixrd_init);
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

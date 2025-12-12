@@ -1050,11 +1050,3 @@ uword elf_delete_segment_with_type (elf_main_t * em,
 void elf_set_dynamic_entries (elf_main_t * em);
 
 #endif /* included_clib_elf_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

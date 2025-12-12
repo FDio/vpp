@@ -268,11 +268,3 @@ lacp_bit_test (u8 val, u8 bit)
 }
 
 #endif /* __included_lacp_node_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

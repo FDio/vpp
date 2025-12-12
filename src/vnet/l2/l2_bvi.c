@@ -325,12 +325,3 @@ VLIB_CLI_COMMAND (l2_bvi_delete_command, static) = {
   .short_help = "bvi delete <interface>",
   .function = l2_bvi_delete_cli,
 };
-
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

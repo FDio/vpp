@@ -201,10 +201,3 @@ segment_manager_parse_segment_handle (u64 segment_handle, u32 * sm_index,
 extern u8 *format_segment_manager (u8 *s, va_list *args);
 
 #endif /* SRC_VNET_SESSION_SEGMENT_MANAGER_H_ */
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

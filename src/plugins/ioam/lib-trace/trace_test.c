@@ -118,11 +118,3 @@ vl_api_trace_profile_show_config_reply_t_handler (vat_main_t * vam)
 /* Override generated plugin register symbol */
 #define vat_plugin_register trace_vat_plugin_register
 #include <ioam/lib-trace/trace.api_test.c>
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

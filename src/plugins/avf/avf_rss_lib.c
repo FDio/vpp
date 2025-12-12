@@ -2680,11 +2680,3 @@ avf_rss_rule_destroy (struct avf_flow_vc_ctx *ctx,
 
   return ret;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

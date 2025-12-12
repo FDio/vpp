@@ -1401,11 +1401,3 @@ vnet_tls_get_main (void)
 {
   return &tls_main;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

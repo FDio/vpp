@@ -118,11 +118,3 @@ u8 *tcp_scoreboard_replay (u8 * s, tcp_connection_t * tc, u8 verbose);
 u8 tcp_scoreboard_is_sane_post_recovery (tcp_connection_t * tc);
 
 #endif /* SRC_VNET_TCP_TCP_SACK_H_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

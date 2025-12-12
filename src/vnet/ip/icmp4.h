@@ -35,11 +35,3 @@ icmp4_error_set_vnet_buffer (vlib_buffer_t * b, u8 type, u8 code, u32 data)
 extern vlib_node_registration_t ip4_icmp_input_node;
 
 #endif /* included_vnet_icmp4_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

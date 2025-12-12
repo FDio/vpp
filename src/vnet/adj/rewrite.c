@@ -202,11 +202,3 @@ vnet_update_adjacency_for_sw_interface (vnet_main_t * vnm,
   ASSERT (hc->update_adjacency);
   hc->update_adjacency (vnm, sw_if_index, ai);
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -176,11 +176,3 @@ VNET_FEATURE_INIT (srv6_end_m_gtp6_e, static) =
 };
 
 VLIB_INIT_FUNCTION (srv6_end_m_gtp6_e_init);
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

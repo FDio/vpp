@@ -121,11 +121,3 @@ vnet_api_error_t bfd_udp_set_echo_source (u32 loopback_sw_if_index);
 vnet_api_error_t bfd_udp_del_echo_source ();
 
 #endif /* __included_bfd_api_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

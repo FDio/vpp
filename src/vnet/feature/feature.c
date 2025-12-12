@@ -750,11 +750,3 @@ vnet_feature_add_del_sw_interface (vnet_main_t * vnm, u32 sw_if_index,
 
 VNET_SW_INTERFACE_ADD_DEL_FUNCTION_PRIO (vnet_feature_add_del_sw_interface,
 					 VNET_ITF_FUNC_PRIORITY_HIGH);
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -33,11 +33,3 @@ int tracenode_feature_enable_disable (u32 sw_if_index, bool is_pcap,
 				      bool enable);
 
 #endif /* _TRACENODE_H_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

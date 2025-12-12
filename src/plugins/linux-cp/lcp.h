@@ -70,11 +70,3 @@ void lcp_set_default_num_queues (u16 num_queues, u8 is_tx);
 u16 lcp_get_default_num_queues (u8 is_tx);
 
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -91,11 +91,3 @@ vnet_device_increment_rx_packets (clib_thread_index_t thread_index, u64 count)
 }
 
 #endif /* included_vnet_vnet_device_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

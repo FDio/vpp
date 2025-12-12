@@ -96,11 +96,3 @@ nat_free_ip4_addr_and_port (nat_ip4_pool_t * pool,
 			    u16 protocol, nat_ip4_addr_port_t * in);
 
 #endif /* included_nat_lib_alloc_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

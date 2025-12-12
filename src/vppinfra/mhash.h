@@ -174,11 +174,3 @@ format_function_t format_mhash_key;
 int test_mhash_main (unformat_input_t *input);
 
 #endif /* included_clib_mhash_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

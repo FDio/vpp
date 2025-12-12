@@ -73,11 +73,3 @@ udp_ping_create_reply_from_probe_ip6 (ip6_header_t * ip,
 }
 
 #endif /* PLUGINS_IOAM_PLUGIN_IOAM_UDP_PING_UDP_PING_UTIL_H_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

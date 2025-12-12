@@ -303,11 +303,3 @@ gso_segment_buffer_inline (vlib_main_t *vm,
 }
 
 #endif /* included_gso_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

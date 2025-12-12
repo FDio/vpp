@@ -224,11 +224,3 @@ void swrap_constructor (void);
 void swrap_destructor (void);
 
 #endif /* included_ldp_socket_wrapper_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -656,11 +656,3 @@ bond_member_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
 }
 
 VNET_SW_INTERFACE_ADD_DEL_FUNCTION (bond_member_interface_add_del);
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

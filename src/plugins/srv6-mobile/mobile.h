@@ -353,11 +353,3 @@ extern srv6_t_main_v4_dt_t srv6_t_main_v4_dt;
 extern vlib_node_registration_t srv6_t_m_gtp4_dt;
 
 #endif /* __included_srv6_end_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -97,17 +97,8 @@ done:
   return error;
 }
 
-VLIB_CLI_COMMAND (create_pppoe_cp_cmd, static) =
-{
-    .path = "create pppoe cp",
-    .short_help = "create pppoe cp-if-index <intfc> [del]",
-    .function = pppoe_add_del_cp_command_fn,
+VLIB_CLI_COMMAND (create_pppoe_cp_cmd, static) = {
+  .path = "create pppoe cp",
+  .short_help = "create pppoe cp-if-index <intfc> [del]",
+  .function = pppoe_add_del_cp_command_fn,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

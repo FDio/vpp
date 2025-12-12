@@ -83,11 +83,3 @@ int l2_rw_mod_entry (u32 * index,
 extern vlib_node_registration_t l2_rw_node;
 
 #endif /* L2_FW_H_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -169,11 +169,3 @@ unformat_function_t unformat_llc_header;
 unformat_function_t unformat_pg_llc_header;
 
 #endif /* included_llc_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

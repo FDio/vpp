@@ -22,11 +22,3 @@ int clib_netns_open (u8 *netns);
 int clib_setns (int nfd);
 
 #endif /* included_vppinfra_netns_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

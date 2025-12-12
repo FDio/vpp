@@ -70,11 +70,3 @@ lacp_start_wait_while_timer (vlib_main_t * vm, member_if_t * mif,
 }
 
 #endif /* __LACP_MUX_MACHINE_H__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

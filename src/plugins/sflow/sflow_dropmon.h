@@ -68,11 +68,3 @@ bool SFLOWDM_set_attr (SFLOWDM *dmt, int field, void *buf, int len);
 int SFLOWDM_send (SFLOWDM *dmt);
 
 #endif /* __included_sflow_dropmon_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

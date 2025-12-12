@@ -408,11 +408,3 @@ VLIB_CLI_COMMAND (show_nat66_static_mappings_command, static) = {
   .short_help = "show nat66 static mappings",
   .function = nat66_show_static_mappings_command_fn,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

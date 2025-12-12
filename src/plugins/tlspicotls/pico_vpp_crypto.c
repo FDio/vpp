@@ -349,16 +349,6 @@ ptls_cipher_suite_t ptls_vpp_crypto_aes256gcmsha384 =
   &ptls_openssl_sha384
 };
 
-ptls_cipher_suite_t *ptls_vpp_crypto_cipher_suites[] =
-  { &ptls_vpp_crypto_aes256gcmsha384,
-  &ptls_vpp_crypto_aes128gcmsha256,
-  NULL
+ptls_cipher_suite_t *ptls_vpp_crypto_cipher_suites[] = {
+  &ptls_vpp_crypto_aes256gcmsha384, &ptls_vpp_crypto_aes128gcmsha256, NULL
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

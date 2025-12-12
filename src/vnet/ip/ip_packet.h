@@ -250,11 +250,3 @@ ip_csum_and_memcpy_fold (ip_csum_t sum, void *dst)
 }
 
 #endif /* included_ip_packet_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

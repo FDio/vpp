@@ -72,11 +72,3 @@ api_vxlan_gpe_ioam_export_enable_disable (vat_main_t * vam)
 /* Override generated plugin register symbol */
 #define vat_plugin_register vxlan_gpe_ioam_export_vat_plugin_register
 #include <ioam/export-vxlan-gpe/vxlan_gpe_ioam_export.api_test.c>
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

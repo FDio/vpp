@@ -329,11 +329,3 @@ VLIB_REGISTER_NODE (dns6_request_node) =
     [DNS46_REQUEST_NEXT_IP_LOOKUP] = "ip6-lookup",
   },
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

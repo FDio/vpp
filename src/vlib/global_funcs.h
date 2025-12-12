@@ -66,11 +66,3 @@ vlib_get_elog_main ()
 }
 
 #endif /* included_vlib_global_funcs_h_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

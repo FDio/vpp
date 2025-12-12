@@ -262,11 +262,3 @@ tunnel_build_v4_hdr (const tunnel_t *t, ip_protocol_t next_proto,
   ip->protocol = next_proto;
   ip->checksum = ip4_header_checksum (ip);
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

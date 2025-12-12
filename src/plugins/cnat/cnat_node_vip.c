@@ -248,11 +248,3 @@ VLIB_REGISTER_NODE (cnat_vip_ip6_node) =
     [CNAT_TRANSLATION_NEXT_LOOKUP] = "ip6-lookup",
   },
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

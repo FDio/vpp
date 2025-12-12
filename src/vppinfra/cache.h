@@ -145,12 +145,3 @@ clib_cl_demote (void *p)
 }
 
 #endif /* included_clib_cache_h */
-
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -47,11 +47,3 @@ int ip_session_redirect_del (vlib_main_t *vm, u32 table_index,
 			     const u8 *match);
 
 #endif /* IP_SESSION_REDIRECT_H_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

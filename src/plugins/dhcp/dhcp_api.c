@@ -895,14 +895,6 @@ VLIB_API_INIT_FUNCTION (dhcp_api_hookup);
 #include <vpp/app/version.h>
 
 VLIB_PLUGIN_REGISTER () = {
-    .version = VPP_BUILD_VER,
-    .description = "Dynamic Host Configuration Protocol (DHCP)",
+  .version = VPP_BUILD_VER,
+  .description = "Dynamic Host Configuration Protocol (DHCP)",
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

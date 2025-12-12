@@ -31,11 +31,3 @@ extern void ip_neighbor_publish (index_t ipni,
 				 ip_neighbor_event_flags_t flags);
 
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

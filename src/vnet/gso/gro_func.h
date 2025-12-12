@@ -691,11 +691,3 @@ vnet_gro_simple_inline (vlib_main_t * vm, u32 * from, u16 n_left_from,
   return bi;
 }
 #endif /* included_gro_func_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

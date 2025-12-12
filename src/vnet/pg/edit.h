@@ -200,11 +200,3 @@ uword unformat_pg_number (unformat_input_t * input, va_list * args);
 uword unformat_pg_interface (unformat_input_t * input, va_list * args);
 
 #endif /* included_packet_generator_pg_edit_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

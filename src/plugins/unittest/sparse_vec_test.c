@@ -55,17 +55,8 @@ test_sparse_vec_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-VLIB_CLI_COMMAND (test_sparse_vec_command, static) =
-{
+VLIB_CLI_COMMAND (test_sparse_vec_command, static) = {
   .path = "test sparse_vec",
   .short_help = "test sparse_vec",
   .function = test_sparse_vec_command_fn,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

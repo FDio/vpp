@@ -132,11 +132,3 @@ sock_test_write (int fd, uint8_t * buf, uint32_t nbytes,
 }
 
 #endif /* __sock_test_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

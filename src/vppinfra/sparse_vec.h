@@ -260,11 +260,3 @@ sparse_vec_index2 (void *v,
 })
 
 #endif /* included_sparse_vec_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

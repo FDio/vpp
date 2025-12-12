@@ -593,11 +593,3 @@ void ethernet_input_init (vlib_main_t * vm, ethernet_main_t * em);
 extern vlib_node_registration_t ethernet_input_node;
 
 #endif /* included_ethernet_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -215,11 +215,3 @@ BIO_new_dtls (session_handle_t sh)
 
   return b;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

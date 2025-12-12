@@ -462,11 +462,3 @@ int echo_sapi_detach (echo_main_t *em);
 int echo_sapi_recv_fd (echo_main_t *em, int *fds, int n_fds);
 
 #endif /* __included_vpp_echo_common_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

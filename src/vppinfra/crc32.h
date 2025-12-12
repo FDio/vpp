@@ -172,11 +172,3 @@ clib_crc32c (const u8 *p, uword len)
 #endif
 
 #endif /* __included_crc32_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

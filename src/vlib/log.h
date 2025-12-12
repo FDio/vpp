@@ -182,11 +182,3 @@ vlib_log_is_enabled (vlib_log_level_t level, vlib_log_class_t class)
 }
 
 #endif /* included_vlib_log_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

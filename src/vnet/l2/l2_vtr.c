@@ -816,14 +816,8 @@ done:
 
 VLIB_CLI_COMMAND (int_l2_pbb_vtr_cli, static) = {
   .path = "set interface l2 pbb-tag-rewrite",
-  .short_help = "set interface l2 pbb-tag-rewrite <interface> [disable | pop | push | translate_pbb_stag <outer_tag> dmac <address> smac <address> s_id <nn> [b_vlanid <nn>]]",
+  .short_help = "set interface l2 pbb-tag-rewrite <interface> [disable | pop "
+		"| push | translate_pbb_stag <outer_tag> dmac <address> smac "
+		"<address> s_id <nn> [b_vlanid <nn>]]",
   .function = int_l2_pbb_vtr,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

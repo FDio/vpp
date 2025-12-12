@@ -752,11 +752,3 @@ VLIB_REGISTER_NODE (ioam_cache_ts_timer_tick_node) = {
     [0] = "error-drop",
   },
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -122,11 +122,3 @@ _signed_binop (32, 4, is_equal, vcmpequw)
 }
 
 #endif /* included_vector_altivec_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

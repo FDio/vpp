@@ -118,11 +118,3 @@ int openssl_ctx_read_tls (tls_ctx_t *ctx, session_t *tls_session);
 void tls_async_evts_init_list (tls_async_ctx_t *ctx);
 void tls_async_evts_free_list (tls_ctx_t *ctx);
 #endif /* SRC_PLUGINS_TLSOPENSSL_TLS_OPENSSL_H_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

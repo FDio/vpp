@@ -576,11 +576,3 @@ VLIB_REGISTER_NODE (dpdk_input_node) = {
   .n_errors = DPDK_N_ERROR,
   .error_strings = dpdk_error_strings,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

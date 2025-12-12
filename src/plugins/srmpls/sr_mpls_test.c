@@ -164,11 +164,3 @@ api_sr_mpls_policy_del (vat_main_t *vam)
 }
 
 #include <plugins/srmpls/sr_mpls.api_test.c>
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

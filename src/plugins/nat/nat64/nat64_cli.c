@@ -974,15 +974,7 @@ VLIB_CLI_COMMAND (show_nat64_prefix_command, static) = {
  * @cliexend
 ?*/
 VLIB_CLI_COMMAND (nat64_add_interface_address_command, static) = {
-    .path = "nat64 add interface address",
-    .short_help = "nat64 add interface address <interface> [del]",
-    .function = nat64_add_interface_address_command_fn,
+  .path = "nat64 add interface address",
+  .short_help = "nat64 add interface address <interface> [del]",
+  .function = nat64_add_interface_address_command_fn,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

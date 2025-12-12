@@ -79,11 +79,3 @@ __unittest_crypto_test_registration_##x (void)                               \
 unittest_crypto_test_registration_t __unittest_crypto_test_##x
 
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

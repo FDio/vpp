@@ -30,11 +30,3 @@ void clib_ptclosure_copy (u8 ** dst, u8 ** src);
 u8 **clib_ptclosure (u8 ** orig);
 
 #endif /* included_clib_ptclosure_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

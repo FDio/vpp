@@ -483,18 +483,10 @@ done:
   return ret;
 }
 
-VLIB_CLI_COMMAND (vrrp_vr_track_if_command, static) =
-{
+VLIB_CLI_COMMAND (vrrp_vr_track_if_command, static) = {
   .path = "vrrp vr track-if",
   .short_help =
-  "vrrp vr track-if (add|del) (<intf_name>|sw_if_index <n>) vr_id <n> [ipv6] track-index <n> priority <n> [ track-index <n> priority <n> ...]",
+    "vrrp vr track-if (add|del) (<intf_name>|sw_if_index <n>) vr_id <n> "
+    "[ipv6] track-index <n> priority <n> [ track-index <n> priority <n> ...]",
   .function = vrrp_vr_track_if_command_fn,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

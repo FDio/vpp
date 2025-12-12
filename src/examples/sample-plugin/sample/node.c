@@ -705,11 +705,3 @@ VLIB_REGISTER_NODE (sample_node) =
     [SAMPLE_NEXT_INTERFACE_OUTPUT] = "interface-output",
   },
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

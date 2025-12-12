@@ -260,11 +260,3 @@ ppp_init (vlib_main_t * vm)
 }
 
 VLIB_INIT_FUNCTION (ppp_init);
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

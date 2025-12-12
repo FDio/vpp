@@ -614,11 +614,3 @@ format_ipsec_itf (u8 * s, va_list * a)
 
   return (s);
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

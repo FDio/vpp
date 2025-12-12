@@ -469,11 +469,3 @@ clib_timebase_summer_offset (clib_timebase_t * tb, f64 now)
   else
     return (0.0);
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

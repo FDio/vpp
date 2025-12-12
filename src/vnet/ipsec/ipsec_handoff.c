@@ -415,11 +415,3 @@ VLIB_REGISTER_NODE (ah6_decrypt_handoff) = {
     [0] = "error-drop",
   },
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

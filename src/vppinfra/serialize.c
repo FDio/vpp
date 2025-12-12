@@ -1251,11 +1251,3 @@ unserialize_open_clib_file (serialize_main_t * m, char *file)
 }
 
 #endif /* CLIB_UNIX */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

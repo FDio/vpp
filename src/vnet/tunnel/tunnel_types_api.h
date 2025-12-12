@@ -43,11 +43,3 @@ extern int tunnel_decode (const vl_api_tunnel_t *in, tunnel_t *out);
 extern void tunnel_encode (const tunnel_t *in, vl_api_tunnel_t *out);
 
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

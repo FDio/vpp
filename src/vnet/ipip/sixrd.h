@@ -62,11 +62,3 @@ ip4_sixrd_get_tunnel (u32 sdi, ip4_address_t * addr, u8 * error)
     }
   return t;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

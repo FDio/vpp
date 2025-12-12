@@ -564,11 +564,3 @@ VLIB_CLI_COMMAND (int_l2_efp_filter_cli, static) = {
 };
 
 #endif /* CLIB_MARCH_VARIANT */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

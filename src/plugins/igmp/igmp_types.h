@@ -65,13 +65,4 @@ typedef enum igmp_filter_mode_t_
 } igmp_filter_mode_t;
 
 #define IGMP_N_FILTER_MODES 2
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
-
 #endif

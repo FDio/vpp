@@ -75,11 +75,3 @@ extern void ip_mprefix_encode (const mfib_prefix_t * in,
 			       vl_api_mprefix_t * out);
 
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

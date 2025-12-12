@@ -48,11 +48,3 @@ typedef walk_rc_t (*igmp_ssm_range_walk_t) (const fib_prefix_t * pfx,
 extern void igmp_ssm_range_walk (igmp_ssm_range_walk_t fn, void *ctx);
 
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

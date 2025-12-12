@@ -571,11 +571,3 @@ VNET_DEVICE_CLASS_TX_FN (rdma_device_class) (vlib_main_t * vm,
 
   return n_buffers - n_left;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

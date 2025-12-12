@@ -1618,11 +1618,3 @@ format_nat_protocol (u8 * s, va_list * args)
   s = format (s, "%s", t);
   return s;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

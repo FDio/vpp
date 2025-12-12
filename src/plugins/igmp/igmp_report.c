@@ -253,11 +253,3 @@ igmp_handle_report (const igmp_report_args_t * args)
 
   igmp_proxy_device_merge_config (config, 0);
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

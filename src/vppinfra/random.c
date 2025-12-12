@@ -93,11 +93,3 @@ clib_chisquare (u64 *values)
     }
   return d;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

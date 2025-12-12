@@ -959,10 +959,3 @@ vlib_node_main_lazy_next_update (vlib_main_t *vm)
     }
   return 0;
 }
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

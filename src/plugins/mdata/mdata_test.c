@@ -70,11 +70,3 @@ api_mdata_enable_disable (vat_main_t * vam)
  * and that the data plane plugin processes
  */
 #include <mdata/mdata.api_test.c>
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

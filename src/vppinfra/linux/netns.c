@@ -45,11 +45,3 @@ clib_setns (int nfd)
 {
   return setns (nfd, CLONE_NEWNET);
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

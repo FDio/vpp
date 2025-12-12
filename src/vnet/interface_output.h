@@ -147,11 +147,3 @@ vnet_calc_outer_checksums_inline (vlib_main_t *vm, vlib_buffer_t *b)
   vnet_buffer_offload_flags_clear (b, VNET_BUFFER_OFFLOAD_F_TNL_MASK);
 }
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -1478,11 +1478,3 @@ build_src_dst (gid_address_t * sd, gid_address_t * src, gid_address_t * dst)
       break;
     }
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -23,11 +23,3 @@ VLIB_PLUGIN_REGISTER () = {
   .version = VPP_BUILD_VER,
   .description = "RDMA IBverbs Device Driver",
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

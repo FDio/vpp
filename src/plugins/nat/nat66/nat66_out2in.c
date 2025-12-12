@@ -207,11 +207,3 @@ VLIB_REGISTER_NODE (nat66_out2in_node) = {
     [NAT66_OUT2IN_NEXT_IP6_LOOKUP] = "ip6-lookup",
   },
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

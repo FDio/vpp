@@ -582,11 +582,3 @@ VLIB_CLI_COMMAND (show_l2xcrw_command, static) = {
   .short_help = "show l2xcrw",
   .function = show_l2xcrw_command_fn,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

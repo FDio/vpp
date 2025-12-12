@@ -1646,11 +1646,3 @@ vlib_buffer_chain_linearize (vlib_main_t * vm, vlib_buffer_t * b)
 }
 
 #endif /* included_vlib_buffer_funcs_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -70,11 +70,3 @@ vnet_set_vni_and_flags (vxlan_header_t * h, u32 vni)
 }
 
 #endif /* __included_vxlan_packet_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

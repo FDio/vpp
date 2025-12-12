@@ -179,11 +179,3 @@ always_inline f32 clib_net_to_host_f32 (f32 x) { return x; }
 always_inline f32 clib_host_to_net_f32 (f32 x) { return x; }
 
 #endif /* included_clib_byte_order_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

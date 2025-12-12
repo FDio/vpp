@@ -146,11 +146,3 @@ void osi_register_input_protocol (osi_protocol_t protocol, u32 node_index);
 format_function_t format_osi_header;
 
 #endif /* included_osi_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

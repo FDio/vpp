@@ -144,11 +144,3 @@ typedef struct
 } udp_ping_t;
 
 #endif /* PLUGINS_IOAM_PLUGIN_IOAM_UDP_PING_UDP_PING_PACKET_H_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -42,11 +42,3 @@
 #include <vppinfra/tw_timer_template.h>
 
 #endif /* __included_tw_timer_16t_1w_2048sl__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

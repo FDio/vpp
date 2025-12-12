@@ -277,11 +277,3 @@ nat_affinity_unlock (ip4_address_t client_addr, ip4_address_t service_addr,
 unlock:
   clib_spinlock_unlock_if_init (&nam->affinity_lock);
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

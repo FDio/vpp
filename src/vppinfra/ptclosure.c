@@ -113,13 +113,3 @@ clib_ptclosure (u8 ** orig)
   clib_ptclosure_free (prev);
   return cur;
 }
-
-
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

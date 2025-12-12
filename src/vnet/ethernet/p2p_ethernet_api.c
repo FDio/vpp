@@ -102,11 +102,3 @@ p2p_ethernet_api_hookup (vlib_main_t * vm)
 }
 
 VLIB_API_INIT_FUNCTION (p2p_ethernet_api_hookup);
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

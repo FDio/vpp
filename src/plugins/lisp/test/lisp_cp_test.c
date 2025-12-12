@@ -1378,15 +1378,7 @@ VLIB_CLI_COMMAND (lisp_cp_command, static) =
 #include <vpp/app/version.h>
 
 VLIB_PLUGIN_REGISTER () = {
-    .version = VPP_BUILD_VER,
-    .description = "Test Locator ID Separation Protocol (LISP)",
-    .default_disabled = 1,
+  .version = VPP_BUILD_VER,
+  .description = "Test Locator ID Separation Protocol (LISP)",
+  .default_disabled = 1,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

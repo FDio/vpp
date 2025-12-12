@@ -45,11 +45,3 @@ extern mssc_main_t mssc_main;
 #define MSS_CLAMP_UNSET 0xffff
 
 #endif /* __included_mss_clamp_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -772,11 +772,3 @@ crypto_sw_scheduler_config (vlib_main_t *vm, unformat_input_t *input)
 }
 
 VLIB_CONFIG_FUNCTION (crypto_sw_scheduler_config, "crypto_sw_scheduler");
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

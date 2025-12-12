@@ -672,12 +672,3 @@ ikev2_get_per_thread_data ()
   return vec_elt_at_index (ikev2_main.per_thread_data, thread_index);
 }
 #endif /* __included_ikev2_priv_h__ */
-
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

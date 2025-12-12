@@ -138,13 +138,4 @@ typedef enum
 
 #define DNS_CLASS_IN	1	/**< The Internet */
 
-
 #endif /* included_dns_packet_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

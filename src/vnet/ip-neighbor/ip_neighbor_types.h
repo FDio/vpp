@@ -153,11 +153,3 @@ extern void ip_neighbor_alloc_ctr (ip_neighbor_counters_t *ctr,
 extern ip_neighbor_counters_t ip_neighbor_counters[N_AF];
 
 #endif /* __INCLUDE_IP_NEIGHBOR_H__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -680,17 +680,8 @@ VLIB_CLI_COMMAND (det44_feature_command, static) =
  *  GigabitEthernet0/a/0 out
  * @cliexend
 ?*/
-VLIB_CLI_COMMAND (det44_show_interfaces_command, static) =
-{
+VLIB_CLI_COMMAND (det44_show_interfaces_command, static) = {
   .path = "show det44 interfaces",
   .short_help = "show det44 interfaces",
   .function = det44_show_interfaces_command_fn,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

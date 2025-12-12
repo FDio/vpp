@@ -342,11 +342,3 @@ VLIB_REGISTER_NODE (nat44_handoff_classify_node) = {
   .format_trace = format_nat44_classify_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

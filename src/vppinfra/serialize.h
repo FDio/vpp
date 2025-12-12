@@ -433,11 +433,3 @@ void unserialize_check_magic (serialize_main_t * m, void *magic,
 			      u32 magic_bytes);
 
 #endif /* included_clib_serialize_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

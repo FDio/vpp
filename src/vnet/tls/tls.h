@@ -191,11 +191,3 @@ void tls_add_postponed_ho_cleanups (u32 ho_index);
 void tls_flush_postponed_ho_cleanups ();
 
 #endif /* SRC_VNET_TLS_TLS_H_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

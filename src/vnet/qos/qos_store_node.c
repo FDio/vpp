@@ -163,15 +163,6 @@ VNET_FEATURE_INIT (ip6_qos_store_node, static) = {
     .node_name = "ip6-qos-store",
 };
 VNET_FEATURE_INIT (ip6m_qos_store_node, static) = {
-    .arc_name = "ip6-multicast",
-    .node_name = "ip6-qos-store",
+  .arc_name = "ip6-multicast",
+  .node_name = "ip6-qos-store",
 };
-
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

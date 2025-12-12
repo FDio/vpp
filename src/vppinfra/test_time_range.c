@@ -173,10 +173,3 @@ main (int argc, char *argv[])
   return ret;
 }
 #endif /* CLIB_UNIX */
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

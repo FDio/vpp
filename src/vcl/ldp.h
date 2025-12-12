@@ -40,11 +40,3 @@
 #define LDP_APP_NAME_MAX  256
 
 #endif /* included_ldp_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

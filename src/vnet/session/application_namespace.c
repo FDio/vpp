@@ -656,11 +656,3 @@ VLIB_CLI_COMMAND (show_app_ns_command, static) = {
   .short_help = "show app ns [id <id> [api-clients]]",
   .function = show_app_ns_fn,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

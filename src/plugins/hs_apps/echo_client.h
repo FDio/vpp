@@ -181,11 +181,3 @@ typedef enum ec_rtt_stat_
 void ec_program_connects (void);
 
 #endif /* __included_echo_client_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

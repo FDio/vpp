@@ -23,11 +23,3 @@ VLIB_PLUGIN_REGISTER () = {
   .version = VPP_BUILD_VER,
   .description = "Intel Adaptive Virtual Function (AVF) Device Driver",
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

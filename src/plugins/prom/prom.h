@@ -56,11 +56,3 @@ void prom_stat_name_prefix_set (u8 *prefix);
 void prom_report_used_only (u8 used_only);
 
 #endif /* SRC_PLUGINS_PROM_PROM_H_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -62,11 +62,3 @@ void alloc_param_srv6_t_m_gtp4_dt (void **plugin_mem_p, const u32 fib_index,
 				   const u32 local_fib_index, const u8 type);
 
 #endif /* included_sr_mobile_api_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

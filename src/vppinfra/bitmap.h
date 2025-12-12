@@ -746,11 +746,3 @@ u8 *format_bitmap_hex (u8 *s, va_list *args);
 u8 *format_bitmap_list (u8 *s, va_list *args);
 
 #endif /* included_clib_bitmap_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

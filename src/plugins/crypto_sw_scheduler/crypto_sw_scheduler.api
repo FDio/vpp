@@ -35,11 +35,3 @@ autoreply define crypto_sw_scheduler_set_worker
   u32 worker_index;
   bool crypto_enable;
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

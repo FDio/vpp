@@ -117,11 +117,3 @@ ip6_ioam_analyse_compare_path_delay (ip6_hop_by_hop_header_t * hbh0,
 }
 
 #endif /* PLUGINS_IOAM_PLUGIN_IOAM_ANALYSE_IP6_IOAM_ANALYSE_NODE_H_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

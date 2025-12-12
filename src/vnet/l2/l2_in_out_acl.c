@@ -525,11 +525,3 @@ l2_in_out_acl_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (l2_in_out_acl_init);
 #endif /* CLIB_MARCH_VARIANT */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

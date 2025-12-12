@@ -409,18 +409,9 @@ ip6_punt_redirect_show_cmd (vlib_main_t * vm,
  * @cliexpar
  * @cliexcmd{set ip punt policer <INDEX>}
  ?*/
-VLIB_CLI_COMMAND (show_ip6_punt_redirect_command, static) =
-{
+VLIB_CLI_COMMAND (show_ip6_punt_redirect_command, static) = {
   .path = "show ip6 punt redirect",
   .function = ip6_punt_redirect_show_cmd,
   .short_help = "show ip6 punt redirect",
   .is_mp_safe = 1,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

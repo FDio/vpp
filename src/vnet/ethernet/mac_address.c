@@ -68,11 +68,3 @@ mac_address_increment (mac_address_t * mac)
   a++;
   ethernet_mac_address_from_u64 (a, mac->bytes);
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

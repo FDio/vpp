@@ -326,11 +326,3 @@ typedef enum
 } rdma_tx_func_error_t;
 
 #endif /* _RDMA_H_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

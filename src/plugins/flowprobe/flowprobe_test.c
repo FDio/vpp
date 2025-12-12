@@ -368,11 +368,3 @@ vl_api_flowprobe_get_params_reply_t_handler (
  * and that the data plane plugin processes
  */
 #include <flowprobe/flowprobe.api_test.c>
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

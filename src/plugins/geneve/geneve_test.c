@@ -398,13 +398,4 @@ api_geneve_tunnel_dump (vat_main_t * vam)
 /*   "vni <vni> [encap-vrf-id <nn>] [decap-next <l2|nn>] [del]")            */
 /* _(geneve_tunnel_dump, "[<intfc> | sw_if_index <nn>]")                    */
 
-
 #include <geneve/geneve.api_test.c>
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

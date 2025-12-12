@@ -239,13 +239,4 @@ extern u8 cnat_resolve_ep (cnat_endpoint_t * ep);
 extern u8 cnat_resolve_addr (u32 sw_if_index, ip_address_family_t af,
 			     ip_address_t * addr);
 
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
-
 #endif

@@ -70,11 +70,3 @@ void vls_set_epoll_fns (vls_epoll_fns_t ep_fns);
 void vls_register_vcl_worker (void);
 
 #endif /* SRC_VCL_VCL_LOCKED_H_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -146,10 +146,3 @@ MACRO_FORMAT (auth_method)
 #define _(v,f,str) else if (unformat (input, str)) *r = IKEV2_TRANSFORM_ESN_TYPE_##f;
   MACRO_UNFORMAT (transform_esn_type)
 #undef _
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -897,11 +897,3 @@ format_dpdk_flow (u8 * s, va_list * args)
   s = format (s, "mark %u", fe->mark);
   return s;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -3115,18 +3115,9 @@ set_ip6_classify_command_fn (vlib_main_t * vm,
  * Example of how to assign a classification table to an interface:
  * @cliexcmd{set ip6 classify intfc GigabitEthernet2/0/0 table-index 1}
 ?*/
-VLIB_CLI_COMMAND (set_ip6_classify_command, static) =
-{
+VLIB_CLI_COMMAND (set_ip6_classify_command, static) = {
   .path = "set ip6 classify",
   .short_help =
-  "set ip6 classify intfc <interface> table-index <classify-idx>",
+    "set ip6 classify intfc <interface> table-index <classify-idx>",
   .function = set_ip6_classify_command_fn,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

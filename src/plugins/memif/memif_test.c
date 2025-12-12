@@ -575,11 +575,3 @@ static void vl_api_memif_socket_filename_details_t_handler
 }
 
 #include <memif/memif.api_test.c>
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

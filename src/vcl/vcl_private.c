@@ -1008,11 +1008,3 @@ vcl_heap_alloc (void)
 	     (unsigned long) vcl_cfg->heapsize,
 	     (unsigned long) vcl_cfg->heapsize);
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

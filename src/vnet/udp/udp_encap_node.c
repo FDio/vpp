@@ -353,12 +353,3 @@ VLIB_REGISTER_NODE (udp6_encap_node) = {
   .n_next_nodes = 0,
   .sibling_of = "udp6o6-encap",
 };
-
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

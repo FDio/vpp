@@ -225,11 +225,3 @@ VLIB_CLI_COMMAND (test_bitmap_command, static) = {
   .short_help = "Coverage test for bitmap.h",
   .function = test_bitmap_command_fn,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

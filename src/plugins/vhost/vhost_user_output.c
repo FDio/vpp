@@ -1132,12 +1132,3 @@ VNET_DEVICE_CLASS (vhost_user_device_class) = {
   .rx_mode_change_function = vhost_user_interface_rx_mode_change,
   .format_tx_trace = format_vhost_trace,
 };
-
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

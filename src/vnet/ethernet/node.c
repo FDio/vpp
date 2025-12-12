@@ -2381,11 +2381,3 @@ ethernet_register_l3_redirect (vlib_main_t * vm, u32 node_index)
   ASSERT (i == em->redirect_l3_next);
 }
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -1063,11 +1063,3 @@ gid_dictionary_init (gid_dictionary_t * db)
   arp_ndp_lookup_init (&db->arp_ndp_table);
   nsh_lookup_init (&db->nsh_table);
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

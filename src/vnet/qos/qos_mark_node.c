@@ -324,16 +324,7 @@ VLIB_REGISTER_NODE (vlan_mpls_qos_mark_node) = {
 };
 
 VNET_FEATURE_INIT (vlan_mpls_qos_mark_node, static) = {
-    .arc_name = "mpls-output",
-    .node_name = "vlan-mpls-qos-mark",
-    .runs_after = VNET_FEATURES ("mpls-qos-mark"),
+  .arc_name = "mpls-output",
+  .node_name = "vlan-mpls-qos-mark",
+  .runs_after = VNET_FEATURES ("mpls-qos-mark"),
 };
-
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

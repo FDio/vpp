@@ -456,11 +456,3 @@ dhcp6_clients_enable_disable (u8 enable)
     udp_unregister_dst_port (vm, UDP_DST_PORT_dhcpv6_to_client,
 			     0 /* is_ip6 */ );
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -88,23 +88,9 @@ vnet_main_init (vlib_main_t * vm)
   return 0;
 }
 
-VLIB_INIT_FUNCTION (vnet_main_init)=
-{
-  .init_order = VLIB_INITS("vnet_interface_init",
-                           "ethernet_init",
-                           "fib_module_init",
-                           "mfib_module_init",
-                           "ip_main_init",
-                           "ip4_lookup_init",
-                           "ip6_lookup_init",
-                           "mpls_init",
-                           "vnet_main_init"),
+VLIB_INIT_FUNCTION (vnet_main_init) = {
+  .init_order = VLIB_INITS ("vnet_interface_init", "ethernet_init",
+			    "fib_module_init", "mfib_module_init",
+			    "ip_main_init", "ip4_lookup_init",
+			    "ip6_lookup_init", "mpls_init", "vnet_main_init"),
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

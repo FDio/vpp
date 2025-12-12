@@ -210,13 +210,4 @@ int lcp_ethertype_enable (ethernet_type_t ethertype);
  * @param ethertypes_vec - pointer to a vector to store the list of ethertypes
  */
 int lcp_ethertype_get_enabled (ethernet_type_t **ethertypes_vec);
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
-
 #endif

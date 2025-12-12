@@ -210,14 +210,6 @@ l3xc_api_init (vlib_main_t * vm)
 VLIB_INIT_FUNCTION (l3xc_api_init);
 
 VLIB_PLUGIN_REGISTER () = {
-    .version = VPP_BUILD_VER,
-    .description = "L3 Cross-Connect (L3XC)",
+  .version = VPP_BUILD_VER,
+  .description = "L3 Cross-Connect (L3XC)",
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

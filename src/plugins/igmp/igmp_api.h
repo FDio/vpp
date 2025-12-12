@@ -45,13 +45,4 @@ int igmp_enable_disable (u32 sw_if_index, u8 enable, u8 mode);
 int igmp_listen (vlib_main_t * vm, u8 enable, u32 sw_if_index,
 		 const ip46_address_t * saddr, const ip46_address_t * gaddr);
 
-
 #endif /* _IGMP_API_H_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

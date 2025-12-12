@@ -659,11 +659,3 @@ out:
   region_unlock (client->db_rp);
   return (rv);
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

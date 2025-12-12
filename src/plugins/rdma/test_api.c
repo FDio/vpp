@@ -334,11 +334,3 @@ api_rdma_delete (vat_main_t * vam)
 }
 
 #include <rdma/rdma.api_test.c>
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

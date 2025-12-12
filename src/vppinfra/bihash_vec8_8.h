@@ -126,11 +126,3 @@ clib_bihash_key_compare_vec8_8 (u64 a_arg, u64 b_arg)
 #include <vppinfra/bihash_template.h>
 
 #endif /* __included_bihash_vec8_8_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

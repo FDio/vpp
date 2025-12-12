@@ -76,11 +76,3 @@ api_cdp_enable_disable (vat_main_t * vam)
 }
 
 #include <cdp/cdp.api_test.c>
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

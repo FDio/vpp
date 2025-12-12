@@ -63,11 +63,3 @@ syslog_add_udp_transport (vlib_main_t * vm, u32 bi)
 
   b->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

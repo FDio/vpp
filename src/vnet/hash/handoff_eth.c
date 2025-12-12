@@ -342,11 +342,3 @@ VNET_REGISTER_HASH_FUNCTION (handoff_eth_sym, static) = {
   .priority = 1,
   .function[VNET_HASH_FN_TYPE_ETHERNET] = handoff_eth_sym_func,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

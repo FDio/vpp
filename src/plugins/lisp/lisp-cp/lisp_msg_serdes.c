@@ -379,11 +379,3 @@ lisp_msg_parse_mapping_record (vlib_buffer_t * b, gid_address_t * eid,
 
   return len + sizeof (map_reply_hdr_t);
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

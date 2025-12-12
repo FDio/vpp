@@ -499,11 +499,3 @@ rb_tree_is_init (rb_tree_t * rt)
     return 0;
   return 1;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

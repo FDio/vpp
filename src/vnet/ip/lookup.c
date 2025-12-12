@@ -1013,18 +1013,10 @@ done:
  * @cliexcmd{ip mroute add 232.1.1.1 Signal}
 
  ?*/
-VLIB_CLI_COMMAND (ip_mroute_command, static) =
-{
+VLIB_CLI_COMMAND (ip_mroute_command, static) = {
   .path = "ip mroute",
-  .short_help = "ip mroute [add|del] <dst-ip-addr>/<width> [table <table-id>] [rpf-id <ID>] [via <next-hop-ip-addr> [<interface>],",
+  .short_help = "ip mroute [add|del] <dst-ip-addr>/<width> [table <table-id>] "
+		"[rpf-id <ID>] [via <next-hop-ip-addr> [<interface>],",
   .function = vnet_ip_mroute_cmd,
   .is_mp_safe = 1,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

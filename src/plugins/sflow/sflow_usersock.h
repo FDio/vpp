@@ -122,11 +122,3 @@ bool SFLOWUS_set_attr (SFLOWUS *ust, EnumSFlowVppAttributes field, void *buf,
 int SFLOWUS_send (SFLOWUS *ust);
 
 #endif /* __included_sflow_usersock_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -250,11 +250,3 @@ extern vlib_node_registration_t ip6_proto_punt_socket_node;
 extern vlib_node_registration_t punt_socket_rx_node;
 
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

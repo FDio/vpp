@@ -405,12 +405,3 @@ VLIB_CLI_COMMAND (wg_show_modemode_command, static) = {
   .short_help = "show wireguard mode",
   .function = wg_show_mode_command_fn,
 };
-
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

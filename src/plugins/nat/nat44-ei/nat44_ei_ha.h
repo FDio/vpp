@@ -170,11 +170,3 @@ int nat_ha_resync (u32 client_index, u32 pid,
 void nat_ha_get_resync_status (u8 * in_resync, u32 * resync_ack_missed);
 
 #endif /* __included_nat_ha_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

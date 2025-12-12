@@ -65,11 +65,3 @@ typedef struct
 } vlib_physmem_main_t;
 
 #endif /* included_vlib_physmem_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

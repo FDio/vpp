@@ -334,14 +334,6 @@ VLIB_REGISTER_NODE (snat_out2in_worker_handoff_node) = {
   .sibling_of = "nat-default",
   .format_trace = format_nat44_handoff_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
-  .n_errors = ARRAY_LEN(nat44_handoff_error_strings),
+  .n_errors = ARRAY_LEN (nat44_handoff_error_strings),
   .error_strings = nat44_handoff_error_strings,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

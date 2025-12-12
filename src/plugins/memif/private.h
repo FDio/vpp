@@ -391,11 +391,3 @@ clib_error_t *memif_msg_send_disconnect (memif_if_t * mif,
 u8 *format_memif_device_name (u8 * s, va_list * args);
 void memif_dma_completion_cb (vlib_main_t *vm, vlib_dma_batch_t *b);
 void memif_tx_dma_completion_cb (vlib_main_t *vm, vlib_dma_batch_t *b);
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -156,11 +156,3 @@ format_clib_mem_page_stats (u8 * s, va_list * va)
 
   return s;
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

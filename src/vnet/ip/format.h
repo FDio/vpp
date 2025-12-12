@@ -102,11 +102,3 @@ format_function_t format_tcp_header, format_udp_header;
 unformat_function_t unformat_pg_tcp_header, unformat_pg_udp_header;
 
 #endif /* included_ip_format_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

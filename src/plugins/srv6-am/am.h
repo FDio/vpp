@@ -57,11 +57,3 @@ void srv6_am_dpo_unlock (dpo_id_t * dpo);
 extern vlib_node_registration_t srv6_am_localsid_node;
 
 #endif /* __included_srv6_am_h__ */
-
-/*
-* fd.io coding-style-patch-verification: ON
-*
-* Local Variables:
-* eval: (c-set-style "gnu")
-* End:
-*/

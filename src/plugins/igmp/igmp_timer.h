@@ -76,11 +76,3 @@ extern u32 igmp_timer_type_get (igmp_timer_type_t t);
 extern void igmp_timer_type_set (igmp_timer_type_t t, u32 v);
 
 #endif /* IGMP_TIMER_H_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

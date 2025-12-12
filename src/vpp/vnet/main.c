@@ -553,11 +553,3 @@ __asan_default_options (void)
   return VPP_SANITIZE_ADDR_OPTIONS;
 }
 #endif /* CLIB_SANITIZE_ADDR */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

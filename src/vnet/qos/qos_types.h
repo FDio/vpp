@@ -68,11 +68,3 @@ extern uword unformat_qos_source (unformat_input_t * input, va_list * args);
 typedef u8 qos_bits_t;
 
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

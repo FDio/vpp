@@ -347,11 +347,3 @@ snap_register_input_protocol (vlib_main_t * vm,
   mhash_set (&sm->protocol_hash, &key, pi - sm->protocols, /* old_value */ 0);
   hash_set_mem (sm->protocol_info_by_name, name, pi - sm->protocols);
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

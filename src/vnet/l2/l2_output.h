@@ -163,11 +163,3 @@ void l2output_intf_bitmap_enable (u32 sw_if_index,
 				  u32 enable);
 
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -370,11 +370,3 @@ format_function_t format_tcp_connection_id;
 	 || transport_max_tx_dequeue (&_tc->connection) >= _a)
 
 #endif /* _vnet_tcp_h_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

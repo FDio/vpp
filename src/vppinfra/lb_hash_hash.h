@@ -59,11 +59,3 @@ lb_hash_hash_2_tuples (u64 k0, u32 k1)
 #endif
 
 #endif /* __included_lb_hash_hash_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

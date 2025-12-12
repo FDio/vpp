@@ -178,11 +178,3 @@ typedef CLIB_PACKED (struct {
 }) vnet_virtio_net_hdr_mrg_rxbuf_t;
 
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

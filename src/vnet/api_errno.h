@@ -51,11 +51,3 @@ vnet_get_api_error_and_free (clib_error_t *err)
 }
 
 #endif /* included_vnet_api_errno_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -339,11 +339,3 @@ void gid_address_from_ip (gid_address_t * g, ip_address_t * ip);
 void gid_to_dp_address (gid_address_t * g, dp_address_t * d);
 
 #endif /* VNET_LISP_GPE_LISP_TYPES_H_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

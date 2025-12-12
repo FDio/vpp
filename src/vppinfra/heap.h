@@ -321,11 +321,3 @@ void *_heap_free (void *v);
 #define heap_free(v) (v)=_heap_free(v)
 
 #endif /* included_heap_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

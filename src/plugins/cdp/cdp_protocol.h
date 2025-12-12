@@ -176,11 +176,3 @@ typedef enum
 #define CDP_DUPLEX_TLV_FULL 0x1
 
 #endif /* __included_cdp_protocol_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -86,11 +86,3 @@ void qos_egress_map_walk (qos_egress_map_walk_cb_t fn, void *c);
 extern qos_egress_map_t *qem_pool;
 
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

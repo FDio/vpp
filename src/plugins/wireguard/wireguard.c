@@ -105,16 +105,7 @@ VNET_FEATURE_INIT (wg6_output_tun, static) = {
   .runs_after = VNET_FEATURES ("gso-ip6"),
 };
 
-VLIB_PLUGIN_REGISTER () =
-{
+VLIB_PLUGIN_REGISTER () = {
   .version = VPP_BUILD_VER,
   .description = "Wireguard Protocol",
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

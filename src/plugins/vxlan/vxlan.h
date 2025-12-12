@@ -230,11 +230,3 @@ int vnet_vxlan_add_del_rx_flow (u32 hw_if_index, u32 t_imdex, int is_add);
 
 u32 vnet_vxlan_get_tunnel_index (u32 sw_if_index);
 #endif /* included_vnet_vxlan_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

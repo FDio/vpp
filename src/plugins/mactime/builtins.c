@@ -169,11 +169,3 @@ mactime_url_init (vlib_main_t * vm)
 
   (*fp) (handle_get_mactime, "mactime.json", HTTP_REQ_GET);
 }
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

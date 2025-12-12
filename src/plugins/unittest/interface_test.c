@@ -57,17 +57,8 @@ test_interface_command_fn (vlib_main_t * vm,
   return (NULL);
 }
 
-VLIB_CLI_COMMAND (test_interface_command, static) =
-{
+VLIB_CLI_COMMAND (test_interface_command, static) = {
   .path = "test interface link-state",
   .short_help = "test interface link-state <interface> [up] [down]",
   .function = test_interface_command_fn,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

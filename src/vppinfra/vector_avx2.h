@@ -534,11 +534,3 @@ u32x8_shuffle_dynamic (u32x8 v, u32x8 idx)
 }
 
 #endif /* included_vector_avx2_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -828,11 +828,3 @@ VNET_DEVICE_CLASS (af_packet_device_class) = {
   .mac_addr_change_function = af_packet_set_mac_address_function,
   .rx_mode_change_function = af_packet_interface_rx_mode_change,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

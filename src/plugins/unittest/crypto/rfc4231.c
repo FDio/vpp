@@ -585,11 +585,3 @@ UNITTEST_REGISTER_CRYPTO_TEST (rfc4231_tc7_sha512_chain) = {
     TEST_DATA_CHUNK (tc7_data, 150, 2),
   },
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

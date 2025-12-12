@@ -460,15 +460,6 @@ igmp_input_init (vlib_main_t * vm)
   return (0);
 }
 
-VLIB_INIT_FUNCTION (igmp_input_init) =
-{
-  .runs_after = VLIB_INITS("igmp_init"),
+VLIB_INIT_FUNCTION (igmp_input_init) = {
+  .runs_after = VLIB_INITS ("igmp_init"),
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

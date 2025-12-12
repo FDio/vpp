@@ -527,16 +527,8 @@ done:
   return error;
 }
 
-VLIB_CLI_COMMAND (cmd_test_frame_queue_threshold,static) = {
-    .path = "test frame-queue threshold",
-    .short_help = "test frame-queue threshold N (0=no limit)",
-    .function = test_frame_queue_threshold,
+VLIB_CLI_COMMAND (cmd_test_frame_queue_threshold, static) = {
+  .path = "test frame-queue threshold",
+  .short_help = "test frame-queue threshold N (0=no limit)",
+  .function = test_frame_queue_threshold,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

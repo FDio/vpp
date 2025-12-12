@@ -242,11 +242,3 @@ VNET_DEVICE_CLASS (netmap_device_class) = {
   .subif_add_del_function = netmap_subif_add_del_function,
 };
 /* *INDENT-ON* */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

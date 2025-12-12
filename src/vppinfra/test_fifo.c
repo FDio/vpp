@@ -132,11 +132,3 @@ main (int argc, char *argv[])
   return r;
 }
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

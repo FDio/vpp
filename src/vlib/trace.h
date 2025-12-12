@@ -160,11 +160,3 @@ uword unformat_vlib_trace_filter_function (unformat_input_t *input,
 					   va_list *args);
 
 #endif /* included_vlib_trace_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

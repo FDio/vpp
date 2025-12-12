@@ -191,11 +191,3 @@ main (int argc, char *argv[])
     return test_format_main (&i);
 }
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

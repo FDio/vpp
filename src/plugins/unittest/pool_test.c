@@ -60,11 +60,3 @@ VLIB_CLI_COMMAND (test_pool_command, static) = {
   .short_help = "vppinfra pool.h tests",
   .function = test_pool_command_fn,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

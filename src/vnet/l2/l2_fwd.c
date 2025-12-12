@@ -530,11 +530,3 @@ VLIB_CLI_COMMAND (int_fwd_cli, static) = {
 };
 
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

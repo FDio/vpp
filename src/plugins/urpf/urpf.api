@@ -94,11 +94,3 @@ define urpf_interface_details
   vl_api_address_family_t af;
   u32 table_id;
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

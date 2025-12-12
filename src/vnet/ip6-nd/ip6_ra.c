@@ -2239,15 +2239,6 @@ ip6_ra_init (vlib_main_t * vm)
   return (NULL);
 }
 
-VLIB_INIT_FUNCTION (ip6_ra_init) =
-{
-  .runs_after = VLIB_INITS("icmp6_init"),
+VLIB_INIT_FUNCTION (ip6_ra_init) = {
+  .runs_after = VLIB_INITS ("icmp6_init"),
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

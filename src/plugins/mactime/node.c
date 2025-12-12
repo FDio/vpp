@@ -397,11 +397,3 @@ VLIB_REGISTER_NODE (mactime_tx_node) =
     [MACTIME_NEXT_ETHERNET_INPUT] = "ethernet-input", /* notused */
   },
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

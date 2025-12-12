@@ -1121,16 +1121,8 @@ dhcp_option_82_address_show_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-VLIB_CLI_COMMAND (dhcp_proxy_address_show_command,static) = {
+VLIB_CLI_COMMAND (dhcp_proxy_address_show_command, static) = {
   .path = "show dhcp option-82-address interface",
   .short_help = "show dhcp option-82-address interface <interface>",
   .function = dhcp_option_82_address_show_command_fn,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

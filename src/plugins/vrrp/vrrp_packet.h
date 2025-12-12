@@ -57,11 +57,3 @@ typedef struct vrrp_input_process_args
 } vrrp_input_process_args_t;
 
 #endif /* __included_vrrp_packet_h__ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
