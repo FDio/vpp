@@ -95,7 +95,7 @@ vl_api_tap_create_v3_t_handler (vl_api_tap_create_v3_t *mp)
       ap->host_mtu_set = 1;
     }
 
-  ap->tap_flags = (int) mp->tap_flags;
+  ap->tap_flags = mp->tap_flags;
 
   tap_create_if (vm, ap);
 
