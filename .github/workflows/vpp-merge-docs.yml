@@ -1,8 +1,16 @@
-name: vpp-merge-maketest
+name: vpp-merge-docs
 
 on:
-  workflow_dispatch:
+  workflow_call:
     inputs:
+      CI_TIMESTAMP:
+        description: "Start verify timestamp"
+        required: true
+        type: string
+      FDIO_NAMESPACE:
+        description: "Executor Namespace (prod|sandbox)"
+        required: true
+        type: string
       GERRIT_BRANCH:
         description: "Branch that change is against"
         required: true
@@ -39,6 +47,12 @@ on:
         description: "Gerrit refspec of change"
         required: true
         type: string
+  workflow_dispatch:
+    inputs:
+      CI_TIMESTAMP:
+        description: "Start verify timestamp"
+        required: false
+        type: string
       FDIO_NAMESPACE:
         description: "Executor Namespace (prod|sandbox)"
         required: false
@@ -47,6 +61,42 @@ on:
           - sandbox
           - prod
         default: prod
+      GERRIT_BRANCH:
+        description: "Branch that change is against"
+        required: true
+        type: string
+      GERRIT_CHANGE_ID:
+        description: "The ID for the change"
+        required: true
+        type: string
+      GERRIT_CHANGE_NUMBER:
+        description: "The Gerrit number"
+        required: true
+        type: string
+      GERRIT_CHANGE_URL:
+        description: "URL to the change"
+        required: true
+        type: string
+      GERRIT_EVENT_TYPE:
+        description: "Type of Gerrit event"
+        required: true
+        type: string
+      GERRIT_PATCHSET_NUMBER:
+        description: "The patch number for the change"
+        required: true
+        type: string
+      GERRIT_PATCHSET_REVISION:
+        description: "The revision sha"
+        required: true
+        type: string
+      GERRIT_PROJECT:
+        description: "Project in Gerrit"
+        required: true
+        type: string
+      GERRIT_REFSPEC:
+        description: "Gerrit refspec of change"
+        required: true
+        type: string
 
 env:
   GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
@@ -90,47 +140,22 @@ jobs:
           vote-type: clear
           comment-only: true
 
-  merge-maketest:
+  merge-docs:
     # yamllint disable-line rule:line-length
     name: ${{ inputs.GERRIT_CHANGE_NUMBER }}/${{ inputs.GERRIT_PATCHSET_NUMBER}}__${{ inputs.GERRIT_BRANCH }}__${{ inputs.FDIO_NAMESPACE }}
-    if: ${{ inputs.GERRIT_EVENT_TYPE == 'change-merged' }}
+    needs: notify-start
     runs-on:
       - self-hosted
       - nomad
-      - fdio:arch=${{ matrix.executor_arch }}
+      - fdio:arch=x86_64
       - fdio:class=builder
       - fdio:namespace=${{ inputs.FDIO_NAMESPACE }}
-      - fdio:os=${{ matrix.os }}
-
-    strategy:
-      fail-fast: false
-      matrix:
-        os: ['ubuntu2404', 'ubuntu2204', 'debian12']
-        executor_arch: ['x86_64', 'aarch64']
-        build_type: ['rel']
-        exclude:
-          # Exclude debian12 on aarch64 for all builds
-          - os: 'debian12'
-            executor_arch: 'aarch64'
+      - fdio:os=ubuntu2404
 
     env:
+      CI_TIMESTAMP: ""
+      LOG_DIR: ""
       WORKSPACE: /scratch/docker-build/vpp
-      CCACHE_DIR: /scratch/ccache/${{ matrix.os }}-${{ matrix.executor_arch }}
-      BUILD_TYPE: ${{ matrix.build_type }}
-      MAKE_PARALLEL_JOBS: 16
-      TEST_JOBS: 16
-      TEST_RETRIES: 3
-      MAKE_TEST_OS: ${{ matrix.os == 'ubuntu2204' && 'ubuntu-22.04' || 'ubuntu-24.04'  }}
-      MAKE_TEST_MULTIWORKER_OS: 'debian-12'
-      VPPAPIGEN_TEST_OS: ${{ matrix.os == 'ubuntu2204' && 'ubuntu-22.04' || 'ubuntu-24.04' }}
-      SHM_SIZE: ${{ matrix.executor_arch == 'aarch64' && '4096M' || '2048M' }}
-      GERRIT_BRANCH: ${{ needs.restore-gerrit-env.outputs.GERRIT_BRANCH }}
-      GERRIT_CHANGE_URL: ${{ needs.restore-gerrit-env.outputs.GERRIT_CHANGE_URL }}
-      GERRIT_PROJECT: ${{ needs.restore-gerrit-env.outputs.GERRIT_PROJECT }}
-      GERRIT_REFSPEC: ${{ needs.restore-gerrit-env.outputs.GERRIT_REFSPEC }}
-      GERRIT_CHANGE_NUMBER: ${{ needs.restore-gerrit-env.outputs.GERRIT_CHANGE_NUMBER }}
-      GERRIT_PATCHSET_NUMBER: ${{ needs.restore-gerrit-env.outputs.GERRIT_PATCHSET_NUMBER }}
-      FDIO_NAMESPACE: ${{ needs.restore-gerrit-env.outputs.FDIO_NAMESPACE }}
       TUI_LINE: "*******************************************************************"
 
     steps:
@@ -140,6 +165,39 @@ jobs:
       - name: Setup Environment
         # yamllint disable-line rule:line-length
         uses: fdio/.github/.github/actions/setup-executor-env@b728d1589228e2891a4241a1bba362d76895c225
+
+      - name: Set Timestamp and Log Path
+        run: |
+          set -euxo pipefail
+          ts="${{ inputs.CI_TIMESTAMP || '' }}"
+          if [ -z "$ts" ]; then
+            ts="$(date -u +%Y_%m_%d_%H%M%S_UTC)"
+          fi
+          echo "CI_TIMESTAMP=$ts" >> "$GITHUB_ENV"
+          echo "LOG_DIR=/scratch/docker-build/vpp/logs/$ts/merge-docs-ubuntu2404-${{ env.FDIO_NAMESPACE || 'prod' }}" >> "$GITHUB_ENV"
+
+      - name: Prepare Log Directory
+        run: |
+          set -euxo pipefail
+          mkdir -p "$LOG_DIR"
+
+      - name: Show Environment
+        run: |
+          set -euo pipefail
+          env | sort | tee "$LOG_DIR/environment.log"
+
+      - name: Log Docs Start
+        run: |
+          set -euxo pipefail
+          {
+            echo "$TUI_LINE"
+            echo "* $CI_TIMESTAMP: Starting merge docs build"
+            echo "$TUI_LINE"
+          } | tee "$LOG_DIR/docs_start.log"
+
+      - name: Show Environment
+        run: |
+          env | sort
 
       - name: Show Nomad Dockerfile
         # yamllint disable-line rule:line-length
@@ -154,54 +212,36 @@ jobs:
           GERRIT_REFSPEC: ${{ env.GERRIT_REFSPEC }}
           TUI_LINE: ${{ env.TUI_LINE }}
 
-      - name: Install VPP dependencies
-        # yamllint disable-line rule:line-length
-        uses: fdio/vpp/.github/actions/vpp-install-deps@f9e0f384d665800c8e580da853e26558dd6d2668
-        with:
-          WORKSPACE: ${{ env.WORKSPACE }}
-          TUI_LINE: ${{ env.TUI_LINE }}
+      - name: Make Docs
+        run: |
+          set -euxo pipefail
+          cd "$WORKSPACE"
+          make docs | tee "$LOG_DIR/make_docs.log"
 
-      - name: Install VPP external dependencies
-        # yamllint disable-line rule:line-length
-        uses: fdio/vpp/.github/actions/vpp-install-ext-deps@f9e0f384d665800c8e580da853e26558dd6d2668
+      - name: Upload Documentation Artifacts
+        if: always()
+        uses: actions/upload-artifact@v5
         with:
-          WORKSPACE: ${{ env.WORKSPACE }}
-          TUI_LINE: ${{ env.TUI_LINE }}
+          name: vpp-merge-docs-${{ env.GERRIT_BRANCH }}-rel-ubuntu2404-x86_64-${{ env.GERRIT_CHANGE_NUMBER }}-${{ env.GERRIT_PATCHSET_NUMBER }}
+          path: ${{ env.WORKSPACE }}/build-root/docs/
+          retention-days: 5
 
-      - name: Build VPP
-        # yamllint disable-line rule:line-length
-        uses: fdio/vpp/.github/actions/vpp-build@f9e0f384d665800c8e580da853e26558dd6d2668
-        with:
-          WORKSPACE: ${{ env.WORKSPACE }}
-          MAKE_PARALLEL_JOBS: ${{ env.MAKE_PARALLEL_JOBS }}
-          BUILD_TYPE: ${{ env.BUILD_TYPE }}
-          TUI_LINE: ${{ env.TUI_LINE }}
-
-      - name: Setup Docker VPP Runtime Environment for 'make test'
-        # yamllint disable-line rule:line-length
-        uses: fdio/vpp/.github/actions/vpp-docker-runtime-setup@f9e0f384d665800c8e580da853e26558dd6d2668
-        with:
-          WORKSPACE: ${{ env.WORKSPACE }}
-          SHM_SIZE: ${{ env.SHM_SIZE }}
-          TUI_LINE: ${{ env.TUI_LINE }}
-
-      - name: VPP Make Test
-        # yamllint disable-line rule:line-length
-        uses: fdio/vpp/.github/actions/vpp-make-test@f9e0f384d665800c8e580da853e26558dd6d2668
-        timeout-minutes: 90
-        with:
-          WORKSPACE: ${{ env.WORKSPACE }}
-          TEST_JOBS: ${{ env.TEST_JOBS }}
-          TEST_RETRIES: ${{ env.TEST_RETRIES }}
-          MAKE_TEST_OS: ${{ env.MAKE_TEST_OS }}
-          MAKE_TEST_MULTIWORKER_OS: ${{ env.MAKE_TEST_MULTIWORKER_OS }}
-          VPPAPIGEN_TEST_OS: ${{ env.VPPAPIGEN_TEST_OS }}
-          TUI_LINE: ${{ env.TUI_LINE }}
+      - name: Show Docs Logs
+        if: always()
+        run: |
+          set -euo pipefail
+          echo "Log directory: $LOG_DIR"
+          ls -l "$LOG_DIR"
+          for file in $(ls "$LOG_DIR"); do
+            echo -e "\n\n-----[ $file ]-----\n"
+            cat "$LOG_DIR/$file"
+            echo "-----"
+          done
 
       - name: Report Success
         if: success()
         run: |
-          echo "::notice::VPP Merge Make Test workflow completed successfully!"
+          echo "::notice::VPP Merge Docs workflow completed successfully!"
           echo "Workflow ID: ${{ github.run_id }}"
           echo "Name: ${{ github.workflow }}"
           echo "Branch: $GERRIT_BRANCH, Change: $GERRIT_CHANGE_NUMBER, Patchset: $GERRIT_PATCHSET_NUMBER"

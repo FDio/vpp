@@ -3,6 +3,14 @@ name: gerrit-verify
 on:
   workflow_dispatch:
     inputs:
+      FDIO_NAMESPACE:
+        description: "Executor Namespace (prod|sandbox)"
+        required: false
+        type: choice
+        options:
+          - sandbox
+          - prod
+        default: prod
       GERRIT_BRANCH:
         description: "Branch that change is against"
         required: true
@@ -39,14 +47,6 @@ on:
         description: "Gerrit refspec of change"
         required: true
         type: string
-      FDIO_NAMESPACE:
-        description: "Executor Namespace (prod|sandbox)"
-        required: false
-        type: choice
-        options:
-          - sandbox
-          - prod
-        default: prod
 
 defaults:
   run:
@@ -94,6 +94,7 @@ jobs:
       - start-verify
     uses: fdio/vpp/.github/workflows/vpp-verify-checkstyle.yml@master
     with:
+      CI_TIMESTAMP: ${{ needs.start-verify.outputs.timestamp }}
       FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
       GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
       GERRIT_CHANGE_ID: ${{ inputs.GERRIT_CHANGE_ID }}
@@ -104,7 +105,6 @@ jobs:
       GERRIT_PATCHSET_REVISION: ${{ inputs.GERRIT_PATCHSET_REVISION }}
       GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
       GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
-      CI_TIMESTAMP: ${{ needs.start-verify.outputs.timestamp }}
       LOG_PATH: ${{ inputs.GERRIT_CHANGE_NUMBER }}/${{ inputs.GERRIT_PATCHSET_NUMBER}}/${{ needs.start-verify.outputs.timestamp }}
     secrets: inherit
 
@@ -116,13 +116,15 @@ jobs:
     if: ${{ needs.verify-checkstyle.result == 'success' }}
     uses: fdio/vpp/.github/workflows/vpp-verify-maketest.yml@master
     with:
+      CI_TIMESTAMP: ${{ needs.start-verify.outputs.timestamp }}
+      FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
       GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
+      GERRIT_CHANGE_NUMBER: ${{ inputs.GERRIT_CHANGE_NUMBER }}
+      GERRIT_PATCHSET_NUMBER: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
       GERRIT_CHANGE_URL: ${{ inputs.GERRIT_CHANGE_URL }}
       GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
       GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
-      GERRIT_CHANGE_NUMBER: ${{ inputs.GERRIT_CHANGE_NUMBER }}
-      GERRIT_PATCHSET_NUMBER: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
-      FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
+      LOG_PATH: ${{ inputs.GERRIT_CHANGE_NUMBER }}/${{ inputs.GERRIT_PATCHSET_NUMBER}}/${{ needs.start-verify.outputs.timestamp }}
     secrets: inherit
 
   verify-docs:
@@ -133,13 +135,15 @@ jobs:
     if: ${{ needs.verify-checkstyle.result == 'success' }}
     uses: fdio/vpp/.github/workflows/vpp-verify-docs.yml@master
     with:
+      CI_TIMESTAMP: ${{ needs.start-verify.outputs.timestamp }}
+      FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
       GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
       GERRIT_CHANGE_URL: ${{ inputs.GERRIT_CHANGE_URL }}
-      GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
-      GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
       GERRIT_CHANGE_NUMBER: ${{ inputs.GERRIT_CHANGE_NUMBER }}
       GERRIT_PATCHSET_NUMBER: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
-      FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
+      GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
+      GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
+      LOG_PATH: ${{ inputs.GERRIT_CHANGE_NUMBER }}/${{ inputs.GERRIT_PATCHSET_NUMBER}}/${{ needs.start-verify.outputs.timestamp }}
     secrets: inherit
 
   verify-csit-api:
@@ -150,13 +154,15 @@ jobs:
     if: ${{ needs.verify-checkstyle.result == 'success' }}
     uses: fdio/vpp/.github/workflows/vpp-csit-verify-api.yml@master
     with:
+      CI_TIMESTAMP: ${{ needs.start-verify.outputs.timestamp }}
+      FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
       GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
       GERRIT_CHANGE_URL: ${{ inputs.GERRIT_CHANGE_URL }}
-      GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
-      GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
       GERRIT_CHANGE_NUMBER: ${{ inputs.GERRIT_CHANGE_NUMBER }}
       GERRIT_PATCHSET_NUMBER: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
-      FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
+      GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
+      GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
+      LOG_PATH: ${{ inputs.GERRIT_CHANGE_NUMBER }}/${{ inputs.GERRIT_PATCHSET_NUMBER}}/${{ needs.start-verify.outputs.timestamp }}
     secrets: inherit
 
   verify-arm-drivers:
@@ -167,13 +173,15 @@ jobs:
     if: ${{ needs.verify-checkstyle.result == 'success' }}
     uses: fdio/vpp/.github/workflows/vpp-verify-arm-drivers.yml@master
     with:
+      CI_TIMESTAMP: ${{ needs.start-verify.outputs.timestamp }}
+      FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
       GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
+      GERRIT_CHANGE_NUMBER: ${{ inputs.GERRIT_CHANGE_NUMBER }}
+      GERRIT_PATCHSET_NUMBER: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
       GERRIT_CHANGE_URL: ${{ inputs.GERRIT_CHANGE_URL }}
       GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
       GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
-      GERRIT_CHANGE_NUMBER: ${{ inputs.GERRIT_CHANGE_NUMBER }}
-      GERRIT_PATCHSET_NUMBER: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
-      FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
+      LOG_PATH: ${{ inputs.GERRIT_CHANGE_NUMBER }}/${{ inputs.GERRIT_PATCHSET_NUMBER}}/${{ needs.start-verify.outputs.timestamp }}
     secrets: inherit
 
   verify-hst:
@@ -196,13 +204,13 @@ jobs:
   #   if: ${{ needs.verify-checkstyle.result == 'success' }}
   #   uses: fdio/vpp/.github/workflows/vpp-verify-hst.yml@master
   #   with:
+  #     FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
   #     GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
+  #     GERRIT_CHANGE_NUMBER: ${{ inputs.GERRIT_CHANGE_NUMBER }}
   #     GERRIT_CHANGE_URL: ${{ inputs.GERRIT_CHANGE_URL }}
+  #     GERRIT_PATCHSET_NUMBER: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
   #     GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
   #     GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
-  #     GERRIT_CHANGE_NUMBER: ${{ inputs.GERRIT_CHANGE_NUMBER }}
-  #     GERRIT_PATCHSET_NUMBER: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
-  #     FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
   #   secrets: inherit
 
   final-vote:

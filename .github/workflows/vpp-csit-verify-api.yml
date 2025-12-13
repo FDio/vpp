@@ -4,63 +4,29 @@ name: vpp-csit-verify-api
 on:
   workflow_call:
     inputs:
-      GERRIT_BRANCH:
-        description: "Branch that change is against"
-        required: true
-        type: string
-      GERRIT_CHANGE_URL:
-        description: "URL to the change"
-        required: true
-        type: string
-      GERRIT_PROJECT:
-        description: "Project in Gerrit"
-        required: true
-        type: string
-      GERRIT_REFSPEC:
-        description: "Gerrit refspec of change"
-        required: true
-        type: string
-      GERRIT_CHANGE_NUMBER:
-        description: "The Gerrit number"
-        required: true
-        type: string
-      GERRIT_PATCHSET_NUMBER:
-        description: "The patch number for the change"
+      CI_TIMESTAMP:
+        description: "Start verify timestamp"
         required: true
         type: string
       FDIO_NAMESPACE:
         description: "Executor Namespace (prod|sandbox)"
-        required: false
+        required: true
         type: string
         default: prod
-  workflow_dispatch:
-    inputs:
       GERRIT_BRANCH:
         description: "Branch that change is against"
-        required: true
-        type: string
-      GERRIT_CHANGE_ID:
-        description: "The ID for the change"
-        required: true
-        type: string
-      GERRIT_CHANGE_NUMBER:
-        description: "The Gerrit number"
         required: true
         type: string
       GERRIT_CHANGE_URL:
         description: "URL to the change"
         required: true
         type: string
-      GERRIT_EVENT_TYPE:
-        description: "Type of Gerrit event"
+      GERRIT_CHANGE_NUMBER:
+        description: "The Gerrit number"
         required: true
         type: string
       GERRIT_PATCHSET_NUMBER:
         description: "The patch number for the change"
-        required: true
-        type: string
-      GERRIT_PATCHSET_REVISION:
-        description: "The revision sha"
         required: true
         type: string
       GERRIT_PROJECT:
@@ -69,6 +35,16 @@ on:
         type: string
       GERRIT_REFSPEC:
         description: "Gerrit refspec of change"
+        required: true
+        type: string
+      LOG_PATH:
+        description: "Sub-path to the log directory"
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      CI_TIMESTAMP:
+        description: "Start verify timestamp"
         required: true
         type: string
       FDIO_NAMESPACE:
@@ -79,6 +55,34 @@ on:
           - sandbox
           - prod
         default: prod
+      GERRIT_BRANCH:
+        description: "Branch that change is against"
+        required: true
+        type: string
+      GERRIT_CHANGE_URL:
+        description: "URL to the change"
+        required: true
+        type: string
+      GERRIT_CHANGE_NUMBER:
+        description: "The Gerrit number"
+        required: true
+        type: string
+      GERRIT_PATCHSET_NUMBER:
+        description: "The patch number for the change"
+        required: true
+        type: string
+      GERRIT_PROJECT:
+        description: "Project in Gerrit"
+        required: true
+        type: string
+      GERRIT_REFSPEC:
+        description: "Gerrit refspec of change"
+        required: true
+        type: string
+      LOG_PATH:
+        description: "Sub-path to the log directory"
+        required: true
+        type: string
 
 defaults:
   run:
@@ -95,11 +99,20 @@ jobs:
     runs-on:
       - self-hosted
       - nomad
-      - fdio:arch=x86_64
-      - fdio:class=builder
-      - fdio:size=csit
+      - fdio:arch=${{ matrix.executor_arch }}
+      - fdio:class=${{ matrix.class }}
+      - fdio:size=${{ matrix.size }}
       - fdio:namespace=${{ inputs.FDIO_NAMESPACE || 'prod' }}
-      - fdio:os=ubuntu2404
+      - fdio:os=${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        build_type: ['release']
+        class: ['builder']
+        os: ['ubuntu2404']
+        executor_arch: ['x86_64']
+        size: ['csit']
 
     env:
       WORKSPACE: /scratch/docker-build/vpp
@@ -110,7 +123,10 @@ jobs:
       GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
       GERRIT_CHANGE_NUMBER: ${{ inputs.GERRIT_CHANGE_NUMBER }}
       GERRIT_PATCHSET_NUMBER: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
+      CI_TIMESTAMP: ${{ inputs.CI_TIMESTAMP }}
+      LOG_PATH: ${{ inputs.LOG_PATH }}
       FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
+      LOG_DIR: /scratch/docker-build/vpp/logs/${{ inputs.LOG_PATH }}/csit-api-${{ matrix.build_type }}-${{ matrix.class }}-${{ matrix.os }}-${{ inputs.FDIO_NAMESPACE }}-${{ matrix.executor_arch }}
       TUI_LINE: "*******************************************************************"
 
     steps:
@@ -121,9 +137,15 @@ jobs:
         # yamllint disable-line rule:line-length
         uses: fdio/.github/.github/actions/setup-executor-env@b728d1589228e2891a4241a1bba362d76895c225
 
+      - name: Prepare Log Directory
+        run: |
+          set -euxo pipefail
+          mkdir -p "$LOG_DIR"
+
       - name: Show Environment
         run: |
-          env | sort
+          set -euo pipefail
+          env | sort | tee "$LOG_DIR/environment.log"
 
       - name: "Show Nomad Dockerfile"
         # yamllint disable-line rule:line-length
@@ -141,18 +163,35 @@ jobs:
       - name: Run CSIT check_crc.sh
         run: |
           set -euxo pipefail
+          {
+            echo "$TUI_LINE"
+            echo "* $CI_TIMESTAMP: Starting CSIT check_crc.sh"
+            echo "$TUI_LINE"
 
-          # Checkout CSIT HEAD
-          cd $CSIT_DIR
-          git checkout HEAD
+            # Checkout CSIT HEAD
+            cd "$CSIT_DIR"
+            git checkout HEAD
 
-          # Run check_crc.sh from CSIT
-          cd $WORKSPACE
-          # TODO: fix csit bash scripts to not rely on CSIT_DIR being inside WORKSPACE
-          NEW_CSIT_DIR="$WORKSPACE/$(basename $CSIT_DIR)"
-          mv $CSIT_DIR $NEW_CSIT_DIR
-          csit_entry_dir="$NEW_CSIT_DIR/resources/libraries/bash/entry"
-          source "${csit_entry_dir}/with_oper_for_vpp.sh" "check_crc.sh"
+            # Run check_crc.sh from CSIT
+            cd "$WORKSPACE"
+            # TODO: fix csit bash scripts to not rely on CSIT_DIR being inside WORKSPACE
+            NEW_CSIT_DIR="$WORKSPACE/$(basename "$CSIT_DIR")"
+            mv "$CSIT_DIR" "$NEW_CSIT_DIR"
+            csit_entry_dir="$NEW_CSIT_DIR/resources/libraries/bash/entry"
+            source "${csit_entry_dir}/with_oper_for_vpp.sh" "check_crc.sh"
+          } | tee "$LOG_DIR/csit_api.log"
+
+      - name: Show CSIT API Logs
+        if: always()
+        run: |
+          set -euo pipefail
+          echo "Log directory: $LOG_DIR"
+          ls -l $LOG_DIR
+          for file in $(ls $LOG_DIR) ; do
+            echo -e "\n\n-----[ $file ]-----\n"
+            cat $LOG_DIR/$file
+            echo "-----"
+          done
 
       - name: Report Success
         if: success()

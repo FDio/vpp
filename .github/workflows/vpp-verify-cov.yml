@@ -32,16 +32,27 @@ concurrency:
 jobs:
   verify-cov:
     # yamllint disable-line rule:line-length
-    name: ${{ inputs.GERRIT_CHANGE_NUMBER }}/${{ inputs.GERRIT_PATCHSET_NUMBER}}__${{ inputs.GERRIT_BRANCH }}__${{ inputs.FDIO_NAMESPACE }}
+    name: cov-${{ matrix.os }}-${{ matrix.executor_arch }}-${{ inputs.FDIO_NAMESPACE || 'prod' }}
     runs-on:
       - self-hosted
       - nomad
-      - fdio:arch=x86_64
-      - fdio:class=builder
+      - fdio:arch=${{ matrix.executor_arch }}
+      - fdio:class=${{ matrix.class }}
       - fdio:namespace=${{ inputs.FDIO_NAMESPACE || 'prod' }}
-      - fdio:os=ubuntu2404
+      - fdio:os=${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        build_type: ['release']
+        class: ['builder']
+        os: ['ubuntu2404']
+        executor_arch: ['x86_64']
 
     env:
+      CI_TIMESTAMP: ""
+      FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE || 'prod' }}
+      LOG_DIR: ""
       WORKSPACE: /scratch/docker-build/vpp
       MAKE_PARALLEL_JOBS: 16
       TEST_JOBS: 16
@@ -59,9 +70,22 @@ jobs:
         # yamllint disable-line rule:line-length
         uses: fdio/.github/.github/actions/setup-executor-env@b728d1589228e2891a4241a1bba362d76895c225
 
+      - name: Set Timestamp and Log Path
+        run: |
+          set -euxo pipefail
+          ts="$(date -u +%Y_%m_%d_%H%M%S_UTC)"
+          echo "CI_TIMESTAMP=$ts" >> "$GITHUB_ENV"
+          echo "LOG_DIR=/scratch/docker-build/vpp/logs/$ts/cov-${{ matrix.build_type }}-${{ matrix.class }}-${{ matrix.os }}-${{ env.FDIO_NAMESPACE || 'prod' }}-${{ matrix.executor_arch }}" >> "$GITHUB_ENV"
+
+      - name: Prepare Log Directory
+        run: |
+          set -euxo pipefail
+          mkdir -p "$LOG_DIR"
+
       - name: Show Environment
         run: |
-          env | sort
+          set -euo pipefail
+          env | sort | tee "$LOG_DIR/environment.log"
 
       - name: Show Nomad Dockerfile
         # yamllint disable-line rule:line-length
@@ -111,7 +135,7 @@ jobs:
           BUILD_RESULT="MAKE TEST COVERAGE SUCCESSFULLY COMPLETED"
           RETVAL="0"
 
-          cd $WORKSPACE
+          cd "$WORKSPACE"
           find / -name start-docker.sh
           start-docker.sh
           if ! make COMPRESS_FAILED_TEST_LOGS=yes TEST_JOBS=$TEST_JOBS CCACHE_DISABLE=1 test-cov-both ; then
@@ -121,8 +145,11 @@ jobs:
               BUILD_RESULT="$BUILD_ERROR"
               RETVAL="1"
           fi
-          echo -e "\n$TUI_LINE\n* VPP ${OS_ID^^}-${OS_VERSION_ID}-${OS_ARCH^^} BUILD " \
-                  "\n* $BUILD_RESULT\n$TUI_LINE\n"
+          {
+            echo -e "\n$TUI_LINE\n* VPP ${OS_ID^^}-${OS_VERSION_ID}-${OS_ARCH^^} BUILD " \
+                    "\n* $BUILD_RESULT\n$TUI_LINE\n"
+            [ -n "$BUILD_ERROR" ] && echo "$BUILD_ERROR"
+          } | tee "$LOG_DIR/cov_result.log"
           exit $RETVAL
 
       - name: Report Success
@@ -131,3 +158,15 @@ jobs:
           echo "::notice::VPP Coverage workflow completed successfully!"
           echo "Workflow ID: ${{ github.run_id }}"
           echo "Name: ${{ github.workflow }}"
+
+      - name: Show Coverage Logs
+        if: always()
+        run: |
+          set -euo pipefail
+          echo "Log directory: $LOG_DIR"
+          ls -l "$LOG_DIR"
+          for file in $(ls "$LOG_DIR"); do
+            echo -e "\n\n-----[ $file ]-----\n"
+            cat "$LOG_DIR/$file"
+            echo "-----"
+          done

@@ -3,8 +3,25 @@ name: vpp-verify-arm-drivers
 on:
   workflow_call:
     inputs:
+      CI_TIMESTAMP:
+        description: "Start verify timestamp"
+        required: true
+        type: string
+      FDIO_NAMESPACE:
+        description: "Executor Namespace (prod|sandbox)"
+        required: true
+        type: string
+        default: prod
       GERRIT_BRANCH:
         description: "Branch that change is against"
+        required: true
+        type: string
+      GERRIT_CHANGE_NUMBER:
+        description: "The Gerrit number"
+        required: true
+        type: string
+      GERRIT_PATCHSET_NUMBER:
+        description: "The patch number for the change"
         required: true
         type: string
       GERRIT_CHANGE_URL:
@@ -19,21 +36,24 @@ on:
         description: "Gerrit refspec of change"
         required: true
         type: string
-      GERRIT_CHANGE_NUMBER:
-        description: "The Gerrit number"
+      LOG_PATH:
+        description: "Sub-path to the log directory"
         required: true
         type: string
-      GERRIT_PATCHSET_NUMBER:
-        description: "The patch number for the change"
+  workflow_dispatch:
+    inputs:
+      CI_TIMESTAMP:
+        description: "Start verify timestamp"
         required: true
         type: string
       FDIO_NAMESPACE:
         description: "Executor Namespace (prod|sandbox)"
         required: false
-        type: string
+        type: choice
+        options:
+          - sandbox
+          - prod
         default: prod
-  workflow_dispatch:
-    inputs:
       GERRIT_BRANCH:
         description: "Branch that change is against"
         required: true
@@ -70,14 +90,10 @@ on:
         description: "Gerrit refspec of change"
         required: true
         type: string
-      FDIO_NAMESPACE:
-        description: "Executor Namespace (prod|sandbox)"
-        required: false
-        type: choice
-        options:
-          - sandbox
-          - prod
-        default: prod
+      LOG_PATH:
+        description: "Sub-path to the log directory"
+        required: true
+        type: string
 
 defaults:
   run:
@@ -94,22 +110,33 @@ jobs:
     runs-on:
       - self-hosted
       - nomad
-      - fdio:arch=aarch64
-      - fdio:class=builder
+      - fdio:arch=${{ matrix.executor_arch }}
+      - fdio:class=${{ matrix.class }}
       - fdio:namespace=${{ inputs.FDIO_NAMESPACE || 'prod' }}
-      - fdio:os=ubuntu2404
+      - fdio:os=${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        build_type: ['release']
+        class: ['builder']
+        os: ['ubuntu2404']
+        executor_arch: ['aarch64']
 
     env:
-      WORKSPACE: /scratch/docker-build/vpp
-      CCACHE_DIR: /scratch/ccache/ubuntu2404-aarch64
-      MAKE_PARALLEL_JOBS: 16
+      CI_TIMESTAMP: ${{ inputs.CI_TIMESTAMP }}
+      FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
       GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
       GERRIT_CHANGE_URL: ${{ inputs.GERRIT_CHANGE_URL }}
-      GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
-      GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
       GERRIT_CHANGE_NUMBER: ${{ inputs.GERRIT_CHANGE_NUMBER }}
       GERRIT_PATCHSET_NUMBER: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
-      FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
+      GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
+      GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
+      LOG_PATH: ${{ inputs.LOG_PATH }}
+      LOG_DIR: /scratch/docker-build/vpp/logs/${{ inputs.LOG_PATH }}/arm-drivers-${{ matrix.build_type }}-${{ matrix.class }}-${{ matrix.os }}-${{ inputs.FDIO_NAMESPACE }}-${{ matrix.executor_arch }}
+      WORKSPACE: /scratch/docker-build/vpp
+      CCACHE_DIR: /scratch/ccache/${{ matrix.os }}-${{ matrix.executor_arch }}
+      MAKE_PARALLEL_JOBS: 16
       TUI_LINE: "*******************************************************************"
 
     steps:
@@ -120,9 +147,24 @@ jobs:
         # yamllint disable-line rule:line-length
         uses: fdio/.github/.github/actions/setup-executor-env@b728d1589228e2891a4241a1bba362d76895c225
 
+      - name: Prepare Log Directory
+        run: |
+          set -euxo pipefail
+          mkdir -p "$LOG_DIR"
+
       - name: Show Environment
         run: |
-          env | sort
+          set -euo pipefail
+          env | sort | tee "$LOG_DIR/environment.log"
+
+      - name: Log ARM Driver Build Start
+        run: |
+          set -euxo pipefail
+          {
+            echo "$TUI_LINE"
+            echo "* $CI_TIMESTAMP: Starting ARM driver build"
+            echo "$TUI_LINE"
+          } | tee "$LOG_DIR/arm_driver_start.log"
 
       - name: Show Nomad Dockerfile
         # yamllint disable-line rule:line-length
@@ -152,29 +194,43 @@ jobs:
       - name: Build VPP ARM Drivers
         run: |
           set -euxo pipefail
-          cd $WORKSPACE
-          BUILD_RESULT="* SUCCESSFULLY COMPLETED"
-          BUILD_ERROR=""
-          RETVAL="0"
+          cd "$WORKSPACE"
+          {
+            BUILD_RESULT="* SUCCESSFULLY COMPLETED"
+            BUILD_ERROR=""
+            RETVAL="0"
 
-          make_pkg_verify_arm_driver() {
-              vpp_platform="$1"
-              git clean -fdx || true
-              if ! make UNATTENDED=yes MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS} pkg-verify VPP_PLATFORM="$vpp_platform"; then
-                  BUILD_ERROR+="* FAILED 'make UNATTENDED=yes MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS} pkg-verify VPP_PLATFORM=$vpp_platform'\n"
-              fi
-          }
+            make_pkg_verify_arm_driver() {
+                vpp_platform="$1"
+                git clean -fdx || true
+                if ! make UNATTENDED=yes MAKE_PARALLEL_JOBS="${MAKE_PARALLEL_JOBS}" pkg-verify VPP_PLATFORM="$vpp_platform"; then
+                    BUILD_ERROR+="* FAILED 'make UNATTENDED=yes MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS} pkg-verify VPP_PLATFORM=$vpp_platform'\n"
+                fi
+            }
 
-          make_pkg_verify_arm_driver cn913x
-          make_pkg_verify_arm_driver octeon9
-          make_pkg_verify_arm_driver octeon10
+            make_pkg_verify_arm_driver cn913x
+            make_pkg_verify_arm_driver octeon9
+            make_pkg_verify_arm_driver octeon10
 
-          if [ -n "$BUILD_ERROR" ] ; then
-              BUILD_RESULT="$BUILD_ERROR"
-              RETVAL="1"
-          fi
-          echo -e "\n$TUI_LINE\n* VPP ${OS_ID^^}-${OS_VERSION_ID}-${OS_ARCH^^} ARM DRIVERS BUILD\n$BUILD_RESULT\n$TUI_LINE\n"
-          exit "$RETVAL"
+            if [ -n "$BUILD_ERROR" ] ; then
+                BUILD_RESULT="$BUILD_ERROR"
+                RETVAL="1"
+            fi
+            echo -e "\n$TUI_LINE\n* VPP ${OS_ID^^}-${OS_VERSION_ID}-${OS_ARCH^^} ARM DRIVERS BUILD\n$BUILD_RESULT\n$TUI_LINE\n"
+            exit "$RETVAL"
+          } | tee "$LOG_DIR/arm_driver_build.log"
+
+      - name: Show ARM Driver Logs
+        if: always()
+        run: |
+          set -euo pipefail
+          echo "Log directory: $LOG_DIR"
+          ls -l $LOG_DIR
+          for file in $(ls $LOG_DIR) ; do
+            echo -e "\n\n-----[ $file ]-----\n"
+            cat $LOG_DIR/$file
+            echo "-----"
+          done
 
       - name: Report Success
         if: success()

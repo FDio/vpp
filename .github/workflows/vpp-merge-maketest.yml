@@ -1,4 +1,4 @@
-name: vpp-verify-maketest
+name: vpp-merge-maketest
 
 on:
   workflow_call:
@@ -11,63 +11,16 @@ on:
         description: "Executor Namespace (prod|sandbox)"
         required: true
         type: string
-        default: prod
       GERRIT_BRANCH:
         description: "Branch that change is against"
-        required: true
-        type: string
-      GERRIT_CHANGE_NUMBER:
-        description: "The Gerrit number"
-        required: true
-        type: string
-      GERRIT_PATCHSET_NUMBER:
-        description: "The patch number for the change"
-        required: true
-        type: string
-      GERRIT_CHANGE_URL:
-        description: "URL to the change"
-        required: true
-        type: string
-      GERRIT_PROJECT:
-        description: "Project in Gerrit"
-        required: true
-        type: string
-      GERRIT_REFSPEC:
-        description: "Gerrit refspec of change"
-        required: true
-        type: string
-      LOG_PATH:
-        description: "Sub-path to the log directory"
-        required: true
-        type: string
-  workflow_dispatch:
-    inputs:
-      CI_TIMESTAMP:
-        description: "Start verify timestamp"
-        required: true
-        type: string
-      FDIO_NAMESPACE:
-        description: "Executor Namespace (prod|sandbox)"
-        required: false
-        type: choice
-        options:
-          - sandbox
-          - prod
-        default: prod
-      GERRIT_BRANCH:
-        description: "Branch that change is against"
-        required: true
-        type: string
-      GERRIT_CHANGE_NUMBER:
-        description: "The Gerrit number"
-        required: true
-        type: string
-      GERRIT_PATCHSET_NUMBER:
-        description: "The patch number for the change"
         required: true
         type: string
       GERRIT_CHANGE_ID:
         description: "The ID for the change"
+        required: true
+        type: string
+      GERRIT_CHANGE_NUMBER:
+        description: "The Gerrit number"
         required: true
         type: string
       GERRIT_CHANGE_URL:
@@ -76,6 +29,10 @@ on:
         type: string
       GERRIT_EVENT_TYPE:
         description: "Type of Gerrit event"
+        required: true
+        type: string
+      GERRIT_PATCHSET_NUMBER:
+        description: "The patch number for the change"
         required: true
         type: string
       GERRIT_PATCHSET_REVISION:
@@ -90,10 +47,68 @@ on:
         description: "Gerrit refspec of change"
         required: true
         type: string
-      LOG_PATH:
-        description: "Sub-path to the log directory"
+  workflow_dispatch:
+    inputs:
+      CI_TIMESTAMP:
+        description: "Start verify timestamp"
+        required: false
+        type: string
+      GERRIT_BRANCH:
+        description: "Branch that change is against"
         required: true
         type: string
+      GERRIT_CHANGE_ID:
+        description: "The ID for the change"
+        required: true
+        type: string
+      GERRIT_CHANGE_NUMBER:
+        description: "The Gerrit number"
+        required: true
+        type: string
+      GERRIT_CHANGE_URL:
+        description: "URL to the change"
+        required: true
+        type: string
+      GERRIT_EVENT_TYPE:
+        description: "Type of Gerrit event"
+        required: true
+        type: string
+      GERRIT_PATCHSET_NUMBER:
+        description: "The patch number for the change"
+        required: true
+        type: string
+      GERRIT_PATCHSET_REVISION:
+        description: "The revision sha"
+        required: true
+        type: string
+      GERRIT_PROJECT:
+        description: "Project in Gerrit"
+        required: true
+        type: string
+      GERRIT_REFSPEC:
+        description: "Gerrit refspec of change"
+        required: true
+        type: string
+      FDIO_NAMESPACE:
+        description: "Executor Namespace (prod|sandbox)"
+        required: false
+        type: choice
+        options:
+          - sandbox
+          - prod
+        default: prod
+
+env:
+  GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
+  GERRIT_CHANGE_ID: ${{ inputs.GERRIT_CHANGE_ID }}
+  GERRIT_CHANGE_NUMBER: ${{ inputs.GERRIT_CHANGE_NUMBER }}
+  GERRIT_CHANGE_URL: ${{ inputs.GERRIT_CHANGE_URL }}
+  GERRIT_EVENT_TYPE: ${{ inputs.GERRIT_EVENT_TYPE }}
+  GERRIT_PATCHSET_NUMBER: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
+  GERRIT_PATCHSET_REVISION: ${{ inputs.GERRIT_PATCHSET_REVISION }}
+  GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
+  GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
+  FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
 
 defaults:
   run:
@@ -103,16 +118,38 @@ permissions:
   contents: read
   actions: read
 
+concurrency:
+  # yamllint disable-line rule:line-length
+  group: required-${{ github.workflow }}-rel-ubuntu2404-x86_64-${{ inputs.GERRIT_CHANGE_NUMBER }}-${{ inputs.GERRIT_PATCHSET_NUMBER }}
+  cancel-in-progress: true
+
 jobs:
-  verify-maketest:
+  notify-start:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify workflow start
+        # yamllint disable-line rule:line-length
+        uses: lfreleng-actions/gerrit-review-action@537251ec667665b386f70b330b05446e3fc29087 # v0.9
+        with:
+          host: ${{ vars.GERRIT_SERVER }}
+          username: ${{ vars.GERRIT_SSH_REQUIRED_USER }}
+          key: ${{ secrets.GERRIT_SSH_REQUIRED_PRIVKEY }}
+          known_hosts: ${{ vars.GERRIT_KNOWN_HOSTS }}
+          gerrit-change-number: ${{ github.event.inputs.GERRIT_CHANGE_NUMBER }}
+          gerrit-patchset-number: ${{ github.event.inputs.GERRIT_PATCHSET_NUMBER }}
+          vote-type: clear
+          comment-only: true
+
+  merge-maketest:
     # yamllint disable-line rule:line-length
     name: ${{ inputs.GERRIT_CHANGE_NUMBER }}/${{ inputs.GERRIT_PATCHSET_NUMBER}}__${{ inputs.GERRIT_BRANCH }}__${{ inputs.FDIO_NAMESPACE }}
+    if: ${{ inputs.GERRIT_EVENT_TYPE == 'change-merged' }}
     runs-on:
       - self-hosted
       - nomad
       - fdio:arch=${{ matrix.executor_arch }}
-      - fdio:class=${{ matrix.class }}
-      - fdio:namespace=${{ inputs.FDIO_NAMESPACE || 'prod' }}
+      - fdio:class=builder
+      - fdio:namespace=${{ inputs.FDIO_NAMESPACE }}
       - fdio:os=${{ matrix.os }}
 
     strategy:
@@ -120,34 +157,18 @@ jobs:
       matrix:
         os: ['ubuntu2404', 'ubuntu2204', 'debian12']
         executor_arch: ['x86_64', 'aarch64']
-        class: ['builder']
-        build_type: ['debug', 'release']
+        build_type: ['rel']
         exclude:
           # Exclude debian12 on aarch64 for all builds
           - os: 'debian12'
             executor_arch: 'aarch64'
-          # Exclude non-ubuntu2204 OS for debug builds
-          - build_type: 'debug'
-            os: 'ubuntu2404'
-          - build_type: 'debug'
-            os: 'debian12'
-          # Exclude aarch64 architecture for debug builds
-          - build_type: 'debug'
-            executor_arch: 'aarch64'
 
     env:
-      CI_TIMESTAMP: ${{ inputs.CI_TIMESTAMP }}
-      FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
-      GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
-      GERRIT_CHANGE_URL: ${{ inputs.GERRIT_CHANGE_URL }}
-      GERRIT_CHANGE_NUMBER: ${{ inputs.GERRIT_CHANGE_NUMBER }}
-      GERRIT_PATCHSET_NUMBER: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
-      GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
-      GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
-      LOG_PATH: ${{ inputs.LOG_PATH }}
-      LOG_DIR: /scratch/docker-build/vpp/logs/${{ inputs.LOG_PATH }}/maketest-${{ matrix.build_type }}-${{ matrix.class }}-${{ matrix.os }}-${{ inputs.FDIO_NAMESPACE }}-${{ matrix.executor_arch }}
+      CI_TIMESTAMP: ""
+      LOG_DIR: ""
       WORKSPACE: /scratch/docker-build/vpp
       CCACHE_DIR: /scratch/ccache/${{ matrix.os }}-${{ matrix.executor_arch }}
+      BUILD_TYPE: ${{ matrix.build_type }}
       MAKE_PARALLEL_JOBS: 16
       TEST_JOBS: 16
       TEST_RETRIES: 3
@@ -155,6 +176,13 @@ jobs:
       MAKE_TEST_MULTIWORKER_OS: 'debian-12'
       VPPAPIGEN_TEST_OS: ${{ matrix.os == 'ubuntu2204' && 'ubuntu-22.04' || 'ubuntu-24.04' }}
       SHM_SIZE: ${{ matrix.executor_arch == 'aarch64' && '4096M' || '2048M' }}
+      GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
+      GERRIT_CHANGE_URL: ${{ inputs.GERRIT_CHANGE_URL }}
+      GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
+      GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
+      GERRIT_CHANGE_NUMBER: ${{ inputs.GERRIT_CHANGE_NUMBER }}
+      GERRIT_PATCHSET_NUMBER: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
+      FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
       TUI_LINE: "*******************************************************************"
 
     steps:
@@ -164,6 +192,16 @@ jobs:
       - name: Setup Environment
         # yamllint disable-line rule:line-length
         uses: fdio/.github/.github/actions/setup-executor-env@b728d1589228e2891a4241a1bba362d76895c225
+
+      - name: Set Timestamp and Log Path
+        run: |
+          set -euxo pipefail
+          ts="${{ inputs.CI_TIMESTAMP || '' }}"
+          if [ -z "$ts" ]; then
+            ts="$(date -u +%Y_%m_%d_%H%M%S_UTC)"
+          fi
+          echo "CI_TIMESTAMP=$ts" >> "$GITHUB_ENV"
+          echo "LOG_DIR=/scratch/docker-build/vpp/logs/$ts/merge-maketest-${{ matrix.build_type }}-${{ matrix.os }}-${{ env.FDIO_NAMESPACE || 'prod' }}-${{ matrix.executor_arch }}" >> "$GITHUB_ENV"
 
       - name: Prepare Log Directory
         run: |
@@ -180,7 +218,7 @@ jobs:
           set -euxo pipefail
           {
             echo "$TUI_LINE"
-            echo "* $CI_TIMESTAMP: Starting VPP maketest"
+            echo "* $CI_TIMESTAMP: Starting merge maketest"
             echo "$TUI_LINE"
           } | tee "$LOG_DIR/maketest_start.log"
 
@@ -217,7 +255,7 @@ jobs:
         with:
           WORKSPACE: ${{ env.WORKSPACE }}
           MAKE_PARALLEL_JOBS: ${{ env.MAKE_PARALLEL_JOBS }}
-          BUILD_TYPE: ${{ matrix['build_type'] }}
+          BUILD_TYPE: ${{ env.BUILD_TYPE }}
           TUI_LINE: ${{ env.TUI_LINE }}
 
       - name: Setup Docker VPP Runtime Environment for 'make test'
@@ -246,17 +284,17 @@ jobs:
         run: |
           set -euo pipefail
           echo "Log directory: $LOG_DIR"
-          ls -l $LOG_DIR
-          for file in $(ls $LOG_DIR) ; do
+          ls -l "$LOG_DIR"
+          for file in $(ls "$LOG_DIR"); do
             echo -e "\n\n-----[ $file ]-----\n"
-            cat $LOG_DIR/$file
+            cat "$LOG_DIR/$file"
             echo "-----"
           done
 
       - name: Report Success
         if: success()
         run: |
-          echo "::notice::VPP Verify Maketest workflow completed successfully!"
+          echo "::notice::VPP Merge Make Test workflow completed successfully!"
           echo "Workflow ID: ${{ github.run_id }}"
           echo "Name: ${{ github.workflow }}"
           echo "Branch: $GERRIT_BRANCH, Change: $GERRIT_CHANGE_NUMBER, Patchset: $GERRIT_PATCHSET_NUMBER"

@@ -3,49 +3,15 @@ name: vpp-verify-gcc
 on:
   workflow_call:
     inputs:
-      GERRIT_BRANCH:
-        description: "Branch that change is against"
-        required: true
-        type: string
-      GERRIT_CHANGE_ID:
-        description: "The ID for the change"
-        required: true
-        type: string
-      GERRIT_CHANGE_NUMBER:
-        description: "The Gerrit number"
-        required: true
-        type: string
-      GERRIT_CHANGE_URL:
-        description: "URL to the change"
-        required: true
-        type: string
-      GERRIT_EVENT_TYPE:
-        description: "Type of Gerrit event"
-        required: true
-        type: string
-      GERRIT_PATCHSET_NUMBER:
-        description: "The patch number for the change"
-        required: true
-        type: string
-      GERRIT_PATCHSET_REVISION:
-        description: "The revision sha"
-        required: true
-        type: string
-      GERRIT_PROJECT:
-        description: "Project in Gerrit"
-        required: true
-        type: string
-      GERRIT_REFSPEC:
-        description: "Gerrit refspec of change"
+      CI_TIMESTAMP:
+        description: "Start verify timestamp"
         required: true
         type: string
       FDIO_NAMESPACE:
         description: "Executor Namespace (prod|sandbox)"
-        required: false
+        required: true
         type: string
         default: prod
-  workflow_dispatch:
-    inputs:
       GERRIT_BRANCH:
         description: "Branch that change is against"
         required: true
@@ -80,6 +46,16 @@ on:
         type: string
       GERRIT_REFSPEC:
         description: "Gerrit refspec of change"
+        required: true
+        type: string
+      LOG_PATH:
+        description: "Sub-path to the log directory"
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      CI_TIMESTAMP:
+        description: "Start verify timestamp"
         required: true
         type: string
       FDIO_NAMESPACE:
@@ -90,6 +66,46 @@ on:
           - sandbox
           - prod
         default: prod
+      GERRIT_BRANCH:
+        description: "Branch that change is against"
+        required: true
+        type: string
+      GERRIT_CHANGE_ID:
+        description: "The ID for the change"
+        required: true
+        type: string
+      GERRIT_CHANGE_NUMBER:
+        description: "The Gerrit number"
+        required: true
+        type: string
+      GERRIT_CHANGE_URL:
+        description: "URL to the change"
+        required: true
+        type: string
+      GERRIT_EVENT_TYPE:
+        description: "Type of Gerrit event"
+        required: true
+        type: string
+      GERRIT_PATCHSET_NUMBER:
+        description: "The patch number for the change"
+        required: true
+        type: string
+      GERRIT_PATCHSET_REVISION:
+        description: "The revision sha"
+        required: true
+        type: string
+      GERRIT_PROJECT:
+        description: "Project in Gerrit"
+        required: true
+        type: string
+      GERRIT_REFSPEC:
+        description: "Gerrit refspec of change"
+        required: true
+        type: string
+      LOG_PATH:
+        description: "Sub-path to the log directory"
+        required: true
+        type: string
 
 defaults:
   run:
@@ -108,7 +124,7 @@ jobs:
       - nomad
       - fdio:arch=${{ matrix.executor_arch }}
       - fdio:class=builder
-      - fdio:namespace=dev
+      - fdio:namespace=${{ inputs.FDIO_NAMESPACE || 'prod' }}
       - fdio:os=${{ matrix.os }}
 
     strategy:
@@ -119,6 +135,16 @@ jobs:
         build_type: ['dbg', 'rel']
 
     env:
+      CI_TIMESTAMP: ${{ inputs.CI_TIMESTAMP }}
+      FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
+      GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
+      GERRIT_CHANGE_URL: ${{ inputs.GERRIT_CHANGE_URL }}
+      GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
+      GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
+      GERRIT_CHANGE_NUMBER: ${{ inputs.GERRIT_CHANGE_NUMBER }}
+      GERRIT_PATCHSET_NUMBER: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
+      LOG_PATH: ${{ inputs.LOG_PATH }}
+      LOG_DIR: /scratch/docker-build/vpp/logs/${{ inputs.LOG_PATH }}/gcc-${{ matrix.build_type }}-${{ matrix.os }}-${{ inputs.FDIO_NAMESPACE }}-${{ matrix.executor_arch }}
       WORKSPACE: /scratch/docker-build/vpp
       CCACHE_DIR: /scratch/ccache/${{ matrix.os }}-${{ matrix.executor_arch }}
       MAKE_PARALLEL_JOBS: 16
@@ -135,13 +161,6 @@ jobs:
       MAKE_TEST_MULTIWORKER_OS: 'debian-12'
       VPPAPIGEN_TEST_OS: ${{ matrix.os == 'ubuntu2204' && 'ubuntu-22.04' || 'ubuntu-24.04' }}
       SHM_SIZE: ${{ matrix.executor_arch == 'aarch64' && '4096M' || '2048M' }}
-      GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
-      GERRIT_CHANGE_URL: ${{ inputs.GERRIT_CHANGE_URL }}
-      GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
-      GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
-      GERRIT_CHANGE_NUMBER: ${{ inputs.GERRIT_CHANGE_NUMBER }}
-      GERRIT_PATCHSET_NUMBER: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
-      FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
       TUI_LINE: "*******************************************************************"
 
     steps:
@@ -152,9 +171,24 @@ jobs:
         # yamllint disable-line rule:line-length
         uses: fdio/.github/.github/actions/setup-executor-env@b728d1589228e2891a4241a1bba362d76895c225
 
+      - name: Prepare Log Directory
+        run: |
+          set -euxo pipefail
+          mkdir -p "$LOG_DIR"
+
       - name: Show Environment
         run: |
-          env | sort
+          set -euo pipefail
+          env | sort | tee "$LOG_DIR/environment.log"
+
+      - name: Log GCC Build Start
+        run: |
+          set -euxo pipefail
+          {
+            echo "$TUI_LINE"
+            echo "* $CI_TIMESTAMP: Starting GCC/GCOV build & tests"
+            echo "$TUI_LINE"
+          } | tee "$LOG_DIR/gcc_start.log"
 
       - name: Show Nomad Dockerfile
         # yamllint disable-line rule:line-length
@@ -215,6 +249,18 @@ jobs:
           MAKE_TEST_MULTIWORKER_OS: ${{ env.MAKE_TEST_MULTIWORKER_OS }}
           VPPAPIGEN_TEST_OS: ${{ env.VPPAPIGEN_TEST_OS }}
           TUI_LINE: ${{ env.TUI_LINE }}
+
+      - name: Show GCC Logs
+        if: always()
+        run: |
+          set -euo pipefail
+          echo "Log directory: $LOG_DIR"
+          ls -l "$LOG_DIR"
+          for file in $(ls "$LOG_DIR"); do
+            echo -e "\n\n-----[ $file ]-----\n"
+            cat "$LOG_DIR/$file"
+            echo "-----"
+          done
 
       - name: Report Success
         if: success()

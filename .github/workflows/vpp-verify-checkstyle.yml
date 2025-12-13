@@ -4,6 +4,10 @@ name: vpp-verify-checkstyle
 on:
   workflow_call:
     inputs:
+      CI_TIMESTAMP:
+        description: "Start verify timestamp"
+        required: true
+        type: string
       FDIO_NAMESPACE:
         description: "Executor Namespace (prod|sandbox)"
         required: true
@@ -48,12 +52,12 @@ on:
         description: "Sub-path to the log directory"
         required: true
         type: string
+  workflow_dispatch:
+    inputs:
       CI_TIMESTAMP:
         description: "Start verify timestamp"
         required: true
         type: string
-  workflow_dispatch:
-    inputs:
       FDIO_NAMESPACE:
         description: "Executor Namespace (prod|sandbox)"
         required: false
@@ -102,10 +106,6 @@ on:
         description: "Sub-path to the log directory"
         required: true
         type: string
-      CI_TIMESTAMP:
-        description: "Start verify timestamp"
-        required: true
-        type: string
 
 defaults:
   run:
@@ -149,7 +149,7 @@ jobs:
       CI_TIMESTAMP: ${{ inputs.CI_TIMESTAMP }}
       LOG_PATH: ${{ inputs.LOG_PATH }}
       WORKSPACE: /scratch/docker-build/vpp
-      LOG_DIR: /scratch/docker-build/vpp/logs/${{ inputs.LOG_PATH }}/checkstyle-${{ matrix.class }}-${{ matrix.os }}-${{ inputs.FDIO_NAMESPACE }}-${{ matrix.executor_arch }}
+      LOG_DIR: /scratch/docker-build/vpp/logs/${{ inputs.LOG_PATH }}/checkstyle-${{ matrix.build_type }}-${{ matrix.class }}-${{ matrix.os }}-${{ inputs.FDIO_NAMESPACE }}-${{ matrix.executor_arch }}
       TUI_LINE: "*******************************************************************"
 
     steps:
@@ -158,9 +158,15 @@ jobs:
         # yamllint disable-line rule:line-length
         uses: fdio/.github/.github/actions/setup-executor-env@b728d1589228e2891a4241a1bba362d76895c225
 
+      - name: Prepare Log Directory
+        run: |
+          set -euxo pipefail
+          mkdir -p "$LOG_DIR"
+
       - name: Show Environment
         run: |
-          env | sort
+          set -euo pipefail
+          env | sort | tee "$LOG_DIR/environment.log"
 
       - name: "Show Nomad Dockerfile"
         # yamllint disable-line rule:line-length
@@ -179,7 +185,6 @@ jobs:
         run: |
           set -euxo pipefail
           cd $WORKSPACE
-          mkdir -p $LOG_DIR
           {
             BUILD_EXT_DIR="build/external"
             MATRIX_FILE="$BUILD_EXT_DIR/mlx_rdma_dpdk_matrix.txt"
@@ -206,14 +211,12 @@ jobs:
         run: |
           set -euxo pipefail
           cd $WORKSPACE
-          mkdir -p $LOG_DIR
           make test-checkstyle | tee $LOG_DIR/test_checkstyle.log
 
       - name: Run API Checkstyle Scripts
         run: |
           set -euxo pipefail
           cd $WORKSPACE
-          mkdir -p $LOG_DIR
           {
             VPP_CRC_CHECKER="extras/scripts/crcchecker.py"
             VPP_CRC_CHECKER_CMD="$VPP_CRC_CHECKER --check-patchset"
@@ -236,7 +239,6 @@ jobs:
         run: |
           set -euxo pipefail
           cd $WORKSPACE
-          mkdir -p $LOG_DIR
           {
             echo "Running extras/scripts/check_commit_msg.sh"
             extras/scripts/check_commit_msg.sh
@@ -246,13 +248,13 @@ jobs:
         run: |
           set -euxo pipefail
           cd $WORKSPACE
-          mkdir -p $LOG_DIR
           make docs-spell | tee $LOG_DIR/docs_spelling_checkstyle.log
 
       - name: Show Checkstyle Logs
         if: always()
         run: |
-          set -euxo pipefail
+          set -euo pipefail
+          echo "Log directory: $LOG_DIR"
           ls -l $LOG_DIR
           for file in $(ls $LOG_DIR) ; do
             echo -e "\n\n-----[ $file ]-----\n"
