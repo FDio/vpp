@@ -33,6 +33,24 @@
       "message": "lgtm... but could you please rebase this patch? it\u0027s couple of weeks behind master",
       "revId": "a03b2908cdf2d43623689651436fad766a6cd7cf",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "62e5689c_82ae08ad",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-12-13T19:53:46Z",
+      "side": 1,
+      "message": "let’s also shorten the commit line, e.g., just call it vcl server",
+      "parentUuid": "b2744d2f_30149c74",
+      "revId": "a03b2908cdf2d43623689651436fad766a6cd7cf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
