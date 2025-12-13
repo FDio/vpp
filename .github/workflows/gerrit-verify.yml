@@ -104,7 +104,7 @@ jobs:
       GERRIT_PATCHSET_REVISION: ${{ inputs.GERRIT_PATCHSET_REVISION }}
       GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
       GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
-      TIMESTAMP: ${{ needs.start-verify.outputs.timestamp }}
+      CI_TIMESTAMP: ${{ needs.start-verify.outputs.timestamp }}
       LOG_PATH: ${{ inputs.GERRIT_CHANGE_NUMBER }}/${{ inputs.GERRIT_PATCHSET_NUMBER}}/${{ needs.start-verify.outputs.timestamp }}
     secrets: inherit
 
