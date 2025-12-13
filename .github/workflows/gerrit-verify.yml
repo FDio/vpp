@@ -61,7 +61,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  notify-start:
+  start-verify:
+    name: Start Verify
     runs-on: ubuntu-latest
     steps:
       - name: Clear Gerrit vote
@@ -78,9 +79,9 @@ jobs:
           comment-only: true
 
   verify-checkstyle:
-    name: Run vpp-verify-checkstyle
+    name: Checkstyle
     needs:
-      - notify-start
+      - start-verify
     uses: fdio/vpp/.github/workflows/vpp-verify-checkstyle.yml@master
     with:
       GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
@@ -96,9 +97,9 @@ jobs:
     secrets: inherit
 
   verify-maketest:
-    name: Run vpp-verify-maketest
+    name: Maketest
     needs:
-      - notify-start
+      - start-verify
       - verify-checkstyle
     if: ${{ needs.verify-checkstyle.result == 'success' }}
     uses: fdio/vpp/.github/workflows/vpp-verify-maketest.yml@master
@@ -113,9 +114,9 @@ jobs:
     secrets: inherit
 
   verify-docs:
-    name: Run vpp-verify-docs
+    name: Docs
     needs:
-      - notify-start
+      - start-verify
       - verify-checkstyle
     if: ${{ needs.verify-checkstyle.result == 'success' }}
     uses: fdio/vpp/.github/workflows/vpp-verify-docs.yml@master
@@ -130,9 +131,9 @@ jobs:
     secrets: inherit
 
   verify-csit-api:
-    name: Run vpp-csit-verify-api
+    name: CSIT API
     needs:
-      - notify-start
+      - start-verify
       - verify-checkstyle
     if: ${{ needs.verify-checkstyle.result == 'success' }}
     uses: fdio/vpp/.github/workflows/vpp-csit-verify-api.yml@master
@@ -147,9 +148,9 @@ jobs:
     secrets: inherit
 
   verify-arm-drivers:
-    name: Run vpp-verify-arm-drivers
+    name: ARM Drivers
     needs:
-      - notify-start
+      - start-verify
       - verify-checkstyle
     if: ${{ needs.verify-checkstyle.result == 'success' }}
     uses: fdio/vpp/.github/workflows/vpp-verify-arm-drivers.yml@master
@@ -165,9 +166,9 @@ jobs:
 
   verify-hst:
     runs-on: ubuntu-latest
-    name: Run vpp-verify-hst
+    name: HST nop
     needs:
-      - notify-start
+      - start-verify
       - verify-checkstyle
     if: ${{ needs.verify-checkstyle.result == 'success' }}
     steps:
@@ -176,9 +177,9 @@ jobs:
           echo "verify-checkstyle.result: ${{ needs.verify-checkstyle.result }}"
   # TODO: enable hst job when dispatch class refactoring is complete
   # verify-hst:
-  #   name: Run vpp-verify-hst
+  #   name: HST
   #   needs:
-  #     - notify-start
+  #     - start-verify
   #     - verify-checkstyle
   #   if: ${{ needs.verify-checkstyle.result == 'success' }}
   #   uses: fdio/vpp/.github/workflows/vpp-verify-hst.yml@master
@@ -193,9 +194,10 @@ jobs:
   #   secrets: inherit
 
   final-vote:
+    name: Vote
     if: ${{ always() }}
     needs:
-      - notify-start
+      - start-verify
       - verify-checkstyle
       - verify-maketest
       - verify-docs
@@ -211,7 +213,7 @@ jobs:
         id: overall
         run: |
           set -euxo pipefail
-          if [[ "${{ needs.notify-start.result }}" == "success" && \
+          if [[ "${{ needs.start-verify.result }}" == "success" && \
                 "${{ needs.verify-checkstyle.result }}" == "success" && \
                 "${{ needs.verify-maketest.result }}" == "success" && \
                 "${{ needs.verify-docs.result }}" == "success" && \
@@ -224,7 +226,7 @@ jobs:
             echo "result=failure" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Set aggregated Gerrit vote
+      - name: Gerrit Vote disabled
         # yamllint disable-line rule:line-length
         uses: lfreleng-actions/gerrit-review-action@537251ec667665b386f70b330b05446e3fc29087 # v0.9
         with:
