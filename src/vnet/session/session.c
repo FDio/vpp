@@ -1260,7 +1260,9 @@ session_open_cl (session_endpoint_cfg_t *rmt, session_handle_t *rsh)
   sh = session_handle (s);
   *rsh = sh;
 
-  session_lookup_add_connection (tc, sh);
+  if (!(tc->flags & TRANSPORT_CONNECTION_F_NO_LOOKUP))
+    session_lookup_add_connection (tc, sh);
+
   return app_worker_connect_notify (app_wrk, s, SESSION_E_NONE, rmt->opaque);
 }
 
