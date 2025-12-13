@@ -663,7 +663,7 @@ srtp_connect (transport_endpoint_cfg_t *tep)
     return rv;
 
   SRTP_DBG (1, "New connect request %u", ctx_index);
-  return 0;
+  return ctx_index;
 }
 
 static void
@@ -969,7 +969,7 @@ static const transport_proto_vft_t srtp_proto = {
     .name = "srtp",
     .short_name = "R",
     .tx_type = TRANSPORT_TX_INTERNAL,
-    .service_type = TRANSPORT_SERVICE_APP,
+    .service_type = TRANSPORT_SERVICE_CL,
   },
 };
 
