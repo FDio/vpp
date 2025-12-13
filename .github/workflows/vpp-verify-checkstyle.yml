@@ -48,7 +48,7 @@ on:
         description: "Sub-path to the log directory"
         required: true
         type: string
-      TIMESTAMP:
+      CI_TIMESTAMP:
         description: "Start verify timestamp"
         required: true
         type: string
@@ -102,7 +102,7 @@ on:
         description: "Sub-path to the log directory"
         required: true
         type: string
-      TIMESTAMP:
+      CI_TIMESTAMP:
         description: "Start verify timestamp"
         required: true
         type: string
@@ -146,7 +146,7 @@ jobs:
       GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
       GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
       FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
-      TIMESTAMP: ${{ inputs.TIMESTAMP }}
+      CI_TIMESTAMP: ${{ inputs.CI_TIMESTAMP }}
       LOG_PATH: ${{ inputs.LOG_PATH }}
       WORKSPACE: /scratch/docker-build/vpp
       LOG_DIR: /scratch/docker-build/vpp/logs/${{ inputs.LOG_PATH }}/checkstyle-${{ matrix.class }}-${{ matrix.os }}-${{ inputs.FDIO_NAMESPACE }}-${{ matrix.executor_arch }}
@@ -190,11 +190,13 @@ jobs:
                 DPDK_VERSION="$(grep dpdk_version $PKGS_DIR/dpdk.mk | grep -v '(' | mawk '{print $3}')"
                 CURRENT_MATRIX="rdma=$RDMA_CORE_VERSION dpdk=$DPDK_VERSION"
                 if grep -q "$CURRENT_MATRIX" "$MATRIX_FILE"; then
-                    echo -e "$TUI_LINE\n* ${{ inputs.TIMESTAMP }}: DPDK/RDMA-CORE matrix file update successfully verified\n$TUI_LINE"
+                    echo -e "$TUI_LINE\n* DPDK/RDMA-CORE matrix file update successfully verified\n$TUI_LINE"
                 else
                     echo -e "$TUI_LINE\n* ERROR: 'rdma=$RDMA_CORE_VERSION dpdk=$DPDK_VERSION' not found in $MATRIX_FILE!\n$TUI_LINE"
                     exit 1
                 fi
+            else
+              echo -e "$TUI_LINE\n* DPDK/RDMA-CORE matrix file not modified in $GERRIT_CHANGE_URL \n$TUI_LINE"
             fi
           } | tee $LOG_DIR/dpdk_rdma_matrix_check.log
 
@@ -252,6 +254,11 @@ jobs:
         run: |
           set -euxo pipefail
           ls -l $LOG_DIR
+          for file in $(ls $LOG_DIR) ; do
+            echo -e "\n\n-----[ $file ]-----\n"
+            cat $file
+            echo "-----"
+          done
 
       - name: Report Success
         if: success()
