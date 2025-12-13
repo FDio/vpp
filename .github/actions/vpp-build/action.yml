@@ -4,18 +4,19 @@ description: |
   This GitHub Action builds the VPP Docker image.
 
 inputs:
-  WORKSPACE:
-    description: "Workspace directory where VPP is located"
+  BUILD_TYPE:
+    description: "Type of build: debug or release"
     required: true
+    type: string
+  LOG_DIR:
+    description: "Base directory for build logs"
+    required: false
+    default: "/scratch/docker-build/vpp/logs"
     type: string
   MAKE_PARALLEL_JOBS:
     description: "Number of parallel jobs for 'make' (overrides MAKE_PARALLEL_JOBS)"
     required: false
     default: "16"
-    type: string
-  BUILD_TYPE:
-    description: "Type of build: debug (dbg) or release (rel)"
-    required: true
     type: string
   BUILD_HST:
     description: "Build VPP for HostStack Test (HST) framework"
@@ -32,6 +33,10 @@ inputs:
     required: false
     default: "*******************************************************************"
     type: string
+  WORKSPACE:
+    description: "Workspace directory where VPP is located"
+    required: true
+    type: string
 
 runs:
   using: "composite"
@@ -42,12 +47,17 @@ runs:
         WORKSPACE: ${{ inputs.WORKSPACE }}
         MAKE_PARALLEL_JOBS: ${{ inputs.MAKE_PARALLEL_JOBS }}
         BUILD_TYPE: ${{ inputs.BUILD_TYPE }}
+        LOG_DIR: ${{ inputs.LOG_DIR }}
         BUILD_HST: ${{ inputs.BUILD_HST }}
         USE_GCC: ${{ inputs.USE_GCC }}
         TUI_LINE: ${{ inputs.TUI_LINE }}
       run: |
         set -euo pipefail
         cd "${WORKSPACE}"
+
+        LOG_DIR_VPP="${LOG_DIR}/build_vpp"
+        LOG_DIR_HST="${LOG_DIR}/build_hst_vpp"
+        mkdir -p "$LOG_DIR_VPP" "$LOG_DIR_HST"
 
         if [ "$USE_GCC" == "true" ] ; then
             BUILD_RESULT="(GCC) "
@@ -62,30 +72,30 @@ runs:
             echo "Building VPP. Number of cores for build set with" \
                   "MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS}."
             if [ -f extras/scripts/build_static_vppctl.sh ]; then
-                if ! extras/scripts/build_static_vppctl.sh ; then
+                if ! extras/scripts/build_static_vppctl.sh | tee "$LOG_DIR_VPP/build_static_vppctl.log" ; then
                     BUILD_ERROR="FAILED 'extras/scripts/build_static_vppctl.sh'"
                     return
                 fi
             fi
-            if [ "$BUILD_TYPE" == "dbg" ] ; then
+            if [ "$BUILD_TYPE" == "debug" ] ; then
                 if [ "$USE_GCC" == "true" ] ; then
-                    if ! make UNATTENDED=yes CC=gcc MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS} build ; then
+                    if ! make UNATTENDED=yes CC=gcc MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS} build | tee "$LOG_DIR_VPP/build_debug_gcc.log" ; then
                         BUILD_ERROR="FAILED 'make UNATTENDED=yes CC=gcc MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS} build'"
                         return
                     fi
                 else
-                    if ! make UNATTENDED=yes MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS} build ; then
+                    if ! make UNATTENDED=yes MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS} build | tee "$LOG_DIR_VPP/build_debug.log" ; then
                         BUILD_ERROR="FAILED 'make UNATTENDED=yes MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS} build'"
                         return
                     fi
                 fi
             elif [ "$USE_GCC" == "true" ] ; then
-                if ! make UNATTENDED=yes CC=gcc MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS} pkg-verify ; then
+                if ! make UNATTENDED=yes CC=gcc MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS} pkg-verify | tee "$LOG_DIR_VPP/pkg_verify_release_gcc.log" ; then
                     BUILD_ERROR="FAILED 'make UNATTENDED=yes CC=gcc MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS} pkg-verify'"
                     return
                 fi
             else
-              if ! make UNATTENDED=yes MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS} pkg-verify ; then
+              if ! make UNATTENDED=yes MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS} pkg-verify | tee "$LOG_DIR_VPP/pkg_verify_release.log" ; then
                   BUILD_ERROR="FAILED 'make UNATTENDED=yes MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS} pkg-verify'"
                   return
               fi
@@ -96,13 +106,13 @@ runs:
             echo "Building VPP. Number of cores for build set with" \
                   "MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS}."
 
-            if [ "$BUILD_TYPE" == "dbg" ] ; then
-                if ! make UNATTENDED=yes MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS} build ; then
+            if [ "$BUILD_TYPE" == "debug" ] ; then
+                if ! make UNATTENDED=yes MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS} build | tee "$LOG_DIR_HST/hst_build_debug.log" ; then
                     BUILD_ERROR="FAILED HST BUILD 'make UNATTENDED=yes MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS} build'"
                     return
                 fi
             else
-              if ! make UNATTENDED=yes MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS} build-release ; then
+              if ! make UNATTENDED=yes MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS} build-release | tee "$LOG_DIR_HST/hst_build_release.log" ; then
                   BUILD_ERROR="FAILED HST BUILD 'make UNATTENDED=yes MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS} build-release'"
                   return
               fi
