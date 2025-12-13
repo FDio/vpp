@@ -1065,7 +1065,6 @@ http_connect_connection (session_endpoint_cfg_t *sep)
   http_conn_t *hc;
   int error;
   u32 hc_index;
-  session_t *ho;
   transport_endpt_ext_cfg_t *ext_cfg;
   segment_manager_props_t *props;
   app_worker_t *app_wrk = app_worker_get (sep->app_wrk_index);
@@ -1083,6 +1082,7 @@ http_connect_connection (session_endpoint_cfg_t *sep)
   hc->hc_pa_app_api_ctx = sep->opaque;
   hc->state = HTTP_CONN_STATE_CONNECTING;
   hc->version = HTTP_VERSION_1;
+  hc->c_proto = TRANSPORT_PROTO_HTTP;
   cargs->api_context = hc_index;
 
   ext_cfg = session_endpoint_get_ext_cfg (sep, TRANSPORT_ENDPT_EXT_CFG_HTTP);
@@ -1139,18 +1139,11 @@ http_connect_connection (session_endpoint_cfg_t *sep)
   if ((error = vnet_connect (cargs)))
     return error;
 
-  ho = session_alloc_for_half_open (&hc->connection);
-  ho->app_wrk_index = app_wrk->wrk_index;
-  ho->ho_index = app_worker_add_half_open (app_wrk, session_handle (ho));
-  ho->opaque = sep->opaque;
-  ho->session_type =
-    session_type_from_proto_and_ip (TRANSPORT_PROTO_HTTP, sep->is_ip4);
   hc->hc_tc_session_handle = cargs->sh;
-  hc->c_s_index = ho->session_index;
   props = application_segment_manager_properties (app);
   hc->app_rx_fifo_size = props->rx_fifo_size;
 
-  return 0;
+  return hc_index;
 }
 
 static int
@@ -1728,7 +1721,7 @@ static const transport_proto_vft_t http_proto = {
     .name = "http",
     .short_name = "H",
     .tx_type = TRANSPORT_TX_INTERNAL,
-    .service_type = TRANSPORT_SERVICE_APP,
+    .service_type = TRANSPORT_SERVICE_VC,
   },
 };
 
