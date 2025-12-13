@@ -52,6 +52,9 @@ defaults:
   run:
     shell: bash
 
+env:
+  GERRIT_CHANGE: "${{ inputs.GERRIT_CHANGE_NUMBER }}/${{ inputs.GERRIT_PATCHSET_NUMBER}}"
+
 permissions:
   contents: read
   actions: read
@@ -64,7 +67,14 @@ jobs:
   start-verify:
     name: Start Verify
     runs-on: ubuntu-latest
+    outputs:
+      timestamp: ${{ steps.start-time.outputs.timestamp }}
     steps:
+      - name: Start Time
+        id: start-time
+        run: |
+          echo "timestamp=$(date -u +%Y_%m_%d_%H%M%S_UTC)" >> "$GITHUB_OUTPUT"
+
       - name: Clear Gerrit vote
         # yamllint disable-line rule:line-length
         uses: lfreleng-actions/gerrit-review-action@537251ec667665b386f70b330b05446e3fc29087 # v0.9
@@ -84,6 +94,7 @@ jobs:
       - start-verify
     uses: fdio/vpp/.github/workflows/vpp-verify-checkstyle.yml@master
     with:
+      FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
       GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
       GERRIT_CHANGE_ID: ${{ inputs.GERRIT_CHANGE_ID }}
       GERRIT_CHANGE_NUMBER: ${{ inputs.GERRIT_CHANGE_NUMBER }}
@@ -93,7 +104,8 @@ jobs:
       GERRIT_PATCHSET_REVISION: ${{ inputs.GERRIT_PATCHSET_REVISION }}
       GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
       GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
-      FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
+      TIMESTAMP: ${{ needs.start-verify.outputs.timestamp }}
+      LOG_PATH: ${{ inputs.GERRIT_CHANGE_NUMBER }}/${{ inputs.GERRIT_PATCHSET_NUMBER}}/${{ needs.start-verify.outputs.timestamp }}
     secrets: inherit
 
   verify-maketest:
@@ -218,7 +230,6 @@ jobs:
                 "${{ needs.verify-maketest.result }}" == "success" && \
                 "${{ needs.verify-docs.result }}" == "success" && \
                 "${{ needs.verify-csit-api.result }}" == "success" && \
-                "${{ needs.verify-arm-drivers.result }}" == "success" && \
                 "${{ needs.verify-arm-drivers.result }}" == "success" && \
                 "${{ needs.verify-hst.result }}" == "success" ]]; then
             echo "result=success" >> "$GITHUB_OUTPUT"
