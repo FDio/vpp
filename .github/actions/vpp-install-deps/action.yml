@@ -4,6 +4,11 @@ description: |
   This GitHub Action installs the necessary dependencies for VPP.
 
 inputs:
+  LOG_DIR:
+    description: "Directory for dependency install logs"
+    required: false
+    default: "/scratch/docker-build/vpp/logs/install-deps"
+    type: string
   WORKSPACE:
     description: "Workspace directory where VPP is located"
     required: true
@@ -20,11 +25,19 @@ runs:
     - name: Install Dependencies
       shell: bash
       env:
+        LOG_DIR: ${{ inputs.LOG_DIR }}
         WORKSPACE: ${{ inputs.WORKSPACE }}
         TUI_LINE: ${{ inputs.TUI_LINE }}
       run: |
         set -euo pipefail
         cd "$WORKSPACE"
-        echo -e "$TUI_LINE\nInstalling VPP dependencies...\n"
-        make UNATTENDED=yes install-deps
-        echo "$TUI_LINE"
+
+        mkdir -p "$LOG_DIR"
+        LOG_FILE="$LOG_DIR/install_deps.log"
+        {
+          echo "$TUI_LINE"
+          echo "* Installing VPP dependencies"
+          echo "$TUI_LINE"
+          make UNATTENDED=yes install-deps
+          echo "$TUI_LINE"
+        } | tee "$LOG_FILE"
