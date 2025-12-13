@@ -160,7 +160,7 @@ jobs:
 
     steps:
       - name: Actions Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Setup Environment
         # yamllint disable-line rule:line-length
