@@ -1307,23 +1307,12 @@ session_open_vc (session_endpoint_cfg_t *rmt, session_handle_t *rsh)
   return 0;
 }
 
-int
-session_open_app (session_endpoint_cfg_t *rmt, session_handle_t *rsh)
-{
-  transport_endpoint_cfg_t *tep_cfg = session_endpoint_to_transport_cfg (rmt);
-
-  /* Not supported for now */
-  *rsh = SESSION_INVALID_HANDLE;
-  return transport_connect (rmt->transport_proto, tep_cfg);
-}
-
 typedef int (*session_open_service_fn) (session_endpoint_cfg_t *,
 					session_handle_t *);
 
 static session_open_service_fn session_open_srv_fns[TRANSPORT_N_SERVICES] = {
   session_open_vc,
   session_open_cl,
-  session_open_app,
 };
 
 /**
