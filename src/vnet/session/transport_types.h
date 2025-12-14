@@ -24,9 +24,8 @@ typedef enum transport_dequeue_type_
 
 typedef enum transport_service_type_
 {
-  TRANSPORT_SERVICE_VC,		/**< virtual circuit service */
-  TRANSPORT_SERVICE_CL,		/**< connectionless service */
-  TRANSPORT_SERVICE_APP,	/**< app transport service */
+  TRANSPORT_SERVICE_VC, /**< virtual circuit service */
+  TRANSPORT_SERVICE_CL, /**< connectionless service */
   TRANSPORT_N_SERVICES
 } transport_service_type_t;
 
