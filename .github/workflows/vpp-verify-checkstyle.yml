@@ -124,7 +124,7 @@ jobs:
       - nomad
       - fdio:arch=${{ matrix.executor_arch }}
       - fdio:class=${{ matrix.class }}
-      - fdio:namespace=${{ inputs.FDIO_NAMESPACE }}
+      - fdio:namespace=${{ inputs.FDIO_NAMESPACE || 'prod' }}
       - fdio:os=${{ matrix.os }}
 
     strategy:
@@ -136,6 +136,8 @@ jobs:
         executor_arch: ['x86_64']
 
     env:
+      CI_TIMESTAMP: ${{ inputs.CI_TIMESTAMP }}
+      FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
       GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
       GERRIT_CHANGE_ID: ${{ inputs.GERRIT_CHANGE_ID }}
       GERRIT_CHANGE_NUMBER: ${{ inputs.GERRIT_CHANGE_NUMBER }}
@@ -145,8 +147,6 @@ jobs:
       GERRIT_PATCHSET_REVISION: ${{ inputs.GERRIT_PATCHSET_REVISION }}
       GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
       GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
-      FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
-      CI_TIMESTAMP: ${{ inputs.CI_TIMESTAMP }}
       LOG_PATH: ${{ inputs.LOG_PATH }}
       WORKSPACE: /scratch/docker-build/vpp
       LOG_DIR: /scratch/docker-build/vpp/logs/${{ inputs.LOG_PATH }}/checkstyle-${{ matrix.build_type }}-${{ matrix.class }}-${{ matrix.os }}-${{ inputs.FDIO_NAMESPACE }}-${{ matrix.executor_arch }}

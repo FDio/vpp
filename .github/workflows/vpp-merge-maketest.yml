@@ -53,6 +53,14 @@ on:
         description: "Start verify timestamp"
         required: false
         type: string
+      FDIO_NAMESPACE:
+        description: "Executor Namespace (prod|sandbox)"
+        required: false
+        type: choice
+        options:
+          - sandbox
+          - prod
+        default: prod
       GERRIT_BRANCH:
         description: "Branch that change is against"
         required: true
@@ -89,26 +97,6 @@ on:
         description: "Gerrit refspec of change"
         required: true
         type: string
-      FDIO_NAMESPACE:
-        description: "Executor Namespace (prod|sandbox)"
-        required: false
-        type: choice
-        options:
-          - sandbox
-          - prod
-        default: prod
-
-env:
-  GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
-  GERRIT_CHANGE_ID: ${{ inputs.GERRIT_CHANGE_ID }}
-  GERRIT_CHANGE_NUMBER: ${{ inputs.GERRIT_CHANGE_NUMBER }}
-  GERRIT_CHANGE_URL: ${{ inputs.GERRIT_CHANGE_URL }}
-  GERRIT_EVENT_TYPE: ${{ inputs.GERRIT_EVENT_TYPE }}
-  GERRIT_PATCHSET_NUMBER: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
-  GERRIT_PATCHSET_REVISION: ${{ inputs.GERRIT_PATCHSET_REVISION }}
-  GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
-  GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
-  FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
 
 defaults:
   run:
@@ -149,7 +137,7 @@ jobs:
       - nomad
       - fdio:arch=${{ matrix.executor_arch }}
       - fdio:class=builder
-      - fdio:namespace=${{ inputs.FDIO_NAMESPACE }}
+      - fdio:namespace=${{ inputs.FDIO_NAMESPACE || 'prod' }}
       - fdio:os=${{ matrix.os }}
 
     strategy:
@@ -164,7 +152,17 @@ jobs:
             executor_arch: 'aarch64'
 
     env:
-      CI_TIMESTAMP: ""
+      CI_TIMESTAMP: ${{ inputs.CI_TIMESTAMP }}
+      FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
+      GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
+      GERRIT_CHANGE_ID: ${{ inputs.GERRIT_CHANGE_ID }}
+      GERRIT_CHANGE_NUMBER: ${{ inputs.GERRIT_CHANGE_NUMBER }}
+      GERRIT_CHANGE_URL: ${{ inputs.GERRIT_CHANGE_URL }}
+      GERRIT_EVENT_TYPE: ${{ inputs.GERRIT_EVENT_TYPE }}
+      GERRIT_PATCHSET_NUMBER: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
+      GERRIT_PATCHSET_REVISION: ${{ inputs.GERRIT_PATCHSET_REVISION }}
+      GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
+      GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
       LOG_DIR: ""
       WORKSPACE: /scratch/docker-build/vpp
       CCACHE_DIR: /scratch/ccache/${{ matrix.os }}-${{ matrix.executor_arch }}
@@ -176,13 +174,6 @@ jobs:
       MAKE_TEST_MULTIWORKER_OS: 'debian-12'
       VPPAPIGEN_TEST_OS: ${{ matrix.os == 'ubuntu2204' && 'ubuntu-22.04' || 'ubuntu-24.04' }}
       SHM_SIZE: ${{ matrix.executor_arch == 'aarch64' && '4096M' || '2048M' }}
-      GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
-      GERRIT_CHANGE_URL: ${{ inputs.GERRIT_CHANGE_URL }}
-      GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
-      GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
-      GERRIT_CHANGE_NUMBER: ${{ inputs.GERRIT_CHANGE_NUMBER }}
-      GERRIT_PATCHSET_NUMBER: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
-      FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
       TUI_LINE: "*******************************************************************"
 
     steps:

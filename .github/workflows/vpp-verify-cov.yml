@@ -14,9 +14,6 @@ on:
           - prod
         default: prod
 
-env:
-  FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
-
 defaults:
   run:
     shell: bash

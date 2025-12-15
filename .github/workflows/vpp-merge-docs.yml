@@ -98,18 +98,6 @@ on:
         required: true
         type: string
 
-env:
-  GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
-  GERRIT_CHANGE_ID: ${{ inputs.GERRIT_CHANGE_ID }}
-  GERRIT_CHANGE_NUMBER: ${{ inputs.GERRIT_CHANGE_NUMBER }}
-  GERRIT_CHANGE_URL: ${{ inputs.GERRIT_CHANGE_URL }}
-  GERRIT_EVENT_TYPE: ${{ inputs.GERRIT_EVENT_TYPE }}
-  GERRIT_PATCHSET_NUMBER: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
-  GERRIT_PATCHSET_REVISION: ${{ inputs.GERRIT_PATCHSET_REVISION }}
-  GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
-  GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
-  FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
-
 defaults:
   run:
     shell: bash
@@ -147,13 +135,31 @@ jobs:
     runs-on:
       - self-hosted
       - nomad
-      - fdio:arch=x86_64
-      - fdio:class=builder
-      - fdio:namespace=${{ inputs.FDIO_NAMESPACE }}
-      - fdio:os=ubuntu2404
+      - fdio:arch=${{ matrix.executor_arch }}
+      - fdio:class=${{ matrix.class }}
+      - fdio:namespace=${{ inputs.FDIO_NAMESPACE || 'prod' }}
+      - fdio:os=${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        build_type: ['release']
+        class: ['builder']
+        os: ['ubuntu2404']
+        executor_arch: ['x86_64']
 
     env:
-      CI_TIMESTAMP: ""
+      CI_TIMESTAMP: ${{ inputs.CI_TIMESTAMP }}
+      FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
+      GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
+      GERRIT_CHANGE_ID: ${{ inputs.GERRIT_CHANGE_ID }}
+      GERRIT_CHANGE_NUMBER: ${{ inputs.GERRIT_CHANGE_NUMBER }}
+      GERRIT_CHANGE_URL: ${{ inputs.GERRIT_CHANGE_URL }}
+      GERRIT_EVENT_TYPE: ${{ inputs.GERRIT_EVENT_TYPE }}
+      GERRIT_PATCHSET_NUMBER: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
+      GERRIT_PATCHSET_REVISION: ${{ inputs.GERRIT_PATCHSET_REVISION }}
+      GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
+      GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
       LOG_DIR: ""
       WORKSPACE: /scratch/docker-build/vpp
       TUI_LINE: "*******************************************************************"
