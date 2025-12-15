@@ -87,6 +87,22 @@ endif
 
 FORCE_BUILD?=true
 
+# reserve some CPUs so that test containers have guaranteed free CPUs
+SYS_CPUS := $(shell nproc 2>/dev/null)
+TO_RESERVE := $(shell echo "$$((4 * $(PARALLEL)))")
+
+# make sure we always leave 9 CPUs for test containers (for some MW tests)
+ifeq ($(shell [ $(TO_RESERVE) -lt 9 ] && echo $$?),0)
+TO_RESERVE := 9
+endif
+
+CONT_CPUS = $(shell echo "$$(($(SYS_CPUS) - $(TO_RESERVE)))")
+
+# don't reserve CPUs if we don't have enough
+ifeq ($(shell [ $(TO_RESERVE) -gt $(SYS_CPUS) ] && echo $$?),0)
+CONT_CPUS := $(SYS_CPUS)
+endif
+
 # privileged is needed for "ip netns" otherwise we are not able to create namespace
 DOCKER_CAPABILITIES:=--privileged
 DOCKER_DEVICES:=--device /dev/vhost-net:/dev/vhost-net --device /dev/net/tun:/dev/net/tun
@@ -94,7 +110,7 @@ DOCKER_VOLUMES:=-v $(WS_ROOT):$(WS_ROOT) -v /var/run/docker.sock:/var/run/docker
 	-v /etc/localtime:/etc/localtime:ro $(CORE_VOLUME) -v $(HS_ROOT)/.go_cache/mod:/root/go/pkg/mod \
 	-v $(HS_ROOT)/.go_cache/build:/root/.cache/go-build
 DOCKER_PROXY:=-e HTTP_PROXY=$(HTTP_PROXY) -e HTTPS_PROXY=$(HTTPS_PROXY) -e NO_PROXY=$(NO_PROXY)
-DOCKER_COMMON_ARGS:=$(DOCKER_TTY) --rm $(DOCKER_CAPABILITIES) $(DOCKER_DEVICES) $(DOCKER_PROXY)\
+DOCKER_COMMON_ARGS:=$(DOCKER_TTY) --cpus=$(CONT_CPUS) --rm $(DOCKER_CAPABILITIES) $(DOCKER_DEVICES) $(DOCKER_PROXY)\
 		-e BUILD_NUMBER=$(BUILD_NUMBER) $(DOCKER_VOLUMES) --name ginkgo hs-test/ginkgo \
 		.$(HS_ROOT)/hs_test.sh --persist=$(PERSIST) --verbose=$(VERBOSE) \
 		--unconfigure=$(UNCONFIGURE) --debug=$(DEBUG) --cpus=$(CPUS) \
