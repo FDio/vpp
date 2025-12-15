@@ -143,6 +143,8 @@ sanitize (char *str, int len)
     {
       if (!isalnum (str[i]))
 	str[i] = '_';
+      if (str[i] == '/')
+	str[i] = '_';
     }
 }
 
@@ -153,6 +155,33 @@ tokenize (const char *name, char **tokens, int *lengths, int max_tokens)
   char *savep = p;
 
   int i = 0;
+  if (strncmp (p, "/interfaces/", 12) == 0)
+    {
+      /*
+	 Special case for interfaces as its sometimes contains '/' in the id.
+	 Split the string into interface id and token name
+		      /interfaces/<id>/<name>
+      */
+      tokens[i] = p;
+      lengths[i] = 0;
+      i++;
+      p++;
+      tokens[i] = p;
+      lengths[i] = 10;
+      i++;
+      p += 11;
+      savep = p;
+      p = p + strlen (p) - 1;
+      while (*p != '/' && p != savep)
+	p--;
+      tokens[i] = savep;
+      lengths[i] = (int) (p - savep);
+      p++; // skip '/'
+      i++;
+      tokens[i] = p;
+      lengths[i] = (int) (strlen (p));
+      return i + 1;
+    }
   while (*p && i < max_tokens - 1)
     {
       if (*p == '/')
@@ -201,6 +230,7 @@ print_metric_v2 (FILE *stream, stat_segment_data_t *res)
 		 !strncmp (tokens[1], "interfaces", lengths[1])))
 	      {
 		sanitize (tokens[1], lengths[1]);
+		sanitize (tokens[2], lengths[2]);
 		sanitize (tokens[3], lengths[3]);
 		fformat (
 		  stream,
@@ -239,6 +269,7 @@ print_metric_v2 (FILE *stream, stat_segment_data_t *res)
 		else
 		  {
 		    print_metric_v1 (stream, res);
+		    return;
 		  }
 	      }
 	    else if (!strncmp (tokens[1], "err", lengths[1]))
@@ -255,6 +286,7 @@ print_metric_v2 (FILE *stream, stat_segment_data_t *res)
 	    else
 	      {
 		print_metric_v1 (stream, res);
+		return;
 	      }
 	  }
       break;
@@ -286,6 +318,7 @@ print_metric_v2 (FILE *stream, stat_segment_data_t *res)
 	    else
 	      {
 		print_metric_v1 (stream, res);
+		return;
 	      }
 	  }
       break;
@@ -318,6 +351,7 @@ print_metric_v2 (FILE *stream, stat_segment_data_t *res)
       else
 	{
 	  print_metric_v1 (stream, res);
+	  return;
 	}
       break;
 
