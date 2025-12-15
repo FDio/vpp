@@ -220,7 +220,7 @@ jobs:
 
       - name: Upload Documentation Artifacts
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: vpp-merge-docs-${{ env.GERRIT_BRANCH }}-rel-ubuntu2404-x86_64-${{ env.GERRIT_CHANGE_NUMBER }}-${{ env.GERRIT_PATCHSET_NUMBER }}
           path: ${{ env.WORKSPACE }}/build-root/docs/
