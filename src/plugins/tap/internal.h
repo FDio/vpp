@@ -42,7 +42,7 @@ typedef struct
 {
   u32 id;
   u32 sw_if_index;
-  u32 tap_flags;
+  tap_flag_t tap_flags;
   u8 dev_name[64];
   u16 tx_ring_sz;
   u16 rx_ring_sz;
@@ -135,7 +135,7 @@ typedef struct
   u32 dev_instance;
   u32 id;
   u32 host_mtu_size;
-  u32 tap_flags;
+  tap_flag_t tap_flags;
 
   /* error */
   clib_error_t *error;
