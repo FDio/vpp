@@ -112,22 +112,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  notify-start:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Notify workflow start
-        # yamllint disable-line rule:line-length
-        uses: lfreleng-actions/gerrit-review-action@537251ec667665b386f70b330b05446e3fc29087 # v0.9
-        with:
-          host: ${{ vars.GERRIT_SERVER }}
-          username: ${{ vars.GERRIT_SSH_REQUIRED_USER }}
-          key: ${{ secrets.GERRIT_SSH_REQUIRED_PRIVKEY }}
-          known_hosts: ${{ vars.GERRIT_KNOWN_HOSTS }}
-          gerrit-change-number: ${{ github.event.inputs.GERRIT_CHANGE_NUMBER }}
-          gerrit-patchset-number: ${{ github.event.inputs.GERRIT_PATCHSET_NUMBER }}
-          vote-type: clear
-          comment-only: true
-
   merge-maketest:
     # yamllint disable-line rule:line-length
     name: ${{ inputs.GERRIT_CHANGE_NUMBER }}/${{ inputs.GERRIT_PATCHSET_NUMBER}}__${{ inputs.GERRIT_BRANCH }}__${{ inputs.FDIO_NAMESPACE }}
