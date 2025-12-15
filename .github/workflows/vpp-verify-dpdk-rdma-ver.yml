@@ -105,7 +105,7 @@ jobs:
 
       - name: Install VPP dependencies
         # yamllint disable-line rule:line-length
-        uses: fdio/vpp/.github/actions/vpp-install-ext-deps@f9e0f384d665800c8e580da853e26558dd6d2668
+        uses: fdio/vpp/.github/actions/vpp-install-ext-deps@3ee3e38eb4107f80f96cb092dd5fc2bc61e54b74
         with:
           WORKSPACE: ${{ env.WORKSPACE }}
           TUI_LINE: ${{ env.TUI_LINE }}

@@ -190,7 +190,7 @@ jobs:
 
       - name: Checkout VPP Gerrit Change
         # yamllint disable-line rule:line-length
-        uses: fdio/vpp/.github/actions/vpp-checkout-gerrit-change@3cadd680be3814d9737a341c0b563f3441157a7c
+        uses: fdio/vpp/.github/actions/vpp-checkout-gerrit-change@3ee3e38eb4107f80f96cb092dd5fc2bc61e54b74
         with:
           WORKSPACE: ${{ env.WORKSPACE }}
           GERRIT_BRANCH: ${{ env.GERRIT_BRANCH }}
@@ -199,21 +199,21 @@ jobs:
 
       - name: Install VPP dependencies
         # yamllint disable-line rule:line-length
-        uses: fdio/vpp/.github/actions/vpp-install-deps@f9e0f384d665800c8e580da853e26558dd6d2668
+        uses: fdio/vpp/.github/actions/vpp-install-deps@3ee3e38eb4107f80f96cb092dd5fc2bc61e54b74
         with:
           WORKSPACE: ${{ env.WORKSPACE }}
           TUI_LINE: ${{ env.TUI_LINE }}
 
       - name: Install VPP external dependencies
         # yamllint disable-line rule:line-length
-        uses: fdio/vpp/.github/actions/vpp-install-ext-deps@f9e0f384d665800c8e580da853e26558dd6d2668
+        uses: fdio/vpp/.github/actions/vpp-install-ext-deps@3ee3e38eb4107f80f96cb092dd5fc2bc61e54b74
         with:
           WORKSPACE: ${{ env.WORKSPACE }}
           TUI_LINE: ${{ env.TUI_LINE }}
 
       - name: Build VPP
         # yamllint disable-line rule:line-length
-        uses: fdio/vpp/.github/actions/vpp-build@f9e0f384d665800c8e580da853e26558dd6d2668
+        uses: fdio/vpp/.github/actions/vpp-build@3ee3e38eb4107f80f96cb092dd5fc2bc61e54b74
         with:
           WORKSPACE: ${{ env.WORKSPACE }}
           MAKE_PARALLEL_JOBS: ${{ env.MAKE_PARALLEL_JOBS }}
@@ -222,7 +222,7 @@ jobs:
 
       - name: Setup Docker VPP Runtime Environment for 'make test'
         # yamllint disable-line rule:line-length
-        uses: fdio/vpp/.github/actions/vpp-docker-runtime-setup@f9e0f384d665800c8e580da853e26558dd6d2668
+        uses: fdio/vpp/.github/actions/vpp-docker-runtime-setup@3ee3e38eb4107f80f96cb092dd5fc2bc61e54b74
         with:
           WORKSPACE: ${{ env.WORKSPACE }}
           SHM_SIZE: ${{ env.SHM_SIZE }}
@@ -230,7 +230,7 @@ jobs:
 
       - name: VPP Make Test
         # yamllint disable-line rule:line-length
-        uses: fdio/vpp/.github/actions/vpp-make-test@f9e0f384d665800c8e580da853e26558dd6d2668
+        uses: fdio/vpp/.github/actions/vpp-make-test@3ee3e38eb4107f80f96cb092dd5fc2bc61e54b74
         timeout-minutes: 90
         with:
           WORKSPACE: ${{ env.WORKSPACE }}
