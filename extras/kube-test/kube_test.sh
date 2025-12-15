@@ -79,8 +79,10 @@ if [ -n "${BUILD_NUMBER}" ]; then
         ginkgo_args="$ginkgo_args --no-color"
 fi
 
+mkdir -p .perf_logs
 mkdir -p summary
-rm -f summary/*
+rm -f summary/* || true
+rm -f .perf_logs/* || true
 # shellcheck disable=SC2086
 CMD="go run github.com/onsi/ginkgo/v2/ginkgo --json-report=summary/report.json $ginkgo_args -- $args"
 echo "$CMD"

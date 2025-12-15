@@ -130,17 +130,17 @@ func createIngressEgressPolicy(name, namespace, appLabel string, ingressProtocol
 
 // createAndLogPolicy creates a network policy and logs the result
 func (s *BaseSuite) createAndLogPolicy(ctx context.Context, policy *networkingv1.NetworkPolicy) error {
-	created, err := s.ClientSet.NetworkingV1().NetworkPolicies(policy.Namespace).Create(ctx, policy, metav1.CreateOptions{})
+	created, err := ClientSet.NetworkingV1().NetworkPolicies(policy.Namespace).Create(ctx, policy, metav1.CreateOptions{})
 	if err != nil {
-		s.Log("Failed to create NetworkPolicy %s: %v", policy.Name, err)
-		s.Log("Policy spec: %+v", policy)
+		Log("Failed to create NetworkPolicy %s: %v", policy.Name, err)
+		Log("Policy spec: %+v", policy)
 		// Try to get more details if it's a status error
 		if statusErr, ok := err.(interface{ Status() metav1.Status }); ok {
-			s.Log("API Status: %+v", statusErr.Status())
+			Log("API Status: %+v", statusErr.Status())
 		}
 		return err
 	}
-	s.Log("Created NetworkPolicy: %s", created.Name)
+	Log("Created NetworkPolicy: %s", created.Name)
 	return nil
 }
 
@@ -150,7 +150,7 @@ func (s *BaseSuite) createAndLogPolicy(ctx context.Context, policy *networkingv1
 // Policy 3: Allow HTTP 80 and HTTPS 443 ingress (TCP and UDP)
 // Policy 4: Allow HTTP 80 and HTTPS 443 egress (TCP and UDP)
 func (s *BaseSuite) CreateDefaultNetworkPolicies(ctx context.Context, namespace, appLabel string) error {
-	s.Log("Creating default network policies in namespace: %s", namespace)
+	Log("Creating default network policies in namespace: %s", namespace)
 	policies := []*networkingv1.NetworkPolicy{
 		createIngressOnlyPolicy("kube-test-network-policy-1", namespace, appLabel,
 			createIngressRule(appLabel, corev1.ProtocolTCP, 5201)),
@@ -184,33 +184,33 @@ func (s *BaseSuite) CreateNetworkPolicy(ctx context.Context, namespace, appLabel
 
 // GetNetworkPolicies retrieves all NetworkPolicies with app=HST label in the specified namespace
 func (s *BaseSuite) GetNetworkPolicies(ctx context.Context, namespace, appLabel string) (*networkingv1.NetworkPolicyList, error) {
-	return s.ClientSet.NetworkingV1().NetworkPolicies(namespace).List(ctx, metav1.ListOptions{
+	return ClientSet.NetworkingV1().NetworkPolicies(namespace).List(ctx, metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("app=%s", appLabel),
 	})
 }
 
 // DeleteNetworkPolicy deletes a specific NetworkPolicy by name and logs the result
 func (s *BaseSuite) DeleteNetworkPolicy(ctx context.Context, namespace, policyName string) error {
-	err := s.ClientSet.NetworkingV1().NetworkPolicies(namespace).Delete(ctx, policyName, metav1.DeleteOptions{})
+	err := ClientSet.NetworkingV1().NetworkPolicies(namespace).Delete(ctx, policyName, metav1.DeleteOptions{})
 	if err != nil {
-		s.Log("Failed to delete NetworkPolicy %s: %v", policyName, err)
+		Log("Failed to delete NetworkPolicy %s: %v", policyName, err)
 		return err
 	} else {
-		s.Log("Deleted NetworkPolicy: %s", policyName)
+		Log("Deleted NetworkPolicy: %s", policyName)
 		return nil
 	}
 }
 
 // CleanupNetworkPolicies deletes all NetworkPolicies with app=HST label in the specified namespace
 func (s *BaseSuite) CleanupNetworkPolicies(namespace, appLabel string) {
-	s.ClientSet.NetworkingV1().NetworkPolicies(namespace).DeleteCollection(
+	ClientSet.NetworkingV1().NetworkPolicies(namespace).DeleteCollection(
 		context.Background(),
 		metav1.DeleteOptions{},
 		metav1.ListOptions{
 			LabelSelector: fmt.Sprintf("app=%s", appLabel),
 		},
 	)
-	s.Log("Cleaned up NetworkPolicies in namespace: %s (app=%s)", namespace, appLabel)
+	Log("Cleaned up NetworkPolicies in namespace: %s (app=%s)", namespace, appLabel)
 }
 
 // VerifyDefaultNetworkPolicies verifies that VPP output contains expected network policy patterns
@@ -225,32 +225,32 @@ func (s *BaseSuite) VerifyDefaultNetworkPolicies(output, nodeName string) (bool,
 		"[proto==TCP,dst==5201,src==[ipset#",
 	}
 
-	s.Log("=== Verifying Default Network Policy Patterns on %s ===", nodeName)
+	Log("=== Verifying Default Network Policy Patterns on %s ===", nodeName)
 
 	var missingPatterns []string
 	allFound := true
 
 	for _, pattern := range expectedPatterns {
 		if strings.Contains(output, pattern) {
-			s.Log("FOUND: %s", pattern)
+			Log("FOUND: %s", pattern)
 		} else {
 			missingPatterns = append(missingPatterns, pattern)
-			s.Log("MISSING: %s", pattern)
+			Log("MISSING: %s", pattern)
 			allFound = false
 		}
 	}
 
 	if allFound {
-		s.Log("SUCCESS: All expected default network policy patterns found on %s", nodeName)
+		Log("SUCCESS: All expected default network policy patterns found on %s", nodeName)
 	} else {
-		s.Log("FAILURE: %d patterns missing on %s", len(missingPatterns), nodeName)
-		s.Log("Missing patterns:")
+		Log("FAILURE: %d patterns missing on %s", len(missingPatterns), nodeName)
+		Log("Missing patterns:")
 		for _, missing := range missingPatterns {
-			s.Log("  - %s", missing)
+			Log("  - %s", missing)
 		}
 	}
 
-	s.Log("")
+	Log("")
 	return allFound, missingPatterns
 }
 
@@ -258,8 +258,8 @@ func (s *BaseSuite) VerifyDefaultNetworkPolicies(output, nodeName string) (bool,
 // are present in the VPP output with their expected UDP and TCP patterns
 // Each policy should have both UDP and TCP rules for its specific port
 func (s *BaseSuite) VerifyDynamicNetworkPolicies(output, nodeName string, createdPolicies []string) (bool, []string) {
-	s.Log("=== Verifying Dynamic Network Policy Patterns on %s ===", nodeName)
-	s.Log("Checking %d remaining dynamic policies", len(createdPolicies))
+	Log("=== Verifying Dynamic Network Policy Patterns on %s ===", nodeName)
+	Log("Checking %d remaining dynamic policies", len(createdPolicies))
 
 	// Build a set of expected ports for quick lookup and validation
 	expectedPorts := make(map[string]bool)
@@ -268,7 +268,7 @@ func (s *BaseSuite) VerifyDynamicNetworkPolicies(output, nodeName string, create
 			port := strings.TrimPrefix(policyName, "kube-test-network-policy-")
 			expectedPorts[port] = true
 		} else {
-			s.Log("Unexpected policy name format: %s", policyName)
+			Log("Unexpected policy name format: %s", policyName)
 		}
 	}
 
@@ -289,16 +289,16 @@ func (s *BaseSuite) VerifyDynamicNetworkPolicies(output, nodeName string, create
 		tcpFound := strings.Contains(output, tcpPattern)
 
 		if udpFound && tcpFound {
-			s.Log("FOUND: %s (port %s) - UDP and TCP patterns present", policyName, port)
+			Log("FOUND: %s (port %s) - UDP and TCP patterns present", policyName, port)
 		} else {
 			missingPolicyNames = append(missingPolicyNames, policyName)
 			allFound = false
-			s.Log("FAILURE: %s (port %s) - UDP found: %t, TCP found: %t", policyName, port, udpFound, tcpFound)
+			Log("FAILURE: %s (port %s) - UDP found: %t, TCP found: %t", policyName, port, udpFound, tcpFound)
 		}
 	}
 
 	// Check for unexpected 200xx patterns that shouldn't be present
-	s.Log("=== Checking for Unexpected 200xx Patterns ===")
+	Log("=== Checking for Unexpected 200xx Patterns ===")
 
 	// Use regex to find all 200xx patterns in the output
 	udpRegex := regexp.MustCompile(`\[proto==UDP,dst==(200\d\d),dst==\[ipset#`)
@@ -325,29 +325,29 @@ func (s *BaseSuite) VerifyDynamicNetworkPolicies(output, nodeName string, create
 	for port := range foundPorts {
 		if !expectedPorts[port] {
 			if unexpectedCount == 0 {
-				s.Log("FAILURE: Found unexpected 200xx patterns on %s", nodeName)
+				Log("FAILURE: Found unexpected 200xx patterns on %s", nodeName)
 			}
-			s.Log("  - Port %s (should have been deleted)", port)
+			Log("  - Port %s (should have been deleted)", port)
 			unexpectedCount++
 			allFound = false
 		}
 	}
 
 	if allFound {
-		s.Log("SUCCESS: All remaining dynamic policies found and no unexpected patterns present on %s", nodeName)
+		Log("SUCCESS: All remaining dynamic policies found and no unexpected patterns present on %s", nodeName)
 	} else {
-		s.Log("FAILURE on %s:", nodeName)
+		Log("FAILURE on %s:", nodeName)
 		if len(missingPolicyNames) > 0 {
-			s.Log("  - %d dynamic policies missing", len(missingPolicyNames))
+			Log("  - %d dynamic policies missing", len(missingPolicyNames))
 			for _, missing := range missingPolicyNames {
-				s.Log("    * %s", missing)
+				Log("    * %s", missing)
 			}
 		}
 		if unexpectedCount > 0 {
-			s.Log("  - %d unexpected 200xx patterns found", unexpectedCount)
+			Log("  - %d unexpected 200xx patterns found", unexpectedCount)
 		}
 	}
 
-	s.Log("")
+	Log("")
 	return allFound, missingPolicyNames
 }

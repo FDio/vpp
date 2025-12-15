@@ -14,7 +14,7 @@ import (
 func (s *BaseSuite) CreateDynamicJob(ctx context.Context, namespace, jobName, appLabel, nodeName string) error {
 	// Verify node exists if specified
 	if nodeName != "" && nodeName != "any" {
-		nodes, err := s.ClientSet.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
+		nodes, err := ClientSet.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
 		if err != nil {
 			return fmt.Errorf("failed to list nodes: %v", err)
 		}
@@ -93,31 +93,31 @@ func (s *BaseSuite) CreateDynamicJob(ctx context.Context, namespace, jobName, ap
 		},
 	}
 
-	_, err := s.ClientSet.BatchV1().Jobs(namespace).Create(ctx, job, metav1.CreateOptions{})
+	_, err := ClientSet.BatchV1().Jobs(namespace).Create(ctx, job, metav1.CreateOptions{})
 	if err != nil {
-		s.Log("Failed to create job %s: %v", jobName, err)
+		Log("Failed to create job %s: %v", jobName, err)
 		return err
 	}
 
-	s.Log("Created dynamic job: %s", jobName)
+	Log("Created dynamic job: %s", jobName)
 	return nil
 }
 
 // DeleteDynamicJob deletes a job using Kubernetes API
 func (s *BaseSuite) DeleteDynamicJob(ctx context.Context, namespace, jobName string) error {
-	err := s.ClientSet.BatchV1().Jobs(namespace).Delete(ctx, jobName, metav1.DeleteOptions{})
+	err := ClientSet.BatchV1().Jobs(namespace).Delete(ctx, jobName, metav1.DeleteOptions{})
 	if err != nil {
-		s.Log("Failed to delete job %s: %v", jobName, err)
+		Log("Failed to delete job %s: %v", jobName, err)
 		return err
 	}
 
-	s.Log("Deleted dynamic job: %s", jobName)
+	Log("Deleted dynamic job: %s", jobName)
 	return nil
 }
 
 // ListJobsInNamespace lists all jobs in a specific namespace
 func (s *BaseSuite) ListJobsInNamespace(ctx context.Context, namespace string) ([]string, error) {
-	jobList, err := s.ClientSet.BatchV1().Jobs(namespace).List(ctx, metav1.ListOptions{})
+	jobList, err := ClientSet.BatchV1().Jobs(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -132,7 +132,7 @@ func (s *BaseSuite) ListJobsInNamespace(ctx context.Context, namespace string) (
 
 // CleanupJobsWithFinalizers removes finalizers from jobs before cleanup to prevent hanging resources
 func (s *BaseSuite) CleanupJobsWithFinalizers(ctx context.Context, namespace string) error {
-	jobs, err := s.ClientSet.BatchV1().Jobs(namespace).List(ctx, metav1.ListOptions{})
+	jobs, err := ClientSet.BatchV1().Jobs(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return err
 	}
@@ -141,11 +141,11 @@ func (s *BaseSuite) CleanupJobsWithFinalizers(ctx context.Context, namespace str
 		if len(job.Finalizers) > 0 {
 			// Remove the finalizer
 			job.Finalizers = []string{}
-			_, err := s.ClientSet.BatchV1().Jobs(namespace).Update(ctx, &job, metav1.UpdateOptions{})
+			_, err := ClientSet.BatchV1().Jobs(namespace).Update(ctx, &job, metav1.UpdateOptions{})
 			if err != nil {
-				s.Log("Failed to remove finalizer from job %s: %v", job.Name, err)
+				Log("Failed to remove finalizer from job %s: %v", job.Name, err)
 			} else {
-				s.Log("Removed finalizer from job %s", job.Name)
+				Log("Removed finalizer from job %s", job.Name)
 			}
 		}
 	}

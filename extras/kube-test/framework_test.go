@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -13,20 +14,8 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = ReportAfterSuite("VPP version under test", func(report Report) {
-	for i := range report.SpecReports {
-		specReport := report.SpecReports[i]
-		for j := range specReport.ReportEntries {
-			reportEntry := specReport.ReportEntries[j]
-			if reportEntry.Name == "VPP version" {
-				fmt.Println(reportEntry.Value)
-				return
-			}
-		}
-	}
-})
-
 func TestKube(t *testing.T) {
+	Log("Go version: %s", runtime.Version())
 	TestTimeout = time.Minute * time.Duration(*Timeout)
 
 	// creates a file with PPID, used for 'make cleanup-kt'
@@ -42,31 +31,31 @@ func TestKube(t *testing.T) {
 	}
 	_, err := os.Stat(Kubeconfig)
 	if err != nil {
-		fmt.Println("** Kubeconfig not found **")
+		Log("** Kubeconfig not found **")
 		os.Exit(1)
 	}
 	contents, err := os.ReadFile(Kubeconfig)
 	if err != nil {
-		fmt.Println("** Error reading Kubeconfig **")
+		Log("** Error reading Kubeconfig **")
 		os.Exit(1)
 	}
 	if strings.Contains(string(contents), "cluster: kind-kind") {
 		KindCluster = true
 	}
-	fmt.Printf("\nKubeconfig: '%s'\nKinD cluster: %v\n", Kubeconfig, KindCluster)
+	Log("Kubeconfig: '%s'\nKinD cluster: %v", Kubeconfig, KindCluster)
 
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "kube-test")
 	if *IsPersistent {
-		fmt.Println("\033[36m" + "Use 'make cleanup-kt' to remove pods " +
+		Log("\033[36m" + "Use 'make cleanup-kt' to remove pods " +
 			"and namespaces. \nPPID: " + Ppid + "\033[0m")
 	}
 	// deleting the namespace here since we use the same namespace for every suite
 	if !*IsPersistent {
-		fmt.Println("Deleting kube-test namespace")
+		Log("Deleting kube-test namespace")
 		cmd := exec.Command("kubectl", "delete", "ns", "kube-test"+Ppid)
-		fmt.Println(cmd.String())
+		Log(cmd.String())
 		o, _ := cmd.CombinedOutput()
-		fmt.Printf("%s", string(o))
+		Log("%s", string(o))
 	}
 }

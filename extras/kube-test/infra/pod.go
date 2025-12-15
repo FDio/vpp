@@ -55,7 +55,7 @@ func (s *BaseSuite) LoadPodConfigs() {
 	envVarsSet := os.Getenv("KUBE_WRK1") != "" && os.Getenv("KUBE_WRK2") != ""
 
 	if KindCluster && !envVarsSet {
-		s.Log("KUBE_WRK1, KUBE_WRK2 not set, using default names (KinD only)")
+		Log("KUBE_WRK1, KUBE_WRK2 not set, using default names (KinD only)")
 		os.Setenv("KUBE_WRK1", "kind-worker")
 		os.Setenv("KUBE_WRK2", "kind-worker2")
 		envVarsSet = true
@@ -64,21 +64,21 @@ func (s *BaseSuite) LoadPodConfigs() {
 	_, err := os.Stat("kubernetes/pod-definitions.yaml")
 	if envVarsSet {
 		s.Envsubst("kubernetes/pod-definitions-template.yaml", "kubernetes/pod-definitions.yaml")
-		s.Log("pod-definitions.yaml OK [updated]")
+		Log("pod-definitions.yaml OK [updated]")
 	} else if err == nil {
-		s.Log("pod-definitions.yaml OK")
+		Log("pod-definitions.yaml OK")
 	} else if errors.Is(err, os.ErrNotExist) {
-		s.AssertNil(err, "Please set KUBE_WRK1 and KUBE_WRK2 env vars")
+		AssertNil(err, "Please set KUBE_WRK1 and KUBE_WRK2 env vars")
 	} else {
-		s.AssertNil(err)
+		AssertNil(err)
 	}
 
 	data, err := os.ReadFile("kubernetes/pod-definitions.yaml")
-	s.AssertNil(err)
+	AssertNil(err)
 
 	var config Config
 	err = yaml.Unmarshal(data, &config)
-	s.AssertNil(err)
+	AssertNil(err)
 
 	for _, podData := range config.Pods {
 		newPod(s, podData)
@@ -114,14 +114,14 @@ func (s *BaseSuite) getPodsByName(podName string) *Pod {
 func (pod *Pod) CopyToPod(src string, dst string) {
 	cmd := exec.Command("kubectl", "--kubeconfig="+Kubeconfig, "cp", src, pod.Namespace+"/"+pod.Name+":"+dst)
 	out, err := cmd.CombinedOutput()
-	pod.suite.AssertNil(err, string(out))
+	AssertNil(err, string(out))
 }
 
 func (pod *Pod) Exec(ctx context.Context, command []string) (string, error) {
 	var stdout, stderr bytes.Buffer
 
 	// Prepare the request
-	req := pod.suite.ClientSet.CoreV1().RESTClient().Post().
+	req := ClientSet.CoreV1().RESTClient().Post().
 		Resource("pods").
 		Name(pod.Name).
 		Namespace(pod.suite.Namespace).
@@ -134,9 +134,9 @@ func (pod *Pod) Exec(ctx context.Context, command []string) (string, error) {
 	for _, cmd := range command {
 		req = req.Param("command", cmd)
 	}
-	pod.suite.Log("%s: %s\n", pod.Name, command)
+	Log("%s: %s\n", pod.Name, command)
 
-	executor, err := remotecommand.NewSPDYExecutor(pod.suite.Config, "POST", req.URL())
+	executor, err := remotecommand.NewSPDYExecutor(KubeConfig, "POST", req.URL())
 	if err != nil {
 		return "", err
 	}
@@ -159,13 +159,13 @@ func (pod *Pod) CreateConfigFromTemplate(targetConfigName string, templateName s
 	template := template.Must(template.ParseFiles(templateName))
 
 	f, err := os.CreateTemp(LogDir, "kube-config")
-	pod.suite.AssertNil(err, fmt.Sprint(err))
+	AssertNil(err, fmt.Sprint(err))
 	defer os.Remove(f.Name())
 
 	err = template.Execute(f, values)
-	pod.suite.AssertNil(err, err)
+	AssertNil(err, err)
 	err = f.Close()
-	pod.suite.AssertNil(err, err)
+	AssertNil(err, err)
 
 	pod.CopyToPod(f.Name(), targetConfigName)
 }
@@ -206,31 +206,31 @@ func (s *BaseSuite) CreateDynamicPod(ctx context.Context, namespace, podName, ap
 		},
 	}
 
-	_, err := s.ClientSet.CoreV1().Pods(namespace).Create(ctx, pod, metav1.CreateOptions{})
+	_, err := ClientSet.CoreV1().Pods(namespace).Create(ctx, pod, metav1.CreateOptions{})
 	if err != nil {
-		s.Log("Failed to create pod %s: %v", podName, err)
+		Log("Failed to create pod %s: %v", podName, err)
 		return err
 	}
 
-	s.Log("Created dynamic pod: %s", podName)
+	Log("Created dynamic pod: %s", podName)
 	return nil
 }
 
 // DeleteDynamicPod deletes a pod in the specified namespace
 func (s *BaseSuite) DeleteDynamicPod(ctx context.Context, namespace, podName string) error {
-	err := s.ClientSet.CoreV1().Pods(namespace).Delete(ctx, podName, metav1.DeleteOptions{})
+	err := ClientSet.CoreV1().Pods(namespace).Delete(ctx, podName, metav1.DeleteOptions{})
 	if err != nil {
-		s.Log("Failed to delete pod %s: %v", podName, err)
+		Log("Failed to delete pod %s: %v", podName, err)
 		return err
 	}
 
-	s.Log("Deleted dynamic pod: %s", podName)
+	Log("Deleted dynamic pod: %s", podName)
 	return nil
 }
 
 // ListPodsInNamespace lists all pods in a specific namespace
 func (s *BaseSuite) ListPodsInNamespace(ctx context.Context, namespace string) ([]string, error) {
-	podList, err := s.ClientSet.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
+	podList, err := ClientSet.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}

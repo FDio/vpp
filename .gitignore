@@ -165,6 +165,7 @@ calicovppversion
 /extras/kube-test/kubernetes/pod-definitions.yaml
 /extras/kube-test/kubernetes/.vars
 /extras/kube-test/*.tar
+/extras/kube-test/.perf_logs
 
 # ./configure
 /CMakeFiles
