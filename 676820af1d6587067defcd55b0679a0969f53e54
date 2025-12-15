@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5511e123_d38d7092",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2025-12-15T13:24:05Z",
+      "side": 1,
+      "message": "This [0] confirms API parsing is correct, the GSO issue is elsewhere.",
+      "revId": "676820af1d6587067defcd55b0679a0969f53e54",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
