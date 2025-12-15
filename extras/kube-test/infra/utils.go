@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -12,7 +14,7 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
-
+	. "github.com/onsi/ginkgo/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -38,7 +40,7 @@ var startTime time.Time = time.Now()
 
 func TestCounterFunc() {
 	testCounter++
-	fmt.Printf("Test counter: %d\n"+
+	Log("Test counter: %d\n"+
 		"Time elapsed: %.2fs\n",
 		testCounter, time.Since(startTime).Seconds())
 }
@@ -80,7 +82,7 @@ type IPerfResult struct {
 	} `json:"end"`
 }
 
-func (s *BaseSuite) ParseJsonIperfOutput(jsonResult []byte) IPerfResult {
+func ParseJsonIperfOutput(jsonResult []byte) IPerfResult {
 	var result IPerfResult
 
 	// VCL/LDP debugging can pollute output so find the first occurrence of a curly brace to locate the start of JSON data
@@ -110,7 +112,7 @@ func (s *BaseSuite) ParseJsonIperfOutput(jsonResult []byte) IPerfResult {
 	}
 
 	err := json.Unmarshal(jsonResult, &result)
-	s.AssertNil(err)
+	AssertNil(err)
 
 	if result.Start.Details.Protocol == "TCP" {
 		result.End.TcpSent.MbitsPerSecond = result.End.TcpSent.MbitsPerSecond / 1000000
@@ -125,8 +127,8 @@ func (s *BaseSuite) ParseJsonIperfOutput(jsonResult []byte) IPerfResult {
 	return result
 }
 
-func (s *BaseSuite) LogJsonIperfOutput(result IPerfResult) {
-	s.Log("\n*******************************************\n"+
+func LogJsonIperfOutput(result IPerfResult) {
+	Log("\n*******************************************\n"+
 		"%s\n"+
 		"[%s] %s:%d connected to %s:%d\n"+
 		"Started:  %s\n",
@@ -137,7 +139,7 @@ func (s *BaseSuite) LogJsonIperfOutput(result IPerfResult) {
 		result.Start.Timestamp.Time)
 
 	if result.Start.Details.Protocol == "TCP" {
-		s.Log("Transfer (sent):     %.2f MBytes\n"+
+		Log("Transfer (sent):     %.2f MBytes\n"+
 			"Bitrate  (sent):     %.2f Mbits/sec\n"+
 			"Transfer (received): %.2f MBytes\n"+
 			"Bitrate  (received): %.2f Mbits/sec",
@@ -146,7 +148,7 @@ func (s *BaseSuite) LogJsonIperfOutput(result IPerfResult) {
 			result.End.TcpReceived.MBytes,
 			result.End.TcpReceived.MbitsPerSecond)
 	} else {
-		s.Log("Transfer:     %.2f MBytes\n"+
+		Log("Transfer:     %.2f MBytes\n"+
 			"Bitrate:      %.2f Mbits/sec\n"+
 			"Jitter:       %.3f ms\n"+
 			"Packets:      %d\n"+
@@ -159,10 +161,10 @@ func (s *BaseSuite) LogJsonIperfOutput(result IPerfResult) {
 			result.End.Udp.LostPackets,
 			result.End.Udp.LostPercent)
 	}
-	s.Log("*******************************************\n")
+	Log("*******************************************\n")
 }
 
-func (s *BaseSuite) handleExistingVarsFile(fileValues map[string]string) error {
+func handleExistingVarsFile(fileValues map[string]string) error {
 	varsToWatch := []string{"CALICOVPP_VERSION", "CALICOVPP_INTERFACE"}
 	needsWrite := false
 
@@ -170,7 +172,7 @@ func (s *BaseSuite) handleExistingVarsFile(fileValues map[string]string) error {
 		envValue := os.Getenv(key)
 		if envValue != "" {
 			if fileValue, ok := fileValues[key]; !ok || fileValue != envValue {
-				s.Log("Updating '%s'. New value: '%s'", key, envValue)
+				Log("Updating '%s'. New value: '%s'", key, envValue)
 				fileValues[key] = envValue
 				needsWrite = true
 			}
@@ -181,14 +183,14 @@ func (s *BaseSuite) handleExistingVarsFile(fileValues map[string]string) error {
 		if err := godotenv.Write(fileValues, EnvVarsFile); err != nil {
 			return err
 		}
-		s.Log("File %s updated", EnvVarsFile)
+		Log("File %s updated", EnvVarsFile)
 	} else {
-		s.Log("%s OK", EnvVarsFile)
+		Log("%s OK", EnvVarsFile)
 	}
 	return nil
 }
 
-func (s *BaseSuite) handleNewVarsFile() error {
+func handleNewVarsFile() error {
 	iface := os.Getenv("CALICOVPP_INTERFACE")
 	version := os.Getenv("CALICOVPP_VERSION")
 
@@ -198,7 +200,7 @@ func (s *BaseSuite) handleNewVarsFile() error {
 			"CALICOVPP_VERSION":   version,
 		}
 
-		s.Log("\nCreating '%s' from environment variables\n", EnvVarsFile)
+		Log("\nCreating '%s' from environment variables\n", EnvVarsFile)
 		if err := godotenv.Write(newFileValues, EnvVarsFile); err != nil {
 			return err
 		}
@@ -210,23 +212,23 @@ func (s *BaseSuite) handleNewVarsFile() error {
 }
 
 // findNodePod finds a pod with the given prefix running on the specified node
-func (s *BaseSuite) findNodePod(nodeName, podPrefix, namespace string) (string, error) {
+func findNodePod(nodeName, podPrefix, namespace string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 
-	s.Log("Searching for pods with prefix '%s' in namespace '%s' on node '%s'", podPrefix, namespace, nodeName)
+	Log("Searching for pods with prefix '%s' in namespace '%s' on node '%s'", podPrefix, namespace, nodeName)
 
-	pods, err := s.ClientSet.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
+	pods, err := ClientSet.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
 		FieldSelector: fmt.Sprintf("spec.nodeName=%s", nodeName),
 	})
 	if err != nil {
-		s.Log("Failed to list pods in namespace %s: %v", namespace, err)
+		Log("Failed to list pods in namespace %s: %v", namespace, err)
 		return "", err
 	}
 
 	for _, pod := range pods.Items {
 		if strings.HasPrefix(pod.Name, podPrefix) {
-			s.Log("Found pod %s on node %s", pod.Name, nodeName)
+			Log("Found pod %s on node %s", pod.Name, nodeName)
 			return pod.Name, nil
 		}
 	}
@@ -235,7 +237,7 @@ func (s *BaseSuite) findNodePod(nodeName, podPrefix, namespace string) (string, 
 }
 
 // execInContainer executes a command in the given container within the specified pod
-func (s *BaseSuite) execInContainer(namespace, podName, containerName string, command ...string) ([]byte, error) {
+func execInContainer(namespace, podName, containerName string, command ...string) ([]byte, error) {
 	kubectlArgs := append([]string{
 		"exec",
 		"-n", namespace,
@@ -245,7 +247,7 @@ func (s *BaseSuite) execInContainer(namespace, podName, containerName string, co
 	}, command...)
 
 	cmd := exec.Command("kubectl", kubectlArgs...)
-	s.Log(cmd.String())
+	Log(cmd.String())
 	return cmd.CombinedOutput()
 }
 
@@ -254,18 +256,18 @@ func (s *BaseSuite) execInContainer(namespace, podName, containerName string, co
 // nodeName: name of the Kubernetes node (e.g., "kind-worker", "kind-worker2")
 // containerName: name of the container within the pod (e.g., "vpp", "agent")
 // command: the command to execute as separate arguments
-func (s *BaseSuite) ExecInKubeContainer(nodeName, containerName string, command ...string) ([]byte, error) {
+func ExecInKubeContainer(nodeName, containerName string, command ...string) ([]byte, error) {
 	// Find the Calico VPP pod on the specified node
-	podName, err := s.findNodePod(nodeName, "calico-vpp-node", "calico-vpp-dataplane")
+	podName, err := findNodePod(nodeName, "calico-vpp-node", "calico-vpp-dataplane")
 	if err != nil {
-		s.Log("Failed to find Calico VPP pod on %s: %v", nodeName, err)
+		Log("Failed to find Calico VPP pod on %s: %v", nodeName, err)
 		return nil, err
 	}
 
 	// Execute the command in the pod
-	output, err := s.execInContainer("calico-vpp-dataplane", podName, containerName, command...)
+	output, err := execInContainer("calico-vpp-dataplane", podName, containerName, command...)
 	if err != nil {
-		s.Log("Command failed on %s in container %s: %v", nodeName, containerName, err)
+		Log("Command failed on %s in container %s: %v", nodeName, containerName, err)
 		return output, err
 	}
 
@@ -273,9 +275,45 @@ func (s *BaseSuite) ExecInKubeContainer(nodeName, containerName string, command 
 }
 
 // ExecVppctlInKubeNode executes a vppctl command in the VPP container on a Kubernetes node
-func (s *BaseSuite) ExecVppctlInKubeNode(nodeName string, vppctlArgs ...string) ([]byte, error) {
+func ExecVppctlInKubeNode(nodeName string, vppctlArgs ...string) ([]byte, error) {
 	command := []string{"/usr/bin/vppctl", "-s", "/var/run/vpp/cli.sock"}
 	command = append(command, vppctlArgs...)
 
-	return s.ExecInKubeContainer(nodeName, "vpp", command...)
+	return ExecInKubeContainer(nodeName, "vpp", command...)
+}
+
+// Logs to files by default, logs to stdout when VERBOSE=true with GinkgoWriter
+// to keep console tidy
+func Log(log any, arg ...any) {
+	var logStr string
+	if len(arg) == 0 {
+		logStr = fmt.Sprint(log)
+	} else {
+		logStr = fmt.Sprintf(fmt.Sprint(log), arg...)
+	}
+	logs := strings.Split(logStr, "\n")
+
+	for _, line := range logs {
+		Logger.Println(line)
+	}
+	if *IsVerbose {
+		GinkgoWriter.Println(logStr)
+	}
+}
+
+func CreateLogger() {
+	var suiteName string
+	var err error
+
+	if len(CurrentSpecReport().ContainerHierarchyTexts) == 0 {
+		suiteName = "Init"
+	} else {
+		suiteName = CurrentSpecReport().ContainerHierarchyTexts[0]
+	}
+
+	LogFile, err = os.Create("summary/" + suiteName + ".log")
+	if err != nil {
+		Fail("Unable to create log file.")
+	}
+	Logger = log.New(io.Writer(LogFile), "", log.LstdFlags)
 }
