@@ -89,6 +89,10 @@ ifeq ($(shell tty -s && echo $$?), 0)
 DOCKER_TTY := -it
 endif
 
+ifeq ($(HT),)
+HT=false
+endif
+
 # it's better to omit these if not set
 SEED_ARG := $(if $(SEED),--seed=$(SEED))
 LABEL_ARG := $(if $(LABEL),--label="$(LABEL)")
@@ -109,7 +113,7 @@ DOCKER_COMMON_ARGS:=$(DOCKER_TTY) --rm $(DOCKER_CAPABILITIES) $(DOCKER_DEVICES) 
 		--vppsrc=$(VPPSRC) --parallel=$(PARALLEL) --repeat=$(REPEAT) --cpu0=$(CPU0) \
 		--dryrun=$(DRYRUN) --skip=$(SKIP) --no_color=$(NO_COLOR) --timeout=$(TIMEOUT) \
 		--ginkgo_timeout=$(GINKGO_TIMEOUT) --vpp_cpus=$(VPP_CPUS) --hs_root=$(HS_ROOT) \
-		$(LABEL_ARG) --host_ppid=$$PPID $(SEED_ARG)
+		$(LABEL_ARG) --host_ppid=$$PPID $(SEED_ARG) --hyperthread=$(HT)
 
 .PHONY: help
 help:
@@ -138,6 +142,7 @@ help:
 	@echo " TEST=[name1,name2...]    - specific test(s) to run"
 	@echo " LABEL=[suite labels]     - filter by suite labels, case insensitive (https://onsi.github.io/ginkgo/#spec-labels)"
 	@echo " SKIP=[name1,name2...]    - specific test(s) to skip"
+	@echo " HT=[true|false]          - enable or disable hyperthread allocation (false by default)"
 	@echo " CPUS=[n]                 - number of cpus to allocate to each non-VPP container (default = 1)"
 	@echo " VPP_CPUS=[n]             - number of cpus to allocate to each VPP container (default = 1)"
 	@echo " VPPSRC=[path-to-vpp-src] - path to vpp source files (for gdb)"

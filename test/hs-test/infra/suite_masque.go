@@ -13,7 +13,6 @@ import (
 
 type MasqueSuite struct {
 	HstSuite
-	maxTimeout int
 	Interfaces struct {
 		Client       *NetInterface
 		TunnelClient *NetInterface

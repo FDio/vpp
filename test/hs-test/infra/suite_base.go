@@ -44,6 +44,8 @@ var DryRun = flag.Bool("dryrun", false, "set up containers but don't run tests")
 var Timeout = flag.Int("timeout", 5, "test timeout override (in minutes)")
 var PerfTesting = flag.Bool("perf", false, "perf test flag")
 var HostPpid = flag.Int("host_ppid", os.Getppid(), "automatically set in Makefile")
+var CpuOffset = flag.Int("cpu_offset", 0, "initial CPU offset")
+var HyperThreading = flag.Bool("hyperthread", false, "whether to use hyperthreads in CPU allocation")
 var NumaAwareCpuAlloc bool
 var TestTimeout time.Duration
 var RunningInCi bool
