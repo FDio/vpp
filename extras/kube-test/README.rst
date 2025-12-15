@@ -115,7 +115,7 @@ Below is one of the tests in ``kube_test.go`` with added comments.
 	                	defer GinkgoRecover()
 	                	out, err := s.Pods.Nginx.Exec(ctx, []string{"/bin/bash", "-c", "nginx -c /nginx.conf"})
 	                	if !errors.Is(err, context.Canceled) {
-	                		s.AssertNil(err, out)
+	                		AssertNil(err, out)
 	                	}
 	                }()
 
@@ -123,8 +123,8 @@ Below is one of the tests in ``kube_test.go`` with added comments.
 	                time.Sleep(time.Second * 2)
                         // run ab
 	                out, err = s.Pods.Ab.Exec(ctx, []string{"ab", "-k", "-r", "-n", "1000000", "-c", "1000", "http://" + s.Pods.Nginx.IpAddress + ":8081/64B.json"})
-	                s.Log(out)
-	                s.AssertNil(err)
+	                Log(out)
+	                AssertNil(err)
                 }
 
 
@@ -228,7 +228,7 @@ Modifying the framework
         			funcValue := runtime.FuncForPC(pc)
         			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
         			It(testName, func(ctx SpecContext) {
-        				s.Log("[* TEST BEGIN]: " + testName)
+        				Log("[* TEST BEGIN]: " + testName)
         				test(&s)
         			}, SpecTimeout(TestTimeout))
         		}

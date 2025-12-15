@@ -22,14 +22,14 @@ func FelixCniServerRaceTest(s *FelixSuite) {
 
 	defer func() {
 		err := s.CleanupJobsWithFinalizers(context.Background(), s.Namespace)
-		s.AssertNil(err, "Failed to cleanup jobs with finalizers")
+		AssertNil(err, "Failed to cleanup jobs with finalizers")
 		s.CleanupNetworkPolicies(s.Namespace, appLabel)
 	}()
 
 	err := s.CreateDefaultNetworkPolicies(ctx, s.Namespace, appLabel)
-	s.AssertNil(err, "Failed to create default network policies")
+	AssertNil(err, "Failed to create default network policies")
 
-	s.Log("Starting Felix CNI server race test ...")
+	Log("Starting Felix CNI server race test ...")
 
 	go func() {
 		defer GinkgoRecover()
@@ -42,11 +42,11 @@ func FelixCniServerRaceTest(s *FelixSuite) {
 			if time.Now().After(endTime) {
 				return
 			}
-			for i := 0; i < 4; i++ {
+			for range 4 {
 				port := 20000 + counter
 				err := s.CreateNetworkPolicy(ctx, s.Namespace, appLabel, int32(port))
-				s.AssertNil(err, "Failed to create dynamic network policy")
-				s.Log("Created dynamic network policy %d with port %d", counter, port)
+				AssertNil(err, "Failed to create dynamic network policy")
+				Log("Created dynamic network policy %d with port %d", counter, port)
 				counter++
 			}
 		}
@@ -66,23 +66,23 @@ func FelixCniServerRaceTest(s *FelixSuite) {
 			for i := 0; i < 4; i++ {
 				jobName := fmt.Sprintf("race-job-%d-%d", time.Now().Unix(), counter)
 				err := s.CreateDynamicJob(ctx, s.Namespace, jobName, appLabel, "any")
-				s.AssertNil(err, "Failed to create dynamic job")
-				s.Log("Created job %d: %s", counter, jobName)
+				AssertNil(err, "Failed to create dynamic job")
+				Log("Created job %d: %s", counter, jobName)
 				counter++
 			}
 		}
 	}()
 
-	s.Log("Waiting for 2 minutes for test to complete ...")
+	Log("Waiting for 2 minutes for test to complete ...")
 	time.Sleep(time.Minute * 2)
 
 	finalPods, err := s.ListPodsInNamespace(ctx, s.Namespace)
-	s.AssertNil(err)
-	s.AssertEqual(0, len(finalPods))
+	AssertNil(err)
+	AssertEqual(0, len(finalPods))
 
 	finalJobs, err := s.ListJobsInNamespace(ctx, s.Namespace)
-	s.AssertNil(err)
-	s.AssertEqual(0, len(finalJobs))
+	AssertNil(err)
+	AssertEqual(0, len(finalJobs))
 }
 
 func FelixPodChurnTest(s *FelixSuite) {
@@ -90,7 +90,7 @@ func FelixPodChurnTest(s *FelixSuite) {
 	defer cancel()
 
 	err := s.CreateDefaultNetworkPolicies(ctx, s.Namespace, appLabel)
-	s.AssertNil(err, "Failed to create default network policies")
+	AssertNil(err, "Failed to create default network policies")
 	defer func() {
 		s.CleanupNetworkPolicies(s.Namespace, appLabel)
 	}()
@@ -98,7 +98,7 @@ func FelixPodChurnTest(s *FelixSuite) {
 	var createCounter int = 1
 	var deleteCounter int = 1
 
-	s.Log("Starting Pod churn test ...")
+	Log("Starting Pod churn test ...")
 
 	go func() {
 		defer GinkgoRecover()
@@ -112,14 +112,14 @@ func FelixPodChurnTest(s *FelixSuite) {
 			}
 			podName := fmt.Sprintf("churn-pod-%d", createCounter)
 			err := s.CreateDynamicPod(ctx, s.Namespace, podName, appLabel)
-			s.AssertNil(err, "Failed to create dynamic pod")
+			AssertNil(err, "Failed to create dynamic pod")
 			createCounter++
 		}
 	}()
 
 	go func() {
 		defer GinkgoRecover()
-		s.Log("Deletion goroutine: waiting 5 seconds before starting deletion ...")
+		Log("Deletion goroutine: waiting 5 seconds before starting deletion ...")
 		time.Sleep(time.Second * 5)
 		podDeleteTicker := time.NewTicker(time.Second)
 		defer podDeleteTicker.Stop()
@@ -131,30 +131,30 @@ func FelixPodChurnTest(s *FelixSuite) {
 			}
 			podToDelete := fmt.Sprintf("churn-pod-%d", deleteCounter)
 			err := s.DeleteDynamicPod(ctx, s.Namespace, podToDelete)
-			s.AssertNil(err, "Failed to delete dynamic pod")
+			AssertNil(err, "Failed to delete dynamic pod")
 			deleteCounter++
 		}
 	}()
 
-	s.Log("Waiting for 30 seconds for pod churn to complete ...")
+	Log("Waiting for 30 seconds for pod churn to complete ...")
 	time.Sleep(time.Second * 30)
 
 	remainingPods, err := s.ListPodsInNamespace(ctx, s.Namespace)
-	s.AssertNil(err, "Failed to list pods in test namespace")
+	AssertNil(err, "Failed to list pods in test namespace")
 
-	s.Log("=== All Pods in Namespace %s ===", s.Namespace)
-	s.Log("Found %d pods in namespace", len(remainingPods))
+	Log("=== All Pods in Namespace %s ===", s.Namespace)
+	Log("Found %d pods in namespace", len(remainingPods))
 	for i, podName := range remainingPods {
-		s.Log("  %d. %s", i+1, podName)
+		Log("  %d. %s", i+1, podName)
 	}
 
-	s.Log("=== Pod Churn Summary ===")
-	s.Log("Pods created: %d", createCounter-1)
-	s.Log("Pods deleted: %d", deleteCounter-1)
-	s.Log("Pod churn test completed. Found %d pods remaining in namespace", len(remainingPods))
+	Log("=== Pod Churn Summary ===")
+	Log("Pods created: %d", createCounter-1)
+	Log("Pods deleted: %d", deleteCounter-1)
+	Log("Pod churn test completed. Found %d pods remaining in namespace", len(remainingPods))
 	for _, podName := range remainingPods {
 		err := s.DeleteDynamicPod(ctx, s.Namespace, podName)
-		s.AssertNil(err, "Failed to delete dynamic pod")
+		AssertNil(err, "Failed to delete dynamic pod")
 	}
 }
 
@@ -163,7 +163,7 @@ func FelixPolicyChurnTest(s *FelixSuite) {
 	defer cancel()
 
 	err := s.CreateDefaultNetworkPolicies(ctx, s.Namespace, appLabel)
-	s.AssertNil(err, "Failed to create default network policies")
+	AssertNil(err, "Failed to create default network policies")
 	defer func() {
 		s.CleanupNetworkPolicies(s.Namespace, appLabel)
 	}()
@@ -174,7 +174,7 @@ func FelixPolicyChurnTest(s *FelixSuite) {
 	var createdPolicies []string
 	var policiesMutex sync.Mutex
 
-	s.Log("Starting NetworkPolicy churn test ...")
+	Log("Starting NetworkPolicy churn test ...")
 
 	go func() {
 		defer GinkgoRecover()
@@ -187,10 +187,10 @@ func FelixPolicyChurnTest(s *FelixSuite) {
 			if time.Now().After(endTime) {
 				return
 			}
-			for i := 0; i < 5; i++ {
+			for range 5 {
 				port := 20000 + updateCounter
 				err := s.CreateNetworkPolicy(ctx, s.Namespace, appLabel, int32(port))
-				s.AssertNil(err, "Failed to create dynamic network policy")
+				AssertNil(err, "Failed to create dynamic network policy")
 				policyName := fmt.Sprintf("kube-test-network-policy-%d", port)
 				policiesMutex.Lock()
 				createdPolicies = append(createdPolicies, policyName)
@@ -219,42 +219,42 @@ func FelixPolicyChurnTest(s *FelixSuite) {
 					policiesMutex.Unlock()
 					s.DeleteNetworkPolicy(ctx, s.Namespace, policyToDelete)
 				} else {
-					s.Log("No dynamic policies available to delete")
+					Log("No dynamic policies available to delete")
 				}
 			}
 		}
 	}()
 
-	s.Log("Waiting for 30 seconds for policy churn to complete ...")
+	Log("Waiting for 30 seconds for policy churn to complete ...")
 	time.Sleep(time.Second * 30)
 
-	s.Log("=== Policy Churn Summary ===")
-	s.Log("Remaining dynamic policies count: %d", len(createdPolicies))
+	Log("=== Policy Churn Summary ===")
+	Log("Remaining dynamic policies count: %d", len(createdPolicies))
 	if len(createdPolicies) > 0 {
-		s.Log("Remaining dynamic policy names:")
+		Log("Remaining dynamic policy names:")
 		for i, policyName := range createdPolicies {
-			s.Log("  %d. %s", i+1, policyName)
+			Log("  %d. %s", i+1, policyName)
 		}
 	}
-	s.Log("")
+	Log("")
 
-	out, err := s.ExecVppctlInKubeNode(s.Pods.ClientGeneric.Worker, "show", "npol", "rules")
-	s.AssertNil(err, fmt.Sprintf("Failed to run 'show npol rules' on %s", s.Pods.ClientGeneric.Worker))
+	out, err := ExecVppctlInKubeNode(s.Pods.ClientGeneric.Worker, "show", "npol", "rules")
+	AssertNil(err, fmt.Sprintf("Failed to run 'show npol rules' on %s", s.Pods.ClientGeneric.Worker))
 
 	ret, _ := s.VerifyDefaultNetworkPolicies(string(out), s.Pods.ClientGeneric.Worker)
-	s.AssertEqual(true, ret)
+	AssertEqual(true, ret)
 
 	ret, _ = s.VerifyDynamicNetworkPolicies(string(out), s.Pods.ClientGeneric.Worker, createdPolicies)
-	s.AssertEqual(true, ret)
+	AssertEqual(true, ret)
 
-	out, err = s.ExecVppctlInKubeNode(s.Pods.ServerGeneric.Worker, "show", "npol", "rules")
-	s.AssertNil(err, fmt.Sprintf("Failed to run 'show npol rules' on %s", s.Pods.ServerGeneric.Worker))
+	out, err = ExecVppctlInKubeNode(s.Pods.ServerGeneric.Worker, "show", "npol", "rules")
+	AssertNil(err, fmt.Sprintf("Failed to run 'show npol rules' on %s", s.Pods.ServerGeneric.Worker))
 
 	ret, _ = s.VerifyDefaultNetworkPolicies(string(out), s.Pods.ServerGeneric.Worker)
-	s.AssertEqual(true, ret)
+	AssertEqual(true, ret)
 
 	ret, _ = s.VerifyDynamicNetworkPolicies(string(out), s.Pods.ServerGeneric.Worker, createdPolicies)
-	s.AssertEqual(true, ret)
+	AssertEqual(true, ret)
 }
 
 func FinalizerTest(s *FelixSuite) {
@@ -262,7 +262,7 @@ func FinalizerTest(s *FelixSuite) {
 	defer cancel()
 
 	err := s.CreateDefaultNetworkPolicies(ctx, s.Namespace, appLabel)
-	s.AssertNil(err, "Failed to create default network policies")
+	AssertNil(err, "Failed to create default network policies")
 	defer func() {
 		s.CleanupNetworkPolicies(s.Namespace, appLabel)
 	}()
@@ -320,12 +320,12 @@ func FinalizerTest(s *FelixSuite) {
 		s.RunFinalizerTest(ctx, "kube-test-no-finalizer-failure", noFinalizer, noFinalizer, false)
 	}()
 
-	s.Log("Starting all 8 finalizer tests in parallel ...")
+	Log("Starting all 8 finalizer tests in parallel ...")
 	wg.Wait()
-	s.Log("All 8 finalizer tests completed successfully")
+	Log("All 8 finalizer tests completed successfully")
 
 	allJobs, err := s.ListJobsInNamespace(ctx, s.Namespace)
-	s.AssertNil(err)
-	s.AssertEqual(0, len(allJobs))
-	s.Log("Checking jobs: No jobs remain in namespace %s", s.Namespace)
+	AssertNil(err)
+	AssertEqual(0, len(allJobs))
+	Log("Checking jobs: No jobs remain in namespace %s", s.Namespace)
 }
