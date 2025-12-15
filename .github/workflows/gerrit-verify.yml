@@ -52,9 +52,6 @@ defaults:
   run:
     shell: bash
 
-env:
-  GERRIT_CHANGE: "${{ inputs.GERRIT_CHANGE_NUMBER }}/${{ inputs.GERRIT_PATCHSET_NUMBER}}"
-
 permissions:
   contents: read
   actions: read
