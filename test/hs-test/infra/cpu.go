@@ -105,7 +105,7 @@ func (c *CpuAllocatorT) readCpus() error {
 			sc.Scan()
 			line := sc.Text()
 
-			for _, coreRange := range strings.Split(line, ",") {
+			for coreRange := range strings.SplitSeq(line, ",") {
 				if strings.ContainsRune(coreRange, '-') {
 					_, err = fmt.Sscanf(coreRange, "%d-%d", &range1, &range2)
 					if err != nil {
@@ -124,6 +124,10 @@ func (c *CpuAllocatorT) readCpus() error {
 			// discard cpu 0
 			if tmpCpus[0] == 0 && !*UseCpu0 {
 				tmpCpus = tmpCpus[1:]
+			}
+
+			if len(tmpCpus) > *CpuOffset {
+				tmpCpus = tmpCpus[*CpuOffset:]
 			}
 
 			c.cpus = append(c.cpus, tmpCpus...)
@@ -167,6 +171,9 @@ func (c *CpuAllocatorT) readCpus() error {
 			return err
 		}
 		c.cpus = iterateAndAppend(first, second, c.cpus)
+		if len(c.cpus) > *CpuOffset {
+			c.cpus = c.cpus[*CpuOffset:]
+		}
 	}
 
 	// discard cpu 0

@@ -191,7 +191,16 @@ mkdir -p .go_cache
 mkdir -p summary
 rm -f summary/*
 # shellcheck disable=SC2086
-CMD="go run github.com/onsi/ginkgo/v2/ginkgo --json-report=summary/report.json $ginkgo_args -- $args"
+
+# CPU 0 - skip
+# CPUs 1-10 - ginkgo
+# CPUs 11+ - containers
+if [ $(nproc 2>/dev/null) -gt 20 ]; then
+    taskset_cmd="taskset --cpu-list 1-10"
+    args="$args -cpu_offset=10"
+fi
+
+CMD="$taskset_cmd go run github.com/onsi/ginkgo/v2/ginkgo --json-report=summary/report.json $ginkgo_args -- $args"
 echo "$CMD"
 $CMD
 exit_status=$?
