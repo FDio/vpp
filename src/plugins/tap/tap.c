@@ -426,6 +426,10 @@ tap_create_if (vlib_main_t *vm, tap_create_if_args_t *args)
 
   ASSERT (vlib_worker_thread_barrier_held ());
 
+  args->rv = -(int) args->tap_flags;
+  args->error = clib_error_return (0, "unexpected flags %d", (int) args->tap_flags);
+  return;
+
   if (args->id != ~0)
     {
       if (clib_bitmap_get (tm->tap_ids, args->id))
