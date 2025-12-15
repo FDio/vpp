@@ -2,10 +2,12 @@ package hst
 
 import (
 	"bufio"
+	"bytes"
 	"errors"
 	"fmt"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 )
 
@@ -24,13 +26,6 @@ type CpuAllocatorT struct {
 	suite   *HstSuite
 }
 
-func iterateAndAppend(start int, end int, slice []int) []int {
-	for i := start; i <= end; i++ {
-		slice = append(slice, i)
-	}
-	return slice
-}
-
 var cpuAllocator *CpuAllocatorT = nil
 
 func (c *CpuAllocatorT) Allocate(nCpus int, offset int) (*CpuContext, error) {
@@ -43,7 +38,7 @@ func (c *CpuAllocatorT) Allocate(nCpus int, offset int) (*CpuContext, error) {
 
 	if len(c.cpus)-1 < maxCpu {
 		msg := fmt.Sprintf("could not allocate %d CPUs; available count: %d; attempted to allocate cores with index %d-%d; max index: %d;\n"+
-			"available cores: %v", nCpus, len(c.cpus), minCpu, maxCpu, len(c.cpus)-1, c.cpus)
+			"available cores: %v\ntry running hs-test with HT=true and/or CPU0=true", nCpus, len(c.cpus), minCpu, maxCpu, len(c.cpus)-1, c.cpus)
 		if c.suite.SkipIfNotEnoguhCpus {
 			c.suite.Skip("skipping: " + msg)
 		}
@@ -71,8 +66,51 @@ func (c *CpuAllocatorT) Allocate(nCpus int, offset int) (*CpuContext, error) {
 	return &cpuCtx, nil
 }
 
+// Helper to get physical cores only
+func getPhysicalCores() (map[int]bool, error) {
+	cmd := exec.Command("lscpu", "-p=CORE,CPU")
+	output, err := cmd.Output()
+	if err != nil {
+		return nil, err
+	}
+
+	// Map to track which physical Core IDs we have already seen.
+	// We want to keep the first CPU ID associated with a Core ID and discard the rest.
+	seenCores := make(map[int]bool)
+	physicalCpuSet := make(map[int]bool)
+
+	scanner := bufio.NewScanner(bytes.NewReader(output))
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.HasPrefix(line, "#") {
+			continue
+		}
+		parts := strings.Split(line, ",")
+		if len(parts) < 2 {
+			continue
+		}
+		coreID, _ := strconv.Atoi(parts[0])
+		cpuID, _ := strconv.Atoi(parts[1])
+
+		if !seenCores[coreID] {
+			seenCores[coreID] = true
+			physicalCpuSet[cpuID] = true
+		}
+	}
+	return physicalCpuSet, nil
+}
+
 func (c *CpuAllocatorT) readCpus() error {
 	var first, second int
+	var physicalCores map[int]bool
+	var err error
+
+	if !*HyperThreading {
+		physicalCores, err = getPhysicalCores()
+		if err != nil {
+			return fmt.Errorf("failed to get physical cores: %v", err)
+		}
+	}
 
 	if NumaAwareCpuAlloc {
 		var range1, range2 int
@@ -105,29 +143,46 @@ func (c *CpuAllocatorT) readCpus() error {
 			sc.Scan()
 			line := sc.Text()
 
-			for _, coreRange := range strings.Split(line, ",") {
+			for coreRange := range strings.SplitSeq(line, ",") {
 				if strings.ContainsRune(coreRange, '-') {
 					_, err = fmt.Sscanf(coreRange, "%d-%d", &range1, &range2)
 					if err != nil {
 						return err
 					}
-					tmpCpus = iterateAndAppend(range1, range2, tmpCpus)
+					// filter range
+					for cpu := range1; cpu <= range2; cpu++ {
+						if !*HyperThreading {
+							if _, isPhysical := physicalCores[cpu]; !isPhysical {
+								continue
+							}
+						}
+						tmpCpus = append(tmpCpus, cpu)
+					}
 				} else {
 					_, err = fmt.Sscanf(coreRange, "%d", &range1)
 					if err != nil {
 						return err
+					}
+					// filter single CPU
+					if !*HyperThreading {
+						if _, isPhysical := physicalCores[range1]; !isPhysical {
+							continue
+						}
 					}
 					tmpCpus = append(tmpCpus, range1)
 				}
 			}
 
 			// discard cpu 0
-			if tmpCpus[0] == 0 && !*UseCpu0 {
+			if len(tmpCpus) > 0 && tmpCpus[0] == 0 && !*UseCpu0 {
 				tmpCpus = tmpCpus[1:]
 			}
 
 			c.cpus = append(c.cpus, tmpCpus...)
 			if i == 0 {
+				if len(tmpCpus) > *CpuOffset {
+					tmpCpus = tmpCpus[*CpuOffset:]
+				}
 				c.numa0 = append(c.numa0, tmpCpus...)
 			} else {
 				c.numa1 = append(c.numa1, tmpCpus...)
@@ -164,15 +219,33 @@ func (c *CpuAllocatorT) readCpus() error {
 		line := sc.Text()
 		_, err = fmt.Sscanf(line, "%d-%d", &first, &second)
 		if err != nil {
-			return err
+			// fallback if not a range (single cpu)
+			_, err = fmt.Sscanf(line, "%d", &first)
+			if err == nil {
+				second = first
+			} else {
+				return err
+			}
 		}
-		c.cpus = iterateAndAppend(first, second, c.cpus)
+
+		for i := first; i <= second; i++ {
+			if !*HyperThreading {
+				if _, isPhysical := physicalCores[i]; !isPhysical {
+					continue
+				}
+			}
+			c.cpus = append(c.cpus, i)
+		}
+
+		if len(c.cpus) > 0 && c.cpus[0] == 0 && !*UseCpu0 {
+			c.cpus = c.cpus[1:]
+		}
+
+		if len(c.cpus) > *CpuOffset {
+			c.cpus = c.cpus[*CpuOffset:]
+		}
 	}
 
-	// discard cpu 0
-	if c.cpus[0] == 0 && !*UseCpu0 {
-		c.cpus = c.cpus[1:]
-	}
 	return nil
 }
 

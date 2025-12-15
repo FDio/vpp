@@ -17,6 +17,7 @@ no_color=
 hs_root=
 label=
 verbose=0
+hyperthread=false
 
 for i in "$@"
 do
@@ -132,6 +133,10 @@ case "${i}" in
         seed="${i#*=}"
         ginkgo_args="$ginkgo_args --seed=$seed"
         ;;
+    --hyperthread=*)
+        args="$args -hyperthread=${i#*=}"
+        hyperthread=${i#*=}
+        ;;
 esac
 done
 
@@ -204,8 +209,48 @@ mkdir -p .go_cache
 mkdir -p summary
 rm -f summary/*
 # shellcheck disable=SC2086
+
+REQUIRED_PHYSICAL_CORES=20
+CORES_TO_USE=10
 CMD="go run github.com/onsi/ginkgo/v2/ginkgo --json-report=summary/report.json $ginkgo_args -- $args"
-echo "$CMD"
+
+get_cores_on_node() {
+    local node_id=$1
+    # sort -t, -k3,3n | \ - sort by CPU ID numerically to ensure lowest ID is first
+    # sort -u -t, -k2,2 | \ - unique Sort by Core ID to remove siblings (keeping the top/lowest one)
+    if [ "$hyperthread" = true ]; then
+        lscpu -p=NODE,CORE,CPU | \
+        grep "^$node_id," | \
+        sort -t, -k3,3n | \
+        cut -d, -f3
+    else
+        lscpu -p=NODE,CORE,CPU | \
+        grep "^$node_id," | \
+        sort -t, -k3,3n | \
+        sort -u -n -t, -k2,2 | \
+        cut -d, -f3
+    fi
+}
+
+for node in /sys/devices/system/node/node*; do
+    node_id=$(basename "$node" | sed 's/node//')
+
+    # get list of cores in a node into an array
+    mapfile -t phys_cores < <(get_cores_on_node "$node_id")
+    count=${#phys_cores[@]}
+
+    if [ "$count" -ge "$REQUIRED_PHYSICAL_CORES" ]; then
+        # skip core 0
+        selected_cores=("${phys_cores[@]:1:$CORES_TO_USE}")
+        cpu_list=$(IFS=,; echo "${selected_cores[*]}")
+
+        CMD="taskset -c $cpu_list $CMD -cpu_offset=10"
+        echo "* System has enough CPUs to run Ginkgo with taskset!"
+        break
+    fi
+done
+
+echo $CMD
 $CMD
 exit_status=$?
 
