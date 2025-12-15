@@ -87,6 +87,22 @@ endif
 
 FORCE_BUILD?=true
 
+# # reserve some CPUs so that test containers have guaranteed free CPUs
+# SYS_CPUS := $(shell nproc 2>/dev/null)
+# TO_RESERVE := $(shell echo "$$((4 * $(PARALLEL)))")
+
+# # make sure we always leave 9 CPUs for test containers (for some MW tests)
+# ifeq ($(shell [ $(TO_RESERVE) -lt 9 ] && echo $$?),0)
+# TO_RESERVE := 9
+# endif
+
+# CONT_CPUS = $(shell echo "$$(($(SYS_CPUS) - $(TO_RESERVE)))")
+
+# # don't reserve CPUs if we don't have enough
+# ifeq ($(shell [ $(TO_RESERVE) -gt $(SYS_CPUS) ] && echo $$?),0)
+# CONT_CPUS := $(SYS_CPUS)
+# endif
+
 # privileged is needed for "ip netns" otherwise we are not able to create namespace
 DOCKER_CAPABILITIES:=--privileged
 DOCKER_DEVICES:=--device /dev/vhost-net:/dev/vhost-net --device /dev/net/tun:/dev/net/tun
