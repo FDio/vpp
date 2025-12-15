@@ -70,10 +70,10 @@ func (s *KubeSuite) SetupSuite() {
 func (s *KubeSuite) TeardownTest() {
 	s.BaseSuite.TeardownTest()
 	if len(s.CurrentlyRunning) != 0 {
-		s.Log("Removing pods:")
+		Log("Removing pods:")
 		for _, pod := range s.CurrentlyRunning {
-			s.Log("   %s", pod.Name)
-			s.AssertNil(s.deletePod(s.Namespace, pod.Name))
+			Log("   %s", pod.Name)
+			AssertNil(s.deletePod(s.Namespace, pod.Name))
 		}
 	}
 }
@@ -98,7 +98,7 @@ func (s *KubeSuite) FixVersionNumber(pods ...*Pod) {
 
 	if len(match) > 1 {
 		version := match[1]
-		s.Log("Found version: %s", version)
+		Log("Found version: %s", version)
 		cmd := fmt.Sprintf("for file in /usr/lib/*.so; do\n"+
 			"if [ -e \"$file\" ]; then\n"+
 			"base=$(basename \"$file\")\n"+
@@ -111,7 +111,7 @@ func (s *KubeSuite) FixVersionNumber(pods ...*Pod) {
 		}
 
 	} else {
-		s.Log("Couldn't find version.")
+		Log("Couldn't find version.")
 	}
 }
 
@@ -181,7 +181,7 @@ var _ = Describe("KubeSuite", Ordered, ContinueOnFailure, func() {
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, func(ctx SpecContext) {
-				s.Log("[* TEST BEGIN]: " + testName)
+				Log("[* TEST BEGIN]: " + testName)
 				test(&s)
 			}, SpecTimeout(TestTimeout))
 		}
@@ -211,7 +211,7 @@ var _ = Describe("KubeMWSuite", Ordered, ContinueOnFailure, Label("Perf", "Multi
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, func(ctx SpecContext) {
-				s.Log("[* TEST BEGIN]: " + testName)
+				Log("[* TEST BEGIN]: " + testName)
 				test(&s)
 			}, SpecTimeout(TestTimeout))
 		}

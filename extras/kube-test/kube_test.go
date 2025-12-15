@@ -26,14 +26,14 @@ func kubeIperfVclTest(s *KubeSuite, clientArgs string) IPerfResult {
 	defer cancel()
 	defer func() {
 		o, err := s.Pods.ServerGeneric.Exec(ctx, []string{"/bin/bash", "-c", "cat /iperf_server.log"})
-		s.Log(o)
-		s.AssertNil(err)
+		Log(o)
+		AssertNil(err)
 	}()
 
 	_, err := s.Pods.ClientGeneric.Exec(ctx, []string{"/bin/bash", "-c", VclConfIperf})
-	s.AssertNil(err)
+	AssertNil(err)
 	_, err = s.Pods.ServerGeneric.Exec(ctx, []string{"/bin/bash", "-c", VclConfIperf})
-	s.AssertNil(err)
+	AssertNil(err)
 
 	s.FixVersionNumber(s.Pods.ClientGeneric, s.Pods.ServerGeneric)
 
@@ -42,18 +42,18 @@ func kubeIperfVclTest(s *KubeSuite, clientArgs string) IPerfResult {
 
 	o, err := s.Pods.ServerGeneric.Exec(ctx, []string{"/bin/bash", "-c",
 		vcl + " " + ldp + " iperf3 -s -D --logfile /iperf_server.log -B " + s.Pods.ServerGeneric.IpAddress})
-	s.Log("Sleeping for 2s")
+	Log("Sleeping for 2s")
 	time.Sleep(time.Second * 2)
-	s.AssertNil(err)
+	AssertNil(err)
 	out, err := s.Pods.ServerGeneric.Exec(ctx, []string{"/bin/bash", "-c", "pidof iperf3"})
-	s.Log(out)
-	s.AssertNil(err)
-	s.AssertNil(err, o)
+	Log(out)
+	AssertNil(err)
+	AssertNil(err, o)
 
 	o, err = s.Pods.ClientGeneric.Exec(ctx, []string{"/bin/bash", "-c", iperfClientCmd})
-	s.AssertNil(err, o)
-	result := s.ParseJsonIperfOutput([]byte(o))
-	s.LogJsonIperfOutput(result)
+	AssertNil(err, o)
+	result := ParseJsonIperfOutput([]byte(o))
+	LogJsonIperfOutput(result)
 	return result
 }
 
@@ -65,14 +65,14 @@ func kubeIperfVclMtuTest(s *LargeMtuSuite, clientArgs string) IPerfResult {
 	defer cancel()
 	defer func() {
 		o, err := s.Pods.ServerGeneric.Exec(ctx, []string{"/bin/bash", "-c", "cat /iperf_server.log"})
-		s.Log(o)
-		s.AssertNil(err)
+		Log(o)
+		AssertNil(err)
 	}()
 
 	_, err := s.Pods.ClientGeneric.Exec(ctx, []string{"/bin/bash", "-c", VclConfIperf})
-	s.AssertNil(err)
+	AssertNil(err)
 	_, err = s.Pods.ServerGeneric.Exec(ctx, []string{"/bin/bash", "-c", VclConfIperf})
-	s.AssertNil(err)
+	AssertNil(err)
 
 	s.FixVersionNumber(s.Pods.ClientGeneric, s.Pods.ServerGeneric)
 
@@ -81,39 +81,39 @@ func kubeIperfVclMtuTest(s *LargeMtuSuite, clientArgs string) IPerfResult {
 
 	o, err := s.Pods.ServerGeneric.Exec(ctx, []string{"/bin/bash", "-c",
 		vcl + " " + ldp + " iperf3 -s -D --logfile /iperf_server.log -B " + s.Pods.ServerGeneric.IpAddress})
-	s.Log("Sleeping for 2s")
+	Log("Sleeping for 2s")
 	time.Sleep(time.Second * 2)
-	s.AssertNil(err)
+	AssertNil(err)
 	out, err := s.Pods.ServerGeneric.Exec(ctx, []string{"/bin/bash", "-c", "pidof iperf3"})
-	s.Log(out)
-	s.AssertNil(err)
-	s.AssertNil(err, o)
+	Log(out)
+	AssertNil(err)
+	AssertNil(err, o)
 
 	o, err = s.Pods.ClientGeneric.Exec(ctx, []string{"/bin/bash", "-c", iperfClientCmd})
-	s.AssertNil(err, o)
-	result := s.ParseJsonIperfOutput([]byte(o))
-	s.LogJsonIperfOutput(result)
+	AssertNil(err, o)
+	result := ParseJsonIperfOutput([]byte(o))
+	LogJsonIperfOutput(result)
 	return result
 }
 
 func KubeTcpIperfVclTest(s *KubeSuite) {
-	s.AssertIperfMinTransfer(kubeIperfVclTest(s, "-M 1460"), 2000)
+	AssertIperfMinTransfer(kubeIperfVclTest(s, "-M 1460"), 2000)
 }
 
 func KubeTcpIperfVclLargeMTUTest(s *LargeMtuSuite) {
-	s.AssertIperfMinTransfer(kubeIperfVclMtuTest(s, "-M 8900"), 2000)
+	AssertIperfMinTransfer(kubeIperfVclMtuTest(s, "-M 8900"), 2000)
 }
 
 func KubeUdpIperfVclTest(s *KubeSuite) {
-	s.AssertIperfMinTransfer(kubeIperfVclTest(s, "-l 1460 -u"), 2000)
+	AssertIperfMinTransfer(kubeIperfVclTest(s, "-l 1460 -u"), 2000)
 }
 
 func KubeTcpIperfVclMWTest(s *KubeSuite) {
-	s.AssertIperfMinTransfer(kubeIperfVclTest(s, "-M 1460"), 200)
+	AssertIperfMinTransfer(kubeIperfVclTest(s, "-M 1460"), 200)
 }
 
 func KubeUdpIperfVclMWTest(s *KubeSuite) {
-	s.AssertIperfMinTransfer(kubeIperfVclTest(s, "-l 1460 -u"), 200)
+	AssertIperfMinTransfer(kubeIperfVclTest(s, "-l 1460 -u"), 200)
 }
 
 func NginxRpsTest(s *KubeSuite) {
@@ -124,22 +124,23 @@ func NginxRpsTest(s *KubeSuite) {
 	s.DeployPod(s.Pods.Ab)
 	s.CreateNginxConfig(s.Pods.Nginx)
 
-	out, err := s.Pods.Nginx.Exec(ctx, []string{"/bin/bash", "-c", VclConfNginx})
-	s.AssertNil(err, out)
-
 	go func() {
 		defer GinkgoRecover()
 		out, err := s.Pods.Nginx.Exec(ctx, []string{"/bin/bash", "-c", "nginx -c /nginx.conf"})
 		if !errors.Is(err, context.Canceled) {
-			s.AssertNil(err, out)
+			AssertNil(err, out)
 		}
 	}()
 
 	// wait for nginx to start up
 	time.Sleep(time.Second * 2)
-	out, err = s.Pods.Ab.Exec(ctx, []string{"ab", "-k", "-r", "-n", "1000000", "-c", "1000", "http://" + s.Pods.Nginx.IpAddress + ":8081/64B.json"})
-	s.Log(out)
-	s.AssertNil(err)
+	filename := GetTestName() + GetDateTime() + ".csv"
+	out, err := s.Pods.Ab.Exec(ctx, []string{"ab", "-k", "-e", filename, "-r", "-n", "1000000", "-c", "1000", "http://" + s.Pods.Nginx.IpAddress + ":8081/64B.json"})
+	Log(out)
+	fileOut, err2 := s.Pods.Ab.Exec(ctx, []string{"cat", filename})
+	AssertNil(err)
+	AssertNil(err2)
+	WriteToFile(PerfLogsDir+filename, []byte(fileOut))
 }
 
 func NginxProxyMirroringTest(s *KubeSuite) {
@@ -153,15 +154,15 @@ func NginxProxyMirroringTest(s *KubeSuite) {
 	s.CreateNginxProxyConfig(s.Pods.NginxProxy)
 
 	out, err := s.Pods.Nginx.Exec(ctx, []string{"/bin/bash", "-c", VclConfNginx})
-	s.AssertNil(err, out)
+	AssertNil(err, out)
 	out, err = s.Pods.NginxProxy.Exec(ctx, []string{"/bin/bash", "-c", VclConfNginx})
-	s.AssertNil(err, out)
+	AssertNil(err, out)
 
 	go func() {
 		defer GinkgoRecover()
 		out, err := s.Pods.Nginx.Exec(ctx, []string{"/bin/bash", "-c", ldp + " " + vcl + " nginx -c /nginx.conf"})
 		if !errors.Is(err, context.Canceled) {
-			s.AssertNil(err, out)
+			AssertNil(err, out)
 		}
 	}()
 
@@ -169,13 +170,13 @@ func NginxProxyMirroringTest(s *KubeSuite) {
 		defer GinkgoRecover()
 		out, err := s.Pods.NginxProxy.Exec(ctx, []string{"/bin/bash", "-c", "nginx -c /nginx.conf"})
 		if !errors.Is(err, context.Canceled) {
-			s.AssertNil(err, out)
+			AssertNil(err, out)
 		}
 	}()
 
 	// wait for nginx to start up
 	time.Sleep(time.Second * 2)
 	out, err = s.Pods.ClientGeneric.Exec(ctx, []string{"curl", "-v", "--noproxy", "'*'", "--insecure", "http://" + s.Pods.NginxProxy.IpAddress + ":8080/64B.json"})
-	s.Log(out)
-	s.AssertNil(err)
+	Log(out)
+	AssertNil(err)
 }

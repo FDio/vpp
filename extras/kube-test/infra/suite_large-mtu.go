@@ -48,7 +48,7 @@ var _ = Describe("LargeMtuSuite", Ordered, ContinueOnFailure, Label("Large MTU")
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, func(ctx SpecContext) {
-				s.Log("[* TEST BEGIN]: " + testName)
+				Log("[* TEST BEGIN]: " + testName)
 				test(&s)
 			}, SpecTimeout(TestTimeout))
 		}

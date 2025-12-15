@@ -15,23 +15,23 @@ import (
 // Helper function to remove finalizers from a specific job in a namespace
 func (s *BaseSuite) CleanupJobFinalizers(ctx context.Context, namespace string, jobName string) {
 	// Get the specific job by name
-	job, err := s.ClientSet.BatchV1().Jobs(namespace).Get(ctx, jobName, metav1.GetOptions{})
+	job, err := ClientSet.BatchV1().Jobs(namespace).Get(ctx, jobName, metav1.GetOptions{})
 	if err != nil {
-		s.Log("Failed to get job %s for finalizer cleanup: %v", jobName, err)
+		Log("Failed to get job %s for finalizer cleanup: %v", jobName, err)
 		return
 	}
 
 	// Remove all finalizers from the job (if the job has them)
 	if len(job.Finalizers) > 0 {
 		job.Finalizers = []string{}
-		_, err := s.ClientSet.BatchV1().Jobs(namespace).Update(ctx, job, metav1.UpdateOptions{})
+		_, err := ClientSet.BatchV1().Jobs(namespace).Update(ctx, job, metav1.UpdateOptions{})
 		if err != nil {
-			s.Log("Failed to remove finalizer from job %s: %v", job.Name, err)
+			Log("Failed to remove finalizer from job %s: %v", job.Name, err)
 		} else {
-			s.Log("Removed finalizers from job %s", job.Name)
+			Log("Removed finalizers from job %s", job.Name)
 		}
 	} else {
-		s.Log("Job %s has no finalizers to remove", jobName)
+		Log("Job %s has no finalizers to remove", jobName)
 	}
 }
 
@@ -59,7 +59,7 @@ func (s *BaseSuite) CreateTestJob(ctx context.Context, namespace, jobName string
 		},
 	}
 
-	return s.ClientSet.BatchV1().Jobs(namespace).Create(ctx, job, metav1.CreateOptions{})
+	return ClientSet.BatchV1().Jobs(namespace).Create(ctx, job, metav1.CreateOptions{})
 }
 
 // Helper function to create a pod template spec with configurable finalizers
@@ -120,42 +120,42 @@ func (s *BaseSuite) RunFinalizerTest(ctx context.Context, testName string, jobFi
 	// Create job with specified finalizers
 	jobName := fmt.Sprintf("%s-job", testName)
 	_, err := s.CreateTestJob(ctx, s.Namespace, jobName, jobFinalizers, podFinalizers, jobSuccess)
-	s.AssertNil(err)
-	s.Log("Created job %s with job finalizers: %v, pod finalizers: %v", jobName, jobFinalizers, podFinalizers)
+	AssertNil(err)
+	Log("Created job %s with job finalizers: %v, pod finalizers: %v", jobName, jobFinalizers, podFinalizers)
 
 	// Wait for pods to be created and ready
-	s.Log("[%s...] Waiting for pods to be created and ready...", jobName)
+	Log("[%s...] Waiting for pods to be created and ready...", jobName)
 	cmd := exec.Command("kubectl", "wait", "--for=condition=Ready", "pod",
 		"--selector=test-name="+jobName,
 		"--namespace="+s.Namespace,
 		"--timeout=30s")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		s.Log("[%s...] kubectl wait failed: %v, output: %s", jobName, err, string(output))
+		Log("[%s...] kubectl wait failed: %v, output: %s", jobName, err, string(output))
 	}
 
 	// Check pods and their finalizers status
-	pod, err := s.ClientSet.CoreV1().Pods(s.Namespace).List(ctx, metav1.ListOptions{
+	pod, err := ClientSet.CoreV1().Pods(s.Namespace).List(ctx, metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("test-name=%s", jobName),
 	})
-	s.AssertNil(err)
+	AssertNil(err)
 
 	// Log pod finalizer status before cleanup
 	for _, pod := range pod.Items {
-		s.Log("[%s...] Pod %s: phase=%s, finalizers=%v, deletionTimestamp=%v",
+		Log("[%s...] Pod %s: phase=%s, finalizers=%v, deletionTimestamp=%v",
 			jobName, pod.Name, pod.Status.Phase, pod.Finalizers, pod.DeletionTimestamp)
 	}
 
 	// Check jobs and their finalizers status
-	job, err := s.ClientSet.BatchV1().Jobs(s.Namespace).List(ctx, metav1.ListOptions{
+	job, err := ClientSet.BatchV1().Jobs(s.Namespace).List(ctx, metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("test-name=%s", jobName),
 	})
-	s.AssertNil(err)
+	AssertNil(err)
 
 	if !jobSuccess {
 		// For failed jobs, expect jobs to remain initially due to TTL cleanup delay
-		s.AssertEqual(len(job.Items), 1)
-		s.Log("Job %s failed as expected, waiting for job completion (failure)...", jobName)
+		AssertEqual(len(job.Items), 1)
+		Log("Job %s failed as expected, waiting for job completion (failure)...", jobName)
 		// Wait for job to complete (either succeed or fail)
 		cmd := exec.Command("kubectl", "wait", "--for=condition=Failed", "job",
 			"--selector=test-name="+jobName,
@@ -163,23 +163,23 @@ func (s *BaseSuite) RunFinalizerTest(ctx context.Context, testName string, jobFi
 			"--timeout=25s")
 		output, err := cmd.CombinedOutput()
 		if err != nil {
-			s.Log("[%s...] kubectl wait failed: %v, output: %s", jobName, err, string(output))
+			Log("[%s...] kubectl wait failed: %v, output: %s", jobName, err, string(output))
 		}
 
 		// Sleep for 5 seconds to account for TTL job cleanup
-		s.Log("[%s...] Sleeping for 5 seconds to account for TTL job cleanup...", jobName)
+		Log("[%s...] Sleeping for 5 seconds to account for TTL job cleanup...", jobName)
 		time.Sleep(5 * time.Second)
 	}
 
 	if len(jobFinalizers) > 0 {
-		s.AssertEqual(len(job.Items), 1)
-		s.Log("Checking jobs: Job (%s) remains because of finalizer %v", job.Items[0].Name, job.Items[0].Finalizers)
+		AssertEqual(len(job.Items), 1)
+		Log("Checking jobs: Job (%s) remains because of finalizer %v", job.Items[0].Name, job.Items[0].Finalizers)
 		s.CleanupJobFinalizers(ctx, s.Namespace, job.Items[0].Name)
 	}
 
 	// Log job finalizer status before cleanup
 	for _, job := range job.Items {
-		s.Log("Job %s: status=%+v, finalizers=%v, deletionTimestamp=%v",
+		Log("Job %s: status=%+v, finalizers=%v, deletionTimestamp=%v",
 			job.Name, job.Status, job.Finalizers, job.DeletionTimestamp)
 	}
 }

@@ -15,18 +15,18 @@ func (s *BaseSuite) loadDockerImages() {
 	if !KindCluster {
 		return
 	}
-	s.Log("This may take a while. If you encounter problems, " +
+	Log("This may take a while. If you encounter problems, " +
 		"try loading docker images manually: 'kind load docker-image [image]'")
 
 	var cmd *exec.Cmd
 	var out []byte
 	var err error
 	for _, image := range s.images {
-		s.Log("loading docker image %s...", image)
+		Log("loading docker image %s...", image)
 		cmd = exec.Command("go", "run", "sigs.k8s.io/kind@v0.29.0", "load", "docker-image", image)
 		out, err = cmd.CombinedOutput()
-		s.Log(string(out))
-		s.AssertNil(err, string(out))
+		Log(string(out))
+		AssertNil(err, string(out))
 	}
 }
 
@@ -38,18 +38,18 @@ func (s *BaseSuite) createNamespace(name string) {
 	}
 
 	// Create the namespace in the cluster
-	_, err := s.ClientSet.CoreV1().Namespaces().Create(context.TODO(), namespace, metav1.CreateOptions{})
-	s.AssertNil(err)
-	s.Log("Namespace '%s' created", name)
+	_, err := ClientSet.CoreV1().Namespaces().Create(context.TODO(), namespace, metav1.CreateOptions{})
+	AssertNil(err)
+	Log("Namespace '%s' created", name)
 }
 
 func (s *BaseSuite) deletePod(namespace string, podName string) error {
 	delete(s.CurrentlyRunning, podName)
-	return s.ClientSet.CoreV1().Pods(namespace).Delete(context.TODO(), podName, metav1.DeleteOptions{GracePeriodSeconds: int64Ptr(0)})
+	return ClientSet.CoreV1().Pods(namespace).Delete(context.TODO(), podName, metav1.DeleteOptions{GracePeriodSeconds: int64Ptr(0)})
 }
 
 func (s *BaseSuite) DeleteNamespace(namespace string) error {
-	return s.ClientSet.CoreV1().Namespaces().Delete(context.TODO(), namespace, metav1.DeleteOptions{})
+	return ClientSet.CoreV1().Namespaces().Delete(context.TODO(), namespace, metav1.DeleteOptions{})
 }
 
 func (s *BaseSuite) DeployPod(pod *Pod) {
@@ -81,17 +81,17 @@ func (s *BaseSuite) DeployPod(pod *Pod) {
 	}
 
 	// Create the Pod
-	_, err := s.ClientSet.CoreV1().Pods(s.Namespace).Create(context.TODO(), pod.CreatedPod, metav1.CreateOptions{})
-	s.AssertNil(err)
+	_, err := ClientSet.CoreV1().Pods(s.Namespace).Create(context.TODO(), pod.CreatedPod, metav1.CreateOptions{})
+	AssertNil(err)
 	s.CurrentlyRunning[pod.Name] = pod
-	s.Log("Pod '%s' created", pod.Name)
+	Log("Pod '%s' created", pod.Name)
 
 	// Get IP
-	s.Log("Obtaining IP from '%s'", pod.Name)
+	Log("Obtaining IP from '%s'", pod.Name)
 	pod.IpAddress = ""
 	counter := 1
 	for pod.IpAddress == "" {
-		pod.CreatedPod, err = s.ClientSet.CoreV1().Pods(s.Namespace).Get(context.TODO(), pod.Name, metav1.GetOptions{})
+		pod.CreatedPod, err = ClientSet.CoreV1().Pods(s.Namespace).Get(context.TODO(), pod.Name, metav1.GetOptions{})
 		pod.IpAddress = pod.CreatedPod.Status.PodIP
 		time.Sleep(time.Second * 1)
 		counter++
@@ -100,5 +100,5 @@ func (s *BaseSuite) DeployPod(pod *Pod) {
 		}
 	}
 
-	s.Log("IP: %s\n", pod.IpAddress)
+	Log("IP: %s\n", pod.IpAddress)
 }
