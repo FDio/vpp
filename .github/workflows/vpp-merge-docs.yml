@@ -115,7 +115,6 @@ jobs:
   merge-docs:
     # yamllint disable-line rule:line-length
     name: ${{ inputs.GERRIT_CHANGE_NUMBER }}/${{ inputs.GERRIT_PATCHSET_NUMBER}}__${{ inputs.GERRIT_BRANCH }}__${{ inputs.FDIO_NAMESPACE }}
-    needs: notify-start
     runs-on:
       - self-hosted
       - nomad
