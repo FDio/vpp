@@ -52,6 +52,7 @@ jobs:
     env:
       CI_TIMESTAMP: ""
       FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE || 'prod' }}
+      LOG_PATH: ""
       LOG_DIR: ""
       WORKSPACE: /scratch/docker-build/vpp
       TUI_LINE: "*******************************************************************"
@@ -69,7 +70,9 @@ jobs:
           set -euxo pipefail
           ts="$(date -u +%Y_%m_%d_%H%M%S_UTC)"
           echo "CI_TIMESTAMP=$ts" >> "$GITHUB_ENV"
-          echo "LOG_DIR=/scratch/docker-build/vpp/logs/$ts/dpdk-rdma-ver-${{ matrix.build_type }}-${{ matrix.class }}-${{ matrix.os }}-${{ env.FDIO_NAMESPACE || 'prod' }}-${{ matrix.executor_arch }}" >> "$GITHUB_ENV"
+          LOG_PATH="dpdk-rdma-ver-${{ matrix.build_type }}-${{ matrix.class }}-${{ matrix.os }}-${{ env.FDIO_NAMESPACE || 'prod' }}-${{ matrix.executor_arch }}/$ts"
+          echo "LOG_PATH=$LOG_PATH" >> "$GITHUB_ENV"
+          echo "LOG_DIR=/scratch/docker-build/vpp/logs/$LOG_PATH" >> "$GITHUB_ENV"
 
       - name: Prepare Log Directory
         run: |
@@ -129,17 +132,17 @@ jobs:
           echo -e "\n$TUI_LINE\n* MLX DPDK DRIVER $MISMATCH_RESULT VPP-EXT-DEPS PACKAGE\n$TUI_LINE\n" | tee "$LOG_DIR/dpdk_rdma_result.log"
           exit $RETVAL
 
-      - name: Show DPDK RDMA Logs
-        if: always()
-        run: |
-          set -euo pipefail
-          echo "Log directory: $LOG_DIR"
-          ls -l "$LOG_DIR"
-          for file in $(ls "$LOG_DIR"); do
-            echo -e "\n\n-----[ $file ]-----\n"
-            cat "$LOG_DIR/$file"
-            echo "-----"
-          done
+      - name: AWS S3 Publish Logs
+        if: ${{ always() }}
+        # yamllint disable-line rule:line-length
+        uses: fdio/.github/.github/actions/aws-s3-publish-logs@a28ad9abc70855292df1ea0d59829e814e78c2f4
+        with:
+          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws_region: ${{ vars.AWS_REGION }}
+          s3_bucket: ${{ vars.S3_BUCKET }}
+          s3_path: vpp-daily-${{ env.LOG_PATH }}
+          archives_path: ${{ env.LOG_DIR }}
 
       - name: Report Success
         if: success()
