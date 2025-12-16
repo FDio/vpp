@@ -208,6 +208,7 @@ jobs:
   #     GERRIT_PATCHSET_NUMBER: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
   #     GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
   #     GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
+  #     LOG_PATH: ${{ inputs.GERRIT_CHANGE_NUMBER }}/${{ inputs.GERRIT_PATCHSET_NUMBER}}/${{ needs.start-verify.outputs.timestamp }}
   #   secrets: inherit
 
   final-vote:

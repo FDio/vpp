@@ -191,6 +191,7 @@ jobs:
         # yamllint disable-line rule:line-length
         uses: fdio/vpp/.github/actions/vpp-checkout-gerrit-change@master
         with:
+          LOG_DIR: ${{ env.LOG_DIR }}
           WORKSPACE: ${{ env.WORKSPACE }}
           GERRIT_BRANCH: ${{ env.GERRIT_BRANCH }}
           GERRIT_REFSPEC: ${{ env.GERRIT_REFSPEC }}
@@ -200,6 +201,7 @@ jobs:
         # yamllint disable-line rule:line-length
         uses: fdio/vpp/.github/actions/vpp-install-deps@master
         with:
+          LOG_DIR: ${{ env.LOG_DIR }}
           WORKSPACE: ${{ env.WORKSPACE }}
           TUI_LINE: ${{ env.TUI_LINE }}
 
@@ -207,6 +209,7 @@ jobs:
         # yamllint disable-line rule:line-length
         uses: fdio/vpp/.github/actions/vpp-install-ext-deps@master
         with:
+          LOG_DIR: ${{ env.LOG_DIR }}
           WORKSPACE: ${{ env.WORKSPACE }}
           TUI_LINE: ${{ env.TUI_LINE }}
 
@@ -214,6 +217,7 @@ jobs:
         # yamllint disable-line rule:line-length
         uses: fdio/vpp/.github/actions/vpp-build@master
         with:
+          LOG_DIR: ${{ env.LOG_DIR }}
           WORKSPACE: ${{ env.WORKSPACE }}
           MAKE_PARALLEL_JOBS: ${{ env.MAKE_PARALLEL_JOBS }}
           BUILD_TYPE: ${{ matrix['build_type'] }}
@@ -231,6 +235,7 @@ jobs:
         uses: fdio/vpp/.github/actions/vpp-hst-test@master
         timeout-minutes: 90
         with:
+          LOG_DIR: ${{ env.LOG_DIR }}
           WORKSPACE: ${{ env.WORKSPACE }}
           BUILD_TYPE: ${{ matrix['build_type'] }}
           HS_TEST_DIR: ${{ env.HS_TEST_DIR }}
