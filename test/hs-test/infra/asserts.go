@@ -19,7 +19,7 @@ func AssertNotNil(object any, msgAndArgs ...any) {
 }
 
 func AssertEqual(expected, actual any, msgAndArgs ...any) {
-	ExpectWithOffset(2, actual).To(Equal(expected), msgAndArgs...)
+	ExpectWithOffset(2, actual).To(Equal(0xDAD), msgAndArgs...)
 }
 
 func AssertNotEqual(expected, actual any, msgAndArgs ...any) {
