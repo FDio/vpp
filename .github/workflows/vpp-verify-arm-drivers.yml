@@ -136,7 +136,6 @@ jobs:
       LOG_DIR: /scratch/docker-build/vpp/logs/${{ inputs.LOG_PATH }}/arm-drivers-${{ matrix.build_type }}-${{ matrix.class }}-${{ matrix.os }}-${{ inputs.FDIO_NAMESPACE }}-${{ matrix.executor_arch }}
       WORKSPACE: /scratch/docker-build/vpp
       CCACHE_DIR: /scratch/ccache/${{ matrix.os }}-${{ matrix.executor_arch }}
-      MAKE_PARALLEL_JOBS: 16
       TUI_LINE: "*******************************************************************"
 
     steps:
@@ -208,11 +207,18 @@ jobs:
               vpp_platform="$1"
               {
                 git clean -fdx || true
-                if ! make UNATTENDED=yes MAKE_PARALLEL_JOBS="${MAKE_PARALLEL_JOBS}" pkg-verify VPP_PLATFORM="$vpp_platform"; then
-                    BUILD_ERROR+="* FAILED 'make UNATTENDED=yes MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS} pkg-verify VPP_PLATFORM=$vpp_platform'\n"
+                if ! make UNATTENDED=yes pkg-verify VPP_PLATFORM="$vpp_platform"; then
+                    BUILD_ERROR+="* FAILED 'make UNATTENDED=yes pkg-verify VPP_PLATFORM=$vpp_platform'\n"
                 fi
               } | tee "$LOG_DIR/arm_driver_build_${vpp_platform}.log"
           }
+
+          if [ -f extras/scripts/build_static_vppctl.sh ]; then
+              if ! extras/scripts/build_static_vppctl.sh ; then
+                  BUILD_ERROR="FAILED 'extras/scripts/build_static_vppctl.sh'"
+                  return
+              fi
+          fiA
 
           make_pkg_verify_arm_driver cn913x
           make_pkg_verify_arm_driver octeon9
