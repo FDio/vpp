@@ -6,7 +6,11 @@ export WS_ROOT=$(HS_ROOT)/../..
 endif
 
 ifeq ($(VERBOSE),)
-VERBOSE=false
+VERBOSE=0
+endif
+
+ifneq ($(V),)
+VERBOSE=$(V)
 endif
 
 ifeq ($(PERSIST),)
@@ -62,7 +66,7 @@ ARCH=$(shell dpkg --print-architecture)
 endif
 
 ifeq ($(NO_COLOR),)
-VERBOSE=false
+NO_COLOR=false
 endif
 
 ifeq ($(TIMEOUT),)
@@ -85,6 +89,10 @@ ifeq ($(shell tty -s && echo $$?), 0)
 DOCKER_TTY := -it
 endif
 
+# it's better to omit these if not set
+SEED_ARG := $(if $(SEED),--seed=$(SEED))
+LABEL_ARG := $(if $(LABEL),--label="$(LABEL)")
+
 FORCE_BUILD?=true
 
 # privileged is needed for "ip netns" otherwise we are not able to create namespace
@@ -101,7 +109,7 @@ DOCKER_COMMON_ARGS:=$(DOCKER_TTY) --rm $(DOCKER_CAPABILITIES) $(DOCKER_DEVICES) 
 		--vppsrc=$(VPPSRC) --parallel=$(PARALLEL) --repeat=$(REPEAT) --cpu0=$(CPU0) \
 		--dryrun=$(DRYRUN) --skip=$(SKIP) --no_color=$(NO_COLOR) --timeout=$(TIMEOUT) \
 		--ginkgo_timeout=$(GINKGO_TIMEOUT) --vpp_cpus=$(VPP_CPUS) --hs_root=$(HS_ROOT) \
-		--label=$(LABEL) --host_ppid=$$PPID
+		$(LABEL_ARG) --host_ppid=$$PPID $(SEED_ARG)
 
 .PHONY: help
 help:
@@ -124,7 +132,7 @@ help:
 	@echo
 	@echo "'make test' specific arguments:"
 	@echo " PERSIST=[true|false]     - whether clean up topology and dockers after test"
-	@echo " VERBOSE=[true|false]     - verbose output"
+	@echo " V or VERBOSE=[0|1|2]     - verbose output"
 	@echo " UNCONFIGURE=[true|false] - unconfigure selected test"
 	@echo " DEBUG=[true|false]       - attach VPP to GDB"
 	@echo " TEST=[name1,name2...]    - specific test(s) to run"
@@ -140,6 +148,7 @@ help:
 	@echo " NO_COLOR=[true|false]    - disables colorful Docker and Ginkgo output"
 	@echo " TIMEOUT=[minutes]        - test timeout override (5 minutes by default)"
 	@echo " GINKGO_TIMEOUT=[Ns/m/h]  - Ginkgo timeout override (3h by default)"
+	@echo " SEED=[n]                 - set Ginkgo seed"
 
 .PHONY: list-tests
 list-tests:
@@ -201,8 +210,9 @@ test-leak: FORCE_BUILD=false
 test-leak: .deps.ok .build_debug.ok
 	docker run $(DOCKER_TTY) --rm $(DOCKER_CAPABILITIES) $(DOCKER_DEVICES) $(DOCKER_PROXY)\
 		-e BUILD_NUMBER=$(BUILD_NUMBER) $(DOCKER_VOLUMES) --name ginkgo hs-test/ginkgo \
-		.$(HS_ROOT)/hs_test.sh --test=$(TEST) --debug_build=true --leak_check=true --vppsrc=$(VPPSRC) --timeout=$(TIMEOUT) \
-		--ginkgo_timeout=$(GINKGO_TIMEOUT) --vpp_cpus=$(VPP_CPUS) --hs_root=$(HS_ROOT) --label=$(LABEL) --host_ppid=$$PPID; \
+		.$(HS_ROOT)/hs_test.sh --test=$(TEST) --debug_build=true --leak_check=true --vppsrc=$(VPPSRC) \
+		--timeout=$(TIMEOUT) --ginkgo_timeout=$(GINKGO_TIMEOUT) --vpp_cpus=$(VPP_CPUS) --hs_root=$(HS_ROOT) \
+		$(LABEL_ARG) --host_ppid=$$PPID $(SEED_ARG); \
 
 .PHONY: build
 build: .deps.ok build-vpp-release
