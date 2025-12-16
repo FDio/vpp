@@ -205,24 +205,22 @@ jobs:
 
           make_pkg_verify_arm_driver() {
               vpp_platform="$1"
-              {
-                git clean -fdx || true
-                if ! make UNATTENDED=yes pkg-verify VPP_PLATFORM="$vpp_platform"; then
-                    BUILD_ERROR+="* FAILED 'make UNATTENDED=yes pkg-verify VPP_PLATFORM=$vpp_platform'\n"
-                fi
-              } | tee "$LOG_DIR/arm_driver_build_${vpp_platform}.log"
+              git clean -fdx || true
+              if ! make UNATTENDED=yes pkg-verify VPP_PLATFORM="$vpp_platform"; then
+                  BUILD_ERROR+="* FAILED 'make UNATTENDED=yes pkg-verify VPP_PLATFORM=$vpp_platform'\n"
+              fi
           }
 
-          if [ -f extras/scripts/build_static_vppctl.sh ]; then
-              if ! extras/scripts/build_static_vppctl.sh ; then
-                  BUILD_ERROR="FAILED 'extras/scripts/build_static_vppctl.sh'"
+          if [ -f $WORKSPACE/extras/scripts/build_static_vppctl.sh ]; then
+              if ! $WORKSPACE/extras/scripts/build_static_vppctl.sh ; then
+                  BUILD_ERROR="FAILED '$WORKSPACE/extras/scripts/build_static_vppctl.sh'"
                   return
               fi
-          fiA
+          fi
 
-          make_pkg_verify_arm_driver cn913x
-          make_pkg_verify_arm_driver octeon9
-          make_pkg_verify_arm_driver octeon10
+          make_pkg_verify_arm_driver cn913x | tee "$LOG_DIR/arm_driver_build_cn913x.log"
+          make_pkg_verify_arm_driver octeon9 | tee "$LOG_DIR/arm_driver_build_octeon9.log"
+          make_pkg_verify_arm_driver octeon10 | tee "$LOG_DIR/arm_driver_build_octeon10.log"
 
           {
             if [ -n "$BUILD_ERROR" ] ; then
@@ -231,6 +229,7 @@ jobs:
             fi
             echo -e "\n$TUI_LINE\n* VPP ${OS_ID^^}-${OS_VERSION_ID}-${OS_ARCH^^} ARM DRIVERS BUILD\n$BUILD_RESULT\n$TUI_LINE\n"
           } | tee "$LOG_DIR/arm_driver_build_results.log"
+
           exit "$RETVAL"
 
       - name: Show ARM Driver Logs
