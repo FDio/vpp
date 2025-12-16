@@ -4,6 +4,11 @@ description: |
   This GitHub Action installs the necessary optional dependencies for VPP.
 
 inputs:
+  LOG_DIR:
+    description: "Base directory for optional dependencies build logs"
+    required: false
+    default: "/scratch/docker-build/vpp/logs/install-opt-deps.log"
+    type: string
   WORKSPACE:
     description: "Workspace directory where VPP is located"
     required: true
@@ -20,11 +25,16 @@ runs:
     - name: Install Optional Dependencies
       shell: bash
       env:
+        LOG_DIR: ${{ inputs.LOG_DIR }}
         WORKSPACE: ${{ inputs.WORKSPACE }}
         TUI_LINE: ${{ inputs.TUI_LINE }}
       run: |
         set -euo pipefail
         cd "$WORKSPACE"
-        echo -e "$TUI_LINE\nInstalling VPP optional dependencies...\n"
-        make UNATTENDED=yes install-opt-deps
-        echo "$TUI_LINE"
+        mkdir -p "$LOG_DIR"
+        LOG_FILE="$LOG_DIR/build-install-optt-deps.log"
+        {
+          echo -e "$TUI_LINE\nInstalling VPP optional dependencies...\n"
+          make UNATTENDED=yes install-opt-deps
+          echo "$TUI_LINE"
+        } | tee "$LOG_FILE"

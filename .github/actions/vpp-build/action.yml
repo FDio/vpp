@@ -11,7 +11,7 @@ inputs:
   LOG_DIR:
     description: "Base directory for build logs"
     required: false
-    default: "/scratch/docker-build/vpp/logs"
+    default: "/scratch/docker-build/vpp/logs/build"
     type: string
   MAKE_PARALLEL_JOBS:
     description: "Number of parallel jobs for 'make' (overrides MAKE_PARALLEL_JOBS)"
