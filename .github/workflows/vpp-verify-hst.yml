@@ -116,8 +116,6 @@ jobs:
       - fdio:namespace=${{ inputs.FDIO_NAMESPACE || 'prod' }}
       - fdio:os=${{ matrix.os }}
 
-    # TODO: modify the self-hosted agent to ensure hst class workflows are placed on nomad clients
-    #       one at a time or on a per numa node basis to avoid resource contention
     strategy:
       fail-fast: false
       matrix:
