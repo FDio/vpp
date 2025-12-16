@@ -91,6 +91,7 @@ jobs:
     name: Merge Maketest
     needs:
       - start-merge
+      - merge-docs
     uses: fdio/vpp/.github/workflows/vpp-merge-maketest.yml@master
     with:
       CI_TIMESTAMP: ${{ needs.start-merge.outputs.timestamp }}
