@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9a9bb799_d1f210d4",
+        "filename": "test/hs-test/hs_test.sh",
+        "patchSetId": 4
+      },
+      "lineNbr": 198,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-12-16T17:55:42Z",
+      "side": 1,
+      "message": "Wondering now if this is a bit too generous. nproc returns cpus across numas and includes hyperthreads, so let\u0027s try on older machines to see if this still works",
+      "revId": "4f1d56c9ac75ee3eb2807555bca10be44c9ab0d5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
