@@ -189,6 +189,7 @@ jobs:
     if: ${{ needs.verify-checkstyle.result == 'success' }}
     uses: fdio/vpp/.github/workflows/vpp-verify-hst.yml@master
     with:
+      CI_TIMESTAMP: ${{ needs.start-verify.outputs.timestamp }}
       FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
       GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
       GERRIT_CHANGE_NUMBER: ${{ inputs.GERRIT_CHANGE_NUMBER }}
