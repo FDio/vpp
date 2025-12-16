@@ -55,9 +55,6 @@ runs:
         set -euo pipefail
         cd "${WORKSPACE}"
 
-        LOG_DIR_VPP="${LOG_DIR}/build_vpp"
-        LOG_DIR_HST="${LOG_DIR}/build_hst_vpp"
-
         if [ "$USE_GCC" == "true" ] ; then
             BUILD_RESULT="(GCC) "
         else
@@ -68,34 +65,33 @@ runs:
         RETVAL="0"
 
         build_vpp() {
-            mkdir -p "$LOG_DIR_VPP"
             echo "Building VPP. Number of cores for build set with" \
                   "MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS}."
             if [ -f extras/scripts/build_static_vppctl.sh ]; then
-                if ! extras/scripts/build_static_vppctl.sh | tee "$LOG_DIR_VPP/build_static_vppctl.log" ; then
+                if ! extras/scripts/build_static_vppctl.sh | tee "$LOG_DIR_VPP/build_vpp_static_vppctl.log" ; then
                     BUILD_ERROR="FAILED 'extras/scripts/build_static_vppctl.sh'"
                     return
                 fi
             fi
             if [ "$BUILD_TYPE" == "debug" ] ; then
                 if [ "$USE_GCC" == "true" ] ; then
-                    if ! make UNATTENDED=yes CC=gcc MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS} build | tee "$LOG_DIR_VPP/build_debug_gcc.log" ; then
+                    if ! make UNATTENDED=yes CC=gcc MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS} build | tee "$LOG_DIR/build_vpp_debug_gcc.log" ; then
                         BUILD_ERROR="FAILED 'make UNATTENDED=yes CC=gcc MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS} build'"
                         return
                     fi
                 else
-                    if ! make UNATTENDED=yes MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS} build | tee "$LOG_DIR_VPP/build_debug.log" ; then
+                    if ! make UNATTENDED=yes MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS} build | tee "$LOG_DIR/build_vpp_debug.log" ; then
                         BUILD_ERROR="FAILED 'make UNATTENDED=yes MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS} build'"
                         return
                     fi
                 fi
             elif [ "$USE_GCC" == "true" ] ; then
-                if ! make UNATTENDED=yes CC=gcc MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS} pkg-verify | tee "$LOG_DIR_VPP/pkg_verify_release_gcc.log" ; then
+                if ! make UNATTENDED=yes CC=gcc MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS} pkg-verify | tee "$LOG_DIR/build_vpp_pkg_verify_release_gcc.log" ; then
                     BUILD_ERROR="FAILED 'make UNATTENDED=yes CC=gcc MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS} pkg-verify'"
                     return
                 fi
             else
-              if ! make UNATTENDED=yes MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS} pkg-verify | tee "$LOG_DIR_VPP/pkg_verify_release.log" ; then
+              if ! make UNATTENDED=yes MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS} pkg-verify | tee "$LOG_DIR/build_vpp_pkg_verify_release.log" ; then
                   BUILD_ERROR="FAILED 'make UNATTENDED=yes MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS} pkg-verify'"
                   return
               fi
@@ -103,32 +99,32 @@ runs:
         }
 
         build_hst_vpp() {
-            mkdir -p "$LOG_DIR_HST"
             echo "Building VPP. Number of cores for build set with" \
                   "MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS}."
 
             if [ "$BUILD_TYPE" == "debug" ] ; then
-                if ! make UNATTENDED=yes MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS} build | tee "$LOG_DIR_HST/hst_build_debug.log" ; then
+                if ! make UNATTENDED=yes MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS} build | tee "$LOG_DIR/build_hst_debug.log" ; then
                     BUILD_ERROR="FAILED HST BUILD 'make UNATTENDED=yes MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS} build'"
                     return
                 fi
             else
-              if ! make UNATTENDED=yes MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS} build-release | tee "$LOG_DIR_HST/hst_build_release.log" ; then
+              if ! make UNATTENDED=yes MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS} build-release | tee "$LOG_DIR/build_hst_release.log" ; then
                   BUILD_ERROR="FAILED HST BUILD 'make UNATTENDED=yes MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS} build-release'"
                   return
               fi
             fi
         }
 
-        echo "$TUI_LINE"
         if [ "$BUILD_HST" == "true" ] ; then
             build_hst_vpp
         else
             build_vpp
         fi
-        if [ -n "${BUILD_ERROR}" ] ; then
-            BUILD_RESULT="${BUILD_ERROR}"
-            RETVAL="1"
-        fi
-        echo -e "\n$TUI_LINE\n* VPP ${OS_ID^^}-${OS_VERSION_ID}-${OS_ARCH^^} BUILD $BUILD_RESULT\n$TUI_LINE\n"
+        {
+          if [ -n "${BUILD_ERROR}" ] ; then
+              BUILD_RESULT="${BUILD_ERROR}"
+              RETVAL="1"
+          fi
+          echo -e "\n$TUI_LINE\n* VPP ${OS_ID^^}-${OS_VERSION_ID}-${OS_ARCH^^} BUILD $BUILD_RESULT\n$TUI_LINE\n"
+        } | tee build_results.log
         exit $RETVAL

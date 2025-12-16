@@ -209,6 +209,7 @@ jobs:
         # yamllint disable-line rule:line-length
         uses: fdio/vpp/.github/actions/vpp-install-deps@master
         with:
+          LOG_DIR: ${{ env.LOG_DIR }}
           WORKSPACE: ${{ env.WORKSPACE }}
           TUI_LINE: ${{ env.TUI_LINE }}
 
@@ -216,6 +217,7 @@ jobs:
         # yamllint disable-line rule:line-length
         uses: fdio/vpp/.github/actions/vpp-install-ext-deps@master
         with:
+          LOG_DIR: ${{ env.LOG_DIR }}
           WORKSPACE: ${{ env.WORKSPACE }}
           TUI_LINE: ${{ env.TUI_LINE }}
 
@@ -223,6 +225,7 @@ jobs:
         # yamllint disable-line rule:line-length
         uses: fdio/vpp/.github/actions/vpp-build@master
         with:
+          LOG_DIR: ${{ env.LOG_DIR }}
           WORKSPACE: ${{ env.WORKSPACE }}
           MAKE_PARALLEL_JOBS: ${{ env.MAKE_PARALLEL_JOBS }}
           BUILD_TYPE: ${{ env.BUILD_TYPE }}
@@ -232,6 +235,7 @@ jobs:
         # yamllint disable-line rule:line-length
         uses: fdio/vpp/.github/actions/vpp-docker-runtime-setup@master
         with:
+          LOG_DIR: ${{ env.LOG_DIR }}
           WORKSPACE: ${{ env.WORKSPACE }}
           SHM_SIZE: ${{ env.SHM_SIZE }}
           TUI_LINE: ${{ env.TUI_LINE }}
@@ -241,6 +245,7 @@ jobs:
         uses: fdio/vpp/.github/actions/vpp-make-test@master
         timeout-minutes: 90
         with:
+          LOG_DIR: ${{ env.LOG_DIR }}
           WORKSPACE: ${{ env.WORKSPACE }}
           TEST_JOBS: ${{ env.TEST_JOBS }}
           TEST_RETRIES: ${{ env.TEST_RETRIES }}
