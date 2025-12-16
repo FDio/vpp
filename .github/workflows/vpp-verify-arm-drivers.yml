@@ -155,11 +155,13 @@ jobs:
       - name: Show Environment
         run: |
           set -euo pipefail
+          ls -l "$LOG_DIR"
           env | sort | tee "${{ env.LOG_DIR }}/environment.log"
 
       - name: Log ARM Driver Build Start
         run: |
           set -euxo pipefail
+          ls -l "$LOG_DIR"
           {
             echo "$TUI_LINE"
             echo "* $CI_TIMESTAMP: Starting ARM driver build"
@@ -197,6 +199,7 @@ jobs:
         run: |
           set -euxo pipefail
           cd "$WORKSPACE"
+          ls -l "$LOG_DIR"
           {
             BUILD_RESULT="* SUCCESSFULLY COMPLETED"
             BUILD_ERROR=""
