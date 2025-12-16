@@ -100,8 +100,8 @@ defaults:
     shell: bash
 
 permissions:
-  contents: write
-  actions: write
+  contents: read
+  actions: read
 
 jobs:
   verify-arm-drivers:

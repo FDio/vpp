@@ -247,11 +247,20 @@ jobs:
         run: |
           set -euo pipefail
           echo "Log directory: $LOG_DIR"
-          ls -l "$LOG_DIR"
-          for file in $(ls "$LOG_DIR"); do
-            echo -e "\n\n-----[ $file ]-----\n"
-            cat "$LOG_DIR/$file"
-            echo "-----"
+          ls -l $LOG_DIR
+          for file in $(ls $LOG_DIR) ; do
+            if [ -d "$file" ] ; then
+              ls -l "$file"
+              for log in $(ls $file) ; do
+                echo -e "\n\n-----[ $log ]-----\n"
+                cat $LOG_DIR/$log
+                echo "-----"
+              done
+            else
+              echo -e "\n\n-----[ $file ]-----\n"
+              cat $LOG_DIR/$file
+              echo "-----"
+            fi
           done
 
       - name: Report Success

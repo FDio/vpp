@@ -57,7 +57,6 @@ runs:
 
         LOG_DIR_VPP="${LOG_DIR}/build_vpp"
         LOG_DIR_HST="${LOG_DIR}/build_hst_vpp"
-        mkdir -p "$LOG_DIR_VPP" "$LOG_DIR_HST"
 
         if [ "$USE_GCC" == "true" ] ; then
             BUILD_RESULT="(GCC) "
@@ -69,6 +68,7 @@ runs:
         RETVAL="0"
 
         build_vpp() {
+            mkdir -p "$LOG_DIR_VPP"
             echo "Building VPP. Number of cores for build set with" \
                   "MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS}."
             if [ -f extras/scripts/build_static_vppctl.sh ]; then
@@ -103,6 +103,7 @@ runs:
         }
 
         build_hst_vpp() {
+            mkdir -p "$LOG_DIR_HST"
             echo "Building VPP. Number of cores for build set with" \
                   "MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS}."
 
