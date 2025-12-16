@@ -100,8 +100,8 @@ defaults:
     shell: bash
 
 permissions:
-  contents: read
-  actions: read
+  contents: write
+  actions: write
 
 jobs:
   verify-arm-drivers:
@@ -150,7 +150,7 @@ jobs:
       - name: Prepare Log Directory
         run: |
           set -euxo pipefail
-          mkdir -p "${{ env.LOG_DIR }}"
+          mkdir -p "$LOG_DIR"
 
       - name: Show Environment
         run: |
@@ -166,7 +166,7 @@ jobs:
             echo "$TUI_LINE"
             echo "* $CI_TIMESTAMP: Starting ARM driver build"
             echo "$TUI_LINE"
-          } | tee "${{ env.LOG_DIR }}/arm_driver_start.log"
+          } | tee "$LOG_DIR/arm_driver_start.log"
 
       - name: Show Nomad Dockerfile
         # yamllint disable-line rule:line-length
@@ -223,19 +223,25 @@ jobs:
             fi
             echo -e "\n$TUI_LINE\n* VPP ${OS_ID^^}-${OS_VERSION_ID}-${OS_ARCH^^} ARM DRIVERS BUILD\n$BUILD_RESULT\n$TUI_LINE\n"
             exit "$RETVAL"
-          } | tee "${{ env.LOG_DIR }}/arm_driver_build.log"
+          } | tee "$LOG_DIR/arm_driver_build.log"
 
       - name: Show ARM Driver Logs
         if: always()
         run: |
           set -euo pipefail
-          echo "Log directory: ${{ env.LOG_DIR }}"
-          ls -l ${{ env.LOG_DIR }}
-          for file in $(ls ${{ env.LOG_DIR }}) ; do
-            echo -e "\n\n-----[ $file ]-----\n"
-            cat ${{ env.LOG_DIR }}/$file
-            echo "-----"
-          done
+          if [ -d "$LOG_DIR" ] ; then
+            echo "Log directory: $LOG_DIR"
+            echo "cat $LOG_DIR/arm_driver_start.log"
+            cat "$LOG_DIR/arm_driver_start.log"
+            ls -l "$LOG_DIR"
+            for file in $(ls "$LOG_DIR") ; do
+              echo -e "\n-----[ $file ]-----\n"
+              cat "$LOG_DIR/$file"
+              echo "-----"
+            done
+          else
+            echo "ERROR: log dir does not exist!"
+          fi
 
       - name: Report Success
         if: success()
