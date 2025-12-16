@@ -33,6 +33,23 @@
       "message": "recheck",
       "revId": "6cf8668a16631b886ebf815d6e2a4ce77512e0fe",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f9201be0_b7bbe6e4",
+        "filename": "src/plugins/sfdp_services/CMakeLists.txt",
+        "patchSetId": 6
+      },
+      "lineNbr": 48,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2025-12-16T16:38:19Z",
+      "side": 1,
+      "message": "Is there a way to add those files to the compilation conditionally to the presence of snort headers",
+      "revId": "6cf8668a16631b886ebf815d6e2a4ce77512e0fe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
