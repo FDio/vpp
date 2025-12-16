@@ -150,12 +150,12 @@ jobs:
       - name: Prepare Log Directory
         run: |
           set -euxo pipefail
-          mkdir -p "$LOG_DIR"
+          mkdir -p "${{ env.LOG_DIR }}"
 
       - name: Show Environment
         run: |
           set -euo pipefail
-          env | sort | tee "$LOG_DIR/environment.log"
+          env | sort | tee "${{ env.LOG_DIR }}/environment.log"
 
       - name: Log ARM Driver Build Start
         run: |
@@ -164,7 +164,7 @@ jobs:
             echo "$TUI_LINE"
             echo "* $CI_TIMESTAMP: Starting ARM driver build"
             echo "$TUI_LINE"
-          } | tee "$LOG_DIR/arm_driver_start.log"
+          } | tee "${{ env.LOG_DIR }}/arm_driver_start.log"
 
       - name: Show Nomad Dockerfile
         # yamllint disable-line rule:line-length
@@ -182,12 +182,14 @@ jobs:
       - name: Install VPP dependencies
         uses: fdio/vpp/.github/actions/vpp-install-deps@master
         with:
+          LOG_DIR: ${{ env.LOG_DIR }}
           WORKSPACE: ${{ env.WORKSPACE }}
           TUI_LINE: ${{ env.TUI_LINE }}
 
       - name: Install VPP external dependencies
         uses: fdio/vpp/.github/actions/vpp-install-ext-deps@master
         with:
+          LOG_DIR: ${{ env.LOG_DIR }}
           WORKSPACE: ${{ env.WORKSPACE }}
           TUI_LINE: ${{ env.TUI_LINE }}
 
@@ -218,17 +220,17 @@ jobs:
             fi
             echo -e "\n$TUI_LINE\n* VPP ${OS_ID^^}-${OS_VERSION_ID}-${OS_ARCH^^} ARM DRIVERS BUILD\n$BUILD_RESULT\n$TUI_LINE\n"
             exit "$RETVAL"
-          } | tee "$LOG_DIR/arm_driver_build.log"
+          } | tee "${{ env.LOG_DIR }}/arm_driver_build.log"
 
       - name: Show ARM Driver Logs
         if: always()
         run: |
           set -euo pipefail
-          echo "Log directory: $LOG_DIR"
-          ls -l $LOG_DIR
-          for file in $(ls $LOG_DIR) ; do
+          echo "Log directory: ${{ env.LOG_DIR }}"
+          ls -l ${{ env.LOG_DIR }}
+          for file in $(ls ${{ env.LOG_DIR }}) ; do
             echo -e "\n\n-----[ $file ]-----\n"
-            cat $LOG_DIR/$file
+            cat ${{ env.LOG_DIR }}/$file
             echo "-----"
           done
 
