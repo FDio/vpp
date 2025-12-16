@@ -69,6 +69,24 @@
       "parentUuid": "b1b8d161_d4389808",
       "revId": "fb3e4a43a1e99010e36abc518cf5f2427c6a1081",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "47dc89ba_18f04360",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 532,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-12-16T16:02:43Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "ba6b857e_52608c6d",
+      "revId": "fb3e4a43a1e99010e36abc518cf5f2427c6a1081",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }

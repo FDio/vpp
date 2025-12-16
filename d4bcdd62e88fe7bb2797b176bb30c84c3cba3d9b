@@ -72,6 +72,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "f78ef28c_15a69387",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 528,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-12-16T16:02:43Z",
+      "side": 0,
+      "message": "Ack",
+      "parentUuid": "86930e87_5e3aa908",
+      "range": {
+        "startLine": 528,
+        "startChar": 36,
+        "endLine": 528,
+        "endChar": 67
+      },
+      "revId": "d4bcdd62e88fe7bb2797b176bb30c84c3cba3d9b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "f79edf4f_1db5afd9",
@@ -121,6 +145,24 @@
       "side": 0,
       "message": "Yup, let\u0027s make sure buffer is large enough and test to make sure things are stable.",
       "parentUuid": "123b242b_5aeac05e",
+      "revId": "d4bcdd62e88fe7bb2797b176bb30c84c3cba3d9b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "88e153a1_9ad71ff1",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 542,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-12-16T16:02:43Z",
+      "side": 0,
+      "message": "Ack",
+      "parentUuid": "a8eb845f_427538e8",
       "revId": "d4bcdd62e88fe7bb2797b176bb30c84c3cba3d9b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
