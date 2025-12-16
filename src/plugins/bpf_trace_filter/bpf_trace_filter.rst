@@ -1,7 +1,7 @@
 BPF Trace Filter Function
 ============================
 This plugin provides a trace filter function that relies on a BPF interpreter to select which packets
-must be traced. This filter function can be applied to vpp traces and pcap captures.
+must be traced. This filter function can be applied to vpp traces, pcap captures and dispatch traces.
 
 Note that if a classifier-based filter has been specified, then it will be used
 in conjunction with the BPF filter.
@@ -58,6 +58,28 @@ Enable pcap capture with filter:
 
    vpp# pcap trace rx tx max 1000 intfc <interface> filter
    vpp# pcap trace off
+
+Enabling BPF filter on dispatch trace:
+---------------------------------------
+
+Set the BPF filter:
+::
+
+   vpp# set bpf trace filter {{ip host 10.0.0.254 and icmp}}
+
+Enable BPF filter function for dispatch trace:
+::
+
+   vpp# set pcap filter function bpf_trace_filter
+   vpp# show pcap filter function
+   (*) name:bpf_trace_filter description: bpf based trace filter priority: 10
+   name:vnet_is_packet_traced description: classifier based filter priority: 50
+
+Enable dispatch trace with filter:
+::
+
+   vpp# pcap dispatch trace on max 1000 file dispatch.pcap filter
+   vpp# pcap dispatch trace off
 
 Additional information:
 -------------------------------------
