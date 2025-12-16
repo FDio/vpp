@@ -68,7 +68,7 @@ runs:
             echo "Building VPP. Number of cores for build set with" \
                   "MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS}."
             if [ -f extras/scripts/build_static_vppctl.sh ]; then
-                if ! extras/scripts/build_static_vppctl.sh | tee "$LOG_DIR_VPP/build_vpp_static_vppctl.log" ; then
+                if ! extras/scripts/build_static_vppctl.sh | tee "$LOG_DIR/build_vpp_static_vppctl.log" ; then
                     BUILD_ERROR="FAILED 'extras/scripts/build_static_vppctl.sh'"
                     return
                 fi
