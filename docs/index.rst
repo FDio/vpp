@@ -7,7 +7,7 @@
 What is the Vector Packet Processor (VPP)
 #########################################
 
-FD.io's Vector Packet Processor (VPP) is a fast, scalable layer 2-4
+DO NOT COMMIT: FD.io's Vector Packet Processor (VPP) is a fast, scalable layer 2-4
 multi-platform network stack. It runs in `Linux Userspace <https://en.wikipedia.org/wiki/User_space>`_
 on multiple architectures including x86, ARM, and Power architectures.
 
