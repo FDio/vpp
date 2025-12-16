@@ -56,10 +56,6 @@ permissions:
   contents: read
   actions: read
 
-concurrency:
-  group: ${{ github.workflow }}-${{ inputs.GERRIT_CHANGE_NUMBER }}-${{ inputs.GERRIT_PATCHSET_NUMBER }}
-  cancel-in-progress: true
-
 jobs:
   start-merge:
     name: Start Merge
