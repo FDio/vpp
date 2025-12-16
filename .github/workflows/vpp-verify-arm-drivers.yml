@@ -200,30 +200,32 @@ jobs:
           set -euxo pipefail
           cd "$WORKSPACE"
           ls -l "$LOG_DIR"
-          {
-            BUILD_RESULT="* SUCCESSFULLY COMPLETED"
-            BUILD_ERROR=""
-            RETVAL="0"
+          BUILD_RESULT="* SUCCESSFULLY COMPLETED"
+          BUILD_ERROR=""
+          RETVAL="0"
 
-            make_pkg_verify_arm_driver() {
-                vpp_platform="$1"
+          make_pkg_verify_arm_driver() {
+              vpp_platform="$1"
+              {
                 git clean -fdx || true
                 if ! make UNATTENDED=yes MAKE_PARALLEL_JOBS="${MAKE_PARALLEL_JOBS}" pkg-verify VPP_PLATFORM="$vpp_platform"; then
                     BUILD_ERROR+="* FAILED 'make UNATTENDED=yes MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS} pkg-verify VPP_PLATFORM=$vpp_platform'\n"
                 fi
-            }
+              } | tee "$LOG_DIR/arm_driver_build_${vpp_platform}.log"
+          }
 
-            make_pkg_verify_arm_driver cn913x
-            make_pkg_verify_arm_driver octeon9
-            make_pkg_verify_arm_driver octeon10
+          make_pkg_verify_arm_driver cn913x
+          make_pkg_verify_arm_driver octeon9
+          make_pkg_verify_arm_driver octeon10
 
+          {
             if [ -n "$BUILD_ERROR" ] ; then
                 BUILD_RESULT="$BUILD_ERROR"
                 RETVAL="1"
             fi
             echo -e "\n$TUI_LINE\n* VPP ${OS_ID^^}-${OS_VERSION_ID}-${OS_ARCH^^} ARM DRIVERS BUILD\n$BUILD_RESULT\n$TUI_LINE\n"
-            exit "$RETVAL"
-          } | tee "$LOG_DIR/arm_driver_build.log"
+          } | tee "$LOG_DIR/arm_driver_build_results.log"
+          exit "$RETVAL"
 
       - name: Show ARM Driver Logs
         if: always()
