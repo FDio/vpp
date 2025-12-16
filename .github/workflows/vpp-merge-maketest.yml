@@ -106,11 +106,6 @@ permissions:
   contents: read
   actions: read
 
-concurrency:
-  # yamllint disable-line rule:line-length
-  group: required-${{ github.workflow }}-rel-ubuntu2404-x86_64-${{ inputs.GERRIT_CHANGE_NUMBER }}-${{ inputs.GERRIT_PATCHSET_NUMBER }}
-  cancel-in-progress: true
-
 jobs:
   merge-maketest:
     # yamllint disable-line rule:line-length
