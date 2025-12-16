@@ -16,6 +16,7 @@ dryrun=
 no_color=
 hs_root=
 label=
+verbose=0
 
 for i in "$@"
 do
@@ -49,9 +50,6 @@ case "${i}" in
         ;;
     --verbose=*)
         verbose="${i#*=}"
-        if [ "$verbose" = "true" ]; then
-            args="$args -verbose"
-        fi
         ;;
     --unconfigure=*)
         unconfigure="${i#*=}"
@@ -71,11 +69,9 @@ case "${i}" in
         ;;
     --test=*)
         tc_list="${i#*=}"
-        ginkgo_args="$ginkgo_args -v"
         if [ "$tc_list" != "all" ]; then
             focused_test=1
             IFS=',' read -r -a tc_names <<< "$tc_list"
-            args="$args -verbose"
         fi
         ;;
     --skip=*)
@@ -126,11 +122,15 @@ case "${i}" in
         ;;
     --label=*)
         label="${i#*=}"
-        ginkgo_args="$ginkgo_args --label-filter="$label" -v"
-        args="$args -verbose"
+        focused_test=1
+        ginkgo_args="$ginkgo_args --label-filter="$label""
         ;;
     --host_ppid=*)
         args="$args -host_ppid ${i#*=}"
+        ;;
+    --seed=*)
+        seed="${i#*=}"
+        ginkgo_args="$ginkgo_args --seed=$seed"
         ;;
 esac
 done
@@ -168,6 +168,19 @@ if [ $focused_test -eq 0 ] && [ $debug_set -eq 1 ]; then
     exit 2
 fi
 
+if [ "$verbose" == "true" ]; then
+    echo -e "\e[1;33mPlease use V=[0|1|2] or VERBOSE=[0|1|2]\e[1;0m"
+    verbose=1
+fi
+
+if { [ $focused_test -eq 1 ] && [ $verbose -eq 0 ]; } || [ $verbose -eq 1 ]; then
+    args="$args -verbose"
+    ginkgo_args="$ginkgo_args -v"
+elif [ $verbose -eq 2 ]; then
+    args="$args -verbose"
+    ginkgo_args="$ginkgo_args -vv"
+fi
+
 args="$args -whoami $(whoami)"
 
 if [ $leak_check_set -eq 1 ]; then
@@ -176,7 +189,7 @@ if [ $leak_check_set -eq 1 ]; then
     exit 2
   else
     if [[ $tc_list != *"MemLeak"* ]]; then
-        echo -e "\e[1;31ma none of the selected tests are memleak tests\e[1;0m"
+        echo -e "\e[1;31mnone of the selected tests are memleak tests\e[1;0m"
         exit 2
     fi
   fi
