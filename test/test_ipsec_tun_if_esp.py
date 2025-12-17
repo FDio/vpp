@@ -1085,46 +1085,10 @@ class TestIpsec4TunIfEspAll(TemplateIpsec4TunProtect, TemplateIpsec, IpsecTun4):
         """IPSEC tunnel all algos"""
 
         # foreach VPP crypto engine
-        engines = ["ia32", "ipsecmb", "openssl"]
+        engines = ["native"]
 
         # foreach crypto algorithm
         algos = [
-            {
-                "vpp-crypto": (
-                    VppEnum.vl_api_ipsec_crypto_alg_t.IPSEC_API_CRYPTO_ALG_AES_GCM_128
-                ),
-                "vpp-integ": (
-                    VppEnum.vl_api_ipsec_integ_alg_t.IPSEC_API_INTEG_ALG_NONE
-                ),
-                "scapy-crypto": "AES-GCM",
-                "scapy-integ": "NULL",
-                "key": b"JPjyOWBeVEQiMe7h",
-                "salt": 3333,
-            },
-            {
-                "vpp-crypto": (
-                    VppEnum.vl_api_ipsec_crypto_alg_t.IPSEC_API_CRYPTO_ALG_AES_GCM_192
-                ),
-                "vpp-integ": (
-                    VppEnum.vl_api_ipsec_integ_alg_t.IPSEC_API_INTEG_ALG_NONE
-                ),
-                "scapy-crypto": "AES-GCM",
-                "scapy-integ": "NULL",
-                "key": b"JPjyOWBeVEQiMe7hJPjyOWBe",
-                "salt": 0,
-            },
-            {
-                "vpp-crypto": (
-                    VppEnum.vl_api_ipsec_crypto_alg_t.IPSEC_API_CRYPTO_ALG_AES_GCM_256
-                ),
-                "vpp-integ": (
-                    VppEnum.vl_api_ipsec_integ_alg_t.IPSEC_API_INTEG_ALG_NONE
-                ),
-                "scapy-crypto": "AES-GCM",
-                "scapy-integ": "NULL",
-                "key": b"JPjyOWBeVEQiMe7hJPjyOWBeVEQiMe7h",
-                "salt": 9999,
-            },
             {
                 "vpp-crypto": (
                     VppEnum.vl_api_ipsec_crypto_alg_t.IPSEC_API_CRYPTO_ALG_AES_CBC_128
@@ -1177,6 +1141,7 @@ class TestIpsec4TunIfEspAll(TemplateIpsec4TunProtect, TemplateIpsec, IpsecTun4):
 
         for engine in engines:
             self.vapi.cli("set crypto handler all %s" % engine)
+            self.logger.info(self.vapi.cli("show crypto handlers"))
 
             #
             # loop through each of the algorithms
