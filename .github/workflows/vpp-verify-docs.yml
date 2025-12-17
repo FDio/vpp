@@ -3,10 +3,6 @@ name: vpp-verify-docs
 on:
   workflow_call:
     inputs:
-      CI_TIMESTAMP:
-        description: "Start verify timestamp"
-        required: true
-        type: string
       FDIO_NAMESPACE:
         description: "Executor Namespace (prod|sandbox)"
         required: true
@@ -36,16 +32,12 @@ on:
         description: "Gerrit refspec of change"
         required: true
         type: string
-      LOG_PATH:
-        description: "Sub-path to the log directory"
+      LOG_PREFIX:
+        description: "Prefix of the log directory"
         required: true
         type: string
   workflow_dispatch:
     inputs:
-      CI_TIMESTAMP:
-        description: "Start verify timestamp"
-        required: true
-        type: string
       FDIO_NAMESPACE:
         description: "Executor Namespace (prod|sandbox)"
         required: false
@@ -90,8 +82,8 @@ on:
         description: "Gerrit refspec of change"
         required: true
         type: string
-      LOG_PATH:
-        description: "Sub-path to the log directory"
+      LOG_PREFIX:
+        description: "Prefix of the log directory"
         required: true
         type: string
 
@@ -124,7 +116,6 @@ jobs:
         executor_arch: ['x86_64']
 
     env:
-      CI_TIMESTAMP: ${{ inputs.CI_TIMESTAMP }}
       FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
       GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
       GERRIT_CHANGE_URL: ${{ inputs.GERRIT_CHANGE_URL }}
@@ -132,14 +123,15 @@ jobs:
       GERRIT_PATCHSET_NUMBER: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
       GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
       GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
-      LOG_PATH: ${{ inputs.LOG_PATH }}
-      LOG_DIR: /scratch/docker-build/vpp/logs/${{ inputs.LOG_PATH }}/docs-${{ matrix.build_type }}-${{ matrix.class }}-${{ matrix.os }}-${{ inputs.FDIO_NAMESPACE }}-${{ matrix.executor_arch }}
+      LOG_PREFIX: ${{ inputs.LOG_PREFIX }}
+      LOG_NAME: ""
+      LOG_DIR: ""
       WORKSPACE: /scratch/docker-build/vpp
       TUI_LINE: "*******************************************************************"
 
     steps:
       - name: Actions Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Setup Environment
         # yamllint disable-line rule:line-length
@@ -148,6 +140,10 @@ jobs:
       - name: Prepare Log Directory
         run: |
           set -euxo pipefail
+          LOG_NAME="${{ env.LOG_PREFIX }}/verify-docs-${{ matrix.build_type }}-${{ matrix.class }}-${{ matrix.os }}-${{ inputs.FDIO_NAMESPACE }}-${{ matrix.executor_arch }}"
+          echo "LOG_NAME=$LOG_NAME" >> "$GITHUB_ENV"
+          LOG_DIR="/scratch/docker-build/vpp/logs/$LOG_NAME"
+          echo "LOG_DIR=$LOG_DIR" >> "$GITHUB_ENV"
           mkdir -p "$LOG_DIR"
 
       - name: Show Environment
@@ -160,7 +156,7 @@ jobs:
           set -euxo pipefail
           {
             echo "$TUI_LINE"
-            echo "* $CI_TIMESTAMP: Starting docs build"
+            echo "* Starting docs build"
             echo "$TUI_LINE"
           } | tee "$LOG_DIR/docs_start.log"
 
@@ -191,23 +187,14 @@ jobs:
       #     path: ${{ env.WORKSPACE }}/build-root/docs/
       #     retention-days: 7
 
-      - name: Show Docs Logs
+      - name: AWS S3 Publish Logs
         if: always()
-        run: |
-          set -euo pipefail
-          echo "Log directory: $LOG_DIR"
-          ls -l $LOG_DIR
-          for file in $(ls $LOG_DIR) ; do
-            echo -e "\n\n-----[ $file ]-----\n"
-            cat $LOG_DIR/$file
-            echo "-----"
-          done
-
-      - name: Report Success
-        if: success()
-        run: |
-          echo "::notice::VPP Verify Docs workflow completed successfully!"
-          echo "Workflow ID: ${{ github.run_id }}"
-          echo "Name: ${{ github.workflow }}"
-          echo "Branch: $GERRIT_BRANCH, Change: $GERRIT_CHANGE_NUMBER, Patchset: $GERRIT_PATCHSET_NUMBER"
-          echo "Gerrit Refspec: $GERRIT_REFSPEC, Gerrit Change URL: $GERRIT_CHANGE_URL"
+        # yamllint disable-line rule:line-length
+        uses: fdio/.github/.github/actions/aws-s3-publish-logs@a28ad9abc70855292df1ea0d59829e814e78c2f4
+        with:
+          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws_region: ${{ vars.AWS_REGION }}
+          s3_bucket: ${{ vars.S3_BUCKET }}
+          s3_path: ${{ env.LOG_NAME }}
+          archives_path: ${{ env.LOG_DIR }}

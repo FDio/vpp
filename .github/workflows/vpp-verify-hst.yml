@@ -3,10 +3,6 @@ name: vpp-verify-hst
 on:
   workflow_call:
     inputs:
-      CI_TIMESTAMP:
-        description: "Start verify timestamp"
-        required: true
-        type: string
       FDIO_NAMESPACE:
         description: "Executor Namespace (prod|sandbox)"
         required: true
@@ -36,16 +32,12 @@ on:
         description: "Gerrit refspec of change"
         required: true
         type: string
-      LOG_PATH:
-        description: "Sub-path to the log directory"
+      LOG_PREFIX:
+        description: "Prefix of the log directory"
         required: true
         type: string
   workflow_dispatch:
     inputs:
-      CI_TIMESTAMP:
-        description: "Start verify timestamp"
-        required: true
-        type: string
       FDIO_NAMESPACE:
         description: "Executor Namespace (prod|sandbox)"
         required: false
@@ -90,8 +82,8 @@ on:
         description: "Gerrit refspec of change"
         required: true
         type: string
-      LOG_PATH:
-        description: "Sub-path to the log directory"
+      LOG_PREFIX:
+        description: "Prefix of the log directory"
         required: true
         type: string
 
@@ -137,10 +129,10 @@ jobs:
             build_type: 'release'
 
     env:
-      CI_TIMESTAMP: ${{ inputs.CI_TIMESTAMP }}
       FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
-      LOG_PATH: ${{ inputs.LOG_PATH }}
-      LOG_DIR: /scratch/docker-build/vpp/logs/${{ inputs.LOG_PATH }}/hst-${{ matrix.build_type }}-${{ matrix.class }}-${{ matrix.os }}-${{ inputs.FDIO_NAMESPACE }}-${{ matrix.executor_arch }}
+      LOG_PREFIX: ${{ inputs.LOG_PREFIX }}
+      LOG_NAME: ""
+      LOG_DIR: ""
       GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
       GERRIT_CHANGE_NUMBER: ${{ inputs.GERRIT_CHANGE_NUMBER }}
       GERRIT_PATCHSET_NUMBER: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
@@ -156,7 +148,7 @@ jobs:
 
     steps:
       - name: Actions Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Setup Environment
         # yamllint disable-line rule:line-length
@@ -165,6 +157,10 @@ jobs:
       - name: Prepare Log Directory
         run: |
           set -euxo pipefail
+          LOG_NAME="${{ env.LOG_PREFIX }}/verify-hst-${{ matrix.build_type }}-${{ matrix.class }}-${{ matrix.os }}-${{ inputs.FDIO_NAMESPACE }}-${{ matrix.executor_arch }}"
+          echo "LOG_NAME=$LOG_NAME" >> "$GITHUB_ENV"
+          LOG_DIR="/scratch/docker-build/vpp/logs/$LOG_NAME"
+          echo "LOG_DIR=$LOG_DIR" >> "$GITHUB_ENV"
           mkdir -p "$LOG_DIR"
 
       - name: Show Environment
@@ -177,7 +173,7 @@ jobs:
           set -euxo pipefail
           {
             echo "$TUI_LINE"
-            echo "* $CI_TIMESTAMP: Starting HST build/tests"
+            echo "* Starting HST build/tests"
             echo "$TUI_LINE"
           } | tee "$LOG_DIR/hst_start.log"
 
@@ -240,23 +236,38 @@ jobs:
           TEST_JOBS: ${{ env.TEST_JOBS }}
           TUI_LINE: ${{ env.TUI_LINE }}
 
-      - name: Show HST Logs
+      - name: AWS S3 Publish Logs
+        if: always()
+        # yamllint disable-line rule:line-length
+        uses: fdio/.github/.github/actions/aws-s3-publish-logs@a28ad9abc70855292df1ea0d59829e814e78c2f4
+        with:
+          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws_region: ${{ vars.AWS_REGION }}
+          s3_bucket: ${{ vars.S3_BUCKET }}
+          s3_path: ${{ env.LOG_NAME }}
+          archives_path: ${{ env.LOG_DIR }}
+
+      - name: Check Archives Directory
+        id: check-archives
         if: always()
         run: |
-          set -euo pipefail
-          echo "Log directory: $LOG_DIR"
-          ls -l $LOG_DIR
-          for file in $(ls $LOG_DIR) ; do
-            echo -e "\n\n-----[ $file ]-----\n"
-            cat $LOG_DIR/$file
-            echo "-----"
-          done
+          set -euxo pipefail
+          archives_dir="$WORKSPACE/archives"
+          if [[ -d "$archives_dir" ]] && find "$archives_dir" -type f -print -quit | grep -q . ; then
+            echo "has_archives=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_archives=false" >> "$GITHUB_OUTPUT"
+          fi
 
-      - name: Report Success
-        if: success()
-        run: |
-          echo "::notice::VPP Verify HST workflow completed successfully!"
-          echo "Workflow ID: ${{ github.run_id }}"
-          echo "Name: ${{ github.workflow }}"
-          echo "Branch: $GERRIT_BRANCH, Change: $GERRIT_CHANGE_NUMBER, Patchset: $GERRIT_PATCHSET_NUMBER"
-          echo "Gerrit Refspec: $GERRIT_REFSPEC, Gerrit Change URL: $GERRIT_CHANGE_URL"
+      - name: AWS S3 Publish Archives
+        if: ${{ always() && steps.check-archives.outputs.has_archives == 'true' }}
+        # yamllint disable-line rule:line-length
+        uses: fdio/.github/.github/actions/aws-s3-publish-logs@a28ad9abc70855292df1ea0d59829e814e78c2f4
+        with:
+          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws_region: ${{ vars.AWS_REGION }}
+          s3_bucket: ${{ vars.S3_BUCKET }}
+          s3_path: ${{ env.LOG_NAME }}
+          archives_path: ${{ env.WORKSPACE }}/archives

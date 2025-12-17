@@ -29,13 +29,13 @@ concurrency:
 jobs:
   verify-cov:
     # yamllint disable-line rule:line-length
-    name: cov-${{ matrix.os }}-${{ matrix.executor_arch }}-${{ inputs.FDIO_NAMESPACE || 'prod' }}
+    name: cov-${{ matrix.os }}-${{ matrix.executor_arch }}-${{ github.event.inputs.FDIO_NAMESPACE || 'prod' }}
     runs-on:
       - self-hosted
       - nomad
       - fdio:arch=${{ matrix.executor_arch }}
       - fdio:class=${{ matrix.class }}
-      - fdio:namespace=${{ inputs.FDIO_NAMESPACE || 'prod' }}
+      - fdio:namespace=${{ github.event.inputs.FDIO_NAMESPACE || 'prod' }}
       - fdio:os=${{ matrix.os }}
 
     strategy:
@@ -47,8 +47,8 @@ jobs:
         executor_arch: ['x86_64']
 
     env:
-      CI_TIMESTAMP: ""
-      FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE || 'prod' }}
+      FDIO_NAMESPACE: ${{ github.event.inputs.FDIO_NAMESPACE || 'prod' }}
+      LOG_NAME: ""
       LOG_DIR: ""
       WORKSPACE: /scratch/docker-build/vpp
       MAKE_PARALLEL_JOBS: 16
@@ -61,7 +61,7 @@ jobs:
 
     steps:
       - name: Actions Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Setup Environment
         # yamllint disable-line rule:line-length
@@ -71,12 +71,10 @@ jobs:
         run: |
           set -euxo pipefail
           ts="$(date -u +%Y_%m_%d_%H%M%S_UTC)"
-          echo "CI_TIMESTAMP=$ts" >> "$GITHUB_ENV"
-          echo "LOG_DIR=/scratch/docker-build/vpp/logs/$ts/cov-${{ matrix.build_type }}-${{ matrix.class }}-${{ matrix.os }}-${{ env.FDIO_NAMESPACE || 'prod' }}-${{ matrix.executor_arch }}" >> "$GITHUB_ENV"
-
-      - name: Prepare Log Directory
-        run: |
-          set -euxo pipefail
+          LOG_NAME="vpp-coverage-master-${ts}-${{ matrix.build_type }}-${{ matrix.class }}-${{ matrix.os }}-${{ env.FDIO_NAMESPACE }}-${{ matrix.executor_arch }}"
+          echo "LOG_NAME=$LOG_NAME" >> "$GITHUB_ENV"
+          LOG_DIR=/scratch/docker-build/vpp/logs/$LOG_NAME
+          echo "LOG_DIR=$LOG_DIR" >> "$GITHUB_ENV"
           mkdir -p "$LOG_DIR"
 
       - name: Show Environment
@@ -91,7 +89,7 @@ jobs:
       - name: Pull VPP master HEAD
         run: |
           set -euxo pipefail
-          cd $WORKSPACE
+          cd "$WORKSPACE"
           git checkout master
           git pull
           git show --stat
@@ -100,6 +98,7 @@ jobs:
         # yamllint disable-line rule:line-length
         uses: fdio/vpp/.github/actions/vpp-install-deps@master
         with:
+          LOG_DIR: ${{ env.LOG_DIR }}
           WORKSPACE: ${{ env.WORKSPACE }}
           TUI_LINE: ${{ env.TUI_LINE }}
 
@@ -107,6 +106,7 @@ jobs:
         # yamllint disable-line rule:line-length
         uses: fdio/vpp/.github/actions/vpp-install-ext-deps@master
         with:
+          LOG_DIR: ${{ env.LOG_DIR }}
           WORKSPACE: ${{ env.WORKSPACE }}
           TUI_LINE: ${{ env.TUI_LINE }}
 
@@ -114,6 +114,7 @@ jobs:
         # yamllint disable-line rule:line-length
         uses: fdio/vpp/.github/actions/vpp-docker-runtime-setup@master
         with:
+          LOG_DIR: ${{ env.LOG_DIR }}
           WORKSPACE: ${{ env.WORKSPACE }}
           SHM_SIZE: ${{ env.SHM_SIZE }}
           TUI_LINE: ${{ env.TUI_LINE }}
@@ -121,6 +122,7 @@ jobs:
       - name: Start Docker Daemon
         uses: fdio/vpp/.github/actions/vpp-start-docker@master
         with:
+          LOG_DIR: ${{ env.LOG_DIR }}
           START_DOCKER_SCRIPT: start-docker.sh
           TUI_LINE: ${{ env.TUI_LINE }}
 
@@ -131,6 +133,7 @@ jobs:
           BUILD_ERROR=""
           BUILD_RESULT="MAKE TEST COVERAGE SUCCESSFULLY COMPLETED"
           RETVAL="0"
+          RESULT="pass"
 
           cd "$WORKSPACE"
           find / -name start-docker.sh
@@ -141,29 +144,36 @@ jobs:
           if [ -n "$BUILD_ERROR" ] ; then
               BUILD_RESULT="$BUILD_ERROR"
               RETVAL="1"
+              RESULT="fail"
           fi
           {
             echo -e "\n$TUI_LINE\n* VPP ${OS_ID^^}-${OS_VERSION_ID}-${OS_ARCH^^} BUILD " \
                     "\n* $BUILD_RESULT\n$TUI_LINE\n"
             [ -n "$BUILD_ERROR" ] && echo "$BUILD_ERROR"
-          } | tee "$LOG_DIR/cov_result.log"
+          } | tee "$LOG_DIR/result_$RESULT.log"
           exit $RETVAL
 
-      - name: Report Success
-        if: success()
-        run: |
-          echo "::notice::VPP Coverage workflow completed successfully!"
-          echo "Workflow ID: ${{ github.run_id }}"
-          echo "Name: ${{ github.workflow }}"
+      - name: AWS S3 Publish Logs
+        if: ${{ always() }}
+        # yamllint disable-line rule:line-length
+        uses: fdio/.github/.github/actions/aws-s3-publish-logs@a28ad9abc70855292df1ea0d59829e814e78c2f4
+        with:
+          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws_region: ${{ vars.AWS_REGION }}
+          s3_bucket: ${{ vars.S3_BUCKET }}
+          s3_path: gha-vpp-periodic/${{ env.LOG_NAME }}
+          archives_path: ${{ env.LOG_DIR }}
 
-      - name: Show Coverage Logs
-        if: always()
-        run: |
-          set -euo pipefail
-          echo "Log directory: $LOG_DIR"
-          ls -l "$LOG_DIR"
-          for file in $(ls "$LOG_DIR"); do
-            echo -e "\n\n-----[ $file ]-----\n"
-            cat "$LOG_DIR/$file"
-            echo "-----"
-          done
+      # TODO: Publish Coverage Report to docs-7day retention bucket
+      # - name: AWS S3 Publish Coverage Report
+      #   if: ${{ always() }}
+      #   # yamllint disable-line rule:line-length
+      #   uses: fdio/.github/.github/actions/aws-s3-publish-logs@a28ad9abc70855292df1ea0d59829e814e78c2f4
+      #   with:
+      #     aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      #     aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      #     aws_region: ${{ vars.AWS_REGION }}
+      #     s3_bucket: ${{ vars.S3_BUCKET }}
+      #     s3_path: gha-vpp-periodic/${{ env.LOG_NAME }}
+      #     archives_path: ${{ env.LOG_DIR }}

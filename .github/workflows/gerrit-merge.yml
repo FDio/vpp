@@ -61,12 +61,16 @@ jobs:
     name: Start Merge
     runs-on: ubuntu-latest
     outputs:
-      timestamp: ${{ steps.start-time.outputs.timestamp }}
+      log_prefix: ${{ steps.start-time.outputs.log_prefix }}
     steps:
       - name: Start Time
         id: start-time
         run: |
-          echo "timestamp=$(date -u +%Y_%m_%d_%H%M%S_UTC)" >> "$GITHUB_OUTPUT"
+          set -euxo pipefail
+          timestamp=$(date -u +%Y_%m_%d_%H%M%S_UTC)
+          log_prefix="gha-vpp-per-patch/merge-${{ inputs.GERRIT_BRANCH }}-${timestamp}-gerrit-${{ inputs.GERRIT_CHANGE_NUMBER }}-${{ inputs.GERRIT_PATCHSET_NUMBER}}"
+          echo "log_prefix=$log_prefix" >> "$GITHUB_OUTPUT"
+          echo "Gerrit Change: ${{ inputs.GERRIT_CHANGE_URL }}"
 
   merge-docs:
     name: Merge Docs
@@ -74,7 +78,6 @@ jobs:
       - start-merge
     uses: fdio/vpp/.github/workflows/vpp-merge-docs.yml@master
     with:
-      CI_TIMESTAMP: ${{ needs.start-merge.outputs.timestamp }}
       FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
       GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
       GERRIT_CHANGE_ID: ${{ inputs.GERRIT_CHANGE_ID }}
@@ -85,6 +88,7 @@ jobs:
       GERRIT_PATCHSET_REVISION: ${{ inputs.GERRIT_PATCHSET_REVISION }}
       GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
       GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
+      LOG_PREFIX: ${{ needs.start-merge.outputs.log_prefix }}
     secrets: inherit
 
   merge-maketest:
@@ -93,7 +97,6 @@ jobs:
       - merge-docs
     uses: fdio/vpp/.github/workflows/vpp-merge-maketest.yml@master
     with:
-      CI_TIMESTAMP: ${{ needs.start-merge.outputs.timestamp }}
       FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
       GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
       GERRIT_CHANGE_ID: ${{ inputs.GERRIT_CHANGE_ID }}
@@ -104,4 +107,5 @@ jobs:
       GERRIT_PATCHSET_REVISION: ${{ inputs.GERRIT_PATCHSET_REVISION }}
       GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
       GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
+      LOG_PREFIX: ${{ needs.start-merge.outputs.log_prefix }}
     secrets: inherit
