@@ -67,7 +67,7 @@ jobs:
           set -euxo pipefail
           ts="$(date -u +%Y_%m_%d_%H%M%S_UTC)"
           echo "CI_TIMESTAMP=$ts" >> "$GITHUB_ENV"
-          LOG_NAME="vpp-${ts}-dpdk-rdma-ver-${{ matrix.build_type }}-${{ matrix.class }}-${{ matrix.os }}-${{ env.FDIO_NAMESPACE }}-${{ matrix.executor_arch }}"
+          LOG_NAME="vpp-${ts}-dpdk-rdma-ver-master-${{ matrix.build_type }}-${{ matrix.class }}-${{ matrix.os }}-${{ env.FDIO_NAMESPACE }}-${{ matrix.executor_arch }}"
           echo "LOG_NAME=$LOG_NAME" >> "$GITHUB_ENV"
           LOG_DIR=/scratch/docker-build/vpp/logs/$LOG_NAME
           echo "LOG_DIR=$LOG_DIR" >> "$GITHUB_ENV"
@@ -77,15 +77,6 @@ jobs:
         run: |
           set -euo pipefail
           env | sort | tee "$LOG_DIR/environment.log"
-
-      - name: Start DPDK RDMA Verify
-        run: |
-          set -euxo pipefail
-          {
-            echo "$TUI_LINE"
-            echo "* $CI_TIMESTAMP: Starting DPDK RDMA verification"
-            echo "$TUI_LINE"
-          } | tee "$LOG_DIR/dpdk_rdma_ver_start.log"
 
       - name: Show Nomad Dockerfile
         # yamllint disable-line rule:line-length
@@ -121,6 +112,7 @@ jobs:
 
           EXTERNAL_BUILD_DIR="$WORKSPACE/build/external"
           RETVAL="0"
+          RESULT="pass"
           MISMATCH_RESULT="INCLUDED IN"
 
           make -C "$EXTERNAL_BUILD_DIR" build-deb | tee "$LOG_DIR/build_deb.log"
@@ -129,8 +121,9 @@ jobs:
           if [ "${DPDK_MLX_DEFAULT-}" = "n" ] ; then
               MISMATCH_RESULT="MISSING FROM"
               RETVAL="1"
+              RESULT="fail"
           fi
-          echo -e "\n$TUI_LINE\n* MLX DPDK DRIVER $MISMATCH_RESULT VPP-EXT-DEPS PACKAGE\n$TUI_LINE\n" | tee "$LOG_DIR/dpdk_rdma_ver_result.log"
+          echo -e "\n$TUI_LINE\n* MLX DPDK DRIVER $MISMATCH_RESULT VPP-EXT-DEPS PACKAGE\n$TUI_LINE\n" | tee "$LOG_DIR/result_${RESULT}.log"
           exit $RETVAL
 
       - name: AWS S3 Publish Logs
@@ -142,12 +135,5 @@ jobs:
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws_region: ${{ vars.AWS_REGION }}
           s3_bucket: ${{ vars.S3_BUCKET }}
-          s3_path: ${{ env.LOG_NAME }}
+          s3_path: gha-vpp-periodic/${{ env.LOG_NAME }}
           archives_path: ${{ env.LOG_DIR }}
-
-      - name: Report Success
-        if: success()
-        run: |
-          echo "::notice::VPP DPDK RDMA Version workflow completed successfully!"
-          echo "Workflow ID: ${{ github.run_id }}"
-          echo "Name: ${{ github.workflow }}"
