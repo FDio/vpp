@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "55571517_d97bdf85",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 527,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-12-17T08:52:55Z",
+      "side": 1,
+      "message": "why not to allocate per thread buffers to this size in tls_openssl_init?",
+      "range": {
+        "startLine": 526,
+        "startChar": 2,
+        "endLine": 527,
+        "endChar": 39
+      },
+      "revId": "9e339994da9b6562a06072cf247ccb20fab7a3e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
