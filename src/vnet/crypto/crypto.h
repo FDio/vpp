@@ -10,6 +10,8 @@
 
 #define VNET_CRYPTO_FRAME_SIZE 64
 #define VNET_CRYPTO_FRAME_POOL_SIZE 1024
+#define VNET_CRYPTO_KEY_NUM_INITIAL 1024
+#define VNET_CRYPTO_MAX_ENGINES	    5
 
 /* CRYPTO_ID, PRETTY_NAME, ARGS*/
 #define foreach_crypto_cipher_alg                                             \
