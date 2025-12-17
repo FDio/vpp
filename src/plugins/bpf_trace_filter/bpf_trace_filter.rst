@@ -59,6 +59,23 @@ Enable pcap capture with filter:
    vpp# pcap trace rx tx max 1000 intfc <interface> filter
    vpp# pcap trace off
 
+Enabling BPF filter on dispatch trace:
+---------------------------------------
+
+Enable BPF filter function for dispatch trace:
+::
+
+   vpp# set pcap filter function bpf_trace_filter
+   vpp# show pcap filter function
+   (*) name:bpf_trace_filter description: bpf based trace filter priority: 10
+   name:vnet_is_packet_traced description: classifier based filter priority: 50
+
+Enable dispatch trace with filter:
+::
+
+   vpp# pcap dispatch trace on max 1000 file dispatch.pcap filter
+   vpp# pcap dispatch trace off
+
 Additional information:
 -------------------------------------
 
