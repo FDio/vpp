@@ -73,6 +73,7 @@ typedef struct vcl_test_session
   int fd;
   int (*read) (struct vcl_test_session *ts, void *buf, uint32_t buflen);
   int (*write) (struct vcl_test_session *ts, void *buf, uint32_t buflen);
+  int (*done) (struct vcl_test_session *ts, uint8_t check_rx);
   uint32_t txbuf_size;
   uint32_t rxbuf_size;
   char *txbuf;
@@ -82,6 +83,7 @@ typedef struct vcl_test_session
   vcl_test_stats_t old_stats;
   int session_index;
   struct vcl_test_session *next;
+  struct vcl_test_session *prev;
   vppcom_endpt_t endpt;
   uint8_t ip[16];
   vppcom_data_segment_t ds[2];
@@ -102,7 +104,8 @@ typedef struct
   int (*open) (vcl_test_session_t *ts, vppcom_endpt_t *endpt);
   int (*listen) (vcl_test_session_t *ts, vppcom_endpt_t *endpt);
   int (*accept) (int listen_fd, vcl_test_session_t *ts);
-  int (*close) (vcl_test_session_t *ts);
+  int (*cleanup) (vcl_test_session_t *ts);
+  int (*close) (vcl_test_session_t *ts, uint32_t events);
 } vcl_test_proto_vft_t;
 
 typedef struct
@@ -112,12 +115,19 @@ typedef struct
   uint32_t n_sessions;
 } vcl_test_wrk_t;
 
+typedef enum
+{
+  VT_RX_DATA_SOURCE,
+  VT_TEST_DATA_SOURCE,
+} vcl_test_data_source_t;
+
 typedef struct
 {
   const vcl_test_proto_vft_t *protos[VPPCOM_PROTO_HTTP + 1];
   uint32_t ckpair_index;
   hs_test_cfg_t cfg;
   vcl_test_wrk_t *wrk;
+  vcl_test_data_source_t server_data_source;
 } vcl_test_main_t;
 
 extern vcl_test_main_t vcl_test_main;
@@ -307,6 +317,26 @@ vcl_comp_tspec (struct timespec *a, struct timespec *b)
 }
 
 static inline int
+vcl_test_close_nop (vcl_test_session_t *ts, uint32_t events)
+{
+  /* just signal that we can close session */
+  return 1;
+}
+
+static inline int
+vcl_test_is_done (vcl_test_session_t *ts, uint8_t check_rx)
+{
+  if ((!check_rx && ts->stats.tx_bytes >= ts->cfg.total_bytes) ||
+      (check_rx && ts->stats.rx_bytes >= ts->cfg.total_bytes))
+    {
+      clock_gettime (CLOCK_REALTIME, &ts->stats.stop);
+      ts->is_done = 1;
+      return 1;
+    }
+  return 0;
+}
+
+static inline int
 vcl_test_read (vcl_test_session_t *ts, void *buf, uint32_t nbytes)
 {
   vcl_test_stats_t *stats = &ts->stats;
@@ -388,8 +418,12 @@ vcl_test_write (vcl_test_session_t *ts, void *buf, uint32_t nbytes)
 	{
 	  errno = -rv;
 	  if ((errno == EAGAIN || errno == EWOULDBLOCK))
-	    stats->tx_eagain++;
-	  break;
+	    {
+	      stats->tx_eagain++;
+	      break;
+	    }
+	  vterr ("vpcom_session_write", -errno);
+	  return -1;
 	}
       tx_bytes += rv;
 
@@ -400,12 +434,7 @@ vcl_test_write (vcl_test_session_t *ts, void *buf, uint32_t nbytes)
     }
   while (tx_bytes != nbytes);
 
-  if (tx_bytes < 0)
-    {
-      vterr ("vpcom_session_write", -errno);
-    }
-  else
-    stats->tx_bytes += tx_bytes;
+  stats->tx_bytes += tx_bytes;
 
   return (tx_bytes);
 }
