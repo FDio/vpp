@@ -1405,7 +1405,8 @@ vtc_alloc_workers (vcl_test_client_main_t *vcm)
   vcm->workers = calloc (vcm->n_workers, sizeof (vcl_test_client_worker_t));
   vt->wrk = calloc (vcm->n_workers, sizeof (vcl_test_wrk_t));
 
-  if (vcm->ctrl_session.cfg.num_test_sessions > VCL_TEST_CFG_MAX_SELECT_SESS)
+  if (vcm->ctrl_session.cfg.num_test_sessions > VCL_TEST_CFG_MAX_SELECT_SESS ||
+      vcm->proto == VPPCOM_PROTO_QUIC)
     run_fn = vtc_worker_run_epoll;
   else
     run_fn = vtc_worker_run_select;
