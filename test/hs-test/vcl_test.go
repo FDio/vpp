@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -17,6 +18,16 @@ func init() {
 		VclQuicBidirectionalStreamTest)
 	RegisterSoloVethTests(VclRetryAttachTest)
 	RegisterVethMWTests(VclQuicUnidirectionalStreamsMWTest)
+}
+
+func vclGetLabelValue(output, label string) (int, error) {
+	lines := strings.SplitSeq(output, "\n")
+	for line := range lines {
+		if strings.Contains(line, label) {
+			return strconv.Atoi(strings.Fields(strings.SplitAfter(line, ":")[1])[0])
+		}
+	}
+	return 0, fmt.Errorf("label '%s' not found", label)
 }
 
 func getVclConfig(c *Container, ns_id_optional ...string) string {
@@ -158,7 +169,15 @@ func VclQuicUnidirectionalStreamsMWTest(s *VethsSuite) {
 }
 
 func VclQuicBidirectionalStreamTest(s *VethsSuite) {
-	testVclEcho(s, "quic", "-B -N 1000")
+	_, oSrv := testVclEcho(s, "quic", "-B -N 1000")
+	clientTxBytes, err := vclGetLabelValue(oSrv, "rx bytes")
+	AssertNil(err)
+	serverRxBytes, err := vclGetLabelValue(oSrv, "rx bytes")
+	AssertNil(err)
+	serverTxBytes, err := vclGetLabelValue(oSrv, "client tx bytes")
+	AssertNil(err)
+	AssertGreaterEqual(clientTxBytes, serverRxBytes, "server receive less data")
+	AssertGreaterEqual(clientTxBytes, serverTxBytes, "server send less data")
 }
 
 func VclHttpPostTest(s *VethsSuite) {
