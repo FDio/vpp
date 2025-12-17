@@ -1,4 +1,4 @@
-name: comment-handler
+name: gerrit-comment-handler
 
 # yamllint disable-line rule:truthy
 on:
