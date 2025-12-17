@@ -16,6 +16,24 @@
       "message": "Wondering now if this is a bit too generous. nproc returns cpus across numas and includes hyperthreads, so let\u0027s try on older machines to see if this still works",
       "revId": "4f1d56c9ac75ee3eb2807555bca10be44c9ab0d5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9661b9d7_55fcd70b",
+        "filename": "test/hs-test/hs_test.sh",
+        "patchSetId": 4
+      },
+      "lineNbr": 198,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2025-12-17T17:36:19Z",
+      "side": 1,
+      "message": "updated the code, HT\u003dtrue|false now controls both ginkgo container cpu allocation and hs-test. \nif the initial hs-test.sh script doesn\u0027t detect enough physical cpus, it won\u0027t run with taskset (Go will use all cpus) but hs-test will attempt to use physical cpus only.",
+      "parentUuid": "9a9bb799_d1f210d4",
+      "revId": "4f1d56c9ac75ee3eb2807555bca10be44c9ab0d5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
