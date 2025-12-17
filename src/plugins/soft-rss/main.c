@@ -268,6 +268,13 @@ soft_rss_enable (vlib_main_t __clib_unused *vm, u32 hw_if_index)
 			      format_vnet_sw_if_index_name, vnm,
 			      hi->sw_if_index, rv);
 
+  rv = vnet_feature_enable_disable ("port-rx-eth", "soft-rss",
+				    hi->sw_if_index, 1, 0, 0);
+  if (rv)
+    return clib_error_return (0, "soft-rss enable failed on interface %U: %d",
+			      format_vnet_sw_if_index_name, vnm,
+			      hi->sw_if_index, rv);
+
   rt->enabled = 1;
 
   return 0;
@@ -304,13 +311,26 @@ soft_rss_disable (vlib_main_t __clib_unused *vm, u32 hw_if_index)
 			      format_vnet_sw_if_index_name, vnm,
 			      hi->sw_if_index, rv);
 
+  rv = vnet_feature_enable_disable ("port-rx-eth", "soft-rss",
+				    hi->sw_if_index, 0, 0, 0);
+  if (rv)
+    return clib_error_return (0, "soft-rss disable failed on interface %U: %d",
+			      format_vnet_sw_if_index_name, vnm,
+			      hi->sw_if_index, rv);
+
   rt->enabled = 0;
 
   return 0;
 }
 
-VNET_FEATURE_INIT (soft_rss_feature, static) = {
+VNET_FEATURE_INIT (soft_rss_feature_device_input, static) = {
   .arc_name = "device-input",
+  .node_name = "soft-rss",
+  .runs_before = VNET_FEATURES ("ethernet-input"),
+};
+
+VNET_FEATURE_INIT (soft_rss_feature_rx_eth, static) = {
+  .arc_name = "port-rx-eth",
   .node_name = "soft-rss",
   .runs_before = VNET_FEATURES ("ethernet-input"),
 };
