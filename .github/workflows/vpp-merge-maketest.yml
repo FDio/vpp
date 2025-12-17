@@ -148,7 +148,7 @@ jobs:
       CCACHE_DIR: /scratch/ccache/${{ matrix.os }}-${{ matrix.executor_arch }}
       BUILD_TYPE: ${{ matrix.build_type }}
       MAKE_PARALLEL_JOBS: 16
-      TEST_JOBS: 16
+      TEST_JOBS: 4
       TEST_RETRIES: 3
       MAKE_TEST_OS: ${{ matrix.os == 'ubuntu2204' && 'ubuntu-22.04' || 'ubuntu-24.04'  }}
       MAKE_TEST_MULTIWORKER_OS: 'debian-12'
@@ -252,7 +252,7 @@ jobs:
       - name: AWS S3 Publish Logs
         if: always()
         # yamllint disable-line rule:line-length
-        uses: fdio/.github/.github/actions/aws-s3-publish-logs@a28ad9abc70855292df1ea0d59829e814e78c2f4
+        uses: fdio/.github/.github/actions/aws-s3-publish-logs@ae7db6e7250ff58a28f48af147901f0039e11948
         with:
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -276,7 +276,7 @@ jobs:
       - name: AWS S3 Publish Archives
         if: ${{ always() && steps.check-archives.outputs.has_archives == 'true' }}
         # yamllint disable-line rule:line-length
-        uses: fdio/.github/.github/actions/aws-s3-publish-logs@a28ad9abc70855292df1ea0d59829e814e78c2f4
+        uses: fdio/.github/.github/actions/aws-s3-publish-logs@ae7db6e7250ff58a28f48af147901f0039e11948
         with:
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -284,4 +284,3 @@ jobs:
           s3_bucket: ${{ vars.S3_BUCKET }}
           s3_path: ${{ env.LOG_NAME }}
           archives_path: ${{ env.WORKSPACE }}/archives
-
