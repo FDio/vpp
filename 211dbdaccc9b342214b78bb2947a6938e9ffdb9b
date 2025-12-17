@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7b76a7a4_12eb640c",
+        "filename": "src/plugins/soft-rss/main.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 118,
+      "author": {
+        "id": 198
+      },
+      "writtenOn": "2025-12-17T18:58:33Z",
+      "side": 1,
+      "message": "nit: typo",
+      "range": {
+        "startLine": 118,
+        "startChar": 60,
+        "endLine": 118,
+        "endChar": 61
+      },
+      "revId": "211dbdaccc9b342214b78bb2947a6938e9ffdb9b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
