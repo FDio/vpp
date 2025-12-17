@@ -4,10 +4,6 @@ name: vpp-csit-verify-api
 on:
   workflow_call:
     inputs:
-      CI_TIMESTAMP:
-        description: "Start verify timestamp"
-        required: true
-        type: string
       FDIO_NAMESPACE:
         description: "Executor Namespace (prod|sandbox)"
         required: true
@@ -43,10 +39,6 @@ on:
         type: string
   workflow_dispatch:
     inputs:
-      CI_TIMESTAMP:
-        description: "Start verify timestamp"
-        required: true
-        type: string
       FDIO_NAMESPACE:
         description: "Executor Namespace (prod|sandbox)"
         required: false
@@ -95,14 +87,14 @@ permissions:
 jobs:
   csit-verify-api:
     # yamllint disable-line rule:line-length
-    name: ${{ inputs.GERRIT_CHANGE_NUMBER }}/${{ inputs.GERRIT_PATCHSET_NUMBER}}__${{ inputs.GERRIT_BRANCH }}__${{ inputs.FDIO_NAMESPACE }}
+    name: ${{ inputs.GERRIT_CHANGE_NUMBER }}/${{ inputs.GERRIT_PATCHSET_NUMBER}}__${{ inputs.GERRIT_BRANCH }}__${{ github.event.inputs.FDIO_NAMESPACE || 'prod' }}
     runs-on:
       - self-hosted
       - nomad
       - fdio:arch=${{ matrix.executor_arch }}
       - fdio:class=${{ matrix.class }}
       - fdio:size=${{ matrix.size }}
-      - fdio:namespace=${{ inputs.FDIO_NAMESPACE || 'prod' }}
+      - fdio:namespace=${{ github.event.inputs.FDIO_NAMESPACE || 'prod' }}
       - fdio:os=${{ matrix.os }}
 
     strategy:
@@ -123,9 +115,8 @@ jobs:
       GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
       GERRIT_CHANGE_NUMBER: ${{ inputs.GERRIT_CHANGE_NUMBER }}
       GERRIT_PATCHSET_NUMBER: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
-      CI_TIMESTAMP: ${{ inputs.CI_TIMESTAMP }}
       LOG_PREFIX: ${{ inputs.LOG_PREFIX }}
-      FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
+      FDIO_NAMESPACE: ${{ github.event.inputs.FDIO_NAMESPACE || 'prod' }}
       LOG_NAME: ""
       LOG_DIR: ""
       TUI_LINE: "*******************************************************************"
@@ -141,9 +132,9 @@ jobs:
       - name: Prepare Log Directory
         run: |
           set -euxo pipefail
-          LOG_NAME="${{ env.LOG_PREFIX }}/verify-csit-api-${{ matrix.build_type }}-${{ matrix.class }}-${{ matrix.os }}-${{ inputs.FDIO_NAMESPACE }}-${{ matrix.executor_arch }}"
+          LOG_NAME="${{ env.LOG_PREFIX }}/verify-csit-api-${{ matrix.build_type }}-${{ matrix.class }}-${{ matrix.os }}-${{ github.event.inputs.FDIO_NAMESPACE || 'prod' }}-${{ matrix.executor_arch }}"
           echo "LOG_NAME=$LOG_NAME" >> "$GITHUB_ENV"
-          LOG_DIR="/scratch/docker-build/vpp/logs/$LOG_NAME"
+          LOG_DIR="$WORKSPACE/logs/$LOG_NAME"
           echo "LOG_DIR=$LOG_DIR" >> "$GITHUB_ENV"
           mkdir -p "$LOG_DIR"
 
@@ -169,10 +160,6 @@ jobs:
         run: |
           set -euxo pipefail
           {
-            echo "$TUI_LINE"
-            echo "* $CI_TIMESTAMP: Starting CSIT check_crc.sh"
-            echo "$TUI_LINE"
-
             # Checkout CSIT HEAD
             cd "$CSIT_DIR"
             git checkout HEAD

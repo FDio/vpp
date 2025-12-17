@@ -67,7 +67,7 @@ jobs:
           ts="$(date -u +%Y_%m_%d_%H%M%S_UTC)"
           LOG_NAME="dpdk-rdma-version-master-${ts}-${{ matrix.build_type }}-${{ matrix.class }}-${{ matrix.os }}-${{ env.FDIO_NAMESPACE }}-${{ matrix.executor_arch }}"
           echo "LOG_NAME=$LOG_NAME" >> "$GITHUB_ENV"
-          LOG_DIR=/scratch/docker-build/vpp/logs/$LOG_NAME
+          LOG_DIR="$WORKSPACE/logs/$LOG_NAME"
           echo "LOG_DIR=$LOG_DIR" >> "$GITHUB_ENV"
           mkdir -p "$LOG_DIR"
 

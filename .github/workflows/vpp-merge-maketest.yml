@@ -169,7 +169,7 @@ jobs:
           set -euxo pipefail
           LOG_NAME="${{ env.LOG_PREFIX }}/merge-maketest-${{ matrix.build_type }}-${{ matrix.os }}-${{ inputs.FDIO_NAMESPACE }}-${{ matrix.executor_arch }}"
           echo "LOG_NAME=$LOG_NAME" >> "$GITHUB_ENV"
-          LOG_DIR="/scratch/docker-build/vpp/logs/$LOG_NAME"
+          LOG_DIR="$WORKSPACE/logs/$LOG_NAME"
           echo "LOG_DIR=$LOG_DIR" >> "$GITHUB_ENV"
           mkdir -p "$LOG_DIR"
 
