@@ -155,8 +155,8 @@ vts_session_close (vcl_test_session_t *conn)
   if (!conn->is_open)
     return;
 
-  if (vt->protos[vsm->server_cfg.proto]->close)
-    vt->protos[vsm->server_cfg.proto]->close (conn);
+  if (vt->protos[vsm->server_cfg.proto]->cleanup)
+    vt->protos[vsm->server_cfg.proto]->cleanup (conn);
 
   vppcom_session_close (conn->fd);
   conn->is_open = 0;
@@ -275,7 +275,7 @@ vts_server_process_rx (vcl_test_session_t *conn, int rx_bytes)
       if (vsm->use_ds)
 	(void) vcl_test_write_ds (conn);
       else
-	(void) vcl_test_write (conn, conn->rxbuf, rx_bytes);
+	(void) conn->write (conn, conn->rxbuf, rx_bytes);
     }
 
   if (vsm->use_ds)
@@ -375,7 +375,7 @@ vts_accept_client (vcl_test_server_worker_t *wrk, int listen_fd)
     vtinf ("Got a connection -- fd = %d (0x%08x) on listener fd = %d (0x%08x)",
 	   conn->fd, conn->fd, listen_fd, listen_fd);
 
-  ev.events = EPOLLET | EPOLLIN;
+  ev.events = EPOLLET | EPOLLIN | EPOLLRDHUP;
   ev.data.u64 = conn - wrk->conn_pool;
   rv = vppcom_epoll_ctl (wrk->epfd, EPOLL_CTL_ADD, conn->fd, &ev);
   if (rv < 0)
@@ -672,9 +672,12 @@ vts_worker_loop (void *arg)
   vcl_test_session_t *conn;
   int i, rx_bytes, num_ev;
   hs_test_cfg_t *rx_cfg;
+  const vcl_test_proto_vft_t *tp;
 
   if (wrk->wrk_index)
     vts_worker_init (wrk);
+
+  tp = vcl_test_main.protos[vsm->server_cfg.proto];
 
   while (1)
     {
@@ -688,6 +691,18 @@ vts_worker_loop (void *arg)
 	}
       else if (num_ev == 0)
 	{
+	  if (vsm->ctrl && vsm->ctrl->cfg.test == HS_TEST_TYPE_BI &&
+	      vcl_test_main.server_data_source == VT_TEST_DATA_SOURCE)
+	    {
+	      for (i = 0; i < wrk->conn_pool_size; i++)
+		{
+		  conn = &wrk->conn_pool[i];
+		  if (conn == vsm->ctrl)
+		    continue;
+		  if (conn->is_open)
+		    (void) conn->write (conn, 0, 0);
+		}
+	    }
 	  continue;
 	}
       for (i = 0; i < num_ev; i++)
@@ -706,6 +721,12 @@ vts_worker_loop (void *arg)
 		}
 	      else
 		{
+		  if (tp->close)
+		    {
+		      if (!tp->close (conn, ep_evts[i].events))
+			continue;
+		    }
+		  vtinf ("deleting %d (fd %d)", conn->session_index, conn->fd);
 		  vts_session_cleanup (conn);
 		  wrk->nfds--;
 		}

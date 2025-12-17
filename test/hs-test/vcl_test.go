@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -13,9 +14,20 @@ import (
 
 func init() {
 	RegisterVethTests(XEchoVclClientUdpTest, XEchoVclClientTcpTest, XEchoVclServerUdpTest, VclQuicUnidirectionalStreamTest,
-		XEchoVclServerTcpTest, VclEchoTcpTest, VclEchoUdpTest, VclHttpPostTest, VclClUdpDscpTest)
+		XEchoVclServerTcpTest, VclEchoTcpTest, VclEchoUdpTest, VclHttpPostTest, VclClUdpDscpTest,
+		VclQuicBidirectionalStreamTest)
 	RegisterSoloVethTests(VclRetryAttachTest)
 	RegisterVethMWTests(VclQuicUnidirectionalStreamsMWTest)
+}
+
+func vclGetLabelValue(output, label string) (int, error) {
+	lines := strings.SplitSeq(output, "\n")
+	for line := range lines {
+		if strings.Contains(line, label) {
+			return strconv.Atoi(strings.Fields(strings.SplitAfter(line, ":")[1])[0])
+		}
+	}
+	return 0, fmt.Errorf("label '%s' not found", label)
 }
 
 func getVclConfig(c *Container, ns_id_optional ...string) string {
@@ -147,6 +159,11 @@ func VclEchoUdpTest(s *VethsSuite) {
 func VclQuicUnidirectionalStreamTest(s *VethsSuite) {
 	_, oSrv := testVclEcho(s, "quic", "-N 1000")
 	AssertNotContains(oSrv, "ERROR: expected unidirectional stream")
+	minBytes, err := vclGetLabelValue(oSrv, "client tx bytes")
+	AssertNil(err)
+	serverRxBytes, err := vclGetLabelValue(oSrv, "rx bytes")
+	AssertNil(err)
+	AssertGreaterEqual(serverRxBytes, minBytes, "server receive less data")
 }
 
 func VclQuicUnidirectionalStreamsMWTest(s *VethsSuite) {
@@ -154,6 +171,18 @@ func VclQuicUnidirectionalStreamsMWTest(s *VethsSuite) {
 	s.SetupTest()
 	_, oSrv := testVclEcho(s, "quic", "-s 20 -q 10 -N 1000")
 	AssertNotContains(oSrv, "ERROR: expected unidirectional stream")
+}
+
+func VclQuicBidirectionalStreamTest(s *VethsSuite) {
+	_, oSrv := testVclEcho(s, "quic", "-B -N 1000")
+	minBytes, err := vclGetLabelValue(oSrv, "client tx bytes")
+	AssertNil(err)
+	serverRxBytes, err := vclGetLabelValue(oSrv, "rx bytes")
+	AssertNil(err)
+	serverTxBytes, err := vclGetLabelValue(oSrv, "tx bytes")
+	AssertNil(err)
+	AssertGreaterEqual(serverRxBytes, minBytes, "server receive less data")
+	AssertGreaterEqual(serverTxBytes, minBytes, "server send less data")
 }
 
 func VclHttpPostTest(s *VethsSuite) {
