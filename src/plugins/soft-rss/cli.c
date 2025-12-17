@@ -28,12 +28,14 @@ soft_rss_config_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	;
       else if (unformat (input, "type %U", unformat_soft_rss_type, &cfg.type))
 	;
+      else if (unformat (input, "ipv4-type %U", unformat_soft_rss_type,
+			 &cfg.ipv4_type))
+	;
+      else if (unformat (input, "ipv6-type %U", unformat_soft_rss_type,
+			 &cfg.ipv6_type))
+	;
       else if (unformat (input, "l2-offset %u", &cfg.l2_hdr_offset))
 	;
-      else if (unformat (input, "ipv4-only"))
-	cfg.ip4_only = 1;
-      else if (unformat (input, "ipv6-only"))
-	cfg.ip6_only = 1;
       else if (unformat (input, "with-main-thread"))
 	cfg.with_main_thread = 1;
       else if (unformat (input, "threads %U", unformat_bitmap_list,
@@ -52,13 +54,6 @@ soft_rss_config_command_fn (vlib_main_t *vm, unformat_input_t *input,
   if (hw_if_index == ~0)
     {
       err = clib_error_return (0, "hardware interface required");
-      goto done;
-    }
-
-  if (cfg.ip4_only && cfg.ip6_only)
-    {
-      err = clib_error_return (
-	0, "ipv4-only and ipv6-only cannot be used together");
       goto done;
     }
 
@@ -215,7 +210,7 @@ VLIB_CLI_COMMAND (soft_rss_config_command, static) = {
   .path = "soft-rss config",
   .short_help = "soft-rss config <hw-interface> [type <type>] "
 		"[l2-offset <bytes>] [threads <bitmap-list>] "
-		"[rss-key <hex-string>] [ipv4-only] [ipv6-only] "
+		"[rss-key <hex-string>] [ipv4-type <type>] [ipv6-type <type>] "
 		"[with-main-thread]",
   .function = soft_rss_config_command_fn,
 };

@@ -20,7 +20,8 @@ typedef struct
 typedef struct
 {
   u8 enabled : 1;
-  soft_rss_type_t type;
+  soft_rss_type_t ipv4_type;
+  soft_rss_type_t ipv6_type;
   clib_toeplitz_hash_key_t *key;
   u8 n_match;
   u16 match_offset;
