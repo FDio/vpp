@@ -329,19 +329,6 @@ vtc_worker_start_transfer (vcl_test_client_worker_t *wrk)
 }
 
 static int
-vtc_session_check_is_done (vcl_test_session_t *ts, uint8_t check_rx)
-{
-  if ((!check_rx && ts->stats.tx_bytes >= ts->cfg.total_bytes) ||
-      (check_rx && ts->stats.rx_bytes >= ts->cfg.total_bytes))
-    {
-      clock_gettime (CLOCK_REALTIME, &ts->stats.stop);
-      ts->is_done = 1;
-      return 1;
-    }
-  return 0;
-}
-
-static int
 vtc_worker_connect_sessions_select (vcl_test_client_worker_t *wrk)
 {
   vcl_test_client_main_t *vcm = &vcl_client_main;
@@ -452,7 +439,7 @@ vtc_worker_run_select (vcl_test_client_worker_t *wrk)
 	      if (vcm->incremental_stats)
 		vtc_worker_inc_stats_check (wrk, ts);
 	    }
-	  if (vtc_session_check_is_done (ts, check_rx))
+	  if (ts->done (ts, check_rx))
 	    n_active_sessions -= 1;
 	}
     }
@@ -464,6 +451,9 @@ static void
 vtc_worker_epoll_send_add (vcl_test_client_worker_t *wrk,
 			   vcl_test_session_t *ts)
 {
+  if (ts->next || ts->prev)
+    return;
+
   if (!wrk->next_to_send)
     {
       wrk->next_to_send = ts;
@@ -471,22 +461,34 @@ vtc_worker_epoll_send_add (vcl_test_client_worker_t *wrk,
   else
     {
       ts->next = wrk->next_to_send;
-      wrk->next_to_send = ts->next;
+      wrk->next_to_send->prev = ts;
+      wrk->next_to_send = ts;
     }
 }
 
 static void
 vtc_worker_epoll_send_del (vcl_test_client_worker_t *wrk,
-			   vcl_test_session_t *ts, vcl_test_session_t *prev)
+			   vcl_test_session_t *ts)
 {
-  if (!prev)
+  if (ts == wrk->next_to_send)
     {
-      wrk->next_to_send = ts->next;
+      wrk->next_to_send = wrk->next_to_send->next;
+      if (wrk->next_to_send)
+	wrk->next_to_send->prev = 0;
     }
   else
     {
-      prev->next = ts->next;
+      if (ts->next)
+	{
+	  ts->next->prev = ts->prev;
+	}
+      if (ts->prev)
+	{
+	  ts->prev->next = ts->next;
+	}
     }
+  ts->next = 0;
+  ts->prev = 0;
 }
 
 static int
@@ -609,8 +611,9 @@ vtc_worker_run_epoll (vcl_test_client_worker_t *wrk)
 {
   vcl_test_client_main_t *vcm = &vcl_client_main;
   uint32_t n_active_sessions, max_writes = 16, n_writes = 0;
-  vcl_test_session_t *ts, *prev = 0;
+  vcl_test_session_t *ts, *next;
   int i, rv, check_rx = 0, n_ev;
+  const vcl_test_proto_vft_t *tp;
 
   rv = vtc_worker_connect_sessions_epoll (wrk);
   if (rv < 0)
@@ -623,13 +626,16 @@ vtc_worker_run_epoll (vcl_test_client_worker_t *wrk)
   check_rx = wrk->cfg.test != HS_TEST_TYPE_UNI;
 
   vtc_worker_start_transfer (wrk);
-  ts = wrk->next_to_send;
+  next = wrk->next_to_send;
+
+  tp = vcl_test_main.protos[vcm->proto];
 
   while (n_active_sessions && vcm->test_running)
     {
       /*
        * Try to write
        */
+      ts = next;
       if (!ts)
 	{
 	  ts = wrk->next_to_send;
@@ -638,24 +644,23 @@ vtc_worker_run_epoll (vcl_test_client_worker_t *wrk)
 	}
 
       rv = ts->write (ts, ts->txbuf, ts->cfg.txbuf_size);
+      next = ts->next;
       if (rv > 0)
 	{
 	  if (vcm->incremental_stats)
 	    vtc_worker_inc_stats_check (wrk, ts);
-	  if (vtc_session_check_is_done (ts, check_rx))
+	  if (ts->done (ts, check_rx))
 	    n_active_sessions -= 1;
 	}
       else if (rv == 0)
 	{
-	  vtc_worker_epoll_send_del (wrk, ts, prev);
+	  vtc_worker_epoll_send_del (wrk, ts);
 	}
       else
 	{
 	  vtwrn ("vppcom_test_write (%d) failed -- aborting test", ts->fd);
 	  return -1;
 	}
-      prev = ts;
-      ts = ts->next;
       n_writes += 1;
 
       if (rv > 0 && n_writes < max_writes)
@@ -689,6 +694,21 @@ vtc_worker_run_epoll (vcl_test_client_worker_t *wrk)
 
 	  if (wrk->ep_evts[i].events & (EPOLLERR | EPOLLHUP | EPOLLRDHUP))
 	    {
+	      if (tp->close)
+		{
+		  if (tp->close (ts, wrk->ep_evts[i].events))
+		    {
+		      n_active_sessions -= 1;
+		      continue;
+		    }
+		  else
+		    {
+		      vtwrn (
+			"%u finished before reading all data -- aborting test",
+			ts->fd);
+		      return -1;
+		    }
+		}
 	      vtinf ("%u finished before reading all data?", ts->fd);
 	      break;
 	    }
@@ -698,7 +718,7 @@ vtc_worker_run_epoll (vcl_test_client_worker_t *wrk)
 	      rv = ts->read (ts, ts->rxbuf, ts->rxbuf_size);
 	      if (rv < 0)
 		break;
-	      if (vtc_session_check_is_done (ts, check_rx))
+	      if (ts->done (ts, check_rx))
 		n_active_sessions -= 1;
 	    }
 	  if ((wrk->ep_evts[i].events & EPOLLOUT) &&
@@ -1405,7 +1425,8 @@ vtc_alloc_workers (vcl_test_client_main_t *vcm)
   vcm->workers = calloc (vcm->n_workers, sizeof (vcl_test_client_worker_t));
   vt->wrk = calloc (vcm->n_workers, sizeof (vcl_test_wrk_t));
 
-  if (vcm->ctrl_session.cfg.num_test_sessions > VCL_TEST_CFG_MAX_SELECT_SESS)
+  if (vcm->ctrl_session.cfg.num_test_sessions > VCL_TEST_CFG_MAX_SELECT_SESS ||
+      vcm->proto == VPPCOM_PROTO_QUIC)
     run_fn = vtc_worker_run_epoll;
   else
     run_fn = vtc_worker_run_select;
