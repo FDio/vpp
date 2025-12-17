@@ -71,7 +71,7 @@ jobs:
         run: |
           set -euxo pipefail
           ts="$(date -u +%Y_%m_%d_%H%M%S_UTC)"
-          LOG_NAME="vpp-coverage-master-${ts}-${{ matrix.build_type }}-${{ matrix.class }}-${{ matrix.os }}-${{ env.FDIO_NAMESPACE }}-${{ matrix.executor_arch }}"
+          LOG_NAME="gha-vpp-periodic/vpp-coverage-master-${ts}-${{ matrix.build_type }}-${{ matrix.class }}-${{ matrix.os }}-${{ env.FDIO_NAMESPACE }}-${{ matrix.executor_arch }}"
           echo "LOG_NAME=$LOG_NAME" >> "$GITHUB_ENV"
           LOG_DIR="$WORKSPACE/logs/$LOG_NAME"
           echo "LOG_DIR=$LOG_DIR" >> "$GITHUB_ENV"
@@ -122,58 +122,50 @@ jobs:
       - name: Start Docker Daemon
         uses: fdio/vpp/.github/actions/vpp-start-docker@master
         with:
-          LOG_DIR: ${{ env.LOG_DIR }}
           START_DOCKER_SCRIPT: start-docker.sh
           TUI_LINE: ${{ env.TUI_LINE }}
 
       - name: VPP Make Coverage Test
-        if: success()
         run: |
-          set -euo pipefail
+          set -euxo pipefail
           BUILD_ERROR=""
           BUILD_RESULT="MAKE TEST COVERAGE SUCCESSFULLY COMPLETED"
-          RETVAL="0"
           RESULT="pass"
 
           cd "$WORKSPACE"
-          find / -name start-docker.sh
-          start-docker.sh
-          if ! make COMPRESS_FAILED_TEST_LOGS=yes TEST_JOBS=$TEST_JOBS CCACHE_DISABLE=1 test-cov-both ; then
-              BUILD_ERROR="FAILED 'make COMPRESS_FAILED_TEST_LOGS=yes TEST_JOBS=$TEST_JOBS CCACHE_DISABLE=1 test-cov-both'"
-          fi
-          if [ -n "$BUILD_ERROR" ] ; then
-              BUILD_RESULT="$BUILD_ERROR"
-              RETVAL="1"
-              RESULT="fail"
-          fi
           {
+            if ! make COMPRESS_FAILED_TEST_LOGS=yes TEST_JOBS=$TEST_JOBS CCACHE_DISABLE=1 test-cov-both ; then
+                BUILD_ERROR="FAILED 'make COMPRESS_FAILED_TEST_LOGS=yes TEST_JOBS=$TEST_JOBS CCACHE_DISABLE=1 test-cov-both'"
+            fi
+            if [ -n "$BUILD_ERROR" ] ; then
+                BUILD_RESULT="$BUILD_ERROR"
+                RESULT="fail"
+            fi
             echo -e "\n$TUI_LINE\n* VPP ${OS_ID^^}-${OS_VERSION_ID}-${OS_ARCH^^} BUILD " \
                     "\n* $BUILD_RESULT\n$TUI_LINE\n"
             [ -n "$BUILD_ERROR" ] && echo "$BUILD_ERROR"
-          } | tee "$LOG_DIR/result_$RESULT.log"
-          exit $RETVAL
+          } | tee "$LOG_DIR/make_coverage_test.log"
 
       - name: AWS S3 Publish Logs
         if: ${{ always() }}
         # yamllint disable-line rule:line-length
-        uses: fdio/.github/.github/actions/aws-s3-publish-logs@a28ad9abc70855292df1ea0d59829e814e78c2f4
+        uses: fdio/.github/.github/actions/aws-s3-publish-logs@ae7db6e7250ff58a28f48af147901f0039e11948
         with:
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws_region: ${{ vars.AWS_REGION }}
           s3_bucket: ${{ vars.S3_BUCKET }}
-          s3_path: gha-vpp-periodic/${{ env.LOG_NAME }}
+          s3_path: ${{ env.LOG_NAME }}
           archives_path: ${{ env.LOG_DIR }}
 
-      # TODO: Publish Coverage Report to docs-7day retention bucket
-      # - name: AWS S3 Publish Coverage Report
-      #   if: ${{ always() }}
-      #   # yamllint disable-line rule:line-length
-      #   uses: fdio/.github/.github/actions/aws-s3-publish-logs@a28ad9abc70855292df1ea0d59829e814e78c2f4
-      #   with:
-      #     aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      #     aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      #     aws_region: ${{ vars.AWS_REGION }}
-      #     s3_bucket: ${{ vars.S3_BUCKET }}
-      #     s3_path: gha-vpp-periodic/${{ env.LOG_NAME }}
-      #     archives_path: ${{ env.LOG_DIR }}
+      - name: AWS S3 Publish Coverage Report
+        if: ${{ always() }}
+        # yamllint disable-line rule:line-length
+        uses: fdio/.github/.github/actions/aws-s3-publish-logs@ae7db6e7250ff58a28f48af147901f0039e11948
+        with:
+          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws_region: ${{ vars.AWS_REGION }}
+          s3_bucket: 'vpp-docs-7day-retention'
+          s3_path: ${{ env.LOG_NAME }}
+          archives_path: "${{ env.WORKSPACE }}/build-root/test-coverage-merged/html"
