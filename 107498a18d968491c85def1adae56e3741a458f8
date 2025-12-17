@@ -16,6 +16,24 @@
       "message": "Two things:\n- First you really have two changes in one, raw IP packet support and dispatch trace filter. You probably should separate them in different gerrit patches, espacially given that they are very loosely coupled (if at all)\n- Wrt raw IP packet support, the \"guessing\" method is fun, but I wonder if we couldn\u0027t have a more \"structured\" approach here (where basically we know in advance upon calling the trace filter function if it is L2 or L3...) Thoughts about why this would be impossible?",
       "revId": "107498a18d968491c85def1adae56e3741a458f8",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3695f772_6d138ad0",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2025-12-17T21:34:49Z",
+      "side": 1,
+      "message": "1) Yes, these are two separate changes. I have split them:\n--\u003e dispatch trace filter - https://gerrit.fd.io/r/c/vpp/+/44464 (new patch)\n--\u003e raw IP packet support - https://gerrit.fd.io/r/c/vpp/+/44452 (this patch)\n\n2) I think that\u0027s possible! One option is to add a parameter to the filter function signature to indicate whether the packet is L2 or L3. The caller already has this context, so it can explicitly pass the layer information to the filter. This would update the `vlib_is_packet_traced_fn_t` API. I will try implementing this approach and see how it goes.",
+      "parentUuid": "446a9cad_e0859c28",
+      "revId": "107498a18d968491c85def1adae56e3741a458f8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
