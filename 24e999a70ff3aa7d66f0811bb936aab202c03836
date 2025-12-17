@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4477a146_c3ca7ae1",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 198
+      },
+      "writtenOn": "2025-12-17T13:53:34Z",
+      "side": 1,
+      "message": "I tested this commit and I no longer saw plugin symbol export issues",
+      "revId": "24e999a70ff3aa7d66f0811bb936aab202c03836",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
