@@ -13,6 +13,7 @@ typedef struct
 typedef struct
 {
   u32 enable : 1;
+  u32 filter_enable : 1;
   pcap_main_t dispatch_pcap_main;
   u32 *dispatch_buffer_trace_nodes;
   dispatch_trace_thread_t *threads;
@@ -30,6 +31,7 @@ typedef struct
   int enable;
   int status;
   int post_mortem;
+  u32 filter;
   u32 packets_to_capture;
   u32 buffer_trace_node_index;
   u32 buffer_traces_to_capture;
@@ -66,6 +68,7 @@ dispatch_pcap_trace (vlib_main_t *vm, vlib_node_runtime_t *node,
   pcap_main_t *pm = &dtm->dispatch_pcap_main;
   dispatch_trace_thread_t *dtt =
     vec_elt_at_index (dtm->threads, vm->thread_index);
+  vnet_pcap_t *pp = &vnet_get_main ()->pcap;
   vlib_trace_main_t *tm = &vm->trace_main;
   u32 capture_size;
   vlib_node_t *n;
@@ -90,6 +93,16 @@ dispatch_pcap_trace (vlib_main_t *vm, vlib_node_runtime_t *node,
       if (PREDICT_TRUE (pm->n_packets_captured < pm->n_packets_to_capture))
 	{
 	  b = bufp[i];
+
+	  /* Apply filter if enabled */
+	  if (PREDICT_FALSE (dtm->filter_enable))
+	    {
+	      /* dispatch trace does not use classifier-based filtering. */
+	      if (pp->current_filter_function &&
+		  pp->current_filter_function (b, ~0, /* classify_table_index */
+					       0 /* full classify */) != 1)
+		continue;
+	    }
 
 	  vec_reset_length (dtt->pcap_buffer);
 	  string_count = 0;
@@ -226,6 +239,9 @@ vlib_pcap_dispatch_trace_configure (vlib_pcap_dispatch_trace_args_t *a)
 			   pm->n_packets_captured, pm->n_packets_to_capture);
 	  vlib_cli_output (vm, "capture to file %s", pm->file_name);
 
+	  if (dtm->filter_enable)
+	    vlib_cli_output (vm, "packet filter enabled");
+
 	  for (i = 0; i < vec_len (dtm->dispatch_buffer_trace_nodes); i++)
 	    {
 	      vlib_cli_output (
@@ -298,10 +314,16 @@ vlib_pcap_dispatch_trace_configure (vlib_pcap_dispatch_trace_args_t *a)
       pm->packet_type = PCAP_PACKET_TYPE_vpp;
       pm->n_packets_to_capture = a->packets_to_capture;
       dtm->enable = 1;
+
+      /* Enable filter if requested */
+      if (a->filter)
+	dtm->filter_enable = 1;
     }
   else
     {
       dtm->enable = 0;
+      /* Disable filter */
+      dtm->filter_enable = 0;
       foreach_vlib_main ()
 	{
 	  tm = &this_vlib_main->trace_main;
@@ -360,6 +382,7 @@ dispatch_trace_command_fn (vlib_main_t *vm, unformat_input_t *input,
   int enable = 0;
   int status = 0;
   int post_mortem = 0;
+  u32 filter = 0;
   u32 node_index = ~0, buffer_traces_to_capture = 100;
 
   /* Get a line of input. */
@@ -390,6 +413,8 @@ dispatch_trace_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	;
       else if (unformat (line_input, "post-mortem %=", &post_mortem, 1))
 	;
+      else if (unformat (line_input, "filter %=", &filter, 1))
+	;
       else
 	{
 	  return clib_error_return (0, "unknown input `%U'",
@@ -407,6 +432,7 @@ dispatch_trace_command_fn (vlib_main_t *vm, unformat_input_t *input,
   a->buffer_trace_node_index = node_index;
   a->buffer_traces_to_capture = buffer_traces_to_capture;
   a->post_mortem = post_mortem;
+  a->filter = filter;
 
   rv = vlib_pcap_dispatch_trace_configure (a);
 
@@ -464,6 +490,12 @@ dispatch_trace_command_fn (vlib_main_t *vm, unformat_input_t *input,
  *   the local buffer. All additional attributes entered on command line
  *   with '<em>status</em>' will be ignored and not applied.
  *
+ * - <b>filter</b> - Enables packet filtering using the selected pcap
+ *   filter function. To use the BPF-based filter, configure it with
+ *   '<em>set bpf trace filter</em>' and select it via
+ *   '<em>set pcap filter function bpf_trace_filter</em>'. If not
+ *   specified, all packets will be captured.
+ *
  * @cliexpar
  * Example of how to display the status of capture when off:
  * @cliexstart{pcap dispatch trace status}
@@ -492,13 +524,16 @@ dispatch_trace_command_fn (vlib_main_t *vm, unformat_input_t *input,
  * pcap dispatch trace on max 20000 buffer-trace
  *     dpdk-input 3000000000 post-mortem
  * @cliexend
+ * Example of how to start a dispatch trace with filter:
+ * @cliexstart{pcap dispatch trace on max 1000 file dispatch.pcap filter}
+ * pcap dispatch capture on...
+ * @cliexend
 ?*/
 
 VLIB_CLI_COMMAND (pcap_dispatch_trace_command, static) = {
   .path = "pcap dispatch trace",
-  .short_help =
-    "pcap dispatch trace [on|off] [max <nn>] [file <name>] [status]\n"
-    "              [buffer-trace <input-node-name> <nn>][post-mortem]",
+  .short_help = "pcap dispatch trace [on|off] [max <nn>] [file <name>] [status]\n"
+		"              [buffer-trace <input-node-name> <nn>][post-mortem][filter]",
   .function = dispatch_trace_command_fn,
 };
 
