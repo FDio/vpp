@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "446a9cad_e0859c28",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2025-12-17T09:13:10Z",
+      "side": 1,
+      "message": "Two things:\n- First you really have two changes in one, raw IP packet support and dispatch trace filter. You probably should separate them in different gerrit patches, espacially given that they are very loosely coupled (if at all)\n- Wrt raw IP packet support, the \"guessing\" method is fun, but I wonder if we couldn\u0027t have a more \"structured\" approach here (where basically we know in advance upon calling the trace filter function if it is L2 or L3...) Thoughts about why this would be impossible?",
+      "revId": "107498a18d968491c85def1adae56e3741a458f8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
