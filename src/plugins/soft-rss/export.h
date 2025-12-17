@@ -45,12 +45,13 @@ typedef clib_error_t *(*soft_rss_disable_fn_t) (vlib_main_t *vm,
 
 #ifdef SOFT_RSS_PLUGIN_INTERNAL
 
-clib_error_t *soft_rss_config (vlib_main_t *vm,
-			       const soft_rss_config_t *config,
-			       u32 hw_if_index);
-clib_error_t *soft_rss_clear (vlib_main_t *vm, u32 hw_if_index);
-clib_error_t *soft_rss_enable (vlib_main_t *vm, u32 hw_if_index);
-clib_error_t *soft_rss_disable (vlib_main_t *vm, u32 hw_if_index);
+__clib_export clib_error_t *soft_rss_config (vlib_main_t *vm,
+					     const soft_rss_config_t *config,
+					     u32 hw_if_index);
+__clib_export clib_error_t *soft_rss_clear (vlib_main_t *vm, u32 hw_if_index);
+__clib_export clib_error_t *soft_rss_enable (vlib_main_t *vm, u32 hw_if_index);
+__clib_export clib_error_t *soft_rss_disable (vlib_main_t *vm,
+					      u32 hw_if_index);
 
 #else /* SOFT_RSS_PLUGIN_INTERNAL */
 
