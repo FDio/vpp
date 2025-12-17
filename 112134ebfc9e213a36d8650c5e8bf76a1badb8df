@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6115c527_0012aab7",
+        "filename": "test/hs-test/hs_test.sh",
+        "patchSetId": 5
+      },
+      "lineNbr": 247,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-12-17T18:48:01Z",
+      "side": 1,
+      "message": "should this be CORES_TO_USE?",
+      "range": {
+        "startLine": 247,
+        "startChar": 51,
+        "endLine": 247,
+        "endChar": 53
+      },
+      "revId": "112134ebfc9e213a36d8650c5e8bf76a1badb8df",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
