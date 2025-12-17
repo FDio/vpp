@@ -79,7 +79,8 @@ format_soft_rss_if (u8 *s, va_list *args)
 
   s = format (s, "%U:\n", format_vnet_sw_if_index_name, vnm, sw_if_index);
   s = format (s, "  status: %s\n", rt->enabled ? "enabled" : "disabled");
-  s = format (s, "  type: %U\n", format_soft_rss_type, rt->type);
+  s = format (s, "  ipv4-type: %U\n", format_soft_rss_type, rt->ipv4_type);
+  s = format (s, "  ipv6-type: %U\n", format_soft_rss_type, rt->ipv6_type);
   s = format (s, "  match-offset: %u\n", rt->match_offset);
   s = format (s, "  reta size: %u\n", rt->reta_mask + 1);
   s = format (s, "  reta: %U", format_soft_rss_reta, rt->reta,
