@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "15f42f66_6ece452f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-12-17T14:55:53Z",
+      "side": 1,
+      "message": "gha-run vpp-csit-2n-icx perftest nic_intel-e810cqAND1cAND100bANDethip4tcp*-ip4base-h65536-p63-s4128768-tput #generate-all",
+      "revId": "adef168f45de9f99756d3a866ecb320fe09a31c2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
