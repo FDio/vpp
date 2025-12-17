@@ -558,6 +558,28 @@ vt_quic_init (hs_test_cfg_t *cfg)
   return vt_add_cert_key_pair ();
 }
 
+typedef enum vt_quic_flags_
+{
+  VT_QUIC_F_SERVER = (1 << 0),
+  VT_QUIC_F_HALF_CLOSED = (1 << 1),
+} vt_quic_flags_t;
+
+typedef struct vt_quic_ctx_
+{
+  vt_quic_flags_t flags;
+} vt_quic_ctx_t;
+
+static void
+vt_quic_session_init (vcl_test_session_t *ts, u8 is_server)
+{
+  vt_quic_ctx_t *quic_ctx;
+
+  quic_ctx = malloc (sizeof (vt_quic_ctx_t));
+  memset (quic_ctx, 0, sizeof (*quic_ctx));
+  quic_ctx->flags |= is_server ? VT_QUIC_F_SERVER : 0;
+  ts->opaque = quic_ctx;
+}
+
 static int
 vt_quic_maybe_init_wrk (vcl_test_main_t *vt, vcl_test_wrk_t *wrk,
 			vppcom_endpt_t *endpt)
@@ -622,6 +644,19 @@ vt_quic_maybe_init_wrk (vcl_test_main_t *vt, vcl_test_wrk_t *wrk,
 }
 
 static int
+vt_quic_client_bidi_write (vcl_test_session_t *ts, void *buf, uint32_t nbytes)
+{
+  int rv;
+
+  rv = vcl_test_write (ts, buf, nbytes);
+
+  if (ts->stats.tx_bytes >= ts->cfg.total_bytes)
+    vppcom_session_shutdown (ts->fd, SHUT_WR);
+
+  return rv;
+}
+
+static int
 vt_quic_connect (vcl_test_session_t *ts, vppcom_endpt_t *endpt)
 {
   vcl_test_main_t *vt = &vcl_test_main;
@@ -661,8 +696,18 @@ vt_quic_connect (vcl_test_session_t *ts, vppcom_endpt_t *endpt)
       return rv;
     }
 
-  ts->read = vcl_test_read;
-  ts->write = vcl_test_write;
+  if (vt->cfg.test == HS_TEST_TYPE_BI)
+    {
+      ts->read = vcl_test_read;
+      ts->write = vt_quic_client_bidi_write;
+    }
+  else
+    {
+      ts->read = vcl_test_read;
+      ts->write = vcl_test_write;
+    }
+
+  vt_quic_session_init (ts, 0);
 
   if (!ts->noblk_connect)
     {
@@ -712,6 +757,29 @@ vt_quic_listen (vcl_test_session_t *ts, vppcom_endpt_t *endpt)
 }
 
 static int
+vt_quic_server_bidi_write (vcl_test_session_t *ts, void *buf, uint32_t nbytes)
+{
+  if (!vppcom_session_is_stream (ts->fd))
+    return 0;
+
+  vt_quic_ctx_t *quic_ctx = (vt_quic_ctx_t *) ts->opaque;
+  int rv = 0;
+
+  if (quic_ctx->flags & VT_QUIC_F_HALF_CLOSED &&
+      ts->stats.tx_bytes < ts->cfg.total_bytes)
+    {
+      rv = vcl_test_write (ts, ts->txbuf, ts->cfg.txbuf_size);
+      if (ts->stats.tx_bytes >= ts->cfg.total_bytes)
+	{
+	  vppcom_session_close (ts->fd);
+	  ts->is_open = 0;
+	}
+    }
+
+  return rv;
+}
+
+static int
 vt_quic_accept (int listen_fd, vcl_test_session_t *ts)
 {
   int client_fd;
@@ -745,14 +813,25 @@ vt_quic_accept (int listen_fd, vcl_test_session_t *ts)
 
   ts->fd = client_fd;
   ts->is_open = 1;
-  ts->read = vcl_test_read;
-  ts->write = vcl_test_write;
+
+  if (ts->cfg.test == HS_TEST_TYPE_BI)
+    {
+      ts->read = vcl_test_read;
+      ts->write = vt_quic_server_bidi_write;
+    }
+  else
+    {
+      ts->read = vcl_test_read;
+      ts->write = vcl_test_write;
+    }
+
+  vt_quic_session_init (ts, 1);
 
   return 0;
 }
 
 static int
-vt_quic_close (vcl_test_session_t *ts)
+vt_quic_cleanup (vcl_test_session_t *ts)
 {
   int listener_fd = vppcom_session_listener (ts->fd);
 
@@ -763,7 +842,28 @@ vt_quic_close (vcl_test_session_t *ts)
       vppcom_session_close (listener_fd);
     }
 
+  if (ts->opaque)
+    free (ts->opaque);
+
   return 0;
+}
+
+static int
+vt_quic_close (vcl_test_session_t *ts, uint32_t events)
+{
+  vt_quic_ctx_t *quic_ctx = (vt_quic_ctx_t *) ts->opaque;
+
+  vtinf ("session %d (fd %d) closed evt %x", ts->session_index, ts->fd,
+	 events);
+  if (quic_ctx->flags & VT_QUIC_F_SERVER && events & EPOLLRDHUP &&
+      vppcom_session_is_stream (ts->fd))
+    {
+      vtinf ("stream half-closed");
+      quic_ctx->flags |= VT_QUIC_F_HALF_CLOSED;
+      return 0;
+    }
+
+  return 1;
 }
 
 static const vcl_test_proto_vft_t vcl_test_quic = {
@@ -771,6 +871,7 @@ static const vcl_test_proto_vft_t vcl_test_quic = {
   .open = vt_quic_connect,
   .listen = vt_quic_listen,
   .accept = vt_quic_accept,
+  .cleanup = vt_quic_cleanup,
   .close = vt_quic_close,
 };
 
@@ -1048,7 +1149,7 @@ vt_srtp_accept (int listen_fd, vcl_test_session_t *ts)
 }
 
 static int
-vt_srtp_close (vcl_test_session_t *ts)
+vt_srtp_cleanup (vcl_test_session_t *ts)
 {
   free (ts->opaque);
   return 0;
@@ -1058,7 +1159,7 @@ static const vcl_test_proto_vft_t vcl_test_srtp = {
   .open = vt_srtp_connect,
   .listen = vt_srtp_listen,
   .accept = vt_srtp_accept,
-  .close = vt_srtp_close,
+  .cleanup = vt_srtp_cleanup,
 };
 
 VCL_TEST_REGISTER_PROTO (VPPCOM_PROTO_SRTP, vcl_test_srtp);
@@ -1452,7 +1553,7 @@ vt_http_accept (int listen_fd, vcl_test_session_t *ts)
 }
 
 static int
-vt_http_close (vcl_test_session_t *ts)
+vt_http_cleanup (vcl_test_session_t *ts)
 {
   free (ts->opaque);
   return 0;
@@ -1462,7 +1563,7 @@ static const vcl_test_proto_vft_t vcl_test_http = {
   .open = vt_http_connect,
   .listen = vt_http_listen,
   .accept = vt_http_accept,
-  .close = vt_http_close,
+  .cleanup = vt_http_cleanup,
 };
 
 VCL_TEST_REGISTER_PROTO (VPPCOM_PROTO_HTTP, vcl_test_http);

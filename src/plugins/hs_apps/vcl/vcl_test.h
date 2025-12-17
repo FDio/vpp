@@ -102,7 +102,8 @@ typedef struct
   int (*open) (vcl_test_session_t *ts, vppcom_endpt_t *endpt);
   int (*listen) (vcl_test_session_t *ts, vppcom_endpt_t *endpt);
   int (*accept) (int listen_fd, vcl_test_session_t *ts);
-  int (*close) (vcl_test_session_t *ts);
+  int (*cleanup) (vcl_test_session_t *ts);
+  int (*close) (vcl_test_session_t *ts, uint32_t events);
 } vcl_test_proto_vft_t;
 
 typedef struct
@@ -388,8 +389,12 @@ vcl_test_write (vcl_test_session_t *ts, void *buf, uint32_t nbytes)
 	{
 	  errno = -rv;
 	  if ((errno == EAGAIN || errno == EWOULDBLOCK))
-	    stats->tx_eagain++;
-	  break;
+	    {
+	      stats->tx_eagain++;
+	      break;
+	    }
+	  vterr ("vpcom_session_write", -errno);
+	  return -1;
 	}
       tx_bytes += rv;
 
@@ -400,12 +405,7 @@ vcl_test_write (vcl_test_session_t *ts, void *buf, uint32_t nbytes)
     }
   while (tx_bytes != nbytes);
 
-  if (tx_bytes < 0)
-    {
-      vterr ("vpcom_session_write", -errno);
-    }
-  else
-    stats->tx_bytes += tx_bytes;
+  stats->tx_bytes += tx_bytes;
 
   return (tx_bytes);
 }
