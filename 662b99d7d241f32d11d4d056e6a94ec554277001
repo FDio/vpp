@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f9122dbb_5491707d",
+        "filename": "src/plugins/sasc/sasc.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 181,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-12-18T08:55:02Z",
+      "side": 1,
+      "message": "Note that vnet_buffer_opaque_t-\u003eunused is a lie, it is actually used. To be convinced, double-check the definition of vnet_buffer_opaque_t, the unused field is in the union and overlap with other fileds.\nSo if you can guarantee it does not overlap with any fields that can be used then this is perfectly fine. Otherwise, it might be better to use vnet_buffer_opaque2_t unused instead, which is really unused.",
+      "revId": "662b99d7d241f32d11d4d056e6a94ec554277001",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
