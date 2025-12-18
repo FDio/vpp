@@ -178,14 +178,16 @@ jobs:
           cd "$WORKSPACE"
           make docs | tee "$LOG_DIR/make_docs.log"
 
-      # TODO: Upload Docs to S3
-      # - name: Upload Documentation Artifacts
-      #   if: always()
-      #   uses: actions/upload-artifact@v5
-      #   with:
-      #     name: vpp-verify-docs-${{ env.GERRIT_BRANCH }}-rel-ubuntu2404-x86_64-${{ env.GERRIT_CHANGE_NUMBER }}-${{ env.GERRIT_PATCHSET_NUMBER }}
-      #     path: ${{ env.WORKSPACE }}/build-root/docs/
-      #     retention-days: 7
+      - name: AWS S3 Publish Docs
+        # yamllint disable-line rule:line-length
+        uses: fdio/.github/.github/actions/aws-s3-publish-logs@ae7db6e7250ff58a28f48af147901f0039e11948
+        with:
+          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws_region: ${{ vars.AWS_REGION }}
+          s3_bucket: 'vpp-docs-7day-retention'
+          s3_path: ${{ env.LOG_NAME }}
+          archives_path: "${{ env.WORKSPACE }}/build-root/docs/html"
 
       - name: AWS S3 Publish Logs
         if: always()
