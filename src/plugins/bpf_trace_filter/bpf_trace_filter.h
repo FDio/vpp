@@ -8,10 +8,13 @@
 #include <pcap.h>
 typedef struct
 {
-  pcap_t *pcap;
+  pcap_t *pcap;	    /* for DLT_EN10MB (Ethernet) */
+  pcap_t *pcap_raw; /* for DLT_RAW (raw IP) */
   u16 msg_id_base;
   u8 prog_set;
-  struct bpf_program prog;
+  u8 prog_raw_set;
+  struct bpf_program prog;     /* compiled for Ethernet */
+  struct bpf_program prog_raw; /* compiled for raw IP */
 } bpf_trace_filter_main_t;
 
 extern bpf_trace_filter_main_t bpf_trace_filter_main;
