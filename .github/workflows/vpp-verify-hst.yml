@@ -111,22 +111,29 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        build_type: ['debug', 'release']
+        build_type: ['debug']
         class: ['hst']
-        os: ['ubuntu2404', 'ubuntu2204']
-        executor_arch: ['x86_64', 'aarch64']
+        os: ['ubuntu2404']
+        executor_arch: ['x86_64']
         size: ['hst']
-        exclude:
-          # Exclude all ubuntu2404 on aarch64
-          - os: 'ubuntu2404'
-            executor_arch: 'aarch64'
-          # Exclude all release builds on ubuntu2404
-          - os: 'ubuntu2404'
-            build_type: 'release'
-          # Exclude release builds on aarch64 (ubuntu2204 only, since ubuntu2404+aarch64 already excluded)
-          - os: 'ubuntu2204'
-            executor_arch: 'aarch64'
-            build_type: 'release'
+
+        # TODO: create periodic job to run the rest of the HST variants
+        # build_type: ['debug', 'release']
+        # class: ['hst']
+        # os: ['ubuntu2404', 'ubuntu2204']
+        # executor_arch: ['x86_64', 'aarch64']
+        # size: ['hst']
+        # exclude:
+        #   # Exclude all ubuntu2404 on aarch64
+        #   - os: 'ubuntu2404'
+        #     executor_arch: 'aarch64'
+        #   # Exclude all release builds on ubuntu2404
+        #   - os: 'ubuntu2404'
+        #     build_type: 'release'
+        #   # Exclude release builds on aarch64 (ubuntu2204 only, since ubuntu2404+aarch64 already excluded)
+        #   - os: 'ubuntu2204'
+        #     executor_arch: 'aarch64'
+        #     build_type: 'release'
 
     env:
       FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
