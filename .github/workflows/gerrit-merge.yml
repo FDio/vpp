@@ -120,8 +120,6 @@ jobs:
     name: Merge Maketest
     needs:
       - start-merge
-      - merge-docs
-    if: ${{ needs.start-merge.result == 'success' && (needs.merge-docs.result == 'success' || needs.merge-docs.result == 'skipped') }}
     uses: fdio/vpp/.github/workflows/vpp-merge-maketest.yml@master
     with:
       FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
