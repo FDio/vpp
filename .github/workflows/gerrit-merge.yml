@@ -62,6 +62,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       log_prefix: ${{ steps.start-time.outputs.log_prefix }}
+      docs_changed: ${{ steps.docs-changed.outputs.docs_changed }}
     steps:
       - name: Start Time
         id: start-time
@@ -72,10 +73,34 @@ jobs:
           echo "log_prefix=$log_prefix" >> "$GITHUB_OUTPUT"
           echo "Gerrit Change: ${{ inputs.GERRIT_CHANGE_URL }}"
 
+      - name: Actions Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Detect docs changes
+        id: docs-changed
+        run: |
+          set -euo pipefail
+
+          docs_changed=true
+          if git fetch origin "${{ inputs.GERRIT_REFSPEC }}"; then
+            if git diff-tree --no-commit-id --name-only -r --root FETCH_HEAD | grep -Eq 'docs/|\.rst$'; then
+              docs_changed=true
+            else
+              docs_changed=false
+            fi
+          else
+            echo "warn: unable to fetch '${{ inputs.GERRIT_REFSPEC }}'; defaulting docs_changed=true" >&2
+          fi
+
+          echo "docs_changed=$docs_changed" >> "$GITHUB_OUTPUT"
+
   merge-docs:
     name: Merge Docs
     needs:
       - start-merge
+    if: ${{ needs.start-merge.outputs.docs_changed == 'true' }}
     uses: fdio/vpp/.github/workflows/vpp-merge-docs.yml@master
     with:
       FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
@@ -94,7 +119,9 @@ jobs:
   merge-maketest:
     name: Merge Maketest
     needs:
+      - start-merge
       - merge-docs
+    if: ${{ needs.start-merge.result == 'success' && (needs.merge-docs.result == 'success' || needs.merge-docs.result == 'skipped') }}
     uses: fdio/vpp/.github/workflows/vpp-merge-maketest.yml@master
     with:
       FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}

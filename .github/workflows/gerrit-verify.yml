@@ -66,6 +66,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       log_prefix: ${{ steps.start-time.outputs.log_prefix }}
+      docs_changed: ${{ steps.docs-changed.outputs.docs_changed }}
 
     steps:
       - name: Start Time
@@ -89,6 +90,29 @@ jobs:
           gerrit-patchset-number: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
           vote-type: clear
           comment-only: true
+
+      - name: Actions Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Detect docs changes
+        id: docs-changed
+        run: |
+          set -euo pipefail
+
+          docs_changed=true
+          if git fetch origin "${{ inputs.GERRIT_REFSPEC }}"; then
+            if git diff-tree --no-commit-id --name-only -r --root FETCH_HEAD | grep -Eq 'docs/|\.rst$'; then
+              docs_changed=true
+            else
+              docs_changed=false
+            fi
+          else
+            echo "warn: unable to fetch '${{ inputs.GERRIT_REFSPEC }}'; defaulting docs_changed=true" >&2
+          fi
+
+          echo "docs_changed=$docs_changed" >> "$GITHUB_OUTPUT"
 
   verify-checkstyle:
     name: Checkstyle
@@ -132,7 +156,7 @@ jobs:
     needs:
       - start-verify
       - verify-checkstyle
-    if: ${{ needs.verify-checkstyle.result == 'success' }}
+    if: ${{ needs.verify-checkstyle.result == 'success' && needs.start-verify.outputs.docs_changed == 'true' }}
     uses: fdio/vpp/.github/workflows/vpp-verify-docs.yml@master
     with:
       FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
@@ -219,10 +243,15 @@ jobs:
         id: overall
         run: |
           set -euxo pipefail
+          docs_ok=true
+          if [[ "${{ needs.start-verify.outputs.docs_changed }}" == "true" ]]; then
+            [[ "${{ needs.verify-docs.result }}" == "success" ]] || docs_ok=false
+          fi
+
           if [[ "${{ needs.start-verify.result }}" == "success" && \
                 "${{ needs.verify-checkstyle.result }}" == "success" && \
                 "${{ needs.verify-maketest.result }}" == "success" && \
-                "${{ needs.verify-docs.result }}" == "success" && \
+                "$docs_ok" == "true" && \
                 "${{ needs.verify-csit-api.result }}" == "success" && \
                 "${{ needs.verify-arm-drivers.result }}" == "success" && \
                 "${{ needs.verify-hst.result }}" == "success" ]]; then
