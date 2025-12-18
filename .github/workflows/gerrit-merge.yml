@@ -103,6 +103,7 @@ jobs:
       - fdio:namespace=${{ inputs.FDIO_NAMESPACE || 'prod' }}
       - fdio:os=ubuntu2404
       - fdio:size=csit
+      - fdio:workflow=${{ github.run_id }}
     outputs:
       docs_changed: ${{ steps.docs-changed.outputs.docs_changed }}
     env:
