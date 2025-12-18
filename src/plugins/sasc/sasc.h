@@ -172,10 +172,15 @@ typedef struct {
     u32 context_id;
     u16 next_indices_index; // Index into sasc->next_indices
     u16 position;           // Position within the next_indices vector
-    u16 tenant_index;       // Added for tenant tracking
+    u8 pad_rew_len;         // do not overlay with ip.save_rewrite_length
     u8 flags;
+    u16 tenant_index; // Added for tenant tracking
 } sasc_buffer_opaque_t;
 #define sasc_buffer(b) ((sasc_buffer_opaque_t *)vnet_buffer(b)->unused)
+
+STATIC_ASSERT(sizeof(sasc_buffer_opaque_t) <= sizeof(vnet_buffer((vlib_buffer_t *)0)->unused),
+              "size of sasc_buffer_opaque_t must be <= size of "
+              "vnet_buffer_opaque_t->unused");
 
 typedef enum {
     SASC_INGRESS_NODE_LOOKUP_IP4 = 0,
