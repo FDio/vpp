@@ -196,14 +196,19 @@ jobs:
           set -euxo pipefail
           cd "$WORKSPACE"
           make docs | tee "$LOG_DIR/make_docs.log"
+          vpp_release ="$(${WORKSPACE}/build-root/scripts/version rpm-version)"
+          echo "S3_PATH=/vpp/${vpp_release}/" >> "$GITHUB_ENV"
 
-      - name: Upload Documentation Artifacts
-        if: always()
-        uses: actions/upload-artifact@v5
+      - name: AWS S3 Publish Docs
+        # yamllint disable-line rule:line-length
+        uses: fdio/.github/.github/actions/aws-s3-publish-logs@ae7db6e7250ff58a28f48af147901f0039e11948
         with:
-          name: vpp-merge-docs-${{ env.GERRIT_BRANCH }}-rel-ubuntu2404-x86_64-${{ env.GERRIT_CHANGE_NUMBER }}-${{ env.GERRIT_PATCHSET_NUMBER }}
-          path: ${{ env.WORKSPACE }}/build-root/docs/
-          retention-days: 5
+          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws_region: ${{ vars.AWS_REGION }}
+          s3_bucket: 'fdio-docs-s3-cloudfront-index'
+          s3_path: ${{ env.S3_PATH }}
+          archives_path: "${{ env.WORKSPACE }}/build-root/docs/html"
 
       - name: AWS S3 Publish Logs
         if: always()
