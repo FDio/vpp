@@ -34,6 +34,24 @@
       "parentUuid": "446a9cad_e0859c28",
       "revId": "107498a18d968491c85def1adae56e3741a458f8",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3360547a_6476c5f3",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2025-12-18T01:04:45Z",
+      "side": 1,
+      "message": "Ran into an issue with the above idea. The trace filter is applied at device input nodes (L2). IP nodes (L3) only add trace data via `vlib_add_trace()`, they don\u0027t call `vlib_trace_buffer()` directly. So, the above approach of changing the API won\u0027t work. Instead, we can use the `VNET_BUFFER_F_L2_HDR_OFFSET_VALID` flag that VPP already maintains.",
+      "parentUuid": "3695f772_6d138ad0",
+      "revId": "107498a18d968491c85def1adae56e3741a458f8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
