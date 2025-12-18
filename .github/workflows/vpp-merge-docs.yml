@@ -192,6 +192,7 @@ jobs:
           TUI_LINE: ${{ env.TUI_LINE }}
 
       - name: Make Docs
+        id: make-docs
         run: |
           set -euxo pipefail
           cd "$WORKSPACE"
@@ -200,6 +201,7 @@ jobs:
           echo "S3_PATH=/vpp/${vpp_release}/" >> "$GITHUB_ENV"
 
       - name: AWS S3 Publish Docs
+        if: ${{ steps.make-docs.outcome == 'success' }}
         # yamllint disable-line rule:line-length
         uses: fdio/.github/.github/actions/aws-s3-publish-logs@ae7db6e7250ff58a28f48af147901f0039e11948
         with:
