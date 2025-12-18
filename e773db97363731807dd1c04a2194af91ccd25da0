@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "35195863_0af012f7",
+        "filename": "src/vpp/app/dump_metrics.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 146,
+      "author": {
+        "id": 3270
+      },
+      "writtenOn": "2025-12-18T21:06:40Z",
+      "side": 1,
+      "message": "Ill fix",
+      "parentUuid": "f88f6b86_7fa32ef9",
+      "revId": "e773db97363731807dd1c04a2194af91ccd25da0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "cf59f051_4641cfdf",
@@ -35,6 +53,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "58dfc824_84cc8e21",
+        "filename": "src/vpp/app/dump_metrics.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 158,
+      "author": {
+        "id": 3270
+      },
+      "writtenOn": "2025-12-18T21:06:40Z",
+      "side": 1,
+      "message": "Cause some of the interface tokens have / in there ids. And then you dont know if you should split the part into a id or its the / inside the id.\nSamples:\n/interfaces/GigabitEthernet0_14_0/tx-broadcast\n/interfaces/GigabitEthernet0/14/0/rx_good_packets",
+      "parentUuid": "cf59f051_4641cfdf",
+      "revId": "e773db97363731807dd1c04a2194af91ccd25da0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "f831df97_d9aa0ddf",
@@ -48,6 +84,24 @@
       "writtenOn": "2025-12-18T09:00:55Z",
       "side": 1,
       "message": "I think we can compute the full length of the string once?",
+      "revId": "e773db97363731807dd1c04a2194af91ccd25da0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "df3acb07_e2024862",
+        "filename": "src/vpp/app/dump_metrics.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 182,
+      "author": {
+        "id": 3270
+      },
+      "writtenOn": "2025-12-18T21:06:40Z",
+      "side": 1,
+      "message": "This is the length of the section no the string length.",
+      "parentUuid": "f831df97_d9aa0ddf",
       "revId": "e773db97363731807dd1c04a2194af91ccd25da0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
