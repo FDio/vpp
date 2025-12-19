@@ -135,9 +135,9 @@ func Http3PostTest(s *Http3Suite) {
 func Http3UploadTest(s *Http3Suite) {
 	vpp := s.Containers.Vpp.VppInstance
 	serverAddress := s.VppAddr() + ":" + s.Ports.Port1
-	Log(vpp.Vppctl("http tps no-zc h3 uri https://" + serverAddress))
+	Log(vpp.Vppctl("http tps no-zc h3 uri https://" + serverAddress + " fifo-size 1M"))
 
-	args := fmt.Sprintf("-k --max-time 30 --noproxy '*' --http3-only --data-binary @/tmp/testFile https://%s/test_file_10M",
+	args := fmt.Sprintf("-k --max-time 30 --noproxy '*' --http3-only --data-binary @/tmp/testFile https://%s/test_file_10M fifo-size 1M",
 		serverAddress)
 	_, log := RunCurlContainer(s.Containers.Curl, args)
 	Log(vpp.Vppctl("show session verbose 2"))
@@ -189,7 +189,7 @@ func Http3ClientGetMultiplexingTest(s *Http3Suite) {
 	s.StartNginx()
 
 	uri := "https://" + serverAddress + "/httpTestFile"
-	cmd := fmt.Sprintf("http client http3 streams %d repeat %d uri %s", 10, 20, uri)
+	cmd := fmt.Sprintf("http client http3 streams %d repeat %d uri %s fifo-size 1M", 10, 20, uri)
 	o := vpp.Vppctl(cmd)
 	Log(o)
 	AssertContains(o, "20 request(s)")
