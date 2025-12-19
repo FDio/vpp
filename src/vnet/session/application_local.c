@@ -184,7 +184,6 @@ ct_session_connect_notify (session_t *ss, session_error_t err)
   cs = session_alloc (thread_index);
   ss = session_get (ss_index, thread_index);
   cs->session_type = ss->session_type;
-  cs->listener_handle = SESSION_INVALID_HANDLE;
   session_set_state (cs, SESSION_STATE_CONNECTING);
   cs->app_wrk_index = client_wrk->wrk_index;
   cs->connection_index = cct->c_c_index;

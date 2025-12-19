@@ -90,6 +90,7 @@ quic_connect_connection (transport_endpoint_cfg_t *tep)
   ctx_index = quic_ctx_alloc (qm, thread_index);
   ctx = quic_ctx_get (ctx_index, thread_index);
   ctx->parent_app_wrk_id = sep->app_wrk_index;
+  ctx->app_wrk_connect_index = sep->app_wrk_connect_index;
   ctx->c_s_index = SESSION_INVALID_INDEX;
   ctx->c_c_index = ctx_index;
   ctx->c_thread_index = thread_index;
@@ -253,6 +254,7 @@ quic_start_listen (u32 quic_listen_session_index,
   quic_main_t *qm = &quic_main;
   session_handle_t udp_handle;
   session_endpoint_cfg_t *sep;
+  session_t *quic_listen_session;
   session_t *udp_listen_session;
   app_worker_t *app_wrk;
   application_t *app;
@@ -285,6 +287,8 @@ quic_start_listen (u32 quic_listen_session_index,
   udp_handle = args->handle;
   app_listener = app_listener_get_w_handle (udp_handle);
   udp_listen_session = app_listener_get_session (app_listener);
+  quic_listen_session = listen_session_get (quic_listen_session_index);
+  udp_listen_session->listener_handle = listen_session_get_handle (quic_listen_session);
   udp_listen_session->opaque = lctx_index;
 
   lctx = quic_ctx_get (lctx_index, 0);
