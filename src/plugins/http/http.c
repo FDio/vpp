@@ -354,6 +354,7 @@ http_connect_transport_stream (u32 parent_index, clib_thread_index_t thread_inde
   http_main_t *hm = &http_main;
   http_ctx_t *hc, *parent;
   http_conn_handle_t hc_handle;
+  session_t *ts;
   u32 hc_index;
   int error;
 
@@ -370,6 +371,11 @@ http_connect_transport_stream (u32 parent_index, clib_thread_index_t thread_inde
   clib_memset (cargs, 0, sizeof (*cargs));
   cargs->sep.transport_proto = TRANSPORT_PROTO_QUIC;
   cargs->sep_ext.parent_handle = parent->hc_tc_session_handle;
+  ts = session_get_from_handle (parent->hc_tc_session_handle);
+  if (ts->app_wrk_connect_index != SESSION_INVALID_INDEX)
+    cargs->sep_ext.app_wrk_connect_index = ts->app_wrk_connect_index;
+  else
+    cargs->sep_ext.app_wrk_connect_index = parent->hc_pa_wrk_index;
   cargs->app_index = hm->app_index;
   cargs->api_context = hc_handle.as_u32;
   if (is_unidirectional)

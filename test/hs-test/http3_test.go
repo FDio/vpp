@@ -106,6 +106,105 @@ func Http3GetTest(s *Http3Suite) {
 	AssertNotContains(o, "LISTEN")
 }
 
+func Http3ListenerSegmentManagerTest(s *Http3Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	serverAddress := s.VppAddr() + ":" + s.Ports.Port1
+	baselineSmCount := getSegmentManagerCount(vpp)
+
+	Log(vpp.Vppctl("http cli server http3-enabled listener add uri https://" + serverAddress))
+	Log(vpp.Vppctl("show app listeners verbose"))
+
+	appSms := waitForAppListenerSegmentManagers(vpp, "http_cli_server", 10)
+	httpSms := waitForAppListenerSegmentManagers(vpp, "http", 10)
+	quicSms := waitForAppListenerSegmentManagers(vpp, "quic", 10)
+	tlsSms := waitForAppListenerSegmentManagers(vpp, "tls", 10)
+	appSm := appSms[0]
+
+	assertAllSegmentManagersEqual(appSms, appSm, "application listener should use a single segment manager")
+	assertAllSegmentManagersEqual(httpSms, appSm, "http transport listener should use application listener segment manager")
+	assertAllSegmentManagersEqual(quicSms, appSm, "quic transport listener should use application listener segment manager")
+	assertAllSegmentManagersEqual(tlsSms, appSm, "tls transport listener should use application listener segment manager")
+	assertSegmentManagerOwner(vpp, appSm, "http_cli_server")
+
+	args := fmt.Sprintf("-k --max-time 10 --noproxy '*' --http3-only https://%s/show/version", serverAddress)
+	writeOut, log := RunCurlContainer(s.Containers.Curl, args)
+	AssertContains(log, "HTTP/3 200")
+	AssertContains(writeOut, "<html>", "<html> not found in the result!")
+	AssertContains(writeOut, "</html>", "</html> not found in the result!")
+	http3TestSessionCleanupServer(s)
+
+	Log(vpp.Vppctl("http cli server listener del uri https://" + serverAddress))
+	waitForNoAppListener(vpp, "http_cli_server", 10)
+	waitForNoAppListener(vpp, "http", 10)
+	waitForNoAppListener(vpp, "quic", 10)
+	waitForSegmentManagerCount(vpp, baselineSmCount, 10)
+}
+
+func Http3ConnectSegmentManagerTest(s *Http3Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	baselineSmCount := getSegmentManagerCount(vpp)
+
+	s.StartNginx()
+
+	uri := "https://" + s.HostAddr() + ":" + s.Ports.Port1 + "/64B"
+	o := vpp.Vppctl("http client http3 repeat 10 uri " + uri)
+	Log(o)
+	AssertContains(o, "10 request(s)")
+	AssertNotContains(o, "error")
+
+	o = vpp.Vppctl("show http stats")
+	Log(o)
+	AssertContains(o, "1 connections established")
+	AssertContains(o, "1 application streams opened")
+	AssertContains(o, "1 application streams closed")
+	AssertContains(o, "10 requests sent")
+	AssertContains(o, "10 responses received")
+
+	AssertEqual(0, len(getConnectSegmentManagers(vpp, "http")),
+		"http transport app should not own a connect segment manager")
+	AssertEqual(0, len(getConnectSegmentManagers(vpp, "quic")),
+		"quic transport app should not own a connect segment manager")
+	waitForNoClientProtoEntries(vpp, []string{"[Q]", "[H3]"}, 10)
+	waitForSegmentManagerCount(vpp, baselineSmCount, 10)
+}
+
+func Http3TransportSegmentManagerSegmentsTest(s *Http3Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	serverAddress := s.VppAddr() + ":" + s.Ports.Port1
+	baselineSmCount := getSegmentManagerCount(vpp)
+
+	Log(vpp.Vppctl("http cli server http3-enabled listener add uri https://" + serverAddress))
+	o := waitForSegmentManagerSegmentsApp(vpp, "http_cli_server", 10)
+	assertNoSegmentManagerSegmentsForApps(o, "http", "quic", "tls")
+
+	Log(vpp.Vppctl("http cli server listener del uri https://" + serverAddress))
+	waitForNoSegmentManagerSegmentsApp(vpp, "http_cli_server", 10)
+	waitForSegmentManagerCount(vpp, baselineSmCount, 10)
+}
+
+func Http3ConnectTransportSegmentManagerSegmentsTest(s *Http3Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	baselineSmCount := getSegmentManagerCount(vpp)
+
+	s.StartNginx()
+
+	uri := "https://" + s.HostAddr() + ":" + s.Ports.Port1 + "/64B"
+	done := make(chan string, 1)
+
+	go func() {
+		done <- vpp.Vppctl("http client http3 duration 5 uri " + uri)
+	}()
+
+	o := waitForSegmentManagerSegmentsApp(vpp, "http_client", 10)
+	assertNoSegmentManagerSegmentsForApps(o, "http", "quic", "tls")
+
+	o = <-done
+	Log(o)
+	AssertNotContains(o, "error")
+	waitForNoSegmentManagerSegmentsApp(vpp, "http_client", 10)
+	waitForSegmentManagerCount(vpp, baselineSmCount, 10)
+}
+
 func Http3DownloadTest(s *Http3Suite) {
 	vpp := s.Containers.Vpp.VppInstance
 	serverAddress := s.VppAddr() + ":" + s.Ports.Port1
@@ -135,7 +234,7 @@ func Http3PostTest(s *Http3Suite) {
 func Http3UploadTest(s *Http3Suite) {
 	vpp := s.Containers.Vpp.VppInstance
 	serverAddress := s.VppAddr() + ":" + s.Ports.Port1
-	Log(vpp.Vppctl("http tps no-zc h3 uri https://" + serverAddress))
+	Log(vpp.Vppctl("http tps no-zc h3 uri https://" + serverAddress + " fifo-size 1M"))
 
 	args := fmt.Sprintf("-k --max-time 30 --noproxy '*' --http3-only --data-binary @/tmp/testFile https://%s/test_file_10M",
 		serverAddress)
@@ -189,7 +288,7 @@ func Http3ClientGetMultiplexingTest(s *Http3Suite) {
 	s.StartNginx()
 
 	uri := "https://" + serverAddress + "/httpTestFile"
-	cmd := fmt.Sprintf("http client http3 streams %d repeat %d uri %s", 10, 20, uri)
+	cmd := fmt.Sprintf("http client http3 streams %d repeat %d uri %s fifo-size 1M", 10, 20, uri)
 	o := vpp.Vppctl(cmd)
 	Log(o)
 	AssertContains(o, "20 request(s)")
