@@ -264,6 +264,10 @@ tls_notify_app_connected (tls_ctx_t * ctx, session_error_t err)
   app_session->opaque = ctx->parent_app_api_context;
   ctx->c_s_index = app_session->session_index;
 
+  /* pass parent session to app_session */
+  app_session->listener_handle = ctx->tls_session_handle;
+  app_session->app_wrk_connect_index = ctx->app_wrk_connect_index;
+
   if ((err = app_worker_init_connected (app_wrk, app_session)))
     {
       app_worker_connect_notify (app_wrk, 0, err, ctx->parent_app_api_context);
@@ -447,6 +451,7 @@ tls_session_connected_cb (u32 tls_app_index, u32 ho_ctx_index,
   ctx->tls_session_handle = session_handle (tls_session);
   tls_session->opaque = ctx_handle;
 
+  ctx->app_wrk_connect_index = tls_session->app_wrk_connect_index;
   if (tls_ctx_init_client (ctx))
     {
       tls_notify_app_connected (ctx, SESSION_E_TLS_HANDSHAKE);
@@ -668,6 +673,7 @@ tls_connect (transport_endpoint_cfg_t * tep)
 
   clib_memcpy_fast (&cargs->sep, sep, sizeof (session_endpoint_t));
   cargs->sep.transport_proto = TRANSPORT_PROTO_TCP;
+  cargs->sep_ext.app_wrk_connect_index = sep->app_wrk_connect_index;
   cargs->app_index = tm->app_index;
   cargs->api_context = ctx_index;
   cargs->sep_ext.ns_index = app->ns_index;
@@ -1257,6 +1263,7 @@ dtls_connect (transport_endpoint_cfg_t *tep)
 
   clib_memcpy_fast (&cargs->sep, sep, sizeof (session_endpoint_t));
   cargs->sep.transport_proto = TRANSPORT_PROTO_UDP;
+  cargs->sep_ext.app_wrk_connect_index = sep->app_wrk_connect_index;
   cargs->app_index = tm->app_index;
   cargs->api_context = ctx_handle;
   cargs->sep_ext.ns_index = app->ns_index;
