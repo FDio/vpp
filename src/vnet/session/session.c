@@ -250,6 +250,7 @@ session_alloc (clib_thread_index_t thread_index)
   s->session_index = s - wrk->sessions;
   s->thread_index = thread_index;
   s->al_index = APP_INVALID_INDEX;
+  s->app_wrk_connect_index = SESSION_INVALID_INDEX;
 
   return s;
 }
@@ -776,6 +777,7 @@ session_stream_connect_notify (transport_connection_t * tc,
   s->app_wrk_index = app_wrk->wrk_index;
   s->listener_handle = SESSION_INVALID_HANDLE;
   s->opaque = opaque;
+  s->app_wrk_connect_index = ho->app_wrk_connect_index;
   new_si = s->session_index;
   new_ti = s->thread_index;
 
@@ -919,7 +921,8 @@ session_dgram_connect_notify (transport_connection_t *tc,
   if (!(tc->flags & TRANSPORT_CONNECTION_F_NO_LOOKUP))
     session_lookup_add_connection (tc, session_handle (new_s));
 
-  if (!(new_s->flags & SESSION_F_PROXY))
+  app_wrk = app_worker_get_if_valid (new_s->app_wrk_connect_index);
+  if (app_wrk && !(new_s->flags & SESSION_F_PROXY))
     {
       /* New set of fifos attached to the same shared memory */
       segment_manager_attach_fifo (&new_s->rx_fifo, new_s);
@@ -1289,6 +1292,7 @@ session_open_cl (session_endpoint_cfg_t *rmt, session_handle_t *rsh)
   session_set_state (s, SESSION_STATE_OPENED);
   if (transport_connection_is_cless (tc))
     s->flags |= SESSION_F_IS_CLESS;
+  s->app_wrk_connect_index = rmt->app_wrk_connect_index;
   if (app_worker_init_connected (app_wrk, s))
     {
       session_free (s);
@@ -1335,6 +1339,7 @@ session_open_vc (session_endpoint_cfg_t *rmt, session_handle_t *rsh)
    */
   ho = session_alloc_for_half_open (tc);
   ho->app_wrk_index = app_wrk->wrk_index;
+  ho->app_wrk_connect_index = rmt->app_wrk_connect_index;
   ho->ho_index = app_worker_add_half_open (app_wrk, session_handle (ho));
   ho->opaque = rmt->opaque;
   *rsh = session_handle (ho);
@@ -1382,10 +1387,11 @@ session_open_stream (session_endpoint_cfg_t *sep, session_handle_t *rsh)
 {
   transport_connection_t *tc;
   transport_endpoint_cfg_t *tep;
-  app_worker_t *app_wrk;
-  session_t *s;
+  app_worker_t *app_wrk, *parent_app_wrk;
+  session_t *s, *parent;
   u32 conn_index;
   int rv;
+  application_t *app;
 
   app_wrk = app_worker_get (sep->app_wrk_index);
   tep = session_endpoint_to_transport_cfg (sep);
@@ -1399,6 +1405,41 @@ session_open_stream (session_endpoint_cfg_t *sep, session_handle_t *rsh)
   s->app_wrk_index = app_wrk->wrk_index;
   s->opaque = sep->opaque;
   s->flags |= SESSION_F_STREAM;
+
+  parent = session_get_from_handle (sep->parent_handle);
+  if (parent->app_wrk_connect_index != SESSION_INVALID_INDEX)
+    s->app_wrk_connect_index = parent->app_wrk_connect_index;
+  else
+    s->app_wrk_connect_index = parent->app_wrk_index;
+  app = application_get (app_wrk->app_index);
+  if (app && application_is_transport (app))
+    {
+      parent = session_get_from_handle_if_valid (parent->listener_handle);
+      if (parent)
+	{
+	  if (parent->app_wrk_connect_index != SESSION_INVALID_INDEX)
+	    parent_app_wrk = app_worker_get (parent->app_wrk_connect_index);
+	  else
+	    parent_app_wrk = app_worker_get (parent->app_wrk_index);
+	  app = application_get (parent_app_wrk->app_index);
+	  while (app && application_is_transport (app) &&
+		 (parent->listener_handle != SESSION_INVALID_HANDLE))
+	    {
+	      parent = session_get_from_handle (parent->listener_handle);
+	      if (parent->app_wrk_connect_index != SESSION_INVALID_INDEX)
+		{
+		  parent_app_wrk = app_worker_get (parent->app_wrk_connect_index);
+		  s->app_wrk_connect_index = parent->app_wrk_connect_index;
+		}
+	      else
+		{
+		  parent_app_wrk = app_worker_get (parent->app_wrk_index);
+		  s->app_wrk_connect_index = parent->app_wrk_index;
+		}
+	      app = application_get (parent_app_wrk->app_index);
+	    }
+	}
+    }
   if ((rv = app_worker_init_connected (app_wrk, s)))
     {
       session_free (s);

@@ -117,6 +117,8 @@ parse_uri (char *uri, session_endpoint_cfg_t *sep)
       return 0;
     }
 
+  *sep = (session_endpoint_cfg_t) SESSION_ENDPOINT_CFG_NULL;
+
   /* Make sure */
   uri = (char *) format (0, "%s%c", uri, 0);
 
