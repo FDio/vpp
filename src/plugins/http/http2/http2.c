@@ -29,12 +29,13 @@ typedef enum http2_stream_state_
 #undef _
 } http2_stream_state_t;
 
-#define foreach_http2_req_flags                                               \
-  _ (APP_CLOSED, "app-closed")                                                \
-  _ (SHUTDOWN_TUNNEL, "shutdown-tunnel")                                      \
-  _ (NEED_WINDOW_UPDATE, "need-window-update")                                \
-  _ (IS_PARENT, "is-parent")                                                  \
-  _ (PENDING_SND_WIN_UPDATE, "pending-snd-win-update")
+#define foreach_http2_req_flags                                                                    \
+  _ (APP_CLOSED, "app-closed")                                                                     \
+  _ (SHUTDOWN_TUNNEL, "shutdown-tunnel")                                                           \
+  _ (NEED_WINDOW_UPDATE, "need-window-update")                                                     \
+  _ (IS_PARENT, "is-parent")                                                                       \
+  _ (PENDING_SND_WIN_UPDATE, "pending-snd-win-update")                                             \
+  _ (PENDING_RX_PAYLOAD, "pending-rx-payload")
 
 typedef enum http2_req_flags_bit_
 {
@@ -61,6 +62,7 @@ typedef struct http2_req_
   u32 our_window;
   u8 *payload;
   u32 payload_len;
+  u8 *pending_payload;
   clib_llist_anchor_t sched_list;
   http_req_state_t app_reply_next_state;
   void (*dispatch_headers_cb) (struct http2_req_ *req, http_conn_t *hc,
@@ -325,6 +327,7 @@ http2_conn_free_req (http2_conn_ctx_t *h2c, http2_req_t *req,
     clib_llist_remove (wrk->req_pool, sched_list, req);
   vec_free (req->base.headers);
   vec_free (req->base.target);
+  vec_free (req->pending_payload);
   http_buffer_free (&req->base.tx_buf);
   if (req->stream_id)
     hash_unset (h2c->req_by_stream_id, req->stream_id);
@@ -350,10 +353,13 @@ http2_conn_reset_req (http2_conn_ctx_t *h2c, http2_req_t *req,
   if (clib_llist_elt_is_linked (req, sched_list))
     clib_llist_remove (wrk->req_pool, sched_list, req);
   http_buffer_free (&req->base.tx_buf);
-  req->flags &= ~HTTP2_REQ_F_NEED_WINDOW_UPDATE;
+  vec_reset_length (req->pending_payload);
+  req->flags &= ~(HTTP2_REQ_F_NEED_WINDOW_UPDATE | HTTP2_REQ_F_PENDING_RX_PAYLOAD);
   req->stream_state = HTTP2_STREAM_STATE_IDLE;
   req->peer_window = h2c->peer_settings.initial_window_size;
   req->our_window = h2c->settings.initial_window_size;
+  req->payload = 0;
+  req->payload_len = 0;
 }
 
 http2_req_t *
@@ -416,9 +422,35 @@ http2_req_schedule_data_tx (http_conn_t *hc, http2_req_t *req)
   http2_conn_ctx_t *h2c;
   http2_req_t *he;
 
+  if (clib_llist_elt_is_linked (req, sched_list))
+    return;
+
   h2c = http2_conn_ctx_get_w_thread (hc);
   he = clib_llist_elt (wrk->req_pool, h2c->old_tx_streams);
   clib_llist_add_tail (wrk->req_pool, sched_list, req, he);
+}
+
+always_inline void
+http2_req_stash_pending_payload (http2_req_t *req)
+{
+  vec_reset_length (req->pending_payload);
+  if (req->payload_len)
+    {
+      vec_validate (req->pending_payload, req->payload_len - 1);
+      clib_memcpy_fast (req->pending_payload, req->payload, req->payload_len);
+    }
+  req->flags |= HTTP2_REQ_F_PENDING_RX_PAYLOAD;
+  req->payload = req->pending_payload;
+  req->payload_len = vec_len (req->pending_payload);
+}
+
+always_inline void
+http2_req_clear_pending_payload (http2_req_t *req)
+{
+  req->flags &= ~HTTP2_REQ_F_PENDING_RX_PAYLOAD;
+  vec_reset_length (req->pending_payload);
+  req->payload = 0;
+  req->payload_len = 0;
 }
 
 always_inline int
@@ -906,6 +938,11 @@ http2_sched_dispatch_udp_tunnel (http2_req_t *req, http_conn_t *hc,
       /* drop datagram if not fit into frame */
       HTTP_DBG (1, "datagram larger than maximum frame size, dropped");
       http_io_as_drain (&req->base, dgram_size);
+      if (max_read - dgram_size)
+	http2_req_schedule_data_tx (hc, req);
+      else
+	transport_connection_reschedule (&req->base.connection);
+      http_io_as_dequeue_notify (&req->base, dgram_size);
       return;
     }
 
@@ -925,10 +962,8 @@ http2_sched_dispatch_udp_tunnel (http2_req_t *req, http_conn_t *hc,
   max_write = clib_min (max_write, h2c->peer_window);
   if (PREDICT_FALSE (max_write < hdr.data_length))
     {
-      /* we should have at least 16kB free space in underlying transport,
-       * maybe peer is doing small connection window updates */
-      HTTP_DBG (1, "datagram dropped");
-      http_io_as_drain (&req->base, dgram_size);
+      HTTP_DBG (1, "postponing datagram until more transport space is available");
+      http2_req_schedule_data_tx (hc, req);
       return;
     }
 
@@ -1823,12 +1858,15 @@ http2_req_state_tunnel_rx (http_conn_t *hc, http2_req_t *req,
   max_enq = http_io_as_max_write (&req->base);
   if (max_enq < req->payload_len)
     {
-      clib_warning ("not enough space in app fifo (%lu)", max_enq);
-      http2_stream_error (hc, req, HTTP2_ERROR_INTERNAL_ERROR, sp);
+      HTTP_DBG (1, "app's rx fifo full, postponing tunnel payload");
+      http2_req_stash_pending_payload (req);
+      http_io_as_add_want_deq_ntf (&req->base);
       return HTTP_SM_STOP;
     }
   http_io_as_write (&req->base, req->payload, req->payload_len);
   http_app_worker_rx_notify (&req->base);
+  if (req->flags & HTTP2_REQ_F_PENDING_RX_PAYLOAD)
+    http2_req_clear_pending_payload (req);
 
   switch (req->stream_state)
     {
@@ -1887,11 +1925,9 @@ http2_req_state_udp_tunnel_rx (http_conn_t *hc, http2_req_t *req,
     }
   if (http_io_as_max_write (&req->base) < (sizeof (hdr) + payload_len))
     {
-      /* should only happen when we don't keep enough space for dgram hdr */
-      clib_warning ("not enough space in app fifo (%lu) for dgram (%lu)",
-		    http_io_as_max_write (&req->base),
-		    sizeof (hdr) + payload_len);
-      http2_stream_error (hc, req, HTTP2_ERROR_INTERNAL_ERROR, sp);
+      HTTP_DBG (1, "app's rx fifo full, postponing datagram tunnel payload");
+      http2_req_stash_pending_payload (req);
+      http_io_as_add_want_deq_ntf (&req->base);
       return HTTP_SM_STOP;
     }
 
@@ -1904,6 +1940,8 @@ http2_req_state_udp_tunnel_rx (http_conn_t *hc, http2_req_t *req,
 			     { req->payload + payload_offset, payload_len } };
   http_io_as_write_segs (&req->base, segs, 2);
   http_app_worker_rx_notify (&req->base);
+  if (req->flags & HTTP2_REQ_F_PENDING_RX_PAYLOAD)
+    http2_req_clear_pending_payload (req);
 
   if (req->stream_state == HTTP2_STREAM_STATE_HALF_CLOSED)
     {
@@ -2975,8 +3013,10 @@ static void
 http2_app_rx_evt_callback (http_conn_t *hc, u32 req_index,
 			   clib_thread_index_t thread_index)
 {
+  http2_worker_ctx_t *wrk = http2_get_worker (thread_index);
   http2_req_t *req;
   http2_conn_ctx_t *h2c;
+  http2_error_t rv;
   u32 increment;
   http2_stream_state_t expected_state;
 
@@ -2987,6 +3027,20 @@ http2_app_rx_evt_callback (http_conn_t *hc, u32 req_index,
       return;
     }
   HTTP_DBG (1, "received app read notification stream id %u", req->stream_id);
+  if (req->flags & HTTP2_REQ_F_PENDING_RX_PAYLOAD)
+    {
+      req->payload = req->pending_payload;
+      req->payload_len = vec_len (req->pending_payload);
+      rv = http2_req_run_state_machine (hc, req, 0, 0);
+      if (rv != HTTP2_ERROR_NO_ERROR)
+	{
+	  http2_connection_error (hc, rv, 0);
+	  return;
+	}
+      if (pool_is_free_index (wrk->req_pool, req_index))
+	return;
+      req = http2_req_get (req_index, thread_index);
+    }
   /* send stream window update if app read data in rx fifo and we expect more
    * data (stream is still open) */
   expected_state = (hc->flags & HTTP_CONN_F_IS_SERVER || req->base.is_tunnel) ?
@@ -3082,7 +3136,8 @@ http2_app_close_callback (http_conn_t *hc, u32 req_index,
 	  break;
 	check_reschedule:
 	  if (!clib_llist_elt_is_linked (req, sched_list) &&
-	      req->base.state == HTTP_REQ_STATE_TUNNEL)
+	      (req->base.state == HTTP_REQ_STATE_TUNNEL ||
+	       req->base.state == HTTP_REQ_STATE_UDP_TUNNEL))
 	    {
 	      http2_req_schedule_data_tx (hc, req);
 	      h2c = http2_conn_ctx_get_w_thread (hc);
@@ -3518,9 +3573,13 @@ http2_conn_cleanup_callback (http_conn_t *hc)
   u32 req_index, stream_id, *req_index_p, *req_indices = 0;
   http2_req_t *req;
   http2_conn_ctx_t *h2c;
+  http2_worker_ctx_t *wrk;
 
   HTTP_DBG (1, "hc [%u]%x", hc->c_thread_index, hc->hc_hc_index);
+  wrk = http2_get_worker (hc->c_thread_index);
   h2c = http2_conn_ctx_get_w_thread (hc);
+  if (clib_llist_elt_is_linked (h2c, sched_list))
+    clib_llist_remove (wrk->conn_pool, sched_list, h2c);
   hash_foreach (stream_id, req_index, h2c->req_by_stream_id,
 		({ vec_add1 (req_indices, req_index); }));
 

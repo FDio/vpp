@@ -182,7 +182,7 @@ func (s *MasqueSuite) ProxyClientConnect(proto, port string, extraArgs ...string
 		extras = strings.Join(extraArgs, " ")
 	}
 	vpp := s.Containers.VppClient.VppInstance
-	cmd := fmt.Sprintf("http connect proxy client enable server-uri https://%s:%s listener %s://0.0.0.0:%s interface %s %s",
+	cmd := fmt.Sprintf("http connect proxy client enable server-uri https://%s:%s listener %s://0.0.0.0:%s interface %s %s fifo-size 1M",
 		s.ProxyAddr(), s.Ports.Proxy, proto, port, s.Interfaces.Client.VppName(), extras)
 	Log(vpp.Vppctl(cmd))
 
