@@ -250,6 +250,7 @@ session_alloc (clib_thread_index_t thread_index)
   s->session_index = s - wrk->sessions;
   s->thread_index = thread_index;
   s->al_index = APP_INVALID_INDEX;
+  s->listener_handle = SESSION_INVALID_HANDLE;
 
   return s;
 }
@@ -776,6 +777,7 @@ session_stream_connect_notify (transport_connection_t * tc,
   s->app_wrk_index = app_wrk->wrk_index;
   s->listener_handle = SESSION_INVALID_HANDLE;
   s->opaque = opaque;
+  s->app_wrk_connect_index = ho->app_wrk_connect_index;
   new_si = s->session_index;
   new_ti = s->thread_index;
 
@@ -912,7 +914,6 @@ session_dgram_connect_notify (transport_connection_t *tc,
    */
   new_s = session_clone_safe (tc->s_index, osh.thread_index);
   new_s->connection_index = tc->c_index;
-  new_s->listener_handle = SESSION_INVALID_HANDLE;
   session_set_state (new_s, SESSION_STATE_READY);
   new_s->flags |= SESSION_F_IS_MIGRATING;
 
@@ -1289,6 +1290,7 @@ session_open_cl (session_endpoint_cfg_t *rmt, session_handle_t *rsh)
   session_set_state (s, SESSION_STATE_OPENED);
   if (transport_connection_is_cless (tc))
     s->flags |= SESSION_F_IS_CLESS;
+  s->app_wrk_connect_index = rmt->app_wrk_connect_index;
   if (app_worker_init_connected (app_wrk, s))
     {
       session_free (s);
@@ -1335,6 +1337,7 @@ session_open_vc (session_endpoint_cfg_t *rmt, session_handle_t *rsh)
    */
   ho = session_alloc_for_half_open (tc);
   ho->app_wrk_index = app_wrk->wrk_index;
+  ho->app_wrk_connect_index = rmt->app_wrk_connect_index;
   ho->ho_index = app_worker_add_half_open (app_wrk, session_handle (ho));
   ho->opaque = rmt->opaque;
   *rsh = session_handle (ho);
@@ -1374,6 +1377,151 @@ session_open (session_endpoint_cfg_t *rmt, session_handle_t *rsh)
   return session_open_srv_fns[tst](rmt, rsh);
 }
 
+u32
+session_connect_originated_get_app_wrk_connect_index (session_t *s)
+{
+  session_t *parent;
+
+  /* listener_handle is overlaid with {ho_index, app_wrk_connect_index}.
+   * ho_index therefore acts as the low 32 bits of a parent handle and is
+   * the only safe signal that there is another parent session to follow.
+   *
+   * This helper is for connect-originated paths only. Once the walk reaches
+   * a real listener, the session chain came from accept and there is no
+   * connect worker index to inherit, so return SESSION_INVALID_INDEX. */
+  while (s->ho_index != SESSION_INVALID_INDEX)
+    {
+      parent = session_get_from_handle_if_valid (s->listener_handle);
+      if (!parent)
+	break;
+
+      if (parent->session_state == SESSION_STATE_LISTENING)
+	return SESSION_INVALID_INDEX;
+
+      s = parent;
+    }
+
+  return s->app_wrk_connect_index;
+}
+
+u32
+session_connect_originated_get_valid_app_wrk_connect_index (session_t *s)
+{
+  u32 app_wrk_connect_index;
+
+  app_wrk_connect_index = session_connect_originated_get_app_wrk_connect_index (s);
+  if (PREDICT_FALSE (app_wrk_connect_index == SESSION_INVALID_INDEX))
+    {
+      session_log_backtrace ("connect-originated path with invalid app_wrk_connect_index");
+      ASSERT (0);
+    }
+
+  return app_wrk_connect_index;
+}
+
+static inline u32
+session_accept_originated_child_open_get_app_wrk_connect_index (session_t *s)
+{
+  return s->app_wrk_index;
+}
+
+static inline u32
+session_connect_originated_child_open_get_app_wrk_connect_index (session_t *s)
+{
+  return s->app_wrk_connect_index;
+}
+
+static session_t *
+session_get_child_open_origin_session (session_t *s, u8 *is_accept_originated)
+{
+  session_t *parent;
+
+  *is_accept_originated = 0;
+
+  while (s->ho_index != SESSION_INVALID_INDEX)
+    {
+      parent = session_get_from_handle_if_valid (s->listener_handle);
+      if (!parent)
+	break;
+
+      /* Child opens on accepted parents should stay on the worker selected
+       * for that accepted session. Connected transport parents must walk down
+       * until a real connect worker index is found. */
+      if (parent->session_state == SESSION_STATE_LISTENING)
+	{
+	  *is_accept_originated = 1;
+	  return s;
+	}
+
+      s = parent;
+    }
+
+  return s;
+}
+
+u32
+session_get_child_open_app_wrk_connect_index (session_t *s)
+{
+  u8 is_accept_originated;
+
+  s = session_get_child_open_origin_session (s, &is_accept_originated);
+  if (is_accept_originated)
+    return session_accept_originated_child_open_get_app_wrk_connect_index (s);
+  else
+    return session_connect_originated_child_open_get_app_wrk_connect_index (s);
+}
+
+static u32
+session_get_transport_parent_app_wrk_index (session_t *s)
+{
+  u32 app_wrk_index;
+
+  /* When walking a transport-app parent chain, accepted parents have no
+   * connect-originated worker of their own. In that case use the parent's
+   * owning app worker only to decide whether we need to descend another
+   * layer. */
+  app_wrk_index = session_connect_originated_get_app_wrk_connect_index (s);
+  if (app_wrk_index != SESSION_INVALID_INDEX)
+    return app_wrk_index;
+  else
+    return s->app_wrk_index;
+}
+
+u32
+session_resolve_child_stream_app_wrk_connect_index (u32 app_wrk_index, session_t *parent)
+{
+  app_worker_t *app_wrk, *parent_app_wrk;
+  application_t *app;
+  u32 app_wrk_connect_index;
+
+  app_wrk_connect_index = session_get_child_open_app_wrk_connect_index (parent);
+  app_wrk = app_worker_get (app_wrk_index);
+  app = application_get (app_wrk->app_index);
+  if (!(app && application_is_transport (app)))
+    return app_wrk_connect_index;
+
+  /* Keep the accepted-parent choice intact unless we truly descend through
+   * another transport-app layer. */
+  if (parent->ho_index != SESSION_INVALID_INDEX)
+    parent = session_get_from_handle_if_valid (parent->listener_handle);
+  else
+    parent = 0;
+  if (!parent)
+    return app_wrk_connect_index;
+
+  parent_app_wrk = app_worker_get (session_get_transport_parent_app_wrk_index (parent));
+  app = application_get (parent_app_wrk->app_index);
+  while (app && application_is_transport (app) && (parent->ho_index != SESSION_INVALID_INDEX))
+    {
+      parent = session_get_from_handle (parent->listener_handle);
+      app_wrk_connect_index = session_get_transport_parent_app_wrk_index (parent);
+      parent_app_wrk = app_worker_get (app_wrk_connect_index);
+      app = application_get (parent_app_wrk->app_index);
+    }
+
+  return app_wrk_connect_index;
+}
+
 /**
  * Ask transport to open stream on existing connection.
  */
@@ -1383,7 +1531,7 @@ session_open_stream (session_endpoint_cfg_t *sep, session_handle_t *rsh)
   transport_connection_t *tc;
   transport_endpoint_cfg_t *tep;
   app_worker_t *app_wrk;
-  session_t *s;
+  session_t *s, *parent;
   u32 conn_index;
   int rv;
 
@@ -1399,6 +1547,10 @@ session_open_stream (session_endpoint_cfg_t *sep, session_handle_t *rsh)
   s->app_wrk_index = app_wrk->wrk_index;
   s->opaque = sep->opaque;
   s->flags |= SESSION_F_STREAM;
+
+  parent = session_get_from_handle (sep->parent_handle);
+  s->app_wrk_connect_index =
+    session_resolve_child_stream_app_wrk_connect_index (app_wrk->wrk_index, parent);
   if ((rv = app_worker_init_connected (app_wrk, s)))
     {
       session_free (s);

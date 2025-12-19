@@ -217,6 +217,7 @@ tls_notify_app_accept (tls_ctx_t * ctx)
       ctx->flags |= TLS_CONN_F_NO_APP_SESSION;
       return rv;
     }
+  ctx->app_wrk_connect_index = app_session->app_wrk_index;
   ctx->app_session_handle = session_handle (app_session);
   ctx->parent_app_wrk_index = app_session->app_wrk_index;
   app_wrk = app_worker_get (app_session->app_wrk_index);
@@ -264,6 +265,10 @@ tls_notify_app_connected (tls_ctx_t * ctx, session_error_t err)
   app_session->opaque = ctx->parent_app_api_context;
   ctx->c_s_index = app_session->session_index;
 
+  /* pass parent session to app_session */
+  app_session->listener_handle = ctx->tls_session_handle;
+  app_session->app_wrk_connect_index = ctx->app_wrk_connect_index;
+
   if ((err = app_worker_init_connected (app_wrk, app_session)))
     {
       app_worker_connect_notify (app_wrk, 0, err, ctx->parent_app_api_context);
@@ -271,6 +276,8 @@ tls_notify_app_connected (tls_ctx_t * ctx, session_error_t err)
       session_free (app_session);
       return -1;
     }
+
+  app_session->listener_handle = ctx->tls_session_handle;
 
   app_session->session_state = SESSION_STATE_READY;
   parent_app_api_ctx = ctx->parent_app_api_context;
@@ -447,6 +454,8 @@ tls_session_connected_cb (u32 tls_app_index, u32 ho_ctx_index,
   ctx->tls_session_handle = session_handle (tls_session);
   tls_session->opaque = ctx_handle;
 
+  ctx->app_wrk_connect_index =
+    session_connect_originated_get_valid_app_wrk_connect_index (tls_session);
   if (tls_ctx_init_client (ctx))
     {
       tls_notify_app_connected (ctx, SESSION_E_TLS_HANDSHAKE);
@@ -470,6 +479,9 @@ dtls_session_connected_cb (u32 app_wrk_index, u32 ctx_handle, session_t *us,
   ctx->tls_session_handle = session_handle (us);
   ctx->c_flags |= TRANSPORT_CONNECTION_F_NO_LOOKUP;
   us->opaque = ctx_handle;
+  /* Connected callbacks are client-side only, so inherit the connect worker
+   * from the underlying transport session. */
+  ctx->app_wrk_connect_index = session_connect_originated_get_valid_app_wrk_connect_index (us);
 
   /* We don't preallocate the app session because the udp session might
    * actually migrate to a different worker at the end of the handshake */
@@ -668,6 +680,7 @@ tls_connect (transport_endpoint_cfg_t * tep)
 
   clib_memcpy_fast (&cargs->sep, sep, sizeof (session_endpoint_t));
   cargs->sep.transport_proto = TRANSPORT_PROTO_TCP;
+  cargs->sep_ext.app_wrk_connect_index = sep->app_wrk_connect_index;
   cargs->app_index = tm->app_index;
   cargs->api_context = ctx_index;
   cargs->sep_ext.ns_index = app->ns_index;
@@ -767,6 +780,7 @@ tls_start_listen (u32 app_listener_index, transport_endpoint_cfg_t *tep)
   tls_listener->opaque = lctx_index;
 
   app_listener = listen_session_get (app_listener_index);
+  tls_listener->listener_handle = listen_session_get_handle (app_listener);
 
   lctx = tls_listener_ctx_get (lctx_index);
   lctx->parent_app_wrk_index = sep->app_wrk_index;
@@ -1284,6 +1298,8 @@ dtls_connect (transport_endpoint_cfg_t *tep)
   ctx_handle = tls_ctx_alloc_w_thread (engine_type, transport_cl_thread ());
   ctx = tls_ctx_get_w_thread (ctx_handle, transport_cl_thread ());
   ctx->parent_app_wrk_index = sep->app_wrk_index;
+  ASSERT (sep->app_wrk_connect_index != SESSION_INVALID_INDEX);
+  ctx->app_wrk_connect_index = sep->app_wrk_connect_index;
   ctx->parent_app_api_context = sep->opaque;
   ctx->tcp_is_ip4 = sep->is_ip4;
   ctx->ckpair_index = ccfg->ckpair_index;
@@ -1304,6 +1320,7 @@ dtls_connect (transport_endpoint_cfg_t *tep)
 
   clib_memcpy_fast (&cargs->sep, sep, sizeof (session_endpoint_t));
   cargs->sep.transport_proto = TRANSPORT_PROTO_UDP;
+  cargs->sep_ext.app_wrk_connect_index = sep->app_wrk_connect_index;
   cargs->app_index = tm->app_index;
   cargs->api_context = ctx_handle;
   cargs->sep_ext.ns_index = app->ns_index;
