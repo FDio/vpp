@@ -2164,6 +2164,16 @@ vppcom_session_stream_connect (uint32_t session_handle,
    * Send connect stream request and wait for reply from vpp
    */
   vcl_send_session_connect_stream (wrk, session);
+
+  if (vcl_session_has_attr (session, VCL_SESS_ATTR_NONBLOCK))
+    {
+      /* State set to STATE_UPDATED to ensure the session is not assumed
+       * to be ready and to also allow the app to close it prior to vpp's
+       * connected reply. */
+      session->session_state = VCL_STATE_UPDATED;
+      return VPPCOM_EINPROGRESS;
+    }
+
   rv = vppcom_wait_for_session_state_change (session_index, VCL_STATE_READY,
 					     vcm->cfg.session_timeout);
   VDBG (0, "session %u [0x%llx]: connect %s!", session_index, session_handle,
