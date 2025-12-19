@@ -792,7 +792,8 @@ et_quic_connected (session_t *s, echo_test_cfg_t *cfg, echo_test_worker_t *wrk, 
   u32 stream_n;
   int rv;
 
-  ASSERT (s->listener_handle == SESSION_INVALID_HANDLE);
+  /* Connected QUIC sessions reuse the overlaid listener/connect-worker slot
+   * to preserve app_wrk_connect_index for child stream opens. */
   ASSERT (!(s->flags & SESSION_F_STREAM));
 
   clib_memset (a, 0, sizeof (*a));
