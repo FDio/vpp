@@ -213,9 +213,11 @@ typedef enum transport_endpt_cfg_flags_
   _ (transport_endpoint_t, peer)            				\
   _ (u32, next_node_index) 						\
   _ (u32, next_node_opaque)						\
+  _ (u32, al_index)						        \
+  _ (u32, app_wrk_connect_index)					\
   _ (u16, mss)           						\
-  _ (u8, dscp) \
-  _ (u8, transport_flags)						\
+  _ (u8, dscp)                                                          \
+  _ (u8, transport_flags)
 /* clang-format on */
 
 typedef struct transport_endpoint_pair_

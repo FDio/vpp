@@ -595,7 +595,10 @@ segment_manager_init_free (segment_manager_t * sm)
 
   segment_manager_app_detach (sm);
   if (segment_manager_has_fifos (sm))
-    segment_manager_del_sessions (sm);
+    {
+      segment_manager_del_sessions (sm);
+      sm->app_wrk_index = SEGMENT_MANAGER_INVALID_APP_INDEX;
+    }
   else
     {
       ASSERT (!sm->first_is_protected || segment_manager_app_detached (sm));
@@ -676,7 +679,10 @@ segment_manager_del_sessions (segment_manager_t * sm)
           {
 	    session = session_get_if_valid (f->vpp_session_index,
 					    f->master_thread_index);
-	    if (session)
+	    /* Remove sessions matching the app_wrk_index. We still need the
+	     * non-matching app_wrk_index sessions so that it can clean up
+	     * itself first. */
+	    if (session && (session->app_wrk_index == sm->app_wrk_index))
 	      vec_add1 (handles, session_handle (session));
 	    f = f->next;
 	  }
@@ -723,7 +729,10 @@ segment_manager_del_sessions_filter (segment_manager_t *sm,
 	    {
 	      session = session_get_if_valid (f->vpp_session_index,
 					      f->master_thread_index);
-	      if (session)
+	      /* Remove sessions matching the app_wrk_index. We still need the
+	       * non-matching app_wrk_index sessions so that it can clean up
+	       * itself first. */
+	      if (session && (session->app_wrk_index == sm->app_wrk_index))
 		{
 		  session_state_t *state;
 		  vec_foreach (state, states)
