@@ -90,6 +90,7 @@ quic_connect_connection (transport_endpoint_cfg_t *tep)
   ctx_index = quic_ctx_alloc (qm, thread_index);
   ctx = quic_ctx_get (ctx_index, thread_index);
   ctx->parent_app_wrk_id = sep->app_wrk_index;
+  ctx->app_wrk_connect_index = sep->app_wrk_connect_index;
   ctx->c_s_index = SESSION_INVALID_INDEX;
   ctx->c_c_index = ctx_index;
   ctx->c_thread_index = thread_index;
