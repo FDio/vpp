@@ -369,11 +369,13 @@ exit:
 }
 
 static int
-mbedtls_ctx_handshake_rx (tls_ctx_t * ctx)
+mbedtls_ctx_handshake_rx (tls_ctx_t *ctx, session_t *tls_session)
 {
   mbedtls_ctx_t *mc = (mbedtls_ctx_t *) ctx;
   u32 flags;
   int rv;
+
+  ctx->app_wrk_connect_index = session_connect_originated_get_app_wrk_connect_index (tls_session);
   while (mc->ssl.state != MBEDTLS_SSL_HANDSHAKE_OVER)
     {
       rv = mbedtls_ssl_handshake_step (&mc->ssl);
@@ -483,7 +485,7 @@ mbedtls_ctx_read (tls_ctx_t * ctx, session_t * tls_session)
 
   if (PREDICT_FALSE (mc->ssl.state != MBEDTLS_SSL_HANDSHAKE_OVER))
     {
-      mbedtls_ctx_handshake_rx (ctx);
+      mbedtls_ctx_handshake_rx (ctx, tls_session);
       return 0;
     }
 

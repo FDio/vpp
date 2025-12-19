@@ -9,6 +9,7 @@
 #include <vnet/session/transport.h>
 #include <vlib/vlib.h>
 #include <vpp/vnet/config.h>
+#include <vppinfra/stack.h>
 
 #define foreach_session_dbg_evt                                               \
   _ (ENQ, DEQ_EVTS, 1, "enqueue")                                             \
@@ -402,5 +403,20 @@ extern session_dbg_main_t session_dbg_main;
 #endif /* SESSION_DEBUG */
 
 void session_debug_init (void);
+
+static_always_inline void
+session_log_backtrace (const char *tag)
+{
+  foreach_clib_stack_frame (sf)
+    {
+      if (sf->name[0])
+	clib_warning ("%s #%u %s + 0x%x ip=0x%lx file=%s", tag, sf->index, sf->name, sf->offset,
+		      sf->ip, sf->file_name ? sf->file_name : "unknown");
+      else
+	clib_warning ("%s #%u ip=0x%lx file=%s", tag, sf->index, sf->ip,
+		      sf->file_name ? sf->file_name : "unknown");
+    }
+  clib_warning ("\n");
+}
 
 #endif /* SRC_VNET_SESSION_SESSION_DEBUG_H_ */

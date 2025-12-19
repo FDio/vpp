@@ -133,6 +133,8 @@ srtp_ctx_init_client (srtp_tc_t *ctx)
 
   /* session_open_cl() already allocated and initialized the app session */
   app_session = session_get (ctx->c_s_index, ctx->c_thread_index);
+  app_session->app_wrk_index = ctx->parent_app_wrk_index;
+  app_session->app_wrk_connect_index = ctx->app_wrk_connect_index;
   app_session->connection_index = ctx->srtp_ctx_handle;
   ctx->app_session_handle = session_handle (app_session);
   return 0;
@@ -165,6 +167,7 @@ srtp_ctx_init_server (srtp_tc_t *ctx)
       session_free (app_session);
       return rv;
     }
+  ctx->app_wrk_connect_index = app_session->app_wrk_index;
   ctx->app_session_handle = session_handle (app_session);
   ctx->parent_app_wrk_index = app_session->app_wrk_index;
   app_wrk = app_worker_get (app_session->app_wrk_index);
@@ -366,6 +369,7 @@ srtp_session_connected_callback (u32 srtp_app_index, u32 ctx_handle,
   ctx->srtp_session_handle = session_handle (us);
   ctx->c_flags |= TRANSPORT_CONNECTION_F_NO_LOOKUP;
   us->opaque = ctx_handle;
+  ctx->app_wrk_connect_index = us->app_wrk_connect_index;
 
   return srtp_ctx_init_client (ctx);
 }
@@ -599,6 +603,8 @@ srtp_connect (transport_endpoint_cfg_t *tep)
   ctx_index = srtp_ctx_alloc_w_thread (thread_index);
   ctx = srtp_ctx_get_w_thread (ctx_index, thread_index);
   ctx->parent_app_wrk_index = sep->app_wrk_index;
+  ASSERT (sep->app_wrk_connect_index != SESSION_INVALID_INDEX);
+  ctx->app_wrk_connect_index = sep->app_wrk_connect_index;
   ctx->parent_app_api_context = sep->opaque;
   ctx->udp_is_ip4 = sep->is_ip4;
   ctx->srtp_ctx_handle = ctx_index;
@@ -610,6 +616,7 @@ srtp_connect (transport_endpoint_cfg_t *tep)
   clib_memcpy_fast (&cargs->sep, sep, sizeof (session_endpoint_t));
   cargs->sep.transport_proto = TRANSPORT_PROTO_UDP;
   cargs->sep_ext.transport_flags = TRANSPORT_CFG_F_CONNECTED;
+  cargs->sep_ext.app_wrk_connect_index = ctx->app_wrk_connect_index;
   cargs->app_index = sm->app_index;
   cargs->api_context = ctx_index;
   cargs->sep_ext.ns_index = app->ns_index;
@@ -696,6 +703,7 @@ srtp_start_listen (u32 app_listener_index, transport_endpoint_cfg_t *tep)
   srtp_listener->opaque = lctx_index;
 
   app_listener = listen_session_get (app_listener_index);
+  srtp_listener->listener_handle = listen_session_get_handle (app_listener);
 
   lctx = srtp_listener_ctx_get (lctx_index);
   lctx->parent_app_wrk_index = sep->app_wrk_index;
