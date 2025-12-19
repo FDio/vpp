@@ -142,6 +142,30 @@ app_listener_lookup (application_t * app, session_endpoint_cfg_t * sep_ext)
   return 0;
 }
 
+static segment_manager_t *
+application_alloc_listener_sm (app_worker_t *app_wrk, session_endpoint_cfg_t *sep)
+{
+  segment_manager_t *sm;
+
+  sep->sm_index = ENDPOINT_INVALID_INDEX;
+  sm = app_worker_alloc_listener_segment_manager (app_wrk);
+  if (sm)
+    sep->sm_index = segment_manager_index (sm);
+
+  return sm;
+}
+
+/*static*/ void
+application_free_listener_sm (segment_manager_t *sm)
+{
+  if (!sm)
+    return;
+
+  sm->first_is_protected = 0;
+  segment_manager_app_detach (sm);
+  segment_manager_free_safe (sm);
+}
+
 void
 app_listener_cleanup (app_listener_t * al)
 {
@@ -994,6 +1018,13 @@ application_alloc_worker_and_init (application_t * app, app_worker_t ** wrk)
   wrk_map = app_worker_map_alloc (app);
   wrk_map->wrk_index = app_wrk->wrk_index;
   app_wrk->wrk_map_index = app_worker_map_index (app, wrk_map);
+  app_wrk->listeners_table = hash_create (0, sizeof (u64));
+
+  if (application_is_transport (app))
+    {
+      /* skip creating segment manager for transport */
+      goto skip;
+    }
 
   /*
    * Setup first segment manager
@@ -1015,6 +1046,8 @@ application_alloc_worker_and_init (application_t * app, app_worker_t ** wrk)
   app_wrk->connects_seg_manager = segment_manager_index (sm);
   app_wrk->listeners_table = hash_create (0, sizeof (u64));
   app_wrk->event_queue = segment_manager_event_queue (sm);
+
+skip:
   app_wrk->app_is_builtin = application_is_builtin (app);
 
   *wrk = app_wrk;
@@ -1163,6 +1196,13 @@ vnet_application_attach (vnet_app_attach_args_t *a)
 
   a->app_evt_q = app_wrk->event_queue;
   app_wrk->api_client_index = a->api_client_index;
+
+  if (application_is_transport (app))
+    {
+      /* skip creating segment manager for transport */
+      goto skip;
+    }
+
   sm = segment_manager_get (app_wrk->connects_seg_manager);
   fs = segment_manager_get_segment_w_lock (sm, 0);
 
@@ -1180,6 +1220,7 @@ vnet_application_attach (vnet_app_attach_args_t *a)
 
   segment_manager_segment_reader_unlock (sm);
 
+skip:
   if (!application_is_builtin (app) && application_use_private_rx_mqs ())
     rv = app_rx_mqs_alloc (app);
 
@@ -1277,9 +1318,11 @@ session_error_t
 vnet_listen (vnet_listen_args_t *a)
 {
   app_listener_t *app_listener;
+  segment_manager_t *sm;
   app_worker_t *app_wrk;
   application_t *app;
   int rv;
+  app_options_flags_t is_transport;
 
   ASSERT (vlib_thread_is_main_w_barrier ());
 
@@ -1292,11 +1335,17 @@ vnet_listen (vnet_listen_args_t *a)
     return SESSION_E_INVALID_APPWRK;
 
   a->sep_ext.app_wrk_index = app_wrk->wrk_index;
+  /* Listeners do not consume connect-worker state. Keep the union slot free. */
+  a->sep_ext.app_wrk_connect_index = SESSION_INVALID_INDEX;
 
   session_endpoint_update_for_app (&a->sep_ext, app, 0 /* is_connect */ );
   if (!session_endpoint_in_ns (&a->sep_ext))
     return SESSION_E_INVALID_NS;
 
+  is_transport = application_is_transport (app);
+  /*
+   * Check if we already have an app listener
+   */
   app_listener = app_listener_lookup (app, &a->sep_ext);
   if (app_listener)
     {
@@ -1308,6 +1357,12 @@ vnet_listen (vnet_listen_args_t *a)
       app_listener = app_listener_alloc (app);
     }
 
+  if (!is_transport)
+    {
+      sm = application_alloc_listener_sm (app_wrk, &a->sep_ext);
+      if (!sm)
+	return SESSION_E_SEG_CREATE;
+    }
   if ((rv = app_worker_start_listen (app_wrk, &app_listener, &a->sep_ext)))
     {
       /* No app workers mapped to listener, clean up */
@@ -1556,6 +1611,12 @@ application_change_listener_owner (session_t * s, app_worker_t * app_wrk)
   return 0;
 }
 
+app_options_flags_t
+application_is_transport (application_t *app)
+{
+  return (app->flags & APP_OPTIONS_FLAGS_IS_TRANSPORT_APP);
+}
+
 int
 application_is_proxy (application_t * app)
 {
@@ -1600,6 +1661,7 @@ application_start_stop_proxy_fib_proto (application_t * app, u8 fib_proto,
   u8 is_ip4 = (fib_proto == FIB_PROTOCOL_IP4);
   session_endpoint_cfg_t sep = SESSION_ENDPOINT_CFG_NULL;
   transport_connection_t *tc;
+  segment_manager_t *sm;
   app_worker_t *app_wrk;
   app_listener_t *al;
   session_t *s;
@@ -1608,6 +1670,8 @@ application_start_stop_proxy_fib_proto (application_t * app, u8 fib_proto,
 
   /* TODO decide if we want proxy to be enabled for all workers */
   app_wrk = application_get_default_worker (app);
+  if (application_is_transport (app))
+    return clib_error_return (0, "Proxy listen not supported for transport app");
   if (is_start)
     {
       s = app_worker_first_listener (app_wrk, fib_proto, transport_proto);
@@ -1617,12 +1681,18 @@ application_start_stop_proxy_fib_proto (application_t * app, u8 fib_proto,
 	  sep.fib_index = app_namespace_get_fib_index (app_ns, fib_proto);
 	  sep.sw_if_index = app_ns->sw_if_index;
 	  sep.transport_proto = transport_proto;
-	  sep.app_wrk_index = app_wrk->wrk_index;	/* only default */
+	  sep.app_wrk_index = app_wrk->wrk_index; /* only default */
 
 	  /* force global scope listener */
 	  flags = app->flags;
 	  app->flags &= ~APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE;
 	  al = app_listener_alloc (app);
+	  sm = application_alloc_listener_sm (app_wrk, &sep);
+	  if (!sm)
+	    {
+	      app_listener_cleanup (al);
+	      return clib_error_return (0, "Failed to create segment manager");
+	    }
 
 	  rv = app_worker_start_listen (app_wrk, &al, &sep);
 	  app->flags = flags;
@@ -1904,13 +1974,14 @@ format_app_mq (u8 *s, va_list *args)
 
   pool_foreach (map, app->worker_maps)  {
     wrk = app_worker_get (map->wrk_index);
-    s = format (s, "[A%d][%d]%U", app->app_index, map->wrk_index,
-		format_svm_msg_q, wrk->event_queue);
+    if (wrk->event_queue)
+	s = format (s, "[A%d][%d]%U", app->app_index, map->wrk_index, format_svm_msg_q,
+		    wrk->event_queue);
   }
 
   for (i = 0; i < vec_len (app->rx_mqs); i++)
-  s = format (s, "[A%d][R%d]%U", app->app_index, i, format_svm_msg_q,
-	      app->rx_mqs[i].mq);
+  if (app->rx_mqs[i].mq)
+    s = format (s, "[A%d][R%d]%U", app->app_index, i, format_svm_msg_q, app->rx_mqs[i].mq);
 
   return s;
 }
@@ -1931,8 +2002,9 @@ application_format_mqs (vlib_main_t *vm, application_t *req_app)
 
   for (i = 0; i < n_threads; i++)
     {
-      vlib_cli_output (vm, "[Ctrl%d]%U", i, format_svm_msg_q,
-		       session_main_get_vpp_event_queue (i));
+    if (session_main_get_vpp_event_queue (i))
+	vlib_cli_output (vm, "[Ctrl%d]%U", i, format_svm_msg_q,
+			 session_main_get_vpp_event_queue (i));
     }
 
   pool_foreach (app, app_main.app_pool)
