@@ -797,6 +797,8 @@ tls_async_handshake_event_handler (void *async_evt, void *unused)
 	      return -1;
 	    }
 	}
+      ctx->app_wrk_connect_index =
+	session_connect_originated_get_valid_app_wrk_connect_index (tls_session);
       if (tls_notify_app_connected (ctx, SESSION_E_NONE))
 	{
 	  tls_disconnect_transport (ctx);

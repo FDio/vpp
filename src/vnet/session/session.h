@@ -538,6 +538,10 @@ session_clone_safe (u32 session_index, clib_thread_index_t thread_index)
 
 int session_open (session_endpoint_cfg_t *sep, session_handle_t *rsh);
 int session_open_stream (session_endpoint_cfg_t *sep, session_handle_t *rsh);
+u32 session_connect_originated_get_app_wrk_connect_index (session_t *s);
+u32 session_connect_originated_get_valid_app_wrk_connect_index (session_t *s);
+u32 session_get_child_open_app_wrk_connect_index (session_t *s);
+u32 session_resolve_child_stream_app_wrk_connect_index (u32 app_wrk_index, session_t *parent);
 int session_listen (session_t * s, session_endpoint_cfg_t * sep);
 int session_stop_listen (session_t * s);
 void session_half_close (session_t *s);

@@ -303,6 +303,7 @@ openssl_ctx_handshake_rx (tls_ctx_t *ctx, session_t *tls_session)
   openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
   int rv = 0, err;
 
+  ctx->app_wrk_connect_index = session_connect_originated_get_app_wrk_connect_index (tls_session);
   while (SSL_in_init (oc->ssl))
     {
       if (ctx->flags & TLS_CONN_F_RESUME)
