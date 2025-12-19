@@ -441,6 +441,7 @@ picotls_ctx_read (tls_ctx_t *ctx, session_t *tcp_session)
 	    }
 	  else
 	    {
+	      ctx->app_wrk_connect_index = tcp_session->app_wrk_connect_index;
 	      tls_notify_app_connected (ctx, SESSION_E_NONE);
 	    }
 	}

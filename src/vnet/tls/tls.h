@@ -117,6 +117,7 @@ typedef struct tls_ctx_
   u8 *alpn_list;
   tls_alpn_proto_t alpn_selected;
   tls_verify_cfg_t verify_cfg;
+  u32 app_wrk_connect_index;
 } tls_ctx_t;
 
 typedef struct tls_main_
