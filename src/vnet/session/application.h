@@ -296,6 +296,7 @@ app_worker_t *application_get_default_worker (application_t * app);
 app_worker_t *application_listener_select_worker (session_t * ls);
 int application_change_listener_owner (session_t * s, app_worker_t * app_wrk);
 int application_is_proxy (application_t * app);
+app_options_flags_t application_is_transport (application_t *app);
 int application_is_builtin (application_t * app);
 int application_is_builtin_proxy (application_t * app);
 u32 application_session_table (application_t * app, u8 fib_proto);
@@ -341,8 +342,8 @@ int app_worker_connect_session (app_worker_t *app, session_endpoint_cfg_t *sep,
 				session_handle_t *rsh);
 int app_worker_connect_stream (app_worker_t *app, session_endpoint_cfg_t *sep,
 			       session_handle_t *rsh);
-session_error_t app_worker_start_listen (app_worker_t *app_wrk,
-					 app_listener_t *lstnr);
+session_error_t app_worker_start_listen (app_worker_t *app_wrk, app_listener_t *lstnr,
+					 segment_manager_t *sm);
 int app_worker_stop_listen (app_worker_t * app_wrk, app_listener_t * al);
 int app_worker_init_accepted (session_t * s);
 int app_worker_init_accepted_ct (session_t *s);
@@ -413,6 +414,7 @@ session_error_t vnet_app_worker_add_del (vnet_app_worker_add_del_args_t *a);
 uword unformat_application_proto (unformat_input_t * input, va_list * args);
 
 void sapi_socket_close_w_handle (u32 api_handle);
+segment_manager_t *app_worker_alloc_listener_segment_manager (app_worker_t *app_wrk);
 
 static inline u8
 app_worker_application_is_builtin (app_worker_t *app_wrk)
