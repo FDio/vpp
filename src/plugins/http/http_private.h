@@ -1231,6 +1231,10 @@ http_conn_established (http_ctx_t *hc, http_ctx_t *req, u32 parent_app_api_ctx)
   as->session_state = SESSION_STATE_READY;
   as->opaque = parent_app_api_ctx;
   ts = session_get_from_handle (hc->hc_tc_session_handle);
+  if (ts->app_wrk_connect_index != SESSION_INVALID_INDEX)
+    as->app_wrk_connect_index = ts->app_wrk_connect_index;
+  else
+    as->app_wrk_connect_index = hc->hc_pa_wrk_index;
   as->session_type = session_type_from_proto_and_ip (
     TRANSPORT_PROTO_HTTP, session_type_is_ip4 (ts->session_type));
 
