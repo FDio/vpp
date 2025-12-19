@@ -193,7 +193,7 @@ jobs:
 
       - name: Checkout VPP Gerrit Change
         # yamllint disable-line rule:line-length
-        uses: fdio/vpp/.github/actions/vpp-checkout-gerrit-change@master
+        uses: fdio/vpp/.github/actions/vpp-checkout-gerrit-change@777792ecef2d5c93ce15fa5b7fdca999f5412c9d
         with:
           WORKSPACE: ${{ env.WORKSPACE }}
           GERRIT_BRANCH: ${{ env.GERRIT_BRANCH }}
@@ -202,21 +202,21 @@ jobs:
 
       - name: Install VPP dependencies
         # yamllint disable-line rule:line-length
-        uses: fdio/vpp/.github/actions/vpp-install-deps@master
+        uses: fdio/vpp/.github/actions/vpp-install-deps@777792ecef2d5c93ce15fa5b7fdca999f5412c9d
         with:
           WORKSPACE: ${{ env.WORKSPACE }}
           TUI_LINE: ${{ env.TUI_LINE }}
 
       - name: Install VPP external dependencies
         # yamllint disable-line rule:line-length
-        uses: fdio/vpp/.github/actions/vpp-install-ext-deps@master
+        uses: fdio/vpp/.github/actions/vpp-install-ext-deps@d4f0fac555e52087747b04f77a9a07bc8aaa3daa
         with:
           WORKSPACE: ${{ env.WORKSPACE }}
           TUI_LINE: ${{ env.TUI_LINE }}
 
       - name: Build VPP with GCC/GCOV
         # yamllint disable-line rule:line-length
-        uses: fdio/vpp/.github/actions/vpp-build@master
+        uses: fdio/vpp/.github/actions/vpp-build@43b0339292476442bd7e2429e2ae1075918d8f83
         with:
           WORKSPACE: ${{ env.WORKSPACE }}
           MAKE_PARALLEL_JOBS: ${{ env.MAKE_PARALLEL_JOBS }}
@@ -226,7 +226,7 @@ jobs:
 
       - name: Setup Docker VPP Runtime Environment for 'make test'
         # yamllint disable-line rule:line-length
-        uses: fdio/vpp/.github/actions/vpp-docker-runtime-setup@master
+        uses: fdio/vpp/.github/actions/vpp-docker-runtime-setup@777792ecef2d5c93ce15fa5b7fdca999f5412c9d
         with:
           WORKSPACE: ${{ env.WORKSPACE }}
           SHM_SIZE: ${{ env.SHM_SIZE }}
@@ -234,7 +234,7 @@ jobs:
 
       - name: VPP Make Test with GCC/GCOV
         # yamllint disable-line rule:line-length
-        uses: fdio/vpp/.github/actions/vpp-make-test@master
+        uses: fdio/vpp/.github/actions/vpp-make-test@9cfacba509b66cdd96ebf7d2a06159a8b34953dd
         timeout-minutes: 90
         with:
           WORKSPACE: ${{ env.WORKSPACE }}
@@ -250,7 +250,7 @@ jobs:
       - name: AWS S3 Publish Logs
         if: always()
         # yamllint disable-line rule:line-length
-        uses: fdio/.github/.github/actions/aws-s3-publish-logs@8939e0ec651e21b5cf054f8e2e7c1297f90c3d78
+        uses: fdio/.github/.github/actions/aws-s3-publish-logs@6942711be695b980368af984793c5c15b7b48b76
         with:
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
