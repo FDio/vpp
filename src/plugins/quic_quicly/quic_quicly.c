@@ -128,6 +128,7 @@ quic_quicly_notify_app_connected (quic_ctx_t *ctx, session_error_t err)
   app_session->app_wrk_index = ctx->parent_app_wrk_id;
   app_session->opaque = ctx->client_opaque;
   app_session->connection_index = ctx->c_c_index;
+  app_session->app_wrk_connect_index = ctx->app_wrk_connect_index;
   ctx->c_s_index = app_session->session_index;
 
   if (ctx->alpn_protos[0])
@@ -794,12 +795,14 @@ quic_quicly_on_stream_open (quicly_stream_open_t *self, quicly_stream_t *stream)
    * - in quicly_open_stream, returned directly
    */
 
-  session_t *stream_session, *quic_session;
+  session_t *stream_session, *quic_session, *parent;
   quic_stream_data_t *stream_data;
   app_worker_t *app_wrk;
   quic_ctx_t *qctx, *sctx;
   u32 sctx_id;
   int rv;
+  application_t *parent_app;
+  app_worker_t *parent_app_wrk;
 
   QUIC_DBG (2, "on_stream_open called");
   stream->data = clib_mem_alloc (sizeof (quic_stream_data_t));
@@ -862,6 +865,38 @@ quic_quicly_on_stream_open (quicly_stream_open_t *self, quicly_stream_t *stream)
     session_type_from_proto_and_ip (TRANSPORT_PROTO_QUIC, qctx->udp_is_ip4);
   quic_session = session_get (qctx->c_s_index, qctx->c_thread_index);
   stream_session->listener_handle = listen_session_get_handle (quic_session);
+
+  parent = session_get_from_handle (qctx->udp_session_handle);
+  if (parent->app_wrk_connect_index != SESSION_INVALID_INDEX)
+    stream_session->app_wrk_connect_index = parent->app_wrk_connect_index;
+  else
+    stream_session->app_wrk_connect_index = parent->app_wrk_index;
+
+  parent = session_get_from_handle_if_valid (parent->listener_handle);
+  if (parent)
+    {
+      if (parent->app_wrk_connect_index != SESSION_INVALID_INDEX)
+	parent_app_wrk = app_worker_get (parent->app_wrk_connect_index);
+      else
+	parent_app_wrk = app_worker_get (parent->app_wrk_index);
+      parent_app = application_get (parent_app_wrk->app_index);
+      while (parent_app && application_is_transport (parent_app) &&
+	     (parent->listener_handle != SESSION_INVALID_HANDLE))
+	{
+	  parent = session_get_from_handle (parent->listener_handle);
+	  if (parent->app_wrk_connect_index != SESSION_INVALID_INDEX)
+	    {
+	      parent_app_wrk = app_worker_get (parent->app_wrk_connect_index);
+	      stream_session->app_wrk_connect_index = parent->app_wrk_connect_index;
+	    }
+	  else
+	    {
+	      parent_app_wrk = app_worker_get (parent->app_wrk_index);
+	      stream_session->app_wrk_connect_index = parent->app_wrk_index;
+	    }
+	  parent_app = application_get (parent_app_wrk->app_index);
+	}
+    }
 
   app_wrk = app_worker_get (stream_session->app_wrk_index);
   if ((rv = app_worker_init_connected (app_wrk, stream_session)))
@@ -1370,7 +1405,7 @@ quic_quicly_conn_app_init_failed (quic_ctx_t *ctx, const char *reason_phrase)
 static void
 quic_quicly_on_quic_session_accepted (quic_ctx_t *ctx)
 {
-  session_t *quic_session;
+  session_t *quic_session, *udp_session;
   app_worker_t *app_wrk;
   quic_ctx_t *lctx;
   int rv;
@@ -1410,6 +1445,10 @@ quic_quicly_on_quic_session_accepted (quic_ctx_t *ctx)
       quic_quicly_conn_app_init_failed (ctx, "failed to allocate fifos");
       return;
     }
+
+  quic_session->app_wrk_connect_index = quic_session->app_wrk_index;
+  udp_session = session_get_from_handle (ctx->udp_session_handle);
+  udp_session->app_wrk_connect_index = quic_session->app_wrk_index;
 
   svm_fifo_init_ooo_lookup (quic_session->rx_fifo, 0 /* ooo enq */);
   svm_fifo_init_ooo_lookup (quic_session->tx_fifo, 1 /* ooo deq */);
@@ -2038,6 +2077,7 @@ rx_start:
 	  ctx = quic_quicly_get_quic_ctx (packet_ctx->ctx_index, packet_ctx->thread_index);
 	  if (ctx->conn_state <= QUIC_CONN_STATE_HANDSHAKE)
 	    {
+	      ctx->app_wrk_connect_index = us->app_wrk_connect_index;
 	      quic_quicly_try_establish (ctx);
 	      ctx = quic_quicly_get_quic_ctx (packet_ctx->ctx_index, packet_ctx->thread_index);
 	    }
