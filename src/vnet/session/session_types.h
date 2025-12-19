@@ -246,8 +246,9 @@ typedef struct session_
 
   /** Opaque, for general use */
   u32 opaque;
+  u32 app_wrk_connect_index;
 
-    CLIB_CACHE_LINE_ALIGN_MARK (pad);
+  CLIB_CACHE_LINE_ALIGN_MARK (pad);
 } session_t;
 
 always_inline session_type_t
