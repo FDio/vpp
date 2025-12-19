@@ -137,6 +137,7 @@ srtp_ctx_init_client (srtp_tc_t *ctx)
   app_wrk = app_worker_get (ctx->parent_app_wrk_index);
   app_session = session_get (ctx->c_s_index, ctx->c_thread_index);
   app_session->app_wrk_index = ctx->parent_app_wrk_index;
+  app_session->app_wrk_connect_index = ctx->app_wrk_connect_index;
   app_session->connection_index = ctx->srtp_ctx_handle;
   app_session->opaque = ctx->parent_app_api_context;
   app_session->session_type =
@@ -171,7 +172,7 @@ failed:
 static int
 srtp_ctx_init_server (srtp_tc_t *ctx)
 {
-  session_t *app_listener, *app_session;
+  session_t *app_listener, *app_session, *srtp_session;
   app_worker_t *app_wrk;
   srtp_tc_t *lctx;
   int rv;
@@ -195,6 +196,10 @@ srtp_ctx_init_server (srtp_tc_t *ctx)
       session_free (app_session);
       return rv;
     }
+  app_session->app_wrk_connect_index = app_session->app_wrk_index;
+  srtp_session = session_get_from_handle (ctx->srtp_session_handle);
+  srtp_session->app_wrk_connect_index = app_session->app_wrk_connect_index;
+  ctx->app_wrk_connect_index = app_session->app_wrk_connect_index;
   ctx->app_session_handle = session_handle (app_session);
   ctx->parent_app_wrk_index = app_session->app_wrk_index;
   app_wrk = app_worker_get (app_session->app_wrk_index);
@@ -398,6 +403,7 @@ srtp_session_connected_callback (u32 srtp_app_index, u32 ctx_handle,
   ctx->srtp_session_handle = session_handle (us);
   ctx->c_flags |= TRANSPORT_CONNECTION_F_NO_LOOKUP;
   us->opaque = ctx_handle;
+  ctx->app_wrk_connect_index = us->app_wrk_connect_index;
 
   /* Preallocate app session. Avoids allocating a session on srtp_session rx
    * and potentially invalidating the session pool */
@@ -640,6 +646,8 @@ srtp_connect (transport_endpoint_cfg_t *tep)
   ctx_index = srtp_ctx_alloc_w_thread (1 /* because of udp */);
   ctx = srtp_ctx_get_w_thread (ctx_index, 1);
   ctx->parent_app_wrk_index = sep->app_wrk_index;
+  ASSERT (sep->app_wrk_connect_index != SESSION_INVALID_INDEX);
+  ctx->app_wrk_connect_index = sep->app_wrk_connect_index;
   ctx->parent_app_api_context = sep->opaque;
   ctx->udp_is_ip4 = sep->is_ip4;
   ctx->srtp_ctx_handle = ctx_index;
@@ -650,6 +658,7 @@ srtp_connect (transport_endpoint_cfg_t *tep)
   clib_memcpy_fast (&cargs->sep, sep, sizeof (session_endpoint_t));
   cargs->sep.transport_proto = TRANSPORT_PROTO_UDP;
   cargs->sep_ext.transport_flags = TRANSPORT_CFG_F_CONNECTED;
+  cargs->sep_ext.app_wrk_connect_index = ctx->app_wrk_connect_index;
   cargs->app_index = sm->app_index;
   cargs->api_context = ctx_index;
   cargs->sep_ext.ns_index = app->ns_index;
