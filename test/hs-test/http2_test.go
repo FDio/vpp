@@ -77,7 +77,7 @@ func Http2TcpPostTest(s *Http2Suite) {
 func Http2MultiplexingTest(s *Http2Suite) {
 	vpp := s.Containers.Vpp.VppInstance
 	serverAddress := s.VppAddr() + ":" + s.Ports.Port1
-	vpp.Vppctl("http tps uri http://" + serverAddress + " no-zc")
+	vpp.Vppctl("http tps uri http://" + serverAddress + " no-zc fifo-size 1M")
 
 	args := fmt.Sprintf("--log-file=%s -T10 -n21 -c1 -m100 http://%s/test_file_20M", H2loadLogFileName(s.Containers.H2load), serverAddress)
 	s.Containers.H2load.ExtraRunningArgs = args
@@ -121,6 +121,105 @@ func Http2TlsTest(s *Http2Suite) {
 	AssertContains(log, "HTTP/2 200")
 	AssertContains(log, "ALPN: server accepted h2")
 	AssertContains(writeOut, "version")
+}
+
+func Http2TlsListenerSegmentManagerTest(s *Http2Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	serverAddress := s.VppAddr() + ":" + s.Ports.Port1
+	baselineSmCount := getSegmentManagerCount(vpp)
+
+	Log(vpp.Vppctl("http cli server listener add uri https://" + serverAddress))
+	Log(vpp.Vppctl("show app listeners verbose"))
+
+	appSms := waitForAppListenerSegmentManagers(vpp, "http_cli_server", 10)
+	httpSms := waitForAppListenerSegmentManagers(vpp, "http", 10)
+	tlsSms := waitForAppListenerSegmentManagers(vpp, "tls", 10)
+	appSm := appSms[0]
+
+	assertAllSegmentManagersEqual(appSms, appSm, "application listener should use a single segment manager")
+	assertAllSegmentManagersEqual(httpSms, appSm, "http transport listener should use application listener segment manager")
+	assertAllSegmentManagersEqual(tlsSms, appSm, "tls transport listener should use application listener segment manager")
+	assertSegmentManagerOwner(vpp, appSm, "http_cli_server")
+
+	Log(vpp.Vppctl("http cli server listener del uri https://" + serverAddress))
+	waitForNoAppListener(vpp, "http_cli_server", 10)
+	waitForNoAppListener(vpp, "http", 10)
+	waitForNoAppListener(vpp, "tls", 10)
+	waitForSegmentManagerCount(vpp, baselineSmCount, 10)
+}
+
+func Http2TlsConnectSegmentManagerTest(s *Http2Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+
+	s.CreateNginxServer()
+	AssertNil(s.Containers.NginxServer.Start())
+
+	uri := "https://" + s.HostAddr() + ":" + s.Ports.Port2 + "/64B"
+	done := make(chan string, 1)
+
+	go func() {
+		done <- vpp.Vppctl("http client http2 duration 5 verbose uri " + uri)
+	}()
+
+	entriesByProto := waitForClientProtoSnapshot(vpp, []string{"[TLS]", "[H2]"}, 10)
+	tlsEntries := entriesByProto["[TLS]"]
+	h2Entries := entriesByProto["[H2]"]
+	appSm := tlsEntries[0].smIndex
+
+	assertClientProtoEntriesUseApp(tlsEntries, "http_client", appSm,
+		"tls connect sessions should use the application connect segment manager")
+	assertClientProtoEntriesUseApp(h2Entries, "http_client", appSm,
+		"http2 connect sessions should use the application connect segment manager")
+	assertSegmentManagerOwner(vpp, appSm, "http_client")
+	AssertEqual(1, len(getConnectSegmentManagers(vpp, "http_client")),
+		"http_client should own exactly one connect segment manager")
+	AssertEqual(0, len(getConnectSegmentManagers(vpp, "http")),
+		"http transport app should not own a connect segment manager")
+	AssertEqual(0, len(getConnectSegmentManagers(vpp, "tls")),
+		"tls transport app should not own a connect segment manager")
+
+	o := <-done
+	Log(o)
+	AssertNotContains(o, "error")
+	waitForNoClientProtoEntries(vpp, []string{"[TLS]", "[H2]"}, 10)
+}
+
+func Http2TlsTransportSegmentManagerSegmentsTest(s *Http2Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	serverAddress := s.VppAddr() + ":" + s.Ports.Port1
+	baselineSmCount := getSegmentManagerCount(vpp)
+
+	Log(vpp.Vppctl("http cli server listener add uri https://" + serverAddress))
+	o := waitForSegmentManagerSegmentsApp(vpp, "http_cli_server", 10)
+	assertNoSegmentManagerSegmentsForApps(o, "http", "tls")
+
+	Log(vpp.Vppctl("http cli server listener del uri https://" + serverAddress))
+	waitForNoSegmentManagerSegmentsApp(vpp, "http_cli_server", 10)
+	waitForSegmentManagerCount(vpp, baselineSmCount, 10)
+}
+
+func Http2ConnectTransportSegmentManagerSegmentsTest(s *Http2Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	baselineSmCount := getSegmentManagerCount(vpp)
+
+	s.CreateNginxServer()
+	AssertNil(s.Containers.NginxServer.Start())
+
+	uri := "https://" + s.HostAddr() + ":" + s.Ports.Port2 + "/64B"
+	done := make(chan string, 1)
+
+	go func() {
+		done <- vpp.Vppctl("http client http2 duration 5 uri " + uri)
+	}()
+
+	o := waitForSegmentManagerSegmentsApp(vpp, "http_client", 10)
+	assertNoSegmentManagerSegmentsForApps(o, "http", "tls")
+
+	o = <-done
+	Log(o)
+	AssertNotContains(o, "error")
+	waitForNoSegmentManagerSegmentsApp(vpp, "http_client", 10)
+	waitForSegmentManagerCount(vpp, baselineSmCount, 20)
 }
 
 func Htttp2TlsNoAlpnTest(s *Http2Suite) {
