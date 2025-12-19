@@ -483,6 +483,7 @@ mbedtls_ctx_read (tls_ctx_t * ctx, session_t * tls_session)
 
   if (PREDICT_FALSE (mc->ssl.state != MBEDTLS_SSL_HANDSHAKE_OVER))
     {
+      ctx->app_wrk_connect_index = tls_session->app_wrk_connect_index;
       mbedtls_ctx_handshake_rx (ctx);
       return 0;
     }

@@ -157,6 +157,7 @@ app_listener_alloc_and_init (application_t * app,
 
   app_listener = app_listener_alloc (app);
   al_index = app_listener->al_index;
+
   st = session_type_from_proto_and_ip (sep->transport_proto, sep->is_ip4);
 
   /*
@@ -173,6 +174,7 @@ app_listener_alloc_and_init (application_t * app,
       ls = listen_session_alloc (0, local_st);
       ls->app_wrk_index = sep->app_wrk_index;
       lh = session_handle (ls);
+      app_listener->ls_handle = lh;
 
       if ((rv = session_listen (ls, sep)))
 	{
@@ -185,7 +187,6 @@ app_listener_alloc_and_init (application_t * app,
       ls = session_get_from_handle (lh);
       app_listener = app_listener_get (al_index);
       app_listener->local_index = ls->session_index;
-      app_listener->ls_handle = lh;
       ls->al_index = al_index;
 
       table_index = application_local_session_table (app);
@@ -207,6 +208,7 @@ app_listener_alloc_and_init (application_t * app,
       /* Listen pool can be reallocated if the transport is
        * recursive (tls) */
       lh = listen_session_get_handle (ls);
+      app_listener->ls_handle = lh;
 
       if ((rv = session_listen (ls, sep)))
 	{
@@ -219,7 +221,6 @@ app_listener_alloc_and_init (application_t * app,
       ls = listen_session_get_from_handle (lh);
       app_listener = app_listener_get (al_index);
       app_listener->session_index = ls->session_index;
-      app_listener->ls_handle = lh;
       ls->al_index = al_index;
 
       /* Add to the global lookup table after transport was initialized.
@@ -1083,6 +1084,13 @@ application_alloc_worker_and_init (application_t * app, app_worker_t ** wrk)
   wrk_map = app_worker_map_alloc (app);
   wrk_map->wrk_index = app_wrk->wrk_index;
   app_wrk->wrk_map_index = app_worker_map_index (app, wrk_map);
+  app_wrk->listeners_table = hash_create (0, sizeof (u64));
+
+  if (application_is_transport (app))
+    {
+      /* skip creating segment manager for transport */
+      goto skip;
+    }
 
   /*
    * Setup first segment manager
@@ -1102,8 +1110,9 @@ application_alloc_worker_and_init (application_t * app, app_worker_t ** wrk)
    * Setup app worker
    */
   app_wrk->connects_seg_manager = segment_manager_index (sm);
-  app_wrk->listeners_table = hash_create (0, sizeof (u64));
   app_wrk->event_queue = segment_manager_event_queue (sm);
+
+skip:
   app_wrk->app_is_builtin = application_is_builtin (app);
 
   *wrk = app_wrk;
@@ -1252,6 +1261,13 @@ vnet_application_attach (vnet_app_attach_args_t *a)
 
   a->app_evt_q = app_wrk->event_queue;
   app_wrk->api_client_index = a->api_client_index;
+
+  if (application_is_transport (app))
+    {
+      /* skip creating segment manager for transport */
+      goto skip;
+    }
+
   sm = segment_manager_get (app_wrk->connects_seg_manager);
   fs = segment_manager_get_segment_w_lock (sm, 0);
 
@@ -1269,6 +1285,7 @@ vnet_application_attach (vnet_app_attach_args_t *a)
 
   segment_manager_segment_reader_unlock (sm);
 
+skip:
   if (!application_is_builtin (app) && application_use_private_rx_mqs ())
     rv = app_rx_mqs_alloc (app);
 
@@ -1365,7 +1382,7 @@ session_endpoint_update_for_app (session_endpoint_cfg_t * sep,
 session_error_t
 vnet_listen (vnet_listen_args_t *a)
 {
-  app_listener_t *app_listener;
+  app_listener_t *app_listener = 0;
   app_worker_t *app_wrk;
   application_t *app;
   int rv;
@@ -1579,6 +1596,12 @@ application_change_listener_owner (session_t * s, app_worker_t * app_wrk)
   s->app_wrk_index = app_wrk->wrk_index;
 
   return 0;
+}
+
+app_options_flags_t
+application_is_transport (application_t *app)
+{
+  return (app->flags & APP_OPTIONS_FLAGS_IS_TRANSPORT_APP);
 }
 
 int
@@ -1911,13 +1934,14 @@ format_app_mq (u8 *s, va_list *args)
 
   pool_foreach (map, app->worker_maps)  {
     wrk = app_worker_get (map->wrk_index);
-    s = format (s, "[A%d][%d]%U", app->app_index, map->wrk_index,
-		format_svm_msg_q, wrk->event_queue);
+    if (wrk->event_queue)
+	s = format (s, "[A%d][%d]%U", app->app_index, map->wrk_index, format_svm_msg_q,
+		    wrk->event_queue);
   }
 
   for (i = 0; i < vec_len (app->rx_mqs); i++)
-  s = format (s, "[A%d][R%d]%U", app->app_index, i, format_svm_msg_q,
-	      app->rx_mqs[i].mq);
+  if (app->rx_mqs[i].mq)
+    s = format (s, "[A%d][R%d]%U", app->app_index, i, format_svm_msg_q, app->rx_mqs[i].mq);
 
   return s;
 }
@@ -1938,8 +1962,9 @@ application_format_mqs (vlib_main_t *vm, application_t *req_app)
 
   for (i = 0; i < n_threads; i++)
     {
-      vlib_cli_output (vm, "[Ctrl%d]%U", i, format_svm_msg_q,
-		       session_main_get_vpp_event_queue (i));
+    if (session_main_get_vpp_event_queue (i))
+	vlib_cli_output (vm, "[Ctrl%d]%U", i, format_svm_msg_q,
+			 session_main_get_vpp_event_queue (i));
     }
 
   pool_foreach (app, app_main.app_pool)

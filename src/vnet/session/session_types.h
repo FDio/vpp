@@ -232,8 +232,14 @@ typedef struct session_
   /** Index of the transport connection associated to the session */
   u32 connection_index;
 
-  /** App listener index in app's listener pool if a listener */
-  u32 al_index;
+  union
+  {
+    /** App listener index in app's listener pool if a listener */
+    u32 al_index;
+
+    /** App worker connect index for connect */
+    u32 app_wrk_connect_index;
+  };
 
   union
   {
@@ -247,7 +253,7 @@ typedef struct session_
   /** Opaque, for general use */
   u32 opaque;
 
-    CLIB_CACHE_LINE_ALIGN_MARK (pad);
+  CLIB_CACHE_LINE_ALIGN_MARK (pad);
 } session_t;
 
 always_inline session_type_t
