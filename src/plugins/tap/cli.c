@@ -57,7 +57,7 @@ tap_show (vlib_main_t *vm, u32 *hw_if_indices, u8 show_descr, int is_tun)
        * share the same fork mode (configured at interface creation). */
       if (vec_len (tif->vhost_fds) > 0)
 	{
-	  int fork_mode = -1;
+	  u8 fork_mode = 0;
 	  if (ioctl (tif->vhost_fds[0], VHOST_GET_FORK_FROM_OWNER,
 		     &fork_mode) == 0)
 	    {

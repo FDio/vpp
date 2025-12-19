@@ -649,7 +649,7 @@ tap_create_if (vlib_main_t *vm, tap_create_if_args_t *args)
        * IMPORTANT: This IOCTL must be called BEFORE VHOST_SET_OWNER.
        * Only available on kernel >= 6.12 with
        * CONFIG_VHOST_ENABLE_FORK_OWNER_CONTROL=y */
-      int fork_mode = VHOST_FORK_OWNER_KTHREAD;
+      u8 fork_mode = VHOST_FORK_OWNER_KTHREAD;
       if (ioctl (vfd, VHOST_SET_FORK_FROM_OWNER, &fork_mode) == 0)
 	{
 	  if (i == 0)
