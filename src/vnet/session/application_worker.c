@@ -103,9 +103,9 @@ app_worker_free (app_worker_t * app_wrk)
   if (app_wrk->connects_seg_manager != APP_INVALID_SEGMENT_MANAGER_INDEX)
     {
       sm = segment_manager_get (app_wrk->connects_seg_manager);
-      sm->app_wrk_index = SEGMENT_MANAGER_INVALID_APP_INDEX;
       sm->first_is_protected = 0;
       segment_manager_init_free (sm);
+      sm->app_wrk_index = SEGMENT_MANAGER_INVALID_APP_INDEX;
     }
 
   /*
@@ -224,9 +224,12 @@ app_worker_free_wrk_cl_session (app_worker_t *app_wrk, session_t *ls)
 }
 
 int
-app_worker_init_listener (app_worker_t * app_wrk, session_t * ls)
+app_worker_init_listener (app_worker_t *app_wrk, session_t *ls, segment_manager_t *sm)
 {
-  segment_manager_t *sm;
+  application_t *app = application_get (app_wrk->app_index);
+
+  if (app && application_is_transport (app) && sm)
+    goto skip;
 
   /* Allocate segment manager. All sessions derived out of a listen session
    * have fifos allocated by the same segment manager.
@@ -238,6 +241,7 @@ app_worker_init_listener (app_worker_t * app_wrk, session_t * ls)
   sm->first_is_protected = 1;
   sm->flags |= SEG_MANAGER_F_LISTENER;
 
+skip:
   /* Keep track of the segment manager for the listener or this worker */
   hash_set (app_wrk->listeners_table, listen_session_get_handle (ls),
 	    segment_manager_index (sm));
@@ -249,7 +253,7 @@ app_worker_init_listener (app_worker_t * app_wrk, session_t * ls)
 }
 
 session_error_t
-app_worker_start_listen (app_worker_t *app_wrk, app_listener_t *app_listener)
+app_worker_start_listen (app_worker_t *app_wrk, app_listener_t *app_listener, segment_manager_t *sm)
 {
   session_t *ls;
   int rv;
@@ -263,14 +267,14 @@ app_worker_start_listen (app_worker_t *app_wrk, app_listener_t *app_listener)
   if (app_listener->session_index != SESSION_INVALID_INDEX)
     {
       ls = session_get (app_listener->session_index, 0);
-      if ((rv = app_worker_init_listener (app_wrk, ls)))
+      if ((rv = app_worker_init_listener (app_wrk, ls, sm)))
 	return rv;
     }
 
   if (app_listener->local_index != SESSION_INVALID_INDEX)
     {
       ls = session_get (app_listener->local_index, 0);
-      if ((rv = app_worker_init_listener (app_wrk, ls)))
+      if ((rv = app_worker_init_listener (app_wrk, ls, sm)))
 	return rv;
     }
 
@@ -316,8 +320,12 @@ app_worker_stop_listen_session (app_worker_t * app_wrk, session_t * ls)
   if (ls->flags & SESSION_F_IS_CLESS)
     app_worker_free_wrk_cl_session (app_wrk, ls);
 
-  /* Try to cleanup segment manager */
-  sm = segment_manager_get (*sm_indexp);
+  /* Try to cleanup segment manager. Because transport uses the same sm
+   * from the application, sm may already be freed for the second caller,
+   * which may be the application or the transport. The second caller
+   * does not need to do anything in this case since the first caller
+   * already free the sm if there was no more fifos. */
+  sm = segment_manager_get_if_valid (*sm_indexp);
   if (sm)
     {
       sm->first_is_protected = 0;
@@ -482,6 +490,21 @@ app_worker_init_connected (app_worker_t * app_wrk, session_t * s)
 {
   application_t *app = application_get (app_wrk->app_index);
   segment_manager_t *sm;
+  app_worker_t *app_wrk2;
+
+  if (app && application_is_transport (app))
+    {
+      if (s->app_wrk_connect_index != SESSION_INVALID_INDEX)
+	{
+	  app_wrk2 = app_worker_get_if_valid (s->app_wrk_connect_index);
+	  if (app_wrk2)
+	    app_wrk = app_wrk2;
+	}
+      else
+	{
+	  session_log_backtrace ("init_connected with bad app_wrk_connect_index");
+	}
+    }
 
   if (app->cb_fns.fifo_tuning_callback)
     s->flags |= SESSION_F_CUSTOM_FIFO_TUNING;
@@ -649,6 +672,9 @@ app_worker_connect_session (app_worker_t *app_wrk, session_endpoint_cfg_t *sep,
     return SESSION_E_REFUSED;
 
   sep->app_wrk_index = app_wrk->wrk_index;
+  /* pass/leak app worker index to app_worker_init_connected */
+  if (sep->app_wrk_connect_index == 0)
+    sep->app_wrk_connect_index = app_wrk->wrk_index;
 
   return session_open (sep, rsh);
 }
@@ -661,6 +687,9 @@ app_worker_connect_stream (app_worker_t *app_wrk, session_endpoint_cfg_t *sep,
     return SESSION_E_REFUSED;
 
   sep->app_wrk_index = app_wrk->wrk_index;
+  /* pass/leak app worker index to app_worker_init_connected */
+  if (sep->app_wrk_connect_index == 0)
+    sep->app_wrk_connect_index = app_wrk->wrk_index;
 
   return session_open_stream (sep, rsh);
 }

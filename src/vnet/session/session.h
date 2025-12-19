@@ -13,6 +13,7 @@
 #include <svm/message_queue.h>
 #include <svm/fifo_segment.h>
 #include <vlib/dma/dma.h>
+#include <vppinfra/stack.h>
 
 typedef struct session_wrk_stats_
 {
@@ -1242,4 +1243,18 @@ session_rule_table_is_enabled (void)
   return (smm->rt_engine_type == RT_BACKEND_ENGINE_RULE_TABLE);
 }
 
+static_always_inline void
+session_log_backtrace (const char *tag)
+{
+  foreach_clib_stack_frame (sf)
+    {
+      if (sf->name[0])
+	clib_warning ("%s #%u %s + 0x%x ip=0x%lx file=%s", tag, sf->index, sf->name, sf->offset,
+		      sf->ip, sf->file_name ? sf->file_name : "unknown");
+      else
+	clib_warning ("%s #%u ip=0x%lx file=%s", tag, sf->index, sf->ip,
+		      sf->file_name ? sf->file_name : "unknown");
+    }
+  clib_warning ("\n");
+}
 #endif /* __included_session_h__ */
