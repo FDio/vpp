@@ -196,6 +196,7 @@ typedef struct quic_ctx_
   ip46_address_t lcl_ip;
   u16 lcl_port;
   quic_app_err_code_t app_err_code;
+  u32 app_wrk_connect_index;
 } quic_ctx_t;
 
 /* Make sure our custom fields don't overlap with the fields we use in

@@ -128,6 +128,7 @@ quic_quicly_notify_app_connected (quic_ctx_t *ctx, session_error_t err)
   app_session->app_wrk_index = ctx->parent_app_wrk_id;
   app_session->opaque = ctx->client_opaque;
   app_session->connection_index = ctx->c_c_index;
+  app_session->app_wrk_connect_index = ctx->app_wrk_connect_index;
   ctx->c_s_index = app_session->session_index;
 
   if (ctx->alpn_protos[0])
@@ -782,12 +783,14 @@ quic_quicly_on_stream_open (quicly_stream_open_t *self, quicly_stream_t *stream)
    * - in quicly_open_stream, returned directly
    */
 
-  session_t *stream_session, *quic_session;
+  session_t *stream_session, *quic_session, *parent;
   quic_stream_data_t *stream_data;
   app_worker_t *app_wrk;
   quic_ctx_t *qctx, *sctx;
   u32 sctx_id;
   int rv;
+  application_t *parent_app;
+  app_worker_t *parent_app_wrk;
 
   QUIC_DBG (2, "on_stream_open called");
   stream->data = clib_mem_alloc (sizeof (quic_stream_data_t));
@@ -849,6 +852,29 @@ quic_quicly_on_stream_open (quicly_stream_open_t *self, quicly_stream_t *stream)
     session_type_from_proto_and_ip (TRANSPORT_PROTO_QUIC, qctx->udp_is_ip4);
   quic_session = session_get (qctx->c_s_index, qctx->c_thread_index);
   stream_session->listener_handle = listen_session_get_handle (quic_session);
+
+  parent = session_get_from_handle (qctx->udp_session_handle);
+  if (parent->session_state == SESSION_STATE_READY)
+    stream_session->app_wrk_connect_index = parent->app_wrk_connect_index;
+  else
+    stream_session->app_wrk_connect_index = parent->app_wrk_index;
+
+  parent = session_get_from_handle_if_valid (parent->listener_handle);
+  if (parent)
+    {
+      parent_app = application_get (parent->app_wrk_connect_index);
+      while (parent_app && application_is_transport (parent_app) &&
+	     (parent->listener_handle != SESSION_INVALID_HANDLE))
+	{
+	  parent = session_get_from_handle (parent->listener_handle);
+	  parent_app_wrk = app_worker_get (parent->app_wrk_index);
+	  parent_app = application_get (parent_app_wrk->app_index);
+	  if (parent->session_state == SESSION_STATE_READY)
+	    stream_session->app_wrk_connect_index = parent->app_wrk_connect_index;
+	  else
+	    stream_session->app_wrk_connect_index = parent->app_wrk_index;
+	}
+    }
 
   app_wrk = app_worker_get (stream_session->app_wrk_index);
   if ((rv = app_worker_init_connected (app_wrk, stream_session)))
@@ -1958,6 +1984,7 @@ rx_start:
 	  ctx = quic_quicly_get_quic_ctx (packet_ctx->ctx_index, packet_ctx->thread_index);
 	  if (ctx->conn_state <= QUIC_CONN_STATE_HANDSHAKE)
 	    {
+	      ctx->app_wrk_connect_index = udp_session->app_wrk_connect_index;
 	      quic_quicly_check_quic_session_connected (ctx);
 	      ctx = quic_quicly_get_quic_ctx (packet_ctx->ctx_index, packet_ctx->thread_index);
 	    }
