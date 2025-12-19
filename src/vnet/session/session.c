@@ -776,6 +776,7 @@ session_stream_connect_notify (transport_connection_t * tc,
   s->app_wrk_index = app_wrk->wrk_index;
   s->listener_handle = SESSION_INVALID_HANDLE;
   s->opaque = opaque;
+  s->app_wrk_connect_index = ho->app_wrk_connect_index;
   new_si = s->session_index;
   new_ti = s->thread_index;
 
@@ -836,7 +837,7 @@ session_switch_pool (void *cb_args)
   session_switch_pool_args_t *args = (session_switch_pool_args_t *) cb_args;
   session_handle_t new_sh;
   segment_manager_t *sm;
-  app_worker_t *app_wrk;
+  app_worker_t *app_wrk, *app_wrk2;
   session_t *s;
 
   ASSERT (args->thread_index == vlib_get_thread_index ());
@@ -852,10 +853,14 @@ session_switch_pool (void *cb_args)
     {
       if (svm_fifo_max_dequeue (s->tx_fifo))
 	session_program_tx_io_evt (new_sh, SESSION_IO_EVT_TX);
-      /* Cleanup fifo segment slice state for fifos */
-      sm = app_worker_get_connect_segment_manager (app_wrk);
-      segment_manager_detach_fifo (sm, &s->rx_fifo);
-      segment_manager_detach_fifo (sm, &s->tx_fifo);
+      app_wrk2 = app_worker_get_if_valid (s->app_wrk_connect_index);
+      if (app_wrk2)
+	{
+	  /* Cleanup fifo segment slice state for fifos */
+	  sm = app_worker_get_connect_segment_manager (app_wrk2);
+	  segment_manager_detach_fifo (sm, &s->rx_fifo);
+	  segment_manager_detach_fifo (sm, &s->tx_fifo);
+	}
     }
 
   /* Check if session closed during migration */
@@ -902,7 +907,7 @@ session_dgram_connect_notify (transport_connection_t *tc,
   if (!(tc->flags & TRANSPORT_CONNECTION_F_NO_LOOKUP))
     session_lookup_add_connection (tc, session_handle (new_s));
 
-  app_wrk = app_worker_get_if_valid (new_s->app_wrk_index);
+  app_wrk = app_worker_get_if_valid (new_s->app_wrk_connect_index);
   if (app_wrk && !(new_s->flags & SESSION_F_PROXY))
     {
       /* New set of fifos attached to the same shared memory */
@@ -1279,6 +1284,7 @@ session_open_cl (session_endpoint_cfg_t *rmt, session_handle_t *rsh)
   session_set_state (s, SESSION_STATE_OPENED);
   if (transport_connection_is_cless (tc))
     s->flags |= SESSION_F_IS_CLESS;
+  s->app_wrk_connect_index = rmt->app_wrk_connect_index;
   if (app_worker_init_connected (app_wrk, s))
     {
       session_free (s);
@@ -1325,6 +1331,7 @@ session_open_vc (session_endpoint_cfg_t *rmt, session_handle_t *rsh)
    */
   ho = session_alloc_for_half_open (tc);
   ho->app_wrk_index = app_wrk->wrk_index;
+  ho->app_wrk_connect_index = rmt->app_wrk_connect_index;
   ho->ho_index = app_worker_add_half_open (app_wrk, session_handle (ho));
   ho->opaque = rmt->opaque;
   *rsh = session_handle (ho);
@@ -1372,10 +1379,11 @@ session_open_stream (session_endpoint_cfg_t *sep, session_handle_t *rsh)
 {
   transport_connection_t *tc;
   transport_endpoint_cfg_t *tep;
-  app_worker_t *app_wrk;
-  session_t *s;
+  app_worker_t *app_wrk, *parent_app_wrk;
+  session_t *s, *parent;
   u32 conn_index;
   int rv;
+  application_t *parent_app;
 
   app_wrk = app_worker_get (sep->app_wrk_index);
   tep = session_endpoint_to_transport_cfg (sep);
@@ -1388,6 +1396,26 @@ session_open_stream (session_endpoint_cfg_t *sep, session_handle_t *rsh)
   s->app_wrk_index = app_wrk->wrk_index;
   s->opaque = sep->opaque;
   s->flags |= SESSION_F_STREAM;
+
+  parent = session_get_from_handle (sep->parent_handle);
+  if (parent->app_wrk_connect_index != SESSION_INVALID_INDEX)
+    s->app_wrk_connect_index = parent->app_wrk_connect_index;
+  else
+    {
+      parent_app = application_get (app_wrk->app_index);
+      parent = session_get_from_handle_if_valid (sep->parent_handle);
+      while (parent_app && application_is_transport (parent_app) &&
+	     (parent->listener_handle != SESSION_INVALID_HANDLE))
+	{
+	  parent = session_get_from_handle (parent->listener_handle);
+	  parent_app_wrk = app_worker_get (parent->app_wrk_index);
+	  parent_app = application_get (parent_app_wrk->app_index);
+	  if (parent->session_state == SESSION_STATE_READY)
+	    s->app_wrk_connect_index = parent->app_wrk_connect_index;
+	  else
+	    s->app_wrk_connect_index = parent->app_wrk_index;
+	}
+    }
   if ((rv = app_worker_init_connected (app_wrk, s)))
     {
       session_free (s);

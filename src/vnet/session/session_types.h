@@ -232,8 +232,12 @@ typedef struct session_
   /** Index of the transport connection associated to the session */
   u32 connection_index;
 
-  /** App listener index in app's listener pool if a listener */
-  u32 al_index;
+  union
+  {
+    /** App listener index in app's listener pool if a listener */
+    u32 al_index;
+    u32 app_wrk_connect_index;
+  };
 
   union
   {
