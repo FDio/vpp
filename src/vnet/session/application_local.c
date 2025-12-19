@@ -189,6 +189,7 @@ ct_session_connect_notify (session_t *ss, session_error_t err)
   cs->app_wrk_index = client_wrk->wrk_index;
   cs->connection_index = cct->c_c_index;
   cs->opaque = opaque;
+  cs->app_wrk_connect_index = SESSION_INVALID_INDEX;
   cct->c_s_index = cs->session_index;
 
   /* This will allocate fifos for the session. They won't be used for
