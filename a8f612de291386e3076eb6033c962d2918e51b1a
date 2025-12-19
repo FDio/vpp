@@ -16,6 +16,24 @@
       "message": "Please do not hard code the default value as 32 here.\n\nDoing so overrides the default value specified in the api definition: https://github.com/FDio/vpp/blob/master/src/vpp-api/python/vpp_papi/vpp_papi.py#L645\n\nThus if the default value is changed in the API definition, this code will never use the new default value for tests which do not define cls.rx_qlen\n\nI\u0027d recommend doing something like this instead:\n\ntry:\n    rx_qlen \u003d getattr(cls, \"rx_qlen\", None)\n    kwargs \u003d {} if rx_qlen is None else {\"rx_qlen\": rx_qlen}\n    cls.vapi.connect(**kwargs)\nexcept (vpp_papi.VPPIOError, Exception) as e:",
       "revId": "a8f612de291386e3076eb6033c962d2918e51b1a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cc886022_b2c568ae",
+        "filename": "test/asf/asfframework.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 684,
+      "author": {
+        "id": 3200
+      },
+      "writtenOn": "2025-12-19T16:14:55Z",
+      "side": 1,
+      "message": "Agreed, many thanks!",
+      "parentUuid": "0eb68668_ac0525cb",
+      "revId": "a8f612de291386e3076eb6033c962d2918e51b1a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
