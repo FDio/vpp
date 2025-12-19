@@ -237,6 +237,22 @@ ec_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
   for (i = 0; i < vec_len (conns_this_batch); i++)
     {
       es = ec_session_get (wrk, conns_this_batch[i]);
+      s = session_get_from_handle_if_valid (es->vpp_session_handle);
+      if (PREDICT_FALSE (!s))
+	{
+	  ec_err ("session AWOL?");
+	  vec_delete (conns_this_batch, 1, i);
+	  i--;
+	  clib_atomic_fetch_add (&ecm->ready_connections, -1);
+	  if (ecm->ready_connections == 0)
+	    signal_evt_to_cli (EC_CLI_TEST_DONE);
+	  continue;
+	}
+
+      /* Refresh app-session state so we do not keep stale fifo pointers if
+       * the backing session changed ownership or was recreated. */
+      hs_test_app_session_init (es, s);
+
       delete_session = 1;
       if (es->bytes_to_send > 0)
 	{
@@ -277,6 +293,8 @@ ec_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 	    {
 	      ec_err ("session AWOL?");
 	      vec_delete (conns_this_batch, 1, i);
+	      i--;
+	      clib_atomic_fetch_add (&ecm->ready_connections, -1);
 	    }
 
 	  /* Kick the debug CLI process */
