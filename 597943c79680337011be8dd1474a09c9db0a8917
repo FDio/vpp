@@ -16,6 +16,24 @@
       "message": "Sorry, I just realized the same problem exists here that you fixed in asfframework.py.  If the caller does not provide an rx_qlen, then self.vpp.connect() will fail due to rx_qlen\u003dNone instead of not setting rx_qlen to any value here which allows the default value to be set in self.vpp.connect().\n\nThe same solution should work here:\n\nkwargs \u003d {} if rx_qlen is None else {\"rx_qlen\": rx_qlen}\nself.vpp.connect(self.name[:63], **kwargs)",
       "revId": "597943c79680337011be8dd1474a09c9db0a8917",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ab975d5b_7f2caec0",
+        "filename": "test/vpp_papi_provider.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 362,
+      "author": {
+        "id": 3200
+      },
+      "writtenOn": "2025-12-19T23:52:36Z",
+      "side": 1,
+      "message": "Thanks, sorry, I should have caught this one",
+      "parentUuid": "c4cdabe8_369bcf65",
+      "revId": "597943c79680337011be8dd1474a09c9db0a8917",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
