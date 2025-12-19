@@ -1971,7 +1971,7 @@ func HttpAbsoluteFormUriTest(s *Http1Suite) {
 func HttpInvalidAuthorityFormUriTest(s *Http1Suite) {
 	vpp := s.Containers.Vpp.VppInstance
 	serverAddress := s.VppAddr() + ":" + s.Ports.Http
-	vpp.Vppctl("test proxy server fifo-size 512k server-uri http://%s", serverAddress)
+	vpp.Vppctl("test proxy server fifo-size 1M server-uri http://%s", serverAddress)
 
 	resp, err := TcpSendReceive(serverAddress, "CONNECT 1.2.3.4:80a HTTP/1.1\r\n\r\n")
 	AssertNil(err, fmt.Sprint(err))
