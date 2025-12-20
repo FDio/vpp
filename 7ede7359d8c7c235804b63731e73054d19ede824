@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c2688320_b957e028",
+        "filename": "src/plugins/hs_apps/vcl/vcl_test_client.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 697,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-12-20T21:53:16Z",
+      "side": 1,
+      "message": "Shouldn\u0027t we close non-quic sessions here? We don\u0027t necessarily get data with a close to hit the EPOLLIN lower. \nMaybe add no-op close functions to all protos that are non-quic.",
+      "revId": "7ede7359d8c7c235804b63731e73054d19ede824",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f5ee3596_d5274cbd",
+        "filename": "src/plugins/hs_apps/vcl/vcl_test_server.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 697,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-12-20T21:53:16Z",
+      "side": 1,
+      "message": "Comment to explain what this and/or move the for to a function with a suggestive name",
+      "revId": "7ede7359d8c7c235804b63731e73054d19ede824",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cb4dfed8_bef54dc7",
+        "filename": "src/plugins/hs_apps/vcl/vcl_test_server.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 724,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-12-20T21:53:16Z",
+      "side": 1,
+      "message": "Same comment about tp-\u003eclose",
+      "revId": "7ede7359d8c7c235804b63731e73054d19ede824",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
