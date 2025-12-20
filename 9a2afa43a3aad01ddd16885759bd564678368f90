@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "aa4244d3_b5e44c86",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 18
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-12-20T21:34:58Z",
+      "side": 1,
+      "message": "Nice! Only some nits",
+      "revId": "9a2afa43a3aad01ddd16885759bd564678368f90",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "05f0375a_50378d3d",
+        "filename": "src/plugins/quic_quicly/quic_quicly.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 1517,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-12-20T21:34:58Z",
+      "side": 1,
+      "message": "ternary expression as it might be faster and this might end up being some static inline?\n\nI\u0027d expect this to only hit if stream is closing and closed to being deleted ..",
+      "revId": "9a2afa43a3aad01ddd16885759bd564678368f90",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "fe5f8cd6_8e119029",
+        "filename": "src/plugins/quic_quicly/quic_quicly.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 1669,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-12-20T21:34:58Z",
+      "side": 1,
+      "message": "Should we track that with some internal flag instead of always going \"down\" in quicly? And if we choose our flags wisely, we can reduce this to only one if, I think. That is, \n```\nif (ctx-\u003eflags \u0026 whatever)\n  {\n    /* handle closing states */\n  }\n..\n```",
+      "revId": "9a2afa43a3aad01ddd16885759bd564678368f90",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
