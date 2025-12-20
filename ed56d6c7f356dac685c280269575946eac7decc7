@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a4ce87c8_92ab153b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3200
+      },
+      "writtenOn": "2025-12-20T16:45:20Z",
+      "side": 1,
+      "message": "I\u0027m still new to the vpp change submission process; reviewers picked via vpp-review script. Thanks for your help/comments.",
+      "revId": "ed56d6c7f356dac685c280269575946eac7decc7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
