@@ -9,6 +9,7 @@
 #include <vnet/dev/counters.h>
 #include <vnet/dev/log.h>
 #include <vnet/dev/api.h>
+#include <vppinfra/error.h>
 
 VLIB_REGISTER_LOG_CLASS (dev_log, static) = {
   .class_name = "dev",
@@ -91,15 +92,18 @@ vnet_dev_api_attach (vlib_main_t *vm, vnet_dev_api_attach_args_t *args)
   dev->description = dev_desc;
 
   if (driver->registration->args)
-    for (vnet_dev_arg_t *a = driver->registration->args;
-	 a->type != VNET_DEV_ARG_END; a++)
-      vec_add1 (dev->args, *a);
+    dev->args = clib_args_init (driver->registration->args);
 
   if (args->args)
     {
-      if ((rv = vnet_dev_arg_parse (vm, dev, dev->args, args->args)) !=
-	  VNET_DEV_OK)
-	goto done;
+      clib_error_t *err = clib_args_parse (dev->args, args->args);
+      if (err)
+	{
+	  log_err (dev, "%U", format_clib_error, err);
+	  clib_error_free (err);
+	  rv = VNET_DEV_ERR_INVALID_ARG;
+	  goto done;
+	}
     }
 
   if ((args->flags.e & VNET_DEV_F_NO_STATS) == 0)
@@ -187,9 +191,13 @@ vnet_dev_api_create_port_if (vlib_main_t *vm,
 
   if (args->args)
     {
-      rv = vnet_dev_arg_parse (vm, dev, port->args, args->args);
-      if (rv != VNET_DEV_OK)
-	return rv;
+      clib_error_t *err = clib_args_parse (port->args, args->args);
+      if (err)
+	{
+	  log_err (dev, "%U", format_clib_error, err);
+	  clib_error_free (err);
+	  return VNET_DEV_ERR_INVALID_ARG;
+	}
     }
 
   default_is_intr_mode = (args->flags.e & VNET_DEV_PORT_F_INTERRUPT_MODE) != 0;

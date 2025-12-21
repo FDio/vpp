@@ -26,26 +26,6 @@
 
 typedef enum
 {
-  OCT_DRV_ARG_NPA_MAX_POOLS = 1,
-  OCT_DRV_ARG_END,
-} oct_drv_args_t;
-
-typedef enum
-{
-  OCT_PORT_ARG_EN_ETH_PAUSE_FRAME = 1,
-  OCT_PORT_ARG_RSS_FLOW_KEY = 2,
-  OCT_PORT_ARG_SWITCH_HEADER_TYPE = 3,
-  OCT_PORT_ARG_END
-} oct_port_args_t;
-
-typedef enum
-{
-  OCT_DEV_ARG_CRYPTO_N_DESC = 1,
-  OCT_DEV_ARG_END,
-} oct_dev_args_t;
-
-typedef enum
-{
   OCT_DEVICE_TYPE_UNKNOWN = 0,
   OCT_DEVICE_TYPE_RVU_PF,
   OCT_DEVICE_TYPE_RVU_VF,
