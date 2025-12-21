@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "72bfdf13_cb6fe9e8",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3200
+      },
+      "writtenOn": "2025-12-21T17:23:30Z",
+      "side": 1,
+      "message": "Christian: gerrit added you as a reviewer automatically; I can remove if you prefer.\n\nOle: I have another two commits in the pipeline for vpp_get_stats. I didn\u0027t combine them because I thought it would be easier to review this way.",
+      "revId": "b357ecae7fcc9f648149caaefac12ec11d098d80",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
