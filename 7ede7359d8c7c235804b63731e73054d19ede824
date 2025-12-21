@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "bd2a10dc_ffb2845c",
+        "filename": "src/plugins/hs_apps/vcl/vcl_test_client.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 697,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-12-21T11:25:51Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c2688320_b957e028",
+      "revId": "7ede7359d8c7c235804b63731e73054d19ede824",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "f5ee3596_d5274cbd",
@@ -35,6 +53,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "e5882104_38f53e23",
+        "filename": "src/plugins/hs_apps/vcl/vcl_test_server.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 697,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-12-21T11:25:51Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "f5ee3596_d5274cbd",
+      "revId": "7ede7359d8c7c235804b63731e73054d19ede824",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "cb4dfed8_bef54dc7",
@@ -48,6 +84,24 @@
       "writtenOn": "2025-12-20T21:53:16Z",
       "side": 1,
       "message": "Same comment about tp-\u003eclose",
+      "revId": "7ede7359d8c7c235804b63731e73054d19ede824",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6b6c8d6e_9b778c08",
+        "filename": "src/plugins/hs_apps/vcl/vcl_test_server.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 724,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-12-21T11:25:51Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "cb4dfed8_bef54dc7",
       "revId": "7ede7359d8c7c235804b63731e73054d19ede824",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
