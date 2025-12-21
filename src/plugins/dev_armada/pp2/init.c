@@ -343,23 +343,21 @@ mvpp2_init (vlib_main_t *vm, vnet_dev_t *dev)
             .max_supported_rx_frame_size = 9216,
 	    .caps.secondary_interfaces = mvpp2_port.is_dsa != 0,
           },
-	  .args = VNET_DEV_ARGS ({
-            .id = MVPP2_PORT_ARG_DSA_ENABLED,
-            .type = VNET_DEV_ARG_TYPE_ENUM,
+	  .args = CLIB_ARGS ({
+            .type = CLIB_ARG_TYPE_ENUM,
             .name = "rss_hash",
             .desc = "RSS Hash type (2-tuple, 5-tuple)",
             .default_val.enum_val = PP2_PPIO_HASH_T_5_TUPLE,
-            .enum_vals = VNET_DEV_ARG_ENUM_VALS(
+            .enum_vals = CLIB_ARG_ENUM_VALS(
               { .val = PP2_PPIO_HASH_T_2_TUPLE, .name = "2-tuple", },
               { .val = PP2_PPIO_HASH_T_5_TUPLE , .name = "5-tuple", },
             ),
           },{
-            .id = MVPP2_PORT_ARG_DSA_ENABLED,
-            .type = VNET_DEV_ARG_TYPE_ENUM,
+            .type = CLIB_ARG_TYPE_ENUM,
             .name = "dsa_enable",
             .desc = "DSA header parsing (on, off, auto)",
             .default_val.enum_val = MVPP2_PORT_DSA_ENABLED_AUTO,
-            .enum_vals = VNET_DEV_ARG_ENUM_VALS(
+            .enum_vals = CLIB_ARG_ENUM_VALS(
               { .val = MVPP2_PORT_DSA_ENABLED_OFF, .name = "off", },
               { .val = MVPP2_PORT_DSA_ENABLED_ON, .name = "on", },
               { .val = MVPP2_PORT_DSA_ENABLED_AUTO, .name = "auto", },
@@ -379,9 +377,9 @@ mvpp2_init (vlib_main_t *vm, vnet_dev_t *dev)
           },
           .data_size = sizeof (mvpp2_port_t),
           .initial_data = &mvpp2_port,
-	  .sec_if_args = VNET_DEV_ARGS (
-	    VNET_DEV_ARG_UINT32 (MVPP2_SEC_IF_ARG_DSA_SWITCH, "dsa_switch", "DSA source switch ID", .max= 31),
-	    VNET_DEV_ARG_UINT32 (MVPP2_SEC_IF_ARG_DSA_PORT, "dsa_port", "DSA source switch port ID", .max = 31)
+	  .sec_if_args = CLIB_ARGS (
+	    CLIB_ARG_UINT32 (0, "dsa_switch", "DSA source switch ID", .max= 31),
+	    CLIB_ARG_UINT32 (0, "dsa_port", "DSA source switch port ID", .max = 31)
 	  ),
         },
     .rx_node = &mvpp2_rx_node,

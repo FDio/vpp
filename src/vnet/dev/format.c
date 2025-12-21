@@ -95,7 +95,7 @@ format_vnet_dev_info (u8 *s, va_list *args)
 	      indent, format_vlib_node_name, vm, dev->process_node_index);
   if (dev->args)
     s = format (s, "\n%UDevice Specific Arguments:\n%U%U", format_white_space,
-		indent, format_white_space, indent + 2, format_vnet_dev_args,
+		indent, format_white_space, indent + 2, format_clib_args,
 		dev->args);
   if (dev->ops.format_info)
     s =
@@ -160,7 +160,7 @@ format_vnet_dev_port_info (u8 *s, va_list *args)
   if (port->args)
     s = format (s, "\n%UDevice Specific Port Arguments:\n%U%U",
 		format_white_space, indent, format_white_space, indent + 2,
-		format_vnet_dev_args, port->args);
+		format_clib_args, port->args);
 
   s = format (s, "\n%UInterface ", format_white_space, indent);
   if (port->interfaces)
@@ -177,7 +177,7 @@ format_vnet_dev_port_info (u8 *s, va_list *args)
 		      sif->sw_if_index);
 	  if (sif->args)
 	    s = format (s, "\n%U args '%U", format_white_space, indent,
-			format_vnet_dev_args, sif->args);
+			format_clib_args, sif->args);
 	}
     }
   else
