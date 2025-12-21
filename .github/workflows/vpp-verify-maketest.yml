@@ -246,7 +246,7 @@ jobs:
       - name: AWS S3 Publish Logs
         if: always()
         # yamllint disable-line rule:line-length
-        uses: fdio/.github/.github/actions/aws-s3-publish-logs@6942711be695b980368af984793c5c15b7b48b76
+        uses: fdio/.github/.github/actions/aws-s3-publish-logs@17796170bed35b8f30a5480e0cd6be942a22c7aa
         with:
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -270,7 +270,7 @@ jobs:
       - name: AWS S3 Publish Archives
         if: ${{ always() && steps.check-archives.outputs.has_archives == 'true' }}
         # yamllint disable-line rule:line-length
-        uses: fdio/.github/.github/actions/aws-s3-publish-logs@6942711be695b980368af984793c5c15b7b48b76
+        uses: fdio/.github/.github/actions/aws-s3-publish-logs@17796170bed35b8f30a5480e0cd6be942a22c7aa
         with:
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
