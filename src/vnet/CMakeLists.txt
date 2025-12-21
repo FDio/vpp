@@ -27,7 +27,6 @@ list(APPEND VNET_SOURCES
   devices/devices.c
   devices/netlink.c
   dev/api.c
-  dev/args.c
   dev/bus/pci.c
   dev/cli.c
   dev/config.c
@@ -75,7 +74,6 @@ list(APPEND VNET_HEADERS
   devices/devices.h
   devices/netlink.h
   dev/api.h
-  dev/args.h
   dev/bus/pci.h
   dev/counters.h
   dev/dev_funcs.h

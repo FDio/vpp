@@ -10,7 +10,7 @@
 #include <vppinfra/format.h>
 #include <vnet/vnet.h>
 #include <vnet/dev/types.h>
-#include <vnet/dev/args.h>
+#include <vppinfra/args.h>
 
 #define VNET_DEV_DEVICE_ID_PREFIX_DELIMITER "/"
 
@@ -350,7 +350,7 @@ typedef struct
   u32 current_config_index;
   u16 redirect_to_node_next_index;
   u32 user_data;
-  vnet_dev_arg_t *args;
+  clib_args_handle_t args;
 } vnet_dev_port_interface_t;
 
 typedef struct
@@ -388,8 +388,8 @@ typedef struct vnet_dev_port
   vnet_dev_rx_queue_t **rx_queues;
   vnet_dev_tx_queue_t **tx_queues;
   vnet_dev_port_ops_t port_ops;
-  vnet_dev_arg_t *args;
-  vnet_dev_arg_t *sec_if_args;
+  clib_args_handle_t args;
+  clib_args_handle_t sec_if_args;
   vnet_dev_rx_queue_ops_t rx_queue_ops;
   vnet_dev_tx_queue_ops_t tx_queue_ops;
   vnet_dev_node_t rx_node;
@@ -422,7 +422,7 @@ typedef struct vnet_dev
   vnet_dev_port_t **ports;
   vnet_dev_periodic_op_t *periodic_ops;
   u8 *description;
-  vnet_dev_arg_t *args;
+  clib_args_handle_t args;
   u8 __clib_aligned (16)
   data[];
 } vnet_dev_t;
@@ -471,8 +471,8 @@ struct vnet_dev_driver_registration
   vnet_dev_match_t *match;
   int priority;
   vnet_dev_ops_t ops;
-  vnet_dev_arg_t *args;
-  vnet_dev_arg_t *drv_args;
+  clib_arg_t *args;
+  clib_arg_t *drv_args;
 };
 
 typedef struct
@@ -490,7 +490,7 @@ typedef struct vnet_dev_driver
   u32 dev_class_index;
   vnet_dev_bus_index_t bus_index;
   vnet_dev_ops_t ops;
-  vnet_dev_arg_t *args;
+  clib_args_handle_t args;
 } vnet_dev_driver_t;
 
 typedef struct
@@ -531,8 +531,8 @@ typedef struct
   {
     vnet_dev_port_attr_t attr;
     vnet_dev_port_ops_t ops;
-    vnet_dev_arg_t *args;
-    vnet_dev_arg_t *sec_if_args;
+    clib_arg_t *args;
+    clib_arg_t *sec_if_args;
     u16 data_size;
     void *initial_data;
     vnet_dev_rss_key_t default_rss_key;
@@ -570,15 +570,6 @@ typedef struct
   u8 full_duplex : 1;
   u32 link_speed;
 } vnet_dev_port_state_changes_t;
-
-/* args.c */
-vnet_dev_rv_t vnet_dev_arg_parse (vlib_main_t *, vnet_dev_t *,
-				  vnet_dev_arg_t *, u8 *);
-void vnet_dev_arg_free (vnet_dev_arg_t **);
-void vnet_dev_arg_clear_value (vnet_dev_arg_t *);
-format_function_t format_vnet_dev_arg_type;
-format_function_t format_vnet_dev_arg_value;
-format_function_t format_vnet_dev_args;
 
 /* config.c */
 void vnet_dev_wait_for_startup_config_complete (vlib_main_t *);

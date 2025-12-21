@@ -96,15 +96,21 @@ vnet_dev_config_driver_args (vlib_main_t *vm, unformat_input_t *input,
 	    continue;
 	  if (driver->registration->drv_args)
 	    {
-	      for (vnet_dev_arg_t *a = driver->registration->drv_args;
-		   a->type != VNET_DEV_ARG_END; a++)
-		vec_add1 (driver->args, *a);
+	      clib_args_free (driver->args);
+	      driver->args = clib_args_init (driver->registration->drv_args);
 
 	      if (args)
 		{
-		  rv = vnet_dev_arg_parse (vm, NULL, driver->args, args);
-		  if (rv != VNET_DEV_OK)
-		    goto done;
+		  clib_error_t *parse_err =
+		    clib_args_parse (driver->args, args);
+		  if (parse_err)
+		    {
+		      err = clib_error_return (
+			0, "error parsing args for driver '%s': %U",
+			driver_name, format_clib_error, parse_err);
+		      clib_error_free (parse_err);
+		      goto done;
+		    }
 
 		  if (driver->ops.config_args)
 		    rv = driver->ops.config_args (vm, driver);
@@ -115,7 +121,7 @@ vnet_dev_config_driver_args (vlib_main_t *vm, unformat_input_t *input,
     done:
       vec_free (args);
 
-      if (rv != VNET_DEV_OK)
+      if (err == 0 && rv != VNET_DEV_OK)
 	err = clib_error_return (0, "error: %U for driver '%s'",
 				 format_vnet_dev_rv, rv, driver_name);
     }
