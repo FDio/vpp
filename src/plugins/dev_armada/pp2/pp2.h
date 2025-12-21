@@ -56,18 +56,6 @@ typedef enum
   MVPP2_PORT_DSA_ENABLED_AUTO = 2,
 } mvpp2_port_dsa_enabled_t;
 
-typedef enum
-{
-  MVPP2_PORT_ARG_RSS_HASH,
-  MVPP2_PORT_ARG_DSA_ENABLED,
-} mvpp2_port_args_t;
-
-typedef enum
-{
-  MVPP2_SEC_IF_ARG_DSA_SWITCH,
-  MVPP2_SEC_IF_ARG_DSA_PORT
-} mvpp2_sec_if_args_t;
-
 typedef union
 {
   struct

@@ -39,27 +39,23 @@ mvpp2_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
       n_rxq++;
     }
 
-  foreach_vnet_dev_args (arg, port)
-    if (arg->id == MVPP2_PORT_ARG_RSS_HASH)
-      {
-	if (n_rxq > 1)
-	  hash_type = vnet_dev_arg_get_enum (arg);
-      }
-    else if (arg->id == MVPP2_PORT_ARG_DSA_ENABLED)
-      switch (vnet_dev_arg_get_enum (arg))
-	{
-	case MVPP2_PORT_DSA_ENABLED_ON:
-	  mp->is_dsa = 1;
-	  break;
-	case MVPP2_PORT_DSA_ENABLED_OFF:
-	  mp->is_dsa = 0;
-	  break;
-	case MVPP2_PORT_DSA_ENABLED_AUTO:
-	  break;
-	default:
-	  ASSERT (0);
-	  break;
-	}
+  if (n_rxq > 1)
+    hash_type = clib_args_get_enum_val_by_name (port->args, "rss_hash");
+
+  switch (clib_args_get_enum_val_by_name (port->args, "dsa_enable"))
+    {
+    case MVPP2_PORT_DSA_ENABLED_ON:
+      mp->is_dsa = 1;
+      break;
+    case MVPP2_PORT_DSA_ENABLED_OFF:
+      mp->is_dsa = 0;
+      break;
+    case MVPP2_PORT_DSA_ENABLED_AUTO:
+      break;
+    default:
+      ASSERT (0);
+      break;
+    }
 
   index = get_lowest_set_bit_index (md->free_bpools);
   md->free_bpools ^= 1 << index;
@@ -300,21 +296,8 @@ mvpp2_port_add_sec_if (vlib_main_t *vm, vnet_dev_port_t *port, void *p)
   if (mp->is_dsa == 0)
     return VNET_DEV_ERR_NOT_SUPPORTED;
 
-  foreach_vnet_dev_args (a, sif)
-    {
-      switch (a->id)
-	{
-	case MVPP2_SEC_IF_ARG_DSA_PORT:
-	  if (a->val_set)
-	    port_id = vnet_dev_arg_get_uint32 (a);
-	  break;
-	case MVPP2_SEC_IF_ARG_DSA_SWITCH:
-	  switch_id = vnet_dev_arg_get_uint32 (a);
-	  break;
-	default:
-	  break;
-	}
-    }
+  port_id = clib_args_get_uint32_val_by_name (sif->args, "dsa_port");
+  switch_id = clib_args_get_uint32_val_by_name (sif->args, "dsa_switch");
 
   if (port_id == CLIB_U32_MAX)
     {

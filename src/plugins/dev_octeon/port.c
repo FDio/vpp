@@ -127,15 +127,14 @@ oct_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
 
   log_debug (dev, "port init: port %u", port->port_id);
 
-  foreach_vnet_dev_port_args (arg, port)
+  if (port->args)
     {
-      if (arg->id == OCT_PORT_ARG_EN_ETH_PAUSE_FRAME &&
-	  vnet_dev_arg_get_bool (arg))
+      if (clib_args_get_bool_val_by_name (port->args, "eth_pause_frame"))
 	is_pause_frame_enable = true;
-      else if (arg->id == OCT_PORT_ARG_RSS_FLOW_KEY)
-	cp->rss_flowkey = vnet_dev_arg_get_uint32 (arg);
-      else if (arg->id == OCT_PORT_ARG_SWITCH_HEADER_TYPE)
-	cp->switch_header_type = vnet_dev_arg_get_enum (arg);
+      cp->rss_flowkey =
+	clib_args_get_uint32_val_by_name (port->args, "rss_flow_key");
+      cp->switch_header_type =
+	clib_args_get_enum_val_by_name (port->args, "switch_header_type");
     }
 
   if ((rrv = roc_nix_lf_alloc (nix, ifs->num_rx_queues, ifs->num_tx_queues,

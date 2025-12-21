@@ -7,6 +7,7 @@
 #include <vnet/dev/dev.h>
 #include <vnet/dev/counters.h>
 #include <vnet/dev/log.h>
+#include <vppinfra/error.h>
 
 VLIB_REGISTER_LOG_CLASS (dev_log, static) = {
   .class_name = "dev",
@@ -116,8 +117,8 @@ vnet_dev_port_free (vlib_main_t *vm, vnet_dev_port_t *port)
   pool_free (port->secondary_hw_addr);
   pool_free (port->rx_queues);
   pool_free (port->tx_queues);
-  vnet_dev_arg_free (&port->args);
-  vnet_dev_arg_free (&port->sec_if_args);
+  clib_args_free (port->args);
+  clib_args_free (port->sec_if_args);
   pool_put_index (dev->ports, port->index);
   clib_mem_free (port);
 }
@@ -316,13 +317,10 @@ vnet_dev_port_add (vlib_main_t *vm, vnet_dev_t *dev, vnet_dev_port_id_t id,
     port->rss_key = args->port.default_rss_key;
 
   if (args->port.args)
-    for (vnet_dev_arg_t *a = args->port.args; a->type != VNET_DEV_ARG_END; a++)
-      vec_add1 (port->args, *a);
+    port->args = clib_args_init (args->port.args);
 
   if (args->port.sec_if_args)
-    for (vnet_dev_arg_t *a = args->port.sec_if_args;
-	 a->type != VNET_DEV_ARG_END; a++)
-      vec_add1 (port->sec_if_args, *a);
+    port->sec_if_args = clib_args_init (args->port.sec_if_args);
 
   /* defaults out of port attributes */
   port->max_rx_frame_size = args->port.attr.max_supported_rx_frame_size;
@@ -869,9 +867,6 @@ vnet_dev_port_if_remove (vlib_main_t *vm, vnet_dev_port_t *port)
 
   vnet_dev_port_free_counters (vm, port);
 
-  foreach_vnet_dev_port_args (v, port)
-    vnet_dev_arg_clear_value (v);
-
   return VNET_DEV_OK;
 }
 
@@ -899,7 +894,7 @@ vnet_dev_port_del_sec_if_internal (vlib_main_t *vm, vnet_dev_port_t *port,
     ethernet_delete_interface (vnet_get_main (), sif->hw_if_index);
 
   pool_put_index (port->interfaces->secondary_interfaces, sif->index);
-  vnet_dev_arg_free (&sif->args);
+  clib_args_free (sif->args);
   clib_mem_free (sif);
   return rv;
 }
@@ -921,16 +916,20 @@ vnet_dev_port_add_sec_if (vlib_main_t *vm, vnet_dev_port_t *port, void *ptr)
 
   *sif = (vnet_dev_port_interface_t){
     .index = sip - port->interfaces->secondary_interfaces,
-    .args = vec_dup (port->sec_if_args),
+    .args = port->sec_if_args ? clib_args_clone (port->sec_if_args) : 0,
   };
 
   clib_memcpy (sif->name, a->name, sizeof (sif->name));
 
   if (sif->args)
     {
-      rv = vnet_dev_arg_parse (vm, dev, sif->args, a->args);
-      if (rv != VNET_DEV_OK)
-	return rv;
+      clib_error_t *err = clib_args_parse (sif->args, a->args);
+      if (err)
+	{
+	  log_err (dev, "%U", format_clib_error, err);
+	  clib_error_free (err);
+	  return VNET_DEV_ERR_INVALID_ARG;
+	}
     }
 
   if (port->attr.type == VNET_DEV_PORT_TYPE_ETHERNET)

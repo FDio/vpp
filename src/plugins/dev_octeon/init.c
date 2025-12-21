@@ -62,46 +62,41 @@ static struct
 #undef _
 };
 
-static vnet_dev_arg_t oct_drv_args[] = {
+static clib_arg_t oct_drv_args[] = {
   {
-    .id = OCT_DRV_ARG_NPA_MAX_POOLS,
     .name = "npa_max_pools",
     .desc = "Max NPA pools",
-    .type = VNET_DEV_ARG_TYPE_UINT32,
+    .type = CLIB_ARG_TYPE_UINT32,
     .default_val.uint32 = 128,
   },
   {
-    .id = OCT_DRV_ARG_END,
     .name = "end",
     .desc = "Argument end",
-    .type = VNET_DEV_ARG_END,
+    .type = CLIB_ARG_END,
   },
 };
 
-static vnet_dev_arg_t oct_port_args[] = {
+static clib_arg_t oct_port_args[] = {
   {
-    .id = OCT_PORT_ARG_EN_ETH_PAUSE_FRAME,
     .name = "eth_pause_frame",
     .desc = "Enable ethernet pause frame support",
-    .type = VNET_DEV_ARG_TYPE_BOOL,
+    .type = CLIB_ARG_TYPE_BOOL,
     .default_val.boolean = false,
   },
   {
-    .id = OCT_PORT_ARG_RSS_FLOW_KEY,
     .name = "rss_flow_key",
     .desc = "RSS Flow Key Bitmap",
-    .type = VNET_DEV_ARG_TYPE_HEX32,
+    .type = CLIB_ARG_TYPE_HEX32,
     .default_val.uint32 = FLOW_KEY_TYPE_IPV4 | FLOW_KEY_TYPE_IPV6 |
 			  FLOW_KEY_TYPE_TCP | FLOW_KEY_TYPE_UDP |
 			  FLOW_KEY_TYPE_SCTP,
   },
   {
-    .id = OCT_PORT_ARG_SWITCH_HEADER_TYPE,
     .name = "switch_header_type",
     .desc = "Type of header used by underlying switch (none, edsa, higig, "
 	    "len_90b, exdsa, vlan_exdsa)",
-    .type = VNET_DEV_ARG_TYPE_ENUM,
-    .enum_vals = VNET_DEV_ARG_ENUM_VALS (
+    .type = CLIB_ARG_TYPE_ENUM,
+    .enum_vals = CLIB_ARG_ENUM_VALS (
       { .val = ROC_PRIV_FLAGS_DEFAULT, .name = "none" },
       { .val = ROC_PRIV_FLAGS_EDSA, .name = "edsa" },
       { .val = ROC_PRIV_FLAGS_HIGIG, .name = "higig" },
@@ -111,23 +106,23 @@ static vnet_dev_arg_t oct_port_args[] = {
     .default_val.enum_val = ROC_PRIV_FLAGS_DEFAULT,
   },
   {
-    .type = VNET_DEV_ARG_END,
+    .type = CLIB_ARG_END,
   },
 };
 
-static vnet_dev_arg_t oct_dev_args[] = {
+static clib_arg_t oct_dev_args[] = {
   {
-    .id = OCT_DEV_ARG_CRYPTO_N_DESC,
     .name = "n_desc",
     .desc = "number of cpt descriptors, applicable to cpt devices only",
-    .type = VNET_DEV_ARG_TYPE_UINT32,
+    .type = CLIB_ARG_TYPE_UINT32,
+    .min = OCT_CPT_LF_MIN_NB_DESC,
+    .max = OCT_CPT_LF_MAX_NB_DESC,
     .default_val.uint32 = OCT_CPT_LF_DEF_NB_DESC,
   },
   {
-    .id = OCT_DEV_ARG_END,
     .name = "end",
     .desc = "Argument end",
-    .type = VNET_DEV_ARG_END,
+    .type = CLIB_ARG_END,
   },
 };
 
@@ -167,12 +162,9 @@ oct_config_args (vlib_main_t *vm, vnet_dev_driver_t *drv)
 {
   if (!oct_main.is_config_done)
     {
-      foreach_vnet_dev_port_args (arg, drv)
-	{
-	  if (arg->id == OCT_DRV_ARG_NPA_MAX_POOLS &&
-	      vnet_dev_arg_get_uint32 (arg))
-	    oct_main.npa_max_pools = vnet_dev_arg_get_uint32 (arg);
-	}
+      if (drv->args)
+	oct_main.npa_max_pools =
+	  clib_args_get_uint32_val_by_name (drv->args, "npa_max_pools");
       oct_main.is_config_done = 1;
     }
   else
@@ -365,7 +357,6 @@ oct_init_cpt (vlib_main_t *vm, vnet_dev_t *dev)
   extern oct_plt_init_param_t oct_plt_init_param;
   oct_device_t *cd = vnet_dev_get_data (dev);
   oct_crypto_dev_t *ocd = NULL;
-  u32 n_desc;
   int rrv;
 
   if (ocm->n_cpt == OCT_MAX_N_CPT_DEV || ocm->started)
@@ -379,27 +370,7 @@ oct_init_cpt (vlib_main_t *vm, vnet_dev_t *dev)
   ocd->roc_cpt->pci_dev = &cd->plt_pci_dev;
 
   ocd->dev = dev;
-  ocd->n_desc = OCT_CPT_LF_DEF_NB_DESC;
-
-  foreach_vnet_dev_args (arg, dev)
-    {
-      if (arg->id == OCT_DEV_ARG_CRYPTO_N_DESC &&
-	  vnet_dev_arg_get_uint32 (arg))
-	{
-	  n_desc = vnet_dev_arg_get_uint32 (arg);
-	  if (n_desc < OCT_CPT_LF_MIN_NB_DESC ||
-	      n_desc > OCT_CPT_LF_MAX_NB_DESC)
-	    {
-	      log_err (dev,
-		       "number of cpt descriptors should be within range "
-		       "of %u and %u",
-		       OCT_CPT_LF_MIN_NB_DESC, OCT_CPT_LF_MAX_NB_DESC);
-	      return VNET_DEV_ERR_NOT_SUPPORTED;
-	    }
-
-	  ocd->n_desc = vnet_dev_arg_get_uint32 (arg);
-	}
-    }
+  ocd->n_desc = clib_args_get_uint32_val_by_name (dev->args, "n_desc");
 
   if ((rrv = roc_cpt_dev_init (ocd->roc_cpt)))
     return cnx_return_roc_err (dev, rrv, "roc_cpt_dev_init");
