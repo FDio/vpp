@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "161e27d4_3a0e5e7b",
+        "filename": "src/plugins/quic_quicly/quic_quicly.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 1517,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-12-21T11:25:47Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "05f0375a_50378d3d",
+      "revId": "9a2afa43a3aad01ddd16885759bd564678368f90",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "fe5f8cd6_8e119029",
@@ -48,6 +66,24 @@
       "writtenOn": "2025-12-20T21:34:58Z",
       "side": 1,
       "message": "Should we track that with some internal flag instead of always going \"down\" in quicly? And if we choose our flags wisely, we can reduce this to only one if, I think. That is, \n```\nif (ctx-\u003eflags \u0026 whatever)\n  {\n    /* handle closing states */\n  }\n..\n```",
+      "revId": "9a2afa43a3aad01ddd16885759bd564678368f90",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "58762bb2_f955b195",
+        "filename": "src/plugins/quic_quicly/quic_quicly.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 1669,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-12-21T11:25:47Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "fe5f8cd6_8e119029",
       "revId": "9a2afa43a3aad01ddd16885759bd564678368f90",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
