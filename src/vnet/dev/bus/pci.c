@@ -7,6 +7,7 @@
 #include <vnet/dev/bus/pci.h>
 #include <vnet/dev/log.h>
 #include <vlib/file.h>
+#include <vppinfra/unix.h>
 
 VLIB_REGISTER_LOG_CLASS (dev_log, static) = {
   .class_name = "dev",
@@ -72,6 +73,12 @@ vnet_dev_bus_pci_open (vlib_main_t *vm, vnet_dev_t *dev)
   if (vnet_dev_bus_pci_device_id_to_pci_addr (&pdd->addr, dev->device_id) == 0)
     return VNET_DEV_ERR_INVALID_DEVICE_ID;
 
+  if (vnet_dev_main.drivers[dev->driver_index].registration->passive == 1)
+    {
+      pdd->is_passive = 1;
+      return VNET_DEV_OK;
+    }
+
   if ((err = vlib_pci_device_open (vm, &pdd->addr, 0, &pdd->handle)))
     {
       log_err (dev, "device_open: %U", format_clib_error, err);
@@ -105,6 +112,9 @@ static void
 vnet_dev_bus_pci_close (vlib_main_t *vm, vnet_dev_t *dev)
 {
   vnet_dev_bus_pci_device_data_t *pdd = vnet_dev_get_bus_pci_device_data (dev);
+
+  if (pdd->is_passive)
+    return;
 
   if (pdd->intx_handler)
     vnet_dev_pci_intx_remove_handler (vm, dev);
@@ -445,6 +455,108 @@ vnet_dev_pci_bus_master_disable (vlib_main_t *vm, vnet_dev_t *dev)
 }
 
 static u8 *
+pci_ids_helper (u16 vid, u16 did)
+{
+  unformat_input_t input;
+  u32 id = CLIB_U32_MAX;
+  uword c;
+  u8 *data = 0;
+  u8 *name = 0;
+
+  foreach_pointer (p, "/usr/share/misc/pci.ids", "/usr/share/hwdata/pci.ids")
+    {
+      clib_error_t *err = clib_file_contents (p, &data);
+      if (!err)
+	break;
+      clib_error_free (err);
+    }
+
+  if (!data)
+    return 0;
+
+  unformat_init_vector (&input, data);
+
+  while (1)
+    {
+      c = unformat_peek_input (&input);
+
+      if (c == UNFORMAT_END_OF_INPUT)
+	break;
+
+      if (c != '\t' && c != '#' && c != '\n')
+	unformat (&input, "%x", &id);
+
+      if (id == vid)
+	break;
+
+      unformat_skip_line (&input);
+    }
+
+  if (id != vid)
+    goto done;
+
+  if (did == 0xffff)
+    {
+      unformat (&input, "%U", unformat_line, &name);
+      goto done;
+    }
+  else
+    unformat_skip_line (&input);
+
+  id = CLIB_U32_MAX;
+  while (!name)
+    {
+      c = unformat_get_input (&input);
+
+      if (c == UNFORMAT_END_OF_INPUT)
+	break;
+
+      if (c != '\t' && c != '#' && c != '\n')
+	break;
+
+      if (c == '\t' && unformat_peek_input (&input) != '\t' &&
+	  unformat (&input, "%x", &id) && id == did)
+	unformat (&input, "%U", unformat_line, &name);
+      unformat_skip_line (&input);
+    }
+
+done:
+  unformat_free (&input);
+  return name;
+}
+
+u8 *
+format_dev_pci_device_name_from_ids (u8 *s, va_list *args)
+{
+  u16 vid = va_arg (*args, u32);
+  u16 did = va_arg (*args, u32);
+
+  u8 *name = pci_ids_helper (vid, did);
+
+  if (!name)
+    return format (s, "Unknown Device (%04x:%04x)", vid, did);
+
+  s = format (s, "%v", name);
+  vec_free (name);
+  return s;
+}
+
+u8 *
+format_dev_pci_vendor_name_from_ids (u8 *s, va_list *args)
+{
+  u16 vid = va_arg (*args, u32);
+
+  u8 *name = pci_ids_helper (vid, 0xffff);
+
+  if (!name)
+    return format (s, "Unknown Vendor (%04x)", vid);
+
+  s = format (s, "%v", name);
+  vec_free (name);
+  return s;
+}
+
+static u8 *
 format_dev_pci_device_info (u8 *s, va_list *args)
 {
   vnet_dev_format_args_t __clib_unused *a =
@@ -456,6 +568,9 @@ format_dev_pci_device_info (u8 *s, va_list *args)
   clib_error_t *err;
 
   s = format (s, "PCIe address is %U", format_vlib_pci_addr, &pdd->addr);
+
+  if (pdd->is_passive)
+    return s;
 
   err = vlib_pci_read_write_config (vm, pdd->handle, VLIB_READ, 0, &cfg,
 				    sizeof (cfg));
