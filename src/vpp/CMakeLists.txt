@@ -90,7 +90,7 @@ endif()
 add_vpp_executable(vpp
   ENABLE_EXPORTS
   SOURCES ${VPP_SOURCES}
-  LINK_LIBRARIES svm vlib vppinfra vlibmemory vnet Threads::Threads ${CMAKE_DL_LIBS} ${EPOLL_LIB}
+  LINK_LIBRARIES svm vlibapi vlib vppinfra vlibmemory vnet Threads::Threads ${CMAKE_DL_LIBS} ${EPOLL_LIB}
   DEPENDS vpp_version_h api_headers
 )
 
