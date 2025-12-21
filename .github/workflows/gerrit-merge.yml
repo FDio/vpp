@@ -68,7 +68,7 @@ jobs:
         run: |
           set -euxo pipefail
           timestamp=$(date -u +%Y_%m_%d_%H%M%S_UTC)
-          log_prefix="gha-vpp-per-patch/merge-${{ inputs.GERRIT_BRANCH }}-${timestamp}-gerrit-${{ inputs.GERRIT_CHANGE_NUMBER }}-${{ inputs.GERRIT_PATCHSET_NUMBER}}"
+          log_prefix="gha-vpp-gerrit-patchset/merge-${{ inputs.GERRIT_BRANCH }}-${timestamp}-gerrit-${{ inputs.GERRIT_CHANGE_NUMBER }}-${{ inputs.GERRIT_PATCHSET_NUMBER}}"
           echo "log_prefix=$log_prefix" >> "$GITHUB_OUTPUT"
           echo "Gerrit Change: ${{ inputs.GERRIT_CHANGE_URL }}"
 
