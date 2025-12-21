@@ -128,23 +128,10 @@ jobs:
 
       - name: VPP Make Coverage Test
         run: |
-          set -x pipefail
-          BUILD_ERROR=""
-          BUILD_RESULT="MAKE TEST COVERAGE SUCCESSFULLY COMPLETED"
-          RESULT="pass"
-
           cd "$WORKSPACE"
+          set -x
           {
-            if ! make COMPRESS_FAILED_TEST_LOGS=yes TEST_JOBS=$TEST_JOBS CCACHE_DISABLE=1 test-cov-both ; then
-                BUILD_ERROR="FAILED 'make COMPRESS_FAILED_TEST_LOGS=yes TEST_JOBS=$TEST_JOBS CCACHE_DISABLE=1 test-cov-both'"
-            fi
-            if [ -n "$BUILD_ERROR" ] ; then
-                BUILD_RESULT="$BUILD_ERROR"
-                RESULT="fail"
-            fi
-            echo -e "\n$TUI_LINE\n* VPP ${OS_ID^^}-${OS_VERSION_ID}-${OS_ARCH^^} BUILD " \
-                    "\n* $BUILD_RESULT\n$TUI_LINE\n"
-            [ -n "$BUILD_ERROR" ] && echo "$BUILD_ERROR"
+            make COMPRESS_FAILED_TEST_LOGS=yes TEST_JOBS=$TEST_JOBS CCACHE_DISABLE=1 test-cov-both || true
           } | tee "$LOG_DIR/make_coverage_test.log"
 
       - name: AWS S3 Publish Logs
@@ -171,3 +158,27 @@ jobs:
           s3_path: ${{ env.LOG_NAME }}/coverage-report
           archives_path: "${{ env.WORKSPACE }}/build-root/test-coverage-merged/html"
           compress_files: false
+
+      - name: Check Archives Directory
+        id: check-archives
+        if: always()
+        run: |
+          set -euxo pipefail
+          archives_dir="$WORKSPACE/archives"
+          if [[ -d "$archives_dir" ]] && find "$archives_dir" -type f -print -quit | grep -q . ; then
+            echo "has_archives=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_archives=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: AWS S3 Publish Archives
+        if: ${{ always() && steps.check-archives.outputs.has_archives == 'true' }}
+        # yamllint disable-line rule:line-length
+        uses: fdio/.github/.github/actions/aws-s3-publish-logs@17796170bed35b8f30a5480e0cd6be942a22c7aa
+        with:
+          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws_region: ${{ vars.AWS_REGION }}
+          s3_bucket: ${{ vars.S3_BUCKET }}
+          s3_path: ${{ env.LOG_NAME }}
+          archives_path: ${{ env.WORKSPACE }}/archives
