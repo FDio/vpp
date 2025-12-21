@@ -230,6 +230,7 @@ include(cmake/library.cmake)
 include(cmake/exec.cmake)
 include(cmake/plugin.cmake)
 include(cmake/crypto_engines.cmake)
+include(cmake/drivers.cmake)
 
 ##############################################################################
 # FreeBSD - use epoll-shim
@@ -264,7 +265,8 @@ elseif(${CMAKE_SYSTEM_NAME} MATCHES "Linux|FreeBSD")
   find_package(OpenSSL)
   set(SUBDIRS
     vppinfra svm vlib vlibmemory vlibapi vnet vpp vat vat2 vcl vpp-api
-    plugins crypto_engines tools/vppapigen tools/g2 tools/perftool cmake pkg
+    plugins drivers crypto_engines tools/vppapigen tools/g2 tools/perftool cmake
+    pkg
     tools/appimage
   )
 elseif("${CMAKE_SYSTEM_NAME}" STREQUAL "Darwin")
@@ -335,6 +337,72 @@ mark_as_advanced(CLEAR
   CMAKE_VERBOSE_MAKEFILE
 )
 
+set(_vpp_drivers_list "")
+if(DEFINED VPP_DRIVERS AND NOT VPP_DRIVERS STREQUAL "")
+  if(VPP_DRIVERS STREQUAL "none")
+    set(_vpp_drivers_list "none")
+  else()
+    string(REGEX REPLACE "[ \t]*,[ \t]*" ";" _vpp_drivers_list "${VPP_DRIVERS}")
+    list(FILTER _vpp_drivers_list EXCLUDE REGEX "^$")
+  endif()
+else()
+  file(GLOB _vpp_driver_files RELATIVE
+    ${CMAKE_CURRENT_SOURCE_DIR}/drivers
+    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/*/CMakeLists.txt
+  )
+  foreach (f ${_vpp_driver_files})
+    get_filename_component(dir ${f} DIRECTORY)
+    list(APPEND _vpp_drivers_list ${dir})
+  endforeach()
+endif()
+if(_vpp_drivers_list)
+  list(SORT _vpp_drivers_list)
+endif()
+
+set(_vpp_crypto_engines_list "")
+if(DEFINED VPP_CRYPTO_ENGINES AND NOT VPP_CRYPTO_ENGINES STREQUAL "")
+  if(VPP_CRYPTO_ENGINES STREQUAL "none")
+    set(_vpp_crypto_engines_list "none")
+  else()
+    string(REGEX REPLACE "[ \t]*,[ \t]*" ";" _vpp_crypto_engines_list "${VPP_CRYPTO_ENGINES}")
+    list(FILTER _vpp_crypto_engines_list EXCLUDE REGEX "^$")
+  endif()
+else()
+  file(GLOB _vpp_crypto_engine_files RELATIVE
+    ${CMAKE_CURRENT_SOURCE_DIR}/crypto_engines
+    ${CMAKE_CURRENT_SOURCE_DIR}/crypto_engines/*/CMakeLists.txt
+  )
+  foreach (f ${_vpp_crypto_engine_files})
+    get_filename_component(dir ${f} DIRECTORY)
+    list(APPEND _vpp_crypto_engines_list ${dir})
+  endforeach()
+endif()
+if(_vpp_crypto_engines_list)
+  list(SORT _vpp_crypto_engines_list)
+endif()
+
+set(_vpp_plugins_list "")
+if(DEFINED VPP_PLUGINS AND NOT VPP_PLUGINS STREQUAL "")
+  if(VPP_PLUGINS STREQUAL "none")
+    set(_vpp_plugins_list "none")
+  else()
+    string(REGEX REPLACE "[ \t]*,[ \t]*" ";" _vpp_plugins_list "${VPP_PLUGINS}")
+    list(FILTER _vpp_plugins_list EXCLUDE REGEX "^$")
+  endif()
+else()
+  file(GLOB _vpp_plugin_files RELATIVE
+    ${CMAKE_CURRENT_SOURCE_DIR}/plugins
+    ${CMAKE_CURRENT_SOURCE_DIR}/plugins/*/CMakeLists.txt
+  )
+  foreach (f ${_vpp_plugin_files})
+    get_filename_component(dir ${f} DIRECTORY)
+    list(APPEND _vpp_plugins_list ${dir})
+  endforeach()
+endif()
+if(_vpp_plugins_list)
+  list(SORT _vpp_plugins_list)
+endif()
+
 ##############################################################################
 # print configuration
 ##############################################################################
@@ -354,3 +422,6 @@ pr("Prefix path" ${CMAKE_PREFIX_PATH})
 pr("Install prefix" ${CMAKE_INSTALL_PREFIX})
 pr("Library dir" ${VPP_LIBRARY_DIR})
 pr("Multiarch variants" ${MARCH_VARIANTS_NAMES})
+pr("Plugins" ${_vpp_plugins_list})
+pr("Drivers" ${_vpp_drivers_list})
+pr("Crypto engines" ${_vpp_crypto_engines_list})

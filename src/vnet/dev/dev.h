@@ -464,6 +464,7 @@ struct vnet_dev_driver_registration
 {
   vnet_dev_driver_registration_t *next_registration;
   u8 bus_master_enable : 1;
+  u8 passive : 1;
   vnet_dev_driver_name_t name;
   vnet_dev_bus_name_t bus;
   u16 device_data_sz;

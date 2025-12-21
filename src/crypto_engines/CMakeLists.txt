@@ -16,6 +16,32 @@ include_directories (
   ${CMAKE_CURRENT_BINARY_DIR}
 )
 
+set(VPP_CRYPTO_ENGINES
+  ""
+  CACHE
+  STRING "Comma-separated list of crypto engines included in build"
+)
+
+if(NOT VPP_CRYPTO_ENGINES STREQUAL "")
+  if(VPP_CRYPTO_ENGINES STREQUAL "none")
+    message(STATUS "VPP crypto engines explicitly disabled")
+    return()
+  endif()
+
+  string(REGEX REPLACE "[ \t]*,[ \t]*" ";" _crypto_engines "${VPP_CRYPTO_ENGINES}")
+  list(FILTER _crypto_engines EXCLUDE REGEX "^$")
+
+  foreach(e IN LISTS _crypto_engines)
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${e}/CMakeLists.txt")
+      add_subdirectory("${e}")
+    else()
+      message(FATAL_ERROR
+        "VPP crypto engine '${e}' not found: expected '${CMAKE_CURRENT_SOURCE_DIR}/${e}/CMakeLists.txt'")
+    endif()
+  endforeach()
+  return()
+endif()
+
 ##############################################################################
 # find and add all crypto engine subdirs
 ##############################################################################
