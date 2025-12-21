@@ -20,7 +20,7 @@ inputs:
   TEST_JOBS:
     description: "Number of parallel jobs for 'make test'"
     required: false
-    default: "16"
+    default: "4"
     type: string
   TEST_RETRIES:
     description: "Number of retries for flaky tests"
@@ -126,8 +126,6 @@ runs:
                     echo "Skip running 'make test' on ${OS_ID}-${OS_VERSION_ID}"
                 fi
                 if grep -q "${OS_ID}-${OS_VERSION_ID}" <<< "${MAKE_TEST_MULTIWORKER_OS}"; then
-                    # Hard-code multiworker test jobs for now
-                    TEST_JOBS="8"
                     if ! make VPP_WORKER_COUNT="${VPP_WORKER_COUNT}" COMPRESS_FAILED_TEST_LOGS=yes \
                             TEST_RETRIES="${TEST_RETRIES}" TEST_JOBS="${TEST_JOBS}" $TEST_TARGET ; then
                         BUILD_ERROR+="FAILED 'make VPP_WORKER_COUNT=${VPP_WORKER_COUNT} "
