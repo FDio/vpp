@@ -5,6 +5,7 @@
 
 /* cli.c: command line interface */
 
+#include <vlibapi/api.h>
 #include <vlib/vlib.h>
 #include <vlib/stats/stats.h>
 #include <vlib/file.h>
@@ -753,19 +754,6 @@ vlib_cli_output (vlib_main_t * vm, char *fmt, ...)
     cp->output_function (cp->output_function_arg, s, vec_len (s));
 
   vec_free (s);
-}
-
-void *vl_msg_push_heap (void) __attribute__ ((weak));
-void *
-vl_msg_push_heap (void)
-{
-  return 0;
-}
-
-void vl_msg_pop_heap (void *oldheap) __attribute__ ((weak));
-void
-vl_msg_pop_heap (void *oldheap)
-{
 }
 
 static clib_error_t *

@@ -27,5 +27,8 @@ add_vpp_library (vlibapi
   vat_helper_macros.h
   memory_shared.h
   jsonformat.h
+
+  LINK_LIBRARIES
+  vppinfra svm
 )
 

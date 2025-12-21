@@ -396,12 +396,6 @@ vlib_frame_queue_alloc (int nelts)
   return (fq);
 }
 
-void vl_msg_api_handler_no_free (void *) __attribute__ ((weak));
-void
-vl_msg_api_handler_no_free (void *v)
-{
-}
-
 /* To be called by vlib worker threads upon startup */
 void
 vlib_worker_thread_init (vlib_worker_thread_t * w)

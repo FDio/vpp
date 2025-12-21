@@ -1836,28 +1836,7 @@ clib_error_t *name (vlib_main_t *vm) { return 0; }
 foreach_weak_reference_stub;
 #undef _
 
-void vl_api_set_elog_main (elog_main_t * m) __attribute__ ((weak));
-void
-vl_api_set_elog_main (elog_main_t * m)
-{
-  clib_warning ("STUB");
-}
-
-int vl_api_set_elog_trace_api_messages (int enable) __attribute__ ((weak));
-int
-vl_api_set_elog_trace_api_messages (int enable)
-{
-  clib_warning ("STUB");
-  return 0;
-}
-
-int vl_api_get_elog_trace_api_messages (void) __attribute__ ((weak));
-int
-vl_api_get_elog_trace_api_messages (void)
-{
-  clib_warning ("STUB");
-  return 0;
-}
+void vl_api_set_elog_main (elog_main_t *m);
 
 /* Main function. */
 int
