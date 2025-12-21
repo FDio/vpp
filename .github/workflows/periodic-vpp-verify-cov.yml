@@ -168,5 +168,6 @@ jobs:
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws_region: ${{ vars.AWS_REGION }}
           s3_bucket: ${{ vars.S3_BUCKET }}
-          s3_path: ${{ env.LOG_NAME }}
+          s3_path: ${{ env.LOG_NAME }}/coverage-report
           archives_path: "${{ env.WORKSPACE }}/build-root/test-coverage-merged/html"
+          compress_files: false
