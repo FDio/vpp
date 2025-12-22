@@ -148,15 +148,15 @@ jobs:
         env:
           CHECKOUT_OUTCOME: ${{ steps.checkout-vpp.outcome }}
         run: |
-          set -euo pipefail
+          set -euxo pipefail
 
-          docs_changed=true
+          docs_changed="true"
           if [[ "$CHECKOUT_OUTCOME" == "success" ]]; then
             cd "$WORKSPACE"
             if git diff-tree --no-commit-id --name-only -r --root HEAD | grep -Eq '(^docs/|\.rst$)'; then
-              docs_changed=true
+              docs_changed="true"
             else
-              docs_changed=false
+              docs_changed="false"
             fi
           else
             echo "warn: unable to checkout '${GERRIT_REFSPEC}'; defaulting docs_changed=true" >&2
@@ -202,9 +202,9 @@ jobs:
         id: overall
         run: |
           set -euxo pipefail
-          docs_ok=true
+          docs_ok="true"
           if [[ "${{ needs.detect-docs-changes.outputs.docs_changed }}" == "true" ]]; then
-            [[ "${{ needs.merge-docs.result }}" == "success" ]] || docs_ok=false
+            [[ "${{ needs.merge-docs.result }}" == "success" ]] || docs_ok="false"
           fi
 
           if [[ "${{ needs.start-merge.result }}" == "success" && \
