@@ -12,6 +12,7 @@ import (
 
 func init() {
 	RegisterH3Tests(Http3GetTest, Http3DownloadTest, Http3PostTest, Http3UploadTest)
+	RegisterVethTests(Http3CliTest)
 }
 
 func Http3GetTest(s *Http3Suite) {
@@ -30,7 +31,7 @@ func Http3GetTest(s *Http3Suite) {
 	udpCleanupDone := false
 	quicCleanupDone := false
 	httpCleanupDone := false
-	for nTries := 0; nTries < 5; nTries++ {
+	for range 5 {
 		o := vpp.Vppctl("show session verbose 2")
 		if !strings.Contains(o, "[U] "+serverAddress+"->10.") {
 			udpCleanupDone = true
@@ -58,8 +59,8 @@ func Http3GetTest(s *Http3Suite) {
 	AssertContains(o, "1 responses sent")
 	ctrlStreamsOpened := 0
 	ctrlStreamsClosed := 0
-	lines := strings.Split(o, "\n")
-	for _, line := range lines {
+	lines := strings.SplitSeq(o, "\n")
+	for line := range lines {
 		if strings.Contains(line, "control streams opened") {
 			tmp := strings.Split(line, " ")
 			ctrlStreamsOpened, _ = strconv.Atoi(tmp[1])
@@ -113,4 +114,15 @@ func Http3UploadTest(s *Http3Suite) {
 	_, log := RunCurlContainer(s.Containers.Curl, args)
 	Log(vpp.Vppctl("show session verbose 2"))
 	AssertContains(log, "HTTP/3 200")
+}
+
+func Http3CliTest(s *VethsSuite) {
+	uri := "https://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1
+	serverVpp := s.Containers.ServerVpp.VppInstance
+	clientVpp := s.Containers.ClientVpp.VppInstance
+	Log(serverVpp.Vppctl("http cli server http3-enabled listener add uri " + uri))
+	o := clientVpp.Vppctl("http cli client http3 uri " + uri + "/show/version")
+	Log(o)
+	AssertContains(o, "<html>", "<html> not found in the result!")
+	AssertContains(o, "</html>", "</html> not found in the result!")
 }

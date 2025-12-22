@@ -374,12 +374,26 @@ http_close_transport_stream (http_conn_t *stream)
     .app_index = http_main.app_index,
   };
 
-  stream->state = stream->flags & HTTP_CONN_F_IS_SERVER ?
-		    HTTP_CONN_STATE_CLOSED :
-		    HTTP_CONN_STATE_HALF_CLOSED;
+  stream->state = HTTP_CONN_STATE_CLOSED;
 
   if (vnet_disconnect_session (&a))
     clib_warning ("disconnect returned");
+}
+
+void
+http_half_close_transport_stream (http_conn_t *stream)
+{
+  ASSERT (http_conn_is_stream (stream));
+
+  vnet_shutdown_args_t a = {
+    .handle = stream->hc_tc_session_handle,
+    .app_index = http_main.app_index,
+  };
+
+  stream->state = HTTP_CONN_STATE_HALF_CLOSED;
+
+  if (vnet_shutdown_session (&a))
+    clib_warning ("shutdown returned");
 }
 
 http_status_code_t
@@ -1111,6 +1125,7 @@ http_connect_connection (session_endpoint_cfg_t *sep)
 	case TLS_ALPN_PROTO_HTTP_3:
 	  HTTP_DBG (1, "app want to use http/3");
 	  cargs->sep.transport_proto = TRANSPORT_PROTO_QUIC;
+	  hc->version = HTTP_VERSION_3;
 	  break;
 	case TLS_ALPN_PROTO_NONE:
 	  HTTP_DBG (1,
@@ -1164,7 +1179,7 @@ http_connect_stream (u64 parent_handle, u32 *req_index)
     }
 
   rh.as_u32 = hs->connection_index;
-  if (rh.version != HTTP_VERSION_2)
+  if (rh.version < HTTP_VERSION_2)
     {
       HTTP_DBG (1, "%U multiplexing not supported", format_http_version,
 		rh.version);
