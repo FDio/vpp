@@ -209,7 +209,7 @@ jobs:
 
           if [[ "${{ needs.start-merge.result }}" == "success" && \
                 "${{ needs.merge-maketest.result }}" == "success" && \
-                "$docs_ok" == "true" && \
+                "$docs_ok" == "true" ]] ; then
             echo "result=success" >> "$GITHUB_OUTPUT"
           else
             echo "result=failure" >> "$GITHUB_OUTPUT"
