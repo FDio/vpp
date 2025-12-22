@@ -492,11 +492,18 @@ int http_connect_transport_stream (u32 parent_index,
 void http_reset_transport_stream (http_conn_t *stream, u64 error_code);
 
 /**
- * Close stream for sending.
+ * Close stream.
  *
  * @param stream Stream ctx.
  */
 void http_close_transport_stream (http_conn_t *stream);
+
+/**
+ * Close stream for sending.
+ *
+ * @param stream Stream ctx.
+ */
+void http_half_close_transport_stream (http_conn_t *stream);
 
 /**
  * Change state of given HTTP request.
