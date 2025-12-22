@@ -202,9 +202,9 @@ jobs:
         id: overall
         run: |
           set -euxo pipefail
-          docs_ok=true
+          docs_ok="true"
           if [[ "${{ needs.detect-docs-changes.outputs.docs_changed }}" == "true" ]]; then
-            [[ "${{ needs.merge-docs.result }}" == "success" ]] || docs_ok=false
+            [[ "${{ needs.merge-docs.result }}" == "success" ]] || docs_ok="false"
           fi
 
           if [[ "${{ needs.start-merge.result }}" == "success" && \
