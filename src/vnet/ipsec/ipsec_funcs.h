@@ -11,6 +11,7 @@
 always_inline ipsec_sa_t *
 ipsec_sa_get (u32 sa_index)
 {
+  ASSERT (!pool_is_free_index (ipsec_main.sa_pool, sa_index));
   return (pool_elt_at_index (ipsec_main.sa_pool, sa_index));
 }
 
