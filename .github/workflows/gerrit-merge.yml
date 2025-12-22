@@ -72,6 +72,19 @@ jobs:
           echo "log_prefix=$log_prefix" >> "$GITHUB_OUTPUT"
           echo "Gerrit Change: ${{ inputs.GERRIT_CHANGE_URL }}"
 
+      - name: Clear Gerrit Vote
+        # yamllint disable-line rule:line-length
+        uses: lfreleng-actions/gerrit-review-action@537251ec667665b386f70b330b05446e3fc29087 # v0.9
+        with:
+          host: ${{ vars.GERRIT_SERVER }}
+          username: ${{ vars.GERRIT_SSH_REQUIRED_USER }}
+          key: ${{ secrets.GERRIT_SSH_REQUIRED_PRIVKEY }}
+          known_hosts: ${{ vars.GERRIT_KNOWN_HOSTS }}
+          gerrit-change-number: ${{ inputs.GERRIT_CHANGE_NUMBER }}
+          gerrit-patchset-number: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
+          vote-type: clear
+          comment-only: true  # Just set a comment, do not vote on gerrit
+
   merge-maketest:
     name: Merge Maketest
     needs:
@@ -171,3 +184,46 @@ jobs:
       GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
       LOG_PREFIX: ${{ needs.start-merge.outputs.log_prefix }}
     secrets: inherit
+
+  final-vote:
+    name: Vote
+    if: ${{ always() }}
+    needs:
+      - start-merge
+      - detect-docs-changes
+      - merge-maketest
+      - merge-docs
+    runs-on: ubuntu-latest
+    env:
+      GERRIT_CHANGE_NUMBER: ${{ inputs.GERRIT_CHANGE_NUMBER }}
+      GERRIT_PATCHSET_NUMBER: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
+    steps:
+      - name: Collect workflow results
+        id: overall
+        run: |
+          set -euxo pipefail
+          docs_ok=true
+          if [[ "${{ needs.detect-docs-changes.outputs.docs_changed }}" == "true" ]]; then
+            [[ "${{ needs.merge-docs.result }}" == "success" ]] || docs_ok=false
+          fi
+
+          if [[ "${{ needs.start-merge.result }}" == "success" && \
+                "${{ needs.merge-maketest.result }}" == "success" && \
+                "$docs_ok" == "true" && \
+            echo "result=success" >> "$GITHUB_OUTPUT"
+          else
+            echo "result=failure" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Gerrit Vote Disabled
+        # yamllint disable-line rule:line-length
+        uses: lfreleng-actions/gerrit-review-action@537251ec667665b386f70b330b05446e3fc29087 # v0.9
+        with:
+          host: ${{ vars.GERRIT_SERVER }}
+          username: ${{ vars.GERRIT_SSH_USER }}
+          key: ${{ secrets.GERRIT_SSH_PRIVKEY }}
+          known_hosts: ${{ vars.GERRIT_KNOWN_HOSTS }}
+          gerrit-change-number: ${{ env.GERRIT_CHANGE_NUMBER }}
+          gerrit-patchset-number: ${{ env.GERRIT_PATCHSET_NUMBER }}
+          vote-type: ${{ steps.overall.outputs.result }}
+          comment-only: true  # Just set a comment, do not vote on gerrit
