@@ -8,7 +8,8 @@
 #include "vppinfra/pool.h"
 
 sasc_main_t sasc_main;
-#define MAX_SASC_SESSIONS 1024 * 128 // TODO: Make this configurable
+#define DEFAULT_SASC_MAX_SESSIONS (1024 * 128)
+#define DEFAULT_SASC_N_BUCKETS    1024
 
 static clib_error_t *
 sasc_init(vlib_main_t *vm) {
@@ -19,14 +20,18 @@ sasc_init(vlib_main_t *vm) {
     sasc->chains = 0;
     sasc->tenants = 0;
     sasc->next_indices = 0;
-    sasc->no_sessions = MAX_SASC_SESSIONS;
+
+    if (sasc->no_sessions == 0)
+        sasc->no_sessions = DEFAULT_SASC_MAX_SESSIONS;
 
     sasc->log_class = vlib_log_register_class("sasc", 0);
 
-    u32 n_buckets = 1024; // TODO: Make this configurable
-    clib_bihash_init_40_8(&sasc->session_hash, "sasc session hash table", n_buckets, 0);
-    pool_init_fixed(sasc->sessions, MAX_SASC_SESSIONS);
-    vec_validate(sasc->sp_sessions, MAX_SASC_SESSIONS);
+    if (sasc->n_buckets == 0)
+        sasc->n_buckets = DEFAULT_SASC_N_BUCKETS;
+
+    clib_bihash_init_40_8(&sasc->session_hash, "sasc session hash table", sasc->n_buckets, 0);
+    pool_init_fixed(sasc->sessions, sasc->no_sessions);
+    vec_validate(sasc->sp_sessions, sasc->no_sessions);
 
 #define _(x, y, z) sasc->timeouts[SASC_SESSION_STATE_##x] = y;
     foreach_sasc_session_state
@@ -41,6 +46,26 @@ sasc_init(vlib_main_t *vm) {
 
 VLIB_INIT_FUNCTION(sasc_init);
 extern vlib_node_registration_t sasc_lookup_ip4_node;
+
+static clib_error_t *
+sasc_config(vlib_main_t *vm, unformat_input_t *input) {
+
+    sasc_main_t *sasc = &sasc_main;
+
+    while (unformat_check_input(input) != UNFORMAT_END_OF_INPUT) {
+        if (unformat(input, "max-sessions %d", &sasc->no_sessions))
+            ;
+        else if (unformat(input, "n-buckets %d", &sasc->n_buckets))
+            ;
+        else
+            return clib_error_return(0, "unknown input `%U'", format_unformat_error, input);
+    }
+
+    return 0;
+}
+
+/* sasc { ... } configuration. */
+VLIB_CONFIG_FUNCTION(sasc_config, "sasc");
 
 u32
 sasc_ingress_node_index(sasc_ingress_node_index_t index) {

@@ -140,6 +140,7 @@ typedef struct {
 
     /* Configuration*/
     u32 no_sessions;
+    u32 n_buckets;
 
     /* Time */
     u64 unix_time_0;
