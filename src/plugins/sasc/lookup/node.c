@@ -195,41 +195,37 @@ sasc_lookup_inline(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *fra
     u32 *in_local = to_local;
     u32 *in_remote = to_remote;
 
-    for (i = 0; i < frame->n_vectors; i++) {
-        if (!(b[0]->flags & VLIB_BUFFER_IS_TRACED)) {
-            if (PREDICT_FALSE(vlib_trace_buffer(vm, node, local_next_indices[i], b[0], 0))) {
-                b[0]->flags |= VLIB_BUFFER_IS_TRACED;
-            }
+    if (PREDICT_FALSE((node->flags & VLIB_NODE_FLAG_TRACE))) {
+        for (i = 0; i < frame->n_vectors; i++) {
+            if (b[0]->flags & VLIB_BUFFER_IS_TRACED) {
+                sasc_lookup_trace_t *t = vlib_add_trace(vm, node, b[0], sizeof(*t));
+                t->sw_if_index = vnet_buffer(b[0])->sw_if_index[VLIB_RX];
+                t->flow_id = b[0]->flow_id;
+                t->hash = h[0];
+                t->hit = hit[0];
+                t->session_idx = si[0];
+                if (bi[0] == in_local[0]) {
+                    t->next_index = local_next_indices[(in_local++) - to_local];
+                } else {
+                    t->next_index = ~0;
+                    t->remote_worker = thread_indices[(in_remote++) - to_remote];
+                }
+                if (b[0]->error) {
+                    t->error = b[0]->error;
+                } else {
+                    t->error = 0;
+                }
+                clib_memcpy(&t->k4, &keys[i], sizeof(t->k4));
+                bi++;
+                b++;
+                h++;
+                hit++;
+                si++;
+            } else
+                break;
         }
-
-        if (b[0]->flags & VLIB_BUFFER_IS_TRACED) {
-            clib_warning("Adding trace for buffer %p", b[0]);
-            sasc_lookup_trace_t *t = vlib_add_trace(vm, node, b[0], sizeof(*t));
-            t->sw_if_index = vnet_buffer(b[0])->sw_if_index[VLIB_RX];
-            t->flow_id = b[0]->flow_id;
-            t->hash = h[0];
-            t->hit = hit[0];
-            t->session_idx = si[0];
-            if (bi[0] == in_local[0]) {
-                t->next_index = local_next_indices[(in_local++) - to_local];
-            } else {
-                t->next_index = ~0;
-                t->remote_worker = thread_indices[(in_remote++) - to_remote];
-            }
-            if (b[0]->error) {
-                t->error = b[0]->error;
-            } else {
-                t->error = 0;
-            }
-            clib_memcpy(&t->k4, &keys[i], sizeof(t->k4));
-            bi++;
-            b++;
-            h++;
-            hit++;
-            si++;
-        } else
-            break;
     }
+
     return frame->n_vectors;
 }
 
