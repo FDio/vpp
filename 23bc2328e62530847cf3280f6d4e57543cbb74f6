@@ -46,6 +46,30 @@
       },
       "revId": "23bc2328e62530847cf3280f6d4e57543cbb74f6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a0c73249_61758905",
+        "filename": "test/hs-test/script/build_curl.sh",
+        "patchSetId": 1
+      },
+      "lineNbr": 5,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-12-23T14:52:07Z",
+      "side": 1,
+      "message": "make sense to have such make target, I use \"docker system prune\" and \"docker buildx prune -a\" when I want fresh setup\nlocally it cache/registry works fine with buildx builder, but there might be some bug",
+      "parentUuid": "df0374c4_6533c482",
+      "range": {
+        "startLine": 5,
+        "startChar": 0,
+        "endLine": 5,
+        "endChar": 21
+      },
+      "revId": "23bc2328e62530847cf3280f6d4e57543cbb74f6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
