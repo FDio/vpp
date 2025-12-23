@@ -70,6 +70,30 @@
       },
       "revId": "23bc2328e62530847cf3280f6d4e57543cbb74f6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e0efdd94_e600c0e1",
+        "filename": "test/hs-test/script/build_curl.sh",
+        "patchSetId": 1
+      },
+      "lineNbr": 5,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-12-23T15:20:42Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "a0c73249_61758905",
+      "range": {
+        "startLine": 5,
+        "startChar": 0,
+        "endLine": 5,
+        "endChar": 21
+      },
+      "revId": "23bc2328e62530847cf3280f6d4e57543cbb74f6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
