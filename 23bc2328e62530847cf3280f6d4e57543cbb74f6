@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "39f7d1a0_f40a6b65",
+        "filename": "test/hs-test/script/build_curl.sh",
+        "patchSetId": 1
+      },
+      "lineNbr": 5,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-12-23T08:26:13Z",
+      "side": 1,
+      "message": "this should go before CURL_TARBALL",
+      "range": {
+        "startLine": 5,
+        "startChar": 0,
+        "endLine": 5,
+        "endChar": 21
+      },
+      "revId": "23bc2328e62530847cf3280f6d4e57543cbb74f6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
