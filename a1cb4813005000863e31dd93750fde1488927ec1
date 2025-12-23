@@ -16,6 +16,24 @@
       "message": "you don\u0027t need this. This assert is already done within `pool_elt_at_index`.",
       "revId": "a1cb4813005000863e31dd93750fde1488927ec1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a8e3ccf5_77fa8e6e",
+        "filename": "src/vnet/ipsec/ipsec_funcs.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 14,
+      "author": {
+        "id": 3200
+      },
+      "writtenOn": "2025-12-23T14:54:45Z",
+      "side": 1,
+      "message": "Thank you, I see that now. I\u0027ll withdraw the change.",
+      "parentUuid": "fb3f7f5a_24e38080",
+      "revId": "a1cb4813005000863e31dd93750fde1488927ec1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ],
   "submitRequirementResults": [
