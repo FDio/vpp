@@ -681,7 +681,7 @@ quic_quicly_on_receive (quicly_stream_t *stream, size_t off, const void *src,
 	    }
 	}
       /* send half-close notification to app */
-      if (!(sctx->flags & QUIC_F_APP_CLOSED) &&
+      if (!(sctx->flags & QUIC_F_APP_CLOSED_TX) &&
 	  quicly_recvstate_transfer_complete (&stream->recvstate))
 	{
 	  QUIC_DBG (2,
