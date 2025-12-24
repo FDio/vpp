@@ -299,7 +299,7 @@ jobs:
             echo "result=failure" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Gerrit Vote disabled
+      - name: Gerrit Vote
         # yamllint disable-line rule:line-length
         uses: lfreleng-actions/gerrit-review-action@537251ec667665b386f70b330b05446e3fc29087 # v0.9
         with:
@@ -310,4 +310,4 @@ jobs:
           gerrit-change-number: ${{ env.GERRIT_CHANGE_NUMBER }}
           gerrit-patchset-number: ${{ env.GERRIT_PATCHSET_NUMBER }}
           vote-type: ${{ steps.overall.outputs.result }}
-          comment-only: true  # Do not vote on gerrit
+          comment-only: false # Vote on gerrit
