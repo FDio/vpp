@@ -29,6 +29,8 @@ OPTIONS:
   --arch, -a              Cross-compile for specified target architecture (aarch64, riscv64, i386, ...)
   --build-dir, -b         Build directory
   --build-type, -t        Build type (release, debug, ...)
+  --crypto-engines, -E    Specify list of crypto engines to be built
+  --drivers, -D           Specify list of drivers to be built
   --help, -h              This help
   --install-dir, -i       Install directory
   --native-only, -n       Only compile for Native CPU (no multiarch)
@@ -96,6 +98,24 @@ while (( "$#" )); do
     -P|--plugins)
       if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
         plugins=$2
+        shift 2
+      else
+        echo "Error: Argument for $1 is missing" >&2
+        exit 1
+      fi
+      ;;
+    -D|--drivers)
+      if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
+        drivers=$2
+        shift 2
+      else
+        echo "Error: Argument for $1 is missing" >&2
+        exit 1
+      fi
+      ;;
+    -E|--crypto-engines)
+      if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
+        crypto_engines=$2
         shift 2
       else
         echo "Error: Argument for $1 is missing" >&2
@@ -180,6 +200,8 @@ $native_only && args+=("-DVPP_BUILD_NATIVE_ONLY:BOOL=ON")
 $wipe && git clean -fdx --exclude=startup.\*
 
 [[ -v plugins ]] && args+=("-DVPP_PLUGINS=${plugins}")
+[[ -v drivers ]] && args+=("-DVPP_DRIVERS=${drivers}")
+[[ -v crypto_engines ]] && args+=("-DVPP_CRYPTO_ENGINES=${crypto_engines}")
 
 (
   $verbose && set -o xtrace

@@ -20,7 +20,6 @@ For more on plugins please refer to :ref:`add_plugin`.
     quic
     cnat
     npol
-    dev_armada
     lcp
     srv6/index
     lldp

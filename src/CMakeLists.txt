@@ -230,6 +230,7 @@ include(cmake/library.cmake)
 include(cmake/exec.cmake)
 include(cmake/plugin.cmake)
 include(cmake/crypto_engines.cmake)
+include(cmake/drivers.cmake)
 
 ##############################################################################
 # FreeBSD - use epoll-shim
@@ -264,7 +265,8 @@ elseif(${CMAKE_SYSTEM_NAME} MATCHES "Linux|FreeBSD")
   find_package(OpenSSL)
   set(SUBDIRS
     vppinfra svm vlib vlibmemory vlibapi vnet vpp vat vat2 vcl vpp-api
-    plugins crypto_engines tools/vppapigen tools/g2 tools/perftool cmake pkg
+    plugins drivers crypto_engines tools/vppapigen tools/g2 tools/perftool cmake
+    pkg
     tools/appimage
   )
 elseif("${CMAKE_SYSTEM_NAME}" STREQUAL "Darwin")
@@ -354,3 +356,6 @@ pr("Prefix path" ${CMAKE_PREFIX_PATH})
 pr("Install prefix" ${CMAKE_INSTALL_PREFIX})
 pr("Library dir" ${VPP_LIBRARY_DIR})
 pr("Multiarch variants" ${MARCH_VARIANTS_NAMES})
+pr("Plugins" ${VPP_PLUGINS_LIST})
+pr("Drivers" ${VPP_DRIVERS_LIST})
+pr("Crypto engines" ${VPP_CRYPTO_ENGINES_LIST})
