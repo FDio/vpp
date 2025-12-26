@@ -2,10 +2,14 @@
  * Copyright (c) 2023 Cisco Systems, Inc.
  */
 
+#define _GNU_SOURCE
+#include <dlfcn.h>
+
 #include <vnet/vnet.h>
 #include <vnet/dev/dev.h>
 #include <vnet/dev/counters.h>
 #include <vnet/dev/api.h>
+#include <vppinfra/format_table.h>
 
 static clib_error_t *
 device_attach_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
@@ -372,6 +376,72 @@ VLIB_CLI_COMMAND (show_devices_cmd, static) = {
   .short_help =
     "show device [counters] [zero-counters] [debug] [<device-id> ...]",
   .function = show_devices_cmd_fn,
+  .is_mp_safe = 1,
+};
+
+static clib_error_t *
+show_device_drivers_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
+			    vlib_cli_command_t *cmd __clib_unused)
+{
+  vnet_dev_main_t *dm = &vnet_dev_main;
+  vnet_dev_driver_t *driver = 0;
+  table_t table = {}, *t = &table;
+  clib_error_t *err = 0;
+  int c = 0;
+
+  if (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    return clib_error_return (0, "unknown input `%U'", format_unformat_error,
+			      input);
+
+  if (pool_elts (dm->drivers) == 0)
+    {
+      vlib_cli_output (vm, "no device drivers loaded");
+      return 0;
+    }
+
+  table_add_header_col (t, 5, "name", "bus", "priority", "shared object",
+			"description");
+  table_set_cell_align (t, -1, 0, TTAA_LEFT);
+  table_set_cell_align (t, -1, 3, TTAA_LEFT);
+  table_set_cell_align (t, -1, 4, TTAA_LEFT);
+  pool_foreach (driver, dm->drivers)
+    {
+      vnet_dev_driver_registration_t *r = driver->registration;
+      Dl_info info = {};
+      const char *desc = driver->description ? driver->description : "";
+      const char *file = "";
+
+      if (dladdr (r, &info) && info.dli_fname)
+	{
+	  file = strrchr (info.dli_fname, '/');
+	  if (file)
+	    file++;
+	  else
+	    file = info.dli_fname;
+	}
+
+      table_format_cell (t, c, 0, "%s", r->name);
+      table_format_cell (t, c, 1, "%s", r->bus);
+      table_format_cell (t, c, 2, "%d", r->priority);
+      table_format_cell (t, c, 3, "%s", file);
+      table_format_cell (t, c, 4, "%s", desc);
+      table_set_cell_align (t, c, 0, TTAA_LEFT);
+      table_set_cell_align (t, c, 2, TTAA_CENTER);
+      table_set_cell_align (t, c, 3, TTAA_LEFT);
+      table_set_cell_align (t, c, 4, TTAA_LEFT);
+      c++;
+    }
+
+  vlib_cli_output (vm, "%U", format_table, t);
+
+  table_free (t);
+  return err;
+}
+
+VLIB_CLI_COMMAND (show_device_drivers_cmd, static) = {
+  .path = "show device drivers",
+  .short_help = "show device drivers",
+  .function = show_device_drivers_cmd_fn,
   .is_mp_safe = 1,
 };
 
