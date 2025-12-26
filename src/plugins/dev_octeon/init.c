@@ -503,6 +503,7 @@ oct_free (vlib_main_t *vm, vnet_dev_t *dev)
 
 VNET_DEV_REGISTER_DRIVER (octeon) = {
   .name = "octeon",
+  .description = "Marvell Octeon",
   .bus = "pci",
   .device_data_sz = sizeof (oct_device_t),
   .ops = {
