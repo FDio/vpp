@@ -34,6 +34,23 @@
       "parentUuid": "a4ce87c8_92ab153b",
       "revId": "ed56d6c7f356dac685c280269575946eac7decc7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d4658c2d_cfde35fd",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-12-26T13:53:07Z",
+      "side": 1,
+      "message": "Please rebase on master:HEAD -- cannot rebase without Signed-Off by \u003cauthor\u003e",
+      "revId": "ed56d6c7f356dac685c280269575946eac7decc7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
