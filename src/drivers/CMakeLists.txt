@@ -1,4 +1,4 @@
-# Copyright (c) 2018 Cisco and/or its affiliates.
+# Copyright (c) 2025 Cisco Systems, Inc.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at:
@@ -16,34 +16,34 @@ include_directories (
   ${CMAKE_CURRENT_BINARY_DIR}
 )
 
-set(VPP_CRYPTO_ENGINES
+set(VPP_DRIVERS
   ""
   CACHE
-  STRING "Comma-separated list of crypto engines included in build"
+  STRING "Comma-separated list of drivers included in build"
 )
 
-if(NOT VPP_CRYPTO_ENGINES STREQUAL "")
-  if(VPP_CRYPTO_ENGINES STREQUAL "none")
-    message(STATUS "VPP crypto engines explicitly disabled")
+if(NOT VPP_DRIVERS STREQUAL "")
+  if(VPP_DRIVERS STREQUAL "none")
+    message(STATUS "VPP drivers explicitly disabled")
     return()
   endif()
 
-  string(REGEX REPLACE "[ \t]*,[ \t]*" ";" _crypto_engines "${VPP_CRYPTO_ENGINES}")
-  list(FILTER _crypto_engines EXCLUDE REGEX "^$")
+  string(REGEX REPLACE "[ \t]*,[ \t]*" ";" _drivers "${VPP_DRIVERS}")
+  list(FILTER _drivers EXCLUDE REGEX "^$")
 
-  foreach(e IN LISTS _crypto_engines)
-    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${e}/CMakeLists.txt")
-      add_subdirectory("${e}")
+  foreach(d IN LISTS _drivers)
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${d}/CMakeLists.txt")
+      add_subdirectory("${d}")
     else()
       message(FATAL_ERROR
-        "VPP crypto engine '${e}' not found: expected '${CMAKE_CURRENT_SOURCE_DIR}/${e}/CMakeLists.txt'")
+        "VPP driver '${d}' not found: expected '${CMAKE_CURRENT_SOURCE_DIR}/${d}/CMakeLists.txt'")
     endif()
   endforeach()
   return()
 endif()
 
 ##############################################################################
-# find and add all crypto engine subdirs
+# find and add all driver subdirs
 ##############################################################################
 FILE(GLOB files RELATIVE
   ${CMAKE_CURRENT_SOURCE_DIR}
