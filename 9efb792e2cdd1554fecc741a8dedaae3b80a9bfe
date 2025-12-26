@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d4a09407_8c296ade",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-12-26T13:53:36Z",
+      "side": 1,
+      "message": "Please rebase on master:HEAD -- cannot rebase without Signed-Off by \u003cauthor\u003e",
+      "revId": "9efb792e2cdd1554fecc741a8dedaae3b80a9bfe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
