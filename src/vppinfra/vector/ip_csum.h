@@ -77,7 +77,7 @@ clib_ip_csum_inline (clib_ip_csum_t *c, u8 *dst, u8 *src, u16 count,
       sum8 += clib_ip_csum_cvt_and_add_16 (s[1]);
       sum8 += clib_ip_csum_cvt_and_add_16 (s[2]);
       sum8 += clib_ip_csum_cvt_and_add_16 (s[3]);
-      sum8 += clib_ip_csum_cvt_and_add_16 (s[8]);
+      sum8 += clib_ip_csum_cvt_and_add_16 (s[4]);
       sum8 += clib_ip_csum_cvt_and_add_16 (s[5]);
       sum8 += clib_ip_csum_cvt_and_add_16 (s[6]);
       sum8 += clib_ip_csum_cvt_and_add_16 (s[7]);
