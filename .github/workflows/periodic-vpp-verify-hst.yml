@@ -112,7 +112,7 @@ jobs:
 
       - name: Install VPP dependencies
         # yamllint disable-line rule:line-length
-        uses: fdio/vpp/.github/actions/vpp-install-deps@777792ecef2d5c93ce15fa5b7fdca999f5412c9d
+        uses: fdio/vpp/.github/actions/vpp-install-deps@33e4bce4afcc0298071dd5932c4a8057d44c197a
         with:
           LOG_DIR: ${{ env.LOG_DIR }}
           WORKSPACE: ${{ env.WORKSPACE }}
@@ -120,7 +120,7 @@ jobs:
 
       - name: Install VPP external dependencies
         # yamllint disable-line rule:line-length
-        uses: fdio/vpp/.github/actions/vpp-install-ext-deps@d4f0fac555e52087747b04f77a9a07bc8aaa3daa
+        uses: fdio/vpp/.github/actions/vpp-install-ext-deps@33e4bce4afcc0298071dd5932c4a8057d44c197a
         with:
           LOG_DIR: ${{ env.LOG_DIR }}
           WORKSPACE: ${{ env.WORKSPACE }}
@@ -128,7 +128,7 @@ jobs:
 
       - name: HST VPP Build
         # yamllint disable-line rule:line-length
-        uses: fdio/vpp/.github/actions/vpp-build@43b0339292476442bd7e2429e2ae1075918d8f83
+        uses: fdio/vpp/.github/actions/vpp-build@33e4bce4afcc0298071dd5932c4a8057d44c197a
         with:
           LOG_DIR: ${{ env.LOG_DIR }}
           WORKSPACE: ${{ env.WORKSPACE }}
@@ -138,14 +138,14 @@ jobs:
           TUI_LINE: ${{ env.TUI_LINE }}
 
       - name: Start Docker Daemon
-        uses: fdio/vpp/.github/actions/vpp-start-docker@f9e0f384d665800c8e580da853e26558dd6d2668
+        uses: fdio/vpp/.github/actions/vpp-start-docker@33e4bce4afcc0298071dd5932c4a8057d44c197a
         with:
           START_DOCKER_SCRIPT: start-docker.sh
           TUI_LINE: ${{ env.TUI_LINE }}
 
       - name: HST Test VPP
         if: success()
-        uses: fdio/vpp/.github/actions/vpp-hst-test@7598c9acb6bc034ffbe25b7110230b3d243a9b36
+        uses: fdio/vpp/.github/actions/vpp-hst-test@33e4bce4afcc0298071dd5932c4a8057d44c197a
         timeout-minutes: 90
         with:
           LOG_DIR: ${{ env.LOG_DIR }}
