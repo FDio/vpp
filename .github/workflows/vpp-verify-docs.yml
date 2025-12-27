@@ -191,6 +191,7 @@ jobs:
           s3_bucket: ${{ vars.S3_BUCKET }}
           s3_path: ${{ env.LOG_NAME }}/docs
           archives_path: "${{ env.WORKSPACE }}/build-root/docs/html"
+          compress_files: false
 
       - name: AWS S3 Publish Logs
         if: always()
