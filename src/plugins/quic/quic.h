@@ -411,6 +411,7 @@ typedef struct quic_engine_vft_
   void (*proto_on_close) (u32 ctx_index, clib_thread_index_t thread_index);
   void (*proto_on_half_close) (u32 ctx_index,
 			       clib_thread_index_t thread_index);
+  void (*proto_on_reset) (u32 ctx_index, clib_thread_index_t thread_index);
   void (*transport_closed) (quic_ctx_t *ctx);
 } quic_engine_vft_t;
 
