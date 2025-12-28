@@ -644,13 +644,13 @@ vtc_worker_run_epoll (vcl_test_client_worker_t *wrk)
 	}
 
       rv = ts->write (ts, ts->txbuf, ts->cfg.txbuf_size);
+      if (ts->done (ts, check_rx))
+	n_active_sessions -= 1;
       next = ts->next;
       if (rv > 0)
 	{
 	  if (vcm->incremental_stats)
 	    vtc_worker_inc_stats_check (wrk, ts);
-	  if (ts->done (ts, check_rx))
-	    n_active_sessions -= 1;
 	}
       else if (rv == 0)
 	{
@@ -1036,33 +1036,45 @@ parse_input ()
   return rv;
 }
 
+static int
+vtc_unformat_test_param (uint32_t *test_param, char *test_param_str)
+{
+  if (!strcmp (test_param_str, "server-rst-stream"))
+    *test_param = HS_TEST_PARAM_SERVER_RST_STREAM;
+  else if (!strcmp (test_param_str, "client-rst-stream"))
+    *test_param = HS_TEST_PARAM_CLIENT_RST_STREAM;
+  else
+    return 1;
+  return 0;
+}
+
 void
 print_usage_and_exit (void)
 {
-  fprintf (
-    stderr,
-    "vcl_test_client [OPTIONS] <ipaddr> <port>\n"
-    "  OPTIONS\n"
-    "  -h               Print this message and exit.\n"
-    "  -6               Use IPv6\n"
-    "  -c               Print test config before test.\n"
-    "  -w <dir>         Write test results to <dir>.\n"
-    "  -X               Exit after running test.\n"
-    "  -p <proto>       Use <proto> transport layer\n"
-    "  -D               Use UDP transport layer\n"
-    "  -L               Use TLS transport layer\n"
-    "  -E               Run Echo test.\n"
-    "  -N <num-writes>  Test Cfg: number of writes.\n"
-    "  -R <rxbuf-size>  Test Cfg: rx buffer size.\n"
-    "  -T <txbuf-size>  Test Cfg: tx buffer size.\n"
-    "  -U               Run Uni-directional test.\n"
-    "  -B               Run Bi-directional test.\n"
-    "  -b <bytes>       Total number of bytes transferred\n"
-    "  -V               Verbose mode.\n"
-    "  -I <N>           Use N sessions.\n"
-    "  -s <N>           Use N sessions.\n"
-    "  -S	       	Print incremental stats per session.\n"
-    "  -q <n>           QUIC : use N Ssessions on top of n Qsessions\n");
+  fprintf (stderr,
+	   "vcl_test_client [OPTIONS] <ipaddr> <port>\n"
+	   "  OPTIONS\n"
+	   "  -h               Print this message and exit.\n"
+	   "  -6               Use IPv6\n"
+	   "  -c               Print test config before test.\n"
+	   "  -w <dir>         Write test results to <dir>.\n"
+	   "  -X               Exit after running test.\n"
+	   "  -p <proto>       Use <proto> transport layer\n"
+	   "  -D               Use UDP transport layer\n"
+	   "  -L               Use TLS transport layer\n"
+	   "  -E               Run Echo test.\n"
+	   "  -N <num-writes>  Test Cfg: number of writes.\n"
+	   "  -R <rxbuf-size>  Test Cfg: rx buffer size.\n"
+	   "  -T <txbuf-size>  Test Cfg: tx buffer size.\n"
+	   "  -U               Run Uni-directional test.\n"
+	   "  -B               Run Bi-directional test.\n"
+	   "  -b <bytes>       Total number of bytes transferred\n"
+	   "  -V               Verbose mode.\n"
+	   "  -I <N>           Use N sessions.\n"
+	   "  -s <N>           Use N sessions.\n"
+	   "  -S               Print incremental stats per session.\n"
+	   "  -q <n>           QUIC : use N Ssessions on top of n Qsessions\n"
+	   "  -t <test-param>  QUIC : additional test parameter\n");
   exit (1);
 }
 
@@ -1073,7 +1085,7 @@ vtc_process_opts (vcl_test_client_main_t * vcm, int argc, char **argv)
   int c, v;
 
   opterr = 0;
-  while ((c = getopt (argc, argv, "chnp:w:xXE:I:N:R:T:b:UBV6DLs:q:S")) != -1)
+  while ((c = getopt (argc, argv, "chnp:w:xXE:I:N:R:T:b:UBV6DLs:q:St:")) != -1)
     switch (c)
       {
       case 'c':
@@ -1251,6 +1263,14 @@ vtc_process_opts (vcl_test_client_main_t * vcm, int argc, char **argv)
 	vcm->incremental_stats = 1;
 	break;
 
+      case 't':
+	if (vtc_unformat_test_param (&ctrl->cfg.test_param, optarg))
+	  {
+	    vtwrn ("Invalid value for option -%c!", c);
+	    print_usage_and_exit ();
+	  }
+	break;
+
       case '?':
 	switch (optopt)
 	  {
@@ -1262,6 +1282,7 @@ vtc_process_opts (vcl_test_client_main_t * vcm, int argc, char **argv)
 	  case 'w':
 	  case 'p':
 	  case 'q':
+	  case 't':
 	    vtwrn ("Option -%c requires an argument.", optopt);
 	    break;
 

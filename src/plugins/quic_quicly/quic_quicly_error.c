@@ -16,22 +16,6 @@ quic_quicly_format_err (u8 *s, va_list *args)
     case 0:
       s = format (s, "no error");
       break;
-      /* app errors */
-    case QUIC_QUICLY_ERROR_FULL_FIFO:
-      s = format (s, "full fifo");
-      break;
-    case QUIC_QUICLY_APP_ERROR_CLOSE_NOTIFY:
-      s = format (s, "QUIC_QUICLY_APP_ERROR_CLOSE_NOTIFY");
-      break;
-    case QUIC_QUICLY_APP_ALLOCATION_ERROR:
-      s = format (s, "QUIC_QUICLY_APP_ALLOCATION_ERROR");
-      break;
-    case QUIC_QUICLY_APP_ACCEPT_NOTIFY_ERROR:
-      s = format (s, "QUIC_QUICLY_APP_ACCEPT_NOTIFY_ERROR");
-      break;
-    case QUIC_QUICLY_APP_CONNECT_NOTIFY_ERROR:
-      s = format (s, "QUIC_QUICLY_APP_CONNECT_NOTIFY_ERROR");
-      break;
       /* quicly errors */
     case QUICLY_ERROR_PACKET_IGNORED:
       s = format (s, "QUICLY_ERROR_PACKET_IGNORED");
