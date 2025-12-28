@@ -33,6 +33,24 @@
       "message": "oroginal idea is not to make vlib dependant on vlibapi.... That\u0027s why those weak symbols are there...",
       "revId": "0cf6b4d088275308553b23b3b7f78d481458ed17",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e183c0d0_1d055fae",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2429
+      },
+      "writtenOn": "2025-12-28T09:54:19Z",
+      "side": 1,
+      "message": "Ok, thanks for letting me know. I\u0027ve pushed a new changeset that leaves the weak symbols alone.",
+      "parentUuid": "b2210e2e_bc3514d0",
+      "revId": "0cf6b4d088275308553b23b3b7f78d481458ed17",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
