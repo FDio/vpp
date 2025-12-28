@@ -15,7 +15,9 @@ import (
 func init() {
 	RegisterVethTests(XEchoVclClientUdpTest, XEchoVclClientTcpTest, XEchoVclServerUdpTest, VclQuicUnidirectionalStreamTest,
 		XEchoVclServerTcpTest, VclEchoTcpTest, VclEchoUdpTest, VclHttpPostTest, VclClUdpDscpTest,
-		VclQuicBidirectionalStreamTest)
+		VclQuicBidirectionalStreamTest, VclQuicUnidirectionalStreamClientResetTest,
+		VclQuicUnidirectionalStreamServerResetTest, VclQuicBidirectionalStreamClientResetTest,
+		VclQuicBidirectionalStreamServerResetTest)
 	RegisterSoloVethTests(VclRetryAttachTest)
 	RegisterVethMWTests(VclQuicUnidirectionalStreamsMWTest)
 }
@@ -183,6 +185,54 @@ func VclQuicBidirectionalStreamTest(s *VethsSuite) {
 	AssertNil(err)
 	AssertGreaterEqual(serverRxBytes, minBytes, "server receive less data")
 	AssertGreaterEqual(serverTxBytes, minBytes, "server send less data")
+}
+
+func VclQuicUnidirectionalStreamClientResetTest(s *VethsSuite) {
+	oCln, oSrv := testVclEcho(s, "quic", "-N 1000 -t client-rst-stream")
+	AssertNotContains(oSrv, "ctrl session went away")
+	AssertNotContains(oSrv, "invalid application error code")
+	serverRstCount, err := vclGetLabelValue(oSrv, "reset count")
+	AssertNil(err)
+	AssertEqual(serverRstCount, 1, "server stream should receive reset")
+	clientRstCount, err := vclGetLabelValue(oCln, "reset count")
+	AssertNil(err)
+	AssertEqual(clientRstCount, 0, "client stream should not receive reset")
+}
+
+func VclQuicUnidirectionalStreamServerResetTest(s *VethsSuite) {
+	oCln, oSrv := testVclEcho(s, "quic", "-N 1000 -t server-rst-stream")
+	AssertNotContains(oSrv, "ctrl session went away")
+	AssertNotContains(oCln, "invalid application error code")
+	serverRstCount, err := vclGetLabelValue(oSrv, "reset count")
+	AssertNil(err)
+	AssertEqual(serverRstCount, 0, "server stream should not receive reset")
+	clientRstCount, err := vclGetLabelValue(oCln, "reset count")
+	AssertNil(err)
+	AssertEqual(clientRstCount, 1, "client stream should receive reset")
+}
+
+func VclQuicBidirectionalStreamClientResetTest(s *VethsSuite) {
+	oCln, oSrv := testVclEcho(s, "quic", "-B -N 1000 -t client-rst-stream")
+	AssertNotContains(oSrv, "ctrl session went away")
+	AssertNotContains(oSrv, "invalid application error code")
+	serverRstCount, err := vclGetLabelValue(oSrv, "reset count")
+	AssertNil(err)
+	AssertEqual(serverRstCount, 1, "server stream should receive reset")
+	clientRstCount, err := vclGetLabelValue(oCln, "reset count")
+	AssertNil(err)
+	AssertEqual(clientRstCount, 0, "client stream should not receive reset")
+}
+
+func VclQuicBidirectionalStreamServerResetTest(s *VethsSuite) {
+	oCln, oSrv := testVclEcho(s, "quic", "-B -N 1000 -t server-rst-stream")
+	AssertNotContains(oSrv, "ctrl session went away")
+	AssertNotContains(oCln, "invalid application error code")
+	serverRstCount, err := vclGetLabelValue(oSrv, "reset count")
+	AssertNil(err)
+	AssertEqual(serverRstCount, 0, "server stream should not receive reset")
+	clientRstCount, err := vclGetLabelValue(oCln, "reset count")
+	AssertNil(err)
+	AssertEqual(clientRstCount, 1, "client stream should receive reset")
 }
 
 func VclHttpPostTest(s *VethsSuite) {
