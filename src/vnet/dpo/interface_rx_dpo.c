@@ -3,6 +3,8 @@
  * Copyright (c) 2016 Cisco and/or its affiliates.
  */
 
+// clang-format off
+
 #include <vnet/dpo/interface_rx_dpo.h>
 #include <vnet/fib/fib_node.h>
 #include <vnet/l2/l2_input.h>
@@ -278,6 +280,11 @@ interface_rx_dpo_inline (vlib_main_t * vm,
 		vnet_update_l2_len (b0);
 		vnet_update_l2_len (b1);
 	    }
+	    else
+	    {
+		vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~0;
+		vnet_buffer (b1)->sw_if_index[VLIB_TX] = (u32) ~0;
+	    }
 
             vlib_increment_combined_counter (im->combined_sw_if_counters
                                              + VNET_INTERFACE_COUNTER_RX,
@@ -333,6 +340,8 @@ interface_rx_dpo_inline (vlib_main_t * vm,
 	    /* Update l2_len to make l2 tag rewrite work */
 	    if (is_l2)
 		vnet_update_l2_len (b0);
+	    else
+		vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~0;
 
             /* Bump the interface's RX coutners */
             vlib_increment_combined_counter (im->combined_sw_if_counters
@@ -427,3 +436,4 @@ VLIB_REGISTER_NODE (interface_rx_dpo_l2_node) = {
     },
 };
 
+// clang-format on
