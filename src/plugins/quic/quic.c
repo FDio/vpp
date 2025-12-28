@@ -230,6 +230,12 @@ quic_proto_on_half_close (u32 ctx_index, clib_thread_index_t thread_index)
   quic_eng_proto_on_half_close (ctx_index, thread_index);
 }
 
+static void
+quic_proto_on_reset (u32 ctx_index, clib_thread_index_t thread_index)
+{
+  quic_eng_proto_on_reset (ctx_index, thread_index);
+}
+
 static u32
 quic_start_listen (u32 quic_listen_session_index,
 		   transport_endpoint_cfg_t *tep)
@@ -643,10 +649,20 @@ quic_session_attribute (u32 ctx_index, clib_thread_index_t thread_index,
 {
   quic_ctx_t *ctx;
 
-  if (!is_get)
-    return -1;
-
   ctx = quic_ctx_get (ctx_index, thread_index);
+
+  if (!is_get)
+    {
+      switch (attr->type)
+	{
+	case TRANSPORT_ENDPT_ATTR_APP_PROTO_ERR_CODE:
+	  ctx->app_err_code = (quic_app_err_code_t) attr->app_proto_err_code;
+	  break;
+	default:
+	  return -1;
+	}
+      return 0;
+    }
 
   switch (attr->type)
     {
@@ -655,6 +671,9 @@ quic_session_attribute (u32 ctx_index, clib_thread_index_t thread_index,
       break;
     case TRANSPORT_ENDPT_ATTR_NEXT_TRANSPORT:
       attr->next_transport = ctx->udp_session_handle;
+      break;
+    case TRANSPORT_ENDPT_ATTR_APP_PROTO_ERR_CODE:
+      attr->app_proto_err_code = (u64) ctx->app_err_code;
       break;
     default:
       return -1;
@@ -786,6 +805,7 @@ static transport_proto_vft_t quic_proto = {
   .connect_stream = quic_connect_stream,
   .close = quic_proto_on_close,
   .half_close = quic_proto_on_half_close,
+  .reset = quic_proto_on_reset,
   .start_listen = quic_start_listen,
   .stop_listen = quic_stop_listen,
   .get_connection = quic_connection_get,
