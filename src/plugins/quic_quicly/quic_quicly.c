@@ -720,7 +720,8 @@ quic_quicly_on_receive_reset (quicly_stream_t *stream, int quicly_error)
 		session_handle (stream_session), quic_quicly_format_err,
 		quicly_error);
 #endif
-  session_transport_closing_notify (&sctx->connection);
+  if (!(sctx->flags & QUIC_F_APP_CLOSED))
+    session_transport_reset_notify (&sctx->connection);
 }
 
 const quicly_stream_callbacks_t quic_quicly_stream_callbacks = {
@@ -1169,6 +1170,47 @@ quic_quicly_on_app_closed_tx (u32 ctx_index, clib_thread_index_t thread_index)
   quicly_stream_sync_sendbuf (stream, 1);
   quic_quicly_reschedule_ctx (quic_quicly_get_quic_ctx (
     ctx->quic_connection_ctx_id, ctx->c_thread_index));
+}
+
+static void
+quic_quicly_on_app_reset (u32 ctx_index, clib_thread_index_t thread_index)
+{
+  quic_ctx_t *ctx;
+  quicly_stream_t *stream;
+
+  ctx = quic_quicly_get_quic_ctx_if_valid (ctx_index, thread_index);
+  if (!ctx)
+    {
+      return;
+    }
+  if (!quic_ctx_is_stream (ctx))
+    {
+      /* TODO: handle as connection close? */
+      QUIC_ERR ("Trying to reset connection");
+      return;
+    }
+
+  QUIC_DBG (2, "App reset session 0x%lx ctx_index %u",
+	    session_handle (session_get (ctx->c_s_index, ctx->c_thread_index)),
+	    ctx->c_c_index);
+  ctx->flags |= QUIC_F_APP_CLOSED;
+  stream = ctx->stream;
+  if (quicly_stream_has_receive_side (quicly_is_client (stream->conn),
+				      stream->stream_id) &&
+      !quicly_recvstate_transfer_complete (&stream->recvstate))
+    {
+      /* TODO: error code provided by app */
+      quicly_request_stop (stream,
+			   QUICLY_ERROR_FROM_APPLICATION_ERROR_CODE (0));
+    }
+  if (quicly_stream_has_send_side (quicly_is_client (stream->conn),
+				   stream->stream_id) &&
+      !quicly_sendstate_transfer_complete (&stream->sendstate))
+    {
+      /* TODO: error code provided by app */
+      quicly_reset_stream (stream,
+			   QUICLY_ERROR_FROM_APPLICATION_ERROR_CODE (0));
+    }
 }
 
 /*
@@ -1924,6 +1966,7 @@ const static quic_engine_vft_t quic_quicly_engine_vft = {
   .stream_get_stream_id = quic_quicly_stream_get_stream_id,
   .proto_on_close = quic_quicly_on_app_closed,
   .proto_on_half_close = quic_quicly_on_app_closed_tx,
+  .proto_on_reset = quic_quicly_on_app_reset,
   .transport_closed = quic_quicly_transport_closed,
 };
 

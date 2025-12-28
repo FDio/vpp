@@ -47,11 +47,19 @@ typedef enum
   HS_TEST_TYPE_EXIT_CLIENT,
 } hs_test_t;
 
+typedef enum
+{
+  HS_TEST_PARAM_NONE,
+  HS_TEST_PARAM_SERVER_RST_STREAM,
+  HS_TEST_PARAM_CLIENT_RST_STREAM,
+} hs_test_param_t;
+
 typedef struct __attribute__ ((packed))
 {
   uint32_t magic;
   uint32_t seq_num;
   uint32_t test;
+  uint32_t test_param;
   uint32_t cmd;
   uint32_t ctrl_handle;
   uint32_t num_test_sessions;
@@ -86,6 +94,28 @@ hs_test_type_str (hs_test_t t)
 
     case HS_TEST_TYPE_EXIT:
       return "EXIT";
+
+    case HS_TEST_TYPE_EXIT_CLIENT:
+      return "EXIT-CLIENT";
+
+    default:
+      return "Unknown";
+    }
+}
+
+static inline char *
+hs_test_param_str (hs_test_param_t p)
+{
+  switch (p)
+    {
+    case HS_TEST_PARAM_NONE:
+      return "NONE";
+
+    case HS_TEST_PARAM_SERVER_RST_STREAM:
+      return "SERVER-RST-STREAM";
+
+    case HS_TEST_PARAM_CLIENT_RST_STREAM:
+      return "CLIENT-RST-STREAM";
 
     default:
       return "Unknown";
@@ -147,6 +177,7 @@ hs_test_cfg_dump (hs_test_cfg_t *cfg, uint8_t is_client)
 	  "               seq_num:  0x%08x\n"
 	  "            test bytes:  %s\n"
 	  "%-5s             test:  %s (%d)\n"
+	  "  additional parameter:  %s (%d)\n"
 	  "           ctrl handle:  %d (0x%x)\n"
 	  "%-5s num test sockets:  %u (0x%08x)\n"
 	  "%-5s          verbose:  %s (%d)\n"
@@ -157,12 +188,13 @@ hs_test_cfg_dump (hs_test_cfg_t *cfg, uint8_t is_client)
 	  (void *) cfg, hs_test_cmd_to_str (cfg->cmd), cfg->magic,
 	  cfg->seq_num, cfg->test_bytes ? "yes" : "no",
 	  is_client && (cfg->test == HS_TEST_TYPE_UNI) ?
-		  "'" HS_TEST_TOKEN_RUN_UNI "'" :
+	    "'" HS_TEST_TOKEN_RUN_UNI "'" :
 	  is_client && (cfg->test == HS_TEST_TYPE_BI) ?
-		  "'" HS_TEST_TOKEN_RUN_BI "'" :
-		  spc,
-	  hs_test_type_str (cfg->test), cfg->test, cfg->ctrl_handle,
-	  cfg->ctrl_handle,
+	    "'" HS_TEST_TOKEN_RUN_BI "'" :
+	    spc,
+	  hs_test_type_str (cfg->test), cfg->test,
+	  hs_test_param_str (cfg->test_param), cfg->test_param,
+	  cfg->ctrl_handle, cfg->ctrl_handle,
 	  is_client ? "'" VCL_TEST_TOKEN_NUM_TEST_SESS "'" : spc,
 	  cfg->num_test_sessions, cfg->num_test_sessions,
 	  is_client ? "'" VCL_TEST_TOKEN_VERBOSE "'" : spc,
