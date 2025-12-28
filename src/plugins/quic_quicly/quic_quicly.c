@@ -556,18 +556,22 @@ quic_quicly_fifo_egress_emit (quicly_stream_t *stream, size_t off, void *dst,
 }
 
 static void
-quic_quicly_on_stop_sending (quicly_stream_t *stream, int err)
+quic_quicly_on_stop_sending (quicly_stream_t *stream, int quicly_error)
 {
-  /* TODO : handle STOP_SENDING */
-#if QUIC_DEBUG >= 2
   quic_stream_data_t *stream_data = (quic_stream_data_t *) stream->data;
   quic_ctx_t *sctx =
     quic_quicly_get_quic_ctx (stream_data->ctx_id, stream_data->thread_index);
-  session_t *stream_session =
-    session_get (sctx->c_s_index, sctx->c_thread_index);
-  clib_warning ("(NOT IMPLEMENTD) STOP_SENDING: session 0x%lx (%U)",
-		session_handle (stream_session), quic_quicly_format_err, err);
-#endif
+
+  QUIC_DBG (
+    2, "STOP_SENDING: session 0x%lx (%U)",
+    session_handle (session_get (sctx->c_s_index, sctx->c_thread_index)),
+    quic_quicly_format_err, quicly_error);
+
+  if (!(sctx->flags & QUIC_F_APP_CLOSED))
+    {
+      sctx->app_err_code = QUICLY_ERROR_GET_ERROR_CODE (quicly_error);
+      session_transport_reset_notify (&sctx->connection);
+    }
 }
 
 static void
@@ -713,14 +717,17 @@ quic_quicly_on_receive_reset (quicly_stream_t *stream, int quicly_error)
   quic_stream_data_t *stream_data = (quic_stream_data_t *) stream->data;
   quic_ctx_t *sctx =
     quic_quicly_get_quic_ctx (stream_data->ctx_id, stream_data->thread_index);
-#if QUIC_DEBUG >= 2
-  session_t *stream_session =
-    session_get (sctx->c_s_index, sctx->c_thread_index);
-  clib_warning ("RESET_STREAM: session 0x%lx (%U)",
-		session_handle (stream_session), quic_quicly_format_err,
-		quicly_error);
-#endif
-  session_transport_closing_notify (&sctx->connection);
+
+  QUIC_DBG (
+    2, "RESET_STREAM: session 0x%lx (%U)",
+    session_handle (session_get (sctx->c_s_index, sctx->c_thread_index)),
+    quic_quicly_format_err, quicly_error);
+
+  if (!(sctx->flags & QUIC_F_APP_CLOSED))
+    {
+      sctx->app_err_code = QUICLY_ERROR_GET_ERROR_CODE (quicly_error);
+      session_transport_reset_notify (&sctx->connection);
+    }
 }
 
 const quicly_stream_callbacks_t quic_quicly_stream_callbacks = {
@@ -843,8 +850,7 @@ quic_quicly_on_stream_open (quicly_stream_open_t *self,
   if ((rv = app_worker_init_connected (app_wrk, stream_session)))
     {
       QUIC_ERR ("failed to allocate fifos");
-      quicly_reset_stream (stream, QUIC_QUICLY_APP_ALLOCATION_ERROR);
-      return 0; /* Frame is still valid */
+      return -1; /* close connection */
     }
   svm_fifo_add_want_deq_ntf (stream_session->rx_fifo,
 			     SVM_FIFO_WANT_DEQ_NOTIF_IF_FULL |
@@ -856,8 +862,7 @@ quic_quicly_on_stream_open (quicly_stream_open_t *self,
   if ((rv = app_worker_accept_notify (app_wrk, stream_session)))
     {
       QUIC_ERR ("failed to notify accept worker app");
-      quicly_reset_stream (stream, QUIC_QUICLY_APP_ACCEPT_NOTIFY_ERROR);
-      return 0; /* Frame is still valid */
+      return -1; /* close connection */
     }
 
   return 0;
@@ -1047,6 +1052,7 @@ quic_quicly_get_quic_ctx_if_valid (u32 ctx_index,
 static void
 quic_quicly_on_app_closed (u32 ctx_index, clib_thread_index_t thread_index)
 {
+  int rv;
   quic_ctx_t *ctx =
     quic_quicly_get_quic_ctx_if_valid (ctx_index, thread_index);
   if (!ctx)
@@ -1079,18 +1085,19 @@ quic_quicly_on_app_closed (u32 ctx_index, clib_thread_index_t thread_index)
 		    ctx_index, thread_index);
 	  return;
 	}
+      if (!quicly_sendstate_is_open (&stream->sendstate))
+	{
+	  QUIC_DBG (2, "send side already closed");
+	  return;
+	}
       QUIC_DBG (2, "App closed stream, ctx_index %u thread_index %u",
 		ctx->c_c_index, ctx->c_thread_index);
       quicly_sendstate_shutdown (
 	&stream->sendstate,
 	ctx->bytes_written + svm_fifo_max_dequeue (stream_session->tx_fifo));
       ctx->flags |= QUIC_F_APP_CLOSED_TX;
-      if (quicly_stream_sync_sendbuf (stream, 1))
-	{
-	  QUIC_DBG (1, "sendstate_shutdown failed for stream session %lu",
-		    session_handle (stream_session));
-	  quicly_reset_stream (stream, QUIC_QUICLY_APP_ERROR_CLOSE_NOTIFY);
-	}
+      rv = quicly_stream_sync_sendbuf (stream, 1);
+      ASSERT (!rv);
       quic_quicly_reschedule_ctx (quic_quicly_get_quic_ctx (
 	ctx->quic_connection_ctx_id, ctx->c_thread_index));
       return;
@@ -1169,6 +1176,46 @@ quic_quicly_on_app_closed_tx (u32 ctx_index, clib_thread_index_t thread_index)
   quicly_stream_sync_sendbuf (stream, 1);
   quic_quicly_reschedule_ctx (quic_quicly_get_quic_ctx (
     ctx->quic_connection_ctx_id, ctx->c_thread_index));
+}
+
+static void
+quic_quicly_on_app_reset (u32 ctx_index, clib_thread_index_t thread_index)
+{
+  quic_ctx_t *ctx;
+  quicly_stream_t *stream;
+
+  ctx = quic_quicly_get_quic_ctx_if_valid (ctx_index, thread_index);
+  if (!ctx)
+    {
+      return;
+    }
+  if (!quic_ctx_is_stream (ctx))
+    {
+      /* TODO: handle as connection close? */
+      QUIC_ERR ("Trying to reset connection");
+      return;
+    }
+
+  QUIC_DBG (2,
+	    "App reset session 0x%lx ctx_index %u, app proto error code 0x%lx",
+	    session_handle (session_get (ctx->c_s_index, ctx->c_thread_index)),
+	    ctx->c_c_index, ctx->app_err_code);
+  ctx->flags |= QUIC_F_APP_CLOSED;
+  stream = ctx->stream;
+  if (quicly_stream_has_receive_side (quicly_is_client (stream->conn),
+				      stream->stream_id) &&
+      !quicly_recvstate_transfer_complete (&stream->recvstate))
+    {
+      quicly_request_stop (
+	stream, QUICLY_ERROR_FROM_APPLICATION_ERROR_CODE (ctx->app_err_code));
+    }
+  if (quicly_stream_has_send_side (quicly_is_client (stream->conn),
+				   stream->stream_id) &&
+      !quicly_sendstate_transfer_complete (&stream->sendstate))
+    {
+      quicly_reset_stream (
+	stream, QUICLY_ERROR_FROM_APPLICATION_ERROR_CODE (ctx->app_err_code));
+    }
 }
 
 /*
@@ -1648,13 +1695,6 @@ quic_quicly_connect_stream (void *quic_conn, void **quic_stream,
   return 0;
 }
 
-static_always_inline void
-quic_quicly_connect_stream_error_reset (void *quic_stream)
-{
-  quicly_reset_stream ((quicly_stream_t *) quic_stream,
-		       QUIC_QUICLY_APP_CONNECT_NOTIFY_ERROR);
-}
-
 static_always_inline u64
 quic_quicly_stream_tx (quic_ctx_t *ctx, session_t *stream_session)
 {
@@ -1912,7 +1952,6 @@ const static quic_engine_vft_t quic_quicly_engine_vft = {
   .crypto_context_release = quic_quicly_crypto_context_release,
   .connect = quic_quicly_connect,
   .connect_stream = quic_quicly_connect_stream,
-  .connect_stream_error_reset = quic_quicly_connect_stream_error_reset,
   .connection_migrate = quic_quicly_connection_migrate,
   .connection_get_stats = quic_quicly_connection_get_stats,
   .udp_session_rx_packets = quic_quicly_udp_session_rx_packets,
@@ -1924,6 +1963,7 @@ const static quic_engine_vft_t quic_quicly_engine_vft = {
   .stream_get_stream_id = quic_quicly_stream_get_stream_id,
   .proto_on_close = quic_quicly_on_app_closed,
   .proto_on_half_close = quic_quicly_on_app_closed_tx,
+  .proto_on_reset = quic_quicly_on_app_reset,
   .transport_closed = quic_quicly_transport_closed,
 };
 
