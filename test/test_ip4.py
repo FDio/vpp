@@ -3606,6 +3606,72 @@ class TestIP4InterfaceRx(VppTestCase):
 
         self.send_and_expect(self.pg0, pkts_dst, self.pg2)
 
+    def test_interface_rx_deag(self):
+        """IPv4 Interface Receive after Deaggregate"""
+
+        #
+        # add a route in the default table to deag/lookup in table 1
+        #
+        route_in_dst = VppIpRoute(
+            self,
+            "1.1.1.0",
+            24,
+            [
+                VppRoutePath(
+                    "0.0.0.0",
+                    0xFFFFFFFF,
+                    nh_table_id=1,
+                )
+            ],
+        )
+        route_in_dst.add_vpp_config()
+
+        #
+        # add a route in the table 1 to receive on pg2 in the table 2
+        #
+        route_to_dst = VppIpRoute(
+            self,
+            "1.1.1.0",
+            24,
+            [
+                VppRoutePath(
+                    "0.0.0.0",
+                    self.pg2.sw_if_index,
+                    type=FibPathType.FIB_PATH_TYPE_INTERFACE_RX,
+                )
+            ],
+            table_id=1,
+        )
+        route_to_dst.add_vpp_config()
+
+        #
+        # packets to these destination are dropped, since they'll
+        # hit the respective default route in table 2
+        #
+        p_dst = (
+            Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+            / IP(src="5.5.5.5", dst="1.1.1.1")
+            / TCP(sport=1234, dport=1234)
+            / Raw(b"\xa5" * 100)
+        )
+        pkts_dst = p_dst * 10
+
+        self.send_and_assert_no_replies(self.pg0, pkts_dst, "IP in table 2")
+
+        #
+        # add a route in the dst table to forward via pg2
+        #
+        route_in_dst = VppIpRoute(
+            self,
+            "1.1.1.1",
+            32,
+            [VppRoutePath(self.pg2.remote_ip4, self.pg2.sw_if_index)],
+            table_id=2,
+        )
+        route_in_dst.add_vpp_config()
+
+        self.send_and_expect(self.pg0, pkts_dst, self.pg2)
+
 
 if __name__ == "__main__":
     unittest.main(testRunner=VppTestRunner)
