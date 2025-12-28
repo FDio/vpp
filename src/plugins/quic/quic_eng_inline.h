@@ -53,13 +53,6 @@ quic_eng_connect_stream (void *quic_conn, void **quic_stream,
 }
 
 static_always_inline void
-quic_eng_connect_stream_error_reset (void *quic_stream)
-{
-  quic_main_t *qm = &quic_main;
-  quic_engine_vfts[qm->engine_type].connect_stream_error_reset (quic_stream);
-}
-
-static_always_inline void
 quic_eng_rpc_evt_to_thread_connection_migrate (u32 dest_thread,
 					       quic_ctx_t *ctx)
 {
@@ -138,6 +131,13 @@ quic_eng_proto_on_half_close (u32 ctx_index, u32 thread_index)
   quic_main_t *qm = &quic_main;
   quic_engine_vfts[qm->engine_type].proto_on_half_close (ctx_index,
 							 thread_index);
+}
+
+static_always_inline void
+quic_eng_proto_on_reset (u32 ctx_index, u32 thread_index)
+{
+  quic_main_t *qm = &quic_main;
+  quic_engine_vfts[qm->engine_type].proto_on_reset (ctx_index, thread_index);
 }
 
 #endif /* __included_quic_eng_inline_h__ */

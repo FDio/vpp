@@ -98,6 +98,8 @@ extern vlib_node_registration_t quic_input_node;
 typedef i64 quic_stream_id_t;
 #define QUIC_INVALID_STREAM_ID INT64_MAX
 
+typedef i64 quic_app_err_code_t;
+
 typedef enum
 {
 #define quic_error(f, n, s, d) QUIC_ERROR_##f,
@@ -192,7 +194,7 @@ typedef struct quic_ctx_
   u16 rmt_port;
   ip46_address_t lcl_ip;
   u16 lcl_port;
-
+  quic_app_err_code_t app_err_code;
 } quic_ctx_t;
 
 /* Make sure our custom fields don't overlap with the fields we use in
@@ -398,7 +400,6 @@ typedef struct quic_engine_vft_
 		  clib_thread_index_t thread_index, struct sockaddr *sa);
   int (*connect_stream) (void *conn, void **quic_stream,
 			 quic_stream_data_t **quic_stream_data, u8 is_unidir);
-  void (*connect_stream_error_reset) (void *quic_stream);
   void (*connection_migrate) (quic_ctx_t *ctx);
   void (*connection_get_stats) (void *conn, quic_stats_t *conn_stats);
   int (*udp_session_rx_packets) (session_t *udp_session);
@@ -411,6 +412,7 @@ typedef struct quic_engine_vft_
   void (*proto_on_close) (u32 ctx_index, clib_thread_index_t thread_index);
   void (*proto_on_half_close) (u32 ctx_index,
 			       clib_thread_index_t thread_index);
+  void (*proto_on_reset) (u32 ctx_index, clib_thread_index_t thread_index);
   void (*transport_closed) (quic_ctx_t *ctx);
 } quic_engine_vft_t;
 
