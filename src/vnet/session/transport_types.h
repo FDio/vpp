@@ -389,7 +389,8 @@ typedef struct transport_endpt_ext_cfgs_
   _ (transport_endpoint_t, ext_endpt, EXT_ENDPT)                              \
   _ (tls_cert_t, tls_peer_cert, TLS_PEER_CERT)                                \
   _ (tls_alpn_proto_t, tls_alpn, TLS_ALPN)                                    \
-  _ (u64, next_transport, NEXT_TRANSPORT)
+  _ (u64, next_transport, NEXT_TRANSPORT)                                     \
+  _ (u64, app_proto_err_code, APP_PROTO_ERR_CODE)
 
 typedef enum transport_endpt_attr_type_
 {

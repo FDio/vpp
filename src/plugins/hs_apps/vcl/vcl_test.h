@@ -60,6 +60,7 @@ typedef struct
   uint64_t tx_bytes;
   uint32_t tx_eagain;
   uint32_t tx_incomp;
+  uint32_t reset_count; /* received reset from vpp */
   struct timespec start;
   struct timespec stop;
 } vcl_test_stats_t;
@@ -150,6 +151,7 @@ vcl_test_stats_accumulate (vcl_test_stats_t * accum, vcl_test_stats_t * incr)
   accum->tx_bytes += incr->tx_bytes;
   accum->tx_eagain += incr->tx_eagain;
   accum->tx_incomp += incr->tx_incomp;
+  accum->reset_count += incr->reset_count;
 }
 
 static inline void
@@ -246,6 +248,7 @@ vcl_test_stats_dump (char *header, vcl_test_stats_t * stats,
 	      stats->rx_bytes, stats->rx_bytes, stats->rx_eagain,
 	      stats->rx_eagain, stats->rx_incomp, stats->rx_incomp);
     }
+  printf ("    reset count:  %u\n", stats->reset_count);
   if (verbose)
     printf ("   start.tv_sec:  %ld\n"
 	    "  start.tv_nsec:  %ld\n"
@@ -328,6 +331,7 @@ static inline int
 vcl_test_reset_nop (vcl_test_session_t *ts)
 {
   /* just signal that this was not expected (error) */
+  ts->stats.reset_count = 1;
   return 1;
 }
 
