@@ -230,6 +230,12 @@ quic_proto_on_half_close (u32 ctx_index, clib_thread_index_t thread_index)
   quic_eng_proto_on_half_close (ctx_index, thread_index);
 }
 
+static void
+quic_proto_on_reset (u32 ctx_index, clib_thread_index_t thread_index)
+{
+  quic_eng_proto_on_reset (ctx_index, thread_index);
+}
+
 static u32
 quic_start_listen (u32 quic_listen_session_index,
 		   transport_endpoint_cfg_t *tep)
@@ -786,6 +792,7 @@ static transport_proto_vft_t quic_proto = {
   .connect_stream = quic_connect_stream,
   .close = quic_proto_on_close,
   .half_close = quic_proto_on_half_close,
+  .reset = quic_proto_on_reset,
   .start_listen = quic_start_listen,
   .stop_listen = quic_stop_listen,
   .get_connection = quic_connection_get,
