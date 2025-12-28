@@ -576,6 +576,7 @@ typedef enum vt_quic_flags_
 {
   VT_QUIC_F_SERVER = (1 << 0),
   VT_QUIC_F_HALF_CLOSED = (1 << 1),
+  VT_QUIC_F_RESET = (1 << 2),
 } vt_quic_flags_t;
 
 typedef struct vt_quic_ctx_
@@ -684,6 +685,39 @@ vt_quic_client_bidi_write (vcl_test_session_t *ts, void *buf, uint32_t nbytes)
 }
 
 static int
+vt_quic_client_write_and_rst (vcl_test_session_t *ts, void *buf,
+			      uint32_t nbytes)
+{
+  int rv;
+  vt_quic_ctx_t *quic_ctx = (vt_quic_ctx_t *) ts->opaque;
+
+  if (quic_ctx->flags & VT_QUIC_F_RESET)
+    return 0;
+
+  rv = vcl_test_write (ts, buf, nbytes);
+
+  if ((ts->stats.tx_bytes << 1) >= ts->cfg.total_bytes)
+    {
+      vtinf ("going to reset stream %d (fd %d)", ts->session_index, ts->fd);
+      vppcom_session_terminate (ts->fd);
+      quic_ctx->flags |= VT_QUIC_F_RESET;
+    }
+
+  return rv;
+}
+
+static int
+vt_quic_rst_is_done (vcl_test_session_t *ts, uint8_t check_rx)
+{
+  vt_quic_ctx_t *quic_ctx = (vt_quic_ctx_t *) ts->opaque;
+
+  if (quic_ctx->flags & VT_QUIC_F_RESET)
+    return 1;
+
+  return 0;
+}
+
+static int
 vt_quic_connect (vcl_test_session_t *ts, vppcom_endpt_t *endpt)
 {
   vcl_test_main_t *vt = &vcl_test_main;
@@ -731,9 +765,18 @@ vt_quic_connect (vcl_test_session_t *ts, vppcom_endpt_t *endpt)
     }
   else
     {
-      ts->read = vcl_test_read;
-      ts->write = vcl_test_write;
-      ts->done = vcl_test_is_done;
+      if (vt->cfg.test_param == HS_TEST_TYPE_CLIENT_RST_STREAM)
+	{
+	  ts->write = vt_quic_client_write_and_rst;
+	  ts->done = vt_quic_rst_is_done;
+	  ts->read = vcl_test_read;
+	}
+      else
+	{
+	  ts->read = vcl_test_read;
+	  ts->write = vcl_test_write;
+	  ts->done = vcl_test_is_done;
+	}
     }
 
   vt_quic_session_init (ts, 0);

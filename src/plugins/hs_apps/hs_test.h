@@ -45,6 +45,8 @@ typedef enum
   HS_TEST_TYPE_BI,
   HS_TEST_TYPE_EXIT,
   HS_TEST_TYPE_EXIT_CLIENT,
+  HS_TEST_TYPE_SERVER_RST_STREAM,
+  HS_TEST_TYPE_CLIENT_RST_STREAM,
 } hs_test_t;
 
 typedef struct __attribute__ ((packed))
@@ -52,6 +54,7 @@ typedef struct __attribute__ ((packed))
   uint32_t magic;
   uint32_t seq_num;
   uint32_t test;
+  uint32_t test_param;
   uint32_t cmd;
   uint32_t ctrl_handle;
   uint32_t num_test_sessions;

@@ -15,7 +15,7 @@ import (
 func init() {
 	RegisterVethTests(XEchoVclClientUdpTest, XEchoVclClientTcpTest, XEchoVclServerUdpTest, VclQuicUnidirectionalStreamTest,
 		XEchoVclServerTcpTest, VclEchoTcpTest, VclEchoUdpTest, VclHttpPostTest, VclClUdpDscpTest,
-		VclQuicBidirectionalStreamTest)
+		VclQuicBidirectionalStreamTest, VclQuicUnidirectionalStreamClientResetTest)
 	RegisterSoloVethTests(VclRetryAttachTest)
 	RegisterVethMWTests(VclQuicUnidirectionalStreamsMWTest)
 }
@@ -183,6 +183,11 @@ func VclQuicBidirectionalStreamTest(s *VethsSuite) {
 	AssertNil(err)
 	AssertGreaterEqual(serverRxBytes, minBytes, "server receive less data")
 	AssertGreaterEqual(serverTxBytes, minBytes, "server send less data")
+}
+
+func VclQuicUnidirectionalStreamClientResetTest(s *VethsSuite) {
+	_, oSrv := testVclEcho(s, "quic", "-N 1000 -t client-rst-stream")
+	AssertNotContains(oSrv, "ctrl session went away")
 }
 
 func VclHttpPostTest(s *VethsSuite) {
