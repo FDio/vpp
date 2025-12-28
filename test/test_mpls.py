@@ -1641,6 +1641,35 @@ class TestMPLS(VppTestCase):
         rx = self.send_and_expect(self.pg0, tx, self.pg1)
         self.verify_capture_ip4(self.pg1, rx, tx)
 
+        #
+        # Add a mpls route that will forward the traffic
+        # post-interface-rx
+        #
+        route_10_0_0_1 = VppIpRoute(
+            self,
+            "10.0.0.1",
+            32,
+            table_id=0,
+            paths=[
+                VppRoutePath(
+                    "0.0.0.0",
+                    self.pg0.sw_if_index,
+                    type=FibPathType.FIB_PATH_TYPE_INTERFACE_RX,
+                    proto=FibPathProto.FIB_PATH_NH_PROTO_MPLS,
+                    labels=[VppMplsLabel(34)],
+                ),
+            ],
+        )
+        route_10_0_0_1.add_vpp_config()
+
+        #
+        # ping an interface in the default table
+        # PG0 is in the default table
+        #
+        tx = self.create_stream_ip4(self.pg0, dst_ip="10.0.0.1")
+        rx = self.send_and_expect(self.pg0, tx, self.pg1)
+        self.verify_capture_ip4(self.pg1, rx, tx, ip_ttl=62)
+
     def test_mcast_mid_point(self):
         """MPLS Multicast Mid Point"""
 

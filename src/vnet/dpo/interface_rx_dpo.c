@@ -195,13 +195,17 @@ const static char* const interface_rx_dpo_l2_nodes[] =
     "interface-rx-dpo-l2",
     NULL,
 };
+const static char* const interface_rx_dpo_mpls_nodes[] = {
+    "interface-rx-dpo-mpls",
+    NULL,
+};
 
 const static char* const * const interface_rx_dpo_nodes[DPO_PROTO_NUM] =
 {
     [DPO_PROTO_IP4]  = interface_rx_dpo_ip4_nodes,
     [DPO_PROTO_IP6]  = interface_rx_dpo_ip6_nodes,
     [DPO_PROTO_ETHERNET]  = interface_rx_dpo_l2_nodes,
-    [DPO_PROTO_MPLS] = NULL,
+    [DPO_PROTO_MPLS] = interface_rx_dpo_mpls_nodes,
 };
 
 void
@@ -231,7 +235,7 @@ always_inline uword
 interface_rx_dpo_inline (vlib_main_t * vm,
                          vlib_node_runtime_t * node,
                          vlib_frame_t * from_frame,
-			 u8 is_l2)
+			 u8 is_l2, u8 is_ip)
 {
     u32 n_left_from, next_index, * from, * to_next;
     clib_thread_index_t thread_index = vm->thread_index;
@@ -280,7 +284,7 @@ interface_rx_dpo_inline (vlib_main_t * vm,
 		vnet_update_l2_len (b0);
 		vnet_update_l2_len (b1);
 	    }
-	    else
+	    else if (is_ip)
 	    {
 		vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~0;
 		vnet_buffer (b1)->sw_if_index[VLIB_TX] = (u32) ~0;
@@ -340,7 +344,7 @@ interface_rx_dpo_inline (vlib_main_t * vm,
 	    /* Update l2_len to make l2 tag rewrite work */
 	    if (is_l2)
 		vnet_update_l2_len (b0);
-	    else
+	    else if (is_ip)
 		vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~0;
 
             /* Bump the interface's RX coutners */
@@ -381,21 +385,28 @@ VLIB_NODE_FN (interface_rx_dpo_ip4_node) (vlib_main_t * vm,
                       vlib_node_runtime_t * node,
                       vlib_frame_t * from_frame)
 {
-    return (interface_rx_dpo_inline(vm, node, from_frame, 0));
+    return (interface_rx_dpo_inline(vm, node, from_frame, 0, 1));
 }
 
 VLIB_NODE_FN (interface_rx_dpo_ip6_node) (vlib_main_t * vm,
                       vlib_node_runtime_t * node,
                       vlib_frame_t * from_frame)
 {
-    return (interface_rx_dpo_inline(vm, node, from_frame, 0));
+    return (interface_rx_dpo_inline(vm, node, from_frame, 0, 1));
 }
 
 VLIB_NODE_FN (interface_rx_dpo_l2_node) (vlib_main_t * vm,
                      vlib_node_runtime_t * node,
                      vlib_frame_t * from_frame)
 {
-    return (interface_rx_dpo_inline(vm, node, from_frame, 1));
+    return (interface_rx_dpo_inline(vm, node, from_frame, 1, 0));
+}
+
+VLIB_NODE_FN (interface_rx_dpo_mpls_node) (vlib_main_t * vm,
+                     vlib_node_runtime_t * node,
+                     vlib_frame_t * from_frame)
+{
+    return (interface_rx_dpo_inline (vm, node, from_frame, 0, 0));
 }
 
 VLIB_REGISTER_NODE (interface_rx_dpo_ip4_node) = {
@@ -433,6 +444,19 @@ VLIB_REGISTER_NODE (interface_rx_dpo_l2_node) = {
     .next_nodes = {
         [INTERFACE_RX_DPO_DROP] = "error-drop",
         [INTERFACE_RX_DPO_INPUT] = "l2-input",
+    },
+};
+
+
+VLIB_REGISTER_NODE (interface_rx_dpo_mpls_node) = {
+    .name = "interface-rx-dpo-mpls",
+    .vector_size = sizeof (u32),
+    .format_trace = format_interface_rx_dpo_trace,
+
+    .n_next_nodes = 2,
+    .next_nodes = {
+        [INTERFACE_RX_DPO_DROP] = "mpls-drop",
+        [INTERFACE_RX_DPO_INPUT] = "mpls-input",
     },
 };
 

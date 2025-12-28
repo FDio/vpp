@@ -125,7 +125,8 @@ VLIB_CLI_COMMAND (bier_route_command) = {
     "[next-hop-table <value>] [weight <value>] [preference <value>] "
     "[udp-encap-id <value>] [ip4-lookup-in-table <value>] "
     "[ip6-lookup-in-table <value>] [mpls-lookup-in-table <value>] "
-    "[resolve-via-host] [resolve-via-connected] [rx-ip4|rx-ip6 <interface>] "
+    "[resolve-via-host] [resolve-via-connected] "
+    "[rx-ip4|rx-ip6|rx-mpls <interface>] "
     "[out-labels <value value value>]",
   .function = vnet_bier_route_cmd,
 };
