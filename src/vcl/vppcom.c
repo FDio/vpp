@@ -4676,6 +4676,37 @@ vppcom_session_attr (uint32_t session_handle, uint32_t op,
       else
 	rv = VPPCOM_EINVAL;
       break;
+    case VPPCOM_ATTR_GET_APP_PROTO_ERR_CODE:
+      if (!(buffer && buflen && (*buflen >= sizeof (u64))))
+	{
+	  rv = VPPCOM_EINVAL;
+	  break;
+	}
+      tea.type = TRANSPORT_ENDPT_ATTR_APP_PROTO_ERR_CODE;
+      tea.app_proto_err_code = *(u64 *) buffer;
+      if (vcl_session_transport_attr (wrk, session, 1 /* is_get */, &tea))
+	rv = VPPCOM_ENOPROTOOPT;
+      if (!rv)
+	{
+	  *(u64 *) buffer = tea.app_proto_err_code;
+	  *buflen = sizeof (int);
+	}
+      VDBG (2, "VPPCOM_ATTR_GET_APP_PROTO_ERR_CODE: 0x%lx, buflen %d",
+	    *(int *) buffer, *buflen);
+      break;
+    case VPPCOM_ATTR_SET_APP_PROTO_ERR_CODE:
+      if (!(buffer && buflen && (*buflen == sizeof (u64))))
+	{
+	  rv = VPPCOM_EINVAL;
+	  break;
+	}
+      tea.type = TRANSPORT_ENDPT_ATTR_APP_PROTO_ERR_CODE;
+      tea.app_proto_err_code = *(u64 *) buffer;
+      if (vcl_session_transport_attr (wrk, session, 0 /* is_get */, &tea))
+	rv = VPPCOM_ENOPROTOOPT;
+      VDBG (2, "VPPCOM_ATTR_SET_APP_PROTO_ERR_CODE: 0x%lx, buflen %d",
+	    tea.app_proto_err_code, *buflen);
+      break;
     default:
       rv = VPPCOM_EINVAL;
       break;
