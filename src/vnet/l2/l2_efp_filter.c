@@ -41,13 +41,12 @@ typedef struct
   vnet_main_t *vnet_main;
 } l2_efp_filter_main_t;
 
-
 typedef struct
 {
   /* per-pkt trace data */
   u8 src[6];
   u8 dst[6];
-  u8 raw[12];			/* raw data (vlans) */
+  u8 raw[12]; /* raw data (vlans) */
   u32 sw_if_index;
 } l2_efp_filter_trace_t;
 
@@ -59,14 +58,13 @@ format_l2_efp_filter_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   l2_efp_filter_trace_t *t = va_arg (*args, l2_efp_filter_trace_t *);
 
-  s = format (s, "l2-output-vtr: sw_if_index %d dst %U src %U data "
+  s = format (s,
+	      "l2-output-vtr: sw_if_index %d dst %U src %U data "
 	      "%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",
-	      t->sw_if_index,
-	      format_ethernet_address, t->dst,
-	      format_ethernet_address, t->src,
-	      t->raw[0], t->raw[1], t->raw[2], t->raw[3], t->raw[4],
-	      t->raw[5], t->raw[6], t->raw[7], t->raw[8], t->raw[9],
-	      t->raw[10], t->raw[11]);
+	      t->sw_if_index, format_ethernet_address, t->dst,
+	      format_ethernet_address, t->src, t->raw[0], t->raw[1], t->raw[2],
+	      t->raw[3], t->raw[4], t->raw[5], t->raw[6], t->raw[7], t->raw[8],
+	      t->raw[9], t->raw[10], t->raw[11]);
   return s;
 }
 
@@ -76,9 +74,9 @@ extern l2_efp_filter_main_t l2_efp_filter_main;
 l2_efp_filter_main_t l2_efp_filter_main;
 #endif /* CLIB_MARCH_VARIANT */
 
-#define foreach_l2_efp_filter_error			\
-_(L2_EFP_FILTER, "L2 EFP filter packets")		\
-_(DROP,          "L2 EFP filter post-rewrite drops")
+#define foreach_l2_efp_filter_error                                           \
+  _ (L2_EFP_FILTER, "L2 EFP filter packets")                                  \
+  _ (DROP, "L2 EFP filter post-rewrite drops")
 
 typedef enum
 {
@@ -100,37 +98,84 @@ typedef enum
   L2_EFP_FILTER_N_NEXT,
 } l2_efp_filter_next_t;
 
-
 /**
  *  Extract fields from the packet that will be used in interface
  *  classification.
+ *
+ * FIX: make this safe for packets with <2 VLAN tags and/or short buffers.
  */
 static_always_inline void
-extract_keys (vnet_main_t * vnet_main,
-	      u32 sw_if_index0,
-	      vlib_buffer_t * b0,
-	      u32 * port_sw_if_index0,
-	      u16 * first_ethertype0,
-	      u16 * outer_id0, u16 * inner_id0, u32 * match_flags0)
+extract_keys (vnet_main_t *vnet_main, u32 sw_if_index0, vlib_buffer_t *b0,
+	      u32 *port_sw_if_index0, u16 *first_ethertype0, u16 *outer_id0,
+	      u16 *inner_id0, u32 *match_flags0)
 {
   ethernet_header_t *e0;
   ethernet_vlan_header_t *h0;
-  u32 tag_len;
-  u32 tag_num;
+  u32 l2_len, cur_len, bytes_after_eth, tag_len, tag_num;
 
   *port_sw_if_index0 =
     vnet_get_sup_sw_interface (vnet_main, sw_if_index0)->sw_if_index;
 
   e0 = vlib_buffer_get_current (b0);
-  h0 = (ethernet_vlan_header_t *) (e0 + 1);
-
   *first_ethertype0 = clib_net_to_host_u16 (e0->type);
-  *outer_id0 = clib_net_to_host_u16 (h0[0].priority_cfi_and_id);
-  *inner_id0 = clib_net_to_host_u16 (h0[1].priority_cfi_and_id);
 
-  tag_len = vnet_buffer (b0)->l2.l2_len - sizeof (ethernet_header_t);
+  /* Default values if there are no VLAN tags */
+  *outer_id0 = 0;
+  *inner_id0 = 0;
+
+  l2_len = vnet_buffer (b0)->l2.l2_len;
+  cur_len = b0->current_length;
+
+  if (PREDICT_FALSE (l2_len < sizeof (ethernet_header_t) ||
+		     cur_len < sizeof (ethernet_header_t)))
+    {
+      *match_flags0 = eth_create_valid_subint_match_flags (0);
+      return;
+    }
+
+  bytes_after_eth = l2_len - sizeof (ethernet_header_t);
+
+  /* Clamp to actual bytes available in buffer */
+  if (bytes_after_eth > (cur_len - sizeof (ethernet_header_t)))
+    bytes_after_eth = cur_len - sizeof (ethernet_header_t);
+
+  tag_len = bytes_after_eth;
   tag_num = tag_len / sizeof (ethernet_vlan_header_t);
+  if (tag_num > 2)
+    tag_num = 2;
+
   *match_flags0 = eth_create_valid_subint_match_flags (tag_num);
+
+  if (tag_num >= 1)
+    {
+      h0 = (ethernet_vlan_header_t *) (e0 + 1);
+      *outer_id0 = clib_net_to_host_u16 (h0[0].priority_cfi_and_id);
+    }
+  if (tag_num >= 2)
+    {
+      h0 = (ethernet_vlan_header_t *) (e0 + 1);
+      *inner_id0 = clib_net_to_host_u16 (h0[1].priority_cfi_and_id);
+    }
+}
+
+/*
+ * Guard wrapper: do not call eth_identify_subint() with hi == 0
+ * (prevents NULL dereference / SIGSEGV). On failure, force mismatch (drop).
+ */
+static_always_inline u32
+safe_eth_identify_subint (vnet_hw_interface_t *hi, u32 match_flags,
+			  main_intf_t *main_intf, vlan_intf_t *vlan_intf,
+			  qinq_intf_t *qinq_intf, u32 *subint_sw_if_index,
+			  u8 *error, u32 *is_l2)
+{
+  if (PREDICT_TRUE (hi != 0))
+    return eth_identify_subint (hi, match_flags, main_intf, vlan_intf,
+				qinq_intf, subint_sw_if_index, error, is_l2);
+
+  *subint_sw_if_index = ~0;
+  *error = 1;
+  *is_l2 = 0;
+  return 0;
 }
 
 /*
@@ -161,9 +206,8 @@ extract_keys (vnet_main_t * vnet_main,
  * The post-rewrite check is performed here.
  */
 
-VLIB_NODE_FN (l2_efp_filter_node) (vlib_main_t * vm,
-				   vlib_node_runtime_t * node,
-				   vlib_frame_t * frame)
+VLIB_NODE_FN (l2_efp_filter_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   u32 n_left_from, *from, *to_next;
   l2_efp_filter_next_t next_index;
@@ -173,7 +217,7 @@ VLIB_NODE_FN (l2_efp_filter_node) (vlib_main_t * vm,
   vlib_error_main_t *em = &vm->error_main;
 
   from = vlib_frame_vector_args (frame);
-  n_left_from = frame->n_vectors;	/* number of packets to process */
+  n_left_from = frame->n_vectors; /* number of packets to process */
   next_index = node->cached_next_index;
 
   while (n_left_from > 0)
@@ -212,7 +256,8 @@ VLIB_NODE_FN (l2_efp_filter_node) (vlib_main_t * vm,
 	    p4 = vlib_get_buffer (vm, from[4]);
 	    p5 = vlib_get_buffer (vm, from[5]);
 
-	    /* Prefetch the buffer header and packet for the N+2 loop iteration */
+	    /* Prefetch the buffer header and packet for the N+2 loop iteration
+	     */
 	    vlib_prefetch_buffer_header (p4, LOAD);
 	    vlib_prefetch_buffer_header (p5, LOAD);
 
@@ -262,53 +307,31 @@ VLIB_NODE_FN (l2_efp_filter_node) (vlib_main_t * vm,
 
 	  /* perform the efp filter check on two packets */
 
-	  extract_keys (msm->vnet_main,
-			sw_if_index0,
-			b0,
-			&port_sw_if_index0,
-			&first_ethertype0,
-			&outer_id0, &inner_id0, &match_flags0);
+	  extract_keys (msm->vnet_main, sw_if_index0, b0, &port_sw_if_index0,
+			&first_ethertype0, &outer_id0, &inner_id0,
+			&match_flags0);
 
-	  extract_keys (msm->vnet_main,
-			sw_if_index1,
-			b1,
-			&port_sw_if_index1,
-			&first_ethertype1,
-			&outer_id1, &inner_id1, &match_flags1);
+	  extract_keys (msm->vnet_main, sw_if_index1, b1, &port_sw_if_index1,
+			&first_ethertype1, &outer_id1, &inner_id1,
+			&match_flags1);
 
-	  eth_vlan_table_lookups (&ethernet_main,
-				  msm->vnet_main,
-				  port_sw_if_index0,
-				  first_ethertype0,
-				  outer_id0,
-				  inner_id0,
-				  &hi0,
-				  &main_intf0, &vlan_intf0, &qinq_intf0);
+	  eth_vlan_table_lookups (&ethernet_main, msm->vnet_main,
+				  port_sw_if_index0, first_ethertype0,
+				  outer_id0, inner_id0, &hi0, &main_intf0,
+				  &vlan_intf0, &qinq_intf0);
 
-	  eth_vlan_table_lookups (&ethernet_main,
-				  msm->vnet_main,
-				  port_sw_if_index1,
-				  first_ethertype1,
-				  outer_id1,
-				  inner_id1,
-				  &hi1,
-				  &main_intf1, &vlan_intf1, &qinq_intf1);
+	  eth_vlan_table_lookups (&ethernet_main, msm->vnet_main,
+				  port_sw_if_index1, first_ethertype1,
+				  outer_id1, inner_id1, &hi1, &main_intf1,
+				  &vlan_intf1, &qinq_intf1);
 
-	  matched0 = eth_identify_subint (hi0,
-					  match_flags0,
-					  main_intf0,
-					  vlan_intf0,
-					  qinq_intf0,
-					  &subint_sw_if_index0,
-					  &error0, &is_l20);
+	  matched0 = safe_eth_identify_subint (
+	    hi0, match_flags0, main_intf0, vlan_intf0, qinq_intf0,
+	    &subint_sw_if_index0, &error0, &is_l20);
 
-	  matched1 = eth_identify_subint (hi1,
-					  match_flags1,
-					  main_intf1,
-					  vlan_intf1,
-					  qinq_intf1,
-					  &subint_sw_if_index1,
-					  &error1, &is_l21);
+	  matched1 = safe_eth_identify_subint (
+	    hi1, match_flags1, main_intf1, vlan_intf1, qinq_intf1,
+	    &subint_sw_if_index1, &error1, &is_l21);
 
 	  if (PREDICT_FALSE (sw_if_index0 != subint_sw_if_index0))
 	    {
@@ -349,10 +372,11 @@ VLIB_NODE_FN (l2_efp_filter_node) (vlib_main_t * vm,
 	    }
 
 	  /* verify speculative enqueues, maybe switch current next frame */
-	  /* if next0==next1==next_index then nothing special needs to be done */
-	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, bi1, next0, next1);
+	  /* if next0==next1==next_index then nothing special needs to be done
+	   */
+	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, bi1, next0,
+					   next1);
 	}
 
       while (n_left_from > 0 && n_left_to_next > 0)
@@ -394,29 +418,18 @@ VLIB_NODE_FN (l2_efp_filter_node) (vlib_main_t * vm,
 
 	  /* perform the efp filter check on one packet */
 
-	  extract_keys (msm->vnet_main,
-			sw_if_index0,
-			b0,
-			&port_sw_if_index0,
-			&first_ethertype0,
-			&outer_id0, &inner_id0, &match_flags0);
+	  extract_keys (msm->vnet_main, sw_if_index0, b0, &port_sw_if_index0,
+			&first_ethertype0, &outer_id0, &inner_id0,
+			&match_flags0);
 
-	  eth_vlan_table_lookups (&ethernet_main,
-				  msm->vnet_main,
-				  port_sw_if_index0,
-				  first_ethertype0,
-				  outer_id0,
-				  inner_id0,
-				  &hi0,
-				  &main_intf0, &vlan_intf0, &qinq_intf0);
+	  eth_vlan_table_lookups (&ethernet_main, msm->vnet_main,
+				  port_sw_if_index0, first_ethertype0,
+				  outer_id0, inner_id0, &hi0, &main_intf0,
+				  &vlan_intf0, &qinq_intf0);
 
-	  matched0 = eth_identify_subint (hi0,
-					  match_flags0,
-					  main_intf0,
-					  vlan_intf0,
-					  qinq_intf0,
-					  &subint_sw_if_index0,
-					  &error0, &is_l20);
+	  matched0 = safe_eth_identify_subint (
+	    hi0, match_flags0, main_intf0, vlan_intf0, qinq_intf0,
+	    &subint_sw_if_index0, &error0, &is_l20);
 
 	  if (PREDICT_FALSE (sw_if_index0 != subint_sw_if_index0))
 	    {
@@ -425,8 +438,8 @@ VLIB_NODE_FN (l2_efp_filter_node) (vlib_main_t * vm,
 	      b0->error = node->errors[L2_EFP_FILTER_ERROR_DROP];
 	    }
 
-	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
-			     && (b0->flags & VLIB_BUFFER_IS_TRACED)))
+	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
+			     (b0->flags & VLIB_BUFFER_IS_TRACED)))
 	    {
 	      ethernet_header_t *h0 = vlib_buffer_get_current (b0);
 	      l2_efp_filter_trace_t *t =
@@ -438,9 +451,8 @@ VLIB_NODE_FN (l2_efp_filter_node) (vlib_main_t * vm,
 	    }
 
 	  /* verify speculative enqueue, maybe switch current next frame */
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, next0);
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
@@ -448,7 +460,6 @@ VLIB_NODE_FN (l2_efp_filter_node) (vlib_main_t * vm,
 
   return frame->n_vectors;
 }
-
 
 VLIB_REGISTER_NODE (l2_efp_filter_node) = {
   .name = "l2-efp-filter",
@@ -463,7 +474,7 @@ VLIB_REGISTER_NODE (l2_efp_filter_node) = {
 
   /* edit / add dispositions here */
   .next_nodes = {
-       [L2_EFP_FILTER_NEXT_DROP]  = "error-drop",
+    [L2_EFP_FILTER_NEXT_DROP]  = "error-drop",
   },
 };
 
@@ -477,9 +488,7 @@ l2_efp_filter_init (vlib_main_t * vm)
   mp->vnet_main = vnet_get_main ();
 
   /* Initialize the feature next-node indexes */
-  feat_bitmap_init_next_nodes (vm,
-			       l2_efp_filter_node.index,
-			       L2OUTPUT_N_FEAT,
+  feat_bitmap_init_next_nodes (vm, l2_efp_filter_node.index, L2OUTPUT_N_FEAT,
 			       l2output_get_feat_names (),
 			       mp->l2_out_feat_next);
 
@@ -487,7 +496,6 @@ l2_efp_filter_init (vlib_main_t * vm)
 }
 
 VLIB_INIT_FUNCTION (l2_efp_filter_init);
-
 
 /** Enable/disable the EFP Filter check on the subinterface. */
 void
@@ -497,15 +505,14 @@ l2_efp_filter_configure (vnet_main_t * vnet_main, u32 sw_if_index, u8 enable)
   l2output_intf_bitmap_enable (sw_if_index, L2OUTPUT_FEAT_EFP_FILTER, enable);
 }
 
-
 /**
  * Set subinterface egress efp filter enable/disable.
  * The CLI format is:
  *    set interface l2 efp-filter <interface> [disable]]
  */
 static clib_error_t *
-int_l2_efp_filter (vlib_main_t * vm,
-		   unformat_input_t * input, vlib_cli_command_t * cmd)
+int_l2_efp_filter (vlib_main_t *vm, unformat_input_t *input,
+		   vlib_cli_command_t *cmd)
 {
   vnet_main_t *vnm = vnet_get_main ();
   clib_error_t *error = 0;
@@ -531,7 +538,6 @@ int_l2_efp_filter (vlib_main_t * vm,
 done:
   return error;
 }
-
 
 /*?
  * EFP filtering is a basic switch feature which prevents an interface from
