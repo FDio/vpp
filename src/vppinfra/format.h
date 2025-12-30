@@ -18,6 +18,7 @@ typedef u8 *(format_function_t) (u8 * s, va_list * args);
 u8 *va_format (u8 * s, const char *format, va_list * args);
 u8 *format (u8 * s, const char *format, ...);
 u32 format_get_visible_length (u8 *s);
+u8 *format_ansi (u8 *s, const char *esc, const char *format, ...);
 
 #ifdef CLIB_UNIX
 
