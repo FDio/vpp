@@ -32,6 +32,7 @@ typedef enum
   VNET_DEV_CTR_UNIT_PACKETS,
   VNET_DEV_CTR_UNIT_DESCRIPTORS,
   VNET_DEV_CTR_UNIT_BUFFERS,
+  VNET_DEV_CTR_UNIT_COMMANDS,
 } __clib_packed vnet_dev_counter_unit_t;
 
 typedef struct vnet_dev_counter
