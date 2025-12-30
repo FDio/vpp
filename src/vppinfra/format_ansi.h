@@ -7,6 +7,7 @@
 
 #define ANSI_RESET	   "\x1b[0m"
 #define ANSI_BOLD	   "\x1b[1m"
+#define ANSI_DIM	   "\x1b[2m"
 #define ANSI_ITALIC	   "\x1b[3m"
 #define ANSI_UNDERLINE	   "\x1b[4m"
 #define ANSI_BLINK	   "\x1b[5m"

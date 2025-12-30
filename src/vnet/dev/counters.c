@@ -8,6 +8,7 @@
 #include <vnet/dev/counters.h>
 #include <vnet/dev/log.h>
 #include <vnet/interface/rx_queue_funcs.h>
+#include <vppinfra/format_table.h>
 
 VLIB_REGISTER_LOG_CLASS (dev_log, static) = {
   .class_name = "dev",
@@ -73,40 +74,12 @@ format_vnet_dev_counter_name (u8 *s, va_list *va)
 {
   vnet_dev_counter_t *c = va_arg (*va, vnet_dev_counter_t *);
 
-  char *std_counters[] = {
-    [VNET_DEV_CTR_TYPE_RX_BYTES] = "total bytes received",
-    [VNET_DEV_CTR_TYPE_TX_BYTES] = "total bytes transmitted",
-    [VNET_DEV_CTR_TYPE_RX_PACKETS] = "total packets received",
-    [VNET_DEV_CTR_TYPE_TX_PACKETS] = "total packets transmitted",
-    [VNET_DEV_CTR_TYPE_RX_DROPS] = "total drops received",
-    [VNET_DEV_CTR_TYPE_TX_DROPS] = "total drops transmitted",
-  };
-
-  char *directions[] = {
-    [VNET_DEV_CTR_DIR_RX] = "received",
-    [VNET_DEV_CTR_DIR_TX] = "sent",
-  };
-  char *units[] = {
-    [VNET_DEV_CTR_UNIT_BYTES] = "bytes",
-    [VNET_DEV_CTR_UNIT_PACKETS] = "packets",
-    [VNET_DEV_CTR_UNIT_DESCRIPTORS] = "descriptors",
-    [VNET_DEV_CTR_UNIT_BUFFERS] = "buffers",
-  };
-
   if (c->type == VNET_DEV_CTR_TYPE_VENDOR)
-    {
-      s = format (s, "%s", c->name);
-
-      if (c->unit < ARRAY_LEN (units) && units[c->unit])
-	s = format (s, " %s", units[c->unit]);
-
-      if (c->dir < ARRAY_LEN (directions) && directions[c->dir])
-	s = format (s, " %s", directions[c->dir]);
-    }
-  else if (c->type < ARRAY_LEN (std_counters) && std_counters[c->type])
-    s = format (s, "%s", std_counters[c->type]);
+    s = format (s, "%s", c->name);
+  else if (c->type == VNET_DEV_CTR_TYPE_RX_DROPS || c->type == VNET_DEV_CTR_TYPE_TX_DROPS)
+    s = format (s, "drops");
   else
-    ASSERT (0);
+    s = format (s, "total");
 
   return s;
 }
@@ -116,19 +89,52 @@ format_vnet_dev_counters (u8 *s, va_list *va)
 {
   vnet_dev_format_args_t *a = va_arg (*va, vnet_dev_format_args_t *);
   vnet_dev_counter_main_t *cm = va_arg (*va, vnet_dev_counter_main_t *);
-  u32 line = 0, indent = format_get_indent (s);
+  table_t table = {}, *t = &table;
+  u32 row = 0;
+  char *units[] = {
+    [VNET_DEV_CTR_UNIT_BYTES] = "bytes",
+    [VNET_DEV_CTR_UNIT_PACKETS] = "packets",
+    [VNET_DEV_CTR_UNIT_DESCRIPTORS] = "descriptors",
+    [VNET_DEV_CTR_UNIT_BUFFERS] = "buffers",
+    [VNET_DEV_CTR_UNIT_COMMANDS] = "commands",
+  };
+  char *directions[] = {
+    [VNET_DEV_CTR_DIR_RX] = "rx",
+    [VNET_DEV_CTR_DIR_TX] = "tx",
+  };
+
+  t->no_ansi = a->no_color;
+  t->default_header_col.align = TTAA_LEFT;
+  t->default_body.align = TTAA_LEFT;
+  if (a->no_color == 0)
+    {
+      t->default_header_col.flags |= TTAF_FG_COLOR_SET;
+      t->default_header_col.fg_color = TTAC_YELLOW;
+    }
+  table_add_header_col (t, 4, "dir", "counter", "value", "unit");
+  table_set_cell_align (t, -1, 2, TTAA_RIGHT);
 
   foreach_vnet_dev_counter (c, cm)
     {
       if (a->show_zero_counters == 0 && cm->counter_data[c->index] == 0)
 	continue;
 
-      if (line++)
-	s = format (s, "\n%U", format_white_space, indent);
-
-      s = format (s, "%-45U%lu", format_vnet_dev_counter_name, c,
-		  cm->counter_data[c->index]);
+      if (c->dir < ARRAY_LEN (directions) && directions[c->dir])
+	table_format_cell (t, row, 0, "%s", directions[c->dir]);
+      else
+	table_format_cell (t, row, 0, "");
+      table_format_cell (t, row, 1, "%U", format_vnet_dev_counter_name, c);
+      table_format_cell (t, row, 2, "%llu", (unsigned long long) cm->counter_data[c->index]);
+      if (c->unit < ARRAY_LEN (units) && units[c->unit])
+	table_format_cell (t, row, 3, "%s", units[c->unit]);
+      else
+	table_format_cell (t, row, 3, "");
+      row++;
     }
+
+  if (row)
+    s = format (s, "%U", format_table, t);
+  table_free (t);
 
   return s;
 }

@@ -9,6 +9,7 @@
 #include <vnet/dev/dev.h>
 #include <vnet/dev/counters.h>
 #include <vnet/dev/api.h>
+#include <vlib/unix/unix.h>
 #include <vppinfra/format_table.h>
 
 static clib_error_t *
@@ -319,6 +320,7 @@ show_devices_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
 		     vlib_cli_command_t *cmd)
 {
   vnet_dev_main_t *dm = &vnet_dev_main;
+  unix_main_t *um = vlib_unix_get_main ();
   vnet_dev_format_args_t fa = {}, *a = &fa;
   vnet_dev_t **devs = 0;
   u32 v;
@@ -340,6 +342,9 @@ show_devices_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
 				  format_unformat_error, input);
     }
 
+  if (um->flags & UNIX_FLAG_NOCOLOR)
+    a->no_color = 1;
+
   if (vec_len (devs) == 0)
     pool_foreach_pointer (dev, dm->devices)
       vec_add1 (devs, dev);
@@ -353,14 +358,21 @@ show_devices_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
 	  vlib_cli_output (vm, "  Port %u:", p->port_id);
 	  vlib_cli_output (vm, "    %U", format_vnet_dev_port_info, a, p);
 	  if (fa.counters)
-	    vlib_cli_output (vm, "    %U", format_vnet_dev_counters, a,
-			     p->counter_main);
+	    {
+	      vlib_cli_output (vm, "    Counters:");
+	      vlib_cli_output (vm, "      %U", format_vnet_dev_counters, a, p->counter_main);
+	    }
 
 	  foreach_vnet_dev_port_rx_queue (q, p)
 	    {
 	      vlib_cli_output (vm, "    RX queue %u:", q->queue_id);
 	      vlib_cli_output (vm, "      %U", format_vnet_dev_rx_queue_info,
 			       a, q);
+	      if (fa.counters && q->counter_main)
+		{
+		  vlib_cli_output (vm, "      Counters:");
+		  vlib_cli_output (vm, "        %U", format_vnet_dev_counters, a, q->counter_main);
+		}
 	    }
 
 	  foreach_vnet_dev_port_tx_queue (q, p)
@@ -368,6 +380,11 @@ show_devices_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
 	      vlib_cli_output (vm, "    TX queue %u:", q->queue_id);
 	      vlib_cli_output (vm, "      %U", format_vnet_dev_tx_queue_info,
 			       a, q);
+	      if (fa.counters && q->counter_main)
+		{
+		  vlib_cli_output (vm, "      Counters:");
+		  vlib_cli_output (vm, "        %U", format_vnet_dev_counters, a, q->counter_main);
+		}
 	    }
 	}
     }

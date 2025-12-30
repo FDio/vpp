@@ -406,6 +406,19 @@ format (u8 * s, const char *fmt, ...)
   return s;
 }
 
+__clib_export u8 *
+format_ansi (u8 *s, const char *esc, const char *fmt, ...)
+{
+  va_list va;
+  s = format (s, "%s", esc);
+  va_start (va, fmt);
+  s = va_format (s, fmt, &va);
+  va_end (va);
+  if (esc)
+    s = format (s, "\x1b[0m");
+  return s;
+}
+
 __clib_export word
 va_fformat (FILE * f, char *fmt, va_list * va)
 {
