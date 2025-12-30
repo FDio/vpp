@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b7f19536_14c9be07",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3283
+      },
+      "writtenOn": "2025-12-30T07:02:00Z",
+      "side": 1,
+      "message": "CI failures are in HST / Maketest jobs.\nThe change is limited to a null pointer fix in l2_efp_filter.\nNo test, build, or infra related changes.",
+      "revId": "842a66a24867fd6a3ed66826c218cf024a81d1be",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
