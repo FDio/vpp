@@ -181,8 +181,11 @@ setup-cluster:
 
 .PHONY: build-go
 build-go:
+	@mkdir -p $(CURDIR)/.cache/go-build $(CURDIR)/.cache/go-mod
+	HOME=$(CURDIR)/.cache \
+	GOCACHE=$(CURDIR)/.cache/go-build \
+	GOMODCACHE=$(CURDIR)/.cache/go-mod \
 	go build ./tools/http_server
-
 .PHONY: build
 build: .deps.ok build-vpp-release build-go
 	@rm -f .build.ok

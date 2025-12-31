@@ -1,6 +1,6 @@
 module fd.io/hs-test
 
-go 1.22.5
+go 1.22
 
 require (
 	github.com/cilium/cilium v1.15.7
