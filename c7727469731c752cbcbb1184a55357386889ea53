@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ea1b54d7_5805842c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 9
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3283
+      },
+      "writtenOn": "2025-12-31T16:56:45Z",
+      "side": 1,
+      "message": "Failing test is TestVPPInterfacesQemuTapChecksumOffloadL3 ... tcp_ipv6 due to iperf client timeout (ip netns exec iprf_client_ns25 iperf3 -c 2001:2::2 ... timed out). Looks like infra/connectivity flake, unrelated to l2-efp-filter. Please rerun verify / I retriggered.",
+      "revId": "c7727469731c752cbcbb1184a55357386889ea53",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
