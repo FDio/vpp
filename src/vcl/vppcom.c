@@ -192,6 +192,23 @@ vcl_send_session_disconnect (vcl_worker_t * wrk, vcl_session_t * s)
 }
 
 static void
+vcl_send_session_terminate (vcl_worker_t *wrk, vcl_session_t *s)
+{
+  app_session_evt_t _app_evt, *app_evt = &_app_evt;
+  session_terminate_msg_t *mp;
+  svm_msg_q_t *mq;
+
+  /* Send to thread that owns the session */
+  mq = s->vpp_evt_q;
+  app_alloc_ctrl_evt_to_vpp (mq, app_evt, SESSION_CTRL_EVT_TERMINATE);
+  mp = (session_terminate_msg_t *) app_evt->evt->data;
+  memset (mp, 0, sizeof (*mp));
+  mp->client_index = wrk->api_client_handle;
+  mp->handle = s->vpp_handle;
+  app_send_ctrl_evt_to_vpp (mq, app_evt);
+}
+
+static void
 vcl_send_app_detach (vcl_worker_t * wrk)
 {
   app_session_evt_t _app_evt, *app_evt = &_app_evt;
@@ -840,6 +857,53 @@ vppcom_session_disconnect (u32 session_handle)
       if (listen_session)
 	listen_session->n_accepted_sessions--;
     }
+
+  return VPPCOM_OK;
+}
+
+int
+vppcom_session_terminate (u32 session_handle)
+{
+  vcl_worker_t *wrk = vcl_worker_get_current ();
+  vcl_session_t *session;
+  vcl_session_state_t state;
+  u64 vpp_handle;
+
+  session = vcl_session_get_w_handle (wrk, session_handle);
+  if (!session)
+    return VPPCOM_EBADFD;
+
+  vpp_handle = session->vpp_handle;
+  state = session->session_state;
+
+  VDBG (1, "session %u [0x%llx]: terminate state (%s)", session->session_index,
+	vpp_handle, vcl_session_state_str (state));
+
+  if (PREDICT_FALSE (state == VCL_STATE_LISTEN))
+    {
+      VDBG (0, "ERROR: Cannot termiante a listen socket!");
+      return VPPCOM_EBADFD;
+    }
+
+  if (state == VCL_STATE_DISCONNECT)
+    {
+      vcl_send_session_reset_reply (wrk, session, 0);
+      VDBG (1, "session %u [0x%llx]: sending reset REPLY...",
+	    session->session_index, vpp_handle);
+    }
+  else
+    {
+      /* Session doesn't have an event queue yet. Probably a non-blocking
+       * connect. Wait for the reply */
+      if (PREDICT_FALSE (!session->vpp_evt_q))
+	return VPPCOM_OK;
+
+      VDBG (1, "session %u [0x%llx]: sending terminate...",
+	    session->session_index, vpp_handle);
+      vcl_send_session_terminate (wrk, session);
+    }
+
+  session->session_state = VCL_STATE_CLOSED;
 
   return VPPCOM_OK;
 }
