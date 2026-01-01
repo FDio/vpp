@@ -464,6 +464,13 @@ typedef struct session_reset_reply_msg_
   session_handle_t handle;
 } __clib_packed session_reset_reply_msg_t;
 
+typedef struct session_terminate_msg_
+{
+  u32 client_index;
+  u32 context;
+  session_handle_t handle;
+} __clib_packed session_termiante_msg_t;
+
 typedef struct session_req_worker_update_msg_
 {
   session_handle_t session_handle;
