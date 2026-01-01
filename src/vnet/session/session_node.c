@@ -427,6 +427,29 @@ session_mq_disconnect_handler (void *data)
 }
 
 static void
+session_mq_terminate_handler (void *data)
+{
+  session_termiante_msg_t *mp = (session_termiante_msg_t *) data;
+  application_t *app;
+  app_worker_t *app_wrk;
+  session_t *s;
+
+  app = application_lookup (mp->client_index);
+  if (!app)
+    return;
+
+  s = session_get_from_handle_if_valid (mp->handle);
+  if (!s)
+    return;
+
+  app_wrk = app_worker_get (s->app_wrk_index);
+  if (app_wrk->app_index != app->app_index)
+    return;
+
+  session_reset (s);
+}
+
+static void
 app_mq_detach_handler (session_worker_t *wrk, session_evt_elt_t *elt)
 {
   vnet_app_detach_args_t _a, *a = &_a;
@@ -1787,6 +1810,9 @@ session_event_dispatch_ctrl (session_worker_t * wrk, session_evt_elt_t * elt)
       break;
     case SESSION_CTRL_EVT_DISCONNECT:
       session_mq_disconnect_handler (session_evt_ctrl_data (wrk, elt));
+      break;
+    case SESSION_CTRL_EVT_TERMINATE:
+      session_mq_terminate_handler (session_evt_ctrl_data (wrk, elt));
       break;
     case SESSION_CTRL_EVT_DISCONNECTED:
       session_mq_disconnected_handler (session_evt_ctrl_data (wrk, elt));
