@@ -250,6 +250,7 @@ extern void vppcom_app_destroy (void);
 extern int vppcom_session_create (uint8_t proto, uint8_t is_nonblocking);
 extern int vppcom_session_shutdown (uint32_t session_handle, int how);
 extern int vppcom_session_close (uint32_t session_handle);
+extern int vppcom_session_terminate (uint32_t session_handle);
 extern int vppcom_session_bind (uint32_t session_handle, vppcom_endpt_t * ep);
 extern int vppcom_session_listen (uint32_t session_handle, uint32_t q_len);
 
