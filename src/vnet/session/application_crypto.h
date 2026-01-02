@@ -5,6 +5,8 @@
 #ifndef SRC_VNET_SESSION_APPLICATION_CRYPTO_H_
 #define SRC_VNET_SESSION_APPLICATION_CRYPTO_H_
 
+#include <vppinfra/types.h>
+#include <vppinfra/format.h>
 #include <vnet/tls/tls_test.h>
 
 struct app_certkey_int_;

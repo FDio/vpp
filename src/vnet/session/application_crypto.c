@@ -2,6 +2,7 @@
  * Copyright (c) 2025 Cisco Systems, Inc.
  */
 
+#include <vnet/session/application_crypto.h>
 #include <vnet/session/application.h>
 #include <vnet/session/application_interface.h>
 #include <vnet/session/session.h>

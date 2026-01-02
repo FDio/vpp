@@ -840,17 +840,16 @@ openssl_init_int_ca_trust_ctx (app_crypto_ca_trust_t *ca_trust,
   return cti;
 }
 
-static int
-openssl_set_ca_trust (tls_ctx_t *ctx)
+static app_crypto_ca_trust_int_ctx_t *
+openssl_get_int_ca_trust (tls_ctx_t *ctx)
 {
-  openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
   app_crypto_ca_trust_int_ctx_t *cti;
   app_crypto_ca_trust_t *ca_trust;
 
   ca_trust = app_crypto_get_wrk_ca_trust (ctx->parent_app_wrk_index,
 					  ctx->ca_trust_index);
   if (!ca_trust)
-    return -1;
+    return 0;
 
   cti = app_crypto_get_int_ca_trust (ca_trust, ctx->c_thread_index);
   if (!cti || !cti->ca_store)
@@ -859,19 +858,11 @@ openssl_set_ca_trust (tls_ctx_t *ctx)
       if (!cti)
 	{
 	  clib_warning ("unable to initialize certificate/key pair");
-	  return -1;
+	  return 0;
 	}
     }
 
-  if (SSL_set1_verify_cert_store (oc->ssl, cti->ca_store) != 1)
-    {
-      char buf[512];
-      ERR_error_string (ERR_get_error (), buf);
-      clib_warning ("Failed to set CA trust store: %s", buf);
-      return -1;
-    }
-
-  return 0;
+  return cti;
 }
 
 static int
@@ -1053,12 +1044,20 @@ openssl_ctx_init_client (tls_ctx_t *ctx)
 	}
     }
 
-  /* Configure trusted ca only if non-default*/
+  /* Configure trusted ca only if non-default */
   if (ctx->ca_trust_index)
     {
-      if (openssl_set_ca_trust (ctx))
+      app_crypto_ca_trust_int_ctx_t *cti = openssl_get_int_ca_trust (ctx);
+      if (!cti)
 	{
-	  TLS_DBG (1, "Couldn't set trusted CA");
+	  TLS_DBG (1, "Couldn't get trusted CA");
+	  return -1;
+	}
+      if (SSL_set1_verify_cert_store (oc->ssl, cti->ca_store) != 1)
+	{
+	  char buf[512];
+	  ERR_error_string (ERR_get_error (), buf);
+	  clib_warning ("Failed to set CA trust store: %s", buf);
 	  return -1;
 	}
     }
@@ -1192,6 +1191,27 @@ openssl_start_listen (tls_ctx_t * lctx)
     {
       TLS_DBG (1, "Couldn't set temp DH parameters");
       return -1;
+    }
+
+  if (lctx->verify_cfg)
+    {
+      SSL_CTX_set_verify (ssl_ctx,
+			  openssl_make_verify_flags (lctx->verify_cfg), 0);
+      /* Set the cert store for client verification */
+      if (lctx->ca_trust_index)
+	{
+	  app_crypto_ca_trust_int_ctx_t *cti = openssl_get_int_ca_trust (lctx);
+	  if (!cti)
+	    {
+	      TLS_DBG (1, "Couldn't get trusted CA");
+	      return -1;
+	    }
+	  SSL_CTX_set1_verify_cert_store (ssl_ctx, cti->ca_store);
+	}
+      else
+	{
+	  SSL_CTX_set1_cert_store (ssl_ctx, om->cert_store);
+	}
     }
 
   /* Set TLS Record size */
