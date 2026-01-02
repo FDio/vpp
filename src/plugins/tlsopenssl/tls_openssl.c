@@ -1569,6 +1569,36 @@ tls_init_ca_chain (void)
 }
 
 int
+openssl_tls_ctx_attribute (tls_ctx_t *ctx, u8 is_get,
+			   transport_endpt_attr_t *attr)
+{
+  openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
+  int rv = 0;
+
+  if (!is_get)
+    return -1;
+
+  switch (attr->type)
+    {
+    case TRANSPORT_ENDPT_ATTR_TLS_PEER_CERT:
+      {
+	X509 *peer_cert = SSL_get_peer_certificate (oc->ssl);
+	if (!peer_cert)
+	  {
+	    rv = -1;
+	    break;
+	  }
+	attr->tls_peer_cert.cert = peer_cert;
+      }
+      break;
+    default:
+      rv = -1;
+      break;
+    }
+  return rv;
+}
+
+int
 openssl_reinit_ca_chain (void)
 {
   openssl_main_t *om = &openssl_main;
@@ -1598,6 +1628,7 @@ const static tls_engine_vft_t openssl_engine = {
   .ctx_transport_close = openssl_transport_close,
   .ctx_transport_reset = openssl_transport_reset,
   .ctx_app_close = openssl_app_close,
+  .ctx_attribute = openssl_tls_ctx_attribute,
   .ctx_reinit_cachain = openssl_reinit_ca_chain,
 };
 

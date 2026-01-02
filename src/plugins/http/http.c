@@ -1714,6 +1714,32 @@ http_transport_get_next_transport (u32 rh, clib_thread_index_t thread_index)
   return hc->hc_tc_session_handle;
 }
 
+static int
+http_session_attribute (u32 rh, clib_thread_index_t thread_index, u8 is_get,
+			transport_endpt_attr_t *attr)
+{
+  http_req_handle_t hr_handle = { .as_u32 = rh };
+  u32 hc_index = http_vfts[hr_handle.version].hc_index_get_by_req_index (
+    hr_handle.req_index, thread_index);
+  http_conn_t *hc = http_conn_get_w_thread (hc_index, thread_index);
+  session_t *ts;
+
+  if (!is_get)
+    return -1;
+
+  switch (attr->type)
+    {
+    case TRANSPORT_ENDPT_ATTR_TLS_PEER_CERT:
+      ts = session_get_from_handle (hc->hc_tc_session_handle);
+      if (session_transport_attribute (ts, 1 /* is_get */, attr) < 0)
+	return -1;
+      break;
+    default:
+      return -1;
+    }
+  return 0;
+}
+
 static const transport_proto_vft_t http_proto = {
   .enable = http_transport_enable,
   .connect = http_transport_connect,
@@ -1731,6 +1757,7 @@ static const transport_proto_vft_t http_proto = {
   .get_half_open = http_transport_get_ho,
   .get_next_transport = http_transport_get_next_transport,
   .get_transport_endpoint = http_transport_get_endpoint,
+  .attribute = http_session_attribute,
   .format_connection = format_http_transport_connection,
   .format_listener = format_http_transport_listener,
   .format_half_open = format_http_transport_half_open,

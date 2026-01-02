@@ -117,6 +117,14 @@ tls_ctx_app_close (tls_ctx_t *ctx)
 }
 
 static inline int
+tls_ctx_attribute (tls_ctx_t *ctx, u8 is_get, transport_endpt_attr_t *attr)
+{
+  if (!tls_vfts[ctx->tls_ctx_engine].ctx_attribute)
+    return -1;
+  return tls_vfts[ctx->tls_ctx_engine].ctx_attribute (ctx, is_get, attr);
+}
+
+static inline int
 tls_reinit_ca_chain (crypto_engine_type_t tls_engine_id)
 {
   return tls_vfts[tls_engine_id].ctx_reinit_cachain ();
