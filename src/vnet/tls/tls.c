@@ -667,6 +667,7 @@ tls_connect (transport_endpoint_cfg_t * tep)
   ctx->tls_type = sep->transport_proto;
   ctx->ckpair_index = ccfg->ckpair_index;
   ctx->ca_trust_index = ccfg->ca_trust_index;
+  ctx->verify_cfg = ccfg->verify_cfg;
   ctx->c_proto = TRANSPORT_PROTO_TLS;
   ctx->c_flags |= TRANSPORT_CONNECTION_F_NO_LOOKUP;
   if (ccfg->hostname[0])
@@ -795,6 +796,8 @@ tls_start_listen (u32 app_listener_index, transport_endpoint_cfg_t *tep)
   lctx->tls_ctx_engine = engine_type;
   lctx->tls_type = sep->transport_proto;
   lctx->ckpair_index = ccfg->ckpair_index;
+  lctx->ca_trust_index = ccfg->ca_trust_index;
+  lctx->verify_cfg = ccfg->verify_cfg;
   lctx->c_s_index = app_listener_index;
   lctx->c_flags |= TRANSPORT_CONNECTION_F_NO_LOOKUP;
   for (i = 0; i < sizeof (ccfg->alpn_protos) && ccfg->alpn_protos[i]; i++)
