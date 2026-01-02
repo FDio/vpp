@@ -245,12 +245,18 @@ typedef enum transport_endpt_attr_flag_
 #undef _
 } __clib_packed transport_endpt_attr_flag_t;
 
+typedef struct tls_cert_
+{
+  void *cert;
+} tls_cert_t;
+
 #define foreach_transport_attr_fields                                         \
   _ (u64, next_output_node, NEXT_OUTPUT_NODE)                                 \
   _ (u16, mss, MSS)                                                           \
   _ (u8, flags, FLAGS)                                                        \
   _ (u8, cc_algo, CC_ALGO)                                                    \
-  _ (transport_endpoint_t, ext_endpt, EXT_ENDPT)
+  _ (transport_endpoint_t, ext_endpt, EXT_ENDPT)                              \
+  _ (tls_cert_t, tls_peer_cert, TLS_PEER_CERT)
 
 typedef enum transport_endpt_attr_type_
 {

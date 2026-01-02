@@ -1148,6 +1148,27 @@ tls_next_transport_get (u32 ctx_index, clib_thread_index_t thread_index)
   return ctx->tls_session_handle;
 }
 
+static int
+tls_session_attribute (u32 ctx_handle, clib_thread_index_t thread_index,
+		       u8 is_get, transport_endpt_attr_t *attr)
+{
+  tls_ctx_t *ctx = tls_ctx_get_w_thread (ctx_handle, thread_index);
+
+  if (!is_get)
+    return -1;
+
+  switch (attr->type)
+    {
+    case TRANSPORT_ENDPT_ATTR_TLS_PEER_CERT:
+      if (tls_ctx_attribute (ctx, 1 /* is_get */, attr) < 0)
+	return -1;
+      break;
+    default:
+      return -1;
+    }
+  return 0;
+}
+
 static const transport_proto_vft_t tls_proto = {
   .enable = tls_enable,
   .connect = tls_connect,
@@ -1161,6 +1182,7 @@ static const transport_proto_vft_t tls_proto = {
   .get_next_transport = tls_next_transport_get,
   .cleanup_ho = tls_cleanup_ho,
   .custom_tx = tls_custom_tx_callback,
+  .attribute = tls_session_attribute,
   .format_connection = format_tls_connection,
   .format_half_open = format_tls_half_open,
   .format_listener = format_tls_listener,

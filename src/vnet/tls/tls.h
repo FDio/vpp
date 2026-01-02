@@ -158,6 +158,8 @@ typedef struct tls_engine_vft_
   int (*ctx_transport_close) (tls_ctx_t * ctx);
   int (*ctx_transport_reset) (tls_ctx_t *ctx);
   int (*ctx_app_close) (tls_ctx_t * ctx);
+  int (*ctx_attribute) (tls_ctx_t *ctx, u8 is_get,
+			transport_endpt_attr_t *attr);
   int (*ctx_reinit_cachain) (void);
 } tls_engine_vft_t;
 
