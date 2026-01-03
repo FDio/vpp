@@ -72,6 +72,12 @@ vnet_dev_bus_pci_open (vlib_main_t *vm, vnet_dev_t *dev)
   if (vnet_dev_bus_pci_device_id_to_pci_addr (&pdd->addr, dev->device_id) == 0)
     return VNET_DEV_ERR_INVALID_DEVICE_ID;
 
+  if (vnet_dev_main.drivers[dev->driver_index].registration->passive == 1)
+    {
+      pdd->is_passive = 1;
+      return VNET_DEV_OK;
+    }
+
   if ((err = vlib_pci_device_open (vm, &pdd->addr, 0, &pdd->handle)))
     {
       log_err (dev, "device_open: %U", format_clib_error, err);
@@ -105,6 +111,9 @@ static void
 vnet_dev_bus_pci_close (vlib_main_t *vm, vnet_dev_t *dev)
 {
   vnet_dev_bus_pci_device_data_t *pdd = vnet_dev_get_bus_pci_device_data (dev);
+
+  if (pdd->is_passive)
+    return;
 
   if (pdd->intx_handler)
     vnet_dev_pci_intx_remove_handler (vm, dev);
@@ -456,6 +465,9 @@ format_dev_pci_device_info (u8 *s, va_list *args)
   clib_error_t *err;
 
   s = format (s, "PCIe address is %U", format_vlib_pci_addr, &pdd->addr);
+
+  if (pdd->is_passive)
+    return s;
 
   err = vlib_pci_read_write_config (vm, pdd->handle, VLIB_READ, 0, &cfg,
 				    sizeof (cfg));
