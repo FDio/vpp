@@ -131,18 +131,6 @@ u8 *format_vlib_log_level (u8 * s, va_list * args);
 #define vlib_log_info(...) vlib_log(VLIB_LOG_LEVEL_INFO, __VA_ARGS__)
 #define vlib_log_debug(...) vlib_log(VLIB_LOG_LEVEL_DEBUG, __VA_ARGS__)
 
-#define VLIB_REGISTER_LOG_CLASS(x,...) \
-__VA_ARGS__ vlib_log_class_registration_t x; \
-static void __clib_constructor			\
-__vlib_add_log_registration_##x (void)		\
-  {						\
-    vlib_log_main_t * lm = &log_main;		\
-    x.next = lm->registrations;			\
-    x.class = ~0;				\
-    lm->registrations = &x;			\
-  }						\
-__VA_ARGS__  vlib_log_class_registration_t x
-
 static_always_inline vlib_log_class_data_t *
 vlib_log_get_class_data (vlib_log_class_t ci)
 {
@@ -156,6 +144,32 @@ vlib_log_get_subclass_data (vlib_log_class_t ci)
   vlib_log_class_data_t *c = vlib_log_get_class_data (ci);
   return vec_elt_at_index (c->subclasses, (ci & 0xffff));
 }
+
+static_always_inline void
+__vlib_register_log_class_helper (vlib_log_class_registration_t *r)
+{
+  vlib_log_main_t *lm = &log_main;
+  r->next = lm->registrations;
+  r->class = ~0;
+  lm->registrations = r;
+  if (lm->time_zero_timeval.tv_sec)
+    {
+      r->class = vlib_log_register_class (r->class_name, r->subclass_name);
+      if (r->default_level)
+	vlib_log_get_subclass_data (r->class)->level = r->default_level;
+      if (r->default_syslog_level)
+	vlib_log_get_subclass_data (r->class)->syslog_level =
+	  r->default_syslog_level;
+    }
+}
+
+#define VLIB_REGISTER_LOG_CLASS(x, ...)                                       \
+  __VA_ARGS__ vlib_log_class_registration_t x;                                \
+  static void __clib_constructor __vlib_add_log_registration_##x (void)       \
+  {                                                                           \
+    __vlib_register_log_class_helper (&x);                                    \
+  }                                                                           \
+  __VA_ARGS__ vlib_log_class_registration_t x
 
 static_always_inline int
 vlib_log_is_enabled (vlib_log_level_t level, vlib_log_class_t class)
