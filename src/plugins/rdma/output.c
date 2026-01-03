@@ -26,13 +26,11 @@ rdma_device_output_free_mlx5 (vlib_main_t * vm,
 {
   u16 idx = txq->dv_cq_idx;
   u32 cq_mask = pow2_mask (txq->dv_cq_log2sz);
-  u32 sq_mask = pow2_mask (txq->dv_sq_log2sz);
   u32 mask = pow2_mask (txq->bufs_log2sz);
   u32 buf_sz = RDMA_TXQ_BUF_SZ (txq);
   u32 log2_cq_sz = txq->dv_cq_log2sz;
   struct mlx5_cqe64 *cqes = txq->dv_cq_cqes, *cur = cqes + (idx & cq_mask);
   u8 op_own, saved;
-  const rdma_mlx5_wqe_t *wqe;
 
   for (;;)
     {
@@ -56,17 +54,15 @@ rdma_device_output_free_mlx5 (vlib_main_t * vm,
   txq->dv_cq_idx = idx;
 
   /* retrieve original WQE and get new tail counter */
-  wqe = txq->dv_sq_wqes + (be16toh (cur->wqe_counter) & sq_mask);
-  if (PREDICT_FALSE (wqe->ctrl.imm == RDMA_TXQ_DV_INVALID_ID))
-    return;			/* can happen if CQE reports error for an intermediate WQE */
+  u16 tail = be16toh (cur->wqe_counter);
 
-  ASSERT (RDMA_TXQ_USED_SZ (txq->head, wqe->ctrl.imm) <= buf_sz &&
-	  RDMA_TXQ_USED_SZ (wqe->ctrl.imm, txq->tail) < buf_sz);
+  ASSERT (RDMA_TXQ_USED_SZ (txq->head, tail) <= buf_sz &&
+	  RDMA_TXQ_USED_SZ (tail, txq->tail) < buf_sz);
 
   /* free sent buffers and update txq head */
   vlib_buffer_free_from_ring (vm, txq->bufs, txq->head & mask, buf_sz,
-			      RDMA_TXQ_USED_SZ (txq->head, wqe->ctrl.imm));
-  txq->head = wqe->ctrl.imm;
+			      RDMA_TXQ_USED_SZ (txq->head, tail));
+  txq->head = tail;
 
   /* ring doorbell */
   CLIB_MEMORY_STORE_BARRIER ();
@@ -74,10 +70,9 @@ rdma_device_output_free_mlx5 (vlib_main_t * vm,
 }
 
 static_always_inline void
-rdma_device_output_tx_mlx5_doorbell (rdma_txq_t * txq, rdma_mlx5_wqe_t * last,
-				     const u16 tail, u32 sq_mask)
+rdma_device_output_tx_mlx5_doorbell (rdma_txq_t *txq, rdma_mlx5_wqe_t *last,
+				     const u16 tail)
 {
-  last->ctrl.imm = tail;	/* register item to free */
   last->ctrl.fm_ce_se = MLX5_WQE_CTRL_CQ_UPDATE;	/* generate a CQE so we can free buffers */
 
   ASSERT (tail != txq->tail &&
@@ -252,7 +247,7 @@ rdma_device_output_tx_mlx5_chained (vlib_main_t *vm,
     }
 
   if (n != n_left_from)
-    rdma_device_output_tx_mlx5_doorbell (txq, last, tail, sq_mask);
+    rdma_device_output_tx_mlx5_doorbell (txq, last, tail);
 
   txq->tail = tail;
   return n_left_from - n;
@@ -326,7 +321,7 @@ wrap_around:
       goto wrap_around;
     }
 
-  rdma_device_output_tx_mlx5_doorbell (txq, &wqe[-1], tail, sq_mask);
+  rdma_device_output_tx_mlx5_doorbell (txq, &wqe[-1], tail);
   txq->tail = tail;
   return n_left_from;
 }
