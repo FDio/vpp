@@ -25,6 +25,7 @@ typedef struct
 typedef struct
 {
   u8 pci_handle_valid : 1;
+  u8 is_passive : 1;
   u16 n_msix_int;
   vlib_pci_addr_t addr;
   vlib_pci_dev_handle_t handle;
