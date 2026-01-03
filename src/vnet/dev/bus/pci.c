@@ -104,6 +104,15 @@ vnet_dev_bus_pci_open (vlib_main_t *vm, vnet_dev_t *dev)
       clib_memset (pdd->msix_handlers, 0, sz);
     }
 
+  pdd->n_msi_int = vlib_pci_get_num_msi_interrupts (vm, pdd->handle);
+  if (pdd->n_msi_int)
+    {
+      u32 sz = sizeof (pdd->msi_handlers[0]) * pdd->n_msi_int;
+      sz = round_pow2 (sz, CLIB_CACHE_LINE_BYTES);
+      pdd->msi_handlers = clib_mem_alloc_aligned (sz, CLIB_CACHE_LINE_BYTES);
+      clib_memset (pdd->msi_handlers, 0, sz);
+    }
+
   return VNET_DEV_OK;
 }
 
@@ -125,6 +134,15 @@ vnet_dev_bus_pci_close (vlib_main_t *vm, vnet_dev_t *dev)
 	  vnet_dev_pci_msix_remove_handler (vm, dev, i, 1);
       clib_mem_free (pdd->msix_handlers);
       pdd->msix_handlers = 0;
+    }
+
+  if (pdd->msi_handlers)
+    {
+      for (u16 i = 0; i < pdd->n_msi_int; i++)
+	if (pdd->msi_handlers[i])
+	  vnet_dev_pci_msi_remove_handler (vm, dev, i, 1);
+      clib_mem_free (pdd->msi_handlers);
+      pdd->msi_handlers = 0;
     }
 
   if (pdd->pci_handle_valid)
@@ -431,6 +449,108 @@ vnet_dev_pci_msix_disable (vlib_main_t *vm, vnet_dev_t *dev, u16 first,
   if (err)
     {
       log_err (dev, "pci_disable_msix_irq: %U", format_clib_error, err);
+      clib_error_free (err);
+      return VNET_DEV_ERR_BUS;
+    }
+
+  return VNET_DEV_OK;
+}
+
+static void
+vnet_dev_pci_msi_handler (vlib_main_t *vm, vlib_pci_dev_handle_t h, u16 line)
+{
+  vnet_dev_t *dev = (vnet_dev_t *) vlib_pci_get_private_data (vm, h);
+  vnet_dev_bus_pci_device_data_t *pdd = vnet_dev_get_bus_pci_device_data (dev);
+
+  if (line < pdd->n_msi_int && pdd->msi_handlers[line])
+    pdd->msi_handlers[line](vm, dev, line);
+}
+
+vnet_dev_rv_t
+vnet_dev_pci_msi_add_handler (vlib_main_t *vm, vnet_dev_t *dev,
+			      vnet_dev_pci_msix_handler_fn_t *fn, u16 first,
+			      u16 count)
+{
+  vlib_pci_dev_handle_t h = vnet_dev_get_pci_handle (dev);
+  vnet_dev_bus_pci_device_data_t *pdd = vnet_dev_get_bus_pci_device_data (dev);
+  clib_error_t *err;
+
+  err = vlib_pci_register_msi_handler (vm, h, first, count,
+				       vnet_dev_pci_msi_handler);
+
+  if (err)
+    {
+      log_err (dev, "pci_register_msi_handler: %U", format_clib_error, err);
+      clib_error_free (err);
+      return VNET_DEV_ERR_BUS;
+    }
+
+  for (u16 i = first; i < first + count; i++)
+    {
+      ASSERT (pdd->msi_handlers[i] == 0);
+      pdd->msi_handlers[i] = fn;
+    }
+
+  return VNET_DEV_OK;
+}
+
+vnet_dev_rv_t
+vnet_dev_pci_msi_remove_handler (vlib_main_t *vm, vnet_dev_t *dev, u16 first,
+				 u16 count)
+{
+  vlib_pci_dev_handle_t h = vnet_dev_get_pci_handle (dev);
+  vnet_dev_bus_pci_device_data_t *pdd = vnet_dev_get_bus_pci_device_data (dev);
+  clib_error_t *err;
+
+  err = vlib_pci_unregister_msi_handler (vm, h, first, count);
+
+  if (err)
+    {
+      log_err (dev, "pci_unregister_msi_handler: %U", format_clib_error, err);
+      clib_error_free (err);
+      return VNET_DEV_ERR_BUS;
+    }
+
+  for (u16 i = first; i < first + count; i++)
+    {
+      ASSERT (pdd->msi_handlers[i] != 0);
+      pdd->msi_handlers[i] = 0;
+    }
+
+  return VNET_DEV_OK;
+}
+
+vnet_dev_rv_t
+vnet_dev_pci_msi_enable (vlib_main_t *vm, vnet_dev_t *dev, u16 first,
+			 u16 count)
+{
+  vlib_pci_dev_handle_t h = vnet_dev_get_pci_handle (dev);
+  clib_error_t *err;
+
+  err = vlib_pci_enable_msi_irq (vm, h, first, count);
+
+  if (err)
+    {
+      log_err (dev, "pci_enable_msi_irq: %U", format_clib_error, err);
+      clib_error_free (err);
+      return VNET_DEV_ERR_BUS;
+    }
+
+  return VNET_DEV_OK;
+}
+
+vnet_dev_rv_t
+vnet_dev_pci_msi_disable (vlib_main_t *vm, vnet_dev_t *dev, u16 first,
+			  u16 count)
+{
+  vlib_pci_dev_handle_t h = vnet_dev_get_pci_handle (dev);
+  clib_error_t *err;
+
+  err = vlib_pci_disable_msi_irq (vm, h, first, count);
+
+  if (err)
+    {
+      log_err (dev, "pci_disable_msi_irq: %U", format_clib_error, err);
       clib_error_free (err);
       return VNET_DEV_ERR_BUS;
     }

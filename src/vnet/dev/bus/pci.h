@@ -27,10 +27,12 @@ typedef struct
   u8 pci_handle_valid : 1;
   u8 is_passive : 1;
   u16 n_msix_int;
+  u16 n_msi_int;
   vlib_pci_addr_t addr;
   vlib_pci_dev_handle_t handle;
   vnet_dev_pci_intx_handler_fn_t *intx_handler;
   vnet_dev_pci_msix_handler_fn_t **msix_handlers;
+  vnet_dev_pci_msix_handler_fn_t **msi_handlers;
 } vnet_dev_bus_pci_device_data_t;
 
 static_always_inline vnet_dev_bus_pci_device_data_t *
@@ -78,7 +80,20 @@ vnet_dev_rv_t vnet_dev_pci_msix_remove_handler (vlib_main_t *, vnet_dev_t *,
 vnet_dev_rv_t vnet_dev_pci_msix_enable (vlib_main_t *, vnet_dev_t *, u16, u16);
 vnet_dev_rv_t vnet_dev_pci_msix_disable (vlib_main_t *, vnet_dev_t *, u16,
 					 u16);
+vnet_dev_rv_t vnet_dev_pci_msi_add_handler (vlib_main_t *, vnet_dev_t *,
+					    vnet_dev_pci_msix_handler_fn_t *,
+					    u16, u16);
+vnet_dev_rv_t vnet_dev_pci_msi_remove_handler (vlib_main_t *, vnet_dev_t *,
+					       u16, u16);
+vnet_dev_rv_t vnet_dev_pci_msi_enable (vlib_main_t *, vnet_dev_t *, u16, u16);
+vnet_dev_rv_t vnet_dev_pci_msi_disable (vlib_main_t *, vnet_dev_t *, u16, u16);
 void vnet_dev_pci_msix_set_polling_thread (vlib_main_t *, vnet_dev_t *, u16,
 					   u16);
+
+static_always_inline u16
+vnet_dev_get_pci_n_msi_interrupts (vnet_dev_t *dev)
+{
+  return vnet_dev_get_bus_pci_device_data (dev)->n_msi_int;
+}
 
 #endif /* _VNET_DEV_PCI_H_ */
