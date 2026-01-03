@@ -58,6 +58,9 @@ vnet_dev_get_pci_n_msix_interrupts (vnet_dev_t *dev)
   return vnet_dev_get_bus_pci_device_data (dev)->n_msix_int;
 }
 
+format_function_t format_dev_pci_device_name_from_ids;
+format_function_t format_dev_pci_vendor_name_from_ids;
+
 vnet_dev_rv_t vnet_dev_pci_read_config_header (vlib_main_t *, vnet_dev_t *,
 					       vlib_pci_config_hdr_t *);
 vnet_dev_rv_t vnet_dev_pci_read_config (vlib_main_t *, vnet_dev_t *,
