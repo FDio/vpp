@@ -69,6 +69,7 @@ vlib_pci_addr_t *vlib_pci_get_addr (vlib_main_t * vm,
 u32 vlib_pci_get_numa_node (vlib_main_t * vm, vlib_pci_dev_handle_t h);
 u32 vlib_pci_get_num_msix_interrupts (vlib_main_t * vm,
 				      vlib_pci_dev_handle_t h);
+u32 vlib_pci_get_num_msi_interrupts (vlib_main_t *vm, vlib_pci_dev_handle_t h);
 
 uword vlib_pci_get_private_data (vlib_main_t * vm, vlib_pci_dev_handle_t h);
 void vlib_pci_set_private_data (vlib_main_t * vm, vlib_pci_dev_handle_t h,
@@ -216,12 +217,25 @@ clib_error_t *vlib_pci_register_msix_handler (vlib_main_t * vm,
 clib_error_t *vlib_pci_unregister_msix_handler (vlib_main_t *vm,
 						vlib_pci_dev_handle_t h,
 						u32 start, u32 count);
+clib_error_t *
+vlib_pci_register_msi_handler (vlib_main_t *vm, vlib_pci_dev_handle_t h,
+			       u32 start, u32 count,
+			       pci_msix_handler_function_t *msi_handler);
+clib_error_t *vlib_pci_unregister_msi_handler (vlib_main_t *vm,
+					       vlib_pci_dev_handle_t h,
+					       u32 start, u32 count);
 clib_error_t *vlib_pci_enable_msix_irq (vlib_main_t * vm,
 					vlib_pci_dev_handle_t h, u16 start,
 					u16 count);
 clib_error_t *vlib_pci_disable_msix_irq (vlib_main_t * vm,
 					 vlib_pci_dev_handle_t h, u16 start,
 					 u16 count);
+clib_error_t *vlib_pci_enable_msi_irq (vlib_main_t *vm,
+				       vlib_pci_dev_handle_t h, u16 start,
+				       u16 count);
+clib_error_t *vlib_pci_disable_msi_irq (vlib_main_t *vm,
+					vlib_pci_dev_handle_t h, u16 start,
+					u16 count);
 clib_error_t *vlib_pci_map_dma (vlib_main_t * vm, vlib_pci_dev_handle_t h,
 				void *ptr);
 uword vlib_pci_get_msix_file_index (vlib_main_t * vm, vlib_pci_dev_handle_t h,
