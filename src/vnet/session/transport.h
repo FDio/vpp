@@ -116,8 +116,6 @@ typedef struct _transport_proto_vft
 					   transport_endpoint_t *tep_lcl);
   int (*attribute) (u32 conn_index, clib_thread_index_t thread_index,
 		    u8 is_get, transport_endpt_attr_t *attr);
-  tls_alpn_proto_t (*get_alpn_selected) (u32 conn_index,
-					 clib_thread_index_t thread_index);
 
   /*
    * Properties
@@ -156,9 +154,6 @@ void transport_get_listener_endpoint (transport_proto_t tp, u32 conn_index,
 int transport_connection_attribute (transport_proto_t tp, u32 conn_index,
 				    u8 thread_index, u8 is_get,
 				    transport_endpt_attr_t *attr);
-tls_alpn_proto_t
-transport_get_alpn_selected (transport_proto_t tp, u32 conn_index,
-			     clib_thread_index_t thread_index);
 
 static inline transport_connection_t *
 transport_get_connection (transport_proto_t tp, u32 conn_index,

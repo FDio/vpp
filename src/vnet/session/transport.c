@@ -581,16 +581,6 @@ transport_connection_attribute (transport_proto_t tp, u32 conn_index,
   return tp_vfts[tp].attribute (conn_index, thread_index, is_get, attr);
 }
 
-tls_alpn_proto_t
-transport_get_alpn_selected (transport_proto_t tp, u32 conn_index,
-			     clib_thread_index_t thread_index)
-{
-  if (!tp_vfts[tp].get_alpn_selected)
-    return TLS_ALPN_PROTO_NONE;
-
-  return tp_vfts[tp].get_alpn_selected (conn_index, thread_index);
-}
-
 #define PORT_MASK ((1 << 16)- 1)
 
 void
