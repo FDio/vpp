@@ -491,7 +491,13 @@ session_tree_insert_node (session_tree_t *st, u32 parent_index,
 static void
 session_tree_insert_session (session_tree_t *st, session_t *s)
 {
-  session_handle_t parent_sh = session_get_next_transport (s);
+  transport_endpt_attr_t attr = { .type =
+				    TRANSPORT_ENDPT_ATTR_NEXT_TRANSPORT };
+  session_handle_t parent_sh = SESSION_INVALID_HANDLE;
+
+  if (s->session_state != SESSION_STATE_LISTENING &&
+      session_transport_attribute (s, 1 /* is_get */, &attr) == 0)
+    parent_sh = attr.next_transport;
 
   /* parent not yet part of tree */
   if (parent_sh != SESSION_INVALID_HANDLE &&

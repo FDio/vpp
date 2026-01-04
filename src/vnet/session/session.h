@@ -561,8 +561,7 @@ void session_send_rpc_evt_to_thread_force (clib_thread_index_t thread_index,
 void session_add_self_custom_tx_evt (transport_connection_t * tc,
 				     u8 has_prio);
 void sesssion_reschedule_tx (transport_connection_t * tc);
-transport_connection_t *session_get_transport (session_t * s);
-session_handle_t session_get_next_transport (session_t *s);
+transport_connection_t *session_get_transport (session_t *s);
 void session_get_endpoint (session_t *s, transport_endpoint_t *tep_rmt,
 			   transport_endpoint_t *tep_lcl);
 int session_transport_attribute (session_t *s, u8 is_get,
