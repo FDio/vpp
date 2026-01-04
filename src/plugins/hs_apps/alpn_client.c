@@ -62,8 +62,9 @@ ac_ts_connected_callback (u32 app_index, u32 api_context, session_t *s,
       return -1;
     }
 
-  cm->alpn_proto_selected = transport_get_alpn_selected (
-    session_get_transport_proto (s), s->connection_index, s->thread_index);
+  transport_endpt_attr_t attr = { .type = TRANSPORT_ENDPT_ATTR_TLS_ALPN };
+  session_transport_attribute (s, 1 /* is_get */, &attr);
+  cm->alpn_proto_selected = attr.tls_alpn;
 
   a->handle = session_handle (s);
   a->app_index = cm->app_index;

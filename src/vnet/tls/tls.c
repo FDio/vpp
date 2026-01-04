@@ -94,13 +94,6 @@ tls_add_app_q_evt (app_worker_t *app_wrk, session_t *app_session)
   return 0;
 }
 
-tls_alpn_proto_t
-tls_get_alpn_selected (u32 ctx_handle, clib_thread_index_t thread_index)
-{
-  tls_ctx_t *ctx = tls_ctx_get_w_thread (ctx_handle, thread_index);
-  return ctx->alpn_selected;
-}
-
 u32
 tls_listener_ctx_alloc (void)
 {
@@ -1166,6 +1159,9 @@ tls_session_attribute (u32 ctx_handle, clib_thread_index_t thread_index,
       if (tls_ctx_attribute (ctx, 1 /* is_get */, attr) < 0)
 	return -1;
       break;
+    case TRANSPORT_ENDPT_ATTR_TLS_ALPN:
+      attr->tls_alpn = ctx->alpn_selected;
+      break;
     default:
       return -1;
     }
@@ -1191,7 +1187,6 @@ static const transport_proto_vft_t tls_proto = {
   .format_listener = format_tls_listener,
   .get_transport_endpoint = tls_transport_endpoint_get,
   .get_transport_listener_endpoint = tls_transport_listener_endpoint_get,
-  .get_alpn_selected = tls_get_alpn_selected,
   .transport_options = {
     .name = "tls",
     .short_name = "J",
@@ -1323,7 +1318,6 @@ static const transport_proto_vft_t dtls_proto = {
   .format_listener = format_tls_listener,
   .get_transport_endpoint = tls_transport_endpoint_get,
   .get_transport_listener_endpoint = tls_transport_listener_endpoint_get,
-  .get_alpn_selected = tls_get_alpn_selected,
   .transport_options = {
     .name = "dtls",
     .short_name = "D",

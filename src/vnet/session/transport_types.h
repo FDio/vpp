@@ -245,37 +245,6 @@ typedef enum transport_endpt_attr_flag_
 #undef _
 } __clib_packed transport_endpt_attr_flag_t;
 
-typedef struct tls_cert_
-{
-  void *cert;
-} tls_cert_t;
-
-#define foreach_transport_attr_fields                                         \
-  _ (u64, next_output_node, NEXT_OUTPUT_NODE)                                 \
-  _ (u16, mss, MSS)                                                           \
-  _ (u8, flags, FLAGS)                                                        \
-  _ (u8, cc_algo, CC_ALGO)                                                    \
-  _ (transport_endpoint_t, ext_endpt, EXT_ENDPT)                              \
-  _ (tls_cert_t, tls_peer_cert, TLS_PEER_CERT)
-
-typedef enum transport_endpt_attr_type_
-{
-#define _(type, name, str) TRANSPORT_ENDPT_ATTR_##str,
-  foreach_transport_attr_fields
-#undef _
-} __clib_packed transport_endpt_attr_type_t;
-
-typedef struct transport_endpt_attr_
-{
-  transport_endpt_attr_type_t type;
-  union
-  {
-#define _(type, name, str) type name;
-    foreach_transport_attr_fields
-#undef _
-  };
-} transport_endpt_attr_t;
-
 typedef enum transport_endpt_ext_cfg_type_
 {
   TRANSPORT_ENDPT_EXT_CFG_NONE,
@@ -379,6 +348,11 @@ typedef struct transport_endpt_crypto_cfg_
   u8 hostname[256];	       /**< full domain len is 255 as per rfc 3986 */
 } transport_endpt_crypto_cfg_t;
 
+typedef struct tls_cert_
+{
+  void *cert;
+} tls_cert_t;
+
 typedef struct transport_endpt_ext_cfg_
 {
   u16 type;
@@ -406,6 +380,33 @@ typedef struct transport_endpt_ext_cfgs_
   {                                                                           \
     .len = 0, .tail_offset = 0, .data = 0,                                    \
   }
+
+#define foreach_transport_attr_fields                                         \
+  _ (u64, next_output_node, NEXT_OUTPUT_NODE)                                 \
+  _ (u16, mss, MSS)                                                           \
+  _ (u8, flags, FLAGS)                                                        \
+  _ (u8, cc_algo, CC_ALGO)                                                    \
+  _ (transport_endpoint_t, ext_endpt, EXT_ENDPT)                              \
+  _ (tls_cert_t, tls_peer_cert, TLS_PEER_CERT)                                \
+  _ (tls_alpn_proto_t, tls_alpn, TLS_ALPN)
+
+typedef enum transport_endpt_attr_type_
+{
+#define _(type, name, str) TRANSPORT_ENDPT_ATTR_##str,
+  foreach_transport_attr_fields
+#undef _
+} __clib_packed transport_endpt_attr_type_t;
+
+typedef struct transport_endpt_attr_
+{
+  transport_endpt_attr_type_t type;
+  union
+  {
+#define _(type, name, str) type name;
+    foreach_transport_attr_fields
+#undef _
+  };
+} transport_endpt_attr_t;
 
 typedef clib_bihash_24_8_t transport_endpoint_table_t;
 
