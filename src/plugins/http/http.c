@@ -568,8 +568,9 @@ http_ts_accept_connection (session_t *ts)
   tp = session_get_transport_proto (ts);
   if (tp == TRANSPORT_PROTO_TLS || tp == TRANSPORT_PROTO_QUIC)
     {
-      alpn_proto = transport_get_alpn_selected (tp, ts->connection_index,
-						ts->thread_index);
+      transport_endpt_attr_t attr = { .type = TRANSPORT_ENDPT_ATTR_TLS_ALPN };
+      session_transport_attribute (ts, 1 /* is_get */, &attr);
+      alpn_proto = attr.tls_alpn;
       HTTP_DBG (1, "ALPN selected: %U", format_tls_alpn_proto, alpn_proto);
       switch (alpn_proto)
 	{
@@ -738,8 +739,9 @@ http_ts_connected_callback (u32 http_app_index, u32 ho_hc_index, session_t *ts,
   /* TLS set by ALPN result, TCP and QUIC: prior knowledge (set in ho) */
   if (tp == TRANSPORT_PROTO_TLS)
     {
-      alpn_proto = transport_get_alpn_selected (tp, ts->connection_index,
-						ts->thread_index);
+      transport_endpt_attr_t attr = { .type = TRANSPORT_ENDPT_ATTR_TLS_ALPN };
+      session_transport_attribute (ts, 1 /* is_get */, &attr);
+      alpn_proto = attr.tls_alpn;
       HTTP_DBG (1, "ALPN selected: %U", format_tls_alpn_proto, alpn_proto);
       switch (alpn_proto)
 	{

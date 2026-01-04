@@ -38,11 +38,12 @@ as_ts_accept_callback (session_t *ts)
 {
   alpn_server_main_t *sm = &alpn_server_main;
   tls_alpn_proto_t alpn_proto;
+  transport_endpt_attr_t attr = { .type = TRANSPORT_ENDPT_ATTR_TLS_ALPN };
 
   ts->session_state = SESSION_STATE_READY;
 
-  alpn_proto = transport_get_alpn_selected (
-    session_get_transport_proto (ts), ts->connection_index, ts->thread_index);
+  session_transport_attribute (ts, 1 /* is_get */, &attr);
+  alpn_proto = attr.tls_alpn;
   clib_warning ("ALPN selected: %U", format_tls_alpn_proto, alpn_proto);
   sm->accepted_count++;
 

@@ -636,12 +636,26 @@ quic_get_transport_endpoint (u32 ctx_index, clib_thread_index_t thread_index,
   quic_common_get_transport_endpoint (ctx, tep_rmt, tep_lcl);
 }
 
-static tls_alpn_proto_t
-quic_get_alpn_selected (u32 ctx_index, clib_thread_index_t thread_index)
+static int
+quic_session_attribute (u32 ctx_index, clib_thread_index_t thread_index,
+			u8 is_get, transport_endpt_attr_t *attr)
 {
   quic_ctx_t *ctx;
+
+  if (!is_get)
+    return -1;
+
   ctx = quic_ctx_get (ctx_index, thread_index);
-  return ctx->alpn_selected;
+
+  switch (attr->type)
+    {
+    case TRANSPORT_ENDPT_ATTR_TLS_ALPN:
+      attr->tls_alpn = ctx->alpn_selected;
+      break;
+    default:
+      return -1;
+    }
+  return 0;
 }
 
 static session_cb_vft_t quic_app_cb_vft = {
@@ -784,12 +798,12 @@ static transport_proto_vft_t quic_proto = {
   .update_time = quic_update_time,
   .app_rx_evt = quic_custom_app_rx_callback,
   .custom_tx = quic_custom_tx_callback,
+  .attribute = quic_session_attribute,
   .format_connection = format_quic_connection,
   .format_half_open = format_quic_half_open,
   .format_listener = format_quic_listener,
   .get_transport_endpoint = quic_get_transport_endpoint,
   .get_transport_listener_endpoint = quic_get_transport_listener_endpoint,
-  .get_alpn_selected = quic_get_alpn_selected,
   .transport_options = {
     .name = "quic",
     .short_name = "Q",
