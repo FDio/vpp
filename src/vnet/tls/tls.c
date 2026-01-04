@@ -1137,13 +1137,6 @@ tls_enable (vlib_main_t * vm, u8 is_en)
   return 0;
 }
 
-static session_handle_t
-tls_next_transport_get (u32 ctx_index, clib_thread_index_t thread_index)
-{
-  tls_ctx_t *ctx = tls_ctx_get_w_thread (ctx_index, thread_index);
-  return ctx->tls_session_handle;
-}
-
 static int
 tls_session_attribute (u32 ctx_handle, clib_thread_index_t thread_index,
 		       u8 is_get, transport_endpt_attr_t *attr)
@@ -1162,6 +1155,9 @@ tls_session_attribute (u32 ctx_handle, clib_thread_index_t thread_index,
     case TRANSPORT_ENDPT_ATTR_TLS_ALPN:
       attr->tls_alpn = ctx->alpn_selected;
       break;
+    case TRANSPORT_ENDPT_ATTR_NEXT_TRANSPORT:
+      attr->next_transport = ctx->tls_session_handle;
+      break;
     default:
       return -1;
     }
@@ -1178,7 +1174,6 @@ static const transport_proto_vft_t tls_proto = {
   .get_connection = tls_connection_get,
   .get_listener = tls_listener_get,
   .get_half_open = tls_half_open_get,
-  .get_next_transport = tls_next_transport_get,
   .cleanup_ho = tls_cleanup_ho,
   .custom_tx = tls_custom_tx_callback,
   .attribute = tls_session_attribute,
@@ -1309,7 +1304,6 @@ static const transport_proto_vft_t dtls_proto = {
   .get_connection = tls_connection_get,
   .get_listener = tls_listener_get,
   .get_half_open = dtls_half_open_get,
-  .get_next_transport = tls_next_transport_get,
   .custom_tx = tls_custom_tx_callback,
   .cleanup = dtls_cleanup_callback,
   .cleanup_ho = dtls_cleanup_ho,

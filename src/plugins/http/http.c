@@ -1702,20 +1702,6 @@ http_transport_cleanup_ho (u32 ho_hc_index)
   http_ho_conn_free (ho_hc);
 }
 
-static session_handle_t
-http_transport_get_next_transport (u32 rh, clib_thread_index_t thread_index)
-{
-  http_req_handle_t hr_handle = { .as_u32 = rh };
-  http_conn_t *hc;
-  u32 hc_index;
-
-  hc_index = http_vfts[hr_handle.version].hc_index_get_by_req_index (
-    hr_handle.req_index, thread_index);
-  hc = http_conn_get_w_thread (hc_index, thread_index);
-
-  return hc->hc_tc_session_handle;
-}
-
 static int
 http_session_attribute (u32 rh, clib_thread_index_t thread_index, u8 is_get,
 			transport_endpt_attr_t *attr)
@@ -1735,6 +1721,9 @@ http_session_attribute (u32 rh, clib_thread_index_t thread_index, u8 is_get,
       ts = session_get_from_handle (hc->hc_tc_session_handle);
       if (session_transport_attribute (ts, 1 /* is_get */, attr) < 0)
 	return -1;
+      break;
+    case TRANSPORT_ENDPT_ATTR_NEXT_TRANSPORT:
+      attr->next_transport = hc->hc_tc_session_handle;
       break;
     default:
       return -1;
@@ -1757,7 +1746,6 @@ static const transport_proto_vft_t http_proto = {
   .get_connection = http_transport_get_connection,
   .get_listener = http_transport_get_listener,
   .get_half_open = http_transport_get_ho,
-  .get_next_transport = http_transport_get_next_transport,
   .get_transport_endpoint = http_transport_get_endpoint,
   .attribute = http_session_attribute,
   .format_connection = format_http_transport_connection,
