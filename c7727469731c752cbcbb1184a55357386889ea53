@@ -34,6 +34,24 @@
       "parentUuid": "ea1b54d7_5805842c",
       "revId": "c7727469731c752cbcbb1184a55357386889ea53",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f411d8df_00c6fcfe",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 9
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-01-05T18:09:05Z",
+      "side": 1,
+      "message": "Please ignore comment about [0], it was for 44422, not this gerrit change.  Sorry about the confusion.\n\nThe good news is that the patchset 10 passed 😊",
+      "parentUuid": "13b36d65_0c774bb6",
+      "revId": "c7727469731c752cbcbb1184a55357386889ea53",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
