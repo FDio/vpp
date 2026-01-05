@@ -213,6 +213,7 @@ dns46_request_inline (vlib_main_t * vm,
 	      if (!memcmp (aptr0, ".arpa", 5))
 		t0->request_type = DNS_PEER_PENDING_IP_TO_NAME;
 	    }
+	  vec_add1 (name0, 0);
 
 	  t0->client_index = ~0;
 	  t0->is_ip6 = is_ip6;
@@ -230,7 +231,6 @@ dns46_request_inline (vlib_main_t * vm,
 	   * vnet_dns_labels_to_name produces a non NULL terminated vector
 	   * vnet_dns_resolve_name expects a C-string.
 	   */
-	  vec_add1 (name0, 0);
 	  vnet_dns_resolve_name (vm, dm, name0, t0, &ep0);
 
 	  if (ep0)
