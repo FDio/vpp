@@ -16,6 +16,23 @@
       "message": "we prefer static library built by make install-ext-deps",
       "revId": "c58309245786f904aca18e242d9329baef2125ec",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ec926a6c_141d5c68",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-01-05T09:27:08Z",
+      "side": 1,
+      "message": "Agree with Damjan, static libs built by install-ext-dep should take precedence, but having the option to force the system dynamic library should be fine, see the DPDK plugin for example.",
+      "revId": "c58309245786f904aca18e242d9329baef2125ec",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
