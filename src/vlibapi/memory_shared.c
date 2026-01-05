@@ -790,7 +790,7 @@ vl_msg_api_send_shmem (svm_queue_t * q, u8 * elem)
 int
 vl_mem_api_can_send (svm_queue_t * q)
 {
-  return (q->cursize < q->maxsize);
+  return q ? (q->cursize < q->maxsize) : 0;
 }
 
 void
