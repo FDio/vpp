@@ -136,6 +136,14 @@ class TestDefine(unittest.TestCase):
         s = self.parser.process(r)
         self.assertIsNotNone(s)
 
+    def test_vla(self):
+        test_string = """
+          define foo { u8 foo[]; };
+          define foo_reply {u32 context; i32 retval; };
+        """
+        with self.assertRaises(ValueError):
+            self.parser.parse_string(test_string)
+
 
 class TestService(unittest.TestCase):
     @classmethod

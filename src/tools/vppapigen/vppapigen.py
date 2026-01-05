@@ -469,6 +469,14 @@ class Array(Processable):
         self.fieldtype = fieldtype
         self.fieldname = name
         self.modern_vla = modern_vla
+        if length is None and fieldtype == "string":
+            length = 0
+        elif length is None:
+            raise ValueError(
+                "Field {!r} has no length, which is only allowed for string types".format(
+                    name
+                )
+            )
         if type(length) is str:
             self.lengthfield = length
             self.length = 0
@@ -891,7 +899,7 @@ class VPPAPIParser:
 
     def p_declaration_array_vla(self, p):
         """declaration : type_specifier variable_name '[' ']' ';'"""
-        p[0] = Array(p[1], p[2], 0, modern_vla=True)
+        p[0] = Array(p[1], p[2], None, modern_vla=True)
 
     def p_declaration_array(self, p):
         """declaration : type_specifier variable_name '[' NUM ']' ';'
