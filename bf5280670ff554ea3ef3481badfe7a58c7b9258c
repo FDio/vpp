@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a83e8c92_fa919f39",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3200
+      },
+      "writtenOn": "2026-01-06T22:58:27Z",
+      "side": 1,
+      "message": "I reworked the logic so that static libs are preferred. I tried to preserve the original handling of --whole-archive.",
+      "revId": "bf5280670ff554ea3ef3481badfe7a58c7b9258c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
