@@ -348,5 +348,28 @@ enumflag virtio_flags_ef {
             self.fail()
 
 
+class TestPaths(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.parser = VPPAPI()
+
+    def test_paths(self):
+        test_string = """\
+paths {
+  "/err/bfd-udp4-input" "bfd";
+  "/err/bfd-udp6-input" "bfd";
+};
+paths {
+  "/err/bfd-worker-input" "bfd_udp_tx";
+};
+"""
+        r = self.parser.parse_string(test_string)
+        self.assertIsNotNone(r)
+        s = self.parser.process(r)
+        self.assertEqual(s["Paths"][0].paths[0]["path"], "/err/bfd-udp4-input")
+        self.assertEqual(s["Paths"][0].paths[1]["path"], "/err/bfd-udp6-input")
+        self.assertEqual(s["Paths"][1].paths[0]["path"], "/err/bfd-worker-input")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

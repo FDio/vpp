@@ -616,12 +616,9 @@ class VPPAPIParser:
         """path_elements : path_element
         | path_elements path_element"""
         if len(p) == 2:
-            p[0] = p[1]
+            p[0] = [p[1]]
         else:
-            if type(p[1]) is dict:
-                p[0] = [p[1], p[2]]
-            else:
-                p[0] = p[1] + [p[2]]
+            p[0] = p[1] + [p[2]]
 
     def p_path_element(self, p):
         """path_element : STRING_LITERAL STRING_LITERAL ';'"""
