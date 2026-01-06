@@ -595,14 +595,14 @@ abf_input_inline (vlib_main_t * vm,
     }
 
   vlib_node_increment_counter (vm,
-			       (fproto = FIB_PROTOCOL_IP6 ?
-				abf_ip4_node.index :
-				abf_ip6_node.index),
+			       (fproto == FIB_PROTOCOL_IP6 ?
+				abf_ip6_node.index :
+				abf_ip4_node.index),
 			       ABF_ERROR_MATCHED, matches);
   vlib_node_increment_counter (vm,
-			       (fproto = FIB_PROTOCOL_IP6 ?
-				abf_ip4_node.index :
-				abf_ip6_node.index),
+			       (fproto == FIB_PROTOCOL_IP6 ?
+				abf_ip6_node.index :
+				abf_ip4_node.index),
 			       ABF_ERROR_MISSED, misses);
 
   return frame->n_vectors;
