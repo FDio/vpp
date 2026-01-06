@@ -33,6 +33,23 @@
       "message": "Russell,\nThank you for your contribution to FD.io/VPP.  However, stable/2406 branch is not supported and the branch is effectively closed as there is no CI support to verify fixes on it.\n\nStandard practice is first commit fixes to the master branch, then cherry-pick them as needed to current stable/\u003crelease\u003e branches.  The VPP project policy supports master plus the previous two release branches.\n\nPlease verify this anomaly exists on master and if necessary submit a fix on that branch.",
       "revId": "3bc8b64a670f7d9ff762c40ba97ecc4850247919",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ab81b4de_ae0f34a0",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3285
+      },
+      "writtenOn": "2026-01-06T00:33:10Z",
+      "side": 1,
+      "message": "Got it, I will test against master and then update this.",
+      "revId": "3bc8b64a670f7d9ff762c40ba97ecc4850247919",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
