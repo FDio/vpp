@@ -537,6 +537,7 @@ tap_create_if (vlib_main_t *vm, tap_create_if_args_t *args)
     {
       offload = TUN_F_CSUM | TUN_F_TSO4 | TUN_F_TSO6;
       tif->gso_enabled = 1;
+      tif->csum_offload_enabled = 1;
     }
   else if (args->tap_flags & TAP_FLAG_CSUM_OFFLOAD)
     {
