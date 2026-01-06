@@ -943,10 +943,12 @@ hss_attach ()
 }
 
 static int
-hss_transport_needs_crypto (transport_proto_t proto)
+hss_transport_needs_crypto (session_endpoint_cfg_t *sep)
 {
-  return proto == TRANSPORT_PROTO_TLS || proto == TRANSPORT_PROTO_DTLS ||
-	 proto == TRANSPORT_PROTO_QUIC;
+  return sep->flags & SESSION_ENDPT_CFG_F_SECURE ||
+	 sep->transport_proto == TRANSPORT_PROTO_TLS ||
+	 sep->transport_proto == TRANSPORT_PROTO_DTLS ||
+	 sep->transport_proto == TRANSPORT_PROTO_QUIC;
 }
 
 static int
@@ -962,7 +964,7 @@ hss_listen (hss_listener_t *l, session_handle_t *lh)
   clib_memset (a, 0, sizeof (*a));
   a->app_index = hsm->app_index;
 
-  need_crypto = hss_transport_needs_crypto (l->sep.transport_proto);
+  need_crypto = hss_transport_needs_crypto (&l->sep);
 
   l->sep.transport_proto = TRANSPORT_PROTO_HTTP;
   clib_memcpy (&a->sep_ext, &l->sep, sizeof (l->sep));
