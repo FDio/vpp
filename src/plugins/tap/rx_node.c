@@ -333,12 +333,13 @@ tap_device_input_one_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       for (u32 i = 0; n_trace > 0 && i < n_rx; i++)
 	{
 	  vlib_buffer_t *b = vlib_get_buffer (vm, buffer_indices[i]);
-	  if (vlib_trace_buffer (vm, node, next_indices[i], b,
+	  u32 next = is_tun ? next_indices[i] : next_index;
+	  if (vlib_trace_buffer (vm, node, next, b,
 				 /* follow_chain */ 0))
 	    {
 	      tap_rx_trace_t *tr;
 	      tr = vlib_add_trace (vm, node, b, sizeof (*tr));
-	      tr->next_index = is_tun ? next_indices[i] : next_index;
+	      tr->next_index = next;
 	      tr->hw_if_index = tif->hw_if_index;
 	      tr->len = b->current_length;
 	      tr->hdr = ((vnet_virtio_net_hdr_v1_t *) (b->data + off))[-1];
