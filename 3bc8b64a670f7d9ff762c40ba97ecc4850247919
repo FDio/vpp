@@ -50,6 +50,23 @@
       "message": "Got it, I will test against master and then update this.",
       "revId": "3bc8b64a670f7d9ff762c40ba97ecc4850247919",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9242046c_9cfb5ed8",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3285
+      },
+      "writtenOn": "2026-01-07T00:37:42Z",
+      "side": 1,
+      "message": "I\u0027ve verified that on the latest master branch we are still seeing the crash during periodic restarts of our dataplane agent.\n\nBuilt from master/HEAD at https://github.com/FDio/vpp/commit/7f4eb6d42dc1deef7b64de2af666aee639ae76fa\n\n```\nvpp# show version\nvpp v26.02-rc0~457-g7f4eb6d42 built by root on buildkitsandbox at 2026-01-06T22:48:48\n```\n\n```\nThread 1 \"vpp_main\" received signal SIGSEGV, Segmentation fault.\nvl_mem_api_can_send (q\u003d0x0) at /root/vpp/src/vlibapi/memory_shared.c:781\n781     in /root/vpp/src/vlibapi/memory_shared.c\n```",
+      "revId": "3bc8b64a670f7d9ff762c40ba97ecc4850247919",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
