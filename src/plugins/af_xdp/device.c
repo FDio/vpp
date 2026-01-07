@@ -581,6 +581,13 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
       goto err0;
     }
 
+  if (clib_strnlen (args->linux_ifname, IFNAMSIZ) == IFNAMSIZ)
+    {
+      args->rv = VNET_API_ERROR_INVALID_VALUE;
+      args->error = clib_error_return (0, "host interface name too long");
+      goto err0;
+    }
+
   if (args->rxq_size < VLIB_FRAME_SIZE || args->txq_size < VLIB_FRAME_SIZE ||
       args->rxq_size > 65535 || args->txq_size > 65535 ||
       !is_pow2 (args->rxq_size) || !is_pow2 (args->txq_size))
