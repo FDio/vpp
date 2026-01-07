@@ -29,8 +29,14 @@ from util import ppp, ppc, UnexpectedPacketError
 from scapy.utils6 import in6_getnsma, in6_getnsmac, in6_ismaddr
 
 
-class CaptureTimeoutError(Exception):
+class CaptureTimeoutError(TimeoutError):
     """Exception raised if capture or packet doesn't appear within timeout"""
+
+    pass
+
+
+class CaptureMismatchError(ValueError):
+    """Exception raised if number of captured packets doesn't match expectation"""
 
     pass
 
@@ -315,9 +321,7 @@ class VppPGInterface(VppInterface):
             expected_count = self.test.get_packet_count_for_if_idx(self.sw_if_index)
             based_on = "based on stored packet_infos"
             if expected_count == 0:
-                raise Exception(
-                    "Internal error, expected packet count for %s is 0!" % name
-                )
+                raise RuntimeError(f"Expected packet count for {name} is 0!")
         self.test.logger.debug(
             "Expecting to capture %s (%s) packets on %s"
             % (expected_count, based_on, name)
@@ -331,7 +335,7 @@ class VppPGInterface(VppInterface):
                     # bingo, got the packets we expected
                     return capture
                 elif len(capture.res) > expected_count:
-                    self.test.logger.error(
+                    self.test.logger.info(
                         ppc(
                             f"Unexpected packets captured, got {len(capture.res)}, expected {expected_count}:",
                             capture,
@@ -357,11 +361,13 @@ class VppPGInterface(VppInterface):
                     f"\n({len(capture)} packets captured in total){rem} on {name}",
                 )
             msg = f"Captured packets mismatch, captured {len(capture.res)} packets, expected {expected_count} packets on {name}:"
-            raise Exception(f"{ppc(msg, capture)}")
+            raise CaptureMismatchError(f"{ppc(msg, capture)}")
         else:
             if 0 == expected_count:
                 return
-            raise Exception(f"No packets captured on {name} (timeout = {timeout}s)")
+            raise CaptureTimeoutError(
+                f"No packets captured on {name} (timeout = {timeout}s)"
+            )
 
     def assert_nothing_captured(
         self, timeout=1, remark=None, filter_out_fn=is_ipv6_misc
@@ -459,7 +465,7 @@ class VppPGInterface(VppInterface):
         :param timeout: How long to wait for the packet
 
         :returns: Captured packet if no packet arrived within timeout
-        :raises Exception: if no packet arrives within timeout
+        :raises CaptureTimeoutError: if no packet arrives within timeout
         """
         deadline = time.time() + timeout
         if self._pcap_reader is None:
@@ -553,23 +559,21 @@ class VppPGInterface(VppInterface):
         self.test.logger.info(self.test.vapi.cli("show trace"))
         try:
             captured_packet = pg_interface.wait_for_packet(1)
-        except:
+        except CaptureTimeoutError:
             self.test.logger.info("No ARP received on port %s" % pg_interface.name)
             return
         arp_reply = captured_packet.copy()  # keep original for exception
-        try:
-            if arp_reply[ARP].op == ARP.is_at:
-                self.test.logger.info(
-                    "VPP %s MAC address is %s " % (self.name, arp_reply[ARP].hwsrc)
-                )
-                self._local_mac = arp_reply[ARP].hwsrc
-            else:
-                self.test.logger.info("No ARP received on port %s" % pg_interface.name)
-        except:
-            self.test.logger.error(
+        if ARP not in arp_reply:
+            raise UnexpectedPacketError(
                 ppp("Unexpected response to ARP request:", captured_packet)
             )
-            raise
+        if arp_reply[ARP].op == ARP.is_at:
+            self.test.logger.info(
+                "VPP %s MAC address is %s " % (self.name, arp_reply[ARP].hwsrc)
+            )
+            self._local_mac = arp_reply[ARP].hwsrc
+        else:
+            self.test.logger.info("No ARP received on port %s" % pg_interface.name)
 
     def resolve_ndp(self, pg_interface=None, timeout=1, link_layer=False):
         """Resolve NDP using provided packet-generator interface
@@ -601,8 +605,8 @@ class VppPGInterface(VppInterface):
                 captured_packet = pg_interface.wait_for_packet(
                     deadline - now, filter_out_fn=None
                 )
-            except:
-                self.test.logger.error("Timeout while waiting for NDP response")
+            except CaptureTimeoutError:
+                self.test.logger.info("Timeout while waiting for NDP response")
                 raise
             ndp_reply = captured_packet.copy()  # keep original for exception
             try:
@@ -622,4 +626,4 @@ class VppPGInterface(VppInterface):
             now = time.time()
 
         self.test.logger.debug(self.test.vapi.cli("show trace"))
-        raise Exception("Timeout while waiting for NDP response")
+        raise CaptureTimeoutError("Timeout while waiting for NDP response")
