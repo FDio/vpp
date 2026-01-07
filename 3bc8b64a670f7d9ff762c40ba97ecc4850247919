@@ -84,6 +84,42 @@
       "message": "The patch that we\u0027ve submitted isn\u0027t a long term fix for this from our findings so far.  Looking further up the call stack to where the vl_mem_api_can_send is being called.",
       "revId": "3bc8b64a670f7d9ff762c40ba97ecc4850247919",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "dd25b890_2ab59f53",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-01-07T17:19:05Z",
+      "side": 1,
+      "message": "Ok, please abandon this change once you\u0027ve pushed a fix to master.\n\nIt would also be good to discuss this issue on vpp-dev@lists.fd.io and/or join the next VPP Community meeting if you want interactive feedback.",
+      "parentUuid": "9813a2f6_b0906e15",
+      "revId": "3bc8b64a670f7d9ff762c40ba97ecc4850247919",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "83693b78_ee5cf763",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-01-07T17:19:05Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "9242046c_9cfb5ed8",
+      "revId": "3bc8b64a670f7d9ff762c40ba97ecc4850247919",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
