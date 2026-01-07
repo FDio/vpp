@@ -73,6 +73,7 @@ typedef void (*sasc_quality_scorer_fn)(const sasc_session_t *session, sasc_packe
 typedef struct {
     sasc_packet_stats_session_data_t *session_data;
     u32 log_class;
+    u16 msg_id_base;
 
     /* Counters */
     vlib_simple_counter_main_t *counters;
