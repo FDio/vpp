@@ -36,7 +36,7 @@ vl_api_can_send_msg (vl_api_registration_t * rp)
   if (PREDICT_FALSE (rp->registration_type > REGISTRATION_TYPE_SHMEM))
     return 1;
   else
-    return vl_mem_api_can_send (rp->vl_input_queue);
+    return rp->vl_input_queue ? vl_mem_api_can_send (rp->vl_input_queue) : 0;
 }
 
 /*
