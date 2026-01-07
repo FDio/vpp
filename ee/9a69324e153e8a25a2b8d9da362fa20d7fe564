@@ -1,0 +1,8 @@
+Verified+1: FDio GitHub Actions <releng+fdio-github@linuxfoundation.org>
+Code-Review+2: Benoit Ganne <bganne@cisco.com>
+Code-Review+1: Jimmy Bjorklund <jimmy.bjorklund@hotmail.se>
+Submitted-by: Benoit Ganne <bganne@cisco.com>
+Submitted-at: Wed, 07 Jan 2026 12:55:48 +0000
+Reviewed-on: https://gerrit.fd.io/r/c/vpp/+/44397
+Project: vpp
+Branch: refs/heads/master
