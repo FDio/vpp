@@ -71,7 +71,7 @@ class TestSasc(VppTestCase):
             / Raw(b"\xa5" * 100)
         )
 
-    def _configure_sasc(self):
+    def _configure_sasc(self, add_packet_stats = False):
         # Configure SASC on input feat-arc of pg0
 
         # Get service information
@@ -80,30 +80,42 @@ class TestSasc(VppTestCase):
         # Extract IDs of services 'sasc-create', 'sasc-feature-arc-return'
         sasc_create_service_id = 0
         sasc_feature_arc_return_id = 0
+        sasc_packets_stats_service_id = 0
         for svc in services:
             if svc.name == "sasc-create":
                 sasc_create_service_id = svc.service_index
             elif svc.name == "sasc-feature-arc-return":
                 sasc_feature_arc_return_id = svc.service_index
+            elif svc.name == "sasc-packet-stats":
+                sasc_packets_stats_service_id = svc.service_index
 
-        self.sasc_expected_fwd_rvs_service_chain = [sasc_feature_arc_return_id]
-        self.sasc_expected_miss_service_chain = [
-            sasc_create_service_id,
-            sasc_feature_arc_return_id,
-        ]
+        # If packet stats are enabled, include service in forward/reverse/miss chains
+        if add_packet_stats:
+            self.sasc_expected_fwd_rvs_service_chain = [sasc_packets_stats_service_id, sasc_feature_arc_return_id]
+            self.sasc_expected_miss_service_chain = [
+                sasc_create_service_id,
+                sasc_packets_stats_service_id,
+                sasc_feature_arc_return_id,
+            ]
+        else:
+            self.sasc_expected_fwd_rvs_service_chain = [sasc_feature_arc_return_id]
+            self.sasc_expected_miss_service_chain = [
+                sasc_create_service_id,
+                sasc_feature_arc_return_id,
+            ]
 
         # Configure the following service chains
-        # Service chain 0: sasc-create sasc-feature-arc-return
-        # Service chain 1: sasc-feature-arc-return
+        # Service chain 0: sasc-create (sasc-packet-stats) sasc-feature-arc-return
+        # Service chain 1: (sasc-packet-stats) sasc-feature-arc-return
         reply = self.vapi.sasc_set_services(
             chain_id=0,
-            n_services=2,
+            n_services=len(self.sasc_expected_miss_service_chain),
             services=self.sasc_expected_miss_service_chain,
         )
         self.assertEqual(reply.retval, 0)
         reply = self.vapi.sasc_set_services(
             chain_id=1,
-            n_services=1,
+            n_services=len(self.sasc_expected_fwd_rvs_service_chain),
             services=self.sasc_expected_fwd_rvs_service_chain,
         )
         self.assertEqual(reply.retval, 0)
@@ -120,7 +132,7 @@ class TestSasc(VppTestCase):
 
         self.tenant_idx_0 = reply.tenant_idx
 
-        # Enable SASC on interface pg0 input, with configured tenant 0
+        # Enable SASC on interface pg0 input/output, using configured tenant 0
         reply = self.vapi.sasc_interface_enable_disable(
             sw_if_index=self.pg0.sw_if_index,
             tenant_idx=self.tenant_idx_0,
@@ -199,10 +211,10 @@ class TestSasc(VppTestCase):
         self.assertEqual(len(service_chains), 2)
 
         self.verify_service_chain(
-            service_chains[0], 0, 2, self.sasc_expected_miss_service_chain
+            service_chains[0], 0, len(self.sasc_expected_miss_service_chain), self.sasc_expected_miss_service_chain
         )
         self.verify_service_chain(
-            service_chains[1], 1, 1, self.sasc_expected_fwd_rvs_service_chain
+            service_chains[1], 1, len(self.sasc_expected_fwd_rvs_service_chain), self.sasc_expected_fwd_rvs_service_chain
         )
 
         # Verify tenant exists, and has been configured appropriately
@@ -708,6 +720,64 @@ class TestSasc(VppTestCase):
         sessions = self.vapi.sasc_session_dump()
         self.assertEqual(len(sessions), 0, "All sessions should be cleared")
 
+    def test_sasc_packet_stats_dump(self):
+        """Test sasc packet stats dump API for TCP sessions"""
+        # SASC Initialization
+        self._configure_sasc(add_packet_stats=True)
+
+        # Create a TCP session by sending packets
+        test_flow = {"sport": 40000, "dport": 80}
+
+        # Send some data packets
+        for _ in range(5):
+            data_pkt = self.create_tcp_packet(
+                src_mac=self.pg0.remote_mac,
+                dst_mac=self.pg0.local_mac,
+                src_ip=self.pg0.remote_ip4,
+                dst_ip=self.pg1.remote_ip4,
+                sport=test_flow["sport"],
+                dport=test_flow["dport"],
+            )
+            self.pg_send(self.pg0, data_pkt)
+
+        # Verify session was created
+        sessions = self.vapi.sasc_session_dump()
+        self.assertGreaterEqual(len(sessions), 1, "Expected at least 1 session to be created")
+
+        # Find our test session
+        test_session = None
+        for session in sessions:
+            if session.forward_key.sport == test_flow["sport"] and session.forward_key.dport == test_flow["dport"]:
+                test_session = session
+                break
+
+        self.assertIsNotNone(test_session, "Test session not found")
+        session_index = test_session.session_index
+
+        # Dump packet stats for the specific session
+        packet_stats = self.vapi.sasc_packet_stats_dump(session_index=session_index)
+        self.assertEqual(len(packet_stats), 1, "Expected one packet stats entry for session")
+
+        stats = packet_stats[0]
+        self.assertEqual(stats.session_index, session_index, "Session index should match")
+
+        # Verify basic stats are populated
+        self.assertGreater(stats.tcp_packets, 0, "TCP packets should be > 0")
+
+        # Dump all packet stats (no session_index filter)
+        all_packet_stats = self.vapi.sasc_packet_stats_dump()
+        self.assertGreaterEqual(len(all_packet_stats), 1, "Should have at least 1 packet stats entry")
+
+        # Verify our session is in the dump
+        found_session = False
+        for s in all_packet_stats:
+            if s.session_index == session_index:
+                found_session = True
+                break
+        self.assertTrue(found_session, "Test session should be in dump-all results")
+
+        # SASC cleanup
+        self._cleanup_sasc()
 
 if __name__ == "__main__":
     unittest.main(testRunner=VppTestRunner)

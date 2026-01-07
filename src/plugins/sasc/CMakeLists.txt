@@ -48,6 +48,7 @@ add_vpp_plugin(sasc
   services/pcap/cli.c
   services/pcap/pcap.c
 
+  services/flow-quality/api.c
   services/flow-quality/flow_quality_tcp.c
   services/flow-quality/format.c
   services/flow-quality/counter.c
@@ -61,6 +62,7 @@ add_vpp_plugin(sasc
 
   API_FILES
   sasc.api
+  services/flow-quality/sasc_flow_quality.api
 
   API_TEST_SOURCES
   sasc_test.c
