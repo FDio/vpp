@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d231380a_f4557c37",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2561
+      },
+      "writtenOn": "2026-01-07T22:58:56Z",
+      "side": 1,
+      "message": "Hi Andrew, there is an error with dscp cs7 value but it\u0027s also used in api - triggers api style check error. What would be the right way to fix it?",
+      "revId": "345f562955668b41a1a3e2b47faa01ec423cf705",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
