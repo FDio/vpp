@@ -621,7 +621,7 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
       0 == (args->flags & AF_XDP_CREATE_FLAGS_NO_SYSCALL_LOCK))
     ad->flags |= AF_XDP_DEVICE_F_SYSCALL_LOCK;
 
-  ad->linux_ifname = (char *) format (0, "%s", args->linux_ifname);
+  ad->linux_ifname = (char *) format (0, "%s%c", args->linux_ifname, 0);
   vec_validate (ad->linux_ifname, IFNAMSIZ - 1);	/* libbpf expects ifname to be at least IFNAMSIZ */
 
   if (args->netns)
@@ -707,13 +707,13 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
       if (args->netns != NULL && strncmp (args->netns, "pid:", 4) == 0)
 	{
 	  ad->name =
-	    (char *) format (0, "%s/%u", ifname, atoi (args->netns + 4));
+	    (char *) format (0, "%s/%u%c", ifname, atoi (args->netns + 4), 0);
 	}
       else
-	ad->name = (char *) format (0, "%s/%d", ifname, ad->dev_instance);
+	ad->name = (char *) format (0, "%s/%d%c", ifname, ad->dev_instance, 0);
     }
   else
-    ad->name = (char *) format (0, "%s", args->name);
+    ad->name = (char *) format (0, "%s%c", args->name, 0);
 
   ethernet_mac_address_generate (ad->hwaddr);
 
