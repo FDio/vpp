@@ -20,7 +20,7 @@
 // Protocol-agnostic statistics, quality scores)
 static void
 sasc_send_packet_stats_details(vl_api_registration_t *rp, u32 context, u32 session_index,
-                               sasc_packet_stats_session_data_t *session_data) {
+                               session_quality_data_t *session_data) {
 
     sasc_packet_stats_main_t *packet_details = &sasc_packet_stats_main;
     vl_api_sasc_packet_stats_details_t *mp;
@@ -72,7 +72,7 @@ sasc_send_packet_stats_details(vl_api_registration_t *rp, u32 context, u32 sessi
     mp->q_packetization = clib_host_to_net_f64(session_data->q_packetization);
 
     /* TCP statistics - basic counters */
-    sasc_tcp_quality_session_data_t *tcp = &session_data->tcp_session_data;
+    session_quality_tcp_data_t *tcp = &session_data->tcp_data;
     mp->tcp_packets = clib_host_to_net_u32(tcp->packets);
     mp->tcp_data_packets = clib_host_to_net_u32(tcp->data_packets);
     mp->tcp_syn_packets = clib_host_to_net_u32(tcp->syn_packets);
@@ -139,7 +139,7 @@ vl_api_sasc_packet_stats_dump_t_handler(vl_api_sasc_packet_stats_dump_t *mp) {
         /* Dump specific session */
         session = sasc_session_at_index(sasc, filter_session_index);
         if (session && psm->session_data) {
-            sasc_packet_stats_session_data_t *session_data = &psm->session_data[filter_session_index];
+            session_quality_data_t *session_data = &psm->session_data[filter_session_index];
             sasc_quality_compute(session, session_data);
             sasc_send_packet_stats_details(rp, mp->context, filter_session_index, session_data);
         }
@@ -148,7 +148,7 @@ vl_api_sasc_packet_stats_dump_t_handler(vl_api_sasc_packet_stats_dump_t *mp) {
         pool_foreach (session, sasc->sessions) {
             u32 session_index = session - sasc->sessions;
             if (psm->session_data) {
-                sasc_packet_stats_session_data_t *session_data = &psm->session_data[session_index];
+                session_quality_data_t *session_data = &psm->session_data[session_index];
                 sasc_quality_compute(session, session_data);
                 sasc_send_packet_stats_details(rp, mp->context, session_index, session_data);
             }

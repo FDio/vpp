@@ -56,8 +56,8 @@ if (pcm->enabled && (sasc_buffer(b[0])->flags & SASC_BUFFER_F_PCAP_TRACE)) {
         .session_index = session_idx,
         .flow_id = b[0]->flow_id,
         .quality_score = psm->session_data[session_idx].quality_score,
-        .retransmissions = psm->session_data[session_idx].tcp_session_data.retransmissions,
-        .ack_stalls = psm->session_data[session_idx].tcp_session_data.ack_stall_count_0,
+        .retransmissions = psm->session_data[session_idx].tcp_data.retransmissions,
+        .ack_stalls = psm->session_data[session_idx].tcp_data.ack_stall_count_0,
         .timestamp_us = (u64)(vlib_time_now(vm) * 1e6)
     };
 

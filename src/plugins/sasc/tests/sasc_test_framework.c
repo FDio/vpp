@@ -367,10 +367,10 @@ sasc_test_get_tcp_quality_data(const sasc_5tuple_t *key) {
     }
 
     // Get the packet stats session data
-    sasc_packet_stats_session_data_t *session_data = &sasc_packet_stats_main.session_data[session - sasc_main.sessions];
+    session_quality_data_t *session_data = &sasc_packet_stats_main.session_data[session - sasc_main.sessions];
 
     // Return the TCP quality data
-    return &session_data->tcp_session_data;
+    return &session_data->tcp_data;
 }
 
 void *

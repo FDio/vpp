@@ -7,7 +7,7 @@
 
 #if 0
 u8 *
-format_rate_stats(u8 *s, sasc_packet_stats_session_data_t *data) {
+format_rate_stats(u8 *s, session_quality_data_t *data) {
     s = format(s, "Rate Statistics:\n");
     s = format(s, "  Current: %lu packets/sec, %lu bytes/sec\n", data->packets_per_second,
                data->bytes_per_second);
@@ -19,7 +19,7 @@ format_rate_stats(u8 *s, sasc_packet_stats_session_data_t *data) {
 }
 
 u8 *
-format_timing_stats(u8 *s, sasc_packet_stats_session_data_t *data) {
+format_timing_stats(u8 *s, session_quality_data_t *data) {
     s = format(s, "Inter-Packet Timing:\n");
     s = format(s, "  Min: %lu ns\n", data->min_inter_packet_time);
     s = format(s, "  Max: %lu ns\n", data->max_inter_packet_time);

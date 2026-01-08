@@ -108,21 +108,10 @@ sasc_get_effective_service_chain(sasc_main_t *sasc, u32 chain_id, sasc_proto_gro
 }
 
 /* Parse IP header for ECN, TTL, and DSCP */
+#include <vnet/session_quality/session_quality.h>
+
 static inline void
 sasc_parse_ip_header(vlib_buffer_t *b, u32 *l3_len, u32 *ecn, u8 *ttl, u32 *dscp) {
-    ip4_header_t *ip4 = (ip4_header_t *)(b->data + vnet_buffer(b)->l3_hdr_offset);
-    if (ip4->ip_version_and_header_length >> 4 == 4) {
-        /* IPv4 */
-        *l3_len = clib_net_to_host_u16(ip4->length);
-        *ecn = ip4_header_get_ecn(ip4);
-        *ttl = ip4->ttl;
-        *dscp = ip4_header_get_dscp(ip4);
-    } else {
-        // /* IPv6 */
-        // ip6_header_t *ip6 = (ip6_header_t *)(b->data + vnet_buffer(b)->l3_hdr_offset);
-        // *ecn = ip6_header_get_ecn(ip6);
-        // *ttl = ip6_header_get_hop_limit(ip6);
-        // *dscp = ip6_header_get_dscp(ip6);
-    }
+    session_quality_parse_ip_header(b, l3_len, ecn, ttl, dscp);
 }
 #endif

@@ -35,16 +35,16 @@ pred_counter_nonzero(void *p) {
 // }
 
 /* Helper function to lookup session and get TCP quality data */
-static sasc_tcp_quality_session_data_t *
+static session_quality_tcp_data_t *
 get_session_tcp_data(sasc_5tuple_t *key) {
-    return (sasc_tcp_quality_session_data_t *)sasc_test_get_tcp_quality_data(key);
+    return (session_quality_tcp_data_t *)sasc_test_get_tcp_quality_data(key);
 }
 
 /* Session-specific predicates that look up the session and check session counters */
 static int
 pred_session_retransmit_detected(void *ctx) {
     sasc_5tuple_t *key = (sasc_5tuple_t *)ctx;
-    sasc_tcp_quality_session_data_t *tcp_data = get_session_tcp_data(key);
+    session_quality_tcp_data_t *tcp_data = get_session_tcp_data(key);
 
     if (!tcp_data) {
         return 0; // No session found
@@ -57,7 +57,7 @@ pred_session_retransmit_detected(void *ctx) {
 static int
 pred_session_fast_retransmit_detected(void *ctx) {
     sasc_5tuple_t *key = (sasc_5tuple_t *)ctx;
-    sasc_tcp_quality_session_data_t *tcp_data = get_session_tcp_data(key);
+    session_quality_tcp_data_t *tcp_data = get_session_tcp_data(key);
 
     if (!tcp_data) {
         return 0; // No session found
@@ -70,7 +70,7 @@ pred_session_fast_retransmit_detected(void *ctx) {
 static int
 pred_session_no_fast_retransmit_detected(void *ctx) {
     sasc_5tuple_t *key = (sasc_5tuple_t *)ctx;
-    sasc_tcp_quality_session_data_t *tcp_data = get_session_tcp_data(key);
+    session_quality_tcp_data_t *tcp_data = get_session_tcp_data(key);
 
     if (!tcp_data) {
         return 1; // No session found, so no fast retransmit
@@ -83,7 +83,7 @@ pred_session_no_fast_retransmit_detected(void *ctx) {
 static int
 pred_session_reorder_detected(void *ctx) {
     sasc_5tuple_t *key = (sasc_5tuple_t *)ctx;
-    sasc_tcp_quality_session_data_t *tcp_data = get_session_tcp_data(key);
+    session_quality_tcp_data_t *tcp_data = get_session_tcp_data(key);
 
     if (!tcp_data) {
         return 0; // No session found

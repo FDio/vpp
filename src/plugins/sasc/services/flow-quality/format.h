@@ -7,8 +7,8 @@
 
 #include "packet_stats.h"
 
-u8 *format_rate_stats(u8 *s, sasc_packet_stats_session_data_t *data);
-u8 *format_timing_stats(u8 *s, sasc_packet_stats_session_data_t *data);
+u8 *format_rate_stats(u8 *s, session_quality_data_t *data);
+u8 *format_timing_stats(u8 *s, session_quality_data_t *data);
 u8 *format_vector_size_histogram(u8 *s, u64 *buckets);
 u8 *format_gap_histogram(u8 *s, u64 *buckets);
 u8 *format_packet_size_histogram(u8 *s, u64 *buckets);

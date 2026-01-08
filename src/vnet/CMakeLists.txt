@@ -1437,6 +1437,17 @@ list (APPEND VNET_MULTIARCH_SOURCES
 )
 
 ##############################################################################
+# Session Quality - Common session quality analysis infrastructure
+##############################################################################
+list (APPEND VNET_SOURCES
+  session_quality/session_quality.c
+)
+
+list (APPEND VNET_HEADERS
+  session_quality/session_quality.h
+)
+
+##############################################################################
 # VNET Library
 ##############################################################################
 

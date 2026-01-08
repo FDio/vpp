@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright(c) 2025 Cisco Systems, Inc.
 
-#include <math.h>
 #include <vlib/vlib.h>
 #include <sasc/sasc.h>
 #include <sasc/service.h>
@@ -11,6 +10,7 @@
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/udp/udp.h>
 #include <vnet/tcp/tcp.h>
+#include <vnet/session_quality/session_quality.h>
 #include <vppinfra/hash.h>
 #include <stddef.h> // for offsetof
 #include "packet_stats.h"
@@ -18,8 +18,6 @@
 #include <cbor.h>
 #include "format.h"
 #include <sasc/export.h>
-#include <vnet/ip/ip4_packet.h>
-#include <vnet/ip/ip6_packet.h>
 
 /* Plugin scorer registry */
 static sasc_quality_scorer_fn *sasc_q_scorers;
@@ -41,111 +39,12 @@ format_sasc_packet_stats_trace(u8 *s, va_list *args) {
     return s;
 }
 
-/* Welford's online algorithm for variance */
-static inline void
-welford_update(f64 *mean, f64 *m2, u32 *count, f64 new_value) {
-    /* Protect against invalid input */
-    // if (!isfinite(new_value)) {
-    //     return;
-    // }
-
-    (*count)++;
-    f64 delta = new_value - *mean;
-    *mean += delta / *count;
-    f64 delta2 = new_value - *mean;
-    *m2 += delta * delta2;
-
-    /* Ensure m2 doesn't become negative due to floating point errors */
-    if (*m2 < 0.0) {
-        *m2 = 0.0;
-    }
-
-    // /* Ensure mean and m2 remain finite */
-    // if (!isfinite(*mean) || !isfinite(*m2)) {
-    //     *mean = new_value;
-    //     *m2 = 0.0;
-    // }
-}
-
-static inline f64
-welford_stddev(f64 m2, u32 count) {
-    if (count < 2 || m2 <= 0.0 /* || !isfinite(m2) */)
-        return 0.0;
-    f64 variance = m2 / (count - 1);
-    if (variance <= 0.0 /* || !isfinite(variance) */)
-        return 0.0;
-    return sqrt(variance);
-}
-
-/* Quality component computation functions */
 static f64
-compute_q_stability(f64 iat_cv) {
-    /* Map iat_cv via knee 0.5 span 1.5 */
-    if (iat_cv <= 0.5)
-        return 100.0;
-    if (iat_cv >= 2.0)
-        return 0.0;
-    return 100.0 * (2.0 - iat_cv) / 1.5;
-}
-
-static f64
-compute_q_congestion(u32 ecn_ce, u32 ecn_ect, f64 ttl_stddev_fwd, f64 ttl_stddev_rev) {
-    f64 ce_rate = (ecn_ect > 0) ? (f64)ecn_ce / ecn_ect : 0.0;
-
-    /* TTL penalty based on both directions - use the worse direction */
-    f64 ttl_penalty_fwd = (ttl_stddev_fwd > 5.0) ? (ttl_stddev_fwd - 5.0) * 10.0 : 0.0;
-    f64 ttl_penalty_rev = (ttl_stddev_rev > 5.0) ? (ttl_stddev_rev - 5.0) * 10.0 : 0.0;
-    f64 ttl_penalty = clib_max(ttl_penalty_fwd, ttl_penalty_rev);
-
-    f64 score = 100.0 - (ce_rate * 50.0) - clib_min(ttl_penalty, 50.0);
-    return clib_max(0.0, score);
-}
-
-static f64
-compute_q_continuity(u32 burst_count, u32 idle_periods, u32 frames_touched) {
-    if (frames_touched == 0)
-        return 100.0;
-    f64 bursty_fraction = (f64)burst_count / frames_touched;
-    f64 idle_penalty = idle_periods * 10.0;
-    f64 score = 100.0 - (bursty_fraction * 40.0) - clib_min(idle_penalty, 40.0);
-    return clib_max(0.0, score);
-}
-
-static f64
-compute_q_delivery(u32 icmp_unreach, u32 icmp_frag_needed, u32 icmp_ttl_expired, u32 icmp_packet_too_big) {
-    // Weight different ICMP error types based on their impact on delivery
-    f64 penalty = (icmp_unreach * 25.0) +       // Destination unreachable - high impact
-                  (icmp_frag_needed * 20.0) +   // Fragmentation needed - medium impact
-                  (icmp_ttl_expired * 15.0) +   // TTL expired - medium impact
-                  (icmp_packet_too_big * 20.0); // Packet too big - medium impact
-    return clib_max(0.0, 100.0 - penalty);
-}
-
-static f64
-compute_q_packetization(const sasc_session_t *session, sasc_packet_stats_session_data_t *session_data) {
+compute_q_packetization(const sasc_session_t *session, session_quality_data_t *session_data) {
     u32 packets_total = session->pkts[SASC_FLOW_FORWARD] + session->pkts[SASC_FLOW_REVERSE];
     u64 bytes_total = session->bytes[SASC_FLOW_FORWARD] + session->bytes[SASC_FLOW_REVERSE];
-
-    if (packets_total == 0)
-        return 100.0;
-
-    f64 avg_packet_size = (f64)bytes_total / packets_total;
-    f64 tiny_fraction = (f64)session_data->tiny_packets / packets_total;
-    f64 dscp_penalty = session_data->dscp_changes * 5.0;
-
-    /* Penalize tiny packets and DSCP changes */
-    f64 tiny_penalty = tiny_fraction * 30.0;
-    f64 size_penalty = 0.0;
-
-    /* Additional penalty for very small or very large average packet sizes */
-    if (avg_packet_size < 64.0) {
-        size_penalty = (64.0 - avg_packet_size) * 1.0;
-    } else if (avg_packet_size > 1500.0) {
-        size_penalty = (avg_packet_size - 1500.0) * 0.05;
-    }
-
-    f64 score = 100.0 - tiny_penalty - dscp_penalty - clib_min(size_penalty, 20.0);
-    return clib_max(0.0, score);
+    return session_quality_compute_packetization(packets_total, bytes_total, session_data->tiny_packets,
+                                                 session_data->dscp_changes);
 }
 
 VLIB_NODE_FN(sasc_packet_stats_node)
@@ -169,7 +68,7 @@ VLIB_NODE_FN(sasc_packet_stats_node)
         sip[0] = session_idx;
 
         /* Get or create session data */
-        sasc_packet_stats_session_data_t *session_data = &psm->session_data[session_idx];
+        session_quality_data_t *session_data = &psm->session_data[session_idx];
 
         /* Handle session version mismatch */
         if (PREDICT_FALSE(session_data->version != session->session_version)) {
@@ -178,15 +77,15 @@ VLIB_NODE_FN(sasc_packet_stats_node)
             session_data->last_packet_time = current_time; /* bootstrap */
         }
 
-        /* Parse IP header for ECN, TTL, and DSCP */
+        /* Parse IP header for ECN, TTL, and DSCP using common function */
         u32 l3_len = 0;
         u32 ecn = 0;
         u8 ttl = 0;
         u32 dscp = 0;
-        sasc_parse_ip_header(b[0], &l3_len, &ecn, &ttl, &dscp);
+        session_quality_parse_ip_header(b[0], &l3_len, &ecn, &ttl, &dscp);
 
         /* Track tiny packets for quality assessment */
-        if (b[0]->current_length < SASC_TINY_PKT_THRESH) {
+        if (b[0]->current_length < SESSION_QUALITY_TINY_PKT_THRESH) {
             session_data->tiny_packets++;
         }
 
@@ -203,7 +102,8 @@ VLIB_NODE_FN(sasc_packet_stats_node)
             session_data->ttl_min[dir] = clib_min(session_data->ttl_min[dir], ttl);
             session_data->ttl_max[dir] = clib_max(session_data->ttl_max[dir], ttl);
         }
-        welford_update(&session_data->ttl_mean[dir], &session_data->ttl_m2[dir], &session_data->ttl_count[dir], ttl);
+        session_quality_welford_update(&session_data->ttl_mean[dir], &session_data->ttl_m2[dir],
+                                       &session_data->ttl_count[dir], ttl);
 
         /* Update DSCP drift */
         if (session_data->frames_touched > 0 && session_data->last_dscp != dscp) {
@@ -219,7 +119,7 @@ VLIB_NODE_FN(sasc_packet_stats_node)
         session_data->last_packet_time = current_time;
 
         /* Update Welford state for IAT */
-        welford_update(&session_data->iat_mean, &session_data->iat_m2, &session_data->iat_count, iat);
+        session_quality_welford_update(&session_data->iat_mean, &session_data->iat_m2, &session_data->iat_count, iat);
 
         /* Classify burst and idle periods */
         if (iat < 0.001) { /* < 1ms */
@@ -278,22 +178,22 @@ sasc_quality_register_scorer(const char *name, sasc_quality_scorer_fn scorer) {
 }
 
 u8
-sasc_quality_compute(const sasc_session_t *session, sasc_packet_stats_session_data_t *session_data) {
+sasc_quality_compute(const sasc_session_t *session, session_quality_data_t *session_data) {
     /* Compute derived statistics when needed */
-    session_data->ttl_stddev[0] = welford_stddev(session_data->ttl_m2[0], session_data->ttl_count[0]);
-    session_data->ttl_stddev[1] = welford_stddev(session_data->ttl_m2[1], session_data->ttl_count[1]);
-    session_data->iat_stddev = welford_stddev(session_data->iat_m2, session_data->iat_count);
+    session_data->ttl_stddev[0] = session_quality_welford_stddev(session_data->ttl_m2[0], session_data->ttl_count[0]);
+    session_data->ttl_stddev[1] = session_quality_welford_stddev(session_data->ttl_m2[1], session_data->ttl_count[1]);
+    session_data->iat_stddev = session_quality_welford_stddev(session_data->iat_m2, session_data->iat_count);
     session_data->iat_cv = (session_data->iat_mean > 0) ? session_data->iat_stddev / session_data->iat_mean : 0.0;
 
     /* Compute quality components directly from session data */
-    session_data->q_stability = compute_q_stability(session_data->iat_cv);
+    session_data->q_stability = session_quality_compute_stability(session_data->iat_cv);
     session_data->q_congestion =
-        compute_q_congestion(session_data->ecn_ce, session_data->ecn_ect, session_data->ttl_stddev[0],
-                             session_data->ttl_stddev[1]); // Changed to use session_data->ttl_stddev[0]
-    session_data->q_continuity =
-        compute_q_continuity(session_data->burst_count, session_data->idle_periods, session_data->frames_touched);
-    session_data->q_delivery = compute_q_delivery(session->icmp_unreach, session->icmp_frag_needed,
-                                                  session->icmp_ttl_expired, session->icmp_packet_too_big);
+        session_quality_compute_congestion(session_data->ecn_ce, session_data->ecn_ect, session_data->ttl_stddev[0],
+                                           session_data->ttl_stddev[1]); // Changed to use session_data->ttl_stddev[0]
+    session_data->q_continuity = session_quality_compute_continuity(
+        session_data->burst_count, session_data->idle_periods, session_data->frames_touched);
+    session_data->q_delivery = session_quality_compute_delivery(
+        session->icmp_unreach, session->icmp_frag_needed, session->icmp_ttl_expired, session->icmp_packet_too_big);
     session_data->q_packetization = compute_q_packetization(session, session_data);
 
     /* Apply registered scorer callbacks */

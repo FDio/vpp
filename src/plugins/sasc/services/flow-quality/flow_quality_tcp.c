@@ -3,199 +3,22 @@
 #include <vppinfra/mem.h>
 #include <vnet/ip/ip.h>
 #include <vnet/tcp/tcp_packet.h> /* tcp_header_t, seq_lt, seq_geq */
+#include <vnet/session_quality/session_quality.h>
 #include <ctype.h>
 #include <math.h>
 #include "packet_stats.h"
 
-/* ---- Small utilities ---- */
-
-/* Time utility functions for microsecond tick handling */
-static inline u32
-now_ticks_us(void) {
-    vlib_main_t *vm = vlib_get_main();
-    /* vlib_time_now returns seconds as f64; convert to microseconds in u32 (wraps) */
-    f64 seconds = vlib_time_now(vm);
-    u64 us64 = (u64)(seconds * 1e6);
-    return (u32)us64; /* wrap intentionally */
-}
-
-static inline f64
-delta_s_from_ticks(u32 newer, u32 older) {
-    /* Compute delta in seconds from wrapping u32 microsecond ticks */
-    u32 delta_us = newer - older; /* unsigned wrap-safe */
-    return (f64)delta_us / 1e6;
-}
-
-/* Welford update for RTT - per direction */
-static inline void
-rtt_update(sasc_tcp_quality_session_data_t *st, f64 sample, u8 dir) {
-    st->rtt_count[dir]++;
-    f64 delta = sample - st->rtt_mean[dir];
-    st->rtt_mean[dir] += delta / st->rtt_count[dir];
-    st->rtt_m2[dir] += delta * (sample - st->rtt_mean[dir]);
-}
-
-static inline f64
-rtt_stddev(const sasc_tcp_quality_session_data_t *st, u8 dir) {
-    if (st->rtt_count[dir] < 2)
-        return 0.0;
-    f64 var = st->rtt_m2[dir] / (st->rtt_count[dir] - 1);
-    return var > 0 ? sqrt(var) : 0.0;
-}
-
-/* EMA helpers for decayed rates ("current" quality) */
-#define SASC_TCP_EMA_ALPHA_DEFAULT 0.10 /* ~19-sample effective window */
-#define SASC_TCP_EMA_ALPHA_CE      0.08 /* slightly slower for CE density */
-static inline void
-ema_update(f64 *ema_value, f64 alpha, f64 sample_value) {
-    *ema_value = alpha * sample_value + (1.0 - alpha) * (*ema_value);
-}
-
-/* ---- Helper functions to eliminate code duplication ---- */
-
-/* Process TCP flags and update counters */
-static inline void
-process_tcp_flags(sasc_tcp_quality_session_data_t *st, u8 flags, u8 dir, u8 ack_dir, vlib_main_t *vm, tcp_header_t *th,
-                  u32 tcp_hlen) {
-    if (flags & TCP_FLAG_SYN) {
-        if (st->syn_packets)
-            st->syn_retx++;
-        st->syn_packets++;
-        if ((flags & TCP_FLAG_ACK) && !st->handshake_ok) {
-            /* SYN-ACK: robust SYN RTT calculation using explicit SYN timestamps */
-            if (st->syn_timestamp_us[ack_dir] != 0) {
-                u32 now_us = now_ticks_us();
-                st->syn_rtt = delta_s_from_ticks(now_us, st->syn_timestamp_us[ack_dir]);
-            }
-        }
-        if (!(flags & TCP_FLAG_ACK)) {
-            /* Pure SYN: explicitly timestamp for robust RTT calculation */
-            st->syn_timestamp_us[dir] = now_ticks_us();
-        }
-        /* Parse MSS from SYN options if needed */
-        if (st->mss == 0) {
-            const u8 *opt = (const u8 *)th + sizeof(tcp_header_t);
-            const u8 *end = (const u8 *)th + tcp_hlen;
-            while (opt + 1 < end) {
-                u8 kind = opt[0];
-                if (kind == 0)
-                    break; /* EOL */
-                if (kind == 1) {
-                    opt += 1;
-                    continue;
-                } /* NOP */
-                if (opt + 2 > end)
-                    break;
-                u8 len = opt[1];
-                if (len < 2 || opt + len > end)
-                    break;
-                if (kind == 2 && len == 4) { /* MSS */
-                    st->mss = (opt[2] << 8) | opt[3];
-                    break;
-                }
-                opt += len;
-            }
-        }
-    }
-    if ((flags & TCP_FLAG_ACK) && !(flags & TCP_FLAG_SYN) && !st->handshake_ok) {
-        /* First pure ACK following SYN-ACK finalizes 3WHS */
-        st->handshake_ok = 1;
-    }
-    if (flags & TCP_FLAG_FIN)
-        st->fin_packets++;
-    if (flags & TCP_FLAG_RST)
-        st->rst_packets++;
-}
-
-/* Track ECN flags and update CE mark bitset */
-static inline void
-process_ecn_flags(sasc_tcp_quality_session_data_t *st, u8 flags, u32 ecn) {
-    /* Track ECN flags for debugging (not used for penalties) */
-    if (flags & TCP_FLAG_ECE) {
-        st->ece_seen++;
-        if (ecn == 3)
-            st->ece_with_ce++;
-        else
-            st->ece_without_ce++;
-    }
-    if (flags & TCP_FLAG_CWR)
-        st->cwr_seen++;
-
-    /* Track CE marks in 64-bit sliding window with O(1) rolling popcount */
-    u64 outgoing_bit = 1ULL << st->ce_mark_index;
-    u64 incoming_bit = (ecn == 3) ? (1ULL << st->ce_mark_index) : 0;
-
-    /* Update popcount: subtract outgoing bit, add incoming bit */
-    if (st->ce_mark_bitset & outgoing_bit) {
-        st->ce_mark_popcnt--; /* outgoing bit was 1, so decrement count */
-    }
-    if (incoming_bit) {
-        st->ce_mark_popcnt++; /* incoming bit is 1, so increment count */
-    }
-
-    /* Update bitset: clear outgoing bit, set incoming bit */
-    st->ce_mark_bitset = (st->ce_mark_bitset & ~outgoing_bit) | incoming_bit;
-    st->ce_mark_index = (st->ce_mark_index + 1) % 64;
-}
-
-/* Handle zero-window tracking and stall timing */
-static inline void
-process_zero_window(sasc_tcp_quality_session_data_t *st, u16 win, u8 dir, vlib_main_t *vm) {
-    if (win == 0 && !st->in_zero_window[dir]) {
-        st->zero_window_events++;
-        st->in_zero_window[dir] = 1;
-        st->stall_start_tick_us[dir] = now_ticks_us();
-    } else if (win > 0 && st->in_zero_window[dir]) {
-        st->in_zero_window[dir] = 0;
-        if (st->stall_start_tick_us[dir] != 0) {
-            u32 now_us = now_ticks_us();
-            st->stall_time_accum[dir] += delta_s_from_ticks(now_us, st->stall_start_tick_us[dir]);
-            st->stall_start_tick_us[dir] = 0;
-        }
-    }
-}
-
-/* Process ACK flags for RTT calculation and reorder detection */
-static inline void
-process_ack_flags(sasc_tcp_quality_session_data_t *st, u8 flags, u32 ack, u8 ack_dir) {
-    if (!(flags & TCP_FLAG_ACK))
-        return;
-
-    /* Track ACK advancement for reorder detection */
-    if (ack != 0) {
-        if (seq_gt(ack, st->last_ack[ack_dir])) {
-            /* ACK advanced - reset stall counter */
-            st->ack_stall_count[ack_dir] = 0;
-            st->last_ack[ack_dir] = ack;
-        } else if (seq_leq(ack, st->last_ack[ack_dir])) {
-            /* ACK did not advance - increment stall counter */
-            st->ack_stall_count[ack_dir]++;
-        }
-    }
-
-    /* RTT calculation */
-    if (st->rtt_probe_tick_us[ack_dir] != 0) {
-        if (seq_geq(ack, st->last_data_seq[ack_dir])) {
-            u32 now_us = now_ticks_us();
-            f64 sample = delta_s_from_ticks(now_us, st->rtt_probe_tick_us[ack_dir]);
-            if (sample >= 0 && sample < 60.0)
-                rtt_update(st, sample, ack_dir);
-            st->rtt_probe_tick_us[ack_dir] = 0;
-        } else {
-            /* Improved dupACK detection: only count if ACK didn't advance AND we've seen data above ACK */
-            if (ack == st->last_ack[ack_dir] && st->end_seq_max[ack_dir] > ack) {
-                st->dupack_like++;
-            }
-        }
-    }
-}
+/* Compatibility define for segment analysis */
+#ifdef SESSION_QUALITY_TCP_SEGMENT_ANALYSIS_ENABLED
+#define SASC_TCP_SEGMENT_ANALYSIS_ENABLED
+#endif
 
 /* ---- Public: per-packet updater (called only for TCP packets) ---- */
 
 void
 fq_tcp_on_packet(vlib_main_t *vm, vlib_buffer_t *b, u8 dir, tcp_header_t *th, u32 session_index, f64 now) {
-    sasc_packet_stats_session_data_t *core = &sasc_packet_stats_main.session_data[session_index];
-    sasc_tcp_quality_session_data_t *st = &core->tcp_session_data;
+    session_quality_data_t *core = &sasc_packet_stats_main.session_data[session_index];
+    session_quality_tcp_data_t *st = &core->tcp_data;
 
     u32 tcp_hlen = tcp_header_bytes(th);
     st->packets++;
@@ -205,24 +28,24 @@ fq_tcp_on_packet(vlib_main_t *vm, vlib_buffer_t *b, u8 dir, tcp_header_t *th, u3
     const u16 win = clib_net_to_host_u16(th->window);
     const u8 flags = th->flags;
 
-    /* Parse IP header for ECN, TTL, and DSCP */
+    /* Parse IP header for ECN, TTL, and DSCP using common function */
     u32 l3_len = 0;
     u32 ecn = 0;
     u8 ttl = 0;
     u32 dscp = 0;
-    sasc_parse_ip_header(b, &l3_len, &ecn, &ttl, &dscp);
+    session_quality_parse_ip_header(b, &l3_len, &ecn, &ttl, &dscp);
     const u32 l4_off = vnet_buffer(b)->l4_hdr_offset;
     const u32 payload_len = (l3_len > (l4_off + tcp_hlen)) ? (l3_len - l4_off - tcp_hlen) : 0;
     /* Update CE density EMA for every packet */
-    ema_update(&st->ema_ce_rate, SASC_TCP_EMA_ALPHA_CE, (ecn == 3) ? 1.0 : 0.0);
+    session_quality_ema_update(&st->ema_ce_rate, SESSION_QUALITY_EMA_ALPHA_CE, (ecn == 3) ? 1.0 : 0.0);
 
     /* Fast-path: Handle non-data packets (pure ACKs, control packets) */
     if (payload_len == 0) {
         /* Essential flag accounting for non-data packets */
-        process_tcp_flags(st, flags, dir, ack_dir, vm, th, tcp_hlen);
-        process_ecn_flags(st, flags, ecn);
-        process_zero_window(st, win, dir, vm);
-        process_ack_flags(st, flags, ack, ack_dir);
+        session_quality_tcp_process_flags(st, flags, dir, ack_dir, th, tcp_hlen);
+        session_quality_tcp_process_ecn(st, flags, ecn);
+        session_quality_tcp_process_zero_window(st, win, dir);
+        session_quality_tcp_process_ack(st, flags, ack, ack_dir);
         return; /* Fast-path exit for non-data packets */
     }
 
@@ -230,10 +53,10 @@ fq_tcp_on_packet(vlib_main_t *vm, vlib_buffer_t *b, u8 dir, tcp_header_t *th, u3
     st->data_packets++;
 
     /* Essential flag accounting for data packets */
-    process_tcp_flags(st, flags, dir, ack_dir, vm, th, tcp_hlen);
-    process_ecn_flags(st, flags, ecn);
-    process_zero_window(st, win, dir, vm);
-    process_ack_flags(st, flags, ack, ack_dir);
+    session_quality_tcp_process_flags(st, flags, dir, ack_dir, th, tcp_hlen);
+    session_quality_tcp_process_ecn(st, flags, ecn);
+    session_quality_tcp_process_zero_window(st, win, dir);
+    session_quality_tcp_process_ack(st, flags, ack, ack_dir);
 
     /* Improved atypical segment size detection
        - Only penalize sustained small segments over a sliding window (last 16 packets)
@@ -268,16 +91,16 @@ fq_tcp_on_packet(vlib_main_t *vm, vlib_buffer_t *b, u8 dir, tcp_header_t *th, u3
                 /* First few small packets after idle - likely Nagle/delayed-ACK dance */
                 st->idle_packet_count++;
                 /* Avoid bumping EMA during initial idle dance */
-                ema_update(&st->ema_small_seg, SASC_TCP_EMA_ALPHA_DEFAULT, 0.0);
+                session_quality_ema_update(&st->ema_small_seg, SESSION_QUALITY_EMA_ALPHA_DEFAULT, 0.0);
             } else {
                 /* Sustained small segments - count as atypical */
                 st->atypical_seg_sizes++;
-                ema_update(&st->ema_small_seg, SASC_TCP_EMA_ALPHA_DEFAULT, 1.0);
+                session_quality_ema_update(&st->ema_small_seg, SESSION_QUALITY_EMA_ALPHA_DEFAULT, 1.0);
             }
         } else {
             /* Normal or large segment - reset idle packet counter */
             st->idle_packet_count = 0;
-            ema_update(&st->ema_small_seg, SASC_TCP_EMA_ALPHA_DEFAULT, 0.0);
+            session_quality_ema_update(&st->ema_small_seg, SESSION_QUALITY_EMA_ALPHA_DEFAULT, 0.0);
         }
     }
 #endif
@@ -314,9 +137,9 @@ fq_tcp_on_packet(vlib_main_t *vm, vlib_buffer_t *b, u8 dir, tcp_header_t *th, u3
     }
 
     /* Update EMAs for per-packet event rates */
-    ema_update(&st->ema_retrans, SASC_TCP_EMA_ALPHA_DEFAULT, ema_sample_retrans);
-    ema_update(&st->ema_overlap, SASC_TCP_EMA_ALPHA_DEFAULT, ema_sample_overlap);
-    ema_update(&st->ema_reorder, SASC_TCP_EMA_ALPHA_DEFAULT, ema_sample_reorder);
+    session_quality_ema_update(&st->ema_retrans, SESSION_QUALITY_EMA_ALPHA_DEFAULT, ema_sample_retrans);
+    session_quality_ema_update(&st->ema_overlap, SESSION_QUALITY_EMA_ALPHA_DEFAULT, ema_sample_overlap);
+    session_quality_ema_update(&st->ema_reorder, SESSION_QUALITY_EMA_ALPHA_DEFAULT, ema_sample_reorder);
 
     /* Update sequence tracking */
     if (!st->last_seq_valid[dir] || seq_gt(end_seq, st->end_seq_max[dir])) {
@@ -327,17 +150,17 @@ fq_tcp_on_packet(vlib_main_t *vm, vlib_buffer_t *b, u8 dir, tcp_header_t *th, u3
 
     /* Save send time for RTT via ACK on reverse dir */
     st->last_data_seq[dir] = seq + payload_len - 1;
-    st->rtt_probe_tick_us[dir] = now_ticks_us();
+    st->rtt_probe_tick_us[dir] = session_quality_now_ticks_us();
 
     /* Detect idle periods for Nagle/delayed-ACK handling */
     if (st->last_data_tick_us[dir] != 0) {
-        u32 now_us = now_ticks_us();
-        f64 time_since_last = delta_s_from_ticks(now_us, st->last_data_tick_us[dir]);
+        u32 now_us = session_quality_now_ticks_us();
+        f64 time_since_last = session_quality_delta_s_from_ticks(now_us, st->last_data_tick_us[dir]);
         if (time_since_last > 0.1) {   /* 100ms idle threshold */
             st->idle_packet_count = 0; /* Reset counter after idle period */
         }
     }
-    st->last_data_tick_us[dir] = now_ticks_us();
+    st->last_data_tick_us[dir] = session_quality_now_ticks_us();
 
 #ifdef SASC_TCP_TTFB_ENABLED
     /* TTFB tracking: measure time from first data to first response data
@@ -352,8 +175,8 @@ fq_tcp_on_packet(vlib_main_t *vm, vlib_buffer_t *b, u8 dir, tcp_header_t *th, u3
             /* We've seen data in both directions - calculate TTFB */
             /* This is a simplified approach; for HTTP flows, we'd need L7 parsing */
             if (st->rtt_probe_tick_us[ack_dir] != 0) {
-                u32 now_us = now_ticks_us();
-                st->ttfb = delta_s_from_ticks(now_us, st->rtt_probe_tick_us[ack_dir]);
+                u32 now_us = session_quality_now_ticks_us();
+                st->ttfb = session_quality_delta_s_from_ticks(now_us, st->rtt_probe_tick_us[ack_dir]);
                 st->ttfb_valid = 1;
             }
         }
@@ -369,12 +192,12 @@ fq_tcp_scorer(u8 protocol, u32 session_index) {
     if (protocol != IP_PROTOCOL_TCP)
         return;
 
-    sasc_packet_stats_session_data_t *core = &sasc_packet_stats_main.session_data[session_index];
-    sasc_tcp_quality_session_data_t *st = &core->tcp_session_data;
+    session_quality_data_t *core = &sasc_packet_stats_main.session_data[session_index];
+    session_quality_tcp_data_t *st = &core->tcp_data;
 
     /* Compute derived TCP metrics */
-    f64 rtt_sd = rtt_stddev(st, 0);    // RTT for outgoing direction
-    f64 rtt_sd_in = rtt_stddev(st, 1); // RTT for incoming direction
+    f64 rtt_sd = session_quality_tcp_rtt_stddev(st, 0);    // RTT for outgoing direction
+    f64 rtt_sd_in = session_quality_tcp_rtt_stddev(st, 1); // RTT for incoming direction
     f64 loss_penalty = 0.0;
     f64 reorder_penalty = 0.0;
     f64 stall_penalty = 0.0;
@@ -494,8 +317,8 @@ f64
 fq_tcp_get_rtt_mean(u32 session_index, u8 direction) {
     if (direction > 1)
         return 0.0;
-    sasc_packet_stats_session_data_t *core = &sasc_packet_stats_main.session_data[session_index];
-    sasc_tcp_quality_session_data_t *st = &core->tcp_session_data;
+    session_quality_data_t *core = &sasc_packet_stats_main.session_data[session_index];
+    session_quality_tcp_data_t *st = &core->tcp_data;
     return st->rtt_mean[direction];
 }
 
@@ -503,15 +326,15 @@ f64
 fq_tcp_get_rtt_stddev(u32 session_index, u8 direction) {
     if (direction > 1)
         return 0.0;
-    sasc_packet_stats_session_data_t *core = &sasc_packet_stats_main.session_data[session_index];
-    sasc_tcp_quality_session_data_t *st = &core->tcp_session_data;
-    return rtt_stddev(st, direction);
+    session_quality_data_t *core = &sasc_packet_stats_main.session_data[session_index];
+    session_quality_tcp_data_t *st = &core->tcp_data;
+    return session_quality_tcp_rtt_stddev(st, direction);
 }
 
 f64
 fq_tcp_get_rtt_asymmetry(u32 session_index) {
-    sasc_packet_stats_session_data_t *core = &sasc_packet_stats_main.session_data[session_index];
-    sasc_tcp_quality_session_data_t *st = &core->tcp_session_data;
+    session_quality_data_t *core = &sasc_packet_stats_main.session_data[session_index];
+    session_quality_tcp_data_t *st = &core->tcp_data;
 
     if (st->rtt_mean[0] <= 0.001 || st->rtt_mean[1] <= 0.001)
         return 1.0; /* No asymmetry if we don't have both measurements */
@@ -531,7 +354,7 @@ fq_tcp_register_scorer(void) {
 u64
 fq_tcp_memory_usage(void) {
     /* TCP session data is stored in sasc_packet_stats_main.session_data, not in module state */
-    return vec_len(sasc_packet_stats_main.session_data) * sizeof(sasc_tcp_quality_session_data_t);
+    return vec_len(sasc_packet_stats_main.session_data) * sizeof(session_quality_tcp_data_t);
 }
 
 static clib_error_t *

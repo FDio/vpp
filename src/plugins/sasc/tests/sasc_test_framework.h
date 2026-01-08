@@ -285,7 +285,7 @@ void *sasc_test_get_packet_stats_data(const sasc_5tuple_t *key);
  * // For TCP quality data (retransmissions, reordering, etc.)
  * static int pred_session_retransmit_detected(void *ctx) {
  *     sasc_5tuple_t *key = (sasc_5tuple_t *)ctx;
- *     sasc_tcp_quality_session_data_t *tcp_data = sasc_test_get_tcp_quality_data(key);
+ *     session_quality_tcp_data_t *tcp_data = sasc_test_get_tcp_quality_data(key);
  *     if (!tcp_data) return 0;
  *     return tcp_data->retransmissions > 0;
  * }
@@ -293,7 +293,7 @@ void *sasc_test_get_packet_stats_data(const sasc_5tuple_t *key);
  * // For packet stats data (ECN, TTL, etc.)
  * static int pred_session_ecn_ce_detected(void *ctx) {
  *     sasc_5tuple_t *key = (sasc_5tuple_t *)ctx;
- *     sasc_packet_stats_session_data_t *stats = sasc_test_get_packet_stats_data(key);
+ *     session_quality_data_t *stats = sasc_test_get_packet_stats_data(key);
  *     if (!stats) return 0;
  *     return stats->ecn_ce > 0;
  * }
