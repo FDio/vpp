@@ -225,28 +225,19 @@ clib_time_verify_frequency (clib_time_t * c)
   now_reference = unix_time_now ();
   now_clock = clib_cpu_time_now ();
 
+  if (PREDICT_FALSE (now_clock < c->last_verify_cpu_time))
+    {
+      clib_warning ("CPU clock regressed: now %lu last %lu", now_clock,
+		    c->last_verify_cpu_time);
+      /* Resync baselines so the next sample can proceed cleanly. */
+      c->last_cpu_time = now_clock;
+      c->last_verify_cpu_time = now_clock;
+      c->last_verify_reference_time = now_reference;
+      return;
+    }
+
   /* Compute change in the reference clock */
   delta_reference = now_reference - c->last_verify_reference_time;
-
-  /* And change in the CPU clock */
-  delta_clock_in_seconds = (f64) (now_clock - c->last_verify_cpu_time) *
-    c->seconds_per_clock;
-
-  /*
-   * Recompute vpp start time reference, and total clocks
-   * using the current clock rate
-   */
-  c->init_reference_time += (delta_reference - delta_clock_in_seconds);
-  c->total_cpu_time = (now_reference - c->init_reference_time)
-    * c->clocks_per_second;
-
-  c->last_cpu_time = now_clock;
-
-  /* Calculate a new clock rate sample */
-  delta_clock = c->last_cpu_time - c->last_verify_cpu_time;
-
-  c->last_verify_cpu_time = c->last_cpu_time;
-  c->last_verify_reference_time = now_reference;
 
   /*
    * Is the reported reference interval non-positive,
@@ -260,6 +251,18 @@ clib_time_verify_frequency (clib_time_t * c)
   /* Ignore this sample */
   if (delta_reference <= 0.0 || delta_reference > delta_reference_max)
     return;
+
+  /* And change in the CPU clock */
+  delta_clock_in_seconds =
+    (f64) (now_clock - c->last_verify_cpu_time) * c->seconds_per_clock;
+
+  c->last_cpu_time = now_clock;
+
+  /* Calculate a new clock rate sample */
+  delta_clock = now_clock - c->last_verify_cpu_time;
+
+  c->last_verify_cpu_time = now_clock;
+  c->last_verify_reference_time = now_reference;
 
   /*
    * Reject large frequency changes, another consequence of
@@ -279,6 +282,12 @@ clib_time_verify_frequency (clib_time_t * c)
 		    (delta / c->clocks_per_second) * 100.0);
       return;
     }
+
+  /*
+   * Recompute vpp start time reference, and total clocks
+   * using the current clock rate
+   */
+  c->init_reference_time += (delta_reference - delta_clock_in_seconds);
 
   /* Add sample to the exponentially-smoothed rate */
   c->clocks_per_second = c->clocks_per_second * c->damping_constant +
