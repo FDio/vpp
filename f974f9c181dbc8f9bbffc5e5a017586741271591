@@ -51,6 +51,24 @@
       "message": "could we ignore the input value here and set it to ~0?",
       "revId": "f974f9c181dbc8f9bbffc5e5a017586741271591",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1f1d58e9_cf751909",
+        "filename": "src/vnet/fib/fib_api.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 191,
+      "author": {
+        "id": 2561
+      },
+      "writtenOn": "2026-01-08T09:31:36Z",
+      "side": 1,
+      "message": "Well, I\u0027m thinking for valid reasons of multiple sw interfaces in \"right\" vrf, to be used for generating icmp reply. Taking into account that frp_sw_if_index was not initialized before, there should be no real word usage for specific sw_if_index, so indeed it can be ignored.",
+      "parentUuid": "b9d65155_190d108b",
+      "revId": "f974f9c181dbc8f9bbffc5e5a017586741271591",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
