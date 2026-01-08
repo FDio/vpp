@@ -33,6 +33,23 @@
       "message": "recheck",
       "revId": "b4d0402c6c2ed04bb5218baf0b4aa62bb4779eb2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4fcc7dff_01e3afb4",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2561
+      },
+      "writtenOn": "2026-01-08T13:56:34Z",
+      "side": 1,
+      "message": "Hi Neale, kindly please take a look - improves ecmp over multiple mpls tunnels for example, and in our case - over mpls tunnels over multiple vxlan tunnels - can be any combinations of subsequent lb node graph",
+      "revId": "b4d0402c6c2ed04bb5218baf0b4aa62bb4779eb2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
