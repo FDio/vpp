@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "196ca58c_52b0a6bd",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2561
+      },
+      "writtenOn": "2026-01-08T14:28:32Z",
+      "side": 1,
+      "message": "Hi, Neale, rebased and finally green, this is what we\u0027re using in production with thousands of mpls-o-udp tunnels. Kindly please take a look, and subsequent related https://gerrit.fd.io/r/c/vpp/+/40627",
+      "revId": "38de5990da203e9a704dde667592aed66a159d23",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
