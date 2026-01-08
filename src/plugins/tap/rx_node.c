@@ -316,8 +316,8 @@ tap_device_input_one_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
     }
   else
     {
-      n_rx = tap_rx_dequeue (vm, node, tif, rxq, buffer_indices, next_indices,
-			     &n_rx_bytes, 0);
+      n_rx =
+	tap_rx_dequeue (vm, node, tif, rxq, buffer_indices, 0, &n_rx_bytes, 0);
       if (n_rx == 0)
 	goto done;
     }
@@ -333,7 +333,8 @@ tap_device_input_one_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       for (u32 i = 0; n_trace > 0 && i < n_rx; i++)
 	{
 	  vlib_buffer_t *b = vlib_get_buffer (vm, buffer_indices[i]);
-	  if (vlib_trace_buffer (vm, node, next_indices[i], b,
+	  if (vlib_trace_buffer (vm, node,
+				 is_tun ? next_indices[i] : next_index, b,
 				 /* follow_chain */ 0))
 	    {
 	      tap_rx_trace_t *tr;
