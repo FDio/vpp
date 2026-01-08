@@ -16,6 +16,24 @@
       "message": "Hi Neale, kindly please take a look\nWe\u0027re using pbr with intf-rx on loopback in some scenario and were faced ip lookups in pbr table, not in loopback interface vrf.",
       "revId": "f974f9c181dbc8f9bbffc5e5a017586741271591",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1e696632_676ce89e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2561
+      },
+      "writtenOn": "2026-01-08T09:08:07Z",
+      "side": 1,
+      "message": "Neale, ouch plz ignore reasoning - it\u0027s from different patch.\nThis one is to fix crashes on null route remove, same as it was done before for drop, also removes unnecessary FIB_ENTRY_FLAG_NO_ATTACHED_EXPORT specific hack for drop, not required after sw_if_index fix",
+      "parentUuid": "24a12944_98f20ae0",
+      "revId": "f974f9c181dbc8f9bbffc5e5a017586741271591",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
