@@ -16,6 +16,24 @@
       "message": "I\u0027ll let Neale review the udp_encap.c logic, but my ask is that we prefix the startup config with \"encap\" to be sure it won\u0027t be assumed to be a generic udp connection dscp config.",
       "revId": "b0b784cd4b23846d60b71bc79f13f35613e64ae6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "04fa1718_fe7e1ba3",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2561
+      },
+      "writtenOn": "2026-01-08T21:41:23Z",
+      "side": 1,
+      "message": "great suggestion, Florin, thank you. will also tune tests to do encap only",
+      "parentUuid": "17cb573c_f373b508",
+      "revId": "b0b784cd4b23846d60b71bc79f13f35613e64ae6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
