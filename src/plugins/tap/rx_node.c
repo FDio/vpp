@@ -243,6 +243,7 @@ tap_rx_dequeue (vlib_main_t *vm, vlib_node_runtime_t *node, tap_if_t *tif,
 	      cb = vlib_get_buffer (vm, cbi);
 
 	      /* current buffer */
+	      cb->current_data = -hdr_sz;
 	      cb->current_length = clen;
 
 	      /* previous buffer */
@@ -316,8 +317,8 @@ tap_device_input_one_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
     }
   else
     {
-      n_rx = tap_rx_dequeue (vm, node, tif, rxq, buffer_indices, next_indices,
-			     &n_rx_bytes, 0);
+      n_rx =
+	tap_rx_dequeue (vm, node, tif, rxq, buffer_indices, 0, &n_rx_bytes, 0);
       if (n_rx == 0)
 	goto done;
     }
@@ -341,7 +342,8 @@ tap_device_input_one_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      tr = vlib_add_trace (vm, node, b, sizeof (*tr));
 	      tr->next_index = next;
 	      tr->hw_if_index = tif->hw_if_index;
-	      tr->len = b->current_length;
+	      tr->len =
+		b->current_length + b->total_length_not_including_first_buffer;
 	      tr->hdr = ((vnet_virtio_net_hdr_v1_t *) (b->data + off))[-1];
 	      n_trace--;
 	    }
