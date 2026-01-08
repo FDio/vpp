@@ -67,6 +67,24 @@
       "message": "Hi, CLIB_DEBUG is constant define in compile time, with 0 for release builds code blocks are eliminated and kept only for debug builds.\nso, VLIB_VALIDATE_BUFFER_DEBUG in all the places with CLIB_DEBUG makes effect only for debug builds which are slow due multiple other reasons (like vec validations and so on), was it implied?",
       "revId": "e83bdb81e08d319c917327626e2f5f2b62f2b4d4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "dda0d481_46615e56",
+        "filename": "extras/deprecated/ixge/ixge.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1719,
+      "author": {
+        "id": 3200
+      },
+      "writtenOn": "2026-01-08T23:42:44Z",
+      "side": 1,
+      "message": "Thanks, I am having discussions with colleagues about this change because we might not have a good case for it. I will plan on updating here in the next working day or two.",
+      "parentUuid": "be766cf7_20182aab",
+      "revId": "e83bdb81e08d319c917327626e2f5f2b62f2b4d4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
