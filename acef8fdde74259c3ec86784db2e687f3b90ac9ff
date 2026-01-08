@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "52dcb421_f2fb7fc2",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2561
+      },
+      "writtenOn": "2026-01-08T23:53:37Z",
+      "side": 1,
+      "message": "Hi, John and Steven, kindly please take a look\nAlmost same approach is used for udp encap in https://gerrit.fd.io/r/c/vpp/+/44567",
+      "revId": "acef8fdde74259c3ec86784db2e687f3b90ac9ff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
