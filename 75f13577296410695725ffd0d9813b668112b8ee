@@ -16,6 +16,24 @@
       "message": "Hi Dave, should be typo",
       "revId": "75f13577296410695725ffd0d9813b668112b8ee",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1683f08b_8b359fd3",
+        "filename": "test/test_memif.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-01-08T12:53:14Z",
+      "side": 1,
+      "message": "Done.  Thanks for the review!",
+      "parentUuid": "8020ec41_fdc7f062",
+      "revId": "75f13577296410695725ffd0d9813b668112b8ee",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
