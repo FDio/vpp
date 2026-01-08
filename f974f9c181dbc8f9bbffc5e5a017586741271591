@@ -34,6 +34,23 @@
       "parentUuid": "24a12944_98f20ae0",
       "revId": "f974f9c181dbc8f9bbffc5e5a017586741271591",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b9d65155_190d108b",
+        "filename": "src/vnet/fib/fib_api.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 191,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2026-01-08T09:08:34Z",
+      "side": 1,
+      "message": "could we ignore the input value here and set it to ~0?",
+      "revId": "f974f9c181dbc8f9bbffc5e5a017586741271591",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
