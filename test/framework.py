@@ -431,7 +431,7 @@ class VppTestCase(VppAsfTestCase):
             )
             self.logger.debug(
                 "Checksum field `%s` on `%s` layer has correct value `%s`"
-                % (cf, temp[layer].name, calc_sum)
+                % (cf, temp[layer].name, hex(calc_sum))
             )
 
     def assert_checksum_valid(
