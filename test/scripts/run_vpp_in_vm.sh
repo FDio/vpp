@@ -35,11 +35,16 @@ CPUS=${#CPU_MASK_ARRAY[@]}
 # Guest MEM (Default 2G)
 MEM=${5:-"2G"}
 
-# Set the QEMU executable for the OS pkg.
+# Set the QEMU executable for the OS pkg and architecture
 os_VENDOR=$(lsb_release -i -s)
+ARCH=$(uname -m)
 if [[ $os_VENDOR =~ (Debian|Ubuntu) ]]; then
     os_PACKAGE="deb"
-    QEMU=${QEMU:-"qemu-system-x86_64"}
+    if [[ $ARCH == "aarch64" ]] || [[ $ARCH == "arm64" ]]; then
+        QEMU=${QEMU:-"qemu-system-aarch64"}
+    else
+        QEMU=${QEMU:-"qemu-system-x86_64"}
+    fi
 else
     os_PACKAGE="rpm"
     QEMU=${QEMU:-"qemu-kvm"}
@@ -147,8 +152,26 @@ for envVar in ${EnvVarArray[*]}; do
     fi
 done
 
+# Create tap interfaces for virtio backend
+# These will be used by QEMU virtio-net-pci devices and later
+# attached to namespaces by the test framework
+function create_tap_interfaces {
+    # Create vtap0 and vtap1 if they don't exist
+    if ! ip link show vtap0 > /dev/null 2>&1; then
+        sudo ip tuntap add vtap0 mode tap
+        sudo ip link set vtap0 up
+    fi
+    if ! ip link show vtap1 > /dev/null 2>&1; then
+        sudo ip tuntap add vtap1 mode tap
+        sudo ip link set vtap1 up
+    fi
+}
+
 # Boot QEMU VM and run the test
 function run_in_vm {
+    # Create tap interfaces for virtio testing
+    create_tap_interfaces
+
     INIT=$(mktemp -p ${TEST_DATA_DIR})
     cat > ${INIT} << _EOF_
 #!/bin/bash
@@ -167,14 +190,29 @@ _EOF_
 
     chmod +x ${INIT}
 
+    # Select machine type based on architecture
+    if [[ $ARCH == "aarch64" ]] || [[ $ARCH == "arm64" ]]; then
+        MACHINE_TYPE="virt"
+        CONSOLE="ttyAMA0"
+    else
+        MACHINE_TYPE="pc"
+        CONSOLE="ttyS0"
+    fi
+    ACCEL="kvm"
+    CPU_MODEL="host"
+    if [[ ! -e /dev/kvm ]]; then
+        ACCEL="tcg"
+        CPU_MODEL="max"
+    fi
+
     sudo taskset -c ${CPU_MASK} ${QEMU} \
                  -nodefaults \
                  -name test_$(basename $INIT) \
                  -chardev stdio,mux=on,id=char0 \
                  -mon chardev=char0,mode=readline \
                  -serial chardev:char0 \
-                 -machine pc,accel=kvm,usb=off,mem-merge=off \
-                 -cpu host \
+                 -machine ${MACHINE_TYPE},accel=${ACCEL},usb=off \
+                 -cpu ${CPU_MODEL} \
                  -smp ${CPUS},sockets=1,cores=${CPUS},threads=1 \
                  -m ${MEM} \
                  -no-user-config \
@@ -186,8 +224,12 @@ _EOF_
                  -virtfs local,path=/tmp,mount_tag=tmp9p,security_model=passthrough,id=tmp9p,multidevs=remap \
                  -netdev tap,id=net0,vhost=on \
                  -device virtio-net-pci,netdev=net0,mac=52:54:00:de:64:01 \
+                 -netdev tap,id=vtap0,ifname=vtap0,script=no,downscript=no \
+                 -device virtio-net-pci,netdev=vtap0,mac=52:54:00:de:64:02,addr=0x6 \
+                 -netdev tap,id=vtap1,ifname=vtap1,script=no,downscript=no \
+                 -device virtio-net-pci,netdev=vtap1,mac=52:54:00:de:64:03,addr=0x7 \
                  -nographic \
-                 -append "ro root=fsRoot rootfstype=9p rootflags=trans=virtio,cache=mmap console=ttyS0 hugepages=${HUGEPAGES} init=${INIT}"
+                 -append "ro root=fsRoot rootfstype=9p rootflags=trans=virtio,cache=mmap console=${CONSOLE} hugepages=${HUGEPAGES} init=${INIT}"
     }
 
 run_in_vm

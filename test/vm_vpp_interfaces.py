@@ -259,6 +259,7 @@ class TestVPPInterfacesQemu:
         # IPerf client & server ingress/egress interface indexes in VPP
         self.tap_interfaces = []
         self.memif_interfaces = []
+        self.virtio_interfaces = []
         self.ingress_if_idxes = []
         self.egress_if_idxes = []
         self.vpp_interfaces = []
@@ -389,6 +390,47 @@ class TestVPPInterfacesQemu:
                     ),
                     version=client_if_version,
                 )
+            elif client_if_type == "virtio":
+                virtio_config = test_config["virtio"]
+                pci_address = virtio_config["client_pci_address"]
+                linux_tap_name = virtio_config["iprf_client_interface_on_linux"]
+
+                # Configure the backend tap interface (created by QEMU)
+                # and move it to the client namespace
+                import subprocess
+                subprocess.run(
+                    ["sudo", "ip", "link", "set", linux_tap_name, "netns", self.client_namespace],
+                    check=True
+                )
+                subprocess.run(
+                    ["sudo", "ip", "netns", "exec", self.client_namespace,
+                     "ip", "addr", "add",
+                     (layer2["client_ip4_prefix"] if x_connect_mode == "L2" else layer3["client_ip4_prefix"]),
+                     "dev", linux_tap_name],
+                    check=True
+                )
+                subprocess.run(
+                    ["sudo", "ip", "netns", "exec", self.client_namespace,
+                     "ip", "addr", "add",
+                     (layer2["client_ip6_prefix"] if x_connect_mode == "L2" else layer3["client_ip6_prefix"]),
+                     "dev", linux_tap_name],
+                    check=True
+                )
+                subprocess.run(
+                    ["sudo", "ip", "netns", "exec", self.client_namespace,
+                     "ip", "link", "set", linux_tap_name, "up"],
+                    check=True
+                )
+
+                # Create VPP virtio interface
+                self.ingress_if_idx = self.create_virtio(
+                    pci_address=pci_address,
+                    enable_gso=enable_client_if_gso,
+                )
+                self.ingress_if_idxes.append(self.ingress_if_idx)
+                self.vpp_interfaces.append(self.ingress_if_idx)
+                self.virtio_interfaces.append(self.ingress_if_idx)
+                self.linux_interfaces.append([self.client_namespace, linux_tap_name])
             else:
                 print(
                     f"Unsupported client interface type: {client_if_type} "
@@ -472,6 +514,42 @@ class TestVPPInterfacesQemu:
                     ip6_prefix=server_ip6_prefix,
                     version=server_if_version,
                 )
+            elif server_if_type == "virtio":
+                virtio_config = test_config["virtio"]
+                pci_address = virtio_config["server_pci_address"]
+                linux_tap_name = virtio_config["iprf_server_interface_on_linux"]
+
+                # Configure the backend tap interface (created by QEMU)
+                # and move it to the server namespace
+                subprocess.run(
+                    ["sudo", "ip", "link", "set", linux_tap_name, "netns", self.server_namespace],
+                    check=True
+                )
+                subprocess.run(
+                    ["sudo", "ip", "netns", "exec", self.server_namespace,
+                     "ip", "addr", "add", server_ip4_prefix, "dev", linux_tap_name],
+                    check=True
+                )
+                subprocess.run(
+                    ["sudo", "ip", "netns", "exec", self.server_namespace,
+                     "ip", "addr", "add", server_ip6_prefix, "dev", linux_tap_name],
+                    check=True
+                )
+                subprocess.run(
+                    ["sudo", "ip", "netns", "exec", self.server_namespace,
+                     "ip", "link", "set", linux_tap_name, "up"],
+                    check=True
+                )
+
+                # Create VPP virtio interface
+                self.egress_if_idx = self.create_virtio(
+                    pci_address=pci_address,
+                    enable_gso=enable_server_if_gso,
+                )
+                self.egress_if_idxes.append(self.egress_if_idx)
+                self.vpp_interfaces.append(self.egress_if_idx)
+                self.virtio_interfaces.append(self.egress_if_idx)
+                self.linux_interfaces.append([self.server_namespace, linux_tap_name])
             else:
                 print(
                     f"Unsupported server interface type: {server_if_type} "
@@ -518,18 +596,28 @@ class TestVPPInterfacesQemu:
 
     def tearDown(self):
         # Delete tap interfaces
-        for interface_if_idx in self.tap_interfaces:
-            try:
-                self.vapi.tap_delete_v2(sw_if_index=interface_if_idx)
-            except Exception:
-                pass
+        if hasattr(self, "tap_interfaces"):
+            for interface_if_idx in self.tap_interfaces:
+                try:
+                    self.vapi.tap_delete_v2(sw_if_index=interface_if_idx)
+                except Exception:
+                    pass
 
         # Delete memif interfaces
-        for interface_if_idx in self.memif_interfaces:
-            try:
-                self.vapi.memif_delete(sw_if_index=interface_if_idx)
-            except Exception:
-                pass
+        if hasattr(self, "memif_interfaces"):
+            for interface_if_idx in self.memif_interfaces:
+                try:
+                    self.vapi.memif_delete(sw_if_index=interface_if_idx)
+                except Exception:
+                    pass
+
+        # Delete virtio interfaces
+        if hasattr(self, "virtio_interfaces"):
+            for interface_if_idx in self.virtio_interfaces:
+                try:
+                    self.vapi.virtio_pci_delete(sw_if_index=interface_if_idx)
+                except Exception:
+                    pass
 
         # Delete af_packet interfaces
         try:
@@ -647,6 +735,53 @@ class TestVPPInterfacesQemu:
             self.vapi.feature_gso_enable_disable(
                 sw_if_index=sw_if_index, enable_disable=0
             )
+        self.vapi.sw_interface_set_flags(sw_if_index=sw_if_index, flags=1)
+        return sw_if_index
+
+    def create_virtio(self, pci_address, enable_gso=0):
+        """Create a virtio PCI interface in VPP.
+
+        Parameters:
+        pci_address -- PCI address of the virtio device (e.g., "0000:00:06.0")
+        enable_gso -- Enable GSO on the interface when True
+        """
+        from vpp_papi import VppEnum
+
+        virtio_flags = VppEnum.vl_api_virtio_flags_t
+        flags = 0
+        if enable_gso:
+            flags = virtio_flags.VIRTIO_API_FLAG_GSO
+
+        # Parse PCI address format "0000:00:06.0" to components
+        # Expected format: domain:bus:slot.function
+        pci_parts = pci_address.replace(":", ".").split(".")
+        if len(pci_parts) != 4:
+            raise ValueError(f"Invalid PCI address format: {pci_address}")
+
+        api_args = {
+            "pci_addr": {
+                "domain": int(pci_parts[0], 16),
+                "bus": int(pci_parts[1], 16),
+                "slot": int(pci_parts[2], 16),
+                "function": int(pci_parts[3], 16),
+            },
+            "use_random_mac": True,
+            "virtio_flags": flags,
+            "features": 0,  # Let VPP negotiate features
+        }
+        result = self.vapi.virtio_pci_create_v2(**api_args)
+        sw_if_index = result.sw_if_index
+
+        # Enable software GSO chunking when interface doesn't support GSO offload
+        if enable_gso == 0:
+            self.vapi.feature_gso_enable_disable(
+                sw_if_index=sw_if_index, enable_disable=1
+            )
+        else:
+            self.vapi.feature_gso_enable_disable(
+                sw_if_index=sw_if_index, enable_disable=0
+            )
+
         self.vapi.sw_interface_set_flags(sw_if_index=sw_if_index, flags=1)
         return sw_if_index
 

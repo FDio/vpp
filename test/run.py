@@ -139,6 +139,29 @@ def vm_test_runner(
     if not run_vpp_in_vm_sh.is_file():
         print(f"Error: script {base_dir}/scripts/run_vpp_in_vm.sh not found.")
         sys.exit(1)
+
+
+def get_available_mem_gib():
+    try:
+        lines = os.popen("free -g").read().splitlines()
+    except Exception:
+        return 0
+    if not lines:
+        return 0
+    header = lines[0].lower().split()
+    mem_line = next((line for line in lines if line.lower().startswith("mem:")), "")
+    if not mem_line:
+        return 0
+    values = mem_line.split()
+    if "available" in header:
+        idx = header.index("available") + 1
+        if idx < len(values):
+            return int(values[idx])
+    if "free" in header:
+        idx = header.index("free") + 1
+        if idx < len(values):
+            return int(values[idx])
+    return 0
     p = Popen(
         [run_vpp_in_vm_sh, test_name, kernel_image, test_data_dir, cpu_mask, mem],
         stdout=PIPE,
@@ -375,7 +398,7 @@ if __name__ == "__main__":
         if num_cpus > usable_cpus:
             print(f"Error:# of CPUs:{num_cpus} > Avail CPUs:{usable_cpus}")
             sys.exit(1)
-        avail_mem = int(os.popen("free -t -g").readlines()[-1].split()[-1])
+        avail_mem = get_available_mem_gib()
         if int(args.vm_mem) > avail_mem:
             print(f"Error: Mem Size:{args.vm_mem}G > Avail Mem:{avail_mem}G")
             sys.exit(1)
