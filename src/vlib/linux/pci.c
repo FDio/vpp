@@ -782,7 +782,6 @@ add_device_uio (vlib_main_t * vm, linux_pci_device_t * p,
 
   p->config_fd = open ((char *) s, O_RDWR);
   p->config_offset = 0;
-  vec_reset_length (s);
 
   if (p->config_fd == -1)
     {
@@ -790,6 +789,7 @@ add_device_uio (vlib_main_t * vm, linux_pci_device_t * p,
       goto error;
     }
 
+  vec_reset_length (s);
   s = format (0, "%s/%U/uio%c", sysfs_pci_dev_path,
 	      format_vlib_pci_addr, &di->addr, 0);
   foreach_directory_file ((char *) s, scan_uio_dir, p,	/* scan_dirs */
