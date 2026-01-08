@@ -36,7 +36,7 @@ from bfd import (
 from framework import VppTestCase
 from asfframework import (
     tag_fixme_vpp_workers,
-    tag_fixme_debian11,
+    tag_fixme_debian12,
     tag_run_solo,
     VppTestRunner,
 )
@@ -1079,7 +1079,7 @@ def bfd_stats_diff(stats_before, stats_after):
     ]
 )
 @tag_run_solo
-@tag_fixme_debian11
+@tag_fixme_debian12
 class BFD4TestCase(VppTestCase):
     pg0 = None
     interface0 = None
