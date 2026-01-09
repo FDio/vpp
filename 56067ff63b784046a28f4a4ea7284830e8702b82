@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "595be452_60e97eb7",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 31
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-01-09T01:14:01Z",
+      "side": 1,
+      "message": "Please rebase this (and child gerrit change) onto HEAD to utilize the latest CI changes.",
+      "revId": "56067ff63b784046a28f4a4ea7284830e8702b82",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
