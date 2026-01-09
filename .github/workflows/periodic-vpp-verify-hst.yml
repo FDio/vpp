@@ -1,4 +1,4 @@
-name: periodic-vpp-verify-hst-periodic
+name: periodic-vpp-verify-hst
 
 on:
   schedule:
