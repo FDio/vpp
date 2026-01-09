@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b9e475ad_9c03b89b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2561
+      },
+      "writtenOn": "2026-01-09T10:45:43Z",
+      "side": 1,
+      "message": "Hi Neale and John, this one protects tracked p2p vxlan-like endpoints.\nIn our scenario routes to p2p endpoints are dynamic, so can be absent in runtime -w/o fix it was triggering full outage. Kindly please review",
+      "revId": "dff18f71f683564a262368a6e00490eca7cfc2f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
