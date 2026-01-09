@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e798102e_3f861499",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-01-09T12:40:07Z",
+      "side": 1,
+      "message": "should be MAC feature not MTU?",
+      "revId": "b9249c293611be5456ac2ce32f61392ee09d49f3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
