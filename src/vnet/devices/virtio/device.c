@@ -426,7 +426,7 @@ add_buffer_to_slot (vlib_main_t *vm, vlib_node_runtime_t *node,
 
   if (PREDICT_TRUE ((b->flags & VLIB_BUFFER_NEXT_PRESENT) == 0))
     {
-      d->addr = vlib_buffer_get_current_pa (vm, b);
+      d->addr = vlib_buffer_get_current_pa (vm, b) - hdr_sz;
       d->len = b->current_length + hdr_sz;
       d->flags = 0;
     }
@@ -599,7 +599,7 @@ add_buffer_to_slot_packed (vlib_main_t *vm, vlib_node_runtime_t *node,
 
   if (PREDICT_TRUE ((b->flags & VLIB_BUFFER_NEXT_PRESENT) == 0))
     {
-      d->addr = vlib_buffer_get_current_pa (vm, b);
+      d->addr = vlib_buffer_get_current_pa (vm, b) - hdr_sz;
       d->len = b->current_length + hdr_sz;
     }
   else if (is_indirect)
