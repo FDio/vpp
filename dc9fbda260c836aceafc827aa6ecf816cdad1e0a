@@ -50,6 +50,23 @@
       "message": "recheck",
       "revId": "dc9fbda260c836aceafc827aa6ecf816cdad1e0a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "01c46ee3_13c10157",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2561
+      },
+      "writtenOn": "2026-01-09T09:52:32Z",
+      "side": 1,
+      "message": "Hi Neale, replaced with ~0 for drop \u0026 icmp, tests still gives green result",
+      "revId": "dc9fbda260c836aceafc827aa6ecf816cdad1e0a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
