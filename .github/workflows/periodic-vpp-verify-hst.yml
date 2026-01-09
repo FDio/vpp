@@ -47,13 +47,9 @@ jobs:
       matrix:
         build_type: ['debug', 'release']
         class: ['hst']
-        os: ['ubuntu2204']
+        os: ['ubuntu2204', 'ubuntu2404']
         executor_arch: ['x86_64', 'aarch64']
         size: ['hst']
-        exclude:
-          # Exclude release builds on aarch64
-          - executor_arch: 'aarch64'
-            build_type: 'release'
 
     env:
       FDIO_NAMESPACE: ${{ github.event.inputs.FDIO_NAMESPACE || 'prod' }}
