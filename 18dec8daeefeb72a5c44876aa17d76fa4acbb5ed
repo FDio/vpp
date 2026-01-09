@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "68b9781c_86e43a0d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-01-09T16:32:00Z",
+      "side": 1,
+      "message": "44580 appears to be the continuation of this gerrit change (maybe forgot to git commit --amend ?).  If so, please abandon one of them.  If you decide to keep this one, please rebase on HEAD to pick up the latest CI stability fixes.",
+      "revId": "18dec8daeefeb72a5c44876aa17d76fa4acbb5ed",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
