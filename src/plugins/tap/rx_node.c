@@ -243,7 +243,7 @@ tap_rx_dequeue (vlib_main_t *vm, vlib_node_runtime_t *node, tap_if_t *tif,
 	      cb = vlib_get_buffer (vm, cbi);
 
 	      /* current buffer */
-	      cb->current_data = -hdr_sz;
+	      cb->current_data = -hdr_sz + off;
 	      cb->current_length = clen;
 
 	      /* previous buffer */
