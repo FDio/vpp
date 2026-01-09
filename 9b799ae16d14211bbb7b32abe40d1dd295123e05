@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "33cf21e3_ae6da1d7",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2561
+      },
+      "writtenOn": "2026-01-09T13:21:22Z",
+      "side": 1,
+      "message": "Hello, this is sort of feature-parity with rx-ip while via-label nh has no support for eos label lookup via api, I might be add it next patchset",
+      "revId": "9b799ae16d14211bbb7b32abe40d1dd295123e05",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
