@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "0cb48730a14d05558ff91422049c3c034b0b450c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "def00694_da04782e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2561
+      },
+      "writtenOn": "2026-01-09T13:17:58Z",
+      "side": 1,
+      "message": "Hi Neale, now it\u0027s the right one Ж)\nWe\u0027re using pbr with intf-rx on loopback in some scenario and were faced ip lookups in pbr table, not in loopback interface vrf.",
+      "revId": "0cb48730a14d05558ff91422049c3c034b0b450c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
