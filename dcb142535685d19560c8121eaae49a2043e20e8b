@@ -34,6 +34,24 @@
       "parentUuid": "f85eab39_bbe350a6",
       "revId": "dcb142535685d19560c8121eaae49a2043e20e8b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6cce1575_7b69cfa6",
+        "filename": "src/vlib/linux/pci.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 793,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-01-09T16:59:12Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3c0cec58_a594591b",
+      "revId": "dcb142535685d19560c8121eaae49a2043e20e8b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
