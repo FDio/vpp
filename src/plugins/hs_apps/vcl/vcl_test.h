@@ -106,6 +106,7 @@ typedef struct
   int (*accept) (int listen_fd, vcl_test_session_t *ts);
   int (*cleanup) (vcl_test_session_t *ts);
   int (*close) (vcl_test_session_t *ts, uint32_t events);
+  int (*reset) (vcl_test_session_t *ts);
 } vcl_test_proto_vft_t;
 
 typedef struct
@@ -320,6 +321,13 @@ static inline int
 vcl_test_close_nop (vcl_test_session_t *ts, uint32_t events)
 {
   /* just signal that we can close session */
+  return 1;
+}
+
+static inline int
+vcl_test_reset_nop (vcl_test_session_t *ts)
+{
+  /* just signal that this was not expected (error) */
   return 1;
 }
 

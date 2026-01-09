@@ -110,6 +110,7 @@ static const vcl_test_proto_vft_t vcl_test_tcp = {
   .listen = vt_tcp_listen,
   .accept = vt_tcp_accept,
   .close = vcl_test_close_nop,
+  .reset = vcl_test_reset_nop,
 };
 
 VCL_TEST_REGISTER_PROTO (VPPCOM_PROTO_TCP, vcl_test_tcp);
@@ -244,11 +245,21 @@ vt_udp_accept (int listen_fd, vcl_test_session_t *ts)
   return 0;
 }
 
+static int
+vt_udp_reset (vcl_test_session_t *ts)
+{
+  vtinf ("Test session %d (fd %d) reset (ICMP destination unreachable "
+	 "received - client closed UDP session).",
+	 ts->session_index, ts->fd);
+  return 0;
+}
+
 static const vcl_test_proto_vft_t vcl_test_udp = {
   .open = vt_udp_connect,
   .listen = vt_udp_listen,
   .accept = vt_udp_accept,
   .close = vcl_test_close_nop,
+  .reset = vt_udp_reset,
 };
 
 VCL_TEST_REGISTER_PROTO (VPPCOM_PROTO_UDP, vcl_test_udp);
@@ -444,6 +455,7 @@ static const vcl_test_proto_vft_t vcl_test_tls = {
   .listen = vt_tls_listen,
   .accept = vt_tls_accept,
   .close = vcl_test_close_nop,
+  .reset = vcl_test_reset_nop,
 };
 
 VCL_TEST_REGISTER_PROTO (VPPCOM_PROTO_TLS, vcl_test_tls);
@@ -555,6 +567,7 @@ static const vcl_test_proto_vft_t vcl_test_dtls = {
   .listen = vt_dtls_listen,
   .accept = vt_dtls_accept,
   .close = vcl_test_close_nop,
+  .reset = vcl_test_reset_nop,
 };
 
 VCL_TEST_REGISTER_PROTO (VPPCOM_PROTO_DTLS, vcl_test_dtls);
@@ -930,6 +943,7 @@ static const vcl_test_proto_vft_t vcl_test_quic = {
   .accept = vt_quic_accept,
   .cleanup = vt_quic_cleanup,
   .close = vt_quic_close,
+  .reset = vcl_test_reset_nop,
 };
 
 VCL_TEST_REGISTER_PROTO (VPPCOM_PROTO_QUIC, vcl_test_quic);
@@ -1220,6 +1234,7 @@ static const vcl_test_proto_vft_t vcl_test_srtp = {
   .accept = vt_srtp_accept,
   .cleanup = vt_srtp_cleanup,
   .close = vcl_test_close_nop,
+  .reset = vcl_test_reset_nop,
 };
 
 VCL_TEST_REGISTER_PROTO (VPPCOM_PROTO_SRTP, vcl_test_srtp);
@@ -1627,6 +1642,7 @@ static const vcl_test_proto_vft_t vcl_test_http = {
   .accept = vt_http_accept,
   .cleanup = vt_http_cleanup,
   .close = vcl_test_close_nop,
+  .reset = vcl_test_reset_nop,
 };
 
 VCL_TEST_REGISTER_PROTO (VPPCOM_PROTO_HTTP, vcl_test_http);

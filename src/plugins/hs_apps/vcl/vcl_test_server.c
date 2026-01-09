@@ -817,6 +817,9 @@ vts_worker_loop (void *arg)
 		{
 		  if (errno == ECONNRESET)
 		    {
+		      /* if reset return 1 it was not expected (failure) */
+		      if (!tp->reset (conn))
+			continue;
 		      vtinf ("Connection reset by remote peer.\n");
 		      goto fail;
 		    }
