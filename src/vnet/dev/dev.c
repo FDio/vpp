@@ -29,7 +29,7 @@ vnet_dev_load_drivers (vlib_main_t *vm __clib_unused)
 
   path = os_get_exec_path ();
   vec_add1 (path, 0);
-  log_debug (0, "exec path is %s", path);
+  log_warn (0, "exec path is %s", path);
   if ((p = strrchr ((char *) path, '/')) == 0)
     goto done;
   *p = 0;
@@ -42,7 +42,7 @@ vnet_dev_load_drivers (vlib_main_t *vm __clib_unused)
   path_len = vec_len (path);
   vec_add1 (path, 0);
 
-  log_debug (0, "libpath is %s", path);
+  log_warn (0, "libpath is %s", path);
 
   dp = opendir ((char *) path);
   if (dp)
@@ -58,7 +58,7 @@ vnet_dev_load_drivers (vlib_main_t *vm __clib_unused)
 	  ext = strrchr (entry->d_name, '.');
 	  if (!ext || strncmp (ext, ".so", 3) != 0)
 	    {
-	      log_debug (0, "skipping %s, not .so", entry->d_name);
+	      log_warn (0, "skipping %s, not .so", entry->d_name);
 	      continue;
 	    }
 	  vec_set_len (path, path_len);
@@ -70,9 +70,19 @@ vnet_dev_load_drivers (vlib_main_t *vm __clib_unused)
 	      log_err (0, "failed to dlopen %s", path);
 	      continue;
 	    }
+	  else
+	    {
+	      log_err (0, "probably loaded %s", path);
+	    }
 	}
       closedir (dp);
     }
+  else
+    {
+      log_warn (0, "failed to open libpath dir);
+    }
+
+  log_warn (0, "done loading drivers", path);
 
 done:
   vec_free (path);
