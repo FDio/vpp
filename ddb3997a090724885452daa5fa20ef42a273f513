@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "76ea2486_82fceb43",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2561
+      },
+      "writtenOn": "2026-01-09T10:12:22Z",
+      "side": 1,
+      "message": "Hi Ole, rebased with ipfix validation comments fixed, please review",
+      "revId": "ddb3997a090724885452daa5fa20ef42a273f513",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
