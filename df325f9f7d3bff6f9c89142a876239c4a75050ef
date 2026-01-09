@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "930103b1_e9cd08c8",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2561
+      },
+      "writtenOn": "2026-01-09T09:44:22Z",
+      "side": 1,
+      "message": "Hi Neale, kindly please take a look - for huge fib full dump can take several minutes if output is not range-shrinked",
+      "revId": "df325f9f7d3bff6f9c89142a876239c4a75050ef",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
