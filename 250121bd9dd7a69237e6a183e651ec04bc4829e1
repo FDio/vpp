@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "bc32e3f9_b65abe6c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-01-09T14:24:37Z",
+      "side": 1,
+      "message": "Patch validated with the new virtio-pci test https://gerrit.fd.io/r/c/vpp/+/44572",
+      "revId": "250121bd9dd7a69237e6a183e651ec04bc4829e1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
