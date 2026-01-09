@@ -33,6 +33,23 @@
       "message": "recheck",
       "revId": "aae7f54d07ce433b0c7095df2b243d07576ac60b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7dbff857_9ff17bfa",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2561
+      },
+      "writtenOn": "2026-01-09T09:48:28Z",
+      "side": 1,
+      "message": "Hi, Ole, rebased against master",
+      "revId": "aae7f54d07ce433b0c7095df2b243d07576ac60b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
