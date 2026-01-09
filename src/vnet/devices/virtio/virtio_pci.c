@@ -302,16 +302,25 @@ virtio_pci_del_queue (vlib_main_t *vm, virtio_if_t *vif, u16 queue_id)
 u32
 virtio_pci_get_mac (vlib_main_t *vm, virtio_if_t *vif)
 {
-  vif->mac_addr32 = virtio_pci_reg_read_u32 (vif, VIRTIO_MAC_OFFSET (vif));
-  vif->mac_addr16 = virtio_pci_reg_read_u16 (vif, VIRTIO_MAC_OFFSET (vif) + 4);
-  return 0;
+  if (vif->features & VIRTIO_FEATURE (VIRTIO_NET_F_MAC))
+    {
+      vif->mac_addr32 = virtio_pci_reg_read_u32 (vif, VIRTIO_MAC_OFFSET (vif));
+      vif->mac_addr16 =
+	virtio_pci_reg_read_u16 (vif, VIRTIO_MAC_OFFSET (vif) + 4);
+      return 0;
+    }
+  return 1;
 }
 
 void
 virtio_pci_set_mac (vlib_main_t *vm, virtio_if_t *vif)
 {
-  virtio_pci_reg_write_u32 (vif, VIRTIO_MAC_OFFSET (vif), vif->mac_addr32);
-  virtio_pci_reg_write_u16 (vif, VIRTIO_MAC_OFFSET (vif) + 4, vif->mac_addr16);
+  if (vif->features & VIRTIO_FEATURE (VIRTIO_NET_F_MAC))
+    {
+      virtio_pci_reg_write_u32 (vif, VIRTIO_MAC_OFFSET (vif), vif->mac_addr32);
+      virtio_pci_reg_write_u16 (vif, VIRTIO_MAC_OFFSET (vif) + 4,
+				vif->mac_addr16);
+    }
 }
 
 u16
