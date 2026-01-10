@@ -12,7 +12,7 @@ import subprocess
 import time
 import os
 from framework import VppTestCase
-from asfframework import VppTestRunner, tag_fixme_debian12
+from asfframework import VppTestRunner, tag_fixme_debian11
 from config import config
 from vpp_qemu_utils import (
     create_namespace,
@@ -22,7 +22,7 @@ from vpp_iperf import start_iperf, stop_iperf
 
 
 @unittest.skipUnless(config.extended, "part of extended tests")
-@tag_fixme_debian12
+@tag_fixme_debian11
 class TestVirtioQemuL2(VppTestCase):
     """Virtio L2 xconnect test with VPP in QEMU guest.
 
