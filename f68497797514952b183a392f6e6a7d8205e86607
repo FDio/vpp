@@ -16,6 +16,24 @@
       "message": "Looks like you need to run make fixstyle-python",
       "revId": "f68497797514952b183a392f6e6a7d8205e86607",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "830655aa_a1da283b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-01-10T10:31:54Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "fed194a4_54fb93e8",
+      "revId": "f68497797514952b183a392f6e6a7d8205e86607",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
