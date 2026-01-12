@@ -321,6 +321,7 @@ show_devices_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
   vnet_dev_main_t *dm = &vnet_dev_main;
   vnet_dev_format_args_t fa = {}, *a = &fa;
   vnet_dev_t **devs = 0;
+  u32 v;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -328,6 +329,8 @@ show_devices_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
 	fa.counters = 1;
       else if (unformat (input, "zero-counters"))
 	fa.show_zero_counters = fa.counters = 1;
+      else if (unformat (input, "debug-level %u", &v))
+	fa.debug = v;
       else if (unformat (input, "debug"))
 	fa.debug = 1;
       else if (unformat (input, "%U", unformat_vnet_dev_vector, &devs))
@@ -374,7 +377,8 @@ show_devices_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
 VLIB_CLI_COMMAND (show_devices_cmd, static) = {
   .path = "show device",
   .short_help =
-    "show device [counters] [zero-counters] [debug] [<device-id> ...]",
+    "show device [counters] [zero-counters] [debug] [debug-level <n>] "
+    "[<device-id> ...]",
   .function = show_devices_cmd_fn,
   .is_mp_safe = 1,
 };
