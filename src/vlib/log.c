@@ -17,6 +17,7 @@ vlib_log_main_t log_main = {
   .size = 512,
   .add_to_elog = 0,
   .default_rate_limit = 50,
+  .initialized = 0,
 };
 
 VLIB_REGISTER_LOG_CLASS (log_log, static) = {
@@ -353,6 +354,18 @@ format_vlib_log_level (u8 * s, va_list * args)
   return format (s, "%s", t);
 }
 
+void
+vlib_log_register_registration (vlib_log_class_registration_t *r)
+{
+  r->class = vlib_log_register_class (r->class_name, r->subclass_name);
+  if (r->default_level)
+    vlib_log_get_subclass_data (r->class)->level = r->default_level;
+  if (r->default_syslog_level)
+    vlib_log_get_subclass_data (r->class)->syslog_level =
+      r->default_syslog_level;
+  vlib_log_warn (r->class, "logging class initialized");
+}
+
 clib_error_t *
 vlib_log_init (vlib_main_t *vm)
 {
@@ -364,23 +377,19 @@ vlib_log_init (vlib_main_t *vm)
 
   log_size_validate (lm);
 
+  /* Process all registrations collected during early boot */
   while (r)
     {
-      r->class = vlib_log_register_class (r->class_name, r->subclass_name);
-      if (r->default_level)
-	vlib_log_get_subclass_data (r->class)->level = r->default_level;
-      if (r->default_syslog_level)
-	vlib_log_get_subclass_data (r->class)->syslog_level =
-	  r->default_syslog_level;
+      if (r->class == ~0)
+      {
+	vlib_log_register_registration (r);
+      }
       r = r->next;
     }
 
-  r = lm->registrations;
-  while (r)
-    {
-      vlib_log_warn (r->class, "initialized");
-      r = r->next;
-    }
+  /* Set the flag so all future macro calls register immediately */
+  lm->initialized = 1;
+
   return 0;
 }
 

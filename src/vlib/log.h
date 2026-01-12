@@ -105,11 +105,13 @@ typedef struct
 
   /* registrations */
   vlib_log_class_registration_t *registrations;
+  u8 initialized;
 } vlib_log_main_t;
 
 extern vlib_log_main_t log_main;
 
 clib_error_t *vlib_log_init (struct vlib_main_t *vm);
+void vlib_log_register_registration (vlib_log_class_registration_t *r);
 vlib_log_class_t vlib_log_register_class (char *vlass, char *subclass);
 vlib_log_class_t
 vlib_log_register_class_rate_limit (char *class, char *subclass,
@@ -131,17 +133,19 @@ u8 *format_vlib_log_level (u8 * s, va_list * args);
 #define vlib_log_info(...) vlib_log(VLIB_LOG_LEVEL_INFO, __VA_ARGS__)
 #define vlib_log_debug(...) vlib_log(VLIB_LOG_LEVEL_DEBUG, __VA_ARGS__)
 
-#define VLIB_REGISTER_LOG_CLASS(x,...) \
-__VA_ARGS__ vlib_log_class_registration_t x; \
-static void __clib_constructor			\
-__vlib_add_log_registration_##x (void)		\
-  {						\
-    vlib_log_main_t * lm = &log_main;		\
-    x.next = lm->registrations;			\
-    x.class = ~0;				\
-    lm->registrations = &x;			\
-  }						\
-__VA_ARGS__  vlib_log_class_registration_t x
+#define VLIB_REGISTER_LOG_CLASS(x, ...)                                       \
+  __VA_ARGS__ vlib_log_class_registration_t x;                                \
+  static void __clib_constructor __vlib_add_log_registration_##x (void)       \
+  {                                                                           \
+    vlib_log_main_t *lm = &log_main;                                          \
+    x.next = lm->registrations;                                               \
+    x.class = ~0;                                                             \
+    lm->registrations = &x;                                                   \
+    /* If the log system is already live, register immediately */             \
+    if (lm->initialized)                                                      \
+      vlib_log_register_registration (&x);                                    \
+  }                                                                           \
+  __VA_ARGS__ vlib_log_class_registration_t x
 
 static_always_inline vlib_log_class_data_t *
 vlib_log_get_class_data (vlib_log_class_t ci)
