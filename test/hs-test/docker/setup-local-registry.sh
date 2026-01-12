@@ -28,6 +28,7 @@ else
 
     # Create a new registry container
     docker run -d \
+        -e REGISTRY_STORAGE_DELETE_ENABLED=true \
         --name "$REGISTRY_NAME" \
         --restart=always \
         -p "$REGISTRY_PORT:5000" \

@@ -53,7 +53,7 @@ else
   echo "Warning: setup-local-registry.sh not found or not executable"
   echo "Attempting to create and use local registry at localhost:5000"
   if ! docker ps | grep -q "local-registry"; then
-    docker run -d --restart=always -p $REGISTRY_PORT:5000 --name local-registry registry:2
+    docker run -d -e REGISTRY_STORAGE_DELETE_ENABLED=true --restart=always -p $REGISTRY_PORT:5000 --name local-registry registry:2
   fi
 fi
 

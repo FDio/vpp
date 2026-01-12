@@ -129,6 +129,7 @@ help:
 	@echo " cleanup-hst              - removes all docker containers and namespaces from last test run"
 	@echo " list-tests               - list all tests"
 	@echo " install-deps             - install software dependencies"
+	@echo " clean-hst-registry       - delete images and repositories from local registry"
 	@echo
 	@echo "'make build' and 'make test' arguments:"
 	@echo " UBUNTU_VERSION           - ubuntu version for docker image"
@@ -318,3 +319,7 @@ cleanup-hst:
 	@echo "****************************"
 	@echo "Done."
 	@echo "****************************"
+
+.PHONY: clear-hst-registry
+clear-hst-registry:
+	@bash ./script/clean_registry.sh
