@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "1b40de494d5caf658050f3c4c6a9f98b7310c2d7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "34f46620_31a7c112",
+        "filename": "test/hs-test/script/clean_registry.sh",
+        "patchSetId": 1
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-01-12T16:46:24Z",
+      "side": 1,
+      "message": "can we remove \".last_state_hash\" instead of this?",
+      "revId": "1b40de494d5caf658050f3c4c6a9f98b7310c2d7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
