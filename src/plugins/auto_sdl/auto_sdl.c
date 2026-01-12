@@ -71,7 +71,11 @@ auto_sdl_add_del (auto_sdl_mapping_t *mapping, u32 is_add)
   args.table_args.action_index = mapping->action_index;
   args.table_args.is_add = is_add;
   args.table_args.tag = mapping->tag;
-  args.appns_index = *vec_elt_at_index (st->appns_index, 0);
+  /* If appns_index not set, assume default appns and use mapping fib_index */
+  if (st->appns_index)
+    args.appns_index = *vec_elt_at_index (st->appns_index, 0);
+  else
+    args.fib_index = mapping->fib_index;
   args.scope = SESSION_RULE_SCOPE_GLOBAL;
   log_debug ("%s sdl entry %U, appns_index %d", is_add ? "added" : "deleted",
 	     format_ip46_address, &args.table_args.rmt.fp_addr, IP46_TYPE_ANY,

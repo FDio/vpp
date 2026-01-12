@@ -1465,7 +1465,11 @@ vnet_session_rule_add_del (session_rule_add_del_args_t *args)
   if ((args->scope & SESSION_RULE_SCOPE_GLOBAL) || args->scope == 0)
     {
       fib_proto = args->table_args.rmt.fp_proto;
-      fib_index = app_namespace_get_fib_index (app_ns, fib_proto);
+      /* If in the default appns and fib index provided, use it */
+      if (app_namespace_index (app_ns) == 0 && args->fib_index)
+	fib_index = args->fib_index;
+      else
+	fib_index = app_namespace_get_fib_index (app_ns, fib_proto);
       st = session_table_get_for_fib_index (fib_proto, fib_index);
       if (!st)
 	return SESSION_E_INVALID;
