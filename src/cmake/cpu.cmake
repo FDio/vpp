@@ -265,7 +265,7 @@ macro(vpp_library_set_multiarch_sources lib)
   cmake_parse_arguments(ARG
     ""
     ""
-    "SOURCES;DEPENDS;FORCE_ON"
+    "SOURCES;DEPENDS;FORCE_ON;INCLUDE_DIRECTORIES"
     ${ARGN}
   )
 
@@ -292,10 +292,12 @@ macro(vpp_library_set_multiarch_sources lib)
       add_dependencies(${l} ${ARG_DEPENDS})
     endif()
     set_target_properties(${l} PROPERTIES POSITION_INDEPENDENT_CODE ON)
+    if(ARG_INCLUDE_DIRECTORIES)
+      target_include_directories(${l} PRIVATE ${ARG_INCLUDE_DIRECTORIES})
+    endif()
     target_compile_definitions(${l} PUBLIC CLIB_MARCH_VARIANT=${VARIANT})
     separate_arguments(VARIANT_FLAGS)
     target_compile_options(${l} PUBLIC ${VARIANT_FLAGS})
     target_sources(${lib} PRIVATE $<TARGET_OBJECTS:${l}>)
   endforeach()
 endmacro()
-

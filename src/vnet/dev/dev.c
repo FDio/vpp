@@ -8,12 +8,75 @@
 #include <vnet/dev/dev.h>
 #include <vnet/dev/log.h>
 #include <vnet/dev/counters.h>
+#include <vppinfra/unix.h>
+#include <dlfcn.h>
+#include <dirent.h>
 
 VLIB_REGISTER_LOG_CLASS (dev_log, static) = {
   .class_name = "dev",
 };
 
 vnet_dev_main_t vnet_dev_main = { .next_rx_queue_thread = 1 };
+
+static void
+vnet_dev_load_drivers (vlib_main_t *vm __clib_unused)
+{
+  u8 *path = 0;
+  char *p = 0;
+  u32 path_len = 0;
+  struct dirent *entry = 0;
+  DIR *dp = 0;
+
+  path = os_get_exec_path ();
+  vec_add1 (path, 0);
+  log_debug (0, "exec path is %s", path);
+  if ((p = strrchr ((char *) path, '/')) == 0)
+    goto done;
+  *p = 0;
+  if ((p = strrchr ((char *) path, '/')) == 0)
+    goto done;
+
+  vec_set_len (path, (u8 *) p - path);
+
+  path = format (path, "/" CLIB_LIB_DIR "/vpp_drivers");
+  path_len = vec_len (path);
+  vec_add1 (path, 0);
+
+  log_debug (0, "libpath is %s", path);
+
+  dp = opendir ((char *) path);
+  if (dp)
+    {
+      while ((entry = readdir (dp)))
+	{
+	  void *handle;
+	  char *ext;
+
+	  if (entry->d_type != DT_REG)
+	    continue;
+
+	  ext = strrchr (entry->d_name, '.');
+	  if (!ext || strncmp (ext, ".so", 3) != 0)
+	    {
+	      log_debug (0, "skipping %s, not .so", entry->d_name);
+	      continue;
+	    }
+	  vec_set_len (path, path_len);
+	  path = format (path, "/%s%c", entry->d_name, 0);
+
+	  handle = dlopen ((char *) path, RTLD_LAZY);
+	  if (!handle)
+	    {
+	      log_err (0, "failed to dlopen %s", path);
+	      continue;
+	    }
+	}
+      closedir (dp);
+    }
+
+done:
+  vec_free (path);
+}
 
 vnet_dev_bus_t *
 vnet_dev_find_device_bus (vlib_main_t *vm, vnet_dev_device_id_t id)
@@ -374,6 +437,8 @@ vnet_dev_main_init (vlib_main_t *vm)
       log_debug (0, "bus '%s' registered", r->name);
     }
 
+  vnet_dev_load_drivers (vm);
+
   for (vnet_dev_driver_registration_t *r = dm->driver_registrations; r;
        r = r->next_registration)
     vec_add1 (drv, r);
@@ -401,6 +466,7 @@ vnet_dev_main_init (vlib_main_t *vm)
 
       pool_get_zero (dm->drivers, driver);
       driver->registration = r;
+      driver->description = r->description ? r->description : r->name;
       driver->index = driver - dm->drivers;
       driver->bus_index = bus_index;
       driver->ops = r->ops;

@@ -18,6 +18,18 @@ macro(add_vpp_crypto_engine name)
     "SOURCES;LINK_LIBRARIES;SUPPORTED_OS_LIST"
     ${ARGN}
   )
+  if(DEFINED VPP_CRYPTO_ENGINES AND NOT VPP_CRYPTO_ENGINES STREQUAL "")
+    if(VPP_CRYPTO_ENGINES STREQUAL "none")
+      return()
+    endif()
+    get_property(_vpp_crypto_engines_filter GLOBAL PROPERTY VPP_CRYPTO_ENGINES_FILTER)
+    list(FIND _vpp_crypto_engines_filter ${name} _vpp_crypto_idx)
+    if(_vpp_crypto_idx EQUAL -1)
+      return()
+    endif()
+    list(REMOVE_AT _vpp_crypto_engines_filter ${_vpp_crypto_idx})
+    set_property(GLOBAL PROPERTY VPP_CRYPTO_ENGINES_FILTER "${_vpp_crypto_engines_filter}")
+  endif()
   if (CRYPTO_ENGINE_SUPPORTED_OS_LIST AND NOT ${CMAKE_SYSTEM_NAME} IN_LIST CRYPTO_ENGINE_SUPPORTED_OS_LIST)
     message(WARNING "unsupported OS - ${name} crypto engine disabled")
     return()
@@ -57,6 +69,8 @@ macro(add_vpp_crypto_engine name)
   if(CRYPTO_ENGINE_LINK_FLAGS)
     set_target_properties(${crypto_engine_name} PROPERTIES LINK_FLAGS "${CRYPTO_ENGINE_LINK_FLAGS}")
   endif()
+
+  set_property(GLOBAL APPEND PROPERTY VPP_CRYPTO_ENGINES_LIST ${name})
 
   install(
     TARGETS ${crypto_engine_name}
