@@ -125,6 +125,10 @@ typedef struct _session_rule_add_del_args
    */
   u32 appns_index;
   /**
+   * FIB index where the rule should be applied, valid only if default appns
+   */
+  u32 fib_index;
+  /**
    * Rule scope flag.
    */
   u8 scope;
