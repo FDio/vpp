@@ -108,7 +108,7 @@ iavf_reset (vlib_main_t *vm, vnet_dev_t *dev)
 static vnet_dev_rv_t
 iavf_alloc (vlib_main_t *vm, vnet_dev_t *dev)
 {
-  log_debug (dev, "alloc");
+  log_warn (dev, "alloc");
   return iavf_aq_alloc (vm, dev);
 }
 
@@ -122,7 +122,7 @@ iavf_init (vlib_main_t *vm, vnet_dev_t *dev)
   u16 max_frame_sz;
   vnet_dev_rv_t rv;
 
-  log_debug (dev, "init");
+  log_warn (dev, "init");
 
   if ((rv = vnet_dev_pci_map_region (vm, dev, 0, &ad->bar0)))
     return rv;
@@ -243,7 +243,7 @@ iavf_init (vlib_main_t *vm, vnet_dev_t *dev)
     }
   else
     {
-      log_notice (
+      log_warn (
 	dev,
 	"number of threads (%u) bigger than number of interrupt lines "
 	"(%u), interrupt mode disabled",
@@ -255,14 +255,14 @@ iavf_init (vlib_main_t *vm, vnet_dev_t *dev)
     {
       if (res.rss_key_size < IAVF_MAX_RSS_KEY_SIZE)
 	{
-	  log_notice (
+	  log_warn (
 	    dev, "unsupported RSS config provided by device, RSS disabled");
 	}
       else
 	{
 	  port_add_args.port.attr.caps.rss = 1;
 	  if (res.rss_lut_size > IAVF_MAX_RSS_LUT_SIZE)
-	    log_notice (dev, "device supports bigger RSS LUT than driver");
+	    log_warn (dev, "device supports bigger RSS LUT than driver");
 	}
     }
 
@@ -272,7 +272,7 @@ iavf_init (vlib_main_t *vm, vnet_dev_t *dev)
 static void
 iavf_deinit (vlib_main_t *vm, vnet_dev_t *dev)
 {
-  log_debug (dev, "deinit");
+  log_warn (dev, "deinit");
   iavf_aq_poll_off (vm, dev);
   iavf_aq_deinit (vm, dev);
   iavf_aq_free (vm, dev);
@@ -281,7 +281,7 @@ iavf_deinit (vlib_main_t *vm, vnet_dev_t *dev)
 static void
 iavf_free (vlib_main_t *vm, vnet_dev_t *dev)
 {
-  log_debug (dev, "free");
+  log_warn (dev, "free");
   iavf_aq_free (vm, dev);
 }
 

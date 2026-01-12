@@ -29,7 +29,7 @@ vnet_dev_load_drivers (vlib_main_t *vm __clib_unused)
 
   path = os_get_exec_path ();
   vec_add1 (path, 0);
-  log_debug (0, "exec path is %s", path);
+  log_warn (0, "exec path is %s", path);
   if ((p = strrchr ((char *) path, '/')) == 0)
     goto done;
   *p = 0;
@@ -42,7 +42,7 @@ vnet_dev_load_drivers (vlib_main_t *vm __clib_unused)
   path_len = vec_len (path);
   vec_add1 (path, 0);
 
-  log_debug (0, "libpath is %s", path);
+  log_warn (0, "libpath is %s", path);
 
   dp = opendir ((char *) path);
   if (dp)
@@ -58,7 +58,7 @@ vnet_dev_load_drivers (vlib_main_t *vm __clib_unused)
 	  ext = strrchr (entry->d_name, '.');
 	  if (!ext || strncmp (ext, ".so", 3) != 0)
 	    {
-	      log_debug (0, "skipping %s, not .so", entry->d_name);
+	      log_warn (0, "skipping %s, not .so", entry->d_name);
 	      continue;
 	    }
 	  vec_set_len (path, path_len);
@@ -70,9 +70,19 @@ vnet_dev_load_drivers (vlib_main_t *vm __clib_unused)
 	      log_err (0, "failed to dlopen %s", path);
 	      continue;
 	    }
+	  else
+	    {
+	      log_warn (0, "probably loaded %s", path);
+	    }
 	}
       closedir (dp);
     }
+  else
+    {
+      log_warn (0, "failed to open libpath dir");
+    }
+
+  log_warn (0, "done loading drivers", path);
 
 done:
   vec_free (path);
@@ -434,7 +444,7 @@ vnet_dev_main_init (vlib_main_t *vm)
 	return clib_error_return (
 	  0, "bus device data for bus '%s' is too big not specified", r->name);
 
-      log_debug (0, "bus '%s' registered", r->name);
+      log_warn (0, "bus '%s' registered", r->name);
     }
 
   vnet_dev_load_drivers (vm);
@@ -485,15 +495,15 @@ vnet_dev_main_init (vlib_main_t *vm)
 	.set_rss_queues_function = vnet_dev_interface_set_rss_queues,
       };
       driver->dev_class_index = vnet_register_device_class (vm, dev_class);
-      log_debug (0, "driver '%s' registered on bus '%s'", r->name,
-		 bus->registration->name);
+      log_warn (0, "driver '%s' registered on bus '%s'", r->name,
+		bus->registration->name);
 
       if (temp_space_sz < r->runtime_temp_space_sz)
 	temp_space_sz = r->runtime_temp_space_sz;
     }
 
   if (dm->startup_config)
-    log_debug (0, "startup config: %v", dm->startup_config);
+    log_warn (0, "startup config: %v", dm->startup_config);
 
   vec_free (drv);
 
@@ -507,10 +517,10 @@ vnet_dev_main_init (vlib_main_t *vm)
       sz *= vlib_get_n_threads ();
       dm->runtime_temp_spaces = clib_mem_alloc_aligned (sz, align);
       clib_memset (dm->runtime_temp_spaces, 0, sz);
-      log_debug (0,
-		 "requested %u bytes for runtime temp storage, allocated %u "
-		 "per thread (total %u)",
-		 temp_space_sz, 1 << dm->log2_runtime_temp_space_sz, sz);
+      log_warn (0,
+		"requested %u bytes for runtime temp storage, allocated %u "
+		"per thread (total %u)",
+		temp_space_sz, 1 << dm->log2_runtime_temp_space_sz, sz);
     }
 
   vnet_feature_register (vnet_dev_feature_update_cb, 0);
@@ -534,7 +544,7 @@ vnet_dev_num_workers_change (vlib_main_t *vm)
 	clib_mem_free (dm->runtime_temp_spaces);
       dm->runtime_temp_spaces = clib_mem_alloc_aligned (sz, align);
       clib_memset (dm->runtime_temp_spaces, 0, sz);
-      log_debug (0, "runtime temp storage resized to %u", sz);
+      log_warn (0, "runtime temp storage resized to %u", sz);
     }
 
   return 0;
