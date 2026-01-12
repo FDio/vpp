@@ -378,7 +378,7 @@ vlib_log_init (vlib_main_t *vm)
   r = lm->registrations;
   while (r)
     {
-      vlib_log_debug (r->class, "initialized");
+      vlib_log_warn (r->class, "initialized");
       r = r->next;
     }
   return 0;
