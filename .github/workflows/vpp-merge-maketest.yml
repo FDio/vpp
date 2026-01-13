@@ -250,6 +250,56 @@ jobs:
           VPPAPIGEN_TEST_OS: ${{ env.VPPAPIGEN_TEST_OS }}
           TUI_LINE: ${{ env.TUI_LINE }}
 
+      - name: Push Packages to Packagecloud
+        run: |
+          set -euxo pipefail
+          push_cmd=""
+          push_ext_deps_cmd=""
+          ext_deps_pkg=""
+          push_opt_deps_cmd=""
+          opt_deps_pkg=""
+
+          create_deb_push_cmds()
+          {
+              local distro="$(/usr/bin/facter operatingsystem)"
+              local codename="$(/usr/bin/facter lsbdistcodename)"
+              local downloads_dir="/root/Downloads"
+              local pkgcloud_acct="fdio"
+              local pkgs=$(find . -type f -iname '*.deb' | grep -v vpp-ext-deps | xargs || true)
+
+              if [ "$distro" = "Debian" ] || [ "$distro" = "Ubuntu" ] ; then
+                  push_cmd="package_cloud push ${pkgcloud_acct}/${GERRIT_BRANCH}/${distro}/${codename}/main/ ${pkgs}"
+                  ext_deps_ver="$(dpkg -l vpp-ext-deps | mawk '/vpp-ext-deps/{print $3}' || true)"
+                  ext_deps_pkg="$(find . -type f -iname 'vpp-ext-deps*.deb' | grep $ext_deps_ver || find $downloads_dir -type f -iname 'vpp-ext-deps*.deb' | grep $ext_deps_ver || true)"
+                  if [ -n "$ext_deps_pkg" ] ; then
+                      push_ext_deps_cmd="package_cloud push ${pkgcloud_acct}/${GERRIT_BRANCH}/${distro}/${codename}/main/ ${ext_deps_pkg}"
+                  fi
+                  opt_deps_ver="$(dpkg -l vpp-opt-deps | mawk '/vpp-opt-deps/{print $3}' || true)"
+                  opt_deps_pkg="$(find . -type f -iname 'vpp-opt-deps*.deb' | grep $opt_deps_ver || find $downloads_dir -type f -iname 'vpp-opt-deps*.deb' | grep $opt_deps_ver || true)"
+                  if [ -n "$opt_deps_pkg" ] ; then
+                      push_opt_deps_cmd="package_cloud push ${pkgcloud_acct}/${GERRIT_BRANCH}/${distro}/${codename}/main/ ${opt_deps_pkg}"
+                  fi
+              else
+                  echo -e "\n$TUI_LINE\n* ERROR: Unknown distro: '$distro'\n* PACKAGECLOUD PUSH FAILED!\n$TUI_LINE\n"
+                  exit 1
+              fi
+          }
+
+          if [ -f ~/.packagecloud ]; then
+              create_deb_push_cmds
+              $push_cmd
+              if [ -n "$push_ext_deps_cmd" ] ; then
+                  $push_ext_deps_cmd || true
+              fi
+              if [ -n "$push_opt_deps_cmd" ] ; then
+                  $push_opt_deps_cmd || true
+              fi
+          else
+              echo -e "\n$TUI_LINE\n* ERROR: Missing '~/.packagecloud' for user '$(id)'\n* PACKAGECLOUD PUSH FAILED!\n$TUI_LINE\n"
+              exit 1
+          fi
+          echo -e "\n$TUI_LINE\n* PACKAGECLOUD PUSH COMPLETE\n$TUI_LINE\n"
+
       - name: AWS S3 Publish Logs
         if: always()
         # yamllint disable-line rule:line-length
