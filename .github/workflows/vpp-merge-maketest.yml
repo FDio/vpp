@@ -265,17 +265,25 @@ jobs:
               local codename="$(/usr/bin/facter lsbdistcodename)"
               local downloads_dir="/root/Downloads"
               local pkgcloud_acct="fdio"
-              local pkgs=$(find . -type f -iname '*.deb' | grep -v vpp-ext-deps | xargs || true)
 
               if [ "$distro" = "Debian" ] || [ "$distro" = "Ubuntu" ] ; then
+                  local pkgs="$(find . -type f -iname '*.deb' | grep -v vpp-ext-deps | xargs || true)"
+                  if [ -z "$pkgs" ] ; then
+                      echo -e "\n$TUI_LINE\n* ERROR: No .deb packages found to push\n* PACKAGECLOUD PUSH FAILED!\n$TUI_LINE\n"
+                      exit 1
+                  fi
                   push_cmd="package_cloud push ${pkgcloud_acct}/${GERRIT_BRANCH}/${distro}/${codename}/main/ ${pkgs}"
                   ext_deps_ver="$(dpkg -l vpp-ext-deps | mawk '/vpp-ext-deps/{print $3}' || true)"
-                  ext_deps_pkg="$(find . -type f -iname 'vpp-ext-deps*.deb' | grep $ext_deps_ver || find $downloads_dir -type f -iname 'vpp-ext-deps*.deb' | grep $ext_deps_ver || true)"
+                  if [ -n "$ext_deps_ver" ] ; then
+                      ext_deps_pkg="$(find . -type f -iname 'vpp-ext-deps*.deb' | grep $ext_deps_ver || find $downloads_dir -type f -iname 'vpp-ext-deps*.deb' | grep $ext_deps_ver || true)"
+                  fi
                   if [ -n "$ext_deps_pkg" ] ; then
                       push_ext_deps_cmd="package_cloud push ${pkgcloud_acct}/${GERRIT_BRANCH}/${distro}/${codename}/main/ ${ext_deps_pkg}"
                   fi
                   opt_deps_ver="$(dpkg -l vpp-opt-deps | mawk '/vpp-opt-deps/{print $3}' || true)"
-                  opt_deps_pkg="$(find . -type f -iname 'vpp-opt-deps*.deb' | grep $opt_deps_ver || find $downloads_dir -type f -iname 'vpp-opt-deps*.deb' | grep $opt_deps_ver || true)"
+                  if [ -n "$opt_deps_ver" ] ; then
+                      opt_deps_pkg="$(find . -type f -iname 'vpp-opt-deps*.deb' | grep $opt_deps_ver || find $downloads_dir -type f -iname 'vpp-opt-deps*.deb' | grep $opt_deps_ver || true)"
+                  fi
                   if [ -n "$opt_deps_pkg" ] ; then
                       push_opt_deps_cmd="package_cloud push ${pkgcloud_acct}/${GERRIT_BRANCH}/${distro}/${codename}/main/ ${opt_deps_pkg}"
                   fi
@@ -286,6 +294,7 @@ jobs:
           }
 
           if [ -f ~/.packagecloud ]; then
+              cd "$WORKSPACE"
               create_deb_push_cmds
               $push_cmd
               if [ -n "$push_ext_deps_cmd" ] ; then
