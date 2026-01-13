@@ -250,6 +250,7 @@ jobs:
           TUI_LINE: ${{ env.TUI_LINE }}
 
       - name: Push Packages to Packagecloud
+        if: always()
         run: |
           set -euxo pipefail
           push_cmd=""
