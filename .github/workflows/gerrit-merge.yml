@@ -71,6 +71,7 @@ jobs:
           log_prefix="gha-vpp-gerrit-patchset/merge-${{ inputs.GERRIT_BRANCH }}-${timestamp}-gerrit-${{ inputs.GERRIT_CHANGE_NUMBER }}-${{ inputs.GERRIT_PATCHSET_NUMBER}}"
           echo "log_prefix=$log_prefix" >> "$GITHUB_OUTPUT"
           echo "Gerrit Change: ${{ inputs.GERRIT_CHANGE_URL }}"
+          echo "Gerrit Event Type: ${{ inputs.GERRIT_EVENT_TYPE }}"
 
       - name: Clear Gerrit Vote
         # yamllint disable-line rule:line-length
