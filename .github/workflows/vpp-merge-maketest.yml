@@ -266,7 +266,9 @@ jobs:
               local downloads_dir="/root/Downloads"
               local pkgcloud_acct="fdio"
 
-              if [ "$distro" = "Debian" ] || [ "$distro" = "Ubuntu" ] ; then
+              distro=${distro,,} # to lowercase
+              codename=${codename,,} # to lowercase
+              if [ "$distro" = "debian" ] || [ "$distro" = "ubuntu" ] ; then
                   local pkgs="$(find . -type f -iname '*.deb' | grep -v vpp-ext-deps | xargs || true)"
                   if [ -z "$pkgs" ] ; then
                       echo -e "\n$TUI_LINE\n* ERROR: No .deb packages found to push\n* PACKAGECLOUD PUSH FAILED!\n$TUI_LINE\n"
