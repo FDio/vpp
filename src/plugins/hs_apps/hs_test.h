@@ -52,6 +52,8 @@ typedef enum
   HS_TEST_PARAM_NONE,
   HS_TEST_PARAM_SERVER_RST_STREAM,
   HS_TEST_PARAM_CLIENT_RST_STREAM,
+  HS_TEST_PARAM_SERVER_CLOSE_CONN,
+  HS_TEST_PARAM_CLIENT_CLOSE_CONN,
 } hs_test_param_t;
 
 typedef struct __attribute__ ((packed))
