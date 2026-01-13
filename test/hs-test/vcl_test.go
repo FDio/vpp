@@ -17,7 +17,7 @@ func init() {
 		XEchoVclServerTcpTest, VclEchoTcpTest, VclEchoUdpTest, VclHttpPostTest, VclClUdpDscpTest,
 		VclQuicBidirectionalStreamTest, VclQuicUnidirectionalStreamClientResetTest,
 		VclQuicUnidirectionalStreamServerResetTest, VclQuicBidirectionalStreamClientResetTest,
-		VclQuicBidirectionalStreamServerResetTest)
+		VclQuicBidirectionalStreamServerResetTest, VclQuicClientCloseConnectionTest, VclQuicServerCloseConnectionTest)
 	RegisterSoloVethTests(VclRetryAttachTest)
 	RegisterVethMWTests(VclQuicUnidirectionalStreamsMWTest)
 }
@@ -233,6 +233,30 @@ func VclQuicBidirectionalStreamServerResetTest(s *VethsSuite) {
 	clientRstCount, err := vclGetLabelValue(oCln, "reset count")
 	AssertNil(err)
 	AssertEqual(clientRstCount, 1, "client stream should receive reset")
+}
+
+func VclQuicClientCloseConnectionTest(s *VethsSuite) {
+	oCln, oSrv := testVclEcho(s, "quic", "-B -N 1000 -t client-close-conn")
+	AssertNotContains(oSrv, "ctrl session went away")
+	AssertNotContains(oSrv, "invalid application error code")
+	serverCloseCount, err := vclGetLabelValue(oSrv, "close count")
+	AssertNil(err)
+	AssertEqual(serverCloseCount, 1, "server connection should be closed by client")
+	clientCloseCount, err := vclGetLabelValue(oCln, "close count")
+	AssertNil(err)
+	AssertEqual(clientCloseCount, 0, "client connection shloud not be closed by server")
+}
+
+func VclQuicServerCloseConnectionTest(s *VethsSuite) {
+	oCln, oSrv := testVclEcho(s, "quic", "-B -N 1000 -t server-close-conn")
+	AssertNotContains(oSrv, "ctrl session went away")
+	AssertNotContains(oCln, "invalid application error code")
+	serverCloseCount, err := vclGetLabelValue(oSrv, "close count")
+	AssertNil(err)
+	AssertEqual(serverCloseCount, 0, "server connection should not be closed by client")
+	clientCloseCount, err := vclGetLabelValue(oCln, "close count")
+	AssertNil(err)
+	AssertEqual(clientCloseCount, 1, "client connection shloud be closed by server")
 }
 
 func VclHttpPostTest(s *VethsSuite) {
