@@ -112,6 +112,22 @@ oct_port_pause_flow_control_init (vlib_main_t *vm, vnet_dev_port_t *port)
   return VNET_DEV_OK;
 }
 
+static int
+oct_port_is_arg_valid (clib_args_handle_t h, char *fmt, ...)
+{
+  va_list va;
+  int idx;
+
+  va_start (va, fmt);
+  idx = clib_args_find_arg_by_name (h, fmt, &va);
+  va_end (va);
+
+  if (idx >= 0)
+    return true;
+
+  return false;
+}
+
 vnet_dev_rv_t
 oct_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
 {
@@ -129,12 +145,15 @@ oct_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
 
   if (port->args)
     {
-      if (clib_args_get_bool_val_by_name (port->args, "eth_pause_frame"))
+      if (oct_port_is_arg_valid (port->args, "eth_pause_frame") &&
+	  clib_args_get_bool_val_by_name (port->args, "eth_pause_frame"))
 	is_pause_frame_enable = true;
-      cp->rss_flowkey =
-	clib_args_get_uint32_val_by_name (port->args, "rss_flow_key");
-      cp->switch_header_type =
-	clib_args_get_enum_val_by_name (port->args, "switch_header_type");
+      if (oct_port_is_arg_valid (port->args, "rss_flow_key"))
+	cp->rss_flowkey =
+	  clib_args_get_uint32_val_by_name (port->args, "rss_flow_key");
+      if (oct_port_is_arg_valid (port->args, "switch_header_type"))
+	cp->switch_header_type =
+	  clib_args_get_enum_val_by_name (port->args, "switch_header_type");
     }
 
   if ((rrv = roc_nix_lf_alloc (nix, ifs->num_rx_queues, ifs->num_tx_queues,
