@@ -251,16 +251,20 @@ install-deps:
 		wget -t 2 https://go.dev/dl/go1.25.4.linux-$(ARCH).tar.gz -O /tmp/go1.25.4.linux-$(ARCH).tar.gz && sudo tar -C /usr/local -xzf /tmp/go1.25.4.linux-$(ARCH).tar.gz; \
 		sudo ln -s /usr/local/go/bin/go /usr/bin/go ; \
 	fi
-	@sudo -E apt-get update
-	@sudo -E apt-get install -y apt-transport-https ca-certificates curl software-properties-common \
-		bridge-utils gpg
-	@if [ ! -f /usr/share/keyrings/docker-archive-keyring.gpg ] ; then \
-		curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg; \
-		echo "deb [arch=$(ARCH) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(UBUNTU_CODENAME) stable" \
-			| sudo tee /etc/apt/sources.list.d/docker.list > /dev/null ; \
-		apt-get update; \
-	fi
-	@sudo -E apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+	@if ! command -v docker >/dev/null 2>&1; then \
+        echo "Docker not found. Installing..."; \
+        sudo -E apt-get update; \
+        sudo -E apt-get install -y apt-transport-https ca-certificates curl software-properties-common bridge-utils gpg; \
+        if [ ! -f /usr/share/keyrings/docker-archive-keyring.gpg ] ; then \
+            curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg; \
+            echo "deb [arch=$(ARCH) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(UBUNTU_CODENAME) stable" \
+                | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null ; \
+            sudo apt-get update; \
+        fi; \
+        sudo -E apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin; \
+    else \
+        echo "Docker is already installed. You may have to update manually."; \
+    fi
 	@touch .deps.ok
 
 .PHONY: checkstyle-go
