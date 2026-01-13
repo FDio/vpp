@@ -25,7 +25,7 @@ permissions:
 
 concurrency:
   group: required-${{ github.workflow }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   verify-hst-periodic:
@@ -63,23 +63,6 @@ jobs:
             executor_arch: 'x86_64'
             class: 'hst'
             size: 'hst'
-          - build_type: 'debug'
-            os: 'ubuntu2404'
-            executor_arch: 'x86_64'
-            class: 'hst'
-            size: 'hst'
-          # Release builds on x86_64
-          - build_type: 'release'
-            os: 'ubuntu2204'
-            executor_arch: 'x86_64'
-            class: 'hst'
-            size: 'hst'
-          - build_type: 'release'
-            os: 'ubuntu2404'
-            executor_arch: 'x86_64'
-            class: 'hst'
-            size: 'hst'
-
 
     env:
       FDIO_NAMESPACE: ${{ github.event.inputs.FDIO_NAMESPACE || 'prod' }}
