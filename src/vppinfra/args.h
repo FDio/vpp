@@ -100,6 +100,7 @@ typedef clib_args_t *clib_args_handle_t;
     __VA_ARGS__, CLIB_ARG_END ()                                              \
   }
 
+int clib_args_find_arg_by_name (clib_args_handle_t h, char *fmt, va_list *va);
 u32 clib_args_get_uint32_val_by_name (clib_args_handle_t h, char *fmt, ...);
 int clib_args_get_bool_val_by_name (clib_args_handle_t h, char *fmt, ...);
 int clib_args_get_enum_val_by_name (clib_args_handle_t h, char *fmt, ...);

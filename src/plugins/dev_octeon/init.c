@@ -110,6 +110,38 @@ static clib_arg_t oct_port_args[] = {
   },
 };
 
+static clib_arg_t oct_port_args_rvu_vf[] = {
+  {
+    .name = "eth_pause_frame",
+    .desc = "Enable ethernet pause frame support",
+    .type = CLIB_ARG_TYPE_BOOL,
+    .default_val.boolean = false,
+  },
+  {
+    .name = "rss_flow_key",
+    .desc = "RSS Flow Key Bitmap",
+    .type = CLIB_ARG_TYPE_HEX32,
+    .default_val.uint32 = FLOW_KEY_TYPE_IPV4 | FLOW_KEY_TYPE_IPV6 | FLOW_KEY_TYPE_TCP |
+			  FLOW_KEY_TYPE_UDP | FLOW_KEY_TYPE_SCTP,
+  },
+  {
+    .type = CLIB_ARG_END,
+  },
+};
+
+static clib_arg_t oct_port_args_lbk_sdp[] = {
+  {
+    .name = "rss_flow_key",
+    .desc = "RSS Flow Key Bitmap",
+    .type = CLIB_ARG_TYPE_HEX32,
+    .default_val.uint32 = FLOW_KEY_TYPE_IPV4 | FLOW_KEY_TYPE_IPV6 | FLOW_KEY_TYPE_TCP |
+			  FLOW_KEY_TYPE_UDP | FLOW_KEY_TYPE_SCTP,
+  },
+  {
+    .type = CLIB_ARG_END,
+  },
+};
+
 static clib_arg_t oct_dev_args[] = {
   {
     .name = "n_desc",
@@ -175,6 +207,17 @@ oct_config_args (vlib_main_t *vm, vnet_dev_driver_t *drv)
     }
 
   return 0;
+}
+
+static clib_arg_t *
+oct_dev_get_port_args (oct_device_t *cd)
+{
+  if (roc_nix_is_lbk (cd->nix) || roc_nix_is_sdp (cd->nix))
+    return oct_port_args_lbk_sdp;
+  else if (!roc_nix_is_pf (cd->nix))
+    return oct_port_args_rvu_vf;
+  else
+    return oct_port_args;
 }
 
 static vnet_dev_rv_t
@@ -247,7 +290,7 @@ oct_init_nix (vlib_main_t *vm, vnet_dev_t *dev)
       },
       .data_size = sizeof (oct_port_t),
       .initial_data = &oct_port,
-      .args = roc_nix_is_vf_or_sdp(cd->nix) == 0 ? oct_port_args : 0,
+      .args = oct_dev_get_port_args (cd),
     },
     .rx_node = &oct_rx_node,
     .tx_node = &oct_tx_node,
