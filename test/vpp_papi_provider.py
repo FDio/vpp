@@ -6,6 +6,7 @@
 #
 
 import os
+import re
 import socket
 import time
 import queue
@@ -229,6 +230,7 @@ class VppPapiProvider(object):
     """
 
     _zero, _negative = range(2)
+    ansi_escape = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
 
     def __init__(self, name, test_class, read_timeout):
         self.hook = Hook(test_class)
@@ -431,10 +433,11 @@ class VppPapiProvider(object):
         self.hook.after_cli(cli)
         return r
 
-    def cli(self, cli):
+    def cli(self, cli, strip_ansi_escapes: bool = True):
         """Execute a CLI, calling the before/after hooks appropriately.
 
         :param cli: CLI to execute
+        :param strip_ansi_escapes: If true, remove ansi escape sequences from output
         :returns: CLI output
 
         """
@@ -444,6 +447,8 @@ class VppPapiProvider(object):
         if r.retval != 0:
             raise CliFailedCommandError(r.reply)
         if hasattr(r, "reply"):
+            if strip_ansi_escapes:
+                return self.ansi_escape.sub("", r.reply)
             return r.reply
 
     def ppcli(self, cli):
