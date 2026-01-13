@@ -20,7 +20,7 @@ clib_args_alloc (void)
   return h;
 }
 
-static int
+__clib_export int
 clib_args_find_arg_by_name (clib_args_handle_t h, char *fmt, va_list *va)
 {
   clib_arg_t *a;
