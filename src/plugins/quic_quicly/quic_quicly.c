@@ -903,6 +903,7 @@ quic_quicly_on_closed_by_remote (quicly_closed_by_remote_t *self,
   ctx->conn_state = QUIC_CONN_STATE_PASSIVE_CLOSING;
   if (ctx->c_s_index != QUIC_SESSION_INVALID)
     {
+      ctx->app_err_code = QUICLY_ERROR_GET_ERROR_CODE (code);
       session_transport_closing_notify (&ctx->connection);
     }
 }
@@ -1115,8 +1116,9 @@ quic_quicly_on_app_closed (u32 ctx_index, clib_thread_index_t thread_index)
 
       quic_increment_counter (quic_quicly_main.qm,
 			      QUIC_ERROR_CLOSED_CONNECTION, 1);
-      /* TODO: we should be able to pass error code from app */
-      quicly_close (conn, 0, "shutting down");
+      quicly_close (
+	conn, QUICLY_ERROR_FROM_APPLICATION_ERROR_CODE (ctx->app_err_code),
+	"shutting down");
       /* This also causes all streams to be closed (and the cb called) */
       quic_quicly_reschedule_ctx (ctx);
       break;
@@ -1294,7 +1296,8 @@ quic_quicly_conn_app_init_failed (quic_ctx_t *ctx, const char *reason_phrase)
   ctx->flags |= QUIC_F_NO_APP_SESSION;
   /* use 0 as error code because we can't pass quic transport error codes to
    * quicly */
-  quicly_close (ctx->conn, 0, reason_phrase);
+  quicly_close (ctx->conn, QUICLY_ERROR_FROM_APPLICATION_ERROR_CODE (0),
+		reason_phrase);
   quic_quicly_reschedule_ctx (ctx);
 }
 
