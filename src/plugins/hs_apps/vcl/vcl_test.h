@@ -61,6 +61,7 @@ typedef struct
   uint32_t tx_eagain;
   uint32_t tx_incomp;
   uint32_t reset_count; /* received reset from vpp */
+  uint32_t close_count; /* received close from vpp */
   struct timespec start;
   struct timespec stop;
 } vcl_test_stats_t;
@@ -152,6 +153,7 @@ vcl_test_stats_accumulate (vcl_test_stats_t * accum, vcl_test_stats_t * incr)
   accum->tx_eagain += incr->tx_eagain;
   accum->tx_incomp += incr->tx_incomp;
   accum->reset_count += incr->reset_count;
+  accum->close_count += incr->close_count;
 }
 
 static inline void
@@ -249,6 +251,7 @@ vcl_test_stats_dump (char *header, vcl_test_stats_t * stats,
 	      stats->rx_eagain, stats->rx_incomp, stats->rx_incomp);
     }
   printf ("    reset count:  %u\n", stats->reset_count);
+  printf ("    close count:  %u\n", stats->close_count);
   if (verbose)
     printf ("   start.tv_sec:  %ld\n"
 	    "  start.tv_nsec:  %ld\n"
