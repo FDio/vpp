@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "854d6a4c_2c88602a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2026-01-13T14:07:02Z",
+      "side": 1,
+      "message": "GHA jobs are not ready yet, but I got a run [1] on Sandbox.\n\n[1] https://jenkins.fd.io/sandbox/job/vpp-csit-verify-perf-master-ubuntu2404-x86_64-2n-emr/2/console",
+      "revId": "fa609789ba59b57e873d0b691bd2dbd2a4668eb1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
