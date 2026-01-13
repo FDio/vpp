@@ -45,11 +45,41 @@ jobs:
       fail-fast: false
       max-parallel: 1
       matrix:
-        build_type: ['debug', 'release']
-        class: ['hst']
-        os: ['ubuntu2204', 'ubuntu2404']
-        executor_arch: ['x86_64', 'aarch64']
-        size: ['hst']
+        include:
+          # Debug builds on aarch64
+          - build_type: 'debug'
+            os: 'ubuntu2204'
+            executor_arch: 'aarch64'
+            class: 'hst'
+            size: 'hst'
+          - build_type: 'debug'
+            os: 'ubuntu2404'
+            executor_arch: 'aarch64'
+            class: 'hst'
+            size: 'hst'
+          # Debug builds on x86_64
+          - build_type: 'debug'
+            os: 'ubuntu2204'
+            executor_arch: 'x86_64'
+            class: 'hst'
+            size: 'hst'
+          - build_type: 'debug'
+            os: 'ubuntu2404'
+            executor_arch: 'x86_64'
+            class: 'hst'
+            size: 'hst'
+          # Release builds on x86_64
+          - build_type: 'release'
+            os: 'ubuntu2204'
+            executor_arch: 'x86_64'
+            class: 'hst'
+            size: 'hst'
+          - build_type: 'release'
+            os: 'ubuntu2404'
+            executor_arch: 'x86_64'
+            class: 'hst'
+            size: 'hst'
+
 
     env:
       FDIO_NAMESPACE: ${{ github.event.inputs.FDIO_NAMESPACE || 'prod' }}
