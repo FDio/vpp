@@ -1043,6 +1043,10 @@ vtc_unformat_test_param (uint32_t *test_param, char *test_param_str)
     *test_param = HS_TEST_PARAM_SERVER_RST_STREAM;
   else if (!strcmp (test_param_str, "client-rst-stream"))
     *test_param = HS_TEST_PARAM_CLIENT_RST_STREAM;
+  else if (!strcmp (test_param_str, "server-close-conn"))
+    *test_param = HS_TEST_PARAM_SERVER_CLOSE_CONN;
+  else if (!strcmp (test_param_str, "client-close-conn"))
+    *test_param = HS_TEST_PARAM_CLIENT_CLOSE_CONN;
   else
     return 1;
   return 0;

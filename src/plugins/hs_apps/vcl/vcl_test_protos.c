@@ -675,11 +675,11 @@ vt_quic_maybe_init_wrk (vcl_test_main_t *vt, vcl_test_wrk_t *wrk,
 }
 
 static void
-vt_quic_set_app_proto_err_code (vcl_test_session_t *ts, uint64_t app_err_code)
+vt_quic_set_app_proto_err_code (int fd, uint64_t app_err_code)
 {
   uint32_t elen = sizeof (app_err_code);
-  vppcom_session_attr (ts->fd, VPPCOM_ATTR_SET_APP_PROTO_ERR_CODE,
-		       &app_err_code, &elen);
+  vppcom_session_attr (fd, VPPCOM_ATTR_SET_APP_PROTO_ERR_CODE, &app_err_code,
+		       &elen);
 }
 
 static uint64_t
@@ -689,7 +689,9 @@ vt_quic_get_app_proto_err_code (vcl_test_session_t *ts)
   uint32_t elen = sizeof (app_err_code);
   vppcom_session_attr (ts->fd, VPPCOM_ATTR_GET_APP_PROTO_ERR_CODE,
 		       &app_err_code, &elen);
-  vtinf ("stream %d app proto error code 0x%lx", ts->fd, app_err_code);
+  vtinf ("%s %d app proto error code 0x%lx",
+	 vppcom_session_is_stream (ts->fd) ? "stream" : "connection", ts->fd,
+	 app_err_code);
   return app_err_code;
 }
 
@@ -732,7 +734,7 @@ vt_quic_client_write_and_rst (vcl_test_session_t *ts, void *buf,
   if ((ts->stats.tx_bytes << 1) >= ts->cfg.total_bytes)
     {
       vtinf ("going to reset stream %d (fd %d)", ts->session_index, ts->fd);
-      vt_quic_set_app_proto_err_code (ts, VT_QUIC_CLIENT_ERROR);
+      vt_quic_set_app_proto_err_code (ts->fd, VT_QUIC_CLIENT_ERROR);
       vppcom_session_terminate (ts->fd);
       quic_ctx->flags |= VT_QUIC_F_RESET;
       return 0;
@@ -782,6 +784,36 @@ vt_quic_client_read_server_rst (vcl_test_session_t *ts, void *buf,
 }
 
 static int
+vt_quic_client_write_and_close (vcl_test_session_t *ts, void *buf,
+				uint32_t nbytes)
+{
+  int rv;
+  vcl_test_main_t *vt = &vcl_test_main;
+  vcl_test_session_t *tq;
+  vcl_test_wrk_t *wrk;
+  vt_quic_ctx_t *quic_ctx = (vt_quic_ctx_t *) ts->opaque;
+
+  if (quic_ctx->flags & VT_QUIC_F_RESET)
+    return 0;
+
+  if ((ts->stats.tx_bytes << 1) >= ts->cfg.total_bytes)
+    {
+      wrk = &vt->wrk[vcl_test_worker_index ()];
+      tq = &wrk->qsessions[ts->session_index / vt->cfg.num_test_sessions_perq];
+      vtinf ("going to close connection %d (fd %d)", tq->session_index,
+	     tq->fd);
+      vt_quic_set_app_proto_err_code (tq->fd, VT_QUIC_CLIENT_ERROR);
+      vppcom_session_close (tq->fd);
+      quic_ctx->flags |= VT_QUIC_F_RESET;
+      return 0;
+    }
+
+  rv = vcl_test_write (ts, buf, nbytes);
+
+  return rv;
+}
+
+static int
 vt_quic_rst_is_done (vcl_test_session_t *ts, uint8_t check_rx)
 {
   vt_quic_ctx_t *quic_ctx = (vt_quic_ctx_t *) ts->opaque;
@@ -790,6 +822,12 @@ vt_quic_rst_is_done (vcl_test_session_t *ts, uint8_t check_rx)
     return 1;
 
   return 0;
+}
+
+static int
+vt_quic_close_is_done (vcl_test_session_t *ts, uint8_t check_rx)
+{
+  return ts->is_done;
 }
 
 static int
@@ -836,12 +874,24 @@ vt_quic_connect (vcl_test_session_t *ts, vppcom_endpt_t *endpt)
     {
       ts->read = vt_quic_client_read_server_rst;
       ts->write = vcl_test_write;
-      ts->done = vt_quic_rst_is_done;
+      ts->done = vt_quic_close_is_done;
     }
   else if (vt->cfg.test_param == HS_TEST_PARAM_CLIENT_RST_STREAM)
     {
       ts->read = vcl_test_read;
       ts->write = vt_quic_client_write_and_rst;
+      ts->done = vt_quic_rst_is_done;
+    }
+  else if (vt->cfg.test_param == HS_TEST_PARAM_CLIENT_CLOSE_CONN)
+    {
+      ts->read = vcl_test_read;
+      ts->write = vt_quic_client_write_and_close;
+      ts->done = vt_quic_rst_is_done;
+    }
+  else if (ts->cfg.test_param == HS_TEST_PARAM_SERVER_CLOSE_CONN)
+    {
+      ts->read = vcl_test_read;
+      ts->write = vcl_test_write;
       ts->done = vt_quic_rst_is_done;
     }
   else if (vt->cfg.test == HS_TEST_TYPE_BI)
@@ -932,6 +982,12 @@ vt_quic_server_bidi_write (vcl_test_session_t *ts, void *buf, uint32_t nbytes)
 }
 
 static int
+vt_quic_server_write_nop (vcl_test_session_t *ts, void *buf, uint32_t nbytes)
+{
+  return 0;
+}
+
+static int
 vt_quic_server_read_and_rst (vcl_test_session_t *ts, void *buf,
 			     uint32_t nbytes)
 {
@@ -941,11 +997,33 @@ vt_quic_server_read_and_rst (vcl_test_session_t *ts, void *buf,
   if ((ts->stats.rx_bytes << 1) >= ts->cfg.total_bytes)
     {
       vtinf ("going to reset stream %d (fd %d)", ts->session_index, ts->fd);
-      vt_quic_set_app_proto_err_code (ts, VT_QUIC_SERVER_ERROR);
+      vt_quic_set_app_proto_err_code (ts->fd, VT_QUIC_SERVER_ERROR);
       vppcom_session_terminate (ts->fd);
       free (quic_ctx);
       ts->is_open = 0;
       ts->opaque = 0;
+      return 0;
+    }
+
+  rv = vcl_test_read (ts, buf, nbytes);
+
+  return rv;
+}
+
+static int
+vt_quic_server_read_and_close (vcl_test_session_t *ts, void *buf,
+			       uint32_t nbytes)
+{
+  int rv;
+
+  if ((ts->stats.rx_bytes << 1) >= ts->cfg.total_bytes)
+    {
+      int conn_fd = vppcom_session_listener (ts->fd);
+      if (conn_fd == VPPCOM_EBADFD)
+	return 0;
+      vtinf ("going to close connection %d", conn_fd);
+      vt_quic_set_app_proto_err_code (conn_fd, VT_QUIC_SERVER_ERROR);
+      vppcom_session_close (conn_fd);
       return 0;
     }
 
@@ -991,9 +1069,21 @@ vt_quic_accept (int listen_fd, vcl_test_session_t *ts)
 
   if (ts->cfg.test_param == HS_TEST_PARAM_SERVER_RST_STREAM)
     {
-      ts->write = vcl_test_write;
-      ts->done = vt_quic_rst_is_done;
       ts->read = vt_quic_server_read_and_rst;
+      ts->write = vt_quic_server_write_nop;
+      ts->done = vt_quic_rst_is_done;
+    }
+  else if (ts->cfg.test_param == HS_TEST_PARAM_CLIENT_CLOSE_CONN)
+    {
+      ts->read = vcl_test_read;
+      ts->write = vt_quic_server_write_nop;
+      ts->done = vcl_test_is_done;
+    }
+  else if (ts->cfg.test_param == HS_TEST_PARAM_SERVER_CLOSE_CONN)
+    {
+      ts->read = vt_quic_server_read_and_close;
+      ts->write = vt_quic_server_write_nop;
+      ts->done = vcl_test_is_done;
     }
   else if (ts->cfg.test == HS_TEST_TYPE_BI)
     {
@@ -1068,35 +1158,74 @@ vt_quic_close (vcl_test_session_t *ts, uint32_t events)
 	    }
 	  else if (events & EPOLLRDHUP)
 	    {
+	      if (ts->cfg.test_param == HS_TEST_PARAM_CLIENT_CLOSE_CONN ||
+		  ts->cfg.test_param == HS_TEST_PARAM_SERVER_CLOSE_CONN)
+		return 1;
 	      quic_ctx->flags |= VT_QUIC_F_HALF_CLOSED;
 	      vtinf ("stream %u half-closed", ts->fd);
 	      return 0;
 	    }
 	}
+      else
+	{
+	  app_err_code = vt_quic_get_app_proto_err_code (ts);
+	  vtinf ("connection %u closed by client", ts->fd);
+	  if (app_err_code != VT_QUIC_CLIENT_ERROR)
+	    vtwrn ("invalid application error code 0x%lx, expected 0x%lx",
+		   app_err_code, VT_QUIC_CLIENT_ERROR);
+	  ts->stats.close_count = 1;
+	}
       return 1;
     }
   else
     {
-      if (events & EPOLLERR &&
-	  ts->cfg.test_param == HS_TEST_PARAM_SERVER_RST_STREAM)
+      if (vppcom_session_is_stream (ts->fd))
 	{
-	  vtinf ("stream %u reset by server", ts->fd);
-	  app_err_code = vt_quic_get_app_proto_err_code (ts);
-	  if (app_err_code != VT_QUIC_SERVER_ERROR)
-	    vtwrn ("invalid application error code 0x%lx, expected 0x%lx",
-		   app_err_code, VT_QUIC_SERVER_ERROR);
-	  quic_ctx->flags |= VT_QUIC_F_RESET;
-	  ts->stats.reset_count = 1;
-	  return 1;
-	}
-      if (ts->cfg.test == HS_TEST_TYPE_BI)
-	{
-	  if (ts->stats.rx_bytes >= ts->cfg.total_bytes)
+	  if (events & EPOLLERR &&
+	      ts->cfg.test_param == HS_TEST_PARAM_SERVER_RST_STREAM)
 	    {
-	      vtinf ("stream %u closed - done", ts->fd);
-	      ts->is_done = 1;
+	      vtinf ("stream %u reset by server", ts->fd);
+	      app_err_code = vt_quic_get_app_proto_err_code (ts);
+	      if (app_err_code != VT_QUIC_SERVER_ERROR)
+		vtwrn ("invalid application error code 0x%lx, expected 0x%lx",
+		       app_err_code, VT_QUIC_SERVER_ERROR);
+	      quic_ctx->flags |= VT_QUIC_F_RESET;
+	      ts->stats.reset_count = 1;
 	      return 1;
 	    }
+	  if (ts->cfg.test_param == HS_TEST_PARAM_SERVER_CLOSE_CONN)
+	    {
+	      vtinf ("stream %u closed", ts->fd);
+	      ts->is_done = 1;
+	      /* client don't get events for quic connections, they are also in
+	       * different pool, so just check if connection has error code set
+	       */
+	      vcl_test_main_t *vt = &vcl_test_main;
+	      vcl_test_wrk_t *wrk = &vt->wrk[vcl_test_worker_index ()];
+	      vcl_test_session_t *tq =
+		&wrk->qsessions[ts->session_index /
+				vt->cfg.num_test_sessions_perq];
+	      app_err_code = vt_quic_get_app_proto_err_code (tq);
+	      if (app_err_code != VT_QUIC_SERVER_ERROR)
+		vtwrn ("invalid application error code 0x%lx, expected 0x%lx",
+		       app_err_code, VT_QUIC_SERVER_ERROR);
+	      ts->stats.close_count = 1;
+	      return 1;
+	    }
+	  if (ts->cfg.test == HS_TEST_TYPE_BI)
+	    {
+	      if (ts->stats.rx_bytes >= ts->cfg.total_bytes)
+		{
+		  vtinf ("stream %u closed - done", ts->fd);
+		  ts->is_done = 1;
+		  return 1;
+		}
+	    }
+	}
+      else
+	{
+	  vtinf ("connection %u closed by server", ts->fd);
+	  ts->stats.close_count = 1;
 	}
       return 0;
     }
