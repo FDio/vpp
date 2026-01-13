@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a4945aa4_26699cab",
+        "filename": "test/hs-test/script/clean_registry.sh",
+        "patchSetId": 2
+      },
+      "lineNbr": 3,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-01-13T15:29:38Z",
+      "side": 1,
+      "message": "What is the significance of the name \u0027blue\u0027 for this print format function?\n\nSomething like \u0027status_msg\u0027 or \u0027log_msg\u0027 might be clearer.",
+      "range": {
+        "startLine": 3,
+        "startChar": 0,
+        "endLine": 3,
+        "endChar": 4
+      },
+      "revId": "b51bf7ab8f09dcc323e75fcf90382865230a36ba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
