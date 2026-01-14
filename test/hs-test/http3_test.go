@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"crypto/tls"
 	"fmt"
 	"strconv"
 	"strings"
@@ -9,11 +11,13 @@ import (
 	. "fd.io/hs-test/infra"
 	"github.com/edwarnicke/exechelper"
 	. "github.com/onsi/ginkgo/v2"
+	"github.com/quic-go/quic-go"
+	"github.com/quic-go/quic-go/http3"
 )
 
 func init() {
 	RegisterH3Tests(Http3GetTest, Http3DownloadTest, Http3PostTest, Http3UploadTest, Http3ClientGetRepeatTest,
-		Http3ClientGetMultiplexingTest)
+		Http3ClientGetMultiplexingTest, Http3PeerResetStream)
 	RegisterVethTests(Http3CliTest, Http3ClientPostTest, Http3ClientPostPtrTest)
 }
 
@@ -235,4 +239,30 @@ func Http3ClientPostTest(s *VethsSuite) {
 
 func Http3ClientPostPtrTest(s *VethsSuite) {
 	http3ClientPostFile(s, true)
+}
+
+func Http3PeerResetStream(s *Http3Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	serverAddress := s.VppAddr() + ":" + s.Ports.Port1
+	Log(vpp.Vppctl("http tps no-zc h3 uri https://" + serverAddress))
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	conn, err := quic.DialAddr(
+		ctx,
+		serverAddress,
+		&tls.Config{InsecureSkipVerify: true, NextProtos: []string{"h3"}},
+		&quic.Config{},
+	)
+
+	stream, err := conn.OpenStream()
+	AssertNil(err)
+	// send incomplete headers frame and wait a bit to be sure stream was accepted before we reset it
+	stream.Write([]byte{0x01, 0x09})
+	time.Sleep(500 * time.Millisecond)
+	stream.CancelWrite(quic.StreamErrorCode(http3.ErrCodeRequestCanceled))
+	time.Sleep(500 * time.Millisecond)
+	o := vpp.Vppctl("show http stats")
+	Log(o)
+	AssertContains(o, "1 streams reset by peer")
 }

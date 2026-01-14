@@ -8,6 +8,7 @@
 #include <vppinfra/format.h>
 #include <vppinfra/types.h>
 #include <http/http.h>
+#include <http/http_private.h>
 
 #define foreach_http3_errors                                                  \
   _ (NO_ERROR, "NO_ERROR", 0x0100)                                            \
@@ -124,6 +125,16 @@ format_http3_stream_type (u8 *s, va_list *va)
     default:
       return format (s, "unknown-stream-type");
     }
+}
+
+static_always_inline int
+http3_get_application_error_code (http_conn_t *hc)
+{
+  session_t *ts = session_get_from_handle (hc->hc_tc_session_handle);
+  transport_endpt_attr_t attr = { .type =
+				    TRANSPORT_ENDPT_ATTR_APP_PROTO_ERR_CODE };
+  session_transport_attribute (ts, 1 /* is_get */, &attr);
+  return (int) attr.app_proto_err_code;
 }
 
 #endif /* SRC_PLUGINS_HTTP_HTTP3_H_ */
