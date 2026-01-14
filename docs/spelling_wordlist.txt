@@ -5,6 +5,7 @@ Aarch
 AArch
 abf
 accelera
+accessor
 ACK
 acl
 ACL
@@ -350,6 +351,7 @@ eventfd
 evt
 executables
 expander
+expirations
 extensibility
 eXtensible
 extranet
@@ -828,6 +830,8 @@ parallelizes
 param
 params
 parsable
+parser
+parsers
 passthrough
 passwordless
 patchset
