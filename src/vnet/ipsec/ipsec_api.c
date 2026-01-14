@@ -976,13 +976,13 @@ send_ipsec_sa_details (ipsec_sa_t * sa, void *arg)
 
   mp->entry.sad_id = htonl (sa->id);
   mp->entry.spi = htonl (sa->spi);
-  mp->entry.protocol = ipsec_proto_encode (sa->protocol);
+  ipsec_proto_encode (sa->protocol, &mp->entry.protocol);
   mp->entry.tx_table_id = htonl (sa->tunnel.t_table_id);
 
-  mp->entry.crypto_algorithm = ipsec_crypto_algo_encode (sa->crypto_alg);
+  ipsec_crypto_algo_encode (sa->crypto_alg, &mp->entry.crypto_algorithm);
   ipsec_key_encode (&sa->crypto_key, &mp->entry.crypto_key);
 
-  mp->entry.integrity_algorithm = ipsec_integ_algo_encode (sa->integ_alg);
+  ipsec_integ_algo_encode (sa->integ_alg, &mp->entry.integrity_algorithm);
   ipsec_key_encode (&sa->integ_key, &mp->entry.integrity_key);
 
   mp->entry.flags = ipsec_sad_flags_encode (sa);
@@ -1058,13 +1058,13 @@ send_ipsec_sa_v2_details (ipsec_sa_t * sa, void *arg)
 
   mp->entry.sad_id = htonl (sa->id);
   mp->entry.spi = htonl (sa->spi);
-  mp->entry.protocol = ipsec_proto_encode (sa->protocol);
+  ipsec_proto_encode (sa->protocol, &mp->entry.protocol);
   mp->entry.tx_table_id = htonl (sa->tunnel.t_table_id);
 
-  mp->entry.crypto_algorithm = ipsec_crypto_algo_encode (sa->crypto_alg);
+  ipsec_crypto_algo_encode (sa->crypto_alg, &mp->entry.crypto_algorithm);
   ipsec_key_encode (&sa->crypto_key, &mp->entry.crypto_key);
 
-  mp->entry.integrity_algorithm = ipsec_integ_algo_encode (sa->integ_alg);
+  ipsec_integ_algo_encode (sa->integ_alg, &mp->entry.integrity_algorithm);
   ipsec_key_encode (&sa->integ_key, &mp->entry.integrity_key);
 
   mp->entry.flags = ipsec_sad_flags_encode (sa);
@@ -1144,12 +1144,12 @@ send_ipsec_sa_v3_details (ipsec_sa_t *sa, void *arg)
 
   mp->entry.sad_id = htonl (sa->id);
   mp->entry.spi = htonl (sa->spi);
-  mp->entry.protocol = ipsec_proto_encode (sa->protocol);
+  ipsec_proto_encode (sa->protocol, &mp->entry.protocol);
 
-  mp->entry.crypto_algorithm = ipsec_crypto_algo_encode (sa->crypto_alg);
+  ipsec_crypto_algo_encode (sa->crypto_alg, &mp->entry.crypto_algorithm);
   ipsec_key_encode (&sa->crypto_key, &mp->entry.crypto_key);
 
-  mp->entry.integrity_algorithm = ipsec_integ_algo_encode (sa->integ_alg);
+  ipsec_integ_algo_encode (sa->integ_alg, &mp->entry.integrity_algorithm);
   ipsec_key_encode (&sa->integ_key, &mp->entry.integrity_key);
 
   mp->entry.flags = ipsec_sad_flags_encode (sa);
@@ -1225,12 +1225,12 @@ send_ipsec_sa_v4_details (ipsec_sa_t *sa, void *arg)
 
   mp->entry.sad_id = htonl (sa->id);
   mp->entry.spi = htonl (sa->spi);
-  mp->entry.protocol = ipsec_proto_encode (sa->protocol);
+  ipsec_proto_encode (sa->protocol, &mp->entry.protocol);
 
-  mp->entry.crypto_algorithm = ipsec_crypto_algo_encode (sa->crypto_alg);
+  ipsec_crypto_algo_encode (sa->crypto_alg, &mp->entry.crypto_algorithm);
   ipsec_key_encode (&sa->crypto_key, &mp->entry.crypto_key);
 
-  mp->entry.integrity_algorithm = ipsec_integ_algo_encode (sa->integ_alg);
+  ipsec_integ_algo_encode (sa->integ_alg, &mp->entry.integrity_algorithm);
   ipsec_key_encode (&sa->integ_key, &mp->entry.integrity_key);
 
   mp->entry.flags = ipsec_sad_flags_encode (sa);
@@ -1312,12 +1312,12 @@ send_ipsec_sa_v5_details (ipsec_sa_t *sa, void *arg)
 
   mp->entry.sad_id = htonl (sa->id);
   mp->entry.spi = htonl (sa->spi);
-  mp->entry.protocol = ipsec_proto_encode (sa->protocol);
+  ipsec_proto_encode (sa->protocol, &mp->entry.protocol);
 
-  mp->entry.crypto_algorithm = ipsec_crypto_algo_encode (sa->crypto_alg);
+  ipsec_crypto_algo_encode (sa->crypto_alg, &mp->entry.crypto_algorithm);
   ipsec_key_encode (&sa->crypto_key, &mp->entry.crypto_key);
 
-  mp->entry.integrity_algorithm = ipsec_integ_algo_encode (sa->integ_alg);
+  ipsec_integ_algo_encode (sa->integ_alg, &mp->entry.integrity_algorithm);
   ipsec_key_encode (&sa->integ_key, &mp->entry.integrity_key);
 
   mp->entry.flags = ipsec_sad_flags_encode (sa);

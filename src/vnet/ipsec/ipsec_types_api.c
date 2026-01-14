@@ -23,15 +23,17 @@ ipsec_proto_decode (vl_api_ipsec_proto_t in, ipsec_protocol_t * out)
   return (VNET_API_ERROR_INVALID_PROTOCOL);
 }
 
-vl_api_ipsec_proto_t
-ipsec_proto_encode (ipsec_protocol_t p)
+int
+ipsec_proto_encode (ipsec_protocol_t p, vl_api_ipsec_proto_t *out)
 {
   switch (p)
     {
     case IPSEC_PROTOCOL_ESP:
-      return clib_host_to_net_u32 (IPSEC_API_PROTO_ESP);
+      *out = clib_host_to_net_u32 (IPSEC_API_PROTO_ESP);
+      return (0);
     case IPSEC_PROTOCOL_AH:
-      return clib_host_to_net_u32 (IPSEC_API_PROTO_AH);
+      *out = clib_host_to_net_u32 (IPSEC_API_PROTO_AH);
+      return (0);
     }
   ASSERT (0);
   return clib_host_to_net_u32 (IPSEC_API_PROTO_ESP);
@@ -54,16 +56,18 @@ ipsec_crypto_algo_decode (vl_api_ipsec_crypto_alg_t in,
   return (VNET_API_ERROR_INVALID_ALGORITHM);
 }
 
-vl_api_ipsec_crypto_alg_t
-ipsec_crypto_algo_encode (ipsec_crypto_alg_t c)
+int
+ipsec_crypto_algo_encode (ipsec_crypto_alg_t c, vl_api_ipsec_crypto_alg_t *out)
 {
   switch (c)
     {
-#define _(v,f,s) case IPSEC_CRYPTO_ALG_##f:                     \
-      return clib_host_to_net_u32(IPSEC_API_CRYPTO_ALG_##f);
-      foreach_ipsec_crypto_alg
+#define _(v, f, s)                                                                                 \
+  case IPSEC_CRYPTO_ALG_##f:                                                                       \
+    *out = clib_host_to_net_u32 (IPSEC_API_CRYPTO_ALG_##f);                                        \
+    return 0;
+    foreach_ipsec_crypto_alg
 #undef _
-    case IPSEC_CRYPTO_N_ALG:
+      case IPSEC_CRYPTO_N_ALG:
       break;
     }
   ASSERT (0);
@@ -86,16 +90,18 @@ ipsec_integ_algo_decode (vl_api_ipsec_integ_alg_t in, ipsec_integ_alg_t * out)
   return (VNET_API_ERROR_INVALID_ALGORITHM);
 }
 
-vl_api_ipsec_integ_alg_t
-ipsec_integ_algo_encode (ipsec_integ_alg_t i)
+int
+ipsec_integ_algo_encode (ipsec_integ_alg_t i, vl_api_ipsec_integ_alg_t *out)
 {
   switch (i)
     {
-#define _(v,f,s) case IPSEC_INTEG_ALG_##f:                      \
-      return (clib_host_to_net_u32(IPSEC_API_INTEG_ALG_##f));
-      foreach_ipsec_integ_alg
+#define _(v, f, s)                                                                                 \
+  case IPSEC_INTEG_ALG_##f:                                                                        \
+    *out = (clib_host_to_net_u32 (IPSEC_API_INTEG_ALG_##f));                                       \
+    return 0;
+    foreach_ipsec_integ_alg
 #undef _
-    case IPSEC_INTEG_N_ALG:
+      case IPSEC_INTEG_N_ALG:
       break;
     }
   ASSERT (0);
