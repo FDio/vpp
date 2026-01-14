@@ -24,3 +24,4 @@ Core Features
     selinux_doc
     policer
     hash
+    sfdp
