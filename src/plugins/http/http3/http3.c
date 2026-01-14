@@ -5,7 +5,6 @@
 #include <http/http3/http3.h>
 #include <http/http3/frame.h>
 #include <http/http3/qpack.h>
-#include <http/http_private.h>
 #include <http/http_timer.h>
 
 #define foreach_http3_stream_flags                                            \
@@ -1585,7 +1584,8 @@ http3_transport_close_callback (http_conn_t *hc)
   http3_conn_ctx_t *h3c;
   http3_stream_ctx_t *parent_sctx;
 
-  HTTP_DBG (1, "hc [%u]%x", hc->c_thread_index, hc->hc_hc_index);
+  HTTP_DBG (1, "hc [%u]%x, error code: %U", hc->c_thread_index,
+	    hc->hc_hc_index, http3_get_application_error_code (hc));
   h3c = http3_conn_ctx_get (pointer_to_uword (hc->opaque), hc->c_thread_index);
   if (h3c->parent_sctx_index != SESSION_INVALID_INDEX)
     {
@@ -1708,9 +1708,24 @@ http3_transport_stream_close_callback (http_conn_t *stream)
 static void
 http3_transport_stream_reset_callback (http_conn_t *stream)
 {
-  HTTP_DBG (1, "stream [%u]%x sctx %x", stream->c_thread_index,
-	    stream->hc_hc_index, pointer_to_uword (stream->opaque));
-  /* FIXME: */
+  http3_stream_ctx_t *sctx;
+
+  HTTP_DBG (1, "stream [%u]%x sctx %x, error code: %U", stream->c_thread_index,
+	    stream->hc_hc_index, pointer_to_uword (stream->opaque),
+	    format_http3_error, http3_get_application_error_code (stream));
+  if (stream->flags & HTTP_CONN_F_UNIDIRECTIONAL_STREAM)
+    {
+      /* this should not happen since we don't support server push */
+      /* FIXME: connection error */
+    }
+  else
+    {
+      http_stats_stream_reset_by_peer_inc (stream->c_thread_index);
+      sctx = http3_stream_ctx_get (pointer_to_uword (stream->opaque),
+				   stream->c_thread_index);
+      if (!(sctx->flags & HTTP3_STREAM_F_APP_CLOSED))
+	session_transport_reset_notify (&sctx->base.connection);
+    }
 }
 
 static void
