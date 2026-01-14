@@ -18,6 +18,10 @@
 option version = "1.0.0";
 import "vnet/interface_types.api";
 
+/*
+ * This plugin is DEPRECATED, migrate to drivers/iavf please.
+ */
+
 /** \brief
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -31,6 +35,7 @@ import "vnet/interface_types.api";
 
 define avf_create
 {
+  option deprecated;
   u32 client_index;
   u32 context;
 
@@ -50,6 +55,7 @@ define avf_create
 
 define avf_create_reply
 {
+  option deprecated;
   u32 context;
   i32 retval;
   vl_api_interface_index_t sw_if_index;
@@ -63,9 +69,9 @@ define avf_create_reply
 
 autoreply define avf_delete
 {
+  option deprecated;
   u32 client_index;
   u32 context;
-
   vl_api_interface_index_t sw_if_index;
   option vat_help = "<sw_if_index>";
 };
