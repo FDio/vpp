@@ -426,6 +426,11 @@ I:	pnat
 M:	Ole Troan <ot@cisco.com>
 F:	src/plugins/nat/pnat/
 
+Plugin - AVF Device driver
+I:	avf
+M:	Damjan Marion <damarion@cisco.com>
+F:	src/plugins/avf/
+
 Device drivers (new infra)
 I:	drivers
 M:	Damjan Marion <damarion@cisco.com>
