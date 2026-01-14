@@ -941,6 +941,9 @@ ct_session_tx (session_t * s)
   if (peer_s->session_state >= SESSION_STATE_TRANSPORT_CLOSING)
     return 0;
   peer_s->flags |= SESSION_F_RX_EVT;
+  /* Propagate dequeue ntf request along with enqueue notify */
+  if (s->tx_fifo->signals->want_deq_ntf)
+    peer_s->rx_fifo->signals->want_deq_ntf = s->tx_fifo->signals->want_deq_ntf;
   return session_enqueue_notify (peer_s);
 }
 
