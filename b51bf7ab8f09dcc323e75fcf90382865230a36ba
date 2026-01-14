@@ -46,6 +46,30 @@
       },
       "revId": "b51bf7ab8f09dcc323e75fcf90382865230a36ba",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5910ff06_69eef6a7",
+        "filename": "test/hs-test/script/clean_registry.sh",
+        "patchSetId": 2
+      },
+      "lineNbr": 3,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-01-14T16:04:23Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "09509bd2_bbdd0994",
+      "range": {
+        "startLine": 3,
+        "startChar": 0,
+        "endLine": 3,
+        "endChar": 4
+      },
+      "revId": "b51bf7ab8f09dcc323e75fcf90382865230a36ba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
