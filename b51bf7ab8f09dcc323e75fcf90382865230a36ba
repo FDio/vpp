@@ -22,6 +22,30 @@
       },
       "revId": "b51bf7ab8f09dcc323e75fcf90382865230a36ba",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "09509bd2_bbdd0994",
+        "filename": "test/hs-test/script/clean_registry.sh",
+        "patchSetId": 2
+      },
+      "lineNbr": 3,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2026-01-14T13:10:24Z",
+      "side": 1,
+      "message": "That just prints messages in blue, it\u0027s also used in some scripts in CalicoVPP",
+      "parentUuid": "a4945aa4_26699cab",
+      "range": {
+        "startLine": 3,
+        "startChar": 0,
+        "endLine": 3,
+        "endChar": 4
+      },
+      "revId": "b51bf7ab8f09dcc323e75fcf90382865230a36ba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
