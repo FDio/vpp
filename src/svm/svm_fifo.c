@@ -1629,11 +1629,12 @@ format_svm_fifo (u8 * s, va_list * args)
     return s;
 
   indent = format_get_indent (s);
-  s = format (s, "cursize %u nitems %u has_event %d min_alloc %u\n",
+  s = format (s, "cursize %u nitems %u has_event %d want_deq %d has_deq %d\n",
 	      svm_fifo_max_dequeue (f), f->shr->size, f->signals->has_event,
-	      f->shr->min_alloc);
-  s = format (s, "%Uhead %u tail %u segment manager %u\n", format_white_space,
-	      indent, f->shr->head, f->shr->tail, f->segment_manager);
+	      f->signals->want_deq_ntf, f->signals->has_deq_ntf);
+  s = format (s, "%Uhead %u tail %u segment manager %u min_alloc %u\n",
+	      format_white_space, indent, f->shr->head, f->shr->tail,
+	      f->segment_manager, f->shr->min_alloc);
 
   if (verbose > 1)
     s = format (s, "%Uvpp session %d thread %d app session %d thread %d\n",
