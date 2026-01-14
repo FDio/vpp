@@ -800,6 +800,7 @@ ct_app_rx_evt (transport_connection_t * tc)
   ps = session_get (peer_ct->c_s_index, peer_ct->c_thread_index);
   if (ps->session_state >= SESSION_STATE_TRANSPORT_CLOSING)
     return -1;
+  svm_fifo_reset_has_deq_ntf (s->rx_fifo);
   return session_dequeue_notify (ps);
 }
 
@@ -941,6 +942,9 @@ ct_session_tx (session_t * s)
   if (peer_s->session_state >= SESSION_STATE_TRANSPORT_CLOSING)
     return 0;
   peer_s->flags |= SESSION_F_RX_EVT;
+  /* Propagate dequeue ntf request along with enqueue notify */
+  if (s->tx_fifo->signals->want_deq_ntf)
+    peer_s->rx_fifo->signals->want_deq_ntf = s->tx_fifo->signals->want_deq_ntf;
   return session_enqueue_notify (peer_s);
 }
 
