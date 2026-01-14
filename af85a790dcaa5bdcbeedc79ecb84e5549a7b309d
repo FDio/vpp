@@ -33,6 +33,57 @@
       "message": "recheck",
       "revId": "af85a790dcaa5bdcbeedc79ecb84e5549a7b309d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8f089ac9_635e7d96",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-01-14T06:01:25Z",
+      "side": 1,
+      "message": "nit",
+      "revId": "af85a790dcaa5bdcbeedc79ecb84e5549a7b309d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ecc51f4c_08efcd9c",
+        "filename": "src/plugins/hs_apps/vcl/vcl_test_protos.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 799,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-01-14T06:01:25Z",
+      "side": 1,
+      "message": "Comment to explain the logic here?",
+      "revId": "af85a790dcaa5bdcbeedc79ecb84e5549a7b309d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bc5944e3_2aa2f3f0",
+        "filename": "src/plugins/hs_apps/vcl/vcl_test_protos.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1019,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-01-14T06:01:25Z",
+      "side": 1,
+      "message": "Comment to explain the logic here?",
+      "revId": "af85a790dcaa5bdcbeedc79ecb84e5549a7b309d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
