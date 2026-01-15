@@ -2,6 +2,7 @@ package hst
 
 import (
 	"bufio"
+	"context"
 	"crypto/tls"
 	"errors"
 	"fmt"
@@ -22,6 +23,7 @@ import (
 
 	"github.com/edwarnicke/exechelper"
 	. "github.com/onsi/ginkgo/v2"
+	"github.com/quic-go/quic-go"
 )
 
 const networkTopologyDir string = "topo-network/"
@@ -168,6 +170,19 @@ func TcpSendAndClose(address, data string) error {
 	}
 
 	return nil
+}
+
+func H3ClientConnect(serverAddress string) *quic.Conn {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	conn, err := quic.DialAddr(
+		ctx,
+		serverAddress,
+		&tls.Config{InsecureSkipVerify: true, NextProtos: []string{"h3"}, SessionTicketsDisabled: true},
+		&quic.Config{},
+	)
+	AssertNil(err)
+	return conn
 }
 
 /*

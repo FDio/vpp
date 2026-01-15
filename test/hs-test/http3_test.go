@@ -1,8 +1,6 @@
 package main
 
 import (
-	"context"
-	"crypto/tls"
 	"fmt"
 	"strconv"
 	"strings"
@@ -17,7 +15,8 @@ import (
 
 func init() {
 	RegisterH3Tests(Http3GetTest, Http3DownloadTest, Http3PostTest, Http3UploadTest, Http3ClientGetRepeatTest,
-		Http3ClientGetMultiplexingTest, Http3PeerResetStream)
+		Http3ClientGetMultiplexingTest, Http3PeerResetStream, Http3ClientRequestIncompleteTest,
+		Http3MissingPseudoHeaderTest, Http3PseudoHeaderAfterRegularTest)
 	RegisterVethTests(Http3CliTest, Http3ClientPostTest, Http3ClientPostPtrTest)
 }
 
@@ -246,15 +245,8 @@ func Http3PeerResetStream(s *Http3Suite) {
 	serverAddress := s.VppAddr() + ":" + s.Ports.Port1
 	Log(vpp.Vppctl("http tps no-zc h3 uri https://" + serverAddress))
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-	conn, err := quic.DialAddr(
-		ctx,
-		serverAddress,
-		&tls.Config{InsecureSkipVerify: true, NextProtos: []string{"h3"}},
-		&quic.Config{},
-	)
-
+	conn := H3ClientConnect(serverAddress)
+	defer conn.CloseWithError(0, "")
 	stream, err := conn.OpenStream()
 	AssertNil(err)
 	// send incomplete headers frame and wait a bit to be sure stream was accepted before we reset it
@@ -265,4 +257,78 @@ func Http3PeerResetStream(s *Http3Suite) {
 	o := vpp.Vppctl("show http stats")
 	Log(o)
 	AssertContains(o, "1 streams reset by peer")
+}
+
+func http3SenInvalidReqExpectStreamError(s *Http3Suite, p []byte, expectedErrorCode http3.ErrCode) {
+	vpp := s.Containers.Vpp.VppInstance
+	serverAddress := s.VppAddr() + ":" + s.Ports.Port1
+	Log(vpp.Vppctl("http tps no-zc h3 uri https://" + serverAddress))
+
+	conn := H3ClientConnect(serverAddress)
+	defer conn.CloseWithError(0, "")
+	stream, err := conn.OpenStream()
+	AssertNil(err)
+	stream.Write(p)
+	time.Sleep(500 * time.Millisecond)
+	stream.SetReadDeadline(time.Now().Add(time.Second))
+	_, err = stream.Read([]byte{0})
+	AssertNotNil(err, "expected stream reset")
+	Log(err)
+	expectedErr := quic.StreamError{
+		StreamID:  stream.StreamID(),
+		ErrorCode: quic.StreamErrorCode(expectedErrorCode),
+		Remote:    true,
+	}
+	AssertMatchError(err, &expectedErr, "expected error code "+expectedErrorCode.String())
+}
+
+func Http3ClientRequestIncompleteTest(s *Http3Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	serverAddress := s.VppAddr() + ":" + s.Ports.Port1
+	Log(vpp.Vppctl("http tps no-zc h3 uri https://" + serverAddress))
+
+	conn := H3ClientConnect(serverAddress)
+	defer conn.CloseWithError(0, "")
+	stream, err := conn.OpenStream()
+	AssertNil(err)
+	// send just frame header and close stream
+	stream.Write([]byte{0x01, 0x09})
+	stream.CancelWrite(quic.StreamErrorCode(http3.ErrCodeRequestCanceled))
+	time.Sleep(500 * time.Millisecond)
+	// server should reset stream with H3_REQUEST_INCOMPLETE
+	stream.SetReadDeadline(time.Now().Add(time.Second))
+	_, err = stream.Read([]byte{0})
+	AssertNotNil(err, "expected stream reset")
+	Log(err)
+	expectedErr := quic.StreamError{
+		StreamID:  stream.StreamID(),
+		ErrorCode: quic.StreamErrorCode(http3.ErrCodeRequestIncomplete),
+		Remote:    true,
+	}
+	AssertMatchError(err, &expectedErr, "expected error code H3_REQUEST_INCOMPLETE")
+}
+
+func Http3MissingPseudoHeaderTest(s *Http3Suite) {
+	// metod pseudo header is missing
+	// server should reset stream with H3_MESSAGE_ERROR
+	http3SenInvalidReqExpectStreamError(
+		s,
+		[]byte{
+			0x01, 0x0D, 0x00, 0x00, 0xD7, 0x50, 0x01, 0x61,
+			0xC1, 0x23, 0x61, 0x62, 0x63, 0x01, 0x5A,
+		},
+		http3.ErrCodeMessageError)
+}
+
+func Http3PseudoHeaderAfterRegularTest(s *Http3Suite) {
+	// pseudo header after regular header
+	// server should reset stream with H3_MESSAGE_ERROR
+	http3SenInvalidReqExpectStreamError(
+		s,
+		[]byte{
+			0x01, 0x14, 0x00, 0x00, 0xD7, 0x50, 0x01, 0x61,
+			0xC1, 0x23, 0x61, 0x62, 0x63, 0x01, 0x5A, 0x23,
+			0x61, 0x62, 0x63, 0x01, 0x5A, 0xD1,
+		},
+		http3.ErrCodeMessageError)
 }

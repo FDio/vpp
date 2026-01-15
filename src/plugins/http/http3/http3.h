@@ -44,7 +44,7 @@ typedef enum
 static inline u8 *
 format_http3_error (u8 *s, va_list *va)
 {
-  http3_error_t e = va_arg (*va, http3_error_t);
+  int e = va_arg (*va, int);
   u8 *t = 0;
 
   switch (e)
@@ -55,7 +55,7 @@ format_http3_error (u8 *s, va_list *va)
     break;
       foreach_http3_errors
 #undef _
-	default : return format (s, "BUG: unknown");
+	default : return format (s, "unknown 0x%x", e);
     }
   return format (s, "%s", t);
 }
