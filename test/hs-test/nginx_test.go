@@ -79,18 +79,22 @@ func parseString(s, pattern string) string {
 	return ""
 }
 
-func runNginxPerf(s *NoTopoSuite, mode, ab_or_wrk string, multiThreadWorkers bool) error {
+type nginxPerfInterface interface {
+	VppAddr() string
+	AddNginxVclConfig(bool)
+	CreateNginxConfig(*Container, bool)
+}
+
+func runNginxPerf(s nginxPerfInterface, mode, ab_or_wrk string, multiThreadWorkers bool, port string,
+	vpp *VppInstance, nginxCont *Container, wrkCont *Container, abCont *Container) error {
 	nRequests := 1000000
 	nClients := 1000
+	serverAddress := JoinHostPort(s.VppAddr(), port)
 
-	serverAddress := s.VppAddr() + ":" + s.Ports.NginxServer
-
-	vpp := s.Containers.Vpp.VppInstance
-
-	s.Containers.Nginx.Create()
+	nginxCont.Create()
 	s.AddNginxVclConfig(multiThreadWorkers)
-	s.CreateNginxConfig(s.Containers.Nginx, multiThreadWorkers)
-	s.Containers.Nginx.Start()
+	s.CreateNginxConfig(nginxCont, multiThreadWorkers)
+	nginxCont.Start()
 	vpp.WaitForApp("nginx-", 5)
 
 	if ab_or_wrk == "ab" {
@@ -103,20 +107,20 @@ func runNginxPerf(s *NoTopoSuite, mode, ab_or_wrk string, multiThreadWorkers boo
 		// don't exit on socket receive errors
 		args += " -r"
 		args += " http://" + serverAddress + "/64B.json"
-		s.Containers.Ab.ExtraRunningArgs = args
+		abCont.ExtraRunningArgs = args
 		Log("Test might take up to 2 minutes to finish. Please wait")
-		s.Containers.Ab.Run()
-		o, err := s.Containers.Ab.GetOutput()
+		abCont.Run()
+		o, err := abCont.GetOutput()
 		rps := parseString(o, "Requests per second:")
 		Log(rps)
 		AssertContains(err, "Finished "+fmt.Sprint(nRequests))
 	} else {
 		args := fmt.Sprintf("-c %d -t 2 -d 30 http://%s/64B.json", nClients,
 			serverAddress)
-		s.Containers.Wrk.ExtraRunningArgs = args
-		s.Containers.Wrk.Run()
+		wrkCont.ExtraRunningArgs = args
+		wrkCont.Run()
 		Log("Please wait for 30s, test is running.")
-		o, err := s.Containers.Wrk.GetOutput()
+		o, err := wrkCont.GetOutput()
 		rps := parseString(o, "requests")
 		Log(rps)
 		Log(err)
@@ -130,11 +134,13 @@ func NginxPerfCpsInterruptModeTest(s *NoTopoSuite) {
 }
 
 func NginxPerfCpsMultiThreadTest(s *NoTopoSuite) {
-	AssertNil(runNginxPerf(s, "cps", "ab", true))
+	AssertNil(runNginxPerf(s, "cps", "ab", true, s.Ports.NginxServer, s.Containers.Vpp.VppInstance,
+		s.Containers.Nginx, s.Containers.Wrk, s.Containers.Ab))
 }
 
 func NginxPerfCpsTest(s *NoTopoSuite) {
-	AssertNil(runNginxPerf(s, "cps", "ab", false))
+	AssertNil(runNginxPerf(s, "cps", "ab", false, s.Ports.NginxServer, s.Containers.Vpp.VppInstance,
+		s.Containers.Nginx, s.Containers.Wrk, s.Containers.Ab))
 }
 
 func NginxPerfRpsInterruptModeTest(s *NoTopoSuite) {
@@ -142,11 +148,13 @@ func NginxPerfRpsInterruptModeTest(s *NoTopoSuite) {
 }
 
 func NginxPerfRpsMultiThreadTest(s *NoTopoSuite) {
-	AssertNil(runNginxPerf(s, "rps", "ab", true))
+	AssertNil(runNginxPerf(s, "rps", "ab", true, s.Ports.NginxServer, s.Containers.Vpp.VppInstance,
+		s.Containers.Nginx, s.Containers.Wrk, s.Containers.Ab))
 }
 
 func NginxPerfRpsTest(s *NoTopoSuite) {
-	AssertNil(runNginxPerf(s, "rps", "ab", false))
+	AssertNil(runNginxPerf(s, "rps", "ab", false, s.Ports.NginxServer, s.Containers.Vpp.VppInstance,
+		s.Containers.Nginx, s.Containers.Wrk, s.Containers.Ab))
 }
 
 func NginxPerfWrkInterruptModeTest(s *NoTopoSuite) {
@@ -154,54 +162,11 @@ func NginxPerfWrkInterruptModeTest(s *NoTopoSuite) {
 }
 
 func NginxPerfWrkTest(s *NoTopoSuite) {
-	AssertNil(runNginxPerf(s, "", "wrk", false))
-}
-
-func runNginxPerf6(s *NoTopo6Suite, mode, ab_or_wrk string, multiThreadWorkers bool) error {
-	nRequests := 1000000
-	nClients := 1000
-
-	serverAddress := "[" + s.VppAddr() + "]:" + s.Ports.NginxServer
-	vpp := s.Containers.Vpp.VppInstance
-
-	s.Containers.Nginx.Create()
-	s.AddNginxVclConfig(multiThreadWorkers)
-	s.CreateNginxConfig(s.Containers.Nginx, multiThreadWorkers)
-	s.Containers.Nginx.Start()
-	vpp.WaitForApp("nginx-", 5)
-
-	if ab_or_wrk == "ab" {
-		args := fmt.Sprintf("-n %d -c %d", nRequests, nClients)
-		if mode == "rps" {
-			args += " -k"
-		} else if mode != "cps" {
-			return fmt.Errorf("invalid mode %s; expected cps/rps", mode)
-		}
-		// don't exit on socket receive errors
-		args += " -r"
-		args += " http://" + serverAddress + "/64B.json"
-		s.Containers.Ab.ExtraRunningArgs = args
-		Log("Test might take up to 2 minutes to finish. Please wait")
-		s.Containers.Ab.Run()
-		o, err := s.Containers.Ab.GetOutput()
-		rps := parseString(o, "Requests per second:")
-		Log(rps)
-		AssertContains(err, "Finished "+fmt.Sprint(nRequests))
-	} else {
-		args := fmt.Sprintf("-c %d -t 2 -d 30 http://%s/64B.json", nClients,
-			serverAddress)
-		s.Containers.Wrk.ExtraRunningArgs = args
-		s.Containers.Wrk.Run()
-		Log("Please wait for 30s, test is running.")
-		o, err := s.Containers.Wrk.GetOutput()
-		rps := parseString(o, "requests")
-		Log(rps)
-		Log(err)
-		AssertEmpty(err, "err: '%s', output: '%s'", err, o)
-	}
-	return nil
+	AssertNil(runNginxPerf(s, "", "wrk", false, s.Ports.NginxServer, s.Containers.Vpp.VppInstance,
+		s.Containers.Nginx, s.Containers.Wrk, s.Containers.Ab))
 }
 
 func NginxPerfRps6Test(s *NoTopo6Suite) {
-	AssertNil(runNginxPerf6(s, "rps", "ab", false))
+	AssertNil(runNginxPerf(s, "rps", "ab", false, s.Ports.NginxServer, s.Containers.Vpp.VppInstance,
+		s.Containers.Nginx, s.Containers.Wrk, s.Containers.Ab))
 }
