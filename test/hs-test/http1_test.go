@@ -51,6 +51,12 @@ func init() {
 const wwwRootPath = "/tmp/www_root"
 const defaultHttpTimeout = time.Second * 10
 
+// helper interface for ip4/6 HttpClientGet tests
+type httpClientGetInterface interface {
+	HostAddr() string
+	LogHttpReq(bool) http.HandlerFunc
+}
+
 func httpDownloadBenchmark(experiment *gmeasure.Experiment, data any) {
 	url, isValid := data.(string)
 	AssertEqual(true, isValid)
@@ -539,18 +545,32 @@ func HttpClientNoPrintTest(s *Http1Suite) {
 func HttpClientGetResponseBodyTest(s *Http1Suite) {
 	response := "<body>hello world</body>"
 	size := len(response)
-	httpClientGet(s, response, size, "http")
+	httpClientGet(s, s.Containers.Vpp.VppInstance, response, size, "http", s.Ports.Http)
 }
 
 func HttpClientGet128kbResponseTest(s *Http1Suite) {
 	response := strings.Repeat("a", 128*1024)
 	size := len(response)
-	httpClientGet(s, response, size, "http")
+	httpClientGet(s, s.Containers.Vpp.VppInstance, response, size, "http", s.Ports.Http)
 }
 
 func HttpClientGetTlsNoRespBodyTest(s *Http1Suite) {
 	response := ""
-	httpClientGet(s, response, 0, "https")
+	httpClientGet(s, s.Containers.Vpp.VppInstance, response, 0, "https", s.Ports.Http)
+}
+
+// registered as a solo test and not using generated ports
+func HttpClientGetResponseBody6Test(s *NoTopo6Suite) {
+	response := "<body>hello world</body>"
+	size := len(response)
+	httpClientGet(s, s.Containers.Vpp.VppInstance, response, size, "http", s.Ports.Http)
+}
+
+// registered as a solo test and not using generated ports
+func HttpClientGetTlsResponseBody6Test(s *NoTopo6Suite) {
+	response := "<body>hello world</body>"
+	size := len(response)
+	httpClientGet(s, s.Containers.Vpp.VppInstance, response, size, "https", s.Ports.Http)
 }
 
 func golangServer(serverAddress string, proto string) *ghttp.Server {
@@ -578,26 +598,23 @@ func golangServer(serverAddress string, proto string) *ghttp.Server {
 	return destinationServer
 }
 
-func httpClientGet(s *Http1Suite, response string, size int, proto string) {
+func httpClientGet(s httpClientGetInterface, vpp *VppInstance, response string, size int, proto string, port string) {
 	var err error
-	vpp := s.Containers.Vpp.VppInstance
-	serverAddress := s.HostAddr() + ":" + s.Ports.Http
+
+	serverAddress := JoinHostPort(s.HostAddr(), port)
 	server := golangServer(serverAddress, proto)
 	server.AppendHandlers(
 		ghttp.CombineHandlers(
-			s.LogHttpReq(true),
+			s.LogHttpReq(false),
 			ghttp.VerifyRequest("GET", "/"),
-			ghttp.RespondWith(
-				http.StatusOK,
-				response,
-				http.Header{"Content-Length": {strconv.Itoa(size)}},
-			),
-		),
-	)
+			ghttp.VerifyHeaderKV("Hello", "World"),
+			ghttp.VerifyHeaderKV("Test-H2", "Test-K2"),
+			ghttp.RespondWith(http.StatusOK, string(response), http.Header{"Content-Length": {strconv.Itoa(size)}}),
+		))
 	server.Start()
 	defer server.Close()
 
-	uri := proto + "://" + serverAddress
+	uri := proto + "://" + serverAddress + "/"
 	cmd := "http client use-ptr verbose header Hello:World header Test-H2:Test-K2 save-to response.txt uri " + uri
 
 	o := vpp.Vppctl(cmd)
@@ -750,70 +767,6 @@ func HttpClientRedirectLimitTest(s *Http1Suite) {
 	Log(o)
 	AssertContains(o, "redirect limit")
 	AssertContains(o, http.StatusPermanentRedirect)
-}
-
-// registered as a solo test and not using generated ports
-func HttpClientGetResponseBody6Test(s *NoTopo6Suite) {
-	response := "<body>hello world</body>"
-	size := len(response)
-	httpClientGet6(s, response, size, "http")
-}
-
-// registered as a solo test and not using generated ports
-func HttpClientGetTlsResponseBody6Test(s *NoTopo6Suite) {
-	response := "<body>hello world</body>"
-	size := len(response)
-	httpClientGet6(s, response, size, "https")
-}
-
-func httpClientGet6(s *NoTopo6Suite, response string, size int, proto string) {
-	var l net.Listener
-	var err error
-	var port string
-
-	vpp := s.Containers.Vpp.VppInstance
-	server := ghttp.NewUnstartedServer()
-	serverAddress := "[" + s.HostAddr() + "]"
-
-	if proto == "https" {
-		var cer tls.Certificate
-		certFile := "resources/cert/localhost.crt"
-		keyFile := "resources/cert/localhost.key"
-		cer, err = tls.LoadX509KeyPair(certFile, keyFile)
-		AssertNil(err)
-		tlsConfig := &tls.Config{Certificates: []tls.Certificate{cer}}
-		server.HTTPTestServer.TLS = tlsConfig
-		port = "443"
-		l, err = tls.Listen("tcp", serverAddress+":443", tlsConfig)
-	} else {
-		port = "80"
-		l, err = net.Listen("tcp", serverAddress+":80")
-	}
-	AssertNil(err, fmt.Sprint(err))
-
-	server.HTTPTestServer.Listener = l
-	server.AppendHandlers(
-		ghttp.CombineHandlers(
-			s.LogHttpReq(false),
-			ghttp.VerifyRequest("GET", "/"),
-			ghttp.VerifyHeaderKV("Hello", "World"),
-			ghttp.VerifyHeaderKV("Test-H2", "Test-K2"),
-			ghttp.RespondWith(http.StatusOK, string(response), http.Header{"Content-Length": {strconv.Itoa(size)}}),
-		))
-	server.Start()
-	defer server.Close()
-
-	uri := proto + "://" + serverAddress + ":" + port + "/"
-	cmd := "http client use-ptr verbose header Hello:World header Test-H2:Test-K2 save-to response.txt uri " + uri
-
-	o := vpp.Vppctl(cmd)
-	Log(o)
-	AssertContains(o, "200 OK")
-	AssertContains(o, "Content-Length: "+strconv.Itoa(size))
-
-	file_contents, err := vpp.Container.Exec(false, "cat /tmp/response.txt")
-	AssertNil(err)
-	AssertContains(file_contents, response)
 }
 
 func HttpClientGetRepeatMWTest(s *Http1Suite) {
@@ -1095,7 +1048,7 @@ func PromMemLeakTest(s *Http1Suite) {
 	AssertNil(err, fmt.Sprint(err))
 
 	/* collect stats couple of times */
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		time.Sleep(time.Second * 1)
 		promReq(url, defaultHttpTimeout)
 	}

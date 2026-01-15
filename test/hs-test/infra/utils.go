@@ -652,3 +652,7 @@ func WrapCmdWithLineBuffering(cmd string) string {
 func GetCurrentTestName() string {
 	return strings.Split(CurrentSpecReport().LeafNodeText, "/")[1]
 }
+
+func JoinHostPort(ip string, port string) string {
+	return net.JoinHostPort(ip, port)
+}
