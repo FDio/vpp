@@ -357,7 +357,7 @@ http_connect_transport_stream (u32 parent_index,
 }
 
 void
-http_reset_transport_stream (http_conn_t *stream, u64 error_code)
+http_reset_transport_stream (http_conn_t *stream)
 {
   ASSERT (http_conn_is_stream (stream));
   stream->state = HTTP_CONN_STATE_CLOSED;
