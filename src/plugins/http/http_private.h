@@ -489,7 +489,7 @@ int http_connect_transport_stream (u32 parent_index,
  *
  * @param stream Stream ctx.
  */
-void http_reset_transport_stream (http_conn_t *stream, u64 error_code);
+void http_reset_transport_stream (http_conn_t *stream);
 
 /**
  * Close stream.
