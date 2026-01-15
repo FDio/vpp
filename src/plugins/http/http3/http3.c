@@ -81,6 +81,16 @@ typedef struct
 
 static http3_main_t http3_main;
 
+static_always_inline void
+http3_set_application_error_code (http_conn_t *hc, http3_error_t err)
+{
+  ASSERT (err >= 0); /* negative values are for internal use only */
+  session_t *ts = session_get_from_handle (hc->hc_tc_session_handle);
+  transport_endpt_attr_t attr = { .type = TRANSPORT_ENDPT_ATTR_APP_PROTO_ERR_CODE,
+				  .app_proto_err_code = (u64) err };
+  session_transport_attribute (ts, 0 /* is_set */, &attr);
+}
+
 static_always_inline http3_worker_ctx_t *
 http3_worker_get (clib_thread_index_t thread_index)
 {
@@ -250,6 +260,18 @@ http3_stream_close (http_conn_t *stream, http3_stream_ctx_t *sctx)
     }
   else
     http_stats_ctrl_streams_closed_inc (stream->c_thread_index);
+}
+
+static_always_inline void
+http3_stream_terminate (http_conn_t *stream, http3_stream_ctx_t *sctx, http3_error_t err)
+{
+  /* this should not happen since we don't support server push */
+  ASSERT (stream->flags & HTTP_CONN_F_BIDIRECTIONAL_STREAM);
+
+  http3_set_application_error_code (stream, err);
+  if (!(sctx->flags & HTTP3_STREAM_F_APP_CLOSED) || !(stream->flags & HTTP_CONN_F_NO_APP_SESSION))
+    session_transport_reset_notify (&sctx->base.connection);
+  http_reset_transport_stream (stream);
 }
 
 static_always_inline void
@@ -521,9 +543,10 @@ http3_req_state_wait_transport_method (http_conn_t *stream,
   if (http_io_ts_max_read (stream) < sctx->fh.length)
     {
       HTTP_DBG (1, "headers frame incomplete");
-      *error = HTTP3_ERROR_INCOMPLETE;
+      if (stream->state == HTTP_CONN_STATE_HALF_CLOSED)
+	http3_stream_terminate (stream, sctx, HTTP3_ERROR_REQUEST_INCOMPLETE);
       *n_deq = 0;
-      return HTTP_SM_ERROR;
+      return HTTP_SM_STOP;
     }
 
   http_stats_requests_received_inc (stream->c_thread_index);
@@ -539,7 +562,13 @@ http3_req_state_wait_transport_method (http_conn_t *stream,
 				&sctx->base.headers, &h3c->qpack_decoder_ctx);
   if (*error != HTTP3_ERROR_NO_ERROR)
     {
-      HTTP_DBG (1, "qpack_parse_request failed");
+      HTTP_DBG (1, "qpack_parse_request failed: %U", format_http3_error, *error);
+      /* message error is only stream error, otherwise it's connection error */
+      if (*error == HTTP3_ERROR_MESSAGE_ERROR)
+	{
+	  http3_stream_terminate (stream, sctx, HTTP3_ERROR_MESSAGE_ERROR);
+	  return HTTP_SM_STOP;
+	}
       return HTTP_SM_ERROR;
     }
 
@@ -550,40 +579,40 @@ http3_req_state_wait_transport_method (http_conn_t *stream,
   if (!(control_data.parsed_bitmap & HPACK_PSEUDO_HEADER_METHOD_PARSED))
     {
       HTTP_DBG (1, ":method pseudo-header missing in request");
-      /* FIXME: */
-      return HTTP_SM_ERROR;
+      http3_stream_terminate (stream, sctx, HTTP3_ERROR_MESSAGE_ERROR);
+      return HTTP_SM_STOP;
     }
   if (control_data.method == HTTP_REQ_UNKNOWN)
     {
       HTTP_DBG (1, "unsupported method");
-      /* FIXME: */
-      return HTTP_SM_ERROR;
+      http3_stream_terminate (stream, sctx, HTTP3_ERROR_GENERAL_PROTOCOL_ERROR);
+      return HTTP_SM_STOP;
     }
   if (!(control_data.parsed_bitmap & HPACK_PSEUDO_HEADER_SCHEME_PARSED) &&
       control_data.method != HTTP_REQ_CONNECT)
     {
       HTTP_DBG (1, ":scheme pseudo-header missing in request");
-      /* FIXME: */
-      return HTTP_SM_ERROR;
+      http3_stream_terminate (stream, sctx, HTTP3_ERROR_MESSAGE_ERROR);
+      return HTTP_SM_STOP;
     }
   if (control_data.scheme == HTTP_URL_SCHEME_UNKNOWN)
     {
       HTTP_DBG (1, "unsupported scheme");
-      /* FIXME: */
-      return HTTP_SM_ERROR;
+      http3_stream_terminate (stream, sctx, HTTP3_ERROR_INTERNAL_ERROR);
+      return HTTP_SM_STOP;
     }
   if (!(control_data.parsed_bitmap & HPACK_PSEUDO_HEADER_PATH_PARSED) &&
       control_data.method != HTTP_REQ_CONNECT)
     {
       HTTP_DBG (1, ":path pseudo-header missing in request");
-      /* FIXME: */
-      return HTTP_SM_ERROR;
+      http3_stream_terminate (stream, sctx, HTTP3_ERROR_MESSAGE_ERROR);
+      return HTTP_SM_STOP;
     }
   if (!(control_data.parsed_bitmap & HPACK_PSEUDO_HEADER_AUTHORITY_PARSED))
     {
       HTTP_DBG (1, ":authority pseudo-header missing in request");
-      /* FIXME: */
-      return HTTP_SM_ERROR;
+      http3_stream_terminate (stream, sctx, HTTP3_ERROR_MESSAGE_ERROR);
+      return HTTP_SM_STOP;
     }
   if (control_data.content_len_header_index != ~0)
     {
@@ -591,8 +620,14 @@ http3_req_state_wait_transport_method (http_conn_t *stream,
 	control_data.content_len_header_index;
       if (http_parse_content_length (&sctx->base, wrk->header_list))
 	{
-	  /* FIXME: */
-	  return HTTP_SM_ERROR;
+	  http3_stream_terminate (stream, sctx, HTTP3_ERROR_MESSAGE_ERROR);
+	  return HTTP_SM_STOP;
+	}
+      if (stream->state == HTTP_CONN_STATE_HALF_CLOSED && !http_io_ts_max_read (stream))
+	{
+	  HTTP_DBG (1, "request incomplete");
+	  http3_stream_terminate (stream, sctx, HTTP3_ERROR_REQUEST_INCOMPLETE);
+	  return HTTP_SM_STOP;
 	}
       new_state = HTTP_REQ_STATE_TRANSPORT_IO_MORE_DATA;
       res = HTTP_SM_CONTINUE;
@@ -686,6 +721,12 @@ http3_req_state_wait_transport_reply (http_conn_t *stream,
   if (*error != HTTP3_ERROR_NO_ERROR)
     {
       HTTP_DBG (1, "qpack_parse_response failed");
+      /* message error is only stream error, otherwise it's connection error */
+      if (*error == HTTP3_ERROR_MESSAGE_ERROR)
+	{
+	  http3_stream_terminate (stream, sctx, HTTP3_ERROR_MESSAGE_ERROR);
+	  return HTTP_SM_STOP;
+	}
       return HTTP_SM_ERROR;
     }
 
@@ -697,7 +738,7 @@ http3_req_state_wait_transport_reply (http_conn_t *stream,
   if (!(control_data.parsed_bitmap & HPACK_PSEUDO_HEADER_STATUS_PARSED))
     {
       HTTP_DBG (1, ":status pseudo-header missing in request");
-      /* FIXME: */
+      http3_stream_terminate (stream, sctx, HTTP3_ERROR_MESSAGE_ERROR);
       return HTTP_SM_STOP;
     }
 
@@ -707,7 +748,7 @@ http3_req_state_wait_transport_reply (http_conn_t *stream,
 	control_data.content_len_header_index;
       if (http_parse_content_length (&sctx->base, wrk->header_list))
 	{
-	  /* FIXME: */
+	  http3_stream_terminate (stream, sctx, HTTP3_ERROR_MESSAGE_ERROR);
 	  return HTTP_SM_STOP;
 	}
       new_state = HTTP_REQ_STATE_TRANSPORT_IO_MORE_DATA;
@@ -799,6 +840,16 @@ http3_req_state_transport_io_more_data (http_conn_t *stream,
 	  http3_stream_ctx_reset (stream, sctx);
 	}
       res = HTTP_SM_STOP;
+    }
+  else
+    {
+      if (stream->flags & HTTP_CONN_F_IS_SERVER && stream->state == HTTP_CONN_STATE_HALF_CLOSED &&
+	  !http_io_ts_max_read (stream))
+	{
+	  HTTP_DBG (1, "request incomplete");
+	  http3_stream_terminate (stream, sctx, HTTP3_ERROR_REQUEST_INCOMPLETE);
+	  return HTTP_SM_STOP;
+	}
     }
   http_app_worker_rx_notify (&sctx->base);
 
@@ -1492,6 +1543,7 @@ http3_app_close_callback (http_conn_t *stream, u32 req_index,
       http_stats_app_streams_closed_inc (thread_index);
       if (sctx->flags & HTTP3_STREAM_F_IS_PARENT)
 	{
+	  /* TODO: send goaway and set app error code to H3_NO_ERROR */
 	  HTTP_DBG (1, "app closed parent, closing connection");
 	  hc = http_conn_get_w_thread (stream->hc_http_conn_index,
 				       stream->c_thread_index);
@@ -1523,13 +1575,27 @@ http3_app_reset_callback (http_conn_t *stream, u32 req_index,
 	    stream->hc_hc_index, req_index);
   http_stats_stream_reset_by_app_inc (thread_index);
   sctx = http3_stream_ctx_get (req_index, thread_index);
-  sctx->flags |= HTTP3_STREAM_F_APP_CLOSED;
-  http_reset_transport_stream (stream, HTTP3_ERROR_INTERNAL_ERROR);
+  if (sctx->base.state == HTTP_REQ_STATE_WAIT_APP_METHOD)
+    {
+      /* client session without request - no quic stream, delete it
+       * now */
+      session_transport_delete_notify (&sctx->base.connection);
+      http3_stream_ctx_free_w_index (req_index, thread_index);
+    }
+  else
+    {
+      sctx->flags |= HTTP3_STREAM_F_APP_CLOSED;
+      http3_stream_terminate (stream, sctx,
+			      sctx->base.is_tunnel ? HTTP3_ERROR_CONNECT_ERROR :
+						     HTTP3_ERROR_REQUEST_CANCELLED);
+    }
   if (sctx->flags & HTTP3_STREAM_F_IS_PARENT)
     {
+      /* TODO: should we send goaway too? */
       HTTP_DBG (1, "app closed parent, closing connection");
       hc = http_conn_get_w_thread (stream->hc_http_conn_index,
 				   stream->c_thread_index);
+      http3_set_application_error_code (hc, HTTP3_ERROR_INTERNAL_ERROR);
       http_disconnect_transport (hc);
       http_stats_connections_reset_by_app_inc (thread_index);
     }
@@ -1584,8 +1650,8 @@ http3_transport_close_callback (http_conn_t *hc)
   http3_conn_ctx_t *h3c;
   http3_stream_ctx_t *parent_sctx;
 
-  HTTP_DBG (1, "hc [%u]%x, error code: %U", hc->c_thread_index,
-	    hc->hc_hc_index, http3_get_application_error_code (hc));
+  HTTP_DBG (1, "hc [%u]%x, error code: %U", hc->c_thread_index, hc->hc_hc_index, format_http3_error,
+	    http3_get_application_error_code (hc));
   h3c = http3_conn_ctx_get (pointer_to_uword (hc->opaque), hc->c_thread_index);
   if (h3c->parent_sctx_index != SESSION_INVALID_INDEX)
     {
@@ -1650,10 +1716,11 @@ http3_transport_stream_accept_callback (http_conn_t *stream)
 		((http_req_handle_t) sctx->base.hr_req_handle).req_index);
       if (http_conn_accept_request (stream, &sctx->base))
 	{
-	  /* FIXME: */
 	  HTTP_DBG (1, "http_conn_accept_request failed");
-	  return -1;
+	  http3_stream_terminate (stream, sctx, HTTP3_ERROR_REQUEST_REJECTED);
+	  return 0;
 	}
+      stream->flags &= ~HTTP_CONN_F_NO_APP_SESSION;
       http_req_state_change (&sctx->base,
 			     HTTP_REQ_STATE_WAIT_TRANSPORT_METHOD);
       http_stats_app_streams_opened_inc (stream->c_thread_index);
@@ -1698,7 +1765,17 @@ http3_transport_stream_close_callback (http_conn_t *stream)
 	  /* for server stream is closed for receiving
 	   * for client we can confirm close if we already read all data */
 	  if (stream->flags & HTTP_CONN_F_IS_SERVER)
-	    stream->state = HTTP_CONN_STATE_HALF_CLOSED;
+	    {
+	      sctx =
+		http3_stream_ctx_get (pointer_to_uword (stream->opaque), stream->c_thread_index);
+	      if (sctx->base.state < HTTP_REQ_STATE_WAIT_APP_REPLY && !http_io_ts_max_read (stream))
+		{
+		  HTTP_DBG (1, "request incomplete");
+		  http3_stream_terminate (stream, sctx, HTTP3_ERROR_REQUEST_INCOMPLETE);
+		  return;
+		}
+	      stream->state = HTTP_CONN_STATE_HALF_CLOSED;
+	    }
 	  else if (pointer_to_uword (stream->opaque) == SESSION_INVALID_INDEX)
 	    http_close_transport_stream (stream);
 	}
@@ -1807,7 +1884,11 @@ http3_stream_cleanup_callback (http_conn_t *stream)
       sctx = http3_stream_ctx_get (pointer_to_uword (stream->opaque),
 				   stream->c_thread_index);
       ASSERT (sctx->base.to_recv == 0);
-      session_transport_delete_notify (&sctx->base.connection);
+      if (!(stream->flags & HTTP_CONN_F_NO_APP_SESSION))
+	{
+	  clib_warning ("called");
+	  session_transport_delete_notify (&sctx->base.connection);
+	}
     }
   http3_stream_ctx_free (stream);
 }
