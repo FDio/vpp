@@ -148,16 +148,20 @@ jobs:
           GERRIT_REFSPEC: ${{ env.GERRIT_REFSPEC }}
           TUI_LINE: ${{ env.TUI_LINE }}
 
-      - name: Gerrit Checkout CSIT
-        run: |
-          cd "$CSIT_DIR"
-          git checkout HEAD
+      - name: Git Checkout CSIT
+        uses: actions/checkout@v6
+        with:
+          path: csit
+          ref: master
+          repository: FDio/csit
+          fetch-depth: 0
+          fetch-tags: 'true'
 
       - name: Run CSIT Bootstrap
-        # yamllint disable-line rule:line-length
-        uses: fdio/csit/.github/actions/csit-bootstrap@a372372ca8f89676c55631f8650468dfab86cc2a
+        uses: fdio/csit/.github/actions/csit-bootstrap@6e2e8dd6eae1a9297bfcc3a1630be181191a0553
         with:
-          bootstrap_script: bootstrap_verify_perf.sh
+          bootstrap_script: per_patch_perf.sh
+          path: csit
           with_oper: true
 
       - name: AWS S3 Publish Logs
