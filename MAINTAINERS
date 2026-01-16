@@ -759,6 +759,11 @@ I:	oddbuf
 M:	Dave Barach <vpp@barachs.net>
 F:	src/plugins/oddbuf
 
+Plugin - Header skip/restore
+I:	hdrskip
+M:	Mohammed Hawari <mohammed@hawari.fr>
+F:	src/plugins/hdrskip
+
 Plugin - VRRP
 I:	vrrp
 M:	Matthew Smith <mgsmith@netgate.com>
