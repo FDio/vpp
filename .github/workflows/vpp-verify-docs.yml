@@ -111,7 +111,6 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        build_type: ['release']
         class: ['builder']
         os: ['ubuntu2404']
         executor_arch: ['x86_64']
@@ -141,7 +140,7 @@ jobs:
       - name: Prepare Log Directory
         run: |
           set -euxo pipefail
-          LOG_NAME="${{ env.LOG_PREFIX }}/verify-docs-${{ matrix.build_type }}-${{ matrix.class }}-${{ matrix.os }}-${{ inputs.FDIO_NAMESPACE }}-${{ matrix.executor_arch }}"
+          LOG_NAME="${{ env.LOG_PREFIX }}/verify-docs-${{ matrix.class }}-${{ matrix.os }}-${{ inputs.FDIO_NAMESPACE }}-${{ matrix.executor_arch }}"
           echo "LOG_NAME=$LOG_NAME" >> "$GITHUB_ENV"
           LOG_DIR="$WORKSPACE/logs/$LOG_NAME"
           echo "LOG_DIR=$LOG_DIR" >> "$GITHUB_ENV"
@@ -188,7 +187,7 @@ jobs:
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws_region: ${{ vars.AWS_REGION }}
-          s3_bucket: ${{ vars.S3_BUCKET }}
+          s3_bucket: vpp-docs-7day-retention
           s3_path: ${{ env.LOG_NAME }}/docs
           archives_path: "${{ env.WORKSPACE }}/build-root/docs/html"
           compress_files: false
