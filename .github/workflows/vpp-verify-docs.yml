@@ -184,10 +184,10 @@ jobs:
         # yamllint disable-line rule:line-length
         uses: fdio/.github/.github/actions/aws-s3-publish-logs@6af3edc5eabc756240c3d419a3b693466efcbb86
         with:
-          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws_access_key_id: ${{ secrets.AWS_DOCS_ACCESS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_DOCS_SECRET_ACCESS_KEY }}
           aws_region: ${{ vars.AWS_REGION }}
-          s3_bucket: vpp-docs-7day-retention
+          s3_bucket: ${{ vars.S3_DOCS_7DAY_BUCKET}}
           s3_path: ${{ env.LOG_NAME }}/docs
           archives_path: "${{ env.WORKSPACE }}/build-root/docs/html"
           compress_files: false
