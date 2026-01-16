@@ -301,7 +301,10 @@ quic_quicly_init_crypto_context (crypto_context_t *crctx, quic_ctx_t *ctx)
     app->sm_properties.rx_fifo_size - 1;
   quicly_ctx->transport_params.max_stream_data.bidi_remote =
     app->sm_properties.tx_fifo_size - 1;
-  quicly_ctx->transport_params.max_stream_data.uni = QUIC_INT_MAX;
+  quicly_ctx->transport_params.max_stream_data.uni =
+    clib_min (app->sm_properties.rx_fifo_size,
+	      app->sm_properties.tx_fifo_size) -
+    1;
 
   quicly_ctx->transport_params.max_udp_payload_size = QUIC_MAX_PACKET_SIZE;
   app_cctx = app_crypto_ctx_get (app);
