@@ -440,6 +440,7 @@ handoffs
 hashtable
 hbh
 hdr
+hdrskip
 headend
 Headend
 heapsize
