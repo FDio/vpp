@@ -109,6 +109,16 @@ class TestDns(VppTestCase):
         self.assertIn("1.2.3.4", str)
         self.assertIn("[P] no.clown.org:", str)
 
+    def test_dns_no_source_address(self):
+        """DNS fails gracefully when no usable source IP exists"""
+
+        # Disable DNS servers if any
+        self.vapi.dns_enable_disable(enable=1)
+
+        # Try resolving a name without any IP addresses
+        rv = self.vapi.dns_resolve_name(name=b"unknown.domain")
+        self.assertEqual(rv, VNET_API_ERROR_INVALID_SRC_ADDRESS)
+
 
 if __name__ == "__main__":
     unittest.main(testRunner=VppTestRunner)
