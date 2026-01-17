@@ -10,16 +10,17 @@
 #include <vppinfra/format.h>
 
 #if defined(__x86_64__)
-#define foreach_march_variant                                                 \
-  _ (scalar, "Generic (SIMD disabled)")                                       \
-  _ (hsw, "Intel Haswell")                                                    \
-  _ (trm, "Intel Tremont")                                                    \
-  _ (skx, "Intel Skylake (server) / Cascade Lake")                            \
-  _ (icl, "Intel Ice Lake")                                                   \
-  _ (adl, "Intel Alder Lake")                                                 \
-  _ (spr, "Intel Sapphire Rapids")                                            \
-  _ (znver3, "AMD Milan")                                                     \
-  _ (znver4, "AMD Genoa")
+#define foreach_march_variant                                                                      \
+  _ (scalar, "Generic (SIMD disabled)")                                                            \
+  _ (hsw, "Intel Haswell")                                                                         \
+  _ (trm, "Intel Tremont")                                                                         \
+  _ (skx, "Intel Skylake (server) / Cascade Lake")                                                 \
+  _ (icl, "Intel Ice Lake")                                                                        \
+  _ (adl, "Intel Alder Lake")                                                                      \
+  _ (spr, "Intel Sapphire Rapids")                                                                 \
+  _ (znver3, "AMD Milan (Zen 3)")                                                                  \
+  _ (znver4, "AMD Genoa (Zen 4)")                                                                  \
+  _ (znver5, "AMD Turin (Zen 5)")
 #elif defined(__aarch64__)
 #define foreach_march_variant                                                 \
   _ (octeontx2, "Marvell Octeon TX2")                                         \
@@ -33,10 +34,6 @@
 #define foreach_march_variant
 #endif
 
-#define amd_vendor(t1, t2, t3)                                                \
-  ((t1 == 0x68747541) && /* htuA */                                           \
-   (t2 == 0x444d4163) && /* DMAc */                                           \
-   (t3 == 0x69746e65))	 /* itne */
 typedef enum
 {
   CLIB_MARCH_VARIANT_TYPE = 0,
@@ -115,34 +112,35 @@ _CLIB_MARCH_FN_REGISTRATION(fn)
 clib_march_fn_registration *fn##_march_fn_registrations = 0; \
 _CLIB_MARCH_FN_REGISTRATION(fn)
 #endif
-#define foreach_x86_64_flags                                                  \
-  _ (sse3, 1, ecx, 0)                                                         \
-  _ (pclmulqdq, 1, ecx, 1)                                                    \
-  _ (ssse3, 1, ecx, 9)                                                        \
-  _ (sse41, 1, ecx, 19)                                                       \
-  _ (sse42, 1, ecx, 20)                                                       \
-  _ (avx, 1, ecx, 28)                                                         \
-  _ (rdrand, 1, ecx, 30)                                                      \
-  _ (avx2, 7, ebx, 5)                                                         \
-  _ (bmi2, 7, ebx, 8)                                                         \
-  _ (rtm, 7, ebx, 11)                                                         \
-  _ (pqm, 7, ebx, 12)                                                         \
-  _ (pqe, 7, ebx, 15)                                                         \
-  _ (avx512f, 7, ebx, 16)                                                     \
-  _ (rdseed, 7, ebx, 18)                                                      \
-  _ (x86_aes, 1, ecx, 25)                                                     \
-  _ (sha, 7, ebx, 29)                                                         \
-  _ (vaes, 7, ecx, 9)                                                         \
-  _ (vpclmulqdq, 7, ecx, 10)                                                  \
-  _ (avx512_vnni, 7, ecx, 11)                                                 \
-  _ (avx512_bitalg, 7, ecx, 12)                                               \
-  _ (avx512_vpopcntdq, 7, ecx, 14)                                            \
-  _ (movdiri, 7, ecx, 27)                                                     \
-  _ (movdir64b, 7, ecx, 28)                                                   \
-  _ (enqcmd, 7, ecx, 29)                                                      \
-  _ (avx512_fp16, 7, edx, 23)                                                 \
-  _ (aperfmperf, 0x00000006, ecx, 0)                                          \
-  _ (invariant_tsc, 0x80000007, edx, 8)                                       \
+#define foreach_x86_64_flags                                                                       \
+  _ (sse3, 1, ecx, 0)                                                                              \
+  _ (pclmulqdq, 1, ecx, 1)                                                                         \
+  _ (ssse3, 1, ecx, 9)                                                                             \
+  _ (sse41, 1, ecx, 19)                                                                            \
+  _ (sse42, 1, ecx, 20)                                                                            \
+  _ (avx, 1, ecx, 28)                                                                              \
+  _ (rdrand, 1, ecx, 30)                                                                           \
+  _ (avx2, 7, ebx, 5)                                                                              \
+  _ (bmi2, 7, ebx, 8)                                                                              \
+  _ (rtm, 7, ebx, 11)                                                                              \
+  _ (pqm, 7, ebx, 12)                                                                              \
+  _ (pqe, 7, ebx, 15)                                                                              \
+  _ (avx512f, 7, ebx, 16)                                                                          \
+  _ (rdseed, 7, ebx, 18)                                                                           \
+  _ (x86_aes, 1, ecx, 25)                                                                          \
+  _ (sha, 7, ebx, 29)                                                                              \
+  _ (vaes, 7, ecx, 9)                                                                              \
+  _ (vpclmulqdq, 7, ecx, 10)                                                                       \
+  _ (avx512_vnni, 7, ecx, 11)                                                                      \
+  _ (avx512_bitalg, 7, ecx, 12)                                                                    \
+  _ (avx512_vpopcntdq, 7, ecx, 14)                                                                 \
+  _ (avx512_vp2intersect, 7, edx, 8)                                                               \
+  _ (movdiri, 7, ecx, 27)                                                                          \
+  _ (movdir64b, 7, ecx, 28)                                                                        \
+  _ (enqcmd, 7, ecx, 29)                                                                           \
+  _ (avx512_fp16, 7, edx, 23)                                                                      \
+  _ (aperfmperf, 0x00000006, ecx, 0)                                                               \
+  _ (invariant_tsc, 0x80000007, edx, 8)                                                            \
   _ (monitorx, 0x80000001, ecx, 29)
 
 #define foreach_aarch64_flags \
@@ -243,6 +241,42 @@ clib_cpu_supports_aes ()
 }
 
 static inline int
+clib_cpu_is_amd ()
+{
+#ifdef __x86_64__
+  const char vendor[13] = "AuthenticAMD";
+  u32u *v = (u32u *) vendor;
+  u32 eax, ebx, ecx, edx;
+
+  if (clib_get_cpuid (0, &eax, &ebx, &ecx, &edx) == 0)
+    return 0;
+
+  if (ebx == v[0] && ecx == v[2] && edx == v[1])
+    return 1;
+#endif
+
+  return 0;
+}
+
+static inline int
+clib_cpu_is_intel ()
+{
+#ifdef __x86_64__
+  const char vendor[13] = "GenuineIntel";
+  u32u *v = (u32u *) vendor;
+  u32 eax, ebx, ecx, edx;
+
+  if (clib_get_cpuid (0, &eax, &ebx, &ecx, &edx) == 0)
+    return 0;
+
+  if (ebx == v[0] && ecx == v[2] && edx == v[1])
+    return 1;
+#endif
+
+  return 0;
+}
+
+static inline int
 clib_cpu_march_priority_scalar ()
 {
   return 1;
@@ -251,7 +285,7 @@ clib_cpu_march_priority_scalar ()
 static inline int
 clib_cpu_march_priority_spr ()
 {
-  if (clib_cpu_supports_enqcmd ())
+  if (clib_cpu_is_intel () && clib_cpu_supports_enqcmd ())
     return 300;
   return -1;
 }
@@ -259,7 +293,7 @@ clib_cpu_march_priority_spr ()
 static inline int
 clib_cpu_march_priority_icl ()
 {
-  if (clib_cpu_supports_avx512_bitalg ())
+  if (clib_cpu_is_intel () && clib_cpu_supports_avx512_bitalg ())
     return 200;
   return -1;
 }
@@ -267,7 +301,7 @@ clib_cpu_march_priority_icl ()
 static inline int
 clib_cpu_march_priority_adl ()
 {
-  if (clib_cpu_supports_movdiri () && clib_cpu_supports_avx2 ())
+  if (clib_cpu_is_intel () && clib_cpu_supports_movdiri () && clib_cpu_supports_avx2 ())
     return 150;
   return -1;
 }
@@ -275,7 +309,7 @@ clib_cpu_march_priority_adl ()
 static inline int
 clib_cpu_march_priority_skx ()
 {
-  if (clib_cpu_supports_avx512f ())
+  if (clib_cpu_is_intel () && clib_cpu_supports_avx512f ())
     return 100;
   return -1;
 }
@@ -283,7 +317,7 @@ clib_cpu_march_priority_skx ()
 static inline int
 clib_cpu_march_priority_trm ()
 {
-  if (clib_cpu_supports_movdiri ())
+  if (clib_cpu_is_intel () && clib_cpu_supports_movdiri ())
     return 40;
   return -1;
 }
@@ -297,9 +331,17 @@ clib_cpu_march_priority_hsw ()
 }
 
 static inline int
+clib_cpu_march_priority_znver5 ()
+{
+  if (clib_cpu_is_amd () && clib_cpu_supports_avx512_vp2intersect ())
+    return 350;
+  return -1;
+}
+
+static inline int
 clib_cpu_march_priority_znver4 ()
 {
-  if (clib_cpu_supports_avx512_bitalg () && clib_cpu_supports_monitorx ())
+  if (clib_cpu_is_amd () && clib_cpu_supports_avx512f ())
     return 250;
   return -1;
 }
@@ -307,7 +349,7 @@ clib_cpu_march_priority_znver4 ()
 static inline int
 clib_cpu_march_priority_znver3 ()
 {
-  if (clib_cpu_supports_avx2 () && clib_cpu_supports_monitorx ())
+  if (clib_cpu_is_amd () && clib_cpu_supports_vaes ())
     return 70;
   return -1;
 }

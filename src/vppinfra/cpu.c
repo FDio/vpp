@@ -91,7 +91,7 @@ format_cpu_uarch (u8 * s, va_list * args)
   if (__get_cpuid (0, &eax, &ebx, &ecx, &edx) == 0)
     return format (s, "unknown (missing cpuid)");
 
-  if (amd_vendor (ebx, ecx, edx))
+  if (clib_cpu_is_amd ())
     amd_vendor = 1;
 
   if (__get_cpuid (1, &eax, &ebx, &ecx, &edx) == 0)

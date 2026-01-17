@@ -211,6 +211,10 @@ elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "amd64.*|x86_64.*|AMD64.*")
 
     add_vpp_march_variant(znver4
       FLAGS -march=znver4 -mtune=znver4 -mprefer-vector-width=512
+    )
+
+    add_vpp_march_variant(znver5
+      FLAGS -march=znver5 -mtune=znver5 -mprefer-vector-width=512
       OFF
     )
   endif()
