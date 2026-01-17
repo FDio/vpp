@@ -1829,8 +1829,10 @@ METHOD (kernel_ipsec_t, del_sa, status_t, private_kernel_vpp_ipsec_t *this,
   free (sa);
   rv = SUCCESS;
 error:
-  free (out);
-  vl_msg_api_free (mp);
+  if (out)
+    free (out);
+  if (mp)
+    vl_msg_api_free (mp);
   this->mutex->unlock (this->mutex);
   return rv;
 }
