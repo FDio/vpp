@@ -127,6 +127,8 @@ typedef struct vlib_cli_main_t
 
 } vlib_cli_main_t;
 
+void vlib_cli_command_registration_helper (vlib_cli_command_t *x);
+
 #ifndef CLIB_MARCH_VARIANT
 #define VLIB_CLI_COMMAND(x, ...)                                              \
   __VA_ARGS__ vlib_cli_command_t x;                                           \
@@ -134,10 +136,7 @@ typedef struct vlib_cli_main_t
     __attribute__ ((__constructor__));                                        \
   static void __vlib_cli_command_registration_##x (void)                      \
   {                                                                           \
-    vlib_global_main_t *vgm = vlib_get_global_main ();                        \
-    vlib_cli_main_t *cm = &vgm->cli_main;                                     \
-    x.next_cli_command = cm->cli_command_registrations;                       \
-    cm->cli_command_registrations = &x;                                       \
+    vlib_cli_command_registration_helper (&x);                                \
   }                                                                           \
   static void __vlib_cli_command_unregistration_##x (void)                    \
     __attribute__ ((__destructor__));                                         \

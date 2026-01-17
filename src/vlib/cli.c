@@ -1405,6 +1405,17 @@ vlib_cli_command_is_empty (vlib_cli_command_t * c)
   return (c->long_help == 0 && c->short_help == 0 && c->function == 0);
 }
 
+void
+vlib_cli_command_registration_helper (vlib_cli_command_t *x)
+{
+  vlib_global_main_t *vgm = vlib_get_global_main ();
+  vlib_cli_main_t *cm = &vgm->cli_main;
+  x->next_cli_command = cm->cli_command_registrations;
+  cm->cli_command_registrations = x;
+  if (cm->command_index_by_path)
+    vlib_cli_register (vgm->vlib_mains[0], x);
+}
+
 clib_error_t *
 vlib_cli_register (vlib_main_t * vm, vlib_cli_command_t * c)
 {
