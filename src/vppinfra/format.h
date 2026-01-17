@@ -55,6 +55,15 @@ format_get_indent (u8 * s)
   return indent;
 }
 
+always_inline u8 *
+format_newline (u8 *s, u32 indent)
+{
+  vec_add1 (s, '\n');
+  while (indent-- > 0)
+    vec_add1 (s, ' ');
+  return s;
+}
+
 #define _(f) __clib_export u8 * f (u8 * s, va_list * va)
 
 /* Standard user-defined formats. */
