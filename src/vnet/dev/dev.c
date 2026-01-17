@@ -204,6 +204,10 @@ vnet_dev_deinit (vlib_main_t *vm, vnet_dev_t *dev)
 
   vnet_dev_process_quit (vm, dev);
 
+  vec_foreach_pointer (p, dev->dma_allocs)
+    if (p)
+      bus->ops.dma_mem_free_fn (vm, dev, p);
+
   dev->initialized = 0;
 }
 
@@ -267,21 +271,35 @@ vnet_dev_dma_mem_alloc (vlib_main_t *vm, vnet_dev_t *dev, u32 size, u32 align,
   vnet_dev_main_t *dm = &vnet_dev_main;
   vnet_dev_bus_t *bus = pool_elt_at_index (dm->buses, dev->bus_index);
   vnet_dev_rv_t rv;
+  void *p = 0;
+  u32 i;
 
   vnet_dev_validate (vm, dev);
 
   if (!bus->ops.dma_mem_alloc_fn)
     return VNET_DEV_ERR_NOT_SUPPORTED;
 
-  rv = bus->ops.dma_mem_alloc_fn (vm, dev, size, align, pp);
-  if (rv == VNET_DEV_OK)
-    log_debug (dev, "%u bytes va %p dma-addr 0x%lx numa %u align %u", size,
-	       *pp, vnet_dev_get_dma_addr (vm, dev, *pp), dev->numa_node,
-	       align);
-  else
-    log_err (dev, "DMA alloc failed (size %u align %u rv %d)", size, align,
-	     rv);
-  return rv;
+  rv = bus->ops.dma_mem_alloc_fn (vm, dev, size, align, &p);
+  if (rv != VNET_DEV_OK)
+    {
+      log_err (dev, "DMA alloc failed (size %u align %u rv %d)", size, align,
+	       rv);
+      return rv;
+    }
+
+  log_debug (dev, "%u bytes va %p dma-addr 0x%lx numa %u align %u", size, *pp,
+	     vnet_dev_get_dma_addr (vm, dev, *pp), dev->numa_node, align);
+  *pp = p;
+  vec_foreach_index (i, dev->dma_allocs)
+    if (dev->dma_allocs[i] == 0)
+      {
+	dev->dma_allocs[i] = p;
+	return VNET_DEV_OK;
+      }
+
+  vec_add1 (dev->dma_allocs, p);
+
+  return VNET_DEV_OK;
 }
 
 void
@@ -289,11 +307,19 @@ vnet_dev_dma_mem_free (vlib_main_t *vm, vnet_dev_t *dev, void *p)
 {
   vnet_dev_main_t *dm = &vnet_dev_main;
   vnet_dev_bus_t *bus = pool_elt_at_index (dm->buses, dev->bus_index);
+  u32 i;
 
   vnet_dev_validate (vm, dev);
 
   if (p == 0 || !bus->ops.dma_mem_free_fn)
     return;
+
+  vec_foreach_index (i, dev->dma_allocs)
+    if (dev->dma_allocs[i] == p)
+      {
+	dev->dma_allocs[i] = 0;
+	break;
+      }
 
   return bus->ops.dma_mem_free_fn (vm, dev, p);
 }

@@ -423,6 +423,7 @@ typedef struct vnet_dev
   vnet_dev_periodic_op_t *periodic_ops;
   u8 *description;
   clib_args_handle_t args;
+  void **dma_allocs;
   u8 __clib_aligned (16)
   data[];
 } vnet_dev_t;
