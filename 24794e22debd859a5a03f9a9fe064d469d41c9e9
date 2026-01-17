@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6e8c36ea_5d38bed8",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3288
+      },
+      "writtenOn": "2026-01-17T06:10:44Z",
+      "side": 1,
+      "message": "its a fix for a segmentation fault I saw in kernel_vpp_ipsec.c",
+      "revId": "24794e22debd859a5a03f9a9fe064d469d41c9e9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
