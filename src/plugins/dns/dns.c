@@ -20,6 +20,9 @@
 #define REPLY_MSG_ID_BASE dm->msg_id_base
 #include <vlibapi/api_helper_macros.h>
 
+#include <vnet/ip/ip.h>
+#include <vnet/interface.h>
+#include <vnet/ip/ip6.h>
 #define FINISH                                                                \
   vec_add1 (s, 0);                                                            \
   vlib_cli_output (handle, (char *) s);                                       \
@@ -442,6 +445,29 @@ vnet_dns_labels_to_name (u8 * label, u8 * full_text, u8 ** parse_from_here)
   return reply;
 }
 
+static int
+dns_has_usable_source_address (dns_main_t *dm, int use_ip6)
+{
+  if (use_ip6)
+    {
+      ip6_address_t src;
+
+      if (!vec_len (dm->ip6_name_servers))
+	return 0;
+
+      return ip6_sas (0 /* table_id */, ~0 /* any interface */, NULL /* dst */, &src);
+    }
+  else
+    {
+      ip4_address_t src;
+
+      if (!vec_len (dm->ip4_name_servers))
+	return 0;
+
+      return ip4_sas (0 /* table_id */, ~0 /* any interface */, NULL /* dst */, &src);
+    }
+}
+
 void
 vnet_send_dns_request (vlib_main_t * vm, dns_main_t * dm,
 		       dns_cache_entry_t * ep)
@@ -561,10 +587,9 @@ vnet_send_dns_request (vlib_main_t * vm, dns_main_t * dm,
       (vm, dm, ep, dm->ip4_name_servers + ep->server_rotor);
 
 out:
-
-  vlib_process_signal_event_mt (vm,
-				dm->resolver_process_node_index,
-				DNS_RESOLVER_EVENT_PENDING, 0);
+  if (dns_has_usable_source_address (dm, ep->server_af))
+    vlib_process_signal_event_mt (vm, dm->resolver_process_node_index, DNS_RESOLVER_EVENT_PENDING,
+				  0);
 }
 
 int
@@ -735,6 +760,12 @@ vnet_dns_resolve_name (vlib_main_t * vm, dns_main_t * dm, u8 * name,
     return VNET_API_ERROR_INVALID_VALUE;
 
   dns_cache_lock (dm, 5);
+  /* Fail early if no usable IP exists */
+  if (!dns_has_usable_source_address (dm, 0) && !dns_has_usable_source_address (dm, 1))
+    {
+      dns_cache_unlock (dm);
+      return VNET_API_ERROR_INVALID_SRC_ADDRESS;
+    }
 search_again:
   p = hash_get_mem (dm->cache_entry_by_name, name);
   if (p)
