@@ -8,6 +8,7 @@ AlignConsecutiveMacros: true
 BreakBeforeTernaryOperators: false
 BreakBeforeBinaryOperators: None
 ContinuationIndentWidth: 2
+ColumnLimit: 100
 
 ForEachMacros:
   - 'clib_bitmap_foreach'
