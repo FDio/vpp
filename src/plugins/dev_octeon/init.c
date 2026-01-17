@@ -127,9 +127,9 @@ static clib_arg_t oct_dev_args[] = {
 };
 
 static u8 *
-oct_probe (vlib_main_t *vm, vnet_dev_bus_index_t bus_index, void *dev_info)
+oct_probe (vlib_main_t *vm, vnet_dev_probe_args_t *args)
 {
-  vnet_dev_bus_pci_device_info_t *di = dev_info;
+  vnet_dev_bus_pci_device_info_t *di = args->device_info;
 
   if (di->vendor_id != 0x177d) /* Cavium */
     return 0;

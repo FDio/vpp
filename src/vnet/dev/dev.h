@@ -238,13 +238,20 @@ typedef struct
 
 typedef struct
 {
+  vnet_dev_bus_index_t bus_index;
+  void *device_info;
+  u64 probe_handle;
+} vnet_dev_probe_args_t;
+
+typedef struct
+{
   vnet_dev_drv_op_t *config_args;
   vnet_dev_op_t *alloc;
   vnet_dev_op_t *init;
   vnet_dev_op_no_rv_t *deinit;
   vnet_dev_op_t *reset;
   vnet_dev_op_no_rv_t *free;
-  u8 *(*probe) (vlib_main_t *, vnet_dev_bus_index_t, void *);
+  u8 *(*probe) (vlib_main_t *, vnet_dev_probe_args_t *);
   format_function_t *format_info;
 } vnet_dev_ops_t;
 
@@ -416,6 +423,7 @@ typedef struct vnet_dev
   u16 max_tx_queues;
   vnet_dev_driver_index_t driver_index;
   u32 index;
+  u64 probe_handle;
   u32 process_node_index;
   u8 bus_data[32] __clib_aligned (16);
   vnet_dev_ops_t ops;

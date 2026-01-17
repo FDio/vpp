@@ -44,9 +44,9 @@ vnet_dev_node_t mvpp2_tx_node = {
 };
 
 static u8 *
-mvpp2_probe (vlib_main_t *vm, vnet_dev_bus_index_t bus_index, void *dev_info)
+mvpp2_probe (vlib_main_t *vm, vnet_dev_probe_args_t *args)
 {
-  vnet_dev_bus_platform_device_info_t *di = dev_info;
+  vnet_dev_bus_platform_device_info_t *di = args->device_info;
 
   if (clib_dt_node_is_compatible (di->node, "marvell,armada-7k-pp22"))
     return format (0, "Marvell Armada Packet Processor v2.2");

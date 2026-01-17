@@ -40,6 +40,7 @@ vnet_dev_api_attach (vlib_main_t *vm, vnet_dev_api_attach_args_t *args)
   vnet_dev_bus_t *bus;
   vnet_dev_driver_t *driver;
   void *bus_dev_info = 0;
+  u64 probe_handle = 0;
   u8 *dev_desc = 0;
 
   log_debug (0, "%s driver %s flags '%U' args '%v'", args->device_id,
@@ -70,9 +71,18 @@ vnet_dev_api_attach (vlib_main_t *vm, vnet_dev_api_attach_args_t *args)
       if (args->driver_name[0] &&
 	  strcmp (args->driver_name, driver->registration->name))
 	continue;
-      if (driver->ops.probe &&
-	  (dev_desc = driver->ops.probe (vm, bus->index, bus_dev_info)))
-	break;
+      if (driver->ops.probe)
+	{
+	  vnet_dev_probe_args_t pa = {
+	    .bus_index = bus->index,
+	    .device_info = bus_dev_info,
+	  };
+	  if ((dev_desc = driver->ops.probe (vm, &pa)))
+	    {
+	      probe_handle = pa.probe_handle;
+	      break;
+	    }
+	}
     }
 
   if (!dev_desc)
@@ -90,6 +100,7 @@ vnet_dev_api_attach (vlib_main_t *vm, vnet_dev_api_attach_args_t *args)
       goto done;
     }
   dev->description = dev_desc;
+  dev->probe_handle = probe_handle;
 
   if (driver->registration->args)
     dev->args = clib_args_init (driver->registration->args);

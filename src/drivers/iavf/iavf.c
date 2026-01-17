@@ -67,9 +67,9 @@ static struct
 };
 
 static u8 *
-iavf_probe (vlib_main_t *vm, vnet_dev_bus_index_t bus_index, void *dev_info)
+iavf_probe (vlib_main_t *vm, vnet_dev_probe_args_t *a)
 {
-  vnet_dev_bus_pci_device_info_t *di = dev_info;
+  vnet_dev_bus_pci_device_info_t *di = a->device_info;
 
   if (di->vendor_id != 0x8086)
     return 0;
