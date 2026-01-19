@@ -35,7 +35,7 @@ class SiphonCLICMD(process.Siphon):
         _global = self._cmds["_global"]
         if group not in self._group:
             return group
-        (directory, file) = self._group[group]
+        directory, file = self._group[group]
 
         if file in _global and "group_label" in _global[file]:
             return _global[file]["group_label"]
@@ -55,7 +55,7 @@ class SiphonCLICMD(process.Siphon):
 
     def page_title(self, group):
         _global = self._cmds["_global"]
-        (directory, file) = self._group[group]
+        directory, file = self._group[group]
 
         if file and file in _global and "group_label" in _global[file]:
             return _global[file]["group_label"]

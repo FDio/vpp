@@ -54,12 +54,12 @@ class VppPCIUtil(object):
                 device["unused"] = unused[i].split("=")[1].split(",")
 
             cmd = "ls /sys/bus/pci/devices/{}/driver/module/drivers".format(ids[i])
-            (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
+            ret, stdout, stderr = VPPUtil.exec_command(cmd)
             if ret == 0:
                 device["driver"] = stdout.split(":")[1].rstrip("\n")
 
             cmd = "cat /sys/bus/pci/devices/{}/numa_node".format(ids[i])
-            (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
+            ret, stdout, stderr = VPPUtil.exec_command(cmd)
             if ret != 0:
                 raise RuntimeError("{} failed {} {}".format(cmd, stderr, stdout))
             numa_node = stdout.rstrip("\n")
@@ -71,7 +71,7 @@ class VppPCIUtil(object):
             interfaces = []
             device["interfaces"] = []
             cmd = "ls /sys/bus/pci/devices/{}/net".format(ids[i])
-            (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
+            ret, stdout, stderr = VPPUtil.exec_command(cmd)
             if ret == 0:
                 interfaces = stdout.rstrip("\n").split()
                 device["interfaces"] = interfaces
@@ -79,7 +79,7 @@ class VppPCIUtil(object):
             l2_addrs = []
             for intf in interfaces:
                 cmd = "cat /sys/bus/pci/devices/{}/net/{}/address".format(ids[i], intf)
-                (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
+                ret, stdout, stderr = VPPUtil.exec_command(cmd)
                 if ret != 0:
                     raise RuntimeError("{} failed {} {}".format(cmd, stderr, stdout))
 
@@ -111,7 +111,7 @@ class VppPCIUtil(object):
         rootdir = node["rootdir"]
         dpdk_script = rootdir + DPDK_SCRIPT
         cmd = dpdk_script + " --status"
-        (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
+        ret, stdout, stderr = VPPUtil.exec_command(cmd)
         if ret != 0:
             raise RuntimeError(
                 "{} failed on node {} {}".format(cmd, node["host"], stderr)
@@ -154,7 +154,7 @@ class VppPCIUtil(object):
             device = devk[1]
             for i in device["interfaces"]:
                 cmd = "ip addr show " + i
-                (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
+                ret, stdout, stderr = VPPUtil.exec_command(cmd)
                 if ret != 0:
                     raise RuntimeError(
                         "{} failed on node {} {}".format(cmd, node["host"], stderr)
@@ -295,7 +295,7 @@ class VppPCIUtil(object):
         rootdir = node["rootdir"]
         dpdk_script = rootdir + DPDK_SCRIPT
         cmd = dpdk_script + " -u " + " " + device_id
-        (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
+        ret, stdout, stderr = VPPUtil.exec_command(cmd)
         if ret != 0:
             raise RuntimeError(
                 "{} failed on node {} {} {}".format(cmd, node["host"], stdout, stderr)
@@ -318,7 +318,7 @@ class VppPCIUtil(object):
         rootdir = node["rootdir"]
         dpdk_script = rootdir + DPDK_SCRIPT
         cmd = dpdk_script + " -b " + driver + " " + device_id
-        (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
+        ret, stdout, stderr = VPPUtil.exec_command(cmd)
         if ret != 0:
             logging.error(
                 "{} failed on node {}".format(cmd, node["host"], stdout, stderr)

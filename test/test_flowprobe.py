@@ -31,7 +31,6 @@ from vpp_papi import VppEnum
 from vpp_sub_interface import VppDot1ADSubint
 from config import config
 
-
 TMPL_COMMON_FIELD_COUNT = 6
 TMPL_L2_FIELD_COUNT = 3
 TMPL_L3_FIELD_COUNT = 4

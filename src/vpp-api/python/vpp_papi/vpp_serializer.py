@@ -21,7 +21,6 @@ import sys
 
 from . import vpp_format
 
-
 #
 # Set log-level in application by doing e.g.:
 # logger = logging.getLogger('vpp_serializer')

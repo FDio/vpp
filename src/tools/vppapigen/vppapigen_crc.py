@@ -14,7 +14,7 @@ def run(output_dir, input_filename, s):
     patch = 0
     if "version" in s["Option"]:
         v = s["Option"]["version"]
-        (major, minor, patch) = v.split(".")
+        major, minor, patch = v.split(".")
     j["_version"] = {"major": major, "minor": minor, "patch": patch}
     for t in s["Define"]:
         j[t.name] = {"crc": f"{t.crc:#08x}", "version": major, "options": t.options}

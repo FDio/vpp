@@ -15,7 +15,6 @@ from framework import VppTestCase
 from asfframework import VppTestRunner
 from util import reassemble4
 
-
 """ Test_mtu is a subclass of VPPTestCase classes.
     MTU tests.
 """
