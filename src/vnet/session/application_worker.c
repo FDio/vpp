@@ -524,9 +524,15 @@ app_worker_add_half_open (app_worker_t *app_wrk, session_handle_t sh)
 }
 
 int
-app_worker_del_half_open (app_worker_t *app_wrk, session_t *s)
+app_worker_cleanup_ho_notify (app_worker_t *app_wrk, session_t *s,
+			      transport_cleanup_cb_fn cleanup_cb)
 {
-  app_worker_add_event (app_wrk, s, SESSION_CTRL_EVT_HALF_CLEANUP);
+  session_event_t evt = { .event_type = SESSION_CTRL_EVT_HALF_CLEANUP,
+			  .as_u64[0] = s->session_index,
+			  .as_u64[1] = pointer_to_uword (cleanup_cb) };
+
+  app_worker_add_event_custom (app_wrk, s->thread_index, &evt);
+
   return 0;
 }
 

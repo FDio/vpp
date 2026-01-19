@@ -288,6 +288,13 @@ app_worker_flush_events_inline (app_worker_t *app_wrk,
 	  ASSERT (session_vlib_thread_is_cl_thread ());
 	  if (app->cb_fns.half_open_cleanup_callback)
 	    app->cb_fns.half_open_cleanup_callback (s);
+	  /* postponed cleanup requested */
+	  if (evt->as_u64[1])
+	    {
+	      if (app->cb_fns.app_evt_callback)
+		app->cb_fns.app_evt_callback (s);
+	      transport_cleanup_cb ((void *) evt->as_u64[1], session_get_transport (s));
+	    }
 	  pool_put_index (app_wrk->half_open_table, s->ho_index);
 	  session_free (s);
 	  break;

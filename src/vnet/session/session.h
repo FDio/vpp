@@ -577,8 +577,6 @@ uword unformat_transport_connection (unformat_input_t * input,
  * Interface to transport protos
  */
 
-typedef void *transport_cleanup_cb_fn;
-
 static inline void
 transport_cleanup_cb (void *cb_fn, transport_connection_t *tc)
 {
@@ -594,6 +592,7 @@ int session_stream_accept_notify (transport_connection_t * tc);
 void session_transport_closing_notify (transport_connection_t * tc);
 void session_transport_delete_notify (transport_connection_t * tc);
 void session_half_open_delete_notify (transport_connection_t *tc);
+void session_half_open_delete_request (transport_connection_t *tc, transport_cleanup_cb_fn cb_fn);
 void session_half_open_migrate_notify (transport_connection_t *tc);
 int session_half_open_migrated_notify (transport_connection_t *tc);
 void session_transport_closed_notify (transport_connection_t * tc);
