@@ -58,8 +58,7 @@ args = []
 def usage():
     """Print usage information for the program"""
     argv0 = basename(sys.argv[0])
-    print(
-        """
+    print("""
 Usage:
 ------
 
@@ -116,9 +115,7 @@ To unbind 0000:01:00.0 from using any driver
 To bind 0000:02:00.0 and 0000:02:00.1 to the ixgbe kernel driver
         %(argv0)s -b ixgbe 02:00.0 02:00.1
 
-    """
-        % locals()
-    )  # replace items from local variables
+    """ % locals())  # replace items from local variables
 
 
 # This is roughly compatible with check_output function in subprocess module

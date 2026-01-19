@@ -2971,10 +2971,8 @@ class SpdFlowCacheTemplate(IPSecIPv4Fwd):
                 "ipv4-inbound-spd-flow-cache-entries: (.*)", show_ipsec_reply, re.DOTALL
             )
         if regex_match is None:
-            raise Exception(
-                "Unable to find spd flow cache entries \
-                in 'show ipsec spd' CLI output - regex failed to match"
-            )
+            raise Exception("Unable to find spd flow cache entries \
+                in 'show ipsec spd' CLI output - regex failed to match")
         else:
             try:
                 num_entries = int(regex_match.group(1))

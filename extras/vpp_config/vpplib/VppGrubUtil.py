@@ -33,7 +33,7 @@ class VppGrubUtil(object):
 
         # Get the memory information using /proc/meminfo
         cmd = "sudo cat /proc/cmdline"
-        (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
+        ret, stdout, stderr = VPPUtil.exec_command(cmd)
         if ret != 0:
             raise RuntimeError(
                 "{} on node {} {} {}".format(cmd, self._node["host"], stdout, stderr)
@@ -54,7 +54,7 @@ class VppGrubUtil(object):
         gfile = self._node["cpu"]["grub_config_file"]
         grubcmdline = self._node["cpu"]["grubcmdline"]
         cmd = "cat {}".format(rootdir + gfile)
-        (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
+        ret, stdout, stderr = VPPUtil.exec_command(cmd)
         if ret != 0:
             raise RuntimeError(
                 "{} Executing failed on node {} {}".format(
@@ -177,11 +177,11 @@ class VppGrubUtil(object):
 
             # Write the output file
             # Does a copy of the original file exist, if not create one
-            (ret, stdout, stderr) = VPPUtil.exec_command("ls {}".format(ofilename))
+            ret, stdout, stderr = VPPUtil.exec_command("ls {}".format(ofilename))
             if ret != 0:
                 if stdout.strip("\n") != ofilename:
                     cmd = "sudo cp {} {}".format(filename, ofilename)
-                    (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
+                    ret, stdout, stderr = VPPUtil.exec_command(cmd)
                     if ret != 0:
                         raise RuntimeError(
                             "{} failed on node {} {}".format(
@@ -191,7 +191,7 @@ class VppGrubUtil(object):
 
             # Get the contents of the current grub config file
             cmd = "cat {}".format(filename)
-            (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
+            ret, stdout, stderr = VPPUtil.exec_command(cmd)
             if ret != 0:
                 raise RuntimeError(
                     "{} failed on node {} {}".format(cmd, self._node["host"], stderr)
@@ -218,7 +218,7 @@ class VppGrubUtil(object):
             content = content.replace(r"`", r"\`")
             content = content.rstrip("\n")
             cmd = "sudo cat > {0} << EOF\n{1}\n".format(filename, content)
-            (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
+            ret, stdout, stderr = VPPUtil.exec_command(cmd)
             if ret != 0:
                 raise RuntimeError(
                     "{} failed on node {} {}".format(cmd, self._node["host"], stderr)

@@ -27,7 +27,6 @@ from scapy.layers.inet6 import IPv6
 from scapy.contrib.mpls import MPLS
 from scapy.layers.inet6 import IPv6
 
-
 NUM_PKTS = 67
 
 # not exported by scapy, so redefined here
