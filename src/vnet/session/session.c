@@ -383,27 +383,41 @@ session_cleanup_half_open (session_handle_t ho_handle)
 }
 
 static void
-session_half_open_free (session_t *ho)
+session_half_open_cleanup_notify_custom (session_t *ho, transport_cleanup_cb_fn cb_fn)
 {
   app_worker_t *app_wrk;
 
   ASSERT (vlib_get_thread_index () <= transport_cl_thread ());
   app_wrk = app_worker_get_if_valid (ho->app_wrk_index);
-  if (app_wrk)
-    app_worker_del_half_open (app_wrk, ho);
-  else
-    session_free (ho);
+
+  if (!app_wrk)
+    {
+      if (cb_fn)
+	transport_cleanup_cb (cb_fn, session_get_transport (ho));
+      session_free (ho);
+      return;
+    }
+
+  app_worker_cleanup_ho_notify (app_wrk, ho, cb_fn);
 }
 
 static void
-session_half_open_free_rpc (void *args)
+session_half_open_cleanup_notify_rpc (void *args)
 {
   session_t *ho = ho_session_get (pointer_to_uword (args));
-  session_half_open_free (ho);
+  transport_cleanup_cb_fn cb_fn = 0;
+  transport_connection_t *tc;
+
+  if (ho->flags & SESSION_F_TPT_INIT_CLOSE)
+    {
+      tc = transport_get_half_open (session_get_transport_proto (ho), ho->connection_index);
+      cb_fn = transport_get_cleanup_cb_fn (tc);
+    }
+  session_half_open_cleanup_notify_custom (ho, cb_fn);
 }
 
 void
-session_half_open_delete_notify (transport_connection_t *tc)
+session_half_open_delete_request (transport_connection_t *tc, transport_cleanup_cb_fn cb_fn)
 {
   session_t *ho = ho_session_get (tc->s_index);
 
@@ -418,14 +432,25 @@ session_half_open_delete_notify (transport_connection_t *tc)
   /* Notification from ctrl thread accepted without rpc */
   if (tc->thread_index == transport_cl_thread ())
     {
-      session_half_open_free (ho);
+      session_half_open_cleanup_notify_custom (ho, cb_fn);
     }
   else
     {
       void *args = uword_to_pointer ((uword) tc->s_index, void *);
+      if (cb_fn)
+	{
+	  transport_set_cleanup_cb_fn (tc, cb_fn);
+	  ho->flags |= SESSION_F_TPT_INIT_CLOSE;
+	}
       session_send_rpc_evt_to_thread_force (transport_cl_thread (),
-					    session_half_open_free_rpc, args);
+					    session_half_open_cleanup_notify_rpc, args);
     }
+}
+
+void
+session_half_open_delete_notify (transport_connection_t *tc)
+{
+  session_half_open_delete_request (tc, 0);
 }
 
 void
@@ -741,7 +766,11 @@ session_stream_connect_notify (transport_connection_t * tc,
     return -1;
 
   if (err)
-    return app_worker_connect_notify (app_wrk, s, err, opaque);
+    {
+      /* Use transport error as indication that connection failed */
+      tc->flags |= TRANSPORT_CONNECTION_F_ERROR;
+      return app_worker_connect_notify (app_wrk, s, err, opaque);
+    }
 
   s = session_alloc_for_connection (tc);
   session_set_state (s, SESSION_STATE_CONNECTING);

@@ -213,10 +213,19 @@ tcp_half_open_connection_cleanup (tcp_connection_t * tc)
   if (tc->c_thread_index != vlib_get_thread_index ())
     return 1;
 
-  session_half_open_delete_notify (&tc->connection);
   wrk = tcp_get_worker (tc->c_thread_index);
   tcp_timer_reset (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT_SYN);
-  tcp_half_open_connection_free (tc);
+
+  /* If connect failed, postpone cleanup to allow app to handle the error */
+  if (tc->c_flags & TRANSPORT_CONNECTION_F_ERROR)
+    {
+      session_half_open_delete_request (&tc->connection, tcp_half_open_connection_free);
+    }
+  else
+    {
+      session_half_open_delete_notify (&tc->connection);
+      tcp_half_open_connection_free (tc);
+    }
   return 0;
 }
 

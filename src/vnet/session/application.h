@@ -355,7 +355,8 @@ int app_worker_init_connected (app_worker_t * app_wrk, session_t * s);
 int app_worker_connect_notify (app_worker_t * app_wrk, session_t * s,
 			       session_error_t err, u32 opaque);
 int app_worker_add_half_open (app_worker_t *app_wrk, session_handle_t sh);
-int app_worker_del_half_open (app_worker_t *app_wrk, session_t *s);
+int app_worker_cleanup_ho_notify (app_worker_t *app_wrk, session_t *s,
+				  transport_cleanup_cb_fn cleanup_cb);
 int app_worker_close_notify (app_worker_t * app_wrk, session_t * s);
 int app_worker_transport_closed_notify (app_worker_t * app_wrk,
 					session_t * s);
