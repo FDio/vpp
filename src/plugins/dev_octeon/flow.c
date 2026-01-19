@@ -185,6 +185,7 @@ oct_flow_rule_create (vnet_dev_port_t *port, struct roc_npc_action *actions,
   struct roc_npc_attr attr = { .priority = 1, .ingress = 1 };
   struct roc_npc_flow *npc_flow;
   oct_flow_entry_t *flow_entry;
+  u64 npc_default_action = 0;
   struct roc_npc *npc;
   int rv = 0;
 
@@ -198,8 +199,16 @@ oct_flow_rule_create (vnet_dev_port_t *port, struct roc_npc_action *actions,
 		 item_info[i].mask, item_info[i].size);
     }
 
+  rv = roc_npc_mcam_default_rule_action_get (npc, &npc_default_action);
+  if (rv)
+    {
+      log_err (port->dev, "roc_npc_mcam_default_rule_action_get failed with '%s' error",
+	       roc_error_msg_get (rv));
+      return VNET_DEV_ERR_NOT_SUPPORTED;
+    }
+
   npc_flow =
-    roc_npc_flow_create (npc, &attr, item_info, actions, npc->pf_func, &rv);
+    roc_npc_flow_create (npc, &attr, item_info, actions, npc->pf_func, npc_default_action, &rv);
   if (rv)
     {
       log_err (port->dev, "roc_npc_flow_create failed with '%s' error",
