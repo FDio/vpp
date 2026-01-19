@@ -9,7 +9,9 @@ STASH_SAVED=0
 # Tag of built CalicoVPP images.
 # CALICOVPP_VERSION should be the same as TAG when running kube-test
 TAG=${TAG:-"kt-master"}
-BASE=${BASE:-"$COMMIT_HASH"}
+VPP_BASE=${VPP_BASE:-"$COMMIT_HASH"}
+# branch name or commit hash
+CALICOVPP_BASE=${CALICOVPP_BASE:-"origin/master"}
 
 if [ "$1" = "" ]; then
     echo "This script will build, save and import images to both nodes.
@@ -42,16 +44,14 @@ restore_repo() {
 build_calicovpp() {
   if [ ! -d "$CALICOVPP_DIR" ]; then
       git clone https://github.com/projectcalico/vpp-dataplane.git $CALICOVPP_DIR
-  else
-      echo "Repo found, resetting"
-      cd $CALICOVPP_DIR
-      git reset --hard origin/master
-      git fetch --tags --force
-      git pull
-      cd $VPP_DIR/extras/kube-test
   fi
 
-  make -C $CALICOVPP_DIR/vpp-manager vpp VPP_DIR=$VPP_DIR BASE=$BASE && \
+  cd $CALICOVPP_DIR
+  git fetch --tags --force
+  git reset --hard $CALICOVPP_BASE
+  cd $VPP_DIR/extras/kube-test
+
+  make -C $CALICOVPP_DIR/vpp-manager vpp VPP_DIR=$VPP_DIR VPP_BASE=$VPP_BASE && \
   make -C $CALICOVPP_DIR dev TAG=$TAG && \
   make -C $CALICOVPP_DIR image TAG=$TAG
 }
