@@ -38,11 +38,12 @@ typedef enum transport_service_type_
  *        are that connections are not pinned to workers and listeners will
  *        have fifos associated to them
  */
-#define foreach_transport_connection_flag                                     \
-  _ (IS_TX_PACED, "tx_paced")                                                 \
-  _ (NO_LOOKUP, "no_lookup")                                                  \
-  _ (DESCHED, "descheduled")                                                  \
-  _ (CLESS, "connectionless")
+#define foreach_transport_connection_flag                                                          \
+  _ (IS_TX_PACED, "tx_paced")                                                                      \
+  _ (NO_LOOKUP, "no_lookup")                                                                       \
+  _ (DESCHED, "descheduled")                                                                       \
+  _ (CLESS, "connectionless")                                                                      \
+  _ (ERROR, "error")
 
 typedef enum transport_connection_flags_bits_
 {
@@ -409,6 +410,8 @@ typedef struct transport_endpt_attr_
 #undef _
   };
 } transport_endpt_attr_t;
+
+typedef void *transport_cleanup_cb_fn;
 
 typedef clib_bihash_24_8_t transport_endpoint_table_t;
 
