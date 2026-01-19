@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "63209ca5_7743a77c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2026-01-19T13:53:49Z",
+      "side": 1,
+      "message": "gha-run perftest-2n-icx nic_*AND1cAND*-2tap-* #2n-icx-gso",
+      "revId": "309b7490f042e2135d94b180713e2b9ca32c2bfa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
