@@ -15,7 +15,6 @@ from docker import from_env
 from scapy.contrib.gtp import *
 from scapy.all import *
 
-
 verbose_levels = {"error": ERROR, "debug": DEBUG, "info": INFO}
 
 

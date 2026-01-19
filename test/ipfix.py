@@ -13,7 +13,6 @@ from scapy.all import (
 )
 from scapy.layers.inet import UDP
 
-
 # IPFIX Information Elements http://www.iana.org/assignments/ipfix/ipfix.xhtml
 information_elements = {
     1: "octetDeltaCount",

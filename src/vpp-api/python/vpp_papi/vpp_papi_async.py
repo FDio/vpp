@@ -438,7 +438,7 @@ class VPPApiClient:
         writer.write(b)
         await writer.drain()
         hdr = await reader.readexactly(16)
-        (_, hdrlen, _) = self.header_struct.unpack(hdr)  # If at head of message
+        _, hdrlen, _ = self.header_struct.unpack(hdr)  # If at head of message
         msg = await reader.readexactly(hdrlen)
         header2 = VPPType("header", [["u16", "msgid"], ["u32", "client_index"]])
         hdr, _ = header2.unpack(msg, 0)
@@ -694,7 +694,7 @@ class VPPApiClient:
         hdr = await self.reader.readexactly(16)
         if not hdr:
             return
-        (_, hdrlen, _) = self.header_struct.unpack(hdr)  # If at head of message
+        _, hdrlen, _ = self.header_struct.unpack(hdr)  # If at head of message
 
         # Read the rest of the message
         msg = await self._read_exactly(hdrlen)

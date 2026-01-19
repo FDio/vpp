@@ -22,7 +22,6 @@ import platform
 import sys
 import unittest
 
-
 """ TestCDP is a subclass of  VPPTestCase classes.
 
 CDP test.

@@ -845,9 +845,7 @@ def typedefs(filename):
 #ifdef vl_typedefs
 #include "{include}.api_types.h"
 #endif
-""".format(
-        include=filename
-    )
+""".format(include=filename)
     return output
 
 
@@ -1394,7 +1392,7 @@ def version_tuple(s, module):
 """
     if "version" in s["Option"]:
         v = s["Option"]["version"]
-        (major, minor, patch) = v.split(".")
+        major, minor, patch = v.split(".")
         output += "vl_api_version_tuple(%s, %s, %s, %s)\n" % (
             module,
             major,
@@ -1443,7 +1441,7 @@ def generate_include_types(s, module, stream):
 
     if "version" in s["Option"]:
         v = s["Option"]["version"]
-        (major, minor, patch) = v.split(".")
+        major, minor, patch = v.split(".")
         write(
             "#define VL_API_{m}_API_VERSION_MAJOR {v}\n".format(
                 m=module.upper(), v=major

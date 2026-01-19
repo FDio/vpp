@@ -215,7 +215,7 @@ class Generate(object):
                             m = self.siphon_initializer.search(str)
                             if m is not None:
                                 # count the braces on this line
-                                (count, index) = self.count_braces(str[m.start() :])
+                                count, index = self.count_braces(str[m.start() :])
                                 siphon[2] = count
                                 # TODO - it's possible we have the
                                 # initializer all on the first line
@@ -233,7 +233,7 @@ class Generate(object):
                 else:
                     # See if we should end the siphon here - do we have
                     # balanced braces?
-                    (count, index) = self.count_braces(str, count=siphon[2], found=True)
+                    count, index = self.count_braces(str, count=siphon[2], found=True)
                     if count == 0:
                         # braces balanced - add the substring and
                         # close the siphon
@@ -253,7 +253,7 @@ class Generate(object):
                     details = {}
                     for key in directives:
                         if ":" in key:
-                            (sn, label) = key.split(":")
+                            sn, label = key.split(":")
                             if sn == siphon_name:
                                 details[label] = directives[key]
                         else:
@@ -285,7 +285,7 @@ class Generate(object):
                 else:
                     l = filename
 
-                (sn, label) = key.split(":")
+                sn, label = key.split(":")
 
                 if sn not in self.output:
                     self.output[sn] = {}

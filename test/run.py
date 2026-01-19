@@ -25,7 +25,6 @@ import sys
 import time
 import re
 
-
 base_dir = Path(__file__).resolve().parent
 ws_root = base_dir.parent
 run_sh = base_dir / "scripts" / "run.sh"

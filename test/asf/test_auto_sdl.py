@@ -23,7 +23,6 @@ from vpp_ip_route import (
 
 from vpp_papi import VppEnum
 
-
 VPP_TAP_IP4 = "8.8.8.1"
 VPP_TAP_IP6 = "2001::1"
 
