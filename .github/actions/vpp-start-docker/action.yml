@@ -1,0 +1,33 @@
+---
+name: "🛠️ Start docker daemon inside d-in-d executor image'"
+description: |
+  This GitHub Action starts docker daemon inside a docker-in-docker executor image
+
+inputs:
+  START_DOCKER_SCRIPT:
+    description: "Name of the docker script file"
+    required: false
+    default: start-docker.sh
+    type: string
+  TUI_LINE:
+    description: "Delimiter line for TUI output"
+    required: false
+    default: "*******************************************************************"
+    type: string
+
+runs:
+  using: "composite"
+  steps:
+    - name: Start docker daemon
+      shell: bash
+      env:
+        START_DOCKER_SCRIPT: ${{ inputs.START_DOCKER_SCRIPT }}
+        TUI_LINE: ${{ inputs.TUI_LINE }}
+      run: |
+        if [ -n "$(which $START_DOCKER_SCRIPT)" ] ; then
+          cat "$(which $START_DOCKER_SCRIPT)"
+          $START_DOCKER_SCRIPT
+        else
+          echo "Docker startup script not found on PATH: $START_DOCKER_SCRIPT"
+          exit 1
+        fi

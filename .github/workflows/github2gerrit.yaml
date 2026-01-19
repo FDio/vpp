@@ -1,0 +1,68 @@
+---
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2025 The Linux Foundation
+
+name: 'GitHub2Gerrit'
+
+# yamllint disable-line rule:truthy
+on:
+  workflow_dispatch:
+    inputs:
+      preserve_github_prs:
+        description: "Do NOT close GitHub PRs after pushing to Gerrit"
+        required: false
+        default: false
+        type: boolean
+      allow_duplicates:
+        description: "Allow duplicate changes to be raised in Gerrit"
+        required: false
+        default: false
+        type: boolean
+
+  pull_request_target:
+    types: [opened, reopened, edited, synchronize]
+    branches:
+      - master
+      - main
+
+concurrency:
+  group: "${{ github.workflow }}-${{ github.run_id }}"
+  cancel-in-progress: true
+
+jobs:
+  github2gerrit:
+    name: 'GitHub2Gerrit'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+    timeout-minutes: 12
+    steps:
+      # Harden the runner used by this workflow
+      # yamllint disable-line rule:line-length
+      - uses: step-security/harden-runner@95d9a5deda9de15063e7595e9719c11c38c90ae2  # v2.13.2
+        name: 'Harden runner'
+        with:
+          egress-policy: audit
+
+      - name: 'Checkout repository'
+        # yamllint disable-line rule:line-length
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 10
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: 'Run GitHub2Gerrit Action'
+        # yamllint disable-line rule:line-length
+        uses: lfreleng-actions/github2gerrit-action@260cddcd3f96af3e46a84e46fd6c10d6574b45d7  # v0.1.22
+        with:
+          USE_PR_AS_COMMIT: true
+          ALLOW_DUPLICATES: ${{ inputs.allow_duplicates }}
+          PRESERVE_GITHUB_PRS: ${{ inputs.preserve_github_prs }}
+          ISSUE_ID_LOOKUP_JSON: ${{ vars.ISSUE_ID_LOOKUP_JSON }}
+          GERRIT_SSH_PRIVKEY_G2G: ${{ secrets.GERRIT_SSH_PRIVKEY_G2G }}
+          GERRIT_SSH_USER_G2G: ${{ vars.GERRIT_SSH_USER_G2G }}
+          GERRIT_SSH_USER_G2G_EMAIL: ${{ vars.GERRIT_SSH_USER_G2G_EMAIL }}
+          GERRIT_KNOWN_HOSTS: ${{ vars.GERRIT_KNOWN_HOSTS }}
+          VERBOSE: true
