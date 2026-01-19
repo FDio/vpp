@@ -22,6 +22,7 @@
 #    docs        (changes to documentation)
 #    test        (adding or refactoring tests; no production code change)
 #    make        (change the build process, or tools, or infrastructure)
+#    ci          (continuous integration)
 #
 # feature-name: Is the name of the VPP feature, plugin or directory.
 #               Commits across multiple components should be split.
