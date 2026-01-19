@@ -202,8 +202,7 @@ def lw46_shared_b(
 
 
 def xml_header_print():
-    print(
-        """
+    print("""
 <?xml version="1.0" encoding="UTF-8"?>
     <hello xmlns="urn:ietf:params:xml:ns:netconf:base:1.0">
     <capabilities>
@@ -224,13 +223,11 @@ def xml_header_print():
  <softwire>
  <softwire-instances>
 
-    """
-    )
+    """)
 
 
 def xml_footer_print():
-    print(
-        """
+    print("""
 </softwire-instances>
 </softwire>
 </vpp>
@@ -246,8 +243,7 @@ def xml_footer_print():
     </rpc>
 
 ]]>]]>
-    """
-    )
+    """)
 
 
 format = args.format

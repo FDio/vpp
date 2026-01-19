@@ -16,7 +16,6 @@ from scapy.layers.inet import TCP
 from framework import VppTestCase
 from asfframework import VppTestRunner
 
-
 """ Test_gro is a subclass of VPPTestCase classes.
     GRO tests.
 """

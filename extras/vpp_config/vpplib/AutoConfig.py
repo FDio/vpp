@@ -12,6 +12,7 @@
 # limitations under the License.
 
 """Library that supports Auto Configuration."""
+
 from __future__ import absolute_import, division, print_function
 
 import logging
@@ -91,12 +92,12 @@ class AutoConfig(object):
 
         # Does a copy of the file exist, if not create one
         ofile = filename + ".orig"
-        (ret, stdout, stderr) = VPPUtil.exec_command("ls {}".format(ofile))
+        ret, stdout, stderr = VPPUtil.exec_command("ls {}".format(ofile))
         if ret != 0:
             logging.debug(stderr)
             if stdout.strip("\n") != ofile:
                 cmd = "sudo cp {} {}".format(filename, ofile)
-                (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
+                ret, stdout, stderr = VPPUtil.exec_command(cmd)
                 if ret != 0:
                     logging.debug(stderr)
 
@@ -707,19 +708,19 @@ class AutoConfig(object):
 
             # Get the template
             tfile = sfile + ".template"
-            (ret, stdout, stderr) = VPPUtil.exec_command("cat {}".format(tfile))
+            ret, stdout, stderr = VPPUtil.exec_command("cat {}".format(tfile))
             if ret != 0:
                 raise RuntimeError(
                     "Executing cat command failed to node {}".format(node["host"])
                 )
             startup = stdout.format(cpu=cpu, buffers=buffers, devices=devices, tcp=tcp)
 
-            (ret, stdout, stderr) = VPPUtil.exec_command("rm {}".format(sfile))
+            ret, stdout, stderr = VPPUtil.exec_command("rm {}".format(sfile))
             if ret != 0:
                 logging.debug(stderr)
 
             cmd = "sudo cat > {0} << EOF\n{1}\n".format(sfile, startup)
-            (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
+            ret, stdout, stderr = VPPUtil.exec_command(cmd)
             if ret != 0:
                 raise RuntimeError("Writing config failed node {}".format(node["host"]))
 
@@ -877,7 +878,7 @@ class AutoConfig(object):
         """
 
         cmd = "lscpu -p"
-        (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
+        ret, stdout, stderr = VPPUtil.exec_command(cmd)
         if ret != 0:
             raise RuntimeError(
                 "{} failed on node {} {}".format(cmd, node["host"], stderr)
@@ -1708,7 +1709,7 @@ class AutoConfig(object):
 
             # Execute the script
             cmd = "vppctl exec {}".format(filename)
-            (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
+            ret, stdout, stderr = VPPUtil.exec_command(cmd)
             if ret != 0:
                 logging.debug(stderr)
 
@@ -1737,7 +1738,7 @@ class AutoConfig(object):
             name = intf[0]
             if name[:7] == "Virtual":
                 cmd = "vppctl delete vhost-user {}".format(name)
-                (ret, stdout, stderr) = vpputl.exec_command(cmd)
+                ret, stdout, stderr = vpputl.exec_command(cmd)
                 if ret != 0:
                     logging.debug(
                         "{} failed on node {} {}".format(cmd, node["host"], stderr)
@@ -1764,7 +1765,7 @@ class AutoConfig(object):
                 if os.path.exists(sockfilename):
                     os.remove(sockfilename)
                 cmd = "vppctl create vhost-user socket {} server".format(sockfilename)
-                (ret, stdout, stderr) = vpputl.exec_command(cmd)
+                ret, stdout, stderr = vpputl.exec_command(cmd)
                 if ret != 0:
                     raise RuntimeError(
                         "Couldn't execute the command {}, {}.".format(cmd, stderr)
@@ -1772,7 +1773,7 @@ class AutoConfig(object):
                 vintname = stdout.rstrip("\r\n")
 
                 cmd = "chmod 777 {}".format(sockfilename)
-                (ret, stdout, stderr) = vpputl.exec_command(cmd)
+                ret, stdout, stderr = vpputl.exec_command(cmd)
                 if ret != 0:
                     raise RuntimeError(
                         "Couldn't execute the command {}, {}.".format(cmd, stderr)
@@ -1854,7 +1855,7 @@ class AutoConfig(object):
 
             # Execute the script
             cmd = "vppctl exec {}".format(filename)
-            (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
+            ret, stdout, stderr = VPPUtil.exec_command(cmd)
             if ret != 0:
                 logging.debug(stderr)
 
@@ -1883,7 +1884,7 @@ class AutoConfig(object):
             name = intf[0]
             if name[:7] == "Virtual":
                 cmd = "vppctl delete vhost-user {}".format(name)
-                (ret, stdout, stderr) = vpputl.exec_command(cmd)
+                ret, stdout, stderr = vpputl.exec_command(cmd)
                 if ret != 0:
                     logging.debug(
                         "{} failed on node {} {}".format(cmd, node["host"], stderr)
@@ -1917,7 +1918,7 @@ class AutoConfig(object):
                     cmd = "vppctl create vhost-user socket {} server".format(
                         self._sockfilename
                     )
-                    (ret, stdout, stderr) = vpputl.exec_command(cmd)
+                    ret, stdout, stderr = vpputl.exec_command(cmd)
                     if ret != 0:
                         raise RuntimeError(
                             "Couldn't execute the command {}, {}.".format(cmd, stderr)
@@ -1925,7 +1926,7 @@ class AutoConfig(object):
                     vintname = stdout.rstrip("\r\n")
 
                     cmd = "chmod 777 {}".format(self._sockfilename)
-                    (ret, stdout, stderr) = vpputl.exec_command(cmd)
+                    ret, stdout, stderr = vpputl.exec_command(cmd)
                     if ret != 0:
                         raise RuntimeError(
                             "Couldn't execute the command {}, {}.".format(cmd, stderr)
@@ -2010,7 +2011,7 @@ class AutoConfig(object):
 
             # Execute the script
             cmd = "vppctl exec {}".format(filename)
-            (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
+            ret, stdout, stderr = VPPUtil.exec_command(cmd)
             if ret != 0:
                 logging.debug(stderr)
 
@@ -2029,7 +2030,7 @@ class AutoConfig(object):
         """
 
         cmd = "virsh list"
-        (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
+        ret, stdout, stderr = VPPUtil.exec_command(cmd)
         if ret != 0:
             logging.debug(stderr)
             raise RuntimeError(
@@ -2038,7 +2039,7 @@ class AutoConfig(object):
 
         if re.findall(name, stdout):
             cmd = "virsh destroy {}".format(name)
-            (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
+            ret, stdout, stderr = VPPUtil.exec_command(cmd)
             if ret != 0:
                 logging.debug(stderr)
                 raise RuntimeError(
@@ -2084,7 +2085,7 @@ class AutoConfig(object):
         ifile.close()
 
         cmd = "virsh create {}".format(ifilename)
-        (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
+        ret, stdout, stderr = VPPUtil.exec_command(cmd)
         if ret != 0:
             logging.debug(stderr)
             raise RuntimeError(

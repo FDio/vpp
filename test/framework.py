@@ -40,7 +40,6 @@ from scapy.layers.inet6 import ICMPv6DestUnreach, ICMPv6EchoRequest
 from scapy.layers.inet6 import ICMPv6EchoReply
 from asfframework import VppAsfTestCase
 
-
 """
   Packet Generator / Scapy Test framework module.
 

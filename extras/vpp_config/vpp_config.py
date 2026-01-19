@@ -15,6 +15,7 @@
 # limitations under the License.
 
 """VPP Configuration Main Entry"""
+
 from __future__ import absolute_import, division, print_function
 
 import re
@@ -87,10 +88,10 @@ def autoconfig_cp(node, src, dst):
     # If the destination file exist, create a copy if one does not already
     # exist
     ofile = dst + ".orig"
-    (ret, stdout, stderr) = VPPUtil.exec_command("ls {}".format(dst))
+    ret, stdout, stderr = VPPUtil.exec_command("ls {}".format(dst))
     if ret == 0:
         cmd = "cp {} {}".format(dst, ofile)
-        (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
+        ret, stdout, stderr = VPPUtil.exec_command(cmd)
         if ret != 0:
             raise RuntimeError(
                 "{} failed on node {} {} {}".format(cmd, node["host"], stdout, stderr)
@@ -98,7 +99,7 @@ def autoconfig_cp(node, src, dst):
 
     # Copy the source file
     cmd = "cp {} {}".format(src, os.path.dirname(dst))
-    (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
+    ret, stdout, stderr = VPPUtil.exec_command(cmd)
     if ret != 0:
         raise RuntimeError("{} failed on node {} {}".format(cmd, node["host"], stderr))
 
@@ -120,7 +121,7 @@ def autoconfig_diff(node, src, dst):
 
     # Diff the files and return the output
     cmd = "diff {} {}".format(src, dst)
-    (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
+    ret, stdout, stderr = VPPUtil.exec_command(cmd)
     if stderr != "":
         raise RuntimeError(
             "{} failed on node {} {} {}".format(cmd, node["host"], ret, stderr)
@@ -169,7 +170,7 @@ def autoconfig_hugepage_apply(node, ask_questions=True):
         # Copy and sysctl
         autoconfig_cp(node, rootdir + VPP_HUGE_PAGE_FILE, VPP_REAL_HUGE_PAGE_FILE)
         cmd = "sysctl -p {}".format(VPP_REAL_HUGE_PAGE_FILE)
-        (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
+        ret, stdout, stderr = VPPUtil.exec_command(cmd)
         if ret != 0:
             raise RuntimeError(
                 "{} failed on node {} {} {}".format(cmd, node["host"], stdout, stderr)
@@ -261,7 +262,7 @@ def autoconfig_grub_apply(node, ask_questions=True):
         else:
             cmd = "grub2-mkconfig -o /boot/grub2/grub.cfg"
 
-        (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
+        ret, stdout, stderr = VPPUtil.exec_command(cmd)
         if ret != 0:
             raise RuntimeError(
                 "{} failed on node {} {} {}".format(cmd, node["host"], stdout, stderr)
@@ -569,9 +570,7 @@ def autoconfig_main_menu():
 2) Dry Run (Saves the configuration files in {}/vpp/vpp-config/dryrun.\n\
 3) Full configuration (WARNING: This will change the system configuration)\n\
 4) List/Install/Uninstall VPP.\n\
-q) Quit".format(
-        rootdir, rootdir
-    )
+q) Quit".format(rootdir, rootdir)
 
     # 5) Dry Run from {}/vpp/vpp-config/auto-config.yaml (will not ask questions).\n\
     # 6) Install QEMU patch (Needed when running openstack).\n\
@@ -687,7 +686,7 @@ def autoconfig_setup(ask_questions=True):
 
         # Be sure the uio_pci_generic driver is installed
         cmd = "modprobe uio_pci_generic"
-        (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
+        ret, stdout, stderr = VPPUtil.exec_command(cmd)
         if ret != 0:
             logging.warning("{} failed on node {} {}".format(cmd, node["host"], stderr))
 

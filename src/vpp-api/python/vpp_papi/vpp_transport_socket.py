@@ -215,7 +215,7 @@ class VppTransport:
         hdr = self._read_fixed(16)
         if not hdr:
             return
-        (_, hdrlen, _) = self.header.unpack(hdr)  # If at head of message
+        _, hdrlen, _ = self.header.unpack(hdr)  # If at head of message
 
         # Read rest of message
         msg = self._read_fixed(hdrlen)

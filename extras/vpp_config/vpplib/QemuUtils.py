@@ -12,6 +12,7 @@
 # limitations under the License.
 
 """QEMU utilities library."""
+
 from __future__ import absolute_import, division
 
 from time import time, sleep
@@ -173,7 +174,7 @@ class QemuUtils(object):
 
         for qemu_cpu, host_cpu in zip(qemu_cpus, host_cpus):
             cmd = "taskset -pc {0} {1}".format(host_cpu, qemu_cpu["thread_id"])
-            (ret_code, _, stderr) = self._ssh.exec_command_sudo(cmd)
+            ret_code, _, stderr = self._ssh.exec_command_sudo(cmd)
             if int(ret_code) != 0:
                 logging.debug("Set affinity failed {0}".format(stderr))
                 raise RuntimeError(
@@ -190,7 +191,7 @@ class QemuUtils(object):
 
         for qemu_cpu in qemu_cpus:
             cmd = "chrt -r -p 1 {0}".format(qemu_cpu["thread_id"])
-            (ret_code, _, stderr) = self._ssh.exec_command_sudo(cmd)
+            ret_code, _, stderr = self._ssh.exec_command_sudo(cmd)
             if int(ret_code) != 0:
                 logging.debug("Set SCHED_RR failed {0}".format(stderr))
                 raise RuntimeError(
@@ -269,7 +270,7 @@ class QemuUtils(object):
             + self._qmp_sock
         )
 
-        (ret_code, stdout, stderr) = self._ssh.exec_command(qmp_cmd)
+        ret_code, stdout, stderr = self._ssh.exec_command(qmp_cmd)
         if int(ret_code) != 0:
             logging.debug("QMP execute failed {0}".format(stderr))
             raise RuntimeError(
@@ -289,7 +290,7 @@ class QemuUtils(object):
             "sudo -S socat - UNIX-CONNECT:" + self._qga_sock
         )
         # TODO: probably need something else
-        (ret_code, stdout, stderr) = self._ssh.exec_command(qga_cmd)
+        ret_code, stdout, stderr = self._ssh.exec_command(qga_cmd)
         if int(ret_code) != 0:
             logging.debug("QGA execute failed {0}".format(stderr))
             raise RuntimeError(
@@ -314,7 +315,7 @@ class QemuUtils(object):
             + '\\" }"; sleep 1) | sudo -S socat - UNIX-CONNECT:'
             + self._qga_sock
         )
-        (ret_code, stdout, stderr) = self._ssh.exec_command(qga_cmd)
+        ret_code, stdout, stderr = self._ssh.exec_command(qga_cmd)
         if int(ret_code) != 0:
             logging.debug("QGA execute failed {0}".format(stderr))
             raise RuntimeError(
@@ -417,12 +418,12 @@ class QemuUtils(object):
                 cmd = 'echo "{0}" | sudo tee /proc/sys/vm/max_map_count'.format(
                     max_map_count
                 )
-                (ret_code, _, stderr) = self._ssh.exec_command_sudo(cmd)
+                ret_code, _, stderr = self._ssh.exec_command_sudo(cmd)
                 # Increase hugepage count
                 cmd = 'echo "{0}" | sudo tee /proc/sys/vm/nr_hugepages'.format(
                     huge_to_allocate
                 )
-                (ret_code, _, stderr) = self._ssh.exec_command_sudo(cmd)
+                ret_code, _, stderr = self._ssh.exec_command_sudo(cmd)
                 if int(ret_code) != 0:
                     logging.debug("Mount huge pages failed {0}".format(stderr))
                     raise RuntimeError(
@@ -436,7 +437,7 @@ class QemuUtils(object):
                 )
         # Check if huge pages mount point exist
         has_huge_mnt = False
-        (_, output, _) = self._ssh.exec_command("cat /proc/mounts")
+        _, output, _ = self._ssh.exec_command("cat /proc/mounts")
         for line in output.splitlines():
             # Try to find something like:
             # none /mnt/huge hugetlbfs rw,relatime,pagesize=2048k 0 0
@@ -447,14 +448,14 @@ class QemuUtils(object):
         # If huge page mount point not exist create one
         if not has_huge_mnt:
             cmd = "mkdir -p {0}".format(huge_mnt)
-            (ret_code, _, stderr) = self._ssh.exec_command_sudo(cmd)
+            ret_code, _, stderr = self._ssh.exec_command_sudo(cmd)
             if int(ret_code) != 0:
                 logging.debug("Create mount dir failed: {0}".format(stderr))
                 raise RuntimeError(
                     "Create mount dir failed on {0}".format(self._node["host"])
                 )
             cmd = "mount -t hugetlbfs -o pagesize=2048k none {0}".format(huge_mnt)
-            (ret_code, _, stderr) = self._ssh.exec_command_sudo(cmd)
+            ret_code, _, stderr = self._ssh.exec_command_sudo(cmd)
             if int(ret_code) != 0:
                 logging.debug("Mount huge pages failed {0}".format(stderr))
                 raise RuntimeError(
@@ -471,7 +472,7 @@ class QemuUtils(object):
         # TODO: remove to dedicated library
         cmd_huge_size = "grep Hugepagesize /proc/meminfo | awk '{ print $2 }'"
         for _ in range(3):
-            (ret, out, _) = self._ssh.exec_command_sudo(cmd_huge_size)
+            ret, out, _ = self._ssh.exec_command_sudo(cmd_huge_size)
             if ret == 0:
                 try:
                     huge_size = int(out)
@@ -499,7 +500,7 @@ class QemuUtils(object):
             "free_hugepages".format(huge_size)
         )
         for _ in range(3):
-            (ret, out, _) = self._ssh.exec_command_sudo(cmd_huge_free)
+            ret, out, _ = self._ssh.exec_command_sudo(cmd_huge_free)
             if ret == 0:
                 try:
                     huge_free = int(out)
@@ -527,7 +528,7 @@ class QemuUtils(object):
             "nr_hugepages".format(huge_size)
         )
         for _ in range(3):
-            (ret, out, _) = self._ssh.exec_command_sudo(cmd_huge_total)
+            ret, out, _ = self._ssh.exec_command_sudo(cmd_huge_total)
             if ret == 0:
                 try:
                     huge_total = int(out)
@@ -600,7 +601,7 @@ class QemuUtils(object):
             graphic,
             pid,
         )
-        (ret_code, _, stderr) = self._ssh.exec_command_sudo(cmd, timeout=300)
+        ret_code, _, stderr = self._ssh.exec_command_sudo(cmd, timeout=300)
         if int(ret_code) != 0:
             logging.debug("QEMU start failed {0}".format(stderr))
             raise RuntimeError("QEMU start failed on {0}".format(self._node["host"]))
@@ -731,7 +732,7 @@ class QemuUtils(object):
         force = " --force" if force_install else ""
         patch = " --patch" if apply_patch else ""
 
-        (ret_code, stdout, stderr) = VPPUtil.exec_command(
+        ret_code, stdout, stderr = VPPUtil.exec_command(
             "sudo -E sh -c '{0}/{1}/qemu_build.sh{2}{3}{4}{5}'".format(
                 Constants.REMOTE_FW_DIR,
                 Constants.RESOURCES_LIB_SH,

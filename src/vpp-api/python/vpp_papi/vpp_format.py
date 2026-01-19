@@ -18,7 +18,6 @@ import socket
 import ipaddress
 from . import macaddress
 
-
 # Copies from vl_api_address_t definition
 ADDRESS_IP4 = 0
 ADDRESS_IP6 = 1

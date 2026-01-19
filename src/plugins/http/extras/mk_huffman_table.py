@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 from io import StringIO
 
-
 # SPDX-License-Identifier: Apache-2.0
 # Copyright(c) 2025 Cisco Systems, Inc.
 
@@ -285,8 +284,7 @@ for line in StringIO(rfc7541_huffman_code):
     huff_code_table.append((code_len, code))
 
 f = open("../http2/huffman_table.h", "w")
-f.write(
-    """/* SPDX-License-Identifier: Apache-2.0
+f.write("""/* SPDX-License-Identifier: Apache-2.0
  * Copyright(c) 2025 Cisco Systems, Inc.
  */
 
@@ -304,14 +302,12 @@ typedef struct
 } hpack_huffman_symbol_t;
 
 static hpack_huffman_symbol_t huff_sym_table[] = {
-"""
-)
+""")
 
 # encoding table
 [f.write("  {" + code[0] + ", 0x" + code[1] + "},\n") for code in huff_code_table]
 
-f.write(
-    """};
+f.write("""};
 
 typedef struct
 {
@@ -320,8 +316,7 @@ typedef struct
 } hpack_huffman_code_t;
 
 static hpack_huffman_code_t huff_code_table_fast[] = {
-"""
-)
+""")
 
 # fast decoding table, symbols with code length from 5 to 8 bits (most of printable ASCII characters)
 [generate_slots(f, i, 5) for i, code in enumerate(huff_code_table) if code[0] == "5"]
@@ -333,8 +328,7 @@ static hpack_huffman_code_t huff_code_table_fast[] = {
 f.write("  { 0x00, 0 },\n")
 f.write("  { 0x00, 0 },\n")
 
-f.write(
-    """};
+f.write("""};
 
 typedef struct
 {
@@ -346,8 +340,7 @@ typedef struct
 /* clang-format off */
 
 static hpack_huffman_group_t huff_code_table_slow[] = {
-"""
-)
+""")
 for i in range(10, 31):
     symbols = [
         (symbol, code[1])
@@ -368,16 +361,14 @@ for i in range(10, 31):
                 [f.write(" 0x%02X," % s) for s, c in symbols[20:30]]
         f.write("\n    } /* symbols */\n  },\n")
 
-f.write(
-    """};
+f.write("""};
 
 /* clang format-on */
 
 always_inline hpack_huffman_group_t *
 hpack_huffman_get_group (u32 value)
 {
-"""
-)
+""")
 
 index = 0
 
@@ -406,11 +397,9 @@ for i in range(11, 30):
 f.write("  else\n")
 f.write("    return &huff_code_table_slow[%d];\n" % index)
 
-f.write(
-    """}
+f.write("""}
 
 #endif /* SRC_PLUGINS_HTTP_HUFFMAN_TABLE_H_ */
-"""
-)
+""")
 
 f.close()

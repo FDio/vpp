@@ -329,7 +329,7 @@ class RemoteClass(Process):
             try:
                 rv = None
                 # get request from the parent process
-                (op, path, args, kwargs) = self._pipe[RemoteClass.PIPE_CHILD].recv()
+                op, path, args, kwargs = self._pipe[RemoteClass.PIPE_CHILD].recv()
                 args = self._deserialize(args)
                 kwargs = self._deserialize(kwargs)
                 path = path.split(".") if path else []

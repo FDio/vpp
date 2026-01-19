@@ -33,7 +33,6 @@ from vpp_qos import VppQosEgressMap, VppQosMark
 from vpp_dhcp import VppDHCPClient, VppDHCPProxy
 from config import config
 
-
 DHCP4_CLIENT_PORT = 68
 DHCP4_SERVER_PORT = 67
 DHCP6_CLIENT_PORT = 547

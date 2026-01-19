@@ -53,7 +53,7 @@ class VppHugePageUtil(object):
         filename = rootdir + node["hugepages"]["hugepage_config_file"]
 
         cmd = 'echo "{0}" | sudo tee {1}'.format(vpp_hugepage_config, filename)
-        (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
+        ret, stdout, stderr = VPPUtil.exec_command(cmd)
         if ret != 0:
             raise RuntimeError(
                 "{} failed on node {} {} {}".format(cmd, node["host"], stdout, stderr)
@@ -70,7 +70,7 @@ class VppHugePageUtil(object):
 
         # Get the memory information using /proc/meminfo
         cmd = "sudo cat /proc/meminfo"
-        (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
+        ret, stdout, stderr = VPPUtil.exec_command(cmd)
         if ret != 0:
             raise RuntimeError(
                 "{} failed on node {} {} {}".format(
