@@ -396,6 +396,36 @@ session_half_open_free (session_t *ho)
 }
 
 static void
+session_half_open_cleanup_notify_custom (session_t *ho,
+					 transport_cleanup_cb_fn cb_fn)
+{
+  app_worker_t *app_wrk;
+
+  ASSERT (vlib_get_thread_index () <= transport_cl_thread ());
+  app_wrk = app_worker_get_if_valid (ho->app_wrk_index);
+
+  if (!app_wrk)
+    {
+      transport_cleanup_cb (cb_fn, session_get_transport (ho));
+      session_free (ho);
+      return;
+    }
+
+  app_worker_cleanup_ho_notify_custom (app_wrk, ho, cb_fn);
+}
+
+static void
+session_half_open_free_rpc_custom (void *args)
+{
+  session_t *ho = ho_session_get (pointer_to_uword (args));
+  transport_connection_t *tc = transport_get_half_open (
+    session_get_transport_proto (ho), ho->connection_index);
+  transport_cleanup_cb_fn cb_fn =
+    uword_to_pointer (tc->pacer.bytes_per_sec, transport_cleanup_cb_fn);
+  session_half_open_cleanup_notify_custom (ho, cb_fn);
+}
+
+static void
 session_half_open_free_rpc (void *args)
 {
   session_t *ho = ho_session_get (pointer_to_uword (args));
@@ -425,6 +455,35 @@ session_half_open_delete_notify (transport_connection_t *tc)
       void *args = uword_to_pointer ((uword) tc->s_index, void *);
       session_send_rpc_evt_to_thread_force (transport_cl_thread (),
 					    session_half_open_free_rpc, args);
+    }
+}
+
+void
+session_half_open_delete_request (transport_connection_t *tc,
+				  transport_cleanup_cb_fn cb_fn)
+{
+  session_t *ho = ho_session_get (tc->s_index);
+
+  /* Cleanup half-open lookup table if need be */
+  if (ho->session_state != SESSION_STATE_TRANSPORT_CLOSED)
+    {
+      if (!(tc->flags & TRANSPORT_CONNECTION_F_NO_LOOKUP))
+	session_lookup_del_half_open (tc);
+    }
+  session_set_state (ho, SESSION_STATE_TRANSPORT_DELETED);
+
+  /* Notification from ctrl thread accepted without rpc */
+  if (tc->thread_index == transport_cl_thread ())
+    {
+      session_half_open_cleanup_notify_custom (ho, cb_fn);
+    }
+  else
+    {
+      void *args = uword_to_pointer ((uword) tc->s_index, void *);
+      /* Reuse field in pacer to keep track of cleanup fn */
+      tc->pacer.bytes_per_sec = pointer_to_uword (cb_fn);
+      session_send_rpc_evt_to_thread_force (
+	transport_cl_thread (), session_half_open_free_rpc_custom, args);
     }
 }
 
@@ -741,7 +800,11 @@ session_stream_connect_notify (transport_connection_t * tc,
     return -1;
 
   if (err)
-    return app_worker_connect_notify (app_wrk, s, err, opaque);
+    {
+      /* Use transport error as indication that connection failed */
+      tc->flags |= TRANSPORT_CONNECTION_F_ERROR;
+      return app_worker_connect_notify (app_wrk, s, err, opaque);
+    }
 
   s = session_alloc_for_connection (tc);
   session_set_state (s, SESSION_STATE_CONNECTING);

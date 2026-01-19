@@ -544,4 +544,6 @@ typedef enum session_error_
 #define SESSION_ERROR_NO_SPACE SESSION_E_SEG_NO_SPACE
 #define SESSION_ERROR_NEW_SEG_NO_SPACE SESSION_E_SEG_NO_SPACE2
 
+typedef void *transport_cleanup_cb_fn;
+
 #endif /* SRC_VNET_SESSION_SESSION_TYPES_H_ */

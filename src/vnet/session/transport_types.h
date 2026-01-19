@@ -42,7 +42,8 @@ typedef enum transport_service_type_
   _ (IS_TX_PACED, "tx_paced")                                                 \
   _ (NO_LOOKUP, "no_lookup")                                                  \
   _ (DESCHED, "descheduled")                                                  \
-  _ (CLESS, "connectionless")
+  _ (CLESS, "connectionless")                                                 \
+  _ (ERROR, "error")
 
 typedef enum transport_connection_flags_bits_
 {
