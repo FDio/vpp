@@ -396,7 +396,7 @@ uword
 unformat_sfdp_service (unformat_input_t *input, va_list *args)
 {
   sfdp_service_main_t *sm = &sfdp_service_main;
-  u32 *result = va_arg (*args, u32 *);
+  u8 *result = va_arg (*args, u8 *);
   int i;
   for (u32 scope_index = 0; scope_index < sm->n_scopes; scope_index++)
     for (i = 0; i < vec_len (sm->services_per_scope_index[scope_index]); i++)
@@ -416,11 +416,11 @@ uword
 unformat_sfdp_service_bitmap (unformat_input_t *input, va_list *args)
 {
   sfdp_bitmap_t *result = va_arg (*args, sfdp_bitmap_t *);
-  int i = -1;
+  u8 i = UINT8_MAX;
   sfdp_bitmap_t bitmap = 0;
   while (unformat_user (input, unformat_sfdp_service, &i))
     bitmap |= 1ULL << i;
-  if (i > -1)
+  if (i != UINT8_MAX)
     {
       *result = bitmap;
       return 1;
