@@ -702,8 +702,8 @@ ip6_full_reass_finalize (vlib_main_t * vm, vlib_node_runtime_t * node,
       u32 tmp_bi = sub_chain_bi;
       vlib_buffer_t *tmp = vlib_get_buffer (vm, tmp_bi);
       vnet_buffer_opaque_t *vnb = vnet_buffer (tmp);
-      if (!(vnb->ip.reass.range_first >= vnb->ip.reass.fragment_first) &&
-	  !(vnb->ip.reass.range_last > vnb->ip.reass.fragment_first))
+      if (vnb->ip.reass.range_first < vnb->ip.reass.fragment_first ||
+	  vnb->ip.reass.range_last <= vnb->ip.reass.fragment_first)
 	{
 	  rv = IP6_FULL_REASS_RC_INTERNAL_ERROR;
 	  goto free_buffers_and_return;
