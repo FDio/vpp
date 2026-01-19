@@ -1,7 +1,6 @@
 from vpp_interface import VppInterface
 from vpp_papi import VppEnum
 
-
 INDEX_INVALID = 0xFFFFFFFF
 
 

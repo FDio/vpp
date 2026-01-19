@@ -27,30 +27,26 @@ with open(r.input, "r") as fp:
 
 c = open(r.output, "w")
 
-c.write(
-    """
+c.write("""
 #include <perfmon/perfmon_intel.h>
 
 static perfmon_intel_pmc_cpu_model_t cpu_model_table[] = {
-"""
-)
+""")
 
 for v in r.model:
     if "," in v:
-        (m, s) = v.split(",")
+        m, s = v.split(",")
         m = int(m, 0)
         s = int(s, 0)
         c.write("  {}0x{:02X}, 0x{:02X}, 1{},\n".format("{", m, s, "}"))
     else:
         m = int(v, 0)
         c.write("  {}0x{:02X}, 0x00, 0{},\n".format("{", m, "}"))
-c.write(
-    """
+c.write("""
 };
 
 static perfmon_intel_pmc_event_t event_table[] = {
-"""
-)
+""")
 
 for obj in objects:
     MSRIndex = obj["MSRIndex"]
@@ -70,15 +66,13 @@ for obj in objects:
     c.write("   },\n")
 
 
-c.write(
-    """  {
+c.write("""  {
    .event_name = 0,
    },
 };
 
 PERFMON_REGISTER_INTEL_PMC (cpu_model_table, event_table);
 
-"""
-)
+""")
 
 c.close()

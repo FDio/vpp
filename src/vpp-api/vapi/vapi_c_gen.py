@@ -475,8 +475,7 @@ class CMessage(Message):
         )
 
     def get_verify_msg_size_func_def(self):
-        return inspect.cleandoc(
-            f"""
+        return inspect.cleandoc(f"""
             {self.get_verify_msg_size_func_decl()}
             {{
               if (sizeof({self.get_c_name()}) > buf_size)
@@ -495,8 +494,7 @@ class CMessage(Message):
                 }}
               return 0;
             }}
-        """
-        )
+        """)
 
     def get_c_def(self):
         if self.has_payload():

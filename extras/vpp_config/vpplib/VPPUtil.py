@@ -129,12 +129,12 @@ class VPPUtil(object):
 
         # Does a copy of the file exist, if not create one
         ofile = filename + ".orig"
-        (ret, stdout, stderr) = self.exec_command("ls {}".format(ofile))
+        ret, stdout, stderr = self.exec_command("ls {}".format(ofile))
         if ret != 0:
             logging.debug(stderr)
             if stdout.strip("\n") != ofile:
                 cmd = "sudo cp {} {}".format(filename, ofile)
-                (ret, stdout, stderr) = self.exec_command(cmd)
+                ret, stdout, stderr = self.exec_command(cmd)
                 if ret != 0:
                     logging.debug(stderr)
 
@@ -167,7 +167,7 @@ class VPPUtil(object):
 
         key = requests.get("https://packagecloud.io/fdio/{}/gpgkey".format(branch))
         cmd = 'echo "{}" | apt-key add -'.format(key.content.decode(key.encoding))
-        (ret, stdout, stderr) = self.exec_command(cmd)
+        ret, stdout, stderr = self.exec_command(cmd)
         if ret != 0:
             raise RuntimeError(
                 "{} failed on node {} {}".format(cmd, node["host"], stderr)
@@ -175,7 +175,7 @@ class VPPUtil(object):
 
         # Install the package
         cmd = "apt-get -y update"
-        (ret, stdout, stderr) = self.exec_command(cmd)
+        ret, stdout, stderr = self.exec_command(cmd)
         if ret != 0:
             raise RuntimeError(
                 "{} apt-get update failed on node {} {}".format(
@@ -189,7 +189,7 @@ class VPPUtil(object):
             pkgstr += ps + " "
 
         cmd = "apt-get -y install {}".format(pkgstr)
-        (ret, stdout, stderr) = self.exec_command(cmd)
+        ret, stdout, stderr = self.exec_command(cmd)
         if ret != 0:
             raise RuntimeError(
                 "{} failed on node {} {} {}".format(cmd, node["host"], stdout, stderr)
@@ -207,12 +207,12 @@ class VPPUtil(object):
 
         # Be sure the correct system packages are installed
         cmd = "yum -y update"
-        (ret, stdout, stderr) = self.exec_command(cmd)
+        ret, stdout, stderr = self.exec_command(cmd)
         if ret != 0:
             logging.debug("{} failed on node {} {}".format(cmd, node["host"], stderr))
 
         cmd = "yum -y install pygpgme yum-utils"
-        (ret, stdout, stderr) = self.exec_command(cmd)
+        ret, stdout, stderr = self.exec_command(cmd)
         if ret != 0:
             logging.debug("{} failed on node {} {}".format(cmd, node["host"], stderr))
 
@@ -224,7 +224,7 @@ class VPPUtil(object):
 
         # Remove the current file
         cmd = "rm {}".format(sfile)
-        (ret, stdout, stderr) = self.exec_command(cmd)
+        ret, stdout, stderr = self.exec_command(cmd)
         if ret != 0:
             logging.debug("{} failed on node {} {}".format(cmd, node["host"], stderr))
 
@@ -260,14 +260,14 @@ class VPPUtil(object):
 
         # Update the fdio repo
         cmd = "yum clean all"
-        (ret, stdout, stderr) = self.exec_command(cmd)
+        ret, stdout, stderr = self.exec_command(cmd)
         if ret != 0:
             logging.debug("{} failed on node {} {}".format(cmd, node["host"], stderr))
 
         cmd = "yum -q makecache -y --disablerepo='*' " "--enablerepo='fdio_{}'".format(
             branch
         )
-        (ret, stdout, stderr) = self.exec_command(cmd)
+        ret, stdout, stderr = self.exec_command(cmd)
         if ret != 0:
             logging.debug("{} failed on node {} {}".format(cmd, node["host"], stderr))
 
@@ -277,7 +277,7 @@ class VPPUtil(object):
             pkgstr += ps + " "
 
         cmd = "yum -y install {}".format(pkgstr)
-        (ret, stdout, stderr) = self.exec_command(cmd)
+        ret, stdout, stderr = self.exec_command(cmd)
         if ret != 0:
             raise RuntimeError(
                 "{} failed on node {} {} {}".format(cmd, node["host"], stdout, stderr)
@@ -322,7 +322,7 @@ class VPPUtil(object):
             pkgstr += pkgname + " "
 
         cmd = "dpkg --purge {}".format(pkgstr)
-        (ret, stdout, stderr) = self.exec_command(cmd)
+        ret, stdout, stderr = self.exec_command(cmd)
         if ret != 0:
             raise RuntimeError(
                 "{} failed on node {} {} {}".format(cmd, node["host"], stdout, stderr)
@@ -344,7 +344,7 @@ class VPPUtil(object):
 
         logging.info("Uninstalling {}".format(pkgstr))
         cmd = "yum -y remove {}".format(pkgstr)
-        (ret, stdout, stderr) = self.exec_command(cmd)
+        ret, stdout, stderr = self.exec_command(cmd)
         if ret != 0:
             raise RuntimeError(
                 "{} failed on node {} {} {}".format(cmd, node["host"], stdout, stderr)
@@ -428,7 +428,7 @@ class VPPUtil(object):
         """
         interfaces = {}
         cmd = "vppctl show int addr"
-        (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
+        ret, stdout, stderr = VPPUtil.exec_command(cmd)
         if ret != 0:
             return interfaces
 
@@ -470,7 +470,7 @@ class VPPUtil(object):
 
         interfaces = {}
         cmd = "vppctl show hard"
-        (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
+        ret, stdout, stderr = VPPUtil.exec_command(cmd)
         if ret != 0:
             return interfaces
 
@@ -539,7 +539,7 @@ class VPPUtil(object):
 
         pkgs = []
         cmd = "dpkg -l | grep vpp"
-        (ret, stdout, stderr) = self.exec_command(cmd)
+        ret, stdout, stderr = self.exec_command(cmd)
         if ret != 0:
             return pkgs
 
@@ -564,7 +564,7 @@ class VPPUtil(object):
 
         pkgs = []
         cmd = "rpm -qa | grep vpp"
-        (ret, stdout, stderr) = self.exec_command(cmd)
+        ret, stdout, stderr = self.exec_command(cmd)
         if ret != 0:
             return pkgs
 
@@ -648,7 +648,7 @@ class VPPUtil(object):
         """
 
         cmd = "service vpp restart"
-        (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
+        ret, stdout, stderr = VPPUtil.exec_command(cmd)
         if ret != 0:
             raise RuntimeError(
                 "{} failed on node {} {} {}".format(cmd, node["host"], stdout, stderr)
@@ -665,7 +665,7 @@ class VPPUtil(object):
         """
 
         cmd = "service vpp start"
-        (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
+        ret, stdout, stderr = VPPUtil.exec_command(cmd)
         if ret != 0:
             raise RuntimeError(
                 "{} failed on node {} {} {}".format(cmd, node["host"], stdout, stderr)
@@ -682,7 +682,7 @@ class VPPUtil(object):
         """
 
         cmd = "service vpp stop"
-        (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
+        ret, stdout, stderr = VPPUtil.exec_command(cmd)
         if ret != 0:
             logging.debug(
                 "{} failed on node {} {} {}".format(cmd, node["host"], stdout, stderr)
@@ -707,7 +707,7 @@ class VPPUtil(object):
             return "Not Installed", errors
 
         cmd = "service vpp status"
-        (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
+        ret, stdout, stderr = VPPUtil.exec_command(cmd)
 
         # Get the active status
         state = re.findall(r"Active:[\w (\)]+", stdout)[0].split(" ")
@@ -754,7 +754,7 @@ class VPPUtil(object):
 
         version = {}
         cmd = "vppctl show version verbose"
-        (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
+        ret, stdout, stderr = VPPUtil.exec_command(cmd)
         if ret != 0:
             return version
 
@@ -783,7 +783,7 @@ class VPPUtil(object):
 
         ifaces = []
         cmd = "vppctl show bridge"
-        (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
+        ret, stdout, stderr = VPPUtil.exec_command(cmd)
         if ret != 0:
             raise RuntimeError(
                 "{} failed on node {} {} {}".format(cmd, node["host"], stdout, stderr)
@@ -803,7 +803,7 @@ class VPPUtil(object):
 
         for bridge in bridges:
             cmd = "vppctl show bridge {} detail".format(bridge)
-            (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
+            ret, stdout, stderr = VPPUtil.exec_command(cmd)
             if ret != 0:
                 raise RuntimeError(
                     "{} failed on node {} {} {}".format(

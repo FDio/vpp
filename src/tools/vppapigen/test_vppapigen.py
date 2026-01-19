@@ -4,7 +4,6 @@ import unittest
 from vppapigen import VPPAPI, Option, ParseError, Union, foldup_crcs, global_types
 import vppapigen
 
-
 # TODO
 # - test parsing of options, typedefs, enums, defines
 # - test JSON, C output
