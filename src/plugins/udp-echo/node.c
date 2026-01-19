@@ -1,0 +1,139 @@
+/* SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2026 Cisco and/or its affiliates.
+ */
+
+#include <vlib/vlib.h>
+#include <vnet/vnet.h>
+#include <vnet/pg/pg.h>
+#include <vnet/ip/ip.h>
+#include <vnet/udp/udp_packet.h>
+#include <vppinfra/error.h>
+#include <udp-echo/udp_echo.h>
+
+vlib_node_registration_t udp_echo_node;
+#define foreach_udp_echo_error _ (PROCESSED, "UDP echo packets processed")
+
+typedef enum
+{
+#define _(sym, str) UDP_ECHO_ERROR_##sym,
+  foreach_udp_echo_error
+#undef _
+    UDP_ECHO_N_ERROR,
+} udp_echo_error_t;
+
+static char *udp_echo_error_strings[] = {
+#define _(sym, string) string,
+  foreach_udp_echo_error
+#undef _
+};
+
+typedef enum
+{
+  UDP_ECHO_NEXT_IP4_LOOKUP,
+  UDP_ECHO_N_NEXT,
+} udp_echo_next_t;
+
+VLIB_NODE_FN (udp_echo_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  u32 n_left_from = frame->n_vectors;
+  u32 *from = vlib_frame_vector_args (frame);
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE + 4], **b;
+
+  vlib_get_buffers (vm, from, bufs, n_left_from);
+  for (u32 i = 0; i < 4; i++)
+    bufs[n_left_from + i] = bufs[n_left_from - 1];
+  b = bufs;
+
+  for (; n_left_from >= 4; n_left_from -= 4, b += 4)
+    {
+      i16 ip_off0 = vnet_buffer (b[0])->l3_hdr_offset;
+      i16 ip_off1 = vnet_buffer (b[1])->l3_hdr_offset;
+      i16 ip_off2 = vnet_buffer (b[2])->l3_hdr_offset;
+      i16 ip_off3 = vnet_buffer (b[3])->l3_hdr_offset;
+      ip4_header_t *ip0 = (ip4_header_t *) (b[0]->data + ip_off0);
+      ip4_header_t *ip1 = (ip4_header_t *) (b[1]->data + ip_off1);
+      ip4_header_t *ip2 = (ip4_header_t *) (b[2]->data + ip_off2);
+      ip4_header_t *ip3 = (ip4_header_t *) (b[3]->data + ip_off3);
+
+      udp_header_t *udp0 = ip4_next_header (ip0);
+      udp_header_t *udp1 = ip4_next_header (ip1);
+      udp_header_t *udp2 = ip4_next_header (ip2);
+      udp_header_t *udp3 = ip4_next_header (ip3);
+
+      vlib_prefetch_buffer_header (b[4], LOAD);
+      vlib_prefetch_buffer_header (b[5], LOAD);
+      vlib_prefetch_buffer_header (b[6], LOAD);
+      vlib_prefetch_buffer_header (b[7], LOAD);
+
+      CLIB_PREFETCH (b[4]->data, CLIB_CACHE_LINE_BYTES, LOAD);
+      CLIB_PREFETCH (b[5]->data, CLIB_CACHE_LINE_BYTES, LOAD);
+      CLIB_PREFETCH (b[6]->data, CLIB_CACHE_LINE_BYTES, LOAD);
+      CLIB_PREFETCH (b[7]->data, CLIB_CACHE_LINE_BYTES, LOAD);
+
+      CLIB_SWAP (ip0->src_address.as_u32, ip0->dst_address.as_u32);
+      CLIB_SWAP (udp0->src_port, udp0->dst_port);
+      vlib_buffer_advance (b[0], ip_off0 - b[0]->current_data);
+
+      CLIB_SWAP (ip1->src_address.as_u32, ip1->dst_address.as_u32);
+      CLIB_SWAP (udp1->src_port, udp1->dst_port);
+      vlib_buffer_advance (b[1], ip_off1 - b[1]->current_data);
+
+      CLIB_SWAP (ip2->src_address.as_u32, ip2->dst_address.as_u32);
+      CLIB_SWAP (udp2->src_port, udp2->dst_port);
+      vlib_buffer_advance (b[2], ip_off2 - b[2]->current_data);
+
+      CLIB_SWAP (ip3->src_address.as_u32, ip3->dst_address.as_u32);
+      CLIB_SWAP (udp3->src_port, udp3->dst_port);
+      vlib_buffer_advance (b[3], ip_off3 - b[3]->current_data);
+    }
+
+  for (; n_left_from > 0; n_left_from -= 1, b += 1)
+    {
+      i16 ip_off0 = vnet_buffer (b[0])->l3_hdr_offset;
+      ip4_header_t *ip0 = (ip4_header_t *) (b[0]->data + ip_off0);
+      udp_header_t *udp0 = ip4_next_header (ip0);
+
+      CLIB_SWAP (ip0->src_address.as_u32, ip0->dst_address.as_u32);
+      CLIB_SWAP (udp0->src_port, udp0->dst_port);
+      vlib_buffer_advance (b[0], ip_off0 - b[0]->current_data);
+    }
+
+  if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
+    {
+      b = bufs;
+      for (u32 i = 0; i < frame->n_vectors; i++)
+	{
+	  if (b[i]->flags & VLIB_BUFFER_IS_TRACED)
+	    {
+	      ip4_header_t *ip = (ip4_header_t *) (b[i]->data + vnet_buffer (b[i])->l3_hdr_offset);
+	      udp_header_t *udp = ip4_next_header (ip);
+	      udp_echo_trace_t *t = vlib_add_trace (vm, node, b[i], sizeof (*t));
+	      t->src = ip->src_address;
+	      t->dst = ip->dst_address;
+	      t->src_port = udp->src_port;
+	      t->dst_port = udp->dst_port;
+	    }
+	}
+    }
+
+  vlib_buffer_enqueue_to_single_next (vm, node, from, UDP_ECHO_NEXT_IP4_LOOKUP, frame->n_vectors);
+
+  vlib_node_increment_counter (vm, udp_echo_node.index, UDP_ECHO_ERROR_PROCESSED, frame->n_vectors);
+  return frame->n_vectors;
+}
+
+VLIB_REGISTER_NODE (udp_echo_node) = {
+  .name = "udp-echo",
+  .vector_size = sizeof (u32),
+  .format_trace = format_udp_echo_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+
+  .n_errors = ARRAY_LEN (udp_echo_error_strings),
+  .error_strings = udp_echo_error_strings,
+
+  .next_nodes = {
+        [UDP_ECHO_NEXT_IP4_LOOKUP] = "ip4-lookup",
+  },
+  .n_next_nodes = UDP_ECHO_N_NEXT,
+};

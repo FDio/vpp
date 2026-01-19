@@ -854,6 +854,11 @@ I:	http
 M:	Florin Coras <fcoras@cisco.com>
 F:	src/plugins/http
 
+Plugin - UDP Echo
+I:	udp-echo
+M:	Damjan Marion <damarion@cisco.com>
+F:	src/plugins/udp-echo/
+
 Plugin - Prom
 I:	prom
 M:	Florin Coras <fcoras@cisco.com>
