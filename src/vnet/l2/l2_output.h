@@ -67,20 +67,21 @@ extern vlib_node_registration_t l2output_node;
 /* L2 output features */
 
 /* Mappings from feature ID to graph node name in reverse order */
-#define foreach_l2output_feat \
- _(OUTPUT,            "interface-output")           \
- _(SPAN,              "span-l2-output")             \
- _(CFM,               "feature-bitmap-drop")        \
- _(QOS,               "feature-bitmap-drop")        \
- _(ACL,               "l2-output-acl")              \
- _(L2PT,              "feature-bitmap-drop")        \
- _(EFP_FILTER,        "l2-efp-filter")              \
- _(IPIW,              "feature-bitmap-drop")        \
- _(STP_BLOCKED,       "feature-bitmap-drop")        \
- _(LINESTATUS_DOWN,   "feature-bitmap-drop")        \
- _(OUTPUT_CLASSIFY,   "l2-output-classify")	    \
- _(OUTPUT_FEAT_ARC,   "l2-output-feat-arc")	    \
- _(XCRW,	      "l2-xcrw")
+#define foreach_l2output_feat                                                                      \
+  _ (OUTPUT, "interface-output")                                                                   \
+  _ (SPAN, "span-l2-output")                                                                       \
+  _ (CFM, "feature-bitmap-drop")                                                                   \
+  _ (QOS, "feature-bitmap-drop")                                                                   \
+  _ (ACL, "l2-output-acl")                                                                         \
+  _ (L2PT, "feature-bitmap-drop")                                                                  \
+  _ (EFP_FILTER, "l2-efp-filter")                                                                  \
+  _ (IPIW, "feature-bitmap-drop")                                                                  \
+  _ (STP_BLOCKED, "feature-bitmap-drop")                                                           \
+  _ (LINESTATUS_DOWN, "feature-bitmap-drop")                                                       \
+  _ (OUTPUT_CLASSIFY, "l2-output-classify")                                                        \
+  _ (OUTPUT_FEAT_ARC, "l2-output-feat-arc")                                                        \
+  _ (POLICER, "l2-policer-output")                                                                 \
+  _ (XCRW, "l2-xcrw")
 
 /* Feature bitmap positions */
 typedef enum

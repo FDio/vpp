@@ -4,6 +4,9 @@
 
 #include <vlib/vlib.h>
 #include <vnet/classify/vnet_classify.h>
+#include <vnet/l2/l2_input.h>
+#include <vnet/l2/l2_output.h>
+#include <vnet/l2/feat_bitmap.h>
 
 #include <policer/internal.h>
 #include <policer/policer_node.h>
@@ -793,6 +796,14 @@ policer_init (vlib_main_t *vm)
 
   ip4_punt_policer_cfg.fq_index = vlib_frame_queue_main_init (ip4_punt_policer_node.index, 0);
   ip6_punt_policer_cfg.fq_index = vlib_frame_queue_main_init (ip6_punt_policer_node.index, 0);
+
+  /* Initialize L2 input feature bitmap next nodes */
+  feat_bitmap_init_next_nodes (vm, policer_l2_input_node.index, L2INPUT_N_FEAT,
+			       l2input_get_feat_names (), pm->l2_input_feat_next);
+
+  /* Initialize L2 output feature bitmap next nodes */
+  feat_bitmap_init_next_nodes (vm, policer_l2_output_node.index, L2OUTPUT_N_FEAT,
+			       l2output_get_feat_names (), pm->l2_output_feat_next);
 
   vnet_classify_register_unformat_policer_next_index_fn (unformat_policer_classify_next_index);
   vnet_classify_register_unformat_opaque_index_fn (unformat_policer_classify_precolor);
