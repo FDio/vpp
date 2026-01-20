@@ -32,7 +32,7 @@ runs:
         set -euo pipefail
         cd "$WORKSPACE"
         mkdir -p "$LOG_DIR"
-        LOG_FILE="$LOG_DIR/build-install-optt-deps.log"
+        LOG_FILE="$LOG_DIR/build-install-opt-deps.log"
         {
           echo -e "$TUI_LINE\nInstalling VPP optional dependencies...\n"
           make UNATTENDED=yes install-opt-deps
