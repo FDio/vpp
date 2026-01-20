@@ -38,6 +38,7 @@ runs:
           OS_ID=$(grep '^ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g')
           OS_VERSION_ID=$(grep '^VERSION_ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g')
           STREAM="${GERRIT_BRANCH:-master}"
+          STREAM="${STREAM/stable\//}"
 
           echo "Installing vpp-ext-deps (STREAM: $STREAM, OS: $OS_ID $OS_VERSION_ID)..."
           REPO_URL="https://packagecloud.io/fdio/${STREAM}"

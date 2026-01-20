@@ -270,7 +270,7 @@ jobs:
               echo '{"url":"https://packagecloud.io","token":"${{ secrets.PACKAGECLOUD_TOKEN }}"}' > /root/.packagecloud
               distro=${distro,,} # to lowercase
               codename=${codename,,} # to lowercase
-              pkgcloud_cmd="package_cloud push ${pkgcloud_acct}/${GERRIT_BRANCH}/${distro}/${codename}/main/ "
+              pkgcloud_cmd="package_cloud push ${pkgcloud_acct}/${GERRIT_BRANCH/stable\//}/${distro}/${codename}/main/ "
               if [ "$distro" = "debian" ] || [ "$distro" = "ubuntu" ] ; then
                   local pkgs="$(find . -type f -iname '*.deb' | grep -v vpp-ext-deps | xargs || true)"
                   if [ -z "$pkgs" ] ; then
