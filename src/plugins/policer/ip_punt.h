@@ -92,10 +92,10 @@ ip_punt_policer (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame
 	  b0 = vlib_get_buffer (vm, bi0);
 	  b1 = vlib_get_buffer (vm, bi1);
 
-	  act0 =
-	    policer_police (vm, b0, policer_index, time_in_policer_periods, POLICE_CONFORM, true);
-	  act1 =
-	    policer_police (vm, b1, policer_index, time_in_policer_periods, POLICE_CONFORM, true);
+	  act0 = policer_police (vm, b0, policer_index, time_in_policer_periods, POLICE_CONFORM,
+				 true, 0);
+	  act1 = policer_police (vm, b1, policer_index, time_in_policer_periods, POLICE_CONFORM,
+				 true, 0);
 
 	  if (PREDICT_FALSE (act0 == QOS_ACTION_HANDOFF))
 	    {
@@ -152,8 +152,8 @@ ip_punt_policer (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame
 
 	  b0 = vlib_get_buffer (vm, bi0);
 
-	  act0 =
-	    policer_police (vm, b0, policer_index, time_in_policer_periods, POLICE_CONFORM, true);
+	  act0 = policer_police (vm, b0, policer_index, time_in_policer_periods, POLICE_CONFORM,
+				 true, 0);
 	  if (PREDICT_FALSE (act0 == QOS_ACTION_HANDOFF))
 	    {
 	      next0 = IP_PUNT_POLICER_NEXT_HANDOFF;

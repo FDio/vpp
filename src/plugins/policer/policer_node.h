@@ -35,6 +35,8 @@ extern u8 *format_policer_handoff_trace (u8 *s, va_list *args);
 
 extern vlib_node_registration_t policer_input_node;
 extern vlib_node_registration_t policer_output_node;
+extern vlib_node_registration_t policer_l2_input_node;
+extern vlib_node_registration_t policer_l2_output_node;
 
 /* Do worker handoff based on the policer's thread_index */
 always_inline uword

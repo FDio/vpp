@@ -11,6 +11,7 @@
 #include <vlib/unix/plugin.h>
 
 #include <policer/xlate.h>
+#include <vnet/l2/feat_bitmap.h>
 
 // This is the hardware representation of the policer.
 // To be multithread-safe, the policer is accessed through a spin-lock
@@ -92,6 +93,16 @@ typedef struct
   /* policer pool, aligned */
   policer_t *policers;
 
+  /* Policer by sw_if_index vector */
+  u32 *policer_index_by_sw_if_index[VLIB_N_RX_TX];
+
+  /* L2 feature next-node indexes */
+  u32 l2_input_feat_next[FEAT_MAX];
+  u32 l2_output_feat_next[FEAT_MAX];
+
+  /* L2 overhead per sw_if_index (used for L3 input accounting) */
+  u8 *l2_overhead_by_sw_if_index[VLIB_N_RX_TX];
+
   /* config + template h/w policer instance parallel pools */
   qos_pol_cfg_params_st *configs;
   policer_t *policer_templates;
@@ -101,9 +112,6 @@ typedef struct
 
   /* Policer by name hash */
   uword *policer_index_by_name;
-
-  /* Policer by sw_if_index vector */
-  u32 *policer_index_by_sw_if_index[VLIB_N_RX_TX];
 
   /* convenience */
   vlib_main_t *vlib_main;
