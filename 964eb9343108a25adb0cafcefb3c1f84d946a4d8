@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "fdaa6bf2_64dee93e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 9
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2026-01-20T18:05:24Z",
+      "side": 1,
+      "message": "probably fixed here: https://gerrit.fd.io/r/c/vpp/+/44648",
+      "revId": "964eb9343108a25adb0cafcefb3c1f84d946a4d8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
