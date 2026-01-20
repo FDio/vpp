@@ -131,6 +131,12 @@ func testVclEcho(s *VethsSuite, proto string, extraArgs ...string) (string, stri
 	srvAppCont.ExecServer(true, WrapCmdWithLineBuffering(vclSrvCmd))
 	srvVppCont.VppInstance.WaitForApp("vcl_test_server", 3)
 
+	if proto == "quic" {
+		o := s.Containers.ServerVpp.VppInstance.Vppctl("show quic crypto context")
+		Log(o)
+		AssertNotEmpty(o)
+		AssertContains(o, "n_sub: 1")
+	}
 	echoClnContainer := s.GetTransientContainerByName("client-app")
 	echoClnContainer.CreateFile("/vcl.conf", getVclConfig(echoClnContainer))
 
@@ -171,8 +177,12 @@ func VclQuicUnidirectionalStreamTest(s *VethsSuite) {
 func VclQuicUnidirectionalStreamsMWTest(s *VethsSuite) {
 	s.CpusPerVppContainer = 3
 	s.SetupTest()
-	_, oSrv := testVclEcho(s, "quic", "-s 20 -q 10 -N 1000")
+	_, oSrv := testVclEcho(s, "quic", "-s 80 -q 10 -N 1000")
 	AssertNotContains(oSrv, "ERROR: expected unidirectional stream")
+	o := s.Containers.ClientVpp.VppInstance.Vppctl("show quic crypto context")
+	AssertEmpty(o)
+	o = s.Containers.ServerVpp.VppInstance.Vppctl("show quic crypto context")
+	AssertEmpty(o)
 }
 
 func VclQuicBidirectionalStreamTest(s *VethsSuite) {
