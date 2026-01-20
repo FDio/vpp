@@ -50,7 +50,6 @@ The optimization phase supports several environment variables for advanced confi
 
 | Variable | Description | Default | Example |
 |----------|-------------|---------|---------|
-| `STREAM` | VPP stream to use | `master` | `stable/2024` |
 | `VERBOSE` | Enable verbose logging | `1` | `0` or `1` |
 | `DOWNLOADS_DIR` | Cache directory path | `/root/Downloads` | `/tmp/vpp-cache` |
 | `APT_RETRIES` | Number of retry attempts | `3` | `5` |

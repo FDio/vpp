@@ -30,28 +30,28 @@ runs:
         WORKSPACE: ${{ inputs.WORKSPACE }}
         TUI_LINE: ${{ inputs.TUI_LINE }}
       run: |
-        set -euo pipefail
+        set -euxo pipefail
 
         mkdir -p "$LOG_DIR"
         LOG_FILE="$LOG_DIR/packagecloud-install-ext-deps.log"
         {
           OS_ID=$(grep '^ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g')
           OS_VERSION_ID=$(grep '^VERSION_ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g')
-          STREAM="${GERRIT_BRANCH:-master}"
-          STREAM="${STREAM/stable\//}"
+          branch="${GERRIT_BRANCH:-master}"
+          branch="${branch/stable\//}"
 
-          echo "Installing vpp-ext-deps (STREAM: $STREAM, OS: $OS_ID $OS_VERSION_ID)..."
-          REPO_URL="https://packagecloud.io/fdio/${STREAM}"
+          echo "Installing vpp-ext-deps (branch: $branch, OS: $OS_ID $OS_VERSION_ID)..."
+          REPO_URL="https://packagecloud.io/fdio/${branch}"
           echo "REPO_URL: $REPO_URL"
-          INSTALL_URL="https://packagecloud.io/install/repositories/fdio/${STREAM}"
+          INSTALL_URL="https://packagecloud.io/install/repositories/fdio/${branch}"
           echo "INSTALL_URL: $INSTALL_URL"
 
           downloads_dir="/root/Downloads"
 
           # Setup by installing vpp-dev and vpp-lib
           if [ "${OS_ID,,}" == "ubuntu" ] || [ "${OS_ID,,}" == "debian" ] ; then
-              if [ "${STREAM}" != "master" ]; then
-                  echo "stream '${STREAM}' is not master: replacing packagecloud apt sources list with stream specific list"
+              if [ "${branch}" != "master" ]; then
+                  echo "branch '${branch}' is not master: replacing packagecloud apt sources list with stream specific list"
                   sudo apt-get -y remove vpp-ext-deps --purge || true
                   sudo rm -f /etc/apt/sources.list.d/fdio_master.list
                   curl -s $INSTALL_URL/script.deb.sh | sudo bash || true
