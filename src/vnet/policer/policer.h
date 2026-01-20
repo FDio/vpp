@@ -41,6 +41,10 @@ typedef struct
   /* frame queue for thread handoff */
   u32 fq_index[VLIB_N_RX_TX];
 
+  /* L2 feature next node indexes for input and output */
+  u32 l2_input_feat_next[32];
+  u32 l2_output_feat_next[32];
+
   /* cached TSC value. No need to re-compute for each new policer */
   u64 tsc_hz;
 
