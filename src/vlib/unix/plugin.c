@@ -5,6 +5,7 @@
 /* plugin.c: plugin handling */
 
 #include <vlib/unix/plugin.h>
+#include <vppinfra/ptclosure.h>
 #include <vppinfra/elf.h>
 #include <dlfcn.h>
 #include <dirent.h>
@@ -17,6 +18,8 @@ plugin_main_t vlib_plugin_main;
   do {vlib_log_err (vlib_plugin_main.logger, __VA_ARGS__);} while(0)
 #define PLUGIN_LOG_NOTICE(...) \
   do {vlib_log_notice (vlib_plugin_main.logger, __VA_ARGS__);} while(0)
+
+static void plugin_load_order (plugin_main_t *pm);
 
 char *vlib_plugin_path __attribute__ ((weak));
 char *vlib_plugin_path = "";
@@ -134,10 +137,240 @@ r2_to_reg (elf_main_t *em, vlib_plugin_r2_t *r2,
 	      r2->description.length);
       reg->description = (void *) desc;
     }
+
+  if (r2->load_after.length > 0)
+    {
+      u8 *load_after = 0;
+      vec_validate (load_after, r2->load_after.length + 1);
+      memcpy (load_after, data + r2->load_after.data_segment_offset, r2->load_after.length);
+      reg->load_after = (void *) load_after;
+    }
   vec_free (data);
   return 0;
 }
 
+/*
+ * inspect a (presumed) plugin.so file, looking for load order constraints.
+ * Works with both .vlib_plugin_registration and .vlib_plugin_r2 initializers
+ */
+static int
+find_plugin_load_order_constraints (plugin_main_t *pm, plugin_info_t *pi, int from_early_init)
+{
+  clib_error_t *error;
+  elf_main_t em = { 0 };
+  elf_section_t *section;
+  u8 *data;
+  char *version_required;
+  vlib_plugin_registration_t *reg;
+  vlib_plugin_r2_t *r2;
+  plugin_config_t *pc = 0;
+  uword *p;
+
+  if (elf_read_file (&em, (char *) pi->filename))
+    return -1;
+
+  /* New / improved (well, not really) registration structure? */
+  error = elf_get_section_by_name (&em, ".vlib_plugin_r2", &section);
+  if (error == 0)
+    {
+      elf_section_t *data_section;
+      elf_relocation_table_t *rt;
+      elf_relocation_with_addend_t *r;
+      elf_symbol_table_t *st;
+      elf64_symbol_t *sym, *symok = 0;
+
+      data = elf_get_section_contents (&em, section->index, 1);
+      r2 = (vlib_plugin_r2_t *) data;
+
+      elf_get_section_by_name (&em, ".data", &data_section);
+
+      // Find first symbol in .vlib_plugin_r2 section.
+      vec_foreach (st, em.symbol_tables)
+	{
+	  vec_foreach (sym, st->symbols)
+	    {
+	      if (sym->section_index == section->index)
+		{
+		  symok = sym;
+		  break;
+		}
+	    }
+	}
+
+      // Relocate section data as per relocation tables.
+      if (symok != 0)
+	{
+	  vec_foreach (rt, em.relocation_tables)
+	    {
+	      vec_foreach (r, rt->relocations)
+		{
+		  if (r->address >= symok->value && r->address < symok->value + symok->size)
+		    {
+		      *(uword *) ((void *) data + r->address - symok->value) +=
+			r->addend - data_section->header.exec_address;
+		    }
+		}
+	    }
+	}
+
+      reg = clib_mem_alloc (sizeof (*reg));
+      memset (reg, 0, sizeof (*reg));
+
+      reg->default_disabled = r2->default_disabled != 0;
+      error = r2_to_reg (&em, r2, reg, data_section);
+      if (error)
+	{
+	  PLUGIN_LOG_ERR ("Bad r2 registration: %s\n", (char *) pi->name);
+	  return -1;
+	}
+      if (pm->plugins_default_disable)
+	reg->default_disabled = 1;
+      goto process_reg;
+    }
+  else
+    {
+      elf_section_t *rodata_section;
+      uword rodata_segment_offset;
+
+      error = elf_get_section_by_name (&em, ".vlib_plugin_registration", &section);
+      if (error)
+	{
+	  elf_main_free (&em);
+	  return -1;
+	}
+
+      data = elf_get_section_contents (&em, section->index, 1);
+      reg = (vlib_plugin_registration_t *) data;
+
+      /*
+       * It turns out that the load-constraint string land
+       * in the ".rodata" section
+       */
+      elf_get_section_by_name (&em, ".rodata", &rodata_section);
+      rodata_segment_offset = rodata_section->header.exec_address;
+
+      if (pm->plugins_default_disable)
+	reg->default_disabled = 1;
+
+      if (reg->load_after)
+	{
+	  u8 *data = elf_get_section_contents (&em, rodata_section->index, 1);
+
+	  uword offset = (uword) (reg->load_after) - rodata_segment_offset;
+
+	  int i = 0, len = 0;
+	  while ((data + offset)[i] != 0)
+	    {
+	      len++;
+	      i++;
+	    }
+
+	  u8 *load_after = 0;
+	  vec_validate (load_after, len + 1);
+	  memcpy (load_after, (u8 *) data + offset, len);
+	  reg->load_after = (char *) load_after;
+	  vec_free (data);
+	}
+    }
+
+process_reg:
+  p = hash_get_mem (pm->config_index_by_name, pi->name);
+  if (p)
+    {
+      pc = vec_elt_at_index (pm->configs, p[0]);
+      if (pc->is_disabled)
+	{
+	  PLUGIN_LOG_NOTICE ("Plugin disabled: %s", pi->name);
+	  goto error;
+	}
+      if (reg->default_disabled && pc->is_enabled == 0)
+	{
+	  PLUGIN_LOG_NOTICE ("Plugin disabled (default): %s", pi->name);
+	  goto error;
+	}
+    }
+  else if (reg->default_disabled)
+    {
+      PLUGIN_LOG_NOTICE ("Plugin disabled (default): %s", pi->name);
+      goto error;
+    }
+
+  version_required =
+    str_array_to_vec ((char *) &reg->version_required, sizeof (reg->version_required));
+
+  if ((strlen (version_required) > 0) &&
+      (strncmp (vlib_plugin_app_version, version_required, strlen (version_required))))
+    {
+      PLUGIN_LOG_ERR ("Plugin %s version mismatch: %s != %s", pi->name, vlib_plugin_app_version,
+		      reg->version_required);
+      if (!(pc && pc->skip_version_check == 1))
+	{
+	  vec_free (version_required);
+	  goto error;
+	}
+    }
+
+  /*
+   * Collect names of plugins overridden (disabled) by the
+   * current plugin.
+   */
+  if (reg->overrides[0])
+    {
+      const char *overrides = reg->overrides;
+      u8 *override_name_copy, *overridden_by_name_copy;
+      u8 *sp, *ep;
+      uword *p;
+
+      sp = ep = (u8 *) overrides;
+
+      while (1)
+	{
+	  if (*sp == 0 || (sp >= (u8 *) overrides + ARRAY_LEN (reg->overrides)))
+	    break;
+	  if (*sp == ' ' || *sp == ',')
+	    {
+	      sp++;
+	      continue;
+	    }
+	  ep = sp;
+	  while (*ep && *ep != ' ' && *ep != ',' &&
+		 ep < (u8 *) overrides + ARRAY_LEN (reg->overrides))
+	    ep++;
+	  if (*ep == ' ' || *ep == ',')
+	    ep--;
+
+	  override_name_copy = extract (sp, ep);
+
+	  p = hash_get_mem (pm->plugin_overrides_by_name_hash, override_name_copy);
+	  /* Already overridden... */
+	  if (p)
+	    vec_free (override_name_copy);
+	  else
+	    {
+	      overridden_by_name_copy = format (0, "%s%c", pi->name, 0);
+	      hash_set_mem (pm->plugin_overrides_by_name_hash, override_name_copy,
+			    overridden_by_name_copy);
+	    }
+	  sp = *ep ? ep + 1 : ep;
+	}
+    }
+  vec_free (version_required);
+
+  vec_validate (pi->reg, 0);
+  memcpy (pi->reg, reg, sizeof (*reg));
+  pi->version = str_array_to_vec ((char *) &reg->version, sizeof (reg->version));
+  if (reg->load_after)
+    pi->reg->load_after = (char *) format (0, "%s", reg->load_after);
+
+  vec_free (data);
+  elf_main_free (&em);
+  return 0;
+
+error:
+  vec_free (data);
+  elf_main_free (&em);
+  return -1;
+}
 
 static int
 load_one_plugin (plugin_main_t * pm, plugin_info_t * pi, int from_early_init)
@@ -419,6 +652,54 @@ split_plugin_path (plugin_main_t * pm)
     }
   return rv;
 }
+static u8 **
+split_plugin_load_constraints (plugin_info_t *pi)
+{
+  int i;
+  u8 **rv = 0;
+  u8 *path = (u8 *) (pi->reg->load_after);
+  u8 *this = 0;
+  int this_len;
+
+  for (i = 0; i < vec_len (path); i++)
+    {
+      if (path[i] != ',')
+	{
+	  vec_add1 (this, path[i]);
+	  continue;
+	}
+      this_len = vec_len (this);
+      /*
+       * Does this constraint end in .so?
+       * if not, add it: vpp plugins are always named xxx.so
+       */
+      if (this_len <= 3 ||
+	  (this[this_len - 3] != '.' && this[this_len - 2] != 's' && this[this_len - 1] != 'o'))
+	{
+	  vec_add1 (this, '.');
+	  vec_add1 (this, 's');
+	  vec_add1 (this, 'o');
+	}
+      vec_add1 (this, 0);
+      vec_add1 (rv, this);
+      this = 0;
+    }
+  if (this)
+    {
+      this_len = vec_len (this);
+      if (this_len <= 3 ||
+	  (this[this_len - 3] != '.' && this[this_len - 2] != 's' && this[this_len - 1] != 'o'))
+	{
+	  vec_add1 (this, '.');
+	  vec_add1 (this, 's');
+	  vec_add1 (this, 'o');
+	}
+      vec_add1 (this, 0);
+      vec_add1 (rv, this);
+    }
+
+  return rv;
+}
 
 static int
 plugin_name_sort_cmp (void *a1, void *a2)
@@ -515,7 +796,6 @@ vlib_load_new_plugins (plugin_main_t * pm, int from_early_init)
     }
   vec_free (plugin_path);
 
-
   /*
    * Sort the plugins by name. This is important.
    * API traces contain absolute message numbers.
@@ -523,6 +803,21 @@ vlib_load_new_plugins (plugin_main_t * pm, int from_early_init)
    * makes trace replay incredibly fragile.
    */
   vec_sort_with_function (pm->plugin_info, plugin_name_sort_cmp);
+
+  /* Recreate the plugin name hash */
+  hash_free (pm->plugin_by_name_hash);
+  pm->plugin_by_name_hash = hash_create_string (0, sizeof (uword));
+
+  /* Inspect all plugins for load order constraints */
+  for (i = 0; i < vec_len (pm->plugin_info); i++)
+    {
+      pi = vec_elt_at_index (pm->plugin_info, i);
+      find_plugin_load_order_constraints (pm, pi, from_early_init);
+      hash_set_mem (pm->plugin_by_name_hash, pi->name, pi - pm->plugin_info);
+    }
+
+  /* Topological sort based on load order constraints */
+  plugin_load_order (pm);
 
   /*
    * Attempt to load the plugins
@@ -613,6 +908,130 @@ vlib_load_new_plugins (plugin_main_t * pm, int from_early_init)
   return 0;
 }
 
+/*
+ * Topological sort plugin registrations to honor plugin load dependencies
+ */
+static void
+plugin_load_order (plugin_main_t *pm)
+{
+  plugin_info_t *pi;
+  plugin_info_t *original_plugin_infos = 0;
+  u8 **load_afters = 0;
+  uword *index_pairs = 0;
+  u8 **orig, **closure;
+  int *result = 0;
+  int i, j, k;
+  uword before, after, *beforep;
+  int n_plugins;
+
+  for (i = 0; i < vec_len (pm->plugin_info); i++)
+    {
+      pi = vec_elt_at_index (pm->plugin_info, i);
+
+      /* No load order constraints? Skip this one */
+      if (!pi->reg || !pi->reg->load_after)
+	continue;
+
+      load_afters = split_plugin_load_constraints (pi);
+
+      for (j = 0; j < vec_len (load_afters); j++)
+	{
+	  after = i;
+	  /*
+	   * If we can't find the plugin that this one is supposed to load
+	   * after, complain and continue
+	   */
+	  beforep = hash_get_mem (pm->plugin_by_name_hash, load_afters[j]);
+	  if (beforep == 0)
+	    {
+	      PLUGIN_LOG_ERR ("plugin constraint (%s before %s) %s missing", load_afters[j],
+			      pi->name, load_afters[j]);
+	      continue;
+	    }
+	  before = beforep[0];
+	  /* Enable if needed */
+	  PLUGIN_LOG_DBG ("add constraint %s before %s", load_afters[j], pi->name);
+	  vec_add1 (index_pairs, before);
+	  vec_add1 (index_pairs, after);
+	}
+      vec_free (load_afters);
+    }
+
+  n_plugins = vec_len (pm->plugin_info);
+  orig = clib_ptclosure_alloc (n_plugins);
+  ASSERT ((vec_len (index_pairs) & 1) == 0);
+
+  /* Initialize the matrix for Warshall's algorithm. */
+  for (i = 0; i < vec_len (index_pairs); i += 2)
+    {
+      before = index_pairs[i];
+      after = index_pairs[i + 1];
+
+      orig[before][after] = 1;
+    }
+
+  /* Compute the positive transitive closure of the (a before b) matrix */
+  closure = clib_ptclosure (orig);
+
+  /*
+   * Perform the topological sort. Look for unconstrained
+   * items in the closure matrix, and output them in reverse order.
+   */
+again:
+  for (i = 0; i < vec_len (closure); i++)
+    {
+      for (j = 0; j < vec_len (closure); j++)
+	{
+	  if (closure[j][i])
+	    goto item_constrained;
+	}
+      vec_add1 (result, i);
+      {
+	/*
+	 * When an item is output, clear other item's constraints
+	 * which say output the item after the one we just output
+	 */
+	for (k = 0; k < n_plugins; k++)
+	  {
+	    if (closure[i][k])
+	      closure[i][k] = 0;
+	  }
+	/*
+	 * Add a roadblock (a before a) constraint.
+	 * This means we'll never output it again
+	 */
+	closure[i][i] = 1;
+	goto again;
+      }
+    item_constrained:;
+    }
+
+  if (vec_len (result) != vec_len (pm->plugin_info))
+    {
+      PLUGIN_LOG_ERR ("Couldn't find an acceptable plugin load order!");
+      /* keep going, until debugged */
+      goto out;
+    }
+
+  /* OK, the topological sort worked. Now rebuild the plugin_info vector */
+  original_plugin_infos = pm->plugin_info;
+  pm->plugin_info = 0;
+
+  for (i = 0; i < vec_len (result); i++)
+    {
+      pi = vec_elt_at_index (original_plugin_infos, result[i]);
+      vec_add1 (pm->plugin_info, *pi);
+    }
+
+out:
+  vec_free (original_plugin_infos);
+  vec_free (index_pairs);
+  vec_free (orig);
+  vec_free (closure);
+  vec_free (result);
+  return;
+}
+
 int
 vlib_plugin_early_init (vlib_main_t * vm)
 {
@@ -659,25 +1078,23 @@ vlib_plugins_show_cmd_fn (vlib_main_t * vm,
 {
   plugin_main_t *pm = &vlib_plugin_main;
   u8 *s = 0;
-  u8 *key = 0;
-  uword value = 0;
   int index = 1;
   plugin_info_t *pi;
+  int verbose = 0;
 
-  s = format (s, " Plugin path is: %s\n\n", pm->plugin_path);
+  unformat (input, "verbose %=", &verbose, 1);
+
+  s = format (s, " Plugin path is: %s, plugins shown in load order\n\n", pm->plugin_path);
   s = format (s, "     %-41s%-33s%s\n", "Plugin", "Version", "Description");
 
-  hash_foreach_mem (key, value, pm->plugin_by_name_hash,
+  for (index = 0; index < vec_len (pm->plugin_info); index++)
     {
-      if (key != 0)
-        {
-          pi = vec_elt_at_index (pm->plugin_info, value);
-          s = format (s, "%3d. %-40s %-32s %s\n", index, key, pi->version,
-		      (pi->reg && pi->reg->description) ?
-                      pi->reg->description : "");
-	  index++;
-        }
-    });
+      pi = vec_elt_at_index (pm->plugin_info, index);
+      s = format (s, "%3d. %-40s %-32s %s\n", index + 1, pi->name, pi->version,
+		  (pi->reg && pi->reg->description) ? pi->reg->description : "");
+      if (verbose && pi->reg->load_after)
+	s = format (s, "   must load after %s\n", pi->reg->load_after);
+    }
 
   vlib_cli_output (vm, "%v", s);
   vec_free (s);

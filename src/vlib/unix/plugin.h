@@ -55,6 +55,7 @@ typedef struct
   const char overrides[256];
   const char *early_init;
   const char *description;
+  char *load_after;
 } vlib_plugin_registration_t;
 
 /*
@@ -75,14 +76,16 @@ typedef struct
   vlib_r2_string_t overrides;
   vlib_r2_string_t early_init;
   vlib_r2_string_t description;
+  vlib_r2_string_t load_after;
 } vlib_plugin_r2_t;
 
-#define foreach_r2_string_field                 \
-_(version)                                      \
-_(version_required)                             \
-_(overrides)                                    \
-_(early_init)                                   \
-_(description)
+#define foreach_r2_string_field                                                                    \
+  _ (version)                                                                                      \
+  _ (version_required)                                                                             \
+  _ (overrides)                                                                                    \
+  _ (early_init)                                                                                   \
+  _ (description)                                                                                  \
+  _ (load_after)
 
 typedef struct
 {
