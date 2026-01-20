@@ -758,9 +758,24 @@ do_percent (unformat_input_t * input, va_list * va, const char *f)
       {
 	int *var = va_arg (*va, int *);
 	uword val = va_arg (*va, int);
-
+	/*
+	 * '|' or's the argument (1-n bits) into a variable.
+	 */
 	if (cf == '|')
 	  val |= *var;
+	else
+	  {
+	    uword non_default_value;
+	    /*
+	     * "=" sets a variable.
+	     * a call of the form unformat(input, "verbose %=" &verbose, XXX)
+	     * with input "verbose NNN" sets the variable to NNN
+	     * with input "verbose" set the variable to XXX
+	     */
+	    if (unformat (input, "%u", &non_default_value))
+	      val = non_default_value;
+	  }
+
 	*var = val;
 	n = 1;
       }
