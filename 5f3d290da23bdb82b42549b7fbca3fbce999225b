@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "5343f5af_3f1673bf",
+        "filename": "src/vnet/policer/node_funcs.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 138,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2026-01-20T23:46:12Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5f1c3e3e_98b544f4",
+      "revId": "5f3d290da23bdb82b42549b7fbca3fbce999225b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "c950de31_d043a666",
@@ -48,6 +66,24 @@
       "writtenOn": "2026-01-20T08:44:12Z",
       "side": 1,
       "message": "I think this slightly change the policer behavior: the policer uses vlib_buffer_length_in_chain() to get the packet length which is dependent upon b-\u003ecurrent_length and this gets updated when me move b-\u003ecurrent_data, so the length you get on device-input should take into account the ethernet header whereas the length you get on ip-unicast should not. This is not a big change for big packets, but it can be for smaller ones.",
+      "revId": "5f3d290da23bdb82b42549b7fbca3fbce999225b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "96424f30_2c49e8d1",
+        "filename": "src/vnet/policer/node_funcs.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 316,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2026-01-20T23:46:12Z",
+      "side": 1,
+      "message": "you\u0027re right that it changes the behavior (moving from \u0027ethernet length\u0027 to \u0027ip length\u0027 on L3 ingress policing, but at the same time it makes it the same as egress behavior (which is on ip length today). Let\u0027s discuss on vpp-dev@ so we can do the right thing here.",
+      "parentUuid": "c950de31_d043a666",
       "revId": "5f3d290da23bdb82b42549b7fbca3fbce999225b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
