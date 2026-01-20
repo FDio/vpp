@@ -48,8 +48,8 @@ vnet_policer_mark (vlib_buffer_t *b, ip_dscp_t dscp)
 
 static_always_inline u8
 vnet_policer_police (vlib_main_t *vm, vlib_buffer_t *b, u32 policer_index,
-		     u64 time_in_policer_periods,
-		     policer_result_e packet_color, bool handoff)
+		     u64 time_in_policer_periods, policer_result_e packet_color, bool handoff,
+		     u16 l2_overhead)
 {
   qos_action_type_en act;
   u32 len;
@@ -80,6 +80,7 @@ vnet_policer_police (vlib_main_t *vm, vlib_buffer_t *b, u32 policer_index,
     }
 
   len = vlib_buffer_length_in_chain (vm, b);
+  len += l2_overhead;
   col = vnet_police_packet (pol, len, packet_color, time_in_policer_periods);
   act = pol->action[col];
   vlib_increment_combined_counter (&policer_counters[col], vm->thread_index,
