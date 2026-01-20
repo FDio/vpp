@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f2e800ec_19da4a99",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2026-01-20T05:54:35Z",
+      "side": 1,
+      "message": "recheck\n(policer tests pass, failure is an unrelated wireguard test)",
+      "revId": "5f3d290da23bdb82b42549b7fbca3fbce999225b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
