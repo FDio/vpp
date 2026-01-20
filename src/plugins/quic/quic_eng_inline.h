@@ -14,10 +14,24 @@ quic_eng_engine_init (quic_main_t *qm)
 }
 
 static_always_inline int
-quic_eng_crypto_context_acquire (quic_ctx_t *ctx)
+quic_eng_crypto_context_acquire_listen (quic_ctx_t *ctx)
 {
   quic_main_t *qm = &quic_main;
-  return (quic_engine_vfts[qm->engine_type].crypto_context_acquire (ctx));
+  return (quic_engine_vfts[qm->engine_type].crypto_context_acquire_listen (ctx));
+}
+
+static_always_inline int
+quic_eng_crypto_context_acquire_accept (quic_ctx_t *ctx)
+{
+  quic_main_t *qm = &quic_main;
+  return (quic_engine_vfts[qm->engine_type].crypto_context_acquire_accept (ctx));
+}
+
+static_always_inline int
+quic_eng_crypto_context_acquire_connect (quic_ctx_t *ctx)
+{
+  quic_main_t *qm = &quic_main;
+  return (quic_engine_vfts[qm->engine_type].crypto_context_acquire_connect (ctx));
 }
 
 static_always_inline void
@@ -53,12 +67,19 @@ quic_eng_connect_stream (void *quic_conn, void **quic_stream,
 }
 
 static_always_inline void
+quic_eng_connection_migrate (quic_ctx_t *ctx)
+{
+  quic_main_t *qm = &quic_main;
+  quic_engine_vfts[qm->engine_type].connection_migrate (ctx);
+}
+
+static_always_inline void
 quic_eng_rpc_evt_to_thread_connection_migrate (u32 dest_thread,
 					       quic_ctx_t *ctx)
 {
   quic_main_t *qm = &quic_main;
-  session_send_rpc_evt_to_thread (
-    dest_thread, quic_engine_vfts[qm->engine_type].connection_migrate, ctx);
+  session_send_rpc_evt_to_thread (dest_thread,
+				  quic_engine_vfts[qm->engine_type].connection_migrate_rpc, ctx);
 }
 
 static_always_inline void
