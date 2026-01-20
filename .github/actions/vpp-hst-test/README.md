@@ -138,11 +138,11 @@ jobs:
     strategy:
       matrix:
         build_type: ['dbg', 'rel']
-    
+
     env:
       WORKSPACE: /scratch/docker-build/vpp
       HS_TEST_DIR: /scratch/docker-build/vpp/test-c/hs-test
-    
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v5
@@ -217,4 +217,4 @@ The action provides detailed output including:
 - Test and build failures are captured but don't immediately exit (using `|| true`)
 - Final exit code reflects whether any errors occurred during the process
 - Debug builds (`dbg`) are typically slower but provide more diagnostic information
-- Release builds (`rel`) are optimized for performance testing
+- Release builds (`rel`) are optimized for performance troubleshooting
