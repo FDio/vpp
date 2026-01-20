@@ -52,6 +52,24 @@
       "parentUuid": "8257d54e_259360bb",
       "revId": "8f855cbaac748801156c00d2bf01f08ef4df4f8b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bac71690_f4b00787",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-01-20T17:30:18Z",
+      "side": 1,
+      "message": "I added guards to only add vzeroupper for AVX and above.",
+      "parentUuid": "4d7db79a_cb356a3c",
+      "revId": "8f855cbaac748801156c00d2bf01f08ef4df4f8b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
