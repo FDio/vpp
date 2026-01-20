@@ -247,8 +247,7 @@ typedef struct crypto_ctx_
   u32 n_subscribers; /**< refcount of sessions using said context */
   u32 ckpair_index;  /**< certificate & key */
   u8 crypto_engine;
-  void *data; /**< protocol specific data */
-} crypto_context_t;
+} quic_crypto_context_t;
 
 typedef struct quic_worker_ctx_
 {
@@ -256,7 +255,6 @@ typedef struct quic_worker_ctx_
   int64_t time_now;
   tw_timer_wheel_1t_3w_1024sl_ov_t timer_wheel;
   quic_ctx_t *ctx_pool;
-  crypto_context_t *crypto_ctx_pool;
 } quic_worker_ctx_t;
 
 typedef struct quic_main_
@@ -394,13 +392,16 @@ typedef enum quic_session_connected_
 typedef struct quic_engine_vft_
 {
   void (*engine_init) (quic_main_t *qm);
-  int (*crypto_context_acquire) (quic_ctx_t *ctx);
+  int (*crypto_context_acquire_listen) (quic_ctx_t *ctx);
+  int (*crypto_context_acquire_accept) (quic_ctx_t *ctx);
+  int (*crypto_context_acquire_connect) (quic_ctx_t *ctx);
   void (*crypto_context_release) (u32 crypto_context_index, u8 thread_index);
   int (*connect) (quic_ctx_t *ctx, u32 ctx_index,
 		  clib_thread_index_t thread_index, struct sockaddr *sa);
   int (*connect_stream) (void *conn, void **quic_stream,
 			 quic_stream_data_t **quic_stream_data, u8 is_unidir);
   void (*connection_migrate) (quic_ctx_t *ctx);
+  void (*connection_migrate_rpc) (quic_ctx_t *ctx);
   void (*connection_get_stats) (void *conn, quic_stats_t *conn_stats);
   int (*udp_session_rx_packets) (session_t *udp_session);
   void (*ack_rx_data) (session_t *stream_session);
