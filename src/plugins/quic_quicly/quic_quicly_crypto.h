@@ -13,7 +13,7 @@
 #include <quic_quicly/quic_quicly.h>
 #include <vnet/session/session.h>
 
-static_always_inline crypto_context_t *
+static_always_inline quic_crypto_context_t *
 quic_quicly_crypto_context_get (u32 cr_index, u32 thread_index)
 {
   ASSERT (QUIC_CRCTX_CTX_INDEX_DECODE_THREAD (cr_index) == thread_index);
@@ -76,6 +76,7 @@ typedef struct quic_quicly_crypto_context_data_
   char cid_key[QUIC_IV_LEN];
   ptls_context_t ptls_ctx;
   quic_quicly_on_client_hello_t client_hello_ctx;
+  volatile u32 ref_count;
 } quic_quicly_crypto_context_data_t;
 
 static_always_inline u8
@@ -108,9 +109,19 @@ quic_quicly_register_cipher_suite (crypto_engine_type_t type,
   return rv;
 }
 
+static_always_inline void
+quic_quicly_crypto_context_reserve_data (quic_crypto_context_t *crctx)
+{
+  ASSERT (crctx->data);
+  clib_atomic_add_fetch (&((quic_quicly_crypto_context_data_t *) crctx->data)->ref_count, 1);
+}
+
 extern quicly_crypto_engine_t quic_quicly_crypto_engine;
 extern ptls_cipher_suite_t *quic_quicly_crypto_cipher_suites[];
 int quic_quicly_crypto_context_init (quic_ctx_t *ctx);
+quic_crypto_context_t *quic_quicly_crypto_context_get_or_alloc (quic_ctx_t *ctx);
+int quic_quicly_crypto_context_init_data (quic_crypto_context_t *crctx, quic_ctx_t *ctx);
+quic_quicly_crypto_context_data_t *quic_quicly_crypto_context_get_data (quic_ctx_t *ctx);
 void quic_quicly_crypto_context_free (u32 crypto_context_index,
 				      u8 thread_index);
 extern int quic_quicly_encrypt_ticket_cb (ptls_encrypt_ticket_t *_self,
