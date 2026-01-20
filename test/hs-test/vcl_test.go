@@ -171,7 +171,7 @@ func VclQuicUnidirectionalStreamTest(s *VethsSuite) {
 func VclQuicUnidirectionalStreamsMWTest(s *VethsSuite) {
 	s.CpusPerVppContainer = 3
 	s.SetupTest()
-	_, oSrv := testVclEcho(s, "quic", "-s 20 -q 10 -N 1000")
+	_, oSrv := testVclEcho(s, "quic", "-s 80 -q 10 -N 1000")
 	AssertNotContains(oSrv, "ERROR: expected unidirectional stream")
 }
 

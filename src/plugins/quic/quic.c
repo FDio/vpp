@@ -122,7 +122,7 @@ quic_connect_connection (transport_endpoint_cfg_t *tep)
   quic_ctx_set_alpn_protos (ctx, ccfg);
   ctx->crypto_engine = ccfg->crypto_engine;
   ctx->ckpair_index = ccfg->ckpair_index;
-  error = quic_eng_crypto_context_acquire (ctx);
+  error = quic_eng_crypto_context_init_client (ctx);
   if (error)
     return error;
 
@@ -377,6 +377,7 @@ quic_transfer_connection (u32 ctx_index, u32 dest_thread)
   temp_ctx = clib_mem_alloc (sizeof (quic_ctx_t));
   QUIC_ASSERT (temp_ctx != NULL);
   ctx = quic_ctx_get (ctx_index, thread_index);
+  quic_eng_connection_migrate (ctx);
 
   clib_memcpy (temp_ctx, ctx, sizeof (quic_ctx_t));
 
@@ -751,7 +752,7 @@ quic_enable (vlib_main_t *vm, u8 is_en)
 {
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
   quic_main_t *qm = &quic_main;
-  crypto_context_t *crctx;
+  quic_crypto_context_t *crctx;
   quic_worker_ctx_t *qwc;
   clib_error_t *err;
   quic_ctx_t *ctx;

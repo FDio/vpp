@@ -63,6 +63,7 @@ typedef struct quic_quicly_main_
   quic_quicly_session_cache_t session_cache;
   quicly_cid_plaintext_t *next_cid;
   clib_bihash_24_8_t *crypto_ctx_hash;
+  clib_bihash_24_8_t crypto_ctx_data_hash;
   uword *available_crypto_engines; /**< Bitmap for registered engines */
   u8 vnet_crypto_enabled;
 } quic_quicly_main_t;

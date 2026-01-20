@@ -23,8 +23,8 @@ VLIB_PLUGIN_REGISTER () = {
 static_always_inline quicly_context_t *
 quic_quicly_get_quicly_ctx_from_ctx (quic_ctx_t *ctx)
 {
-  crypto_context_t *crctx = quic_quicly_crypto_context_get (
-    ctx->crypto_context_index, ctx->c_thread_index);
+  quic_crypto_context_t *crctx =
+    quic_quicly_crypto_context_get (ctx->crypto_context_index, ctx->c_thread_index);
   quic_quicly_crypto_context_data_t *data =
     (quic_quicly_crypto_context_data_t *) crctx->data;
   return &data->quicly_ctx;
@@ -754,19 +754,19 @@ quic_quicly_store_conn_ctx (void *conn, quic_ctx_t *ctx)
     (void *) (((u64) ctx->c_thread_index) << 32 | (u64) ctx->c_c_index);
 }
 
-static_always_inline void
-quic_quicly_update_conn_ctx (quicly_conn_t *conn,
-			     quicly_context_t *quicly_context)
-{
-  /* we need to update the quicly_conn on migrate
-   * as it contains a pointer to the crypto context */
-  ptls_context_t **tls;
-  quicly_context_t **_quicly_context;
-  _quicly_context = (quicly_context_t **) conn;
-  *_quicly_context = quicly_context;
-  tls = (ptls_context_t **) quicly_get_tls (conn);
-  *tls = quicly_context->tls;
-}
+// static_always_inline void
+// quic_quicly_update_conn_ctx (quicly_conn_t *conn,
+// 			     quicly_context_t *quicly_context)
+// {
+//   /* we need to update the quicly_conn on migrate
+//    * as it contains a pointer to the crypto context */
+//   ptls_context_t **tls;
+//   quicly_context_t **_quicly_context;
+//   _quicly_context = (quicly_context_t **) conn;
+//   *_quicly_context = quicly_context;
+//   tls = (ptls_context_t **) quicly_get_tls (conn);
+//   *tls = quicly_context->tls;
+// }
 
 static int
 quic_quicly_on_stream_open (quicly_stream_open_t *self,
@@ -945,14 +945,47 @@ quic_quicly_crypto_context_release (u32 crctx_ndx, u8 thread_index)
   quic_quicly_crypto_context_free (crctx_ndx, thread_index);
 }
 
+static int
+quic_quicly_crypto_context_init_client (quic_ctx_t *ctx)
+{
+  quic_crypto_context_t *crctx = quic_quicly_crypto_context_get_or_alloc (ctx);
+
+  /* connects are always done from same thread, init data for all workers here if needed because it
+   * needs to stay same once used in quicly connection */
+  if (PREDICT_FALSE (!crctx->data))
+    {
+      if (!(crctx->data = quic_quicly_crypto_context_get_data (ctx)))
+	{
+	  quic_quicly_crypto_context_init_data (crctx, ctx);
+	  quic_quicly_crypto_context_data_t *data =
+	    (quic_quicly_crypto_context_data_t *) crctx->data;
+	  data->quicly_ctx.stream_open = &on_stream_open;
+	  data->quicly_ctx.closed_by_remote = &on_closed_by_remote;
+	  data->quicly_ctx.now = &quicly_vpp_now_cb;
+	}
+    }
+  quic_quicly_crypto_context_reserve_data (crctx);
+  return 0;
+}
+
 static void
 quic_quicly_connection_migrate (quic_ctx_t *ctx)
+{
+  quic_crypto_context_t *crctx;
+
+  /* increment ref count to be sure data is not freed before we process migrate rpc */
+  crctx = quic_quicly_crypto_context_get (ctx->crypto_context_index, ctx->c_thread_index);
+  quic_quicly_crypto_context_reserve_data (crctx);
+}
+
+static void
+quic_quicly_connection_migrate_rpc (quic_ctx_t *ctx)
 {
   u32 new_ctx_index, thread_index = vlib_get_thread_index ();
   quic_ctx_t *new_ctx;
   clib_bihash_kv_16_8_t kv;
   quicly_conn_t *conn;
-  quicly_context_t *quicly_context;
+  // quicly_context_t *quicly_context;
   session_t *udp_session;
 
   new_ctx_index = quic_ctx_alloc (quic_quicly_main.qm, thread_index);
@@ -967,11 +1000,14 @@ quic_quicly_connection_migrate (quic_ctx_t *ctx)
 
   new_ctx->c_thread_index = thread_index;
   new_ctx->c_c_index = new_ctx_index;
-  quic_quicly_crypto_context_acquire (new_ctx);
+
+  quic_crypto_context_t *crctx = quic_quicly_crypto_context_get_or_alloc (new_ctx);
+  crctx->data = quic_quicly_crypto_context_get_data (ctx);
+  // quic_quicly_crypto_context_acquire (new_ctx);
 
   conn = new_ctx->conn;
-  quicly_context = quic_quicly_get_quicly_ctx_from_ctx (new_ctx);
-  quic_quicly_update_conn_ctx (conn, quicly_context);
+  // quicly_context = quic_quicly_get_quicly_ctx_from_ctx (new_ctx);
+  // quic_quicly_update_conn_ctx (conn, quicly_context);
 
   quic_quicly_store_conn_ctx (conn, new_ctx);
   quic_quicly_make_connection_key (&kv, quicly_get_master_id (conn));
@@ -1764,6 +1800,8 @@ quic_quicly_engine_init (quic_main_t *qm)
   clib_bihash_init_24_8 (&qqm->conn_accepting_hash,
 			 "quic (quicly engine) accepting connections", 1024,
 			 4 << 20);
+  clib_bihash_init_24_8 (&qqm->crypto_ctx_data_hash, "quic (quicly engine) crypto context data", 64,
+			 128 << 10);
   quic_quicly_register_cipher_suite (CRYPTO_ENGINE_PICOTLS,
 				     ptls_openssl_cipher_suites);
 
@@ -1952,10 +1990,12 @@ quic_quicly_transport_closed (quic_ctx_t *ctx)
 const static quic_engine_vft_t quic_quicly_engine_vft = {
   .engine_init = quic_quicly_engine_init,
   .crypto_context_acquire = quic_quicly_crypto_context_acquire,
+  .crypto_context_init_client = quic_quicly_crypto_context_init_client,
   .crypto_context_release = quic_quicly_crypto_context_release,
   .connect = quic_quicly_connect,
   .connect_stream = quic_quicly_connect_stream,
   .connection_migrate = quic_quicly_connection_migrate,
+  .connection_migrate_rpc = quic_quicly_connection_migrate_rpc,
   .connection_get_stats = quic_quicly_connection_get_stats,
   .udp_session_rx_packets = quic_quicly_udp_session_rx_packets,
   .ack_rx_data = quic_quicly_ack_rx_data,
