@@ -16,6 +16,40 @@
       "message": "recheck\n(policer tests pass, failure is an unrelated wireguard test)",
       "revId": "5f3d290da23bdb82b42549b7fbca3fbce999225b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5f1c3e3e_98b544f4",
+        "filename": "src/vnet/policer/node_funcs.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 138,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-01-20T08:44:12Z",
+      "side": 1,
+      "message": "I think you should be able to define 2 different nodes: 1 for l2 and 1 for l3, and enable the right one on the right interface based on its type. You can still use the same inline function but just add a parameter is_l2 or similar, and constant propagation should do the rest (similar to what is already done for dir).\nThat way there should be no perf penalty.",
+      "revId": "5f3d290da23bdb82b42549b7fbca3fbce999225b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c950de31_d043a666",
+        "filename": "src/vnet/policer/node_funcs.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 316,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-01-20T08:44:12Z",
+      "side": 1,
+      "message": "I think this slightly change the policer behavior: the policer uses vlib_buffer_length_in_chain() to get the packet length which is dependent upon b-\u003ecurrent_length and this gets updated when me move b-\u003ecurrent_data, so the length you get on device-input should take into account the ethernet header whereas the length you get on ip-unicast should not. This is not a big change for big packets, but it can be for smaller ones.",
+      "revId": "5f3d290da23bdb82b42549b7fbca3fbce999225b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
