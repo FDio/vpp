@@ -164,23 +164,10 @@ format_quic_listener (u8 *s, va_list *args)
   return s;
 }
 
-u8 *
-format_crypto_context (u8 *s, va_list *args)
-{
-  crypto_context_t *crctx = va_arg (*args, crypto_context_t *);
-  s = format (s, "[0x%x][sub%d,ckpair%x]", crctx->ctx_index,
-	      crctx->n_subscribers, crctx->ckpair_index);
-  s = format (s, "[engine:%U]", format_crypto_engine, crctx->crypto_engine);
-  return s;
-}
-
 static clib_error_t *
 quic_list_crypto_context_command_fn (vlib_main_t *vm, unformat_input_t *input,
 				     vlib_cli_command_t *cmd)
 {
-  crypto_context_t *crctx;
-  vlib_thread_main_t *vtm = vlib_get_thread_main ();
-  int i, num_threads = 1 /* main thread */ + vtm->n_threads;
   quic_main_t *qm = &quic_main;
 
   session_cli_return_if_not_enabled ();
@@ -196,13 +183,7 @@ quic_list_crypto_context_command_fn (vlib_main_t *vm, unformat_input_t *input,
       return 0;
     }
 
-  for (i = 0; i < num_threads; i++)
-    {
-      pool_foreach (crctx, quic_wrk_ctx_get (&quic_main, i)->crypto_ctx_pool)
-	{
-	  vlib_cli_output (vm, "[%d][Q]%U", i, format_crypto_context, crctx);
-	}
-    }
+  quic_eng_crypto_context_list (vm);
   return 0;
 }
 

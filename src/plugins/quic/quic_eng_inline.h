@@ -14,10 +14,24 @@ quic_eng_engine_init (quic_main_t *qm)
 }
 
 static_always_inline int
-quic_eng_crypto_context_acquire (quic_ctx_t *ctx)
+quic_eng_crypto_context_acquire_listen (quic_ctx_t *ctx)
 {
   quic_main_t *qm = &quic_main;
-  return (quic_engine_vfts[qm->engine_type].crypto_context_acquire (ctx));
+  return (quic_engine_vfts[qm->engine_type].crypto_context_acquire_listen (ctx));
+}
+
+static_always_inline int
+quic_eng_crypto_context_acquire_accept (quic_ctx_t *ctx)
+{
+  quic_main_t *qm = &quic_main;
+  return (quic_engine_vfts[qm->engine_type].crypto_context_acquire_accept (ctx));
+}
+
+static_always_inline int
+quic_eng_crypto_context_acquire_connect (quic_ctx_t *ctx)
+{
+  quic_main_t *qm = &quic_main;
+  return (quic_engine_vfts[qm->engine_type].crypto_context_acquire_connect (ctx));
 }
 
 static_always_inline void
@@ -26,6 +40,20 @@ quic_eng_crypto_context_release (u32 crypto_context_index, u8 thread_index)
   quic_main_t *qm = &quic_main;
   quic_engine_vfts[qm->engine_type].crypto_context_release (
     crypto_context_index, thread_index);
+}
+
+static_always_inline quic_crypto_context_t *
+quic_eng_crypto_context_get (quic_ctx_t *ctx)
+{
+  quic_main_t *qm = &quic_main;
+  return (quic_engine_vfts[qm->engine_type].crypto_context_get (ctx));
+}
+
+static_always_inline void
+quic_eng_crypto_context_list (vlib_main_t *vm)
+{
+  quic_main_t *qm = &quic_main;
+  quic_engine_vfts[qm->engine_type].crypto_context_list (vm);
 }
 
 static_always_inline void
@@ -53,12 +81,19 @@ quic_eng_connect_stream (void *quic_conn, void **quic_stream,
 }
 
 static_always_inline void
+quic_eng_connection_migrate (quic_ctx_t *ctx)
+{
+  quic_main_t *qm = &quic_main;
+  quic_engine_vfts[qm->engine_type].connection_migrate (ctx);
+}
+
+static_always_inline void
 quic_eng_rpc_evt_to_thread_connection_migrate (u32 dest_thread,
 					       quic_ctx_t *ctx)
 {
   quic_main_t *qm = &quic_main;
-  session_send_rpc_evt_to_thread (
-    dest_thread, quic_engine_vfts[qm->engine_type].connection_migrate, ctx);
+  session_send_rpc_evt_to_thread (dest_thread,
+				  quic_engine_vfts[qm->engine_type].connection_migrate_rpc, ctx);
 }
 
 static_always_inline void
