@@ -13,12 +13,20 @@
 
 #include <vnet/policer/xlate.h>
 #include <vnet/policer/police.h>
+#include <vnet/l2/feat_bitmap.h>
 
 typedef struct
 {
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  /* HOT - datapath */
   /* policer pool, aligned */
   policer_t *policers;
+  u32 *policer_index_by_sw_if_index[VLIB_N_RX_TX];
+  u32 l2_input_feat_next[FEAT_MAX];
+  u32 l2_output_feat_next[FEAT_MAX];
+  u8 *l2_overhead_by_sw_if_index[VLIB_N_RX_TX];
 
+  /* COLD - control plane */
   /* config + template h/w policer instance parallel pools */
   qos_pol_cfg_params_st *configs;
   policer_t *policer_templates;
@@ -28,9 +36,6 @@ typedef struct
 
   /* Policer by name hash */
   uword *policer_index_by_name;
-
-  /* Policer by sw_if_index vector */
-  u32 *policer_index_by_sw_if_index[VLIB_N_RX_TX];
 
   /* convenience */
   vlib_main_t *vlib_main;
@@ -53,6 +58,8 @@ extern vlib_combined_counter_main_t policer_counters[];
 
 extern vlib_node_registration_t policer_input_node;
 extern vlib_node_registration_t policer_output_node;
+extern vlib_node_registration_t policer_l2_input_node;
+extern vlib_node_registration_t policer_l2_output_node;
 
 typedef enum
 {

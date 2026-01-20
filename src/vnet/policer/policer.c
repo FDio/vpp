@@ -9,6 +9,9 @@
 #include <vnet/policer/police_inlines.h>
 #include <vnet/classify/vnet_classify.h>
 #include <vnet/ip/ip_packet.h>
+#include <vnet/l2/l2_input.h>
+#include <vnet/l2/l2_output.h>
+#include <vnet/l2/feat_bitmap.h>
 
 vnet_policer_main_t vnet_policer_main;
 
@@ -212,6 +215,32 @@ policer_bind_worker (u32 policer_index, u32 worker, bool bind)
   return 0;
 }
 
+static u8
+vnet_policer_compute_l2_overhead (vnet_main_t *vnm, u32 sw_if_index, vlib_dir_t dir)
+{
+  /* L2 input/output policers don't need adjustment (packet has ethernet header)
+   * L3 output runs after ip-rewrite, which has prepended the ethernet header (no adjustment)
+   * L3 input runs after ip-unicast, which has stripped the ethernet header (adjustment needed)
+   */
+  if (dir == VLIB_TX)
+    return 0;
+
+  vnet_hw_interface_t *hi = vnet_get_sup_hw_interface (vnm, sw_if_index);
+  if (PREDICT_FALSE (hi->hw_class_index != ethernet_hw_interface_class.index))
+    return 0; /* Not Ethernet */
+
+  vnet_sw_interface_t *si = vnet_get_sw_interface (vnm, sw_if_index);
+  if (si->type == VNET_SW_INTERFACE_TYPE_SUB)
+    {
+      if (si->sub.eth.flags.one_tag)
+	return 18; /* Ethernet + single VLAN */
+      if (si->sub.eth.flags.two_tags)
+	return 22; /* Ethernet + QinQ */
+    }
+
+  return 14; /* Untagged Ethernet */
+}
+
 int
 policer_input (u32 policer_index, u32 sw_if_index, vlib_dir_t dir, bool apply)
 {
@@ -224,23 +253,29 @@ policer_input (u32 policer_index, u32 sw_if_index, vlib_dir_t dir, bool apply)
     {
       vec_validate (pm->policer_index_by_sw_if_index[dir], sw_if_index);
       pm->policer_index_by_sw_if_index[dir][sw_if_index] = policer_index;
+
+      /* Pre-compute L2 overhead for this interface (used by L3 input path) */
+      vec_validate (pm->l2_overhead_by_sw_if_index[dir], sw_if_index);
+      pm->l2_overhead_by_sw_if_index[dir][sw_if_index] =
+	vnet_policer_compute_l2_overhead (pm->vnet_main, sw_if_index, dir);
     }
   else
     {
       pm->policer_index_by_sw_if_index[dir][sw_if_index] = ~0;
     }
 
+  /* Enable policer both on L2 feature bitmap, and L3 feature arcs */
   if (dir == VLIB_RX)
     {
-      vnet_feature_enable_disable ("device-input", "policer-input",
-				   sw_if_index, apply, 0, 0);
+      l2input_intf_bitmap_enable (sw_if_index, L2INPUT_FEAT_POLICER, apply);
+      vnet_feature_enable_disable ("ip4-unicast", "policer-input", sw_if_index, apply, 0, 0);
+      vnet_feature_enable_disable ("ip6-unicast", "policer-input", sw_if_index, apply, 0, 0);
     }
   else
     {
-      vnet_feature_enable_disable ("ip4-output", "policer-output", sw_if_index,
-				   apply, 0, 0);
-      vnet_feature_enable_disable ("ip6-output", "policer-output", sw_if_index,
-				   apply, 0, 0);
+      l2output_intf_bitmap_enable (sw_if_index, L2OUTPUT_FEAT_POLICER, apply);
+      vnet_feature_enable_disable ("ip4-output", "policer-output", sw_if_index, apply, 0, 0);
+      vnet_feature_enable_disable ("ip6-output", "policer-output", sw_if_index, apply, 0, 0);
     }
   return 0;
 }
@@ -1057,6 +1092,14 @@ policer_init (vlib_main_t * vm)
   pm->policer_config_by_name = hash_create_string (0, sizeof (uword));
   pm->policer_index_by_name = hash_create_string (0, sizeof (uword));
   pm->tsc_hz = get_tsc_hz ();
+
+  /* Initialize L2 input feature bitmap next nodes */
+  feat_bitmap_init_next_nodes (vm, policer_l2_input_node.index, L2INPUT_N_FEAT,
+			       l2input_get_feat_names (), pm->l2_input_feat_next);
+
+  /* Initialize L2 output feature bitmap next nodes */
+  feat_bitmap_init_next_nodes (vm, policer_l2_output_node.index, L2OUTPUT_N_FEAT,
+			       l2output_get_feat_names (), pm->l2_output_feat_next);
 
   vnet_classify_register_unformat_policer_next_index_fn
     (unformat_policer_classify_next_index);
