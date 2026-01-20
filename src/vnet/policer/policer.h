@@ -41,6 +41,10 @@ typedef struct
   /* frame queue for thread handoff */
   u32 fq_index[VLIB_N_RX_TX];
 
+  /* L2 feature next node indexes for input and output */
+  u32 l2_input_feat_next[32];
+  u32 l2_output_feat_next[32];
+
   /* cached TSC value. No need to re-compute for each new policer */
   u64 tsc_hz;
 
@@ -53,6 +57,8 @@ extern vlib_combined_counter_main_t policer_counters[];
 
 extern vlib_node_registration_t policer_input_node;
 extern vlib_node_registration_t policer_output_node;
+extern vlib_node_registration_t policer_l2_input_node;
+extern vlib_node_registration_t policer_l2_output_node;
 
 typedef enum
 {

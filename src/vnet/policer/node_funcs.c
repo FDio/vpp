@@ -14,7 +14,7 @@
 #include <vnet/classify/vnet_classify.h>
 #include <vnet/l2/feat_bitmap.h>
 #include <vnet/l2/l2_input.h>
-
+#include <vnet/l2/l2_output.h>
 
 /* Dispatch functions meant to be instantiated elsewhere */
 
@@ -57,8 +57,8 @@ static char *vnet_policer_error_strings[] = {
 };
 
 static inline uword
-vnet_policer_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
-		     vlib_frame_t *frame, vlib_dir_t dir)
+vnet_policer_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame,
+		     vlib_dir_t dir, u8 is_l2)
 {
   u32 n_left_from, *from, *to_next;
   vnet_policer_next_t next_index;
@@ -135,7 +135,23 @@ vnet_policer_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  else /* transmit or mark-and-transmit action */
 	    {
 	      transmitted++;
-	      vnet_feature_next (&next0, b0);
+	      if (is_l2)
+		{
+		  if (dir == VLIB_RX)
+		    {
+		      next0 =
+			vnet_l2_feature_next (b0, pm->l2_input_feat_next, L2INPUT_FEAT_POLICER);
+		    }
+		  else
+		    {
+		      next0 =
+			vnet_l2_feature_next (b0, pm->l2_output_feat_next, L2OUTPUT_FEAT_POLICER);
+		    }
+		}
+	      else
+		{
+		  vnet_feature_next (&next0, b0);
+		}
 	    }
 
 	  if (PREDICT_FALSE (act1 == QOS_ACTION_HANDOFF))
@@ -151,7 +167,23 @@ vnet_policer_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  else /* transmit or mark-and-transmit action */
 	    {
 	      transmitted++;
-	      vnet_feature_next (&next1, b1);
+	      if (is_l2)
+		{
+		  if (dir == VLIB_RX)
+		    {
+		      next1 =
+			vnet_l2_feature_next (b1, pm->l2_input_feat_next, L2INPUT_FEAT_POLICER);
+		    }
+		  else
+		    {
+		      next1 =
+			vnet_l2_feature_next (b1, pm->l2_output_feat_next, L2OUTPUT_FEAT_POLICER);
+		    }
+		}
+	      else
+		{
+		  vnet_feature_next (&next1, b1);
+		}
 	    }
 
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
@@ -215,7 +247,23 @@ vnet_policer_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  else /* transmit or mark-and-transmit action */
 	    {
 	      transmitted++;
-	      vnet_feature_next (&next0, b0);
+	      if (is_l2)
+		{
+		  if (dir == VLIB_RX)
+		    {
+		      next0 =
+			vnet_l2_feature_next (b0, pm->l2_input_feat_next, L2INPUT_FEAT_POLICER);
+		    }
+		  else
+		    {
+		      next0 =
+			vnet_l2_feature_next (b0, pm->l2_output_feat_next, L2OUTPUT_FEAT_POLICER);
+		    }
+		}
+	      else
+		{
+		  vnet_feature_next (&next0, b0);
+		}
 	    }
 
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
@@ -245,7 +293,7 @@ vnet_policer_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 VLIB_NODE_FN (policer_input_node)
 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
-  return vnet_policer_inline (vm, node, frame, VLIB_RX);
+  return vnet_policer_inline (vm, node, frame, VLIB_RX, 0);
 }
 
 VLIB_REGISTER_NODE (policer_input_node) = {
@@ -262,16 +310,43 @@ VLIB_REGISTER_NODE (policer_input_node) = {
 		 },
 };
 
-VNET_FEATURE_INIT (policer_input_node, static) = {
-  .arc_name = "device-input",
+VLIB_NODE_FN (policer_l2_input_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  return vnet_policer_inline (vm, node, frame, VLIB_RX, 1);
+}
+
+VLIB_REGISTER_NODE (policer_l2_input_node) = {
+  .name = "l2-policer-input",
+  .vector_size = sizeof (u32),
+  .format_trace = format_policer_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = ARRAY_LEN(vnet_policer_error_strings),
+  .error_strings = vnet_policer_error_strings,
+  .n_next_nodes = VNET_POLICER_N_NEXT,
+  .next_nodes = {
+		 [VNET_POLICER_NEXT_DROP] = "error-drop",
+		 [VNET_POLICER_NEXT_HANDOFF] = "policer-input-handoff",
+		 },
+};
+
+/* Register on IP unicast arcs for L3 routed sub-interfaces */
+VNET_FEATURE_INIT (policer_ip4_unicast, static) = {
+  .arc_name = "ip4-unicast",
   .node_name = "policer-input",
-  .runs_before = VNET_FEATURES ("ethernet-input"),
+  .runs_before = VNET_FEATURES ("ip4-lookup"),
+};
+
+VNET_FEATURE_INIT (policer_ip6_unicast, static) = {
+  .arc_name = "ip6-unicast",
+  .node_name = "policer-input",
+  .runs_before = VNET_FEATURES ("ip6-lookup"),
 };
 
 VLIB_NODE_FN (policer_output_node)
 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
-  return vnet_policer_inline (vm, node, frame, VLIB_TX);
+  return vnet_policer_inline (vm, node, frame, VLIB_TX, 0);
 }
 
 VLIB_REGISTER_NODE (policer_output_node) = {
@@ -288,12 +363,32 @@ VLIB_REGISTER_NODE (policer_output_node) = {
 		 },
 };
 
-VNET_FEATURE_INIT (policer_output_node, static) = {
+VLIB_NODE_FN (policer_l2_output_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  return vnet_policer_inline (vm, node, frame, VLIB_TX, 1);
+}
+
+VLIB_REGISTER_NODE (policer_l2_output_node) = {
+  .name = "l2-policer-output",
+  .vector_size = sizeof (u32),
+  .format_trace = format_policer_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = ARRAY_LEN(vnet_policer_error_strings),
+  .error_strings = vnet_policer_error_strings,
+  .n_next_nodes = VNET_POLICER_N_NEXT,
+  .next_nodes = {
+		 [VNET_POLICER_NEXT_DROP] = "error-drop",
+		 [VNET_POLICER_NEXT_HANDOFF] = "policer-output-handoff",
+		 },
+};
+
+VNET_FEATURE_INIT (policer_ip4_output, static) = {
   .arc_name = "ip4-output",
   .node_name = "policer-output",
 };
 
-VNET_FEATURE_INIT (policer6_output_node, static) = {
+VNET_FEATURE_INIT (policer_ip6_output, static) = {
   .arc_name = "ip6-output",
   .node_name = "policer-output",
 };
