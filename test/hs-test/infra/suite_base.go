@@ -195,7 +195,7 @@ func (s *HstSuite) getLogDirPath() string {
 	testName := GetCurrentTestName()
 	logDirPath := LogDir + testName + "/" + testId + "/"
 
-	cmd := exec.Command("mkdir", "-p", logDirPath)
+	cmd := exec.Command("mkdir", "-m", "777", "-p", logDirPath)
 	if err := cmd.Run(); err != nil {
 		Fail("mkdir error: " + fmt.Sprint(err))
 	}
@@ -333,8 +333,13 @@ func (s *HstSuite) LogVppInstance(container *Container, maxLines int) {
 
 	logSource := container.GetHostWorkDir() + defaultLogFilePath
 	file, err := os.Open(logSource)
-
 	if err != nil {
+		Log("%v", err)
+		return
+	}
+	err = os.Chmod(logSource, 0666)
+	if err != nil {
+		Log("%v", err)
 		return
 	}
 	defer file.Close()
@@ -428,6 +433,7 @@ func (s *HstSuite) WaitForCoreDump() bool {
 	archStr := strings.TrimSpace(string(arch))
 	for _, core := range coreFiles {
 		corePath := s.getLogDirPath() + core.file
+		os.Chmod(corePath, 0666)
 		Log(fmt.Sprintf("WAITING FOR CORE DUMP (%s)", corePath))
 		for i := waitTime; i <= timeout; i += waitTime {
 			fileInfo, err := os.Stat(corePath)

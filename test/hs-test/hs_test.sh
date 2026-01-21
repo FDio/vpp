@@ -280,7 +280,10 @@ Message:\n"
     end
 )' summary/report.json > summary/failed-summary.log \
 && echo "Summary generated -> summary/failed-summary.log"
+    chmod 666 summary/report.json
+    chmod 666 summary/failed-summary.log
     exit $exit_status
 else
+    chmod 666 summary/report.json
     exit $exit_status
 fi

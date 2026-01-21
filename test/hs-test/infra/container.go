@@ -3,6 +3,7 @@ package hst
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -370,6 +371,7 @@ func (c *Container) getVolumesAsSlice() []string {
 	if len(c.Volumes) > 0 {
 		for _, volume := range c.Volumes {
 			volumeSlice = append(volumeSlice, fmt.Sprintf("%s:%s", volume.HostDir, volume.ContainerDir))
+			os.Chmod(volume.HostDir, 0777)
 		}
 	}
 	return volumeSlice
@@ -443,7 +445,12 @@ func (c *Container) CreateFile(destFileName string, content string) error {
 	if err := f.Close(); err != nil {
 		return err
 	}
+
 	c.copy(f.Name(), destFileName)
+	if err = os.Chmod(destFileName, 0666); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -582,6 +589,11 @@ func (c *Container) saveLogs() {
 		return
 	}
 	defer f.Close()
+	err = os.Chmod(testLogFilePath, 0666)
+	if err != nil {
+		Log(err)
+		return
+	}
 	fmt.Fprint(f, logs)
 }
 
@@ -663,8 +675,10 @@ func (c *Container) CreateConfigFromTemplate(targetConfigName string, templateNa
 }
 
 func init() {
-	cmd := exec.Command("mkdir", "-p", LogDir)
-	if err := cmd.Run(); err != nil {
+	err := os.Mkdir(LogDir, 0777)
+	if err != nil && !errors.Is(err, os.ErrExist) {
 		panic(err)
+	} else {
+		os.Chmod(LogDir, 0777)
 	}
 }
