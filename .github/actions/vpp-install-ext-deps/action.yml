@@ -57,12 +57,12 @@ runs:
                   curl -s $INSTALL_URL/script.deb.sh | sudo bash || true
               fi
               sudo apt-get update -qq || true
-              vpp_ext_deps_version="$(apt-cache show vpp-ext-deps 2>/dev/null | mawk '/Version/ {print $2}' | head -1)"
+              vpp_ext_deps_version="$(apt-cache show vpp-ext-deps 2>/dev/null | mawk '/Version/ {print $2}' | head -1)" || true
               if [ -z "$vpp_ext_deps_version" ]; then
                   echo "Warning: Could not determine vpp-ext-deps version, skipping cache optimization"
                   # Proceed with direct installation
               else
-                  vpp_ext_deps_arch="$(apt-cache show vpp-ext-deps | mawk '/Architecture/ {print $2}' | head -1)"
+                  vpp_ext_deps_arch="$(apt-cache show vpp-ext-deps | mawk '/Architecture/ {print $2}' | head -1)" || true
                   vpp_ext_deps_pkg="vpp-ext-deps_${vpp_ext_deps_version}_${vpp_ext_deps_arch}.deb"
                   if [ -f "$downloads_dir/$vpp_ext_deps_pkg" ] ; then
                       echo "Installing cached vpp-ext-deps pkg: $downloads_dir/$vpp_ext_deps_pkg"
