@@ -166,10 +166,13 @@ is_platform_aarch64 = _is_platform_aarch64()
 
 
 def _is_distro_debian12():
-    with open("/etc/os-release") as f:
-        for line in f.readlines():
-            if "bookworm" in line:
-                return True
+    try:
+        with open("/etc/os-release") as f:
+            for line in f.readlines():
+                if "bookworm" in line:
+                    return True
+    except (FileNotFoundError, PermissionError):
+        pass
     return False
 
 
@@ -241,8 +244,18 @@ def create_tag_decorator(e):
 tag_run_solo = create_tag_decorator(TestCaseTag.RUN_SOLO)
 tag_fixme_vpp_workers = create_tag_decorator(TestCaseTag.FIXME_VPP_WORKERS)
 tag_fixme_asan = create_tag_decorator(TestCaseTag.FIXME_ASAN)
-tag_fixme_debian12 = create_tag_decorator(TestCaseTag.FIXME_DEBIAN12)
 tag_fixme_vpp_debug = create_tag_decorator(TestCaseTag.FIXME_VPP_DEBUG)
+
+
+def tag_fixme_debian12(cls):
+    """Decorator to mark test classes that should be skipped on Debian 12"""
+    if is_distro_debian12:
+        try:
+            cls.test_tags.append(TestCaseTag.FIXME_DEBIAN12)
+        except AttributeError:
+            cls.test_tags = [TestCaseTag.FIXME_DEBIAN12]
+        return unittest.skip("Skipping @tag_fixme_debian12 tests on Debian 12")(cls)
+    return cls
 
 
 class DummyVpp:
@@ -742,17 +755,39 @@ class VppAsfTestCase(CPUInterface, unittest.TestCase):
         """
         cls._debug_quit()
 
+        # Get timeout from environment or use default (None = wait forever)
+        # Set VPP_TEARDOWN_TIMEOUT to enable timeout (e.g., 30 for 30 seconds)
+        thread_join_timeout = os.environ.get("VPP_TEARDOWN_TIMEOUT")
+        if thread_join_timeout:
+            thread_join_timeout = float(thread_join_timeout)
+            cls.logger.info(
+                f"Using thread join timeout: {thread_join_timeout}s "
+                f"from VPP_TEARDOWN_TIMEOUT"
+            )
+        else:
+            thread_join_timeout = None
+
         # first signal that we want to stop the pump thread, then wake it up
         if hasattr(cls, "pump_thread_stop_flag"):
             cls.pump_thread_stop_flag.set()
         if hasattr(cls, "pump_thread_wakeup_pipe"):
             os.write(cls.pump_thread_wakeup_pipe[1], b"ding dong wake up")
         if hasattr(cls, "pump_thread"):
-            cls.logger.debug("Waiting for pump thread to stop")
-            cls.pump_thread.join()
+            cls.logger.debug(f"[{cls.__name__}] Waiting for pump thread to stop...")
+            cls.pump_thread.join(timeout=thread_join_timeout)
+            if thread_join_timeout and cls.pump_thread.is_alive():
+                cls.logger.error(
+                    f"[{cls.__name__}] PUMP THREAD TIMEOUT after "
+                    f"{thread_join_timeout}s - thread did not stop!"
+                )
         if hasattr(cls, "vpp_stderr_reader_thread"):
-            cls.logger.debug("Waiting for stderr pump to stop")
-            cls.vpp_stderr_reader_thread.join()
+            cls.logger.debug(f"[{cls.__name__}] Waiting for stderr pump to stop...")
+            cls.vpp_stderr_reader_thread.join(timeout=thread_join_timeout)
+            if thread_join_timeout and cls.vpp_stderr_reader_thread.is_alive():
+                cls.logger.error(
+                    f"[{cls.__name__}] STDERR PUMP THREAD TIMEOUT after "
+                    f"{thread_join_timeout}s - thread did not stop!"
+                )
 
         if hasattr(cls, "vpp"):
             if hasattr(cls, "vapi"):
@@ -1363,6 +1398,9 @@ class VppTestResult(unittest.TestResult):
             if test.has_tag(TestCaseTag.FIXME_ASAN):
                 test_title = colorize(f"FIXME with ASAN: {test_title}", RED)
                 test.skip_fixme_asan()
+
+            if test.has_tag(TestCaseTag.FIXME_DEBIAN12):
+                test_title = colorize(f"FIXME with Debian 12: {test_title}", RED)
 
             if hasattr(test, "vpp_worker_count"):
                 if test.vpp_worker_count == 0:
