@@ -484,6 +484,7 @@ func CreateLogger() {
 	if err != nil {
 		Fail("Unable to create log file.")
 	}
+	os.Chmod(LogFile.Name(), 0666)
 	Logger = log.New(io.Writer(LogFile), "", log.LstdFlags)
 }
 
