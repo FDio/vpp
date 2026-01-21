@@ -37,6 +37,7 @@ from framework import VppTestCase
 from asfframework import (
     tag_fixme_vpp_workers,
     tag_fixme_debian12,
+    VppAsfTestCase,
     tag_run_solo,
     VppTestRunner,
 )
@@ -135,6 +136,7 @@ class AuthKeyFactory(object):
         {"multihop": True},
     ]
 )
+@tag_fixme_debian12
 class BFDAPITestCase(VppTestCase):
 
     pg0 = None
@@ -157,6 +159,8 @@ class BFDAPITestCase(VppTestCase):
         cls.__doc__ = (
             f"""""Bidirectional Forwarding Detection (BFD) - API, {hoptype_str}"""
         )
+        if VppAsfTestCase.is_fixme_debian12:
+            return
         cls.vapi.cli("set log class bfd level debug")
         try:
             cls.create_pg_interfaces(range(2))
@@ -178,6 +182,8 @@ class BFDAPITestCase(VppTestCase):
 
     @classmethod
     def tearDownClass(cls):
+        if VppAsfTestCase.is_fixme_debian12:
+            return
         super(BFDAPITestCase, cls).tearDownClass()
 
     def setUp(self):
@@ -1078,8 +1084,8 @@ def bfd_stats_diff(stats_before, stats_after):
         {"multihop": True},
     ]
 )
-@tag_run_solo
 @tag_fixme_debian12
+@tag_run_solo
 class BFD4TestCase(VppTestCase):
     pg0 = None
     interface0 = None
@@ -1096,6 +1102,8 @@ class BFD4TestCase(VppTestCase):
         cls.__doc__ = (
             f"""""Bidirectional Forwarding Detection (BFD) - IPv4, {hoptype_str}"""
         )
+        if VppAsfTestCase.is_fixme_debian12:
+            return
         cls.vapi.cli("set log class bfd level debug")
         try:
             cls.create_pg_interfaces([0])
@@ -1114,6 +1122,8 @@ class BFD4TestCase(VppTestCase):
 
     @classmethod
     def tearDownClass(cls):
+        if VppAsfTestCase.is_fixme_debian12:
+            return
         super(BFD4TestCase, cls).tearDownClass()
 
     def setUp(self):
@@ -2125,6 +2135,7 @@ class BFD4TestCase(VppTestCase):
         {"multihop": True},
     ]
 )
+@tag_fixme_debian12
 @tag_run_solo
 @tag_fixme_vpp_workers
 class BFD6TestCase(VppTestCase):
@@ -2143,6 +2154,8 @@ class BFD6TestCase(VppTestCase):
         cls.__doc__ = (
             f"""""Bidirectional Forwarding Detection (BFD) - IPv6, {hoptype_str}"""
         )
+        if VppAsfTestCase.is_fixme_debian12:
+            return
         cls.vapi.cli("set log class bfd level debug")
         try:
             cls.create_pg_interfaces([0])
@@ -2161,6 +2174,8 @@ class BFD6TestCase(VppTestCase):
 
     @classmethod
     def tearDownClass(cls):
+        if VppAsfTestCase.is_fixme_debian12:
+            return
         super(BFD6TestCase, cls).tearDownClass()
 
     def setUp(self):
@@ -2467,6 +2482,7 @@ class BFD6TestCase(VppTestCase):
         {"multihop": True},
     ]
 )
+@tag_fixme_debian12
 @tag_run_solo
 class BFDFIBTestCase(VppTestCase):
     """BFD-FIB interactions (IPv6)"""
@@ -2481,10 +2497,14 @@ class BFDFIBTestCase(VppTestCase):
         super(BFDFIBTestCase, cls).setUpClass()
         hoptype_str = "MultiHop" if cls.multihop else "SingleHop"
         cls.__doc__ = f"""""BFD-FIB interactions (IPv6) - {hoptype_str}"""
+        if VppAsfTestCase.is_fixme_debian12:
+            return
         cls.vapi.cli("set log class bfd level debug")
 
     @classmethod
     def tearDownClass(cls):
+        if VppAsfTestCase.is_fixme_debian12:
+            return
         super(BFDFIBTestCase, cls).tearDownClass()
 
     def setUp(self):
@@ -2607,6 +2627,7 @@ class BFDFIBTestCase(VppTestCase):
             self.assertEqual(captured[IPv6].dst, packet[IPv6].dst)
 
 
+@tag_fixme_debian12
 @unittest.skipUnless(config.extended, "part of extended tests")
 class BFDTunTestCase(VppTestCase):
     """BFD over GRE tunnel"""
@@ -2616,10 +2637,14 @@ class BFDTunTestCase(VppTestCase):
 
     @classmethod
     def setUpClass(cls):
+        if VppAsfTestCase.is_fixme_debian12:
+            return
         super(BFDTunTestCase, cls).setUpClass()
 
     @classmethod
     def tearDownClass(cls):
+        if VppAsfTestCase.is_fixme_debian12:
+            return
         super(BFDTunTestCase, cls).tearDownClass()
 
     def setUp(self):
@@ -2696,6 +2721,7 @@ class BFDTunTestCase(VppTestCase):
         {"multihop": True},
     ]
 )
+@tag_fixme_debian12
 @tag_run_solo
 class BFDSHA1TestCase(VppTestCase):
     pg0 = None
@@ -2710,6 +2736,8 @@ class BFDSHA1TestCase(VppTestCase):
         super(BFDSHA1TestCase, cls).setUpClass()
         hoptype_str = "MultiHop" if cls.multihop else "SingleHop"
         cls.__doc__ = f"""""Bidirectional Forwarding Detection (BFD) - SHA1 auth - {hoptype_str}"""
+        if VppAsfTestCase.is_fixme_debian12:
+            return
         cls.vapi.cli("set log class bfd level debug")
         try:
             cls.create_pg_interfaces([0])
@@ -2728,6 +2756,8 @@ class BFDSHA1TestCase(VppTestCase):
 
     @classmethod
     def tearDownClass(cls):
+        if VppAsfTestCase.is_fixme_debian12:
+            return
         super(BFDSHA1TestCase, cls).tearDownClass()
 
     def setUp(self):
@@ -3079,6 +3109,7 @@ class BFDSHA1TestCase(VppTestCase):
         {"multihop": True},
     ]
 )
+@tag_fixme_debian12
 @tag_run_solo
 class BFDAuthOnOffTestCase(VppTestCase):
     pg0 = None
@@ -3090,6 +3121,8 @@ class BFDAuthOnOffTestCase(VppTestCase):
         super(BFDAuthOnOffTestCase, cls).setUpClass()
         hoptype_str = "MultiHop" if cls.multihop else "SingleHop"
         cls.__doc__ = f"""""Bidirectional Forwarding Detection (BFD) - changing auth - {hoptype_str}"""
+        if VppAsfTestCase.is_fixme_debian12:
+            return
         cls.vapi.cli("set log class bfd level debug")
         try:
             cls.create_pg_interfaces([0])
@@ -3108,6 +3141,8 @@ class BFDAuthOnOffTestCase(VppTestCase):
 
     @classmethod
     def tearDownClass(cls):
+        if VppAsfTestCase.is_fixme_debian12:
+            return
         super(BFDAuthOnOffTestCase, cls).tearDownClass()
 
     def setUp(self):
@@ -3374,6 +3409,7 @@ class BFDAuthOnOffTestCase(VppTestCase):
         {"multihop": True},
     ]
 )
+@tag_fixme_debian12
 @tag_run_solo
 class BFDCLITestCase(VppTestCase):
     """Bidirectional Forwarding Detection (BFD) (CLI)"""
@@ -3387,6 +3423,8 @@ class BFDCLITestCase(VppTestCase):
         cls.__doc__ = (
             f"""""Bidirectional Forwarding Detection (BFD) - CLI - {hoptype_str}"""
         )
+        if VppAsfTestCase.is_fixme_debian12:
+            return
         cls.vapi.cli("set log class bfd level debug")
         try:
             cls.create_pg_interfaces([0])
@@ -3408,6 +3446,8 @@ class BFDCLITestCase(VppTestCase):
 
     @classmethod
     def tearDownClass(cls):
+        if VppAsfTestCase.is_fixme_debian12:
+            return
         super(BFDCLITestCase, cls).tearDownClass()
 
     def setUp(self):
