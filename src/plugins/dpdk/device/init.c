@@ -422,8 +422,19 @@ dpdk_lib_init (dpdk_main_t * dm)
 	  if (dr && dr->interface_number_from_port_id)
 	    xd->name = format (xd->name, "%u", port_id);
 	  else if ((pci_dev = dpdk_get_pci_device (&di)))
-	    xd->name = format (xd->name, if_num_fmt, pci_dev->addr.bus,
-			       pci_dev->addr.devid, pci_dev->addr.function);
+	    {
+	      /* Include domain in name if non-zero (prevents collisions) */
+	      if (pci_dev->addr.domain != 0)
+		{
+		  char *domain_fmt =
+		    dm->conf->interface_name_format_decimal ? "-%d/%d/%d/%d" : "-%x/%x/%x/%x";
+		  xd->name = format (xd->name, domain_fmt, pci_dev->addr.domain, pci_dev->addr.bus,
+				     pci_dev->addr.devid, pci_dev->addr.function);
+		}
+	      else
+		xd->name = format (xd->name, if_num_fmt, pci_dev->addr.bus, pci_dev->addr.devid,
+				   pci_dev->addr.function);
+	    }
 	  else
 	    xd->name = format (xd->name, "%u", port_id);
 
