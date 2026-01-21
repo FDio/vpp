@@ -238,7 +238,7 @@ jobs:
       - name: VPP Make Test
         # yamllint disable-line rule:line-length
         uses: fdio/vpp/.github/actions/vpp-make-test@7598c9acb6bc034ffbe25b7110230b3d243a9b36
-        timeout-minutes: 90
+        timeout-minutes: 120
         with:
           LOG_DIR: ${{ env.LOG_DIR }}
           WORKSPACE: ${{ env.WORKSPACE }}
