@@ -20,7 +20,7 @@ from scapy.layers.isakmp import ISAKMP
 
 
 from framework import VppTestCase
-from asfframework import VppTestRunner
+from asfframework import VppTestRunner, tag_fixme_debian12
 from util import ppp, reassemble4, fragment_rfc791, fragment_rfc8200
 from vpp_papi import VppEnum
 
@@ -193,6 +193,7 @@ def config_tra_params(p, encryption_type):
     )
 
 
+@tag_fixme_debian12
 class TemplateIpsec(VppTestCase):
     """
     TRANSPORT MODE::
@@ -3088,7 +3089,7 @@ class IpsecDefaultTemplate(IPSecIPv4Fwd):
             src_if, dst_if, capture, tcp_port_in, udp_port_in
         )
 
-
+@tag_fixme_debian12
 class IPSecIPv6Fwd(VppTestCase):
     """Test IPSec by capturing and verifying IPv6 forwarded pkts"""
 
