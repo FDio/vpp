@@ -756,7 +756,7 @@ func (vpp *VppInstance) generateVPPCpuConfig() string {
 
 	if len(workers) > 0 && vpp.CpuConfig.UseWorkers {
 		if vpp.CpuConfig.PinWorkersCorelist {
-			for i := 0; i < len(workers); i++ {
+			for i := range workers {
 				if i != 0 {
 					s = s + ", "
 				}
@@ -808,7 +808,7 @@ func (vpp *VppInstance) GetMemoryTrace() ([]VppMemTrace, error) {
 // memTracesSuppressCli filter out CLI related samples
 func memTracesSuppressCli(traces []VppMemTrace) []VppMemTrace {
 	var filtered []VppMemTrace
-	for i := 0; i < len(traces); i++ {
+	for i := range traces {
 		isCli := false
 		for j := 0; j < len(traces[i].Traceback); j++ {
 			if strings.Contains(traces[i].Traceback[j], "unix_cli") {
@@ -830,9 +830,9 @@ func (vpp *VppInstance) MemLeakCheck(first, second []VppMemTrace) {
 	trace1 := memTracesSuppressCli(first)
 	trace2 := memTracesSuppressCli(second)
 	report := ""
-	for i := 0; i < len(trace2); i++ {
+	for i := range trace2 {
 		match := false
-		for j := 0; j < len(trace1); j++ {
+		for j := range trace1 {
 			if trace1[j].Sample == trace2[i].Sample {
 				if trace2[i].Size > trace1[j].Size {
 					deltaBytes := trace2[i].Size - trace1[j].Size

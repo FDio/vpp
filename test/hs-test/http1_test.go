@@ -998,7 +998,7 @@ func PromConcurrentConnectionsTest(s *Http1Suite) {
 	time.Sleep(time.Second * 5)
 
 	var wg sync.WaitGroup
-	for i := 0; i < 20; i++ {
+	for range 20 {
 		wg.Add(1)
 		go promReqWg(url, &wg)
 	}
@@ -1015,7 +1015,7 @@ func PromConsecutiveConnectionsTest(s *Http1Suite) {
 	Log(vpp.Vppctl("prom enable"))
 	time.Sleep(time.Second * 5)
 
-	for i := 0; i < 1000; i++ {
+	for range 1000 {
 		promReq(url, time.Millisecond*500)
 	}
 }

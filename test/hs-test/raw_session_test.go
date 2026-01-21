@@ -21,6 +21,8 @@ func VppEchoTcpTest(s *VethsSuite) {
 }
 
 func testVppEcho(s *VethsSuite, proto string) {
+	s.SetupAppContainers()
+
 	serverVethAddress := s.Interfaces.Server.Ip4AddressString()
 	uri := proto + "://" + serverVethAddress + "/" + s.Ports.Port1
 

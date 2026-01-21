@@ -125,6 +125,11 @@ func (s *VethsSuite) SetupClientVpp() {
 	AssertNotEqual(0, idx)
 }
 
+func (s *VethsSuite) SetupAppContainers() {
+	s.Containers.ClientApp.Run()
+	s.Containers.ServerApp.Run()
+}
+
 var _ = Describe("VethsSuite", Ordered, ContinueOnFailure, Label("Veth"), func() {
 	var s VethsSuite
 	BeforeAll(func() {

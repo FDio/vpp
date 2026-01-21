@@ -58,6 +58,7 @@ func (s *LdpSuite) SetupSuite() {
 
 func (s *LdpSuite) SetupTest() {
 	s.HstSuite.SetupTest()
+	s.SetupAppContainers()
 
 	// Setup test conditions
 	var sessionConfig Stanza
@@ -144,6 +145,11 @@ func (s *LdpSuite) TeardownTest() {
 		delete(container.EnvVars, "LD_PRELOAD")
 		delete(container.EnvVars, "VCL_CONFIG")
 	}
+}
+
+func (s *LdpSuite) SetupAppContainers() {
+	s.Containers.ClientApp.Run()
+	s.Containers.ServerApp.Run()
 }
 
 func (s *LdpSuite) CreateVclConfig(container *Container) {

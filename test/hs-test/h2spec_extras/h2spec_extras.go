@@ -374,7 +374,7 @@ func ConnectMethod() *spec.TestGroup {
 				return spec.ErrSkipped
 			}
 
-			for i := 0; i < int(maxStreams); i++ {
+			for range int(maxStreams) {
 				headers := ConnectHeaders(c)
 				hp := http2.HeadersFrameParam{
 					StreamID:      streamID,
@@ -392,13 +392,13 @@ func ConnectMethod() *spec.TestGroup {
 			}
 
 			streamID = 1
-			for i := 0; i < int(maxStreams); i++ {
+			for range int(maxStreams) {
 				conn.WriteData(streamID, false, []byte("HEAD /index.html HTTP/1.1\r\nHost: example.com\r\n\r\n"))
 				streamID += 2
 			}
 
 			var receivedResp []uint32
-			for i := 0; i < int(maxStreams); i++ {
+			for range int(maxStreams) {
 				actual, passed := conn.WaitEventByType(spec.EventDataFrame)
 				switch event := actual.(type) {
 				case spec.DataFrameEvent:
@@ -697,7 +697,7 @@ func ConnectUdp() *spec.TestGroup {
 				return spec.ErrSkipped
 			}
 
-			for i := 0; i < int(maxStreams); i++ {
+			for range int(maxStreams) {
 				headers := ConnectUdpHeaders(c)
 				hp := http2.HeadersFrameParam{
 					StreamID:      streamID,
@@ -716,14 +716,14 @@ func ConnectUdp() *spec.TestGroup {
 
 			streamID = 1
 			data := []byte("hello")
-			for i := 0; i < int(maxStreams); i++ {
+			for range int(maxStreams) {
 				err = writeCapsule(conn, streamID, false, data)
 				if err != nil {
 					return err
 				}
 			}
 
-			for i := 0; i < int(maxStreams); i++ {
+			for range int(maxStreams) {
 				resp, err := readCapsule(conn, streamID)
 				if err != nil {
 					return err
