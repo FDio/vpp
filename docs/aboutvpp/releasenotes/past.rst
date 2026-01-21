@@ -6,6 +6,7 @@ Past releases
 .. toctree::
     :maxdepth: 1
 
+    v24.10
     v24.06
     v24.02
     v23.10
