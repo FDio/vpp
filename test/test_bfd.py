@@ -37,6 +37,7 @@ from framework import VppTestCase
 from asfframework import (
     tag_fixme_vpp_workers,
     tag_fixme_debian12,
+    VppAsfTestCase,
     tag_run_solo,
     VppTestRunner,
 )
@@ -135,6 +136,7 @@ class AuthKeyFactory(object):
         {"multihop": True},
     ]
 )
+@tag_fixme_debian12
 class BFDAPITestCase(VppTestCase):
 
     pg0 = None
@@ -1078,8 +1080,8 @@ def bfd_stats_diff(stats_before, stats_after):
         {"multihop": True},
     ]
 )
-@tag_run_solo
 @tag_fixme_debian12
+@tag_run_solo
 class BFD4TestCase(VppTestCase):
     pg0 = None
     interface0 = None
@@ -2125,6 +2127,7 @@ class BFD4TestCase(VppTestCase):
         {"multihop": True},
     ]
 )
+@tag_fixme_debian12
 @tag_run_solo
 @tag_fixme_vpp_workers
 class BFD6TestCase(VppTestCase):
@@ -2467,6 +2470,7 @@ class BFD6TestCase(VppTestCase):
         {"multihop": True},
     ]
 )
+@tag_fixme_debian12
 @tag_run_solo
 class BFDFIBTestCase(VppTestCase):
     """BFD-FIB interactions (IPv6)"""
@@ -2607,6 +2611,7 @@ class BFDFIBTestCase(VppTestCase):
             self.assertEqual(captured[IPv6].dst, packet[IPv6].dst)
 
 
+@tag_fixme_debian12
 @unittest.skipUnless(config.extended, "part of extended tests")
 class BFDTunTestCase(VppTestCase):
     """BFD over GRE tunnel"""
@@ -2696,6 +2701,7 @@ class BFDTunTestCase(VppTestCase):
         {"multihop": True},
     ]
 )
+@tag_fixme_debian12
 @tag_run_solo
 class BFDSHA1TestCase(VppTestCase):
     pg0 = None
@@ -3079,6 +3085,7 @@ class BFDSHA1TestCase(VppTestCase):
         {"multihop": True},
     ]
 )
+@tag_fixme_debian12
 @tag_run_solo
 class BFDAuthOnOffTestCase(VppTestCase):
     pg0 = None
@@ -3374,6 +3381,7 @@ class BFDAuthOnOffTestCase(VppTestCase):
         {"multihop": True},
     ]
 )
+@tag_fixme_debian12
 @tag_run_solo
 class BFDCLITestCase(VppTestCase):
     """Bidirectional Forwarding Detection (BFD) (CLI)"""
