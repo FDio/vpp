@@ -106,6 +106,11 @@ func (s *Veths6Suite) SetupClientVpp() {
 	AssertNotEqual(0, idx)
 }
 
+func (s *Veths6Suite) SetupAppContainers() {
+	s.Containers.ClientApp.Run()
+	s.Containers.ServerApp.Run()
+}
+
 var _ = Describe("Veths6Suite", Ordered, ContinueOnFailure, Label("Veth", "IPv6"), func() {
 	var s Veths6Suite
 	BeforeAll(func() {

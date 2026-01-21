@@ -223,7 +223,7 @@ func vppConnectProxyStressLoad(s *VppProxySuite, proxyPort string) {
 	targetUri := fmt.Sprintf("%s:%d", s.ServerAddr(), s.Ports.Server)
 	Log("Running 30s test @ " + targetUri)
 
-	for i := 0; i < 1000; i++ {
+	for range 1000 {
 		wg.Add(1)
 		go func() {
 			var tot, timed, re, we uint32
@@ -306,7 +306,7 @@ func vppConnectProxyStressLoad(s *VppProxySuite, proxyPort string) {
 
 		}()
 	}
-	for i := 0; i < 30; i++ {
+	for range 30 {
 		GinkgoWriter.Print(".")
 		time.Sleep(time.Second)
 	}
@@ -590,7 +590,7 @@ func vppConnectUdpStressLoad(s *VppUdpProxySuite) {
 	stop := make(chan struct{})
 
 	Log("Running 30s test @ " + targetUri)
-	for i := 0; i < 1000; i++ {
+	for range 1000 {
 		wg.Add(1)
 		go func() {
 			var tot, timed, re, we uint32

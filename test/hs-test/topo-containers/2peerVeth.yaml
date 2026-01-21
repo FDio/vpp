@@ -17,9 +17,11 @@ containers:
     volumes:
       - <<: *client-vol
   - name: "server-app"
+    is-optional: true
     volumes:
       - <<: *server-vol
   - name: "client-app"
+    is-optional: true
     volumes:
       - <<: *client-vol
 

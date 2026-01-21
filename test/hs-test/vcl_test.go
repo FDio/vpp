@@ -59,6 +59,8 @@ func XEchoVclClientTcpTest(s *VethsSuite) {
 }
 
 func testXEchoVclClient(s *VethsSuite, proto string) {
+	s.SetupAppContainers()
+
 	serverVpp := s.Containers.ServerVpp.VppInstance
 
 	serverVpp.Vppctl("test echo server uri %s://%s/%s fifo-size 64k", proto, s.Interfaces.Server.Ip4AddressString(), s.Ports.Port1)
@@ -86,6 +88,8 @@ func XEchoVclServerTcpTest(s *VethsSuite) {
 }
 
 func testXEchoVclServer(s *VethsSuite, proto string) {
+	s.SetupAppContainers()
+
 	ctx, cancel := context.WithCancel(context.Background())
 	var wg sync.WaitGroup
 	defer cancel()
@@ -114,6 +118,8 @@ func testXEchoVclServer(s *VethsSuite, proto string) {
 }
 
 func testVclEcho(s *VethsSuite, proto string, extraArgs ...string) (string, string) {
+	s.SetupAppContainers()
+
 	extras := ""
 	if len(extraArgs) > 0 {
 		extras = strings.Join(extraArgs, " ")
@@ -269,6 +275,8 @@ func VclRetryAttachTest(s *VethsSuite) {
 }
 
 func testRetryAttach(s *VethsSuite, proto string) {
+	s.SetupAppContainers()
+
 	srvVppContainer := s.GetTransientContainerByName("server-vpp")
 	echoSrvContainer := s.Containers.ServerApp
 	serverVethAddress := s.Interfaces.Server.Ip4AddressString()
@@ -321,6 +329,8 @@ func testRetryAttach(s *VethsSuite, proto string) {
 }
 
 func VclClUdpDscpTest(s *VethsSuite) {
+	s.SetupAppContainers()
+
 	srvVppCont := s.Containers.ServerVpp
 	srvAppCont := s.Containers.ServerApp
 	srvAppCont.CreateFile("/vcl.conf", getVclConfig(srvVppCont))
