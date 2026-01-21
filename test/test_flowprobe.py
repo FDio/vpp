@@ -379,9 +379,9 @@ class MethodHolder(VppTestCase):
         return p
 
 
+@tag_fixme_debian12
 @tag_run_solo
 @tag_fixme_vpp_workers
-@tag_fixme_debian12
 @unittest.skipIf(
     "flowprobe" in config.excluded_plugins, "Exclude Flowprobe plugin tests"
 )
