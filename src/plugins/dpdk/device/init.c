@@ -329,6 +329,7 @@ dpdk_lib_init (dpdk_main_t * dm)
       u8 addr[6];
       int rv, q;
       struct rte_eth_dev_info di;
+      struct rte_pci_device *pci_dev;
       dpdk_device_config_t *devconf = 0;
       vnet_eth_interface_registration_t eir = {};
       dpdk_driver_t *dr;
@@ -393,7 +394,6 @@ dpdk_lib_init (dpdk_main_t * dm)
 	}
       else
 	{
-	  struct rte_pci_device *pci_dev;
 	  if (dr && dr->interface_name_prefix)
 	    {
 	      /* prefix override by driver */
@@ -433,6 +433,38 @@ dpdk_lib_init (dpdk_main_t * dm)
 	      (di.switch_info.port_id != (uint16_t) -1))
 	    xd->name = format (xd->name, "/%d", di.switch_info.port_id);
 	}
+
+      /* Check for interface name collision */
+      {
+	vnet_interface_main_t *im = &vnm->interface_main;
+
+	if (im->hw_interface_by_name)
+	  {
+	    uword *existing =
+	      hash_get_mem (im->hw_interface_by_name, xd->name);
+	    if (existing)
+	      {
+		clib_error_t *error;
+
+		error = clib_error_return (
+		  0,
+		  "DPDK interface name collision: '%v' (PCI "
+		  "%04x:%02x:%02x.%x) "
+		  "already exists. Use 'interface-name-include-domain' or "
+		  "manually name devices.",
+		  xd->name, pci_dev ? pci_dev->addr.domain : 0,
+		  pci_dev ? pci_dev->addr.bus : 0,
+		  pci_dev ? pci_dev->addr.devid : 0,
+		  pci_dev ? pci_dev->addr.function : 0);
+
+		/* Free allocated resources before returning error */
+		vec_free (xd->name);
+		vec_set_len (dm->devices, vec_len (dm->devices) - 1);
+
+		return error;
+	      }
+	  }
+      }
 
       /* number of RX and TX queues */
       if (devconf->num_tx_queues > 0)
