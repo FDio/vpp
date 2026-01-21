@@ -1119,4 +1119,7 @@ if __name__ == "__main__":
                 print("Test run was successful")
             else:
                 print("%s attempt(s) left." % attempts)
+        print(f"\n{'='*80}", flush=True)
+        print(f"TEST RUN COMPLETE - exiting with code {exit_code}", flush=True)
+        print(f"{'='*80}\n", flush=True)
         sys.exit(exit_code)
