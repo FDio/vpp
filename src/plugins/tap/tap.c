@@ -998,7 +998,16 @@ tap_create_if (vlib_main_t *vm, tap_create_if_args_t *args)
   vnet_buffer (bt)->sw_if_index[VLIB_RX] = tif->sw_if_index;
   vnet_buffer (bt)->sw_if_index[VLIB_TX] = ~0;
   bt->flags = VLIB_BUFFER_TOTAL_LENGTH_VALID;
-  bt->current_data = is_tun ? TUN_DATA_OFFSET : 0;
+  if (is_tun)
+    {
+      bt->current_data = TUN_DATA_OFFSET;
+      bt->flags |= VNET_BUFFER_F_L3_HDR_OFFSET_VALID;
+      vnet_buffer (bt)->l3_hdr_offset = TUN_DATA_OFFSET;
+    }
+  else
+    {
+      bt->current_data = 0;
+    }
   tap_template_update (tif);
 
   vnet_hw_interface_set_flags (vnm, tif->hw_if_index,
