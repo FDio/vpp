@@ -188,7 +188,7 @@ def generate_vpp_interface_tests(tests, test_class):
                 setattr(test_class, test_name, test_func)
 
 
-@tag_fixme_debian12
+@tag_fixme_debian12("Intermittent failure on Debian 12 - CI issue")
 class TestVPPInterfacesQemu:
     """Test VPP interfaces inside a QEMU VM for IPv4/v6.
 

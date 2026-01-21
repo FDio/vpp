@@ -913,7 +913,7 @@ def get_nat44_ei_in2out_worker_index(ip, vpp_worker_count):
     return 1 + h % vpp_worker_count
 
 
-@tag_fixme_debian12
+@tag_fixme_debian12("Intermittent failure on Debian 12 - CI issue")
 @unittest.skipIf("nat" in config.excluded_plugins, "Exclude NAT plugin tests")
 class TestNAT44EI(MethodHolder):
     """NAT44EI Test Cases"""

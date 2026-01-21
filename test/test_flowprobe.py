@@ -381,7 +381,7 @@ class MethodHolder(VppTestCase):
 
 @tag_run_solo
 @tag_fixme_vpp_workers
-@tag_fixme_debian12
+@tag_fixme_debian12("Intermittent failure on Debian 12 - CI issue")
 @unittest.skipIf(
     "flowprobe" in config.excluded_plugins, "Exclude Flowprobe plugin tests"
 )

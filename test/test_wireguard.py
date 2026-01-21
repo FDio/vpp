@@ -512,6 +512,7 @@ def filter_out_misc_and_handshake_init(p):
     "wireguard" in config.excluded_plugins, "Exclude Wireguard plugin tests"
 )
 @tag_run_solo
+@tag_fixme_debian12("Intermittent failure on Debian 12 - CI issue")
 class TestWg(VppTestCase):
     """Wireguard Test Case"""
 
@@ -2914,6 +2915,7 @@ class WireguardHandoffTests(TestWg):
     "wireguard" in config.excluded_plugins, "Exclude Wireguard plugin tests"
 )
 @tag_run_solo
+@tag_fixme_debian12("Intermittent failure on Debian 12 - CI issue")
 class TestWgFIB(VppTestCase):
     """Wireguard FIB Test Case"""
 

@@ -18,7 +18,7 @@ from config import config
 
 
 @tag_run_solo
-@tag_fixme_debian12
+@tag_fixme_debian12("Intermittent failure on Debian 12 - CI issue")
 @unittest.skipIf("memif" in config.excluded_plugins, "Exclude Memif plugin tests")
 class TestMemif(VppTestCase):
     """Memif Test Case"""
