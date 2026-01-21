@@ -306,6 +306,13 @@ class VppAsfTestCase(CPUInterface, unittest.TestCase):
                 cls = unittest.skip("Skipping @tag_fixme_asan tests")(cls)
 
     @classmethod
+    def skip_fixme_debian12(cls):
+        """if @tag_fixme_debian12 & running on Debian 12, then mark for skip"""
+        if cls.has_tag(TestCaseTag.FIXME_DEBIAN12):
+            if is_distro_debian12:
+                cls = unittest.skip("Skipping @tag_fixme_debian12 tests")(cls)
+
+    @classmethod
     def instance(cls):
         """Return the instance of this testcase"""
         return cls.test_instance
@@ -1363,6 +1370,10 @@ class VppTestResult(unittest.TestResult):
             if test.has_tag(TestCaseTag.FIXME_ASAN):
                 test_title = colorize(f"FIXME with ASAN: {test_title}", RED)
                 test.skip_fixme_asan()
+
+            if test.has_tag(TestCaseTag.FIXME_DEBIAN12):
+                test_title = colorize(f"FIXME with Debian 12: {test_title}", RED)
+                test.skip_fixme_debian12()
 
             if hasattr(test, "vpp_worker_count"):
                 if test.vpp_worker_count == 0:
