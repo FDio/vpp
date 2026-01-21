@@ -290,6 +290,12 @@ typedef struct
    */
   u8 interface_name_format_decimal;
 
+  /*
+   * Include PCI domain in interface names: xxxEthernet-%x/%x/%x/%x
+   * instead of xxxEthernet%x/%x/%x (default: 0 for backward compatibility)
+   */
+  u8 include_pci_domain;
+
   /* per-device config */
   dpdk_device_config_t default_devconf;
   dpdk_device_config_t *dev_confs;
