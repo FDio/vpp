@@ -409,7 +409,22 @@ dpdk_device_start (dpdk_device_t * xd)
   else
     rte_eth_promiscuous_disable (xd->port_id);
 
-  rte_eth_allmulticast_enable (xd->port_id);
+  rv = rte_eth_allmulticast_enable (xd->port_id);
+  if (rv)
+    {
+      /* Fallback: manually add critical IPv6 multicast addresses */
+      struct rte_ether_addr mc_addrs[2];
+
+      /* DHCPv6 multicast (ff02::1:2 -> 33:33:00:01:00:02) */
+      mc_addrs[0] = (struct rte_ether_addr){ .addr_bytes = { 0x33, 0x33, 0x00, 0x01, 0x00, 0x02 } };
+
+      /* IPv6 all-nodes multicast (ff02::1 -> 33:33:00:00:00:01) */
+      mc_addrs[1] = (struct rte_ether_addr){ .addr_bytes = { 0x33, 0x33, 0x00, 0x00, 0x00, 0x01 } };
+
+      rv = rte_eth_dev_set_mc_addr_list (xd->port_id, mc_addrs, 2);
+      if (rv)
+	dpdk_device_error (xd, "rte_eth_dev_set_mc_addr_list", rv);
+    }
 
   dpdk_log_info ("Interface %U started", format_dpdk_device_name,
 		 xd->device_index);
