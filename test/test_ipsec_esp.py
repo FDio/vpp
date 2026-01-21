@@ -29,6 +29,7 @@ from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_ip import DpoProto
 from vpp_papi import VppEnum
 from config import config
+from asfframework import tag_fixme_debian12
 
 NUM_PKTS = 67
 engines_supporting_chain_bufs = ["openssl", "async"]
@@ -1077,6 +1078,7 @@ class MyParameters:
         }
 
 
+@tag_fixme_debian12
 @unittest.skipIf(
     "ping" in config.excluded_plugins, "Exclude tests requiring Ping plugin"
 )
