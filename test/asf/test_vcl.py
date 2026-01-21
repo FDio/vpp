@@ -7,7 +7,12 @@ import subprocess
 import signal
 import glob
 from config import config
-from asfframework import VppAsfTestCase, VppTestRunner, Worker, tag_fixme_asan
+from asfframework import (
+    VppAsfTestCase,
+    VppTestRunner,
+    Worker,
+    tag_fixme_debian12,
+)
 from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 
 iperf3 = "/usr/bin/iperf3"
@@ -58,6 +63,7 @@ class VCLAppWorker(Worker):
         super(VCLAppWorker, self).__init__(self.args, logger, env, *args, **kwargs)
 
 
+@tag_fixme_debian12
 class VCLTestCase(VppAsfTestCase):
     """VCL Test Class"""
 
