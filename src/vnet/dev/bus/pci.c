@@ -52,6 +52,9 @@ vnet_dev_bus_pci_get_device_info (vlib_main_t *vm, char *device_id)
   info->addr = addr;
   info->vendor_id = di->vendor_id;
   info->device_id = di->device_id;
+  info->sub_vendor_id = di->config.sub_vendor_id;
+  info->sub_device_id = di->config.sub_device_id;
+  info->class_code = (di->device_class << 8) | di->config.prog_if;
   info->revision = di->revision;
 
   vlib_pci_free_device_info (di);
@@ -192,56 +195,56 @@ vnet_dev_bus_pci_dma_mem_free (vlib_main_t *vm, vnet_dev_t *dev, void *p)
 }
 
 vnet_dev_rv_t
-vnet_dev_pci_read_config_header (vlib_main_t *vm, vnet_dev_t *dev,
-				 vlib_pci_config_hdr_t *hdr)
+vnet_dev_pci_config_read (vlib_main_t *vm, vnet_dev_t *dev, u32 offset, u32 len, u32 *val)
 {
   vlib_pci_dev_handle_t h = vnet_dev_get_pci_handle (dev);
   clib_error_t *err;
 
-  err = vlib_pci_read_write_config (vm, h, VLIB_READ, 0, hdr, sizeof (*hdr));
+  err = vlib_pci_read_write_config (vm, h, VLIB_READ, offset, val, len);
   if (err)
     {
-      log_err (dev, "pci_read_config_header: %U", format_clib_error, err);
+      log_err (dev, "pci_config_read: %U", format_clib_error, err);
       clib_error_free (err);
       return VNET_DEV_ERR_BUS;
     }
+
   return VNET_DEV_OK;
 }
 
 vnet_dev_rv_t
-vnet_dev_pci_read_config (vlib_main_t *vm, vnet_dev_t *dev,
-			  vlib_pci_config_t *config)
+vnet_dev_pci_config_write (vlib_main_t *vm, vnet_dev_t *dev, u32 offset, u32 len, u32 val)
 {
   vlib_pci_dev_handle_t h = vnet_dev_get_pci_handle (dev);
   clib_error_t *err;
 
-  err =
-    vlib_pci_read_write_config (vm, h, VLIB_READ, 0, config, sizeof (*config));
+  err = vlib_pci_read_write_config (vm, h, VLIB_WRITE, offset, &val, len);
   if (err)
     {
-      log_err (dev, "pci_read_config: %U", format_clib_error, err);
+      log_err (dev, "pci_config_write: %U", format_clib_error, err);
       clib_error_free (err);
       return VNET_DEV_ERR_BUS;
     }
+
   return VNET_DEV_OK;
+}
+
+vnet_dev_rv_t
+vnet_dev_pci_read_config_header (vlib_main_t *vm, vnet_dev_t *dev, vlib_pci_config_hdr_t *hdr)
+{
+  return vnet_dev_pci_config_read (vm, dev, 0, sizeof (*hdr), (u32 *) hdr);
+}
+
+vnet_dev_rv_t
+vnet_dev_pci_read_config (vlib_main_t *vm, vnet_dev_t *dev, vlib_pci_config_t *config)
+{
+  return vnet_dev_pci_config_read (vm, dev, 0, sizeof (*config), (u32 *) config);
 }
 
 vnet_dev_rv_t
 vnet_dev_pci_read_config_ext (vlib_main_t *vm, vnet_dev_t *dev,
 			      vlib_pci_config_ext_t *config_ext)
 {
-  vlib_pci_dev_handle_t h = vnet_dev_get_pci_handle (dev);
-  clib_error_t *err;
-
-  err = vlib_pci_read_write_config (vm, h, VLIB_READ, 0, config_ext,
-				    sizeof (*config_ext));
-  if (err)
-    {
-      log_err (dev, "pci_read_config_ext: %U", format_clib_error, err);
-      clib_error_free (err);
-      return VNET_DEV_ERR_BUS;
-    }
-  return VNET_DEV_OK;
+  return vnet_dev_pci_config_read (vm, dev, 0, sizeof (*config_ext), (u32 *) config_ext);
 }
 
 vnet_dev_rv_t
@@ -574,6 +577,101 @@ vnet_dev_pci_bus_master_disable (vlib_main_t *vm, vnet_dev_t *dev)
   return VNET_DEV_OK;
 }
 
+u8
+vnet_dev_pci_find_next_std_capa_offset (vlib_main_t *vm, vnet_dev_t *dev, u8 capa_id,
+					u8 current_capa_offset)
+{
+  u32 pos = current_capa_offset;
+  u32 val;
+  u8 id, next;
+
+  if (pos == 0)
+    {
+      if (vnet_dev_pci_config_read (vm, dev, 0x34, 1, &pos) != VNET_DEV_OK)
+	return 0;
+    }
+  else
+    {
+      if (vnet_dev_pci_config_read (vm, dev, pos + 1, 1, &pos) != VNET_DEV_OK)
+	return 0;
+    }
+
+  pos &= 0xff;
+
+  while (pos)
+    {
+      if (vnet_dev_pci_config_read (vm, dev, pos, 2, &val) != VNET_DEV_OK)
+	return 0;
+
+      id = val & 0xff;
+      next = (val >> 8) & 0xff;
+
+      if (id == capa_id)
+	return pos;
+
+      pos = next;
+    }
+  return 0;
+}
+
+vnet_dev_rv_t
+vnet_dev_pci_set_power_state (vlib_main_t *vm, vnet_dev_t *dev, u8 state)
+{
+  u32 ctrl;
+  vnet_dev_rv_t rv;
+  u8 pos;
+
+  log_debug (dev, "pci_set_power_state: start state %u", state);
+
+  pos = vnet_dev_pci_find_next_std_capa_offset (vm, dev, VNET_DEV_PCI_STD_CAP_PM, 0);
+  if (!pos)
+    return VNET_DEV_ERR_NOT_SUPPORTED;
+
+  rv = vnet_dev_pci_config_read (vm, dev, pos + 4, 2, &ctrl);
+  if (rv != VNET_DEV_OK)
+    return rv;
+
+  if ((ctrl & 0x3) != (state & 0x3))
+    {
+      log_debug (dev, "pci_set_power_state: setting state to D%u", state & 0x3);
+      ctrl &= ~0x3;
+      ctrl |= (state & 0x3);
+      rv = vnet_dev_pci_config_write (vm, dev, pos + 4, 2, ctrl);
+      if (rv != VNET_DEV_OK)
+	return rv;
+
+      /* Wait for transition (D3->D0 requires 10ms) */
+      if ((state & 0x3) == 0)
+	vlib_process_suspend (vm, 10e-3);
+      log_debug (dev, "pci_set_power_state: transition complete");
+    }
+  return VNET_DEV_OK;
+}
+
+vnet_dev_rv_t
+vnet_dev_pci_get_power_state (vlib_main_t *vm, vnet_dev_t *dev, u8 *state)
+{
+  u32 ctrl;
+  vnet_dev_rv_t rv;
+  u8 pos;
+
+  pos = vnet_dev_pci_find_next_std_capa_offset (vm, dev, VNET_DEV_PCI_STD_CAP_PM, 0);
+  if (!pos)
+    {
+      *state = 0; /* Assume D0 if no PM capability */
+      return VNET_DEV_OK;
+    }
+
+  rv = vnet_dev_pci_config_read (vm, dev, pos + 4, 2, &ctrl);
+  if (rv != VNET_DEV_OK)
+    {
+      *state = 0; /* Assume D0 if error */
+      return VNET_DEV_OK;
+    }
+
+  *state = ctrl & 0x3;
+  return VNET_DEV_OK;
+}
 static u8 *
 pci_ids_helper (u16 vid, u16 did)
 {
@@ -685,23 +783,18 @@ format_dev_pci_device_info (u8 *s, va_list *args)
   vnet_dev_bus_pci_device_data_t *pdd = vnet_dev_get_bus_pci_device_data (dev);
   vlib_main_t *vm = vlib_get_main ();
   vlib_pci_config_t cfg = {};
-  clib_error_t *err;
 
   s = format (s, "PCIe address is %U", format_vlib_pci_addr, &pdd->addr);
 
   if (pdd->is_passive)
     return s;
 
-  err = vlib_pci_read_write_config (vm, pdd->handle, VLIB_READ, 0, &cfg,
-				    sizeof (cfg));
-  if (!err)
+  if (vnet_dev_pci_config_read (vm, dev, 0, sizeof (cfg), (u32 *) &cfg) == VNET_DEV_OK)
     {
       s = format (s, ", port is %U, speed is %U (max %U)",
 		  format_vlib_pci_link_port, &cfg, format_vlib_pci_link_speed,
 		  &cfg, format_vlib_pci_link_speed_cap, &cfg);
     }
-  else
-    clib_error_free (err);
 
   return s;
 }

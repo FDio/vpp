@@ -272,6 +272,9 @@ typedef enum pci_capability_type
   /* Hypertransport. */
   PCI_CAP_ID_HYPERTRANSPORT = 8,
 
+  /* Vendor Specific */
+  PCI_CAP_ID_VNDR = 9,
+
   /* PCI Standard Hot-Plug Controller */
   PCI_CAP_ID_SHPC = 0xc,
 
