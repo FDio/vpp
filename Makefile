@@ -101,7 +101,18 @@ DEB_DEPENDS += libnl-3-dev libnl-route-3-dev libmnl-dev
 DEB_DEPENDS += python3-virtualenv
 DEB_DEPENDS += libssl-dev
 DEB_DEPENDS += libelf-dev libpcap-dev # for libxdp (af_xdp)
+# FIXME: This is a workaround to avoid installing a bad version of iperf3 in the CI
+#        which is not currently installed in the docker executor image:
+#
+#        "Unpacking iperf3 (3.9-1+deb11u1ubuntu0.1) over (3.9-1+deb11u1build0.22.04.1) ..."
+#
+ifeq ($(OS_VERSION_ID),22.04)
+ifndef GITHUB_REPO_URL
 DEB_DEPENDS += iperf3 # for 'make test TEST=vcl'
+endif
+else
+DEB_DEPENDS += iperf3 # for 'make test TEST=vcl'
+endif
 DEB_DEPENDS += iperf ethtool  # for 'make test TEST=vm_vpp_interfaces'
 DEB_DEPENDS += libpcap-dev
 DEB_DEPENDS += tshark
