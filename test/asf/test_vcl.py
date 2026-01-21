@@ -7,7 +7,12 @@ import subprocess
 import signal
 import glob
 from config import config
-from asfframework import VppAsfTestCase, VppTestRunner, Worker
+from asfframework import (
+    VppAsfTestCase,
+    VppTestRunner,
+    Worker,
+    tag_fixme_debian12,
+)
 from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 
 iperf3 = "/usr/bin/iperf3"
@@ -564,6 +569,7 @@ class VCLThruHostStackEcho(VCLTestCase):
         self.logger.debug(self.vapi.cli("show app mq"))
 
 
+@tag_fixme_debian12
 @unittest.skipIf(
     "hs_apps" in config.excluded_plugins, "Exclude tests requiring hs_apps plugin"
 )
