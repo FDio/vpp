@@ -16,6 +16,24 @@
       "message": "great idea, thank you.\nmaybe worth to set local struct bpf_program *prog either to \u0026bfm-\u003eprog or bfm-\u003eprog_raw by condition and call pcap_offline_filter just once ~ with ~\nres \u003d pcap_offline_filter (prog, \u0026phdr, vlib_buffer_get_current (b));",
       "revId": "1b4d71b039a4ecfc3b2ebe562433e58d9d92e639",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4ac91d11_bfb0ea02",
+        "filename": "src/plugins/bpf_trace_filter/bpf_trace_filter.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 112,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2026-01-21T16:42:01Z",
+      "side": 1,
+      "message": "Note sure it will make the code more readable, I think we can keep it as is!",
+      "parentUuid": "e46ba70f_5c1821e7",
+      "revId": "1b4d71b039a4ecfc3b2ebe562433e58d9d92e639",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
