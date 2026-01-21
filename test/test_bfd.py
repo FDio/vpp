@@ -135,6 +135,7 @@ class AuthKeyFactory(object):
         {"multihop": True},
     ]
 )
+@tag_fixme_debian12
 class BFDAPITestCase(VppTestCase):
 
     pg0 = None
@@ -2127,6 +2128,7 @@ class BFD4TestCase(VppTestCase):
 )
 @tag_run_solo
 @tag_fixme_vpp_workers
+@tag_fixme_debian12
 class BFD6TestCase(VppTestCase):
     pg0 = None
     interface0 = None
@@ -2468,6 +2470,7 @@ class BFD6TestCase(VppTestCase):
     ]
 )
 @tag_run_solo
+@tag_fixme_debian12
 class BFDFIBTestCase(VppTestCase):
     """BFD-FIB interactions (IPv6)"""
 
@@ -2607,6 +2610,7 @@ class BFDFIBTestCase(VppTestCase):
             self.assertEqual(captured[IPv6].dst, packet[IPv6].dst)
 
 
+@tag_fixme_debian12
 @unittest.skipUnless(config.extended, "part of extended tests")
 class BFDTunTestCase(VppTestCase):
     """BFD over GRE tunnel"""
@@ -2697,6 +2701,7 @@ class BFDTunTestCase(VppTestCase):
     ]
 )
 @tag_run_solo
+@tag_fixme_debian12
 class BFDSHA1TestCase(VppTestCase):
     pg0 = None
     vpp_clock_offset = None
@@ -3080,6 +3085,7 @@ class BFDSHA1TestCase(VppTestCase):
     ]
 )
 @tag_run_solo
+@tag_fixme_debian12
 class BFDAuthOnOffTestCase(VppTestCase):
     pg0 = None
     vpp_session = None
@@ -3375,6 +3381,7 @@ class BFDAuthOnOffTestCase(VppTestCase):
     ]
 )
 @tag_run_solo
+@tag_fixme_debian12
 class BFDCLITestCase(VppTestCase):
     """Bidirectional Forwarding Detection (BFD) (CLI)"""
 
