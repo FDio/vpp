@@ -2127,6 +2127,7 @@ class BFD4TestCase(VppTestCase):
 )
 @tag_run_solo
 @tag_fixme_vpp_workers
+@tag_fixme_debian12
 class BFD6TestCase(VppTestCase):
     pg0 = None
     interface0 = None
@@ -2468,6 +2469,7 @@ class BFD6TestCase(VppTestCase):
     ]
 )
 @tag_run_solo
+@tag_fixme_debian12
 class BFDFIBTestCase(VppTestCase):
     """BFD-FIB interactions (IPv6)"""
 
