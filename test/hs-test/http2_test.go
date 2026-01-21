@@ -147,7 +147,7 @@ func Http2ServerMemLeakTest(s *Http2Suite) {
 	args := fmt.Sprintf("--max-time 10 --noproxy '*' --http2-prior-knowledge -z %s %s %s %s", target, target, target, target)
 	_, log := RunCurlContainer(s.Containers.Curl, args)
 	AssertContains(log, "HTTP/2 200")
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		time.Sleep(time.Second * 1)
 		AssertNil(s.Containers.Curl.Start())
 	}
@@ -159,7 +159,7 @@ func Http2ServerMemLeakTest(s *Http2Suite) {
 	traces1, err := vpp.GetMemoryTrace()
 	AssertNil(err, fmt.Sprint(err))
 
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		time.Sleep(time.Second * 1)
 		AssertNil(s.Containers.Curl.Start())
 	}

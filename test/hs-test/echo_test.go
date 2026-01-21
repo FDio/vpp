@@ -76,7 +76,7 @@ func EchoBuiltinPeriodicReportTotalTest(s *VethsSuite) {
 		// Check we got a correct number of reports
 		AssertEqual(4, len(matches))
 		// Verify TX numbers
-		for i := 0; i < 4; i++ {
+		for i := range 4 {
 			mbytes, _ := strconv.ParseFloat(matches[i][2], 32)
 			AssertEqualWithinThreshold(mbytes, 2*(i+1), 0.1)
 			rtt, _ := strconv.ParseFloat(matches[i][3], 32)
@@ -111,7 +111,7 @@ func EchoBuiltinPeriodicReportUDPTest(s *VethsSuite) {
 		// Check we got a correct number of reports
 		AssertEqual(4, len(matches))
 		// Verify TX numbers
-		for i := 0; i < 4; i++ {
+		for i := range 4 {
 			mbytes, _ := strconv.ParseFloat(matches[i][3], 32)
 			AssertEqualWithinThreshold(mbytes, 1.5, 0.1)
 			rtt, _ := strconv.ParseFloat(matches[i][4], 32)
@@ -154,7 +154,7 @@ func EchoBuiltinPeriodicReportTest(s *VethsSuite) {
 		// Check we got a correct number of reports
 		AssertEqual(4, len(matches))
 		// Verify TX numbers
-		for i := 0; i < 4; i++ {
+		for i := range 4 {
 			mbytes, _ := strconv.ParseFloat(matches[i][3], 32)
 			AssertEqualWithinThreshold(mbytes, 2, 0.1)
 			rtt, _ := strconv.ParseFloat(matches[i][4], 32)
