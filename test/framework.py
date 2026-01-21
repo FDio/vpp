@@ -101,6 +101,8 @@ class VppTestCase(VppAsfTestCase):
 
     @classmethod
     def setUpClass(cls):
+        if super(VppTestCase, cls).is_fixme_debian12:
+            return
         super(VppTestCase, cls).setUpClass()
         cls.reset_packet_infos()
         cls._pcaps = []
@@ -108,6 +110,8 @@ class VppTestCase(VppAsfTestCase):
 
     @classmethod
     def tearDownClass(cls):
+        if super(VppTestCase, cls).is_fixme_debian12:
+            return
         cls.logger.debug("--- tearDownClass() for %s called ---" % cls.__name__)
         cls.reset_packet_infos()
         super(VppTestCase, cls).tearDownClass()

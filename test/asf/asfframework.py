@@ -306,6 +306,20 @@ class VppAsfTestCase(CPUInterface, unittest.TestCase):
                 cls = unittest.skip("Skipping @tag_fixme_asan tests")(cls)
 
     @classmethod
+    def is_fixme_debian12(cls):
+        """if @tag_fixme_debian12 & running on Debian 12"""
+        if cls.has_tag(TestCaseTag.FIXME_DEBIAN12):
+            if is_distro_debian12:
+                return True
+        return False
+
+    @classmethod
+    def skip_fixme_debian12(cls):
+        """if @tag_fixme_debian12 & running on Debian 12 - mark for skip"""
+        if cls.is_fixme_debian12:
+            cls = unittest.skip("Skipping @tag_fixme_debian12 tests")(cls)
+
+    @classmethod
     def instance(cls):
         """Return the instance of this testcase"""
         return cls.test_instance
@@ -620,6 +634,8 @@ class VppAsfTestCase(CPUInterface, unittest.TestCase):
         Perform class setup before running the testcase
         Remove shared memory files, start vpp and connect the vpp-api
         """
+        if cls.is_fixme_debian12:
+            return
         super(VppAsfTestCase, cls).setUpClass()
         cls.logger = get_logger(cls.__name__)
         cls.logger.debug(f"--- START setUpClass() {cls.__name__} ---")
@@ -742,17 +758,39 @@ class VppAsfTestCase(CPUInterface, unittest.TestCase):
         """
         cls._debug_quit()
 
+        # Get timeout from environment or use default (None = wait forever)
+        # Set VPP_TEARDOWN_TIMEOUT to enable timeout (e.g., 30 for 30 seconds)
+        thread_join_timeout = os.environ.get("VPP_TEARDOWN_TIMEOUT")
+        if thread_join_timeout:
+            thread_join_timeout = float(thread_join_timeout)
+            cls.logger.info(
+                f"Using thread join timeout: {thread_join_timeout}s "
+                f"from VPP_TEARDOWN_TIMEOUT"
+            )
+        else:
+            thread_join_timeout = None
+
         # first signal that we want to stop the pump thread, then wake it up
         if hasattr(cls, "pump_thread_stop_flag"):
             cls.pump_thread_stop_flag.set()
         if hasattr(cls, "pump_thread_wakeup_pipe"):
             os.write(cls.pump_thread_wakeup_pipe[1], b"ding dong wake up")
         if hasattr(cls, "pump_thread"):
-            cls.logger.debug("Waiting for pump thread to stop")
-            cls.pump_thread.join()
+            cls.logger.info(f"[{cls.__name__}] Waiting for pump thread to stop...")
+            cls.pump_thread.join(timeout=thread_join_timeout)
+            if thread_join_timeout and cls.pump_thread.is_alive():
+                cls.logger.error(
+                    f"[{cls.__name__}] PUMP THREAD TIMEOUT after "
+                    f"{thread_join_timeout}s - thread did not stop!"
+                )
         if hasattr(cls, "vpp_stderr_reader_thread"):
-            cls.logger.debug("Waiting for stderr pump to stop")
-            cls.vpp_stderr_reader_thread.join()
+            cls.logger.info(f"[{cls.__name__}] Waiting for stderr pump to stop...")
+            cls.vpp_stderr_reader_thread.join(timeout=thread_join_timeout)
+            if thread_join_timeout and cls.vpp_stderr_reader_thread.is_alive():
+                cls.logger.error(
+                    f"[{cls.__name__}] STDERR PUMP THREAD TIMEOUT after "
+                    f"{thread_join_timeout}s - thread did not stop!"
+                )
 
         if hasattr(cls, "vpp"):
             if hasattr(cls, "vapi"):
@@ -808,13 +846,15 @@ class VppAsfTestCase(CPUInterface, unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         """Perform final cleanup after running all tests in this test-case"""
-        cls.logger.debug(f"--- START tearDownClass() {cls.__name__} ---")
+        if cls.is_fixme_debian12:
+            return
+        cls.logger.info(f"--- START tearDownClass() {cls.__name__} ---")
         cls.reporter.send_keep_alive(cls, "tearDownClass")
         cls.quit()
         cls.file_handler.close()
         if config.debug_framework:
             debug_internal.on_tear_down_class(cls)
-        cls.logger.debug(f"--- END tearDownClass() {cls.__name__} ---")
+        cls.logger.info(f"--- END tearDownClass() {cls.__name__} ---")
 
     def show_commands_at_teardown(self):
         """Allow subclass specific teardown logging additions."""
@@ -1363,6 +1403,10 @@ class VppTestResult(unittest.TestResult):
             if test.has_tag(TestCaseTag.FIXME_ASAN):
                 test_title = colorize(f"FIXME with ASAN: {test_title}", RED)
                 test.skip_fixme_asan()
+
+            if test.has_tag(TestCaseTag.FIXME_DEBIAN12):
+                test_title = colorize(f"FIXME with Debian 12: {test_title}", RED)
+                test.skip_fixme_debian12()
 
             if hasattr(test, "vpp_worker_count"):
                 if test.vpp_worker_count == 0:
