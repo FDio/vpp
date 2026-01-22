@@ -44,7 +44,7 @@ quic_update_timer (quic_worker_ctx_t *wc, quic_ctx_t *ctx,
   next_interval = next_timeout - wc->time_now;
   if (next_timeout == 0 || next_interval <= 0)
     {
-      if (ctx->c_s_index == QUIC_SESSION_INVALID)
+      if (ctx->c_s_index == QUIC_SESSION_INVALID || ctx->flags & QUIC_F_NO_APP_SESSION)
 	{
 	  next_interval = 1;
 	}
