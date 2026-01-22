@@ -80,17 +80,22 @@ class VppIperf:
         args.extend(self.server_args.split())
         cmd = " ".join(args)
         self.logger.debug(f"Starting iperf server: {cmd}")
+        # Use Popen for daemonized process - don't wait for it to complete
+        # The -D flag makes iperf3 daemonize, so we don't need to wait
+        # Just start it and return the command for later cleanup
         try:
-            subprocess.run(
+            subprocess.Popen(
                 cmd,
-                timeout=self.duration + 5,
                 encoding="utf-8",
                 shell=True,
                 stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
+                stderr=subprocess.PIPE,
             )
-        except subprocess.TimeoutExpired as e:
-            raise Exception("Error: Timeout expired for iPerf", e.output)
+            # Give the daemon a moment to start
+            time.sleep(0.5)
+        except Exception as e:
+            self.logger.error(f"Failed to start iperf server: {e}")
+            raise
         return args[4:]
 
     def start_iperf_client(self):
