@@ -110,6 +110,14 @@ class VppPolicer(VppObject):
                 return True
         return False
 
+    def query_policer_interface(self, sw_if_index, dir: Dir):
+        ret = self._test.vapi.policer_interface_get(sw_if_index=sw_if_index)
+        if (dir == Dir.RX and ret.input_policer_index == self._policer_index) or (
+            dir == Dir.TX and ret.output_policer_index == self._policer_index
+        ):
+            return True
+        return False
+
     def object_id(self):
         return "policer-%s" % (self.name)
 
