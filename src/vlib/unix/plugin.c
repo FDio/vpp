@@ -214,6 +214,7 @@ find_plugin_load_order_constraints (plugin_main_t *pm, plugin_info_t *pi, int fr
 	}
 
       reg = clib_mem_alloc (sizeof (*reg));
+      // coverity[WRITE_CONST_FIELD]: SUPPRESS
       memset (reg, 0, sizeof (*reg));
 
       reg->default_disabled = r2->default_disabled != 0;
@@ -357,6 +358,7 @@ process_reg:
   vec_free (version_required);
 
   vec_validate (pi->reg, 0);
+  // coverity[WRITE_CONST_FIELD]: SUPPRESS
   memcpy (pi->reg, reg, sizeof (*reg));
   pi->version = str_array_to_vec ((char *) &reg->version, sizeof (reg->version));
   if (reg->load_after)
@@ -1082,7 +1084,7 @@ vlib_plugins_show_cmd_fn (vlib_main_t * vm,
   plugin_info_t *pi;
   int verbose = 0;
 
-  unformat (input, "verbose %=", &verbose, 1);
+  (void) unformat (input, "verbose %=", &verbose, 1);
 
   s = format (s, " Plugin path is: %s, plugins shown in load order\n\n", pm->plugin_path);
   s = format (s, "     %-41s%-33s%s\n", "Plugin", "Version", "Description");
@@ -1091,7 +1093,7 @@ vlib_plugins_show_cmd_fn (vlib_main_t * vm,
     {
       pi = vec_elt_at_index (pm->plugin_info, index);
       s = format (s, "%3d. %-40s %-32s %s\n", index + 1, pi->name, pi->version,
-		  (pi->reg && pi->reg->description) ? pi->reg->description : "");
+		  (pi && pi->reg && pi->reg->description) ? pi->reg->description : "");
       if (verbose && pi->reg->load_after)
 	s = format (s, "   must load after %s\n", pi->reg->load_after);
     }
