@@ -155,6 +155,7 @@ jobs:
       VPPAPIGEN_TEST_OS: ${{ matrix.os == 'ubuntu2204' && 'ubuntu-22.04' || 'ubuntu-24.04' }}
       SHM_SIZE: ${{ matrix.executor_arch == 'aarch64' && '4096M' || '2048M' }}
       TUI_LINE: "*******************************************************************"
+      VPP_TEARDOWN_TIMEOUT: 30
 
     steps:
       - name: Actions Checkout
