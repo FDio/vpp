@@ -98,6 +98,8 @@ static_always_inline void
 sfdp_session_timer_update (sfdp_tw_t *tw, sfdp_session_timer_t *timer, f64 now,
 			   u32 ticks)
 {
+  if (PREDICT_FALSE (ticks == 0))
+    vlib_node_set_interrupt_pending (vlib_get_main (), sfdp_expire_node.index);
   timer->next_expiration = now + ticks * SFDP_TIMER_INTERVAL;
 }
 
@@ -109,7 +111,7 @@ sfdp_session_timer_update_maybe_past (sfdp_tw_t *tw,
   if (timer->next_expiration > now + (ticks * SFDP_TIMER_INTERVAL))
     sfdp_timer_update_internal (tw, timer->handle, ticks);
 
-  timer->next_expiration = now + ticks * SFDP_TIMER_INTERVAL;
+  sfdp_session_timer_update (tw, timer, now, ticks);
 }
 
 static_always_inline void

@@ -45,6 +45,8 @@ sfdp_enable_disable_expiry_node (u8 is_disable, int skip_main)
       vlib_node_set_state (vm, node->index,
 			   is_disable ? VLIB_NODE_STATE_DISABLED :
 					VLIB_NODE_STATE_POLLING);
+      if (!is_disable)
+	vlib_node_set_interrupt_pending (vm, node->index);
     }
 }
 
@@ -92,6 +94,8 @@ VLIB_NODE_FN (sfdp_expire_node)
 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   sfdp_main_t *sfdp = &sfdp_main;
+  if (PREDICT_FALSE (!expiry_is_enabled))
+    return 0;
   u32 thread_index = vm->thread_index;
   sfdp_per_thread_data_t *ptd =
     vec_elt_at_index (sfdp->per_thread_data, thread_index);
@@ -114,9 +118,7 @@ VLIB_NODE_FN (sfdp_expire_node)
 			       desired_evictions);
 
   if (vec_len (ptd->expired_sessions) == 0)
-    {
-      return 0;
-    }
+    goto done;
 
   sfdp_notify_deleted_sessions (sfdp, ptd->expired_sessions,
 				vec_len (ptd->expired_sessions));
@@ -131,7 +133,8 @@ VLIB_NODE_FN (sfdp_expire_node)
 			       vec_len (ptd->expired_sessions));
   vec_reset_length (ptd->expired_sessions);
 
-  /* TODO: some logic so that we are not called too often */
+done:
+  vlib_node_schedule (vm, node->node_index, 1.0);
   return 0;
 }
 
@@ -156,10 +159,8 @@ sfdp_set_eviction_sessions_margin (u32 margin)
   return 0;
 }
 
-VLIB_REGISTER_NODE (sfdp_expire_node) = {
-  .name = "sfdp-expire",
-  .type = VLIB_NODE_TYPE_INPUT,
-  .n_errors = SFDP_EXPIRE_N_ERROR,
-  .error_counters = sfdp_expire_error_descriptors,
-  .state = VLIB_NODE_STATE_DISABLED
-};
+VLIB_REGISTER_NODE (sfdp_expire_node) = { .name = "sfdp-expire",
+					  .type = VLIB_NODE_TYPE_SCHED,
+					  .n_errors = SFDP_EXPIRE_N_ERROR,
+					  .error_counters = sfdp_expire_error_descriptors,
+					  .state = VLIB_NODE_STATE_DISABLED };
