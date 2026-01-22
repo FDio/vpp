@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "304975a0d9ab2c40f854f4e4775fc630b32c1540",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "913748ab_44c48dde",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-01-22T06:32:59Z",
+      "side": 1,
+      "message": "Please don\u0027t merge this until the failures caused by the iperf3 upgrade on ubuntu 22.04 is fixed as this will require the generation of new docker executor images to prevent fragility due to potential download failures over the internet.",
+      "revId": "304975a0d9ab2c40f854f4e4775fc630b32c1540",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
