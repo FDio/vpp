@@ -8,7 +8,7 @@ import (
 
 func init() {
 	RegisterVethTests(QuicAlpnMatchTest, QuicAlpnOverlapMatchTest, QuicAlpnServerPriorityMatchTest, QuicAlpnMismatchTest,
-		QuicAlpnEmptyServerListTest, QuicAlpnEmptyClientListTest, QuicBuiltinEchoTest)
+		QuicAlpnEmptyServerListTest, QuicAlpnEmptyClientListTest, QuicBuiltinEchoTest, QuicCpsTest)
 }
 
 func QuicAlpnMatchTest(s *VethsSuite) {
@@ -123,4 +123,20 @@ func QuicBuiltinEchoTest(s *VethsSuite) {
 	} else {
 		AssertEmpty("invalid echo test client output")
 	}
+}
+
+func QuicCpsTest(s *VethsSuite) {
+	serverVpp := s.Containers.ServerVpp.VppInstance
+	clientVpp := s.Containers.ClientVpp.VppInstance
+
+	Log(serverVpp.Vppctl("test echo server " +
+		" uri quic://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1))
+
+	o := clientVpp.Vppctl("test echo client nclients 10000 bytes 64 syn-timeout 60" +
+		" uri quic://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1)
+	Log(o)
+	Log(serverVpp.Vppctl("show quic"))
+	Log(clientVpp.Vppctl("show quic"))
+	Log(serverVpp.Vppctl("show quic crypto context"))
+	Log(clientVpp.Vppctl("show quic crypto context"))
 }

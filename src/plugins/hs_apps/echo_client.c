@@ -725,7 +725,7 @@ quic_ec_session_connected_callback (u32 app_index, u32 api_context,
 
   if (err)
     {
-      ec_err ("connection %d failed!", api_context);
+      ec_err ("connection %d failed, err: %U!", api_context, format_session_error, err);
       ecm->run_test = EC_EXITING;
       signal_evt_to_cli (EC_CLI_CONNECTS_FAILED);
       return 0;
@@ -1678,7 +1678,8 @@ parse_config:
       break;
 
     case EC_CLI_CONNECTS_FAILED:
-      error = clib_error_return (0, "failed: connect returned");
+      error = clib_error_return (0, "failed: connect failed (%u sessions connected)",
+				 ecm->ready_connections);
       goto stop_test;
 
     default:
