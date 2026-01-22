@@ -16,6 +16,24 @@
       "message": "We might have to keep this, i.e., cleanup hash as cert has been removed. We need to prevent new sessions from using it",
       "revId": "06ae4386383f17e604b491fb94a02f62bf637839",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d609ce1c_f78755f2",
+        "filename": "src/plugins/quic_quicly/quic_quicly_crypto.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 144,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-01-22T19:01:35Z",
+      "side": 0,
+      "message": "Done",
+      "parentUuid": "04bcf0ac_cab71cc0",
+      "revId": "06ae4386383f17e604b491fb94a02f62bf637839",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
