@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ebce9aab_f965aad8",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-01-22T22:02:49Z",
+      "side": 1,
+      "message": "\u0027make fixstyle\u0027 is your friend ;)",
+      "revId": "2318e1ce780a68fb864ec8470cc8aad3e3e77906",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
