@@ -439,6 +439,36 @@ vl_api_policer_dump_v2_t_handler (vl_api_policer_dump_v2_t *mp)
     }
 }
 
+static void
+vl_api_policer_interface_get_t_handler (vl_api_policer_interface_get_t *mp)
+{
+  vl_api_policer_interface_get_reply_t *rmp;
+  vnet_policer_main_t *pm = &vnet_policer_main;
+  u32 sw_if_index;
+  u32 input_policer_index = ~0;
+  u32 output_policer_index = ~0;
+  int rv = 0;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  sw_if_index = ntohl (mp->sw_if_index);
+
+  if (sw_if_index < vec_len (pm->policer_index_by_sw_if_index[VLIB_RX]))
+    input_policer_index =
+      pm->policer_index_by_sw_if_index[VLIB_RX][sw_if_index];
+
+  if (sw_if_index < vec_len (pm->policer_index_by_sw_if_index[VLIB_TX]))
+    output_policer_index =
+      pm->policer_index_by_sw_if_index[VLIB_TX][sw_if_index];
+
+  BAD_SW_IF_INDEX_LABEL;
+
+  REPLY_MACRO2 (VL_API_POLICER_INTERFACE_GET_REPLY, ({
+                  rmp->input_policer_index = htonl (input_policer_index);
+                  rmp->output_policer_index = htonl (output_policer_index);
+                }));
+}
+
 #include <vnet/policer/policer.api.c>
 static clib_error_t *
 policer_api_hookup (vlib_main_t * vm)

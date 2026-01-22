@@ -222,7 +222,7 @@ policer_input (u32 policer_index, u32 sw_if_index, vlib_dir_t dir, bool apply)
 
   if (apply)
     {
-      vec_validate (pm->policer_index_by_sw_if_index[dir], sw_if_index);
+      vec_validate_init_empty (pm->policer_index_by_sw_if_index[dir], sw_if_index, ~0);
       pm->policer_index_by_sw_if_index[dir][sw_if_index] = policer_index;
     }
   else
@@ -944,10 +944,13 @@ show_policer_command_fn (vlib_main_t * vm,
   unformat_input_t _line_input, *line_input = &_line_input;
   policer_t *policer;
   u32 policer_index = ~0;
+  u32 interface_index = ~0;
   u8 *name = 0;
   uword *ci, *pi;
   qos_pol_cfg_params_st *config;
   clib_error_t *error = 0;
+  u8 dir = VLIB_RX;
+  vnet_main_t *vnm = vnet_get_main ();
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -971,12 +974,38 @@ show_policer_command_fn (vlib_main_t * vm,
 	;
       else if (unformat (line_input, "index %u", &policer_index))
 	;
+      else if (unformat (line_input, "input"))
+        dir = VLIB_RX;
+      else if (unformat (line_input, "output"))
+        dir = VLIB_TX;
+      else if (unformat (line_input, "sw_if_index %d", &interface_index))
+	;
+      else if (unformat (line_input, "%U", unformat_vnet_sw_interface,
+			 vnm, &interface_index))
+	;
       else
 	{
 	  error = clib_error_return (0, "unknown input `%U'",
 				     format_unformat_error, line_input);
 	  goto done;
 	}
+    }
+
+  if (~0 != interface_index)
+    {
+        if (interface_index >= vec_len (pm->policer_index_by_sw_if_index[dir]) ||
+                ~0 == pm->policer_index_by_sw_if_index[dir][interface_index])
+        {
+            vlib_cli_output (vm, "Interface %u has no %s policer applied",
+                             interface_index,
+                             (dir == VLIB_RX)? "input" : "output");
+            goto done;
+        }
+        policer_index = pm->policer_index_by_sw_if_index[dir][interface_index];
+        vlib_cli_output (vm, "Interface %u, %s policer index %u",
+                         interface_index,
+                         (dir == VLIB_RX)? "input" : "output",
+                         policer_index);
     }
 
   if (~0 == policer_index && 0 != name)
@@ -1007,7 +1036,7 @@ done:
 
 VLIB_CLI_COMMAND (show_policer_command, static) = {
   .path = "show policer",
-  .short_help = "show policer [name <name> | index <index>]",
+  .short_help = "show policer [name <name> | index <index> | [input|output] <interface>|sw_if_index <sw_idx>]",
   .function = show_policer_command_fn,
 };
 

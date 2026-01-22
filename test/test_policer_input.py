@@ -64,6 +64,10 @@ class TestPolicerInput(VppTestCase):
         # Start policing on pg0
         policer.apply_vpp_config(sw_if_index, dir, True)
 
+        # check applied policer
+        self.assertTrue(policer.query_vpp_config())
+        self.assertTrue(policer.query_policer_interface(sw_if_index, dir))
+
         rx = self.send_and_expect(self.pg0, pkts, self.pg1, worker=0)
         stats = policer.get_stats()
 
@@ -74,6 +78,9 @@ class TestPolicerInput(VppTestCase):
 
         # Stop policing on pg0
         policer.apply_vpp_config(sw_if_index, dir, False)
+
+        # check unapplied policer
+        self.assertFalse(policer.query_policer_interface(sw_if_index, dir))
 
         rx = self.send_and_expect(self.pg0, pkts, self.pg1, worker=0)
 
