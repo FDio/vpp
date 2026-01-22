@@ -101,6 +101,7 @@ int
 quic_echo_server_qsession_accept_callback (session_t * s)
 {
   es_dbg ("QSession %u accept w/opaque %d", s->session_index, s->opaque);
+  s->session_state = SESSION_STATE_READY;
   return 0;
 }
 
