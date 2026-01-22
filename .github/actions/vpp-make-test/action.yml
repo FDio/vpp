@@ -57,6 +57,11 @@ inputs:
     required: false
     default: "*******************************************************************"
     type: string
+  VPP_TEARDOWN_TIMEOUT:
+    description: "Timeout waiting for VPP teardown to complete"
+    required: false
+    default: "30"
+    type: string
 
 runs:
   using: "composite"
@@ -75,6 +80,7 @@ runs:
         VPPAPIGEN_TEST_OS: ${{ inputs.VPPAPIGEN_TEST_OS }}
         VPP_WORKER_COUNT: ${{ inputs.VPP_WORKER_COUNT }}
         TUI_LINE: ${{ inputs.TUI_LINE }}
+        VPP_TEARDOWN_TIMEOUT: ${{ inputs.VPP_TEARDOWN_TIMEOUT }}
       run: |
           set -euxo pipefail
           cd "$WORKSPACE"
