@@ -748,11 +748,31 @@ class VppAsfTestCase(CPUInterface, unittest.TestCase):
         if hasattr(cls, "pump_thread_wakeup_pipe"):
             os.write(cls.pump_thread_wakeup_pipe[1], b"ding dong wake up")
         if hasattr(cls, "pump_thread"):
+<<<<<<< HEAD   (424299 gha: pin vpp make test action to latest)
             cls.logger.debug("Waiting for pump thread to stop")
             cls.pump_thread.join()
+=======
+            cls.logger.info(f"[{cls.__name__}] Waiting for pump thread to stop...")
+            cls.pump_thread.join(timeout=thread_join_timeout)
+            if thread_join_timeout and cls.pump_thread.is_alive():
+                cls.logger.error(
+                    f"[{cls.__name__}] PUMP THREAD TIMEOUT after "
+                    f"{thread_join_timeout}s - thread did not stop!"
+                )
+>>>>>>> CHANGE (42c74e tests: formatting adjustments for CI)
         if hasattr(cls, "vpp_stderr_reader_thread"):
+<<<<<<< HEAD   (424299 gha: pin vpp make test action to latest)
             cls.logger.debug("Waiting for stderr pump to stop")
             cls.vpp_stderr_reader_thread.join()
+=======
+            cls.logger.info(f"[{cls.__name__}] Waiting for stderr pump to stop...")
+            cls.vpp_stderr_reader_thread.join(timeout=thread_join_timeout)
+            if thread_join_timeout and cls.vpp_stderr_reader_thread.is_alive():
+                cls.logger.error(
+                    f"[{cls.__name__}] STDERR PUMP THREAD TIMEOUT after "
+                    f"{thread_join_timeout}s - thread did not stop!"
+                )
+>>>>>>> CHANGE (42c74e tests: formatting adjustments for CI)
 
         if hasattr(cls, "vpp"):
             if hasattr(cls, "vapi"):

@@ -1119,4 +1119,10 @@ if __name__ == "__main__":
                 print("Test run was successful")
             else:
                 print("%s attempt(s) left." % attempts)
+<<<<<<< HEAD   (424299 gha: pin vpp make test action to latest)
+=======
+        print(f"\n{'='*80}", flush=True)
+        print(f"TEST RUN COMPLETE - exiting with code {exit_code}", flush=True)
+        print(f"{'='*80}\n", flush=True)
+>>>>>>> CHANGE (42c74e tests: formatting adjustments for CI)
         sys.exit(exit_code)
