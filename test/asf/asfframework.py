@@ -767,9 +767,7 @@ class VppAsfTestCase(CPUInterface, unittest.TestCase):
         if hasattr(cls, "pump_thread_wakeup_pipe"):
             os.write(cls.pump_thread_wakeup_pipe[1], b"ding dong wake up")
         if hasattr(cls, "pump_thread"):
-            cls.logger.info(
-                f"[{cls.__name__}] Waiting for pump thread to stop..."
-            )
+            cls.logger.info(f"[{cls.__name__}] Waiting for pump thread to stop...")
             cls.pump_thread.join(timeout=thread_join_timeout)
             if thread_join_timeout and cls.pump_thread.is_alive():
                 cls.logger.error(
@@ -777,9 +775,7 @@ class VppAsfTestCase(CPUInterface, unittest.TestCase):
                     f"{thread_join_timeout}s - thread did not stop!"
                 )
         if hasattr(cls, "vpp_stderr_reader_thread"):
-            cls.logger.info(
-                f"[{cls.__name__}] Waiting for stderr pump to stop..."
-            )
+            cls.logger.info(f"[{cls.__name__}] Waiting for stderr pump to stop...")
             cls.vpp_stderr_reader_thread.join(timeout=thread_join_timeout)
             if thread_join_timeout and cls.vpp_stderr_reader_thread.is_alive():
                 cls.logger.error(
