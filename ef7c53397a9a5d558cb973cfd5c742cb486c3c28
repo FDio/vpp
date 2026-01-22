@@ -16,6 +16,24 @@
       "message": "Why not sending it to error-drop instead?",
       "revId": "ef7c53397a9a5d558cb973cfd5c742cb486c3c28",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "40d9f5fa_c0cdeb16",
+        "filename": "src/vnet/ip/reass/ip6_full_reass.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1364,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2026-01-22T14:11:38Z",
+      "side": 1,
+      "message": "The reasoning was that that buffer is an IP fragment and maybe shouldn\u0027t be treated like a regular packet. We have a similar behaviour for all the buffer indices accumulated in a given failed reassembly context (if we don\u0027t have the index of the next error node set that is).",
+      "parentUuid": "8d274634_1c65c2a1",
+      "revId": "ef7c53397a9a5d558cb973cfd5c742cb486c3c28",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
