@@ -155,6 +155,7 @@ jobs:
       VPPAPIGEN_TEST_OS: ${{ matrix.os == 'ubuntu2204' && 'ubuntu-22.04' || 'ubuntu-24.04' }}
       SHM_SIZE: ${{ matrix.executor_arch == 'aarch64' && '4096M' || '2048M' }}
       TUI_LINE: "*******************************************************************"
+      VPP_TEARDOWN_TIMEOUT: 30
 
     steps:
       - name: Actions Checkout
@@ -235,7 +236,7 @@ jobs:
       - name: VPP Make Test with GCC/GCOV
         # yamllint disable-line rule:line-length
         uses: fdio/vpp/.github/actions/vpp-make-test@7598c9acb6bc034ffbe25b7110230b3d243a9b36
-        timeout-minutes: 90
+        timeout-minutes: 120
         with:
           WORKSPACE: ${{ env.WORKSPACE }}
           BUILD_TYPE: ${{ matrix['build_type'] }}
