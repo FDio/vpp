@@ -88,7 +88,7 @@ quic_quicly_connection_delete (quic_ctx_t *ctx)
 
   quic_disconnect_transport (ctx, qm->app_index);
   quicly_free (conn);
-  if (ctx->c_s_index != QUIC_SESSION_INVALID)
+  if (ctx->c_s_index != QUIC_SESSION_INVALID && !(ctx->flags & QUIC_F_NO_APP_SESSION))
     session_transport_delete_notify (&ctx->connection);
 }
 
@@ -331,6 +331,9 @@ quic_quicly_send_packets (quic_ctx_t *ctx)
   if (PREDICT_FALSE (!udp_session))
     goto quicly_error;
 
+  if (PREDICT_FALSE (udp_session->session_state == SESSION_STATE_TRANSPORT_DELETED))
+    return 0;
+
   conn = ctx->conn;
   ASSERT (conn);
 
@@ -348,7 +351,11 @@ quic_quicly_send_packets (quic_ctx_t *ctx)
 
   /* If under memory pressure and chunks cannot be allocated try reschedule */
   if (svm_fifo_provision_chunks (udp_session->tx_fifo, 0, 0, buf_size))
-    goto try_reschedule;
+    {
+      quic_worker_ctx_t *wc = quic_wrk_ctx_get (quic_quicly_main.qm, ctx->c_thread_index);
+      quic_update_timer (wc, ctx, wc->time_now + 1);
+      return 0;
+    }
 
   num_packets = max_packets;
   if ((err = quicly_send (conn, &quicly_rmt_ip, &quicly_lcl_ip, packets,
@@ -376,7 +383,6 @@ quic_quicly_send_packets (quic_ctx_t *ctx)
   QUIC_DBG (3, "%u[TX] %u[RX]", svm_fifo_max_dequeue (udp_session->tx_fifo),
 	    svm_fifo_max_dequeue (udp_session->rx_fifo));
 
-try_reschedule:
   quic_quicly_reschedule_ctx (ctx);
 
   return n_sent;
