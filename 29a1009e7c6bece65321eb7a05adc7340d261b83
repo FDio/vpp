@@ -16,6 +16,98 @@
       "message": "recheck",
       "revId": "29a1009e7c6bece65321eb7a05adc7340d261b83",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e826092a_7e545072",
+        "filename": "docs/developer/corefeatures/sfdp.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2026-01-22T13:37:39Z",
+      "side": 1,
+      "message": "What happens if the session table is full?\nPerhaps mention the eviction margin mentioned later can help to prevent that situation.",
+      "range": {
+        "startLine": 22,
+        "startChar": 116,
+        "endLine": 22,
+        "endChar": 123
+      },
+      "revId": "29a1009e7c6bece65321eb7a05adc7340d261b83",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bd3663e8_5fce364e",
+        "filename": "docs/developer/corefeatures/sfdp.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2026-01-22T13:37:39Z",
+      "side": 1,
+      "message": "Does this also mean after the worker handoff ...",
+      "range": {
+        "startLine": 24,
+        "startChar": 0,
+        "endLine": 24,
+        "endChar": 20
+      },
+      "revId": "29a1009e7c6bece65321eb7a05adc7340d261b83",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c4cf4d96_7cc84a7d",
+        "filename": "docs/developer/corefeatures/sfdp.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2026-01-22T13:37:39Z",
+      "side": 1,
+      "message": "... implying the session index points to the table on the worker that has seen the initiator packet? The worker that starts processing the reverse packets will have a different session at that index (hence the handoff is needed).",
+      "range": {
+        "startLine": 25,
+        "startChar": 136,
+        "endLine": 25,
+        "endChar": 159
+      },
+      "revId": "29a1009e7c6bece65321eb7a05adc7340d261b83",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ef5988d2_ce9b5974",
+        "filename": "docs/developer/corefeatures/sfdp.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 191,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2026-01-22T13:37:39Z",
+      "side": 1,
+      "message": "For testing purposes it would be very convenient if giving zero here caused all know sessions to immediately time-out so sessions tables are empty and ready for next test, regardless of haw badly the previous tests went.\n\nI did not check the code yet, but I suspect the current implementation does not spend time re-evaluating existing sessions. Still, an independent \"reset tables\" CLI/API would be nice.",
+      "range": {
+        "startLine": 191,
+        "startChar": 53,
+        "endLine": 191,
+        "endChar": 60
+      },
+      "revId": "29a1009e7c6bece65321eb7a05adc7340d261b83",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
