@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "63bb341c_77e8d013",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-01-22T06:38:41Z",
+      "side": 1,
+      "message": "Please abandon this bad patch which partially reverts https://gerrit.fd.io/r/c/vpp/+/44565",
+      "revId": "8f61ac41e29ddf8f48da5efc0a08410ce39d0324",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
