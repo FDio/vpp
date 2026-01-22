@@ -235,7 +235,7 @@ jobs:
 
       - name: VPP Make Test with GCC/GCOV
         # yamllint disable-line rule:line-length
-        uses: fdio/vpp/.github/actions/vpp-make-test@7598c9acb6bc034ffbe25b7110230b3d243a9b36
+        uses: fdio/vpp/.github/actions/vpp-make-test@970ed8ecbe252fb5384e72141397e42fd9f127af
         with:
           WORKSPACE: ${{ env.WORKSPACE }}
           BUILD_TYPE: ${{ matrix['build_type'] }}
