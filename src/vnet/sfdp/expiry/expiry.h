@@ -6,6 +6,7 @@
 #define __included_sfdp_expiry_h__
 #include <vppinfra/format.h>
 #include <vppinfra/types.h>
+#include <vlib/vlib.h>
 
 /* Default margin before eviction is requested to expiry module. */
 #define SFDP_DEFAULT_EVICTION_SESSIONS_MARGIN (256 * 256) /* 256 vectors */
@@ -90,7 +91,7 @@ int sfdp_init_timeouts (const sfdp_timeout_t *timeouts, u32 n);
 /** Called by sfdp when enabling/disabling expiry. */
 void sfdp_enable_disable_expiry (u8 is_disable);
 
-/** Called by sfdp_enable_disable_expiry to set the sfdp-expiry pre-input
+/** Called by sfdp_enable_disable_expiry to set the sfdp-expiry sched node
  *  to disabled or polling state. */
 void sfdp_enable_disable_expiry_node (u8 is_disable, int skip_main);
 
@@ -112,5 +113,7 @@ void sfdp_enable_disable_expiry_node (u8 is_disable, int skip_main);
 clib_error_t *sfdp_set_eviction_sessions_margin (u32 margin);
 
 void sfdp_check_eviction_sessions_margin ();
+
+extern vlib_node_registration_t sfdp_expire_node;
 
 #endif /* __included_sfdp_expiry_h__ */
