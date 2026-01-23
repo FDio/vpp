@@ -685,9 +685,8 @@ transport_release_local_endpoint (u8 proto, u32 fib_index,
   return -1;
 }
 
-static int
-transport_endpoint_mark_used (u8 proto, u32 fib_index, ip46_address_t *ip,
-			      u16 port)
+int
+transport_endpoint_mark_used (u8 proto, u32 fib_index, ip46_address_t *ip, u16 port)
 {
   transport_main_t *tm = &tp_main;
   local_endpoint_t *lep;

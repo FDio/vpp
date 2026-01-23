@@ -2646,6 +2646,8 @@ tcp46_listen_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       child->state = TCP_STATE_SYN_RCVD;
       child->c_fib_index = lc->c_fib_index;
       child->cc_algo = lc->cc_algo;
+      /* do not attempt to cleanup local endpoint */
+      child->cfg_flags |= TCP_CFG_F_NO_ENDPOINT;
 
       /* In the regular case, the tw_iss will be zero, but
        * in the special case of syn arriving in time_wait state, the value
