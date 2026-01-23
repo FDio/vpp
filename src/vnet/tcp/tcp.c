@@ -133,6 +133,16 @@ tcp_connection_bind (u32 session_index, transport_endpoint_cfg_t *lcl)
 
   tcp_connection_timers_init (listener);
 
+  if (!ip_is_zero (&lcl->ip, 1))
+    {
+      if (transport_mark_used_local_endpoint (TRANSPORT_PROTO_TCP, listener->c_fib_index,
+					      &listener->c_lcl_ip, listener->c_lcl_port))
+	transport_share_local_endpoint (TRANSPORT_PROTO_TCP, listener->c_fib_index,
+					&listener->c_lcl_ip, listener->c_lcl_port);
+    }
+  else
+    listener->cfg_flags |= TCP_CFG_F_NO_ENDPOINT;
+
   TCP_EVT (TCP_EVT_BIND, listener);
 
   return listener->c_c_index;
@@ -151,6 +161,10 @@ tcp_connection_unbind (u32 listener_index)
   tcp_connection_t *tc;
 
   tc = pool_elt_at_index (tm->listener_pool, listener_index);
+
+  if (!(tc->cfg_flags & TCP_CFG_F_NO_ENDPOINT))
+    transport_release_local_endpoint (TRANSPORT_PROTO_TCP, tc->c_fib_index, &tc->c_lcl_ip,
+				      tc->c_lcl_port);
 
   TCP_EVT (TCP_EVT_UNBIND, tc);
 
