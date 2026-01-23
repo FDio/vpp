@@ -462,9 +462,17 @@ session_test_endpoint_cfg (vlib_main_t * vm, unformat_input_t * input)
   clib_warning ("waited %.1f seconds for disconnect", tries / 10.0);
   SESSION_TEST ((connected_session_index == ~0), "session should not exist");
   SESSION_TEST ((connected_session_thread == ~0), "thread should not exist");
-  SESSION_TEST (transport_port_local_in_use () == 0,
-		"port should be cleaned up");
   SESSION_TEST ((app_session_error == 0), "no app session errors");
+
+  vnet_unlisten_args_t unbind_args = {
+    .handle = bind_args.handle,
+    .app_index = server_index,
+  };
+  error = vnet_unlisten (&unbind_args);
+
+  /* Listen session consumes local port, so unbind before checking port usage */
+  SESSION_TEST ((error == 0), "server unbind should work: %U", format_session_error, error);
+  SESSION_TEST (transport_port_local_in_use () == 0, "port should be cleaned up");
 
   /* Start cleanup by detaching apps */
   vnet_app_detach_args_t detach_args = {

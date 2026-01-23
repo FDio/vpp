@@ -685,9 +685,8 @@ transport_release_local_endpoint (u8 proto, u32 fib_index,
   return -1;
 }
 
-static int
-transport_endpoint_mark_used (u8 proto, u32 fib_index, ip46_address_t *ip,
-			      u16 port)
+int
+transport_mark_used_local_endpoint (u8 proto, u32 fib_index, ip46_address_t *ip, u16 port)
 {
   transport_main_t *tm = &tp_main;
   local_endpoint_t *lep;
@@ -768,8 +767,7 @@ transport_alloc_local_port (u8 proto, ip46_address_t *lcl_addr,
 	    }
 	}
 
-      if (!transport_endpoint_mark_used (proto, rmt->fib_index, lcl_addr,
-					 port))
+      if (!transport_mark_used_local_endpoint (proto, rmt->fib_index, lcl_addr, port))
 	break;
 
       /* IP:port pair already in use, check if 6-tuple available */
@@ -906,8 +904,7 @@ transport_alloc_local_endpoint (u8 proto, transport_endpoint_cfg_t * rmt_cfg,
     {
       *lcl_port = rmt_cfg->peer.port;
 
-      if (!transport_endpoint_mark_used (proto, rmt->fib_index, lcl_addr,
-					 rmt_cfg->peer.port))
+      if (!transport_mark_used_local_endpoint (proto, rmt->fib_index, lcl_addr, rmt_cfg->peer.port))
 	return 0;
 
       /* IP:port pair already in use, check if 6-tuple available */
