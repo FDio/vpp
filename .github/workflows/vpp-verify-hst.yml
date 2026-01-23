@@ -115,7 +115,7 @@ jobs:
         build_type: ['debug']
         class: ['hst']
         os: ['ubuntu2404']
-        executor_arch: ['x86_64', 'aarch64']
+        executor_arch: ['x86_64']
         size: ['hst']
 
     env:
