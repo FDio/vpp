@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "cff8a5d0_fefb6187",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-01-23T22:53:24Z",
+      "side": 1,
+      "message": "This change needs to be rebased on HEAD to pass CI.  Unfortunately, gerrit is complaining when I tried to rebase it:\n\n\"Could not perform action: not Signed-off-by author/committer/uploader in message footer\"",
+      "revId": "ec174e8ea1d2332282b71648455c068c90ae86ab",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
