@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f0eade3a_c83c67ed",
+        "filename": "src/plugins/sfdp_services/snort/snort.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 242,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2026-01-23T13:06:28Z",
+      "side": 1,
+      "message": "What happens if this fails (because snort plugin is not loaded)?",
+      "range": {
+        "startLine": 242,
+        "startChar": 2,
+        "endLine": 242,
+        "endChar": 26
+      },
+      "revId": "6c837e936950c7df3b1ae5eb24cc163b80b74288",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
