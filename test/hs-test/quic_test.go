@@ -132,7 +132,8 @@ func QuicCpsTest(s *VethsSuite) {
 	Log(serverVpp.Vppctl("test echo server " +
 		" uri quic://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1))
 
-	o := clientVpp.Vppctl("test echo client nclients 10000 bytes 64 syn-timeout 60" +
+	// syn-timeout must be less than quic connection timeout (30 seconds)
+	o := clientVpp.Vppctl("test echo client nclients 10000 bytes 64 syn-timeout 27" +
 		" uri quic://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1)
 	Log(o)
 	Log(serverVpp.Vppctl("show quic"))
