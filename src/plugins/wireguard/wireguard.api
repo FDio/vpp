@@ -101,6 +101,7 @@ enum wireguard_peer_flags : u8
 typedef wireguard_peer
 {
   u32 peer_index;
+  u8 preshared_key[32];
   u8 public_key[32];
   u16 port;
   u16 persistent_keepalive;
