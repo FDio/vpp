@@ -9,6 +9,7 @@ import os
 import socket
 import time
 import queue
+import reprlib
 from config import config
 from vpp_papi import VPPApiClient
 from hook import Hook
