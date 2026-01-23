@@ -354,6 +354,45 @@ sfdp_set_icmp_error_node (sfdp_main_t *sfdp, u32 tenant_id, u8 is_ip6,
   return 0;
 }
 
+static void
+sfdp_expire_session_now (sfdp_session_t *session, f64 now)
+{
+  u16 thread_index = session->owning_thread_index;
+  if (thread_index == SFDP_UNBOUND_THREAD_INDEX)
+    thread_index = 0;
+
+  sfdp_timer_per_thread_data_t *tptd = sfdp_timer_get_per_thread_data (thread_index);
+  sfdp_session_timer_t *timer = SFDP_SESSION_TIMER (session);
+
+  sfdp_session_timer_update_maybe_past (&tptd->wheel, timer, now, 0);
+  tptd->current_time = now;
+}
+
+clib_error_t *
+sfdp_kill_session (sfdp_main_t *sfdp, u32 session_index, u8 is_all)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  f64 now = vlib_time_now (vm);
+  sfdp_session_t *session;
+  uword index;
+
+  if (vec_len (sfdp_timer_main.per_thread_data) == 0)
+    return clib_error_return (0, "sfdp timer module is not initialized");
+
+  if (is_all)
+    {
+      sfdp_foreach_session (sfdp, index, session) { sfdp_expire_session_now (session, now); }
+      return 0;
+    }
+
+  session = sfdp_session_at_index_if_valid (session_index);
+  if (!session)
+    return clib_error_return (0, "Session index %u not found", session_index);
+
+  sfdp_expire_session_now (session, now);
+  return 0;
+}
+
 int
 sfdp_create_session (vlib_main_t *vm, vlib_buffer_t *b, u32 context_id,
 		     u32 thread_index, u32 tenant_index, u32 *session_index,

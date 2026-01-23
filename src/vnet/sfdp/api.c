@@ -199,6 +199,18 @@ vl_api_sfdp_session_dump_t_handler (vl_api_sfdp_session_dump_t *mp)
 }
 
 static void
+vl_api_sfdp_kill_session_t_handler (vl_api_sfdp_kill_session_t *mp)
+{
+  sfdp_main_t *sfdp = &sfdp_main;
+  u32 session_index = clib_net_to_host_u32 (mp->session_index);
+  u8 is_all = mp->is_all;
+  clib_error_t *err = sfdp_kill_session (sfdp, session_index, is_all);
+  vl_api_sfdp_kill_session_reply_t *rmp;
+  int rv = err ? -1 : 0;
+  REPLY_MACRO (VL_API_SFDP_KILL_SESSION_REPLY);
+}
+
+static void
 sfdp_send_tenant_details (vl_api_registration_t *rp, u32 context,
 			  u16 tenant_index, sfdp_tenant_t *tenant)
 {

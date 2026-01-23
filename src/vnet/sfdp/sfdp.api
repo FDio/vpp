@@ -60,6 +60,15 @@ define sfdp_session_details
   vl_api_sfdp_session_key_t keys[n_keys];
 };
 
+autoreply define sfdp_kill_session
+{
+  u32 client_index;
+  u32 context;
+
+  u32 session_index;
+  bool is_all;
+};
+
 define sfdp_tenant_dump
 {
   u32 client_index;
