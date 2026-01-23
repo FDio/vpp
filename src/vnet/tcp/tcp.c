@@ -117,10 +117,9 @@ tcp_connection_bind (u32 session_index, transport_endpoint_cfg_t *lcl)
   listener->c_lcl_port = lcl->port;
 
   /* If we are provided a sw_if_index, bind using one of its ips */
-  if (ip_is_zero (&lcl->ip, 1) && lcl->sw_if_index != ENDPOINT_INVALID_INDEX)
+  if (ip_is_zero (&lcl->ip, lcl->is_ip4) && lcl->sw_if_index != ENDPOINT_INVALID_INDEX)
     {
-      if ((iface_ip = ip_interface_get_first_ip (lcl->sw_if_index,
-						 lcl->is_ip4)))
+      if ((iface_ip = ip_interface_get_first_ip (lcl->sw_if_index, lcl->is_ip4)))
 	ip_set (&lcl->ip, iface_ip, lcl->is_ip4);
     }
   ip_copy (&listener->c_lcl_ip, &lcl->ip, lcl->is_ip4);
@@ -132,6 +131,16 @@ tcp_connection_bind (u32 session_index, transport_endpoint_cfg_t *lcl)
   listener->cc_algo = tcp_cc_algo_get (tcp_cfg.cc_algo);
 
   tcp_connection_timers_init (listener);
+
+  if (!ip_is_zero (&lcl->ip, lcl->is_ip4))
+    {
+      if (transport_mark_used_local_endpoint (TRANSPORT_PROTO_TCP, listener->c_fib_index,
+					      &listener->c_lcl_ip, listener->c_lcl_port))
+	transport_share_local_endpoint (TRANSPORT_PROTO_TCP, listener->c_fib_index,
+					&listener->c_lcl_ip, listener->c_lcl_port);
+    }
+  else
+    listener->cfg_flags |= TCP_CFG_F_NO_ENDPOINT;
 
   TCP_EVT (TCP_EVT_BIND, listener);
 
@@ -151,6 +160,10 @@ tcp_connection_unbind (u32 listener_index)
   tcp_connection_t *tc;
 
   tc = pool_elt_at_index (tm->listener_pool, listener_index);
+
+  if (!(tc->cfg_flags & TCP_CFG_F_NO_ENDPOINT))
+    transport_release_local_endpoint (TRANSPORT_PROTO_TCP, tc->c_fib_index, &tc->c_lcl_ip,
+				      tc->c_lcl_port);
 
   TCP_EVT (TCP_EVT_UNBIND, tc);
 
