@@ -117,6 +117,7 @@ typedef struct wg_peer_table_bind_ctx_t_
 } wg_peer_table_bind_ctx_t;
 
 int wg_peer_add (u32 tun_sw_if_index,
+         const u8 preshared_key[NOISE_SYMMETRIC_KEY_LEN], bool preshared_key_set,
 		 const u8 public_key_64[NOISE_PUBLIC_KEY_LEN],
 		 u32 table_id,
 		 const ip46_address_t * endpoint,
