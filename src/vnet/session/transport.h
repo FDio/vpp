@@ -252,8 +252,8 @@ int transport_alloc_local_endpoint (u8 proto, transport_endpoint_cfg_t *rmt,
 				    ip46_address_t *lcl_addr, u16 *lcl_port);
 void transport_share_local_endpoint (u8 proto, u32 fib_index,
 				     ip46_address_t *lcl_ip, u16 port);
-int transport_release_local_endpoint (u8 proto, u32 fib_index,
-				      ip46_address_t *lcl_ip, u16 port);
+int transport_mark_used_local_endpoint (u8 proto, u32 fib_index, ip46_address_t *ip, u16 port);
+int transport_release_local_endpoint (u8 proto, u32 fib_index, ip46_address_t *lcl_ip, u16 port);
 u16 transport_port_alloc_max_tries ();
 u32 transport_port_local_in_use ();
 void transport_clear_stats ();
