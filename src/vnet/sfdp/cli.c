@@ -403,6 +403,51 @@ sfdp_show_session_detail_command_fn (vlib_main_t *vm, unformat_input_t *input,
 }
 
 static clib_error_t *
+sfdp_kill_session_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
+{
+  unformat_input_t line_input_, *line_input = &line_input_;
+  clib_error_t *err = 0;
+  sfdp_main_t *sfdp = &sfdp_main;
+  u32 session_index = ~0;
+  bool is_all = false;
+  bool has_index = false;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "all"))
+	is_all = true;
+      else if (unformat (line_input, "index %u", &session_index) ||
+	       unformat (line_input, "0x%x", &session_index) ||
+	       unformat (line_input, "%u", &session_index))
+	has_index = true;
+      else
+	{
+	  err = unformat_parse_error (line_input);
+	  goto done;
+	}
+    }
+
+  if (is_all && has_index)
+    {
+      err = clib_error_return (0, "Use either a session index or all");
+      goto done;
+    }
+  if (!is_all && !has_index)
+    {
+      err = clib_error_return (0, "Missing session index or all");
+      goto done;
+    }
+
+  err = sfdp_kill_session (sfdp, session_index, is_all);
+
+done:
+  unformat_free (line_input);
+  return err;
+}
+
+static clib_error_t *
 sfdp_show_tenant_detail_command_fn (vlib_main_t *vm, unformat_input_t *input,
 				    vlib_cli_command_t *cmd)
 {
@@ -515,6 +560,12 @@ VLIB_CLI_COMMAND (show_sfdp_detail_command, static) = {
   .path = "show sfdp session-detail",
   .short_help = "show sfdp session-detail 0x<session-id>",
   .function = sfdp_show_session_detail_command_fn,
+};
+
+VLIB_CLI_COMMAND (sfdp_kill_session_command, static) = {
+  .path = "kill sfdp session",
+  .short_help = "kill sfdp session index <index>|all",
+  .function = sfdp_kill_session_command_fn,
 };
 
 VLIB_CLI_COMMAND (show_sfdp_tenant, static) = {
