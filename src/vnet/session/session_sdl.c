@@ -244,8 +244,10 @@ session_sdl_table_init (session_table_t *st, u8 fib_proto)
   if (st->is_local == 1)
     return;
 
-  appns_index =
-    *vec_elt_at_index (st->appns_index, vec_len (st->appns_index) - 1);
+  if (!st->appns_index)
+    appns_index = 0;
+  else
+    appns_index = *vec_elt_at_index (st->appns_index, vec_len (st->appns_index) - 1);
   app_ns = app_namespace_get (appns_index);
   srtg = srtg_instance_alloc (st, 0);
   srt = srtg->session_rules;
@@ -597,6 +599,7 @@ show_session_sdl_command_fn (vlib_main_t *vm, unformat_input_t *input,
   u32 fib_index;
   ip46_address_t rmt_ip;
   u8 show_one = 0;
+  u8 fib_index_set = 0;
   app_namespace_t *app_ns;
   session_table_t *st;
   u8 *ns_id = 0, fib_proto = FIB_PROTOCOL_IP4;
@@ -608,6 +611,10 @@ show_session_sdl_command_fn (vlib_main_t *vm, unformat_input_t *input,
     {
       if (unformat (input, "appns %_%s%_", &ns_id))
 	;
+      else if (unformat (input, "table %u", &fib_index))
+	{
+	  fib_index_set = 1;
+	}
       else if (unformat (input, "%U", unformat_ip4_address, &rmt_ip.ip4))
 	{
 	  fib_proto = FIB_PROTOCOL_IP4;
@@ -648,7 +655,8 @@ show_session_sdl_command_fn (vlib_main_t *vm, unformat_input_t *input,
 
   if (show_one)
     {
-      fib_index = app_namespace_get_fib_index (app_ns, fib_proto);
+      if (!fib_index_set)
+	fib_index = app_namespace_get_fib_index (app_ns, fib_proto);
       st = session_table_get_for_fib_index (fib_proto, fib_index);
       if (st && (st->srtg_handle != SESSION_SRTG_HANDLE_INVALID))
 	session_rules_table_show_rule (vm, st->srtg_handle, 0, &rmt_ip, 0, 0,
@@ -657,12 +665,14 @@ show_session_sdl_command_fn (vlib_main_t *vm, unformat_input_t *input,
     }
 
   /* 2 separate session tables for global entries, 1 for ip4 and 1 for ip6 */
-  fib_index = app_namespace_get_fib_index (app_ns, FIB_PROTOCOL_IP4);
+  if (!fib_index_set)
+    fib_index = app_namespace_get_fib_index (app_ns, FIB_PROTOCOL_IP4);
   st = session_table_get_for_fib_index (FIB_PROTOCOL_IP4, fib_index);
   if (st && (st->srtg_handle != SESSION_SRTG_HANDLE_INVALID))
     session_rules_table_cli_dump (vm, st->srtg_handle, 0, FIB_PROTOCOL_IP4);
 
-  fib_index = app_namespace_get_fib_index (app_ns, FIB_PROTOCOL_IP6);
+  if (!fib_index_set)
+    fib_index = app_namespace_get_fib_index (app_ns, FIB_PROTOCOL_IP6);
   st = session_table_get_for_fib_index (FIB_PROTOCOL_IP6, fib_index);
   if (st && (st->srtg_handle != SESSION_SRTG_HANDLE_INVALID))
     session_rules_table_cli_dump (vm, st->srtg_handle, 0, FIB_PROTOCOL_IP6);
@@ -782,7 +792,7 @@ session_sdl_deregister_callbacks (session_sdl_callback_fn_t cb)
 
 VLIB_CLI_COMMAND (show_session_sdl_command, static) = {
   .path = "show session sdl",
-  .short_help = "show session sdl [appns <id> <rmt-ip>]",
+  .short_help = "show session sdl [appns <id>] [table <fib-index>] [<rmt-ip>]",
   .function = show_session_sdl_command_fn,
   .is_mp_safe = 1,
 };
