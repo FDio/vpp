@@ -1473,6 +1473,9 @@ vnet_session_rule_add_del (session_rule_add_del_args_t *args)
       st = session_table_get_for_fib_index (fib_proto, fib_index);
       if (!st)
 	return SESSION_E_INVALID;
+      if (app_namespace_index (app_ns) == 0 && args->fib_index &&
+	  (!st->appns_index || vec_len (st->appns_index) == 0))
+	vec_add1 (st->appns_index, app_namespace_index (app_ns));
       session_rules_table_init (st, fib_proto);
       if ((rv = session_rules_table_add_del (
 	     st->srtg_handle, args->transport_proto, &args->table_args)))
