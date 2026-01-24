@@ -16,6 +16,24 @@
       "message": "we already have ipv6 stack asking for secondary mac address 01:00:5e:00:00:01 and 01:00:5e:00:00:02, should we use that mechanism instead of hacking driver?",
       "revId": "c469390d6c9835d7abc0d50cb336473fd6936e67",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "88a97cfc_3beb7947",
+        "filename": "src/plugins/dpdk/device/common.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 412,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-01-24T01:31:12Z",
+      "side": 1,
+      "message": "Probably. It\u0027s WIP because we were debugging some issues with DHCPv6 and for now this might not be the problem.",
+      "parentUuid": "aa51e07e_1a78da34",
+      "revId": "c469390d6c9835d7abc0d50cb336473fd6936e67",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
