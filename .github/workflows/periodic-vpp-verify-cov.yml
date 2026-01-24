@@ -97,7 +97,7 @@ jobs:
 
       - name: Install VPP dependencies
         # yamllint disable-line rule:line-length
-        uses: fdio/vpp/.github/actions/vpp-install-deps@ffca663b9e2373ada96c3f66c06a1517b0f55fa4
+        uses: fdio/vpp/.github/actions/vpp-install-deps@b6572e4205e002205cfe0f7cb75c65970e6ff7d1
         with:
           LOG_DIR: ${{ env.LOG_DIR }}
           WORKSPACE: ${{ env.WORKSPACE }}
@@ -113,7 +113,7 @@ jobs:
 
       - name: Setup Docker VPP Runtime Environment for 'make test'
         # yamllint disable-line rule:line-length
-        uses: fdio/vpp/.github/actions/vpp-docker-runtime-setup@ffca663b9e2373ada96c3f66c06a1517b0f55fa4
+        uses: fdio/vpp/.github/actions/vpp-docker-runtime-setup@b6572e4205e002205cfe0f7cb75c65970e6ff7d1
         with:
           LOG_DIR: ${{ env.LOG_DIR }}
           WORKSPACE: ${{ env.WORKSPACE }}
@@ -121,7 +121,7 @@ jobs:
           TUI_LINE: ${{ env.TUI_LINE }}
 
       - name: Start Docker Daemon
-        uses: fdio/vpp/.github/actions/vpp-start-docker@f9e0f384d665800c8e580da853e26558dd6d2668
+        uses: fdio/vpp/.github/actions/vpp-start-docker@b6572e4205e002205cfe0f7cb75c65970e6ff7d1
         with:
           START_DOCKER_SCRIPT: start-docker.sh
           TUI_LINE: ${{ env.TUI_LINE }}
