@@ -38,6 +38,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "11f36b57_c8f12017",
+        "filename": "src/plugins/auto_sdl/auto_sdl.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 75,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-01-25T22:40:27Z",
+      "side": 1,
+      "message": "That vector should be just 0/NULL, for it to be initialized and empty would mean we\u0027ve added an appns and then removed it. If the latter happens, we just need to be sure we free it when we remove the last appns. Let\u0027s see what Steven thinks since he\u0027s closer to the code.",
+      "parentUuid": "2e80c347_d374b5c9",
+      "revId": "95a1825e24bc65c097964c2bc04389faa807bff4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "79f7e470_ccf0a3d1",
         "filename": "src/vnet/session/session_lookup.c",
         "patchSetId": 1
@@ -67,6 +85,24 @@
       "side": 1,
       "message": "Again same reason that when session table is being created directly by FIB (e.g., explicit fib_index path), st-\u003eappns_index can be NULL/empty because the table wasn’t created via appns setup. In that case, appns‑based APIs/dumps/cleanup that rely on st-\u003eappns_index won’t associate the table with any namespace, hence thought to explicitly assign default ns to session table.",
       "parentUuid": "79f7e470_ccf0a3d1",
+      "revId": "95a1825e24bc65c097964c2bc04389faa807bff4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2c243e5d_f8e8ff62",
+        "filename": "src/vnet/session/session_lookup.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1476,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-01-25T22:40:27Z",
+      "side": 1,
+      "message": "All depends on how we want to interpret uninitialized st-\u003eappns_index, which for now means default appns. Let\u0027s see how we solve the other comment.",
+      "parentUuid": "1cf1455e_70200638",
       "revId": "95a1825e24bc65c097964c2bc04389faa807bff4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
