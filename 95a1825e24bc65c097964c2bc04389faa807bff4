@@ -145,6 +145,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "99cf66a5_c7af9ed1",
+        "filename": "src/vnet/session/session_lookup.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1476,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2026-01-26T17:47:59Z",
+      "side": 1,
+      "message": "Is it cleaner and better to remove this change here and just add the line vec_add1 to the changes in auto_sdl that you were changing?",
+      "parentUuid": "2c243e5d_f8e8ff62",
+      "revId": "95a1825e24bc65c097964c2bc04389faa807bff4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "c83f6f37_85d731d0",
         "filename": "src/vnet/session/session_sdl.c",
         "patchSetId": 1
