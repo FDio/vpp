@@ -47,7 +47,7 @@ runs:
           echo "$TUI_LINE"
           cd "$WORKSPACE"
           git checkout "$GERRIT_BRANCH" || echo "WARNING: Could not checkout $GERRIT_BRANCH!"
-          git fetch origin "$GERRIT_REFSPEC"
+          git fetch --tags origin "$GERRIT_REFSPEC"
           git checkout FETCH_HEAD
           git show --stat
         } | tee "$LOG_DIR/checkout.log"
