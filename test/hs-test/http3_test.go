@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -16,23 +17,14 @@ import (
 func init() {
 	RegisterH3Tests(Http3GetTest, Http3DownloadTest, Http3PostTest, Http3UploadTest, Http3ClientGetRepeatTest,
 		Http3ClientGetMultiplexingTest, Http3PeerResetStream, Http3ClientRequestIncompleteTest,
-		Http3MissingPseudoHeaderTest, Http3PseudoHeaderAfterRegularTest)
+		Http3MissingPseudoHeaderTest, Http3PseudoHeaderAfterRegularTest, Http3ReservedFrameTest,
+		Http3DataFrameOnCtrlStreamTest, Http3GoawayOnReqStreamTest)
 	RegisterVethTests(Http3CliTest, Http3ClientPostTest, Http3ClientPostPtrTest)
 }
 
-func Http3GetTest(s *Http3Suite) {
+func http3TestSessionCleanupServer(s *Http3Suite) {
 	vpp := s.Containers.Vpp.VppInstance
 	serverAddress := s.VppAddr() + ":" + s.Ports.Port1
-	Log(vpp.Vppctl("http cli server http3-enabled listener add uri https://" + serverAddress))
-	Log(vpp.Vppctl("show session verbose 2"))
-	args := fmt.Sprintf("-k --max-time 10 --noproxy '*' --http3-only https://%s/show/version", serverAddress)
-	writeOut, log := RunCurlContainer(s.Containers.Curl, args)
-	Log(vpp.Vppctl("show session verbose 2"))
-	AssertContains(log, "HTTP/3 200")
-	AssertContains(writeOut, "<html>", "<html> not found in the result!")
-	AssertContains(writeOut, "</html>", "</html> not found in the result!")
-
-	/* test session cleanup */
 	udpCleanupDone := false
 	quicCleanupDone := false
 	httpCleanupDone := false
@@ -55,6 +47,22 @@ func Http3GetTest(s *Http3Suite) {
 	AssertEqual(true, udpCleanupDone, "UDP session not cleaned up")
 	AssertEqual(true, quicCleanupDone, "QUIC not cleaned up")
 	AssertEqual(true, httpCleanupDone, "HTTP/3 not cleaned up")
+}
+
+func Http3GetTest(s *Http3Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	serverAddress := s.VppAddr() + ":" + s.Ports.Port1
+	Log(vpp.Vppctl("http cli server http3-enabled listener add uri https://" + serverAddress))
+	Log(vpp.Vppctl("show session verbose 2"))
+	args := fmt.Sprintf("-k --max-time 10 --noproxy '*' --http3-only https://%s/show/version", serverAddress)
+	writeOut, log := RunCurlContainer(s.Containers.Curl, args)
+	Log(vpp.Vppctl("show session verbose 2"))
+	AssertContains(log, "HTTP/3 200")
+	AssertContains(writeOut, "<html>", "<html> not found in the result!")
+	AssertContains(writeOut, "</html>", "</html> not found in the result!")
+
+	/* test session cleanup */
+	http3TestSessionCleanupServer(s)
 	o := vpp.Vppctl("show http stats")
 	Log(o)
 	AssertContains(o, "1 connections accepted")
@@ -331,4 +339,65 @@ func Http3PseudoHeaderAfterRegularTest(s *Http3Suite) {
 			0x61, 0x62, 0x63, 0x01, 0x5A, 0xD1,
 		},
 		http3.ErrCodeMessageError)
+}
+
+func http3SendCtrlExpectConnError(s *Http3Suite, p []byte, expectedErrorCode http3.ErrCode) {
+	vpp := s.Containers.Vpp.VppInstance
+	serverAddress := s.VppAddr() + ":" + s.Ports.Port1
+	Log(vpp.Vppctl("http tps no-zc h3 uri https://" + serverAddress))
+
+	conn := H3ClientConnect(serverAddress)
+	stream, err := conn.OpenUniStream()
+	stream.Write(append([]byte{0x00}, p[:]...))
+	AssertNil(err)
+	select {
+	case <-conn.Context().Done():
+		err := context.Cause(conn.Context())
+		Log(err)
+		expectedErr := quic.ApplicationError{
+			ErrorCode: quic.ApplicationErrorCode(expectedErrorCode),
+			Remote:    true,
+		}
+		AssertMatchError(err, &expectedErr, "expected connection error "+expectedErrorCode.String())
+	case <-time.After(time.Second):
+		AssertNotNil(nil, "timeout")
+	}
+}
+
+func http3SendReqExpectConnError(s *Http3Suite, p []byte, expectedErrorCode http3.ErrCode) {
+	vpp := s.Containers.Vpp.VppInstance
+	serverAddress := s.VppAddr() + ":" + s.Ports.Port1
+	Log(vpp.Vppctl("http tps no-zc h3 uri https://" + serverAddress))
+
+	conn := H3ClientConnect(serverAddress)
+	stream, err := conn.OpenStream()
+	stream.Write(p)
+	AssertNil(err)
+	select {
+	case <-conn.Context().Done():
+		err := context.Cause(conn.Context())
+		Log(err)
+		expectedErr := quic.ApplicationError{
+			ErrorCode: quic.ApplicationErrorCode(expectedErrorCode),
+			Remote:    true,
+		}
+		AssertMatchError(err, &expectedErr, "expected connection error "+expectedErrorCode.String())
+	case <-time.After(time.Second):
+		AssertNotNil(nil, "timeout")
+	}
+}
+
+func Http3ReservedFrameTest(s *Http3Suite) {
+	// frame type 0x06 is reserved (PING in h2)
+	http3SendCtrlExpectConnError(s, []byte{0x06, 0x02, 0x00, 0x00}, http3.ErrCodeFrameUnexpected)
+	/* test session cleanup */
+	http3TestSessionCleanupServer(s)
+}
+
+func Http3DataFrameOnCtrlStreamTest(s *Http3Suite) {
+	http3SendCtrlExpectConnError(s, []byte{0x01, 0x02, 0x0A, 0x0B}, http3.ErrCodeFrameUnexpected)
+}
+
+func Http3GoawayOnReqStreamTest(s *Http3Suite) {
+	http3SendReqExpectConnError(s, []byte{0x07, 0x02, 0x7B, 0xBD}, http3.ErrCodeFrameUnexpected)
 }

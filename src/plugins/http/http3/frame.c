@@ -57,11 +57,19 @@ http3_frame_header_read (u8 *src, u64 src_len, http3_stream_type_t stream_type,
 	}                                                                     \
     }                                                                         \
     break;
-      foreach_http3_frame_type
+    foreach_http3_frame_type
 #undef _
-	default :
-	  /* ignore unknown frame type */
-	  break;
+      /* clang-format off */
+    /* reserved frame types */
+    case 0x02:
+    case 0x06:
+    case 0x08:
+    case 0x09:
+      return HTTP3_ERROR_FRAME_UNEXPECTED;
+    default :
+      /* ignore unknown frame type */
+      break;
+      /* clang-format on */
     }
   return HTTP3_ERROR_NO_ERROR;
 }
