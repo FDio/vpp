@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -16,23 +17,16 @@ import (
 func init() {
 	RegisterH3Tests(Http3GetTest, Http3DownloadTest, Http3PostTest, Http3UploadTest, Http3ClientGetRepeatTest,
 		Http3ClientGetMultiplexingTest, Http3PeerResetStream, Http3ClientRequestIncompleteTest,
-		Http3MissingPseudoHeaderTest, Http3PseudoHeaderAfterRegularTest)
+		Http3MissingPseudoHeaderTest, Http3PseudoHeaderAfterRegularTest, Http3ReservedFrameTest,
+		Http3DataFrameOnCtrlStreamTest, Http3GoawayOnReqStreamTest, Http3SecondSettingsFrameTest,
+		Http3ReservedSettingsTest, Http3MissingSettingsTest, Http3SecondCtrlStreamTest, Http3CtrlStreamClosedTest,
+		Http3QpackDecompressionFailedTest, Http3ClientOpenPushStreamTest, Http3DataBeforeHeadersTest)
 	RegisterVethTests(Http3CliTest, Http3ClientPostTest, Http3ClientPostPtrTest)
 }
 
-func Http3GetTest(s *Http3Suite) {
+func http3TestSessionCleanupServer(s *Http3Suite) {
 	vpp := s.Containers.Vpp.VppInstance
 	serverAddress := s.VppAddr() + ":" + s.Ports.Port1
-	Log(vpp.Vppctl("http cli server http3-enabled listener add uri https://" + serverAddress))
-	Log(vpp.Vppctl("show session verbose 2"))
-	args := fmt.Sprintf("-k --max-time 10 --noproxy '*' --http3-only https://%s/show/version", serverAddress)
-	writeOut, log := RunCurlContainer(s.Containers.Curl, args)
-	Log(vpp.Vppctl("show session verbose 2"))
-	AssertContains(log, "HTTP/3 200")
-	AssertContains(writeOut, "<html>", "<html> not found in the result!")
-	AssertContains(writeOut, "</html>", "</html> not found in the result!")
-
-	/* test session cleanup */
 	udpCleanupDone := false
 	quicCleanupDone := false
 	httpCleanupDone := false
@@ -55,6 +49,22 @@ func Http3GetTest(s *Http3Suite) {
 	AssertEqual(true, udpCleanupDone, "UDP session not cleaned up")
 	AssertEqual(true, quicCleanupDone, "QUIC not cleaned up")
 	AssertEqual(true, httpCleanupDone, "HTTP/3 not cleaned up")
+}
+
+func Http3GetTest(s *Http3Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	serverAddress := s.VppAddr() + ":" + s.Ports.Port1
+	Log(vpp.Vppctl("http cli server http3-enabled listener add uri https://" + serverAddress))
+	Log(vpp.Vppctl("show session verbose 2"))
+	args := fmt.Sprintf("-k --max-time 10 --noproxy '*' --http3-only https://%s/show/version", serverAddress)
+	writeOut, log := RunCurlContainer(s.Containers.Curl, args)
+	Log(vpp.Vppctl("show session verbose 2"))
+	AssertContains(log, "HTTP/3 200")
+	AssertContains(writeOut, "<html>", "<html> not found in the result!")
+	AssertContains(writeOut, "</html>", "</html> not found in the result!")
+
+	/* test session cleanup */
+	http3TestSessionCleanupServer(s)
 	o := vpp.Vppctl("show http stats")
 	Log(o)
 	AssertContains(o, "1 connections accepted")
@@ -331,4 +341,166 @@ func Http3PseudoHeaderAfterRegularTest(s *Http3Suite) {
 			0x61, 0x62, 0x63, 0x01, 0x5A, 0xD1,
 		},
 		http3.ErrCodeMessageError)
+}
+
+func Http3DataBeforeHeadersTest(s *Http3Suite) {
+	http3SenInvalidReqExpectStreamError(s, []byte{0x00, 0x01, 0xEE}, http3.ErrCodeMessageError)
+}
+
+func http3SendCtrlExpectConnError(s *Http3Suite, p []byte, expectedErrorCode http3.ErrCode) {
+	vpp := s.Containers.Vpp.VppInstance
+	serverAddress := s.VppAddr() + ":" + s.Ports.Port1
+	Log(vpp.Vppctl("http tps no-zc h3 uri https://" + serverAddress))
+
+	conn := H3ClientConnect(serverAddress)
+	stream, err := conn.OpenUniStream()
+	AssertNil(err)
+	stream.Write(append([]byte{0x00}, p[:]...))
+	select {
+	case <-conn.Context().Done():
+		err := context.Cause(conn.Context())
+		Log(err)
+		expectedErr := quic.ApplicationError{
+			ErrorCode: quic.ApplicationErrorCode(expectedErrorCode),
+			Remote:    true,
+		}
+		AssertMatchError(err, &expectedErr, "expected connection error "+expectedErrorCode.String())
+	case <-time.After(time.Second):
+		AssertNotNil(nil, "timeout")
+	}
+}
+
+func http3SendReqExpectConnError(s *Http3Suite, p []byte, expectedErrorCode http3.ErrCode) {
+	vpp := s.Containers.Vpp.VppInstance
+	serverAddress := s.VppAddr() + ":" + s.Ports.Port1
+	Log(vpp.Vppctl("http tps no-zc h3 uri https://" + serverAddress))
+
+	conn := H3ClientConnect(serverAddress)
+	stream, err := conn.OpenStream()
+	AssertNil(err)
+	stream.Write(p)
+	select {
+	case <-conn.Context().Done():
+		err := context.Cause(conn.Context())
+		Log(err)
+		expectedErr := quic.ApplicationError{
+			ErrorCode: quic.ApplicationErrorCode(expectedErrorCode),
+			Remote:    true,
+		}
+		AssertMatchError(err, &expectedErr, "expected connection error "+expectedErrorCode.String())
+	case <-time.After(time.Second):
+		AssertNotNil(nil, "timeout")
+	}
+}
+
+func Http3ReservedFrameTest(s *Http3Suite) {
+	// frame type 0x06 is reserved (PING in h2)
+	http3SendCtrlExpectConnError(s, []byte{0x06, 0x02, 0x00, 0x00}, http3.ErrCodeFrameUnexpected)
+	/* test session cleanup */
+	http3TestSessionCleanupServer(s)
+}
+
+func Http3DataFrameOnCtrlStreamTest(s *Http3Suite) {
+	http3SendCtrlExpectConnError(s, []byte{0x01, 0x02, 0x0A, 0x0B}, http3.ErrCodeFrameUnexpected)
+}
+
+func Http3GoawayOnReqStreamTest(s *Http3Suite) {
+	http3SendReqExpectConnError(s, []byte{0x07, 0x02, 0x7B, 0xBD}, http3.ErrCodeFrameUnexpected)
+}
+
+func Http3SecondSettingsFrameTest(s *Http3Suite) {
+	http3SendCtrlExpectConnError(s, []byte{0x04, 0x00, 0x04, 0x00}, http3.ErrCodeFrameUnexpected)
+}
+
+func Http3ReservedSettingsTest(s *Http3Suite) {
+	http3SendCtrlExpectConnError(s, []byte{0x04, 0x02, 0x04, 0x00}, http3.ErrCodeSettingsError)
+}
+
+func Http3MissingSettingsTest(s *Http3Suite) {
+	http3SendCtrlExpectConnError(s, []byte{0x0D, 0x01, 0x04}, http3.ErrCodeMissingSettings)
+}
+
+func Http3QpackDecompressionFailedTest(s *Http3Suite) {
+	http3SendReqExpectConnError(
+		s,
+		[]byte{
+			0x01, 0x00, 0x00, 0x00, 0xd1, 0xd7, 0x50, 0x09,
+			0x31, 0x32, 0x37, 0x2e, 0x30, 0x2e, 0x30, 0x2e,
+			0x31, 0xc1, 0xff, 0x24,
+		},
+		http3.ErrCodeQPACKDecompressionFailed)
+}
+
+func Http3ClientOpenPushStreamTest(s *Http3Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	serverAddress := s.VppAddr() + ":" + s.Ports.Port1
+	Log(vpp.Vppctl("http tps no-zc h3 uri https://" + serverAddress))
+
+	conn := H3ClientConnect(serverAddress)
+	stream, err := conn.OpenUniStream()
+	AssertNil(err)
+	stream.Write([]byte{0x01, 0x01})
+	select {
+	case <-conn.Context().Done():
+		err := context.Cause(conn.Context())
+		Log(err)
+		expectedErr := quic.ApplicationError{
+			ErrorCode: quic.ApplicationErrorCode(http3.ErrCodeStreamCreationError),
+			Remote:    true,
+		}
+		AssertMatchError(err, &expectedErr, "expected connection error H3_STREAM_CREATION_ERROR")
+	case <-time.After(time.Second):
+		AssertNotNil(nil, "timeout")
+	}
+}
+
+func Http3SecondCtrlStreamTest(s *Http3Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	serverAddress := s.VppAddr() + ":" + s.Ports.Port1
+	Log(vpp.Vppctl("http tps no-zc h3 uri https://" + serverAddress))
+
+	conn := H3ClientConnect(serverAddress)
+	stream1, err := conn.OpenUniStream()
+	AssertNil(err)
+	stream1.Write([]byte{0x00})
+	stream2, err := conn.OpenUniStream()
+	AssertNil(err)
+	stream2.Write([]byte{0x00})
+	select {
+	case <-conn.Context().Done():
+		err := context.Cause(conn.Context())
+		Log(err)
+		expectedErr := quic.ApplicationError{
+			ErrorCode: quic.ApplicationErrorCode(http3.ErrCodeStreamCreationError),
+			Remote:    true,
+		}
+		AssertMatchError(err, &expectedErr, "expected connection error H3_STREAM_CREATION_ERROR")
+	case <-time.After(time.Second):
+		AssertNotNil(nil, "timeout")
+	}
+}
+
+func Http3CtrlStreamClosedTest(s *Http3Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	serverAddress := s.VppAddr() + ":" + s.Ports.Port1
+	Log(vpp.Vppctl("http tps no-zc h3 uri https://" + serverAddress))
+
+	conn := H3ClientConnect(serverAddress)
+	stream, err := conn.OpenUniStream()
+	AssertNil(err)
+	stream.Write([]byte{0x00})
+	time.Sleep(500 * time.Millisecond)
+	stream.CancelWrite(quic.StreamErrorCode(http3.ErrCodeInternalError))
+	select {
+	case <-conn.Context().Done():
+		err := context.Cause(conn.Context())
+		Log(err)
+		expectedErr := quic.ApplicationError{
+			ErrorCode: quic.ApplicationErrorCode(http3.ErrCodeClosedCriticalStream),
+			Remote:    true,
+		}
+		AssertMatchError(err, &expectedErr, "expected connection error H3_CLOSED_CRITICAL_STREAM")
+	case <-time.After(time.Second):
+		AssertNotNil(nil, "timeout")
+	}
 }
