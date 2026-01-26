@@ -231,12 +231,15 @@ wg_peer_enable (vlib_main_t *vm, wg_peer_t *peer)
   clib_memcpy (preshared_key, peer->remote.r_psk, NOISE_SYMMETRIC_KEY_LEN);
   clib_memcpy (public_key, peer->remote.r_public, NOISE_PUBLIC_KEY_LEN);
 
-  bool preshared_key_set = memcmp(preshared_key, (uint8_t[NOISE_SYMMETRIC_KEY_LEN]){0}, NOISE_SYMMETRIC_KEY_LEN) != 0;
-  for (size_t i = 0; i < NOISE_SYMMETRIC_KEY_LEN; i++) {
-         printf("%02x", preshared_key[i]);
-     }
-     printf("^^ from wg_peer_enable\n");
-  noise_remote_init (vm, &peer->remote, peeri, preshared_key, preshared_key_set, public_key, wg_if->local_idx);
+  bool preshared_key_set =
+    memcmp (preshared_key, (uint8_t[NOISE_SYMMETRIC_KEY_LEN]){ 0 }, NOISE_SYMMETRIC_KEY_LEN) != 0;
+  for (size_t i = 0; i < NOISE_SYMMETRIC_KEY_LEN; i++)
+    {
+      printf ("%02x", preshared_key[i]);
+    }
+  printf ("^^ from wg_peer_enable\n");
+  noise_remote_init (vm, &peer->remote, peeri, preshared_key, preshared_key_set, public_key,
+		     wg_if->local_idx);
 
   wg_timers_send_first_handshake (peer);
 }
@@ -433,10 +436,9 @@ wg_peer_update_endpoint_from_mt (index_t peeri, const ip46_address_t *addr,
 }
 
 int
-wg_peer_add (u32 tun_sw_if_index, const u8 preshared_key[NOISE_SYMMETRIC_KEY_LEN], bool preshared_key_set,
-         const u8 public_key[NOISE_PUBLIC_KEY_LEN],
-	     u32 table_id, const ip46_address_t *endpoint,
-	     const fib_prefix_t *allowed_ips, u16 port,
+wg_peer_add (u32 tun_sw_if_index, const u8 preshared_key[NOISE_SYMMETRIC_KEY_LEN],
+	     bool preshared_key_set, const u8 public_key[NOISE_PUBLIC_KEY_LEN], u32 table_id,
+	     const ip46_address_t *endpoint, const fib_prefix_t *allowed_ips, u16 port,
 	     u16 persistent_keepalive, u32 *peer_index)
 {
   wg_if_t *wg_if;
@@ -477,8 +479,8 @@ wg_peer_add (u32 tun_sw_if_index, const u8 preshared_key[NOISE_SYMMETRIC_KEY_LEN
       return (rv);
     }
 
-  noise_remote_init (vm, &peer->remote, peer - wg_peer_pool, preshared_key, preshared_key_set, public_key,
-		     wg_if->local_idx);
+  noise_remote_init (vm, &peer->remote, peer - wg_peer_pool, preshared_key, preshared_key_set,
+		     public_key, wg_if->local_idx);
   cookie_maker_init (&peer->cookie_maker, public_key);
 
   if (vnet_sw_interface_is_admin_up (vnet_get_main (), tun_sw_if_index))
@@ -564,11 +566,12 @@ format_wg_peer (u8 * s, va_list * va)
     {
       s = format (s, " %d", *adj_index);
     }
-  if (memcmp(peer->remote.r_psk, (uint8_t[NOISE_SYMMETRIC_KEY_LEN]){0}, NOISE_SYMMETRIC_KEY_LEN) != 0)
-      s = format (s, "\n  pre-shared key:%=s %U", preshared_key, format_hex_bytes,
-              peer->remote.r_psk, NOISE_SYMMETRIC_KEY_LEN);
-  s = format (s, "\n  public key:%=s %U", public_key, format_hex_bytes,
-	      peer->remote.r_public, NOISE_PUBLIC_KEY_LEN);
+  if (memcmp (peer->remote.r_psk, (uint8_t[NOISE_SYMMETRIC_KEY_LEN]){ 0 },
+	      NOISE_SYMMETRIC_KEY_LEN) != 0)
+    s = format (s, "\n  pre-shared key:%=s %U", preshared_key, format_hex_bytes, peer->remote.r_psk,
+		NOISE_SYMMETRIC_KEY_LEN);
+  s = format (s, "\n  public key:%=s %U", public_key, format_hex_bytes, peer->remote.r_public,
+	      NOISE_PUBLIC_KEY_LEN);
   s = format (s, "\n  allowed-ips:");
   vec_foreach (allowed_ip, peer->allowed_ips)
   {
