@@ -142,7 +142,7 @@ jobs:
         with:
           WORKSPACE: ${{ env.WORKSPACE }}
           GERRIT_BRANCH: ${{ env.GERRIT_BRANCH }}
-          GERRIT_REFSPEC: ${{ env.GERRIT_REFSPEC }}
+          GERRIT_REFSPEC: refs/heads/${{ env.GERRIT_BRANCH }}
           TUI_LINE: ${{ env.TUI_LINE }}
 
       - name: Detect docs changes
