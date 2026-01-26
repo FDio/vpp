@@ -867,6 +867,11 @@ I:	tracenode
 M:	Maxime Peim <mpeim@cisco.com>
 F:	src/plugins/tracenode
 
+Plugin - Trace path
+I:	tracepath
+M:	Hadi Rayan Al-Sandid <halsandi@cisco.com>
+F:	src/plugins/tracepath
+
 Plugin - Packet Vector Tunnel Interface
 I:	pvti
 M:	Andrew Yourtchenko <ayourtch@gmail.com>
