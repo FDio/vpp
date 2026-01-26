@@ -19,77 +19,43 @@ func init() {
 const vcl string = "VCL_CONFIG=/vcl.conf"
 const ldp string = "LD_PRELOAD=/usr/lib/libvcl_ldpreload.so"
 
-func kubeIperfVclTest(s *KubeSuite, clientArgs string) IPerfResult {
-	s.DeployPod(s.Pods.ClientGeneric)
-	s.DeployPod(s.Pods.ServerGeneric)
-	ctx, cancel := context.WithTimeout(s.MainContext, time.Minute*2)
-	defer cancel()
-	defer func() {
-		o, err := s.Pods.ServerGeneric.Exec(ctx, []string{"/bin/bash", "-c", "cat /iperf_server.log"})
-		Log(o)
-		AssertNil(err)
-	}()
-
-	_, err := s.Pods.ClientGeneric.Exec(ctx, []string{"/bin/bash", "-c", VclConfIperf})
-	AssertNil(err)
-	_, err = s.Pods.ServerGeneric.Exec(ctx, []string{"/bin/bash", "-c", VclConfIperf})
-	AssertNil(err)
-
-	s.FixVersionNumber(s.Pods.ClientGeneric, s.Pods.ServerGeneric)
-
-	iperfClientCmd := fmt.Sprintf("%s %s iperf3 %s -J -4 -b 40g -c %s",
-		vcl, ldp, clientArgs, s.Pods.ServerGeneric.IpAddress)
-
-	o, err := s.Pods.ServerGeneric.Exec(ctx, []string{"/bin/bash", "-c",
-		vcl + " " + ldp + " iperf3 -s -D --logfile /iperf_server.log -B " + s.Pods.ServerGeneric.IpAddress})
-	Log("Sleeping for 2s")
-	time.Sleep(time.Second * 2)
-	AssertNil(err)
-	out, err := s.Pods.ServerGeneric.Exec(ctx, []string{"/bin/bash", "-c", "pidof iperf3"})
-	Log(out)
-	AssertNil(err)
-	AssertNil(err, o)
-
-	o, err = s.Pods.ClientGeneric.Exec(ctx, []string{"/bin/bash", "-c", iperfClientCmd})
-	AssertNil(err, o)
-	result := ParseJsonIperfOutput([]byte(o))
-	LogJsonIperfOutput(result)
-	return result
+type iperfVclInterface interface {
+	DeployPod(*Pod)
+	FixVersionNumber(...*Pod)
 }
 
-// TODO: use interfaces to avoid duplicated code
-func kubeIperfVclMtuTest(s *LargeMtuSuite, clientArgs string) IPerfResult {
-	s.DeployPod(s.Pods.ClientGeneric)
-	s.DeployPod(s.Pods.ServerGeneric)
-	ctx, cancel := context.WithTimeout(s.MainContext, time.Minute*2)
+func kubeIperfVclTest(ctx context.Context, clnPod *Pod, srvPod *Pod, s iperfVclInterface, clientArgs string) IPerfResult {
+	s.DeployPod(clnPod)
+	s.DeployPod(srvPod)
+	ctx, cancel := context.WithTimeout(ctx, time.Minute*2)
 	defer cancel()
 	defer func() {
-		o, err := s.Pods.ServerGeneric.Exec(ctx, []string{"/bin/bash", "-c", "cat /iperf_server.log"})
+		o, err := srvPod.Exec(ctx, []string{"/bin/bash", "-c", "cat /iperf_server.log"})
 		Log(o)
 		AssertNil(err)
 	}()
 
-	_, err := s.Pods.ClientGeneric.Exec(ctx, []string{"/bin/bash", "-c", VclConfIperf})
+	_, err := clnPod.Exec(ctx, []string{"/bin/bash", "-c", VclConfIperf})
 	AssertNil(err)
-	_, err = s.Pods.ServerGeneric.Exec(ctx, []string{"/bin/bash", "-c", VclConfIperf})
+	_, err = srvPod.Exec(ctx, []string{"/bin/bash", "-c", VclConfIperf})
 	AssertNil(err)
 
-	s.FixVersionNumber(s.Pods.ClientGeneric, s.Pods.ServerGeneric)
+	s.FixVersionNumber(clnPod, srvPod)
 
 	iperfClientCmd := fmt.Sprintf("%s %s iperf3 %s -J -4 -b 40g -c %s",
-		vcl, ldp, clientArgs, s.Pods.ServerGeneric.IpAddress)
+		vcl, ldp, clientArgs, srvPod.IpAddress)
 
-	o, err := s.Pods.ServerGeneric.Exec(ctx, []string{"/bin/bash", "-c",
-		vcl + " " + ldp + " iperf3 -s -D --logfile /iperf_server.log -B " + s.Pods.ServerGeneric.IpAddress})
+	o, err := srvPod.Exec(ctx, []string{"/bin/bash", "-c",
+		vcl + " " + ldp + " iperf3 -s -D --logfile /iperf_server.log -B " + srvPod.IpAddress})
 	Log("Sleeping for 2s")
 	time.Sleep(time.Second * 2)
 	AssertNil(err)
-	out, err := s.Pods.ServerGeneric.Exec(ctx, []string{"/bin/bash", "-c", "pidof iperf3"})
+	out, err := srvPod.Exec(ctx, []string{"/bin/bash", "-c", "pidof iperf3"})
 	Log(out)
 	AssertNil(err)
 	AssertNil(err, o)
 
-	o, err = s.Pods.ClientGeneric.Exec(ctx, []string{"/bin/bash", "-c", iperfClientCmd})
+	o, err = clnPod.Exec(ctx, []string{"/bin/bash", "-c", iperfClientCmd})
 	AssertNil(err, o)
 	result := ParseJsonIperfOutput([]byte(o))
 	LogJsonIperfOutput(result)
@@ -97,23 +63,23 @@ func kubeIperfVclMtuTest(s *LargeMtuSuite, clientArgs string) IPerfResult {
 }
 
 func KubeTcpIperfVclTest(s *KubeSuite) {
-	AssertIperfMinTransfer(kubeIperfVclTest(s, "-M 1460"), 2000)
+	AssertIperfMinTransfer(kubeIperfVclTest(s.MainContext, s.Pods.ClientGeneric, s.Pods.ServerGeneric, s, "-M 1460"), 2000)
 }
 
 func KubeTcpIperfVclLargeMTUTest(s *LargeMtuSuite) {
-	AssertIperfMinTransfer(kubeIperfVclMtuTest(s, "-M 8900"), 2000)
+	AssertIperfMinTransfer(kubeIperfVclTest(s.MainContext, s.Pods.ClientGeneric, s.Pods.ServerGeneric, s, "-M 8900"), 2000)
 }
 
 func KubeUdpIperfVclTest(s *KubeSuite) {
-	AssertIperfMinTransfer(kubeIperfVclTest(s, "-l 1460 -u"), 2000)
+	AssertIperfMinTransfer(kubeIperfVclTest(s.MainContext, s.Pods.ClientGeneric, s.Pods.ServerGeneric, s, "-l 1460 -u"), 2000)
 }
 
 func KubeTcpIperfVclMWTest(s *KubeSuite) {
-	AssertIperfMinTransfer(kubeIperfVclTest(s, "-M 1460"), 200)
+	AssertIperfMinTransfer(kubeIperfVclTest(s.MainContext, s.Pods.ClientGeneric, s.Pods.ServerGeneric, s, "-M 1460"), 200)
 }
 
 func KubeUdpIperfVclMWTest(s *KubeSuite) {
-	AssertIperfMinTransfer(kubeIperfVclTest(s, "-l 1460 -u"), 200)
+	AssertIperfMinTransfer(kubeIperfVclTest(s.MainContext, s.Pods.ClientGeneric, s.Pods.ServerGeneric, s, "-l 1460 -u"), 200)
 }
 
 func NginxRpsTest(s *KubeSuite) {
