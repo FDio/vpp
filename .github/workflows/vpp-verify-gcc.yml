@@ -194,7 +194,7 @@ jobs:
 
       - name: Checkout VPP Gerrit Change
         # yamllint disable-line rule:line-length
-        uses: fdio/vpp/.github/actions/vpp-checkout-gerrit-change@ffca663b9e2373ada96c3f66c06a1517b0f55fa4
+        uses: fdio/vpp/.github/actions/vpp-checkout-gerrit-change@27fc2aa27f57c8f7055e8f1b6e5a9f41b0315873
         with:
           WORKSPACE: ${{ env.WORKSPACE }}
           GERRIT_BRANCH: ${{ env.GERRIT_BRANCH }}
@@ -203,7 +203,7 @@ jobs:
 
       - name: Install VPP dependencies
         # yamllint disable-line rule:line-length
-        uses: fdio/vpp/.github/actions/vpp-install-deps@ffca663b9e2373ada96c3f66c06a1517b0f55fa4
+        uses: fdio/vpp/.github/actions/vpp-install-deps@27fc2aa27f57c8f7055e8f1b6e5a9f41b0315873
         with:
           WORKSPACE: ${{ env.WORKSPACE }}
           TUI_LINE: ${{ env.TUI_LINE }}
@@ -227,7 +227,7 @@ jobs:
 
       - name: Setup Docker VPP Runtime Environment for 'make test'
         # yamllint disable-line rule:line-length
-        uses: fdio/vpp/.github/actions/vpp-docker-runtime-setup@ffca663b9e2373ada96c3f66c06a1517b0f55fa4
+        uses: fdio/vpp/.github/actions/vpp-docker-runtime-setup@27fc2aa27f57c8f7055e8f1b6e5a9f41b0315873
         with:
           WORKSPACE: ${{ env.WORKSPACE }}
           SHM_SIZE: ${{ env.SHM_SIZE }}
