@@ -8,7 +8,7 @@ require (
 	github.com/edwarnicke/exechelper v1.0.3
 	github.com/onsi/ginkgo/v2 v2.27.2
 	github.com/onsi/gomega v1.38.2
-	github.com/quic-go/quic-go v0.56.0
+	github.com/quic-go/quic-go v0.59.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/summerwind/h2spec v2.2.1+incompatible
 	go.fd.io/govpp v0.13.0
@@ -44,7 +44,7 @@ require (
 	github.com/opencontainers/image-spec v1.1.1 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
-	github.com/quic-go/qpack v0.5.1 // indirect
+	github.com/quic-go/qpack v0.6.0 // indirect
 	github.com/vishvananda/netns v0.0.5 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.58.0 // indirect
