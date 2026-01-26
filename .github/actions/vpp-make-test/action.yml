@@ -14,7 +14,7 @@ inputs:
     required: true
     type: string
   BUILD_TYPE:
-    description: "Type of build: debug (dbg) or release (rel)"
+    description: "Type of build: debug or release"
     required: true
     type: string
   TEST_JOBS:
@@ -88,7 +88,7 @@ runs:
           mkdir -p $LOG_DIR
           LOG_FILE="$LOG_DIR/maketest.log"
           {
-            if [ "$BUILD_TYPE" == "dbg" ] ; then
+            if [ "$BUILD_TYPE" == "debug" ] ; then
                 TEST_TARGET="test-debug"
             else
                 TEST_TARGET="test"

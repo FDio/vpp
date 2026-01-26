@@ -235,7 +235,7 @@ jobs:
 
       - name: VPP Make Test with GCC/GCOV
         # yamllint disable-line rule:line-length
-        uses: fdio/vpp/.github/actions/vpp-make-test@970ed8ecbe252fb5384e72141397e42fd9f127af
+        uses: fdio/vpp/.github/actions/vpp-make-test@0b2ad4fb479a2e4b03adb05089895c90f4281a60
         timeout-minutes: 120
         with:
           WORKSPACE: ${{ env.WORKSPACE }}
