@@ -56,6 +56,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "4caf7d72_1800f039",
+        "filename": "src/plugins/auto_sdl/auto_sdl.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 75,
+      "author": {
+        "id": 3291
+      },
+      "writtenOn": "2026-01-26T10:44:14Z",
+      "side": 1,
+      "message": "Yeah, sorry for confusion, I mean Null only, as I was crashing at \"vec_elt_at_index (st-\u003eappns_index, 0)\".\nThe st created using explicit fib has no path for assigning appns and hence its null.",
+      "parentUuid": "11f36b57_c8f12017",
+      "revId": "95a1825e24bc65c097964c2bc04389faa807bff4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "79f7e470_ccf0a3d1",
         "filename": "src/vnet/session/session_lookup.c",
         "patchSetId": 1
