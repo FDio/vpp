@@ -1,0 +1,10 @@
+---
+name: Tracepath
+maintainer: Hadi Sandid <halsandi@cisco.com>
+features:
+  - display all unique paths of trace buffer entries through VPP graph
+  - can be used to display all traces available for specified paths
+  - can be combined with capture-time trace filters (e.g. 'trace filter classify-table' or trace filter functions)
+description: "Display information on trace buffer entries path through VPP graph"
+state: experimental
+properties: [CLI]
