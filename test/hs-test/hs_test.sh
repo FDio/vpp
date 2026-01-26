@@ -200,7 +200,7 @@ if [ $leak_check_set -eq 1 ]; then
   fi
 fi
 
-if [ -n "${BUILD_NUMBER}" ]; then
+if [ -n "${GITHUB_REPO_URL}" ]; then
         ginkgo_args="$ginkgo_args --no-color"
 fi
 

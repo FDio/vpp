@@ -42,7 +42,7 @@ func TestHst(t *testing.T) {
 		TestTimeout = time.Minute * time.Duration(*Timeout)
 	}
 
-	RunningInCi = os.Getenv("BUILD_NUMBER") != ""
+	RunningInCi = os.Getenv("GITHUB_REPO_URL") != ""
 
 	output, err := os.ReadFile("/sys/devices/system/node/online")
 	if err == nil && strings.Contains(string(output), "-") {
