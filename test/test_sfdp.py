@@ -129,6 +129,16 @@ class TestSfdp(VppTestCase):
 
     def test_sfdp_api_configuration(self):
         """Test SFDP configuration"""
+        # Dump services to build index mapping and verify scope
+        service_index_by_name = {}
+        services = self.vapi.sfdp_service_dump()
+        for svc in services:
+            service_index_by_name[svc.node_name] = svc.index
+            # Verify all services have 'default' scope
+            self.assertEqual(
+                svc.scope, "default", "Service does not have 'default' scope"
+            )
+
         # Test tenant add
         reply = self.vapi.sfdp_tenant_add_del(
             tenant_id=100,
@@ -167,6 +177,27 @@ class TestSfdp(VppTestCase):
         )
         self.assertEqual(reply.retval, 0)
 
+        # Calculate expected bitmaps based on service indices
+        expected_forward_bitmap = 0
+        for service_name in forward_services:
+            idx = service_index_by_name[service_name]
+            expected_forward_bitmap |= 1 << idx
+
+        expected_reverse_bitmap = 0
+        for service_name in reverse_services:
+            idx = service_index_by_name[service_name]
+            expected_reverse_bitmap |= 1 << idx
+
+        # Verify services are set correctly via tenant dump
+        tenants = self.vapi.sfdp_tenant_dump()
+        tenant = tenants[0]
+        self.assertEqual(
+            tenant.forward_bitmap, expected_forward_bitmap, "Forward bitmap mismatch"
+        )
+        self.assertEqual(
+            tenant.reverse_bitmap, expected_reverse_bitmap, "Reverse bitmap mismatch"
+        )
+
         # Test timeout configuration
         reply = self.vapi.sfdp_set_timeout(
             tenant_id=100,
@@ -201,6 +232,12 @@ class TestSfdp(VppTestCase):
 
     def test_sfdp_cli_configuration(self):
         """Test SFDP configuration through CLI"""
+        # Dump services to build index mapping
+        services = self.vapi.sfdp_service_dump()
+        service_index_by_name = {}
+        for svc in services:
+            service_index_by_name[svc.node_name] = svc.index
+
         # Test tenant add via CLI
         self.vapi.cli("sfdp tenant add 200 context 200")
 
@@ -215,12 +252,34 @@ class TestSfdp(VppTestCase):
         self.assertEqual(len(tenants), 1, "There should only be one tenant")
 
         # Test service configuration via CLI
+        forward_services = ["sfdp-l4-lifecycle", "ip4-lookup"]
+        reverse_services = ["ip4-lookup"]
         self.vapi.cli(
             "set sfdp services tenant 200 sfdp-l4-lifecycle ip4-lookup forward"
         )
         self.vapi.cli("set sfdp services tenant 200 ip4-lookup reverse")
 
+        # Calculate expected bitmaps based on service indices
+        expected_forward_bitmap = 0
+        for service_name in forward_services:
+            idx = service_index_by_name[service_name]
+            expected_forward_bitmap |= 1 << idx
+
+        expected_reverse_bitmap = 0
+        for service_name in reverse_services:
+            idx = service_index_by_name[service_name]
+            expected_reverse_bitmap |= 1 << idx
+
         # Verify services are set correctly via tenant dump
+        tenants = self.vapi.sfdp_tenant_dump()
+        tenant = tenants[0]
+        self.assertEqual(
+            tenant.forward_bitmap, expected_forward_bitmap, "Forward bitmap mismatch"
+        )
+        self.assertEqual(
+            tenant.reverse_bitmap, expected_reverse_bitmap, "Reverse bitmap mismatch"
+        )
+
         # Test timeout configuration via CLI
         self.vapi.cli("set sfdp timeout tenant 200 embryonic 35")
 
