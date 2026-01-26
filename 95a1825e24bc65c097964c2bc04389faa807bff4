@@ -74,6 +74,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "9df536c8_328d0d6c",
+        "filename": "src/plugins/auto_sdl/auto_sdl.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 75,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2026-01-26T16:55:03Z",
+      "side": 1,
+      "message": "Can you provide the full calling chain to session_table_get_or_alloc from auto_sdl which st-\u003eappns_index was not set up and requiring this fix?",
+      "parentUuid": "4caf7d72_1800f039",
+      "revId": "95a1825e24bc65c097964c2bc04389faa807bff4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "79f7e470_ccf0a3d1",
         "filename": "src/vnet/session/session_lookup.c",
         "patchSetId": 1
