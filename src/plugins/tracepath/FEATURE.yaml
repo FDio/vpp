@@ -1,0 +1,9 @@
+---
+name: Tracepath plugin
+maintainer: Hadi Rayan Al-Sandid <halsandi@cisco.com>
+features:
+  - displays path of traced packets through VPP node graph
+  - filter packet trace for packets a specific path
+description: "show path of traced packet through VPP graph"
+state: experimental
+properties: [CLI]
