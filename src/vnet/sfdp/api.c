@@ -3,6 +3,7 @@
  */
 
 #include <vnet/sfdp/sfdp.h>
+#include <vnet/sfdp/service.h>
 
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
@@ -257,6 +258,49 @@ vl_api_sfdp_tenant_dump_t_handler (vl_api_sfdp_tenant_dump_t *mp)
     {
       tenant = sfdp_tenant_at_index (sfdp, tenant_index);
       sfdp_send_tenant_details (rp, mp->context, tenant_index, tenant);
+    }
+}
+
+static void
+sfdp_send_service_details (vl_api_registration_t *rp, u32 context,
+			   sfdp_service_registration_t *service, const char *scope_name)
+{
+  sfdp_main_t *sfdp = &sfdp_main;
+  vl_api_sfdp_service_details_t *mp;
+
+  mp = vl_msg_api_alloc_zero (sizeof (*mp));
+  mp->_vl_msg_id = ntohs (VL_API_SFDP_SERVICE_DETAILS + sfdp->msg_id_base);
+
+  mp->context = context;
+  strncpy ((char *) mp->node_name, service->node_name, ARRAY_LEN (mp->node_name) - 1);
+  strncpy ((char *) mp->scope, scope_name, ARRAY_LEN (mp->scope) - 1);
+  mp->index = *(service->index_in_bitmap);
+  mp->is_terminal = service->is_terminal;
+
+  vl_api_send_msg (rp, (u8 *) mp);
+}
+
+static void
+vl_api_sfdp_service_dump_t_handler (vl_api_sfdp_service_dump_t *mp)
+{
+  sfdp_service_main_t *vsm = &sfdp_service_main;
+  sfdp_service_registration_t ***services_for_scope;
+  vl_api_registration_t *rp;
+
+  rp = vl_api_client_index_to_registration (mp->client_index);
+  if (rp == 0)
+    return;
+
+  vec_foreach (services_for_scope, vsm->services_per_scope_index)
+    {
+      u32 scope_index = services_for_scope - vsm->services_per_scope_index;
+      const char *scope_name = vsm->scope_names[scope_index];
+      sfdp_service_registration_t **service;
+
+      vec_foreach (service, *services_for_scope)
+	{
+	  sfdp_send_service_details (rp, mp->context, *service, scope_name);
+	}
     }
 }
 

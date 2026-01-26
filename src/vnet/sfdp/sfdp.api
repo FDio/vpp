@@ -117,6 +117,22 @@ autoreply define sfdp_set_icmp_error_node
   u32 node_index;
 };
 
+define sfdp_service_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+define sfdp_service_details
+{
+  u32 context;
+
+  string node_name[32];
+  string scope[32];
+  bool is_terminal;
+  u8 index;
+};
+
 /*
  * Local Variables:
  * eval: (c-set-style "gnu")
