@@ -93,7 +93,3 @@ gw_set_geneve_output (gw_set_geneve_output_args_t *args)
 }
 
 VLIB_INIT_FUNCTION (gateway_init);
-VLIB_PLUGIN_REGISTER () = {
-  .version = SFDP_GW_PLUGIN_BUILD_VER,
-  .description = "sfdp Gateway Plugin",
-};
