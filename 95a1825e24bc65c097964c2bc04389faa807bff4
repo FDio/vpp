@@ -92,6 +92,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "31600cd9_ed3e4f3d",
+        "filename": "src/plugins/auto_sdl/auto_sdl.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 75,
+      "author": {
+        "id": 3291
+      },
+      "writtenOn": "2026-01-27T17:00:08Z",
+      "side": 1,
+      "message": "→ session_stream_accept\n              → session_lookup_add_connection\n                -\u003e session_table_get_or_alloc_for_connection\n                  -\u003e session_table_get_or_alloc\n                    -\u003e session_table_alloc\n                      -\u003e (session table is allocated)",
+      "parentUuid": "9df536c8_328d0d6c",
+      "revId": "95a1825e24bc65c097964c2bc04389faa807bff4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "79f7e470_ccf0a3d1",
         "filename": "src/vnet/session/session_lookup.c",
         "patchSetId": 1
