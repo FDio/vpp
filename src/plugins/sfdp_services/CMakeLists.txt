@@ -7,6 +7,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
 add_vpp_plugin(sfdp_services
   SOURCES
+  plugin.c
   base/tcp-check/node.c
   base/tcp-check/tcp_check.c
   base/tcp-check/format.c
