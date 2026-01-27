@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "76719d55_b7fb6fdc",
+        "filename": "src/plugins/hs_apps/proxy.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1577,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-01-27T15:26:13Z",
+      "side": 1,
+      "message": "you need to null terminate this before calling parse_uri",
+      "range": {
+        "startLine": 1577,
+        "startChar": 43,
+        "endLine": 1577,
+        "endChar": 55
+      },
+      "revId": "2c0eb80cada4384d2131400879ba3b151d9720ff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d56ec2df_d714bd9e",
+        "filename": "src/plugins/hs_apps/proxy.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1587,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-01-27T15:26:13Z",
+      "side": 1,
+      "message": "you need to null terminate this before calling parse_uri",
+      "range": {
+        "startLine": 1587,
+        "startChar": 48,
+        "endLine": 1587,
+        "endChar": 60
+      },
+      "revId": "2c0eb80cada4384d2131400879ba3b151d9720ff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
