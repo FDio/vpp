@@ -56,6 +56,7 @@ typedef struct
   volatile int ao_disconnected;
 
   u32 ps_index;
+  u32 cfg_index;
 } proxy_session_t;
 
 typedef struct proxy_worker_
@@ -65,6 +66,32 @@ typedef struct proxy_worker_
   vnet_connect_args_t *pending_connects;
   vnet_connect_args_t *burst_connects;
 } proxy_worker_t;
+
+typedef enum
+{
+  PROXY_ACTION_REVERSE_CONNECT,
+  PROXY_ACTION_CONNECT,
+} proxy_server_action_t;
+
+typedef struct
+{
+  /* Listener configuration */
+  session_endpoint_cfg_t listener_sep;
+
+  /* SSL/TLS configuration (optional) */
+  u8 *cert_file;
+  u8 *key_file;
+  u32 ckpair_index;
+
+  /* HTTP-specific configuration */
+  u8 *path;			/**< URI path for HTTP */
+  proxy_server_action_t action; /**< Action: connect or reverse-connect */
+
+  /* Upstream for reverse-connect */
+  session_endpoint_cfg_t upstream_sep;
+
+  u8 is_configured; /**< Server entry is configured */
+} proxy_server_config_t;
 
 typedef struct
 {
@@ -78,7 +105,6 @@ typedef struct
   u32 server_app_index;			/**< server app index */
   u32 active_open_client_index;		/**< active open API client handle */
   u32 active_open_app_index;		/**< active open index after attach */
-  u32 ckpair_index;			/**< certkey pair index for tls */
 
   http_headers_ctx_t capsule_proto_header;
   u8 *capsule_proto_header_buf;
@@ -95,8 +121,12 @@ typedef struct
   u8 prealloc_fifos;			/**< Request fifo preallocation */
   u32 idle_timeout; /**< connect-proxy timeout for idle connections */
   int rcv_buffer_size;
-  session_endpoint_cfg_t server_sep;
-  session_endpoint_cfg_t *client_sep;
+
+  /*
+   * Startup configuration
+   */
+  proxy_server_config_t *server_configs; /**< Server configurations */
+  u32 ckpair_index;
 
   /*
    * Flags
