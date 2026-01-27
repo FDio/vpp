@@ -9,6 +9,7 @@
 #include <hs_apps/proxy.h>
 #include <vnet/tcp/tcp.h>
 #include <http/http_header_names.h>
+#include <vppinfra/unix.h>
 
 proxy_main_t proxy_main;
 
@@ -501,6 +502,14 @@ proxy_accept_callback (session_t * s)
   proxy_session_t *ps;
   proxy_worker_t *wrk;
   transport_proto_t tp = session_get_transport_proto (s);
+  session_t *listener;
+  u32 cfg_index;
+
+  /* Get config index from listener session opaque */
+  listener = session_get_from_handle (s->listener_handle);
+  cfg_index = listener->opaque;
+
+  PROXY_DBG ("[%u] accept callback, cfg_index %u", vlib_get_thread_index (), cfg_index);
 
   wrk = proxy_worker_get (s->thread_index);
   sc = proxy_session_side_ctx_alloc (wrk);
@@ -516,6 +525,7 @@ proxy_accept_callback (session_t * s)
   ps->po.rx_fifo = s->rx_fifo;
   ps->po.tx_fifo = s->tx_fifo;
   ps->po.is_http = tp == TRANSPORT_PROTO_HTTP ? 1 : 0;
+  ps->cfg_index = cfg_index;
 
   ps->ao.session_handle = SESSION_INVALID_HANDLE;
   sc->ps_index = ps->ps_index;
@@ -686,7 +696,7 @@ proxy_session_start_connect (proxy_session_side_ctx_t *sc, session_t *s)
   int actual_transfer __attribute__ ((unused));
   vnet_connect_args_t _a = {}, *a = &_a;
   proxy_main_t *pm = &proxy_main;
-  u32 max_dequeue, ps_index;
+  u32 max_dequeue, ps_index, cfg_index;
   proxy_session_t *ps;
   transport_proto_t tp = session_get_transport_proto (s);
 
@@ -701,8 +711,18 @@ proxy_session_start_connect (proxy_session_side_ctx_t *sc, session_t *s)
       return;
     }
 
-  ps->active_open_establishing = 1;
   ps_index = ps->ps_index;
+  cfg_index = ps->cfg_index;
+
+  if (cfg_index >= vec_len (pm->server_configs))
+    {
+      clib_warning ("invalid config index %u", cfg_index);
+      proxy_session_close_po (ps);
+      clib_spinlock_unlock_if_init (&pm->sessions_lock);
+      return;
+    }
+
+  ps->active_open_establishing = 1;
 
   clib_spinlock_unlock_if_init (&pm->sessions_lock);
 
@@ -719,11 +739,9 @@ proxy_session_start_connect (proxy_session_side_ctx_t *sc, session_t *s)
 	svm_fifo_peek (s->rx_fifo, 0 /* relative_offset */, max_dequeue,
 		       pm->rx_buf[s->thread_index]);
 
-      /* Expectation is that here actual data just received is parsed and based
-       * on its contents, the destination and parameters of the connect to the
-       * upstream are decided
-       */
-      clib_memcpy (&a->sep_ext, &pm->client_sep[tp], sizeof (*pm->client_sep));
+      /* Use the upstream_sep from the server config corresponding to cfg_index */
+      clib_memcpy (&a->sep_ext, &pm->server_configs[cfg_index].upstream_sep,
+		   sizeof (pm->server_configs[cfg_index].upstream_sep));
     }
 
   a->api_context = ps_index;
@@ -1315,67 +1333,138 @@ active_open_attach (void)
 }
 
 static int
-proxy_server_listen ()
+proxy_server_add_ckpair (u8 *cert_file, u8 *key_file)
 {
-  proxy_main_t *pm = &proxy_main;
-  vnet_listen_args_t _a, *a = &_a;
-  int rv, need_crypto;
+  vnet_app_add_cert_key_pair_args_t _ck_pair, *ck_pair = &_ck_pair;
+  clib_error_t *error;
+  u8 *cert_data = 0, *key_data = 0;
 
-  clib_memset (a, 0, sizeof (*a));
+  clib_memset (ck_pair, 0, sizeof (*ck_pair));
 
-  a->app_index = pm->server_app_index;
-  clib_memcpy (&a->sep_ext, &pm->server_sep, sizeof (pm->server_sep));
-  /* Make sure listener is marked connected for transports like udp */
-  a->sep_ext.transport_flags = TRANSPORT_CFG_F_CONNECTED;
-
-  if (pm->server_sep.transport_proto == TRANSPORT_PROTO_HTTP)
+  if (!cert_file || !key_file)
     {
-      /* set http timeout for connect-proxy */
-      transport_endpt_cfg_http_t http_cfg = { pm->idle_timeout,
-					      HTTP_UDP_TUNNEL_DGRAM };
-      transport_endpt_ext_cfg_t *ext_cfg = session_endpoint_add_ext_cfg (
-	&a->sep_ext, TRANSPORT_ENDPT_EXT_CFG_HTTP, sizeof (http_cfg));
-      clib_memcpy (ext_cfg->data, &http_cfg, sizeof (http_cfg));
-      if (pm->server_sep.flags & SESSION_ENDPT_CFG_F_SECURE)
-	{
-	  transport_endpt_ext_cfg_t *ext_cfg = session_endpoint_add_ext_cfg (
-	    &a->sep_ext, TRANSPORT_ENDPT_EXT_CFG_CRYPTO,
-	    sizeof (transport_endpt_crypto_cfg_t));
-	  ext_cfg->crypto.ckpair_index = pm->ckpair_index;
-	}
+      /* Use embedded test certificates */
+      ck_pair->cert = (u8 *) test_srv_crt_rsa;
+      ck_pair->key = (u8 *) test_srv_key_rsa;
+      ck_pair->cert_len = test_srv_crt_rsa_len;
+      ck_pair->key_len = test_srv_key_rsa_len;
     }
   else
     {
-      need_crypto = proxy_transport_needs_crypto (a->sep.transport_proto);
-      if (need_crypto)
+      /* Read certificate from file */
+      error = clib_file_contents ((char *) cert_file, &cert_data);
+      if (error)
 	{
-	  transport_endpt_ext_cfg_t *ext_cfg = session_endpoint_add_ext_cfg (
-	    &a->sep_ext, TRANSPORT_ENDPT_EXT_CFG_CRYPTO,
-	    sizeof (transport_endpt_crypto_cfg_t));
-	  ext_cfg->crypto.ckpair_index = pm->ckpair_index;
+	  clib_warning ("Failed to read certificate file %s: %U", cert_file, format_clib_error,
+			error);
+	  clib_error_free (error);
+	  return -1;
 	}
+
+      /* Read key from file */
+      error = clib_file_contents ((char *) key_file, &key_data);
+      if (error)
+	{
+	  clib_warning ("Failed to read key file %s: %U", key_file, format_clib_error, error);
+	  clib_error_free (error);
+	  vec_free (cert_data);
+	  return -1;
+	}
+
+      ck_pair->cert = cert_data;
+      ck_pair->key = key_data;
+      ck_pair->cert_len = vec_len (cert_data);
+      ck_pair->key_len = vec_len (key_data);
     }
 
-  rv = vnet_listen (a);
-  session_endpoint_free_ext_cfgs (&a->sep_ext);
-
-  return rv;
-}
-
-static void
-proxy_server_add_ckpair (void)
-{
-  vnet_app_add_cert_key_pair_args_t _ck_pair, *ck_pair = &_ck_pair;
-  proxy_main_t *pm = &proxy_main;
-
-  clib_memset (ck_pair, 0, sizeof (*ck_pair));
-  ck_pair->cert = (u8 *) test_srv_crt_rsa;
-  ck_pair->key = (u8 *) test_srv_key_rsa;
-  ck_pair->cert_len = test_srv_crt_rsa_len;
-  ck_pair->key_len = test_srv_key_rsa_len;
   vnet_app_add_cert_key_pair (ck_pair);
 
-  pm->ckpair_index = ck_pair->index;
+  /* Free file data if it was allocated */
+  if (cert_file && key_file)
+    {
+      vec_free (cert_data);
+      vec_free (key_data);
+    }
+
+  return ck_pair->index;
+}
+
+static int
+proxy_server_listen ()
+{
+  proxy_main_t *pm = &proxy_main;
+  proxy_server_config_t *cfg;
+  vnet_listen_args_t _a, *a = &_a;
+  int rv, need_crypto;
+  u32 cfg_index;
+
+  /* Iterate over all server configs and start listening */
+  vec_foreach_index (cfg_index, pm->server_configs)
+    {
+      cfg = &pm->server_configs[cfg_index];
+      if (cfg->is_configured)
+	continue;
+
+      /* Ensure ckpair_index is set for this config */
+      if (cfg->cert_file && cfg->key_file)
+	{
+	  int ckpair_idx = proxy_server_add_ckpair (cfg->cert_file, cfg->key_file);
+	  if (ckpair_idx < 0)
+	    {
+	      clib_warning ("Failed to add certificate/key pair for config %u", cfg_index);
+	      return -1;
+	    }
+	  cfg->ckpair_index = ckpair_idx;
+	}
+      else if (proxy_transport_needs_crypto (cfg->listener_sep.transport_proto))
+	{
+	  cfg->ckpair_index = pm->ckpair_index;
+	}
+
+      clib_memset (a, 0, sizeof (*a));
+
+      a->app_index = pm->server_app_index;
+      clib_memcpy (&a->sep_ext, &cfg->listener_sep, sizeof (cfg->listener_sep));
+      /* Make sure listener is marked connected for transports like udp */
+      a->sep_ext.transport_flags = TRANSPORT_CFG_F_CONNECTED;
+      /* Store config index in listener session opaque */
+      a->sep_ext.opaque = cfg_index;
+
+      if (cfg->listener_sep.transport_proto == TRANSPORT_PROTO_HTTP)
+	{
+	  /* set http timeout for connect-proxy */
+	  transport_endpt_cfg_http_t http_cfg = { pm->idle_timeout, HTTP_UDP_TUNNEL_DGRAM };
+	  transport_endpt_ext_cfg_t *ext_cfg = session_endpoint_add_ext_cfg (
+	    &a->sep_ext, TRANSPORT_ENDPT_EXT_CFG_HTTP, sizeof (http_cfg));
+	  clib_memcpy (ext_cfg->data, &http_cfg, sizeof (http_cfg));
+	  if (cfg->listener_sep.flags & SESSION_ENDPT_CFG_F_SECURE)
+	    {
+	      transport_endpt_ext_cfg_t *ext_cfg = session_endpoint_add_ext_cfg (
+		&a->sep_ext, TRANSPORT_ENDPT_EXT_CFG_CRYPTO, sizeof (transport_endpt_crypto_cfg_t));
+	      ext_cfg->crypto.ckpair_index = cfg->ckpair_index;
+	    }
+	}
+      else
+	{
+	  need_crypto = proxy_transport_needs_crypto (a->sep.transport_proto);
+	  if (need_crypto)
+	    {
+	      transport_endpt_ext_cfg_t *ext_cfg = session_endpoint_add_ext_cfg (
+		&a->sep_ext, TRANSPORT_ENDPT_EXT_CFG_CRYPTO, sizeof (transport_endpt_crypto_cfg_t));
+	      ext_cfg->crypto.ckpair_index = cfg->ckpair_index;
+	    }
+	}
+
+      rv = vnet_listen (a);
+      session_endpoint_free_ext_cfgs (&a->sep_ext);
+
+      if (rv)
+	return rv;
+
+      cfg->is_configured = 1;
+    }
+
+  return 0;
 }
 
 static int
@@ -1404,7 +1493,7 @@ proxy_server_create (vlib_main_t * vm)
       clib_spinlock_init (&wrk->pending_connects_lock);
     }
 
-  proxy_server_add_ckpair ();
+  pm->ckpair_index = proxy_server_add_ckpair (NULL, NULL);
 
   if (proxy_server_attach ())
     {
@@ -1421,6 +1510,28 @@ proxy_server_create (vlib_main_t * vm)
 }
 
 static clib_error_t *
+proxy_server_start (vlib_main_t *vm)
+{
+  proxy_main_t *pm = &proxy_main;
+  int rv;
+
+  if (pm->server_app_index == APP_INVALID_INDEX)
+    {
+      session_enable_disable_args_t args = { .is_en = 1,
+					     .rt_engine_type = RT_BACKEND_ENGINE_RULE_TABLE };
+      vnet_session_enable_disable (vm, &args);
+      rv = proxy_server_create (vm);
+      if (rv)
+	return clib_error_return (0, "server_create returned %d", rv);
+    }
+
+  if (proxy_server_listen ())
+    return clib_error_return (0, "failed to start listening");
+
+  return 0;
+}
+
+static clib_error_t *
 proxy_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 				vlib_cli_command_t * cmd)
 {
@@ -1429,8 +1540,9 @@ proxy_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   char *default_client_uri = "tcp://6.0.2.2/23";
   u8 *server_uri = 0, *client_uri = 0;
   proxy_main_t *pm = &proxy_main;
+  proxy_server_config_t _cfg = {}, *cfg = &_cfg;
   clib_error_t *error = 0;
-  int rv, tmp32;
+  int tmp32;
   u64 tmp64;
 
   pm->fifo_size = 64 << 10;
@@ -1443,7 +1555,11 @@ proxy_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   pm->segment_size = 512 << 20;
 
   if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
+    {
+      if (vec_len (pm->server_configs) > 0)
+	return proxy_server_start (vm);
+      return 0;
+    }
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -1489,14 +1605,14 @@ proxy_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 		    default_server_uri);
       server_uri = format (0, "%s%c", default_server_uri, 0);
     }
-  if (parse_uri ((char *) server_uri, &pm->server_sep))
+  if (parse_uri ((char *) server_uri, &cfg->listener_sep))
     {
       error = clib_error_return (0, "Invalid server uri %v", server_uri);
       goto done;
     }
 
   /* http proxy get target within request */
-  if (pm->server_sep.transport_proto != TRANSPORT_PROTO_HTTP)
+  if (cfg->listener_sep.transport_proto != TRANSPORT_PROTO_HTTP)
     {
       if (!client_uri)
 	{
@@ -1504,30 +1620,16 @@ proxy_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			default_client_uri);
 	  client_uri = format (0, "%s%c", default_client_uri, 0);
 	}
-      if (parse_uri ((char *) client_uri,
-		     &pm->client_sep[pm->server_sep.transport_proto]))
+      if (parse_uri ((char *) client_uri, &cfg->upstream_sep))
 	{
 	  error = clib_error_return (0, "Invalid client uri %v", client_uri);
 	  goto done;
 	}
     }
 
-  if (pm->server_app_index == APP_INVALID_INDEX)
-    {
-      session_enable_disable_args_t args = { .is_en = 1,
-					     .rt_engine_type =
-					       RT_BACKEND_ENGINE_RULE_TABLE };
-      vnet_session_enable_disable (vm, &args);
-      rv = proxy_server_create (vm);
-      if (rv)
-	{
-	  error = clib_error_return (0, "server_create returned %d", rv);
-	  goto done;
-	}
-    }
+  vec_add1 (pm->server_configs, *cfg);
 
-  if (proxy_server_listen ())
-    error = clib_error_return (0, "failed to start listening");
+  error = proxy_server_start (vm);
 
 done:
   unformat_free (line_input);
@@ -1547,6 +1649,146 @@ VLIB_CLI_COMMAND (proxy_create_command, static) = {
   .function = proxy_server_create_command_fn,
 };
 
+static clib_error_t *
+proxy_config_parse_server (unformat_input_t *input, proxy_server_config_t *cfg)
+{
+  clib_error_t *error = 0;
+  u8 *listener_uri = 0;
+  u8 *upstream_uri = 0;
+  u8 *action_str = 0;
+  int have_listener = 0;
+  int have_action = 0;
+
+  /* Parse server block */
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "listener %s", &listener_uri))
+	{
+	  if (parse_uri ((char *) listener_uri, &cfg->listener_sep))
+	    {
+	      error = clib_error_return (0, "Invalid listener URI: %s", listener_uri);
+	      goto done;
+	    }
+	  have_listener = 1;
+	  vec_free (listener_uri);
+	}
+      else if (unformat (input, "upstream %s", &upstream_uri))
+	{
+	  if (parse_uri ((char *) upstream_uri, &cfg->upstream_sep))
+	    {
+	      error = clib_error_return (0, "Invalid upstream URI: %s", upstream_uri);
+	      goto done;
+	    }
+	  vec_free (upstream_uri);
+	  upstream_uri = 0;
+	}
+      else if (unformat (input, "cert %s", &cfg->cert_file))
+	{
+	  /* Cert file path stored */
+	}
+      else if (unformat (input, "key %s", &cfg->key_file))
+	{
+	  /* Key file path stored */
+	}
+      else if (unformat (input, "path %s", &cfg->path))
+	{
+	  /* HTTP path stored */
+	}
+      else if (unformat (input, "action %s", &action_str))
+	{
+	  if (!strcmp ((char *) action_str, "connect"))
+	    cfg->action = PROXY_ACTION_CONNECT;
+	  else if (!strcmp ((char *) action_str, "reverse-connect"))
+	    cfg->action = PROXY_ACTION_REVERSE_CONNECT;
+	  else
+	    {
+	      error = clib_error_return (0, "Unknown action type: %s", action_str);
+	      vec_free (action_str);
+	      goto done;
+	    }
+	  have_action = 1;
+	  vec_free (action_str);
+	}
+      else
+	{
+	  error = clib_error_return (0, "Unknown server option: %U", format_unformat_error, input);
+	  goto done;
+	}
+    }
+
+  if (!have_listener)
+    {
+      error = clib_error_return (0, "Server block requires 'listener' option");
+      goto done;
+    }
+
+  if (!have_action)
+    {
+      error = clib_error_return (0, "Server block requires 'action' option");
+      goto done;
+    }
+
+  if (cfg->action == PROXY_ACTION_REVERSE_CONNECT &&
+      cfg->upstream_sep.transport_proto == TRANSPORT_N_PROTOS)
+    {
+      error = clib_error_return (
+	0, "Server block with 'reverse-connect' action requires 'upstream' option");
+      goto done;
+    }
+
+  if ((cfg->cert_file && !cfg->key_file) || (!cfg->cert_file && cfg->key_file))
+    {
+      error =
+	clib_error_return (0, "Server block requires both 'cert' and 'key' options or neither");
+      goto done;
+    }
+
+done:
+  vec_free (listener_uri);
+  vec_free (upstream_uri);
+  return error;
+}
+
+static clib_error_t *
+test_proxy_config_fn (vlib_main_t *vm, unformat_input_t *input)
+{
+  proxy_main_t *pm = &proxy_main;
+  proxy_server_config_t cfg;
+  clib_error_t *error = 0;
+  unformat_input_t sub_input;
+
+  /* Parse test-proxy stanza */
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "server %U", unformat_vlib_cli_sub_input, &sub_input))
+	{
+	  clib_memset (&cfg, 0, sizeof (cfg));
+
+	  error = proxy_config_parse_server (&sub_input, &cfg);
+	  unformat_free (&sub_input);
+
+	  if (error)
+	    {
+	      clib_warning ("Failed to parse server config: %U", format_clib_error, error);
+	      return error;
+	    }
+
+	  /* Add config to vector */
+	  vec_add1 (pm->server_configs, cfg);
+	}
+      else
+	{
+	  error =
+	    clib_error_return (0, "Unknown test-proxy option: %U", format_unformat_error, input);
+	  return error;
+	}
+    }
+
+  return 0;
+}
+
+VLIB_CONFIG_FUNCTION (test_proxy_config_fn, "test-proxy");
+
 clib_error_t *
 proxy_main_init (vlib_main_t * vm)
 {
@@ -1555,7 +1797,6 @@ proxy_main_init (vlib_main_t * vm)
   pm->active_open_client_index = ~0;
   pm->server_app_index = APP_INVALID_INDEX;
   pm->idle_timeout = 600; /* connect-proxy default idle timeout 10 minutes */
-  vec_validate (pm->client_sep, TRANSPORT_N_PROTOS - 1);
 
   vec_validate (pm->capsule_proto_header_buf, 10);
   http_init_headers_ctx (&pm->capsule_proto_header,
