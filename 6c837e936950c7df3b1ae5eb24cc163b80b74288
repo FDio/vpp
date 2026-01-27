@@ -22,6 +22,30 @@
       },
       "revId": "6c837e936950c7df3b1ae5eb24cc163b80b74288",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7a804730_cc3f1d46",
+        "filename": "src/plugins/sfdp_services/snort/snort.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 242,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2026-01-27T10:26:55Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "f0eade3a_c83c67ed",
+      "range": {
+        "startLine": 242,
+        "startChar": 2,
+        "endLine": 242,
+        "endChar": 26
+      },
+      "revId": "6c837e936950c7df3b1ae5eb24cc163b80b74288",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
