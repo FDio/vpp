@@ -82,13 +82,19 @@ func (s *VppProxySuite) SetupSuite() {
 	s.Containers.IperfS = s.GetContainerByName("iperfS")
 }
 
-func (s *VppProxySuite) SetupTest() {
+func (s *VppProxySuite) SetupTest(proxyConfig ...Stanza) {
 	s.HstSuite.SetupTest()
 
 	// VPP HTTP connect-proxy
 	var memoryConfig Stanza
-	memoryConfig.NewStanza("memory").Append("main-heap-size 2G")
-	vpp, err := s.Containers.VppProxy.newVppInstance(s.Containers.VppProxy.AllocatedCpus, memoryConfig)
+	memoryConfig.NewStanza("memory").Append("main-heap-size 2G").Close()
+
+	var customProxyConfig Stanza
+	if len(proxyConfig) > 0 {
+		customProxyConfig = proxyConfig[0]
+	}
+
+	vpp, err := s.Containers.VppProxy.newVppInstance(s.Containers.VppProxy.AllocatedCpus, memoryConfig, customProxyConfig)
 	AssertNotNil(vpp, fmt.Sprint(err))
 
 	AssertNil(vpp.Start())
