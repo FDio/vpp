@@ -20,6 +20,7 @@ typedef struct
   u16 instance_index;
   u16 dequeue_node_next_index;
   u8 use_rewrite_length_offset;
+  u8 use_flow_id_hash;
 } snort_enq_scalar_args_t;
 
 static_always_inline uword
@@ -116,16 +117,16 @@ snort_enq_qpair (vlib_main_t *vm, vlib_node_runtime_t *node,
 }
 
 static_always_inline void
-snort_enq_prepare_descs (vlib_main_t *vm, vlib_buffer_t **b, daq_vpp_desc_t *d,
-			 void **iph, u32 n_left, int use_rewrite_length_offset,
-			 int with_hash)
+snort_enq_prepare_descs (vlib_main_t *vm, vlib_buffer_t **b, daq_vpp_desc_t *d, void **iph,
+			 u32 *flow_ids, u32 n_left, int use_rewrite_length_offset, int with_hash,
+			 int with_flow_id)
 {
   snort_main_t *sm = &snort_main;
   u8 bpi[4];
   u8 off[4] = { 0, 0, 0, 0 };
   u8 *p[4];
 
-  for (; n_left >= 8; b += 4, d += 4, iph += 4, n_left -= 4)
+  for (; n_left >= 8; b += 4, d += 4, iph += 4, flow_ids += 4, n_left -= 4)
     {
       clib_prefetch_load (b[4]);
       vlib_buffer_chain_linearize (vm, b[0]);
@@ -172,13 +173,21 @@ snort_enq_prepare_descs (vlib_main_t *vm, vlib_buffer_t **b, daq_vpp_desc_t *d,
 	  iph[3] = p[3];
 	}
 
+      if (with_flow_id)
+	{
+	  flow_ids[0] = b[0]->flow_id;
+	  flow_ids[1] = b[1]->flow_id;
+	  flow_ids[2] = b[2]->flow_id;
+	  flow_ids[3] = b[3]->flow_id;
+	}
+
       d[0].metadata = *snort_get_buffer_metadata (b[0]);
       d[1].metadata = *snort_get_buffer_metadata (b[1]);
       d[2].metadata = *snort_get_buffer_metadata (b[2]);
       d[3].metadata = *snort_get_buffer_metadata (b[3]);
     }
 
-  for (; n_left; b++, d++, iph++, n_left--)
+  for (; n_left; b++, d++, iph++, flow_ids++, n_left--)
     {
       vlib_buffer_chain_linearize (vm, b[0]);
       d[0].buffer_pool = bpi[0] = b[0]->buffer_pool_index;
@@ -192,6 +201,9 @@ snort_enq_prepare_descs (vlib_main_t *vm, vlib_buffer_t **b, daq_vpp_desc_t *d,
 
       if (with_hash)
 	iph[0] = p[0];
+
+      if (with_flow_id)
+	flow_ids[0] = b[0]->flow_id;
 
       d[0].metadata = *snort_get_buffer_metadata (b[0]);
     }
@@ -220,11 +232,13 @@ VLIB_NODE_FN (snort_enq_node)
   const snort_enq_scalar_args_t *sa = vlib_frame_scalar_args (frame);
   snort_instance_t *si = pool_elt_at_index (sm->instances, sa->instance_index);
   u16 qpairs_per_thread = si->qpairs_per_thread;
+  u16 use_flow_id_hash = (sa->use_flow_id_hash == 1) ? 1 : 0;
   snort_qpair_t **qp;
   u16 next_index = sa->dequeue_node_next_index;
   daq_vpp_desc_t descs[VLIB_FRAME_SIZE];
   void *ip_hdrs[VLIB_FRAME_SIZE];
   u32 hashes[VLIB_FRAME_SIZE];
+
   uword rv = 0;
 
   /* first qpair for this thread */
@@ -232,22 +246,32 @@ VLIB_NODE_FN (snort_enq_node)
 
   if (qpairs_per_thread > 1)
     {
-      if (sa->use_rewrite_length_offset)
-	snort_enq_prepare_descs (vm, bufs, descs, ip_hdrs, n_from, 1, 1);
+      if (use_flow_id_hash)
+	{
+	  if (sa->use_rewrite_length_offset)
+	    snort_enq_prepare_descs (vm, bufs, descs, 0, hashes, n_from, 1, 0, 1);
+	  else
+	    snort_enq_prepare_descs (vm, bufs, descs, 0, hashes, n_from, 0, 0, 1);
+	}
       else
-	snort_enq_prepare_descs (vm, bufs, descs, ip_hdrs, n_from, 0, 1);
+	{
+	  if (sa->use_rewrite_length_offset)
+	    snort_enq_prepare_descs (vm, bufs, descs, ip_hdrs, 0, n_from, 1, 1, 0);
+	  else
+	    snort_enq_prepare_descs (vm, bufs, descs, ip_hdrs, 0, n_from, 0, 1, 0);
 
-      /* calculate hash out of pointers to ip headers */
-      si->ip4_hash_fn (ip_hdrs, hashes, n_from);
+	  /* calculate hash out of pointers to ip headers */
+	  si->ip4_hash_fn (ip_hdrs, hashes, n_from);
+	}
       /* convert hash to qpair index */
       clib_array_hash_to_index_u32 (hashes, qpairs_per_thread, n_from);
     }
   else
     {
       if (sa->use_rewrite_length_offset)
-	snort_enq_prepare_descs (vm, bufs, descs, 0, n_from, 1, 0);
+	snort_enq_prepare_descs (vm, bufs, descs, 0, 0, n_from, 1, 0, 0);
       else
-	snort_enq_prepare_descs (vm, bufs, descs, 0, n_from, 0, 0);
+	snort_enq_prepare_descs (vm, bufs, descs, 0, 0, n_from, 0, 0, 0);
     }
 
   if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
@@ -381,10 +405,10 @@ snort_arc_input (vlib_main_t *vm, vlib_node_runtime_t *node,
       sa = vlib_frame_scalar_args (f);
       *sa = (snort_enq_scalar_args_t){
 	.instance_index = instance_index,
-	.dequeue_node_next_index = is_output ?
-				     si->ip4_output_dequeue_node_next_index :
-				     si->ip4_input_dequeue_node_next_index,
+	.dequeue_node_next_index = is_output ? si->ip4_output_dequeue_node_next_index :
+					       si->ip4_input_dequeue_node_next_index,
 	.use_rewrite_length_offset = is_output ? 1 : 0,
+	.use_flow_id_hash = 0,
       };
       vlib_frame_no_append (f);
       vlib_put_next_frame (vm, node, next_index, n_left_to_next - n_enq);
