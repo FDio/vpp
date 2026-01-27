@@ -28,7 +28,12 @@
 #include <vpp/vnet/config.h>
 #endif
 
-#define SOCKET_FILE "/run/vpp/cli.sock"
+static char *socket_file_locations[] = {
+  "/run/vpp/cli.sock",
+  "/var/run/vpp/cli.sock",
+  "/var/run/user/%d/vpp/cli.sock",
+  "./cli.sock",
+};
 
 volatile int window_resized = 0;
 struct termios orig_tio;
@@ -176,7 +181,7 @@ main (int argc, char *argv[])
   int is_interactive = 0;
   int acked = 1;		/* counts messages from VPP; starts at 1 */
   int sent_ttype = 0;
-  char *sock_fname = SOCKET_FILE;
+  char *sock_fname = 0;
   int sock_fd = -1;
   int error = 0;
   int arg = 0;
@@ -190,6 +195,35 @@ main (int argc, char *argv[])
       sock_fname = argv[1];
       argc -= 2;
       argv += 2;
+    }
+
+  if (!sock_fname)
+    {
+      int i;
+      static char user_socket[128];
+
+      for (i = 0; i < ARRAY_LEN (socket_file_locations); i++)
+	{
+	  char *path = socket_file_locations[i];
+
+	  if (strstr (path, "%d"))
+	    {
+	      snprintf (user_socket, sizeof (user_socket), path, getuid ());
+	      path = user_socket;
+	    }
+
+	  if (access (path, F_OK) == 0)
+	    {
+	      sock_fname = path;
+	      break;
+	    }
+	}
+
+      if (!sock_fname)
+	{
+	  fprintf (stderr, "Could not find VPP CLI socket\n");
+	  exit (1);
+	}
     }
 
   struct sockaddr_un saddr = { 0 };
