@@ -35,7 +35,7 @@ clean:
 ifeq ($(shell uname), FreeBSD)
 install: $(if $(ARCH_X86_64), ipsec-mb-install) daq-install dpdk-install quicly-install libcbor-install
 else
-install: $(if $(ARCH_X86_64), ipsec-mb-install) daq-install dpdk-install rdma-core-install quicly-install xdp-tools-install libcbor-install $(if $(AARCH64), octeon-roc-install)
+install: $(if $(ARCH_X86_64), ipsec-mb-install) daq-install dpdk-install rdma-core-install liburing-install quicly-install xdp-tools-install libcbor-install $(if $(AARCH64), octeon-roc-install)
 endif	# FreeBSD
 
 .PHONY: config
