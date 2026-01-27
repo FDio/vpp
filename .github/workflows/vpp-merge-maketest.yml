@@ -197,11 +197,11 @@ jobs:
           set -euxo pipefail
           {
             cd "$WORKSPACE"
-            # force rebuild of vpp-opt-deps and vpp-ext-deps
-            apt-get remove -y vpp-* || true
-            make UNATTENDED=yes install-opt-deps || true
             # pkg-verify runs install-deps, install-ext-deps, and builds vpp packages
             make UNATTENDED=yes pkg-verify
+            # force rebuild of vpp-opt-deps
+            apt-get remove -y vpp-opt-deps || true
+            make UNATTENDED=yes install-opt-deps || true
           } | tee "$LOG_DIR/build-all-packages.log"
 
       - name: Push Packages to Packagecloud
