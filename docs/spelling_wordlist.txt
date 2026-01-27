@@ -525,6 +525,7 @@ io
 ioam
 iOAM
 iommu
+iouring
 ip
 IP
 ipaddress
@@ -810,6 +811,7 @@ oldfile
 online
 onlink
 ooo
+openat
 openbsd
 openbsd
 openssl
@@ -1252,6 +1254,7 @@ upgradability
 upgradable
 upstreamed
 uri
+uring
 url
 urpf
 urpf
