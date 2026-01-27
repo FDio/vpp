@@ -50,6 +50,24 @@
       "message": "can we have option which will use skip-cores in cpu stanza to be able use nic on second numa, instead of corelist-workers use workers (and remove main-core)?\nto get something like this:\ncpu { skip cores 32 workers 4 }",
       "revId": "01a12d9aabc3fc4043aa6ac6a7018caa415bcc71",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "39273bc7_4fab033e",
+        "filename": "extras/scripts/host-stack/perf-tests/vpp_dpdk",
+        "patchSetId": 3
+      },
+      "lineNbr": 61,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-01-27T20:10:18Z",
+      "side": 1,
+      "message": "Done but slightly differently. We detect nic\u0027s numa and just use first cores on that numa (although at one point might be good to let it autoconfigure ..)",
+      "parentUuid": "65b9fc54_2ee26bb5",
+      "revId": "01a12d9aabc3fc4043aa6ac6a7018caa415bcc71",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
