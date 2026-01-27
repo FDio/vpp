@@ -45,6 +45,10 @@ add_vpp_plugin(sfdp_services
   reass/sv_reass_node.c
   #reass/full_reass_node.c
 
+  snort/snort.c
+  snort/snort_input.c
+  snort/snort_output.c
+
   MULTIARCH_SOURCES
   base/tcp-check/node.c
   base/l4-lifecycle/node.c
@@ -54,6 +58,8 @@ add_vpp_plugin(sfdp_services
   geneve/geneve_output/node.c
   dot1q/dot1q.c
   reass/sv_reass_node.c
+  snort/snort_input.c
+  snort/snort_output.c
   #reass/full_reass_node.c
 
   API_FILES
