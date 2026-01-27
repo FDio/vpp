@@ -525,6 +525,7 @@ io
 ioam
 iOAM
 iommu
+iouring
 ip
 IP
 ipaddress
@@ -1252,6 +1253,7 @@ upgradability
 upgradable
 upstreamed
 uri
+uring
 url
 urpf
 urpf
