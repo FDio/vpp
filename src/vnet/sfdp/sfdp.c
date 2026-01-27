@@ -582,8 +582,3 @@ sfdp_config (vlib_main_t *vm, unformat_input_t *input)
 VLIB_EARLY_CONFIG_FUNCTION (sfdp_config, "sfdp");
 
 VLIB_INIT_FUNCTION (sfdp_init);
-
-VLIB_PLUGIN_REGISTER () = {
-  .version = SFDP_CORE_PLUGIN_BUILD_VER,
-  .description = "sfdp Core Plugin",
-};
