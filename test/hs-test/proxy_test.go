@@ -25,7 +25,7 @@ func init() {
 	RegisterVppProxyTests(VppProxyHttpGetTcpTest, VppProxyHttpGetTlsTest, VppProxyHttpPutTcpTest, VppProxyHttpPutTlsTest,
 		VppConnectProxyGetTest, VppConnectProxyPutTest, VppHttpsConnectProxyGetTest, VppH2ConnectProxyGetTest,
 		VppH2ConnectProxyPutTest)
-	RegisterVppProxyMWTests(VppProxyHttpGetTcpMWTest, VppProxyHttpPutTcpMWTest, VppProxyTcpIperfMWTest,
+	RegisterVppProxyMWTests(VppProxyHttpGetTcpMWTest, VppProxyHttpGetTcpStartupConfigMWTest, VppProxyHttpPutTcpMWTest, VppProxyTcpIperfMWTest,
 		VppProxyUdpIperfMWTest, VppConnectProxyStressMWTest, VppConnectProxyConnectionFailedMWTest)
 	RegisterVppProxySoloTests(VppConnectProxyStressTest)
 	RegisterVppUdpProxyTests(VppProxyUdpTest, VppConnectUdpProxyTest, VppConnectUdpInvalidCapsuleTest,
@@ -46,6 +46,30 @@ func VppProxyHttpGetTcpMWTest(s *VppProxySuite) {
 	s.CpusPerVppContainer = 3
 	s.SetupTest()
 	VppProxyHttpGetTcpTest(s)
+}
+
+func VppProxyHttpGetTcpStartupConfigMWTest(s *VppProxySuite) {
+	// Configure TCP reverse proxy via startup config
+	var proxyConfig Stanza
+	proxyConfig.NewStanza("test-proxy").
+		NewStanza("server").
+		Append(fmt.Sprintf("listener tcp://%s:%d", s.Interfaces.Client.Ip4AddressString(), s.Ports.Proxy)).
+		Append("action reverse-connect").
+		Append(fmt.Sprintf("upstream tcp://%s:%d", s.ServerAddr(), s.Ports.Server)).
+		Close().Close()
+
+	Log("Generated startup config:")
+	Log(proxyConfig.ToString())
+	s.SetupTest(proxyConfig)
+	s.SetupNginxServer()
+	// Enable the proxy server that was configured via startup config
+	output := s.Containers.VppProxy.VppInstance.Vppctl("test proxy server")
+	Log("proxy enabled: " + output)
+	AssertNotContains(output, "failed")
+	output = s.Containers.VppProxy.VppInstance.Vppctl("sh session verbose")
+	Log(output)
+	uri := fmt.Sprintf("http://%s:%d/httpTestFile", s.VppProxyAddr(), s.Ports.Proxy)
+	s.CurlDownloadResource(uri)
 }
 
 func VppProxyTcpIperfMWTest(s *VppProxySuite) {
