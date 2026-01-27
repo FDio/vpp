@@ -950,6 +950,11 @@ I: gha
 M: Dave Wallace <dwallacelf@gmail.com>
 F: .github/
 
+Plugin - iouring
+I: iouring
+M: Moinak Bhattacharyya <moinakb001@gmail.com>
+F: src/plugins/iouring/
+
 THE REST
 I:	misc
 M:	vpp-dev Mailing List <vpp-dev@fd.io>
