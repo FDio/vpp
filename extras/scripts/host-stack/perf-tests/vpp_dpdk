@@ -1,0 +1,391 @@
+#!/usr/bin/env bash
+
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2025 Cisco Systems, Inc.
+
+set -e
+
+# Default configuration - detect VPP workspace from script location
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+if [[ -z "$VPP_WS" ]]; then
+  if [[ "$SCRIPT_DIR" == */extras/scripts/host-stack/perf-tests ]]; then
+    # Script is in its standard location, use VPP root (4 levels up)
+    VPP_WS="$(cd "$SCRIPT_DIR/../../../../" && pwd)"
+  fi
+fi
+
+CFG_FILE=vpp_dpdk.cli
+CUSTOM_CLI=""  # User-provided CLI config file
+BIN_FLAVOR=release
+
+# Network configuration
+LOCAL_IP="6.0.1.1"
+
+# DPDK configuration
+DPDK_DEV=0000:16:00.0
+IF_RX_DESC=512
+IF_TX_DESC=256
+DPDK_CSUM=enable-tcp-udp-checksum
+NUM_MBUFS=16536
+
+# VPP resource configuration
+HEAP_SIZE=4g
+API_SIZE=1G
+API_GLOBAL_SIZE=2000M
+EVT_LOG_SIZE=400000
+
+# CPU configuration
+MAIN_CORE=1
+WORKERS=1
+CFG_CORELIST_WKS="corelist-workers 2"
+
+# Socket and session configuration
+SOCK=/run/vpp-api.sock
+CLI_SOCK=/run/vpp/cli.sock
+SESSION_CFG="session { event-queue-length 100000 use-app-socket-api }"
+
+# Protocol configuration
+TCP_CFG="tcp { max-rx-fifo 128m }"
+TLS_CFG="tls { fifo-size 1m }"
+#QUIC_ENABLE=1
+#LOCAL_OSSL=/scratch/fcoras/openssl
+
+function usage() {
+  cat <<EOF
+Usage: $0 [OPTIONS]
+
+VPP DPDK Setup Script (vpp_dpdk)
+
+Configures and starts VPP with DPDK for host stack performance testing.
+
+OPTIONS:
+  -a IP            Local IP address (default: 6.0.1.1)
+  -d DEVICE        DPDK device PCI address (default: 0000:16:00.0)
+  -s SCRIPT        Custom CLI config file (absolute path or relative to conf/)
+                   If not specified, configuration will be auto-generated
+  -f FLAVOR        Build flavor: 'release' or 'debug' (default: release)
+  -w WORKSPACE     VPP workspace path (default: /scratch/fcoras/vpp)
+  -c CORES         Number of worker cores (default: 1)
+  -h               Show this help message
+
+EXAMPLES:
+  # Basic usage with default IP (6.0.1.1)
+  $0
+
+  # Specify different IP address
+  $0 -a 6.0.1.2
+
+  # With 4 worker cores
+  $0 -a 6.0.1.2 -c 4
+
+  # Custom DPDK device
+  $0 -a 6.0.1.1 -d 0000:17:00.0
+
+  # Use custom CLI config
+  $0 -s /path/to/custom.cli
+
+  # Debug mode
+  $0 -a 6.0.1.1 -f debug
+
+NOTES:
+  - Ensure DPDK device is properly bound to DPDK driver (vfio-pci or uio_pci_generic)
+  - Script requires root privileges to run VPP
+  - Default configuration uses /24 subnet mask
+  - CLI configuration will be auto-generated in ${CFG_DIR}/${CFG_FILE}
+
+EOF
+}
+
+function validate_ip() {
+  local ip=$1
+  if [[ ! $ip =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    echo "Error: Invalid IP address: $ip"
+    return 1
+  fi
+  return 0
+}
+
+function detect_numa_node() {
+  local pci_dev=$1
+  local pci_path="/sys/bus/pci/devices/${pci_dev}"
+
+  if [[ -f "${pci_path}/numa_node" ]]; then
+    local numa_node
+    numa_node=$(cat "${pci_path}/numa_node" 2>/dev/null || echo "0")
+    # Handle case where numa_node is -1 (NUMA not available)
+    if [[ "$numa_node" -lt 0 ]]; then
+      numa_node=0
+    fi
+    echo "$numa_node"
+  else
+    echo "0"
+  fi
+}
+
+function get_cpus_on_numa() {
+  local numa_node=$1
+  local cpulist=""
+
+  # Try to read from sysfs
+  if [[ -f "/sys/devices/system/node/node${numa_node}/cpulist" ]]; then
+    cpulist=$(cat "/sys/devices/system/node/node${numa_node}/cpulist" 2>/dev/null || echo "")
+  fi
+
+  # If no cpulist found, try using lscpu
+  if [[ -z "$cpulist" ]] && command -v lscpu &>/dev/null; then
+    cpulist=$(lscpu -p=CPU,NODE | grep ",${numa_node}$" | cut -d',' -f1 | tr '\n' ',' | sed 's/,$//')
+  fi
+
+  # If still no cpulist, fall back to default
+  if [[ -z "$cpulist" ]]; then
+    echo "1-3"
+    return
+  fi
+
+  echo "$cpulist"
+}
+
+function adjust_cpus_for_numa() {
+  local pci_dev=$1
+  local workers=$2
+
+  # Detect NUMA node
+  local numa_node
+  numa_node=$(detect_numa_node "$pci_dev")
+
+  echo "Detected NUMA node: $numa_node for device $pci_dev"
+
+  # If device is on NUMA 0, use default configuration
+  if [[ "$numa_node" -eq 0 ]]; then
+    echo "Device is on NUMA 0, using default CPU configuration"
+    return
+  fi
+
+  # Get CPUs on the detected NUMA node
+  local cpulist
+  cpulist=$(get_cpus_on_numa "$numa_node")
+
+  echo "CPUs on NUMA $numa_node: $cpulist"
+
+  # Parse cpulist to get individual CPUs
+  # Handle ranges like "16-31" or lists like "16,17,18" or mixed "16-19,24-27"
+  local -a cpu_array
+  IFS=',' read -ra cpu_ranges <<< "$cpulist"
+  for range in "${cpu_ranges[@]}"; do
+    if [[ "$range" =~ ^([0-9]+)-([0-9]+)$ ]]; then
+      # It's a range
+      local start="${BASH_REMATCH[1]}"
+      local end="${BASH_REMATCH[2]}"
+      for ((cpu=start; cpu<=end; cpu++)); do
+        cpu_array+=("$cpu")
+      done
+    else
+      # Single CPU
+      cpu_array+=("$range")
+    fi
+  done
+
+  # Ensure we have enough CPUs (skipping first core, so need workers + 2)
+  if [[ ${#cpu_array[@]} -lt $((workers + 2)) ]]; then
+    echo "Warning: Not enough CPUs on NUMA $numa_node (have ${#cpu_array[@]}, need $((workers + 2)))"
+    echo "Using available CPUs anyway"
+  fi
+
+  # Skip the first CPU on NUMA node, set MAIN_CORE to second CPU
+  MAIN_CORE="${cpu_array[1]}"
+
+  # Set worker cores starting from third CPU
+  if [[ $workers -gt 1 ]]; then
+    local worker_start="${cpu_array[2]}"
+    local worker_end="${cpu_array[$((workers + 1))]}"
+    if [[ -n "$worker_end" ]]; then
+      CFG_CORELIST_WKS="corelist-workers ${worker_start}-${worker_end}"
+    else
+      # Not enough CPUs, just use what we have
+      CFG_CORELIST_WKS="corelist-workers ${worker_start}"
+    fi
+  else
+    CFG_CORELIST_WKS="corelist-workers ${cpu_array[2]}"
+  fi
+
+  echo "Skipping first core (${cpu_array[0]}) on NUMA $numa_node"
+  echo "Updated MAIN_CORE to: $MAIN_CORE"
+  echo "Updated CFG_CORELIST_WKS to: $CFG_CORELIST_WKS"
+}
+
+function detect_interface_prefix() {
+  local pci_dev=$1
+  local pci_path="/sys/bus/pci/devices/${pci_dev}"
+
+  # Try to detect interface type from PCI device info
+  if [[ -f "${pci_path}/current_link_speed" ]]; then
+    local speed
+    speed=$(grep -oP '^\d+' "${pci_path}/current_link_speed" 2>/dev/null || echo "")
+    case $speed in
+      2.5|5) echo "GigabitEthernet" ;;
+      10) echo "TenGigabitEthernet" ;;
+      25) echo "TwentyFiveGigabitEthernet" ;;
+      40) echo "FortyGigabitEthernet" ;;
+      50) echo "FiftyGigabitEthernet" ;;
+      100) echo "HundredGigabitEthernet" ;;
+      200) echo "TwoHundredGigabitEthernet" ;;
+      *) echo "HundredGigabitEthernet" ;;  # Default fallback
+    esac
+  else
+    # Fallback: check max_link_speed
+    if [[ -f "${pci_path}/max_link_speed" ]]; then
+      local speed
+      speed=$(grep -oP '^\d+' "${pci_path}/max_link_speed" 2>/dev/null || echo "")
+      case $speed in
+        2.5|5) echo "GigabitEthernet" ;;
+        10) echo "TenGigabitEthernet" ;;
+        25) echo "TwentyFiveGigabitEthernet" ;;
+        40) echo "FortyGigabitEthernet" ;;
+        50) echo "FiftyGigabitEthernet" ;;
+        100) echo "HundredGigabitEthernet" ;;
+        200) echo "TwoHundredGigabitEthernet" ;;
+        *) echo "HundredGigabitEthernet" ;;  # Default fallback
+      esac
+    else
+      echo "HundredGigabitEthernet"  # Default fallback
+    fi
+  fi
+}
+
+function generate_cli_config() {
+  local config_file="${CFG_DIR}/${CFG_FILE}"
+
+  # Convert PCI address to interface naming components
+  # e.g., 0000:16:00.0 -> 16/0/0
+  local pci_parts
+  IFS=':.' read -ra pci_parts <<< "$DPDK_DEV"
+
+  # Remove leading zeros but keep at least one digit
+  local bus=$((10#${pci_parts[1]}))
+  local slot=$((10#${pci_parts[2]}))
+  local func=$((10#${pci_parts[3]}))
+
+  # Auto-detect interface type from PCI device
+  local detected_prefix
+  detected_prefix=$(detect_interface_prefix "$DPDK_DEV")
+  local iface_name="${detected_prefix}${bus}/${slot}/${func}"
+
+  cat > "${config_file}" <<EOF
+comment {SPDX-License-Identifier: Apache-2.0}
+comment {Copyright (c) 2025 Cisco Systems, Inc.}
+comment {Auto-generated configuration}
+comment {PCI Device: ${DPDK_DEV}}
+comment {Interface: ${iface_name}}
+set int ip address ${iface_name} ${LOCAL_IP}/24
+set int state ${iface_name} up
+session enable
+EOF
+
+  echo "Generated configuration in ${config_file}"
+  echo "Interface: ${iface_name} (auto-detected: ${detected_prefix})"
+}
+
+# Parse command line arguments
+while getopts "a:d:s:f:w:c:h" opt; do
+  case ${opt} in
+    h)  usage
+        exit 0
+        ;;
+    a)  LOCAL_IP=$OPTARG
+        ;;
+    d)  DPDK_DEV=$OPTARG
+        ;;
+    s)  CUSTOM_CLI=$OPTARG
+        ;;
+    w)  VPP_WS=$OPTARG
+        ;;
+    f)  BIN_FLAVOR=$OPTARG
+        ;;
+    c)  WORKERS=$OPTARG
+        ;;
+    \?) usage
+        exit 1
+        ;;
+  esac
+done
+shift $((OPTIND -1))
+
+# Validate VPP workspace is set
+if [[ -z "$VPP_WS" ]]; then
+  echo "Error: VPP workspace must be specified."
+  echo "Either run this script from the standard location (extras/scripts/host-stack/perf-tests)"
+  echo "or provide the workspace path with -w flag or VPP_WS environment variable."
+  echo ""
+  usage
+  exit 1
+fi
+
+# Set derived paths after workspace may have been updated
+CFG_WS="${VPP_WS}"/extras/scripts/host-stack/perf-tests
+CFG_DIR="${CFG_WS}"
+BASE_DIR="${VPP_WS}"/build-root
+
+# Validate IP address
+validate_ip "$LOCAL_IP" || exit 1
+
+# Handle CLI configuration
+if [[ -n "$CUSTOM_CLI" ]]; then
+  # User provided custom CLI file
+  if [[ -f "$CUSTOM_CLI" ]]; then
+    # Absolute path provided
+    CFG_FILE=$(basename "$CUSTOM_CLI")
+    cp "$CUSTOM_CLI" "${CFG_DIR}/${CFG_FILE}"
+    echo "Using custom CLI configuration: $CUSTOM_CLI"
+  elif [[ -f "${CFG_DIR}/${CUSTOM_CLI}" ]]; then
+    # Relative path to conf/ directory
+    CFG_FILE="$CUSTOM_CLI"
+    echo "Using custom CLI configuration: ${CFG_DIR}/${CFG_FILE}"
+  else
+    echo "Error: Custom CLI file not found: $CUSTOM_CLI"
+    exit 1
+  fi
+fi
+
+# Display configuration
+echo "========================================"
+echo "VPP DPDK Configuration (vpp_dpdk)"
+echo "========================================"
+echo "Local IP:        $LOCAL_IP"
+echo "DPDK Device:     $DPDK_DEV"
+echo "Build Flavor:    $BIN_FLAVOR"
+echo "Worker Cores:    $WORKERS"
+echo "VPP Workspace:   $VPP_WS"
+echo "========================================"
+echo ""
+
+# Adjust CPU configuration based on device NUMA node
+adjust_cpus_for_numa "$DPDK_DEV" "$WORKERS"
+
+echo ""
+
+# Generate CLI configuration based on parameters (unless custom CLI provided)
+if [[ -z "$CUSTOM_CLI" ]]; then
+  generate_cli_config
+fi
+
+# Check if VPP binary exists (release uses install-vpp-native, debug uses install-vpp_debug-native)
+if [[ "$BIN_FLAVOR" == "debug" ]]; then
+  BIN_DIR="${BASE_DIR}/install-vpp_debug-native"
+else
+  BIN_DIR="${BASE_DIR}/install-vpp-native"
+fi
+
+if [[ ! -f "${BIN_DIR}/vpp/bin/vpp" ]]; then
+  echo "Error: VPP binary not found at ${BIN_DIR}/vpp/bin/vpp"
+  echo "Please build VPP first with 'make build' or 'make rebuild-release'."
+  exit 1
+fi
+
+echo "Starting VPP..."
+echo "Press Ctrl+C to stop VPP"
+echo ""
+
+# shellcheck source=start_vpp.sh
+source "${CFG_WS}/start_vpp.sh"
+
+start_vpp

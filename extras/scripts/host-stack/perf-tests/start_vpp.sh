@@ -119,7 +119,7 @@ function start_vpp
 		$CLI_LISTEN_CFG					\
 		poll-sleep-usec 0				\
   	}							\
-  	heapsize $HEAP_SIZE					\
+        memory { main-heap-size $HEAP_SIZE }			\
   	api-trace { on }					\
 	api-segment {						\
 	  global-size $API_GLOBAL_SIZE				\
@@ -147,7 +147,7 @@ function start_vpp
 	  plugin unittest_plugin.so {enable}			\
 	  plugin http_unittest_plugin.so {enable}		\
 	  $QUIC_PLUGIN						\
-	  $QUIC_QUICLY_PLUGIN			\
+	  $QUIC_QUICLY_PLUGIN			                \
 	  $SRTP_PLUGIN						\
 	  $DPDK_PLUGIN_DISABLE					\
 	}
