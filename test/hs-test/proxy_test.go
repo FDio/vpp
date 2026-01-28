@@ -39,7 +39,8 @@ func init() {
 	RegisterMasqueSoloTests(VppConnectProxyIperfTcpTest, VppConnectProxyIperfUdpTest)
 	RegisterMasqueMWTests(VppConnectProxyIperfTcpMWTest, VppConnectProxyIperfUdpMWTest, VppConnectProxyClientUploadTcpMWTest,
 		VppConnectProxyClientTargetUnreachableMWTest, VppConnectProxyClientDownloadTcpMWTest,
-		VppConnectProxyClientStressMWTest, VppConnectProxyClientUdpIdleMWTest, VppConnectProxyClientServerClosedTcpMWTest)
+		VppConnectProxyClientStressMWTest, VppConnectProxyClientUdpIdleMWTest, VppConnectProxyClientServerClosedTcpMWTest,
+		VppConnectProxyClientHttp3DownloadTcpMWTest, VppConnectProxyClientHttp3UploadTcpMWTest)
 }
 
 func VppProxyHttpGetTcpMWTest(s *VppProxySuite) {
@@ -1046,4 +1047,46 @@ func VppConnectProxyClientStressMWTest(s *MasqueSuite) {
 
 	vppConnectProxyClientCheckCleanup(s)
 	vppConnectProxyServerCheckCleanup(s)
+}
+
+func VppConnectProxyClientHttp3DownloadTcpMWTest(s *MasqueSuite) {
+	s.CpusPerVppContainer = 3
+	s.SetupTest("http3")
+	s.StartNginxServer()
+	clientVpp := s.Containers.VppClient.VppInstance
+	s.ProxyClientConnect("tcp", s.Ports.NginxSsl, "http3")
+	o := clientVpp.Vppctl("show http connect proxy client listeners")
+	Log(o)
+	AssertContains(o, "tcp://0.0.0.0:"+s.Ports.NginxSsl)
+
+	uri := fmt.Sprintf("https://%s:%s/httpTestFile", s.NginxAddr(), s.Ports.NginxSsl)
+	finished := make(chan error, 1)
+	go func() {
+		defer GinkgoRecover()
+		StartCurl(finished, uri, s.NetNamespaces.Client, "200", 10, []string{"--http1.1"})
+	}()
+	Log(clientVpp.Vppctl("show http connect proxy client sessions"))
+	AssertNil(<-finished)
+	// TODO: test client initiated stream close
+}
+
+func VppConnectProxyClientHttp3UploadTcpMWTest(s *MasqueSuite) {
+	s.CpusPerVppContainer = 3
+	s.SetupTest("http3")
+	s.StartNginxServer()
+	s.ProxyClientConnect("tcp", s.Ports.NginxSsl, "http3")
+
+	fileName := "/tmp/test_file"
+	defer os.Remove(fileName)
+	fallocate := exec.Command("fallocate", "-l", "10MB", fileName)
+	_, err := fallocate.CombinedOutput()
+	AssertNil(err)
+
+	uri := fmt.Sprintf("https://%s:%s/upload/testFile", s.NginxAddr(), s.Ports.NginxSsl)
+	finished := make(chan error, 1)
+	go func() {
+		defer GinkgoRecover()
+		StartCurl(finished, uri, s.NetNamespaces.Client, "201", 30, []string{"--http1.1", "-T", fileName})
+	}()
+	AssertNil(<-finished)
 }

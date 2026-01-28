@@ -86,6 +86,7 @@ typedef struct
   /* HTTP-specific configuration */
   u8 *path;			/**< URI path for HTTP */
   proxy_server_action_t action; /**< Action: connect or reverse-connect */
+  u8 is_http3;
 
   /* Upstream for reverse-connect */
   session_endpoint_cfg_t upstream_sep;
