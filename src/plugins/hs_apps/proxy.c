@@ -1442,6 +1442,8 @@ proxy_server_listen ()
 	      transport_endpt_ext_cfg_t *ext_cfg = session_endpoint_add_ext_cfg (
 		&a->sep_ext, TRANSPORT_ENDPT_EXT_CFG_CRYPTO, sizeof (transport_endpt_crypto_cfg_t));
 	      ext_cfg->crypto.ckpair_index = cfg->ckpair_index;
+	      if (cfg->is_http3)
+		ext_cfg->crypto.alpn_protos[0] = TLS_ALPN_PROTO_HTTP_3;
 	    }
 	}
       else
@@ -1591,6 +1593,8 @@ proxy_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	vec_add1 (client_uri, 0);
       else if (unformat (line_input, "idle-timeout %d", &pm->idle_timeout))
 	;
+      else if (unformat (line_input, "http3"))
+	cfg->is_http3 = 1;
       else
 	{
 	  error = clib_error_return (0, "unknown input `%U'",
@@ -1645,7 +1649,7 @@ VLIB_CLI_COMMAND (proxy_create_command, static) = {
 		"[max-fifo-size <nn>[k|m]][high-watermark <nn>]"
 		"[low-watermark <nn>][rcv-buf-size <nn>][prealloc-fifos <nn>]"
 		"[private-segment-size <mem>][private-segment-count <nn>]"
-		"[idle-timeout <nn>]",
+		"[idle-timeout <nn>] [http3]",
   .function = proxy_server_create_command_fn,
 };
 
