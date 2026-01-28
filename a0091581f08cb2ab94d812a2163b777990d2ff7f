@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "66a96c8b_6ae48465",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-01-28T09:47:09Z",
+      "side": 1,
+      "message": "Hi, thanks for your contribution and you patience. I have a few comments:\n - I think it could be better to use ip4_sas() and ip6_sas() to identify if there is a suitable IP to do DNS\n - if the crash happens in the DNS process, I think it should be checked at that time, otherwise if all addresses are wiped out between the time you schedule the process node and the time it runs, it will crash again\n - can we have a unit test for this bug? I do not know how hard it is to reproduce but we should try",
+      "revId": "a0091581f08cb2ab94d812a2163b777990d2ff7f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
