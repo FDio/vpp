@@ -167,6 +167,9 @@ calicovppversion
 /extras/kube-test/*.tar
 /extras/kube-test/.perf_logs
 
+# hs perf script
+/extras/scripts/host-stack/perf-tests/vpp_dpdk.cli
+
 # ./configure
 /CMakeFiles
 /bin
