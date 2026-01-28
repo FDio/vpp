@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "fbea280c_6ebb2ee2",
+        "filename": "docs/developer/corefeatures/sfdp.rst",
+        "patchSetId": 7
+      },
+      "lineNbr": 34,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-01-28T15:30:38Z",
+      "side": 1,
+      "message": "Would it be useful to mention existing SFDP nodes/plugins that can be enabled/disabled through API/CLI to have this association ? i.e. sfdp-interface-input, sfdp-geneve-input\n\nIt could be mentioned in this section or under section \u0027Injecting packets in SFDP\u0027",
+      "revId": "26d647f097392bee04b890265d976f49cb741a1d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0d2a9467_f5db2240",
+        "filename": "docs/developer/corefeatures/sfdp.rst",
+        "patchSetId": 7
+      },
+      "lineNbr": 233,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-01-28T15:30:38Z",
+      "side": 1,
+      "message": "For clarity, could you please give an example where blacklisting session callbacks would be used ?",
+      "revId": "26d647f097392bee04b890265d976f49cb741a1d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
