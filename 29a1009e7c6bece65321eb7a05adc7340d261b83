@@ -88,6 +88,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "5a53201a_39f7bf91",
+        "filename": "docs/developer/corefeatures/sfdp.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2026-01-28T14:48:07Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "bd3663e8_5fce364e",
+      "range": {
+        "startLine": 24,
+        "startChar": 0,
+        "endLine": 24,
+        "endChar": 20
+      },
+      "revId": "29a1009e7c6bece65321eb7a05adc7340d261b83",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "c4cf4d96_7cc84a7d",
@@ -125,6 +149,30 @@
       "side": 1,
       "message": "session indexes are unique across workers",
       "parentUuid": "c4cf4d96_7cc84a7d",
+      "range": {
+        "startLine": 25,
+        "startChar": 136,
+        "endLine": 25,
+        "endChar": 159
+      },
+      "revId": "29a1009e7c6bece65321eb7a05adc7340d261b83",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d3c3671d_ce4d46f5",
+        "filename": "docs/developer/corefeatures/sfdp.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2026-01-28T14:48:07Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "0e494a12_d8da277e",
       "range": {
         "startLine": 25,
         "startChar": 136,
