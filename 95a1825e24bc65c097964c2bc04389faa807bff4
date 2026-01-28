@@ -110,6 +110,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "ca1c002f_79bd7a3f",
+        "filename": "src/plugins/auto_sdl/auto_sdl.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 75,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-01-28T19:04:13Z",
+      "side": 1,
+      "message": "Instead of silently updating st (the session table) in this function, let\u0027s just add a check in session_sdl_table_init that sets appns_index to 0 if st-\u003eappns_index is 0.",
+      "parentUuid": "31600cd9_ed3e4f3d",
+      "revId": "95a1825e24bc65c097964c2bc04389faa807bff4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "79f7e470_ccf0a3d1",
         "filename": "src/vnet/session/session_lookup.c",
         "patchSetId": 1
