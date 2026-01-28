@@ -41,6 +41,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "cf527a67_0dc24881",
+        "filename": "docs/developer/corefeatures/sfdp.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2026-01-28T14:41:03Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "e826092a_7e545072",
+      "range": {
+        "startLine": 22,
+        "startChar": 116,
+        "endLine": 22,
+        "endChar": 123
+      },
+      "revId": "29a1009e7c6bece65321eb7a05adc7340d261b83",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "bd3663e8_5fce364e",
@@ -89,6 +113,30 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "0e494a12_d8da277e",
+        "filename": "docs/developer/corefeatures/sfdp.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2026-01-28T14:41:03Z",
+      "side": 1,
+      "message": "session indexes are unique across workers",
+      "parentUuid": "c4cf4d96_7cc84a7d",
+      "range": {
+        "startLine": 25,
+        "startChar": 136,
+        "endLine": 25,
+        "endChar": 159
+      },
+      "revId": "29a1009e7c6bece65321eb7a05adc7340d261b83",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "ef5988d2_ce9b5974",
         "filename": "docs/developer/corefeatures/sfdp.rst",
         "patchSetId": 3
@@ -100,6 +148,30 @@
       "writtenOn": "2026-01-22T13:37:39Z",
       "side": 1,
       "message": "For testing purposes it would be very convenient if giving zero here caused all know sessions to immediately time-out so sessions tables are empty and ready for next test, regardless of haw badly the previous tests went.\n\nI did not check the code yet, but I suspect the current implementation does not spend time re-evaluating existing sessions. Still, an independent \"reset tables\" CLI/API would be nice.",
+      "range": {
+        "startLine": 191,
+        "startChar": 53,
+        "endLine": 191,
+        "endChar": 60
+      },
+      "revId": "29a1009e7c6bece65321eb7a05adc7340d261b83",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7c8de095_3ad077fe",
+        "filename": "docs/developer/corefeatures/sfdp.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 191,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2026-01-28T14:41:03Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "ef5988d2_ce9b5974",
       "range": {
         "startLine": 191,
         "startChar": 53,
