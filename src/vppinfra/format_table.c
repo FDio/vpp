@@ -115,6 +115,8 @@ format_table (u8 *s, va_list *args)
       table_text_attr_t *title_default;
       title_default =
 	t->default_title.as_u32 ? &t->default_title : &default_title;
+      /* fixup table width, in case title is larger than combined row sizes */
+      table_width = vec_len (t->title) > table_width ? vec_len (t->title) : table_width;
       s = format_text_cell (t, s, &title_cell, title_default, table_width);
       s = format (s, "\n%U", format_white_space, indent);
     }
