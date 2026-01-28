@@ -16,6 +16,24 @@
       "message": "When st-\u003eappns_index is non-null, doesn\u0027t it always mean vec_len (st-\u003eappns_index) \u003e 0? If my understanding is correct, why do we need to explicitly check vec_len (st-\u003eappns_index) \u003e 0 ?",
       "revId": "edfd32c8f3e5549cccd0fabc1e29661df9169d48",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f4a6f365_f359a1e6",
+        "filename": "src/plugins/auto_sdl/auto_sdl.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 76,
+      "author": {
+        "id": 3291
+      },
+      "writtenOn": "2026-01-28T03:00:54Z",
+      "side": 1,
+      "message": "Yes, its extra guard but unnecessary, will update.",
+      "parentUuid": "67cd7807_b8447a74",
+      "revId": "edfd32c8f3e5549cccd0fabc1e29661df9169d48",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
