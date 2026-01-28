@@ -6,6 +6,7 @@
 #include <http/http3/frame.h>
 #include <http/http3/qpack.h>
 #include <http/http_timer.h>
+#include <http/http_status_codes.h>
 
 #define HTTP3_SERVER_MAX_STREAM_ID (HTTP_VARINT_MAX - 3)
 
@@ -418,6 +419,23 @@ http3_req_state_wait_app_reply (http_conn_t *stream, http3_stream_ctx_t *sctx,
   control_data.server_name_len = vec_len (stream->app_name);
   control_data.date = date;
   control_data.date_len = vec_len (date);
+
+  if (sctx->base.is_tunnel)
+    {
+      switch (msg.code)
+	{
+	case HTTP_STATUS_OK:
+	case HTTP_STATUS_CREATED:
+	case HTTP_STATUS_ACCEPTED:
+	  /* tunnel established if 2xx (Successful) response to CONNECT */
+	  control_data.content_len = HPACK_ENCODER_SKIP_CONTENT_LEN;
+	  break;
+	default:
+	  /* tunnel not established */
+	  sctx->base.is_tunnel = 0;
+	  break;
+	}
+    }
   control_data.sc = msg.code;
 
   if (msg.data.headers_len)
@@ -489,14 +507,23 @@ http3_req_state_wait_app_method (http_conn_t *hc, http3_stream_ctx_t *sctx,
   request = http_get_tx_buf (stream);
 
   control_data.method = msg.method_type;
-  control_data.parsed_bitmap = HPACK_PSEUDO_HEADER_SCHEME_PARSED;
-  control_data.scheme = HTTP_URL_SCHEME_HTTPS;
-  control_data.parsed_bitmap |= HPACK_PSEUDO_HEADER_PATH_PARSED;
-  control_data.path = http_get_app_target (&sctx->base, &msg);
-  control_data.path_len = msg.data.target_path_len;
-  control_data.parsed_bitmap |= HPACK_PSEUDO_HEADER_AUTHORITY_PARSED;
-  control_data.authority = stream->host;
-  control_data.authority_len = vec_len (stream->host);
+  control_data.parsed_bitmap = HPACK_PSEUDO_HEADER_AUTHORITY_PARSED;
+  if (msg.method_type == HTTP_REQ_CONNECT)
+    {
+      sctx->base.is_tunnel = 1;
+      control_data.authority = http_get_app_target (&sctx->base, &msg);
+      control_data.authority_len = msg.data.target_path_len;
+    }
+  else
+    {
+      control_data.authority = stream->host;
+      control_data.authority_len = vec_len (stream->host);
+      control_data.parsed_bitmap |= HPACK_PSEUDO_HEADER_SCHEME_PARSED;
+      control_data.scheme = HTTP_URL_SCHEME_HTTPS;
+      control_data.parsed_bitmap |= HPACK_PSEUDO_HEADER_PATH_PARSED;
+      control_data.path = http_get_app_target (&sctx->base, &msg);
+      control_data.path_len = msg.data.target_path_len;
+    }
   control_data.user_agent = stream->app_name;
   control_data.user_agent_len = vec_len (stream->app_name);
   control_data.content_len =
@@ -523,7 +550,7 @@ http3_req_state_wait_app_method (http_conn_t *hc, http3_stream_ctx_t *sctx,
       http_req_tx_buffer_init (&sctx->base, &msg);
       new_state = HTTP_REQ_STATE_APP_IO_MORE_DATA;
     }
-  else
+  else if (!sctx->base.is_tunnel)
     {
       /* all done, close stream for sending */
       http_half_close_transport_stream (stream);
@@ -602,6 +629,52 @@ http3_req_state_app_io_more_data (http_conn_t *stream,
 }
 
 static http_sm_result_t
+http3_req_state_tunnel_tx (http_conn_t *stream, http3_stream_ctx_t *sctx,
+			   transport_send_params_t *sp, http3_error_t *error, u32 *n_deq)
+{
+  http_buffer_t *hb = &sctx->base.tx_buf;
+  u32 max_write, n_read, n_segs, n_written;
+  svm_fifo_seg_t *app_segs, *segs = 0;
+  u8 fh_buf[HTTP3_FRAME_HEADER_MAX_LEN];
+  u8 fh_len;
+
+  ASSERT (http_buffer_bytes_left (hb) > 0);
+
+  max_write = http_io_ts_max_write (stream, 0);
+  if (max_write <= HTTP3_FRAME_HEADER_MAX_LEN)
+    {
+      HTTP_DBG (1, "ts tx fifo full");
+      http_req_deschedule (&sctx->base, sp);
+      http_io_ts_add_want_deq_ntf (stream);
+      return HTTP_SM_STOP;
+    }
+  max_write -= HTTP3_FRAME_HEADER_MAX_LEN;
+
+  n_read = http_buffer_get_segs (hb, max_write, &app_segs, &n_segs);
+  if (n_read == 0)
+    {
+      HTTP_DBG (1, "no data to deq");
+      return HTTP_SM_STOP;
+    }
+
+  ASSERT (n_read);
+
+  fh_len = http3_frame_header_write (HTTP3_FRAME_TYPE_DATA, n_read, fh_buf);
+  vec_validate (segs, 0);
+  segs[0].len = fh_len;
+  segs[0].data = fh_buf;
+  vec_append (segs, app_segs);
+  n_written = http_io_ts_write_segs (stream, segs, n_segs + 1, sp);
+  n_written -= fh_len;
+  ASSERT (n_written == n_read);
+  vec_free (segs);
+  http_buffer_drain (hb, n_written);
+  http_io_ts_after_write (stream, 0);
+
+  return HTTP_SM_STOP;
+}
+
+static http_sm_result_t
 http3_req_state_wait_transport_method (http_conn_t *stream,
 				       http3_stream_ctx_t *sctx,
 				       transport_send_params_t *sp,
@@ -612,7 +685,7 @@ http3_req_state_wait_transport_method (http_conn_t *stream,
   http_msg_t msg;
   http_req_state_t new_state = HTTP_REQ_STATE_WAIT_APP_REPLY;
   http3_worker_ctx_t *wrk = http3_worker_get (stream->c_thread_index);
-  u8 *rx_buf;
+  u8 *rx_buf, *p;
   http_sm_result_t res = HTTP_SM_STOP;
 
   if (http_io_ts_max_read (stream) < sctx->fh.length)
@@ -688,6 +761,39 @@ http3_req_state_wait_transport_method (http_conn_t *stream,
       HTTP_DBG (1, ":authority pseudo-header missing in request");
       http3_stream_terminate (stream, sctx, HTTP3_ERROR_MESSAGE_ERROR);
       return HTTP_SM_STOP;
+    }
+  if (control_data.method == HTTP_REQ_CONNECT)
+    {
+      if (control_data.parsed_bitmap & HPACK_PSEUDO_HEADER_SCHEME_PARSED ||
+	  control_data.parsed_bitmap & HPACK_PSEUDO_HEADER_PATH_PARSED)
+	{
+	  HTTP_DBG (1, ":scheme and :path pseudo-header must be omitted for "
+		       "CONNECT method");
+	  http3_stream_terminate (stream, sctx, HTTP3_ERROR_MESSAGE_ERROR);
+	  return HTTP_SM_STOP;
+	}
+      /* quick check if port is present */
+      p = control_data.authority + control_data.authority_len;
+      p--;
+      if (!isdigit (*p))
+	{
+	  HTTP_DBG (1, "port not present in authority");
+	  http3_stream_terminate (stream, sctx, HTTP3_ERROR_MESSAGE_ERROR);
+	  return HTTP_SM_STOP;
+	}
+      p--;
+      for (; p > control_data.authority; p--)
+	{
+	  if (!isdigit (*p))
+	    break;
+	}
+      if (*p != ':')
+	{
+	  HTTP_DBG (1, "port not present in authority");
+	  http3_stream_terminate (stream, sctx, HTTP3_ERROR_MESSAGE_ERROR);
+	  return HTTP_SM_STOP;
+	}
+      sctx->base.is_tunnel = 1;
     }
   if (control_data.content_len_header_index != ~0)
     {
@@ -817,7 +923,13 @@ http3_req_state_wait_transport_reply (http_conn_t *stream,
       return HTTP_SM_STOP;
     }
 
-  if (control_data.content_len_header_index != ~0)
+  if (sctx->base.is_tunnel && http_status_code_str[sctx->base.status_code][0] == '2')
+    {
+      new_state = HTTP_REQ_STATE_TUNNEL;
+      /* cleanup some stuff we don't need anymore in tunnel mode */
+      vec_free (sctx->base.headers);
+    }
+  else if (control_data.content_len_header_index != ~0)
     {
       sctx->base.content_len_header_index =
 	control_data.content_len_header_index;
@@ -937,6 +1049,49 @@ http3_req_state_transport_io_more_data (http_conn_t *stream,
   return res;
 }
 
+static http_sm_result_t
+http3_req_state_tunnel_rx (http_conn_t *stream, http3_stream_ctx_t *sctx,
+			   transport_send_params_t *sp, http3_error_t *error, u32 *n_deq)
+{
+  u32 max_enq, max_deq, n_written, n_segs = 2;
+  svm_fifo_seg_t segs[n_segs];
+  http_sm_result_t res = HTTP_SM_CONTINUE;
+
+  max_deq = http_io_ts_max_read (stream);
+  if (max_deq == 0)
+    {
+      HTTP_DBG (1, "nothing to deq");
+      *n_deq = 0;
+      return HTTP_SM_STOP;
+    }
+  max_deq = clib_min (max_deq, sctx->fh.length);
+
+  max_enq = http_io_as_max_write (&sctx->base);
+  if (max_enq == 0)
+    {
+      HTTP_DBG (1, "app's rx fifo full");
+      http_io_as_add_want_deq_ntf (&sctx->base);
+      *n_deq = 0;
+      return HTTP_SM_STOP;
+    }
+  http_io_ts_read_segs (stream, segs, &n_segs, clib_min (max_deq, max_enq));
+  n_written = http_io_as_write_segs (&sctx->base, segs, n_segs);
+  ASSERT (sctx->fh.length >= n_written);
+  sctx->fh.length -= n_written;
+  http_io_ts_drain (stream, n_written);
+  *n_deq = n_written;
+  http_app_worker_rx_notify (&sctx->base);
+  HTTP_DBG (2, "written %lu", n_written);
+
+  if (max_deq > n_written)
+    {
+      http_io_as_add_want_deq_ntf (&sctx->base);
+      res = HTTP_SM_STOP;
+    }
+
+  return res;
+}
+
 /*************************/
 /* request state machine */
 /*************************/
@@ -955,7 +1110,7 @@ static http3_sm_handler tx_state_funcs[HTTP_REQ_N_STATES] = {
   0, /* wait transport method */
   http3_req_state_wait_app_reply,
   http3_req_state_app_io_more_data,
-  0, /* TODO: tunnel tx */
+  http3_req_state_tunnel_tx,
   0, /* TODO: udp unnel tx */
 };
 
@@ -967,7 +1122,7 @@ static http3_sm_handler rx_state_funcs[HTTP_REQ_N_STATES] = {
   http3_req_state_wait_transport_method,
   0, /* wait app reply */
   0, /* app io more data */
-  0, /* TODO: tunnel rx */
+  http3_req_state_tunnel_rx,
   0, /* TODO: udp tunnel rx */
 };
 
@@ -1267,16 +1422,17 @@ http3_stream_transport_rx_req (http3_stream_ctx_t *sctx, http_conn_t *stream,
 	  HTTP_DBG (1, "headers received");
 	  if (sctx->base.state != headers_state)
 	    {
-	      http3_stream_terminate (stream, sctx, HTTP3_ERROR_MESSAGE_ERROR);
-	      goto done;
+	      err = HTTP3_ERROR_FRAME_UNEXPECTED;
+	      goto error;
 	    }
 	  break;
 	case HTTP3_FRAME_TYPE_DATA:
 	  HTTP_DBG (1, "data received");
-	  if (sctx->base.state != HTTP_REQ_STATE_TRANSPORT_IO_MORE_DATA)
+	  if (!(sctx->base.state == HTTP_REQ_STATE_TRANSPORT_IO_MORE_DATA ||
+		sctx->base.state == HTTP_REQ_STATE_TUNNEL))
 	    {
-	      http3_stream_terminate (stream, sctx, HTTP3_ERROR_MESSAGE_ERROR);
-	      goto done;
+	      err = HTTP3_ERROR_FRAME_UNEXPECTED;
+	      goto error;
 	    }
 	  break;
 	default:
@@ -1298,7 +1454,6 @@ http3_stream_transport_rx_req (http3_stream_ctx_t *sctx, http_conn_t *stream,
 	http3_stream_error_terminate_conn (stream, sctx, err);
     }
 
-done:
   return max_deq - left_deq;
 }
 
