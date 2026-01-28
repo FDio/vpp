@@ -317,14 +317,14 @@ typedef struct http_engine_vft_
   void (*transport_close_callback) (http_conn_t *hc);
   void (*transport_reset_callback) (http_conn_t *hc);
   void (*transport_conn_reschedule_callback) (http_conn_t *hc);
-  int (*transport_stream_accept_callback) (http_conn_t *hc);
-  void (*transport_stream_close_callback) (http_conn_t *hc);
-  void (*transport_stream_reset_callback) (http_conn_t *hc);
+  int (*transport_stream_accept_callback) (http_conn_t *stream, http_conn_t *hc);
+  void (*transport_stream_close_callback) (http_conn_t *stream);
+  void (*transport_stream_reset_callback) (http_conn_t *stream);
   void (*conn_accept_callback) (http_conn_t *hc);
   int (*conn_connect_stream_callback) (http_conn_t *hc,
 				       u32 *req_index); /* optional */
   void (*conn_cleanup_callback) (http_conn_t *hc);
-  void (*stream_cleanup_callback) (http_conn_t *hc);
+  void (*stream_cleanup_callback) (http_conn_t *stream);
   void (*enable_callback) (void);			    /* optional */
   uword (*unformat_cfg_callback) (unformat_input_t *input); /* optional */
 } http_engine_vft_t;
@@ -634,6 +634,21 @@ http_req_deschedule (http_req_t *req, transport_send_params_t *sp)
 {
   transport_connection_deschedule (&req->connection);
   sp->flags |= TRANSPORT_SND_F_DESCHED;
+}
+
+static_always_inline u8
+http_hc_is_valid (u32 hc_index, clib_thread_index_t thread_index)
+{
+  http_conn_t *hc;
+
+  hc = http_conn_get_w_thread (hc_index, thread_index);
+  if (hc->c_thread_index != thread_index || hc->hc_hc_index != hc_index)
+    return 0;
+
+  if (http_conn_is_stream (hc) && hc->version != HTTP_VERSION_3)
+    return 0;
+
+  return 1;
 }
 
 /* Abstraction of app session fifo operations */

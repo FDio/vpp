@@ -71,7 +71,7 @@ func (s *MasqueSuite) SetupSuite() {
 	s.Containers.IperfServer = s.GetContainerByName("iperf-server")
 }
 
-func (s *MasqueSuite) SetupTest() {
+func (s *MasqueSuite) SetupTest(serverExtraArgs ...string) {
 	s.HstSuite.SetupTest()
 
 	var memoryConfig Stanza
@@ -106,7 +106,11 @@ func (s *MasqueSuite) SetupTest() {
 	idx, err = serverVpp.createAfPacket(s.Interfaces.Server, false)
 	AssertNil(err, fmt.Sprint(err))
 	AssertNotEqual(0, idx)
-	proxyCmd := fmt.Sprintf("test proxy server fifo-size 512k server-uri https://%s:%s", s.ProxyAddr(), s.Ports.Proxy)
+	extras := ""
+	if len(serverExtraArgs) > 0 {
+		extras = strings.Join(serverExtraArgs, " ")
+	}
+	proxyCmd := fmt.Sprintf("test proxy server fifo-size 512k server-uri https://%s:%s %s", s.ProxyAddr(), s.Ports.Proxy, extras)
 	Log(serverVpp.Vppctl(proxyCmd))
 
 	// let the client know howto get to the server (must be created here after vpp interface)
@@ -163,10 +167,12 @@ func (s *MasqueSuite) TeardownTest() {
 		Log(clientVpp.Vppctl("show http connect proxy client listeners sessions stats"))
 		Log(clientVpp.Vppctl("show http stats"))
 		Log(clientVpp.Vppctl("show tcp stats"))
+		Log(clientVpp.Vppctl("show quic"))
 		Log(serverVpp.Vppctl("show session verbose 2"))
 		Log(serverVpp.Vppctl("show error"))
 		Log(serverVpp.Vppctl("show http stats"))
 		Log(serverVpp.Vppctl("show tcp stats"))
+		Log(serverVpp.Vppctl("show quic"))
 	}
 }
 
@@ -181,7 +187,7 @@ func (s *MasqueSuite) ProxyClientConnect(proto, port string, extraArgs ...string
 	Log(vpp.Vppctl(cmd))
 
 	connected := false
-	for nTries := 0; nTries < 10; nTries++ {
+	for range 10 {
 		o := vpp.Vppctl("show http connect proxy client")
 		if strings.Contains(strings.ToLower(o), "connection state: connected") {
 			connected = true

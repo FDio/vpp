@@ -661,8 +661,7 @@ http_ts_accept_stream (session_t *stream_session)
   stream->state = HTTP_CONN_STATE_ESTABLISHED;
   stream->hc_http_conn_index = hc->hc_hc_index;
 
-  if ((rv =
-	 http_vfts[stream->version].transport_stream_accept_callback (stream)))
+  if ((rv = http_vfts[stream->version].transport_stream_accept_callback (stream, hc)))
     {
       http_conn_free (stream);
       return rv;
@@ -670,6 +669,8 @@ http_ts_accept_stream (session_t *stream_session)
 
   hc_handle.version = stream->version;
   hc_handle.conn_index = stream_index;
+  /* session pool might be reallocated meanwhile */
+  stream_session = session_get_from_handle (stream->hc_tc_session_handle);
   stream_session->opaque = hc_handle.as_u32;
   stream_session->session_state = SESSION_STATE_READY;
   HTTP_DBG (1, "Accepted on connection [%u]%x new stream %x",
@@ -788,6 +789,7 @@ http_ts_disconnect_callback (session_t *ts)
 
   HTTP_DBG (1, "hc [%u]%x", ts->thread_index, hc_handle.conn_index);
 
+  ASSERT (http_hc_is_valid (hc_handle.conn_index, ts->thread_index));
   hc = http_conn_get_w_thread (hc_handle.conn_index, ts->thread_index);
 
   if (hc->state < HTTP_CONN_STATE_TRANSPORT_CLOSED)
@@ -813,6 +815,7 @@ http_ts_reset_callback (session_t *ts)
 
   HTTP_DBG (1, "hc [%u]%x", ts->thread_index, hc_handle.conn_index);
 
+  ASSERT (http_hc_is_valid (hc_handle.conn_index, ts->thread_index));
   hc = http_conn_get_w_thread (hc_handle.conn_index, ts->thread_index);
   hc->state = HTTP_CONN_STATE_CLOSED;
 
@@ -842,6 +845,7 @@ http_ts_rx_callback (session_t *ts)
 
   HTTP_DBG (1, "hc [%u]%x", ts->thread_index, hc_handle.conn_index);
 
+  ASSERT (http_hc_is_valid (hc_handle.conn_index, ts->thread_index));
   hc = http_conn_get_w_thread (hc_handle.conn_index, ts->thread_index);
 
   if (hc->state == HTTP_CONN_STATE_CLOSED)
@@ -892,6 +896,7 @@ http_ts_builtin_tx_callback (session_t *ts)
 
   hc_handle.as_u32 = ts->opaque;
 
+  ASSERT (http_hc_is_valid (hc_handle.conn_index, ts->thread_index));
   hc = http_conn_get_w_thread (hc_handle.conn_index, ts->thread_index);
   HTTP_DBG (1, "transport connection reschedule");
   http_vfts[hc->version].transport_conn_reschedule_callback (hc);
@@ -907,6 +912,7 @@ http_ts_closed_callback (session_t *ts)
 
   hc_handle.as_u32 = ts->opaque;
   HTTP_DBG (1, "hc [%u]%x", ts->thread_index, hc_handle.conn_index);
+  ASSERT (http_hc_is_valid (hc_handle.conn_index, ts->thread_index));
   hc = http_conn_get_w_thread (hc_handle.conn_index, ts->thread_index);
 
   http_disconnect_transport (hc);
@@ -923,6 +929,7 @@ http_ts_cleanup_callback (session_t *ts, session_cleanup_ntf_t ntf)
     return;
 
   hc_handle.as_u32 = ts->opaque;
+  ASSERT (http_hc_is_valid (hc_handle.conn_index, ts->thread_index));
   hc = http_conn_get_w_thread (hc_handle.conn_index, ts->thread_index);
 
   HTTP_DBG (1, "going to free hc [%u]%x", ts->thread_index,
@@ -1437,6 +1444,7 @@ http_app_close (u32 rh, clib_thread_index_t thread_index, u8 is_shutdown)
   HTTP_DBG (1, "App disconnecting [%u]%x is_shutdown=%u", thread_index,
 	    hc_index, is_shutdown);
 
+  ASSERT (http_hc_is_valid (hc_index, thread_index));
   hc = http_conn_get_w_thread (hc_index, thread_index);
   if (hc->state == HTTP_CONN_STATE_CONNECTING)
     {
@@ -1479,6 +1487,7 @@ http_transport_reset (u32 rh, clib_thread_index_t thread_index)
     hr_handle.req_index, thread_index);
   HTTP_DBG (1, "App disconnecting [%u]%x", thread_index, hc_index);
 
+  ASSERT (http_hc_is_valid (hc_index, thread_index));
   hc = http_conn_get_w_thread (hc_index, thread_index);
   if (hc->state == HTTP_CONN_STATE_CLOSED)
     {
@@ -1520,6 +1529,7 @@ http_app_tx_callback (void *session, transport_send_params_t *sp)
     hr_handle.req_index, as->thread_index);
   HTTP_DBG (1, "hc [%u]%x", as->thread_index, hc_index);
 
+  ASSERT (http_hc_is_valid (hc_index, as->thread_index));
   hc = http_conn_get_w_thread (hc_index, as->thread_index);
 
   if (hc->state == HTTP_CONN_STATE_CLOSED)
@@ -1553,6 +1563,7 @@ http_app_rx_evt_cb (transport_connection_t *tc)
   HTTP_DBG (1, "hc [%u]%x", req->c_thread_index, req->hr_hc_index);
 
   hr_handle.as_u32 = req->hr_req_handle;
+  ASSERT (http_hc_is_valid (req->hr_hc_index, req->c_thread_index));
   hc = http_conn_get_w_thread (req->hr_hc_index, req->c_thread_index);
   http_vfts[hr_handle.version].app_rx_evt_callback (hc, hr_handle.req_index,
 						    req->c_thread_index);

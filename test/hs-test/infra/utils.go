@@ -213,7 +213,7 @@ where LogPrefix is set to nginxContainer.Name
 func CollectNginxLogs(nginxContainer *Container) {
 	targetDir := nginxContainer.Suite.getLogDirPath()
 	source := nginxContainer.GetHostWorkDir() + "/" + nginxContainer.Name + "-"
-	cmd := exec.Command("cp", "-t", targetDir, source+"error.log", source+"accesLog")
+	cmd := exec.Command("cp", "-t", targetDir, source+"error.log", source+"access.log")
 	Log(cmd.String())
 	err := cmd.Run()
 	if err != nil {
