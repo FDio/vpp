@@ -264,7 +264,7 @@ lcp_itf_pair_add (u32 host_sw_if_index, u32 phy_sw_if_index, u8 *host_name,
   lip_db_by_phy[phy_sw_if_index] = lipi;
   lip_db_by_host[host_sw_if_index] = lipi;
 
-  if (clib_strcmp ((char *) ns, (char *) lcp_get_default_ns ()) == 0)
+  if (ns && lcp_get_default_ns () && clib_strcmp ((char *) ns, (char *) lcp_get_default_ns ()) == 0)
     {
       hash_set (lip_db_by_vif, host_index, lipi);
     }
