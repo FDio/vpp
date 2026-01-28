@@ -1101,12 +1101,40 @@ http3_stream_transport_rx_drain (CLIB_UNUSED (http3_stream_ctx_t *sctx),
   return n_deq;
 }
 
+static_always_inline int
+http3_stream_read_goaway (http3_stream_ctx_t *sctx, http_conn_t *stream, u32 *to_deq,
+			  http3_frame_header_t *fh)
+{
+  http3_error_t err;
+  http3_stream_ctx_t *parent_sctx;
+  http3_conn_ctx_t *h3c;
+  u8 *rx_buf;
+  u64 stream_or_push_id;
+
+  rx_buf = http_get_rx_buf (stream);
+  http_io_ts_read (stream, rx_buf, fh->length, 0);
+  *to_deq -= fh->length;
+  err = http3_frame_goaway_read (rx_buf, fh->length, &stream_or_push_id);
+  if (err != HTTP3_ERROR_NO_ERROR)
+    {
+      HTTP_DBG (1, "invalid stream id/push id in goaway frame");
+      http3_stream_error_terminate_conn (stream, sctx, HTTP3_ERROR_ID_ERROR);
+      return -1;
+    }
+  h3c = http3_conn_ctx_get (sctx->h3c_index, sctx->base.c_thread_index);
+  /* graceful shutdown (no new streams for client) */
+  if (!(stream->flags & HTTP_CONN_F_IS_SERVER) && h3c->parent_sctx_index != SESSION_INVALID_INDEX)
+    {
+      parent_sctx = http3_stream_ctx_get (h3c->parent_sctx_index, stream->c_thread_index);
+      session_transport_closing_notify (&parent_sctx->base.connection);
+    }
+  return 0;
+}
 static u32
 http3_stream_transport_rx_ctrl (http3_stream_ctx_t *sctx, http_conn_t *stream)
 {
   u32 to_deq, max_deq;
   http3_conn_ctx_t *h3c;
-  http3_stream_ctx_t *parent_sctx;
 
   max_deq = to_deq = http_io_ts_max_read (stream);
   while (to_deq)
@@ -1132,13 +1160,9 @@ http3_stream_transport_rx_ctrl (http3_stream_ctx_t *sctx, http_conn_t *stream)
 	  break;
 	case HTTP3_FRAME_TYPE_GOAWAY:
 	  HTTP_DBG (1, "goaway received");
-	  /* graceful shutdown (no new streams for client) */
-	  if (!(stream->flags & HTTP_CONN_F_IS_SERVER) &&
-	      h3c->parent_sctx_index != SESSION_INVALID_INDEX)
-	    {
-	      parent_sctx = http3_stream_ctx_get (h3c->parent_sctx_index, stream->c_thread_index);
-	      session_transport_closing_notify (&parent_sctx->base.connection);
-	    }
+	  if (PREDICT_FALSE (http3_stream_read_goaway (sctx, stream, &to_deq, &fh)))
+	    goto done;
+	  break;
 	default:
 	  /* discard payload of unknown frame */
 	  if (fh.length)
@@ -1655,7 +1679,7 @@ http3_app_close_callback (http_conn_t *stream, u32 req_index,
   sctx->flags |= HTTP3_STREAM_F_APP_CLOSED;
   hc = http_conn_get_w_thread (stream->hc_http_conn_index, stream->c_thread_index);
   /* send goaway if shutdown */
-  if (is_shutdown)
+  if (is_shutdown && sctx->flags & HTTP3_STREAM_F_IS_PARENT)
     http3_send_goaway (hc);
   /* Nothing more to send, confirm close */
   if (!http_io_as_max_read (&sctx->base))
@@ -2018,10 +2042,7 @@ http3_stream_cleanup_callback (http_conn_t *stream)
 				   stream->c_thread_index);
       ASSERT (sctx->base.to_recv == 0);
       if (!(stream->flags & HTTP_CONN_F_NO_APP_SESSION))
-	{
-	  clib_warning ("called");
-	  session_transport_delete_notify (&sctx->base.connection);
-	}
+	session_transport_delete_notify (&sctx->base.connection);
     }
   http3_stream_ctx_free (stream);
 }
