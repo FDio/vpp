@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5ea24918_fd049489",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-01-28T18:26:13Z",
+      "side": 1,
+      "message": "I think you meant to `git commit -a --amend` your previous gerrit and `git review`.\n\nRe-grab you patch with `git review -d \u003cgerrit number\u003e`",
+      "revId": "b4356f7c854dbebe9e2a9c6b0b114ba5c5b4978f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
