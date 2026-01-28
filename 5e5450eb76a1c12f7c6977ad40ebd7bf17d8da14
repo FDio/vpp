@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1d9dd800_29816fd1",
+        "filename": "src/vnet/session/application.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 1474,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-01-28T20:00:37Z",
+      "side": 1,
+      "message": "If we have multiple applications using an app transport, this will force the app transport client_wrk to point to the last application\u0027s connects segment manager. For instance, if the app transport is tls, and we have http2 and a tls proxy both actively opening tls connections, the tls layer app will call this function and for both calls `a-\u003ewrk_map_index` will be the same.\n\nProbably need to move some of this logic in `app_worker_init_connected`",
+      "revId": "5e5450eb76a1c12f7c6977ad40ebd7bf17d8da14",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
