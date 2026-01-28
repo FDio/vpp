@@ -11,10 +11,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-PKG_SUFFIX ?= $(shell git log --oneline v$(PKG_VERSION)-rc0.. . | wc -l)
-
 include ../build_common.mk
 include ../packages_common.mk
+
+PKG_SUFFIX ?= $(shell git log --oneline v$(PKG_VERSION)-rc0.. . | wc -l)
 
 ifneq ($(shell uname), FreeBSD)
 include packages/openssl.mk
@@ -46,6 +46,7 @@ DEB_VER := $(PKG_VERSION)
 DEB_ARCH=$(shell dpkg --print-architecture 2> /dev/null)
 DEV_DEB=vpp-opt-deps_$(DEB_VER)-$(PKG_SUFFIX)_$(DEB_ARCH).deb
 INSTALLED_VER=$(shell dpkg-query --showformat='$${Version}' --show vpp-opt-deps 2> /dev/null)
+LINE="=================================================================="
 
 .PHONY: build-deb install-deb check-deb
 
@@ -64,24 +65,31 @@ build-deb: $(DEV_DEB)
 
 install-deb:
 ifneq ($(INSTALLED_VER),$(DEB_VER)-$(PKG_SUFFIX))
+	@echo $(LINE)
+	@echo " Installing vpp-opt-deps debian package $(DEB_VER)-$(PKG_SUFFIX)"
+	@echo $(LINE)
 	@$(MAKE) $(DEV_DEB)
 	@sudo dpkg -i $(DEV_DEB)
 else
-	@echo "=========================================================="
-	@echo " Up-to-date vpp-opt-deps package already installed"
-	@echo "=========================================================="
+	@echo $(LINE)
+	@echo " Up-to-date vpp-opt-deps debian package $(DEB_VER)-$(PKG_SUFFIX) already installed"
+	@echo $(LINE)
 endif
 
 check-deb:
 ifneq ($(INSTALLED_VER),$(DEB_VER)-$(PKG_SUFFIX))
-	@echo "=========================================================="
-	@echo " Out of date vpp-opt-deps package installed."
+	@echo $(LINE)
+	@echo " Out of date vpp-opt-deps debian package installed."
 	@echo " Installed: $(INSTALLED_VER)"
 	@echo " Needed: $(DEB_VER)-$(PKG_SUFFIX)"
 	@echo ""
 	@echo " Please upgrade by invoking 'make install-opt-deps'"
 	@echo " from the top level directory."
-	@echo "=========================================================="
+	@echo $(LINE)
+else
+	@echo $(LINE)
+	@echo " Up-to-date vpp-opt-deps debian package $(DEB_VER)-$(PKG_SUFFIX) already installed"
+	@echo $(LINE)
 endif
 
 ##############################################################################
@@ -112,21 +120,25 @@ ifneq ($(INSTALLED_RPM_VER),$(RPM_VER)-$(PKG_SUFFIX))
 	sudo rpm -e vpp-opt-deps || true
 	sudo rpm -Uih --force $(DEV_RPM)
 else
-	@echo "=========================================================="
-	@echo " Up-to-date vpp-opt-deps package already installed"
-	@echo "=========================================================="
+	@echo $(LINE)
+	@echo " Up-to-date vpp-opt-deps rpm package $(RPM_VER)-$(PKG_SUFFIX) already installed"
+	@echo $(LINE)
 endif
 
 check-rpm:
 ifneq ($(INSTALLED_RPM_VER),$(RPM_VER)-$(PKG_SUFFIX))
-	@echo "=========================================================="
-	@echo " Out of date vpp-opt-deps package installed."
+	@echo $(LINE)
+	@echo " Out of date vpp-opt-deps rpm package installed."
 	@echo " Installed: $(INSTALLED_RPM_VER)"
 	@echo " Needed: $(RPM_VER)-$(PKG_SUFFIX)"
 	@echo ""
 	@echo " Please upgrade by invoking 'make install-opt-deps'"
 	@echo " from the top level directory."
-	@echo "=========================================================="
+	@echo $(LINE)
+else
+	@echo $(LINE)
+	@echo " Up-to-date vpp-opt-deps rpm package $(RPM_VER)-$(PKG_SUFFIX) already installed"
+	@echo $(LINE)
 endif
 
 ##############################################################################
@@ -137,11 +149,11 @@ endif
 
 ebuild-build:
 ifeq ($(INSTALLED_VER)$(INSTALLED_RPM_VER),)
-	@echo "=========================================================="
+	@echo $(LINE)
 	@echo "Building vpp-opt-deps from source. Consider installing"
 	@echo "development package by invoking 'make install-opt-deps'"
 	@echo "from the top level directory"
-	@echo "=========================================================="
+	@echo $(LINE)
 	$(MAKE) config
 else
 ifneq ($(INSTALLED_VER),)
