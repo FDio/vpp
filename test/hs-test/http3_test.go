@@ -344,7 +344,7 @@ func Http3PseudoHeaderAfterRegularTest(s *Http3Suite) {
 }
 
 func Http3DataBeforeHeadersTest(s *Http3Suite) {
-	http3SenInvalidReqExpectStreamError(s, []byte{0x00, 0x01, 0xEE}, http3.ErrCodeMessageError)
+	http3SendReqExpectConnError(s, []byte{0x00, 0x01, 0xEE}, http3.ErrCodeFrameUnexpected)
 }
 
 func http3SendCtrlExpectConnError(s *Http3Suite, p []byte, expectedErrorCode http3.ErrCode) {

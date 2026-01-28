@@ -905,9 +905,8 @@ http_ts_closed_callback (session_t *ts)
   http_conn_handle_t hc_handle;
   http_conn_t *hc;
 
-  HTTP_DBG (1, "hc [%u]%x", ts->thread_index, hc_handle.conn_index);
-
   hc_handle.as_u32 = ts->opaque;
+  HTTP_DBG (1, "hc [%u]%x", ts->thread_index, hc_handle.conn_index);
   hc = http_conn_get_w_thread (hc_handle.conn_index, ts->thread_index);
 
   http_disconnect_transport (hc);

@@ -71,7 +71,7 @@ func (s *MasqueSuite) SetupSuite() {
 	s.Containers.IperfServer = s.GetContainerByName("iperf-server")
 }
 
-func (s *MasqueSuite) SetupTest() {
+func (s *MasqueSuite) SetupTest(serverExtraArgs ...string) {
 	s.HstSuite.SetupTest()
 
 	var memoryConfig Stanza
@@ -106,7 +106,11 @@ func (s *MasqueSuite) SetupTest() {
 	idx, err = serverVpp.createAfPacket(s.Interfaces.Server, false)
 	AssertNil(err, fmt.Sprint(err))
 	AssertNotEqual(0, idx)
-	proxyCmd := fmt.Sprintf("test proxy server fifo-size 512k server-uri https://%s:%s", s.ProxyAddr(), s.Ports.Proxy)
+	extras := ""
+	if len(serverExtraArgs) > 0 {
+		extras = strings.Join(serverExtraArgs, " ")
+	}
+	proxyCmd := fmt.Sprintf("test proxy server fifo-size 512k server-uri https://%s:%s %s", s.ProxyAddr(), s.Ports.Proxy, extras)
 	Log(serverVpp.Vppctl(proxyCmd))
 
 	// let the client know howto get to the server (must be created here after vpp interface)
@@ -128,7 +132,12 @@ func (s *MasqueSuite) SetupTest() {
 		s.Interfaces.Client.Peer.HwAddress)
 	Log(clientVpp.Vppctl(arp))
 	arp = fmt.Sprintf("set ip neighbor %s %s %s",
-		s.Interfaces.Server.Name(),
+		s.Interfaces.TunnelServer.VppName(),
+		s.Interfaces.TunnelClient.Ip4AddressString(),
+		s.Interfaces.TunnelClient.HwAddress)
+	Log(serverVpp.Vppctl(arp))
+	arp = fmt.Sprintf("set ip neighbor %s %s %s",
+		s.Interfaces.Server.VppName(),
 		s.NginxAddr(),
 		s.Interfaces.Server.Peer.HwAddress)
 	Log(serverVpp.Vppctl(arp))
@@ -158,10 +167,12 @@ func (s *MasqueSuite) TeardownTest() {
 		Log(clientVpp.Vppctl("show http connect proxy client listeners sessions stats"))
 		Log(clientVpp.Vppctl("show http stats"))
 		Log(clientVpp.Vppctl("show tcp stats"))
+		Log(clientVpp.Vppctl("show quic"))
 		Log(serverVpp.Vppctl("show session verbose 2"))
 		Log(serverVpp.Vppctl("show error"))
 		Log(serverVpp.Vppctl("show http stats"))
 		Log(serverVpp.Vppctl("show tcp stats"))
+		Log(serverVpp.Vppctl("show quic"))
 	}
 }
 
