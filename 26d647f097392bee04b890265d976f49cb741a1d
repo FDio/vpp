@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "e4f7780e_749577cf",
+        "filename": "docs/developer/corefeatures/sfdp.rst",
+        "patchSetId": 7
+      },
+      "lineNbr": 34,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2026-01-28T15:51:16Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "fbea280c_6ebb2ee2",
+      "revId": "26d647f097392bee04b890265d976f49cb741a1d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "0d2a9467_f5db2240",
@@ -31,6 +49,24 @@
       "writtenOn": "2026-01-28T15:30:38Z",
       "side": 1,
       "message": "For clarity, could you please give an example where blacklisting session callbacks would be used ?",
+      "revId": "26d647f097392bee04b890265d976f49cb741a1d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f8d28753_8b779c8c",
+        "filename": "docs/developer/corefeatures/sfdp.rst",
+        "patchSetId": 7
+      },
+      "lineNbr": 233,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2026-01-28T15:51:16Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "0d2a9467_f5db2240",
       "revId": "26d647f097392bee04b890265d976f49cb741a1d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
