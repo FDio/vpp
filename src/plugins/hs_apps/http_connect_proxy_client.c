@@ -167,6 +167,7 @@ typedef struct
   u32 udp_idle_timeout;
   u8 *cert_file;
   u8 *key_file;
+  u8 is_http3;
 } hcpc_main_t;
 
 hcpc_main_t hcpc_main;
@@ -1021,7 +1022,8 @@ hcpc_connect_http_connection ()
 	&a->sep_ext, TRANSPORT_ENDPT_EXT_CFG_CRYPTO,
 	sizeof (transport_endpt_crypto_cfg_t));
       ext_cfg->crypto.ckpair_index = hcpcm->ckpair_index;
-      ext_cfg->crypto.alpn_protos[0] = TLS_ALPN_PROTO_HTTP_2;
+      ext_cfg->crypto.alpn_protos[0] =
+	hcpcm->is_http3 ? TLS_ALPN_PROTO_HTTP_3 : TLS_ALPN_PROTO_HTTP_2;
     }
   else
     http_cfg.flags |= HTTP_ENDPT_CFG_F_HTTP2_PRIOR_KNOWLEDGE;
@@ -1993,6 +1995,8 @@ hcpc_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	;
       else if (unformat (line_input, "key %s", &hcpcm->key_file))
 	;
+      else if (unformat (line_input, "http3"))
+	hcpcm->is_http3 = 1;
       else
 	{
 	  err = clib_error_return (0, "unknown input `%U'",
@@ -2060,11 +2064,10 @@ done:
 
 VLIB_CLI_COMMAND (hcpc_create_command, static) = {
   .path = "http connect proxy client enable",
-  .short_help =
-    "http connect proxy client enable server-uri <http[s]://ip:port>\n"
-    "interface <intfc> listener <tcp|udp://ip:port> [udp-idle-timeout <n>]\n"
-    "[fifo-size <nM|G>] [private-segment-size <nM|G>] [prealloc-fifos <n>]\n"
-    "[cert <cert> key <key>]",
+  .short_help = "http connect proxy client enable server-uri <http[s]://ip:port>\n"
+		"interface <intfc> listener <tcp|udp://ip:port> [udp-idle-timeout <n>]\n"
+		"[fifo-size <nM|G>] [private-segment-size <nM|G>] [prealloc-fifos <n>]\n"
+		"[cert <cert> key <key>] [http3]",
   .function = hcpc_create_command_fn,
 };
 
