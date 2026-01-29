@@ -132,6 +132,12 @@ add_vpp_executable(vpp_prometheus_push
    DEPENDS api_headers
 )
 
+add_vpp_executable(vpp_session_stats_export
+  SOURCES app/vpp_session_stats_export.c
+  LINK_LIBRARIES vppapiclient vppinfra svm vlibmemoryclient ${EPOLL_LIB}
+  DEPENDS api_headers
+)
+
 install(FILES conf/startup.conf DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/vpp COMPONENT vpp)
 install(FILES conf/80-vpp.conf DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/sysctl.d COMPONENT vpp)
 

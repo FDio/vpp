@@ -1,0 +1,312 @@
+/* SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2025 Cisco Systems, Inc.
+ *
+ * SFDP Session Stats - VPP API Definition
+ */
+
+option version = "1.2.0";
+import "vnet/interface_types.api";
+import "vnet/ip/ip_types.api";
+
+/**
+ * @brief Decorator types for the configurable portion of ring buffer entries
+ */
+enum sfdp_session_stats_decorator_type : u8
+{
+  SFDP_SESSION_STATS_DECORATOR_API_NONE = 0,
+  SFDP_SESSION_STATS_DECORATOR_API_TCP_FLAGS = 1,
+  SFDP_SESSION_STATS_DECORATOR_API_NAT_REWRITE = 2,
+  SFDP_SESSION_STATS_DECORATOR_API_QOS_MARKS = 3,
+  SFDP_SESSION_STATS_DECORATOR_API_CUSTOM_U64 = 4,
+  SFDP_SESSION_STATS_DECORATOR_API_CUSTOM_U32 = 5,
+};
+
+/**
+ * @brief Enable/disable the session stats ring buffer
+ * @param client_index - opaque cookie to identify the sender
+ * @param context - sender context, to match reply w/ request
+ * @param enable - 1 to enable, 0 to disable
+ * @param ring_size - size of the ring buffer (number of entries)
+ */
+autoreply define sfdp_session_stats_ring_enable
+{
+  u32 client_index;
+  u32 context;
+  bool enable [default=true];
+  u32 ring_size [default=4096];
+};
+
+/**
+ * @brief Configure periodic export
+ * @param client_index - opaque cookie to identify the sender
+ * @param context - sender context, to match reply w/ request
+ * @param enable - 1 to enable, 0 to disable periodic export
+ * @param interval - export interval in seconds (0 = use default 10s)
+ */
+autoreply define sfdp_session_stats_periodic_export
+{
+  u32 client_index;
+  u32 context;
+  bool enable [default=true];
+  f64 interval [default=10.0];
+};
+
+/**
+ * @brief Trigger immediate export of all sessions to ring buffer
+ * @param client_index - opaque cookie to identify the sender
+ * @param context - sender context, to match reply w/ request
+ */
+autoreply define sfdp_session_stats_export_now
+{
+  u32 client_index;
+  u32 context;
+};
+
+/**
+ * @brief Request session stats dump
+ * @param client_index - opaque cookie to identify the sender
+ * @param context - sender context, to match reply w/ request
+ * @param session_id - specific session ID to dump (0 = all sessions)
+ * @param tenant_idx - filter by tenant (-1 = all tenants)
+ */
+define sfdp_session_stats_dump
+{
+  u32 client_index;
+  u32 context;
+  u32 session_id [default=0];
+  i32 tenant_idx [default=-1];
+};
+
+/**
+ * @brief Session stats entry with extended statistics
+ * @param context - sender context, to match reply w/ request
+ * @param session_id - the SFDP session ID
+ * @param session_version - session version for stale detection
+ * @param tenant_idx - tenant index
+ * @param proto - IP protocol (6=TCP, 17=UDP, etc.)
+ * @param is_ip6 - 1 if IPv6, 0 if IPv4
+ * @param src_addr - source IP address
+ * @param dst_addr - destination IP address
+ * @param src_port - source port
+ * @param dst_port - destination port
+ * @param packets_fwd - packets in forward direction
+ * @param packets_rev - packets in reverse direction
+ * @param bytes_fwd - bytes in forward direction
+ * @param bytes_rev - bytes in reverse direction
+ * @param first_seen - timestamp when session was first seen
+ * @param last_seen - timestamp when session was last seen
+ * @param duration - session duration in seconds
+ * @param ttl_min_fwd - TTL min forward direction
+ * @param ttl_max_fwd - TTL max forward direction
+ * @param ttl_mean_fwd - TTL mean forward direction
+ * @param ttl_stddev_fwd - TTL standard deviation forward direction
+ * @param ttl_min_rev - TTL min reverse direction
+ * @param ttl_max_rev - TTL max reverse direction
+ * @param ttl_mean_rev - TTL mean reverse direction
+ * @param ttl_stddev_rev - TTL standard deviation reverse direction
+ * @param rtt_mean_fwd - RTT mean forward direction
+ * @param rtt_stddev_fwd - RTT standard deviation forward direction
+ * @param rtt_mean_rev - RTT mean reverse direction
+ * @param rtt_stddev_rev - RTT standard deviation reverse direction
+ * @param tcp_mss - TCP MSS from SYN options (TCP only)
+ * @param tcp_handshake_complete - TCP 3-way handshake completed (TCP only)
+ * @param tcp_syn_packets - TCP SYN packets counter (TCP only)
+ * @param tcp_fin_packets - TCP FIN packets counter (TCP only)
+ * @param tcp_rst_packets - TCP RST packets counter (TCP only)
+ * @param tcp_retransmissions_fwd - TCP retransmission events forward (TCP only)
+ * @param tcp_retransmissions_rev - TCP retransmission events reverse (TCP only)
+ * @param tcp_zero_window_events_fwd - TCP zero window events forward (TCP only)
+ * @param tcp_zero_window_events_rev - TCP zero window events reverse (TCP only)
+ * @param tcp_dupack_events_fwd - TCP duplicate ACK events forward (TCP only)
+ * @param tcp_dupack_events_rev - TCP duplicate ACK events reverse (TCP only)
+ * @param tcp_partial_overlap_events_fwd - TCP partial overlap events forward (TCP only)
+ * @param tcp_partial_overlap_events_rev - TCP partial overlap events reverse (TCP only)
+ * @param tcp_last_seq_fwd - TCP last sequence number forward (TCP only)
+ * @param tcp_last_ack_fwd - TCP last ACK number forward (TCP only)
+ * @param tcp_last_seq_rev - TCP last sequence number reverse (TCP only)
+ * @param tcp_last_ack_rev - TCP last ACK number reverse (TCP only)
+ */
+define sfdp_session_stats_details
+{
+  u32 context;
+  u32 session_id;
+  u32 session_version;
+  i32 tenant_idx;
+  u8 proto;
+  bool is_ip6;
+  vl_api_address_t src_addr;
+  vl_api_address_t dst_addr;
+  u16 src_port;
+  u16 dst_port;
+  u64 packets_fwd;
+  u64 packets_rev;
+  u64 bytes_fwd;
+  u64 bytes_rev;
+  f64 first_seen;
+  f64 last_seen;
+  f64 duration;
+  /* TTL statistics per direction */
+  u8 ttl_min_fwd;
+  u8 ttl_max_fwd;
+  f64 ttl_mean_fwd;
+  f64 ttl_stddev_fwd;
+  u8 ttl_min_rev;
+  u8 ttl_max_rev;
+  f64 ttl_mean_rev;
+  f64 ttl_stddev_rev;
+  /* RTT statistics per direction */
+  f64 rtt_mean_fwd;
+  f64 rtt_stddev_fwd;
+  f64 rtt_mean_rev;
+  f64 rtt_stddev_rev;
+  /* TCP-specific statistics */
+  u16 tcp_mss;
+  bool tcp_handshake_complete;
+  u32 tcp_syn_packets;
+  u32 tcp_fin_packets;
+  u32 tcp_rst_packets;
+  u32 tcp_retransmissions_fwd;
+  u32 tcp_retransmissions_rev;
+  u32 tcp_zero_window_events_fwd;
+  u32 tcp_zero_window_events_rev;
+  u32 tcp_dupack_events_fwd;
+  u32 tcp_dupack_events_rev;
+  u32 tcp_partial_overlap_events_fwd;
+  u32 tcp_partial_overlap_events_rev;
+  u32 tcp_last_seq_fwd;
+  u32 tcp_last_ack_fwd;
+  u32 tcp_last_seq_rev;
+  u32 tcp_last_ack_rev;
+};
+
+/**
+ * @brief Get session stats global configuration
+ * @param client_index - opaque cookie to identify the sender
+ * @param context - sender context, to match reply w/ request
+ */
+define sfdp_session_stats_get_config
+{
+  u32 client_index;
+  u32 context;
+};
+
+/**
+ * @brief Session stats configuration reply
+ * @param context - sender context, to match reply w/ request
+ * @param retval - return code
+ * @param ring_buffer_enabled - whether ring buffer is enabled
+ * @param periodic_export_enabled - whether periodic export is enabled
+ * @param export_interval - current export interval in seconds
+ * @param ring_size - configured ring buffer size
+ * @param total_exports - total number of exports performed
+ * @param active_sessions - number of active sessions being tracked
+ * @param decorator_type - currently configured decorator type
+ * @param decorator_enabled - whether decorator is enabled
+ */
+define sfdp_session_stats_get_config_reply
+{
+  u32 context;
+  i32 retval;
+  bool ring_buffer_enabled;
+  bool periodic_export_enabled;
+  f64 export_interval;
+  u32 ring_size;
+  u64 total_exports;
+  u32 active_sessions;
+  vl_api_sfdp_session_stats_decorator_type_t decorator_type;
+  bool decorator_enabled;
+};
+
+/**
+ * @brief Clear all session stats
+ * @param client_index - opaque cookie to identify the sender
+ * @param context - sender context, to match reply w/ request
+ * @param session_id - specific session to clear (0 = all sessions)
+ */
+autoreply define sfdp_session_stats_clear
+{
+  u32 client_index;
+  u32 context;
+  u32 session_id [default=0];
+};
+
+/**
+ * @brief Configure the decorator type for ring buffer entries
+ * The decorator area is a configurable portion of each ring buffer entry
+ * that can be used to store additional data like TCP flags, NAT rewrite
+ * information, QoS marks, or custom data.
+ *
+ * @param client_index - opaque cookie to identify the sender
+ * @param context - sender context, to match reply w/ request
+ * @param decorator_type - type of decorator to use (see enum)
+ * @param enable - 1 to enable, 0 to disable decorator
+ */
+autoreply define sfdp_session_stats_set_decorator
+{
+  u32 client_index;
+  u32 context;
+  vl_api_sfdp_session_stats_decorator_type_t decorator_type;
+  bool enable [default=true];
+};
+
+/**
+ * @brief Get current decorator configuration
+ * @param client_index - opaque cookie to identify the sender
+ * @param context - sender context, to match reply w/ request
+ */
+define sfdp_session_stats_get_decorator
+{
+  u32 client_index;
+  u32 context;
+};
+
+/**
+ * @brief Decorator configuration reply
+ * @param context - sender context, to match reply w/ request
+ * @param retval - return code
+ * @param decorator_type - currently configured decorator type
+ * @param decorator_enabled - whether decorator is enabled
+ */
+define sfdp_session_stats_get_decorator_reply
+{
+  u32 context;
+  i32 retval;
+  vl_api_sfdp_session_stats_decorator_type_t decorator_type;
+  bool decorator_enabled;
+};
+
+/**
+ * @brief Set custom u64 decorator values
+ * These values will be written to the decorator area of ring buffer entries
+ * when decorator type is CUSTOM_U64.
+ *
+ * @param client_index - opaque cookie to identify the sender
+ * @param context - sender context, to match reply w/ request
+ * @param n_values - number of values (max 8)
+ * @param values - array of u64 values to store
+ */
+autoreply define sfdp_session_stats_set_custom_u64
+{
+  u32 client_index;
+  u32 context;
+  u8 n_values;
+  u64 values[8];
+};
+
+/**
+ * @brief Set custom u32 decorator values
+ * These values will be written to the decorator area of ring buffer entries
+ * when decorator type is CUSTOM_U32.
+ *
+ * @param client_index - opaque cookie to identify the sender
+ * @param context - sender context, to match reply w/ request
+ * @param n_values - number of values (max 16)
+ * @param values - array of u32 values to store
+ */
+autoreply define sfdp_session_stats_set_custom_u32
+{
+  u32 client_index;
+  u32 context;
+  u8 n_values;
+  u32 values[16];
+};
