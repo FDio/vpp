@@ -49,6 +49,12 @@ add_vpp_plugin(sfdp_services
   snort/snort_input.c
   snort/snort_output.c
 
+  session_stats/session_stats.c
+  session_stats/node.c
+  session_stats/process.c
+  session_stats/cli.c
+  session_stats/api.c
+
   MULTIARCH_SOURCES
   base/tcp-check/node.c
   base/l4-lifecycle/node.c
@@ -60,6 +66,7 @@ add_vpp_plugin(sfdp_services
   reass/sv_reass_node.c
   snort/snort_input.c
   snort/snort_output.c
+  session_stats/node.c
   #reass/full_reass_node.c
 
   API_FILES
@@ -67,4 +74,5 @@ add_vpp_plugin(sfdp_services
   base/tcp-check/tcp_check.api
   base/interface_input/interface_input.api
   geneve/gateway.api
+  session_stats/session_stats.api
 )
