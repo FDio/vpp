@@ -16,6 +16,23 @@
       "message": "I think you meant to `git commit -a --amend` your previous gerrit and `git review`.\n\nRe-grab you patch with `git review -d \u003cgerrit number\u003e`",
       "revId": "b4356f7c854dbebe9e2a9c6b0b114ba5c5b4978f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "df8f0bdf_890f47c0",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-01-29T02:56:06Z",
+      "side": 1,
+      "message": "Guess we can abandon this?",
+      "revId": "b4356f7c854dbebe9e2a9c6b0b114ba5c5b4978f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
