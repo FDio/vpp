@@ -189,7 +189,7 @@ jobs:
           aws_region: ${{ vars.AWS_REGION }}
           s3_bucket: ${{ vars.S3_DOCS_7DAY_BUCKET}}
           s3_path: ${{ env.LOG_NAME }}/docs
-          s3_url: "https://s3-docs-7day.fd.io"
+          s3_url: "https://s3-docs-7day.fd.io/vex-yul-rot-jenkins-1"
           archives_path: "${{ env.WORKSPACE }}/build-root/docs/html"
           compress_files: false
 
