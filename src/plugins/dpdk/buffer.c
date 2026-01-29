@@ -343,10 +343,23 @@ CLIB_MULTIARCH_FN (dpdk_ops_vpp_dequeue) (struct rte_mempool * mp,
   vlib_main_t *vm = vlib_get_main ();
   u32 bufs[batch_size], total = 0, n_alloc = 0;
   u8 buffer_pool_index = mp->pool_id;
-  void **obj = obj_table;
   struct rte_mbuf t = dpdk_mbuf_template_by_pool_index[buffer_pool_index];
 
-  while (n >= batch_size)
+  /*
+   * Use a temporary buffer to stage allocations. This ensures obj_table
+   * is not modified on failure, which is required by DPDK's cache refill
+   * logic in rte_mempool_do_generic_get(). If we write to obj_table and
+   * then fail, DPDK may incorrectly assume those entries are valid when
+   * restoring cache->len, leading to stale buffer pointers in the cache.
+   *
+   * Maximum request size is cache->size + remaining, where both are bounded
+   * by RTE_MEMPOOL_CACHE_MAX_SIZE (512), so 1024 entries max.
+   */
+  void *temp_objs[RTE_MEMPOOL_CACHE_MAX_SIZE * 2];
+  void **obj = temp_objs;
+  u32 remaining = n;
+
+  while (remaining >= batch_size)
     {
       n_alloc = vlib_buffer_alloc_from_pool (vm, bufs, batch_size,
 					     buffer_pool_index);
@@ -358,29 +371,32 @@ CLIB_MULTIARCH_FN (dpdk_ops_vpp_dequeue) (struct rte_mempool * mp,
       dpdk_mbuf_init_from_template ((struct rte_mbuf **) obj, &t, batch_size);
       total += batch_size;
       obj += batch_size;
-      n -= batch_size;
+      remaining -= batch_size;
     }
 
-  if (n)
+  if (remaining)
     {
-      n_alloc = vlib_buffer_alloc_from_pool (vm, bufs, n, buffer_pool_index);
+      n_alloc = vlib_buffer_alloc_from_pool (vm, bufs, remaining, buffer_pool_index);
 
-      if (n_alloc != n)
+      if (n_alloc != remaining)
 	goto alloc_fail;
 
-      vlib_get_buffers_with_offset (vm, bufs, obj, n,
-				    -(i32) sizeof (struct rte_mbuf));
-      dpdk_mbuf_init_from_template ((struct rte_mbuf **) obj, &t, n);
+      vlib_get_buffers_with_offset (vm, bufs, obj, remaining, -(i32) sizeof (struct rte_mbuf));
+      dpdk_mbuf_init_from_template ((struct rte_mbuf **) obj, &t, remaining);
     }
 
+  /* Success - copy staged allocations to obj_table */
+  clib_memcpy_fast (obj_table, temp_objs, n * sizeof (void *));
   return 0;
 
 alloc_fail:
-  /* dpdk doesn't support partial alloc, so we need to return what we
-     already got */
+  /*
+   * Return partially allocated buffers to VPP pool.
+   * obj_table is untouched, so DPDK's cache state remains intact.
+   */
   if (n_alloc)
     vlib_buffer_pool_put (vm, buffer_pool_index, bufs, n_alloc);
-  obj = obj_table;
+  obj = temp_objs;
   while (total)
     {
       vlib_get_buffer_indices_with_offset (vm, obj, bufs, batch_size,
