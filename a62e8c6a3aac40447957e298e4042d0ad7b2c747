@@ -33,6 +33,24 @@
       "message": "Only noticed now. To avoid confusion, let\u0027s call this fib-index, otherwise one might think it\u0027s table-id",
       "revId": "a62e8c6a3aac40447957e298e4042d0ad7b2c747",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d971ed0b_6ebac25c",
+        "filename": "src/vnet/session/session_sdl.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 795,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-01-29T05:30:52Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "89bd0da1_277a7804",
+      "revId": "a62e8c6a3aac40447957e298e4042d0ad7b2c747",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
