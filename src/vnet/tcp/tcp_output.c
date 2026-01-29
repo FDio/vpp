@@ -8,6 +8,7 @@
 #include <math.h>
 #include <vnet/ip/ip4_inlines.h>
 #include <vnet/ip/ip6_inlines.h>
+#include <vnet/session/session_rules_table.h>
 
 typedef enum _tcp_output_next
 {
@@ -1290,7 +1291,7 @@ tcp_check_syn_flood (tcp_connection_t *tc)
       args.prefix.fp_len = 128;
     }
   args.fib_index = tc->c_fib_index;
-  args.action_index = 0;
+  args.action_index = SESSION_RULES_TABLE_ACTION_DROP;
   args.tag = 0;
   tm->sdl_cb (&args);
 }
