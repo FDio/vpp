@@ -1,0 +1,299 @@
+/* SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2025 Cisco Systems, Inc.
+ */
+
+option version = "1.1.0";
+import "vnet/interface_types.api";
+import "vnet/ip/ip_types.api";
+
+/**
+ * @brief Enable/disable the session stats ring buffer
+ * @param enable - 1 to enable, 0 to disable
+ * @param ring_size - size of the ring buffer (number of entries)
+ */
+autoreply define sfdp_session_stats_ring_enable
+{
+  u32 client_index;
+  u32 context;
+  bool enable [default=true];
+  u32 ring_size [default=4096];
+};
+
+/**
+ * @brief Configure periodic export
+ * @param enable - 1 to enable, 0 to disable periodic export
+ * @param interval - export interval in seconds (0 = use default 30s)
+ */
+autoreply define sfdp_session_stats_periodic_export
+{
+  u32 client_index;
+  u32 context;
+  bool enable [default=true];
+  f64 interval [default=30.0];
+};
+
+/**
+ * @brief Trigger immediate export of all sessions to ring buffer
+ */
+autoreply define sfdp_session_stats_export_now
+{
+  u32 client_index;
+  u32 context;
+};
+
+/**
+ * @brief Request session stats dump
+ * @param session_id - specific session ID to dump (0 = all sessions)
+ * @param tenant_idx - filter by tenant (0xFFFFFFFF = all tenants)
+ */
+define sfdp_session_stats_dump
+{
+  u32 client_index;
+  u32 context;
+  u64 session_id [default=0];
+  u32 tenant_idx [default=0xFFFFFFFF];
+};
+
+/**
+ * @brief Session stats entry with extended statistics
+ * @param session_id - the SFDP session ID
+ * @param session_version - session version for stale detection
+ * @param tenant_idx - tenant index
+ * @param proto - IP protocol (6=TCP, 17=UDP, etc.)
+ * @param is_ip6 - 1 if IPv6, 0 if IPv4
+ * @param src_addr - source IP address
+ * @param dst_addr - destination IP address
+ * @param src_port - source port
+ * @param dst_port - destination port
+ * @param packets_fwd - packets in forward direction
+ * @param packets_rev - packets in reverse direction
+ * @param bytes_fwd - bytes in forward direction
+ * @param bytes_rev - bytes in reverse direction
+ * @param first_seen - timestamp when session was first seen
+ * @param last_seen - timestamp when session was last seen
+ * @param duration - session duration in seconds
+ * @param ttl_min_fwd - TTL min forward direction
+ * @param ttl_max_fwd - TTL max forward direction
+ * @param ttl_mean_fwd - TTL mean forward direction
+ * @param ttl_stddev_fwd - TTL standard deviation forward direction
+ * @param ttl_min_rev - TTL min reverse direction
+ * @param ttl_max_rev - TTL max reverse direction
+ * @param ttl_mean_rev - TTL mean reverse direction
+ * @param ttl_stddev_rev - TTL standard deviation reverse direction
+ * @param rtt_mean_fwd - RTT mean forward direction
+ * @param rtt_stddev_fwd - RTT standard deviation forward direction
+ * @param rtt_mean_rev - RTT mean reverse direction
+ * @param rtt_stddev_rev - RTT standard deviation reverse direction
+ * @param tcp_mss - TCP MSS from SYN options (TCP only)
+ * @param tcp_handshake_complete - TCP 3-way handshake completed (TCP only)
+ * @param tcp_syn_packets - TCP SYN packets counter (TCP only)
+ * @param tcp_fin_packets - TCP FIN packets counter (TCP only)
+ * @param tcp_rst_packets - TCP RST packets counter (TCP only)
+ * @param tcp_ecn_ect_packets - TCP ECN ECT marked packets (TCP only)
+ * @param tcp_ecn_ce_packets - TCP ECN CE marked packets (TCP only)
+ * @param tcp_ece_packets - TCP ECE flag packets (TCP only)
+ * @param tcp_cwr_packets - TCP CWR flag packets (TCP only)
+ * @param tcp_retransmissions_fwd - TCP retransmission events forward (TCP only)
+ * @param tcp_retransmissions_rev - TCP retransmission events reverse (TCP only)
+ * @param tcp_zero_window_events_fwd - TCP zero window events forward (TCP only)
+ * @param tcp_zero_window_events_rev - TCP zero window events reverse (TCP only)
+ * @param tcp_dupack_events_fwd - TCP duplicate ACK events forward (TCP only)
+ * @param tcp_dupack_events_rev - TCP duplicate ACK events reverse (TCP only)
+ * @param tcp_partial_overlap_events_fwd - TCP partial overlap events forward (TCP only)
+ * @param tcp_partial_overlap_events_rev - TCP partial overlap events reverse (TCP only)
+ * @param tcp_out_of_order_events_fwd - TCP out-of-order events forward (TCP only)
+ * @param tcp_out_of_order_events_rev - TCP out-of-order events reverse (TCP only)
+ * @param tcp_last_seq_fwd - TCP last sequence number forward (TCP only)
+ * @param tcp_last_ack_fwd - TCP last ACK number forward (TCP only)
+ * @param tcp_last_seq_rev - TCP last sequence number reverse (TCP only)
+ * @param tcp_last_ack_rev - TCP last ACK number reverse (TCP only)
+ */
+define sfdp_session_stats_details
+{
+  u32 context;
+  u64 session_id;
+  u32 session_version;
+  u32 tenant_idx;
+  u8 proto;
+  bool is_ip6;
+  vl_api_address_t src_addr;
+  vl_api_address_t dst_addr;
+  u16 src_port;
+  u16 dst_port;
+  u64 packets_fwd;
+  u64 packets_rev;
+  u64 bytes_fwd;
+  u64 bytes_rev;
+  f64 first_seen;
+  f64 last_seen;
+  f64 duration;
+  /* TTL statistics per direction */
+  u8 ttl_min_fwd;
+  u8 ttl_max_fwd;
+  f64 ttl_mean_fwd;
+  f64 ttl_stddev_fwd;
+  u8 ttl_min_rev;
+  u8 ttl_max_rev;
+  f64 ttl_mean_rev;
+  f64 ttl_stddev_rev;
+  /* RTT statistics per direction */
+  f64 rtt_mean_fwd;
+  f64 rtt_stddev_fwd;
+  f64 rtt_mean_rev;
+  f64 rtt_stddev_rev;
+  /* TCP-specific statistics */
+  u16 tcp_mss;
+  bool tcp_handshake_complete;
+  u32 tcp_syn_packets;
+  u32 tcp_fin_packets;
+  u32 tcp_rst_packets;
+  u32 tcp_ecn_ect_packets;
+  u32 tcp_ecn_ce_packets;
+  u32 tcp_ece_packets;
+  u32 tcp_cwr_packets;
+  u32 tcp_retransmissions_fwd;
+  u32 tcp_retransmissions_rev;
+  u32 tcp_zero_window_events_fwd;
+  u32 tcp_zero_window_events_rev;
+  u32 tcp_dupack_events_fwd;
+  u32 tcp_dupack_events_rev;
+  u32 tcp_partial_overlap_events_fwd;
+  u32 tcp_partial_overlap_events_rev;
+  u32 tcp_out_of_order_events_fwd;
+  u32 tcp_out_of_order_events_rev;
+  u32 tcp_last_seq_fwd;
+  u32 tcp_last_ack_fwd;
+  u32 tcp_last_seq_rev;
+  u32 tcp_last_ack_rev;
+};
+
+/**
+ * @brief Get session stats global configuration
+ */
+define sfdp_session_stats_get_config
+{
+  u32 client_index;
+  u32 context;
+};
+
+/**
+ * @brief Session stats configuration reply
+ * @param ring_buffer_enabled - whether ring buffer is enabled
+ * @param periodic_export_enabled - whether periodic export is enabled
+ * @param export_interval - current export interval in seconds
+ * @param ring_size - configured ring buffer size
+ * @param total_exports - total number of exports performed
+ * @param active_sessions - number of active sessions being tracked
+ */
+define sfdp_session_stats_get_config_reply
+{
+  u32 context;
+  i32 retval;
+  bool ring_buffer_enabled;
+  bool periodic_export_enabled;
+  f64 export_interval;
+  u32 ring_size;
+  u64 total_exports;
+  u32 active_sessions;
+};
+
+/**
+ * @brief Clear all session stats
+ * @param session_id - specific session to clear (0xFFFFFFFF = all sessions)
+ */
+autoreply define sfdp_session_stats_clear
+{
+  u32 client_index;
+  u32 context;
+  u64 session_id [default=0];
+};
+
+/**
+ * @brief Set custom API data value for a tenant (first 64 bits of custom data)
+ * This value will be included in the custom_data.api_data field
+ * of each exported session entry for the specified tenant when custom data is enabled.
+ * If no custom data is set for a tenant, the default invalid value (UINT64_MAX) is used.
+ *
+ * @param tenant_id - tenant ID (customer-specified value) to set custom data for
+ * @param value - the u64 value to set
+ */
+autoreply define sfdp_session_stats_set_custom_api_data
+{
+  u32 client_index;
+  u32 context;
+  u32 tenant_id;
+  u64 value;
+};
+
+/**
+ * @brief Clear custom API data for a tenant
+ * @param tenant_id - tenant ID (customer-specified value) to clear custom data for (0xFFFFFFFF = clear all tenants)
+ */
+autoreply define sfdp_session_stats_clear_custom_api_data
+{
+  u32 client_index;
+  u32 context;
+  u32 tenant_id [default=0xFFFFFFFF];
+};
+
+/**
+ * @brief Get custom data configuration for a specific tenant
+ * @param tenant_id - tenant ID (customer-specified value) to query
+ */
+define sfdp_session_stats_get_tenant_custom_data
+{
+  u32 client_index;
+  u32 context;
+  u32 tenant_id;
+};
+
+/**
+ * @brief Tenant custom data configuration reply
+ * @param tenant_id - tenant ID queried
+ * @param has_api_data - whether API custom data is set for this tenant
+ * @param api_data_value - current API custom data value (UINT64_MAX if not set)
+ */
+define sfdp_session_stats_get_tenant_custom_data_reply
+{
+  u32 context;
+  i32 retval;
+  u32 tenant_id;
+  bool has_api_data;
+  u64 api_data_value;
+};
+
+/**
+ * @brief Set the custom API data name for the ring buffer schema
+ * This name will be included in the ring buffer schema when the ring buffer
+ * is initialized. Must be called BEFORE enabling the ring buffer.
+ * If the ring buffer is already enabled, this will return an error.
+ * After disabling the ring buffer, the name can be set again.
+ *
+ * @param name - the custom API data name (max 20 characters, null-terminated)
+ */
+autoreply define sfdp_session_stats_set_custom_api_data_name
+{
+  u32 client_index;
+  u32 context;
+  string name[21];
+};
+
+/**
+ * @brief Get the configured custom API data name
+ */
+define sfdp_session_stats_get_custom_api_data_name
+{
+  u32 client_index;
+  u32 context;
+};
+
+/**
+ * @brief Custom API data name reply
+ * @param name - the currently configured custom API data name
+ */
+define sfdp_session_stats_get_custom_api_data_name_reply
+{
+  u32 context;
+  i32 retval;
+  string name[21];
+};
