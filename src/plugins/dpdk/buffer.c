@@ -339,58 +339,30 @@ int
 CLIB_MULTIARCH_FN (dpdk_ops_vpp_dequeue) (struct rte_mempool * mp,
 					  void **obj_table, unsigned n)
 {
-  const int batch_size = 32;
+  /*
+   * Maximum request size is cache->size + remaining, where both are bounded
+   * by RTE_MEMPOOL_CACHE_MAX_SIZE (512), so 1024 entries max.
+   */
+  const int max_size = RTE_MEMPOOL_CACHE_MAX_SIZE * 2;
   vlib_main_t *vm = vlib_get_main ();
-  u32 bufs[batch_size], total = 0, n_alloc = 0;
+  u32 bufs[max_size], n_alloc = 0;
   u8 buffer_pool_index = mp->pool_id;
-  void **obj = obj_table;
   struct rte_mbuf t = dpdk_mbuf_template_by_pool_index[buffer_pool_index];
 
-  while (n >= batch_size)
-    {
-      n_alloc = vlib_buffer_alloc_from_pool (vm, bufs, batch_size,
-					     buffer_pool_index);
-      if (n_alloc != batch_size)
-	goto alloc_fail;
+  ASSERT (n <= max_size);
+  n_alloc = vlib_buffer_alloc_from_pool (vm, bufs, n, buffer_pool_index);
 
-      vlib_get_buffers_with_offset (vm, bufs, obj, batch_size,
-				    -(i32) sizeof (struct rte_mbuf));
-      dpdk_mbuf_init_from_template ((struct rte_mbuf **) obj, &t, batch_size);
-      total += batch_size;
-      obj += batch_size;
-      n -= batch_size;
+  if (n_alloc != n)
+    {
+      if (n_alloc)
+        vlib_buffer_pool_put (vm, buffer_pool_index, bufs, n_alloc);
+      return -ENOENT;
     }
 
-  if (n)
-    {
-      n_alloc = vlib_buffer_alloc_from_pool (vm, bufs, n, buffer_pool_index);
-
-      if (n_alloc != n)
-	goto alloc_fail;
-
-      vlib_get_buffers_with_offset (vm, bufs, obj, n,
-				    -(i32) sizeof (struct rte_mbuf));
-      dpdk_mbuf_init_from_template ((struct rte_mbuf **) obj, &t, n);
-    }
+  vlib_get_buffers_with_offset (vm, bufs, obj_table, n, -(i32) sizeof (struct rte_mbuf));
+  dpdk_mbuf_init_from_template ((struct rte_mbuf **) obj_table, &t, n);
 
   return 0;
-
-alloc_fail:
-  /* dpdk doesn't support partial alloc, so we need to return what we
-     already got */
-  if (n_alloc)
-    vlib_buffer_pool_put (vm, buffer_pool_index, bufs, n_alloc);
-  obj = obj_table;
-  while (total)
-    {
-      vlib_get_buffer_indices_with_offset (vm, obj, bufs, batch_size,
-					   sizeof (struct rte_mbuf));
-      vlib_buffer_pool_put (vm, buffer_pool_index, bufs, batch_size);
-
-      obj += batch_size;
-      total -= batch_size;
-    }
-  return -ENOENT;
 }
 
 CLIB_MARCH_FN_REGISTRATION (dpdk_ops_vpp_dequeue);
