@@ -16,6 +16,12 @@ add_vpp_plugin(sfdp_services
 
   base/l4-lifecycle/node.c
 
+  base/session_stats/session_stats.c
+  base/session_stats/node.c
+  base/session_stats/process.c
+  base/session_stats/cli.c
+  base/session_stats/api.c
+
   base/nat/nat.c
   base/nat/cli.c
   base/nat/api.c
@@ -52,6 +58,7 @@ add_vpp_plugin(sfdp_services
   MULTIARCH_SOURCES
   base/tcp-check/node.c
   base/l4-lifecycle/node.c
+  base/session_stats/node.c
   base/interface_input/node.c
   acl/node.c
   geneve/geneve_input/node.c
@@ -65,6 +72,7 @@ add_vpp_plugin(sfdp_services
   API_FILES
   base/nat/nat.api
   base/tcp-check/tcp_check.api
+  base/session_stats/session_stats.api
   base/interface_input/interface_input.api
   geneve/gateway.api
 )
