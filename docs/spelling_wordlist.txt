@@ -993,6 +993,8 @@ restack
 reStructured
 reStructuredText
 resync
+retransmissions
+Retransmissions
 retransmit
 retransmits
 rfc
@@ -1100,6 +1102,7 @@ Stateful
 statfs
 statseg
 statSocket
+stddev
 stderr
 stdin
 stdout
@@ -1363,6 +1366,7 @@ Warshall
 wasn
 Webinar
 webpage
+Welford
 whitelist
 whitelisting
 whitelists

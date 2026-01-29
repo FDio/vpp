@@ -1,0 +1,65 @@
+# Configure IP address on pg0 interface
+create packet-generator interface pg0
+set interface ip address pg0 192.168.1.1/24
+set interface state pg0 up
+
+# Create tenant with ID 1 and context 0
+sfdp tenant add 1 context 0
+
+# Configure forward service chain for tenant 1
+set sfdp services tenant 1 sfdp-l4-lifecycle sfdp-session-stats ip4-lookup forward
+
+# Configure reverse service chain for tenant 1
+set sfdp services tenant 1 sfdp-l4-lifecycle sfdp-session-stats ip4-lookup reverse
+
+# Associate pg0 interface with tenant 1
+set sfdp interface-input pg0 tenant 1
+
+# Forward direction: Client -> Server (TCP SYN)
+packet-generator new {						\
+  name tcp-forward						\
+  limit 0							\
+  rate 1e2							\
+  node ip4-input						\
+  size 100-100							\
+  interface pg0							\
+  data {							\
+    TCP: 192.168.1.2 -> 192.168.1.1				\
+    TCP: 32415 -> 80						\
+    SYN								\
+    incrementing 100						\
+  }								\
+}
+
+# Reverse direction: Server -> Client (TCP SYN-ACK)
+# This creates bidirectional traffic for the same session
+packet-generator new {						\
+  name tcp-reverse						\
+  limit 0							\
+  rate 1e2							\
+  node ip4-input						\
+  size 100-100							\
+  interface pg0							\
+  data {							\
+    TCP: 192.168.1.1 -> 192.168.1.2				\
+    TCP: 80 -> 32415						\
+    SYN ACK							\
+    incrementing 100						\
+  }								\
+}
+
+trace add pg-input 100
+
+# Enable session statistics ring buffer with periodic export
+# This creates a ring buffer in the stats segment that can be consumed
+# by external applications (e.g., vpp_session_stats_export for Prometheus)
+sfdp session stats ring enable
+
+# Set custom data value for tenant 1
+sfdp session stats custom-data tenant 1 value 42
+
+# Configure periodic session statistics export (every 5 seconds)
+sfdp session stats periodic interval 5
+
+# Display statistics stored by the sfdp service
+show sfdp session stats
