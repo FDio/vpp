@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "55c4c5d3_6d7185c5",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 16
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-01-29T01:17:12Z",
+      "side": 1,
+      "message": "Type should be \u0027feature\u0027 instead of \u0027improvement\u0027 in the commit message so that this commit ends up in the release notes.",
+      "revId": "edbe7d5c6250dbbd22d2ebf93f92965fc09b6fc0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
