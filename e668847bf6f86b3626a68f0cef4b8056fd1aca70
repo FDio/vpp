@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "e668847bf6f86b3626a68f0cef4b8056fd1aca70",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e425949e_012f356f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-01-29T12:31:14Z",
+      "side": 1,
+      "message": "Re-running failed jobs via GHA",
+      "revId": "e668847bf6f86b3626a68f0cef4b8056fd1aca70",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
