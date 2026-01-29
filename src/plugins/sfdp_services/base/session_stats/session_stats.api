@@ -1,0 +1,151 @@
+/* SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2025 Cisco Systems, Inc.
+ *
+ * SFDP Session Stats - VPP API Definition
+ */
+
+option version = "1.0.0";
+import "vnet/interface_types.api";
+import "vnet/ip/ip_types.api";
+
+/**
+ * @brief Enable/disable the session stats ring buffer
+ * @param client_index - opaque cookie to identify the sender
+ * @param context - sender context, to match reply w/ request
+ * @param enable - 1 to enable, 0 to disable
+ * @param ring_size - size of the ring buffer (number of entries)
+ */
+autoreply define sfdp_session_stats_ring_enable
+{
+  u32 client_index;
+  u32 context;
+  bool enable [default=true];
+  u32 ring_size [default=4096];
+};
+
+/**
+ * @brief Configure periodic export
+ * @param client_index - opaque cookie to identify the sender
+ * @param context - sender context, to match reply w/ request
+ * @param enable - 1 to enable, 0 to disable periodic export
+ * @param interval - export interval in seconds (0 = use default 10s)
+ */
+autoreply define sfdp_session_stats_periodic_export
+{
+  u32 client_index;
+  u32 context;
+  bool enable [default=true];
+  f64 interval [default=10.0];
+};
+
+/**
+ * @brief Trigger immediate export of all sessions to ring buffer
+ * @param client_index - opaque cookie to identify the sender
+ * @param context - sender context, to match reply w/ request
+ */
+autoreply define sfdp_session_stats_export_now
+{
+  u32 client_index;
+  u32 context;
+};
+
+/**
+ * @brief Request session stats dump
+ * @param client_index - opaque cookie to identify the sender
+ * @param context - sender context, to match reply w/ request
+ * @param session_id - specific session ID to dump (0 = all sessions)
+ * @param tenant_idx - filter by tenant (-1 = all tenants)
+ */
+define sfdp_session_stats_dump
+{
+  u32 client_index;
+  u32 context;
+  u32 session_id [default=0];
+  i32 tenant_idx [default=-1];
+};
+
+/**
+ * @brief Session stats entry
+ * @param context - sender context, to match reply w/ request
+ * @param session_id - the SFDP session ID
+ * @param session_version - session version for stale detection
+ * @param tenant_idx - tenant index
+ * @param proto - IP protocol (6=TCP, 17=UDP, etc.)
+ * @param is_ip6 - 1 if IPv6, 0 if IPv4
+ * @param src_addr - source IP address
+ * @param dst_addr - destination IP address
+ * @param src_port - source port
+ * @param dst_port - destination port
+ * @param packets_fwd - packets in forward direction
+ * @param packets_rev - packets in reverse direction
+ * @param bytes_fwd - bytes in forward direction
+ * @param bytes_rev - bytes in reverse direction
+ * @param first_seen - timestamp when session was first seen
+ * @param last_seen - timestamp when session was last seen
+ */
+define sfdp_session_stats_details
+{
+  u32 context;
+  u32 session_id;
+  u32 session_version;
+  i32 tenant_idx;
+  u8 proto;
+  bool is_ip6;
+  vl_api_address_t src_addr;
+  vl_api_address_t dst_addr;
+  u16 src_port;
+  u16 dst_port;
+  u64 packets_fwd;
+  u64 packets_rev;
+  u64 bytes_fwd;
+  u64 bytes_rev;
+  f64 first_seen;
+  f64 last_seen;
+};
+
+/**
+ * @brief Get session stats global configuration
+ * @param client_index - opaque cookie to identify the sender
+ * @param context - sender context, to match reply w/ request
+ */
+define sfdp_session_stats_get_config
+{
+  u32 client_index;
+  u32 context;
+};
+
+/**
+ * @brief Session stats configuration reply
+ * @param context - sender context, to match reply w/ request
+ * @param retval - return code
+ * @param ring_buffer_enabled - whether ring buffer is enabled
+ * @param periodic_export_enabled - whether periodic export is enabled
+ * @param export_interval - current export interval in seconds
+ * @param ring_size - configured ring buffer size
+ * @param total_exports - total number of exports performed
+ * @param active_sessions - number of active sessions being tracked
+ */
+define sfdp_session_stats_get_config_reply
+{
+  u32 context;
+  i32 retval;
+  bool ring_buffer_enabled;
+  bool periodic_export_enabled;
+  f64 export_interval;
+  u32 ring_size;
+  u64 total_exports;
+  u32 active_sessions;
+};
+
+/**
+ * @brief Clear all session stats
+ * @param client_index - opaque cookie to identify the sender
+ * @param context - sender context, to match reply w/ request
+ * @param session_id - specific session to clear (0 = all sessions)
+ */
+autoreply define sfdp_session_stats_clear
+{
+  u32 client_index;
+  u32 context;
+  u32 session_id [default=0];
+};
