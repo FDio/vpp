@@ -618,6 +618,8 @@ ip4_full_reass_finalize (vlib_main_t * vm, vlib_node_runtime_t * node,
   vlib_buffer_t *last_b = NULL;
   u32 sub_chain_bi = reass->first_bi;
   u32 total_length = 0;
+  u32 *vec_drop_compress = NULL;
+  ip4_full_reass_rc_t rv = IP4_REASS_RC_OK;
   do
     {
       u32 tmp_bi = sub_chain_bi;
@@ -627,7 +629,8 @@ ip4_full_reass_finalize (vlib_main_t * vm, vlib_node_runtime_t * node,
       if (vnb->ip.reass.range_first < vnb->ip.reass.fragment_first ||
 	  vnb->ip.reass.range_last <= vnb->ip.reass.fragment_first)
 	{
-	  return IP4_REASS_RC_INTERNAL_ERROR;
+	  rv = IP4_REASS_RC_INTERNAL_ERROR;
+	  goto free_buffers_and_return;
 	}
 
       u32 data_len = ip4_full_reass_buffer_get_data_len (tmp);
@@ -640,14 +643,16 @@ ip4_full_reass_finalize (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  /* first buffer - keep ip4 header */
 	  if (0 != ip4_full_reass_buffer_get_data_offset (tmp))
 	    {
-	      return IP4_REASS_RC_INTERNAL_ERROR;
+	      rv = IP4_REASS_RC_INTERNAL_ERROR;
+	      goto free_buffers_and_return;
 	    }
 	  trim_front = 0;
 	  trim_end = vlib_buffer_length_in_chain (vm, tmp) - data_len -
 	    ip4_header_bytes (ip);
 	  if (!(vlib_buffer_length_in_chain (vm, tmp) - trim_end > 0))
 	    {
-	      return IP4_REASS_RC_INTERNAL_ERROR;
+	      rv = IP4_REASS_RC_INTERNAL_ERROR;
+	      goto free_buffers_and_return;
 	    }
 	}
       u32 keep_data =
@@ -663,13 +668,14 @@ ip4_full_reass_finalize (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  trim_front -= tmp->current_length;
 		  if (!(tmp->flags & VLIB_BUFFER_NEXT_PRESENT))
 		    {
-		      return IP4_REASS_RC_INTERNAL_ERROR;
+		      rv = IP4_REASS_RC_INTERNAL_ERROR;
+		      goto free_buffers_and_return;
 		    }
 		  tmp->flags &= ~VLIB_BUFFER_NEXT_PRESENT;
 		  tmp_bi = tmp->next_buffer;
 		  tmp->next_buffer = 0;
 		  tmp = vlib_get_buffer (vm, tmp_bi);
-		  vlib_buffer_free_one (vm, to_be_freed_bi);
+		  vec_add1 (vec_drop_compress, to_be_freed_bi);
 		  continue;
 		}
 	      else
@@ -696,7 +702,8 @@ ip4_full_reass_finalize (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  keep_data -= tmp->current_length;
 		  if (!(tmp->flags & VLIB_BUFFER_NEXT_PRESENT))
 		    {
-		      return IP4_REASS_RC_INTERNAL_ERROR;
+		      rv = IP4_REASS_RC_INTERNAL_ERROR;
+		      goto free_buffers_and_return;
 		    }
 		}
 	      total_length += tmp->current_length;
@@ -715,7 +722,8 @@ ip4_full_reass_finalize (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      u32 to_be_freed_bi = tmp_bi;
 	      if (reass->first_bi == tmp_bi)
 		{
-		  return IP4_REASS_RC_INTERNAL_ERROR;
+		  rv = IP4_REASS_RC_INTERNAL_ERROR;
+		  goto free_buffers_and_return;
 		}
 	      if (tmp->flags & VLIB_BUFFER_NEXT_PRESENT)
 		{
@@ -723,12 +731,12 @@ ip4_full_reass_finalize (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  tmp_bi = tmp->next_buffer;
 		  tmp->next_buffer = 0;
 		  tmp = vlib_get_buffer (vm, tmp_bi);
-		  vlib_buffer_free_one (vm, to_be_freed_bi);
+		  vec_add1 (vec_drop_compress, to_be_freed_bi);
 		}
 	      else
 		{
 		  tmp->next_buffer = 0;
-		  vlib_buffer_free_one (vm, to_be_freed_bi);
+		  vec_add1 (vec_drop_compress, to_be_freed_bi);
 		  break;
 		}
 	    }
@@ -741,13 +749,15 @@ ip4_full_reass_finalize (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   if (!last_b)
     {
-      return IP4_REASS_RC_INTERNAL_ERROR;
+      rv = IP4_REASS_RC_INTERNAL_ERROR;
+      goto free_buffers_and_return;
     }
   last_b->flags &= ~VLIB_BUFFER_NEXT_PRESENT;
 
   if (total_length < first_b->current_length)
     {
-      return IP4_REASS_RC_INTERNAL_ERROR;
+      rv = IP4_REASS_RC_INTERNAL_ERROR;
+      goto free_buffers_and_return;
     }
   total_length -= first_b->current_length;
   first_b->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
@@ -758,7 +768,8 @@ ip4_full_reass_finalize (vlib_main_t * vm, vlib_node_runtime_t * node,
   ip->checksum = ip4_header_checksum (ip);
   if (!vlib_buffer_chain_linearize (vm, first_b))
     {
-      return IP4_REASS_RC_NO_BUF;
+      rv = IP4_REASS_RC_NO_BUF;
+      goto free_buffers_and_return;
     }
   // reset to reconstruct the mbuf linking
   first_b->flags &= ~VLIB_BUFFER_EXT_HDR_VALID;
@@ -816,7 +827,11 @@ ip4_full_reass_finalize (vlib_main_t * vm, vlib_node_runtime_t * node,
   *error0 = IP4_ERROR_NONE;
   ip4_full_reass_free (rm, rt, reass);
   reass = NULL;
-  return IP4_REASS_RC_OK;
+
+free_buffers_and_return:
+  vlib_buffer_free (vm, vec_drop_compress, vec_len (vec_drop_compress));
+  vec_free (vec_drop_compress);
+  return rv;
 }
 
 always_inline ip4_full_reass_rc_t
