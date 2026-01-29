@@ -4,6 +4,7 @@ aarch
 Aarch
 AArch
 abf
+abi
 accelera
 accessor
 ACK
@@ -1005,6 +1006,8 @@ restack
 reStructured
 reStructuredText
 resync
+retransmissions
+Retransmissions
 retransmit
 retransmits
 rfc
@@ -1114,6 +1117,7 @@ Stateful
 statfs
 statseg
 statSocket
+stddev
 stderr
 stdin
 stdout
@@ -1238,6 +1242,7 @@ uio
 un
 unapplies
 unapply
+unbatched
 uncomment
 undefine
 undirected
@@ -1381,6 +1386,7 @@ Warshall
 wasn
 Webinar
 webpage
+Welford
 whitelist
 whitelisting
 whitelists

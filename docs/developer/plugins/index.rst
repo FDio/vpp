@@ -46,3 +46,4 @@ For more on plugins please refer to :ref:`add_plugin`.
     http
     policer
     tracepath
+    sfdp_session_stats
