@@ -141,7 +141,8 @@ jobs:
       LOG_PREFIX: ${{ inputs.LOG_PREFIX }}
       LOG_NAME: ""
       LOG_DIR: ""
-      VPP_RELEASE: ""
+      DOCS_S3_PATH: ""
+      DOCS_S3_URL: https://s3-docs.fd.io
       WORKSPACE: /scratch/docker-build/vpp
       TUI_LINE: "*******************************************************************"
 
@@ -162,7 +163,7 @@ jobs:
           echo "LOG_DIR=$LOG_DIR" >> "$GITHUB_ENV"
           mkdir -p "$LOG_DIR"
           vpp_release="$(${WORKSPACE}/build-root/scripts/version rpm-version)"
-          echo "VPP_RELEASE=$vpp_release" >> "$GITHUB_ENV"
+          echo "DOCS_S3_PATH=vpp/$vpp_release" >> "$GITHUB_ENV"
 
       - name: Show Environment
         run: |
@@ -210,9 +211,9 @@ jobs:
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws_region: ${{ vars.AWS_REGION }}
-          s3_bucket: 'fdio-docs-s3-cloudfront-index'
-          s3_path: 'vpp/${{ env.VPP_RELEASE }}'
-          s3_url: 'https://s3-docs.fd.io'
+          s3_bucket: fdio-docs-s3-cloudfront-index
+          s3_path: ${{ env.DOCS_S3_PATH }}
+          s3_url: ${{ env.DOCS_S3_URL }}
           archives_path: "${{ env.WORKSPACE }}/build-root/docs/html"
           compress_files: false
 
