@@ -128,7 +128,12 @@ func (s *MasqueSuite) SetupTest() {
 		s.Interfaces.Client.Peer.HwAddress)
 	Log(clientVpp.Vppctl(arp))
 	arp = fmt.Sprintf("set ip neighbor %s %s %s",
-		s.Interfaces.Server.Name(),
+		s.Interfaces.TunnelServer.VppName(),
+		s.Interfaces.TunnelClient.Ip4AddressString(),
+		s.Interfaces.TunnelClient.HwAddress)
+	Log(serverVpp.Vppctl(arp))
+	arp = fmt.Sprintf("set ip neighbor %s %s %s",
+		s.Interfaces.Server.VppName(),
 		s.NginxAddr(),
 		s.Interfaces.Server.Peer.HwAddress)
 	Log(serverVpp.Vppctl(arp))
