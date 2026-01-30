@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0aa7f200_0873fd03",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-01-30T15:38:48Z",
+      "side": 1,
+      "message": "Given the constraint (we cannot overwrite obj_table if there are failures), I think it could be better to allocate everything in a single call to vlib_buffer_alloc_from_pool().\nThat would avoid to have to copy.",
+      "revId": "8ee56c5368e3a2c145f5b23224ec1fb0d6922557",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
