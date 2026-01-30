@@ -141,8 +141,8 @@ jobs:
       LOG_PREFIX: ${{ inputs.LOG_PREFIX }}
       LOG_NAME: ""
       LOG_DIR: ""
-      DOCS_S3_PATH: ""
-      DOCS_S3_URL: https://s3-docs.fd.io
+      S3_DOCS_PATH: ""
+      S3_DOCS_URL: https://s3-docs.fd.io
       WORKSPACE: /scratch/docker-build/vpp
       TUI_LINE: "*******************************************************************"
 
@@ -163,7 +163,7 @@ jobs:
           echo "LOG_DIR=$LOG_DIR" >> "$GITHUB_ENV"
           mkdir -p "$LOG_DIR"
           vpp_release="$(${WORKSPACE}/build-root/scripts/version rpm-version)"
-          echo "DOCS_S3_PATH=vpp/$vpp_release" >> "$GITHUB_ENV"
+          echo "S3_DOCS_PATH=vpp/$vpp_release" >> "$GITHUB_ENV"
 
       - name: Show Environment
         run: |
@@ -211,9 +211,9 @@ jobs:
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws_region: ${{ vars.AWS_REGION }}
-          s3_bucket: fdio-docs-s3-cloudfront-index
-          s3_path: ${{ env.DOCS_S3_PATH }}
-          s3_url: ${{ env.DOCS_S3_URL }}
+          s3_bucket: ${{ vars.S3_DOCS_BUCKET }}
+          s3_path: ${{ env.S3_DOCS_PATH }}
+          s3_url: ${{ env.S3_DOCS_URL }}
           archives_path: "${{ env.WORKSPACE }}/build-root/docs/html"
           compress_files: false
 
@@ -222,9 +222,9 @@ jobs:
         # yamllint disable-line rule:line-length
         uses: fdio/.github/.github/actions/aws-s3-publish-logs@fc7a74365b705fceeea362b3e81690e3908f4506
         with:
-          aws_access_key_id: ${{ secrets.AWS_DOCS_ACCESS_KEY_ID }}
-          aws_secret_access_key: ${{ secrets.AWS_DOCS_SECRET_ACCESS_KEY }}
+          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws_region: ${{ vars.AWS_REGION }}
-          s3_bucket: ${{ vars.S3_DOCS_BUCKET }}
+          s3_bucket: ${{ vars.S3_BUCKET }}
           s3_path: ${{ env.LOG_NAME }}
           archives_path: ${{ env.LOG_DIR }}
