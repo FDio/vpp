@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e43ca663_4e3714d2",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3124
+      },
+      "writtenOn": "2026-01-30T15:06:21Z",
+      "side": 1,
+      "message": "PSK support looks good overall, just remove debug prints, fix the constant in format_wg_peer and some nitpicks",
+      "revId": "9e0ed7d4ff62303f677e886ebd4c5c4e550440f8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8b164212_f638c8f5",
+        "filename": "src/plugins/wireguard/wireguard_cli.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 179,
+      "author": {
+        "id": 3124
+      },
+      "writtenOn": "2026-01-30T15:06:21Z",
+      "side": 1,
+      "message": "else if",
+      "revId": "9e0ed7d4ff62303f677e886ebd4c5c4e550440f8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "082233df_b29a2176",
+        "filename": "src/plugins/wireguard/wireguard_cli.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 254,
+      "author": {
+        "id": 3124
+      },
+      "writtenOn": "2026-01-30T15:06:21Z",
+      "side": 1,
+      "message": "nitpick: I believe preshared-key is optional + comma typo\n\"wireguard peer add \u003cwg_int\u003e [preshared-key \u003cpsk_key\u003e] public-key \u003cpub_key_other\u003e \"",
+      "revId": "9e0ed7d4ff62303f677e886ebd4c5c4e550440f8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b2886f82_38ed8ee9",
+        "filename": "src/plugins/wireguard/wireguard_peer.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 236,
+      "author": {
+        "id": 3124
+      },
+      "writtenOn": "2026-01-30T15:06:21Z",
+      "side": 1,
+      "message": "this prints the key to stdout, probably an unintentionally commited debug printf",
+      "revId": "9e0ed7d4ff62303f677e886ebd4c5c4e550440f8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "70ebad50_d4eae25b",
+        "filename": "src/plugins/wireguard/wireguard_peer.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 555,
+      "author": {
+        "id": 3124
+      },
+      "writtenOn": "2026-01-30T15:06:21Z",
+      "side": 1,
+      "message": "NOISE_SYMMETRIC_KEY_LEN instead of NOISE_PUBLIC_KEY_LEN for preshared_key",
+      "revId": "9e0ed7d4ff62303f677e886ebd4c5c4e550440f8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
