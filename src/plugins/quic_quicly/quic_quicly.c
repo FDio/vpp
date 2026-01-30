@@ -501,6 +501,7 @@ quic_quicly_fifo_egress_shift (quicly_stream_t *stream, size_t delta)
     }
   else
     {
+      stream_data->app_tx_data_len = 0;
       ASSERT (sctx->flags & QUIC_F_STREAM_TX_DRAINED);
       /* All data drained and acked, clear fifo flag to allow new events from
        * app. Then check if we need to reschedule as session layer would */
