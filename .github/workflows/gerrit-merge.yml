@@ -103,7 +103,7 @@ jobs:
       GERRIT_PATCHSET_NUMBER: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
       GERRIT_PATCHSET_REVISION: ${{ inputs.GERRIT_PATCHSET_REVISION }}
       GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
-      GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
+      GERRIT_REFSPEC: refs/heads/${{ env.GERRIT_BRANCH }}
       LOG_PREFIX: ${{ needs.start-merge.outputs.log_prefix }}
     secrets: inherit
 
@@ -142,7 +142,7 @@ jobs:
         with:
           WORKSPACE: ${{ env.WORKSPACE }}
           GERRIT_BRANCH: ${{ env.GERRIT_BRANCH }}
-          GERRIT_REFSPEC: refs/heads/${{ env.GERRIT_BRANCH }}
+          GERRIT_REFSPEC: ${{ env.GERRIT_REFSPEC }}
           TUI_LINE: ${{ env.TUI_LINE }}
 
       - name: Detect docs changes
@@ -184,7 +184,7 @@ jobs:
       GERRIT_PATCHSET_NUMBER: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
       GERRIT_PATCHSET_REVISION: ${{ inputs.GERRIT_PATCHSET_REVISION }}
       GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
-      GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
+      GERRIT_REFSPEC: refs/heads/${{ env.GERRIT_BRANCH }}
       LOG_PREFIX: ${{ needs.start-merge.outputs.log_prefix }}
     secrets: inherit
 

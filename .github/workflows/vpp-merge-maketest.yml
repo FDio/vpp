@@ -210,8 +210,6 @@ jobs:
           set -euxo pipefail
           pkgcloud_cmd=""
           vpp_pkgs=""
-          ext_deps_pkg=""
-          opt_deps_pkg=""
 
           create_deb_push_cmds()
           {
@@ -225,18 +223,10 @@ jobs:
               codename=${codename,,} # to lowercase
               pkgcloud_cmd="package_cloud push ${pkgcloud_acct}/${GERRIT_BRANCH/stable\//}/${distro}/${codename}/main/ "
               if [ "$distro" = "debian" ] || [ "$distro" = "ubuntu" ] ; then
-                  vpp_pkgs="$(find . -type f -iname '*.deb' | grep -v vpp-ext-deps | xargs || true)"
+                  vpp_pkgs="$(find . -type f -iname '*.deb' | xargs || true)"
                   if [ -z "$vpp_pkgs" ] ; then
                       echo -e "\n$TUI_LINE\n* ERROR: No .deb packages found to push\n* PACKAGECLOUD PUSH FAILED!\n$TUI_LINE\n"
                       exit 1
-                  fi
-                  ext_deps_ver="$(dpkg -l vpp-ext-deps | mawk '/vpp-ext-deps/{print $3}' || true)"
-                  if [ -n "$ext_deps_ver" ] ; then
-                      ext_deps_pkg="$(find . -type f -iname 'vpp-ext-deps*.deb' | grep $ext_deps_ver || find $downloads_dir -type f -iname 'vpp-ext-deps*.deb' | grep $ext_deps_ver || true)"
-                  fi
-                  opt_deps_ver="$(dpkg -l vpp-opt-deps | mawk '/vpp-opt-deps/{print $3}' || true)"
-                  if [ -n "$opt_deps_ver" ] ; then
-                      opt_deps_pkg="$(find . -type f -iname 'vpp-opt-deps*.deb' | grep $opt_deps_ver || find $downloads_dir -type f -iname 'vpp-opt-deps*.deb' | grep $opt_deps_ver || true)"
                   fi
               else
                   echo -e "\n$TUI_LINE\n* ERROR: Unknown distro: '$distro'\n* PACKAGECLOUD PUSH FAILED!\n$TUI_LINE\n"
@@ -250,14 +240,8 @@ jobs:
               for pkg in $vpp_pkgs ; do
                   $pkgcloud_cmd $pkg || true
               done
-              if [ -n "$ext_deps_pkg" ] ; then
-                  $pkgcloud_cmd $ext_deps_pkg || true
-              fi
-              if [ -n "$opt_deps_pkg" ] ; then
-                  $pkgcloud_cmd $opt_deps_pkg || true
-                  # remove vpp-opt-deps before running make test
-                  apt-get remove -y vpp-opt-deps || true
-              fi
+              # remove vpp-opt-deps before running make test
+              apt-get remove -y vpp-opt-deps || true
           else
               echo -e "\n$TUI_LINE\n* ERROR: Missing '~/.packagecloud' for user '$(id)'\n* PACKAGECLOUD PUSH FAILED!\n$TUI_LINE\n"
               exit 1
