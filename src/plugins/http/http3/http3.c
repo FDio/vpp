@@ -1291,16 +1291,18 @@ http3_stream_transport_rx_req (http3_stream_ctx_t *sctx, http_conn_t *stream,
 	  HTTP_DBG (1, "headers received");
 	  if (sctx->base.state != headers_state)
 	    {
-	      http3_stream_terminate (stream, sctx, HTTP3_ERROR_MESSAGE_ERROR);
-	      goto done;
+	      HTTP_DBG (1, "unexpected frame, state: %U", format_http_req_state, sctx->base.state);
+	      err = HTTP3_ERROR_FRAME_UNEXPECTED;
+	      goto error;
 	    }
 	  break;
 	case HTTP3_FRAME_TYPE_DATA:
 	  HTTP_DBG (1, "data received");
 	  if (sctx->base.state != HTTP_REQ_STATE_TRANSPORT_IO_MORE_DATA)
 	    {
-	      http3_stream_terminate (stream, sctx, HTTP3_ERROR_MESSAGE_ERROR);
-	      goto done;
+	      HTTP_DBG (1, "unexpected frame, state: %U", format_http_req_state, sctx->base.state);
+	      err = HTTP3_ERROR_FRAME_UNEXPECTED;
+	      goto error;
 	    }
 	  break;
 	default:
@@ -1322,7 +1324,6 @@ http3_stream_transport_rx_req (http3_stream_ctx_t *sctx, http_conn_t *stream,
 	http3_stream_error_terminate_conn (stream, sctx, err);
     }
 
-done:
   return max_deq - left_deq;
 }
 
