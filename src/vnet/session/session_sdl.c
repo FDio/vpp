@@ -659,8 +659,8 @@ show_session_sdl_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	fib_index = app_namespace_get_fib_index (app_ns, fib_proto);
       st = session_table_get_for_fib_index (fib_proto, fib_index);
       if (st && (st->srtg_handle != SESSION_SRTG_HANDLE_INVALID))
-	session_rules_table_show_rule (vm, st->srtg_handle, 0, &rmt_ip, 0, 0,
-				       0, (fib_proto == FIB_PROTOCOL_IP4));
+	session_rules_table_show_rule (vm, st->srtg_handle, 0, 0, 0, &rmt_ip, 0,
+				       (fib_proto == FIB_PROTOCOL_IP4));
       goto done;
     }
 
