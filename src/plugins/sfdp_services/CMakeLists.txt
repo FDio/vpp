@@ -5,8 +5,7 @@
 #include_directories(${CMAKE_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
-add_vpp_plugin(sfdp_services
-  SOURCES
+set(sfdp_services_sources
   plugin.c
   base/tcp-check/node.c
   base/tcp-check/tcp_check.c
@@ -44,12 +43,9 @@ add_vpp_plugin(sfdp_services
   reass/reass.c
   reass/sv_reass_node.c
   #reass/full_reass_node.c
+)
 
-  snort/snort.c
-  snort/snort_input.c
-  snort/snort_output.c
-
-  MULTIARCH_SOURCES
+set(sfdp_services_multiarch_sources
   base/tcp-check/node.c
   base/l4-lifecycle/node.c
   base/interface_input/node.c
@@ -58,9 +54,44 @@ add_vpp_plugin(sfdp_services
   geneve/geneve_output/node.c
   dot1q/dot1q.c
   reass/sv_reass_node.c
-  snort/snort_input.c
-  snort/snort_output.c
   #reass/full_reass_node.c
+)
+
+# Check for libdaq installation for snort service
+find_path(LIBDAQ_INCLUDE_DIR NAMES daq_module_api.h daq_dlt.h daq_version.h)
+find_library(LIBDAQ_LINK_LIBRARY NAMES libdaq.a)
+
+file(STRINGS ${LIBDAQ_INCLUDE_DIR}/daq_version.h daq_version)
+foreach(l ${daq_version})
+  if (l MATCHES "^#define[\t ]*DAQ_")
+    STRING(REGEX REPLACE "^#define[\t ]*([A-Z1-9_]+)[\t ]*(.+)" "\\1;\\2" v "${l}")
+    list(GET v 0 name)
+    list(GET v 1 value)
+    set(${name} ${value})
+  endif()
+endforeach()
+
+set(DAQ_VER "${DAQ_VERSION_MAJOR}.${DAQ_VERSION_MINOR}.${DAQ_VERSION_PATCH}")
+
+if (LIBDAQ_INCLUDE_DIR AND ${DAQ_VER} VERSION_GREATER_EQUAL "3.0.21")
+  list(APPEND sfdp_services_sources
+    snort/snort.c
+    snort/snort_input.c
+    snort/snort_output.c
+  )
+
+  list(APPEND sfdp_services_multiarch_sources
+    snort/snort_input.c
+    snort/snort_output.c
+  )
+endif()
+
+add_vpp_plugin(sfdp_services
+  SOURCES
+  ${sfdp_services_sources}
+
+  MULTIARCH_SOURCES
+  ${sfdp_services_multiarch_sources}
 
   API_FILES
   base/nat/nat.api
