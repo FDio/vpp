@@ -33,6 +33,24 @@
       "message": "Do you mind joining one of our community calls and spend few minutes explaining what this plugin does, how it helps dataplane and what are security implications of using it?\nUntil then putting -1...",
       "revId": "e5a19a7aa0e6c1087592fa4e1639ce210c3931be",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f9228aeb_51dd00d4",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 17
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3260
+      },
+      "writtenOn": "2026-01-31T22:31:01Z",
+      "side": 1,
+      "message": "Sure - are the details here accurate https://wiki.fd.io/view/VPP/Meeting",
+      "parentUuid": "a1f0a476_7d116e6e",
+      "revId": "e5a19a7aa0e6c1087592fa4e1639ce210c3931be",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
