@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6a0566c6_e91ec39d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-01-31T14:10:49Z",
+      "side": 1,
+      "message": "wer dont want to maintain duplicate dependency handling, simply check if snort plugin is present and dynamically add next with vlib_node_add_next()",
+      "revId": "8dd76bc8167f2a56e050c23ec56d60adf747e353",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
