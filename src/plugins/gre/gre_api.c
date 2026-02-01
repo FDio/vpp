@@ -191,12 +191,12 @@ send_gre_tunnel_details (gre_tunnel_t *t, vl_api_gre_tunnel_dump_t *mp)
 }
 
 static void
-send_gre_tunnel_details_v2 (gre_tunnel_t *t, vl_api_gre_tunnel_dump_v2_t *mp)
+send_gre_tunnel_v2_details (gre_tunnel_t *t, vl_api_gre_tunnel_v2_dump_t *mp)
 {
-  vl_api_gre_tunnel_details_v2_t *rmp;
+  vl_api_gre_tunnel_v2_details_t *rmp;
 
   REPLY_MACRO_DETAILS2 (
-    VL_API_GRE_TUNNEL_DETAILS_V2, ({
+    VL_API_GRE_TUNNEL_V2_DETAILS, ({
       ip_address_encode (&t->tunnel_src, IP46_TYPE_ANY, &rmp->tunnel.src);
       ip_address_encode (&t->tunnel_dst.fp_addr, IP46_TYPE_ANY,
 			 &rmp->tunnel.dst);
@@ -250,7 +250,7 @@ vl_api_gre_tunnel_dump_t_handler (vl_api_gre_tunnel_dump_t *mp)
 }
 
 static void
-vl_api_gre_tunnel_dump_v2_t_handler (vl_api_gre_tunnel_dump_v2_t *mp)
+vl_api_gre_tunnel_v2_dump_t_handler (vl_api_gre_tunnel_v2_dump_t *mp)
 {
   vl_api_registration_t *reg;
   gre_main_t *gm = &gre_main;
@@ -267,7 +267,7 @@ vl_api_gre_tunnel_dump_v2_t_handler (vl_api_gre_tunnel_dump_v2_t *mp)
     {
       pool_foreach (t, gm->tunnels)
 	{
-	  send_gre_tunnel_details_v2 (t, mp);
+	  send_gre_tunnel_v2_details (t, mp);
 	}
     }
 
@@ -279,7 +279,7 @@ vl_api_gre_tunnel_dump_v2_t_handler (vl_api_gre_tunnel_dump_v2_t *mp)
 	  return;
 	}
       t = &gm->tunnels[gm->tunnel_index_by_sw_if_index[sw_if_index]];
-      send_gre_tunnel_details_v2 (t, mp);
+      send_gre_tunnel_v2_details (t, mp);
     }
 }
 
