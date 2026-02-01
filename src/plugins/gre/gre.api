@@ -20,15 +20,12 @@ import "vnet/interface_types.api";
 import "vnet/tunnel/tunnel_types.api";
 import "vnet/ip/ip_types.api";
 
-/* Enable the in-progress messages */
-option status = "in_progress";
-
 /*
  * Define the service relationships
  */
 service {
-  rpc gre_tunnel_dump returns gre_tunnel_dump_reply events gre_tunnel_details;
-  rpc gre_tunnel_dump_v2 returns gre_tunnel_dump_v2_reply events gre_tunnel_details_v2;
+  rpc gre_tunnel_dump returns gre_tunnel_dump_reply stream gre_tunnel_details;
+  rpc gre_tunnel_v2_dump returns gre_tunnel_v2_dump_reply stream gre_tunnel_v2_details;
 };
 
 /** \brief A GRE tunnel type
@@ -171,11 +168,23 @@ define gre_tunnel_dump_reply
     @param context - sender context, to match reply w/ request.
     @param sw_if_index - filter for tunnel of this interface index, ~0 for all.
 */
-autoreply define gre_tunnel_dump_v2
+define gre_tunnel_v2_dump
 {
   u32 client_index;
   u32 context;
   vl_api_interface_index_t sw_if_index;
+  option status="in_progress";
+};
+
+/** \brief Reply for gre_tunnel_dump_v2 - empty since actual data is sent via gre_tunnel_details.
+    @param context - sender context, to match reply w/ request.
+    @param retval - return code for the request.
+*/
+define gre_tunnel_v2_dump_reply
+{
+  u32 context;
+  i32 retval;
+  option status="in_progress";
 };
 
 
@@ -193,10 +202,11 @@ define gre_tunnel_details
     @param context - sender context, to match reply w/ request.
     @param tunnel - definition of the dumped tunnel (with key field).
 */
-define gre_tunnel_details_v2
+define gre_tunnel_v2_details
 {
   u32 context;
   vl_api_gre_tunnel_v2_t tunnel;
+  option status="in_progress";
 };
 
 /*
