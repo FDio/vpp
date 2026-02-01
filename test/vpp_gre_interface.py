@@ -115,7 +115,7 @@ class VppGreInterface(VppInterface):
         try:
             # Use appropriate API based on whether tunnel has a key
             if hasattr(self, "t_gre_key") and self.t_gre_key != 0:
-                dump = self.test.vapi.gre_tunnel_dump_v2(sw_if_index=self.sw_if_index)
+                dump = self.test.vapi.gre_tunnel_v2_dump(sw_if_index=self.sw_if_index)
             else:
                 dump = self.test.vapi.gre_tunnel_dump(sw_if_index=self.sw_if_index)
 
