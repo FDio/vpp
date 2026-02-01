@@ -1699,10 +1699,9 @@ ip4_local_classify (vlib_buffer_t * b, ip4_header_t * ip, u16 * next)
   return IP_LOCAL_PACKET_TYPE_L4;
 }
 
-static inline uword
-ip4_local_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
-		  vlib_frame_t *frame, int head_of_feature_arc,
-		  int is_receive_dpo)
+static_always_inline uword
+ip4_local_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame,
+		  int head_of_feature_arc, int is_receive_dpo)
 {
   u32 *from, n_left_from;
   vlib_node_runtime_t *error_node =
