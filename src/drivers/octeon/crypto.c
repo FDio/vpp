@@ -187,15 +187,19 @@ oct_crypto_key_add_handler (vlib_main_t *vm, vnet_crypto_key_index_t key_index)
 }
 
 void
-oct_crypto_key_handler (vnet_crypto_key_op_t kop, vnet_crypto_key_index_t idx)
+oct_crypto_key_handler (vnet_crypto_key_op_t kop, void *key_data, vnet_crypto_alg_t alg,
+			const u8 *data, u16 length)
 {
   oct_crypto_main_t *ocm = &oct_crypto_main;
+  vnet_crypto_key_index_t idx = (vnet_crypto_key_index_t) (uword) key_data;
 
   if (kop == VNET_CRYPTO_KEY_OP_DEL)
     {
       oct_crypto_key_del_handler (vlib_get_main (), idx);
       return;
     }
+
+  /* For ADD/MODIFY, (re)create sessions based on key_index */
   oct_crypto_key_add_handler (vlib_get_main (), idx);
 
   ocm->started = 1;
