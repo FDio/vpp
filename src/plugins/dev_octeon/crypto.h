@@ -192,8 +192,8 @@ void oct_crypto_key_del_handler (vlib_main_t *vm,
 void oct_crypto_key_add_handler (vlib_main_t *vm,
 				 vnet_crypto_key_index_t key_index);
 
-void oct_crypto_key_handler (vnet_crypto_key_op_t kop,
-			     vnet_crypto_key_index_t idx);
+void oct_crypto_key_handler (vnet_crypto_key_op_t kop, void *key_data, vnet_crypto_alg_t alg,
+			     const u8 *data, u16 length);
 
 int oct_crypto_enqueue_linked_alg_enc (vlib_main_t *vm,
 				       vnet_crypto_async_frame_t *frame);
