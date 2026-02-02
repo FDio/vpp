@@ -51,9 +51,10 @@ typedef struct
   snort_instance_index_t instance_index;
   u32 snort_dequeue_node_index;
   u32 snort_dequeue_node_next_index;
-
+  u32 snort_enq_next_index;
 } sfdp_snort_main_t;
 
 extern sfdp_snort_main_t sfdp_snort_main;
+extern vlib_node_registration_t sfdp_snort_input;
 
 #endif /* __SFDP_SNORT_H__ */
