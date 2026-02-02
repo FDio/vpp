@@ -27,9 +27,13 @@ typedef struct vnet_crypto_engine_registration
   char desc[128]; /* backend name */
   int prio;
   u32 version;
+  u32 extra_data_sz;
   u32 per_thread_data_sz;
+  u32 stride;
+  u32 extra_data_stride;
   u32 num_threads;
   void *per_thread_data;
+  void *extra_data;
   vnet_crypto_engine_init_fn_t *init_fn;
   vnet_crypto_key_fn_t *key_handler;
   vnet_crypto_engine_op_handlers_t *op_handlers;
