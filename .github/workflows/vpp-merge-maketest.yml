@@ -185,7 +185,7 @@ jobs:
 
       - name: Checkout VPP Gerrit Change
         # yamllint disable-line rule:line-length
-        uses: fdio/vpp/.github/actions/vpp-checkout-gerrit-change@27fc2aa27f57c8f7055e8f1b6e5a9f41b0315873
+        uses: fdio/vpp/.github/actions/vpp-checkout-gerrit-change@5957be603df8f47f84ab3142dfef2cac75cbf1e7
         with:
           WORKSPACE: ${{ env.WORKSPACE }}
           GERRIT_BRANCH: ${{ env.GERRIT_BRANCH }}
@@ -255,7 +255,7 @@ jobs:
 
       - name: Setup Docker VPP Runtime Environment for 'make test'
         # yamllint disable-line rule:line-length
-        uses: fdio/vpp/.github/actions/vpp-docker-runtime-setup@27fc2aa27f57c8f7055e8f1b6e5a9f41b0315873
+        uses: fdio/vpp/.github/actions/vpp-docker-runtime-setup@5957be603df8f47f84ab3142dfef2cac75cbf1e7
         with:
           LOG_DIR: ${{ env.LOG_DIR }}
           WORKSPACE: ${{ env.WORKSPACE }}
@@ -264,7 +264,7 @@ jobs:
 
       - name: VPP Make Test
         # yamllint disable-line rule:line-length
-        uses: fdio/vpp/.github/actions/vpp-make-test@0b2ad4fb479a2e4b03adb05089895c90f4281a60
+        uses: fdio/vpp/.github/actions/vpp-make-test@5957be603df8f47f84ab3142dfef2cac75cbf1e7
         timeout-minutes: 120
         with:
           LOG_DIR: ${{ env.LOG_DIR }}
