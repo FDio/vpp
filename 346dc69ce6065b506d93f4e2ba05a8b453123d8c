@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7f30293a_acb0e2ee",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1761
+      },
+      "writtenOn": "2026-02-02T12:06:32Z",
+      "side": 1,
+      "message": "Hello\nCould you please take a look at patch?\nAbout it\u0027s Verified(-1) status is another question, not the main one(probably, V2 api was introduced without some kind of being in progress initially)\n\nKindly asking to take a look at main points: I believe that dump/details API messages are intended to be user interacted stream messages, so changing from event to stream type is very needed.\n\nAlso in most files there is a pattern of messages V2_dump/details, but not dump/details_v2, but that\u0027s just the second thing.\n\nThank you!",
+      "revId": "346dc69ce6065b506d93f4e2ba05a8b453123d8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
