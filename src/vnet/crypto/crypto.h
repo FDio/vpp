@@ -200,6 +200,11 @@ typedef struct
 {
   char *name;
   u16 key_length;
+  /* per-engine data size */
+  u16 ped_size;
+  u8 active_eidx;
+  u8 active_eidx_chained;
+
   u8 is_aead : 1;
   u8 variable_key_length : 1;
   u8 is_link : 1;
@@ -219,25 +224,6 @@ typedef struct
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-  uword user_data;
-  vnet_crypto_op_id_t op;
-  vnet_crypto_op_status_t status:8;
-  u8 flags;
-#define VNET_CRYPTO_OP_FLAG_HMAC_CHECK	    (1 << 0)
-#define VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS (1 << 1)
-
-  union
-  {
-    u8 digest_len;
-    u8 tag_len;
-  };
-
-  union
-  {
-    u16 integ_len;
-    u16 integ_n_chunks;
-    u16 aad_len;
-  };
   union
   {
     struct
@@ -254,15 +240,6 @@ typedef struct
     };
   };
 
-  union
-  {
-    u32 len;
-
-    /* valid if VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS is set */
-    u16 n_chunks;
-  };
-
-  u32 key_index;
   u8 *iv;
 
   union
@@ -276,15 +253,52 @@ typedef struct
     u8 *tag;
     u8 *digest;
   };
+
+  union
+  {
+    /* valid if VNET_CRYPTO_OP_FLAG_IS_KEY_DATA is set */
+    uword key_data;
+
+    /* valid if VNET_CRYPTO_OP_FLAG_IS_KEY_DATA is NOT set */
+    u32 key_index;
+  };
+  u32 user_data;
+
+  union
+  {
+    u32 len;
+
+    /* valid if VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS is set */
+    u16 n_chunks;
+  };
+
+  vnet_crypto_op_id_t op;
+  vnet_crypto_op_status_t status : 8;
+  u8 flags;
+#define VNET_CRYPTO_OP_FLAG_HMAC_CHECK	    (1 << 0)
+#define VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS (1 << 1)
+#define VNET_CRYPTO_OP_FLAG_IS_KEY_DATA	    (1 << 2)
+
+  union
+  {
+    u8 digest_len;
+    u8 tag_len;
+  };
+
+  union
+  {
+    u16 integ_len;
+    u16 integ_n_chunks;
+    u16 aad_len;
+  };
 } vnet_crypto_op_t;
 
 STATIC_ASSERT_SIZEOF (vnet_crypto_op_t, CLIB_CACHE_LINE_BYTES);
 
-#define foreach_crypto_handler_type                                           \
-  _ (SIMPLE, "simple")                                                        \
-  _ (CHAINED, "chained")                                                      \
-  _ (ASYNC, "async")                                                          \
-  _ (THREAD_SAFE, "thread-safe")
+#define foreach_crypto_handler_type                                                                \
+  _ (SIMPLE, "simple")                                                                             \
+  _ (CHAINED, "chained")                                                                           \
+  _ (ASYNC, "async")
 
 typedef enum
 {
@@ -304,7 +318,11 @@ typedef struct
     u8 *tag;
   };
   u8 *aad;
-  u32 key_index;
+  union
+  {
+    uword key;
+    u32 key_index;
+  };
   u32 crypto_total_length;
   i16 crypto_start_offset; /* first buffer offset */
   i16 integ_start_offset;
@@ -315,7 +333,7 @@ typedef struct
 } vnet_crypto_async_frame_elt_t;
 
 /* Assert the size so the compiler will warn us when it changes */
-STATIC_ASSERT_SIZEOF (vnet_crypto_async_frame_elt_t, 5 * sizeof (u64));
+STATIC_ASSERT_SIZEOF (vnet_crypto_async_frame_elt_t, 6 * sizeof (u64));
 
 typedef enum vnet_crypto_async_frame_state_t_
 {
@@ -357,8 +375,8 @@ typedef u32 (vnet_crypto_chained_op_fn_t) (vlib_main_t *vm,
 typedef u32 (vnet_crypto_simple_op_fn_t) (vlib_main_t *vm,
 					  vnet_crypto_op_t *ops[], u32 n_ops);
 
-typedef void (vnet_crypto_key_fn_t) (vnet_crypto_key_op_t kop,
-				     vnet_crypto_key_index_t idx);
+typedef void (vnet_crypto_key_fn_t) (vnet_crypto_key_op_t kop, void *key_data,
+				     vnet_crypto_alg_t alg, const u8 *data, u16 length);
 
 /** async crypto function handlers **/
 typedef int (vnet_crypto_frame_enq_fn_t) (vlib_main_t *vm,
@@ -478,19 +496,35 @@ int vnet_crypto_is_set_handler (vnet_crypto_alg_t alg);
 
 u32 vnet_crypto_key_add (vlib_main_t * vm, vnet_crypto_alg_t alg,
 			 u8 * data, u16 length);
+vnet_crypto_key_t *vnet_crypto_key_add_ptr (vnet_crypto_alg_t alg, const u8 *data, u16 length);
 void vnet_crypto_key_del (vlib_main_t * vm, vnet_crypto_key_index_t index);
-void vnet_crypto_key_update (vlib_main_t *vm, vnet_crypto_key_index_t index);
+void vnet_crypto_key_del_ptr (vnet_crypto_key_t *key);
 
 /**
- * Use 2 created keys to generate new key for linked algs (cipher + integ)
- * The returned key index is to be used for linked alg only.
+ * Corner case: updating raw key data requires reallocating `key->data`
+ * when the new key length differs from the current length (e.g. HMAC).
+ * Limitation: update-by-pointer is only used for crypto key algs; it is
+ * not used for linked keys (e.g. wireguard & QUIC).
  **/
-u32 vnet_crypto_key_add_linked (vlib_main_t * vm,
-				vnet_crypto_key_index_t index_crypto,
-				vnet_crypto_key_index_t index_integ);
+void vnet_crypto_key_update (vnet_crypto_key_t *key, const u8 *data);
 
-vnet_crypto_alg_t vnet_crypto_link_algs (vnet_crypto_alg_t crypto_alg,
-					 vnet_crypto_alg_t integ_alg);
+/**
+ * Use crypto & integ keys data to generate new key
+ * for linked algs (cipher + integ)
+ * The returned key pointer is to be used for linked alg only.
+ **/
+vnet_crypto_key_t *vnet_crypto_integ_key_add (vnet_crypto_alg_t crypto_alg, const u8 *crypto_data,
+					      u16 crypto_length, vnet_crypto_alg_t integ_alg,
+					      const u8 *integ_data, u16 integ_length);
+
+static_always_inline vnet_crypto_key_t *
+vnet_crypto_get_key (vnet_crypto_key_index_t index)
+{
+  vnet_crypto_main_t *cm = &crypto_main;
+  return cm->keys[index];
+}
+
+u8 *vnet_crypto_key_data_get (vnet_crypto_key_t *key, vnet_crypto_handler_type_t t);
 
 vnet_crypto_op_id_t *vnet_crypto_ops_from_alg (vnet_crypto_alg_t alg);
 
@@ -508,7 +542,7 @@ vnet_crypto_op_init (vnet_crypto_op_t * op, vnet_crypto_op_id_t type)
     clib_memset (op, 0xfe, sizeof (*op));
   op->op = type;
   op->flags = 0;
-  op->key_index = ~0;
+  op->key_data = 0;
   op->n_chunks = 0;
 }
 
@@ -519,13 +553,6 @@ vnet_crypto_get_op_type (vnet_crypto_op_id_t id)
   ASSERT (id < VNET_CRYPTO_N_OP_IDS);
   vnet_crypto_op_data_t *od = cm->opt_data + id;
   return od->type;
-}
-
-static_always_inline vnet_crypto_key_t *
-vnet_crypto_get_key (vnet_crypto_key_index_t index)
-{
-  vnet_crypto_main_t *cm = &crypto_main;
-  return cm->keys[index];
 }
 
 /** async crypto inline functions **/
@@ -603,11 +630,9 @@ vnet_crypto_async_submit_open_frame (vlib_main_t * vm,
 
 static_always_inline void
 vnet_crypto_async_add_to_frame (vlib_main_t *vm, vnet_crypto_async_frame_t *f,
-				u32 key_index, u32 crypto_len,
-				i16 integ_len_adj, i16 crypto_start_offset,
-				i16 integ_start_offset, u32 buffer_index,
-				u16 next_node, u8 *iv, u8 *tag, u8 *aad,
-				u8 flags)
+				vnet_crypto_key_t *key, u32 crypto_len, i16 integ_len_adj,
+				i16 crypto_start_offset, i16 integ_start_offset, u32 buffer_index,
+				u16 next_node, u8 *iv, u8 *tag, u8 *aad, u8 flags)
 {
   vnet_crypto_async_frame_elt_t *fe;
   u16 index;
@@ -617,7 +642,7 @@ vnet_crypto_async_add_to_frame (vlib_main_t *vm, vnet_crypto_async_frame_t *f,
   index = f->n_elts;
   fe = &f->elts[index];
   f->n_elts++;
-  fe->key_index = key_index;
+  fe->key = (uword) key;
   fe->crypto_total_length = crypto_len;
   fe->crypto_start_offset = crypto_start_offset;
   fe->integ_start_offset = integ_start_offset;

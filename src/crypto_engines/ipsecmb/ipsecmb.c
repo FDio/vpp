@@ -29,6 +29,7 @@ typedef struct
 {
   u16 data_size;
   u8 block_size;
+  u8 is_link;
   aes_gcm_pre_t aes_gcm_pre;
   keyexp_t keyexp;
   hash_one_block_t hash_one_block;
@@ -47,6 +48,12 @@ typedef struct
   u8 enc_key_exp[EXPANDED_KEY_N_BYTES];
   u8 dec_key_exp[EXPANDED_KEY_N_BYTES];
 } ipsecmb_aes_key_data_t;
+
+typedef struct
+{
+  ipsecmb_aes_key_data_t aes_key_data;
+  void *hmac_key_data;
+} ipsecmb_aes_hmac_key_data_t;
 
 static ipsecmb_main_t ipsecmb_main = { };
 
@@ -1236,81 +1243,66 @@ foreach_chacha_poly_fixed_aad_lengths
 #endif
 
   static void
-  crypto_ipsecmb_key_handler (vnet_crypto_key_op_t kop,
-			      vnet_crypto_key_index_t idx)
+  crypto_ipsecmb_key_handler (vnet_crypto_key_op_t kop, void *key_data, vnet_crypto_alg_t alg,
+			      const u8 *data, u16 length)
 {
   ipsecmb_main_t *imbm = &ipsecmb_main;
-  vnet_crypto_key_t *key = vnet_crypto_get_key (idx);
-  ipsecmb_alg_data_t *ad = imbm->alg_data + key->alg;
-  u32 i;
-  void *kd;
+  ipsecmb_alg_data_t *ad = imbm->alg_data + alg;
 
-  /** TODO: add linked alg support **/
-  if (key->is_link)
-    return;
-
-  if (kop == VNET_CRYPTO_KEY_OP_DEL)
+  if (kop == VNET_CRYPTO_KEY_OP_ADD || kop == VNET_CRYPTO_KEY_OP_MODIFY)
     {
-      if (idx >= vec_len (imbm->key_data))
-	return;
+      if (ad->data_size == 0)
+	{
+#ifdef HAVE_IPSECMB_CHACHA_POLY
+	  if (alg == VNET_CRYPTO_ALG_CHACHA20_POLY1305)
+	    {
+	      clib_memcpy_fast (key_data, data, length);
+	    }
+#endif
+	  return;
+	}
+      /* AES GCM */
+      if (ad->aes_gcm_pre)
+	{
+	  ad->aes_gcm_pre (data, (struct gcm_key_data *) key_data);
+	  return;
+	}
 
-      if (imbm->key_data[idx] == 0)
-	return;
+      void *aesd = key_data, *hd = key_data;
+      if (ad->is_link)
+	{
+	  aesd = &((ipsecmb_aes_hmac_key_data_t *) key_data)->aes_key_data;
+	  hd = ((ipsecmb_aes_hmac_key_data_t *) key_data)->hmac_key_data;
+	}
 
-      clib_mem_free_s (imbm->key_data[idx]);
-      imbm->key_data[idx] = 0;
-      return;
-    }
+      /* AES CBC key expansion */
+      if (ad->keyexp)
+	{
+	  ad->keyexp (data, ((ipsecmb_aes_key_data_t *) aesd)->enc_key_exp,
+		      ((ipsecmb_aes_key_data_t *) aesd)->dec_key_exp);
+	}
 
-  if (ad->data_size == 0)
-    return;
+      /* HMAC */
+      if (ad->hash_one_block)
+	{
+	  u32 i;
+	  const int block_qw = HMAC_MAX_BLOCK_SIZE / sizeof (u64);
+	  u64 pad[block_qw], key_hash[block_qw];
 
-  vec_validate_aligned (imbm->key_data, idx, CLIB_CACHE_LINE_BYTES);
+	  clib_memset_u8 (key_hash, 0, HMAC_MAX_BLOCK_SIZE);
+	  if (length <= ad->block_size)
+	    clib_memcpy_fast (key_hash, data, length);
+	  else
+	    ad->hash_fn (data, length, key_hash);
 
-  if (kop == VNET_CRYPTO_KEY_OP_MODIFY && imbm->key_data[idx])
-    {
-      clib_mem_free_s (imbm->key_data[idx]);
-    }
+	  for (i = 0; i < block_qw; i++)
+	    pad[i] = key_hash[i] ^ 0x3636363636363636;
+	  ad->hash_one_block (pad, hd);
 
-  kd = imbm->key_data[idx] = clib_mem_alloc_aligned (ad->data_size,
-						     CLIB_CACHE_LINE_BYTES);
-
-  /* AES CBC key expansion */
-  if (ad->keyexp)
-    {
-      ad->keyexp (key->data, ((ipsecmb_aes_key_data_t *) kd)->enc_key_exp,
-		  ((ipsecmb_aes_key_data_t *) kd)->dec_key_exp);
-      return;
-    }
-
-  /* AES GCM */
-  if (ad->aes_gcm_pre)
-    {
-      ad->aes_gcm_pre (key->data, (struct gcm_key_data *) kd);
-      return;
-    }
-
-  /* HMAC */
-  if (ad->hash_one_block)
-    {
-      const int block_qw = HMAC_MAX_BLOCK_SIZE / sizeof (u64);
-      u64 pad[block_qw], key_hash[block_qw];
-
-      clib_memset_u8 (key_hash, 0, HMAC_MAX_BLOCK_SIZE);
-      if (key->length <= ad->block_size)
-	clib_memcpy_fast (key_hash, key->data, key->length);
-      else
-	ad->hash_fn (key->data, key->length, key_hash);
-
-      for (i = 0; i < block_qw; i++)
-	pad[i] = key_hash[i] ^ 0x3636363636363636;
-      ad->hash_one_block (pad, kd);
-
-      for (i = 0; i < block_qw; i++)
-	pad[i] = key_hash[i] ^ 0x5c5c5c5c5c5c5c5c;
-      ad->hash_one_block (pad, ((u8 *) kd) + (ad->data_size / 2));
-
-      return;
+	  for (i = 0; i < block_qw; i++)
+	    pad[i] = key_hash[i] ^ 0x5c5c5c5c5c5c5c5c;
+	  ad->hash_one_block (pad, ((u8 *) hd) + (ad->data_size / 2));
+	}
     }
 }
 
