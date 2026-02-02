@@ -2,8 +2,6 @@
  * Copyright (c) 2019 Cisco and/or its affiliates.
  */
 
-#include <vlib/vlib.h>
-#include <vnet/plugin/plugin.h>
 #include <vnet/crypto/crypto.h>
 #include <native/crypto_native.h>
 #include <vppinfra/crypto/aes_gcm.h>
@@ -16,13 +14,12 @@ static_always_inline u32
 aes_ops_enc_aes_gcm (vnet_crypto_op_t *ops[], u32 n_ops, aes_key_size_t ks,
 		     u32 fixed, u32 aad_len)
 {
-  crypto_native_main_t *cm = &crypto_native_main;
   vnet_crypto_op_t *op = ops[0];
   aes_gcm_key_data_t *kd;
   u32 n_left = n_ops;
 
 next:
-  kd = (aes_gcm_key_data_t *) cm->key_data[op->key_index];
+  kd = (aes_gcm_key_data_t *) op->key_data;
   aes_gcm (op->src, op->dst, op->aad, (u8 *) op->iv, op->tag, op->len,
 	   fixed ? aad_len : op->aad_len, fixed ? 16 : op->tag_len, kd,
 	   AES_KEY_ROUNDS (ks), AES_GCM_OP_ENCRYPT);
@@ -41,14 +38,13 @@ static_always_inline u32
 aes_ops_dec_aes_gcm (vnet_crypto_op_t *ops[], u32 n_ops, aes_key_size_t ks,
 		     u32 fixed, u32 aad_len)
 {
-  crypto_native_main_t *cm = &crypto_native_main;
   vnet_crypto_op_t *op = ops[0];
   aes_gcm_key_data_t *kd;
   u32 n_left = n_ops;
   int rv;
 
 next:
-  kd = (aes_gcm_key_data_t *) cm->key_data[op->key_index];
+  kd = (aes_gcm_key_data_t *) op->key_data;
   rv = aes_gcm (op->src, op->dst, op->aad, (u8 *) op->iv, op->tag, op->len,
 		fixed ? aad_len : op->aad_len, fixed ? 16 : op->tag_len, kd,
 		AES_KEY_ROUNDS (ks), AES_GCM_OP_DECRYPT);
@@ -72,57 +68,50 @@ next:
   return n_ops;
 }
 
-static_always_inline void *
-aes_gcm_key_exp (vnet_crypto_key_t *key, aes_key_size_t ks)
+static_always_inline void
+aes_gcm_key_exp (vnet_crypto_key_op_t kop, aes_gcm_key_data_t *key_data, const u8 *data,
+		 aes_key_size_t ks)
 {
-  aes_gcm_key_data_t *kd;
-
-  kd = clib_mem_alloc_aligned (sizeof (*kd), CLIB_CACHE_LINE_BYTES);
-
-  clib_aes_gcm_key_expand (kd, key->data, ks);
-
-  return kd;
+  if (kop == VNET_CRYPTO_KEY_OP_ADD || kop == VNET_CRYPTO_KEY_OP_MODIFY)
+    {
+      clib_aes_gcm_key_expand (key_data, data, ks);
+    }
 }
 
-#define foreach_aes_gcm_handler_type _ (128) _ (192) _ (256)
-
-#define _(x)                                                                  \
-  static u32 aes_ops_dec_aes_gcm_##x (vlib_main_t *vm,                        \
-				      vnet_crypto_op_t *ops[], u32 n_ops)     \
-  {                                                                           \
-    return aes_ops_dec_aes_gcm (ops, n_ops, AES_KEY_##x, 0, 0);               \
-  }                                                                           \
-  static u32 aes_ops_enc_aes_gcm_##x (vlib_main_t *vm,                        \
-				      vnet_crypto_op_t *ops[], u32 n_ops)     \
-  {                                                                           \
-    return aes_ops_enc_aes_gcm (ops, n_ops, AES_KEY_##x, 0, 0);               \
-  }                                                                           \
-  static u32 aes_ops_dec_aes_gcm_##x##_tag16_aad8 (                           \
-    vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops)                      \
-  {                                                                           \
-    return aes_ops_dec_aes_gcm (ops, n_ops, AES_KEY_##x, 1, 8);               \
-  }                                                                           \
-  static u32 aes_ops_enc_aes_gcm_##x##_tag16_aad8 (                           \
-    vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops)                      \
-  {                                                                           \
-    return aes_ops_enc_aes_gcm (ops, n_ops, AES_KEY_##x, 1, 8);               \
-  }                                                                           \
-  static u32 aes_ops_dec_aes_gcm_##x##_tag16_aad12 (                          \
-    vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops)                      \
-  {                                                                           \
-    return aes_ops_dec_aes_gcm (ops, n_ops, AES_KEY_##x, 1, 12);              \
-  }                                                                           \
-  static u32 aes_ops_enc_aes_gcm_##x##_tag16_aad12 (                          \
-    vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops)                      \
-  {                                                                           \
-    return aes_ops_enc_aes_gcm (ops, n_ops, AES_KEY_##x, 1, 12);              \
-  }                                                                           \
-  static void *aes_gcm_key_exp_##x (vnet_crypto_key_t *key)                   \
-  {                                                                           \
-    return aes_gcm_key_exp (key, AES_KEY_##x);                                \
+#define _(x)                                                                                       \
+  static u32 aes_ops_dec_aes_gcm_##x (vnet_crypto_op_t *ops[], u32 n_ops)                          \
+  {                                                                                                \
+    return aes_ops_dec_aes_gcm (ops, n_ops, AES_KEY_##x, 0, 0);                                    \
+  }                                                                                                \
+  static u32 aes_ops_enc_aes_gcm_##x (vnet_crypto_op_t *ops[], u32 n_ops)                          \
+  {                                                                                                \
+    return aes_ops_enc_aes_gcm (ops, n_ops, AES_KEY_##x, 0, 0);                                    \
+  }                                                                                                \
+  static u32 aes_ops_dec_aes_gcm_##x##_tag16_aad8 (vnet_crypto_op_t *ops[], u32 n_ops)             \
+  {                                                                                                \
+    return aes_ops_dec_aes_gcm (ops, n_ops, AES_KEY_##x, 1, 8);                                    \
+  }                                                                                                \
+  static u32 aes_ops_enc_aes_gcm_##x##_tag16_aad8 (vnet_crypto_op_t *ops[], u32 n_ops)             \
+  {                                                                                                \
+    return aes_ops_enc_aes_gcm (ops, n_ops, AES_KEY_##x, 1, 8);                                    \
+  }                                                                                                \
+  static u32 aes_ops_dec_aes_gcm_##x##_tag16_aad12 (vnet_crypto_op_t *ops[], u32 n_ops)            \
+  {                                                                                                \
+    return aes_ops_dec_aes_gcm (ops, n_ops, AES_KEY_##x, 1, 12);                                   \
+  }                                                                                                \
+  static u32 aes_ops_enc_aes_gcm_##x##_tag16_aad12 (vnet_crypto_op_t *ops[], u32 n_ops)            \
+  {                                                                                                \
+    return aes_ops_enc_aes_gcm (ops, n_ops, AES_KEY_##x, 1, 12);                                   \
+  }                                                                                                \
+  static void aes_gcm_key_exp_##x (vnet_crypto_key_op_t kop, vnet_crypto_key_handler_args_t a)     \
+  {                                                                                                \
+    return aes_gcm_key_exp (kop, a.per_thread_key_data, a.key, AES_KEY_##x);                       \
   }
 
-foreach_aes_gcm_handler_type;
+_ (128)
+_ (192)
+_ (256)
+
 #undef _
 
 static int
@@ -151,46 +140,47 @@ probe ()
   return -1;
 }
 
-#define _(b)                                                                  \
-  CRYPTO_NATIVE_OP_HANDLER (aes_##b##_gcm_enc) = {                            \
-    .op_id = VNET_CRYPTO_OP_AES_##b##_GCM_ENC,                                \
-    .fn = aes_ops_enc_aes_gcm_##b,                                            \
-    .probe = probe,                                                           \
-  };                                                                          \
-                                                                              \
-  CRYPTO_NATIVE_OP_HANDLER (aes_##b##_gcm_dec) = {                            \
-    .op_id = VNET_CRYPTO_OP_AES_##b##_GCM_DEC,                                \
-    .fn = aes_ops_dec_aes_gcm_##b,                                            \
-    .probe = probe,                                                           \
-  };                                                                          \
-  CRYPTO_NATIVE_OP_HANDLER (aes_##b##_gcm_enc_tag16_aad8) = {                 \
-    .op_id = VNET_CRYPTO_OP_AES_##b##_GCM_TAG16_AAD8_ENC,                     \
-    .fn = aes_ops_enc_aes_gcm_##b##_tag16_aad8,                               \
-    .probe = probe,                                                           \
-  };                                                                          \
-                                                                              \
-  CRYPTO_NATIVE_OP_HANDLER (aes_##b##_gcm_dec_tag16_aad8) = {                 \
-    .op_id = VNET_CRYPTO_OP_AES_##b##_GCM_TAG16_AAD8_DEC,                     \
-    .fn = aes_ops_dec_aes_gcm_##b##_tag16_aad8,                               \
-    .probe = probe,                                                           \
-  };                                                                          \
-                                                                              \
-  CRYPTO_NATIVE_OP_HANDLER (aes_##b##_gcm_enc_tag16_aad12) = {                \
-    .op_id = VNET_CRYPTO_OP_AES_##b##_GCM_TAG16_AAD12_ENC,                    \
-    .fn = aes_ops_enc_aes_gcm_##b##_tag16_aad12,                              \
-    .probe = probe,                                                           \
-  };                                                                          \
-                                                                              \
-  CRYPTO_NATIVE_OP_HANDLER (aes_##b##_gcm_dec_tag16_aad12) = {                \
-    .op_id = VNET_CRYPTO_OP_AES_##b##_GCM_TAG16_AAD12_DEC,                    \
-    .fn = aes_ops_dec_aes_gcm_##b##_tag16_aad12,                              \
-    .probe = probe,                                                           \
-  };                                                                          \
-                                                                              \
-  CRYPTO_NATIVE_KEY_HANDLER (aes_##b##_gcm) = {                               \
-    .alg_id = VNET_CRYPTO_ALG_AES_##b##_GCM,                                  \
-    .key_fn = aes_gcm_key_exp_##b,                                            \
-    .probe = probe,                                                           \
+#define _(b)                                                                                       \
+  CRYPTO_NATIVE_OP_HANDLER (aes_##b##_gcm_enc) = {                                                 \
+    .op_id = VNET_CRYPTO_OP_AES_##b##_GCM_ENC,                                                     \
+    .fn = aes_ops_enc_aes_gcm_##b,                                                                 \
+    .probe = probe,                                                                                \
+  };                                                                                               \
+                                                                                                   \
+  CRYPTO_NATIVE_OP_HANDLER (aes_##b##_gcm_dec) = {                                                 \
+    .op_id = VNET_CRYPTO_OP_AES_##b##_GCM_DEC,                                                     \
+    .fn = aes_ops_dec_aes_gcm_##b,                                                                 \
+    .probe = probe,                                                                                \
+  };                                                                                               \
+  CRYPTO_NATIVE_OP_HANDLER (aes_##b##_gcm_enc_tag16_aad8) = {                                      \
+    .op_id = VNET_CRYPTO_OP_AES_##b##_GCM_TAG16_AAD8_ENC,                                          \
+    .fn = aes_ops_enc_aes_gcm_##b##_tag16_aad8,                                                    \
+    .probe = probe,                                                                                \
+  };                                                                                               \
+                                                                                                   \
+  CRYPTO_NATIVE_OP_HANDLER (aes_##b##_gcm_dec_tag16_aad8) = {                                      \
+    .op_id = VNET_CRYPTO_OP_AES_##b##_GCM_TAG16_AAD8_DEC,                                          \
+    .fn = aes_ops_dec_aes_gcm_##b##_tag16_aad8,                                                    \
+    .probe = probe,                                                                                \
+  };                                                                                               \
+                                                                                                   \
+  CRYPTO_NATIVE_OP_HANDLER (aes_##b##_gcm_enc_tag16_aad12) = {                                     \
+    .op_id = VNET_CRYPTO_OP_AES_##b##_GCM_TAG16_AAD12_ENC,                                         \
+    .fn = aes_ops_enc_aes_gcm_##b##_tag16_aad12,                                                   \
+    .probe = probe,                                                                                \
+  };                                                                                               \
+                                                                                                   \
+  CRYPTO_NATIVE_OP_HANDLER (aes_##b##_gcm_dec_tag16_aad12) = {                                     \
+    .op_id = VNET_CRYPTO_OP_AES_##b##_GCM_TAG16_AAD12_DEC,                                         \
+    .fn = aes_ops_dec_aes_gcm_##b##_tag16_aad12,                                                   \
+    .probe = probe,                                                                                \
+  };                                                                                               \
+                                                                                                   \
+  CRYPTO_NATIVE_KEY_HANDLER (aes_##b##_gcm) = {                                                    \
+    .alg_id = VNET_CRYPTO_ALG_AES_##b##_GCM,                                                       \
+    .key_fn = aes_gcm_key_exp_##b,                                                                 \
+    .probe = probe,                                                                                \
+    .key_data_sz = sizeof (aes_gcm_key_data_t),                                                    \
   };
 
 _ (128) _ (192) _ (256)

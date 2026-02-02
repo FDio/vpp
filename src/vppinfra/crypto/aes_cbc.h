@@ -564,24 +564,18 @@ clib_aes256_cbc_decrypt (const aes_cbc_key_data_t *kd, const u8 *ciphertext,
 #endif
 
 static_always_inline u32
-clib_aes_cbc_encrypt_multi (aes_cbc_key_data_t **key_data,
-			    const uword *key_indices, u8 **plaintext,
-			    const uword *oplen, u8 **iv, aes_key_size_t ks,
-			    u8 **ciphertext, uword n_ops)
+clib_aes_cbc_encrypt_multi (aes_cbc_key_data_t **kd, u8 **plaintext, const uword *oplen, u8 **iv,
+			    aes_key_size_t ks, u8 **ciphertext, uword n_ops)
 {
   int rounds = AES_KEY_ROUNDS (ks);
   u8 placeholder[8192];
   u32 i, j, count, n_left = n_ops;
   u32xN placeholder_mask = {};
   u32xN len = {};
-  u32 key_index[4 * N_AES_LANES];
   u8 *src[4 * N_AES_LANES] = {};
   u8 *dst[4 * N_AES_LANES] = {};
   u8xN r[4] = {};
   u8xN k[15][4] = {};
-
-  for (i = 0; i < 4 * N_AES_LANES; i++)
-    key_index[i] = ~0;
 
 more:
   for (i = 0; i < 4 * N_AES_LANES; i++)
@@ -604,19 +598,13 @@ more:
 	    dst[i] = ciphertext[0];
 	    len[i] = oplen[0];
 	    placeholder_mask[i] = ~0;
-	    if (key_index[i] != key_indices[0])
-	      {
-		aes_cbc_key_data_t *kd;
-		key_index[i] = key_indices[0];
-		kd = key_data[key_index[i]];
-		for (j = 0; j < rounds + 1; j++)
-		  ((u8x16 *) k[j])[i] = kd->encrypt_key[j];
-	      }
+	    for (j = 0; j < rounds + 1; j++)
+	      ((u8x16 *) k[j])[i] = kd[0]->encrypt_key[j];
 	    n_left--;
 	    iv++;
 	    ciphertext++;
 	    plaintext++;
-	    key_indices++;
+	    kd++;
 	    oplen++;
 	  }
       }
