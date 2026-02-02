@@ -49,9 +49,13 @@ sfdp_snort_add_next_node (vlib_main_t *vm, u8 *name)
 {
   sfdp_snort_main_t *vsm = &sfdp_snort_main;
   clib_error_t *err = 0;
+  u8 *deq_node_name = 0;
 
   snort_instance_get_index_by_name_ptr (vm, (char *) name, &vsm->instance_index);
-  u8 *deq_node_name = format (0, "snort-deq-%s", name);
+
+  vsm->snort_enq_next_index = vlib_node_add_named_next (vm, sfdp_snort_input.index, "snort-enq");
+
+  deq_node_name = format (0, "snort-deq-%s", name);
   vlib_node_t *node = vlib_get_node_by_name (vm, deq_node_name);
 
   if (!node)
@@ -118,6 +122,16 @@ sfdp_snort_create_instance_command_fn (vlib_main_t *vm, unformat_input_t *input,
     {
       err = clib_error_return (0, "please specify instance name");
       goto done;
+    }
+
+  if (snort_instance_create_ptr == 0)
+    {
+      err = sfdp_snort_set_functions ();
+      if (err)
+	{
+	  err = clib_error_return (err, "snort instance create function not set");
+	  goto done;
+	}
     }
 
   rv = snort_instance_create_ptr (
@@ -196,6 +210,16 @@ sfdp_snort_delete_instance_command_fn (vlib_main_t *vm, unformat_input_t *input,
       goto done;
     }
 
+  if (snort_instance_get_index_by_name_ptr == 0 || snort_instance_delete_ptr == 0)
+    {
+      err = sfdp_snort_set_functions ();
+      if (err)
+	{
+	  err = clib_error_return (err, "snort instance delete function not set");
+	  goto done;
+	}
+    }
+
   rv = snort_instance_get_index_by_name_ptr (vm, (char *) name, &instance_index);
   if (rv < 0)
     {
@@ -225,20 +249,16 @@ VLIB_CLI_COMMAND (sfdp_snort_delete_instance_command, static) = {
 static clib_error_t *
 sfdp_snort_init (vlib_main_t *vm)
 {
-  clib_error_t *err = 0;
   sfdp_snort_main_t *vsm = &sfdp_snort_main;
 
   clib_memset (vsm, 0, sizeof (*vsm));
-  err = sfdp_snort_set_functions ();
-  if (err)
-    return err;
 
   vsm->snort_dequeue_node_index = ~0;
   vsm->snort_dequeue_node_next_index = ~0;
   vsm->instance_index = ~0;
+  vsm->snort_enq_next_index = ~0;
+
   return 0;
 }
 
-VLIB_INIT_FUNCTION (sfdp_snort_init) = {
-  .runs_after = VLIB_INITS ("snort_init"),
-};
+VLIB_INIT_FUNCTION (sfdp_snort_init);

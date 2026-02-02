@@ -37,8 +37,6 @@ typedef struct
   u16 instance;
 } sfdp_snort_input_trace_t;
 
-#define SFDP_SNORT_INPUT_NEXT_SNORT_ENQ 0
-
 static u8 *
 format_sfdp_snort_input_trace (u8 *s, va_list *args)
 {
@@ -59,7 +57,7 @@ sfdp_snort_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_
   vlib_frame_t *f;
   sfdp_snort_enq_scalar_args_t *sa;
   u32 *to_next, n_left_to_next;
-  u32 next_index = SFDP_SNORT_INPUT_NEXT_SNORT_ENQ; /* snort_enq */
+  u32 next_index = vsm->snort_enq_next_index; /* snort_enq */
   u16 n_enq = 0;
 #define SFDP_DAQ_PKT_FLAG_PRE_ROUTING 0x0004
   daq_vpp_pkt_metadata_t metadata = {
@@ -166,10 +164,6 @@ VLIB_REGISTER_NODE (sfdp_snort_input) = {
   .type = VLIB_NODE_TYPE_INTERNAL,
   .n_errors = SFDP_SNORT_INPUT_N_ERROR,
   .error_strings = sfdp_snort_input_error_strings,
-  .next_nodes = {
-      [SFDP_SNORT_INPUT_NEXT_SNORT_ENQ] = "snort-enq",
-  },
-  .n_next_nodes = 1,
 };
 
 SFDP_SERVICE_DEFINE (sfdp_snort_input) = {
