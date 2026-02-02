@@ -5,7 +5,8 @@
 #ifndef __crypto_native_h__
 #define __crypto_native_h__
 
-typedef void *(crypto_native_key_fn_t) (vnet_crypto_key_t * key);
+typedef void (crypto_native_key_fn_t) (vnet_crypto_key_op_t kop, void *key_data, const u8 *data,
+				       u16 length);
 typedef int (crypto_native_variant_probe_t) ();
 
 typedef struct crypto_native_op_handler
@@ -30,7 +31,8 @@ typedef struct crypto_native_key_handler
 typedef struct
 {
   crypto_native_key_fn_t *key_fn[VNET_CRYPTO_N_ALGS];
-  void **key_data;
+  u32 num_threads;
+  u32 ptd_size;
   crypto_native_op_handler_t *op_handlers;
   crypto_native_key_handler_t *key_handlers;
 } crypto_native_main_t;
