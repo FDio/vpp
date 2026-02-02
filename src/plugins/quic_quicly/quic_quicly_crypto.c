@@ -313,11 +313,11 @@ quic_quicly_crypto_context_init_data (quic_quicly_crypto_ctx_t *crctx, quic_ctx_
 	      u32 i;
 	      qm->default_crypto_engine = ctx->crypto_engine =
 		CRYPTO_ENGINE_VPP;
-	      vec_validate (qqcm->per_thread_crypto_key_indices, qm->num_threads);
+	      vec_validate (qqcm->per_thread_crypto_keys, qm->num_threads);
 	      for (i = 0; i < qm->num_threads; i++)
 		{
-		  qqcm->per_thread_crypto_key_indices[i] = vnet_crypto_key_add (
-		    vlib_get_main (), VNET_CRYPTO_ALG_AES_256_CTR, empty_key, 32);
+		  qqcm->per_thread_crypto_keys[i] =
+		    vnet_crypto_key_add_ptr (VNET_CRYPTO_ALG_AES_256_CTR, empty_key, 32);
 		}
 	    }
 	}
@@ -554,29 +554,19 @@ Exit:
   return ret;
 }
 
-static u32
-quic_quicly_crypto_set_key (crypto_key_t *key)
+static uword
+quic_quicly_crypto_set_key (vlib_main_t *vm, crypto_key_t *key)
 {
   u8 thread_index = vlib_get_thread_index ();
   quic_quicly_crypto_main_t *qqcm = &quic_quicly_crypto_main;
-  u32 key_id = qqcm->per_thread_crypto_key_indices[thread_index];
-  vnet_crypto_key_t *vnet_key = vnet_crypto_get_key (key_id);
-  vnet_crypto_engine_t *engine;
-
-  vec_foreach (engine, cm->engines)
-    if (engine->key_op_handler)
-      engine->key_op_handler (VNET_CRYPTO_KEY_OP_DEL, key_id);
+  vnet_crypto_key_t *vnet_key = qqcm->per_thread_crypto_keys[thread_index];
 
   ASSERT (key->algo);
   ASSERT (key->key_len);
-  vnet_key->alg = key->algo;
-  clib_memcpy (vnet_key->data, key->key, key->key_len);
 
-  vec_foreach (engine, cm->engines)
-    if (engine->key_op_handler)
-      engine->key_op_handler (VNET_CRYPTO_KEY_OP_ADD, key_id);
+  vnet_crypto_key_update (vnet_key, key->key);
 
-  return key_id;
+  return vnet_crypto_get_key_data (vm, vnet_key, VNET_CRYPTO_HANDLER_TYPE_SIMPLE);
 }
 
 static void
@@ -615,13 +605,13 @@ quic_quicly_crypto_encrypt_packet (struct st_quicly_crypto_engine_t *engine,
     aead_crctx->key.key_len, *(u64 *) &aead_crctx->key.key[0],
     *(u64 *) &aead_crctx->key.key[8], *(u64 *) &aead_crctx->key.key[16],
     *(u64 *) &aead_crctx->key.key[24]);
-  aead_crctx->op.key_index = quic_quicly_crypto_set_key (&aead_crctx->key);
+  aead_crctx->op.key_data = quic_quicly_crypto_set_key (vm, &aead_crctx->key);
   aead_crctx->op.src = (u8 *) input;
   aead_crctx->op.dst = output;
   aead_crctx->op.len = inlen;
   aead_crctx->op.tag_len = aead_crctx->super.algo->tag_size;
   aead_crctx->op.tag = aead_crctx->op.src + inlen;
-  vnet_crypto_process_ops (vm, &(aead_crctx->op), 1);
+  vnet_crypto_process_ops (&(aead_crctx->op), 1);
   assert (aead_crctx->op.status == VNET_CRYPTO_OP_STATUS_COMPLETED);
 
   /* Build Header protection crypto operation */
@@ -635,12 +625,12 @@ quic_quicly_crypto_encrypt_packet (struct st_quicly_crypto_engine_t *engine,
   vnet_crypto_op_init (&hp_ctx->op, hp_ctx->id);
   memset (supp.output, 0, sizeof (supp.output));
   hp_ctx->op.iv = (u8 *) supp.input;
-  hp_ctx->op.key_index = quic_quicly_crypto_set_key (&hp_ctx->key);
+  hp_ctx->op.key_data = quic_quicly_crypto_set_key (vm, &hp_ctx->key);
   ;
   hp_ctx->op.src = (u8 *) supp.output;
   hp_ctx->op.dst = (u8 *) supp.output;
   hp_ctx->op.len = sizeof (supp.output);
-  vnet_crypto_process_ops (vm, &(hp_ctx->op), 1);
+  vnet_crypto_process_ops (&(hp_ctx->op), 1);
   assert (hp_ctx->op.status == VNET_CRYPTO_OP_STATUS_COMPLETED);
 
   datagram.base[first_byte_at] ^=
@@ -676,12 +666,12 @@ quic_quicly_crypto_aead_decrypt (quic_ctx_t *qctx, ptls_aead_context_t *_ctx,
     aead_crctx->key.key_len, *(u64 *) &aead_crctx->key.key[0],
     *(u64 *) &aead_crctx->key.key[8], *(u64 *) &aead_crctx->key.key[16],
     *(u64 *) &aead_crctx->key.key[24]);
-  aead_crctx->op.key_index = quic_quicly_crypto_set_key (&aead_crctx->key);
+  aead_crctx->op.key_data = quic_quicly_crypto_set_key (vm, &aead_crctx->key);
   aead_crctx->op.len = inlen - aead_crctx->super.algo->tag_size;
   aead_crctx->op.tag_len = aead_crctx->super.algo->tag_size;
   aead_crctx->op.tag = aead_crctx->op.src + aead_crctx->op.len;
 
-  vnet_crypto_process_ops (vm, &(aead_crctx->op), 1);
+  vnet_crypto_process_ops (&(aead_crctx->op), 1);
 
   return aead_crctx->op.len;
 }

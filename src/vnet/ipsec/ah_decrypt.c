@@ -83,7 +83,7 @@ ah_process_ops (vlib_main_t * vm, vlib_node_runtime_t * node,
   if (n_ops == 0)
     return;
 
-  n_fail = n_ops - vnet_crypto_process_ops (vm, op, n_ops);
+  n_fail = n_ops - vnet_crypto_process_ops (op, n_ops);
 
   while (n_fail)
     {
@@ -221,10 +221,9 @@ ah_decrypt_inline (vlib_main_t * vm,
 
 	  vnet_crypto_op_t *op;
 	  vec_add2_aligned (ptd->crypto_ops, op, 1, CLIB_CACHE_LINE_BYTES);
-	  vnet_crypto_key_t *key = vnet_crypto_get_key (irt->key_index);
-	  if (key->is_link)
-	    key = vnet_crypto_get_key (key->index_integ);
+	  vnet_crypto_key_t *key = irt->ah_key;
 	  vnet_crypto_op_id_t *op_ids = vnet_crypto_ops_from_alg (key->alg);
+
 	  vnet_crypto_op_init (op, op_ids[VNET_CRYPTO_OP_TYPE_HMAC]);
 
 	  op->integ_src = (u8 *) ih4;
@@ -232,7 +231,7 @@ ah_decrypt_inline (vlib_main_t * vm,
 	  op->digest = (u8 *) ih4 - pd->icv_size;
 	  op->flags = VNET_CRYPTO_OP_FLAG_HMAC_CHECK;
 	  op->digest_len = pd->icv_size;
-	  op->key_index = key->index;
+	  op->key_data = vnet_crypto_get_key_data (vm, key, VNET_CRYPTO_HANDLER_TYPE_SIMPLE);
 	  op->user_data = b - bufs;
 	  if (irt->use_esn)
 	    {

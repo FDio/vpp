@@ -2695,27 +2695,26 @@ update_map_register_auth_data (map_register_hdr_t * map_reg_hdr,
 			       lisp_key_type_t key_id, u8 * key,
 			       u16 auth_data_len, u32 msg_len)
 {
-  lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
+  // lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   MREG_KEY_ID (map_reg_hdr) = clib_host_to_net_u16 (key_id);
   MREG_AUTH_DATA_LEN (map_reg_hdr) = clib_host_to_net_u16 (auth_data_len);
   vnet_crypto_op_t _op, *op = &_op;
-  vnet_crypto_key_index_t ki;
+  vnet_crypto_key_t *keys = NULL;
+  vnet_crypto_op_id_t op_id = lisp_key_type_to_crypto_op (key_id);
 
-  vnet_crypto_op_init (op, lisp_key_type_to_crypto_op (key_id));
+  vnet_crypto_op_init (op, op_id);
   op->len = msg_len;
   op->digest = MREG_DATA (map_reg_hdr);
   op->src = (u8 *) map_reg_hdr;
   op->digest_len = 0;
   op->iv = 0;
 
-  ki = vnet_crypto_key_add (lcm->vlib_main,
-			    lisp_key_type_to_crypto_alg (key_id), key,
-			    vec_len (key));
+  keys = vnet_crypto_key_add_ptr (lisp_key_type_to_crypto_alg (key_id), key, vec_len (key));
 
-  op->key_index = ki;
+  op->key_data = (uword) keys;
 
-  vnet_crypto_process_ops (lcm->vlib_main, op, 1);
-  vnet_crypto_key_del (lcm->vlib_main, ki);
+  vnet_crypto_process_ops (op, 1);
+  vnet_crypto_key_del_ptr (keys);
 
   return 0;
 }
@@ -3865,12 +3864,13 @@ static int
 is_auth_data_valid (map_notify_hdr_t * h, u32 msg_len,
 		    lisp_key_type_t key_id, u8 * key)
 {
-  lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
+  // lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   u8 *auth_data = 0;
   u16 auth_data_len;
   int result;
   vnet_crypto_op_t _op, *op = &_op;
-  vnet_crypto_key_index_t ki;
+  vnet_crypto_key_t *keys = NULL;
+  vnet_crypto_op_id_t op_id = lisp_key_type_to_crypto_op (key_id);
   u8 out[EVP_MAX_MD_SIZE] = { 0, };
 
   auth_data_len = auth_data_len_by_key_id (key_id);
@@ -3887,21 +3887,18 @@ is_auth_data_valid (map_notify_hdr_t * h, u32 msg_len,
   /* clear auth data */
   clib_memset (MNOTIFY_DATA (h), 0, auth_data_len);
 
-  vnet_crypto_op_init (op, lisp_key_type_to_crypto_op (key_id));
+  vnet_crypto_op_init (op, op_id);
   op->len = msg_len;
   op->digest = out;
   op->src = (u8 *) h;
   op->digest_len = 0;
   op->iv = 0;
 
-  ki = vnet_crypto_key_add (lcm->vlib_main,
-			    lisp_key_type_to_crypto_alg (key_id), key,
-			    vec_len (key));
+  keys = vnet_crypto_key_add_ptr (lisp_key_type_to_crypto_alg (key_id), key, vec_len (key));
 
-  op->key_index = ki;
-
-  vnet_crypto_process_ops (lcm->vlib_main, op, 1);
-  vnet_crypto_key_del (lcm->vlib_main, ki);
+  op->key_data = (uword) keys;
+  vnet_crypto_process_ops (op, 1);
+  vnet_crypto_key_del_ptr (keys);
 
   result = memcmp (out, auth_data, auth_data_len);
 
