@@ -2,7 +2,6 @@
  * Copyright (c) 2019 Cisco and/or its affiliates.
  */
 
-#include <vlib/vlib.h>
 #include <vnet/plugin/plugin.h>
 #include <vppinfra/crypto/aes_cbc.h>
 #include <native/sha2.h>
@@ -11,15 +10,20 @@
 #pragma GCC optimize ("O3")
 #endif
 
+typedef struct aes_cbc_sha2_hmac_key_data
+{
+  clib_sha2_hmac_key_data_t hmac_key_data;
+  aes_cbc_key_data_t cbc_key_data;
+} aes_cbc_sha2_hmac_key_data_t;
+
 #define CRYPTO_NATIVE_AES_CBC_ENC_VEC_SIZE 256
 
 static_always_inline u32
 aes_ops_enc_aes_cbc_hmac (vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops,
 			  aes_key_size_t ks, clib_sha2_type_t type)
 {
-  crypto_native_main_t *cm = &crypto_native_main;
   u32 i, n_left = n_ops;
-  uword key_indices[CRYPTO_NATIVE_AES_CBC_ENC_VEC_SIZE] = {};
+  aes_cbc_key_data_t *keys_data[CRYPTO_NATIVE_AES_CBC_ENC_VEC_SIZE] = {};
   u8 *plaintext[CRYPTO_NATIVE_AES_CBC_ENC_VEC_SIZE] = {};
   uword oplen[CRYPTO_NATIVE_AES_CBC_ENC_VEC_SIZE] = {};
   u8 *iv[CRYPTO_NATIVE_AES_CBC_ENC_VEC_SIZE] = {};
@@ -27,17 +31,16 @@ aes_ops_enc_aes_cbc_hmac (vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops,
   clib_sha2_hmac_ctx_t ctx[CRYPTO_NATIVE_AES_CBC_ENC_VEC_SIZE];
   vnet_crypto_op_t *h_ops = ops[0];
   u8 buffer[64];
+  aes_cbc_sha2_hmac_key_data_t *cbc_hmac_key_data;
 
   while (n_left)
     {
       i = 0;
       while (n_left && i < CRYPTO_NATIVE_AES_CBC_ENC_VEC_SIZE)
 	{
-	  vnet_crypto_key_t *key = vnet_crypto_get_key (ops[0]->key_index);
-	  clib_sha2_hmac_init (
-	    &ctx[i], type,
-	    (clib_sha2_hmac_key_data_t *) cm->key_data[key->index_integ]);
-	  key_indices[i] = key->index_crypto;
+	  cbc_hmac_key_data = (aes_cbc_sha2_hmac_key_data_t *) ops[0]->key_data;
+	  clib_sha2_hmac_init (&ctx[i], type, &cbc_hmac_key_data->hmac_key_data);
+	  keys_data[i] = &cbc_hmac_key_data->cbc_key_data;
 	  plaintext[i] = ops[0]->src;
 	  ciphertext[i] = ops[0]->dst;
 	  oplen[i] = ops[0]->len;
@@ -48,9 +51,7 @@ aes_ops_enc_aes_cbc_hmac (vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops,
 	  n_left--;
 	  i++;
 	}
-      clib_aes_cbc_encrypt_multi ((aes_cbc_key_data_t **) cm->key_data,
-				  key_indices, plaintext, oplen, iv, ks,
-				  ciphertext, i);
+      clib_aes_cbc_encrypt_multi (keys_data, plaintext, oplen, iv, ks, ciphertext, i);
 
       for (u32 j = 0; j < i; j++, h_ops++)
 	{
@@ -66,12 +67,10 @@ static_always_inline u32
 aes_ops_hmac_dec_aes_cbc (vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops,
 			  aes_key_size_t ks, clib_sha2_type_t type)
 {
-  crypto_native_main_t *cm = &crypto_native_main;
   int rounds = AES_KEY_ROUNDS (ks);
   vnet_crypto_op_t *op = ops[0];
-  vnet_crypto_key_t *key = vnet_crypto_get_key (op->key_index);
-  aes_cbc_key_data_t *kd =
-    (aes_cbc_key_data_t *) cm->key_data[key->index_crypto];
+  aes_cbc_sha2_hmac_key_data_t *cbc_hmac_key_data = (aes_cbc_sha2_hmac_key_data_t *) op->key_data;
+  aes_cbc_key_data_t *kd = &cbc_hmac_key_data->cbc_key_data;
   clib_sha2_hmac_ctx_t ctx;
   u8 buffer[64];
   u32 n_left = n_ops, n_fail = 0;
@@ -79,8 +78,7 @@ aes_ops_hmac_dec_aes_cbc (vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops,
   ASSERT (n_ops >= 1);
 
 decrypt:
-  clib_sha2_hmac_init (
-    &ctx, type, (clib_sha2_hmac_key_data_t *) cm->key_data[key->index_integ]);
+  clib_sha2_hmac_init (&ctx, type, &cbc_hmac_key_data->hmac_key_data);
   clib_sha2_hmac_update (&ctx, op->integ_src, op->integ_len);
   clib_sha2_hmac_final (&ctx, buffer);
 
@@ -107,8 +105,8 @@ decrypt:
   if (--n_left)
     {
       op += 1;
-      key = vnet_crypto_get_key (op->key_index);
-      kd = (aes_cbc_key_data_t *) cm->key_data[key->index_crypto];
+      cbc_hmac_key_data = (aes_cbc_sha2_hmac_key_data_t *) op->key_data;
+      kd = &cbc_hmac_key_data->cbc_key_data;
       goto decrypt;
     }
 
@@ -119,21 +117,21 @@ static_always_inline u32
 aes_ops_enc_aes_cbc (vlib_main_t * vm, vnet_crypto_op_t * ops[],
 		     u32 n_ops, aes_key_size_t ks)
 {
-  crypto_native_main_t *cm = &crypto_native_main;
   u32 i, n_left = n_ops;
-  uword key_indices[CRYPTO_NATIVE_AES_CBC_ENC_VEC_SIZE] = {};
+  aes_cbc_key_data_t *keys_data[CRYPTO_NATIVE_AES_CBC_ENC_VEC_SIZE] = {};
   u8 *plaintext[CRYPTO_NATIVE_AES_CBC_ENC_VEC_SIZE] = {};
   uword oplen[CRYPTO_NATIVE_AES_CBC_ENC_VEC_SIZE] = {};
   u8 *iv[CRYPTO_NATIVE_AES_CBC_ENC_VEC_SIZE] = {};
   u8 *ciphertext[CRYPTO_NATIVE_AES_CBC_ENC_VEC_SIZE] = {};
+  aes_cbc_key_data_t *cbc_key_data;
 
   while (n_left)
     {
       i = 0;
       while (n_left && i < CRYPTO_NATIVE_AES_CBC_ENC_VEC_SIZE)
 	{
-	  vnet_crypto_key_t *key = vnet_crypto_get_key (ops[0]->key_index);
-	  key_indices[i] = key->is_link ? key->index_crypto : key->index;
+	  cbc_key_data = (aes_cbc_key_data_t *) ops[0]->key_data;
+	  keys_data[i] = cbc_key_data;
 	  plaintext[i] = ops[0]->src;
 	  ciphertext[i] = ops[0]->dst;
 	  oplen[i] = ops[0]->len;
@@ -144,22 +142,18 @@ aes_ops_enc_aes_cbc (vlib_main_t * vm, vnet_crypto_op_t * ops[],
 	  n_left--;
 	  i++;
 	}
-      clib_aes_cbc_encrypt_multi ((aes_cbc_key_data_t **) cm->key_data,
-				  key_indices, plaintext, oplen, iv, ks,
-				  ciphertext, i);
+      clib_aes_cbc_encrypt_multi (keys_data, plaintext, oplen, iv, ks, ciphertext, i);
     }
   return n_ops;
 }
-
 
 static_always_inline u32
 aes_ops_dec_aes_cbc (vlib_main_t * vm, vnet_crypto_op_t * ops[],
 		     u32 n_ops, aes_key_size_t ks)
 {
-  crypto_native_main_t *cm = &crypto_native_main;
   int rounds = AES_KEY_ROUNDS (ks);
   vnet_crypto_op_t *op = ops[0];
-  aes_cbc_key_data_t *kd = (aes_cbc_key_data_t *) cm->key_data[op->key_index];
+  aes_cbc_key_data_t *kd = (aes_cbc_key_data_t *) op->key_data;
   u32 n_left = n_ops;
 
   ASSERT (n_ops >= 1);
@@ -180,7 +174,7 @@ decrypt:
   if (--n_left)
     {
       op += 1;
-      kd = (aes_cbc_key_data_t *) cm->key_data[op->key_index];
+      kd = (aes_cbc_key_data_t *) op->key_data;
       goto decrypt;
     }
 
@@ -220,100 +214,110 @@ aes_cbc_sha2_probe ()
   return clib_min (r_cbc, r_sha2);
 }
 
-static void *
-aes_cbc_key_exp_128 (vnet_crypto_key_t *key)
+static void
+aes_cbc_key_exp (vnet_crypto_key_op_t kop, aes_cbc_key_data_t *key_data, const u8 *data,
+		 aes_key_size_t ks)
 {
-  aes_cbc_key_data_t *kd;
-  kd = clib_mem_alloc_aligned (sizeof (*kd), CLIB_CACHE_LINE_BYTES);
-  clib_aes128_cbc_key_expand (kd, key->data);
-  return kd;
+  if (kop == VNET_CRYPTO_KEY_OP_ADD || kop == VNET_CRYPTO_KEY_OP_MODIFY)
+    {
+      clib_aes_cbc_key_expand (key_data, data, ks);
+    }
 }
 
-static void *
-aes_cbc_key_exp_192 (vnet_crypto_key_t *key)
+static void
+aes_cbc_hmac_key_exp (vnet_crypto_key_op_t kop, aes_cbc_sha2_hmac_key_data_t *key_data,
+		      const u8 *data, u16 hmac_length, u16 cbc_length, aes_key_size_t ks,
+		      clib_sha2_type_t type)
 {
-  aes_cbc_key_data_t *kd;
-  kd = clib_mem_alloc_aligned (sizeof (*kd), CLIB_CACHE_LINE_BYTES);
-  clib_aes192_cbc_key_expand (kd, key->data);
-  return kd;
+  if (kop == VNET_CRYPTO_KEY_OP_ADD || kop == VNET_CRYPTO_KEY_OP_MODIFY)
+    {
+      clib_aes_cbc_key_expand (&key_data->cbc_key_data, data, ks);
+      clib_sha2_hmac_key_data (type, data + cbc_length, hmac_length, &key_data->hmac_key_data);
+    }
 }
 
-static void *
-aes_cbc_key_exp_256 (vnet_crypto_key_t *key)
-{
-  aes_cbc_key_data_t *kd;
-  kd = clib_mem_alloc_aligned (sizeof (*kd), CLIB_CACHE_LINE_BYTES);
-  clib_aes256_cbc_key_expand (kd, key->data);
-  return kd;
-}
-
-#define foreach_aes_cbc_handler_type _ (128) _ (192) _ (256)
-
-#define _(x)                                                                  \
-  static u32 aes_ops_enc_aes_cbc_##x (vlib_main_t *vm,                        \
-				      vnet_crypto_op_t *ops[], u32 n_ops)     \
-  {                                                                           \
-    return aes_ops_enc_aes_cbc (vm, ops, n_ops, AES_KEY_##x);                 \
-  }                                                                           \
-                                                                              \
-  CRYPTO_NATIVE_OP_HANDLER (aes_##x##_cbc_enc) = {                            \
-    .op_id = VNET_CRYPTO_OP_AES_##x##_CBC_ENC,                                \
-    .fn = aes_ops_enc_aes_cbc_##x,                                            \
-    .probe = aes_cbc_cpu_probe,                                               \
-  };                                                                          \
-                                                                              \
-  static u32 aes_ops_dec_aes_cbc_##x (vlib_main_t *vm,                        \
-				      vnet_crypto_op_t *ops[], u32 n_ops)     \
-  {                                                                           \
-    return aes_ops_dec_aes_cbc (vm, ops, n_ops, AES_KEY_##x);                 \
-  }                                                                           \
-                                                                              \
-  CRYPTO_NATIVE_OP_HANDLER (aes_##x##_cbc_dec) = {                            \
-    .op_id = VNET_CRYPTO_OP_AES_##x##_CBC_DEC,                                \
-    .fn = aes_ops_dec_aes_cbc_##x,                                            \
-    .probe = aes_cbc_cpu_probe,                                               \
-  };                                                                          \
-                                                                              \
-  CRYPTO_NATIVE_KEY_HANDLER (aes_##x##_cbc) = {                               \
-    .alg_id = VNET_CRYPTO_ALG_AES_##x##_CBC,                                  \
-    .key_fn = aes_cbc_key_exp_##x,                                            \
-    .probe = aes_cbc_cpu_probe,                                               \
+#define _(x)                                                                                       \
+  static u32 aes_ops_enc_aes_cbc_##x (vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops)         \
+  {                                                                                                \
+    return aes_ops_enc_aes_cbc (vm, ops, n_ops, AES_KEY_##x);                                      \
+  }                                                                                                \
+                                                                                                   \
+  CRYPTO_NATIVE_OP_HANDLER (aes_##x##_cbc_enc) = {                                                 \
+    .op_id = VNET_CRYPTO_OP_AES_##x##_CBC_ENC,                                                     \
+    .fn = aes_ops_enc_aes_cbc_##x,                                                                 \
+    .probe = aes_cbc_cpu_probe,                                                                    \
+  };                                                                                               \
+                                                                                                   \
+  static u32 aes_ops_dec_aes_cbc_##x (vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops)         \
+  {                                                                                                \
+    return aes_ops_dec_aes_cbc (vm, ops, n_ops, AES_KEY_##x);                                      \
+  }                                                                                                \
+                                                                                                   \
+  CRYPTO_NATIVE_OP_HANDLER (aes_##x##_cbc_dec) = {                                                 \
+    .op_id = VNET_CRYPTO_OP_AES_##x##_CBC_DEC,                                                     \
+    .fn = aes_ops_dec_aes_cbc_##x,                                                                 \
+    .probe = aes_cbc_cpu_probe,                                                                    \
+  };                                                                                               \
+                                                                                                   \
+  static void aes_cbc_key_exp_##x (vnet_crypto_key_op_t kop, void *key_data, const u8 *data,       \
+				   u16 length)                                                     \
+  {                                                                                                \
+    aes_cbc_key_exp (kop, key_data, data, AES_KEY_##x);                                            \
+  }                                                                                                \
+                                                                                                   \
+  CRYPTO_NATIVE_KEY_HANDLER (aes_##x##_cbc) = {                                                    \
+    .alg_id = VNET_CRYPTO_ALG_AES_##x##_CBC,                                                       \
+    .key_fn = aes_cbc_key_exp_##x,                                                                 \
+    .probe = aes_cbc_cpu_probe,                                                                    \
   };
 
-foreach_aes_cbc_handler_type;
+_ (128)
+_ (192)
+_ (256)
+
 #undef _
 
-#define _(a, b, c)                                                            \
-  static u32 crypto_native_ops_enc_aes_cbc_##a##_hmac_sha##b (                \
-    vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops)                      \
-  {                                                                           \
-    return aes_ops_enc_aes_cbc_hmac (vm, ops, n_ops, AES_KEY_##a,             \
-				     CLIB_SHA2_##b);                          \
-  }                                                                           \
-                                                                              \
-  static u32 crypto_native_ops_dec_aes_cbc_##a##_hmac_sha##b (                \
-    vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops)                      \
-  {                                                                           \
-    return aes_ops_hmac_dec_aes_cbc (vm, ops, n_ops, AES_KEY_##a,             \
-				     CLIB_SHA2_##b);                          \
-  }                                                                           \
-                                                                              \
-  CRYPTO_NATIVE_OP_HANDLER (aes_##a##_cbc_hmac_sha##b##_enc) = {              \
-    .op_id = VNET_CRYPTO_OP_AES_##a##_CBC_SHA##b##_TAG##c##_ENC,              \
-    .fn = crypto_native_ops_enc_aes_cbc_##a##_hmac_sha##b,                    \
-    .probe = aes_cbc_sha2_probe,                                              \
-  };                                                                          \
-  CRYPTO_NATIVE_OP_HANDLER (aes_##a##_cbc_hmac_sha##b##_dec) = {              \
-    .op_id = VNET_CRYPTO_OP_AES_##a##_CBC_SHA##b##_TAG##c##_DEC,              \
-    .fn = crypto_native_ops_dec_aes_cbc_##a##_hmac_sha##b,                    \
-    .probe = aes_cbc_sha2_probe,                                              \
+#define _(a, b, c, d)                                                                              \
+  static u32 crypto_native_ops_enc_aes_cbc_##a##_hmac_sha##b (vlib_main_t *vm,                     \
+							      vnet_crypto_op_t *ops[], u32 n_ops)  \
+  {                                                                                                \
+    return aes_ops_enc_aes_cbc_hmac (vm, ops, n_ops, AES_KEY_##a, CLIB_SHA2_##b);                  \
+  }                                                                                                \
+                                                                                                   \
+  static u32 crypto_native_ops_dec_aes_cbc_##a##_hmac_sha##b (vlib_main_t *vm,                     \
+							      vnet_crypto_op_t *ops[], u32 n_ops)  \
+  {                                                                                                \
+    return aes_ops_hmac_dec_aes_cbc (vm, ops, n_ops, AES_KEY_##a, CLIB_SHA2_##b);                  \
+  }                                                                                                \
+                                                                                                   \
+  CRYPTO_NATIVE_OP_HANDLER (aes_##a##_cbc_hmac_sha##b##_enc) = {                                   \
+    .op_id = VNET_CRYPTO_OP_AES_##a##_CBC_SHA##b##_TAG##c##_ENC,                                   \
+    .fn = crypto_native_ops_enc_aes_cbc_##a##_hmac_sha##b,                                         \
+    .probe = aes_cbc_sha2_probe,                                                                   \
+  };                                                                                               \
+  CRYPTO_NATIVE_OP_HANDLER (aes_##a##_cbc_hmac_sha##b##_dec) = {                                   \
+    .op_id = VNET_CRYPTO_OP_AES_##a##_CBC_SHA##b##_TAG##c##_DEC,                                   \
+    .fn = crypto_native_ops_dec_aes_cbc_##a##_hmac_sha##b,                                         \
+    .probe = aes_cbc_sha2_probe,                                                                   \
+  };                                                                                               \
+                                                                                                   \
+  static void aes_cbc_key_exp_##a##_hmac_sha##b (vnet_crypto_key_op_t kop, void *key_data,         \
+						 const u8 *data, u16 length)                       \
+  {                                                                                                \
+    aes_cbc_hmac_key_exp (kop, key_data, data, length, d, AES_KEY_##a, CLIB_SHA2_##b);             \
+  }                                                                                                \
+                                                                                                   \
+  CRYPTO_NATIVE_KEY_HANDLER (aes_##a##_cbc_hmac_sha##b) = {                                        \
+    .alg_id = VNET_CRYPTO_ALG_AES_##a##_CBC_SHA##b##_TAG##c,                                       \
+    .key_fn = aes_cbc_key_exp_##a##_hmac_sha##b,                                                   \
+    .probe = aes_cbc_cpu_probe,                                                                    \
   };
 
-_ (128, 224, 14)
-_ (192, 224, 14)
-_ (256, 224, 14)
-_ (128, 256, 16)
-_ (192, 256, 16)
-_ (256, 256, 16)
+_ (128, 224, 14, 16)
+_ (192, 224, 14, 24)
+_ (256, 224, 14, 32)
+_ (128, 256, 16, 16)
+_ (192, 256, 16, 24)
+_ (256, 256, 16, 32)
 
 #undef _
