@@ -16,6 +16,23 @@
       "message": "Let me see if this whether still needed (and whether I remember the new Gerrit trigger syntax).\ngha-run vpp-csit-2n-emr perftest mrrANDnic_intel-e810cqANDdrv_avfAND1cAND64bANDeth-l2patch",
       "revId": "131bbaf4797648d2c3cd6de908e0c2f6ba79bd06",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "23d650a2_12d4c289",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2026-02-02T13:12:41Z",
+      "side": 1,
+      "message": "Looking at console log [1], I am still not 100% sure where does the Gerrit Checkout VPP substep create the active VPP repo clone, but from this [2] line I suspect it is at /scratch/docker-build/vpp/. The subsequent CSIT checkout is [3] at /scratch/docker-build/gha-runner/_work/vpp/vpp/csit/. (I am not sure what creates this vpp/vpp structure, but GHA jobs in CSIT similarly create scit/scit and we made that work.)\n\nThen, the per_patch_perf script requires the VPP repo to be one level higher, so it sets [4] VPP_DIR to /scratch/docker-build/gha-runner/_work/vpp/vpp which does not work as the real VPP clone (with .git directory) is in a \"great-great-aunt\" path.\n\nAs our current GHA setup relies on code in various .github directories (as opposed to some src/scripts/ci/ directory created upon cloning VPP, hint hint), I cannot verify any contributed changes to CSIT clone logic, but this change should fix this issue (or at least not make things any worse).\n\n[1] https://github.com/FDio/vpp/actions/runs/21590865511/job/62210405614\n[2] https://github.com/FDio/vpp/actions/runs/21590865511/job/62210405614#step:2:64\n[3] https://github.com/FDio/vpp/actions/runs/21590865511/job/62210405614#step:3:58\n[4] https://github.com/FDio/vpp/actions/runs/21590865511/job/62210405614#step:4:487",
+      "revId": "131bbaf4797648d2c3cd6de908e0c2f6ba79bd06",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
