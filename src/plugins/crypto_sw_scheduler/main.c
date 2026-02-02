@@ -39,29 +39,6 @@ crypto_sw_scheduler_set_worker_crypto (u32 worker_idx, u8 enabled)
   return 0;
 }
 
-static void
-crypto_sw_scheduler_key_handler (vnet_crypto_key_op_t kop,
-				 vnet_crypto_key_index_t idx)
-{
-  crypto_sw_scheduler_main_t *cm = &crypto_sw_scheduler_main;
-  vnet_crypto_key_t *key = vnet_crypto_get_key (idx);
-
-  vec_validate (cm->keys, idx);
-
-  if (key->is_link)
-    {
-      if (kop == VNET_CRYPTO_KEY_OP_DEL)
-	{
-	  cm->keys[idx].index_crypto = UINT32_MAX;
-	  cm->keys[idx].index_integ = UINT32_MAX;
-	}
-      else
-	{
-	  cm->keys[idx] = *key;
-	}
-    }
-}
-
 static int
 crypto_sw_scheduler_frame_enqueue (vlib_main_t *vm,
 				   vnet_crypto_async_frame_t *frame, u8 is_enc)
@@ -170,18 +147,21 @@ crypto_sw_scheduler_convert_aead (vlib_main_t * vm,
       vec_add2 (ptd->chained_crypto_ops, op, 1);
       cryptodev_sw_scheduler_sgl (vm, ptd, b, op, fe->crypto_start_offset,
 				  fe->crypto_total_length);
+      op->key_data = vnet_crypto_get_key_data (vm, (vnet_crypto_key_t *) fe->key,
+					       VNET_CRYPTO_HANDLER_TYPE_CHAINED);
     }
   else
     {
       vec_add2 (ptd->crypto_ops, op, 1);
       op->src = op->dst = b->data + fe->crypto_start_offset;
       op->len = fe->crypto_total_length;
+      op->key_data = vnet_crypto_get_key_data (vm, (vnet_crypto_key_t *) fe->key,
+					       VNET_CRYPTO_HANDLER_TYPE_SIMPLE);
     }
 
   op->op = op_id;
   op->tag = fe->tag;
   op->flags = fe->flags;
-  op->key_index = fe->key_index;
   op->iv = fe->iv;
   op->aad = fe->aad;
   op->aad_len = aad_len;
@@ -190,10 +170,10 @@ crypto_sw_scheduler_convert_aead (vlib_main_t * vm,
 }
 
 static_always_inline void
-crypto_sw_scheduler_convert_link_crypto (
-  vlib_main_t *vm, crypto_sw_scheduler_per_thread_data_t *ptd,
-  vnet_crypto_key_t *key, vnet_crypto_async_frame_elt_t *fe, u32 index, u32 bi,
-  vnet_crypto_op_id_t op_id, u32 digest_len, u8 is_enc)
+crypto_sw_scheduler_convert_link_crypto (vlib_main_t *vm,
+					 crypto_sw_scheduler_per_thread_data_t *ptd,
+					 vnet_crypto_async_frame_elt_t *fe, u32 index, u32 bi,
+					 vnet_crypto_op_id_t op_id, u32 digest_len, u8 is_enc)
 {
   vlib_buffer_t *b = vlib_get_buffer (vm, bi);
   vnet_crypto_op_t *crypto_op = 0;
@@ -211,6 +191,8 @@ crypto_sw_scheduler_convert_link_crypto (
       cryptodev_sw_scheduler_sgl (vm, ptd, b, crypto_op,
 				  fe->crypto_start_offset,
 				  fe->crypto_total_length);
+      crypto_op->key_data = vnet_crypto_get_key_data (vm, (vnet_crypto_key_t *) fe->key,
+						      VNET_CRYPTO_HANDLER_TYPE_CHAINED);
     }
   else
     {
@@ -219,11 +201,12 @@ crypto_sw_scheduler_convert_link_crypto (
       crypto_op->len = fe->crypto_total_length;
       crypto_op->integ_src = b->data + fe->integ_start_offset;
       crypto_op->integ_len = fe->crypto_total_length + fe->integ_length_adj;
+      crypto_op->key_data = vnet_crypto_get_key_data (vm, (vnet_crypto_key_t *) fe->key,
+						      VNET_CRYPTO_HANDLER_TYPE_SIMPLE);
     }
 
   crypto_op->op = op_id;
   crypto_op->iv = fe->iv;
-  crypto_op->key_index = key->index;
   crypto_op->digest = fe->digest;
   crypto_op->digest_len = digest_len;
   crypto_op->flags = fe->flags;
@@ -240,7 +223,7 @@ process_ops (vlib_main_t * vm, vnet_crypto_async_frame_t * f,
   if (n_ops == 0)
     return;
 
-  n_fail = n_ops - vnet_crypto_process_ops (vm, op, n_ops);
+  n_fail = n_ops - vnet_crypto_process_ops (op, n_ops);
 
   /*
    * If we had a failure in the ops then we need to walk all the ops
@@ -272,7 +255,7 @@ process_chained_ops (vlib_main_t * vm, vnet_crypto_async_frame_t * f,
   if (n_ops == 0)
     return;
 
-  n_fail = n_ops - vnet_crypto_process_chained_ops (vm, op, chunks, n_ops);
+  n_fail = n_ops - vnet_crypto_process_chained_ops (op, chunks, n_ops);
 
   /*
    * If we had a failure in the ops then we need to walk all the ops
@@ -351,9 +334,8 @@ crypto_sw_scheduler_process_link (vlib_main_t *vm,
       if (n_elts > 1)
 	clib_prefetch_load (fe + 1);
 
-      crypto_sw_scheduler_convert_link_crypto (
-	vm, ptd, cm->keys + fe->key_index, fe, fe - f->elts, bi[0], op_id,
-	digest_len, is_enc);
+      crypto_sw_scheduler_convert_link_crypto (vm, ptd, fe, fe - f->elts, bi[0], op_id, digest_len,
+					       is_enc);
       bi++;
       fe++;
     }
@@ -654,9 +636,6 @@ crypto_sw_scheduler_init (vlib_main_t * vm)
   cm->crypto_engine_index =
     vnet_crypto_register_engine (vm, "sw_scheduler", 100,
 				 "SW Scheduler Async Engine");
-
-  vnet_crypto_register_key_handler (vm, cm->crypto_engine_index,
-				    crypto_sw_scheduler_key_handler);
 
   crypto_sw_scheduler_api_init (vm);
 
