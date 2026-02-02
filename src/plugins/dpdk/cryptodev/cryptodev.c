@@ -314,8 +314,11 @@ cryptodev_sess_handler (vlib_main_t *vm, vnet_crypto_key_op_t kop,
 }
 
 /*static*/ void
-cryptodev_key_handler (vnet_crypto_key_op_t kop, vnet_crypto_key_index_t idx)
+cryptodev_key_handler (vnet_crypto_key_op_t kop, vnet_crypto_key_handler_args_t a)
 {
+  vnet_crypto_key_index_t idx = (vnet_crypto_key_index_t) (uword) a.per_thread_key_data;
+
+  /* cryptodev backend only needs key index and kop; alg/data unused */
   cryptodev_sess_handler (vlib_get_main (), kop, idx, 8);
 }
 
