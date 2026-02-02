@@ -2,8 +2,8 @@
  * Copyright (c) 2025 Cisco Systems, Inc.
  */
 
-#ifndef __included_nat_h__
-#define __included_nat_h__
+#ifndef __included_sfdp_interface_input_h__
+#define __included_sfdp_interface_input_h__
 
 #include <vlib/vlib.h>
 #include <vnet/sfdp/sfdp.h>
@@ -19,4 +19,4 @@ extern sfdp_interface_input_main_t sfdp_interface_input_main;
 clib_error_t *
 sfdp_interface_input_set_tenant (sfdp_interface_input_main_t *nat,
 				 u32 sw_if_index, u32 tenant_id, u8 unset);
-#endif
+#endif /* __included_sfdp_interface_input_h__ */
