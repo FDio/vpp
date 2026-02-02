@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a3bd654c_a593f1c5",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2026-02-02T12:53:25Z",
+      "side": 1,
+      "message": "Let me see if this whether still needed (and whether I remember the new Gerrit trigger syntax).\ngha-run vpp-csit-2n-emr perftest mrrANDnic_intel-e810cqANDdrv_avfAND1cAND64bANDeth-l2patch",
+      "revId": "131bbaf4797648d2c3cd6de908e0c2f6ba79bd06",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
