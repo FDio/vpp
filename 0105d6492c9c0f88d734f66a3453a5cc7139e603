@@ -105,6 +105,24 @@
       "parentUuid": "07067e45_2d8f0573",
       "revId": "0105d6492c9c0f88d734f66a3453a5cc7139e603",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ace550c8_615d6e94",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 520,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2026-02-03T16:36:35Z",
+      "side": 1,
+      "message": "Checks the same thing but I\u0027d leave it for debug builds as it helps to show that the engine might be receiving incomplete data. Iirc Florin was of similar attitude few comments higher.",
+      "parentUuid": "9641c254_ba0fa9fd",
+      "revId": "0105d6492c9c0f88d734f66a3453a5cc7139e603",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
