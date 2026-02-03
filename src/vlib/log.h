@@ -46,7 +46,8 @@ typedef struct
   vlib_log_level_t level;
   // level of log messages sent to syslog for this subclass
   vlib_log_level_t syslog_level;
-  // flag saying whether this subclass is logged to syslog
+  // level of log messages sent to /dev/kmsg for this subclass
+  vlib_log_level_t kmsg_level;
   f64 last_event_timestamp;
   int last_sec_count;
   int is_throttling;
@@ -64,6 +65,7 @@ typedef struct
 {
   vlib_log_level_t level;
   vlib_log_level_t syslog_level;
+  vlib_log_level_t kmsg_level;
   int rate_limit;
   char *name;
 } vlib_log_class_config_t;
@@ -76,6 +78,7 @@ typedef struct vlib_log_registration
   vlib_log_class_t class;
   vlib_log_level_t default_level;
   vlib_log_level_t default_syslog_level;
+  vlib_log_level_t default_kmsg_level;
 
   /* next */
   struct vlib_log_registration *next;
@@ -91,8 +94,11 @@ typedef struct
   int default_rate_limit;
   int default_log_level;
   int default_syslog_log_level;
+  int default_kmsg_log_level;
   int unthrottle_time;
   u32 max_class_name_length;
+
+  FILE *kmsg_filp;
 
   /* time zero */
   struct timeval time_zero_timeval;
@@ -160,6 +166,8 @@ __vlib_register_log_class_helper (vlib_log_class_registration_t *r)
       if (r->default_syslog_level)
 	vlib_log_get_subclass_data (r->class)->syslog_level =
 	  r->default_syslog_level;
+      if (r->default_kmsg_level)
+	vlib_log_get_subclass_data (r->class)->kmsg_level = r->default_kmsg_level;
     }
 }
 
@@ -180,6 +188,9 @@ vlib_log_is_enabled (vlib_log_level_t level, vlib_log_class_t class)
     return 1;
 
   if (level <= sc->syslog_level && sc->syslog_level != VLIB_LOG_LEVEL_DISABLED)
+    return 1;
+
+  if (level <= sc->kmsg_level && sc->kmsg_level != VLIB_LOG_LEVEL_DISABLED)
     return 1;
 
   return 0;
