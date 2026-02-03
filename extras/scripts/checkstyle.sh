@@ -20,7 +20,7 @@ CLANG_FORMAT_DIFF="/usr/share/clang/clang-format-diff.py"
 
 # TODO: Remove clang-format-${CLANG_FORMAT_VER} from 'make install-deps' when
 #       CLANG_FORMAT_VER default value is upgraded to 15 after Ubuntu-20.04 is deprecated
-CLANG_FORMAT_VER=${CLANG_FORMAT_VER:-11}
+CLANG_FORMAT_VER=${CLANG_FORMAT_VER:-12}
 GIT_DIFF_ARGS="-U0 --no-color --relative HEAD~1"
 GIT_DIFF_EXCLUDE_LIST=(
     ':!*.patch'
