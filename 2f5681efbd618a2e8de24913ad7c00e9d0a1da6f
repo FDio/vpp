@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f08a7a14_ddef374a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2026-02-03T09:53:25Z",
+      "side": 1,
+      "message": "Testing whether the vpp-csit perf verify job works already.\n\ngha-run vpp-csit-2n-zn2 perftest mrrANDnic_intel-xxv710ANDdrv_avfAND1cAND64bANDeth-l2patch",
+      "revId": "2f5681efbd618a2e8de24913ad7c00e9d0a1da6f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
