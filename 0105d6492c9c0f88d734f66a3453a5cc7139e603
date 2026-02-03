@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "0105d6492c9c0f88d734f66a3453a5cc7139e603",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2a304024_34217872",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 520,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-02-03T13:58:20Z",
+      "side": 1,
+      "message": "isn\u0027t this always false?",
+      "revId": "0105d6492c9c0f88d734f66a3453a5cc7139e603",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
