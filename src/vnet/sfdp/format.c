@@ -268,16 +268,13 @@ format_sfdp_session_detail (u8 *s, va_list *args)
   s = format (s, "  session index: %d\n", session_index);
 
   if (session->key_flags & SFDP_SESSION_KEY_FLAG_PRIMARY_VALID_IP4)
-    s = format (s, "  specification: %U\t%U:%u\t-> %U:%u\n",
-		format_ip_protocol, session->proto, format_sfdp_ipv4_ingress,
-		&skey.key4, format_sfdp_ipv4_egress, &skey.key4);
+    s = format (s, "  specification: %U\t%U\t-> %U\n", format_ip_protocol, session->proto,
+		format_sfdp_ipv4_ingress, &skey.key4, format_sfdp_ipv4_egress, &skey.key4);
   else if (session->key_flags & SFDP_SESSION_KEY_FLAG_PRIMARY_VALID_IP6)
-    s = format (s, "  specification: %U\t%U:%u\t-> %U:%u\n",
-		format_ip_protocol, session->proto, format_sfdp_ipv6_ingress,
-		&skey.key4, format_sfdp_ipv6_egress, &skey.key4);
+    s = format (s, "  specification: %U\t%U\t-> %U\n", format_ip_protocol, session->proto,
+		format_sfdp_ipv6_ingress, &skey.key4, format_sfdp_ipv6_egress, &skey.key4);
   else if (session->key_flags & SFDP_SESSION_KEY_FLAG_PRIMARY_VALID_USER)
-    s = format (s, "  specification: %U\t%U:%u\t-> %U:%u\n",
-		format_ip_protocol, session->proto,
+    s = format (s, "  specification: %U\t%U\t-> %U\n", format_ip_protocol, session->proto,
 		parser->format_fn[SFDP_PARSER_FORMAT_FUNCTION_INGRESS], kdata,
 		parser->format_fn[SFDP_PARSER_FORMAT_FUNCTION_EGRESS], kdata);
 

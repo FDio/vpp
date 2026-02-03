@@ -29,6 +29,10 @@ sfdp_session_type_encode (sfdp_session_type_t x)
     {
     case SFDP_SESSION_TYPE_IP4:
       return SFDP_API_SESSION_TYPE_IP4;
+    case SFDP_SESSION_TYPE_IP6:
+      return SFDP_API_SESSION_TYPE_IP6;
+    case SFDP_SESSION_TYPE_USER:
+      return SFDP_API_SESSION_TYPE_USER;
     default:
       return -1;
     }
