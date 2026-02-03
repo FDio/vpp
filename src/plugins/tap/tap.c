@@ -57,18 +57,29 @@ VNET_HW_INTERFACE_CLASS (tun_device_hw_interface_class, static) = {
 static u32
 virtio_eth_flag_change (vnet_main_t *vnm, vnet_hw_interface_t *hi, u32 flags)
 {
-  /* Handle promiscuous mode (ACCEPT_ALL) for tap interfaces.
-   * In CalicoVPP, the host may learn the real gateway MAC from Router Advertisement
-   * instead of the VPP tap interface MAC. Without promiscuous mode, VPP drops these
-   * packets with "l3 mac mismatch" error in ethernet-input.
+  /* Get the ethernet interface to manipulate STATUS_L3 flag.
+   * STATUS_L3 tells ethernet-input to skip software DMAC checks.
    */
+  ethernet_interface_t *ei = ethernet_get_interface (&ethernet_main, hi->hw_if_index);
+
   switch (flags)
     {
     case ETHERNET_INTERFACE_FLAG_ACCEPT_ALL:
-      /* Promiscuous mode: accept all packets regardless of dest MAC */
+      /* Promiscuous mode: skip software L3 DMAC check.
+       * Setting STATUS_L3 tells ethernet-input to accept all packets
+       * regardless of destination MAC address.
+       */
+      if (ei)
+	ei->flags |= ETHERNET_INTERFACE_FLAG_STATUS_L3;
       return 0;
+
     case ETHERNET_INTERFACE_FLAG_DEFAULT_L3:
-      /* Default L3 mode: only accept packets with matching MAC */
+      /* Default L3 mode: enable software L3 DMAC check.
+       * Clearing STATUS_L3 tells ethernet-input to validate DMAC
+       * against the interface MAC and secondary MACs.
+       */
+      if (ei)
+	ei->flags &= ~ETHERNET_INTERFACE_FLAG_STATUS_L3;
       return 0;
     default:
       return ~0;
