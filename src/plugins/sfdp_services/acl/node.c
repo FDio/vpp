@@ -181,15 +181,6 @@ VLIB_REGISTER_NODE (sfdp_acl_sample_node) = {
 SFDP_SERVICE_DEFINE (sfdp_acl_sample) = {
   .node_name = "sfdp-acl-sample",
   .runs_before = SFDP_SERVICES ("sfdp-geneve-output", "ip4-lookup"),
-  .runs_after = SFDP_SERVICES ("sfdp-drop", "sfdp-l4-lifecycle",
-			       "sfdp-tcp-check"),
+  .runs_after = SFDP_SERVICES ("sfdp-drop", "sfdp-l4-lifecycle", "sfdp-tcp-check"),
   .is_terminal = 0
-};
-
-SFDP_SERVICE_DEFINE (ip4_lookup) = {
-  .node_name = "ip4-lookup",
-  .runs_before = SFDP_SERVICES (0),
-  .runs_after = SFDP_SERVICES ("sfdp-drop", "sfdp-l4-lifecycle",
-			       "sfdp-tcp-check"),
-  .is_terminal = 1
 };
