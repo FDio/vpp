@@ -90,13 +90,13 @@ typedef struct _transport_connection
       u32 fib_index;		/**< Network namespace */
       u16 rmt_port;		/**< Remote port */
       u16 lcl_port;		/**< Local port */
+      u8 dscp;			/**< Differentiated Services Code Point */
+      u8 unused[3];		/**< Last unused bytes in conn id */
       u8 is_ip4;		/**< Flag if IP4 connection */
       u8 proto;			/**< Protocol id */
-      u8 unused[2];		/**< First field after id wants to be
-				     4-byte aligned) */
     };
     /*
-     * Opaque connection ID
+     * Opaque connection ID, does not include is_ip4 and proto
      */
     u8 opaque_conn_id[TRANSPORT_CONN_ID_LEN];
   };
@@ -105,7 +105,6 @@ typedef struct _transport_connection
   u32 c_index;			    /**< Connection index in transport pool */
   clib_thread_index_t thread_index; /**< Worker-thread index */
   transport_connection_flags_t flags; /**< Transport specific flags */
-  u8 dscp; /**< Differentiated Services Code Point */
 
   /*fib_node_index_t rmt_fei;
      dpo_id_t rmt_dpo; */
@@ -150,8 +149,8 @@ typedef struct _transport_connection
 #define s_ho_handle pacer.bytes_per_sec
 } transport_connection_t;
 
-STATIC_ASSERT (STRUCT_OFFSET_OF (transport_connection_t, s_index)
-	       == TRANSPORT_CONN_ID_LEN, "update conn id len");
+STATIC_ASSERT (STRUCT_OFFSET_OF (transport_connection_t, is_ip4) == TRANSPORT_CONN_ID_LEN,
+	       "update conn id len");
 
 /* Warn if size changes. Two cache lines is already generous, hopefully we
  * won't have to outgrow that. */
