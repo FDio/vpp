@@ -16,7 +16,6 @@ typedef struct
 
 extern sfdp_interface_input_main_t sfdp_interface_input_main;
 
-clib_error_t *
-sfdp_interface_input_set_tenant (sfdp_interface_input_main_t *nat,
-				 u32 sw_if_index, u32 tenant_id, u8 unset);
+clib_error_t *sfdp_interface_input_set_tenant (sfdp_interface_input_main_t *nat, u32 sw_if_index,
+					       u32 tenant_id, u8 is_ip6, u8 unset);
 #endif /* __included_sfdp_interface_input_h__ */

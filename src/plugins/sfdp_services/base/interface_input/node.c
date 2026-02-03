@@ -27,7 +27,8 @@ format_sfdp_interface_input_trace (u8 *s, va_list *args)
   return s;
 }
 
-#define foreach_sfdp_interface_input_next  _ (LOOKUP, "sfdp-lookup-ip4")
+#define foreach_sfdp_interface_input_ip4_next _ (LOOKUP, "sfdp-lookup-ip4")
+#define foreach_sfdp_interface_input_ip6_next _ (LOOKUP, "sfdp-lookup-ip6")
 #define foreach_sfdp_interface_input_error _ (NOERROR, "No error")
 
 typedef enum
@@ -46,15 +47,23 @@ static char *sfdp_interface_input_error_strings[] = {
 
 typedef enum
 {
-#define _(s, n) SFDP_INTERFACE_INPUT_NEXT_##s,
-  foreach_sfdp_interface_input_next
+#define _(s, n) SFDP_INTERFACE_INPUT_IP4_NEXT_##s,
+  foreach_sfdp_interface_input_ip4_next
 #undef _
-    SFDP_INTERFACE_INPUT_N_NEXT
-} sfdp_interface_input_next_t;
+    SFDP_INTERFACE_INPUT_IP4_N_NEXT
+} sfdp_interface_input_ip4_next_t;
+
+typedef enum
+{
+#define _(s, n) SFDP_INTERFACE_INPUT_IP6_NEXT_##s,
+  foreach_sfdp_interface_input_ip6_next
+#undef _
+    SFDP_INTERFACE_INPUT_IP6_N_NEXT
+} sfdp_interface_input_ip6_next_t;
 
 static_always_inline uword
-sfdp_interface_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
-			     vlib_frame_t *frame)
+sfdp_interface_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame,
+			     u8 is_ipv6)
 {
   /*
    * use VNI as tenant ID
@@ -91,7 +100,8 @@ sfdp_interface_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       tenant = sfdp_tenant_at_index (sfdp, tenant_idx);
       b[0]->flow_id = tenant->context_id;
       sfdp_buffer (b[0])->tenant_index = tenant_idx;
-      current_next[0] = SFDP_INTERFACE_INPUT_NEXT_LOOKUP;
+      current_next[0] =
+	is_ipv6 ? SFDP_INTERFACE_INPUT_IP6_NEXT_LOOKUP : SFDP_INTERFACE_INPUT_IP4_NEXT_LOOKUP;
 
       vlib_increment_combined_counter (cm, thread_index, tenant_idx, 1, len);
     end_of_packet:
@@ -103,27 +113,52 @@ sfdp_interface_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   return frame->n_vectors;
 }
 
-VLIB_NODE_FN (sfdp_interface_input_node)
+VLIB_NODE_FN (sfdp_interface_input_ip4_node)
 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
-  return sfdp_interface_input_inline (vm, node, frame);
+  return sfdp_interface_input_inline (vm, node, frame, 0 /* is_ipv6 */);
 }
 
-VLIB_REGISTER_NODE (sfdp_interface_input_node) = {
-  .name = "sfdp-interface-input",
+VLIB_NODE_FN (sfdp_interface_input_ip6_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  return sfdp_interface_input_inline (vm, node, frame, 1 /* is_ipv6 */);
+}
+
+VLIB_REGISTER_NODE (sfdp_interface_input_ip4_node) = {
+  .name = "sfdp-interface-input-ip4",
   .vector_size = sizeof (u32),
   .format_trace = format_sfdp_interface_input_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
 
   .n_errors = ARRAY_LEN (sfdp_interface_input_error_strings),
   .error_strings = sfdp_interface_input_error_strings,
-  .n_next_nodes = SFDP_INTERFACE_INPUT_N_NEXT,
+  .n_next_nodes = SFDP_INTERFACE_INPUT_IP4_N_NEXT,
   .next_nodes = {
-          [SFDP_INTERFACE_INPUT_NEXT_LOOKUP] = "sfdp-lookup-ip4",
+          [SFDP_INTERFACE_INPUT_IP4_NEXT_LOOKUP] = "sfdp-lookup-ip4",
   },
 };
 
-VNET_FEATURE_INIT (sfdp_interface_input_feat, static) = {
+VLIB_REGISTER_NODE (sfdp_interface_input_ip6_node) = {
+  .name = "sfdp-interface-input-ip6",
+  .vector_size = sizeof (u32),
+  .format_trace = format_sfdp_interface_input_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+
+  .n_errors = ARRAY_LEN (sfdp_interface_input_error_strings),
+  .error_strings = sfdp_interface_input_error_strings,
+  .n_next_nodes = SFDP_INTERFACE_INPUT_IP6_N_NEXT,
+  .next_nodes = {
+          [SFDP_INTERFACE_INPUT_IP6_NEXT_LOOKUP] = "sfdp-lookup-ip6",
+  },
+};
+
+VNET_FEATURE_INIT (sfdp_interface_input_ip4_feat, static) = {
   .arc_name = "ip4-unicast",
-  .node_name = "sfdp-interface-input",
+  .node_name = "sfdp-interface-input-ip4",
+};
+
+VNET_FEATURE_INIT (sfdp_interface_input_ip6_feat, static) = {
+  .arc_name = "ip6-unicast",
+  .node_name = "sfdp-interface-input-ip6",
 };

@@ -186,10 +186,14 @@ SFDP_SERVICE_DEFINE (sfdp_acl_sample) = {
   .is_terminal = 0
 };
 
-SFDP_SERVICE_DEFINE (ip4_lookup) = {
-  .node_name = "ip4-lookup",
-  .runs_before = SFDP_SERVICES (0),
-  .runs_after = SFDP_SERVICES ("sfdp-drop", "sfdp-l4-lifecycle",
-			       "sfdp-tcp-check"),
-  .is_terminal = 1
-};
+SFDP_SERVICE_DEFINE (ip4_lookup) = { .node_name = "ip4-lookup",
+				     .runs_before = SFDP_SERVICES (0),
+				     .runs_after = SFDP_SERVICES ("sfdp-drop", "sfdp-l4-lifecycle",
+								  "sfdp-tcp-check"),
+				     .is_terminal = 1 };
+
+SFDP_SERVICE_DEFINE (ip6_lookup) = { .node_name = "ip6-lookup",
+				     .runs_before = SFDP_SERVICES (0),
+				     .runs_after = SFDP_SERVICES ("sfdp-drop", "sfdp-l4-lifecycle",
+								  "sfdp-tcp-check"),
+				     .is_terminal = 1 };
