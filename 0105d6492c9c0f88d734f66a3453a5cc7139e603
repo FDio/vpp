@@ -33,6 +33,24 @@
       "message": "isn\u0027t this always false?",
       "revId": "0105d6492c9c0f88d734f66a3453a5cc7139e603",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0720b39f_f5da3fb2",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 520,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2026-02-03T14:58:48Z",
+      "side": 1,
+      "message": "In theory, no. In practice, almost.\nIt depends on set app fifo sizes and we can hit that case in some testing scenarios.",
+      "parentUuid": "2a304024_34217872",
+      "revId": "0105d6492c9c0f88d734f66a3453a5cc7139e603",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
