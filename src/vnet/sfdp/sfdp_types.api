@@ -31,6 +31,8 @@ enum sfdp_sp_node : u8
 enum sfdp_session_type : u8
 {
   SFDP_API_SESSION_TYPE_IP4 = 0,
+  SFDP_API_SESSION_TYPE_IP6 = 1,
+  SFDP_API_SESSION_TYPE_USER = 2,
 };
 
 typedef sfdp_service_name

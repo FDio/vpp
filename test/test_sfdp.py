@@ -120,12 +120,35 @@ class TestSfdp(VppTestCase):
             is_del=True,
         )
 
-    def _verify_basic_session_state(self, sess, expected_protocol, expected_state):
+    def _verify_basic_session_state(
+        self,
+        sess,
+        expected_protocol,
+        expected_state,
+        expected_src_ip=None,
+        expected_dst_ip=None,
+    ):
         """Verify basic session state"""
         self.assertEqual(
             sess.protocol, expected_protocol, f"Protocol should be {expected_protocol}"
         )
         self.assertEqual(sess.state, expected_state, "Unexpected session state")
+
+        # Verify session detail via CLI if IPs are provided
+        if expected_src_ip and expected_dst_ip:
+            detail_output = self.vapi.cli(
+                f"show sfdp session-detail {hex(sess.session_id)}"
+            )
+            self.assertIn(
+                expected_src_ip,
+                detail_output,
+                "cli output does not show expected source IP",
+            )
+            self.assertIn(
+                expected_dst_ip,
+                detail_output,
+                "cli output does not show expected destination IP",
+            )
 
     def test_sfdp_api_configuration(self):
         """Test SFDP configuration"""
@@ -267,6 +290,8 @@ class TestSfdp(VppTestCase):
                     sess,
                     6,
                     VppEnum.vl_api_sfdp_session_state_t.SFDP_API_SESSION_STATE_FSOL,
+                    self.pg0.remote_ip4,
+                    self.pg1.remote_ip4,
                 )
                 break
 
@@ -304,6 +329,8 @@ class TestSfdp(VppTestCase):
                     sess,
                     17,
                     VppEnum.vl_api_sfdp_session_state_t.SFDP_API_SESSION_STATE_FSOL,
+                    self.pg0.remote_ip4,
+                    self.pg1.remote_ip4,
                 )
                 break
 
