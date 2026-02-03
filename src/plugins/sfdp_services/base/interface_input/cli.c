@@ -13,6 +13,7 @@ sfdp_interface_input_set_unset_fn (vlib_main_t *vm, unformat_input_t *input,
   clib_error_t *err = 0;
   u32 sw_if_index = ~0;
   u32 tenant_id = ~0;
+  u8 is_ip6 = 0;
   u8 unset = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -22,6 +23,8 @@ sfdp_interface_input_set_unset_fn (vlib_main_t *vm, unformat_input_t *input,
     {
       if (unformat (line_input, "tenant %d", &tenant_id))
 	;
+      else if (unformat (line_input, "ip6"))
+	is_ip6 = 1;
       else if (unformat (line_input, "disable"))
 	unset = 1;
       else if (unformat (line_input, "%U", unformat_vnet_sw_interface,
@@ -33,16 +36,15 @@ sfdp_interface_input_set_unset_fn (vlib_main_t *vm, unformat_input_t *input,
 	  goto done;
 	}
     }
-  err = sfdp_interface_input_set_tenant (&sfdp_interface_input_main,
-					 sw_if_index, tenant_id, unset);
+  err = sfdp_interface_input_set_tenant (&sfdp_interface_input_main, sw_if_index, tenant_id, is_ip6,
+					 unset);
 done:
   unformat_free (line_input);
   return err;
 }
 
-VLIB_CLI_COMMAND (sfdp_nat_external_interface_set_unset, static) = {
+VLIB_CLI_COMMAND (sfdp_interface_input_set_unset, static) = {
   .path = "set sfdp interface-input",
-  .short_help =
-    "set sfdp interface-input <interface> tenant <tenant-id> [disable]",
+  .short_help = "set sfdp interface-input <interface> tenant <tenant-id> [ip6] [disable]",
   .function = sfdp_interface_input_set_unset_fn,
 };

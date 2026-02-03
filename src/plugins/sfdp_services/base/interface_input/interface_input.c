@@ -7,8 +7,8 @@
 #include <vppinfra/pool.h>
 
 clib_error_t *
-sfdp_interface_input_set_tenant (sfdp_interface_input_main_t *vim,
-				 u32 sw_if_index, u32 tenant_id, u8 unset)
+sfdp_interface_input_set_tenant (sfdp_interface_input_main_t *vim, u32 sw_if_index, u32 tenant_id,
+				 u8 is_ip6, u8 unset)
 {
   sfdp_main_t *sfdp = &sfdp_main;
   clib_bihash_kv_8_8_t kv = { .key = tenant_id, .value = 0 };
@@ -32,15 +32,23 @@ sfdp_interface_input_set_tenant (sfdp_interface_input_main_t *vim,
 
   if (!unset)
     {
-      vnet_feature_enable_disable ("ip4-unicast", "sfdp-interface-input",
-				   sw_if_index, 1, 0, 0);
+      /* Enable SFDP feature arc for either IP4 or IP6*/
+      if (is_ip6)
+	vnet_feature_enable_disable ("ip6-unicast", "sfdp-interface-input-ip6", sw_if_index, 1, 0,
+				     0);
+      else
+	vnet_feature_enable_disable ("ip4-unicast", "sfdp-interface-input-ip4", sw_if_index, 1, 0,
+				     0);
+
       config[0] = kv.value;
     }
 
   else
     {
-      vnet_feature_enable_disable ("ip4-unicast", "sfdp-interface-input",
-				   sw_if_index, 0, 0, 0);
+      /* Disable feature arc for both IP4 and IP6 */
+      vnet_feature_enable_disable ("ip6-unicast", "sfdp-interface-input-ip6", sw_if_index, 0, 0, 0);
+      vnet_feature_enable_disable ("ip4-unicast", "sfdp-interface-input-ip4", sw_if_index, 0, 0, 0);
+
       config[0] = (u16) (~0);
     }
 
