@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e07e2bac_b934f437",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2026-02-03T16:56:00Z",
+      "side": 1,
+      "message": "It seems that vl_input_queue can be null in some transient state when a binary client API tries to reconnect after temporarily disconnecting due to timeout",
+      "revId": "37a428808e578ea0e90b338bb595d24ea5114f50",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
