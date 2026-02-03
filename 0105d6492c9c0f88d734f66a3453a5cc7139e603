@@ -87,6 +87,24 @@
       "parentUuid": "30c7e60d_45b55509",
       "revId": "0105d6492c9c0f88d734f66a3453a5cc7139e603",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9641c254_ba0fa9fd",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 520,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-02-03T15:39:15Z",
+      "side": 1,
+      "message": "if it assert with debug build it\u0027s broken, asserts are not in release build because performance... so I guess you should remove assert on line 519?",
+      "parentUuid": "07067e45_2d8f0573",
+      "revId": "0105d6492c9c0f88d734f66a3453a5cc7139e603",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
