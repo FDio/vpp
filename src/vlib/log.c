@@ -13,6 +13,7 @@
 vlib_log_main_t log_main = {
   .default_log_level = VLIB_LOG_LEVEL_NOTICE,
   .default_syslog_log_level = VLIB_LOG_LEVEL_WARNING,
+  .default_kmsg_log_level = VLIB_LOG_LEVEL_DISABLED,
   .unthrottle_time = 3,
   .size = 512,
   .add_to_elog = 0,
@@ -121,9 +122,10 @@ vlib_log_va (vlib_log_level_t level, vlib_log_class_t class, char *fmt,
   f64 delta = t - sc->last_event_timestamp;
   int log_enabled = log_level_is_enabled (level, sc->level);
   int syslog_enabled = log_level_is_enabled (level, sc->syslog_level);
+  int kmsg_enabled = log_level_is_enabled (level, sc->kmsg_level);
   u8 *s = 0;
 
-  if ((log_enabled || syslog_enabled) == 0)
+  if ((log_enabled || syslog_enabled || kmsg_enabled) == 0)
     return;
 
   log_size_validate (lm);
@@ -153,39 +155,45 @@ vlib_log_va (vlib_log_level_t level, vlib_log_class_t class, char *fmt,
       s = va_format (s, fmt, va);
     }
 
-  if (syslog_enabled)
+  if ((syslog_enabled || kmsg_enabled) &&
+      (unix_main.flags & (UNIX_FLAG_INTERACTIVE | UNIX_FLAG_NOSYSLOG)))
     {
       u8 *l = 0;
-      if (unix_main.flags & (UNIX_FLAG_INTERACTIVE | UNIX_FLAG_NOSYSLOG))
+      int indent = 0;
+      int with_colors = (unix_main.flags & UNIX_FLAG_NOCOLOR) == 0;
+      u8 *fmt;
+      if (with_colors)
 	{
-	  int indent = 0;
-	  int with_colors = (unix_main.flags & UNIX_FLAG_NOCOLOR) == 0;
-	  u8 *fmt;
-	  if (with_colors)
-	    {
-	      l = format (l, "\x1b[%um", 90 + colors[level]);
-	      indent = vec_len (l);
-	    }
-	  fmt = format (0, "%%-%uU [%%-6U]: ", lm->max_class_name_length);
-	  vec_terminate_c_string (fmt);
-	  l = format (l, (char *) fmt, format_vlib_log_class, class,
-		      format_vlib_log_level, level);
-	  vec_free (fmt);
-	  indent = vec_len (l) - indent;
-	  if (with_colors)
-	    l = format (l, "\x1b[0m");
-	  l = format (l, "%U", format_indent, s, indent);
-	  fformat (stderr, "%v\n", l);
-	  fflush (stderr);
+	  l = format (l, "\x1b[%um", 90 + colors[level]);
+	  indent = vec_len (l);
 	}
-      else
+      fmt = format (0, "%%-%uU [%%-6U]: ", lm->max_class_name_length);
+      vec_terminate_c_string (fmt);
+      l = format (l, (char *) fmt, format_vlib_log_class, class, format_vlib_log_level, level);
+      vec_free (fmt);
+      indent = vec_len (l) - indent;
+      if (with_colors)
+	l = format (l, "\x1b[0m");
+      l = format (l, "%U", format_indent, s, indent);
+      fformat (stderr, "%v\n", l);
+      fflush (stderr);
+      vec_free (l);
+    }
+  else
+    {
+      u8 *l = 0;
+      l = format (l, "%U", format_vlib_log_class, class);
+      int is_term = vec_c_string_is_terminated (l) ? 1 : 0;
+      if (syslog_enabled)
 	{
-	  l = format (l, "%U", format_vlib_log_class, class);
 	  int prio = log_level_to_syslog_priority[level];
-	  int is_term = vec_c_string_is_terminated (l) ? 1 : 0;
-
 	  syslog (prio, "%.*s: %.*s", (int) vec_len (l), l,
 		  (int) vec_len (s) - is_term, s);
+	}
+      if (kmsg_enabled && lm->kmsg_filp)
+	{
+	  fprintf (lm->kmsg_filp, "%.*s: %.*s", (int) vec_len (l), l, (int) vec_len (s) - is_term,
+		   s);
 	}
       vec_free (l);
     }
@@ -315,6 +323,13 @@ vlib_log_register_class_internal (char *class, char *subclass, u32 limit)
   else
     s->syslog_level = lm->default_syslog_log_level;
 
+  if (scc && scc->kmsg_level != ~0)
+    s->kmsg_level = scc->kmsg_level;
+  else if (cc && cc->kmsg_level != ~0)
+    s->kmsg_level = cc->kmsg_level;
+  else
+    s->kmsg_level = lm->default_kmsg_log_level;
+
   if (subclass)
     length += 1 + vec_len (s->name);
   if (length > lm->max_class_name_length)
@@ -364,6 +379,10 @@ vlib_log_init (vlib_main_t *vm)
 
   log_size_validate (lm);
 
+  lm->kmsg_filp = fopen ("/dev/kmsg", "w");
+  if (lm->kmsg_filp)
+    setbuf (lm->kmsg_filp, NULL); // unbuffered
+
   while (r)
     {
       r->class = vlib_log_register_class (r->class_name, r->subclass_name);
@@ -372,6 +391,8 @@ vlib_log_init (vlib_main_t *vm)
       if (r->default_syslog_level)
 	vlib_log_get_subclass_data (r->class)->syslog_level =
 	  r->default_syslog_level;
+      if (r->default_kmsg_level)
+	vlib_log_get_subclass_data (r->class)->kmsg_level = r->default_kmsg_level;
       r = r->next;
     }
 
@@ -438,12 +459,13 @@ show_log_config (vlib_main_t * vm,
 		   format_vlib_log_level, lm->default_log_level);
   vlib_cli_output (vm, "%-20s %U", "  Syslog Log Level:",
 		   format_vlib_log_level, lm->default_syslog_log_level);
+  vlib_cli_output (vm, "%-20s %U", "  Kmsg Log Level:", format_vlib_log_level,
+		   lm->default_kmsg_log_level);
   vlib_cli_output (vm, "%-20s %u msgs/sec", "  Rate Limit:",
 		   lm->default_rate_limit);
   vlib_cli_output (vm, "\n");
-  vlib_cli_output (vm, "%-22s %-14s %-14s %s",
-		   "Class/Subclass", "Level", "Syslog Level", "Rate Limit");
-
+  vlib_cli_output (vm, "%-22s %-14s %-14s %-14s %s", "Class/Subclass", "Level", "Syslog Level",
+		   "Kmsg Log Level", "Rate Limit");
 
   u8 *defstr = format (0, "default");
   vec_foreach (c, lm->classes)
@@ -451,11 +473,9 @@ show_log_config (vlib_main_t * vm,
     vlib_cli_output (vm, "%v", c->name);
     vec_foreach (sc, c->subclasses)
     {
-      vlib_cli_output (vm, "  %-20v %-14U %-14U %d",
-		       sc->name ? sc->name : defstr,
-		       format_vlib_log_level, sc->level,
-		       format_vlib_log_level, sc->syslog_level,
-		       sc->rate_limit);
+	vlib_cli_output (vm, "  %-20v %-14U %-14U %-14U %d", sc->name ? sc->name : defstr,
+			 format_vlib_log_level, sc->level, format_vlib_log_level, sc->syslog_level,
+			 format_vlib_log_level, sc->kmsg_level, sc->rate_limit);
     }
   }
   vec_free (defstr);
@@ -561,8 +581,10 @@ set_log_class (vlib_main_t * vm,
   bool set_rate_limit = false;
   bool set_level = false;
   bool set_syslog_level = false;
+  bool set_kmsg_level = false;
   vlib_log_level_t level;
   vlib_log_level_t syslog_level;
+  vlib_log_level_t kmsg_level;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -593,6 +615,10 @@ set_log_class (vlib_main_t * vm,
 	{
 	  set_syslog_level = true;
 	}
+      else if (unformat (line_input, "kmsg-level %U", unformat_vlib_log_level, &kmsg_level))
+	{
+	  set_kmsg_level = true;
+	}
       else
 	{
 	  return clib_error_return (0, "unknown input `%U'",
@@ -616,6 +642,14 @@ set_log_class (vlib_main_t * vm,
 	subclass->syslog_level = syslog_level;
       }
     }
+  if (set_kmsg_level)
+    {
+      vlib_log_subclass_data_t *subclass;
+      vec_foreach (subclass, class->subclasses)
+      {
+	subclass->kmsg_level = kmsg_level;
+      }
+    }
   if (set_rate_limit)
     {
       vlib_log_subclass_data_t *subclass;
@@ -631,7 +665,7 @@ set_log_class (vlib_main_t * vm,
 VLIB_CLI_COMMAND (cli_set_log, static) = {
   .path = "set logging class",
   .short_help = "set logging class <class> [rate-limit <int>] "
-    "[level <level>] [syslog-level <level>]",
+		"[level <level>] [syslog-level <level>] [kmsg-level <level>]",
   .function = set_log_class,
 };
 
@@ -802,6 +836,8 @@ log_config_class (vlib_main_t * vm, char *name, unformat_input_t * input)
       else if (unformat (input, "syslog-level %U", unformat_vlib_log_level,
 			 &tmp.syslog_level))
 	;
+      else if (unformat (input, "kmsg-level %U", unformat_vlib_log_level, &tmp.kmsg_level))
+	;
       else if (unformat (input, "rate-limit %u", &tmp.rate_limit))
 	;
       else
@@ -835,6 +871,9 @@ log_config (vlib_main_t * vm, unformat_input_t * input)
       else if (unformat (input, "default-syslog-log-level %U",
 			 unformat_vlib_log_level,
 			 &lm->default_syslog_log_level))
+	;
+      else if (unformat (input, "default-kmsg-log-level %U", unformat_vlib_log_level,
+			 &lm->default_kmsg_log_level))
 	;
       else if (unformat (input, "add-to-elog"))
 	lm->add_to_elog = 1;
