@@ -619,8 +619,6 @@ transport_cleanup_freelist (void)
       if (lep->refcnt > 0)
 	continue;
 
-      transport_endpoint_table_del (&tm->local_endpoints_table, lep->proto,
-				    &lep->ep);
       transport_endpoint_free (*lep_indexp);
     }
 
@@ -677,6 +675,8 @@ transport_release_local_endpoint (u8 proto, u32 fib_index,
   /* Local endpoint no longer in use, program cleanup */
   if (!clib_atomic_sub_fetch (&lep->refcnt, 1))
     {
+      /* avoid reuse while on freelist */
+      transport_endpoint_table_del (&tm->local_endpoints_table, lep->proto, &lep->ep);
       transport_program_endpoint_cleanup (lepi);
       return 0;
     }
