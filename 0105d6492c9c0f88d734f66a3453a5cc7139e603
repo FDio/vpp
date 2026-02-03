@@ -123,6 +123,24 @@
       "parentUuid": "9641c254_ba0fa9fd",
       "revId": "0105d6492c9c0f88d734f66a3453a5cc7139e603",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2b357cda_68dff776",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 520,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-02-03T16:54:10Z",
+      "side": 1,
+      "message": "this is unusual pattern and confusing...",
+      "parentUuid": "ace550c8_615d6e94",
+      "revId": "0105d6492c9c0f88d734f66a3453a5cc7139e603",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
