@@ -16,6 +16,24 @@
       "message": "I\u0027ve added the SFDP service for \u0027ip6-lookup\u0027 here to follow the pattern set with \u0027ip4-lookup\u0027.\n\nCould we move this out of the ACL SFDP service ideally, and specify the dependencies set currently in \u0027runs_before/runs_after\u0027 differently ?",
       "revId": "58a2d8bd36ea93243471c2efd3c8c7a959fc0544",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3fe7e15a_509b6b8f",
+        "filename": "src/plugins/sfdp_services/acl/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 189,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-02-04T17:23:59Z",
+      "side": 1,
+      "message": "After offline discussion, the \u0027ip4-lookup\u0027/\u0027ip6-lookup\u0027 services definition were moved under interface_input base service for clarity.",
+      "parentUuid": "43f264ab_c1a6d85e",
+      "revId": "58a2d8bd36ea93243471c2efd3c8c7a959fc0544",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
