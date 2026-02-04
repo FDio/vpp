@@ -10,27 +10,28 @@
 #include <http/http.h>
 #include <http/http_private.h>
 
-#define foreach_http3_errors                                                  \
-  _ (NO_ERROR, "NO_ERROR", 0x0100)                                            \
-  _ (GENERAL_PROTOCOL_ERROR, "GENERAL_PROTOCOL_ERROR", 0x0101)                \
-  _ (INTERNAL_ERROR, "INTERNAL_ERROR", 0x0102)                                \
-  _ (STREAM_CREATION_ERROR, "STREAM_CREATION_ERROR", 0x0103)                  \
-  _ (CLOSED_CRITICAL_STREAM, "CLOSED_CRITICAL_STREAM", 0x0104)                \
-  _ (FRAME_UNEXPECTED, "FRAME_UNEXPECTED", 0x0105)                            \
-  _ (FRAME_ERROR, "FRAME_ERROR", 0x0106)                                      \
-  _ (EXCESSIVE_LOAD, "EXCESSIVE_LOAD", 0x0107)                                \
-  _ (ID_ERROR, "ID_ERROR", 0x0108)                                            \
-  _ (SETTINGS_ERROR, "SETTINGS_ERROR", 0x0109)                                \
-  _ (MISSING_SETTINGS, "MISSING_SETTINGS", 0x010a)                            \
-  _ (REQUEST_REJECTED, "REQUEST_REJECTED", 0x010b)                            \
-  _ (REQUEST_CANCELLED, "REQUEST_CANCELLED", 0x010c)                          \
-  _ (REQUEST_INCOMPLETE, "REQUEST_INCOMPLETE", 0x010d)                        \
-  _ (MESSAGE_ERROR, "MESSAGE_ERROR", 0x010e)                                  \
-  _ (CONNECT_ERROR, "CONNECT_ERROR", 0x010f)                                  \
-  _ (VERSION_FALLBACK, "VERSION_FALLBACK", 0x0110)                            \
-  _ (QPACK_DECOMPRESSION_FAILED, "QPACK_DECOMPRESSION_FAILED", 0x0200)        \
-  _ (QPACK_ENCODER_STREAM_ERROR, "QPACK_ENCODER_STREAM_ERROR", 0x0201)        \
-  _ (QPACK_DECODER_STREAM_ERROR, "QPACK_DECODER_STREAM_ERROR", 0x0202)        \
+#define foreach_http3_errors                                                                       \
+  _ (DATAGRAM_ERROR, "DATAGRAM_ERROR", 0x0033)                                                     \
+  _ (NO_ERROR, "NO_ERROR", 0x0100)                                                                 \
+  _ (GENERAL_PROTOCOL_ERROR, "GENERAL_PROTOCOL_ERROR", 0x0101)                                     \
+  _ (INTERNAL_ERROR, "INTERNAL_ERROR", 0x0102)                                                     \
+  _ (STREAM_CREATION_ERROR, "STREAM_CREATION_ERROR", 0x0103)                                       \
+  _ (CLOSED_CRITICAL_STREAM, "CLOSED_CRITICAL_STREAM", 0x0104)                                     \
+  _ (FRAME_UNEXPECTED, "FRAME_UNEXPECTED", 0x0105)                                                 \
+  _ (FRAME_ERROR, "FRAME_ERROR", 0x0106)                                                           \
+  _ (EXCESSIVE_LOAD, "EXCESSIVE_LOAD", 0x0107)                                                     \
+  _ (ID_ERROR, "ID_ERROR", 0x0108)                                                                 \
+  _ (SETTINGS_ERROR, "SETTINGS_ERROR", 0x0109)                                                     \
+  _ (MISSING_SETTINGS, "MISSING_SETTINGS", 0x010a)                                                 \
+  _ (REQUEST_REJECTED, "REQUEST_REJECTED", 0x010b)                                                 \
+  _ (REQUEST_CANCELLED, "REQUEST_CANCELLED", 0x010c)                                               \
+  _ (REQUEST_INCOMPLETE, "REQUEST_INCOMPLETE", 0x010d)                                             \
+  _ (MESSAGE_ERROR, "MESSAGE_ERROR", 0x010e)                                                       \
+  _ (CONNECT_ERROR, "CONNECT_ERROR", 0x010f)                                                       \
+  _ (VERSION_FALLBACK, "VERSION_FALLBACK", 0x0110)                                                 \
+  _ (QPACK_DECOMPRESSION_FAILED, "QPACK_DECOMPRESSION_FAILED", 0x0200)                             \
+  _ (QPACK_ENCODER_STREAM_ERROR, "QPACK_ENCODER_STREAM_ERROR", 0x0201)                             \
+  _ (QPACK_DECODER_STREAM_ERROR, "QPACK_DECODER_STREAM_ERROR", 0x0202)                             \
   _ (INCOMPLETE, "INCOMPLETE", -1)
 /* NOTE: negative values are for internal use only */
 
