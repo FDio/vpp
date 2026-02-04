@@ -226,6 +226,15 @@ typedef struct app_main_
    * App sublayer per-worker state
    */
   appsl_wrk_t *wrk;
+
+  /* Pending list of connects from workers (not first) */
+  vnet_connect_args_t *pending_rpc_connects;
+
+  /* Copy buffer of pending list */
+  vnet_connect_args_t *burst_rpc_connects;
+
+  /* Pending rpc connects lock */
+  clib_spinlock_t pending_rpc_connects_lock;
 } app_main_t;
 
 typedef struct app_init_args_
