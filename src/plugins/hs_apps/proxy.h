@@ -62,9 +62,6 @@ typedef struct
 typedef struct proxy_worker_
 {
   proxy_session_side_ctx_t *ctx_pool;
-  clib_spinlock_t pending_connects_lock;
-  vnet_connect_args_t *pending_connects;
-  vnet_connect_args_t *burst_connects;
 } proxy_worker_t;
 
 typedef enum

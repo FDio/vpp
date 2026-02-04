@@ -91,81 +91,6 @@ proxy_send_http_resp (session_t *s, http_status_code_t sc,
     session_program_tx_io_evt (s->handle, SESSION_IO_EVT_TX);
 }
 
-static void
-proxy_do_connect (vnet_connect_args_t *a)
-{
-  ASSERT (session_vlib_thread_is_cl_thread ());
-  vnet_connect (a);
-  session_endpoint_free_ext_cfgs (&a->sep_ext);
-}
-
-static void
-proxy_handle_connects_rpc (void *args)
-{
-  clib_thread_index_t thread_index = pointer_to_uword (args), n_connects = 0,
-		      n_pending;
-  proxy_worker_t *wrk;
-  u32 max_connects;
-
-  wrk = proxy_worker_get (thread_index);
-
-  clib_spinlock_lock (&wrk->pending_connects_lock);
-
-  n_pending = clib_fifo_elts (wrk->pending_connects);
-  max_connects = clib_min (32, n_pending);
-  vec_validate (wrk->burst_connects, max_connects);
-
-  while (n_connects < max_connects)
-    clib_fifo_sub1 (wrk->pending_connects, wrk->burst_connects[n_connects++]);
-
-  clib_spinlock_unlock (&wrk->pending_connects_lock);
-
-  /* Do connects without locking pending_connects */
-  n_connects = 0;
-  while (n_connects < max_connects)
-    {
-      proxy_do_connect (&wrk->burst_connects[n_connects]);
-      n_connects += 1;
-    }
-
-  /* More work to do, program rpc */
-  if (max_connects < n_pending)
-    session_send_rpc_evt_to_thread_force (
-      transport_cl_thread (), proxy_handle_connects_rpc,
-      uword_to_pointer ((uword) thread_index, void *));
-}
-
-static void
-proxy_program_connect (vnet_connect_args_t *a)
-{
-  u32 connects_thread = transport_cl_thread (), thread_index, n_pending;
-  proxy_worker_t *wrk;
-
-  thread_index = vlib_get_thread_index ();
-
-  /* If already on first worker, handle request */
-  if (thread_index == connects_thread)
-    {
-      proxy_do_connect (a);
-      return;
-    }
-
-  /* If not on first worker, queue request */
-  wrk = proxy_worker_get (thread_index);
-
-  clib_spinlock_lock (&wrk->pending_connects_lock);
-
-  clib_fifo_add1 (wrk->pending_connects, *a);
-  n_pending = clib_fifo_elts (wrk->pending_connects);
-
-  clib_spinlock_unlock (&wrk->pending_connects_lock);
-
-  if (n_pending == 1)
-    session_send_rpc_evt_to_thread_force (
-      connects_thread, proxy_handle_connects_rpc,
-      uword_to_pointer ((uword) thread_index, void *));
-}
-
 static proxy_session_t *
 proxy_session_alloc (void)
 {
@@ -762,7 +687,8 @@ proxy_session_start_connect (proxy_session_side_ctx_t *sc, session_t *s)
       /* mTLS not supported, so no cert configured for now */
     }
 
-  proxy_program_connect (a);
+  /* Passive-open side may run on any worker so we cannot call vnet_connect */
+  vnet_connect2 (a);
 }
 
 static int
@@ -1483,7 +1409,6 @@ proxy_server_create (vlib_main_t * vm)
 {
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
   proxy_main_t *pm = &proxy_main;
-  proxy_worker_t *wrk;
   u32 num_threads;
   int i;
   http_header_table_t empty_ht = HTTP_HEADER_TABLE_NULL;
@@ -1499,10 +1424,6 @@ proxy_server_create (vlib_main_t * vm)
     vec_validate (pm->rx_buf[i], pm->rcv_buffer_size);
 
   vec_validate (pm->workers, vlib_num_workers ());
-  vec_foreach (wrk, pm->workers)
-    {
-      clib_spinlock_init (&wrk->pending_connects_lock);
-    }
 
   pm->ckpair_index = proxy_server_add_ckpair (NULL, NULL);
 
