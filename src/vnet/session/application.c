@@ -1475,6 +1475,90 @@ vnet_connect (vnet_connect_args_t *a)
   return app_worker_connect_session (client_wrk, &a->sep_ext, &a->sh);
 }
 
+static void
+vnet_connect2_do_connect (vnet_connect_args_t *a)
+{
+  int rv;
+  ASSERT (session_vlib_thread_is_cl_thread ());
+
+  rv = vnet_connect (a);
+  /* ownership passed to caller due to rpc */
+  session_endpoint_free_ext_cfgs (&a->sep_ext);
+  if (rv)
+    {
+      app_worker_t *app_wrk;
+      app_wrk = application_get_worker (application_get (a->app_index), a->wrk_map_index);
+      app_worker_connect_notify (app_wrk, 0, rv, a->api_context);
+    }
+}
+
+static void
+vnet_connect2_rpc (void *args)
+{
+  u32 n_pending;
+  u32 n_connects = 0, max_connects;
+  app_main_t *am = &app_main;
+
+  ASSERT (session_vlib_thread_is_cl_thread ());
+
+  clib_spinlock_lock (&am->pending_rpc_connects_lock);
+
+  n_pending = clib_fifo_elts (am->pending_rpc_connects);
+  max_connects = clib_min (32, n_pending);
+  vec_validate (am->burst_rpc_connects, max_connects);
+
+  while (n_connects < max_connects)
+    {
+      clib_fifo_sub1 (am->pending_rpc_connects, am->burst_rpc_connects[n_connects]);
+      n_connects += 1;
+    }
+
+  clib_spinlock_unlock (&am->pending_rpc_connects_lock);
+
+  /* Do connects without locking pending_connects */
+  n_connects = 0;
+  while (n_connects < max_connects)
+    {
+      vnet_connect2_do_connect (&am->burst_rpc_connects[n_connects]);
+      n_connects += 1;
+    }
+
+  /* More work to do, program rpc */
+  if (max_connects < n_pending)
+    session_send_rpc_evt_to_thread_force (transport_cl_thread (), vnet_connect2_rpc, 0);
+}
+
+session_error_t
+vnet_connect2 (vnet_connect_args_t *a)
+{
+  u32 connects_thread = transport_cl_thread ();
+  clib_thread_index_t thread_index = vlib_get_thread_index ();
+  app_main_t *am = &app_main;
+  vnet_connect_args_t *pc;
+  u32 n_pending;
+
+  /* If already on worker that handles connects (first), handle request */
+  if (PREDICT_FALSE (thread_index == connects_thread))
+    {
+      vnet_connect2_do_connect (a);
+      return 0;
+    }
+
+  /* Connects done from first worker, so grab pending connects lock */
+  clib_spinlock_lock (&am->pending_rpc_connects_lock);
+
+  clib_fifo_add2 (am->pending_rpc_connects, pc);
+  clib_memcpy (pc, a, sizeof (*a));
+  n_pending = clib_fifo_elts (am->pending_rpc_connects);
+
+  clib_spinlock_unlock (&am->pending_rpc_connects_lock);
+
+  if (n_pending == 1)
+    session_send_rpc_evt_to_thread_force (connects_thread, vnet_connect2_rpc, 0);
+
+  return 0;
+}
+
 session_error_t
 vnet_connect_stream (vnet_connect_args_t *a)
 {
@@ -2069,6 +2153,7 @@ application_init (vlib_main_t * vm)
   n_workers = vlib_num_workers ();
   vec_validate (am->wrk, n_workers);
   am->app_by_name = hash_create_vec (0, sizeof (u8), sizeof (uword));
+  clib_spinlock_init (&am->pending_rpc_connects_lock);
 
   application_crypto_init ();
 
