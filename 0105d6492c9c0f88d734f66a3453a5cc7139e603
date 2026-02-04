@@ -159,6 +159,24 @@
       "parentUuid": "2b357cda_68dff776",
       "revId": "0105d6492c9c0f88d734f66a3453a5cc7139e603",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "92f57072_13ed23a2",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 520,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-02-04T03:14:11Z",
+      "side": 1,
+      "message": "I would recommend choosing one of these (assert or run-time check), not both.\n\nIf the run-time check is kept, then PREDICT_FALSE() the condition to give the optimizer a hint. Equally important this will clarify the expectation that this is not expected to anyone reading the code.",
+      "parentUuid": "2fe40b77_de5fabf2",
+      "revId": "0105d6492c9c0f88d734f66a3453a5cc7139e603",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
