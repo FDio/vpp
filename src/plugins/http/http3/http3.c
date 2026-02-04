@@ -85,6 +85,12 @@ typedef struct
   http3_conn_settings_t settings;
 } http3_main_t;
 
+static http_token_t http3_ext_connect_proto[] = { { http_token_lit ("bug") },
+#define _(sym, str) { http_token_lit (str) },
+						  foreach_http_upgrade_proto
+#undef _
+};
+
 static http3_main_t http3_main;
 
 static_always_inline void
@@ -474,8 +480,11 @@ http3_stream_app_close_tunnel (http3_stream_ctx_t *sctx, http_conn_t *stream, u8
 static_always_inline void
 http3_stream_update_conn_timer (http3_stream_ctx_t *sctx)
 {
-  ASSERT (http_hc_is_valid (sctx->base.hr_hc_index, sctx->base.c_thread_index));
-  http_conn_t *hc = http_conn_get_w_thread (sctx->base.hr_hc_index, sctx->base.c_thread_index);
+  http3_conn_ctx_t *h3c = http3_conn_ctx_get_if_valid (sctx->h3c_index, sctx->base.c_thread_index);
+  if (!h3c)
+    return;
+  ASSERT (http_hc_is_valid (h3c->hc_index, sctx->base.c_thread_index));
+  http_conn_t *hc = http_conn_get_w_thread (h3c->hc_index, sctx->base.c_thread_index);
   http_conn_timer_update (hc);
 }
 
@@ -495,6 +504,7 @@ http3_req_state_wait_app_reply (http_conn_t *stream, http3_stream_ctx_t *sctx,
   u8 fh_buf[HTTP3_FRAME_HEADER_MAX_LEN];
   u8 fh_len;
   http_sm_result_t rv = HTTP_SM_STOP;
+  http_req_state_t new_state;
 
   http_get_app_msg (&sctx->base, &msg);
   ASSERT (msg.type == HTTP_MSG_REPLY);
@@ -512,12 +522,19 @@ http3_req_state_wait_app_reply (http_conn_t *stream, http3_stream_ctx_t *sctx,
     {
       switch (msg.code)
 	{
+	case HTTP_STATUS_SWITCHING_PROTOCOLS:
+	  /* remap status code for extended connect response */
+	  msg.code = HTTP_STATUS_OK;
 	case HTTP_STATUS_OK:
 	case HTTP_STATUS_CREATED:
 	case HTTP_STATUS_ACCEPTED:
 	  /* tunnel established if 2xx (Successful) response to CONNECT */
 	  control_data.content_len = HPACK_ENCODER_SKIP_CONTENT_LEN;
-	  http_req_state_change (&sctx->base, HTTP_REQ_STATE_TUNNEL);
+	  new_state = (sctx->base.upgrade_proto == HTTP_UPGRADE_PROTO_CONNECT_UDP &&
+		       stream->udp_tunnel_mode == HTTP_UDP_TUNNEL_DGRAM) ?
+			HTTP_REQ_STATE_UDP_TUNNEL :
+			HTTP_REQ_STATE_TUNNEL;
+	  http_req_state_change (&sctx->base, new_state);
 	  sctx->app_closed_cb = http3_stream_app_close_tunnel;
 	  break;
 	default:
@@ -602,12 +619,32 @@ http3_req_state_wait_app_method (http_conn_t *hc, http3_stream_ctx_t *sctx,
   if (msg.method_type == HTTP_REQ_CONNECT)
     {
       sctx->base.is_tunnel = 1;
-      control_data.authority = http_get_app_target (&sctx->base, &msg);
-      control_data.authority_len = msg.data.target_path_len;
+      sctx->base.upgrade_proto = msg.data.upgrade_proto;
       /* deschedule until connect response, app might start enqueue tunneled data */
       http_req_deschedule (&sctx->base, sp);
-      HTTP_DBG (1, "opening tunnel to %U", format_http_bytes, control_data.authority,
-		control_data.authority_len);
+      if (msg.data.upgrade_proto != HTTP_UPGRADE_PROTO_NA)
+	{
+	  control_data.authority = hc->host;
+	  control_data.authority_len = vec_len (hc->host);
+	  control_data.parsed_bitmap = HPACK_PSEUDO_HEADER_SCHEME_PARSED;
+	  control_data.scheme = HTTP_URL_SCHEME_HTTPS;
+	  control_data.parsed_bitmap |= HPACK_PSEUDO_HEADER_PATH_PARSED;
+	  control_data.path = http_get_app_target (&sctx->base, &msg);
+	  control_data.path_len = msg.data.target_path_len;
+	  control_data.parsed_bitmap |= HPACK_PSEUDO_HEADER_PROTOCOL_PARSED;
+	  control_data.protocol = (u8 *) http3_ext_connect_proto[msg.data.upgrade_proto].base;
+	  control_data.protocol_len = http3_ext_connect_proto[msg.data.upgrade_proto].len;
+	  HTTP_DBG (1, "extended connect %s %U",
+		    http3_ext_connect_proto[msg.data.upgrade_proto].base, format_http_bytes,
+		    control_data.path, control_data.path_len);
+	}
+      else
+	{
+	  control_data.authority = http_get_app_target (&sctx->base, &msg);
+	  control_data.authority_len = msg.data.target_path_len;
+	  HTTP_DBG (1, "opening tunnel to %U", format_http_bytes, control_data.authority,
+		    control_data.authority_len);
+	}
     }
   else
     {
@@ -767,6 +804,95 @@ http3_req_state_tunnel_tx (http_conn_t *stream, http3_stream_ctx_t *sctx,
 }
 
 static http_sm_result_t
+http3_req_state_udp_tunnel_tx (http_conn_t *stream, http3_stream_ctx_t *sctx,
+			       transport_send_params_t *sp, http3_error_t *error, u32 *n_deq)
+{
+  u32 max_read, max_write, n_written, dgram_size, capsule_size, n_segs = 2;
+  session_dgram_hdr_t hdr;
+  svm_fifo_seg_t segs[n_segs + 2]; /* 2 extra segments for frame and caspule headers */
+  u8 *payload;
+  u8 fh_buf[HTTP3_FRAME_HEADER_MAX_LEN];
+  u8 fh_len;
+  u8 capsule_header[HTTP_UDP_PROXY_DATAGRAM_CAPSULE_OVERHEAD];
+  u8 capsule_header_len;
+
+  max_read = http_io_as_max_read (&sctx->base);
+  if (max_read < sizeof (hdr))
+    {
+      HTTP_DBG (2, "max_read == 0");
+      return HTTP_SM_STOP;
+    }
+  /* read datagram header */
+  http_io_as_peek (&sctx->base, (u8 *) &hdr, sizeof (hdr), 0);
+  HTTP_DBG (1, "datagram len %lu", hdr.data_length);
+  ASSERT (hdr.data_length <= HTTP_UDP_PAYLOAD_MAX_LEN);
+  dgram_size = hdr.data_length + SESSION_CONN_HDR_LEN;
+  if (PREDICT_FALSE (max_read < dgram_size))
+    {
+      HTTP_DBG (2, "datagram incomplete");
+      return HTTP_SM_STOP;
+    }
+  ASSERT (max_read >= dgram_size);
+  max_write = http_io_ts_max_write (stream, 0);
+  if (PREDICT_FALSE (max_write < (hdr.data_length + HTTP3_FRAME_HEADER_MAX_LEN +
+				  HTTP_UDP_PROXY_DATAGRAM_CAPSULE_OVERHEAD)))
+    {
+      HTTP_DBG (1, "ts tx fifo full");
+      http_req_deschedule (&sctx->base, sp);
+      http_io_ts_add_want_deq_ntf (stream);
+      return HTTP_SM_STOP;
+    }
+  http_io_as_drain (&sctx->base, sizeof (hdr));
+  /* create capsule header */
+  payload = http_encap_udp_payload_datagram (capsule_header, hdr.data_length);
+  capsule_header_len = payload - capsule_header;
+  ASSERT (capsule_header_len <= HTTP_UDP_PROXY_DATAGRAM_CAPSULE_OVERHEAD);
+  capsule_size = capsule_header_len + hdr.data_length;
+  /* read payload */
+  http_io_as_read_segs (&sctx->base, segs + 2, &n_segs, hdr.data_length);
+  fh_len = http3_frame_header_write (HTTP3_FRAME_TYPE_DATA, capsule_size, fh_buf);
+  segs[0].len = fh_len;
+  segs[0].data = fh_buf;
+  segs[1].len = capsule_header_len;
+  segs[1].data = capsule_header;
+  n_written = http_io_ts_write_segs (stream, segs, n_segs + 2, 0);
+  ASSERT (n_written == (fh_len + capsule_size));
+  http_io_as_drain (&sctx->base, hdr.data_length);
+  http_io_ts_after_write (stream, 0);
+  HTTP_DBG (1, "capsule payload len %lu", hdr.data_length);
+  return (max_read - dgram_size) ? HTTP_SM_CONTINUE : HTTP_SM_STOP;
+}
+
+static_always_inline void
+http3_stream_resp_not_implemented (http_conn_t *stream, http3_stream_ctx_t *sctx)
+{
+  u8 fh_buf[HTTP3_FRAME_HEADER_MAX_LEN];
+  u8 fh_len;
+  u32 headers_len, n_written;
+  u8 *response = http_get_tx_buf (stream);
+  u8 *date = format (0, "%U", format_http_time_now, stream);
+  hpack_response_control_data_t control_data = {
+    .content_len = 0,
+    .server_name = stream->app_name,
+    .server_name_len = vec_len (stream->app_name),
+    .date = date,
+    .date_len = vec_len (date),
+    .sc = HTTP_STATUS_NOT_IMPLEMENTED,
+  };
+
+  qpack_serialize_response (0, 0, &control_data, &response);
+  vec_free (date);
+  headers_len = vec_len (response);
+  fh_len = http3_frame_header_write (HTTP3_FRAME_TYPE_HEADERS, headers_len, fh_buf);
+  svm_fifo_seg_t segs[2] = { { fh_buf, fh_len }, { response, headers_len } };
+  n_written = http_io_ts_write_segs (stream, segs, 2, 0);
+  ASSERT (n_written == (fh_len + headers_len));
+  http3_stream_close (stream, sctx);
+  http_io_ts_after_write (stream, 0);
+  http_stats_responses_sent_inc (stream->c_thread_index);
+}
+
+static http_sm_result_t
 http3_req_state_wait_transport_method (http_conn_t *stream,
 				       http3_stream_ctx_t *sctx,
 				       transport_send_params_t *sp,
@@ -856,34 +982,66 @@ http3_req_state_wait_transport_method (http_conn_t *stream,
     }
   if (control_data.method == HTTP_REQ_CONNECT)
     {
-      if (control_data.parsed_bitmap & HPACK_PSEUDO_HEADER_SCHEME_PARSED ||
-	  control_data.parsed_bitmap & HPACK_PSEUDO_HEADER_PATH_PARSED)
+      if (control_data.parsed_bitmap & HPACK_PSEUDO_HEADER_PROTOCOL_PARSED)
 	{
-	  HTTP_DBG (1, ":scheme and :path pseudo-header must be omitted for "
-		       "CONNECT method");
-	  http3_stream_terminate (stream, sctx, HTTP3_ERROR_MESSAGE_ERROR);
-	  return HTTP_SM_STOP;
+	  /* extended CONNECT (RFC9220) */
+	  if (!(control_data.parsed_bitmap & HPACK_PSEUDO_HEADER_SCHEME_PARSED) ||
+	      !(control_data.parsed_bitmap & HPACK_PSEUDO_HEADER_PATH_PARSED))
+	    {
+	      HTTP_DBG (1, ":scheme and :path pseudo-header must be present for "
+			   "extended CONNECT method");
+	      http3_stream_terminate (stream, sctx, HTTP3_ERROR_MESSAGE_ERROR);
+	      return HTTP_SM_STOP;
+	    }
+	  /* parse protocol header value */
+	  if (0)
+	    ;
+#define _(sym, str)                                                                                \
+  else if (http_token_is_case ((const char *) control_data.protocol, control_data.protocol_len,    \
+			       http_token_lit (str))) sctx->base.upgrade_proto =                   \
+    HTTP_UPGRADE_PROTO_##sym;
+	  foreach_http_upgrade_proto
+#undef _
+	    else
+	  {
+	    HTTP_DBG (1, "unsupported extended connect protocol %U", format_http_bytes,
+		      control_data.protocol, control_data.protocol_len);
+	    http3_stream_resp_not_implemented (stream, sctx);
+	    return HTTP_SM_STOP;
+	  }
 	}
-      /* quick check if port is present */
-      p = control_data.authority + control_data.authority_len;
-      p--;
-      if (!isdigit (*p))
+      else
 	{
-	  HTTP_DBG (1, "port not present in authority");
-	  http3_stream_terminate (stream, sctx, HTTP3_ERROR_MESSAGE_ERROR);
-	  return HTTP_SM_STOP;
-	}
-      p--;
-      for (; p > control_data.authority; p--)
-	{
+	  if (control_data.parsed_bitmap & HPACK_PSEUDO_HEADER_SCHEME_PARSED ||
+	      control_data.parsed_bitmap & HPACK_PSEUDO_HEADER_PATH_PARSED)
+	    {
+	      HTTP_DBG (1, ":scheme and :path pseudo-header must be omitted for "
+			   "CONNECT method");
+	      http3_stream_terminate (stream, sctx, HTTP3_ERROR_MESSAGE_ERROR);
+	      return HTTP_SM_STOP;
+	    }
+	  /* quick check if port is present */
+	  p = control_data.authority + control_data.authority_len;
+	  p--;
 	  if (!isdigit (*p))
-	    break;
-	}
-      if (*p != ':')
-	{
-	  HTTP_DBG (1, "port not present in authority");
-	  http3_stream_terminate (stream, sctx, HTTP3_ERROR_MESSAGE_ERROR);
-	  return HTTP_SM_STOP;
+	    {
+	      HTTP_DBG (1, "port not present in authority");
+	      http3_stream_terminate (stream, sctx, HTTP3_ERROR_MESSAGE_ERROR);
+	      return HTTP_SM_STOP;
+	    }
+	  p--;
+	  for (; p > control_data.authority; p--)
+	    {
+	      if (!isdigit (*p))
+		break;
+	    }
+	  if (*p != ':')
+	    {
+	      HTTP_DBG (1, "port not present in authority");
+	      http3_stream_terminate (stream, sctx, HTTP3_ERROR_MESSAGE_ERROR);
+	      return HTTP_SM_STOP;
+	    }
+	  sctx->base.upgrade_proto = HTTP_UPGRADE_PROTO_NA;
 	}
       sctx->base.is_tunnel = 1;
     }
@@ -1017,7 +1175,10 @@ http3_req_state_wait_transport_reply (http_conn_t *stream,
 
   if (sctx->base.is_tunnel && http_status_code_str[sctx->base.status_code][0] == '2')
     {
-      new_state = HTTP_REQ_STATE_TUNNEL;
+      new_state = (sctx->base.upgrade_proto == HTTP_UPGRADE_PROTO_CONNECT_UDP &&
+		   stream->udp_tunnel_mode == HTTP_UDP_TUNNEL_DGRAM) ?
+		    HTTP_REQ_STATE_UDP_TUNNEL :
+		    HTTP_REQ_STATE_TUNNEL;
       sctx->app_closed_cb = http3_stream_app_close_tunnel;
       /* reschedule, we can now transfer tunnel data */
       transport_connection_reschedule (&sctx->base.connection);
@@ -1188,6 +1349,82 @@ http3_req_state_tunnel_rx (http_conn_t *stream, http3_stream_ctx_t *sctx,
   return res;
 }
 
+static http_sm_result_t
+http3_req_state_udp_tunnel_rx (http_conn_t *stream, http3_stream_ctx_t *sctx,
+			       transport_send_params_t *sp, http3_error_t *error, u32 *n_deq)
+{
+  u8 *rx_buf;
+  int rv;
+  u8 payload_offset = 0;
+  u64 payload_len = 0;
+  u32 dgram_size;
+  session_dgram_hdr_t hdr;
+
+  if (http_io_ts_max_read (stream) < sctx->fh.length)
+    {
+      HTTP_DBG (1, "data frame incomplete");
+      *error = HTTP3_ERROR_INCOMPLETE;
+      *n_deq = 0;
+      return HTTP_SM_ERROR;
+    }
+
+  rx_buf = http_get_rx_buf (stream);
+  vec_validate (rx_buf, sctx->fh.length - 1);
+  http_io_ts_read (stream, rx_buf, sctx->fh.length, 1);
+  rv = http_decap_udp_payload_datagram (rx_buf, sctx->fh.length, &payload_offset, &payload_len);
+  HTTP_DBG (1, "rv=%d, payload_offset=%u, payload_len=%llu", rv, payload_offset, payload_len);
+  if (PREDICT_FALSE (rv != 0))
+    {
+      if (rv < 0)
+	{
+	  /* capsule datagram is invalid (stream need to be aborted) */
+	  HTTP_DBG (1, "invalid capsule");
+	  http3_stream_terminate (stream, sctx, HTTP3_ERROR_DATAGRAM_ERROR);
+	  return HTTP_SM_STOP;
+	}
+      else
+	{
+	  /* unknown capsule should be skipped */
+	  HTTP_DBG (1, "unknown capsule dropped");
+	  http_io_ts_drain (stream, sctx->fh.length);
+	  *n_deq = sctx->fh.length;
+	  sctx->fh.length = 0;
+	  return HTTP_SM_CONTINUE;
+	}
+    }
+  /* check if we have the full capsule */
+  if (PREDICT_FALSE (sctx->fh.length != (payload_offset + payload_len)))
+    {
+      HTTP_DBG (1, "capsule not complete, frame length: %lu, capsule size: %lu", sctx->fh.length,
+		payload_offset + payload_len);
+      http3_stream_terminate (stream, sctx, HTTP3_ERROR_DATAGRAM_ERROR);
+      return HTTP_SM_STOP;
+    }
+  dgram_size = sizeof (hdr) + payload_len;
+  if (http_io_as_max_write (&sctx->base) < dgram_size)
+    {
+      HTTP_DBG (1, "app's rx fifo full");
+      http_io_as_add_want_deq_ntf (&sctx->base);
+      *n_deq = 0;
+      return HTTP_SM_STOP;
+    }
+
+  hdr.data_length = payload_len;
+  hdr.data_offset = 0;
+  hdr.gso_size = 0;
+
+  /* send datagram header and payload */
+  svm_fifo_seg_t segs[2] = { { (u8 *) &hdr, sizeof (hdr) },
+			     { rx_buf + payload_offset, payload_len } };
+  http_io_as_write_segs (&sctx->base, segs, 2);
+  http_app_worker_rx_notify (&sctx->base);
+  http_io_ts_drain (stream, sctx->fh.length);
+  *n_deq = sctx->fh.length;
+  sctx->fh.length = 0;
+
+  return HTTP_SM_CONTINUE;
+}
+
 /*************************/
 /* request state machine */
 /*************************/
@@ -1207,7 +1444,7 @@ static http3_sm_handler tx_state_funcs[HTTP_REQ_N_STATES] = {
   http3_req_state_wait_app_reply,
   http3_req_state_app_io_more_data,
   http3_req_state_tunnel_tx,
-  0, /* TODO: udp unnel tx */
+  http3_req_state_udp_tunnel_tx,
 };
 
 static http3_sm_handler rx_state_funcs[HTTP_REQ_N_STATES] = {
@@ -1219,7 +1456,7 @@ static http3_sm_handler rx_state_funcs[HTTP_REQ_N_STATES] = {
   0, /* wait app reply */
   0, /* app io more data */
   http3_req_state_tunnel_rx,
-  0, /* TODO: udp tunnel rx */
+  http3_req_state_udp_tunnel_rx,
 };
 
 static_always_inline int
@@ -1550,7 +1787,8 @@ http3_stream_transport_rx_req (http3_stream_ctx_t *sctx, http_conn_t *stream,
 	case HTTP3_FRAME_TYPE_DATA:
 	  HTTP_DBG (1, "data received");
 	  if (!(sctx->base.state == HTTP_REQ_STATE_TRANSPORT_IO_MORE_DATA ||
-		sctx->base.state == HTTP_REQ_STATE_TUNNEL))
+		sctx->base.state == HTTP_REQ_STATE_TUNNEL ||
+		sctx->base.state == HTTP_REQ_STATE_UDP_TUNNEL))
 	    {
 	      HTTP_DBG (1, "unexpected frame, state: %U", format_http_req_state, sctx->base.state);
 	      err = HTTP3_ERROR_FRAME_UNEXPECTED;
@@ -1566,6 +1804,7 @@ http3_stream_transport_rx_req (http3_stream_ctx_t *sctx, http_conn_t *stream,
 
       res = rx_state_funcs[sctx->base.state](stream, sctx, 0, &err, &n_deq);
       left_deq -= n_deq;
+      ASSERT (left_deq == http_io_ts_max_read (stream));
     }
   while (res == HTTP_SM_CONTINUE && left_deq);
 
@@ -2337,6 +2576,7 @@ http3_init (vlib_main_t *vm)
 
   h3m->settings = http3_default_conn_settings;
   h3m->settings.max_field_section_size = 1 << 14; /* by default unlimited */
+  h3m->settings.enable_connect_protocol = 1;	  /* enable extended connect */
   http_register_engine (&http3_engine, HTTP_VERSION_3);
 
   return 0;

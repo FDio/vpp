@@ -851,7 +851,7 @@ http2_sched_dispatch_udp_tunnel (http2_req_t *req, http_conn_t *hc,
   *n_emissions += HTTP2_SCHED_WEIGHT_DATA_INLINE;
 
   max_read = http_io_as_max_read (&req->base);
-  if (max_read == 0)
+  if (max_read < sizeof (hdr))
     {
       HTTP_DBG (2, "max_read == 0");
       transport_connection_reschedule (&req->base.connection);
@@ -862,7 +862,12 @@ http2_sched_dispatch_udp_tunnel (http2_req_t *req, http_conn_t *hc,
   HTTP_DBG (1, "datagram len %lu", hdr.data_length);
   ASSERT (hdr.data_length <= HTTP_UDP_PAYLOAD_MAX_LEN);
   dgram_size = hdr.data_length + SESSION_CONN_HDR_LEN;
-  ASSERT (max_read >= dgram_size);
+  if (PREDICT_FALSE (max_read < dgram_size))
+    {
+      HTTP_DBG (2, "datagram incomplete");
+      transport_connection_reschedule (&req->base.connection);
+      return;
+    }
 
   h2c = http2_conn_ctx_get_w_thread (hc);
 
