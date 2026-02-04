@@ -177,6 +177,24 @@
       "parentUuid": "2fe40b77_de5fabf2",
       "revId": "0105d6492c9c0f88d734f66a3453a5cc7139e603",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "abb0faf0_3531e7fc",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 520,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-02-04T03:42:35Z",
+      "side": 1,
+      "message": "Let\u0027s remove 519 and maybe change the if to be the old 519 reversed (`if (to_deq \u003c hdr.data_length + SESSION_CONN_HDR_LEN)`). We want to stop (goto done) if the dgram is incomplete in tx fifo. That shouldn\u0027t happen often, but app might not write it in atomically. So the logic should be:\n- if incomplete dgram goto done (need to wait for more data)\n- if dgram \u003e max bufsize drop it because we don\u0027t do fragmentation. We should update to_deq with the bytes that were drained and continue (try to send the next dgram, if any)\n- handle dgram",
+      "parentUuid": "92f57072_13ed23a2",
+      "revId": "0105d6492c9c0f88d734f66a3453a5cc7139e603",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
