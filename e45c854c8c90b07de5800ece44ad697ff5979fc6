@@ -33,6 +33,23 @@
       "message": "recheck",
       "revId": "e45c854c8c90b07de5800ece44ad697ff5979fc6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9d8780ed_423b5728",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-02-04T18:04:23Z",
+      "side": 1,
+      "message": "Re-run failed workflows via Github UI",
+      "revId": "e45c854c8c90b07de5800ece44ad697ff5979fc6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
