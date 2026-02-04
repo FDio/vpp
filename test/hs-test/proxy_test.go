@@ -42,7 +42,8 @@ func init() {
 		VppConnectProxyClientStressMWTest, VppConnectProxyClientUdpIdleMWTest, VppConnectProxyClientServerClosedTcpMWTest,
 		VppConnectProxyHttp3DownloadTcpMWTest, VppConnectProxyHttp3UploadTcpMWTest,
 		VppConnectProxyHttp3IperfTcpMWTest, VppConnectProxyHttp3TargetUnreachableMWTest,
-		VppConnectProxyHttp3ServerClosedTcpMWTest, VppConnectProxyHttp3StressMWTest)
+		VppConnectProxyHttp3ServerClosedTcpMWTest, VppConnectProxyHttp3StressMWTest, VppConnectProxyHttp3DownloadUdpMWTest,
+		VppConnectProxyHttp3UploadUdpMWTest, VppConnectProxyHttp3IperfUdpMWTest)
 }
 
 func VppProxyHttpGetTcpMWTest(s *VppProxySuite) {
@@ -885,10 +886,10 @@ func VppConnectProxyIperfTcpTest(s *MasqueSuite) {
 	vppConnectProxyIperfTcp(s)
 }
 
-func VppConnectProxyIperfUdpTest(s *MasqueSuite) {
+func vppConnectProxyIperfUdp(s *MasqueSuite, extraArgs ...string) {
 	s.Containers.IperfServer.Run()
 	// test listen all, we are running solo anyway
-	s.ProxyClientConnect("udp", "0")
+	s.ProxyClientConnect("udp", "0", extraArgs...)
 	clientVpp := s.Containers.VppClient.VppInstance
 	cmd := "http connect proxy client listener add listener tcp://0.0.0.0:0"
 	Log(clientVpp.Vppctl(cmd))
@@ -910,6 +911,10 @@ func VppConnectProxyIperfUdpTest(s *MasqueSuite) {
 	fileLog, _ := s.Containers.IperfServer.Exec(false, "cat "+IperfLogFileName(s.Containers.IperfServer))
 	Log("*** Server logs: \n%s\n***", fileLog)
 	AssertNil(err)
+}
+
+func VppConnectProxyIperfUdpTest(s *MasqueSuite) {
+	vppConnectProxyIperfUdp(s)
 }
 
 func VppConnectProxyIperfTcpMWTest(s *MasqueSuite) {
@@ -1177,4 +1182,49 @@ func VppConnectProxyHttp3StressMWTest(s *MasqueSuite) {
 
 	Log(s.Containers.VppClient.VppInstance.Vppctl("show http connect proxy client stats"))
 	vppConnectProxyClientHttp3CheckCleanup(s)
+}
+
+func VppConnectProxyHttp3DownloadUdpMWTest(s *MasqueSuite) {
+	s.CpusPerVppContainer = 3
+	s.SetupTest("http3")
+	s.StartNginxServer()
+	clientVpp := s.Containers.VppClient.VppInstance
+	s.ProxyClientConnect("udp", s.Ports.NginxSsl, "http3")
+	Log(clientVpp.Vppctl("show http connect proxy client listeners"))
+
+	uri := fmt.Sprintf("https://%s:%s/httpTestFile", s.NginxAddr(), s.Ports.NginxSsl)
+	finished := make(chan error, 1)
+	go func() {
+		defer GinkgoRecover()
+		StartCurl(finished, uri, s.NetNamespaces.Client, "200", 30, []string{"--http3-only"})
+	}()
+	Log(clientVpp.Vppctl("show http connect proxy client sessions"))
+	AssertNil(<-finished)
+}
+
+func VppConnectProxyHttp3UploadUdpMWTest(s *MasqueSuite) {
+	s.CpusPerVppContainer = 3
+	s.SetupTest("http3")
+	s.StartNginxServer()
+	s.ProxyClientConnect("udp", s.Ports.NginxSsl, "http3")
+
+	fileName := "/tmp/test_file"
+	defer os.Remove(fileName)
+	fallocate := exec.Command("fallocate", "-l", "10MB", fileName)
+	_, err := fallocate.CombinedOutput()
+	AssertNil(err)
+
+	uri := fmt.Sprintf("https://%s:%s/upload/testFile", s.NginxAddr(), s.Ports.NginxSsl)
+	finished := make(chan error, 1)
+	go func() {
+		defer GinkgoRecover()
+		StartCurl(finished, uri, s.NetNamespaces.Client, "201", 30, []string{"--http3-only", "-T", fileName})
+	}()
+	AssertNil(<-finished)
+}
+
+func VppConnectProxyHttp3IperfUdpMWTest(s *MasqueSuite) {
+	s.CpusPerVppContainer = 3
+	s.SetupTest("http3")
+	vppConnectProxyIperfUdp(s, "http3")
 }

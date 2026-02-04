@@ -1716,7 +1716,11 @@ http1_req_state_udp_tunnel_tx (http_conn_t *hc, http_req_t *req,
       http_io_as_peek (req, (u8 *) &hdr, sizeof (hdr), 0);
       ASSERT (hdr.data_length <= HTTP_UDP_PAYLOAD_MAX_LEN);
       dgram_size = hdr.data_length + SESSION_CONN_HDR_LEN;
-      ASSERT (to_deq >= dgram_size);
+      if (PREDICT_FALSE (to_deq < dgram_size))
+	{
+	  HTTP_DBG (2, "datagram incomplete");
+	  goto done;
+	}
 
       if (http_io_ts_max_write (hc, sp) <
 	  (hdr.data_length + HTTP_UDP_PROXY_DATAGRAM_CAPSULE_OVERHEAD))
