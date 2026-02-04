@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "05ada186b12c842737e215177be06741c42312f1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a3577e47_46a867a8",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 10
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-02-04T18:03:04Z",
+      "side": 1,
+      "message": "Re-run failed tests using Github UI",
+      "revId": "05ada186b12c842737e215177be06741c42312f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
