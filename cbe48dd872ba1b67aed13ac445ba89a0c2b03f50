@@ -16,6 +16,24 @@
       "message": "things like \"ptd-\u003ecrypto_key_data\" should dissapear from crypto engines.\n\n1. on init crypto engine tells crypto infra for each op type how much memory it needs for key_data, also it needs to say how much it needs for per-thread key_data and expected alignment for both\n\n2. on key add crypto_key_t should be allocated so it have space for both key and key_data\n\n3 on encrypt/decrypt crypto infra passes pointer to key_data so crypto_engine doesn\u0027t need to have any internal data allocated\n\nAt the end we need to remove any vlib/vppinfra includes (so no vectors, pools, ...) from crypto_engines so we can have stable ABI for FIPS compliance",
       "revId": "cbe48dd872ba1b67aed13ac445ba89a0c2b03f50",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3ce11951_f3d22f6c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 37
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3139
+      },
+      "writtenOn": "2026-02-04T15:44:50Z",
+      "side": 1,
+      "message": "Actual updates have been moved here: https://gerrit.fd.io/r/c/vpp/+/44827",
+      "parentUuid": "d0cc5c35_68a4c2b7",
+      "revId": "cbe48dd872ba1b67aed13ac445ba89a0c2b03f50",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
