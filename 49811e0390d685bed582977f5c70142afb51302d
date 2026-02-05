@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d28da54a_a7fb148d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-02-05T05:24:01Z",
+      "side": 1,
+      "message": "Overall looks great, I am fine with changing the behavior for L3 input as it better aligns with output.\nI have a few improvements proposals.\nAlso I\u0027d like Neale to weight in as he\u0027s the maintainer for this part.",
+      "revId": "49811e0390d685bed582977f5c70142afb51302d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1aaf21d8_5a1d342e",
+        "filename": "src/vnet/policer/node_funcs.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 60,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-02-05T05:24:01Z",
+      "side": 1,
+      "message": "The L2 overhead could be precomputed at feature enable time and stored in a separate array, to avoid per-packet interface type lookup.                                             \n\n    // policer.h - add to vnet_policer_main_t:\n    u8 *l2_overhead_by_sw_if_index[VLIB_N_RX_TX];\n    \n    // policer_input() - populate at enable:\n    vec_validate(pm-\u003el2_overhead_by_sw_if_index[dir], sw_if_index);\n    pm-\u003el2_overhead_by_sw_if_index[dir][sw_if_index] \u003d\n        vnet_policer_get_l2_overhead(sw_if_index, dir);\n    \n    // L2 inline - fetch alongside policer index:\n    pi0 \u003d pm-\u003epolicer_index_by_sw_if_index[dir][sw_if_index];\n    l2_overhead \u003d is_l2 ? pm-\u003el2_overhead_by_sw_if_index[dir][sw_if_index] : 0;\n\nL3 path stays unchanged (overhead\u003d0 as compile-time constant).",
+      "revId": "49811e0390d685bed582977f5c70142afb51302d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2fe842de_c73f2301",
+        "filename": "src/vnet/policer/policer.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 20,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-02-05T05:24:01Z",
+      "side": 1,
+      "message": "We should probably regroup hot fields together at the start of the struct, especially as adding l2 makes it grow quite a bit, something like this:\n\n    typedef struct {\n      CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);\n      /* HOT - datapath */\n      policer_t *policers;\n      u32 *policer_index_by_sw_if_index[VLIB_N_RX_TX];\n      u32 l2_input_feat_next[L2INPUT_N_FEAT];\n      u32 l2_output_feat_next[L2OUTPUT_N_FEAT];\n      \n      /* COLD - control plane */\n      ...\n    }",
+      "revId": "49811e0390d685bed582977f5c70142afb51302d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b273c186_b973dd5b",
+        "filename": "src/vnet/policer/policer.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-02-05T05:24:01Z",
+      "side": 1,
+      "message": "We should probably use L2INPUT_N_FEAT and L2OUTPUT_N_FEAT instead of hardcoded 32 here?",
+      "revId": "49811e0390d685bed582977f5c70142afb51302d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
