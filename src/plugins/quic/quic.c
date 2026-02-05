@@ -676,6 +676,10 @@ quic_session_attribute (u32 ctx_index, clib_thread_index_t thread_index,
     case TRANSPORT_ENDPT_ATTR_APP_PROTO_ERR_CODE:
       attr->app_proto_err_code = (u64) ctx->app_err_code;
       break;
+    case TRANSPORT_ENDPT_ATTR_TLS_PEER_CERT:
+      if (quic_eng_ctx_attribute (ctx, 1 /* is_get */, attr) < 0)
+	return -1;
+      break;
     default:
       return -1;
     }

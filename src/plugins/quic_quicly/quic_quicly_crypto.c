@@ -209,6 +209,55 @@ quic_quicly_cleanup_certkey_int_ctx (app_certkey_int_ctx_t *cki)
   clib_mem_free (cki->cert);
 }
 
+/* Custom verify certificate callback that stores the peer certificate */
+typedef struct st_quic_quicly_verify_certificate_t
+{
+  ptls_openssl_verify_certificate_t super;
+  quic_ctx_t *qctx;
+  int (*orig_cb) (ptls_verify_certificate_t *, ptls_t *, const char *,
+		  int (**) (void *, uint16_t, ptls_iovec_t, ptls_iovec_t), void **, ptls_iovec_t *,
+		  size_t);
+} quic_quicly_verify_certificate_t;
+
+static int
+quic_quicly_verify_cert_cb (ptls_verify_certificate_t *_self, ptls_t *tls, const char *server_name,
+			    int (**verifier) (void *, uint16_t, ptls_iovec_t, ptls_iovec_t),
+			    void **verify_data, ptls_iovec_t *certs, size_t num_certs)
+{
+  quic_quicly_verify_certificate_t *self = (quic_quicly_verify_certificate_t *) _self;
+  int ret;
+
+  /* Get the specific quicly connection from the TLS data pointer */
+  void **data_ptr = ptls_get_data_ptr (tls);
+  quicly_conn_t *conn = data_ptr ? (quicly_conn_t *) *data_ptr : NULL;
+  quic_ctx_t *qctx = conn ? quic_quicly_get_conn_ctx (conn) : NULL;
+
+  /* Call the original OpenSSL-based verification */
+  ret = self->orig_cb (_self, tls, server_name, verifier, verify_data, certs, num_certs);
+
+  /* If verification succeeded and we have certificates, store the peer cert */
+  if (ret == 0 && num_certs > 0 && qctx)
+    {
+      /* Free any existing peer certificate */
+      if (qctx->peer_cert)
+	{
+	  X509_free ((X509 *) qctx->peer_cert);
+	  qctx->peer_cert = NULL;
+	}
+
+      /* Convert the first certificate (peer's certificate) to X509 */
+      const uint8_t *p = certs[0].base;
+      X509 *cert = d2i_X509 (NULL, &p, (long) certs[0].len);
+      if (cert)
+	{
+	  qctx->peer_cert = cert;
+	  QUIC_DBG (2, "Stored peer certificate for ctx %p (conn %p)", qctx, conn);
+	}
+    }
+
+  return ret;
+}
+
 static app_certkey_int_ctx_t *
 quic_quicly_certkey_init_ctx (app_cert_key_pair_t *ckpair,
 			      clib_thread_index_t thread_index)
@@ -300,7 +349,22 @@ quic_quicly_crypto_context_init_data (quic_quicly_crypto_ctx_t *crctx, quic_ctx_
   ptls_ctx->on_client_hello = &crctx->client_hello_ctx.super;
   ptls_ctx->emit_certificate = NULL;
   ptls_ctx->sign_certificate = NULL;
-  ptls_ctx->verify_certificate = NULL;
+
+  /* Set up custom verify certificate callback to capture peer certificates
+   * Enable for both client and server (mutual TLS support) */
+  /* Allocate verify certificate context (freed when crypto context is freed) */
+  quic_quicly_verify_certificate_t *verify_cert =
+    clib_mem_alloc (sizeof (quic_quicly_verify_certificate_t));
+  ptls_openssl_init_verify_certificate (&verify_cert->super, NULL);
+  /* Save the original callback and replace with our wrapper */
+  verify_cert->orig_cb = verify_cert->super.super.cb;
+  verify_cert->super.super.cb = quic_quicly_verify_cert_cb;
+  verify_cert->qctx = ctx;
+  ptls_ctx->verify_certificate = &verify_cert->super.super;
+
+  /* Enable mutual TLS: server will request client certificates */
+  ptls_ctx->require_client_authentication = 1;
+
   ptls_ctx->ticket_lifetime = 86400;
   ptls_ctx->max_early_data_size = 8192;
   ptls_ctx->hkdf_label_prefix__obsolete = NULL;
@@ -956,3 +1020,13 @@ ptls_cipher_suite_t *quic_quicly_crypto_cipher_suites[] = {
 quicly_crypto_engine_t quic_quicly_crypto_engine = {
   quic_quicly_crypto_setup_cipher, quic_quicly_crypto_encrypt_packet
 };
+
+X509 *
+quic_quicly_get_peer_cert (quic_ctx_t *ctx)
+{
+  if (!ctx || !ctx->peer_cert)
+    return NULL;
+
+  /* Return the stored certificate - caller should NOT free it */
+  return (X509 *) ctx->peer_cert;
+}

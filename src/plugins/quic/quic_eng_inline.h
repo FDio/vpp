@@ -175,4 +175,13 @@ quic_eng_proto_on_reset (u32 ctx_index, u32 thread_index)
   quic_engine_vfts[qm->engine_type].proto_on_reset (ctx_index, thread_index);
 }
 
+static_always_inline int
+quic_eng_ctx_attribute (quic_ctx_t *ctx, u8 is_get, transport_endpt_attr_t *attr)
+{
+  quic_main_t *qm = &quic_main;
+  if (!quic_engine_vfts[qm->engine_type].ctx_attribute)
+    return -1;
+  return quic_engine_vfts[qm->engine_type].ctx_attribute (ctx, is_get, attr);
+}
+
 #endif /* __included_quic_eng_inline_h__ */

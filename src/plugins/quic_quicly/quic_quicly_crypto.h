@@ -115,4 +115,6 @@ extern int quic_quicly_encrypt_ticket_cb (ptls_encrypt_ticket_t *_self,
 extern void
 quic_quicly_crypto_decrypt_packet (quic_ctx_t *qctx,
 				   quic_quicly_rx_packet_ctx_t *pctx);
+extern X509 *quic_quicly_get_peer_cert (quic_ctx_t *ctx);
+
 #endif /* __included_quic_quicly_crypto_h__ */
