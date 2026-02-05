@@ -20,7 +20,8 @@ func init() {
 		Http3MissingPseudoHeaderTest, Http3PseudoHeaderAfterRegularTest, Http3ReservedFrameTest,
 		Http3DataFrameOnCtrlStreamTest, Http3GoawayOnReqStreamTest, Http3SecondSettingsFrameTest,
 		Http3ReservedSettingsTest, Http3MissingSettingsTest, Http3SecondCtrlStreamTest, Http3CtrlStreamClosedTest,
-		Http3QpackDecompressionFailedTest, Http3ClientOpenPushStreamTest, Http3DataBeforeHeadersTest)
+		Http3QpackDecompressionFailedTest, Http3ClientOpenPushStreamTest, Http3DataBeforeHeadersTest,
+		Http3StaticGetTest)
 	RegisterVethTests(Http3CliTest, Http3ClientPostTest, Http3ClientPostPtrTest)
 }
 
@@ -49,6 +50,18 @@ func http3TestSessionCleanupServer(s *Http3Suite) {
 	AssertEqual(true, udpCleanupDone, "UDP session not cleaned up")
 	AssertEqual(true, quicCleanupDone, "QUIC not cleaned up")
 	AssertEqual(true, httpCleanupDone, "HTTP/3 not cleaned up")
+}
+
+func Http3StaticGetTest(s *Http3Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	serverAddress := s.VppAddr() + ":" + s.Ports.Port1
+	Log(vpp.Vppctl("http static server http3 uri https://" + serverAddress + " url-handlers"))
+	Log(vpp.Vppctl("test-url-handler enable"))
+	args := fmt.Sprintf("-k --max-time 10 --noproxy '*' --http3-only https://%s/version.json", serverAddress)
+	writeOut, log := RunCurlContainer(s.Containers.Curl, args)
+	Log(vpp.Vppctl("show session verbose 2"))
+	AssertContains(log, "HTTP/3 200")
+	AssertContains(writeOut, "build_date")
 }
 
 func Http3GetTest(s *Http3Suite) {
