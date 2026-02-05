@@ -120,9 +120,10 @@ typedef hss_url_handler_rc_t (*hss_url_handler_fn) (hss_url_handler_args_t *);
 typedef void (*hss_register_url_fn) (hss_url_handler_fn, char *, int);
 typedef void (*hss_session_send_fn) (hss_url_handler_args_t *args);
 
-#define foreach_hss_listener_flags                                            \
-  _ (HTTP1_ONLY)                                                              \
-  _ (NEED_CRYPTO)
+#define foreach_hss_listener_flags                                                                 \
+  _ (HTTP1_ONLY)                                                                                   \
+  _ (NEED_CRYPTO)                                                                                  \
+  _ (HTTP3)
 
 typedef enum hss_listener_flags_bit_
 {
