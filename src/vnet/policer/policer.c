@@ -222,7 +222,9 @@ policer_input (u32 policer_index, u32 sw_if_index, vlib_dir_t dir, bool apply)
 
   if (apply)
     {
-      vec_validate (pm->policer_index_by_sw_if_index[dir], sw_if_index);
+      vec_validate_init_empty (pm->policer_index_by_sw_if_index[dir], sw_if_index, ~0);
+      if (~0 != pm->policer_index_by_sw_if_index[dir][sw_if_index])
+	return VNET_API_ERROR_VALUE_EXIST;
       pm->policer_index_by_sw_if_index[dir][sw_if_index] = policer_index;
     }
   else
