@@ -138,6 +138,7 @@ bool noise_local_set_private (noise_local_t *,
 			      const uint8_t[NOISE_PUBLIC_KEY_LEN]);
 
 void noise_remote_init (vlib_main_t *, noise_remote_t *, uint32_t,
+			const uint8_t[NOISE_SYMMETRIC_KEY_LEN], bool preshared_key_set,
 			const uint8_t[NOISE_PUBLIC_KEY_LEN], uint32_t);
 
 /* Should be called anytime noise_local_set_private is called */

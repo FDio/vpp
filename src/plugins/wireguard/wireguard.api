@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-option version = "1.3.0";
+option version = "1.4.0";
 
 import "vnet/interface_types.api";
 import "vnet/ip/ip_types.api";
@@ -112,6 +112,22 @@ typedef wireguard_peer
   vl_api_prefix_t allowed_ips[n_allowed_ips];
 };
 
+typedef wireguard_peer_v2
+{
+  u32 peer_index;
+  u8 preshared_key[32];
+  bool preshared_key_set;
+  u8 public_key[32];
+  u16 port;
+  u16 persistent_keepalive;
+  u32 table_id;
+  vl_api_address_t endpoint;
+  vl_api_interface_index_t sw_if_index;
+  vl_api_wireguard_peer_flags_t flags;
+  u8 n_allowed_ips;
+  vl_api_prefix_t allowed_ips[n_allowed_ips];
+};
+
 service {
   rpc want_wireguard_peer_events returns want_wireguard_peer_events_reply
     events wireguard_peer_event;
@@ -154,9 +170,18 @@ define wireguard_peer_event
 */
 define wireguard_peer_add
 {
+  option deprecated;
   u32 client_index;
   u32 context;
   vl_api_wireguard_peer_t peer;
+};
+
+define wireguard_peer_add_v2
+{
+  option in_progress;
+  u32 client_index;
+  u32 context;
+  vl_api_wireguard_peer_v2_t peer;
 };
 
 /** \brief Create new peer
@@ -166,6 +191,15 @@ define wireguard_peer_add
 */
 define wireguard_peer_add_reply
 {
+  option deprecated;
+  u32 context;
+  i32 retval;
+  u32 peer_index;
+};
+
+define wireguard_peer_add_v2_reply
+{
+  option in_progress;
   u32 context;
   i32 retval;
   u32 peer_index;
@@ -189,6 +223,14 @@ autoreply define wireguard_peer_remove
     @param peer_index - peer index to be dumped.  If 0xFFFFFFFF dumps all peers
 */
 define wireguard_peers_dump {
+  option deprecated;
+  u32 client_index;
+  u32 context;
+  u32 peer_index [default=0xFFFFFFFF];
+};
+
+define wireguard_peers_v2_dump {
+  option in_progress;
   u32 client_index;
   u32 context;
   u32 peer_index [default=0xFFFFFFFF];
@@ -199,8 +241,15 @@ define wireguard_peers_dump {
     @param peer - peer details
 */
 define wireguard_peers_details {
+  option deprecated;
   u32 context;
   vl_api_wireguard_peer_t peer;
+};
+
+define wireguard_peers_v2_details {
+  option in_progress;
+  u32 context;
+  vl_api_wireguard_peer_v2_t peer;
 };
 
 /** \brief Wireguard Set Async mode
