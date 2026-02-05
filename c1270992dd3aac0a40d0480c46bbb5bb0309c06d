@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a6c99926_09cbae7f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2026-02-05T15:50:05Z",
+      "side": 1,
+      "message": "Simple / low-risk changes in the plugin loader.",
+      "revId": "c1270992dd3aac0a40d0480c46bbb5bb0309c06d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
