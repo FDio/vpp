@@ -22,7 +22,7 @@ vl_api_sfdp_interface_input_set_t_handler (
 {
   sfdp_interface_input_main_t *vim = &sfdp_interface_input_main;
   u32 sw_if_index = clib_net_to_host_u32 (mp->sw_if_index);
-  u32 tenant_id = clib_net_to_host_u32 (mp->tenant_id);
+  sfdp_tenant_id_t tenant_id = clib_net_to_host_u32 (mp->tenant_id);
   u8 unset = mp->is_disable;
   u8 is_ip6 = mp->is_ip6;
   clib_error_t *err = sfdp_interface_input_set_tenant (vim, sw_if_index, tenant_id, is_ip6, unset);

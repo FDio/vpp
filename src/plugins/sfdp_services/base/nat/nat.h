@@ -9,7 +9,7 @@
 #include <vnet/sfdp/sfdp.h>
 #include <vnet/ip/ip46_address.h>
 
-#define NAT_INVALID_TENANT_IDX	(u16) (~0)
+#define NAT_INVALID_TENANT_IDX	(sfdp_tenant_index_t) (~0)
 #define NAT_ALLOC_POOL_ARRAY_SZ 13
 
 #define foreach_nat_tenant_flag _ (SNAT, 0x1, "snat")
@@ -75,7 +75,7 @@ STATIC_ASSERT_SIZEOF (nat_alloc_pool_t, CLIB_CACHE_LINE_BYTES);
 
 typedef struct
 {
-  u16 *tenant_idx_by_sw_if_idx; /* vec */
+  u32 *tenant_idx_by_sw_if_idx; /* vec */
   nat_tenant_t *tenants;	/* vec */
   nat_alloc_pool_t *alloc_pool; /* pool of allocation pools */
   nat_rewrite_data_t *flows;	/* by flow_index */
@@ -85,15 +85,14 @@ typedef struct
 
 extern nat_main_t nat_main;
 
-clib_error_t *nat_external_interface_set_tenant (nat_main_t *nat,
-						 u32 sw_if_index,
-						 u32 tenant_id, u8 unset);
+clib_error_t *nat_external_interface_set_tenant (nat_main_t *nat, u32 sw_if_index,
+						 sfdp_tenant_id_t tenant_id, u8 unset);
 
 clib_error_t *nat_alloc_pool_add_del (nat_main_t *nat, u32 alloc_pool_id,
 				      u8 is_del, ip4_address_t *addr);
 
-clib_error_t *nat_tenant_set_snat (nat_main_t *nat, u32 tenant_id,
-				   u32 outside_tenant_id, u32 table_id,
-				   u32 alloc_pool_id, u8 unset);
+clib_error_t *nat_tenant_set_snat (nat_main_t *nat, sfdp_tenant_id_t tenant_id,
+				   u32 outside_tenant_id, u32 table_id, u32 alloc_pool_id,
+				   u8 unset);
 format_function_t format_sfdp_nat_rewrite;
 #endif

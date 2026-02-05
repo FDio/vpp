@@ -36,7 +36,7 @@ sfdp_table_format_insert_tcp_check_session (
   table_format_cell (t, n, 0, "0x%U", format_hex_bytes, &session_net,
 		     sizeof (session_net));
   /* Tenant id */
-  table_format_cell (t, n, 1, "%d", tenant->tenant_id);
+  table_format_cell (t, n, 1, "%u", tenant->tenant_id);
   /* Session index */
   table_format_cell (t, n, 2, "%d", session_index);
   /* Session type */

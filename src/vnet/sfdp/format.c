@@ -101,9 +101,8 @@ sfdp_table_format_add_header_col (table_t *session_table)
 }
 
 u32
-sfdp_table_format_insert_session (table_t *t, u32 n, u32 session_index,
-				  sfdp_session_t *session, u32 tenant_id,
-				  f64 now)
+sfdp_table_format_insert_session (table_t *t, u32 n, u32 session_index, sfdp_session_t *session,
+				  sfdp_tenant_id_t tenant_id, f64 now)
 {
   u64 session_net = clib_host_to_net_u64 (session->session_id);
   sfdp_session_ip46_key_t skey = {};
@@ -115,7 +114,7 @@ sfdp_table_format_insert_session (table_t *t, u32 n, u32 session_index,
   table_format_cell (t, n, 0, "0x%U", format_hex_bytes, &session_net,
 		     sizeof (session_net));
   /* Tenant id */
-  table_format_cell (t, n, 1, "%d", tenant_id);
+  table_format_cell (t, n, 1, "%u", tenant_id);
   /* Owning thread */
   table_format_cell (t, n, 2, "%d", session->owning_thread_index);
   /* Session index */
@@ -300,10 +299,10 @@ format_sfdp_tenant (u8 *s, va_list *args)
 
   u32 indent = format_get_indent (s);
   __clib_unused sfdp_main_t *sfdp = va_arg (*args, sfdp_main_t *);
-  u32 tenant_idx = va_arg (*args, u32);
+  sfdp_tenant_index_t tenant_idx = va_arg (*args, u32);
   sfdp_tenant_t *tenant = va_arg (*args, sfdp_tenant_t *);
   u32 scope_index;
-  s = format (s, "index: %d\n", tenant_idx);
+  s = format (s, "index: %u\n", tenant_idx);
   s = format (s, "%Ucontext: %d\n", format_white_space, indent,
 	      tenant->context_id);
   foreach_sfdp_scope_index (scope_index)
@@ -330,7 +329,7 @@ format_sfdp_tenant_extra (u8 *s, va_list *args)
   u32 indent = format_get_indent (s);
   sfdp_main_t *sfdp = va_arg (*args, sfdp_main_t *);
   vlib_main_t *vm = vlib_get_main ();
-  u32 tenant_idx = va_arg (*args, u32);
+  sfdp_tenant_index_t tenant_idx = va_arg (*args, u32);
   __clib_unused sfdp_tenant_t *tenant = va_arg (*args, sfdp_tenant_t *);
   sfdp_timeout_t *timeout;
   counter_t ctr;

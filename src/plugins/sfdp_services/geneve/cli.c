@@ -36,10 +36,9 @@ gateway_set_output_command_fn (vlib_main_t *vm, unformat_input_t *input,
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "tenant %d", &args.tenant_id))
+      if (unformat (line_input, "tenant %u", &args.tenant_id))
 	;
-      else if (unformat (line_input, "output-tenant %d",
-			 &args.output_tenant_id))
+      else if (unformat (line_input, "output-tenant %u", &args.output_tenant_id))
 	;
       else if (unformat (line_input, "src %U", unformat_ip4_address,
 			 &args.src_addr))

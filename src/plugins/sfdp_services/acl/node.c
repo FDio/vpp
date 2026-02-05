@@ -54,7 +54,7 @@ sfdp_acl_sample_process_one (sfdp_acl_main_t *vam, sfdp_session_t *session,
 			     u8 dir, u16 *to_next, vlib_buffer_t **b,
 			     u8 *matched, u8 *action)
 {
-  u16 tenant_idx = session->tenant_idx;
+  sfdp_tenant_index_t tenant_idx = session->tenant_idx;
   u32 lc_index = vam->lc_by_tenant_idx[tenant_idx];
   fa_5tuple_opaque_t fa_5tuple;
   u32 match_acl_index = ~0;

@@ -31,17 +31,17 @@ sfdp_tenant_add_del_command_fn (vlib_main_t *vm, unformat_input_t *input,
   clib_error_t *err = 0;
   sfdp_main_t *sfdp = &sfdp_main;
   u8 is_del = 0;
-  u32 tenant_id = ~0;
+  sfdp_tenant_id_t tenant_id = ~0;
   u32 context_id = ~0;
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "add %d", &tenant_id))
+      if (unformat (line_input, "add %u", &tenant_id))
 	is_del = 0;
-      else if (unformat (line_input, "del %d", &tenant_id))
+      else if (unformat (line_input, "del %u", &tenant_id))
 	is_del = 1;
-      else if (unformat (line_input, "context %d", &context_id))
+      else if (unformat (line_input, "context %u", &context_id))
 	;
       else
 	{
@@ -69,7 +69,7 @@ sfdp_set_services_command_fn (vlib_main_t *vm, unformat_input_t *input,
   unformat_input_t line_input_, *line_input = &line_input_;
   clib_error_t *err = 0;
   sfdp_main_t *sfdp = &sfdp_main;
-  u32 tenant_id = ~0;
+  sfdp_tenant_id_t tenant_id = ~0;
   sfdp_bitmap_t bitmap = 0;
   u8 direction = ~0;
 
@@ -77,7 +77,7 @@ sfdp_set_services_command_fn (vlib_main_t *vm, unformat_input_t *input,
     return 0;
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "tenant %d", &tenant_id))
+      if (unformat (line_input, "tenant %u", &tenant_id))
 	;
       else if (unformat_user (line_input, unformat_sfdp_service_bitmap,
 			      &bitmap))
@@ -157,7 +157,7 @@ sfdp_set_timeout_command_fn (vlib_main_t *vm, unformat_input_t *input,
   unformat_input_t line_input_, *line_input = &line_input_;
   clib_error_t *err = 0;
   sfdp_main_t *sfdp = &sfdp_main;
-  u32 tenant_id = ~0;
+  sfdp_tenant_id_t tenant_id = ~0;
   u32 timeout_idx = ~0;
   u32 timeout_val = ~0;
 
@@ -165,7 +165,7 @@ sfdp_set_timeout_command_fn (vlib_main_t *vm, unformat_input_t *input,
     return 0;
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "tenant %d", &tenant_id))
+      if (unformat (line_input, "tenant %u", &tenant_id))
 	;
       else if (unformat (line_input, "%U %d", unformat_sfdp_timeout_name,
 			 &timeout_idx, &timeout_val))
@@ -200,7 +200,7 @@ sfdp_set_sp_node_command_fn (vlib_main_t *vm, unformat_input_t *input,
   unformat_input_t line_input_, *line_input = &line_input_;
   clib_error_t *err = 0;
   sfdp_main_t *sfdp = &sfdp_main;
-  u32 tenant_id = ~0;
+  sfdp_tenant_id_t tenant_id = ~0;
   u32 sp_idx = ~0;
   u32 node_index = ~0;
 
@@ -208,7 +208,7 @@ sfdp_set_sp_node_command_fn (vlib_main_t *vm, unformat_input_t *input,
     return 0;
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "tenant %d", &tenant_id))
+      if (unformat (line_input, "tenant %u", &tenant_id))
 	;
       else if (unformat (line_input, "node %U", unformat_vlib_node, vm,
 			 &node_index))
@@ -250,7 +250,7 @@ sfdp_set_icmp_error_node_command_fn (vlib_main_t *vm, unformat_input_t *input,
   unformat_input_t line_input_, *line_input = &line_input_;
   clib_error_t *err = 0;
   sfdp_main_t *sfdp = &sfdp_main;
-  u32 tenant_id = ~0;
+  sfdp_tenant_id_t tenant_id = ~0;
   u32 node_index = ~0;
   u8 ip46 = 0;
 
@@ -258,7 +258,7 @@ sfdp_set_icmp_error_node_command_fn (vlib_main_t *vm, unformat_input_t *input,
     return 0;
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "tenant %d", &tenant_id))
+      if (unformat (line_input, "tenant %u", &tenant_id))
 	;
       else if (unformat (line_input, "node %U", unformat_vlib_node, vm,
 			 &node_index))
@@ -306,7 +306,7 @@ sfdp_show_sessions_command_fn (vlib_main_t *vm, unformat_input_t *input,
   sfdp_session_t *session;
   u32 session_index;
   sfdp_tenant_t *tenant;
-  u32 tenant_id = ~0;
+  sfdp_tenant_id_t tenant_id = ~0;
   u32 max_output_value = 20;
   bool is_show_all = false;
   f64 now = vlib_time_now (vm);
@@ -454,16 +454,16 @@ sfdp_show_tenant_detail_command_fn (vlib_main_t *vm, unformat_input_t *input,
   clib_error_t *err = 0;
   sfdp_main_t *sfdp = &sfdp_main;
   sfdp_tenant_t *tenant;
-  u32 tenant_id = ~0;
-  u16 tenant_idx;
+  sfdp_tenant_id_t tenant_id = ~0;
+  sfdp_tenant_index_t tenant_idx;
   u8 detail = 0;
   if (unformat_user (input, unformat_line_input, line_input))
     {
       while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
 	{
-	  if (unformat (line_input, "%d detail", &tenant_id))
+	  if (unformat (line_input, "%u detail", &tenant_id))
 	    detail = 1;
-	  else if (unformat (line_input, "%d", &tenant_id))
+	  else if (unformat (line_input, "%u", &tenant_id))
 	    ;
 	  else
 	    {
@@ -483,7 +483,7 @@ sfdp_show_tenant_detail_command_fn (vlib_main_t *vm, unformat_input_t *input,
       if (tenant_id != ~0 && tenant->tenant_id != tenant_id)
 	continue;
 
-      vlib_cli_output (vm, "Tenant %d", tenant->tenant_id);
+      vlib_cli_output (vm, "Tenant %u", tenant->tenant_id);
       vlib_cli_output (vm, "  %U", format_sfdp_tenant, sfdp, tenant_idx,
 		       tenant);
       if (detail)

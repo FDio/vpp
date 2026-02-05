@@ -113,10 +113,10 @@ process_one_pkt (vlib_main_t *vm, sfdp_main_t *sfdp,
   u8 *data = vlib_buffer_get_current (b[0]);
   u32 orig_len = vlib_buffer_length_in_chain (vm, b[0]);
   ethernet_header_t *eth = (void *) data;
-  u32 tenant_id = 0;
+  sfdp_tenant_id_t tenant_id = 0;
   u32 off = sizeof (eth[0]);
   u16 type = clib_net_to_host_u16 (eth->type);
-  u16 tenant_idx;
+  sfdp_tenant_index_t tenant_idx;
   if (type == ETHERNET_TYPE_VLAN)
     {
       ethernet_vlan_header_t *vlan = (void *) (data + sizeof (eth[0]));
@@ -221,7 +221,7 @@ VLIB_NODE_FN (sfdp_dummy_dot1q_output_node)
   vlib_combined_counter_main_t *cm =
     &sfdp->tenant_data_ctr[SFDP_TENANT_DATA_COUNTER_OUTGOING];
   u32 thread_index = vlib_get_thread_index ();
-  u16 tenant_idx[SFDP_PREFETCH_SIZE];
+  sfdp_tenant_index_t tenant_idx[SFDP_PREFETCH_SIZE];
   u32 orig_len[SFDP_PREFETCH_SIZE];
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
   u16 next_indices[VLIB_FRAME_SIZE], *to_next = next_indices;
@@ -258,7 +258,7 @@ VLIB_NODE_FN (sfdp_dummy_dot1q_output_node)
     {
       word l2_len;
       u32 orig_len = vlib_buffer_length_in_chain (vm, b[0]);
-      u16 tenant_idx = sfdp_buffer (b[0])->tenant_index;
+      sfdp_tenant_index_t tenant_idx = sfdp_buffer (b[0])->tenant_index;
       vlib_increment_combined_counter (cm, thread_index, tenant_idx, 1,
 				       orig_len);
       l2_len = vnet_buffer (b[0])->l3_hdr_offset;

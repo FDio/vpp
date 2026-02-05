@@ -22,7 +22,7 @@ vl_api_sfdp_nat_set_external_interface_t_handler (
 {
   nat_main_t *nat = &nat_main;
   u32 sw_if_index = clib_net_to_host_u32 (mp->sw_if_index);
-  u32 tenant_id = clib_net_to_host_u32 (mp->tenant_id);
+  sfdp_tenant_id_t tenant_id = clib_net_to_host_u32 (mp->tenant_id);
   u8 unset = mp->is_disable;
   clib_error_t *err =
     nat_external_interface_set_tenant (nat, sw_if_index, tenant_id, unset);
@@ -57,7 +57,7 @@ static void
 vl_api_sfdp_nat_snat_set_unset_t_handler (vl_api_sfdp_nat_snat_set_unset_t *mp)
 {
   nat_main_t *nat = &nat_main;
-  u32 tenant_id = clib_net_to_host_u32 (mp->tenant_id);
+  sfdp_tenant_id_t tenant_id = clib_net_to_host_u32 (mp->tenant_id);
   u32 outside_tenant_id = clib_net_to_host_u32 (mp->outside_tenant_id);
   u32 table_id = clib_net_to_host_u32 (mp->table_id);
   u32 alloc_pool_id = clib_net_to_host_u32 (mp->alloc_pool_id);

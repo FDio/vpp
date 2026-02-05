@@ -25,12 +25,19 @@ enum
   foreach_sfdp_buffer_flag
 #undef _
 };
+
+/* tenant_index is the index of the tenant in the tenant pool */
+typedef u32 sfdp_tenant_index_t;
+
+/* tenant_id is the user-provided value associated with a tenant entry */
+typedef u32 sfdp_tenant_id_t;
+
 typedef u64 sfdp_bitmap_t;
 typedef u16 session_version_t;
 typedef struct
 {
   sfdp_bitmap_t service_bitmap;
-  u16 tenant_index;
+  sfdp_tenant_index_t tenant_index;
   session_version_t session_version_before_handoff;
   u8 flags;
   u8 tcp_flags;

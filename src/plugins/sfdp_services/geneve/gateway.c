@@ -67,8 +67,7 @@ gw_set_geneve_output (gw_set_geneve_output_args_t *args)
   if (clib_bihash_search_inline_8_8 (&sfdp->tenant_idx_by_id, &kv))
     {
       args->rv = -1;
-      args->err =
-	clib_error_return (0, "tenant-id %d not found", args->tenant_id);
+      args->err = clib_error_return (0, "tenant-id %u not found", args->tenant_id);
       return;
     }
   vt = sfdp_tenant_at_index (sfdp, kv.value);

@@ -19,13 +19,13 @@ sfdp_tcp_check_show_sessions_command_fn (vlib_main_t *vm,
   sfdp_tcp_check_session_state_t *tcp_session;
   sfdp_tenant_t *tenant;
   u32 session_index;
-  u32 tenant_id = ~0;
+  sfdp_tenant_id_t tenant_id = ~0;
 
   if (unformat_user (input, unformat_line_input, line_input))
     {
       while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
 	{
-	  if (unformat (line_input, "tenant %d", &tenant_id))
+	  if (unformat (line_input, "tenant %u", &tenant_id))
 	    ;
 	  else
 	    {

@@ -7,25 +7,24 @@
 #include <vppinfra/pool.h>
 
 clib_error_t *
-nat_external_interface_set_tenant (nat_main_t *nat, u32 sw_if_index,
-				   u32 tenant_id, u8 unset)
+nat_external_interface_set_tenant (nat_main_t *nat, u32 sw_if_index, sfdp_tenant_id_t tenant_id,
+				   u8 unset)
 {
   sfdp_main_t *sfdp = &sfdp_main;
   clib_bihash_kv_8_8_t kv = { .key = tenant_id, .value = 0 };
   vnet_main_t *vnm = vnet_get_main ();
-  u16 *config;
+  sfdp_tenant_index_t *config;
 
   if (clib_bihash_search_inline_8_8 (&sfdp->tenant_idx_by_id, &kv))
-    return clib_error_return (0, "Tenant with id %d not found");
+    return clib_error_return (0, "Tenant with id %u not found", tenant_id);
 
   vec_validate (nat->tenants, kv.value);
   vec_validate (nat->tenant_idx_by_sw_if_idx, sw_if_index);
   config = nat->tenant_idx_by_sw_if_idx + sw_if_index;
 
   if (config[0] == NAT_INVALID_TENANT_IDX && unset)
-    return clib_error_return (
-      0, "Outside tenant %d is not configured on interface %U", tenant_id,
-      format_vnet_sw_if_index_name, vnm, sw_if_index);
+    return clib_error_return (0, "Outside tenant %u is not configured on interface %U", tenant_id,
+			      format_vnet_sw_if_index_name, vnm, sw_if_index);
 
   if (config[0] != NAT_INVALID_TENANT_IDX && !unset)
     return clib_error_return (0, "Interface %U is already configured",
@@ -91,7 +90,7 @@ nat_alloc_pool_add_del (nat_main_t *nat, u32 alloc_pool_id, u8 is_del,
 }
 
 clib_error_t *
-nat_tenant_set_snat (nat_main_t *nat, u32 tenant_id, u32 outside_tenant_id,
+nat_tenant_set_snat (nat_main_t *nat, sfdp_tenant_id_t tenant_id, u32 outside_tenant_id,
 		     u32 table_id, u32 alloc_pool_id, u8 unset)
 {
   ip4_main_t *im = &ip4_main;
@@ -112,13 +111,13 @@ nat_tenant_set_snat (nat_main_t *nat, u32 tenant_id, u32 outside_tenant_id,
     return clib_error_return (0, "Unknown allocation pool %d", alloc_pool_id);
 
   if (clib_bihash_search_inline_8_8 (&sfdp->tenant_idx_by_id, &kv))
-    return clib_error_return (0, "Unknown tenant %d", tenant_id);
+    return clib_error_return (0, "Unknown tenant %u", tenant_id);
 
   tenant_idx = kv.value;
   kv.key = outside_tenant_id;
   kv.value = 0;
   if (!unset && clib_bihash_search_inline_8_8 (&sfdp->tenant_idx_by_id, &kv))
-    return clib_error_return (0, "Unknown tenant %d", tenant_id);
+    return clib_error_return (0, "Unknown outside tenant %u", outside_tenant_id);
   else
     outside_tenant_idx = kv.value;
 
@@ -126,11 +125,10 @@ nat_tenant_set_snat (nat_main_t *nat, u32 tenant_id, u32 outside_tenant_id,
   tenant = vec_elt_at_index (nat->tenants, tenant_idx);
 
   if (unset && !(tenant->flags & NAT_TENANT_FLAG_SNAT))
-    return clib_error_return (0, "SNAT is not set on tenant %d", tenant_id);
+    return clib_error_return (0, "SNAT is not set on tenant %u", tenant_id);
 
   if (!unset && (tenant->flags & NAT_TENANT_FLAG_SNAT))
-    return clib_error_return (0, "SNAT is already set on tenant %d",
-			      tenant_id);
+    return clib_error_return (0, "SNAT is already set on tenant %u", tenant_id);
 
   if (unset)
     {

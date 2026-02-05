@@ -170,13 +170,11 @@ sfdp_parser_prepare_all_keys_fast (const sfdp_parser_registration_t *reg,
 }
 
 static_always_inline int
-sfdp_parser_create_session_inline (const sfdp_parser_registration_t *reg,
-				   uword parser_data_index, sfdp_main_t *sfdp,
-				   sfdp_per_thread_data_t *ptd,
-				   sfdp_tenant_t *tenant, u16 tenant_idx,
-				   u16 thread_index, f64 time_now, void *k,
-				   u64 *h, u64 *lookup_val, u32 scope_index,
-				   void *kv, const uword key_size,
+sfdp_parser_create_session_inline (const sfdp_parser_registration_t *reg, uword parser_data_index,
+				   sfdp_main_t *sfdp, sfdp_per_thread_data_t *ptd,
+				   sfdp_tenant_t *tenant, sfdp_tenant_index_t tenant_idx,
+				   u16 thread_index, f64 time_now, void *k, u64 *h, u64 *lookup_val,
+				   u32 scope_index, void *kv, const uword key_size,
 				   void *table_bihash)
 {
   u64 value;
@@ -331,7 +329,7 @@ sfdp_parser_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	    reg, sfdp_parser_bihash_search_with_hash_fn, table_bihash, h[0],
 	    kv))
 	{
-	  u16 tenant_idx = sfdp_buffer (b[0])->tenant_index;
+	  sfdp_tenant_index_t tenant_idx = sfdp_buffer (b[0])->tenant_index;
 	  int rv;
 	  tenant = sfdp_tenant_at_index (sfdp, tenant_idx);
 	  rv = sfdp_parser_create_session_inline (
@@ -516,7 +514,7 @@ sfdp_parser_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       while (n_left)
 	{
 	  u32 node_index;
-	  u16 tenant_idx;
+	  sfdp_tenant_index_t tenant_idx;
 	  sfdp_tenant_t *tenant;
 
 	  tenant_idx = sfdp_buffer (b[0])->tenant_index;

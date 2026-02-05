@@ -72,7 +72,7 @@ sfdp_geneve_output_load_data (gw_main_t *gm,
 			      gw_geneve_output_data_t *geneve_out,
 			      sfdp_session_t *session, vlib_buffer_t *b)
 {
-  u32 tenant_idx = sfdp_buffer (b)->tenant_index;
+  sfdp_tenant_index_t tenant_idx = sfdp_buffer (b)->tenant_index;
   gw_tenant_t *tenant = gw_tenant_at_index (gm, tenant_idx);
   u8 direction = b->flow_id & 0x1;
   ip4_header_t *ip4 = (void *) geneve_out->encap_data;

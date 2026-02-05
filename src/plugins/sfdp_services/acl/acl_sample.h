@@ -15,9 +15,8 @@ typedef struct
   u32 *lc_by_tenant_idx; /* vec */
 } sfdp_acl_main_t;
 
-clib_error_t *sfdp_acl_sample_tenant_set_acl (sfdp_acl_main_t *vam,
-					      u64 tenant_id, u32 acl_index,
-					      bool disable);
+clib_error_t *sfdp_acl_sample_tenant_set_acl (sfdp_acl_main_t *vam, sfdp_tenant_id_t tenant_id,
+					      u32 acl_index, bool disable);
 
 extern sfdp_acl_main_t sfdp_acl_main;
 extern acl_plugin_methods_t acl_plugin;

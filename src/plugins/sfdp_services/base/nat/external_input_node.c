@@ -9,7 +9,7 @@
 #include <vnet/sfdp/common.h>
 typedef struct
 {
-  u32 tenant_id;
+  sfdp_tenant_id_t tenant_id;
   u32 sw_if_index;
 } nat_external_input_trace_t;
 
@@ -20,8 +20,7 @@ format_nat_external_input_trace (u8 *s, va_list *args)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   nat_external_input_trace_t *t = va_arg (*args, nat_external_input_trace_t *);
 
-  s = format (s, "nat-external-input: sw_if_index %d, tenant %d\n",
-	      t->sw_if_index, t->tenant_id);
+  s = format (s, "nat-external-input: sw_if_index %d, tenant %u\n", t->sw_if_index, t->tenant_id);
 
   return s;
 }
@@ -80,7 +79,7 @@ nat_external_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
     {
       u32 len = vlib_buffer_length_in_chain (vm, b[0]);
       u32 rx_sw_if_index = vnet_buffer (b[0])->sw_if_index[VLIB_RX];
-      u32 tenant_idx = nat->tenant_idx_by_sw_if_idx[rx_sw_if_index];
+      sfdp_tenant_index_t tenant_idx = nat->tenant_idx_by_sw_if_idx[rx_sw_if_index];
       sfdp_tenant_t *tenant;
       if (tenant_idx == NAT_INVALID_TENANT_IDX)
 	{
