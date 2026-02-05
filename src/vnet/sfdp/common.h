@@ -30,7 +30,7 @@ typedef u16 session_version_t;
 typedef struct
 {
   sfdp_bitmap_t service_bitmap;
-  u16 tenant_index;
+  u32 tenant_index;
   session_version_t session_version_before_handoff;
   u8 flags;
   u8 tcp_flags;

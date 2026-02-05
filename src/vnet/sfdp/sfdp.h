@@ -291,12 +291,12 @@ typedef struct sfdp_session
   sfdp_bitmap_t bitmaps[SFDP_FLOW_F_B_N];
   u64 session_id;
   u64 expiry_opaque[2];
+  u32 tenant_idx;
   session_version_t session_version;
   u8 state; /* see sfdp_session_state_t */
   u8 proto;
-  u16 tenant_idx;
   u16 owning_thread_index;
-  u8 unused0[16];
+  u8 unused0[14];
   u8 pseudo_dir[SFDP_SESSION_N_KEY];
   u8 type; /* see sfdp_session_type_t */
   u8 key_flags;
@@ -758,9 +758,8 @@ sfdp_session_generate_and_set_id (sfdp_main_t *sfdp,
 		 1 --> Unable to allocate session
 		 2 --> Collision */
 static_always_inline int
-sfdp_create_session_inline (sfdp_main_t *sfdp, sfdp_per_thread_data_t *ptd,
-			    sfdp_tenant_t *tenant, u16 tenant_idx,
-			    u16 thread_index, f64 time_now, void *k, u64 *h,
+sfdp_create_session_inline (sfdp_main_t *sfdp, sfdp_per_thread_data_t *ptd, sfdp_tenant_t *tenant,
+			    u32 tenant_idx, u16 thread_index, f64 time_now, void *k, u64 *h,
 			    u64 *lookup_val, u32 scope_index, int is_ipv6)
 {
   sfdp_bihash_kv46_t kv = {};

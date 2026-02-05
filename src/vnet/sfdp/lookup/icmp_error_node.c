@@ -140,7 +140,7 @@ sfdp_lookup_icmp_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       while (n_left)
 	{
 	  uword flow_thread_index;
-	  u16 tenant_index;
+	  u32 tenant_index;
 	  sfdp_tenant_t *tenant;
 	  clib_bihash_kv_24_8_t kv4;
 
@@ -222,7 +222,7 @@ sfdp_lookup_icmp_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       while (n_left)
 	{
 	  uword flow_thread_index;
-	  u16 tenant_index;
+	  u32 tenant_index;
 	  sfdp_tenant_t *tenant;
 	  clib_bihash_kv_48_8_t kv6;
 

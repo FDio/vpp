@@ -456,7 +456,7 @@ sfdp_show_tenant_detail_command_fn (vlib_main_t *vm, unformat_input_t *input,
   sfdp_main_t *sfdp = &sfdp_main;
   sfdp_tenant_t *tenant;
   u32 tenant_id = ~0;
-  u16 tenant_idx;
+  u32 tenant_idx;
   u8 detail = 0;
   if (unformat_user (input, unformat_line_input, line_input))
     {

@@ -10,7 +10,7 @@
 
 typedef struct
 {
-  u16 *tenant_idx_by_sw_if_idx; /* vec */
+  u32 *tenant_idx_by_sw_if_idx; /* vec */
   u16 msg_id_base;
 } sfdp_interface_input_main_t;
 

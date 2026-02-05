@@ -66,9 +66,8 @@ typedef struct
 } sfdp_handoff_trace_t;
 
 static_always_inline int
-sfdp_create_session_v4 (sfdp_main_t *sfdp, sfdp_per_thread_data_t *ptd,
-			sfdp_tenant_t *tenant, u16 tenant_idx,
-			u32 thread_index, f64 time_now, void *k, u64 *h,
+sfdp_create_session_v4 (sfdp_main_t *sfdp, sfdp_per_thread_data_t *ptd, sfdp_tenant_t *tenant,
+			u32 tenant_idx, u32 thread_index, f64 time_now, void *k, u64 *h,
 			u64 *lookup_val, u32 scope_index)
 {
   return sfdp_create_session_inline (sfdp, ptd, tenant, tenant_idx,
@@ -77,9 +76,8 @@ sfdp_create_session_v4 (sfdp_main_t *sfdp, sfdp_per_thread_data_t *ptd,
 }
 
 static_always_inline int
-sfdp_create_session_v6 (sfdp_main_t *sfdp, sfdp_per_thread_data_t *ptd,
-			sfdp_tenant_t *tenant, u16 tenant_idx,
-			u32 thread_index, f64 time_now, void *k, u64 *h,
+sfdp_create_session_v6 (sfdp_main_t *sfdp, sfdp_per_thread_data_t *ptd, sfdp_tenant_t *tenant,
+			u32 tenant_idx, u32 thread_index, f64 time_now, void *k, u64 *h,
 			u64 *lookup_val, u32 scope_index)
 {
   return sfdp_create_session_inline (sfdp, ptd, tenant, tenant_idx,
@@ -426,7 +424,7 @@ sfdp_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	if (clib_bihash_search_inline_with_hash_48_8 (&sfdp->table6, h[0],
 						      &kv.kv6))
 	  {
-	    u16 tenant_idx = sfdp_buffer (b[0])->tenant_index;
+	    u32 tenant_idx = sfdp_buffer (b[0])->tenant_index;
 	    int rv;
 	    tenant = sfdp_tenant_at_index (sfdp, tenant_idx);
 	    rv = sfdp_create_session_v6 (sfdp, ptd, tenant, tenant_idx,
@@ -486,7 +484,7 @@ sfdp_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	if (clib_bihash_search_inline_with_hash_24_8 (&sfdp->table4, h[0],
 						      &kv.kv4))
 	  {
-	    u16 tenant_idx = sfdp_buffer (b[0])->tenant_index;
+	    u32 tenant_idx = sfdp_buffer (b[0])->tenant_index;
 	    int rv;
 	    tenant = sfdp_tenant_at_index (sfdp, tenant_idx);
 	    rv = sfdp_create_session_v4 (sfdp, ptd, tenant, tenant_idx,
@@ -670,7 +668,7 @@ sfdp_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       while (n_left)
 	{
 	  u32 node_index;
-	  u16 tenant_idx;
+	  u32 tenant_idx;
 	  sfdp_tenant_t *tenant;
 
 	  tenant_idx = sfdp_buffer (b[0])->tenant_index;

@@ -9,7 +9,7 @@
 #include <vnet/sfdp/sfdp.h>
 #include <vnet/ip/ip46_address.h>
 
-#define NAT_INVALID_TENANT_IDX	(u16) (~0)
+#define NAT_INVALID_TENANT_IDX	(u32) (~0)
 #define NAT_ALLOC_POOL_ARRAY_SZ 13
 
 #define foreach_nat_tenant_flag _ (SNAT, 0x1, "snat")
@@ -75,7 +75,7 @@ STATIC_ASSERT_SIZEOF (nat_alloc_pool_t, CLIB_CACHE_LINE_BYTES);
 
 typedef struct
 {
-  u16 *tenant_idx_by_sw_if_idx; /* vec */
+  u32 *tenant_idx_by_sw_if_idx; /* vec */
   nat_tenant_t *tenants;	/* vec */
   nat_alloc_pool_t *alloc_pool; /* pool of allocation pools */
   nat_rewrite_data_t *flows;	/* by flow_index */

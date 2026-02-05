@@ -212,8 +212,8 @@ vl_api_sfdp_kill_session_t_handler (vl_api_sfdp_kill_session_t *mp)
 }
 
 static void
-sfdp_send_tenant_details (vl_api_registration_t *rp, u32 context,
-			  u16 tenant_index, sfdp_tenant_t *tenant)
+sfdp_send_tenant_details (vl_api_registration_t *rp, u32 context, u32 tenant_index,
+			  sfdp_tenant_t *tenant)
 {
   sfdp_main_t *sfdp = &sfdp_main;
   vl_api_sfdp_tenant_details_t *mp;
@@ -248,7 +248,7 @@ vl_api_sfdp_tenant_dump_t_handler (vl_api_sfdp_tenant_dump_t *mp)
 {
   sfdp_main_t *sfdp = &sfdp_main;
   sfdp_tenant_t *tenant;
-  u16 tenant_index;
+  u32 tenant_index;
   vl_api_registration_t *rp;
   rp = vl_api_client_index_to_registration (mp->client_index);
   if (rp == 0)

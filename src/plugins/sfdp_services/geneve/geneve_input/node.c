@@ -83,7 +83,7 @@ sfdp_geneve_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       udp_header_t *udp;
       u32 *gnv;
       u32 tenant_id;
-      u16 tenant_idx;
+      u32 tenant_idx;
       clib_bihash_kv_8_8_t kv = {};
       u16 off = 0;
       u32 len = vlib_buffer_length_in_chain (vm, b[0]);

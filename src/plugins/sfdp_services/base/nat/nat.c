@@ -13,7 +13,7 @@ nat_external_interface_set_tenant (nat_main_t *nat, u32 sw_if_index,
   sfdp_main_t *sfdp = &sfdp_main;
   clib_bihash_kv_8_8_t kv = { .key = tenant_id, .value = 0 };
   vnet_main_t *vnm = vnet_get_main ();
-  u16 *config;
+  u32 *config;
 
   if (clib_bihash_search_inline_8_8 (&sfdp->tenant_idx_by_id, &kv))
     return clib_error_return (0, "Tenant with id %d not found");
