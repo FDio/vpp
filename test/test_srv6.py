@@ -2514,6 +2514,84 @@ class TestSRv6(VppTestCase):
         #                    "Interface %s: Packet expected from interface %s "
         #                    "didn't arrive" % (dst_if.name, i.name))
 
+    def _sr_localsid_add_del_v2(
+        self,
+        is_del,
+        localsid,
+        behavior,
+        locator_block_len=0,
+        locator_node_len=0,
+        function_len=0,
+    ):
+        return self.vapi.sr_localsid_add_del_v2(
+            is_del=is_del,
+            localsid=localsid,
+            end_psp=0,
+            behavior=behavior,
+            sw_if_index=0,
+            vlan_index=0,
+            fib_table=0,
+            nh_addr="::",
+            locator_block_len=locator_block_len,
+            locator_node_len=locator_node_len,
+            function_len=function_len,
+        )
+
+    def test_sr_localsid_add_del_v2_custom_lengths(self):
+        localsid = "B3::1"
+        created = False
+        try:
+            self._sr_localsid_add_del_v2(
+                is_del=0,
+                localsid=localsid,
+                behavior=SRv6LocalSIDBehaviors.SR_BEHAVIOR_END_UN,
+                locator_block_len=32,
+                locator_node_len=16,
+                function_len=16,
+            )
+            created = True
+        finally:
+            if created:
+                self._sr_localsid_add_del_v2(
+                    is_del=1,
+                    localsid=localsid,
+                    behavior=SRv6LocalSIDBehaviors.SR_BEHAVIOR_END_UN,
+                    locator_block_len=32,
+                    locator_node_len=16,
+                    function_len=16,
+                )
+
+    def test_sr_localsid_add_del_v2_invalid_length_alignment(self):
+        with self.vapi.assert_negative_api_retval():
+            self._sr_localsid_add_del_v2(
+                is_del=0,
+                localsid="B3::2",
+                behavior=SRv6LocalSIDBehaviors.SR_BEHAVIOR_END_UN,
+                locator_block_len=33,
+            )
+
+    def test_sr_localsid_add_del_v2_zero_usid_len_rejected(self):
+        with self.vapi.assert_negative_api_retval():
+            self._sr_localsid_add_del_v2(
+                is_del=0,
+                localsid="B3::3",
+                behavior=SRv6LocalSIDBehaviors.SR_BEHAVIOR_END_UN,
+                locator_block_len=48,
+                locator_node_len=0,
+                function_len=0,
+            )
+
+    def test_sr_localsid_add_del_v2_total_len_too_large(self):
+        with self.vapi.assert_negative_api_retval():
+            self._sr_localsid_add_del_v2(
+                is_del=0,
+                localsid="B3::4",
+                behavior=SRv6LocalSIDBehaviors.SR_BEHAVIOR_END_UN,
+                locator_block_len=64,
+                locator_node_len=64,
+                function_len=16,
+            )
+
 
 if __name__ == "__main__":
     unittest.main(testRunner=VppTestRunner)
