@@ -57,7 +57,7 @@ typedef enum crypto_engine_type_
   CRYPTO_ENGINE_VPP,
   CRYPTO_ENGINE_MBEDTLS,
   CRYPTO_ENGINE_LAST = CRYPTO_ENGINE_MBEDTLS,
-} crypto_engine_type_t;
+} __clib_packed crypto_engine_type_t;
 
 typedef struct _vnet_app_add_cert_key_pair_args_
 {
