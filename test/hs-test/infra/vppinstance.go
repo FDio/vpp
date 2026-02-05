@@ -873,7 +873,7 @@ func (vpp *VppInstance) CollectEventLogs() {
 
 // EnablePcapTrace enables packet capture on all interfaces and maximum 10000 packets
 func (vpp *VppInstance) EnablePcapTrace() {
-	Log(vpp.Vppctl("pcap trace rx tx max 10000 intfc any file vppTest.pcap"))
+	Log(vpp.Vppctl("pcap trace rx tx max 10000 max-bytes-per-pkt 1500 intfc any file vppTest.pcap"))
 }
 
 // CollectPcapTrace saves pcap trace to the test execution directory
