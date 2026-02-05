@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "221061a6_dd963715",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2026-02-05T15:47:05Z",
+      "side": 1,
+      "message": "Here [0] is a nice stack trace for the crash. The same bisect run also confirms this is a fix.\n\n[0] https://logs.fd.io/vex-yul-rot-jenkins-1/csit-vpp-bisect-2n-zn2/21716649089/csit_middle/1/log.html.gz#s1-s1-s1-s1-s1-t1-k3-k4-k1",
+      "revId": "065fab89d0ddc69e737db6cd38c205b86b35bdb5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
