@@ -165,10 +165,10 @@ vl_api_wireguard_peer_add_t_handler (vl_api_wireguard_peer_add_t * mp)
   for (ii = 0; ii < mp->peer.n_allowed_ips; ii++)
     ip_prefix_decode (&mp->peer.allowed_ips[ii], &allowed_ips[ii]);
 
-  rv = wg_peer_add (ntohl (mp->peer.sw_if_index), mp->peer.public_key,
-		    ntohl (mp->peer.table_id), &ip_addr_46 (&endpoint),
-		    allowed_ips, ntohs (mp->peer.port),
-		    ntohs (mp->peer.persistent_keepalive), &peeri);
+  rv =
+    wg_peer_add (ntohl (mp->peer.sw_if_index), mp->peer.preshared_key, mp->peer.preshared_key_set,
+		 mp->peer.public_key, ntohl (mp->peer.table_id), &ip_addr_46 (&endpoint),
+		 allowed_ips, ntohs (mp->peer.port), ntohs (mp->peer.persistent_keepalive), &peeri);
 
   vec_free (allowed_ips);
 done:
