@@ -68,7 +68,83 @@ static void vl_api_sr_localsid_add_del_t_handler
 }
 
 static void
-vl_api_sr_policy_add_t_handler (vl_api_sr_policy_add_t * mp)
+vl_api_sr_localsid_add_del_v2_t_handler (vl_api_sr_localsid_add_del_v2_t *mp)
+{
+  vl_api_sr_localsid_add_del_v2_reply_t *rmp;
+  int rv = 0;
+  int usid_len = 0;
+  u16 localsid_prefix_len = 128;
+  ip46_address_t prefix;
+  ip6_address_t localsid;
+  u8 lengths_set = mp->locator_block_len || mp->locator_node_len || mp->function_len;
+  u8 lengths_mask = mp->locator_block_len | mp->locator_node_len | mp->function_len;
+  u16 total_len = (u16) mp->locator_block_len + mp->locator_node_len + mp->function_len;
+  /*
+   * int sr_cli_localsid (char is_del, ip6_address_t *localsid_addr,
+   *  char end_psp, u8 behavior, u32 sw_if_index, u32 vlan_index, u32 fib_table,
+   *  ip46_address_t *nh_addr, void *ls_plugin_mem)
+   */
+  if (mp->behavior == SR_BEHAVIOR_X || mp->behavior == SR_BEHAVIOR_UA ||
+      mp->behavior == SR_BEHAVIOR_DX6 || mp->behavior == SR_BEHAVIOR_DX4 ||
+      mp->behavior == SR_BEHAVIOR_DX2)
+    VALIDATE_SW_IF_INDEX (mp);
+
+  if (lengths_set)
+    {
+      // VPP uSID processing uses byte offsets; keep each length byte-aligned
+      if ((lengths_mask & 0x7) || total_len > 128)
+	{
+	  rv = VNET_API_ERROR_INVALID_VALUE;
+	  goto reply;
+	}
+
+      localsid_prefix_len = total_len;
+      usid_len = mp->function_len + mp->locator_node_len;
+
+      if ((mp->behavior == SR_BEHAVIOR_END_UN_PERF || mp->behavior == SR_BEHAVIOR_END_UN ||
+	   mp->behavior == SR_BEHAVIOR_UA) &&
+	  usid_len == 0)
+	{
+	  rv = VNET_API_ERROR_INVALID_VALUE;
+	  goto reply;
+	}
+      if ((mp->behavior == SR_BEHAVIOR_END_UN_PERF || mp->behavior == SR_BEHAVIOR_END_UN ||
+	   mp->behavior == SR_BEHAVIOR_UA) &&
+	  (usid_len != 16 && usid_len != 32))
+	{
+	  rv = VNET_API_ERROR_INVALID_VALUE;
+	  goto reply;
+	}
+    }
+  else
+    {
+      if (mp->behavior == SR_BEHAVIOR_END_UN_PERF || mp->behavior == SR_BEHAVIOR_END_UN)
+	{
+	  usid_len = 16;
+	  localsid_prefix_len = 48;
+	}
+
+      if (mp->behavior == SR_BEHAVIOR_UA)
+	{
+	  usid_len = 16;
+	  localsid_prefix_len = 64;
+	}
+    }
+
+  ip6_address_decode (mp->localsid, &localsid);
+  ip_address_decode (&mp->nh_addr, &prefix);
+
+  rv = sr_cli_localsid (mp->is_del, &localsid, localsid_prefix_len, mp->end_psp, mp->behavior,
+			ntohl (mp->sw_if_index), ntohl (mp->vlan_index), ntohl (mp->fib_table),
+			&prefix, usid_len, NULL);
+
+reply:
+  BAD_SW_IF_INDEX_LABEL;
+  REPLY_MACRO (VL_API_SR_LOCALSID_ADD_DEL_V2_REPLY);
+}
+
+static void
+vl_api_sr_policy_add_t_handler (vl_api_sr_policy_add_t *mp)
 {
   vl_api_sr_policy_add_reply_t *rmp;
   ip6_address_t *segments = 0, *seg;
