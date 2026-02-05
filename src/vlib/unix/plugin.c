@@ -596,7 +596,7 @@ process_reg:
       if (h)
 	{
 	  ei = h;
-	  error = (*ei) (pm->vlib_main, pi->handle);
+	  error = (*ei) (pm->vlib_main, pi);
 	  if (error)
 	    {
 	      u8 *err = format (0, "%s: %U%c", pi->name,
@@ -926,7 +926,13 @@ plugin_load_order (plugin_main_t *pm)
   uword before, after, *beforep;
   int n_plugins;
 
-  for (i = 0; i < vec_len (pm->plugin_info); i++)
+  n_plugins = vec_len (pm->plugin_info);
+
+  /* Not likely, but possible... */
+  if (n_plugins == 0)
+    return;
+
+  for (i = 0; i < n_plugins; i++)
     {
       pi = vec_elt_at_index (pm->plugin_info, i);
 
@@ -959,7 +965,6 @@ plugin_load_order (plugin_main_t *pm)
       vec_free (load_afters);
     }
 
-  n_plugins = vec_len (pm->plugin_info);
   orig = clib_ptclosure_alloc (n_plugins);
   ASSERT ((vec_len (index_pairs) & 1) == 0);
 
@@ -1008,7 +1013,7 @@ again:
     item_constrained:;
     }
 
-  if (vec_len (result) != vec_len (pm->plugin_info))
+  if (vec_len (result) != n_plugins)
     {
       PLUGIN_LOG_ERR ("Couldn't find an acceptable plugin load order!");
       /* keep going, until debugged */
