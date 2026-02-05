@@ -51,6 +51,23 @@
       "message": "Thanks a mil Benoît!",
       "revId": "29a4ffd73c6793e9f3fc6cb0773d8f952400f08c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "da10dc9b_e1826ce5",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3270
+      },
+      "writtenOn": "2026-02-05T11:13:44Z",
+      "side": 1,
+      "message": "Not sure if this is bad in a real case but i changed the code to test:\nerr \u003d (char*)imb_get_strerror(rtn);\n//err \u003d \"init_mb_mgr_auto() failed\";\ngoto err;\n\nThen I get a better error:\ncrypto/main [error ]: ipsecmb crypto engine init failed: Failed to initialize IMB_MGR due to missing required CPU flags",
+      "revId": "29a4ffd73c6793e9f3fc6cb0773d8f952400f08c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ],
   "submitRequirementResults": [
