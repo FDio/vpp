@@ -12,6 +12,7 @@
 #include <vnet/ethernet/ethernet.h>
 
 #include <linux/if.h>
+#include <netinet/in.h>
 #include <sys/ioctl.h>
 
 #define MV_SYS_DMA_MEM_SZ (2 << 20)
