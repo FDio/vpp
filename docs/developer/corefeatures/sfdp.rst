@@ -356,3 +356,19 @@ Example:
     eviction-sessions-margin 65536
     no-main
   }
+
+SFDP counters
+________________________
+
+After initialization, SFDP exposes per-tenant and per-flow counters in VPP's stats-segment.
+If running a multi-worker configuration, it is highly recommended to configure VPP's
+stats-segment size to be higher than default (32MB) to handle per-thread SFDP counters
+requirements.
+
+::
+
+  /sfdp/per_flow_counters/lookup
+  /sfdp/per_tenant_counters/created
+  /sfdp/per_tenant_counters/incoming
+  /sfdp/per_tenant_counters/outgoing
+  /sfdp/per_tenant_counters/removed
