@@ -33,6 +33,24 @@
       "message": "this is not needed, it’s evaluated same as without braces. bitwise operators has lower precedence only to equal or not-equal operator. it has higher precedence than logical and/or",
       "revId": "9cd5a55fc5ef6c121e8fb1b403a70f04fc8fba9e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9bf4c203_283e6c3a",
+        "filename": "src/plugins/http/http3/http3.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1155,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-02-05T16:33:19Z",
+      "side": 1,
+      "message": "Yeah yeah, it\u0027s cleaner if nothing else :-)",
+      "parentUuid": "d44b32a6_0621bcf7",
+      "revId": "9cd5a55fc5ef6c121e8fb1b403a70f04fc8fba9e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
