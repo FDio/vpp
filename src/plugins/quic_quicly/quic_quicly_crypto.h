@@ -61,12 +61,23 @@ typedef struct quic_quicly_on_client_hello_
   u32 lctx_index;
 } quic_quicly_on_client_hello_t;
 
+/* Custom verify certificate callback that stores the peer certificate */
+typedef struct st_quic_quicly_verify_certificate_t
+{
+  ptls_openssl_verify_certificate_t super;
+  int (*orig_cb) (ptls_verify_certificate_t *, ptls_t *, const char *,
+		  int (**) (void *, uint16_t, ptls_iovec_t, ptls_iovec_t), void **, ptls_iovec_t *,
+		  size_t);
+} quic_quicly_verify_certificate_t;
+
 typedef struct quic_quicly_crypto_ctx_
 {
   quic_crypto_context_t ctx; /* first */
   quicly_context_t quicly_ctx;
   char cid_key[QUIC_IV_LEN];
   ptls_context_t ptls_ctx;
+  tls_verify_cfg_t verify_cfg;
+  quic_quicly_verify_certificate_t verify_cert;
   quic_quicly_on_client_hello_t client_hello_ctx;
 } quic_quicly_crypto_ctx_t;
 
@@ -115,4 +126,6 @@ extern int quic_quicly_encrypt_ticket_cb (ptls_encrypt_ticket_t *_self,
 extern void
 quic_quicly_crypto_decrypt_packet (quic_ctx_t *qctx,
 				   quic_quicly_rx_packet_ctx_t *pctx);
+extern X509 *quic_quicly_crypto_get_peer_cert (quic_ctx_t *ctx);
+
 #endif /* __included_quic_quicly_crypto_h__ */
