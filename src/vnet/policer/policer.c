@@ -227,7 +227,10 @@ policer_input (u32 policer_index, u32 sw_if_index, vlib_dir_t dir, bool apply)
     }
   else
     {
-      pm->policer_index_by_sw_if_index[dir][sw_if_index] = ~0;
+      if (sw_if_index < vec_len (pm->policer_index_by_sw_if_index[dir]))
+	pm->policer_index_by_sw_if_index[dir][sw_if_index] = ~0;
+      else
+	return VNET_API_ERROR_INVALID_SW_IF_INDEX;
     }
 
   if (dir == VLIB_RX)
