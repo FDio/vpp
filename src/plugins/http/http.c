@@ -585,9 +585,9 @@ http_ts_accept_connection (session_t *ts)
 	case TLS_ALPN_PROTO_NONE:
 	  if (tp == TRANSPORT_PROTO_QUIC)
 	    {
-	      /* in case client connect without ALPN */
-	      http_conn_free (hc);
-	      return -1;
+	      /* ALPN is mandatory but not all clients set it so default to H3 */
+	      hc->version = HTTP_VERSION_3;
+	      break;
 	    }
 	  /* TLS: fallback to http/1.1 */
 	case TLS_ALPN_PROTO_HTTP_1_1:
