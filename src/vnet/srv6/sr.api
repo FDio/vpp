@@ -63,6 +63,41 @@ autoreply define sr_localsid_add_del
   vl_api_address_t nh_addr;
 };
 
+/** \brief IPv6 SR LocalSID add/del request (v2)
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_del Boolean of whether its a delete instruction
+    @param localsid_addr IPv6 address of the localsid
+    @param end_psp Boolean of whether decapsulation is allowed in this function
+    @param behavior Type of behavior (function) for this localsid
+    @param sw_if_index Only for L2/L3 xconnect. OIF. In VRF variant the
+     fib_table. Default:0xffffffff
+    @param vlan_index Only for L2 xconnect. Outgoing VLAN tag.
+    @param fib_table  FIB table in which we should install the localsid entry
+    @param nh_addr Next Hop IPv46 address. Only for L2/L3 xconnect.
+    @param locator_block_len Locator block length (bits)
+    @param locator_node_len  Locator node length (bits)
+    @param function_len      Function length (bits)
+*/
+autoreply define sr_localsid_add_del_v2
+{
+  u32 client_index;
+  u32 context;
+  bool is_del [default=false];
+  vl_api_ip6_address_t localsid;
+  bool end_psp;
+  vl_api_sr_behavior_t behavior;
+  vl_api_interface_index_t sw_if_index [default=0xffffffff];
+  u32 vlan_index;
+  u32 fib_table;
+  vl_api_address_t nh_addr;
+  u8 locator_block_len;
+  u8 locator_node_len;
+  u8 function_len;
+  option status="in_progress";
+};
+
+
 /** \brief IPv6 SR policy add
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
