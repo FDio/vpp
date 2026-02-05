@@ -1965,6 +1965,31 @@ quic_quicly_transport_closed (quic_ctx_t *ctx)
   quic_quicly_connection_closed (ctx);
 }
 
+static int
+quic_quicly_ctx_attribute (quic_ctx_t *ctx, u8 is_get, transport_endpt_attr_t *attr)
+{
+  if (!is_get)
+    return -1;
+
+  switch (attr->type)
+    {
+    case TRANSPORT_ENDPT_ATTR_TLS_PEER_CERT:
+      {
+	if (quic_ctx_is_stream (ctx))
+	  ctx = quic_quicly_get_quic_ctx (ctx->quic_connection_ctx_id, ctx->c_thread_index);
+	X509 *peer_cert = quic_quicly_crypto_get_peer_cert (ctx);
+	if (peer_cert)
+	  {
+	    attr->tls_peer_cert.cert = peer_cert;
+	    return 0;
+	  }
+	return -1;
+      }
+    default:
+      return -1;
+    }
+}
+
 const static quic_engine_vft_t quic_quicly_engine_vft = {
   .engine_init = quic_quicly_engine_init,
   .crypto_context_acquire_listen = quic_quicly_crypto_context_acquire_listen,
@@ -1989,6 +2014,7 @@ const static quic_engine_vft_t quic_quicly_engine_vft = {
   .proto_on_half_close = quic_quicly_on_app_closed_tx,
   .proto_on_reset = quic_quicly_on_app_reset,
   .transport_closed = quic_quicly_transport_closed,
+  .ctx_attribute = quic_quicly_ctx_attribute,
 };
 
 static clib_error_t *
