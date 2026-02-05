@@ -20,7 +20,7 @@ static void
 vl_api_sfdp_tenant_add_del_t_handler (vl_api_sfdp_tenant_add_del_t *mp)
 {
   sfdp_main_t *sfdp = &sfdp_main;
-  u32 tenant_id = clib_net_to_host_u32 (mp->tenant_id);
+  sfdp_tenant_id_t tenant_id = clib_net_to_host_u32 (mp->tenant_id);
   u32 context_id =
     mp->context_id == ~0 ? tenant_id : clib_net_to_host_u32 (mp->context_id);
   u8 is_del = mp->is_del;
@@ -35,7 +35,7 @@ static void
 vl_api_sfdp_set_services_t_handler (vl_api_sfdp_set_services_t *mp)
 {
   sfdp_main_t *sfdp = &sfdp_main;
-  u32 tenant_id = clib_net_to_host_u32 (mp->tenant_id);
+  sfdp_tenant_id_t tenant_id = clib_net_to_host_u32 (mp->tenant_id);
   sfdp_bitmap_t bitmap = 0;
   u8 idx = 0;
   u8 dir = sfdp_api_direction (mp->dir);
@@ -66,7 +66,7 @@ static void
 vl_api_sfdp_set_timeout_t_handler (vl_api_sfdp_set_timeout_t *mp)
 {
   sfdp_main_t *sfdp = &sfdp_main;
-  u32 tenant_id = clib_net_to_host_u32 (mp->tenant_id);
+  sfdp_tenant_id_t tenant_id = clib_net_to_host_u32 (mp->tenant_id);
   u32 timeout_id = clib_net_to_host_u32 (mp->timeout_id);
   u32 timeout_value = clib_net_to_host_u32 (mp->timeout_value);
   clib_error_t *err =
@@ -81,7 +81,7 @@ vl_api_sfdp_set_sp_node_t_handler (vl_api_sfdp_set_sp_node_t *mp)
 {
   vl_api_sfdp_set_sp_node_reply_t *rmp;
   sfdp_main_t *sfdp = &sfdp_main;
-  u32 tenant_id = clib_net_to_host_u32 (mp->tenant_id);
+  sfdp_tenant_id_t tenant_id = clib_net_to_host_u32 (mp->tenant_id);
   u8 sp_node = sfdp_api_sp_node (mp->sp_node);
   u32 node_index = clib_net_to_host_u32 (mp->node_index);
 
@@ -96,7 +96,7 @@ vl_api_sfdp_set_icmp_error_node_t_handler (
 {
   vl_api_sfdp_set_icmp_error_node_reply_t *rmp;
   sfdp_main_t *sfdp = &sfdp_main;
-  u32 tenant_id = clib_net_to_host_u32 (mp->tenant_id);
+  sfdp_tenant_id_t tenant_id = clib_net_to_host_u32 (mp->tenant_id);
   u8 is_ip6 = mp->is_ip6;
   u32 node_index = clib_net_to_host_u32 (mp->node_index);
 
@@ -132,7 +132,7 @@ sfdp_send_session_details (vl_api_registration_t *rp, u32 context,
   vl_api_sfdp_session_details_t *mp;
   sfdp_session_ip46_key_t skey;
   sfdp_tenant_t *tenant;
-  u32 tenant_id;
+  sfdp_tenant_id_t tenant_id;
   f64 now = vlib_time_now (vm);
   size_t msg_size;
   u8 n_keys = sfdp_session_n_keys (session);
@@ -212,8 +212,8 @@ vl_api_sfdp_kill_session_t_handler (vl_api_sfdp_kill_session_t *mp)
 }
 
 static void
-sfdp_send_tenant_details (vl_api_registration_t *rp, u32 context,
-			  u16 tenant_index, sfdp_tenant_t *tenant)
+sfdp_send_tenant_details (vl_api_registration_t *rp, u32 context, sfdp_tenant_index_t tenant_index,
+			  sfdp_tenant_t *tenant)
 {
   sfdp_main_t *sfdp = &sfdp_main;
   vl_api_sfdp_tenant_details_t *mp;
@@ -248,7 +248,7 @@ vl_api_sfdp_tenant_dump_t_handler (vl_api_sfdp_tenant_dump_t *mp)
 {
   sfdp_main_t *sfdp = &sfdp_main;
   sfdp_tenant_t *tenant;
-  u16 tenant_index;
+  sfdp_tenant_index_t tenant_index;
   vl_api_registration_t *rp;
   rp = vl_api_client_index_to_registration (mp->client_index);
   if (rp == 0)

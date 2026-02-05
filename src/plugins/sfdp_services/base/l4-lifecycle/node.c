@@ -63,7 +63,7 @@ VLIB_NODE_FN (sfdp_l4_lifecycle_node)
   while (n_left)
     {
       u32 session_idx = sfdp_session_from_flow_index (b[0]->flow_id);
-      u16 tenant_idx = sfdp_buffer (b[0])->tenant_index;
+      sfdp_tenant_index_t tenant_idx = sfdp_buffer (b[0])->tenant_index;
       sfdp_session_t *session = sfdp_session_at_index (session_idx);
       sfdp_tenant_t *tenant = sfdp_tenant_at_index (sfdp, tenant_idx);
       u8 direction = sfdp_direction_from_flow_index (b[0]->flow_id);

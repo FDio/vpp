@@ -10,7 +10,7 @@
 #include <vnet/sfdp/common.h>
 typedef struct
 {
-  u32 tenant_id;
+  sfdp_tenant_id_t tenant_id;
   u32 sw_if_index;
 } sfdp_interface_input_trace_t;
 
@@ -91,7 +91,7 @@ sfdp_interface_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_fr
     {
       u32 len = vlib_buffer_length_in_chain (vm, b[0]);
       u32 rx_sw_if_index = vnet_buffer (b[0])->sw_if_index[VLIB_RX];
-      u32 tenant_idx = vim->tenant_idx_by_sw_if_idx[proto][rx_sw_if_index];
+      sfdp_tenant_index_t tenant_idx = vim->tenant_idx_by_sw_if_idx[proto][rx_sw_if_index];
       sfdp_tenant_t *tenant;
       if (tenant_idx == ~0)
 	{

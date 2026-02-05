@@ -7,13 +7,13 @@
 #include <vppinfra/pool.h>
 
 clib_error_t *
-nat_external_interface_set_tenant (nat_main_t *nat, u32 sw_if_index,
-				   u32 tenant_id, u8 unset)
+nat_external_interface_set_tenant (nat_main_t *nat, u32 sw_if_index, sfdp_tenant_id_t tenant_id,
+				   u8 unset)
 {
   sfdp_main_t *sfdp = &sfdp_main;
   clib_bihash_kv_8_8_t kv = { .key = tenant_id, .value = 0 };
   vnet_main_t *vnm = vnet_get_main ();
-  u16 *config;
+  sfdp_tenant_index_t *config;
 
   if (clib_bihash_search_inline_8_8 (&sfdp->tenant_idx_by_id, &kv))
     return clib_error_return (0, "Tenant with id %d not found");
@@ -91,7 +91,7 @@ nat_alloc_pool_add_del (nat_main_t *nat, u32 alloc_pool_id, u8 is_del,
 }
 
 clib_error_t *
-nat_tenant_set_snat (nat_main_t *nat, u32 tenant_id, u32 outside_tenant_id,
+nat_tenant_set_snat (nat_main_t *nat, sfdp_tenant_id_t tenant_id, u32 outside_tenant_id,
 		     u32 table_id, u32 alloc_pool_id, u8 unset)
 {
   ip4_main_t *im = &ip4_main;

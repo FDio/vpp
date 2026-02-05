@@ -13,7 +13,7 @@ sfdp_nat_external_interface_set_unset_fn (vlib_main_t *vm,
 
   clib_error_t *err = 0;
   u32 sw_if_index = ~0;
-  u32 tenant_id = ~0;
+  sfdp_tenant_id_t tenant_id = ~0;
   u8 unset = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -97,7 +97,7 @@ sfdp_nat_snat_set_unset_fn (vlib_main_t *vm, unformat_input_t *input,
   unformat_input_t line_input_, *line_input = &line_input_;
 
   clib_error_t *err = 0;
-  u32 tenant_id = ~0;
+  sfdp_tenant_id_t tenant_id = ~0;
   u32 outside_tenant_id = ~0;
   u32 table_id = ~0;
   u32 alloc_pool_id = ~0;

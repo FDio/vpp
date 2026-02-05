@@ -12,7 +12,7 @@ sfdp_interface_input_set_unset_fn (vlib_main_t *vm, unformat_input_t *input,
 
   clib_error_t *err = 0;
   u32 sw_if_index = ~0;
-  u32 tenant_id = ~0;
+  sfdp_tenant_id_t tenant_id = ~0;
   u8 is_ip6 = 0;
   u8 unset = 0;
 

@@ -177,7 +177,7 @@ sfdp_init (vlib_main_t *vm)
 }
 
 void
-sfdp_tenant_clear_counters (sfdp_main_t *sfdp, u32 tenant_idx)
+sfdp_tenant_clear_counters (sfdp_main_t *sfdp, sfdp_tenant_index_t tenant_idx)
 {
 #define _(x, y, z)                                                            \
   sfdp->tenant_session_ctr[SFDP_TENANT_SESSION_COUNTER_##x].name = y;         \
@@ -223,14 +223,13 @@ sfdp_tenant_init_sp_nodes (sfdp_tenant_t *tenant)
 }
 
 clib_error_t *
-sfdp_tenant_add_del (sfdp_main_t *sfdp, u32 tenant_id, u32 context_id,
-		     u8 is_del)
+sfdp_tenant_add_del (sfdp_main_t *sfdp, sfdp_tenant_id_t tenant_id, u32 context_id, u8 is_del)
 {
   sfdp_init_main_if_needed (sfdp);
   clib_bihash_kv_8_8_t kv = { .key = tenant_id, .value = 0 };
   clib_error_t *err = 0;
   sfdp_tenant_t *tenant;
-  u32 tenant_idx;
+  sfdp_tenant_index_t tenant_idx;
   u32 n_tenants = pool_elts (sfdp->tenants);
   if (!is_del)
     {
@@ -281,7 +280,7 @@ sfdp_tenant_add_del (sfdp_main_t *sfdp, u32 tenant_id, u32 context_id,
 }
 
 clib_error_t *
-sfdp_set_services (sfdp_main_t *sfdp, u32 tenant_id, sfdp_bitmap_t bitmap,
+sfdp_set_services (sfdp_main_t *sfdp, sfdp_tenant_id_t tenant_id, sfdp_bitmap_t bitmap,
 		   u8 direction)
 {
   sfdp_init_main_if_needed (sfdp);
@@ -297,8 +296,7 @@ sfdp_set_services (sfdp_main_t *sfdp, u32 tenant_id, sfdp_bitmap_t bitmap,
 }
 
 clib_error_t *
-sfdp_set_timeout (sfdp_main_t *sfdp, u32 tenant_id, u32 timeout_idx,
-		  u32 timeout_val)
+sfdp_set_timeout (sfdp_main_t *sfdp, sfdp_tenant_id_t tenant_id, u32 timeout_idx, u32 timeout_val)
 {
   sfdp_init_main_if_needed (sfdp);
   clib_bihash_kv_8_8_t kv = { .key = tenant_id, .value = 0 };
@@ -312,8 +310,7 @@ sfdp_set_timeout (sfdp_main_t *sfdp, u32 tenant_id, u32 timeout_idx,
 }
 
 clib_error_t *
-sfdp_set_sp_node (sfdp_main_t *sfdp, u32 tenant_id, u32 sp_index,
-		  u32 node_index)
+sfdp_set_sp_node (sfdp_main_t *sfdp, sfdp_tenant_id_t tenant_id, u32 sp_index, u32 node_index)
 {
   sfdp_init_main_if_needed (sfdp);
   clib_bihash_kv_8_8_t kv = { .key = tenant_id, .value = 0 };
@@ -327,8 +324,7 @@ sfdp_set_sp_node (sfdp_main_t *sfdp, u32 tenant_id, u32 sp_index,
 }
 
 clib_error_t *
-sfdp_set_icmp_error_node (sfdp_main_t *sfdp, u32 tenant_id, u8 is_ip6,
-			  u32 node_index)
+sfdp_set_icmp_error_node (sfdp_main_t *sfdp, sfdp_tenant_id_t tenant_id, u8 is_ip6, u32 node_index)
 {
   sfdp_init_main_if_needed (sfdp);
   vlib_main_t *vm = vlib_get_main ();

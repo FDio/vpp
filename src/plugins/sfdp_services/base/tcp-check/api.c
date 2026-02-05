@@ -31,7 +31,7 @@ sfdp_tcp_send_session_details (vl_api_registration_t *rp, u32 context,
   vl_api_sfdp_tcp_session_details_t *mp;
   sfdp_session_ip46_key_t skey;
   sfdp_tenant_t *tenant;
-  u32 tenant_id;
+  sfdp_tenant_id_t tenant_id;
   size_t msg_size;
   u8 n_keys = sfdp_session_n_keys (session);
   tenant = sfdp_tenant_at_index (sfdp, session->tenant_idx);

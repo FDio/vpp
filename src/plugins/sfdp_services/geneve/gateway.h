@@ -75,7 +75,7 @@ typedef struct
 {
   int rv;
   clib_error_t *err;
-  u32 tenant_id;
+  sfdp_tenant_id_t tenant_id;
   ip4_address_t src_addr;
   ip4_address_t dst_addr;
   u16 src_port; /*network order*/

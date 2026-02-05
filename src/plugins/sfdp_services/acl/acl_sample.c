@@ -5,7 +5,7 @@
 #include <acl/acl_sample.h>
 
 static void
-acl_sample_validate_tenant_lc (u16 tenant_idx)
+acl_sample_validate_tenant_lc (sfdp_tenant_index_t tenant_idx)
 {
   sfdp_acl_main_t *vam = &sfdp_acl_main;
   sfdp_main_t *sfdp = &sfdp_main;
@@ -21,13 +21,13 @@ acl_sample_validate_tenant_lc (u16 tenant_idx)
 };
 
 clib_error_t *
-sfdp_acl_sample_tenant_set_acl (sfdp_acl_main_t *vam, u64 tenant_id,
-				u32 acl_index, bool disable)
+sfdp_acl_sample_tenant_set_acl (sfdp_acl_main_t *vam, sfdp_tenant_id_t tenant_id, u32 acl_index,
+				bool disable)
 {
   sfdp_main_t *sfdp = &sfdp_main;
   clib_error_t *err = 0;
   clib_bihash_kv_8_8_t kv = { .key = tenant_id, .value = 0 };
-  u16 tenant_idx;
+  sfdp_tenant_index_t tenant_idx;
   u32 lc;
   u32 *acl_vec = 0;
   if (clib_bihash_search_inline_8_8 (&sfdp->tenant_idx_by_id, &kv))

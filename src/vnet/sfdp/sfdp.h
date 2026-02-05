@@ -291,12 +291,12 @@ typedef struct sfdp_session
   sfdp_bitmap_t bitmaps[SFDP_FLOW_F_B_N];
   u64 session_id;
   u64 expiry_opaque[2];
+  sfdp_tenant_index_t tenant_idx;
   session_version_t session_version;
   u8 state; /* see sfdp_session_state_t */
   u8 proto;
-  u16 tenant_idx;
   u16 owning_thread_index;
-  u8 unused0[16];
+  u8 unused0[14];
   u8 pseudo_dir[SFDP_SESSION_N_KEY];
   u8 type; /* see sfdp_session_type_t */
   u8 key_flags;
@@ -363,7 +363,7 @@ STATIC_ASSERT_SIZEOF (sfdp_timeout_t[8], 16 * 8);
 
 typedef struct
 {
-  u32 tenant_id;
+  sfdp_tenant_id_t tenant_id;
   u32 context_id;
   sfdp_bitmap_t bitmaps[SFDP_FLOW_F_B_N];
   u32 timeouts[SFDP_MAX_TIMEOUTS];
@@ -758,10 +758,9 @@ sfdp_session_generate_and_set_id (sfdp_main_t *sfdp,
 		 1 --> Unable to allocate session
 		 2 --> Collision */
 static_always_inline int
-sfdp_create_session_inline (sfdp_main_t *sfdp, sfdp_per_thread_data_t *ptd,
-			    sfdp_tenant_t *tenant, u16 tenant_idx,
-			    u16 thread_index, f64 time_now, void *k, u64 *h,
-			    u64 *lookup_val, u32 scope_index, int is_ipv6)
+sfdp_create_session_inline (sfdp_main_t *sfdp, sfdp_per_thread_data_t *ptd, sfdp_tenant_t *tenant,
+			    sfdp_tenant_index_t tenant_idx, u16 thread_index, f64 time_now, void *k,
+			    u64 *h, u64 *lookup_val, u32 scope_index, int is_ipv6)
 {
   sfdp_bihash_kv46_t kv = {};
   u64 value;
@@ -850,17 +849,17 @@ int sfdp_create_session_with_scope_index (vlib_main_t *vm, vlib_buffer_t *b,
 					  u32 tenant_index, u32 *session_index,
 					  u32 scope_index, int is_ipv6);
 
-clib_error_t *sfdp_tenant_add_del (sfdp_main_t *sfdp, u32 tenant_id,
-				   u32 context_id, u8 is_del);
-clib_error_t *sfdp_set_services (sfdp_main_t *sfdp, u32 tenant_id,
+clib_error_t *sfdp_tenant_add_del (sfdp_main_t *sfdp, sfdp_tenant_id_t tenant_id, u32 context_id,
+				   u8 is_del);
+clib_error_t *sfdp_set_services (sfdp_main_t *sfdp, sfdp_tenant_id_t tenant_id,
 				 sfdp_bitmap_t bitmap, u8 direction);
-clib_error_t *sfdp_set_timeout (sfdp_main_t *sfdp, u32 tenant_id,
-				u32 timeout_idx, u32 timeout_val);
+clib_error_t *sfdp_set_timeout (sfdp_main_t *sfdp, sfdp_tenant_id_t tenant_id, u32 timeout_idx,
+				u32 timeout_val);
 
-clib_error_t *sfdp_set_sp_node (sfdp_main_t *sfdp, u32 tenant_id, u32 sp_index,
+clib_error_t *sfdp_set_sp_node (sfdp_main_t *sfdp, sfdp_tenant_id_t tenant_id, u32 sp_index,
 				u32 node_index);
-clib_error_t *sfdp_set_icmp_error_node (sfdp_main_t *sfdp, u32 tenant_id,
-					u8 is_ip6, u32 node_index);
+clib_error_t *sfdp_set_icmp_error_node (sfdp_main_t *sfdp, sfdp_tenant_id_t tenant_id, u8 is_ip6,
+					u32 node_index);
 clib_error_t *sfdp_kill_session (sfdp_main_t *sfdp, u32 session_index, u8 is_all);
 void sfdp_normalise_ip4_key (sfdp_session_t *session,
 			     sfdp_session_ip4_key_t *result, u8 key_idx);
@@ -869,9 +868,8 @@ void sfdp_normalise_ip6_key (sfdp_session_t *session,
 			     sfdp_session_ip6_key_t *result, u8 key_idx);
 
 void sfdp_table_format_add_header_col (table_t *t);
-u32 sfdp_table_format_insert_session (table_t *t, u32 n, u32 session_index,
-				      sfdp_session_t *session, u32 tenant_id,
-				      f64 now);
+u32 sfdp_table_format_insert_session (table_t *t, u32 n, u32 session_index, sfdp_session_t *session,
+				      sfdp_tenant_id_t tenant_id, f64 now);
 int sfdp_bihash_add_del_inline_with_hash_24_8 (clib_bihash_24_8_t *h,
 					       clib_bihash_kv_24_8_t *kv,
 					       u64 hash, u8 is_add);

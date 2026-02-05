@@ -31,7 +31,7 @@ sfdp_tenant_add_del_command_fn (vlib_main_t *vm, unformat_input_t *input,
   clib_error_t *err = 0;
   sfdp_main_t *sfdp = &sfdp_main;
   u8 is_del = 0;
-  u32 tenant_id = ~0;
+  sfdp_tenant_id_t tenant_id = ~0;
   u32 context_id = ~0;
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -69,7 +69,7 @@ sfdp_set_services_command_fn (vlib_main_t *vm, unformat_input_t *input,
   unformat_input_t line_input_, *line_input = &line_input_;
   clib_error_t *err = 0;
   sfdp_main_t *sfdp = &sfdp_main;
-  u32 tenant_id = ~0;
+  sfdp_tenant_id_t tenant_id = ~0;
   sfdp_bitmap_t bitmap = 0;
   u8 direction = ~0;
 
@@ -158,7 +158,7 @@ sfdp_set_timeout_command_fn (vlib_main_t *vm, unformat_input_t *input,
   unformat_input_t line_input_, *line_input = &line_input_;
   clib_error_t *err = 0;
   sfdp_main_t *sfdp = &sfdp_main;
-  u32 tenant_id = ~0;
+  sfdp_tenant_id_t tenant_id = ~0;
   u32 timeout_idx = ~0;
   u32 timeout_val = ~0;
 
@@ -201,7 +201,7 @@ sfdp_set_sp_node_command_fn (vlib_main_t *vm, unformat_input_t *input,
   unformat_input_t line_input_, *line_input = &line_input_;
   clib_error_t *err = 0;
   sfdp_main_t *sfdp = &sfdp_main;
-  u32 tenant_id = ~0;
+  sfdp_tenant_id_t tenant_id = ~0;
   u32 sp_idx = ~0;
   u32 node_index = ~0;
 
@@ -251,7 +251,7 @@ sfdp_set_icmp_error_node_command_fn (vlib_main_t *vm, unformat_input_t *input,
   unformat_input_t line_input_, *line_input = &line_input_;
   clib_error_t *err = 0;
   sfdp_main_t *sfdp = &sfdp_main;
-  u32 tenant_id = ~0;
+  sfdp_tenant_id_t tenant_id = ~0;
   u32 node_index = ~0;
   u8 ip46 = 0;
 
@@ -307,7 +307,7 @@ sfdp_show_sessions_command_fn (vlib_main_t *vm, unformat_input_t *input,
   sfdp_session_t *session;
   u32 session_index;
   sfdp_tenant_t *tenant;
-  u32 tenant_id = ~0;
+  sfdp_tenant_id_t tenant_id = ~0;
   u32 max_output_value = 20;
   bool is_show_all = false;
   f64 now = vlib_time_now (vm);
@@ -455,8 +455,8 @@ sfdp_show_tenant_detail_command_fn (vlib_main_t *vm, unformat_input_t *input,
   clib_error_t *err = 0;
   sfdp_main_t *sfdp = &sfdp_main;
   sfdp_tenant_t *tenant;
-  u32 tenant_id = ~0;
-  u16 tenant_idx;
+  sfdp_tenant_id_t tenant_id = ~0;
+  sfdp_tenant_index_t tenant_idx;
   u8 detail = 0;
   if (unformat_user (input, unformat_line_input, line_input))
     {

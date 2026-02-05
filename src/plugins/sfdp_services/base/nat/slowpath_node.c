@@ -224,7 +224,7 @@ VLIB_NODE_FN (sfdp_nat_slowpath_node)
   sfdp_session_t *session;
   nat_tenant_t *tenant;
   u32 session_idx;
-  u32 tenant_idx;
+  sfdp_tenant_index_t tenant_idx;
   nat_rewrite_data_t *nat_rewrites; /* rewrite data in both directions */
   u32 *from = vlib_frame_vector_args (frame);
   u32 n_left = frame->n_vectors;
