@@ -192,7 +192,7 @@ vlib_log_va (vlib_log_level_t level, vlib_log_class_t class, char *fmt,
 	}
       if (kmsg_enabled && lm->kmsg_filp)
 	{
-	  fprintf (lm->kmsg_filp, "%.*s: %.*s", (int) vec_len (l), l, (int) vec_len (s) - is_term,
+	  fprintf (lm->kmsg_filp, "%.*s: %.*s\n", (int) vec_len (l), l, (int) vec_len (s) - is_term,
 		   s);
 	}
       vec_free (l);
