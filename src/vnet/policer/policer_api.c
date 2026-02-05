@@ -239,6 +239,34 @@ vl_api_policer_input_t_handler (vl_api_policer_input_t *mp)
 }
 
 static void
+vl_api_policer_remove_t_handler (vl_api_policer_remove_t *mp)
+{
+  vl_api_policer_remove_reply_t *rmp;
+  vnet_policer_main_t *pm = &vnet_policer_main;
+  char name[sizeof (mp->name) + 1];
+  uword *p;
+  u8 dir;
+  u32 sw_if_index;
+  int rv = 0;
+
+  snprintf (name, sizeof (name), "%s", mp->name);
+  dir = mp->direction;
+  p = hash_get_mem (pm->policer_index_by_name, name);
+
+  if (p != NULL)
+    {
+      for (sw_if_index = 0;
+	   sw_if_index < vec_len (pm->policer_index_by_sw_if_index[dir]) && rv >= 0; sw_if_index++)
+	if (pm->policer_index_by_sw_if_index[dir][sw_if_index] == p[0])
+	  rv = policer_input (p[0], sw_if_index, dir, 0);
+    }
+  else
+    rv = VNET_API_ERROR_NO_SUCH_ENTRY;
+
+  REPLY_MACRO (VL_API_POLICER_REMOVE_REPLY);
+}
+
+static void
 vl_api_policer_input_v2_t_handler (vl_api_policer_input_v2_t *mp)
 {
   vl_api_policer_input_v2_reply_t *rmp;

@@ -72,6 +72,21 @@ autoreply define policer_input_v2
   bool apply;
 };
 
+/** \brief policer remove: Unapply a policer from any interface
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param name - policer name
+    @param direction - input VLIB_RX=0, output VLIB_TX=1
+*/
+autoreply define policer_remove
+{
+  u32 client_index;
+  u32 context;
+
+  string name[64];
+  u8 direction;
+};
+
 /** \brief policer output: Apply policer as an output feature.
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
