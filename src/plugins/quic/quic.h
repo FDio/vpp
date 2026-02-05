@@ -178,7 +178,8 @@ typedef struct quic_ctx_
   u32 parent_app_wrk_id;
   u32 parent_app_id;
   u32 ckpair_index;
-  u32 crypto_engine;
+  crypto_engine_type_t crypto_engine;
+  tls_verify_cfg_t verify_cfg;
   u32 crypto_context_index;
   u8 alpn_protos[4];
   tls_alpn_proto_t alpn_selected;
@@ -190,6 +191,7 @@ typedef struct quic_ctx_
     void *aead_ctx;
   } ingress_keys;
   int key_phase_ingress;
+  void *peer_cert; /* X509 * stored as void * to avoid including openssl headers */
   ip46_address_t rmt_ip;
   u16 rmt_port;
   ip46_address_t lcl_ip;
@@ -417,6 +419,7 @@ typedef struct quic_engine_vft_
 			       clib_thread_index_t thread_index);
   void (*proto_on_reset) (u32 ctx_index, clib_thread_index_t thread_index);
   void (*transport_closed) (quic_ctx_t *ctx);
+  int (*ctx_attribute) (quic_ctx_t *ctx, u8 is_get, transport_endpt_attr_t *attr);
 } quic_engine_vft_t;
 
 extern quic_engine_vft_t *quic_engine_vfts;
