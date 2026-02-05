@@ -165,7 +165,51 @@ vl_api_wireguard_peer_add_t_handler (vl_api_wireguard_peer_add_t * mp)
   for (ii = 0; ii < mp->peer.n_allowed_ips; ii++)
     ip_prefix_decode (&mp->peer.allowed_ips[ii], &allowed_ips[ii]);
 
-  rv = wg_peer_add (ntohl (mp->peer.sw_if_index), mp->peer.public_key,
+  rv =
+    wg_peer_add (ntohl (mp->peer.sw_if_index), NONE, false,
+		 mp->peer.public_key, ntohl (mp->peer.table_id), &ip_addr_46 (&endpoint),
+		 allowed_ips, ntohs (mp->peer.port), ntohs (mp->peer.persistent_keepalive), &peeri);
+
+  vec_free (allowed_ips);
+done:
+  BAD_SW_IF_INDEX_LABEL;
+
+  REPLY_MACRO2(VL_API_WIREGUARD_PEER_ADD_REPLY,
+  {
+    rmp->peer_index = ntohl (peeri);
+  });
+}
+
+static void
+vl_api_wireguard_peer_add_v2_t_handler (vl_api_wireguard_peer_add_v2_t *mp)
+{
+  vl_api_wireguard_peer_add_v2_reply_t *rmp;
+  wg_main_t *wmp = &wg_main;
+  index_t peeri = INDEX_INVALID;
+  int ii, rv = 0;
+
+  ip_address_t endpoint;
+  fib_prefix_t *allowed_ips = NULL;
+
+  VALIDATE_SW_IF_INDEX (&(mp->peer));
+
+  if (0 == mp->peer.n_allowed_ips)
+    {
+      rv = VNET_API_ERROR_INVALID_VALUE;
+      goto done;
+    }
+
+  wg_feature_init (wmp);
+
+  vec_validate (allowed_ips, mp->peer.n_allowed_ips - 1);
+  ip_address_decode2 (&mp->peer.endpoint, &endpoint);
+
+  for (ii = 0; ii < mp->peer.n_allowed_ips; ii++)
+    ip_prefix_decode (&mp->peer.allowed_ips[ii], &allowed_ips[ii]);
+
+  rv = wg_peer_add (ntohl (mp->peer.sw_if_index),
+		    mp->peer.preshared_key, mp->peer.preshared_key_set,
+		    mp->peer.public_key,
 		    ntohl (mp->peer.table_id), &ip_addr_46 (&endpoint),
 		    allowed_ips, ntohs (mp->peer.port),
 		    ntohs (mp->peer.persistent_keepalive), &peeri);
@@ -174,7 +218,7 @@ vl_api_wireguard_peer_add_t_handler (vl_api_wireguard_peer_add_t * mp)
 done:
   BAD_SW_IF_INDEX_LABEL;
 
-  REPLY_MACRO2(VL_API_WIREGUARD_PEER_ADD_REPLY,
+  REPLY_MACRO2 (VL_API_WIREGUARD_PEER_ADD_V2_REPLY,
   {
     rmp->peer_index = ntohl (peeri);
   });
@@ -240,6 +284,58 @@ wg_api_send_peers_details (index_t peeri, void *data)
   return (WALK_CONTINUE);
 }
 
+static walk_rc_t
+wg_api_send_peers_v2_details (index_t peeri, void *data)
+{
+  vl_api_wireguard_peers_v2_details_t *rmp;
+  wg_deatils_walk_t *ctx = data;
+  const wg_peer_t *peer;
+  u8 n_allowed_ips;
+  size_t ss;
+
+  if (pool_is_free_index (wg_peer_pool, peeri))
+    return (WALK_CONTINUE);
+
+  peer = wg_peer_get (peeri);
+
+  n_allowed_ips = vec_len (peer->allowed_ips);
+
+  ss = (sizeof (*rmp) + (n_allowed_ips * sizeof (rmp->peer.allowed_ips[0])));
+
+  rmp = vl_msg_api_alloc_zero (ss);
+
+  rmp->_vl_msg_id = htons (VL_API_WIREGUARD_PEERS_V2_DETAILS +
+			    wg_main.msg_id_base);
+
+  rmp->peer.peer_index = htonl (peeri);
+  rmp->peer.flags = peer->flags;
+  clib_memcpy (rmp->peer.public_key,
+	       peer->remote.r_public, NOISE_PUBLIC_KEY_LEN);
+  clib_memcpy (rmp->peer.preshared_key,
+	       peer->remote.r_psk, NOISE_SYMMETRIC_KEY_LEN);
+  rmp->peer.preshared_key_set =
+    memcmp (peer->remote.r_psk,
+	    (uint8_t[NOISE_SYMMETRIC_KEY_LEN]){ 0 },
+	    NOISE_SYMMETRIC_KEY_LEN) != 0;
+
+  ip_address_encode (&peer->dst.addr, IP46_TYPE_ANY, &rmp->peer.endpoint);
+  rmp->peer.port = htons (peer->dst.port);
+  rmp->peer.n_allowed_ips = n_allowed_ips;
+  rmp->peer.sw_if_index = htonl (peer->wg_sw_if_index);
+  rmp->peer.persistent_keepalive = htons (peer->persistent_keepalive_interval);
+  rmp->peer.table_id = htonl (peer->table_id);
+
+  int ii;
+  for (ii = 0; ii < n_allowed_ips; ii++)
+    ip_prefix_encode (&peer->allowed_ips[ii], &rmp->peer.allowed_ips[ii]);
+
+  rmp->context = ctx->context;
+
+  vl_api_send_msg (ctx->reg, (u8 *) rmp);
+
+  return (WALK_CONTINUE);
+}
+
 static void
 vl_api_wireguard_peers_dump_t_handler (vl_api_wireguard_peers_dump_t * mp)
 {
@@ -261,6 +357,30 @@ vl_api_wireguard_peers_dump_t_handler (vl_api_wireguard_peers_dump_t * mp)
     wg_peer_walk (wg_api_send_peers_details, &ctx);
   else
     wg_api_send_peers_details (ntohl (mp->peer_index), &ctx);
+}
+
+static void
+vl_api_wireguard_peers_v2_dump_t_handler (
+  vl_api_wireguard_peers_v2_dump_t *mp)
+{
+  vl_api_registration_t *reg;
+  wg_main_t *wmp = &wg_main;
+
+  wg_feature_init (wmp);
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (reg == NULL)
+    return;
+
+  wg_deatils_walk_t ctx = {
+    .reg = reg,
+    .context = mp->context,
+  };
+
+  if (mp->peer_index == ~0)
+    wg_peer_walk (wg_api_send_peers_v2_details, &ctx);
+  else
+    wg_api_send_peers_v2_details (ntohl (mp->peer_index), &ctx);
 }
 
 static vpe_client_registration_t *
