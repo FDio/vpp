@@ -33,9 +33,29 @@ if(IPSECMB_INCLUDE_DIR AND IPSECMB_LIB)
 		${IPSECMB_LINK_FLAGS}
 		)
 
-	file(READ "${IPSECMB_INCLUDE_DIR}/intel-ipsec-mb.h" ipsecmb_header)
-	string(REGEX MATCH "IMB_VERSION_STR (\"+[0-9]+\\.[0-9]+\\.[0-9]+\")" _ ${ipsecmb_header})
-	string(REPLACE "\"" "" IPSECMB_VERSION ${CMAKE_MATCH_1})
+	# Get library version and verify it matches header
+	file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/ipsecmb_version.c "
+		#include <stdio.h>
+		#include \"${IPSECMB_INCLUDE_DIR}/intel-ipsec-mb.h\"
+		int main(void) {
+			if (IMB_VERSION_NUM != imb_get_version()) return 1;
+			printf(\"%s\", IMB_VERSION_STR);
+			return 0;
+		}
+	")
+	try_run(IPSECMB_RUN_RESULT IPSECMB_COMPILE_RESULT
+		${CMAKE_CURRENT_BINARY_DIR}
+		${CMAKE_CURRENT_BINARY_DIR}/ipsecmb_version.c
+		LINK_LIBRARIES ${IPSECMB_LIB}
+		COMPILE_OUTPUT_VARIABLE IPSECMB_COMPILE_OUTPUT
+		RUN_OUTPUT_VARIABLE IPSECMB_VERSION
+	)
+	if (NOT IPSECMB_COMPILE_RESULT)
+		message(FATAL_ERROR "Intel IPSecMB version check failed to compile: ${IPSECMB_COMPILE_OUTPUT}")
+	endif()
+	if (NOT IPSECMB_RUN_RESULT EQUAL 0)
+		message(FATAL_ERROR "Intel IPSecMB header version does not match library version")
+	endif()
 
 	if (${IPSECMB_VERSION} VERSION_GREATER "0.54.0")
 		add_definitions(-DHAVE_IPSECMB_CHACHA_POLY)
@@ -44,7 +64,7 @@ if(IPSECMB_INCLUDE_DIR AND IPSECMB_LIB)
 	endif()
 
 	target_compile_options(ipsecmb_crypto_engine PRIVATE "-march=silvermont" "-maes")
-	message(STATUS "Intel IPSecMB found: ${IPSECMB_INCLUDE_DIR}")
+	message(STATUS "Intel IPSecMB found: ${IPSECMB_INCLUDE_DIR} (version ${IPSECMB_VERSION})")
 else()
 	message(STATUS "Intel IPSecMB not found")
 endif()

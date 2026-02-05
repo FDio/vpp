@@ -1322,25 +1322,46 @@ crypto_ipsecmb_init (vnet_crypto_engine_registration_t *r)
   ipsecmb_per_thread_data_t *ptd;
   IMB_MGR *m = 0;
   IMB_ARCH arch;
+  char *err = 0;
+  u32 i;
 
   if (!clib_cpu_supports_aes ())
     return "AES ISA not available on this CPU";
 
   imbm->per_thread_data = r->per_thread_data;
 
-  for (u32 i = 0; i < r->num_threads; i++)
+  for (i = 0; i < r->num_threads; i++)
     {
       ptd = imbm->per_thread_data + i;
       ptd->mgr = alloc_mb_mgr (0);
+      if (!ptd->mgr)
+	{
+	  err = "alloc_mb_mgr() failed";
+	  goto err;
+	}
+
 #if IMB_VERSION_NUM >= IMB_VERSION(1, 3, 0)
-	clib_memset_u8 (ptd->burst_jobs, 0,
-			sizeof (IMB_JOB) * IMB_MAX_BURST_SIZE);
+      clib_memset_u8 (ptd->burst_jobs, 0, sizeof (IMB_JOB) * IMB_MAX_BURST_SIZE);
 #endif
 
-	init_mb_mgr_auto (ptd->mgr, &arch);
+      init_mb_mgr_auto (ptd->mgr, &arch);
 
-	if (ptd == imbm->per_thread_data)
-	  m = ptd->mgr;
+      if (imb_get_errno (ptd->mgr) != 0)
+	{
+	  err = "init_mb_mgr_auto() failed";
+	  goto err;
+	}
+
+#if IMB_VERSION_NUM >= IMB_VERSION(1, 3, 0)
+      if (!ptd->mgr->submit_hash_burst_nocheck)
+	{
+	  err = "intel-ipsec-mb burst API not available";
+	  goto err;
+	}
+#endif
+
+      if (ptd == imbm->per_thread_data)
+	m = ptd->mgr;
     }
 
 #define _(a, b, c, d, e, f)                                                   \
@@ -1373,6 +1394,16 @@ crypto_ipsecmb_init (vnet_crypto_engine_registration_t *r)
 #endif
 
   return 0;
+
+err:
+  do
+    {
+      ptd = imbm->per_thread_data + i;
+      if (ptd->mgr)
+	free_mb_mgr (ptd->mgr);
+    }
+  while (i--);
+  return err;
 }
 
 vnet_crypto_engine_op_handlers_t op_handlers[] = {
