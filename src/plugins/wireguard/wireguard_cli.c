@@ -148,6 +148,9 @@ wg_peer_add_command_fn (vlib_main_t * vm,
 
   u8 *public_key_64 = 0;
   u8 public_key[NOISE_PUBLIC_KEY_LEN + 1];
+  u8 *preshared_key_64 = 0;
+  u8 preshared_key[NOISE_SYMMETRIC_KEY_LEN + 1];
+  bool preshared_key_set = false;
   fib_prefix_t allowed_ip, *allowed_ips = NULL;
   ip_prefix_t pfx;
   ip_address_t ip = ip_address_initializer;
@@ -164,12 +167,21 @@ wg_peer_add_command_fn (vlib_main_t * vm,
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "public-key %s", &public_key_64))
+      if (unformat (line_input, "preshared-key %s", &preshared_key_64))
+	{
+	  if (!(key_from_base64 (preshared_key_64, NOISE_KEY_LEN_BASE64, preshared_key)))
+	    {
+	      error = clib_error_return (0, "Error parsing pre-shared key");
+	      goto done;
+	    }
+	  preshared_key_set = true;
+	}
+      else if (unformat (line_input, "public-key %s", &public_key_64))
 	{
 	  if (!(key_from_base64 (public_key_64,
 				 NOISE_KEY_LEN_BASE64, public_key)))
 	    {
-	      error = clib_error_return (0, "Error parsing private key");
+	      error = clib_error_return (0, "Error parsing public key");
 	      goto done;
 	    }
 	}
@@ -204,8 +216,8 @@ wg_peer_add_command_fn (vlib_main_t * vm,
       goto done;
     }
 
-  rv = wg_peer_add (tun_sw_if_index, public_key, table_id, &ip_addr_46 (&ip),
-		    allowed_ips, portDst, persistent_keepalive, &peer_index);
+  rv = wg_peer_add (tun_sw_if_index, preshared_key, preshared_key_set, public_key, table_id,
+		    &ip_addr_46 (&ip), allowed_ips, portDst, persistent_keepalive, &peer_index);
 
   switch (rv)
     {
@@ -231,6 +243,7 @@ wg_peer_add_command_fn (vlib_main_t * vm,
 
 done:
   vec_free (public_key_64);
+  vec_free (preshared_key_64);
   vec_free (allowed_ips);
   unformat_free (line_input);
   return error;
@@ -238,10 +251,9 @@ done:
 
 VLIB_CLI_COMMAND (wg_peer_add_command, static) = {
   .path = "wireguard peer add",
-  .short_help =
-    "wireguard peer add <wg_int> public-key <pub_key_other> "
-    "endpoint <ip4_dst> allowed-ip <prefix> "
-    "dst-port [port_dst] persistent-keepalive [keepalive_interval]",
+  .short_help = "wireguard peer add <wg_int> [preshared-key <psk_key>] public-key <pub_key_other> "
+		"endpoint <ip4_dst> allowed-ip <prefix> "
+		"dst-port [port_dst] persistent-keepalive [keepalive_interval]",
   .function = wg_peer_add_command_fn,
 };
 
