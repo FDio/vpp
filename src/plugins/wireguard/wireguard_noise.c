@@ -78,11 +78,13 @@ noise_local_set_private (noise_local_t * l,
 
 void
 noise_remote_init (vlib_main_t *vm, noise_remote_t *r, uint32_t peer_pool_idx,
-		   const uint8_t public[NOISE_PUBLIC_KEY_LEN],
-		   u32 noise_local_idx)
+		   const uint8_t preshared_key[NOISE_SYMMETRIC_KEY_LEN], bool preshared_key_set,
+		   const uint8_t public[NOISE_PUBLIC_KEY_LEN], u32 noise_local_idx)
 {
   clib_memset (r, 0, sizeof (*r));
   clib_memcpy (r->r_public, public, NOISE_PUBLIC_KEY_LEN);
+  if (preshared_key_set)
+    clib_memcpy (r->r_psk, preshared_key, NOISE_SYMMETRIC_KEY_LEN);
   clib_rwlock_init (&r->r_keypair_lock);
   r->r_peer_idx = peer_pool_idx;
   r->r_local_idx = noise_local_idx;
