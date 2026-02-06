@@ -154,16 +154,6 @@ jobs:
           ls -l "$LOG_DIR"
           env | sort | tee "$LOG_DIR/environment.log"
 
-      - name: Log ARM Driver Build Start
-        run: |
-          set -euxo pipefail
-          ls -l "$LOG_DIR"
-          {
-            echo "$TUI_LINE"
-            echo "* Starting ARM driver build"
-            echo "$TUI_LINE"
-          } | tee "$LOG_DIR/arm_driver_start.log"
-
       - name: Show Nomad Dockerfile
         # yamllint disable-line rule:line-length
         uses: fdio/.github/.github/actions/show-nomad-dockerfile@b728d1589228e2891a4241a1bba362d76895c225

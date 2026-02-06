@@ -154,15 +154,6 @@ jobs:
           set -euo pipefail
           env | sort | tee "$LOG_DIR/environment.log"
 
-      - name: Log Docs Build Start
-        run: |
-          set -euxo pipefail
-          {
-            echo "$TUI_LINE"
-            echo "* Starting docs build"
-            echo "$TUI_LINE"
-          } | tee "$LOG_DIR/docs_start.log"
-
       - name: Show Nomad Dockerfile
         # yamllint disable-line rule:line-length
         uses: fdio/.github/.github/actions/show-nomad-dockerfile@b728d1589228e2891a4241a1bba362d76895c225
