@@ -933,9 +933,9 @@ http_io_ts_after_write (http_conn_t *hc, u8 flush)
 }
 
 always_inline int
-http_conn_accept_request (http_conn_t *hc, http_req_t *req)
+http_conn_accept_request (http_conn_t *hc, http_req_t *req, u8 is_stream)
 {
-  session_t *as, *asl;
+  session_t *as, *parent_as;
   app_worker_t *app_wrk;
   int rv;
 
@@ -948,9 +948,13 @@ http_conn_accept_request (http_conn_t *hc, http_req_t *req)
   req->c_s_index = as->session_index;
   as->connection_index = req->hr_req_handle;
   as->session_state = SESSION_STATE_ACCEPTING;
-  asl = listen_session_get_from_handle (hc->hc_pa_session_handle);
-  as->session_type = asl->session_type;
-  as->listener_handle = hc->hc_pa_session_handle;
+  parent_as = session_get_from_handle (hc->hc_pa_session_handle);
+  as->session_type = parent_as->session_type;
+  /* change hc_pa_session_handle only for connection, because for h2 we have 1:N */
+  if (is_stream)
+    as->flags |= SESSION_F_STREAM;
+  else
+    hc->hc_pa_session_handle = session_handle (as);
 
   /* init session fifos and notify app */
   if ((rv = app_worker_init_accepted (as)))
