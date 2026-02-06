@@ -2111,7 +2111,7 @@ http2_handle_headers_frame (http_conn_t *hc, http2_frame_header_t *fh)
       req = http2_conn_alloc_req (hc, 0);
       http2_req_set_stream_id (req, h2c, fh->stream_id, 0);
       req->dispatch_headers_cb = http2_sched_dispatch_resp_headers;
-      if (http_conn_accept_request (hc, &req->base))
+      if (http_conn_accept_request (hc, &req->base, 1))
 	{
 	  http2_conn_free_req (h2c, req, hc->c_thread_index);
 	  return HTTP2_ERROR_INTERNAL_ERROR;
@@ -3147,7 +3147,7 @@ http2_transport_rx_callback (http_conn_t *hc)
       http_io_ts_drain (hc, http2_conn_preface.len);
       to_deq -= http2_conn_preface.len;
       req = http2_conn_alloc_req (hc, 1);
-      if (http_conn_accept_request (hc, &req->base))
+      if (http_conn_accept_request (hc, &req->base, 0))
 	{
 	  http2_conn_free_req (h2c, req, hc->c_thread_index);
 	  h2c->parent_req_index = SESSION_INVALID_INDEX;

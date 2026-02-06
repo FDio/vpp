@@ -2099,7 +2099,7 @@ http3_transport_stream_accept_callback (http_conn_t *stream, http_conn_t *hc)
       sctx->app_closed_cb = http3_stream_app_close;
       HTTP_DBG (1, "new req stream accepted [%u]%x", sctx->base.c_thread_index,
 		((http_req_handle_t) sctx->base.hr_req_handle).req_index);
-      if (http_conn_accept_request (stream, &sctx->base))
+      if (http_conn_accept_request (stream, &sctx->base, 1))
 	{
 	  HTTP_DBG (1, "http_conn_accept_request failed");
 	  http3_stream_terminate (stream, sctx, HTTP3_ERROR_REQUEST_REJECTED);
@@ -2230,7 +2230,7 @@ http3_conn_accept_callback (http_conn_t *hc)
     return;
   hc = http_conn_get_w_thread (hc_index, thread_index);
   parent_sctx = http3_stream_ctx_alloc (hc, pointer_to_uword (hc->opaque), 1);
-  if (http_conn_accept_request (hc, &parent_sctx->base))
+  if (http_conn_accept_request (hc, &parent_sctx->base, 0))
     {
       http3_stream_ctx_free_w_index (h3c->parent_sctx_index,
 				     hc->c_thread_index);
