@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "dd1b7f52_6baec246",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2026-02-06T09:16:14Z",
+      "side": 1,
+      "message": "Second attempt at pasting the correct hash to Fixed field.",
+      "revId": "634c895659c4c38b8fbc7d74bd4b58f1d71d110c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
