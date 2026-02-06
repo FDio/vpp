@@ -380,6 +380,36 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
 	}
       vec_add1 (vif->vhost_fds, vfd);
       virtio_log_debug (vif, "open vhost-net fd %d qpair %u", vfd, i);
+      /* Try to set vhost worker mode to kthread for better performance.
+       * IMPORTANT: This IOCTL must be called BEFORE VHOST_SET_OWNER.
+       * Only available on kernel >= 6.12 with
+       * CONFIG_VHOST_ENABLE_FORK_OWNER_CONTROL=y */
+      u8 fork_mode = VHOST_FORK_OWNER_KTHREAD;
+      if (ioctl (vfd, VHOST_SET_FORK_FROM_OWNER, &fork_mode) == 0)
+	{
+	  if (i == 0)
+	    tap_log_dbg (
+	      vif,
+	      "VHOST_SET_FORK_FROM_OWNER: fd %u mode %d (kthread mode "
+	      "requested)",
+	      vfd, fork_mode);
+	}
+      else if (errno == ENOTTY || errno == EINVAL)
+	{
+	  /* IOCTL not supported by this kernel, continue with default worker
+	   * mode */
+	  if (i == 0)
+	    tap_log_dbg (vif, "VHOST_SET_FORK_FROM_OWNER not supported, using "
+			      "default worker mode (task)");
+	}
+      else
+	{
+	  /* Unexpected error, log warning but continue */
+	  if (i == 0)
+	    tap_log_dbg (
+	      vif, "VHOST_SET_FORK_FROM_OWNER failed (continuing with default "
+		   "mode)");
+	}
       _IOCTL (vfd, VHOST_SET_OWNER, 0);
       virtio_log_debug (vif, "VHOST_SET_OWNER: fd %u", vfd);
     }

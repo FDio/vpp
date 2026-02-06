@@ -398,6 +398,28 @@ virtio_show (vlib_main_t *vm, u32 *hw_if_indices, u8 show_descr,
 	    str = format (str, " %d", vif->vhost_fds[i]);
 	  vlib_cli_output (vm, "  vhost-fds%v", str);
 	  vec_free (str);
+	  /* Display vhost worker fork mode if available.
+	   * We only check the first vhost_fd since all fds for this interface
+	   * share the same fork mode (configured at interface creation). */
+	  if (vec_len (vif->vhost_fds) > 0)
+	    {
+	      u8 fork_mode = 0;
+	      if (ioctl (vif->vhost_fds[0], VHOST_GET_FORK_FROM_OWNER,
+			 &fork_mode) == 0)
+		{
+		  if (fork_mode == VHOST_FORK_OWNER_KTHREAD)
+		    vlib_cli_output (vm, "  vhost-worker-mode: kthread");
+		  else if (fork_mode == VHOST_FORK_OWNER_TASK)
+		    vlib_cli_output (vm, "  vhost-worker-mode: task");
+		  else
+		    vlib_cli_output (vm, "  vhost-worker-mode: unknown (%d)",
+				     fork_mode);
+		}
+	      else
+		{
+		  vlib_cli_output (vm, "  vhost-worker-mode: not supported");
+		}
+	    }
 	  vec_foreach_index (i, vif->tap_fds)
 	    str = format (str, " %d", vif->tap_fds[i]);
 	  vlib_cli_output (vm, "  tap-fds%v", str);
