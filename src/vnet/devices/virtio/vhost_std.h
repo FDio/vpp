@@ -76,6 +76,12 @@ typedef struct
 #define VHOST_SET_VRING_ERR _IOW(VHOST_VIRTIO, 0x22, vhost_vring_file_t)
 #define VHOST_NET_SET_BACKEND _IOW(VHOST_VIRTIO, 0x30, vhost_vring_file_t)
 
+/* vhost worker fork mode control (kernel >= 6.12 with
+ * CONFIG_VHOST_ENABLE_FORK_OWNER_CONTROL=y) */
+#define VHOST_FORK_OWNER_KTHREAD  0
+#define VHOST_FORK_OWNER_TASK	  1
+#define VHOST_SET_FORK_FROM_OWNER _IOW (VHOST_VIRTIO, 0x84, u8)
+#define VHOST_GET_FORK_FROM_OWNER _IOR (VHOST_VIRTIO, 0x85, u8)
 #endif
 
 /*
