@@ -1019,7 +1019,14 @@ listen_session_get_handle (session_t *s)
 always_inline session_t *
 listen_session_get_from_handle (session_handle_t handle)
 {
-  return session_get_from_handle (handle);
+  session_t *s = session_get_from_handle (handle);
+  if (s->flags & SESSION_F_STREAM)
+    {
+      ASSERT (session_get_transport_proto (s) == TRANSPORT_PROTO_QUIC ||
+	      session_get_transport_proto (s) == TRANSPORT_PROTO_HTTP);
+      s = session_get_from_handle (s->listener_handle);
+    }
+  return s;
 }
 
 always_inline void
