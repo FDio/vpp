@@ -501,7 +501,11 @@ hts_ts_accept_callback (session_t *ts)
   ts->session_state = SESSION_STATE_READY;
 
   /* Check if listener configured for random closes */
-  ls = listen_session_get_from_handle (ts->listener_handle);
+  if (ts->flags & SESSION_F_STREAM)
+    ls = listen_session_get_from_handle (
+      session_get_from_handle (ts->listener_handle)->listener_handle);
+  else
+    ls = listen_session_get_from_handle (ts->listener_handle);
   lhs = hts_session_get (0, ls->opaque);
 
   if (lhs->close_rate)

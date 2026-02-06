@@ -933,9 +933,9 @@ http_io_ts_after_write (http_conn_t *hc, u8 flush)
 }
 
 always_inline int
-http_conn_accept_request (http_conn_t *hc, http_req_t *req)
+http_conn_accept_request (http_conn_t *hc, http_req_t *req, u8 is_stream)
 {
-  session_t *as, *asl;
+  session_t *as, *asl, *asp;
   app_worker_t *app_wrk;
   int rv;
 
@@ -948,9 +948,22 @@ http_conn_accept_request (http_conn_t *hc, http_req_t *req)
   req->c_s_index = as->session_index;
   as->connection_index = req->hr_req_handle;
   as->session_state = SESSION_STATE_ACCEPTING;
-  asl = listen_session_get_from_handle (hc->hc_pa_session_handle);
+  if (is_stream)
+    {
+      as->flags |= SESSION_F_STREAM;
+      asp = session_get_from_handle (hc->hc_pa_session_handle);
+      asl = listen_session_get_from_handle (asp->listener_handle);
+      /* we need listener handle for init */
+      as->listener_handle = asp->listener_handle;
+    }
+  else
+    {
+      as->listener_handle = hc->hc_pa_session_handle;
+      asl = listen_session_get_from_handle (hc->hc_pa_session_handle);
+      /* change hc_pa_session_handle to parent session */
+      hc->hc_pa_session_handle = session_handle (as);
+    }
   as->session_type = asl->session_type;
-  as->listener_handle = hc->hc_pa_session_handle;
 
   /* init session fifos and notify app */
   if ((rv = app_worker_init_accepted (as)))
@@ -960,6 +973,10 @@ http_conn_accept_request (http_conn_t *hc, http_req_t *req)
       session_free (as);
       return rv;
     }
+
+  /* now we can change it to parent */
+  if (is_stream)
+    as->listener_handle = hc->hc_pa_session_handle;
 
   req->hr_pa_wrk_index = as->app_wrk_index;
 
