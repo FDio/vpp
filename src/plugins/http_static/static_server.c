@@ -792,7 +792,11 @@ hss_ts_accept_callback (session_t *ts)
   hs->vpp_session_handle = session_handle (ts);
 
   /* Link to listener context */
-  ls = listen_session_get_from_handle (ts->listener_handle);
+  if (ts->flags & SESSION_F_STREAM)
+    ls = listen_session_get_from_handle (
+      session_get_from_handle (ts->listener_handle)->listener_handle);
+  else
+    ls = listen_session_get_from_handle (ts->listener_handle);
   hs->listener_index = ls->opaque;
   hs->use_ptr_thresh = hss_listener_get (hs->listener_index)->use_ptr_thresh;
 
