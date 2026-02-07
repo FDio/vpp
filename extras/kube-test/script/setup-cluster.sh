@@ -19,7 +19,8 @@ echo "CALICOVPP_DIR=$CALICOVPP_DIR"
 # [KinD only] sets VPP's mtu. Only works if kind network is configured to use MTU=9000
 export CALICO_NETWORK_CONFIG=${CALICO_NETWORK_CONFIG:-"mtu: 9000"}
 # used for Calico images
-export TIGERA_VERSION="${TIGERA_VERSION:-"master"}"
+# keep Calico/Tigera defaults on a stable release tag to avoid master-branch skew
+export TIGERA_VERSION="${TIGERA_VERSION:-"v3.31.0"}"
 export DOCKER_BUILD_PROXY=$HTTP_PROXY
 
 kind_config=$(cat kubernetes/kind-config.yaml)
@@ -70,7 +71,7 @@ help() {
   echo "'release-cluster' starts up a KinD cluster and uses latest CalicoVPP release (e.g. v3.29),
     or you can override versions by using env variables 'CALICOVPP_VERSION' and 'TIGERA_VERSION':
     CALICOVPP_VERSION: latest | v[x].[y].[z] (default=latest)
-    TIGERA_VERSION:    master | v[x].[y].[z] (default="release-v3.31")"
+    TIGERA_VERSION:    master | v[x].[y].[z] (default="v3.31.0")"
 
   echo -e "\nTo shut down the cluster, use 'kind delete cluster'"
 }

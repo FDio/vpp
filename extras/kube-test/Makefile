@@ -167,6 +167,12 @@ install-kube-deps: .deps.ok
     else \
         echo "kubectl is already installed. Skipping."; \
 	fi
+	@if ! command -v envsubst >/dev/null 2>&1; then \
+		echo "envsubst not found. Installing gettext-base..."; \
+		sudo -E apt-get update && sudo -E apt-get install -y gettext-base; \
+	else \
+		echo "envsubst is already installed. Skipping."; \
+	fi
 	@touch .kube_deps.ok
 
 .PHONY: install-deps
