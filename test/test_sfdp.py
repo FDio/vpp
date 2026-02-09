@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright(c) 2025 Cisco Systems, Inc.
 import unittest
+import socket
 from asfframework import VppTestRunner
 from framework import VppTestCase
 from config import config
@@ -11,6 +12,7 @@ from vpp_papi import VppEnum
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP, TCP, ICMP
+from scapy.layers.inet6 import IPv6, TCP as TCP6
 
 
 @unittest.skipIf(
@@ -27,7 +29,9 @@ class TestSfdp(VppTestCase):
             cls.create_pg_interfaces(range(4))
             for i in cls.pg_interfaces:
                 i.config_ip4()
+                i.config_ip6()
                 i.resolve_arp()
+                i.resolve_ndp()
                 i.admin_up()
         except Exception:
             super(TestSfdp, cls).tearDownClass()
@@ -37,6 +41,7 @@ class TestSfdp(VppTestCase):
     def tearDownClass(cls):
         for i in cls.pg_interfaces:
             i.unconfig_ip4()
+            i.unconfig_ip6()
             i.admin_down()
         super(TestSfdp, cls).tearDownClass()
 
@@ -58,7 +63,65 @@ class TestSfdp(VppTestCase):
             / Raw(b"\xa5" * 100)
         )
 
-    def _configure_sfdp(self):
+    def create_ip4_mask(self, src_ip=False, dst_ip=False, proto=False):
+        mask = bytearray(32)  # 2 match vectors = 32 bytes
+
+        if proto:
+            mask[9] = 0xFF  # Protocol at offset 9
+        if src_ip:
+            mask[12:16] = b"\xff\xff\xff\xff"  # Source IP at offset 12
+        if dst_ip:
+            mask[16:20] = b"\xff\xff\xff\xff"  # Destination IP at offset 16
+
+        return bytes(mask)
+
+    def create_ip4_match(self, src_ip=None, dst_ip=None, proto=None):
+        match = bytearray(32)  # 2 match vectors = 32 bytes
+
+        if proto is not None:
+            match[9] = proto
+        if src_ip is not None:
+            match[12:16] = socket.inet_aton(src_ip)
+        if dst_ip is not None:
+            match[16:20] = socket.inet_aton(dst_ip)
+
+        return bytes(match)
+
+    def create_ip6_mask(self, src_ip=False, dst_ip=False, next_header=False):
+        mask = bytearray(64)  # 4 match vectors = 64 bytes for IPv6
+
+        if next_header:
+            mask[6] = 0xFF  # Next Header at offset 6
+        if src_ip:
+            mask[8:24] = b"\xff" * 16  # Source IP at offset 8 (16 bytes)
+        if dst_ip:
+            mask[24:40] = b"\xff" * 16  # Destination IP at offset 24 (16 bytes)
+
+        return bytes(mask)
+
+    def create_ip6_match(self, src_ip=None, dst_ip=None, next_header=None):
+        match = bytearray(64)  # 4 match vectors = 64 bytes for IPv6
+
+        if next_header is not None:
+            match[6] = next_header
+        if src_ip is not None:
+            match[8:24] = socket.inet_pton(socket.AF_INET6, src_ip)
+        if dst_ip is not None:
+            match[24:40] = socket.inet_pton(socket.AF_INET6, dst_ip)
+
+        return bytes(match)
+
+    def create_tcp6_packet(
+        self, src_mac, dst_mac, src_ip, dst_ip, sport, dport, flags="S", hlim=64
+    ):
+        return (
+            Ether(src=src_mac, dst=dst_mac)
+            / IPv6(src=src_ip, dst=dst_ip, hlim=hlim)
+            / TCP(sport=sport, dport=dport, flags=flags)
+            / Raw(b"\xa5" * 100)
+        )
+
+    def _configure_sfdp(self, use_classifier_input=False, is_ip6=False):
         """Base SFDP Configuration"""
         # Add tenant with ID 1
         self.tenant_id = 1
@@ -70,11 +133,12 @@ class TestSfdp(VppTestCase):
         self.assertEqual(reply.retval, 0)
 
         # Configure services - minimal chain for session tracking
+        lookup_service = "ip6-lookup" if is_ip6 else "ip4-lookup"
         reply = self.vapi.sfdp_set_services(
             tenant_id=1,
             dir=VppEnum.vl_api_sfdp_session_direction_t.SFDP_API_FORWARD,
             n_services=2,
-            services=[{"data": "sfdp-l4-lifecycle"}, {"data": "ip4-lookup"}],
+            services=[{"data": "sfdp-l4-lifecycle"}, {"data": lookup_service}],
         )
         self.assertEqual(reply.retval, 0)
 
@@ -82,19 +146,27 @@ class TestSfdp(VppTestCase):
             tenant_id=1,
             dir=VppEnum.vl_api_sfdp_session_direction_t.SFDP_API_REVERSE,
             n_services=2,
-            services=[{"data": "sfdp-l4-lifecycle"}, {"data": "ip4-lookup"}],
+            services=[{"data": "sfdp-l4-lifecycle"}, {"data": lookup_service}],
         )
         self.assertEqual(reply.retval, 0)
 
         # Enable on interface
-        reply = self.vapi.sfdp_interface_input_set(
-            sw_if_index=self.pg0.sw_if_index,
-            tenant_id=1,
-            is_disable=False,
-        )
-        self.assertEqual(reply.retval, 0)
+        if use_classifier_input:
+            reply = self.vapi.sfdp_classifier_input_enable_disable(
+                sw_if_index=self.pg0.sw_if_index,
+                is_disable=False,
+                is_ip6=is_ip6,
+            )
+            self.assertEqual(reply.retval, 0)
+        else:
+            reply = self.vapi.sfdp_interface_input_set(
+                sw_if_index=self.pg0.sw_if_index,
+                tenant_id=1,
+                is_disable=False,
+            )
+            self.assertEqual(reply.retval, 0)
 
-    def _cleanup_sfdp(self):
+    def _cleanup_sfdp(self, use_classifier_input=False, is_ip6=False):
         """Cleanup SFDP configuration"""
         # Expire active sessions
         self.vapi.sfdp_kill_session(is_all=True)
@@ -108,11 +180,19 @@ class TestSfdp(VppTestCase):
         )
 
         # Disable SFDP on interfaces
-        self.vapi.sfdp_interface_input_set(
-            sw_if_index=self.pg0.sw_if_index,
-            tenant_id=self.tenant_id,
-            is_disable=True,
-        )
+        if use_classifier_input:
+            reply = self.vapi.sfdp_classifier_input_enable_disable(
+                sw_if_index=self.pg0.sw_if_index,
+                is_disable=True,
+                is_ip6=is_ip6,
+            )
+            self.assertEqual(reply.retval, 0)
+        else:
+            self.vapi.sfdp_interface_input_set(
+                sw_if_index=self.pg0.sw_if_index,
+                tenant_id=self.tenant_id,
+                is_disable=True,
+            )
 
         # Delete tenant
         self.vapi.sfdp_tenant_add_del(
@@ -565,6 +645,205 @@ class TestSfdp(VppTestCase):
         # Delete tenants
         self.vapi.sfdp_tenant_add_del(tenant_id=1, is_del=True)
         self.vapi.sfdp_tenant_add_del(tenant_id=2, is_del=True)
+
+    def test_sfdp_classifier_input(self):
+        """Test SFDP input classifier node"""
+        self._configure_sfdp(use_classifier_input=True)
+
+        # Create a classifier table matching on src and dst IP
+        mask = self.create_ip4_mask(src_ip=True, dst_ip=True)
+        reply = self.vapi.classify_add_del_table(
+            is_add=True,
+            mask=mask,
+            mask_len=len(mask),
+            skip_n_vectors=0,
+            match_n_vectors=2,
+            nbuckets=64,
+            memory_size=1 << 20,  # 1MB
+        )
+        self.assertEqual(reply.retval, 0)
+        table_index = reply.new_table_index
+
+        # Set the classifier table
+        reply = self.vapi.sfdp_classifier_input_set_table(
+            table_index=table_index,
+            is_del=False,
+        )
+        self.assertEqual(reply.retval, 0)
+
+        # Add classifier session for specific traffic pattern:
+        match = self.create_ip4_match(
+            src_ip=self.pg0.remote_ip4, dst_ip=self.pg1.remote_ip4
+        )
+
+        reply = self.vapi.sfdp_classifier_input_add_del_session(
+            tenant_id=self.tenant_id,
+            is_del=False,
+            match=match,
+            match_len=len(match),
+        )
+        self.assertEqual(reply.retval, 0)
+
+        # Enable classifier input on pg0 (ip4)
+        reply = self.vapi.sfdp_classifier_input_enable_disable(
+            sw_if_index=self.pg0.sw_if_index,
+            is_disable=False,
+            is_ip6=False,
+        )
+        self.assertEqual(reply.retval, 0)
+
+        matching_pkt = self.create_tcp_packet(
+            src_mac=self.pg0.remote_mac,
+            dst_mac=self.pg0.local_mac,
+            src_ip=self.pg0.remote_ip4,
+            dst_ip=self.pg1.remote_ip4,
+            sport=11111,
+            dport=80,
+            flags="S",
+        )
+        self.send_and_expect(self.pg0, matching_pkt, self.pg1)
+
+        # Verify SFDP session was created for matching traffic
+        sessions = self.vapi.sfdp_session_dump()
+        self.assertEqual(len(sessions), 1, "Expected one SFDP session")
+        self.assertEqual(sessions[0].tenant_id, self.tenant_id)
+        self.assertEqual(sessions[0].protocol, 6)  # TCP
+
+        passthrough_pkt1 = self.create_tcp_packet(
+            src_mac=self.pg0.remote_mac,
+            dst_mac=self.pg0.local_mac,
+            src_ip=self.pg0.remote_ip4,  # Same source
+            dst_ip=self.pg2.remote_ip4,  # Different dest - no match
+            sport=22222,
+            dport=443,
+            flags="S",
+        )
+        self.send_and_expect(self.pg0, passthrough_pkt1, self.pg2)
+
+        # Still only one SFDP session - no session
+        # created by passthrough traffic
+        sessions = self.vapi.sfdp_session_dump()
+        self.assertEqual(
+            len(sessions), 1, "Passthrough traffic should not create SFDP session"
+        )
+
+        # Cleanup
+        self.vapi.sfdp_classifier_input_add_del_session(
+            tenant_id=self.tenant_id,
+            is_del=True,
+            match=match,
+            match_len=len(match),
+        )
+
+        self.vapi.sfdp_classifier_input_enable_disable(
+            sw_if_index=self.pg0.sw_if_index,
+            is_disable=True,
+            is_ip6=False,
+        )
+
+        self.vapi.sfdp_classifier_input_set_table(
+            table_index=table_index,
+            is_del=True,
+        )
+        self.vapi.classify_add_del_table(
+            is_add=False,
+            table_index=table_index,
+            mask_len=0,
+            match_n_vectors=0,
+        )
+        self._cleanup_sfdp(use_classifier_input=True)
+
+    def test_sfdp_classifier_input_ip6(self):
+        """Test SFDP input classifier node with IPv6 traffic"""
+        self._configure_sfdp(use_classifier_input=True, is_ip6=True)
+
+        # Create a classifier table matching on src and dst IPv6
+        mask = self.create_ip6_mask(src_ip=True, dst_ip=True)
+        reply = self.vapi.classify_add_del_table(
+            is_add=True,
+            mask=mask,
+            mask_len=len(mask),
+            skip_n_vectors=0,
+            match_n_vectors=4,
+            nbuckets=64,
+            memory_size=1 << 20,  # 1MB
+        )
+        self.assertEqual(reply.retval, 0)
+        table_index = reply.new_table_index
+
+        # Set the classifier table
+        reply = self.vapi.sfdp_classifier_input_set_table(
+            table_index=table_index,
+            is_del=False,
+        )
+        self.assertEqual(reply.retval, 0)
+
+        # Add classifier session for specific traffic pattern:
+        match = self.create_ip6_match(
+            src_ip=self.pg0.remote_ip6, dst_ip=self.pg1.remote_ip6
+        )
+
+        reply = self.vapi.sfdp_classifier_input_add_del_session(
+            tenant_id=self.tenant_id,
+            is_del=False,
+            match=match,
+            match_len=len(match),
+        )
+        self.assertEqual(reply.retval, 0)
+
+        matching_pkt = self.create_tcp6_packet(
+            src_mac=self.pg0.remote_mac,
+            dst_mac=self.pg0.local_mac,
+            src_ip=self.pg0.remote_ip6,
+            dst_ip=self.pg1.remote_ip6,
+            sport=11111,
+            dport=80,
+            flags="S",
+        )
+        self.send_and_expect(self.pg0, matching_pkt, self.pg1)
+
+        # Verify SFDP session was created for matching traffic
+        sessions = self.vapi.sfdp_session_dump()
+        self.assertEqual(len(sessions), 1, "Expected one SFDP session")
+        self.assertEqual(sessions[0].tenant_id, self.tenant_id)
+        self.assertEqual(sessions[0].protocol, 6)  # TCP
+
+        passthrough_pkt = self.create_tcp6_packet(
+            src_mac=self.pg0.remote_mac,
+            dst_mac=self.pg0.local_mac,
+            src_ip=self.pg0.remote_ip6,  # Same source
+            dst_ip=self.pg2.remote_ip6,  # Different dest - no match
+            sport=22222,
+            dport=443,
+            flags="S",
+        )
+        self.send_and_expect(self.pg0, passthrough_pkt, self.pg2)
+
+        # Still only one SFDP session - no session created by passthrough traffic
+        sessions = self.vapi.sfdp_session_dump()
+        self.assertEqual(
+            len(sessions), 1, "Passthrough traffic should not create SFDP session"
+        )
+
+        # Cleanup
+        self.vapi.sfdp_classifier_input_add_del_session(
+            tenant_id=self.tenant_id,
+            is_del=True,
+            match=match,
+            match_len=len(match),
+        )
+
+        self.vapi.sfdp_classifier_input_set_table(
+            table_index=table_index,
+            is_del=True,
+        )
+        self.vapi.classify_add_del_table(
+            is_add=False,
+            table_index=table_index,
+            mask_len=0,
+            match_n_vectors=0,
+        )
+        self._cleanup_sfdp(use_classifier_input=True, is_ip6=True)
 
 
 if __name__ == "__main__":

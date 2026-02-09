@@ -7,6 +7,8 @@
 #include <sfdp_services/base/interface_input/interface_input.h>
 #include <vnet/sfdp/sfdp.h>
 #include <vnet/sfdp/common.h>
+#include <vnet/sfdp/service.h>
+
 typedef struct
 {
   u32 tenant_id;
@@ -127,3 +129,9 @@ VNET_FEATURE_INIT (sfdp_interface_input_feat, static) = {
   .arc_name = "ip4-unicast",
   .node_name = "sfdp-interface-input",
 };
+
+SFDP_SERVICE_DEFINE (ip6_lookup) = { .node_name = "ip6-lookup",
+				     .runs_before = SFDP_SERVICES (0),
+				     .runs_after = SFDP_SERVICES ("sfdp-drop", "sfdp-l4-lifecycle",
+								  "sfdp-tcp-check"),
+				     .is_terminal = 1 };

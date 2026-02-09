@@ -29,6 +29,11 @@ add_vpp_plugin(sfdp_services
   base/interface_input/api.c
   base/interface_input/node.c
 
+  base/classifier_input/classifier_input.c
+  base/classifier_input/cli.c
+  base/classifier_input/api.c
+  base/classifier_input/node.c
+
   acl/acl_sample.c
   acl/cli.c
   acl/node.c
@@ -53,6 +58,7 @@ add_vpp_plugin(sfdp_services
   base/tcp-check/node.c
   base/l4-lifecycle/node.c
   base/interface_input/node.c
+  base/classifier_input/node.c
   acl/node.c
   geneve/geneve_input/node.c
   geneve/geneve_output/node.c
@@ -66,5 +72,6 @@ add_vpp_plugin(sfdp_services
   base/nat/nat.api
   base/tcp-check/tcp_check.api
   base/interface_input/interface_input.api
+  base/classifier_input/classifier_input.api
   geneve/gateway.api
 )
