@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0
- * Copyright (c) 2023 Cisco Systems, Inc.
+ * Copyright (c) 2023-2026 Cisco Systems, Inc.
  */
 
 #include "vppinfra/pool.h"
@@ -124,14 +124,13 @@ vnet_dev_alloc (vlib_main_t *vm, vnet_dev_device_id_t id,
   vnet_dev_main_t *dm = &vnet_dev_main;
   vnet_dev_t *dev = 0, **devp = 0;
 
-  dev = vnet_dev_alloc_with_data (sizeof (vnet_dev_t),
-				  driver->registration->device_data_sz);
+  dev = vnet_dev_alloc_with_data (sizeof (vnet_dev_t), driver->registration->device.data_sz);
 
   pool_get (dm->devices, devp);
   devp[0] = dev;
   dev->index = devp - dm->devices;
   dev->driver_index = driver->index;
-  dev->ops = driver->registration->ops;
+  dev->ops = driver->registration->device.ops;
   dev->bus_index = driver->bus_index;
   clib_memcpy (dev->device_id, id, sizeof (dev->device_id));
   hash_set (dm->device_index_by_id, dev->device_id, dev->index);
@@ -438,6 +437,26 @@ sort_driver_registrations (void *a0, void *a1)
   return 0;
 }
 
+static void
+vnet_dev_call_driver_deinit (vlib_main_t *vm, vnet_dev_driver_t *driver)
+{
+  if (driver->initialized && driver->registration->driver.ops.deinit)
+    {
+      driver->registration->driver.ops.deinit (vm, driver);
+      driver->initialized = 0;
+    }
+}
+
+static void
+vnet_dev_deinit_initialized_drivers (vlib_main_t *vm)
+{
+  vnet_dev_main_t *dm = &vnet_dev_main;
+  vnet_dev_driver_t *driver;
+
+  vec_foreach (driver, dm->drivers)
+    vnet_dev_call_driver_deinit (vm, driver);
+}
+
 static clib_error_t *
 vnet_dev_main_init (vlib_main_t *vm)
 {
@@ -476,6 +495,7 @@ vnet_dev_main_init (vlib_main_t *vm)
       vnet_dev_driver_t *driver;
       vnet_dev_bus_t *bus;
       vnet_device_class_t *dev_class;
+      vnet_dev_rv_t rv;
       int bus_index = -1;
 
       pool_foreach (bus, dm->buses)
@@ -495,7 +515,7 @@ vnet_dev_main_init (vlib_main_t *vm)
       driver->description = r->description ? r->description : r->name;
       driver->index = driver - dm->drivers;
       driver->bus_index = bus_index;
-      driver->ops = r->ops;
+      driver->ops = r->device.ops;
       dev_class = clib_mem_alloc (sizeof (vnet_device_class_t));
       *dev_class = (vnet_device_class_t){
 	.name = r->name,
@@ -511,6 +531,19 @@ vnet_dev_main_init (vlib_main_t *vm)
 	.set_rss_queues_function = vnet_dev_interface_set_rss_queues,
       };
       driver->dev_class_index = vnet_register_device_class (vm, dev_class);
+
+      if (r->driver.ops.init)
+	{
+	  rv = r->driver.ops.init (vm, driver);
+	  if (rv != VNET_DEV_OK)
+	    {
+	      vnet_dev_deinit_initialized_drivers (vm);
+	      return clib_error_return (0, "driver '%s' init failed: %U", r->name,
+					format_vnet_dev_rv, rv);
+	    }
+	  driver->initialized = 1;
+	}
+
       log_debug (0, "driver '%s' registered on bus '%s'", r->name,
 		 bus->registration->name);
 
@@ -545,6 +578,15 @@ vnet_dev_main_init (vlib_main_t *vm)
 }
 
 VLIB_INIT_FUNCTION (vnet_dev_main_init);
+
+static clib_error_t *
+vnet_dev_main_exit (vlib_main_t *vm)
+{
+  vnet_dev_deinit_initialized_drivers (vm);
+  return 0;
+}
+
+VLIB_MAIN_LOOP_EXIT_FUNCTION (vnet_dev_main_exit);
 
 clib_error_t *
 vnet_dev_num_workers_change (vlib_main_t *vm)

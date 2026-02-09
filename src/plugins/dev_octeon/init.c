@@ -548,17 +548,21 @@ VNET_DEV_REGISTER_DRIVER (octeon) = {
   .name = "octeon",
   .description = "Marvell Octeon",
   .bus = "pci",
-  .device_data_sz = sizeof (oct_device_t),
-  .ops = {
-    .config_args = oct_config_args,
-    .alloc = oct_alloc,
-    .init = oct_init,
-    .deinit = oct_deinit,
-    .free = oct_free,
-    .probe = oct_probe,
+  .device = {
+    .data_sz = sizeof (oct_device_t),
+    .ops = {
+      .config_args = oct_config_args,
+      .alloc = oct_alloc,
+      .init = oct_init,
+      .deinit = oct_deinit,
+      .free = oct_free,
+      .probe = oct_probe,
+    },
+    .args = oct_dev_args,
   },
-  .args = oct_dev_args,
-  .drv_args = oct_drv_args,
+  .driver = {
+    .args = oct_drv_args,
+  },
 };
 
 static int

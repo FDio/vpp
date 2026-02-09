@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0
- * Copyright (c) 2023 Cisco Systems, Inc.
+ * Copyright (c) 2023-2026 Cisco Systems, Inc.
  */
 
 #include <vnet/vnet.h>
@@ -289,13 +289,15 @@ VNET_DEV_REGISTER_DRIVER (avf) = {
   .name = "iavf",
   .description = "Intel Adaptive Virtual Function (X710, E810, E830 VFs)",
   .bus = "pci",
-  .device_data_sz = sizeof (iavf_device_t),
   .runtime_temp_space_sz = sizeof (iavf_rt_data_t),
-  .ops = {
-    .alloc = iavf_alloc,
-    .init = iavf_init,
-    .deinit = iavf_deinit,
-    .free = iavf_free,
-    .probe = iavf_probe,
+  .device = {
+    .data_sz = sizeof (iavf_device_t),
+    .ops = {
+      .alloc = iavf_alloc,
+      .init = iavf_init,
+      .deinit = iavf_deinit,
+      .free = iavf_free,
+      .probe = iavf_probe,
+    },
   },
 };

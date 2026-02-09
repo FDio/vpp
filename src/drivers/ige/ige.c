@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0
- * Copyright (c) 2025 Damjan Marion
+ * Copyright (c) 2025-2026 Damjan Marion
  */
 
 #include <vnet/vnet.h>
@@ -216,9 +216,11 @@ VNET_DEV_REGISTER_DRIVER (ige) = {
   .name = "ige",
   .description = "Intel Gigabit Ethernet controllers (i210, i225, i226)",
   .bus = "pci",
-  .device_data_sz = sizeof (ige_device_t),
-  .ops = {
-    .init = ige_init,
-    .probe = ige_probe,
+  .device = {
+    .data_sz = sizeof (ige_device_t),
+    .ops = {
+      .init = ige_init,
+      .probe = ige_probe,
+    },
   },
 };

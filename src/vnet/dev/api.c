@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0
- * Copyright (c) 2023 Cisco Systems, Inc.
+ * Copyright (c) 2023-2026 Cisco Systems, Inc.
  */
 
 #include "vppinfra/pool.h"
@@ -102,8 +102,8 @@ vnet_dev_api_attach (vlib_main_t *vm, vnet_dev_api_attach_args_t *args)
   dev->description = dev_desc;
   dev->probe_handle = probe_handle;
 
-  if (driver->registration->args)
-    dev->args = clib_args_init (driver->registration->args);
+  if (driver->registration->device.args)
+    dev->args = clib_args_init (driver->registration->device.args);
 
   if (args->args)
     {

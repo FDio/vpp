@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0
- * Copyright (c) 2023 Cisco Systems, Inc.
+ * Copyright (c) 2023-2026 Cisco Systems, Inc.
  */
 
 #include <vnet/vnet.h>
@@ -428,11 +428,13 @@ VNET_DEV_REGISTER_DRIVER (pp2) = {
   .name = "mvpp2",
   .description = "Marvell Armada Packet Processor v2",
   .bus = PLATFORM_BUS_NAME,
-  .device_data_sz = sizeof (mvpp2_device_t),
-  .ops = {
-    .init = mvpp2_init,
-    .deinit = mvpp2_deinit,
-    .probe = mvpp2_probe,
-    .format_info = format_mvpp2_dev_info,
+  .device = {
+    .data_sz = sizeof (mvpp2_device_t),
+    .ops = {
+      .init = mvpp2_init,
+      .deinit = mvpp2_deinit,
+      .probe = mvpp2_probe,
+      .format_info = format_mvpp2_dev_info,
+    },
   },
 };

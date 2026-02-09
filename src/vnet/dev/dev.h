@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0
- * Copyright (c) 2023 Cisco Systems, Inc.
+ * Copyright (c) 2023-2026 Cisco Systems, Inc.
  */
 
 #ifndef _VNET_DEV_H_
@@ -93,6 +93,7 @@ typedef struct vnet_dev_counter_main vnet_dev_counter_main_t;
 typedef struct vnet_dev_port_cfg_change_req vnet_dev_port_cfg_change_req_t;
 
 typedef vnet_dev_rv_t (vnet_dev_drv_op_t) (vlib_main_t *, vnet_dev_driver_t *);
+typedef void (vnet_dev_drv_op_no_rv_t) (vlib_main_t *, vnet_dev_driver_t *);
 typedef vnet_dev_rv_t (vnet_dev_op_t) (vlib_main_t *, vnet_dev_t *);
 typedef vnet_dev_rv_t (vnet_dev_port_op_t) (vlib_main_t *, vnet_dev_port_t *);
 typedef vnet_dev_rv_t (vnet_dev_port_cfg_change_op_t) (
@@ -477,13 +478,24 @@ struct vnet_dev_driver_registration
   vnet_dev_driver_name_t name;
   char *description;
   vnet_dev_bus_name_t bus;
-  u16 device_data_sz;
   u16 runtime_temp_space_sz;
   vnet_dev_match_t *match;
   int priority;
-  vnet_dev_ops_t ops;
-  clib_arg_t *args;
-  clib_arg_t *drv_args;
+  struct
+  {
+    vnet_dev_ops_t ops;
+    clib_arg_t *args;
+    u16 data_sz;
+  } device;
+  struct
+  {
+    struct
+    {
+      vnet_dev_drv_op_t *init;
+      vnet_dev_drv_op_no_rv_t *deinit;
+    } ops;
+    clib_arg_t *args;
+  } driver;
 };
 
 typedef struct
@@ -503,6 +515,7 @@ typedef struct vnet_dev_driver
   vnet_dev_bus_index_t bus_index;
   vnet_dev_ops_t ops;
   clib_args_handle_t args;
+  u8 initialized;
 } vnet_dev_driver_t;
 
 typedef struct
