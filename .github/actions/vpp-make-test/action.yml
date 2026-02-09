@@ -1,0 +1,162 @@
+---
+name: "🛠️ Test VPP image using 'make test'"
+description: |
+  This GitHub Action tests the VPP image built using the vpp-build action.
+
+inputs:
+  LOG_DIR:
+    description: "Directory for maketest logs"
+    required: false
+    default: "/scratch/docker-build/vpp/logs/maketest"
+    type: string
+  WORKSPACE:
+    description: "Workspace directory where VPP is located"
+    required: true
+    type: string
+  BUILD_TYPE:
+    description: "Type of build: debug or release"
+    required: true
+    type: string
+  TEST_JOBS:
+    description: "Number of parallel jobs for 'make test'"
+    required: false
+    default: "4"
+    type: string
+  TEST_RETRIES:
+    description: "Number of retries for flaky tests"
+    required: false
+    default: "3"
+    type: string
+  MAKE_TEST_OS:
+    description: "OS to run 'make test' on"
+    required: false
+    default: "ubuntu-24.04"
+    type: string
+  MAKE_TEST_MULTIWORKER_OS:
+    description: "OS to run 'make test' with multiworker config"
+    required: false
+    default: "debian-12"
+    type: string
+  VPPAPIGEN_TEST_OS:
+    description: "OS to run 'vppapigen' tests on"
+    required: false
+    default: "ubuntu-24.04"
+    type: string
+  VPP_WORKER_COUNT:
+    description: "Number of VPP workers to use"
+    required: false
+    default: "0"
+    type: string
+  MAKE_TEST_SUITES:
+    description: "Specific set of test suites to run"
+    required: false
+    default: ""
+    type: string
+  TUI_LINE:
+    description: "Delimiter line for TUI output"
+    required: false
+    default: "*******************************************************************"
+    type: string
+  VPP_TEARDOWN_TIMEOUT:
+    description: "Timeout waiting for VPP teardown to complete"
+    required: false
+    default: "30"
+    type: string
+
+runs:
+  using: "composite"
+  steps:
+    - name: VPP Make Test
+      shell: bash
+      env:
+        LOG_DIR: ${{ inputs.LOG_DIR }}
+        WORKSPACE: ${{ inputs.WORKSPACE }}
+        BUILD_TYPE: ${{ inputs.BUILD_TYPE }}
+        MAKE_TEST_SUITES: ${{ inputs.MAKE_TEST_SUITES }}
+        TEST_JOBS: ${{ inputs.TEST_JOBS }}
+        TEST_RETRIES: ${{ inputs.TEST_RETRIES }}
+        MAKE_TEST_OS: ${{ inputs.MAKE_TEST_OS }}
+        MAKE_TEST_MULTIWORKER_OS: ${{ inputs.MAKE_TEST_MULTIWORKER_OS }}
+        VPPAPIGEN_TEST_OS: ${{ inputs.VPPAPIGEN_TEST_OS }}
+        VPP_WORKER_COUNT: ${{ inputs.VPP_WORKER_COUNT }}
+        TUI_LINE: ${{ inputs.TUI_LINE }}
+        VPP_TEARDOWN_TIMEOUT: ${{ inputs.VPP_TEARDOWN_TIMEOUT }}
+      run: |
+          set -euxo pipefail
+          cd "$WORKSPACE"
+
+          mkdir -p $LOG_DIR
+          LOG_FILE="$LOG_DIR/maketest.log"
+          {
+            if [ "$BUILD_TYPE" == "debug" ] ; then
+                TEST_TARGET="test-debug"
+            else
+                TEST_TARGET="test"
+            fi
+
+            BUILD_RESULT="\n* MAKE TEST SUCCESSFULLY COMPLETED"
+            BUILD_ERROR=""
+            RETVAL="0"
+
+            make_test_suites() {
+                for suite in $MAKE_TEST_SUITES ; do
+                    if ! make UNATTENDED=yes CCACHE_DISABLE=1 TESTS_GCOV=1 TEST_JOBS="$TEST_JOBS" TEST=$suite $TEST_TARGET ; then
+                        BUILD_ERROR="FAILED 'make UNATTENDED=yes CCACHE_DISABLE=1 TESTS_GCOV=1 TEST_JOBS="$TEST_JOBS" TEST=$suite $TEST_TARGET'!"
+                        return
+                    fi
+                    if ! make UNATTENDED=yes CCACHE_DISABLE=1 TESTS_GCOV=1 TEST_JOBS="$TEST_JOBS" TEST=$suite $TEST_TARGET ; then
+                        BUILD_ERROR="FAILED 'make UNATTENDED=yes CCACHE_DISABLE=1 TESTS_GCOV=1 TEST_JOBS="$TEST_JOBS" TEST=$suite $TEST_TARGET'!"
+                        return
+                    fi
+                done
+            }
+
+            make_test() {
+                if ! make UNATTENDED=yes test-dep ; then
+                    BUILD_ERROR+="FAILED 'make UNATTENDED=yes test-dep'"
+                    return
+                fi
+                if grep -q "${OS_ID}-${OS_VERSION_ID}" <<< "${VPPAPIGEN_TEST_OS}"; then
+                    if ! src/tools/vppapigen/test_vppapigen.py ; then
+                        BUILD_ERROR+="FAILED src/tools/vppapigen/test_vppapigen.py"
+                        return
+                    fi
+                fi
+                if grep -q "${OS_ID}-${OS_VERSION_ID}" <<< "${MAKE_TEST_OS}"; then
+                    if ! make COMPRESS_FAILED_TEST_LOGS=yes TEST="\"$MAKE_TEST_SUITES\"" TEST_JOBS="$TEST_JOBS" RETRIES="$TEST_RETRIES" $TEST_TARGET ; then
+                        BUILD_ERROR+="FAILED 'make COMPRESS_FAILED_TEST_LOGS=yes TEST=\"$MAKE_TEST_SUITES\" "
+                        BUILD_ERROR+="TEST_JOBS=$TEST_JOBS RETRIES=$TEST_RETRIES $TEST_TARGET'"
+                        return
+                    fi
+                else
+                    echo "Skip running 'make test' on ${OS_ID}-${OS_VERSION_ID}"
+                fi
+                if grep -q "${OS_ID}-${OS_VERSION_ID}" <<< "${MAKE_TEST_MULTIWORKER_OS}"; then
+                    if ! make VPP_WORKER_COUNT="${VPP_WORKER_COUNT}" COMPRESS_FAILED_TEST_LOGS=yes \
+                            TEST_RETRIES="${TEST_RETRIES}" TEST_JOBS="${TEST_JOBS}" $TEST_TARGET ; then
+                        BUILD_ERROR+="FAILED 'make VPP_WORKER_COUNT=${VPP_WORKER_COUNT} "
+                        BUILD_ERROR+="COMPRESS_FAILED_TEST_LOGS=yes "
+                        BUILD_ERROR+="RETRIES=${TEST_RETRIES} TEST_JOBS=${TEST_JOBS} $TEST_TARGET'"
+                        return
+                    else
+                        BUILD_RESULT+="\n* MULTIWORKER MAKE TEST SUCCESSFULLY COMPLETED"
+                    fi
+                else
+                    echo "Skip running MULTIWORKER MAKE TEST on ${OS_ID}-${OS_VERSION_ID}"
+                fi
+            }
+
+            echo "$TUI_LINE"
+            if [ -n "$MAKE_TEST_SUITES" ] ; then
+                make_test_suites
+            else
+                make_test
+            fi
+            if [ -n "$BUILD_ERROR" ] ; then
+                BUILD_RESULT="$BUILD_ERROR"
+                RETVAL="1"
+            fi
+            echo -e "\n$TUI_LINE\n* VPP ${OS_ID^^}-${OS_VERSION_ID}-${OS_ARCH^^} " \
+                    "\n* $BUILD_RESULT\n$TUI_LINE\n"
+            exit $RETVAL
+          } | tee "$LOG_FILE"

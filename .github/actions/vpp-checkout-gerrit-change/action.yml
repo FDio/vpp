@@ -1,0 +1,53 @@
+---
+name: "🛠️ VPP Checkout Gerrit Change"
+description: |
+  This GitHub Action checks out the VPP Gerrit change specified by the input parameters.
+
+inputs:
+  LOG_DIR:
+    description: "Directory for checkout logs"
+    required: false
+    default: "/scratch/docker-build/vpp/logs/checkout"
+    type: string
+  WORKSPACE:
+    description: "Workspace directory where VPP is located"
+    required: true
+    type: string
+  GERRIT_BRANCH:
+    description: "Gerrit branch to checkout"
+    required: true
+    type: string
+  GERRIT_REFSPEC:
+    description: "Gerrit refspec to fetch"
+    required: true
+    type: string
+  TUI_LINE:
+    description: "Delimiter line for TUI output"
+    required: false
+    default: "*******************************************************************"
+    type: string
+
+runs:
+  using: "composite"
+  steps:
+    - name: Get Gerrit Change
+      shell: bash
+      env:
+        LOG_DIR: ${{ inputs.LOG_DIR }}
+        WORKSPACE: ${{ inputs.WORKSPACE }}
+        GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
+        GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
+        TUI_LINE: ${{ inputs.TUI_LINE }}
+      run: |
+        set -euxo pipefail
+        mkdir -p "$LOG_DIR"
+        {
+          echo "$TUI_LINE"
+          echo "* Checkout $GERRIT_BRANCH ($GERRIT_REFSPEC)"
+          echo "$TUI_LINE"
+          cd "$WORKSPACE"
+          git checkout "$GERRIT_BRANCH" || echo "WARNING: Could not checkout $GERRIT_BRANCH!"
+          git fetch --tags origin "$GERRIT_REFSPEC"
+          git checkout FETCH_HEAD
+          git show --stat
+        } | tee "$LOG_DIR/checkout.log"

@@ -1,0 +1,260 @@
+name: vpp-verify-checkstyle
+
+# yamllint disable-line rule:truthy
+on:
+  workflow_call:
+    inputs:
+      FDIO_NAMESPACE:
+        description: "Executor Namespace (prod|sandbox)"
+        required: true
+        type: string
+      GERRIT_BRANCH:
+        description: "Branch that change is against"
+        required: true
+        type: string
+      GERRIT_CHANGE_ID:
+        description: "The ID for the change"
+        required: true
+        type: string
+      GERRIT_CHANGE_NUMBER:
+        description: "The Gerrit number"
+        required: true
+        type: string
+      GERRIT_CHANGE_URL:
+        description: "URL to the change"
+        required: true
+        type: string
+      GERRIT_EVENT_TYPE:
+        description: "Type of Gerrit event"
+        required: true
+        type: string
+      GERRIT_PATCHSET_NUMBER:
+        description: "The patch number for the change"
+        required: true
+        type: string
+      GERRIT_PATCHSET_REVISION:
+        description: "The revision sha"
+        required: true
+        type: string
+      GERRIT_PROJECT:
+        description: "Project in Gerrit"
+        required: true
+        type: string
+      GERRIT_REFSPEC:
+        description: "Gerrit refspec of change"
+        required: true
+        type: string
+      LOG_PREFIX:
+        description: "Prefix of the log directory"
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      FDIO_NAMESPACE:
+        description: "Executor Namespace (prod|sandbox)"
+        required: false
+        type: choice
+        options:
+          - sandbox
+          - prod
+        default: prod
+      GERRIT_BRANCH:
+        description: "Branch that change is against"
+        required: true
+        type: string
+      GERRIT_CHANGE_ID:
+        description: "The ID for the change"
+        required: true
+        type: string
+      GERRIT_CHANGE_NUMBER:
+        description: "The Gerrit number"
+        required: true
+        type: string
+      GERRIT_CHANGE_URL:
+        description: "URL to the change"
+        required: true
+        type: string
+      GERRIT_EVENT_TYPE:
+        description: "Type of Gerrit event"
+        required: true
+        type: string
+      GERRIT_PATCHSET_NUMBER:
+        description: "The patch number for the change"
+        required: true
+        type: string
+      GERRIT_PATCHSET_REVISION:
+        description: "The revision sha"
+        required: true
+        type: string
+      GERRIT_PROJECT:
+        description: "Project in Gerrit"
+        required: true
+        type: string
+      GERRIT_REFSPEC:
+        description: "Gerrit refspec of change"
+        required: true
+        type: string
+      LOG_PREFIX:
+        description: "Prefix of the log directory"
+        required: true
+        type: string
+
+defaults:
+  run:
+    shell: bash
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  verify-checkstyle:
+    # yamllint disable-line rule:line-length
+    name: ${{ inputs.GERRIT_CHANGE_NUMBER }}/${{ inputs.GERRIT_PATCHSET_NUMBER}}__${{ inputs.GERRIT_BRANCH }}__${{ inputs.FDIO_NAMESPACE }}
+    runs-on:
+      - self-hosted
+      - nomad
+      - fdio:arch=${{ matrix.executor_arch }}
+      - fdio:class=${{ matrix.class }}
+      - fdio:namespace=${{ inputs.FDIO_NAMESPACE || 'prod' }}
+      - fdio:os=${{ matrix.os }}
+      - fdio:workflow=${{ github.run_id }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        build_type: ['release']
+        class: ['builder']
+        os: ['ubuntu2404']
+        executor_arch: ['x86_64']
+
+    env:
+      FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
+      GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
+      GERRIT_CHANGE_ID: ${{ inputs.GERRIT_CHANGE_ID }}
+      GERRIT_CHANGE_NUMBER: ${{ inputs.GERRIT_CHANGE_NUMBER }}
+      GERRIT_CHANGE_URL: ${{ inputs.GERRIT_CHANGE_URL }}
+      GERRIT_EVENT_TYPE: ${{ inputs.GERRIT_EVENT_TYPE }}
+      GERRIT_PATCHSET_NUMBER: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
+      GERRIT_PATCHSET_REVISION: ${{ inputs.GERRIT_PATCHSET_REVISION }}
+      GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
+      GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
+      LOG_PREFIX: ${{ inputs.LOG_PREFIX }}
+      WORKSPACE: /scratch/docker-build/vpp
+      LOG_NAME: ""
+      LOG_DIR: ""
+      TUI_LINE: "*******************************************************************"
+
+    steps:
+      - name: Setup Environment
+        id: setup-executor-env
+        # yamllint disable-line rule:line-length
+        uses: fdio/.github/.github/actions/setup-executor-env@b728d1589228e2891a4241a1bba362d76895c225
+
+      - name: Prepare Log Directory
+        run: |
+          set -euxo pipefail
+          LOG_NAME="${{ env.LOG_PREFIX }}/verify-checkstyle-${{ matrix.build_type }}-${{ matrix.class }}-${{ matrix.os }}-${{ inputs.FDIO_NAMESPACE }}-${{ matrix.executor_arch }}"
+          echo "LOG_NAME=$LOG_NAME" >> "$GITHUB_ENV"
+          LOG_DIR="$WORKSPACE/logs/$LOG_NAME"
+          echo "LOG_DIR=$LOG_DIR" >> "$GITHUB_ENV"
+          mkdir -p "$LOG_DIR"
+
+      - name: Show Environment
+        run: |
+          set -euo pipefail
+          env | sort | tee "$LOG_DIR/environment.log"
+
+      - name: "Show Nomad Dockerfile"
+        # yamllint disable-line rule:line-length
+        uses: fdio/.github/.github/actions/show-nomad-dockerfile@b728d1589228e2891a4241a1bba362d76895c225
+
+      - name: Checkout VPP Gerrit Change
+        # yamllint disable-line rule:line-length
+        uses: fdio/vpp/.github/actions/vpp-checkout-gerrit-change@27fc2aa27f57c8f7055e8f1b6e5a9f41b0315873
+        with:
+          WORKSPACE: ${{ env.WORKSPACE }}
+          GERRIT_BRANCH: ${{ env.GERRIT_BRANCH }}
+          GERRIT_REFSPEC: ${{ env.GERRIT_REFSPEC }}
+          TUI_LINE: ${{ env.TUI_LINE }}
+
+      - name: Run Checkstyle Scripts
+        run: |
+          set -euxo pipefail
+          cd $WORKSPACE
+          {
+            BUILD_EXT_DIR="build/external"
+            MATRIX_FILE="$BUILD_EXT_DIR/mlx_rdma_dpdk_matrix.txt"
+            PKGS_DIR="$BUILD_EXT_DIR/packages"
+
+            if git show --stat | grep -q "$MATRIX_FILE" ; then
+                RDMA_CORE_VERSION="$(grep rdma-core_version $PKGS_DIR/rdma-core.mk | grep -v '(' | mawk '{print $3}')"
+                DPDK_VERSION="$(grep dpdk_version $PKGS_DIR/dpdk.mk | grep -v '(' | mawk '{print $3}')"
+                CURRENT_MATRIX="rdma=$RDMA_CORE_VERSION dpdk=$DPDK_VERSION"
+                if grep -q "$CURRENT_MATRIX" "$MATRIX_FILE"; then
+                    echo -e "$TUI_LINE\n* DPDK/RDMA-CORE matrix file update successfully verified\n$TUI_LINE"
+                else
+                    echo -e "$TUI_LINE\n* ERROR: 'rdma=$RDMA_CORE_VERSION dpdk=$DPDK_VERSION' not found in $MATRIX_FILE!\n$TUI_LINE"
+                    exit 1
+                fi
+            else
+              echo -e "$TUI_LINE\n* DPDK/RDMA-CORE matrix file not modified in $GERRIT_CHANGE_URL \n$TUI_LINE"
+            fi
+          } | tee $LOG_DIR/dpdk_rdma_matrix_check.log
+
+          make UNATTENDED=yes checkstyle | tee $LOG_DIR/make_checkstyle.log
+
+      - name: Run Test Checkstyle Scripts
+        run: |
+          set -euxo pipefail
+          cd $WORKSPACE
+          make test-checkstyle | tee $LOG_DIR/test_checkstyle.log
+
+      - name: Run API Checkstyle Scripts
+        run: |
+          set -euxo pipefail
+          cd $WORKSPACE
+          {
+            VPP_CRC_CHECKER="extras/scripts/crcchecker.py"
+            VPP_CRC_CHECKER_CMD="$VPP_CRC_CHECKER --check-patchset"
+
+            # API checker complains if the git repo is not clean.
+            # Help diagnosing those issues easier
+            git --no-pager diff
+            echo "Running $VPP_CRC_CHECKER_CMD"
+            if $VPP_CRC_CHECKER_CMD; then
+                echo "API check successful"
+            else
+                RET_CODE=$?
+                echo "API check failed: ret code $RET_CODE; please read https://wiki.fd.io/view/VPP/ApiChangeProcess and discuss with ayourtch@gmail.com if unsure how to proceed"
+                echo "::error file=.ci/scripts/vpp/crcchecker.py,line=1::API check FAILED for $GITHUB_REF. See run: https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+                exit $RET_CODE
+            fi
+          } | tee $LOG_DIR/api_checkstyle.log
+
+      - name: Run Commit Message Checkstyle
+        run: |
+          set -euxo pipefail
+          cd $WORKSPACE
+          {
+            echo "Running extras/scripts/check_commit_msg.sh"
+            extras/scripts/check_commit_msg.sh
+          } | tee $LOG_DIR/commit_checkstyle.log
+
+      - name: Run Docs Spell
+        run: |
+          set -euxo pipefail
+          cd $WORKSPACE
+          make docs-spell | tee $LOG_DIR/docs_spelling_checkstyle.log
+
+      - name: AWS S3 Publish Logs
+        if: ${{ always() }}
+        # yamllint disable-line rule:line-length
+        uses: fdio/.github/.github/actions/aws-s3-publish-logs@c2df5c7959a8415f7dd730315a40b058748b4c84
+        with:
+          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws_region: ${{ vars.AWS_REGION }}
+          s3_bucket: ${{ vars.S3_BUCKET }}
+          s3_path: ${{ env.LOG_NAME }}
+          archives_path: ${{ env.LOG_DIR }}

@@ -1,0 +1,102 @@
+---
+name: "🛠️ VPP Install External Dependencies"
+description: |
+  This GitHub Action installs external dependencies for VPP on the self-hosted runner.
+
+inputs:
+  LOG_DIR:
+    description: "Base directory for external dependencies build logs"
+    required: false
+    default: "/scratch/docker-build/vpp/logs/install-ext-deps.log"
+    type: string
+  WORKSPACE:
+    description: "Workspace directory where VPP is located"
+    required: true
+    type: string
+  TUI_LINE:
+    description: "Delimiter line for TUI output"
+    required: false
+    default: "*******************************************************************"
+    type: string
+
+runs:
+  using: "composite"
+  steps:
+    - name: Maybe Install External Dependencies from Packagecloud
+      shell: bash
+      id: maybe-install-from-packagecloud
+      env:
+        LOG_DIR: ${{ inputs.LOG_DIR }}
+        WORKSPACE: ${{ inputs.WORKSPACE }}
+        TUI_LINE: ${{ inputs.TUI_LINE }}
+      run: |
+        set -euxo pipefail
+
+        mkdir -p "$LOG_DIR"
+        LOG_FILE="$LOG_DIR/packagecloud-install-ext-deps.log"
+        {
+          OS_ID=$(grep '^ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g')
+          OS_VERSION_ID=$(grep '^VERSION_ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g')
+          branch="${GERRIT_BRANCH:-master}"
+          branch="${branch/stable\//}"
+
+          echo "Installing vpp-ext-deps (branch: $branch, OS: $OS_ID $OS_VERSION_ID)..."
+          REPO_URL="https://packagecloud.io/fdio/${branch}"
+          echo "REPO_URL: $REPO_URL"
+          INSTALL_URL="https://packagecloud.io/install/repositories/fdio/${branch}"
+          echo "INSTALL_URL: $INSTALL_URL"
+
+          downloads_dir="/root/Downloads"
+
+          # Setup by installing vpp-dev and vpp-lib
+          if [ "${OS_ID,,}" == "ubuntu" ] || [ "${OS_ID,,}" == "debian" ] ; then
+              if [ "${branch}" != "master" ]; then
+                  echo "branch '${branch}' is not master: replacing packagecloud apt sources list with stream specific list"
+                  sudo apt-get -y remove vpp-ext-deps --purge || true
+                  sudo rm -f /etc/apt/sources.list.d/fdio_master.list
+                  curl -s $INSTALL_URL/script.deb.sh | sudo bash || true
+              fi
+              sudo apt-get update -qq || true
+              vpp_ext_deps_version="$(apt-cache show vpp-ext-deps 2>/dev/null | mawk '/Version/ {print $2}' | head -1)" || true
+              if [ -z "$vpp_ext_deps_version" ]; then
+                  echo "Warning: Could not determine vpp-ext-deps version, skipping cache optimization"
+                  # Proceed with direct installation
+              else
+                  # We are here only if the apt-cache show has already succeeded, so no need to guard
+                  vpp_ext_deps_arch="$(apt-cache show vpp-ext-deps | mawk '/Architecture/ {print $2}' | head -1)"
+                  vpp_ext_deps_pkg="vpp-ext-deps_${vpp_ext_deps_version}_${vpp_ext_deps_arch}.deb"
+                  if [ -f "$downloads_dir/$vpp_ext_deps_pkg" ] ; then
+                      echo "Installing cached vpp-ext-deps pkg: $downloads_dir/$vpp_ext_deps_pkg"
+                      sudo dpkg -i "$downloads_dir/$vpp_ext_deps_pkg" || true
+                  else
+                      echo "Installing vpp-ext-deps from packagecloud.io"
+                      force_opts="--allow-downgrades --allow-remove-essential --allow-change-held-packages"
+                      sudo apt-get -y $force_opts install vpp-ext-deps || true
+                  fi
+                  echo "Removing packagecloud.io repository references and running apt-get update"
+                  sudo rm -f /etc/apt/sources.list.d/fdio_*.list
+                  sudo apt-get update -qq || true
+              fi
+          else
+              echo "ERROR: Unsupported OS '$OS_ID'!"
+          fi
+          exit 0
+        } | tee "$LOG_FILE"
+
+    - name: VPP Install External Dependencies
+      shell: bash
+      env:
+        LOG_DIR: ${{ inputs.LOG_DIR }}
+        WORKSPACE: ${{ inputs.WORKSPACE }}
+        TUI_LINE: ${{ inputs.TUI_LINE }}
+      id: vpp-install-ext-deps
+      run: |
+        set -euo pipefail
+        cd "$WORKSPACE"
+        mkdir -p "$LOG_DIR"
+        LOG_FILE="$LOG_DIR/build-install-ext-deps.log"
+        {
+          echo -e "$TUI_LINE\nInstalling VPP external dependencies...\n"
+          make UNATTENDED=yes install-ext-deps
+          echo "$TUI_LINE"
+        } | tee "$LOG_FILE"

@@ -1,0 +1,198 @@
+name: gerrit-comment-handler
+
+# yamllint disable-line rule:truthy
+on:
+  workflow_dispatch:
+    inputs:
+      FDIO_NAMESPACE:
+        description: "Executor Namespace (prod|sandbox)"
+        required: false
+        type: choice
+        options:
+          - sandbox
+          - prod
+        default: prod
+      GERRIT_BRANCH:
+        description: "Branch that change is against"
+        required: true
+        type: string
+      GERRIT_CHANGE_ID:
+        description: "The ID for the change"
+        required: true
+        type: string
+      GERRIT_CHANGE_NUMBER:
+        description: "The Gerrit number"
+        required: true
+        type: string
+      GERRIT_CHANGE_URL:
+        description: "URL to the change"
+        required: true
+        type: string
+      GERRIT_EVENT_TYPE:
+        description: "Type of Gerrit event"
+        required: true
+        type: string
+      GERRIT_PATCHSET_NUMBER:
+        description: "The patch number for the change"
+        required: true
+        type: string
+      GERRIT_PATCHSET_REVISION:
+        description: "The revision sha"
+        required: true
+        type: string
+      GERRIT_PROJECT:
+        description: "Project in Gerrit"
+        required: true
+        type: string
+      GERRIT_REFSPEC:
+        description: "Gerrit refspec of change"
+        required: true
+        type: string
+      GERRIT_COMMENT:
+        description: "Full command line from Gerrit comment"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  notify-start:
+    runs-on: ubuntu-latest
+    outputs:
+      log_prefix: ${{ steps.start-time.outputs.log_prefix }}
+
+    steps:
+      - name: Start Time
+        id: start-time
+        run: |
+          set -euxo pipefail
+          timestamp=$(date -u +%Y_%m_%d_%H%M%S_UTC)
+          log_prefix="gha-vpp-gerrit-patchset/csit-perf-${{ inputs.GERRIT_BRANCH }}-${timestamp}-gerrit-${{ inputs.GERRIT_CHANGE_NUMBER }}-${{ inputs.GERRIT_PATCHSET_NUMBER}}"
+          echo "log_prefix=$log_prefix" >> "$GITHUB_OUTPUT"
+          echo "Gerrit Change: ${{ inputs.GERRIT_CHANGE_URL }}"
+
+      - name: Clear Gerrit vote
+        # yamllint disable-line rule:line-length
+        uses: lfreleng-actions/gerrit-review-action@537251ec667665b386f70b330b05446e3fc29087 # v0.9
+        with:
+          host: ${{ vars.GERRIT_SERVER }}
+          username: ${{ vars.GERRIT_SSH_REQUIRED_USER }}
+          key: ${{ secrets.GERRIT_SSH_REQUIRED_PRIVKEY }}
+          known_hosts: ${{ vars.GERRIT_KNOWN_HOSTS }}
+          gerrit-change-number: ${{ inputs.GERRIT_CHANGE_NUMBER }}
+          gerrit-patchset-number: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
+          vote-type: clear
+          comment-only: true
+
+  dispatch:
+    runs-on: ubuntu-latest
+
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+      params: ${{ steps.set-matrix.outputs.params }}
+
+    steps:
+      - name: Prepare workflow selection matrix
+        id: set-matrix
+        uses: fdio/csit/.github/actions/csit-comment-dispatch@1f3de8c4266cc118bbf3e108dd0f33a42b0cc70f
+        with:
+          gerrit_comment: ${{ github.event.inputs.GERRIT_COMMENT }}
+
+  vpp-csit-verify-handler:
+    needs: dispatch
+    # yamllint disable-line rule:line-length
+    name: vpp-csit-perf-verify-${{ matrix.node }}
+    runs-on:
+      - self-hosted
+      - nomad
+      - fdio:arch=${{ matrix.executor_arch }}
+      - fdio:class=builder
+      - fdio:size=csit
+      - fdio:namespace=${{ inputs.FDIO_NAMESPACE || 'prod' }}
+      - fdio:os=${{ matrix.os }}
+      - fdio:workflow=${{ github.run_id }}
+    timeout-minutes: 1440
+
+    strategy:
+      matrix: ${{ fromJSON(needs.dispatch.outputs.matrix) }}
+
+    env:
+      # yamllint disable-line rule:line-length
+      BUILD_TAG: vpp-csit-verify-perf-${{ github.event.inputs.GERRIT_BRANCH }}-${{ matrix.os }}-${{ matrix.node }}-${{ github.run_id }}
+      # yamllint disable-line rule:line-length
+      JOB_NAME: vpp-csit-verify-perf-${{ github.event.inputs.GERRIT_BRANCH }}-${{ matrix.os }}-${{ matrix.executor_arch }}-${{ matrix.node }}
+      WORKSPACE: /scratch/docker-build/vpp
+      CSIT_DIR: /scratch/docker-build/csit
+      GERRIT_BRANCH: ${{ github.event.inputs.GERRIT_BRANCH }}
+      GERRIT_CHANGE_URL: ${{ github.event.inputs.GERRIT_CHANGE_URL }}
+      GERRIT_PROJECT: ${{ github.event.inputs.GERRIT_PROJECT }}
+      GERRIT_REFSPEC: ${{ github.event.inputs.GERRIT_REFSPEC }}
+      GERRIT_CHANGE_NUMBER: ${{ github.event.inputs.GERRIT_CHANGE_NUMBER }}
+      GERRIT_PATCHSET_NUMBER: ${{ github.event.inputs.GERRIT_PATCHSET_NUMBER }}
+      LOG_PREFIX: ${{ github.event.inputs.LOG_PREFIX }}
+      FDIO_NAMESPACE: ${{ github.event.inputs.FDIO_NAMESPACE || 'prod' }}
+      LOG_NAME: ""
+      LOG_DIR: ""
+      TUI_LINE: "*******************************************************************"
+      GERRIT_EVENT_TYPE: comment-added
+      GERRIT_EVENT_COMMENT_TEXT: ${{ needs.dispatch.outputs.params }}
+
+    steps:
+      - name: Gerrit Checkout VPP
+        # yamllint disable-line rule:line-length
+        uses: fdio/vpp/.github/actions/vpp-checkout-gerrit-change@27fc2aa27f57c8f7055e8f1b6e5a9f41b0315873
+        with:
+          WORKSPACE: ${{ env.WORKSPACE }}
+          GERRIT_BRANCH: ${{ env.GERRIT_BRANCH }}
+          GERRIT_REFSPEC: ${{ env.GERRIT_REFSPEC }}
+          TUI_LINE: ${{ env.TUI_LINE }}
+
+      - name: Git Checkout CSIT
+        uses: actions/checkout@v6
+        with:
+          path: ${{ env.WORKSPACE }}/csit
+          ref: master
+          repository: FDio/csit
+          fetch-depth: 0
+          fetch-tags: 'true'
+
+      - name: Run CSIT Bootstrap
+        uses: fdio/csit/.github/actions/csit-bootstrap@6e2e8dd6eae1a9297bfcc3a1630be181191a0553
+        with:
+          bootstrap_script: per_patch_perf.sh
+          path: ${{ env.WORKSPACE }}/csit
+          with_oper: true
+
+      - name: AWS S3 Publish Logs
+        if: ${{ !cancelled() && (success() || failure()) }}
+        # yamllint disable-line rule:line-length
+        uses: fdio/.github/.github/actions/aws-s3-publish-logs@c2df5c7959a8415f7dd730315a40b058748b4c84
+        with:
+          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws_region: ${{ vars.AWS_REGION }}
+          s3_bucket: ${{ vars.S3_BUCKET }}
+          # yamllint disable-line rule:line-length
+          s3_path: vpp-csit-verify-perf-${{ matrix.node }}/${{ github.run_id }}
+          archives_path: ${{ env.CSIT_DIR }}/archives
+
+  vote:
+    if: ${{ always() }}
+    needs:
+      - notify-start
+      - vpp-csit-verify-handler
+    runs-on: ubuntu-latest
+    steps:
+      - uses: technote-space/workflow-conclusion-action@v3
+      - name: Set vote
+        uses: lfit/gerrit-review-action@v0.9
+        with:
+          host: ${{ vars.GERRIT_SERVER }}
+          username: ${{ vars.GERRIT_SSH_REQUIRED_USER }}
+          key: ${{ secrets.GERRIT_SSH_REQUIRED_PRIVKEY }}
+          known_hosts: ${{ vars.GERRIT_KNOWN_HOSTS }}
+          gerrit-change-number: ${{ github.event.inputs.GERRIT_CHANGE_NUMBER }}
+          gerrit-patchset-number: ${{ github.event.inputs.GERRIT_PATCHSET_NUMBER }}
+          vote-type: ${{ env.WORKFLOW_CONCLUSION }}
+          comment-only: true

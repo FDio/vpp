@@ -1,0 +1,106 @@
+---
+name: "🛠️ Test VPP image using 'HostStack Test (HST)'"
+description: |
+  This GitHub Action tests the VPP image built using the vpp-build action running the HostStack Test (HST) framework.
+
+inputs:
+  LOG_DIR:
+    description: "Directory for HST test logs"
+    required: false
+    default: "/scratch/docker-build/vpp/logs/hst"
+    type: string
+  WORKSPACE:
+    description: "Workspace directory where VPP is located"
+    required: true
+    type: string
+  BUILD_TYPE:
+    description: "Type of build: debug or release"
+    required: true
+    type: string
+  HS_TEST_DIR:
+    description: "Directory containing HostStack Test (HST) framework tests"
+    required: true
+    type: string
+  TEST_JOBS:
+    description: "Number of parallel jobs for HST tests"
+    required: true
+    type: string
+  TUI_LINE:
+    description: "Delimiter line for TUI output"
+    required: false
+    default: "*******************************************************************"
+    type: string
+
+runs:
+  using: "composite"
+  steps:
+    - name: VPP HostStack Test (HST)
+      shell: bash
+      env:
+        LOG_DIR: ${{ inputs.LOG_DIR }}
+        WORKSPACE: ${{ inputs.WORKSPACE }}
+        BUILD_TYPE: ${{ inputs.BUILD_TYPE }}
+        HS_TEST_DIR: ${{ inputs.HS_TEST_DIR }}
+        TEST_JOBS: ${{ inputs.TEST_JOBS }}
+        TUI_LINE: ${{ inputs.TUI_LINE }}
+      run: |
+          set -euxo pipefail
+          cd "$WORKSPACE"
+
+          mkdir -p "$LOG_DIR"
+          LOG_FILE="$LOG_DIR/hst.log"
+          {
+            BUILD_RESULT="SUCCESSFULLY COMPLETED"
+            BUILD_ERROR=""
+            RETVAL="0"
+
+            hst_debug_build_run() {
+                if ! make VERBOSE=true VPPSRC="$WORKSPACE" PARALLEL="${TEST_JOBS}" -C "$HS_TEST_DIR" build-debug ; then
+                    BUILD_ERROR="FAILED 'make VERBOSE=true VPPSRC=$WORKSPACE PARALLEL="${TEST_JOBS}" -C $HS_TEST_DIR build-debug'"
+                    return
+                fi
+                if ! make VERBOSE=true VPPSRC="$WORKSPACE" PARALLEL="${TEST_JOBS}" -C "$HS_TEST_DIR" test-debug ; then
+                    BUILD_ERROR="FAILED 'make VERBOSE=true VPPSRC=$WORKSPACE PARALLEL="${TEST_JOBS}" -C $HS_TEST_DIR test-debug'"
+                    return
+                fi
+            }
+
+            hst_build_run() {
+                if ! make VERBOSE=true VPPSRC="$WORKSPACE" PARALLEL="${TEST_JOBS}" -C "$HS_TEST_DIR" build ; then
+                    BUILD_ERROR="FAILED 'make VERBOSE=true VPPSRC=$WORKSPACE PARALLEL="${TEST_JOBS}" -C $HS_TEST_DIR build'"
+                    return
+                fi
+                if ! make VERBOSE=true VPPSRC="$WORKSPACE" PARALLEL="${TEST_JOBS}" -C "$HS_TEST_DIR" test ; then
+                    BUILD_ERROR="FAILED 'make VERBOSE=true VPPSRC=$WORKSPACE PARALLEL="${TEST_JOBS}" -C $HS_TEST_DIR test'"
+                    return
+                fi
+            }
+
+            check_for_core_files() {
+                echo -e "\n$TUI_LINE\nCheck for system core files\n"
+                ls -la /scratch/nomad || true # DEBUG ONLY, DO NOT COMMIT
+                ls -la /scratch/ccache || true # DEBUG ONLY, DO NOT COMMIT
+                if [ -d /var/crash ] ; then
+                    ls -la /var/crash
+                else
+                    echo "/var/crash/ directory does not exist."
+                fi
+                echo "$TUI_LINE"
+                return 0
+            }
+
+            check_for_core_files || true
+            if [ "${{ inputs.BUILD_TYPE }}" == "debug" ] ; then
+                hst_debug_build_run || true
+            else
+                hst_build_run || true
+            fi
+            check_for_core_files || true
+            if [ -n "$BUILD_ERROR" ] ; then
+                BUILD_RESULT="$BUILD_ERROR"
+                RETVAL="1"
+            fi
+            echo -e "\n$TUI_LINE\n* VPP ${BUILD_TYPE^^} ${OS_ID^^}-${OS_VERSION_ID}-${OS_ARCH^^}" \
+                    "\n* HST $BUILD_RESULT\n$TUI_LINE\n"
+            exit $RETVAL
+          } | tee "$LOG_FILE"

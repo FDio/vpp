@@ -1,0 +1,187 @@
+
+name: vpp-csit-verify-api
+
+on:
+  workflow_call:
+    inputs:
+      FDIO_NAMESPACE:
+        description: "Executor Namespace (prod|sandbox)"
+        required: true
+        type: string
+        default: prod
+      GERRIT_BRANCH:
+        description: "Branch that change is against"
+        required: true
+        type: string
+      GERRIT_CHANGE_URL:
+        description: "URL to the change"
+        required: true
+        type: string
+      GERRIT_CHANGE_NUMBER:
+        description: "The Gerrit number"
+        required: true
+        type: string
+      GERRIT_PATCHSET_NUMBER:
+        description: "The patch number for the change"
+        required: true
+        type: string
+      GERRIT_PROJECT:
+        description: "Project in Gerrit"
+        required: true
+        type: string
+      GERRIT_REFSPEC:
+        description: "Gerrit refspec of change"
+        required: true
+        type: string
+      LOG_PREFIX:
+        description: "Prefix of the log directory"
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      FDIO_NAMESPACE:
+        description: "Executor Namespace (prod|sandbox)"
+        required: false
+        type: choice
+        options:
+          - sandbox
+          - prod
+        default: prod
+      GERRIT_BRANCH:
+        description: "Branch that change is against"
+        required: true
+        type: string
+      GERRIT_CHANGE_URL:
+        description: "URL to the change"
+        required: true
+        type: string
+      GERRIT_CHANGE_NUMBER:
+        description: "The Gerrit number"
+        required: true
+        type: string
+      GERRIT_PATCHSET_NUMBER:
+        description: "The patch number for the change"
+        required: true
+        type: string
+      GERRIT_PROJECT:
+        description: "Project in Gerrit"
+        required: true
+        type: string
+      GERRIT_REFSPEC:
+        description: "Gerrit refspec of change"
+        required: true
+        type: string
+      LOG_PREFIX:
+        description: "Prefix of the log directory"
+        required: true
+        type: string
+
+defaults:
+  run:
+    shell: bash
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  csit-verify-api:
+    # yamllint disable-line rule:line-length
+    name: ${{ inputs.GERRIT_CHANGE_NUMBER }}/${{ inputs.GERRIT_PATCHSET_NUMBER}}__${{ inputs.GERRIT_BRANCH }}__${{ github.event.inputs.FDIO_NAMESPACE || 'prod' }}
+    runs-on:
+      - self-hosted
+      - nomad
+      - fdio:arch=${{ matrix.executor_arch }}
+      - fdio:class=${{ matrix.class }}
+      - fdio:size=${{ matrix.size }}
+      - fdio:namespace=${{ github.event.inputs.FDIO_NAMESPACE || 'prod' }}
+      - fdio:os=${{ matrix.os }}
+      - fdio:workflow=${{ github.run_id }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        build_type: ['release']
+        class: ['builder']
+        os: ['ubuntu2404']
+        executor_arch: ['x86_64']
+        size: ['csit']
+
+    env:
+      WORKSPACE: /scratch/docker-build/vpp
+      CSIT_DIR: /scratch/docker-build/csit
+      GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
+      GERRIT_CHANGE_URL: ${{ inputs.GERRIT_CHANGE_URL }}
+      GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
+      GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
+      GERRIT_CHANGE_NUMBER: ${{ inputs.GERRIT_CHANGE_NUMBER }}
+      GERRIT_PATCHSET_NUMBER: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
+      LOG_PREFIX: ${{ inputs.LOG_PREFIX }}
+      FDIO_NAMESPACE: ${{ github.event.inputs.FDIO_NAMESPACE || 'prod' }}
+      LOG_NAME: ""
+      LOG_DIR: ""
+      TUI_LINE: "*******************************************************************"
+
+    steps:
+      - name: Actions Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Environment
+        # yamllint disable-line rule:line-length
+        uses: fdio/.github/.github/actions/setup-executor-env@b728d1589228e2891a4241a1bba362d76895c225
+
+      - name: Prepare Log Directory
+        run: |
+          set -euxo pipefail
+          LOG_NAME="${{ env.LOG_PREFIX }}/verify-csit-api-${{ matrix.build_type }}-${{ matrix.class }}-${{ matrix.os }}-${{ github.event.inputs.FDIO_NAMESPACE || 'prod' }}-${{ matrix.executor_arch }}"
+          echo "LOG_NAME=$LOG_NAME" >> "$GITHUB_ENV"
+          LOG_DIR="$WORKSPACE/logs/$LOG_NAME"
+          echo "LOG_DIR=$LOG_DIR" >> "$GITHUB_ENV"
+          mkdir -p "$LOG_DIR"
+
+      - name: Show Environment
+        run: |
+          set -euo pipefail
+          env | sort | tee "$LOG_DIR/environment.log"
+
+      - name: "Show Nomad Dockerfile"
+        # yamllint disable-line rule:line-length
+        uses: fdio/.github/.github/actions/show-nomad-dockerfile@b728d1589228e2891a4241a1bba362d76895c225
+
+      - name: Checkout VPP Gerrit Change
+        # yamllint disable-line rule:line-length
+        uses: fdio/vpp/.github/actions/vpp-checkout-gerrit-change@27fc2aa27f57c8f7055e8f1b6e5a9f41b0315873
+        with:
+          WORKSPACE: ${{ env.WORKSPACE }}
+          GERRIT_BRANCH: ${{ env.GERRIT_BRANCH }}
+          GERRIT_REFSPEC: ${{ env.GERRIT_REFSPEC }}
+          TUI_LINE: ${{ env.TUI_LINE }}
+
+      - name: Run CSIT check_crc.sh
+        run: |
+          set -euxo pipefail
+          {
+            # Checkout CSIT HEAD
+            cd "$CSIT_DIR"
+            git checkout HEAD
+
+            # Run check_crc.sh from CSIT
+            cd "$WORKSPACE"
+            # TODO: fix csit bash scripts to not rely on CSIT_DIR being inside WORKSPACE
+            NEW_CSIT_DIR="$WORKSPACE/$(basename "$CSIT_DIR")"
+            mv "$CSIT_DIR" "$NEW_CSIT_DIR"
+            csit_entry_dir="$NEW_CSIT_DIR/resources/libraries/bash/entry"
+            source "${csit_entry_dir}/with_oper_for_vpp.sh" "check_crc.sh"
+          } | tee "$LOG_DIR/csit_api.log"
+
+      - name: AWS S3 Publish Logs
+        if: always()
+        # yamllint disable-line rule:line-length
+        uses: fdio/.github/.github/actions/aws-s3-publish-logs@c2df5c7959a8415f7dd730315a40b058748b4c84
+        with:
+          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws_region: ${{ vars.AWS_REGION }}
+          s3_bucket: ${{ vars.S3_BUCKET }}
+          s3_path: ${{ env.LOG_NAME }}
+          archives_path: ${{ env.LOG_DIR }}

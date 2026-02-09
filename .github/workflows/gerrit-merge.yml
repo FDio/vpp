@@ -1,0 +1,232 @@
+name: gerrit-merge
+
+on:
+  workflow_dispatch:
+    inputs:
+      FDIO_NAMESPACE:
+        description: "Executor Namespace (prod|sandbox)"
+        required: false
+        type: choice
+        options:
+          - sandbox
+          - prod
+        default: prod
+      GERRIT_BRANCH:
+        description: "Branch that change is against"
+        required: true
+        type: string
+      GERRIT_CHANGE_ID:
+        description: "The ID for the change"
+        required: true
+        type: string
+      GERRIT_CHANGE_NUMBER:
+        description: "The Gerrit number"
+        required: true
+        type: string
+      GERRIT_CHANGE_URL:
+        description: "URL to the change"
+        required: true
+        type: string
+      GERRIT_EVENT_TYPE:
+        description: "Type of Gerrit event"
+        required: true
+        type: string
+      GERRIT_PATCHSET_NUMBER:
+        description: "The patch number for the change"
+        required: true
+        type: string
+      GERRIT_PATCHSET_REVISION:
+        description: "The revision sha"
+        required: true
+        type: string
+      GERRIT_PROJECT:
+        description: "Project in Gerrit"
+        required: true
+        type: string
+      GERRIT_REFSPEC:
+        description: "Gerrit refspec of change"
+        required: true
+        type: string
+
+defaults:
+  run:
+    shell: bash
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  start-merge:
+    name: Start Merge
+    runs-on: ubuntu-latest
+    outputs:
+      log_prefix: ${{ steps.start-time.outputs.log_prefix }}
+    steps:
+      - name: Start Time
+        id: start-time
+        run: |
+          set -euxo pipefail
+          timestamp=$(date -u +%Y_%m_%d_%H%M%S_UTC)
+          branch=${{ inputs.GERRIT_BRANCH }}
+          branch=${branch/\//-}
+          log_prefix="gha-vpp-gerrit-patchset/merge-${branch}-${timestamp}-gerrit-${{ inputs.GERRIT_CHANGE_NUMBER }}-${{ inputs.GERRIT_PATCHSET_NUMBER}}"
+          echo "log_prefix=$log_prefix" >> "$GITHUB_OUTPUT"
+          echo "Gerrit Change: ${{ inputs.GERRIT_CHANGE_URL }}"
+          echo "Gerrit Event Type: ${{ inputs.GERRIT_EVENT_TYPE }}"
+
+      - name: Clear Gerrit Vote
+        # yamllint disable-line rule:line-length
+        uses: lfreleng-actions/gerrit-review-action@537251ec667665b386f70b330b05446e3fc29087 # v0.9
+        with:
+          host: ${{ vars.GERRIT_SERVER }}
+          username: ${{ vars.GERRIT_SSH_REQUIRED_USER }}
+          key: ${{ secrets.GERRIT_SSH_REQUIRED_PRIVKEY }}
+          known_hosts: ${{ vars.GERRIT_KNOWN_HOSTS }}
+          gerrit-change-number: ${{ inputs.GERRIT_CHANGE_NUMBER }}
+          gerrit-patchset-number: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
+          vote-type: clear
+          comment-only: true  # Just set a comment, do not vote on gerrit
+
+  merge-maketest:
+    name: Merge Maketest
+    needs:
+      - start-merge
+    uses: fdio/vpp/.github/workflows/vpp-merge-maketest.yml@master
+    with:
+      FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
+      GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
+      GERRIT_CHANGE_ID: ${{ inputs.GERRIT_CHANGE_ID }}
+      GERRIT_CHANGE_NUMBER: ${{ inputs.GERRIT_CHANGE_NUMBER }}
+      GERRIT_CHANGE_URL: ${{ inputs.GERRIT_CHANGE_URL }}
+      GERRIT_EVENT_TYPE: ${{ inputs.GERRIT_EVENT_TYPE }}
+      GERRIT_PATCHSET_NUMBER: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
+      GERRIT_PATCHSET_REVISION: ${{ inputs.GERRIT_PATCHSET_REVISION }}
+      GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
+      GERRIT_REFSPEC: refs/heads/${{ inputs.GERRIT_BRANCH }}
+      LOG_PREFIX: ${{ needs.start-merge.outputs.log_prefix }}
+    secrets: inherit
+
+  detect-docs-changes:
+    name: Detect Docs Changes
+    needs:
+      - start-merge
+    runs-on:
+      - self-hosted
+      - nomad
+      - fdio:arch=x86_64
+      - fdio:class=builder
+      - fdio:namespace=${{ inputs.FDIO_NAMESPACE || 'prod' }}
+      - fdio:os=ubuntu2404
+      - fdio:size=csit
+      - fdio:workflow=${{ github.run_id }}
+    outputs:
+      docs_changed: ${{ steps.docs-changed.outputs.docs_changed }}
+    env:
+      WORKSPACE: /scratch/docker-build/vpp
+      GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
+      GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
+      TUI_LINE: "*******************************************************************"
+    steps:
+      - name: Setup Environment
+        id: setup-executor-env
+        continue-on-error: true
+        # yamllint disable-line rule:line-length
+        uses: fdio/.github/.github/actions/setup-executor-env@b728d1589228e2891a4241a1bba362d76895c225
+
+      - name: Checkout VPP Gerrit Change
+        id: checkout-vpp
+        continue-on-error: true
+        # yamllint disable-line rule:line-length
+        uses: fdio/vpp/.github/actions/vpp-checkout-gerrit-change@27fc2aa27f57c8f7055e8f1b6e5a9f41b0315873
+        with:
+          WORKSPACE: ${{ env.WORKSPACE }}
+          GERRIT_BRANCH: ${{ env.GERRIT_BRANCH }}
+          GERRIT_REFSPEC: ${{ env.GERRIT_REFSPEC }}
+          TUI_LINE: ${{ env.TUI_LINE }}
+
+      - name: Detect docs changes
+        id: docs-changed
+        if: ${{ always() }}
+        env:
+          CHECKOUT_OUTCOME: ${{ steps.checkout-vpp.outcome }}
+        run: |
+          set -euxo pipefail
+
+          docs_changed="true"
+          if [[ "$CHECKOUT_OUTCOME" == "success" ]]; then
+            cd "$WORKSPACE"
+            if git diff-tree --no-commit-id --name-only -r --root HEAD | grep -Eq '(^docs/|\.rst$)'; then
+              docs_changed="true"
+            else
+              docs_changed="false"
+            fi
+          else
+            echo "warn: unable to checkout '${GERRIT_REFSPEC}'; defaulting docs_changed=true" >&2
+          fi
+
+          echo "docs_changed=$docs_changed" >> "$GITHUB_OUTPUT"
+
+  merge-docs:
+    name: Merge Docs
+    needs:
+      - start-merge
+      - detect-docs-changes
+    if: ${{ needs.detect-docs-changes.outputs.docs_changed == 'true' }}
+    uses: fdio/vpp/.github/workflows/vpp-merge-docs.yml@master
+    with:
+      FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
+      GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
+      GERRIT_CHANGE_ID: ${{ inputs.GERRIT_CHANGE_ID }}
+      GERRIT_CHANGE_NUMBER: ${{ inputs.GERRIT_CHANGE_NUMBER }}
+      GERRIT_CHANGE_URL: ${{ inputs.GERRIT_CHANGE_URL }}
+      GERRIT_EVENT_TYPE: ${{ inputs.GERRIT_EVENT_TYPE }}
+      GERRIT_PATCHSET_NUMBER: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
+      GERRIT_PATCHSET_REVISION: ${{ inputs.GERRIT_PATCHSET_REVISION }}
+      GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
+      GERRIT_REFSPEC: refs/heads/${{ inputs.GERRIT_BRANCH }}
+      LOG_PREFIX: ${{ needs.start-merge.outputs.log_prefix }}
+    secrets: inherit
+
+  final-vote:
+    name: Vote
+    if: ${{ always() }}
+    needs:
+      - start-merge
+      - detect-docs-changes
+      - merge-maketest
+      - merge-docs
+    runs-on: ubuntu-latest
+    env:
+      GERRIT_CHANGE_NUMBER: ${{ inputs.GERRIT_CHANGE_NUMBER }}
+      GERRIT_PATCHSET_NUMBER: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
+    steps:
+      - name: Collect workflow results
+        id: overall
+        run: |
+          set -euxo pipefail
+          docs_ok="true"
+          if [[ "${{ needs.detect-docs-changes.outputs.docs_changed }}" == "true" ]]; then
+            [[ "${{ needs.merge-docs.result }}" == "success" ]] || docs_ok="false"
+          fi
+
+          if [[ "${{ needs.start-merge.result }}" == "success" && \
+                "${{ needs.merge-maketest.result }}" == "success" && \
+                "$docs_ok" == "true" ]] ; then
+            echo "result=success" >> "$GITHUB_OUTPUT"
+          else
+            echo "result=failure" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Gerrit Vote Disabled
+        # yamllint disable-line rule:line-length
+        uses: lfreleng-actions/gerrit-review-action@537251ec667665b386f70b330b05446e3fc29087 # v0.9
+        with:
+          host: ${{ vars.GERRIT_SERVER }}
+          username: ${{ vars.GERRIT_SSH_USER }}
+          key: ${{ secrets.GERRIT_SSH_PRIVKEY }}
+          known_hosts: ${{ vars.GERRIT_KNOWN_HOSTS }}
+          gerrit-change-number: ${{ env.GERRIT_CHANGE_NUMBER }}
+          gerrit-patchset-number: ${{ env.GERRIT_PATCHSET_NUMBER }}
+          vote-type: ${{ steps.overall.outputs.result }}
+          comment-only: true  # Just set a comment, do not vote on gerrit
