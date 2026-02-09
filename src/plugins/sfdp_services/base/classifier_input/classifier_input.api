@@ -1,0 +1,59 @@
+/* SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2025 Cisco Systems, Inc.
+ */
+
+option version = "0.0.1";
+
+import "vnet/interface_types.api";
+
+/** \brief Set the classifier table for SFDP classifier input on an interface
+    @param sw_if_index - interface to configure
+    @param table_index - VPP classifier table index
+    @param is_ip6 - configure ip6-unicast arc (default: ip4-unicast)
+    @param is_del - Specify whether to add/delete table configuration
+*/
+autoreply define sfdp_classifier_input_set_table
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+  u32 table_index;
+  bool is_ip6 [default=0];
+  bool is_del;
+};
+
+/** \brief Add/delete a classifier session with tenant ID mapping
+    @param tenant_id - SFDP tenant ID (must be valid)
+    @param sw_if_index - interface whose classifier table to add the session to
+    @param is_ip6 - use ip6 table for this interface
+    @param is_del - Specify whether to add/delete classifier session
+    @param match_len - length of match data
+    @param match - match data for the classifier session
+*/
+autoreply define sfdp_classifier_input_add_del_session
+{
+  u32 client_index;
+  u32 context;
+
+  u32 tenant_id;
+  vl_api_interface_index_t sw_if_index;
+  bool is_ip6 [default=0];
+  u32 match_len;
+  bool is_del;
+  u8 match[match_len];
+};
+
+/** \brief Enable/disable SFDP classifier input on an interface
+    @param sw_if_index - interface to enable/disable on
+    @param is_disable - Specify whether to enable/disable
+    @param is_ip6 - should the feature be enabled on ip6 feature arc
+*/
+autoreply define sfdp_classifier_input_enable_disable
+{
+  u32 client_index;
+  u32 context;
+
+  vl_api_interface_index_t sw_if_index;
+  bool is_disable;
+  bool is_ip6 [default=0];
+};
