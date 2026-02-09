@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright(c) 2025 Cisco Systems, Inc.
 import unittest
+import socket
 from asfframework import VppTestRunner
 from framework import VppTestCase
 from config import config
@@ -11,39 +12,10 @@ from vpp_papi import VppEnum
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP, TCP, ICMP
-from scapy.layers.inet6 import IPv6
+from scapy.layers.inet6 import IPv6, TCP as TCP6
 
 
-@unittest.skipIf(
-    "sfdp_services" in config.excluded_plugins,
-    "SFDP_Services plugin is required to run SFDP tests",
-)
-class TestSfdp(VppTestCase):
-    """SFDP Infrastructure tests"""
-
-    @classmethod
-    def setUpClass(cls):
-        super(TestSfdp, cls).setUpClass()
-        try:
-            cls.create_pg_interfaces(range(4))
-            for i in cls.pg_interfaces:
-                i.config_ip4()
-                i.config_ip6()
-                i.resolve_arp()
-                i.resolve_ndp()
-                i.admin_up()
-        except Exception:
-            super(TestSfdp, cls).tearDownClass()
-            raise
-
-    @classmethod
-    def tearDownClass(cls):
-        for i in cls.pg_interfaces:
-            i.unconfig_ip4()
-            i.unconfig_ip6()
-            i.admin_down()
-        super(TestSfdp, cls).tearDownClass()
-
+class SFDPHelpers:
     def create_tcp_packet(
         self, src_mac, dst_mac, src_ip, dst_ip, sport, dport, flags="S", ttl=64
     ):
@@ -82,7 +54,119 @@ class TestSfdp(VppTestCase):
             / Raw(b"\xa5" * 100)
         )
 
-    # SFDP is configured on IPv4 feat-arc by default
+    def verify_basic_session_state(
+        self,
+        sess,
+        expected_protocol,
+        expected_state,
+        expected_session_type,
+        expected_src_ip=None,
+        expected_dst_ip=None,
+    ):
+        """Verify basic session state"""
+        self.assertEqual(
+            sess.protocol, expected_protocol, f"Protocol should be {expected_protocol}"
+        )
+        self.assertEqual(sess.state, expected_state, "Unexpected session state")
+        self.assertEqual(
+            sess.session_type, expected_session_type, "Unexpected session type"
+        )
+
+        # Verify session detail via CLI if IPs are provided
+        if expected_src_ip and expected_dst_ip:
+            detail_output = self.vapi.cli(
+                f"show sfdp session-detail {hex(sess.session_id)}"
+            )
+            self.assertIn(
+                expected_src_ip,
+                detail_output,
+                "cli output does not show expected source IP",
+            )
+            self.assertIn(
+                expected_dst_ip,
+                detail_output,
+                "cli output does not show expected destination IP",
+            )
+
+    def create_ip4_mask(self, src_ip=False, dst_ip=False, proto=False):
+        mask = bytearray(32)  # 2 match vectors = 32 bytes
+
+        if proto:
+            mask[9] = 0xFF  # Protocol at offset 9
+        if src_ip:
+            mask[12:16] = b"\xff\xff\xff\xff"  # Source IP at offset 12
+        if dst_ip:
+            mask[16:20] = b"\xff\xff\xff\xff"  # Destination IP at offset 16
+
+        return bytes(mask)
+
+    def create_ip4_match(self, src_ip=None, dst_ip=None, proto=None):
+        match = bytearray(32)  # 2 match vectors = 32 bytes
+
+        if proto is not None:
+            match[9] = proto
+        if src_ip is not None:
+            match[12:16] = socket.inet_aton(src_ip)
+        if dst_ip is not None:
+            match[16:20] = socket.inet_aton(dst_ip)
+
+        return bytes(match)
+
+    def create_ip6_mask(self, src_ip=False, dst_ip=False, next_header=False):
+        mask = bytearray(64)  # 4 match vectors = 64 bytes for IPv6
+
+        if next_header:
+            mask[6] = 0xFF  # Next Header at offset 6
+        if src_ip:
+            mask[8:24] = b"\xff" * 16  # Source IP at offset 8 (16 bytes)
+        if dst_ip:
+            mask[24:40] = b"\xff" * 16  # Destination IP at offset 24 (16 bytes)
+
+        return bytes(mask)
+
+    def create_ip6_match(self, src_ip=None, dst_ip=None, next_header=None):
+        match = bytearray(64)  # 4 match vectors = 64 bytes for IPv6
+
+        if next_header is not None:
+            match[6] = next_header
+        if src_ip is not None:
+            match[8:24] = socket.inet_pton(socket.AF_INET6, src_ip)
+        if dst_ip is not None:
+            match[24:40] = socket.inet_pton(socket.AF_INET6, dst_ip)
+
+        return bytes(match)
+
+
+@unittest.skipIf(
+    "sfdp_services" in config.excluded_plugins,
+    "SFDP_Services plugin is required to run SFDP tests",
+)
+class TestSfdp(SFDPHelpers, VppTestCase):
+    """SFDP Infrastructure tests"""
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestSfdp, cls).setUpClass()
+        try:
+            cls.create_pg_interfaces(range(4))
+            for i in cls.pg_interfaces:
+                i.config_ip4()
+                i.config_ip6()
+                i.resolve_arp()
+                i.resolve_ndp()
+                i.admin_up()
+        except Exception:
+            super(TestSfdp, cls).tearDownClass()
+            raise
+
+    @classmethod
+    def tearDownClass(cls):
+        for i in cls.pg_interfaces:
+            i.unconfig_ip4()
+            i.unconfig_ip6()
+            i.admin_down()
+        super(TestSfdp, cls).tearDownClass()
+
     def _configure_sfdp(self, enable_ip4=True, enable_ip6=False):
         """Base SFDP Configuration"""
         self.assertTrue(
@@ -237,40 +321,6 @@ class TestSfdp(VppTestCase):
             tenant_id=self.tenant_id_ip6,
             is_del=True,
         )
-
-    def _verify_basic_session_state(
-        self,
-        sess,
-        expected_protocol,
-        expected_state,
-        expected_session_type,
-        expected_src_ip=None,
-        expected_dst_ip=None,
-    ):
-        """Verify basic session state"""
-        self.assertEqual(
-            sess.protocol, expected_protocol, f"Protocol should be {expected_protocol}"
-        )
-        self.assertEqual(sess.state, expected_state, "Unexpected session state")
-        self.assertEqual(
-            sess.session_type, expected_session_type, "Unexpected session type"
-        )
-
-        # Verify session detail via CLI if IPs are provided
-        if expected_src_ip and expected_dst_ip:
-            detail_output = self.vapi.cli(
-                f"show sfdp session-detail {hex(sess.session_id)}"
-            )
-            self.assertIn(
-                expected_src_ip,
-                detail_output,
-                "cli output does not show expected source IP",
-            )
-            self.assertIn(
-                expected_dst_ip,
-                detail_output,
-                "cli output does not show expected destination IP",
-            )
 
     def test_sfdp_api_configuration(self):
         """Test SFDP configuration"""
@@ -467,7 +517,7 @@ class TestSfdp(VppTestCase):
         for sess in sessions:
             if sess.protocol == 6:  # TCP
                 found = True
-                self._verify_basic_session_state(
+                self.verify_basic_session_state(
                     sess,
                     6,
                     VppEnum.vl_api_sfdp_session_state_t.SFDP_API_SESSION_STATE_FSOL,
@@ -507,7 +557,7 @@ class TestSfdp(VppTestCase):
         for sess in sessions:
             if sess.protocol == 17:  # UDP
                 found = True
-                self._verify_basic_session_state(
+                self.verify_basic_session_state(
                     sess,
                     17,
                     VppEnum.vl_api_sfdp_session_state_t.SFDP_API_SESSION_STATE_FSOL,
@@ -546,7 +596,7 @@ class TestSfdp(VppTestCase):
         for sess in sessions:
             if sess.protocol == 6:  # TCP
                 found = True
-                self._verify_basic_session_state(
+                self.verify_basic_session_state(
                     sess,
                     6,
                     VppEnum.vl_api_sfdp_session_state_t.SFDP_API_SESSION_STATE_FSOL,
@@ -582,7 +632,7 @@ class TestSfdp(VppTestCase):
         for sess in sessions:
             if sess.protocol == 17:  # UDP
                 found = True
-                self._verify_basic_session_state(
+                self.verify_basic_session_state(
                     sess,
                     17,
                     VppEnum.vl_api_sfdp_session_state_t.SFDP_API_SESSION_STATE_FSOL,
@@ -637,7 +687,7 @@ class TestSfdp(VppTestCase):
             ):  # TCP V4
                 found_v4 = True
                 self.assertEqual(sess.tenant_id, self.tenant_id_ip4)
-                self._verify_basic_session_state(
+                self.verify_basic_session_state(
                     sess,
                     6,
                     VppEnum.vl_api_sfdp_session_state_t.SFDP_API_SESSION_STATE_FSOL,
@@ -652,7 +702,7 @@ class TestSfdp(VppTestCase):
             ):  # TCP V6
                 found_v6 = True
                 self.assertEqual(sess.tenant_id, self.tenant_id_ip6)
-                self._verify_basic_session_state(
+                self.verify_basic_session_state(
                     sess,
                     6,
                     VppEnum.vl_api_sfdp_session_state_t.SFDP_API_SESSION_STATE_FSOL,
@@ -696,7 +746,7 @@ class TestSfdp(VppTestCase):
         # Verify all sessions are in FSOL state and belong to tenant 1
         for sess in sessions:
             self.assertEqual(sess.tenant_id, 1, "Session should belong to tenant 1")
-            self._verify_basic_session_state(
+            self.verify_basic_session_state(
                 sess,
                 6,
                 VppEnum.vl_api_sfdp_session_state_t.SFDP_API_SESSION_STATE_FSOL,
@@ -811,7 +861,7 @@ class TestSfdp(VppTestCase):
 
         # Verify both sessions are in FSOL state
         for sess in sessions:
-            self._verify_basic_session_state(
+            self.verify_basic_session_state(
                 sess,
                 6,
                 VppEnum.vl_api_sfdp_session_state_t.SFDP_API_SESSION_STATE_FSOL,
@@ -838,6 +888,282 @@ class TestSfdp(VppTestCase):
         # Delete tenants
         self.vapi.sfdp_tenant_add_del(tenant_id=1, is_del=True)
         self.vapi.sfdp_tenant_add_del(tenant_id=2, is_del=True)
+
+
+@unittest.skipIf(
+    "sfdp_services" in config.excluded_plugins,
+    "SFDP_Services plugin is required to run SFDP Classifier tests",
+)
+class TestSfdpClassifier(SFDPHelpers, VppTestCase):
+    """SFDP Classifier Input tests"""
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestSfdpClassifier, cls).setUpClass()
+        try:
+            cls.create_pg_interfaces(range(4))
+            for i in cls.pg_interfaces:
+                i.config_ip4()
+                i.config_ip6()
+                i.resolve_arp()
+                i.resolve_ndp()
+                i.admin_up()
+        except Exception:
+            super(TestSfdpClassifier, cls).tearDownClass()
+            raise
+
+    @classmethod
+    def tearDownClass(cls):
+        for i in cls.pg_interfaces:
+            i.unconfig_ip4()
+            i.unconfig_ip6()
+            i.admin_down()
+        super(TestSfdpClassifier, cls).tearDownClass()
+
+    def _configure_sfdp_classifier(self, is_ip6=False):
+        """Base SFDP Configuration with classifier input"""
+        # Add tenant with ID 1
+        self.tenant_id = 1
+        reply = self.vapi.sfdp_tenant_add_del(
+            tenant_id=self.tenant_id,
+            context_id=1,
+            is_del=False,
+        )
+        self.assertEqual(reply.retval, 0)
+
+        # Configure services - minimal chain for session tracking
+        lookup_service = "ip6-lookup" if is_ip6 else "ip4-lookup"
+        reply = self.vapi.sfdp_set_services(
+            tenant_id=1,
+            dir=VppEnum.vl_api_sfdp_session_direction_t.SFDP_API_FORWARD,
+            n_services=2,
+            services=[{"data": "sfdp-l4-lifecycle"}, {"data": lookup_service}],
+        )
+        self.assertEqual(reply.retval, 0)
+
+        reply = self.vapi.sfdp_set_services(
+            tenant_id=1,
+            dir=VppEnum.vl_api_sfdp_session_direction_t.SFDP_API_REVERSE,
+            n_services=2,
+            services=[{"data": "sfdp-l4-lifecycle"}, {"data": lookup_service}],
+        )
+        self.assertEqual(reply.retval, 0)
+
+        # Enable on interface
+        reply = self.vapi.sfdp_classifier_input_enable_disable(
+            sw_if_index=self.pg0.sw_if_index,
+            is_disable=False,
+            is_ip6=is_ip6,
+        )
+        self.assertEqual(reply.retval, 0)
+
+    def _cleanup_sfdp_classifier(self, is_ip6=False):
+        """Cleanup SFDP configuration"""
+        # Expire active sessions
+        self.vapi.sfdp_kill_session(is_all=True)
+        # Sleep one second to ensure expired sessions
+        # are removed by process node 'sfdp_expire_node'
+        self.virtual_sleep(1)
+
+        sessions = self.vapi.sfdp_session_dump()
+        self.assertEqual(
+            len(sessions), 0, "SFDP sessions are still present after cleanup"
+        )
+
+        # Disable SFDP classifier input on interfaces
+        reply = self.vapi.sfdp_classifier_input_enable_disable(
+            sw_if_index=self.pg0.sw_if_index,
+            is_disable=True,
+            is_ip6=is_ip6,
+        )
+        self.assertEqual(reply.retval, 0)
+
+        # Delete tenant
+        self.vapi.sfdp_tenant_add_del(
+            tenant_id=self.tenant_id,
+            is_del=True,
+        )
+
+    def test_sfdp_classifier_input(self):
+        """Test SFDP input classifier node"""
+        self._configure_sfdp_classifier()
+
+        # Create a classifier table matching on src and dst IP
+        mask = self.create_ip4_mask(src_ip=True, dst_ip=True)
+        reply = self.vapi.classify_add_del_table(
+            is_add=True,
+            mask=mask,
+            mask_len=len(mask),
+            skip_n_vectors=0,
+            match_n_vectors=2,
+            nbuckets=64,
+            memory_size=1 << 20,  # 1MB
+        )
+        table_index = reply.new_table_index
+
+        # Set the classifier table
+        self.vapi.sfdp_classifier_input_set_table(
+            table_index=table_index,
+            is_del=False,
+        )
+
+        # Add classifier session matching traffic from pg0 to pg1
+        match = self.create_ip4_match(
+            src_ip=self.pg0.remote_ip4, dst_ip=self.pg1.remote_ip4
+        )
+
+        self.vapi.sfdp_classifier_input_add_del_session(
+            tenant_id=self.tenant_id,
+            is_del=False,
+            match=match,
+            match_len=len(match),
+        )
+
+        matching_pkt = self.create_tcp_packet(
+            src_mac=self.pg0.remote_mac,
+            dst_mac=self.pg0.local_mac,
+            src_ip=self.pg0.remote_ip4,
+            dst_ip=self.pg1.remote_ip4,
+            sport=11111,
+            dport=80,
+            flags="S",
+        )
+        self.send_and_expect(self.pg0, matching_pkt, self.pg1)
+
+        # Verify SFDP session was created for matching traffic
+        sessions = self.vapi.sfdp_session_dump()
+        self.assertEqual(len(sessions), 1, "Expected one SFDP session")
+        self.assertEqual(sessions[0].tenant_id, self.tenant_id)
+        self.assertEqual(sessions[0].protocol, 6)  # TCP
+
+        passthrough_pkt1 = self.create_tcp_packet(
+            src_mac=self.pg0.remote_mac,
+            dst_mac=self.pg0.local_mac,
+            src_ip=self.pg0.remote_ip4,  # Same source
+            dst_ip=self.pg2.remote_ip4,  # Different dest - no match
+            sport=22222,
+            dport=443,
+            flags="S",
+        )
+        self.send_and_expect(self.pg0, passthrough_pkt1, self.pg2)
+
+        # Still only one SFDP session - no session
+        # created by passthrough traffic
+        sessions = self.vapi.sfdp_session_dump()
+        self.assertEqual(
+            len(sessions), 1, "Passthrough traffic should not create SFDP session"
+        )
+
+        # Cleanup
+        self.vapi.sfdp_classifier_input_add_del_session(
+            tenant_id=self.tenant_id,
+            is_del=True,
+            match=match,
+            match_len=len(match),
+        )
+        self.vapi.sfdp_classifier_input_set_table(
+            table_index=table_index,
+            is_del=True,
+        )
+        self.vapi.classify_add_del_table(
+            is_add=False,
+            table_index=table_index,
+            mask_len=0,
+            match_n_vectors=0,
+        )
+        self._cleanup_sfdp_classifier()
+
+    def test_sfdp_classifier_input_ip6(self):
+        """Test SFDP input classifier node with IPv6 traffic"""
+        self._configure_sfdp_classifier(is_ip6=True)
+
+        # Create a classifier table matching on src and dst IPv6
+        mask = self.create_ip6_mask(src_ip=True, dst_ip=True)
+        reply = self.vapi.classify_add_del_table(
+            is_add=True,
+            mask=mask,
+            mask_len=len(mask),
+            skip_n_vectors=0,
+            match_n_vectors=4,
+            nbuckets=64,
+            memory_size=1 << 20,  # 1MB
+        )
+        self.assertEqual(reply.retval, 0)
+        table_index = reply.new_table_index
+
+        # Set the classifier table
+        reply = self.vapi.sfdp_classifier_input_set_table(
+            table_index=table_index,
+            is_del=False,
+        )
+        self.assertEqual(reply.retval, 0)
+
+        # Add classifier session matching traffic from pg0 to pg1
+        match = self.create_ip6_match(
+            src_ip=self.pg0.remote_ip6, dst_ip=self.pg1.remote_ip6
+        )
+
+        reply = self.vapi.sfdp_classifier_input_add_del_session(
+            tenant_id=self.tenant_id,
+            is_del=False,
+            match=match,
+            match_len=len(match),
+        )
+        self.assertEqual(reply.retval, 0)
+
+        matching_pkt = self.create_tcp6_packet(
+            src_mac=self.pg0.remote_mac,
+            dst_mac=self.pg0.local_mac,
+            src_ip=self.pg0.remote_ip6,
+            dst_ip=self.pg1.remote_ip6,
+            sport=11111,
+            dport=80,
+            flags="S",
+        )
+        self.send_and_expect(self.pg0, matching_pkt, self.pg1)
+
+        # Verify SFDP session was created for matching traffic
+        sessions = self.vapi.sfdp_session_dump()
+        self.assertEqual(len(sessions), 1, "Expected one SFDP session")
+        self.assertEqual(sessions[0].tenant_id, self.tenant_id)
+        self.assertEqual(sessions[0].protocol, 6)  # TCP
+
+        passthrough_pkt = self.create_tcp6_packet(
+            src_mac=self.pg0.remote_mac,
+            dst_mac=self.pg0.local_mac,
+            src_ip=self.pg0.remote_ip6,  # Same source
+            dst_ip=self.pg2.remote_ip6,  # Different dest - no match
+            sport=22222,
+            dport=443,
+            flags="S",
+        )
+        self.send_and_expect(self.pg0, passthrough_pkt, self.pg2)
+
+        # Still only one SFDP session - no session created by passthrough traffic
+        sessions = self.vapi.sfdp_session_dump()
+        self.assertEqual(
+            len(sessions), 1, "Passthrough traffic should not create SFDP session"
+        )
+
+        # Cleanup
+        self.vapi.sfdp_classifier_input_add_del_session(
+            tenant_id=self.tenant_id,
+            is_del=True,
+            match=match,
+            match_len=len(match),
+        )
+
+        self.vapi.sfdp_classifier_input_set_table(
+            table_index=table_index,
+            is_del=True,
+        )
+        self.vapi.classify_add_del_table(
+            is_add=False,
+            table_index=table_index,
+            mask_len=0,
+            match_n_vectors=0,
+        )
+        self._cleanup_sfdp_classifier(is_ip6=True)
 
 
 if __name__ == "__main__":

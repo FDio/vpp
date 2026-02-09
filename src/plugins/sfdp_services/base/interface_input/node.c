@@ -8,6 +8,8 @@
 #include <vnet/sfdp/sfdp.h>
 #include <vnet/sfdp/service.h>
 #include <vnet/sfdp/common.h>
+#include <vnet/sfdp/service.h>
+
 typedef struct
 {
   u32 tenant_id;
