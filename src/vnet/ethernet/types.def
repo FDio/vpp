@@ -40,7 +40,7 @@
  */
 
 /* Types < 0x600 (1536) are LLC packet lengths. */
-ethernet_type (0x600, LLC_LENGTH)
+ethernet_type (0x5FF, LLC_LENGTH)
 
 ethernet_type (0x600, XNS_IDP)
 ethernet_type (0x800, IP4)
