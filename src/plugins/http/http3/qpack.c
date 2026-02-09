@@ -61,7 +61,7 @@ static qpack_static_table_entry_t qpack_static_table[] = {
   { name_val_token_lit ("cache-control", "no-cache") },
   { name_val_token_lit ("cache-control", "no-store") },
   { name_val_token_lit ("cache-control", "public, max-age=31536000") },
-  { name_val_token_lit ("content-encoding	", "r") },
+  { name_val_token_lit ("content-encoding", "br") },
   { name_val_token_lit ("content-encoding", "gzip") },
   { name_val_token_lit ("content-type", "application/dns-message") },
   { name_val_token_lit ("content-type", "application/javascript") },
@@ -76,8 +76,7 @@ static qpack_static_table_entry_t qpack_static_table[] = {
   { name_val_token_lit ("content-type", "text/plain;charset=utf-8") },
   { name_val_token_lit ("range", "bytes=0-") },
   { name_val_token_lit ("strict-transport-security", "max-age=31536000") },
-  { name_val_token_lit ("strict-transport-security",
-			"max-age=31536000; includesubdomains") },
+  { name_val_token_lit ("strict-transport-security", "max-age=31536000; includesubdomains") },
   { name_val_token_lit ("strict-transport-security",
 			"max-age=31536000; includesubdomains; preload") },
   { name_val_token_lit ("vary", "accept-encoding") },
@@ -98,8 +97,7 @@ static qpack_static_table_entry_t qpack_static_table[] = {
   { name_val_token_lit ("access-control-allow-credentials", "TRUE") },
   { name_val_token_lit ("access-control-allow-headers", "*") },
   { name_val_token_lit ("access-control-allow-methods", "get") },
-  { name_val_token_lit ("access-control-allow-methods",
-			"get, post, options") },
+  { name_val_token_lit ("access-control-allow-methods", "get, post, options") },
   { name_val_token_lit ("access-control-allow-methods", "options") },
   { name_val_token_lit ("access-control-expose-headers", "content-length") },
   { name_val_token_lit ("access-control-request-headers", "content-type") },
@@ -107,9 +105,8 @@ static qpack_static_table_entry_t qpack_static_table[] = {
   { name_val_token_lit ("access-control-request-method", "post") },
   { name_val_token_lit ("alt-svc", "clear") },
   { name_val_token_lit ("authorization", "") },
-  { name_val_token_lit (
-    "content-security-policy",
-    "script-src 'none'; object-src 'none'; base-uri 'none'") },
+  { name_val_token_lit ("content-security-policy",
+			"script-src 'none'; object-src 'none'; base-uri 'none'") },
   { name_val_token_lit ("early-data", "1") },
   { name_val_token_lit ("expect-ct", "") },
   { name_val_token_lit ("forwarded", "") },
@@ -943,8 +940,8 @@ qpack_encode_string (u8 *dst, const u8 *value, uword value_len, u8 prefix_len)
 }
 
 __clib_export hpack_error_t
-qpack_decode_header (u8 **src, u8 *end, u8 **buf, uword *buf_len,
-		     u32 *name_len, u32 *value_len, void *decoder_ctx)
+qpack_decode_header (u8 **src, u8 *end, u8 **buf, uword *buf_len, u32 *name_len, u32 *value_len,
+		     void *decoder_ctx, u8 *never_index)
 {
   u8 *p;
   uword index, old_len;
@@ -980,6 +977,8 @@ qpack_decode_header (u8 **src, u8 *end, u8 **buf, uword *buf_len,
       /* TODO: indexed field line, dynamic table */
       return HPACK_ERROR_COMPRESSION;
     case 7:
+      *never_index = 1;
+      [[fallthrough]];
     case 5:
       /* literal field line with name reference, static table */
       index = hpack_decode_int (&p, end, 4);
@@ -1001,6 +1000,8 @@ qpack_decode_header (u8 **src, u8 *end, u8 **buf, uword *buf_len,
       /* TODO: literal field line with name reference, dynamic table */
       return HPACK_ERROR_COMPRESSION;
     case 3:
+      *never_index = 1;
+      [[fallthrough]];
     case 2:
       /* literal field line with literal name */
       old_len = *buf_len;
@@ -1393,25 +1394,21 @@ qpack_serialize_response (u8 *app_headers, u32 app_headers_len,
   while (app_headers < end)
     {
       /* custom header name? */
-      u32 *tmp = (u32 *) app_headers;
-      if (PREDICT_FALSE (*tmp & HTTP_CUSTOM_HEADER_NAME_BIT))
+      http_app_header_name_t *name = (http_app_header_name_t *) app_headers;
+      if (PREDICT_FALSE (name->flags & HTTP_FIELD_LINE_F_CUSTOM_NAME))
 	{
-	  http_custom_token_t *name, *value;
-	  name = (http_custom_token_t *) app_headers;
-	  u32 name_len = name->len & ~HTTP_CUSTOM_HEADER_NAME_BIT;
-	  app_headers += sizeof (http_custom_token_t) + name_len;
+	  http_custom_token_t *value;
+	  app_headers += sizeof (http_custom_token_t) + name->len;
 	  value = (http_custom_token_t *) app_headers;
 	  app_headers += sizeof (http_custom_token_t) + value->len;
-	  p = qpack_encode_custom_header (p, name->token, name_len,
-					  value->token, value->len);
+	  p = qpack_encode_custom_header (p, name->token, name->len, value->token, value->len);
 	}
       else
 	{
 	  http_app_header_t *header;
 	  header = (http_app_header_t *) app_headers;
 	  app_headers += sizeof (http_app_header_t) + header->value.len;
-	  p = qpack_encode_header (p, header->name, header->value.token,
-				   header->value.len);
+	  p = qpack_encode_header (p, header->name.name, header->value.token, header->value.len);
 	}
     }
 
@@ -1468,25 +1465,21 @@ qpack_serialize_request (u8 *app_headers, u32 app_headers_len,
   while (app_headers < end)
     {
       /* custom header name? */
-      u32 *tmp = (u32 *) app_headers;
-      if (PREDICT_FALSE (*tmp & HTTP_CUSTOM_HEADER_NAME_BIT))
+      http_app_header_name_t *name = (http_app_header_name_t *) app_headers;
+      if (PREDICT_FALSE (name->flags & HTTP_FIELD_LINE_F_CUSTOM_NAME))
 	{
-	  http_custom_token_t *name, *value;
-	  name = (http_custom_token_t *) app_headers;
-	  u32 name_len = name->len & ~HTTP_CUSTOM_HEADER_NAME_BIT;
-	  app_headers += sizeof (http_custom_token_t) + name_len;
+	  http_custom_token_t *value;
+	  app_headers += sizeof (http_custom_token_t) + name->len;
 	  value = (http_custom_token_t *) app_headers;
 	  app_headers += sizeof (http_custom_token_t) + value->len;
-	  p = qpack_encode_custom_header (p, name->token, name_len,
-					  value->token, value->len);
+	  p = qpack_encode_custom_header (p, name->token, name->len, value->token, value->len);
 	}
       else
 	{
 	  http_app_header_t *header;
 	  header = (http_app_header_t *) app_headers;
 	  app_headers += sizeof (http_app_header_t) + header->value.len;
-	  p = qpack_encode_header (p, header->name, header->value.token,
-				   header->value.len);
+	  p = qpack_encode_header (p, header->name.name, header->value.token, header->value.len);
 	}
     }
 

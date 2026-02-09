@@ -301,8 +301,8 @@ hpack_get_table_entry (uword index, http_token_t *name, http_token_t *value,
 }
 
 __clib_export hpack_error_t
-hpack_decode_header (u8 **src, u8 *end, u8 **buf, uword *buf_len,
-		     u32 *name_len, u32 *value_len, void *decoder_ctx)
+hpack_decode_header (u8 **src, u8 *end, u8 **buf, uword *buf_len, u32 *name_len, u32 *value_len,
+		     void *decoder_ctx, u8 *never_index)
 {
   hpack_dynamic_table_t *dt = (hpack_dynamic_table_t *) decoder_ctx;
   u8 *p;
@@ -357,6 +357,7 @@ hpack_decode_header (u8 **src, u8 *end, u8 **buf, uword *buf_len,
     }
   else /* without indexing / never indexed */
     {
+      *never_index = *p >> 4;
       if ((*p & 0x0F) == 0) /* new name */
 	p++;
       else /* indexed name */
@@ -740,25 +741,21 @@ hpack_serialize_response (u8 *app_headers, u32 app_headers_len,
   while (app_headers < end)
     {
       /* custom header name? */
-      u32 *tmp = (u32 *) app_headers;
-      if (PREDICT_FALSE (*tmp & HTTP_CUSTOM_HEADER_NAME_BIT))
+      http_app_header_name_t *name = (http_app_header_name_t *) app_headers;
+      if (PREDICT_FALSE (name->flags & HTTP_FIELD_LINE_F_CUSTOM_NAME))
 	{
-	  http_custom_token_t *name, *value;
-	  name = (http_custom_token_t *) app_headers;
-	  u32 name_len = name->len & ~HTTP_CUSTOM_HEADER_NAME_BIT;
-	  app_headers += sizeof (http_custom_token_t) + name_len;
+	  http_custom_token_t *value;
+	  app_headers += sizeof (http_custom_token_t) + name->len;
 	  value = (http_custom_token_t *) app_headers;
 	  app_headers += sizeof (http_custom_token_t) + value->len;
-	  p = hpack_encode_custom_header (p, name->token, name_len,
-					  value->token, value->len);
+	  p = hpack_encode_custom_header (p, name->token, name->len, value->token, value->len);
 	}
       else
 	{
 	  http_app_header_t *header;
 	  header = (http_app_header_t *) app_headers;
 	  app_headers += sizeof (http_app_header_t) + header->value.len;
-	  p = hpack_encode_header (p, header->name, header->value.token,
-				   header->value.len);
+	  p = hpack_encode_header (p, header->name.name, header->value.token, header->value.len);
 	}
     }
 
@@ -804,25 +801,21 @@ hpack_serialize_request (u8 *app_headers, u32 app_headers_len,
   while (app_headers < end)
     {
       /* custom header name? */
-      u32 *tmp = (u32 *) app_headers;
-      if (PREDICT_FALSE (*tmp & HTTP_CUSTOM_HEADER_NAME_BIT))
+      http_app_header_name_t *name = (http_app_header_name_t *) app_headers;
+      if (PREDICT_FALSE (name->flags & HTTP_FIELD_LINE_F_CUSTOM_NAME))
 	{
-	  http_custom_token_t *name, *value;
-	  name = (http_custom_token_t *) app_headers;
-	  u32 name_len = name->len & ~HTTP_CUSTOM_HEADER_NAME_BIT;
-	  app_headers += sizeof (http_custom_token_t) + name_len;
+	  http_custom_token_t *value;
+	  app_headers += sizeof (http_custom_token_t) + name->len;
 	  value = (http_custom_token_t *) app_headers;
 	  app_headers += sizeof (http_custom_token_t) + value->len;
-	  p = hpack_encode_custom_header (p, name->token, name_len,
-					  value->token, value->len);
+	  p = hpack_encode_custom_header (p, name->token, name->len, value->token, value->len);
 	}
       else
 	{
 	  http_app_header_t *header;
 	  header = (http_app_header_t *) app_headers;
 	  app_headers += sizeof (http_app_header_t) + header->value.len;
-	  p = hpack_encode_header (p, header->name, header->value.token,
-				   header->value.len);
+	  p = hpack_encode_header (p, header->name.name, header->value.token, header->value.len);
 	}
     }
 
