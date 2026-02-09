@@ -301,8 +301,8 @@ hpack_get_table_entry (uword index, http_token_t *name, http_token_t *value,
 }
 
 __clib_export hpack_error_t
-hpack_decode_header (u8 **src, u8 *end, u8 **buf, uword *buf_len,
-		     u32 *name_len, u32 *value_len, void *decoder_ctx)
+hpack_decode_header (u8 **src, u8 *end, u8 **buf, uword *buf_len, u32 *name_len, u32 *value_len,
+		     void *decoder_ctx, u8 *never_index)
 {
   hpack_dynamic_table_t *dt = (hpack_dynamic_table_t *) decoder_ctx;
   u8 *p;
@@ -357,6 +357,7 @@ hpack_decode_header (u8 **src, u8 *end, u8 **buf, uword *buf_len,
     }
   else /* without indexing / never indexed */
     {
+      *never_index = *p >> 4;
       if ((*p & 0x0F) == 0) /* new name */
 	p++;
       else /* indexed name */
@@ -472,8 +473,8 @@ hpack_parse_response (u8 *src, u32 src_len, u8 *dst, u32 dst_len,
 }
 
 static inline u8 *
-hpack_encode_header (u8 *dst, http_header_name_t name, const u8 *value,
-		     u32 value_len)
+hpack_encode_header (u8 *dst, http_header_name_t name, const u8 *value, u32 value_len,
+		     u8 never_index)
 {
   u8 *a, *b;
   u32 orig_len, actual_size;
@@ -485,7 +486,7 @@ hpack_encode_header (u8 *dst, http_header_name_t name, const u8 *value,
       /* static table index with 4 bit prefix is max 2 bytes */
       vec_add2 (dst, a, 2 + value_len + HPACK_ENCODED_INT_MAX_LEN);
       /* Literal Header Field without Indexing — Indexed Name */
-      *a = 0x00; /* zero first 4 bits */
+      *a = never_index ? 0x10 : 0x00;
       b = hpack_encode_int (a, name_token->static_table_index, 4);
     }
   else
@@ -496,7 +497,7 @@ hpack_encode_header (u8 *dst, http_header_name_t name, const u8 *value,
 		  1);
       b = a;
       /* Literal Header Field without Indexing — New Name */
-      *b++ = 0x00;
+      *b++ = never_index ? 0x10 : 0x00;
       b = hpack_encode_string (b, (const u8 *) name_token->base,
 			       name_token->len);
     }
@@ -508,8 +509,8 @@ hpack_encode_header (u8 *dst, http_header_name_t name, const u8 *value,
 }
 
 static inline u8 *
-hpack_encode_custom_header (u8 *dst, const u8 *name, u32 name_len,
-			    const u8 *value, u32 value_len)
+hpack_encode_custom_header (u8 *dst, const u8 *name, u32 name_len, const u8 *value, u32 value_len,
+			    u8 never_index)
 {
   u32 orig_len, actual_size;
   u8 *a, *b;
@@ -519,7 +520,7 @@ hpack_encode_custom_header (u8 *dst, const u8 *name, u32 name_len,
   vec_add2 (dst, a, name_len + value_len + HPACK_ENCODED_INT_MAX_LEN * 2 + 1);
   b = a;
   /* Literal Header Field without Indexing — New Name */
-  *b++ = 0x00;
+  *b++ = never_index ? 0x10 : 0x00;
   b = hpack_encode_string (b, name, name_len);
   b = hpack_encode_string (b, value, value_len);
   actual_size = b - a;
@@ -720,11 +721,10 @@ hpack_serialize_response (u8 *app_headers, u32 app_headers_len,
 
   /* server name */
   p = hpack_encode_header (p, HTTP_HEADER_SERVER, control_data->server_name,
-			   control_data->server_name_len);
+			   control_data->server_name_len, 0);
 
   /* date */
-  p = hpack_encode_header (p, HTTP_HEADER_DATE, control_data->date,
-			   control_data->date_len);
+  p = hpack_encode_header (p, HTTP_HEADER_DATE, control_data->date, control_data->date_len, 0);
 
   /* content length if any */
   if (control_data->content_len != HPACK_ENCODER_SKIP_CONTENT_LEN)
@@ -740,25 +740,23 @@ hpack_serialize_response (u8 *app_headers, u32 app_headers_len,
   while (app_headers < end)
     {
       /* custom header name? */
-      u32 *tmp = (u32 *) app_headers;
-      if (PREDICT_FALSE (*tmp & HTTP_CUSTOM_HEADER_NAME_BIT))
+      http_app_header_name_t *name = (http_app_header_name_t *) app_headers;
+      if (PREDICT_FALSE (name->flags & HTTP_FIELD_LINE_F_CUSTOM_NAME))
 	{
-	  http_custom_token_t *name, *value;
-	  name = (http_custom_token_t *) app_headers;
-	  u32 name_len = name->len & ~HTTP_CUSTOM_HEADER_NAME_BIT;
-	  app_headers += sizeof (http_custom_token_t) + name_len;
+	  http_custom_token_t *value;
+	  app_headers += sizeof (http_custom_token_t) + name->len;
 	  value = (http_custom_token_t *) app_headers;
 	  app_headers += sizeof (http_custom_token_t) + value->len;
-	  p = hpack_encode_custom_header (p, name->token, name_len,
-					  value->token, value->len);
+	  p = hpack_encode_custom_header (p, name->token, name->len, value->token, value->len,
+					  name->flags & HTTP_FIELD_LINE_F_NEVER_INDEX);
 	}
       else
 	{
 	  http_app_header_t *header;
 	  header = (http_app_header_t *) app_headers;
 	  app_headers += sizeof (http_app_header_t) + header->value.len;
-	  p = hpack_encode_header (p, header->name, header->value.token,
-				   header->value.len);
+	  p = hpack_encode_header (p, header->name.name, header->value.token, header->value.len,
+				   name->flags & HTTP_FIELD_LINE_F_NEVER_INDEX);
 	}
     }
 
@@ -783,18 +781,16 @@ hpack_serialize_request (u8 *app_headers, u32 app_headers_len,
     p = hpack_encode_path (p, control_data->path, control_data->path_len);
 
   if (control_data->parsed_bitmap & HPACK_PSEUDO_HEADER_PROTOCOL_PARSED)
-    p = hpack_encode_custom_header (p, (u8 *) ":protocol", 9,
-				    control_data->protocol,
-				    control_data->protocol_len);
+    p = hpack_encode_custom_header (p, (u8 *) ":protocol", 9, control_data->protocol,
+				    control_data->protocol_len, 0);
 
   p = hpack_encode_authority (p, control_data->authority,
 			      control_data->authority_len);
 
   /* user agent */
   if (control_data->user_agent_len)
-    p =
-      hpack_encode_header (p, HTTP_HEADER_USER_AGENT, control_data->user_agent,
-			   control_data->user_agent_len);
+    p = hpack_encode_header (p, HTTP_HEADER_USER_AGENT, control_data->user_agent,
+			     control_data->user_agent_len, 0);
 
   /* content length if any */
   if (control_data->content_len != HPACK_ENCODER_SKIP_CONTENT_LEN)
@@ -804,25 +800,23 @@ hpack_serialize_request (u8 *app_headers, u32 app_headers_len,
   while (app_headers < end)
     {
       /* custom header name? */
-      u32 *tmp = (u32 *) app_headers;
-      if (PREDICT_FALSE (*tmp & HTTP_CUSTOM_HEADER_NAME_BIT))
+      http_app_header_name_t *name = (http_app_header_name_t *) app_headers;
+      if (PREDICT_FALSE (name->flags & HTTP_FIELD_LINE_F_CUSTOM_NAME))
 	{
-	  http_custom_token_t *name, *value;
-	  name = (http_custom_token_t *) app_headers;
-	  u32 name_len = name->len & ~HTTP_CUSTOM_HEADER_NAME_BIT;
-	  app_headers += sizeof (http_custom_token_t) + name_len;
+	  http_custom_token_t *value;
+	  app_headers += sizeof (http_custom_token_t) + name->len;
 	  value = (http_custom_token_t *) app_headers;
 	  app_headers += sizeof (http_custom_token_t) + value->len;
-	  p = hpack_encode_custom_header (p, name->token, name_len,
-					  value->token, value->len);
+	  p = hpack_encode_custom_header (p, name->token, name->len, value->token, value->len,
+					  name->flags & HTTP_FIELD_LINE_F_NEVER_INDEX);
 	}
       else
 	{
 	  http_app_header_t *header;
 	  header = (http_app_header_t *) app_headers;
 	  app_headers += sizeof (http_app_header_t) + header->value.len;
-	  p = hpack_encode_header (p, header->name, header->value.token,
-				   header->value.len);
+	  p = hpack_encode_header (p, header->name.name, header->value.token, header->value.len,
+				   name->flags & HTTP_FIELD_LINE_F_NEVER_INDEX);
 	}
     }
 

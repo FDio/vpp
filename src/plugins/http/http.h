@@ -359,7 +359,7 @@ typedef enum http_status_code_
   _ (X_FRAME_OPTIONS, "X-Frame-Options", "x-frame-options", 0)                \
   _ (X_XSS_PROTECTION, "X-XSS-Protection", "x-xss-protection", 0)
 
-typedef enum http_header_name_
+typedef enum http_header_name_ : u16
 {
 #define _(sym, str_canonical, str_lower, hpack_index) HTTP_HEADER_##sym,
   foreach_http_header_name
@@ -391,10 +391,19 @@ typedef enum http_msg_data_type_
   HTTP_MSG_DATA_N_TYPES,
 } http_msg_data_type_t;
 
+typedef enum http_field_line_flags_ : u16
+{
+  HTTP_FIELD_LINE_F_INTERNAL = 1 << 0,
+  HTTP_FIELD_LINE_F_NEVER_INDEX = 1 << 1,
+  HTTP_FIELD_LINE_F_CUSTOM_NAME = 1 << 2,
+  HTTP_FIELD_LINE_F_PROXY_DROP = 1 << 3,
+} http_field_line_flags_t;
+
 typedef struct http_field_line_
 {
   u32 name_offset;
-  u32 name_len;
+  u16 name_len;
+  http_field_line_flags_t flags;
   u32 value_offset;
   u32 value_len;
 } http_field_line_t;
@@ -1055,12 +1064,23 @@ typedef struct
 
 typedef struct
 {
-  u32 name;
+  http_field_line_flags_t flags;
+  union
+  {
+    http_header_name_t name;
+    struct
+    {
+      u16 len;
+      u8 token[0];
+    };
+  };
+} http_app_header_name_t;
+
+typedef struct
+{
+  http_app_header_name_t name;
   http_custom_token_t value;
 } http_app_header_t;
-
-/* Use high bit of header name length as custom header name bit. */
-#define HTTP_CUSTOM_HEADER_NAME_BIT (1 << 31)
 
 /**
  * Initialize headers list context.
@@ -1097,7 +1117,8 @@ http_add_header (http_headers_ctx_t *ctx, http_header_name_t name,
     return -1;
 
   header = (http_app_header_t *) (ctx->buf + ctx->tail_offset);
-  header->name = (u32) name;
+  header->name.name = name;
+  header->name.flags = 0;
   header->value.len = (u32) value_len;
   clib_memcpy (header->value.token, (u8 *) value, value_len);
   ctx->tail_offset += sizeof (http_app_header_t) + value_len;
@@ -1119,22 +1140,23 @@ always_inline int
 http_add_custom_header (http_headers_ctx_t *ctx, const char *name,
 			uword name_len, const char *value, uword value_len)
 {
-  http_custom_token_t *token;
+  http_custom_token_t *value_token;
+  http_app_header_name_t *name_token;
 
   if ((ctx->tail_offset + 2 * sizeof (http_custom_token_t) + name_len +
        value_len) > ctx->len)
     return -1;
 
   /* name */
-  token = (http_custom_token_t *) (ctx->buf + ctx->tail_offset);
-  token->len = (u32) name_len;
-  clib_memcpy (token->token, (u8 *) name, token->len);
-  token->len |= HTTP_CUSTOM_HEADER_NAME_BIT;
-  ctx->tail_offset += sizeof (http_custom_token_t) + name_len;
+  name_token = (http_app_header_name_t *) (ctx->buf + ctx->tail_offset);
+  name_token->len = (u16) name_len;
+  clib_memcpy (name_token->token, (u8 *) name, name_token->len);
+  name_token->flags = HTTP_FIELD_LINE_F_CUSTOM_NAME;
+  ctx->tail_offset += sizeof (http_app_header_name_t) + name_len;
   /* value */
-  token = (http_custom_token_t *) (ctx->buf + ctx->tail_offset);
-  token->len = (u32) value_len;
-  clib_memcpy (token->token, (u8 *) value, token->len);
+  value_token = (http_custom_token_t *) (ctx->buf + ctx->tail_offset);
+  value_token->len = (u32) value_len;
+  clib_memcpy (value_token->token, (u8 *) value, value_token->len);
   ctx->tail_offset += sizeof (http_custom_token_t) + value_len;
   return 0;
 }
