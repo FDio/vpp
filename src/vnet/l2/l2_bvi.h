@@ -95,6 +95,10 @@ l2_to_bvi (vlib_main_t * vlib_main,
     {
       *next0 = l3_next->input_next_ip6;
     }
+  else if (ethertype < 0x600)
+    {
+      *next0 = L2FLOOD_NEXT_LLC;
+    }
   else
     {
       /* uncommon ethertype, check table */
