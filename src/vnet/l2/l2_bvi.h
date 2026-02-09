@@ -97,6 +97,7 @@ l2_to_bvi (vlib_main_t * vlib_main,
     }
   else
     {
+      ethertype = ethertype < 0x600 ? ETHERNET_TYPE_LLC_LENGTH : ethertype;
       /* uncommon ethertype, check table */
       u32 i0 = sparse_vec_index (l3_next->input_next_by_type, ethertype);
       *next0 = vec_elt (l3_next->input_next_by_type, i0);
