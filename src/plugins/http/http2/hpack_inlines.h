@@ -18,10 +18,9 @@ typedef enum
   HPACK_ERROR_UNKNOWN,
 } hpack_error_t;
 
-typedef hpack_error_t (hpack_header_decoder_fn) (u8 **src, u8 *end, u8 **buf,
-						 uword *buf_len, u32 *name_len,
-						 u32 *value_len,
-						 void *decoder_ctx);
+typedef hpack_error_t (hpack_header_decoder_fn) (u8 **src, u8 *end, u8 **buf, uword *buf_len,
+						 u32 *name_len, u32 *value_len, void *decoder_ctx,
+						 u8 *never_index);
 
 typedef struct
 {
@@ -31,7 +30,7 @@ typedef struct
 } hpack_token_t;
 
 static const hpack_token_t hpack_headers[] = {
-#define _(sym, str_canonical, str_lower, hpack_index)                         \
+#define _(sym, str_canonical, str_lower, hpack_index, flags)                                       \
   { http_token_lit (str_lower), hpack_index },
   foreach_http_header_name
 #undef _
@@ -609,7 +608,7 @@ hpack_decode_request (u8 *src, u8 *end, u8 *dst, u32 dst_len,
 		      hpack_header_decoder_fn *decoder_fn)
 {
   u8 *p, *b, *name, *value;
-  u8 regular_header_parsed = 0;
+  u8 regular_header_parsed = 0, never_index;
   u32 name_len, value_len;
   uword b_left;
   http_field_line_t *header;
@@ -624,9 +623,9 @@ hpack_decode_request (u8 *src, u8 *end, u8 *dst, u32 dst_len,
 
   while (p != end)
     {
+      never_index = 0;
       name = b;
-      rv =
-	decoder_fn (&p, end, &b, &b_left, &name_len, &value_len, decoder_ctx);
+      rv = decoder_fn (&p, end, &b, &b_left, &name_len, &value_len, decoder_ctx, &never_index);
       if (rv)
 	{
 	  HTTP_DBG (1, "decode_header: %d", rv);
@@ -671,6 +670,7 @@ hpack_decode_request (u8 *src, u8 *end, u8 *dst, u32 dst_len,
       header->name_len = name_len;
       header->value_offset = value - control_data->headers;
       header->value_len = value_len;
+      header->flags = never_index ? HTTP_FIELD_LINE_F_NEVER_INDEX : 0;
       control_data->headers_len += name_len;
       control_data->headers_len += value_len;
       if (regular_header_parsed)
@@ -696,7 +696,7 @@ hpack_decode_response (u8 *src, u8 *end, u8 *dst, u32 dst_len,
 		       hpack_header_decoder_fn *decoder_fn)
 {
   u8 *p, *b, *name, *value;
-  u8 regular_header_parsed = 0;
+  u8 regular_header_parsed = 0, never_index;
   u32 name_len, value_len;
   uword b_left;
   http_field_line_t *header;
@@ -711,9 +711,9 @@ hpack_decode_response (u8 *src, u8 *end, u8 *dst, u32 dst_len,
 
   while (p != end)
     {
+      never_index = 0;
       name = b;
-      rv =
-	decoder_fn (&p, end, &b, &b_left, &name_len, &value_len, decoder_ctx);
+      rv = decoder_fn (&p, end, &b, &b_left, &name_len, &value_len, decoder_ctx, &never_index);
       if (rv)
 	{
 	  HTTP_DBG (1, "decode_header: %d", rv);
@@ -758,6 +758,7 @@ hpack_decode_response (u8 *src, u8 *end, u8 *dst, u32 dst_len,
       header->name_len = name_len;
       header->value_offset = value - control_data->headers;
       header->value_len = value_len;
+      header->flags = never_index ? HTTP_FIELD_LINE_F_NEVER_INDEX : 0;
       control_data->headers_len += name_len;
       control_data->headers_len += value_len;
       if (regular_header_parsed)
