@@ -117,6 +117,7 @@ cdp_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
   cdp_main_t *cm = &cdp_main;
   f64 poll_time_remaining;
   uword event_type, *event_data = 0;
+  vlib_node_t *llc_input_node;
 
   /* Start w/ cdp disabled */
   poll_time_remaining = 86400.0;
@@ -158,8 +159,10 @@ cdp_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 					    cdp_input_node.index);
 #endif
 	      /* with ethernet input (for SRP) */
-	      ethernet_register_input_type (vm, ETHERNET_TYPE_CDP /* CDP */ ,
-					    cdp_input_node.index);
+	      llc_input_node = vlib_get_node_by_name (vm, (u8 *) "llc-input");
+
+	      ethernet_register_input_type (vm, ETHERNET_TYPE_LLC_LENGTH /* llc */,
+					    llc_input_node->index);
 	      cm->cdp_protocol_registered = 1;
 	    }
 	  poll_time_remaining = 10.0;
