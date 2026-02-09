@@ -1037,9 +1037,9 @@ http_test_hpack (vlib_main_t *vm)
 
   vlib_cli_output (vm, "hpack_decode_header");
 
-  static hpack_error_t (*_hpack_decode_header) (
-    u8 * *src, u8 * end, u8 * *buf, uword * buf_len, u32 * name_len,
-    u32 * value_len, hpack_dynamic_table_t * dt);
+  static hpack_error_t (*_hpack_decode_header) (u8 * *src, u8 * end, u8 * *buf, uword * buf_len,
+						u32 * name_len, u32 * value_len,
+						hpack_dynamic_table_t * dt, u8 * never_index);
 
   _hpack_decode_header =
     vlib_get_plugin_symbol ("http_plugin.so", "hpack_decode_header");
@@ -1057,75 +1057,73 @@ http_test_hpack (vlib_main_t *vm)
 
   u32 name_len, value_len;
   hpack_dynamic_table_t table;
+  u8 never_index;
 
   _hpack_dynamic_table_init (&table, 128);
 
-#define TEST(i, e_name, e_value, dt_size)                                     \
-  vec_validate (input, sizeof (i) - 2);                                       \
-  memcpy (input, i, sizeof (i) - 1);                                          \
-  pos = input;                                                                \
-  vec_validate_init_empty (buf, 63, 0);                                       \
-  bp = buf;                                                                   \
-  blen = vec_len (buf);                                                       \
-  rv = _hpack_decode_header (&pos, vec_end (input), &bp, &blen, &name_len,    \
-			     &value_len, &table);                             \
-  len = vec_len (buf) - blen;                                                 \
-  HTTP_TEST ((rv == HPACK_ERROR_NONE && table.used == dt_size &&              \
-	      name_len == strlen (e_name) && value_len == strlen (e_value) && \
-	      !memcmp (buf, e_name, name_len) &&                              \
-	      !memcmp (buf + name_len, e_value, value_len) &&                 \
-	      vec_len (buf) == (blen + name_len + value_len) &&               \
-	      pos == vec_end (input) && bp == buf + name_len + value_len),    \
-	     "%U is decoded as '%U: %U'", format_hex_bytes, input,            \
-	     vec_len (input), format_http_bytes, buf, name_len,               \
-	     format_http_bytes, buf + name_len, value_len);                   \
-  vec_free (input);                                                           \
+#define TEST(i, e_name, e_value, dt_size, e_never_index)                                           \
+  vec_validate (input, sizeof (i) - 2);                                                            \
+  memcpy (input, i, sizeof (i) - 1);                                                               \
+  pos = input;                                                                                     \
+  vec_validate_init_empty (buf, 63, 0);                                                            \
+  bp = buf;                                                                                        \
+  blen = vec_len (buf);                                                                            \
+  never_index = 0;                                                                                 \
+  rv = _hpack_decode_header (&pos, vec_end (input), &bp, &blen, &name_len, &value_len, &table,     \
+			     &never_index);                                                        \
+  len = vec_len (buf) - blen;                                                                      \
+  HTTP_TEST ((rv == HPACK_ERROR_NONE && table.used == (dt_size) && name_len == strlen (e_name) &&  \
+	      value_len == strlen (e_value) && !memcmp (buf, e_name, name_len) &&                  \
+	      !memcmp (buf + name_len, e_value, value_len) &&                                      \
+	      vec_len (buf) == (blen + name_len + value_len) && pos == vec_end (input) &&          \
+	      bp == buf + name_len + value_len && (e_never_index) == never_index),                 \
+	     "%U is decoded as '%U: %U'", format_hex_bytes, input, vec_len (input),                \
+	     format_http_bytes, buf, name_len, format_http_bytes, buf + name_len, value_len);      \
+  vec_free (input);                                                                                \
   vec_free (buf);
 
   /* C.2.1. Literal Header Field with Indexing */
   TEST ("\x40\x0A\x63\x75\x73\x74\x6F\x6D\x2D\x6B\x65\x79\x0D\x63\x75\x73\x74"
 	"\x6F\x6D\x2D\x68\x65\x61\x64\x65\x72",
-	"custom-key", "custom-header", 55);
+	"custom-key", "custom-header", 55, 0);
   /* C.2.2. Literal Header Field without Indexing */
-  TEST ("\x04\x0C\x2F\x73\x61\x6D\x70\x6C\x65\x2F\x70\x61\x74\x68", ":path",
-	"/sample/path", 55);
+  TEST ("\x04\x0C\x2F\x73\x61\x6D\x70\x6C\x65\x2F\x70\x61\x74\x68", ":path", "/sample/path", 55, 0);
   /* C.2.3. Literal Header Field Never Indexed */
-  TEST ("\x10\x08\x70\x61\x73\x73\x77\x6F\x72\x64\x06\x73\x65\x63\x72\x65\x74",
-	"password", "secret", 55);
+  TEST ("\x10\x08\x70\x61\x73\x73\x77\x6F\x72\x64\x06\x73\x65\x63\x72\x65\x74", "password",
+	"secret", 55, 1);
   /* C.2.4. Indexed Header Field */
-  TEST ("\x82", ":method", "GET", 55);
-  TEST ("\xBE", "custom-key", "custom-header", 55);
+  TEST ("\x82", ":method", "GET", 55, 0);
+  TEST ("\xBE", "custom-key", "custom-header", 55, 0);
   /* Literal Header Field with Indexing - enough space in dynamic table */
-  TEST ("\x41\x0F\x77\x77\x77\x2E\x65\x78\x61\x6D\x70\x6C\x65\x2E\x63\x6F\x6D",
-	":authority", "www.example.com", 112);
+  TEST ("\x41\x0F\x77\x77\x77\x2E\x65\x78\x61\x6D\x70\x6C\x65\x2E\x63\x6F\x6D", ":authority",
+	"www.example.com", 112, 0);
   /* verification */
-  TEST ("\xBE", ":authority", "www.example.com", 112);
-  TEST ("\xBF", "custom-key", "custom-header", 112);
+  TEST ("\xBE", ":authority", "www.example.com", 112, 0);
+  TEST ("\xBF", "custom-key", "custom-header", 112, 0);
   /* Literal Header Field with Indexing - eviction */
-  TEST ("\x58\x08\x6E\x6F\x2D\x63\x61\x63\x68\x65", "cache-control",
-	"no-cache", 110);
+  TEST ("\x58\x08\x6E\x6F\x2D\x63\x61\x63\x68\x65", "cache-control", "no-cache", 110, 0);
   /* verification */
-  TEST ("\xBE", "cache-control", "no-cache", 110);
-  TEST ("\xBF", ":authority", "www.example.com", 110);
+  TEST ("\xBE", "cache-control", "no-cache", 110, 0);
+  TEST ("\xBF", ":authority", "www.example.com", 110, 0);
   /* Literal Header Field with Indexing - eviction */
   TEST ("\x40\x0A\x63\x75\x73\x74\x6F\x6D\x2D\x6B\x65\x79\x0D\x63\x75\x73\x74"
 	"\x6F\x6D\x2D\x68\x65\x61\x64\x65\x72",
-	"custom-key", "custom-header", 108);
+	"custom-key", "custom-header", 108, 0);
   /* verification */
-  TEST ("\xBE", "custom-key", "custom-header", 108);
-  TEST ("\xBF", "cache-control", "no-cache", 108);
+  TEST ("\xBE", "custom-key", "custom-header", 108, 0);
+  TEST ("\xBF", "cache-control", "no-cache", 108, 0);
   /* Literal Header Field with Indexing - eviction */
-  TEST ("\x41\x0F\x77\x77\x77\x2E\x65\x78\x61\x6D\x70\x6C\x65\x2E\x63\x6F\x6D",
-	":authority", "www.example.com", 112);
+  TEST ("\x41\x0F\x77\x77\x77\x2E\x65\x78\x61\x6D\x70\x6C\x65\x2E\x63\x6F\x6D", ":authority",
+	"www.example.com", 112, 0);
   /* verification */
-  TEST ("\xBE", ":authority", "www.example.com", 112);
-  TEST ("\xBF", "custom-key", "custom-header", 112);
+  TEST ("\xBE", ":authority", "www.example.com", 112, 0);
+  TEST ("\xBF", "custom-key", "custom-header", 112, 0);
   /* Literal Header Field with Indexing - eviction with reference */
-  TEST ("\x7F\x00\x0C\x63\x75\x73\x74\x6F\x6D\x2D\x76\x61\x6C\x75\x65",
-	"custom-key", "custom-value", 111);
+  TEST ("\x7F\x00\x0C\x63\x75\x73\x74\x6F\x6D\x2D\x76\x61\x6C\x75\x65", "custom-key",
+	"custom-value", 111, 0);
   /* verification */
-  TEST ("\xBE", "custom-key", "custom-value", 111);
-  TEST ("\xBF", ":authority", "www.example.com", 111);
+  TEST ("\xBE", "custom-key", "custom-value", 111, 0);
+  TEST ("\xBF", ":authority", "www.example.com", 111, 0);
 #undef TEST
 
   _hpack_dynamic_table_free (&table);
@@ -1617,9 +1615,9 @@ http_test_qpack (vlib_main_t *vm)
 {
   vlib_cli_output (vm, "qpack_decode_header");
 
-  static hpack_error_t (*_qpack_decode_header) (
-    u8 * *src, u8 * end, u8 * *buf, uword * buf_len, u32 * name_len,
-    u32 * value_len);
+  static hpack_error_t (*_qpack_decode_header) (u8 * *src, u8 * end, u8 * *buf, uword * buf_len,
+						u32 * name_len, u32 * value_len, void *decoder_ctx,
+						u8 *never_index);
 
   _qpack_decode_header =
     vlib_get_plugin_symbol ("http_plugin.so", "qpack_decode_header");
@@ -1628,35 +1626,38 @@ http_test_qpack (vlib_main_t *vm)
   uword blen;
   u32 name_len, value_len;
   hpack_error_t rv;
+  u8 never_index;
 
-#define TEST(i, e_name, e_value)                                              \
-  vec_validate (input, sizeof (i) - 2);                                       \
-  memcpy (input, i, sizeof (i) - 1);                                          \
-  pos = input;                                                                \
-  vec_validate_init_empty (buf, 63, 0);                                       \
-  bp = buf;                                                                   \
-  blen = vec_len (buf);                                                       \
-  rv = _qpack_decode_header (&pos, vec_end (input), &bp, &blen, &name_len,    \
-			     &value_len);                                     \
-  HTTP_TEST ((rv == HPACK_ERROR_NONE && name_len == strlen (e_name) &&        \
-	      value_len == strlen (e_value) &&                                \
-	      !memcmp (buf, e_name, name_len) &&                              \
-	      !memcmp (buf + name_len, e_value, value_len) &&                 \
-	      vec_len (buf) == (blen + name_len + value_len) &&               \
-	      pos == vec_end (input) && bp == buf + name_len + value_len),    \
-	     "%U is decoded as '%U: %U'", format_hex_bytes, input,            \
-	     vec_len (input), format_http_bytes, buf, name_len,               \
-	     format_http_bytes, buf + name_len, value_len);                   \
-  vec_free (input);                                                           \
+#define TEST(i, e_name, e_value, e_never_index)                                                    \
+  vec_validate (input, sizeof (i) - 2);                                                            \
+  memcpy (input, i, sizeof (i) - 1);                                                               \
+  pos = input;                                                                                     \
+  vec_validate_init_empty (buf, 63, 0);                                                            \
+  bp = buf;                                                                                        \
+  blen = vec_len (buf);                                                                            \
+  never_index = 0;                                                                                 \
+  rv = _qpack_decode_header (&pos, vec_end (input), &bp, &blen, &name_len, &value_len, 0,          \
+			     &never_index);                                                        \
+  HTTP_TEST ((rv == HPACK_ERROR_NONE && name_len == strlen (e_name) &&                             \
+	      value_len == strlen (e_value) && !memcmp (buf, e_name, name_len) &&                  \
+	      !memcmp (buf + name_len, e_value, value_len) &&                                      \
+	      vec_len (buf) == (blen + name_len + value_len) && pos == vec_end (input) &&          \
+	      bp == buf + name_len + value_len && (e_never_index) == never_index),                 \
+	     "%U is decoded as '%U: %U'", format_hex_bytes, input, vec_len (input),                \
+	     format_http_bytes, buf, name_len, format_http_bytes, buf + name_len, value_len);      \
+  vec_free (input);                                                                                \
   vec_free (buf);
 
   /* literal field line with name reference, static table */
-  TEST ("\x51\x0B\x2F\x69\x6E\x64\x65\x78\x2E\x68\x74\x6D\x6C", ":path",
-	"/index.html");
+  TEST ("\x51\x0B\x2F\x69\x6E\x64\x65\x78\x2E\x68\x74\x6D\x6C", ":path", "/index.html", 0);
+  /* literal field line with name reference, never indexed, static table */
+  TEST ("\x71\x0B\x2F\x69\x6E\x64\x65\x78\x2E\x68\x74\x6D\x6C", ":path", "/index.html", 1);
   /* indexed field line, static table */
-  TEST ("\xC1", ":path", "/");
+  TEST ("\xC1", ":path", "/", 0);
   /* literal field line with literal name */
-  TEST ("\x23\x61\x62\x63\x01\x5A", "abc", "Z");
+  TEST ("\x23\x61\x62\x63\x01\x5A", "abc", "Z", 0);
+  /* literal field line with literal name, never indexed */
+  TEST ("\x33\x61\x62\x63\x01\x5A", "abc", "Z", 1);
 
   vlib_cli_output (vm, "qpack_parse_request");
 
@@ -1725,14 +1726,13 @@ http_test_qpack (vlib_main_t *vm)
 
   vlib_cli_output (vm, "qpack_encode_header");
 
-  static u8 *(*_qpack_encode_header) (u8 * dst, http_header_name_t name,
-				      const u8 *value, u32 value_len);
+  static u8 *(*_qpack_encode_header) (u8 * dst, http_header_name_t name, const u8 *value,
+				      u32 value_len, u8 never_index);
   _qpack_encode_header =
     vlib_get_plugin_symbol ("http_plugin.so", "qpack_encode_header");
 
   /* indexed field line, static table */
-  buf = _qpack_encode_header (buf, HTTP_HEADER_CACHE_CONTROL,
-			      (const u8 *) "no-cache", 8);
+  buf = _qpack_encode_header (buf, HTTP_HEADER_CACHE_CONTROL, (const u8 *) "no-cache", 8, 0);
   HTTP_TEST ((vec_len (buf) == 1 && buf[0] == 0xE7),
 	     "'cache-control: no-cache' encoded as: %U", format_hex_bytes, buf,
 	     vec_len (buf));
@@ -1741,8 +1741,8 @@ http_test_qpack (vlib_main_t *vm)
   /* literal field line with name reference, static table */
   u8 expected1[] = "\x56\x96\xD0\x7A\xBE\x94\x10\x54\xD4\x44\xA8\x20\x05\x95"
 		   "\x04\x0B\x81\x66\xE0\x82\xA6\x2D\x1B\xFF";
-  buf = _qpack_encode_header (
-    buf, HTTP_HEADER_DATE, (const u8 *) "Mon, 21 Oct 2013 20:13:21 GMT", 29);
+  buf = _qpack_encode_header (buf, HTTP_HEADER_DATE, (const u8 *) "Mon, 21 Oct 2013 20:13:21 GMT",
+			      29, 0);
   HTTP_TEST ((vec_len (buf) == (sizeof (expected1) - 1) &&
 	      !memcmp (buf, expected1, vec_len (buf))),
 	     "'date: Mon, 21 Oct 2013 20:13:21 GMT' encoded as: %U",
@@ -1752,28 +1752,50 @@ http_test_qpack (vlib_main_t *vm)
   /* literal field line with literal name */
   u8 expected2[] = "\x2F\x01\x20\xC9\x39\x56\x42\x46\x9B\x51\x8D\xC1\xE4\x74"
 		   "\xD7\x41\x6F\x0C\x93\x97\xED\x49\xCC\x9F";
-  buf = _qpack_encode_header (buf, HTTP_HEADER_CACHE_STATUS,
-			      (const u8 *) "ExampleCache; hit", 17);
-  HTTP_TEST ((vec_len (buf) == (sizeof (expected2) - 1) &&
-	      !memcmp (buf, expected2, vec_len (buf))),
-	     "'cache-status: ExampleCache; hit' encoded as: %U",
-	     format_hex_bytes, buf, vec_len (buf));
+  buf =
+    _qpack_encode_header (buf, HTTP_HEADER_CACHE_STATUS, (const u8 *) "ExampleCache; hit", 17, 0);
+  HTTP_TEST ((vec_len (buf) == (sizeof (expected2) - 1) && !memcmp (buf, expected2, vec_len (buf))),
+	     "'cache-status: ExampleCache; hit' encoded as: %U", format_hex_bytes, buf,
+	     vec_len (buf));
+  vec_free (buf);
+
+  /* literal field line with name reference, never indexed, static table */
+  u8 expected3[] = "\x76\x96\xD0\x7A\xBE\x94\x10\x54\xD4\x44\xA8\x20\x05\x95"
+		   "\x04\x0B\x81\x66\xE0\x82\xA6\x2D\x1B\xFF";
+  buf = _qpack_encode_header (buf, HTTP_HEADER_DATE, (const u8 *) "Mon, 21 Oct 2013 20:13:21 GMT",
+			      29, 1);
+  HTTP_TEST ((vec_len (buf) == (sizeof (expected3) - 1) && !memcmp (buf, expected3, vec_len (buf))),
+	     "'date: Mon, 21 Oct 2013 20:13:21 GMT' encoded as: %U", format_hex_bytes, buf,
+	     vec_len (buf));
+  vec_free (buf);
+
+  /* literal field line with literal name, never indexed */
+  u8 expected4[] = "\x3F\x01\x20\xC9\x39\x56\x42\x46\x9B\x51\x8D\xC1\xE4\x74"
+		   "\xD7\x41\x6F\x0C\x93\x97\xED\x49\xCC\x9F";
+  buf =
+    _qpack_encode_header (buf, HTTP_HEADER_CACHE_STATUS, (const u8 *) "ExampleCache; hit", 17, 1);
+  HTTP_TEST ((vec_len (buf) == (sizeof (expected4) - 1) && !memcmp (buf, expected4, vec_len (buf))),
+	     "'cache-status: ExampleCache; hit' encoded as: %U", format_hex_bytes, buf,
+	     vec_len (buf));
   vec_free (buf);
 
   vlib_cli_output (vm, "qpack_encode_custom_header");
 
-  static u8 *(*_qpack_encode_custom_header) (
-    u8 * dst, const u8 *name, u32 name_len, const u8 *value, u32 value_len);
+  static u8 *(*_qpack_encode_custom_header) (u8 * dst, const u8 *name, u32 name_len,
+					     const u8 *value, u32 value_len, u8 never_index);
   _qpack_encode_custom_header =
     vlib_get_plugin_symbol ("http_plugin.so", "qpack_encode_custom_header");
 
-  u8 expected3[] = "\x2E\x40\xEA\x93\xC1\x89\x3F\x83\x45\x63\xA7";
-  buf = _qpack_encode_custom_header (buf, (const u8 *) "sandwich", 8,
-				     (const u8 *) "spam", 4);
-  HTTP_TEST ((vec_len (buf) == (sizeof (expected3) - 1) &&
-	      !memcmp (buf, expected3, vec_len (buf))),
-	     "'sandwich: spam' encoded as: %U", format_hex_bytes, buf,
-	     vec_len (buf));
+  u8 expected5[] = "\x2E\x40\xEA\x93\xC1\x89\x3F\x83\x45\x63\xA7";
+  buf = _qpack_encode_custom_header (buf, (const u8 *) "sandwich", 8, (const u8 *) "spam", 4, 0);
+  HTTP_TEST ((vec_len (buf) == (sizeof (expected5) - 1) && !memcmp (buf, expected5, vec_len (buf))),
+	     "'sandwich: spam' encoded as: %U", format_hex_bytes, buf, vec_len (buf));
+  vec_free (buf);
+
+  u8 expected6[] = "\x3E\x40\xEA\x93\xC1\x89\x3F\x83\x45\x63\xA7";
+  buf = _qpack_encode_custom_header (buf, (const u8 *) "sandwich", 8, (const u8 *) "spam", 4, 1);
+  HTTP_TEST ((vec_len (buf) == (sizeof (expected6) - 1) && !memcmp (buf, expected6, vec_len (buf))),
+	     "'sandwich: spam' encoded as: %U", format_hex_bytes, buf, vec_len (buf));
   vec_free (buf);
 
   vlib_cli_output (vm, "qpack_serialize_response");
@@ -1795,13 +1817,11 @@ http_test_qpack (vlib_main_t *vm)
   resp_control_data.server_name_len = vec_len (server_name);
   resp_control_data.date = date;
   resp_control_data.date_len = vec_len (date);
-  u8 expected4[] =
-    "\x00\x00\x5F\x09\x03\x35\x30\x34\x5F\x4D\x8B\x9D\x29\xAD\x4B\x6A\x32\x54"
-    "\x49\x50\x94\x7F\x56\x96\xD0\x7A\xBE\x94\x10\x54\xD4\x44\xA8\x20\x05\x95"
-    "\x04\x0B\x81\x66\xE0\x82\xA6\x2D\x1B\xFF\xC4";
+  u8 expected7[] = "\x00\x00\x5F\x09\x03\x35\x30\x34\x5F\x4D\x8B\x9D\x29\xAD\x4B\x6A\x32\x54"
+		   "\x49\x50\x94\x7F\x56\x96\xD0\x7A\xBE\x94\x10\x54\xD4\x44\xA8\x20\x05\x95"
+		   "\x04\x0B\x81\x66\xE0\x82\xA6\x2D\x1B\xFF\xC4";
   _qpack_serialize_response (0, 0, &resp_control_data, &buf);
-  HTTP_TEST ((vec_len (buf) == (sizeof (expected4) - 1) &&
-	      !memcmp (buf, expected4, vec_len (buf))),
+  HTTP_TEST ((vec_len (buf) == (sizeof (expected7) - 1) && !memcmp (buf, expected7, vec_len (buf))),
 	     "response encoded as: %U", format_hex_bytes, buf, vec_len (buf));
   vec_free (buf);
 
@@ -1817,16 +1837,14 @@ http_test_qpack (vlib_main_t *vm)
 		   http_token_lit ("ExampleCache; hit"));
   http_add_custom_header (&headers_ctx, http_token_lit ("sandwich"),
 			  http_token_lit ("spam"));
-  u8 expected5[] =
-    "\x00\x00\xD9\x5F\x4D\x8B\x9D\x29\xAD\x4B\x6A\x32\x54\x49\x50\x94\x7F\x56"
-    "\x96\xD0\x7A\xBE\x94\x10\x54\xD4\x44\xA8\x20\x05\x95\x04\x0B\x81\x66\xE0"
-    "\x82\xA6\x2D\x1B\xFF\x54\x83\x08\x04\xD7\xF5\x2F\x01\x20\xC9\x39\x56\x42"
-    "\x46\x9B\x51\x8D\xC1\xE4\x74\xD7\x41\x6F\x0C\x93\x97\xED\x49\xCC\x9F\x2E"
-    "\x40\xEA\x93\xC1\x89\x3F\x83\x45\x63\xA7";
+  u8 expected8[] = "\x00\x00\xD9\x5F\x4D\x8B\x9D\x29\xAD\x4B\x6A\x32\x54\x49\x50\x94\x7F\x56"
+		   "\x96\xD0\x7A\xBE\x94\x10\x54\xD4\x44\xA8\x20\x05\x95\x04\x0B\x81\x66\xE0"
+		   "\x82\xA6\x2D\x1B\xFF\x54\x83\x08\x04\xD7\xF5\x2F\x01\x20\xC9\x39\x56\x42"
+		   "\x46\x9B\x51\x8D\xC1\xE4\x74\xD7\x41\x6F\x0C\x93\x97\xED\x49\xCC\x9F\x2E"
+		   "\x40\xEA\x93\xC1\x89\x3F\x83\x45\x63\xA7";
   _qpack_serialize_response (headers_buf, headers_ctx.tail_offset,
 			     &resp_control_data, &buf);
-  HTTP_TEST ((vec_len (buf) == (sizeof (expected5) - 1) &&
-	      !memcmp (buf, expected5, vec_len (buf))),
+  HTTP_TEST ((vec_len (buf) == (sizeof (expected8) - 1) && !memcmp (buf, expected8, vec_len (buf))),
 	     "response encoded as: %U", format_hex_bytes, buf, vec_len (buf));
   vec_free (headers_buf);
   vec_free (buf);
@@ -1855,11 +1873,10 @@ http_test_qpack (vlib_main_t *vm)
   req_control_data.authority_len = vec_len (authority);
   req_control_data.user_agent_len = 0;
   req_control_data.content_len = HPACK_ENCODER_SKIP_CONTENT_LEN;
-  u8 expected6[] = "\x00\x00\xD1\xD7\xC1\x50\x8C\xF1\xE3\xC2\xE5\xF2\x3A\x6B"
+  u8 expected9[] = "\x00\x00\xD1\xD7\xC1\x50\x8C\xF1\xE3\xC2\xE5\xF2\x3A\x6B"
 		   "\xA0\xAB\x90\xF4\xFF";
   _qpack_serialize_request (0, 0, &req_control_data, &buf);
-  HTTP_TEST ((vec_len (buf) == (sizeof (expected6) - 1) &&
-	      !memcmp (buf, expected6, vec_len (buf))),
+  HTTP_TEST ((vec_len (buf) == (sizeof (expected9) - 1) && !memcmp (buf, expected9, vec_len (buf))),
 	     "request encoded as: %U", format_hex_bytes, buf, vec_len (buf));
   vec_free (buf);
   vec_free (authority);
@@ -1879,15 +1896,14 @@ http_test_qpack (vlib_main_t *vm)
   http_init_headers_ctx (&headers_ctx, headers_buf, vec_len (headers_buf));
   http_add_custom_header (&headers_ctx, http_token_lit ("sandwich"),
 			  http_token_lit ("spam"));
-  u8 expected7[] =
-    "\x00\x00\xCF\x50\x8B\x2F\x91\xD3\x5D\x05\x5C\xF6\x4D\x70\x22\x67\x5F\x50"
-    "\x8B\x9D\x29\xAD\x4B\x6A\x32\x54\x49\x50\x94\x7f\x2E\x40\xEA\x93\xC1\x89"
-    "\x3F\x83\x45\x63\xA7";
+  u8 expected10[] = "\x00\x00\xCF\x50\x8B\x2F\x91\xD3\x5D\x05\x5C\xF6\x4D\x70\x22\x67\x5F\x50"
+		    "\x8B\x9D\x29\xAD\x4B\x6A\x32\x54\x49\x50\x94\x7f\x2E\x40\xEA\x93\xC1\x89"
+		    "\x3F\x83\x45\x63\xA7";
   _qpack_serialize_request (headers_buf, headers_ctx.tail_offset,
 			    &req_control_data, &buf);
-  HTTP_TEST ((vec_len (buf) == (sizeof (expected7) - 1) &&
-	      !memcmp (buf, expected7, vec_len (buf))),
-	     "request encoded as: %U", format_hex_bytes, buf, vec_len (buf));
+  HTTP_TEST (
+    (vec_len (buf) == (sizeof (expected10) - 1) && !memcmp (buf, expected10, vec_len (buf))),
+    "request encoded as: %U", format_hex_bytes, buf, vec_len (buf));
 
   vec_free (server_name);
   vec_free (buf);
@@ -2021,6 +2037,110 @@ http_test_h3_frame (vlib_main_t *vm)
   return 0;
 }
 
+static int
+http_test_http_lookup_header_name (vlib_main_t *vm)
+{
+  http_header_name_t name;
+
+#define _(sym, str_canonical, str_lower, hpack_index, flags)                                       \
+  name = http_lookup_header_name (http_token_lit (str_canonical));                                 \
+  if (name != HTTP_HEADER_##sym)                                                                   \
+    {                                                                                              \
+      vlib_cli_output (vm, "FAIL:%d: %s != %u", __LINE__, str_lower, name);                        \
+      return 1;                                                                                    \
+    }
+  foreach_http_header_name
+#undef _
+
+    vlib_cli_output (vm, "PASS:%d: http_lookup_header_name", __LINE__);
+  return 0;
+}
+
+static int
+http_test_http_headers_rx_to_tx (vlib_main_t *vm)
+{
+  const char buf[] = "daTe: Wed, 15 Jan 2025 16:17:33 GMT"
+		     "conTent-tYpE: text/html; charset=utf-8"
+		     "STRICT-transport-security: max-age=31536000"
+		     "Sandwich: Eggs"
+		     "CONTENT-ENCODING: GZIP"
+		     "Content-Length: 1001"
+		     "Proxy-Authorization: spam";
+  http_headers_ctx_t headers_ctx, expected_ctx;
+  u8 *headers_buf = 0, *expected_buf = 0;
+  http_msg_t msg = {};
+  http_field_line_t *headers = 0, *field_line;
+  int rv;
+
+  /* daTe */
+  vec_add2 (headers, field_line, 1);
+  field_line->name_offset = 0;
+  field_line->name_len = 4;
+  field_line->value_offset = 6;
+  field_line->value_len = 29;
+  /* conTent-tYpE */
+  vec_add2 (headers, field_line, 1);
+  field_line->name_offset = 35;
+  field_line->name_len = 12;
+  field_line->value_offset = 49;
+  field_line->value_len = 24;
+  /* STRICT-transport-security */
+  vec_add2 (headers, field_line, 1);
+  field_line->name_offset = 73;
+  field_line->name_len = 25;
+  field_line->value_offset = 100;
+  field_line->value_len = 16;
+  /* Sandwich */
+  vec_add2 (headers, field_line, 1);
+  field_line->name_offset = 116;
+  field_line->name_len = 8;
+  field_line->value_offset = 126;
+  field_line->value_len = 4;
+  /* CONTENT-ENCODING */
+  vec_add2 (headers, field_line, 1);
+  field_line->name_offset = 130;
+  field_line->name_len = 16;
+  field_line->value_offset = 148;
+  field_line->value_len = 4;
+  /* Content-Length */
+  vec_add2 (headers, field_line, 1);
+  field_line->name_offset = 152;
+  field_line->name_len = 14;
+  field_line->value_offset = 168;
+  field_line->value_len = 4;
+  /* Proxy-Authorization */
+  vec_add2 (headers, field_line, 1);
+  field_line->name_offset = 172;
+  field_line->name_len = 19;
+  field_line->value_offset = 193;
+  field_line->value_len = 4;
+
+  msg.data.headers_ctx = pointer_to_uword (headers);
+  msg.data.headers_len = strlen (buf);
+
+  vec_validate (headers_buf, 255);
+  http_init_headers_ctx (&headers_ctx, headers_buf, vec_len (headers_buf));
+
+  vec_validate (expected_buf, 255);
+  http_init_headers_ctx (&expected_ctx, expected_buf, vec_len (expected_buf));
+  http_add_header (&expected_ctx, HTTP_HEADER_CONTENT_TYPE,
+		   http_token_lit ("text/html; charset=utf-8"));
+  http_add_header (&expected_ctx, HTTP_HEADER_STRICT_TRANSPORT_SECURITY,
+		   http_token_lit ("max-age=31536000"));
+  http_add_custom_header (&expected_ctx, http_token_lit ("Sandwich"), http_token_lit ("Eggs"));
+  http_add_header (&expected_ctx, HTTP_HEADER_CONTENT_ENCODING, http_token_lit ("GZIP"));
+
+  rv = http_headers_rx_to_tx (msg, (const u8 *) buf, &headers_ctx);
+  HTTP_TEST ((rv == 0 && headers_ctx.tail_offset == expected_ctx.tail_offset &&
+	      !memcmp (headers_buf, expected_buf, headers_ctx.tail_offset)),
+	     "rx headers converted to tx headers as: %U", format_hex_bytes, headers_buf,
+	     headers_ctx.tail_offset);
+
+  vec_free (headers_buf);
+  vec_free (expected_buf);
+  return 0;
+}
+
 static clib_error_t *
 test_http_command_fn (vlib_main_t *vm, unformat_input_t *input,
 		      vlib_cli_command_t *cmd)
@@ -2046,6 +2166,10 @@ test_http_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	res = http_test_qpack (vm);
       else if (unformat (input, "h3-frame"))
 	res = http_test_h3_frame (vm);
+      else if (unformat (input, "lookup-header-name"))
+	res = http_test_http_lookup_header_name (vm);
+      else if (unformat (input, "headers-rx-to-tx"))
+	res = http_test_http_headers_rx_to_tx (vm);
       else if (unformat (input, "all"))
 	{
 	  if ((res = http_test_parse_authority (vm)))
@@ -2065,6 +2189,10 @@ test_http_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	  if ((res = http_test_qpack (vm)))
 	    goto done;
 	  if ((res = http_test_h3_frame (vm)))
+	    goto done;
+	  if ((res = http_test_http_lookup_header_name (vm)))
+	    goto done;
+	  if ((res = http_test_http_headers_rx_to_tx (vm)))
 	    goto done;
 	}
       else
