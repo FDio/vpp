@@ -1411,6 +1411,7 @@ quic_quicly_accept_connection (quic_quicly_rx_packet_ctx_t *pctx)
   quic_ctx_t *ctx;
   int rv, quicly_state;
   quic_quicly_main_t *qqm = &quic_quicly_main;
+  quic_main_t *qm = qqm->qm;
 
   QUIC_DBG (2, "Accept connection: pkt ctx_index %u, thread %u",
 	    pctx->ctx_index, pctx->thread_index);
@@ -1435,7 +1436,13 @@ quic_quicly_accept_connection (quic_quicly_rx_packet_ctx_t *pctx)
       assert (conn == NULL);
       QUIC_ERR ("Accept connection: failed with %U", quic_quicly_format_err,
 		rv);
-      /* TODO: cleanup created quic ctx and UDP session */
+      /* Mark packet as drop and close UDP session */
+      pctx->ptype = QUIC_PACKET_TYPE_DROP;
+      if (ctx->conn_state < QUIC_CONN_STATE_CLOSED)
+	{
+	  ctx->conn_state = QUIC_CONN_STATE_CLOSED;
+	  quic_disconnect_transport (ctx, qm->app_index);
+	}
       return;
     }
   ASSERT (conn != NULL);

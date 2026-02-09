@@ -118,6 +118,7 @@ typedef enum quic_ctx_conn_state_
   QUIC_CONN_STATE_PASSIVE_CLOSING_QUIC_CLOSED,
   QUIC_CONN_STATE_ACTIVE_CLOSING,
   QUIC_CONN_STATE_TRANSPORT_CLOSED,
+  QUIC_CONN_STATE_CLOSED,
 } quic_ctx_conn_state_t;
 
 typedef enum quic_packet_type_

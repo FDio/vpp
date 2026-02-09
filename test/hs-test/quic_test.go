@@ -1,14 +1,19 @@
 package main
 
 import (
+	"context"
+	"crypto/tls"
 	"regexp"
+	"time"
 
 	. "fd.io/hs-test/infra"
+	"github.com/quic-go/quic-go"
 )
 
 func init() {
 	RegisterVethTests(QuicAlpnMatchTest, QuicAlpnOverlapMatchTest, QuicAlpnServerPriorityMatchTest, QuicAlpnMismatchTest,
 		QuicAlpnEmptyServerListTest, QuicAlpnEmptyClientListTest, QuicBuiltinEchoTest, QuicCpsTest)
+	RegisterNoTopoTests(QuicFailedHandshakeTest)
 }
 
 func QuicAlpnMatchTest(s *VethsSuite) {
@@ -101,6 +106,28 @@ func QuicAlpnEmptyClientListTest(s *VethsSuite) {
 	AssertNotContains(o, "timeout")
 	// no alpn negotiation
 	AssertContains(o, "ALPN selected: none")
+}
+
+func QuicFailedHandshakeTest(s *NoTopoSuite) {
+	serverAddress := s.Interfaces.Tap.Peer.Ip4AddressString() + ":" + s.Ports.Http
+	Log(s.Containers.Vpp.VppInstance.Vppctl("test alpn server uri quic://" + serverAddress))
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	_, err := quic.DialAddr(
+		ctx,
+		serverAddress,
+		&tls.Config{InsecureSkipVerify: true, SessionTicketsDisabled: true},
+		// set QUIC version 2 because we want failed accept
+		&quic.Config{Versions: []quic.Version{quic.Version2}},
+	)
+	Log(err)
+	// connect should fail (context deadline exceeded)
+	AssertNotNil(err, "connect should failed")
+	// expect only two sessions (UDP and QUIC listener)
+	o := s.Containers.Vpp.VppInstance.Vppctl("show session verbose")
+	Log(o)
+	AssertContains(o, "active sessions 2", "expected only listeners")
 }
 
 func QuicBuiltinEchoTest(s *VethsSuite) {
