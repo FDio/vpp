@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0
- * Copyright (c) 2023 Cisco Systems, Inc.
+ * Copyright (c) 2023-2026 Cisco Systems, Inc.
  */
 
 #include <vnet/vnet.h>
@@ -7,13 +7,11 @@
 #include <vnet/dev/bus/pci.h>
 #include <vnet/dev/counters.h>
 #include <vnet/ethernet/ethernet.h>
-#include <vnet/plugin/plugin.h>
-#include <vpp/app/version.h>
-#include <dev_octeon/octeon.h>
-#include <dev_octeon/crypto.h>
+#include <octeon.h>
+#include <crypto.h>
 
 #include <base/roc_api.h>
-#include <common.h>
+#include "common.h"
 
 struct roc_model oct_model;
 oct_main_t oct_main;
@@ -544,6 +542,43 @@ oct_free (vlib_main_t *vm, vnet_dev_t *dev)
     roc_nix_dev_fini (cd->nix);
 }
 
+static int
+oct_npa_max_pools_set_cb (struct plt_pci_device *pci_dev)
+{
+  roc_idev_npa_maxpools_set (oct_main.npa_max_pools);
+  return 0;
+}
+
+static vnet_dev_rv_t
+oct_driver_init (vlib_main_t *vm, vnet_dev_driver_t *drv __clib_unused)
+{
+  int rv;
+  extern oct_plt_init_param_t oct_plt_init_param;
+
+  rv = oct_plt_init (&oct_plt_init_param);
+  if (rv)
+    return VNET_DEV_ERR_INIT_FAILED;
+
+  rv = roc_model_init (&oct_model);
+  if (rv)
+    return VNET_DEV_ERR_INIT_FAILED;
+
+#ifdef PLATFORM_OCTEON9
+  if (!roc_model_is_cn9k ())
+    return VNET_DEV_ERR_UNSUPPORTED_DEVICE;
+#else
+  if (!roc_model_is_cn10k ())
+    return VNET_DEV_ERR_UNSUPPORTED_DEVICE;
+#endif
+
+  /* set default values in oct_main */
+  oct_main.npa_max_pools = OCT_NPA_MAX_POOLS;
+
+  roc_npa_lf_init_cb_register (oct_npa_max_pools_set_cb);
+
+  return VNET_DEV_OK;
+}
+
 VNET_DEV_REGISTER_DRIVER (octeon) = {
   .name = "octeon",
   .description = "Marvell Octeon",
@@ -561,50 +596,7 @@ VNET_DEV_REGISTER_DRIVER (octeon) = {
     .args = oct_dev_args,
   },
   .driver = {
+    .ops.init = oct_driver_init,
     .args = oct_drv_args,
   },
-};
-
-static int
-oct_npa_max_pools_set_cb (struct plt_pci_device *pci_dev)
-{
-  roc_idev_npa_maxpools_set (oct_main.npa_max_pools);
-  return 0;
-}
-
-static clib_error_t *
-oct_plugin_init (vlib_main_t *vm)
-{
-  int rv;
-  extern oct_plt_init_param_t oct_plt_init_param;
-
-  rv = oct_plt_init (&oct_plt_init_param);
-  if (rv)
-    return clib_error_return (0, "oct_plt_init failed");
-
-  rv = roc_model_init (&oct_model);
-  if (rv)
-    return clib_error_return (0, "roc_model_init failed");
-
-#ifdef PLATFORM_OCTEON9
-  if (!roc_model_is_cn9k ())
-    return clib_error_return (0, "OCTEON model is not OCTEON9");
-#else
-  if (!roc_model_is_cn10k ())
-    return clib_error_return (0, "OCTEON model is not OCTEON10");
-#endif
-
-  /* set default values in oct_main */
-  oct_main.npa_max_pools = OCT_NPA_MAX_POOLS;
-
-  roc_npa_lf_init_cb_register (oct_npa_max_pools_set_cb);
-
-  return 0;
-}
-
-VLIB_INIT_FUNCTION (oct_plugin_init);
-
-VLIB_PLUGIN_REGISTER () = {
-  .version = VPP_BUILD_VER,
-  .description = "dev_octeon",
 };

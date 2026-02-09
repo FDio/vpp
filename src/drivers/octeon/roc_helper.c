@@ -8,7 +8,7 @@
 #include <vlib/pci/pci.h>
 #include <vlib/linux/vfio.h>
 #include <base/roc_api.h>
-#include <common.h>
+#include "common.h"
 #include "octeon.h"
 
 static oct_plt_memzone_list_t memzone_list;

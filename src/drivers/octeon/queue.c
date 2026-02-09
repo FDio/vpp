@@ -1,11 +1,11 @@
 /* SPDX-License-Identifier: Apache-2.0
- * Copyright (c) 2023 Cisco Systems, Inc.
+ * Copyright (c) 2023-2026 Cisco Systems, Inc.
  */
 
 #include <vnet/vnet.h>
 #include <vnet/dev/dev.h>
 #include <vnet/dev/counters.h>
-#include <dev_octeon/octeon.h>
+#include <octeon.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/plugin/plugin.h>
 #include <vpp/app/version.h>

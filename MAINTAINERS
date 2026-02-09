@@ -446,11 +446,11 @@ I:	armada
 M:	Damjan Marion <damarion@cisco.com>
 F:	src/drivers/armada/
 
-Plugin - Marvell Octeon device driver
+Marvell Octeon device driver
 I:	octeon
 M:	Monendra Singh Kushwaha <kmonendra@marvell.com>
 M:	Damjan Marion <damarion@cisco.com>
-F:	src/plugins/dev_octeon/
+F:	src/drivers/octeon/
 
 Plugin - Dispatch Trace PCAP
 I:	dispatch-trace

@@ -4,7 +4,7 @@
  * https://spdx.org/licenses/Apache-2.0.html
  */
 
-#include <dev_octeon/octeon.h>
+#include <octeon.h>
 #include <base/roc_npc_priv.h>
 
 VLIB_REGISTER_LOG_CLASS (oct_log, static) = {
@@ -478,15 +478,15 @@ oct_parse_tunnel (oct_flow_parse_state *pst)
 	}
       else if (dport == VXLAN_PORT)
 	{
-	  vxlan_header_t *vxlan_spec =
-	    (vxlan_header_t *) &pst->generic.spec[pst->generic.off];
-	  vxlan_header_t *vxlan_mask =
-	    (vxlan_header_t *) &pst->generic.spec[pst->generic.off];
+	  octeon_vxlan_header_t *vxlan_spec =
+	    (octeon_vxlan_header_t *) &pst->generic.spec[pst->generic.off];
+	  octeon_vxlan_header_t *vxlan_mask =
+	    (octeon_vxlan_header_t *) &pst->generic.spec[pst->generic.off];
 	  pst->items[pst->layer].spec = (void *) vxlan_spec;
 	  pst->items[pst->layer].mask = (void *) vxlan_mask;
-	  pst->items[pst->layer].size = sizeof (vxlan_header_t);
+	  pst->items[pst->layer].size = sizeof (octeon_vxlan_header_t);
 	  pst->items[pst->layer].type = ROC_NPC_ITEM_TYPE_VXLAN;
-	  pst->generic.off += sizeof (vxlan_header_t);
+	  pst->generic.off += sizeof (octeon_vxlan_header_t);
 	  pst->layer++;
 	  pst->nxt_proto = 0;
 	  goto parse_l2;

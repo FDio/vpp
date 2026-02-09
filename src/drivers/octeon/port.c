@@ -1,12 +1,12 @@
 /* SPDX-License-Identifier: Apache-2.0
- * Copyright (c) 2023 Cisco Systems, Inc.
+ * Copyright (c) 2023-2026 Cisco Systems, Inc.
  */
 
 #include <vnet/vnet.h>
 #include <vnet/dev/dev.h>
 #include <vnet/dev/counters.h>
-#include <dev_octeon/octeon.h>
-#include <dev_octeon/common.h>
+#include <octeon.h>
+#include "common.h"
 #include <vnet/ethernet/ethernet.h>
 
 #define OCT_FLOW_PREALLOC_SIZE	1

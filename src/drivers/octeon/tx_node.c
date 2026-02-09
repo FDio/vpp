@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0
- * Copyright (c) 2023 Cisco Systems, Inc.
+ * Copyright (c) 2023-2026 Cisco Systems, Inc.
  */
 
 #include <vlib/vlib.h>
@@ -13,7 +13,7 @@
 #include <vnet/udp/udp_packet.h>
 #include <vnet/tcp/tcp_packet.h>
 
-#include <dev_octeon/octeon.h>
+#include <octeon.h>
 
 typedef struct
 {

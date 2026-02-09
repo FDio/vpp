@@ -6,10 +6,10 @@
 
 #include <vnet/dev/dev.h>
 #include <vnet/devices/devices.h>
-#include <dev_octeon/octeon.h>
-#include <dev_octeon/crypto.h>
+#include <octeon.h>
+#include <crypto.h>
 #include <base/roc_api.h>
-#include <common.h>
+#include "common.h"
 
 oct_crypto_main_t oct_crypto_main;
 oct_crypto_dev_t oct_crypto_dev;

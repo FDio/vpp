@@ -7,8 +7,8 @@
 #include <vnet/vnet.h>
 #include <vnet/dev/dev.h>
 #include <vnet/dev/counters.h>
-#include <dev_octeon/octeon.h>
-#include <dev_octeon/common.h>
+#include <octeon.h>
+#include "common.h"
 
 VLIB_REGISTER_LOG_CLASS (oct_log, static) = {
   .class_name = "oct",

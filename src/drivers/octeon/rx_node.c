@@ -1,12 +1,12 @@
 /* SPDX-License-Identifier: Apache-2.0
- * Copyright (c) 2023 Cisco Systems, Inc.
+ * Copyright (c) 2023-2026 Cisco Systems, Inc.
  */
 
 #include <vlib/vlib.h>
 #include <vnet/dev/dev.h>
 #include <vnet/ethernet/ethernet.h>
-#include <dev_octeon/octeon.h>
-#include <dev_octeon/hw_defs.h>
+#include <octeon.h>
+#include <hw_defs.h>
 
 typedef struct
 {

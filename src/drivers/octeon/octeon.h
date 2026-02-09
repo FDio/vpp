@@ -1,6 +1,6 @@
 
 /* SPDX-License-Identifier: Apache-2.0
- * Copyright (c) 2023 Cisco Systems, Inc.
+ * Copyright (c) 2023-2026 Cisco Systems, Inc.
  */
 #ifndef _OCTEON_H_
 #define _OCTEON_H_
@@ -17,9 +17,18 @@
 #include <vnet/ip/icmp46_packet.h>
 #include <vnet/ip/igmp_packet.h>
 #include <vnet/gre/packet.h>
-#include <vxlan/vxlan.h>
 #include <base/roc_api.h>
-#include <dev_octeon/hw_defs.h>
+#include <hw_defs.h>
+
+/* Minimal VXLAN header shape used by octeon flow parser. */
+typedef struct
+{
+  u8 flags;
+  u8 res1;
+  u8 res2;
+  u8 res3;
+  u32 vni_reserved;
+} octeon_vxlan_header_t;
 
 #define OCT_NPA_MAX_POOLS	   128
 #define OCT_BATCH_ALLOC_IOVA0_MASK 0xFFFFFFFFFFFFFF80

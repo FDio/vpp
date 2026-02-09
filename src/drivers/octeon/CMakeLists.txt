@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright(c) 2022 Cisco Systems, Inc.
+# Copyright(c) 2022-2026 Cisco Systems, Inc.
 
 if (NOT VPP_PLATFORM_NAME STREQUAL "octeon10" AND NOT VPP_PLATFORM_NAME STREQUAL "octeon9")
   return()
@@ -7,15 +7,15 @@ endif()
 
 # Find OCTEON roc files
 vpp_find_path(OCTEON_ROC_DIR PATH_SUFFIXES octeon-roc NAMES platform.h)
-vpp_plugin_find_library(dev-octeon OCTEON_ROC_LIB "libocteon-roc.a")
+vpp_driver_find_library(octeon OCTEON_ROC_LIB "libocteon-roc.a")
 
 if (NOT OCTEON_ROC_DIR)
-  message("OCTEON ROC files not found - Marvell OCTEON device plugin disabled")
+  message("OCTEON ROC files not found - Marvell OCTEON driver disabled")
   return()
 endif()
 
 if (NOT OCTEON_ROC_LIB)
-  message("OCTEON ROC library (libocteon-roc.a) not found - Marvell OCTEON device plugin disabled")
+  message("OCTEON ROC library (libocteon-roc.a) not found - Marvell OCTEON driver disabled")
   return ()
 endif()
 
@@ -25,7 +25,7 @@ if (VPP_PLATFORM_NAME STREQUAL "octeon9")
    add_compile_definitions(PLATFORM_OCTEON9)
 endif()
 
-add_vpp_plugin(dev_octeon
+add_vpp_driver(octeon
   SOURCES
   init.c
   format.c
@@ -45,4 +45,3 @@ add_vpp_plugin(dev_octeon
   LINK_LIBRARIES
   ${OCTEON_ROC_LIB}
 )
-
