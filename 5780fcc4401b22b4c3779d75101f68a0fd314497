@@ -33,6 +33,24 @@
       "message": "recheck",
       "revId": "5780fcc4401b22b4c3779d75101f68a0fd314497",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c5227353_5ecb55bf",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-02-10T11:12:54Z",
+      "side": 1,
+      "message": "docs/developer/extras/hs-test.rst is just link (to make test/hs-test/README.rst visible in web version of docs)",
+      "parentUuid": "f6e03a8f_7122d09c",
+      "revId": "5780fcc4401b22b4c3779d75101f68a0fd314497",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
