@@ -96,6 +96,11 @@ lcp_itf_pair_sync_state (lcp_itf_pair_t *lip)
   /* Linux will remove IPv6 addresses on children when the parent state
    * goes down, so we ensure all IPv4/IPv6 addresses are synced.
    */
+  if ((sw->flags & VNET_SW_INTERFACE_FLAG_UNNUMBERED) && !lcp_sync_unnumbered ())
+    {
+      LCP_ITF_PAIR_NOTICE ("sync_state: not syncing addresses on unnumbered %U",
+			   format_lcp_itf_pair, lip);
+    }
   lcp_itf_set_interface_addr (lip);
 
   if (vif_ns_fd != -1)

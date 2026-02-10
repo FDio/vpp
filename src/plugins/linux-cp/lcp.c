@@ -88,6 +88,26 @@ lcp_sync (void)
 }
 
 void
+lcp_set_sync_unnumbered (u8 is_sync)
+{
+  lcp_main_t *lcpm = &lcp_main;
+
+  lcpm->lcp_sync_unnumbered = (is_sync != 0);
+
+  // If we set to 'on', do a one-off sync of LCP interfaces
+  if (is_sync)
+    lcp_itf_pair_sync_state_all ();
+}
+
+int
+lcp_sync_unnumbered (void)
+{
+  lcp_main_t *lcpm = &lcp_main;
+
+  return lcpm->lcp_sync_unnumbered;
+}
+
+void
 lcp_set_auto_subint (u8 is_auto)
 {
   lcp_main_t *lcpm = &lcp_main;

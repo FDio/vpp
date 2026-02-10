@@ -123,6 +123,7 @@ lcp_itf_pair_show (u32 phy_sw_if_index)
   vlib_cli_output (vm, "lcp lcp-auto-subint %s\n",
 		   lcp_auto_subint () ? "on" : "off");
   vlib_cli_output (vm, "lcp lcp-sync %s\n", lcp_sync () ? "on" : "off");
+  vlib_cli_output (vm, "lcp lcp-sync-unnumbered %s\n", lcp_sync_unnumbered () ? "on" : "off");
   vlib_cli_output (vm, "lcp del-static-on-link-down %s\n",
 		   lcp_get_del_static_on_link_down () ? "on" : "off");
   vlib_cli_output (vm, "lcp del-dynamic-on-link-down %s\n",
@@ -1276,6 +1277,8 @@ lcp_interface_init (vlib_main_t *vm)
   tcp_punt_unknown (vm, 1, 1);
 
   lcp_itf_pair_logger = vlib_log_register_class ("linux-cp", "itf");
+
+  lcp_main.lcp_sync_unnumbered = 1;
 
   return NULL;
 }
