@@ -66,7 +66,7 @@ For adding a new suite, please see `Modifying the framework`_ below.
 **Example test case**
 
 Assumed are two docker containers, each with its own VPP instance running. One VPP then pings the other.
-This can be put in file ``extras/hs-test/my_test.go`` and run with command ``make test TEST=MyTest``.
+This can be put in file ``test/hs-test/my_test.go`` and run with command ``make test TEST=MyTest``.
 
 To add a multi-worker test, register it to a multi-worker suite. The suite *cannot* have ``s.SetupTest()`` in the ``BeforeEach`` block.
 Set your desired core counts using ``s.CpusPerContainer`` and/or ``s.CpusPerVppContainer`` and run ``s.SetupTest()`` at the beginning of your test.
@@ -176,11 +176,11 @@ Modifying the framework
 #. In suite file, implement ``SetupSuite`` method which Ginkgo runs once before starting any of the tests.
    It's important here to call ``ConfigureNetworkTopology()`` method,
    pass the topology name to the function in a form of file name of one of the *yaml* files in ``topo-network`` folder
-   without the extension. In this example, *myTopology* corresponds to file ``extras/hs-test/topo-network/myTopology.yaml``
+   without the extension. In this example, *myTopology* corresponds to file ``test/hs-test/topo-network/myTopology.yaml``
    This will ensure network topology, such as network interfaces and namespaces, will be created.
    Another important method to call is ``LoadContainerTopology()`` which will load
    containers and shared volumes used by the suite. This time the name passed to method corresponds
-   to file in ``extras/hs-test/topo-containers`` folder. Lastly, initialize ``Interfaces`` and ``Containers`` struct fields
+   to file in ``test/hs-test/topo-containers`` folder. Lastly, initialize ``Interfaces`` and ``Containers`` struct fields
    using ``s.GetInterfaceByName("interfaceName")`` and ``s.GetContainerByName("containerName")``. Use the names that are defined in ``.yaml`` files
 
         ::
@@ -270,8 +270,8 @@ Modifying the framework
 
 **Adding a topology element**
 
-Topology configuration exists as ``yaml`` files in the ``extras/hs-test/topo-network`` and
-``extras/hs-test/topo-containers`` folders. Processing of a network topology file for a particular test suite
+Topology configuration exists as ``yaml`` files in the ``test/hs-test/topo-network`` and
+``test/hs-test/topo-containers`` folders. Processing of a network topology file for a particular test suite
 is started by the ``configureNetworkTopology`` method depending on which file's name is passed to it.
 Specified file is loaded and converted into internal data structures which represent various elements of the topology.
 After parsing the configuration, framework loops over the elements and configures them one by one on the host system.
@@ -309,7 +309,7 @@ where binary API socket is accessible by both sides.
 
 If an external program should be executed as part of a test case, it might be useful to wrap its execution in its own function.
 These types of functions are placed in the ``utils.go`` file. If the external program is not available by default in Docker image,
-add its installation to ``extras/hs-test/Dockerfile.vpp`` in ``apt-get install`` command.
+add its installation to ``test/hs-test/Dockerfile.vpp`` in ``apt-get install`` command.
 Alternatively copy the executable from host system to the Docker image, similarly how the VPP executables and libraries are being copied.
 
 **Skipping tests**
@@ -325,7 +325,7 @@ test run time it is not advisable to use aforementioned skip methods and instead
 * Standalone programs ``wget``, ``iperf3`` - since these are downloaded when Docker image is made,
   they are reasonably up-to-date automatically
 * Programs in Docker images  - ``envoyproxy/envoy-contrib`` and ``nginx``
-* Non-standard Go libraries - see ``extras/hs-test/go.mod``
+* Non-standard Go libraries - see ``test/hs-test/go.mod``
 
 Generally, these will be updated on a per-need basis, for example when a bug is discovered
 or a new version incompatibility issue occurs.
@@ -402,12 +402,12 @@ To get your memory leak report run following command:
     $ make test-leak TEST=MemLeakTest
     ...
     NoTopoSuiteSolo mem_leak_test.go/MemLeakTest [SOLO]
-    /home/matus/vpp/extras/hs-test/infra/suite_no_topo.go:113
+    /home/matus/vpp/test/hs-test/infra/suite_no_topo.go:113
 
       Report Entries >>
 
       SUMMARY: 112 byte(s) leaked in 1 allocation(s)
-       - /home/matus/vpp/extras/hs-test/infra/vppinstance.go:624 @ 07/19/24 15:53:33.539
+       - /home/matus/vpp/test/hs-test/infra/vppinstance.go:624 @ 07/19/24 15:53:33.539
 
         leak of 112 byte(s) in 1 allocation(s) from:
             #0 clib_mem_heap_alloc_aligned + 0x31
