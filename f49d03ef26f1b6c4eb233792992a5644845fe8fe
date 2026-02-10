@@ -16,6 +16,40 @@
       "message": "Looks great",
       "revId": "f49d03ef26f1b6c4eb233792992a5644845fe8fe",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3a582bf8_63f50cd7",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2026-02-10T22:31:49Z",
+      "side": 1,
+      "message": "The commit message should have a blank line after the topic.",
+      "revId": "f49d03ef26f1b6c4eb233792992a5644845fe8fe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b212ad1d_4881da95",
+        "filename": "src/plugins/linux-cp/lcp_interface_sync.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 91,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2026-02-10T22:31:49Z",
+      "side": 1,
+      "message": "It looks like vnet_netlink_get_link_mtu() also returns a clib_error_t *. If you\u0027re fixing the other leaks I suppose this one should get fixed too. You could probably do something like:\n```\n  error \u003d vnet_netlink_get_link_mtu (...);\n  if (!error \u0026\u0026 (netlink_mtu !\u003d mtu))\n    error \u003d vnet_netlink_set_link_mtu (...);\n  if (error)\n    {\n      clib_warning (...);\n      clib_error_free (error);\n    }\n```",
+      "revId": "f49d03ef26f1b6c4eb233792992a5644845fe8fe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
