@@ -105,10 +105,17 @@ always_inline void
 clib_file_del (clib_file_main_t *fm, clib_file_t *f)
 {
   fm->file_update (f, UNIX_FILE_UPDATE_DELETE);
-  if (f->dont_close == 0)
-    close ((int) f->file_descriptor);
 
   CLIB_SPINLOCK_LOCK (fm->lock);
+  /* guard against double-deletion which would add the file to pending_free
+   * twice, causing use-after-free when clib_file_free_deleted iterates */
+  if (!f->active)
+    {
+      CLIB_SPINLOCK_UNLOCK (fm->lock);
+      return;
+    }
+  if (f->dont_close == 0)
+    close ((int) f->file_descriptor);
   f->active = 0;
   vec_add1 (fm->pending_free, f);
   pool_put_index (fm->file_pool, f->index);
@@ -119,7 +126,9 @@ always_inline void
 clib_file_del_by_index (clib_file_main_t *fm, uword index)
 {
   clib_file_t *f = clib_file_get (fm, index);
-  clib_file_del (fm, f);
+  /* clib_file_get returns NULL if pool index was already freed */
+  if (f)
+    clib_file_del (fm, f);
 }
 
 always_inline void
