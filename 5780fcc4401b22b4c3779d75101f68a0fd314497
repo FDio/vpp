@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f6e03a8f_7122d09c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-02-10T09:50:28Z",
+      "side": 1,
+      "message": "This patch updates the documentation under \u0027test/hs-test/README.rst\u0027, but I see that there is also similar documentation under \u0027docs/developer/extras/hs-test.rst\u0027.\n\nShould one of the duplicates be deprecated/removed, or both doc files are being kept up-to-date ?",
+      "revId": "5780fcc4401b22b4c3779d75101f68a0fd314497",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
