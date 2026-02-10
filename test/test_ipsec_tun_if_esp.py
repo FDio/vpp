@@ -769,6 +769,7 @@ class TestIpsec6TunIfEsp1(TemplateIpsec6TunIfEsp, IpsecTun6Tests):
         self.verify_tun_46(self.params[socket.AF_INET6], count=257)
 
 
+@unittest.skipIf("policer" in config.excluded_plugins, "Exclude Policer plugin tests")
 class TestIpsec6TunIfEspHandoff(TemplateIpsec6TunIfEsp, IpsecTun6HandoffTests):
     """Ipsec ESP 6 Handoff tests"""
 
@@ -852,6 +853,7 @@ class TestIpsec6TunIfEspHandoff(TemplateIpsec6TunIfEsp, IpsecTun6HandoffTests):
         policer.remove_vpp_config()
 
 
+@unittest.skipIf("policer" in config.excluded_plugins, "Exclude Policer plugin tests")
 class TestIpsec4TunIfEspHandoff(TemplateIpsec4TunIfEsp, IpsecTun4HandoffTests):
     """Ipsec ESP 4 Handoff tests"""
 
@@ -3262,6 +3264,9 @@ class TestIpsecItf4(TemplateIpsec, TemplateIpsecItf4, IpsecTun4):
         self.unconfig_sa(p)
         self.unconfig_network(p)
 
+    @unittest.skipIf(
+        "policer" in config.excluded_plugins, "Exclude Policer plugin tests"
+    )
     def test_tun_44_police(self):
         """IPSEC interface IPv4 with input policer"""
         n_pkts = 127
@@ -3574,6 +3579,9 @@ class TestIpsecItf6(TemplateIpsec, TemplateIpsecItf6, IpsecTun6):
         self.unconfig_sa(np)
         self.unconfig_network(p)
 
+    @unittest.skipIf(
+        "policer" in config.excluded_plugins, "Exclude Policer plugin tests"
+    )
     def test_tun_66_police(self):
         """IPSEC interface IPv6 with input policer"""
         tf = VppEnum.vl_api_tunnel_encap_decap_flags_t

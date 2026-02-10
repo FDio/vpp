@@ -433,21 +433,6 @@ vl_api_ip_mroute_dump_t_handler (vl_api_ip_mroute_dump_t * mp)
 }
 
 static void
-vl_api_ip_punt_police_t_handler (vl_api_ip_punt_police_t * mp,
-				 vlib_main_t * vm)
-{
-  vl_api_ip_punt_police_reply_t *rmp;
-  int rv = 0;
-
-  if (mp->is_ip6)
-    ip6_punt_policer_add_del (mp->is_add, ntohl (mp->policer_index));
-  else
-    ip4_punt_policer_add_del (mp->is_add, ntohl (mp->policer_index));
-
-  REPLY_MACRO (VL_API_IP_PUNT_POLICE_REPLY);
-}
-
-static void
 ip_punt_redirect_t_handler_common (u8 is_add, u32 rx_sw_if_index,
 				   ip_address_family_t af,
 				   const fib_route_path_t *rpaths)

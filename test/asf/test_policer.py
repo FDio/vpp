@@ -3,6 +3,7 @@
 
 import unittest
 
+from config import config
 from asfframework import VppAsfTestCase, VppTestRunner
 from vpp_policer import VppPolicer
 
@@ -23,6 +24,7 @@ CBURST = 100000  # Committed burst in bytes
 EBURST = 200000  # Excess burst in bytes
 
 
+@unittest.skipIf("policer" in config.excluded_plugins, "Exclude Policer plugin tests")
 class TestPolicer(VppAsfTestCase):
     """Policer Test Case"""
 

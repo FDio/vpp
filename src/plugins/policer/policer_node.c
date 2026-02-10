@@ -1,20 +1,22 @@
 /*
  * SPDX-License-Identifier: Apache-2.0
- * Copyright (c) 2015 Cisco and/or its affiliates.
+ * Copyright (c) 2026 Cisco and/or its affiliates.
  */
 
 #include <stdint.h>
 
 #include <vlib/vlib.h>
 #include <vnet/vnet.h>
-#include <vnet/policer/policer.h>
-#include <vnet/policer/police_inlines.h>
 #include <vnet/ip/ip.h>
 #include <vnet/classify/policer_classify.h>
 #include <vnet/classify/vnet_classify.h>
 #include <vnet/l2/feat_bitmap.h>
 #include <vnet/l2/l2_input.h>
 
+#include <policer/internal.h>
+#include <policer/ip_punt.h>
+#include <policer/policer_node.h>
+#include <policer/police_inlines.h>
 
 /* Dispatch functions meant to be instantiated elsewhere */
 
@@ -27,47 +29,61 @@ typedef struct
 
 /* packet trace format function */
 static u8 *
-format_policer_trace (u8 * s, va_list * args)
+format_policer_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   vnet_policer_trace_t *t = va_arg (*args, vnet_policer_trace_t *);
 
-  s = format (s, "VNET_POLICER: sw_if_index %d policer_index %d next %d",
-	      t->sw_if_index, t->policer_index, t->next_index);
+  s = format (s, "VNET_POLICER: sw_if_index %d policer_index %d next %d", t->sw_if_index,
+	      t->policer_index, t->next_index);
   return s;
 }
 
-#define foreach_vnet_policer_error              \
-_(TRANSMIT, "Packets Transmitted")              \
-_(DROP, "Packets Dropped")
+#define foreach_vnet_policer_error                                                                 \
+  _ (TRANSMIT, "Packets Transmitted")                                                              \
+  _ (DROP, "Packets Dropped")
 
 typedef enum
 {
-#define _(sym,str) VNET_POLICER_ERROR_##sym,
+#define _(sym, str) VNET_POLICER_ERROR_##sym,
   foreach_vnet_policer_error
 #undef _
     VNET_POLICER_N_ERROR,
 } vnet_policer_error_t;
 
 static char *vnet_policer_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_vnet_policer_error
 #undef _
 };
 
+#ifndef CLIB_MARCH_VARIANT
+u8 *
+format_policer_handoff_trace (u8 *s, va_list *args)
+{
+  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
+  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
+  policer_handoff_trace_t *t = va_arg (*args, policer_handoff_trace_t *);
+
+  s = format (s, "policer %d, handoff thread %d to %d", t->policer_index, t->current_worker_index,
+	      t->next_worker_index);
+
+  return s;
+}
+#endif
+
 static inline uword
-vnet_policer_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
-		     vlib_frame_t *frame, vlib_dir_t dir)
+policer_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame,
+		     vlib_dir_t dir)
 {
   u32 n_left_from, *from, *to_next;
-  vnet_policer_next_t next_index;
-  vnet_policer_main_t *pm = &vnet_policer_main;
+  policer_next_t next_index;
+  policer_main_t *pm = &policer_main;
   u64 time_in_policer_periods;
   u32 transmitted = 0;
 
-  time_in_policer_periods =
-    clib_cpu_time_now () >> POLICER_TICKS_PER_PERIOD_SHIFT;
+  time_in_policer_periods = clib_cpu_time_now () >> POLICER_TICKS_PER_PERIOD_SHIFT;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -116,11 +132,11 @@ vnet_policer_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  pi0 = pm->policer_index_by_sw_if_index[dir][sw_if_index0];
 	  pi1 = pm->policer_index_by_sw_if_index[dir][sw_if_index1];
 
-	  act0 = vnet_policer_police (vm, b0, pi0, time_in_policer_periods,
-				      POLICE_CONFORM /* no chaining */, true);
+	  act0 = policer_police (vm, b0, pi0, time_in_policer_periods,
+				 POLICE_CONFORM /* no chaining */, true);
 
-	  act1 = vnet_policer_police (vm, b1, pi1, time_in_policer_periods,
-				      POLICE_CONFORM /* no chaining */, true);
+	  act1 = policer_police (vm, b1, pi1, time_in_policer_periods,
+				 POLICE_CONFORM /* no chaining */, true);
 
 	  if (PREDICT_FALSE (act0 == QOS_ACTION_HANDOFF))
 	    {
@@ -158,24 +174,21 @@ vnet_policer_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	    {
 	      if (b0->flags & VLIB_BUFFER_IS_TRACED)
 		{
-		  vnet_policer_trace_t *t =
-		    vlib_add_trace (vm, node, b0, sizeof (*t));
+		  vnet_policer_trace_t *t = vlib_add_trace (vm, node, b0, sizeof (*t));
 		  t->sw_if_index = sw_if_index0;
 		  t->next_index = next0;
 		}
 	      if (b1->flags & VLIB_BUFFER_IS_TRACED)
 		{
-		  vnet_policer_trace_t *t =
-		    vlib_add_trace (vm, node, b1, sizeof (*t));
+		  vnet_policer_trace_t *t = vlib_add_trace (vm, node, b1, sizeof (*t));
 		  t->sw_if_index = sw_if_index1;
 		  t->next_index = next1;
 		}
 	    }
 
 	  /* verify speculative enqueues, maybe switch current next frame */
-	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, bi1, next0, next1);
+	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index, to_next, n_left_to_next, bi0, bi1,
+					   next0, next1);
 	}
 
       while (n_left_from > 0 && n_left_to_next > 0)
@@ -199,8 +212,8 @@ vnet_policer_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[dir];
 	  pi0 = pm->policer_index_by_sw_if_index[dir][sw_if_index0];
 
-	  act0 = vnet_policer_police (vm, b0, pi0, time_in_policer_periods,
-				      POLICE_CONFORM /* no chaining */, true);
+	  act0 = policer_police (vm, b0, pi0, time_in_policer_periods,
+				 POLICE_CONFORM /* no chaining */, true);
 
 	  if (PREDICT_FALSE (act0 == QOS_ACTION_HANDOFF))
 	    {
@@ -218,34 +231,31 @@ vnet_policer_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      vnet_feature_next (&next0, b0);
 	    }
 
-	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
-			     && (b0->flags & VLIB_BUFFER_IS_TRACED)))
+	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
+			     (b0->flags & VLIB_BUFFER_IS_TRACED)))
 	    {
-	      vnet_policer_trace_t *t =
-		vlib_add_trace (vm, node, b0, sizeof (*t));
+	      vnet_policer_trace_t *t = vlib_add_trace (vm, node, b0, sizeof (*t));
 	      t->sw_if_index = sw_if_index0;
 	      t->next_index = next0;
 	      t->policer_index = pi0;
 	    }
 
 	  /* verify speculative enqueue, maybe switch current next frame */
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next, n_left_to_next, bi0,
+					   next0);
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
 
-  vlib_node_increment_counter (vm, node->node_index,
-			       VNET_POLICER_ERROR_TRANSMIT, transmitted);
+  vlib_node_increment_counter (vm, node->node_index, VNET_POLICER_ERROR_TRANSMIT, transmitted);
   return frame->n_vectors;
 }
 
 VLIB_NODE_FN (policer_input_node)
 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
-  return vnet_policer_inline (vm, node, frame, VLIB_RX);
+  return policer_node_inline (vm, node, frame, VLIB_RX);
 }
 
 VLIB_REGISTER_NODE (policer_input_node) = {
@@ -271,7 +281,7 @@ VNET_FEATURE_INIT (policer_input_node, static) = {
 VLIB_NODE_FN (policer_output_node)
 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
-  return vnet_policer_inline (vm, node, frame, VLIB_TX);
+  return policer_node_inline (vm, node, frame, VLIB_TX);
 }
 
 VLIB_REGISTER_NODE (policer_output_node) = {
@@ -303,8 +313,7 @@ static char *policer_input_handoff_error_strings[] = { "congestion drop" };
 VLIB_NODE_FN (policer_input_handoff_node)
 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
-  return policer_handoff (vm, node, frame, vnet_policer_main.fq_index[VLIB_RX],
-			  ~0);
+  return policer_handoff (vm, node, frame, policer_main.fq_index[VLIB_RX], ~0);
 }
 
 VLIB_REGISTER_NODE (policer_input_handoff_node) = {
@@ -324,8 +333,7 @@ VLIB_REGISTER_NODE (policer_input_handoff_node) = {
 VLIB_NODE_FN (policer_output_handoff_node)
 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
-  return policer_handoff (vm, node, frame, vnet_policer_main.fq_index[VLIB_TX],
-			  ~0);
+  return policer_handoff (vm, node, frame, policer_main.fq_index[VLIB_TX], ~0);
 }
 
 VLIB_REGISTER_NODE (policer_output_handoff_node) = {
@@ -351,43 +359,41 @@ typedef struct
 } policer_classify_trace_t;
 
 static u8 *
-format_policer_classify_trace (u8 * s, va_list * args)
+format_policer_classify_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   policer_classify_trace_t *t = va_arg (*args, policer_classify_trace_t *);
 
-  s = format (s, "POLICER_CLASSIFY: sw_if_index %d next %d table %d offset %d"
+  s = format (s,
+	      "POLICER_CLASSIFY: sw_if_index %d next %d table %d offset %d"
 	      " policer_index %d",
-	      t->sw_if_index, t->next_index, t->table_index, t->offset,
-	      t->policer_index);
+	      t->sw_if_index, t->next_index, t->table_index, t->offset, t->policer_index);
   return s;
 }
 
-#define foreach_policer_classify_error                 \
-_(MISS, "Policer classify misses")                     \
-_(HIT, "Policer classify hits")                        \
-_(CHAIN_HIT, "Policer classify hits after chain walk") \
-_(DROP, "Policer classify action drop")
+#define foreach_policer_classify_error                                                             \
+  _ (MISS, "Policer classify misses")                                                              \
+  _ (HIT, "Policer classify hits")                                                                 \
+  _ (CHAIN_HIT, "Policer classify hits after chain walk")                                          \
+  _ (DROP, "Policer classify action drop")
 
 typedef enum
 {
-#define _(sym,str) POLICER_CLASSIFY_ERROR_##sym,
+#define _(sym, str) POLICER_CLASSIFY_ERROR_##sym,
   foreach_policer_classify_error
 #undef _
     POLICER_CLASSIFY_N_ERROR,
 } policer_classify_error_t;
 
 static char *policer_classify_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_policer_classify_error
 #undef _
 };
 
 static inline uword
-policer_classify_inline (vlib_main_t * vm,
-			 vlib_node_runtime_t * node,
-			 vlib_frame_t * frame,
+policer_classify_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame,
 			 policer_classify_table_id_t tid)
 {
   u32 n_left_from, *from, *to_next;
@@ -401,8 +407,7 @@ policer_classify_inline (vlib_main_t * vm,
   u32 n_next_nodes;
   u64 time_in_policer_periods;
 
-  time_in_policer_periods =
-    clib_cpu_time_now () >> POLICER_TICKS_PER_PERIOD_SHIFT;
+  time_in_policer_periods = clib_cpu_time_now () >> POLICER_TICKS_PER_PERIOD_SHIFT;
 
   n_next_nodes = node->n_next_nodes;
 
@@ -441,24 +446,20 @@ policer_classify_inline (vlib_main_t * vm,
       h1 = b1->data;
 
       sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
-      table_index0 =
-	pcm->classify_table_index_by_sw_if_index[tid][sw_if_index0];
+      table_index0 = pcm->classify_table_index_by_sw_if_index[tid][sw_if_index0];
 
       sw_if_index1 = vnet_buffer (b1)->sw_if_index[VLIB_RX];
-      table_index1 =
-	pcm->classify_table_index_by_sw_if_index[tid][sw_if_index1];
+      table_index1 = pcm->classify_table_index_by_sw_if_index[tid][sw_if_index1];
 
       t0 = pool_elt_at_index (vcm->tables, table_index0);
 
       t1 = pool_elt_at_index (vcm->tables, table_index1);
 
-      vnet_buffer (b0)->l2_classify.hash =
-	vnet_classify_hash_packet (t0, (u8 *) h0);
+      vnet_buffer (b0)->l2_classify.hash = vnet_classify_hash_packet (t0, (u8 *) h0);
 
       vnet_classify_prefetch_bucket (t0, vnet_buffer (b0)->l2_classify.hash);
 
-      vnet_buffer (b1)->l2_classify.hash =
-	vnet_classify_hash_packet (t1, (u8 *) h1);
+      vnet_buffer (b1)->l2_classify.hash = vnet_classify_hash_packet (t1, (u8 *) h1);
 
       vnet_classify_prefetch_bucket (t1, vnet_buffer (b1)->l2_classify.hash);
 
@@ -484,12 +485,10 @@ policer_classify_inline (vlib_main_t * vm,
       h0 = b0->data;
 
       sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
-      table_index0 =
-	pcm->classify_table_index_by_sw_if_index[tid][sw_if_index0];
+      table_index0 = pcm->classify_table_index_by_sw_if_index[tid][sw_if_index0];
 
       t0 = pool_elt_at_index (vcm->tables, table_index0);
-      vnet_buffer (b0)->l2_classify.hash =
-	vnet_classify_hash_packet (t0, (u8 *) h0);
+      vnet_buffer (b0)->l2_classify.hash = vnet_classify_hash_packet (t0, (u8 *) h0);
 
       vnet_buffer (b0)->l2_classify.table_index = table_index0;
       vnet_classify_prefetch_bucket (t0, vnet_buffer (b0)->l2_classify.hash);
@@ -556,12 +555,11 @@ policer_classify_inline (vlib_main_t * vm,
 	  if (tid == POLICER_CLASSIFY_TABLE_L2)
 	    {
 	      /* Feature bitmap update and determine the next node */
-	      next0 = vnet_l2_feature_next (b0, pcm->feat_next_node_index,
-					    L2INPUT_FEAT_POLICER_CLAS);
+	      next0 =
+		vnet_l2_feature_next (b0, pcm->feat_next_node_index, L2INPUT_FEAT_POLICER_CLAS);
 	    }
 	  else
-	    vnet_get_config_data (pcm->vnet_config_main[tid],
-				  &b0->current_config_index, &next0,
+	    vnet_get_config_data (pcm->vnet_config_main[tid], &b0->current_config_index, &next0,
 				  /* # bytes of config data */ 0);
 
 	  vnet_buffer (b0)->l2_classify.opaque_index = ~0;
@@ -574,9 +572,8 @@ policer_classify_inline (vlib_main_t * vm,
 
 	      if (e0)
 		{
-		  act0 = vnet_policer_police (vm, b0, e0->next_index,
-					      time_in_policer_periods,
-					      e0->opaque_index, false);
+		  act0 = policer_police (vm, b0, e0->next_index, time_in_policer_periods,
+					 e0->opaque_index, false);
 		  if (PREDICT_FALSE (act0 == QOS_ACTION_DROP))
 		    {
 		      next0 = POLICER_CLASSIFY_NEXT_INDEX_DROP;
@@ -590,30 +587,26 @@ policer_classify_inline (vlib_main_t * vm,
 		    {
 		      if (PREDICT_TRUE (t0->next_table_index != ~0))
 			{
-			  t0 = pool_elt_at_index (vcm->tables,
-						  t0->next_table_index);
+			  t0 = pool_elt_at_index (vcm->tables, t0->next_table_index);
 			}
 		      else
 			{
-			  next0 = (t0->miss_next_index < n_next_nodes) ?
-			    t0->miss_next_index : next0;
+			  next0 =
+			    (t0->miss_next_index < n_next_nodes) ? t0->miss_next_index : next0;
 			  misses++;
 			  break;
 			}
 
 		      hash0 = vnet_classify_hash_packet (t0, (u8 *) h0);
-		      e0 =
-			vnet_classify_find_entry (t0, (u8 *) h0, hash0, now);
+		      e0 = vnet_classify_find_entry (t0, (u8 *) h0, hash0, now);
 		      if (e0)
 			{
-			  act0 = vnet_policer_police (vm, b0, e0->next_index,
-						      time_in_policer_periods,
-						      e0->opaque_index, false);
+			  act0 = policer_police (vm, b0, e0->next_index, time_in_policer_periods,
+						 e0->opaque_index, false);
 			  if (PREDICT_FALSE (act0 == QOS_ACTION_DROP))
 			    {
 			      next0 = POLICER_CLASSIFY_NEXT_INDEX_DROP;
-			      b0->error =
-				node->errors[POLICER_CLASSIFY_ERROR_DROP];
+			      b0->error = node->errors[POLICER_CLASSIFY_ERROR_DROP];
 			    }
 			  hits++;
 			  chain_hits++;
@@ -622,11 +615,10 @@ policer_classify_inline (vlib_main_t * vm,
 		    }
 		}
 	    }
-	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
-			     && (b0->flags & VLIB_BUFFER_IS_TRACED)))
+	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
+			     (b0->flags & VLIB_BUFFER_IS_TRACED)))
 	    {
-	      policer_classify_trace_t *t =
-		vlib_add_trace (vm, node, b0, sizeof (*t));
+	      policer_classify_trace_t *t = vlib_add_trace (vm, node, b0, sizeof (*t));
 	      t->sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 	      t->next_index = next0;
 	      t->table_index = t0 ? t0 - vcm->tables : ~0;
@@ -635,29 +627,24 @@ policer_classify_inline (vlib_main_t * vm,
 	    }
 
 	  /* Verify speculative enqueue, maybe switch current next frame */
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
-					   n_left_to_next, bi0, next0);
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next, n_left_to_next, bi0,
+					   next0);
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
 
-  vlib_node_increment_counter (vm, node->node_index,
-			       POLICER_CLASSIFY_ERROR_MISS, misses);
-  vlib_node_increment_counter (vm, node->node_index,
-			       POLICER_CLASSIFY_ERROR_HIT, hits);
-  vlib_node_increment_counter (vm, node->node_index,
-			       POLICER_CLASSIFY_ERROR_CHAIN_HIT, chain_hits);
+  vlib_node_increment_counter (vm, node->node_index, POLICER_CLASSIFY_ERROR_MISS, misses);
+  vlib_node_increment_counter (vm, node->node_index, POLICER_CLASSIFY_ERROR_HIT, hits);
+  vlib_node_increment_counter (vm, node->node_index, POLICER_CLASSIFY_ERROR_CHAIN_HIT, chain_hits);
 
   return frame->n_vectors;
 }
 
-VLIB_NODE_FN (ip4_policer_classify_node) (vlib_main_t * vm,
-					  vlib_node_runtime_t * node,
-					  vlib_frame_t * frame)
+VLIB_NODE_FN (ip4_policer_classify_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
-  return policer_classify_inline (vm, node, frame,
-				  POLICER_CLASSIFY_TABLE_IP4);
+  return policer_classify_inline (vm, node, frame, POLICER_CLASSIFY_TABLE_IP4);
 }
 
 VLIB_REGISTER_NODE (ip4_policer_classify_node) = {
@@ -672,12 +659,10 @@ VLIB_REGISTER_NODE (ip4_policer_classify_node) = {
   },
 };
 
-VLIB_NODE_FN (ip6_policer_classify_node) (vlib_main_t * vm,
-					  vlib_node_runtime_t * node,
-					  vlib_frame_t * frame)
+VLIB_NODE_FN (ip6_policer_classify_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
-  return policer_classify_inline (vm, node, frame,
-				  POLICER_CLASSIFY_TABLE_IP6);
+  return policer_classify_inline (vm, node, frame, POLICER_CLASSIFY_TABLE_IP6);
 }
 
 VLIB_REGISTER_NODE (ip6_policer_classify_node) = {
@@ -692,9 +677,8 @@ VLIB_REGISTER_NODE (ip6_policer_classify_node) = {
   },
 };
 
-VLIB_NODE_FN (l2_policer_classify_node) (vlib_main_t * vm,
-					 vlib_node_runtime_t * node,
-					 vlib_frame_t * frame)
+VLIB_NODE_FN (l2_policer_classify_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return policer_classify_inline (vm, node, frame, POLICER_CLASSIFY_TABLE_L2);
 }
@@ -713,7 +697,7 @@ VLIB_REGISTER_NODE (l2_policer_classify_node) = {
 
 #ifndef CLIB_MARCH_VARIANT
 static clib_error_t *
-policer_classify_init (vlib_main_t * vm)
+policer_classify_init (vlib_main_t *vm)
 {
   policer_classify_main_t *pcm = &policer_classify_main;
 
@@ -722,14 +706,13 @@ policer_classify_init (vlib_main_t * vm)
   pcm->vnet_classify_main = &vnet_classify_main;
 
   /* Initialize L2 feature next-node indexes */
-  feat_bitmap_init_next_nodes (vm,
-			       l2_policer_classify_node.index,
-			       L2INPUT_N_FEAT,
-			       l2input_get_feat_names (),
-			       pcm->feat_next_node_index);
+  feat_bitmap_init_next_nodes (vm, l2_policer_classify_node.index, L2INPUT_N_FEAT,
+			       l2input_get_feat_names (), pcm->feat_next_node_index);
 
   return 0;
 }
 
-VLIB_INIT_FUNCTION (policer_classify_init);
+VLIB_INIT_FUNCTION (policer_classify_init) = {
+  .runs_after = VLIB_INITS ("in_out_acl_init"),
+};
 #endif /* CLIB_MARCH_VARIANT */

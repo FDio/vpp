@@ -117,31 +117,6 @@ list(APPEND VNET_API_FILES
 )
 
 ##############################################################################
-# Policer infra
-##############################################################################
-list(APPEND VNET_SOURCES
-  policer/node_funcs.c
-  policer/policer.c
-  policer/xlate.c
-  policer/policer_api.c
-)
-
-list(APPEND VNET_MULTIARCH_SOURCES
-  policer/node_funcs.c
-)
-
-list(APPEND VNET_HEADERS
-  policer/police.h
-  policer/policer.h
-  policer/xlate.h
-)
-
-list(APPEND VNET_API_FILES
-  policer/policer.api
-  policer/policer_types.api
-)
-
-##############################################################################
 # Layer 2 protocols go here
 ##############################################################################
 

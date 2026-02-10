@@ -2496,6 +2496,7 @@ class IP6PuntSetup(object):
             i.admin_down()
 
 
+@unittest.skipIf("policer" in config.excluded_plugins, "Exclude Policer plugin tests")
 class TestIP6Punt(IP6PuntSetup, VppTestCase):
     """IPv6 Punt Police/Redirect"""
 
@@ -2612,6 +2613,7 @@ class TestIP6Punt(IP6PuntSetup, VppTestCase):
         self.assertEqual(str(punts[2].punt.nh), "::")
 
 
+@unittest.skipIf("policer" in config.excluded_plugins, "Exclude Policer plugin tests")
 class TestIP6PuntHandoff(IP6PuntSetup, VppTestCase):
     """IPv6 Punt Police/Redirect"""
 

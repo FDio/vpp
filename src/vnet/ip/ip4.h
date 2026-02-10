@@ -224,8 +224,6 @@ serialize_function_t serialize_vnet_ip4_main, unserialize_vnet_ip4_main;
 int vnet_set_ip4_classify_intfc (vlib_main_t * vm, u32 sw_if_index,
 				 u32 table_index);
 
-void ip4_punt_policer_add_del (u8 is_add, u32 policer_index);
-
 void ip4_punt_redirect_add_paths (u32 rx_sw_if_index,
 				  const fib_route_path_t *paths);
 
