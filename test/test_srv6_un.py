@@ -55,6 +55,8 @@ class TestSRv6uSIDSRH(VppTestCase):
                 / IPv6(dst=d, src=s)
                 / UDP(sport=1000, dport=23)
             )
+            pkt[Ether].src = self.pg_if_i.remote_mac
+            pkt[Ether].dst = self.pg_if_i.local_mac
             self.logger.info(pkt.show2(dump=True))
             pkts.append(pkt)
 
@@ -129,6 +131,8 @@ class TestSRv6uSID(VppTestCase):
                 / IPv6(dst=d, src=s)
                 / UDP(sport=1000, dport=23)
             )
+            pkt[Ether].src = self.pg_if_i.remote_mac
+            pkt[Ether].dst = self.pg_if_i.local_mac
             self.logger.info(pkt.show2(dump=True))
             pkts.append(pkt)
 
@@ -209,6 +213,8 @@ class TestSRv6uSIDFlexSRH(VppTestCase):
                 / IPv6(dst=d, src=s)
                 / UDP(sport=1000, dport=23)
             )
+            pkt[Ether].src = self.pg_if_i.remote_mac
+            pkt[Ether].dst = self.pg_if_i.local_mac
             self.logger.info(pkt.show2(dump=True))
             pkts.append(pkt)
 
@@ -283,6 +289,8 @@ class TestSRv6uSIDFlex(VppTestCase):
                 / IPv6(dst=d, src=s)
                 / UDP(sport=1000, dport=23)
             )
+            pkt[Ether].src = self.pg_if_i.remote_mac
+            pkt[Ether].dst = self.pg_if_i.local_mac
             self.logger.info(pkt.show2(dump=True))
             pkts.append(pkt)
 

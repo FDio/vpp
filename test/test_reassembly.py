@@ -2545,7 +2545,7 @@ class TestFIFReassembly(VppTestCase):
             # doesn't matter how it's initialized. This is to ensure that
             # reassembled packet is not > 9000 bytes, so that it's not dropped
             p = (
-                Ether()
+                Ether(src="00:00:00:00:00:01", dst="00:00:00:00:00:02")
                 / IP(id=i, src=self.src_if.remote_ip4, dst=self.dst_if.remote_ip4)
                 / UDP(sport=1234, dport=5678)
                 / Raw(payload)
@@ -2622,7 +2622,7 @@ class TestFIFReassembly(VppTestCase):
             # doesn't matter how it's initialized. This is to ensure that
             # reassembled packet is not > 9000 bytes, so that it's not dropped
             p = (
-                Ether()
+                Ether(src="00:00:00:00:00:01", dst="00:00:00:00:00:02")
                 / IPv6(src=self.src_if.remote_ip6, dst=self.dst_if.remote_ip6)
                 / UDP(sport=1234, dport=5678)
                 / Raw(payload)
