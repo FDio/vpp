@@ -1795,6 +1795,13 @@ pg_input_stream (vlib_node_runtime_t * node, pg_main_t * pg, pg_stream_t * s)
   dt = time_now - s->time_last_generate;
   s->time_last_generate = time_now;
 
+  /* Guard against non-monotonic time (e.g. worker time_offset adjustments). */
+  if (PREDICT_FALSE (dt <= 0))
+    {
+      s->packet_accumulator = 0;
+      return 0;
+    }
+
   n_packets = VLIB_FRAME_SIZE;
   if (s->rate_packets_per_second > 0)
     {
