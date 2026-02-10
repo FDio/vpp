@@ -23,11 +23,13 @@ typedef struct
   soft_rss_type_t ipv4_type;
   soft_rss_type_t ipv6_type;
   clib_toeplitz_hash_key_t *key;
-  u8 n_match;
+  u8 n_match4;
+  u8 n_match6;
   u16 match_offset;
   clib_thread_index_t reta_mask;
   clib_thread_index_t reta[256];
-  soft_rss_rt_match_t match[8];
+  soft_rss_rt_match_t match4[4];
+  soft_rss_rt_match_t match6[4];
 } soft_rss_rt_data_t;
 
 typedef struct
