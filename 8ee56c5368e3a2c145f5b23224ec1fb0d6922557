@@ -33,6 +33,24 @@
       "message": "Looking at the per-patch perf results [0] (from sandbox, as the new GHA job still has issues), I am not sure what to think about this.\nThe new average performance is less than 0.1% worse, but the spread of trial results is greater.\nConsidering that this promises to fix cases with memory corruption, the tiny performance and stability penalty is definitely worth is (I think).\n\n[0] https://jenkins.fd.io/sandbox/job/vpp-csit-verify-perf-master-ubuntu2404-x86_64-2n-spr/1/console",
       "revId": "8ee56c5368e3a2c145f5b23224ec1fb0d6922557",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3ce06d81_6d189126",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-02-10T17:31:56Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "0aa7f200_0873fd03",
+      "revId": "8ee56c5368e3a2c145f5b23224ec1fb0d6922557",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
