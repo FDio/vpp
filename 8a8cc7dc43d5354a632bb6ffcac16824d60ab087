@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4ab6a0db_7fa99fca",
+        "filename": "src/plugins/dpdk/buffer.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 355,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-02-10T16:43:02Z",
+      "side": 1,
+      "message": "Small nitpick: I think this could be simplified with something like\n\n    n_alloc \u003d vlib_buffer_alloc_from_pool(vm, bufs, n, buffer_pool_index);\n    if (n_alloc !\u003d n) {\n      if (n_alloc)\n        vlib_buffer_pool_put(vm, buffer_pool_index, bufs, n_alloc);\n      return -ENOENT;\n    }",
+      "revId": "8a8cc7dc43d5354a632bb6ffcac16824d60ab087",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
