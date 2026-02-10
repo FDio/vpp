@@ -15,7 +15,8 @@ typedef enum
 #define ethernet_type(n,s) ETHERNET_TYPE_##s = n,
 #include <vnet/ethernet/types.def>
 #undef ethernet_type
-} ethernet_type_t;
+} __clib_packed ethernet_type_t;
+STATIC_ASSERT (sizeof (ethernet_type_t) == 2, "Ethernet type should be 2 bytes");
 
 typedef struct
 {
