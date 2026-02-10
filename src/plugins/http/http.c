@@ -863,6 +863,7 @@ http_ts_rx_callback (session_t *ts)
       if (max_deq >= http2_conn_preface.len)
 	{
 	  rx_buf = http_get_rx_buf (hc);
+	  vec_validate (rx_buf, http2_conn_preface.len - 1);
 	  svm_fifo_peek (ts->rx_fifo, 0, http2_conn_preface.len, rx_buf);
 	  if (memcmp (rx_buf, http2_conn_preface.base,
 		      http2_conn_preface.len) == 0)
