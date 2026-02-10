@@ -3,97 +3,92 @@
  * Copyright (c) 2015 Cisco and/or its affiliates.
  */
 
-#include <string.h>
 #include <stddef.h>
-#include <stdio.h>
 #include <assert.h>
-#include <math.h>
 #include <stdint.h>
 
 #include <vlib/vlib.h>
 #include <vnet/vnet.h>
 
-#include <vnet/policer/policer.h>
+#include <policer/internal.h>
 
 /* debugs */
-#define QOS_DEBUG_ERROR(msg, args...)                                         \
-  vlib_log_err (vnet_policer_main.log_class, msg, ##args);
+#define QOS_DEBUG_ERROR(msg, args...) vlib_log_err (policer_main.log_class, msg, ##args);
 
-#define QOS_DEBUG_INFO(msg, args...)                                          \
-  vlib_log_info (vnet_policer_main.log_class, msg, ##args);
+#define QOS_DEBUG_INFO(msg, args...) vlib_log_info (policer_main.log_class, msg, ##args);
 
 #ifndef MIN
-#define MIN(x,y)            (((x)<(y))?(x):(y))
+#define MIN(x, y) (((x) < (y)) ? (x) : (y))
 #endif
 
 #ifndef MAX
-#define MAX(x,y)            (((x)>(y))?(x):(y))
+#define MAX(x, y) (((x) > (y)) ? (x) : (y))
 #endif
 
-#define IPE_POLICER_FULL_WRITE_REQUEST_M40AH_OFFSET                   0
-#define IPE_POLICER_FULL_WRITE_REQUEST_M40AH_MASK                     8
-#define IPE_POLICER_FULL_WRITE_REQUEST_M40AH_SHIFT                   24
+#define IPE_POLICER_FULL_WRITE_REQUEST_M40AH_OFFSET 0
+#define IPE_POLICER_FULL_WRITE_REQUEST_M40AH_MASK   8
+#define IPE_POLICER_FULL_WRITE_REQUEST_M40AH_SHIFT  24
 
-#define IPE_POLICER_FULL_WRITE_REQUEST_TYPE_OFFSET                    2
-#define IPE_POLICER_FULL_WRITE_REQUEST_TYPE_MASK                      2
-#define IPE_POLICER_FULL_WRITE_REQUEST_TYPE_SHIFT                    10
+#define IPE_POLICER_FULL_WRITE_REQUEST_TYPE_OFFSET 2
+#define IPE_POLICER_FULL_WRITE_REQUEST_TYPE_MASK   2
+#define IPE_POLICER_FULL_WRITE_REQUEST_TYPE_SHIFT  10
 
-#define IPE_POLICER_FULL_WRITE_REQUEST_CMD_OFFSET                     3
-#define IPE_POLICER_FULL_WRITE_REQUEST_CMD_MASK                       2
-#define IPE_POLICER_FULL_WRITE_REQUEST_CMD_SHIFT                      0
+#define IPE_POLICER_FULL_WRITE_REQUEST_CMD_OFFSET 3
+#define IPE_POLICER_FULL_WRITE_REQUEST_CMD_MASK	  2
+#define IPE_POLICER_FULL_WRITE_REQUEST_CMD_SHIFT  0
 
-#define IPE_POLICER_FULL_WRITE_REQUEST_M40AL_OFFSET                   4
-#define IPE_POLICER_FULL_WRITE_REQUEST_M40AL_MASK                    32
-#define IPE_POLICER_FULL_WRITE_REQUEST_M40AL_SHIFT                    0
+#define IPE_POLICER_FULL_WRITE_REQUEST_M40AL_OFFSET 4
+#define IPE_POLICER_FULL_WRITE_REQUEST_M40AL_MASK   32
+#define IPE_POLICER_FULL_WRITE_REQUEST_M40AL_SHIFT  0
 
-#define IPE_POLICER_FULL_WRITE_REQUEST_RFC_OFFSET                     8
-#define IPE_POLICER_FULL_WRITE_REQUEST_RFC_MASK                       2
-#define IPE_POLICER_FULL_WRITE_REQUEST_RFC_SHIFT                     30
+#define IPE_POLICER_FULL_WRITE_REQUEST_RFC_OFFSET 8
+#define IPE_POLICER_FULL_WRITE_REQUEST_RFC_MASK	  2
+#define IPE_POLICER_FULL_WRITE_REQUEST_RFC_SHIFT  30
 
-#define IPE_POLICER_FULL_WRITE_REQUEST_AN_OFFSET                      8
-#define IPE_POLICER_FULL_WRITE_REQUEST_AN_MASK                        1
-#define IPE_POLICER_FULL_WRITE_REQUEST_AN_SHIFT                      29
+#define IPE_POLICER_FULL_WRITE_REQUEST_AN_OFFSET 8
+#define IPE_POLICER_FULL_WRITE_REQUEST_AN_MASK	 1
+#define IPE_POLICER_FULL_WRITE_REQUEST_AN_SHIFT	 29
 
-#define IPE_POLICER_FULL_WRITE_REQUEST_REXP_OFFSET                    8
-#define IPE_POLICER_FULL_WRITE_REQUEST_REXP_MASK                      4
-#define IPE_POLICER_FULL_WRITE_REQUEST_REXP_SHIFT                    22
+#define IPE_POLICER_FULL_WRITE_REQUEST_REXP_OFFSET 8
+#define IPE_POLICER_FULL_WRITE_REQUEST_REXP_MASK   4
+#define IPE_POLICER_FULL_WRITE_REQUEST_REXP_SHIFT  22
 
-#define IPE_POLICER_FULL_WRITE_REQUEST_ARM_OFFSET                     9
-#define IPE_POLICER_FULL_WRITE_REQUEST_ARM_MASK                      11
-#define IPE_POLICER_FULL_WRITE_REQUEST_ARM_SHIFT                     11
+#define IPE_POLICER_FULL_WRITE_REQUEST_ARM_OFFSET 9
+#define IPE_POLICER_FULL_WRITE_REQUEST_ARM_MASK	  11
+#define IPE_POLICER_FULL_WRITE_REQUEST_ARM_SHIFT  11
 
-#define IPE_POLICER_FULL_WRITE_REQUEST_PRM_OFFSET                    10
-#define IPE_POLICER_FULL_WRITE_REQUEST_PRM_MASK                      11
-#define IPE_POLICER_FULL_WRITE_REQUEST_PRM_SHIFT                      0
+#define IPE_POLICER_FULL_WRITE_REQUEST_PRM_OFFSET 10
+#define IPE_POLICER_FULL_WRITE_REQUEST_PRM_MASK	  11
+#define IPE_POLICER_FULL_WRITE_REQUEST_PRM_SHIFT  0
 
-#define IPE_POLICER_FULL_WRITE_REQUEST_CBLE_OFFSET                   12
-#define IPE_POLICER_FULL_WRITE_REQUEST_CBLE_MASK                      5
-#define IPE_POLICER_FULL_WRITE_REQUEST_CBLE_SHIFT                    27
+#define IPE_POLICER_FULL_WRITE_REQUEST_CBLE_OFFSET 12
+#define IPE_POLICER_FULL_WRITE_REQUEST_CBLE_MASK   5
+#define IPE_POLICER_FULL_WRITE_REQUEST_CBLE_SHIFT  27
 
-#define IPE_POLICER_FULL_WRITE_REQUEST_CBLM_OFFSET                   12
-#define IPE_POLICER_FULL_WRITE_REQUEST_CBLM_MASK                      7
-#define IPE_POLICER_FULL_WRITE_REQUEST_CBLM_SHIFT                    20
+#define IPE_POLICER_FULL_WRITE_REQUEST_CBLM_OFFSET 12
+#define IPE_POLICER_FULL_WRITE_REQUEST_CBLM_MASK   7
+#define IPE_POLICER_FULL_WRITE_REQUEST_CBLM_SHIFT  20
 
-#define IPE_POLICER_FULL_WRITE_REQUEST_EBLE_OFFSET                   13
-#define IPE_POLICER_FULL_WRITE_REQUEST_EBLE_MASK                      5
-#define IPE_POLICER_FULL_WRITE_REQUEST_EBLE_SHIFT                    15
+#define IPE_POLICER_FULL_WRITE_REQUEST_EBLE_OFFSET 13
+#define IPE_POLICER_FULL_WRITE_REQUEST_EBLE_MASK   5
+#define IPE_POLICER_FULL_WRITE_REQUEST_EBLE_SHIFT  15
 
-#define IPE_POLICER_FULL_WRITE_REQUEST_EBLM_OFFSET                   14
-#define IPE_POLICER_FULL_WRITE_REQUEST_EBLM_MASK                      7
-#define IPE_POLICER_FULL_WRITE_REQUEST_EBLM_SHIFT                     8
+#define IPE_POLICER_FULL_WRITE_REQUEST_EBLM_OFFSET 14
+#define IPE_POLICER_FULL_WRITE_REQUEST_EBLM_MASK   7
+#define IPE_POLICER_FULL_WRITE_REQUEST_EBLM_SHIFT  8
 
-#define IPE_POLICER_FULL_WRITE_REQUEST_CB_OFFSET                     16
-#define IPE_POLICER_FULL_WRITE_REQUEST_CB_MASK                       31
-#define IPE_POLICER_FULL_WRITE_REQUEST_CB_SHIFT                       0
+#define IPE_POLICER_FULL_WRITE_REQUEST_CB_OFFSET 16
+#define IPE_POLICER_FULL_WRITE_REQUEST_CB_MASK	 31
+#define IPE_POLICER_FULL_WRITE_REQUEST_CB_SHIFT	 0
 
-#define IPE_POLICER_FULL_WRITE_REQUEST_EB_OFFSET                     20
-#define IPE_POLICER_FULL_WRITE_REQUEST_EB_MASK                       31
-#define IPE_POLICER_FULL_WRITE_REQUEST_EB_SHIFT                       0
+#define IPE_POLICER_FULL_WRITE_REQUEST_EB_OFFSET 20
+#define IPE_POLICER_FULL_WRITE_REQUEST_EB_MASK	 31
+#define IPE_POLICER_FULL_WRITE_REQUEST_EB_SHIFT	 0
 
-#define IPE_RFC_RFC2697           0x00000000
-#define IPE_RFC_RFC2698           0x00000001
-#define IPE_RFC_RFC4115           0x00000002
-#define IPE_RFC_MEF5CF1           0x00000003
+#define IPE_RFC_RFC2697 0x00000000
+#define IPE_RFC_RFC2698 0x00000001
+#define IPE_RFC_RFC4115 0x00000002
+#define IPE_RFC_MEF5CF1 0x00000003
 
 /* End of constants copied from sse_ipe_desc_fmt.h */
 
@@ -127,37 +122,25 @@
 #define QOS_POL_RATE_EXP_MAX	   ((1 << QOS_POL_RATE_EXP_SIZE) - 1)
 #define QOS_POL_AVG_RATE_MANT_SIZE (IPE_POLICER_FULL_WRITE_REQUEST_ARM_MASK)
 #define QOS_POL_AVG_RATE_MANT_MAX  ((1 << QOS_POL_AVG_RATE_MANT_SIZE) - 1)
-#define QOS_POL_AVG_RATE_MAX                                                  \
-  (QOS_POL_AVG_RATE_MANT_MAX << QOS_POL_RATE_EXP_MAX)
+#define QOS_POL_AVG_RATE_MAX	   (QOS_POL_AVG_RATE_MANT_MAX << QOS_POL_RATE_EXP_MAX)
 
 #define QOS_POL_PEAK_RATE_MANT_SIZE (IPE_POLICER_FULL_WRITE_REQUEST_PRM_MASK)
 #define QOS_POL_PEAK_RATE_MANT_MAX  ((1 << QOS_POL_PEAK_RATE_MANT_SIZE) - 1)
-#define QOS_POL_PEAK_RATE_MAX                                                 \
-  (QOS_POL_PEAK_RATE_MANT_MAX << QOS_POL_RATE_EXP_MAX)
+#define QOS_POL_PEAK_RATE_MAX	    (QOS_POL_PEAK_RATE_MANT_MAX << QOS_POL_RATE_EXP_MAX)
 
-#define QOS_POL_COMM_BKT_LIMIT_MANT_SIZE                                      \
-  (IPE_POLICER_FULL_WRITE_REQUEST_CBLM_MASK)
-#define QOS_POL_COMM_BKT_LIMIT_MANT_MAX                                       \
-  ((1 << QOS_POL_COMM_BKT_LIMIT_MANT_SIZE) - 1)
-#define QOS_POL_COMM_BKT_LIMIT_EXP_SIZE                                       \
-  (IPE_POLICER_FULL_WRITE_REQUEST_CBLE_MASK)
-#define QOS_POL_COMM_BKT_LIMIT_EXP_MAX                                        \
-  ((1 << QOS_POL_COMM_BKT_LIMIT_EXP_SIZE) - 1)
-#define QOS_POL_COMM_BKT_LIMIT_MAX                                            \
-  ((u64) QOS_POL_COMM_BKT_LIMIT_MANT_MAX                                      \
-   << (u64) QOS_POL_COMM_BKT_LIMIT_EXP_MAX)
+#define QOS_POL_COMM_BKT_LIMIT_MANT_SIZE (IPE_POLICER_FULL_WRITE_REQUEST_CBLM_MASK)
+#define QOS_POL_COMM_BKT_LIMIT_MANT_MAX	 ((1 << QOS_POL_COMM_BKT_LIMIT_MANT_SIZE) - 1)
+#define QOS_POL_COMM_BKT_LIMIT_EXP_SIZE	 (IPE_POLICER_FULL_WRITE_REQUEST_CBLE_MASK)
+#define QOS_POL_COMM_BKT_LIMIT_EXP_MAX	 ((1 << QOS_POL_COMM_BKT_LIMIT_EXP_SIZE) - 1)
+#define QOS_POL_COMM_BKT_LIMIT_MAX                                                                 \
+  ((u64) QOS_POL_COMM_BKT_LIMIT_MANT_MAX << (u64) QOS_POL_COMM_BKT_LIMIT_EXP_MAX)
 
-#define QOS_POL_EXTD_BKT_LIMIT_MANT_SIZE                                      \
-  (IPE_POLICER_FULL_WRITE_REQUEST_EBLM_MASK)
-#define QOS_POL_EXTD_BKT_LIMIT_MANT_MAX                                       \
-  ((1 << QOS_POL_EXTD_BKT_LIMIT_MANT_SIZE) - 1)
-#define QOS_POL_EXTD_BKT_LIMIT_EXP_SIZE                                       \
-  (IPE_POLICER_FULL_WRITE_REQUEST_EBLE_MASK)
-#define QOS_POL_EXTD_BKT_LIMIT_EXP_MAX                                        \
-  ((1 << QOS_POL_EXTD_BKT_LIMIT_EXP_SIZE) - 1)
-#define QOS_POL_EXT_BKT_LIMIT_MAX                                             \
-  ((u64) QOS_POL_EXTD_BKT_LIMIT_MANT_MAX                                      \
-   << (u64) QOS_POL_EXTD_BKT_LIMIT_EXP_MAX)
+#define QOS_POL_EXTD_BKT_LIMIT_MANT_SIZE (IPE_POLICER_FULL_WRITE_REQUEST_EBLM_MASK)
+#define QOS_POL_EXTD_BKT_LIMIT_MANT_MAX	 ((1 << QOS_POL_EXTD_BKT_LIMIT_MANT_SIZE) - 1)
+#define QOS_POL_EXTD_BKT_LIMIT_EXP_SIZE	 (IPE_POLICER_FULL_WRITE_REQUEST_EBLE_MASK)
+#define QOS_POL_EXTD_BKT_LIMIT_EXP_MAX	 ((1 << QOS_POL_EXTD_BKT_LIMIT_EXP_SIZE) - 1)
+#define QOS_POL_EXT_BKT_LIMIT_MAX                                                                  \
+  ((u64) QOS_POL_EXTD_BKT_LIMIT_MANT_MAX << (u64) QOS_POL_EXTD_BKT_LIMIT_EXP_MAX)
 
 /*
  * Rates determine the units of the bucket
@@ -177,8 +160,7 @@
 #define RATE_64TO128_UNIT  2LL
 
 static int
-qos_pol_round (u64 numerator, u64 denominator, u64 *rounded_value,
-	       qos_round_type_en round_type)
+qos_pol_round (u64 numerator, u64 denominator, u64 *rounded_value, qos_round_type_en round_type)
 {
   int rc = 0;
 
@@ -225,8 +207,8 @@ pol_validate_cfg_params (qos_pol_cfg_params_st *cfg)
   if ((cfg->rfc == QOS_POLICER_TYPE_2R3C_RFC_2698) &&
       (cfg->rb.kbps.eir_kbps < cfg->rb.kbps.cir_kbps))
     {
-      QOS_DEBUG_ERROR ("CIR (%u kbps) is greater than PIR (%u kbps)",
-		       cfg->rb.kbps.cir_kbps, cfg->rb.kbps.eir_kbps);
+      QOS_DEBUG_ERROR ("CIR (%u kbps) is greater than PIR (%u kbps)", cfg->rb.kbps.cir_kbps,
+		       cfg->rb.kbps.eir_kbps);
       return (EINVAL);
     }
 
@@ -277,8 +259,7 @@ pol_validate_cfg_params (qos_pol_cfg_params_st *cfg)
       return (EINVAL);
     }
 
-  if ((cfg->rb.kbps.eir_kbps == 0) &&
-      (cfg->rfc > QOS_POLICER_TYPE_1R3C_RFC_2697))
+  if ((cfg->rb.kbps.eir_kbps == 0) && (cfg->rfc > QOS_POLICER_TYPE_1R3C_RFC_2697))
     {
       QOS_DEBUG_ERROR ("EIR = 0 for a 2R3C policer (rfc: %u)", cfg->rfc);
       return (EINVAL);
@@ -286,8 +267,8 @@ pol_validate_cfg_params (qos_pol_cfg_params_st *cfg)
 
   if (cfg->rb.kbps.eir_kbps && (cfg->rfc < QOS_POLICER_TYPE_2R3C_RFC_2698))
     {
-      QOS_DEBUG_ERROR ("EIR: %u kbps for a 1-rate policer (rfc: %u)",
-		       cfg->rb.kbps.eir_kbps, cfg->rfc);
+      QOS_DEBUG_ERROR ("EIR: %u kbps for a 1-rate policer (rfc: %u)", cfg->rb.kbps.eir_kbps,
+		       cfg->rfc);
       return (EINVAL);
     }
 
@@ -301,9 +282,8 @@ pol_validate_cfg_params (qos_pol_cfg_params_st *cfg)
 }
 
 static void
-qos_convert_value_to_exp_mant_fmt (u64 value, u16 max_exp_value,
-				   u16 max_mant_value, qos_round_type_en type,
-				   u8 *exp, u32 *mant)
+qos_convert_value_to_exp_mant_fmt (u64 value, u16 max_exp_value, u16 max_mant_value,
+				   qos_round_type_en type, u8 *exp, u32 *mant)
 {
   u64 rnd_value;
   u64 temp_mant;
@@ -323,8 +303,7 @@ qos_convert_value_to_exp_mant_fmt (u64 value, u16 max_exp_value,
 
       temp_exp++;
       rnd_value = 0;
-      (void) qos_pol_round ((u64) value, (u64) (1 << temp_exp), &rnd_value,
-			    type);
+      (void) qos_pol_round ((u64) value, (u64) (1 << temp_exp), &rnd_value, type);
       temp_mant = rnd_value;
     }
 
@@ -345,8 +324,7 @@ qos_convert_value_to_exp_mant_fmt (u64 value, u16 max_exp_value,
 }
 
 static int
-pol_convert_cfg_rates_to_hw (qos_pol_cfg_params_st *cfg,
-			     qos_pol_hw_params_st *hw)
+pol_convert_cfg_rates_to_hw (qos_pol_cfg_params_st *cfg, qos_pol_hw_params_st *hw)
 {
   int rc = 0;
   u32 cir_hw, eir_hw, hi_mant, hi_rate, cir_rnded, eir_rnded, eir_kbps;
@@ -362,8 +340,8 @@ pol_convert_cfg_rates_to_hw (qos_pol_cfg_params_st *cfg,
   rc = qos_pol_round (numer, denom, &rnd_value, cfg->rnd_type);
   if (rc != 0)
     {
-      QOS_DEBUG_ERROR ("Rounding error, rate: %d kbps, rounding_type: %d",
-		       cfg->rb.kbps.cir_kbps, cfg->rnd_type);
+      QOS_DEBUG_ERROR ("Rounding error, rate: %d kbps, rounding_type: %d", cfg->rb.kbps.cir_kbps,
+		       cfg->rnd_type);
       return (rc);
     }
   cir_hw = (u32) rnd_value;
@@ -397,8 +375,7 @@ pol_convert_cfg_rates_to_hw (qos_pol_cfg_params_st *cfg,
   rc = qos_pol_round (numer, denom, &rnd_value, cfg->rnd_type);
   if (rc != 0)
     {
-      QOS_DEBUG_ERROR ("Rounding error, rate: %d kbps, rounding_type: %d",
-		       eir_kbps, cfg->rnd_type);
+      QOS_DEBUG_ERROR ("Rounding error, rate: %d kbps, rounding_type: %d", eir_kbps, cfg->rnd_type);
       return (rc);
     }
   eir_hw = (u32) rnd_value;
@@ -411,8 +388,7 @@ pol_convert_cfg_rates_to_hw (qos_pol_cfg_params_st *cfg,
       eir_hw = 1;
     }
 
-  QOS_DEBUG_INFO ("cir_hw: %u bytes/tick, eir_hw: %u bytes/tick", cir_hw,
-		  eir_hw);
+  QOS_DEBUG_INFO ("cir_hw: %u bytes/tick, eir_hw: %u bytes/tick", cir_hw, eir_hw);
 
   if (cir_hw > eir_hw)
     {
@@ -437,8 +413,8 @@ pol_convert_cfg_rates_to_hw (qos_pol_cfg_params_st *cfg,
   else
     {
       qos_convert_value_to_exp_mant_fmt (hi_rate, (u16) QOS_POL_RATE_EXP_MAX,
-					 (u16) QOS_POL_AVG_RATE_MANT_MAX,
-					 cfg->rnd_type, &exp, &hi_mant);
+					 (u16) QOS_POL_AVG_RATE_MANT_MAX, cfg->rnd_type, &exp,
+					 &hi_mant);
     }
 
   denom = (1ULL << exp);
@@ -488,13 +464,11 @@ pol_convert_cfg_rates_to_hw (qos_pol_cfg_params_st *cfg,
 
   QOS_DEBUG_INFO ("Configured(rounded) values, cir: %u "
 		  "kbps (mant: %u, exp: %u, rate: %u bytes/tick)",
-		  cfg->rb.kbps.cir_kbps, hw->avg_rate_man, hw->rate_exp,
-		  cir_rnded);
+		  cfg->rb.kbps.cir_kbps, hw->avg_rate_man, hw->rate_exp, cir_rnded);
 
   QOS_DEBUG_INFO ("Configured(rounded) values, eir: %u "
 		  "kbps (mant: %u, exp: %u, rate: %u bytes/tick)",
-		  cfg->rb.kbps.eir_kbps, hw->peak_rate_man, hw->rate_exp,
-		  eir_rnded);
+		  cfg->rb.kbps.eir_kbps, hw->peak_rate_man, hw->rate_exp, eir_rnded);
 
   return (rc);
 }
@@ -577,9 +551,8 @@ pol_get_bkt_value (u64 rate_hw, u64 byte_value)
 }
 
 static void
-pol_rnd_burst_byte_fmt (u64 cfg_burst, u16 max_exp_value, u16 max_mant_value,
-			u32 max_bkt_value, u32 rate_hw, u8 *exp, u32 *mant,
-			u32 *bkt_value)
+pol_rnd_burst_byte_fmt (u64 cfg_burst, u16 max_exp_value, u16 max_mant_value, u32 max_bkt_value,
+			u32 rate_hw, u8 *exp, u32 *mant, u32 *bkt_value)
 {
   u64 bkt_max = max_bkt_value;
   u64 bkt_limit_max;
@@ -620,8 +593,8 @@ pol_rnd_burst_byte_fmt (u64 cfg_burst, u16 max_exp_value, u16 max_mant_value,
       cfg_burst = QOS_POL_MIN_BURST_BYTE;
     }
 
-  qos_convert_value_to_exp_mant_fmt (cfg_burst, max_exp_value, max_mant_value,
-				     QOS_ROUND_TO_DOWN, exp, mant);
+  qos_convert_value_to_exp_mant_fmt (cfg_burst, max_exp_value, max_mant_value, QOS_ROUND_TO_DOWN,
+				     exp, mant);
 
   /* Bucket value is based on rate. */
   rnd_burst = ((u64) (*mant) << (u64) (*exp));
@@ -630,8 +603,7 @@ pol_rnd_burst_byte_fmt (u64 cfg_burst, u16 max_exp_value, u16 max_mant_value,
 }
 
 static int
-pol_convert_cfg_burst_to_hw (qos_pol_cfg_params_st *cfg,
-			     qos_pol_hw_params_st *hw)
+pol_convert_cfg_burst_to_hw (qos_pol_cfg_params_st *cfg, qos_pol_hw_params_st *hw)
 {
   u8 temp_exp;
   u32 temp_mant, rate_hw;
@@ -643,14 +615,13 @@ pol_convert_cfg_burst_to_hw (qos_pol_cfg_params_st *cfg,
    */
   QOS_DEBUG_INFO ("Compute commit burst ...");
   rate_hw = (hw->avg_rate_man) << (hw->rate_exp);
-  pol_rnd_burst_byte_fmt (
-    cfg->rb.kbps.cb_bytes, (u16) QOS_POL_COMM_BKT_LIMIT_EXP_MAX,
-    (u16) QOS_POL_COMM_BKT_LIMIT_MANT_MAX, (u32) QOS_POL_COMM_BKT_MAX, rate_hw,
-    &temp_exp, &temp_mant, &bkt_value);
+  pol_rnd_burst_byte_fmt (cfg->rb.kbps.cb_bytes, (u16) QOS_POL_COMM_BKT_LIMIT_EXP_MAX,
+			  (u16) QOS_POL_COMM_BKT_LIMIT_MANT_MAX, (u32) QOS_POL_COMM_BKT_MAX,
+			  rate_hw, &temp_exp, &temp_mant, &bkt_value);
   QOS_DEBUG_INFO ("Committed burst, burst_limit: 0x%llx mant : %u, "
 		  "exp: %u, rnded: 0x%llx cb:%u bytes",
-		  cfg->rb.kbps.cb_bytes, temp_mant, temp_exp,
-		  ((u64) temp_mant << (u64) temp_exp), bkt_value);
+		  cfg->rb.kbps.cb_bytes, temp_mant, temp_exp, ((u64) temp_mant << (u64) temp_exp),
+		  bkt_value);
 
   hw->comm_bkt_limit_exp = temp_exp;
   hw->comm_bkt_limit_man = (u8) temp_mant;
@@ -670,11 +641,10 @@ pol_convert_cfg_burst_to_hw (qos_pol_cfg_params_st *cfg,
        */
       hw->extd_bkt_limit_exp = (u8) QOS_POL_EXTD_BKT_LIMIT_EXP_MAX;
       hw->extd_bkt_limit_man = 0;
-      QOS_DEBUG_INFO (
-	"Excess burst, burst: 0x%llx mant: %u, "
-	"exp: %u, rnded: 0x%llx bytes",
-	cfg->rb.kbps.eb_bytes, hw->extd_bkt_limit_man, hw->extd_bkt_limit_exp,
-	((u64) hw->extd_bkt_limit_man << (u64) hw->extd_bkt_limit_exp));
+      QOS_DEBUG_INFO ("Excess burst, burst: 0x%llx mant: %u, "
+		      "exp: %u, rnded: 0x%llx bytes",
+		      cfg->rb.kbps.eb_bytes, hw->extd_bkt_limit_man, hw->extd_bkt_limit_exp,
+		      ((u64) hw->extd_bkt_limit_man << (u64) hw->extd_bkt_limit_exp));
       return (0);
     }
 
@@ -693,14 +663,13 @@ pol_convert_cfg_burst_to_hw (qos_pol_cfg_params_st *cfg,
 
   rate_hw = (hw->peak_rate_man) << (hw->rate_exp);
   pol_rnd_burst_byte_fmt (eb_bytes, (u16) QOS_POL_EXTD_BKT_LIMIT_EXP_MAX,
-			  (u16) QOS_POL_EXTD_BKT_LIMIT_MANT_MAX,
-			  (u32) QOS_POL_EXTD_BKT_MAX, rate_hw, &temp_exp,
-			  &temp_mant, &bkt_value);
+			  (u16) QOS_POL_EXTD_BKT_LIMIT_MANT_MAX, (u32) QOS_POL_EXTD_BKT_MAX,
+			  rate_hw, &temp_exp, &temp_mant, &bkt_value);
 
   QOS_DEBUG_INFO ("Excess burst, burst_limit: 0x%llx mant: %u, "
 		  "exp: %u, rnded: 0x%llx eb:%u bytes",
-		  cfg->rb.kbps.eb_bytes, temp_mant, temp_exp,
-		  ((u64) temp_mant << (u64) temp_exp), bkt_value);
+		  cfg->rb.kbps.eb_bytes, temp_mant, temp_exp, ((u64) temp_mant << (u64) temp_exp),
+		  bkt_value);
 
   hw->extd_bkt_limit_exp = (u8) temp_exp;
   hw->extd_bkt_limit_man = (u8) temp_mant;
@@ -709,15 +678,13 @@ pol_convert_cfg_burst_to_hw (qos_pol_cfg_params_st *cfg,
   return (0);
 }
 
-
 /*
  * Input: configured parameter values in 'cfg'.
  * Output: h/w programmable parameter values in 'hw'.
  * Return: success or failure code.
  */
 static int
-pol_convert_cfg_to_hw_params (qos_pol_cfg_params_st *cfg,
-			      qos_pol_hw_params_st *hw)
+pol_convert_cfg_to_hw_params (qos_pol_cfg_params_st *cfg, qos_pol_hw_params_st *hw)
 {
   int rc = 0;
 
@@ -728,8 +695,7 @@ pol_convert_cfg_to_hw_params (qos_pol_cfg_params_st *cfg,
 
   hw->allow_negative = QOS_POL_ALLOW_NEGATIVE;
 
-  if ((cfg->rfc == QOS_POLICER_TYPE_1R2C) ||
-      (cfg->rfc == QOS_POLICER_TYPE_2R3C_RFC_4115))
+  if ((cfg->rfc == QOS_POLICER_TYPE_1R2C) || (cfg->rfc == QOS_POLICER_TYPE_2R3C_RFC_4115))
     {
       hw->rfc = IPE_RFC_RFC4115;
     }
@@ -791,7 +757,6 @@ qos_convert_burst_ms_to_bytes (u32 burst_ms, u32 rate_kbps)
   return ((u32) rnd_value);
 }
 
-
 /*
  * Input: configured parameters in 'cfg'.
  * Output: h/w parameters are returned in 'hw',
@@ -839,17 +804,16 @@ pol_compute_hw_params (qos_pol_cfg_params_st *cfg, qos_pol_hw_params_st *hw)
  * Return 0 if ok or 1 if error.
  */
 static int
-compute_policer_params (u64 hz,	      /* CPU speed in clocks per second */
-			u64 cir_rate, /* in bytes per second */
-			u64 pir_rate, /* in bytes per second */
+compute_policer_params (u64 hz,		     /* CPU speed in clocks per second */
+			u64 cir_rate,	     /* in bytes per second */
+			u64 pir_rate,	     /* in bytes per second */
 			u32 *current_limit,  /* in bytes, output may scale
 					      * the input
 					      */
 			u32 *extended_limit, /* in bytes, output may scale
 					      * the input
 					      */
-			u32 *cir_bytes_per_period, u32 *pir_bytes_per_period,
-			u32 *scale)
+			u32 *cir_bytes_per_period, u32 *pir_bytes_per_period, u32 *scale)
 {
   double period;
   double internal_cir_bytes_per_period;
@@ -893,10 +857,8 @@ compute_policer_params (u64 hz,	      /* CPU speed in clocks per second */
   *extended_limit = *extended_limit << scale_shift;
 
   /* Scale the rates */
-  internal_cir_bytes_per_period =
-    internal_cir_bytes_per_period * ((double) scale_amount);
-  internal_pir_bytes_per_period =
-    internal_pir_bytes_per_period * ((double) scale_amount);
+  internal_cir_bytes_per_period = internal_cir_bytes_per_period * ((double) scale_amount);
+  internal_pir_bytes_per_period = internal_pir_bytes_per_period * ((double) scale_amount);
 
   /*
    * Make sure the new rates are reasonable
@@ -917,7 +879,6 @@ compute_policer_params (u64 hz,	      /* CPU speed in clocks per second */
   return 0;
 }
 
-
 /*
  * Input: configured parameters in 'cfg'.
  * Output: h/w parameters are returned in 'hw',
@@ -926,7 +887,7 @@ compute_policer_params (u64 hz,	      /* CPU speed in clocks per second */
 int
 x86_pol_compute_hw_params (qos_pol_cfg_params_st *cfg, policer_t *hw)
 {
-  vnet_policer_main_t *pm = &vnet_policer_main;
+  policer_main_t *pm = &policer_main;
   const int BYTES_PER_KBIT = (1000 / 8);
   u32 cap;
 
@@ -942,15 +903,12 @@ x86_pol_compute_hw_params (qos_pol_cfg_params_st *cfg, policer_t *hw)
    * Cap the bursts to 32-bits. This allows up to almost one second of
    * burst on a 40GE interface, which should be fine for x86.
    */
-  cap =
-    (cfg->rb.kbps.cb_bytes > 0xFFFFFFFF) ? 0xFFFFFFFF : cfg->rb.kbps.cb_bytes;
+  cap = (cfg->rb.kbps.cb_bytes > 0xFFFFFFFF) ? 0xFFFFFFFF : cfg->rb.kbps.cb_bytes;
   hw->current_limit = cap;
-  cap =
-    (cfg->rb.kbps.eb_bytes > 0xFFFFFFFF) ? 0xFFFFFFFF : cfg->rb.kbps.eb_bytes;
+  cap = (cfg->rb.kbps.eb_bytes > 0xFFFFFFFF) ? 0xFFFFFFFF : cfg->rb.kbps.eb_bytes;
   hw->extended_limit = cap;
 
-  if ((cfg->rb.kbps.cir_kbps == 0) && (cfg->rb.kbps.cb_bytes == 0)
-      && (cfg->rb.kbps.eb_bytes == 0))
+  if ((cfg->rb.kbps.cir_kbps == 0) && (cfg->rb.kbps.cb_bytes == 0) && (cfg->rb.kbps.eb_bytes == 0))
     {
       /* This is a uninitialized, always-violate policer */
       hw->single_rate = 1;
@@ -958,8 +916,7 @@ x86_pol_compute_hw_params (qos_pol_cfg_params_st *cfg, policer_t *hw)
       return 0;
     }
 
-  if ((cfg->rfc == QOS_POLICER_TYPE_1R2C) ||
-      (cfg->rfc == QOS_POLICER_TYPE_1R3C_RFC_2697))
+  if ((cfg->rfc == QOS_POLICER_TYPE_1R2C) || (cfg->rfc == QOS_POLICER_TYPE_1R3C_RFC_2697))
     {
       /* Single-rate policer */
       hw->single_rate = 1;
@@ -970,52 +927,46 @@ x86_pol_compute_hw_params (qos_pol_cfg_params_st *cfg, policer_t *hw)
 	  return (-1);
 	}
 
-      if ((cfg->rb.kbps.cir_kbps == 0) ||
-	  (cfg->rb.kbps.eir_kbps != 0) ||
+      if ((cfg->rb.kbps.cir_kbps == 0) || (cfg->rb.kbps.eir_kbps != 0) ||
 	  ((cfg->rb.kbps.cb_bytes == 0) && (cfg->rb.kbps.eb_bytes == 0)))
 	{
 	  QOS_DEBUG_ERROR ("Policer parameter validation failed -- 1R.");
 	  return (-1);
 	}
 
-      if (compute_policer_params (pm->tsc_hz,
-				  (u64) cfg->rb.kbps.cir_kbps * BYTES_PER_KBIT,
-				  0, &hw->current_limit, &hw->extended_limit,
-				  &hw->cir_tokens_per_period,
-				  &hw->pir_tokens_per_period, &hw->scale))
+      if (compute_policer_params (pm->tsc_hz, (u64) cfg->rb.kbps.cir_kbps * BYTES_PER_KBIT, 0,
+				  &hw->current_limit, &hw->extended_limit,
+				  &hw->cir_tokens_per_period, &hw->pir_tokens_per_period,
+				  &hw->scale))
 	{
 	  QOS_DEBUG_ERROR ("Policer parameter computation failed.");
 	  return (-1);
 	}
-
     }
   else if ((cfg->rfc == QOS_POLICER_TYPE_2R3C_RFC_2698) ||
 	   (cfg->rfc == QOS_POLICER_TYPE_2R3C_RFC_4115))
     {
       /* Two-rate policer */
-      if ((cfg->rb.kbps.cir_kbps == 0) || (cfg->rb.kbps.eir_kbps == 0)
-	  || (cfg->rb.kbps.eir_kbps < cfg->rb.kbps.cir_kbps)
-	  || (cfg->rb.kbps.cb_bytes == 0) || (cfg->rb.kbps.eb_bytes == 0))
+      if ((cfg->rb.kbps.cir_kbps == 0) || (cfg->rb.kbps.eir_kbps == 0) ||
+	  (cfg->rb.kbps.eir_kbps < cfg->rb.kbps.cir_kbps) || (cfg->rb.kbps.cb_bytes == 0) ||
+	  (cfg->rb.kbps.eb_bytes == 0))
 	{
 	  QOS_DEBUG_ERROR ("Config parameter validation failed.");
 	  return (-1);
 	}
 
-      if (compute_policer_params (
-	    pm->tsc_hz, (u64) cfg->rb.kbps.cir_kbps * BYTES_PER_KBIT,
-	    (u64) cfg->rb.kbps.eir_kbps * BYTES_PER_KBIT, &hw->current_limit,
-	    &hw->extended_limit, &hw->cir_tokens_per_period,
-	    &hw->pir_tokens_per_period, &hw->scale))
+      if (compute_policer_params (pm->tsc_hz, (u64) cfg->rb.kbps.cir_kbps * BYTES_PER_KBIT,
+				  (u64) cfg->rb.kbps.eir_kbps * BYTES_PER_KBIT, &hw->current_limit,
+				  &hw->extended_limit, &hw->cir_tokens_per_period,
+				  &hw->pir_tokens_per_period, &hw->scale))
 	{
 	  QOS_DEBUG_ERROR ("Policer parameter computation failed.");
 	  return (-1);
 	}
-
     }
   else
     {
-      QOS_DEBUG_ERROR (
-	"Config parameter validation failed. RFC not supported");
+      QOS_DEBUG_ERROR ("Config parameter validation failed. RFC not supported");
       return (-1);
     }
 
@@ -1055,14 +1006,12 @@ pol_logical_2_physical (const qos_pol_cfg_params_st *cfg, policer_t *phys)
       kbps_cfg.rb.kbps.eb_bytes = cfg->rb.kbps.eb_bytes;
       break;
     case QOS_RATE_PPS:
-      kbps_cfg.rb.kbps.cir_kbps =
-	qos_convert_pps_to_kbps (cfg->rb.pps.cir_pps);
-      kbps_cfg.rb.kbps.eir_kbps =
-	qos_convert_pps_to_kbps (cfg->rb.pps.eir_pps);
-      kbps_cfg.rb.kbps.cb_bytes = qos_convert_burst_ms_to_bytes (
-	(u32) cfg->rb.pps.cb_ms, kbps_cfg.rb.kbps.cir_kbps);
-      kbps_cfg.rb.kbps.eb_bytes = qos_convert_burst_ms_to_bytes (
-	(u32) cfg->rb.pps.eb_ms, kbps_cfg.rb.kbps.eir_kbps);
+      kbps_cfg.rb.kbps.cir_kbps = qos_convert_pps_to_kbps (cfg->rb.pps.cir_pps);
+      kbps_cfg.rb.kbps.eir_kbps = qos_convert_pps_to_kbps (cfg->rb.pps.eir_pps);
+      kbps_cfg.rb.kbps.cb_bytes =
+	qos_convert_burst_ms_to_bytes ((u32) cfg->rb.pps.cb_ms, kbps_cfg.rb.kbps.cir_kbps);
+      kbps_cfg.rb.kbps.eb_bytes =
+	qos_convert_burst_ms_to_bytes ((u32) cfg->rb.pps.eb_ms, kbps_cfg.rb.kbps.eir_kbps);
       break;
     default:
       QOS_DEBUG_ERROR ("Illegal rate type");
@@ -1113,8 +1062,7 @@ qos_convert_pol_bucket_to_hw_fmt (policer_t *bkt, qos_pol_hw_params_st *hw_fmt)
  * Return: Status, success or failure code.
  */
 static int
-pol_convert_hw_to_cfg_params (qos_pol_hw_params_st *hw,
-			      qos_pol_cfg_params_st *cfg)
+pol_convert_hw_to_cfg_params (qos_pol_hw_params_st *hw, qos_pol_cfg_params_st *cfg)
 {
   u64 temp_rate;
 
@@ -1123,8 +1071,8 @@ pol_convert_hw_to_cfg_params (qos_pol_hw_params_st *hw,
       return EINVAL;
     }
 
-  if ((hw->rfc == IPE_RFC_RFC4115) &&
-      (hw->peak_rate_man << hw->rate_exp) == 0 && !(hw->extd_bkt_limit_man))
+  if ((hw->rfc == IPE_RFC_RFC4115) && (hw->peak_rate_man << hw->rate_exp) == 0 &&
+      !(hw->extd_bkt_limit_man))
     {
       /*
        * For a 1R2C, we set EIR = 0, EB = 0
@@ -1152,20 +1100,14 @@ pol_convert_hw_to_cfg_params (qos_pol_hw_params_st *hw,
       return EINVAL;
     }
 
-  temp_rate =
-    (((u64) hw->avg_rate_man << hw->rate_exp) * 8LL * QOS_POL_TICKS_PER_SEC) /
-    1000;
+  temp_rate = (((u64) hw->avg_rate_man << hw->rate_exp) * 8LL * QOS_POL_TICKS_PER_SEC) / 1000;
   cfg->rb.kbps.cir_kbps = (u32) temp_rate;
 
-  temp_rate =
-    (((u64) hw->peak_rate_man << hw->rate_exp) * 8LL * QOS_POL_TICKS_PER_SEC) /
-    1000;
+  temp_rate = (((u64) hw->peak_rate_man << hw->rate_exp) * 8LL * QOS_POL_TICKS_PER_SEC) / 1000;
   cfg->rb.kbps.eir_kbps = (u32) temp_rate;
 
-  cfg->rb.kbps.cb_bytes = ((u64) hw->comm_bkt_limit_man <<
-			   (u64) hw->comm_bkt_limit_exp);
-  cfg->rb.kbps.eb_bytes = ((u64) hw->extd_bkt_limit_man <<
-			   (u64) hw->extd_bkt_limit_exp);
+  cfg->rb.kbps.cb_bytes = ((u64) hw->comm_bkt_limit_man << (u64) hw->comm_bkt_limit_exp);
+  cfg->rb.kbps.eb_bytes = ((u64) hw->extd_bkt_limit_man << (u64) hw->extd_bkt_limit_exp);
 
   if (cfg->rfc == QOS_POLICER_TYPE_1R3C_RFC_2697)
     {
@@ -1193,8 +1135,8 @@ pol_convert_hw_to_cfg_params (qos_pol_hw_params_st *hw,
 
   QOS_DEBUG_INFO ("configured params, cir: %u kbps, eir: %u kbps, cb "
 		  "burst: 0x%llx bytes, eb burst: 0x%llx bytes",
-		  cfg->rb.kbps.cir_kbps, cfg->rb.kbps.eir_kbps,
-		  cfg->rb.kbps.cb_bytes, cfg->rb.kbps.eb_bytes);
+		  cfg->rb.kbps.cir_kbps, cfg->rb.kbps.eir_kbps, cfg->rb.kbps.cb_bytes,
+		  cfg->rb.kbps.eb_bytes);
 
   return 0;
 }
@@ -1268,14 +1210,12 @@ pol_physical_2_logical (policer_t *phys, qos_pol_cfg_params_st *cfg)
       cfg->rb.kbps.eb_bytes = kbps_cfg.rb.kbps.eb_bytes;
       break;
     case QOS_RATE_PPS:
-      cfg->rb.pps.cir_pps =
-	qos_convert_kbps_to_pps (kbps_cfg.rb.kbps.cir_kbps);
-      cfg->rb.pps.eir_pps =
-	qos_convert_kbps_to_pps (kbps_cfg.rb.kbps.eir_kbps);
-      cfg->rb.pps.cb_ms = qos_convert_burst_bytes_to_ms (
-	kbps_cfg.rb.kbps.cb_bytes, kbps_cfg.rb.kbps.cir_kbps);
-      cfg->rb.pps.eb_ms = qos_convert_burst_bytes_to_ms (
-	kbps_cfg.rb.kbps.eb_bytes, kbps_cfg.rb.kbps.eir_kbps);
+      cfg->rb.pps.cir_pps = qos_convert_kbps_to_pps (kbps_cfg.rb.kbps.cir_kbps);
+      cfg->rb.pps.eir_pps = qos_convert_kbps_to_pps (kbps_cfg.rb.kbps.eir_kbps);
+      cfg->rb.pps.cb_ms =
+	qos_convert_burst_bytes_to_ms (kbps_cfg.rb.kbps.cb_bytes, kbps_cfg.rb.kbps.cir_kbps);
+      cfg->rb.pps.eb_ms =
+	qos_convert_burst_bytes_to_ms (kbps_cfg.rb.kbps.eb_bytes, kbps_cfg.rb.kbps.eir_kbps);
       break;
     default:
       QOS_DEBUG_ERROR ("Illegal rate type");

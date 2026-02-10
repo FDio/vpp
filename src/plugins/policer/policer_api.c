@@ -1,9 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0
- * Copyright (c) 2016 Cisco and/or its affiliates.
- */
-
-/*
- * policer_api.c - policer api
+ * Copyright (c) 2026 Cisco and/or its affiliates.
  */
 
 #include <vnet/vnet.h>
@@ -11,20 +7,22 @@
 
 #include <vnet/interface.h>
 #include <vnet/api_errno.h>
-#include <vnet/policer/policer.h>
+#include <policer/internal.h>
+#include <policer/policer_op.h>
+#include <policer/ip_punt.h>
 
 #include <vnet/format_fns.h>
-#include <vnet/policer/policer.api_enum.h>
-#include <vnet/policer/policer.api_types.h>
+#include <policer/policer.api_enum.h>
+#include <policer/policer.api_types.h>
 
-#define REPLY_MSG_ID_BASE vnet_policer_main.msg_id_base
+#define REPLY_MSG_ID_BASE policer_main.msg_id_base
 #include <vlibapi/api_helper_macros.h>
 
 static void
-vl_api_policer_add_del_t_handler (vl_api_policer_add_del_t * mp)
+vl_api_policer_add_del_t_handler (vl_api_policer_add_del_t *mp)
 {
   vlib_main_t *vm = vlib_get_main ();
-  vnet_policer_main_t *pm = &vnet_policer_main;
+  policer_main_t *pm = &policer_main;
   vl_api_policer_add_del_reply_t *rmp;
   int rv = 0;
   uword *p;
@@ -44,14 +42,11 @@ vl_api_policer_add_del_t_handler (vl_api_policer_add_del_t * mp)
       cfg.rb.kbps.eir_kbps = ntohl (mp->eir);
       cfg.rb.kbps.cb_bytes = clib_net_to_host_u64 (mp->cb);
       cfg.rb.kbps.eb_bytes = clib_net_to_host_u64 (mp->eb);
-      cfg.conform_action.action_type =
-	(qos_action_type_en) mp->conform_action.type;
+      cfg.conform_action.action_type = (qos_action_type_en) mp->conform_action.type;
       cfg.conform_action.dscp = mp->conform_action.dscp;
-      cfg.exceed_action.action_type =
-	(qos_action_type_en) mp->exceed_action.type;
+      cfg.exceed_action.action_type = (qos_action_type_en) mp->exceed_action.type;
       cfg.exceed_action.dscp = mp->exceed_action.dscp;
-      cfg.violate_action.action_type =
-	(qos_action_type_en) mp->violate_action.type;
+      cfg.violate_action.action_type = (qos_action_type_en) mp->violate_action.type;
       cfg.violate_action.dscp = mp->violate_action.dscp;
       cfg.color_aware = mp->color_aware;
 
@@ -75,8 +70,7 @@ vl_api_policer_add_del_t_handler (vl_api_policer_add_del_t * mp)
 }
 
 static_always_inline void
-policer_set_configuration (qos_pol_cfg_params_st *cfg,
-			   vl_api_policer_config_t *infos)
+policer_set_configuration (qos_pol_cfg_params_st *cfg, vl_api_policer_config_t *infos)
 {
   clib_memset (cfg, 0, sizeof (*cfg));
   cfg->rfc = (qos_policer_type_en) infos->type;
@@ -86,14 +80,11 @@ policer_set_configuration (qos_pol_cfg_params_st *cfg,
   cfg->rb.kbps.eir_kbps = ntohl (infos->eir);
   cfg->rb.kbps.cb_bytes = clib_net_to_host_u64 (infos->cb);
   cfg->rb.kbps.eb_bytes = clib_net_to_host_u64 (infos->eb);
-  cfg->conform_action.action_type =
-    (qos_action_type_en) infos->conform_action.type;
+  cfg->conform_action.action_type = (qos_action_type_en) infos->conform_action.type;
   cfg->conform_action.dscp = infos->conform_action.dscp;
-  cfg->exceed_action.action_type =
-    (qos_action_type_en) infos->exceed_action.type;
+  cfg->exceed_action.action_type = (qos_action_type_en) infos->exceed_action.type;
   cfg->exceed_action.dscp = infos->exceed_action.dscp;
-  cfg->violate_action.action_type =
-    (qos_action_type_en) infos->violate_action.type;
+  cfg->violate_action.action_type = (qos_action_type_en) infos->violate_action.type;
   cfg->violate_action.dscp = infos->violate_action.dscp;
   cfg->color_aware = infos->color_aware;
 }
@@ -171,7 +162,7 @@ static void
 vl_api_policer_bind_t_handler (vl_api_policer_bind_t *mp)
 {
   vl_api_policer_bind_reply_t *rmp;
-  vnet_policer_main_t *pm = &vnet_policer_main;
+  policer_main_t *pm = &policer_main;
   char name[sizeof (mp->name) + 1];
   uword *p;
   u32 worker_index;
@@ -214,7 +205,7 @@ static void
 vl_api_policer_input_t_handler (vl_api_policer_input_t *mp)
 {
   vl_api_policer_input_reply_t *rmp;
-  vnet_policer_main_t *pm = &vnet_policer_main;
+  policer_main_t *pm = &policer_main;
   char name[sizeof (mp->name) + 1];
   uword *p;
   u32 sw_if_index;
@@ -263,7 +254,7 @@ static void
 vl_api_policer_output_t_handler (vl_api_policer_output_t *mp)
 {
   vl_api_policer_output_reply_t *rmp;
-  vnet_policer_main_t *pm = &vnet_policer_main;
+  policer_main_t *pm = &policer_main;
   char name[sizeof (mp->name) + 1];
   uword *p;
   u32 sw_if_index;
@@ -309,8 +300,8 @@ vl_api_policer_output_v2_t_handler (vl_api_policer_output_v2_t *mp)
 }
 
 static void
-send_policer_details (qos_pol_cfg_params_st *config, policer_t *policer,
-		      vl_api_registration_t *reg, u32 context)
+send_policer_details (qos_pol_cfg_params_st *config, policer_t *policer, vl_api_registration_t *reg,
+		      u32 context)
 {
   vl_api_policer_details_t *mp;
 
@@ -325,14 +316,11 @@ send_policer_details (qos_pol_cfg_params_st *config, policer_t *policer,
   mp->rate_type = (vl_api_sse2_qos_rate_type_t) config->rate_type;
   mp->round_type = (vl_api_sse2_qos_round_type_t) config->rnd_type;
   mp->type = (vl_api_sse2_qos_policer_type_t) config->rfc;
-  mp->conform_action.type =
-    (vl_api_sse2_qos_action_type_t) policer->action[POLICE_CONFORM];
+  mp->conform_action.type = (vl_api_sse2_qos_action_type_t) policer->action[POLICE_CONFORM];
   mp->conform_action.dscp = policer->mark_dscp[POLICE_CONFORM];
-  mp->exceed_action.type =
-    (vl_api_sse2_qos_action_type_t) policer->action[POLICE_EXCEED];
+  mp->exceed_action.type = (vl_api_sse2_qos_action_type_t) policer->action[POLICE_EXCEED];
   mp->exceed_action.dscp = policer->mark_dscp[POLICE_EXCEED];
-  mp->violate_action.type =
-    (vl_api_sse2_qos_action_type_t) policer->action[POLICE_VIOLATE];
+  mp->violate_action.type = (vl_api_sse2_qos_action_type_t) policer->action[POLICE_VIOLATE];
   mp->violate_action.dscp = policer->mark_dscp[POLICE_VIOLATE];
   mp->single_rate = policer->single_rate ? 1 : 0;
   mp->color_aware = policer->color_aware ? 1 : 0;
@@ -345,17 +333,16 @@ send_policer_details (qos_pol_cfg_params_st *config, policer_t *policer,
   mp->extended_bucket = htonl (policer->extended_bucket);
   mp->last_update_time = clib_host_to_net_u64 (policer->last_update_time);
 
-  strncpy ((char *) mp->name, (char *) policer->name,
-	   ARRAY_LEN (mp->name) - 1);
+  strncpy ((char *) mp->name, (char *) policer->name, ARRAY_LEN (mp->name) - 1);
 
   vl_api_send_msg (reg, (u8 *) mp);
 }
 
 static void
-vl_api_policer_dump_t_handler (vl_api_policer_dump_t * mp)
+vl_api_policer_dump_t_handler (vl_api_policer_dump_t *mp)
 {
   vl_api_registration_t *reg;
-  vnet_policer_main_t *pm = &vnet_policer_main;
+  policer_main_t *pm = &policer_main;
   uword *p, *pi;
   u32 pool_index, policer_index;
   u8 *match_name = 0;
@@ -404,7 +391,7 @@ static void
 vl_api_policer_dump_v2_t_handler (vl_api_policer_dump_v2_t *mp)
 {
   vl_api_registration_t *reg;
-  vnet_policer_main_t *pm = &vnet_policer_main;
+  policer_main_t *pm = &policer_main;
   qos_pol_cfg_params_st *config;
   u32 policer_index, pool_index;
   policer_t *policer;
@@ -439,9 +426,23 @@ vl_api_policer_dump_v2_t_handler (vl_api_policer_dump_v2_t *mp)
     }
 }
 
-#include <vnet/policer/policer.api.c>
+static void
+vl_api_ip_punt_police_t_handler (vl_api_ip_punt_police_t *mp, vlib_main_t *vm)
+{
+  vl_api_ip_punt_police_reply_t *rmp;
+  int rv = 0;
+
+  if (mp->is_ip6)
+    ip6_punt_policer_add_del (mp->is_add, ntohl (mp->policer_index));
+  else
+    ip4_punt_policer_add_del (mp->is_add, ntohl (mp->policer_index));
+
+  REPLY_MACRO (VL_API_IP_PUNT_POLICE_REPLY);
+}
+
+#include <policer/policer.api.c>
 static clib_error_t *
-policer_api_hookup (vlib_main_t * vm)
+policer_api_hookup (vlib_main_t *vm)
 {
   /*
    * Set up the (msg_name, crc, message-id) table

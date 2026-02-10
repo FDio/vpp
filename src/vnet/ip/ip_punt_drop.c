@@ -224,11 +224,6 @@ ip_punt_drop_init (vlib_main_t * vm)
   fib_node_register_type (FIB_NODE_TYPE_IP_PUNT_REDIRECT,
 			  &ip_punt_redirect_vft);
 
-  ip4_punt_policer_cfg.fq_index =
-    vlib_frame_queue_main_init (ip4_punt_policer_node.index, 0);
-  ip6_punt_policer_cfg.fq_index =
-    vlib_frame_queue_main_init (ip6_punt_policer_node.index, 0);
-
   return (NULL);
 }
 

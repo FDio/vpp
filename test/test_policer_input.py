@@ -2,6 +2,7 @@
 # Copyright (c) 2021 Graphiant, Inc.
 
 import unittest
+from config import config
 from scapy.layers.inet import IP, UDP
 from scapy.layers.l2 import Ether
 from scapy.packet import Raw
@@ -13,6 +14,7 @@ from vpp_policer import VppPolicer, PolicerAction, Dir
 NUM_PKTS = 67
 
 
+@unittest.skipIf("policer" in config.excluded_plugins, "Exclude Policer plugin tests")
 class TestPolicerInput(VppTestCase):
     """Policer on an interface"""
 

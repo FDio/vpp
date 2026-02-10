@@ -28,10 +28,7 @@
 #include <inttypes.h>
 #include <vnet/ip/ip6_hop_by_hop.h>
 #include <vnet/ip/ip_source_and_port_range_check.h>
-#include <vnet/policer/xlate.h>
 #include <vnet/span/span.h>
-#include <vnet/policer/policer.h>
-#include <vnet/policer/police.h>
 #include <vnet/mfib/mfib_types.h>
 #include <vnet/bonding/node.h>
 #include <vnet/qos/qos_types.h>
@@ -1511,21 +1508,6 @@ api_unformat_acl_next_index (unformat_input_t * input, va_list * args)
 
 out:
   *miss_next_indexp = next_index;
-  return 1;
-}
-
-uword
-unformat_policer_precolor (unformat_input_t * input, va_list * args)
-{
-  u32 *r = va_arg (*args, u32 *);
-
-  if (unformat (input, "conform-color"))
-    *r = POLICE_CONFORM;
-  else if (unformat (input, "exceed-color"))
-    *r = POLICE_EXCEED;
-  else
-    return 0;
-
   return 1;
 }
 

@@ -701,12 +701,6 @@ api_mfib_signal_dump (vat_main_t *vat)
 }
 
 static int
-api_ip_punt_police (vat_main_t *vat)
-{
-  return -1;
-}
-
-static int
 api_ip_punt_redirect (vat_main_t *vat)
 {
   return -1;
