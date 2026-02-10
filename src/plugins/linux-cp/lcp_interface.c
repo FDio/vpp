@@ -644,6 +644,7 @@ lcp_validate_if_name (u8 *name)
 void
 lcp_itf_set_link_state (const lcp_itf_pair_t *lip, u8 state)
 {
+  clib_error_t *error;
   int curr_ns_fd, vif_ns_fd;
 
   if (!lip)
@@ -661,7 +662,11 @@ lcp_itf_set_link_state (const lcp_itf_pair_t *lip, u8 state)
 
   /* Set the same link state on the netlink interface
    */
-  vnet_netlink_set_link_state (lip->lip_vif_index, state);
+  if ((error = vnet_netlink_set_link_state (lip->lip_vif_index, state)) != NULL)
+    {
+      clib_warning ("%U", format_clib_error, error);
+      clib_error_free (error);
+    }
 
   if (vif_ns_fd != -1)
     close (vif_ns_fd);
@@ -683,6 +688,7 @@ lcp_itf_set_interface_addr (const lcp_itf_pair_t *lip)
   ip_lookup_main_t *lm4 = &im4->lookup_main;
   ip_lookup_main_t *lm6 = &im6->lookup_main;
   ip_interface_address_t *ia = 0;
+  clib_error_t *error;
   int vif_ns_fd = -1;
   int curr_ns_fd = -1;
 
@@ -704,7 +710,11 @@ lcp_itf_set_interface_addr (const lcp_itf_pair_t *lip)
       LCP_ITF_PAIR_NOTICE ("set_interface_addr: %U add ip4 %U/%d",
 			   format_lcp_itf_pair, lip, format_ip4_address, r4,
 			   ia->address_length);
-      vnet_netlink_add_ip4_addr (lip->lip_vif_index, r4, ia->address_length);
+      if ((error = vnet_netlink_add_ip4_addr (lip->lip_vif_index, r4, ia->address_length)) != NULL)
+	{
+	  clib_warning ("%U", format_clib_error, error);
+	  clib_error_free (error);
+	}
     }));
 
   /* Sync any IP6 addressing info into LCP */
@@ -714,7 +724,11 @@ lcp_itf_set_interface_addr (const lcp_itf_pair_t *lip)
       LCP_ITF_PAIR_NOTICE ("set_interface_addr: %U add ip6 %U/%d",
 			   format_lcp_itf_pair, lip, format_ip6_address, r6,
 			   ia->address_length);
-      vnet_netlink_add_ip6_addr (lip->lip_vif_index, r6, ia->address_length);
+      if ((error = vnet_netlink_add_ip6_addr (lip->lip_vif_index, r6, ia->address_length)) != NULL)
+	{
+	  clib_warning ("%U", format_clib_error, error);
+	  clib_error_free (error);
+	}
     }));
 
   if (vif_ns_fd != -1)
