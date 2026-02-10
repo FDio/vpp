@@ -613,22 +613,6 @@ define mfib_signal_details
   u8 ip_packet_data[256];
 };
 
-/** \brief IP punt policer
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param is_add - 1 to add neighbor, 0 to delete
-    @param is_ipv6 - 1 for IPv6 neighbor, 0 for IPv4
-    @param policer_index - Index of policer to use
-*/
-autoreply define ip_punt_police
-{
-  u32 client_index;
-  u32 context;
-  u32 policer_index;
-  bool is_add [default=true];
-  bool is_ip6;
-};
-
 /** \brief Punt redirect type
     @param rx_sw_if_index - specify the original RX interface of traffic
                             that should be redirected. ~0 means any interface.
