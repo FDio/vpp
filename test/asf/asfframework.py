@@ -848,7 +848,7 @@ class VppAsfTestCase(CPUInterface, unittest.TestCase):
 
         try:
             if not self.vpp_dead:
-                self.logger.debug(self.vapi.cli("show trace max 1000"))
+                self.logger.debug(self.vapi.cli("show trace max 100"))
                 self.logger.info(self.vapi.ppcli("show interface"))
                 self.logger.info(self.vapi.ppcli("show hardware"))
                 self.logger.info(self.statistics.set_errors_str())
