@@ -1,0 +1,208 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2026 Cisco and/or its affiliates.
+ */
+
+#include <vnet/feature/feature.h>
+
+#include <policer/internal.h>
+#include <policer/policer_op.h>
+
+int
+policer_add (vlib_main_t *vm, const u8 *name, const qos_pol_cfg_params_st *cfg, u32 *policer_index)
+{
+  policer_main_t *pm = &policer_main;
+  policer_t test_policer;
+  policer_t *policer;
+  policer_t *pp;
+  qos_pol_cfg_params_st *cp;
+  uword *p;
+  u32 pi;
+  int rv;
+  int i;
+
+  p = hash_get_mem (pm->policer_config_by_name, name);
+
+  if (p != NULL)
+    return VNET_API_ERROR_VALUE_EXIST;
+
+  /* Vet the configuration before adding it to the table */
+  rv = pol_logical_2_physical (cfg, &test_policer);
+
+  if (rv != 0)
+    return VNET_API_ERROR_INVALID_VALUE;
+
+  pool_get (pm->configs, cp);
+  pool_get_aligned (pm->policers, policer, CLIB_CACHE_LINE_BYTES);
+
+  clib_memcpy (cp, cfg, sizeof (*cp));
+  clib_memcpy (policer, &test_policer, sizeof (*pp));
+
+  policer->name = format (0, "%s%c", name, 0);
+  pi = policer - pm->policers;
+
+  hash_set_mem (pm->policer_config_by_name, policer->name, cp - pm->configs);
+  hash_set_mem (pm->policer_index_by_name, policer->name, pi);
+  *policer_index = pi;
+  policer->thread_index = ~0;
+
+  for (i = 0; i < NUM_POLICE_RESULTS; i++)
+    {
+      vlib_validate_combined_counter (&policer_counters[i], pi);
+      vlib_zero_combined_counter (&policer_counters[i], pi);
+    }
+
+  return 0;
+}
+
+int
+policer_del (vlib_main_t *vm, u32 policer_index)
+{
+  policer_main_t *pm = &policer_main;
+  policer_t *policer;
+  uword *p;
+
+  if (pool_is_free_index (pm->policers, policer_index))
+    return VNET_API_ERROR_NO_SUCH_ENTRY;
+
+  policer = &pm->policers[policer_index];
+
+  p = hash_get_mem (pm->policer_config_by_name, policer->name);
+
+  /* free policer config */
+  if (p != NULL)
+    {
+      pool_put_index (pm->configs, p[0]);
+      hash_unset_mem (pm->policer_config_by_name, policer->name);
+    }
+
+  /* free policer */
+  hash_unset_mem (pm->policer_index_by_name, policer->name);
+  vec_free (policer->name);
+  pool_put_index (pm->policers, policer_index);
+
+  return 0;
+}
+
+int
+policer_update (vlib_main_t *vm, u32 policer_index, const qos_pol_cfg_params_st *cfg)
+{
+  policer_main_t *pm = &policer_main;
+  policer_t test_policer;
+  policer_t *policer;
+  qos_pol_cfg_params_st *cp;
+  uword *p;
+  u8 *name;
+  int rv;
+  int i;
+
+  if (pool_is_free_index (pm->policers, policer_index))
+    return VNET_API_ERROR_NO_SUCH_ENTRY;
+
+  policer = &pm->policers[policer_index];
+
+  /* Vet the configuration before adding it to the table */
+  rv = pol_logical_2_physical (cfg, &test_policer);
+  if (rv != 0)
+    return VNET_API_ERROR_INVALID_VALUE;
+
+  p = hash_get_mem (pm->policer_config_by_name, policer->name);
+
+  if (PREDICT_TRUE (p != NULL))
+    {
+      cp = &pm->configs[p[0]];
+    }
+  else
+    {
+      /* recover from a missing configuration */
+      pool_get (pm->configs, cp);
+      hash_set_mem (pm->policer_config_by_name, policer->name, cp - pm->configs);
+    }
+
+  name = policer->name;
+
+  clib_memcpy (cp, cfg, sizeof (*cp));
+  clib_memcpy (policer, &test_policer, sizeof (*policer));
+
+  policer->name = name;
+  policer->thread_index = ~0;
+
+  for (i = 0; i < NUM_POLICE_RESULTS; i++)
+    vlib_zero_combined_counter (&policer_counters[i], policer_index);
+
+  return 0;
+}
+
+int
+policer_reset (vlib_main_t *vm, u32 policer_index)
+{
+  policer_main_t *pm = &policer_main;
+  policer_t *policer;
+
+  if (pool_is_free_index (pm->policers, policer_index))
+    return VNET_API_ERROR_NO_SUCH_ENTRY;
+
+  policer = &pm->policers[policer_index];
+
+  policer->current_bucket = policer->current_limit;
+  policer->extended_bucket = policer->extended_limit;
+
+  return 0;
+}
+
+int
+policer_bind_worker (u32 policer_index, u32 worker, bool bind)
+{
+  policer_main_t *pm = &policer_main;
+  policer_t *policer;
+
+  if (pool_is_free_index (pm->policers, policer_index))
+    return VNET_API_ERROR_NO_SUCH_ENTRY;
+
+  policer = &pm->policers[policer_index];
+
+  if (bind)
+    {
+      if (worker >= vlib_num_workers ())
+	{
+	  return VNET_API_ERROR_INVALID_WORKER;
+	}
+
+      policer->thread_index = vlib_get_worker_thread_index (worker);
+    }
+  else
+    {
+      policer->thread_index = ~0;
+    }
+  return 0;
+}
+
+int
+policer_input (u32 policer_index, u32 sw_if_index, vlib_dir_t dir, bool apply)
+{
+  policer_main_t *pm = &policer_main;
+
+  if (pool_is_free_index (pm->policers, policer_index))
+    return VNET_API_ERROR_NO_SUCH_ENTRY;
+
+  if (apply)
+    {
+      vec_validate (pm->policer_index_by_sw_if_index[dir], sw_if_index);
+      pm->policer_index_by_sw_if_index[dir][sw_if_index] = policer_index;
+    }
+  else
+    {
+      pm->policer_index_by_sw_if_index[dir][sw_if_index] = ~0;
+    }
+
+  if (dir == VLIB_RX)
+    {
+      vnet_feature_enable_disable ("device-input", "policer-input", sw_if_index, apply, 0, 0);
+    }
+  else
+    {
+      vnet_feature_enable_disable ("ip4-output", "policer-output", sw_if_index, apply, 0, 0);
+      vnet_feature_enable_disable ("ip6-output", "policer-output", sw_if_index, apply, 0, 0);
+    }
+  return 0;
+}

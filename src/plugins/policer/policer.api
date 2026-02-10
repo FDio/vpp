@@ -16,7 +16,7 @@
 option version = "3.0.0";
 
 import "vnet/interface_types.api";
-import "vnet/policer/policer_types.api";
+import "plugins/policer/policer_types.api";
 
 /** \brief policer bind: Associate/disassociate a policer with a worker thread.
     @param client_index - opaque cookie to identify the sender
@@ -270,6 +270,22 @@ define policer_details
   u32 extended_limit;
   u32 extended_bucket;
   u64 last_update_time;
+};
+
+/** \brief IP punt policer
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - 1 to add neighbor, 0 to delete
+    @param is_ipv6 - 1 for IPv6 neighbor, 0 for IPv4
+    @param policer_index - Index of policer to use
+*/
+autoreply define ip_punt_police
+{
+  u32 client_index;
+  u32 context;
+  u32 policer_index;
+  bool is_add [default=true];
+  bool is_ip6;
 };
 
 /*

@@ -1814,6 +1814,7 @@ class IPPuntSetup(object):
             i.admin_down()
 
 
+@unittest.skipIf("policer" in config.excluded_plugins, "Exclude Policer plugin tests")
 class TestIPPunt(IPPuntSetup, VppTestCase):
     """IPv4 Punt Police/Redirect"""
 

@@ -2,13 +2,12 @@
  * Copyright (c) 2021 Graphiant, Inc.
  */
 
-#include <vnet/policer/policer.h>
+#include <policer/policer.h>
 
 #define PKT_LEN 500
 
 static clib_error_t *
-policer_test (vlib_main_t *vm, unformat_input_t *input,
-	      vlib_cli_command_t *cmd_arg)
+policer_test (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd_arg)
 {
   int policer_index, i;
   unsigned int rate_kbps, burst, num_pkts;
@@ -18,13 +17,16 @@ policer_test (vlib_main_t *vm, unformat_input_t *input,
   uint64_t policer_time;
 
   policer_t *pol;
-  vnet_policer_main_t *pm = &vnet_policer_main;
+  policer_main_t *pm = policer_get_main ();
+  vlib_combined_counter_main_t *counters = policer_get_counters ();
+
+  if (!pm || !counters)
+    return clib_error_return (0, "policer plugin not loaded");
 
   if (!unformat (input, "index %d", &policer_index) || /* policer to use */
-      !unformat (input, "rate %u", &rate_kbps) || /* rate to send at in kbps */
-      !unformat (input, "burst %u", &burst) ||	  /* burst to send in ms */
-      !unformat (input, "colour %u",
-		 &input_colour)) /* input colour if aware */
+      !unformat (input, "rate %u", &rate_kbps) ||      /* rate to send at in kbps */
+      !unformat (input, "burst %u", &burst) ||	       /* burst to send in ms */
+      !unformat (input, "colour %u", &input_colour))   /* input colour if aware */
     return clib_error_return (0, "Policer test failed to parse params");
 
   total_bytes = (rate_kbps * burst) / 8;
@@ -41,8 +43,7 @@ policer_test (vlib_main_t *vm, unformat_input_t *input,
       time += cpu_ticks_per_pkt;
       policer_time = ((uint64_t) time) >> POLICER_TICKS_PER_PERIOD_SHIFT;
       result = vnet_police_packet (pol, PKT_LEN, input_colour, policer_time);
-      vlib_increment_combined_counter (&policer_counters[result], 0,
-				       policer_index, 1, PKT_LEN);
+      vlib_increment_combined_counter (&counters[result], 0, policer_index, 1, PKT_LEN);
     }
 
   return NULL;

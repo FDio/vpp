@@ -44,3 +44,4 @@ For more on plugins please refer to :ref:`add_plugin`.
     ip_session_redirect_doc
     bpf_trace_filter
     http
+    policer
