@@ -35,3 +35,50 @@ macro(add_vpp_executable exec)
   endif()
 endmacro()
 
+function(vpp_add_filtered_executable type name)
+  cmake_parse_arguments(ARG
+    "ENABLE_EXPORTS;NO_INSTALL"
+    ""
+    "SOURCES;LINK_LIBRARIES;DEPENDS"
+    ${ARGN}
+  )
+
+  string(TOUPPER ${type} TYPE)
+  if(DEFINED VPP_${TYPE}S AND NOT VPP_${TYPE}S STREQUAL "")
+    if(VPP_${TYPE}S STREQUAL "none")
+      return()
+    endif()
+    get_property(_filter GLOBAL PROPERTY VPP_${TYPE}S_FILTER)
+    list(FIND _filter ${name} _idx)
+    if(_idx EQUAL -1)
+      return()
+    endif()
+    list(REMOVE_AT _filter ${_idx})
+    set_property(GLOBAL PROPERTY VPP_${TYPE}S_FILTER "${_filter}")
+  endif()
+
+  set(_args "")
+  if(ARG_ENABLE_EXPORTS)
+    list(APPEND _args ENABLE_EXPORTS)
+  endif()
+  if(ARG_NO_INSTALL)
+    list(APPEND _args NO_INSTALL)
+  endif()
+
+  add_vpp_executable(${name}
+    SOURCES ${ARG_SOURCES}
+    LINK_LIBRARIES ${ARG_LINK_LIBRARIES}
+    DEPENDS ${ARG_DEPENDS}
+    ${_args}
+  )
+
+  set_property(GLOBAL APPEND PROPERTY VPP_${TYPE}S_LIST ${name})
+endfunction()
+
+macro(add_vpp_tool name)
+  vpp_add_filtered_executable(tool ${name} ${ARGN})
+endmacro()
+
+macro(add_vpp_test name)
+  vpp_add_filtered_executable(test ${name} ${ARGN})
+endmacro()

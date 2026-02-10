@@ -233,6 +233,58 @@ include(cmake/crypto_engines.cmake)
 include(cmake/drivers.cmake)
 
 ##############################################################################
+# options
+##############################################################################
+
+set(VPP_TOOLS
+  ""
+  CACHE
+  STRING "Comma-separated list of tools included in build"
+)
+
+# Parse tool selection list.
+set(VPP_TOOLS_FILTER "")
+
+if(DEFINED VPP_TOOLS AND NOT VPP_TOOLS STREQUAL "")
+  if(NOT VPP_TOOLS STREQUAL "none")
+    string(REGEX REPLACE "[ \t]*,[ \t]*" ";" VPP_TOOLS_FILTER "${VPP_TOOLS}")
+    list(FILTER VPP_TOOLS_FILTER EXCLUDE REGEX "^$")
+  endif()
+endif()
+
+# Initialize built list and request sentinel for validation.
+set_property(GLOBAL PROPERTY VPP_TOOLS_LIST "")
+if(DEFINED VPP_TOOLS AND NOT VPP_TOOLS STREQUAL "" AND NOT VPP_TOOLS STREQUAL "none")
+  set(_vpp_tools_filter ${VPP_TOOLS_FILTER})
+  list(APPEND _vpp_tools_filter "__EOL__")
+  set_property(GLOBAL PROPERTY VPP_TOOLS_FILTER "${_vpp_tools_filter}")
+endif()
+
+set(VPP_TESTS
+  ""
+  CACHE
+  STRING "Comma-separated list of tests included in build"
+)
+
+# Parse test selection list.
+set(VPP_TESTS_FILTER "")
+
+if(DEFINED VPP_TESTS AND NOT VPP_TESTS STREQUAL "")
+  if(NOT VPP_TESTS STREQUAL "none")
+    string(REGEX REPLACE "[ \t]*,[ \t]*" ";" VPP_TESTS_FILTER "${VPP_TESTS}")
+    list(FILTER VPP_TESTS_FILTER EXCLUDE REGEX "^$")
+  endif()
+endif()
+
+# Initialize built list and request sentinel for validation.
+set_property(GLOBAL PROPERTY VPP_TESTS_LIST "")
+if(DEFINED VPP_TESTS AND NOT VPP_TESTS STREQUAL "" AND NOT VPP_TESTS STREQUAL "none")
+  set(_vpp_tests_filter ${VPP_TESTS_FILTER})
+  list(APPEND _vpp_tests_filter "__EOL__")
+  set_property(GLOBAL PROPERTY VPP_TESTS_FILTER "${_vpp_tests_filter}")
+endif()
+
+##############################################################################
 # FreeBSD - use epoll-shim
 ##############################################################################
 set(EPOLL_LIB "")
@@ -278,6 +330,16 @@ endif()
 foreach(DIR ${SUBDIRS})
   add_subdirectory(${DIR} ${VPP_BINARY_DIR}/${DIR})
 endforeach()
+
+get_property(_vpp_tools_list GLOBAL PROPERTY VPP_TOOLS_LIST)
+list(REMOVE_DUPLICATES _vpp_tools_list)
+list(SORT _vpp_tools_list)
+set(VPP_TOOLS_LIST ${_vpp_tools_list})
+
+get_property(_vpp_tests_list GLOBAL PROPERTY VPP_TESTS_LIST)
+list(REMOVE_DUPLICATES _vpp_tests_list)
+list(SORT _vpp_tests_list)
+set(VPP_TESTS_LIST ${_vpp_tests_list})
 
 ##############################################################################
 # detect if we are inside git repo and add configure dependency
@@ -359,3 +421,13 @@ pr("Multiarch variants" ${MARCH_VARIANTS_NAMES})
 pr("Plugins" ${VPP_PLUGINS_LIST})
 pr("Drivers" ${VPP_DRIVERS_LIST})
 pr("Crypto engines" ${VPP_CRYPTO_ENGINES_LIST})
+pr("Tools" ${VPP_TOOLS_LIST})
+pr("Tests" ${VPP_TESTS_LIST})
+
+# Fail if any requested tools were not found/registered.
+get_property(_vpp_tools_filter GLOBAL PROPERTY VPP_TOOLS_FILTER)
+vpp_check_consumed_list(_vpp_tools_filter "VPP_TOOLS requested but not found")
+
+# Fail if any requested tests were not found/registered.
+get_property(_vpp_tests_filter GLOBAL PROPERTY VPP_TESTS_FILTER)
+vpp_check_consumed_list(_vpp_tests_filter "VPP_TESTS requested but not found")

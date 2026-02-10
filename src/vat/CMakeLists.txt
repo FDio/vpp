@@ -47,7 +47,7 @@ add_vpp_executable(vpp_api_test ENABLE_EXPORTS
 ##############################################################################
 #  vpp_json_test
 ##############################################################################
-add_vpp_executable(vpp_json_test ENABLE_EXPORTS NO_INSTALL
+add_vpp_test(vpp_json_test ENABLE_EXPORTS NO_INSTALL
   SOURCES json_format.c json_test.c
   LINK_LIBRARIES vppinfra m
 )
