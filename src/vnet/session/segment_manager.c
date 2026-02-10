@@ -1387,8 +1387,10 @@ segment_manager_dealloc_fifos_ct (svm_fifo_t *rx_fifo, svm_fifo_t *tx_fifo,
     goto done;
 
   /*
-   * Remove segment context because both client and server detached
+   * Remove segment context because both client and server detached.
+   * Save client_wrk before potentially freeing seg_ctx.
    */
+  u32 client_wrk = seg_ctx->client_wrk;
 
   pool_put_index (seg_ctx->segments, ct_seg_index);
 
@@ -1397,7 +1399,7 @@ segment_manager_dealloc_fifos_ct (svm_fifo_t *rx_fifo, svm_fifo_t *tx_fifo,
    */
   if (!pool_elts (seg_ctx->segments))
     {
-      u64 table_handle = seg_ctx->client_wrk << 16 | seg_ctx->server_wrk;
+      u64 table_handle = client_wrk << 16 | seg_ctx->server_wrk;
       table_handle = (u64) seg_ctx->sm_index << 32 | table_handle;
       hash_unset (smm->custom_segs_ctxs_table, table_handle);
       pool_free (seg_ctx->segments);
@@ -1408,7 +1410,7 @@ segment_manager_dealloc_fifos_ct (svm_fifo_t *rx_fifo, svm_fifo_t *tx_fifo,
    * Segment to be removed so notify both apps
    */
 
-  app_wrk = app_worker_get_if_valid (seg_ctx->client_wrk);
+  app_wrk = app_worker_get_if_valid (client_wrk);
   /* Determine if client app still needs notification, i.e., if it is
    * still attached. If client detached and this is the last ct session
    * on this segment, then its connects segment manager should also be
@@ -1419,8 +1421,7 @@ segment_manager_dealloc_fifos_ct (svm_fifo_t *rx_fifo, svm_fifo_t *tx_fifo,
       u64 segment_handle = segment_manager_segment_handle (sm, fs);
       csm = app_worker_get_connect_segment_manager (app_wrk);
       if (!segment_manager_app_detached (csm))
-	app_worker_del_segment_notify (
-	  app_wrk, ct_client_seg_handle (segment_handle, seg_ctx->client_wrk));
+	app_worker_del_segment_notify (app_wrk, ct_client_seg_handle (segment_handle, client_wrk));
     }
 
   /* Notify server app and free segment */
