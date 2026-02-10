@@ -3,7 +3,6 @@
  * Copyright (c) 2016-2019 Cisco and/or its affiliates.
  */
 
-#include <vlibmemory/api.h>
 #include <vlib/vlib.h>
 
 #include <vppinfra/hash.h>

@@ -642,18 +642,6 @@ vl_api_rpc_call_main_thread_inline (void *fp, u8 *data, u32 data_length,
 }
 
 /*
- * Check if called from worker threads.
- * If so, make rpc call of fp through shmem.
- * Otherwise, call fp directly
- */
-void
-vl_api_rpc_call_main_thread (void *fp, u8 *data, u32 data_length)
-{
-  vl_api_rpc_call_main_thread_inline (fp, data, data_length, /*force_rpc */
-				      0);
-}
-
-/*
  * Always make rpc call of fp through shmem, useful for calling from threads
  * not setup as worker threads, such as DPDK callback thread
  */
@@ -705,17 +693,6 @@ vl_api_trace_plugin_msg_ids_t_handler (vl_api_trace_plugin_msg_ids_t *mp)
 
 #define foreach_plugin_trace_msg _ (TRACE_PLUGIN_MSG_IDS, trace_plugin_msg_ids)
 
-/*
- * Set the rpc callback at our earliest possible convenience.
- * This avoids ordering issues between thread_init() -> start_workers and
- * an init function which we could define here. If we ever intend to use
- * vlib all by itself, we can't create a link-time dependency on
- * an init function here and a typical "call foo_init first"
- * guitar lick.
- */
-
-extern void *rpc_call_main_thread_cb_fn;
-
 static clib_error_t *
 rpc_api_hookup (vlib_main_t *vm)
 {
@@ -755,7 +732,6 @@ rpc_api_hookup (vlib_main_t *vm)
 
   /* No reason to halt the parade to create a trace record... */
   vl_api_set_msg_thread_safe (am, VL_API_TRACE_PLUGIN_MSG_IDS, 1);
-  rpc_call_main_thread_cb_fn = vl_api_rpc_call_main_thread;
   return 0;
 }
 

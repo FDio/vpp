@@ -37,8 +37,7 @@ signal_report (prefix_report_t * r)
 int
 dhcp6_pd_publish_report (prefix_report_t * r)
 {
-  void vl_api_rpc_call_main_thread (void *fp, u8 * data, u32 data_length);
-  vl_api_rpc_call_main_thread (signal_report, (u8 *) r, sizeof *r);
+  vlib_rpc_call_main_thread (signal_report, (u8 *) r, sizeof *r);
   return 0;
 }
 

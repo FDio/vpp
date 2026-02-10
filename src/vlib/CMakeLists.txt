@@ -71,7 +71,7 @@ set(PLATFORM_SOURCES
 )
 endif()
 
-set(VLIB_LIBS vppinfra svm ${CMAKE_DL_LIBS} ${EPOLL_LIB})
+set(VLIB_LIBS vppinfra ${CMAKE_DL_LIBS} ${EPOLL_LIB})
 
 vpp_find_path(LIBIBERTY_INCLUDE_DIR libiberty/demangle.h)
 vpp_find_library(LIBIBERTY_LIB NAMES iberty libiberty)
