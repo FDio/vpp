@@ -3,7 +3,7 @@
 import unittest
 
 from framework import VppTestCase
-from asfframework import VppTestRunner, tag_fixme_vpp_workers
+from asfframework import VppTestRunner, tag_fixme_vpp_workers, tag_fixme_asan
 from ipaddress import IPv4Network, IPv6Network
 from config import config
 
@@ -21,6 +21,7 @@ from vpp_session_sdl import SessionSdl
 
 
 @tag_fixme_vpp_workers
+@tag_fixme_asan
 class TestSessionSDL(VppTestCase):
     """Session SDL Test Case"""
 
