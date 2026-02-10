@@ -3,25 +3,15 @@
  * Copyright (c) 2015 Cisco and/or its affiliates.
  */
 
-#ifndef __POLICE_H__
-#define __POLICE_H__
+#ifndef __included_policer_h__
+#define __included_policer_h__
 
-typedef enum
-{
-  POLICE_CONFORM = 0,
-  POLICE_EXCEED = 1,
-  POLICE_VIOLATE = 2,
-} policer_result_e;
+#include <stdbool.h>
 
-#define NUM_POLICE_RESULTS 3
+#include <vlib/vlib.h>
+#include <vnet/vnet.h>
 
-typedef enum
-{
-  QOS_ACTION_DROP = 0,
-  QOS_ACTION_TRANSMIT,
-  QOS_ACTION_MARK_AND_TRANSMIT,
-  QOS_ACTION_HANDOFF
-} __clib_packed qos_action_type_en;
+#include <policer/xlate.h>
 
 // This is the hardware representation of the policer.
 // To be multithread-safe, the policer is accessed through a spin-lock
@@ -61,12 +51,21 @@ typedef enum
 #define POLICER_TICKS_PER_PERIOD_SHIFT 17
 #define POLICER_TICKS_PER_PERIOD       (1 << POLICER_TICKS_PER_PERIOD_SHIFT)
 
+typedef enum
+{
+  POLICE_CONFORM = 0,
+  POLICE_EXCEED = 1,
+  POLICE_VIOLATE = 2,
+} policer_result_e;
+
+#define NUM_POLICE_RESULTS 3
+
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-  u32 single_rate;		// 1 = single rate policer, 0 = two rate policer
-  u32 color_aware;		// for hierarchical policing
-  u32 scale;			// power-of-2 shift amount for lower rates
+  u32 single_rate; // 1 = single rate policer, 0 = two rate policer
+  u32 color_aware; // for hierarchical policing
+  u32 scale;	   // power-of-2 shift amount for lower rates
   qos_action_type_en action[3];
   ip_dscp_t mark_dscp[3];
   u8 pad[2];
@@ -75,24 +74,59 @@ typedef struct
   // and MOD if they are modified as part of the update operation.
   // 1 token = 1 byte.
 
-  u32 cir_tokens_per_period;	// # of tokens for each period
-  u32 pir_tokens_per_period;	// 2R
+  u32 cir_tokens_per_period; // # of tokens for each period
+  u32 pir_tokens_per_period; // 2R
 
   u32 current_limit;
-  u32 current_bucket;		// MOD
+  u32 current_bucket; // MOD
   u32 extended_limit;
-  u32 extended_bucket;		// MOD
-  clib_thread_index_t
-    thread_index;		// Tie policer to a thread, rather than lock
-  u64 last_update_time;		// MOD
+  u32 extended_bucket;		    // MOD
+  clib_thread_index_t thread_index; // Tie policer to a thread, rather than lock
+  u64 last_update_time;		    // MOD
   u8 *name;
 } policer_t;
 
 STATIC_ASSERT_SIZEOF (policer_t, CLIB_CACHE_LINE_BYTES);
 
+typedef struct
+{
+  /* policer pool, aligned */
+  policer_t *policers;
+
+  /* config + template h/w policer instance parallel pools */
+  qos_pol_cfg_params_st *configs;
+  policer_t *policer_templates;
+
+  /* Config by policer name hash */
+  uword *policer_config_by_name;
+
+  /* Policer by name hash */
+  uword *policer_index_by_name;
+
+  /* Policer by sw_if_index vector */
+  u32 *policer_index_by_sw_if_index[VLIB_N_RX_TX];
+
+  /* convenience */
+  vlib_main_t *vlib_main;
+  vnet_main_t *vnet_main;
+
+  vlib_log_class_t log_class;
+
+  /* frame queue for thread handoff */
+  u32 fq_index[VLIB_N_RX_TX];
+
+  /* cached TSC value. No need to re-compute for each new policer */
+  u64 tsc_hz;
+
+  u16 msg_id_base;
+} policer_main_t;
+
+extern policer_main_t policer_main;
+
+extern vlib_combined_counter_main_t policer_counters[];
+
 static inline policer_result_e
-vnet_police_packet (policer_t *policer, u32 packet_length,
-		    policer_result_e packet_color, u64 time)
+vnet_police_packet (policer_t *policer, u32 packet_length, policer_result_e packet_color, u64 time)
 {
   u64 n_periods;
   u64 current_tokens, extended_tokens;
@@ -124,15 +158,13 @@ vnet_police_packet (policer_t *policer, u32 packet_length,
     {
 
       // Compute number of tokens for this time period
-      current_tokens =
-	policer->current_bucket + n_periods * policer->cir_tokens_per_period;
+      current_tokens = policer->current_bucket + n_periods * policer->cir_tokens_per_period;
       if (current_tokens > policer->current_limit)
 	{
 	  current_tokens = policer->current_limit;
 	}
 
-      extended_tokens =
-	policer->extended_bucket + n_periods * policer->cir_tokens_per_period;
+      extended_tokens = policer->extended_bucket + n_periods * policer->cir_tokens_per_period;
       if (extended_tokens > policer->extended_limit)
 	{
 	  extended_tokens = policer->extended_limit;
@@ -140,15 +172,15 @@ vnet_police_packet (policer_t *policer, u32 packet_length,
 
       // Determine color
 
-      if ((!policer->color_aware || (packet_color == POLICE_CONFORM))
-	  && (current_tokens >= packet_length))
+      if ((!policer->color_aware || (packet_color == POLICE_CONFORM)) &&
+	  (current_tokens >= packet_length))
 	{
 	  policer->current_bucket = current_tokens - packet_length;
 	  policer->extended_bucket = extended_tokens - packet_length;
 	  result = POLICE_CONFORM;
 	}
-      else if ((!policer->color_aware || (packet_color != POLICE_VIOLATE))
-	       && (extended_tokens >= packet_length))
+      else if ((!policer->color_aware || (packet_color != POLICE_VIOLATE)) &&
+	       (extended_tokens >= packet_length))
 	{
 	  policer->current_bucket = current_tokens;
 	  policer->extended_bucket = extended_tokens - packet_length;
@@ -160,17 +192,14 @@ vnet_police_packet (policer_t *policer, u32 packet_length,
 	  policer->extended_bucket = extended_tokens;
 	  result = POLICE_VIOLATE;
 	}
-
     }
   else
     {
       // Two-rate policer
 
       // Compute number of tokens for this time period
-      current_tokens =
-	policer->current_bucket + n_periods * policer->cir_tokens_per_period;
-      extended_tokens =
-	policer->extended_bucket + n_periods * policer->pir_tokens_per_period;
+      current_tokens = policer->current_bucket + n_periods * policer->cir_tokens_per_period;
+      extended_tokens = policer->extended_bucket + n_periods * policer->pir_tokens_per_period;
       if (current_tokens > policer->current_limit)
 	{
 	  current_tokens = policer->current_limit;
@@ -182,15 +211,15 @@ vnet_police_packet (policer_t *policer, u32 packet_length,
 
       // Determine color
 
-      if ((policer->color_aware && (packet_color == POLICE_VIOLATE))
-	  || (extended_tokens < packet_length))
+      if ((policer->color_aware && (packet_color == POLICE_VIOLATE)) ||
+	  (extended_tokens < packet_length))
 	{
 	  policer->current_bucket = current_tokens;
 	  policer->extended_bucket = extended_tokens;
 	  result = POLICE_VIOLATE;
 	}
-      else if ((policer->color_aware && (packet_color == POLICE_EXCEED))
-	       || (current_tokens < packet_length))
+      else if ((policer->color_aware && (packet_color == POLICE_EXCEED)) ||
+	       (current_tokens < packet_length))
 	{
 	  policer->current_bucket = current_tokens;
 	  policer->extended_bucket = extended_tokens - packet_length;
@@ -206,4 +235,22 @@ vnet_police_packet (policer_t *policer, u32 packet_length,
   return result;
 }
 
-#endif // __POLICE_H__
+typedef enum
+{
+  VNET_POLICER_NEXT_DROP,
+  VNET_POLICER_NEXT_HANDOFF,
+  VNET_POLICER_N_NEXT,
+} policer_next_t;
+
+int pol_logical_2_physical (const qos_pol_cfg_params_st *cfg, policer_t *phys);
+
+int policer_add (vlib_main_t *vm, const u8 *name, const qos_pol_cfg_params_st *cfg,
+		 u32 *policer_index);
+
+int policer_update (vlib_main_t *vm, u32 policer_index, const qos_pol_cfg_params_st *cfg);
+int policer_del (vlib_main_t *vm, u32 policer_index);
+int policer_reset (vlib_main_t *vm, u32 policer_index);
+int policer_bind_worker (u32 policer_index, u32 worker, bool bind);
+int policer_input (u32 policer_index, u32 sw_if_index, vlib_dir_t dir, bool apply);
+
+#endif /* __included_policer_h__ */

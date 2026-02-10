@@ -44,7 +44,6 @@ add_vpp_plugin(unittest
   mem_bulk_test.c
   mfib_test.c
   mpcap_node.c
-  policer_test.c
   pool_test.c
   punt_test.c
   rbtree_test.c
