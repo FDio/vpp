@@ -29,7 +29,7 @@ add_vpp_headers(vpp-api
   client/stat_client.h
 )
 
-add_vpp_executable(test_vppapiclient NO_INSTALL
+add_vpp_test(test_vppapiclient NO_INSTALL
   SOURCES client/test.c
   LINK_LIBRARIES vppinfra pthread vppapiclient
 )

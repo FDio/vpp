@@ -170,13 +170,14 @@ add_vpp_plugin(pnat
 )
 
 # Unit tests
+if(NOT VPP_NO_TESTS)
 set (PACKET_HEADER ${CMAKE_CURRENT_SOURCE_DIR}/pnat/tests/test_packets.h)
 set (PACKET_DEFS
   ${CMAKE_CURRENT_SOURCE_DIR}/pnat/tests/packets.def
   ${CMAKE_CURRENT_SOURCE_DIR}/pnat/tests/missing_rule.def)
 set (PACKET_TESTGET ${CMAKE_CURRENT_SOURCE_DIR}/pnat/tests/test_genpackets.py)
 
-add_vpp_executable(test_pnat
+add_vpp_test(test_pnat
   SOURCES
   pnat/tests/pnat_test.c
   pnat/pnat_node.c
@@ -229,4 +230,5 @@ if(VPP_BUILD_TESTS_WITH_COVERAGE)
     COMMAND ;
     COMMENT "Open ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${TARGET_NAME}-llvm-cov/index.html in your browser to view the coverage report."
 )
+endif()
 endif()

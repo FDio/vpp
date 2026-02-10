@@ -39,6 +39,8 @@ OPTIONS:
   --plugins, -P           Specify list of plugins to be built
   --prefix, -r            Specify prefix path (default: $prefix_path)
   --sanitize, -s          Enable sanitizer (mem)
+  --tests, -S             Specify list of tests to be built
+  --tools, -T             Specify list of tools to be built
   --verbose, -v           Verbose output of this script
   --wipe, -w              Wipe whole repo (except startup.* files)
 __EOF__
@@ -107,6 +109,24 @@ while (( "$#" )); do
     -D|--drivers)
       if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
         drivers=$2
+        shift 2
+      else
+        echo "Error: Argument for $1 is missing" >&2
+        exit 1
+      fi
+      ;;
+    -T|--tools)
+      if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
+        tools=$2
+        shift 2
+      else
+        echo "Error: Argument for $1 is missing" >&2
+        exit 1
+      fi
+      ;;
+    -S|--tests)
+      if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
+        tests=$2
         shift 2
       else
         echo "Error: Argument for $1 is missing" >&2
@@ -201,6 +221,8 @@ $wipe && git clean -fdx --exclude=startup.\*
 
 [[ -v plugins ]] && args+=("-DVPP_PLUGINS=${plugins}")
 [[ -v drivers ]] && args+=("-DVPP_DRIVERS=${drivers}")
+[[ -v tools ]] && args+=("-DVPP_TOOLS=${tools}")
+[[ -v tests ]] && args+=("-DVPP_TESTS=${tests}")
 [[ -v crypto_engines ]] && args+=("-DVPP_CRYPTO_ENGINES=${crypto_engines}")
 
 (

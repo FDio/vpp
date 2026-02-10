@@ -18,7 +18,7 @@ add_vpp_plugin(fateshare
   fateshare.h
 )
 
-add_vpp_executable(vpp_fateshare_monitor
+add_vpp_tool(vpp_fateshare_monitor
   SOURCES vpp_fateshare_monitor.c
   LINK_LIBRARIES vppinfra
 )
