@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "919400b8_f30b00fb",
+        "filename": "test/asf/test_session.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 378,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-02-10T22:32:11Z",
+      "side": 1,
+      "message": "Any idea what might be happening here? Are these maybe only the tests that fork vpp and do some stress tests?",
+      "revId": "d3694d21134c48ab239de771806b60e691720679",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "785650cd_e5ad4997",
+        "filename": "test/asf/test_session_sdl.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-02-10T22:32:11Z",
+      "side": 1,
+      "message": "@Steven, maybe we should look at this.",
+      "revId": "d3694d21134c48ab239de771806b60e691720679",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
