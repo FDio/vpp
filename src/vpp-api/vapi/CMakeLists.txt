@@ -89,7 +89,7 @@ if(SUBUNIT_INCLUDE_DIR AND SUBUNIT_LIB)
 
   set(libs vppinfra vlibmemoryclient svm pthread check rt m vapiclient ${SUBUNIT_LIB})
 
-  add_vpp_executable(vapi_c_test
+  add_vpp_test(vapi_c_test
     SOURCES
     vapi_c_test.c
     DEPENDS fake_api_vapi_h
@@ -98,7 +98,7 @@ if(SUBUNIT_INCLUDE_DIR AND SUBUNIT_LIB)
   )
 
   enable_language(CXX)
-  add_vpp_executable(vapi_cpp_test
+  add_vpp_test(vapi_cpp_test
     SOURCES
     vapi_cpp_test.cpp
     DEPENDS fake_api_vapi_hpp

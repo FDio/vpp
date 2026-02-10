@@ -26,7 +26,7 @@ add_vpp_plugin(mactime
 
 option(VPP_BUILD_MACTIME_TOP "Build mactime plugin 'top' tool" OFF)
 if(VPP_BUILD_MACTIME_TOP)
-  add_vpp_executable(mactime_top ENABLE_EXPORTS
+  add_vpp_tool(mactime_top ENABLE_EXPORTS
     SOURCES
     mactime_top.c
 

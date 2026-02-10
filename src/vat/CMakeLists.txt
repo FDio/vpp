@@ -22,7 +22,7 @@ add_vpp_library(vatplugin
 ##############################################################################
 # vpp_api_test
 ##############################################################################
-add_vpp_executable(vpp_api_test ENABLE_EXPORTS
+add_vpp_tool(vpp_api_test ENABLE_EXPORTS
   SOURCES
   api_format.c
   main.c
@@ -47,7 +47,7 @@ add_vpp_executable(vpp_api_test ENABLE_EXPORTS
 ##############################################################################
 #  vpp_json_test
 ##############################################################################
-add_vpp_executable(vpp_json_test ENABLE_EXPORTS NO_INSTALL
+add_vpp_test(vpp_json_test ENABLE_EXPORTS NO_INSTALL
   SOURCES json_format.c json_test.c
   LINK_LIBRARIES vppinfra m
 )
@@ -64,7 +64,7 @@ install(
 ##############################################################################
 # restart
 ##############################################################################
-add_vpp_executable(vpp_restart
+add_vpp_tool(vpp_restart
   SOURCES restart.c
   LINK_LIBRARIES svm svmdb vppinfra Threads::Threads rt
 )

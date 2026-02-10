@@ -12,7 +12,7 @@ add_vpp_library(selog_client
   selog_client.h
 )
 
-add_vpp_executable(selog_client_example
+add_vpp_test(selog_client_example
   SOURCES
   selog_client_example.c
   LINK_LIBRARIES
