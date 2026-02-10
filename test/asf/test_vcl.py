@@ -294,7 +294,10 @@ class VCLTestCase(VppAsfTestCase):
             self.logger.info(
                 "Killing server worker process (pid %d)" % worker_server.process.pid
             )
-            os.killpg(os.getpgid(worker_server.process.pid), signal.SIGTERM)
+            try:
+                os.killpg(os.getpgid(worker_server.process.pid), signal.SIGTERM)
+            except ProcessLookupError:
+                self.logger.debug("Server worker process already exited")
             worker_server.join()
         self.logger.info("Client worker result is `%s'" % worker_client.result)
         error = False
