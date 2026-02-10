@@ -849,7 +849,6 @@ VLIB_REGISTER_NODE (ip4_outacl_node) = {
 VNET_FEATURE_INIT (ip4_punt_acl_feature) = {
   .arc_name = "ip4-punt",
   .node_name = "ip4-punt-acl",
-  .runs_after = VNET_FEATURES ("ip4-punt-policer"),
 };
 
 VLIB_NODE_FN (ip6_inacl_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
@@ -922,7 +921,6 @@ VLIB_REGISTER_NODE (ip6_outacl_node) = {
 VNET_FEATURE_INIT (ip6_punt_acl_feature) = {
   .arc_name = "ip6-punt",
   .node_name = "ip6-punt-acl",
-  .runs_after = VNET_FEATURES ("ip6-punt-policer"),
 };
 
 #ifndef CLIB_MARCH_VARIANT

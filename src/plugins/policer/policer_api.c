@@ -1,9 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0
- * Copyright (c) 2016 Cisco and/or its affiliates.
- */
-
-/*
- * policer_api.c - policer api
+ * Copyright (c) 2026 Cisco and/or its affiliates.
  */
 
 #include <vnet/vnet.h>
@@ -11,20 +7,21 @@
 
 #include <vnet/interface.h>
 #include <vnet/api_errno.h>
-#include <vnet/policer/policer.h>
+#include <plugins/policer/policer.h>
+#include <plugins/policer/ip_punt.h>
 
 #include <vnet/format_fns.h>
-#include <vnet/policer/policer.api_enum.h>
-#include <vnet/policer/policer.api_types.h>
+#include <policer/policer.api_enum.h>
+#include <policer/policer.api_types.h>
 
-#define REPLY_MSG_ID_BASE vnet_policer_main.msg_id_base
+#define REPLY_MSG_ID_BASE policer_main.msg_id_base
 #include <vlibapi/api_helper_macros.h>
 
 static void
 vl_api_policer_add_del_t_handler (vl_api_policer_add_del_t * mp)
 {
   vlib_main_t *vm = vlib_get_main ();
-  vnet_policer_main_t *pm = &vnet_policer_main;
+  policer_main_t *pm = &policer_main;
   vl_api_policer_add_del_reply_t *rmp;
   int rv = 0;
   uword *p;
@@ -171,7 +168,7 @@ static void
 vl_api_policer_bind_t_handler (vl_api_policer_bind_t *mp)
 {
   vl_api_policer_bind_reply_t *rmp;
-  vnet_policer_main_t *pm = &vnet_policer_main;
+  policer_main_t *pm = &policer_main;
   char name[sizeof (mp->name) + 1];
   uword *p;
   u32 worker_index;
@@ -214,7 +211,7 @@ static void
 vl_api_policer_input_t_handler (vl_api_policer_input_t *mp)
 {
   vl_api_policer_input_reply_t *rmp;
-  vnet_policer_main_t *pm = &vnet_policer_main;
+  policer_main_t *pm = &policer_main;
   char name[sizeof (mp->name) + 1];
   uword *p;
   u32 sw_if_index;
@@ -263,7 +260,7 @@ static void
 vl_api_policer_output_t_handler (vl_api_policer_output_t *mp)
 {
   vl_api_policer_output_reply_t *rmp;
-  vnet_policer_main_t *pm = &vnet_policer_main;
+  policer_main_t *pm = &policer_main;
   char name[sizeof (mp->name) + 1];
   uword *p;
   u32 sw_if_index;
@@ -355,7 +352,7 @@ static void
 vl_api_policer_dump_t_handler (vl_api_policer_dump_t * mp)
 {
   vl_api_registration_t *reg;
-  vnet_policer_main_t *pm = &vnet_policer_main;
+  policer_main_t *pm = &policer_main;
   uword *p, *pi;
   u32 pool_index, policer_index;
   u8 *match_name = 0;
@@ -404,7 +401,7 @@ static void
 vl_api_policer_dump_v2_t_handler (vl_api_policer_dump_v2_t *mp)
 {
   vl_api_registration_t *reg;
-  vnet_policer_main_t *pm = &vnet_policer_main;
+  policer_main_t *pm = &policer_main;
   qos_pol_cfg_params_st *config;
   u32 policer_index, pool_index;
   policer_t *policer;
@@ -439,7 +436,22 @@ vl_api_policer_dump_v2_t_handler (vl_api_policer_dump_v2_t *mp)
     }
 }
 
-#include <vnet/policer/policer.api.c>
+static void
+vl_api_ip_punt_police_t_handler (vl_api_ip_punt_police_t * mp,
+				 vlib_main_t * vm)
+{
+  vl_api_ip_punt_police_reply_t *rmp;
+  int rv = 0;
+
+  if (mp->is_ip6)
+    ip6_punt_policer_add_del (mp->is_add, ntohl (mp->policer_index));
+  else
+    ip4_punt_policer_add_del (mp->is_add, ntohl (mp->policer_index));
+
+  REPLY_MACRO (VL_API_IP_PUNT_POLICE_REPLY);
+}
+
+#include <policer/policer.api.c>
 static clib_error_t *
 policer_api_hookup (vlib_main_t * vm)
 {
@@ -452,3 +464,10 @@ policer_api_hookup (vlib_main_t * vm)
 }
 
 VLIB_API_INIT_FUNCTION (policer_api_hookup);
+
+#include <vnet/plugin/plugin.h>
+#include <vpp/app/version.h>
+VLIB_PLUGIN_REGISTER () = {
+  .version = VPP_BUILD_VER,
+  .description = "Policer",
+};

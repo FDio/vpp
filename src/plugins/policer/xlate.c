@@ -13,14 +13,12 @@
 #include <vlib/vlib.h>
 #include <vnet/vnet.h>
 
-#include <vnet/policer/policer.h>
+#include <policer/policer.h>
 
 /* debugs */
-#define QOS_DEBUG_ERROR(msg, args...)                                         \
-  vlib_log_err (vnet_policer_main.log_class, msg, ##args);
+#define QOS_DEBUG_ERROR(msg, args...) vlib_log_err (policer_main.log_class, msg, ##args);
 
-#define QOS_DEBUG_INFO(msg, args...)                                          \
-  vlib_log_info (vnet_policer_main.log_class, msg, ##args);
+#define QOS_DEBUG_INFO(msg, args...) vlib_log_info (policer_main.log_class, msg, ##args);
 
 #ifndef MIN
 #define MIN(x,y)            (((x)<(y))?(x):(y))
@@ -926,7 +924,7 @@ compute_policer_params (u64 hz,	      /* CPU speed in clocks per second */
 int
 x86_pol_compute_hw_params (qos_pol_cfg_params_st *cfg, policer_t *hw)
 {
-  vnet_policer_main_t *pm = &vnet_policer_main;
+  policer_main_t *pm = &policer_main;
   const int BYTES_PER_KBIT = (1000 / 8);
   u32 cap;
 
