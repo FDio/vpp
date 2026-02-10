@@ -36,8 +36,8 @@ static void
 soft_rss_add_ip4_match (soft_rss_rt_data_t *rt, int protocol, u8 key_start,
 			u8 key_len)
 {
-  soft_rss_rt_match_t *m = rt->match + rt->n_match++;
-  ASSERT (rt->n_match <= ARRAY_LEN (rt->match));
+  soft_rss_rt_match_t *m = rt->match4 + rt->n_match4++;
+  ASSERT (rt->n_match4 <= ARRAY_LEN (rt->match4));
 
   soft_rss_match_template_t match = {
     .ethertype = clib_host_to_net_u16(0x0800),
@@ -66,8 +66,8 @@ static void
 soft_rss_add_ip6_match (soft_rss_rt_data_t *rt, int protocol, u8 key_start,
 			u8 key_len)
 {
-  soft_rss_rt_match_t *m = rt->match + rt->n_match++;
-  ASSERT (rt->n_match <= ARRAY_LEN (rt->match));
+  soft_rss_rt_match_t *m = rt->match6 + rt->n_match6++;
+  ASSERT (rt->n_match6 <= ARRAY_LEN (rt->match6));
 
   soft_rss_match_template_t match = {
     .ethertype = clib_host_to_net_u16(0x86dd),

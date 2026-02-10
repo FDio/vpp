@@ -45,12 +45,51 @@ vlan_advance (u8 **data)
 }
 
 static_always_inline u16
-match_and_hash (soft_rss_rt_match_t *match, u32 n_match,
-		clib_toeplitz_hash_key_t *k, u8 *d)
+match_and_hash (soft_rss_rt_match_t *match4, u32 n_match4, soft_rss_rt_match_t *match6,
+		u32 n_match6, clib_toeplitz_hash_key_t *k, u8 *d)
 {
-  for (soft_rss_rt_match_t *m = match; m < match + n_match; m++)
-    if (u8x16_is_equal (*(u8x16u *) d & m->mask, m->match))
-      return clib_toeplitz_hash (k, d + m->key_start, m->key_len);
+  u16 ethertype = *(u16u *) d;
+  if (PREDICT_TRUE (ethertype == clib_host_to_net_u16 (ETHERNET_TYPE_IP4)))
+    {
+      for (soft_rss_rt_match_t *m = match4; m < match4 + n_match4; m++)
+	if (u8x16_is_equal (*(u8x16u *) d & m->mask, m->match))
+	  {
+	    CLIB_ASSUME (m->key_len <= 12);
+	    switch (m->key_len)
+	      {
+	      case 4:
+		return clib_toeplitz_hash (k, d + m->key_start, 4);
+	      case 8:
+		return clib_toeplitz_hash (k, d + m->key_start, 8);
+	      case 12:
+		return clib_toeplitz_hash (k, d + m->key_start, 12);
+	      default:
+		ASSERT (0);
+		break;
+	      }
+	  }
+    }
+  else if (PREDICT_TRUE (ethertype == clib_host_to_net_u16 (ETHERNET_TYPE_IP6)))
+    {
+      for (soft_rss_rt_match_t *m = match6; m < match6 + n_match6; m++)
+	if (u8x16_is_equal (*(u8x16u *) d & m->mask, m->match))
+	  {
+	    CLIB_ASSUME (m->key_len <= 36);
+	    switch (m->key_len)
+	      {
+	      case 16:
+		return clib_toeplitz_hash (k, d + m->key_start, 16);
+	      case 32:
+		return clib_toeplitz_hash (k, d + m->key_start, 32);
+	      case 36:
+		return clib_toeplitz_hash (k, d + m->key_start, 36);
+	      default:
+		ASSERT (0);
+		break;
+	      }
+	  }
+    }
+
   return 0;
 }
 
@@ -62,8 +101,10 @@ soft_rss_one_interface (vlib_main_t *vm, vlib_node_runtime_t *node,
   i64 i, n_left = n_pkts;
   u8 *data[VLIB_FRAME_SIZE + 4], **d = data;
   u16 hashes[VLIB_FRAME_SIZE], *h = hashes;
-  const u32 n_match = rt->n_match;
-  soft_rss_rt_match_t *match = rt->match;
+  const u32 n_match4 = rt->n_match4;
+  const u32 n_match6 = rt->n_match6;
+  soft_rss_rt_match_t *match4 = rt->match4;
+  soft_rss_rt_match_t *match6 = rt->match6;
   clib_toeplitz_hash_key_t *k = rt->key;
   clib_thread_index_t *reta;
 
@@ -76,7 +117,7 @@ soft_rss_one_interface (vlib_main_t *vm, vlib_node_runtime_t *node,
   clib_ptr_array_pad_tail ((void **) d, n_pkts, 4);
 
   /* apply current_data offset and reset hash array */
-  for (i64 i = n_pkts; i > 0; i -= 32, d += 32, cds += 32, h += 32)
+  for (i64 i = n_pkts; i > 0; i -= 32, d += 32, cds += 32)
     for (u32 j = 0; j < 32; j++)
       d[j] += cds[j];
 
@@ -86,30 +127,30 @@ soft_rss_one_interface (vlib_main_t *vm, vlib_node_runtime_t *node,
       clib_prefetch_load (d[5]);
 
       vlan_advance (d + 0);
-      h[0] = match_and_hash (match, n_match, k, d[0]);
+      h[0] = match_and_hash (match4, n_match4, match6, n_match6, k, d[0]);
       clib_cl_demote (d[0]);
 
       clib_prefetch_load (d[6]);
 
       vlan_advance (d + 1);
-      h[1] = match_and_hash (match, n_match, k, d[1]);
+      h[1] = match_and_hash (match4, n_match4, match6, n_match6, k, d[1]);
       clib_cl_demote (d[1]);
 
       clib_prefetch_load (d[7]);
 
       vlan_advance (d + 2);
-      h[2] = match_and_hash (match, n_match, k, d[2]);
+      h[2] = match_and_hash (match4, n_match4, match6, n_match6, k, d[2]);
       clib_cl_demote (d[2]);
 
       vlan_advance (d + 3);
-      h[3] = match_and_hash (match, n_match, k, d[3]);
+      h[3] = match_and_hash (match4, n_match4, match6, n_match6, k, d[3]);
       clib_cl_demote (d[3]);
     }
 
   for (; n_left > 0; n_left--, d++, h++)
     {
       vlan_advance (d);
-      h[0] = match_and_hash (match, n_match, k, d[0]);
+      h[0] = match_and_hash (match4, n_match4, match6, n_match6, k, d[0]);
       clib_cl_demote (d[0]);
     }
 
@@ -212,10 +253,10 @@ VLIB_NODE_FN (soft_rss_node)
       if (vec_len (srm->rt_by_sw_if_index) > sw_if_index && srm->rt_by_sw_if_index[sw_if_index])
 	{
 	  i16 to_cds[VLIB_FRAME_SIZE + 4], *tail = to_cds + n_sel;
+	  soft_rss_rt_data_t rt = *srm->rt_by_sw_if_index[sw_if_index];
 	  clib_compress_u16 ((u16 *) to_cds, (u16 *) cds, selected_bmp, n_pkts);
 	  tail[0] = tail[1] = tail[2] = tail[3] = 0;
-	  soft_rss_one_interface (vm, node, srm->rt_by_sw_if_index[sw_if_index], (u32 *) to, to_cds,
-				  n_sel);
+	  soft_rss_one_interface (vm, node, &rt, to, to_cds, n_sel);
 	}
       else
 	{
