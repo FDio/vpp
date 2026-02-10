@@ -116,6 +116,34 @@ VLIB_CLI_COMMAND (lcp_sync_command, static) = {
 };
 
 static clib_error_t *
+lcp_sync_unnumbered_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "on") || unformat (line_input, "enable"))
+	lcp_set_sync_unnumbered (1);
+      else if (unformat (line_input, "off") || unformat (line_input, "disable"))
+	lcp_set_sync_unnumbered (0);
+      else
+	return clib_error_return (0, "unknown input `%U'", format_unformat_error, line_input);
+    }
+
+  unformat_free (line_input);
+  return 0;
+}
+
+VLIB_CLI_COMMAND (lcp_sync_unnumbered_command, static) = {
+  .path = "lcp lcp-sync-unnumbered",
+  .short_help = "lcp lcp-sync-unnumbered [on|enable|off|disable]",
+  .function = lcp_sync_unnumbered_command_fn,
+};
+
+static clib_error_t *
 lcp_auto_subint_command_fn (vlib_main_t *vm, unformat_input_t *input,
 			    vlib_cli_command_t *cmd)
 {

@@ -212,6 +212,23 @@ class TestLinuxCP(VppTestCase):
         for phy in phys:
             phy.unconfig_ip4()
 
+    def test_linux_cp_sync_unnumbered(self):
+        """Linux CP Sync Unnumbered"""
+
+        # default should be enabled
+        reply = self.vapi.lcp_sync_unnumbered_get()
+        self.assertTrue(reply.is_enable)
+
+        # disable it
+        self.vapi.lcp_sync_unnumbered_set(is_enable=False)
+
+        # verify it is now disabled
+        reply = self.vapi.lcp_sync_unnumbered_get()
+        self.assertFalse(reply.is_enable)
+
+        # re-enable for clean state
+        self.vapi.lcp_sync_unnumbered_set(is_enable=True)
+
     def test_linux_cp_tun(self):
         """Linux CP TUN"""
 

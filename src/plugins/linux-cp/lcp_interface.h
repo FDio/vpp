@@ -173,6 +173,12 @@ int lcp_auto_subint (void);
 void lcp_set_sync (u8 is_auto);
 int lcp_sync (void);
 
+/**
+ * sync address of unnumbered interfaces from VPP into LCP
+ */
+void lcp_set_sync_unnumbered (u8 is_sync);
+int lcp_sync_unnumbered (void);
+
 /* Set TAP and Linux host link state */
 void lcp_itf_set_link_state (const lcp_itf_pair_t *lip, u8 state);
 
