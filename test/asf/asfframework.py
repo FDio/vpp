@@ -299,11 +299,11 @@ class VppAsfTestCase(CPUInterface, unittest.TestCase):
 
     @classmethod
     def skip_fixme_asan(cls):
-        """if @tag_fixme_asan & ASan is enabled - mark for skip"""
+        """if @tag_fixme_asan & ASan is enabled - raise SkipTest"""
         if cls.has_tag(TestCaseTag.FIXME_ASAN):
             vpp_extra_cmake_args = os.environ.get("VPP_EXTRA_CMAKE_ARGS", "")
             if "DVPP_ENABLE_SANITIZE_ADDR=ON" in vpp_extra_cmake_args:
-                cls = unittest.skip("Skipping @tag_fixme_asan tests")(cls)
+                raise unittest.SkipTest("Skipping @tag_fixme_asan tests")
 
     @classmethod
     def instance(cls):

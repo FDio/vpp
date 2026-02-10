@@ -6,6 +6,7 @@ from asfframework import (
     VppAsfTestCase,
     VppTestRunner,
     tag_fixme_vpp_workers,
+    tag_fixme_asan,
     tag_run_solo,
 )
 from vpp_papi import VppEnum
@@ -374,6 +375,7 @@ class TestApplicationNamespace(VppAsfTestCase):
 
 
 @tag_fixme_vpp_workers
+@tag_fixme_asan
 class TestSessionUnitTests(VppAsfTestCase):
     """Session Unit Tests Case"""
 

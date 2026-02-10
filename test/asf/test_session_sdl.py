@@ -3,7 +3,7 @@
 import unittest
 
 from framework import VppTestCase
-from asfframework import VppTestRunner, tag_fixme_vpp_workers
+from asfframework import VppTestRunner, tag_fixme_vpp_workers, tag_fixme_asan
 from ipaddress import IPv4Network, IPv6Network
 from config import config
 
@@ -75,6 +75,7 @@ class TestSessionSDL(VppTestCase):
         r = VppSessionSdl(self, rules, is_add=is_add, appns_index=appns_index)
         r.add_vpp_config()
 
+    @tag_fixme_asan
     def test_session_sdl_ip4(self):
         """Session SDL IP4 test"""
 

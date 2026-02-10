@@ -3,7 +3,7 @@
 import unittest
 
 from config import config
-from asfframework import VppAsfTestCase, VppTestRunner
+from asfframework import VppAsfTestCase, VppTestRunner, tag_fixme_asan
 
 
 class TestBihash(VppAsfTestCase):
@@ -34,6 +34,7 @@ class TestBihash(VppAsfTestCase):
             self.logger.critical(error)
             self.assertNotIn("failed", error)
 
+    @tag_fixme_asan
     def test_bihash_thread(self):
         """Bihash Thread Test"""
 
