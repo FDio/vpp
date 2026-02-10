@@ -6,6 +6,8 @@ import unittest
 from asfframework import VppAsfTestCase, VppTestRunner
 from vpp_policer import VppPolicer
 
+from config import config
+
 # Default for the tests is 10s of "Green" packets at 8Mbps, ie. 10M bytes.
 # The policer helper CLI "sends" 500 byte packets, so default is 20000.
 
@@ -23,8 +25,19 @@ CBURST = 100000  # Committed burst in bytes
 EBURST = 200000  # Excess burst in bytes
 
 
+@unittest.skipIf(
+    "policer_unittest" in config.excluded_plugins, "Exclude policer plugin tests"
+)
 class TestPolicer(VppAsfTestCase):
     """Policer Test Case"""
+
+    extra_vpp_plugin_config = [
+        "plugin",
+        "policer_unittest_plugin.so",
+        "{",
+        "enable",
+        "}",
+    ]
 
     def run_policer_test(
         self, type, cir, cb, eir, eb, rate=8000, burst=10000, colour=0

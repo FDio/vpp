@@ -12,7 +12,14 @@
 #define __included_xlate_h__
 
 #include <vnet/ip/ip_packet.h>
-#include <vnet/policer/police.h>
+
+typedef enum
+{
+  QOS_ACTION_DROP = 0,
+  QOS_ACTION_TRANSMIT,
+  QOS_ACTION_MARK_AND_TRANSMIT,
+  QOS_ACTION_HANDOFF
+} __clib_packed qos_action_type_en;
 
 /*
  * edt: * enum qos_policer_type_en
@@ -148,7 +155,5 @@ typedef struct qos_pol_hw_params_st_
   u32 comm_bkt;
   u32 extd_bkt;
 } qos_pol_hw_params_st;
-
-int pol_logical_2_physical (const qos_pol_cfg_params_st *cfg, policer_t *phys);
 
 #endif /* __included_xlate_h__ */
