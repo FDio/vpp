@@ -1665,7 +1665,7 @@ vt_process_http_server_read_msg (vcl_test_session_t *ts, void *buf,
 	  /* validate target path syntax */
 	  if (msg.data.target_path_len)
 	    {
-	      vec_validate (target_path, msg.data.target_path_len - 1);
+	      vec_validate (target_path, msg.data.target_path_len);
 	      memcpy (target_path,
 		      buf + sizeof (msg) + msg.data.target_path_offset - 1,
 		      msg.data.target_path_len + 1);
