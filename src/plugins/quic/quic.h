@@ -23,6 +23,7 @@
  **/
 
 #define QUIC_DEBUG		  0
+#define QUIC_CTX_INVALID_INDEX	  ((u32) ~0)
 #define QUIC_TIMER_HANDLE_INVALID ((u32) ~0)
 #define QUIC_SESSION_INVALID ((u32) ~0 - 1)
 #define QUIC_MAX_PACKET_SIZE 1280
