@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5895a96a_91b82f6a",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 3
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-02-10T14:16:47Z",
+      "side": 1,
+      "message": "The subject mentions \"ikev2 crash\" but this is a dns plugin fix. Consider:\ndns: fix crash when no usable source address exists",
+      "revId": "f9ab522a25b70efff370f23143b404052d531bf6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8cd4e28d_1f2baf92",
+        "filename": "src/plugins/dns/dns.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 590,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-02-10T14:16:47Z",
+      "side": 1,
+      "message": "The check should be an early bail out at the top of the function, not just around the signaling. As currently written, the code at lines 556-561 will still execute and crash when accessing empty ip4/6_name_servers vectors before reaching this check.\n\nSuggested fix:\n\n    void\n    vnet_send_dns_request (vlib_main_t * vm, dns_main_t * dm,\n                           dns_cache_entry_t * ep)\n    {\n      /* Bail out early if no usable source address exists */\n      if (!dns_has_usable_source_address (dm, 0) \u0026\u0026\n          !dns_has_usable_source_address (dm, 1))\n        return;\n      ...\n\nWe check both AFs to preserve the existing fallback behavior (the function can switch from IPv4 to IPv6 or vice-versa).",
+      "revId": "f9ab522a25b70efff370f23143b404052d531bf6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
