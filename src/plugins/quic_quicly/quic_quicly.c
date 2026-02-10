@@ -201,8 +201,9 @@ quic_quicly_connection_closed (quic_ctx_t *ctx)
       quic_quicly_connection_delete (ctx);
       break;
     case QUIC_CONN_STATE_HANDSHAKE:
-      /* handshake failed notify app that connect failed */
-      quic_quicly_notify_app_connected (ctx, SESSION_E_TLS_HANDSHAKE);
+      /* handshake failed, notify app only if this was a client connection */
+      if (ctx->listener_ctx_id == QUIC_CTX_INVALID_INDEX)
+	quic_quicly_notify_app_connected (ctx, SESSION_E_TLS_HANDSHAKE);
       quic_quicly_connection_delete (ctx);
       break;
     case QUIC_CONN_STATE_OPENED:

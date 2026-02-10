@@ -99,6 +99,7 @@ quic_connect_connection (transport_endpoint_cfg_t *tep)
   ctx->udp_is_ip4 = sep->is_ip4;
   ctx->timer_handle = QUIC_TIMER_HANDLE_INVALID;
   ctx->conn_state = QUIC_CONN_STATE_HANDSHAKE;
+  ctx->listener_ctx_id = QUIC_CTX_INVALID_INDEX;
   ctx->client_opaque = sep->opaque;
   if (ccfg->hostname[0])
     ctx->srv_hostname = format (0, "%s", ccfg->hostname);
