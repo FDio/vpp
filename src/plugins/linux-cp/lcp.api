@@ -223,6 +223,40 @@ service {
     stream lcp_itf_pair_details;
 };
 
+/** \brief Enable or disable syncing unnumbered interface addresses to Linux
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_enable - true to enable, false to disable
+*/
+autoreply define lcp_sync_unnumbered_set
+{
+  u32 client_index;
+  u32 context;
+  bool is_enable;
+};
+
+/** \brief Get the sync-unnumbered setting
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define lcp_sync_unnumbered_get
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Reply to get the sync-unnumbered setting
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for the request
+    @param is_enable - true if sync-unnumbered is enabled
+*/
+define lcp_sync_unnumbered_get_reply
+{
+  u32 context;
+  i32 retval;
+  bool is_enable;
+};
+
 /** \brief Replace end/begin
  */
 autoreply define lcp_itf_pair_replace_begin

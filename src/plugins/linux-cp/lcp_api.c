@@ -257,6 +257,27 @@ vl_api_lcp_default_ns_get_t_handler (vl_api_lcp_default_ns_get_t *mp)
 }
 
 static void
+vl_api_lcp_sync_unnumbered_set_t_handler (vl_api_lcp_sync_unnumbered_set_t *mp)
+{
+  vl_api_lcp_sync_unnumbered_set_reply_t *rmp;
+  int rv = 0;
+
+  lcp_set_sync_unnumbered (mp->is_enable);
+
+  REPLY_MACRO (VL_API_LCP_SYNC_UNNUMBERED_SET_REPLY);
+}
+
+static void
+vl_api_lcp_sync_unnumbered_get_t_handler (vl_api_lcp_sync_unnumbered_get_t *mp)
+{
+  vl_api_lcp_sync_unnumbered_get_reply_t *rmp;
+  int rv = 0;
+
+  REPLY_MACRO2 (VL_API_LCP_SYNC_UNNUMBERED_GET_REPLY,
+		({ rmp->is_enable = lcp_sync_unnumbered (); }));
+}
+
+static void
 vl_api_lcp_itf_pair_replace_begin_t_handler (
   vl_api_lcp_itf_pair_replace_begin_t *mp)
 {
