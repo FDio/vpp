@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d007d1f9_67ff133c",
+        "filename": "src/plugins/http/http.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 866,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-02-10T20:10:48Z",
+      "side": 1,
+      "message": "this is not needed, rx buffers are preallocated to more than h2 connection preface length in http_transport_enable, vec_validate is used only if data might exceed this value (not everywhere)\nhttps://github.com/FDio/vpp/blob/master/src/plugins/http/http.c#L1059",
+      "revId": "07414f912be31ce0694363552a2de55ff6ec2bc2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
