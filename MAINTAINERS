@@ -891,13 +891,6 @@ M:	Matus Fabian <matfabia@cisco.com>
 M:	Adrian Villin <avillin@cisco.com>
 F:	extras/hs-test
 
-THE REST
-I:	misc
-M:	vpp-dev Mailing List <vpp-dev@fd.io>
-C:	Missing Maintainer
-F:	*
-F:	*/
-
 Netmap
 I:	netmap
 M:	Tom Jones <thj@freebsd.org>
@@ -908,3 +901,15 @@ I:	sflow
 M:	Pim van Pelt <pim@ipng.nl>
 M:	Neil McKee <neil.mckee@inmon.com>
 F:	src/plugins/sflow/
+
+GitHub Actions
+I: gha
+M: Dave Wallace <dwallacelf@gmail.com>
+F: .github/
+
+THE REST
+I:	misc
+M:	vpp-dev Mailing List <vpp-dev@fd.io>
+C:	Missing Maintainer
+F:	*
+F:	*/
