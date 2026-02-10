@@ -1506,6 +1506,8 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
 	  if (!is_main)
 	    vlib_worker_flush_pending_rpc_requests (vm);
 	}
+      if (is_main)
+	vlib_rpc_call_main_thread_process (vm);
 
       if (!is_main)
 	vlib_worker_thread_barrier_check ();
