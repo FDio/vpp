@@ -4,7 +4,6 @@
  */
 
 #include <vlib/vlib.h>
-#include <vlibmemory/api.h>
 #include <dhcp/client.h>
 #include <dhcp/dhcp_proxy.h>
 #include <vnet/fib/fib_table.h>
@@ -394,8 +393,7 @@ dhcp_client_for_us (u32 bi, vlib_buffer_t * b,
       c->next_transmit = 0;	/* send right now... */
       /* Poke the client process, which will send the request */
       uword client_id = c - dcm->clients;
-      vl_api_rpc_call_main_thread (dhcp_client_proc_callback,
-				   (u8 *) & client_id, sizeof (uword));
+      vlib_rpc_call_main_thread (dhcp_client_proc_callback, (u8 *) &client_id, sizeof (uword));
       break;
 
     case DHCP_BOUND:
@@ -426,8 +424,7 @@ dhcp_client_for_us (u32 bi, vlib_buffer_t * b,
 	/* Send the index over to the main thread, where it can retrieve
 	 * the original client */
 	u32 cindex = c - dcm->clients;
-	vl_api_force_rpc_call_main_thread (dhcp_client_addr_callback,
-					   (u8 *) & cindex, sizeof (u32));
+	vlib_force_rpc_call_main_thread (dhcp_client_addr_callback, (u8 *) &cindex, sizeof (u32));
       }
 
       c->state = DHCP_BOUND;

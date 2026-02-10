@@ -127,8 +127,7 @@ l2_arp_term_publish_v4_dp (u32 sw_if_index,
     .mac = a->mac,
   };
 
-  vl_api_rpc_call_main_thread (l2_arp_term_publish, (u8 *) & args,
-			       sizeof (args));
+  vlib_rpc_call_main_thread (l2_arp_term_publish, (u8 *) &args, sizeof (args));
 }
 
 static inline void
@@ -148,8 +147,7 @@ l2_arp_term_publish_v6_dp (u32 sw_if_index,
     .mac = *mac,
   };
 
-  vl_api_rpc_call_main_thread (l2_arp_term_publish, (u8 *) & args,
-			       sizeof (args));
+  vlib_rpc_call_main_thread (l2_arp_term_publish, (u8 *) &args, sizeof (args));
 }
 
 static inline int

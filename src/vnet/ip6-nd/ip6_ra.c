@@ -1585,8 +1585,8 @@ ip6_ra_signal_report (ip6_ra_report_t * r)
 static int
 ip6_ra_publish (ip6_ra_report_t * r)
 {
-  void vl_api_rpc_call_main_thread (void *fp, u8 * data, u32 data_length);
-  vl_api_rpc_call_main_thread (ip6_ra_signal_report, (u8 *) r, sizeof *r);
+  void vlib_rpc_call_main_thread (void *fp, u8 *data, u32 data_length);
+  vlib_rpc_call_main_thread (ip6_ra_signal_report, (u8 *) r, sizeof *r);
   return 0;
 }
 
