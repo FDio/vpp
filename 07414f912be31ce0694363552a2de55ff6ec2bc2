@@ -16,6 +16,24 @@
       "message": "this is not needed, rx buffers are preallocated to more than h2 connection preface length in http_transport_enable, vec_validate is used only if data might exceed this value (not everywhere)\nhttps://github.com/FDio/vpp/blob/master/src/plugins/http/http.c#L1059",
       "revId": "07414f912be31ce0694363552a2de55ff6ec2bc2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bbdc902e_c652cd33",
+        "filename": "src/plugins/http/http.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 866,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-02-10T22:37:57Z",
+      "side": 1,
+      "message": "This gets us back to what do we need to do to teach asan about our vec use patterns. One could argue asan is right because we\u0027re outside vec len boundary, but at times vecs are just used as replacement for clib_mem_alloc because we can realloc them with one liners ..",
+      "parentUuid": "d007d1f9_67ff133c",
+      "revId": "07414f912be31ce0694363552a2de55ff6ec2bc2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
