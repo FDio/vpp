@@ -63,7 +63,7 @@ jobs:
       LOG_NAME: ""
       LOG_DIR: ""
       WORKSPACE: /scratch/docker-build/vpp
-      HS_TEST_DIR: /scratch/docker-build/vpp/test/hs-test
+      HS_TEST_DIR: /scratch/docker-build/vpp/extras/hs-test
       CCACHE_DIR: /scratch/ccache/${{ matrix.os }}-${{ matrix.executor_arch }}
       MAKE_PARALLEL_JOBS: 16
       TEST_JOBS: 1  # TODO: debug test failures with 16 parallel test jobs
