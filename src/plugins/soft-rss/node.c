@@ -185,7 +185,7 @@ VLIB_NODE_FN (soft_rss_node)
       clib_cl_demote (b[3]);
     }
 
-  for (; n_left > 0; b += 1, sii += 1, n_left -= 1)
+  for (; n_left > 0; b += 1, sii += 1, cd += 1, n_left -= 1)
     {
       sii[0] = vnet_buffer (b[0])->sw_if_index[VLIB_RX];
       cd[0] = b[0]->current_data;
@@ -209,21 +209,18 @@ VLIB_NODE_FN (soft_rss_node)
       clib_compress_u32 ((u32 *) to, from, selected_bmp, n_pkts);
       n_left -= n_sel;
 
-      if (vec_len (srm->rt_by_sw_if_index) > sw_if_index &&
-	  srm->rt_by_sw_if_index[sw_if_index])
+      if (vec_len (srm->rt_by_sw_if_index) > sw_if_index && srm->rt_by_sw_if_index[sw_if_index])
 	{
-	  i16 *to_cds[VLIB_FRAME_SIZE];
-	  clib_compress_u16 ((u16 *) to_cds, (u16 *) cds, selected_bmp,
-			     n_pkts);
-	  soft_rss_one_interface (vm, node,
-				  srm->rt_by_sw_if_index[sw_if_index],
-				  (u32 *) to, (i16 *) to_cds, n_sel);
+	  i16 to_cds[VLIB_FRAME_SIZE + 4], *tail = to_cds + n_sel;
+	  clib_compress_u16 ((u16 *) to_cds, (u16 *) cds, selected_bmp, n_pkts);
+	  tail[0] = tail[1] = tail[2] = tail[3] = 0;
+	  soft_rss_one_interface (vm, node, srm->rt_by_sw_if_index[sw_if_index], (u32 *) to, to_cds,
+				  n_sel);
 	}
       else
 	{
 	  vlib_buffer_free (vm, to, n_sel);
-	  vlib_node_increment_counter (vm, node->node_index,
-				       SOFT_RSS_ERROR_NOT_ENABLED, n_sel);
+	  vlib_node_increment_counter (vm, node->node_index, SOFT_RSS_ERROR_NOT_ENABLED, n_sel);
 	}
     }
 

@@ -103,7 +103,7 @@ soft_rss_config (vlib_main_t __clib_unused *vm,
   vnet_hw_interface_t *hi = vnet_get_hw_interface_or_null (vnm, hw_if_index);
   soft_rss_rt_data_t *rt;
   u32 n_threads = 0;
-  clib_thread_index_t ti;
+  clib_thread_index_t ti, n_vlib_threads = vlib_get_n_threads ();
   soft_rss_type_t type4 = config->ipv4_type != SOFT_RSS_TYPE_NOT_SET ?
 			    config->ipv4_type :
 			    config->type;
@@ -123,6 +123,9 @@ soft_rss_config (vlib_main_t __clib_unused *vm,
   if (!hi)
     return clib_error_return (0, "invalid hardware interface index %u",
 			      hw_if_index);
+
+  if (n_vlib_threads <= 1)
+    return clib_error_return (0, "soft-rss requires more than one thread");
 
   if (sm->frame_queue_index == CLIB_U32_MAX)
     sm->frame_queue_index =
@@ -151,18 +154,29 @@ soft_rss_config (vlib_main_t __clib_unused *vm,
 
   if (config->threads)
     {
+      uword last_set = clib_bitmap_last_set (config->threads);
+      if (last_set == ~0)
+	return clib_error_return (0, "no threads selected for soft-rss");
+      if (clib_bitmap_count_set_bits (config->threads) > 64)
+	return clib_error_return (0, "too many threads selected (max 64)");
+      if (last_set >= n_vlib_threads)
+	return clib_error_return (0, "invalid thread index specified");
       clib_bitmap_foreach (ti, config->threads)
 	rt->reta[n_threads++] = ti;
     }
   else
     {
-      for (ti = config->with_main_thread ? 0 : 1; ti < vlib_get_n_threads ();
-	   ti++)
-	rt->reta[n_threads++] = ti;
+      for (ti = config->with_main_thread ? 0 : 1; ti < n_vlib_threads; ti++)
+	{
+	  if (n_threads >= ARRAY_LEN (rt->reta))
+	    return clib_error_return (0, "too many threads available");
+	  rt->reta[n_threads++] = ti;
+	}
     }
 
   if (count_set_bits (n_threads) != 1)
     {
+      /* n_threads is not power-of-2 */
       for (u32 i = n_threads; i < ARRAY_LEN (rt->reta); i++)
 	rt->reta[i] = rt->reta[i - n_threads];
       rt->reta_mask = ARRAY_LEN (rt->reta) - 1;
