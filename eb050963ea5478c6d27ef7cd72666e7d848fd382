@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a4c051ec_ea622df3",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-02-10T22:11:32Z",
+      "side": 1,
+      "message": "We need to figure out what to do about these ASAN failures because as far as I can tell parse_uri handles non-zero terminated strings. That is, it\u0027s perfectly fine to pass a non null terminated char * or vector.",
+      "revId": "eb050963ea5478c6d27ef7cd72666e7d848fd382",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
