@@ -70,6 +70,7 @@ typedef struct nl_main
   struct nl_cache *nl_caches[LCP_NL_N_OBJS];
   nl_msg_info_t *nl_msg_queue;
   uword clib_file_index;
+  u32 clib_file_lcp_refcnt;
 
   u32 rx_buf_size;
   u32 tx_buf_size;
@@ -743,11 +744,32 @@ lcp_nl_drain_messages (void)
   return err;
 }
 
-void
+static void
 lcp_nl_pair_add_cb (lcp_itf_pair_t *pair)
 {
-  if (!lcp_get_netlink_processing_active ())
+  nl_main_t *nm = &nl_main;
+
+  nm->clib_file_lcp_refcnt++;
+  if (!nm->sk_route)
+    {
+      NL_INFO ("pair_add_cb: Opening netlink socket, refcnt %u", nm->clib_file_lcp_refcnt);
+      lcp_nl_open_socket ();
+    }
+  else if (!lcp_get_netlink_processing_active ())
     lcp_nl_drain_messages ();
+}
+
+static void
+lcp_nl_pair_del_cb (lcp_itf_pair_t *pair)
+{
+  nl_main_t *nm = &nl_main;
+
+  nm->clib_file_lcp_refcnt--;
+  if (nm->clib_file_lcp_refcnt == 0)
+    {
+      NL_INFO ("pair_del_cb: Closing netlink socket");
+      lcp_nl_close_socket ();
+    }
 }
 
 static clib_error_t *
@@ -1002,13 +1024,13 @@ lcp_nl_init (vlib_main_t *vm)
   nl_main_t *nm = &nl_main;
   lcp_itf_pair_vft_t nl_itf_pair_vft = {
     .pair_add_fn = lcp_nl_pair_add_cb,
+    .pair_del_fn = lcp_nl_pair_del_cb,
   };
 
   nm->nl_status = NL_STATUS_NOTIF_PROC;
   nm->clib_file_index = ~0;
   nm->nl_logger = vlib_log_register_class ("nl", "nl");
 
-  lcp_nl_open_socket ();
   lcp_itf_pair_register_vft (&nl_itf_pair_vft);
 
   return (NULL);
