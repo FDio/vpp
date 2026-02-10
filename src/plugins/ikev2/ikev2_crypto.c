@@ -540,9 +540,8 @@ ikev2_generate_dh (ikev2_sa_t * sa, ikev2_sa_transform_t * t)
 	  int pad = t->key_len - r;
 	  if (pad)
 	    {
-	      vec_insert (sa->dh_shared_key, pad, 0);
+	      memmove (sa->dh_shared_key + pad, sa->dh_shared_key, r);
 	      clib_memset (sa->dh_shared_key, 0, pad);
-	      vec_dec_len (sa->dh_shared_key, pad);
 	    }
 	  BN_clear_free (ex);
 	}
