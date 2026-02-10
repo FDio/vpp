@@ -97,7 +97,7 @@ add_vpp_executable(vpp
 ##############################################################################
 # vppctl binary
 ##############################################################################
-add_vpp_executable(vppctl
+add_vpp_tool(vppctl
   SOURCES app/vppctl.c
   LINK_LIBRARIES vppinfra ${EPOLL_LIB}
 )
@@ -105,7 +105,7 @@ add_vpp_executable(vppctl
 ##############################################################################
 # vpp_get_metrics binary
 ##############################################################################
-add_vpp_executable(vpp_get_metrics
+add_vpp_tool(vpp_get_metrics
   SOURCES api/vpp_get_metrics.c
   LINK_LIBRARIES vppinfra svm svmdb
   DEPENDS api_headers
@@ -114,19 +114,19 @@ add_vpp_executable(vpp_get_metrics
 ##############################################################################
 # stats binaries
 ##############################################################################
-add_vpp_executable(vpp_get_stats
+add_vpp_tool(vpp_get_stats
   SOURCES app/vpp_get_stats.c
   LINK_LIBRARIES vppapiclient vppinfra
   DEPENDS api_headers
 )
 
-add_vpp_executable(vpp_prometheus_export
+add_vpp_tool(vpp_prometheus_export
   SOURCES app/vpp_prometheus_export.c app/dump_metrics.c
   LINK_LIBRARIES vppapiclient vppinfra svm vlibmemoryclient ${EPOLL_LIB}
   DEPENDS api_headers
 )
 
-add_vpp_executable(vpp_prometheus_push
+add_vpp_tool(vpp_prometheus_push
    SOURCES app/vpp_prometheus_push.c app/dump_metrics.c
    LINK_LIBRARIES vppapiclient vppinfra svm vlibmemoryclient ssl crypto ${EPOLL_LIB}
    DEPENDS api_headers

@@ -14,7 +14,7 @@
 ##############################################################################
 # vat2
 ##############################################################################
-add_vpp_executable(vat2 ENABLE_EXPORTS
+add_vpp_tool(vat2 ENABLE_EXPORTS
   SOURCES
   main.c
   plugin.c
@@ -37,7 +37,7 @@ add_vpp_executable(vat2 ENABLE_EXPORTS
 #)
 
 vpp_generate_api_c_header (test/vat2_test.api)
-add_vpp_executable(test_vat2 ENABLE_EXPORTS NO_INSTALL
+add_vpp_test(test_vat2 ENABLE_EXPORTS NO_INSTALL
   SOURCES
   test/vat2_test.c
 

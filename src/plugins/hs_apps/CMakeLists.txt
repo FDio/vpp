@@ -39,7 +39,7 @@ add_vpp_plugin(hs_apps
 ##############################################################################
 option(VPP_BUILD_HS_SAPI_APPS "Build hs apps that use the session api." ON)
 if(VPP_BUILD_HS_SAPI_APPS)
-  add_vpp_executable(vpp_echo
+  add_vpp_tool(vpp_echo
     SOURCES
     sapi/vpp_echo.c
     sapi/vpp_echo_common.c
@@ -62,7 +62,7 @@ if(VPP_BUILD_VCL_TESTS)
     sock_test_server
     sock_test_client
   )
-    add_vpp_executable(${test}
+    add_vpp_test(${test}
       SOURCES "vcl/${test}.c"
       LINK_LIBRARIES vppcom pthread ${EPOLL_LIB}
       NO_INSTALL
@@ -73,7 +73,7 @@ if(VPP_BUILD_VCL_TESTS)
     vcl_test_server
     vcl_test_client
   )
-    add_vpp_executable(${test}
+    add_vpp_test(${test}
       SOURCES
       "vcl/${test}.c"
       vcl/vcl_test_protos.c
@@ -81,12 +81,12 @@ if(VPP_BUILD_VCL_TESTS)
     )
   endforeach()
 
-  add_vpp_executable(vcl_test_cl_udp SOURCES "vcl/vcl_test_cl_udp.c"
+  add_vpp_test(vcl_test_cl_udp SOURCES "vcl/vcl_test_cl_udp.c"
     LINK_LIBRARIES vppcom pthread ${EPOLL_LIB}
     NO_INSTALL
   )
 
-  add_vpp_executable(vcl_cfg_test SOURCES "vcl/vcl_cfg_test.c"
+  add_vpp_test(vcl_cfg_test SOURCES "vcl/vcl_cfg_test.c"
     LINK_LIBRARIES vppcom pthread ${EPOLL_LIB}
     NO_INSTALL
   )

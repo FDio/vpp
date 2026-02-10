@@ -305,14 +305,14 @@ if(VPP_BUILD_VPPINFRA_TESTS)
     valloc
     vec
   )
-    add_vpp_executable(test_${test}
+    add_vpp_test(test_${test}
       SOURCES test_${test}.c
       LINK_LIBRARIES vppinfra pthread
       )
   endforeach()
 
   foreach(test bihash_template)
-    add_vpp_executable(test_${test}
+    add_vpp_test(test_${test}
       SOURCES test_${test}.c
       LINK_LIBRARIES vppinfra Threads::Threads
       )
@@ -337,7 +337,7 @@ set(test_files
   test/toeplitz.c
 )
 
-add_vpp_executable(test_infra
+add_vpp_test(test_infra
   SOURCES
   test/test.c
   ${test_files}
@@ -345,7 +345,9 @@ add_vpp_executable(test_infra
   NO_INSTALL
 )
 
-vpp_library_set_multiarch_sources(test_infra
-  SOURCES
-  ${test_files}
-)
+if(TARGET test_infra)
+  vpp_library_set_multiarch_sources(test_infra
+    SOURCES
+    ${test_files}
+  )
+endif()

@@ -52,12 +52,12 @@ add_vpp_library(svmdb
 # svm tools
 ##############################################################################
 
-add_vpp_executable(svmtool
+add_vpp_tool(svmtool
   SOURCES svmtool.c
   LINK_LIBRARIES vppinfra svm
 )
 
-add_vpp_executable (svmdbtool
+add_vpp_tool (svmdbtool
   SOURCES svmdbtool.c
   LINK_LIBRARIES vppinfra svm svmdb
 )
