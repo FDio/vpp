@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "eed268ed_193e7ecf",
+        "filename": "src/plugins/sfdp_services/base/interface_input/interface_input.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2026-02-10T09:24:18Z",
+      "side": 1,
+      "message": "remove outside",
+      "range": {
+        "startLine": 26,
+        "startChar": 34,
+        "endLine": 26,
+        "endChar": 41
+      },
+      "revId": "daed578d520ef64620f74b3e2bcbf674cdf66f0e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "08330222_93bc5b6a",
+        "filename": "src/plugins/sfdp_services/base/interface_input/interface_input.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2026-02-10T09:24:18Z",
+      "side": 1,
+      "message": "If you also could remove Outside",
+      "range": {
+        "startLine": 26,
+        "startChar": 34,
+        "endLine": 26,
+        "endChar": 41
+      },
+      "revId": "daed578d520ef64620f74b3e2bcbf674cdf66f0e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e8d5ef25_c21bc194",
+        "filename": "src/plugins/sfdp_services/base/interface_input/interface_input.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2026-02-10T09:24:18Z",
+      "side": 1,
+      "message": "if you could fix the nat variable as well ;)",
+      "range": {
+        "startLine": 26,
+        "startChar": 76,
+        "endLine": 26,
+        "endChar": 79
+      },
+      "revId": "daed578d520ef64620f74b3e2bcbf674cdf66f0e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e05960a1_c6de40ea",
+        "filename": "src/plugins/sfdp_services/base/interface_input/interface_input.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2026-02-10T09:24:18Z",
+      "side": 1,
+      "message": "change nat",
+      "range": {
+        "startLine": 26,
+        "startChar": 76,
+        "endLine": 26,
+        "endChar": 79
+      },
+      "revId": "daed578d520ef64620f74b3e2bcbf674cdf66f0e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
