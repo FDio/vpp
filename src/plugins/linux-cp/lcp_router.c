@@ -157,18 +157,19 @@ lcp_router_link_del (struct rtnl_link *rl, void *ctx)
       if (lcp_router_lip_ts_check ((nl_msg_info_t *) ctx, lip))
 	return;
 
+      u32 phy_sw_if_index = lip->lip_phy_sw_if_index;
+      u32 host_sw_if_index = lip->lip_host_sw_if_index;
+
       LCP_ROUTER_INFO ("delete link: %s - %U", rtnl_link_get_type (rl),
-		       format_vnet_sw_if_index_name, vnet_get_main (),
-		       lip->lip_phy_sw_if_index);
-      lcp_itf_pair_delete (lip->lip_phy_sw_if_index);
+		       format_vnet_sw_if_index_name, vnet_get_main (), phy_sw_if_index);
+      lcp_itf_pair_delete (phy_sw_if_index);
 
       if (rtnl_link_is_vlan (rl))
 	{
 	  LCP_ROUTER_INFO ("delete vlan: %s -> %U", rtnl_link_get_name (rl),
-			   format_vnet_sw_if_index_name, vnet_get_main (),
-			   lip->lip_phy_sw_if_index);
-	  vnet_delete_sub_interface (lip->lip_phy_sw_if_index);
-	  vnet_delete_sub_interface (lip->lip_host_sw_if_index);
+			   format_vnet_sw_if_index_name, vnet_get_main (), phy_sw_if_index);
+	  vnet_delete_sub_interface (phy_sw_if_index);
+	  vnet_delete_sub_interface (host_sw_if_index);
 	}
     }
   else
