@@ -16,5 +16,5 @@
 void
 ip_neighbor_learn_dp (const ip_neighbor_learn_t * l)
 {
-  vl_api_rpc_call_main_thread (ip_neighbor_learn, (u8 *) l, sizeof (*l));
+  vlib_rpc_call_main_thread (ip_neighbor_learn, (u8 *) l, sizeof (*l));
 }

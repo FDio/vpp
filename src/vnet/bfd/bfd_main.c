@@ -617,7 +617,7 @@ bfd_event_rpc (u32 bs_idx)
   bfd_rpc_event_t *event = (bfd_rpc_event_t *) data;
 
   event->bs_idx = bs_idx;
-  vl_api_rpc_call_main_thread (bfd_rpc_event_cb, data, data_size);
+  vlib_rpc_call_main_thread (bfd_rpc_event_cb, data, data_size);
 }
 
 typedef struct
@@ -651,7 +651,7 @@ bfd_notify_listeners_rpc (u32 bs_idx)
   u8 data[data_size];
   bfd_rpc_notify_listeners_t *notify = (bfd_rpc_notify_listeners_t *) data;
   notify->bs_idx = bs_idx;
-  vl_api_rpc_call_main_thread (bfd_rpc_notify_listeners_cb, data, data_size);
+  vlib_rpc_call_main_thread (bfd_rpc_notify_listeners_cb, data, data_size);
 }
 
 static void

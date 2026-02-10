@@ -12,7 +12,6 @@
 #include <vlibmemory/socket_api.h>
 #include <vlibmemory/socket_client.h>
 
-void vl_api_rpc_call_main_thread (void *fp, u8 * data, u32 data_length);
 void vl_api_force_rpc_call_main_thread (void *fp, u8 * data, u32 data_length);
 u16 vl_client_get_first_plugin_msg_id (const char *plugin_name);
 u8 *vl_api_serialize_message_table (api_main_t * am, u8 * vector);

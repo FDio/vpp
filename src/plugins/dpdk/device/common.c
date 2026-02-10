@@ -429,8 +429,6 @@ dpdk_device_stop (dpdk_device_t * xd)
 		 xd->device_index);
 }
 
-void vl_api_force_rpc_call_main_thread (void *fp, u8 * data, u32 data_length);
-
 always_inline int
 dpdk_port_state_callback_inline (dpdk_portid_t port_id,
 				 enum rte_eth_event_type type, void *param)
