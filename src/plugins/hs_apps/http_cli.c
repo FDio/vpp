@@ -815,8 +815,10 @@ hcs_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
 
 start_server:
 
-  if (hcm->uri == 0)
-    hcm->uri = format (0, "http://0.0.0.0");
+  if (hcm->uri)
+    vec_terminate_c_string (hcm->uri);
+  else
+    hcm->uri = format (0, "http://0.0.0.0%c", 0);
 
   if (hcm->app_index != (u32) ~0)
     {

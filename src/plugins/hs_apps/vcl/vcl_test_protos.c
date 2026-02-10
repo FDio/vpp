@@ -1666,9 +1666,8 @@ vt_process_http_server_read_msg (vcl_test_session_t *ts, void *buf,
 	  if (msg.data.target_path_len)
 	    {
 	      vec_validate (target_path, msg.data.target_path_len - 1);
-	      memcpy (target_path,
-		      buf + sizeof (msg) + msg.data.target_path_offset - 1,
-		      msg.data.target_path_len + 1);
+	      memcpy (target_path, buf + sizeof (msg) + msg.data.target_path_offset,
+		      msg.data.target_path_len);
 	      if (http_validate_abs_path_syntax (target_path, 0))
 		{
 		  vt_http_send_reply_msg (ts, HTTP_STATUS_BAD_REQUEST);
