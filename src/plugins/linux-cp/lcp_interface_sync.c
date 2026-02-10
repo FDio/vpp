@@ -19,6 +19,7 @@ lcp_itf_pair_sync_state (lcp_itf_pair_t *lip)
 {
   vnet_sw_interface_t *sw;
   vnet_sw_interface_t *sup_sw;
+  clib_error_t *error;
   int curr_ns_fd = -1;
   int vif_ns_fd = -1;
   u32 mtu;
@@ -87,10 +88,13 @@ lcp_itf_pair_sync_state (lcp_itf_pair_t *lip)
    */
   vnet_sw_interface_set_mtu (vnet_get_main (), lip->lip_phy_sw_if_index, mtu);
   vnet_sw_interface_set_mtu (vnet_get_main (), lip->lip_host_sw_if_index, mtu);
-  if (NULL == vnet_netlink_get_link_mtu (lip->lip_vif_index, &netlink_mtu))
+  error = vnet_netlink_get_link_mtu (lip->lip_vif_index, &netlink_mtu);
+  if (!error && (netlink_mtu != mtu))
+    error = vnet_netlink_set_link_mtu (lip->lip_vif_index, mtu);
+  if (error)
     {
-      if (netlink_mtu != mtu)
-	vnet_netlink_set_link_mtu (lip->lip_vif_index, mtu);
+      clib_warning ("%U", format_clib_error, error);
+      clib_error_free (error);
     }
 
   /* Linux will remove IPv6 addresses on children when the parent state
@@ -256,6 +260,7 @@ lcp_itf_ip4_add_del_interface_addr (ip4_main_t *im, uword opaque,
 				    u32 is_del)
 {
   const lcp_itf_pair_t *lip;
+  clib_error_t *error;
   int curr_ns_fd = -1;
   int vif_ns_fd = -1;
 
@@ -283,9 +288,14 @@ lcp_itf_ip4_add_del_interface_addr (ip4_main_t *im, uword opaque,
 		    address_length);
 
   if (is_del)
-    vnet_netlink_del_ip4_addr (lip->lip_vif_index, address, address_length);
+    error = vnet_netlink_del_ip4_addr (lip->lip_vif_index, address, address_length);
   else
-    vnet_netlink_add_ip4_addr (lip->lip_vif_index, address, address_length);
+    error = vnet_netlink_add_ip4_addr (lip->lip_vif_index, address, address_length);
+  if (error)
+    {
+      clib_warning ("%U", format_clib_error, error);
+      clib_error_free (error);
+    }
 
   if (vif_ns_fd != -1)
     close (vif_ns_fd);
@@ -305,6 +315,7 @@ lcp_itf_ip6_add_del_interface_addr (ip6_main_t *im, uword opaque,
 				    u32 is_del)
 {
   const lcp_itf_pair_t *lip;
+  clib_error_t *error;
   int curr_ns_fd = -1;
   int vif_ns_fd = -1;
 
@@ -330,9 +341,14 @@ lcp_itf_ip6_add_del_interface_addr (ip6_main_t *im, uword opaque,
 		    format_lcp_itf_pair, lip, format_ip6_address, address,
 		    address_length);
   if (is_del)
-    vnet_netlink_del_ip6_addr (lip->lip_vif_index, address, address_length);
+    error = vnet_netlink_del_ip6_addr (lip->lip_vif_index, address, address_length);
   else
-    vnet_netlink_add_ip6_addr (lip->lip_vif_index, address, address_length);
+    error = vnet_netlink_add_ip6_addr (lip->lip_vif_index, address, address_length);
+  if (error)
+    {
+      clib_warning ("%U", format_clib_error, error);
+      clib_error_free (error);
+    }
 
   if (vif_ns_fd != -1)
     close (vif_ns_fd);
