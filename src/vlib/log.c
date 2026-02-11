@@ -183,17 +183,21 @@ vlib_log_va (vlib_log_level_t level, vlib_log_class_t class, char *fmt,
     {
       u8 *l = 0;
       l = format (l, "%U", format_vlib_log_class, class);
-      int is_term = vec_c_string_is_terminated (l) ? 1 : 0;
+      int is_term = s && vec_c_string_is_terminated (s) ? 1 : 0;
+      const char *log_class = l ? (const char *) l : "";
+      const char *log_msg = s ? (const char *) s : "";
+      int log_class_len = l ? (int) vec_len (l) : 0;
+      int log_msg_len = s ? (int) (vec_len (s) - is_term) : 0;
       if (syslog_enabled)
 	{
 	  int prio = log_level_to_syslog_priority[level];
-	  syslog (prio, "%.*s: %.*s", (int) vec_len (l), l,
-		  (int) vec_len (s) - is_term, s);
+	  syslog (prio, "%.*s: %.*s", log_class_len, log_class,
+		  log_msg_len, log_msg);
 	}
       if (kmsg_enabled && lm->kmsg_filp)
 	{
-	  fprintf (lm->kmsg_filp, "%.*s: %.*s\n", (int) vec_len (l), l, (int) vec_len (s) - is_term,
-		   s);
+	  fprintf (lm->kmsg_filp, "%.*s: %.*s\n", log_class_len, log_class,
+		   log_msg_len, log_msg);
 	}
       vec_free (l);
     }
