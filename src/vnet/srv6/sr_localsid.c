@@ -56,17 +56,15 @@ sr_localsid_key_create (sr_localsid_key_t * key, ip6_address_t * addr,
  * @param is_decap Boolean of whether decapsulation is allowed in this function
  * @param behavior Type of behavior (function) for this localsid
  * @param sw_if_index Only for L2/L3 xconnect. OIF. In VRF variant the fib_table.
- * @param vlan_index Only for L2 xconnect. Outgoing VLAN tag.
  * @param fib_table  FIB table in which we should install the localsid entry
  * @param nh_addr Next Hop IPv4/IPv6 address. Only for L2/L3 xconnect.
  *
  * @return 0 on success, error otherwise.
  */
 int
-sr_cli_localsid (char is_del, ip6_address_t * localsid_addr,
-		 u16 localsid_prefix_len, char end_psp, u8 behavior,
-		 u32 sw_if_index, u32 vlan_index, u32 fib_table,
-		 ip46_address_t * nh_addr, int usid_len, void *ls_plugin_mem)
+sr_cli_localsid (char is_del, ip6_address_t *localsid_addr, u16 localsid_prefix_len, char end_psp,
+		 u8 behavior, u32 sw_if_index, u32 fib_table, ip46_address_t *nh_addr, int usid_len,
+		 void *ls_plugin_mem)
 {
   ip6_sr_main_t *sm = &sr_main;
   uword *p;
@@ -242,7 +240,6 @@ sr_cli_localsid (char is_del, ip6_address_t * localsid_addr,
       break;
     case SR_BEHAVIOR_DX2:
       ls->sw_if_index = sw_if_index;
-      ls->vlan_index = vlan_index;
       break;
     }
 
@@ -335,7 +332,7 @@ sr_cli_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
 {
   vnet_main_t *vnm = vnet_get_main ();
   ip6_sr_main_t *sm = &sr_main;
-  u32 sw_if_index = (u32) ~ 0, vlan_index = (u32) ~ 0, fib_index = 0;
+  u32 sw_if_index = (u32) ~0, fib_index = 0;
   int prefix_len = 0;
   int is_del = 0;
   int end_psp = 0;
@@ -367,9 +364,8 @@ sr_cli_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	       && unformat (input, "addr %U", unformat_ip6_address,
 			    &resulting_address))
 	address_set = 1;
-      else if (unformat (input, "fib-table %u", &fib_index));
-      else if (vlan_index == (u32) ~ 0
-	       && unformat (input, "vlan %u", &vlan_index));
+      else if (unformat (input, "fib-table %u", &fib_index))
+	;
       else if (!behavior && unformat (input, "behavior"))
 	{
 	  if (unformat (input, "end.x %U %U",
@@ -462,19 +458,13 @@ sr_cli_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
     return clib_error_return (0,
 			      "Error: SRv6 LocalSID address is mandatory.");
   if (!is_del && !behavior)
-    return clib_error_return (0,
-			      "Error: SRv6 LocalSID behavior is mandatory.");
-  if (vlan_index != (u32) ~ 0)
-    return clib_error_return (0,
-			      "Error: SRv6 End.DX2 with rewrite VLAN tag not supported by now.");
+    return clib_error_return (0, "Error: SRv6 LocalSID behavior is mandatory.");
   if (end_psp && !(behavior == SR_BEHAVIOR_END || behavior == SR_BEHAVIOR_X))
     return clib_error_return (0,
 			      "Error: SRv6 PSP only compatible with End and End.X");
 
-  rv =
-    sr_cli_localsid (is_del, &resulting_address, prefix_len, end_psp,
-		     behavior, sw_if_index, vlan_index, fib_index, &next_hop,
-		     usid_size, ls_plugin_mem);
+  rv = sr_cli_localsid (is_del, &resulting_address, prefix_len, end_psp, behavior, sw_if_index,
+			fib_index, &next_hop, usid_size, ls_plugin_mem);
 
   if (behavior == SR_BEHAVIOR_END_UN_PERF || behavior == SR_BEHAVIOR_UA)
     {
@@ -482,9 +472,8 @@ sr_cli_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	{
 	  u16 perf_len;
 	  perf_len = prefix_len + usid_size;
-	  rv = sr_cli_localsid (is_del, &resulting_address, perf_len, end_psp,
-				SR_BEHAVIOR_END, sw_if_index, vlan_index,
-				fib_index, &next_hop, 0, ls_plugin_mem);
+	  rv = sr_cli_localsid (is_del, &resulting_address, perf_len, end_psp, SR_BEHAVIOR_END,
+				sw_if_index, fib_index, &next_hop, 0, ls_plugin_mem);
 	}
     }
 
@@ -633,16 +622,12 @@ show_sr_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			   format_ip6_address, &ls->next_hop.ip6);
 	  break;
 	case SR_BEHAVIOR_DX2:
-	  if (ls->vlan_index == (u32) ~ 0)
-	    vlib_cli_output (vm,
-			     "\tAddress: \t%U/%u\n\tBehavior: \tDX2 (Endpoint with decapulation and Layer-2 cross-connect)"
-			     "\n\tIface:  \t%U", format_ip6_address,
-			     &ls->localsid, ls->localsid_prefix_len,
-			     format_vnet_sw_if_index_name, vnm,
-			     ls->sw_if_index);
-	  else
-	    vlib_cli_output (vm,
-			     "Unsupported yet. (DX2 with egress VLAN rewrite)");
+	  vlib_cli_output (vm,
+			   "\tAddress: \t%U/%u\n\tBehavior: \tDX2 (Endpoint with decapulation and "
+			   "Layer-2 cross-connect)"
+			   "\n\tIface:  \t%U",
+			   format_ip6_address, &ls->localsid, ls->localsid_prefix_len,
+			   format_vnet_sw_if_index_name, vnm, ls->sw_if_index);
 	  break;
 	case SR_BEHAVIOR_DT6:
 	  vlib_cli_output (vm,
