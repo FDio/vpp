@@ -142,8 +142,6 @@ typedef struct
 
   u32 fib_table;				/**< FIB table where localsid is registered */
 
-  u32 vlan_index;				/**< VLAN tag (not an index) */
-
   ip46_address_t next_hop;		/**< Next_hop for xconnect usage only */
 
   u32 nh_adj;						/**< Next_adj for xconnect usage only */
@@ -312,6 +310,9 @@ typedef struct
   u32 fib_table_ip6;
   u32 fib_table_ip4;
 
+  /* L2 feature bitmap next-node indexes for sr-pl-rewrite-encaps-l2 */
+  u32 l2_sr_feat_next[32];
+
   /* convenience */
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
@@ -357,11 +358,9 @@ extern int sr_policy_mod (ip6_address_t *bsid, u32 index, u32 fib_table,
 			  ip6_address_t *encap_src, u32 sl_index, u32 weight);
 extern int sr_policy_del (ip6_address_t * bsid, u32 index);
 
-extern int
-sr_cli_localsid (char is_del, ip6_address_t * localsid_addr,
-		 u16 localsid_prefix_len, char end_psp, u8 behavior,
-		 u32 sw_if_index, u32 vlan_index, u32 fib_table,
-		 ip46_address_t * nh_addr, int usid_len, void *ls_plugin_mem);
+extern int sr_cli_localsid (char is_del, ip6_address_t *localsid_addr, u16 localsid_prefix_len,
+			    char end_psp, u8 behavior, u32 sw_if_index, u32 fib_table,
+			    ip46_address_t *nh_addr, int usid_len, void *ls_plugin_mem);
 
 extern int
 sr_steering_policy (int is_del, ip6_address_t * bsid, u32 sr_policy_index,
