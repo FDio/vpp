@@ -109,7 +109,7 @@ typedef enum
   QUIC_N_ERROR,
 } quic_error_t;
 
-typedef enum quic_ctx_conn_state_
+typedef enum quic_ctx_conn_state_ : u8
 {
   QUIC_CONN_STATE_OPENED,
   QUIC_CONN_STATE_HANDSHAKE,
@@ -163,7 +163,7 @@ typedef struct quic_ctx_
       u32 listener_ctx_id;
       u32 client_opaque;
       u8 *srv_hostname;
-      u8 conn_state;
+      quic_ctx_conn_state_t conn_state;
       u8 udp_is_ip4;
       u8 _qctx_end_marker;	/* Leave this at the end */
     };

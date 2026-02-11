@@ -163,6 +163,8 @@ func QuicCpsTest(s *VethsSuite) {
 	o := clientVpp.Vppctl("test echo client nclients 10000 bytes 64 syn-timeout 27" +
 		" uri quic://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1)
 	Log(o)
+	// wait a bit to be sure quic do not crash when app detached after syn-timeout
+	time.Sleep(1 * time.Second)
 	Log(serverVpp.Vppctl("show quic"))
 	Log(clientVpp.Vppctl("show quic"))
 	Log(serverVpp.Vppctl("show quic crypto context"))

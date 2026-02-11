@@ -179,14 +179,16 @@ quic_quicly_connection_closed (quic_ctx_t *ctx)
     {
     /* Not much can be done when UDP connection is closed */
     case QUIC_CONN_STATE_TRANSPORT_CLOSED:
-      session_transport_reset_notify (&ctx->connection);
+      if (!(ctx->flags & QUIC_F_NO_APP_SESSION))
+	session_transport_reset_notify (&ctx->connection);
       quic_quicly_connection_delete (ctx);
       break;
     case QUIC_CONN_STATE_READY:
       /* Error on an opened connection (timeout...)
 	 This puts the session in closing state, we should receive a
 	 notification when the app has closed its session */
-      session_transport_reset_notify (&ctx->connection);
+      if (!(ctx->flags & QUIC_F_NO_APP_SESSION))
+	session_transport_reset_notify (&ctx->connection);
       /* This ensures we delete the connection when the app confirms the close
        */
       ctx->conn_state = QUIC_CONN_STATE_PASSIVE_CLOSING_QUIC_CLOSED;
