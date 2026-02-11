@@ -51,6 +51,24 @@
       "message": "@Steven, maybe we should look at this.",
       "revId": "d3694d21134c48ab239de771806b60e691720679",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5037a023_ca293e9d",
+        "filename": "test/asf/test_session_sdl.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2026-02-11T15:32:46Z",
+      "side": 1,
+      "message": "The failure happens on second test which the API adds 64k SDL entries to the backend in one call for scaling test. It only fails when ASen dwbug image is used. It works fine using debug image without ASan or ASan release image. ASan debug image runs a lot slower. When adding 64k entries, the backend takes a little longer than expected to finish and the API response timeout expires in the test. Please only skip the second test for ASan, not the entire class (3 tests). I verified that works. Ideally, when ASan image is used, the response timeout should be adjusted higher to avoid timeout. But that may require a bit of change in the test frame work.",
+      "parentUuid": "785650cd_e5ad4997",
+      "revId": "d3694d21134c48ab239de771806b60e691720679",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
