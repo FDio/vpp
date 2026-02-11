@@ -685,6 +685,7 @@ af_packet_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index,
 				   u32 flags)
 {
   af_packet_main_t *apm = &af_packet_main;
+  clib_error_t *error;
   vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
   af_packet_if_t *apif =
     pool_elt_at_index (apm->interfaces, hw->dev_instance);
@@ -698,12 +699,17 @@ af_packet_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index,
   if (apif->is_admin_up)
     {
       hw_flags = VNET_HW_INTERFACE_FLAG_LINK_UP;
-      vnet_netlink_set_link_state (apif->host_if_index, 1);
+      error = vnet_netlink_set_link_state (apif->host_if_index, 1);
     }
   else
     {
       hw_flags = 0;
-      vnet_netlink_set_link_state (apif->host_if_index, 0);
+      error = vnet_netlink_set_link_state (apif->host_if_index, 0);
+    }
+  if (error)
+    {
+      clib_warning ("%U", format_clib_error, error);
+      clib_error_free (error);
     }
 
   vnet_hw_interface_set_flags (vnm, hw_if_index, hw_flags);
