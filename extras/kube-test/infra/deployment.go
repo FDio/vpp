@@ -52,7 +52,13 @@ func (s *BaseSuite) DeleteNamespace(namespace string) error {
 	return ClientSet.CoreV1().Namespaces().Delete(context.TODO(), namespace, metav1.DeleteOptions{})
 }
 
-func (s *BaseSuite) DeployPod(pod *Pod) {
+func (s *BaseSuite) DeployPod(pod *Pod, enableDisableVcl bool) {
+	var enableDisableVclStr string
+	if enableDisableVcl {
+		enableDisableVclStr = "enable"
+	} else {
+		enableDisableVclStr = "disable"
+	}
 	pod.CreatedPod = &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: s.Namespace,
@@ -61,7 +67,7 @@ func (s *BaseSuite) DeployPod(pod *Pod) {
 				"app": "Kube-Test",
 			},
 			Annotations: map[string]string{
-				"cni.projectcalico.org/vppVcl": "enable",
+				"cni.projectcalico.org/vppVcl": enableDisableVclStr,
 			},
 		},
 		Spec: corev1.PodSpec{

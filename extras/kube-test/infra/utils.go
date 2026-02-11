@@ -19,6 +19,62 @@ import (
 )
 
 const PerfLogsDir string = ".perf_logs/"
+const VppStartupConf string = `"unix {
+  log /tmp/vpp.log
+  full-coredump
+  coredump-size unlimited
+  cli-listen /cli.sock
+  runtime-dir /tmp/vpp/var/run
+}
+
+api-trace {
+  on
+}
+
+socksvr {
+  socket-name /api.sock
+}
+
+statseg {
+  socket-name /stats.sock
+}
+
+plugins {
+  plugin default { disable }
+
+  plugin unittest_plugin.so { enable }
+  plugin quic_plugin.so { enable }
+  plugin quic_quicly_plugin.so { enable }
+  plugin af_packet_plugin.so { enable }
+  plugin hs_apps_plugin.so { enable }
+  plugin hsi_plugin.so { enable }
+  plugin http_plugin.so { enable }
+  plugin http_unittest_plugin.so { enable }
+  plugin http_static_plugin.so { enable }
+  plugin prom_plugin.so { enable }
+  plugin tlsopenssl_plugin.so { enable }
+  plugin ping_plugin.so { enable }
+  plugin nsim_plugin.so { enable }
+  plugin mactime_plugin.so { enable }
+  plugin arping_plugin.so { enable }
+  plugin tap_plugin.so { enable }
+}
+
+logging {
+  default-log-level debug
+  default-syslog-log-level debug
+}
+
+session {
+  enable
+  use-app-socket-api
+}
+"`
+const VppCliConf string = `"create host-interface name eth0 mode ip
+set int ip addr host-eth0 $(ip addr show dev eth0 | grep 'inet '| awk '{print $2}')
+ip route add 0.0.0.0/0 via host-eth0
+set int st host-eth0 up
+"`
 
 func boolPtr(b bool) *bool {
 	return &b
@@ -296,9 +352,9 @@ func Log(log any, arg ...any) {
 	} else {
 		logStr = fmt.Sprintf(fmt.Sprint(log), arg...)
 	}
-	logs := strings.Split(logStr, "\n")
+	logs := strings.SplitSeq(logStr, "\n")
 
-	for _, line := range logs {
+	for line := range logs {
 		Logger.Println(line)
 	}
 	if *IsVerbose {
