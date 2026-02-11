@@ -130,6 +130,7 @@ l2input_bd_config (u32 bd_index)
   _ (FWD, "l2-fwd")                                                                                \
   _ (RW, "l2-rw")                                                                                  \
   _ (LEARN, "l2-learn")                                                                            \
+  _ (SRV6, "sr-pl-rewrite-encaps-l2")                                                              \
   _ (VTR, "l2-input-vtr")                                                                          \
   _ (L2_IP_QOS_RECORD, "l2-ip-qos-record")                                                         \
   _ (VPATH, "vpath-input-l2")                                                                      \
