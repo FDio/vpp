@@ -187,7 +187,6 @@ vl_api_sr_mobile_localsid_add_del_t_handler (
 			0, // ignore end_psp
 			behavior,
 			0, // ignore sw_if_index
-			0, // ignore vlan_index
 			ntohl (mp->fib_table),
 			NULL, // ignore nh_addr
 			0,    // ignore usid_len

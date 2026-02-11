@@ -119,25 +119,26 @@ l2input_bd_config (u32 bd_index)
 /* L2 input features */
 
 /* Mappings from feature ID to graph node name in reverse order */
-#define foreach_l2input_feat                    \
- _(DROP,          "feature-bitmap-drop")        \
- _(XCONNECT,      "l2-output")                  \
- _(FLOOD,         "l2-flood")                   \
- _(ARP_UFWD,      "l2-uu-fwd")                  \
- _(ARP_TERM,      "arp-term-l2bd")              \
- _(UU_FLOOD,      "l2-flood")                   \
- _(UU_FWD,        "l2-uu-fwd")                  \
- _(FWD,           "l2-fwd")                     \
- _(RW,            "l2-rw")                      \
- _(LEARN,         "l2-learn")                   \
- _(VTR,           "l2-input-vtr")               \
- _(L2_IP_QOS_RECORD, "l2-ip-qos-record")        \
- _(VPATH,         "vpath-input-l2")             \
- _(ACL,           "l2-input-acl")               \
- _(POLICER_CLAS,  "l2-policer-classify")	\
- _(INPUT_FEAT_ARC, "l2-input-feat-arc")         \
- _(INPUT_CLASSIFY, "l2-input-classify")         \
- _(SPAN,          "span-l2-input")
+#define foreach_l2input_feat                                                                       \
+  _ (DROP, "feature-bitmap-drop")                                                                  \
+  _ (XCONNECT, "l2-output")                                                                        \
+  _ (FLOOD, "l2-flood")                                                                            \
+  _ (ARP_UFWD, "l2-uu-fwd")                                                                        \
+  _ (ARP_TERM, "arp-term-l2bd")                                                                    \
+  _ (UU_FLOOD, "l2-flood")                                                                         \
+  _ (UU_FWD, "l2-uu-fwd")                                                                          \
+  _ (FWD, "l2-fwd")                                                                                \
+  _ (RW, "l2-rw")                                                                                  \
+  _ (LEARN, "l2-learn")                                                                            \
+  _ (SRV6, "sr-pl-rewrite-encaps-l2")                                                              \
+  _ (VTR, "l2-input-vtr")                                                                          \
+  _ (L2_IP_QOS_RECORD, "l2-ip-qos-record")                                                         \
+  _ (VPATH, "vpath-input-l2")                                                                      \
+  _ (ACL, "l2-input-acl")                                                                          \
+  _ (POLICER_CLAS, "l2-policer-classify")                                                          \
+  _ (INPUT_FEAT_ARC, "l2-input-feat-arc")                                                          \
+  _ (INPUT_CLASSIFY, "l2-input-classify")                                                          \
+  _ (SPAN, "span-l2-input")
 
 /* Feature bitmap positions */
 typedef enum
