@@ -16,6 +16,23 @@
       "message": "Re-running failed jobs via Github UI",
       "revId": "906be5152e4e92919c863a9d2241141948d9c658",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0c221ae8_930e5ed4",
+        "filename": "src/plugins/linux-cp/lcp_nl.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 752,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2026-02-11T20:25:53Z",
+      "side": 1,
+      "message": "Is the refcnt needed? It seems like it\u0027s tracking the number of active pairs in the pool. Could you just use lcp_itf_num_pairs() to determine whether a pair being added/deleted is the first/last one?",
+      "revId": "906be5152e4e92919c863a9d2241141948d9c658",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
