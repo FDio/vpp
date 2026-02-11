@@ -34,6 +34,24 @@
       "parentUuid": "d007d1f9_67ff133c",
       "revId": "07414f912be31ce0694363552a2de55ff6ec2bc2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cc5b795c_73a4592e",
+        "filename": "src/plugins/http/http.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 866,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-02-11T06:01:24Z",
+      "side": 1,
+      "message": "True, that is a trade-off. I see a couple of options:\n - I can mark all http tests to be skipped under ASAN. No impact on http,\n - I can change the vec_validate to vec_set_len(). Slightly lower overhead than vec_validate(), but still mark the vector with the right len (nice for debugging and expressing intent, plus it will ASSERT() in debug mode if for some reason the memory is too small) and handle ASAN marking if needed\n - I can use clib_mem_unpoison() which is a no-op if ASAN is not enabled. That makes it 0-overhead and still allow to benefit from ASAN for the rest of http\n - leave it as-is\n \nWhat would you prefer? My opinion is ASAN is beneficial and the overhead here is tiny.",
+      "parentUuid": "bbdc902e_c652cd33",
+      "revId": "07414f912be31ce0694363552a2de55ff6ec2bc2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
