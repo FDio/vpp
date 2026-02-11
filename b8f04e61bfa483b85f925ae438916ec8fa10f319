@@ -33,6 +33,23 @@
       "message": "Could we re-trigger the CI?\nSeems to be some transient error\n\n+ git fetch --tags origin refs/changes/09/44809/7\nfatal: unable to access \u0027https://gerrit.fd.io/r/vpp/\u0027: Failed to connect to gerrit.fd.io port 443 after 7673 ms: Couldn\u0027t connect to server",
       "revId": "b8f04e61bfa483b85f925ae438916ec8fa10f319",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f146c2fa_ba9cbdfe",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2026-02-11T14:32:34Z",
+      "side": 1,
+      "message": "recheck",
+      "revId": "b8f04e61bfa483b85f925ae438916ec8fa10f319",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
