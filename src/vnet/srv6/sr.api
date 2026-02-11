@@ -45,7 +45,7 @@ typedef srv6_sid_list_with_sl_index
     @param behavior Type of behavior (function) for this localsid
     @param sw_if_index Only for L2/L3 xconnect. OIF. In VRF variant the
      fib_table. Default:0xffffffff
-    @param vlan_index Only for L2 xconnect. Outgoing VLAN tag.
+    @param vlan_index Unused, will be ignored.
     @param fib_table  FIB table in which we should install the localsid entry
     @param nh_addr Next Hop IPv46 address. Only for L2/L3 xconnect.
 */

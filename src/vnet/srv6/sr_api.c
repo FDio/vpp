@@ -32,11 +32,6 @@ static void vl_api_sr_localsid_add_del_t_handler
   u16 localsid_prefix_len = 128;
   ip46_address_t prefix;
   ip6_address_t localsid;
-/*
- * int sr_cli_localsid (char is_del, ip6_address_t *localsid_addr,
- *  char end_psp, u8 behavior, u32 sw_if_index, u32 vlan_index, u32 fib_table,
- *  ip46_address_t *nh_addr, void *ls_plugin_mem)
- */
   if (mp->behavior == SR_BEHAVIOR_X || mp->behavior == SR_BEHAVIOR_UA ||
       mp->behavior == SR_BEHAVIOR_DX6 || mp->behavior == SR_BEHAVIOR_DX4 ||
       mp->behavior == SR_BEHAVIOR_DX2)
@@ -58,10 +53,8 @@ static void vl_api_sr_localsid_add_del_t_handler
   ip6_address_decode (mp->localsid, &localsid);
   ip_address_decode (&mp->nh_addr, &prefix);
 
-  rv = sr_cli_localsid (mp->is_del, &localsid, localsid_prefix_len,
-			mp->end_psp, mp->behavior, ntohl (mp->sw_if_index),
-			ntohl (mp->vlan_index), ntohl (mp->fib_table), &prefix,
-			usid_len, NULL);
+  rv = sr_cli_localsid (mp->is_del, &localsid, localsid_prefix_len, mp->end_psp, mp->behavior,
+			ntohl (mp->sw_if_index), ntohl (mp->fib_table), &prefix, usid_len, NULL);
 
   BAD_SW_IF_INDEX_LABEL;
   REPLY_MACRO (VL_API_SR_LOCALSID_ADD_DEL_REPLY);
@@ -135,8 +128,7 @@ vl_api_sr_localsid_add_del_v2_t_handler (vl_api_sr_localsid_add_del_v2_t *mp)
   ip_address_decode (&mp->nh_addr, &prefix);
 
   rv = sr_cli_localsid (mp->is_del, &localsid, localsid_prefix_len, mp->end_psp, mp->behavior,
-			ntohl (mp->sw_if_index), ntohl (mp->vlan_index), ntohl (mp->fib_table),
-			&prefix, usid_len, NULL);
+			ntohl (mp->sw_if_index), ntohl (mp->fib_table), &prefix, usid_len, NULL);
 
 reply:
   BAD_SW_IF_INDEX_LABEL;
@@ -370,7 +362,6 @@ static void send_sr_localsid_details
   rmp->end_psp = t->end_psp;
   rmp->behavior = t->behavior;
   rmp->fib_table = htonl (t->fib_table);
-  rmp->vlan_index = htonl (t->vlan_index);
   ip_address_encode (&t->next_hop, IP46_TYPE_ANY, &rmp->xconnect_nh_addr);
 
   if (t->behavior == SR_BEHAVIOR_T || t->behavior == SR_BEHAVIOR_DT6)
@@ -422,7 +413,6 @@ send_sr_localsid_with_packet_stats_details (int local_sid_index,
   rmp->end_psp = t->end_psp;
   rmp->behavior = t->behavior;
   rmp->fib_table = htonl (t->fib_table);
-  rmp->vlan_index = htonl (t->vlan_index);
   ip_address_encode (&t->next_hop, IP46_TYPE_ANY, &rmp->xconnect_nh_addr);
 
   if (t->behavior == SR_BEHAVIOR_T || t->behavior == SR_BEHAVIOR_DT6)
@@ -467,7 +457,7 @@ vl_api_sr_localsids_with_packet_stats_dump_t_handler (
   for (i = 0; i < vec_len (localsid_list); i++)
     {
       t = localsid_list[i];
-      send_sr_localsid_with_packet_stats_details (i, t, reg, mp->context);
+      send_sr_localsid_with_packet_stats_details (t - sm->localsids, t, reg, mp->context);
     }
 }
 

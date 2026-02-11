@@ -751,7 +751,6 @@ class TestSRv6(VppTestCase):
             nh_addr=0,
             end_psp=0,
             sw_if_index=0,
-            vlan_index=0,
             fib_table=0,
         )
         localsid.add_vpp_config()
@@ -841,7 +840,6 @@ class TestSRv6(VppTestCase):
             nh_addr=0,
             end_psp=1,
             sw_if_index=0,
-            vlan_index=0,
             fib_table=0,
         )
         localsid.add_vpp_config()
@@ -923,7 +921,6 @@ class TestSRv6(VppTestCase):
             nh_addr=self.pg1.remote_ip6,
             end_psp=0,
             sw_if_index=self.pg1.sw_if_index,
-            vlan_index=0,
             fib_table=0,
         )
         localsid.add_vpp_config()
@@ -1007,7 +1004,6 @@ class TestSRv6(VppTestCase):
             nh_addr=self.pg1.remote_ip6,
             end_psp=1,
             sw_if_index=self.pg1.sw_if_index,
-            vlan_index=0,
             fib_table=0,
         )
         localsid.add_vpp_config()
@@ -1078,7 +1074,6 @@ class TestSRv6(VppTestCase):
             nh_addr=self.pg1.remote_ip6,
             end_psp=0,
             sw_if_index=self.pg1.sw_if_index,
-            vlan_index=0,
             fib_table=0,
         )
         localsid.add_vpp_config()
@@ -1176,7 +1171,6 @@ class TestSRv6(VppTestCase):
             nh_addr=0,
             end_psp=0,
             sw_if_index=vrf_1,
-            vlan_index=0,
             fib_table=0,
         )
         localsid.add_vpp_config()
@@ -1248,7 +1242,6 @@ class TestSRv6(VppTestCase):
             nh_addr=self.pg1.remote_ip4,
             end_psp=0,
             sw_if_index=self.pg1.sw_if_index,
-            vlan_index=0,
             fib_table=0,
         )
         localsid.add_vpp_config()
@@ -1351,7 +1344,6 @@ class TestSRv6(VppTestCase):
             nh_addr=0,
             end_psp=0,
             sw_if_index=vrf_1,
-            vlan_index=0,
             fib_table=0,
         )
         localsid.add_vpp_config()
@@ -1422,7 +1414,6 @@ class TestSRv6(VppTestCase):
             nh_addr=0,
             end_psp=0,
             sw_if_index=self.pg1.sw_if_index,
-            vlan_index=0,
             fib_table=0,
         )
         localsid.add_vpp_config()

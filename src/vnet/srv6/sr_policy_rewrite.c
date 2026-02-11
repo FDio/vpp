@@ -37,6 +37,8 @@
 #include <vnet/dpo/dpo.h>
 #include <vnet/dpo/replicate_dpo.h>
 #include <vnet/srv6/sr_pt.h>
+#include <vnet/l2/l2_input.h>
+#include <vnet/l2/feat_bitmap.h>
 
 #include <vppinfra/byte_order.h>
 #include <vppinfra/error.h>
@@ -2026,7 +2028,7 @@ sr_policy_rewrite_encaps_l2 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 
 	  if (vec_len (sp1->segments_lists) == 1)
-	    vnet_buffer (b1)->ip.adj_index[VLIB_TX] = sp1->segments_lists[1];
+	    vnet_buffer (b1)->ip.adj_index[VLIB_TX] = sp1->segments_lists[0];
 	  else
 	    {
 	      vnet_buffer (b1)->ip.flow_hash = flow_label1;
@@ -2036,7 +2038,7 @@ sr_policy_rewrite_encaps_l2 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 
 	  if (vec_len (sp2->segments_lists) == 1)
-	    vnet_buffer (b2)->ip.adj_index[VLIB_TX] = sp2->segments_lists[2];
+	    vnet_buffer (b2)->ip.adj_index[VLIB_TX] = sp2->segments_lists[0];
 	  else
 	    {
 	      vnet_buffer (b2)->ip.flow_hash = flow_label2;
@@ -2046,7 +2048,7 @@ sr_policy_rewrite_encaps_l2 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 
 	  if (vec_len (sp3->segments_lists) == 1)
-	    vnet_buffer (b3)->ip.adj_index[VLIB_TX] = sp3->segments_lists[3];
+	    vnet_buffer (b3)->ip.adj_index[VLIB_TX] = sp3->segments_lists[0];
 	  else
 	    {
 	      vnet_buffer (b3)->ip.flow_hash = flow_label3;
@@ -3641,6 +3643,10 @@ sr_policy_rewrite_init (vlib_main_t * vm)
 
   /* Register the L2 encaps node used in HW redirect */
   sm->l2_sr_policy_rewrite_index = sr_policy_rewrite_encaps_node.index;
+
+  /* Initialize L2 feature bitmap next-nodes for sr-pl-rewrite-encaps-l2 */
+  feat_bitmap_init_next_nodes (vm, sr_policy_rewrite_encaps_l2_node.index, L2INPUT_N_FEAT,
+			       l2input_get_feat_names (), sm->l2_sr_feat_next);
 
   sm->fib_table_ip6 = (u32) ~ 0;
   sm->fib_table_ip4 = (u32) ~ 0;
