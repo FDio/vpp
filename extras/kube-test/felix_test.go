@@ -168,8 +168,8 @@ func FelixPolicyChurnTest(s *FelixSuite) {
 		s.CleanupNetworkPolicies(s.Namespace, appLabel)
 	}()
 
-	s.DeployPod(s.Pods.ClientGeneric)
-	s.DeployPod(s.Pods.ServerGeneric)
+	s.DeployPod(s.Pods.ClientGeneric, false)
+	s.DeployPod(s.Pods.ServerGeneric, false)
 
 	var createdPolicies []string
 	var policiesMutex sync.Mutex

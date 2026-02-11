@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"slices"
 	"text/template"
+	"time"
 
 	"gopkg.in/yaml.v3"
 	corev1 "k8s.io/api/core/v1"
@@ -118,6 +119,22 @@ func (pod *Pod) CopyToPod(src string, dst string) {
 }
 
 func (pod *Pod) Exec(ctx context.Context, command []string) (string, error) {
+	return pod.execTemplate(ctx, true, command)
+}
+
+func (pod *Pod) ExecServer(ctx context.Context, command []string) (string, error) {
+	return pod.execTemplate(ctx, false, command)
+}
+
+func (pod *Pod) ExecVppctl(ctx context.Context, command string) (string, error) {
+	return pod.execTemplate(ctx, true, []string{"/bin/bash", "-c", "vppctl -s /cli.sock " + command})
+}
+
+func (pod *Pod) ExecServerVppctl(ctx context.Context, command string) (string, error) {
+	return pod.execTemplate(ctx, false, []string{"/bin/bash", "-c", "vppctl -s /cli.sock " + command})
+}
+
+func (pod *Pod) execTemplate(ctx context.Context, tty bool, command []string) (string, error) {
 	var stdout, stderr bytes.Buffer
 
 	// Prepare the request
@@ -129,12 +146,12 @@ func (pod *Pod) Exec(ctx context.Context, command []string) (string, error) {
 		Param("container", pod.ContainerName).
 		Param("stdout", "true").
 		Param("stderr", "true").
-		Param("tty", "true")
+		Param("tty", fmt.Sprint(tty))
 
 	for _, cmd := range command {
 		req = req.Param("command", cmd)
 	}
-	Log("%s: %s\n", pod.Name, command)
+	Log("%s: %s", pod.Name, command)
 
 	executor, err := remotecommand.NewSPDYExecutor(KubeConfig, "POST", req.URL())
 	if err != nil {
@@ -144,7 +161,7 @@ func (pod *Pod) Exec(ctx context.Context, command []string) (string, error) {
 	err = executor.StreamWithContext(ctx, remotecommand.StreamOptions{
 		Stdout: &stdout,
 		Stderr: &stderr,
-		Tty:    true,
+		Tty:    tty,
 	})
 
 	output := stdout.String()
@@ -241,4 +258,33 @@ func (s *BaseSuite) ListPodsInNamespace(ctx context.Context, namespace string) (
 	}
 
 	return podNames, nil
+}
+
+func (pod *Pod) InitVpp() {
+	ctx, cancel := context.WithTimeout(pod.suite.MainContext, time.Second*10)
+	defer cancel()
+
+	o, err := pod.Exec(ctx, []string{"/bin/bash", "-c", "echo " + VppCliConf + " > /vppcliconf.conf"})
+	AssertNil(err, o)
+
+	o, err = pod.Exec(ctx, []string{"/bin/bash", "-c", "echo " + VppStartupConf + " > /startup.conf"})
+	AssertNil(err, o)
+
+	_, err = pod.ExecServer(ctx, []string{"/bin/bash", "-c", "vpp -c /startup.conf"})
+	AssertNil(err)
+
+	// temporary workaround: VPP has to start without creating interfaces (without running 'exec XYZ.conf'),
+	// exec interface config
+	// delete interface + route
+	// exec interface config again
+	// otherwise, VPP ping sends 5 packets but receives 15
+	time.Sleep(time.Second * 1)
+	o, err = pod.ExecVppctl(ctx, "exec /vppstartup.conf")
+	AssertNil(err, o)
+	o, err = pod.ExecVppctl(ctx, "delete host-interface name eth0")
+	AssertNil(err, o)
+	o, err = pod.ExecVppctl(ctx, "ip route del 0.0.0.0/0")
+	AssertNil(err, o)
+	o, err = pod.ExecVppctl(ctx, "exec /vppstartup.conf")
+	AssertNil(err, o)
 }

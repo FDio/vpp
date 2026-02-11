@@ -37,7 +37,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     # Tools moved from derived images
     apache2-utils \
     nghttp2 \
-    wrk
+    wrk \
+    tcpdump
 
 # Because of http/3 support we can't use stock nginx in ubuntu 24.04
 RUN curl https://nginx.org/keys/nginx_signing.key | gpg --dearmor \
