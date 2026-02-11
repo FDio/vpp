@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "58216459ae708fbfd45bd99265264d1fca5bb044",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3ec473c9_8a1bd16e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2026-02-11T19:59:22Z",
+      "side": 1,
+      "message": "Thanks for contributing this, but I think it\u0027s obsolete now. A similar patch which was already merged makes the same sort of change (https://gerrit.fd.io/r/c/vpp/+/44878).\n\nThe other patch had an additional check which would cause the (host_index, lipi) mapping to be stored if ns and lcp_get_default_ns() are both null (this would happen when you are adding your linux-cp taps to the host system\u0027s default netns). Thats the reason the other one was merged instead of this one.",
+      "revId": "58216459ae708fbfd45bd99265264d1fca5bb044",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
