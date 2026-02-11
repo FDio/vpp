@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f9f6ac8d_2ff9646c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3270
+      },
+      "writtenOn": "2026-02-11T07:04:47Z",
+      "side": 1,
+      "message": "doing a generic search for vnet_netlink* as thy all seem to return errro and found that there are some more places that are effected. \ndevice.c: 708\n  if (apif-\u003eis_admin_up)\n    {\n      hw_flags \u003d VNET_HW_INTERFACE_FLAG_LINK_UP;\n      vnet_netlink_set_link_state (apif-\u003ehost_if_index, 1);\n    }\n  else\n    {\n      hw_flags \u003d 0;\n      vnet_netlink_set_link_state (apif-\u003ehost_if_index, 0);\n    }\n\n  vnet_hw_interface_set_flags (vnm, hw_if_index, hw_flags);\n\n  return 0;\t\t\t/* no error */",
+      "revId": "590c4bb0315c006e6ef4eed5669166b37e0dd13d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
