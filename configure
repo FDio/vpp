@@ -33,6 +33,7 @@ OPTIONS:
   --drivers, -D           Specify list of drivers to be built
   --help, -h              This help
   --install-dir, -i       Install directory
+  --minimal, -m           Minimal build (no plugins, tools, tests, crypto_engines)
   --native-only, -n       Only compile for Native CPU (no multiarch)
   --option, -o            Enable specific VPP options (fib8, fib16)
   --platform, -p          Specify target platform
@@ -150,6 +151,16 @@ while (( "$#" )); do
         echo "Error: Argument for $1 is missing" >&2
         exit 1
       fi
+      ;;
+    -m|--minimal)
+      plugins=${plugins:-none}
+      tools=${tools:-none}
+      tests=${tests:-none}
+      crypto_engines=${crypto_engines:-none}
+      args+=("-DVPP_BUILD_PYTHON_API=OFF")
+      args+=("-DVPP_API_TEST_BUILTIN=OFF")
+      args+=("-DVPP_BUILD_VCL=OFF")
+      shift 1
       ;;
     -n|--native-only)
       native_only=true
