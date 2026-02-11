@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4e8b4acc_4d004419",
+        "filename": "src/plugins/linux-cp/lcp_interface_sync.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 99,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2026-02-11T20:39:23Z",
+      "side": 1,
+      "message": "Does this actually change the behavior? I see that a message is logged, but then execution follows the same code path as before - lcp_itf_set_interface_addr() gets called.\n\nIt seems like the call to lcp_itf_set_interface_addr() should be in an \u0027else\u0027 block.",
+      "revId": "47f63cb84755c3a6b253f815a8a6d40ce2de9d8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
