@@ -5,6 +5,7 @@
 
 #include <vnet/session/application.h>
 #include <vnet/session/session.h>
+#include <vnet/plugin/plugin.h>
 
 u8 *
 format_session_fifos (u8 *s, va_list *args)
@@ -494,19 +495,28 @@ session_tree_insert_session (session_tree_t *st, session_t *s)
   transport_endpt_attr_t attr = { .type =
 				    TRANSPORT_ENDPT_ATTR_NEXT_TRANSPORT };
   session_handle_t parent_sh = SESSION_INVALID_HANDLE;
+  u32 parent_index;
 
   if (s->session_state != SESSION_STATE_LISTENING &&
       session_transport_attribute (s, 1 /* is_get */, &attr) == 0)
     parent_sh = attr.next_transport;
 
-  /* parent not yet part of tree */
-  if (parent_sh != SESSION_INVALID_HANDLE &&
-      !(hash_get (st->session_index_to_node,
-		  session_index_from_handle (parent_sh))))
-    session_tree_insert_session (st, session_get_from_handle (parent_sh));
+  parent_index = session_index_from_handle (parent_sh);
 
-  session_tree_insert_node (st, session_index_from_handle (parent_sh),
-			    s->session_index);
+  /* parent not yet part of tree */
+  if (parent_sh != SESSION_INVALID_HANDLE && !(hash_get (st->session_index_to_node, parent_index)))
+    {
+      session_t *parent_s = session_get_from_handle_if_valid (parent_sh);
+      if (!parent_s)
+	{
+	  /* add as root session */
+	  session_tree_insert_node (st, SESSION_INVALID_INDEX, s->session_index);
+	  return;
+	}
+      session_tree_insert_session (st, parent_s);
+    }
+
+  session_tree_insert_node (st, parent_index, s->session_index);
 }
 
 static void
@@ -1222,3 +1232,137 @@ VLIB_CLI_COMMAND (clear_session_stats_command, static) = {
   .short_help = "clear session stats",
   .function = clear_session_stats_fn,
 };
+
+static clib_error_t *
+session_config_fn (vlib_main_t *vm, unformat_input_t *input)
+{
+  session_main_t *smm = &session_main;
+  u32 nitems;
+  uword tmp;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "wrk-mq-length %d", &nitems))
+	{
+	  if (nitems >= 2048)
+	    smm->configured_wrk_mq_length = nitems;
+	  else
+	    clib_warning ("event queue length %d too small, ignored", nitems);
+	}
+      else if (unformat (input, "wrk-mqs-segment-size %U", unformat_memory_size,
+			 &smm->wrk_mqs_segment_size))
+	;
+      else if (unformat (input, "preallocated-sessions %d", &smm->preallocated_sessions))
+	;
+      else if (unformat (input, "v4-session-table-buckets %d",
+			 &smm->configured_v4_session_table_buckets))
+	;
+      else if (unformat (input, "v4-halfopen-table-buckets %d",
+			 &smm->configured_v4_halfopen_table_buckets))
+	;
+      else if (unformat (input, "v6-session-table-buckets %d",
+			 &smm->configured_v6_session_table_buckets))
+	;
+      else if (unformat (input, "v6-halfopen-table-buckets %d",
+			 &smm->configured_v6_halfopen_table_buckets))
+	;
+      else if (unformat (input, "v4-session-table-memory %U", unformat_memory_size, &tmp))
+	{
+	  if (tmp >= 0x100000000)
+	    return clib_error_return (0, "memory size %llx (%lld) too large", tmp, tmp);
+	  smm->configured_v4_session_table_memory = tmp;
+	}
+      else if (unformat (input, "v4-halfopen-table-memory %U", unformat_memory_size, &tmp))
+	{
+	  if (tmp >= 0x100000000)
+	    return clib_error_return (0, "memory size %llx (%lld) too large", tmp, tmp);
+	  smm->configured_v4_halfopen_table_memory = tmp;
+	}
+      else if (unformat (input, "v6-session-table-memory %U", unformat_memory_size, &tmp))
+	{
+	  if (tmp >= 0x100000000)
+	    return clib_error_return (0, "memory size %llx (%lld) too large", tmp, tmp);
+	  smm->configured_v6_session_table_memory = tmp;
+	}
+      else if (unformat (input, "v6-halfopen-table-memory %U", unformat_memory_size, &tmp))
+	{
+	  if (tmp >= 0x100000000)
+	    return clib_error_return (0, "memory size %llx (%lld) too large", tmp, tmp);
+	  smm->configured_v6_halfopen_table_memory = tmp;
+	}
+      else if (unformat (input, "local-endpoints-table-memory %U", unformat_memory_size, &tmp))
+	{
+	  if (tmp >= 0x100000000)
+	    return clib_error_return (0, "memory size %llx (%lld) too large", tmp, tmp);
+	  smm->local_endpoints_table_memory = tmp;
+	}
+      else if (unformat (input, "local-endpoints-table-buckets %d",
+			 &smm->local_endpoints_table_buckets))
+	;
+      else if (unformat (input, "min-src-port %d", &tmp))
+	smm->port_allocator_min_src_port = tmp;
+      else if (unformat (input, "max-src-port %d", &tmp))
+	smm->port_allocator_max_src_port = tmp;
+      else if (unformat (input, "enable rt-backend rule-table"))
+	{
+	  smm->rt_engine_type = RT_BACKEND_ENGINE_RULE_TABLE;
+	  smm->session_enable_asap = 1;
+	}
+      else if (unformat (input, "enable rt-backend sdl"))
+	{
+	  smm->rt_engine_type = RT_BACKEND_ENGINE_SDL;
+	  smm->session_enable_asap = 1;
+	}
+      else if (unformat (input, "enable"))
+	{
+	  /* enable session without rt-backend */
+	  smm->rt_engine_type = RT_BACKEND_ENGINE_NONE;
+	  smm->session_enable_asap = 1;
+	}
+      else if (unformat (input, "poll-main"))
+	smm->poll_main = 1;
+      else if (unformat (input, "use-private-rx-mqs"))
+	smm->use_private_rx_mqs = 1;
+      else if (unformat (input, "no-adaptive"))
+	smm->no_adaptive = 1;
+      else if (unformat (input, "use-dma"))
+	smm->dma_enabled = 1;
+      else if (unformat (input, "nat44-original-dst-enable"))
+	{
+	  smm->original_dst_lookup =
+	    vlib_get_plugin_symbol ("nat_plugin.so", "nat44_original_dst_lookup");
+	}
+      else if (unformat (input, "no-dump-segments"))
+	smm->no_dump_segments = 1;
+      /*
+       * Deprecated but maintained for compatibility
+       */
+      else if (unformat (input, "use-app-socket-api"))
+	;
+      else if (unformat (input, "use-bapi-socket-api"))
+	{
+	  clib_warning ("App attachment using binary-api is deprecated in favor "
+			"of socket api. Support for bapi may be removed in the future.");
+	  (void) appns_sapi_enable_disable (0 /* is_enable */);
+	}
+      else if (unformat (input, "evt_qs_memfd_seg"))
+	;
+      else if (unformat (input, "segment-baseva 0x%lx", &tmp))
+	;
+      else if (unformat (input, "evt_qs_seg_size %U", unformat_memory_size,
+			 &smm->wrk_mqs_segment_size))
+	;
+      else if (unformat (input, "event-queue-length %d", &nitems))
+	{
+	  if (nitems >= 2048)
+	    smm->configured_wrk_mq_length = nitems;
+	  else
+	    clib_warning ("event queue length %d too small, ignored", nitems);
+	}
+      else
+	return clib_error_return (0, "unknown input `%U'", format_unformat_error, input);
+    }
+  return 0;
+}
+
+VLIB_CONFIG_FUNCTION (session_config_fn, "session");
