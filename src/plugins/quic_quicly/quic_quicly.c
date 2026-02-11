@@ -452,6 +452,8 @@ quic_quicly_on_stream_destroy (quicly_stream_t *stream, int err)
 
   sctx->flags |= QUIC_F_STREAM_TX_CLOSED;
   sctx->stream = 0;
+  sctx->udp_session_handle = SESSION_INVALID_HANDLE;
+
   /* free stream only when app already closed, otherwise it might has unread
    * data */
   if (sctx->flags & QUIC_F_APP_CLOSED)
