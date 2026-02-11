@@ -53,7 +53,6 @@ class VppSRv6LocalSID(VppObject):
         nh_addr,
         end_psp,
         sw_if_index,
-        vlan_index,
         fib_table,
     ):
         self._test = test
@@ -62,7 +61,6 @@ class VppSRv6LocalSID(VppObject):
         self.nh_addr = nh_addr
         self.end_psp = end_psp
         self.sw_if_index = sw_if_index
-        self.vlan_index = vlan_index
         self.fib_table = fib_table
         self._configured = False
 
@@ -74,7 +72,6 @@ class VppSRv6LocalSID(VppObject):
             is_del=0,
             end_psp=self.end_psp,
             sw_if_index=self.sw_if_index,
-            vlan_index=self.vlan_index,
             fib_table=self.fib_table,
         )
         self._configured = True
@@ -87,7 +84,6 @@ class VppSRv6LocalSID(VppObject):
             is_del=1,
             end_psp=self.end_psp,
             sw_if_index=self.sw_if_index,
-            vlan_index=self.vlan_index,
             fib_table=self.fib_table,
         )
         self._configured = False

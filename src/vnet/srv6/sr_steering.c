@@ -28,6 +28,7 @@
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/dpo/dpo.h>
 
+#include <vnet/l2/l2_input.h>
 #include <vppinfra/error.h>
 #include <vppinfra/elog.h>
 
@@ -79,7 +80,7 @@ sr_steering_policy (int is_del, ip6_address_t * bsid, u32 sr_policy_index,
 
       vnet_sw_interface_t *sw =
 	vnet_get_sw_interface (sm->vnet_main, sw_if_index);
-      if (sw->type != VNET_SW_INTERFACE_TYPE_HARDWARE)
+      if (sw->type != VNET_SW_INTERFACE_TYPE_HARDWARE && sw->type != VNET_SW_INTERFACE_TYPE_SUB)
 	return -3;
     }
   else
@@ -123,23 +124,12 @@ sr_steering_policy (int is_del, ip6_address_t * bsid, u32 sr_policy_index,
 	    }
 	  else if (steer_pl->classify.traffic_type == SR_STEER_L2)
 	    {
-	      /* Remove HW redirection */
-	      int ret = vnet_feature_enable_disable ("device-input",
-						     "sr-pl-rewrite-encaps-l2",
-						     sw_if_index, 0, 0, 0);
+	      vnet_main_t *vnm = vnet_get_main ();
 
-	      if (ret != 0)
-		return -1;
+	      /* Restore interface to L3 mode */
+	      set_int_l2_mode (vlib_get_main (), vnm, MODE_L3, sw_if_index, 0, 0, 0, 0);
 
 	      sm->sw_iface_sr_policies[sw_if_index] = ~(u32) 0;
-
-	      /* Remove promiscous mode from interface */
-	      vnet_main_t *vnm = vnet_get_main ();
-	      vnet_hw_interface_t *hi =
-		vnet_get_sup_hw_interface (vnm, sw_if_index);
-	      /* Make sure it is main interface */
-	      if (hi->sw_if_index == sw_if_index)
-		ethernet_set_flags (vnm, hi->hw_if_index, 0);
 	    }
 
 	  /* Delete SR steering policy entry */
@@ -266,17 +256,13 @@ sr_steering_policy (int is_del, ip6_address_t * bsid, u32 sr_policy_index,
       if (!sr_policy->is_encap)
 	goto cleanup_error_encap;
 
-      if (vnet_feature_enable_disable
-	  ("device-input", "sr-pl-rewrite-encaps-l2", sw_if_index, 1, 0, 0))
-	goto cleanup_error_redirection;
-
-      /* Set promiscous mode on interface */
       vnet_main_t *vnm = vnet_get_main ();
-      vnet_hw_interface_t *hi = vnet_get_sup_hw_interface (vnm, sw_if_index);
-      /* Make sure it is main interface */
-      if (hi->sw_if_index == sw_if_index)
-	ethernet_set_flags (vnm, hi->hw_if_index,
-			    ETHERNET_INTERFACE_FLAG_ACCEPT_ALL);
+
+      /* Replace xconnect with SRv6 steering in the L2 feature bitmap */
+      set_int_l2_mode (vlib_get_main (), vnm, MODE_L2_XC, sw_if_index, 0, 0, 0, 0);
+      l2_input_config_t *config = l2input_intf_config (sw_if_index);
+      config->feature_bitmap &= ~L2INPUT_FEAT_XCONNECT;
+      config->feature_bitmap |= L2INPUT_FEAT_SRV6;
     }
   else if (traffic_type == SR_STEER_IPV4)
     if (!sr_policy->is_encap)
@@ -337,11 +323,6 @@ cleanup_error_encap:
   pool_put (sm->steer_policies, steer_pl);
   mhash_unset (&sm->sr_steer_policies_hash, &key, NULL);
   return -5;
-
-cleanup_error_redirection:
-  pool_put (sm->steer_policies, steer_pl);
-  mhash_unset (&sm->sr_steer_policies_hash, &key, NULL);
-  return -3;
 }
 
 static clib_error_t *
@@ -447,16 +428,17 @@ sr_steer_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
 VLIB_CLI_COMMAND (sr_steer_policy_command, static) = {
   .path = "sr steer",
-  .short_help = "sr steer (del) [l3 <ip_addr/mask>|l2 <sf_if>] "
-    "via [index <sr_policy_index>|bsid <bsid_ip6_addr>] "
-    "(fib-table <fib_table_index>)",
-  .long_help =
-    "\tSteer a L2 or L3 traffic through an existing SR policy.\n"
-    "\tExamples:\n"
-    "\t\tsr steer l3 2001::/64 via sr_policy index 5\n"
-    "\t\tsr steer l3 2001::/64 via sr_policy bsid 2010::9999:1\n"
-    "\t\tsr steer l2 GigabitEthernet0/5/0 via sr_policy index 5\n"
-    "\t\tsr steer del l3 2001::/64 via sr_policy index 5\n",
+  .short_help = "sr steer (del) [l3 <ip_addr/mask>|l2 <iface>] "
+		"via [index <sr_policy_index>|bsid <bsid_ip6_addr>] "
+		"(fib-table <fib_table_index>)",
+  .long_help = "\tSteer a L2 or L3 traffic through an existing SR policy.\n"
+	       "\tFor L2, both hardware interfaces and sub-interfaces are supported.\n"
+	       "\tExamples:\n"
+	       "\t\tsr steer l3 2001::/64 via sr_policy index 5\n"
+	       "\t\tsr steer l3 2001::/64 via sr_policy bsid 2010::9999:1\n"
+	       "\t\tsr steer l2 GigabitEthernet0/5/0 via sr_policy index 5\n"
+	       "\t\tsr steer l2 GigabitEthernet0/5/0.100 via bsid 2010::9999:1\n"
+	       "\t\tsr steer del l3 2001::/64 via sr_policy index 5\n",
   .function = sr_steer_policy_command_fn,
 };
 
