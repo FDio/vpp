@@ -1328,6 +1328,9 @@ crypto_ipsecmb_init (vnet_crypto_engine_registration_t *r)
   if (!clib_cpu_supports_aes ())
     return "AES ISA not available on this CPU";
 
+  if (IMB_VERSION_NUM != imb_get_version ())
+    return "incompatible IPsec Multi-Buffer Crypto library version";
+
   imbm->per_thread_data = r->per_thread_data;
 
   for (i = 0; i < r->num_threads; i++)
