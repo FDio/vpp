@@ -67,6 +67,23 @@
       "message": "Tested patchset 7 in [1]. Results look good, if I had to guess I would say this might be even a small (less than 1%) performance improvement.\n\n[1] https://s3-logs.fd.io/vex-yul-rot-jenkins-2/vpp-csit-verify-perf-master-ubuntu2404-x86_64-2n-spr/5/console.log.gz",
       "revId": "b8f04e61bfa483b85f925ae438916ec8fa10f319",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b4ede83b_87335f16",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2267
+      },
+      "writtenOn": "2026-02-11T19:13:55Z",
+      "side": 1,
+      "message": "Looks like there\u0027s another infra issue\nError: Can\u0027t use \u0027tar -xzf\u0027 extract archive file: /scratch/docker-build/gha-runner/_work/_actions/_temp_f3065905-18d4-4659-afbd-0fb5fb99b1aa/07baadfd-9e54-418a-83c9-88031efcb530.tar.gz (SHA256 \u0027946f593e556bbcb7b835f9bffcea165ce78c1085213684792bf0ca1a6804653b\u0027, size \u002712156928\u0027 bytes, tar outputs \u0027STDERR: gzip: stdin: unexpected end of file STDERR: /usr/bin/tar: Unexpected EOF in archive STDERR: /usr/bin/tar: Unexpected EOF in archive STDERR: /usr/bin/tar: Error is not recoverable: exiting now\u0027). Action being checked out: fdio/vpp@27fc2aa27f57c8f7055e8f1b6e5a9f41b0315873. return code: 2.",
+      "revId": "b8f04e61bfa483b85f925ae438916ec8fa10f319",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
