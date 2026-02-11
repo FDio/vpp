@@ -1,6 +1,7 @@
 from config import config
 from asfframework import VppTestRunner
 import unittest
+import re
 from framework import VppTestCase
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
@@ -107,6 +108,70 @@ class TestTracedump(VppTestCase):
         self.pg_start()
         reply = self.vapi.trace_v2_dump(thread_id=0, position=1, clear_cache=False)
         self.assertFalse(reply)
+
+    def test_trace_timestamp_formats(self):
+        """Test trace timestamp format via API"""
+        self.vapi.trace_clear_cache()
+        self.vapi.trace_clear_capture()
+
+        packets = create_stream(self.pg0, self.pg1, 1)
+        self.pg0.add_stream(packets)
+
+        # Setup trace capture
+        reply = self.vapi.graph_node_get(
+            cursor=0xFFFFFFFF,
+            index=0xFFFFFFFF,
+            name="pg-input",
+        )
+        pg_input_index = reply[1][0].index
+        self.vapi.trace_capture_packets(
+            node_index=pg_input_index,
+            max_packets=1,
+            use_filter=False,
+            verbose=False,
+            pre_capture_clear=True,
+        )
+        self.pg_start()
+
+        # Test relative format (default): HH:MM:SS:uuuuuu
+        self.vapi.cli("set trace timestamp-format relative")
+        reply = self.vapi.trace_v2_dump(
+            thread_id=0xFFFFFFFF, position=0, clear_cache=False
+        )
+        self.assertTrue(reply, "Expected trace data")
+        trace_data = reply[0].trace_data
+        self.assertTrue(
+            re.search(r"\d{2}:\d{2}:\d{2}:\d+", trace_data),
+            f"Expected relative timestamp (HH:MM:SS:uuuuuu) in: {trace_data}",
+        )
+
+        # Test unix format: ssssssssss.uuuuuu
+        self.vapi.cli("set trace timestamp-format unix")
+        reply = self.vapi.trace_v2_dump(
+            thread_id=0xFFFFFFFF, position=0, clear_cache=False
+        )
+        self.assertTrue(reply, "Expected trace data")
+        trace_data = reply[0].trace_data
+        self.assertTrue(
+            re.search(r"\d{10,}\.\d{6}", trace_data),
+            f"Expected unix timestamp in: {trace_data}",
+        )
+
+        # Test datetime format: YYYY-MM-DDTHH:MM:SS.uuuuuu
+        self.vapi.cli("set trace timestamp-format datetime")
+        reply = self.vapi.trace_v2_dump(
+            thread_id=0xFFFFFFFF, position=0, clear_cache=False
+        )
+        self.assertTrue(reply, "Expected trace data")
+        trace_data = reply[0].trace_data
+        self.assertTrue(
+            re.search(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}", trace_data),
+            f"Expected ISO 8601 datetime in: {trace_data}",
+        )
+
+        # Restore default
+        self.vapi.cli("set trace timestamp-format relative")
+        self.vapi.trace_clear_cache()
 
 
 if __name__ == "__main__":

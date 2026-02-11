@@ -92,10 +92,22 @@ typedef struct
 
 } vlib_trace_main_t;
 
+/* Timestamp format for trace display */
+typedef enum __clib_packed
+{
+  VLIB_TRACE_TIMESTAMP_RELATIVE = 0, /* h:m:s:u since worker start (default) */
+  VLIB_TRACE_TIMESTAMP_UNIX,	     /* Unix epoch (seconds.microseconds) */
+  VLIB_TRACE_TIMESTAMP_DATETIME,     /* ISO 8601 datetime */
+} vlib_trace_timestamp_format_t;
+
 format_function_t format_vlib_trace;
+vlib_trace_timestamp_format_t vlib_trace_get_timestamp_format (void);
+void vlib_trace_set_timestamp_format (vlib_trace_timestamp_format_t fmt);
+
 typedef struct
 {
   vlib_trace_filter_function_registration_t *trace_filter_registration;
+  vlib_trace_timestamp_format_t timestamp_format;
 } vlib_trace_filter_main_t;
 
 extern vlib_trace_filter_main_t vlib_trace_filter_main;

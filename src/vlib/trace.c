@@ -10,6 +10,18 @@
 
 u8 *vnet_trace_placeholder;
 
+vlib_trace_timestamp_format_t
+vlib_trace_get_timestamp_format (void)
+{
+  return vlib_trace_filter_main.timestamp_format;
+}
+
+void
+vlib_trace_set_timestamp_format (vlib_trace_timestamp_format_t fmt)
+{
+  vlib_trace_filter_main.timestamp_format = fmt;
+}
+
 /* Helper function for nodes which only trace buffer data. */
 void
 vlib_trace_frame_buffers_only (vlib_main_t * vm,
@@ -120,11 +132,27 @@ format_vlib_trace (u8 * s, va_list * va)
 
       if (node != prev_node)
 	{
-	  t =
-	    (h->time - vm->cpu_time_main_loop_start) * ct->seconds_per_clock;
-	  s =
-	    format (s, "\n%U: %v", format_time_interval, "h:m:s:u", t,
-		    node->name);
+	  switch (vlib_trace_filter_main.timestamp_format)
+	    {
+	    case VLIB_TRACE_TIMESTAMP_UNIX:
+	      t = ct->init_reference_time + (h->time - ct->init_cpu_time) * ct->seconds_per_clock;
+	      s = format (s, "\n%.6f: %v", t, node->name);
+	      break;
+	    case VLIB_TRACE_TIMESTAMP_DATETIME:
+	      {
+		u32 usec;
+		t = ct->init_reference_time + (h->time - ct->init_cpu_time) * ct->seconds_per_clock;
+		usec = (u32) (1e6 * (t - (i64) t));
+		s = format (s, "\n%U.%06d: %v", format_time_float, "y-m-dTH:M:S", t, usec,
+			    node->name);
+	      }
+	      break;
+	    case VLIB_TRACE_TIMESTAMP_RELATIVE:
+	    default:
+	      t = (h->time - vm->cpu_time_main_loop_start) * ct->seconds_per_clock;
+	      s = format (s, "\n%U: %v", format_time_interval, "h:m:s:u", t, node->name);
+	      break;
+	    }
 	}
       prev_node = node;
 
@@ -709,3 +737,91 @@ VLIB_CLI_COMMAND (set_trace_filter_function_cli, static) = {
   .short_help = "set trace filter function <func_name>",
   .function = set_trace_filter_function,
 };
+
+static clib_error_t *
+set_trace_timestamp_format_cli (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  clib_error_t *error = 0;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return clib_error_create ("expected timestamp format");
+
+  while (unformat_check_input (line_input) != (uword) UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "relative"))
+	vlib_trace_filter_main.timestamp_format = VLIB_TRACE_TIMESTAMP_RELATIVE;
+      else if (unformat (line_input, "unix"))
+	vlib_trace_filter_main.timestamp_format = VLIB_TRACE_TIMESTAMP_UNIX;
+      else if (unformat (line_input, "datetime"))
+	vlib_trace_filter_main.timestamp_format = VLIB_TRACE_TIMESTAMP_DATETIME;
+      else
+	{
+	  error = clib_error_create ("expected 'relative', 'unix', or 'datetime', got `%U'",
+				     format_unformat_error, line_input);
+	  break;
+	}
+    }
+
+  unformat_free (line_input);
+  return error;
+}
+
+VLIB_CLI_COMMAND (set_trace_timestamp_format_cli_cmd, static) = {
+  .path = "set trace timestamp-format",
+  .short_help = "set trace timestamp-format <relative|unix|datetime>",
+  .function = set_trace_timestamp_format_cli,
+};
+
+static clib_error_t *
+show_trace_timestamp_format_cli (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
+{
+  char *fmt_str;
+  switch (vlib_trace_filter_main.timestamp_format)
+    {
+    case VLIB_TRACE_TIMESTAMP_UNIX:
+      fmt_str = "unix";
+      break;
+    case VLIB_TRACE_TIMESTAMP_DATETIME:
+      fmt_str = "datetime";
+      break;
+    case VLIB_TRACE_TIMESTAMP_RELATIVE:
+    default:
+      fmt_str = "relative";
+      break;
+    }
+  vlib_cli_output (vm, "trace timestamp format: %s", fmt_str);
+  return 0;
+}
+
+VLIB_CLI_COMMAND (show_trace_timestamp_format_cli_cmd, static) = {
+  .path = "show trace timestamp-format",
+  .short_help = "show trace timestamp-format",
+  .function = show_trace_timestamp_format_cli,
+};
+
+/*
+ * Startup configuration for trace settings.
+ *
+ * trace {
+ *   timestamp-format <relative|unix|datetime>
+ * }
+ */
+static clib_error_t *
+trace_config (vlib_main_t *vm, unformat_input_t *input)
+{
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "timestamp-format relative"))
+	vlib_trace_filter_main.timestamp_format = VLIB_TRACE_TIMESTAMP_RELATIVE;
+      else if (unformat (input, "timestamp-format unix"))
+	vlib_trace_filter_main.timestamp_format = VLIB_TRACE_TIMESTAMP_UNIX;
+      else if (unformat (input, "timestamp-format datetime"))
+	vlib_trace_filter_main.timestamp_format = VLIB_TRACE_TIMESTAMP_DATETIME;
+      else
+	return clib_error_return (0, "unknown input `%U'", format_unformat_error, input);
+    }
+  return 0;
+}
+
+VLIB_CONFIG_FUNCTION (trace_config, "trace");
