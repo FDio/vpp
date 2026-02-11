@@ -52,6 +52,24 @@
       "parentUuid": "bbdc902e_c652cd33",
       "revId": "07414f912be31ce0694363552a2de55ff6ec2bc2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "21038e07_32ac890e",
+        "filename": "src/plugins/http/http.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 866,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-02-11T06:15:14Z",
+      "side": 1,
+      "message": "We want asan so my vote is for clib_mem_unpoison. Matus?",
+      "parentUuid": "cc5b795c_73a4592e",
+      "revId": "07414f912be31ce0694363552a2de55ff6ec2bc2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
