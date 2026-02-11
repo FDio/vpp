@@ -3,6 +3,23 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "3ac5162a_7c9aa9bf",
+        "filename": "src/plugins/linux-cp/lcp_cli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 119,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2026-02-11T20:51:32Z",
+      "side": 1,
+      "message": "It looks like the only way to toggle this option is via vppctl. Could you add a binary API message type and handler function to change this also?",
+      "revId": "47f63cb84755c3a6b253f815a8a6d40ce2de9d8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "4e8b4acc_4d004419",
         "filename": "src/plugins/linux-cp/lcp_interface_sync.c",
         "patchSetId": 1
