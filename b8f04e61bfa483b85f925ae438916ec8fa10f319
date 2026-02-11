@@ -50,6 +50,23 @@
       "message": "recheck",
       "revId": "b8f04e61bfa483b85f925ae438916ec8fa10f319",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "31794c91_75429b82",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2026-02-11T18:21:49Z",
+      "side": 1,
+      "message": "Tested patchset 7 in [1]. Results look good, if I had to guess I would say this might be even a small (less than 1%) performance improvement.\n\n[1] https://s3-logs.fd.io/vex-yul-rot-jenkins-2/vpp-csit-verify-perf-master-ubuntu2404-x86_64-2n-spr/5/console.log.gz",
+      "revId": "b8f04e61bfa483b85f925ae438916ec8fa10f319",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
