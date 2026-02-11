@@ -33,6 +33,24 @@
       "message": "Hm, wonder if this is right and the memcpy lower (1671) should be shorter",
       "revId": "eb050963ea5478c6d27ef7cd72666e7d848fd382",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "53426014_1c39cee6",
+        "filename": "src/plugins/hs_apps/vcl/vcl_test_protos.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1668,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-02-11T06:04:38Z",
+      "side": 1,
+      "message": "Unfortunately I do not know this code path enough to answer. Any idea?",
+      "parentUuid": "fe62dc34_c9f7e1d1",
+      "revId": "eb050963ea5478c6d27ef7cd72666e7d848fd382",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
