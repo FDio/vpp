@@ -296,8 +296,8 @@ class TestBondInterface(VppTestCase):
         if_dump = self.vapi.sw_bond_interface_dump(sw_if_index=bond0.sw_if_index)
         self.assertFalse(bond0.is_interface_config_in_dump(if_dump))
 
-    def test_bond_link(self):
-        """Bond hw interface link state test"""
+    def test_bond_link_when_admin_up(self):
+        """Bond hw interface link state test (when admin up)"""
 
         # for convenience
         bond_modes = VppEnum.vl_api_bond_mode_t
@@ -309,25 +309,115 @@ class TestBondInterface(VppTestCase):
         bond0 = VppBondInterface(self, mode=bond_modes.BOND_API_MODE_ROUND_ROBIN)
         bond0.add_vpp_config()
 
-        # set bond admin up.
+        # initially admin state is down and link state is down
+        bond0.assert_interface_state(0, 0)
+
+        # set bond admin up. confirm link down because no members are active
         self.logger.info("set interface BondEthernet0 admin up")
         bond0.admin_up()
-        # confirm link up
+        bond0.assert_interface_state(intf_flags.IF_STATUS_API_FLAG_ADMIN_UP, 0)
+
+        # make sure future members are down. add them to bond.
+        self.logger.info("set interface pg0 admin down")
+        self.pg0.admin_down()
+        self.logger.info("bond add_member interface pg0 to BondEthernet0")
+        bond0.add_member_vpp_bond_interface(
+            sw_if_index=self.pg0.sw_if_index, is_passive=0, is_long_timeout=0
+        )
+        self.logger.info("set interface pg1 admin down")
+        self.pg1.admin_down()
+        self.logger.info("bond add_member interface pg1 to BondEthernet0")
+        bond0.add_member_vpp_bond_interface(
+            sw_if_index=self.pg1.sw_if_index, is_passive=0, is_long_timeout=0
+        )
+
+        # confirm link down because no members are still active
+        self.logger.info("set interface BondEthernet0 admin up")
+        bond0.assert_interface_state(intf_flags.IF_STATUS_API_FLAG_ADMIN_UP, 0)
+
+        # bring members up, confirm bond link is up
+        self.logger.info("set interface pg0 admin up")
+        self.pg0.admin_up()
+        bond0.assert_interface_state(
+            intf_flags.IF_STATUS_API_FLAG_ADMIN_UP,
+            intf_flags.IF_STATUS_API_FLAG_LINK_UP,
+        )
+        self.logger.info("set interface pg1 admin up")
+        self.pg1.admin_up()
         bond0.assert_interface_state(
             intf_flags.IF_STATUS_API_FLAG_ADMIN_UP,
             intf_flags.IF_STATUS_API_FLAG_LINK_UP,
         )
 
-        # toggle bond admin state
-        self.logger.info("toggle interface BondEthernet0")
-        bond0.admin_down()
+        # detach pg0, pg1
+        self.logger.info("detach interface pg0")
+        bond0.detach_vpp_bond_interface(sw_if_index=self.pg0.sw_if_index)
+        bond0.assert_interface_state(
+            intf_flags.IF_STATUS_API_FLAG_ADMIN_UP,
+            intf_flags.IF_STATUS_API_FLAG_LINK_UP,
+        )
+        self.logger.info("detach interface pg1")
+        bond0.detach_vpp_bond_interface(sw_if_index=self.pg1.sw_if_index)
+
+        # link should be down now
+        bond0.assert_interface_state(intf_flags.IF_STATUS_API_FLAG_ADMIN_UP, 0)
+
+        # delete BondEthernet0
+        self.logger.info("Deleting BondEthernet0")
+        bond0.remove_vpp_config()
+
+    def test_bond_link_when_admin_down(self):
+        """Bond hw interface link state test (when admin down)"""
+
+        # for convenience
+        bond_modes = VppEnum.vl_api_bond_mode_t
+        intf_flags = VppEnum.vl_api_if_status_flags_t
+
+        # create interface 1 (BondEthernet0)
+        self.logger.info("Create bond interface")
+        # use round-robin mode to avoid negotiation required by LACP
+        bond0 = VppBondInterface(self, mode=bond_modes.BOND_API_MODE_ROUND_ROBIN)
+        bond0.add_vpp_config()
+
+        # initially admin state is down and link state is down
+        bond0.assert_interface_state(0, 0)
+
+        # add an active member to bond
+        self.logger.info("bond add_member interface pg0 to BondEthernet0")
+        bond0.add_member_vpp_bond_interface(
+            sw_if_index=self.pg0.sw_if_index, is_passive=0, is_long_timeout=0
+        )
+
+        # confirm link down regardless of active members because bond is admin down
+        bond0.assert_interface_state(0, 0)
+
+        # set bond admin up. confirm link up because there are active members
+        self.logger.info("set interface BondEthernet0 admin up")
         bond0.admin_up()
-
-        # confirm link is still up
         bond0.assert_interface_state(
             intf_flags.IF_STATUS_API_FLAG_ADMIN_UP,
             intf_flags.IF_STATUS_API_FLAG_LINK_UP,
         )
+
+        # set bond admin down. confirm link down because bond is admin down
+        self.logger.info("set interface BondEthernet0 admin down")
+        bond0.admin_down()
+        bond0.assert_interface_state(0, 0)
+
+        # set member admin down
+        self.logger.info("set interface pg0 admin down")
+        self.pg0.admin_down()
+        bond0.assert_interface_state(0, 0)
+
+        # set bond admin up. confirm link down because no active members
+        self.logger.info("set interface BondEthernet0 admin up")
+        bond0.admin_up()
+        bond0.assert_interface_state(intf_flags.IF_STATUS_API_FLAG_ADMIN_UP, 0)
+
+        # detach member
+        self.logger.info("detach interface pg0")
+        bond0.detach_vpp_bond_interface(sw_if_index=self.pg0.sw_if_index)
+        bond0.assert_interface_state(intf_flags.IF_STATUS_API_FLAG_ADMIN_UP, 0)
 
         # delete BondEthernet0
         self.logger.info("Deleting BondEthernet0")
