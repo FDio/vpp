@@ -107,7 +107,7 @@ bond_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
   bond_if_t *bif = pool_elt_at_index (bm->interfaces, hif->dev_instance);
 
   bif->admin_up = is_up;
-  if (is_up)
+  if (is_up && vec_len (bif->active_members))
     vnet_hw_interface_set_flags (vnm, bif->hw_if_index,
 				 VNET_HW_INTERFACE_FLAG_LINK_UP);
   return 0;

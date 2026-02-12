@@ -9,6 +9,36 @@
 #include <vnet/bonding/node.h>
 #include <vlib/stats/stats.h>
 
+typedef struct
+{
+  u32 hw_if_index;
+} bond_hw_if_set_flags_args_t;
+
+static void
+bond_hw_if_set_flags_cb (bond_hw_if_set_flags_args_t *args)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  bond_main_t *bm = &bond_main;
+
+  /* Validate hw_if_index still exists and is a bond */
+  vnet_hw_interface_t *hi = vnet_get_hw_interface_or_null (vnm, args->hw_if_index);
+  if (!hi || hi->dev_class_index != bond_dev_class.index)
+    return;
+
+  bond_if_t *bif = pool_elt_at_index (bm->interfaces, hi->dev_instance);
+
+  /* Re-derive from current state, not stale args */
+  u8 should_be_up = bif->admin_up && vec_len (bif->active_members) > 0;
+
+  vnet_hw_interface_flags_t flags = hi->flags;
+  if (should_be_up)
+    flags |= VNET_HW_INTERFACE_FLAG_LINK_UP;
+  else
+    flags &= ~VNET_HW_INTERFACE_FLAG_LINK_UP;
+
+  vnet_hw_interface_set_flags (vnm, args->hw_if_index, flags);
+}
+
 void
 bond_disable_collecting_distributing (vlib_main_t * vm, member_if_t * mif)
 {
@@ -17,6 +47,8 @@ bond_disable_collecting_distributing (vlib_main_t * vm, member_if_t * mif)
   int i;
   uword p;
   u8 switching_active = 0;
+  u8 link_state_changed = 0;
+  u32 hw_if_index = 0;
 
   bif = bond_get_bond_if_by_dev_instance (mif->bif_dev_instance);
   clib_spinlock_lock_if_init (&bif->lockp);
@@ -41,15 +73,49 @@ bond_disable_collecting_distributing (vlib_main_t * vm, member_if_t * mif)
 		ASSERT (bif->n_numa_members >= 0);
 	      }
 	  }
+	/* If that was the last active member, set bond link state down */
+	if (!vec_len (bif->active_members))
+	  {
+	    link_state_changed = 1;
+	    hw_if_index = bif->hw_if_index;
+	  }
 	break;
       }
   }
 
-  /* We get a new member just becoming active */
+  /*
+   * We get a new member just becoming active.
+   * Non-mt variant of signalling the event is safe: this is only
+   * reached for BOND_MODE_ACTIVE_BACKUP (see mode check above), which
+   * never has worker-thread callers — only LACP does, and LACP uses
+   * BOND_MODE_LACP.
+   */
   if (switching_active)
     vlib_process_signal_event (bm->vlib_main, bond_process_node.index,
 			       BOND_SEND_GARP_NA, bif->hw_if_index);
   clib_spinlock_unlock_if_init (&bif->lockp);
+
+  /*
+   * Use vlib_rpc_call_main_thread to set link state under barrier:
+   *  - Must be after releasing bif->lockp to avoid deadlock (the RPC
+   *    callback runs synchronously with barrier when called from the
+   *    main thread; workers spinning on bif->lockp in the TX path
+   *    would prevent barrier completion).
+   *  - This code path can be reached from a worker thread in the LACP
+   *    case (stale SYNC, loopback, or bad-key UNSELECTED from
+   *    COLLECTING_DISTRIBUTING state).
+   *  - Using bond_process with vlib_process_signal_event_mt would also
+   *    work, but would require two barrier acquisitions instead of one
+   *    (one for the _mt signal delivery RPC, one for the explicit
+   *    barrier in bond_process).
+   */
+  if (link_state_changed)
+    {
+    bond_hw_if_set_flags_args_t args = {
+      .hw_if_index = hw_if_index,
+    };
+    vlib_rpc_call_main_thread (bond_hw_if_set_flags_cb, (u8 *) &args, sizeof (args));
+    }
 }
 
 /*
@@ -126,6 +192,8 @@ bond_enable_collecting_distributing (vlib_main_t * vm, member_if_t * mif)
   vnet_hw_interface_t *hw = vnet_get_sup_hw_interface (vnm, mif->sw_if_index);
   int i;
   uword p;
+  u8 link_state_changed = 0;
+  u32 hw_if_index = 0;
 
   bif = bond_get_bond_if_by_dev_instance (mif->bif_dev_instance);
   clib_spinlock_lock_if_init (&bif->lockp);
@@ -145,9 +213,21 @@ bond_enable_collecting_distributing (vlib_main_t * vm, member_if_t * mif)
   else
     vec_add1 (bif->active_members, mif->sw_if_index);
 
+  /* If this was the first active member, set bond link state up */
+  if (bif->admin_up && vec_len (bif->active_members) == 1)
+    {
+      link_state_changed = 1;
+      hw_if_index = bif->hw_if_index;
+    }
+
   mif->is_local_numa = (vm->numa_node == hw->numa_node) ? 1 : 0;
   if (bif->mode == BOND_MODE_ACTIVE_BACKUP)
     {
+      /*
+       * Non-mt variant is safe: only reached for
+       * BOND_MODE_ACTIVE_BACKUP, which never has worker-thread
+       * callers — only LACP does (BOND_MODE_LACP).
+       */
       if (vec_len (bif->active_members) == 1)
 	/* First member becomes active? */
 	vlib_process_signal_event (bm->vlib_main, bond_process_node.index,
@@ -158,6 +238,27 @@ bond_enable_collecting_distributing (vlib_main_t * vm, member_if_t * mif)
 
 done:
   clib_spinlock_unlock_if_init (&bif->lockp);
+
+  /*
+   * Use vlib_rpc_call_main_thread to set link state under barrier:
+   *  - Must be after releasing bif->lockp to avoid deadlock (see
+   *    comment in bond_disable_collecting_distributing).
+   *  - This code path can be reached from a worker thread in the LACP
+   *    case (readiness-loop cascade from WAITING to
+   *    COLLECTING_DISTRIBUTING via lacp_selection_logic on PDU
+   *    arrival).
+   *  - Using bond_process with vlib_process_signal_event_mt would also
+   *    work, but would require two barrier acquisitions instead of one
+   *    (one for the _mt signal delivery RPC, one for the explicit
+   *    barrier in bond_process).
+   */
+  if (link_state_changed)
+    {
+      bond_hw_if_set_flags_args_t args = {
+	.hw_if_index = hw_if_index,
+      };
+      vlib_rpc_call_main_thread (bond_hw_if_set_flags_cb, (u8 *) &args, sizeof (args));
+    }
 }
 
 int
@@ -461,9 +562,6 @@ bond_create_if (vlib_main_t * vm, bond_create_if_args_t * args)
     }
   if (vlib_get_thread_main ()->n_vlib_mains > 1)
     clib_spinlock_init (&bif->lockp);
-
-  vnet_hw_interface_set_flags (vnm, bif->hw_if_index,
-			       VNET_HW_INTERFACE_FLAG_LINK_UP);
 
   hash_set (bm->bond_by_sw_if_index, bif->sw_if_index, bif->dev_instance);
 
