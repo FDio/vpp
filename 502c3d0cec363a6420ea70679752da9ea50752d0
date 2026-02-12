@@ -16,6 +16,23 @@
       "message": "Nice",
       "revId": "502c3d0cec363a6420ea70679752da9ea50752d0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2d61fce6_4af60598",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2026-02-12T22:54:00Z",
+      "side": 1,
+      "message": "PTAL, Mohsin. This was found while fixing similar issue in linux-cp plugin.",
+      "revId": "502c3d0cec363a6420ea70679752da9ea50752d0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
