@@ -72,9 +72,35 @@ static u32
 virtio_eth_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi,
 			u32 flags)
 {
-  /* nothing for now */
-  //TODO On MTU change call vnet_netlink_set_if_mtu
-  return 0;
+  /* Get the ethernet interface to manipulate STATUS_L3 flag.
+   * STATUS_L3 tells ethernet-input to skip software DMAC checks.
+   */
+  ethernet_interface_t *ei =
+    ethernet_get_interface (&ethernet_main, hi->hw_if_index);
+
+  switch (flags)
+    {
+    case ETHERNET_INTERFACE_FLAG_ACCEPT_ALL:
+      /* Promiscuous mode: skip software L3 DMAC check.
+       * Setting STATUS_L3 tells ethernet-input to accept all packets
+       * regardless of destination MAC address.
+       */
+      if (ei)
+	ei->flags |= ETHERNET_INTERFACE_FLAG_STATUS_L3;
+      return 0;
+
+    case ETHERNET_INTERFACE_FLAG_DEFAULT_L3:
+      /* Default L3 mode: enable software L3 DMAC check.
+       * Clearing STATUS_L3 tells ethernet-input to validate DMAC
+       * against the interface MAC and secondary MACs.
+       */
+      if (ei)
+	ei->flags &= ~ETHERNET_INTERFACE_FLAG_STATUS_L3;
+      return 0;
+    default:
+      return ~0;
+    }
+  // TODO On MTU change call vnet_netlink_set_if_mtu
 }
 
 static clib_error_t *
