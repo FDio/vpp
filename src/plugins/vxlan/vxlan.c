@@ -352,6 +352,7 @@ int vnet_vxlan_add_del_tunnel
 {
   vxlan_main_t *vxm = &vxlan_main;
   vnet_main_t *vnm = vxm->vnet_main;
+  const dpo_id_t dpo_invalid = DPO_INVALID;
   vxlan_decap_info_t *p;
   u32 sw_if_index = ~0;
   vxlan4_tunnel_key_t key4;
@@ -415,6 +416,7 @@ int vnet_vxlan_add_del_tunnel
       vxlan_tunnel_t *t;
       pool_get_aligned (vxm->tunnels, t, CLIB_CACHE_LINE_BYTES);
       clib_memset (t, 0, sizeof (*t));
+      t->next_dpo = dpo_invalid;
       dev_instance = t - vxm->tunnels;
 
       /* copy from arg structure */
@@ -655,6 +657,7 @@ int vnet_vxlan_add_del_tunnel
       hash_unset (vxm->instance_used, t->user_instance);
 
       fib_node_deinit (&t->node);
+      dpo_reset (&t->next_dpo);
       pool_put (vxm->tunnels, t);
     }
 
