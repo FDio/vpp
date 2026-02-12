@@ -16,6 +16,24 @@
       "message": "I think it needs to be checked for \u0027\u003d\u003d 1\u0027. In lcp_itf_pair_del(), the pair_del_fn function pointers are called before pool_put(). So if the current number of pairs is 1 when lcp_nl_pair_del_cb() is called, the number of pairs is about to be 0.\n\nOtherwise, everything looks fine.",
       "revId": "8f0dfc88a39fdd570603bc8bf96ca026ab0ce0df",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "96c558c5_000358e1",
+        "filename": "src/plugins/linux-cp/lcp_nl.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 763,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2026-02-12T22:51:57Z",
+      "side": 1,
+      "message": "Thanks, Matt. Good catch, I\u0027ve added a comment here for future readers.",
+      "parentUuid": "22435acc_13a1e67c",
+      "revId": "8f0dfc88a39fdd570603bc8bf96ca026ab0ce0df",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
