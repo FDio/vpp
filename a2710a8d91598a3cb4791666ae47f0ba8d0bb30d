@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b0337564_031b7490",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2267
+      },
+      "writtenOn": "2026-02-12T22:51:30Z",
+      "side": 1,
+      "message": "This is a rework of https://gerrit.fd.io/r/c/vpp/+/41161 that addresses the review comments from the original CR:\n\n- The RPC callback re-derives link state from current admin_up and active_members instead of blindly applying the stale decision captured at enqueue time (fixes the stale-state race).\n- The callback validates hw_if_index with vnet_get_hw_interface_or_null() and a dev_class_index check (guards against use-after-free if the bond is deleted before the RPC executes, and against hw_if_index recycling).\n- The RPC is called after releasing bif-\u003elockp (fixes the deadlock caused by calling vl_api_rpc_call_main_thread() while holding the spinlock).\n\nThe code comments explain why vl_api_rpc_call_main_thread() is used instead of routing through bond_process: the link-state code paths in bond_{enable,disable}_collecting_distributing() can be reached from worker threads via the LACP state machine, which would require using vlib_process_signal_event_mt() instead of vlib_process_signal_event().\nSince vlib_process_signal_event_mt() uses vl_api_rpc_call_main_thread() under the hood, this would result in two barrier acquisitions per event (one for the signal delivery RPC, one explicit in bond_process) instead of one.",
+      "revId": "a2710a8d91598a3cb4791666ae47f0ba8d0bb30d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
