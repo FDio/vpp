@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e9be80db_428ca10b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-02-13T11:14:00Z",
+      "side": 1,
+      "message": "Hi everyone,\nThere is no change to the logic, just moving the policer to a plugin of its own.",
+      "revId": "5c94e4fc7e36865ccf916c29d238624f1e0a38f4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
