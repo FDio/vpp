@@ -33,6 +33,24 @@
       "message": "Is checking/using bif-\u003eactive_members thread-safe here? Worker-threads are free to modify it.",
       "revId": "792c5ce1997f2be3d0667d6fd0dca15aa667c201",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1a34f244_4ce9663d",
+        "filename": "src/vnet/bonding/device.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 110,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2026-02-13T19:09:46Z",
+      "side": 1,
+      "message": "Just checked. The callback is from the CLI/API. So it should be thread-safe",
+      "parentUuid": "eb455b65_f7666056",
+      "revId": "792c5ce1997f2be3d0667d6fd0dca15aa667c201",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
