@@ -250,7 +250,7 @@ jobs:
       - name: AWS S3 Publish Logs
         if: ${{ always() }}
         # yamllint disable-line rule:line-length
-        uses: fdio/.github/.github/actions/aws-s3-publish-logs@fc7a74365b705fceeea362b3e81690e3908f4506
+        uses: fdio/.github/.github/actions/aws-s3-publish-logs@c2df5c7959a8415f7dd730315a40b058748b4c84
         with:
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}

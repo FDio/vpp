@@ -92,7 +92,7 @@ jobs:
     name: Merge Maketest
     needs:
       - start-merge
-    uses: fdio/vpp/.github/workflows/vpp-merge-maketest.yml@master
+    uses: fdio/vpp/.github/workflows/vpp-merge-maketest.yml@1d3c4f761e2c0d2fa8b20d8653d4614a4fbaea49
     with:
       FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
       GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
@@ -103,7 +103,7 @@ jobs:
       GERRIT_PATCHSET_NUMBER: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
       GERRIT_PATCHSET_REVISION: ${{ inputs.GERRIT_PATCHSET_REVISION }}
       GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
-      GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
+      GERRIT_REFSPEC: refs/heads/${{ inputs.GERRIT_BRANCH }}
       LOG_PREFIX: ${{ needs.start-merge.outputs.log_prefix }}
     secrets: inherit
 
@@ -142,7 +142,7 @@ jobs:
         with:
           WORKSPACE: ${{ env.WORKSPACE }}
           GERRIT_BRANCH: ${{ env.GERRIT_BRANCH }}
-          GERRIT_REFSPEC: refs/heads/${{ env.GERRIT_BRANCH }}
+          GERRIT_REFSPEC: ${{ env.GERRIT_REFSPEC }}
           TUI_LINE: ${{ env.TUI_LINE }}
 
       - name: Detect docs changes
@@ -173,7 +173,7 @@ jobs:
       - start-merge
       - detect-docs-changes
     if: ${{ needs.detect-docs-changes.outputs.docs_changed == 'true' }}
-    uses: fdio/vpp/.github/workflows/vpp-merge-docs.yml@master
+    uses: fdio/vpp/.github/workflows/vpp-merge-docs.yml@eb4497824eab8f892014948c7553a1b6777735f5
     with:
       FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
       GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
@@ -184,7 +184,7 @@ jobs:
       GERRIT_PATCHSET_NUMBER: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
       GERRIT_PATCHSET_REVISION: ${{ inputs.GERRIT_PATCHSET_REVISION }}
       GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
-      GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
+      GERRIT_REFSPEC: refs/heads/${{ inputs.GERRIT_BRANCH }}
       LOG_PREFIX: ${{ needs.start-merge.outputs.log_prefix }}
     secrets: inherit
 
