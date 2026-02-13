@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "3bc8ee9e56776467bb8066c4323f91cf77895b4e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "329e6fc4_7cda9f6d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-02-13T11:15:28Z",
+      "side": 1,
+      "message": "Thanks for reporting this issue. I am working on fixing timing issues in VPP, can you see if https://gerrit.fd.io/r/c/vpp/+/36770 fixes your issue?",
+      "revId": "3bc8ee9e56776467bb8066c4323f91cf77895b4e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
