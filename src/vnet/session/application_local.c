@@ -801,6 +801,12 @@ ct_app_rx_evt (transport_connection_t * tc)
   if (ps->session_state >= SESSION_STATE_TRANSPORT_CLOSING)
     return -1;
   svm_fifo_reset_has_deq_ntf (s->rx_fifo);
+  /* Fifo was filled while notification was propagating, ask for another one */
+  if (!svm_fifo_max_enqueue (ps->tx_fifo))
+    {
+      svm_fifo_add_want_deq_ntf (s->rx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
+      return 0;
+    }
   return session_dequeue_notify (ps);
 }
 
