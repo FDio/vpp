@@ -1317,6 +1317,7 @@ http3_req_state_tunnel_rx (http_conn_t *stream, http3_stream_ctx_t *sctx,
     {
       HTTP_DBG (1, "proxy app closed, going to reset stream");
       http3_stream_terminate (stream, sctx, HTTP3_ERROR_CONNECT_ERROR);
+      *n_deq = 0;
       return HTTP_SM_STOP;
     }
 
