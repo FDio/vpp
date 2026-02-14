@@ -179,75 +179,30 @@ jobs:
           set -euo pipefail
           env | sort | tee "$LOG_DIR/environment.log"
 
-      - name: Log Maketest Start
-        run: |
-          set -euxo pipefail
-          {
-            echo "$TUI_LINE"
-            echo "* Starting merge maketest"
-            echo "$TUI_LINE"
-          } | tee "$LOG_DIR/maketest_start.log"
-
       - name: Show Nomad Dockerfile
         # yamllint disable-line rule:line-length
         uses: fdio/.github/.github/actions/show-nomad-dockerfile@b728d1589228e2891a4241a1bba362d76895c225
 
       - name: Checkout VPP Gerrit Change
         # yamllint disable-line rule:line-length
-        uses: fdio/vpp/.github/actions/vpp-checkout-gerrit-change@3e7a1d738effde79ef4d87bc05f80de5a84b739a
+        uses: fdio/vpp/.github/actions/vpp-checkout-gerrit-change@27fc2aa27f57c8f7055e8f1b6e5a9f41b0315873
         with:
           WORKSPACE: ${{ env.WORKSPACE }}
           GERRIT_BRANCH: ${{ env.GERRIT_BRANCH }}
           GERRIT_REFSPEC: ${{ env.GERRIT_REFSPEC }}
           TUI_LINE: ${{ env.TUI_LINE }}
 
-      - name: Install VPP dependencies
-        # yamllint disable-line rule:line-length
-        uses: fdio/vpp/.github/actions/vpp-install-deps@3e7a1d738effde79ef4d87bc05f80de5a84b739a
-        with:
-          LOG_DIR: ${{ env.LOG_DIR }}
-          WORKSPACE: ${{ env.WORKSPACE }}
-          TUI_LINE: ${{ env.TUI_LINE }}
-
-      - name: Install VPP external dependencies
-        # yamllint disable-line rule:line-length
-        uses: fdio/vpp/.github/actions/vpp-install-ext-deps@master
-        with:
-          LOG_DIR: ${{ env.LOG_DIR }}
-          WORKSPACE: ${{ env.WORKSPACE }}
-          TUI_LINE: ${{ env.TUI_LINE }}
-
-      - name: Build VPP
-        # yamllint disable-line rule:line-length
-        uses: fdio/vpp/.github/actions/vpp-build@43b0339292476442bd7e2429e2ae1075918d8f83
-        with:
-          LOG_DIR: ${{ env.LOG_DIR }}
-          WORKSPACE: ${{ env.WORKSPACE }}
-          MAKE_PARALLEL_JOBS: ${{ env.MAKE_PARALLEL_JOBS }}
-          BUILD_TYPE: ${{ env.BUILD_TYPE }}
-          TUI_LINE: ${{ env.TUI_LINE }}
-
-      - name: Setup Docker VPP Runtime Environment for 'make test'
-        # yamllint disable-line rule:line-length
-        uses: fdio/vpp/.github/actions/vpp-docker-runtime-setup@3e7a1d738effde79ef4d87bc05f80de5a84b739a
-        with:
-          LOG_DIR: ${{ env.LOG_DIR }}
-          WORKSPACE: ${{ env.WORKSPACE }}
-          SHM_SIZE: ${{ env.SHM_SIZE }}
-          TUI_LINE: ${{ env.TUI_LINE }}
-
-      - name: VPP Make Test
-        # yamllint disable-line rule:line-length
-        uses: fdio/vpp/.github/actions/vpp-make-test@970ed8ecbe252fb5384e72141397e42fd9f127af
-        with:
-          LOG_DIR: ${{ env.LOG_DIR }}
-          WORKSPACE: ${{ env.WORKSPACE }}
-          TEST_JOBS: ${{ env.TEST_JOBS }}
-          TEST_RETRIES: ${{ env.TEST_RETRIES }}
-          MAKE_TEST_OS: ${{ env.MAKE_TEST_OS }}
-          MAKE_TEST_MULTIWORKER_OS: ${{ env.MAKE_TEST_MULTIWORKER_OS }}
-          VPPAPIGEN_TEST_OS: ${{ env.VPPAPIGEN_TEST_OS }}
-          TUI_LINE: ${{ env.TUI_LINE }}
+      - name: Build VPP Packages
+        run: |
+          set -euxo pipefail
+          {
+            cd "$WORKSPACE"
+            # pkg-verify runs install-deps, install-ext-deps, and builds vpp packages
+            make UNATTENDED=yes pkg-verify
+            # force rebuild of vpp-opt-deps
+            apt-get remove -y vpp-opt-deps || true
+            make UNATTENDED=yes install-opt-deps || true
+          } | tee "$LOG_DIR/build-all-packages.log"
 
       - name: Push Packages to Packagecloud
         if: always()
@@ -255,8 +210,6 @@ jobs:
           set -euxo pipefail
           pkgcloud_cmd=""
           vpp_pkgs=""
-          ext_deps_pkg=""
-          opt_deps_pkg=""
 
           create_deb_push_cmds()
           {
@@ -270,18 +223,10 @@ jobs:
               codename=${codename,,} # to lowercase
               pkgcloud_cmd="package_cloud push ${pkgcloud_acct}/${GERRIT_BRANCH/stable\//}/${distro}/${codename}/main/ "
               if [ "$distro" = "debian" ] || [ "$distro" = "ubuntu" ] ; then
-                  vpp_pkgs="$(find . -type f -iname '*.deb' | grep -v vpp-ext-deps | xargs || true)"
+                  vpp_pkgs="$(find . -type f -iname '*.deb' | xargs || true)"
                   if [ -z "$vpp_pkgs" ] ; then
                       echo -e "\n$TUI_LINE\n* ERROR: No .deb packages found to push\n* PACKAGECLOUD PUSH FAILED!\n$TUI_LINE\n"
                       exit 1
-                  fi
-                  ext_deps_ver="$(dpkg -l vpp-ext-deps | mawk '/vpp-ext-deps/{print $3}' || true)"
-                  if [ -n "$ext_deps_ver" ] ; then
-                      ext_deps_pkg="$(find . -type f -iname 'vpp-ext-deps*.deb' | grep $ext_deps_ver || find $downloads_dir -type f -iname 'vpp-ext-deps*.deb' | grep $ext_deps_ver || true)"
-                  fi
-                  opt_deps_ver="$(dpkg -l vpp-opt-deps | mawk '/vpp-opt-deps/{print $3}' || true)"
-                  if [ -n "$opt_deps_ver" ] ; then
-                      opt_deps_pkg="$(find . -type f -iname 'vpp-opt-deps*.deb' | grep $opt_deps_ver || find $downloads_dir -type f -iname 'vpp-opt-deps*.deb' | grep $opt_deps_ver || true)"
                   fi
               else
                   echo -e "\n$TUI_LINE\n* ERROR: Unknown distro: '$distro'\n* PACKAGECLOUD PUSH FAILED!\n$TUI_LINE\n"
@@ -295,12 +240,8 @@ jobs:
               for pkg in $vpp_pkgs ; do
                   $pkgcloud_cmd $pkg || true
               done
-              if [ -n "$ext_deps_pkg" ] ; then
-                  $pkgcloud_cmd $ext_deps_pkg || true
-              fi
-              if [ -n "$opt_deps_pkg" ] ; then
-                  $pkgcloud_cmd $opt_deps_pkg || true
-              fi
+              # remove vpp-opt-deps before running make test
+              apt-get remove -y vpp-opt-deps || true
           else
               echo -e "\n$TUI_LINE\n* ERROR: Missing '~/.packagecloud' for user '$(id)'\n* PACKAGECLOUD PUSH FAILED!\n$TUI_LINE\n"
               exit 1
@@ -312,10 +253,33 @@ jobs:
         run: |
           echo '{"url":"https://packagecloud.io","token":"$token"}' > /root/.packagecloud
 
+      - name: Setup Docker VPP Runtime Environment for 'make test'
+        # yamllint disable-line rule:line-length
+        uses: fdio/vpp/.github/actions/vpp-docker-runtime-setup@777792ecef2d5c93ce15fa5b7fdca999f5412c9d
+        with:
+          LOG_DIR: ${{ env.LOG_DIR }}
+          WORKSPACE: ${{ env.WORKSPACE }}
+          SHM_SIZE: ${{ env.SHM_SIZE }}
+          TUI_LINE: ${{ env.TUI_LINE }}
+
+      - name: VPP Make Test
+        # yamllint disable-line rule:line-length
+        uses: fdio/vpp/.github/actions/vpp-make-test@aafbd5109fbd323b3ec3292ec3acad8f5eb48fe0
+        timeout-minutes: 120
+        with:
+          LOG_DIR: ${{ env.LOG_DIR }}
+          WORKSPACE: ${{ env.WORKSPACE }}
+          TEST_JOBS: ${{ env.TEST_JOBS }}
+          TEST_RETRIES: ${{ env.TEST_RETRIES }}
+          MAKE_TEST_OS: ${{ env.MAKE_TEST_OS }}
+          MAKE_TEST_MULTIWORKER_OS: ${{ env.MAKE_TEST_MULTIWORKER_OS }}
+          VPPAPIGEN_TEST_OS: ${{ env.VPPAPIGEN_TEST_OS }}
+          TUI_LINE: ${{ env.TUI_LINE }}
+
       - name: AWS S3 Publish Logs
         if: always()
         # yamllint disable-line rule:line-length
-        uses: fdio/.github/.github/actions/aws-s3-publish-logs@6af3edc5eabc756240c3d419a3b693466efcbb86
+        uses: fdio/.github/.github/actions/aws-s3-publish-logs@c2df5c7959a8415f7dd730315a40b058748b4c84
         with:
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -339,7 +303,7 @@ jobs:
       - name: AWS S3 Publish Archives
         if: ${{ always() && steps.check-archives.outputs.has_archives == 'true' }}
         # yamllint disable-line rule:line-length
-        uses: fdio/.github/.github/actions/aws-s3-publish-logs@6af3edc5eabc756240c3d419a3b693466efcbb86
+        uses: fdio/.github/.github/actions/aws-s3-publish-logs@c2df5c7959a8415f7dd730315a40b058748b4c84
         with:
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
