@@ -171,7 +171,7 @@ jobs:
       - start-verify
       - verify-checkstyle
     if: ${{ needs.verify-checkstyle.result == 'success' }}
-    uses: fdio/vpp/.github/workflows/vpp-verify-hst.yml@3c759dcf6bd598fe129511f4b53a1a10573838d2
+    uses: fdio/vpp/.github/workflows/vpp-verify-hst.yml@5a84fcc15a94ee37cc2e070b7416e388e4d5f122
     with:
       FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
       GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
