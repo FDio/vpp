@@ -126,6 +126,8 @@ jobs:
       LOG_PREFIX: ${{ inputs.LOG_PREFIX }}
       LOG_NAME: ""
       LOG_DIR: ""
+      S3_DOCS_7DAY_PATH: ""
+      S3_DOCS_7DAY_URL: https://s3-docs-7day.fd.io/vex-yul-rot-jenkins-1
       WORKSPACE: /scratch/docker-build/vpp
       TUI_LINE: "*******************************************************************"
 
@@ -142,6 +144,7 @@ jobs:
           set -euxo pipefail
           LOG_NAME="${{ env.LOG_PREFIX }}/verify-docs-${{ matrix.class }}-${{ matrix.os }}-${{ inputs.FDIO_NAMESPACE }}-${{ matrix.executor_arch }}"
           echo "LOG_NAME=$LOG_NAME" >> "$GITHUB_ENV"
+          echo "S3_DOCS_7DAY_PATH=$LOG_NAME/docs" >> "$GITHUB_ENV"
           LOG_DIR="$WORKSPACE/logs/$LOG_NAME"
           echo "LOG_DIR=$LOG_DIR" >> "$GITHUB_ENV"
           mkdir -p "$LOG_DIR"
@@ -150,15 +153,6 @@ jobs:
         run: |
           set -euo pipefail
           env | sort | tee "$LOG_DIR/environment.log"
-
-      - name: Log Docs Build Start
-        run: |
-          set -euxo pipefail
-          {
-            echo "$TUI_LINE"
-            echo "* Starting docs build"
-            echo "$TUI_LINE"
-          } | tee "$LOG_DIR/docs_start.log"
 
       - name: Show Nomad Dockerfile
         # yamllint disable-line rule:line-length
@@ -182,21 +176,21 @@ jobs:
       - name: AWS S3 Publish Docs
         if: ${{ steps.make-docs.outcome == 'success' }}
         # yamllint disable-line rule:line-length
-        uses: fdio/.github/.github/actions/aws-s3-publish-logs@fc7a74365b705fceeea362b3e81690e3908f4506
+        uses: fdio/.github/.github/actions/aws-s3-publish-logs@c2df5c7959a8415f7dd730315a40b058748b4c84
         with:
-          aws_access_key_id: ${{ secrets.AWS_DOCS_ACCESS_KEY_ID }}
-          aws_secret_access_key: ${{ secrets.AWS_DOCS_SECRET_ACCESS_KEY }}
+          aws_access_key_id: ${{ secrets.AWS_DOCS_7DAY_ACCESS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_DOCS_7DAY_SECRET_ACCESS_KEY }}
           aws_region: ${{ vars.AWS_REGION }}
           s3_bucket: ${{ vars.S3_DOCS_7DAY_BUCKET}}
-          s3_path: ${{ env.LOG_NAME }}/docs
-          s3_url: "https://s3-docs-7day.fd.io/vex-yul-rot-jenkins-1"
+          s3_path: ${{ env.S3_DOCS_7DAY_PATH }}
+          s3_url: ${{ env.S3_DOCS_7DAY_URL }}
           archives_path: "${{ env.WORKSPACE }}/build-root/docs/html"
           compress_files: false
 
       - name: AWS S3 Publish Logs
         if: always()
         # yamllint disable-line rule:line-length
-        uses: fdio/.github/.github/actions/aws-s3-publish-logs@fc7a74365b705fceeea362b3e81690e3908f4506
+        uses: fdio/.github/.github/actions/aws-s3-publish-logs@c2df5c7959a8415f7dd730315a40b058748b4c84
         with:
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}

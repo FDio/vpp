@@ -151,7 +151,7 @@ jobs:
       - name: Git Checkout CSIT
         uses: actions/checkout@v6
         with:
-          path: csit
+          path: ${{ env.WORKSPACE }}/csit
           ref: master
           repository: FDio/csit
           fetch-depth: 0
@@ -161,13 +161,13 @@ jobs:
         uses: fdio/csit/.github/actions/csit-bootstrap@6e2e8dd6eae1a9297bfcc3a1630be181191a0553
         with:
           bootstrap_script: per_patch_perf.sh
-          path: csit
+          path: ${{ env.WORKSPACE }}/csit
           with_oper: true
 
       - name: AWS S3 Publish Logs
         if: ${{ !cancelled() && (success() || failure()) }}
         # yamllint disable-line rule:line-length
-        uses: fdio/.github/.github/actions/aws-s3-publish-logs@fc7a74365b705fceeea362b3e81690e3908f4506
+        uses: fdio/.github/.github/actions/aws-s3-publish-logs@c2df5c7959a8415f7dd730315a40b058748b4c84
         with:
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}

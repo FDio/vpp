@@ -210,8 +210,6 @@ jobs:
           set -euxo pipefail
           pkgcloud_cmd=""
           vpp_pkgs=""
-          ext_deps_pkg=""
-          opt_deps_pkg=""
 
           create_deb_push_cmds()
           {
@@ -225,18 +223,10 @@ jobs:
               codename=${codename,,} # to lowercase
               pkgcloud_cmd="package_cloud push ${pkgcloud_acct}/${GERRIT_BRANCH/stable\//}/${distro}/${codename}/main/ "
               if [ "$distro" = "debian" ] || [ "$distro" = "ubuntu" ] ; then
-                  vpp_pkgs="$(find . -type f -iname '*.deb' | grep -v vpp-ext-deps | xargs || true)"
+                  vpp_pkgs="$(find . -type f -iname '*.deb' | xargs || true)"
                   if [ -z "$vpp_pkgs" ] ; then
                       echo -e "\n$TUI_LINE\n* ERROR: No .deb packages found to push\n* PACKAGECLOUD PUSH FAILED!\n$TUI_LINE\n"
                       exit 1
-                  fi
-                  ext_deps_ver="$(dpkg -l vpp-ext-deps | mawk '/vpp-ext-deps/{print $3}' || true)"
-                  if [ -n "$ext_deps_ver" ] ; then
-                      ext_deps_pkg="$(find . -type f -iname 'vpp-ext-deps*.deb' | grep $ext_deps_ver || find $downloads_dir -type f -iname 'vpp-ext-deps*.deb' | grep $ext_deps_ver || true)"
-                  fi
-                  opt_deps_ver="$(dpkg -l vpp-opt-deps | mawk '/vpp-opt-deps/{print $3}' || true)"
-                  if [ -n "$opt_deps_ver" ] ; then
-                      opt_deps_pkg="$(find . -type f -iname 'vpp-opt-deps*.deb' | grep $opt_deps_ver || find $downloads_dir -type f -iname 'vpp-opt-deps*.deb' | grep $opt_deps_ver || true)"
                   fi
               else
                   echo -e "\n$TUI_LINE\n* ERROR: Unknown distro: '$distro'\n* PACKAGECLOUD PUSH FAILED!\n$TUI_LINE\n"
@@ -250,14 +240,8 @@ jobs:
               for pkg in $vpp_pkgs ; do
                   $pkgcloud_cmd $pkg || true
               done
-              if [ -n "$ext_deps_pkg" ] ; then
-                  $pkgcloud_cmd $ext_deps_pkg || true
-              fi
-              if [ -n "$opt_deps_pkg" ] ; then
-                  $pkgcloud_cmd $opt_deps_pkg || true
-                  # remove vpp-opt-deps before running make test
-                  apt-get remove -y vpp-opt-deps || true
-              fi
+              # remove vpp-opt-deps before running make test
+              apt-get remove -y vpp-opt-deps || true
           else
               echo -e "\n$TUI_LINE\n* ERROR: Missing '~/.packagecloud' for user '$(id)'\n* PACKAGECLOUD PUSH FAILED!\n$TUI_LINE\n"
               exit 1
@@ -271,7 +255,7 @@ jobs:
 
       - name: Setup Docker VPP Runtime Environment for 'make test'
         # yamllint disable-line rule:line-length
-        uses: fdio/vpp/.github/actions/vpp-docker-runtime-setup@27fc2aa27f57c8f7055e8f1b6e5a9f41b0315873
+        uses: fdio/vpp/.github/actions/vpp-docker-runtime-setup@777792ecef2d5c93ce15fa5b7fdca999f5412c9d
         with:
           LOG_DIR: ${{ env.LOG_DIR }}
           WORKSPACE: ${{ env.WORKSPACE }}
@@ -280,7 +264,7 @@ jobs:
 
       - name: VPP Make Test
         # yamllint disable-line rule:line-length
-        uses: fdio/vpp/.github/actions/vpp-make-test@0b2ad4fb479a2e4b03adb05089895c90f4281a60
+        uses: fdio/vpp/.github/actions/vpp-make-test@aafbd5109fbd323b3ec3292ec3acad8f5eb48fe0
         timeout-minutes: 120
         with:
           LOG_DIR: ${{ env.LOG_DIR }}
@@ -295,7 +279,7 @@ jobs:
       - name: AWS S3 Publish Logs
         if: always()
         # yamllint disable-line rule:line-length
-        uses: fdio/.github/.github/actions/aws-s3-publish-logs@fc7a74365b705fceeea362b3e81690e3908f4506
+        uses: fdio/.github/.github/actions/aws-s3-publish-logs@c2df5c7959a8415f7dd730315a40b058748b4c84
         with:
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -319,7 +303,7 @@ jobs:
       - name: AWS S3 Publish Archives
         if: ${{ always() && steps.check-archives.outputs.has_archives == 'true' }}
         # yamllint disable-line rule:line-length
-        uses: fdio/.github/.github/actions/aws-s3-publish-logs@fc7a74365b705fceeea362b3e81690e3908f4506
+        uses: fdio/.github/.github/actions/aws-s3-publish-logs@c2df5c7959a8415f7dd730315a40b058748b4c84
         with:
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
