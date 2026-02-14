@@ -96,7 +96,7 @@ jobs:
     name: Checkstyle
     needs:
       - start-verify
-    uses: fdio/vpp/.github/workflows/vpp-verify-checkstyle.yml@master
+    uses: fdio/vpp/.github/workflows/vpp-verify-checkstyle.yml@1d3c4f761e2c0d2fa8b20d8653d4614a4fbaea49
     with:
       FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
       GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
@@ -117,7 +117,7 @@ jobs:
       - start-verify
       - verify-checkstyle
     if: ${{ needs.verify-checkstyle.result == 'success' }}
-    uses: fdio/vpp/.github/workflows/vpp-verify-maketest.yml@master
+    uses: fdio/vpp/.github/workflows/vpp-verify-maketest.yml@eb4497824eab8f892014948c7553a1b6777735f5
     with:
       FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
       GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
@@ -135,7 +135,7 @@ jobs:
       - start-verify
       - verify-checkstyle
     if: ${{ needs.verify-checkstyle.result == 'success' }}
-    uses: fdio/vpp/.github/workflows/vpp-csit-verify-api.yml@master
+    uses: fdio/vpp/.github/workflows/vpp-csit-verify-api.yml@1d3c4f761e2c0d2fa8b20d8653d4614a4fbaea49
     with:
       FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
       GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
@@ -153,7 +153,7 @@ jobs:
       - start-verify
       - verify-checkstyle
     if: ${{ needs.verify-checkstyle.result == 'success' }}
-    uses: fdio/vpp/.github/workflows/vpp-verify-arm-drivers.yml@master
+    uses: fdio/vpp/.github/workflows/vpp-verify-arm-drivers.yml@eb4497824eab8f892014948c7553a1b6777735f5
     with:
       FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
       GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
@@ -171,7 +171,7 @@ jobs:
       - start-verify
       - verify-checkstyle
     if: ${{ needs.verify-checkstyle.result == 'success' }}
-    uses: fdio/vpp/.github/workflows/vpp-verify-hst.yml@a594055e5cee850b71c4caa207aac3d54ed8c64f
+    uses: fdio/vpp/.github/workflows/vpp-verify-hst.yml@3dc23cb13b0aebf148e6664854ae21535cdab1c0
     with:
       FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
       GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
@@ -251,7 +251,7 @@ jobs:
       - detect-docs-changes
       - verify-checkstyle
     if: ${{ needs.verify-checkstyle.result == 'success' && needs.detect-docs-changes.outputs.docs_changed == 'true' }}
-    uses: fdio/vpp/.github/workflows/vpp-verify-docs.yml@master
+    uses: fdio/vpp/.github/workflows/vpp-verify-docs.yml@eb4497824eab8f892014948c7553a1b6777735f5
     with:
       FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
       GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
