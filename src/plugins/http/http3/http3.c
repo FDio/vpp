@@ -1671,7 +1671,7 @@ static u32
 http3_stream_transport_rx_unknown_type (http3_stream_ctx_t *sctx,
 					http_conn_t *stream)
 {
-  u32 max_deq, to_deq;
+  u32 max_deq, to_deq, n_deq;
   u8 *rx_buf, *p;
   u64 stream_type;
   http3_conn_ctx_t *h3c;
@@ -1688,7 +1688,8 @@ http3_stream_transport_rx_unknown_type (http3_stream_ctx_t *sctx,
       http3_stream_error_terminate_conn (stream, sctx, HTTP3_ERROR_GENERAL_PROTOCOL_ERROR);
       return 0;
     }
-  http_io_ts_drain (stream, p - rx_buf);
+  n_deq = p - rx_buf;
+  http_io_ts_drain (stream, n_deq);
   sctx->stream_type = stream_type;
   HTTP_DBG (1, "stream type %lx [%u]%x sctx %x", stream_type,
 	    stream->hc_hc_index, sctx->base.c_thread_index,
@@ -1703,7 +1704,7 @@ http3_stream_transport_rx_unknown_type (http3_stream_ctx_t *sctx,
 	{
 	  HTTP_DBG (1, "second control stream opened");
 	  http3_stream_error_terminate_conn (stream, sctx, HTTP3_ERROR_STREAM_CREATION_ERROR);
-	  return 1;
+	  return n_deq;
 	}
       h3c->peer_ctrl_stream_sctx_index =
 	((http_req_handle_t) sctx->base.hr_req_handle).req_index;
@@ -1714,7 +1715,7 @@ http3_stream_transport_rx_unknown_type (http3_stream_ctx_t *sctx,
 	{
 	  HTTP_DBG (1, "second decoder stream opened");
 	  http3_stream_error_terminate_conn (stream, sctx, HTTP3_ERROR_STREAM_CREATION_ERROR);
-	  return 1;
+	  return n_deq;
 	}
       h3c->peer_decoder_stream_sctx_index =
 	((http_req_handle_t) sctx->base.hr_req_handle).req_index;
@@ -1725,7 +1726,7 @@ http3_stream_transport_rx_unknown_type (http3_stream_ctx_t *sctx,
 	{
 	  HTTP_DBG (1, "second encoder stream opened");
 	  http3_stream_error_terminate_conn (stream, sctx, HTTP3_ERROR_STREAM_CREATION_ERROR);
-	  return 1;
+	  return n_deq;
 	}
       h3c->peer_encoder_stream_sctx_index =
 	((http_req_handle_t) sctx->base.hr_req_handle).req_index;
@@ -1736,18 +1737,19 @@ http3_stream_transport_rx_unknown_type (http3_stream_ctx_t *sctx,
 	{
 	  HTTP_DBG (1, "client initiated push stream");
 	  http3_stream_error_terminate_conn (stream, sctx, HTTP3_ERROR_STREAM_CREATION_ERROR);
-	  return 1;
+	  return n_deq;
 	}
       /* push not supported (we do not send MAX_PUSH_ID frame)*/
       HTTP_DBG (1, "server initiated push stream, not supported");
       http3_stream_error_terminate_conn (stream, sctx, HTTP3_ERROR_ID_ERROR);
-      return 1;
+      return n_deq;
     default:
       sctx->transport_rx_cb = http3_stream_transport_rx_drain;
       break;
     }
 
-  return sctx->transport_rx_cb (sctx, stream);
+  n_deq += sctx->transport_rx_cb (sctx, stream);
+  return n_deq;
 }
 
 static u32
