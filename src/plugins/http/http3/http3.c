@@ -1380,6 +1380,7 @@ http3_req_state_udp_tunnel_rx (http_conn_t *stream, http3_stream_ctx_t *sctx,
 	  /* capsule datagram is invalid (stream need to be aborted) */
 	  HTTP_DBG (1, "invalid capsule");
 	  http3_stream_terminate (stream, sctx, HTTP3_ERROR_DATAGRAM_ERROR);
+	  *n_deq = 0;
 	  return HTTP_SM_STOP;
 	}
       else
@@ -1398,6 +1399,7 @@ http3_req_state_udp_tunnel_rx (http_conn_t *stream, http3_stream_ctx_t *sctx,
       HTTP_DBG (1, "capsule not complete, frame length: %lu, capsule size: %lu", sctx->fh.length,
 		payload_offset + payload_len);
       http3_stream_terminate (stream, sctx, HTTP3_ERROR_DATAGRAM_ERROR);
+      *n_deq = 0;
       return HTTP_SM_STOP;
     }
   dgram_size = sizeof (hdr) + payload_len;
