@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "57e295e2_8f26c6a5",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2596
+      },
+      "writtenOn": "2026-02-15T17:02:30Z",
+      "side": 1,
+      "message": "Looks like after this commit compilation failed on rhel8\n\n```\n[2703/3399] : \u0026\u0026 /usr/bin/clang-20   CMakeFiles/plugins/nat/CMakeFiles/test_pnat.dir/pnat/tests/pnat_test.c.o CMakeFiles/plugins/nat/CMakeFiles/test_pnat.dir/pnat/pnat_node.c.o CMakeFiles/plugins/nat/CMakeFiles/test_pnat.dir/pnat/pnat.c.o CMakeFiles/plugins/nat/CMakeFiles/test_pnat.dir/__/__/vnet/ip/ip_checksum.c.o -o bin/test_pnat  -Wl,-rpath,/builddir/build/BUILD/vpp-26.06/build-root/build-vpp-native/vpp/lib64  lib64/libvlib.so.26.06  lib64/libvppinfra.so.26.06  -lm  /usr/lib64/libunwind.so  -ldl \u0026\u0026 :\nFAILED: bin/test_pnat \n: \u0026\u0026 /usr/bin/clang-20   CMakeFiles/plugins/nat/CMakeFiles/test_pnat.dir/pnat/tests/pnat_test.c.o CMakeFiles/plugins/nat/CMakeFiles/test_pnat.dir/pnat/pnat_node.c.o CMakeFiles/plugins/nat/CMakeFiles/test_pnat.dir/pnat/pnat.c.o CMakeFiles/plugins/nat/CMakeFiles/test_pnat.dir/__/__/vnet/ip/ip_checksum.c.o -o bin/test_pnat  -Wl,-rpath,/builddir/build/BUILD/vpp-26.06/build-root/build-vpp-native/vpp/lib64  lib64/libvlib.so.26.06  lib64/libvppinfra.so.26.06  -lm  /usr/lib64/libunwind.so  -ldl \u0026\u0026 :\n/opt/rh/gcc-toolset-14/root//usr/lib/gcc/aarch64-redhat-linux/14/../../../../bin/ld: lib64/libvlib.so.26.06: undefined reference to `pthread_sigmask\u0027\n/opt/rh/gcc-toolset-14/root//usr/lib/gcc/aarch64-redhat-linux/14/../../../../bin/ld: lib64/libvlib.so.26.06: undefined reference to `pthread_attr_setstack\u0027\n/opt/rh/gcc-toolset-14/root//usr/lib/gcc/aarch64-redhat-linux/14/../../../../bin/ld: lib64/libvlib.so.26.06: undefined reference to `pthread_setname_np\u0027\n/opt/rh/gcc-toolset-14/root//usr/lib/gcc/aarch64-redhat-linux/14/../../../../bin/ld: lib64/libvlib.so.26.06: undefined reference to `pthread_create\u0027\n/opt/rh/gcc-toolset-14/root//usr/lib/gcc/aarch64-redhat-linux/14/../../../../bin/ld: lib64/libvlib.so.26.06: undefined reference to `pthread_setaffinity_np\u0027\nclang-20: error: linker command failed with exit code 1 (use -v to see invocation)\n```",
+      "revId": "cb28ba605bf86f0304949d0427c804e71a6d85fa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
