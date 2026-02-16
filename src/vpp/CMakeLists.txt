@@ -132,8 +132,15 @@ add_vpp_tool(vpp_prometheus_push
    DEPENDS api_headers
 )
 
+add_vpp_test(test_dump_metrics
+   SOURCES app/dump_metrics_test.c app/dump_metrics.c
+   LINK_LIBRARIES vppapiclient vppinfra vlib svm vlibmemoryclient ${EPOLL_LIB}
+   DEPENDS api_headers
+)
+
 install(FILES conf/startup.conf DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/vpp COMPONENT vpp)
 install(FILES conf/80-vpp.conf DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/sysctl.d COMPONENT vpp)
+
 
 ##############################################################################
 # VAT2 plugins
