@@ -721,6 +721,100 @@ vlib_buffer_pool_put (vlib_main_t * vm, u8 buffer_pool_index,
   clib_spinlock_unlock (&bp->lock);
 }
 
+/** \brief Strictly allocate exactly @c n_buffers into ring from specific pool
+
+    Attempts to allocate @c n_buffers into @c ring starting at @c start.
+    If fewer than @c n_buffers are allocated, partial allocation is returned
+    to @c buffer_pool_index and the function reports failure.
+
+    @param vm - (vlib_main_t *) vlib main data structure pointer
+    @param ring - (u32 *) buffer index ring
+    @param start - (u32) first slot in the ring
+    @param ring_size - (u32) ring size
+    @param n_buffers - (u32) number of buffers requested
+    @param buffer_pool_index - (u8) source buffer pool index
+    @return - (u32) 1 on full success, 0 on failure
+*/
+always_inline __clib_warn_unused_result u32
+vlib_buffer_strict_alloc_to_ring_from_pool (vlib_main_t *vm, u32 *ring, u32 start, u32 ring_size,
+					    u32 n_buffers, u8 buffer_pool_index)
+{
+  u32 n_alloc;
+
+  n_alloc =
+    vlib_buffer_alloc_to_ring_from_pool (vm, ring, start, ring_size, n_buffers, buffer_pool_index);
+  if (PREDICT_TRUE (n_alloc == n_buffers))
+    return 1;
+
+  if (n_alloc)
+    {
+      if (PREDICT_TRUE (start + n_alloc <= ring_size))
+	vlib_buffer_pool_put (vm, buffer_pool_index, ring + start, n_alloc);
+      else
+	{
+	  u32 n = ring_size - start;
+	  vlib_buffer_pool_put (vm, buffer_pool_index, ring + start, n);
+	  vlib_buffer_pool_put (vm, buffer_pool_index, ring, n_alloc - n);
+	}
+    }
+
+  return 0;
+}
+
+/** \brief Strictly allocate exactly @c n_buffers from a specific buffer pool
+
+    Attempts to allocate @c n_buffers from @c buffer_pool_index into @c buffers.
+    If fewer than @c n_buffers are allocated, any partial allocation is returned
+    back to the same pool and the function reports failure.
+
+    @param vm - (vlib_main_t *) vlib main data structure pointer
+    @param buffers - (u32 *) destination buffer index array
+    @param n_buffers - (u32) number of buffers requested
+    @param buffer_pool_index - (u8) source buffer pool index
+    @return - (u32) 1 on full success, 0 on failure
+*/
+always_inline __clib_warn_unused_result u32
+vlib_buffer_strict_alloc_from_pool (vlib_main_t *vm, u32 *buffers, u32 n_buffers,
+				    u8 buffer_pool_index)
+{
+  u32 n_alloc = vlib_buffer_alloc_from_pool (vm, buffers, n_buffers, buffer_pool_index);
+  if (PREDICT_TRUE (n_alloc == n_buffers))
+    return 1;
+
+  if (n_alloc)
+    vlib_buffer_pool_put (vm, buffer_pool_index, buffers, n_alloc);
+  return 0;
+}
+
+/** \brief Strictly allocate exactly @c n_buffers from default numa pool
+
+    @param vm - (vlib_main_t *) vlib main data structure pointer
+    @param buffers - (u32 *) destination buffer index array
+    @param n_buffers - (u32) number of buffers requested
+    @return - (u32) 1 on full success, 0 on failure
+*/
+always_inline __clib_warn_unused_result u32
+vlib_buffer_strict_alloc (vlib_main_t *vm, u32 *buffers, u32 n_buffers)
+{
+  u8 index = vlib_buffer_pool_get_default_for_numa (vm, vm->numa_node);
+  return vlib_buffer_strict_alloc_from_pool (vm, buffers, n_buffers, index);
+}
+
+/** \brief Strictly allocate exactly @c n_buffers from specific numa node
+
+    @param vm - (vlib_main_t *) vlib main data structure pointer
+    @param buffers - (u32 *) destination buffer index array
+    @param n_buffers - (u32) number of buffers requested
+    @param numa_node - (u32) numa node
+    @return - (u32) 1 on full success, 0 on failure
+*/
+always_inline __clib_warn_unused_result u32
+vlib_buffer_strict_alloc_on_numa (vlib_main_t *vm, u32 *buffers, u32 n_buffers, u32 numa_node)
+{
+  u8 index = vlib_buffer_pool_get_default_for_numa (vm, numa_node);
+  return vlib_buffer_strict_alloc_from_pool (vm, buffers, n_buffers, index);
+}
+
 /** \brief return unused buffers back to pool
     This function can be used to return buffers back to pool without going
     through vlib_buffer_free. Buffer metadata must not be modified in any
