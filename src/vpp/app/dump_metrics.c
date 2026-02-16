@@ -141,9 +141,11 @@ sanitize (char *str, int len)
 {
   for (int i = 0; i < len; i++)
     {
-      if (!isalnum (str[i]))
+      if (str[i] == '/')
 	str[i] = '_';
-      else if (str[i] == '/')
+      else if (str[i] == '-')
+	continue;
+      else if (!isalnum (str[i]))
 	str[i] = '_';
     }
 }
