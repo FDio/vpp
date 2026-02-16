@@ -1,6 +1,23 @@
 {
   "comments": [
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "2bbcf6a5_c1128ca9",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3270
+      },
+      "writtenOn": "2026-02-16T14:21:08Z",
+      "side": 1,
+      "message": "Will this work better i, unfortunately do not have the ability to test you case.",
+      "revId": "c285b77eb9322a3fb3548a7115279ed8c539f64d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "9ec652e1_46616b1e",
@@ -20,6 +37,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "882de4da_be08f1c9",
+        "filename": "src/vpp/app/dump_metrics.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 146,
+      "author": {
+        "id": 3270
+      },
+      "writtenOn": "2026-02-16T14:21:08Z",
+      "side": 1,
+      "message": "Aggree i will change the code only look for / and replace it with _",
+      "parentUuid": "9ec652e1_46616b1e",
+      "revId": "c285b77eb9322a3fb3548a7115279ed8c539f64d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "ef3c8b1b_1dcd89bc",
         "filename": "src/vpp/app/dump_metrics.c",
         "patchSetId": 1
@@ -31,6 +66,24 @@
       "writtenOn": "2026-02-16T12:47:34Z",
       "side": 1,
       "message": "I know this is out of scope in CL but as to the consistency reasoning these changes seek, shouldn\u0027t this sanitization of the 2nd token in a 4-way tuple variant also happen here?",
+      "revId": "c285b77eb9322a3fb3548a7115279ed8c539f64d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7cec436d_8983474e",
+        "filename": "src/vpp/app/dump_metrics.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 306,
+      "author": {
+        "id": 3270
+      },
+      "writtenOn": "2026-02-16T14:21:08Z",
+      "side": 1,
+      "message": "Good catch",
+      "parentUuid": "ef3c8b1b_1dcd89bc",
       "revId": "c285b77eb9322a3fb3548a7115279ed8c539f64d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
