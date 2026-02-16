@@ -137,13 +137,21 @@ print_metric_v1 (FILE *stream, stat_segment_data_t *res)
 }
 
 static void
+sanitize_slash_only (char *str, int len)
+{
+  for (int i = 0; i < len; i++)
+    {
+      if (str[i] == '/')
+	str[i] = '_';
+    }
+}
+
+static void
 sanitize (char *str, int len)
 {
   for (int i = 0; i < len; i++)
     {
       if (!isalnum (str[i]))
-	str[i] = '_';
-      else if (str[i] == '/')
 	str[i] = '_';
     }
 }
@@ -204,7 +212,7 @@ tokenize (const char *name, char **tokens, int *lengths, int max_tokens)
   return i;
 }
 
-static void
+void
 print_metric_v2 (FILE *stream, stat_segment_data_t *res)
 {
   int num_tokens = 0;
@@ -230,7 +238,7 @@ print_metric_v2 (FILE *stream, stat_segment_data_t *res)
 		 !strncmp (tokens[1], "interfaces", lengths[1])))
 	      {
 		sanitize (tokens[1], lengths[1]);
-		sanitize (tokens[2], lengths[2]);
+		sanitize_slash_only (tokens[2], lengths[2]);
 		sanitize (tokens[3], lengths[3]);
 		fformat (
 		  stream,
@@ -301,6 +309,7 @@ print_metric_v2 (FILE *stream, stat_segment_data_t *res)
 		!strncmp (tokens[1], "interfaces", lengths[1]))
 	      {
 		sanitize (tokens[1], lengths[1]);
+		sanitize_slash_only (tokens[2], lengths[2]);
 		sanitize (tokens[3], lengths[3]);
 		fformat (stream,
 			 "%.*s_%.*s_packets{interface=\"%.*s\",index=\"%d\","
