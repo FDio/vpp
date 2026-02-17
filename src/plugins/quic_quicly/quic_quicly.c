@@ -280,10 +280,10 @@ quic_quicly_set_udp_tx_evt (session_t *udp_session)
   if (svm_fifo_set_event (udp_session->tx_fifo))
     {
       rv = session_program_tx_io_evt (udp_session->handle, SESSION_IO_EVT_TX);
-    }
-  if (PREDICT_FALSE (rv))
-    {
-      clib_warning ("Event enqueue errored %d", rv);
+      if (PREDICT_FALSE (rv))
+	{
+	  clib_warning ("Event enqueue errored %d", rv);
+	}
     }
 }
 
@@ -439,7 +439,7 @@ get_stream_session_and_ctx_from_stream (quicly_stream_t *stream,
 /* Quicly callbacks */
 
 static void
-quic_quicly_on_stream_destroy (quicly_stream_t *stream, int err)
+quic_quicly_on_stream_destroy (quicly_stream_t *stream, quicly_error_t err)
 {
   quic_stream_data_t *stream_data = (quic_stream_data_t *) stream->data;
   quic_ctx_t *sctx =
@@ -565,7 +565,7 @@ quic_quicly_fifo_egress_emit (quicly_stream_t *stream, size_t off, void *dst,
 }
 
 static void
-quic_quicly_on_stop_sending (quicly_stream_t *stream, int quicly_error)
+quic_quicly_on_stop_sending (quicly_stream_t *stream, quicly_error_t quicly_error)
 {
   quic_stream_data_t *stream_data = (quic_stream_data_t *) stream->data;
   quic_ctx_t *sctx =
@@ -724,7 +724,7 @@ quic_quicly_on_receive (quicly_stream_t *stream, size_t off, const void *src,
 }
 
 static void
-quic_quicly_on_receive_reset (quicly_stream_t *stream, int quicly_error)
+quic_quicly_on_receive_reset (quicly_stream_t *stream, quicly_error_t quicly_error)
 {
   quic_stream_data_t *stream_data = (quic_stream_data_t *) stream->data;
   quic_ctx_t *sctx =
@@ -766,9 +766,8 @@ quic_quicly_store_conn_ctx (void *conn, quic_ctx_t *ctx)
     (void *) (((u64) ctx->c_thread_index) << 32 | (u64) ctx->c_c_index);
 }
 
-static int
-quic_quicly_on_stream_open (quicly_stream_open_t *self,
-			    quicly_stream_t *stream)
+static quicly_error_t
+quic_quicly_on_stream_open (quicly_stream_open_t *self, quicly_stream_t *stream)
 {
   /* Return code for this function ends either
    * - in quicly_receive : if not QUICLY_ERROR_PACKET_IGNORED, will close
@@ -867,9 +866,8 @@ quic_quicly_on_stream_open (quicly_stream_open_t *self,
 }
 
 static void
-quic_quicly_on_closed_by_remote (quicly_closed_by_remote_t *self,
-				 quicly_conn_t *conn, int code,
-				 uint64_t frame_type, const char *reason,
+quic_quicly_on_closed_by_remote (quicly_closed_by_remote_t *self, quicly_conn_t *conn,
+				 quicly_error_t code, uint64_t frame_type, const char *reason,
 				 size_t reason_len)
 {
   quic_ctx_t *ctx = quic_quicly_get_conn_ctx (conn);
@@ -1725,7 +1723,7 @@ quic_quicly_connect_stream (void *quic_conn, void **quic_stream,
 {
   quicly_conn_t *conn = quic_conn;
   quicly_stream_t *quicly_stream;
-  int rv;
+  quicly_error_t rv;
 
   rv = quicly_open_stream (conn, (quicly_stream_t **) quic_stream, is_unidir);
   if (rv)

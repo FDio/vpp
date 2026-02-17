@@ -65,7 +65,8 @@ func (s *VethsSuite) SetupTest() {
 	sessionConfig.
 		NewStanza("session").
 		Append("enable").
-		Append("use-app-socket-api")
+		Append("use-app-socket-api").
+		Append("event-queue-length 100000")
 
 	if strings.Contains(CurrentSpecReport().LeafNodeText, "InterruptMode") {
 		sessionConfig.Append("use-private-rx-mqs").Close()
