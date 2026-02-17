@@ -79,8 +79,10 @@ clib_stack_frame_get (clib_stack_frame_t *sf)
       return 0;
     }
 
-  if (unw_get_proc_name (&cursor, sf->name, sizeof (sf->name), &sf->offset) <
-      0)
+  int r = unw_get_proc_name (&cursor, sf->name, sizeof (sf->name), &sf->offset);
+  if (r == -UNW_ENOMEM)
+    memcpy (sf->name + sizeof (sf->name) - 4, "...", 4);
+  else if (r < 0)
     sf->name[0] = sf->offset = 0;
 
   sf->is_signal_frame = unw_is_signal_frame (&cursor) ? 1 : 0;
