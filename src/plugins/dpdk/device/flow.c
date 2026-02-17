@@ -826,6 +826,8 @@ dpdk_flow_ops_fn (vnet_main_t * vnm, vnet_flow_dev_op_t op, u32 dev_instance,
     case VNET_FLOW_TYPE_IP6_IP6:
     case VNET_FLOW_TYPE_IP6_IP6_N_TUPLE:
     case VNET_FLOW_TYPE_GENERIC:
+    case VNET_FLOW_TYPE_META:
+    case VNET_FLOW_TYPE_TAG:
       if ((rv = dpdk_flow_add (xd, flow, fe)))
 	goto done;
       break;

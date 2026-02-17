@@ -14,37 +14,39 @@
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/ethernet/packet.h>
 
-#define foreach_flow_type                                                     \
-  /* l2 flow*/                                                                \
-  _ (ETHERNET, ethernet, "ethernet")                                          \
-  /* l3 IP flow */                                                            \
-  _ (IP4, ip4, "ipv4")                                                        \
-  _ (IP6, ip6, "ipv6")                                                        \
-  /* IP tunnel flow */                                                        \
-  _ (IP4_L2TPV3OIP, ip4_l2tpv3oip, "ipv4-l2tpv3oip")                          \
-  _ (IP4_IPSEC_ESP, ip4_ipsec_esp, "ipv4-ipsec-esp")                          \
-  _ (IP4_IPSEC_AH, ip4_ipsec_ah, "ipv4-ipsec-ah")                             \
-  /* l4 flow*/                                                                \
-  _ (IP4_N_TUPLE, ip4_n_tuple, "ipv4-n-tuple")                                \
-  _ (IP6_N_TUPLE, ip6_n_tuple, "ipv6-n-tuple")                                \
-  _ (IP4_N_TUPLE_TAGGED, ip4_n_tuple_tagged, "ipv4-n-tuple-tagged")           \
-  _ (IP6_N_TUPLE_TAGGED, ip6_n_tuple_tagged, "ipv6-n-tuple-tagged")           \
-  /* L4 tunnel flow*/                                                         \
-  _ (IP4_VXLAN, ip4_vxlan, "ipv4-vxlan")                                      \
-  _ (IP6_VXLAN, ip6_vxlan, "ipv6-vxlan")                                      \
-  _ (IP4_GTPC, ip4_gtpc, "ipv4-gtpc")                                         \
-  _ (IP4_GTPU, ip4_gtpu, "ipv4-gtpu")                                         \
-  /* generic flow */                                                          \
-  _ (GENERIC, generic, "generic")                                             \
-  /* IP in IP */                                                              \
-  _ (IP6_IP6, ip6_ip6, "ipv6-ipv6")                                           \
-  _ (IP6_IP4, ip6_ip4, "ipv6-ipv4")                                           \
-  _ (IP4_IP6, ip4_ip6, "ipv4-ipv6")                                           \
-  _ (IP4_IP4, ip4_ip4, "ipv4-ipv4")                                           \
-  _ (IP6_IP6_N_TUPLE, ip6_ip6_n_tuple, "ipv6-ipv6-n-tuple")                   \
-  _ (IP6_IP4_N_TUPLE, ip6_ip4_n_tuple, "ipv6-ipv4-n-tuple")                   \
-  _ (IP4_IP6_N_TUPLE, ip4_ip6_n_tuple, "ipv4-ipv6-n-tuple")                   \
-  _ (IP4_IP4_N_TUPLE, ip4_ip4_n_tuple, "ipv4-ipv4-n-tuple")
+#define foreach_flow_type                                                                          \
+  /* l2 flow*/                                                                                     \
+  _ (ETHERNET, ethernet, "ethernet")                                                               \
+  /* l3 IP flow */                                                                                 \
+  _ (IP4, ip4, "ipv4")                                                                             \
+  _ (IP6, ip6, "ipv6")                                                                             \
+  /* IP tunnel flow */                                                                             \
+  _ (IP4_L2TPV3OIP, ip4_l2tpv3oip, "ipv4-l2tpv3oip")                                               \
+  _ (IP4_IPSEC_ESP, ip4_ipsec_esp, "ipv4-ipsec-esp")                                               \
+  _ (IP4_IPSEC_AH, ip4_ipsec_ah, "ipv4-ipsec-ah")                                                  \
+  /* l4 flow*/                                                                                     \
+  _ (IP4_N_TUPLE, ip4_n_tuple, "ipv4-n-tuple")                                                     \
+  _ (IP6_N_TUPLE, ip6_n_tuple, "ipv6-n-tuple")                                                     \
+  _ (IP4_N_TUPLE_TAGGED, ip4_n_tuple_tagged, "ipv4-n-tuple-tagged")                                \
+  _ (IP6_N_TUPLE_TAGGED, ip6_n_tuple_tagged, "ipv6-n-tuple-tagged")                                \
+  /* L4 tunnel flow*/                                                                              \
+  _ (IP4_VXLAN, ip4_vxlan, "ipv4-vxlan")                                                           \
+  _ (IP6_VXLAN, ip6_vxlan, "ipv6-vxlan")                                                           \
+  _ (IP4_GTPC, ip4_gtpc, "ipv4-gtpc")                                                              \
+  _ (IP4_GTPU, ip4_gtpu, "ipv4-gtpu")                                                              \
+  /* generic flow */                                                                               \
+  _ (GENERIC, generic, "generic")                                                                  \
+  /* IP in IP */                                                                                   \
+  _ (IP6_IP6, ip6_ip6, "ipv6-ipv6")                                                                \
+  _ (IP6_IP4, ip6_ip4, "ipv6-ipv4")                                                                \
+  _ (IP4_IP6, ip4_ip6, "ipv4-ipv6")                                                                \
+  _ (IP4_IP4, ip4_ip4, "ipv4-ipv4")                                                                \
+  _ (IP6_IP6_N_TUPLE, ip6_ip6_n_tuple, "ipv6-ipv6-n-tuple")                                        \
+  _ (IP6_IP4_N_TUPLE, ip6_ip4_n_tuple, "ipv6-ipv4-n-tuple")                                        \
+  _ (IP4_IP6_N_TUPLE, ip4_ip6_n_tuple, "ipv4-ipv6-n-tuple")                                        \
+  _ (IP4_IP4_N_TUPLE, ip4_ip4_n_tuple, "ipv4-ipv4-n-tuple")                                        \
+  _ (META, meta, "meta")                                                                           \
+  _ (TAG, tag, "tag")
 
 #define foreach_flow_entry_ethernet \
   _fe(ethernet_header_t, eth_hdr)
@@ -143,14 +145,22 @@
 
 #define foreach_flow_entry_generic _fe (generic_pattern_t, pattern)
 
-#define foreach_flow_action \
-  _(0, COUNT, "count") \
-  _(1, MARK, "mark") \
-  _(2, BUFFER_ADVANCE, "buffer-advance") \
-  _(3, REDIRECT_TO_NODE, "redirect-to-node") \
-  _(4, REDIRECT_TO_QUEUE, "redirect-to-queue") \
-  _(5, RSS, "rss") \
-  _(6, DROP, "drop")
+#define foreach_flow_entry_meta _fe (meta_t, pattern)
+
+#define foreach_flow_entry_tag _fe (tag_t, pattern)
+
+#define foreach_flow_action                                                                        \
+  _ (0, COUNT, "count")                                                                            \
+  _ (1, MARK, "mark")                                                                              \
+  _ (2, SET_META, "set-meta")                                                                      \
+  _ (3, SET_TAG, "set-tag")                                                                        \
+  _ (4, FLAG, "flag")                                                                              \
+  _ (5, JUMP, "jump")                                                                              \
+  _ (6, BUFFER_ADVANCE, "buffer-advance")                                                          \
+  _ (7, REDIRECT_TO_NODE, "redirect-to-node")                                                      \
+  _ (8, REDIRECT_TO_QUEUE, "redirect-to-queue")                                                    \
+  _ (9, RSS, "rss")                                                                                \
+  _ (10, DROP, "drop")
 
 typedef enum
 {
@@ -236,6 +246,19 @@ typedef struct
   u8 mask[1024];
 } generic_pattern_t;
 
+typedef struct
+{
+  u32 spec;
+  u32 mask;
+} meta_t;
+
+typedef struct
+{
+  u32 spec;
+  u32 mask;
+  u8 index;
+} tag_t;
+
 typedef enum
 {
   VNET_FLOW_TYPE_UNKNOWN,
@@ -272,14 +295,28 @@ typedef struct
   /* flow type */
   vnet_flow_type_t type;
 
+  /* group (table) in which this rule will be inserted */
+  u32 group;
+
   /* flow index */
   u32 index;
 
   /* bitmap of flow actions (VNET_FLOW_ACTION_*) */
   u32 actions;
 
+  /* Actions data */
+
   /* flow id for VNET_FLOW_ACTION_MARK */
   u32 mark_flow_id;
+
+  /* metadata for VNET_FLOW_ACTION_SET_META */
+  u32 set_meta;
+
+  /* tag for VNET_FLOW_ACTION_TAG */
+  u32 set_tag;
+
+  /* jump table index for VNET_FLOW_ACTION_JUMP */
+  u32 jump_group;
 
   /* node index and next index for VNET_FLOW_ACTION_REDIRECT_TO_NODE */
   u32 redirect_node_index;

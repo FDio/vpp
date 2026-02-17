@@ -55,6 +55,27 @@ enum flow_type_v2
   FLOW_TYPE_GENERIC_V2,
 };
 
+enum flow_type_v3
+{
+  FLOW_TYPE_ETHERNET_V3 = 1,
+  FLOW_TYPE_IP4_V3,
+  FLOW_TYPE_IP6_V3,
+  FLOW_TYPE_IP4_L2TPV3OIP_V3,
+  FLOW_TYPE_IP4_IPSEC_ESP_V3,
+  FLOW_TYPE_IP4_IPSEC_AH_V3,
+  FLOW_TYPE_IP4_N_TUPLE_V3,
+  FLOW_TYPE_IP6_N_TUPLE_V3,
+  FLOW_TYPE_IP4_N_TUPLE_TAGGED_V3,
+  FLOW_TYPE_IP6_N_TUPLE_TAGGED_V3,
+  FLOW_TYPE_IP4_VXLAN_V3,
+  FLOW_TYPE_IP6_VXLAN_V3,
+  FLOW_TYPE_IP4_GTPC_V3,
+  FLOW_TYPE_IP4_GTPU_V3,
+  FLOW_TYPE_GENERIC_V3,
+  FLOW_TYPE_META_V3,
+  FLOW_TYPE_TAG_V3,
+};
+
 enum flow_action
 {
   FLOW_ACTION_COUNT = 1,
@@ -76,12 +97,40 @@ enum flow_action_v2
   FLOW_ACTION_DROP_V2 = 64,
 };
 
+enum flow_action_v3
+{
+  FLOW_ACTION_COUNT_V3 = 1,
+  FLOW_ACTION_MARK_V3 = 2,
+  FLOW_ACTION_SET_META_V3 = 4,
+  FLOW_ACTION_SET_TAG_V3 = 8,
+  FLOW_ACTION_FLAG_V3 = 16,
+  FLOW_ACTION_JUMP_V3 = 32,
+  FLOW_ACTION_BUFFER_ADVANCE_V3 = 64,
+  FLOW_ACTION_REDIRECT_TO_NODE_V3 = 128,
+  FLOW_ACTION_REDIRECT_TO_QUEUE_V3 = 256,
+  FLOW_ACTION_RSS_V3 = 512,
+  FLOW_ACTION_DROP_V3 = 1024,
+};
+
 enum rss_function
 {
   RSS_FUNC_DEFAULT,
   RSS_FUNC_TOEPLITZ,
   RSS_FUNC_SIMPLE_XOR,
   RSS_FUNC_SYMMETRIC_TOEPLITZ,
+};
+
+typedef tag
+{
+    u32 spec;
+    u32 mask;
+    u8 index;
+};
+
+typedef meta
+{
+    u32 spec;
+    u32 mask;
 };
 
 typedef generic_pattern
@@ -243,6 +292,18 @@ typedef flow_generic
   vl_api_generic_pattern_t pattern;
 };
 
+typedef flow_tag
+{
+  i32 foo;
+  vl_api_tag_t tag;
+};
+
+typedef flow_meta
+{
+  i32 foo;
+  vl_api_meta_t meta;
+};
+
 union flow
 {
   vl_api_flow_ethernet_t ethernet;
@@ -278,6 +339,27 @@ union flow_v2
   vl_api_flow_ip4_gtpc_t ip4_gtpc;
   vl_api_flow_ip4_gtpu_t ip4_gtpu;
   vl_api_flow_generic_t generic;
+};
+
+union flow_v3
+{
+  vl_api_flow_ethernet_t ethernet;
+  vl_api_flow_ip4_t ip4;
+  vl_api_flow_ip6_t ip6;
+  vl_api_flow_ip4_l2tpv3oip_t ip4_l2tpv3oip;
+  vl_api_flow_ip4_ipsec_esp_t ip4_ipsec_esp;
+  vl_api_flow_ip4_ipsec_ah_t ip4_ipsec_ah;
+  vl_api_flow_ip4_n_tuple_t ip4_n_tuple;
+  vl_api_flow_ip6_n_tuple_t ip6_n_tuple;
+  vl_api_flow_ip4_n_tuple_tagged_t ip4_n_tuple_tagged;
+  vl_api_flow_ip6_n_tuple_tagged_t ip6_n_tuple_tagged;
+  vl_api_flow_ip4_vxlan_t ip4_vxlan;
+  vl_api_flow_ip6_vxlan_t ip6_vxlan;
+  vl_api_flow_ip4_gtpc_t ip4_gtpc;
+  vl_api_flow_ip4_gtpu_t ip4_gtpu;
+  vl_api_flow_generic_t generic;
+  vl_api_flow_tag_t tag;
+  vl_api_flow_meta_t meta;
 };
 
 /* main flow struct */
@@ -346,4 +428,55 @@ typedef flow_rule_v2
 
   /* flow enum */
   vl_api_flow_v2_t flow;
+};
+
+/* main flow struct */
+typedef flow_rule_v3
+{
+  /* flow type */
+  vl_api_flow_type_v3_t type;
+
+  /* group (table) in which this rule will be inserted */
+  u32 group;
+
+  /* flow index */
+  u32 index;
+
+  /* bitmap of flow actions (FLOW_ACTION_*) */
+  vl_api_flow_action_v3_t actions;
+
+  /* flow id for VNET_FLOW_ACTION_MARK */
+  u32 mark_flow_id;
+
+  /* metadate for VNET_FLOW_ACTION_SET_META */
+  u32 set_meta;
+
+  /* tag for VNET_FLOW_ACTION_SET_TAG */
+  u32 set_tag;
+
+  /* jump table index for VNET_FLOW_ACTION_JUMP */
+  u32 jump_group;
+
+  /* node index and next index for FLOW_ACTION_REDIRECT_TO_NODE */
+  u32 redirect_node_index;
+  u32 redirect_device_input_next_index;
+
+  /* queue for FLOW_ACTION_REDIRECT_TO_QUEUE */
+  u32 redirect_queue;
+
+  /* start queue index and queue numbers for RSS queue group with FLOW_ACTION_RSS */
+  u32 queue_index;
+  u32 queue_num;
+
+  /* buffer offset for FLOW_ACTION_BUFFER_ADVANCE */
+  i32 buffer_advance;
+
+  /* RSS types, including IPv4/IPv6/TCP/UDP... */
+  u64 rss_types;
+
+  /* RSS functions, including IPv4/IPv6/TCP/UDP... */
+  vl_api_rss_function_t rss_fun;
+
+  /* flow enum */
+  vl_api_flow_v3_t flow;
 };

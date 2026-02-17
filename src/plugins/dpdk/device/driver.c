@@ -11,6 +11,12 @@ static const u32 supported_flow_actions_intel =
    VNET_FLOW_ACTION_REDIRECT_TO_QUEUE | VNET_FLOW_ACTION_BUFFER_ADVANCE |
    VNET_FLOW_ACTION_COUNT | VNET_FLOW_ACTION_DROP | VNET_FLOW_ACTION_RSS);
 
+static const u32 supported_flow_actions_mlx5 =
+  (VNET_FLOW_ACTION_MARK | VNET_FLOW_ACTION_SET_META | VNET_FLOW_ACTION_FLAG |
+   VNET_FLOW_ACTION_JUMP | VNET_FLOW_ACTION_REDIRECT_TO_NODE | VNET_FLOW_ACTION_REDIRECT_TO_QUEUE |
+   VNET_FLOW_ACTION_BUFFER_ADVANCE | VNET_FLOW_ACTION_COUNT | VNET_FLOW_ACTION_DROP |
+   VNET_FLOW_ACTION_RSS);
+
 #define DPDK_DRIVERS(...)                                                     \
   (dpdk_driver_name_t[])                                                      \
   {                                                                           \
@@ -92,8 +98,13 @@ static dpdk_driver_t dpdk_drivers[] = {
     .interface_name_prefix = "VhostEthernet",
   },
   {
-    .drivers = DPDK_DRIVERS ({ "mlx5_pci", "Mellanox ConnectX-4/5/6 Family" },
-			     { "net_enic", "Cisco VIC" }),
+    .drivers = DPDK_DRIVERS ({ "net_enic", "Cisco VIC" }),
+    .use_intel_phdr_cksum = 1,
+  },
+  {
+    .drivers = DPDK_DRIVERS ({ "mlx5_pci", "Mallanox ConnectX-4/5/6/7/8/9 BF-2/3 Family" }),
+    .interface_name_prefix = "Mlx5Ethernet",
+    .supported_flow_actions = supported_flow_actions_mlx5,
     .use_intel_phdr_cksum = 1,
   },
   {
