@@ -11,7 +11,7 @@ typedef struct
 {
   uword ip, sp;
   uword offset;
-  char name[64];
+  char name[256];
   const char *file_name;
   u32 index;
   u8 is_signal_frame;
