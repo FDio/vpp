@@ -7,7 +7,7 @@ if(NOT OPENSSL_FOUND)
 endif()
 
 unset(QUICLY_LINK_LIBRARIES)
-set(EXPECTED_QUICLY_VERSION "0.1.5-vpp")
+set(EXPECTED_QUICLY_VERSION "0.1.6-vpp")
 
 vpp_find_path(QUICLY_INCLUDE_DIR NAMES quicly.h)
 vpp_find_path(PICOTLS_INCLUDE_DIR NAMES picotls.h)

@@ -138,7 +138,7 @@ func QuicBuiltinEchoTest(s *VethsSuite) {
 	Log(serverVpp.Vppctl("test echo server " +
 		" uri quic://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1))
 
-	o := clientVpp.Vppctl("test echo client run-time 30 report-interval verbose" +
+	o := clientVpp.Vppctl("test echo client run-time 30 report-interval " +
 		" uri quic://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1)
 	Log(o)
 	AssertContains(o, "Test started")
