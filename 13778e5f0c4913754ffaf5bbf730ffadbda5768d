@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "71486a94_cc03f103",
+        "filename": "src/vnet/ip6-nd/rd_cp.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 378,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-02-18T17:02:17Z",
+      "side": 1,
+      "message": "Why not split the if and remove the one on 384? That is \n```\nif (!flag_a) \n  {\n     if (flag_l)\n       rd_cp_learn_prefix (vm, sw_if_index, dst_address, prefix_length);\n     continue;\n  }\n```",
+      "revId": "13778e5f0c4913754ffaf5bbf730ffadbda5768d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
