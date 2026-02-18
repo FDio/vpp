@@ -80,13 +80,13 @@ router_solicitation_start_stop (u32 sw_if_index, u8 start)
 
 static void interrupt_process (void);
 
-static int
-add_slaac_address (vlib_main_t * vm, u32 sw_if_index, u8 address_length,
-		   const ip6_address_t * address, f64 due_time)
+static void
+add_slaac_address (vlib_main_t *vm, u32 sw_if_index, u8 address_length,
+		   const ip6_address_t *address, f64 due_time)
 {
   rd_cp_main_t *rm = &rd_cp_main;
   slaac_address_t *slaac_address;
-  clib_error_t *rv = 0;
+  clib_error_t *err = NULL;
 
   pool_get_zero (rm->slaac_address_pool, slaac_address);
 
@@ -95,11 +95,13 @@ add_slaac_address (vlib_main_t * vm, u32 sw_if_index, u8 address_length,
   slaac_address->address = *address;
   slaac_address->due_time = due_time;
 
-  rv =
-    ip6_add_del_interface_address (vm, sw_if_index, &slaac_address->address,
-				   address_length, 0);
+  err = ip6_add_del_interface_address (vm, sw_if_index, &slaac_address->address, address_length, 0);
 
-  return rv != 0;
+  if (err != NULL)
+    {
+      vlib_log_warn (rm->log_class, "%U", format_clib_error, err);
+      clib_error_free (err);
+    }
 }
 
 static void
@@ -135,19 +137,21 @@ add_default_route (vlib_main_t * vm, u32 sw_if_index,
   }
 }
 
-static int
-remove_slaac_address (vlib_main_t * vm, slaac_address_t * slaac_address)
+static void
+remove_slaac_address (vlib_main_t *vm, slaac_address_t *slaac_address)
 {
   rd_cp_main_t *rm = &rd_cp_main;
-  clib_error_t *rv = 0;
+  clib_error_t *err = NULL;
 
-  rv = ip6_add_del_interface_address (vm, slaac_address->sw_if_index,
-				      &slaac_address->address,
-				      slaac_address->address_length, 1);
+  err = ip6_add_del_interface_address (vm, slaac_address->sw_if_index, &slaac_address->address,
+				       slaac_address->address_length, 1);
 
   pool_put (rm->slaac_address_pool, slaac_address);
-
-  return rv != 0;
+  if (err != NULL)
+    {
+      vlib_log_warn (rm->log_class, "%U", format_clib_error, err);
+      clib_error_free (err);
+    }
 }
 
 static void
@@ -217,6 +221,71 @@ ip6_prefixes_equal (ip6_address_t * prefix1, ip6_address_t * prefix2, u8 len)
 	prefix2->as_u64[1] >> (128 - len);
     }
   return prefix1->as_u64[0] >> (64 - len) == prefix2->as_u64[0] >> (64 - len);
+}
+
+static void
+rd_cp_learn_prefix (vlib_main_t *vm, const u32 sw_if_index, const ip6_address_t *address,
+		    const u8 address_length)
+{
+  ip_prefix_t *conflict_pfxs = NULL, _pfx = { 0 }, *pfx = &_pfx;
+  ip_prefix_t _largest_pfx = { 0 }, *largest_pfx = &_largest_pfx;
+  ip_interface_address_t *ia;
+  rd_cp_main_t *rm = &rd_cp_main;
+  ip6_main_t *im = &ip6_main;
+  clib_error_t *err = NULL;
+
+  foreach_ip_interface_address (&im->lookup_main, ia, sw_if_index, 0 /* honor unnumbered */, ({
+    ip6_address_t *x = ip_interface_address_get_address (&im->lookup_main, ia);
+
+    if (ip6_destination_matches_route (im, address, x, ia->address_length) ||
+	ip6_destination_matches_route (im, x, address, address_length))
+      {
+	/* an intf may have >1 addr from the same prefix */
+	if ((ia->address_length == address_length) && !ip6_address_is_equal (x, address))
+	  continue;
+
+	if (ia->flags & IP_INTERFACE_ADDRESS_FLAG_STALE)
+	  /* we do not bother we with stale routes, see ip6_add_del_interface_address */
+	  continue;
+
+	pfx->len = ia->address_length;
+	ip6_address_copy (&ip_prefix_v6 (pfx), x);
+	vec_add1 (conflict_pfxs, *pfx);
+
+	if (ip_prefix_len (pfx) > ip_prefix_len (largest_pfx))
+	  {
+	    largest_pfx->len = ia->address_length;
+	    ip6_address_copy (&ip_prefix_v6 (largest_pfx), x);
+	  }
+      }
+  }));
+
+  /* we could not find any overlapping address to amend so we exit */
+  if (ip_prefix_len (largest_pfx) == 0)
+    goto done;
+
+  vec_foreach (pfx, conflict_pfxs)
+    {
+      err = ip6_add_del_interface_address (vm, sw_if_index, &ip_prefix_v6 (pfx),
+					   ip_prefix_len (pfx), 1 /* is_del */);
+      if (err)
+	{
+	  vlib_log_warn (rm->log_class, "%U", format_clib_error, err);
+	  clib_error_free (err);
+	}
+    }
+
+  err = ip6_add_del_interface_address (vm, sw_if_index, &ip_prefix_v6 (largest_pfx), address_length,
+				       0 /* is_del */);
+
+  if (err)
+    {
+      vlib_log_warn (rm->log_class, "%U", format_clib_error, err);
+      clib_error_free (err);
+    }
+
+done:
+  vec_free (conflict_pfxs);
 }
 
 #define PREFIX_FLAG_A (1 << 6)
@@ -300,13 +369,19 @@ ip6_ra_report_handler (const ip6_ra_report_t * r)
 
       prefix = &r->prefixes[i];
 
-      if (!(prefix->flags & PREFIX_FLAG_A))
-	continue;
-
       dst_address = &prefix->prefix.fp_addr.ip6;
       prefix_length = prefix->prefix.fp_len;
 
       if (ip6_address_is_link_local_unicast (dst_address))
+	continue;
+
+      if (!(prefix->flags & PREFIX_FLAG_A) && (prefix->flags & PREFIX_FLAG_L))
+	{
+	  rd_cp_learn_prefix (vm, sw_if_index, dst_address, prefix_length);
+	  continue;
+	}
+
+      if (!(prefix->flags & PREFIX_FLAG_A))
 	continue;
 
       valid_time = prefix->valid_time;
