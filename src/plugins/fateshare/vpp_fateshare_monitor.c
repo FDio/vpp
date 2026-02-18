@@ -138,6 +138,7 @@ launch_command (char *scmd, char *logname_base)
       exit (1);
     }
   dup2 (fd, 0);
+  close (fd);
 
   char logname_stdout[PATH_MAX];
   char logname_stderr[PATH_MAX];
@@ -155,6 +156,7 @@ launch_command (char *scmd, char *logname_base)
       exit (1);
     }
   dup2 (fd, 1);
+  close (fd);
   fd = open ((char *) logname_stderr, O_APPEND | O_RDWR | O_CREAT, 0777);
   if (fd < 0)
     {
@@ -162,6 +164,7 @@ launch_command (char *scmd, char *logname_base)
       exit (1);
     }
   dup2 (fd, 2);
+  close (fd);
 
   char *argv[] = { (char *) scmd, 0 };
   int res = execv (argv[0], argv);
