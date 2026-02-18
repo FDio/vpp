@@ -1199,6 +1199,68 @@ class TestIPv6(TestIPv6ND):
 
         self.assertEqual(mld.records_number, 4)
 
+    def test_mld_solicited_node_refcount(self):
+        """MLD solicited-node refcount for duplicate low-24bit addresses"""
+        intf = self.pg0
+        addr1 = "2001::7f:1e2d"
+        addr2 = "2001::107f:1e2d"
+        prefix_len = 64
+        solicited_group = "ff02::1:ff7f:1e2d"
+        solicited_mac = "33:33:ff:7f:1e:2d"
+
+        def add_interface_addr(addr):
+            self.vapi.sw_interface_add_del_address(
+                sw_if_index=intf.sw_if_index, prefix=f"{addr}/{prefix_len}", is_add=1
+            )
+
+        def del_interface_addr(addr):
+            self.vapi.sw_interface_add_del_address(
+                sw_if_index=intf.sw_if_index, prefix=f"{addr}/{prefix_len}", is_add=0
+            )
+
+        def get_secondary_mac_count():
+            output = self.vapi.cli(
+                f"show interface secondary-mac-address {intf.name}"
+            ).lower()
+            return sum(
+                1 for line in output.splitlines() if line.strip() == solicited_mac
+            )
+
+        def has_solicited_group():
+            output = self.vapi.cli(f"show ip6 interface {intf.name}").lower()
+            return solicited_group in output
+
+        base_mac_count = get_secondary_mac_count()
+        base_group_present = has_solicited_group()
+        addr1_added = False
+        addr2_added = False
+
+        try:
+            add_interface_addr(addr1)
+            addr1_added = True
+            self.assertEqual(get_secondary_mac_count(), base_mac_count + 1)
+            self.assertTrue(has_solicited_group())
+
+            add_interface_addr(addr2)
+            addr2_added = True
+            self.assertEqual(get_secondary_mac_count(), base_mac_count + 1)
+            self.assertTrue(has_solicited_group())
+
+            del_interface_addr(addr1)
+            addr1_added = False
+            self.assertEqual(get_secondary_mac_count(), base_mac_count + 1)
+            self.assertTrue(has_solicited_group())
+
+            del_interface_addr(addr2)
+            addr2_added = False
+            self.assertEqual(get_secondary_mac_count(), base_mac_count)
+            self.assertEqual(has_solicited_group(), base_group_present)
+        finally:
+            if addr1_added:
+                del_interface_addr(addr1)
+            if addr2_added:
+                del_interface_addr(addr2)
+
 
 class TestIPv6RouteLookup(VppTestCase):
     """IPv6 Route Lookup Test Case"""

@@ -45,11 +45,12 @@ typedef struct
   /* group information */
   u16 num_sources;
   u8 type;
+  u8 n_addrs;
   ip6_address_t mcast_address;
   ip6_address_t *mcast_source_address_pool;
 } ip6_mldp_group_t;
 
-typedef struct ip6_nd_t_
+typedef struct ip6_mld_t_
 {
   /* local information */
   u32 sw_if_index;
@@ -57,6 +58,9 @@ typedef struct ip6_nd_t_
 
   /* MLDP  group information */
   ip6_mldp_group_t *mldp_group_pool;
+
+  /* ll_mld_pfx is the link local sollicted node mcast addr */
+  ip6_address_t ll_mld_pfx;
 
   /* Hash table mapping address to index in mldp address pool. */
   mhash_t address_to_mldp_index;
@@ -85,8 +89,8 @@ ip6_mld_get_itf (u32 sw_if_index)
 /**
  * @brief Add a multicast Address to the advertised MLD set
  */
-static void
-ip6_neighbor_add_mld_prefix (ip6_mld_t * imd, ip6_address_t * addr)
+static int
+ip6_neighbor_add_mld_prefix (ip6_mld_t *imd, ip6_address_t *addr)
 {
   ip6_mldp_group_t *mcast_group_info;
   uword *p;
@@ -109,16 +113,20 @@ ip6_neighbor_add_mld_prefix (ip6_mld_t * imd, ip6_address_t * addr)
       mcast_group_info->type = 4;
       mcast_group_info->mcast_source_address_pool = 0;
       mcast_group_info->num_sources = 0;
+      mcast_group_info->n_addrs = 1;
       clib_memcpy (&mcast_group_info->mcast_address, addr,
 		   sizeof (ip6_address_t));
+      return (1);
     }
+  mcast_group_info->n_addrs++;
+  return (0);
 }
 
 /**
  * @brief Delete a multicast Address from the advertised MLD set
  */
-static void
-ip6_neighbor_del_mld_prefix (ip6_mld_t * imd, ip6_address_t * addr)
+static int
+ip6_neighbor_del_mld_prefix (ip6_mld_t *imd, ip6_address_t *addr)
 {
   ip6_mldp_group_t *mcast_group_info;
   uword *p;
@@ -128,10 +136,17 @@ ip6_neighbor_del_mld_prefix (ip6_mld_t * imd, ip6_address_t * addr)
 
   if (mcast_group_info)
     {
-      mhash_unset (&imd->address_to_mldp_index, addr,
-		   /* old_value */ 0);
-      pool_put (imd->mldp_group_pool, mcast_group_info);
+      ASSERT (mcast_group_info->n_addrs > 0);
+      mcast_group_info->n_addrs--;
+      if (0 == mcast_group_info->n_addrs)
+	{
+	  mhash_unset (&imd->address_to_mldp_index, addr,
+		       /* old_value */ 0);
+	  pool_put (imd->mldp_group_pool, mcast_group_info);
+	  return (1);
+	}
     }
+  return (0);
 }
 
 /**
@@ -160,6 +175,26 @@ ip6_mld_get_eth_itf (u32 sw_if_index)
     return (ethernet_get_interface (&ethernet_main, sw->hw_if_index));
 
   return (NULL);
+}
+
+/**
+ * @brief Add/delete a multicast group MAC as a secondary MAC on interface.
+ */
+static void
+ip6_mld_add_del_group_mac (u32 sw_if_index, const ip6_address_t *addr, int is_add)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_hw_interface_t *hi;
+  u8 mac[6];
+  u32 group_id;
+
+  hi = vnet_get_sup_hw_interface (vnm, sw_if_index);
+  if (NULL == hi || NULL == hi->hw_address)
+    return;
+
+  group_id = clib_net_to_host_u32 (addr->as_u32[3]);
+  ip6_multicast_ethernet_address (mac, group_id);
+  vnet_hw_interface_add_del_mac_address (vnm, hi->hw_if_index, mac, is_add);
 }
 
 /**
@@ -447,8 +482,7 @@ format_ip6_mld (u8 * s, va_list * args)
  * @brief callback when an interface address is added or deleted
  */
 static void
-ip6_mld_address_add (u32 imi,
-		     const ip6_address_t * address, u8 address_oength)
+ip6_mld_address_add (u32 imi, const ip6_address_t *address, u8 address_length)
 {
   ip6_mld_t *imd;
   ip6_address_t a;
@@ -462,12 +496,12 @@ ip6_mld_address_add (u32 imi,
   a.as_u8[0xe] = address->as_u8[0xe];
   a.as_u8[0xf] = address->as_u8[0xf];
 
-  ip6_neighbor_add_mld_prefix (imd, &a);
+  if (ip6_neighbor_add_mld_prefix (imd, &a))
+  ip6_mld_add_del_group_mac (imd->sw_if_index, &a, 1 /* is_add */);
 }
 
 static void
-ip6_mld_address_del (u32 imi,
-		     const ip6_address_t * address, u8 address_oength)
+ip6_mld_address_del (u32 imi, const ip6_address_t *address, u8 address_length)
 {
   ip6_mld_t *imd;
   ip6_address_t a;
@@ -481,7 +515,32 @@ ip6_mld_address_del (u32 imi,
   a.as_u8[0xe] = address->as_u8[0xe];
   a.as_u8[0xf] = address->as_u8[0xf];
 
-  ip6_neighbor_del_mld_prefix (imd, &a);
+  if (ip6_neighbor_del_mld_prefix (imd, &a))
+  ip6_mld_add_del_group_mac (imd->sw_if_index, &a, 0 /* is_add */);
+}
+
+static void
+ip6_mld_link_ll_change (u32 imi, const ip6_address_t *address)
+{
+  ip6_mld_t *imd;
+
+  imd = pool_elt_at_index (ip6_mld_pool, imi);
+
+  if (imd->ll_mld_pfx.as_u8[0] != 0)
+  {
+    if (ip6_neighbor_del_mld_prefix (imd, &imd->ll_mld_pfx))
+	ip6_mld_add_del_group_mac (imd->sw_if_index, &imd->ll_mld_pfx, 0 /* is_add */);
+  }
+
+  /* create solicited node multicast address for this interface address */
+  ip6_set_solicited_node_multicast_address (&imd->ll_mld_pfx, 0);
+
+  imd->ll_mld_pfx.as_u8[0xd] = address->as_u8[0xd];
+  imd->ll_mld_pfx.as_u8[0xe] = address->as_u8[0xe];
+  imd->ll_mld_pfx.as_u8[0xf] = address->as_u8[0xf];
+
+  if (ip6_neighbor_add_mld_prefix (imd, &imd->ll_mld_pfx))
+  ip6_mld_add_del_group_mac (imd->sw_if_index, &imd->ll_mld_pfx, 1 /* is_add */);
 }
 
 /**
@@ -493,6 +552,7 @@ const static ip6_link_delegate_vft_t ip6_mld_delegate_vft = {
   .ildv_format = format_ip6_mld,
   .ildv_addr_add = ip6_mld_address_add,
   .ildv_addr_del = ip6_mld_address_del,
+  .ildv_ll_change = ip6_mld_link_ll_change,
 };
 
 static clib_error_t *
