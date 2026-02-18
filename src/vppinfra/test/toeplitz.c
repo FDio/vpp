@@ -451,10 +451,10 @@ void __test_perf_fn
 perftest_fixed_36byte_x4 (test_perf_t *tp)
 {
   u32 n = tp->n_ops / 4;
-  u8 *d0 = test_mem_alloc_and_splat (36, n, (void *) &ip4_tests[0].key);
-  u8 *d1 = test_mem_alloc_and_splat (36, n, (void *) &ip4_tests[1].key);
-  u8 *d2 = test_mem_alloc_and_splat (36, n, (void *) &ip4_tests[2].key);
-  u8 *d3 = test_mem_alloc_and_splat (36, n, (void *) &ip4_tests[3].key);
+  u8 *d0 = test_mem_alloc_and_splat (36, n, (void *) &ip6_tests[0].key);
+  u8 *d1 = test_mem_alloc_and_splat (36, n, (void *) &ip6_tests[1].key);
+  u8 *d2 = test_mem_alloc_and_splat (36, n, (void *) &ip6_tests[2].key);
+  u8 *d3 = test_mem_alloc_and_splat (36, n, (void *) &ip6_tests[0].key);
   u32 *h0 = test_mem_alloc (4 * n);
   u32 *h1 = test_mem_alloc (4 * n);
   u32 *h2 = test_mem_alloc (4 * n);
