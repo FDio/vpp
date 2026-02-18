@@ -33,6 +33,24 @@
       "message": "Instead of creating library and polluting plugins list with another _unittest plugin can you simply export policer APIs (see src/plugins/soft-rss/export.h or src/plugins/tap/tap.h) and use it from existing unittest plugin?\n\nThat voids need for another plugin, and allows other plugins to configure policer. \nExample: linuxcp plugin uses tap plugin",
       "revId": "5c94e4fc7e36865ccf916c29d238624f1e0a38f4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ddd1d9a3_3f211413",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-02-18T09:43:20Z",
+      "side": 1,
+      "message": "I am fine with that. however, so you know, I based myself on how linux-cp declares its unittest.",
+      "parentUuid": "bd3de3bc_3839f002",
+      "revId": "5c94e4fc7e36865ccf916c29d238624f1e0a38f4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
