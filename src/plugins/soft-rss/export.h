@@ -7,28 +7,13 @@
 #include <vlib/vlib.h>
 #include <vlib/unix/plugin.h>
 #include <vppinfra/error.h>
-
-#define foreach_soft_rss_type                                                 \
-  _ (DISABLED, "disabled")                                                    \
-  _ (4_TUPLE, "4-tuple")                                                      \
-  _ (2_TUPLE, "2-tuple")                                                      \
-  _ (SRC_IP, "src-ip")                                                        \
-  _ (DST_IP, "dst-ip")
-
-typedef enum
-{
-  SOFT_RSS_TYPE_NOT_SET = 0,
-#define _(a, b) SOFT_RSS_TYPE_##a,
-  foreach_soft_rss_type
-#undef _
-    SOFT_RSS_N_TYPES,
-} __clib_packed soft_rss_type_t;
+#include <vnet/ethernet/ethernet.h>
 
 typedef struct
 {
-  soft_rss_type_t type;
-  soft_rss_type_t ipv4_type;
-  soft_rss_type_t ipv6_type;
+  vnet_eth_rss_type_t type;
+  vnet_eth_rss_type_t ipv4_type;
+  vnet_eth_rss_type_t ipv6_type;
   u8 with_main_thread : 1;
   u16 l2_hdr_offset; /* typically 0, used if another header exists (e.g. DSA */
   clib_bitmap_t *threads; /* bitmap of RSS threads, NULL means all */

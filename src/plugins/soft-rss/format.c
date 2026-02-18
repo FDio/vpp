@@ -7,50 +7,6 @@
 #include <vppinfra/format.h>
 #include <vppinfra/vec.h>
 #include <vnet/interface.h>
-#include <strings.h>
-
-static const char *const soft_rss_type_strings[SOFT_RSS_N_TYPES] = {
-#define _(sym, str) [SOFT_RSS_TYPE_##sym] = str,
-  foreach_soft_rss_type
-#undef _
-};
-
-u8 *
-format_soft_rss_type (u8 *s, va_list *args)
-{
-  soft_rss_type_t type = (soft_rss_type_t) va_arg (*args, int);
-  const char *name = 0;
-
-  if ((u32) type < ARRAY_LEN (soft_rss_type_strings))
-    name = soft_rss_type_strings[type];
-
-  if (!name)
-    return format (s, "unknown(%u)", (u32) type);
-
-  return format (s, "%s", name);
-}
-
-uword
-unformat_soft_rss_type (unformat_input_t *input, va_list *args)
-{
-  soft_rss_type_t *type = va_arg (*args, soft_rss_type_t *);
-  u8 *value = 0;
-
-  if (!unformat (input, "%s", &value))
-    return 0;
-
-  for (u32 i = 0; i < ARRAY_LEN (soft_rss_type_strings); i++)
-    if (soft_rss_type_strings[i] &&
-	!strcasecmp ((char *) value, soft_rss_type_strings[i]))
-      {
-	*type = (soft_rss_type_t) i;
-	vec_free (value);
-	return 1;
-      }
-
-  vec_free (value);
-  return 0;
-}
 
 u8 *
 format_soft_rss_reta (u8 *s, va_list *args)
@@ -81,9 +37,9 @@ format_soft_rss_if (u8 *s, va_list *args)
   s = format_newline (s, indent + 2);
   s = format (s, "status: %s", rt->enabled ? "enabled" : "disabled");
   s = format_newline (s, indent + 2);
-  s = format (s, "ipv4-type: %U", format_soft_rss_type, rt->ipv4_type);
+  s = format (s, "ipv4-type: %U", format_vnet_eth_rss_type, rt->ipv4_type);
   s = format_newline (s, indent + 2);
-  s = format (s, "ipv6-type: %U", format_soft_rss_type, rt->ipv6_type);
+  s = format (s, "ipv6-type: %U", format_vnet_eth_rss_type, rt->ipv6_type);
   s = format_newline (s, indent + 2);
   s = format (s, "match-offset: %u", rt->match_offset);
   s = format_newline (s, indent + 2);

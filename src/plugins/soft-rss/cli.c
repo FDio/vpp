@@ -26,13 +26,11 @@ soft_rss_config_command_fn (vlib_main_t *vm, unformat_input_t *input,
       if (unformat (input, "%U", unformat_vnet_hw_interface, vnm,
 		    &hw_if_index))
 	;
-      else if (unformat (input, "type %U", unformat_soft_rss_type, &cfg.type))
+      else if (unformat (input, "type %U", unformat_vnet_eth_rss_type, &cfg.type))
 	;
-      else if (unformat (input, "ipv4-type %U", unformat_soft_rss_type,
-			 &cfg.ipv4_type))
+      else if (unformat (input, "ipv4-type %U", unformat_vnet_eth_rss_type, &cfg.ipv4_type))
 	;
-      else if (unformat (input, "ipv6-type %U", unformat_soft_rss_type,
-			 &cfg.ipv6_type))
+      else if (unformat (input, "ipv6-type %U", unformat_vnet_eth_rss_type, &cfg.ipv6_type))
 	;
       else if (unformat (input, "l2-offset %u", &cfg.l2_hdr_offset))
 	;

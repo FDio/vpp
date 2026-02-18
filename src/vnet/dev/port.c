@@ -114,6 +114,7 @@ vnet_dev_port_free (vlib_main_t *vm, vnet_dev_port_t *port)
   if (port->port_ops.free)
     port->port_ops.free (vm, port);
 
+  clib_mem_free (port->rss_config);
   pool_free (port->secondary_hw_addr);
   pool_free (port->rx_queues);
   pool_free (port->tx_queues);
@@ -313,8 +314,22 @@ vnet_dev_port_add (vlib_main_t *vm, vnet_dev_t *dev, vnet_dev_port_id_t id,
   port->rx_node = *args->rx_node;
   port->tx_node = *args->tx_node;
 
-  if (port->attr.caps.rss && args->port.default_rss_key.length)
-    port->rss_key = args->port.default_rss_key;
+  if (port->attr.caps.rss)
+    {
+      port->rss_config = clib_mem_alloc (sizeof (*port->rss_config));
+      if (port->rss_config == 0)
+	{
+	  rv = VNET_DEV_ERR_INTERNAL;
+	  goto done;
+	}
+
+      *port->rss_config = (vnet_dev_port_rss_config_t){
+	.ip4 = VNET_ETH_RSS_TYPE_NOT_SET,
+	.ip6 = VNET_ETH_RSS_TYPE_NOT_SET,
+      };
+      if (args->port.default_rss_key.length)
+	port->rss_config->key = args->port.default_rss_key;
+    }
 
   if (args->port.args)
     port->args = clib_args_init (args->port.args);
@@ -336,8 +351,14 @@ vnet_dev_port_add (vlib_main_t *vm, vnet_dev_t *dev, vnet_dev_port_id_t id,
   if (port->port_ops.alloc)
     rv = port->port_ops.alloc (vm, port);
 
+done:
   if (rv == VNET_DEV_OK)
     port->initialized = 1;
+  else
+    {
+      clib_mem_free (port->rss_config);
+      port->rss_config = 0;
+    }
 
   return rv;
 }
@@ -389,9 +410,23 @@ vnet_dev_port_cfg_change_req_validate (vlib_main_t *vm, vnet_dev_port_t *port,
 	return VNET_DEV_ERR_NO_SUCH_ENTRY;
       break;
 
-    case VNET_DEV_PORT_CFG_SET_RSS_KEY:
-      if (!port->attr.caps.rss)
+    case VNET_DEV_PORT_CFG_SET_RSS_CONFIG:
+      if (!port->attr.caps.rss || port->rss_config == 0)
 	return VNET_DEV_ERR_NOT_SUPPORTED;
+      if ((u32) req->rss_config.ip4 >= VNET_ETH_RSS_N_TYPES ||
+	  (u32) req->rss_config.ip6 >= VNET_ETH_RSS_N_TYPES)
+	return VNET_DEV_ERR_INVALID_VALUE;
+      if (req->rss_config.key.length > sizeof (req->rss_config.key.key))
+	return VNET_DEV_ERR_INVALID_VALUE;
+      if (req->rss_config.key.length == 0 && req->rss_config.ip4 == port->rss_config->ip4 &&
+	  req->rss_config.ip6 == port->rss_config->ip6)
+	return VNET_DEV_ERR_NO_CHANGE;
+      if (req->rss_config.key.length == port->rss_config->key.length &&
+	  clib_memcmp (req->rss_config.key.key, port->rss_config->key.key,
+		       req->rss_config.key.length) == 0 &&
+	  req->rss_config.ip4 == port->rss_config->ip4 &&
+	  req->rss_config.ip6 == port->rss_config->ip6)
+	return VNET_DEV_ERR_NO_CHANGE;
       break;
 
     default:
@@ -510,8 +545,11 @@ vnet_dev_port_cfg_change (vlib_main_t *vm, vnet_dev_port_t *port,
 	  }
       break;
 
-    case VNET_DEV_PORT_CFG_SET_RSS_KEY:
-      port->rss_key = req->rss_key;
+    case VNET_DEV_PORT_CFG_SET_RSS_CONFIG:
+      if (req->rss_config.key.length)
+	port->rss_config->key = req->rss_config.key;
+      port->rss_config->ip4 = req->rss_config.ip4;
+      port->rss_config->ip6 = req->rss_config.ip6;
       break;
 
     default:
@@ -722,6 +760,7 @@ vnet_dev_port_if_create (vlib_main_t *vm, vnet_dev_port_t *port, void *ptr)
 	       .dev_instance = ifs->primary_interface.dev_instance,
 	       .cb.set_max_frame_size = vnet_dev_port_set_max_frame_size,
 	       .cb.flag_change = vnet_dev_port_eth_flag_change,
+	       .cb.set_rss_config = vnet_dev_port_set_rss_config,
 	     });
       ifs->primary_interface.hw_if_index = hw_if_index;
 
@@ -964,6 +1003,7 @@ vnet_dev_port_add_sec_if (vlib_main_t *vm, vnet_dev_port_t *port, void *ptr)
 	       .dev_instance = sif->dev_instance,
 	       .cb.set_max_frame_size = vnet_dev_port_set_max_frame_size,
 	       .cb.flag_change = vnet_dev_port_eth_flag_change,
+	       .cb.set_rss_config = vnet_dev_port_set_rss_config,
 	     });
 
       sw = vnet_get_hw_sw_interface (vnm, sif->hw_if_index);

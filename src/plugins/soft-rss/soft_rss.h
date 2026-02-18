@@ -20,8 +20,8 @@ typedef struct
 typedef struct
 {
   u8 enabled : 1;
-  soft_rss_type_t ipv4_type;
-  soft_rss_type_t ipv6_type;
+  vnet_eth_rss_type_t ipv4_type;
+  vnet_eth_rss_type_t ipv6_type;
   clib_toeplitz_hash_key_t *key;
   u8 n_match4;
   u8 n_match6;
@@ -63,5 +63,3 @@ extern vlib_node_registration_t soft_rss_handoff_node;
 format_function_t format_soft_rss_if;
 format_function_t format_soft_rss_trace;
 format_function_t format_soft_rss_handoff_trace;
-format_function_t format_soft_rss_type;
-unformat_function_t unformat_soft_rss_type;

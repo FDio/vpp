@@ -104,20 +104,18 @@ soft_rss_config (vlib_main_t __clib_unused *vm,
   soft_rss_rt_data_t *rt;
   u32 n_threads = 0;
   clib_thread_index_t ti, n_vlib_threads = vlib_get_n_threads ();
-  soft_rss_type_t type4 = config->ipv4_type != SOFT_RSS_TYPE_NOT_SET ?
-			    config->ipv4_type :
-			    config->type;
-  soft_rss_type_t type6 = config->ipv6_type != SOFT_RSS_TYPE_NOT_SET ?
-			    config->ipv6_type :
-			    config->type;
+  vnet_eth_rss_type_t type4 =
+    config->ipv4_type != VNET_ETH_RSS_TYPE_NOT_SET ? config->ipv4_type : config->type;
+  vnet_eth_rss_type_t type6 =
+    config->ipv6_type != VNET_ETH_RSS_TYPE_NOT_SET ? config->ipv6_type : config->type;
 
-  if (type4 == SOFT_RSS_TYPE_NOT_SET || type6 == SOFT_RSS_TYPE_NOT_SET)
+  if (type4 == VNET_ETH_RSS_TYPE_NOT_SET || type6 == VNET_ETH_RSS_TYPE_NOT_SET)
     return clib_error_return (0, "RSS type not set");
 
-  if (type4 == SOFT_RSS_TYPE_DISABLED && type6 == SOFT_RSS_TYPE_DISABLED)
+  if (type4 == VNET_ETH_RSS_TYPE_DISABLED && type6 == VNET_ETH_RSS_TYPE_DISABLED)
     return clib_error_return (0, "both IPv4 and IPv6 cannot be disabled");
 
-  if (config->type >= SOFT_RSS_N_TYPES)
+  if (config->type >= VNET_ETH_RSS_N_TYPES)
     return clib_error_return (0, "invalid rss type %u", config->type);
 
   if (!hi)
@@ -199,28 +197,28 @@ soft_rss_config (vlib_main_t __clib_unused *vm,
   ip6_src_off = STRUCT_OFFSET_OF (soft_rss_match_template_t, ip6.src_address);
   ip6_dst_off = STRUCT_OFFSET_OF (soft_rss_match_template_t, ip6.dst_address);
 
-  if (type4 == SOFT_RSS_TYPE_SRC_IP)
+  if (type4 == VNET_ETH_RSS_TYPE_SRC_IP)
     soft_rss_add_ip4_match (rt, -1, ip4_src_off, 4);
-  if (type6 == SOFT_RSS_TYPE_SRC_IP)
+  if (type6 == VNET_ETH_RSS_TYPE_SRC_IP)
     soft_rss_add_ip6_match (rt, -1, ip6_src_off, 16);
 
-  if (type4 == SOFT_RSS_TYPE_DST_IP)
+  if (type4 == VNET_ETH_RSS_TYPE_DST_IP)
     soft_rss_add_ip4_match (rt, -1, ip4_dst_off, 4);
-  if (type6 == SOFT_RSS_TYPE_DST_IP)
+  if (type6 == VNET_ETH_RSS_TYPE_DST_IP)
     soft_rss_add_ip6_match (rt, -1, ip6_dst_off, 16);
 
-  if (type4 == SOFT_RSS_TYPE_4_TUPLE)
+  if (type4 == VNET_ETH_RSS_TYPE_4_TUPLE)
     soft_rss_add_ip4_match (rt, IP_PROTOCOL_TCP, ip4_src_off, 12);
-  if (type6 == SOFT_RSS_TYPE_4_TUPLE)
+  if (type6 == VNET_ETH_RSS_TYPE_4_TUPLE)
     soft_rss_add_ip6_match (rt, IP_PROTOCOL_TCP, ip6_src_off, 36);
-  if (type4 == SOFT_RSS_TYPE_4_TUPLE)
+  if (type4 == VNET_ETH_RSS_TYPE_4_TUPLE)
     soft_rss_add_ip4_match (rt, IP_PROTOCOL_UDP, ip4_src_off, 12);
-  if (type6 == SOFT_RSS_TYPE_4_TUPLE)
+  if (type6 == VNET_ETH_RSS_TYPE_4_TUPLE)
     soft_rss_add_ip6_match (rt, IP_PROTOCOL_UDP, ip6_src_off, 36);
 
-  if (type4 == SOFT_RSS_TYPE_4_TUPLE || type4 == SOFT_RSS_TYPE_2_TUPLE)
+  if (type4 == VNET_ETH_RSS_TYPE_4_TUPLE || type4 == VNET_ETH_RSS_TYPE_2_TUPLE)
     soft_rss_add_ip4_match (rt, -1, ip4_src_off, 8);
-  if (type6 == SOFT_RSS_TYPE_4_TUPLE || type6 == SOFT_RSS_TYPE_2_TUPLE)
+  if (type6 == VNET_ETH_RSS_TYPE_4_TUPLE || type6 == VNET_ETH_RSS_TYPE_2_TUPLE)
     soft_rss_add_ip6_match (rt, -1, ip6_src_off, 32);
 
   rt->key = clib_toeplitz_hash_key_init (config->key, vec_len (config->key));
