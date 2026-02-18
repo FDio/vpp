@@ -93,6 +93,75 @@ vnet_dev_port_eth_flag_change (vnet_main_t *vnm, vnet_hw_interface_t *hw,
 }
 
 clib_error_t *
+vnet_dev_port_set_rss_key (vnet_main_t *vnm, vnet_hw_interface_t *hw, u8 *key, u8 key_len)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  vnet_dev_instance_t *di = vnet_dev_get_dev_instance (hw->dev_instance);
+  vnet_dev_port_t *p = di->port;
+  vnet_dev_rv_t rv;
+  vnet_dev_port_cfg_change_req_t req = {
+    .type = VNET_DEV_PORT_CFG_SET_RSS_KEY,
+    .rss_key = {
+      .length = key_len,
+    },
+  };
+
+  if (!di->is_primary_if)
+    return vnet_dev_port_err (vm, p, VNET_DEV_ERR_NOT_PRIMARY_INTERFACE, "");
+
+  if (key_len > ARRAY_LEN (req.rss_key.key))
+    return clib_error_return (0, "rss key length %u exceeds max %u", key_len,
+			      ARRAY_LEN (req.rss_key.key));
+
+  if (key_len)
+    clib_memcpy (req.rss_key.key, key, key_len);
+
+  rv = vnet_dev_port_cfg_change_req_validate (vm, p, &req);
+  if (rv == VNET_DEV_ERR_NO_CHANGE)
+    return 0;
+
+  if (rv != VNET_DEV_OK)
+    return vnet_dev_port_err (vm, p, rv, "rss key is not valid for port");
+
+  if ((rv = vnet_dev_process_port_cfg_change_req (vm, p, &req)) != VNET_DEV_OK)
+    return vnet_dev_port_err (vm, p, rv, "device failed to change rss key");
+
+  return 0;
+}
+
+clib_error_t *
+vnet_dev_port_set_rss_type (vnet_main_t *vnm, vnet_hw_interface_t *hw, vnet_eth_rss_type_t ip4_type,
+			    vnet_eth_rss_type_t ip6_type)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  vnet_dev_instance_t *di = vnet_dev_get_dev_instance (hw->dev_instance);
+  vnet_dev_port_t *p = di->port;
+  vnet_dev_rv_t rv;
+  vnet_dev_port_cfg_change_req_t req = {
+    .type = VNET_DEV_PORT_CFG_SET_RSS_TYPE,
+    .rss_type = {
+      .ip4 = ip4_type,
+      .ip6 = ip6_type,
+    },
+  };
+
+  if (!di->is_primary_if)
+    return vnet_dev_port_err (vm, p, VNET_DEV_ERR_NOT_PRIMARY_INTERFACE, "");
+
+  rv = vnet_dev_port_cfg_change_req_validate (vm, p, &req);
+  if (rv == VNET_DEV_ERR_NO_CHANGE)
+    return 0;
+
+  if (rv != VNET_DEV_OK)
+    return vnet_dev_port_err (vm, p, rv, "rss type is not valid for port");
+
+  if ((rv = vnet_dev_process_port_cfg_change_req (vm, p, &req)) != VNET_DEV_OK)
+    return vnet_dev_port_err (vm, p, rv, "device failed to change rss type");
+
+  return 0;
+}
+
+clib_error_t *
 vnet_dev_port_mac_change (vnet_hw_interface_t *hi, const u8 *old,
 			  const u8 *new)
 {

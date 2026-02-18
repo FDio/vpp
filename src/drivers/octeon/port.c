@@ -704,6 +704,68 @@ oct_op_config_set_rss_key (vlib_main_t *vm, vnet_dev_port_t *port,
   return rv;
 }
 
+static_always_inline u32
+oct_rss_flowkey_bits_from_type (vnet_eth_rss_type_t type, u8 is_ip6)
+{
+  u32 bits = 0;
+
+  if (type == VNET_ETH_RSS_TYPE_NOT_SET)
+    type = VNET_ETH_RSS_TYPE_4_TUPLE;
+
+  switch (type)
+    {
+    case VNET_ETH_RSS_TYPE_DISABLED:
+      break;
+    case VNET_ETH_RSS_TYPE_2_TUPLE:
+      bits = is_ip6 ? FLOW_KEY_TYPE_IPV6 : FLOW_KEY_TYPE_IPV4;
+      break;
+    case VNET_ETH_RSS_TYPE_4_TUPLE:
+      bits = (is_ip6 ? FLOW_KEY_TYPE_IPV6 : FLOW_KEY_TYPE_IPV4) | FLOW_KEY_TYPE_TCP |
+	     FLOW_KEY_TYPE_UDP | FLOW_KEY_TYPE_SCTP;
+      break;
+    case VNET_ETH_RSS_TYPE_SRC_IP:
+      bits = (is_ip6 ? FLOW_KEY_TYPE_IPV6 : FLOW_KEY_TYPE_IPV4) | FLOW_KEY_TYPE_L3_SRC;
+      break;
+    case VNET_ETH_RSS_TYPE_DST_IP:
+      bits = (is_ip6 ? FLOW_KEY_TYPE_IPV6 : FLOW_KEY_TYPE_IPV4) | FLOW_KEY_TYPE_L3_DST;
+      break;
+    default:
+      break;
+    }
+
+  return bits;
+}
+
+vnet_dev_rv_t
+oct_op_config_set_rss_type (vlib_main_t *vm, vnet_dev_port_t *port, vnet_eth_rss_type_t ip4_type,
+			    vnet_eth_rss_type_t ip6_type)
+{
+  vnet_dev_t *dev = port->dev;
+  oct_device_t *cd = vnet_dev_get_data (dev);
+  oct_port_t *cp = vnet_dev_get_port_data (port);
+  const u32 rss_type_mask = FLOW_KEY_TYPE_IPV4 | FLOW_KEY_TYPE_IPV6 | FLOW_KEY_TYPE_IPV6_EXT |
+			    FLOW_KEY_TYPE_TCP | FLOW_KEY_TYPE_UDP | FLOW_KEY_TYPE_SCTP |
+			    FLOW_KEY_TYPE_L3_SRC | FLOW_KEY_TYPE_L3_DST;
+  u32 bits4, bits6, flowkey;
+  i32 rrv;
+
+  bits4 = oct_rss_flowkey_bits_from_type (ip4_type, 0);
+  bits6 = oct_rss_flowkey_bits_from_type (ip6_type, 1);
+
+  if ((ip4_type > VNET_ETH_RSS_TYPE_DST_IP && ip4_type != VNET_ETH_RSS_TYPE_NOT_SET) ||
+      (ip6_type > VNET_ETH_RSS_TYPE_DST_IP && ip6_type != VNET_ETH_RSS_TYPE_NOT_SET))
+    return VNET_DEV_ERR_INVALID_VALUE;
+
+  flowkey = (cp->rss_flowkey & ~rss_type_mask) | bits4 | bits6;
+  cp->rss_flowkey = flowkey;
+
+  rrv = roc_nix_rss_default_setup (cd->nix, flowkey);
+  if (rrv)
+    return oct_roc_err (dev, rrv, "roc_nix_rss_default_setup() failed");
+
+  return VNET_DEV_OK;
+}
+
 vnet_dev_rv_t
 oct_port_cfg_change_validate (vlib_main_t *vm, vnet_dev_port_t *port,
 			      vnet_dev_port_cfg_change_req_t *req)
@@ -724,6 +786,7 @@ oct_port_cfg_change_validate (vlib_main_t *vm, vnet_dev_port_t *port,
     case VNET_DEV_PORT_CFG_ADD_SECONDARY_HW_ADDR:
     case VNET_DEV_PORT_CFG_REMOVE_SECONDARY_HW_ADDR:
     case VNET_DEV_PORT_CFG_SET_RSS_KEY:
+    case VNET_DEV_PORT_CFG_SET_RSS_TYPE:
       break;
 
     case VNET_DEV_PORT_CFG_ADD_RX_FLOW:
@@ -771,6 +834,9 @@ oct_port_cfg_change (vlib_main_t *vm, vnet_dev_port_t *port,
 
     case VNET_DEV_PORT_CFG_SET_RSS_KEY:
       rv = oct_op_config_set_rss_key (vm, port, &req->rss_key);
+      break;
+    case VNET_DEV_PORT_CFG_SET_RSS_TYPE:
+      rv = oct_op_config_set_rss_type (vm, port, req->rss_type.ip4, req->rss_type.ip6);
       break;
 
     case VNET_DEV_PORT_CFG_ADD_RX_FLOW:
