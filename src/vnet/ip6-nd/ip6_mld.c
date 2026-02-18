@@ -163,6 +163,26 @@ ip6_mld_get_eth_itf (u32 sw_if_index)
 }
 
 /**
+ * @brief Add/delete a multicast group MAC as a secondary MAC on interface.
+ */
+static void
+ip6_mld_add_del_group_mac (u32 sw_if_index, const ip6_address_t *addr, int is_add)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_hw_interface_t *hi;
+  u8 mac[6];
+  u32 group_id;
+
+  hi = vnet_get_sup_hw_interface (vnm, sw_if_index);
+  if (NULL == hi)
+    return;
+
+  group_id = clib_net_to_host_u32 (addr->as_u32[3]);
+  ip6_multicast_ethernet_address (mac, group_id);
+  vnet_hw_interface_add_del_mac_address (vnm, hi->hw_if_index, mac, is_add);
+}
+
+/**
  * @brief create and initialize router advertisement parameters with default
  * values for this intfc
  */
@@ -463,6 +483,7 @@ ip6_mld_address_add (u32 imi,
   a.as_u8[0xf] = address->as_u8[0xf];
 
   ip6_neighbor_add_mld_prefix (imd, &a);
+  ip6_mld_add_del_group_mac (imd->sw_if_index, &a, 1 /* is_add */);
 }
 
 static void
@@ -481,6 +502,7 @@ ip6_mld_address_del (u32 imi,
   a.as_u8[0xe] = address->as_u8[0xe];
   a.as_u8[0xf] = address->as_u8[0xf];
 
+  ip6_mld_add_del_group_mac (imd->sw_if_index, &a, 0 /* is_add */);
   ip6_neighbor_del_mld_prefix (imd, &a);
 }
 
