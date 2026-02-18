@@ -101,6 +101,83 @@ dpdk_set_max_frame_size (vnet_main_t *vnm, vnet_hw_interface_t *hi,
   return 0;
 }
 
+static clib_error_t *
+dpdk_set_rss_config (vnet_main_t *vnm __clib_unused, vnet_hw_interface_t *hi,
+		     vnet_eth_rss_config_t *cfg)
+{
+  dpdk_main_t *dm = &dpdk_main;
+  dpdk_device_t *xd = vec_elt_at_index (dm->devices, hi->dev_instance);
+  struct rte_eth_dev_info di;
+  struct rte_eth_rss_conf rss_conf = {};
+  vnet_eth_rss_hash_t hash;
+  vnet_eth_rss_hash_t requested_hash;
+  vnet_eth_rss_hash_t bit;
+  u64 hf = xd->conf.rss_hf;
+  u64 unsupported_hf;
+  u64 hfi;
+  int rv;
+
+  static const u64 rss_hf_by_hash_bit[] = {
+    [VNET_ETH_RSS_T_IPV4_BIT] = RTE_ETH_RSS_IPV4,
+    [VNET_ETH_RSS_T_TCP_IPV4_BIT] = RTE_ETH_RSS_NONFRAG_IPV4_TCP,
+    [VNET_ETH_RSS_T_UDP_IPV4_BIT] = RTE_ETH_RSS_NONFRAG_IPV4_UDP,
+    [VNET_ETH_RSS_T_IPV4_SRC_ONLY_BIT] = RTE_ETH_RSS_IPV4 | RTE_ETH_RSS_L3_SRC_ONLY,
+    [VNET_ETH_RSS_T_IPV4_DST_ONLY_BIT] = RTE_ETH_RSS_IPV4 | RTE_ETH_RSS_L3_DST_ONLY,
+    [VNET_ETH_RSS_T_IPV6_BIT] = RTE_ETH_RSS_IPV6,
+    [VNET_ETH_RSS_T_TCP_IPV6_BIT] = RTE_ETH_RSS_NONFRAG_IPV6_TCP,
+    [VNET_ETH_RSS_T_UDP_IPV6_BIT] = RTE_ETH_RSS_NONFRAG_IPV6_UDP,
+    [VNET_ETH_RSS_T_IPV6_EX_BIT] = RTE_ETH_RSS_IPV6_EX,
+    [VNET_ETH_RSS_T_TCP_IPV6_EX_BIT] = RTE_ETH_RSS_IPV6_TCP_EX,
+    [VNET_ETH_RSS_T_UDP_IPV6_EX_BIT] = RTE_ETH_RSS_IPV6_UDP_EX,
+    [VNET_ETH_RSS_T_IPV6_SRC_ONLY_BIT] = RTE_ETH_RSS_IPV6 | RTE_ETH_RSS_L3_SRC_ONLY,
+    [VNET_ETH_RSS_T_IPV6_DST_ONLY_BIT] = RTE_ETH_RSS_IPV6 | RTE_ETH_RSS_L3_DST_ONLY,
+  };
+
+  if (cfg == 0)
+    return vnet_error (VNET_ERR_INVALID_VALUE, "invalid rss config");
+  hash = cfg->hash;
+  requested_hash = hash;
+
+  if (hash != VNET_ETH_RSS_HASH_NOT_SET)
+    {
+      for (u32 i = 0; i < ARRAY_LEN (rss_hf_by_hash_bit); i++)
+	{
+	  bit = 1U << i;
+	  hfi = rss_hf_by_hash_bit[i];
+	  if ((hash & bit) == 0)
+	    continue;
+	  if (hfi == 0)
+	    continue;
+	  hf |= hfi;
+	  hash &= ~bit;
+	}
+
+      if (hash)
+	return vnet_error (VNET_ERR_UNSUPPORTED, "rss hash %U not supported",
+			   format_vnet_eth_rss_types, requested_hash);
+      if ((rv = rte_eth_dev_info_get (xd->port_id, &di)) != 0)
+	return vnet_error (VNET_ERR_BUG, "rte_eth_dev_info_get failed (%d)", rv);
+
+      unsupported_hf = hf & ~di.flow_type_rss_offloads;
+      if (unsupported_hf)
+	return vnet_error (VNET_ERR_UNSUPPORTED, "rss hash %U not supported",
+			   format_vnet_eth_rss_types, requested_hash);
+    }
+
+  rss_conf = (struct rte_eth_rss_conf){
+    .rss_key = cfg->key_len ? cfg->key : 0,
+    .rss_key_len = cfg->key_len,
+    .rss_hf = hf,
+  };
+
+  rv = rte_eth_dev_rss_hash_update (xd->port_id, &rss_conf);
+  if (rv < 0)
+    return vnet_error (VNET_ERR_BUG, "rte_eth_dev_rss_hash_update failed (%d)", rv);
+
+  xd->conf.rss_hf = hf;
+  return 0;
+}
+
 static u32
 dpdk_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi, u32 flags)
 {
@@ -562,6 +639,7 @@ dpdk_lib_init (dpdk_main_t * dm)
       eir.address = addr;
       eir.cb.flag_change = dpdk_flag_change;
       eir.cb.set_max_frame_size = dpdk_set_max_frame_size;
+      eir.cb.set_rss_config = dpdk_set_rss_config;
       xd->hw_if_index = vnet_eth_register_interface (vnm, &eir);
       hi = vnet_get_hw_interface (vnm, xd->hw_if_index);
       numa_node = (i8) rte_eth_dev_socket_id (port_id);

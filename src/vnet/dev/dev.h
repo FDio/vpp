@@ -9,6 +9,7 @@
 #include <vppinfra/error_bootstrap.h>
 #include <vppinfra/format.h>
 #include <vnet/vnet.h>
+#include <vnet/ethernet/ethernet.h>
 #include <vnet/dev/types.h>
 #include <vppinfra/args.h>
 
@@ -148,19 +149,19 @@ typedef struct
   u8 size_is_power_of_two : 1;
 } vnet_dev_queue_config_t;
 
-#define foreach_vnet_dev_port_cfg_type                                        \
-  _ (PROMISC_MODE)                                                            \
-  _ (MAX_RX_FRAME_SIZE)                                                       \
-  _ (CHANGE_PRIMARY_HW_ADDR)                                                  \
-  _ (ADD_SECONDARY_HW_ADDR)                                                   \
-  _ (REMOVE_SECONDARY_HW_ADDR)                                                \
-  _ (RXQ_INTR_MODE_ENABLE)                                                    \
-  _ (RXQ_INTR_MODE_DISABLE)                                                   \
-  _ (ADD_RX_FLOW)                                                             \
-  _ (DEL_RX_FLOW)                                                             \
-  _ (GET_RX_FLOW_COUNTER)                                                     \
-  _ (RESET_RX_FLOW_COUNTER)                                                   \
-  _ (SET_RSS_KEY)
+#define foreach_vnet_dev_port_cfg_type                                                             \
+  _ (PROMISC_MODE)                                                                                 \
+  _ (MAX_RX_FRAME_SIZE)                                                                            \
+  _ (CHANGE_PRIMARY_HW_ADDR)                                                                       \
+  _ (ADD_SECONDARY_HW_ADDR)                                                                        \
+  _ (REMOVE_SECONDARY_HW_ADDR)                                                                     \
+  _ (RXQ_INTR_MODE_ENABLE)                                                                         \
+  _ (RXQ_INTR_MODE_DISABLE)                                                                        \
+  _ (ADD_RX_FLOW)                                                                                  \
+  _ (DEL_RX_FLOW)                                                                                  \
+  _ (GET_RX_FLOW_COUNTER)                                                                          \
+  _ (RESET_RX_FLOW_COUNTER)                                                                        \
+  _ (SET_RSS_CONFIG)
 
 typedef enum
 {
@@ -169,6 +170,12 @@ typedef enum
   foreach_vnet_dev_port_cfg_type
 #undef _
 } __clib_packed vnet_dev_port_cfg_type_t;
+
+typedef struct
+{
+  vnet_dev_rss_key_t key;
+  vnet_eth_rss_hash_t hash;
+} vnet_dev_port_rss_config_t;
 
 typedef struct vnet_dev_port_cfg_change_req
 {
@@ -182,7 +189,7 @@ typedef struct vnet_dev_port_cfg_change_req
     vnet_dev_hw_addr_t addr;
     u16 max_rx_frame_size;
     vnet_dev_queue_id_t queue_id;
-    vnet_dev_rss_key_t rss_key;
+    vnet_dev_port_rss_config_t rss_config;
     struct
     {
       u32 flow_index;
@@ -200,6 +207,7 @@ typedef struct
   u16 max_supported_rx_frame_size;
   vnet_dev_port_type_t type;
   vnet_dev_port_caps_t caps;
+  vnet_eth_rss_hash_t rss_types;
   vnet_dev_port_rx_offloads_t rx_offloads;
   vnet_dev_port_tx_offloads_t tx_offloads;
 } vnet_dev_port_attr_t;
@@ -403,7 +411,7 @@ typedef struct vnet_dev_port
   vnet_dev_node_t rx_node;
   vnet_dev_node_t tx_node;
   vnet_dev_port_interfaces_t *interfaces;
-  vnet_dev_rss_key_t rss_key;
+  vnet_dev_port_rss_config_t *rss_config;
 
   CLIB_CACHE_LINE_ALIGN_MARK (data0);
   u8 data[];
@@ -622,9 +630,10 @@ clib_error_t *vnet_dev_port_err (vlib_main_t *, vnet_dev_port_t *,
 int vnet_dev_flow_err (vlib_main_t *, vnet_dev_rv_t);
 
 /* handlers.c */
-clib_error_t *vnet_dev_port_set_max_frame_size (vnet_main_t *,
-						vnet_hw_interface_t *, u32);
+clib_error_t *vnet_dev_port_set_max_frame_size (vnet_main_t *, vnet_hw_interface_t *, u32);
 u32 vnet_dev_port_eth_flag_change (vnet_main_t *, vnet_hw_interface_t *, u32);
+clib_error_t *vnet_dev_port_set_rss_config (vnet_main_t *, vnet_hw_interface_t *,
+					    vnet_eth_rss_config_t *);
 clib_error_t *vnet_dev_port_mac_change (vnet_hw_interface_t *, const u8 *,
 					const u8 *);
 clib_error_t *vnet_dev_add_del_mac_address (vnet_hw_interface_t *, const u8 *,
