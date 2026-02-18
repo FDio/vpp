@@ -132,6 +132,7 @@ list(APPEND VNET_SOURCES
   ethernet/mac_address.c
   ethernet/node.c
   ethernet/pg.c
+  ethernet/rss.c
   ethernet/sfp.c
   ethernet/sfp_sff8472.c
   ethernet/sfp_sff8636.c

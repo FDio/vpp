@@ -91,10 +91,53 @@ typedef struct
   ethernet_vlan_header_t vlan[2];
 } ethernet_max_header_t;
 
+#define foreach_vnet_eth_rss_hash                                                                  \
+  _ (0, IPV4, "ipv4")                                                                              \
+  _ (1, TCP_IPV4, "tcp-ipv4")                                                                      \
+  _ (2, UDP_IPV4, "udp-ipv4")                                                                      \
+  _ (3, IPV6, "ipv6")                                                                              \
+  _ (4, TCP_IPV6, "tcp-ipv6")                                                                      \
+  _ (5, UDP_IPV6, "udp-ipv6")                                                                      \
+  _ (6, IPV6_EX, "ipv6-ex")                                                                        \
+  _ (7, TCP_IPV6_EX, "tcp-ipv6-ex")                                                                \
+  _ (8, UDP_IPV6_EX, "udp-ipv6-ex")                                                                \
+  _ (9, IPV4_SRC_ONLY, "ipv4-src-only")                                                            \
+  _ (10, IPV4_DST_ONLY, "ipv4-dst-only")                                                           \
+  _ (11, IPV6_DST_ONLY, "ipv6-dst-only")                                                           \
+  _ (12, IPV6_SRC_ONLY, "ipv6-src-only")
+
+typedef enum
+{
+#define _(a, b, c) VNET_ETH_RSS_T_##b = 1U << (a),
+  foreach_vnet_eth_rss_hash
+#undef _
+} vnet_eth_rss_hash_bit_t;
+
+typedef enum
+{
+#define _(a, b, c) VNET_ETH_RSS_T_##b##_BIT = a,
+  foreach_vnet_eth_rss_hash
+#undef _
+} vnet_eth_rss_hash_pos_t;
+
+typedef u32 vnet_eth_rss_hash_t;
+
+#define VNET_ETH_RSS_HASH_NOT_SET (1U << 31)
+
+typedef struct
+{
+  u8 *key;
+  u8 key_len;
+  vnet_eth_rss_hash_t hash;
+} vnet_eth_rss_config_t;
+
 struct vnet_hw_interface_t;
 /* Ethernet flag change callback. */
 typedef u32 (ethernet_flag_change_function_t)
   (vnet_main_t * vnm, struct vnet_hw_interface_t * hi, u32 flags);
+typedef clib_error_t *(vnet_eth_set_rss_config_fn_t) (vnet_main_t *vnm,
+						      struct vnet_hw_interface_t *hi,
+						      vnet_eth_rss_config_t *cfg);
 
 typedef struct
 {
@@ -103,6 +146,9 @@ typedef struct
 
   /* set Max Frame Size callback */
   vnet_interface_set_max_frame_size_function_t *set_max_frame_size;
+
+  /* set RSS config callback */
+  vnet_eth_set_rss_config_fn_t *set_rss_config;
 } vnet_eth_if_callbacks_t;
 
 #define ETHERNET_MIN_PACKET_BYTES  64
@@ -552,6 +598,11 @@ typedef struct
 
 u32 vnet_eth_register_interface (vnet_main_t *vnm,
 				 vnet_eth_interface_registration_t *r);
+clib_error_t *vnet_eth_set_rss_config (vnet_main_t *vnm, u32 hw_if_index,
+				       vnet_eth_rss_config_t *cfg);
+u8 vnet_eth_rss_hash_is_valid (vnet_eth_rss_hash_t hash);
+format_function_t format_vnet_eth_rss_hash;
+unformat_function_t unformat_vnet_eth_rss_hash;
 void ethernet_update_adjacency (vnet_main_t * vnm, u32 sw_if_index, u32 ai);
 u8 *ethernet_build_rewrite (vnet_main_t * vnm,
 			    u32 sw_if_index,
