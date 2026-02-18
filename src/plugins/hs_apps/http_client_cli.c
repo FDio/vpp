@@ -389,7 +389,7 @@ hcc_connect_rpc (void *rpc_args)
 
   rv = vnet_connect (a);
   if (rv)
-    clib_warning (0, "connect returned: %U", format_session_error, rv);
+    clib_warning ("connect returned: %U", format_session_error, rv);
 
   session_endpoint_free_ext_cfgs (&a->sep_ext);
   vec_free (a);
