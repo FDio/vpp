@@ -372,8 +372,11 @@ vnet_dev_api_port_set_rss_key (vlib_main_t *vm,
   vnet_dev_t *dev = vnet_dev_by_index (args->dev_index);
   vnet_dev_rv_t rv = VNET_DEV_OK;
   vnet_dev_port_cfg_change_req_t req = {
-    .type = VNET_DEV_PORT_CFG_SET_RSS_KEY,
-    .rss_key = args->rss_key,
+    .type = VNET_DEV_PORT_CFG_SET_RSS_CONFIG,
+    .rss_config = {
+      .key = args->rss_key,
+      .hash = VNET_ETH_RSS_HASH_NOT_SET,
+    },
   };
 
   if (!dev)
