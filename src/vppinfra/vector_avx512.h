@@ -345,6 +345,20 @@ u8x64_permute2 (u8x64 idx, u8x64 a, u8x64 b)
 					   (__m512i) b);
 }
 
+#if defined(__AVX512VL__) && defined(__AVX512BW__)
+static_always_inline u16x32
+u16x32_permute2 (u16x32 idx, u16x32 a, u16x32 b)
+{
+  return (u16x32) _mm512_permutex2var_epi16 ((__m512i) a, (__m512i) idx, (__m512i) b);
+}
+
+static_always_inline u16x16
+u16x16_permute2 (u16x16 idx, u16x16 a, u16x16 b)
+{
+  return (u16x16) _mm256_permutex2var_epi16 ((__m256i) a, (__m256i) idx, (__m256i) b);
+}
+#endif
+
 #define _(t, m, e, p, it)                                                     \
   static_always_inline m t##_is_equal_mask (t a, t b)                         \
   {                                                                           \
@@ -427,6 +441,9 @@ _ (u8x16, u16, _mm, __m128i, epi8)
 
 #ifdef CLIB_HAVE_VEC256
 #define CLIB_HAVE_VEC256_COMPRESS
+#if defined(__AVX512VL__) && defined(__AVX512BW__)
+#define CLIB_HAVE_VEC256_PERMUTE2
+#endif
 #ifdef __AVX512VBMI2__
 #define CLIB_HAVE_VEC256_COMPRESS_U8_U16
 #endif
@@ -434,6 +451,9 @@ _ (u8x16, u16, _mm, __m128i, epi8)
 #endif
 #ifdef CLIB_HAVE_VEC512
 #define CLIB_HAVE_VEC512_COMPRESS
+#if defined(__AVX512VL__) && defined(__AVX512BW__)
+#define CLIB_HAVE_VEC512_PERMUTE2
+#endif
 #ifdef __AVX512VBMI2__
 #define CLIB_HAVE_VEC512_COMPRESS_U8_U16
 #endif

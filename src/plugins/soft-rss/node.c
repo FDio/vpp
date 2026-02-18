@@ -98,15 +98,16 @@ soft_rss_one_interface (vlib_main_t *vm, vlib_node_runtime_t *node,
 			soft_rss_rt_data_t *rt, u32 *buffer_indices, i16 *cds,
 			u32 n_pkts)
 {
-  i64 i, n_left = n_pkts;
+  i64 n_left = n_pkts;
   u8 *data[VLIB_FRAME_SIZE + 4], **d = data;
   u16 hashes[VLIB_FRAME_SIZE], *h = hashes;
+  const u16 reta_mask = rt->reta_mask;
   const u32 n_match4 = rt->n_match4;
   const u32 n_match6 = rt->n_match6;
   soft_rss_rt_match_t *match4 = rt->match4;
   soft_rss_rt_match_t *match6 = rt->match6;
   clib_toeplitz_hash_key_t *k = rt->key;
-  clib_thread_index_t *reta;
+  clib_thread_index_t *reta = rt->reta;
 
   /* get pointer to b->data out of buffer indices */
   vlib_get_buffers_with_offset (vm, buffer_indices, (void **) d, n_pkts,
@@ -168,18 +169,34 @@ soft_rss_one_interface (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  t = vlib_add_trace (vm, node, tb, sizeof (*t));
 	  t->sw_if_index = vnet_buffer (tb)->sw_if_index[VLIB_RX];
 	  t->hash = hashes[j];
-	  t->thread_index = rt->reta[hashes[j] & rt->reta_mask];
+	  t->thread_index = reta[hashes[j] & reta_mask];
 	}
     }
 
-  /* mask hashes with reta mask */
-  for (h = hashes, i = n_pkts; i > 0; i -= 32, h += 32)
-    clib_array_mask_u16 (h, rt->reta_mask, 32);
+#if defined(CLIB_HAVE_VEC512_PERMUTE2)
+  u16x32u *dp = (u16x32u *) hashes;
+  u16x32 t0 = ((u16x32u *) reta)[0];
+  u16x32 t1 = ((u16x32u *) reta)[1];
+  u16x32 mask = u16x32_splat (reta_mask);
 
-  /* lookup from reta table */
-  for (h = hashes, reta = rt->reta, i = n_pkts; i > 0; i -= 16, h += 16)
-    for (u32 j = 0; j < 16; j++)
-      h[j] = reta[h[j]];
+  for (u32 n_data = n_pkts; n_data > 0; n_data -= 32, dp++)
+    *dp = u16x32_permute2 (*dp & mask, t0, t1);
+#elif defined(CLIB_HAVE_VEC256_PERMUTE2)
+  u16x16u *dp = (u16x16u *) hashes;
+  u16x16 t0 = ((u16x16u *) reta)[0];
+  u16x16 t1 = ((u16x16u *) reta)[1];
+  u16x16 mask = u16x16_splat (reta_mask);
+
+  for (u32 n_data = n_pkts; n_data > 0; n_data -= 16, dp++)
+    *dp = u16x16_permute2 (*dp & mask, t0, t1);
+#else
+  u32 i;
+  for (h = hashes, i = n_pkts; i > 0; i -= 32, h += 32)
+    clib_array_mask_u16 (h, reta_mask, 32);
+
+  for (h = hashes, i = n_pkts; i > 0; i--, h++)
+    h[0] = reta[h[0]];
+#endif
 
   vlib_buffer_enqueue_to_thread (vm, node, soft_rss_main.frame_queue_index,
 				 buffer_indices, hashes, n_pkts, 0);
