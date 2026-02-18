@@ -55,8 +55,7 @@ unformat_soft_rss_type (unformat_input_t *input, va_list *args)
 u8 *
 format_soft_rss_reta (u8 *s, va_list *args)
 {
-  const clib_thread_index_t *reta =
-    va_arg (*args, const clib_thread_index_t *);
+  const u8 *reta = va_arg (*args, const u8 *);
   u32 len = va_arg (*args, u32);
   u32 indent = format_get_indent (s);
 

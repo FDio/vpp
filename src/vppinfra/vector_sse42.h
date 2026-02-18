@@ -363,6 +363,12 @@ u8x16_reflect (u8x16 v)
   return (u8x16) _mm_shuffle_epi8 ((__m128i) v, (__m128i) mask);
 }
 
+static_always_inline u8x16
+u8x16_permute (u8x16 idx, u8x16 a)
+{
+  return (u8x16) _mm_shuffle_epi8 ((__m128i) a, (__m128i) idx);
+}
+
 static_always_inline u32x4
 u32x4_hadd (u32x4 v1, u32x4 v2)
 {
