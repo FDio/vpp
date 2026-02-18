@@ -1197,7 +1197,185 @@ class TestIPv6(TestIPv6ND):
             ):
                 mld = rx[ICMPv6MLReport2]
 
-        self.assertEqual(mld.records_number, 4)
+        self.assertEqual(mld.records_number, 5)
+
+    def test_mld_solicited_node_refcount(self):
+        """MLD solicited-node refcount for duplicate low-24bit addresses"""
+        intf = self.pg0
+        addr1 = "2001::7f:1e2d"
+        addr2 = "2001::107f:1e2d"
+        prefix_len = 64
+        solicited_group = "ff02::1:ff7f:1e2d"
+        solicited_mac = "33:33:ff:7f:1e:2d"
+
+        def add_interface_addr(addr):
+            self.vapi.sw_interface_add_del_address(
+                sw_if_index=intf.sw_if_index, prefix=f"{addr}/{prefix_len}", is_add=1
+            )
+
+        def del_interface_addr(addr):
+            self.vapi.sw_interface_add_del_address(
+                sw_if_index=intf.sw_if_index, prefix=f"{addr}/{prefix_len}", is_add=0
+            )
+
+        def get_secondary_mac_count():
+            output = self.vapi.cli(
+                f"show interface secondary-mac-address {intf.name}"
+            ).lower()
+            return sum(
+                1 for line in output.splitlines() if line.strip() == solicited_mac
+            )
+
+        def has_solicited_group():
+            output = self.vapi.cli(f"show ip6 interface {intf.name}").lower()
+            return solicited_group in output
+
+        base_mac_count = get_secondary_mac_count()
+        base_group_present = has_solicited_group()
+        addr1_added = False
+        addr2_added = False
+
+        try:
+            add_interface_addr(addr1)
+            addr1_added = True
+            self.assertEqual(get_secondary_mac_count(), base_mac_count + 1)
+            self.assertTrue(has_solicited_group())
+
+            add_interface_addr(addr2)
+            addr2_added = True
+            self.assertEqual(get_secondary_mac_count(), base_mac_count + 1)
+            self.assertTrue(has_solicited_group())
+
+            del_interface_addr(addr1)
+            addr1_added = False
+            self.assertEqual(get_secondary_mac_count(), base_mac_count + 1)
+            self.assertTrue(has_solicited_group())
+
+            del_interface_addr(addr2)
+            addr2_added = False
+            self.assertEqual(get_secondary_mac_count(), base_mac_count)
+            self.assertEqual(has_solicited_group(), base_group_present)
+        finally:
+            if addr1_added:
+                del_interface_addr(addr1)
+            if addr2_added:
+                del_interface_addr(addr2)
+
+    def test_mld_solicited_node_link_local(self):
+        """MLD solicited-node multicast and secondary MAC for link-local addr"""
+        intf = self.pg0
+
+        def get_secondary_mac_count(mac):
+            output = self.vapi.cli(
+                f"show interface secondary-mac-address {intf.name}"
+            ).lower()
+            return sum(1 for line in output.splitlines() if line.strip() == mac)
+
+        def has_solicited_group(group):
+            output = self.vapi.cli(f"show ip6 interface {intf.name}").lower()
+            return group in output
+
+        def ll_to_group_and_mac(addr):
+            ll_bytes = inet_pton(AF_INET6, addr)
+            nsma = in6_getnsma(ll_bytes)
+            group = inet_ntop(AF_INET6, nsma)
+            mac = in6_getnsmac(nsma).lower()
+            return group, mac
+
+        initial_ll = self.pg0.local_ip6_ll
+        initial_group, initial_mac = ll_to_group_and_mac(initial_ll)
+        ll_1 = "fe80::88"
+        ll_1_group, ll_1_mac = ll_to_group_and_mac(ll_1)
+        ll_2 = "fe80::99"
+        ll_2_group, ll_2_mac = ll_to_group_and_mac(ll_2)
+
+        self.assertTrue(
+            has_solicited_group(initial_group),
+            "solicited-node group for initial link-local not found",
+        )
+        self.assertEqual(
+            get_secondary_mac_count(initial_mac),
+            1,
+            "secondary MAC for initial link-local not programmed",
+        )
+
+        self.vapi.sw_interface_ip6_set_link_local_address(
+            sw_if_index=intf.sw_if_index, ip=ll_1
+        )
+
+        self.assertTrue(
+            has_solicited_group(ll_1_group),
+            "solicited-node group for first updated link-local not found",
+        )
+        self.assertEqual(
+            get_secondary_mac_count(ll_1_mac),
+            1,
+            "secondary MAC for first updated link-local not programmed",
+        )
+        self.assertFalse(
+            has_solicited_group(initial_group),
+            "solicited-node group for initial link-local not removed",
+        )
+        self.assertEqual(
+            get_secondary_mac_count(initial_mac),
+            0,
+            "secondary MAC for initial link-local not removed",
+        )
+
+        self.vapi.sw_interface_ip6_set_link_local_address(
+            sw_if_index=intf.sw_if_index, ip=ll_2
+        )
+
+        self.assertTrue(
+            has_solicited_group(ll_2_group),
+            "solicited-node group for second updated link-local not found",
+        )
+        self.assertEqual(
+            get_secondary_mac_count(ll_2_mac),
+            1,
+            "secondary MAC for second updated link-local not programmed",
+        )
+        self.assertFalse(
+            has_solicited_group(ll_1_group),
+            "solicited-node group for first updated link-local not removed",
+        )
+        self.assertEqual(
+            get_secondary_mac_count(ll_1_mac),
+            0,
+            "secondary MAC for first updated link-local not removed",
+        )
+
+        self.vapi.sw_interface_ip6_set_link_local_address(
+            sw_if_index=intf.sw_if_index, ip=initial_ll
+        )
+
+        self.assertTrue(
+            has_solicited_group(initial_group),
+            "solicited-node group for restored initial link-local not found",
+        )
+        self.assertEqual(
+            get_secondary_mac_count(initial_mac),
+            1,
+            "secondary MAC for restored initial link-local not programmed",
+        )
+        self.assertFalse(
+            has_solicited_group(ll_1_group),
+            "solicited-node group for first updated link-local leaked",
+        )
+        self.assertEqual(
+            get_secondary_mac_count(ll_1_mac),
+            0,
+            "secondary MAC for first updated link-local leaked",
+        )
+        self.assertFalse(
+            has_solicited_group(ll_2_group),
+            "solicited-node group for second updated link-local leaked",
+        )
+        self.assertEqual(
+            get_secondary_mac_count(ll_2_mac),
+            0,
+            "secondary MAC for second updated link-local leaked",
+        )
 
 
 class TestIPv6RouteLookup(VppTestCase):
