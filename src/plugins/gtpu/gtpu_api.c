@@ -28,6 +28,7 @@ vl_api_gtpu_offload_rx_t_handler (vl_api_gtpu_offload_rx_t * mp)
 {
   vl_api_gtpu_offload_rx_reply_t *rmp;
   int rv = 0;
+  gtpu_main_t *gtm = &gtpu_main;
   vl_api_interface_index_t hw_if_index = ntohl (mp->hw_if_index);
   vl_api_interface_index_t sw_if_index = ntohl (mp->sw_if_index);
 
@@ -44,8 +45,6 @@ vl_api_gtpu_offload_rx_t_handler (vl_api_gtpu_offload_rx_t * mp)
       rv = VNET_API_ERROR_INVALID_SW_IF_INDEX_2;
       goto err;
     }
-
-  gtpu_main_t *gtm = &gtpu_main;
   gtpu_tunnel_t *t = pool_elt_at_index (gtm->tunnels, t_index);
   if (!ip46_address_is_ip4 (&t->dst))
     {
@@ -105,6 +104,7 @@ static void vl_api_gtpu_add_del_tunnel_t_handler
 {
   vl_api_gtpu_add_del_tunnel_reply_t *rmp;
   int rv = 0;
+  u32 sw_if_index = ~0;
   gtpu_main_t *gtm = &gtpu_main;
 
   vnet_gtpu_add_mod_del_tunnel_args_t a = {
@@ -143,7 +143,6 @@ static void vl_api_gtpu_add_del_tunnel_t_handler
       goto out;
     }
 
-  u32 sw_if_index = ~0;
   rv = vnet_gtpu_add_mod_del_tunnel (&a, &sw_if_index);
 
 out:
@@ -158,8 +157,9 @@ vl_api_gtpu_add_del_tunnel_v2_t_handler (vl_api_gtpu_add_del_tunnel_v2_t *mp)
 {
   vl_api_gtpu_add_del_tunnel_v2_reply_t *rmp;
   int rv = 0;
-  vlib_counter_t result_rx;
-  vlib_counter_t result_tx;
+  vlib_counter_t result_rx = { 0 };
+  vlib_counter_t result_tx = { 0 };
+  u32 sw_if_index = ~0;
   gtpu_main_t *gtm = &gtpu_main;
 
   vnet_gtpu_add_mod_del_tunnel_args_t a = {
@@ -198,7 +198,6 @@ vl_api_gtpu_add_del_tunnel_v2_t_handler (vl_api_gtpu_add_del_tunnel_v2_t *mp)
       goto out;
     }
 
-  u32 sw_if_index = ~0;
   rv = vnet_gtpu_add_mod_del_tunnel (&a, &sw_if_index);
   get_combined_counters (sw_if_index, &result_rx, &result_tx);
 
@@ -388,6 +387,7 @@ vl_api_gtpu_add_del_forward_t_handler (vl_api_gtpu_add_del_forward_t *mp)
 {
   vl_api_gtpu_add_del_forward_reply_t *rmp;
   int rv = 0;
+  u32 sw_if_index = ~0;
   gtpu_main_t *gtm = &gtpu_main;
 
   vnet_gtpu_add_mod_del_tunnel_args_t a = {
@@ -422,7 +422,6 @@ vl_api_gtpu_add_del_forward_t_handler (vl_api_gtpu_add_del_forward_t *mp)
       goto out;
     }
 
-  u32 sw_if_index = ~0;
   rv = vnet_gtpu_add_del_forwarding (&a, &sw_if_index);
 
 out:
