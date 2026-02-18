@@ -15,6 +15,10 @@
 
 quic_quicly_main_t quic_quicly_main;
 
+/* quicly assume that the buffer provided by the caller of quicly_send is no greater than the burst
+ * size of the pacer (10 packets) */
+#define QUIC_QUICLY_SEND_PACKET_VEC_SIZE 10
+
 VLIB_PLUGIN_REGISTER () = {
   .version = VPP_BUILD_VER,
   .description = "Quicly QUIC Engine",
@@ -42,7 +46,7 @@ quic_quicly_sendable_packet_count (session_t *udp_session)
   u32 max_enqueue;
   u32 packet_size = QUIC_MAX_PACKET_SIZE + SESSION_CONN_HDR_LEN;
   max_enqueue = svm_fifo_max_enqueue (udp_session->tx_fifo);
-  return clib_min (max_enqueue / packet_size, QUIC_SEND_PACKET_VEC_SIZE);
+  return clib_min (max_enqueue / packet_size, QUIC_QUICLY_SEND_PACKET_VEC_SIZE);
 }
 
 static_always_inline void
@@ -310,10 +314,10 @@ static int
 quic_quicly_send_packets (quic_ctx_t *ctx)
 {
   /* TODO: GET packetsp[], buf[], next_timeout OFF OF THE STACK!!! */
-  struct iovec packets[QUIC_SEND_PACKET_VEC_SIZE];
+  struct iovec packets[QUIC_QUICLY_SEND_PACKET_VEC_SIZE];
   uint64_t max_udp_payload_size = quic_quicly_get_quicly_ctx_from_ctx (ctx)
 				    ->transport_params.max_udp_payload_size;
-  uint8_t buf[QUIC_SEND_PACKET_VEC_SIZE * max_udp_payload_size];
+  uint8_t buf[QUIC_QUICLY_SEND_PACKET_VEC_SIZE * max_udp_payload_size];
   session_t *udp_session;
   quicly_conn_t *conn;
   size_t num_packets, i, max_packets;
@@ -349,7 +353,7 @@ quic_quicly_send_packets (quic_ctx_t *ctx)
       return 0;
     }
 
-  /* Shrink buf_size if we have less dgrams than QUIC_SEND_PACKET_VEC_SIZE */
+  /* Shrink buf_size if we have less dgrams than QUIC_QUICLY_SEND_PACKET_VEC_SIZE */
   buf_size = clib_min (sizeof (buf), max_packets * max_udp_payload_size);
 
   /* If under memory pressure and chunks cannot be allocated try reschedule */

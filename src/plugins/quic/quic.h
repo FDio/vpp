@@ -30,7 +30,6 @@
 
 #define QUIC_INT_MAX  0x3FFFFFFFFFFFFFFF
 #define QUIC_DEFAULT_FIFO_SIZE (64 << 10)
-#define QUIC_SEND_PACKET_VEC_SIZE 16
 
 #define QUIC_MAX_COALESCED_PACKET 4
 
@@ -272,6 +271,7 @@ typedef struct quic_main_
   u64 max_packets_per_key;  /**< number of packets that can be sent without a
 			       key update */
   u8 default_quic_cc;
+  u8 enable_tx_pacing; /**< enable tx pacing for connections */
 
   u32 udp_fifo_size;
   u32 udp_fifo_prealloc;

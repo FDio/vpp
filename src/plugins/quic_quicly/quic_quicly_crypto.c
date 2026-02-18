@@ -365,6 +365,7 @@ quic_quicly_crypto_context_init_data (quic_quicly_crypto_ctx_t *crctx, quic_ctx_
 
   quicly_ctx->max_packets_per_key = qm->max_packets_per_key;
   quicly_ctx->tls = ptls_ctx;
+  quicly_ctx->enable_ratio.pacing = qm->enable_tx_pacing;
 
   quicly_amend_ptls_context (quicly_ctx->tls);
 
