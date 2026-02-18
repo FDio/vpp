@@ -497,6 +497,7 @@ svs_route_cli (vlib_main_t * vm,
   fib_prefix_t pfx;
   int rv;
   u8 add;
+  u8 pfx_set = 0;
 
   src_table_id = table_id = ~0;
   add = 1;
@@ -515,11 +516,13 @@ svs_route_cli (vlib_main_t * vm,
 			 unformat_ip4_address, &pfx.fp_addr.ip4, &pfx.fp_len))
 	{
 	  pfx.fp_proto = FIB_PROTOCOL_IP4;
+	  pfx_set = 1;
 	}
       else if (unformat (input, "%U/%d",
 			 unformat_ip6_address, &pfx.fp_addr.ip6, &pfx.fp_len))
 	{
 	  pfx.fp_proto = FIB_PROTOCOL_IP6;
+	  pfx_set = 1;
 	}
       else
 	break;
@@ -529,6 +532,8 @@ svs_route_cli (vlib_main_t * vm,
     return clib_error_return (0, "table-id must be specified");
   if (~0 == src_table_id)
     return clib_error_return (0, "src-table-id must be specified");
+  if (!pfx_set)
+    return clib_error_return (0, "prefix must be specified");
 
   if (add)
     rv = svs_route_add (table_id, &pfx, src_table_id);
