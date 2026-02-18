@@ -30,6 +30,7 @@ static void vl_api_pppoe_add_del_session_t_handler
   vl_api_pppoe_add_del_session_reply_t *rmp;
   int rv = 0;
   u32 decap_fib_index;
+  u32 sw_if_index = ~0;
   ip4_main_t *im = &ip4_main;
   pppoe_main_t *pem = &pppoe_main;
 
@@ -49,7 +50,6 @@ static void vl_api_pppoe_add_del_session_t_handler
   ip_address_decode (&mp->client_ip, &a.client_ip);
   clib_memcpy (a.client_mac, mp->client_mac, 6);
 
-  u32 sw_if_index = ~0;
   rv = vnet_pppoe_add_del_session (&a, &sw_if_index);
 
 out:
