@@ -101,6 +101,86 @@ dpdk_set_max_frame_size (vnet_main_t *vnm, vnet_hw_interface_t *hi,
   return 0;
 }
 
+static_always_inline u64
+dpdk_rss_hf_from_type (vnet_eth_rss_type_t type, u8 is_ip6)
+{
+  u64 hf = 0;
+
+  switch (type)
+    {
+    case VNET_ETH_RSS_TYPE_DISABLED:
+      break;
+    case VNET_ETH_RSS_TYPE_2_TUPLE:
+      hf = is_ip6 ? RTE_ETH_RSS_IPV6 : RTE_ETH_RSS_IPV4;
+      break;
+    case VNET_ETH_RSS_TYPE_4_TUPLE:
+      hf = is_ip6 ? (RTE_ETH_RSS_NONFRAG_IPV6_TCP | RTE_ETH_RSS_NONFRAG_IPV6_UDP) :
+		    (RTE_ETH_RSS_NONFRAG_IPV4_TCP | RTE_ETH_RSS_NONFRAG_IPV4_UDP);
+      break;
+    case VNET_ETH_RSS_TYPE_SRC_IP:
+      hf = is_ip6 ? RTE_ETH_RSS_IPV6 : RTE_ETH_RSS_IPV4;
+#ifdef RTE_ETH_RSS_L3_SRC_ONLY
+      hf |= RTE_ETH_RSS_L3_SRC_ONLY;
+#endif
+      break;
+    case VNET_ETH_RSS_TYPE_DST_IP:
+      hf = is_ip6 ? RTE_ETH_RSS_IPV6 : RTE_ETH_RSS_IPV4;
+#ifdef RTE_ETH_RSS_L3_DST_ONLY
+      hf |= RTE_ETH_RSS_L3_DST_ONLY;
+#endif
+      break;
+    default:
+      break;
+    }
+
+  return hf;
+}
+
+static clib_error_t *
+dpdk_set_rss_config (vnet_main_t *vnm __clib_unused, vnet_hw_interface_t *hi,
+		     vnet_eth_rss_config_t *cfg)
+{
+  dpdk_main_t *dm = &dpdk_main;
+  dpdk_device_t *xd = vec_elt_at_index (dm->devices, hi->dev_instance);
+  struct rte_eth_rss_conf rss_conf = {};
+  vnet_eth_rss_type_t ip4_type;
+  vnet_eth_rss_type_t ip6_type;
+  u64 hf = xd->conf.rss_hf;
+  int rv;
+
+  if (cfg == 0)
+    return vnet_error (VNET_ERR_INVALID_VALUE, "invalid rss config");
+  ip4_type = cfg->ip4_type;
+  ip6_type = cfg->ip6_type;
+
+  if (ip4_type != VNET_ETH_RSS_TYPE_NOT_SET || ip6_type != VNET_ETH_RSS_TYPE_NOT_SET)
+    {
+      if (ip4_type == VNET_ETH_RSS_TYPE_NOT_SET || ip6_type == VNET_ETH_RSS_TYPE_NOT_SET)
+	return vnet_error (VNET_ERR_INVALID_VALUE, "both ipv4 and ipv6 rss type must be set");
+
+      if (ip4_type <= VNET_ETH_RSS_TYPE_NOT_SET || ip4_type >= VNET_ETH_RSS_N_TYPES)
+	return vnet_error (VNET_ERR_INVALID_VALUE, "invalid ipv4 rss type %u", ip4_type);
+
+      if (ip6_type <= VNET_ETH_RSS_TYPE_NOT_SET || ip6_type >= VNET_ETH_RSS_N_TYPES)
+	return vnet_error (VNET_ERR_INVALID_VALUE, "invalid ipv6 rss type %u", ip6_type);
+
+      hf = dpdk_rss_hf_from_type (ip4_type, 0) | dpdk_rss_hf_from_type (ip6_type, 1);
+    }
+
+  rss_conf = (struct rte_eth_rss_conf){
+    .rss_key = cfg->key_len ? cfg->key : 0,
+    .rss_key_len = cfg->key_len,
+    .rss_hf = hf,
+  };
+
+  rv = rte_eth_dev_rss_hash_update (xd->port_id, &rss_conf);
+  if (rv < 0)
+    return vnet_error (VNET_ERR_BUG, "rte_eth_dev_rss_hash_update failed (%d)", rv);
+
+  xd->conf.rss_hf = hf;
+  return 0;
+}
+
 static u32
 dpdk_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi, u32 flags)
 {
@@ -562,6 +642,7 @@ dpdk_lib_init (dpdk_main_t * dm)
       eir.address = addr;
       eir.cb.flag_change = dpdk_flag_change;
       eir.cb.set_max_frame_size = dpdk_set_max_frame_size;
+      eir.cb.set_rss_config = dpdk_set_rss_config;
       xd->hw_if_index = vnet_eth_register_interface (vnm, &eir);
       hi = vnet_get_hw_interface (vnm, xd->hw_if_index);
       numa_node = (i8) rte_eth_dev_socket_id (port_id);

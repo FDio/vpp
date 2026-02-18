@@ -93,6 +93,53 @@ vnet_dev_port_eth_flag_change (vnet_main_t *vnm, vnet_hw_interface_t *hw,
 }
 
 clib_error_t *
+vnet_dev_port_set_rss_config (vnet_main_t *vnm, vnet_hw_interface_t *hw, vnet_eth_rss_config_t *cfg)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  vnet_dev_instance_t *di = vnet_dev_get_dev_instance (hw->dev_instance);
+  vnet_dev_port_t *p = di->port;
+  vnet_dev_rv_t rv;
+  vnet_dev_port_cfg_change_req_t req;
+
+  if (cfg == 0)
+    return clib_error_return (0, "invalid rss config");
+
+  if (!di->is_primary_if)
+    return vnet_dev_port_err (vm, p, VNET_DEV_ERR_NOT_PRIMARY_INTERFACE, "");
+  if (p->rss_config == 0)
+    return vnet_dev_port_err (vm, p, VNET_DEV_ERR_NOT_SUPPORTED, "rss is not supported");
+
+  req = (vnet_dev_port_cfg_change_req_t){
+    .type = VNET_DEV_PORT_CFG_SET_RSS_CONFIG,
+    .rss_config = {
+      .ip4 = cfg->ip4_type == VNET_ETH_RSS_TYPE_NOT_SET ? p->rss_config->ip4 :
+							   cfg->ip4_type,
+      .ip6 = cfg->ip6_type == VNET_ETH_RSS_TYPE_NOT_SET ? p->rss_config->ip6 :
+							   cfg->ip6_type,
+    },
+  };
+
+  if (cfg->key_len)
+    {
+      if (cfg->key_len > ARRAY_LEN (req.rss_config.key.key))
+	return clib_error_return (0, "rss key length %u exceeds max %u", cfg->key_len,
+				  ARRAY_LEN (req.rss_config.key.key));
+      clib_memcpy (req.rss_config.key.key, cfg->key, cfg->key_len);
+      req.rss_config.key.length = cfg->key_len;
+    }
+
+  rv = vnet_dev_port_cfg_change_req_validate (vm, p, &req);
+  if (rv == VNET_DEV_ERR_NO_CHANGE)
+    return 0;
+  if (rv != VNET_DEV_OK)
+    return vnet_dev_port_err (vm, p, rv, "rss config is not valid for port");
+  if ((rv = vnet_dev_process_port_cfg_change_req (vm, p, &req)) != VNET_DEV_OK)
+    return vnet_dev_port_err (vm, p, rv, "device failed to change rss config");
+
+  return 0;
+}
+
+clib_error_t *
 vnet_dev_port_mac_change (vnet_hw_interface_t *hi, const u8 *old,
 			  const u8 *new)
 {

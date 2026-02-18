@@ -91,10 +91,37 @@ typedef struct
   ethernet_vlan_header_t vlan[2];
 } ethernet_max_header_t;
 
+#define foreach_vnet_eth_rss_type                                                                  \
+  _ (DISABLED, "disabled")                                                                         \
+  _ (4_TUPLE, "4-tuple")                                                                           \
+  _ (2_TUPLE, "2-tuple")                                                                           \
+  _ (SRC_IP, "src-ip")                                                                             \
+  _ (DST_IP, "dst-ip")
+
+typedef enum
+{
+  VNET_ETH_RSS_TYPE_NOT_SET = 0,
+#define _(a, b) VNET_ETH_RSS_TYPE_##a,
+  foreach_vnet_eth_rss_type
+#undef _
+    VNET_ETH_RSS_N_TYPES,
+} __clib_packed vnet_eth_rss_type_t;
+
+typedef struct
+{
+  u8 *key;
+  u8 key_len;
+  vnet_eth_rss_type_t ip4_type;
+  vnet_eth_rss_type_t ip6_type;
+} vnet_eth_rss_config_t;
+
 struct vnet_hw_interface_t;
 /* Ethernet flag change callback. */
 typedef u32 (ethernet_flag_change_function_t)
   (vnet_main_t * vnm, struct vnet_hw_interface_t * hi, u32 flags);
+typedef clib_error_t *(vnet_eth_set_rss_config_fn_t) (vnet_main_t *vnm,
+						      struct vnet_hw_interface_t *hi,
+						      vnet_eth_rss_config_t *cfg);
 
 typedef struct
 {
@@ -103,6 +130,9 @@ typedef struct
 
   /* set Max Frame Size callback */
   vnet_interface_set_max_frame_size_function_t *set_max_frame_size;
+
+  /* set RSS config callback */
+  vnet_eth_set_rss_config_fn_t *set_rss_config;
 } vnet_eth_if_callbacks_t;
 
 #define ETHERNET_MIN_PACKET_BYTES  64
@@ -552,6 +582,10 @@ typedef struct
 
 u32 vnet_eth_register_interface (vnet_main_t *vnm,
 				 vnet_eth_interface_registration_t *r);
+clib_error_t *vnet_eth_set_rss_config (vnet_main_t *vnm, u32 hw_if_index,
+				       vnet_eth_rss_config_t *cfg);
+format_function_t format_vnet_eth_rss_type;
+unformat_function_t unformat_vnet_eth_rss_type;
 void ethernet_update_adjacency (vnet_main_t * vnm, u32 sw_if_index, u32 ai);
 u8 *ethernet_build_rewrite (vnet_main_t * vnm,
 			    u32 sw_if_index,
