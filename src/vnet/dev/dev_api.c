@@ -47,8 +47,8 @@ vl_api_dev_attach_t_handler (vl_api_dev_attach_t *mp)
   STATIC_ASSERT (sizeof (mp->flags) == sizeof (a.flags), "");
 
   a.flags.n = mp->flags;
-  strncpy (a.device_id, (char *) mp->device_id, sizeof (a.device_id));
-  strncpy (a.driver_name, (char *) mp->driver_name, sizeof (a.driver_name));
+  snprintf (a.device_id, sizeof (a.device_id), "%s", (char *) mp->device_id);
+  snprintf (a.driver_name, sizeof (a.driver_name), "%s", (char *) mp->driver_name);
   vec_add (a.args, mp->args.buf, mp->args.length);
 
   rv = vnet_dev_api_attach (vm, &a);
@@ -122,7 +122,7 @@ vl_api_dev_create_port_if_t_handler (vl_api_dev_create_port_if_t *mp)
   _ (tx_queue_size)
 #undef _
 
-  strncpy (a.intf_name, (char *) mp->intf_name, sizeof (a.intf_name));
+  snprintf (a.intf_name, sizeof (a.intf_name), "%s", (char *) mp->intf_name);
   vec_add (a.args, mp->args.buf, mp->args.length);
 
   rv = vnet_dev_api_create_port_if (vm, &a);
