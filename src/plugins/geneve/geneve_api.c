@@ -47,6 +47,7 @@ static void vl_api_geneve_add_del_tunnel_t_handler
 {
   vl_api_geneve_add_del_tunnel_reply_t *rmp;
   int rv = 0;
+  u32 sw_if_index = ~0;
   ip4_main_t *im = &ip4_main;
 
   uword *p = hash_get (im->fib_index_by_table_id, ntohl (mp->encap_vrf_id));
@@ -81,7 +82,6 @@ static void vl_api_geneve_add_del_tunnel_t_handler
       goto out;
     }
 
-  u32 sw_if_index = ~0;
   rv = vnet_geneve_add_del_tunnel (&a, &sw_if_index);
 
 out:
@@ -96,6 +96,7 @@ static void vl_api_geneve_add_del_tunnel2_t_handler
 {
   vl_api_geneve_add_del_tunnel2_reply_t *rmp;
   int rv = 0;
+  u32 sw_if_index = ~0;
   ip4_main_t *im = &ip4_main;
 
   uword *p = hash_get (im->fib_index_by_table_id, ntohl (mp->encap_vrf_id));
@@ -131,7 +132,6 @@ static void vl_api_geneve_add_del_tunnel2_t_handler
       goto out;
     }
 
-  u32 sw_if_index = ~0;
   rv = vnet_geneve_add_del_tunnel (&a, &sw_if_index);
 
 out:
