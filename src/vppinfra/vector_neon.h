@@ -129,6 +129,18 @@ u64x2_from_u32x4_high (u32x4 v)
   return vmovl_high_u32 (v);
 }
 
+static_always_inline u16x8
+u16x8_from_u8x16 (u8x16 v)
+{
+  return (u16x8) vmovl_u8 (vget_low_u8 ((uint8x16_t) v));
+}
+
+static_always_inline u16x8
+u16x8_from_u8x16_high (u8x16 v)
+{
+  return (u16x8) vmovl_u8 (vget_high_u8 ((uint8x16_t) v));
+}
+
 /* Creates a mask made up of the MSB of each byte of the source vector */
 static_always_inline u16
 u8x16_msb_mask (u8x16 v)

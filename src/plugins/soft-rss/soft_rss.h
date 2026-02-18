@@ -26,8 +26,14 @@ typedef struct
   u8 n_match4;
   u8 n_match6;
   u16 match_offset;
-  clib_thread_index_t reta_mask;
-  clib_thread_index_t reta[256];
+  u8 reta_mask;
+  union
+  {
+    u8 reta[64];
+#if defined(__aarch64__)
+    uint8x16x4_t reta_neon;
+#endif
+  };
   soft_rss_rt_match_t match4[4];
   soft_rss_rt_match_t match6[4];
 } soft_rss_rt_data_t;

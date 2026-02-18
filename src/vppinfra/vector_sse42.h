@@ -363,6 +363,12 @@ u8x16_reflect (u8x16 v)
   return (u8x16) _mm_shuffle_epi8 ((__m128i) v, (__m128i) mask);
 }
 
+static_always_inline u8x16
+u8x16_permute (u8x16 idx, u8x16 a)
+{
+  return (u8x16) _mm_shuffle_epi8 ((__m128i) a, (__m128i) idx);
+}
+
 static_always_inline u32x4
 u32x4_hadd (u32x4 v1, u32x4 v2)
 {
@@ -397,6 +403,12 @@ _(i16x8, i32x4, epi16_epi32)
 _(i16x8, i64x2, epi16_epi64)
 _(i32x4, i64x2, epi32_epi64)
 #undef _
+
+static_always_inline u16x8
+u16x8_from_u8x16_high (u8x16 v)
+{
+  return u16x8_from_u8x16 (u8x16_word_shift_right (v, 8));
+}
 
 static_always_inline u64x2
 u64x2_gather (void *p0, void *p1)
