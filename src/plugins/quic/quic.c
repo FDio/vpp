@@ -4,7 +4,6 @@
 
 #include <sys/socket.h>
 #include <sys/syscall.h>
-#include <openssl/rand.h>
 
 #include <vnet/session/application.h>
 #include <vnet/session/transport.h>
@@ -852,13 +851,8 @@ static clib_error_t *
 quic_init (vlib_main_t * vm)
 {
   quic_main_t *qm = &quic_main;
-  u8 seed[32];
 
   QUIC_DBG (1, "QUIC plugin init");
-
-  if (syscall (SYS_getrandom, &seed, sizeof (seed), 0) != sizeof (seed))
-    return clib_error_return_unix (0, "getrandom() failed");
-  RAND_seed (seed, sizeof (seed));
 
   transport_register_protocol (TRANSPORT_PROTO_QUIC, &quic_proto,
 			       FIB_PROTOCOL_IP4, ~0);

@@ -11,6 +11,7 @@
 #include <quic/quic_timer.h>
 #include <quicly.h>
 #include <picotls/openssl.h>
+#include <openssl/rand.h>
 #include <pthread.h>
 
 #define QUICLY_EPOCH_1RTT 3
@@ -50,9 +51,15 @@ void
 quic_quicly_crypto_init (quic_quicly_main_t *qqm)
 {
   quic_quicly_crypto_main_t *qqcm = &quic_quicly_crypto_main;
+  u8 seed[32];
 
   QUIC_DBG (2, "quic_quicly_crypto init");
   qqcm->qqm = qqm;
+
+  if (syscall (SYS_getrandom, &seed, sizeof (seed), 0) != sizeof (seed))
+    clib_warning ("getrandom() failed");
+  RAND_seed (seed, sizeof (seed));
+
   clib_bihash_init_24_8 (&qqcm->crypto_ctx_hash, "quic (quicly engine) crypto ctx", 64, 128 << 10);
   quic_quicly_register_cipher_suite (CRYPTO_ENGINE_PICOTLS, ptls_openssl_cipher_suites);
 }
