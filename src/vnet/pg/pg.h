@@ -295,6 +295,7 @@ pg_edit_group_n_bytes (pg_stream_t * s, u32 group_index)
 always_inline void
 pg_free_edit_group (pg_stream_t * s)
 {
+  ASSERT (vec_len (s->edit_groups) > 0);
   uword i = vec_len (s->edit_groups) - 1;
   pg_edit_group_t *g = pg_stream_get_group (s, i);
 
