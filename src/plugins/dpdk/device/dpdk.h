@@ -445,6 +445,8 @@ format_function_t format_dpdk_flow;
 format_function_t format_dpdk_rss_hf_name;
 format_function_t format_dpdk_rx_offload_caps;
 format_function_t format_dpdk_tx_offload_caps;
+format_function_t format_dpdk_flow_port_info;
+format_function_t format_dpdk_flow_queue_info;
 format_function_t format_dpdk_burst_fn;
 format_function_t format_dpdk_rte_device;
 vnet_flow_dev_ops_function_t dpdk_flow_ops_fn;
