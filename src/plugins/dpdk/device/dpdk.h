@@ -42,25 +42,29 @@
 #include <vlib/vmbus/vmbus.h>
 #include <vnet/flow/flow.h>
 
+#define DPDK_DEFAULT_ASYNC_FLOW_N_QUEUES   1
+#define DPDK_DEFAULT_ASYNC_FLOW_QUEUE_SIZE 64
+
 extern vnet_device_class_t dpdk_device_class;
 extern vlib_node_registration_t dpdk_input_node;
 extern vlib_node_registration_t admin_up_down_process_node;
 
 typedef uint16_t dpdk_portid_t;
 
-#define foreach_dpdk_device_flags                                             \
-  _ (0, ADMIN_UP, "admin-up")                                                 \
-  _ (1, PROMISC, "promisc")                                                   \
-  _ (3, PMD_INIT_FAIL, "pmd-init-fail")                                       \
-  _ (4, MAYBE_MULTISEG, "maybe-multiseg")                                     \
-  _ (5, HAVE_SUBIF, "subif")                                                  \
-  _ (9, TX_OFFLOAD, "tx-offload")                                             \
-  _ (10, INTEL_PHDR_CKSUM, "intel-phdr-cksum")                                \
-  _ (11, RX_FLOW_OFFLOAD, "rx-flow-offload")                                  \
-  _ (12, RX_IP4_CKSUM, "rx-ip4-cksum")                                        \
-  _ (13, INT_SUPPORTED, "int-supported")                                      \
-  _ (14, INT_UNMASKABLE, "int-unmaskable")                                    \
-  _ (15, TX_PREPARE, "tx-prepare")
+#define foreach_dpdk_device_flags                                                                  \
+  _ (0, ADMIN_UP, "admin-up")                                                                      \
+  _ (1, PROMISC, "promisc")                                                                        \
+  _ (3, PMD_INIT_FAIL, "pmd-init-fail")                                                            \
+  _ (4, MAYBE_MULTISEG, "maybe-multiseg")                                                          \
+  _ (5, HAVE_SUBIF, "subif")                                                                       \
+  _ (9, TX_OFFLOAD, "tx-offload")                                                                  \
+  _ (10, INTEL_PHDR_CKSUM, "intel-phdr-cksum")                                                     \
+  _ (11, RX_FLOW_OFFLOAD, "rx-flow-offload")                                                       \
+  _ (12, RX_IP4_CKSUM, "rx-ip4-cksum")                                                             \
+  _ (13, INT_SUPPORTED, "int-supported")                                                           \
+  _ (14, INT_UNMASKABLE, "int-unmaskable")                                                         \
+  _ (15, TX_PREPARE, "tx-prepare")                                                                 \
+  _ (16, ASYNC_FLOW_OFFLOAD, "async-flow-offload")
 
 typedef enum
 {
@@ -168,7 +172,7 @@ typedef struct
   /* next node index if we decide to steal the rx graph arc */
   u32 per_interface_next_index;
 
-  u16 flags;
+  u32 flags;
 
   /* DPDK device port number */
   dpdk_portid_t port_id;
@@ -442,6 +446,8 @@ format_function_t format_dpdk_flow;
 format_function_t format_dpdk_rss_hf_name;
 format_function_t format_dpdk_rx_offload_caps;
 format_function_t format_dpdk_tx_offload_caps;
+format_function_t format_dpdk_flow_port_info;
+format_function_t format_dpdk_flow_queue_info;
 format_function_t format_dpdk_burst_fn;
 format_function_t format_dpdk_rte_device;
 format_function_t format_dpdk_rte_err;
