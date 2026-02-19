@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "b4781a97_ee3f1409",
+        "filename": "src/plugins/snort/enqueue.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2026-02-19T13:38:56Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "a0df4691_84bf946b",
+      "revId": "7eb906ab0d4c2a836fa61e4ca460082c1b09d0a2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "1e4e6620_9f32ba79",
@@ -31,6 +49,24 @@
       "writtenOn": "2026-01-27T19:07:55Z",
       "side": 1,
       "message": "Edge case: if hash_with_flow_ids is enabled but b-\u003eflow_id is zero/unset, all packets map to qpair 0. Suggest falling back to ip4_hash_fn for zero flow IDs (and maybe count it) to avoid silent skew.",
+      "revId": "7eb906ab0d4c2a836fa61e4ca460082c1b09d0a2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ffa3cc8b_e8edb6c2",
+        "filename": "src/plugins/snort/enqueue.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 249,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2026-02-19T13:38:56Z",
+      "side": 1,
+      "message": "checking individual flow_id for each packet if it is zero or not would cost cycles. if user has set the hash_with_flow_ids, it better to compute the hash and set it to flow_id field in VPP vlib_buffer_t.",
+      "parentUuid": "1e4e6620_9f32ba79",
       "revId": "7eb906ab0d4c2a836fa61e4ca460082c1b09d0a2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
