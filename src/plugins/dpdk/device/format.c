@@ -291,6 +291,24 @@ format_dpdk_tx_offload_caps (u8 * s, va_list * args)
 #undef _
 
 u8 *
+format_dpdk_flow_port_info (u8 *s, va_list *args)
+{
+  struct rte_flow_port_info *info = va_arg (*args, struct rte_flow_port_info *);
+
+  s = format (s, "max queues %d", info->max_nb_queues);
+  return s;
+}
+
+u8 *
+format_dpdk_flow_queue_info (u8 *s, va_list *args)
+{
+  struct rte_flow_queue_info *info = va_arg (*args, struct rte_flow_queue_info *);
+
+  s = format (s, "max size %d", info->max_size);
+  return s;
+}
+
+u8 *
 format_dpdk_device_errors (u8 * s, va_list * args)
 {
   dpdk_device_t *xd = va_arg (*args, dpdk_device_t *);
