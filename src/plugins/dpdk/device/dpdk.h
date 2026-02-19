@@ -42,6 +42,9 @@
 #include <vlib/vmbus/vmbus.h>
 #include <vnet/flow/flow.h>
 
+#define DPDK_DEFAULT_ASYNC_FLOW_N_QUEUES   1
+#define DPDK_DEFAULT_ASYNC_FLOW_QUEUE_SIZE 64
+
 extern vnet_device_class_t dpdk_device_class;
 extern vlib_node_registration_t dpdk_input_node;
 extern vlib_node_registration_t admin_up_down_process_node;
@@ -61,7 +64,8 @@ typedef uint16_t dpdk_portid_t;
   _ (13, INT_SUPPORTED, "int-supported")                                                           \
   _ (14, INT_UNMASKABLE, "int-unmaskable")                                                         \
   _ (15, TX_PREPARE, "tx-prepare")                                                                 \
-  _ (16, REPRESENTOR, "representor")
+  _ (16, REPRESENTOR, "representor")                                                               \
+  _ (17, ASYNC_FLOW_OFFLOAD, "async-flow-offload")
 
 typedef enum
 {
@@ -443,6 +447,8 @@ format_function_t format_dpdk_flow;
 format_function_t format_dpdk_rss_hf_name;
 format_function_t format_dpdk_rx_offload_caps;
 format_function_t format_dpdk_tx_offload_caps;
+format_function_t format_dpdk_flow_port_info;
+format_function_t format_dpdk_flow_queue_info;
 format_function_t format_dpdk_burst_fn;
 format_function_t format_dpdk_rte_device;
 format_function_t format_dpdk_rte_err;
