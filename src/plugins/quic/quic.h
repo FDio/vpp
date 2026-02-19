@@ -273,6 +273,8 @@ typedef struct quic_main_
   u8 default_quic_cc;
   u8 enable_tx_pacing; /**< enable tx pacing for connections */
 
+  u64 first_seg_size;
+  u64 add_seg_size;
   u32 udp_fifo_size;
   u32 udp_fifo_prealloc;
   u32 connection_timeout;

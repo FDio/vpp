@@ -704,9 +704,6 @@ static session_cb_vft_t quic_app_cb_vft = {
 static clib_error_t *
 quic_app_enable (quic_main_t *qm, u8 is_en)
 {
-  /* TODO: Don't use hard-coded values for segment_size */
-  u32 segment_size = 256 << 20;
-
   if (is_en && qm->app_index == APP_INVALID_INDEX)
     {
       vnet_app_attach_args_t _a = {}, *a = &_a;
@@ -719,8 +716,8 @@ quic_app_enable (quic_main_t *qm, u8 is_en)
       a->api_client_index = APP_INVALID_INDEX;
       a->options = options;
       a->name = format (0, "quic");
-      a->options[APP_OPTIONS_SEGMENT_SIZE] = segment_size;
-      a->options[APP_OPTIONS_ADD_SEGMENT_SIZE] = segment_size;
+      a->options[APP_OPTIONS_SEGMENT_SIZE] = qm->first_seg_size;
+      a->options[APP_OPTIONS_ADD_SEGMENT_SIZE] = qm->add_seg_size;
       a->options[APP_OPTIONS_RX_FIFO_SIZE] = qm->udp_fifo_size;
       a->options[APP_OPTIONS_TX_FIFO_SIZE] = qm->udp_fifo_size;
       a->options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] = qm->udp_fifo_prealloc;
