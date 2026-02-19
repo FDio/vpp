@@ -504,6 +504,103 @@ api_l2_flags (vat_main_t *vam)
 }
 
 static void
+vl_api_l2_flags_get_reply_t_handler (vl_api_l2_flags_get_reply_t *mp)
+{
+  vat_main_t *vam = l2_test_main.vat_main;
+  i32 retval = ntohl (mp->retval);
+  if (vam->async_mode)
+    {
+      vam->async_errors += (retval < 0);
+    }
+  else
+    {
+      vam->retval = retval;
+      if (retval == 0)
+	fformat (vam->ofp, "input_feature_bitmap: 0x%08x output_feature_bitmap: 0x%08x\n",
+		 ntohl (mp->input_feature_bitmap), ntohl (mp->output_feature_bitmap));
+      vam->result_ready = 1;
+    }
+}
+
+static int
+api_l2_flags_get (vat_main_t *vam)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  unformat_input_t *i = vam->input;
+  vl_api_l2_flags_get_t *mp;
+  u32 sw_if_index = ~0;
+  int ret;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "sw_if_index %d", &sw_if_index))
+	;
+      else if (unformat (i, "%U", unformat_vnet_sw_interface, vnm, &sw_if_index))
+	;
+      else
+	break;
+    }
+
+  if (sw_if_index == ~0)
+    {
+      errmsg ("missing interface name or sw_if_index");
+      return -99;
+    }
+
+  M (L2_FLAGS_GET, mp);
+  mp->sw_if_index = ntohl (sw_if_index);
+  S (mp);
+  W (ret);
+  return ret;
+}
+
+static int
+api_l2_flags_set (vat_main_t *vam)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  unformat_input_t *i = vam->input;
+  vl_api_l2_flags_set_t *mp;
+  u32 sw_if_index = ~0;
+  u32 in_bitmap = 0;
+  u32 out_bitmap = 0;
+  u8 is_set = 1;
+  int ret;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "sw_if_index %d", &sw_if_index))
+	;
+      else if (unformat (i, "%U", unformat_vnet_sw_interface, vnm, &sw_if_index))
+	;
+      else if (unformat (i, "input 0x%x", &in_bitmap))
+	;
+      else if (unformat (i, "output 0x%x", &out_bitmap))
+	;
+      else if (unformat (i, "disable"))
+	is_set = 0;
+      else if (unformat (i, "enable"))
+	is_set = 1;
+      else
+	break;
+    }
+
+  if (sw_if_index == ~0)
+    {
+      errmsg ("missing interface name or sw_if_index");
+      return -99;
+    }
+
+  M (L2_FLAGS_SET, mp);
+  mp->sw_if_index = ntohl (sw_if_index);
+  mp->input_feature_bitmap = ntohl (in_bitmap);
+  mp->output_feature_bitmap = ntohl (out_bitmap);
+  mp->is_set = is_set;
+  S (mp);
+  W (ret);
+  return ret;
+}
+
+static void
 vl_api_l2_flags_reply_t_handler (vl_api_l2_flags_reply_t *mp)
 {
   vat_main_t *vam = l2_test_main.vat_main;
@@ -1421,6 +1518,114 @@ api_bridge_flags (vat_main_t *vam)
   mp->flags = ntohl (flags);
   mp->is_set = is_set;
 
+  S (mp);
+  W (ret);
+  return ret;
+}
+
+static void
+vl_api_l2_interface_feat_flags_get_reply_t_handler (vl_api_l2_interface_feat_flags_get_reply_t *mp)
+{
+  vat_main_t *vam = l2_test_main.vat_main;
+  i32 retval = ntohl (mp->retval);
+  if (vam->async_mode)
+    {
+      vam->async_errors += (retval < 0);
+    }
+  else
+    {
+      vam->retval = retval;
+      if (retval == 0)
+	{
+	  u32 flags = ntohl (mp->flags);
+	  fformat (vam->ofp, "flags: 0x%08x%s%s%s%s%s%s\n", flags, (flags & 0x01) ? " learn" : "",
+		   (flags & 0x02) ? " fwd" : "", (flags & 0x04) ? " flood" : "",
+		   (flags & 0x08) ? " uu-flood" : "", (flags & 0x10) ? " arp-term" : "",
+		   (flags & 0x20) ? " arp-ufwd" : "");
+	}
+      vam->result_ready = 1;
+    }
+}
+
+static int
+api_l2_interface_feat_flags_get (vat_main_t *vam)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  unformat_input_t *i = vam->input;
+  vl_api_l2_interface_feat_flags_get_t *mp;
+  u32 sw_if_index = ~0;
+  int ret;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "sw_if_index %d", &sw_if_index))
+	;
+      else if (unformat (i, "%U", unformat_vnet_sw_interface, vnm, &sw_if_index))
+	;
+      else
+	break;
+    }
+
+  if (sw_if_index == ~0)
+    {
+      errmsg ("missing interface name or sw_if_index");
+      return -99;
+    }
+
+  M (L2_INTERFACE_FEAT_FLAGS_GET, mp);
+  mp->sw_if_index = ntohl (sw_if_index);
+  S (mp);
+  W (ret);
+  return ret;
+}
+
+static int
+api_l2_interface_feat_flags_set (vat_main_t *vam)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  unformat_input_t *i = vam->input;
+  vl_api_l2_interface_feat_flags_set_t *mp;
+  u32 sw_if_index = ~0;
+  u32 flags = 0;
+  u8 is_set = 1;
+  int ret;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "sw_if_index %d", &sw_if_index))
+	;
+      else if (unformat (i, "%U", unformat_vnet_sw_interface, vnm, &sw_if_index))
+	;
+      else if (unformat (i, "learn"))
+	flags |= 0x01;
+      else if (unformat (i, "fwd"))
+	flags |= 0x02;
+      else if (unformat (i, "flood"))
+	flags |= 0x04;
+      else if (unformat (i, "uu-flood"))
+	flags |= 0x08;
+      else if (unformat (i, "arp-term"))
+	flags |= 0x10;
+      else if (unformat (i, "arp-ufwd"))
+	flags |= 0x20;
+      else if (unformat (i, "disable"))
+	is_set = 0;
+      else if (unformat (i, "enable"))
+	is_set = 1;
+      else
+	break;
+    }
+
+  if (sw_if_index == ~0)
+    {
+      errmsg ("missing interface name or sw_if_index");
+      return -99;
+    }
+
+  M (L2_INTERFACE_FEAT_FLAGS_SET, mp);
+  mp->sw_if_index = ntohl (sw_if_index);
+  mp->flags = ntohl (flags);
+  mp->is_set = is_set;
   S (mp);
   W (ret);
   return ret;
