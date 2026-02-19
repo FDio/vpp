@@ -101,6 +101,7 @@ static dpdk_driver_t dpdk_drivers[] = {
   {
     .drivers = DPDK_DRIVERS ({ "net_enic", "Cisco VIC" }),
     .use_intel_phdr_cksum = 1,
+    .supported_flow_actions = VNET_FLOW_ACTION_MARK | VNET_FLOW_ACTION_REDIRECT_TO_QUEUE,
   },
   {
     .drivers = DPDK_DRIVERS ({ "net_failsafe", "FailsafeEthernet" }),
