@@ -2,13 +2,40 @@
  * Copyright (c) 2025 Cisco Systems, Inc.
  */
 
+#include "vnet/sfdp/sfdp.h"
 #include <vnet/sfdp/expiry/expiry.h>
 #include <vnet/sfdp/timer/timer.h>
 
 #include <vlib/vlib.h>
+#include <vppinfra/elog.h>
 #include <vnet/sfdp/sfdp_funcs.h>
+#include <vnet/flow/flow.h>
+#include <vnet/sfdp/lookup/lookup.h>
 
 u8 static expiry_is_enabled = 0;
+
+#define foreach_sfdp_expire_error                                                                  \
+  _ (NODE_CALLED, "node-called", INFO, "node called")                                              \
+  _ (EXPIRED, "expired", INFO, "session expired")                                                  \
+  _ (REQUESTED_EVICTION, "requested-eviction", INFO, "requested eviction")                         \
+  _ (FLOW_OFFLOAD_UNSET, "flow-offload-unset", ERROR, "flow offload unset")                        \
+  _ (FLOW_OFFLOAD_DISABLE_FAILED, "flow-offload-disable-failed", ERROR,                            \
+     "flow offload disable failed")                                                                \
+  _ (FLOW_OFFLOAD_DELETE_FAILED, "flow-offload-delete-failed", ERROR, "flow offload delete failed")
+
+typedef enum
+{
+#define _(sym, name, sev, str) SFDP_EXPIRE_ERROR_##sym,
+  foreach_sfdp_expire_error
+#undef _
+    SFDP_EXPIRE_N_ERROR,
+} sfdp_expire_error_t;
+
+static vlib_error_desc_t sfdp_expire_error_descriptors[] = {
+#define _(sym, name, sev, str) { name, str, VL_COUNTER_SEVERITY_##sev },
+  foreach_sfdp_expire_error
+#undef _
+};
 
 int
 sfdp_set_expiry_callbacks (const sfdp_expiry_callbacks_t *callbacks)
@@ -72,35 +99,21 @@ sfdp_enable_disable_expiry (u8 is_disable)
     }
 }
 
-#define foreach_sfdp_expire_error                                             \
-  _ (NODE_CALLED, "node-called", INFO, "node called")                         \
-  _ (EXPIRED, "expired", INFO, "session expired")                             \
-  _ (REQUESTED_EVICTION, "requested-eviction", INFO, "requested eviction")
-
-typedef enum
-{
-#define _(sym, name, sev, str) SFDP_EXPIRE_ERROR_##sym,
-  foreach_sfdp_expire_error
-#undef _
-    SFDP_EXPIRE_N_ERROR,
-} sfdp_expire_error_t;
-
-static vlib_error_desc_t sfdp_expire_error_descriptors[] = {
-#define _(sym, name, sev, str) { name, str, VL_COUNTER_SEVERITY_##sev },
-  foreach_sfdp_expire_error
-#undef _
-};
-
 VLIB_NODE_FN (sfdp_expire_node)
 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   sfdp_main_t *sfdp = &sfdp_main;
   if (PREDICT_FALSE (!expiry_is_enabled))
     return 0;
+  vnet_main_t *vnm = vnet_get_main ();
   u32 thread_index = vm->thread_index;
   sfdp_per_thread_data_t *ptd =
     vec_elt_at_index (sfdp->per_thread_data, thread_index);
   u32 *session_index;
+  u32 hw_if_index_in_use = ~0;
+  u32 flow_delete = 0;
+  u32 *fi;
+  bool same_hw_if_index = true;
 
   u32 n_remaining_sessions = sfdp_sessions_available_for_this_thread (ptd);
   u32 desired_evictions =
@@ -127,8 +140,46 @@ VLIB_NODE_FN (sfdp_expire_node)
   vec_foreach (session_index, ptd->expired_sessions)
     {
       sfdp_session_t *session = sfdp_session_at_index (*session_index);
+
+      if (session->flow_index[SFDP_FLOW_FORWARD] == ~0)
+	vlib_node_increment_counter (vm, node->node_index, SFDP_EXPIRE_ERROR_FLOW_OFFLOAD_UNSET, 1);
+      else
+	{
+	  if (flow_delete == 0)
+	    hw_if_index_in_use = session->rx_hw_if_index;
+
+	  /* we hope all flows share the same hw_if_index, if it is not the case, disable
+	   * asynchronously all first flows that do and disable synchronously the later ones */
+	  if (PREDICT_FALSE (same_hw_if_index && session->rx_hw_if_index != hw_if_index_in_use))
+	    {
+	      same_hw_if_index = false;
+	      vec_set_len (ptd->flow_indices_del, flow_delete);
+	      vnet_flow_async_range_disable (vnm, ptd->flow_indices_del, hw_if_index_in_use);
+	    }
+	  if (!same_hw_if_index)
+	    {
+	      vnet_flow_disable (vnm, session->flow_index[SFDP_FLOW_FORWARD]);
+	      vnet_flow_disable (vnm, session->flow_index[SFDP_FLOW_REVERSE]);
+	    }
+	  vec_elt (ptd->flow_indices_del, flow_delete++) = session->flow_index[SFDP_FLOW_FORWARD];
+	  vec_elt (ptd->flow_indices_del, flow_delete++) = session->flow_index[SFDP_FLOW_REVERSE];
+
+	  session->flow_index[SFDP_FLOW_FORWARD] = ~0;
+	  session->flow_index[SFDP_FLOW_REVERSE] = ~0;
+	}
+
       sfdp_session_remove (sfdp, ptd, session, thread_index, *session_index);
     }
+
+  vec_set_len (ptd->flow_indices_del, flow_delete);
+
+  if (same_hw_if_index)
+    vnet_flow_async_range_disable (vnm, ptd->flow_indices_del, hw_if_index_in_use);
+
+  vec_foreach (fi, ptd->flow_indices_del)
+    vnet_flow_del (vnm, *fi);
+
+  vec_set_len (ptd->flow_indices_del, sfdp_num_sessions ());
 
   vlib_node_increment_counter (vm, node->node_index, SFDP_EXPIRE_ERROR_EXPIRED,
 			       vec_len (ptd->expired_sessions));
