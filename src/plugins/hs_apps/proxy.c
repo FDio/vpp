@@ -564,6 +564,12 @@ proxy_add_segment_callback (u32 client_index, u64 segment_handle)
 }
 
 static int
+proxy_del_segment_callback (u32 client_index, u64 segment_handle)
+{
+  return 0;
+}
+
+static int
 proxy_transport_needs_crypto (transport_proto_t proto)
 {
   return proto == TRANSPORT_PROTO_TLS;
@@ -872,6 +878,7 @@ static session_cb_vft_t proxy_session_cb_vft = {
   .session_disconnect_callback = proxy_disconnect_callback,
   .session_connected_callback = proxy_connected_callback,
   .add_segment_callback = proxy_add_segment_callback,
+  .del_segment_callback = proxy_del_segment_callback,
   .builtin_app_rx_callback = proxy_rx_callback,
   .builtin_app_tx_callback = proxy_tx_callback,
   .session_reset_callback = proxy_reset_callback,
@@ -1255,6 +1262,8 @@ static session_cb_vft_t active_open_clients = {
   .builtin_app_tx_callback = active_open_tx_callback,
   .fifo_tuning_callback = common_fifo_tuning_callback,
   .proxy_alloc_session_fifos = active_open_alloc_session_fifos,
+  .add_segment_callback = proxy_add_segment_callback,
+  .del_segment_callback = proxy_del_segment_callback,
 };
 
 static int

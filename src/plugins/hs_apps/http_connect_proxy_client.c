@@ -1482,16 +1482,29 @@ hcpc_http_alloc_session_fifos (session_t *s)
   return 0;
 }
 
+static int
+hcpc_http_add_segment_callback (u32 client_index, u64 segment_handle)
+{
+  return 0;
+}
+
+static int
+hcpc_http_del_segment_callback (u32 client_index, u64 segment_handle)
+{
+  return 0;
+}
+
 static session_cb_vft_t http_session_cb_vft = {
   .session_accept_callback = hcpc_http_session_accept_callback,
   .session_connected_callback = hcpc_http_session_connected_callback,
   .session_disconnect_callback = hcpc_http_session_disconnect_callback,
-  .session_transport_closed_callback =
-    hcpc_http_session_transport_closed_callback,
+  .session_transport_closed_callback = hcpc_http_session_transport_closed_callback,
   .session_reset_callback = hcpc_http_session_reset_callback,
   .builtin_app_rx_callback = hcpc_http_rx_callback,
   .builtin_app_tx_callback = hcpc_http_tx_callback,
   .session_cleanup_callback = hcpc_http_session_cleanup_callback,
+  .add_segment_callback = hcpc_http_add_segment_callback,
+  .del_segment_callback = hcpc_http_del_segment_callback,
   .proxy_alloc_session_fifos = hcpc_http_alloc_session_fifos,
 };
 
@@ -1671,6 +1684,12 @@ hcpc_intercept_add_segment_callback (u32 client_index, u64 segment_handle)
 }
 
 static int
+hcpc_intercept_del_segment_callback (u32 client_index, u64 segment_handle)
+{
+  return 0;
+}
+
+static int
 hcpc_intercept_write_early_data (session_t *s)
 {
   transport_proto_t tp;
@@ -1703,13 +1722,13 @@ static session_cb_vft_t listener_session_cb_vft = {
   .session_accept_callback = hcpc_intercept_accept_callback,
   .session_connected_callback = hcpc_intercept_connected_callback,
   .session_disconnect_callback = hcpc_intercept_session_disconnect_callback,
-  .session_transport_closed_callback =
-    hcpc_intercept_session_transport_closed_callback,
+  .session_transport_closed_callback = hcpc_intercept_session_transport_closed_callback,
   .session_reset_callback = hcpc_intercept_session_reset_callback,
   .builtin_app_rx_callback = hcpc_intercept_rx_callback,
   .builtin_app_tx_callback = hcpc_intercept_tx_callback,
   .session_cleanup_callback = hcpc_intercept_session_cleanup_callback,
   .add_segment_callback = hcpc_intercept_add_segment_callback,
+  .del_segment_callback = hcpc_intercept_del_segment_callback,
   .proxy_write_early_data = hcpc_intercept_write_early_data,
 };
 

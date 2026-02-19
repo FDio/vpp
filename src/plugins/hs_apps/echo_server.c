@@ -194,6 +194,12 @@ echo_server_add_segment_callback (u32 client_index, u64 segment_handle)
 }
 
 int
+echo_server_del_segment_callback (u32 client_index, u64 segment_handle)
+{
+  return 0;
+}
+
+int
 echo_server_redirect_connect_callback (u32 client_index, void *mp)
 {
   es_err ("called...");
@@ -487,6 +493,7 @@ static session_cb_vft_t echo_server_session_cb_vft = {
   .session_disconnect_callback = echo_server_session_disconnect_callback,
   .session_connected_callback = echo_server_session_connected_callback,
   .add_segment_callback = echo_server_add_segment_callback,
+  .del_segment_callback = echo_server_del_segment_callback,
   .builtin_app_rx_callback = echo_server_rx_callback_common,
   .session_reset_callback = echo_server_session_reset_callback
 };

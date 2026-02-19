@@ -186,7 +186,7 @@ func Http2CliTlsTest(s *VethsSuite) {
 
 	/* second request to test postponed ho-cleanup */
 	o = s.Containers.ClientVpp.VppInstance.Vppctl("http cli client" +
-		" uri " + uri + "/show/vlib/graph")
+		" uri " + uri + "/show/vlib/graph fifo-size 65536")
 	Log(o)
 	AssertContains(o, "<html>", "<html> not found in the result!")
 	AssertContains(o, "</html>", "</html> not found in the result!")

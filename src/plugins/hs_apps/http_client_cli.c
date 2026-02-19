@@ -317,6 +317,18 @@ hcc_ho_cleanup_callback (session_t *ts)
   hcc_ho_session_free (ts->opaque);
 }
 
+static int
+hcc_add_segment_callback (u32 app_index, u64 segment_handle)
+{
+  return 0;
+}
+
+static int
+hcc_del_segment_callback (u32 app_index, u64 segment_handle)
+{
+  return 0;
+}
+
 static session_cb_vft_t hcc_session_cb_vft = {
   .session_accept_callback = hcc_ts_accept_callback,
   .session_disconnect_callback = hcc_ts_disconnect_callback,
@@ -326,6 +338,8 @@ static session_cb_vft_t hcc_session_cb_vft = {
   .session_reset_callback = hcc_ts_reset_callback,
   .session_transport_closed_callback = hcc_ts_transport_closed,
   .half_open_cleanup_callback = hcc_ho_cleanup_callback,
+  .add_segment_callback = hcc_add_segment_callback,
+  .del_segment_callback = hcc_del_segment_callback,
 };
 
 static clib_error_t *

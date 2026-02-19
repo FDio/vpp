@@ -973,6 +973,18 @@ hc_ho_cleanup_callback (session_t *s)
   pool_put_index (wrk->sessions, s->opaque);
 }
 
+static int
+hc_add_segment_callback (u32 app_index, u64 segment_handle)
+{
+  return 0;
+}
+
+static int
+hc_del_segment_callback (u32 app_index, u64 segment_handle)
+{
+  return 0;
+}
+
 static session_cb_vft_t hc_session_cb_vft = {
   .session_connected_callback = hc_session_connected_callback,
   .session_disconnect_callback = hc_session_disconnect_callback,
@@ -981,6 +993,8 @@ static session_cb_vft_t hc_session_cb_vft = {
   .builtin_app_rx_callback = hc_rx_callback,
   .builtin_app_tx_callback = hc_tx_callback,
   .half_open_cleanup_callback = hc_ho_cleanup_callback,
+  .add_segment_callback = hc_add_segment_callback,
+  .del_segment_callback = hc_del_segment_callback,
 };
 
 static clib_error_t *
