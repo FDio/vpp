@@ -164,7 +164,7 @@ out:
 always_inline void
 clib_mem_trace_main_free (clib_mem_trace_main_t *tm)
 {
-  ASSERT (tm->lock == 0);
+  ASSERT (tm->lock);
   tm->current_traced_heap = 0;
   vec_free (tm->traces);
   vec_free (tm->trace_free_list);
