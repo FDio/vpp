@@ -688,8 +688,7 @@ pattern_end:
   vec_add2 (actions, action, 1);
   action->type = RTE_FLOW_ACTION_TYPE_END;
 
-  rv = rte_flow_validate (xd->device_index, &ingress, items, actions,
-			  &xd->last_flow_error);
+  rv = rte_flow_validate (xd->port_id, &ingress, items, actions, &xd->last_flow_error);
 
   if (rv)
     {
@@ -703,8 +702,7 @@ pattern_end:
       goto done;
     }
 
-  fe->handle = rte_flow_create (xd->device_index, &ingress, items, actions,
-				&xd->last_flow_error);
+  fe->handle = rte_flow_create (xd->port_id, &ingress, items, actions, &xd->last_flow_error);
 
   if (!fe->handle)
     rv = VNET_FLOW_ERROR_NOT_SUPPORTED;
@@ -743,8 +741,7 @@ dpdk_flow_ops_fn (vnet_main_t * vnm, vnet_flow_dev_op_t op, u32 dev_instance,
     {
       fe = vec_elt_at_index (xd->flow_entries, *private_data);
 
-      if ((rv = rte_flow_destroy (xd->device_index, fe->handle,
-				  &xd->last_flow_error)))
+      if ((rv = rte_flow_destroy (xd->port_id, fe->handle, &xd->last_flow_error)))
 	return VNET_FLOW_ERROR_INTERNAL;
 
       if (fe->mark)
