@@ -2,6 +2,7 @@
  * Copyright (c) 2025 Cisco Systems, Inc.
  */
 
+#include "vnet/flow/flow.h"
 #include <vlib/vlib.h>
 #include <vnet/feature/feature.h>
 #include <sfdp_services/base/interface_input/interface_input.h>
@@ -28,7 +29,10 @@ format_sfdp_interface_input_trace (u8 *s, va_list *args)
   return s;
 }
 
-#define foreach_sfdp_interface_input_ip4_next _ (LOOKUP, "sfdp-lookup-ip4")
+#define foreach_sfdp_interface_input_ip4_next                                                      \
+  _ (LOOKUP, "sfdp-lookup-ip4")                                                                    \
+  _ (LOOKUP_OFFLOAD, "sfdp-lookup-ip4-offload")                                                    \
+  _ (LOOKUP_OFFLOAD_1ST_PACKET, "sfdp-lookup-ip4-offload-1st-packet")
 #define foreach_sfdp_interface_input_ip6_next _ (LOOKUP, "sfdp-lookup-ip6")
 #define foreach_sfdp_interface_input_error _ (NOERROR, "No error")
 
@@ -92,19 +96,40 @@ sfdp_interface_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_fr
       u32 len = vlib_buffer_length_in_chain (vm, b[0]);
       u32 rx_sw_if_index = vnet_buffer (b[0])->sw_if_index[VLIB_RX];
       u32 tenant_idx = vim->tenant_idx_by_sw_if_idx[proto][rx_sw_if_index];
+      u8 offload_enabled = vim->offload_enabled_by_sw_if_idx[proto][rx_sw_if_index];
       sfdp_tenant_t *tenant;
       if (tenant_idx == ~0)
 	{
 	  vnet_feature_next_u16 (current_next, b[0]);
 	  goto end_of_packet;
 	}
-      tenant = sfdp_tenant_at_index (sfdp, tenant_idx);
-      b[0]->flow_id = tenant->context_id;
+
       sfdp_buffer (b[0])->tenant_index = tenant_idx;
-      current_next[0] =
-	is_ipv6 ? SFDP_INTERFACE_INPUT_IP6_NEXT_LOOKUP : SFDP_INTERFACE_INPUT_IP4_NEXT_LOOKUP;
+
+      if (is_ipv6)
+	{
+	  current_next[0] = SFDP_INTERFACE_INPUT_IP6_NEXT_LOOKUP;
+	}
+      else if (offload_enabled)
+	{
+	  if (b[0]->flow_id == 0)
+	    {
+	      current_next[0] = SFDP_INTERFACE_INPUT_IP4_NEXT_LOOKUP_OFFLOAD_1ST_PACKET;
+	    }
+	  else
+	    {
+	      current_next[0] = SFDP_INTERFACE_INPUT_IP4_NEXT_LOOKUP_OFFLOAD;
+	    }
+	}
+      else
+	{
+	  tenant = sfdp_tenant_at_index (sfdp, tenant_idx);
+	  b[0]->flow_id = tenant->context_id;
+	  current_next[0] = SFDP_INTERFACE_INPUT_IP4_NEXT_LOOKUP;
+	}
 
       vlib_increment_combined_counter (cm, thread_index, tenant_idx, 1, len);
+
     end_of_packet:
       b += 1;
       current_next += 1;
@@ -136,7 +161,9 @@ VLIB_REGISTER_NODE (sfdp_interface_input_ip4_node) = {
   .error_strings = sfdp_interface_input_error_strings,
   .n_next_nodes = SFDP_INTERFACE_INPUT_IP4_N_NEXT,
   .next_nodes = {
-          [SFDP_INTERFACE_INPUT_IP4_NEXT_LOOKUP] = "sfdp-lookup-ip4",
+#define _(s, n) [SFDP_INTERFACE_INPUT_IP4_NEXT_##s] = n,
+          foreach_sfdp_interface_input_ip4_next
+#undef _
   },
 };
 

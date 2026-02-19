@@ -8,19 +8,22 @@
 
 clib_error_t *
 sfdp_interface_input_set_tenant (sfdp_interface_input_main_t *vim, u32 sw_if_index, u32 tenant_id,
-				 u8 is_ip6, u8 unset)
+				 u8 is_ip6, u8 offload, u8 unset)
 {
   sfdp_main_t *sfdp = &sfdp_main;
   clib_bihash_kv_8_8_t kv = { .key = tenant_id, .value = 0 };
   vnet_main_t *vnm = vnet_get_main ();
   u16 *config;
   u8 proto = is_ip6 ? SFDP_INTERFACE_INPUT_PROTO_IP6 : SFDP_INTERFACE_INPUT_PROTO_IP4;
+  u8 *offload_config;
 
   if (clib_bihash_search_inline_8_8 (&sfdp->tenant_idx_by_id, &kv))
     return clib_error_return (0, "Tenant with id %d not found");
 
   vec_validate (vim->tenant_idx_by_sw_if_idx[proto], sw_if_index);
   config = vim->tenant_idx_by_sw_if_idx[proto] + sw_if_index;
+  vec_validate (vim->offload_enabled_by_sw_if_idx[proto], sw_if_index);
+  offload_config = vim->offload_enabled_by_sw_if_idx[proto] + sw_if_index;
 
   if (config[0] == ((u16) ~0) && unset)
     return clib_error_return (0, "Tenant %d is not configured on interface %U for proto %s",
@@ -43,8 +46,8 @@ sfdp_interface_input_set_tenant (sfdp_interface_input_main_t *vim, u32 sw_if_ind
 				     0);
 
       config[0] = kv.value;
+      offload_config[0] = offload;
     }
-
   else
     {
       /* Disable feature arc for either IP4 and IP6 */
@@ -56,6 +59,7 @@ sfdp_interface_input_set_tenant (sfdp_interface_input_main_t *vim, u32 sw_if_ind
 				     0);
 
       config[0] = (u16) (~0);
+      offload_config[0] = (u8) (~0);
     }
 
   return 0;
@@ -76,6 +80,14 @@ sfdp_interface_input_add_del_sw_interface (vnet_main_t *vnm, u32 sw_if_index,
 	vim->tenant_idx_by_sw_if_idx[SFDP_INTERFACE_INPUT_PROTO_IP4][i] = (u16) (~0);
     }
 
+  old_size = vec_len (vim->offload_enabled_by_sw_if_idx[SFDP_INTERFACE_INPUT_PROTO_IP4]);
+  if (sw_if_index >= old_size)
+    {
+      vec_validate (vim->offload_enabled_by_sw_if_idx[SFDP_INTERFACE_INPUT_PROTO_IP4], sw_if_index);
+      for (int i = old_size; i <= sw_if_index; i++)
+	vim->offload_enabled_by_sw_if_idx[SFDP_INTERFACE_INPUT_PROTO_IP4][i] = (u8) (~0);
+    }
+
   /* reset for ip6 interface */
   old_size = vec_len (vim->tenant_idx_by_sw_if_idx[SFDP_INTERFACE_INPUT_PROTO_IP6]);
   if (sw_if_index >= old_size)
@@ -83,6 +95,14 @@ sfdp_interface_input_add_del_sw_interface (vnet_main_t *vnm, u32 sw_if_index,
       vec_validate (vim->tenant_idx_by_sw_if_idx[SFDP_INTERFACE_INPUT_PROTO_IP6], sw_if_index);
       for (int i = old_size; i <= sw_if_index; i++)
 	vim->tenant_idx_by_sw_if_idx[SFDP_INTERFACE_INPUT_PROTO_IP6][i] = (u16) (~0);
+    }
+
+  old_size = vec_len (vim->offload_enabled_by_sw_if_idx[SFDP_INTERFACE_INPUT_PROTO_IP6]);
+  if (sw_if_index >= old_size)
+    {
+      vec_validate (vim->offload_enabled_by_sw_if_idx[SFDP_INTERFACE_INPUT_PROTO_IP6], sw_if_index);
+      for (int i = old_size; i <= sw_if_index; i++)
+	vim->offload_enabled_by_sw_if_idx[SFDP_INTERFACE_INPUT_PROTO_IP6][i] = (u8) (~0);
     }
 
   return 0;

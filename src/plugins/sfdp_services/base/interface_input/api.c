@@ -25,7 +25,9 @@ vl_api_sfdp_interface_input_set_t_handler (
   u32 tenant_id = clib_net_to_host_u32 (mp->tenant_id);
   u8 unset = mp->is_disable;
   u8 is_ip6 = mp->is_ip6;
-  clib_error_t *err = sfdp_interface_input_set_tenant (vim, sw_if_index, tenant_id, is_ip6, unset);
+  u8 offload = mp->is_offload_enabled;
+  clib_error_t *err =
+    sfdp_interface_input_set_tenant (vim, sw_if_index, tenant_id, is_ip6, offload, unset);
   int rv = err ? -1 : 0;
   vl_api_sfdp_interface_input_set_reply_t *rmp;
   REPLY_MACRO (VL_API_SFDP_INTERFACE_INPUT_SET_REPLY);

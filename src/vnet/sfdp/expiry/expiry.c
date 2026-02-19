@@ -50,6 +50,38 @@ sfdp_enable_disable_expiry_node (u8 is_disable, int skip_main)
     }
 }
 
+#include "vnet/flow/flow.h"
+
+static int
+sfdp_flow_offload_delete (u32 session_index, u32 hw_if_index)
+{
+  vnet_main_t *vnm = &vnet_main;
+  sfdp_main_t *sfdp = &sfdp_main;
+  sfdp_session_t *session = pool_elt_at_index (sfdp->sessions, session_index);
+  int rv = 0;
+
+  if (session->flow_index == ~0)
+    {
+      clib_warning ("Flow offload unset for session %u", session_index);
+      return -1;
+    }
+
+  rv = vnet_flow_disable (vnm, session->flow_index, hw_if_index);
+  if (rv != 0)
+    {
+      clib_warning ("Failed to disable flow %u: %d", session->flow_index, rv);
+      return rv;
+    }
+
+  rv = vnet_flow_del (vnm, session->flow_index);
+  if (rv != 0)
+    {
+      clib_warning ("Failed to delete flow %u: %d", session->flow_index, rv);
+      return rv;
+    }
+  return 0;
+}
+
 void
 sfdp_enable_disable_expiry (u8 is_disable)
 {
@@ -126,6 +158,10 @@ VLIB_NODE_FN (sfdp_expire_node)
   vec_foreach (session_index, ptd->expired_sessions)
     {
       sfdp_session_t *session = sfdp_session_at_index (*session_index);
+      if (session->flow_index != ~0)
+	{
+	  sfdp_flow_offload_delete (*session_index, session->rx_sw_if_index);
+	}
       sfdp_session_remove (sfdp, ptd, session, thread_index, *session_index);
     }
 
