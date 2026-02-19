@@ -45,6 +45,17 @@ dpdk_device_error (dpdk_device_t * xd, char *str, int rv)
 }
 
 void
+dpdk_device_flow_error (dpdk_device_t *xd, char *str, struct rte_flow_error *error, int rv)
+{
+  dpdk_log_err ("Interface %U error %d: %s", format_dpdk_device_name, xd->device_index, rv,
+		rte_strerror (rv));
+  xd->errors = clib_error_return (xd->errors, "%s[port:%d, errno:%d]: %s", str, xd->port_id, rv,
+				  rte_strerror (rv));
+  xd->errors = clib_error_return (xd->errors, "type: %d, cause: %s, message: %s", error->type,
+				  error->cause, error->message);
+}
+
+void
 dpdk_device_setup (dpdk_device_t * xd)
 {
   vlib_main_t *vm = vlib_get_main ();
@@ -55,10 +66,21 @@ dpdk_device_setup (dpdk_device_t * xd)
   vnet_hw_if_caps_change_t caps = {};
   struct rte_eth_dev_info dev_info;
   struct rte_eth_conf conf = {};
+  struct rte_flow_port_info flow_port_info = {};
+  struct rte_flow_queue_info flow_queue_info = {};
+  struct rte_flow_error flow_error = {};
+  // dummy values to configure devices for flow offload
+  struct rte_flow_port_attr port_attr = {};
+  struct rte_flow_queue_attr queue_attr = {
+    .size = DPDK_DEFAULT_ASYNC_FLOW_QUEUE_SIZE,
+  };
+  const struct rte_flow_queue_attr **queue_attr_list = malloc (sizeof (struct rte_flow_queue_attr));
   u64 rxo, txo;
   u32 max_frame_size;
   int rv;
   int j;
+
+  queue_attr_list[0] = &queue_attr;
 
   ASSERT (vlib_get_thread_index () == 0);
 
@@ -240,6 +262,29 @@ retry:
   if (vec_len (xd->errors))
     goto error;
 
+  if (xd->supported_flow_actions != 0 &&
+      (rv = rte_flow_info_get (xd->port_id, &flow_port_info, &flow_queue_info, &flow_error)) != 0)
+    {
+      dpdk_device_flow_error (xd, "rte_flow_info_get", &flow_error, rv);
+      xd->supported_flow_actions = 0;
+    }
+
+  // at least one queue is need, of size 0 for now
+  if (xd->supported_flow_actions != 0 &&
+      (rv = rte_flow_configure (xd->port_id, &port_attr, 1, queue_attr_list, &flow_error)) != 0)
+    {
+      dpdk_device_flow_error (xd, "rte_flow_configure", &flow_error, rv);
+      xd->supported_flow_actions = 0;
+    }
+
+  if (xd->supported_flow_actions != 0)
+    {
+      dpdk_log_debug ("[%u] Flow port info: %U", xd->port_id, format_dpdk_flow_port_info,
+		      &flow_port_info);
+      dpdk_log_debug ("[%u] Flow queue info: %U", xd->port_id, format_dpdk_flow_queue_info,
+		      &flow_queue_info);
+    }
+
   xd->buffer_flags =
     (VLIB_BUFFER_TOTAL_LENGTH_VALID | VLIB_BUFFER_EXT_HDR_VALID);
 
@@ -281,9 +326,11 @@ retry:
   if (vec_len (xd->errors))
     goto error;
 
+  free (queue_attr_list);
   return;
 
 error:
+  free (queue_attr_list);
   xd->flags |= DPDK_DEVICE_FLAG_PMD_INIT_FAIL;
   sw->flags |= VNET_SW_INTERFACE_FLAG_ERROR;
 }
