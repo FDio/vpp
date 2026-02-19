@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <stdarg.h>
+#include <time.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <sys/mman.h>
@@ -27,6 +28,139 @@ daq_vpp_main_t daq_vpp_main = {
   .default_msg_pool_size = 256,
 };
 
+static inline uint64_t
+daq_vpp_trace_now_nsec (void)
+{
+  struct timespec ts;
+  clock_gettime (CLOCK_MONOTONIC_COARSE, &ts);
+  return (uint64_t) ts.tv_sec * 1000000000ull + (uint64_t) ts.tv_nsec;
+}
+
+static const char *
+daq_vpp_trace_event_to_string (daq_vpp_trace_event_t ev)
+{
+  switch (ev)
+    {
+    case DAQ_VPP_TRACE_EV_INSTANTIATE:
+      return "INSTANTIATE";
+    case DAQ_VPP_TRACE_EV_MSG_RECV_ENTER:
+      return "MSG_RECV_ENTER";
+    case DAQ_VPP_TRACE_EV_MSG_RECV_ONE_ENTER:
+      return "MSG_RECV_ONE_ENTER";
+    case DAQ_VPP_TRACE_EV_FILL_MSG:
+      return "FILL_MSG";
+    case DAQ_VPP_TRACE_EV_MSG_RECV_ONE_RET:
+      return "MSG_RECV_ONE_RET";
+    case DAQ_VPP_TRACE_EV_MSG_RECV_RET:
+      return "MSG_RECV_RET";
+    case DAQ_VPP_TRACE_EV_MSG_FINALIZE:
+      return "MSG_FINALIZE";
+    case DAQ_VPP_TRACE_EV_INJECT_ENTER:
+      return "INJECT_ENTER";
+    case DAQ_VPP_TRACE_EV_INJECT_NO_EMPTY_BUF:
+      return "INJECT_NO_EMPTY_BUF";
+    case DAQ_VPP_TRACE_EV_INJECT_DONE:
+      return "INJECT_DONE";
+    default:
+      return "UNKNOWN";
+    }
+}
+
+int
+daq_vpp_trace_ring_init (daq_vpp_ctx_t *ctx)
+{
+  daq_vpp_main_t *vdm = &daq_vpp_main;
+
+  if (!vdm->trace_ring_enable)
+    return DAQ_SUCCESS;
+  if (vdm->trace_ring)
+    return DAQ_SUCCESS;
+  if (vdm->trace_ring_size == 0)
+    vdm->trace_ring_size = DAQ_VPP_TRACE_RING_DEFAULT_SIZE;
+  if ((vdm->trace_ring_size & (vdm->trace_ring_size - 1)) != 0)
+    return daq_vpp_err (ctx, "trace ring size must be power-of-two");
+
+  vdm->trace_ring = calloc (vdm->trace_ring_size, sizeof (daq_vpp_trace_entry_t));
+  if (!vdm->trace_ring)
+    return daq_vpp_err (ctx, "trace ring allocation failed");
+
+  vdm->trace_ring_seq = 0;
+  return DAQ_SUCCESS;
+}
+
+void
+daq_vpp_trace_ring_free (void)
+{
+  daq_vpp_main_t *vdm = &daq_vpp_main;
+
+  if (vdm->trace_ring)
+    free (vdm->trace_ring);
+  vdm->trace_ring = 0;
+  vdm->trace_ring_seq = 0;
+}
+
+void
+daq_vpp_trace_ring_add (daq_vpp_ctx_t *ctx, daq_vpp_qpair_t *qp, daq_vpp_trace_event_t ev,
+			uint32_t arg0, uint32_t arg1)
+{
+  daq_vpp_main_t *vdm = &daq_vpp_main;
+  daq_vpp_trace_entry_t *e;
+  uint64_t seq;
+  uint64_t token;
+
+  if (!vdm->trace_ring_enable || vdm->trace_ring == 0)
+    return;
+
+  seq = __atomic_fetch_add (&vdm->trace_ring_seq, 1, __ATOMIC_RELAXED);
+  token = seq + 1;
+  e = &vdm->trace_ring[seq & (vdm->trace_ring_size - 1)];
+
+  e->ts_nsec = daq_vpp_trace_now_nsec ();
+  e->event = ev;
+  e->instance_id = ctx ? ctx->instance_id : 0;
+  e->qpair_thread_id = qp ? qp->qpair_id.thread_id : UINT16_MAX;
+  e->qpair_queue_id = qp ? qp->qpair_id.queue_id : UINT16_MAX;
+  e->arg0 = arg0;
+  e->arg1 = arg1;
+  __atomic_store_n (&e->seq, token, __ATOMIC_RELEASE);
+}
+
+void
+daq_vpp_trace_ring_dump (FILE *f, uint32_t max_entries)
+{
+  daq_vpp_main_t *vdm = &daq_vpp_main;
+  uint64_t total, start;
+  uint64_t n;
+
+  if (vdm->trace_ring == 0 || vdm->trace_ring_size == 0)
+    return;
+
+  total = __atomic_load_n (&vdm->trace_ring_seq, __ATOMIC_ACQUIRE);
+  if (total == 0)
+    return;
+
+  n = total < vdm->trace_ring_size ? total : vdm->trace_ring_size;
+  if (max_entries && n > max_entries)
+    n = max_entries;
+  start = total - n;
+
+  fprintf (f, "daq_vpp: trace-ring dump (total=%llu, showing-last=%llu, size=%u)\n",
+	   (unsigned long long) total, (unsigned long long) n, vdm->trace_ring_size);
+  for (uint64_t i = 0; i < n; i++)
+    {
+      uint64_t seq = start + i;
+      uint64_t token = seq + 1;
+      daq_vpp_trace_entry_t *e = &vdm->trace_ring[seq & (vdm->trace_ring_size - 1)];
+
+      if (__atomic_load_n (&e->seq, __ATOMIC_ACQUIRE) != token)
+	continue;
+
+      fprintf (f, "  #%llu t=%llu ev=%s inst=%u qp=%u.%u a0=%u a1=%u\n", (unsigned long long) seq,
+	       (unsigned long long) e->ts_nsec, daq_vpp_trace_event_to_string (e->event),
+	       e->instance_id, e->qpair_thread_id, e->qpair_queue_id, e->arg0, e->arg1);
+    }
+}
+
 int
 daq_vpp_err (daq_vpp_ctx_t *ctx, char *fmt, ...)
 {
@@ -36,6 +170,11 @@ daq_vpp_err (daq_vpp_ctx_t *ctx, char *fmt, ...)
   va_start (va, fmt);
   vsnprintf (buffer, sizeof (buffer), fmt, va);
   va_end (va);
+  if (daq_vpp_main.trace_ring_enable && daq_vpp_main.trace_ring_dump_on_err)
+    {
+      fprintf (stderr, "daq_vpp: error: %s\n", buffer);
+      daq_vpp_trace_ring_dump (stderr, 256);
+    }
 
   daq_vpp_main.daq_base_api.set_errbuf (ctx->modinst, "%s", buffer);
   return DAQ_ERROR;
@@ -63,6 +202,7 @@ daq_vpp_module_load (const DAQ_BaseAPI_t *base_api)
 static int
 daq_vpp_module_unload (void)
 {
+  daq_vpp_trace_ring_free ();
   return DAQ_SUCCESS;
 }
 
@@ -249,6 +389,8 @@ daq_vpp_instantiate (DAQ_ModuleConfig_h modcfg, DAQ_ModuleInstance_h modinst,
 
   DEBUG ("creating instance %u out of %u with input %s", instance_id,
 	 n_instances, name);
+
+  daq_vpp_trace_ring_add (ctx, 0, DAQ_VPP_TRACE_EV_INSTANTIATE, n_instances, instance_id);
 
   msg_pool_size = vdm->daq_base_api.config_get_msg_pool_size (modcfg);
   msg_pool_size = msg_pool_size ? msg_pool_size : vdm->default_msg_pool_size;
@@ -443,6 +585,8 @@ daq_vpp_inject_relative (void *handle, DAQ_Msg_h msg, const uint8_t *data,
   uint8_t *buf_data;
   daq_vpp_empty_buf_desc_t *empty_buf_desc;
 
+  daq_vpp_trace_ring_add (ctx, qp, DAQ_VPP_TRACE_EV_INJECT_ENTER, pe->index, data_len);
+
   DEBUG_DUMP_MSG (msg);
   DEBUG2 ("%s", daq_vpp_inject_direction (reverse));
   DEBUG_DUMP_DATA_HEX (data, data_len);
@@ -469,6 +613,8 @@ daq_vpp_inject_relative (void *handle, DAQ_Msg_h msg, const uint8_t *data,
   if (head == tail)
     {
       DEBUG2 ("no empty buffer available to inject packet");
+      daq_vpp_trace_ring_add (ctx, qp, DAQ_VPP_TRACE_EV_INJECT_NO_EMPTY_BUF,
+			      (uint32_t) (head - tail), data_len);
       return daq_vpp_err (ctx, "no empty buffer available to inject packet");
     }
   empty_buf_desc = &qp->empty_buf_ring[tail & mask];
@@ -476,8 +622,12 @@ daq_vpp_inject_relative (void *handle, DAQ_Msg_h msg, const uint8_t *data,
     vdm->bpools[empty_buf_desc->buffer_pool].base + empty_buf_desc->offset;
 
   if (empty_buf_desc->length < data_len)
-    return daq_vpp_err (ctx, "descriptor %u buffer too small (%u < %u)",
-			tail & mask, empty_buf_desc->length, data_len);
+    {
+      DEBUG ("descriptor %lu buffer too small (%u < %u)", tail & mask, empty_buf_desc->length,
+	     data_len);
+      return daq_vpp_err (ctx, "descriptor %u buffer too small (%u < %u)", tail & mask,
+			  empty_buf_desc->length, data_len);
+    }
 
   memcpy (buf_data, data, data_len);
   empty_buf_desc->length = data_len;
@@ -486,6 +636,7 @@ daq_vpp_inject_relative (void *handle, DAQ_Msg_h msg, const uint8_t *data,
 
   tail = tail + 1;
   __atomic_store_n (&h->deq.empty_buf_tail, tail, __ATOMIC_RELEASE);
+  daq_vpp_trace_ring_add (ctx, qp, DAQ_VPP_TRACE_EV_INJECT_DONE, pe->index, (uint32_t) tail);
 
   if (!__atomic_exchange_n (&qp->hdr->deq.interrupt_pending, 1,
 			    __ATOMIC_RELAXED))
@@ -523,6 +674,8 @@ daq_vpp_fill_msg (daq_vpp_ctx_t *ctx, daq_vpp_qpair_t *qp, uint32_t desc_index,
   pe->msg.data = data;
   pe->msg.data_len = d->length;
 
+  daq_vpp_trace_ring_add (ctx, qp, DAQ_VPP_TRACE_EV_FILL_MSG, desc_index, d->length);
+
   DEBUG_DUMP_MSG (&pe->msg);
   return &pe->msg;
 }
@@ -541,7 +694,7 @@ daq_vpp_msg_receive_one (daq_vpp_ctx_t *ctx, daq_vpp_qpair_t *qp,
   tail = qp->tail;
   head = __atomic_load_n (&qp->hdr->enq.head, __ATOMIC_ACQUIRE);
   n_recv = head - tail;
-
+  daq_vpp_trace_ring_add (ctx, qp, DAQ_VPP_TRACE_EV_MSG_RECV_ONE_ENTER, n_recv, max_recv);
   if (n_recv == 0)
     return 0;
 
@@ -563,7 +716,7 @@ daq_vpp_msg_receive_one (daq_vpp_ctx_t *ctx, daq_vpp_qpair_t *qp,
   msgs[0] = daq_vpp_fill_msg (ctx, qp, next_desc_index, tv);
 
   qp->tail = tail;
-
+  daq_vpp_trace_ring_add (ctx, qp, DAQ_VPP_TRACE_EV_MSG_RECV_ONE_RET, n_recv, (uint32_t) qp->tail);
   return n_recv;
 }
 
@@ -584,6 +737,9 @@ daq_vpp_msg_receive (void *handle, unsigned max_recv, const DAQ_Msg_t *msgs[],
   uint32_t n_recv = 0;
   int32_t n_events;
   DAQ_RecvStatus rstat = DAQ_RSTAT_OK;
+
+  daq_vpp_trace_ring_add (ctx, 0, DAQ_VPP_TRACE_EV_MSG_RECV_ENTER, max_recv,
+			  ctx->msg_pool_info.available);
 
   if (ctx->interrupted)
     {
@@ -708,6 +864,7 @@ done:
   if (n_recv)
     ctx->msg_pool_info.available -= n_recv;
   *rstatp = rstat;
+  daq_vpp_trace_ring_add (ctx, 0, DAQ_VPP_TRACE_EV_MSG_RECV_RET, n_recv, (uint32_t) rstat);
   return n_recv;
 }
 
@@ -720,6 +877,8 @@ daq_vpp_msg_finalize (void *handle, const DAQ_Msg_t *msg, DAQ_Verdict verdict)
   daq_vpp_head_tail_t head, mask;
   daq_vpp_qpair_header_t *h = qp->hdr;
   daq_vpp_desc_t *d;
+
+  daq_vpp_trace_ring_add (ctx, qp, DAQ_VPP_TRACE_EV_MSG_FINALIZE, pe->index, verdict);
 
   DEBUG_DUMP_MSG (msg);
 
@@ -737,7 +896,7 @@ daq_vpp_msg_finalize (void *handle, const DAQ_Msg_t *msg, DAQ_Verdict verdict)
   ctx->stats.verdicts[verdict]++;
 
   mask = qp->queue_size - 1;
-  head = __atomic_load_n (&h->deq.head, __ATOMIC_RELAXED);
+  head = __atomic_load_n (&h->deq.head, __ATOMIC_ACQUIRE);
   d = h->descs + pe->index;
 
   d->metadata.verdict = (daq_vpp_verdict_t) verdict;

@@ -6,6 +6,7 @@
 #define __DAQ_VPP_H__
 
 #include <stdint.h>
+#include <stdio.h>
 #include <daq_module_api.h>
 #include <snort/daq_vpp_shared.h>
 
@@ -23,6 +24,40 @@
 #define DEBUG(fmt, ...)                                                       \
   if (daq_vpp_main.debug)                                                     \
     printf ("%s: %s: " fmt "\n", "daq_vpp", __func__, ##__VA_ARGS__);
+
+#define DAQ_VPP_TRACE_RING_DEFAULT_SIZE 16384
+
+static inline int
+is_pow2 (uint64_t x)
+{
+  return x && !(x & (x - 1));
+}
+
+typedef enum
+{
+  DAQ_VPP_TRACE_EV_INSTANTIATE = 1,
+  DAQ_VPP_TRACE_EV_MSG_RECV_ENTER,
+  DAQ_VPP_TRACE_EV_MSG_RECV_ONE_ENTER,
+  DAQ_VPP_TRACE_EV_FILL_MSG,
+  DAQ_VPP_TRACE_EV_MSG_RECV_ONE_RET,
+  DAQ_VPP_TRACE_EV_MSG_RECV_RET,
+  DAQ_VPP_TRACE_EV_MSG_FINALIZE,
+  DAQ_VPP_TRACE_EV_INJECT_ENTER,
+  DAQ_VPP_TRACE_EV_INJECT_NO_EMPTY_BUF,
+  DAQ_VPP_TRACE_EV_INJECT_DONE,
+} daq_vpp_trace_event_t;
+
+typedef struct
+{
+  uint64_t seq;
+  uint64_t ts_nsec;
+  uint16_t event;
+  uint16_t instance_id;
+  uint16_t qpair_thread_id;
+  uint16_t qpair_queue_id;
+  uint32_t arg0;
+  uint32_t arg1;
+} __aligned (64) daq_vpp_trace_entry_t;
 
 /* dump.c */
 char *daq_vpp_dump_pkt_hdr (const DAQ_PktHdr_t *hdr);
@@ -162,10 +197,16 @@ typedef struct
   uint32_t connected : 1;
   uint32_t buffer_pools_initialized : 1;
   uint32_t hangup : 1;
+  uint32_t trace_ring_enable : 1;
+  uint32_t trace_ring_dump_on_err : 1;
 
   /* configured */
   uint32_t default_msg_pool_size;
+  uint32_t trace_ring_size;
   DAQ_BaseAPI_t daq_base_api;
+
+  uint64_t trace_ring_seq;
+  daq_vpp_trace_entry_t *trace_ring;
 
   /* buffer pools */
   uint8_t num_bpools;
@@ -187,6 +228,12 @@ extern daq_vpp_main_t daq_vpp_main;
 
 /* main.c */
 int daq_vpp_err (daq_vpp_ctx_t *ctx, char *fmt, ...);
+
+int daq_vpp_trace_ring_init (daq_vpp_ctx_t *ctx);
+void daq_vpp_trace_ring_add (daq_vpp_ctx_t *ctx, daq_vpp_qpair_t *qp, daq_vpp_trace_event_t ev,
+			     uint32_t arg0, uint32_t arg1);
+void daq_vpp_trace_ring_dump (FILE *f, uint32_t max_entries);
+void daq_vpp_trace_ring_free (void);
 
 /* config.c */
 int daq_vpp_get_variable_descs (const DAQ_VariableDesc_t **var_desc_table);
