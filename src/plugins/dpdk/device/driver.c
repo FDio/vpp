@@ -7,22 +7,25 @@
 #include <dpdk/device/dpdk.h>
 
 static const u32 supported_flow_actions_intel =
-  (VNET_FLOW_ACTION_MARK | VNET_FLOW_ACTION_REDIRECT_TO_NODE |
-   VNET_FLOW_ACTION_REDIRECT_TO_QUEUE | VNET_FLOW_ACTION_BUFFER_ADVANCE |
-   VNET_FLOW_ACTION_COUNT | VNET_FLOW_ACTION_DROP | VNET_FLOW_ACTION_RSS);
+  (VNET_FLOW_ACTION_MARK | VNET_FLOW_ACTION_REDIRECT_TO_NODE | VNET_FLOW_ACTION_REDIRECT_TO_QUEUE |
+   VNET_FLOW_ACTION_BUFFER_ADVANCE | VNET_FLOW_ACTION_COUNT | VNET_FLOW_ACTION_DROP |
+   VNET_FLOW_ACTION_RSS);
 
-#define DPDK_DRIVERS(...)                                                     \
-  (dpdk_driver_name_t[])                                                      \
-  {                                                                           \
-    __VA_ARGS__, {}                                                           \
+static const u32 supported_flow_actions_mlx5 = supported_flow_actions_intel;
+
+#define DPDK_DRIVERS(...)                                                                          \
+  (dpdk_driver_name_t[])                                                                           \
+  {                                                                                                \
+    __VA_ARGS__,                                                                                   \
+    {                                                                                              \
+    }                                                                                              \
   }
 
 static dpdk_driver_t dpdk_drivers[] = {
   {
-    .drivers = DPDK_DRIVERS ({ "net_ice", "Intel E810 Family" },
-			     { "net_igc", "Intel I225 2.5G Family" },
-			     { "net_e1000_igb", "Intel e1000" },
-			     { "net_e1000_em", "Intel 82540EM (e1000)" }),
+    .drivers = DPDK_DRIVERS (
+      { "net_ice", "Intel E810 Family" }, { "net_igc", "Intel I225 2.5G Family" },
+      { "net_e1000_igb", "Intel e1000" }, { "net_e1000_em", "Intel 82540EM (e1000)" }),
     .enable_rxq_int = 1,
     .supported_flow_actions = supported_flow_actions_intel,
     .use_intel_phdr_cksum = 1,
@@ -41,13 +44,13 @@ static dpdk_driver_t dpdk_drivers[] = {
     .int_unmaskable = 1,
   },
   {
-    .drivers = DPDK_DRIVERS ({ "net_liovf", "Cavium Lio VF" },
-			     { "net_thunderx", "Cavium ThunderX" }),
+    .drivers =
+      DPDK_DRIVERS ({ "net_liovf", "Cavium Lio VF" }, { "net_thunderx", "Cavium ThunderX" }),
     .interface_name_prefix = "VirtualFunctionEthernet",
   },
   {
-    .drivers = DPDK_DRIVERS ({ "net_iavf", "Intel iAVF" },
-			     { "net_i40e_vf", "Intel X710/XL710 Family VF" }),
+    .drivers =
+      DPDK_DRIVERS ({ "net_iavf", "Intel iAVF" }, { "net_i40e_vf", "Intel X710/XL710 Family VF" }),
     .interface_name_prefix = "VirtualFunctionEthernet",
     .supported_flow_actions = supported_flow_actions_intel,
     .use_intel_phdr_cksum = 1,
@@ -70,8 +73,7 @@ static dpdk_driver_t dpdk_drivers[] = {
     .interface_name_prefix = "TenGigabitEthernet",
   },
   {
-    .drivers =
-      DPDK_DRIVERS ({ "net_fm10k", "Intel FM10000 Family Ethernet Switch" }),
+    .drivers = DPDK_DRIVERS ({ "net_fm10k", "Intel FM10000 Family Ethernet Switch" }),
     .interface_name_prefix = "EthernetSwitch",
   },
   {
@@ -92,8 +94,12 @@ static dpdk_driver_t dpdk_drivers[] = {
     .interface_name_prefix = "VhostEthernet",
   },
   {
-    .drivers = DPDK_DRIVERS ({ "mlx5_pci", "Mellanox ConnectX-4/5/6 Family" },
-			     { "net_enic", "Cisco VIC" }),
+    .drivers = DPDK_DRIVERS ({ "mlx5_pci", "Mellanox ConnectX-4/5/6 Family" }),
+    .supported_flow_actions = supported_flow_actions_mlx5,
+    .use_intel_phdr_cksum = 1,
+  },
+  {
+    .drivers = DPDK_DRIVERS ({ "net_enic", "Cisco VIC" }),
     .use_intel_phdr_cksum = 1,
   },
   {
