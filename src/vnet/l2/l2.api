@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-option version = "3.2.0";
+option version = "3.3.0";
 
 import "vnet/ip/ip_types.api";
 import "vnet/ethernet/ethernet_types.api";
@@ -262,6 +262,108 @@ define l2_flags_reply
   u32 context;
   i32 retval;
   u32 resulting_feature_bitmap;
+};
+
+/** \brief Get interface L2 flags (companion getter for l2_flags)
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - interface to query
+*/
+define l2_flags_get
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+};
+
+/** \brief Get interface L2 flags response
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+    @param input_feature_bitmap - raw internal L2 input feature bitmap for the interface
+    @param output_feature_bitmap - raw internal L2 output feature bitmap for the interface
+*/
+define l2_flags_get_reply
+{
+  u32 context;
+  i32 retval;
+  u32 input_feature_bitmap;
+  u32 output_feature_bitmap;
+};
+
+/** \brief Set interface L2 flags (upgraded companion setter for l2_flags_get).
+    Sets or clears raw feature bitmap bits on both the input and output paths.
+    Pass zero for a bitmap to leave that direction unchanged.
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - interface to modify
+    @param is_set - if non-zero set the bits, else clear them
+    @param input_feature_bitmap - input feature bits to set or clear
+    @param output_feature_bitmap - output feature bits to set or clear
+*/
+autoreply define l2_flags_set
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+  bool is_set;
+  u32 input_feature_bitmap;
+  u32 output_feature_bitmap;
+};
+
+/** \brief Per-interface L2 feature flags (bridge-domain relevant subset).
+ *  Used with l2_interface_feat_flags_get and l2_interface_feat_flags_set.
+ *
+ *  NOTE: keep in sync with foreach_l2_intf_feat_flag in l2_api.c.
+ */
+enum l2_intf_feat_flags : u32
+{
+  L2_INTF_FEAT_NONE     = 0x00,
+  L2_INTF_FEAT_LEARN    = 0x01,
+  L2_INTF_FEAT_FWD      = 0x02,
+  L2_INTF_FEAT_FLOOD    = 0x04,
+  L2_INTF_FEAT_UU_FLOOD = 0x08,
+  L2_INTF_FEAT_ARP_TERM = 0x10,
+  L2_INTF_FEAT_ARP_UFWD = 0x20,
+};
+
+/** \brief Get L2 per-interface feature flags
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - interface to query
+*/
+define l2_interface_feat_flags_get
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+};
+
+/** \brief Reply for l2_interface_feat_flags_get
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+    @param flags - current feature flags active on this interface
+*/
+define l2_interface_feat_flags_get_reply
+{
+  u32 context;
+  i32 retval;
+  vl_api_l2_intf_feat_flags_t flags;
+};
+
+/** \brief Set or clear L2 per-interface feature flags
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - interface to modify
+    @param is_set - true to enable the given flags, false to disable them
+    @param flags - which feature flags to enable or disable
+*/
+autoreply define l2_interface_feat_flags_set
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+  bool is_set;
+  vl_api_l2_intf_feat_flags_t flags;
 };
 
 /** \brief L2 bridge domain set mac age
