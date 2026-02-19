@@ -513,6 +513,8 @@ quic_config_fn (vlib_main_t *vm, unformat_input_t *input)
   qm->udp_fifo_prealloc = 0;
   qm->connection_timeout = QUIC_DEFAULT_CONN_TIMEOUT;
   qm->enable_tx_pacing = 1;
+  qm->first_seg_size = 32 << 20;
+  qm->add_seg_size = 256 << 20;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -529,11 +531,17 @@ quic_config_fn (vlib_main_t *vm, unformat_input_t *input)
 	    }
 	  qm->udp_fifo_size = tmp;
 	}
+      else if (unformat (line_input, "first-segment-size %U", unformat_memory_size,
+			 &qm->first_seg_size))
+	;
+      else if (unformat (line_input, "add-segment-size %U", unformat_memory_size,
+			 &qm->add_seg_size))
+	;
       else if (unformat (line_input, "conn-timeout %u", &i))
 	qm->connection_timeout = i;
       else if (unformat (line_input, "fifo-prealloc %u", &i))
 	qm->udp_fifo_prealloc = i;
-      else if (unformat (input, "no-tx-pacing"))
+      else if (unformat (line_input, "no-tx-pacing"))
 	qm->enable_tx_pacing = 0;
       /* TODO: add cli selection of quic_eng_<types> */
       else
