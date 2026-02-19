@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": true,
+      "key": {
+        "uuid": "0b8f8d78_2548ebb4",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-02-19T09:09:47Z",
+      "side": 1,
+      "message": "Sure. I\u0027ve added typedef \u0027sfdp_tenant_index_t\u0027 for the tenant_index.\n\nTo differentiate between usage of tenant_index and tenant_id (which is a user-provided value), I\u0027ve also added typedef \u0027sfdp_tenant_id_t\u0027",
+      "parentUuid": "465972e7_cbd14827",
+      "revId": "43224aa1e47363cab3c93c5d8e892d8db4de2236",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": false,
       "key": {
         "uuid": "c25b811c_13baa0b1",
