@@ -1,0 +1,225 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a6f1c165_f84f3eeb",
+        "filename": "src/plugins/dpdk/device/driver.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-02-19T19:09:46Z",
+      "side": 1,
+      "message": "Should rebase on 44974?",
+      "revId": "26a7a72707676985e0f010bb407ea0dec3a1ca0d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "37d61a11_fc0f49c2",
+        "filename": "src/plugins/sfdp_services/base/interface_input/interface_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-02-19T19:09:46Z",
+      "side": 1,
+      "message": "you should use vec_elt()",
+      "revId": "26a7a72707676985e0f010bb407ea0dec3a1ca0d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a991d6e3_eead3f21",
+        "filename": "src/plugins/sfdp_services/base/interface_input/interface_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 88,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-02-19T19:09:46Z",
+      "side": 1,
+      "message": "vec_elt",
+      "revId": "26a7a72707676985e0f010bb407ea0dec3a1ca0d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a0e2f5a6_66b1de6d",
+        "filename": "src/plugins/sfdp_services/base/interface_input/interface_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 105,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-02-19T19:09:46Z",
+      "side": 1,
+      "message": "vec_elt",
+      "revId": "26a7a72707676985e0f010bb407ea0dec3a1ca0d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f67e17a1_29aa80f6",
+        "filename": "src/plugins/sfdp_services/base/interface_input/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 5,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-02-19T19:09:46Z",
+      "side": 1,
+      "message": "\u003c\u003e",
+      "revId": "26a7a72707676985e0f010bb407ea0dec3a1ca0d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9abe0d61_e3ae4188",
+        "filename": "src/plugins/sfdp_services/base/interface_input/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 99,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-02-19T19:09:46Z",
+      "side": 1,
+      "message": "vec_elt",
+      "revId": "26a7a72707676985e0f010bb407ea0dec3a1ca0d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "de433f99_b1971a8e",
+        "filename": "src/vnet/sfdp/expiry/expiry.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 53,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-02-19T19:09:46Z",
+      "side": 1,
+      "message": "should on top and use \u003c\u003e",
+      "revId": "26a7a72707676985e0f010bb407ea0dec3a1ca0d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1d27eeb3_5673416a",
+        "filename": "src/vnet/sfdp/expiry/expiry.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 65,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-02-19T19:09:46Z",
+      "side": 1,
+      "message": "elog",
+      "revId": "26a7a72707676985e0f010bb407ea0dec3a1ca0d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e740db2d_d9a7d284",
+        "filename": "src/vnet/sfdp/lookup/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 392,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-02-19T19:09:46Z",
+      "side": 1,
+      "message": "can we use an enum for clarity?",
+      "revId": "26a7a72707676985e0f010bb407ea0dec3a1ca0d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2f9ab825_dbabeaa6",
+        "filename": "src/vnet/sfdp/lookup/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 558,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-02-19T19:09:46Z",
+      "side": 1,
+      "message": "why is it set only on success? what happens is hw flow creation fails?",
+      "revId": "26a7a72707676985e0f010bb407ea0dec3a1ca0d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b41cc6fe_8c9d2896",
+        "filename": "src/vnet/sfdp/lookup/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1073,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-02-19T19:09:46Z",
+      "side": 1,
+      "message": "put this at the top, and use \u003c\u003e",
+      "revId": "26a7a72707676985e0f010bb407ea0dec3a1ca0d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ae340953_59f349d0",
+        "filename": "src/vnet/sfdp/lookup/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1109,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-02-19T19:09:46Z",
+      "side": 1,
+      "message": "we set redirect to queue but queue is not specified, is it on purpose?",
+      "revId": "26a7a72707676985e0f010bb407ea0dec3a1ca0d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "47458f2f_e533ee68",
+        "filename": "src/vnet/sfdp/lookup/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1115,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-02-19T19:09:46Z",
+      "side": 1,
+      "message": "you should consider elog as it is in the packet path",
+      "revId": "26a7a72707676985e0f010bb407ea0dec3a1ca0d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
