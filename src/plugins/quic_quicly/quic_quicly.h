@@ -60,6 +60,9 @@ typedef struct quic_quicly_main_
   clib_bihash_24_8_t conn_accepting_hash;
   quic_quicly_session_cache_t session_cache;
   quicly_cid_plaintext_t *next_cid;
+  quic_quicly_rx_packet_ctx_t **rx_packets;
+  struct iovec **tx_packets;
+  u8 **tx_bufs;
 } quic_quicly_main_t;
 
 extern quic_quicly_main_t quic_quicly_main;
