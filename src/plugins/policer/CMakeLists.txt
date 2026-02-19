@@ -19,6 +19,7 @@ add_vpp_plugin(policer
 
   INSTALL_HEADERS
   policer.h
+  xlate.h
   ip_punt.h
 
   API_FILES
