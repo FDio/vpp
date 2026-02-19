@@ -13,6 +13,7 @@
 #include <vnet/interface.h>
 #include <vnet/api_errno.h>
 #include <vnet/l2/l2_input.h>
+#include <vnet/l2/l2_output.h>
 #include <vnet/l2/l2_fib.h>
 #include <vnet/l2/l2_vtr.h>
 #include <vnet/l2/l2_learn.h>
@@ -405,6 +406,133 @@ vl_api_l2_flags_t_handler (vl_api_l2_flags_t * mp)
   ({
     rmp->resulting_feature_bitmap = ntohl(rbm);
   }));
+}
+
+static void
+vl_api_l2_flags_get_t_handler (vl_api_l2_flags_get_t *mp)
+{
+  vl_api_l2_flags_get_reply_t *rmp;
+  int rv = 0;
+  u32 feature_bitmap = 0;
+  u32 out_feature_bitmap = 0;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  u32 sw_if_index = ntohl (mp->sw_if_index);
+  l2_input_config_t *in_cfg = l2input_intf_config (sw_if_index);
+  if (in_cfg)
+    feature_bitmap = in_cfg->feature_bitmap;
+  l2_output_config_t *out_cfg = l2output_intf_config (sw_if_index);
+  if (out_cfg)
+    out_feature_bitmap = out_cfg->feature_bitmap;
+
+  BAD_SW_IF_INDEX_LABEL;
+  REPLY_MACRO2 (VL_API_L2_FLAGS_GET_REPLY, ({
+		  rmp->input_feature_bitmap = htonl (feature_bitmap);
+		  rmp->output_feature_bitmap = htonl (out_feature_bitmap);
+		}));
+}
+
+static void
+vl_api_l2_flags_set_t_handler (vl_api_l2_flags_set_t *mp)
+{
+  vl_api_l2_flags_set_reply_t *rmp;
+  int rv = 0;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  u32 sw_if_index = ntohl (mp->sw_if_index);
+  u32 in_bitmap = ntohl (mp->input_feature_bitmap);
+  u32 out_bitmap = ntohl (mp->output_feature_bitmap);
+
+  if (in_bitmap)
+    l2input_intf_bitmap_enable (sw_if_index, in_bitmap, mp->is_set);
+  if (out_bitmap)
+    l2output_intf_bitmap_enable (sw_if_index, out_bitmap, mp->is_set);
+
+  BAD_SW_IF_INDEX_LABEL;
+  REPLY_MACRO (VL_API_L2_FLAGS_SET_REPLY);
+}
+
+/*
+ * Translation between the stable API enum (l2_intf_feat_flags) and the
+ * internal feature bitmap (L2INPUT_FEAT_*).
+ *
+ * NOTE: keep in sync with enum l2_intf_feat_flags in l2.api.
+ * The STATIC_ASSERT below enforces that every API flag is listed here.
+ */
+#define foreach_l2_intf_feat_flag                                                                  \
+  _ (LEARN, L2INPUT_FEAT_LEARN)                                                                    \
+  _ (FWD, L2INPUT_FEAT_FWD)                                                                        \
+  _ (FLOOD, L2INPUT_FEAT_FLOOD)                                                                    \
+  _ (UU_FLOOD, L2INPUT_FEAT_UU_FLOOD)                                                              \
+  _ (ARP_TERM, L2INPUT_FEAT_ARP_TERM)                                                              \
+  _ (ARP_UFWD, L2INPUT_FEAT_ARP_UFWD)
+
+/* Verify the translation table covers every bit defined in the API enum. */
+#define _(f, i) | L2_INTF_FEAT_##f
+STATIC_ASSERT ((0 foreach_l2_intf_feat_flag) ==
+		 (L2_INTF_FEAT_LEARN | L2_INTF_FEAT_FWD | L2_INTF_FEAT_FLOOD |
+		  L2_INTF_FEAT_UU_FLOOD | L2_INTF_FEAT_ARP_TERM | L2_INTF_FEAT_ARP_UFWD),
+	       "foreach_l2_intf_feat_flag does not cover all API flags");
+#undef _
+
+static u32
+l2_intf_feat_flags_to_bitmap (vl_api_l2_intf_feat_flags_t api_flags)
+{
+  u32 bitmap = 0;
+#define _(f, i)                                                                                    \
+  if (api_flags & L2_INTF_FEAT_##f)                                                                \
+    bitmap |= (i);
+  foreach_l2_intf_feat_flag
+#undef _
+    return bitmap;
+}
+
+static vl_api_l2_intf_feat_flags_t
+l2_bitmap_to_intf_feat_flags (u32 bitmap)
+{
+  vl_api_l2_intf_feat_flags_t flags = L2_INTF_FEAT_NONE;
+#define _(f, i)                                                                                    \
+  if (bitmap & (i))                                                                                \
+    flags |= L2_INTF_FEAT_##f;
+  foreach_l2_intf_feat_flag
+#undef _
+    return flags;
+}
+
+static void
+vl_api_l2_interface_feat_flags_get_t_handler (vl_api_l2_interface_feat_flags_get_t *mp)
+{
+  vl_api_l2_interface_feat_flags_get_reply_t *rmp;
+  int rv = 0;
+  vl_api_l2_intf_feat_flags_t flags = L2_INTF_FEAT_NONE;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  u32 sw_if_index = ntohl (mp->sw_if_index);
+  l2_input_config_t *cfg = l2input_intf_config (sw_if_index);
+  if (cfg)
+    flags = l2_bitmap_to_intf_feat_flags (cfg->feature_bitmap);
+
+  BAD_SW_IF_INDEX_LABEL;
+  REPLY_MACRO2 (VL_API_L2_INTERFACE_FEAT_FLAGS_GET_REPLY, ({ rmp->flags = htonl (flags); }));
+}
+
+static void
+vl_api_l2_interface_feat_flags_set_t_handler (vl_api_l2_interface_feat_flags_set_t *mp)
+{
+  vl_api_l2_interface_feat_flags_set_reply_t *rmp;
+  int rv = 0;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  u32 sw_if_index = ntohl (mp->sw_if_index);
+  u32 bitmap = l2_intf_feat_flags_to_bitmap (ntohl (mp->flags));
+  l2input_intf_bitmap_enable (sw_if_index, bitmap, mp->is_set);
+
+  BAD_SW_IF_INDEX_LABEL;
+  REPLY_MACRO (VL_API_L2_INTERFACE_FEAT_FLAGS_SET_REPLY);
 }
 
 static void
