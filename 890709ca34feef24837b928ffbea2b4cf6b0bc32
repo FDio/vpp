@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e73f1383_ccbe6b7a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-02-19T22:49:08Z",
+      "side": 1,
+      "message": "blunt copy of opaque is ugly, inefficient and error prone, please come up with better design",
+      "revId": "890709ca34feef24837b928ffbea2b4cf6b0bc32",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
