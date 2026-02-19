@@ -49,6 +49,9 @@
    VNET_FLOW_ACTION_REDIRECT_TO_QUEUE | VNET_FLOW_ACTION_BUFFER_ADVANCE | VNET_FLOW_ACTION_COUNT | \
    VNET_FLOW_ACTION_DROP | VNET_FLOW_ACTION_RSS)
 
+#define DPDK_DEFAULT_ASYNC_FLOW_N_QUEUES   1
+#define DPDK_DEFAULT_ASYNC_FLOW_QUEUE_SIZE 64
+
 extern vnet_device_class_t dpdk_device_class;
 extern vlib_node_registration_t dpdk_input_node;
 extern vlib_node_registration_t admin_up_down_process_node;
@@ -450,6 +453,8 @@ format_function_t format_dpdk_flow;
 format_function_t format_dpdk_rss_hf_name;
 format_function_t format_dpdk_rx_offload_caps;
 format_function_t format_dpdk_tx_offload_caps;
+format_function_t format_dpdk_flow_port_info;
+format_function_t format_dpdk_flow_queue_info;
 format_function_t format_dpdk_burst_fn;
 format_function_t format_dpdk_rte_device;
 vnet_flow_dev_ops_function_t dpdk_flow_ops_fn;

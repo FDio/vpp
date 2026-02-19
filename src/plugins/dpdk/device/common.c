@@ -45,7 +45,68 @@ dpdk_device_error (dpdk_device_t * xd, char *str, int rv)
 }
 
 void
-dpdk_device_setup (dpdk_device_t * xd)
+dpdk_device_flow_error (dpdk_device_t *xd, char *str)
+{
+  dpdk_log_err ("Interface %U error %d: %s", format_dpdk_device_name, xd->device_index, rte_errno,
+		rte_strerror (rte_errno));
+  dpdk_log_err ("[%d] %s - type: %d, cause: %s, message: %s", xd->port_id, str,
+		xd->last_flow_error.type, xd->last_flow_error.cause, xd->last_flow_error.message);
+  xd->errors = clib_error_return (xd->errors, "%s[port:%d, errno:%d]: %s", str, xd->port_id,
+				  rte_errno, rte_strerror (rte_errno));
+}
+
+/*
+ * Check for async flow offload support.
+ * The only way to tell, is to check if rte_flow_info_get and rte_flow_configure does not return
+ * -ENOTSUP.
+ */
+void
+dpdk_device_configure_flow_offload (dpdk_device_t *xd)
+{
+  struct rte_flow_port_info flow_port_info = {};
+  struct rte_flow_queue_info flow_queue_info = {};
+  // dummy values to configure devices for flow offload
+  struct rte_flow_port_attr port_attr = {};
+  struct rte_flow_queue_attr queue_attr = {
+    .size = DPDK_DEFAULT_ASYNC_FLOW_QUEUE_SIZE,
+  };
+  const struct rte_flow_queue_attr *queue_attr_list[] = { &queue_attr };
+  int rv;
+
+  rv = rte_flow_info_get (xd->port_id, &flow_port_info, &flow_queue_info, &xd->last_flow_error);
+  if (rv == -ENOTSUP)
+    {
+      return;
+    }
+  else if (rv)
+    {
+      dpdk_device_flow_error (xd, "rte_flow_info_get");
+      xd->supported_flow_actions = 0;
+      return;
+    }
+
+  // at least one queue is need, of size DPDK_DEFAULT_ASYNC_FLOW_QUEUE_SIZE for now
+  rv = rte_flow_configure (xd->port_id, &port_attr, DPDK_DEFAULT_ASYNC_FLOW_N_QUEUES,
+			   queue_attr_list, &xd->last_flow_error);
+  if (rv == -ENOTSUP)
+    {
+      return;
+    }
+  else if (rv)
+    {
+      dpdk_device_flow_error (xd, "rte_flow_configure");
+      xd->supported_flow_actions = 0;
+      return;
+    }
+
+  dpdk_log_debug ("[%u] Async flow port info: %U", xd->port_id, format_dpdk_flow_port_info,
+		  &flow_port_info);
+  dpdk_log_debug ("[%u] Async flow queue info: %U", xd->port_id, format_dpdk_flow_queue_info,
+		  &flow_queue_info);
+}
+
+void
+dpdk_device_setup (dpdk_device_t *xd)
 {
   vlib_main_t *vm = vlib_get_main ();
   vnet_main_t *vnm = vnet_get_main ();
@@ -239,6 +300,9 @@ retry:
 
   if (vec_len (xd->errors))
     goto error;
+
+  if (xd->supported_flow_actions != 0)
+    dpdk_device_configure_flow_offload (xd);
 
   xd->buffer_flags =
     (VLIB_BUFFER_TOTAL_LENGTH_VALID | VLIB_BUFFER_EXT_HDR_VALID);
