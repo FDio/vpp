@@ -44,6 +44,11 @@
 #include <vlib/vmbus/vmbus.h>
 #include <vnet/flow/flow.h>
 
+#define DPDK_VNET_FLOW_DEFAULT_SUPPORTED_ACTIONS                                                   \
+  (VNET_FLOW_ACTION_MARK | VNET_FLOW_ACTION_REDIRECT_TO_NODE |                                     \
+   VNET_FLOW_ACTION_REDIRECT_TO_QUEUE | VNET_FLOW_ACTION_BUFFER_ADVANCE | VNET_FLOW_ACTION_COUNT | \
+   VNET_FLOW_ACTION_DROP | VNET_FLOW_ACTION_RSS)
+
 extern vnet_device_class_t dpdk_device_class;
 extern vlib_node_registration_t dpdk_input_node;
 extern vlib_node_registration_t admin_up_down_process_node;
