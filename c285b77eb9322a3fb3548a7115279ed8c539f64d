@@ -158,6 +158,24 @@
       "parentUuid": "7cec436d_8983474e",
       "revId": "c285b77eb9322a3fb3548a7115279ed8c539f64d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "00b61f04_31ac2f31",
+        "filename": "src/vpp/app/dump_metrics.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 306,
+      "author": {
+        "id": 3270
+      },
+      "writtenOn": "2026-02-19T09:56:31Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "7cec436d_8983474e",
+      "revId": "c285b77eb9322a3fb3548a7115279ed8c539f64d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
