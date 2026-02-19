@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3da18ee7_e8c068f2",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-02-19T22:47:53Z",
+      "side": 1,
+      "message": "excesive inlining/const propagation, let\u0027s keep 4 variants",
+      "revId": "97a4a19db17c99b42ff219185a12918c23ab1989",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
