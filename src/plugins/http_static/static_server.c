@@ -852,6 +852,12 @@ hss_add_segment_callback (u32 client_index, u64 segment_handle)
   return 0;
 }
 
+static int
+hss_del_segment_callback (u32 client_index, u64 segment_handle)
+{
+  return 0;
+}
+
 static void
 hss_ts_cleanup (session_t *s, session_cleanup_ntf_t ntf)
 {
@@ -891,6 +897,7 @@ static session_cb_vft_t hss_cb_vft = {
   .session_disconnect_callback = hss_ts_disconnect_callback,
   .session_connected_callback = hss_ts_connected_callback,
   .add_segment_callback = hss_add_segment_callback,
+  .del_segment_callback = hss_del_segment_callback,
   .builtin_app_rx_callback = hss_ts_rx_callback,
   .builtin_app_tx_callback = hss_ts_tx_callback,
   .session_reset_callback = hss_ts_reset_callback,
