@@ -7,17 +7,14 @@
 #include <snort/snort.h>
 
 static_always_inline void
-snort_deq_node_inject (vlib_main_t *vm, vlib_node_runtime_t *node,
-		       snort_qpair_t *qp)
+snort_deq_node_inject (vlib_main_t *vm, vlib_node_runtime_t *node, snort_qpair_t *qp,
+		       daq_vpp_head_tail_t tail)
 {
   daq_vpp_desc_index_t mask = pow2_mask (qp->log2_empty_buf_queue_size);
-  daq_vpp_head_tail_t tail, last_tail = qp->empty_buf_tail;
+  daq_vpp_head_tail_t last_tail = qp->empty_buf_tail;
   u32 from[VLIB_FRAME_SIZE];
   u16 nexts[VLIB_FRAME_SIZE];
   u32 n_recv;
-
-  /* recv injected buffers from empty_buf ring */
-  tail = __atomic_load_n (&qp->hdr->deq.empty_buf_tail, __ATOMIC_ACQUIRE);
 
   n_recv = tail - last_tail;
 
@@ -44,7 +41,7 @@ snort_deq_node_inject (vlib_main_t *vm, vlib_node_runtime_t *node,
 
       b->current_config_index = ref_b->current_config_index;
       vnet_buffer (b)->feature_arc_index =
-	vnet_buffer (ref_b)->feature_arc_index;
+        vnet_buffer (ref_b)->feature_arc_index;
 
       from[i] = bi;
       nexts[i] = ref_qpe->next_index;
@@ -62,13 +59,13 @@ snort_deq_node_inject (vlib_main_t *vm, vlib_node_runtime_t *node,
 }
 
 static u32
-snort_deq_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
-		       snort_instance_t *si, snort_qpair_t *qp)
+snort_deq_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node, snort_instance_t *si,
+		       snort_qpair_t *qp, daq_vpp_head_tail_t head)
 {
   u32 buffer_indices[VLIB_FRAME_SIZE], *from;
   u16 next_indices[VLIB_FRAME_SIZE], *nexts;
   u32 n_left, n_deq, error = 0, n_total = 0;
-  daq_vpp_head_tail_t head, tail, old_tail;
+  daq_vpp_head_tail_t tail, old_tail;
   daq_vpp_desc_index_t next_free, mask = pow2_mask (qp->log2_queue_size);
   u32 drop_bitmap = si->drop_bitmap;
   u16 n_verdicsts[DAQ_VPP_MAX_DAQ_VERDICT] = {};
@@ -113,7 +110,6 @@ snort_deq_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
     }
 
   tail = qp->deq_tail;
-  head = __atomic_load_n (&qp->hdr->deq.head, __ATOMIC_ACQUIRE);
   next_free = qp->next_free_desc;
 
   if (head == tail)
@@ -224,8 +220,21 @@ VLIB_NODE_FN (snort_deq_node)
   while (qpairs_per_thread--)
     {
       snort_qpair_t *qp = qp_vec++[0];
-      snort_deq_node_inject (vm, node, qp);
-      rv += snort_deq_node_inline (vm, node, si, qp);
+      /*
+       * Snapshot both producer indexes once per queue-pair loop so
+       * snort_deq_node_inline() doesn’t free a descriptor before
+       * snort_deq_node_inject() finishes using the corresponding
+       * empty-buffer entry. Without the snapshot, snort_deq_node_inline()
+       * could release a descriptor that snort_deq_node_inject()
+       * still references, leading to invalid buffer indexes, crashes,
+       * or undefined behavior. Taking the snapshot ensures both functions
+       * operate on consistent metadata and prevents the race condition.
+       */
+      daq_vpp_head_tail_t deq_head = __atomic_load_n (&qp->hdr->deq.head, __ATOMIC_ACQUIRE);
+      daq_vpp_head_tail_t inject_tail =
+	__atomic_load_n (&qp->hdr->deq.empty_buf_tail, __ATOMIC_ACQUIRE);
+      snort_deq_node_inject (vm, node, qp, inject_tail);
+      rv += snort_deq_node_inline (vm, node, si, qp, deq_head);
     }
 
   return rv;
