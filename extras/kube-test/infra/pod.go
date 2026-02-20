@@ -279,12 +279,12 @@ func (pod *Pod) InitVpp() {
 	// exec interface config again
 	// otherwise, VPP ping sends 5 packets but receives 15
 	time.Sleep(time.Second * 1)
-	o, err = pod.ExecVppctl(ctx, "exec /vppstartup.conf")
+	o, err = pod.ExecVppctl(ctx, "exec /vppcliconf.conf")
 	AssertNil(err, o)
 	o, err = pod.ExecVppctl(ctx, "delete host-interface name eth0")
 	AssertNil(err, o)
 	o, err = pod.ExecVppctl(ctx, "ip route del 0.0.0.0/0")
 	AssertNil(err, o)
-	o, err = pod.ExecVppctl(ctx, "exec /vppstartup.conf")
+	o, err = pod.ExecVppctl(ctx, "exec /vppcliconf.conf")
 	AssertNil(err, o)
 }
