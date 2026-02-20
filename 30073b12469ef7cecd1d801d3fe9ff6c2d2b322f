@@ -16,6 +16,24 @@
       "message": "clib_mem_alloc() or even better, just use the stack if possible?",
       "revId": "30073b12469ef7cecd1d801d3fe9ff6c2d2b322f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "770d4cdd_8264f1fb",
+        "filename": "src/plugins/dpdk/device/common.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 77,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-02-20T08:20:22Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "a7cd84a7_8bd16d8b",
+      "revId": "30073b12469ef7cecd1d801d3fe9ff6c2d2b322f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
