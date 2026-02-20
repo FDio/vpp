@@ -12,6 +12,7 @@
 #include <vnet/ip-neighbor/ip_neighbor_watch.h>
 
 #include <vnet/ip/ip6_ll_table.h>
+#include <vnet/ip/ip6_link.h>
 #include <vnet/ip/ip46_address.h>
 #include <vnet/fib/fib_table.h>
 #include <vnet/adj/adj_mcast.h>
@@ -310,6 +311,33 @@ ip_af_type_pfx_len (ip_address_family_t type)
   return (type == AF_IP4 ? 32 : 128);
 }
 
+static bool
+ip_neighbor_is_self_link_local (const ip_neighbor_t *ipn)
+{
+  const ip6_address_t *ll;
+
+  if (AF_IP6 != ip_neighbor_get_af (ipn))
+    return (false);
+
+  if (!ip6_address_is_link_local_unicast (&ip_addr_v6 (&ipn->ipn_key->ipnk_ip)))
+    return (false);
+
+  ll = ip6_get_link_local_address (ipn->ipn_key->ipnk_sw_if_index);
+
+  return (NULL != ll && ip6_address_is_equal (ll, &ip_addr_v6 (&ipn->ipn_key->ipnk_ip)));
+}
+
+static void
+ip_neighbor_restore_self_link_local (const ip_neighbor_t *ipn)
+{
+  ip6_ll_prefix_t pfx = {
+    .ilp_addr = ip_addr_v6 (&ipn->ipn_key->ipnk_ip),
+    .ilp_sw_if_index = ipn->ipn_key->ipnk_sw_if_index,
+  };
+
+  ip6_ll_table_entry_update (&pfx, FIB_ROUTE_PATH_LOCAL);
+}
+
 static void
 ip_neighbor_adj_fib_add (ip_neighbor_t * ipn, u32 fib_index)
 {
@@ -321,6 +349,17 @@ ip_neighbor_adj_fib_add (ip_neighbor_t * ipn, u32 fib_index)
       ip6_address_is_link_local_unicast (&ip_addr_v6
 					 (&ipn->ipn_key->ipnk_ip)))
     {
+      /*
+       * Do not overwrite the interface's own LL receive DPO with a
+       * neighbor entry that can replace the local route in the LL FIB.
+       * Re-install local as a safeguard for already-corrupted state.
+       */
+      if (ip_neighbor_is_self_link_local (ipn))
+	{
+	  ip_neighbor_restore_self_link_local (ipn);
+	  return;
+	}
+
       ip6_ll_prefix_t pfx = {
 	.ilp_addr = ip_addr_v6 (&ipn->ipn_key->ipnk_ip),
 	.ilp_sw_if_index = ipn->ipn_key->ipnk_sw_if_index,
@@ -372,6 +411,16 @@ ip_neighbor_adj_fib_remove (ip_neighbor_t * ipn, u32 fib_index)
 	  ip6_address_is_link_local_unicast (&ip_addr_v6
 					     (&ipn->ipn_key->ipnk_ip)))
 	{
+	  /*
+	   * Re-install local receive route instead of deleting it
+	   * to avoid leaving the interface without a receive route.
+	   */
+	  if (ip_neighbor_is_self_link_local (ipn))
+	    {
+	      ip_neighbor_restore_self_link_local (ipn);
+	      return;
+	    }
+
 	  ip6_ll_prefix_t pfx = {
 	    .ilp_addr = ip_addr_v6 (&ipn->ipn_key->ipnk_ip),
 	    .ilp_sw_if_index = ipn->ipn_key->ipnk_sw_if_index,
