@@ -6,7 +6,11 @@
 #define DPDK_NB_RX_DESC_DEFAULT   1024
 #define DPDK_NB_TX_DESC_DEFAULT   1024
 #define DPDK_MAX_LRO_SIZE_DEFAULT 65536
+
+#define DPDK_DEFAULT_ASYNC_QUEUE_INDEX	   0
+#define DPDK_DEFAULT_ASYNC_N_QUEUES	   1
 #define DPDK_DEFAULT_ASYNC_FLOW_QUEUE_SIZE 64
+#define DPDK_DEFAULT_ASYNC_FLOW_PUSH_BATCH 32
 
 /* These args appear by themselves */
 #define foreach_eal_double_hyphen_predicate_arg \

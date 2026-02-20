@@ -159,13 +159,16 @@ typedef enum
 #undef _
 } vnet_flow_action_t;
 
-#define foreach_flow_error \
-  _( -1, NOT_SUPPORTED, "not supported")			\
-  _( -2, ALREADY_DONE, "already done")				\
-  _( -3, ALREADY_EXISTS, "already exists")			\
-  _( -4, NO_SUCH_ENTRY, "no such entry")			\
-  _( -5, NO_SUCH_INTERFACE, "no such interface")		\
-  _( -6, INTERNAL, "internal error")
+#define VNET_FLOW_VPP_SPECIFIC_ACTION_MASK                                                         \
+  (VNET_FLOW_ACTION_REDIRECT_TO_NODE | VNET_FLOW_ACTION_BUFFER_ADVANCE)
+
+#define foreach_flow_error                                                                         \
+  _ (-1, NOT_SUPPORTED, "not supported")                                                           \
+  _ (-2, ALREADY_DONE, "already done")                                                             \
+  _ (-3, ALREADY_EXISTS, "already exists")                                                         \
+  _ (-4, NO_SUCH_ENTRY, "no such entry")                                                           \
+  _ (-5, NO_SUCH_INTERFACE, "no such interface")                                                   \
+  _ (-6, INTERNAL, "internal error")
 
 #define foreach_flow_rss_types                                                \
   _ (0, FRAG_IPV4, "ipv4-frag")                                               \
@@ -312,15 +315,7 @@ typedef struct
   uword *private_data;
 } vnet_flow_t;
 
-int vnet_flow_get_range (vnet_main_t * vnm, char *owner, u32 count,
-			 u32 * start);
-int vnet_flow_add (vnet_main_t * vnm, vnet_flow_t * flow, u32 * flow_index);
-int vnet_flow_enable (vnet_main_t * vnm, u32 flow_index, u32 hw_if_index);
-int vnet_flow_disable (vnet_main_t * vnm, u32 flow_index, u32 hw_if_index);
-int vnet_flow_del (vnet_main_t * vnm, u32 flow_index);
-vnet_flow_t *vnet_get_flow (u32 flow_index);
-
-typedef struct
+typedef struct vnet_flow_range_t_
 {
   u32 start;
   u32 count;
@@ -331,6 +326,8 @@ typedef struct
 {
   /* pool of device flow entries */
   vnet_flow_t *global_flow_pool;
+
+  vnet_flow_t *global_flow_template_pool;
 
   /* flow ids allocated */
   u32 flows_used;
@@ -345,5 +342,27 @@ extern vnet_flow_main_t flow_main;
 
 format_function_t format_flow_actions;
 format_function_t format_flow_enabled_hw;
+
+int vnet_flow_get_range (vnet_main_t *vnm, char *owner, u32 count, u32 *start);
+int vnet_flow_add (vnet_main_t *vnm, vnet_flow_t *flow, u32 *flow_index);
+int vnet_flow_add_async_template (vnet_main_t *vnm, vnet_flow_t *template,
+				  u32 *flow_template_index);
+int vnet_flow_enable (vnet_main_t *vnm, u32 flow_index, u32 hw_if_index);
+int vnet_flow_disable (vnet_main_t *vnm, u32 flow_index, u32 hw_if_index);
+int vnet_flow_async_template_enable (vnet_main_t *vnm, u32 flow_template_index, u32 hw_if_index,
+				     u32 n_flows);
+int vnet_flow_async_template_disable (vnet_main_t *vnm, u32 flow_template_index, u32 hw_if_index);
+int vnet_flow_async_enable (vnet_main_t *vnm, vnet_flow_range_t *range, u32 flow_template_index,
+			    u32 hw_if_index);
+int vnet_flow_async_disable (vnet_main_t *vnm, vnet_flow_range_t *range, u32 hw_if_index);
+int vnet_flow_del (vnet_main_t *vnm, u32 flow_index);
+int vnet_flow_async_template_del (vnet_main_t *vnm, u32 flow_template_index);
+vnet_flow_t *vnet_get_flow (u32 flow_index);
+vnet_flow_t *vnet_get_flow_async_template (u32 flow_template_index);
+vnet_flow_t *vnet_flow_range_get_flow (const vnet_flow_range_t *range, u32 fi);
+
+#define flow_range_foreach(_r, _f)                                                                 \
+  (_f) = vnet_flow_range_get_flow ((_r), (_r)->start);                                             \
+  for (u32 _fi = 0; _fi < (_r)->count; ++_fi, (_f) = vnet_get_flow ((_r)->start + _fi))
 
 #endif /* included_vnet_flow_flow_h */
