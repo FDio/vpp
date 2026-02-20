@@ -13,7 +13,7 @@ from vpp_qemu_utils import (
 )
 from vpp_iperf import start_iperf, stop_iperf
 from framework import VppTestCase
-from asfframework import VppTestRunner, tag_fixme_debian11, is_distro_debian11
+from asfframework import VppTestRunner, tag_fixme_debian12, is_distro_debian11
 from config import config
 from vpp_papi import VppEnum
 import time
@@ -188,7 +188,7 @@ def generate_vpp_interface_tests(tests, test_class):
                 setattr(test_class, test_name, test_func)
 
 
-@tag_fixme_debian11
+@tag_fixme_debian12
 class TestVPPInterfacesQemu:
     """Test VPP interfaces inside a QEMU VM for IPv4/v6.
 

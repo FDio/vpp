@@ -29,6 +29,7 @@ from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_ip import DpoProto
 from vpp_papi import VppEnum
 from config import config
+from asfframework import tag_fixme_debian12
 
 NUM_PKTS = 67
 engines_supporting_chain_bufs = ["openssl", "async"]
@@ -421,6 +422,7 @@ class TemplateIpsecEsp(ConfigIpsecESP):
         super(TemplateIpsecEsp, self).tearDown()
 
 
+@tag_fixme_debian12
 class TestIpsecEsp1(
     TemplateIpsecEsp, IpsecTra46Tests, IpsecTun46Tests, IpsecTra6ExtTests
 ):
@@ -511,6 +513,7 @@ class TestIpsecEsp1(
         self.tun4_encrypt_node_name = old_name
 
 
+@tag_fixme_debian12
 class TestIpsecEspTun(TemplateIpsecEsp, IpsecTun46Tests):
     """Ipsec ESP - TUN encap tests"""
 
@@ -561,6 +564,7 @@ class TestIpsecEspTun(TemplateIpsecEsp, IpsecTun46Tests):
             self.assertEqual(rx[IPv6].tc, 5)
 
 
+@tag_fixme_debian12
 class TestIpsecEspTun2(TemplateIpsecEsp, IpsecTun46Tests):
     """Ipsec ESP - TUN DSCP tests"""
 
@@ -604,12 +608,14 @@ class TestIpsecEspTun2(TemplateIpsecEsp, IpsecTun46Tests):
             )
 
 
+@tag_fixme_debian12
 class TestIpsecEsp2(TemplateIpsecEsp, IpsecTcpTests):
     """Ipsec ESP - TCP tests"""
 
     pass
 
 
+@tag_fixme_debian12
 class TestIpsecEspAsync(TemplateIpsecEsp):
     """Ipsec ESP - Aysnc tests"""
 
@@ -828,6 +834,7 @@ class TestIpsecEspAsync(TemplateIpsecEsp):
         self.p_async.sa.remove_vpp_config()
 
 
+@tag_fixme_debian12
 class TestIpsecEspHandoff(
     TemplateIpsecEsp, IpsecTun6HandoffTests, IpsecTun4HandoffTests
 ):
@@ -892,6 +899,7 @@ class TemplateIpsecEspUdp(ConfigIpsecESP):
         self.logger.info(self.vapi.cli("show hardware"))
 
 
+@tag_fixme_debian12
 class TestIpsecEspUdp(TemplateIpsecEspUdp, IpsecTra4Tests):
     """Ipsec NAT-T ESP UDP tests"""
 
@@ -1258,6 +1266,7 @@ class RunTestIpsecEspAll(ConfigIpsecESP, IpsecTra4, IpsecTra6, IpsecTun4, IpsecT
 # GEN done; done; done;
 
 
+@tag_fixme_debian12
 class Test_native_ESNon_ARon_AES_GCM_128_NONE(RunTestIpsecEspAll):
     """native ESNon ARon AES-GCM-128/NONE IPSec test"""
 
@@ -1266,6 +1275,7 @@ class Test_native_ESNon_ARon_AES_GCM_128_NONE(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_native_ESNon_ARon_AES_GCM_192_NONE(RunTestIpsecEspAll):
     """native ESNon ARon AES-GCM-192/NONE IPSec test"""
 
@@ -1274,6 +1284,7 @@ class Test_native_ESNon_ARon_AES_GCM_192_NONE(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_native_ESNon_ARon_AES_GCM_256_NONE(RunTestIpsecEspAll):
     """native ESNon ARon AES-GCM-256/NONE IPSec test"""
 
@@ -1282,6 +1293,7 @@ class Test_native_ESNon_ARon_AES_GCM_256_NONE(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_native_ESNon_ARon_AES_CBC_128_MD5_96(RunTestIpsecEspAll):
     """native ESNon ARon AES-CBC-128/MD5-96 IPSec test"""
 
@@ -1290,6 +1302,7 @@ class Test_native_ESNon_ARon_AES_CBC_128_MD5_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_native_ESNon_ARon_AES_CBC_192_SHA1_96(RunTestIpsecEspAll):
     """native ESNon ARon AES-CBC-192/SHA1-96 IPSec test"""
 
@@ -1298,6 +1311,7 @@ class Test_native_ESNon_ARon_AES_CBC_192_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_native_ESNon_ARon_AES_CBC_256_SHA1_96(RunTestIpsecEspAll):
     """native ESNon ARon AES-CBC-256/SHA1-96 IPSec test"""
 
@@ -1306,6 +1320,7 @@ class Test_native_ESNon_ARon_AES_CBC_256_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_native_ESNon_ARon_3DES_CBC_SHA1_96(RunTestIpsecEspAll):
     """native ESNon ARon 3DES-CBC/SHA1-96 IPSec test"""
 
@@ -1314,6 +1329,7 @@ class Test_native_ESNon_ARon_3DES_CBC_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_native_ESNon_ARon_NONE_SHA1_96(RunTestIpsecEspAll):
     """native ESNon ARon NONE/SHA1-96 IPSec test"""
 
@@ -1322,6 +1338,7 @@ class Test_native_ESNon_ARon_NONE_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_native_ESNon_ARon_AES_CTR_128_SHA1_96(RunTestIpsecEspAll):
     """native ESNon ARon AES-CTR-128/SHA1-96 IPSec test"""
 
@@ -1330,6 +1347,7 @@ class Test_native_ESNon_ARon_AES_CTR_128_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_native_ESNon_ARon_AES_CTR_192_SHA1_96(RunTestIpsecEspAll):
     """native ESNon ARon AES-CTR-192/SHA1-96 IPSec test"""
 
@@ -1338,6 +1356,7 @@ class Test_native_ESNon_ARon_AES_CTR_192_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_native_ESNon_ARon_AES_CTR_256_SHA1_96(RunTestIpsecEspAll):
     """native ESNon ARon AES-CTR-256/SHA1-96 IPSec test"""
 
@@ -1346,6 +1365,7 @@ class Test_native_ESNon_ARon_AES_CTR_256_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_native_ESNon_ARoff_AES_GCM_128_NONE(RunTestIpsecEspAll):
     """native ESNon ARoff AES-GCM-128/NONE IPSec test"""
 
@@ -1354,6 +1374,7 @@ class Test_native_ESNon_ARoff_AES_GCM_128_NONE(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_native_ESNon_ARoff_AES_GCM_192_NONE(RunTestIpsecEspAll):
     """native ESNon ARoff AES-GCM-192/NONE IPSec test"""
 
@@ -1362,6 +1383,7 @@ class Test_native_ESNon_ARoff_AES_GCM_192_NONE(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_native_ESNon_ARoff_AES_GCM_256_NONE(RunTestIpsecEspAll):
     """native ESNon ARoff AES-GCM-256/NONE IPSec test"""
 
@@ -1370,6 +1392,7 @@ class Test_native_ESNon_ARoff_AES_GCM_256_NONE(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_native_ESNon_ARoff_AES_CBC_128_MD5_96(RunTestIpsecEspAll):
     """native ESNon ARoff AES-CBC-128/MD5-96 IPSec test"""
 
@@ -1378,6 +1401,7 @@ class Test_native_ESNon_ARoff_AES_CBC_128_MD5_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_native_ESNon_ARoff_AES_CBC_192_SHA1_96(RunTestIpsecEspAll):
     """native ESNon ARoff AES-CBC-192/SHA1-96 IPSec test"""
 
@@ -1386,6 +1410,7 @@ class Test_native_ESNon_ARoff_AES_CBC_192_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_native_ESNon_ARoff_AES_CBC_256_SHA1_96(RunTestIpsecEspAll):
     """native ESNon ARoff AES-CBC-256/SHA1-96 IPSec test"""
 
@@ -1394,6 +1419,7 @@ class Test_native_ESNon_ARoff_AES_CBC_256_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_native_ESNon_ARoff_3DES_CBC_SHA1_96(RunTestIpsecEspAll):
     """native ESNon ARoff 3DES-CBC/SHA1-96 IPSec test"""
 
@@ -1402,6 +1428,7 @@ class Test_native_ESNon_ARoff_3DES_CBC_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_native_ESNon_ARoff_NONE_SHA1_96(RunTestIpsecEspAll):
     """native ESNon ARoff NONE/SHA1-96 IPSec test"""
 
@@ -1410,6 +1437,7 @@ class Test_native_ESNon_ARoff_NONE_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_native_ESNon_ARoff_AES_CTR_128_SHA1_96(RunTestIpsecEspAll):
     """native ESNon ARoff AES-CTR-128/SHA1-96 IPSec test"""
 
@@ -1418,6 +1446,7 @@ class Test_native_ESNon_ARoff_AES_CTR_128_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_native_ESNon_ARoff_AES_CTR_192_SHA1_96(RunTestIpsecEspAll):
     """native ESNon ARoff AES-CTR-192/SHA1-96 IPSec test"""
 
@@ -1426,6 +1455,7 @@ class Test_native_ESNon_ARoff_AES_CTR_192_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_native_ESNon_ARoff_AES_CTR_256_SHA1_96(RunTestIpsecEspAll):
     """native ESNon ARoff AES-CTR-256/SHA1-96 IPSec test"""
 
@@ -1434,6 +1464,7 @@ class Test_native_ESNon_ARoff_AES_CTR_256_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_native_ESNoff_ARon_AES_GCM_128_NONE(RunTestIpsecEspAll):
     """native ESNoff ARon AES-GCM-128/NONE IPSec test"""
 
@@ -1442,6 +1473,7 @@ class Test_native_ESNoff_ARon_AES_GCM_128_NONE(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_native_ESNoff_ARon_AES_GCM_192_NONE(RunTestIpsecEspAll):
     """native ESNoff ARon AES-GCM-192/NONE IPSec test"""
 
@@ -1450,6 +1482,7 @@ class Test_native_ESNoff_ARon_AES_GCM_192_NONE(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_native_ESNoff_ARon_AES_GCM_256_NONE(RunTestIpsecEspAll):
     """native ESNoff ARon AES-GCM-256/NONE IPSec test"""
 
@@ -1458,6 +1491,7 @@ class Test_native_ESNoff_ARon_AES_GCM_256_NONE(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_native_ESNoff_ARon_AES_CBC_128_MD5_96(RunTestIpsecEspAll):
     """native ESNoff ARon AES-CBC-128/MD5-96 IPSec test"""
 
@@ -1466,6 +1500,7 @@ class Test_native_ESNoff_ARon_AES_CBC_128_MD5_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_native_ESNoff_ARon_AES_CBC_192_SHA1_96(RunTestIpsecEspAll):
     """native ESNoff ARon AES-CBC-192/SHA1-96 IPSec test"""
 
@@ -1474,6 +1509,7 @@ class Test_native_ESNoff_ARon_AES_CBC_192_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_native_ESNoff_ARon_AES_CBC_256_SHA1_96(RunTestIpsecEspAll):
     """native ESNoff ARon AES-CBC-256/SHA1-96 IPSec test"""
 
@@ -1482,6 +1518,7 @@ class Test_native_ESNoff_ARon_AES_CBC_256_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_native_ESNoff_ARon_3DES_CBC_SHA1_96(RunTestIpsecEspAll):
     """native ESNoff ARon 3DES-CBC/SHA1-96 IPSec test"""
 
@@ -1490,6 +1527,7 @@ class Test_native_ESNoff_ARon_3DES_CBC_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_native_ESNoff_ARon_NONE_SHA1_96(RunTestIpsecEspAll):
     """native ESNoff ARon NONE/SHA1-96 IPSec test"""
 
@@ -1498,6 +1536,7 @@ class Test_native_ESNoff_ARon_NONE_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_native_ESNoff_ARon_AES_CTR_128_SHA1_96(RunTestIpsecEspAll):
     """native ESNoff ARon AES-CTR-128/SHA1-96 IPSec test"""
 
@@ -1506,6 +1545,7 @@ class Test_native_ESNoff_ARon_AES_CTR_128_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_native_ESNoff_ARon_AES_CTR_192_SHA1_96(RunTestIpsecEspAll):
     """native ESNoff ARon AES-CTR-192/SHA1-96 IPSec test"""
 
@@ -1514,6 +1554,7 @@ class Test_native_ESNoff_ARon_AES_CTR_192_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_native_ESNoff_ARon_AES_CTR_256_SHA1_96(RunTestIpsecEspAll):
     """native ESNoff ARon AES-CTR-256/SHA1-96 IPSec test"""
 
@@ -1522,6 +1563,7 @@ class Test_native_ESNoff_ARon_AES_CTR_256_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_native_ESNoff_ARoff_AES_GCM_128_NONE(RunTestIpsecEspAll):
     """native ESNoff ARoff AES-GCM-128/NONE IPSec test"""
 
@@ -1530,6 +1572,7 @@ class Test_native_ESNoff_ARoff_AES_GCM_128_NONE(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_native_ESNoff_ARoff_AES_GCM_192_NONE(RunTestIpsecEspAll):
     """native ESNoff ARoff AES-GCM-192/NONE IPSec test"""
 
@@ -1538,6 +1581,7 @@ class Test_native_ESNoff_ARoff_AES_GCM_192_NONE(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_native_ESNoff_ARoff_AES_GCM_256_NONE(RunTestIpsecEspAll):
     """native ESNoff ARoff AES-GCM-256/NONE IPSec test"""
 
@@ -1546,6 +1590,7 @@ class Test_native_ESNoff_ARoff_AES_GCM_256_NONE(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_native_ESNoff_ARoff_AES_CBC_128_MD5_96(RunTestIpsecEspAll):
     """native ESNoff ARoff AES-CBC-128/MD5-96 IPSec test"""
 
@@ -1554,6 +1599,7 @@ class Test_native_ESNoff_ARoff_AES_CBC_128_MD5_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_native_ESNoff_ARoff_AES_CBC_192_SHA1_96(RunTestIpsecEspAll):
     """native ESNoff ARoff AES-CBC-192/SHA1-96 IPSec test"""
 
@@ -1562,6 +1608,7 @@ class Test_native_ESNoff_ARoff_AES_CBC_192_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_native_ESNoff_ARoff_AES_CBC_256_SHA1_96(RunTestIpsecEspAll):
     """native ESNoff ARoff AES-CBC-256/SHA1-96 IPSec test"""
 
@@ -1570,6 +1617,7 @@ class Test_native_ESNoff_ARoff_AES_CBC_256_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_native_ESNoff_ARoff_3DES_CBC_SHA1_96(RunTestIpsecEspAll):
     """native ESNoff ARoff 3DES-CBC/SHA1-96 IPSec test"""
 
@@ -1578,6 +1626,7 @@ class Test_native_ESNoff_ARoff_3DES_CBC_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_native_ESNoff_ARoff_NONE_SHA1_96(RunTestIpsecEspAll):
     """native ESNoff ARoff NONE/SHA1-96 IPSec test"""
 
@@ -1586,6 +1635,7 @@ class Test_native_ESNoff_ARoff_NONE_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_native_ESNoff_ARoff_AES_CTR_128_SHA1_96(RunTestIpsecEspAll):
     """native ESNoff ARoff AES-CTR-128/SHA1-96 IPSec test"""
 
@@ -1594,6 +1644,7 @@ class Test_native_ESNoff_ARoff_AES_CTR_128_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_native_ESNoff_ARoff_AES_CTR_192_SHA1_96(RunTestIpsecEspAll):
     """native ESNoff ARoff AES-CTR-192/SHA1-96 IPSec test"""
 
@@ -1602,6 +1653,7 @@ class Test_native_ESNoff_ARoff_AES_CTR_192_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_native_ESNoff_ARoff_AES_CTR_256_SHA1_96(RunTestIpsecEspAll):
     """native ESNoff ARoff AES-CTR-256/SHA1-96 IPSec test"""
 
@@ -1610,6 +1662,7 @@ class Test_native_ESNoff_ARoff_AES_CTR_256_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_ipsecmb_ESNon_ARon_AES_GCM_128_NONE(RunTestIpsecEspAll):
     """ipsecmb ESNon ARon AES-GCM-128/NONE IPSec test"""
 
@@ -1618,6 +1671,7 @@ class Test_ipsecmb_ESNon_ARon_AES_GCM_128_NONE(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_ipsecmb_ESNon_ARon_AES_GCM_192_NONE(RunTestIpsecEspAll):
     """ipsecmb ESNon ARon AES-GCM-192/NONE IPSec test"""
 
@@ -1626,6 +1680,7 @@ class Test_ipsecmb_ESNon_ARon_AES_GCM_192_NONE(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_ipsecmb_ESNon_ARon_AES_GCM_256_NONE(RunTestIpsecEspAll):
     """ipsecmb ESNon ARon AES-GCM-256/NONE IPSec test"""
 
@@ -1634,6 +1689,7 @@ class Test_ipsecmb_ESNon_ARon_AES_GCM_256_NONE(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_ipsecmb_ESNon_ARon_AES_CBC_128_MD5_96(RunTestIpsecEspAll):
     """ipsecmb ESNon ARon AES-CBC-128/MD5-96 IPSec test"""
 
@@ -1642,6 +1698,7 @@ class Test_ipsecmb_ESNon_ARon_AES_CBC_128_MD5_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_ipsecmb_ESNon_ARon_AES_CBC_192_SHA1_96(RunTestIpsecEspAll):
     """ipsecmb ESNon ARon AES-CBC-192/SHA1-96 IPSec test"""
 
@@ -1650,6 +1707,7 @@ class Test_ipsecmb_ESNon_ARon_AES_CBC_192_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_ipsecmb_ESNon_ARon_AES_CBC_256_SHA1_96(RunTestIpsecEspAll):
     """ipsecmb ESNon ARon AES-CBC-256/SHA1-96 IPSec test"""
 
@@ -1658,6 +1716,7 @@ class Test_ipsecmb_ESNon_ARon_AES_CBC_256_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_ipsecmb_ESNon_ARon_3DES_CBC_SHA1_96(RunTestIpsecEspAll):
     """ipsecmb ESNon ARon 3DES-CBC/SHA1-96 IPSec test"""
 
@@ -1666,6 +1725,7 @@ class Test_ipsecmb_ESNon_ARon_3DES_CBC_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_ipsecmb_ESNon_ARon_NONE_SHA1_96(RunTestIpsecEspAll):
     """ipsecmb ESNon ARon NONE/SHA1-96 IPSec test"""
 
@@ -1674,6 +1734,7 @@ class Test_ipsecmb_ESNon_ARon_NONE_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_ipsecmb_ESNon_ARon_AES_CTR_128_SHA1_96(RunTestIpsecEspAll):
     """ipsecmb ESNon ARon AES-CTR-128/SHA1-96 IPSec test"""
 
@@ -1682,6 +1743,7 @@ class Test_ipsecmb_ESNon_ARon_AES_CTR_128_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_ipsecmb_ESNon_ARon_AES_CTR_192_SHA1_96(RunTestIpsecEspAll):
     """ipsecmb ESNon ARon AES-CTR-192/SHA1-96 IPSec test"""
 
@@ -1690,6 +1752,7 @@ class Test_ipsecmb_ESNon_ARon_AES_CTR_192_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_ipsecmb_ESNon_ARon_AES_CTR_256_SHA1_96(RunTestIpsecEspAll):
     """ipsecmb ESNon ARon AES-CTR-256/SHA1-96 IPSec test"""
 
@@ -1698,6 +1761,7 @@ class Test_ipsecmb_ESNon_ARon_AES_CTR_256_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_ipsecmb_ESNon_ARoff_AES_GCM_128_NONE(RunTestIpsecEspAll):
     """ipsecmb ESNon ARoff AES-GCM-128/NONE IPSec test"""
 
@@ -1706,6 +1770,7 @@ class Test_ipsecmb_ESNon_ARoff_AES_GCM_128_NONE(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_ipsecmb_ESNon_ARoff_AES_GCM_192_NONE(RunTestIpsecEspAll):
     """ipsecmb ESNon ARoff AES-GCM-192/NONE IPSec test"""
 
@@ -1714,6 +1779,7 @@ class Test_ipsecmb_ESNon_ARoff_AES_GCM_192_NONE(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_ipsecmb_ESNon_ARoff_AES_GCM_256_NONE(RunTestIpsecEspAll):
     """ipsecmb ESNon ARoff AES-GCM-256/NONE IPSec test"""
 
@@ -1722,6 +1788,7 @@ class Test_ipsecmb_ESNon_ARoff_AES_GCM_256_NONE(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_ipsecmb_ESNon_ARoff_AES_CBC_128_MD5_96(RunTestIpsecEspAll):
     """ipsecmb ESNon ARoff AES-CBC-128/MD5-96 IPSec test"""
 
@@ -1730,6 +1797,7 @@ class Test_ipsecmb_ESNon_ARoff_AES_CBC_128_MD5_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_ipsecmb_ESNon_ARoff_AES_CBC_192_SHA1_96(RunTestIpsecEspAll):
     """ipsecmb ESNon ARoff AES-CBC-192/SHA1-96 IPSec test"""
 
@@ -1738,6 +1806,7 @@ class Test_ipsecmb_ESNon_ARoff_AES_CBC_192_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_ipsecmb_ESNon_ARoff_AES_CBC_256_SHA1_96(RunTestIpsecEspAll):
     """ipsecmb ESNon ARoff AES-CBC-256/SHA1-96 IPSec test"""
 
@@ -1746,6 +1815,7 @@ class Test_ipsecmb_ESNon_ARoff_AES_CBC_256_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_ipsecmb_ESNon_ARoff_3DES_CBC_SHA1_96(RunTestIpsecEspAll):
     """ipsecmb ESNon ARoff 3DES-CBC/SHA1-96 IPSec test"""
 
@@ -1754,6 +1824,7 @@ class Test_ipsecmb_ESNon_ARoff_3DES_CBC_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_ipsecmb_ESNon_ARoff_NONE_SHA1_96(RunTestIpsecEspAll):
     """ipsecmb ESNon ARoff NONE/SHA1-96 IPSec test"""
 
@@ -1762,6 +1833,7 @@ class Test_ipsecmb_ESNon_ARoff_NONE_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_ipsecmb_ESNon_ARoff_AES_CTR_128_SHA1_96(RunTestIpsecEspAll):
     """ipsecmb ESNon ARoff AES-CTR-128/SHA1-96 IPSec test"""
 
@@ -1770,6 +1842,7 @@ class Test_ipsecmb_ESNon_ARoff_AES_CTR_128_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_ipsecmb_ESNon_ARoff_AES_CTR_192_SHA1_96(RunTestIpsecEspAll):
     """ipsecmb ESNon ARoff AES-CTR-192/SHA1-96 IPSec test"""
 
@@ -1778,6 +1851,7 @@ class Test_ipsecmb_ESNon_ARoff_AES_CTR_192_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_ipsecmb_ESNon_ARoff_AES_CTR_256_SHA1_96(RunTestIpsecEspAll):
     """ipsecmb ESNon ARoff AES-CTR-256/SHA1-96 IPSec test"""
 
@@ -1786,6 +1860,7 @@ class Test_ipsecmb_ESNon_ARoff_AES_CTR_256_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_ipsecmb_ESNoff_ARon_AES_GCM_128_NONE(RunTestIpsecEspAll):
     """ipsecmb ESNoff ARon AES-GCM-128/NONE IPSec test"""
 
@@ -1794,6 +1869,7 @@ class Test_ipsecmb_ESNoff_ARon_AES_GCM_128_NONE(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_ipsecmb_ESNoff_ARon_AES_GCM_192_NONE(RunTestIpsecEspAll):
     """ipsecmb ESNoff ARon AES-GCM-192/NONE IPSec test"""
 
@@ -1802,6 +1878,7 @@ class Test_ipsecmb_ESNoff_ARon_AES_GCM_192_NONE(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_ipsecmb_ESNoff_ARon_AES_GCM_256_NONE(RunTestIpsecEspAll):
     """ipsecmb ESNoff ARon AES-GCM-256/NONE IPSec test"""
 
@@ -1810,6 +1887,7 @@ class Test_ipsecmb_ESNoff_ARon_AES_GCM_256_NONE(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_ipsecmb_ESNoff_ARon_AES_CBC_128_MD5_96(RunTestIpsecEspAll):
     """ipsecmb ESNoff ARon AES-CBC-128/MD5-96 IPSec test"""
 
@@ -1818,6 +1896,7 @@ class Test_ipsecmb_ESNoff_ARon_AES_CBC_128_MD5_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_ipsecmb_ESNoff_ARon_AES_CBC_192_SHA1_96(RunTestIpsecEspAll):
     """ipsecmb ESNoff ARon AES-CBC-192/SHA1-96 IPSec test"""
 
@@ -1826,6 +1905,7 @@ class Test_ipsecmb_ESNoff_ARon_AES_CBC_192_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_ipsecmb_ESNoff_ARon_AES_CBC_256_SHA1_96(RunTestIpsecEspAll):
     """ipsecmb ESNoff ARon AES-CBC-256/SHA1-96 IPSec test"""
 
@@ -1834,6 +1914,7 @@ class Test_ipsecmb_ESNoff_ARon_AES_CBC_256_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_ipsecmb_ESNoff_ARon_3DES_CBC_SHA1_96(RunTestIpsecEspAll):
     """ipsecmb ESNoff ARon 3DES-CBC/SHA1-96 IPSec test"""
 
@@ -1842,6 +1923,7 @@ class Test_ipsecmb_ESNoff_ARon_3DES_CBC_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_ipsecmb_ESNoff_ARon_NONE_SHA1_96(RunTestIpsecEspAll):
     """ipsecmb ESNoff ARon NONE/SHA1-96 IPSec test"""
 
@@ -1850,6 +1932,7 @@ class Test_ipsecmb_ESNoff_ARon_NONE_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_ipsecmb_ESNoff_ARon_AES_CTR_128_SHA1_96(RunTestIpsecEspAll):
     """ipsecmb ESNoff ARon AES-CTR-128/SHA1-96 IPSec test"""
 
@@ -1858,6 +1941,7 @@ class Test_ipsecmb_ESNoff_ARon_AES_CTR_128_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_ipsecmb_ESNoff_ARon_AES_CTR_192_SHA1_96(RunTestIpsecEspAll):
     """ipsecmb ESNoff ARon AES-CTR-192/SHA1-96 IPSec test"""
 
@@ -1866,6 +1950,7 @@ class Test_ipsecmb_ESNoff_ARon_AES_CTR_192_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_ipsecmb_ESNoff_ARon_AES_CTR_256_SHA1_96(RunTestIpsecEspAll):
     """ipsecmb ESNoff ARon AES-CTR-256/SHA1-96 IPSec test"""
 
@@ -1874,6 +1959,7 @@ class Test_ipsecmb_ESNoff_ARon_AES_CTR_256_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_ipsecmb_ESNoff_ARoff_AES_GCM_128_NONE(RunTestIpsecEspAll):
     """ipsecmb ESNoff ARoff AES-GCM-128/NONE IPSec test"""
 
@@ -1882,6 +1968,7 @@ class Test_ipsecmb_ESNoff_ARoff_AES_GCM_128_NONE(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_ipsecmb_ESNoff_ARoff_AES_GCM_192_NONE(RunTestIpsecEspAll):
     """ipsecmb ESNoff ARoff AES-GCM-192/NONE IPSec test"""
 
@@ -1890,6 +1977,7 @@ class Test_ipsecmb_ESNoff_ARoff_AES_GCM_192_NONE(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_ipsecmb_ESNoff_ARoff_AES_GCM_256_NONE(RunTestIpsecEspAll):
     """ipsecmb ESNoff ARoff AES-GCM-256/NONE IPSec test"""
 
@@ -1898,6 +1986,7 @@ class Test_ipsecmb_ESNoff_ARoff_AES_GCM_256_NONE(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_ipsecmb_ESNoff_ARoff_AES_CBC_128_MD5_96(RunTestIpsecEspAll):
     """ipsecmb ESNoff ARoff AES-CBC-128/MD5-96 IPSec test"""
 
@@ -1906,6 +1995,7 @@ class Test_ipsecmb_ESNoff_ARoff_AES_CBC_128_MD5_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_ipsecmb_ESNoff_ARoff_AES_CBC_192_SHA1_96(RunTestIpsecEspAll):
     """ipsecmb ESNoff ARoff AES-CBC-192/SHA1-96 IPSec test"""
 
@@ -1914,6 +2004,7 @@ class Test_ipsecmb_ESNoff_ARoff_AES_CBC_192_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_ipsecmb_ESNoff_ARoff_AES_CBC_256_SHA1_96(RunTestIpsecEspAll):
     """ipsecmb ESNoff ARoff AES-CBC-256/SHA1-96 IPSec test"""
 
@@ -1922,6 +2013,7 @@ class Test_ipsecmb_ESNoff_ARoff_AES_CBC_256_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_ipsecmb_ESNoff_ARoff_3DES_CBC_SHA1_96(RunTestIpsecEspAll):
     """ipsecmb ESNoff ARoff 3DES-CBC/SHA1-96 IPSec test"""
 
@@ -1930,6 +2022,7 @@ class Test_ipsecmb_ESNoff_ARoff_3DES_CBC_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_ipsecmb_ESNoff_ARoff_NONE_SHA1_96(RunTestIpsecEspAll):
     """ipsecmb ESNoff ARoff NONE/SHA1-96 IPSec test"""
 
@@ -1938,6 +2031,7 @@ class Test_ipsecmb_ESNoff_ARoff_NONE_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_ipsecmb_ESNoff_ARoff_AES_CTR_128_SHA1_96(RunTestIpsecEspAll):
     """ipsecmb ESNoff ARoff AES-CTR-128/SHA1-96 IPSec test"""
 
@@ -1946,6 +2040,7 @@ class Test_ipsecmb_ESNoff_ARoff_AES_CTR_128_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_ipsecmb_ESNoff_ARoff_AES_CTR_192_SHA1_96(RunTestIpsecEspAll):
     """ipsecmb ESNoff ARoff AES-CTR-192/SHA1-96 IPSec test"""
 
@@ -1954,6 +2049,7 @@ class Test_ipsecmb_ESNoff_ARoff_AES_CTR_192_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_ipsecmb_ESNoff_ARoff_AES_CTR_256_SHA1_96(RunTestIpsecEspAll):
     """ipsecmb ESNoff ARoff AES-CTR-256/SHA1-96 IPSec test"""
 
@@ -1962,6 +2058,7 @@ class Test_ipsecmb_ESNoff_ARoff_AES_CTR_256_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_openssl_ESNon_ARon_AES_GCM_128_NONE(RunTestIpsecEspAll):
     """openssl ESNon ARon AES-GCM-128/NONE IPSec test"""
 
@@ -1970,6 +2067,7 @@ class Test_openssl_ESNon_ARon_AES_GCM_128_NONE(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_openssl_ESNon_ARon_AES_GCM_192_NONE(RunTestIpsecEspAll):
     """openssl ESNon ARon AES-GCM-192/NONE IPSec test"""
 
@@ -1978,6 +2076,7 @@ class Test_openssl_ESNon_ARon_AES_GCM_192_NONE(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_openssl_ESNon_ARon_AES_GCM_256_NONE(RunTestIpsecEspAll):
     """openssl ESNon ARon AES-GCM-256/NONE IPSec test"""
 
@@ -1986,6 +2085,7 @@ class Test_openssl_ESNon_ARon_AES_GCM_256_NONE(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_openssl_ESNon_ARon_AES_CBC_128_MD5_96(RunTestIpsecEspAll):
     """openssl ESNon ARon AES-CBC-128/MD5-96 IPSec test"""
 
@@ -1994,6 +2094,7 @@ class Test_openssl_ESNon_ARon_AES_CBC_128_MD5_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_openssl_ESNon_ARon_AES_CBC_192_SHA1_96(RunTestIpsecEspAll):
     """openssl ESNon ARon AES-CBC-192/SHA1-96 IPSec test"""
 
@@ -2002,6 +2103,7 @@ class Test_openssl_ESNon_ARon_AES_CBC_192_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_openssl_ESNon_ARon_AES_CBC_256_SHA1_96(RunTestIpsecEspAll):
     """openssl ESNon ARon AES-CBC-256/SHA1-96 IPSec test"""
 
@@ -2010,6 +2112,7 @@ class Test_openssl_ESNon_ARon_AES_CBC_256_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_openssl_ESNon_ARon_3DES_CBC_SHA1_96(RunTestIpsecEspAll):
     """openssl ESNon ARon 3DES-CBC/SHA1-96 IPSec test"""
 
@@ -2018,6 +2121,7 @@ class Test_openssl_ESNon_ARon_3DES_CBC_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_openssl_ESNon_ARon_NONE_SHA1_96(RunTestIpsecEspAll):
     """openssl ESNon ARon NONE/SHA1-96 IPSec test"""
 
@@ -2026,6 +2130,7 @@ class Test_openssl_ESNon_ARon_NONE_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_openssl_ESNon_ARon_AES_CTR_128_SHA1_96(RunTestIpsecEspAll):
     """openssl ESNon ARon AES-CTR-128/SHA1-96 IPSec test"""
 
@@ -2034,6 +2139,7 @@ class Test_openssl_ESNon_ARon_AES_CTR_128_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_openssl_ESNon_ARon_AES_CTR_192_SHA1_96(RunTestIpsecEspAll):
     """openssl ESNon ARon AES-CTR-192/SHA1-96 IPSec test"""
 
@@ -2042,6 +2148,7 @@ class Test_openssl_ESNon_ARon_AES_CTR_192_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_openssl_ESNon_ARon_AES_CTR_256_SHA1_96(RunTestIpsecEspAll):
     """openssl ESNon ARon AES-CTR-256/SHA1-96 IPSec test"""
 
@@ -2050,6 +2157,7 @@ class Test_openssl_ESNon_ARon_AES_CTR_256_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_openssl_ESNon_ARon_AES_NULL_GMAC_128_NONE(RunTestIpsecEspAll):
     """openssl ESNon ARon AES-NULL-GMAC-128/NONE IPSec test"""
 
@@ -2058,6 +2166,7 @@ class Test_openssl_ESNon_ARon_AES_NULL_GMAC_128_NONE(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_openssl_ESNon_ARon_AES_NULL_GMAC_192_NONE(RunTestIpsecEspAll):
     """openssl ESNon ARon AES-NULL-GMAC-192/NONE IPSec test"""
 
@@ -2066,6 +2175,7 @@ class Test_openssl_ESNon_ARon_AES_NULL_GMAC_192_NONE(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_openssl_ESNon_ARon_AES_NULL_GMAC_256_NONE(RunTestIpsecEspAll):
     """openssl ESNon ARon AES-NULL-GMAC-256/NONE IPSec test"""
 
@@ -2074,6 +2184,7 @@ class Test_openssl_ESNon_ARon_AES_NULL_GMAC_256_NONE(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_openssl_ESNon_ARoff_AES_GCM_128_NONE(RunTestIpsecEspAll):
     """openssl ESNon ARoff AES-GCM-128/NONE IPSec test"""
 
@@ -2082,6 +2193,7 @@ class Test_openssl_ESNon_ARoff_AES_GCM_128_NONE(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_openssl_ESNon_ARoff_AES_GCM_192_NONE(RunTestIpsecEspAll):
     """openssl ESNon ARoff AES-GCM-192/NONE IPSec test"""
 
@@ -2090,6 +2202,7 @@ class Test_openssl_ESNon_ARoff_AES_GCM_192_NONE(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_openssl_ESNon_ARoff_AES_GCM_256_NONE(RunTestIpsecEspAll):
     """openssl ESNon ARoff AES-GCM-256/NONE IPSec test"""
 
@@ -2098,6 +2211,7 @@ class Test_openssl_ESNon_ARoff_AES_GCM_256_NONE(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_openssl_ESNon_ARoff_AES_CBC_128_MD5_96(RunTestIpsecEspAll):
     """openssl ESNon ARoff AES-CBC-128/MD5-96 IPSec test"""
 
@@ -2106,6 +2220,7 @@ class Test_openssl_ESNon_ARoff_AES_CBC_128_MD5_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_openssl_ESNon_ARoff_AES_CBC_192_SHA1_96(RunTestIpsecEspAll):
     """openssl ESNon ARoff AES-CBC-192/SHA1-96 IPSec test"""
 
@@ -2114,6 +2229,7 @@ class Test_openssl_ESNon_ARoff_AES_CBC_192_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_openssl_ESNon_ARoff_AES_CBC_256_SHA1_96(RunTestIpsecEspAll):
     """openssl ESNon ARoff AES-CBC-256/SHA1-96 IPSec test"""
 
@@ -2122,6 +2238,7 @@ class Test_openssl_ESNon_ARoff_AES_CBC_256_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_openssl_ESNon_ARoff_3DES_CBC_SHA1_96(RunTestIpsecEspAll):
     """openssl ESNon ARoff 3DES-CBC/SHA1-96 IPSec test"""
 
@@ -2130,6 +2247,7 @@ class Test_openssl_ESNon_ARoff_3DES_CBC_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_openssl_ESNon_ARoff_NONE_SHA1_96(RunTestIpsecEspAll):
     """openssl ESNon ARoff NONE/SHA1-96 IPSec test"""
 
@@ -2138,6 +2256,7 @@ class Test_openssl_ESNon_ARoff_NONE_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_openssl_ESNon_ARoff_AES_CTR_128_SHA1_96(RunTestIpsecEspAll):
     """openssl ESNon ARoff AES-CTR-128/SHA1-96 IPSec test"""
 
@@ -2146,6 +2265,7 @@ class Test_openssl_ESNon_ARoff_AES_CTR_128_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_openssl_ESNon_ARoff_AES_CTR_192_SHA1_96(RunTestIpsecEspAll):
     """openssl ESNon ARoff AES-CTR-192/SHA1-96 IPSec test"""
 
@@ -2154,6 +2274,7 @@ class Test_openssl_ESNon_ARoff_AES_CTR_192_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_openssl_ESNon_ARoff_AES_CTR_256_SHA1_96(RunTestIpsecEspAll):
     """openssl ESNon ARoff AES-CTR-256/SHA1-96 IPSec test"""
 
@@ -2162,6 +2283,7 @@ class Test_openssl_ESNon_ARoff_AES_CTR_256_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_openssl_ESNon_ARoff_AES_NULL_GMAC_128_NONE(RunTestIpsecEspAll):
     """openssl ESNon ARoff AES-NULL-GMAC-128/NONE IPSec test"""
 
@@ -2170,6 +2292,7 @@ class Test_openssl_ESNon_ARoff_AES_NULL_GMAC_128_NONE(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_openssl_ESNon_ARoff_AES_NULL_GMAC_192_NONE(RunTestIpsecEspAll):
     """openssl ESNon ARoff AES-NULL-GMAC-192/NONE IPSec test"""
 
@@ -2178,6 +2301,7 @@ class Test_openssl_ESNon_ARoff_AES_NULL_GMAC_192_NONE(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_openssl_ESNon_ARoff_AES_NULL_GMAC_256_NONE(RunTestIpsecEspAll):
     """openssl ESNon ARoff AES-NULL-GMAC-256/NONE IPSec test"""
 
@@ -2186,6 +2310,7 @@ class Test_openssl_ESNon_ARoff_AES_NULL_GMAC_256_NONE(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_openssl_ESNoff_ARon_AES_GCM_128_NONE(RunTestIpsecEspAll):
     """openssl ESNoff ARon AES-GCM-128/NONE IPSec test"""
 
@@ -2194,6 +2319,7 @@ class Test_openssl_ESNoff_ARon_AES_GCM_128_NONE(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_openssl_ESNoff_ARon_AES_GCM_192_NONE(RunTestIpsecEspAll):
     """openssl ESNoff ARon AES-GCM-192/NONE IPSec test"""
 
@@ -2202,6 +2328,7 @@ class Test_openssl_ESNoff_ARon_AES_GCM_192_NONE(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_openssl_ESNoff_ARon_AES_GCM_256_NONE(RunTestIpsecEspAll):
     """openssl ESNoff ARon AES-GCM-256/NONE IPSec test"""
 
@@ -2210,6 +2337,7 @@ class Test_openssl_ESNoff_ARon_AES_GCM_256_NONE(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_openssl_ESNoff_ARon_AES_CBC_128_MD5_96(RunTestIpsecEspAll):
     """openssl ESNoff ARon AES-CBC-128/MD5-96 IPSec test"""
 
@@ -2218,6 +2346,7 @@ class Test_openssl_ESNoff_ARon_AES_CBC_128_MD5_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_openssl_ESNoff_ARon_AES_CBC_192_SHA1_96(RunTestIpsecEspAll):
     """openssl ESNoff ARon AES-CBC-192/SHA1-96 IPSec test"""
 
@@ -2226,6 +2355,7 @@ class Test_openssl_ESNoff_ARon_AES_CBC_192_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_openssl_ESNoff_ARon_AES_CBC_256_SHA1_96(RunTestIpsecEspAll):
     """openssl ESNoff ARon AES-CBC-256/SHA1-96 IPSec test"""
 
@@ -2234,6 +2364,7 @@ class Test_openssl_ESNoff_ARon_AES_CBC_256_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_openssl_ESNoff_ARon_3DES_CBC_SHA1_96(RunTestIpsecEspAll):
     """openssl ESNoff ARon 3DES-CBC/SHA1-96 IPSec test"""
 
@@ -2242,6 +2373,7 @@ class Test_openssl_ESNoff_ARon_3DES_CBC_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_openssl_ESNoff_ARon_NONE_SHA1_96(RunTestIpsecEspAll):
     """openssl ESNoff ARon NONE/SHA1-96 IPSec test"""
 
@@ -2250,6 +2382,7 @@ class Test_openssl_ESNoff_ARon_NONE_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_openssl_ESNoff_ARon_AES_CTR_128_SHA1_96(RunTestIpsecEspAll):
     """openssl ESNoff ARon AES-CTR-128/SHA1-96 IPSec test"""
 
@@ -2258,6 +2391,7 @@ class Test_openssl_ESNoff_ARon_AES_CTR_128_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_openssl_ESNoff_ARon_AES_CTR_192_SHA1_96(RunTestIpsecEspAll):
     """openssl ESNoff ARon AES-CTR-192/SHA1-96 IPSec test"""
 
@@ -2266,6 +2400,7 @@ class Test_openssl_ESNoff_ARon_AES_CTR_192_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_openssl_ESNoff_ARon_AES_CTR_256_SHA1_96(RunTestIpsecEspAll):
     """openssl ESNoff ARon AES-CTR-256/SHA1-96 IPSec test"""
 
@@ -2274,6 +2409,7 @@ class Test_openssl_ESNoff_ARon_AES_CTR_256_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_openssl_ESNoff_ARon_AES_NULL_GMAC_128_NONE(RunTestIpsecEspAll):
     """openssl ESNoff ARon AES-NULL-GMAC-128/NONE IPSec test"""
 
@@ -2282,6 +2418,7 @@ class Test_openssl_ESNoff_ARon_AES_NULL_GMAC_128_NONE(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_openssl_ESNoff_ARon_AES_NULL_GMAC_192_NONE(RunTestIpsecEspAll):
     """openssl ESNoff ARon AES-NULL-GMAC-192/NONE IPSec test"""
 
@@ -2290,6 +2427,7 @@ class Test_openssl_ESNoff_ARon_AES_NULL_GMAC_192_NONE(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_openssl_ESNoff_ARon_AES_NULL_GMAC_256_NONE(RunTestIpsecEspAll):
     """openssl ESNoff ARon AES-NULL-GMAC-256/NONE IPSec test"""
 
@@ -2298,6 +2436,7 @@ class Test_openssl_ESNoff_ARon_AES_NULL_GMAC_256_NONE(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_openssl_ESNoff_ARoff_AES_GCM_128_NONE(RunTestIpsecEspAll):
     """openssl ESNoff ARoff AES-GCM-128/NONE IPSec test"""
 
@@ -2306,6 +2445,7 @@ class Test_openssl_ESNoff_ARoff_AES_GCM_128_NONE(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_openssl_ESNoff_ARoff_AES_GCM_192_NONE(RunTestIpsecEspAll):
     """openssl ESNoff ARoff AES-GCM-192/NONE IPSec test"""
 
@@ -2314,6 +2454,7 @@ class Test_openssl_ESNoff_ARoff_AES_GCM_192_NONE(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_openssl_ESNoff_ARoff_AES_GCM_256_NONE(RunTestIpsecEspAll):
     """openssl ESNoff ARoff AES-GCM-256/NONE IPSec test"""
 
@@ -2322,6 +2463,7 @@ class Test_openssl_ESNoff_ARoff_AES_GCM_256_NONE(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_openssl_ESNoff_ARoff_AES_CBC_128_MD5_96(RunTestIpsecEspAll):
     """openssl ESNoff ARoff AES-CBC-128/MD5-96 IPSec test"""
 
@@ -2330,6 +2472,7 @@ class Test_openssl_ESNoff_ARoff_AES_CBC_128_MD5_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_openssl_ESNoff_ARoff_AES_CBC_192_SHA1_96(RunTestIpsecEspAll):
     """openssl ESNoff ARoff AES-CBC-192/SHA1-96 IPSec test"""
 
@@ -2338,6 +2481,7 @@ class Test_openssl_ESNoff_ARoff_AES_CBC_192_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_openssl_ESNoff_ARoff_AES_CBC_256_SHA1_96(RunTestIpsecEspAll):
     """openssl ESNoff ARoff AES-CBC-256/SHA1-96 IPSec test"""
 
@@ -2346,6 +2490,7 @@ class Test_openssl_ESNoff_ARoff_AES_CBC_256_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_openssl_ESNoff_ARoff_3DES_CBC_SHA1_96(RunTestIpsecEspAll):
     """openssl ESNoff ARoff 3DES-CBC/SHA1-96 IPSec test"""
 
@@ -2354,6 +2499,7 @@ class Test_openssl_ESNoff_ARoff_3DES_CBC_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_openssl_ESNoff_ARoff_NONE_SHA1_96(RunTestIpsecEspAll):
     """openssl ESNoff ARoff NONE/SHA1-96 IPSec test"""
 
@@ -2362,6 +2508,7 @@ class Test_openssl_ESNoff_ARoff_NONE_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_openssl_ESNoff_ARoff_AES_CTR_128_SHA1_96(RunTestIpsecEspAll):
     """openssl ESNoff ARoff AES-CTR-128/SHA1-96 IPSec test"""
 
@@ -2370,6 +2517,7 @@ class Test_openssl_ESNoff_ARoff_AES_CTR_128_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_openssl_ESNoff_ARoff_AES_CTR_192_SHA1_96(RunTestIpsecEspAll):
     """openssl ESNoff ARoff AES-CTR-192/SHA1-96 IPSec test"""
 
@@ -2378,6 +2526,7 @@ class Test_openssl_ESNoff_ARoff_AES_CTR_192_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_openssl_ESNoff_ARoff_AES_CTR_256_SHA1_96(RunTestIpsecEspAll):
     """openssl ESNoff ARoff AES-CTR-256/SHA1-96 IPSec test"""
 
@@ -2386,6 +2535,7 @@ class Test_openssl_ESNoff_ARoff_AES_CTR_256_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_openssl_ESNoff_ARoff_AES_NULL_GMAC_128_NONE(RunTestIpsecEspAll):
     """openssl ESNoff ARoff AES-NULL-GMAC-128/NONE IPSec test"""
 
@@ -2394,6 +2544,7 @@ class Test_openssl_ESNoff_ARoff_AES_NULL_GMAC_128_NONE(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_openssl_ESNoff_ARoff_AES_NULL_GMAC_192_NONE(RunTestIpsecEspAll):
     """openssl ESNoff ARoff AES-NULL-GMAC-192/NONE IPSec test"""
 
@@ -2402,6 +2553,7 @@ class Test_openssl_ESNoff_ARoff_AES_NULL_GMAC_192_NONE(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_openssl_ESNoff_ARoff_AES_NULL_GMAC_256_NONE(RunTestIpsecEspAll):
     """openssl ESNoff ARoff AES-NULL-GMAC-256/NONE IPSec test"""
 
@@ -2410,6 +2562,7 @@ class Test_openssl_ESNoff_ARoff_AES_NULL_GMAC_256_NONE(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_async_ESNon_ARon_AES_GCM_128_NONE(RunTestIpsecEspAll):
     """async ESNon ARon AES-GCM-128/NONE IPSec test"""
 
@@ -2418,6 +2571,7 @@ class Test_async_ESNon_ARon_AES_GCM_128_NONE(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_async_ESNon_ARon_AES_GCM_192_NONE(RunTestIpsecEspAll):
     """async ESNon ARon AES-GCM-192/NONE IPSec test"""
 
@@ -2426,6 +2580,7 @@ class Test_async_ESNon_ARon_AES_GCM_192_NONE(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_async_ESNon_ARon_AES_GCM_256_NONE(RunTestIpsecEspAll):
     """async ESNon ARon AES-GCM-256/NONE IPSec test"""
 
@@ -2434,6 +2589,7 @@ class Test_async_ESNon_ARon_AES_GCM_256_NONE(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_async_ESNon_ARon_AES_CBC_192_SHA1_96(RunTestIpsecEspAll):
     """async ESNon ARon AES-CBC-192/SHA1-96 IPSec test"""
 
@@ -2442,6 +2598,7 @@ class Test_async_ESNon_ARon_AES_CBC_192_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_async_ESNon_ARon_AES_CBC_256_SHA1_96(RunTestIpsecEspAll):
     """async ESNon ARon AES-CBC-256/SHA1-96 IPSec test"""
 
@@ -2450,6 +2607,7 @@ class Test_async_ESNon_ARon_AES_CBC_256_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_async_ESNon_ARoff_AES_GCM_128_NONE(RunTestIpsecEspAll):
     """async ESNon ARoff AES-GCM-128/NONE IPSec test"""
 
@@ -2458,6 +2616,7 @@ class Test_async_ESNon_ARoff_AES_GCM_128_NONE(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_async_ESNon_ARoff_AES_GCM_192_NONE(RunTestIpsecEspAll):
     """async ESNon ARoff AES-GCM-192/NONE IPSec test"""
 
@@ -2466,6 +2625,7 @@ class Test_async_ESNon_ARoff_AES_GCM_192_NONE(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_async_ESNon_ARoff_AES_GCM_256_NONE(RunTestIpsecEspAll):
     """async ESNon ARoff AES-GCM-256/NONE IPSec test"""
 
@@ -2474,6 +2634,7 @@ class Test_async_ESNon_ARoff_AES_GCM_256_NONE(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_async_ESNon_ARoff_AES_CBC_192_SHA1_96(RunTestIpsecEspAll):
     """async ESNon ARoff AES-CBC-192/SHA1-96 IPSec test"""
 
@@ -2482,6 +2643,7 @@ class Test_async_ESNon_ARoff_AES_CBC_192_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_async_ESNon_ARoff_AES_CBC_256_SHA1_96(RunTestIpsecEspAll):
     """async ESNon ARoff AES-CBC-256/SHA1-96 IPSec test"""
 
@@ -2490,6 +2652,7 @@ class Test_async_ESNon_ARoff_AES_CBC_256_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_async_ESNoff_ARon_AES_GCM_128_NONE(RunTestIpsecEspAll):
     """async ESNoff ARon AES-GCM-128/NONE IPSec test"""
 
@@ -2498,6 +2661,7 @@ class Test_async_ESNoff_ARon_AES_GCM_128_NONE(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_async_ESNoff_ARon_AES_GCM_192_NONE(RunTestIpsecEspAll):
     """async ESNoff ARon AES-GCM-192/NONE IPSec test"""
 
@@ -2506,6 +2670,7 @@ class Test_async_ESNoff_ARon_AES_GCM_192_NONE(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_async_ESNoff_ARon_AES_GCM_256_NONE(RunTestIpsecEspAll):
     """async ESNoff ARon AES-GCM-256/NONE IPSec test"""
 
@@ -2514,6 +2679,7 @@ class Test_async_ESNoff_ARon_AES_GCM_256_NONE(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_async_ESNoff_ARon_AES_CBC_192_SHA1_96(RunTestIpsecEspAll):
     """async ESNoff ARon AES-CBC-192/SHA1-96 IPSec test"""
 
@@ -2522,6 +2688,7 @@ class Test_async_ESNoff_ARon_AES_CBC_192_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_async_ESNoff_ARon_AES_CBC_256_SHA1_96(RunTestIpsecEspAll):
     """async ESNoff ARon AES-CBC-256/SHA1-96 IPSec test"""
 
@@ -2530,6 +2697,7 @@ class Test_async_ESNoff_ARon_AES_CBC_256_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_async_ESNoff_ARoff_AES_GCM_128_NONE(RunTestIpsecEspAll):
     """async ESNoff ARoff AES-GCM-128/NONE IPSec test"""
 
@@ -2538,6 +2706,7 @@ class Test_async_ESNoff_ARoff_AES_GCM_128_NONE(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_async_ESNoff_ARoff_AES_GCM_192_NONE(RunTestIpsecEspAll):
     """async ESNoff ARoff AES-GCM-192/NONE IPSec test"""
 
@@ -2546,6 +2715,7 @@ class Test_async_ESNoff_ARoff_AES_GCM_192_NONE(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_async_ESNoff_ARoff_AES_GCM_256_NONE(RunTestIpsecEspAll):
     """async ESNoff ARoff AES-GCM-256/NONE IPSec test"""
 
@@ -2554,6 +2724,7 @@ class Test_async_ESNoff_ARoff_AES_GCM_256_NONE(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_async_ESNoff_ARoff_AES_CBC_192_SHA1_96(RunTestIpsecEspAll):
     """async ESNoff ARoff AES-CBC-192/SHA1-96 IPSec test"""
 
@@ -2562,6 +2733,7 @@ class Test_async_ESNoff_ARoff_AES_CBC_192_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_debian12
 class Test_async_ESNoff_ARoff_AES_CBC_256_SHA1_96(RunTestIpsecEspAll):
     """async ESNoff ARoff AES-CBC-256/SHA1-96 IPSec test"""
 
