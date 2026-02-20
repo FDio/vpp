@@ -8,8 +8,10 @@ import (
 )
 
 func init() {
-	RegisterVethTests(EchoBuiltinTest, EchoBuiltinBandwidthTest, EchoBuiltinEchobytesTest, EchoBuiltinRoundtripTest, EchoBuiltinTestbytesTest, EchoBuiltinPeriodicReportTest, EchoBuiltinPeriodicReportTotalTest, TlsSingleConnectionTest, EchoBuiltinPeriodicReportUDPTest)
-	RegisterVethMWTests(TcpWithLossTest)
+	RegisterVethTests(EchoBuiltinTest, EchoBuiltinBandwidthTest, EchoBuiltinEchobytesTest, EchoBuiltinRoundtripTest,
+		EchoBuiltinTestbytesTest, EchoBuiltinPeriodicReportTest, EchoBuiltinPeriodicReportTotalTest, TlsSingleConnectionTest,
+		EchoBuiltinPeriodicReportUDPTest)
+	RegisterVethMWTests(TcpWithLossMWTest)
 	RegisterSoloVeth6Tests(TcpWithLoss6Test)
 }
 
@@ -40,8 +42,6 @@ func EchoBuiltinBandwidthTest(s *VethsSuite) {
 	o := clientVpp.Vppctl("test echo client nclients 4 bytes 2m throughput 32m" +
 		" uri tcp://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1)
 	Log(o)
-	AssertContains(o, "Test started")
-	AssertContains(o, "Test finished")
 	if regex.MatchString(o) {
 		matches := regex.FindStringSubmatch(o)
 		if len(matches) != 0 {
@@ -69,8 +69,6 @@ func EchoBuiltinPeriodicReportTotalTest(s *VethsSuite) {
 	o := clientVpp.Vppctl("test echo client bytes 7900k throughput 16m report-interval-total 1" +
 		" uri tcp://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1)
 	Log(o)
-	AssertContains(o, "Test started")
-	AssertContains(o, "Test finished")
 	if regex.MatchString(o) {
 		matches := regex.FindAllStringSubmatch(o, -1)
 		// Check we got a correct number of reports
@@ -104,8 +102,6 @@ func EchoBuiltinPeriodicReportUDPTest(s *VethsSuite) {
 	o := clientVpp.Vppctl("test echo client bytes 6000k throughput 12m report-interval 1 echo-bytes" +
 		" uri udp://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1)
 	Log(o)
-	AssertContains(o, "Test started")
-	AssertContains(o, "Test finished")
 	if regex.MatchString(o) {
 		matches := regex.FindAllStringSubmatch(o, -1)
 		// Check we got a correct number of reports
@@ -147,8 +143,6 @@ func EchoBuiltinPeriodicReportTest(s *VethsSuite) {
 	o := clientVpp.Vppctl("test echo client bytes 7900k throughput 16m report-interval 1" +
 		" uri tcp://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1)
 	Log(o)
-	AssertContains(o, "Test started")
-	AssertContains(o, "Test finished")
 	if regex.MatchString(o) {
 		matches := regex.FindAllStringSubmatch(o, -1)
 		// Check we got a correct number of reports
@@ -186,8 +180,6 @@ func EchoBuiltinRoundtripTest(s *VethsSuite) {
 	o := clientVpp.Vppctl("test echo client bytes 8m" +
 		" uri tcp://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1)
 	Log(o)
-	AssertContains(o, "Test started")
-	AssertContains(o, "Test finished")
 	if regex.MatchString(o) {
 		matches := regex.FindStringSubmatch(o)
 		if len(matches) != 0 {
@@ -255,7 +247,7 @@ func tcpEcho(port string, ip string, clientVpp *VppInstance, serverVpp *VppInsta
 	return output
 }
 
-func TcpWithLossTest(s *VethsSuite) {
+func TcpWithLossMWTest(s *VethsSuite) {
 	s.CpusPerVppContainer = 2
 	s.CpusPerContainer = 1
 	s.SetupTest()

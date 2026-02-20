@@ -4,19 +4,20 @@
 
 /* echo_client.c - vpp built-in echo client code */
 
-#include <hs_apps/echo_client.h>
+#include <float.h>
+#include <hs_apps/builtin_echo/echo_client.h>
 #include <vnet/tcp/tcp_types.h>
 
 static ec_main_t ec_main;
 
 #define ec_err(_fmt, _args...) clib_warning (_fmt, ##_args);
 
-#define ec_dbg(_fmt, _args...)                                                \
-  do                                                                          \
-    {                                                                         \
-      if (ec_main.cfg.verbose)                                                \
-	ec_err (_fmt, ##_args);                                               \
-    }                                                                         \
+#define ec_dbg(_fmt, _args...)                                                                     \
+  do                                                                                               \
+    {                                                                                              \
+      if (ec_main.cfg.test_cfg.verbose)                                                            \
+	ec_err (_fmt, ##_args);                                                                    \
+    }                                                                                              \
   while (0)
 
 #define ec_cli(_fmt, _args...) vlib_cli_output (vm, _fmt, ##_args)
@@ -56,10 +57,10 @@ ec_sessions_stop_clean ()
   ecm->end_test = true;
 }
 
-static inline ec_session_t *
+static inline echo_test_session_t *
 ec_session_alloc (ec_worker_t *wrk)
 {
-  ec_session_t *ecs;
+  echo_test_session_t *ecs;
 
   pool_get_zero (wrk->sessions, ecs);
   ecs->session_index = ecs - wrk->sessions;
@@ -68,7 +69,7 @@ ec_session_alloc (ec_worker_t *wrk)
   return ecs;
 }
 
-static inline ec_session_t *
+static inline echo_test_session_t *
 ec_session_get (ec_worker_t *wrk, u32 ec_index)
 {
   return pool_elt_at_index (wrk->sessions, ec_index);
@@ -90,7 +91,7 @@ update_rtt_stats (f64 session_rtt)
 }
 
 static void
-update_rtt_stats_tcp (ec_session_t *es)
+update_rtt_stats_tcp (echo_test_session_t *es)
 {
   session_t *s = session_get_from_handle_if_valid (es->vpp_session_handle);
   if (s)
@@ -108,7 +109,7 @@ update_rtt_stats_tcp (ec_session_t *es)
 }
 
 static void
-send_data_chunk (ec_main_t *ecm, ec_session_t *es)
+send_data_chunk (ec_main_t *ecm, echo_test_session_t *es)
 {
   u8 *test_data = ecm->connect_test_data;
   int test_buf_len, rv;
@@ -224,7 +225,7 @@ send_data_chunk (ec_main_t *ecm, ec_session_t *es)
 	  es->bytes_paced_current += es->bytes_paced_target;
 	}
 
-      if (ecm->cfg.verbose)
+      if (ecm->cfg.test_cfg.verbose)
 	{
           ELOG_TYPE_DECLARE (e) =
             {
@@ -247,7 +248,7 @@ static void
 receive_data_chunk (session_t *s)
 {
   ec_main_t *ecm = &ec_main;
-  ec_session_t *es;
+  echo_test_session_t *es;
   ec_worker_t *wrk;
   svm_fifo_t *rx_fifo;
   session_dgram_pre_hdr_t ph;
@@ -316,7 +317,7 @@ receive_data_chunk (session_t *s)
 	      update_rtt_stats (rtt);
 	    }
 	}
-      if (ecm->cfg.verbose)
+      if (ecm->cfg.test_cfg.verbose)
 	{
           ELOG_TYPE_DECLARE (e) =
             {
@@ -331,7 +332,7 @@ receive_data_chunk (session_t *s)
 	  ed->data[0] = n_read;
 	}
 
-      if (ecm->cfg.test_bytes)
+      if (ecm->cfg.test_cfg.test_bytes)
 	{
 	  for (i = 0; i < n_read; i++)
 	    {
@@ -370,7 +371,7 @@ ec_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
   f64 time_now = 0;
   ec_main_t *ecm = &ec_main;
   ec_worker_t *wrk;
-  ec_session_t *es;
+  echo_test_session_t *es;
   session_t *s;
 
   if (ecm->run_test != EC_RUNNING)
@@ -502,17 +503,17 @@ VLIB_REGISTER_NODE (echo_clients_node) = {
 static void
 ec_reset_runtime_config (ec_main_t *ecm)
 {
-  hs_test_cfg_init (&ecm->cfg);
+  hs_test_cfg_init (&ecm->cfg.test_cfg);
   ecm->n_clients = 1;
-  ecm->quic_streams = 1;
+  ecm->n_streams = 1;
   ecm->bytes_to_send = 8192;
   ecm->echo_bytes = 0;
-  ecm->fifo_size = 64 << 10;
+  ecm->cfg.fifo_size = 4 << 20;
   ecm->connections_per_batch = 1000;
-  ecm->private_segment_count = 0;
-  ecm->private_segment_size = 256 << 20;
+  ecm->cfg.private_segment_count = 0;
+  ecm->cfg.private_segment_size = 256 << 20;
   ecm->test_failed = 0;
-  ecm->tls_engine = CRYPTO_ENGINE_OPENSSL;
+  ecm->cfg.tls_engine = CRYPTO_ENGINE_OPENSSL;
   ecm->no_copy = 0;
   ecm->run_test = EC_STARTING;
   ecm->end_test = false;
@@ -547,7 +548,7 @@ ec_reset_runtime_config (ec_main_t *ecm)
   ecm->rtt_stats.min_rtt = CLIB_F64_MAX;
   if (ecm->rtt_stats.w_lock == NULL)
     clib_spinlock_init (&ecm->rtt_stats.w_lock);
-  vec_free (ecm->connect_uri);
+  vec_free (ecm->cfg.uri);
 }
 
 static int
@@ -651,7 +652,7 @@ ec_cleanup (ec_main_t *ecm)
   vec_foreach (wrk, ecm->wrk)
     ec_worker_cleanup (wrk);
 
-  vec_free (ecm->connect_uri);
+  vec_free (ecm->cfg.uri);
   vec_free (ecm->appns_id);
   if (ecm->throughput)
     ecm->pacing_window_len = 1;
@@ -667,7 +668,7 @@ ec_ctrl_send (hs_test_cmd_t cmd)
   session_t *s;
   int rv;
 
-  ecm->cfg.cmd = cmd;
+  ecm->cfg.test_cfg.cmd = cmd;
   if (ecm->ctrl_session_handle == SESSION_INVALID_HANDLE)
     {
       ec_dbg ("ctrl session went away");
@@ -682,11 +683,11 @@ ec_ctrl_send (hs_test_cmd_t cmd)
     }
 
   ec_dbg ("sending test paramters to the server..");
-  if (ecm->cfg.verbose)
-    hs_test_cfg_dump (&ecm->cfg, 1);
+  if (ecm->cfg.test_cfg.verbose)
+    hs_test_cfg_dump (&ecm->cfg.test_cfg, 1);
 
-  rv = svm_fifo_enqueue (s->tx_fifo, sizeof (ecm->cfg), (u8 *) &ecm->cfg);
-  ASSERT (rv == sizeof (ecm->cfg));
+  rv = svm_fifo_enqueue (s->tx_fifo, sizeof (ecm->cfg.test_cfg), (u8 *) &ecm->cfg.test_cfg);
+  ASSERT (rv == sizeof (ecm->cfg.test_cfg));
   session_program_tx_io_evt (s->handle, SESSION_IO_EVT_TX);
   return 0;
 }
@@ -709,7 +710,7 @@ quic_ec_session_connected_callback (u32 app_index, u32 api_context,
 				    session_t *s, session_error_t err)
 {
   ec_main_t *ecm = &ec_main;
-  ec_session_t *es;
+  echo_test_session_t *es;
   ec_worker_t *wrk;
   session_endpoint_cfg_t sep = SESSION_ENDPOINT_CFG_NULL;
   vnet_connect_args_t _a, *a = &_a;
@@ -743,7 +744,7 @@ quic_ec_session_connected_callback (u32 app_index, u32 api_context,
   clib_memcpy (&a->sep_ext, &sep, sizeof (sep));
   wrk = ec_worker_get (s->thread_index);
 
-  for (stream_n = 0; stream_n < ecm->quic_streams; stream_n++)
+  for (stream_n = 0; stream_n < ecm->n_streams; stream_n++)
     {
       ec_dbg ("QUIC opening stream #%d", stream_n);
       es = ec_session_alloc (wrk);
@@ -766,7 +767,7 @@ quic_ec_session_connected_callback (u32 app_index, u32 api_context,
       vec_add1 (wrk->conn_indices, es->session_index);
     }
 
-  clib_atomic_fetch_add (&ecm->ready_connections, ecm->quic_streams);
+  clib_atomic_fetch_add (&ecm->ready_connections, ecm->n_streams);
   if (ecm->ready_connections == ecm->expected_connections)
     {
       ecm->run_test = EC_RUNNING;
@@ -782,7 +783,7 @@ ec_calc_tput (ec_main_t *ecm)
 {
   vlib_main_t *vm = vlib_get_main ();
   ec_worker_t *wrk;
-  ec_session_t *sess;
+  echo_test_session_t *sess;
   f64 pacing_base;
   u64 bytes_paced_target;
   u64 target_size_threshold;
@@ -790,14 +791,14 @@ ec_calc_tput (ec_main_t *ecm)
   /* Choose an appropriate data size chunk threshold based on fifo size.
      ~30k is fine for most scenarios, unless the fifo starts getting
      smaller than 48k, where a slight curve is needed. */
-  if (PREDICT_TRUE (ecm->fifo_size > 49152))
+  if (PREDICT_TRUE (ecm->cfg.fifo_size > 49152))
     target_size_threshold = 30720;
-  else if (ecm->fifo_size > 20480)
+  else if (ecm->cfg.fifo_size > 20480)
     target_size_threshold = 12288;
-  else if (ecm->fifo_size > 10240)
+  else if (ecm->cfg.fifo_size > 10240)
     target_size_threshold = 6144;
   else
-    target_size_threshold = ecm->fifo_size;
+    target_size_threshold = ecm->cfg.fifo_size;
 
   /* find a suitable pacing window length & data chunk size */
   bytes_paced_target =
@@ -830,7 +831,7 @@ ec_session_connected_callback (u32 app_index, u32 api_context, session_t *s,
 			       session_error_t err)
 {
   ec_main_t *ecm = &ec_main;
-  ec_session_t *es;
+  echo_test_session_t *es;
   clib_thread_index_t thread_index;
   ec_worker_t *wrk;
 
@@ -949,7 +950,7 @@ ec_ctrl_session_rx_callback (session_t *s)
     }
 
   ec_dbg ("control message received:");
-  if (ecm->cfg.verbose)
+  if (ecm->cfg.test_cfg.verbose)
     hs_test_cfg_dump (&cfg, 1);
 
   switch (cfg.cmd)
@@ -958,7 +959,7 @@ ec_ctrl_session_rx_callback (session_t *s)
       switch (ecm->run_test)
 	{
 	case EC_STARTING:
-	  if (!hs_test_cfg_verify (&cfg, &ecm->cfg))
+	  if (!hs_test_cfg_verify (&cfg, &ecm->cfg.test_cfg))
 	    {
 	      ec_err ("invalid config received from server!");
 	      signal_evt_to_cli (EC_CLI_CONNECTS_FAILED);
@@ -1062,13 +1063,13 @@ ec_attach ()
 
   prealloc_fifos = ecm->prealloc_fifos ? ecm->expected_connections : 1;
 
-  options[APP_OPTIONS_SEGMENT_SIZE] = ecm->private_segment_size;
-  options[APP_OPTIONS_ADD_SEGMENT_SIZE] = ecm->private_segment_size;
-  options[APP_OPTIONS_RX_FIFO_SIZE] = ecm->fifo_size;
-  options[APP_OPTIONS_TX_FIFO_SIZE] = ecm->fifo_size;
+  options[APP_OPTIONS_SEGMENT_SIZE] = ecm->cfg.private_segment_size;
+  options[APP_OPTIONS_ADD_SEGMENT_SIZE] = ecm->cfg.private_segment_size;
+  options[APP_OPTIONS_RX_FIFO_SIZE] = ecm->cfg.fifo_size;
+  options[APP_OPTIONS_TX_FIFO_SIZE] = ecm->cfg.fifo_size;
   options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] = prealloc_fifos;
   options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
-  options[APP_OPTIONS_TLS_ENGINE] = ecm->tls_engine;
+  options[APP_OPTIONS_TLS_ENGINE] = ecm->cfg.tls_engine;
   options[APP_OPTIONS_PCT_FIRST_ALLOC] = 100;
   options[APP_OPTIONS_FLAGS] |= ecm->attach_flags;
   if (ecm->appns_id)
@@ -1090,14 +1091,14 @@ ec_attach ()
   ck_pair->cert_len = test_srv_crt_rsa_len;
   ck_pair->key_len = test_srv_key_rsa_len;
   vnet_app_add_cert_key_pair (ck_pair);
-  ecm->ckpair_index = ck_pair->index;
+  ecm->cfg.ckpair_index = ck_pair->index;
 
   vec_validate (ca_args->ca_chain, test_ca_chain_rsa_len - 1);
   clib_memcpy (ca_args->ca_chain, test_ca_chain_rsa, test_ca_chain_rsa_len);
   vec_validate (ca_args->crl, test_ca_crl_len - 1);
   clib_memcpy (ca_args->crl, test_ca_crl, test_ca_crl_len);
   app_crypto_add_ca_trust (ecm->app_index, ca_args);
-  ecm->ca_trust_index = ca_args->index;
+  ecm->cfg.ca_trust_index = ca_args->index;
 
   ecm->test_client_attached = 1;
 
@@ -1119,16 +1120,9 @@ ec_detach ()
   rv = vnet_application_detach (da);
   ecm->test_client_attached = 0;
   ecm->app_index = ~0;
-  vnet_app_del_cert_key_pair (ecm->ckpair_index);
+  vnet_app_del_cert_key_pair (ecm->cfg.ckpair_index);
 
   return rv;
-}
-
-static int
-ec_transport_needs_crypto (transport_proto_t proto)
-{
-  return proto == TRANSPORT_PROTO_TLS || proto == TRANSPORT_PROTO_DTLS ||
-	 proto == TRANSPORT_PROTO_QUIC;
 }
 
 static int
@@ -1140,8 +1134,8 @@ ec_connect_rpc (void *args)
   u32 n_clients, ci;
 
   n_clients = ecm->n_clients;
-  needs_crypto = ec_transport_needs_crypto (ecm->transport_proto);
-  clib_memcpy (&a->sep_ext, &ecm->connect_sep, sizeof (ecm->connect_sep));
+  needs_crypto = echo_test_transport_needs_crypto (&ecm->cfg.sep);
+  clib_memcpy (&a->sep_ext, &ecm->cfg.sep, sizeof (ecm->cfg.sep));
   a->sep_ext.transport_flags |= TRANSPORT_CFG_F_CONNECTED;
   a->app_index = ecm->app_index;
 
@@ -1162,8 +1156,8 @@ ec_connect_rpc (void *args)
 	  transport_endpt_ext_cfg_t *ext_cfg = session_endpoint_add_ext_cfg (
 	    &a->sep_ext, TRANSPORT_ENDPT_EXT_CFG_CRYPTO,
 	    sizeof (transport_endpt_crypto_cfg_t));
-	  ext_cfg->crypto.ckpair_index = ecm->ckpair_index;
-	  ext_cfg->crypto.ca_trust_index = ecm->ca_trust_index;
+	  ext_cfg->crypto.ckpair_index = ecm->cfg.ckpair_index;
+	  ext_cfg->crypto.ca_trust_index = ecm->cfg.ca_trust_index;
 	}
 
       rv = vnet_connect (a);
@@ -1203,8 +1197,8 @@ ec_ctrl_connect_rpc ()
   vnet_connect_args_t _a = {}, *a = &_a;
 
   a->api_context = HS_CTRL_HANDLE;
-  ecm->cfg.cmd = HS_TEST_CMD_SYNC;
-  clib_memcpy (&a->sep_ext, &ecm->connect_sep, sizeof (ecm->connect_sep));
+  ecm->cfg.test_cfg.cmd = HS_TEST_CMD_SYNC;
+  clib_memcpy (&a->sep_ext, &ecm->cfg.sep, sizeof (ecm->cfg.sep));
   a->sep_ext.transport_proto = TRANSPORT_PROTO_TCP;
   a->app_index = ecm->app_index;
 
@@ -1243,7 +1237,7 @@ static int
 ec_ctrl_test_sync ()
 {
   ec_main_t *ecm = &ec_main;
-  ecm->cfg.test = HS_TEST_TYPE_ECHO;
+  ecm->cfg.test_cfg.test = HS_TEST_TYPE_ECHO;
   return ec_ctrl_send (HS_TEST_CMD_SYNC);
 }
 
@@ -1259,24 +1253,19 @@ ec_ctrl_test_stop ()
   return ec_ctrl_send (HS_TEST_CMD_STOP);
 }
 
-#define ec_wait_for_signal(_sig)                                              \
-  vlib_process_wait_for_event_or_clock (vm, ecm->syn_timeout);                \
-  event_type = vlib_process_get_events (vm, &event_data);                     \
-  switch (event_type)                                                         \
-    {                                                                         \
-    case ~0:                                                                  \
-      ec_cli ("Timeout while waiting for " #_sig);                            \
-      error =                                                                 \
-	clib_error_return (0, "failed: timeout while waiting for " #_sig);    \
-      goto cleanup;                                                           \
-    case _sig:                                                                \
-      break;                                                                  \
-    default:                                                                  \
-      ec_cli ("unexpected event while waiting for " #_sig ": %d",             \
-	      event_type);                                                    \
-      error =                                                                 \
-	clib_error_return (0, "failed: unexpected event: %d", event_type);    \
-      goto cleanup;                                                           \
+#define ec_wait_for_signal(_sig)                                                                   \
+  vlib_process_wait_for_event_or_clock (vm, ecm->syn_timeout);                                     \
+  event_type = vlib_process_get_events (vm, &event_data);                                          \
+  switch (event_type)                                                                              \
+    {                                                                                              \
+    case ~0:                                                                                       \
+      ec_cli ("Timeout while waiting for " #_sig);                                                 \
+      return clib_error_return (0, "failed: timeout while waiting for " #_sig);                    \
+    case _sig:                                                                                     \
+      break;                                                                                       \
+    default:                                                                                       \
+      ec_cli ("unexpected event while waiting for " #_sig ": %d", event_type);                     \
+      return clib_error_return (0, "failed: unexpected event: %d", event_type);                    \
     }
 
 static void
@@ -1285,7 +1274,7 @@ ec_print_timeout_stats (vlib_main_t *vm)
   ec_main_t *ecm = &ec_main;
   u64 received_bytes = 0, sent_bytes = 0;
   ec_worker_t *wrk;
-  ec_session_t *sess;
+  echo_test_session_t *sess;
   vec_foreach (wrk, ecm->wrk)
     {
       pool_foreach (sess, wrk->sessions)
@@ -1304,7 +1293,18 @@ ec_print_timeout_stats (vlib_main_t *vm)
 }
 
 static void
-ec_print_periodic_stats (vlib_main_t *vm, bool print_header, bool print_footer)
+ec_print_footer (vlib_main_t *vm)
+{
+  ec_main_t *ecm = &ec_main;
+  if (ecm->transport_proto == TRANSPORT_PROTO_UDP)
+    ec_cli ("-------------------------------------------------------------"
+	    "-----------------------");
+  else
+    ec_cli ("-------------------------------------------------------------");
+}
+
+static void
+ec_print_periodic_stats (vlib_main_t *vm, bool print_header)
 {
   ec_main_t *ecm = &ec_main;
   f64 time_now, print_delta, interval_start, interval_end, rtt = 0.0,
@@ -1313,7 +1313,7 @@ ec_print_periodic_stats (vlib_main_t *vm, bool print_header, bool print_footer)
     received_bytes = 0, sent_bytes = 0, dgrams_sent = 0, dgrams_received = 0,
     last_total_bytes = ecm->last_total_tx_bytes + ecm->last_total_rx_bytes;
   ec_worker_t *wrk;
-  ec_session_t *sess;
+  echo_test_session_t *sess;
   vec_foreach (wrk, ecm->wrk)
     {
       pool_foreach (sess, wrk->sessions)
@@ -1389,9 +1389,6 @@ ec_print_periodic_stats (vlib_main_t *vm, bool print_header, bool print_footer)
 		  (dgrams_sent - ecm->last_total_tx_dgrams),
 		  (dgrams_received - ecm->last_total_rx_dgrams));
 	}
-      if (print_footer)
-	ec_cli ("-------------------------------------------------------------"
-		"-----------------------");
       ecm->last_total_tx_dgrams = dgrams_sent;
       ecm->last_total_rx_dgrams = dgrams_received;
     }
@@ -1417,17 +1414,11 @@ ec_print_periodic_stats (vlib_main_t *vm, bool print_header, bool print_footer)
 		  8,
 		rtt * 1000);
       else
-	ec_cli ("%.1f-%-9.1f %-13U %-10U %+9Ub/s %+7.3fms", interval_start,
-		interval_end, format_base10,
-		sent_bytes - ecm->last_total_tx_bytes, format_base10,
+	ec_cli ("%.1f-%-9.1f %-13U %-10U %+9Ub/s %+7.3fms", interval_start, interval_end,
+		format_base10, sent_bytes - ecm->last_total_tx_bytes, format_base10,
 		received_bytes - ecm->last_total_rx_bytes, format_base10,
-		flt_round_nearest (((f64) (total_bytes - last_total_bytes)) /
-				   print_delta) *
-		  8,
+		flt_round_nearest (((f64) (total_bytes - last_total_bytes)) / print_delta) * 8,
 		rtt * 1000);
-      if (print_footer)
-	ec_cli (
-	  "-------------------------------------------------------------");
     }
   ecm->last_print_time = time_now;
   ecm->last_total_tx_bytes = sent_bytes;
@@ -1488,147 +1479,19 @@ ec_transport_proto_is_cless ()
 }
 
 static clib_error_t *
-ec_command_fn (vlib_main_t *vm, unformat_input_t *input,
-	       vlib_cli_command_t *cmd)
+ec_run (vlib_main_t *vm)
 {
-  unformat_input_t _line_input, *line_input = &_line_input;
-  char *default_uri = "tcp://6.0.1.1/1234";
   ec_main_t *ecm = &ec_main;
   uword *event_data = 0, event_type;
   clib_error_t *error = 0;
-  int rv, timed_run_conflict = 0, tput_conflict = 0, had_config = 1;
   f64 delta, wait_time = 0;
 
-  if (ecm->test_client_attached)
-    return clib_error_return (0, "failed: already running!");
-
-  if (ec_init (vm))
-    {
-      error = clib_error_return (0, "failed init");
-      goto cleanup;
-    }
-
-  if (!unformat_user (input, unformat_line_input, line_input))
-    {
-      had_config = 0;
-      goto parse_config;
-    }
-
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (line_input, "uri %s", &ecm->connect_uri))
-	;
-      else if (unformat (line_input, "nclients %d", &ecm->n_clients))
-	;
-      else if (unformat (line_input, "quic-streams %d", &ecm->quic_streams))
-	;
-      else if (unformat (line_input, "bytes %U", unformat_memory_size,
-			 &ecm->bytes_to_send))
-	timed_run_conflict++;
-      else if (unformat (line_input, "test-timeout %f", &ecm->test_timeout))
-	timed_run_conflict++;
-      else if (unformat (line_input, "syn-timeout %f", &ecm->syn_timeout))
-	;
-      else if (unformat (line_input, "run-time %f", &ecm->run_time))
-	ecm->test_timeout = ecm->run_time;
-      else if (unformat (line_input, "echo-bytes"))
-	ecm->echo_bytes = 1;
-      else if (unformat (line_input, "fifo-size %U", unformat_memory_size,
-			 &ecm->fifo_size))
-	;
-      else if (unformat (line_input, "private-segment-count %d",
-			 &ecm->private_segment_count))
-	;
-      else if (unformat (line_input, "private-segment-size %U",
-			 unformat_memory_size, &ecm->private_segment_size))
-	;
-      else if (unformat (line_input, "throughput %U", unformat_base10,
-			 &ecm->throughput))
-	ecm->throughput /= 8;
-      else if (unformat (line_input, "max-tx-chunk %U", unformat_memory_size,
-			 &ecm->max_chunk_bytes))
-	tput_conflict = 1;
-      else if (unformat (line_input, "preallocate-fifos"))
-	ecm->prealloc_fifos = 1;
-      else if (unformat (line_input, "preallocate-sessions"))
-	ecm->prealloc_sessions = 1;
-      else if (unformat (line_input, "client-batch %d",
-			 &ecm->connections_per_batch))
-	;
-      else if (unformat (line_input, "report-jitter"))
-	ecm->report_interval_jitter = 1;
-      else if (unformat (line_input, "report-interval-total %u",
-			 &ecm->report_interval))
-	ecm->report_interval_total = 1;
-      else if (unformat (line_input, "report-interval %u",
-			 &ecm->report_interval))
-	;
-      else if (unformat (line_input, "report-interval"))
-	ecm->report_interval = 1;
-      else if (unformat (line_input, "appns %_%v%_", &ecm->appns_id))
-	;
-      else if (unformat (line_input, "all-scope"))
-	ecm->attach_flags |= (APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE |
-			      APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE);
-      else if (unformat (line_input, "local-scope"))
-	ecm->attach_flags = APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE;
-      else if (unformat (line_input, "global-scope"))
-	ecm->attach_flags = APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE;
-      else if (unformat (line_input, "secret %lu", &ecm->appns_secret))
-	;
-      else if (unformat (line_input, "verbose"))
-	ecm->cfg.verbose = 1;
-      else if (unformat (line_input, "test-bytes"))
-	ecm->cfg.test_bytes = 1;
-      else if (unformat (line_input, "tls-engine %d", &ecm->tls_engine))
-	;
-      else
-	{
-	  error = clib_error_return (0, "failed: unknown input `%U'",
-				     format_unformat_error, line_input);
-	  goto cleanup;
-	}
-    }
-
-  if (timed_run_conflict && ecm->run_time)
-    return clib_error_return (0, "failed: invalid arguments for a timed run!");
-  if (ecm->throughput && tput_conflict)
-    return clib_error_return (
-      0, "failed: can't set fixed tx chunk for a throughput run!");
-
-parse_config:
-
-  ecm->cfg.num_test_sessions = ecm->expected_connections =
-    ecm->n_clients * ecm->quic_streams;
-
-  if (!ecm->connect_uri)
-    {
-      ec_cli ("No uri provided. Using default: %s", default_uri);
-      ecm->connect_uri = format (0, "%s%c", default_uri, 0);
-    }
-
-  if ((rv = parse_uri ((char *) ecm->connect_uri, &ecm->connect_sep)))
-    {
-      error = clib_error_return (0, "Uri parse error: %d", rv);
-      goto cleanup;
-    }
-  ecm->transport_proto = ecm->connect_sep.transport_proto;
-  ecm->fifo_fill_threshold = ecm->fifo_size / 6;
-  if (ecm->prealloc_sessions)
-    ec_prealloc_sessions (ecm);
-
-  if ((error = ec_attach ()))
-    {
-      clib_error_report (error);
-      goto cleanup;
-    }
-
   if (ecm->echo_bytes)
-    ecm->cfg.test = HS_TEST_TYPE_BI;
+    ecm->cfg.test_cfg.test = HS_TEST_TYPE_BI;
   else
-    ecm->cfg.test = HS_TEST_TYPE_UNI;
+    ecm->cfg.test_cfg.test = HS_TEST_TYPE_UNI;
 
-  if (ecm->cfg.test_bytes ||
+  if (ecm->cfg.test_cfg.test_bytes ||
       (ecm->echo_bytes && ecm->transport_proto == TRANSPORT_PROTO_UDP))
     ecm->include_buffer_offset = 1;
 
@@ -1637,8 +1500,7 @@ parse_config:
 
   if (ec_ctrl_test_start () < 0)
     {
-      ec_cli ("failed to send start command");
-      goto cleanup;
+      return clib_error_return (0, "failed to send start command");
     }
   ec_wait_for_signal (EC_CLI_START);
 
@@ -1647,7 +1509,7 @@ parse_config:
    */
 
   /* update data port */
-  ecm->connect_sep.port = hs_make_data_port (ecm->connect_sep.port);
+  ecm->cfg.sep.port = hs_make_data_port (ecm->cfg.sep.port);
 
   ecm->syn_start_time = vlib_time_now (vm);
   ec_program_connects ();
@@ -1655,25 +1517,22 @@ parse_config:
   /*
    * Park until the sessions come up, or syn_timeout seconds pass
    */
-
   vlib_process_wait_for_event_or_clock (vm, ecm->syn_timeout);
   event_type = vlib_process_get_events (vm, &event_data);
   switch (event_type)
     {
     case ~0:
-      ec_cli ("Timeout with only %d sessions active...",
-	      ecm->ready_connections);
-      error = clib_error_return (0, "failed: syn timeout with %d sessions",
-				 ecm->ready_connections);
+      ec_cli ("Timeout with only %u sessions active...", ecm->ready_connections);
+      error = clib_error_return (0, "failed: syn timeout with %u sessions", ecm->ready_connections);
       goto stop_test;
 
     case EC_CLI_CONNECTS_DONE:
-      if (!ec_transport_proto_is_cless ())
+      if (!ec_transport_proto_is_cless () && ecm->expected_connections > 1)
 	{
 	  delta = vlib_time_now (vm) - ecm->syn_start_time;
 	  if (delta != 0.0)
-	    ec_cli ("%d three-way handshakes in %.2f seconds %.2f/s",
-		    ecm->n_clients, delta, ((f64) ecm->n_clients) / delta);
+	    ec_cli ("%u connections established in %.2f seconds %.2f/s", ecm->n_clients, delta,
+		    ((f64) ecm->n_clients) / delta);
 	}
       break;
 
@@ -1683,16 +1542,18 @@ parse_config:
       goto stop_test;
 
     default:
-      ec_cli ("unexpected event(2): %d", event_type);
-      error =
-	clib_error_return (0, "failed: unexpected event(2): %d", event_type);
+      ec_cli ("unexpected event while waiting for connects to finish: %d", event_type);
+      error = clib_error_return (0, "failed: unexpected event while waiting for connects: %d",
+				 event_type);
       goto stop_test;
     }
+
   /* Testing officially starts now */
   ecm->test_start_time = vlib_time_now (ecm->vlib_main);
   if (ecm->report_interval)
     ecm->last_print_time = ecm->test_start_time;
-  ec_cli ("Test started at %.6f", ecm->test_start_time);
+  if (ecm->cfg.test_cfg.verbose)
+    ec_cli ("Test started at %.6f", ecm->test_start_time);
 
   /*
    * Wait for the sessions to finish or test_timeout (timeout or length
@@ -1733,9 +1594,7 @@ parse_config:
 		}
 	      ec_print_timeout_stats (vm);
 	      if (ecm->transport_proto != TRANSPORT_PROTO_UDP)
-		error =
-		  clib_error_return (0, "failed: timeout with %d sessions",
-				     ecm->ready_connections);
+		error = clib_error_return (0, "failed: test timeout");
 	      else if (ecm->echo_bytes)
 		{
 		  ec_sessions_stop_clean ();
@@ -1745,7 +1604,7 @@ parse_config:
 	    }
 	  else
 	    {
-	      ec_print_periodic_stats (vm, print_header, false);
+	      ec_print_periodic_stats (vm, print_header);
 	      if (PREDICT_FALSE (print_header))
 		print_header = false;
 	    }
@@ -1757,8 +1616,8 @@ parse_config:
 	  break;
 
 	default:
-	  ec_cli ("unexpected event(3): %d", event_type);
-	  error = clib_error_return (0, "failed: unexpected event(3): %d",
+	  ec_cli ("unexpected event while waiting for test end: %d", event_type);
+	  error = clib_error_return (0, "failed: unexpected event while waiting for test end: %d",
 				     event_type);
 	  goto stop_test;
 	}
@@ -1766,20 +1625,25 @@ parse_config:
   while (!main_loop_done);
 
   delta = ecm->test_end_time - ecm->test_start_time;
-  if (delta == 0.0)
+  if (delta < FLT_EPSILON)
     {
-      ec_cli ("zero delta-t?");
-      error = clib_error_return (0, "failed: zero delta-t");
+      ec_cli ("zero delta time?");
+      error = clib_error_return (0, "failed: zero delta time");
       goto stop_test;
     }
-  /* Print last interval */
-  if (ecm->report_interval &&
-      vlib_time_now (vm) - ecm->last_print_time >= 0.1f)
-    ec_print_periodic_stats (vm, print_header, true);
-  ec_cli ("Test finished at %.6f", ecm->test_end_time);
+
+  if (ecm->report_interval)
+    {
+      /* Print last interval */
+      if (vlib_time_now (vm) - ecm->last_print_time >= 0.1f)
+	ec_print_periodic_stats (vm, print_header);
+      ec_print_footer (vm);
+    }
+  if (ecm->cfg.test_cfg.verbose)
+    ec_cli ("Test finished at %.6f", ecm->test_end_time);
   ec_print_final_stats (vm, delta);
 
-  if (ecm->cfg.test_bytes && ecm->test_failed)
+  if (ecm->cfg.test_cfg.test_bytes && ecm->test_failed)
     error = clib_error_return (0, "failed: test bytes");
 
 stop_test:
@@ -1789,7 +1653,7 @@ stop_test:
   if (ec_ctrl_test_stop () < 0)
     {
       ec_cli ("failed to send stop command");
-      goto cleanup;
+      return error;
     }
   ec_wait_for_signal (EC_CLI_STOP);
 
@@ -1797,15 +1661,164 @@ stop_test:
   if (ec_ctrl_test_sync () < 0)
     {
       ec_cli ("failed to send post sync command");
-      goto cleanup;
+      return error;
     }
   ec_wait_for_signal (EC_CLI_CFG_SYNC);
 
   /* disconnect control session */
   ec_ctrl_session_disconnect ();
 
-cleanup:
+  return error;
+}
 
+static clib_error_t *
+ec_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  char *default_uri = "tcp://6.0.1.1/1234";
+  ec_main_t *ecm = &ec_main;
+  clib_error_t *error = 0;
+  int rv, timed_run_conflict = 0, tput_conflict = 0, had_config = 1, use_default_mode = 1;
+
+  if (ecm->test_client_attached)
+    return clib_error_return (0, "failed: already running!");
+
+  if (ec_init (vm))
+    {
+      error = clib_error_return (0, "failed init");
+      goto cleanup;
+    }
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    {
+      had_config = 0;
+      goto parse_config;
+    }
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "uri %s", &ecm->cfg.uri))
+	;
+      else if (unformat (line_input, "nclients %d", &ecm->n_clients))
+	;
+      else if (unformat (line_input, "nstreams %d", &ecm->n_streams))
+	;
+      else if (unformat (line_input, "bytes %U", unformat_memory_size, &ecm->bytes_to_send))
+	{
+	  timed_run_conflict++;
+	  use_default_mode = 0;
+	}
+      else if (unformat (line_input, "test-timeout %f", &ecm->test_timeout))
+	timed_run_conflict++;
+      else if (unformat (line_input, "syn-timeout %f", &ecm->syn_timeout))
+	;
+      else if (unformat (line_input, "run-time %f", &ecm->run_time))
+	{
+	  ecm->test_timeout = ecm->run_time;
+	  use_default_mode = 0;
+	}
+      else if (unformat (line_input, "echo-bytes"))
+	{
+	  ecm->echo_bytes = 1;
+	  use_default_mode = 0;
+	}
+      else if (unformat (line_input, "fifo-size %U", unformat_memory_size, &ecm->cfg.fifo_size))
+	;
+      else if (unformat (line_input, "private-segment-count %d", &ecm->cfg.private_segment_count))
+	;
+      else if (unformat (line_input, "private-segment-size %U", unformat_memory_size,
+			 &ecm->cfg.private_segment_size))
+	;
+      else if (unformat (line_input, "throughput %U", unformat_base10, &ecm->throughput))
+	ecm->throughput /= 8;
+      else if (unformat (line_input, "max-tx-chunk %U", unformat_memory_size,
+			 &ecm->max_chunk_bytes))
+	tput_conflict = 1;
+      else if (unformat (line_input, "preallocate-fifos"))
+	ecm->prealloc_fifos = 1;
+      else if (unformat (line_input, "preallocate-sessions"))
+	ecm->prealloc_sessions = 1;
+      else if (unformat (line_input, "client-batch %d", &ecm->connections_per_batch))
+	;
+      else if (unformat (line_input, "report-jitter"))
+	ecm->report_interval_jitter = 1;
+      else if (unformat (line_input, "report-interval-total %u", &ecm->report_interval))
+	ecm->report_interval_total = 1;
+      else if (unformat (line_input, "report-interval %u", &ecm->report_interval))
+	;
+      else if (unformat (line_input, "report-interval"))
+	ecm->report_interval = 1;
+      else if (unformat (line_input, "appns %_%v%_", &ecm->appns_id))
+	;
+      else if (unformat (line_input, "all-scope"))
+	ecm->attach_flags |=
+	  (APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE | APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE);
+      else if (unformat (line_input, "local-scope"))
+	ecm->attach_flags = APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE;
+      else if (unformat (line_input, "global-scope"))
+	ecm->attach_flags = APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE;
+      else if (unformat (line_input, "secret %lu", &ecm->appns_secret))
+	;
+      else if (unformat (line_input, "verbose"))
+	ecm->cfg.test_cfg.verbose = 1;
+      else if (unformat (line_input, "test-bytes"))
+	ecm->cfg.test_cfg.test_bytes = 1;
+      else if (unformat (line_input, "tls-engine %d", &ecm->cfg.tls_engine))
+	;
+      else
+	{
+	  error =
+	    clib_error_return (0, "failed: unknown input `%U'", format_unformat_error, line_input);
+	  goto cleanup;
+	}
+    }
+
+  if (use_default_mode)
+    {
+      ecm->test_timeout = ecm->run_time = 10.0;
+      ecm->report_interval = 1;
+    }
+  else
+    {
+      if (timed_run_conflict && ecm->run_time)
+	return clib_error_return (0, "failed: invalid arguments for a timed run!");
+      if (ecm->throughput && tput_conflict)
+	return clib_error_return (0, "failed: can't set fixed tx chunk for a throughput run!");
+    }
+
+parse_config:
+
+  ecm->cfg.test_cfg.num_test_sessions = ecm->expected_connections = ecm->n_clients * ecm->n_streams;
+
+  if (!ecm->cfg.uri)
+    {
+      ec_cli ("No uri provided. Using default: %s", default_uri);
+      ecm->cfg.uri = (char *) format (0, "%s%c", default_uri, 0);
+    }
+
+  if ((rv = parse_uri (ecm->cfg.uri, &ecm->cfg.sep)))
+    {
+      error = clib_error_return (0, "Uri parse error: %d", rv);
+      goto cleanup;
+    }
+  ecm->transport_proto = ecm->cfg.sep.transport_proto;
+  ecm->fifo_fill_threshold = ecm->cfg.fifo_size / 6;
+  if (ecm->prealloc_sessions)
+    ec_prealloc_sessions (ecm);
+
+  if ((error = ec_attach ()))
+    {
+      clib_error_report (error);
+      goto cleanup;
+    }
+
+  if ((error = ec_run (vm)))
+    {
+      clib_error_report (error);
+      goto cleanup;
+    }
+
+cleanup:
   ecm->run_test = EC_EXITING;
   vlib_process_wait_for_event_or_clock (vm, 10e-3);
 
@@ -1826,17 +1839,27 @@ cleanup:
   return error;
 }
 
+/*?
+ * Client for performing network throughput measurements.
+ * It can test TCP, UDP, TLS or QUIC throughput.
+ * To perform test you must establish both a server and a client.
+ *
+ * @cliexpar
+ * Example of how to measure upload speed, test durattion 10 seconds and measurement interval 1
+ * second:
+ * @cliexcmd{test echo client uri tcp://6.0.1.2:1234}
+ ?*/
 VLIB_CLI_COMMAND (ec_command, static) = {
   .path = "test echo clients",
   .short_help =
-    "test echo clients [nclients %d][bytes <bytes>[m|g]][test-timeout <time>]"
-    "[run-time <time>][syn-timeout <time>][echo-bytes][fifo-size <size>]"
-    "[private-segment-count <count>][private-segment-size <bytes>[m|g]]"
-    "[preallocate-fifos][preallocate-sessions][client-batch <batch-size>]"
-    "[throughput <bytes>[m|g]][report-interval[-total] "
-    "<time>][report-jitter][[uri "
-    "<tcp://ip/port>]"
-    "[test-bytes][verbose]",
+    "test echo clients [nclients <n>] [bytes <bytes>[k|m|g] | run-time <seconds>]\n"
+    "[test-timeout <seconds>] [syn-timeout <seconds>] [echo-bytes]\n"
+    "[fifo-size <bytes>[k|m|g]] [private-segment-count <n>] [appns <id>]\n"
+    "[private-segment-size <bytes>[k|m|g]] [preallocate-fifos] [preallocate-sessions]\n"
+    "[client-batch <n>] [max-tx-chunk <bytes>[k|m|g]] [nstreams <n>]\n"
+    "[throughput <bytes>[k|m|g]] [report-interval[-total] [<seconds>]] [report-jitter]\n"
+    "[uri <proto://ip:port>] [test-bytes] [verbose] [all-scope|local-scope|global-scope]\n"
+    "[tls-engine <id>]",
   .function = ec_command_fn,
   .is_mp_safe = 1,
 };
