@@ -244,7 +244,6 @@ vts_test_cmd (vcl_test_server_worker_t *wrk, vcl_test_session_t *conn,
 	}
 
       sync_config_and_reply (conn, rx_cfg);
-      memset (&conn->stats, 0, sizeof (conn->stats));
     }
   else if (rx_cfg->cmd == HS_TEST_CMD_SYNC)
     {
@@ -570,6 +569,11 @@ vts_handle_ctrl_cfg (vcl_test_server_worker_t *wrk, hs_test_cfg_t *rx_cfg,
     {
     case HS_TEST_TYPE_NONE:
     case HS_TEST_TYPE_ECHO:
+      /* post-test sync, send our rx stats to the client, builtin echo use it to show datagram loss
+       * rate */
+      rx_cfg->total_bytes = conn->stats.rx_bytes;
+      rx_cfg->num_reads = conn->stats.rx_xacts;
+      memset (&conn->stats, 0, sizeof (conn->stats));
       sync_config_and_reply (conn, rx_cfg);
       break;
 

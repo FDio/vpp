@@ -74,7 +74,7 @@ vcl_test_client_main_t vcl_client_main;
 vcl_test_main_t vcl_test_main;
 
 static int
-vtc_cfg_sync (vcl_test_session_t * ts)
+vtc_cfg_sync (vcl_test_session_t *ts, int post_test)
 {
   hs_test_cfg_t *rx_cfg = (hs_test_cfg_t *) ts->rxbuf;
   int rx_bytes, tx_bytes;
@@ -101,22 +101,23 @@ vtc_cfg_sync (vcl_test_session_t * ts)
       vtwrn ("(fd %d): Bad server reply cfg -- aborting!", ts->fd);
       return -1;
     }
-  if ((rx_bytes != sizeof (hs_test_cfg_t)) ||
-      !hs_test_cfg_verify (rx_cfg, &ts->cfg))
+  if ((rx_bytes != sizeof (hs_test_cfg_t)))
     {
       vtwrn ("(fd %d): Invalid config received from server!", ts->fd);
-      if (rx_bytes != sizeof (hs_test_cfg_t))
+      vtinf ("\tRx bytes %d != cfg size %lu", rx_bytes, sizeof (hs_test_cfg_t));
+      return -1;
+    }
+  /* in post test sync server use some fields for rx stats */
+  if (!post_test)
+    {
+      if (!hs_test_cfg_verify (rx_cfg, &ts->cfg))
 	{
-	  vtinf ("\tRx bytes %d != cfg size %lu", rx_bytes,
-		 sizeof (hs_test_cfg_t));
-	}
-      else
-	{
+	  vtwrn ("(fd %d): Invalid config received from server!", ts->fd);
 	  hs_test_cfg_dump (rx_cfg, 1 /* is_client */);
 	  vtinf ("(fd %d): Valid config sent to server.", ts->fd);
 	  hs_test_cfg_dump (&ts->cfg, 1 /* is_client */);
+	  return -1;
 	}
-      return -1;
     }
   if (ts->cfg.verbose)
     {
@@ -853,7 +854,7 @@ vtc_stream_client (vcl_test_client_main_t * vcm)
 
   vcm->test_running = 1;
   ctrl->cfg.cmd = HS_TEST_CMD_START;
-  if (vtc_cfg_sync (ctrl))
+  if (vtc_cfg_sync (ctrl, 0))
     {
       vtwrn ("test cfg sync failed -- aborting!");
       return;
@@ -876,7 +877,7 @@ vtc_stream_client (vcl_test_client_main_t * vcm)
 
   vtinf ("Sending config on ctrl session (fd %d) for stats...", ctrl->fd);
   ctrl->cfg.cmd = HS_TEST_CMD_STOP;
-  if (vtc_cfg_sync (ctrl))
+  if (vtc_cfg_sync (ctrl, 0))
     {
       vtwrn ("test cfg sync failed -- aborting!");
       return;
@@ -887,7 +888,7 @@ vtc_stream_client (vcl_test_client_main_t * vcm)
   ctrl->cfg.cmd = HS_TEST_CMD_SYNC;
   ctrl->cfg.test = HS_TEST_TYPE_ECHO;
   ctrl->cfg.total_bytes = 0;
-  if (vtc_cfg_sync (ctrl))
+  if (vtc_cfg_sync (ctrl, 1))
     vtwrn ("post-test cfg sync failed!");
 }
 
@@ -1400,7 +1401,7 @@ vtc_ctrl_session_init (vcl_test_client_main_t *vcm, vcl_test_session_t *ctrl)
   ctrl->write = vcl_test_write;
 
   ctrl->cfg.cmd = HS_TEST_CMD_SYNC;
-  rv = vtc_cfg_sync (ctrl);
+  rv = vtc_cfg_sync (ctrl, 0);
   if (rv)
     {
       vterr ("vtc_cfg_sync()", rv);
