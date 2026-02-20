@@ -129,8 +129,8 @@ in obvious, accessible places.** Time wasted trying to acquire
 accounts, credentials, and IP addresses simply delays problem
 resolution.
 
-Please remember to add post-mortem data location information to Jira
-tickets.
+Please remember to add post-mortem data location information to GitHub
+issues.
 
 Syslog Output
 -------------
@@ -220,7 +220,7 @@ In particular:
   vpp-plugin-dpdk_<version>_<arch>.deb # dpdk plugin
 
 For reference, please include git commit-ID, branch, and git repo
-information [for repos other than gerrit.fd.io] in the Jira ticket.
+information [for repos other than gerrit.fd.io] in the GitHub issue.
 
 Note that git commit-ids are crypto sums of the head [latest]
 **merged** patch. They say **nothing whatsoever** about local
