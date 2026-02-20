@@ -97,5 +97,5 @@ copy the file out of the host:
 
    docker cp d7aceb2e4876:/tmp/dumps/vppdump.tar.gz .
 
-Now you are ready to file a bug in `jira.fd.io <https://jira.fd.io/>`__
+Now you are ready to file a bug on `GitHub <https://github.com/fdio/vpp/issues>`__
 and attach the core file.
