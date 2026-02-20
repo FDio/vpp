@@ -16,6 +16,24 @@
       "message": "let\u0027s get the thread from udp_session, then assert it\u0027s what we expect",
       "revId": "64fe2f2868a7792f7add150a4b9ca04a5688be5b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "66817785_cfe7dc72",
+        "filename": "src/plugins/quic_quicly/quic_quicly.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1874,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-02-20T10:04:56Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c843fb4b_c33dcd44",
+      "revId": "64fe2f2868a7792f7add150a4b9ca04a5688be5b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
