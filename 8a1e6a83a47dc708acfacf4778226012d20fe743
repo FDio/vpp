@@ -16,6 +16,23 @@
       "message": "LGTM, I don\u0027t have rights for full approval",
       "revId": "8a1e6a83a47dc708acfacf4778226012d20fe743",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "45516a3f_7fd96bc9",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-02-20T22:12:44Z",
+      "side": 1,
+      "message": "Is it possible to add a test to \u0027make test\u0027 which catches the failure reported and verifies this fixes the issue permanently?",
+      "revId": "8a1e6a83a47dc708acfacf4778226012d20fe743",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
