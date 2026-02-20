@@ -8,6 +8,7 @@
 #include <vnet/fib/fib_table.h>
 #include <vnet/adj/adj_midchain.h>
 #include <vnet/ip/ip6_ll_table.h>
+#include <vnet/ip/ip6_link.h>
 
 typedef struct teib_key_t_
 {
@@ -126,9 +127,47 @@ teib_entry_find_46 (u32 sw_if_index,
   return (teib_entry_find (sw_if_index, &ip));
 }
 
+static bool
+teib_is_self_link_local (const ip_address_t *ip, u32 sw_if_index)
+{
+  const ip6_address_t *ll;
+
+  if (AF_IP6 != ip_addr_version (ip))
+    return (false);
+
+  if (!ip6_address_is_link_local_unicast (&ip_addr_v6 (ip)))
+    return (false);
+
+  ll = ip6_get_link_local_address (sw_if_index);
+
+  return (NULL != ll && ip6_address_is_equal (ll, &ip_addr_v6 (ip)));
+}
+
+static void
+teib_restore_self_link_local (const ip_address_t *ip, u32 sw_if_index)
+{
+  ip6_ll_prefix_t pfx = {
+    .ilp_addr = ip_addr_v6 (ip),
+    .ilp_sw_if_index = sw_if_index,
+  };
+
+  ip6_ll_table_entry_update (&pfx, FIB_ROUTE_PATH_LOCAL);
+}
+
 static void
 teib_adj_fib_add (const ip_address_t *ip, u32 sw_if_index, u32 peer_fib_index)
 {
+  /*
+   * Do not overwrite the interface's own LL receive DPO with a
+   * teib entry that can replace the local route in the LL FIB.
+   * Re-install local as a safeguard for already-corrupted state.
+   */
+  if (teib_is_self_link_local (ip, sw_if_index))
+    {
+      teib_restore_self_link_local (ip, sw_if_index);
+      return;
+    }
+
   if (AF_IP6 == ip_addr_version (ip) &&
       ip6_address_is_link_local_unicast (&ip_addr_v6 (ip)))
     {
@@ -156,6 +195,16 @@ teib_adj_fib_add (const ip_address_t *ip, u32 sw_if_index, u32 peer_fib_index)
 static void
 teib_adj_fib_remove (ip_address_t *ip, u32 sw_if_index, u32 peer_fib_index)
 {
+  /*
+   * Re-install local receive route instead of deleting it
+   * to avoid leaving the interface without a receive route.
+   */
+  if (teib_is_self_link_local (ip, sw_if_index))
+    {
+      teib_restore_self_link_local (ip, sw_if_index);
+      return;
+    }
+
   if (AF_IP6 == ip_addr_version (ip) &&
       ip6_address_is_link_local_unicast (&ip_addr_v6 (ip)))
     {
