@@ -811,8 +811,8 @@ test_flow (vlib_main_t * vm, unformat_input_t * input,
 }
 
 VLIB_CLI_COMMAND (test_flow_command, static) = {
-  .path = "test flow",
-  .short_help = "test flow [add|del|enable|disable] [index <id>] "
+  .path = "flow",
+  .short_help = "flow [add|del|enable|disable] [index <id>] "
 		"[src-ip <ip-addr/mask>] [dst-ip <ip-addr/mask>] "
 		"[ip6-src-ip <ip-addr/mask>] [ip6-dst-ip <ip-addr/mask>] "
 		"[src-port <port/mask>] [dst-port <port/mask>] "

@@ -45,14 +45,15 @@ dpdk_device_error (dpdk_device_t * xd, char *str, int rv)
 }
 
 void
-dpdk_device_flow_error (dpdk_device_t *xd, char *str, struct rte_flow_error *error, int rv)
+dpdk_device_flow_error (dpdk_device_t *xd, char *str, int rv)
 {
   dpdk_log_err ("Interface %U error %d: %s", format_dpdk_device_name, xd->device_index, rv,
 		rte_strerror (rv));
+  dpdk_log_err ("type: %d, cause: %s, message: %s", xd->last_flow_error.type,
+		xd->last_flow_error.cause, xd->last_flow_error.message);
+
   xd->errors = clib_error_return (xd->errors, "%s[port:%d, errno:%d]: %s", str, xd->port_id, rv,
 				  rte_strerror (rv));
-  xd->errors = clib_error_return (xd->errors, "type: %d, cause: %s, message: %s", error->type,
-				  error->cause, error->message);
 }
 
 void
@@ -68,7 +69,6 @@ dpdk_device_setup (dpdk_device_t * xd)
   struct rte_eth_conf conf = {};
   struct rte_flow_port_info flow_port_info = {};
   struct rte_flow_queue_info flow_queue_info = {};
-  struct rte_flow_error flow_error = {};
   // dummy values to configure devices for flow offload
   struct rte_flow_port_attr port_attr = {};
   struct rte_flow_queue_attr queue_attr = {
@@ -263,17 +263,19 @@ retry:
     goto error;
 
   if (xd->supported_flow_actions != 0 &&
-      (rv = rte_flow_info_get (xd->port_id, &flow_port_info, &flow_queue_info, &flow_error)) != 0)
+      (rv = rte_flow_info_get (xd->port_id, &flow_port_info, &flow_queue_info,
+			       &xd->last_flow_error)) != 0)
     {
-      dpdk_device_flow_error (xd, "rte_flow_info_get", &flow_error, rv);
+      dpdk_device_flow_error (xd, "rte_flow_info_get", rv);
       xd->supported_flow_actions = 0;
     }
 
   // at least one queue is need, of size 0 for now
   if (xd->supported_flow_actions != 0 &&
-      (rv = rte_flow_configure (xd->port_id, &port_attr, 1, queue_attr_list, &flow_error)) != 0)
+      (rv = rte_flow_configure (xd->port_id, &port_attr, 1, queue_attr_list,
+				&xd->last_flow_error)) != 0)
     {
-      dpdk_device_flow_error (xd, "rte_flow_configure", &flow_error, rv);
+      dpdk_device_flow_error (xd, "rte_flow_configure", rv);
       xd->supported_flow_actions = 0;
     }
 
