@@ -1,0 +1,7 @@
+Verified+1: FDio GitHub Actions <releng+fdio-github@linuxfoundation.org>
+Code-Review+2: Dave Wallace <dwallacelf@gmail.com>
+Submitted-by: Dave Wallace <dwallacelf@gmail.com>
+Submitted-at: Fri, 20 Feb 2026 17:17:45 +0000
+Reviewed-on: https://gerrit.fd.io/r/c/vpp/+/44719
+Project: vpp
+Branch: refs/heads/stable/2510
