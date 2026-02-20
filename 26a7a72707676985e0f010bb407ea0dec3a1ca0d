@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "93ce53cd_6ff8c82f",
+        "filename": "src/plugins/dpdk/device/driver.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2026-02-20T16:13:08Z",
+      "side": 1,
+      "message": "yes",
+      "parentUuid": "a6f1c165_f84f3eeb",
+      "revId": "26a7a72707676985e0f010bb407ea0dec3a1ca0d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "37d61a11_fc0f49c2",
@@ -31,6 +49,24 @@
       "writtenOn": "2026-02-19T19:09:46Z",
       "side": 1,
       "message": "you should use vec_elt()",
+      "revId": "26a7a72707676985e0f010bb407ea0dec3a1ca0d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "75f762ce_d0e31752",
+        "filename": "src/plugins/sfdp_services/base/interface_input/interface_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2026-02-20T16:13:08Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "37d61a11_fc0f49c2",
       "revId": "26a7a72707676985e0f010bb407ea0dec3a1ca0d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -52,6 +88,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "87689d22_a8ced6d8",
+        "filename": "src/plugins/sfdp_services/base/interface_input/interface_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 88,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2026-02-20T16:13:08Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "a991d6e3_eead3f21",
+      "revId": "26a7a72707676985e0f010bb407ea0dec3a1ca0d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "a0e2f5a6_66b1de6d",
@@ -65,6 +119,24 @@
       "writtenOn": "2026-02-19T19:09:46Z",
       "side": 1,
       "message": "vec_elt",
+      "revId": "26a7a72707676985e0f010bb407ea0dec3a1ca0d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1488395f_9bbfda4f",
+        "filename": "src/plugins/sfdp_services/base/interface_input/interface_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 105,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2026-02-20T16:13:08Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "a0e2f5a6_66b1de6d",
       "revId": "26a7a72707676985e0f010bb407ea0dec3a1ca0d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -86,6 +158,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "2725a192_38d21f8f",
+        "filename": "src/plugins/sfdp_services/base/interface_input/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 5,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2026-02-20T16:13:08Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "f67e17a1_29aa80f6",
+      "revId": "26a7a72707676985e0f010bb407ea0dec3a1ca0d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "9abe0d61_e3ae4188",
@@ -99,6 +189,24 @@
       "writtenOn": "2026-02-19T19:09:46Z",
       "side": 1,
       "message": "vec_elt",
+      "revId": "26a7a72707676985e0f010bb407ea0dec3a1ca0d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ca5d07f2_7a759ad8",
+        "filename": "src/plugins/sfdp_services/base/interface_input/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 99,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2026-02-20T16:13:08Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "9abe0d61_e3ae4188",
       "revId": "26a7a72707676985e0f010bb407ea0dec3a1ca0d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -120,6 +228,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "329b7f29_f865877a",
+        "filename": "src/vnet/sfdp/expiry/expiry.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 53,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2026-02-20T16:13:08Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "de433f99_b1971a8e",
+      "revId": "26a7a72707676985e0f010bb407ea0dec3a1ca0d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "1d27eeb3_5673416a",
@@ -133,6 +259,24 @@
       "writtenOn": "2026-02-19T19:09:46Z",
       "side": 1,
       "message": "elog",
+      "revId": "26a7a72707676985e0f010bb407ea0dec3a1ca0d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8ea2382b_8abeaa63",
+        "filename": "src/vnet/sfdp/expiry/expiry.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 65,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2026-02-20T16:13:08Z",
+      "side": 1,
+      "message": "as discussed offline, done via counters",
+      "parentUuid": "1d27eeb3_5673416a",
       "revId": "26a7a72707676985e0f010bb407ea0dec3a1ca0d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -154,6 +298,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "94adc047_ceca959e",
+        "filename": "src/vnet/sfdp/lookup/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 392,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2026-02-20T16:13:08Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "e740db2d_d9a7d284",
+      "revId": "26a7a72707676985e0f010bb407ea0dec3a1ca0d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "2f9ab825_dbabeaa6",
@@ -167,6 +329,24 @@
       "writtenOn": "2026-02-19T19:09:46Z",
       "side": 1,
       "message": "why is it set only on success? what happens is hw flow creation fails?",
+      "revId": "26a7a72707676985e0f010bb407ea0dec3a1ca0d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b4641f36_a1ec5fa5",
+        "filename": "src/vnet/sfdp/lookup/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 558,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2026-02-20T16:13:08Z",
+      "side": 1,
+      "message": "I save the rx interface only on success as we need it to delete the flow later\nthis can be done inside sfdp_flow_offload_create()",
+      "parentUuid": "2f9ab825_dbabeaa6",
       "revId": "26a7a72707676985e0f010bb407ea0dec3a1ca0d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -188,6 +368,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "7f284503_71c08d96",
+        "filename": "src/vnet/sfdp/lookup/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1073,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2026-02-20T16:13:08Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "b41cc6fe_8c9d2896",
+      "revId": "26a7a72707676985e0f010bb407ea0dec3a1ca0d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "ae340953_59f349d0",
@@ -205,6 +403,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "e20312be_09a50678",
+        "filename": "src/vnet/sfdp/lookup/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1109,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2026-02-20T16:13:08Z",
+      "side": 1,
+      "message": "vnet flow will apply the current queue for the future packets",
+      "parentUuid": "ae340953_59f349d0",
+      "revId": "26a7a72707676985e0f010bb407ea0dec3a1ca0d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "47458f2f_e533ee68",
@@ -218,6 +434,24 @@
       "writtenOn": "2026-02-19T19:09:46Z",
       "side": 1,
       "message": "you should consider elog as it is in the packet path",
+      "revId": "26a7a72707676985e0f010bb407ea0dec3a1ca0d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9f9ac71b_e32a274b",
+        "filename": "src/vnet/sfdp/lookup/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1115,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2026-02-20T16:13:08Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "47458f2f_e533ee68",
       "revId": "26a7a72707676985e0f010bb407ea0dec3a1ca0d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
