@@ -135,7 +135,9 @@ class AuthKeyFactory(object):
         {"multihop": True},
     ]
 )
+@tag_fixme_debian12
 class BFDAPITestCase(VppTestCase):
+    """BFD API test"""
 
     pg0 = None
     pg1 = None
@@ -1078,9 +1080,16 @@ def bfd_stats_diff(stats_before, stats_after):
         {"multihop": True},
     ]
 )
+<<<<<<< HEAD   (6ec273 gha: use stable/2510 hst verify workflow)
 @tag_run_solo
 @tag_fixme_debian11
+=======
+@tag_fixme_debian12
+@tag_run_solo
+>>>>>>> CHANGE (66c8f6 tests: fix @tag_fixme_debian12 to properly skip tests on Deb)
 class BFD4TestCase(VppTestCase):
+    """BFD v4 test"""
+
     pg0 = None
     interface0 = None
     vpp_clock_offset = None
@@ -2125,9 +2134,12 @@ class BFD4TestCase(VppTestCase):
         {"multihop": True},
     ]
 )
+@tag_fixme_debian12
 @tag_run_solo
 @tag_fixme_vpp_workers
 class BFD6TestCase(VppTestCase):
+    """BFD v6 test"""
+
     pg0 = None
     interface0 = None
     vpp_clock_offset = None
@@ -2467,6 +2479,7 @@ class BFD6TestCase(VppTestCase):
         {"multihop": True},
     ]
 )
+@tag_fixme_debian12
 @tag_run_solo
 class BFDFIBTestCase(VppTestCase):
     """BFD-FIB interactions (IPv6)"""
@@ -2607,6 +2620,7 @@ class BFDFIBTestCase(VppTestCase):
             self.assertEqual(captured[IPv6].dst, packet[IPv6].dst)
 
 
+@tag_fixme_debian12
 @unittest.skipUnless(config.extended, "part of extended tests")
 class BFDTunTestCase(VppTestCase):
     """BFD over GRE tunnel"""
@@ -2696,8 +2710,11 @@ class BFDTunTestCase(VppTestCase):
         {"multihop": True},
     ]
 )
+@tag_fixme_debian12
 @tag_run_solo
 class BFDSHA1TestCase(VppTestCase):
+    """BFD SHA1 test"""
+
     pg0 = None
     vpp_clock_offset = None
     vpp_session = None
@@ -3079,8 +3096,11 @@ class BFDSHA1TestCase(VppTestCase):
         {"multihop": True},
     ]
 )
+@tag_fixme_debian12
 @tag_run_solo
 class BFDAuthOnOffTestCase(VppTestCase):
+    """BFD Auth On/Off test"""
+
     pg0 = None
     vpp_session = None
     test_session = None
@@ -3374,6 +3394,7 @@ class BFDAuthOnOffTestCase(VppTestCase):
         {"multihop": True},
     ]
 )
+@tag_fixme_debian12
 @tag_run_solo
 class BFDCLITestCase(VppTestCase):
     """Bidirectional Forwarding Detection (BFD) (CLI)"""
