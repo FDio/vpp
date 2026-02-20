@@ -107,7 +107,7 @@ class TestSession(VppAsfTestCase):
 
         error = self.vapi.cli(
             "test echo client nclients 100 appns 1 "
-            + "fifo-size 64k syn-timeout 2 "
+            + "fifo-size 64k syn-timeout 2 bytes 8k "
             + "private-segment-size 1m uri "
             + uri
         )
