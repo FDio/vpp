@@ -9,6 +9,7 @@
 #define __included_echo_client_h__
 
 #include <hs_apps/hs_test.h>
+#include <hs_apps/builtin_echo/echo_test.h>
 #include <vnet/session/session.h>
 #include <vnet/session/application_interface.h>
 
@@ -22,34 +23,10 @@ typedef struct ec_rttstat_
   clib_spinlock_t w_lock;
 } ec_rttstat_t;
 
-typedef struct ec_session_
-{
-  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-#define _(type, name) type name;
-  foreach_app_session_field
-#undef _
-    u32 vpp_session_index;
-  clib_thread_index_t thread_index;
-  u64 bytes_to_send;
-  u64 bytes_sent;
-  u64 bytes_to_receive;
-  u64 bytes_received;
-  u64 vpp_session_handle;
-  f64 time_to_send;
-  u64 bytes_paced_target;
-  u64 bytes_paced_current;
-  f64 send_rtt;
-  u8 rtt_stat;
-  u32 rtt_udp_buffer_offset;
-  f64 jitter;
-  u64 dgrams_sent;
-  u64 dgrams_received;
-} ec_session_t;
-
 typedef struct ec_worker_
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-  ec_session_t *sessions;	/**< session pool */
+  echo_test_session_t *sessions; /**< session pool */
   u8 *rx_buf;			/**< prealloced rx buffer */
   u32 *conn_indices;		/**< sessions handled by worker */
   u32 *conns_this_batch;	/**< sessions handled in batch */
@@ -97,24 +74,15 @@ typedef struct
   /*
    * Configuration params
    */
-  hs_test_cfg_t cfg;
-  u32 n_clients;			/**< Number of clients */
-  u8 *connect_uri;			/**< URI for slave's connect */
-  session_endpoint_cfg_t connect_sep;	/**< Sever session endpoint */
-  u64 bytes_to_send;			/**< Bytes to send */
-  u32 configured_segment_size;
-  u32 fifo_size;
+  echo_test_cfg_t cfg;
+  u32 n_clients;     /**< Number of clients */
+  u64 bytes_to_send; /**< Bytes to send */
   u32 fifo_fill_threshold;
   u32 expected_connections;		/**< Number of clients/connections */
   u32 connections_per_batch;		/**< Connections to rx/tx at once */
-  u32 private_segment_count;		/**< Number of private fifo segs */
-  u64 private_segment_size;		/**< size of private fifo segs */
   u64 throughput;			/**< Target bytes per second */
-  u32 tls_engine;			/**< TLS engine mbedtls/openssl */
   u32 no_copy;				/**< Don't memcpy data to tx fifo */
-  u32 quic_streams;			/**< QUIC streams per connection */
-  u32 ckpair_index;			/**< Cert key pair for tls/quic */
-  u32 ca_trust_index;			/**< CA trust chain to be used */
+  u32 n_streams;			/**< QUIC/HTTP streams per connection */
   u64 attach_flags;			/**< App attach flags */
   u8 *appns_id;				/**< App namespaces id */
   u64 appns_secret;			/**< App namespace secret */
