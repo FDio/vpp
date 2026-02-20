@@ -13,7 +13,7 @@ from vpp_qemu_utils import (
 )
 from vpp_iperf import start_iperf, stop_iperf
 from framework import VppTestCase
-from asfframework import VppTestRunner, tag_fixme_debian11, is_distro_debian11
+from asfframework import VppTestRunner, tag_fixme_debian12, is_distro_debian12
 from config import config
 from vpp_papi import VppEnum
 import time
@@ -85,7 +85,7 @@ def create_test(test_name, test, ip_version, mtu):
     """Create and return a unittest method for a test."""
 
     @unittest.skipIf(
-        is_distro_debian11, "FIXME intermittent test failures on debian11 distro"
+        is_distro_debian12, "FIXME intermittent test failures on debian12 distro"
     )
     @unittest.skipIf(
         config.skip_netns_tests, "netns not available or disabled from cli"
@@ -188,7 +188,7 @@ def generate_vpp_interface_tests(tests, test_class):
                 setattr(test_class, test_name, test_func)
 
 
-@tag_fixme_debian11
+@tag_fixme_debian12
 class TestVPPInterfacesQemu:
     """Test VPP interfaces inside a QEMU VM for IPv4/v6.
 

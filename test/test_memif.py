@@ -6,8 +6,8 @@ from scapy.layers.inet import IP, ICMP
 from framework import VppTestCase
 from asfframework import (
     tag_run_solo,
-    tag_fixme_debian11,
-    is_distro_debian11,
+    tag_fixme_debian12,
+    is_distro_debian12,
     VppTestRunner,
 )
 from remote_test import RemoteClass, RemoteVppTestCase
@@ -18,7 +18,7 @@ from config import config
 
 
 @tag_run_solo
-@tag_fixme_debian11
+@tag_fixme_debian12
 @unittest.skipIf("memif" in config.excluded_plugins, "Exclude Memif plugin tests")
 class TestMemif(VppTestCase):
     """Memif Test Case"""
@@ -43,7 +43,7 @@ class TestMemif(VppTestCase):
         cls.remote_test.start_remote()
         cls.remote_test.set_request_timeout(10)
         super(TestMemif, cls).setUpClass()
-        if is_distro_debian11 == True and not hasattr(cls, "vpp"):
+        if is_distro_debian12 == True and not hasattr(cls, "vpp"):
             cls.remote_test.quit_remote()
             return
         cls.remote_test.setUpClass(cls.tempdir)
