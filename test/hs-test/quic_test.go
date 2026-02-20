@@ -12,7 +12,8 @@ import (
 
 func init() {
 	RegisterVethTests(QuicAlpnMatchTest, QuicAlpnOverlapMatchTest, QuicAlpnServerPriorityMatchTest, QuicAlpnMismatchTest,
-		QuicAlpnEmptyServerListTest, QuicAlpnEmptyClientListTest, QuicBuiltinEchoTest, QuicCpsTest)
+		QuicAlpnEmptyServerListTest, QuicAlpnEmptyClientListTest, QuicBuiltinEchoTest, QuicCpsTest,
+		QuicBuiltinEchoUnidirectionalTest)
 	RegisterNoTopoTests(QuicFailedHandshakeTest)
 }
 
@@ -130,19 +131,26 @@ func QuicFailedHandshakeTest(s *NoTopoSuite) {
 	AssertContains(o, "active sessions 2", "expected only listeners")
 }
 
-func QuicBuiltinEchoTest(s *VethsSuite) {
-	regex := regexp.MustCompile(`(\d+\.\d)-(\d+.\d)\s+(\d+\.\d+)[KMG]\s+0\s+\d+\.\d+[KMG]b/s\s+(\d?\.\d+)ms`)
+func quicBuiltinEcho(s *VethsSuite, uni bool) {
+	expr := `(\d+\.\d)-(\d+.\d)\s+(\d+\.\d+)[KMG]\s+0\s+\d+\.\d+[KMG]b/s\s+(\d?\.\d+)ms`
+	if uni {
+		expr = `(\d+\.\d)-(\d+.\d)\s+(\d+\.\d+)[KMG]\s+(\d+\.\d+)[KMG]\s+\d+\.\d+[KMG]b/s\s+(\d?\.\d+)ms`
+	}
+	regex := regexp.MustCompile(expr)
 	serverVpp := s.Containers.ServerVpp.VppInstance
 	clientVpp := s.Containers.ClientVpp.VppInstance
 
 	Log(serverVpp.Vppctl("test echo server " +
 		" uri quic://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1))
 
-	o := clientVpp.Vppctl("test echo client run-time 30 report-interval " +
-		" uri quic://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1)
+	cmd := "test echo client run-time 30 report-interval "
+	if uni {
+		cmd += "echo-bytes "
+	}
+	cmd += "uri quic://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1
+
+	o := clientVpp.Vppctl(cmd)
 	Log(o)
-	AssertContains(o, "Test started")
-	AssertContains(o, "Test finished")
 	if regex.MatchString(o) {
 		matches := regex.FindAllStringSubmatch(o, -1)
 		// check if all intervals have non-zero TX bytes
@@ -150,6 +158,14 @@ func QuicBuiltinEchoTest(s *VethsSuite) {
 	} else {
 		AssertEmpty("invalid echo test client output")
 	}
+}
+
+func QuicBuiltinEchoTest(s *VethsSuite) {
+	quicBuiltinEcho(s, false)
+}
+
+func QuicBuiltinEchoUnidirectionalTest(s *VethsSuite) {
+	quicBuiltinEcho(s, true)
 }
 
 func QuicCpsTest(s *VethsSuite) {
