@@ -7,7 +7,17 @@ import subprocess
 import signal
 import glob
 from config import config
+<<<<<<< HEAD   (6ec273 gha: use stable/2510 hst verify workflow)
 from asfframework import VppAsfTestCase, VppTestRunner, Worker
+=======
+from asfframework import (
+    VppAsfTestCase,
+    VppTestRunner,
+    Worker,
+    tag_fixme_asan,
+    tag_fixme_debian12,
+)
+>>>>>>> CHANGE (66c8f6 tests: fix @tag_fixme_debian12 to properly skip tests on Deb)
 from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 
 iperf3 = "/usr/bin/iperf3"
@@ -58,6 +68,7 @@ class VCLAppWorker(Worker):
         super(VCLAppWorker, self).__init__(self.args, logger, env, *args, **kwargs)
 
 
+@tag_fixme_debian12
 class VCLTestCase(VppAsfTestCase):
     """VCL Test Class"""
 

@@ -379,9 +379,13 @@ class MethodHolder(VppTestCase):
         return p
 
 
+@tag_fixme_debian12
 @tag_run_solo
 @tag_fixme_vpp_workers
+<<<<<<< HEAD   (6ec273 gha: use stable/2510 hst verify workflow)
 @tag_fixme_debian11
+=======
+>>>>>>> CHANGE (66c8f6 tests: fix @tag_fixme_debian12 to properly skip tests on Deb)
 @unittest.skipIf(
     "flowprobe" in config.excluded_plugins, "Exclude Flowprobe plugin tests"
 )
@@ -685,6 +689,7 @@ class Flowprobe(MethodHolder):
         self.logger.info("FFP_TEST_FINISH_0004")
 
 
+@tag_fixme_debian12
 class DatapathTestsHolder(object):
     """collect information on Ethernet, IP4 and IP6 datapath (no timers)"""
 
