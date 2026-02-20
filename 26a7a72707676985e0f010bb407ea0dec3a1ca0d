@@ -471,6 +471,24 @@
       "message": "Could you please set an explicit padding value for clarity ?\n\n\ni.e. `u8 unused1[39]`",
       "revId": "26a7a72707676985e0f010bb407ea0dec3a1ca0d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ff1acb54_18b53f2b",
+        "filename": "src/vnet/sfdp/sfdp.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 308,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2026-02-20T19:34:55Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "dec8c2f4_780d601e",
+      "revId": "26a7a72707676985e0f010bb407ea0dec3a1ca0d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
