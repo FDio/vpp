@@ -11,8 +11,8 @@ project_lead: &vpp_ptl
     timezone: 'Europe/Zagreb'
 primary_contact: *vpp_ptl
 issue_tracking:
-    type: 'jira'
-    url: 'https://jira.fd.io/projects/vpp'
+    type: 'github'
+    url: 'https://github.com/fdio/vpp/issues'
     key: 'VPP'
 mailing_list:
     type: 'groups.io'
