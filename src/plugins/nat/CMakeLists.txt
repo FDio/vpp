@@ -184,7 +184,7 @@ add_vpp_test(test_pnat
   pnat/pnat.c
   ../../vnet/ip/ip_checksum.c
 
-  LINK_LIBRARIES vppinfra vlib
+  LINK_LIBRARIES vppinfra vlib pthread
   NO_INSTALL
 )
 
