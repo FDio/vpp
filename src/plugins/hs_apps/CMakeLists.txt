@@ -22,8 +22,11 @@ add_vpp_plugin(hs_apps
   SOURCES
   alpn_client.c
   alpn_server.c
-  echo_client.c
-  echo_server.c
+  builtin_echo/echo_cli.c
+  builtin_echo/echo_client.c
+  builtin_echo/echo_server.c
+  builtin_echo/echo_stats.c
+  builtin_echo/echo_test_protos.c
   hs_apps.c
   http_cli.c
   http_client_cli.c

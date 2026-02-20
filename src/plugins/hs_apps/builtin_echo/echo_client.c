@@ -1,0 +1,1214 @@
+/* SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2017-2019 by Cisco and/or its affiliates.
+ */
+
+/* echo_client.c - vpp built-in echo client code */
+
+#include <float.h>
+#include <hs_apps/builtin_echo/echo_client.h>
+#include <vnet/tcp/tcp_types.h>
+
+ec_main_t ec_main;
+
+#define ec_err(_fmt, _args...) clib_warning (_fmt, ##_args);
+
+#define ec_dbg(_fmt, _args...)                                                                     \
+  do                                                                                               \
+    {                                                                                              \
+      if (ec_main.cfg.test_cfg.verbose)                                                            \
+	ec_err (_fmt, ##_args);                                                                    \
+    }                                                                                              \
+  while (0)
+
+static void
+signal_evt_to_cli_i (void *codep)
+{
+  ec_main_t *ecm = &ec_main;
+  int code;
+
+  ASSERT (vlib_get_thread_index () == 0);
+  code = pointer_to_uword (codep);
+  vlib_process_signal_event (ecm->vlib_main, ecm->cli_node_index, code, 0);
+}
+
+static void
+signal_evt_to_cli (int code)
+{
+  if (vlib_get_thread_index () != 0)
+    session_send_rpc_evt_to_thread_force (0, signal_evt_to_cli_i,
+					  uword_to_pointer ((uword) code, void *));
+  else
+    signal_evt_to_cli_i (uword_to_pointer ((uword) code, void *));
+}
+
+static inline echo_test_worker_t *
+ec_worker_get (clib_thread_index_t thread_index)
+{
+  return vec_elt_at_index (ec_main.wrk, thread_index);
+}
+
+static inline void
+ec_sessions_stop_clean ()
+{
+  ec_main_t *ecm = &ec_main;
+  ecm->test_timeout += 1;
+  ecm->end_test = true;
+}
+
+static inline echo_test_session_t *
+ec_session_get (echo_test_worker_t *wrk, u32 ec_index)
+{
+  return pool_elt_at_index (wrk->sessions, ec_index);
+}
+
+always_inline void
+echo_client_tx_data (echo_test_session_t *es, u8 run_time, u8 paced, u8 test_bytes)
+{
+  ec_main_t *ecm = &ec_main;
+  const echo_test_proto_vft_t *tp = &echo_test_main.protos[ecm->cfg.proto];
+  u32 n_send;
+  u64 bytes_to_send;
+
+  if (run_time)
+    bytes_to_send = ecm->max_chunk_bytes;
+  else
+    bytes_to_send = clib_min (es->bytes_to_send, ecm->max_chunk_bytes);
+
+  if (paced)
+    {
+      f64 time_now = vlib_time_now (vlib_get_main ());
+      if (time_now < es->time_to_send)
+	return;
+      es->time_to_send += ecm->pacing_window_len;
+      bytes_to_send = clib_min (bytes_to_send, es->bytes_paced_current);
+    }
+
+  if (test_bytes)
+    n_send = tp->client_tx_test_bytes (es, ecm->connect_test_data, bytes_to_send);
+  else
+    n_send = tp->client_tx (es, bytes_to_send);
+
+  if (ecm->run_time)
+    es->bytes_to_receive += n_send;
+  else
+    es->bytes_to_send -= n_send;
+
+  if (ecm->throughput)
+    {
+      if (n_send)
+	{
+	  es->bytes_paced_current -= n_send;
+	  es->bytes_paced_current += es->bytes_paced_target;
+	}
+    }
+}
+
+static void
+echo_client_tx_test_bytes (echo_test_session_t *es)
+{
+  echo_client_tx_data (es, 0, 0, 1);
+}
+
+static void
+echo_client_tx_test_bytes_time (echo_test_session_t *es)
+{
+  echo_client_tx_data (es, 1, 0, 1);
+}
+
+static void
+echo_client_tx_test_bytes_paced (echo_test_session_t *es)
+{
+  echo_client_tx_data (es, 0, 1, 1);
+}
+
+static void
+echo_client_tx_test_bytes_paced_time (echo_test_session_t *es)
+{
+  echo_client_tx_data (es, 1, 1, 1);
+}
+
+static void
+echo_client_tx_zc (echo_test_session_t *es)
+{
+  echo_client_tx_data (es, 0, 0, 0);
+}
+
+static void
+echo_client_tx_zc_time (echo_test_session_t *es)
+{
+  echo_client_tx_data (es, 1, 0, 0);
+}
+
+static void
+echo_client_tx_zc_paced (echo_test_session_t *es)
+{
+  echo_client_tx_data (es, 0, 1, 0);
+}
+
+static void
+echo_client_tx_zc_paced_time (echo_test_session_t *es)
+{
+  echo_client_tx_data (es, 1, 1, 0);
+}
+
+always_inline void
+echo_client_rx_data (session_t *s, u8 test_bytes)
+{
+  ec_main_t *ecm = &ec_main;
+  echo_test_session_t *es;
+  echo_test_worker_t *wrk;
+  const echo_test_proto_vft_t *tp;
+
+  wrk = ec_worker_get (s->thread_index);
+  es = ec_session_get (wrk, s->opaque);
+  tp = &echo_test_main.protos[ecm->cfg.proto];
+  if (test_bytes)
+    ecm->test_failed = tp->client_rx_test_bytes (es, s, wrk->rx_buf);
+  else
+    ecm->test_failed = tp->client_rx (es, s, wrk->rx_buf);
+}
+
+static void
+echo_client_rx (session_t *s)
+{
+  echo_client_rx_data (s, 0);
+}
+
+static void
+echo_client_rx_test_bytes (session_t *s)
+{
+  echo_client_rx_data (s, 1);
+}
+
+static uword
+ec_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  u32 *conn_indices, *conns_this_batch, nconns_this_batch;
+  int thread_index = vm->thread_index, i, delete_session;
+  ec_main_t *ecm = &ec_main;
+  echo_test_worker_t *wrk;
+  echo_test_session_t *es;
+  session_t *s;
+
+  if (ecm->run_test != EC_RUNNING)
+    return 0;
+
+  wrk = ec_worker_get (thread_index);
+  conn_indices = wrk->conn_indices;
+  conns_this_batch = wrk->conns_this_batch;
+
+  if (((vec_len (conn_indices) == 0) && vec_len (conns_this_batch) == 0))
+    return 0;
+
+  /* Grab another pile of connections */
+  if (PREDICT_FALSE (vec_len (conns_this_batch) == 0))
+    {
+      nconns_this_batch = clib_min (ecm->connections_per_batch, vec_len (conn_indices));
+
+      ASSERT (nconns_this_batch > 0);
+      vec_validate (conns_this_batch, nconns_this_batch - 1);
+      clib_memcpy_fast (conns_this_batch, conn_indices + vec_len (conn_indices) - nconns_this_batch,
+			nconns_this_batch * sizeof (u32));
+      vec_dec_len (conn_indices, nconns_this_batch);
+    }
+
+  /*
+   * Track progress
+   */
+  if (PREDICT_FALSE (ecm->prev_conns != ecm->connections_per_batch &&
+		     ecm->prev_conns == vec_len (conns_this_batch)))
+    {
+      ecm->repeats++;
+      ecm->prev_conns = vec_len (conns_this_batch);
+      if (ecm->repeats == 500000 && !ecm->run_time)
+	{
+	  ec_err ("stuck clients");
+	}
+    }
+  else
+    {
+      ecm->prev_conns = vec_len (conns_this_batch);
+      ecm->repeats = 0;
+    }
+
+  /*
+   * Handle connections in this batch
+   */
+  for (i = 0; i < vec_len (conns_this_batch); i++)
+    {
+      es = ec_session_get (wrk, conns_this_batch[i]);
+      delete_session = 1;
+      if (es->bytes_to_send > 0)
+	{
+	  ecm->tx_callback (es);
+	  delete_session = 0;
+	}
+
+      if (es->bytes_to_receive > 0)
+	{
+	  delete_session = 0;
+	}
+
+      if (PREDICT_FALSE (delete_session == 1) || ecm->end_test)
+	{
+	  clib_atomic_fetch_add (&ecm->stats.tx_total, es->bytes_sent);
+	  clib_atomic_fetch_add (&ecm->stats.rx_total, es->bytes_received);
+	  clib_atomic_fetch_add (&ecm->stats.tx_total_dgrams, es->dgrams_sent);
+	  clib_atomic_fetch_add (&ecm->stats.rx_total_dgrams, es->dgrams_received);
+	  s = session_get_from_handle_if_valid (es->vpp_session_handle);
+
+	  if (s)
+	    {
+	      if (ecm->cfg.proto == TRANSPORT_PROTO_TCP)
+		echo_update_rtt_stats_tcp (es, &ecm->stats.rtt_stats);
+	      else if (ecm->cfg.proto == TRANSPORT_PROTO_UDP)
+		echo_update_rtt_stats_udp (es, &ecm->stats.rtt_stats);
+
+	      vnet_disconnect_args_t _a, *a = &_a;
+	      a->handle = session_handle (s);
+	      a->app_index = ecm->app_index;
+	      vnet_disconnect_session (a);
+
+	      vec_delete (conns_this_batch, 1, i);
+	      i--;
+	      clib_atomic_fetch_add (&ecm->ready_connections, -1);
+	    }
+	  else
+	    {
+	      ec_err ("session AWOL?");
+	      vec_delete (conns_this_batch, 1, i);
+	    }
+
+	  /* Kick the debug CLI process */
+	  if (ecm->ready_connections == 0)
+	    {
+	      signal_evt_to_cli (EC_CLI_TEST_DONE);
+	    }
+	}
+    }
+
+  wrk->conn_indices = conn_indices;
+  wrk->conns_this_batch = conns_this_batch;
+  return 0;
+}
+
+VLIB_REGISTER_NODE (echo_clients_node) = {
+  .function = ec_node_fn,
+  .name = "echo-clients",
+  .type = VLIB_NODE_TYPE_INPUT,
+  .state = VLIB_NODE_STATE_DISABLED,
+};
+
+static void
+ec_reset_runtime_config (ec_main_t *ecm)
+{
+  hs_test_cfg_init (&ecm->cfg.test_cfg);
+  ecm->cfg.n_clients = 1;
+  ecm->cfg.n_streams = 1;
+  ecm->cfg.bytes_to_send = 8192;
+  ecm->cfg.echo_bytes = 0;
+  ecm->cfg.fifo_size = 4 << 20;
+  ecm->connections_per_batch = 1000;
+  ecm->cfg.private_segment_size = 256 << 20;
+  ecm->test_failed = 0;
+  ecm->cfg.tls_engine = CRYPTO_ENGINE_OPENSSL;
+  ecm->run_test = EC_STARTING;
+  ecm->end_test = false;
+  ecm->ready_connections = 0;
+  ecm->connect_conn_index = 0;
+  ecm->stats.rx_total = 0;
+  ecm->stats.tx_total = 0;
+  ecm->stats.rx_total_dgrams = 0;
+  ecm->stats.tx_total_dgrams = 0;
+  ecm->barrier_acq_needed = 0;
+  ecm->prealloc_sessions = 0;
+  ecm->prealloc_fifos = 0;
+  ecm->appns_id = 0;
+  ecm->appns_secret = 0;
+  ecm->attach_flags = 0;
+  ecm->syn_timeout = 20.0;
+  ecm->test_timeout = 20.0;
+  ecm->run_time = 0;
+  ecm->throughput = 0;
+  ecm->pacing_window_len = 1;
+  ecm->max_chunk_bytes = TRANSPORT_PACER_MAX_BURST;
+  ecm->cfg.report_interval = 0;
+  ecm->cfg.report_interval_total = 0;
+  ecm->stats.last_print_time = 0;
+  ecm->stats.last_total_tx_bytes = 0;
+  ecm->stats.last_total_rx_bytes = 0;
+  ecm->stats.last_total_rx_dgrams = 0;
+  ecm->stats.last_total_tx_dgrams = 0;
+  ecm->cfg.report_interval_jitter = 0;
+  ecm->include_buffer_offset = 0;
+  clib_memset (&ecm->stats.rtt_stats, 0, sizeof (echo_rtt_stat_t));
+  ecm->stats.rtt_stats.min_rtt = CLIB_F64_MAX;
+  if (ecm->stats.rtt_stats.w_lock == NULL)
+    clib_spinlock_init (&ecm->stats.rtt_stats.w_lock);
+  vec_free (ecm->cfg.uri);
+}
+
+int
+ec_init (vlib_main_t *vm)
+{
+  ec_main_t *ecm = &ec_main;
+  echo_test_worker_t *wrk;
+  u32 num_threads;
+  int i;
+
+  ec_reset_runtime_config (ecm);
+
+  /* Store cli process node index for signaling */
+  ecm->cli_node_index = vlib_get_current_process (vm)->node_runtime.node_index;
+  ecm->vlib_main = vm;
+
+  if (vlib_num_workers ())
+    {
+      /* The request came over the binary api and the inband cli handler
+       * is not mp_safe. Drop the barrier to make sure the workers are not
+       * blocked.
+       */
+      if (vlib_thread_is_main_w_barrier ())
+	{
+	  ecm->barrier_acq_needed = 1;
+	  vlib_worker_thread_barrier_release (vm);
+	}
+      /*
+       * There's a good chance that both the client and the server echo
+       * apps will be enabled so make sure the session queue node polls on
+       * the main thread as connections will probably be established on it.
+       */
+      vlib_node_set_state (vm, session_queue_node.index, VLIB_NODE_STATE_POLLING);
+    }
+
+  /* App init done only once */
+  if (ecm->app_is_init)
+    return 0;
+
+  /* Init test data. Big buffer */
+  vec_validate (ecm->connect_test_data, 4 * 1024 * 1024 - 1);
+  for (i = 0; i < vec_len (ecm->connect_test_data); i++)
+    ecm->connect_test_data[i] = i & 0xff;
+
+  num_threads = 1 /* main thread */ + vlib_num_workers ();
+  vec_validate (ecm->wrk, num_threads - 1);
+  vec_foreach (wrk, ecm->wrk)
+    {
+      vec_validate (wrk->rx_buf, vec_len (ecm->connect_test_data) - 1);
+    }
+
+  ecm->app_is_init = 1;
+
+  session_enable_disable_args_t args = { .is_en = 1,
+					 .rt_engine_type = RT_BACKEND_ENGINE_RULE_TABLE };
+  vlib_worker_thread_barrier_sync (vm);
+  vnet_session_enable_disable (vm, &args);
+
+  /* Turn on the builtin client input nodes */
+  foreach_vlib_main ()
+    vlib_node_set_state (this_vlib_main, echo_clients_node.index, VLIB_NODE_STATE_POLLING);
+
+  vlib_worker_thread_barrier_release (vm);
+
+  return 0;
+}
+
+void
+ec_prealloc_sessions (ec_main_t *ecm)
+{
+  u32 sessions_per_wrk, n_wrks;
+  echo_test_worker_t *wrk;
+
+  n_wrks = vlib_num_workers () ? vlib_num_workers () : 1;
+
+  sessions_per_wrk = ecm->cfg.n_clients / n_wrks;
+  vec_foreach (wrk, ecm->wrk)
+    pool_init_fixed (wrk->sessions, 1.1 * sessions_per_wrk);
+}
+
+static void
+ec_worker_cleanup (echo_test_worker_t *wrk)
+{
+  pool_free (wrk->sessions);
+  vec_free (wrk->conn_indices);
+  vec_free (wrk->conns_this_batch);
+}
+
+void
+ec_cleanup (ec_main_t *ecm)
+{
+  echo_test_worker_t *wrk;
+
+  vec_foreach (wrk, ecm->wrk)
+    ec_worker_cleanup (wrk);
+
+  vec_free (ecm->cfg.uri);
+  vec_free (ecm->appns_id);
+  if (ecm->throughput)
+    ecm->pacing_window_len = 1;
+  if (ecm->barrier_acq_needed)
+    vlib_worker_thread_barrier_sync (ecm->vlib_main);
+  clib_spinlock_free (&ecm->stats.rtt_stats.w_lock);
+}
+
+static int
+ec_ctrl_send (hs_test_cmd_t cmd)
+{
+  ec_main_t *ecm = &ec_main;
+  session_t *s;
+  int rv;
+
+  ecm->cfg.test_cfg.cmd = cmd;
+  if (ecm->ctrl_session_handle == SESSION_INVALID_HANDLE)
+    {
+      ec_dbg ("ctrl session went away");
+      return -1;
+    }
+
+  s = session_get_from_handle_if_valid (ecm->ctrl_session_handle);
+  if (!s)
+    {
+      ec_err ("ctrl session not found");
+      return -1;
+    }
+
+  ec_dbg ("sending test paramters to the server..");
+  if (ecm->cfg.test_cfg.verbose)
+    hs_test_cfg_dump (&ecm->cfg.test_cfg, 1);
+
+  rv = svm_fifo_enqueue (s->tx_fifo, sizeof (ecm->cfg.test_cfg), (u8 *) &ecm->cfg.test_cfg);
+  ASSERT (rv == sizeof (ecm->cfg.test_cfg));
+  session_program_tx_io_evt (s->handle, SESSION_IO_EVT_TX);
+  return 0;
+}
+
+static int
+ec_ctrl_session_connected_callback (session_t *s)
+{
+  ec_main_t *ecm = &ec_main;
+
+  s->opaque = HS_CTRL_HANDLE;
+  ecm->ctrl_session_handle = session_handle (s);
+
+  /* send test parameters to the server */
+  ec_ctrl_send (HS_TEST_CMD_SYNC);
+  return 0;
+}
+
+static void
+ec_calc_tput (ec_main_t *ecm)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  echo_test_worker_t *wrk;
+  echo_test_session_t *sess;
+  f64 pacing_base;
+  u64 bytes_paced_target;
+  u64 target_size_threshold;
+
+  /* Choose an appropriate data size chunk threshold based on fifo size.
+     ~30k is fine for most scenarios, unless the fifo starts getting
+     smaller than 48k, where a slight curve is needed. */
+  if (PREDICT_TRUE (ecm->cfg.fifo_size > 49152))
+    target_size_threshold = 30720;
+  else if (ecm->cfg.fifo_size > 20480)
+    target_size_threshold = 12288;
+  else if (ecm->cfg.fifo_size > 10240)
+    target_size_threshold = 6144;
+  else
+    target_size_threshold = ecm->cfg.fifo_size;
+
+  /* find a suitable pacing window length & data chunk size */
+  bytes_paced_target = ecm->throughput * ecm->pacing_window_len / ecm->cfg.n_clients;
+  while (bytes_paced_target > target_size_threshold ||
+	 (ecm->cfg.proto == TRANSPORT_PROTO_UDP && bytes_paced_target > 1460))
+    {
+      ecm->pacing_window_len /= 2;
+      bytes_paced_target /= 2;
+    }
+
+  /* order sessions to shoot out data sequentially */
+  pacing_base = vlib_time_now (vm) - ecm->pacing_window_len;
+  vec_foreach (wrk, ecm->wrk)
+    {
+      vec_foreach (sess, wrk->sessions)
+	{
+	  sess->time_to_send = pacing_base + ecm->pacing_window_len / ecm->cfg.n_clients;
+	  pacing_base = sess->time_to_send;
+	  sess->bytes_paced_target = bytes_paced_target;
+	  sess->bytes_paced_current = bytes_paced_target;
+	}
+    }
+}
+
+static int
+ec_session_connected_callback (u32 app_index, u32 api_context, session_t *s, session_error_t err)
+{
+  ec_main_t *ecm = &ec_main;
+  clib_thread_index_t thread_index;
+  echo_test_worker_t *wrk;
+  const echo_test_proto_vft_t *tp;
+  u32 n_connected;
+
+  if (PREDICT_FALSE (ecm->run_test != EC_STARTING))
+    return -1;
+
+  if (err)
+    {
+      ec_err ("connection %d failed! %U", api_context, format_session_error, err);
+      ecm->run_test = EC_EXITING;
+      signal_evt_to_cli (EC_CLI_CONNECTS_FAILED);
+      return 0;
+    }
+
+  thread_index = s->thread_index;
+  ASSERT (thread_index == vlib_get_thread_index () ||
+	  session_transport_service_type (s) == TRANSPORT_SERVICE_CL);
+
+  if (PREDICT_FALSE (api_context == HS_CTRL_HANDLE))
+    return ec_ctrl_session_connected_callback (s);
+
+  wrk = ec_worker_get (thread_index);
+  tp = &echo_test_main.protos[ecm->cfg.proto];
+  n_connected = tp->connected (s, &ecm->cfg, wrk, ecm->app_index);
+
+  clib_atomic_fetch_add (&ecm->ready_connections, n_connected);
+  if (ecm->ready_connections == ecm->expected_connections)
+    {
+      if (ecm->throughput)
+	ec_calc_tput (ecm);
+      ecm->run_test = EC_RUNNING;
+      /* Signal the CLI process that the action is starting... */
+      signal_evt_to_cli (EC_CLI_CONNECTS_DONE);
+    }
+
+  return 0;
+}
+
+static void
+ec_session_reset_callback (session_t *s)
+{
+  ec_main_t *ecm = &ec_main;
+  vnet_disconnect_args_t _a = { 0 }, *a = &_a;
+
+  if (s->session_state == SESSION_STATE_READY)
+    ec_err ("Reset active connection %U", format_session, s, 2);
+
+  a->handle = session_handle (s);
+  a->app_index = ecm->app_index;
+  vnet_disconnect_session (a);
+  return;
+}
+
+static int
+ec_session_accept_callback (session_t *s)
+{
+  return 0;
+}
+
+static void
+ec_session_disconnect_callback (session_t *s)
+{
+  ec_main_t *ecm = &ec_main;
+  vnet_disconnect_args_t _a = { 0 }, *a = &_a;
+
+  if (session_handle (s) == ecm->ctrl_session_handle)
+    {
+      ec_dbg ("ctrl session disconnect");
+      ecm->ctrl_session_handle = SESSION_INVALID_HANDLE;
+    }
+
+  a->handle = session_handle (s);
+  a->app_index = ecm->app_index;
+  vnet_disconnect_session (a);
+  return;
+}
+
+void
+ec_session_disconnect (session_t *s)
+{
+  ec_main_t *ecm = &ec_main;
+  vnet_disconnect_args_t _a = { 0 }, *a = &_a;
+
+  a->handle = session_handle (s);
+  a->app_index = ecm->app_index;
+  vnet_disconnect_session (a);
+}
+
+static int
+ec_ctrl_session_rx_callback (session_t *s)
+{
+  ec_main_t *ecm = &ec_main;
+  int rx_bytes;
+  hs_test_cfg_t cfg = { 0 };
+
+  rx_bytes = svm_fifo_dequeue (s->rx_fifo, sizeof (cfg), (u8 *) &cfg);
+  if (rx_bytes != sizeof (cfg))
+    {
+      ec_err ("invalid cfg length %d (expected %d)", rx_bytes, sizeof (cfg));
+      signal_evt_to_cli (EC_CLI_CONNECTS_FAILED);
+      return -1;
+    }
+
+  ec_dbg ("control message received:");
+  if (ecm->cfg.test_cfg.verbose)
+    hs_test_cfg_dump (&cfg, 1);
+
+  switch (cfg.cmd)
+    {
+    case HS_TEST_CMD_SYNC:
+      switch (ecm->run_test)
+	{
+	case EC_STARTING:
+	  if (!hs_test_cfg_verify (&cfg, &ecm->cfg.test_cfg))
+	    {
+	      ec_err ("invalid config received from server!");
+	      signal_evt_to_cli (EC_CLI_CONNECTS_FAILED);
+	      return -1;
+	    }
+	  signal_evt_to_cli (EC_CLI_CFG_SYNC);
+	  break;
+
+	case EC_RUNNING:
+	  ec_dbg ("test running..");
+	  break;
+
+	case EC_EXITING:
+	  /* post test sync */
+	  ecm->stats.peer_bytes_received = cfg.total_bytes;
+	  ecm->stats.peer_dgrams_received = cfg.num_reads;
+	  signal_evt_to_cli (EC_CLI_CFG_SYNC);
+	  break;
+
+	default:
+	  ec_err ("unexpected test state! %d", ecm->run_test);
+	  break;
+	}
+      break;
+    case HS_TEST_CMD_START:
+      signal_evt_to_cli (EC_CLI_START);
+      break;
+    case HS_TEST_CMD_STOP:
+      signal_evt_to_cli (EC_CLI_STOP);
+      break;
+    default:
+      ec_err ("unexpected cmd! %d", cfg.cmd);
+      break;
+    }
+
+  return 0;
+}
+
+static int
+ec_session_rx_callback (session_t *s)
+{
+  ec_main_t *ecm = &ec_main;
+
+  if (PREDICT_FALSE (s->opaque == HS_CTRL_HANDLE))
+    return ec_ctrl_session_rx_callback (s);
+
+  if (PREDICT_FALSE (ecm->run_test != EC_RUNNING))
+    {
+      ec_session_disconnect (s);
+      return -1;
+    }
+
+  ecm->rx_callback (s);
+
+  if (svm_fifo_max_dequeue_cons (s->rx_fifo))
+    session_enqueue_notify (s);
+
+  return 0;
+}
+
+static int
+ec_add_segment_callback (u32 app_index, u64 segment_handle)
+{
+  /* New segments may be added */
+  return 0;
+}
+
+static int
+ec_del_segment_callback (u32 app_index, u64 segment_handle)
+{
+  return 0;
+}
+
+static session_cb_vft_t ec_cb_vft = {
+  .session_reset_callback = ec_session_reset_callback,
+  .session_connected_callback = ec_session_connected_callback,
+  .session_accept_callback = ec_session_accept_callback,
+  .session_disconnect_callback = ec_session_disconnect_callback,
+  .builtin_app_rx_callback = ec_session_rx_callback,
+  .add_segment_callback = ec_add_segment_callback,
+  .del_segment_callback = ec_del_segment_callback,
+};
+
+clib_error_t *
+ec_attach ()
+{
+  vnet_app_add_cert_key_pair_args_t _ck_pair, *ck_pair = &_ck_pair;
+  app_ca_trust_add_args_t _ca_args = {}, *ca_args = &_ca_args;
+  ec_main_t *ecm = &ec_main;
+  vnet_app_attach_args_t _a, *a = &_a;
+  u32 prealloc_fifos;
+  u64 options[18];
+  int rv;
+
+  clib_memset (a, 0, sizeof (*a));
+  clib_memset (options, 0, sizeof (options));
+
+  a->api_client_index = ~0;
+  a->name = format (0, "echo_client");
+  a->session_cb_vft = &ec_cb_vft;
+
+  prealloc_fifos = ecm->prealloc_fifos ? ecm->expected_connections : 1;
+
+  options[APP_OPTIONS_SEGMENT_SIZE] = ecm->cfg.private_segment_size;
+  options[APP_OPTIONS_ADD_SEGMENT_SIZE] = ecm->cfg.private_segment_size;
+  options[APP_OPTIONS_RX_FIFO_SIZE] = ecm->cfg.fifo_size;
+  options[APP_OPTIONS_TX_FIFO_SIZE] = ecm->cfg.fifo_size;
+  options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] = prealloc_fifos;
+  options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
+  options[APP_OPTIONS_TLS_ENGINE] = ecm->cfg.tls_engine;
+  options[APP_OPTIONS_PCT_FIRST_ALLOC] = 100;
+  options[APP_OPTIONS_FLAGS] |= ecm->attach_flags;
+  if (ecm->appns_id)
+    {
+      options[APP_OPTIONS_NAMESPACE_SECRET] = ecm->appns_secret;
+      a->namespace_id = ecm->appns_id;
+    }
+  a->options = options;
+
+  if ((rv = vnet_application_attach (a)))
+    return clib_error_return (0, "attach returned %d", rv);
+
+  ecm->app_index = a->app_index;
+  vec_free (a->name);
+
+  clib_memset (ck_pair, 0, sizeof (*ck_pair));
+  ck_pair->cert = (u8 *) test_srv_crt_rsa;
+  ck_pair->key = (u8 *) test_srv_key_rsa;
+  ck_pair->cert_len = test_srv_crt_rsa_len;
+  ck_pair->key_len = test_srv_key_rsa_len;
+  vnet_app_add_cert_key_pair (ck_pair);
+  ecm->cfg.ckpair_index = ck_pair->index;
+
+  vec_validate (ca_args->ca_chain, test_ca_chain_rsa_len - 1);
+  clib_memcpy (ca_args->ca_chain, test_ca_chain_rsa, test_ca_chain_rsa_len);
+  vec_validate (ca_args->crl, test_ca_crl_len - 1);
+  clib_memcpy (ca_args->crl, test_ca_crl, test_ca_crl_len);
+  app_crypto_add_ca_trust (ecm->app_index, ca_args);
+  ecm->cfg.ca_trust_index = ca_args->index;
+
+  ecm->test_client_attached = 1;
+
+  return 0;
+}
+
+int
+ec_detach ()
+{
+  ec_main_t *ecm = &ec_main;
+  vnet_app_detach_args_t _da, *da = &_da;
+  int rv;
+
+  if (!ecm->test_client_attached)
+    return 0;
+
+  da->app_index = ecm->app_index;
+  da->api_client_index = ~0;
+  rv = vnet_application_detach (da);
+  ecm->test_client_attached = 0;
+  ecm->app_index = ~0;
+  vnet_app_del_cert_key_pair (ecm->cfg.ckpair_index);
+
+  return rv;
+}
+
+static int
+ec_connect_rpc (void *args)
+{
+  ec_main_t *ecm = &ec_main;
+  vnet_connect_args_t _a = {}, *a = &_a;
+  int rv;
+  u32 n_clients, ci;
+  const echo_test_proto_vft_t *tp;
+
+  n_clients = ecm->cfg.n_clients;
+  tp = &echo_test_main.protos[ecm->cfg.proto];
+  clib_memcpy (&a->sep_ext, &ecm->cfg.sep, sizeof (ecm->cfg.sep));
+  a->sep_ext.transport_flags |= TRANSPORT_CFG_F_CONNECTED;
+  a->app_index = ecm->app_index;
+
+  ci = ecm->connect_conn_index;
+
+  while (ci < n_clients)
+    {
+      /* Crude pacing for call setups  */
+      if (ci - ecm->ready_connections > 128)
+	{
+	  ecm->connect_conn_index = ci;
+	  break;
+	}
+
+      a->api_context = ci;
+      rv = tp->connect (a, &ecm->cfg);
+      if (rv)
+	{
+	  ec_err ("connect returned: %U", format_session_error, rv);
+	  ecm->run_test = EC_EXITING;
+	  signal_evt_to_cli (EC_CLI_CONNECTS_FAILED);
+	  break;
+	}
+
+      ci += 1;
+    }
+
+  if (ci < ecm->expected_connections && ecm->run_test != EC_EXITING)
+    ec_program_connects ();
+
+  return 0;
+}
+
+void
+ec_program_connects (void)
+{
+  session_send_rpc_evt_to_thread_force (transport_cl_thread (), ec_connect_rpc, 0);
+}
+
+static clib_error_t *
+ec_ctrl_connect_rpc ()
+{
+  session_error_t rv;
+  ec_main_t *ecm = &ec_main;
+  vnet_connect_args_t _a = {}, *a = &_a;
+
+  a->api_context = HS_CTRL_HANDLE;
+  ecm->cfg.test_cfg.cmd = HS_TEST_CMD_SYNC;
+  clib_memcpy (&a->sep_ext, &ecm->cfg.sep, sizeof (ecm->cfg.sep));
+  a->sep_ext.transport_proto = TRANSPORT_PROTO_TCP;
+  a->app_index = ecm->app_index;
+
+  rv = vnet_connect (a);
+  if (rv)
+    {
+      ec_err ("ctrl connect returned: %U", format_session_error, rv);
+      ecm->run_test = EC_EXITING;
+      signal_evt_to_cli (EC_CLI_CONNECTS_FAILED);
+    }
+  return 0;
+}
+
+static void
+ec_ctrl_connect (void)
+{
+  session_send_rpc_evt_to_thread_force (transport_cl_thread (), ec_ctrl_connect_rpc, 0);
+}
+
+static void
+ec_ctrl_session_disconnect ()
+{
+  ec_main_t *ecm = &ec_main;
+  vnet_disconnect_args_t _a, *a = &_a;
+  session_error_t err;
+
+  a->handle = ecm->ctrl_session_handle;
+  a->app_index = ecm->app_index;
+  err = vnet_disconnect_session (a);
+  if (err)
+    ec_err ("vnet_disconnect_session: %U", format_session_error, err);
+}
+
+static int
+ec_ctrl_test_sync ()
+{
+  ec_main_t *ecm = &ec_main;
+  ecm->cfg.test_cfg.test = HS_TEST_TYPE_ECHO;
+  return ec_ctrl_send (HS_TEST_CMD_SYNC);
+}
+
+static int
+ec_ctrl_test_start ()
+{
+  return ec_ctrl_send (HS_TEST_CMD_START);
+}
+
+static int
+ec_ctrl_test_stop ()
+{
+  return ec_ctrl_send (HS_TEST_CMD_STOP);
+}
+
+#define ec_wait_for_signal(_sig)                                                                   \
+  vlib_process_wait_for_event_or_clock (vm, ecm->syn_timeout);                                     \
+  event_type = vlib_process_get_events (vm, &event_data);                                          \
+  switch (event_type)                                                                              \
+    {                                                                                              \
+    case ~0:                                                                                       \
+      echo_cli ("Timeout while waiting for " #_sig);                                               \
+      return clib_error_return (0, "failed: timeout while waiting for " #_sig);                    \
+    case _sig:                                                                                     \
+      break;                                                                                       \
+    default:                                                                                       \
+      echo_cli ("unexpected event while waiting for " #_sig ": %d", event_type);                   \
+      return clib_error_return (0, "failed: unexpected event: %d", event_type);                    \
+    }
+
+static void
+ec_print_timeout_stats (vlib_main_t *vm)
+{
+  ec_main_t *ecm = &ec_main;
+  u64 received_bytes = 0, sent_bytes = 0;
+  echo_test_worker_t *wrk;
+  echo_test_session_t *sess;
+  vec_foreach (wrk, ecm->wrk)
+    {
+      pool_foreach (sess, wrk->sessions)
+	{
+	  received_bytes += sess->bytes_received;
+	  sent_bytes += sess->bytes_sent;
+	}
+    }
+  echo_cli ("Timeout at %.6f with %d sessions still active...", vlib_time_now (vm),
+	    ecm->ready_connections);
+  if (ecm->cfg.proto == TRANSPORT_PROTO_UDP)
+    {
+      echo_cli ("Received %llu bytes out of %llu sent (%llu target)", received_bytes, sent_bytes,
+		ecm->cfg.bytes_to_send * ecm->cfg.n_clients);
+    }
+}
+
+static u8
+ec_transport_proto_is_cless ()
+{
+  return (ec_main.cfg.proto == TRANSPORT_PROTO_UDP || ec_main.cfg.proto == TRANSPORT_PROTO_SRTP);
+}
+
+clib_error_t *
+ec_run (vlib_main_t *vm)
+{
+  ec_main_t *ecm = &ec_main;
+  uword *event_data = 0, event_type;
+  clib_error_t *error = 0;
+  f64 delta, wait_time = 0;
+
+  if (ecm->cfg.test_cfg.test_bytes ||
+      (ecm->cfg.echo_bytes && ecm->cfg.proto == TRANSPORT_PROTO_UDP))
+    {
+      ecm->cfg.test_cfg.test_bytes = 1;
+      ecm->include_buffer_offset = 1;
+    }
+
+  /* set tx function which we'll use */
+  if (ecm->cfg.test_cfg.test_bytes)
+    {
+      if (ecm->throughput)
+	ecm->tx_callback =
+	  ecm->run_time ? echo_client_tx_test_bytes_paced_time : echo_client_tx_test_bytes_paced;
+      else
+	ecm->tx_callback =
+	  ecm->run_time ? echo_client_tx_test_bytes_time : echo_client_tx_test_bytes;
+    }
+  else
+    {
+      if (ecm->throughput)
+	ecm->tx_callback = ecm->run_time ? echo_client_tx_zc_paced_time : echo_client_tx_zc_paced;
+      else
+	ecm->tx_callback = ecm->run_time ? echo_client_tx_zc_time : echo_client_tx_zc;
+    }
+
+  /* vcl_test_server might send one byte on accept */
+  ecm->rx_callback = echo_client_rx;
+  if (ecm->cfg.echo_bytes)
+    {
+      ecm->cfg.test_cfg.test = HS_TEST_TYPE_BI;
+      if (ecm->include_buffer_offset)
+	ecm->rx_callback = echo_client_rx_test_bytes;
+    }
+  else
+    ecm->cfg.test_cfg.test = HS_TEST_TYPE_UNI;
+
+  ec_ctrl_connect ();
+  ec_wait_for_signal (EC_CLI_CFG_SYNC);
+
+  if (ec_ctrl_test_start () < 0)
+    {
+      return clib_error_return (0, "failed to send start command");
+    }
+  ec_wait_for_signal (EC_CLI_START);
+
+  /*
+   * Start. Fire off connect requests
+   */
+
+  /* update data port */
+  ecm->cfg.sep.port = hs_make_data_port (ecm->cfg.sep.port);
+
+  ecm->syn_start_time = vlib_time_now (vm);
+  ec_program_connects ();
+
+  /*
+   * Park until the sessions come up, or syn_timeout seconds pass
+   */
+  vlib_process_wait_for_event_or_clock (vm, ecm->syn_timeout);
+  event_type = vlib_process_get_events (vm, &event_data);
+  switch (event_type)
+    {
+    case ~0:
+      echo_cli ("Timeout with only %u sessions active...", ecm->ready_connections);
+      error = clib_error_return (0, "failed: syn timeout with %u sessions", ecm->ready_connections);
+      goto stop_test;
+
+    case EC_CLI_CONNECTS_DONE:
+      if (!ec_transport_proto_is_cless () && ecm->expected_connections > 1)
+	{
+	  delta = vlib_time_now (vm) - ecm->syn_start_time;
+	  if (delta != 0.0)
+	    echo_cli ("%u connections established in %.2f seconds %.2f/s", ecm->cfg.n_clients,
+		      delta, ((f64) ecm->cfg.n_clients) / delta);
+	}
+      break;
+
+    case EC_CLI_CONNECTS_FAILED:
+      error = clib_error_return (0, "failed: connect failed (%u sessions connected)",
+				 ecm->ready_connections);
+      goto stop_test;
+
+    default:
+      echo_cli ("unexpected event while waiting for connects to finish: %d", event_type);
+      error = clib_error_return (0, "failed: unexpected event while waiting for connects: %d",
+				 event_type);
+      goto stop_test;
+    }
+
+  /* Testing officially starts now */
+  ecm->stats.test_start_time = vlib_time_now (ecm->vlib_main);
+  if (ecm->cfg.report_interval)
+    ecm->stats.last_print_time = ecm->stats.test_start_time;
+  if (ecm->cfg.test_cfg.verbose)
+    echo_cli ("Test started at %.6f", ecm->stats.test_start_time);
+
+  /*
+   * Wait for the sessions to finish or test_timeout (timeout or length
+   * of timed run) seconds pass. If providing periodic reports, wake up
+   * every now and then to print them and loop.
+   */
+  u8 main_loop_done = false, print_header = true, report_timeout = false;
+  do
+    {
+      if (ecm->cfg.report_interval)
+	{
+	  delta = vlib_time_now (vm) - ecm->stats.test_start_time;
+	  if (delta + (f64) ecm->cfg.report_interval > ecm->test_timeout)
+	    {
+	      report_timeout = true;
+	      wait_time = ecm->test_timeout - delta;
+	    }
+	  else
+	    wait_time = (f64) ecm->cfg.report_interval;
+	}
+      else
+	{
+	  report_timeout = true;
+	  wait_time = (f64) ecm->test_timeout;
+	}
+
+      vlib_process_wait_for_event_or_clock (vm, wait_time);
+      event_type = vlib_process_get_events (vm, &event_data);
+      switch (event_type)
+	{
+	case ~0:
+	  if (report_timeout)
+	    {
+	      if (ecm->run_time)
+		{
+		  ec_sessions_stop_clean ();
+		  break;
+		}
+	      ec_print_timeout_stats (vm);
+	      if (ecm->cfg.proto != TRANSPORT_PROTO_UDP)
+		error = clib_error_return (0, "failed: test timeout");
+	      else if (ecm->cfg.echo_bytes)
+		{
+		  ec_sessions_stop_clean ();
+		  break;
+		}
+	      goto stop_test;
+	    }
+	  else
+	    {
+	      echo_print_periodic_stats (vm, print_header, &ecm->cfg, &ecm->stats, ecm->wrk);
+	      if (PREDICT_FALSE (print_header))
+		print_header = false;
+	    }
+	  break;
+
+	case EC_CLI_TEST_DONE:
+	  ecm->stats.test_end_time = vlib_time_now (vm);
+	  main_loop_done = true;
+	  break;
+
+	default:
+	  echo_cli ("unexpected event while waiting for test end: %d", event_type);
+	  error = clib_error_return (0, "failed: unexpected event while waiting for test end: %d",
+				     event_type);
+	  goto stop_test;
+	}
+    }
+  while (!main_loop_done);
+
+  delta = ecm->stats.test_end_time - ecm->stats.test_start_time;
+  if (delta < FLT_EPSILON)
+    {
+      echo_cli ("zero delta time?");
+      error = clib_error_return (0, "failed: zero delta time");
+      goto stop_test;
+    }
+
+  if (ecm->cfg.report_interval)
+    {
+      /* Print last interval */
+      if (vlib_time_now (vm) - ecm->stats.last_print_time >= 0.1f)
+	echo_print_periodic_stats (vm, print_header, &ecm->cfg, &ecm->stats, ecm->wrk);
+      echo_print_footer (vm, ecm->cfg.proto);
+    }
+  if (ecm->cfg.test_cfg.verbose)
+    echo_cli ("Test finished at %.6f", ecm->stats.test_end_time);
+
+  if (ecm->cfg.test_cfg.test_bytes && ecm->test_failed)
+    error = clib_error_return (0, "failed: test bytes");
+
+stop_test:
+  ecm->run_test = EC_EXITING;
+
+  /* send stop test command to the server */
+  if (ec_ctrl_test_stop () < 0)
+    {
+      echo_cli ("failed to send stop command");
+      return error;
+    }
+  ec_wait_for_signal (EC_CLI_STOP);
+
+  /* post test sync */
+  if (ec_ctrl_test_sync () < 0)
+    {
+      echo_cli ("failed to send post sync command");
+      return error;
+    }
+  ec_wait_for_signal (EC_CLI_CFG_SYNC);
+  echo_print_final_stats (vm, delta, &ecm->cfg, &ecm->stats);
+
+  /* disconnect control session */
+  ec_ctrl_session_disconnect ();
+
+  return error;
+}
+clib_error_t *
+ec_main_init (vlib_main_t *vm)
+{
+  ec_main_t *ecm = &ec_main;
+  ecm->app_is_init = 0;
+  return 0;
+}
+
+VLIB_INIT_FUNCTION (ec_main_init);
