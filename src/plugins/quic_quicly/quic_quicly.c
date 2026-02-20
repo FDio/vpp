@@ -1871,11 +1871,12 @@ quic_quicly_udp_session_rx_packets (session_t *udp_session)
   u32 max_deq;
   u64 udp_session_handle = session_handle (udp_session);
   int rv = 0;
-  clib_thread_index_t thread_index = vlib_get_thread_index ();
+  clib_thread_index_t thread_index = udp_session->thread_index;
   u32 cur_deq, fifo_offset, max_packets, i;
   quic_quicly_rx_packet_ctx_t *packet_ctx;
 
-  ASSERT (vec_len (qqm->rx_packets[udp_session->thread_index]) >= QUIC_QUICLY_RCV_MAX_PACKETS);
+  ASSERT (thread_index == vlib_get_thread_index ());
+  ASSERT (vec_len (qqm->rx_packets[thread_index]) >= QUIC_QUICLY_RCV_MAX_PACKETS);
 
   if (udp_session->flags & SESSION_F_IS_MIGRATING)
     {
@@ -1895,7 +1896,7 @@ rx_start:
 
   for (i = 0; i < max_packets; i++)
     {
-      packet_ctx = vec_elt_at_index (qqm->rx_packets[udp_session->thread_index], i);
+      packet_ctx = vec_elt_at_index (qqm->rx_packets[thread_index], i);
       packet_ctx->thread_index = UINT32_MAX;
       packet_ctx->ctx_index = UINT32_MAX;
       packet_ctx->ptype = QUIC_PACKET_TYPE_DROP;
@@ -1928,7 +1929,7 @@ rx_start:
 
   for (i = 0; i < max_packets; i++)
     {
-      packet_ctx = vec_elt_at_index (qqm->rx_packets[udp_session->thread_index], i);
+      packet_ctx = vec_elt_at_index (qqm->rx_packets[thread_index], i);
       switch (packet_ctx->ptype)
 	{
 	case QUIC_PACKET_TYPE_RECEIVE:
@@ -1949,7 +1950,7 @@ rx_start:
   ctx = prev_ctx = NULL;
   for (i = 0; i < max_packets; i++)
     {
-      packet_ctx = vec_elt_at_index (qqm->rx_packets[udp_session->thread_index], i);
+      packet_ctx = vec_elt_at_index (qqm->rx_packets[thread_index], i);
       prev_ctx = ctx;
       switch (packet_ctx->ptype)
 	{
