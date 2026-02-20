@@ -72,7 +72,11 @@ typedef struct __attribute__ ((packed))
   uint32_t transport_udp;
   uint64_t rxbuf_size;
   uint64_t txbuf_size;
-  uint64_t num_writes;
+  union
+  {
+    uint64_t num_writes;
+    uint64_t num_reads;
+  };
   uint64_t total_bytes;
   uint32_t test_bytes;
 } hs_test_cfg_t;
