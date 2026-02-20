@@ -44,6 +44,13 @@
 #include <vlib/vmbus/vmbus.h>
 #include <vnet/flow/flow.h>
 
+#define DPDK_DEFAULT_ASYNC_QUEUE_INDEX	   0
+#define DPDK_DEFAULT_ASYNC_N_QUEUES	   1
+#define DPDK_DEFAULT_ASYNC_FLOW_QUEUE_SIZE 1024
+#define DPDK_DEFAULT_ASYNC_FLOW_PUSH_BATCH 512
+#define DPDK_MAX_FLOW_ITEMS		   32
+#define DPDK_MAX_FLOW_ACTIONS		   32
+
 extern vnet_device_class_t dpdk_device_class;
 extern vlib_node_registration_t dpdk_input_node;
 extern vlib_node_registration_t admin_up_down_process_node;
@@ -77,6 +84,24 @@ typedef struct
   u32 mark;
   struct rte_flow *handle;
 } dpdk_flow_entry_t;
+
+/* Function pointer types for item/action fill functions.
+ * vnet_flow_t is defined in vnet/flow/flow.h which is included above. */
+typedef void (*dpdk_flow_fill_item_fn_t) (vnet_flow_t *f, struct rte_flow_item *item);
+typedef void (*dpdk_flow_fill_action_fn_t) (vnet_flow_t *f, struct rte_flow_action *action);
+
+typedef struct
+{
+  struct rte_flow_actions_template *actions_handle;
+  struct rte_flow_pattern_template *pattern_handle;
+  struct rte_flow_template_table *table_handle;
+
+  /* Function pointer arrays for fast async flow fill */
+  dpdk_flow_fill_item_fn_t item_fns[DPDK_MAX_FLOW_ITEMS];
+  dpdk_flow_fill_action_fn_t action_fns[DPDK_MAX_FLOW_ACTIONS];
+  u8 n_item_fns;
+  u8 n_action_fns;
+} dpdk_flow_template_entry_t;
 
 typedef struct
 {
@@ -190,6 +215,7 @@ typedef struct
   /* flow related */
   u32 supported_flow_actions;
   dpdk_flow_entry_t *flow_entries;	/* pool */
+  dpdk_flow_template_entry_t *flow_template_entries;	/* pool */
   dpdk_flow_lookup_entry_t *flow_lookup_entries;	/* pool */
   u32 *parked_lookup_indexes;	/* vector */
   u32 parked_loop_count;
@@ -450,6 +476,8 @@ format_function_t format_dpdk_flow_queue_info;
 format_function_t format_dpdk_burst_fn;
 format_function_t format_dpdk_rte_device;
 vnet_flow_dev_ops_function_t dpdk_flow_ops_fn;
+vnet_flow_dev_ops_function_async_t dpdk_flow_async_ops_fn;
+vnet_flow_dev_ops_function_async_template_t dpdk_flow_async_template_ops_fn;
 
 clib_error_t *unformat_rss_fn (unformat_input_t * input, uword * rss_fn);
 
@@ -461,6 +489,7 @@ struct rte_pci_device *dpdk_get_pci_device (const struct rte_eth_dev_info
 struct rte_vmbus_device *
 dpdk_get_vmbus_device (const struct rte_eth_dev_info *info);
 void dpdk_cli_reference (void);
+void dpdk_device_flow_error (dpdk_device_t *xd, char *str);
 
 #if CLI_DEBUG
 int dpdk_buffer_validate_trajectory_all (u32 * uninitialized);
