@@ -3,24 +3,31 @@ set -e
 
 COMMAND=$1
 CALICOVPP_DIR=${CALICOVPP_DIR:-"$HOME/vpp-dataplane"}
-VPP_DIR=$(pwd)
-VPP_DIR=${VPP_DIR%extras*}
+VPP_DIR=${VPP_DIR:-"$CALICOVPP_DIR/vpp-manager/vpp_build"}
 reg_name='kind-registry'
 reg_port='5000'
 COMMIT_HASH=$(git rev-parse HEAD)
 BASE=${BASE:-"$COMMIT_HASH"}
+[ "$BASE" = "default" ] && BASE=""
 STASH_SAVED=0
 
 # TAG "kt-master" (kube-test master) is only used when setting up a master cluster.
 # "kt-master" is then written to .vars, from where kube-test parses it
 TAG=${TAG:-"kt-master"}
 echo "CALICOVPP_DIR=$CALICOVPP_DIR"
+echo "VPP_DIR=$VPP_DIR"
 
 # [KinD only] sets VPP's mtu. Only works if kind network is configured to use MTU=9000
 export CALICO_NETWORK_CONFIG=${CALICO_NETWORK_CONFIG:-"mtu: 9000"}
 # used for Calico images
-export TIGERA_VERSION="${TIGERA_VERSION:-"master"}"
+export TIGERA_VERSION="${TIGERA_VERSION:-"v3.31.0"}"
+export KIND_CALICO_VERSION=$TIGERA_VERSION
+export TIGERA_OPERATOR_VERSION=$KIND_CALICO_VERSION
 export DOCKER_BUILD_PROXY=$HTTP_PROXY
+export BASE=$BASE
+export TAG=$TAG
+export DOCKER_BUILD_PROXY=$HTTP_PROXY
+export VPP_DIR=$VPP_DIR
 
 kind_config=$(cat kubernetes/kind-config.yaml)
 kind_config=$(cat <<EOF
@@ -105,6 +112,7 @@ push_tag_to_registry() {
 }
 
 build_calicovpp() {
+  tmp_path=$(pwd)
   if [ ! -d "$CALICOVPP_DIR" ]; then
       git clone https://github.com/projectcalico/vpp-dataplane.git $CALICOVPP_DIR
   else
@@ -112,31 +120,37 @@ build_calicovpp() {
       cd $CALICOVPP_DIR
       git reset --hard origin/master
       git fetch --tags --force
-      git pull
-      cd $VPP_DIR/extras/kube-test
   fi
+  cd $tmp_path
 
-  make -C $CALICOVPP_DIR/vpp-manager vpp VPP_DIR=$VPP_DIR BASE=$BASE && \
-  make -C $CALICOVPP_DIR dev TAG=$TAG && \
-  make -C $CALICOVPP_DIR image-kind TAG=$TAG
+  make -C $CALICOVPP_DIR/vpp-manager vpp && \
+  make -C $CALICOVPP_DIR dev && \
+  make -C $CALICOVPP_DIR image-kind
 }
 
 start_cni() {
-  kubectl create --save-config -f kubernetes/kind-calicovpp-config.yaml
+  kubectl create --save-config -f kubernetes/kind-calicovpp-config.yaml || true
 }
 
 save_stash() {
+  tmp_path=$(pwd)
+  cd $VPP_DIR
+  git fetch --tags --force
   if ! git stash -u | grep -q "No local changes to save"; then
     STASH_SAVED=1
     git stash apply
   fi
+  cd $tmp_path
 }
 
 restore_repo() {
+  tmp_path=$(pwd)
+  cd $VPP_DIR
   git reset --hard $COMMIT_HASH
   if [ "$STASH_SAVED" -eq 1 ]; then
     git stash pop
   fi
+  cd $tmp_path
 }
 
 setup_master() {

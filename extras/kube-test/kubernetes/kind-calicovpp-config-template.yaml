@@ -154,6 +154,9 @@ data:
       cli-listen /var/run/vpp/cli.sock
       pidfile /run/vpp/vpp.pid
     }
+    cpu {
+      workers 0
+    }
     socksvr {
       socket-name /var/run/vpp/vpp-api.sock
     }
@@ -166,7 +169,7 @@ data:
         plugin calico_plugin.so { enable }
         plugin dpdk_plugin.so { disable }
     }
-    ${ADDITIONAL_VPP_CONFIG}
+    
   CALICOVPP_DEBUG: |-
     {
           "servicesEnabled": true,
@@ -174,16 +177,19 @@ data:
         }
   CALICOVPP_FEATURE_GATES: |-
     {
-    	"prometheusEnabled": true,
-    	"vclEnabled": true,
-    	"memifEnabled": true
-    }
+          "memifEnabled": true,
+          "vclEnabled": true,
+          "multinetEnabled": false,
+          "ipsecEnabled": false,
+          "prometheusEnabled": true
+        }
   CALICOVPP_INIT_SCRIPT_TEMPLATE: ""
   CALICOVPP_INITIAL_CONFIG: |-
     {
           "vppStartupSleepSeconds": 0,
           "corePattern": "/var/lib/vpp/vppcore.%e.%p",
           "defaultGWs": "",
+          "healthCheckPort": 9090,
           "redirectToHostRules": [
           {
             "proto": "udp",
@@ -226,7 +232,8 @@ data:
   CALICOVPP_SRV6: |-
     {}
   CALICOVPP_SWAP_DRIVER: ""
-  DEBUG: ""
+  DEBUG: "false"
+  GOCOVERDIR: /repo/.coverage/kind
   SERVICE_PREFIX: 11.96.0.0/12,fd10::0/120
 kind: ConfigMap
 metadata:
@@ -351,6 +358,8 @@ spec:
           periodSeconds: 30
           timeoutSeconds: 3
         volumeMounts:
+        - mountPath: /repo
+          name: repo-directory
         - mountPath: /var/run/calico
           name: var-run-calico
           readOnly: false
@@ -440,7 +449,7 @@ spec:
       encapsulation: IPIP
       natOutgoing: Enabled
     - cidr: fd20::/64
-      encapsulation: None
+      encapsulation: VXLAN
       natOutgoing: Enabled
     linuxDataplane: VPP
     nodeAddressAutodetectionV4:
