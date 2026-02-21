@@ -1345,6 +1345,7 @@ list(APPEND VNET_API_FILES arp/arp.api)
 list (APPEND VNET_SOURCES
   ip6-nd/ip6_mld.c
   ip6-nd/ip6_nd.c
+  ip6-nd/ip6_dad.c
   ip6-nd/ip6_nd_api.c
   ip6-nd/ip6_nd_proxy.c
   ip6-nd/ip6_nd_mirror_proxy.c
@@ -1355,6 +1356,7 @@ list (APPEND VNET_SOURCES
 
 list(APPEND VNET_HEADERS
   ip6-nd/ip6_nd.h
+  ip6-nd/ip6_dad.h
 )
 
 list(APPEND VNET_API_FILES
