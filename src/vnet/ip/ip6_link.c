@@ -5,6 +5,7 @@
 
 #include <vnet/ip/ip6_link.h>
 #include <vnet/ip/ip6_ll_table.h>
+#include <vnet/ip6-nd/ip6_dad.h>
 
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/mfib/ip6_mfib.h>
@@ -197,6 +198,11 @@ ip6_link_enable (u32 sw_if_index, const ip6_address_t * link_local_addr)
 	ip6_ll_table_entry_update (&ilp, FIB_ROUTE_PATH_LOCAL);
       }
 
+      /* Note: DAD for auto-generated link-local addresses is handled
+       * by ip6_link_set_local_address() for manually configured addresses.
+       * Auto-generated link-local addresses (EUI-64 or random) do not
+       * require DAD in this context as they are generated at link enable time */
+
       /* essentially "enables" ipv6 on this interface */
       ip6_mfib_interface_enable_disable (sw_if_index, 1);
       ip6_sw_interface_enable_disable (sw_if_index, 1);
@@ -252,6 +258,9 @@ ip6_link_last_lock_gone (ip6_link_t * il)
   IP6_LINK_INFO ("last-lock: %U",
 		 format_vnet_sw_if_index_name,
 		 vnet_get_main (), il->il_sw_if_index);
+
+  /* Stop DAD if in progress */
+  ip6_dad_stop (il->il_sw_if_index, &il->il_ll_addr);
 
   ip6_link_delegate_flush (il);
   ip6_ll_table_entry_delete (&ilp);
@@ -351,6 +360,15 @@ ip6_link_set_local_address (u32 sw_if_index, const ip6_address_t * address)
       il_delegate_vfts[ild->ild_type].ildv_ll_change(ild->ild_index,
                                                      &il->il_ll_addr);
   }));
+
+  /* Start DAD for link-local address */
+  clib_error_t *dad_err = ip6_dad_start (sw_if_index, address, 128);
+  if (dad_err)
+    {
+      IP6_LINK_INFO ("DAD start failed for link-local %U: %v", format_ip6_address, address,
+		     dad_err);
+      clib_error_free (dad_err);
+    }
 
   return (0);
 }
