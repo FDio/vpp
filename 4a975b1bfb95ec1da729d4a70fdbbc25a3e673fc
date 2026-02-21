@@ -34,6 +34,24 @@
       "parentUuid": "c86ac071_bc666753",
       "revId": "4a975b1bfb95ec1da729d4a70fdbbc25a3e673fc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "259fc5a4_85b68f77",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3297
+      },
+      "writtenOn": "2026-02-21T20:07:59Z",
+      "side": 1,
+      "message": "\u003e It is indeed, a non-related intermittent test failure.  A change has just been merged which should mitigate this issue.\n\u003e \n\u003e Rebased the change to pick up the \u0027make test\u0027 fix.\n\nI had to rebase the CR again due to the failing QUIC test (fixed in commit 74c11ba).",
+      "parentUuid": "8ccd896f_5eeefe51",
+      "revId": "4a975b1bfb95ec1da729d4a70fdbbc25a3e673fc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
