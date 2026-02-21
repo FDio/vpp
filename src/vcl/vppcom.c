@@ -3829,6 +3829,9 @@ vcl_epoll_wait_handle_lt (vcl_worker_t *wrk, struct epoll_event *events,
 	}
       else
 	{
+	  /* Incomplete dgram, don't remove for list yet */
+	  if (s->is_dgram && (s->vep.ev.events & EPOLLIN) && svm_fifo_max_dequeue (s->rx_fifo))
+	    continue;
 	  vec_add1 (to_remove, s->session_index);
 	}
     }
