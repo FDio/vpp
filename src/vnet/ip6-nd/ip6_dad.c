@@ -1,0 +1,665 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2024 Cisco and/or its affiliates.
+ */
+
+/**
+ * @file
+ * @brief IPv6 Duplicate Address Detection (DAD) - RFC 4862 Implementation
+ */
+
+#include <vnet/ip6-nd/ip6_dad.h>
+#include <vnet/ip6-nd/ip6_nd.h>
+#include <vnet/ip/ip6_forward.h>
+#include <vnet/ip-neighbor/ip6_neighbor.h>
+#include <vnet/ethernet/ethernet.h>
+#include <vnet/fib/fib_table.h>
+
+/* Global DAD main */
+ip6_dad_main_t ip6_dad_main;
+
+/* Logging */
+#define DAD_DBG(...)  vlib_log_debug (ip6_dad_main.log_class, __VA_ARGS__)
+#define DAD_INFO(...) vlib_log_notice (ip6_dad_main.log_class, __VA_ARGS__)
+#define DAD_ERR(...)  vlib_log_err (ip6_dad_main.log_class, __VA_ARGS__)
+
+/* Forward declarations */
+
+/**
+ * Create a DAD Neighbor Solicitation packet
+ *
+ * This function creates NS packets specifically for Duplicate Address
+ * Detection, with the following RFC-mandated differences from normal
+ * neighbor discovery:
+ *
+ * RFC 4862 Section 5.4.2 Requirements:
+ * - Source address MUST be :: (unspecified)
+ * - MUST NOT include Source Link-Layer Address Option
+ *
+ * Implementation note: This is intentionally separate from
+ * ip6_neighbor_probe() to avoid polluting the existing neighbor
+ * discovery code with DAD-specific logic and to maintain clear
+ * separation of concerns.
+ *
+ * @param vm    vlib main
+ * @param entry DAD entry containing target address and interface
+ * @return      buffer index, or ~0 on error
+ */
+static u32
+create_dad_ns_buffer (vlib_main_t *vm, ip6_dad_entry_t *entry)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  vlib_buffer_t *b;
+  icmp6_neighbor_solicitation_header_t *h;
+  ip6_address_t dst_mcast;
+  u8 dst_mac[6];
+  u8 *rewrite;
+  u8 rewrite_len;
+  u32 bi;
+  int bogus_length;
+
+  /* Get NS packet template */
+  extern vlib_packet_template_t ip6_neighbor_packet_template;
+  h = vlib_packet_template_get_packet (vm, &ip6_neighbor_packet_template, &bi);
+  if (!h)
+    return ~0;
+
+  b = vlib_get_buffer (vm, bi);
+
+  /* Calculate solicited-node multicast address */
+  u32 id = clib_net_to_host_u32 (entry->address.as_u32[3]) & 0x00FFFFFF;
+  ip6_set_solicited_node_multicast_address (&dst_mcast, id);
+
+  /* Build IPv6 header */
+  h->ip.ip_version_traffic_class_and_flow_label = clib_host_to_net_u32 (0x6 << 28);
+  h->ip.payload_length =
+    clib_host_to_net_u16 (sizeof (icmp6_neighbor_solicitation_or_advertisement_header_t));
+  h->ip.protocol = IP_PROTOCOL_ICMP6;
+  h->ip.hop_limit = 255;
+
+  /* DAD NS: Source = :: (unspecified) */
+  ip6_address_set_zero (&h->ip.src_address);
+
+  /* Destination = solicited-node multicast */
+  h->ip.dst_address = dst_mcast;
+
+  /* ICMPv6 NS */
+  h->neighbor.icmp.type = ICMP6_neighbor_solicitation;
+  h->neighbor.icmp.code = 0;
+  h->neighbor.target_address = entry->address;
+
+  /* RFC 4861: NO Source Link-Layer option when src is :: */
+  /* Set option to zero length to indicate "not present" */
+  h->link_layer_option.header.type = 0;
+  h->link_layer_option.header.n_data_u64s = 0;
+
+  /* Compute checksum */
+  h->neighbor.icmp.checksum = ip6_tcp_udp_icmp_compute_checksum (vm, b, &h->ip, &bogus_length);
+  ASSERT (bogus_length == 0);
+
+  /* Ethernet header: multicast destination */
+  ip6_multicast_ethernet_address (dst_mac, id | (0xff << 24));
+  rewrite = ethernet_build_rewrite (vnm, entry->sw_if_index, VNET_LINK_IP6, dst_mac);
+  rewrite_len = vec_len (rewrite);
+  vlib_buffer_advance (b, -rewrite_len);
+  ethernet_header_t *e = vlib_buffer_get_current (b);
+  clib_memcpy (e, rewrite, rewrite_len);
+  vec_free (rewrite);
+
+  /* Mark buffer for TX on specific interface */
+  vnet_buffer (b)->sw_if_index[VLIB_RX] = entry->sw_if_index;
+  vnet_buffer (b)->sw_if_index[VLIB_TX] = entry->sw_if_index;
+
+  return bi;
+}
+
+/**
+ * Send DAD NS from main thread
+ */
+static void
+send_dad_ns (vlib_main_t *vm, ip6_dad_entry_t *entry)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_hw_interface_t *hi;
+  vlib_frame_t *f;
+  u32 *to_next;
+  u32 bi;
+
+  ASSERT (vm->thread_index == 0); /* Main thread only */
+
+  hi = vnet_get_sup_hw_interface (vnm, entry->sw_if_index);
+
+  /* Create a fresh NS buffer */
+  bi = create_dad_ns_buffer (vm, entry);
+  if (bi == ~0)
+    {
+      DAD_ERR ("Failed to create DAD NS buffer for %U", format_ip6_address, &entry->address);
+      return;
+    }
+
+  /* Send to interface output node */
+  f = vlib_get_frame_to_node (vm, hi->output_node_index);
+  to_next = vlib_frame_vector_args (f);
+  to_next[0] = bi;
+  f->n_vectors = 1;
+  vlib_put_frame_to_node (vm, hi->output_node_index, f);
+
+  DAD_DBG ("DAD NS sent for %U on sw_if_index %u (attempt %u/%u)", format_ip6_address,
+	   &entry->address, entry->sw_if_index, entry->dad_count + 1, entry->dad_transmits);
+}
+
+/**
+ * Complete DAD successfully
+ */
+static void
+complete_dad_success (vlib_main_t *vm, ip6_dad_entry_t *entry)
+{
+  entry->state = IP6_DAD_STATE_PREFERRED;
+
+  DAD_INFO ("DAD SUCCESS: %U on sw_if_index %u is now PREFERRED", format_ip6_address,
+	    &entry->address, entry->sw_if_index);
+
+  /* Address is already in FIB, just update state if needed */
+  /* In future: mark address as PREFERRED in FIB */
+}
+
+/**
+ * Handle DAD conflict (called from main thread via RPC)
+ */
+static void
+handle_dad_conflict (vlib_main_t *vm, u32 sw_if_index, const ip6_address_t *address)
+{
+  ip6_dad_main_t *dm = &ip6_dad_main;
+  ip6_dad_entry_t *entry;
+
+  ASSERT (vm->thread_index == 0); /* Main thread only */
+
+  /* Find the DAD entry */
+  pool_foreach (entry, dm->dad_entries)
+    {
+      if (entry->sw_if_index == sw_if_index && entry->state == IP6_DAD_STATE_TENTATIVE &&
+	  ip6_address_is_equal (&entry->address, address))
+	{
+	  /* CONFLICT DETECTED */
+	  entry->state = IP6_DAD_STATE_DUPLICATE;
+
+	  DAD_ERR ("DAD FAILED: Duplicate address %U on sw_if_index %u", format_ip6_address,
+		   address, sw_if_index);
+
+	  /* Remove address from FIB - this will call ip6_dad_stop() which frees entry */
+	  ip6_add_del_interface_address (vm, sw_if_index, (ip6_address_t *) address,
+					 entry->address_length, 1 /* is_del */);
+
+	  /* NOTE: Do NOT pool_put() here - ip6_dad_stop() already freed the entry */
+	  return;
+	}
+    }
+}
+
+/**
+ * RPC callback for NA received (called on main thread)
+ */
+static void
+ip6_dad_na_received_main (ip6_dad_na_event_t *event)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  handle_dad_conflict (vm, event->sw_if_index, &event->address);
+}
+
+/**
+ * DAD process node - runs on main thread only
+ */
+static uword
+ip6_dad_process (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  ip6_dad_main_t *dm = &ip6_dad_main;
+  ip6_dad_entry_t *entry;
+  f64 now, next_timeout, due_time;
+  uword event_type;
+  uword *event_data = 0;
+
+  ASSERT (vm->thread_index == 0); /* Main thread only */
+
+  /* Initialize */
+  next_timeout = 1e70; /* Far in the future */
+
+  while (1)
+    {
+      /* Wait for event or timeout */
+      vlib_process_wait_for_event_or_clock (vm, next_timeout);
+
+      /* Get events */
+      event_type = vlib_process_get_events (vm, &event_data);
+
+      /* Current time */
+      now = vlib_time_now (vm);
+      next_timeout = 1e70;
+
+      /* Process events */
+      if (event_type == IP6_DAD_EVENT_START)
+	{
+	  DAD_DBG ("DAD process: START event received");
+	}
+      else if (event_type == IP6_DAD_EVENT_NA_RECEIVED)
+	{
+	  DAD_DBG ("DAD process: NA_RECEIVED event");
+	  /* Event data contains the conflict info - already handled by RPC */
+	}
+
+      /* Process all active DAD entries
+       * We use pool_foreach_index() instead of pool_foreach() because
+       * we may call pool_put() inside the loop body (VPP requirement).
+       */
+      u32 index;
+      pool_foreach_index (index, dm->dad_entries)
+	{
+	  entry = pool_elt_at_index (dm->dad_entries, index);
+
+	  /* Clean up entries that were stopped (IDLE state) */
+	  if (entry->state == IP6_DAD_STATE_IDLE)
+	    {
+	      pool_put (dm->dad_entries, entry);
+	      continue;
+	    }
+
+	  if (entry->state != IP6_DAD_STATE_TENTATIVE)
+	    continue;
+
+	  /* Time to send NS? */
+	  if (now >= entry->dad_next_send_time)
+	    {
+	      if (entry->dad_count < entry->dad_transmits)
+		{
+		  /* Send NS */
+		  send_dad_ns (vm, entry);
+		  entry->dad_count++;
+
+		  /* Schedule next transmission */
+		  entry->dad_next_send_time = now + entry->dad_retransmit_delay;
+		}
+	      else
+		{
+		  /* DAD completed successfully */
+		  complete_dad_success (vm, entry);
+		  pool_put (dm->dad_entries, entry);
+		  continue;
+		}
+	    }
+
+	  /* Update next timeout */
+	  due_time = entry->dad_next_send_time;
+	  if (due_time < next_timeout)
+	    next_timeout = due_time;
+	}
+
+      /* Calculate sleep time */
+      if (next_timeout > now)
+	next_timeout = next_timeout - now;
+      else
+	next_timeout = 0.001; /* Wake up soon */
+
+      vec_reset_length (event_data);
+    }
+
+  return 0;
+}
+
+VLIB_REGISTER_NODE (ip6_dad_process_node) = {
+  .function = ip6_dad_process,
+  .type = VLIB_NODE_TYPE_PROCESS,
+  .name = "ip6-dad-process",
+};
+
+/**
+ * Start DAD for an address
+ */
+clib_error_t *
+ip6_dad_start (u32 sw_if_index, const ip6_address_t *address, u8 address_length)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  ip6_dad_main_t *dm = &ip6_dad_main;
+  ip6_dad_entry_t *entry;
+  f64 now;
+
+  /* Check if DAD is enabled */
+  DAD_DBG (" ip6_dad_start called, dad_enabled=%d", dm->dad_enabled);
+  if (!dm->dad_enabled)
+    {
+      DAD_DBG (" DAD disabled, returning NULL");
+      return NULL; /* DAD disabled - success */
+    }
+  DAD_DBG (" DAD enabled, proceeding with DAD start");
+
+  /* Skip DAD for certain address types */
+  if (ip6_address_is_loopback (address) || ip6_address_is_multicast (address))
+    {
+      DAD_DBG ("Skipping DAD for special address %U", format_ip6_address, address);
+      return NULL;
+    }
+
+  /* Check if DAD already in progress for this address */
+  pool_foreach (entry, dm->dad_entries)
+    {
+      if (entry->sw_if_index == sw_if_index && ip6_address_is_equal (&entry->address, address))
+	{
+	  return clib_error_return (0, "DAD already in progress for %U", format_ip6_address,
+				    address);
+	}
+    }
+
+  /* Allocate new DAD entry */
+  pool_get_zero (dm->dad_entries, entry);
+
+  entry->sw_if_index = sw_if_index;
+  entry->address = *address;
+  entry->address_length = address_length;
+  entry->state = IP6_DAD_STATE_TENTATIVE;
+
+  /* Timer configuration */
+  now = vlib_time_now (vm);
+  entry->dad_start_time = now;
+  entry->dad_transmits = dm->dad_transmits_default;
+  entry->dad_count = 0;
+  entry->dad_retransmit_delay = dm->dad_retransmit_delay_default;
+
+  /* Send first NS ASAP */
+  entry->dad_next_send_time = now;
+
+  DAD_INFO ("DAD started for %U on sw_if_index %u (%u transmits)", format_ip6_address, address,
+	    sw_if_index, entry->dad_transmits);
+
+  /* Signal process node to wake up */
+  vlib_process_signal_event (vm, ip6_dad_process_node.index, IP6_DAD_EVENT_START,
+			     entry - dm->dad_entries);
+
+  return NULL;
+}
+
+/**
+ * NA received from data plane (called from worker thread)
+ */
+void
+ip6_dad_na_received_dp (u32 sw_if_index, const ip6_address_t *address)
+{
+  ip6_dad_na_event_t event = {
+    .sw_if_index = sw_if_index,
+    .address = *address,
+  };
+
+  /* RPC to main thread */
+  vlib_rpc_call_main_thread (ip6_dad_na_received_main, (u8 *) &event, sizeof (event));
+}
+
+/**
+ * Stop DAD for an address
+ */
+void
+ip6_dad_stop (u32 sw_if_index, const ip6_address_t *address)
+{
+  ip6_dad_main_t *dm = &ip6_dad_main;
+  ip6_dad_entry_t *entry;
+
+  pool_foreach (entry, dm->dad_entries)
+    {
+      if (entry->sw_if_index == sw_if_index && ip6_address_is_equal (&entry->address, address))
+	{
+	  DAD_INFO ("DAD stopped for %U on sw_if_index %u", format_ip6_address, address,
+		    sw_if_index);
+
+	  /* Free DAD entry */
+	  pool_put (dm->dad_entries, entry);
+	  return;
+	}
+    }
+}
+
+/**
+ * Enable/disable DAD
+ */
+void
+ip6_dad_enable_disable (bool enable)
+{
+  ip6_dad_main_t *dm = &ip6_dad_main;
+
+  DAD_DBG (" ip6_dad_enable_disable called with enable=%d", enable);
+
+  /* If disabling, clear all active DAD sessions before changing flag */
+  if (!enable)
+    {
+      ip6_dad_entry_t *entry;
+
+      /* Mark all entries as completed (will be freed by process node) */
+      pool_foreach (entry, dm->dad_entries)
+	{
+	  if (entry->state == IP6_DAD_STATE_TENTATIVE)
+	    {
+	      DAD_INFO ("Stopping DAD for %U on sw_if_index %u (disabled)", format_ip6_address,
+			&entry->address, entry->sw_if_index);
+	      entry->state = IP6_DAD_STATE_IDLE;       /* Mark as stopped */
+	      entry->dad_count = entry->dad_transmits; /* Prevent further NS */
+	    }
+	}
+    }
+
+  dm->dad_enabled = enable;
+  DAD_DBG (" dad_enabled is now %d", dm->dad_enabled);
+  DAD_INFO ("DAD %s", enable ? "enabled" : "disabled");
+}
+
+/**
+ * Configure DAD parameters
+ */
+clib_error_t *
+ip6_dad_config (u8 transmits, f64 delay)
+{
+  if (transmits < 1 || transmits > 10)
+    return clib_error_return (0, "transmits must be 1-10");
+
+  if (delay < 0.1 || delay > 10.0)
+    return clib_error_return (0, "delay must be 0.1-10.0 seconds");
+
+  ip6_dad_main.dad_transmits_default = transmits;
+  ip6_dad_main.dad_retransmit_delay_default = delay;
+
+  DAD_INFO ("DAD configured: transmits=%u, delay=%.1fs", transmits, delay);
+  return NULL;
+}
+
+/**
+ * Get DAD configuration
+ */
+void
+ip6_dad_get_config (bool *enabled, u8 *transmits, f64 *delay)
+{
+  *enabled = ip6_dad_main.dad_enabled;
+  *transmits = ip6_dad_main.dad_transmits_default;
+  *delay = ip6_dad_main.dad_retransmit_delay_default;
+}
+
+/**
+ * Format DAD state
+ */
+u8 *
+format_ip6_dad_state (u8 *s, va_list *args)
+{
+  ip6_dad_state_e state = va_arg (*args, ip6_dad_state_e);
+
+  switch (state)
+    {
+    case IP6_DAD_STATE_IDLE:
+      s = format (s, "IDLE");
+      break;
+    case IP6_DAD_STATE_TENTATIVE:
+      s = format (s, "TENTATIVE");
+      break;
+    case IP6_DAD_STATE_PREFERRED:
+      s = format (s, "PREFERRED");
+      break;
+    case IP6_DAD_STATE_DUPLICATE:
+      s = format (s, "DUPLICATE");
+      break;
+    default:
+      s = format (s, "UNKNOWN");
+      break;
+    }
+
+  return s;
+}
+
+/**
+ * Format DAD entry
+ */
+u8 *
+format_ip6_dad_entry (u8 *s, va_list *args)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  ip6_dad_entry_t *entry = va_arg (*args, ip6_dad_entry_t *);
+  f64 now = vlib_time_now (vm);
+  f64 next_in = entry->dad_next_send_time - now;
+
+  s = format (s, "%U/%u on sw_if_index %u: state=%U, count=%u/%u", format_ip6_address,
+	      &entry->address, entry->address_length, entry->sw_if_index, format_ip6_dad_state,
+	      entry->state, entry->dad_count, entry->dad_transmits);
+
+  if (entry->state == IP6_DAD_STATE_TENTATIVE)
+    s = format (s, ", next in %.3fs", next_in);
+
+  return s;
+}
+
+/**
+ * CLI: set ip6 dad
+ */
+static clib_error_t *
+ip6_dad_enable_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
+{
+  u8 transmits = 0;
+  f64 delay = 0;
+  bool has_transmits = false;
+  bool has_delay = false;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "transmits %u", &transmits))
+	has_transmits = true;
+      else if (unformat (input, "delay %f", &delay))
+	has_delay = true;
+      else
+	return clib_error_return (0, "unknown input '%U'", format_unformat_error, input);
+    }
+
+  DAD_DBG (" enable command, has_transmits=%d", has_transmits);
+
+  /* Enable DAD */
+  DAD_DBG (" About to call ip6_dad_enable_disable(true)");
+  ip6_dad_enable_disable (true);
+
+  /* Configure parameters if specified */
+  if (has_transmits || has_delay)
+    {
+      bool enabled;
+      u8 cur_transmits;
+      f64 cur_delay;
+
+      ip6_dad_get_config (&enabled, &cur_transmits, &cur_delay);
+
+      if (!has_transmits)
+	transmits = cur_transmits;
+      if (!has_delay)
+	delay = cur_delay;
+
+      return ip6_dad_config (transmits, delay);
+    }
+
+  return NULL;
+}
+
+static clib_error_t *
+ip6_dad_disable_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
+{
+  DAD_DBG (" disable command");
+  ip6_dad_enable_disable (false);
+  return NULL;
+}
+
+VLIB_CLI_COMMAND (ip6_dad_enable_command, static) = {
+  .path = "set ip6 dad enable",
+  .short_help = "set ip6 dad enable [transmits <1-10>] [delay <seconds>]",
+  .function = ip6_dad_enable_command_fn,
+};
+
+VLIB_CLI_COMMAND (ip6_dad_disable_command, static) = {
+  .path = "set ip6 dad disable",
+  .short_help = "set ip6 dad disable",
+  .function = ip6_dad_disable_command_fn,
+};
+
+/**
+ * CLI: show ip6 dad
+ */
+static clib_error_t *
+ip6_dad_show_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
+{
+  ip6_dad_main_t *dm = &ip6_dad_main;
+  ip6_dad_entry_t *entry;
+  u32 count = 0;
+
+  vlib_cli_output (vm, "DAD Configuration:");
+  vlib_cli_output (vm, "  Enabled: %s", dm->dad_enabled ? "yes" : "no");
+  vlib_cli_output (vm, "  Transmits: %u", dm->dad_transmits_default);
+  vlib_cli_output (vm, "  Delay: %.1f seconds", dm->dad_retransmit_delay_default);
+  vlib_cli_output (vm, "");
+
+  pool_foreach (entry, dm->dad_entries)
+    {
+      count++;
+    }
+
+  vlib_cli_output (vm, "Active DAD entries: %u", count);
+
+  if (count > 0)
+    {
+      vlib_cli_output (vm, "");
+      pool_foreach (entry, dm->dad_entries)
+	{
+	  vlib_cli_output (vm, "  %U", format_ip6_dad_entry, entry);
+	}
+    }
+
+  return NULL;
+}
+
+VLIB_CLI_COMMAND (ip6_dad_show_command, static) = {
+  .path = "show ip6 dad",
+  .short_help = "show ip6 dad",
+  .function = ip6_dad_show_command_fn,
+};
+
+/**
+ * DAD initialization
+ */
+static clib_error_t *
+ip6_dad_init (vlib_main_t *vm)
+{
+  ip6_dad_main_t *dm = &ip6_dad_main;
+
+  /* Initialize */
+  clib_memset (dm, 0, sizeof (*dm));
+
+  /* Default configuration */
+  dm->dad_enabled = false;		  /* Disabled by default for backward compatibility */
+  dm->dad_transmits_default = 1;	  /* RFC 4862 minimum */
+  dm->dad_retransmit_delay_default = 1.0; /* 1 second */
+
+  /* Logging */
+  dm->log_class = vlib_log_register_class ("ip6", "dad");
+
+  /* Store process node index */
+  dm->dad_process_node_index = ip6_dad_process_node.index;
+
+  DAD_INFO ("IPv6 DAD initialized (disabled by default)");
+
+  return NULL;
+}
+
+VLIB_INIT_FUNCTION (ip6_dad_init);

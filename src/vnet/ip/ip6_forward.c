@@ -26,6 +26,7 @@
 #include <vppinfra/bihash_template.c>
 #endif
 #include <vnet/ip/ip6_forward.h>
+#include <vnet/ip6-nd/ip6_dad.h>
 #include <vnet/interface_output.h>
 
 /* Flag used by IOAM code. Classifier sets it pop-hop-by-hop checks it */
@@ -472,6 +473,27 @@ ip6_add_del_interface_address (vlib_main_t * vm,
   vec_foreach (cb, im->add_del_interface_address_callbacks)
     cb->function (im, cb->function_opaque, sw_if_index,
 		  address, address_length, if_address_index, is_del);
+
+  /* Start or stop DAD for this address
+   *
+   * LIMITATION: Address is installed in FIB before DAD completes (reactive DAD).
+   * RFC 4862 requires "tentative" addresses not be used for communication.
+   * Current implementation: address usable immediately, removed on conflict.
+   * Future improvement: proactive DAD with address installation after validation.
+   */
+  if (!is_del)
+    {
+      clib_error_t *dad_err = ip6_dad_start (sw_if_index, address, address_length);
+      if (dad_err)
+	{
+	  clib_warning ("DAD start failed for %U: %v", format_ip6_address, address, dad_err);
+	  clib_error_free (dad_err);
+	}
+    }
+  else
+    {
+      ip6_dad_stop (sw_if_index, address);
+    }
 
   if (is_del)
     ip6_link_disable (sw_if_index);
