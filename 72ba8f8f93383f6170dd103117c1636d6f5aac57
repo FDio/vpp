@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "dd2bdf6e_2eccc459",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-02-22T23:52:25Z",
+      "side": 1,
+      "message": "This is a weird inter dependency, but we\u0027ll have to live with it for now ..",
+      "revId": "72ba8f8f93383f6170dd103117c1636d6f5aac57",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
