@@ -1,5 +1,23 @@
 {
-  "comments": [],
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ec5e72c5_4aafa9c3",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2596
+      },
+      "writtenOn": "2026-02-22T19:21:25Z",
+      "side": 1,
+      "message": "-- Found quicly 0.1.6-vpp in /opt/vpp/external/x86_64/include\n-- -- quicly 0.1.5-vpp not found - tlspicotls plugin disabled",
+      "revId": "7e870f6c260e74dd594f67e3671da82044e9a1c2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ],
   "submitRequirementResults": [
     {
       "submitRequirement": {
