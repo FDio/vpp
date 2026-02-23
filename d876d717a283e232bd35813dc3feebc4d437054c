@@ -1,0 +1,225 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d7c3b984_3a673d3f",
+        "filename": "src/vnet/ip/ip6_forward.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 477,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2026-02-23T22:56:56Z",
+      "side": 1,
+      "message": "please register for IP6 link events using `ip6_link_delegate_register`. that way we remove the direct dependencies.",
+      "revId": "d876d717a283e232bd35813dc3feebc4d437054c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d3a75159_b7f70419",
+        "filename": "src/vnet/ip/ip6_link.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 262,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2026-02-23T22:56:56Z",
+      "side": 1,
+      "message": "this goes in `ildv_disable`",
+      "revId": "d876d717a283e232bd35813dc3feebc4d437054c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "acb7a700_62a8acaf",
+        "filename": "src/vnet/ip/ip6_link.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 364,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2026-02-23T22:56:56Z",
+      "side": 1,
+      "message": "this goes in `ildv_ll_change`",
+      "revId": "d876d717a283e232bd35813dc3feebc4d437054c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "66ccaa1e_be513af2",
+        "filename": "src/vnet/ip6-nd/ip6_dad.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 190,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2026-02-23T22:56:56Z",
+      "side": 1,
+      "message": "if this was the address that was added over the API, how is the user informed that the address is no longer in use?",
+      "revId": "d876d717a283e232bd35813dc3feebc4d437054c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b13950bd_2e270183",
+        "filename": "src/vnet/ip6-nd/ip6_dad.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 431,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2026-02-23T22:56:56Z",
+      "side": 1,
+      "message": "why free (`pool_put`) all these in the process node? In the `ip6_dad_stop` function above, they where free\u0027d immediately,",
+      "revId": "d876d717a283e232bd35813dc3feebc4d437054c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d8fa47d2_30317e53",
+        "filename": "src/vnet/ip6-nd/ip6_dad.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 618,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2026-02-23T22:56:56Z",
+      "side": 1,
+      "message": "`vlib_cli_output (vm, \"Active DAD entries: %u\", pool_elts(dm-\u003edad_entries));",
+      "revId": "d876d717a283e232bd35813dc3feebc4d437054c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "410024ed_0ba41ef7",
+        "filename": "src/vnet/ip6-nd/ip6_dad.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 118,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2026-02-23T22:56:56Z",
+      "side": 1,
+      "message": "if it\u0027s a prefix, perhaps `prefix` would be a better name. Same comment throughout.\nmaybe define a `ip6_prefix_t` type.",
+      "revId": "d876d717a283e232bd35813dc3feebc4d437054c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b5169923_cecef606",
+        "filename": "test/test_ip6_dad.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 122,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2026-02-23T22:56:56Z",
+      "side": 1,
+      "message": "please use the API in the UTs. if you want to use the CLI as well, you could rename this function verify_bla_bla and have two test_bla_bla functions that perform the setup and teardown using the API and CLI resp.",
+      "revId": "d876d717a283e232bd35813dc3feebc4d437054c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "65e6e15f_23c3364d",
+        "filename": "test/test_ip6_dad.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 150,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2026-02-23T22:56:56Z",
+      "side": 1,
+      "message": "the `dad disable` is missing here and in the other functions too.",
+      "revId": "d876d717a283e232bd35813dc3feebc4d437054c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e0d3b1fb_bc62cb41",
+        "filename": "test/test_ip6_dad.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 237,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2026-02-23T22:56:56Z",
+      "side": 1,
+      "message": "this looks like a good candidate to refactor into a function.",
+      "revId": "d876d717a283e232bd35813dc3feebc4d437054c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "34abb551_c6a67ddb",
+        "filename": "test/test_ip6_dad.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 384,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2026-02-23T22:56:56Z",
+      "side": 1,
+      "message": "does this work with `virtual_sleep`?",
+      "revId": "d876d717a283e232bd35813dc3feebc4d437054c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5d0215f1_ea7b8b29",
+        "filename": "test/test_ip6_dad.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 415,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2026-02-23T22:56:56Z",
+      "side": 1,
+      "message": "might? what does it depend on that is not controlled by this test?",
+      "revId": "d876d717a283e232bd35813dc3feebc4d437054c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "18933ab9_1107279f",
+        "filename": "test/test_ip6_dad.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 430,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2026-02-23T22:56:56Z",
+      "side": 1,
+      "message": "if you expect the API call to fail, you can use:\n```\n        with self.vapi.assert_negative_api_retval():\n           self.vapi.bla_bla\n```",
+      "revId": "d876d717a283e232bd35813dc3feebc4d437054c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
