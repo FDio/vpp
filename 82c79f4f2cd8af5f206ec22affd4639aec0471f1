@@ -16,6 +16,24 @@
       "message": "When adding a tunnel, we call dpo_stack_from_node -\u003e dpo_stack_i -\u003e dpo_copy -\u003e dpo_lock\nWhen deleting a tunnel, is it correct to call dpo_reset or dpo_unlock?\ndpo_reset -\u003e dpo_copy -\u003e dpo_lock",
       "revId": "82c79f4f2cd8af5f206ec22affd4639aec0471f1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a69fcbd0_6071fb46",
+        "filename": "src/plugins/vxlan/vxlan.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 660,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2026-02-23T17:42:25Z",
+      "side": 1,
+      "message": "dopo_reset works also. It calls dpo_unlock on the dst and dpo_lock on src which is DPO_INVALID. The latter does nothing.",
+      "parentUuid": "3983989d_07110374",
+      "revId": "82c79f4f2cd8af5f206ec22affd4639aec0471f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
