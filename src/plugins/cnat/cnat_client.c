@@ -294,7 +294,10 @@ cnat_client_show (vlib_main_t * vm,
     }
   else
     {
-      vlib_cli_output (vm, "Invalid policy ID:%d", cci);
+      if (pool_is_free_index (cnat_client_pool, cci))
+	vlib_cli_output (vm, "Invalid client ID:%d", cci);
+      else
+	vlib_cli_output (vm, "%U", format_cnat_client, cci, 0);
     }
 
   return (NULL);
@@ -303,7 +306,7 @@ cnat_client_show (vlib_main_t * vm,
 VLIB_CLI_COMMAND (cnat_client_show_cmd_node, static) = {
   .path = "show cnat client",
   .function = cnat_client_show,
-  .short_help = "show cnat client",
+  .short_help = "show cnat client [<client-id>]",
   .is_mp_safe = 1,
 };
 
