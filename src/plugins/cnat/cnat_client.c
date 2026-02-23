@@ -294,7 +294,10 @@ cnat_client_show (vlib_main_t * vm,
     }
   else
     {
-      vlib_cli_output (vm, "Invalid policy ID:%d", cci);
+      if (pool_is_free_index (cnat_client_pool, cci))
+	vlib_cli_output (vm, "Invalid client ID:%d", cci);
+      else
+	vlib_cli_output (vm, "%U", format_cnat_client, cci, 0);
     }
 
   return (NULL);
