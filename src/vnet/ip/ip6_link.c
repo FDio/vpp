@@ -197,6 +197,11 @@ ip6_link_enable (u32 sw_if_index, const ip6_address_t * link_local_addr)
 	ip6_ll_table_entry_update (&ilp, FIB_ROUTE_PATH_LOCAL);
       }
 
+      /* Note: DAD for auto-generated link-local addresses is handled
+       * by ip6_link_set_local_address() for manually configured addresses.
+       * Auto-generated link-local addresses (EUI-64 or random) do not
+       * require DAD in this context as they are generated at link enable time */
+
       /* essentially "enables" ipv6 on this interface */
       ip6_mfib_interface_enable_disable (sw_if_index, 1);
       ip6_sw_interface_enable_disable (sw_if_index, 1);
@@ -214,6 +219,17 @@ ip6_link_enable (u32 sw_if_index, const ip6_address_t * link_local_addr)
 	if (NULL != il_delegate_vfts[id].ildv_enable)
 	  il_delegate_vfts[id].ildv_enable (il->il_sw_if_index);
       }
+
+      /* If user provided a link-local address, inform delegates about it */
+      if (NULL != link_local_addr)
+	{
+	  ip6_link_delegate_t *ild;
+	  FOREACH_IP6_LINK_DELEGATE (ild, il, ({
+				       if (NULL != il_delegate_vfts[ild->ild_type].ildv_ll_change)
+					 il_delegate_vfts[ild->ild_type].ildv_ll_change (
+					   ild->ild_index, &il->il_ll_addr);
+				     }));
+	}
 
       rv = 0;
     }
