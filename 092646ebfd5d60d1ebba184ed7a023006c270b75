@@ -34,6 +34,41 @@
       "parentUuid": "ad9f75b0_41e430e5",
       "revId": "092646ebfd5d60d1ebba184ed7a023006c270b75",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "fa8df943_2718d79d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 8
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2026-02-24T20:00:07Z",
+      "side": 1,
+      "message": "See https://gerrit.fd.io/r/c/vpp/+/45004",
+      "parentUuid": "376890e9_b433526a",
+      "revId": "092646ebfd5d60d1ebba184ed7a023006c270b75",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7a40db8e_749b688e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 8
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2026-02-24T20:00:07Z",
+      "side": 1,
+      "message": "Split out the bugfix from the feature improvement. PTAL",
+      "revId": "092646ebfd5d60d1ebba184ed7a023006c270b75",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
