@@ -1,0 +1,61 @@
+/* Hey Emacs use -*- mode: C -*- */
+/*
+ * Copyright (c) 2024 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/** \file
+    This file defines IPv6 Duplicate Address Detection (DAD) API messages.
+*/
+
+option version = "1.0.0";
+
+/** \brief Enable/Disable IPv6 DAD
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param enable - true to enable, false to disable
+    @param dad_transmits - number of DAD NS transmissions (RFC 4862 default: 1)
+    @param dad_retransmit_delay - delay between transmissions in seconds (default: 1.0)
+*/
+autoreply define ip6_dad_enable_disable
+{
+  u32 client_index;
+  u32 context;
+  bool enable [default=true];
+  u8 dad_transmits [default=1];
+  f64 dad_retransmit_delay [default=1.0];
+};
+
+/** \brief Dump IPv6 DAD configuration and state
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define ip6_dad_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief IPv6 DAD configuration response (dump details)
+    @param context - sender context, to match reply w/ request
+    @param enabled - true if DAD is enabled
+    @param dad_transmits - number of DAD NS transmissions
+    @param dad_retransmit_delay - delay between transmissions in seconds
+*/
+define ip6_dad_details
+{
+  u32 context;
+  bool enabled;
+  u8 dad_transmits;
+  f64 dad_retransmit_delay;
+};
