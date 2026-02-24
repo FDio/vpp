@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ad9f75b0_41e430e5",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 8
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1776
+      },
+      "writtenOn": "2026-02-24T17:21:05Z",
+      "side": 1,
+      "message": "Hello Pim. Many thanks for the changes. \n\nIs possible to split the fix and new feature in two patches?\nThat will help to cherry-pick/backport the fix to some older releases.",
+      "revId": "092646ebfd5d60d1ebba184ed7a023006c270b75",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
