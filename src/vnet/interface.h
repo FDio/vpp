@@ -17,6 +17,7 @@
 struct vnet_main_t;
 struct vnet_hw_interface_t;
 struct vnet_sw_interface_t;
+struct vnet_flow_range_t_;
 union ip46_address_t_;
 
 typedef enum
@@ -104,10 +105,20 @@ typedef enum
 } vnet_flow_dev_op_t;
 
 /* Interface flow operations callback. */
+
 typedef int (vnet_flow_dev_ops_function_t) (struct vnet_main_t * vnm,
 					    vnet_flow_dev_op_t op,
 					    u32 hw_if_index, u32 index,
 					    uword * private_data);
+
+typedef int (vnet_flow_dev_ops_function_async_t) (struct vnet_main_t *vnm, vnet_flow_dev_op_t op,
+						  u32 hw_if_index, struct vnet_flow_range_t_ *range,
+						  uword *private_template_data,
+						  uword *private_data);
+
+typedef int (vnet_flow_dev_ops_function_async_template_t) (struct vnet_main_t *vnm,
+							   vnet_flow_dev_op_t op, u32 hw_if_index,
+							   u32 index, uword *private_data);
 
 typedef enum vnet_interface_function_priority_t_
 {
@@ -258,6 +269,8 @@ typedef struct _vnet_device_class
 
   /* Interface flow offload operations */
   vnet_flow_dev_ops_function_t *flow_ops_function;
+  vnet_flow_dev_ops_function_async_t *flow_async_ops_function;
+  vnet_flow_dev_ops_function_async_template_t *flow_async_template_ops_function;
 
   /* Format device instance as name. */
   format_function_t *format_device_name;

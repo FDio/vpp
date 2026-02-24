@@ -632,6 +632,9 @@ dpdk_lib_init (dpdk_main_t * dm)
       if (devconf->disable_rxq_int)
 	xd->conf.enable_rxq_int = 0;
 
+      xd->async_flow_offload_n_queues = devconf->async_flow_offload_n_queues;
+      xd->async_flow_offload_queue_size = devconf->async_flow_offload_queue_size;
+
       dpdk_device_setup (xd);
 
       /* rss queues should be configured after dpdk_device_setup() */
@@ -1022,6 +1025,9 @@ dpdk_device_config (dpdk_config_main_t *conf, void *addr,
       devconf->dev_addr_type = VNET_DEV_ADDR_VMBUS;
     }
 
+  devconf->async_flow_offload_n_queues = DPDK_DEFAULT_ASYNC_FLOW_N_QUEUES;
+  devconf->async_flow_offload_queue_size = DPDK_DEFAULT_ASYNC_FLOW_QUEUE_SIZE;
+
   if (!input)
     return 0;
 
@@ -1070,6 +1076,10 @@ dpdk_device_config (dpdk_config_main_t *conf, void *addr,
 	;
       else if (unformat (input, "max-lro-pkt-size %u",
 			 &devconf->max_lro_pkt_size))
+	;
+      else if (unformat (input, "async-fo-queues %u", &devconf->async_flow_offload_n_queues))
+	;
+      else if (unformat (input, "async-fo-qsize %u", &devconf->async_flow_offload_queue_size))
 	;
       else
 	{
