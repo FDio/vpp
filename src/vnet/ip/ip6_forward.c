@@ -473,6 +473,7 @@ ip6_add_del_interface_address (vlib_main_t * vm,
     cb->function (im, cb->function_opaque, sw_if_index,
 		  address, address_length, if_address_index, is_del);
 
+
   if (is_del)
     ip6_link_disable (sw_if_index);
 

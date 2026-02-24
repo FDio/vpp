@@ -197,6 +197,11 @@ ip6_link_enable (u32 sw_if_index, const ip6_address_t * link_local_addr)
 	ip6_ll_table_entry_update (&ilp, FIB_ROUTE_PATH_LOCAL);
       }
 
+      /* Note: DAD for auto-generated link-local addresses is handled
+       * by ip6_link_set_local_address() for manually configured addresses.
+       * Auto-generated link-local addresses (EUI-64 or random) do not
+       * require DAD in this context as they are generated at link enable time */
+
       /* essentially "enables" ipv6 on this interface */
       ip6_mfib_interface_enable_disable (sw_if_index, 1);
       ip6_sw_interface_enable_disable (sw_if_index, 1);
@@ -252,6 +257,7 @@ ip6_link_last_lock_gone (ip6_link_t * il)
   IP6_LINK_INFO ("last-lock: %U",
 		 format_vnet_sw_if_index_name,
 		 vnet_get_main (), il->il_sw_if_index);
+
 
   ip6_link_delegate_flush (il);
   ip6_ll_table_entry_delete (&ilp);
