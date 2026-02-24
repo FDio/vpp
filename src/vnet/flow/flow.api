@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-option version = "1.0.3";
+option version = "1.0.4";
 
 import "vnet/interface_types.api";
 import "vnet/ip/ip_types.api";
@@ -31,7 +31,7 @@ define flow_add
   u32 client_index;
   u32 context;
   vl_api_flow_rule_t flow;
-  option vat_help = "test flow add [src-ip <ip-addr/mask>] [dst-ip <ip-addr/mask>] [src-port <port/mask>] [dst-port <port/mask>] [proto <ip-proto>]";
+  option vat_help = "flow add [src-ip <ip-addr/mask>] [dst-ip <ip-addr/mask>] [src-port <port/mask>] [dst-port <port/mask>] [proto <ip-proto>]";
 };
 
 /** \brief flow add request v2
@@ -44,7 +44,22 @@ define flow_add_v2
   u32 client_index;
   u32 context;
   vl_api_flow_rule_v2_t flow;
-  option vat_help = "test flow add [src-ip <ip-addr/mask>] [dst-ip <ip-addr/mask>] [src-port <port/mask>] [dst-port <port/mask>] [proto <ip-proto>] [spec <spec-string>] [mask <mask-string>]";
+  option vat_help = "flow add [src-ip <ip-addr/mask>] [dst-ip <ip-addr/mask>] [src-port <port/mask>] [dst-port <port/mask>] [proto <ip-proto>] [spec <spec-string>] [mask <mask-string>]";
+};
+
+/** \brief flow add request v3
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param flow - flow rule v2
+    @param is_template - is the flow a template for async
+*/
+define flow_add_v3
+{
+  u32 client_index;
+  u32 context;
+  vl_api_flow_rule_v2_t flow;
+  bool is_template [default=false];
+  option vat_help = "flow add [template] [src-ip <ip-addr/mask>] [dst-ip <ip-addr/mask>] [src-port <port/mask>] [dst-port <port/mask>] [proto <ip-proto>] [spec <spec-string>] [mask <mask-string>]";
 };
 
 /** \brief reply for adding flow
@@ -73,6 +88,18 @@ define flow_add_v2_reply
   u32 flow_index;
 };
 
+/** \brief reply for adding flow v3
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+    @param flow_index - flow index, can be used for flow del/enable/disable
+*/
+define flow_add_v3_reply
+{
+  u32 context;
+  i32 retval;
+  u32 flow_index;
+};
+
 /** \brief flow del request
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -83,14 +110,29 @@ autoreply define flow_del
   u32 client_index;
   u32 context;
   u32 flow_index;
-  option vat_help = "test flow del index <index>";
+  option vat_help = "flow del index <index>";
+};
+
+/** \brief flow del request v2
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param flow_index - flow index
+    @param is_template - is the flow a template for async
+*/
+autoreply define flow_del_v2
+{
+  u32 client_index;
+  u32 context;
+  u32 flow_index;
+  bool is_template [default=false];
+  option vat_help = "flow del [template] index <index>";
 };
 
 /** \brief flow enable request
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param flow_index - flow index
-	@param hw_if_index - hardware interface index
+	  @param hw_if_index - hardware interface index
 */
 autoreply define flow_enable
 {
@@ -98,14 +140,50 @@ autoreply define flow_enable
   u32 context;
   u32 flow_index;
   u32 hw_if_index;
-  option vat_help = "test flow enable index <index> <interface name>";
+  option vat_help = "flow enable index <index> <interface name>";
+};
+
+/** \brief flow template enable request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param flow_index - template flow index
+    @param n_flows - how many flows for that template
+	  @param hw_if_index - hardware interface index
+*/
+autoreply define flow_template_enable
+{
+  u32 client_index;
+  u32 context;
+  u32 flow_index;
+  u32 n_flows;
+  u32 hw_if_index;
+  option vat_help = "flow enable template <n_flows> index <index> <interface name>";
+};
+
+/** \brief flow async enable request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param start_flow_index - start flow index
+    @param count - number of contiguous flow to enable
+    @param template_index - template flow index
+	  @param hw_if_index - hardware interface index
+*/
+autoreply define flow_async_enable
+{
+  u32 client_index;
+  u32 context;
+  u32 start_flow_index;
+  u32 count;
+  u32 template_index;
+  u32 hw_if_index;
+  option vat_help = "flow enable template-index <index> range <start> <count> <interface name>";
 };
 
 /** \brief flow disable request
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param flow_index - flow index
-	@param hw_if_index - hardware interface index
+	  @param hw_if_index - hardware interface index
 */
 autoreply define flow_disable
 {
@@ -113,7 +191,39 @@ autoreply define flow_disable
   u32 context;
   u32 flow_index;
   u32 hw_if_index;
-  option vat_help = "test flow disable index <index> <interface name>";
+  option vat_help = "flow disable index <index> <interface name>";
+};
+
+/** \brief flow template disable request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param flow_index - flow index
+	  @param hw_if_index - hardware interface index
+*/
+autoreply define flow_template_disable
+{
+  u32 client_index;
+  u32 context;
+  u32 flow_index;
+  u32 hw_if_index;
+  option vat_help = "flow disable template index <index> <interface name>";
+};
+
+/** \brief flow async disable request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param start_flow_index - start flow index
+    @param count - number of contiguous flow to enable
+	  @param hw_if_index - hardware interface index
+*/
+autoreply define flow_async_disable
+{
+  u32 client_index;
+  u32 context;
+  u32 start_flow_index;
+  u32 count;
+  u32 hw_if_index;
+  option vat_help = "flow disable range <start> <count> <interface name>";
 };
 
 /*
