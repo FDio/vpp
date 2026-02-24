@@ -3,6 +3,7 @@
  * Copyright (c) 2017 Cisco and/or its affiliates.
  */
 
+#include "vppinfra/mem.h"
 #include <vnet/vnet.h>
 #include <vppinfra/vec.h>
 #include <vppinfra/format.h>
@@ -71,9 +72,9 @@ dpdk_device_setup (dpdk_device_t * xd)
   // dummy values to configure devices for flow offload
   struct rte_flow_port_attr port_attr = {};
   struct rte_flow_queue_attr queue_attr = {
-    .size = DPDK_DEFAULT_ASYNC_FLOW_QUEUE_SIZE,
+    .size = xd->async_flow_offload_queue_size,
   };
-  const struct rte_flow_queue_attr *queue_attr_list[] = { &queue_attr };
+  const struct rte_flow_queue_attr **queue_attr_list = 0;
   u64 rxo, txo;
   u32 max_frame_size;
   int rv;
@@ -259,6 +260,14 @@ retry:
   if (vec_len (xd->errors))
     goto error;
 
+  // We need to report at least one queue to configure flow offload
+  if (xd->async_flow_offload_n_queues == 0 || xd->async_flow_offload_queue_size == 0)
+    {
+      dpdk_log_notice ("[%u] Flow offload disable because no queue reported or zeroed queue size",
+		       xd->port_id);
+      xd->supported_flow_actions = 0;
+    }
+
   if (xd->supported_flow_actions != 0 &&
       (rv = rte_flow_info_get (xd->port_id, &flow_port_info, &flow_queue_info,
 			       &xd->last_flow_error)) != 0)
@@ -267,10 +276,17 @@ retry:
       xd->supported_flow_actions = 0;
     }
 
-  // at least one queue is need, of size DPDK_DEFAULT_ASYNC_FLOW_QUEUE_SIZE for now
+  if (xd->supported_flow_actions != 0)
+    {
+      queue_attr_list =
+	clib_mem_alloc (sizeof (struct rte_flow_queue_attr *) * xd->async_flow_offload_n_queues);
+      for (j = 0; j < xd->async_flow_offload_n_queues; j++)
+	queue_attr_list[j] = &queue_attr;
+    }
+
   if (xd->supported_flow_actions != 0 &&
-      (rv = rte_flow_configure (xd->port_id, &port_attr, 1, queue_attr_list,
-				&xd->last_flow_error)) != 0)
+      (rv = rte_flow_configure (xd->port_id, &port_attr, xd->async_flow_offload_n_queues,
+				queue_attr_list, &xd->last_flow_error)) != 0)
     {
       dpdk_device_flow_error (xd, "rte_flow_configure");
       xd->supported_flow_actions = 0;
@@ -283,6 +299,9 @@ retry:
       dpdk_log_debug ("[%u] Flow queue info: %U", xd->port_id, format_dpdk_flow_queue_info,
 		      &flow_queue_info);
     }
+
+  if (queue_attr_list != 0)
+    clib_mem_free (queue_attr_list);
 
   xd->buffer_flags =
     (VLIB_BUFFER_TOTAL_LENGTH_VALID | VLIB_BUFFER_EXT_HDR_VALID);
