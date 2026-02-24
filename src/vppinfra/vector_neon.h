@@ -202,6 +202,12 @@ u32x4_sum_elts (u32x4 v)
   return vaddvq_u32 (v);
 }
 
+static_always_inline u16
+u16x8_sum_elts (u16x8 v)
+{
+  return vaddvq_u16 (v);
+}
+
 #define u8x16_word_shift_left(x,n)  vextq_u8(u8x16_splat (0), x, 16 - n)
 #define u8x16_word_shift_right(x,n) vextq_u8(x, u8x16_splat (0), n)
 
