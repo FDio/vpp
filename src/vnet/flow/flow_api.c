@@ -380,9 +380,91 @@ out:
 }
 
 static void
+vl_api_flow_add_v3_t_handler (vl_api_flow_add_v3_t *mp)
+{
+  vl_api_flow_add_v3_reply_t *rmp;
+  int rv = 0;
+  vnet_flow_t flow;
+  u32 flow_index = ~0;
+  vl_api_flow_rule_v2_t *f = &mp->flow;
+
+  vnet_main_t *vnm = vnet_get_main ();
+
+  flow.type = ntohl (f->type);
+  flow.actions = ntohl (f->actions);
+  flow.mark_flow_id = ntohl (f->mark_flow_id);
+  flow.redirect_node_index = ntohl (f->redirect_node_index);
+  flow.redirect_device_input_next_index = ntohl (f->redirect_device_input_next_index);
+  flow.redirect_queue = ntohl (f->redirect_queue);
+  flow.buffer_advance = ntohl (f->buffer_advance);
+  flow.queue_index = ntohl (f->queue_index);
+  flow.queue_num = ntohl (f->queue_num);
+  flow.rss_types = clib_net_to_host_u64 (f->rss_types);
+  flow.rss_fun = ntohl (f->rss_fun);
+
+  switch (flow.type)
+    {
+    case VNET_FLOW_TYPE_IP4:
+      ipv4_flow_convert (&f->flow.ip4, &flow.ip4);
+      break;
+    case VNET_FLOW_TYPE_IP6:
+      ipv6_flow_convert (&f->flow.ip6, &flow.ip6);
+      break;
+    case VNET_FLOW_TYPE_IP4_N_TUPLE:
+      ipv4_n_tuple_flow_convert (&f->flow.ip4_n_tuple, &flow.ip4_n_tuple);
+      break;
+    case VNET_FLOW_TYPE_IP6_N_TUPLE:
+      ipv6_n_tuple_flow_convert (&f->flow.ip6_n_tuple, &flow.ip6_n_tuple);
+      break;
+    case VNET_FLOW_TYPE_IP4_N_TUPLE_TAGGED:
+      ipv4_n_tuple_tagged_flow_convert (&f->flow.ip4_n_tuple_tagged, &flow.ip4_n_tuple_tagged);
+      break;
+    case VNET_FLOW_TYPE_IP6_N_TUPLE_TAGGED:
+      ipv6_n_tuple_tagged_flow_convert (&f->flow.ip6_n_tuple_tagged, &flow.ip6_n_tuple_tagged);
+      break;
+    case VNET_FLOW_TYPE_IP4_L2TPV3OIP:
+      ipv4_l2tpv3oip_flow_convert (&f->flow.ip4_l2tpv3oip, &flow.ip4_l2tpv3oip);
+      break;
+    case VNET_FLOW_TYPE_IP4_IPSEC_ESP:
+      ipv4_ipsec_esp_flow_convert (&f->flow.ip4_ipsec_esp, &flow.ip4_ipsec_esp);
+      break;
+    case VNET_FLOW_TYPE_IP4_IPSEC_AH:
+      ipv4_ipsec_ah_flow_convert (&f->flow.ip4_ipsec_ah, &flow.ip4_ipsec_ah);
+      break;
+    case VNET_FLOW_TYPE_IP4_VXLAN:
+      ipv4_vxlan_flow_convert (&f->flow.ip4_vxlan, &flow.ip4_vxlan);
+      break;
+    case VNET_FLOW_TYPE_IP6_VXLAN:
+      ipv6_vxlan_flow_convert (&f->flow.ip6_vxlan, &flow.ip6_vxlan);
+      break;
+    case VNET_FLOW_TYPE_IP4_GTPU:
+      ipv4_gtpu_flow_convert (&f->flow.ip4_gtpu, &flow.ip4_gtpu);
+      break;
+    case VNET_FLOW_TYPE_IP4_GTPC:
+      ipv4_gtpc_flow_convert (&f->flow.ip4_gtpc, &flow.ip4_gtpc);
+      break;
+    case VNET_FLOW_TYPE_GENERIC:
+      generic_flow_convert (&f->flow.generic, &flow.generic);
+      break;
+    default:
+      rv = VNET_FLOW_ERROR_NOT_SUPPORTED;
+      goto out;
+      break;
+    }
+
+  if (mp->is_template)
+    vnet_flow_add_async_template (vnm, &flow, &flow_index);
+  else
+    rv = vnet_flow_add (vnm, &flow, &flow_index);
+
+out:
+  REPLY_MACRO2 (VL_API_FLOW_ADD_V3_REPLY, ({ rmp->flow_index = ntohl (flow_index); }));
+}
+
+static void
 vl_api_flow_del_t_handler (vl_api_flow_del_t * mp)
 {
-  vl_api_flow_add_reply_t *rmp;
+  vl_api_flow_del_reply_t *rmp;
   int rv = 0;
 
   vnet_main_t *vnm = vnet_get_main ();
@@ -392,9 +474,25 @@ vl_api_flow_del_t_handler (vl_api_flow_del_t * mp)
 }
 
 static void
+vl_api_flow_del_v2_t_handler (vl_api_flow_del_v2_t *mp)
+{
+  vl_api_flow_del_v2_reply_t *rmp;
+  int rv = 0;
+
+  vnet_main_t *vnm = vnet_get_main ();
+
+  if (mp->is_template)
+    rv = vnet_flow_del_async_template (vnm, ntohl (mp->flow_index));
+  else
+    rv = vnet_flow_del (vnm, ntohl (mp->flow_index));
+
+  REPLY_MACRO (VL_API_FLOW_DEL_V2_REPLY);
+}
+
+static void
 vl_api_flow_enable_t_handler (vl_api_flow_enable_t * mp)
 {
-  vl_api_flow_add_reply_t *rmp;
+  vl_api_flow_enable_reply_t *rmp;
   int rv = 0;
 
   vnet_main_t *vnm = vnet_get_main ();
@@ -405,9 +503,38 @@ vl_api_flow_enable_t_handler (vl_api_flow_enable_t * mp)
 }
 
 static void
+vl_api_flow_template_enable_t_handler (vl_api_flow_template_enable_t *mp)
+{
+  vl_api_flow_template_enable_reply_t *rmp;
+  int rv = 0;
+
+  vnet_main_t *vnm = vnet_get_main ();
+  rv = vnet_flow_async_template_enable (vnm, ntohl (mp->flow_index), ntohl (mp->n_flows),
+					ntohl (mp->hw_if_index));
+
+  REPLY_MACRO (VL_API_FLOW_TEMPLATE_ENABLE_REPLY);
+}
+
+static void
+vl_api_flow_async_enable_t_handler (vl_api_flow_async_enable_t *mp)
+{
+  vl_api_flow_async_enable_reply_t *rmp;
+  int rv = 0;
+
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_flow_range_t range = {
+    .start = ntohl (mp->start_flow_index),
+    .count = ntohl (mp->count),
+  };
+  rv = vnet_flow_async_enable (vnm, &range, ntohl (mp->template_index), ntohl (mp->hw_if_index));
+
+  REPLY_MACRO (VL_API_FLOW_ASYNC_ENABLE_REPLY);
+}
+
+static void
 vl_api_flow_disable_t_handler (vl_api_flow_disable_t * mp)
 {
-  vl_api_flow_add_reply_t *rmp;
+  vl_api_flow_disable_reply_t *rmp;
   int rv = 0;
 
   vnet_main_t *vnm = vnet_get_main ();
@@ -415,6 +542,34 @@ vl_api_flow_disable_t_handler (vl_api_flow_disable_t * mp)
     vnet_flow_disable (vnm, ntohl (mp->flow_index), ntohl (mp->hw_if_index));
 
   REPLY_MACRO (VL_API_FLOW_DISABLE_REPLY);
+}
+
+static void
+vl_api_flow_template_disable_t_handler (vl_api_flow_template_disable_t *mp)
+{
+  vl_api_flow_template_disable_reply_t *rmp;
+  int rv = 0;
+
+  vnet_main_t *vnm = vnet_get_main ();
+  rv = vnet_flow_async_template_disable (vnm, ntohl (mp->flow_index), ntohl (mp->hw_if_index));
+
+  REPLY_MACRO (VL_API_FLOW_TEMPLATE_DISABLE_REPLY);
+}
+
+static void
+vl_api_flow_async_disable_t_handler (vl_api_flow_async_disable_t *mp)
+{
+  vl_api_flow_async_disable_reply_t *rmp;
+  int rv = 0;
+
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_flow_range_t range = {
+    .start = ntohl (mp->start_flow_index),
+    .count = ntohl (mp->count),
+  };
+  rv = vnet_flow_async_disable (vnm, &range, ntohl (mp->hw_if_index));
+
+  REPLY_MACRO (VL_API_FLOW_ASYNC_DISABLE_REPLY);
 }
 
 #include <vnet/flow/flow.api.c>

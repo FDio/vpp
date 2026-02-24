@@ -136,6 +136,7 @@ add_vpp_plugin(dpdk
   device/device.c
   device/driver.c
   device/flow.c
+  device/flow_gen.c
   device/format.c
   device/init.c
   device/node.c
