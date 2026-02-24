@@ -1467,7 +1467,7 @@ vlib_frame_bitmap_set_bit_at_index (uword *bmp, uword bit_index)
 }
 
 static_always_inline void
-_vlib_frame_bitmap_clear_bit_at_index (uword *bmp, uword bit_index)
+vlib_frame_bitmap_clear_bit_at_index (uword *bmp, uword bit_index)
 {
   uword_bitmap_clear_bits_at_index (bmp, bit_index, 1);
 }
