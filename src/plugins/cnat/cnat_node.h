@@ -955,6 +955,13 @@ cnat_rsession_create (cnat_timestamp_rewrite_t *rw, u32 flow_id)
 
   cnat_rsession_create_client (rw);
 
+  /* For ICMP echo, the echo identifier is a single field mapped to both
+   * ports in the 5-tuple. Sync port[VLIB_TX] with port[VLIB_RX] (which
+   * holds the possibly rewritten echo id) before the swap, so the reverse
+   * session key matches the return packet's 5-tuple. */
+  if (PREDICT_FALSE (rw->tuple.iproto == IP_PROTOCOL_ICMP || rw->tuple.iproto == IP_PROTOCOL_ICMP6))
+    rw->tuple.port[VLIB_TX] = rw->tuple.port[VLIB_RX];
+
   /* create the reverse flow key */
   cnat_5tuple_copy (&rsession->key.cs_5tuple, &rw->tuple, 1 /* swap */);
 
