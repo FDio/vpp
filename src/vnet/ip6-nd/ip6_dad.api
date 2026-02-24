@@ -1,0 +1,104 @@
+/* Hey Emacs use -*- mode: C -*- */
+/*
+ * Copyright (c) 2024 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/** \file
+    This file defines IPv6 Duplicate Address Detection (DAD) API messages.
+*/
+
+option version = "1.1.0";
+
+import "vnet/interface_types.api";
+import "vnet/ip/ip_types.api";
+
+/** \brief Enable/Disable IPv6 DAD
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param enable - true to enable, false to disable
+    @param dad_transmits - number of DAD NS transmissions (RFC 4862 default: 1)
+    @param dad_retransmit_delay - delay between transmissions in seconds (default: 1.0)
+*/
+autoreply define ip6_dad_enable_disable
+{
+  u32 client_index;
+  u32 context;
+  bool enable [default=true];
+  u8 dad_transmits [default=1];
+  f64 dad_retransmit_delay [default=1.0];
+};
+
+/** \brief Dump IPv6 DAD configuration and state
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define ip6_dad_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief IPv6 DAD configuration response (dump details)
+    @param context - sender context, to match reply w/ request
+    @param enabled - true if DAD is enabled
+    @param dad_transmits - number of DAD NS transmissions
+    @param dad_retransmit_delay - delay between transmissions in seconds
+*/
+define ip6_dad_details
+{
+  u32 context;
+  bool enabled;
+  u8 dad_transmits;
+  f64 dad_retransmit_delay;
+};
+
+/** \brief Register for IPv6 DAD events
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param enable_disable - 1 => register for events, 0 => cancel registration
+    @param pid - sender's pid
+*/
+autoreply define want_ip6_dad_events
+{
+  u32 client_index;
+  u32 context;
+  bool enable_disable;
+  u32 pid;
+};
+
+/** \brief IPv6 DAD state change event
+    @param client_index - opaque cookie to identify the sender
+    @param pid - client pid registered to receive notification
+    @param state - DAD state: 1=TENTATIVE, 2=PREFERRED, 3=DUPLICATE
+    @param sw_if_index - interface index
+    @param address - IPv6 address undergoing DAD
+    @param dad_count - current retry count (0=initial, 1-N for each retry)
+    @param dad_transmits - total configured retries
+*/
+define ip6_dad_event
+{
+  u32 client_index;
+  u32 pid;
+  u8 state;
+  vl_api_interface_index_t sw_if_index;
+  vl_api_ip6_address_t address;
+  u8 dad_count;
+  u8 dad_transmits;
+};
+
+/** \brief Service definition for DAD events */
+service {
+  rpc want_ip6_dad_events returns want_ip6_dad_events_reply
+    events ip6_dad_event;
+};
