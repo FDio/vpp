@@ -2026,7 +2026,7 @@ sr_policy_rewrite_encaps_l2 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 
 	  if (vec_len (sp1->segments_lists) == 1)
-	    vnet_buffer (b1)->ip.adj_index[VLIB_TX] = sp1->segments_lists[1];
+	    vnet_buffer (b1)->ip.adj_index[VLIB_TX] = sp1->segments_lists[0];
 	  else
 	    {
 	      vnet_buffer (b1)->ip.flow_hash = flow_label1;
@@ -2036,7 +2036,7 @@ sr_policy_rewrite_encaps_l2 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 
 	  if (vec_len (sp2->segments_lists) == 1)
-	    vnet_buffer (b2)->ip.adj_index[VLIB_TX] = sp2->segments_lists[2];
+	    vnet_buffer (b2)->ip.adj_index[VLIB_TX] = sp2->segments_lists[0];
 	  else
 	    {
 	      vnet_buffer (b2)->ip.flow_hash = flow_label2;
@@ -2046,7 +2046,7 @@ sr_policy_rewrite_encaps_l2 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 
 	  if (vec_len (sp3->segments_lists) == 1)
-	    vnet_buffer (b3)->ip.adj_index[VLIB_TX] = sp3->segments_lists[3];
+	    vnet_buffer (b3)->ip.adj_index[VLIB_TX] = sp3->segments_lists[0];
 	  else
 	    {
 	      vnet_buffer (b3)->ip.flow_hash = flow_label3;
