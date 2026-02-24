@@ -75,6 +75,10 @@
    (f->type == VNET_FLOW_TYPE_IP6_IP4_N_TUPLE) ||                             \
    (f->type == VNET_FLOW_TYPE_IP6_IP6_N_TUPLE))
 
+#define FLOW_NEEDS_MARK(f)                                                                         \
+  (f->actions &                                                                                    \
+   (VNET_FLOW_ACTION_MARK | VNET_FLOW_ACTION_REDIRECT_TO_NODE | VNET_FLOW_ACTION_BUFFER_ADVANCE))
+
 /* get source addr from ipv6 header */
 #if (RTE_VERSION >= RTE_VERSION_NUM(24, 11, 0, 0))
 #define IP6_SRC_ADDR(ip6) ip6.hdr.src_addr.a
@@ -677,7 +681,7 @@ pattern_end:
       action->type = RTE_FLOW_ACTION_TYPE_PASSTHRU;
     }
 
-  if (f->actions & VNET_FLOW_ACTION_MARK)
+  if (FLOW_NEEDS_MARK (f))
     {
       vec_add2 (actions, action, 1);
       mark.id = fe->mark;
@@ -772,9 +776,7 @@ dpdk_flow_ops_fn (vnet_main_t * vnm, vnet_flow_dev_op_t op, u32 dev_instance,
     }
 
   /* if we need to mark packets, assign one mark */
-  if (flow->actions & (VNET_FLOW_ACTION_MARK |
-		       VNET_FLOW_ACTION_REDIRECT_TO_NODE |
-		       VNET_FLOW_ACTION_BUFFER_ADVANCE))
+  if (FLOW_NEEDS_MARK (flow))
     {
       /* reserve slot 0 */
       if (xd->flow_lookup_entries == 0)
