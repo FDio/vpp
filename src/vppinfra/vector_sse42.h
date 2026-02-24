@@ -383,6 +383,15 @@ u32x4_sum_elts (u32x4 sum4)
   return sum4[0];
 }
 
+static_always_inline u16
+u16x8_sum_elts (u16x8 v)
+{
+  v += (u16x8) u8x16_align_right ((u8x16) v, (u8x16) v, 8);
+  v += (u16x8) u8x16_align_right ((u8x16) v, (u8x16) v, 4);
+  v += (u16x8) u8x16_align_right ((u8x16) v, (u8x16) v, 2);
+  return v[0];
+}
+
 /* _from_ */
 #define _(f,t,i) \
 static_always_inline t							\
