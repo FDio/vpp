@@ -448,7 +448,13 @@ cnat_translation_show (vlib_main_t * vm,
     }
   else
     {
-      vlib_cli_output (vm, "Invalid policy ID:%d", cti);
+      if (pool_is_free_index (cnat_translation_pool, cti))
+      vlib_cli_output (vm, "Invalid translation ID:%d", cti);
+      else
+      {
+	ct = pool_elt_at_index (cnat_translation_pool, cti);
+	vlib_cli_output (vm, "%U", format_cnat_translation, ct);
+      }
     }
 
   return (NULL);
@@ -477,7 +483,7 @@ cnat_translation_purge (void)
 VLIB_CLI_COMMAND (cnat_translation_show_cmd_node, static) = {
   .path = "show cnat translation",
   .function = cnat_translation_show,
-  .short_help = "show cnat translation <VIP>",
+  .short_help = "show cnat translation [<translation-id>]",
   .is_mp_safe = 1,
 };
 
