@@ -18,6 +18,19 @@
 /* Global DAD main */
 ip6_dad_main_t ip6_dad_main;
 
+
+/* IP6 link delegate ID for DAD */
+static ip6_link_delegate_id_t ip6_dad_delegate_id;
+
+/**
+ * DAD delegate structure - one per interface with IPv6 enabled
+ */
+typedef struct ip6_dad_delegate_t_
+{
+  u32 sw_if_index;
+} ip6_dad_delegate_t;
+
+static ip6_dad_delegate_t *ip6_dad_delegate_pool;
 /* Logging */
 #define DAD_DBG(...)  vlib_log_debug (ip6_dad_main.log_class, __VA_ARGS__)
 #define DAD_INFO(...) vlib_log_notice (ip6_dad_main.log_class, __VA_ARGS__)
@@ -186,6 +199,14 @@ handle_dad_conflict (vlib_main_t *vm, u32 sw_if_index, const ip6_address_t *addr
 	  DAD_ERR ("DAD FAILED: Duplicate address %U on sw_if_index %u", format_ip6_address,
 		   address, sw_if_index);
 
+	  /* User notification of address removal:
+	   * - Error log message (visible via show logging)
+	   * - Address is removed from interface (detectable via sw_interface_dump)
+	   * - No active API notification event is sent
+	   * Note: Applications monitoring interface addresses via periodic dumps or
+	   * subscribing to address change callbacks will detect the removal.
+	   */
+
 	  /* Remove address from FIB - this will call ip6_dad_stop() which frees entry */
 	  ip6_add_del_interface_address (vm, sw_if_index, (ip6_address_t *) address,
 					 entry->address_length, 1 /* is_del */);
@@ -246,15 +267,8 @@ ip6_dad_process (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame
 	  /* Event data contains the conflict info - already handled by RPC */
 	}
 
-      /* Process all active DAD entries */
       pool_foreach (entry, dm->dad_entries)
 	{
-	  /* Clean up entries that were stopped (IDLE state) */
-	  if (entry->state == IP6_DAD_STATE_IDLE)
-	    {
-	      pool_put (dm->dad_entries, entry);
-	      continue;
-	    }
 
 	  if (entry->state != IP6_DAD_STATE_TENTATIVE)
 	    continue;
@@ -422,15 +436,14 @@ ip6_dad_enable_disable (bool enable)
     {
       ip6_dad_entry_t *entry;
 
-      /* Mark all entries as completed (will be freed by process node) */
+      /* Free all active DAD entries immediately (consistent with ip6_dad_stop) */
       pool_foreach (entry, dm->dad_entries)
 	{
 	  if (entry->state == IP6_DAD_STATE_TENTATIVE)
 	    {
 	      DAD_INFO ("Stopping DAD for %U on sw_if_index %u (disabled)", format_ip6_address,
 			&entry->address, entry->sw_if_index);
-	      entry->state = IP6_DAD_STATE_IDLE;       /* Mark as stopped */
-	      entry->dad_count = entry->dad_transmits; /* Prevent further NS */
+	      pool_put (dm->dad_entries, entry);
 	    }
 	}
     }
@@ -596,7 +609,7 @@ ip6_dad_show_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_comm
 {
   ip6_dad_main_t *dm = &ip6_dad_main;
   ip6_dad_entry_t *entry;
-  u32 count = 0;
+  u32 count;
 
   vlib_cli_output (vm, "DAD Configuration:");
   vlib_cli_output (vm, "  Enabled: %s", dm->dad_enabled ? "yes" : "no");
@@ -604,10 +617,7 @@ ip6_dad_show_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_comm
   vlib_cli_output (vm, "  Delay: %.1f seconds", dm->dad_retransmit_delay_default);
   vlib_cli_output (vm, "");
 
-  pool_foreach (entry, dm->dad_entries)
-    {
-      count++;
-    }
+  count = pool_elts (dm->dad_entries);
 
   vlib_cli_output (vm, "Active DAD entries: %u", count);
 
@@ -619,9 +629,175 @@ ip6_dad_show_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_comm
 	  vlib_cli_output (vm, "  %U", format_ip6_dad_entry, entry);
 	}
     }
-
   return NULL;
 }
+
+/**
+ * @brief Callback when IPv6 is enabled on an interface
+ *
+ * This function is called when IPv6 is enabled on an interface.
+ * It creates a DAD delegate instance to track the interface.
+ */
+static void
+ip6_dad_link_enable (u32 sw_if_index)
+{
+  ip6_dad_delegate_t *idd;
+
+  /* Ensure no existing delegate for this interface */
+  ASSERT (INDEX_INVALID == ip6_link_delegate_get (sw_if_index, ip6_dad_delegate_id));
+
+  /* Allocate new delegate instance */
+  pool_get_zero (ip6_dad_delegate_pool, idd);
+
+  /* Store the interface index */
+  idd->sw_if_index = sw_if_index;
+
+  /* Register this delegate instance with the IP6 link layer */
+  ip6_link_delegate_update (sw_if_index, ip6_dad_delegate_id, idd - ip6_dad_delegate_pool);
+
+  DAD_DBG ("DAD delegate enabled for sw_if_index %u", sw_if_index);
+}
+
+/**
+ * @brief Callback when IPv6 is disabled on an interface
+ *
+ * This function is called when IPv6 is disabled on an interface.
+ * It stops all active DAD sessions on the interface and cleans up the delegate.
+ *
+ * @param iddi The DAD delegate index (NOT sw_if_index!)
+ */
+static void
+ip6_dad_delegate_disable (index_t iddi)
+{
+  ip6_dad_main_t *dm = &ip6_dad_main;
+  ip6_dad_delegate_t *idd;
+  ip6_dad_entry_t *entry;
+  u32 sw_if_index;
+
+  /* Get delegate instance from pool using the delegate index */
+  idd = pool_elt_at_index (ip6_dad_delegate_pool, iddi);
+  sw_if_index = idd->sw_if_index;
+
+  DAD_DBG ("DAD delegate disable for sw_if_index %u", sw_if_index);
+
+  /* Stop all DAD sessions on this interface */
+  pool_foreach (entry, dm->dad_entries)
+    {
+      if (entry->sw_if_index == sw_if_index)
+	{
+	  DAD_INFO ("Stopping DAD for %U on sw_if_index %u (interface disabled)",
+		    format_ip6_address, &entry->address, sw_if_index);
+	  ip6_dad_stop (sw_if_index, &entry->address);
+	}
+    }
+
+  /* Free the delegate instance */
+  pool_put (ip6_dad_delegate_pool, idd);
+}
+
+/**
+ * @brief Callback when link-local address changes on an interface
+ *
+ * This function is called when the link-local address changes.
+ * It starts DAD for the new link-local address.
+ *
+ * @param iddi The DAD delegate index (NOT sw_if_index!)
+ * @param address The new link-local address
+ */
+static void
+ip6_dad_delegate_ll_change (u32 iddi, const ip6_address_t *address)
+{
+  ip6_dad_delegate_t *idd;
+  u32 sw_if_index;
+  clib_error_t *dad_err;
+
+  /* Get delegate instance to extract sw_if_index */
+  idd = pool_elt_at_index (ip6_dad_delegate_pool, iddi);
+  sw_if_index = idd->sw_if_index;
+
+  DAD_DBG ("DAD link-local change for sw_if_index %u, address %U", sw_if_index,
+	   format_ip6_address, address);
+
+  /* Start DAD for the new link-local address (always /128) */
+  dad_err = ip6_dad_start (sw_if_index, address, 128);
+  if (dad_err)
+    {
+      DAD_INFO ("DAD start failed for link-local %U: %v", format_ip6_address, address, dad_err);
+      clib_error_free (dad_err);
+    }
+}
+
+/**
+ * Virtual Function Table (VFT) for DAD delegate
+ */
+
+/**
+ * @brief Callback when an address is added to an interface
+ *
+ * This function is called when a non-link-local address is added.
+ * It starts DAD for the new address.
+ *
+ * @param iddi The DAD delegate index (NOT sw_if_index!)
+ * @param address The address being added
+ * @param address_length The prefix length
+ */
+static void
+ip6_dad_delegate_addr_add (u32 iddi, const ip6_address_t *address, u8 address_length)
+{
+  ip6_dad_delegate_t *idd;
+  u32 sw_if_index;
+  clib_error_t *dad_err;
+
+  /* Get delegate instance to extract sw_if_index */
+  idd = pool_elt_at_index (ip6_dad_delegate_pool, iddi);
+  sw_if_index = idd->sw_if_index;
+
+  DAD_DBG ("DAD address add for sw_if_index %u, address %U/%u", sw_if_index,
+	   format_ip6_address, address, address_length);
+
+  /* Start DAD for the new address */
+  dad_err = ip6_dad_start (sw_if_index, address, address_length);
+  if (dad_err)
+    {
+      DAD_INFO ("DAD start failed for %U: %v", format_ip6_address, address, dad_err);
+      clib_error_free (dad_err);
+    }
+}
+
+/**
+ * @brief Callback when an address is deleted from an interface
+ *
+ * This function is called when an address is removed.
+ * It stops any ongoing DAD for that address.
+ *
+ * @param iddi The DAD delegate index (NOT sw_if_index!)
+ * @param address The address being removed
+ * @param address_length The prefix length (unused)
+ */
+static void
+ip6_dad_delegate_addr_del (u32 iddi, const ip6_address_t *address, u8 address_length)
+{
+  ip6_dad_delegate_t *idd;
+  u32 sw_if_index;
+
+  /* Get delegate instance to extract sw_if_index */
+  idd = pool_elt_at_index (ip6_dad_delegate_pool, iddi);
+  sw_if_index = idd->sw_if_index;
+
+  DAD_DBG ("DAD address del for sw_if_index %u, address %U", sw_if_index,
+	   format_ip6_address, address);
+
+  /* Stop DAD if in progress */
+  ip6_dad_stop (sw_if_index, address);
+}
+static const ip6_link_delegate_vft_t ip6_dad_delegate_vft = {
+  .ildv_enable = ip6_dad_link_enable,
+  .ildv_disable = ip6_dad_delegate_disable,
+  .ildv_addr_add = ip6_dad_delegate_addr_add,
+  .ildv_addr_del = ip6_dad_delegate_addr_del,
+  .ildv_ll_change = ip6_dad_delegate_ll_change,
+};
+
 
 VLIB_CLI_COMMAND (ip6_dad_show_command, static) = {
   .path = "show ip6 dad",
@@ -650,6 +826,9 @@ ip6_dad_init (vlib_main_t *vm)
 
   /* Store process node index */
   dm->dad_process_node_index = ip6_dad_process_node.index;
+
+  /* Register as an IP6 link delegate */
+  ip6_dad_delegate_id = ip6_link_delegate_register (&ip6_dad_delegate_vft);
 
   DAD_INFO ("IPv6 DAD initialized (disabled by default)");
 

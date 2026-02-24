@@ -115,7 +115,7 @@ typedef struct ip6_dad_na_event_t_
  * @brief Start DAD for an IPv6 address
  *
  * @param sw_if_index Interface index
- * @param address IPv6 address to test
+ * @param address IPv6 address to test for uniqueness
  * @param address_length Prefix length
  * @return Error if DAD cannot be started
  */

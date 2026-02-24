@@ -5,7 +5,6 @@
 
 #include <vnet/ip/ip6_link.h>
 #include <vnet/ip/ip6_ll_table.h>
-#include <vnet/ip6-nd/ip6_dad.h>
 
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/mfib/ip6_mfib.h>
@@ -259,8 +258,6 @@ ip6_link_last_lock_gone (ip6_link_t * il)
 		 format_vnet_sw_if_index_name,
 		 vnet_get_main (), il->il_sw_if_index);
 
-  /* Stop DAD if in progress */
-  ip6_dad_stop (il->il_sw_if_index, &il->il_ll_addr);
 
   ip6_link_delegate_flush (il);
   ip6_ll_table_entry_delete (&ilp);
@@ -360,15 +357,6 @@ ip6_link_set_local_address (u32 sw_if_index, const ip6_address_t * address)
       il_delegate_vfts[ild->ild_type].ildv_ll_change(ild->ild_index,
                                                      &il->il_ll_addr);
   }));
-
-  /* Start DAD for link-local address */
-  clib_error_t *dad_err = ip6_dad_start (sw_if_index, address, 128);
-  if (dad_err)
-    {
-      IP6_LINK_INFO ("DAD start failed for link-local %U: %v", format_ip6_address, address,
-		     dad_err);
-      clib_error_free (dad_err);
-    }
 
   return (0);
 }

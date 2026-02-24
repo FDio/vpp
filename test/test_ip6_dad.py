@@ -24,6 +24,10 @@ from scapy.utils6 import in6_getnsma, in6_getnsmac
 from framework import VppTestCase
 from asfframework import VppTestRunner
 
+# NOTE: self.sleep() uses VPP virtual time (comment #11)
+# This means sleep durations are simulated, not real-time delays.
+# DAD timers are also based on VPP virtual time, so tests remain deterministic.
+
 
 class TestIP6DAD(VppTestCase):
     """IPv6 Duplicate Address Detection (DAD) - RFC 4862"""
@@ -47,6 +51,9 @@ class TestIP6DAD(VppTestCase):
             i.admin_up()
 
     def tearDown(self):
+        # Disable DAD after each test (comment #9)
+        self.vapi.ip6_dad_enable_disable(enable=False)
+
         for i in self.pg_interfaces:
             i.admin_down()
 
@@ -85,6 +92,24 @@ class TestIP6DAD(VppTestCase):
         expected_mac = in6_getnsmac(expected_mcast)
         self.assertEqual(rx_pkt[Ether].dst, expected_mac)
 
+    def assert_address_not_present(self, sw_if_index, address):
+        """Helper to verify address NOT present (comment #10)."""
+        addrs = self.vapi.ip_address_dump(sw_if_index=sw_if_index, is_ipv6=1)
+        for addr in addrs:
+            self.assertFalse(
+                str(addr.prefix).startswith(address),
+                f"Address {address} should not be on sw_if_index {sw_if_index}"
+            )
+
+    def assert_address_present(self, sw_if_index, address):
+        """Helper to verify address is present (comment #10)."""
+        addrs = self.vapi.ip_address_dump(sw_if_index=sw_if_index, is_ipv6=1)
+        for addr in addrs:
+            if str(addr.prefix).startswith(address):
+                return
+        self.fail(f"Address {address} not found on sw_if_index {sw_if_index}")
+
+
     def test_dad_disabled_by_default(self):
         """DAD should be disabled by default (backward compatibility)"""
 
@@ -119,7 +144,7 @@ class TestIP6DAD(VppTestCase):
         """DAD for link-local address - no conflict (success)"""
 
         # Enable DAD with 1 transmission
-        self.vapi.cli("set ip6 dad enable transmits 1")
+        self.vapi.ip6_dad_enable_disable(enable=True, dad_transmits=1)
 
         test_address = "fe80::100"
 
@@ -153,7 +178,7 @@ class TestIP6DAD(VppTestCase):
         """DAD for global unicast address - no conflict (success)"""
 
         # Enable DAD with 2 transmissions
-        self.vapi.cli("set ip6 dad enable transmits 2")
+        self.vapi.ip6_dad_enable_disable(enable=True, dad_transmits=2)
 
         test_address = "2001:db8::200"
 
@@ -192,7 +217,7 @@ class TestIP6DAD(VppTestCase):
         """DAD detects duplicate address (conflict - failure)"""
 
         # Enable DAD
-        self.vapi.cli("set ip6 dad enable transmits 1")
+        self.vapi.ip6_dad_enable_disable(enable=True, dad_transmits=1)
 
         test_address = "2001:db8::300"
 
@@ -245,7 +270,7 @@ class TestIP6DAD(VppTestCase):
         """DAD for multiple addresses on same interface"""
 
         # Enable DAD
-        self.vapi.cli("set ip6 dad enable transmits 1")
+        self.vapi.ip6_dad_enable_disable(enable=True, dad_transmits=1)
 
         addr1 = "2001:db8::1:100"
         addr2 = "2001:db8::2:200"
@@ -298,7 +323,7 @@ class TestIP6DAD(VppTestCase):
         """DAD operates independently on different interfaces"""
 
         # Enable DAD
-        self.vapi.cli("set ip6 dad enable transmits 1")
+        self.vapi.ip6_dad_enable_disable(enable=True, dad_transmits=1)
 
         addr_pg0 = "2001:db8:1::100"
         addr_pg1 = "2001:db8:2::200"
@@ -349,7 +374,7 @@ class TestIP6DAD(VppTestCase):
         """Verify RetransTimer delay between DAD NS transmissions"""
 
         # Enable DAD with 3 transmissions, 1 second delay
-        self.vapi.cli("set ip6 dad enable transmits 3 delay 1.0")
+        self.vapi.ip6_dad_enable_disable(enable=True, dad_transmits=3, dad_retransmit_delay=1.0)
 
         test_address = "2001:db8::400"
 
@@ -391,61 +416,65 @@ class TestIP6DAD(VppTestCase):
         """Loopback address (::1) should NOT trigger DAD"""
 
         # Enable DAD
-        self.vapi.cli("set ip6 dad enable transmits 1")
+        self.vapi.ip6_dad_enable_disable(enable=True, dad_transmits=1)
 
         loopback_addr = "::1"
 
         # Start capturing
         self.pg0.enable_capture()
 
-        # Configure loopback address (should be rejected or skip DAD)
-        # Note: VPP might reject ::1 on non-loopback interface
-        # This test verifies no DAD NS is sent if accepted
-        try:
-            self.vapi.sw_interface_add_del_address(
-                sw_if_index=self.pg0.sw_if_index,
-                prefix=f"{loopback_addr}/128",
-                is_add=1,
-            )
+        # VPP accepts loopback but skips DAD (see ip6_dad.c:334-338)
+        self.vapi.sw_interface_add_del_address(
+            sw_if_index=self.pg0.sw_if_index,
+            prefix=f"{loopback_addr}/128",
+            is_add=1,
+        )
 
-            # Should NOT send any DAD NS for loopback
-            self.sleep(0.5)
-            self.pg0.assert_nothing_captured(timeout=0.1)
-        except:
-            # Expected: VPP might reject ::1 on regular interface
-            pass
+        # Should NOT send any DAD NS for loopback
+        self.sleep(0.5)
+        self.pg0.assert_nothing_captured(timeout=0.1)
+
+        # Cleanup
+        self.vapi.sw_interface_add_del_address(
+            sw_if_index=self.pg0.sw_if_index,
+            prefix=f"{loopback_addr}/128",
+            is_add=0,
+        )
 
     def test_dad_multicast_exemption(self):
         """Multicast addresses should NOT trigger DAD"""
 
         # Enable DAD
-        self.vapi.cli("set ip6 dad enable transmits 1")
+        self.vapi.ip6_dad_enable_disable(enable=True, dad_transmits=1)
 
         mcast_addr = "ff02::1"  # All-nodes multicast
 
         # Start capturing
         self.pg0.enable_capture()
 
-        # Try to configure multicast (should be rejected or skip DAD)
-        try:
-            self.vapi.sw_interface_add_del_address(
-                sw_if_index=self.pg0.sw_if_index,
-                prefix=f"{mcast_addr}/128",
-                is_add=1,
-            )
+        # VPP accepts multicast but skips DAD (see ip6_dad.c:334-338)
+        self.vapi.sw_interface_add_del_address(
+            sw_if_index=self.pg0.sw_if_index,
+            prefix=f"{mcast_addr}/128",
+            is_add=1,
+        )
 
-            # Should NOT send any DAD NS for multicast
-            self.sleep(0.5)
-            self.pg0.assert_nothing_captured(timeout=0.1)
-        except:
-            # Expected: VPP should reject multicast addresses
-            pass
+        # Should NOT send any DAD NS for multicast
+        self.sleep(0.5)
+        self.pg0.assert_nothing_captured(timeout=0.1)
+
+        # Cleanup
+        self.vapi.sw_interface_add_del_address(
+            sw_if_index=self.pg0.sw_if_index,
+            prefix=f"{mcast_addr}/128",
+            is_add=0,
+        )
 
     def test_dad_disable_stops_new_sessions(self):
         """set ip6 dad disable should prevent new DAD sessions"""
 
         # Ensure DAD is disabled
-        self.vapi.cli("set ip6 dad disable")
+        self.vapi.ip6_dad_enable_disable(enable=False)
 
         test_address = "2001:db8::200"
 
