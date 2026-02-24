@@ -6,6 +6,7 @@
 
 #include <vnet/ip6-nd/ip6_nd.h>
 #include <vnet/ip6-nd/ip6_nd_inline.h>
+#include <vnet/ip6-nd/ip6_dad.h>
 
 #include <vnet/ip-neighbor/ip_neighbor.h>
 #include <vnet/ip-neighbor/ip_neighbor_dp.h>
@@ -151,6 +152,11 @@ icmp6_neighbor_solicitation_or_advertisement (vlib_main_t * vm,
 	      ip_neighbor_learn_dp (&learn);
 	    }
 
+	  /* Check if this NA conflicts with an ongoing DAD */
+	  if (!is_solicitation)
+	    {
+	      ip6_dad_na_received_dp (sw_if_index0, &h0->target_address);
+	    }
 	  if (is_solicitation && error0 == ICMP6_ERROR_NONE)
 	    {
 	      /* Check that target address is local to this router. */
