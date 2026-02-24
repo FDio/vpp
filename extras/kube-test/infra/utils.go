@@ -42,20 +42,11 @@ statseg {
 plugins {
   plugin default { disable }
 
-  plugin unittest_plugin.so { enable }
-  plugin quic_plugin.so { enable }
-  plugin quic_quicly_plugin.so { enable }
   plugin af_packet_plugin.so { enable }
   plugin hs_apps_plugin.so { enable }
-  plugin hsi_plugin.so { enable }
   plugin http_plugin.so { enable }
-  plugin http_unittest_plugin.so { enable }
   plugin http_static_plugin.so { enable }
-  plugin prom_plugin.so { enable }
-  plugin tlsopenssl_plugin.so { enable }
   plugin ping_plugin.so { enable }
-  plugin nsim_plugin.so { enable }
-  plugin mactime_plugin.so { enable }
   plugin arping_plugin.so { enable }
   plugin tap_plugin.so { enable }
 }
