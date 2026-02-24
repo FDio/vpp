@@ -118,7 +118,7 @@ format_flow_actions (u8 * s, va_list * args)
 }
 
 u8 *
-format_flow_enabled_hw (u8 * s, va_list * args)
+format_flow_enabled_hw (u8 *s, va_list *args)
 {
   u32 flow_index = va_arg (*args, u32);
   vnet_flow_t *f = vnet_get_flow (flow_index);
@@ -126,14 +126,12 @@ format_flow_enabled_hw (u8 * s, va_list * args)
     return format (s, "not found");
 
   u8 *t = 0;
-  u32 hw_if_index;
-  uword private_data;
   vnet_main_t *vnm = vnet_get_main ();
-  hash_foreach (hw_if_index, private_data, f->private_data,
-    ({
-     t = format (t, "%s%U", t ? ", " : "",
-                 format_vnet_hw_if_index_name, vnm, hw_if_index);
-     }));
+  for (u32 hw_if_index = 0; hw_if_index < vec_len (f->private_data); hw_if_index++)
+    {
+      if (f->private_data[hw_if_index] != ~0)
+	t = format (t, "%s%U", t ? ", " : "", format_vnet_hw_if_index_name, vnm, hw_if_index);
+    }
   s = format (s, "%v", t);
   vec_free (t);
   return s;
@@ -187,7 +185,6 @@ show_flow_entry (vlib_main_t * vm, unformat_input_t * input,
   vnet_hw_interface_t *hi;
   vnet_device_class_t *dev_class;
   vnet_flow_t *f;
-  uword private_data;
   u32 index = ~0, hw_if_index;
 
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -217,16 +214,17 @@ show_flow_entry (vlib_main_t * vm, unformat_input_t * input,
 	  vlib_cli_output (vm, "%s: %s", "spec", f->generic.pattern.spec);
 	  vlib_cli_output (vm, "%s: %s", "mask", f->generic.pattern.mask);
 	}
-      hash_foreach (hw_if_index, private_data, f->private_data,
-        ({
-	 hi = vnet_get_hw_interface (vnm, hw_if_index);
+      for (hw_if_index = 0; hw_if_index < vec_len (f->private_data); hw_if_index++)
+	{
+	  if (f->private_data[hw_if_index] == ~0)
+	    continue;
+	  hi = vnet_get_hw_interface (vnm, hw_if_index);
 	  dev_class = vnet_get_device_class (vnm, hi->dev_class_index);
-	  vlib_cli_output (vm,  "interface %U\n",
-			   format_vnet_hw_if_index_name, vnm, hw_if_index);
+	  vlib_cli_output (vm, "interface %U\n", format_vnet_hw_if_index_name, vnm, hw_if_index);
 	  if (dev_class->format_flow)
-	    vlib_cli_output (vm,  "  %U\n", dev_class->format_flow,
-			     hi->dev_instance, f->index, private_data);
-         }));
+	    vlib_cli_output (vm, "  %U\n", dev_class->format_flow, hi->dev_instance, f->index,
+			     f->private_data[hw_if_index]);
+	}
       return 0;
     }
 
@@ -811,8 +809,8 @@ test_flow (vlib_main_t * vm, unformat_input_t * input,
 }
 
 VLIB_CLI_COMMAND (test_flow_command, static) = {
-  .path = "test flow",
-  .short_help = "test flow [add|del|enable|disable] [index <id>] "
+  .path = "flow",
+  .short_help = "flow [add|del|enable|disable] [index <id>] "
 		"[src-ip <ip-addr/mask>] [dst-ip <ip-addr/mask>] "
 		"[ip6-src-ip <ip-addr/mask>] [ip6-dst-ip <ip-addr/mask>] "
 		"[src-port <port/mask>] [dst-port <port/mask>] "
