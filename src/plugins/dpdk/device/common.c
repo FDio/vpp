@@ -68,12 +68,9 @@ dpdk_device_setup (dpdk_device_t * xd)
   struct rte_eth_conf conf = {};
   struct rte_flow_port_info flow_port_info = {};
   struct rte_flow_queue_info flow_queue_info = {};
-  // dummy values to configure devices for flow offload
   struct rte_flow_port_attr port_attr = {};
-  struct rte_flow_queue_attr queue_attr = {
-    .size = DPDK_DEFAULT_ASYNC_FLOW_QUEUE_SIZE,
-  };
-  const struct rte_flow_queue_attr *queue_attr_list[] = { &queue_attr };
+  struct rte_flow_queue_attr queue_attr = {};
+  const struct rte_flow_queue_attr **queue_attr_list = 0;
   u64 rxo, txo;
   u32 max_frame_size;
   int rv;
@@ -276,9 +273,31 @@ retry:
 	  goto skip_async_fo;
 	}
 
-      // at least one queue is need, of size DPDK_DEFAULT_ASYNC_FLOW_QUEUE_SIZE for now
-      rv = rte_flow_configure (xd->port_id, &port_attr, DPDK_DEFAULT_ASYNC_FLOW_N_QUEUES,
+      if (flow_port_info.max_nb_queues < xd->async_flow_offload_n_queues)
+	{
+	  dpdk_log_notice ("[%u] %u async flow queues supported, %u requested", xd->port_id,
+			   flow_port_info.max_nb_queues, xd->async_flow_offload_n_queues);
+	  xd->async_flow_offload_n_queues = flow_port_info.max_nb_queues;
+	}
+
+      if (flow_queue_info.max_size < xd->async_flow_offload_queue_size)
+	{
+	  dpdk_log_notice ("[%u] Supported async flow queues of size %u, %u requested", xd->port_id,
+			   flow_queue_info.max_size, xd->async_flow_offload_queue_size);
+	  xd->async_flow_offload_queue_size = flow_queue_info.max_size;
+	}
+
+      queue_attr.size = xd->async_flow_offload_queue_size;
+      queue_attr_list =
+	clib_mem_alloc (sizeof (struct rte_flow_queue_attr *) * xd->async_flow_offload_n_queues);
+      for (j = 0; j < xd->async_flow_offload_n_queues; j++)
+	queue_attr_list[j] = &queue_attr;
+
+      rv = rte_flow_configure (xd->port_id, &port_attr, xd->async_flow_offload_n_queues,
 			       queue_attr_list, &xd->last_flow_error);
+
+      clib_mem_free (queue_attr_list);
+
       if (rv == -ENOTSUP)
 	{
 	  goto skip_async_fo;
