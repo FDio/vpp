@@ -7,6 +7,35 @@
 #include <snort/snort.h>
 
 static_always_inline void
+snort_deq_copy_inject_metadata (vlib_buffer_t *b, vlib_buffer_t *ref_b)
+{
+  u8 *opaque = vnet_buffer_get_opaque (b);
+  u8 *ref_opaque = vnet_buffer_get_opaque (ref_b);
+
+  /*
+   * Preserve only the metadata needed to continue feature processing and
+   * plugin scratch extensions. Avoid full opaque copies as many fields are
+   * transient and packet-content dependent.
+   */
+  b->current_config_index = ref_b->current_config_index;
+
+  vnet_buffer (b)->sw_if_index[VLIB_RX] = vnet_buffer (ref_b)->sw_if_index[VLIB_RX];
+  vnet_buffer (b)->sw_if_index[VLIB_TX] = vnet_buffer (ref_b)->sw_if_index[VLIB_TX];
+  vnet_buffer (b)->l2_hdr_offset = vnet_buffer (ref_b)->l2_hdr_offset;
+  vnet_buffer (b)->l3_hdr_offset = vnet_buffer (ref_b)->l3_hdr_offset;
+  vnet_buffer (b)->l4_hdr_offset = vnet_buffer (ref_b)->l4_hdr_offset;
+  vnet_buffer (b)->feature_arc_index = vnet_buffer (ref_b)->feature_arc_index;
+  vnet_buffer (b)->oflags = vnet_buffer (ref_b)->oflags;
+  vnet_buffer (b)->ip.save_rewrite_length = vnet_buffer (ref_b)->ip.save_rewrite_length;
+
+  clib_memcpy_fast (vnet_buffer (b)->unused, vnet_buffer (ref_b)->unused,
+		    sizeof (vnet_buffer (ref_b)->unused));
+
+  clib_memcpy_fast (vnet_buffer2 (b)->unused, vnet_buffer2 (ref_b)->unused,
+		    sizeof (vnet_buffer2 (ref_b)->unused));
+}
+
+static_always_inline void
 snort_deq_node_inject (vlib_main_t *vm, vlib_node_runtime_t *node, snort_qpair_t *qp,
 		       daq_vpp_head_tail_t tail)
 {
@@ -23,7 +52,6 @@ snort_deq_node_inject (vlib_main_t *vm, vlib_node_runtime_t *node, snort_qpair_t
       daq_vpp_empty_buf_desc_t *desc = &qp->empty_buf_ring[last_tail & mask];
       u32 ref_desc_index = desc->ref_buffer_desc_index;
       snort_qpair_entry_t *ref_qpe = qp->entries + ref_desc_index;
-      daq_vpp_desc_t *ref_d = qp->hdr->descs + ref_desc_index;
       vlib_buffer_t *b, *ref_b;
       u32 bi, ref_bi;
 
@@ -37,10 +65,7 @@ snort_deq_node_inject (vlib_main_t *vm, vlib_node_runtime_t *node, snort_qpair_t
       ref_bi = ref_qpe->buffer_index;
       ref_b = vlib_get_buffer (vm, ref_bi);
 
-      *snort_get_buffer_metadata (b) = ref_d->metadata;
-
-      b->current_config_index = ref_b->current_config_index;
-      vnet_buffer (b)->feature_arc_index = vnet_buffer (ref_b)->feature_arc_index;
+      snort_deq_copy_inject_metadata (b, ref_b);
 
       from[i] = bi;
       nexts[i] = ref_qpe->next_index;
