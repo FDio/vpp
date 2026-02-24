@@ -1,0 +1,61 @@
+# IPv6 DAD Client Examples
+
+This directory contains example code demonstrating how to integrate with VPP's
+IPv6 Duplicate Address Detection (DAD) system.
+
+## Files
+
+- **dad_client.py** - Python example using vpp-papi (complete working example)
+- **dad_client.c** - C example using VAPI (structural example)
+- **Makefile** - Build system for C example
+
+## Python Example (Recommended)
+
+Complete working example using VPP Python API.
+
+### Requirements
+```bash
+pip3 install vpp-papi
+```
+
+### Usage
+```bash
+sudo ./dad_client.py
+```
+
+### Features
+- Enable/configure DAD
+- Register for event notifications
+- Monitor all state transitions
+- Handle duplicate detection
+
+## C Example
+
+Structural example showing VAPI integration patterns. This example
+demonstrates the integration approach and can be adapted for your
+specific VPP version and build environment.
+
+### Build
+```bash
+make
+```
+
+### Run
+```bash
+./dad_client
+```
+
+## DAD States
+
+- **TENTATIVE** (1): Address being validated
+- **PREFERRED** (2): Address validated, ready to use
+- **DUPLICATE** (3): Duplicate detected, **IP remains configured**
+
+## Event Sequence
+
+1. TENTATIVE (count=0) - Initial state
+2. TENTATIVE (count=1..N) - After each NS probe
+3. PREFERRED or DUPLICATE - Final state
+
+⚠️ **Important**: IP address remains configured even in DUPLICATE state.
+Application must decide how to handle duplicates.
