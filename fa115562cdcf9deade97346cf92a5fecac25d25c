@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c2f051ff_aa78f00d",
+        "filename": "src/vnet/srv6/sr_api.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 39,
+      "author": {
+        "id": 1776
+      },
+      "writtenOn": "2026-02-24T21:40:06Z",
+      "side": 0,
+      "message": "We could keep this and just remove the vlan_index. Some folks might still find it useful as a reminder of the function input.",
+      "revId": "fa115562cdcf9deade97346cf92a5fecac25d25c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
