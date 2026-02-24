@@ -368,6 +368,12 @@ stat_segment_ls_r (uint8_t ** patterns, stat_client_main_t * sm)
   if (stat_segment_access_start (&sa, sm))
     return 0;
 
+  /* Preallocate an empty vec in case there are no matching
+   * counters. This avoids us returning NULL in this case,
+   * which callers would treat as an error.
+   */
+  vec_alloc (dir, 0);
+
   vlib_stats_entry_t *counter_vec = get_stat_vector_r (sm);
   for (j = 0; j < vec_len (counter_vec); j++)
     {
