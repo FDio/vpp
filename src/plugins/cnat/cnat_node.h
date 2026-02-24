@@ -373,6 +373,22 @@ cnat_translation_icmp4_error (ip4_header_t *outer_ip4, icmp46_header_t *icmp,
     }
   else if (ip4->protocol == IP_PROTOCOL_ICMP)
     {
+      icmp46_header_t *inner_icmp = (icmp46_header_t *) (ip4 + 1);
+      if (icmp_type_is_echo (inner_icmp->type))
+	{
+	  cnat_echo_header_t *echo = (cnat_echo_header_t *) (inner_icmp + 1);
+	  u16 old_id = echo->identifier;
+	  echo->identifier = new_port[VLIB_RX];
+	  /* Update outer ICMP checksum for identifier change */
+	  sum = ip_csum_update (sum, old_id, new_port[VLIB_RX], udp_header_t, src_port);
+	  /* Update inner ICMP checksum for identifier change */
+	  inner_l4_old_sum = inner_icmp->checksum;
+	  inner_icmp->checksum = ip_csum_fold (ip_csum_update (
+	    inner_icmp->checksum, old_id, new_port[VLIB_RX], udp_header_t, src_port));
+	  /* Update outer ICMP checksum for inner checksum change */
+	  sum =
+	    ip_csum_update (sum, inner_l4_old_sum, inner_icmp->checksum, ip4_header_t, checksum);
+	}
       old_port[VLIB_TX] = 0;
       old_port[VLIB_RX] = 0;
     }
@@ -636,10 +652,21 @@ cnat_translation_icmp6_error (ip6_header_t *outer_ip6, icmp46_header_t *icmp,
       icmp_sum = ip_csum_add_even (icmp_sum, new_addr[VLIB_RX].as_u64[1]);
       icmp_sum = ip_csum_sub_even (icmp_sum, ip6->src_address.as_u64[0]);
       icmp_sum = ip_csum_sub_even (icmp_sum, ip6->src_address.as_u64[1]);
+
+      if (icmp6_type_is_echo (inner_icmp->type))
+	{
+	  cnat_echo_header_t *echo = (cnat_echo_header_t *) (inner_icmp + 1);
+	  u16 old_id = echo->identifier;
+	  echo->identifier = new_port[VLIB_RX];
+	  icmp_sum = ip_csum_update (icmp_sum, old_id, new_port[VLIB_RX], udp_header_t, src_port);
+	  /* Identifier changed in outer payload */
+	  sum = ip_csum_update (sum, old_id, new_port[VLIB_RX], udp_header_t, src_port);
+	}
+
       inner_icmp->checksum = ip_csum_fold (icmp_sum);
 
-      /* Update ICMP6 checksum change */
-      sum = ip_csum_update (sum, inner_l4_old_sum, icmp_sum, ip4_header_t, checksum);
+      /* Update ICMP6 checksum for inner checksum change */
+      sum = ip_csum_update (sum, inner_l4_old_sum, inner_icmp->checksum, ip4_header_t, checksum);
     }
   else
     return;
