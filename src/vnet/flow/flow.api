@@ -13,26 +13,11 @@
  * limitations under the License.
  */
 
-option version = "1.0.4";
+option version = "1.0.5";
 
 import "vnet/interface_types.api";
 import "vnet/ip/ip_types.api";
 import "vnet/flow/flow_types.api";
-
-/** \brief flow add request
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param flow - flow rule
-*/
-define flow_add
-{
-  option deprecated;
-
-  u32 client_index;
-  u32 context;
-  vl_api_flow_rule_t flow;
-  option vat_help = "flow add [src-ip <ip-addr/mask>] [dst-ip <ip-addr/mask>] [src-port <port/mask>] [dst-port <port/mask>] [proto <ip-proto>]";
-};
 
 /** \brief flow add request v2
     @param client_index - opaque cookie to identify the sender
@@ -41,6 +26,8 @@ define flow_add
 */
 define flow_add_v2
 {
+  option deprecated;
+
   u32 client_index;
   u32 context;
   vl_api_flow_rule_v2_t flow;
@@ -62,18 +49,19 @@ define flow_add_v3
   option vat_help = "flow add [template] [src-ip <ip-addr/mask>] [dst-ip <ip-addr/mask>] [src-port <port/mask>] [dst-port <port/mask>] [proto <ip-proto>] [spec <spec-string>] [mask <mask-string>]";
 };
 
-/** \brief reply for adding flow
+/** \brief flow add request v4
+    @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param retval - return code
-    @param flow_index - flow index, can be used for flow del/enable/disable
+    @param flow - flow rule v3
+    @param is_template - is the flow a template for async
 */
-define flow_add_reply
+define flow_add_v4
 {
-  option deprecated;
-
+  u32 client_index;
   u32 context;
-  i32 retval;
-  u32 flow_index;
+  vl_api_flow_rule_v3_t flow;
+  bool is_template [default=false];
+  option vat_help = "flow add [template] [src-ip <ip-addr/mask>] [dst-ip <ip-addr/mask>] [src-port <port/mask>] [dst-port <port/mask>] [proto <ip-proto>] [spec <spec-string>] [mask <mask-string>]";
 };
 
 /** \brief reply for adding flow v2
@@ -83,6 +71,8 @@ define flow_add_reply
 */
 define flow_add_v2_reply
 {
+  option deprecated;
+
   u32 context;
   i32 retval;
   u32 flow_index;
@@ -94,6 +84,18 @@ define flow_add_v2_reply
     @param flow_index - flow index, can be used for flow del/enable/disable
 */
 define flow_add_v3_reply
+{
+  u32 context;
+  i32 retval;
+  u32 flow_index;
+};
+
+/** \brief reply for adding flow v4
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+    @param flow_index - flow index, can be used for flow del/enable/disable
+*/
+define flow_add_v4_reply
 {
   u32 context;
   i32 retval;
