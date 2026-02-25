@@ -17,18 +17,35 @@
 #include <vppinfra/error.h>
 
 /* constant structs */
-static const struct rte_flow_attr ingress = { .ingress = 1 };
-static const struct rte_flow_actions_template_attr action_attr = { .ingress = 1 };
-static const struct rte_flow_pattern_template_attr pattern_attr = { .ingress = 1,
-								    .relaxed_matching = 1 };
 static const struct rte_flow_op_attr async_op = { .postpone = 1 };
+
+static_always_inline void
+dpdk_flow_dir_to_attr (vnet_flow_t *f, struct rte_flow_attr *attr)
+{
+  switch (f->dir)
+    {
+    case VNET_FLOW_DIRECTION_EGRESS:
+      attr->egress = 1;
+      break;
+    case VNET_FLOW_DIRECTION_TRANSFER:
+      attr->transfer = 1;
+      break;
+    case VNET_FLOW_DIRECTION_INGRESS:
+    default:
+      attr->ingress = 1;
+      break;
+    }
+}
 
 static int
 dpdk_flow_add (dpdk_device_t *xd, vnet_flow_t *f, dpdk_flow_entry_t *fe)
 {
+  struct rte_flow_attr attr = { .group = f->group };
   struct rte_flow_item items[DPDK_MAX_FLOW_ITEMS];
   struct rte_flow_action actions[DPDK_MAX_FLOW_ACTIONS];
   int rv = 0;
+
+  dpdk_flow_dir_to_attr (f, &attr);
 
   if ((rv = dpdk_flow_fill_items (xd, f, fe, items)) != 0)
     return rv;
@@ -36,7 +53,7 @@ dpdk_flow_add (dpdk_device_t *xd, vnet_flow_t *f, dpdk_flow_entry_t *fe)
   if ((rv = dpdk_flow_fill_actions (xd, f, fe, actions)) != 0)
     return rv;
 
-  rv = rte_flow_validate (xd->port_id, &ingress, items, actions, &xd->last_flow_error);
+  rv = rte_flow_validate (xd->port_id, &attr, items, actions, &xd->last_flow_error);
 
   if (rv)
     {
@@ -50,7 +67,7 @@ dpdk_flow_add (dpdk_device_t *xd, vnet_flow_t *f, dpdk_flow_entry_t *fe)
       goto done;
     }
 
-  fe->handle = rte_flow_create (xd->port_id, &ingress, items, actions, &xd->last_flow_error);
+  fe->handle = rte_flow_create (xd->port_id, &attr, items, actions, &xd->last_flow_error);
 
   if (!fe->handle)
     rv = VNET_FLOW_ERROR_NOT_SUPPORTED;
@@ -125,15 +142,21 @@ static int
 dpdk_flow_async_template_add (dpdk_device_t *xd, vnet_flow_t *t, dpdk_flow_template_entry_t *fte,
 			      u32 nb_flows)
 {
+  struct rte_flow_pattern_template_attr pattern_attr;
+  struct rte_flow_actions_template_attr action_attr;
   struct rte_flow_item items[DPDK_MAX_FLOW_ITEMS];
   struct rte_flow_action actions[DPDK_MAX_FLOW_ACTIONS];
   struct rte_flow_action actions_mask[DPDK_MAX_FLOW_ACTIONS];
   struct rte_flow_template_table_attr template_attr = {
     .nb_flows = nb_flows,
+    .flow_attr = { .group = t->group },
   };
   int rv = 0;
 
-  clib_memcpy (&template_attr.flow_attr, &ingress, sizeof (ingress));
+  dpdk_flow_dir_to_attr (t, &template_attr.flow_attr);
+  action_attr.egress = pattern_attr.egress = template_attr.flow_attr.egress;
+  action_attr.transfer = pattern_attr.transfer = template_attr.flow_attr.transfer;
+  action_attr.ingress = pattern_attr.ingress = template_attr.flow_attr.ingress;
 
   if ((rv = dpdk_flow_fill_items_template (xd, t, fte, items)) != 0)
     return rv;

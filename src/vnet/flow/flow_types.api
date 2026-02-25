@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-option version = "0.0.4";
+option version = "0.0.5";
 import "vnet/ethernet/ethernet_types.api";
 import "vnet/ip/ip_types.api";
 
@@ -82,6 +82,13 @@ enum rss_function
   RSS_FUNC_TOEPLITZ,
   RSS_FUNC_SIMPLE_XOR,
   RSS_FUNC_SYMMETRIC_TOEPLITZ,
+};
+
+enum flow_direction
+{
+  FLOW_DIRECTION_INGRESS,
+  FLOW_DIRECTION_EGRESS,
+  FLOW_DIRECTION_TRANSFER,
 };
 
 typedef generic_pattern
@@ -281,16 +288,16 @@ union flow_v2
 };
 
 /* main flow struct */
-typedef flow_rule
+typedef flow_rule_v2
 {
   /* flow type */
-  vl_api_flow_type_t type;
-  
+  vl_api_flow_type_v2_t type;
+
   /* flow index */
   u32 index;
-  
+
   /* bitmap of flow actions (FLOW_ACTION_*) */
-  vl_api_flow_action_t actions;
+  vl_api_flow_action_v2_t actions;
 
   /* flow id for VNET_FLOW_ACTION_MARK */
   u32 mark_flow_id;
@@ -302,18 +309,34 @@ typedef flow_rule
   /* queue for FLOW_ACTION_REDIRECT_TO_QUEUE */
   u32 redirect_queue;
 
+  /* start queue index and queue numbers for RSS queue group with FLOW_ACTION_RSS */
+  u32 queue_index;
+  u32 queue_num;
+
   /* buffer offset for FLOW_ACTION_BUFFER_ADVANCE */
   i32 buffer_advance;
-  
+
+  /* RSS types, including IPv4/IPv6/TCP/UDP... */
+  u64 rss_types;
+
+  /* RSS functions, including IPv4/IPv6/TCP/UDP... */
+  vl_api_rss_function_t rss_fun;
+
   /* flow enum */
-  vl_api_flow_t flow;
+  vl_api_flow_v2_t flow;
 };
 
 /* main flow struct */
-typedef flow_rule_v2
+typedef flow_rule_v3
 {
   /* flow type */
   vl_api_flow_type_v2_t type;
+
+  /* flow direction */
+  vl_api_flow_direction_t dir;
+
+  /* group into which insert this rule */
+  u32 group;
 
   /* flow index */
   u32 index;
