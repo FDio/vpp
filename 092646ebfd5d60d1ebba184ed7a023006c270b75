@@ -88,6 +88,23 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "37b9e297_1822748e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 8
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2026-02-25T00:51:06Z",
+      "side": 1,
+      "message": "See latest patchset, addresses your concern, also udpated the description on this gerrit. I suggest we wait to merge gerrit 45004 (the quadloop encap bugfix), then I\u0027ll rebase on master and ask to merge this one.",
+      "revId": "092646ebfd5d60d1ebba184ed7a023006c270b75",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "1584eff7_595a51e0",
@@ -101,6 +118,24 @@
       "writtenOn": "2026-02-24T21:40:06Z",
       "side": 1,
       "message": "We could consider adding a new version of the api sr_localsid_add_del_v2 where we remove the vlan and clearly indicate that sw_if_index can be physical or vlan interface. This doesn\u0027t have to be part of this patch. It can come later in as a different patch.",
+      "revId": "092646ebfd5d60d1ebba184ed7a023006c270b75",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "525f0350_e0e63051",
+        "filename": "src/vnet/srv6/sr.api",
+        "patchSetId": 8
+      },
+      "lineNbr": 48,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2026-02-25T00:51:06Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "1584eff7_595a51e0",
       "revId": "092646ebfd5d60d1ebba184ed7a023006c270b75",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
