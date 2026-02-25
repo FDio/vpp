@@ -3,6 +3,7 @@
  * Copyright (c) 2018 Cisco and/or its affiliates.
  */
 
+#include "vppinfra/format.h"
 #include <stddef.h>
 
 #include <vnet/vnet.h>
@@ -351,13 +352,22 @@ flow_cli_add (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd_
   clib_memset (&flow, 0, sizeof (vnet_flow_t));
   flow.index = ~0;
   flow.actions = 0;
+  flow.dir = VNET_FLOW_DIRECTION_INGRESS;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "spec %s", &spec))
+      if (unformat (line_input, "ingress"))
+	flow.dir = VNET_FLOW_DIRECTION_INGRESS;
+      else if (unformat (line_input, "egress"))
+	flow.dir = VNET_FLOW_DIRECTION_EGRESS;
+      else if (unformat (line_input, "transfer"))
+	flow.dir = VNET_FLOW_DIRECTION_TRANSFER;
+      else if (unformat (line_input, "group %u", &flow.group))
+	;
+      else if (unformat (line_input, "spec %s", &spec))
 	;
       else if (unformat (line_input, "mask %s", &mask))
 	;
@@ -714,7 +724,7 @@ flow_cli_add (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd_
 
 VLIB_CLI_COMMAND (flow_add_cmd, static) = {
   .path = "flow add",
-  .short_help = "flow add [template] "
+  .short_help = "flow add [template] [ingress|egress|transfer] "
 		"[src-ip <ip-addr/mask>] [dst-ip <ip-addr/mask>] "
 		"[ip6-src-ip <ip-addr/mask>] [ip6-dst-ip <ip-addr/mask>] "
 		"[src-port <port/mask>] [dst-port <port/mask>] "
@@ -725,7 +735,8 @@ VLIB_CLI_COMMAND (flow_add_cmd, static) = {
 		"[next-node <node>] [mark <id>] [buffer-advance <len>] "
 		"[redirect-to-queue <queue>] [drop] "
 		"[rss function <name>] [rss types <flow type>] "
-		"[rss queues <queue_start> to <queue_end>]",
+		"[rss queues <queue_start> to <queue_end>] "
+		"[group <group>]",
   .function = flow_cli_add,
 };
 
