@@ -39,10 +39,12 @@ FORCE_BUILD?=true
 .PHONY: help
 help:
 	@echo "Make targets:"
-	@echo " test                     - run kube-test (requires a running cluster)"
+	@echo " test-kind                - run kube-test (requires a running KinD cluster)"
+	@echo " test-kind-debug          - run kube-test (requires a running KinD cluster)"
 	@echo " test-bm                  - run kube-test without building kube-test images (bare-metal testing)"
 	@echo " build                    - build test infra"
 	@echo " build-debug              - build test infra (vpp debug image)"
+	@echo " bm-images                - build and import Kube-Test and CalicoVPP images to master and worker (can be run directly: ./script/quick-import.sh)"
 	@echo " cluster-help             - print info about KinD cluster setup (perf testing)"
 	@echo " master-cluster           - setup KinD cluster for performance testing (master CalicoVPP + VPP)"
 	@echo " rebuild-master-cluster   - rebuild VPP and update related pods without shutting down the cluster"
@@ -74,6 +76,11 @@ help:
 	@echo " NO_COLOR=[true|false]    - disables colorful Docker and Ginkgo output"
 	@echo " TIMEOUT=[minutes]        - test timeout override (30 minutes by default)"
 	@echo " GINKGO_TIMEOUT=[Ns/m/h]  - Ginkgo timeout override (3h by default)"
+	@echo
+	@echo "'make bm-images' specific arguments:"
+	@echo " REMOTE=[user@address:path]        - used to import images to worker"
+	@echo " IMG=[(empty) | cv | kt | kt-dbg]  - which images to build (leave empty to build and import all,\n\
+	                                     cv = CalicoVPP only, kt = Kube-Test only, kt-dbg = Kube-Test debug only)"
 
 .PHONY: list-tests
 list-tests:
@@ -94,9 +101,18 @@ build-vpp-debug:
 .build_debug.ok: build-debug
 	@touch .build.ok
 
-.PHONY: test
-test: FORCE_BUILD=false
-test: .deps.ok .build.ok
+.PHONY: test-kind
+test-kind: FORCE_BUILD=false
+test-kind: .deps.ok .build.ok
+	@bash ./kube_test.sh --persist=$(PERSIST) --verbose=$(VERBOSE) \
+		--test=$(TEST) --repeat=$(REPEAT) --skip=$(SKIP) \
+		--no_color=$(NO_COLOR) --timeout=$(TIMEOUT) \
+		--ginkgo_timeout=$(GINKGO_TIMEOUT); \
+		./script/compress.sh $$?
+
+.PHONY: test-kind-debug
+test-kind-debug: FORCE_BUILD=false
+test-kind-debug: .deps.ok .build_debug.ok
 	@bash ./kube_test.sh --persist=$(PERSIST) --verbose=$(VERBOSE) \
 		--test=$(TEST) --repeat=$(REPEAT) --skip=$(SKIP) \
 		--no_color=$(NO_COLOR) --timeout=$(TIMEOUT) \
@@ -111,6 +127,10 @@ test-bm: .deps.ok
 		--no_color=$(NO_COLOR) --timeout=$(TIMEOUT) \
 		--ginkgo_timeout=$(GINKGO_TIMEOUT); \
 		./script/compress.sh $$?
+
+.PHONY: bm-images
+bm-images:
+	@bash ./script/quick-import.sh $(REMOTE) $(IMG)
 
 .PHONY: cluster-help
 cluster-help:

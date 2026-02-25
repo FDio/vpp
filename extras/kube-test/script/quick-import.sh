@@ -19,12 +19,12 @@ CALICOVPP_BASE=${CALICOVPP_BASE:-"origin/master"}
 
 if [ "$1" = "" ]; then
     echo "This script will build, save and import images to both nodes.
-To import kube-test images only, \$2 = kt
+To import kube-test images only, \$2 = kt or kt-dbg
 To import CalicoVPP images only, \$2 = cv
 To import all, leave \$2 empty.
 Only run this script on the master node.
     Usage:
-    ./quick-import.sh user@remote:path [ kt | cv ]
+    ./quick-import.sh user@remote:path [ kt | kt-dbg | cv ]
     Env vars:
     TAG - CalicoVPP image tag (default: kt-master)
     VPP_BASE - commit or branch to build VPP from (default: current commit)
@@ -73,8 +73,12 @@ build_calicovpp() {
 
 set -x
 
-if [ "$2" = "kt" ] || [ "$2" = "" ]; then
-    make build
+if [ "$2" = "kt" ] || [ "$2" = "kt-dbg" ] || [ "$2" = "" ]; then
+    if [ "$2" = "kt-dbg" ]; then
+        make build-debug
+    else
+        make build
+    fi
     docker save -o kube-test-images.tar $(docker images | grep kube-test | awk '{print $1":"$2}')
     sudo ctr -n k8s.io images import kube-test-images.tar
     scp kube-test-images.tar $1
