@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3e7e15b5_d95ca725",
+        "filename": "src/plugins/dpdk/device/common.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 53,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-02-25T12:56:04Z",
+      "side": 1,
+      "message": "are we sure cause and message are always non-NULL here?",
+      "revId": "6b2f988ac500133497235b82f375a157d3b3e40a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6e478dfc_d1687859",
+        "filename": "src/plugins/dpdk/device/common.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 54,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-02-25T12:56:04Z",
+      "side": 1,
+      "message": "wouldn\u0027t this cause the dpdk_device_setup() to fail unconditionally because of the if (vec_len (xd-\u003eerrors)) goto errors at the end?",
+      "revId": "6b2f988ac500133497235b82f375a157d3b3e40a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "09caf9f9_8d143941",
+        "filename": "src/plugins/dpdk/device/common.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 262,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-02-25T12:56:04Z",
+      "side": 1,
+      "message": "nitpick but VPP codestyle usually favors C-style comments",
+      "revId": "6b2f988ac500133497235b82f375a157d3b3e40a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "53964429_9b3e7f66",
+        "filename": "src/plugins/dpdk/device/common.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 265,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-02-25T12:56:04Z",
+      "side": 1,
+      "message": "it would probably be better as a functionm that would keep the main funtion clean and would avoid gotos",
+      "revId": "6b2f988ac500133497235b82f375a157d3b3e40a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1f7db183_6648c288",
+        "filename": "src/plugins/dpdk/device/dpdk.h",
+        "patchSetId": 8
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-02-25T12:56:04Z",
+      "side": 1,
+      "message": "is it used?",
+      "revId": "6b2f988ac500133497235b82f375a157d3b3e40a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
