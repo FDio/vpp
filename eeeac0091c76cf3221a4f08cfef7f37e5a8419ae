@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "23945dac_22d97b7a",
+        "filename": "src/plugins/dpdk/device/driver.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-02-25T12:35:30Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "1bfdaf46_fdee30bf",
+      "revId": "eeeac0091c76cf3221a4f08cfef7f37e5a8419ae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "bcfed428_edffd866",
@@ -31,6 +49,24 @@
       "writtenOn": "2026-02-25T11:17:55Z",
       "side": 1,
       "message": "is it needed?",
+      "revId": "eeeac0091c76cf3221a4f08cfef7f37e5a8419ae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "bfcfee5c_d41d1053",
+        "filename": "src/plugins/dpdk/device/driver.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 99,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-02-25T12:35:30Z",
+      "side": 1,
+      "message": "It was set previously when Cisco VIC and mlx5 were gathered together, this is not the purpose of this PR to change it.",
+      "parentUuid": "bcfed428_edffd866",
       "revId": "eeeac0091c76cf3221a4f08cfef7f37e5a8419ae",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
