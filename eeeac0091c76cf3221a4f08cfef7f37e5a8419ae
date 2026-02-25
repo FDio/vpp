@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1bfdaf46_fdee30bf",
+        "filename": "src/plugins/dpdk/device/driver.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-02-25T11:17:55Z",
+      "side": 1,
+      "message": "should we use a define such as DPDK_VNET_FLOW_DEFAULT or similar instead?",
+      "revId": "eeeac0091c76cf3221a4f08cfef7f37e5a8419ae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bcfed428_edffd866",
+        "filename": "src/plugins/dpdk/device/driver.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 99,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-02-25T11:17:55Z",
+      "side": 1,
+      "message": "is it needed?",
+      "revId": "eeeac0091c76cf3221a4f08cfef7f37e5a8419ae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
