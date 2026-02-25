@@ -34,6 +34,24 @@
       "parentUuid": "7e373a67_78800e15",
       "revId": "75d8dae104cb42df38d109b3e2600b08f13c43fd",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "baf41591_0644264a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-02-25T23:25:18Z",
+      "side": 1,
+      "message": "Yes, please update INFO.yaml as well.",
+      "parentUuid": "d602121a_5a9f3587",
+      "revId": "75d8dae104cb42df38d109b3e2600b08f13c43fd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
