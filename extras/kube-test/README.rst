@@ -15,32 +15,32 @@ Initial setup
 * [KinD only] Create a cluster using ``make master-cluster`` or ``make release-cluster``.
   ``make release-cluster`` uses the latest CalicoVPP release available. Run ``make cluster-help`` for more info.
 * [Bare-metal only] When testing on a bare-metal cluster, Kube-test expects a running cluster.
-  Run ``./script/quick-import.sh`` to build Kube-test and CalicoVPP images and import them to nodes.
+  Run ``make bm-images`` or ``./script/quick-import.sh`` to build Kube-test and CalicoVPP images and import them to nodes.
 
 Running tests
 -------------
 
-[KinD only] Run ``make test`` to run all tests. Running with ``VERBOSE=true`` is highly recommended. For more options, run ``make help`` .
+[KinD only] Run ``make test-kind`` to run all tests. Running with ``VERBOSE=true`` is highly recommended. For more options, run ``make help`` .
 
 [Bare-metal only] When running tests for the first time, you must set ``KIND_WRK1``, ``KIND_WRK2``, ``CALICOVPP_VERSION`` and ``CALICOVPP_INTERFACE``
 variables first.
 For example, let's assume that the first node's hostname is ``vpp_node1`` and the second one is ``vpp_node2``.
 We want to test master images, so the version is ``kt-master``, and the cluster uses interface ``ens3f0np0``.
 The final command will look like this:
-``make test VERBOSE=true KUBE_WRK1=vpp_node1 KUBE_WRK2=vpp_node2 CALICOVPP_VERSION=kt-master CALICOVPP_INTERFACE=ens3f0np0``
-After the first run, you can run tests with just ``make test VERBOSE=true``. The variables are written to ``kubernetes/.vars`` and
+``make test-bm VERBOSE=true KUBE_WRK1=vpp_node1 KUBE_WRK2=vpp_node2 CALICOVPP_VERSION=kt-master CALICOVPP_INTERFACE=ens3f0np0``
+After the first run, you can run tests with just ``make test-bm VERBOSE=true``. The variables are written to ``kubernetes/.vars`` and
 ``kubernetes/pod-definitions.yaml``
 
 Filtering test cases
 --------------------
 
-The framework allows us to filter test cases in a few different ways, using ``make test TEST=xyz SKIP=xyz``:
+The framework allows us to filter test cases in a few different ways, using ``make test-bm TEST=xyz SKIP=xyz``:
 
         * Suite name
         * File name
         * Test name
-        * All of the above as long as they are ordered properly, e.g. ``make test TEST=KubeSuite.kube_test.go.KubeTcpIperfVclTest``
-        * Multiple tests/suites: ``make test TEST=KubeTcpIperfVclTest,KubeSuite``
+        * All of the above as long as they are ordered properly, e.g. ``make test-bm TEST=KubeSuite.kube_test.go.KubeTcpIperfVclTest``
+        * Multiple tests/suites: ``make test-bm TEST=KubeTcpIperfVclTest,KubeSuite``
 
 All of the above also applies to ``SKIP``
 
@@ -49,17 +49,17 @@ All of the above also applies to ``SKIP``
 Names don't have to be complete, as long as they are last:
 This is valid and will run all tests in every ``kube`` file (if there is more than one):
 
-* ``make test TEST=KubeSuite.kube``
+* ``make test-bm TEST=KubeSuite.kube``
 
 This is not valid:
 
-* ``make test TEST=Kube.kube``
+* ``make test-bm TEST=Kube.kube``
 
 They can also be left out:
 
-* ``make test TEST=felix_test.go`` will run every test in ``felix_test.go``
-* ``make test TEST=Nginx`` will run everything that has 'Nginx' in its name - suites, files and tests.
-* ``make test TEST=KubeTcpIperfVclTest`` will only run the KubeTcpIperfVcl test
+* ``make test-bm TEST=felix_test.go`` will run every test in ``felix_test.go``
+* ``make test-bm TEST=Nginx`` will run everything that has 'Nginx' in its name - suites, files and tests.
+* ``make test-bm TEST=KubeTcpIperfVclTest`` will only run the KubeTcpIperfVcl test
 
 
 Adding a test case
