@@ -1510,6 +1510,70 @@ class ARPTestCase(VppTestCase):
         static_arp.remove_vpp_config()
         self.pg2.set_table_ip4(0)
 
+    def test_arp_static_off_subnet_host_prefix(self):
+        """ARP Static off-subnet host-prefix"""
+        self.pg2.generate_remote_hosts(2)
+
+        host_addr = VppIpInterfaceAddress(self, self.pg2, self.pg2.local_ip4, 32)
+        static_arp = VppNeighbor(
+            self,
+            self.pg2.sw_if_index,
+            self.pg2.remote_hosts[1].mac,
+            self.pg2.remote_hosts[1].ip4,
+            is_static=1,
+        )
+        host_addr.add_vpp_config()
+        static_arp.add_vpp_config()
+
+        #
+        # with only a host-prefix there is no connected subnet,
+        # so no adj-fib host route should be created.
+        #
+        self.assertTrue(
+            find_nbr(
+                self,
+                self.pg2.sw_if_index,
+                self.pg2.remote_hosts[1].ip4,
+                is_static=1,
+            )
+        )
+        self.assertFalse(find_route(self, self.pg2.remote_hosts[1].ip4, 32))
+
+        static_arp.remove_vpp_config()
+        host_addr.remove_vpp_config()
+
+    def test_nd_static_off_subnet_host_prefix(self):
+        """NDP Static off-subnet host-prefix"""
+        self.pg2.generate_remote_hosts(2)
+
+        host_addr = VppIpInterfaceAddress(self, self.pg2, self.pg2.local_ip6, 128)
+        static_nd = VppNeighbor(
+            self,
+            self.pg2.sw_if_index,
+            self.pg2.remote_hosts[1].mac,
+            self.pg2.remote_hosts[1].ip6,
+            is_static=1,
+        )
+        host_addr.add_vpp_config()
+        static_nd.add_vpp_config()
+
+        #
+        # with only a host-prefix there is no connected subnet,
+        # so no adj-fib host route should be created.
+        #
+        self.assertTrue(
+            find_nbr(
+                self,
+                self.pg2.sw_if_index,
+                self.pg2.remote_hosts[1].ip6,
+                is_static=1,
+            )
+        )
+        self.assertFalse(find_route(self, self.pg2.remote_hosts[1].ip6, 128))
+
+        static_nd.remove_vpp_config()
+        host_addr.remove_vpp_config()
+
     def test_arp_static_replace_dynamic_same_mac(self):
         """ARP Static can replace Dynamic (same mac)"""
         self.pg2.generate_remote_hosts(1)
