@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4d45ef44_9b875feb",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 18
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-02-26T20:04:37Z",
+      "side": 1,
+      "message": "Nice, quick nit inside",
+      "revId": "ee1ce6d78e85508ea65871c25ff0907b3dbcab73",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2c2dc26f_8f4750f2",
+        "filename": "src/plugins/hs_apps/builtin_echo/echo_server.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 623,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-02-26T20:04:37Z",
+      "side": 1,
+      "message": "Now that we have a separate folder, should we move cli out to keep the actual app logic \"cleaner\"? For both server/client.\n\nFeels like we should do something similar for stats, to keep code a bit more readable. Ideally cli/stats should be reused across the two apps",
+      "revId": "ee1ce6d78e85508ea65871c25ff0907b3dbcab73",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
