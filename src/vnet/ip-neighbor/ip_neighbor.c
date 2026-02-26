@@ -336,6 +336,32 @@ ip_neighbor_adj_fib_add (ip_neighbor_t * ipn, u32 fib_index)
 
       fproto = ip_address_family_to_fib_proto (af);
 
+      /*
+       * Create an adj-fib only if the neighbor is within a connected
+       * prefix on the interface. With host-prefix addresses (/32 or
+       * /128) there is no connected subnet, so neighbors learned via
+       * NDP/ARP are not "on-link". Creating adj-fibs for off-link
+       * neighbors installs a FIB_SOURCE_ADJ attached host route that
+       * overrides the default route for that specific IP, producing
+       * UNRESOLVED forwarding since on-link resolution requires a
+       * connected prefix that does not exist. The neighbor entry and
+       * its adjacency are still created and completed regardless,
+       * only the FIB route is suppressed. */
+      u32 sw_if_index = ipn->ipn_key->ipnk_sw_if_index;
+      int is_on_link = 0;
+
+      if (af == AF_IP6)
+	is_on_link =
+	  (ip6_interface_address_matching_destination (
+	     &ip6_main, &ip_addr_v6 (&ipn->ipn_key->ipnk_ip), sw_if_index, NULL) != NULL);
+      else
+	is_on_link =
+	  (ip4_interface_address_matching_destination (
+	     &ip4_main, &ip_addr_v4 (&ipn->ipn_key->ipnk_ip), sw_if_index, NULL) != NULL);
+
+      if (!is_on_link)
+	return;
+
       fib_prefix_t pfx = {
 	.fp_len = ip_af_type_pfx_len (af),
 	.fp_proto = fproto,
@@ -1401,6 +1427,11 @@ typedef struct ip_neighbor_walk_covered_ctx_t_
   index_t *ipnis;
 } ip_neighbor_walk_covered_ctx_t;
 
+typedef struct ip_neighbor_walk_adj_fib_refresh_ctx_t_
+{
+  u32 fib_index;
+} ip_neighbor_walk_adj_fib_refresh_ctx_t;
+
 static walk_rc_t
 ip_neighbor_walk_covered (index_t ipni, void *arg)
 {
@@ -1434,6 +1465,25 @@ ip_neighbor_walk_covered (index_t ipni, void *arg)
   return (WALK_CONTINUE);
 }
 
+static walk_rc_t
+ip_neighbor_walk_adj_fib_refresh (index_t ipni, void *arg)
+{
+  ip_neighbor_walk_adj_fib_refresh_ctx_t *ctx = arg;
+  ip_neighbor_t *ipn;
+
+  ipn = ip_neighbor_get (ipni);
+
+  /*
+   * Connected prefixes can appear/disappear after the neighbour
+   * is created, so re-evaluate whether an adj-fib should exist.
+   */
+  ip_neighbor_adj_fib_remove (ipn, ctx->fib_index);
+
+  if (!(ipn->ipn_flags & IP_NEIGHBOR_FLAG_NO_FIB_ENTRY))
+    ip_neighbor_adj_fib_add (ipn, ctx->fib_index);
+
+  return (WALK_CONTINUE);
+}
 
 /*
  * callback when an interface address is added or deleted
@@ -1472,6 +1522,12 @@ ip_neighbor_add_del_interface_address_v4 (ip4_main_t * im,
 
       vec_free (ctx.ipnis);
     }
+
+  ip_neighbor_walk_adj_fib_refresh_ctx_t ctx = {
+    .fib_index = fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP4, sw_if_index),
+  };
+
+  ip_neighbor_walk (AF_IP4, sw_if_index, ip_neighbor_walk_adj_fib_refresh, &ctx);
 }
 
 /*
@@ -1512,6 +1568,12 @@ ip_neighbor_add_del_interface_address_v6 (ip6_main_t * im,
 
       vec_free (ctx.ipnis);
     }
+
+  ip_neighbor_walk_adj_fib_refresh_ctx_t ctx = {
+    .fib_index = fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP6, sw_if_index),
+  };
+
+  ip_neighbor_walk (AF_IP6, sw_if_index, ip_neighbor_walk_adj_fib_refresh, &ctx);
 }
 
 typedef struct ip_neighbor_table_bind_ctx_t_
