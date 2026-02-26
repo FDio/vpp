@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9523330f_f2b937f4",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2026-02-26T14:37:59Z",
+      "side": 1,
+      "message": "I do not see why cmake does not recognize [0] \"icelake\" as a new platform. I will continue debugging when testbeds are free (2602 release testing just started).\n\n[0] https://github.com/FDio/csit/actions/runs/22404621950/job/64860754471#step:6:18712",
+      "revId": "a2476b9dff772e3378283db31da93245c330967c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
