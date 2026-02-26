@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "245ef524_e84ae0ca",
+        "filename": "src/vnet/sfdp/lookup/node.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 648,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-02-26T15:19:20Z",
+      "side": 1,
+      "message": "My previous comment is still valid: you need the hardware interface index, not the software one",
+      "revId": "7c83999a7e0d5c90194f66e6f7c4a8911c730b77",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
