@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "409fc388_fe06038b",
+        "filename": "src/plugins/dpdk/device/driver.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 104,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2026-02-26T11:22:28Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "334f8e90_3c898669",
+      "revId": "b1ad26be4df0cddc6fc6bea28a3c45ec9aaf5396",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "b03e6319_4b0e4527",
@@ -48,6 +66,24 @@
       "writtenOn": "2026-02-24T16:51:25Z",
       "side": 1,
       "message": "maybe `flow_offload`?",
+      "revId": "b1ad26be4df0cddc6fc6bea28a3c45ec9aaf5396",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "412452b5_e3f52d98",
+        "filename": "src/plugins/sfdp_services/base/interface_input/api.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2026-02-26T11:22:28Z",
+      "side": 1,
+      "message": "is_lookup_offload\nother bool fields are \"is_\" but the feature is lookup_offload",
+      "parentUuid": "b03e6319_4b0e4527",
       "revId": "b1ad26be4df0cddc6fc6bea28a3c45ec9aaf5396",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -69,6 +105,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "f9c71e16_b150e69f",
+        "filename": "src/plugins/sfdp_services/base/interface_input/cli.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 31,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2026-02-26T11:22:28Z",
+      "side": 1,
+      "message": "lookup-offload",
+      "parentUuid": "c8b1e734_9516fad1",
+      "revId": "b1ad26be4df0cddc6fc6bea28a3c45ec9aaf5396",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "b4a02cc9_74524392",
@@ -82,6 +136,24 @@
       "writtenOn": "2026-02-24T16:51:25Z",
       "side": 1,
       "message": "You shouldn\u0027t set the offload config to ~0 but 0, since you check if the offload_config is non-zero in the node.",
+      "revId": "b1ad26be4df0cddc6fc6bea28a3c45ec9aaf5396",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2689b3b9_de25e19f",
+        "filename": "src/plugins/sfdp_services/base/interface_input/interface_input.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2026-02-26T11:22:28Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "b4a02cc9_74524392",
       "revId": "b1ad26be4df0cddc6fc6bea28a3c45ec9aaf5396",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -103,6 +175,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "0810e0d6_26e8b5a7",
+        "filename": "src/plugins/sfdp_services/base/interface_input/interface_input.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 88,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2026-02-26T11:22:28Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "727323fe_118da5bc",
+      "revId": "b1ad26be4df0cddc6fc6bea28a3c45ec9aaf5396",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "65480340_ed4fe440",
@@ -116,6 +206,24 @@
       "writtenOn": "2026-02-24T16:51:25Z",
       "side": 1,
       "message": "same",
+      "revId": "b1ad26be4df0cddc6fc6bea28a3c45ec9aaf5396",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d318e977_bbb8ee97",
+        "filename": "src/plugins/sfdp_services/base/interface_input/interface_input.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 105,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2026-02-26T11:22:28Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "65480340_ed4fe440",
       "revId": "b1ad26be4df0cddc6fc6bea28a3c45ec9aaf5396",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -137,6 +245,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "1d31304b_c77aec8d",
+        "filename": "src/vnet/sfdp/expiry/expiry.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 93,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2026-02-26T11:22:28Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "d5e2ff01_c07d132a",
+      "revId": "b1ad26be4df0cddc6fc6bea28a3c45ec9aaf5396",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "0d379ae9_1d94f784",
@@ -150,6 +276,24 @@
       "writtenOn": "2026-02-24T16:51:25Z",
       "side": 1,
       "message": "`flow` is already filled with zero with `\u003d {0}`",
+      "revId": "b1ad26be4df0cddc6fc6bea28a3c45ec9aaf5396",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4c98716d_2d21ec00",
+        "filename": "src/vnet/sfdp/lookup/node.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 358,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2026-02-26T11:22:28Z",
+      "side": 1,
+      "message": "old code thanks",
+      "parentUuid": "0d379ae9_1d94f784",
       "revId": "b1ad26be4df0cddc6fc6bea28a3c45ec9aaf5396",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -171,6 +315,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "91bb229d_2fb5491e",
+        "filename": "src/vnet/sfdp/lookup/node.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 612,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2026-02-26T11:22:28Z",
+      "side": 1,
+      "message": "session is set only before in case of SFDP_LOOKUP_OFFLOAD_FAST and jump to offloaded_lookup",
+      "parentUuid": "949b580e_df674204",
+      "revId": "b1ad26be4df0cddc6fc6bea28a3c45ec9aaf5396",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "b4ecc9f1_e8f71a45",
@@ -184,6 +346,24 @@
       "writtenOn": "2026-02-24T16:51:25Z",
       "side": 1,
       "message": "Could you replace the magic value by the enum value?",
+      "revId": "b1ad26be4df0cddc6fc6bea28a3c45ec9aaf5396",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8575feb1_0d2443a1",
+        "filename": "src/vnet/sfdp/lookup/node.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 669,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2026-02-26T11:22:28Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "b4ecc9f1_e8f71a45",
       "revId": "b1ad26be4df0cddc6fc6bea28a3c45ec9aaf5396",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -205,6 +385,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "719e8125_dd1b2811",
+        "filename": "src/vnet/sfdp/lookup/node.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 773,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2026-02-26T11:22:28Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "6a1f4e4b_5fd2364a",
+      "revId": "b1ad26be4df0cddc6fc6bea28a3c45ec9aaf5396",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "5879aa16_6ba58a2b",
@@ -218,6 +416,24 @@
       "writtenOn": "2026-02-24T16:51:25Z",
       "side": 1,
       "message": "you need the hw_if_index",
+      "revId": "b1ad26be4df0cddc6fc6bea28a3c45ec9aaf5396",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "11da40e6_2c112709",
+        "filename": "src/vnet/sfdp/sfdp.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 296,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2026-02-26T11:22:28Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "5879aa16_6ba58a2b",
       "revId": "b1ad26be4df0cddc6fc6bea28a3c45ec9aaf5396",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
