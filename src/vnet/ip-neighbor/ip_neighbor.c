@@ -336,6 +336,34 @@ ip_neighbor_adj_fib_add (ip_neighbor_t * ipn, u32 fib_index)
 
       fproto = ip_address_family_to_fib_proto (af);
 
+      /*
+       * Only create an adj-fib if the neighbor is within a connected
+       * prefix on the interface. With host-prefix addresses (/128 or
+       * /32) there is no connected subnet, so neighbors learned via
+       * NDP/ARP are not "on-link". Creating adj-fibs for off-link
+       * neighbors produces FIB_ENTRY_FLAG_ATTACHED entries with
+       * FIB_SOURCE_ADJ that override the default route for that
+       * specific IP producing UNRESOLVED forwarding when no covering
+       * connected route exists on the interface.
+       *
+       * The neighbor entry and its adjacency are still created and
+       * completed regardless, only the FIB route is suppressed.
+       */
+      u32 sw_if_index = ipn->ipn_key->ipnk_sw_if_index;
+      int is_on_link = 0;
+
+      if (af == AF_IP6)
+	is_on_link =
+	  (ip6_interface_address_matching_destination (
+	     &ip6_main, &ip_addr_v6 (&ipn->ipn_key->ipnk_ip), sw_if_index, NULL) != NULL);
+      else
+	is_on_link =
+	  (ip4_interface_address_matching_destination (
+	     &ip4_main, &ip_addr_v4 (&ipn->ipn_key->ipnk_ip), sw_if_index, NULL) != NULL);
+
+      if (!is_on_link)
+	return;
+
       fib_prefix_t pfx = {
 	.fp_len = ip_af_type_pfx_len (af),
 	.fp_proto = fproto,
