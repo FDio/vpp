@@ -361,12 +361,14 @@ stat_segment_ls_r (uint8_t ** patterns, stat_client_main_t * sm)
       if (rv)
 	{
 	  fprintf (stderr, "Could not compile regex %s\n", patterns[i]);
+	  for (i--; i >= 0; i--)
+	    regfree (&regex[i]);
 	  return dir;
 	}
     }
 
   if (stat_segment_access_start (&sa, sm))
-    return 0;
+    goto done;
 
   vlib_stats_entry_t *counter_vec = get_stat_vector_r (sm);
   for (j = 0; j < vec_len (counter_vec); j++)
@@ -384,19 +386,21 @@ stat_segment_ls_r (uint8_t ** patterns, stat_client_main_t * sm)
 	vec_add1 (dir, j);
     }
 
-  for (i = 0; i < vec_len (patterns); i++)
-    regfree (&regex[i]);
-
   if (!stat_segment_access_end (&sa, sm))
     {
       /* Failed, clean up */
       vec_free (dir);
-      return 0;
-
+      dir = NULL;
+      goto done;
     }
 
   /* Update last version */
   sm->current_epoch = sa.epoch;
+
+done:
+  for (i = 0; i < vec_len (patterns); i++)
+    regfree (&regex[i]);
+
   return dir;
 }
 
