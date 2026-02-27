@@ -43,6 +43,9 @@ barrier_trace_sync (f64 t_entry, f64 t_open, f64 t_closed)
   if (!vlib_worker_threads->barrier_elog_enabled)
     return;
 
+  vlib_main_t *vm = vlib_get_main ();
+  vlib_worker_thread_t *w = vlib_worker_threads + vm->thread_index;
+
   ELOG_TYPE_DECLARE (e) = {
     .format = "bar-trace-%s-#%d",
     .format_args = "T4i4",
@@ -53,7 +56,7 @@ barrier_trace_sync (f64 t_entry, f64 t_open, f64 t_closed)
     u32 caller, count, t_entry, t_open, t_closed;
   } *ed = 0;
 
-  ed = ELOG_DATA (vlib_get_elog_main (), e);
+  ed = ELOG_TRACK_DATA (vlib_get_elog_main (), e, w->elog_track);
   ed->count = (int) vlib_worker_threads[0].barrier_sync_count;
   ed->caller = elog_string (vlib_get_elog_main (),
 			    (char *) vlib_worker_threads[0].barrier_caller);
@@ -68,6 +71,9 @@ barrier_trace_sync_rec (f64 t_entry)
   if (!vlib_worker_threads->barrier_elog_enabled)
     return;
 
+  vlib_main_t *vm = vlib_get_main ();
+  vlib_worker_thread_t *w = vlib_worker_threads + vm->thread_index;
+
   ELOG_TYPE_DECLARE (e) = {
     .format = "bar-syncrec-%s-#%d",
     .format_args = "T4i4",
@@ -78,7 +84,7 @@ barrier_trace_sync_rec (f64 t_entry)
     u32 caller, depth;
   } *ed = 0;
 
-  ed = ELOG_DATA (vlib_get_elog_main (), e);
+  ed = ELOG_TRACK_DATA (vlib_get_elog_main (), e, w->elog_track);
   ed->depth = (int) vlib_worker_threads[0].recursion_level - 1;
   ed->caller = elog_string (vlib_get_elog_main (),
 			    (char *) vlib_worker_threads[0].barrier_caller);
@@ -90,6 +96,9 @@ barrier_trace_release_rec (f64 t_entry)
   if (!vlib_worker_threads->barrier_elog_enabled)
     return;
 
+  vlib_main_t *vm = vlib_get_main ();
+  vlib_worker_thread_t *w = vlib_worker_threads + vm->thread_index;
+
   ELOG_TYPE_DECLARE (e) = {
     .format = "bar-relrrec-#%d",
     .format_args = "i4",
@@ -100,7 +109,7 @@ barrier_trace_release_rec (f64 t_entry)
     u32 depth;
   } *ed = 0;
 
-  ed = ELOG_DATA (vlib_get_elog_main (), e);
+  ed = ELOG_TRACK_DATA (vlib_get_elog_main (), e, w->elog_track);
   ed->depth = (int) vlib_worker_threads[0].recursion_level;
 }
 
@@ -109,6 +118,9 @@ barrier_trace_release (f64 t_entry, f64 t_closed_total, f64 t_update_main)
 {
   if (!vlib_worker_threads->barrier_elog_enabled)
     return;
+
+  vlib_main_t *vm = vlib_get_main ();
+  vlib_worker_thread_t *w = vlib_worker_threads + vm->thread_index;
 
   ELOG_TYPE_DECLARE (e) = {
     .format = "bar-rel-#%d-e%d-u%d-t%d",
@@ -120,7 +132,7 @@ barrier_trace_release (f64 t_entry, f64 t_closed_total, f64 t_update_main)
     u32 count, t_entry, t_update_main, t_closed_total;
   } *ed = 0;
 
-  ed = ELOG_DATA (vlib_get_elog_main (), e);
+  ed = ELOG_TRACK_DATA (vlib_get_elog_main (), e, w->elog_track);
   ed->t_entry = (int) (1000000.0 * t_entry);
   ed->t_update_main = (int) (1000000.0 * t_update_main);
   ed->t_closed_total = (int) (1000000.0 * t_closed_total);

@@ -1568,7 +1568,7 @@ event_logger_trace_command_fn (vlib_main_t * vm,
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   int enable = 1;
-  int api = 0, cli = 0, barrier = 0, dispatch = 0, circuit = 0;
+  int api = 0, cli = 0, barrier = 0, dispatch = 0, circuit = 0, tw_expiration = 0;
   u32 circuit_node_index;
 
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -1580,6 +1580,8 @@ event_logger_trace_command_fn (vlib_main_t * vm,
 	api = 1;
       else if (unformat (line_input, "dispatch"))
 	dispatch = 1;
+      else if (unformat (line_input, "timers"))
+	tw_expiration = 1;
       else if (unformat (line_input, "circuit-node %U",
 			 unformat_vlib_node, vm, &circuit_node_index))
 	circuit = 1;
@@ -1589,7 +1591,11 @@ event_logger_trace_command_fn (vlib_main_t * vm,
 	barrier = 1;
       else if (unformat (line_input, "disable"))
 	enable = 0;
+      else if (unformat (line_input, "off"))
+	enable = 0;
       else if (unformat (line_input, "enable"))
+	enable = 1;
+      else if (unformat (line_input, "on"))
 	enable = 1;
       else
 	break;
@@ -1601,6 +1607,7 @@ event_logger_trace_command_fn (vlib_main_t * vm,
   vm->elog_trace_cli_commands = cli ? enable : vm->elog_trace_cli_commands;
   vm->elog_trace_graph_dispatch = dispatch ?
     enable : vm->elog_trace_graph_dispatch;
+  vm->elog_trace_tw_expiration = tw_expiration ? enable : vm->elog_trace_tw_expiration;
   vm->elog_trace_graph_circuit = circuit ?
     enable : vm->elog_trace_graph_circuit;
   vlib_worker_threads->barrier_elog_enabled =
@@ -1635,6 +1642,7 @@ print_status:
   vlib_cli_output
     (vm, "    Graph Dispatch: %s",
      vm->elog_trace_graph_dispatch ? "on" : "off");
+  vlib_cli_output (vm, "    Timing Wheel: %s", vm->elog_trace_tw_expiration ? "on" : "off");
   vlib_cli_output
     (vm, "    Graph Circuit: %s",
      vm->elog_trace_graph_circuit ? "on" : "off");
@@ -1658,13 +1666,12 @@ print_status:
  * event-logger trace dispatch
  * event-logger trace circuit-node ethernet-input
  * @cliend
- * @cliexcmd{event-logger trace [api][cli][barrier][disable]}
+ * @cliexcmd{event-logger trace [api][cli][dispatch][timers][barrier][disable]}
 ?*/
-VLIB_CLI_COMMAND (event_logger_trace_command, static) =
-{
+VLIB_CLI_COMMAND (event_logger_trace_command, static) = {
   .path = "event-logger trace",
-  .short_help = "event-logger trace [api][cli][barrier][dispatch]\n"
-  "[circuit-node <name> e.g. ethernet-input][disable]",
+  .short_help = "event-logger trace [api][cli][dispatch][tw_timer][barrier][dispatch]\n"
+		"[circuit-node <name> e.g. ethernet-input][disable]",
   .function = event_logger_trace_command_fn,
 };
 
