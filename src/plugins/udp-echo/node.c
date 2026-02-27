@@ -11,7 +11,9 @@
 #include <udp-echo/udp_echo.h>
 
 vlib_node_registration_t udp_echo_node;
-#define foreach_udp_echo_error _ (PROCESSED, "UDP echo packets processed")
+#define foreach_udp_echo_error                                                                     \
+  _ (PROCESSED, "UDP echo packets processed")                                                      \
+  _ (CLONE_FAIL, "UDP echo clone failures")
 
 typedef enum
 {
@@ -39,10 +41,17 @@ VLIB_NODE_FN (udp_echo_node)
   udp_echo_main_t *uem = &udp_echo_main;
   u32 n_left_from = frame->n_vectors;
   u32 *from = vlib_frame_vector_args (frame);
+  u8 n_clones = uem->n_clones;
+  u8 linearize = uem->linearize;
   u8 regen_udp_cksum = uem->regen_udp_cksum;
   u8 regen_ip_cksum = uem->regen_ip_cksum;
   vnet_buffer_oflags_t cksum_oflags = 0;
-  vlib_buffer_t *bufs[VLIB_FRAME_SIZE + 4], **b;
+  u32 n_clone_fail = 0;
+  u32 n_to_next = frame->n_vectors;
+  u32 *to_next = from;
+  u32 node_index = udp_echo_node.index;
+  u32 to[VLIB_FRAME_SIZE * 5];
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE * 5 + 4], **b;
 
   if (regen_ip_cksum)
     cksum_oflags |= VNET_BUFFER_OFFLOAD_F_IP_CKSUM;
@@ -143,16 +152,52 @@ VLIB_NODE_FN (udp_echo_node)
       vlib_buffer_advance (b[0], ip_off0 - b[0]->current_data);
     }
 
-  if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
+  if (n_clones > 0)
     {
-      b = bufs;
+      u16 n_req = n_clones + 1;
+      n_to_next = 0;
+
       for (u32 i = 0; i < frame->n_vectors; i++)
 	{
-	  if (b[i]->flags & VLIB_BUFFER_IS_TRACED)
+	  vlib_buffer_t *sb = vlib_get_buffer (vm, from[i]);
+	  u16 n_got;
+
+	  n_got = vlib_buffer_clone_at_offset (vm, from[i], to + n_to_next, n_req,
+					       clib_min (32, sb->current_length), 0);
+	  if (PREDICT_FALSE (n_got != n_req))
 	    {
-	      ip4_header_t *ip = (ip4_header_t *) (b[i]->data + vnet_buffer (b[i])->l3_hdr_offset);
+	      if (n_got == 0)
+		to[n_to_next++] = from[i];
+	      else
+		n_to_next += n_got;
+
+	      n_clone_fail += n_req - n_got;
+	    }
+	  else
+	    n_to_next += n_req;
+	}
+
+      to_next = to;
+    }
+
+  if (linearize)
+    {
+      vlib_get_buffers (vm, to_next, bufs, n_to_next);
+      for (u32 i = 0; i < n_to_next; i++)
+	vlib_buffer_chain_linearize (vm, bufs[i]);
+    }
+
+  if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
+    {
+      if (!linearize)
+	vlib_get_buffers (vm, to_next, bufs, n_to_next);
+      for (u32 i = 0; i < n_to_next; i++)
+	{
+	  if (bufs[i]->flags & VLIB_BUFFER_IS_TRACED)
+	    {
+	      ip4_header_t *ip = vlib_buffer_get_current (bufs[i]);
 	      udp_header_t *udp = ip4_next_header (ip);
-	      udp_echo_trace_t *t = vlib_add_trace (vm, node, b[i], sizeof (*t));
+	      udp_echo_trace_t *t = vlib_add_trace (vm, node, bufs[i], sizeof (*t));
 	      t->src = ip->src_address;
 	      t->dst = ip->dst_address;
 	      t->src_port = udp->src_port;
@@ -161,10 +206,11 @@ VLIB_NODE_FN (udp_echo_node)
 	}
     }
 
-  vlib_buffer_enqueue_to_single_next (vm, node, from, UDP_ECHO_NEXT_IP4_LOOKUP, frame->n_vectors);
+  vlib_buffer_enqueue_to_single_next (vm, node, to_next, UDP_ECHO_NEXT_IP4_LOOKUP, n_to_next);
+  vlib_node_increment_counter (vm, node_index, UDP_ECHO_ERROR_PROCESSED, n_to_next);
+  vlib_node_increment_counter (vm, node_index, UDP_ECHO_ERROR_CLONE_FAIL, n_clone_fail);
 
-  vlib_node_increment_counter (vm, udp_echo_node.index, UDP_ECHO_ERROR_PROCESSED, frame->n_vectors);
-  return frame->n_vectors;
+  return n_to_next;
 }
 
 VLIB_REGISTER_NODE (udp_echo_node) = {

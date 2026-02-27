@@ -14,7 +14,9 @@ udp_echo_enable_disable_command_fn (vlib_main_t *vm, unformat_input_t *input,
 {
   udp_echo_main_t *uem = &udp_echo_main;
   u32 port = 0;
+  u32 n_clones = uem->n_clones;
   int enable = 1;
+  u8 linearize = uem->linearize;
   u8 regen_udp_cksum = uem->regen_udp_cksum;
   u8 regen_ip_cksum = uem->regen_ip_cksum;
 
@@ -24,6 +26,10 @@ udp_echo_enable_disable_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	enable = 0;
       else if (unformat (input, "port %d", &port))
 	;
+      else if (unformat (input, "clone %u", &n_clones))
+	;
+      else if (unformat (input, "linearize"))
+	linearize = 1;
       else if (unformat (input, "regen-udp-cksum"))
 	regen_udp_cksum = 1;
       else if (unformat (input, "regen-ip-cksum"))
@@ -34,13 +40,21 @@ udp_echo_enable_disable_command_fn (vlib_main_t *vm, unformat_input_t *input,
 
   if (enable && port == 0)
     return clib_error_return (0, "Please specify a port...");
+  if (n_clones < 1 || n_clones > 4)
+    return clib_error_return (0, "clone must be in range 1..4");
 
   if (enable)
     {
       if (uem->enabled)
 	{
 	  if (uem->port == (u16) port)
-	    return 0;
+	    {
+	      uem->n_clones = n_clones;
+	      uem->linearize = linearize;
+	      uem->regen_udp_cksum = regen_udp_cksum;
+	      uem->regen_ip_cksum = regen_ip_cksum;
+	      return 0;
+	    }
 
 	  /* Port changed, unregister old one */
 	  udp_unregister_dst_port (vm, uem->port, 1 /* is_ip4 */);
@@ -52,6 +66,8 @@ udp_echo_enable_disable_command_fn (vlib_main_t *vm, unformat_input_t *input,
       udp_register_dst_port (vm, port, udp_echo_node.index, 1 /* is_ip4 */);
       uem->port = port;
       uem->enabled = 1;
+      uem->n_clones = n_clones;
+      uem->linearize = linearize;
       uem->regen_udp_cksum = regen_udp_cksum;
       uem->regen_ip_cksum = regen_ip_cksum;
     }
@@ -69,13 +85,15 @@ udp_echo_enable_disable_command_fn (vlib_main_t *vm, unformat_input_t *input,
 
 VLIB_CLI_COMMAND (udp_echo_enable_disable_command, static) = {
   .path = "udp-echo",
-  .short_help = "udp-echo [port <port>] [regen-udp-cksum] [regen-ip-cksum] [disable]",
+  .short_help =
+    "udp-echo [port <port>] [clone <1-4>] [linearize] [regen-udp-cksum] [regen-ip-cksum] [disable]",
   .function = udp_echo_enable_disable_command_fn,
 };
 
 static clib_error_t *
 udp_echo_init (vlib_main_t *vm)
 {
+  udp_echo_main.n_clones = 1;
   return 0;
 }
 

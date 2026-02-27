@@ -24,6 +24,8 @@ typedef struct
   /* Registered port */
   u16 port;
   u8 enabled;
+  u8 n_clones;
+  u8 linearize;
   u8 regen_udp_cksum;
   u8 regen_ip_cksum;
 } udp_echo_main_t;
