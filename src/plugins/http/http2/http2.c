@@ -668,7 +668,8 @@ http2_send_client_preface (http_conn_t *hc)
 static void
 http2_sched_dispatch_data (http2_req_t *req, http_conn_t *hc, u8 *n_emissions)
 {
-  u32 max_write, max_read, n_segs, n_read, n_written = 0;
+  u32 max_write, n_segs, n_read, n_written = 0;
+  u64 max_read;
   svm_fifo_seg_t *app_segs, *segs = 0;
   http_buffer_t *hb = &req->base.tx_buf;
   u8 fh[HTTP2_FRAME_HEADER_SIZE];
