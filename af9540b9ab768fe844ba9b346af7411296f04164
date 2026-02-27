@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "aba9968e_f29afeff",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-02-27T14:44:40Z",
+      "side": 1,
+      "message": "you should remove that",
+      "revId": "af9540b9ab768fe844ba9b346af7411296f04164",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "82daf2dc_8ab831ab",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-02-27T14:44:40Z",
+      "side": 1,
+      "message": "Thanks. In addition to other comments, make sure it pass the CI.",
+      "revId": "af9540b9ab768fe844ba9b346af7411296f04164",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "67be2014_8bc66457",
+        "filename": "src/plugins/cnat/cnat_session.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 20,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-02-27T14:44:40Z",
+      "side": 1,
+      "message": "we should not use unused, we can probably steal a u32 from unused and define a proper field in the session field",
+      "revId": "af9540b9ab768fe844ba9b346af7411296f04164",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b5d93d34_9ae904dc",
+        "filename": "src/plugins/cnat/cnat_session.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 53,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-02-27T14:44:40Z",
+      "side": 1,
+      "message": "rather than extending the key, I\u0027d prefer to replace/rename the fib_index field by a context_id. If a custom context_id is passed then use it as-is, otherwise default to fib_index",
+      "revId": "af9540b9ab768fe844ba9b346af7411296f04164",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
