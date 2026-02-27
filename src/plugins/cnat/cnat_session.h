@@ -13,6 +13,13 @@
 #include <cnat/cnat_bihash.h>
 
 /**
+ * Accessor for scope_id in the buffer opaque2 area.
+ * External plugins (e.g. CNHE) write this before handing packets to CNAT.
+ * Uses unused[0] from vnet_buffer_opaque2_t.
+ */
+#define cnat_scope_id(b) (vnet_buffer2 (b)->cnat_scope_id)
+
+/**
  * A session represents the memory of a translation.
  * In the tx direction (from behind to in front of the NAT), the
  * session is preserved so subsequent packets follow the same path
@@ -37,7 +44,12 @@ typedef struct cnat_session_t_
        * IP 4/6 address, ports in the rx/tx direction & iproto
        */
       cnat_5tuple_t cs_5tuple;
-      u32 fib_index;
+      /**
+       * Caller-defined context identifier. Defaults to fib_index.
+       * Callers may supply a custom value to disambiguate sessions
+       * from different scopes (e.g. tunnels) with identical 5-tuples.
+       */
+      u32 context_id;
     };
     u64 as_u64[6];
   } key;

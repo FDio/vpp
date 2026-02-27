@@ -118,9 +118,9 @@ format_cnat_session (u8 * s, va_list * args)
   cnat_timestamp_t *ts = NULL;
 
   ts = cnat_timestamp_get (sess->value.cs_session_index);
-  s = format (s, "%U => [%U]\n%U%U", format_cnat_5tuple, &sess->key.cs_5tuple,
-	      format_cnat_session_flags, sess->value.cs_flags, format_white_space, indent + 2,
-	      format_cnat_timestamp, ts, indent + 2);
+  s = format (s, "ctx:%d %U => [%U]\n%U%U", sess->key.context_id, format_cnat_5tuple,
+	      &sess->key.cs_5tuple, format_cnat_session_flags, sess->value.cs_flags,
+	      format_white_space, indent + 2, format_cnat_timestamp, ts, indent + 2);
 
   return (s);
 }
@@ -146,7 +146,7 @@ typedef struct
   vlib_main_t *vm;
   ip46_address_t ip;
   f64 start;
-  u32 fib_index;
+  u32 context_id;
   u32 flags;
   int verbose;
   int max;
@@ -163,7 +163,7 @@ cnat_session_show_cbak (BVT (clib_bihash_kv) * kvp, void *arg)
 
   cnat_show_yield (a->vm, &a->start);
 
-  if (a->fib_index != ~0 && a->fib_index != s->key.fib_index)
+  if (a->context_id != ~0 && a->context_id != s->key.context_id)
     return BIHASH_WALK_CONTINUE;
 
   if (a->flags && a->flags != (a->flags & s->value.cs_flags))
@@ -209,7 +209,7 @@ cnat_session_show (vlib_main_t * vm,
 
   arg.vm = vm;
   arg.start = vlib_time_now (vm);
-  arg.fib_index = ~0;
+  arg.context_id = ~0;
   arg.max = 50;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -245,7 +245,7 @@ cnat_session_show (vlib_main_t * vm,
 	{
 	  arg.verbose = 1;
 	}
-      else if (unformat (input, "fib %u", &arg.fib_index))
+      else if (unformat (input, "context %u", &arg.context_id))
 	{
 	  arg.verbose = 1;
 	}
@@ -268,7 +268,7 @@ VLIB_CLI_COMMAND (cnat_session_show_cmd_node, static) = {
   .path = "show cnat session",
   .function = cnat_session_show,
   .short_help = "show cnat session [verbose] [return] [ip <ip>] [port <port>] "
-		"[proto <proto>] [ref <ref>] [max <max>]",
+		"[proto <proto>] [ref <ref>] [max <max>] [scope <id>]",
   .is_mp_safe = 1,
 };
 
@@ -278,7 +278,7 @@ cnat_session_free__ (cnat_session_t *session)
   cnat_log_session_free (session);
   if (session->value.cs_flags & CNAT_SESSION_FLAG_HAS_CLIENT)
     {
-      cnat_client_free_by_ip (&session->key.cs_5tuple.ip[VLIB_TX], session->key.fib_index,
+      cnat_client_free_by_ip (&session->key.cs_5tuple.ip[VLIB_TX], session->key.context_id,
 			      1 /* is_session */);
     }
   cnat_timestamp_free (session->value.cs_session_index,
@@ -340,7 +340,7 @@ cnat_reverse_session_key (cnat_session_t *rsession, const cnat_timestamp_t *ts,
   rrw = &ts->cts_rewrites[rrw_index];
 
   cnat_5tuple_copy (&rsession->key.cs_5tuple, &rw->tuple, 1);
-  rsession->key.fib_index = rrw->fib_index;
+  rsession->key.context_id = rrw->fib_index;
   return 1;
 }
 
@@ -383,7 +383,7 @@ cnat_reverse_session_free (cnat_session_t *session)
     {
       /* nothing found, try to just swap the 5tuple... */
       cnat_5tuple_copy (&rsession->key.cs_5tuple, &session->key.cs_5tuple, 1 /* swap */);
-      rsession->key.fib_index = session->key.fib_index;
+      rsession->key.context_id = session->key.context_id;
     }
 
   if (memcmp (&rsession->key, &session->key, sizeof (session->key)) == 0)
