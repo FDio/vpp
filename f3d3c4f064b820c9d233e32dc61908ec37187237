@@ -16,6 +16,24 @@
       "message": "we can\u0027t do that without alloc/duplicating generic, tcp, udp ... objects as item-\u003espec is just a void *",
       "revId": "f3d3c4f064b820c9d233e32dc61908ec37187237",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a9ead44c_9c73f4c2",
+        "filename": "src/plugins/dpdk/device/flow.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 203,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-02-27T14:16:26Z",
+      "side": 1,
+      "message": "I don\u0027t understand. they are static objects",
+      "parentUuid": "4bebac26_dd83ebce",
+      "revId": "f3d3c4f064b820c9d233e32dc61908ec37187237",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
