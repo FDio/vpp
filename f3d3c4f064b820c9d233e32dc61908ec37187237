@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4bebac26_dd83ebce",
+        "filename": "src/plugins/dpdk/device/flow.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 203,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2026-02-27T14:14:53Z",
+      "side": 1,
+      "message": "we can\u0027t do that without alloc/duplicating generic, tcp, udp ... objects as item-\u003espec is just a void *",
+      "revId": "f3d3c4f064b820c9d233e32dc61908ec37187237",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
