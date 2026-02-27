@@ -36,9 +36,18 @@ typedef enum
 VLIB_NODE_FN (udp_echo_node)
 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
+  udp_echo_main_t *uem = &udp_echo_main;
   u32 n_left_from = frame->n_vectors;
   u32 *from = vlib_frame_vector_args (frame);
+  u8 regen_udp_cksum = uem->regen_udp_cksum;
+  u8 regen_ip_cksum = uem->regen_ip_cksum;
+  vnet_buffer_oflags_t cksum_oflags = 0;
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE + 4], **b;
+
+  if (regen_ip_cksum)
+    cksum_oflags |= VNET_BUFFER_OFFLOAD_F_IP_CKSUM;
+  if (regen_udp_cksum)
+    cksum_oflags |= VNET_BUFFER_OFFLOAD_F_UDP_CKSUM;
 
   vlib_get_buffers (vm, from, bufs, n_left_from);
   for (u32 i = 0; i < 4; i++)
@@ -86,6 +95,32 @@ VLIB_NODE_FN (udp_echo_node)
       CLIB_SWAP (ip3->src_address.as_u32, ip3->dst_address.as_u32);
       CLIB_SWAP (udp3->src_port, udp3->dst_port);
       vlib_buffer_advance (b[3], ip_off3 - b[3]->current_data);
+
+      if (cksum_oflags)
+	{
+	  if (regen_ip_cksum)
+	    {
+	      ip0->checksum = 0;
+	      ip1->checksum = 0;
+	      ip2->checksum = 0;
+	      ip3->checksum = 0;
+	    }
+	  if (regen_udp_cksum)
+	    {
+	      udp0->checksum = 0;
+	      udp1->checksum = 0;
+	      udp2->checksum = 0;
+	      udp3->checksum = 0;
+	    }
+	  vnet_buffer (b[0])->l4_hdr_offset = (u8 *) udp0 - b[0]->data;
+	  vnet_buffer (b[1])->l4_hdr_offset = (u8 *) udp1 - b[1]->data;
+	  vnet_buffer (b[2])->l4_hdr_offset = (u8 *) udp2 - b[2]->data;
+	  vnet_buffer (b[3])->l4_hdr_offset = (u8 *) udp3 - b[3]->data;
+	  vnet_buffer_offload_flags_set (b[0], cksum_oflags);
+	  vnet_buffer_offload_flags_set (b[1], cksum_oflags);
+	  vnet_buffer_offload_flags_set (b[2], cksum_oflags);
+	  vnet_buffer_offload_flags_set (b[3], cksum_oflags);
+	}
     }
 
   for (; n_left_from > 0; n_left_from -= 1, b += 1)
@@ -96,6 +131,15 @@ VLIB_NODE_FN (udp_echo_node)
 
       CLIB_SWAP (ip0->src_address.as_u32, ip0->dst_address.as_u32);
       CLIB_SWAP (udp0->src_port, udp0->dst_port);
+      if (cksum_oflags)
+	{
+	  if (regen_ip_cksum)
+	    ip0->checksum = 0;
+	  if (regen_udp_cksum)
+	    udp0->checksum = 0;
+	  vnet_buffer (b[0])->l4_hdr_offset = (u8 *) udp0 - b[0]->data;
+	  vnet_buffer_offload_flags_set (b[0], cksum_oflags);
+	}
       vlib_buffer_advance (b[0], ip_off0 - b[0]->current_data);
     }
 
