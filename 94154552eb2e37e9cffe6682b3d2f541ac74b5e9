@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "09710acf_3a888171",
+        "filename": "src/plugins/hs_apps/vcl/vcl_test_client.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 77,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-02-27T21:22:44Z",
+      "side": 1,
+      "message": "Can we figure out if we\u0027re post_test based on ctrl state?",
+      "range": {
+        "startLine": 77,
+        "startChar": 42,
+        "endLine": 77,
+        "endChar": 51
+      },
+      "revId": "94154552eb2e37e9cffe6682b3d2f541ac74b5e9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
