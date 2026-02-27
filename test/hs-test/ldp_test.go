@@ -28,14 +28,14 @@ func LdpIperfUdpVppInterruptModeTest(s *LdpSuite) {
 }
 
 func ldpIperfTcpReorder(s *LdpSuite, netInterface *NetInterface, extraIperfArgs string) {
-	cmd := exec.Command("tc", "qdisc", "del", "dev", netInterface.Name(),
+	cmd := exec.Command("tc", "qdisc", "del", "dev", netInterface.Host.Name(),
 		"root")
 	Log("defer '%s'", cmd.String())
 	defer cmd.Run()
 
 	// "10% of packets (with a correlation of 50%) will get sent immediately, others will be delayed by 10ms"
 	// https://www.man7.org/linux/man-pages/man8/tc-netem.8.html
-	cmd = exec.Command("tc", "qdisc", "add", "dev", netInterface.Name(),
+	cmd = exec.Command("tc", "qdisc", "add", "dev", netInterface.Host.Name(),
 		"root", "netem", "delay", "10ms", "reorder", "10%", "50%")
 	Log(cmd.String())
 	o, err := cmd.CombinedOutput()
@@ -87,15 +87,15 @@ func LdpIperfUdpTest(s *LdpSuite) {
 }
 
 func ldPreloadIperf(s *LdpSuite, extraClientArgs string, isReorder bool) float64 {
-	serverAddress := s.Interfaces.Server.Peer.Ip4AddressString()
+	serverAddress := s.Interfaces.Server.Ip4AddressString()
 	var clientBindAddress string
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*20)
 	defer cancel()
 
 	if isReorder {
-		clientBindAddress = s.Interfaces.Client.Ip4AddressString()
+		clientBindAddress = s.Interfaces.Client.Host.Ip4AddressString()
 	} else {
-		clientBindAddress = s.Interfaces.Client.Peer.Ip4AddressString()
+		clientBindAddress = s.Interfaces.Client.Ip4AddressString()
 	}
 
 	// running as daemon makes reorder tests unstable
@@ -121,7 +121,7 @@ func RedisBenchmarkTest(s *LdpSuite) {
 	s.SkipIfMultiWorker()
 	s.SkipIfArm()
 
-	serverVethAddress := s.Interfaces.Server.Peer.Ip4AddressString()
+	serverAddress := s.Interfaces.Server.Ip4AddressString()
 	runningSrv := make(chan error)
 	doneSrv := make(chan struct{})
 	clnCh := make(chan error)
@@ -137,7 +137,7 @@ func RedisBenchmarkTest(s *LdpSuite) {
 		s.Containers.ServerApp.Exec(false, "sysctl vm.overcommit_memory=1")
 		// Note: --save "" disables snapshotting which during upgrade to ubuntu 24.04 was
 		// observed to corrupt vcl memory / heap. Needs more debugging.
-		cmd := "redis-server --daemonize yes --protected-mode no --save \"\" --bind " + serverVethAddress + " --loglevel notice --logfile " + RedisServerLogFileName(s.Containers.ServerApp)
+		cmd := "redis-server --daemonize yes --protected-mode no --save \"\" --bind " + serverAddress + " --loglevel notice --logfile " + RedisServerLogFileName(s.Containers.ServerApp)
 		StartServerApp(s.Containers.ServerApp, "redis-server", cmd, runningSrv, doneSrv)
 	}()
 
@@ -148,9 +148,9 @@ func RedisBenchmarkTest(s *LdpSuite) {
 		defer GinkgoRecover()
 		var cmd string
 		if *NConfiguredCpus == 1 {
-			cmd = "redis-benchmark -q --threads 1 -h " + serverVethAddress
+			cmd = "redis-benchmark -q --threads 1 -h " + serverAddress
 		} else {
-			cmd = "redis-benchmark -q --threads " + fmt.Sprint(s.CpusPerContainer) + "-h " + serverVethAddress
+			cmd = "redis-benchmark -q --threads " + fmt.Sprint(s.CpusPerContainer) + "-h " + serverAddress
 		}
 		StartClientApp(s.Containers.ClientApp, cmd, clnCh, clnRes)
 	}()

@@ -4,15 +4,15 @@ devices:
     type: "tap"
     ip4:
       network: 1
-    peer:
-      name: ""
+    host:
+      name: "hstcln"
       ip4:
         network: 1
   - name: "hstsrv"
     type: "tap"
     ip4:
       network: 2
-    peer:
-      name: ""
+    host:
+      name: "hstsrv"
       ip4:
         network: 2

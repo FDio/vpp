@@ -50,7 +50,7 @@ func redisCutThru(s *NoTopoSuite) {
 	s.Containers.ServerApp.Run()
 	s.Containers.ClientApp.Run()
 
-	serverAddress := s.Interfaces.Tap.Peer.Ip4AddressString()
+	serverAddress := s.Interfaces.Tap.Ip4AddressString()
 	cmd := fmt.Sprintf("redis-server --daemonize yes --protected-mode no --save \"\" --bind %s --loglevel notice --logfile %s",
 		serverAddress, RedisServerLogFileName(s.Containers.Vpp))
 	o, err := s.Containers.ServerApp.Exec(true, cmd)
@@ -121,7 +121,7 @@ func ldPreloadIperfCutThru(s *NoTopoSuite, extraClientArgs string) float64 {
 	s.Containers.ServerApp.Run()
 	s.Containers.ClientApp.Run()
 
-	serverAddress := s.Interfaces.Tap.Peer.Ip4AddressString()
+	serverAddress := s.Interfaces.Tap.Ip4AddressString()
 
 	cmd := fmt.Sprintf("sh -c \"iperf3 -4 -s --one-off -B %s -p %s --logfile %s\"",
 		serverAddress, s.Ports.CutThru, IperfLogFileName(s.Containers.ServerApp))

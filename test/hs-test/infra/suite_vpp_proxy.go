@@ -129,7 +129,7 @@ func (s *VppProxySuite) SetupNginxServer() {
 		Timeout   int
 	}{
 		LogPrefix: s.Containers.NginxServerTransient.Name,
-		Address:   s.Interfaces.Server.Ip4AddressString(),
+		Address:   s.Interfaces.Server.Host.Ip4AddressString(),
 		Port:      s.Ports.Server,
 		PortSsl:   s.Ports.ServerSsl,
 		Http2:     "off",
@@ -158,15 +158,15 @@ func (s *VppProxySuite) ConfigureVppProxy(proto string, proxyPort uint16) {
 }
 
 func (s *VppProxySuite) ServerAddr() string {
-	return s.Interfaces.Server.Ip4AddressString()
+	return s.Interfaces.Server.Host.Ip4AddressString()
 }
 
 func (s *VppProxySuite) VppProxyAddr() string {
-	return s.Interfaces.Client.Peer.Ip4AddressString()
+	return s.Interfaces.Client.Ip4AddressString()
 }
 
 func (s *VppProxySuite) ClientAddr() string {
-	return s.Interfaces.Client.Ip4AddressString()
+	return s.Interfaces.Client.Host.Ip4AddressString()
 }
 
 func (s *VppProxySuite) CurlRequest(targetUri string) (string, string) {

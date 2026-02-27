@@ -354,11 +354,11 @@ func (vpp *VppInstance) createAfPacket(veth *NetInterface, IPv6 bool, opts ...Af
 
 	if *DryRun {
 		if IPv6 {
-			if ipAddress, err = veth.Ip6AddrAllocator.NewIp6InterfaceAddress(veth.Peer.NetworkNumber); err == nil {
+			if ipAddress, err = veth.Ip6AddrAllocator.NewIp6InterfaceAddress(veth.Host.NetworkNumber); err == nil {
 				veth.Ip6Address = ipAddress
 			}
 		} else {
-			if ipAddress, err = veth.Ip4AddrAllocator.NewIp4InterfaceAddress(veth.Peer.NetworkNumber); err == nil {
+			if ipAddress, err = veth.Ip4AddrAllocator.NewIp4InterfaceAddress(veth.Host.NetworkNumber); err == nil {
 				veth.Ip4Address = ipAddress
 			}
 		}
@@ -445,11 +445,11 @@ func (vpp *VppInstance) createAfPacket(veth *NetInterface, IPv6 bool, opts ...Af
 	// Add address
 	if veth.AddressWithPrefix(IPv6) == (AddressWithPrefix{}) {
 		if IPv6 {
-			if ipAddress, err = veth.Ip6AddrAllocator.NewIp6InterfaceAddress(veth.Peer.NetworkNumber); err == nil {
+			if ipAddress, err = veth.Ip6AddrAllocator.NewIp6InterfaceAddress(veth.Host.NetworkNumber); err == nil {
 				veth.Ip6Address = ipAddress
 			}
 		} else {
-			if ipAddress, err = veth.Ip4AddrAllocator.NewIp4InterfaceAddress(veth.Peer.NetworkNumber); err == nil {
+			if ipAddress, err = veth.Ip4AddrAllocator.NewIp4InterfaceAddress(veth.Host.NetworkNumber); err == nil {
 				veth.Ip4Address = ipAddress
 			}
 		}
@@ -529,19 +529,18 @@ func (vpp *VppInstance) addAppNamespace(
 func (vpp *VppInstance) CreateTap(tap *NetInterface, IPv6 bool, tapId uint32) error {
 	numRxQueues := uint16(max(1, vpp.CpuConfig.NumWorkers))
 	tapFlags := Consistent_qp
-	tap.vppName = "tap" + fmt.Sprint(tapId)
 
 	if *DryRun {
 		flagsCli := "consistent-qp"
-		ipAddress := ""
-		ipAddressPeer := ""
+		ipAddressVpp := ""
+		ipAddressHost := ""
 
 		if IPv6 {
-			ipAddress = "host-ip6-addr " + tap.Ip6Address
-			ipAddressPeer = tap.Peer.Ip6Address
+			ipAddressHost = "host-ip6-addr " + tap.Host.Ip6Address
+			ipAddressVpp = tap.Ip6Address
 		} else {
-			ipAddress = "host-ip4-addr " + tap.Ip4Address
-			ipAddressPeer = tap.Peer.Ip4Address
+			ipAddressHost = "host-ip4-addr " + tap.Host.Ip4Address
+			ipAddressVpp = tap.Ip4Address
 		}
 
 		vppCliConfig := fmt.Sprintf("create tap id %d host-if-name %s %s num-rx-queues %d num-tx-queues %d %s\n"+
@@ -549,12 +548,12 @@ func (vpp *VppInstance) CreateTap(tap *NetInterface, IPv6 bool, tapId uint32) er
 			"set int state tap%d up\n",
 			tapId,
 			tap.name,
-			ipAddress,
+			ipAddressHost,
 			numRxQueues,
 			numRxQueues+1,
 			flagsCli,
 			tapId,
-			ipAddressPeer,
+			ipAddressVpp,
 			tapId,
 		)
 		vpp.AppendToCliConfig(vppCliConfig)
@@ -565,11 +564,11 @@ func (vpp *VppInstance) CreateTap(tap *NetInterface, IPv6 bool, tapId uint32) er
 	createTapReq := &tapv2.TapCreateV3{
 		ID:               tapId,
 		HostIfNameSet:    true,
-		HostIfName:       tap.Name(),
+		HostIfName:       tap.Host.Name(),
 		HostIP4PrefixSet: true,
-		HostIP4Prefix:    tap.Ip4AddressWithPrefix(),
+		HostIP4Prefix:    tap.Host.Ip4AddressWithPrefix(),
 		HostIP6PrefixSet: true,
-		HostIP6Prefix:    tap.Ip6AddressWithPrefix(),
+		HostIP6Prefix:    tap.Host.Ip6AddressWithPrefix(),
 		NumRxQueues:      numRxQueues,
 		NumTxQueues:      numRxQueues + 1,
 		TapFlags:         tapv2.TapFlags(tapFlags),
@@ -588,7 +587,7 @@ func (vpp *VppInstance) CreateTap(tap *NetInterface, IPv6 bool, tapId uint32) er
 	if err = api.RetvalToVPPApiError(reply.Retval); err != nil {
 		return err
 	}
-	tap.Peer.Index = reply.SwIfIndex
+	tap.Index = reply.SwIfIndex
 
 	// Get name and mac
 	if err := vpp.ApiStream.SendMsg(&interfaces.SwInterfaceDump{
@@ -601,17 +600,17 @@ func (vpp *VppInstance) CreateTap(tap *NetInterface, IPv6 bool, tapId uint32) er
 		return err
 	}
 	ifDetails := replymsg.(*interfaces.SwInterfaceDetails)
-	tap.Peer.name = ifDetails.InterfaceName
-	tap.Peer.HwAddress = ifDetails.L2Address
+	tap.name = ifDetails.InterfaceName
+	tap.HwAddress = ifDetails.L2Address
 
 	// Add address
 	addAddressReq := &interfaces.SwInterfaceAddDelAddress{
 		IsAdd:     true,
 		SwIfIndex: reply.SwIfIndex,
-		Prefix:    tap.Peer.AddressWithPrefix(IPv6),
+		Prefix:    tap.AddressWithPrefix(IPv6),
 	}
 
-	Log("tap interface " + tap.Name() + " add address " + tap.Peer.Ip4Address)
+	Log("tap interface " + tap.Name() + " add address " + tap.Ip4Address)
 	if err := vpp.ApiStream.SendMsg(addAddressReq); err != nil {
 		return err
 	}
@@ -644,9 +643,9 @@ func (vpp *VppInstance) CreateTap(tap *NetInterface, IPv6 bool, tapId uint32) er
 	}
 
 	// Get host mac
-	netIntf, err := net.InterfaceByName(tap.Name())
+	netIntf, err := net.InterfaceByName(tap.Host.Name())
 	if err == nil {
-		tap.HwAddress, _ = ethernet_types.ParseMacAddress(netIntf.HardwareAddr.String())
+		tap.Host.HwAddress, _ = ethernet_types.ParseMacAddress(netIntf.HardwareAddr.String())
 	}
 
 	if IPv6 {
@@ -654,7 +653,7 @@ func (vpp *VppInstance) CreateTap(tap *NetInterface, IPv6 bool, tapId uint32) er
 		for {
 			if timeoutCounter <= 5 {
 				Log("Waiting for 'tentative' flag to disappear [%vs/5s]", timeoutCounter)
-				out, err := vpp.Container.Exec(false, "ip -6 addr show dev %s", tap.Name())
+				out, err := vpp.Container.Exec(false, "ip -6 addr show dev %s", tap.Host.Name())
 				if err != nil {
 					Log(out)
 					return err
@@ -675,7 +674,7 @@ func (vpp *VppInstance) CreateTap(tap *NetInterface, IPv6 bool, tapId uint32) er
 
 func (vpp *VppInstance) DeleteTap(tapInterface *NetInterface) error {
 	deleteReq := &tapv2.TapDeleteV2{
-		SwIfIndex: tapInterface.Peer.Index,
+		SwIfIndex: tapInterface.Index,
 	}
 	Log("delete tap interface " + tapInterface.Name())
 	if err := vpp.ApiStream.SendMsg(deleteReq); err != nil {

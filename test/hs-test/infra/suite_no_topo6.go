@@ -44,7 +44,7 @@ func (s *NoTopo6Suite) SetupSuite() {
 	s.HstSuite.SetupSuite()
 	s.LoadNetworkTopology("tap6")
 	s.LoadContainerTopology("single")
-	s.Interfaces.Tap = s.GetInterfaceByName("htaphost")
+	s.Interfaces.Tap = s.GetInterfaceByName("htapvpp")
 	s.Containers.Vpp = s.GetContainerByName("vpp")
 	s.Containers.Nginx = s.GetContainerByName("nginx")
 	s.Containers.NginxHttp3 = s.GetContainerByName("nginx-http3")
@@ -125,7 +125,7 @@ func (s *NoTopo6Suite) CreateNginxServer() {
 		Timeout   int
 	}{
 		LogPrefix: s.Containers.NginxServer.Name,
-		Address:   "[" + s.Interfaces.Tap.Ip6AddressString() + "]",
+		Address:   "[" + s.Interfaces.Tap.Host.Ip6AddressString() + "]",
 		Port:      s.Ports.NginxServer,
 		PortSsl:   s.Ports.NginxServerSsl,
 		Http2:     "off",
@@ -163,15 +163,15 @@ func (s *NoTopo6Suite) AddNginxVclConfig(multiThreadWorkers bool) {
 }
 
 func (s *NoTopo6Suite) VppAddr() string {
-	return s.Interfaces.Tap.Peer.Ip6AddressString()
+	return s.Interfaces.Tap.Ip6AddressString()
 }
 
 func (s *NoTopo6Suite) VppIfName() string {
-	return s.Interfaces.Tap.Peer.Name()
+	return s.Interfaces.Tap.Name()
 }
 
 func (s *NoTopo6Suite) HostAddr() string {
-	return s.Interfaces.Tap.Ip6AddressString()
+	return s.Interfaces.Tap.Host.Ip6AddressString()
 }
 
 func (s *NoTopo6Suite) CreateNginxHttp3Config(container *Container) {

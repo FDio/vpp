@@ -6,7 +6,7 @@ devices:
   - name: "cln-src"
     type: "veth"
     preset-hw-address: "00:00:5e:00:53:03"
-    peer:
+    host:
       name: "mcln"
       netns: "client-ns"
       ip4:
@@ -14,21 +14,21 @@ devices:
 
   - name: "cln-tun"
     type: "veth"
-    peer:
+    host:
       name: "mtuncln"
       ip4:
         network: 2
 
   - name: "srv-tun"
     type: "veth"
-    peer:
+    host:
       name: "mtunsrv"
       ip4:
         network: 2
 
   - name: "srv-dst"
     type: "veth"
-    peer:
+    host:
       name: "msrv"
       ip4:
         network: 3

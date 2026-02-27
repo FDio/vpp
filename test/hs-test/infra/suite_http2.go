@@ -64,7 +64,7 @@ func (s *Http2Suite) SetupSuite() {
 	s.HstSuite.SetupSuite()
 	s.LoadNetworkTopology("tap")
 	s.LoadContainerTopology("single")
-	s.Interfaces.Tap = s.GetInterfaceByName("htaphost")
+	s.Interfaces.Tap = s.GetInterfaceByName("htapvpp")
 	s.Containers.Vpp = s.GetContainerByName("vpp")
 	s.Containers.Curl = s.GetContainerByName("curl")
 	s.Containers.H2load = s.GetContainerByName("h2load")
@@ -107,11 +107,11 @@ func (s *Http2Suite) TeardownTest() {
 }
 
 func (s *Http2Suite) VppAddr() string {
-	return s.Interfaces.Tap.Peer.Ip4AddressString()
+	return s.Interfaces.Tap.Ip4AddressString()
 }
 
 func (s *Http2Suite) HostAddr() string {
-	return s.Interfaces.Tap.Ip4AddressString()
+	return s.Interfaces.Tap.Host.Ip4AddressString()
 }
 
 func (s *Http2Suite) CreateNginxServer() {
@@ -125,7 +125,7 @@ func (s *Http2Suite) CreateNginxServer() {
 		Timeout   int
 	}{
 		LogPrefix: s.Containers.NginxServer.Name,
-		Address:   s.Interfaces.Tap.Ip4AddressString(),
+		Address:   s.Interfaces.Tap.Host.Ip4AddressString(),
 		Port:      s.Ports.Port1,
 		PortSsl:   s.Ports.Port2,
 		Http2:     "on",

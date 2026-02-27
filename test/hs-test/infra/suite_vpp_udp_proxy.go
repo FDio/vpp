@@ -79,14 +79,14 @@ func (s *VppUdpProxySuite) SetupTest() {
 	AssertNil(vpp.CreateTap(s.Interfaces.Server, false, 2))
 
 	arp := fmt.Sprintf("set ip neighbor %s %s %s",
-		s.Interfaces.Server.Peer.Name(),
-		s.Interfaces.Server.Ip4AddressString(),
-		s.Interfaces.Server.HwAddress)
+		s.Interfaces.Server.Name(),
+		s.Interfaces.Server.Host.Ip4AddressString(),
+		s.Interfaces.Server.Host.HwAddress)
 	vpp.Vppctl(arp)
 	arp = fmt.Sprintf("set ip neighbor %s %s %s",
-		s.Interfaces.Client.Peer.Name(),
-		s.Interfaces.Client.Ip4AddressString(),
-		s.Interfaces.Client.HwAddress)
+		s.Interfaces.Client.Name(),
+		s.Interfaces.Client.Host.Ip4AddressString(),
+		s.Interfaces.Client.Host.HwAddress)
 	vpp.Vppctl(arp)
 
 	if *DryRun {
@@ -105,15 +105,15 @@ func (s *VppUdpProxySuite) TeardownTest() {
 }
 
 func (s *VppUdpProxySuite) VppProxyAddr() string {
-	return s.Interfaces.Client.Peer.Ip4AddressString()
+	return s.Interfaces.Client.Ip4AddressString()
 }
 
 func (s *VppUdpProxySuite) ServerAddr() string {
-	return s.Interfaces.Server.Ip4AddressString()
+	return s.Interfaces.Server.Host.Ip4AddressString()
 }
 
 func (s *VppUdpProxySuite) ClientAddr() string {
-	return s.Interfaces.Client.Ip4AddressString()
+	return s.Interfaces.Client.Host.Ip4AddressString()
 }
 
 func (s *VppUdpProxySuite) ClientSendReceive(toSend []byte, rcvBuffer []byte) (int, error) {

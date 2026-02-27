@@ -791,7 +791,7 @@ func HttpClientPostRepeatTest(s *Http1Suite) {
 
 func httpClientRepeat(s *Http1Suite, requestMethod string, clientArgs string) {
 	vpp := s.Containers.Vpp.VppInstance
-	serverAddress := s.Interfaces.Tap.Ip4AddressString() + ":" + s.Ports.NginxServer
+	serverAddress := s.Interfaces.Tap.Host.Ip4AddressString() + ":" + s.Ports.NginxServer
 	replyCountInt := 0
 	repeatAmount := 10000
 	durationInSec := 10
@@ -1693,7 +1693,7 @@ func HttpStaticMacTimeTest(s *Http1Suite) {
 	AssertNil(err, fmt.Sprint(err))
 	AssertContains(string(data), "mactime")
 	AssertContains(string(data), s.HostAddr())
-	AssertContains(string(data), s.Interfaces.Tap.HwAddress.String())
+	AssertContains(string(data), s.Interfaces.Tap.Host.HwAddress.String())
 	AssertHttpHeaderWithValue(resp, "Content-Type", "application/json")
 	parsedTime, err := time.Parse(time.RFC1123, resp.Header.Get("Date"))
 	AssertNil(err, fmt.Sprint(err))

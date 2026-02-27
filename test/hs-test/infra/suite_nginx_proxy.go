@@ -89,7 +89,7 @@ func (s *NginxProxySuite) SetupTest() {
 		Upstream3 string
 	}{
 		LogPrefix: s.Containers.NginxServerTransient.Name,
-		Address:   s.Interfaces.Server.Ip4AddressString(),
+		Address:   s.Interfaces.Server.Host.Ip4AddressString(),
 		Timeout:   s.maxTimeout,
 		Upstream1: s.Ports.Upstream1,
 		Upstream2: s.Ports.Upstream2,
@@ -141,8 +141,8 @@ func (s *NginxProxySuite) CreateNginxProxyConfig(container *Container, multiThre
 	}{
 		Workers:   workers,
 		LogPrefix: container.Name,
-		Proxy:     s.Interfaces.Client.Peer.Ip4AddressString(),
-		Server:    s.Interfaces.Server.Ip4AddressString(),
+		Proxy:     s.Interfaces.Client.Ip4AddressString(),
+		Server:    s.Interfaces.Server.Host.Ip4AddressString(),
 		Port:      s.Ports.Proxy,
 		Upstream1: s.Ports.Upstream1,
 		Upstream2: s.Ports.Upstream2,
@@ -160,7 +160,7 @@ func (s *NginxProxySuite) ProxyPort() uint16 {
 }
 
 func (s *NginxProxySuite) ProxyAddr() string {
-	return s.Interfaces.Client.Peer.Ip4AddressString()
+	return s.Interfaces.Client.Ip4AddressString()
 }
 
 func (s *NginxProxySuite) CurlDownloadResource(uri string) {
