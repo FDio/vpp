@@ -25,6 +25,7 @@ typedef struct crypto_native_key_handler
   crypto_native_key_fn_t *key_fn;
   crypto_native_variant_probe_t *probe;
   int priority;
+  u16 key_data_sz;
 } crypto_native_key_handler_t;
 
 typedef struct

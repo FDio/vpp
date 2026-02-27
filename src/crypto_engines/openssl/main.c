@@ -923,12 +923,16 @@ crypto_openssl_init (vnet_crypto_engine_registration_t *r)
 
   RAND_seed (seed, sizeof (seed));
 
-#define _(m, a, b, f, l) cm->ctx_fn[VNET_CRYPTO_ALG_##a] = openssl_ctx_##a;
+#define _(m, a, b, f, l)                                                                           \
+  cm->ctx_fn[VNET_CRYPTO_ALG_##a] = openssl_ctx_##a;                                               \
+  r->key_data_sz[VNET_CRYPTO_ALG_##a] = sizeof (openssl_per_thread_data_t);
   foreach_openssl_evp_op;
 #undef _
 
-#define _(a, b) cm->ctx_fn[VNET_CRYPTO_ALG_HMAC_##a] = openssl_ctx_hmac_##a;
-    foreach_openssl_hmac_op;
+#define _(a, b)                                                                                    \
+  cm->ctx_fn[VNET_CRYPTO_ALG_HMAC_##a] = openssl_ctx_hmac_##a;                                     \
+  r->key_data_sz[VNET_CRYPTO_ALG_HMAC_##a] = sizeof (openssl_per_thread_data_t);
+  foreach_openssl_hmac_op;
 #undef _
 
   per_thread_data = r->per_thread_data;

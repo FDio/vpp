@@ -293,24 +293,25 @@ aes_ctr_sha2_probe ()
   return clib_min (r_ctr, r_sha2);
 }
 
-#define _(b)                                                                  \
-  CRYPTO_NATIVE_OP_HANDLER (aes_##b##_ctr_enc) = {                            \
-    .op_id = VNET_CRYPTO_OP_AES_##b##_CTR_ENC,                                \
-    .fn = aes_ops_aes_ctr_##b,                                                \
-    .cfn = aes_ops_aes_ctr_##b##_chained,                                     \
-    .probe = probe,                                                           \
-  };                                                                          \
-                                                                              \
-  CRYPTO_NATIVE_OP_HANDLER (aes_##b##_ctr_dec) = {                            \
-    .op_id = VNET_CRYPTO_OP_AES_##b##_CTR_DEC,                                \
-    .fn = aes_ops_aes_ctr_##b,                                                \
-    .cfn = aes_ops_aes_ctr_##b##_chained,                                     \
-    .probe = probe,                                                           \
-  };                                                                          \
-  CRYPTO_NATIVE_KEY_HANDLER (aes_##b##_ctr) = {                               \
-    .alg_id = VNET_CRYPTO_ALG_AES_##b##_CTR,                                  \
-    .key_fn = aes_ctr_key_exp_##b,                                            \
-    .probe = probe,                                                           \
+#define _(b)                                                                                       \
+  CRYPTO_NATIVE_OP_HANDLER (aes_##b##_ctr_enc) = {                                                 \
+    .op_id = VNET_CRYPTO_OP_AES_##b##_CTR_ENC,                                                     \
+    .fn = aes_ops_aes_ctr_##b,                                                                     \
+    .cfn = aes_ops_aes_ctr_##b##_chained,                                                          \
+    .probe = probe,                                                                                \
+  };                                                                                               \
+                                                                                                   \
+  CRYPTO_NATIVE_OP_HANDLER (aes_##b##_ctr_dec) = {                                                 \
+    .op_id = VNET_CRYPTO_OP_AES_##b##_CTR_DEC,                                                     \
+    .fn = aes_ops_aes_ctr_##b,                                                                     \
+    .cfn = aes_ops_aes_ctr_##b##_chained,                                                          \
+    .probe = probe,                                                                                \
+  };                                                                                               \
+  CRYPTO_NATIVE_KEY_HANDLER (aes_##b##_ctr) = {                                                    \
+    .alg_id = VNET_CRYPTO_ALG_AES_##b##_CTR,                                                       \
+    .key_fn = aes_ctr_key_exp_##b,                                                                 \
+    .probe = probe,                                                                                \
+    .key_data_sz = sizeof (aes_ctr_key_data_t),                                                    \
   };
 
 _ (128)
