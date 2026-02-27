@@ -109,7 +109,7 @@ func QuicAlpnEmptyClientListTest(s *VethsSuite) {
 }
 
 func QuicFailedHandshakeTest(s *NoTopoSuite) {
-	serverAddress := s.Interfaces.Tap.Peer.Ip4AddressString() + ":" + s.Ports.Http
+	serverAddress := s.Interfaces.Tap.Ip4AddressString() + ":" + s.Ports.Http
 	Log(s.Containers.Vpp.VppInstance.Vppctl("test alpn server uri quic://" + serverAddress))
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)

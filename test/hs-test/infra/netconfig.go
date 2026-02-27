@@ -42,7 +42,7 @@ type (
 		HwAddress        MacAddress
 		NetworkNamespace string
 		NetworkNumber    int
-		Peer             *NetInterface
+		Host             *NetInterface
 		vppName          string
 	}
 
@@ -69,7 +69,7 @@ type InterfaceAdder func(n *NetInterface) *Cmd
 var (
 	ipCommandMap = map[string]InterfaceAdder{
 		Veth: func(n *NetInterface) *Cmd {
-			return exec.Command("ip", "link", "add", n.name, "type", "veth", "peer", "name", n.Peer.name)
+			return exec.Command("ip", "link", "add", n.name, "type", "veth", "peer", "name", n.Host.name)
 		},
 		Tap: func(n *NetInterface) *Cmd {
 			return exec.Command("ip", "tuntap", "add", n.name, "mode", "tap")
@@ -117,7 +117,7 @@ func newNetworkInterface(cfg NetDevConfig, a *Ip4AddressAllocator) (*NetInterfac
 
 	peer := cfg["peer"].(NetDevConfig)
 
-	if newInterface.Peer, err = newNetworkInterface(peer, a); err != nil {
+	if newInterface.Host, err = newNetworkInterface(peer, a); err != nil {
 		return &NetInterface{}, err
 	}
 
@@ -164,7 +164,7 @@ func newNetworkInterface6(cfg NetDevConfig, a *Ip6AddressAllocator) (*NetInterfa
 
 	peer := cfg["peer"].(NetDevConfig)
 
-	if newInterface.Peer, err = newNetworkInterface6(peer, a); err != nil {
+	if newInterface.Host, err = newNetworkInterface6(peer, a); err != nil {
 		return &NetInterface{}, err
 	}
 
@@ -240,21 +240,21 @@ func (n *NetInterface) configure() error {
 		return err
 	}
 
-	if n.Peer != nil && n.Peer.name != "" {
-		netIntf, err := net.InterfaceByName(n.Peer.name)
+	if n.Host != nil && n.Host.name != "" {
+		netIntf, err := net.InterfaceByName(n.Host.name)
 		if err == nil {
-			n.Peer.HwAddress, _ = ethernet_types.ParseMacAddress(netIntf.HardwareAddr.String())
+			n.Host.HwAddress, _ = ethernet_types.ParseMacAddress(netIntf.HardwareAddr.String())
 		}
 
-		if err := n.Peer.configureUpState(); err != nil {
+		if err := n.Host.configureUpState(); err != nil {
 			return err
 		}
 
-		if err := n.Peer.configureNetworkNamespace(); err != nil {
+		if err := n.Host.configureNetworkNamespace(); err != nil {
 			return err
 		}
 
-		if err := n.Peer.configureAddress(); err != nil {
+		if err := n.Host.configureAddress(); err != nil {
 			return err
 		}
 	}

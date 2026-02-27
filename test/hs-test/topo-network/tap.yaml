@@ -1,10 +1,10 @@
 ---
 devices:
-  - name: "htaphost"
+  - name: "htapvpp"
     type: "tap"
     ip4:
       network: 1
     peer:
-      name: ""
+      name: "htaphost"
       ip4:
         network: 1

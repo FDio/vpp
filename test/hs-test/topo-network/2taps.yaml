@@ -5,7 +5,7 @@ devices:
     ip4:
       network: 1
     peer:
-      name: ""
+      name: "hstcln"
       ip4:
         network: 1
   - name: "hstsrv"
@@ -13,6 +13,6 @@ devices:
     ip4:
       network: 2
     peer:
-      name: ""
+      name: "hstsrv"
       ip4:
         network: 2

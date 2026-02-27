@@ -133,7 +133,7 @@ func (s *HsiSuite) SetupNginxServer() {
 }
 
 func (s *HsiSuite) ServerAddr() string {
-	return s.Interfaces.Server.Peer.Ip4AddressString()
+	return s.Interfaces.Server.Host.Ip4AddressString()
 }
 
 var _ = Describe("HsiSuite", Ordered, ContinueOnFailure, Label("HSI"), func() {

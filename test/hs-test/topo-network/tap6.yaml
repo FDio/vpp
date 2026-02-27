@@ -1,11 +1,11 @@
 ---
 devices:
-  - name: "htaphost"
+  - name: "htapvpp"
     type: "tap"
     ipv6: true
     ip6:
       network: 1
     peer:
-      name: ""
+      name: "htaphost"
       ip6:
         network: 1

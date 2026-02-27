@@ -70,8 +70,8 @@ func NginxAsServerTest(s *NoTopoSuite) {
 }
 
 func parseString(s, pattern string) string {
-	temp := strings.Split(s, "\n")
-	for _, item := range temp {
+	temp := strings.SplitSeq(s, "\n")
+	for item := range temp {
 		if strings.Contains(item, pattern) {
 			return item
 		}
