@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright(c) 2025 Cisco Systems, Inc.
+
+import time
 import unittest
 from asfframework import VppTestRunner
 from framework import VppTestCase
@@ -838,6 +839,94 @@ class TestSfdp(VppTestCase):
         # Delete tenants
         self.vapi.sfdp_tenant_add_del(tenant_id=1, is_del=True)
         self.vapi.sfdp_tenant_add_del(tenant_id=2, is_del=True)
+
+    # This test was originally written by Gemini 3.1 Pro Preview,
+    # with only minor touches (sleep timining, code comments, test case name) by Vratko.
+    def test_sfdp_tcp_retransmit_of_last_fin(self):
+        """Test TCP late retransmit of receiver FIN+ACK."""
+        self._configure_sfdp()
+
+        mac0, mac1 = self.pg0.remote_mac, self.pg1.remote_mac
+        lmac0, lmac1 = self.pg0.local_mac, self.pg1.local_mac
+        ip0, ip1 = self.pg0.remote_ip4, self.pg1.remote_ip4
+        sport, dport = 12345, 80
+
+        # 1. Establish connection (Full Handshake)
+        syn = (
+            Ether(src=mac0, dst=lmac0)
+            / IP(src=ip0, dst=ip1)
+            / TCP(sport=sport, dport=dport, flags="S", seq=100)
+        )
+        self.send_and_expect(self.pg0, syn, self.pg1)
+
+        syn_ack = (
+            Ether(src=mac1, dst=lmac1)
+            / IP(src=ip1, dst=ip0)
+            / TCP(sport=dport, dport=sport, flags="SA", seq=200, ack=101)
+        )
+        self.send_and_expect(self.pg1, syn_ack, self.pg0)
+
+        ack = (
+            Ether(src=mac0, dst=lmac0)
+            / IP(src=ip0, dst=ip1)
+            / TCP(sport=sport, dport=dport, flags="A", seq=101, ack=201)
+        )
+        self.send_and_expect(self.pg0, ack, self.pg1)
+
+        # 2. Teardown (Clean close to trigger remove_session = 1)
+        fin = (
+            Ether(src=mac0, dst=lmac0)
+            / IP(src=ip0, dst=ip1)
+            / TCP(sport=sport, dport=dport, flags="F", seq=101, ack=201)
+        )
+        self.send_and_expect(self.pg0, fin, self.pg1)
+
+        # Responder ACKs the FIN and sends its own FIN
+        fin_ack = (
+            Ether(src=mac1, dst=lmac1)
+            / IP(src=ip1, dst=ip0)
+            / TCP(sport=dport, dport=sport, flags="FA", seq=201, ack=102)
+        )
+        self.send_and_expect(self.pg1, fin_ack, self.pg0)
+
+        # Initiator sends the final ACK. VPP marks the session for eventual removal.
+        last_ack = (
+            Ether(src=mac0, dst=lmac0)
+            / IP(src=ip0, dst=ip1)
+            / TCP(sport=sport, dport=dport, flags="A", seq=102, ack=202)
+        )
+        self.send_and_expect(self.pg0, last_ack, self.pg1)
+
+        # Wait for the worker thread to maybe remove the session too early.
+        time.sleep(1.5)
+
+        # 3. The Late Packet
+        # Simulated retransmission of FIN+ACK from Responder
+        late_fin_ack = (
+            Ether(src=mac1, dst=lmac1)
+            / IP(src=ip1, dst=ip0)
+            / TCP(sport=dport, dport=sport, flags="FA", seq=201, ack=102)
+        )
+
+        # # Because the session is gone, VPP treats this as a brand new forward flow.
+        # # Since flags != SYN, it creates a BLOCKED session with sfdp-drop.
+        # # We assert no replies because VPP drops it.
+        # self.send_and_assert_no_replies(self.pg1, [late_fin_ack], self.pg0)
+        self.pg_send(self.pg1, [late_fin_ack])
+
+        time.sleep(0.5)
+
+        # 4. Port Reuse: New SYN from Initiator
+        new_syn = (
+            Ether(src=mac0, dst=lmac0)
+            / IP(src=ip0, dst=ip1)
+            / TCP(sport=sport, dport=dport, flags="S", seq=50)
+        )
+
+        # Confirm the new SYN packet passes. This fails if VPP deleted the session too early.
+        self.send_and_expect(self.pg0, new_syn, self.pg1)
+
+        self._cleanup_sfdp()
 
 
 if __name__ == "__main__":
