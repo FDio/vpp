@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8d27f446_359a2ebe",
+        "filename": "test/hs-test/infra/suite_base.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 604,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-02-27T15:17:56Z",
+      "side": 1,
+      "message": "can we change this to host?",
+      "range": {
+        "startLine": 604,
+        "startChar": 23,
+        "endLine": 604,
+        "endChar": 27
+      },
+      "revId": "6cb461c6252744afbd4c8cb53ee14f5f6adcc283",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
