@@ -864,8 +864,8 @@ cryptodev_configure (vlib_main_t *vm, u32 cryptodev_id)
 					    info.device->numa_node);
       if (ret)
 	{
-	  clib_warning ("Cryptodev: Configure device %u queue %u failed %d",
-			cryptodev_id, i, ret);
+	  clib_warning ("Cryptodev: Configure device %u queue %u failed: %U", cryptodev_id, i,
+			format_dpdk_rte_err, ret);
 	  break;
 	}
     }

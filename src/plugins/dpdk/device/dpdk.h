@@ -447,6 +447,7 @@ format_function_t format_dpdk_rx_offload_caps;
 format_function_t format_dpdk_tx_offload_caps;
 format_function_t format_dpdk_burst_fn;
 format_function_t format_dpdk_rte_device;
+format_function_t format_dpdk_rte_err;
 vnet_flow_dev_ops_function_t dpdk_flow_ops_fn;
 
 clib_error_t *unformat_rss_fn (unformat_input_t * input, uword * rss_fn);

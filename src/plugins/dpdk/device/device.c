@@ -49,7 +49,7 @@ dpdk_add_del_mac_address (vnet_hw_interface_t * hi,
 
   if (error)
     {
-      return clib_error_return (0, "mac address add/del failed: %d", error);
+      return clib_error_return (0, "mac address add/del failed: %U", format_dpdk_rte_err, error);
     }
 
   return NULL;
@@ -67,7 +67,7 @@ dpdk_set_mac_address (vnet_hw_interface_t * hi,
 
   if (error)
     {
-      return clib_error_return (0, "mac address set failed: %d", error);
+      return clib_error_return (0, "mac address set failed: %U", format_dpdk_rte_err, error);
     }
   else
     {
@@ -584,8 +584,8 @@ dpdk_subif_add_del_function (vnet_main_t * vnm,
   if ((r = rte_eth_dev_set_vlan_offload (xd->port_id, vlan_offload)))
     {
       xd->num_subifs = prev_subifs;
-      err = clib_error_return (0, "rte_eth_dev_set_vlan_offload[%d]: err %d",
-			       xd->port_id, r);
+      err = clib_error_return (0, "rte_eth_dev_set_vlan_offload[%d]: %U", xd->port_id,
+			       format_dpdk_rte_err, r);
       goto done;
     }
 
@@ -595,8 +595,8 @@ dpdk_subif_add_del_function (vnet_main_t * vnm,
 				t->sub.eth.outer_vlan_id, is_add)))
     {
       xd->num_subifs = prev_subifs;
-      err = clib_error_return (0, "rte_eth_dev_vlan_filter[%d]: err %d",
-			       xd->port_id, r);
+      err = clib_error_return (0, "rte_eth_dev_vlan_filter[%d]: %U", xd->port_id,
+			       format_dpdk_rte_err, r);
       goto done;
     }
 
@@ -704,7 +704,7 @@ dpdk_interface_set_rss_queues (struct vnet_main_t *vnm,
     rte_eth_dev_rss_reta_update (xd->port_id, reta_conf, dev_info.reta_size);
   if (ret)
     {
-      err = clib_error_return (0, "rte_eth_dev_rss_reta_update err %d", ret);
+      err = clib_error_return (0, "rte_eth_dev_rss_reta_update: %U", format_dpdk_rte_err, ret);
       goto done;
     }
 
@@ -748,7 +748,7 @@ dpdk_interface_rx_mode_change (vnet_main_t *vnm, u32 hw_if_index, u32 qid,
       fm->file_update (f, UNIX_FILE_UPDATE_ADD);
     }
   if (rv)
-    return clib_error_return (0, "dpdk_interface_rx_mode_change err %d", rv);
+    return clib_error_return (0, "dpdk_interface_rx_mode_change: %U", format_dpdk_rte_err, rv);
   return 0;
 }
 

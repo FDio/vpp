@@ -136,6 +136,13 @@
   _ (RX_TIMESTAMP, 0, "Timestamp field is valid")
 
 u8 *
+format_dpdk_rte_err (u8 *s, va_list *args)
+{
+  int err = va_arg (*args, int);
+  return format (s, "%s (%d)", rte_strerror (err), err);
+}
+
+u8 *
 format_dpdk_device_name (u8 * s, va_list * args)
 {
   dpdk_main_t *dm = &dpdk_main;
