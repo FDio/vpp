@@ -88,7 +88,7 @@ echo_client_tx_data (echo_test_session_t *es, u8 run_time, u8 paced, u8 test_byt
   else
     n_send = tp->client_tx (es, bytes_to_send);
 
-  if (ecm->run_time)
+  if (ecm->cfg.run_time)
     es->bytes_to_receive += n_send;
   else
     es->bytes_to_send -= n_send;
@@ -220,7 +220,7 @@ ec_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
     {
       ecm->repeats++;
       ecm->prev_conns = vec_len (conns_this_batch);
-      if (ecm->repeats == 500000 && !ecm->run_time)
+      if (ecm->repeats == 500000 && !ecm->cfg.run_time)
 	{
 	  ec_err ("stuck clients");
 	}
@@ -302,6 +302,8 @@ VLIB_REGISTER_NODE (echo_clients_node) = {
 static void
 ec_reset_runtime_config (ec_main_t *ecm)
 {
+  session_endpoint_cfg_t sep_null = SESSION_ENDPOINT_CFG_NULL;
+  ecm->cfg.sep = sep_null;
   hs_test_cfg_init (&ecm->cfg.test_cfg);
   ecm->cfg.n_clients = 1;
   ecm->cfg.n_streams = 1;
@@ -328,7 +330,7 @@ ec_reset_runtime_config (ec_main_t *ecm)
   ecm->attach_flags = 0;
   ecm->syn_timeout = 20.0;
   ecm->test_timeout = 20.0;
-  ecm->run_time = 0;
+  ecm->cfg.run_time = 0;
   ecm->throughput = 0;
   ecm->pacing_window_len = 1;
   ecm->max_chunk_bytes = TRANSPORT_PACER_MAX_BURST;
@@ -1003,18 +1005,19 @@ ec_run (vlib_main_t *vm)
   if (ecm->cfg.test_cfg.test_bytes)
     {
       if (ecm->throughput)
-	ecm->tx_callback =
-	  ecm->run_time ? echo_client_tx_test_bytes_paced_time : echo_client_tx_test_bytes_paced;
+	ecm->tx_callback = ecm->cfg.run_time ? echo_client_tx_test_bytes_paced_time :
+					       echo_client_tx_test_bytes_paced;
       else
 	ecm->tx_callback =
-	  ecm->run_time ? echo_client_tx_test_bytes_time : echo_client_tx_test_bytes;
+	  ecm->cfg.run_time ? echo_client_tx_test_bytes_time : echo_client_tx_test_bytes;
     }
   else
     {
       if (ecm->throughput)
-	ecm->tx_callback = ecm->run_time ? echo_client_tx_zc_paced_time : echo_client_tx_zc_paced;
+	ecm->tx_callback =
+	  ecm->cfg.run_time ? echo_client_tx_zc_paced_time : echo_client_tx_zc_paced;
       else
-	ecm->tx_callback = ecm->run_time ? echo_client_tx_zc_time : echo_client_tx_zc;
+	ecm->tx_callback = ecm->cfg.run_time ? echo_client_tx_zc_time : echo_client_tx_zc;
     }
 
   /* vcl_test_server might send one byte on accept */
@@ -1120,7 +1123,7 @@ ec_run (vlib_main_t *vm)
 	case ~0:
 	  if (report_timeout)
 	    {
-	      if (ecm->run_time)
+	      if (ecm->cfg.run_time)
 		{
 		  ec_sessions_stop_clean ();
 		  break;

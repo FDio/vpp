@@ -10,7 +10,7 @@ import (
 func init() {
 	RegisterVethTests(EchoBuiltinTest, EchoBuiltinBandwidthTest, EchoBuiltinEchobytesTest, EchoBuiltinRoundtripTest,
 		EchoBuiltinTestbytesTest, EchoBuiltinPeriodicReportTest, EchoBuiltinPeriodicReportTotalTest, TlsSingleConnectionTest,
-		EchoBuiltinPeriodicReportUDPTest, EchoBuiltinUdpTest)
+		EchoBuiltinPeriodicReportUDPTest, EchoBuiltinUdpTest, EchoBuiltinHttpTest, EchoBuiltinHttpsTest)
 	RegisterVethMWTests(TcpWithLossMWTest)
 	RegisterSoloVeth6Tests(TcpWithLoss6Test)
 }
@@ -330,4 +330,28 @@ func TlsSingleConnectionTest(s *VethsSuite) {
 	throughput, err := ParseEchoClientTransfer(o)
 	AssertNil(err)
 	AssertGreaterThan(throughput, uint64(0))
+}
+
+func EchoBuiltinHttpTest(s *VethsSuite) {
+	serverVpp := s.Containers.ServerVpp.VppInstance
+
+	serverVpp.Vppctl("test echo server uri http://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1)
+
+	clientVpp := s.Containers.ClientVpp.VppInstance
+
+	o := clientVpp.Vppctl("test echo client uri http://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1)
+	Log(o)
+	AssertNotContains(o, "failed:")
+}
+
+func EchoBuiltinHttpsTest(s *VethsSuite) {
+	serverVpp := s.Containers.ServerVpp.VppInstance
+
+	serverVpp.Vppctl("test echo server uri https://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1)
+
+	clientVpp := s.Containers.ClientVpp.VppInstance
+
+	o := clientVpp.Vppctl("test echo client uri https://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1)
+	Log(o)
+	AssertNotContains(o, "failed:")
 }

@@ -26,8 +26,9 @@ typedef struct
   transport_proto_t proto;    /**< Tested protocolo */
   u8 echo_bytes;	      /**< Don't use zero-copy mode */
   u8 report_interval_total;   /**< Shown data are totals since the start of the test */
-  u64 report_interval;	      /**< Time between periodic reports (s) */
   u8 report_interval_jitter;  /**< Report jitter in periodic reports */
+  u64 report_interval;	      /**< Time between periodic reports (s) */
+  f64 run_time;		      /**< Length of a test (s) */
 } echo_test_cfg_t;
 
 typedef enum et_rtt_stat_ : u8

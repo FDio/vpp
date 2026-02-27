@@ -154,9 +154,9 @@ ec_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd
 	timed_run_conflict++;
       else if (unformat (line_input, "syn-timeout %f", &ecm->syn_timeout))
 	;
-      else if (unformat (line_input, "run-time %f", &ecm->run_time))
+      else if (unformat (line_input, "run-time %f", &ecm->cfg.run_time))
 	{
-	  ecm->test_timeout = ecm->run_time;
+	  ecm->test_timeout = ecm->cfg.run_time;
 	  use_default_mode = 0;
 	}
       else if (unformat (line_input, "echo-bytes"))
@@ -223,17 +223,17 @@ ec_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd
   /* if just uri provided do 10 seconds upload test with 1 second report interval */
   if (use_default_mode)
     {
-      ecm->test_timeout = ecm->run_time = 10.0;
+      ecm->test_timeout = ecm->cfg.run_time = 10.0;
       ecm->cfg.report_interval = 1;
     }
   else
     {
-      if (timed_run_conflict && ecm->run_time)
+      if (timed_run_conflict && ecm->cfg.run_time)
 	return clib_error_return (0, "failed: invalid arguments for a timed run!");
       if (ecm->throughput && tput_conflict)
 	return clib_error_return (0, "failed: can't set fixed tx chunk for a throughput run!");
       /* if running for given time do periodic stats by default */
-      if (ecm->run_time && !ecm->cfg.report_interval)
+      if (ecm->cfg.run_time && !ecm->cfg.report_interval)
 	ecm->cfg.report_interval = 1;
     }
 
