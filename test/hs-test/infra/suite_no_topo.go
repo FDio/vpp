@@ -52,7 +52,7 @@ func (s *NoTopoSuite) SetupSuite() {
 	s.HstSuite.SetupSuite()
 	s.LoadNetworkTopology("tap")
 	s.LoadContainerTopology("single")
-	s.Interfaces.Tap = s.GetInterfaceByName("htaphost")
+	s.Interfaces.Tap = s.GetInterfaceByName("htapvpp")
 	s.Containers.Vpp = s.GetContainerByName("vpp")
 	s.Containers.Nginx = s.GetContainerByName("nginx")
 	s.Containers.NginxHttp3 = s.GetContainerByName("nginx-http3")
@@ -175,15 +175,15 @@ func (s *NoTopoSuite) AddNginxVclConfig(multiThreadWorkers bool) {
 }
 
 func (s *NoTopoSuite) VppAddr() string {
-	return s.Interfaces.Tap.Peer.Ip4AddressString()
+	return s.Interfaces.Tap.Ip4AddressString()
 }
 
 func (s *NoTopoSuite) VppIfName() string {
-	return s.Interfaces.Tap.Peer.Name()
+	return s.Interfaces.Tap.Name()
 }
 
 func (s *NoTopoSuite) HostAddr() string {
-	return s.Interfaces.Tap.Ip4AddressString()
+	return s.Interfaces.Tap.Host.Ip4AddressString()
 }
 
 func (s *NoTopoSuite) CreateNginxHttp3Config(container *Container) {

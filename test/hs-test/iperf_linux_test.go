@@ -11,8 +11,8 @@ func init() {
 }
 
 func IperfUdpLinuxTest(s *IperfSuite) {
-	serverIpAddress := s.Interfaces.Server.Ip4AddressString()
-	clientIpAddress := s.Interfaces.Client.Ip4AddressString()
+	serverIpAddress := s.Interfaces.Server.Host.Ip4AddressString()
+	clientIpAddress := s.Interfaces.Client.Host.Ip4AddressString()
 
 	cmd := fmt.Sprintf("iperf3 -4 -s --one-off -D -B %s -p %s --logfile %s",
 		serverIpAddress, s.Ports.Port1, IperfLogFileName(s.Containers.Server))

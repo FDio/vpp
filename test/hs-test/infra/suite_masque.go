@@ -128,8 +128,8 @@ func (s *MasqueSuite) SetupTest(serverExtraArgs ...string) {
 	Log(clientVpp.Vppctl(arp))
 	arp = fmt.Sprintf("set ip neighbor %s %s %s",
 		s.Interfaces.Client.VppName(),
-		s.Interfaces.Client.Peer.Ip4AddressString(),
-		s.Interfaces.Client.Peer.HwAddress)
+		s.Interfaces.Client.Host.Ip4AddressString(),
+		s.Interfaces.Client.Host.HwAddress)
 	Log(clientVpp.Vppctl(arp))
 	arp = fmt.Sprintf("set ip neighbor %s %s %s",
 		s.Interfaces.TunnelServer.VppName(),
@@ -139,7 +139,7 @@ func (s *MasqueSuite) SetupTest(serverExtraArgs ...string) {
 	arp = fmt.Sprintf("set ip neighbor %s %s %s",
 		s.Interfaces.Server.VppName(),
 		s.NginxAddr(),
-		s.Interfaces.Server.Peer.HwAddress)
+		s.Interfaces.Server.Host.HwAddress)
 	Log(serverVpp.Vppctl(arp))
 
 	if *DryRun {
@@ -220,7 +220,7 @@ func (s *MasqueSuite) StartNginxServer() {
 }
 
 func (s *MasqueSuite) NginxAddr() string {
-	return s.Interfaces.Server.Peer.Ip4AddressString()
+	return s.Interfaces.Server.Host.Ip4AddressString()
 }
 
 func (s *MasqueSuite) ProxyAddr() string {

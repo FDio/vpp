@@ -525,6 +525,9 @@ func (s *HstSuite) GetNetNamespaceByName(name string) string {
 }
 
 func (s *HstSuite) GetInterfaceByName(name string) *NetInterface {
+	if s.NetInterfaces[s.ProcessIndex+name+Ppid] == nil {
+		Fail(s.ProcessIndex + name + Ppid + ": Interface not found")
+	}
 	return s.NetInterfaces[s.ProcessIndex+name+Ppid]
 }
 
@@ -593,15 +596,17 @@ func (s *HstSuite) LoadNetworkTopology(topologyName string) {
 			elem["ipv6"] = false
 		}
 		if _, ok := elem["name"]; ok {
-			elem["name"] = s.ProcessIndex + elem["name"].(string) + Ppid
+			if elem["name"].(string) != "" {
+				elem["name"] = s.ProcessIndex + elem["name"].(string) + Ppid
+			}
 		}
 
-		if peer, ok := elem["peer"].(NetDevConfig); ok {
-			if peer["name"].(string) != "" {
-				peer["name"] = s.ProcessIndex + peer["name"].(string) + Ppid
+		if host, ok := elem["host"].(NetDevConfig); ok {
+			if host["name"].(string) != "" {
+				host["name"] = s.ProcessIndex + host["name"].(string) + Ppid
 			}
-			if _, ok := peer["netns"]; ok {
-				peer["netns"] = s.ProcessIndex + peer["netns"].(string) + Ppid
+			if _, ok := host["netns"]; ok {
+				host["netns"] = s.ProcessIndex + host["netns"].(string) + Ppid
 			}
 		}
 

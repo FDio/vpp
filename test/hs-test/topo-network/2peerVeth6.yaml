@@ -4,13 +4,13 @@ devices:
     ipv6: true
     type: "veth"
     preset-hw-address: "00:00:5e:00:53:01"
-    peer:
+    host:
       name: "srv_veth"
 
   - name: "cln"
     ipv6: true
     type: "veth"
-    peer:
+    host:
       name: "cln_veth"
 
   - name: "br"

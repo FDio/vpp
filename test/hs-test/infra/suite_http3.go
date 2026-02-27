@@ -42,7 +42,7 @@ func (s *Http3Suite) SetupSuite() {
 	s.HstSuite.SetupSuite()
 	s.LoadNetworkTopology("tap")
 	s.LoadContainerTopology("http3")
-	s.Interfaces.Tap = s.GetInterfaceByName("htaphost")
+	s.Interfaces.Tap = s.GetInterfaceByName("htapvpp")
 	s.Containers.Vpp = s.GetContainerByName("vpp")
 	s.Containers.Curl = s.GetContainerByName("curl")
 	s.Containers.Nginx = s.GetContainerByName("nginx")
@@ -104,11 +104,11 @@ func (s *Http3Suite) StartNginx() {
 }
 
 func (s *Http3Suite) VppAddr() string {
-	return s.Interfaces.Tap.Peer.Ip4AddressString()
+	return s.Interfaces.Tap.Ip4AddressString()
 }
 
 func (s *Http3Suite) HostAddr() string {
-	return s.Interfaces.Tap.Ip4AddressString()
+	return s.Interfaces.Tap.Host.Ip4AddressString()
 }
 
 var _ = Describe("Http3Suite", Ordered, ContinueOnFailure, Label("HTTP", "HTTP3"), func() {

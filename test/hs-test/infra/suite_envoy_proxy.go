@@ -70,7 +70,6 @@ func (s *EnvoyProxySuite) SetupSuite() {
 }
 
 func (s *EnvoyProxySuite) SetupTest() {
-	s.Skip("temporarily skip envoy tests until we update envoy to latest vcl")
 	s.HstSuite.SetupTest()
 
 	// VPP
@@ -96,7 +95,7 @@ func (s *EnvoyProxySuite) SetupTest() {
 		Timeout   int
 	}{
 		LogPrefix: s.Containers.NginxServerTransient.Name,
-		Address:   s.Interfaces.Server.Ip4AddressString(),
+		Address:   s.Interfaces.Server.Host.Ip4AddressString(),
 		Port:      s.Ports.Nginx,
 		PortSsl:   s.Ports.NginxSsl,
 		Http2:     "off",
@@ -120,7 +119,7 @@ func (s *EnvoyProxySuite) SetupTest() {
 		EnvoyAdminPort uint16
 	}{
 		LogPrefix:      s.Containers.EnvoyProxy.Name,
-		ServerAddress:  s.Interfaces.Server.Ip4AddressString(),
+		ServerAddress:  s.Interfaces.Server.Host.Ip4AddressString(),
 		ServerPort:     s.Ports.Nginx,
 		ProxyPort:      s.Ports.Proxy,
 		ProxyAddr:      s.ProxyAddr(),
@@ -141,9 +140,9 @@ func (s *EnvoyProxySuite) SetupTest() {
 
 	// Add Ipv4 ARP entry for nginx HTTP server, otherwise first request fail (HTTP error 503)
 	arp := fmt.Sprintf("set ip neighbor %s %s %s",
-		s.Interfaces.Server.Peer.Name(),
-		s.Interfaces.Server.Ip4AddressString(),
-		s.Interfaces.Server.HwAddress)
+		s.Interfaces.Server.Name(),
+		s.Interfaces.Server.Host.Ip4AddressString(),
+		s.Interfaces.Server.Host.HwAddress)
 
 	if *DryRun {
 		vpp.AppendToCliConfig(arp)
@@ -168,7 +167,7 @@ func (s *EnvoyProxySuite) TeardownTest() {
 }
 
 func (s *EnvoyProxySuite) ProxyAddr() string {
-	return s.Interfaces.Client.Peer.Ip4AddressString()
+	return s.Interfaces.Client.Ip4AddressString()
 }
 
 func (s *EnvoyProxySuite) CurlDownloadResource(uri string) {

@@ -95,31 +95,31 @@ func (s *LdpSuite) SetupTest() {
 	s.setupClientVpp(s.Containers.ClientVpp)
 
 	arp := fmt.Sprintf("set ip neighbor %s %s %s",
-		s.Interfaces.Server.Peer.Name(),
-		s.Interfaces.Client.Peer.Ip4AddressString(),
-		s.Interfaces.Client.HwAddress)
+		s.Interfaces.Server.Name(),
+		s.Interfaces.Client.Ip4AddressString(),
+		s.Interfaces.Client.Host.HwAddress)
 	Log(serverVpp.Vppctl(arp))
 
 	arp = fmt.Sprintf("set ip neighbor %s %s %s",
-		s.Interfaces.Client.Peer.Name(),
-		s.Interfaces.Server.Peer.Ip4AddressString(),
-		s.Interfaces.Server.HwAddress)
+		s.Interfaces.Client.Name(),
+		s.Interfaces.Server.Ip4AddressString(),
+		s.Interfaces.Server.Host.HwAddress)
 	Log(clientVpp.Vppctl(arp))
 
 	_, ipNet, err := net.ParseCIDR(s.Interfaces.Client.Ip4Address)
 	AssertNil(err)
 	route := fmt.Sprintf("ip route add %s via %s %s",
 		ipNet.String(),
-		s.Interfaces.Server.Ip4AddressString(),
-		s.Interfaces.Server.Peer.name)
+		s.Interfaces.Server.Host.Ip4AddressString(),
+		s.Interfaces.Server.name)
 	Log(serverVpp.Vppctl(route))
 
 	_, ipNet, err = net.ParseCIDR(s.Interfaces.Server.Ip4Address)
 	AssertNil(err)
 	route = fmt.Sprintf("ip route add %s via %s %s",
 		ipNet.String(),
-		s.Interfaces.Client.Ip4AddressString(),
-		s.Interfaces.Client.Peer.name)
+		s.Interfaces.Client.Host.Ip4AddressString(),
+		s.Interfaces.Client.name)
 	Log(clientVpp.Vppctl(route))
 
 	if *DryRun {

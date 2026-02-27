@@ -579,7 +579,7 @@ func VppConnectUdpClientCloseTest(s *VppUdpProxySuite) {
 	err = c.Close()
 	AssertNil(err, fmt.Sprint(err))
 	proxyClientConn := fmt.Sprintf("[T] %s:%d->%s", s.VppProxyAddr(), s.Ports.Proxy, s.ClientAddr())
-	proxyTargetConn := fmt.Sprintf("[U] %s:", s.Interfaces.Server.Peer.Ip4AddressString())
+	proxyTargetConn := fmt.Sprintf("[U] %s:", s.Interfaces.Server.Host.Ip4AddressString())
 	for nTries := 0; nTries < 10; nTries++ {
 		o := vppProxy.Vppctl("show session verbose 2")
 		if !strings.Contains(o, proxyClientConn) {
@@ -872,7 +872,7 @@ func vppConnectProxyIperfTcp(s *MasqueSuite, extraArgs ...string) {
 	finished := make(chan error, 1)
 	go func() {
 		defer GinkgoRecover()
-		StartIperfClient(finished, s.Interfaces.Client.Peer.Ip4AddressString(), s.NginxAddr(), s.Ports.Nginx,
+		StartIperfClient(finished, s.Interfaces.Client.Host.Ip4AddressString(), s.NginxAddr(), s.Ports.Nginx,
 			s.NetNamespaces.Client, []string{"-P", "4"})
 	}()
 	Log(clientVpp.Vppctl("show http connect proxy client sessions"))
@@ -903,7 +903,7 @@ func vppConnectProxyIperfUdp(s *MasqueSuite, extraArgs ...string) {
 	finished := make(chan error, 1)
 	go func() {
 		defer GinkgoRecover()
-		StartIperfClient(finished, s.Interfaces.Client.Peer.Ip4AddressString(), s.NginxAddr(), s.Ports.Nginx,
+		StartIperfClient(finished, s.Interfaces.Client.Host.Ip4AddressString(), s.NginxAddr(), s.Ports.Nginx,
 			s.NetNamespaces.Client, []string{"-u", "-P", "4"})
 	}()
 	Log(clientVpp.Vppctl("show http connect proxy client sessions"))

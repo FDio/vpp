@@ -5,7 +5,7 @@ devices:
 
   - name: "hclnvpp"
     type: "veth"
-    peer:
+    host:
       name: "cln"
       netns: "cln"
       ip4:
@@ -13,7 +13,7 @@ devices:
 
   - name: "hsrvvpp"
     type: "veth"
-    peer:
+    host:
       name: "srv"
       ip4:
         network: 2

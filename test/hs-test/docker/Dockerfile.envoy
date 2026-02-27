@@ -1,4 +1,4 @@
-FROM envoyproxy/envoy-contrib:v1.31-latest
+FROM envoyproxy/envoy:contrib-v1.37-latest
 
 RUN chmod go+r /etc/envoy/envoy.yaml
 RUN chown envoy:envoy /dev/stdout /dev/stderr
