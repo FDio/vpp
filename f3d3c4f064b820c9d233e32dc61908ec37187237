@@ -70,6 +70,24 @@
       "parentUuid": "677dee52_f885e1bf",
       "revId": "f3d3c4f064b820c9d233e32dc61908ec37187237",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e8d372ed_4d072579",
+        "filename": "src/plugins/dpdk/device/flow.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 203,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-02-27T15:24:22Z",
+      "side": 1,
+      "message": "Indeed, I am looking into DPDK to see if the items spec/mask are being copied or not. If there are not, I\u0027ll have an array of the maximum number of elements we would expect in a batch. We cannot rely on memory allocation, this was my first approach and the cost in term of cycles is too high.",
+      "parentUuid": "677dee52_f885e1bf",
+      "revId": "f3d3c4f064b820c9d233e32dc61908ec37187237",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
