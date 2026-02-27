@@ -3,6 +3,7 @@
  */
 
 #include <hs_apps/builtin_echo/echo_test.h>
+#include <http/http.h>
 
 echo_test_main_t echo_test_main;
 
@@ -819,3 +820,184 @@ static echo_test_proto_vft_t echo_test_quic = {
 };
 
 ECHO_TEST_REGISTER_PROTO (TRANSPORT_PROTO_QUIC, echo_test_quic);
+
+static int
+et_http_listen (vnet_listen_args_t *args, echo_test_cfg_t *cfg)
+{
+  int rv;
+
+  if (echo_test_transport_needs_crypto (&args->sep_ext))
+    {
+      transport_endpt_ext_cfg_t *ext_cfg = session_endpoint_add_ext_cfg (
+	&args->sep_ext, TRANSPORT_ENDPT_EXT_CFG_CRYPTO, sizeof (transport_endpt_crypto_cfg_t));
+      ext_cfg->crypto.ckpair_index = cfg->ckpair_index;
+      ext_cfg->crypto.alpn_protos[0] = TLS_ALPN_PROTO_HTTP_3;
+      ext_cfg->crypto.alpn_protos[1] = TLS_ALPN_PROTO_HTTP_2;
+      ext_cfg->crypto.alpn_protos[2] = TLS_ALPN_PROTO_HTTP_1_1;
+    }
+  rv = vnet_listen (args);
+  if (echo_test_transport_needs_crypto (&args->sep_ext))
+    session_endpoint_free_ext_cfgs (&args->sep_ext);
+  return rv;
+}
+
+static int
+et_http_connect (vnet_connect_args_t *args, echo_test_cfg_t *cfg)
+{
+  if (echo_test_transport_needs_crypto (&args->sep_ext))
+    {
+      transport_endpt_ext_cfg_t *ext_cfg = session_endpoint_add_ext_cfg (
+	&args->sep_ext, TRANSPORT_ENDPT_EXT_CFG_CRYPTO, sizeof (transport_endpt_crypto_cfg_t));
+      ext_cfg->crypto.ckpair_index = cfg->ckpair_index;
+      switch (cfg->http_version)
+	{
+	case HTTP_VERSION_NA:
+	case HTTP_VERSION_1:
+	  ext_cfg->crypto.alpn_protos[0] = TLS_ALPN_PROTO_HTTP_1_1;
+	  break;
+	case HTTP_VERSION_2:
+	  ext_cfg->crypto.alpn_protos[0] = TLS_ALPN_PROTO_HTTP_2;
+	  break;
+	case HTTP_VERSION_3:
+	  ext_cfg->crypto.alpn_protos[0] = TLS_ALPN_PROTO_HTTP_3;
+	  break;
+	}
+    }
+  int rv = vnet_connect (args);
+  if (echo_test_transport_needs_crypto (&args->sep_ext))
+    session_endpoint_free_ext_cfgs (&args->sep_ext);
+  return rv;
+}
+
+#define ECHO_TEST_HTTP_MAX_BODY_LEN CLIB_I64_MAX
+
+static u32
+et_http_connected (session_t *s, echo_test_cfg_t *cfg, echo_test_worker_t *wrk, u32 app_index)
+{
+  echo_test_session_t *es;
+  http_msg_t msg;
+  int rv;
+
+  ASSERT (http_session_get_version (s) == cfg->http_version);
+
+  es = echo_test_session_alloc (wrk);
+  hs_test_app_session_init (es, s);
+
+  es->bytes_to_send = cfg->bytes_to_send;
+  es->bytes_to_receive = 0ULL; /* only unidirectional (upload) test supported */
+  es->vpp_session_handle = session_handle (s);
+  es->bytes_paced_target = ~0;
+  es->bytes_paced_current = ~0;
+  s->opaque = es->session_index;
+
+  vec_add1 (wrk->conn_indices, es->session_index);
+
+  /* open request from here, cheating? */
+  msg.type = HTTP_MSG_REQUEST;
+  msg.method_type = HTTP_REQ_POST;
+  msg.data.target_path_offset = 0;
+  msg.data.target_path_len = 1;
+  msg.data.headers_offset = msg.data.target_path_len;
+  msg.data.headers_len = 0;
+  msg.data.body_len = cfg->run_time ? ECHO_TEST_HTTP_MAX_BODY_LEN : cfg->bytes_to_send;
+  msg.data.body_offset = msg.data.headers_offset + msg.data.headers_len;
+  msg.data.len = msg.data.target_path_len + msg.data.headers_len + msg.data.body_len;
+  msg.data.type = HTTP_MSG_DATA_INLINE;
+
+  svm_fifo_seg_t segs[2] = {
+    { (u8 *) &msg, sizeof (msg) },
+    { (u8 *) "/", msg.data.target_path_len },
+  };
+  rv = svm_fifo_enqueue_segments (s->tx_fifo, segs, 2, 0);
+  if (rv < (sizeof (msg) + msg.data.target_path_len))
+    return -1;
+  if (svm_fifo_set_event (s->tx_fifo))
+    session_program_tx_io_evt (s->handle, SESSION_IO_EVT_TX);
+
+  /* TODO: multiplexing support for h2/h3 */
+  return 1;
+}
+
+static int
+et_http_server_rx (echo_test_session_t *es, session_t *s, u8 *rx_buf)
+{
+  return 0;
+}
+
+static int
+et_http_server_rx_test_bytes (echo_test_session_t *es, session_t *s, u8 *rx_buf)
+{
+  return 0;
+}
+
+static u8
+et_http_client_rx (echo_test_session_t *es, session_t *s, u8 *rx_buf)
+{
+  return 0;
+}
+
+static u8
+et_http_client_rx_test_bytes (echo_test_session_t *es, session_t *s, u8 *rx_buf)
+{
+  return 0;
+}
+
+static u32
+et_http_client_tx (echo_test_session_t *es, u32 max_send)
+{
+  svm_fifo_t *f = es->tx_fifo;
+  u32 to_send, max_enq;
+  int rv;
+
+  rv = svm_fifo_fill_chunk_list (f);
+  if (rv < 0)
+    return 0;
+
+  max_enq = svm_fifo_max_enqueue_prod (f);
+  if (max_enq == 0)
+    return 0;
+
+  to_send = clib_min (max_enq, max_send);
+  svm_fifo_enqueue_nocopy (f, to_send);
+  if (svm_fifo_set_event (f))
+    session_program_tx_io_evt (es->vpp_session_handle, SESSION_IO_EVT_TX);
+  es->bytes_sent += to_send;
+  return to_send;
+}
+
+static u32
+et_http_client_tx_test_bytes (echo_test_session_t *es, u8 *test_data, u32 max_send)
+{
+  u32 test_buf_len, test_buf_offset, n_sent;
+  int rv;
+  svm_fifo_seg_t seg[1];
+  svm_fifo_t *f = es->tx_fifo;
+
+  test_buf_len = vec_len (test_data);
+  ASSERT (test_buf_len > 0);
+  test_buf_offset = es->bytes_sent % test_buf_len;
+
+  seg[0].data = test_data + test_buf_offset;
+  seg[0].len = max_send;
+  rv = svm_fifo_enqueue_segments (f, seg, 1, 1);
+  n_sent = clib_max (rv, 0);
+  es->bytes_sent += n_sent;
+  if (n_sent && svm_fifo_set_event (f))
+    session_program_tx_io_evt (es->vpp_session_handle, SESSION_IO_EVT_TX);
+  return n_sent;
+}
+
+static echo_test_proto_vft_t echo_test_http = {
+  .listen = et_http_listen,
+  .server_rx = et_http_server_rx,
+  .server_rx_test_bytes = et_http_server_rx_test_bytes,
+  .server_rx_no_echo = et_server_stream_rx_no_echo,
+  .connect = et_http_connect,
+  .connected = et_http_connected,
+  .client_rx = et_http_client_rx,
+  .client_rx_test_bytes = et_http_client_rx_test_bytes,
+  .client_tx = et_http_client_tx,
+  .client_tx_test_bytes = et_http_client_tx_test_bytes,
+};
+
+ECHO_TEST_REGISTER_PROTO (TRANSPORT_PROTO_HTTP, echo_test_http);
