@@ -50,7 +50,7 @@ dpdk_get_xstats (dpdk_device_t *xd, clib_thread_index_t thread_index)
   ret = rte_eth_xstats_get (xd->port_id, xd->xstats, vec_len (xd->xstats));
   if (ret < 0)
     {
-      dpdk_log_warn ("rte_eth_xstats_get(%d) failed: %d", xd->port_id, ret);
+      dpdk_log_warn ("rte_eth_xstats_get(%d) failed: %U", xd->port_id, format_dpdk_rte_err, ret);
       return;
     }
   else if (ret != vec_len (xd->xstats))
