@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7e3cac61_266e1545",
+        "filename": "src/vnet/ip6-nd/ip6_dad.api",
+        "patchSetId": 20
+      },
+      "lineNbr": 93,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2026-02-27T06:02:28Z",
+      "side": 1,
+      "message": "this should be an enum",
+      "revId": "4b7987ce26f5a4916e6395613ff968147b67c91f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6bc903ae_db755941",
+        "filename": "src/vnet/ip6-nd/ip6_dad.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 46,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2026-02-27T06:02:28Z",
+      "side": 1,
+      "message": "why a weak symbol and not a header file declaration?",
+      "revId": "4b7987ce26f5a4916e6395613ff968147b67c91f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b0d96296_dcd4702f",
+        "filename": "src/vnet/ip6-nd/ip6_dad_api.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 180,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2026-02-27T06:02:28Z",
+      "side": 1,
+      "message": "i think you need a `VL_MSG_API_REAPER_FUNCTION` function to tidy up if the client goes away.",
+      "revId": "4b7987ce26f5a4916e6395613ff968147b67c91f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
