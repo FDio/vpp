@@ -196,10 +196,30 @@ typedef enum
 	  VNET_CRYPTO_N_OP_IDS,
 } __clib_packed vnet_crypto_op_id_t;
 
+#define foreach_crypto_handler_type                                                                \
+  _ (SIMPLE, "simple")                                                                             \
+  _ (CHAINED, "chained")                                                                           \
+  _ (ASYNC, "async")
+
+typedef enum
+{
+#define _(n, s) VNET_CRYPTO_HANDLER_TYPE_##n,
+  foreach_crypto_handler_type
+#undef _
+    VNET_CRYPTO_HANDLER_N_TYPES
+
+} vnet_crypto_handler_type_t;
+
 typedef struct
 {
   char *name;
   u16 key_length;
+  /* per-engine key data size */
+  u16 per_engine_data_sz;
+  /* per-thread key data size */
+  u16 per_thread_key_size[VNET_CRYPTO_HANDLER_N_TYPES];
+  u8 active_eidx[VNET_CRYPTO_HANDLER_N_TYPES];
+
   u8 is_aead : 1;
   u8 variable_key_length : 1;
   u8 is_link : 1;
@@ -279,21 +299,6 @@ typedef struct
 } vnet_crypto_op_t;
 
 STATIC_ASSERT_SIZEOF (vnet_crypto_op_t, CLIB_CACHE_LINE_BYTES);
-
-#define foreach_crypto_handler_type                                           \
-  _ (SIMPLE, "simple")                                                        \
-  _ (CHAINED, "chained")                                                      \
-  _ (ASYNC, "async")                                                          \
-  _ (THREAD_SAFE, "thread-safe")
-
-typedef enum
-{
-#define _(n, s) VNET_CRYPTO_HANDLER_TYPE_##n,
-  foreach_crypto_handler_type
-#undef _
-    VNET_CRYPTO_HANDLER_N_TYPES
-
-} vnet_crypto_handler_type_t;
 
 typedef struct
 {
@@ -410,6 +415,9 @@ typedef struct
   char *desc;
   int priority;
   vnet_crypto_engine_op_t ops[VNET_CRYPTO_N_OP_IDS];
+  u16 key_data_sz[VNET_CRYPTO_N_ALGS];
+  void *per_thread_data;
+  u32 per_thread_data_sz;
   vnet_crypto_key_fn_t *key_op_handler;
   vnet_crypto_frame_dequeue_t *dequeue_handler;
 } vnet_crypto_engine_t;

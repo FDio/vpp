@@ -145,6 +145,7 @@ crypto_set_active_engine (vnet_crypto_op_data_t *od, vnet_crypto_op_id_t id,
     {
       od->active_engine_index[t] = ei;
       cm->opt_data[id].handlers[t] = ce->ops[id].handlers[t];
+      cm->algs[cm->opt_data[id].alg].active_eidx[t] = ei;
     }
 }
 
@@ -214,6 +215,7 @@ vnet_crypto_register_ops_handler_inline (vlib_main_t *vm, u32 engine_index,
   vnet_crypto_main_t *cm = &crypto_main;
   vnet_crypto_engine_t *ae, *e = vec_elt_at_index (cm->engines, engine_index);
   vnet_crypto_op_data_t *otd = cm->opt_data + opt;
+  vnet_crypto_alg_data_t *ad = cm->algs + otd->alg;
 
   if (fn)
     {
@@ -222,6 +224,7 @@ vnet_crypto_register_ops_handler_inline (vlib_main_t *vm, u32 engine_index,
       if (!otd->active_engine_index[t])
 	{
 	  otd->active_engine_index[t] = engine_index;
+	  ad->active_eidx[t] = engine_index;
 	  cm->opt_data[opt].handlers[t] = fn;
 	}
 
@@ -234,9 +237,10 @@ vnet_crypto_register_ops_handler_inline (vlib_main_t *vm, u32 engine_index,
     {
       vnet_crypto_handler_type_t t = VNET_CRYPTO_HANDLER_TYPE_CHAINED;
       e->ops[opt].handlers[t] = cfn;
-      if (otd->active_engine_index[t])
+      if (!otd->active_engine_index[t])
 	{
 	  otd->active_engine_index[t] = engine_index;
+	  ad->active_eidx[t] = engine_index;
 	  cm->opt_data[opt].handlers[t] = cfn;
 	}
 
@@ -698,6 +702,26 @@ vnet_crypto_load_engines (vlib_main_t *vm)
 	      oh++;
 	    }
 
+	  vnet_crypto_engine_t *e = vec_elt_at_index (cm->engines, eidx);
+	  vnet_crypto_alg_t alg = VNET_CRYPTO_ALG_NONE;
+	  vnet_crypto_alg_data_t *ad;
+
+	  while (alg != VNET_CRYPTO_N_ALGS)
+	    {
+	      if (r->key_data_sz[alg])
+		{
+		  u16 key_data_size = round_pow2 (r->key_data_sz[alg], CLIB_CACHE_LINE_BYTES);
+		  e->key_data_sz[alg] = key_data_size;
+		  ad = cm->algs + alg;
+		  u16 pek_sz = key_data_size * tm->n_vlib_mains;
+		  ad->per_engine_data_sz = clib_max (ad->per_engine_data_sz, pek_sz);
+		}
+	      alg++;
+	    }
+
+	  e->per_thread_data = r->per_thread_data;
+	  e->per_thread_data_sz = r->per_thread_data_sz;
+
 	  if (r->key_handler)
 	    vnet_crypto_register_key_handler (vm, eidx, r->key_handler);
 	}
@@ -732,6 +756,28 @@ vnet_crypto_init (vlib_main_t * vm)
     vlib_get_node_by_name (vm, (u8 *) "crypto-dispatch")->index;
 
   vnet_crypto_load_engines (vm);
+
+  /* Update per-alg per-thread key storage requirements for this engine. */
+  vnet_crypto_alg_t alg = VNET_CRYPTO_ALG_NONE;
+  vnet_crypto_alg_data_t *ad;
+
+  while (alg != VNET_CRYPTO_N_ALGS)
+    {
+      ad = cm->algs + alg;
+      vnet_crypto_handler_type_t t = VNET_CRYPTO_HANDLER_TYPE_SIMPLE;
+      if (ad->active_eidx[t])
+	{
+	  vnet_crypto_engine_t *e = vec_elt_at_index (cm->engines, ad->active_eidx[t]);
+	  ad->per_thread_key_size[t] = e->key_data_sz[alg];
+	}
+      t = VNET_CRYPTO_HANDLER_TYPE_CHAINED;
+      if (ad->active_eidx[t])
+	{
+	  vnet_crypto_engine_t *e = vec_elt_at_index (cm->engines, ad->active_eidx[t]);
+	  ad->per_thread_key_size[t] = e->key_data_sz[alg];
+	}
+      alg++;
+    }
 
   return 0;
 }

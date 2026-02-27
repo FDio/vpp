@@ -15,6 +15,7 @@
 
 #define HMAC_MAX_BLOCK_SIZE  IMB_SHA_512_BLOCK_SIZE
 #define EXPANDED_KEY_N_BYTES (16 * 15)
+#define EXPANDED_MAX_HMAC_KEY_N_BYTES (64 * 2)
 
 typedef struct
 {
@@ -47,6 +48,32 @@ typedef struct
   u8 enc_key_exp[EXPANDED_KEY_N_BYTES];
   u8 dec_key_exp[EXPANDED_KEY_N_BYTES];
 } ipsecmb_aes_key_data_t;
+
+typedef struct
+{
+  ipsecmb_aes_key_data_t aes_key_data;
+  ipsecmb_per_thread_data_t *ctx;
+} ipsecmb_aes_key_ctx_data_t;
+
+typedef struct
+{
+  u8 hmac_key_data[EXPANDED_MAX_HMAC_KEY_N_BYTES];
+  ipsecmb_per_thread_data_t *ctx;
+} ipsecmb_hmac_key_ctx_data_t;
+
+typedef struct
+{
+  struct gcm_key_data gcm_key;
+  IMB_MGR *mgr;
+} ipsecmb_aes_gcm_key_ctx_data_t;
+
+#ifdef HAVE_IPSECMB_CHACHA_POLY
+typedef struct
+{
+  IMB_MGR *mgr;
+  void *chacha_key_data;
+} ipsecmb_aes_chacha_key_ctx_data_t;
+#endif
 
 static ipsecmb_main_t ipsecmb_main = { };
 
@@ -1319,6 +1346,7 @@ crypto_ipsecmb_init (vnet_crypto_engine_registration_t *r)
 {
   ipsecmb_main_t *imbm = &ipsecmb_main;
   ipsecmb_alg_data_t *ad;
+  u16 *kd;
   ipsecmb_per_thread_data_t *ptd;
   IMB_MGR *m = 0;
   IMB_ARCH arch;
@@ -1367,26 +1395,32 @@ crypto_ipsecmb_init (vnet_crypto_engine_registration_t *r)
 	m = ptd->mgr;
     }
 
-#define _(a, b, c, d, e, f)                                                   \
-  ad = imbm->alg_data + VNET_CRYPTO_ALG_HMAC_##a;                             \
-  ad->block_size = d;                                                         \
-  ad->data_size = e * 2;                                                      \
-  ad->hash_one_block = m->c##_one_block;                                      \
-  ad->hash_fn = m->c;
+#define _(a, b, c, d, e, f)                                                                        \
+  ad = imbm->alg_data + VNET_CRYPTO_ALG_HMAC_##a;                                                  \
+  ad->block_size = d;                                                                              \
+  ad->data_size = e * 2;                                                                           \
+  ad->hash_one_block = m->c##_one_block;                                                           \
+  ad->hash_fn = m->c;                                                                              \
+  kd = r->key_data_sz + VNET_CRYPTO_ALG_HMAC_##a;                                                  \
+  *kd = sizeof (ipsecmb_hmac_key_ctx_data_t);
 
   foreach_ipsecmb_hmac_op;
 #undef _
-#define _(a, b, c)                                                            \
-  ad = imbm->alg_data + VNET_CRYPTO_ALG_##a;                                  \
-  ad->data_size = sizeof (ipsecmb_aes_key_data_t);                            \
-  ad->keyexp = m->keyexp_##b;
+#define _(a, b, c)                                                                                 \
+  ad = imbm->alg_data + VNET_CRYPTO_ALG_##a;                                                       \
+  ad->data_size = sizeof (ipsecmb_aes_key_data_t);                                                 \
+  ad->keyexp = m->keyexp_##b;                                                                      \
+  kd = r->key_data_sz + VNET_CRYPTO_ALG_##a;                                                       \
+  *kd = sizeof (ipsecmb_aes_key_ctx_data_t);
 
   foreach_ipsecmb_cipher_op;
 #undef _
-#define _(a, b, f, l)                                                         \
-  ad = imbm->alg_data + VNET_CRYPTO_ALG_##a;                                  \
-  ad->data_size = sizeof (struct gcm_key_data);                               \
-  ad->aes_gcm_pre = m->gcm##b##_pre;
+#define _(a, b, f, l)                                                                              \
+  ad = imbm->alg_data + VNET_CRYPTO_ALG_##a;                                                       \
+  ad->data_size = sizeof (struct gcm_key_data);                                                    \
+  ad->aes_gcm_pre = m->gcm##b##_pre;                                                               \
+  kd = r->key_data_sz + VNET_CRYPTO_ALG_##a;                                                       \
+  *kd = sizeof (ipsecmb_aes_gcm_key_ctx_data_t);
 
   foreach_ipsecmb_gcm_cipher_op;
 #undef _
@@ -1394,6 +1428,8 @@ crypto_ipsecmb_init (vnet_crypto_engine_registration_t *r)
 #ifdef HAVE_IPSECMB_CHACHA_POLY
   ad = imbm->alg_data + VNET_CRYPTO_ALG_CHACHA20_POLY1305;
   ad->data_size = 0;
+  kd = r->key_data_sz + VNET_CRYPTO_ALG_CHACHA20_POLY1305;
+  *kd = sizeof (ipsecmb_aes_chacha_key_ctx_data_t);
 #endif
 
   return 0;

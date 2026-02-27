@@ -249,35 +249,34 @@ aes_cbc_key_exp_256 (vnet_crypto_key_t *key)
 
 #define foreach_aes_cbc_handler_type _ (128) _ (192) _ (256)
 
-#define _(x)                                                                  \
-  static u32 aes_ops_enc_aes_cbc_##x (vlib_main_t *vm,                        \
-				      vnet_crypto_op_t *ops[], u32 n_ops)     \
-  {                                                                           \
-    return aes_ops_enc_aes_cbc (vm, ops, n_ops, AES_KEY_##x);                 \
-  }                                                                           \
-                                                                              \
-  CRYPTO_NATIVE_OP_HANDLER (aes_##x##_cbc_enc) = {                            \
-    .op_id = VNET_CRYPTO_OP_AES_##x##_CBC_ENC,                                \
-    .fn = aes_ops_enc_aes_cbc_##x,                                            \
-    .probe = aes_cbc_cpu_probe,                                               \
-  };                                                                          \
-                                                                              \
-  static u32 aes_ops_dec_aes_cbc_##x (vlib_main_t *vm,                        \
-				      vnet_crypto_op_t *ops[], u32 n_ops)     \
-  {                                                                           \
-    return aes_ops_dec_aes_cbc (vm, ops, n_ops, AES_KEY_##x);                 \
-  }                                                                           \
-                                                                              \
-  CRYPTO_NATIVE_OP_HANDLER (aes_##x##_cbc_dec) = {                            \
-    .op_id = VNET_CRYPTO_OP_AES_##x##_CBC_DEC,                                \
-    .fn = aes_ops_dec_aes_cbc_##x,                                            \
-    .probe = aes_cbc_cpu_probe,                                               \
-  };                                                                          \
-                                                                              \
-  CRYPTO_NATIVE_KEY_HANDLER (aes_##x##_cbc) = {                               \
-    .alg_id = VNET_CRYPTO_ALG_AES_##x##_CBC,                                  \
-    .key_fn = aes_cbc_key_exp_##x,                                            \
-    .probe = aes_cbc_cpu_probe,                                               \
+#define _(x)                                                                                       \
+  static u32 aes_ops_enc_aes_cbc_##x (vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops)         \
+  {                                                                                                \
+    return aes_ops_enc_aes_cbc (vm, ops, n_ops, AES_KEY_##x);                                      \
+  }                                                                                                \
+                                                                                                   \
+  CRYPTO_NATIVE_OP_HANDLER (aes_##x##_cbc_enc) = {                                                 \
+    .op_id = VNET_CRYPTO_OP_AES_##x##_CBC_ENC,                                                     \
+    .fn = aes_ops_enc_aes_cbc_##x,                                                                 \
+    .probe = aes_cbc_cpu_probe,                                                                    \
+  };                                                                                               \
+                                                                                                   \
+  static u32 aes_ops_dec_aes_cbc_##x (vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops)         \
+  {                                                                                                \
+    return aes_ops_dec_aes_cbc (vm, ops, n_ops, AES_KEY_##x);                                      \
+  }                                                                                                \
+                                                                                                   \
+  CRYPTO_NATIVE_OP_HANDLER (aes_##x##_cbc_dec) = {                                                 \
+    .op_id = VNET_CRYPTO_OP_AES_##x##_CBC_DEC,                                                     \
+    .fn = aes_ops_dec_aes_cbc_##x,                                                                 \
+    .probe = aes_cbc_cpu_probe,                                                                    \
+  };                                                                                               \
+                                                                                                   \
+  CRYPTO_NATIVE_KEY_HANDLER (aes_##x##_cbc) = {                                                    \
+    .alg_id = VNET_CRYPTO_ALG_AES_##x##_CBC,                                                       \
+    .key_fn = aes_cbc_key_exp_##x,                                                                 \
+    .probe = aes_cbc_cpu_probe,                                                                    \
+    .key_data_sz = sizeof (aes_cbc_key_data_t),                                                    \
   };
 
 foreach_aes_cbc_handler_type;

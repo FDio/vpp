@@ -80,6 +80,7 @@ crypto_native_init (vnet_crypto_engine_registration_t *r)
 	  best_by_alg_id[kh->alg_id]->priority < kh->priority)
 	best_by_alg_id[kh->alg_id] = kh;
 
+      r->key_data_sz[kh->alg_id] = kh->key_data_sz;
       kh = kh->next;
     }
 
