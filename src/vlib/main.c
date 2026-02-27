@@ -808,14 +808,11 @@ vlib_elog_main_loop_event (vlib_main_t * vm,
 	{
 	  elog_track (em,
 		      /* event type */
-		      vec_elt_at_index (is_return
-					? evm->node_return_elog_event_types
-					: evm->node_call_elog_event_types,
+		      vec_elt_at_index (is_return ? evm->node_return_elog_event_types :
+						    evm->node_call_elog_event_types,
 					node_index),
 		      /* track */
-		      (vm->thread_index ?
-		       &vlib_worker_threads[vm->thread_index].elog_track
-		       : &em->default_track),
+		      &vlib_worker_threads[vm->thread_index].elog_track,
 		      /* data to log */ n_vectors);
 	}
     }
@@ -1638,16 +1635,20 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
 	  /* Check if process nodes have expired from timing wheel. */
 	  ASSERT (nm->process_restore_current != 0);
 
-	  if (PREDICT_FALSE (vm->elog_trace_graph_dispatch))
-	    ed = ELOG_DATA (vlib_get_elog_main (), es);
+	  if (PREDICT_FALSE (vm->elog_trace_tw_expiration))
+	    {
+	      vlib_worker_thread_t *w = vlib_worker_threads + vm->thread_index;
+	      ed = ELOG_TRACK_DATA (vlib_get_elog_main (), es, w->elog_track);
+	    }
 
 	  expired_timers = process_expired_timers (expired_timers);
 
 	  ASSERT (nm->process_restore_current != 0);
 
-	  if (PREDICT_FALSE (vm->elog_trace_graph_dispatch))
+	  if (PREDICT_FALSE (vm->elog_trace_tw_expiration))
 	    {
-	      ed = ELOG_DATA (vlib_get_elog_main (), ee);
+	      vlib_worker_thread_t *w = vlib_worker_threads + vm->thread_index;
+	      ed = ELOG_TRACK_DATA (vlib_get_elog_main (), ee, w->elog_track);
 	      ed->nready_procs = _vec_len (nm->process_restore_current);
 	    }
 
