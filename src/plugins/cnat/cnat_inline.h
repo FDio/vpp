@@ -186,7 +186,7 @@ cnat_lookup_create_or_return (vlib_buffer_t *b, int rv, cnat_bihash_kv_t *bkey,
       if (!alloc_if_not_found)
 	goto err;
       cnat_session_t *ksession = (cnat_session_t *) bkey;
-      index_t session_index = cnat_timestamp_new (now, ksession->key.fib_index, is_v6);
+      index_t session_index = cnat_timestamp_new (now, ksession->key.context_id, is_v6);
       ASSERT ((session_index < CNAT_MAX_SESSIONS || INDEX_INVALID == session_index));
       if (PREDICT_FALSE (session_index >= CNAT_MAX_SESSIONS))
 	goto err; /* too many sessions */
