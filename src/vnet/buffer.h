@@ -509,6 +509,7 @@ typedef struct
   u8 loop_counter;
 
   u8 unused8;
+  u32 cnat_scope_id;
   u32 unused[6];
 } vnet_buffer_opaque2_t;
 
