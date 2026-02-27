@@ -76,8 +76,8 @@ dpdk_set_max_frame_size (vnet_main_t *vnm, vnet_hw_interface_t *hi,
 
   if (rv < 0)
     {
-      dpdk_log_err ("[%u] rte_eth_dev_set_mtu failed (mtu %u, rv %d)",
-		    xd->port_id, mtu, rv);
+      dpdk_log_err ("[%u] rte_eth_dev_set_mtu failed (mtu %u, %U)", xd->port_id, mtu,
+		    format_dpdk_rte_err, rv);
       switch (rv)
 	{
 	case -ENOTSUP:
@@ -244,9 +244,9 @@ dpdk_counters_xstats_init (dpdk_device_t *xd)
   len = rte_eth_xstats_get_names (xd->port_id, 0, 0);
   if (len < 0)
     {
-      dpdk_log_err ("[%u] rte_eth_xstats_get_names failed: %d. DPDK xstats "
+      dpdk_log_err ("[%u] rte_eth_xstats_get_names failed: %U. DPDK xstats "
 		    "not configured.",
-		    xd->port_id, len);
+		    xd->port_id, format_dpdk_rte_err, len);
       return;
     }
 
@@ -279,9 +279,9 @@ dpdk_counters_xstats_init (dpdk_device_t *xd)
     }
   else
     {
-      dpdk_log_err ("[%u] rte_eth_xstats_get_names failed: %d. DPDK xstats "
+      dpdk_log_err ("[%u] rte_eth_xstats_get_names failed: %U. DPDK xstats "
 		    "not configured.",
-		    xd->port_id, ret);
+		    xd->port_id, format_dpdk_rte_err, ret);
     }
   vec_free (xstats_names);
 }
@@ -1551,7 +1551,8 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
   ret = rte_eal_init (vec_len (conf->eal_init_args),
 		      (char **) conf->eal_init_args);
   if (ret < 0)
-    return clib_error_return (0, "rte_eal_init returned %d", ret);
+    return clib_error_return (0, "rte_eal_init returned %d (%U)", ret, format_dpdk_rte_err,
+			      rte_errno);
 
   /* enable the AVX-512 vPMDs in DPDK */
   if (clib_cpu_supports_avx512_bitalg () &&
