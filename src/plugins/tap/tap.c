@@ -15,6 +15,7 @@
 #include <linux/ethtool.h>
 #include <net/if_arp.h>
 #include <errno.h>
+#include <limits.h>
 
 #include <vlib/vlib.h>
 #include <vlib/file.h>
