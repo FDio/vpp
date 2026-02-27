@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5127146a_36a97e80",
+        "filename": "src/plugins/dpdk/device/init.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1554,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2026-02-27T22:27:21Z",
+      "side": 1,
+      "message": "I think the error message could be tweaked slightly here. With the existing format string, the formatted text will end up looking like \"rte_eal_init returned -11 (Try again (-11))\". All of the other messages seem to be of the format \"rte_something failed: \u003cmore info\u003e\", which might be better here too. E.g. \"rte_eal_init failed: %U\" would be formatted as \"rte_eal_init failed: Try again (-11)\".\n\nNot really a deal breaker or anything, just a suggestion.",
+      "revId": "b92929570a2e517de8c3e4b231aefd9928218322",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
