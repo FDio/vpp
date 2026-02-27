@@ -52,6 +52,24 @@
       "parentUuid": "a9ead44c_9c73f4c2",
       "revId": "f3d3c4f064b820c9d233e32dc61908ec37187237",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6d61db19_8a209854",
+        "filename": "src/plugins/dpdk/device/flow.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 203,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2026-02-27T14:32:32Z",
+      "side": 1,
+      "message": "```\nstatic struct rte_flow_item_raw generic[2][DPDK_MAX_FLOW_ITEMS] \u003d {};\n...\n      generic[0][n].pattern \u003d f-\u003egeneric.pattern.spec;\n...\n      item \u003d \u0026items[n++];\n      item-\u003etype \u003d RTE_FLOW_ITEM_TYPE_RAW;\n      item-\u003espec \u003d generic;\n\n```\nthis would be inefficient in storage, but will avoid allocation",
+      "parentUuid": "677dee52_f885e1bf",
+      "revId": "f3d3c4f064b820c9d233e32dc61908ec37187237",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
