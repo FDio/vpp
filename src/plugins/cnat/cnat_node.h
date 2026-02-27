@@ -901,6 +901,7 @@ cnat_rsession_create (cnat_timestamp_rewrite_t *rw, u32 flow_id, u32 ret_fib_ind
   /* create the reverse flow key */
   cnat_5tuple_copy (&rsession->key.cs_5tuple, &rw->tuple, 1 /* swap */);
   rsession->key.fib_index = ret_fib_index;
+  rsession->key.scope_id = 0;
 
   rsession->value.cs_session_index = flow_id;
   rsession->value.cs_flags = CNAT_SESSION_IS_RETURN;
@@ -1053,6 +1054,11 @@ cnat_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *fr
       session[2]->key.fib_index = vnet_buffer (b[2])->ip.fib_index;
       session[3]->key.fib_index = vnet_buffer (b[3])->ip.fib_index;
 
+      session[0]->key.scope_id = cnat_scope_id (b[0]);
+      session[1]->key.scope_id = cnat_scope_id (b[1]);
+      session[2]->key.scope_id = cnat_scope_id (b[2]);
+      session[3]->key.scope_id = cnat_scope_id (b[3]);
+
       hash[0] = cnat_bihash_hash (&bkey[0]);
       hash[1] = cnat_bihash_hash (&bkey[1]);
       hash[2] = cnat_bihash_hash (&bkey[2]);
@@ -1117,6 +1123,11 @@ cnat_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *fr
 	  session[2]->key.fib_index = vnet_buffer (b[6])->ip.fib_index;
 	  session[3]->key.fib_index = vnet_buffer (b[7])->ip.fib_index;
 
+	  session[0]->key.scope_id = cnat_scope_id (b[4]);
+	  session[1]->key.scope_id = cnat_scope_id (b[5]);
+	  session[2]->key.scope_id = cnat_scope_id (b[6]);
+	  session[3]->key.scope_id = cnat_scope_id (b[7]);
+
 	  hash[0] = cnat_bihash_hash (&bkey[0]);
 	  hash[1] = cnat_bihash_hash (&bkey[1]);
 	  hash[2] = cnat_bihash_hash (&bkey[2]);
@@ -1165,6 +1176,7 @@ cnat_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *fr
       cnat_make_buffer_5tuple (b[0], af, (cnat_5tuple_t *) &bkey[0], 0, 0);
       ip_lookup_set_buffer_fib_index (fib_index_by_sw_if_index, b[0]);
       session[0]->key.fib_index = vnet_buffer (b[0])->ip.fib_index;
+      session[0]->key.scope_id = cnat_scope_id (b[0]);
       hash[0] = cnat_bihash_hash (&bkey[0]);
 
       rv[0] = cnat_bihash_search_i2_hash (&cnat_session_db, hash[0], &bkey[0], &bvalue[0]);
