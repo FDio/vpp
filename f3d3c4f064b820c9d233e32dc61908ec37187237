@@ -34,6 +34,24 @@
       "parentUuid": "4bebac26_dd83ebce",
       "revId": "f3d3c4f064b820c9d233e32dc61908ec37187237",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "677dee52_f885e1bf",
+        "filename": "src/plugins/dpdk/device/flow.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 203,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2026-02-27T14:21:02Z",
+      "side": 1,
+      "message": "yes but there are reused for each items, so if you change the next items it will overwrite the first one.\nthink we have 2 tcp flow, they will write both write to tcp, then both items[0].spec have the same address. So later you will push twice the same flow parameters",
+      "parentUuid": "a9ead44c_9c73f4c2",
+      "revId": "f3d3c4f064b820c9d233e32dc61908ec37187237",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
