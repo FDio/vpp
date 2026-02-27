@@ -88,6 +88,24 @@
       "parentUuid": "677dee52_f885e1bf",
       "revId": "f3d3c4f064b820c9d233e32dc61908ec37187237",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "31e1e130_bef9ee27",
+        "filename": "src/plugins/dpdk/device/flow.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 203,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-02-27T15:35:59Z",
+      "side": 1,
+      "message": "I think the solution would be to preallocate memory at template creation",
+      "parentUuid": "e8d372ed_4d072579",
+      "revId": "f3d3c4f064b820c9d233e32dc61908ec37187237",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
