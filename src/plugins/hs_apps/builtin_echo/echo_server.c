@@ -441,13 +441,15 @@ echo_server_listen ()
 {
   i32 rv;
   echo_server_main_t *esm = &echo_server_main;
+  session_endpoint_cfg_t sep = SESSION_ENDPOINT_CFG_NULL;
   vnet_listen_args_t _args = {}, *args = &_args;
   const echo_test_proto_vft_t *tp;
 
-  if ((rv = parse_uri (esm->cfg.uri, &args->sep_ext)))
+  if ((rv = parse_uri (esm->cfg.uri, &sep)))
     {
       return -1;
     }
+  clib_memcpy (&args->sep_ext, &sep, sizeof (sep));
   esm->cfg.proto = args->sep_ext.transport_proto;
   tp = &echo_test_main.protos[esm->cfg.proto];
   args->app_index = esm->app_index;

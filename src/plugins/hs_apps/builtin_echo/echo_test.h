@@ -8,6 +8,7 @@
 #include <hs_apps/hs_test.h>
 #include <vnet/session/application_interface.h>
 #include <vnet/session/transport_types.h>
+#include <http/http.h>
 
 typedef struct
 {
@@ -24,10 +25,12 @@ typedef struct
   u64 private_segment_size;   /**< Size of private segments  */
   u64 bytes_to_send;	      /**< Bytes to send */
   transport_proto_t proto;    /**< Tested protocolo */
+  http_version_t http_version; /**< HTTP version used for connects */
   u8 echo_bytes;	      /**< Don't use zero-copy mode */
   u8 report_interval_total;   /**< Shown data are totals since the start of the test */
-  u64 report_interval;	      /**< Time between periodic reports (s) */
   u8 report_interval_jitter;  /**< Report jitter in periodic reports */
+  u64 report_interval;	      /**< Time between periodic reports (s) */
+  f64 run_time;		      /**< Length of a test (s) */
 } echo_test_cfg_t;
 
 typedef enum et_rtt_stat_ : u8
