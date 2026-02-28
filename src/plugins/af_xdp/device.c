@@ -140,16 +140,14 @@ af_xdp_remove_program (af_xdp_device_t *ad)
   int ns_fds[2];
 
   af_xdp_enter_netns (ad->netns, ns_fds);
-  ret = bpf_xdp_query_id (ad->linux_ifindex, XDP_FLAGS_UPDATE_IF_NOEXIST,
-			  &curr_prog_id);
+  ret = bpf_xdp_query_id (ad->linux_ifindex, 0, &curr_prog_id);
   if (ret != 0)
     {
       af_xdp_log (VLIB_LOG_LEVEL_ERR, ad, "bpf_xdp_query_id failed\n");
       goto err0;
     }
 
-  ret = bpf_xdp_detach (ad->linux_ifindex, XDP_FLAGS_UPDATE_IF_NOEXIST, NULL);
-  if (ret != 0)
+  if (curr_prog_id && (ret = bpf_xdp_detach (ad->linux_ifindex, 0, NULL)))
     {
       af_xdp_log (VLIB_LOG_LEVEL_ERR, ad, "bpf_xdp_detach failed\n");
       goto err0;
