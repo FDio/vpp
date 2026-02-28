@@ -185,7 +185,12 @@ def _delete_host_interfaces(*host_interface_names):
 
 
 def create_host_interface(
-    history_file, host_namespace, *host_ip_prefixes, vpp_if_name=None, host_if_name=None
+    history_file,
+    host_namespace,
+    *host_ip_prefixes,
+    vpp_if_name=None,
+    host_if_name=None,
+    mtu=None,
 ):
     """Create a host interface of type veth.
     arguments:
@@ -194,6 +199,7 @@ def create_host_interface(
                         on the host_interface
     vpp_if_name -- name of the veth interface on the VPP side
     host_if_name -- name of the veth interface on the host side
+    mtu -- optional MTU to set on the interfaces (for jumbo frames support)
     """
     with lock:
         retries = 5
@@ -208,26 +214,42 @@ def create_host_interface(
                 or f"vppout{''.join(random.choices(string.ascii_lowercase + string.digits, k=8))}"
             )
 
-            result = subprocess.run(
-                [
-                    "ip",
-                    "link",
-                    "add",
-                    "name",
-                    new_vpp_if_name,
-                    "type",
-                    "veth",
-                    "peer",
-                    "name",
-                    if_name,
-                ],
-                capture_output=True,
-            )
+            # Build command to create veth pair
+            cmd = [
+                "ip",
+                "link",
+                "add",
+                "name",
+                new_vpp_if_name,
+                "type",
+                "veth",
+                "peer",
+                "name",
+                if_name,
+            ]
+            # Add MTU if specified (for jumbo frames support)
+            if mtu:
+                cmd.extend(["mtu", str(mtu)])
+
+            result = subprocess.run(cmd, capture_output=True)
             if result.returncode == 0:
                 host_if_name = if_name
                 vpp_if_name = new_vpp_if_name
                 with open(history_file, "a") as if_file:
                     if_file.write(f"{host_if_name}\n{vpp_if_name}\n")
+
+                # If MTU was specified, also set it on the VPP-side interface
+                # (ip link add sets MTU only on peer, not both sides)
+                if mtu:
+                    result_mtu = subprocess.run(
+                        ["ip", "link", "set", "dev", vpp_if_name, "mtu", str(mtu)],
+                        capture_output=True,
+                    )
+                    if result_mtu.returncode != 0:
+                        raise Exception(
+                            f"Failed to set MTU on VPP-side interface {vpp_if_name}: {result_mtu.stderr.decode()}"
+                        )
+
                 break
             if attempt >= retries - 1:
                 raise Exception(

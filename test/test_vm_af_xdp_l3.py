@@ -11,8 +11,27 @@ from asfframework import VppTestRunner
 from vm_test_config import test_config
 import fcntl
 import time
+import platform
 
 
+def kernel_supports_xdp_multibuffer():
+    """Check if kernel version >= 5.18 (required for XDP multi-buffer support)"""
+    try:
+        release = platform.release()
+        # Parse kernel version string (e.g., "5.15.0-91-generic" -> (5, 15))
+        parts = release.split("-")[0].split(".")
+        major = int(parts[0])
+        minor = int(parts[1]) if len(parts) > 1 else 0
+        return (major, minor) >= (5, 18)
+    except (ValueError, IndexError):
+        # If we can't parse the version, assume it doesn't support multi-buffer
+        return False
+
+
+@unittest.skipIf(
+    not kernel_supports_xdp_multibuffer(),
+    "Kernel version < 5.18 does not support XDP multi-buffer (required for AF_XDP jumbo frames)",
+)
 class TestVPPInterfacesQemuAfXDPL3(TestVPPInterfacesQemu, VppTestCase):
     """Test af_xdp interfaces in L3 mode for IPv4/v6."""
 
