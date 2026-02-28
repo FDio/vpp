@@ -76,10 +76,7 @@ tcp_connection_set_state (tcp_connection_t * tc, tcp_state_t state)
 always_inline tcp_connection_t *
 tcp_listener_get (u32 tli)
 {
-  tcp_connection_t *tc = 0;
-  if (!pool_is_free_index (tcp_main.listener_pool, tli))
-    tc = pool_elt_at_index (tcp_main.listener_pool, tli);
-  return tc;
+  return tcp_connection_get (tli, 0);
 }
 
 always_inline tcp_connection_t *

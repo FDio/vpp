@@ -106,14 +106,10 @@ tcp_cc_algo_new_type (const tcp_cc_algorithm_t * vft)
 static u32
 tcp_connection_bind (u32 session_index, transport_endpoint_cfg_t *lcl)
 {
-  tcp_main_t *tm = &tcp_main;
   tcp_connection_t *listener;
   void *iface_ip;
 
-  pool_get (tm->listener_pool, listener);
-  clib_memset (listener, 0, sizeof (*listener));
-
-  listener->c_c_index = listener - tm->listener_pool;
+  listener = tcp_connection_alloc (0);
   listener->c_lcl_port = lcl->port;
 
   /* If we are provided a sw_if_index, bind using one of its ips */
@@ -156,10 +152,9 @@ tcp_session_bind (u32 session_index, transport_endpoint_cfg_t *tep)
 static void
 tcp_connection_unbind (u32 listener_index)
 {
-  tcp_main_t *tm = vnet_get_tcp_main ();
   tcp_connection_t *tc;
 
-  tc = pool_elt_at_index (tm->listener_pool, listener_index);
+  tc = tcp_connection_get (listener_index, 0);
 
   if (!(tc->cfg_flags & TCP_CFG_F_NO_ENDPOINT))
     transport_release_local_endpoint (TRANSPORT_PROTO_TCP, tc->c_fib_index, &tc->c_lcl_ip,
@@ -167,11 +162,7 @@ tcp_connection_unbind (u32 listener_index)
 
   TCP_EVT (TCP_EVT_UNBIND, tc);
 
-  /* Poison the entry */
-  if (CLIB_DEBUG > 0)
-    clib_memset (tc, 0xFA, sizeof (*tc));
-
-  pool_put_index (tm->listener_pool, listener_index);
+  tcp_connection_free (tc);
 }
 
 static u32
@@ -184,9 +175,7 @@ tcp_session_unbind (u32 listener_index)
 static transport_connection_t *
 tcp_session_get_listener (u32 listener_index)
 {
-  tcp_main_t *tm = vnet_get_tcp_main ();
-  tcp_connection_t *tc;
-  tc = pool_elt_at_index (tm->listener_pool, listener_index);
+  tcp_connection_t *tc = tcp_connection_get (listener_index, 0);
   return &tc->connection;
 }
 

@@ -2632,7 +2632,14 @@ tcp46_listen_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       /* 3. check for a SYN (did that already) */
 
       /* Create child session and send SYN-ACK */
-      child = tcp_connection_alloc (thread_index);
+      if (PREDICT_FALSE (thread_index == lc->c_thread_index))
+	{
+	  u32 lc_index = lc->c_c_index;
+	  child = tcp_connection_alloc (thread_index);
+	  lc = tcp_listener_get (lc_index);
+	}
+      else
+	child = tcp_connection_alloc (thread_index);
 
       if (tcp_options_parse (tcp_buffer_hdr (b[0]), &child->rcv_opts, 1))
 	{
