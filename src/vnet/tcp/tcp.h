@@ -212,9 +212,6 @@ typedef struct _tcp_main
   /** per-worker context */
   tcp_worker_ctx_t *wrk;
 
-  /* Pool of listeners. */
-  tcp_connection_t *listener_pool;
-
   /** vlib buffer size */
   u32 bytes_per_buffer;
 
