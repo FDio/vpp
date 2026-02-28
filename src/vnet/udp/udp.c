@@ -166,11 +166,8 @@ udp_session_bind (u32 session_index, transport_endpoint_cfg_t *lcl)
       return SESSION_E_PORTINUSE;
     }
 
-  pool_get (um->listener_pool, listener);
-  clib_memset (listener, 0, sizeof (udp_connection_t));
-
+  listener = udp_connection_alloc (0);
   listener->c_lcl_port = lcl->port;
-  listener->c_c_index = listener - um->listener_pool;
 
   /* If we are provided a sw_if_index, bind using one of its ips */
   if (ip_is_zero (&lcl->ip, 1) && lcl->sw_if_index != ENDPOINT_INVALID_INDEX)
@@ -205,13 +202,12 @@ udp_session_bind (u32 session_index, transport_endpoint_cfg_t *lcl)
 static u32
 udp_session_unbind (u32 listener_index)
 {
-  udp_main_t *um = &udp_main;
   udp_connection_t *listener;
 
   listener = udp_listener_get (listener_index);
   udp_connection_unregister_port (listener->c_lcl_port, listener->c_is_ip4);
   clib_spinlock_free (&listener->rx_lock);
-  pool_put (um->listener_pool, listener);
+  udp_connection_free (listener);
   return 0;
 }
 

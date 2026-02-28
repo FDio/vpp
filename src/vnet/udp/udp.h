@@ -142,7 +142,6 @@ typedef struct
    */
 
   udp_worker_t *wrk;
-  udp_connection_t *listener_pool;
 
   /* Refcounts for ports consumed by udp transports to handle
    * both passive and active opens using the same port */
@@ -186,7 +185,7 @@ udp_connection_get (u32 conn_index, clib_thread_index_t thread_index)
 always_inline udp_connection_t *
 udp_listener_get (u32 conn_index)
 {
-  return pool_elt_at_index (udp_main.listener_pool, conn_index);
+  return udp_connection_get (conn_index, 0);
 }
 
 always_inline udp_main_t *

@@ -95,7 +95,14 @@ udp_connection_accept (udp_connection_t *listener, session_dgram_hdr_t *hdr,
 {
   udp_connection_t *uc;
 
-  uc = udp_connection_alloc (thread_index);
+  if (PREDICT_FALSE (thread_index == listener->c_thread_index))
+    {
+      u32 listener_index = listener->c_c_index;
+      uc = udp_connection_alloc (thread_index);
+      listener = udp_listener_get (listener_index);
+    }
+  else
+    uc = udp_connection_alloc (thread_index);
   ip_copy (&uc->c_lcl_ip, &hdr->lcl_ip, hdr->is_ip4);
   ip_copy (&uc->c_rmt_ip, &hdr->rmt_ip, hdr->is_ip4);
   uc->c_lcl_port = hdr->lcl_port;
