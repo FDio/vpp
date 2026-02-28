@@ -9,18 +9,19 @@
 #include <vnet/interface.h>
 #include <xdp/xsk.h>
 
-#define AF_XDP_NUM_RX_QUEUES_ALL        ((u16)-1)
+#define AF_XDP_NUM_RX_QUEUES_ALL ((u16) -1)
 
-#define af_xdp_log(lvl, dev, f, ...) \
-  vlib_log(lvl, af_xdp_main.log_class, "%v: " f, (dev)->name, ##__VA_ARGS__)
+#define af_xdp_log(lvl, dev, f, ...)                                                               \
+  vlib_log (lvl, af_xdp_main.log_class, "%v: " f, (dev)->name, ##__VA_ARGS__)
 
-#define foreach_af_xdp_device_flags                                           \
-  _ (0, INITIALIZED, "initialized")                                           \
-  _ (1, ERROR, "error")                                                       \
-  _ (2, ADMIN_UP, "admin-up")                                                 \
-  _ (3, LINK_UP, "link-up")                                                   \
-  _ (4, ZEROCOPY, "zero-copy")                                                \
-  _ (5, SYSCALL_LOCK, "syscall-lock")
+#define foreach_af_xdp_device_flags                                                                \
+  _ (0, INITIALIZED, "initialized")                                                                \
+  _ (1, ERROR, "error")                                                                            \
+  _ (2, ADMIN_UP, "admin-up")                                                                      \
+  _ (3, LINK_UP, "link-up")                                                                        \
+  _ (4, ZEROCOPY, "zero-copy")                                                                     \
+  _ (5, SYSCALL_LOCK, "syscall-lock")                                                              \
+  _ (6, MULTIBUF, "multi-buffer")
 
 enum
 {
@@ -29,12 +30,12 @@ enum
 #undef _
 };
 
-#define af_xdp_device_error(dev, fmt, ...) \
-  if (!(dev)->error) \
-    { \
-      clib_error_t *err_ = clib_error_return_unix (0, fmt, ## __VA_ARGS__); \
-      if (!clib_atomic_bool_cmp_and_swap (&(dev)->error, 0, err_)) \
-        clib_error_free(err_); \
+#define af_xdp_device_error(dev, fmt, ...)                                                         \
+  if (!(dev)->error)                                                                               \
+    {                                                                                              \
+      clib_error_t *err_ = clib_error_return_unix (0, fmt, ##__VA_ARGS__);                         \
+      if (!clib_atomic_bool_cmp_and_swap (&(dev)->error, 0, err_))                                 \
+	clib_error_free (err_);                                                                    \
     }
 
 typedef enum
@@ -73,6 +74,7 @@ typedef struct
   struct xsk_ring_prod tx;
   struct xsk_ring_cons cq;
   int xsk_fd;
+  u32 n_tx_desc; /* number of descriptors to submit (for multi-buffer) */
 
   /* fields below are accessed in control-plane only (cold) */
 
@@ -92,7 +94,7 @@ typedef struct
   u32 sw_if_index;
   u32 hw_if_index;
   u32 flags;
-  u8 pool;			/* buffer pool index */
+  u8 pool; /* buffer pool index */
   u8 txq_num;
 
   /* fields below are accessed in control-plane only (cold) */
@@ -155,8 +157,8 @@ typedef struct
   clib_error_t *error;
 } af_xdp_create_if_args_t;
 
-void af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args);
-void af_xdp_delete_if (vlib_main_t * vm, af_xdp_device_t * ad);
+void af_xdp_create_if (vlib_main_t *vm, af_xdp_create_if_args_t *args);
+void af_xdp_delete_if (vlib_main_t *vm, af_xdp_device_t *ad);
 
 void af_xdp_device_input_refill (af_xdp_device_t *ad);
 
@@ -177,14 +179,14 @@ typedef struct
   u32 hw_if_index;
 } af_xdp_input_trace_t;
 
-#define foreach_af_xdp_tx_func_error                                          \
-  _ (NO_FREE_SLOTS, "no free tx slots")                                       \
-  _ (SYSCALL_REQUIRED, "syscall required")                                    \
+#define foreach_af_xdp_tx_func_error                                                               \
+  _ (NO_FREE_SLOTS, "no free tx slots")                                                            \
+  _ (SYSCALL_REQUIRED, "syscall required")                                                         \
   _ (SYSCALL_FAILURES, "syscall failures")
 
 typedef enum
 {
-#define _(f,s) AF_XDP_TX_ERROR_##f,
+#define _(f, s) AF_XDP_TX_ERROR_##f,
   foreach_af_xdp_tx_func_error
 #undef _
     AF_XDP_TX_N_ERROR,

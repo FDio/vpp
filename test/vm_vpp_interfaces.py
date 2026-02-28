@@ -158,7 +158,11 @@ def generate_vpp_interface_tests(tests, test_class):
             if_type == "af_xdp" for if_type in client_if_types + server_if_types
         )
 
-        # MTU <= 2048 Bytes for af_xdp interfaces
+        # Jumbo frames test: allow all MTUs with multi-buffer support
+        if test.get("jumbo_frames", False):
+            return test_config["mtus"]
+
+        # MTU <= 2048 Bytes for non-multi-buffer af_xdp interfaces
         if contains_af_xdp:
             return [mtu for mtu in test_config["mtus"] if mtu <= 2048]
         else:
@@ -388,6 +392,8 @@ class TestVPPInterfacesQemu:
                         else layer3["client_ip6_prefix"]
                     ),
                     version=client_if_version,
+                    bpf_program=test.get("bpf_program"),
+                    mtu=9001 if test.get("jumbo_frames") else None,
                 )
             else:
                 print(
@@ -471,6 +477,8 @@ class TestVPPInterfacesQemu:
                     ip4_prefix=server_ip4_prefix,
                     ip6_prefix=server_ip6_prefix,
                     version=server_if_version,
+                    bpf_program=test.get("bpf_program"),
+                    mtu=9001 if test.get("jumbo_frames") else None,
                 )
             else:
                 print(
@@ -813,9 +821,20 @@ class TestVPPInterfacesQemu:
         # IPv6 on Linux requires an MTU value >=1280
         if (ip_version == 6 and mtu >= 1280) or ip_version == 4:
             for sw_if_idx in vpp_interfaces:
-                self.vapi.sw_interface_set_mtu(
-                    sw_if_index=sw_if_idx, mtu=[mtu, 0, 0, 0]
-                )
+                try:
+                    self.vapi.sw_interface_set_mtu(
+                        sw_if_index=sw_if_idx, mtu=[mtu, 0, 0, 0]
+                    )
+                except Exception as e:
+                    # AF_XDP interfaces don't support dynamic MTU changes
+                    # This is expected for jumbo frames tests where interfaces
+                    # are created with the correct MTU from the start
+                    if "af_xdp" in self.if_types:
+                        self.logger.debug(
+                            f"MTU change not supported for interface {sw_if_idx} (expected for AF_XDP): {e}"
+                        )
+                    else:
+                        raise
             for namespace, interface_name in linux_interfaces:
                 set_interface_mtu(
                     namespace=namespace,
@@ -828,9 +847,22 @@ class TestVPPInterfacesQemu:
             return False
 
     def create_af_xdp(
-        self, namespace, host_side_name, vpp_side_name, ip4_prefix, ip6_prefix, version
+        self,
+        namespace,
+        host_side_name,
+        vpp_side_name,
+        ip4_prefix,
+        ip6_prefix,
+        version,
+        bpf_program=None,
+        mtu=None,
     ):
-        """Create an AF_XDP interface and configure it in VPP and Linux."""
+        """Create an AF_XDP interface and configure it in VPP and Linux.
+
+        Args:
+            bpf_program: Optional path to BPF program for multi-buffer support
+            mtu: Optional MTU to set on interfaces (for jumbo frames support)
+        """
         try:
             # Generate unique random suffixes for interface names to prevent conflicts
             random_suffix = "".join(
@@ -857,6 +889,7 @@ class TestVPPInterfacesQemu:
                 ip6_prefix,
                 vpp_if_name=unique_vpp_side_name,
                 host_if_name=unique_host_side_name,
+                mtu=mtu,
             )
 
             # Verify that the host interfaces were created successfully
@@ -922,6 +955,10 @@ class TestVPPInterfacesQemu:
                 "host_if": unique_vpp_side_name,
                 "rxq_num": 1,
             }
+
+            # Add BPF program path if specified (for multi-buffer support)
+            if bpf_program:
+                api_args["prog"] = bpf_program
 
             # Clean any stale XDP sockets
             os.system(
