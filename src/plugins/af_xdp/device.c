@@ -233,6 +233,7 @@ af_xdp_load_program (af_xdp_create_if_args_t * args, af_xdp_device_t * ad)
     goto err1;
 
   bpf_program__set_type (bpf_prog, BPF_PROG_TYPE_XDP);
+  bpf_program__set_flags (bpf_prog, BPF_F_XDP_HAS_FRAGS);
 
   if (bpf_object__load (ad->bpf_obj))
     goto err1;
@@ -316,7 +317,7 @@ af_xdp_create_queue (vlib_main_t *vm, af_xdp_create_if_args_t *args,
   memset (&sock_config, 0, sizeof (sock_config));
   sock_config.rx_size = args->rxq_size;
   sock_config.tx_size = args->txq_size;
-  sock_config.bind_flags = XDP_USE_NEED_WAKEUP;
+  sock_config.bind_flags = XDP_USE_NEED_WAKEUP | XDP_USE_SG;
   switch (args->mode)
     {
     case AF_XDP_MODE_AUTO:
@@ -369,6 +370,9 @@ af_xdp_create_queue (vlib_main_t *vm, af_xdp_create_if_args_t *args,
     }
   if (opt.flags & XDP_OPTIONS_ZEROCOPY)
     ad->flags |= AF_XDP_DEVICE_F_ZEROCOPY;
+
+  /* Enable multi-buffer support */
+  ad->flags |= AF_XDP_DEVICE_F_MULTIBUF;
 
   rxq->xsk_fd = is_rx ? fd : -1;
 
