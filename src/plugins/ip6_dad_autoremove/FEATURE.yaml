@@ -1,0 +1,10 @@
+---
+name: IPv6 DAD Auto-Remove
+maintainer: Jerome Tollet <jtollet@cisco.com>
+features:
+  - Automatically removes IPv6 addresses detected as duplicates by DAD
+  - Off by default, enabled via CLI
+  - Clean integration with DAD delegate system
+description: "Automatic removal of duplicate IPv6 addresses"
+state: production
+properties: [CLI]

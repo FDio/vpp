@@ -181,6 +181,47 @@ complete_dad_success (vlib_main_t *vm, ip6_dad_entry_t *entry)
 }
 
 /**
+ * Register internal callback for duplicate address detection
+ */
+u32
+ip6_dad_register_duplicate_callback (ip6_dad_duplicate_callback_fn_t callback_fn)
+{
+  ip6_dad_main_t *dm = &ip6_dad_main;
+  ip6_dad_callback_registration_t *reg;
+
+  if (!callback_fn)
+    return 0;
+
+  pool_get_zero (dm->duplicate_callbacks, reg);
+  reg->callback_fn = callback_fn;
+  reg->handle = ++dm->next_callback_handle;
+
+  return reg->handle;
+}
+
+/**
+ * Unregister duplicate callback
+ */
+void
+ip6_dad_unregister_duplicate_callback (u32 handle)
+{
+  ip6_dad_main_t *dm = &ip6_dad_main;
+  ip6_dad_callback_registration_t *reg;
+
+  if (!handle)
+    return;
+
+  pool_foreach (reg, dm->duplicate_callbacks)
+    {
+      if (reg->handle == handle)
+	{
+	  pool_put (dm->duplicate_callbacks, reg);
+	  return;
+	}
+    }
+}
+
+/**
  * Handle DAD conflict (called from main thread via RPC)
  */
 static void
@@ -204,6 +245,14 @@ handle_dad_conflict (vlib_main_t *vm, u32 sw_if_index, const ip6_address_t *addr
   /* Send DUPLICATE notification */
   ip6_dad_send_event (sw_if_index, address, IP6_DAD_STATE_DUPLICATE, entry->dad_count,
 		      entry->dad_transmits);
+
+  /* Call registered internal callbacks */
+  ip6_dad_callback_registration_t *reg;
+  u8 address_length = entry->address_length; /* Save before freeing entry */
+  pool_foreach (reg, ip6_dad_main.duplicate_callbacks)
+    {
+      reg->callback_fn (sw_if_index, address, address_length);
+    }
 
   /* IMPORTANT CHANGE: Do NOT remove the IP address
    * The IP remains configured but in DUPLICATE state
@@ -828,6 +877,10 @@ ip6_dad_init (vlib_main_t *vm)
 
   /* Initialize event registrations pool */
   dm->dad_event_registrations = NULL;
+
+  /* Initialize internal callback pools */
+  dm->duplicate_callbacks = NULL;
+  dm->next_callback_handle = 0;
 
   /* Logging */
   dm->log_class = vlib_log_register_class ("ip6", "dad");
