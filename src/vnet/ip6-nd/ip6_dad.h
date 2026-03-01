@@ -63,6 +63,23 @@ typedef struct ip6_dad_event_registration_t_
 } ip6_dad_event_registration_t;
 
 /**
+ * Callback function type for duplicate address notifications
+ * Called on main thread when a duplicate is detected
+ */
+typedef void (*ip6_dad_duplicate_callback_fn_t) (u32 sw_if_index,
+						  const ip6_address_t *address,
+						  u8 address_length);
+
+/**
+ * Internal callback registration for duplicate events
+ */
+typedef struct ip6_dad_callback_registration_t_
+{
+  ip6_dad_duplicate_callback_fn_t callback_fn;
+  u32 handle;
+} ip6_dad_callback_registration_t;
+
+/**
  * DAD main structure
  */
 typedef struct ip6_dad_main_t_
@@ -87,6 +104,12 @@ typedef struct ip6_dad_main_t_
 
   /** Pool of registered clients for DAD events */
   ip6_dad_event_registration_t *dad_event_registrations;
+
+  /** Pool of internal callbacks for DUPLICATE events */
+  ip6_dad_callback_registration_t *duplicate_callbacks;
+
+  /** Next callback handle to assign */
+  u32 next_callback_handle;
 
 } ip6_dad_main_t;
 
@@ -190,5 +213,18 @@ extern u8 *format_ip6_dad_state (u8 *s, va_list *args);
  * @brief Format DAD entry
  */
 extern u8 *format_ip6_dad_entry (u8 *s, va_list *args);
+
+/**
+ * Register internal callback for duplicate address detection
+ * @param callback_fn Function to call when duplicate detected
+ * @return Handle for unregistration (0 = error)
+ */
+u32 ip6_dad_register_duplicate_callback (ip6_dad_duplicate_callback_fn_t callback_fn);
+
+/**
+ * Unregister duplicate callback
+ * @param handle Handle returned from registration
+ */
+void ip6_dad_unregister_duplicate_callback (u32 handle);
 
 #endif /* __IP6_DAD_H__ */
