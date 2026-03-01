@@ -1252,6 +1252,14 @@ quic_quicly_on_app_reset (u32 ctx_index, clib_thread_index_t thread_index)
 	    session_handle (session_get (ctx->c_s_index, ctx->c_thread_index)),
 	    ctx->c_c_index, ctx->app_err_code);
   ctx->flags |= QUIC_F_APP_CLOSED;
+  /* stream might get destroyed by quicly meanwhile */
+  if (!ctx->stream)
+    {
+      session_transport_closed_notify (&ctx->connection);
+      session_transport_delete_notify (&ctx->connection);
+      quic_ctx_free (quic_quicly_main.qm, ctx);
+      return;
+    }
   stream = ctx->stream;
   if (quicly_stream_has_receive_side (quicly_is_client (stream->conn),
 				      stream->stream_id) &&
