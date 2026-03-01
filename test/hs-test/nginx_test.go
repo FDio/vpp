@@ -12,8 +12,9 @@ import (
 
 func init() {
 	RegisterNoTopoTests(NginxHttp3Test, NginxAsServerTest)
-	RegisterNoTopoSoloTests(NginxPerfRpsMultiThreadTest, NginxPerfCpsMultiThreadTest, NginxPerfCpsTest, NginxPerfRpsTest, NginxPerfWrkTest,
+	RegisterNoTopoSoloTests(NginxPerfCpsTest, NginxPerfRpsTest, NginxPerfWrkTest,
 		NginxPerfCpsInterruptModeTest, NginxPerfRpsInterruptModeTest, NginxPerfWrkInterruptModeTest)
+	RegisterNoTopoMWTests(NginxPerfRpsMWTest, NginxPerfCpsMultiThreadTest)
 	RegisterNoTopo6SoloTests(NginxPerfRps6Test)
 }
 
@@ -134,6 +135,8 @@ func NginxPerfCpsInterruptModeTest(s *NoTopoSuite) {
 }
 
 func NginxPerfCpsMultiThreadTest(s *NoTopoSuite) {
+	s.CpusPerVppContainer = 3
+	s.SetupTest()
 	AssertNil(runNginxPerf(s, "cps", "ab", true, s.Ports.NginxServer, s.Containers.Vpp.VppInstance,
 		s.Containers.Nginx, s.Containers.Wrk, s.Containers.Ab))
 }
@@ -147,7 +150,9 @@ func NginxPerfRpsInterruptModeTest(s *NoTopoSuite) {
 	NginxPerfRpsTest(s)
 }
 
-func NginxPerfRpsMultiThreadTest(s *NoTopoSuite) {
+func NginxPerfRpsMWTest(s *NoTopoSuite) {
+	s.CpusPerVppContainer = 3
+	s.SetupTest()
 	AssertNil(runNginxPerf(s, "rps", "ab", true, s.Ports.NginxServer, s.Containers.Vpp.VppInstance,
 		s.Containers.Nginx, s.Containers.Wrk, s.Containers.Ab))
 }
