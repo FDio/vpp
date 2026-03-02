@@ -10,6 +10,8 @@
 #include <vnet/session/transport_types.h>
 #include <http/http.h>
 
+#define ECHO_TEST_DELAY_DISCONNECT 1
+
 typedef struct
 {
   hs_test_cfg_t test_cfg;     /**< Test parameters */
@@ -29,6 +31,7 @@ typedef struct
   u8 echo_bytes;	      /**< Don't use zero-copy mode */
   u8 report_interval_total;   /**< Shown data are totals since the start of the test */
   u8 report_interval_jitter;  /**< Report jitter in periodic reports */
+  u8 is_server;		      /**< Server side app */
   u64 report_interval;	      /**< Time between periodic reports (s) */
   f64 run_time;		      /**< Length of a test (s) */
 } echo_test_cfg_t;
@@ -49,6 +52,10 @@ typedef struct
 
   u64 dgrams_received;
   u64 bytes_received;
+  u64 bytes_sent;
+  u64 dgrams_sent;
+  f64 rtt;
+  et_rtt_stat_t rtt_stat;
 
   union
   {
@@ -56,17 +63,13 @@ typedef struct
     struct
     {
       u64 bytes_to_send;
-      u64 bytes_sent;
       u64 bytes_to_receive;
       u64 bytes_paced_target;
       u64 bytes_paced_current;
-      u64 dgrams_sent;
       f64 time_to_send;
       f64 send_rtt;
       f64 jitter;
-      f64 rtt;
       u32 rtt_udp_buffer_offset;
-      et_rtt_stat_t rtt_stat;
     };
     /* server */
     struct
@@ -86,6 +89,8 @@ typedef struct echo_test_worker_
   u32 *conns_this_batch;	 /**< sessions handled in batch */
   u64 dgrams_received;
   u64 bytes_received;
+  u64 dgrams_sent;
+  u64 bytes_sent;
 } echo_test_worker_t;
 
 always_inline echo_test_session_t *

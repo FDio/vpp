@@ -4,6 +4,7 @@
 
 #include <hs_apps/builtin_echo/echo_client.h>
 #include <hs_apps/builtin_echo/echo_server.h>
+#include <vnet/session/application.h>
 
 static clib_error_t *
 echo_server_create_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
@@ -15,11 +16,7 @@ echo_server_create_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cl
   int rv, is_stop = 0;
   clib_error_t *error = 0;
 
-  esm->cfg.fifo_size = 4 << 20;
-  esm->cfg.prealloc_fifos = 0;
-  esm->cfg.private_segment_size = 512 << 20;
-  esm->cfg.tls_engine = CRYPTO_ENGINE_OPENSSL;
-  vec_free (esm->cfg.uri);
+  echo_server_init (vm);
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -46,6 +43,10 @@ echo_server_create_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cl
 	is_stop = 1;
       else if (unformat (input, "tls-engine %d", &esm->cfg.tls_engine))
 	;
+      else if (unformat (input, "report-interval %u", &esm->cfg.report_interval))
+	;
+      else if (unformat (input, "report-interval"))
+	esm->cfg.report_interval = 1;
       else
 	{
 	  error = clib_error_return (0, "failed: unknown input `%U'", format_unformat_error, input);
@@ -55,7 +56,7 @@ echo_server_create_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cl
 
   if (is_stop)
     {
-      if (esm->app_index == (u32) ~0)
+      if (esm->app_index == APP_INVALID_INDEX)
 	{
 	  echo_cli ("server not running");
 	  error = clib_error_return (0, "failed: server not running");
@@ -81,12 +82,56 @@ echo_server_create_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cl
       esm->cfg.uri = (char *) format (0, "%s%c", default_uri, 0);
     }
 
+  vlib_worker_thread_barrier_sync (vm);
   rv = echo_server_create (vm, appns_id, appns_flags, appns_secret);
+  vlib_worker_thread_barrier_release (vm);
   if (rv)
     {
       vec_free (esm->cfg.uri);
       error = clib_error_return (0, "failed: server_create returned %d", rv);
       goto cleanup;
+    }
+
+  if (!esm->cfg.report_interval)
+    goto cleanup;
+
+  u8 pager_old = vlib_unix_cli_enable_disable_pager (0);
+  u8 test_running = 0, print_header = 1;
+  while (1)
+    {
+      uword event_type, *event_data = 0;
+      if (test_running)
+	vlib_process_wait_for_event_or_clock (vm, (f64) esm->cfg.report_interval);
+      else
+	vlib_process_wait_for_event (vm);
+      event_type = vlib_process_get_events (vm, &event_data);
+      vec_free (event_data);
+      switch (event_type)
+	{
+	case ~0: /* no events => timeout */
+	  echo_print_periodic_stats (vm, print_header, &esm->cfg, &esm->stats, esm->wrk);
+	  if (print_header)
+	    print_header = 0;
+	  break;
+	case ES_CLI_START:
+	  test_running = 1;
+	  print_header = 1;
+	  break;
+	case ES_CLI_STOP:
+	  echo_print_footer (vm, esm->cfg.proto);
+	  echo_print_final_stats (vm, esm->stats.test_end_time - esm->stats.test_start_time,
+				  &esm->cfg, &esm->stats, esm->wrk);
+	  test_running = 0;
+	  break;
+	default:
+	  /* someone pressed a key, abort */
+	  vlib_cli_output (vm, "Aborted due to a keypress.");
+	  vlib_unix_cli_enable_disable_pager (pager_old);
+	  rv = echo_server_detach ();
+	  if (rv)
+	    error = clib_error_return (0, "failed: server detach %d", rv);
+	  goto cleanup;
+	}
     }
 
 cleanup:
@@ -111,6 +156,7 @@ VLIB_CLI_COMMAND (echo_server_create_command, static) = {
 		"[all-scope|local-scope|global-scope] [secret <n>] [stop] [tls-engine <id>]\n"
 		"[prealloc-fifos <n>] [appns <id>]",
   .function = echo_server_create_command_fn,
+  .is_mp_safe = 1,
 };
 
 static clib_error_t *
