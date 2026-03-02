@@ -7,6 +7,7 @@ import os
 import sys
 import time
 import signal
+from asfframework import AsfTestCase
 
 
 class VppIperf:
@@ -91,6 +92,7 @@ class VppIperf:
             )
         except subprocess.TimeoutExpired as e:
             raise Exception("Error: Timeout expired for iPerf", e.output)
+        AsfTestCase.sleep(3)
         return args[4:]
 
     def start_iperf_client(self):
