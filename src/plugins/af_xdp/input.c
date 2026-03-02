@@ -192,6 +192,92 @@ af_xdp_device_input_ethernet (vlib_main_t * vm, vlib_node_runtime_t * node,
 }
 
 static_always_inline u32
+af_xdp_device_input_bufs_mb (vlib_main_t *vm, af_xdp_rxq_t *rxq, u32 *bis, const u32 n_desc,
+			     vlib_buffer_t *bt, u32 idx, u32 *n_rx_bytes)
+{
+  const u32 mask = rxq->rx.mask;
+  vlib_buffer_t *head = 0, *tail = 0;
+  u32 head_bi = ~0;
+  u32 total_len = 0;
+  u32 n_pkts = 0;
+  u32 bytes = 0;
+  u32 n = n_desc;
+
+#define addr2bi(addr) ((addr) >> CLIB_LOG2_CACHE_LINE_BYTES)
+
+  if (rxq->mb_total_len)
+    {
+      head_bi = rxq->mb_head_bi;
+      head = vlib_get_buffer (vm, head_bi);
+      tail = vlib_get_buffer (vm, rxq->mb_tail_bi);
+      total_len = rxq->mb_total_len;
+    }
+
+  while (n--)
+    {
+      const struct xdp_desc *desc = xsk_ring_cons__rx_desc (&rxq->rx, idx);
+      const u64 addr = xsk_umem__extract_addr (desc->addr);
+      const u32 bi = addr2bi (addr);
+      vlib_buffer_t *b;
+      u16 off;
+
+      ASSERT (vlib_buffer_is_known (vm, bi) == VLIB_BUFFER_KNOWN_ALLOCATED);
+
+      b = vlib_get_buffer (vm, bi);
+      off = xsk_umem__extract_offset (desc->addr) - sizeof (vlib_buffer_t);
+
+      vlib_buffer_copy_template (b, bt);
+      b->current_data = off;
+      b->current_length = desc->len;
+      b->flags &= ~VLIB_BUFFER_NEXT_PRESENT;
+      b->next_buffer = 0;
+
+      if (PREDICT_FALSE (head == 0))
+	{
+	  head = tail = b;
+	  head_bi = bi;
+	  total_len = b->current_length;
+	}
+      else
+	{
+	  tail->flags |= VLIB_BUFFER_NEXT_PRESENT;
+	  tail->next_buffer = bi;
+	  tail = b;
+	  total_len += b->current_length;
+	}
+
+      if ((desc->options & XDP_PKT_CONTD) == 0)
+	{
+	  head->total_length_not_including_first_buffer = total_len - head->current_length;
+	  bis[n_pkts++] = head_bi;
+	  bytes += total_len;
+	  head = tail = 0;
+	  head_bi = ~0;
+	  total_len = 0;
+	}
+
+      idx = (idx + 1) & mask;
+    }
+
+  if (PREDICT_FALSE (head != 0))
+    {
+      rxq->mb_head_bi = head_bi;
+      rxq->mb_tail_bi = vlib_get_buffer_index (vm, tail);
+      rxq->mb_total_len = total_len;
+    }
+  else
+    {
+      rxq->mb_head_bi = ~0;
+      rxq->mb_tail_bi = ~0;
+      rxq->mb_total_len = 0;
+    }
+
+  xsk_ring_cons__release (&rxq->rx, n_desc);
+  *n_rx_bytes = bytes;
+  return n_pkts;
+}
+
+static_always_inline u32
 af_xdp_device_input_bufs (vlib_main_t *vm, const af_xdp_device_t *ad,
 			  af_xdp_rxq_t *rxq, u32 *bis, const u32 n_rx,
 			  vlib_buffer_t *bt, u32 idx)
@@ -201,8 +287,6 @@ af_xdp_device_input_bufs (vlib_main_t *vm, const af_xdp_device_t *ad,
   u16 lens[VLIB_FRAME_SIZE], *len = lens;
   const u32 mask = rxq->rx.mask;
   u32 n = n_rx, *bi = bis, bytes = 0;
-
-#define addr2bi(addr) ((addr) >> CLIB_LOG2_CACHE_LINE_BYTES)
 
   while (n >= 1)
     {
@@ -277,12 +361,13 @@ af_xdp_device_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   af_xdp_rxq_t *rxq = vec_elt_at_index (ad->rxqs, qid);
   vlib_buffer_t bt;
   u32 next_index, *to_next, n_left_to_next;
-  u32 n_rx_packets, n_rx_bytes;
+  u32 n_rx_packets = 0, n_rx_bytes = 0;
+  u32 n_rx_desc;
   u32 idx;
 
-  n_rx_packets = xsk_ring_cons__peek (&rxq->rx, VLIB_FRAME_SIZE, &idx);
+  n_rx_desc = xsk_ring_cons__peek (&rxq->rx, VLIB_FRAME_SIZE, &idx);
 
-  if (PREDICT_FALSE (0 == n_rx_packets))
+  if (PREDICT_FALSE (0 == n_rx_desc))
     goto refill;
 
   vlib_buffer_copy_template (&bt, ad->buffer_template);
@@ -292,8 +377,16 @@ af_xdp_device_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
   vlib_get_new_next_frame (vm, node, next_index, to_next, n_left_to_next);
 
-  n_rx_bytes =
-    af_xdp_device_input_bufs (vm, ad, rxq, to_next, n_rx_packets, &bt, idx);
+  if (ad->flags & AF_XDP_DEVICE_F_MULTI_BUFFER)
+    {
+      n_rx_packets =
+	af_xdp_device_input_bufs_mb (vm, rxq, to_next, n_rx_desc, &bt, idx, &n_rx_bytes);
+    }
+  else
+    {
+      n_rx_packets = n_rx_desc;
+      n_rx_bytes = af_xdp_device_input_bufs (vm, ad, rxq, to_next, n_rx_packets, &bt, idx);
+    }
   af_xdp_device_input_ethernet (vm, node, next_index, ad->sw_if_index,
 				ad->hw_if_index);
 
