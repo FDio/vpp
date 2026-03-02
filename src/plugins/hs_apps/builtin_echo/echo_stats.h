@@ -19,10 +19,10 @@ typedef struct echo_rtt_stat_
 
 typedef struct echo_stats_
 {
-  volatile u64 rx_total;
-  volatile u64 tx_total;
-  volatile u64 rx_total_dgrams;
-  volatile u64 tx_total_dgrams;
+  u64 rx_total;
+  u64 tx_total;
+  u64 rx_total_dgrams;
+  u64 tx_total_dgrams;
   u64 peer_dgrams_received;
   u64 peer_bytes_received;
   u64 last_total_tx_bytes;
@@ -42,7 +42,7 @@ void echo_update_rtt_stats_udp (echo_test_session_t *es, echo_rtt_stat_t *rtt_st
 void echo_print_footer (vlib_main_t *vm, transport_proto_t proto);
 
 void echo_print_final_stats (vlib_main_t *vm, f64 total_delta, echo_test_cfg_t *cfg,
-			     echo_stats_t *stats);
+			     echo_stats_t *stats, echo_test_worker_t *wrks);
 
 void echo_print_periodic_stats (vlib_main_t *vm, u8 print_header, echo_test_cfg_t *cfg,
 				echo_stats_t *stats, echo_test_worker_t *wrks);
