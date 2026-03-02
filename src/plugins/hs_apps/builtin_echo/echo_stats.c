@@ -3,6 +3,7 @@
  */
 
 #include <hs_apps/builtin_echo/echo_stats.h>
+#include <vppinfra/math.h>
 #include <vnet/tcp/tcp_types.h>
 
 static inline void
@@ -122,6 +123,8 @@ echo_print_periodic_stats (vlib_main_t *vm, u8 print_header, echo_test_cfg_t *cf
       else
 	{
 	  rtt /= cfg->n_clients;
+	  if (isnan (rtt))
+	    rtt = 0.0;
 	  echo_cli ("%.1f-%-9.1f %-13U %-10U %+9Ub/s %+9.3fms %llu/%llu", interval_start,
 		    interval_end, format_base10, sent_bytes - stats->last_total_tx_bytes,
 		    format_base10, received_bytes - stats->last_total_rx_bytes, format_base10,

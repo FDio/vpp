@@ -10,6 +10,8 @@
 
 ec_main_t ec_main;
 
+#define ECHO_TEST_DELAY_DISCONNECT 1
+
 #define ec_err(_fmt, _args...) clib_warning (_fmt, ##_args);
 
 #define ec_dbg(_fmt, _args...)                                                                     \
@@ -464,7 +466,7 @@ ec_ctrl_send (hs_test_cmd_t cmd)
   ecm->cfg.test_cfg.cmd = cmd;
   if (ecm->ctrl_session_handle == SESSION_INVALID_HANDLE)
     {
-      ec_dbg ("ctrl session went away");
+      ec_err ("ctrl session went away");
       return -1;
     }
 
@@ -1184,6 +1186,10 @@ ec_run (vlib_main_t *vm)
 
 stop_test:
   ecm->run_test = EC_EXITING;
+
+  vlib_process_wait_for_event_or_clock (vm, ECHO_TEST_DELAY_DISCONNECT);
+  /* no signals are expected - just wait for clock */
+  (void) vlib_process_get_events (vm, 0);
 
   /* send stop test command to the server */
   if (ec_ctrl_test_stop () < 0)

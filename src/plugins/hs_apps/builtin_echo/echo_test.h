@@ -49,6 +49,10 @@ typedef struct
 
   u64 dgrams_received;
   u64 bytes_received;
+  u64 bytes_sent;
+  u64 dgrams_sent;
+  f64 rtt;
+  et_rtt_stat_t rtt_stat;
 
   union
   {
@@ -56,17 +60,13 @@ typedef struct
     struct
     {
       u64 bytes_to_send;
-      u64 bytes_sent;
       u64 bytes_to_receive;
       u64 bytes_paced_target;
       u64 bytes_paced_current;
-      u64 dgrams_sent;
       f64 time_to_send;
       f64 send_rtt;
       f64 jitter;
-      f64 rtt;
       u32 rtt_udp_buffer_offset;
-      et_rtt_stat_t rtt_stat;
     };
     /* server */
     struct

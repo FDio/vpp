@@ -96,9 +96,7 @@ et_server_stream_rx_inline (echo_test_session_t *es, session_t *s, u8 *rx_buf, u
     }
 
   /* Echo back */
-  actual_transfer = app_send_stream ((app_session_t *) es, rx_buf, max_transfer, 0);
-  if (PREDICT_FALSE (actual_transfer != max_transfer))
-    et_err ("short trout! written %d read %u", actual_transfer, max_transfer);
+  app_send_stream ((app_session_t *) es, rx_buf, max_transfer, 0);
 
   if (PREDICT_FALSE (svm_fifo_max_dequeue_cons (rx_fifo)))
     goto rx_event;
@@ -334,9 +332,7 @@ et_server_dgram_rx (echo_test_session_t *es, session_t *s, u8 *rx_buf, u8 test_b
     }
 
   /* Echo back */
-  actual_transfer = app_send_dgram ((app_session_t *) es, rx_buf, max_transfer, 0);
-  if (PREDICT_FALSE (actual_transfer != max_transfer))
-    et_err ("short trout! written %d read %u", actual_transfer, max_transfer);
+  app_send_dgram ((app_session_t *) es, rx_buf, max_transfer, 0);
 
   if (PREDICT_FALSE (svm_fifo_max_dequeue_cons (rx_fifo)))
     goto rx_event;
@@ -733,9 +729,7 @@ et_quic_server_rx_inline (echo_test_session_t *es, session_t *s, u8 *rx_buf, u8 
     }
 
   /* Echo back */
-  actual_transfer = app_send_stream ((app_session_t *) es, rx_buf, max_transfer, 0);
-  if (PREDICT_FALSE (actual_transfer != max_transfer))
-    et_err ("short trout! written %d read %u", actual_transfer, max_transfer);
+  app_send_stream ((app_session_t *) es, rx_buf, max_transfer, 0);
 
   if (PREDICT_FALSE (svm_fifo_max_dequeue_cons (rx_fifo)))
     goto rx_event;
