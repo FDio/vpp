@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "a88998a7_2f0cb7e3",
+        "filename": "src/vnet/ip6-nd/ip6_dad.api",
+        "patchSetId": 20
+      },
+      "lineNbr": 93,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2026-03-02T22:25:50Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "7e3cac61_266e1545",
+      "revId": "4b7987ce26f5a4916e6395613ff968147b67c91f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "6bc903ae_db755941",
@@ -31,6 +49,24 @@
       "writtenOn": "2026-02-27T06:02:28Z",
       "side": 1,
       "message": "why a weak symbol and not a header file declaration?",
+      "revId": "4b7987ce26f5a4916e6395613ff968147b67c91f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "da621b02_c9ab0d1f",
+        "filename": "src/vnet/ip6-nd/ip6_dad.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 46,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2026-03-02T22:25:50Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "6bc903ae_db755941",
       "revId": "4b7987ce26f5a4916e6395613ff968147b67c91f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
