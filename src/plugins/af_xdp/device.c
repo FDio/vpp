@@ -10,6 +10,7 @@
 #include <linux/sockios.h>
 #include <linux/limits.h>
 #include <bpf/bpf.h>
+#include <xdp/libxdp.h>
 #include <vlib/vlib.h>
 #include <vlib/file.h>
 #include <vlib/pci/pci.h>
@@ -135,29 +136,36 @@ af_xdp_exit_netns (char *netns, int *fds)
 static int
 af_xdp_remove_program (af_xdp_device_t *ad)
 {
-  u32 curr_prog_id = 0;
   int ret;
   int ns_fds[2];
 
   af_xdp_enter_netns (ad->netns, ns_fds);
-  ret = bpf_xdp_query_id (ad->linux_ifindex, XDP_FLAGS_UPDATE_IF_NOEXIST,
-			  &curr_prog_id);
-  if (ret != 0)
+
+  /* Use libxdp if we loaded with libxdp, otherwise use libbpf for cleanup */
+  if (ad->xdp_prog)
     {
-      af_xdp_log (VLIB_LOG_LEVEL_ERR, ad, "bpf_xdp_query_id failed\n");
-      goto err0;
+      ret = xdp_program__detach (ad->xdp_prog, ad->linux_ifindex, XDP_FLAGS_UPDATE_IF_NOEXIST, 0);
+      if (ret != 0)
+	{
+	  af_xdp_log (VLIB_LOG_LEVEL_ERR, ad, "xdp_program__detach failed");
+	  goto err0;
+	}
+      xdp_program__close (ad->xdp_prog);
+      ad->xdp_prog = NULL;
+    }
+  else
+    {
+      /* For single-buffer mode, libxsk loaded the default program.
+       * Use libbpf API to detach it. */
+      ret = bpf_xdp_detach (ad->linux_ifindex, XDP_FLAGS_UPDATE_IF_NOEXIST, NULL);
+      if (ret != 0)
+	{
+	  af_xdp_log (VLIB_LOG_LEVEL_ERR, ad, "bpf_xdp_detach failed");
+	  goto err0;
+	}
     }
 
-  ret = bpf_xdp_detach (ad->linux_ifindex, XDP_FLAGS_UPDATE_IF_NOEXIST, NULL);
-  if (ret != 0)
-    {
-      af_xdp_log (VLIB_LOG_LEVEL_ERR, ad, "bpf_xdp_detach failed\n");
-      goto err0;
-    }
   af_xdp_exit_netns (ad->netns, ns_fds);
-  if (ad->bpf_obj)
-    bpf_object__close (ad->bpf_obj);
-
   return 0;
 
 err0:
@@ -208,10 +216,12 @@ af_xdp_delete_if (vlib_main_t * vm, af_xdp_device_t * ad)
 }
 
 static int
-af_xdp_load_program (af_xdp_create_if_args_t * args, af_xdp_device_t * ad)
+af_xdp_load_program (af_xdp_create_if_args_t *args, af_xdp_device_t *ad, const char *prog_name,
+		     bool enable_frags)
 {
-  int fd;
-  struct bpf_program *bpf_prog;
+  struct xdp_program *xdp_prog = NULL;
+  char errmsg[256];
+  int err;
   struct rlimit r = { RLIM_INFINITY, RLIM_INFINITY };
 
   if (setrlimit (RLIMIT_MEMLOCK, &r))
@@ -219,42 +229,67 @@ af_xdp_load_program (af_xdp_create_if_args_t * args, af_xdp_device_t * ad)
 		"setrlimit(%s) failed: %s (errno %d)", ad->linux_ifname,
 		strerror (errno), errno);
 
-  ad->bpf_obj = bpf_object__open_file (args->prog, NULL);
-  if (libbpf_get_error (ad->bpf_obj))
+  /* Find the BPF program - libxdp will search in standard paths */
+  vlib_log (VLIB_LOG_LEVEL_INFO, af_xdp_main.log_class,
+	    "%s: Loading XDP program '%s' (enable_frags=%d)", ad->linux_ifname, prog_name,
+	    enable_frags);
+
+  xdp_prog = xdp_program__find_file (prog_name, NULL, NULL);
+  err = libxdp_get_error (xdp_prog);
+  if (err)
     {
       args->rv = VNET_API_ERROR_SYSCALL_ERROR_5;
-      args->error = clib_error_return_unix (
-	0, "bpf_object__open_file(%s) failed", args->prog);
-      goto err0;
+      libxdp_strerror (err, errmsg, sizeof (errmsg));
+      args->error =
+	clib_error_return (0, "xdp_program__find_file(%s) failed: %s", prog_name, errmsg);
+      return -1;
     }
 
-  bpf_prog = bpf_object__next_program (ad->bpf_obj, NULL);
-  if (!bpf_prog)
-    goto err1;
+  vlib_log (VLIB_LOG_LEVEL_INFO, af_xdp_main.log_class, "%s: Found XDP program '%s'",
+	    ad->linux_ifname, prog_name);
 
-  bpf_program__set_type (bpf_prog, BPF_PROG_TYPE_XDP);
+  /* Enable multi-buffer support if requested */
+  if (enable_frags)
+    {
+      vlib_log (VLIB_LOG_LEVEL_INFO, af_xdp_main.log_class,
+		"%s: Enabling XDP frags support for program", ad->linux_ifname);
+      err = xdp_program__set_xdp_frags_support (xdp_prog, true);
+      if (err)
+	{
+	  vlib_log (VLIB_LOG_LEVEL_WARNING, af_xdp_main.log_class,
+		    "%s: Failed to enable XDP frags support: %s", ad->linux_ifname,
+		    strerror (-err));
+	  /* Continue anyway - kernel might not support it */
+	}
+      else
+	{
+	  vlib_log (VLIB_LOG_LEVEL_INFO, af_xdp_main.log_class,
+		    "%s: Successfully enabled XDP frags support", ad->linux_ifname);
+	}
+    }
 
-  if (bpf_object__load (ad->bpf_obj))
-    goto err1;
-
-  fd = bpf_program__fd (bpf_prog);
-
-  if (bpf_xdp_attach (ad->linux_ifindex, fd, XDP_FLAGS_UPDATE_IF_NOEXIST,
-		      NULL))
+  /* Attach the program */
+  vlib_log (VLIB_LOG_LEVEL_INFO, af_xdp_main.log_class,
+	    "%s: Attaching XDP program to interface (ifindex=%d)", ad->linux_ifname,
+	    ad->linux_ifindex);
+  err = xdp_program__attach (xdp_prog, ad->linux_ifindex, XDP_FLAGS_UPDATE_IF_NOEXIST, 0);
+  if (err)
     {
       args->rv = VNET_API_ERROR_SYSCALL_ERROR_6;
-      args->error = clib_error_return_unix (0, "bpf_xdp_attach(%s) failed",
-					    ad->linux_ifname);
-      goto err1;
+      libxdp_strerror (err, errmsg, sizeof (errmsg));
+      args->error =
+	clib_error_return_unix (0, "xdp_program__attach(%s) failed: %s", ad->linux_ifname, errmsg);
+      xdp_program__close (xdp_prog);
+      return -1;
     }
 
-  return 0;
+  vlib_log (VLIB_LOG_LEVEL_INFO, af_xdp_main.log_class,
+	    "%s: Successfully attached XDP program to interface", ad->linux_ifname);
 
-err1:
-  bpf_object__close (ad->bpf_obj);
-  ad->bpf_obj = 0;
-err0:
-  return -1;
+  /* Store the program for later cleanup */
+  ad->xdp_prog = xdp_prog;
+
+  return 0;
 }
 
 static int
@@ -328,8 +363,14 @@ af_xdp_create_queue (vlib_main_t *vm, af_xdp_create_if_args_t *args,
       sock_config.bind_flags |= XDP_ZEROCOPY;
       break;
     }
-  if (args->prog)
+  if (ad->flags & AF_XDP_DEVICE_F_MULTI_BUFFER)
+    sock_config.bind_flags |= XDP_USE_SG;
+
+  /* If we loaded a custom XDP program with libxdp, prevent libxsk from
+   * loading its own default program. We'll update the xsks_map manually below. */
+  if (ad->xdp_prog)
     sock_config.libbpf_flags = XSK_LIBBPF_FLAGS__INHIBIT_PROG_LOAD;
+
   if (xsk_socket__create
       (xsk, ad->linux_ifname, qid, *umem, rx, tx, &sock_config))
     {
@@ -342,20 +383,41 @@ af_xdp_create_queue (vlib_main_t *vm, af_xdp_create_if_args_t *args,
     }
 
   fd = xsk_socket__fd (*xsk);
-  if (args->prog)
+
+  /* If we loaded a program with libxdp, we must manually update the xsks_map
+   * because we set INHIBIT_PROG_LOAD above to prevent libxsk from loading
+   * its own program. */
+  if (ad->xdp_prog)
     {
-      struct bpf_map *map =
-	bpf_object__find_map_by_name (ad->bpf_obj, "xsks_map");
+      /* Get the underlying bpf_object from the libxdp program handle */
+      struct bpf_object *bpf_obj = xdp_program__bpf_obj (ad->xdp_prog);
+      if (!bpf_obj)
+	{
+	  args->rv = VNET_API_ERROR_SYSCALL_ERROR_3;
+	  args->error =
+	    clib_error_return (0, "xdp_program__bpf_obj failed for %s", ad->linux_ifname);
+	  goto err2;
+	}
+
+      struct bpf_map *map = bpf_object__find_map_by_name (bpf_obj, "xsks_map");
+      if (!map)
+	{
+	  args->rv = VNET_API_ERROR_SYSCALL_ERROR_3;
+	  args->error = clib_error_return (
+	    0, "bpf_object__find_map_by_name(xsks_map) failed for %s", ad->linux_ifname);
+	  goto err2;
+	}
+
       int ret = xsk_socket__update_xskmap (*xsk, bpf_map__fd (map));
       if (ret)
 	{
 	  args->rv = VNET_API_ERROR_SYSCALL_ERROR_3;
-	  args->error = clib_error_return_unix (
-	    0, "xsk_socket__update_xskmap %s qid %d return %d",
-	    ad->linux_ifname, qid, ret);
+	  args->error = clib_error_return_unix (0, "xsk_socket__update_xskmap %s qid %d failed",
+						ad->linux_ifname, qid);
 	  goto err2;
 	}
     }
+
   optlen = sizeof (opt);
 #ifndef SOL_XDP
 #define SOL_XDP 283
@@ -568,6 +630,7 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
   af_xdp_main_t *am = &af_xdp_main;
   af_xdp_device_t *ad;
   vnet_sw_interface_t *sw;
+  const char *prog = args->prog;
   int rxq_num, txq_num, q_num;
   int ns_fds[2];
   int i, ret;
@@ -620,6 +683,11 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
   if (tm->n_vlib_mains > 1 &&
       0 == (args->flags & AF_XDP_CREATE_FLAGS_NO_SYSCALL_LOCK))
     ad->flags |= AF_XDP_DEVICE_F_SYSCALL_LOCK;
+  if (args->flags & AF_XDP_CREATE_FLAGS_MULTI_BUFFER)
+    ad->flags |= AF_XDP_DEVICE_F_MULTI_BUFFER;
+
+  if ((ad->flags & AF_XDP_DEVICE_F_MULTI_BUFFER) && !prog)
+    prog = AF_XDP_MB_DEFAULT_PROG;
 
   ad->linux_ifname = (char *) format (0, "%s", args->linux_ifname);
   vec_validate (ad->linux_ifname, IFNAMSIZ - 1);	/* libbpf expects ifname to be at least IFNAMSIZ */
@@ -637,9 +705,24 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
       goto err1;
     }
 
-  if (args->prog &&
-      (af_xdp_remove_program (ad) || af_xdp_load_program (args, ad)))
-    goto err2;
+  vlib_log (VLIB_LOG_LEVEL_INFO, af_xdp_main.log_class,
+	    "%s: Checking if XDP program needed: prog=%s, multi-buffer=%d", ad->linux_ifname,
+	    prog ? prog : "(null)", !!(ad->flags & AF_XDP_DEVICE_F_MULTI_BUFFER));
+
+  if (prog)
+    {
+      bool enable_frags = !!(ad->flags & AF_XDP_DEVICE_F_MULTI_BUFFER);
+      vlib_log (VLIB_LOG_LEVEL_INFO, af_xdp_main.log_class,
+		"%s: Loading XDP program: %s (enable_frags=%d)", ad->linux_ifname, prog,
+		enable_frags);
+      if (af_xdp_remove_program (ad) || af_xdp_load_program (args, ad, prog, enable_frags))
+	goto err2;
+    }
+  else
+    {
+      vlib_log (VLIB_LOG_LEVEL_INFO, af_xdp_main.log_class, "%s: No XDP program to load",
+		ad->linux_ifname);
+    }
 
   q_num = clib_max (rxq_num, txq_num);
   ad->rxq_num = rxq_num;
