@@ -90,7 +90,7 @@ class VCLTestCase(VppAsfTestCase):
         self.server_ipv6_args = ["-6", self.server_port]
         self.timeout = 20
         self.echo_phrase = "Hello, world! Jenny is a friend of mine."
-        self.pre_test_sleep = 0.3
+        self.pre_test_sleep = 2
         self.post_test_sleep = 1
         self.sapi_client_sock = "default"
         self.sapi_server_sock = "default"
