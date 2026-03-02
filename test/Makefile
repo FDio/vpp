@@ -314,6 +314,7 @@ $(FAILED_DIR): reset
 
 .PHONY: test-dep
 test-dep: $(PAPI_INSTALL_DONE) $(FAILED_DIR)
+	$(MAKE) -C $(WS_ROOT)/extras/bpf af_xdp_mb.bpf.o
 
 .PHONY: test
 test: test-dep sanity
