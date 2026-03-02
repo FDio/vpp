@@ -1,0 +1,22 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e20e94ec_bcc723e9",
+        "filename": "src/plugins/dpdk/device/init.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-03-02T09:14:28Z",
+      "side": 1,
+      "message": "Done.",
+      "parentUuid": "5127146a_36a97e80",
+      "revId": "026026dff66191b2567540387aff96314cf4c476",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
