@@ -388,12 +388,27 @@ vnet_crypto_register_key_handler (vlib_main_t *vm, u32 engine_index,
 }
 
 static vnet_crypto_key_t *
-vnet_crypoto_key_alloc (u32 length)
+vnet_crypto_key_alloc (u32 length, vnet_crypto_alg_t alg)
 {
   vnet_crypto_main_t *cm = &crypto_main;
   u8 expected = 0;
   vnet_crypto_key_t *k, **kp;
-  u32 alloc_sz = sizeof (vnet_crypto_key_t) + round_pow2 (length, 16);
+  vnet_crypto_alg_data_t *ad = cm->algs + alg;
+  /* Minimum one engine key_data slot is expected. */
+  u8 active_engine_count = 1;
+
+  if (ad->active_eidx[VNET_CRYPTO_HANDLER_TYPE_CHAINED] !=
+      ad->active_eidx[VNET_CRYPTO_HANDLER_TYPE_SIMPLE])
+    active_engine_count++;
+
+  /* Linked algs store crypto + integ key material in one allocation. */
+  if (ad->is_link)
+    length += cm->algs[ad->link_crypto_alg].key_length;
+
+  u32 alloc_sz = round_pow2 (sizeof (vnet_crypto_key_t) + length, CLIB_CACHE_LINE_BYTES);
+
+  /* key_data: per-engine * per-thread * per-alg key data size. */
+  alloc_sz += active_engine_count * ad->per_engine_data_sz;
 
   while (!__atomic_compare_exchange_n (&cm->keys_lock, &expected, 1, 0,
 				       __ATOMIC_ACQUIRE, __ATOMIC_RELAXED))
@@ -407,11 +422,13 @@ vnet_crypoto_key_alloc (u32 length)
 
   __atomic_store_n (&cm->keys_lock, 0, __ATOMIC_RELEASE);
 
-  k = clib_mem_alloc_aligned (alloc_sz, alignof (vnet_crypto_key_t));
+  k = clib_mem_alloc_aligned (alloc_sz, CLIB_CACHE_LINE_BYTES);
   kp[0] = k;
   *k = (vnet_crypto_key_t){
     .index = kp - cm->keys,
     .length = length,
+    .alg = alg,
+    .is_link = ad->is_link,
   };
 
   return k;
@@ -440,8 +457,7 @@ vnet_crypto_key_add (vlib_main_t * vm, vnet_crypto_alg_t alg, u8 * data,
 	return ~0;
     }
 
-  key = vnet_crypoto_key_alloc (length);
-  key->alg = alg;
+  key = vnet_crypto_key_alloc (length, alg);
 
   clib_memcpy (key->data, data, length);
   vec_foreach (engine, cm->engines)
@@ -515,11 +531,10 @@ vnet_crypto_key_add_linked (vlib_main_t * vm,
   if (linked_alg == ~0)
     return ~0;
 
-  key = vnet_crypoto_key_alloc (0);
+  key = vnet_crypto_key_alloc (0, linked_alg);
   key->is_link = 1;
   key->index_crypto = index_crypto;
   key->index_integ = index_integ;
-  key->alg = linked_alg;
 
   vec_foreach (engine, cm->engines)
     if (engine->key_op_handler)
