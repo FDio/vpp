@@ -92,12 +92,16 @@ def create_test(test_name, test, ip_version, mtu):
     )
     def test_func(self):
         self.logger.debug(f"Starting unittest:{test_name}")
-        self.setUpTestToplogy(test=test, ip_version=ip_version)
+        is_valid_mtu = (ip_version == 6 and mtu >= 1280) or ip_version == 4
+        self.setUpTestToplogy(
+            test=test, ip_version=ip_version, mtu=(mtu if is_valid_mtu else None)
+        )
         result = self.set_interfaces_mtu(
             mtu=mtu,
             ip_version=ip_version,
             vpp_interfaces=self.vpp_interfaces,
             linux_interfaces=self.linux_interfaces,
+            skip_linux_mtu_if_names=getattr(self, "af_xdp_linux_interfaces", set()),
         )
         if "memif" in self.if_types:
             self.logger.debug("Starting libmemif test_app for memif test")
@@ -158,7 +162,12 @@ def generate_vpp_interface_tests(tests, test_class):
             if_type == "af_xdp" for if_type in client_if_types + server_if_types
         )
 
-        # MTU <= 2048 Bytes for af_xdp interfaces
+        # Explicit test MTU list has priority.
+        if "mtus" in test:
+            return test["mtus"]
+
+        # For AF_XDP single-buffer tests, keep MTU <= 2048 bytes.
+        # Multi-buffer tests can override this with test["mtus"].
         if contains_af_xdp:
             return [mtu for mtu in test_config["mtus"] if mtu <= 2048]
         else:
@@ -197,7 +206,7 @@ class TestVPPInterfacesQemu:
              --vppaf_packet_int2--host-int2--iperfServer--Linux_ns2
     """
 
-    def setUpTestToplogy(self, test, ip_version):
+    def setUpTestToplogy(self, test, ip_version, mtu=None):
         """Setup the test topology.
 
         1. Create Linux Namespaces for iPerf Client & Server.
@@ -250,6 +259,9 @@ class TestVPPInterfacesQemu:
         self.if_history_name = (
             f"{config.tmp_dir}/vpp-unittest-{self.__class__.__name__}/history_if.txt"
         )
+        # Defensive cleanup in case a previous failed test leaked namespaces.
+        for ns in (self.client_namespace, self.server_namespace):
+            subprocess.run(["ip", "netns", "del", ns], capture_output=True)
         delete_all_namespaces(self.ns_history_file)
         create_namespace(
             self.ns_history_file, ns=[self.client_namespace, self.server_namespace]
@@ -263,12 +275,15 @@ class TestVPPInterfacesQemu:
         self.egress_if_idxes = []
         self.vpp_interfaces = []
         self.linux_interfaces = []
+        self.af_xdp_linux_interfaces = set()
         enable_client_if_gso = test.get("client_if_gso", 0)
         enable_server_if_gso = test.get("server_if_gso", 0)
         enable_client_if_gro = test.get("client_if_gro", 0)
         enable_server_if_gro = test.get("server_if_gro", 0)
         enable_client_if_checksum_offload = test.get("client_if_checksum_offload", 0)
         enable_server_if_checksum_offload = test.get("server_if_checksum_offload", 0)
+        enable_client_if_multi_buffer = test.get("client_if_multi_buffer", 0)
+        enable_server_if_multi_buffer = test.get("server_if_multi_buffer", 0)
 
         # Create unique host interfaces in Linux and VPP for connecting to iperf
         # client & iperf server to prevent conflicts when TEST_JOBS > 1
@@ -388,6 +403,8 @@ class TestVPPInterfacesQemu:
                         else layer3["client_ip6_prefix"]
                     ),
                     version=client_if_version,
+                    multi_buffer=enable_client_if_multi_buffer,
+                    mtu=mtu,
                 )
             else:
                 print(
@@ -471,6 +488,8 @@ class TestVPPInterfacesQemu:
                     ip4_prefix=server_ip4_prefix,
                     ip6_prefix=server_ip6_prefix,
                     version=server_if_version,
+                    multi_buffer=enable_server_if_multi_buffer,
+                    mtu=mtu,
                 )
             else:
                 print(
@@ -525,14 +544,14 @@ class TestVPPInterfacesQemu:
 
     def tearDown(self):
         # Delete tap interfaces
-        for interface_if_idx in self.tap_interfaces:
+        for interface_if_idx in getattr(self, "tap_interfaces", []):
             try:
                 self.vapi.tap_delete_v2(sw_if_index=interface_if_idx)
             except Exception:
                 pass
 
         # Delete memif interfaces
-        for interface_if_idx in self.memif_interfaces:
+        for interface_if_idx in getattr(self, "memif_interfaces", []):
             try:
                 self.vapi.memif_delete(sw_if_index=interface_if_idx)
             except Exception:
@@ -599,14 +618,15 @@ class TestVPPInterfacesQemu:
         except Exception:
             pass
 
-        # Clean up namespaces and processes
-        try:
-            delete_all_namespaces(self.ns_history_file)
-        except Exception:
-            pass
+        # Stop background processes before namespace removal.
         try:
             if hasattr(self, "iperf_cmd"):
                 stop_iperf(" ".join(self.iperf_cmd))
+        except Exception:
+            pass
+        # Clean up namespaces and processes
+        try:
+            delete_all_namespaces(self.ns_history_file)
         except Exception:
             pass
         try:
@@ -810,6 +830,7 @@ class TestVPPInterfacesQemu:
         """
         vpp_interfaces = kwargs.get("vpp_interfaces")
         linux_interfaces = kwargs.get("linux_interfaces")
+        skip_linux_mtu_if_names = kwargs.get("skip_linux_mtu_if_names", set())
         # IPv6 on Linux requires an MTU value >=1280
         if (ip_version == 6 and mtu >= 1280) or ip_version == 4:
             for sw_if_idx in vpp_interfaces:
@@ -817,6 +838,8 @@ class TestVPPInterfacesQemu:
                     sw_if_index=sw_if_idx, mtu=[mtu, 0, 0, 0]
                 )
             for namespace, interface_name in linux_interfaces:
+                if interface_name in skip_linux_mtu_if_names:
+                    continue
                 set_interface_mtu(
                     namespace=namespace,
                     interface=interface_name,
@@ -828,7 +851,15 @@ class TestVPPInterfacesQemu:
             return False
 
     def create_af_xdp(
-        self, namespace, host_side_name, vpp_side_name, ip4_prefix, ip6_prefix, version
+        self,
+        namespace,
+        host_side_name,
+        vpp_side_name,
+        ip4_prefix,
+        ip6_prefix,
+        version,
+        multi_buffer=0,
+        mtu=None,
     ):
         """Create an AF_XDP interface and configure it in VPP and Linux."""
         try:
@@ -918,11 +949,31 @@ class TestVPPInterfacesQemu:
             # Add delay to ensure host interface is fully initialized
             time.sleep(1)
 
+            # AF_XDP netdev MTU must be configured before AF_XDP attach.
+            if mtu is not None:
+                set_interface_mtu(
+                    namespace="",
+                    interface=unique_vpp_side_name,
+                    mtu=mtu,
+                    logger=self.logger,
+                )
+                set_interface_mtu(
+                    namespace=namespace,
+                    interface=unique_host_side_name,
+                    mtu=mtu,
+                    logger=self.logger,
+                )
+
             api_args = {
                 "host_if": unique_vpp_side_name,
                 "rxq_num": 1,
             }
 
+            if multi_buffer:
+                if version < 3:
+                    raise ValueError("multi-buffer AF_XDP test requires API v3")
+                # AF_XDP_API_FLAGS_MULTI_BUFFER
+                api_args["flags"] = 2
             # Clean any stale XDP sockets
             os.system(
                 f"rm -f /dev/shm/vpp_*{unique_vpp_side_name}* 2>/dev/null || true"
@@ -939,7 +990,10 @@ class TestVPPInterfacesQemu:
                     elif version == 2:
                         result = self.vapi.af_xdp_create_v2(**api_args)
                     elif version == 3:
-                        result = self.vapi.af_xdp_create_v3(**api_args)
+                        if multi_buffer:
+                            result = self.vapi.af_xdp_create_v4(**api_args)
+                        else:
+                            result = self.vapi.af_xdp_create_v3(**api_args)
                     else:
                         raise ValueError(f"Unsupported AF_XDP version: {version}")
                     break
@@ -964,6 +1018,8 @@ class TestVPPInterfacesQemu:
             self.vpp_interfaces.append(sw_if_index)
             self.linux_interfaces.append(["", unique_vpp_side_name])
             self.linux_interfaces.append([namespace, unique_host_side_name])
+            self.af_xdp_linux_interfaces.add(unique_vpp_side_name)
+            self.af_xdp_linux_interfaces.add(unique_host_side_name)
 
             # Track AF_XDP interfaces for tearDown
             if not hasattr(self, "af_xdp_interfaces"):
