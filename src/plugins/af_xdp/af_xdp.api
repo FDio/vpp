@@ -28,6 +28,7 @@ enum af_xdp_mode
 enumflag af_xdp_flag : u8
 {
   AF_XDP_API_FLAGS_NO_SYSCALL_LOCK = 1,
+  AF_XDP_API_FLAGS_MULTI_BUFFER = 2,
 };
 
 /** \brief
@@ -64,7 +65,7 @@ autoendian define af_xdp_create_v3
   vl_api_af_xdp_flag_t flags [default=0];
   string prog[256];
   string netns[64];
-  option vat_help = "<host-if linux-ifname> [name ifname] [rx-queue-size size] [tx-queue-size size] [num-rx-queues <num|all>] [prog pathname] [netns ns] [zero-copy|no-zero-copy] [no-syscall-lock]";
+  option vat_help = "<host-if linux-ifname> [name ifname] [rx-queue-size size] [tx-queue-size size] [num-rx-queues <num|all>] [prog pathname] [netns ns] [zero-copy|no-zero-copy] [no-syscall-lock] [multi-buffer|no-multi-buffer]";
 };
 
 /** \brief

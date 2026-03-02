@@ -10,9 +10,9 @@ CFLAGS += -I/usr/include/x86_64-linux-gnu
 CFLAGS += -I$(BPF_ROOT)
 #CFLAGS += -DDEBUG
 
-all: af_xdp.bpf.o
+all: af_xdp.bpf.o af_xdp_mb.bpf.o
 
 clean:
-	$(RM) af_xdp.bpf.o
+	$(RM) af_xdp.bpf.o af_xdp_mb.bpf.o
 
 .PHONY: all clean
