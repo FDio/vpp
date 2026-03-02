@@ -49,42 +49,42 @@ static u32 num_threads;
   _ (null_gmac, AES_192_NULL_GMAC, EVP_aes_192_gcm, 0, 0)                     \
   _ (null_gmac, AES_256_NULL_GMAC, EVP_aes_256_gcm, 0, 0)
 
-#define foreach_openssl_linked_evp_op                                         \
-  _ (3DES_CBC_SHA1_TAG12)                                                     \
-  _ (3DES_CBC_SHA224_TAG14)                                                   \
-  _ (3DES_CBC_SHA256_TAG16)                                                   \
-  _ (3DES_CBC_SHA384_TAG24)                                                   \
-  _ (3DES_CBC_SHA512_TAG32)                                                   \
-  _ (AES_128_CBC_SHA1_TAG12)                                                  \
-  _ (AES_192_CBC_SHA1_TAG12)                                                  \
-  _ (AES_256_CBC_SHA1_TAG12)                                                  \
-  _ (AES_128_CBC_SHA224_TAG14)                                                \
-  _ (AES_192_CBC_SHA224_TAG14)                                                \
-  _ (AES_256_CBC_SHA224_TAG14)                                                \
-  _ (AES_128_CBC_SHA256_TAG16)                                                \
-  _ (AES_192_CBC_SHA256_TAG16)                                                \
-  _ (AES_256_CBC_SHA256_TAG16)                                                \
-  _ (AES_128_CBC_SHA384_TAG24)                                                \
-  _ (AES_192_CBC_SHA384_TAG24)                                                \
-  _ (AES_256_CBC_SHA384_TAG24)                                                \
-  _ (AES_128_CBC_SHA512_TAG32)                                                \
-  _ (AES_192_CBC_SHA512_TAG32)                                                \
-  _ (AES_256_CBC_SHA512_TAG32)                                                \
-  _ (AES_128_CBC_MD5_TAG12)                                                   \
-  _ (AES_192_CBC_MD5_TAG12)                                                   \
-  _ (AES_256_CBC_MD5_TAG12)                                                   \
-  _ (AES_128_CTR_SHA1_TAG12)                                                  \
-  _ (AES_192_CTR_SHA1_TAG12)                                                  \
-  _ (AES_256_CTR_SHA1_TAG12)                                                  \
-  _ (AES_128_CTR_SHA256_TAG16)                                                \
-  _ (AES_192_CTR_SHA256_TAG16)                                                \
-  _ (AES_256_CTR_SHA256_TAG16)                                                \
-  _ (AES_128_CTR_SHA384_TAG24)                                                \
-  _ (AES_192_CTR_SHA384_TAG24)                                                \
-  _ (AES_256_CTR_SHA384_TAG24)                                                \
-  _ (AES_128_CTR_SHA512_TAG32)                                                \
-  _ (AES_192_CTR_SHA512_TAG32)                                                \
-  _ (AES_256_CTR_SHA512_TAG32)
+#define foreach_openssl_linked_evp_op                                                              \
+  _ (3DES_CBC_SHA1_TAG12, EVP_des_ede3_cbc, 24, EVP_sha1)                                          \
+  _ (3DES_CBC_SHA224_TAG14, EVP_des_ede3_cbc, 24, EVP_sha224)                                      \
+  _ (3DES_CBC_SHA256_TAG16, EVP_des_ede3_cbc, 24, EVP_sha256)                                      \
+  _ (3DES_CBC_SHA384_TAG24, EVP_des_ede3_cbc, 24, EVP_sha384)                                      \
+  _ (3DES_CBC_SHA512_TAG32, EVP_des_ede3_cbc, 24, EVP_sha512)                                      \
+  _ (AES_128_CBC_SHA1_TAG12, EVP_aes_128_cbc, 16, EVP_sha1)                                        \
+  _ (AES_192_CBC_SHA1_TAG12, EVP_aes_192_cbc, 24, EVP_sha1)                                        \
+  _ (AES_256_CBC_SHA1_TAG12, EVP_aes_256_cbc, 32, EVP_sha1)                                        \
+  _ (AES_128_CBC_SHA224_TAG14, EVP_aes_128_cbc, 16, EVP_sha224)                                    \
+  _ (AES_192_CBC_SHA224_TAG14, EVP_aes_192_cbc, 24, EVP_sha224)                                    \
+  _ (AES_256_CBC_SHA224_TAG14, EVP_aes_256_cbc, 32, EVP_sha224)                                    \
+  _ (AES_128_CBC_SHA256_TAG16, EVP_aes_128_cbc, 16, EVP_sha256)                                    \
+  _ (AES_192_CBC_SHA256_TAG16, EVP_aes_192_cbc, 24, EVP_sha256)                                    \
+  _ (AES_256_CBC_SHA256_TAG16, EVP_aes_256_cbc, 32, EVP_sha256)                                    \
+  _ (AES_128_CBC_SHA384_TAG24, EVP_aes_128_cbc, 16, EVP_sha384)                                    \
+  _ (AES_192_CBC_SHA384_TAG24, EVP_aes_192_cbc, 24, EVP_sha384)                                    \
+  _ (AES_256_CBC_SHA384_TAG24, EVP_aes_256_cbc, 32, EVP_sha384)                                    \
+  _ (AES_128_CBC_SHA512_TAG32, EVP_aes_128_cbc, 16, EVP_sha512)                                    \
+  _ (AES_192_CBC_SHA512_TAG32, EVP_aes_192_cbc, 24, EVP_sha512)                                    \
+  _ (AES_256_CBC_SHA512_TAG32, EVP_aes_256_cbc, 32, EVP_sha512)                                    \
+  _ (AES_128_CBC_MD5_TAG12, EVP_aes_128_cbc, 16, EVP_md5)                                          \
+  _ (AES_192_CBC_MD5_TAG12, EVP_aes_192_cbc, 24, EVP_md5)                                          \
+  _ (AES_256_CBC_MD5_TAG12, EVP_aes_256_cbc, 32, EVP_md5)                                          \
+  _ (AES_128_CTR_SHA1_TAG12, EVP_aes_128_ctr, 16, EVP_sha1)                                        \
+  _ (AES_192_CTR_SHA1_TAG12, EVP_aes_192_ctr, 24, EVP_sha1)                                        \
+  _ (AES_256_CTR_SHA1_TAG12, EVP_aes_256_ctr, 32, EVP_sha1)                                        \
+  _ (AES_128_CTR_SHA256_TAG16, EVP_aes_128_ctr, 16, EVP_sha256)                                    \
+  _ (AES_192_CTR_SHA256_TAG16, EVP_aes_192_ctr, 24, EVP_sha256)                                    \
+  _ (AES_256_CTR_SHA256_TAG16, EVP_aes_256_ctr, 32, EVP_sha256)                                    \
+  _ (AES_128_CTR_SHA384_TAG24, EVP_aes_128_ctr, 16, EVP_sha384)                                    \
+  _ (AES_192_CTR_SHA384_TAG24, EVP_aes_192_ctr, 24, EVP_sha384)                                    \
+  _ (AES_256_CTR_SHA384_TAG24, EVP_aes_256_ctr, 32, EVP_sha384)                                    \
+  _ (AES_128_CTR_SHA512_TAG32, EVP_aes_128_ctr, 16, EVP_sha512)                                    \
+  _ (AES_192_CTR_SHA512_TAG32, EVP_aes_192_ctr, 24, EVP_sha512)                                    \
+  _ (AES_256_CTR_SHA512_TAG32, EVP_aes_256_ctr, 32, EVP_sha512)
 
 #define foreach_openssl_chacha20_evp_op                                       \
   _ (chacha20_poly1305, CHACHA20_POLY1305, EVP_chacha20_poly1305, 0, 0)       \
@@ -842,31 +842,27 @@ crypto_openssl_key_handler (vnet_crypto_key_op_t kop,
 foreach_openssl_evp_op;
 #undef _
 
-#define _(a)                                                                  \
-  static u32 openssl_ops_enc_##a (vlib_main_t *vm, vnet_crypto_op_t *ops[],   \
-				  u32 n_ops)                                  \
-  {                                                                           \
-    return openssl_ops_enc_cbc_hmac (vm, ops, n_ops);                         \
-  }                                                                           \
-                                                                              \
-  u32 openssl_ops_dec_##a (vlib_main_t *vm, vnet_crypto_op_t *ops[],          \
-			   u32 n_ops)                                         \
-  {                                                                           \
-    return openssl_ops_hmac_dec_cbc (vm, ops, n_ops);                         \
-  }                                                                           \
-                                                                              \
-  static u32 openssl_ops_enc_chained_##a (                                    \
-    vlib_main_t *vm, vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks, \
-    u32 n_ops)                                                                \
-  {                                                                           \
-    return openssl_ops_enc_cbc_hmac_chained (vm, ops, chunks, n_ops);         \
-  }                                                                           \
-                                                                              \
-  static u32 openssl_ops_dec_chained_##a (                                    \
-    vlib_main_t *vm, vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks, \
-    u32 n_ops)                                                                \
-  {                                                                           \
-    return openssl_ops_hmac_dec_cbc_chained (vm, ops, chunks, n_ops);         \
+#define _(a, b, c, d)                                                                              \
+  static u32 openssl_ops_enc_##a (vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops)             \
+  {                                                                                                \
+    return openssl_ops_enc_cbc_hmac (vm, ops, n_ops);                                              \
+  }                                                                                                \
+                                                                                                   \
+  u32 openssl_ops_dec_##a (vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops)                    \
+  {                                                                                                \
+    return openssl_ops_hmac_dec_cbc (vm, ops, n_ops);                                              \
+  }                                                                                                \
+                                                                                                   \
+  static u32 openssl_ops_enc_chained_##a (vlib_main_t *vm, vnet_crypto_op_t *ops[],                \
+					  vnet_crypto_op_chunk_t *chunks, u32 n_ops)               \
+  {                                                                                                \
+    return openssl_ops_enc_cbc_hmac_chained (vm, ops, chunks, n_ops);                              \
+  }                                                                                                \
+                                                                                                   \
+  static u32 openssl_ops_dec_chained_##a (vlib_main_t *vm, vnet_crypto_op_t *ops[],                \
+					  vnet_crypto_op_chunk_t *chunks, u32 n_ops)               \
+  {                                                                                                \
+    return openssl_ops_hmac_dec_cbc_chained (vm, ops, chunks, n_ops);                              \
   }
 
 foreach_openssl_linked_evp_op;
@@ -935,6 +931,10 @@ crypto_openssl_init (vnet_crypto_engine_registration_t *r)
   foreach_openssl_hmac_op;
 #undef _
 
+#define _(a, b, c, d) r->key_data_sz[VNET_CRYPTO_ALG_##a] = sizeof (openssl_per_thread_data_t);
+  foreach_openssl_linked_evp_op;
+#undef _
+
   per_thread_data = r->per_thread_data;
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
@@ -956,14 +956,14 @@ vnet_crypto_engine_op_handlers_t op_handlers[] = {
       .cfn = openssl_ops_dec_chained_##a },
   foreach_openssl_evp_op
 #undef _
-#define _(a)                                                                  \
-  {                                                                           \
-    .opt = VNET_CRYPTO_OP_##a##_ENC,                                          \
-    .fn = openssl_ops_enc_##a,                                                \
-    .cfn = openssl_ops_enc_chained_##a,                                       \
-  },                                                                          \
-    { .opt = VNET_CRYPTO_OP_##a##_DEC,                                        \
-      .fn = openssl_ops_dec_##a,                                              \
+#define _(a, b, c, d)                                                                              \
+  {                                                                                                \
+    .opt = VNET_CRYPTO_OP_##a##_ENC,                                                               \
+    .fn = openssl_ops_enc_##a,                                                                     \
+    .cfn = openssl_ops_enc_chained_##a,                                                            \
+  },                                                                                               \
+    { .opt = VNET_CRYPTO_OP_##a##_DEC,                                                             \
+      .fn = openssl_ops_dec_##a,                                                                   \
       .cfn = openssl_ops_dec_chained_##a },
     foreach_openssl_linked_evp_op
 #undef _

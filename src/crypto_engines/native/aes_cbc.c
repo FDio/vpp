@@ -11,6 +11,12 @@
 #pragma GCC optimize ("O3")
 #endif
 
+typedef struct aes_cbc_sha2_hmac_key_data
+{
+  clib_sha2_hmac_key_data_t hmac_key_data;
+  aes_cbc_key_data_t cbc_key_data;
+} aes_cbc_sha2_hmac_key_data_t;
+
 #define CRYPTO_NATIVE_AES_CBC_ENC_VEC_SIZE 256
 
 static_always_inline u32
