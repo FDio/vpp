@@ -34,6 +34,8 @@ class VppIperf:
         self.client_ns = client_ns
         self.server_ip = server_ip
         self.duration = 10
+        # iperf3 v3.9 can take longer to complete short runs in CI.
+        self.client_retries = 5
         self.client_args = ""
         self.server_args = ""
         self.logger = logger
@@ -81,17 +83,30 @@ class VppIperf:
         cmd = " ".join(args)
         self.logger.debug(f"Starting iperf server: {cmd}")
         try:
-            subprocess.run(
-                cmd,
-                timeout=self.duration + 5,
+            result = subprocess.run(
+                args,
+                timeout=self.duration,
+                capture_output=True,
                 encoding="utf-8",
-                shell=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
             )
+            if result.returncode != 0:
+                raise Exception(
+                    "Error: Failed to start iPerf server",
+                    (result.stdout or "") + (result.stderr or ""),
+                )
         except subprocess.TimeoutExpired as e:
-            raise Exception("Error: Timeout expired for iPerf", e.output)
+            raise Exception(
+                "Error: Timeout expired for iPerf server", self._to_text(e.output)
+            )
         return args[4:]
+
+    @staticmethod
+    def _to_text(value):
+        if value is None:
+            return ""
+        if isinstance(value, bytes):
+            return value.decode("utf-8", errors="replace")
+        return str(value)
 
     def start_iperf_client(self):
         args = [
@@ -106,17 +121,37 @@ class VppIperf:
             str(self.duration),
         ]
         args.extend(self.client_args.split())
-        args = " ".join(args)
-        try:
-            return subprocess.run(
-                args,
-                timeout=self.duration + 5,
-                encoding="utf-8",
-                capture_output=True,
-                shell=True,
-            )
-        except subprocess.TimeoutExpired as e:
-            raise Exception("Error: Timeout expired for iPerf", e.output)
+        if os.path.basename(self.iperf) == "iperf3" and "--connect-timeout" not in args:
+            args.extend(["--connect-timeout", "3000"])
+        timeout = self.duration
+        cmd = " ".join(args)
+        for attempt in range(1, self.client_retries + 1):
+            try:
+                result = subprocess.run(
+                    args,
+                    timeout=timeout,
+                    encoding="utf-8",
+                    capture_output=True,
+                )
+                transient_error = "unable to connect to server" in (
+                    (result.stderr or "").lower()
+                )
+                if transient_error and attempt < self.client_retries:
+                    self.logger.warning(
+                        f"iPerf client connect race detected (attempt {attempt}/{self.client_retries}): {cmd}"
+                    )
+                    continue
+                return result
+            except subprocess.TimeoutExpired as e:
+                if attempt < self.client_retries:
+                    self.logger.warning(
+                        f"iPerf client timeout (attempt {attempt}/{self.client_retries}): {cmd}"
+                    )
+                    continue
+                raise Exception(
+                    "Error: Timeout expired for iPerf client",
+                    self._to_text(e.output) + self._to_text(e.stderr),
+                )
 
     def start(self, server_only=False, client_only=False):
         """Runs iPerf.
@@ -134,11 +169,12 @@ class VppIperf:
             result = self.start_iperf_client()
             self.logger.debug(f"Iperf client args: {result.args}")
             self.logger.debug(result.stdout)
-            if result.stderr:
+            if result.returncode != 0 or result.stderr:
                 self.logger.error(
                     f"Error starting Iperf Client in Namespace: {self.client_ns}"
                 )
                 self.logger.error(f"Iperf client args: {result.args}")
+                self.logger.error(f"Iperf client returncode: {result.returncode}")
                 self.logger.error(f"Iperf client has errors: {result.stderr}")
                 return False
             else:
@@ -179,13 +215,23 @@ def start_iperf(
     client_only - start the iperf client only
     logger - test logger
     """
+    iperf = VppIperf()
+    is_iperf3 = os.path.basename(iperf.iperf) == "iperf3"
     if ip_version == 4:
         iperf_server_ip = server_ipv4_address
+        if is_iperf3:
+            client_args = f"-4 {client_args}"
+            server_args = f"-4 {server_args}"
     elif ip_version == 6:
         iperf_server_ip = server_ipv6_address
-        client_args = "-V" + " " + client_args
-        server_args = "-V" + " " + server_args
-    iperf = VppIperf()
+        if is_iperf3:
+            # In iperf3, -6 selects IPv6 while -V only enables verbose output.
+            client_args = f"-6 {client_args}"
+            server_args = f"-6 {server_args}"
+        else:
+            # Legacy iperf uses -V for IPv6.
+            client_args = f"-V {client_args}"
+            server_args = f"-V {server_args}"
     iperf.client_ns = client_ns
     iperf.server_ns = server_ns
     iperf.server_ip = iperf_server_ip
