@@ -104,6 +104,8 @@ class VppIperf:
             self.server_ip,
             "-t",
             str(self.duration),
+            "--connect-timeout",
+            "10",
         ]
         args.extend(self.client_args.split())
         args = " ".join(args)
