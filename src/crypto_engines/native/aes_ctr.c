@@ -11,6 +11,12 @@
 #pragma GCC optimize("O3")
 #endif
 
+typedef struct aes_ctr_sha2_hmac_key_data
+{
+  clib_sha2_hmac_key_data_t hmac_key_data;
+  aes_ctr_key_data_t ctr_key_data;
+} aes_ctr_sha2_hmac_key_data_t;
+
 static_always_inline u32
 aes_ops_enc_aes_ctr_hmac (vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops,
 			  aes_key_size_t ks, clib_sha2_type_t type)

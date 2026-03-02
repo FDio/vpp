@@ -30,6 +30,8 @@ typedef struct
 {
   u16 data_size;
   u8 block_size;
+  u8 is_link;
+  u16 link_data_size;
   aes_gcm_pre_t aes_gcm_pre;
   keyexp_t keyexp;
   hash_one_block_t hash_one_block;
@@ -54,6 +56,13 @@ typedef struct
   ipsecmb_aes_key_data_t aes_key_data;
   ipsecmb_per_thread_data_t *ctx;
 } ipsecmb_aes_key_ctx_data_t;
+
+typedef struct
+{
+  ipsecmb_aes_key_data_t aes_key_data;
+  u8 hmac_key_data[EXPANDED_MAX_HMAC_KEY_N_BYTES];
+  ipsecmb_per_thread_data_t *ctx;
+} ipsecmb_aes_hmac_key_ctx_data_t;
 
 typedef struct
 {
@@ -112,34 +121,34 @@ static ipsecmb_main_t ipsecmb_main = { };
   _ (AES_256_GCM_TAG16_AAD8, 256, 1, 8)                                       \
   _ (AES_256_GCM_TAG16_AAD12, 256, 1, 12)
 
-#define foreach_ipsecmb_linked_cipher_op                                      \
-  _ (AES_128_CBC_SHA1, 128, CBC, SHA_1, 64, 20, 20, 12)                       \
-  _ (AES_192_CBC_SHA1, 192, CBC, SHA_1, 64, 20, 20, 12)                       \
-  _ (AES_256_CBC_SHA1, 256, CBC, SHA_1, 64, 20, 20, 12)                       \
-  _ (AES_128_CBC_SHA224, 128, CBC, SHA_224, 64, 32, 28, 14)                   \
-  _ (AES_192_CBC_SHA224, 192, CBC, SHA_224, 64, 32, 28, 14)                   \
-  _ (AES_256_CBC_SHA224, 256, CBC, SHA_224, 64, 32, 28, 14)                   \
-  _ (AES_128_CBC_SHA256, 128, CBC, SHA_256, 64, 32, 32, 16)                   \
-  _ (AES_192_CBC_SHA256, 192, CBC, SHA_256, 64, 32, 32, 16)                   \
-  _ (AES_256_CBC_SHA256, 256, CBC, SHA_256, 64, 32, 32, 16)                   \
-  _ (AES_128_CBC_SHA384, 128, CBC, SHA_384, 128, 64, 48, 24)                  \
-  _ (AES_192_CBC_SHA384, 192, CBC, SHA_384, 128, 64, 48, 24)                  \
-  _ (AES_256_CBC_SHA384, 256, CBC, SHA_384, 128, 64, 48, 24)                  \
-  _ (AES_128_CBC_SHA512, 128, CBC, SHA_512, 128, 64, 64, 32)                  \
-  _ (AES_192_CBC_SHA512, 192, CBC, SHA_512, 128, 64, 64, 32)                  \
-  _ (AES_256_CBC_SHA512, 256, CBC, SHA_512, 128, 64, 64, 32)                  \
-  _ (AES_128_CTR_SHA1, 128, CNTR, SHA_1, 64, 20, 20, 12)                      \
-  _ (AES_192_CTR_SHA1, 192, CNTR, SHA_1, 64, 20, 20, 12)                      \
-  _ (AES_256_CTR_SHA1, 256, CNTR, SHA_1, 64, 20, 20, 12)                      \
-  _ (AES_128_CTR_SHA256, 128, CNTR, SHA_256, 64, 32, 32, 16)                  \
-  _ (AES_192_CTR_SHA256, 192, CNTR, SHA_256, 64, 32, 32, 16)                  \
-  _ (AES_256_CTR_SHA256, 256, CNTR, SHA_256, 64, 32, 32, 16)                  \
-  _ (AES_128_CTR_SHA384, 128, CNTR, SHA_384, 128, 64, 48, 24)                 \
-  _ (AES_192_CTR_SHA384, 192, CNTR, SHA_384, 128, 64, 48, 24)                 \
-  _ (AES_256_CTR_SHA384, 256, CNTR, SHA_384, 128, 64, 48, 24)                 \
-  _ (AES_128_CTR_SHA512, 128, CNTR, SHA_512, 128, 64, 64, 32)                 \
-  _ (AES_192_CTR_SHA512, 192, CNTR, SHA_512, 128, 64, 64, 32)                 \
-  _ (AES_256_CTR_SHA512, 256, CNTR, SHA_512, 128, 64, 64, 32)
+#define foreach_ipsecmb_linked_cipher_op                                                           \
+  _ (AES_128_CBC_SHA1, 128, CBC, SHA_1, 64, 20, 20, 12, sha1)                                      \
+  _ (AES_192_CBC_SHA1, 192, CBC, SHA_1, 64, 20, 20, 12, sha1)                                      \
+  _ (AES_256_CBC_SHA1, 256, CBC, SHA_1, 64, 20, 20, 12, sha1)                                      \
+  _ (AES_128_CBC_SHA224, 128, CBC, SHA_224, 64, 32, 28, 14, sha224)                                \
+  _ (AES_192_CBC_SHA224, 192, CBC, SHA_224, 64, 32, 28, 14, sha224)                                \
+  _ (AES_256_CBC_SHA224, 256, CBC, SHA_224, 64, 32, 28, 14, sha224)                                \
+  _ (AES_128_CBC_SHA256, 128, CBC, SHA_256, 64, 32, 32, 16, sha256)                                \
+  _ (AES_192_CBC_SHA256, 192, CBC, SHA_256, 64, 32, 32, 16, sha256)                                \
+  _ (AES_256_CBC_SHA256, 256, CBC, SHA_256, 64, 32, 32, 16, sha256)                                \
+  _ (AES_128_CBC_SHA384, 128, CBC, SHA_384, 128, 64, 48, 24, sha384)                               \
+  _ (AES_192_CBC_SHA384, 192, CBC, SHA_384, 128, 64, 48, 24, sha384)                               \
+  _ (AES_256_CBC_SHA384, 256, CBC, SHA_384, 128, 64, 48, 24, sha384)                               \
+  _ (AES_128_CBC_SHA512, 128, CBC, SHA_512, 128, 64, 64, 32, sha512)                               \
+  _ (AES_192_CBC_SHA512, 192, CBC, SHA_512, 128, 64, 64, 32, sha512)                               \
+  _ (AES_256_CBC_SHA512, 256, CBC, SHA_512, 128, 64, 64, 32, sha512)                               \
+  _ (AES_128_CTR_SHA1, 128, CNTR, SHA_1, 64, 20, 20, 12, sha1)                                     \
+  _ (AES_192_CTR_SHA1, 192, CNTR, SHA_1, 64, 20, 20, 12, sha1)                                     \
+  _ (AES_256_CTR_SHA1, 256, CNTR, SHA_1, 64, 20, 20, 12, sha1)                                     \
+  _ (AES_128_CTR_SHA256, 128, CNTR, SHA_256, 64, 32, 32, 16, sha256)                               \
+  _ (AES_192_CTR_SHA256, 192, CNTR, SHA_256, 64, 32, 32, 16, sha256)                               \
+  _ (AES_256_CTR_SHA256, 256, CNTR, SHA_256, 64, 32, 32, 16, sha256)                               \
+  _ (AES_128_CTR_SHA384, 128, CNTR, SHA_384, 128, 64, 48, 24, sha384)                              \
+  _ (AES_192_CTR_SHA384, 192, CNTR, SHA_384, 128, 64, 48, 24, sha384)                              \
+  _ (AES_256_CTR_SHA384, 256, CNTR, SHA_384, 128, 64, 48, 24, sha384)                              \
+  _ (AES_128_CTR_SHA512, 128, CNTR, SHA_512, 128, 64, 64, 32, sha512)                              \
+  _ (AES_192_CTR_SHA512, 192, CNTR, SHA_512, 128, 64, 64, 32, sha512)                              \
+  _ (AES_256_CTR_SHA512, 256, CNTR, SHA_512, 128, 64, 64, 32, sha512)
 
 #define foreach_chacha_poly_fixed_aad_lengths _ (0) _ (8) _ (12)
 
@@ -859,21 +868,19 @@ ipsecmb_ops_aes_dec_cipher_hmac_inline (
 }
 #endif
 
-#define _(a, b, c, d, e, f, g, h)                                             \
-  static_always_inline u32 ipsecmb_ops_enc_##a (                              \
-    vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops)                      \
-  {                                                                           \
-    return ipsecmb_ops_aes_enc_cipher_hmac_inline (                           \
-      vm, ops, n_ops, b, IMB_DIR_ENCRYPT, IMB_CIPHER_##c, IMB_AUTH_HMAC_##d,  \
-      e, f, g);                                                               \
-  }                                                                           \
-                                                                              \
-  static_always_inline u32 ipsecmb_ops_dec_##a (                              \
-    vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops)                      \
-  {                                                                           \
-    return ipsecmb_ops_aes_dec_cipher_hmac_inline (                           \
-      vm, ops, n_ops, b, IMB_DIR_DECRYPT, IMB_CIPHER_##c, IMB_AUTH_HMAC_##d,  \
-      e, f, g);                                                               \
+#define _(a, b, c, d, e, f, g, h, i)                                                               \
+  static_always_inline u32 ipsecmb_ops_enc_##a (vlib_main_t *vm, vnet_crypto_op_t *ops[],          \
+						u32 n_ops)                                         \
+  {                                                                                                \
+    return ipsecmb_ops_aes_enc_cipher_hmac_inline (vm, ops, n_ops, b, IMB_DIR_ENCRYPT,             \
+						   IMB_CIPHER_##c, IMB_AUTH_HMAC_##d, e, f, g);    \
+  }                                                                                                \
+                                                                                                   \
+  static_always_inline u32 ipsecmb_ops_dec_##a (vlib_main_t *vm, vnet_crypto_op_t *ops[],          \
+						u32 n_ops)                                         \
+  {                                                                                                \
+    return ipsecmb_ops_aes_dec_cipher_hmac_inline (vm, ops, n_ops, b, IMB_DIR_DECRYPT,             \
+						   IMB_CIPHER_##c, IMB_AUTH_HMAC_##d, e, f, g);    \
   }
 foreach_ipsecmb_linked_cipher_op
 #undef _
@@ -1415,6 +1422,20 @@ crypto_ipsecmb_init (vnet_crypto_engine_registration_t *r)
 
   foreach_ipsecmb_cipher_op;
 #undef _
+#define _(a, b, c, ha, hb, hc, hd, he, hf)                                                         \
+  ad = imbm->alg_data + VNET_CRYPTO_ALG_##a##_TAG##he;                                             \
+  ad->is_link = 1;                                                                                 \
+  ad->block_size = hb;                                                                             \
+  ad->data_size = hc * 2;                                                                          \
+  ad->link_data_size = b / 8;                                                                      \
+  ad->hash_one_block = m->hf##_one_block;                                                          \
+  ad->hash_fn = m->hf;                                                                             \
+  ad->keyexp = m->keyexp_##b;                                                                      \
+  kd = r->key_data_sz + VNET_CRYPTO_ALG_##a##_TAG##he;                                             \
+  *kd = sizeof (ipsecmb_aes_hmac_key_ctx_data_t);
+
+  foreach_ipsecmb_linked_cipher_op;
+#undef _
 #define _(a, b, f, l)                                                                              \
   ad = imbm->alg_data + VNET_CRYPTO_ALG_##a;                                                       \
   ad->data_size = sizeof (struct gcm_key_data);                                                    \
@@ -1470,8 +1491,8 @@ vnet_crypto_engine_op_handlers_t op_handlers[] = {
 
       foreach_ipsecmb_cipher_op
 #undef _
-#define _(a, b, c, d, e, f, g, h)                                             \
-  { .opt = VNET_CRYPTO_OP_##a##_TAG##h##_ENC, .fn = ipsecmb_ops_enc_##a },    \
+#define _(a, b, c, d, e, f, g, h, i)                                                               \
+  { .opt = VNET_CRYPTO_OP_##a##_TAG##h##_ENC, .fn = ipsecmb_ops_enc_##a },                         \
     { .opt = VNET_CRYPTO_OP_##a##_TAG##h##_DEC, .fn = ipsecmb_ops_dec_##a },
 
 	foreach_ipsecmb_linked_cipher_op
