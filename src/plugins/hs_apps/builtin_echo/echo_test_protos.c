@@ -73,12 +73,14 @@ et_server_stream_rx_inline (echo_test_session_t *es, session_t *s, u8 *rx_buf, u
 	  if (session_enqueue_notify (s))
 	    et_err ("failed to enqueue self-tap");
 
+#if CLIB_DEBUG > 0
 	  if (es->rx_retries == 500000)
 	    {
 	      et_err ("session stuck: %U", format_session, s, 2);
 	    }
 	  if (es->rx_retries < 500001)
 	    es->rx_retries++;
+#endif
 	}
 
       return 0;
@@ -97,8 +99,7 @@ et_server_stream_rx_inline (echo_test_session_t *es, session_t *s, u8 *rx_buf, u
 
   /* Echo back */
   actual_transfer = app_send_stream ((app_session_t *) es, rx_buf, max_transfer, 0);
-  if (PREDICT_FALSE (actual_transfer != max_transfer))
-    et_err ("short trout! written %d read %u", actual_transfer, max_transfer);
+  es->bytes_sent += clib_max (actual_transfer, 0);
 
   if (PREDICT_FALSE (svm_fifo_max_dequeue_cons (rx_fifo)))
     goto rx_event;
@@ -308,12 +309,14 @@ et_server_dgram_rx (echo_test_session_t *es, session_t *s, u8 *rx_buf, u8 test_b
 	  if (session_enqueue_notify (s))
 	    et_err ("failed to enqueue self-tap");
 
+#if CLIB_DEBUG > 0
 	  if (es->rx_retries == 500000)
 	    {
 	      et_err ("session stuck: %U", format_session, s, 2);
 	    }
 	  if (es->rx_retries < 500001)
 	    es->rx_retries++;
+#endif
 	}
 
       return 0;
@@ -335,8 +338,11 @@ et_server_dgram_rx (echo_test_session_t *es, session_t *s, u8 *rx_buf, u8 test_b
 
   /* Echo back */
   actual_transfer = app_send_dgram ((app_session_t *) es, rx_buf, max_transfer, 0);
-  if (PREDICT_FALSE (actual_transfer != max_transfer))
-    et_err ("short trout! written %d read %u", actual_transfer, max_transfer);
+  if (actual_transfer > 0)
+    {
+      es->bytes_sent += actual_transfer;
+      es->dgrams_sent++;
+    }
 
   if (PREDICT_FALSE (svm_fifo_max_dequeue_cons (rx_fifo)))
     goto rx_event;
@@ -706,12 +712,14 @@ et_quic_server_rx_inline (echo_test_session_t *es, session_t *s, u8 *rx_buf, u8 
 	  if (session_program_transport_io_evt (s->handle, SESSION_IO_EVT_BUILTIN_RX))
 	    et_err ("failed to enqueue self-tap");
 
+#if CLIB_DEBUG > 0
 	  if (es->rx_retries == 500000)
 	    {
 	      et_err ("session stuck: %U", format_session, s, 2);
 	    }
 	  if (es->rx_retries < 500001)
 	    es->rx_retries++;
+#endif
 	}
 
       return 0;
@@ -734,8 +742,7 @@ et_quic_server_rx_inline (echo_test_session_t *es, session_t *s, u8 *rx_buf, u8 
 
   /* Echo back */
   actual_transfer = app_send_stream ((app_session_t *) es, rx_buf, max_transfer, 0);
-  if (PREDICT_FALSE (actual_transfer != max_transfer))
-    et_err ("short trout! written %d read %u", actual_transfer, max_transfer);
+  es->bytes_sent += clib_max (actual_transfer, 0);
 
   if (PREDICT_FALSE (svm_fifo_max_dequeue_cons (rx_fifo)))
     goto rx_event;

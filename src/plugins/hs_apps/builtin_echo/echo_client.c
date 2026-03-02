@@ -251,10 +251,10 @@ ec_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 
       if (PREDICT_FALSE (delete_session == 1) || ecm->end_test)
 	{
-	  clib_atomic_fetch_add (&ecm->stats.tx_total, es->bytes_sent);
-	  clib_atomic_fetch_add (&ecm->stats.rx_total, es->bytes_received);
-	  clib_atomic_fetch_add (&ecm->stats.tx_total_dgrams, es->dgrams_sent);
-	  clib_atomic_fetch_add (&ecm->stats.rx_total_dgrams, es->dgrams_received);
+	  wrk->bytes_sent += es->bytes_sent;
+	  wrk->bytes_received += es->bytes_received;
+	  wrk->dgrams_sent += es->dgrams_sent;
+	  wrk->dgrams_received += es->dgrams_received;
 	  s = session_get_from_handle_if_valid (es->vpp_session_handle);
 
 	  if (s)
@@ -319,10 +319,6 @@ ec_reset_runtime_config (ec_main_t *ecm)
   ecm->end_test = false;
   ecm->ready_connections = 0;
   ecm->connect_conn_index = 0;
-  ecm->stats.rx_total = 0;
-  ecm->stats.tx_total = 0;
-  ecm->stats.rx_total_dgrams = 0;
-  ecm->stats.tx_total_dgrams = 0;
   ecm->barrier_acq_needed = 0;
   ecm->prealloc_sessions = 0;
   ecm->prealloc_fifos = 0;
@@ -344,6 +340,7 @@ ec_reset_runtime_config (ec_main_t *ecm)
   ecm->stats.last_total_tx_dgrams = 0;
   ecm->cfg.report_interval_jitter = 0;
   ecm->include_buffer_offset = 0;
+  ecm->cfg.is_server = 0;
   clib_memset (&ecm->stats.rtt_stats, 0, sizeof (echo_rtt_stat_t));
   ecm->stats.rtt_stats.min_rtt = CLIB_F64_MAX;
   if (ecm->stats.rtt_stats.w_lock == NULL)
@@ -464,7 +461,7 @@ ec_ctrl_send (hs_test_cmd_t cmd)
   ecm->cfg.test_cfg.cmd = cmd;
   if (ecm->ctrl_session_handle == SESSION_INVALID_HANDLE)
     {
-      ec_dbg ("ctrl session went away");
+      ec_err ("ctrl session went away");
       return -1;
     }
 
@@ -994,6 +991,15 @@ ec_run (vlib_main_t *vm)
   uword *event_data = 0, event_type;
   clib_error_t *error = 0;
   f64 delta, wait_time = 0;
+  echo_test_worker_t *wrk;
+
+  vec_foreach (wrk, ecm->wrk)
+    {
+      wrk->bytes_received = 0;
+      wrk->dgrams_received = 0;
+      wrk->bytes_sent = 0;
+      wrk->dgrams_sent = 0;
+    }
 
   if (ecm->cfg.test_cfg.test_bytes ||
       (ecm->cfg.echo_bytes && ecm->cfg.proto == TRANSPORT_PROTO_UDP))
@@ -1185,6 +1191,10 @@ ec_run (vlib_main_t *vm)
 stop_test:
   ecm->run_test = EC_EXITING;
 
+  vlib_process_wait_for_event_or_clock (vm, ECHO_TEST_DELAY_DISCONNECT);
+  /* no signals are expected - just wait for clock */
+  (void) vlib_process_get_events (vm, 0);
+
   /* send stop test command to the server */
   if (ec_ctrl_test_stop () < 0)
     {
@@ -1200,7 +1210,7 @@ stop_test:
       return error;
     }
   ec_wait_for_signal (EC_CLI_CFG_SYNC);
-  echo_print_final_stats (vm, delta, &ecm->cfg, &ecm->stats);
+  echo_print_final_stats (vm, delta, &ecm->cfg, &ecm->stats, ecm->wrk);
 
   /* disconnect control session */
   ec_ctrl_session_disconnect ();

@@ -63,8 +63,10 @@ echo_print_periodic_stats (vlib_main_t *vm, u8 print_header, echo_test_cfg_t *cf
   f64 time_now, print_delta, interval_start, interval_end, rtt = 0.0, jitter = 0.0;
   u64 total_bytes, received_bytes = 0, sent_bytes = 0, dgrams_sent = 0, dgrams_received = 0,
 		   last_total_bytes = stats->last_total_tx_bytes + stats->last_total_rx_bytes;
+  u32 n_sessions = 0;
   echo_test_worker_t *wrk;
   echo_test_session_t *sess;
+
   vec_foreach (wrk, wrks)
     {
       pool_foreach (sess, wrk->sessions)
@@ -78,6 +80,7 @@ echo_print_periodic_stats (vlib_main_t *vm, u8 print_header, echo_test_cfg_t *cf
 	      dgrams_sent += sess->dgrams_sent;
 	      sess->rtt_stat = 0;
 	      jitter += sess->jitter;
+	      n_sessions++;
 	    }
 	  else if (cfg->proto == TRANSPORT_PROTO_TCP)
 	    {
@@ -98,7 +101,7 @@ echo_print_periodic_stats (vlib_main_t *vm, u8 print_header, echo_test_cfg_t *cf
 
   if (cfg->proto == TRANSPORT_PROTO_UDP)
     {
-      jitter /= cfg->n_clients;
+      jitter = n_sessions ? jitter / n_sessions : 0.0;
       rtt = stats->rtt_stats.last_rtt * 1000;
       if (print_header)
 	{
@@ -121,7 +124,7 @@ echo_print_periodic_stats (vlib_main_t *vm, u8 print_header, echo_test_cfg_t *cf
 	}
       else
 	{
-	  rtt /= cfg->n_clients;
+	  rtt = n_sessions ? rtt / n_sessions : 0.0;
 	  echo_cli ("%.1f-%-9.1f %-13U %-10U %+9Ub/s %+9.3fms %llu/%llu", interval_start,
 		    interval_end, format_base10, sent_bytes - stats->last_total_tx_bytes,
 		    format_base10, received_bytes - stats->last_total_rx_bytes, format_base10,
@@ -161,13 +164,28 @@ echo_print_periodic_stats (vlib_main_t *vm, u8 print_header, echo_test_cfg_t *cf
 }
 
 void
-echo_print_final_stats (vlib_main_t *vm, f64 total_delta, echo_test_cfg_t *cfg, echo_stats_t *stats)
+echo_print_final_stats (vlib_main_t *vm, f64 total_delta, echo_test_cfg_t *cfg, echo_stats_t *stats,
+			echo_test_worker_t *wrks)
 {
   u64 total_bytes;
   f64 dgram_loss;
   char *transfer_type;
+  echo_test_worker_t *wrk;
 
-  if (cfg->proto == TRANSPORT_PROTO_TCP || (cfg->proto == TRANSPORT_PROTO_UDP && cfg->echo_bytes))
+  stats->rx_total = 0;
+  stats->tx_total = 0;
+  stats->rx_total_dgrams = 0;
+  stats->tx_total_dgrams = 0;
+  vec_foreach (wrk, wrks)
+    {
+      stats->rx_total += wrk->bytes_received;
+      stats->rx_total_dgrams += wrk->dgrams_received;
+      stats->tx_total += wrk->bytes_sent;
+      stats->tx_total_dgrams += wrk->dgrams_sent;
+    }
+  if ((cfg->proto == TRANSPORT_PROTO_TCP ||
+       (cfg->proto == TRANSPORT_PROTO_UDP && cfg->echo_bytes)) &&
+      !cfg->is_server)
     {
       /* display rtt stats in milliseconds */
       if (stats->rtt_stats.n_sum == 1)
@@ -183,27 +201,46 @@ echo_print_final_stats (vlib_main_t *vm, f64 total_delta, echo_test_cfg_t *cfg, 
     {
       if (cfg->echo_bytes)
 	{
-	  dgram_loss =
-	    (stats->tx_total_dgrams ? ((f64) (stats->tx_total_dgrams - stats->rx_total_dgrams) /
-				       (f64) stats->tx_total_dgrams * 100.0) :
-				      0.0);
-	  echo_cli ("sent total %llu datagrams, received total %llu datagrams, lost %llu datagrams "
-		    "(%.2f%%)",
-		    stats->tx_total_dgrams, stats->rx_total_dgrams,
-		    stats->tx_total_dgrams - stats->rx_total_dgrams, dgram_loss);
+	  if (cfg->is_server)
+	    {
+	      echo_cli ("received total %llu datagrams, sent total %llu datagrams",
+			stats->rx_total_dgrams, stats->tx_total_dgrams);
+	    }
+	  else
+	    {
+	      dgram_loss =
+		(stats->tx_total_dgrams ? ((f64) (stats->tx_total_dgrams - stats->rx_total_dgrams) /
+					   (f64) stats->tx_total_dgrams * 100.0) :
+					  0.0);
+	      echo_cli (
+		"sent total %llu datagrams, received total %llu datagrams, lost %llu datagrams "
+		"(%.2f%%)",
+		stats->tx_total_dgrams, stats->rx_total_dgrams,
+		stats->tx_total_dgrams - stats->rx_total_dgrams, dgram_loss);
+	    }
 	}
       else
 	{
-	  dgram_loss = (stats->tx_total_dgrams ?
-			  ((f64) (stats->tx_total_dgrams - stats->peer_dgrams_received) /
-			   (f64) stats->tx_total_dgrams * 100.0) :
-			  0.0);
-	  echo_cli ("sent total %llu datagrams, lost %llu datagrams (%.2f%%)",
-		    stats->tx_total_dgrams, stats->tx_total_dgrams - stats->peer_dgrams_received,
-		    dgram_loss);
+	  if (cfg->is_server)
+	    {
+	      echo_cli ("received total %llu datagrams", stats->rx_total_dgrams);
+	    }
+	  else
+	    {
+	      dgram_loss = (stats->tx_total_dgrams ?
+			      ((f64) (stats->tx_total_dgrams - stats->peer_dgrams_received) /
+			       (f64) stats->tx_total_dgrams * 100.0) :
+			      0.0);
+	      echo_cli ("sent total %llu datagrams, lost %llu datagrams (%.2f%%)",
+			stats->tx_total_dgrams,
+			stats->tx_total_dgrams - stats->peer_dgrams_received, dgram_loss);
+	    }
 	}
     }
-  total_bytes = (cfg->echo_bytes ? stats->rx_total : stats->tx_total);
+  if (cfg->is_server)
+    total_bytes = (cfg->echo_bytes ? stats->tx_total : stats->rx_total);
+  else
+    total_bytes = (cfg->echo_bytes ? stats->rx_total : stats->tx_total);
   transfer_type = cfg->echo_bytes ? "full-duplex" : "half-duplex";
   echo_cli ("%lld bytes (%lld mbytes, %lld gbytes) in %.2f seconds", total_bytes,
 	    total_bytes / (1ULL << 20), total_bytes / (1ULL << 30), total_delta);

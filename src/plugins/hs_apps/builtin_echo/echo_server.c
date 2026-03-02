@@ -23,6 +23,32 @@ echo_server_main_t echo_server_main;
     }                                                                                              \
   while (0)
 
+static void
+es_signal_evt_to_cli_i (void *codep)
+{
+  echo_server_main_t *esm = &echo_server_main;
+  int code;
+
+  ASSERT (vlib_get_thread_index () == 0);
+  code = pointer_to_uword (codep);
+  vlib_process_signal_event (esm->vlib_main, esm->cli_node_index, code, 0);
+}
+
+static void
+es_signal_evt_to_cli (int code)
+{
+  echo_server_main_t *esm = &echo_server_main;
+
+  if (!esm->cfg.report_interval)
+    return;
+
+  if (vlib_get_thread_index () != 0)
+    session_send_rpc_evt_to_thread_force (0, es_signal_evt_to_cli_i,
+					  uword_to_pointer ((uword) code, void *));
+  else
+    es_signal_evt_to_cli_i (uword_to_pointer ((uword) code, void *));
+}
+
 static inline echo_test_worker_t *
 es_worker_get (clib_thread_index_t thread_index)
 {
@@ -135,6 +161,24 @@ es_wrk_prealloc_sessions (void *args)
   return 0;
 }
 
+static void
+es_agregate_wrk_stats (echo_server_main_t *esm)
+{
+  echo_test_session_t *es;
+  echo_test_worker_t *wrk;
+
+  pool_foreach (wrk, esm->wrk)
+    {
+      pool_foreach (es, wrk->sessions)
+	{
+	  wrk->bytes_received += es->bytes_received;
+	  wrk->dgrams_received += es->dgrams_received;
+	  wrk->bytes_sent += es->bytes_sent;
+	  wrk->dgrams_sent += es->dgrams_sent;
+	}
+    }
+}
+
 static int
 es_wrk_cleanup_sessions (void *args)
 {
@@ -149,8 +193,6 @@ es_wrk_cleanup_sessions (void *args)
 
   pool_foreach (es, wrk->sessions)
     {
-      wrk->bytes_received += es->bytes_received;
-      wrk->dgrams_received += es->dgrams_received;
       a->handle = es->vpp_session_handle;
       vnet_disconnect_session (a);
     }
@@ -168,7 +210,19 @@ es_reset_stats ()
     {
       wrk->bytes_received = 0;
       wrk->dgrams_received = 0;
+      wrk->bytes_sent = 0;
+      wrk->dgrams_sent = 0;
     }
+  esm->stats.test_start_time = esm->stats.last_print_time = vlib_time_now (vlib_get_main ());
+  esm->stats.last_total_tx_bytes = 0;
+  esm->stats.last_total_rx_bytes = 0;
+  esm->stats.last_total_rx_dgrams = 0;
+  esm->stats.last_total_tx_dgrams = 0;
+  esm->stats.rtt_stats.min_rtt = CLIB_F64_MAX;
+  esm->stats.rtt_stats.max_rtt = 0.0;
+  esm->stats.rtt_stats.sum_rtt = 0.0;
+  esm->stats.rtt_stats.last_rtt = 0.0;
+  esm->stats.rtt_stats.n_sum = 0;
 }
 
 static void
@@ -232,7 +286,6 @@ echo_server_rx_ctrl_callback (session_t *s)
 	  break;
 	case HS_TEST_TYPE_UNI:
 	case HS_TEST_TYPE_BI:
-	  es_reset_stats ();
 	  return es_test_cmd_sync (esm, s);
 	  break;
 	default:
@@ -240,7 +293,14 @@ echo_server_rx_ctrl_callback (session_t *s)
 	}
       break;
     case HS_TEST_CMD_START:
+      es_reset_stats ();
+      echo_server_ctrl_reply (s, 0);
+      es_signal_evt_to_cli (ES_CLI_START);
+      break;
     case HS_TEST_CMD_STOP:
+      esm->stats.test_end_time = vlib_time_now (vlib_get_main ()) - ECHO_TEST_DELAY_DISCONNECT;
+      es_agregate_wrk_stats (esm);
+      es_signal_evt_to_cli (ES_CLI_STOP);
       echo_server_ctrl_reply (s, 0);
       break;
     default:
@@ -321,9 +381,13 @@ echo_server_setup_test (hs_test_cfg_t *c)
   echo_server_main_t *esm = &echo_server_main;
 
   if (c->test == HS_TEST_TYPE_UNI)
-    esm->rx_callback = echo_server_rx_no_echo_callback;
+    {
+      esm->cfg.echo_bytes = 0;
+      esm->rx_callback = echo_server_rx_no_echo_callback;
+    }
   else
     {
+      esm->cfg.echo_bytes = 1;
       if (c->test_bytes)
 	esm->rx_callback = echo_server_rx_test_bytes_callback;
       else
@@ -411,11 +475,14 @@ echo_server_detach (void)
   vnet_app_detach_args_t _da, *da = &_da;
   int rv;
 
+  es_foreach_thread (es_wrk_cleanup_sessions);
+
   da->app_index = esm->app_index;
   da->api_client_index = ~0;
   rv = vnet_application_detach (da);
-  esm->app_index = ~0;
+  esm->app_index = APP_INVALID_INDEX;
   vnet_app_del_cert_key_pair (esm->cfg.ckpair_index);
+  clib_spinlock_free (&esm->stats.rtt_stats.w_lock);
   return rv;
 }
 
@@ -495,9 +562,30 @@ echo_server_create (vlib_main_t *vm, u8 *appns_id, u64 appns_flags, u64 appns_se
   return 0;
 }
 
+void
+echo_server_init (vlib_main_t *vm)
+{
+  echo_server_main_t *esm = &echo_server_main;
+
+  /* Store cli process node index for signaling */
+  esm->cli_node_index = vlib_get_current_process (vm)->node_runtime.node_index;
+  esm->vlib_main = vm;
+  esm->cfg.fifo_size = 4 << 20;
+  esm->cfg.prealloc_fifos = 0;
+  esm->cfg.private_segment_size = 512 << 20;
+  esm->cfg.tls_engine = CRYPTO_ENGINE_OPENSSL;
+  esm->cfg.report_interval = 0;
+  esm->cfg.is_server = 1;
+  if (esm->app_index == APP_INVALID_INDEX)
+    clib_spinlock_init (&esm->stats.rtt_stats.w_lock);
+  vec_free (esm->cfg.uri);
+}
+
 clib_error_t *
 echo_server_main_init (vlib_main_t *vm)
 {
+  echo_server_main_t *esm = &echo_server_main;
+  esm->app_index = APP_INVALID_INDEX;
   return 0;
 }
 
