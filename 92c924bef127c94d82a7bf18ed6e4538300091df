@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0843dea9_f142dc9a",
+        "filename": "test/hs-test/topo-network/2taps.yaml",
+        "patchSetId": 2
+      },
+      "lineNbr": 8,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-03-02T08:36:32Z",
+      "side": 1,
+      "message": "is it ok when both names are same?",
+      "revId": "92c924bef127c94d82a7bf18ed6e4538300091df",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
