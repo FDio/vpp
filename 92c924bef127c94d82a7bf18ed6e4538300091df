@@ -16,6 +16,24 @@
       "message": "is it ok when both names are same?",
       "revId": "92c924bef127c94d82a7bf18ed6e4538300091df",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d9763c12_239e08dc",
+        "filename": "test/hs-test/topo-network/2taps.yaml",
+        "patchSetId": 2
+      },
+      "lineNbr": 8,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2026-03-02T09:56:32Z",
+      "side": 1,
+      "message": "Yes, it\u0027s fine:\ninterface.name is set to \u0027[N]hstcln[XYZ] after parsing yaml configs but then set to \u0027tap[id]\u0027 when vpp.CreateTap() is called. The topmost \u0027hstcln\u0027 is only used by s.GetInterfaceByName().",
+      "parentUuid": "0843dea9_f142dc9a",
+      "revId": "92c924bef127c94d82a7bf18ed6e4538300091df",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
