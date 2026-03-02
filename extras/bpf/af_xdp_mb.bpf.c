@@ -1,7 +1,7 @@
 /*
  * SPDX-License-Identifier: GPL-2.0 OR Apache-2.0
  * Dual-licensed under GPL version 2.0 or Apache License version 2.0
- * Copyright (c) 2020 Cisco and/or its affiliates.
+ * Copyright (c) 2026 Cisco and/or its affiliates.
  */
 #include <linux/bpf.h>
 #include <bpf/bpf_helpers.h>
@@ -24,15 +24,14 @@ struct
 {
   __uint (priority, 10);
   __uint (XDP_PASS, 1);
-} XDP_RUN_CONFIG (xdp_sock_prog);
+} XDP_RUN_CONFIG (xdp_sock_prog_frags);
 
-SEC ("xdp")
+SEC ("xdp.frags")
 int
-xdp_sock_prog (struct xdp_md *ctx)
+xdp_sock_prog_frags (struct xdp_md *ctx)
 {
   return bpf_redirect_map (&xsks_map, ctx->rx_queue_index, XDP_PASS);
 }
 
-/* actually Dual GPLv2/Apache2, but GPLv2 as far as kernel is concerned */
 char _license[] SEC ("license") = "GPL";
 __uint (xsk_prog_version, XSK_PROG_VERSION) SEC (XDP_METADATA_SECTION);
