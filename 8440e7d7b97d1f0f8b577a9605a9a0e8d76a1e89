@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ce5e4550_d58235f5",
+        "filename": "test/test_ip6_dad.py",
+        "patchSetId": 21
+      },
+      "lineNbr": 577,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2026-03-02T22:24:56Z",
+      "side": 1,
+      "message": "rather than a constant use:\n`VppEnum.vl_api_dad_state_t.IP6_DAD_STATE_TENTATIVE`\nhere and all the other verifies too.\nYou can do:\n `DS \u003d VppEnum.vl_api_dad_state_t`\nand\n `DS.IP6_DAD_STATE_TENTATIVE`\nto make it a bit more palatable.",
+      "revId": "8440e7d7b97d1f0f8b577a9605a9a0e8d76a1e89",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}

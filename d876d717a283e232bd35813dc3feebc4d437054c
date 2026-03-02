@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "5d179169_f81baf2f",
+        "filename": "src/vnet/ip/ip6_link.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 262,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2026-03-02T22:24:56Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d3a75159_b7f70419",
+      "revId": "d876d717a283e232bd35813dc3feebc4d437054c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "acb7a700_62a8acaf",
@@ -48,6 +66,24 @@
       "writtenOn": "2026-02-23T22:56:56Z",
       "side": 1,
       "message": "this goes in `ildv_ll_change`",
+      "revId": "d876d717a283e232bd35813dc3feebc4d437054c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ae3b1bed_fd066d4c",
+        "filename": "src/vnet/ip/ip6_link.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 364,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2026-03-02T22:24:56Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "acb7a700_62a8acaf",
       "revId": "d876d717a283e232bd35813dc3feebc4d437054c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -137,6 +173,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "c88f84a5_ecdcb1f8",
+        "filename": "test/test_ip6_dad.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 122,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2026-03-02T22:24:56Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b5169923_cecef606",
+      "revId": "d876d717a283e232bd35813dc3feebc4d437054c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "65e6e15f_23c3364d",
@@ -171,6 +225,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "3ed51e17_c76d06cc",
+        "filename": "test/test_ip6_dad.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 237,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2026-03-02T22:24:56Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "e0d3b1fb_bc62cb41",
+      "revId": "d876d717a283e232bd35813dc3feebc4d437054c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "34abb551_c6a67ddb",
@@ -184,6 +256,24 @@
       "writtenOn": "2026-02-23T22:56:56Z",
       "side": 1,
       "message": "does this work with `virtual_sleep`?",
+      "revId": "d876d717a283e232bd35813dc3feebc4d437054c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "70dbd8d0_aaee0907",
+        "filename": "test/test_ip6_dad.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 384,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2026-03-02T22:24:56Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "34abb551_c6a67ddb",
       "revId": "d876d717a283e232bd35813dc3feebc4d437054c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -205,6 +295,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "e8d3b7b2_474d0fcf",
+        "filename": "test/test_ip6_dad.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 415,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2026-03-02T22:24:56Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5d0215f1_ea7b8b29",
+      "revId": "d876d717a283e232bd35813dc3feebc4d437054c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "18933ab9_1107279f",
@@ -218,6 +326,24 @@
       "writtenOn": "2026-02-23T22:56:56Z",
       "side": 1,
       "message": "if you expect the API call to fail, you can use:\n```\n        with self.vapi.assert_negative_api_retval():\n           self.vapi.bla_bla\n```",
+      "revId": "d876d717a283e232bd35813dc3feebc4d437054c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "77d04dee_1d99d983",
+        "filename": "test/test_ip6_dad.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 430,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2026-03-02T22:24:56Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "18933ab9_1107279f",
       "revId": "d876d717a283e232bd35813dc3feebc4d437054c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
