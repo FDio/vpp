@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright(c) 2025 Cisco Systems, Inc.
+
 import unittest
 from asfframework import VppTestRunner
 from framework import VppTestCase
@@ -83,7 +83,7 @@ class TestSfdp(VppTestCase):
         )
 
     # SFDP is configured on IPv4 feat-arc by default
-    def _configure_sfdp(self, enable_ip4=True, enable_ip6=False):
+    def _configure_sfdp(self, enable_ip4=True, enable_ip6=False, bidir=False):
         """Base SFDP Configuration"""
         self.assertTrue(
             enable_ip4 or enable_ip6,
@@ -133,6 +133,13 @@ class TestSfdp(VppTestCase):
                 is_disable=False,
             )
             self.assertEqual(reply.retval, 0)
+            if bidir:
+                reply = self.vapi.sfdp_interface_input_set(
+                    sw_if_index=self.pg1.sw_if_index,
+                    tenant_id=1,
+                    is_disable=False,
+                )
+                self.assertEqual(reply.retval, 0)
 
             # Verify that SFDP IPv4 feature arc is enabled
             reply = self.vapi.feature_is_enabled(
@@ -160,6 +167,7 @@ class TestSfdp(VppTestCase):
                 services=service_chain,
             )
             self.assertEqual(reply.retval, 0)
+
             reply = self.vapi.sfdp_interface_input_set(
                 sw_if_index=self.pg0.sw_if_index,
                 tenant_id=self.tenant_id_ip6,
@@ -167,6 +175,14 @@ class TestSfdp(VppTestCase):
                 is_ip6=True,
             )
             self.assertEqual(reply.retval, 0)
+            if bidir:
+                reply = self.vapi.sfdp_interface_input_set(
+                    sw_if_index=self.pg1.sw_if_index,
+                    tenant_id=self.tenant_id_ip6,
+                    is_disable=False,
+                    is_ip6=True,
+                )
+                self.assertEqual(reply.retval, 0)
 
             # Verify that SFDP IPv6 feature arc is enabled
             reply = self.vapi.feature_is_enabled(
@@ -176,7 +192,7 @@ class TestSfdp(VppTestCase):
             )
             self.assertTrue(reply.is_enabled, "sfdp ip6 feature arc should be enabled")
 
-    def _cleanup_sfdp(self, disable_ip4=True, disable_ip6=False):
+    def _cleanup_sfdp(self, disable_ip4=True, disable_ip6=False, bidir=False):
         """Cleanup SFDP configuration"""
         self.assertTrue(
             disable_ip4 or disable_ip6, "SFDP must be disabled for either ip4/ip6"
@@ -199,6 +215,12 @@ class TestSfdp(VppTestCase):
                 tenant_id=self.tenant_id_ip4,
                 is_disable=True,
             )
+            if bidir:
+                self.vapi.sfdp_interface_input_set(
+                    sw_if_index=self.pg1.sw_if_index,
+                    tenant_id=self.tenant_id_ip4,
+                    is_disable=True,
+                )
             # Verify that IPv4 SFDP feature arc is disabled
             reply = self.vapi.feature_is_enabled(
                 arc_name="ip4-unicast",
@@ -217,6 +239,13 @@ class TestSfdp(VppTestCase):
                 is_disable=True,
                 is_ip6=True,
             )
+            if bidir:
+                self.vapi.sfdp_interface_input_set(
+                    sw_if_index=self.pg1.sw_if_index,
+                    tenant_id=self.tenant_id_ip6,
+                    is_disable=True,
+                    is_ip6=True,
+                )
             # Verify that IPv6 SFDP feature arc is disabled
             reply = self.vapi.feature_is_enabled(
                 arc_name="ip6-unicast",
@@ -838,6 +867,94 @@ class TestSfdp(VppTestCase):
         # Delete tenants
         self.vapi.sfdp_tenant_add_del(tenant_id=1, is_del=True)
         self.vapi.sfdp_tenant_add_del(tenant_id=2, is_del=True)
+
+    # This test was originally written by Gemini 3.1 Pro Preview,
+    # with only minor touches (sleep timining, code comments, test case name) by Vratko.
+    def test_sfdp_a_tcp_retransmit_of_last_fin(self):
+        """Test SFDP A TCP late retransmit of receiver FIN+ACK."""
+        self._configure_sfdp(bidir=True)
+
+        mac0, mac1 = self.pg0.remote_mac, self.pg1.remote_mac
+        lmac0, lmac1 = self.pg0.local_mac, self.pg1.local_mac
+        ip0, ip1 = self.pg0.remote_ip4, self.pg1.remote_ip4
+        sport, dport = 12345, 80
+
+        # 1. Establish connection (Full Handshake)
+        syn = (
+            Ether(src=mac0, dst=lmac0)
+            / IP(src=ip0, dst=ip1)
+            / TCP(sport=sport, dport=dport, flags="S", seq=100)
+        )
+        self.send_and_expect(self.pg0, syn, self.pg1)
+
+        syn_ack = (
+            Ether(src=mac1, dst=lmac1)
+            / IP(src=ip1, dst=ip0)
+            / TCP(sport=dport, dport=sport, flags="SA", seq=200, ack=101)
+        )
+        self.send_and_expect(self.pg1, syn_ack, self.pg0)
+
+        ack = (
+            Ether(src=mac0, dst=lmac0)
+            / IP(src=ip0, dst=ip1)
+            / TCP(sport=sport, dport=dport, flags="A", seq=101, ack=201)
+        )
+        self.send_and_expect(self.pg0, ack, self.pg1)
+
+        # 2. Teardown (Clean close to trigger remove_session = 1)
+        fin = (
+            Ether(src=mac0, dst=lmac0)
+            / IP(src=ip0, dst=ip1)
+            / TCP(sport=sport, dport=dport, flags="F", seq=101, ack=201)
+        )
+        self.send_and_expect(self.pg0, fin, self.pg1)
+
+        # Responder ACKs the FIN and sends its own FIN
+        fin_ack = (
+            Ether(src=mac1, dst=lmac1)
+            / IP(src=ip1, dst=ip0)
+            / TCP(sport=dport, dport=sport, flags="FA", seq=201, ack=102)
+        )
+        self.send_and_expect(self.pg1, fin_ack, self.pg0)
+
+        # Initiator sends the final ACK. VPP marks the session for eventual removal.
+        last_ack = (
+            Ether(src=mac0, dst=lmac0)
+            / IP(src=ip0, dst=ip1)
+            / TCP(sport=sport, dport=dport, flags="A", seq=102, ack=202)
+        )
+        self.send_and_expect(self.pg0, last_ack, self.pg1)
+
+        # Wait for the worker thread to maybe remove the session too early.
+        self.virtual_sleep(1.5)
+
+        # 3. The Late Packet
+        # Simulated retransmission of FIN+ACK from Responder
+        late_fin_ack = (
+            Ether(src=mac1, dst=lmac1)
+            / IP(src=ip1, dst=ip0)
+            / TCP(sport=dport, dport=sport, flags="FA", seq=201, ack=102)
+        )
+
+        # # Because the session is gone, VPP treats this as a brand new forward flow.
+        # # Since flags != SYN, it creates a BLOCKED session with sfdp-drop.
+        # # We assert no replies because VPP drops it.
+        # self.send_and_assert_no_replies(self.pg1, [late_fin_ack], self.pg0)
+        self.pg_send(self.pg1, [late_fin_ack])
+
+        self.virtual_sleep(0.5)
+
+        # 4. Port Reuse: New SYN from Initiator
+        new_syn = (
+            Ether(src=mac0, dst=lmac0)
+            / IP(src=ip0, dst=ip1)
+            / TCP(sport=sport, dport=dport, flags="S", seq=50)
+        )
+
+        # Confirm the new SYN packet passes. This fails if VPP deleted the session too early.
+        self.send_and_expect(self.pg0, new_syn, self.pg1)
+
+        self._cleanup_sfdp(bidir=True)
 
 
 if __name__ == "__main__":
