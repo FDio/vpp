@@ -12,6 +12,7 @@ Features
 --------
 
 -  copy and zero-copy mode
+-  single-buffer and multi-buffer mode
 -  multiqueue
 -  API
 -  custom eBPF program
@@ -23,10 +24,14 @@ Known limitations
 MTU
 ~~~
 
-Because of AF_XDP restrictions, the MTU is limited to below PAGE_SIZE
-(4096-bytes on most systems) minus 256-bytes, and they are additional
-limitations depending upon specific Linux device drivers. As a rule of
-thumb, a MTU of 3000-bytes or less should be safe.
+In single-buffer mode, because of AF_XDP restrictions, the MTU is
+limited to below PAGE_SIZE (4096-bytes on most systems) minus
+256-bytes, and there are additional limitations depending upon specific
+Linux device drivers. As a rule of thumb, a MTU of 3000-bytes or less
+should be safe.
+
+In multi-buffer mode, packets can span multiple buffers and jumbo frames
+can be used, subject to Linux driver and XDP program capabilities.
 
 Number of buffers
 ~~~~~~~~~~~~~~~~~
@@ -125,13 +130,19 @@ Quickstart
 
    ~# ip l set dev enp216s0f0 promisc on up
 
-2. Create the AF_XDP interface:
+2. Create the AF_XDP interface (single-buffer mode):
 
 ::
 
    ~# vppctl create int af_xdp host-if enp216s0f0 num-rx-queues all
 
-3. Use the interface as usual, e.g.:
+3. Or create the AF_XDP interface in multi-buffer mode:
+
+::
+
+   ~# vppctl create int af_xdp host-if enp216s0f0 num-rx-queues all multi-buffer
+
+4. Use the interface as usual, e.g.:
 
 ::
 
@@ -154,6 +165,9 @@ interface in VPP:
 
 In that case it will replace any previously attached program. A custom
 XDP program example is provided in ``extras/bpf/``.
+
+When ``multi-buffer`` mode is requested, the loaded XDP program must be
+compatible with multi-buffer/frags handling for AF_XDP.
 
 Performance consideration
 -------------------------
