@@ -109,7 +109,7 @@ def create_test(test_name, test, ip_version, mtu):
             # a unique port. Save the iperf cmdline for
             # terminating the iperf_server process after the test.
             self.iperf_cmd = start_iperf(
-                ip_version=6,
+                ip_version=ip_version,
                 client_ns=self.client_namespace,
                 server_ns=self.server_namespace,
                 server_only=True,
