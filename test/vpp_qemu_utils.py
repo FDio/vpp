@@ -77,7 +77,7 @@ def create_namespace(history_file, ns=None):
                     break
                 if attempt >= retries - 1:
                     raise Exception(
-                        f"Failed to create namespace {namespace} after {retries} attempts. Error: {result.stderr.decode()}"
+                        f"Failed to create namespace {namespace} after {retries} attempts. Error: {result.stderr if isinstance(result.stderr, str) else result.stderr.decode()}"
                     )
         return ns
 
@@ -338,7 +338,23 @@ def set_interface_down(namespace, interface):
 
 def enable_interface_gso(namespace, interface):
     """Enable GSO offload on a linux device interface."""
-    args = ["ethtool", "-K", interface, "rx", "on", "tx", "on"]
+    args = [
+        "ethtool",
+        "-K",
+        interface,
+        "rx",
+        "on",
+        "tx",
+        "on",
+        "tso",
+        "on",
+        "gso",
+        "on",
+        "gro",
+        "on",
+        "lro",
+        "on",
+    ]
     if namespace:
         args = ["ip", "netns", "exec", namespace] + args
     with lock:
@@ -351,7 +367,23 @@ def enable_interface_gso(namespace, interface):
 
 def disable_interface_gso(namespace, interface):
     """Disable GSO offload on a linux device interface."""
-    args = ["ethtool", "-K", interface, "rx", "off", "tx", "off"]
+    args = [
+        "ethtool",
+        "-K",
+        interface,
+        "rx",
+        "off",
+        "tx",
+        "off",
+        "tso",
+        "off",
+        "gso",
+        "off",
+        "gro",
+        "off",
+        "lro",
+        "off",
+    ]
     if namespace:
         args = ["ip", "netns", "exec", namespace] + args
     with lock:

@@ -61,8 +61,7 @@ api_af_xdp_create_v3 (vat_main_t *vam)
 
   M (AF_XDP_CREATE_V3, mp);
 
-  snprintf ((char *) mp->host_if, sizeof (mp->host_if), "%s",
-	    args.linux_ifname ?: "");
+  snprintf ((char *) mp->host_if, sizeof (mp->host_if), "%s", args.linux_ifname ?: "");
   snprintf ((char *) mp->name, sizeof (mp->name), "%s", args.name ?: "");
   snprintf ((char *) mp->netns, sizeof (mp->netns), "%s", args.netns ?: "");
   mp->rxq_num = args.rxq_num;
@@ -71,6 +70,8 @@ api_af_xdp_create_v3 (vat_main_t *vam)
   mp->mode = api_af_xdp_mode (args.mode);
   if (args.flags & AF_XDP_CREATE_FLAGS_NO_SYSCALL_LOCK)
     mp->flags |= AF_XDP_API_FLAGS_NO_SYSCALL_LOCK;
+  if (args.flags & AF_XDP_CREATE_FLAGS_MULTI_BUFFER)
+    mp->flags |= AF_XDP_API_FLAGS_MULTI_BUFFER;
   snprintf ((char *) mp->prog, sizeof (mp->prog), "%s", args.prog ?: "");
 
   S (mp);
@@ -88,8 +89,7 @@ vl_api_af_xdp_create_v3_reply_t_handler (vl_api_af_xdp_create_v3_reply_t *mp)
 
   if (retval == 0)
     {
-      fformat (vam->ofp, "created af_xdp with sw_if_index %d\n",
-	       mp->sw_if_index);
+      fformat (vam->ofp, "created af_xdp with sw_if_index %d\n", mp->sw_if_index);
     }
 
   vam->retval = retval;
@@ -99,7 +99,7 @@ vl_api_af_xdp_create_v3_reply_t_handler (vl_api_af_xdp_create_v3_reply_t *mp)
 
 /* af_xdp delete API */
 static int
-api_af_xdp_delete (vat_main_t * vam)
+api_af_xdp_delete (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_af_xdp_delete_t *mp;

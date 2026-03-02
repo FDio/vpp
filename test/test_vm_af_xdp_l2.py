@@ -13,12 +13,10 @@ import fcntl
 import time
 
 
-class TestVPPInterfacesQemuAfXDPL2(TestVPPInterfacesQemu, VppTestCase):
+class TestVPPInterfacesQemuAfXDPL2Base(TestVPPInterfacesQemu, VppTestCase):
     """Test af_xdp interfaces in L2 mode for IPv4/v6."""
 
-    # Set test_id(s) to run from vm_test_config
-    # The expansion of these numbers are included in the test docstring
-    tests_to_run = "28"
+    tests_to_run = ""
 
     @classmethod
     def setUpClass(cls):
@@ -39,12 +37,12 @@ class TestVPPInterfacesQemuAfXDPL2(TestVPPInterfacesQemu, VppTestCase):
                     raise Exception("Could not acquire lock for AF_XDP tests")
                 time.sleep(1)
 
-        super(TestVPPInterfacesQemuAfXDPL2, cls).setUpClass()
+        super(TestVPPInterfacesQemuAfXDPL2Base, cls).setUpClass()
 
     @classmethod
     def tearDownClass(cls):
         try:
-            super(TestVPPInterfacesQemuAfXDPL2, cls).tearDownClass()
+            super(TestVPPInterfacesQemuAfXDPL2Base, cls).tearDownClass()
         finally:
             # Release lock
             if hasattr(cls, "lock_file"):
@@ -52,12 +50,25 @@ class TestVPPInterfacesQemuAfXDPL2(TestVPPInterfacesQemu, VppTestCase):
                 cls.lock_file.close()
 
     def tearDown(self):
-        super(TestVPPInterfacesQemuAfXDPL2, self).tearDown()
+        super(TestVPPInterfacesQemuAfXDPL2Base, self).tearDown()
 
 
-SELECTED_TESTS = TestVPPInterfacesQemuAfXDPL2.tests_to_run
-tests = filter(TestSelector(SELECTED_TESTS).filter_tests, test_config["tests"])
-generate_vpp_interface_tests(tests, TestVPPInterfacesQemuAfXDPL2)
+class TestVPPInterfacesQemuAfXDPL2Single(TestVPPInterfacesQemuAfXDPL2Base):
+    """Test af_xdp interfaces in L2 mode for IPv4/v6."""
+
+    tests_to_run = "28"
+
+
+class TestVPPInterfacesQemuAfXDPL2Multi(TestVPPInterfacesQemuAfXDPL2Base):
+    """Test af_xdp interfaces in L2 mode for IPv4/v6."""
+
+    tests_to_run = "30"
+
+
+for cls in (TestVPPInterfacesQemuAfXDPL2Single, TestVPPInterfacesQemuAfXDPL2Multi):
+    tests = filter(TestSelector(cls.tests_to_run).filter_tests, test_config["tests"])
+    generate_vpp_interface_tests(tests, cls)
+
 
 if __name__ == "__main__":
     unittest.main(testRunner=VppTestRunner)
