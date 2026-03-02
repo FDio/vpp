@@ -208,7 +208,7 @@ af_xdp_delete_if (vlib_main_t * vm, af_xdp_device_t * ad)
 }
 
 static int
-af_xdp_load_program (af_xdp_create_if_args_t * args, af_xdp_device_t * ad)
+af_xdp_load_program (af_xdp_create_if_args_t *args, af_xdp_device_t *ad, const char *prog)
 {
   int fd;
   struct bpf_program *bpf_prog;
@@ -219,12 +219,11 @@ af_xdp_load_program (af_xdp_create_if_args_t * args, af_xdp_device_t * ad)
 		"setrlimit(%s) failed: %s (errno %d)", ad->linux_ifname,
 		strerror (errno), errno);
 
-  ad->bpf_obj = bpf_object__open_file (args->prog, NULL);
+  ad->bpf_obj = bpf_object__open_file (prog, NULL);
   if (libbpf_get_error (ad->bpf_obj))
     {
       args->rv = VNET_API_ERROR_SYSCALL_ERROR_5;
-      args->error = clib_error_return_unix (
-	0, "bpf_object__open_file(%s) failed", args->prog);
+      args->error = clib_error_return_unix (0, "bpf_object__open_file(%s) failed", prog);
       goto err0;
     }
 
@@ -328,7 +327,9 @@ af_xdp_create_queue (vlib_main_t *vm, af_xdp_create_if_args_t *args,
       sock_config.bind_flags |= XDP_ZEROCOPY;
       break;
     }
-  if (args->prog)
+  if (ad->flags & AF_XDP_DEVICE_F_MULTI_BUFFER)
+    sock_config.bind_flags |= XDP_USE_SG;
+  if (ad->bpf_obj)
     sock_config.libbpf_flags = XSK_LIBBPF_FLAGS__INHIBIT_PROG_LOAD;
   if (xsk_socket__create
       (xsk, ad->linux_ifname, qid, *umem, rx, tx, &sock_config))
@@ -342,7 +343,7 @@ af_xdp_create_queue (vlib_main_t *vm, af_xdp_create_if_args_t *args,
     }
 
   fd = xsk_socket__fd (*xsk);
-  if (args->prog)
+  if (ad->bpf_obj)
     {
       struct bpf_map *map =
 	bpf_object__find_map_by_name (ad->bpf_obj, "xsks_map");
@@ -568,6 +569,7 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
   af_xdp_main_t *am = &af_xdp_main;
   af_xdp_device_t *ad;
   vnet_sw_interface_t *sw;
+  const char *prog = args->prog;
   int rxq_num, txq_num, q_num;
   int ns_fds[2];
   int i, ret;
@@ -620,6 +622,11 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
   if (tm->n_vlib_mains > 1 &&
       0 == (args->flags & AF_XDP_CREATE_FLAGS_NO_SYSCALL_LOCK))
     ad->flags |= AF_XDP_DEVICE_F_SYSCALL_LOCK;
+  if (args->flags & AF_XDP_CREATE_FLAGS_MULTI_BUFFER)
+    ad->flags |= AF_XDP_DEVICE_F_MULTI_BUFFER;
+
+  if ((ad->flags & AF_XDP_DEVICE_F_MULTI_BUFFER) && !prog)
+    prog = AF_XDP_MB_DEFAULT_PROG;
 
   ad->linux_ifname = (char *) format (0, "%s", args->linux_ifname);
   vec_validate (ad->linux_ifname, IFNAMSIZ - 1);	/* libbpf expects ifname to be at least IFNAMSIZ */
@@ -637,8 +644,7 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
       goto err1;
     }
 
-  if (args->prog &&
-      (af_xdp_remove_program (ad) || af_xdp_load_program (args, ad)))
+  if (prog && (af_xdp_remove_program (ad) || af_xdp_load_program (args, ad, prog)))
     goto err2;
 
   q_num = clib_max (rxq_num, txq_num);

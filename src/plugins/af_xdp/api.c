@@ -39,6 +39,8 @@ af_xdp_api_flags (vl_api_af_xdp_flag_t flags)
 
   if (flags & AF_XDP_API_FLAGS_NO_SYSCALL_LOCK)
     cflags |= AF_XDP_CREATE_FLAGS_NO_SYSCALL_LOCK;
+  if (flags & AF_XDP_API_FLAGS_MULTI_BUFFER)
+    cflags |= AF_XDP_CREATE_FLAGS_MULTI_BUFFER;
 
   return cflags;
 }
