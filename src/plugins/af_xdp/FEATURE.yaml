@@ -3,6 +3,8 @@ name: AF_XDP device driver
 maintainer: Benoît Ganne <bganne@cisco.com>
 features:
   - AF_XDP driver for Linux kernel 5.4+
+  - Single-buffer and multi-buffer RX/TX support
+  - Interface creation options for multi-buffer mode (CLI and API)
 description: "AF_XDP device driver support"
 state: experimental
 properties: [CLI, STATS, MULTITHREAD, API]

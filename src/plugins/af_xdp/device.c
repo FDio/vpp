@@ -10,6 +10,7 @@
 #include <linux/sockios.h>
 #include <linux/limits.h>
 #include <bpf/bpf.h>
+#include <xdp/libxdp.h>
 #include <vlib/vlib.h>
 #include <vlib/file.h>
 #include <vlib/pci/pci.h>
@@ -41,27 +42,25 @@ gdb_af_xdp_get_prod (const struct xsk_ring_prod *prod)
 }
 
 gdb_af_xdp_pair_t
-gdb_af_xdp_get_cons (const struct xsk_ring_cons * cons)
+gdb_af_xdp_get_cons (const struct xsk_ring_cons *cons)
 {
   gdb_af_xdp_pair_t pair = { *cons->producer, *cons->consumer };
   return pair;
 }
 
 static clib_error_t *
-af_xdp_mac_change (vnet_hw_interface_t * hw, const u8 * old, const u8 * new)
+af_xdp_mac_change (vnet_hw_interface_t *hw, const u8 *old, const u8 *new)
 {
   af_xdp_main_t *am = &af_xdp_main;
   af_xdp_device_t *ad = vec_elt_at_index (am->devices, hw->dev_instance);
   errno_t err = memcpy_s (ad->hwaddr, sizeof (ad->hwaddr), new, 6);
   if (err)
-    return clib_error_return_code (0, -err, CLIB_ERROR_ERRNO_VALID,
-				   "mac change failed");
+    return clib_error_return_code (0, -err, CLIB_ERROR_ERRNO_VALID, "mac change failed");
   return 0;
 }
 
 static clib_error_t *
-af_xdp_set_max_frame_size (vnet_main_t *vnm, vnet_hw_interface_t *hw,
-			   u32 frame_size)
+af_xdp_set_max_frame_size (vnet_main_t *vnm, vnet_hw_interface_t *hw, u32 frame_size)
 {
   af_xdp_main_t *am = &af_xdp_main;
   af_xdp_device_t *ad = vec_elt_at_index (am->devices, hw->dev_instance);
@@ -70,7 +69,7 @@ af_xdp_set_max_frame_size (vnet_main_t *vnm, vnet_hw_interface_t *hw,
 }
 
 static u32
-af_xdp_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hw, u32 flags)
+af_xdp_flag_change (vnet_main_t *vnm, vnet_hw_interface_t *hw, u32 flags)
 {
   af_xdp_main_t *am = &af_xdp_main;
   af_xdp_device_t *ad = vec_elt_at_index (am->devices, hw->dev_instance);
@@ -81,8 +80,7 @@ af_xdp_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hw, u32 flags)
       af_xdp_log (VLIB_LOG_LEVEL_ERR, ad, "set unicast not supported yet");
       return ~0;
     case ETHERNET_INTERFACE_FLAG_ACCEPT_ALL:
-      af_xdp_log (VLIB_LOG_LEVEL_ERR, ad,
-		  "set promiscuous not supported yet");
+      af_xdp_log (VLIB_LOG_LEVEL_ERR, ad, "set promiscuous not supported yet");
       return ~0;
     }
 
@@ -135,27 +133,44 @@ af_xdp_exit_netns (char *netns, int *fds)
 static int
 af_xdp_remove_program (af_xdp_device_t *ad)
 {
-  u32 curr_prog_id = 0;
   int ret;
   int ns_fds[2];
+  u32 curr_prog_id = 0;
 
   af_xdp_enter_netns (ad->netns, ns_fds);
-  ret = bpf_xdp_query_id (ad->linux_ifindex, 0, &curr_prog_id);
-  if (ret != 0)
+
+  /* Use libxdp if we loaded with libxdp, otherwise use libbpf for cleanup */
+  if (ad->xdp_prog)
     {
-      af_xdp_log (VLIB_LOG_LEVEL_ERR, ad, "bpf_xdp_query_id failed\n");
-      goto err0;
+      ret = xdp_program__detach (ad->xdp_prog, ad->linux_ifindex, 0, 0);
+      if (ret != 0)
+	{
+	  af_xdp_log (VLIB_LOG_LEVEL_ERR, ad, "xdp_program__detach failed");
+	  goto err0;
+	}
+      xdp_program__close (ad->xdp_prog);
+      ad->xdp_prog = NULL;
+    }
+  else
+    {
+      /* For single-buffer mode, libxsk loaded the default program.
+       * Query first to check if a program is attached, then detach only if
+       * present. */
+      ret = bpf_xdp_query_id (ad->linux_ifindex, 0, &curr_prog_id);
+      if (ret != 0)
+	{
+	  af_xdp_log (VLIB_LOG_LEVEL_ERR, ad, "bpf_xdp_query_id failed");
+	  goto err0;
+	}
+
+      if (curr_prog_id && (ret = bpf_xdp_detach (ad->linux_ifindex, 0, NULL)))
+	{
+	  af_xdp_log (VLIB_LOG_LEVEL_ERR, ad, "bpf_xdp_detach failed");
+	  goto err0;
+	}
     }
 
-  if (curr_prog_id && (ret = bpf_xdp_detach (ad->linux_ifindex, 0, NULL)))
-    {
-      af_xdp_log (VLIB_LOG_LEVEL_ERR, ad, "bpf_xdp_detach failed\n");
-      goto err0;
-    }
   af_xdp_exit_netns (ad->netns, ns_fds);
-  if (ad->bpf_obj)
-    bpf_object__close (ad->bpf_obj);
-
   return 0;
 
 err0:
@@ -164,7 +179,7 @@ err0:
 }
 
 void
-af_xdp_delete_if (vlib_main_t * vm, af_xdp_device_t * ad)
+af_xdp_delete_if (vlib_main_t *vm, af_xdp_device_t *ad)
 {
   vnet_main_t *vnm = vnet_get_main ();
   af_xdp_main_t *axm = &af_xdp_main;
@@ -205,59 +220,101 @@ af_xdp_delete_if (vlib_main_t * vm, af_xdp_device_t * ad)
   pool_put (axm->devices, ad);
 }
 
+/*
+ * Load and attach an XDP program to the interface.
+ *
+ * prog_name can be:
+ *   - a bare filename (e.g. "xsk_def_xdp_prog.o"): looked up via libxdp in
+ *     LIBXDP_OBJECT_PATH (typically /usr/lib/bpf). Use this for programs
+ *     shipped alongside VPP or installed system-wide.
+ *   - an absolute or relative path (e.g. "/path/to/my_prog.o"): opened
+ *     directly from the filesystem. Use this to load a custom program from
+ *     a non-standard location.
+ *
+ * The distinction is made by the presence of '/' in prog_name.
+ */
 static int
-af_xdp_load_program (af_xdp_create_if_args_t * args, af_xdp_device_t * ad)
+af_xdp_load_program (af_xdp_create_if_args_t *args, af_xdp_device_t *ad, const char *prog_name,
+		     bool enable_frags)
 {
-  int fd;
-  struct bpf_program *bpf_prog;
+  struct xdp_program *xdp_prog = NULL;
+  char errmsg[256];
+  int err;
   struct rlimit r = { RLIM_INFINITY, RLIM_INFINITY };
 
   if (setrlimit (RLIMIT_MEMLOCK, &r))
-    af_xdp_log (VLIB_LOG_LEVEL_WARNING, ad,
-		"setrlimit(%s) failed: %s (errno %d)", ad->linux_ifname,
+    af_xdp_log (VLIB_LOG_LEVEL_WARNING, ad, "setrlimit(%s) failed: %s (errno %d)", ad->linux_ifname,
 		strerror (errno), errno);
 
-  ad->bpf_obj = bpf_object__open_file (args->prog, NULL);
-  if (libbpf_get_error (ad->bpf_obj))
+  vlib_log (VLIB_LOG_LEVEL_INFO, af_xdp_main.log_class,
+	    "%s: Loading XDP program '%s' (enable_frags=%d)", ad->linux_ifname, prog_name,
+	    enable_frags);
+
+  /* If prog_name contains a '/', treat it as a filesystem path and open it
+   * directly. Otherwise, search for it in LIBXDP_OBJECT_PATH (/usr/lib/bpf
+   * by default). */
+  if (strchr (prog_name, '/'))
+    xdp_prog = xdp_program__open_file (prog_name, NULL, NULL);
+  else
+    xdp_prog = xdp_program__find_file (prog_name, NULL, NULL);
+  err = libxdp_get_error (xdp_prog);
+  if (err)
     {
       args->rv = VNET_API_ERROR_SYSCALL_ERROR_5;
-      args->error = clib_error_return_unix (
-	0, "bpf_object__open_file(%s) failed", args->prog);
-      goto err0;
+      libxdp_strerror (err, errmsg, sizeof (errmsg));
+      args->error = clib_error_return (0, "failed to load XDP program '%s': %s", prog_name, errmsg);
+      return -1;
     }
 
-  bpf_prog = bpf_object__next_program (ad->bpf_obj, NULL);
-  if (!bpf_prog)
-    goto err1;
+  vlib_log (VLIB_LOG_LEVEL_INFO, af_xdp_main.log_class, "%s: Loaded XDP program '%s'",
+	    ad->linux_ifname, prog_name);
 
-  bpf_program__set_type (bpf_prog, BPF_PROG_TYPE_XDP);
+  /* Enable multi-buffer support if requested */
+  if (enable_frags)
+    {
+      vlib_log (VLIB_LOG_LEVEL_INFO, af_xdp_main.log_class,
+		"%s: Enabling XDP frags support for program", ad->linux_ifname);
+      err = xdp_program__set_xdp_frags_support (xdp_prog, true);
+      if (err)
+	{
+	  vlib_log (VLIB_LOG_LEVEL_WARNING, af_xdp_main.log_class,
+		    "%s: Failed to enable XDP frags support: %s", ad->linux_ifname,
+		    strerror (-err));
+	  /* Continue anyway - kernel might not support it */
+	}
+      else
+	{
+	  vlib_log (VLIB_LOG_LEVEL_INFO, af_xdp_main.log_class,
+		    "%s: Successfully enabled XDP frags support", ad->linux_ifname);
+	}
+    }
 
-  if (bpf_object__load (ad->bpf_obj))
-    goto err1;
-
-  fd = bpf_program__fd (bpf_prog);
-
-  if (bpf_xdp_attach (ad->linux_ifindex, fd, XDP_FLAGS_UPDATE_IF_NOEXIST,
-		      NULL))
+  /* Attach the program */
+  vlib_log (VLIB_LOG_LEVEL_INFO, af_xdp_main.log_class,
+	    "%s: Attaching XDP program to interface (ifindex=%d)", ad->linux_ifname,
+	    ad->linux_ifindex);
+  err = xdp_program__attach (xdp_prog, ad->linux_ifindex, XDP_FLAGS_UPDATE_IF_NOEXIST, 0);
+  if (err)
     {
       args->rv = VNET_API_ERROR_SYSCALL_ERROR_6;
-      args->error = clib_error_return_unix (0, "bpf_xdp_attach(%s) failed",
-					    ad->linux_ifname);
-      goto err1;
+      libxdp_strerror (err, errmsg, sizeof (errmsg));
+      args->error =
+	clib_error_return_unix (0, "xdp_program__attach(%s) failed: %s", ad->linux_ifname, errmsg);
+      xdp_program__close (xdp_prog);
+      return -1;
     }
 
-  return 0;
+  vlib_log (VLIB_LOG_LEVEL_INFO, af_xdp_main.log_class,
+	    "%s: Successfully attached XDP program to interface", ad->linux_ifname);
 
-err1:
-  bpf_object__close (ad->bpf_obj);
-  ad->bpf_obj = 0;
-err0:
-  return -1;
+  /* Store the program for later cleanup */
+  ad->xdp_prog = xdp_prog;
+
+  return 0;
 }
 
 static int
-af_xdp_create_queue (vlib_main_t *vm, af_xdp_create_if_args_t *args,
-		     af_xdp_device_t *ad, int qid)
+af_xdp_create_queue (vlib_main_t *vm, af_xdp_create_if_args_t *args, af_xdp_device_t *ad, int qid)
 {
   struct xsk_umem **umem;
   struct xsk_socket **xsk;
@@ -288,13 +345,11 @@ af_xdp_create_queue (vlib_main_t *vm, af_xdp_create_if_args_t *args,
   memset (&umem_config, 0, sizeof (umem_config));
   umem_config.fill_size = args->rxq_size;
   umem_config.comp_size = args->txq_size;
-  umem_config.frame_size =
-    sizeof (vlib_buffer_t) + vlib_buffer_get_default_data_size (vm);
+  umem_config.frame_size = sizeof (vlib_buffer_t) + vlib_buffer_get_default_data_size (vm);
   umem_config.frame_headroom = sizeof (vlib_buffer_t);
   umem_config.flags = XDP_UMEM_UNALIGNED_CHUNK_FLAG;
-  if (xsk_umem__create
-      (umem, uword_to_pointer (vm->buffer_main->buffer_mem_start, void *),
-       vm->buffer_main->buffer_mem_size, fq, cq, &umem_config))
+  if (xsk_umem__create (umem, uword_to_pointer (vm->buffer_main->buffer_mem_start, void *),
+			vm->buffer_main->buffer_mem_size, fq, cq, &umem_config))
     {
       uword sys_page_size = clib_mem_get_page_size ();
       args->rv = VNET_API_ERROR_SYSCALL_ERROR_1;
@@ -304,10 +359,8 @@ af_xdp_create_queue (vlib_main_t *vm, af_xdp_create_if_args_t *args,
       if (umem_config.frame_size < XDP_UMEM_MIN_CHUNK_SIZE ||
 	  umem_config.frame_size > sys_page_size)
 	args->error = clib_error_return (
-	  args->error,
-	  "(unsupported data-size? (should be between %d and %d))",
-	  XDP_UMEM_MIN_CHUNK_SIZE - sizeof (vlib_buffer_t),
-	  sys_page_size - sizeof (vlib_buffer_t));
+	  args->error, "(unsupported data-size? (should be between %d and %d))",
+	  XDP_UMEM_MIN_CHUNK_SIZE - sizeof (vlib_buffer_t), sys_page_size - sizeof (vlib_buffer_t));
       goto err0;
     }
 
@@ -326,34 +379,58 @@ af_xdp_create_queue (vlib_main_t *vm, af_xdp_create_if_args_t *args,
       sock_config.bind_flags |= XDP_ZEROCOPY;
       break;
     }
-  if (args->prog)
+  if (ad->flags & AF_XDP_DEVICE_F_MULTI_BUFFER)
+    sock_config.bind_flags |= XDP_USE_SG;
+
+  /* If we loaded a custom XDP program with libxdp, prevent libxsk from
+   * loading its own default program. We'll update the xsks_map manually below. */
+  if (ad->xdp_prog)
     sock_config.libbpf_flags = XSK_LIBBPF_FLAGS__INHIBIT_PROG_LOAD;
-  if (xsk_socket__create
-      (xsk, ad->linux_ifname, qid, *umem, rx, tx, &sock_config))
+
+  if (xsk_socket__create (xsk, ad->linux_ifname, qid, *umem, rx, tx, &sock_config))
     {
       args->rv = VNET_API_ERROR_SYSCALL_ERROR_2;
-      args->error =
-	clib_error_return_unix (0,
-				"xsk_socket__create() failed (is linux netdev %s up?)",
-				ad->linux_ifname);
+      args->error = clib_error_return_unix (
+	0, "xsk_socket__create() failed (is linux netdev %s up?)", ad->linux_ifname);
       goto err1;
     }
 
   fd = xsk_socket__fd (*xsk);
-  if (args->prog)
+
+  /* If we loaded a program with libxdp, we must manually update the xsks_map
+   * because we set INHIBIT_PROG_LOAD above to prevent libxsk from loading
+   * its own program. */
+  if (ad->xdp_prog)
     {
-      struct bpf_map *map =
-	bpf_object__find_map_by_name (ad->bpf_obj, "xsks_map");
+      /* Get the underlying bpf_object from the libxdp program handle */
+      struct bpf_object *bpf_obj = xdp_program__bpf_obj (ad->xdp_prog);
+      if (!bpf_obj)
+	{
+	  args->rv = VNET_API_ERROR_SYSCALL_ERROR_3;
+	  args->error =
+	    clib_error_return (0, "xdp_program__bpf_obj failed for %s", ad->linux_ifname);
+	  goto err2;
+	}
+
+      struct bpf_map *map = bpf_object__find_map_by_name (bpf_obj, "xsks_map");
+      if (!map)
+	{
+	  args->rv = VNET_API_ERROR_SYSCALL_ERROR_3;
+	  args->error = clib_error_return (
+	    0, "bpf_object__find_map_by_name(xsks_map) failed for %s", ad->linux_ifname);
+	  goto err2;
+	}
+
       int ret = xsk_socket__update_xskmap (*xsk, bpf_map__fd (map));
       if (ret)
 	{
 	  args->rv = VNET_API_ERROR_SYSCALL_ERROR_3;
-	  args->error = clib_error_return_unix (
-	    0, "xsk_socket__update_xskmap %s qid %d return %d",
-	    ad->linux_ifname, qid, ret);
+	  args->error = clib_error_return_unix (0, "xsk_socket__update_xskmap %s qid %d failed",
+						ad->linux_ifname, qid);
 	  goto err2;
 	}
     }
+
   optlen = sizeof (opt);
 #ifndef SOL_XDP
 #define SOL_XDP 283
@@ -361,8 +438,7 @@ af_xdp_create_queue (vlib_main_t *vm, af_xdp_create_if_args_t *args,
   if (getsockopt (fd, SOL_XDP, XDP_OPTIONS, &opt, &optlen))
     {
       args->rv = VNET_API_ERROR_SYSCALL_ERROR_4;
-      args->error =
-	clib_error_return_unix (0, "getsockopt(XDP_OPTIONS) failed");
+      args->error = clib_error_return_unix (0, "getsockopt(XDP_OPTIONS) failed");
       goto err2;
     }
   if (opt.flags & XDP_OPTIONS_ZEROCOPY)
@@ -415,8 +491,7 @@ af_xdp_get_numa (const char *ifname)
   clib_error_t *err;
   int numa;
 
-  path =
-    (char *) format (0, "/sys/class/net/%s/device/numa_node%c", ifname, 0);
+  path = (char *) format (0, "/sys/class/net/%s/device/numa_node%c", ifname, 0);
   err = clib_sysfs_read (path, "%d", &numa);
   if (err || numa < 0)
     numa = 0;
@@ -452,7 +527,7 @@ af_xdp_get_q_count (const char *ifname, int *rxq_num, int *txq_num)
 }
 
 static clib_error_t *
-af_xdp_device_rxq_read_ready (clib_file_t * f)
+af_xdp_device_rxq_read_ready (clib_file_t *f)
 {
   vnet_hw_if_rx_queue_set_int_pending (vnet_get_main (), f->private_data);
   return 0;
@@ -476,8 +551,7 @@ af_xdp_device_set_rxq_mode (const af_xdp_device_t *ad, af_xdp_rxq_t *rxq,
       break;
     case AF_XDP_RXQ_MODE_INTERRUPT:
       if (ad->flags & AF_XDP_DEVICE_F_SYSCALL_LOCK)
-	return clib_error_create (
-	  "kernel workaround incompatible with interrupt mode");
+	return clib_error_create ("kernel workaround incompatible with interrupt mode");
       update = UNIX_FILE_UPDATE_ADD;
       break;
     default:
@@ -492,8 +566,7 @@ af_xdp_device_set_rxq_mode (const af_xdp_device_t *ad, af_xdp_rxq_t *rxq,
 }
 
 static u32
-af_xdp_find_rxq_for_thread (vnet_main_t *vnm, const af_xdp_device_t *ad,
-			    const u32 thread)
+af_xdp_find_rxq_for_thread (vnet_main_t *vnm, const af_xdp_device_t *ad, const u32 thread)
 {
   u32 i;
   for (i = 0; i < ad->rxq_num; i++)
@@ -507,8 +580,7 @@ af_xdp_find_rxq_for_thread (vnet_main_t *vnm, const af_xdp_device_t *ad,
 }
 
 static clib_error_t *
-af_xdp_finalize_queues (vnet_main_t *vnm, af_xdp_device_t *ad,
-			const int n_vlib_mains)
+af_xdp_finalize_queues (vnet_main_t *vnm, af_xdp_device_t *ad, const int n_vlib_mains)
 {
   clib_error_t *err = 0;
   int i;
@@ -516,10 +588,9 @@ af_xdp_finalize_queues (vnet_main_t *vnm, af_xdp_device_t *ad,
   for (i = 0; i < ad->rxq_num; i++)
     {
       af_xdp_rxq_t *rxq = vec_elt_at_index (ad->rxqs, i);
-      rxq->queue_index = vnet_hw_if_register_rx_queue (
-	vnm, ad->hw_if_index, i, VNET_HW_IF_RXQ_THREAD_ANY);
-      u8 *desc = format (0, "%U rxq %d", format_af_xdp_device_name,
-			 ad->dev_instance, i);
+      rxq->queue_index =
+	vnet_hw_if_register_rx_queue (vnm, ad->hw_if_index, i, VNET_HW_IF_RXQ_THREAD_ANY);
+      u8 *desc = format (0, "%U rxq %d", format_af_xdp_device_name, ad->dev_instance, i);
       clib_file_t f = {
 	.file_descriptor = rxq->xsk_fd,
 	.private_data = rxq->queue_index,
@@ -527,16 +598,14 @@ af_xdp_finalize_queues (vnet_main_t *vnm, af_xdp_device_t *ad,
 	.description = desc,
       };
       rxq->file_index = clib_file_add (&file_main, &f);
-      vnet_hw_if_set_rx_queue_file_index (vnm, rxq->queue_index,
-					  rxq->file_index);
+      vnet_hw_if_set_rx_queue_file_index (vnm, rxq->queue_index, rxq->file_index);
       err = af_xdp_device_set_rxq_mode (ad, rxq, AF_XDP_RXQ_MODE_POLLING);
       if (err)
 	return err;
     }
 
   for (i = 0; i < ad->txq_num; i++)
-    vec_elt (ad->txqs, i).queue_index =
-      vnet_hw_if_register_tx_queue (vnm, ad->hw_if_index, i);
+    vec_elt (ad->txqs, i).queue_index = vnet_hw_if_register_tx_queue (vnm, ad->hw_if_index, i);
 
   /* We set the rxq and txq of the same queue pair on the same thread
    * by default to avoid locking because of the syscall lock. */
@@ -549,8 +618,7 @@ af_xdp_finalize_queues (vnet_main_t *vnm, af_xdp_device_t *ad,
        * assign txq in a round-robin fashion. We start from the 1st txq
        * not shared with a rxq if possible... */
       qid = qid < ad->txq_num ? qid : (last_qid++ % ad->txq_num);
-      vnet_hw_if_tx_queue_assign_thread (
-	vnm, vec_elt (ad->txqs, qid).queue_index, i);
+      vnet_hw_if_tx_queue_assign_thread (vnm, vec_elt (ad->txqs, qid).queue_index, i);
     }
 
   vnet_hw_if_update_runtime_data (vnm, ad->hw_if_index);
@@ -558,7 +626,7 @@ af_xdp_finalize_queues (vnet_main_t *vnm, af_xdp_device_t *ad,
 }
 
 void
-af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
+af_xdp_create_if (vlib_main_t *vm, af_xdp_create_if_args_t *args)
 {
   vnet_main_t *vnm = vnet_get_main ();
   vlib_thread_main_t *tm = vlib_get_thread_main ();
@@ -566,6 +634,7 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
   af_xdp_main_t *am = &af_xdp_main;
   af_xdp_device_t *ad;
   vnet_sw_interface_t *sw;
+  const char *prog = args->prog;
   int rxq_num, txq_num, q_num;
   int ns_fds[2];
   int i, ret;
@@ -582,14 +651,12 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
     }
 
   if (args->rxq_size < VLIB_FRAME_SIZE || args->txq_size < VLIB_FRAME_SIZE ||
-      args->rxq_size > 65535 || args->txq_size > 65535 ||
-      !is_pow2 (args->rxq_size) || !is_pow2 (args->txq_size))
+      args->rxq_size > 65535 || args->txq_size > 65535 || !is_pow2 (args->rxq_size) ||
+      !is_pow2 (args->txq_size))
     {
       args->rv = VNET_API_ERROR_INVALID_VALUE;
-      args->error =
-	clib_error_return (0,
-			   "queue size must be a power of two between %i and 65535",
-			   VLIB_FRAME_SIZE);
+      args->error = clib_error_return (0, "queue size must be a power of two between %i and 65535",
+				       VLIB_FRAME_SIZE);
       goto err0;
     }
 
@@ -597,8 +664,7 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
   if (ret)
     {
       args->rv = ret;
-      args->error = clib_error_return (0, "enter netns %s failed, ret %d",
-				       args->netns, args->rv);
+      args->error = clib_error_return (0, "enter netns %s failed, ret %d", args->netns, args->rv);
       goto err0;
     }
 
@@ -606,8 +672,7 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
   if (args->rxq_num > rxq_num && AF_XDP_NUM_RX_QUEUES_ALL != args->rxq_num)
     {
       args->rv = VNET_API_ERROR_INVALID_VALUE;
-      args->error = clib_error_create ("too many rxq requested (%d > %d)",
-				       args->rxq_num, rxq_num);
+      args->error = clib_error_create ("too many rxq requested (%d > %d)", args->rxq_num, rxq_num);
       goto err1;
     }
   rxq_num = clib_min (rxq_num, args->rxq_num);
@@ -615,12 +680,16 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
 
   pool_get_zero (am->devices, ad);
 
-  if (tm->n_vlib_mains > 1 &&
-      0 == (args->flags & AF_XDP_CREATE_FLAGS_NO_SYSCALL_LOCK))
+  if (tm->n_vlib_mains > 1 && 0 == (args->flags & AF_XDP_CREATE_FLAGS_NO_SYSCALL_LOCK))
     ad->flags |= AF_XDP_DEVICE_F_SYSCALL_LOCK;
+  if (args->flags & AF_XDP_CREATE_FLAGS_MULTI_BUFFER)
+    ad->flags |= AF_XDP_DEVICE_F_MULTI_BUFFER;
+
+  if ((ad->flags & AF_XDP_DEVICE_F_MULTI_BUFFER) && !prog)
+    prog = AF_XDP_MB_DEFAULT_PROG;
 
   ad->linux_ifname = (char *) format (0, "%s", args->linux_ifname);
-  vec_validate (ad->linux_ifname, IFNAMSIZ - 1);	/* libbpf expects ifname to be at least IFNAMSIZ */
+  vec_validate (ad->linux_ifname, IFNAMSIZ - 1); /* libbpf expects ifname to be at least IFNAMSIZ */
 
   if (args->netns)
     ad->netns = (char *) format (0, "%s%c", args->netns, 0);
@@ -629,15 +698,29 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
   if (!ad->linux_ifindex)
     {
       args->rv = VNET_API_ERROR_INVALID_VALUE;
-      args->error = clib_error_return_unix (0, "if_nametoindex(%s) failed",
-					    ad->linux_ifname);
+      args->error = clib_error_return_unix (0, "if_nametoindex(%s) failed", ad->linux_ifname);
       ad->linux_ifindex = ~0;
       goto err1;
     }
 
-  if (args->prog &&
-      (af_xdp_remove_program (ad) || af_xdp_load_program (args, ad)))
-    goto err2;
+  vlib_log (VLIB_LOG_LEVEL_INFO, af_xdp_main.log_class,
+	    "%s: Checking if XDP program needed: prog=%s, multi-buffer=%d", ad->linux_ifname,
+	    prog ? prog : "(null)", !!(ad->flags & AF_XDP_DEVICE_F_MULTI_BUFFER));
+
+  if (prog)
+    {
+      bool enable_frags = !!(ad->flags & AF_XDP_DEVICE_F_MULTI_BUFFER);
+      vlib_log (VLIB_LOG_LEVEL_INFO, af_xdp_main.log_class,
+		"%s: Loading XDP program: %s (enable_frags=%d)", ad->linux_ifname, prog,
+		enable_frags);
+      if (af_xdp_remove_program (ad) || af_xdp_load_program (args, ad, prog, enable_frags))
+	goto err2;
+    }
+  else
+    {
+      vlib_log (VLIB_LOG_LEVEL_INFO, af_xdp_main.log_class, "%s: No XDP program to load",
+		ad->linux_ifname);
+    }
 
   q_num = clib_max (rxq_num, txq_num);
   ad->rxq_num = rxq_num;
@@ -659,8 +742,8 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
 	   * requested 'max'
 	   * we might create less tx queues than workers but this is ok
 	   */
-	  af_xdp_log (VLIB_LOG_LEVEL_DEBUG, ad,
-		      "create interface failed to create queue qid=%d", i);
+	  af_xdp_log (VLIB_LOG_LEVEL_DEBUG, ad, "create interface failed to create queue qid=%d",
+		      i);
 
 	  /* fixup vectors length */
 	  vec_set_len (ad->umem, i);
@@ -671,14 +754,12 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
 	  ad->rxq_num = clib_min (i, rxq_num);
 	  ad->txq_num = clib_min (i, txq_num);
 
-	  if (i == 0 ||
-	      (i < rxq_num && AF_XDP_NUM_RX_QUEUES_ALL != args->rxq_num))
+	  if (i == 0 || (i < rxq_num && AF_XDP_NUM_RX_QUEUES_ALL != args->rxq_num))
 	    {
 	      ad->rxq_num = ad->txq_num = 0;
 	      goto err2; /* failed creating requested rxq: fatal error, bailing
 			    out */
 	    }
-
 
 	  args->rv = 0;
 	  clib_error_free (args->error);
@@ -695,17 +776,13 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
 
   ad->dev_instance = ad - am->devices;
   ad->per_interface_next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
-  ad->pool =
-    vlib_buffer_pool_get_default_for_numa (vm,
-					   af_xdp_get_numa
-					   (ad->linux_ifname));
+  ad->pool = vlib_buffer_pool_get_default_for_numa (vm, af_xdp_get_numa (ad->linux_ifname));
   if (!args->name)
     {
       char *ifname = ad->linux_ifname;
       if (args->netns != NULL && strncmp (args->netns, "pid:", 4) == 0)
 	{
-	  ad->name =
-	    (char *) format (0, "%s/%u", ifname, atoi (args->netns + 4));
+	  ad->name = (char *) format (0, "%s/%u", ifname, atoi (args->netns + 4));
 	}
       else
 	ad->name = (char *) format (0, "%s/%d", ifname, ad->dev_instance);
@@ -742,7 +819,7 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
   ad->buffer_template->flags = VLIB_BUFFER_TOTAL_LENGTH_VALID;
   ad->buffer_template->ref_count = 1;
   vnet_buffer (ad->buffer_template)->sw_if_index[VLIB_RX] = ad->sw_if_index;
-  vnet_buffer (ad->buffer_template)->sw_if_index[VLIB_TX] = (u32) ~ 0;
+  vnet_buffer (ad->buffer_template)->sw_if_index[VLIB_TX] = (u32) ~0;
   ad->buffer_template->buffer_pool_index = ad->pool;
 
   return;
@@ -756,7 +833,7 @@ err0:
 }
 
 static clib_error_t *
-af_xdp_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
+af_xdp_interface_admin_up_down (vnet_main_t *vnm, u32 hw_if_index, u32 flags)
 {
   vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, hw_if_index);
   af_xdp_main_t *am = &af_xdp_main;
@@ -768,8 +845,7 @@ af_xdp_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
 
   if (is_up)
     {
-      vnet_hw_interface_set_flags (vnm, ad->hw_if_index,
-				   VNET_HW_INTERFACE_FLAG_LINK_UP);
+      vnet_hw_interface_set_flags (vnm, ad->hw_if_index, VNET_HW_INTERFACE_FLAG_LINK_UP);
       ad->flags |= AF_XDP_DEVICE_F_ADMIN_UP;
       af_xdp_device_input_refill (ad);
     }
@@ -809,8 +885,7 @@ af_xdp_interface_rx_mode_change (vnet_main_t *vnm, u32 hw_if_index, u32 qid,
 }
 
 static void
-af_xdp_set_interface_next_node (vnet_main_t * vnm, u32 hw_if_index,
-				u32 node_index)
+af_xdp_set_interface_next_node (vnet_main_t *vnm, u32 hw_if_index, u32 node_index)
 {
   af_xdp_main_t *am = &af_xdp_main;
   vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
@@ -824,12 +899,11 @@ af_xdp_set_interface_next_node (vnet_main_t * vnm, u32 hw_if_index,
     }
 
   ad->per_interface_next_index =
-    vlib_node_add_next (vlib_get_main (), af_xdp_input_node.index,
-			node_index);
+    vlib_node_add_next (vlib_get_main (), af_xdp_input_node.index, node_index);
 }
 
 static char *af_xdp_tx_func_error_strings[] = {
-#define _(n,s) s,
+#define _(n, s) s,
   foreach_af_xdp_tx_func_error
 #undef _
 };
@@ -856,7 +930,7 @@ VNET_DEVICE_CLASS (af_xdp_device_class) = {
 };
 
 clib_error_t *
-af_xdp_init (vlib_main_t * vm)
+af_xdp_init (vlib_main_t *vm)
 {
   af_xdp_main_t *am = &af_xdp_main;
 
