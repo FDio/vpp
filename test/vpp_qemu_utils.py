@@ -77,7 +77,7 @@ def create_namespace(history_file, ns=None):
                     break
                 if attempt >= retries - 1:
                     raise Exception(
-                        f"Failed to create namespace {namespace} after {retries} attempts. Error: {result.stderr.decode()}"
+                        f"Failed to create namespace {namespace} after {retries} attempts. Error: {result.stderr if isinstance(result.stderr, str) else result.stderr.decode()}"
                     )
         return ns
 

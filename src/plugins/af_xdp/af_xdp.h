@@ -14,13 +14,14 @@
 #define af_xdp_log(lvl, dev, f, ...) \
   vlib_log(lvl, af_xdp_main.log_class, "%v: " f, (dev)->name, ##__VA_ARGS__)
 
-#define foreach_af_xdp_device_flags                                           \
-  _ (0, INITIALIZED, "initialized")                                           \
-  _ (1, ERROR, "error")                                                       \
-  _ (2, ADMIN_UP, "admin-up")                                                 \
-  _ (3, LINK_UP, "link-up")                                                   \
-  _ (4, ZEROCOPY, "zero-copy")                                                \
-  _ (5, SYSCALL_LOCK, "syscall-lock")
+#define foreach_af_xdp_device_flags                                                                \
+  _ (0, INITIALIZED, "initialized")                                                                \
+  _ (1, ERROR, "error")                                                                            \
+  _ (2, ADMIN_UP, "admin-up")                                                                      \
+  _ (3, LINK_UP, "link-up")                                                                        \
+  _ (4, ZEROCOPY, "zero-copy")                                                                     \
+  _ (5, SYSCALL_LOCK, "syscall-lock")                                                              \
+  _ (6, MULTI_BUFFER, "multi-buffer")
 
 enum
 {
@@ -60,6 +61,11 @@ typedef struct
   uword file_index;
   u32 queue_index;
   af_xdp_rxq_mode_t mode;
+
+  /* multi-buffer partial packet state */
+  u32 mb_head_bi;
+  u32 mb_tail_bi;
+  u32 mb_total_len;
 } af_xdp_rxq_t;
 
 typedef struct
@@ -135,7 +141,10 @@ typedef enum
 typedef enum
 {
   AF_XDP_CREATE_FLAGS_NO_SYSCALL_LOCK = 1,
+  AF_XDP_CREATE_FLAGS_MULTI_BUFFER = 2,
 } af_xdp_create_flag_t;
+
+#define AF_XDP_MB_DEFAULT_PROG "extras/bpf/af_xdp_mb.bpf.o"
 
 typedef struct
 {
