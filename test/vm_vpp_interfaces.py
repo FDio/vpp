@@ -525,14 +525,14 @@ class TestVPPInterfacesQemu:
 
     def tearDown(self):
         # Delete tap interfaces
-        for interface_if_idx in self.tap_interfaces:
+        for interface_if_idx in getattr(self, "tap_interfaces", []):
             try:
                 self.vapi.tap_delete_v2(sw_if_index=interface_if_idx)
             except Exception:
                 pass
 
         # Delete memif interfaces
-        for interface_if_idx in self.memif_interfaces:
+        for interface_if_idx in getattr(self, "memif_interfaces", []):
             try:
                 self.vapi.memif_delete(sw_if_index=interface_if_idx)
             except Exception:
