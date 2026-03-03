@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "db51c564_bbe6f7d9",
+        "filename": "src/vnet/flow/flow.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 276,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2026-03-03T17:56:53Z",
+      "side": 1,
+      "message": "the comment looks like not relevant, clib_mem_alloc is heap isn\u0027t it",
+      "revId": "c820899be0ed85d89b35c4c5766608a5dc4e470c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
