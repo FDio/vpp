@@ -14,6 +14,7 @@
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/ip/ip6_link.h>
 #include <vnet/ip/ip6_ll_table.h>
+#include <vnet/ip/punt.h>
 
 /**
  * @file
@@ -35,6 +36,7 @@ icmp6_neighbor_solicitation_or_advertisement (vlib_main_t * vm,
 					      vlib_frame_t * frame,
 					      uword is_solicitation)
 {
+  ip6_nd_main_t *indm = &ip6_nd_main;
   ip6_main_t *im = &ip6_main;
   uword n_packets = frame->n_vectors;
   u32 *from, *to_next;
@@ -233,7 +235,8 @@ icmp6_neighbor_solicitation_or_advertisement (vlib_main_t * vm,
 	    }
 	  else
 	    {
-	      next0 = 0;
+	      next0 = ICMP6_NEIGHBOR_ADVERTISEMENT_NEXT_PUNT;
+	      p0->punt_reason = indm->ip6nd_punt_reason[IP6_ND_PUNT_NA];
 	      error0 = error0 == ICMP6_ERROR_NONE ?
 		ICMP6_ERROR_NEIGHBOR_ADVERTISEMENTS_RX : error0;
 	      c_type = IP_NEIGHBOR_CTR_REPLY;
@@ -363,9 +366,10 @@ VLIB_REGISTER_NODE (ip6_icmp_neighbor_advertisement_node,static) =
 
   .format_trace = format_icmp6_input_trace,
 
-  .n_next_nodes = 1,
+  .n_next_nodes = ICMP6_NEIGHBOR_ADVERTISEMENT_N_NEXT,
   .next_nodes = {
-    [0] = "ip6-punt",
+    [ICMP6_NEIGHBOR_ADVERTISEMENT_NEXT_DROP] = "ip6-drop",
+    [ICMP6_NEIGHBOR_ADVERTISEMENT_NEXT_PUNT] = "punt-dispatch",
   },
 };
 
@@ -409,6 +413,19 @@ static clib_error_t *
 ip6_nd_init (vlib_main_t * vm)
 {
   ip6_nd_main_t *i6ndm = &ip6_nd_main;
+  clib_error_t *error;
+  punt_reg_t pr = {
+    .type = PUNT_TYPE_EXCEPTION,
+    .punt = {
+      .exception = {
+	.reason = PUNT_N_REASONS,
+      },
+    },
+  };
+
+  if ((error = vlib_call_init_function (vm, ip_punt_init)))
+    return error;
+
   i6ndm->ip6_nd_pool = NULL;
   i6ndm->i6nd_sw_if_indexes = NULL;
 
@@ -418,6 +435,18 @@ ip6_nd_init (vlib_main_t * vm)
 		       ip6_icmp_neighbor_advertisement_node.index);
 
   ip_neighbor_register (AF_IP6, &ip6_nd_impl_vft);
+
+  i6ndm->i6nd_punt_client = vlib_punt_client_register ("ip6-nd");
+  if (vlib_punt_reason_alloc (i6ndm->i6nd_punt_client, "ip6-nd-neigh-adv", NULL, NULL,
+			      &i6ndm->ip6nd_punt_reason[IP6_ND_PUNT_NA],
+			      VNET_PUNT_REASON_F_IP6_PACKET, format_vnet_punt_reason_flags))
+    return clib_error_return (0, "failed to allocate punt reason for NA");
+
+  /* Punt NAs by default while allowing users to switch to drop via:
+   *   set punt del reason ip6-nd-neigh-adv */
+  pr.punt.exception.reason = i6ndm->ip6nd_punt_reason[IP6_ND_PUNT_NA];
+  if ((error = vnet_punt_add_del (vm, &pr, 1)))
+    return error;
 
   ip6_nd_delegate_id = ip6_link_delegate_register (&ip6_nd_delegate_vft);
 
