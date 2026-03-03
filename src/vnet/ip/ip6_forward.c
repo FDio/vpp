@@ -196,8 +196,8 @@ ip6_del_interface_routes (u32 sw_if_index, ip6_main_t * im,
   };
 
   /* delete special routes for the prefix if needed */
-  ip6_del_interface_prefix_routes (im, sw_if_index, fib_index,
-				   address, address_length);
+  if (address_length < 128)
+    ip6_del_interface_prefix_routes (im, sw_if_index, fib_index, address, address_length);
 
   fib_table_entry_delete (fib_index, &pfx, FIB_SOURCE_INTERFACE);
 }
