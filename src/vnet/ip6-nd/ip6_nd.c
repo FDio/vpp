@@ -13,6 +13,7 @@
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/ip/ip6_link.h>
 #include <vnet/ip/ip6_ll_table.h>
+#include <vnet/ip/punt.h>
 
 /**
  * @file
@@ -35,8 +36,21 @@ typedef struct ip6_nd_t_
   u32 n_solicitations_dropped;
 } ip6_nd_t;
 
+typedef enum ip6_nd_punt_reason_type_t_
+{
+  IP6_ND_PUNT_NA,
+  IP6_ND_PUNT_N_REASONS,
+} ip6_nd_punt_reason_type_t;
+
+typedef struct ip6_nd_main_t_
+{
+  vlib_punt_hdl_t i6nd_punt_client;
+  vlib_punt_reason_t ip6nd_punt_reason[IP6_ND_PUNT_N_REASONS];
+} ip6_nd_main_t;
+
 static ip6_link_delegate_id_t ip6_nd_delegate_id;
 static ip6_nd_t *ip6_nd_pool;
+static ip6_nd_main_t ip6_nd_main;
 
 static_always_inline uword
 icmp6_neighbor_solicitation_or_advertisement (vlib_main_t * vm,
@@ -44,6 +58,7 @@ icmp6_neighbor_solicitation_or_advertisement (vlib_main_t * vm,
 					      vlib_frame_t * frame,
 					      uword is_solicitation)
 {
+  ip6_nd_main_t *indm = &ip6_nd_main;
   ip6_main_t *im = &ip6_main;
   uword n_packets = frame->n_vectors;
   u32 *from, *to_next;
@@ -226,7 +241,8 @@ icmp6_neighbor_solicitation_or_advertisement (vlib_main_t * vm,
 	    }
 	  else
 	    {
-	      next0 = 0;
+	      next0 = ICMP6_NEIGHBOR_ADVERTISEMENT_NEXT_PUNT;
+	      p0->punt_reason = indm->ip6nd_punt_reason[IP6_ND_PUNT_NA];
 	      error0 = error0 == ICMP6_ERROR_NONE ?
 		ICMP6_ERROR_NEIGHBOR_ADVERTISEMENTS_RX : error0;
 	      c_type = IP_NEIGHBOR_CTR_REPLY;
@@ -355,9 +371,10 @@ VLIB_REGISTER_NODE (ip6_icmp_neighbor_advertisement_node,static) =
 
   .format_trace = format_icmp6_input_trace,
 
-  .n_next_nodes = 1,
+  .n_next_nodes = ICMP6_NEIGHBOR_ADVERTISEMENT_N_NEXT,
   .next_nodes = {
-    [0] = "ip6-punt",
+    [ICMP6_NEIGHBOR_ADVERTISEMENT_NEXT_DROP] = "ip6-drop",
+    [ICMP6_NEIGHBOR_ADVERTISEMENT_NEXT_PUNT] = "ip6-punt",
   },
 };
 
@@ -400,12 +417,19 @@ const static ip6_link_delegate_vft_t ip6_nd_delegate_vft = {
 static clib_error_t *
 ip6_nd_init (vlib_main_t * vm)
 {
+  ip6_nd_main_t *indm = &ip6_nd_main;
+
   icmp6_register_type (vm, ICMP6_neighbor_solicitation,
 		       ip6_icmp_neighbor_solicitation_node.index);
   icmp6_register_type (vm, ICMP6_neighbor_advertisement,
 		       ip6_icmp_neighbor_advertisement_node.index);
 
   ip_neighbor_register (AF_IP6, &ip6_nd_impl_vft);
+
+  indm->i6nd_punt_client = vlib_punt_client_register ("ip6-nd");
+  vlib_punt_reason_alloc (indm->i6nd_punt_client, "ip6-nd-neigh-adv", NULL, NULL,
+			  &indm->ip6nd_punt_reason[IP6_ND_PUNT_NA], VNET_PUNT_REASON_F_IP6_PACKET,
+			  format_vnet_punt_reason_flags);
 
   ip6_nd_delegate_id = ip6_link_delegate_register (&ip6_nd_delegate_vft);
 
