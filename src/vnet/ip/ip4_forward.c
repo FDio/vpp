@@ -558,8 +558,8 @@ ip4_del_interface_routes (u32 sw_if_index,
 
   fib_table_entry_delete (fib_index, &pfx, FIB_SOURCE_INTERFACE);
 
-  ip4_del_interface_prefix_routes (im, sw_if_index, fib_index,
-				   address, address_length);
+  if (address_length < 32)
+    ip4_del_interface_prefix_routes (im, sw_if_index, fib_index, address, address_length);
 }
 
 #ifndef CLIB_MARCH_VARIANT
