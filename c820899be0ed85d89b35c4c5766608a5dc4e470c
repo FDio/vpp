@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "55e585a7_78ecf9e9",
+        "filename": "src/vnet/flow/flow.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 276,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-03-03T21:33:12Z",
+      "side": 1,
+      "message": "Sorry, this is a leftover comment for an optimization that I removed: \n```\nuword pd_stack[256];\nprivate_data \u003d range-\u003ecount \u003c\u003d 256 ? pd_stack : clib_mem_alloc(sizeof(uword) * range-\u003ecount);\n```\nBut it\u0027ll add it in a future patch",
+      "parentUuid": "db51c564_bbe6f7d9",
+      "revId": "c820899be0ed85d89b35c4c5766608a5dc4e470c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "a7e36790_33767fb2",
@@ -35,6 +53,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "716407f8_b59c80de",
+        "filename": "src/vnet/flow/flow.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 283,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-03-03T21:33:12Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "a7e36790_33767fb2",
+      "revId": "c820899be0ed85d89b35c4c5766608a5dc4e470c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "89194017_811e93ec",
@@ -48,6 +84,24 @@
       "writtenOn": "2026-03-03T18:03:36Z",
       "side": 1,
       "message": "`if (!f) { rv \u003d VNET_FLOW_ERROR_NO_SUCH_ENTRY; goto error; }`",
+      "revId": "c820899be0ed85d89b35c4c5766608a5dc4e470c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e75e08f0_81174ba0",
+        "filename": "src/vnet/flow/flow.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 349,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-03-03T21:33:12Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "89194017_811e93ec",
       "revId": "c820899be0ed85d89b35c4c5766608a5dc4e470c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
