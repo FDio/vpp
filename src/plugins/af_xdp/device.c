@@ -136,26 +136,19 @@ af_xdp_exit_netns (char *netns, int *fds)
 static int
 af_xdp_remove_program (af_xdp_device_t *ad)
 {
-  u32 curr_prog_id = 0;
   int ret;
   int ns_fds[2];
 
   af_xdp_enter_netns (ad->netns, ns_fds);
-  ret = bpf_xdp_query_id (ad->linux_ifindex, XDP_FLAGS_UPDATE_IF_NOEXIST,
-			  &curr_prog_id);
-  if (ret != 0)
-    {
-      af_xdp_log (VLIB_LOG_LEVEL_ERR, ad, "bpf_xdp_query_id failed\n");
-      goto err0;
-    }
 
-  /* Detach using libxdp if we used it, otherwise use libbpf */
+  /* Use libxdp if we loaded with libxdp, otherwise use libbpf for cleanup */
   if (ad->xdp_prog)
     {
-      ret = xdp_program__detach (ad->xdp_prog, ad->linux_ifindex, XDP_FLAGS_UPDATE_IF_NOEXIST, 0);
+      ret = xdp_program__detach (ad->xdp_prog, ad->linux_ifindex,
+				 XDP_FLAGS_UPDATE_IF_NOEXIST, 0);
       if (ret != 0)
 	{
-	  af_xdp_log (VLIB_LOG_LEVEL_ERR, ad, "xdp_program__detach failed\n");
+	  af_xdp_log (VLIB_LOG_LEVEL_ERR, ad, "xdp_program__detach failed");
 	  goto err0;
 	}
       xdp_program__close (ad->xdp_prog);
@@ -163,20 +156,18 @@ af_xdp_remove_program (af_xdp_device_t *ad)
     }
   else
     {
-      ret = bpf_xdp_detach (ad->linux_ifindex, XDP_FLAGS_UPDATE_IF_NOEXIST, NULL);
+      /* For single-buffer mode, libxsk loaded the default program.
+       * Use libbpf API to detach it. */
+      ret = bpf_xdp_detach (ad->linux_ifindex, XDP_FLAGS_UPDATE_IF_NOEXIST,
+			    NULL);
       if (ret != 0)
 	{
-	  af_xdp_log (VLIB_LOG_LEVEL_ERR, ad, "bpf_xdp_detach failed\n");
+	  af_xdp_log (VLIB_LOG_LEVEL_ERR, ad, "bpf_xdp_detach failed");
 	  goto err0;
 	}
     }
-  af_xdp_exit_netns (ad->netns, ns_fds);
-  if (ad->bpf_obj)
-    {
-      bpf_object__close (ad->bpf_obj);
-      ad->bpf_obj = NULL;
-    }
 
+  af_xdp_exit_netns (ad->netns, ns_fds);
   return 0;
 
 err0:
@@ -376,8 +367,12 @@ af_xdp_create_queue (vlib_main_t *vm, af_xdp_create_if_args_t *args,
     }
   if (ad->flags & AF_XDP_DEVICE_F_MULTI_BUFFER)
     sock_config.bind_flags |= XDP_USE_SG;
-  if (ad->bpf_obj)
+
+  /* If we loaded a custom XDP program with libxdp, prevent libxsk from
+   * loading its own default program. We'll update the xsks_map manually below. */
+  if (ad->xdp_prog)
     sock_config.libbpf_flags = XSK_LIBBPF_FLAGS__INHIBIT_PROG_LOAD;
+
   if (xsk_socket__create
       (xsk, ad->linux_ifname, qid, *umem, rx, tx, &sock_config))
     {
@@ -390,20 +385,45 @@ af_xdp_create_queue (vlib_main_t *vm, af_xdp_create_if_args_t *args,
     }
 
   fd = xsk_socket__fd (*xsk);
-  if (ad->bpf_obj)
+
+  /* If we loaded a program with libxdp, we must manually update the xsks_map
+   * because we set INHIBIT_PROG_LOAD above to prevent libxsk from loading
+   * its own program. */
+  if (ad->xdp_prog)
     {
+      /* Get the underlying bpf_object from the libxdp program handle */
+      struct bpf_object *bpf_obj = xdp_program__bpf_obj (ad->xdp_prog);
+      if (!bpf_obj)
+	{
+	  args->rv = VNET_API_ERROR_SYSCALL_ERROR_3;
+	  args->error = clib_error_return (
+	    0, "xdp_program__bpf_obj failed for %s", ad->linux_ifname);
+	  goto err2;
+	}
+
       struct bpf_map *map =
-	bpf_object__find_map_by_name (ad->bpf_obj, "xsks_map");
+	bpf_object__find_map_by_name (bpf_obj, "xsks_map");
+      if (!map)
+	{
+	  args->rv = VNET_API_ERROR_SYSCALL_ERROR_3;
+	  args->error =
+	    clib_error_return (0,
+			       "bpf_object__find_map_by_name(xsks_map) failed for %s",
+			       ad->linux_ifname);
+	  goto err2;
+	}
+
       int ret = xsk_socket__update_xskmap (*xsk, bpf_map__fd (map));
       if (ret)
 	{
 	  args->rv = VNET_API_ERROR_SYSCALL_ERROR_3;
 	  args->error = clib_error_return_unix (
-	    0, "xsk_socket__update_xskmap %s qid %d return %d",
-	    ad->linux_ifname, qid, ret);
+	    0, "xsk_socket__update_xskmap %s qid %d failed",
+	    ad->linux_ifname, qid);
 	  goto err2;
 	}
     }
+
   optlen = sizeof (opt);
 #ifndef SOL_XDP
 #define SOL_XDP 283
