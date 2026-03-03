@@ -1791,6 +1791,11 @@ class IPv6NDProxyTest(TestIPv6ND):
         self.pg2.ip6_enable()
 
     def tearDown(self):
+        self.pg0.unconfig_ip6()
+        self.pg1.ip6_disable()
+        self.pg2.ip6_disable()
+        for i in self.pg_interfaces:
+            i.admin_down()
         super(IPv6NDProxyTest, self).tearDown()
 
     def test_nd_proxy(self):
@@ -1974,6 +1979,50 @@ class IPv6NDProxyTest(TestIPv6ND):
         rx = self.pg0.get_capture(1)
 
         self.assertTrue(rx[0].haslayer(ICMPv6ND_NS))
+
+    def test_na_punt_reason_toggle(self):
+        """IPv6 NA punt reason add/del toggles punt vs drop"""
+
+        reason_name = "ip6-nd-neigh-adv"
+        rs = self.vapi.punt_reason_dump(reason={"name": reason_name})
+        self.assertEqual(len(rs), 1)
+
+        na = (
+            Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+            / IPv6(src=self.pg0.remote_ip6, dst=self.pg0.local_ip6)
+            / ICMPv6ND_NA(tgt=self.pg0.remote_ip6)
+            / ICMPv6NDOptDstLLAddr(lladdr=self.pg0.remote_mac)
+        )
+
+        no_reg_path = "/err/punt-dispatch/No registrations"
+        dispatched_path = "/err/punt-dispatch/dispatched"
+
+        no_reg_before = self.statistics.get_err_counter(no_reg_path)
+        dispatched_before = self.statistics.get_err_counter(dispatched_path)
+
+        # Default behavior keeps NA punt enabled.
+        self.send_and_assert_no_replies(self.pg0, na, "NA default punt")
+
+        no_reg_after_default = self.statistics.get_err_counter(no_reg_path)
+        dispatched_after_default = self.statistics.get_err_counter(dispatched_path)
+        self.assertEqual(no_reg_after_default, no_reg_before)
+        self.assertEqual(dispatched_after_default, dispatched_before + 1)
+
+        self.vapi.cli("set punt del reason ip6-nd-neigh-adv")
+        try:
+            self.send_and_assert_no_replies(self.pg0, na, "NA after punt del")
+            no_reg_after_del = self.statistics.get_err_counter(no_reg_path)
+            dispatched_after_del = self.statistics.get_err_counter(dispatched_path)
+            self.assertEqual(no_reg_after_del, no_reg_after_default + 1)
+            self.assertEqual(dispatched_after_del, dispatched_after_default)
+        finally:
+            self.vapi.cli("set punt reason ip6-nd-neigh-adv")
+
+        self.send_and_assert_no_replies(self.pg0, na, "NA after punt add")
+        no_reg_after_add = self.statistics.get_err_counter(no_reg_path)
+        dispatched_after_add = self.statistics.get_err_counter(dispatched_path)
+        self.assertEqual(no_reg_after_add, no_reg_after_del)
+        self.assertEqual(dispatched_after_add, dispatched_after_del + 1)
 
 
 class TestIP6Null(VppTestCase):
