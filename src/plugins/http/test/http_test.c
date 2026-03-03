@@ -6,6 +6,7 @@
 #include <vpp/app/version.h>
 #include <http/http.h>
 #include <http/http_header_names.h>
+#include <http/http_private.h>
 #include <http/http2/hpack_inlines.h>
 #include <http/http2/hpack.h>
 #include <http/http2/frame.h>
@@ -2141,6 +2142,63 @@ http_test_http_headers_rx_to_tx (vlib_main_t *vm)
   return 0;
 }
 
+static int
+http_test_parse_content_length (vlib_main_t *vm)
+{
+  http_req_t req = {};
+  http_field_line_t *field_line;
+  int rv;
+
+#define SETUP_CL(_str)                                                                             \
+  do                                                                                               \
+    {                                                                                              \
+      vec_reset_length (req.headers);                                                              \
+      vec_add2 (req.headers, field_line, 1);                                                       \
+      field_line->value_offset = 0;                                                                \
+      field_line->value_len = sizeof (_str) - 1;                                                   \
+      req.content_len_header_index = 0;                                                            \
+      req.headers_offset = 0;                                                                      \
+      req.body_len = 0;                                                                            \
+    }                                                                                              \
+  while (0)
+
+  /* valid value */
+  SETUP_CL ("1234");
+  rv = http_parse_content_length (&req, (u8 *) "1234");
+  HTTP_TEST ((rv == 0 && req.body_len == 1234), "body_len=1234");
+
+  /* zero */
+  SETUP_CL ("0");
+  rv = http_parse_content_length (&req, (u8 *) "0");
+  HTTP_TEST ((rv == 0 && req.body_len == 0), "body_len=0");
+
+  /* non-digit character */
+  SETUP_CL ("123abc");
+  rv = http_parse_content_length (&req, (u8 *) "123abc");
+  HTTP_TEST ((rv == -1), "non-digit rejected");
+
+  /* UINT64_MAX: fits exactly in u64, must be accepted */
+  SETUP_CL ("18446744073709551615");
+  rv = http_parse_content_length (&req, (u8 *) "18446744073709551615");
+  HTTP_TEST ((rv == 0 && req.body_len == CLIB_U64_MAX), "UINT64_MAX accepted");
+
+  /* UINT64_MAX + 1: must be rejected */
+  SETUP_CL ("18446744073709551616");
+  rv = http_parse_content_length (&req, (u8 *) "18446744073709551616");
+  HTTP_TEST ((rv == -1), "UINT64_MAX+1 rejected");
+
+  /* wrap-around overflow not caught by the old body_len*10+digit < body_len
+   * check: after parsing "2049638230412172402", body_len*10 wraps to a value
+   * greater than body_len, so the old check passes silently */
+  SETUP_CL ("20496382304121724020");
+  rv = http_parse_content_length (&req, (u8 *) "20496382304121724020");
+  HTTP_TEST ((rv == -1), "wrap-around overflow rejected");
+
+  vec_free (req.headers);
+#undef SETUP_CL
+  return 0;
+}
+
 static clib_error_t *
 test_http_command_fn (vlib_main_t *vm, unformat_input_t *input,
 		      vlib_cli_command_t *cmd)
@@ -2170,6 +2228,8 @@ test_http_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	res = http_test_http_lookup_header_name (vm);
       else if (unformat (input, "headers-rx-to-tx"))
 	res = http_test_http_headers_rx_to_tx (vm);
+      else if (unformat (input, "parse-content-length"))
+	res = http_test_parse_content_length (vm);
       else if (unformat (input, "all"))
 	{
 	  if ((res = http_test_parse_authority (vm)))
@@ -2193,6 +2253,8 @@ test_http_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	  if ((res = http_test_http_lookup_header_name (vm)))
 	    goto done;
 	  if ((res = http_test_http_headers_rx_to_tx (vm)))
+	    goto done;
+	  if ((res = http_test_parse_content_length (vm)))
 	    goto done;
 	}
       else
