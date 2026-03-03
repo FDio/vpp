@@ -37,7 +37,8 @@ typedef struct
   _ (EMBRYONIC, 5, "embryonic")                                               \
   _ (ESTABLISHED, 120, "established")                                         \
   _ (TCP_ESTABLISHED, 3600, "tcp-established")                                \
-  _ (SECURITY, 30, "security")
+  _ (SECURITY, 30, "security")                                                \
+  _ (TIME_WAIT, 120, "time-wait")
 
 typedef enum
 {
