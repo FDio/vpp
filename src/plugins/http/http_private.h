@@ -613,14 +613,13 @@ http_parse_content_length (http_req_t *req, u8 *rx_buf)
 	  return -1;
 	}
       digit = *p - '0';
-      u64 new_body_len = body_len * 10 + digit;
-      /* check for overflow */
-      if (new_body_len < body_len)
+      /* check for overflow before multiplication */
+      if (body_len > (CLIB_U64_MAX - digit) / 10)
 	{
 	  HTTP_DBG (1, "content-length value too big number, overflow");
 	  return -1;
 	}
-      body_len = new_body_len;
+      body_len = body_len * 10 + digit;
       p++;
     }
 
