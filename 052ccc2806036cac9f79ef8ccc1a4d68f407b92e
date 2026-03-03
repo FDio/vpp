@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "9d50f427_f20a9c22",
+        "filename": "src/plugins/dpdk/device/common.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 52,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-03-03T15:05:09Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "4bdf4273_9248023b",
+      "revId": "052ccc2806036cac9f79ef8ccc1a4d68f407b92e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "33bb458b_7a443e13",
@@ -31,6 +49,24 @@
       "writtenOn": "2026-03-03T14:54:08Z",
       "side": 1,
       "message": "should be static",
+      "revId": "052ccc2806036cac9f79ef8ccc1a4d68f407b92e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6d304d09_d2ae2b9f",
+        "filename": "src/plugins/dpdk/device/common.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 63,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-03-03T15:05:09Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "33bb458b_7a443e13",
       "revId": "052ccc2806036cac9f79ef8ccc1a4d68f407b92e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
