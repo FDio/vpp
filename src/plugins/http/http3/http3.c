@@ -2539,9 +2539,7 @@ http3_stream_cleanup_callback (http_conn_t *stream)
     return;
   if (stream->flags & HTTP_CONN_F_BIDIRECTIONAL_STREAM)
     {
-      sctx = http3_stream_ctx_get (pointer_to_uword (stream->opaque),
-				   stream->c_thread_index);
-      ASSERT (sctx->base.to_recv == 0);
+      sctx = http3_stream_ctx_get (pointer_to_uword (stream->opaque), stream->c_thread_index);
       if (!(stream->flags & HTTP_CONN_F_NO_APP_SESSION))
 	session_transport_delete_notify (&sctx->base.connection);
     }
