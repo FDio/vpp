@@ -16,6 +16,24 @@
       "message": "I\u0027d rather have an if block than a goto, something like\n\n    if (curr_prod_id \u0026\u0026 (ret \u003d bpf_xdp_detach (ad-\u003elinux_ifindex, 0, NULL)) {\n       af_xdp_log (VLIB_LOG_LEVEL_ERR, ad, \"bpf_xdp_detach failed\\n\");\n       goto err0;\n    }",
       "revId": "b405bfbe7b26b55bde071d7ac2622060262bedc3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4f0d5f4a_a0e73cbf",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 150,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-03-03T13:44:58Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "6535777f_ef4d712d",
+      "revId": "b405bfbe7b26b55bde071d7ac2622060262bedc3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
