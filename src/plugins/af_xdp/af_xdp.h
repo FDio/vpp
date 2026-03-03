@@ -124,7 +124,6 @@ typedef struct
   struct xsk_umem **umem;
   struct xsk_socket **xsk;
 
-  struct bpf_object *bpf_obj;
   struct xdp_program *xdp_prog; /* libxdp program handle */
   unsigned linux_ifindex;
 
