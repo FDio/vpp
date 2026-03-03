@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d41342dc_9a3f26a4",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2026-03-03T17:30:40Z",
+      "side": 1,
+      "message": "Are the new APIs multi-thread-safe? It appears to me the getters are. If that is the case, please mark them thread-safe.",
+      "revId": "725c408e078e80774e5ac80ef6a12ace5852a25e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
