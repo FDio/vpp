@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c215db02_3ae1525f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-03-03T13:54:28Z",
+      "side": 1,
+      "message": "Thanks for looking into this, but I think the fix needs rework.                                                                                                                  \n                                                                                                                                                                                   \nad-\u003ename is only used as a VPP vector (%v in format.c:19 and af_xdp_log macro), never as a C string. The added \\0 is harmful: it will be emitted verbatim by %v into the formatted output.                                                                                                                                                                \n                  \nad-\u003elinux_ifname: null termination is already guaranteed by vec_validate(ad-\u003elinux_ifname, IFNAMSIZ - 1) which zero-fills any new elements — no %c, 0 needed.\n\nIMO the real bug is the missing length check: if strlen(args-\u003elinux_ifname) \u003e\u003d IFNAMSIZ, vec_validate is a no-op and there is no null terminator. The fix should be an early length check\n\n    if (strlen (args-\u003elinux_ifname) \u003e\u003d IFNAMSIZ)\n      return error;",
+      "revId": "52baa49143da69018af5eb2c36ac88db7fbdbf90",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
