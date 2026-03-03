@@ -18,7 +18,8 @@
   _ (SEEN_ACK_TO_FIN_RESP, 6, "R")                                            \
   _ (ESTABLISHED, 7, "U")                                                     \
   _ (REMOVING, 8, "D")                                                        \
-  _ (BLOCKED, 9, "X")
+  _ (BLOCKED, 9, "X")                                                         \
+  _ (TIME_WAIT, 10, "T")
 
 typedef enum
 {
