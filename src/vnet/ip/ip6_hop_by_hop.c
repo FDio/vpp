@@ -503,10 +503,11 @@ ip6_hbh_pop_unregister_option (u8 option)
 
 extern vlib_node_registration_t ip6_pop_hop_by_hop_node;
 
-#define foreach_ip6_pop_hop_by_hop_error                \
-_(PROCESSED, "Pkts w/ removed ip6 hop-by-hop options")  \
-_(NO_HOHO, "Pkts w/ no ip6 hop-by-hop options")         \
-_(OPTION_FAILED, "ip6 pop hop-by-hop failed to process")
+#define foreach_ip6_pop_hop_by_hop_error                                                           \
+  _ (PROCESSED, "Pkts w/ removed ip6 hop-by-hop options")                                          \
+  _ (NO_HOHO, "Pkts w/ no ip6 hop-by-hop options")                                                 \
+  _ (OPTION_FAILED, "ip6 pop hop-by-hop failed to process")                                        \
+  _ (OPTION_TRUNCATED, "ip6 hop-by-hop option truncated in buffer")
 
 typedef enum
 {
@@ -522,27 +523,39 @@ static char *ip6_pop_hop_by_hop_error_strings[] = {
 #undef _
 };
 
-static inline void
-ioam_pop_hop_by_hop_processing (vlib_main_t * vm,
-				ip6_header_t * ip0,
-				ip6_hop_by_hop_header_t * hbh0,
-				vlib_buffer_t * b)
+static_always_inline ip6_pop_hop_by_hop_error_t
+ioam_pop_hop_by_hop_processing (vlib_main_t *vm, ip6_header_t *ip0, ip6_hop_by_hop_header_t *hbh0,
+				vlib_buffer_t *b)
 {
   ip6_hop_by_hop_ioam_main_t *hm = &ip6_hop_by_hop_ioam_main;
   ip6_hop_by_hop_option_t *opt0, *limit0;
   u8 type0;
 
   if (!hbh0 || !ip0)
-    return;
+    return IP6_POP_HOP_BY_HOP_N_ERROR;
 
   opt0 = (ip6_hop_by_hop_option_t *) (hbh0 + 1);
   limit0 = (ip6_hop_by_hop_option_t *)
     ((u8 *) hbh0 + ((hbh0->length + 1) << 3));
 
+  /* Reject HBH headers whose advertised size exceeds the buffer. */
+  {
+    u8 *buffer_end = vlib_buffer_get_current (b) + b->current_length;
+    if (PREDICT_FALSE ((u8 *) limit0 > buffer_end))
+      return IP6_POP_HOP_BY_HOP_ERROR_OPTION_TRUNCATED;
+  }
+
   /* Scan the set of h-b-h options, process ones that we understand */
   while (opt0 < limit0)
     {
       type0 = opt0->type;
+      if (type0 != 0)
+	{
+	  if (PREDICT_FALSE ((u8 *) opt0 + sizeof (*opt0) > (u8 *) limit0))
+	    return IP6_POP_HOP_BY_HOP_ERROR_OPTION_TRUNCATED;
+	  if (PREDICT_FALSE ((u8 *) opt0 + sizeof (*opt0) + opt0->length > (u8 *) limit0))
+	    return IP6_POP_HOP_BY_HOP_ERROR_OPTION_TRUNCATED;
+	}
       switch (type0)
 	{
 	case 0:		/* Pad1 */
@@ -566,6 +579,8 @@ ioam_pop_hop_by_hop_processing (vlib_main_t * vm,
 	(ip6_hop_by_hop_option_t *) (((u8 *) opt0) + opt0->length +
 				     sizeof (ip6_hop_by_hop_option_t));
     }
+
+  return IP6_POP_HOP_BY_HOP_N_ERROR;
 }
 
 VLIB_NODE_FN (ip6_pop_hop_by_hop_node) (vlib_main_t * vm,
@@ -598,6 +613,7 @@ VLIB_NODE_FN (ip6_pop_hop_by_hop_node) (vlib_main_t * vm,
 	  ip6_hop_by_hop_header_t *hbh0, *hbh1;
 	  u64 *copy_dst0, *copy_src0, *copy_dst1, *copy_src1;
 	  u16 new_l0, new_l1;
+	  ip6_pop_hop_by_hop_error_t error0, error1;
 
 	  /* Prefetch next iteration. */
 	  {
@@ -638,38 +654,50 @@ VLIB_NODE_FN (ip6_pop_hop_by_hop_node) (vlib_main_t * vm,
 	  hbh0 = (ip6_hop_by_hop_header_t *) (ip0 + 1);
 	  hbh1 = (ip6_hop_by_hop_header_t *) (ip1 + 1);
 
-	  ioam_pop_hop_by_hop_processing (vm, ip0, hbh0, b0);
-	  ioam_pop_hop_by_hop_processing (vm, ip1, hbh1, b1);
+	  error0 = ioam_pop_hop_by_hop_processing (vm, ip0, hbh0, b0);
+	  error1 = ioam_pop_hop_by_hop_processing (vm, ip1, hbh1, b1);
 
-	  vlib_buffer_advance (b0, (hbh0->length + 1) << 3);
-	  vlib_buffer_advance (b1, (hbh1->length + 1) << 3);
+	  if (PREDICT_FALSE (error0 != IP6_POP_HOP_BY_HOP_N_ERROR))
+	    {
+	      next0 = IP_LOOKUP_NEXT_DROP;
+	      b0->error = node->errors[error0];
+	    }
+	  else
+	    {
+	      vlib_buffer_advance (b0, (hbh0->length + 1) << 3);
+	      new_l0 = clib_net_to_host_u16 (ip0->payload_length) - ((hbh0->length + 1) << 3);
+	      ip0->payload_length = clib_host_to_net_u16 (new_l0);
+	      ip0->protocol = hbh0->protocol;
+	      copy_src0 = (u64 *) ip0;
+	      copy_dst0 = copy_src0 + (hbh0->length + 1);
+	      copy_dst0[4] = copy_src0[4];
+	      copy_dst0[3] = copy_src0[3];
+	      copy_dst0[2] = copy_src0[2];
+	      copy_dst0[1] = copy_src0[1];
+	      copy_dst0[0] = copy_src0[0];
+	      processed++;
+	    }
 
-	  new_l0 = clib_net_to_host_u16 (ip0->payload_length) -
-	    ((hbh0->length + 1) << 3);
-	  new_l1 = clib_net_to_host_u16 (ip1->payload_length) -
-	    ((hbh1->length + 1) << 3);
-
-	  ip0->payload_length = clib_host_to_net_u16 (new_l0);
-	  ip1->payload_length = clib_host_to_net_u16 (new_l1);
-
-	  ip0->protocol = hbh0->protocol;
-	  ip1->protocol = hbh1->protocol;
-
-	  copy_src0 = (u64 *) ip0;
-	  copy_src1 = (u64 *) ip1;
-	  copy_dst0 = copy_src0 + (hbh0->length + 1);
-	  copy_dst0[4] = copy_src0[4];
-	  copy_dst0[3] = copy_src0[3];
-	  copy_dst0[2] = copy_src0[2];
-	  copy_dst0[1] = copy_src0[1];
-	  copy_dst0[0] = copy_src0[0];
-	  copy_dst1 = copy_src1 + (hbh1->length + 1);
-	  copy_dst1[4] = copy_src1[4];
-	  copy_dst1[3] = copy_src1[3];
-	  copy_dst1[2] = copy_src1[2];
-	  copy_dst1[1] = copy_src1[1];
-	  copy_dst1[0] = copy_src1[0];
-	  processed += 2;
+	  if (PREDICT_FALSE (error1 != IP6_POP_HOP_BY_HOP_N_ERROR))
+	    {
+	      next1 = IP_LOOKUP_NEXT_DROP;
+	      b1->error = node->errors[error1];
+	    }
+	  else
+	    {
+	      vlib_buffer_advance (b1, (hbh1->length + 1) << 3);
+	      new_l1 = clib_net_to_host_u16 (ip1->payload_length) - ((hbh1->length + 1) << 3);
+	      ip1->payload_length = clib_host_to_net_u16 (new_l1);
+	      ip1->protocol = hbh1->protocol;
+	      copy_src1 = (u64 *) ip1;
+	      copy_dst1 = copy_src1 + (hbh1->length + 1);
+	      copy_dst1[4] = copy_src1[4];
+	      copy_dst1[3] = copy_src1[3];
+	      copy_dst1[2] = copy_src1[2];
+	      copy_dst1[1] = copy_src1[1];
+	      copy_dst1[0] = copy_src1[0];
+	      processed++;
+	    }
 	  /* $$$$$ End of processing 2 x packets $$$$$ */
 
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
@@ -705,6 +733,7 @@ VLIB_NODE_FN (ip6_pop_hop_by_hop_node) (vlib_main_t * vm,
 	  ip6_hop_by_hop_header_t *hbh0;
 	  u64 *copy_dst0, *copy_src0;
 	  u16 new_l0;
+	  ip6_pop_hop_by_hop_error_t error0;
 
 	  /* speculatively enqueue b0 to the current next frame */
 	  bi0 = from[0];
@@ -727,21 +756,28 @@ VLIB_NODE_FN (ip6_pop_hop_by_hop_node) (vlib_main_t * vm,
 	  hbh0 = (ip6_hop_by_hop_header_t *) (ip0 + 1);
 
 	  /* TODO:Temporarily doing it here.. do this validation in end_of_path_cb */
-	  ioam_pop_hop_by_hop_processing (vm, ip0, hbh0, b0);
-	  /* Pop the trace data */
-	  vlib_buffer_advance (b0, (hbh0->length + 1) << 3);
-	  new_l0 = clib_net_to_host_u16 (ip0->payload_length) -
-	    ((hbh0->length + 1) << 3);
-	  ip0->payload_length = clib_host_to_net_u16 (new_l0);
-	  ip0->protocol = hbh0->protocol;
-	  copy_src0 = (u64 *) ip0;
-	  copy_dst0 = copy_src0 + (hbh0->length + 1);
-	  copy_dst0[4] = copy_src0[4];
-	  copy_dst0[3] = copy_src0[3];
-	  copy_dst0[2] = copy_src0[2];
-	  copy_dst0[1] = copy_src0[1];
-	  copy_dst0[0] = copy_src0[0];
-	  processed++;
+	  error0 = ioam_pop_hop_by_hop_processing (vm, ip0, hbh0, b0);
+	  if (PREDICT_FALSE (error0 != IP6_POP_HOP_BY_HOP_N_ERROR))
+	    {
+	      next0 = IP_LOOKUP_NEXT_DROP;
+	      b0->error = node->errors[error0];
+	    }
+	  else
+	    {
+	      /* Pop the trace data */
+	      vlib_buffer_advance (b0, (hbh0->length + 1) << 3);
+	      new_l0 = clib_net_to_host_u16 (ip0->payload_length) - ((hbh0->length + 1) << 3);
+	      ip0->payload_length = clib_host_to_net_u16 (new_l0);
+	      ip0->protocol = hbh0->protocol;
+	      copy_src0 = (u64 *) ip0;
+	      copy_dst0 = copy_src0 + (hbh0->length + 1);
+	      copy_dst0[4] = copy_src0[4];
+	      copy_dst0[3] = copy_src0[3];
+	      copy_dst0[2] = copy_src0[2];
+	      copy_dst0[1] = copy_src0[1];
+	      copy_dst0[0] = copy_src0[0];
+	      processed++;
+	    }
 
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
 			     && (b0->flags & VLIB_BUFFER_IS_TRACED)))
