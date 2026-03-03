@@ -503,10 +503,11 @@ ip6_hbh_pop_unregister_option (u8 option)
 
 extern vlib_node_registration_t ip6_pop_hop_by_hop_node;
 
-#define foreach_ip6_pop_hop_by_hop_error                \
-_(PROCESSED, "Pkts w/ removed ip6 hop-by-hop options")  \
-_(NO_HOHO, "Pkts w/ no ip6 hop-by-hop options")         \
-_(OPTION_FAILED, "ip6 pop hop-by-hop failed to process")
+#define foreach_ip6_pop_hop_by_hop_error                                                           \
+  _ (PROCESSED, "Pkts w/ removed ip6 hop-by-hop options")                                          \
+  _ (NO_HOHO, "Pkts w/ no ip6 hop-by-hop options")                                                 \
+  _ (OPTION_FAILED, "ip6 pop hop-by-hop failed to process")                                        \
+  _ (OPTION_TRUNCATED, "ip6 hop-by-hop option truncated in buffer")
 
 typedef enum
 {
@@ -539,6 +540,14 @@ ioam_pop_hop_by_hop_processing (vlib_main_t * vm,
   limit0 = (ip6_hop_by_hop_option_t *)
     ((u8 *) hbh0 + ((hbh0->length + 1) << 3));
 
+  /* Clamp limit0 to the actual buffer boundary to prevent OOB reads
+   * on a crafted HBH header with an attacker-controlled length field. */
+  {
+    u8 *buffer_end = vlib_buffer_get_current (b) + b->current_length;
+    if (PREDICT_FALSE ((u8 *) limit0 > buffer_end))
+      limit0 = (ip6_hop_by_hop_option_t *) buffer_end;
+  }
+
   /* Scan the set of h-b-h options, process ones that we understand */
   while (opt0 < limit0)
     {
@@ -561,6 +570,14 @@ ioam_pop_hop_by_hop_processing (vlib_main_t * vm,
 					       1);
 		}
 	    }
+	}
+      /* Ensure the full option header (type + length) is readable
+       * before dereferencing opt0->length for the next advance. */
+      if (PREDICT_FALSE ((u8 *) opt0 + sizeof (*opt0) > (u8 *) limit0))
+	{
+	  vlib_node_increment_counter (vm, ip6_pop_hop_by_hop_node.index,
+				       IP6_POP_HOP_BY_HOP_ERROR_OPTION_TRUNCATED, 1);
+	  break;
 	}
       opt0 =
 	(ip6_hop_by_hop_option_t *) (((u8 *) opt0) + opt0->length +
