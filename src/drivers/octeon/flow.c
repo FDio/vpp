@@ -189,6 +189,25 @@ oct_flow_rule_create (vnet_dev_port_t *port, struct roc_npc_action *actions,
   struct roc_npc *npc;
   int rv = 0;
 
+  if (flow->group)
+    log_warn (port->dev, "Flow[%d] Group is non zero, but octeon driver does not support it",
+	      flow->index);
+  switch (flow->dir)
+    {
+    case VNET_FLOW_DIRECTION_EGRESS:
+      attr.egress = 1;
+      break;
+    case VNET_FLOW_DIRECTION_TRANSFER:
+      log_warn (port->dev,
+		"Flow[%d] Direction is transfer, but octeon driver does not support it. "
+		"Defaulting to ingress",
+		flow->index);
+    case VNET_FLOW_DIRECTION_INGRESS:
+    default:
+      attr.ingress = 1;
+      break;
+    }
+
   npc = &oct_port->npc;
 
   for (int i = 0; item_info[i].type != ROC_NPC_ITEM_TYPE_END; i++)

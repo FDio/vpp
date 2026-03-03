@@ -351,13 +351,22 @@ flow_cli_add (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd_
   clib_memset (&flow, 0, sizeof (vnet_flow_t));
   flow.index = ~0;
   flow.actions = 0;
+  flow.dir = VNET_FLOW_DIRECTION_INGRESS;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "spec %s", &spec))
+      if (unformat (line_input, "ingress"))
+	flow.dir = VNET_FLOW_DIRECTION_INGRESS;
+      else if (unformat (line_input, "egress"))
+	flow.dir = VNET_FLOW_DIRECTION_EGRESS;
+      else if (unformat (line_input, "transfer"))
+	flow.dir = VNET_FLOW_DIRECTION_TRANSFER;
+      else if (unformat (line_input, "group %u", &flow.group))
+	;
+      else if (unformat (line_input, "spec %s", &spec))
 	;
       else if (unformat (line_input, "mask %s", &mask))
 	;
@@ -714,11 +723,11 @@ flow_cli_add (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd_
 
 VLIB_CLI_COMMAND (flow_add_cmd, static) = {
   .path = "flow add",
-  .short_help = "flow add [template] "
+  .short_help = "flow add [template] [ingress|egress|transfer] "
 		"[src-ip <ip-addr/mask>] [dst-ip <ip-addr/mask>] "
 		"[ip6-src-ip <ip-addr/mask>] [ip6-dst-ip <ip-addr/mask>] "
 		"[src-port <port/mask>] [dst-port <port/mask>] "
-		"[proto <ip-proto>] "
+		"[proto <ip-proto>] [group <group>] "
 		"[gtpc teid <teid>] [gtpu teid <teid>] [vxlan <vni>] "
 		"[session id <session>] [spi <spi>] "
 		"[spec <spec string>] [mask <mask string>]"

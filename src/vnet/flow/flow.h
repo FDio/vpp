@@ -269,11 +269,24 @@ foreach_flow_type;
 #undef _
 #undef _fe
 
+typedef enum
+{
+  VNET_FLOW_DIRECTION_INGRESS,
+  VNET_FLOW_DIRECTION_EGRESS,
+  VNET_FLOW_DIRECTION_TRANSFER,
+} vnet_flow_direction_t;
+
 /* main flow struct */
 typedef struct
 {
   /* flow type */
   vnet_flow_type_t type;
+
+  /* flow direction */
+  vnet_flow_direction_t dir;
+
+  /* group into which insert this rule */
+  u32 group;
 
   /* flow index */
   u32 index;
