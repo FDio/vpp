@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4bdf4273_9248023b",
+        "filename": "src/plugins/dpdk/device/common.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 52,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-03-03T14:54:08Z",
+      "side": 1,
+      "message": "I am not sure xd-\u003elast_flow_error.cause is always guaranteed to be a string - looks it is an object? We should probably not log it",
+      "revId": "052ccc2806036cac9f79ef8ccc1a4d68f407b92e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "33bb458b_7a443e13",
+        "filename": "src/plugins/dpdk/device/common.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 63,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-03-03T14:54:08Z",
+      "side": 1,
+      "message": "should be static",
+      "revId": "052ccc2806036cac9f79ef8ccc1a4d68f407b92e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}

@@ -73,6 +73,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "da015af8_29a13d57",
+        "filename": "src/plugins/dpdk/device/common.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 54,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-03-03T14:54:08Z",
+      "side": 1,
+      "message": "I think it would be better to log an error and set xd-\u003esupported_flow_actions \u003d 0 to degrade gracefully.",
+      "parentUuid": "a1ca20c1_b9d8080d",
+      "revId": "6b2f988ac500133497235b82f375a157d3b3e40a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "09caf9f9_8d143941",
         "filename": "src/plugins/dpdk/device/common.c",
         "patchSetId": 8
