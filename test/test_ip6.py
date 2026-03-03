@@ -3008,7 +3008,6 @@ class TestIP6Input(VppTestCase):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-
 class TestIP6Replace(VppTestCase):
     """IPv6 Table Replace"""
 
