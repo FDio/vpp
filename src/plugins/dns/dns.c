@@ -395,42 +395,104 @@ name_to_labels (u8 * name)
   return rv;
 }
 
+/* Maximum pointer-chase depth to prevent infinite loops on cyclic DNS data */
+#define DNS_MAX_PTR_DEPTH 128
+/* RFC 1035: max total name length is 253 characters */
+#define DNS_MAX_NAME_LEN 253
+
 /**
  * arc-function for the above.
  * Translate "0x3 f o o 0x3 c o m 0x0" into "foo.com"
  * Produces a non-NULL-terminated u8 *vector. %v format is your friend.
+ * Returns NULL if the label data is malformed or out of bounds.
  */
 u8 *
-vnet_dns_labels_to_name (u8 * label, u8 * full_text, u8 ** parse_from_here)
+vnet_dns_labels_to_name (u8 *label, u8 *full_text, u32 full_text_len, u8 **parse_from_here)
 {
+  u8 *full_text_end = full_text + full_text_len;
   u8 *reply = 0;
   u16 offset;
   u8 len;
   int i;
+  int depth = 0;
 
   *parse_from_here = 0;
+
+  /* Need at least 1 byte before dereferencing label */
+  if (label >= full_text_end)
+    return 0;
 
   /* chase initial pointer? */
   if ((label[0] & 0xC0) == 0xC0)
     {
+      if (label + 2 > full_text_end)
+	return 0;
       *parse_from_here = label + 2;
       offset = ((label[0] & 0x3f) << 8) + label[1];
+      if (offset >= full_text_len)
+	return 0;
       label = full_text + offset;
     }
+
+  if (label >= full_text_end)
+    return 0;
 
   len = *label++;
 
   while (len)
     {
+      /* Prevent infinite loops caused by cyclic pointer chains */
+      if (++depth > DNS_MAX_PTR_DEPTH)
+	{
+	  vec_free (reply);
+	  return 0;
+	}
+
+      /* Prevent memory exhaustion from oversized names */
+      if (vec_len (reply) + len > DNS_MAX_NAME_LEN)
+	{
+	  vec_free (reply);
+	  return 0;
+	}
+
+      /* Ensure the label body lies within the buffer */
+      if (label + len > full_text_end)
+	{
+	  vec_free (reply);
+	  return 0;
+	}
+
       for (i = 0; i < len; i++)
 	vec_add1 (reply, *label++);
+
+      /* Need at least 1 byte to read the next length/pointer byte */
+      if (label >= full_text_end)
+	{
+	  vec_free (reply);
+	  return 0;
+	}
 
       /* chase pointer? */
       if ((label[0] & 0xC0) == 0xC0)
 	{
+	  if (label + 2 > full_text_end)
+	    {
+	      vec_free (reply);
+	      return 0;
+	    }
 	  *parse_from_here = label + 2;
 	  offset = ((label[0] & 0x3f) << 8) + label[1];
+	  if (offset >= full_text_len)
+	    {
+	      vec_free (reply);
+	      return 0;
+	    }
 	  label = full_text + offset;
+	  if (label >= full_text_end)
+	    {
+	      vec_free (reply);
+	      return 0;
+	    }
 	}
 
       len = *label++;
@@ -983,7 +1045,7 @@ vnet_dns_cname_indirection_nolock (vlib_main_t * vm, dns_main_t * dm,
 found_last_request:
 
   now = vlib_time_now (vm);
-  cname = vnet_dns_labels_to_name (rr->rdata, reply, &pos2);
+  cname = vnet_dns_labels_to_name (rr->rdata, reply, vec_len (reply), &pos2);
   /* Save the cname */
   dns_terminate_c_string (&cname);
   ep = pool_elt_at_index (dm->entries, ep_index);
@@ -1317,7 +1379,7 @@ vnet_dns_response_to_name (u8 * response,
       switch (clib_net_to_host_u16 (rr->type))
 	{
 	case DNS_TYPE_PTR:
-	  name = vnet_dns_labels_to_name (rr->rdata, response, &junk);
+	  name = vnet_dns_labels_to_name (rr->rdata, response, vec_len (response), &junk);
 	  memcpy (rmp->name, name, vec_len (name));
 	  ttl = clib_net_to_host_u32 (rr->ttl);
 	  if (min_ttlp)

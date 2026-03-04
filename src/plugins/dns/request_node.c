@@ -198,7 +198,7 @@ dns46_request_inline (vlib_main_t * vm,
 
 	  label0 = (u8 *) (d0 + 1);
 
-	  name0 = vnet_dns_labels_to_name (label0, (u8 *) d0, (u8 **) & q0);
+	  name0 = vnet_dns_labels_to_name (label0, (u8 *) d0, b0->current_length, (u8 **) &q0);
 
 	  t0->request_type = DNS_PEER_PENDING_NAME_TO_IP;
 
