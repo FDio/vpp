@@ -735,13 +735,14 @@ typedef struct
   u8 segments_left;
 } sr_localsid_trace_t;
 
-#define foreach_sr_localsid_error                                   \
-_(NO_INNER_HEADER, "(SR-Error) No inner IP header")                 \
-_(NO_MORE_SEGMENTS, "(SR-Error) No more segments")                  \
-_(NO_SRH, "(SR-Error) No SR header")                                \
-_(NO_PSP, "(SR-Error) PSP Not available (segments left > 0)")       \
-_(NOT_LS, "(SR-Error) Decaps not available (segments left > 0)")    \
-_(L2, "(SR-Error) SRv6 decapsulated a L2 frame without dest")
+#define foreach_sr_localsid_error                                                                  \
+  _ (NO_INNER_HEADER, "(SR-Error) No inner IP header")                                             \
+  _ (NO_MORE_SEGMENTS, "(SR-Error) No more segments")                                              \
+  _ (NO_SRH, "(SR-Error) No SR header")                                                            \
+  _ (NO_PSP, "(SR-Error) PSP Not available (segments left > 0)")                                   \
+  _ (NOT_LS, "(SR-Error) Decaps not available (segments left > 0)")                                \
+  _ (L2, "(SR-Error) SRv6 decapsulated a L2 frame without dest")                                   \
+  _ (INVALID_SRH_LENGTH, "(SR-Error) SRH length exceeds payload length")
 
 typedef enum
 {
@@ -876,6 +877,13 @@ end_srh_processing (vlib_node_runtime_t * node,
 	    ip0->protocol = sr0->protocol;
 
 	  sr_len = ip6_ext_header_len (sr0);
+	  /* Check for underflow: sr_len must not exceed payload_length */
+	  if (PREDICT_FALSE (sr_len > clib_net_to_host_u16 (ip0->payload_length)))
+	    {
+	      *next0 = SR_LOCALSID_NEXT_ERROR;
+	      b0->error = node->errors[SR_LOCALSID_ERROR_INVALID_SRH_LENGTH];
+	      return;
+	    }
 	  vlib_buffer_advance (b0, sr_len);
 	  new_l0 = clib_net_to_host_u16 (ip0->payload_length) - sr_len;
 	  ip0->payload_length = clib_host_to_net_u16 (new_l0);
@@ -1011,6 +1019,13 @@ end_un_srh_processing (vlib_node_runtime_t * node,
 	    ip0->protocol = sr0->protocol;
 
 	  sr_len = ip6_ext_header_len (sr0);
+	  /* Check for underflow: sr_len must not exceed payload_length */
+	  if (PREDICT_FALSE (sr_len > clib_net_to_host_u16 (ip0->payload_length)))
+	    {
+	      *next0 = SR_LOCALSID_NEXT_ERROR;
+	      b0->error = node->errors[SR_LOCALSID_ERROR_INVALID_SRH_LENGTH];
+	      return;
+	    }
 	  vlib_buffer_advance (b0, sr_len);
 	  new_l0 = clib_net_to_host_u16 (ip0->payload_length) - sr_len;
 	  ip0->payload_length = clib_host_to_net_u16 (new_l0);
