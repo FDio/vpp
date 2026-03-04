@@ -264,7 +264,7 @@ static echo_test_proto_vft_t echo_test_tcp = {
   .client_tx_test_bytes = et_client_stream_tx_test_bytes,
 };
 
-ECHO_TEST_REGISTER_PROTO (TRANSPORT_PROTO_TCP, echo_test_tcp);
+ECHO_TEST_REGISTER_PROTO (ET_PROTO_TCP, echo_test_tcp);
 
 static int
 et_udp_listen (vnet_listen_args_t *args, echo_test_cfg_t *cfg)
@@ -628,7 +628,7 @@ static echo_test_proto_vft_t echo_test_udp = {
   .client_tx_test_bytes = et_client_dgram_tx_test_bytes,
 };
 
-ECHO_TEST_REGISTER_PROTO (TRANSPORT_PROTO_UDP, echo_test_udp);
+ECHO_TEST_REGISTER_PROTO (ET_PROTO_UDP, echo_test_udp);
 
 static int
 et_tls_listen (vnet_listen_args_t *args, echo_test_cfg_t *cfg)
@@ -666,7 +666,7 @@ static echo_test_proto_vft_t echo_test_tls = {
   .client_tx_test_bytes = et_client_stream_tx_test_bytes,
 };
 
-ECHO_TEST_REGISTER_PROTO (TRANSPORT_PROTO_TLS, echo_test_tls);
+ECHO_TEST_REGISTER_PROTO (ET_PROTO_TLS, echo_test_tls);
 
 static int
 et_quic_listen (vnet_listen_args_t *args, echo_test_cfg_t *cfg)
@@ -826,7 +826,7 @@ static echo_test_proto_vft_t echo_test_quic = {
   .client_tx_test_bytes = et_client_stream_tx_test_bytes,
 };
 
-ECHO_TEST_REGISTER_PROTO (TRANSPORT_PROTO_QUIC, echo_test_quic);
+ECHO_TEST_REGISTER_PROTO (ET_PROTO_QUIC, echo_test_quic);
 
 static int
 et_http_listen (vnet_listen_args_t *args, echo_test_cfg_t *cfg)
@@ -925,16 +925,87 @@ et_http_connected (session_t *s, echo_test_cfg_t *cfg, echo_test_worker_t *wrk, 
   return 1;
 }
 
+always_inline int
+et_http_server_rx_inline (echo_test_session_t *es, session_t *s, u8 *rx_buf, u8 test_bytes)
+{
+  u32 max_dequeue, max_enqueue, max_transfer;
+  int actual_transfer;
+  clib_thread_index_t thread_index = s->thread_index;
+  svm_fifo_t *tx_fifo, *rx_fifo;
+
+  rx_fifo = s->rx_fifo;
+  tx_fifo = s->tx_fifo;
+
+  ASSERT (rx_fifo->master_thread_index == thread_index);
+  ASSERT (tx_fifo->master_thread_index == thread_index);
+
+  max_enqueue = svm_fifo_max_enqueue_prod (tx_fifo);
+  max_dequeue = svm_fifo_max_dequeue_cons (rx_fifo);
+  if (PREDICT_FALSE (max_dequeue == 0))
+    return 0;
+
+  /* Number of bytes we're going to copy */
+  max_transfer = clib_min (max_dequeue, max_enqueue);
+
+  /* No space in tx fifo */
+  if (PREDICT_FALSE (max_transfer == 0))
+    {
+    rx_event:
+      /* Program self-tap to retry */
+      if (svm_fifo_set_event (rx_fifo))
+	{
+	  /* NOTE: session_enqueue_notify() do not work with http */
+	  if (session_program_transport_io_evt (s->handle, SESSION_IO_EVT_BUILTIN_RX))
+	    et_err ("failed to enqueue self-tap");
+
+#if CLIB_DEBUG > 0
+	  if (es->rx_retries == 500000)
+	    {
+	      et_err ("session stuck: %U", format_session, s, 2);
+	    }
+	  if (es->rx_retries < 500001)
+	    es->rx_retries++;
+#endif
+	}
+
+      return 0;
+    }
+
+  ASSERT (vec_len (rx_buf) >= max_transfer);
+  actual_transfer = app_recv_stream ((app_session_t *) es, rx_buf, max_transfer);
+  ASSERT (actual_transfer == max_transfer);
+  if (svm_fifo_needs_deq_ntf (rx_fifo, actual_transfer))
+    {
+      svm_fifo_clear_deq_ntf (rx_fifo);
+      session_program_transport_io_evt (s->handle, SESSION_IO_EVT_RX);
+    }
+
+  if (test_bytes)
+    {
+      et_test_bytes (rx_buf, actual_transfer, es->byte_index);
+      es->byte_index += actual_transfer;
+    }
+
+  /* Echo back */
+  actual_transfer = app_send_stream ((app_session_t *) es, rx_buf, max_transfer, 0);
+  es->bytes_sent += clib_max (actual_transfer, 0);
+
+  if (PREDICT_FALSE (svm_fifo_max_dequeue_cons (rx_fifo)))
+    goto rx_event;
+
+  return 0;
+}
+
 static int
 et_http_server_rx (echo_test_session_t *es, session_t *s, u8 *rx_buf)
 {
-  return 0;
+  return et_http_server_rx_inline (es, s, rx_buf, 0);
 }
 
 static int
 et_http_server_rx_test_bytes (echo_test_session_t *es, session_t *s, u8 *rx_buf)
 {
-  return 0;
+  return et_http_server_rx_inline (es, s, rx_buf, 1);
 }
 
 static u8
@@ -1007,4 +1078,187 @@ static echo_test_proto_vft_t echo_test_http = {
   .client_tx_test_bytes = et_http_client_tx_test_bytes,
 };
 
-ECHO_TEST_REGISTER_PROTO (TRANSPORT_PROTO_HTTP, echo_test_http);
+ECHO_TEST_REGISTER_PROTO (ET_PROTO_HTTP, echo_test_http);
+
+#define ET_HTTP_CONNECT_TCP_TARGET "6.0.1.1:123"
+
+static_always_inline void
+et_http_proxy_send_resp (session_t *s, u8 is_udp)
+{
+  http_msg_t msg;
+  svm_fifo_seg_t seg;
+  int rv;
+
+  msg.data.headers_len = 0;
+  msg.type = HTTP_MSG_REPLY;
+  msg.code = is_udp ? HTTP_STATUS_SWITCHING_PROTOCOLS : HTTP_STATUS_OK;
+  msg.data.type = HTTP_MSG_DATA_PTR;
+  msg.data.len = msg.data.headers_len;
+  msg.data.headers_offset = 0;
+  msg.data.body_len = 0;
+  msg.data.body_offset = 0;
+  seg.data = (u8 *) &msg;
+  seg.len = sizeof (msg);
+
+  rv = svm_fifo_enqueue_segments (s->tx_fifo, &seg, 1, 0);
+  ASSERT (rv == sizeof (msg));
+
+  if (svm_fifo_set_event (s->tx_fifo))
+    session_program_tx_io_evt (s->handle, SESSION_IO_EVT_TX);
+}
+
+always_inline void
+et_http_read_connect_tcp_req (session_t *s)
+{
+  http_msg_t msg;
+  int rv;
+
+  rv = svm_fifo_dequeue (s->rx_fifo, sizeof (msg), (u8 *) &msg);
+  ASSERT (rv == sizeof (msg));
+  ASSERT (msg.type == HTTP_MSG_REQUEST);
+  ASSERT (msg.method_type == HTTP_REQ_CONNECT);
+  ASSERT (msg.data.upgrade_proto == HTTP_UPGRADE_PROTO_NA);
+  svm_fifo_dequeue_drop (s->rx_fifo, msg.data.len);
+}
+
+always_inline u8
+et_http_connect_tcp_read_resp (echo_test_session_t *es, session_t *s, u8 *rx_buf)
+{
+  http_msg_t msg;
+  int rv;
+
+  rv = svm_fifo_dequeue (s->rx_fifo, sizeof (msg), (u8 *) &msg);
+  ASSERT (rv == sizeof (msg));
+  ASSERT (msg.type == HTTP_MSG_REPLY);
+  ASSERT (msg.code == HTTP_STATUS_OK);
+  svm_fifo_dequeue_drop (s->rx_fifo, msg.data.body_offset);
+  es->opaque = 1;
+  return 0;
+}
+
+static void
+et_http_connect_tcp_accept_no_echo (echo_test_session_t *es, session_t *s)
+{
+  es->opaque = 1;
+  et_http_read_connect_tcp_req (s);
+  et_http_proxy_send_resp (s, 0);
+}
+
+static int
+et_http_connect_tcp_accept_echo (echo_test_session_t *es, session_t *s, u8 *rx_buf)
+{
+  es->opaque = 1;
+  et_http_read_connect_tcp_req (s);
+  et_http_proxy_send_resp (s, 0);
+  return 0;
+}
+
+echo_test_proto_vft_t et_http_connect_tcp_vft[2] = {
+  {
+    .server_rx = et_http_connect_tcp_accept_echo,
+    .server_rx_test_bytes = et_http_connect_tcp_accept_echo,
+    .server_rx_no_echo = et_http_connect_tcp_accept_no_echo,
+    .client_rx = et_http_connect_tcp_read_resp,
+    .client_rx_test_bytes = et_http_connect_tcp_read_resp,
+  },
+  {
+    .server_rx = et_http_server_rx,
+    .server_rx_test_bytes = et_http_server_rx_test_bytes,
+    .server_rx_no_echo = et_server_stream_rx_no_echo,
+    .client_rx = et_client_stream_rx,
+    .client_rx_test_bytes = et_client_stream_rx_test_bytes,
+  },
+};
+
+static int
+et_http_connect_tcp_server_rx (echo_test_session_t *es, session_t *s, u8 *rx_buf)
+{
+  return et_http_connect_tcp_vft[es->opaque].server_rx (es, s, rx_buf);
+}
+
+static int
+et_http_connect_tcp_server_rx_test_bytes (echo_test_session_t *es, session_t *s, u8 *rx_buf)
+{
+  return et_http_connect_tcp_vft[es->opaque].server_rx_test_bytes (es, s, rx_buf);
+}
+
+static void
+et_http_connect_tcp_server_rx_no_echo (echo_test_session_t *es, session_t *s)
+{
+  et_http_connect_tcp_vft[es->opaque].server_rx_no_echo (es, s);
+}
+
+static u8
+et_http_connect_tcp_client_rx (echo_test_session_t *es, session_t *s, u8 *rx_buf)
+{
+  return et_http_connect_tcp_vft[es->opaque].client_rx (es, s, rx_buf);
+}
+
+static u8
+et_http_connect_tcp_client_rx_test_bytes (echo_test_session_t *es, session_t *s, u8 *rx_buf)
+{
+  return et_http_connect_tcp_vft[es->opaque].client_rx_test_bytes (es, s, rx_buf);
+}
+
+static u32
+et_http_connect_tcp_connected (session_t *s, echo_test_cfg_t *cfg, echo_test_worker_t *wrk,
+			       u32 app_index)
+{
+  echo_test_session_t *es;
+  http_msg_t msg;
+  int rv;
+
+  ASSERT (http_session_get_version (s) == cfg->http_version);
+
+  es = echo_test_session_alloc (wrk);
+  hs_test_app_session_init (es, s);
+
+  es->bytes_to_send = cfg->bytes_to_send;
+  es->bytes_to_receive = cfg->echo_bytes ? cfg->bytes_to_send : 0ULL;
+  es->vpp_session_handle = session_handle (s);
+  es->bytes_paced_target = ~0;
+  es->bytes_paced_current = ~0;
+  s->opaque = es->session_index;
+
+  vec_add1 (wrk->conn_indices, es->session_index);
+
+  /* open tunnel from here */
+  msg.type = HTTP_MSG_REQUEST;
+  msg.method_type = HTTP_REQ_CONNECT;
+  msg.data.upgrade_proto = HTTP_UPGRADE_PROTO_NA;
+  msg.data.target_path_offset = 0;
+  msg.data.target_path_len = strlen (ET_HTTP_CONNECT_TCP_TARGET);
+  msg.data.headers_offset = msg.data.target_path_len;
+  msg.data.headers_len = 0;
+  msg.data.body_len = 0;
+  msg.data.type = HTTP_MSG_DATA_INLINE;
+  msg.data.len = msg.data.target_path_len;
+
+  svm_fifo_seg_t segs[2] = {
+    { (u8 *) &msg, sizeof (msg) },
+    { (u8 *) ET_HTTP_CONNECT_TCP_TARGET, msg.data.target_path_len },
+  };
+  rv = svm_fifo_enqueue_segments (s->tx_fifo, segs, 2, 0);
+  if (rv < (sizeof (msg) + msg.data.target_path_len))
+    return -1;
+  if (svm_fifo_set_event (s->tx_fifo))
+    session_program_tx_io_evt (s->handle, SESSION_IO_EVT_TX);
+
+  /* TODO: multiplexing */
+  return 1;
+}
+
+static echo_test_proto_vft_t echo_test_http_connect_tcp = {
+  .listen = et_http_listen,
+  .server_rx = et_http_connect_tcp_server_rx,
+  .server_rx_test_bytes = et_http_connect_tcp_server_rx_test_bytes,
+  .server_rx_no_echo = et_http_connect_tcp_server_rx_no_echo,
+  .connect = et_http_connect,
+  .connected = et_http_connect_tcp_connected,
+  .client_rx = et_http_connect_tcp_client_rx,
+  .client_rx_test_bytes = et_http_connect_tcp_client_rx_test_bytes,
+  .client_tx = et_http_client_tx,
+  .client_tx_test_bytes = et_http_client_tx_test_bytes,
+};
+
+ECHO_TEST_REGISTER_PROTO (ET_PROTO_HTTP_CONNECT_TCP, echo_test_http_connect_tcp);
