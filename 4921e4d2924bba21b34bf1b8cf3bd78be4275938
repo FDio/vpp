@@ -16,6 +16,24 @@
       "message": "thanks for the patch. but echo_print_final_stats should not be called with delta set to 0 (when error is set), it will cause division by zero. I would also add if statement before function call, something like:\n\n  if (!error)\n    echo_print_final_stats (vm, delta, \u0026ecm-\u003ecfg, \u0026ecm-\u003estats, ecm-\u003ewrk);",
       "revId": "4921e4d2924bba21b34bf1b8cf3bd78be4275938",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d8b81b5e_159c2bc8",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-03-04T17:06:14Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d26df1dc_19a2878f",
+      "revId": "4921e4d2924bba21b34bf1b8cf3bd78be4275938",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
