@@ -188,8 +188,7 @@ void vnet_send_dns6_reply (vlib_main_t * vm, dns_main_t * dm,
 			   dns_pending_request_t * t, dns_cache_entry_t * ep,
 			   vlib_buffer_t * b0);
 
-u8 *vnet_dns_labels_to_name (u8 * label, u8 * full_text,
-			     u8 ** parse_from_here);
+u8 *vnet_dns_labels_to_name (u8 *label, u8 *full_text, u32 full_text_len, u8 **parse_from_here);
 
 void vnet_dns_create_resolver_process (vlib_main_t * vm, dns_main_t * dm);
 
