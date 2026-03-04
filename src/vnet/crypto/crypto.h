@@ -695,6 +695,7 @@ format_function_t format_vnet_crypto_engine;
 format_function_t format_crypto_op_type_short;
 format_function_t format_vnet_crypto_op_type;
 format_function_t format_vnet_crypto_op_status;
+format_function_t format_vnet_crypto_op_flags;
 unformat_function_t unformat_vnet_crypto_alg;
 unformat_function_t unformat_vnet_crypto_engine;
 
@@ -842,5 +843,7 @@ vnet_crypto_async_add_to_frame (vlib_main_t *vm, vnet_crypto_async_frame_t *f,
   f->buffer_indices[index] = buffer_index;
   f->next_node_index[index] = next_node;
 }
+
+extern int vnet_crypto_add_trace (vlib_main_t *vm, u32 bi, vnet_crypto_op_t *op);
 
 #endif /* included_vnet_crypto_crypto_h */
