@@ -1306,6 +1306,7 @@ openssl_stop_listen (tls_ctx_t * lctx)
 
   SSL_CTX_free (olc->ssl_ctx);
   openssl_listen_ctx_free (olc);
+  lctx->flags |= TLS_CONN_F_MIGRATED;
 
   return 0;
 }
