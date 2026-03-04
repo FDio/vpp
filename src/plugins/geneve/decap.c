@@ -94,7 +94,7 @@ geneve_input (vlib_main_t * vm,
 	{
 	  u32 bi0, bi1;
 	  vlib_buffer_t *b0, *b1;
-	  u32 next0, next1;
+	  u32 next0 = 0, next1 = 0;
 	  ip4_header_t *ip4_0, *ip4_1;
 	  ip6_header_t *ip6_0, *ip6_1;
 	  geneve_header_t *geneve0, *geneve1;
@@ -134,6 +134,24 @@ geneve_input (vlib_main_t * vm,
 
 	  vnet_geneve_hdr_1word_ntoh (geneve0);
 	  vnet_geneve_hdr_1word_ntoh (geneve1);
+
+	  /* Validate options_len against buffer size */
+	  u32 geneve_len0 = GENEVE_BASE_HEADER_LENGTH + vnet_get_geneve_options_len (geneve0);
+	  u32 geneve_len1 = GENEVE_BASE_HEADER_LENGTH + vnet_get_geneve_options_len (geneve1);
+
+	  if (PREDICT_FALSE (b0->current_length < geneve_len0))
+	    {
+	      error0 = GENEVE_ERROR_BAD_LENGTH;
+	      next0 = GENEVE_INPUT_NEXT_DROP;
+	      goto trace0;
+	    }
+
+	  if (PREDICT_FALSE (b1->current_length < geneve_len1))
+	    {
+	      error1 = GENEVE_ERROR_BAD_LENGTH;
+	      next1 = GENEVE_INPUT_NEXT_DROP;
+	      goto trace1;
+	    }
 
 	  if (is_ip4)
 	    {
@@ -529,7 +547,7 @@ geneve_input (vlib_main_t * vm,
 	{
 	  u32 bi0;
 	  vlib_buffer_t *b0;
-	  u32 next0;
+	  u32 next0 = 0;
 	  ip4_header_t *ip4_0;
 	  ip6_header_t *ip6_0;
 	  geneve_header_t *geneve0;
@@ -554,6 +572,16 @@ geneve_input (vlib_main_t * vm,
 	  /* udp leaves current_data pointing at the geneve header */
 	  geneve0 = vlib_buffer_get_current (b0);
 	  vnet_geneve_hdr_1word_ntoh (geneve0);
+
+	  /* Validate options_len against buffer size */
+	  u32 geneve_len0 = GENEVE_BASE_HEADER_LENGTH + vnet_get_geneve_options_len (geneve0);
+
+	  if (PREDICT_FALSE (b0->current_length < geneve_len0))
+	    {
+	      error0 = GENEVE_ERROR_BAD_LENGTH;
+	      next0 = GENEVE_INPUT_NEXT_DROP;
+	      goto trace00;
+	    }
 
 	  if (is_ip4)
 	    {
