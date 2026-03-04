@@ -11,7 +11,7 @@ func init() {
 	RegisterVethTests(EchoBuiltinTest, EchoBuiltinBandwidthTest, EchoBuiltinEchobytesTest, EchoBuiltinRoundtripTest,
 		EchoBuiltinTestbytesTest, EchoBuiltinPeriodicReportTest, EchoBuiltinPeriodicReportTotalTest, TlsSingleConnectionTest,
 		EchoBuiltinPeriodicReportUDPTest, EchoBuiltinUdpTest, EchoBuiltinHttpTest, EchoBuiltinHttpsTest, EchoBuiltinHttp2Test,
-		EchoBuiltinHttp3Test, EchoBuiltinHttpTestBytesTest)
+		EchoBuiltinHttp3Test, EchoBuiltinHttpTestBytesTest, EchoBuiltinHttp2ConnectTcpTest)
 	RegisterVethMWTests(TcpWithLossMWTest)
 	RegisterSoloVeth6Tests(TcpWithLoss6Test)
 }
@@ -408,6 +408,20 @@ func EchoBuiltinHttp3Test(s *VethsSuite) {
 	clientVpp := s.Containers.ClientVpp.VppInstance
 
 	o := clientVpp.Vppctl("test echo client run-time 5 http3 uri https://" +
+		s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1)
+	Log(o)
+	AssertNotContains(o, "failed:")
+	httpVerifyPeriodicStats(o)
+}
+
+func EchoBuiltinHttp2ConnectTcpTest(s *VethsSuite) {
+	serverVpp := s.Containers.ServerVpp.VppInstance
+
+	serverVpp.Vppctl("test echo server connect-tcp uri https://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1)
+
+	clientVpp := s.Containers.ClientVpp.VppInstance
+
+	o := clientVpp.Vppctl("test echo client run-time 5 http2 connect-tcp uri https://" +
 		s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1)
 	Log(o)
 	AssertNotContains(o, "failed:")

@@ -47,6 +47,10 @@ echo_server_create_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cl
 	;
       else if (unformat (input, "report-interval"))
 	esm->cfg.report_interval = 1;
+      else if (unformat (input, "connect-tcp"))
+	esm->cfg.http_connect_proto = ET_HTTP_CONNECT_PROTO_TCP;
+      else if (unformat (input, "connect-udp"))
+	esm->cfg.http_connect_proto = ET_HTTP_CONNECT_PROTO_UDP;
       else
 	{
 	  error = clib_error_return (0, "failed: unknown input `%U'", format_unformat_error, input);
@@ -81,6 +85,13 @@ echo_server_create_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cl
       echo_cli ("No uri provided! Using default: %s", default_uri);
       esm->cfg.uri = (char *) format (0, "%s%c", default_uri, 0);
     }
+
+  if ((rv = parse_uri (esm->cfg.uri, &esm->cfg.sep)))
+    {
+      error = clib_error_return (0, "Uri parse error: %d", rv);
+      goto cleanup;
+    }
+  echo_test_set_proto (&esm->cfg);
 
   vlib_worker_thread_barrier_sync (vm);
   rv = echo_server_create (vm, appns_id, appns_flags, appns_secret);
@@ -257,6 +268,10 @@ ec_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd
 	ecm->cfg.http_version = HTTP_VERSION_2;
       else if (unformat (line_input, "http3"))
 	ecm->cfg.http_version = HTTP_VERSION_3;
+      else if (unformat (line_input, "connect-tcp"))
+	ecm->cfg.http_connect_proto = ET_HTTP_CONNECT_PROTO_TCP;
+      else if (unformat (line_input, "connect-udp"))
+	ecm->cfg.http_connect_proto = ET_HTTP_CONNECT_PROTO_UDP;
       else
 	{
 	  error =
@@ -305,7 +320,8 @@ parse_config:
       error = clib_error_return (0, "Uri parse error: %d", rv);
       goto cleanup;
     }
-  ecm->cfg.proto = ecm->cfg.sep.transport_proto;
+  echo_test_set_proto (&ecm->cfg);
+
   if (ecm->prealloc_sessions)
     ec_prealloc_sessions (ecm);
 
@@ -357,7 +373,8 @@ VLIB_CLI_COMMAND (ec_command, static) = {
     "[private-segment-size <bytes>[k|m|g]] [preallocate-fifos] [preallocate-sessions]\n"
     "[client-batch <n>] [max-tx-chunk <bytes>[k|m]] [nstreams <n>]\n"
     "[throughput <bytes>[k|m|g]] [report-interval[-total] [<seconds>]] [report-jitter]\n"
-    "[uri <proto://ip:port>] [test-bytes] [verbose] [all-scope|local-scope|global-scope]",
+    "[uri <proto://ip:port>] [test-bytes] [verbose] [all-scope|local-scope|global-scope]\n"
+    "[connect-tcp|connect-udp]",
   .function = ec_command_fn,
   .is_mp_safe = 1,
 };
