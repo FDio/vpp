@@ -23,6 +23,7 @@
 #include <vnet/udp/udp_packet.h>
 #include <vnet/dpo/dpo.h>
 #include <vnet/adj/adj_types.h>
+#include <vnet/flow/flow.h>
 
 typedef CLIB_PACKED (struct {
   ip4_header_t ip4;	/* 20 bytes */
@@ -177,7 +178,7 @@ typedef struct
 
   /* Record used instances */
   uword *instance_used;
-  u32 flow_id_start;
+  u32 flow_range_index;
 
   /* cache for last 8 vxlan tunnel */
   vtep4_cache_t vtep4_u512;
