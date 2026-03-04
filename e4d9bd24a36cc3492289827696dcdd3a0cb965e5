@@ -16,6 +16,23 @@
       "message": "lgtm",
       "revId": "e4d9bd24a36cc3492289827696dcdd3a0cb965e5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a3e25c04_68e2bc13",
+        "filename": "src/vnet/ip6-nd/ip6_mld.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 532,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-03-04T08:35:18Z",
+      "side": 1,
+      "message": "We should probably add a function for ildv_ll_change, which as far as I can tell is only called for link local addresses, and when called we should add (not sure about del) the address. That is, join the multicast group derived out of the ll and add a secondary mac address.",
+      "revId": "e4d9bd24a36cc3492289827696dcdd3a0cb965e5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
