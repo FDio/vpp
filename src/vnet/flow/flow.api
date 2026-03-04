@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-option version = "1.0.3";
+option version = "1.1.0";
 
 import "vnet/interface_types.api";
 import "vnet/ip/ip_types.api";
@@ -114,6 +114,168 @@ autoreply define flow_disable
   u32 flow_index;
   u32 hw_if_index;
   option vat_help = "test flow disable index <index> <interface name>";
+};
+
+/** \brief flow range create request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param owner - range owner name
+    @param count - max flows in range
+*/
+define flow_range_create
+{
+  u32 client_index;
+  u32 context;
+  string owner[64];
+  u32 count;
+};
+
+/** \brief reply for creating flow range
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+    @param range_index - index in fm->ranges pool
+*/
+define flow_range_create_reply
+{
+  u32 context;
+  i32 retval;
+  u32 range_index;
+};
+
+/** \brief flow range free request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param range_index - range to free
+*/
+autoreply define flow_range_free
+{
+  u32 client_index;
+  u32 context;
+  u32 range_index;
+};
+
+/** \brief add flow to a range
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param range_index - range to add flow to
+    @param flow - flow rule v2
+*/
+define flow_range_add_flow
+{
+  u32 client_index;
+  u32 context;
+  u32 range_index;
+  vl_api_flow_rule_v2_t flow;
+};
+
+/** \brief reply for adding flow to a range
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+    @param range_flow_index - index within the range
+*/
+define flow_range_add_flow_reply
+{
+  u32 context;
+  i32 retval;
+  u32 range_flow_index;
+};
+
+/** \brief delete flow from a range
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param range_index - range index
+    @param range_flow_index - flow index within the range
+*/
+autoreply define flow_range_del_flow
+{
+  u32 client_index;
+  u32 context;
+  u32 range_index;
+  u32 range_flow_index;
+};
+
+/** \brief enable flow in a range
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param range_index - range index
+    @param range_flow_index - flow index within the range
+    @param hw_if_index - hardware interface index
+*/
+autoreply define flow_range_enable_flow
+{
+  u32 client_index;
+  u32 context;
+  u32 range_index;
+  u32 range_flow_index;
+  u32 hw_if_index;
+};
+
+/** \brief disable flow in a range
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param range_index - range index
+    @param range_flow_index - flow index within the range
+    @param hw_if_index - hardware interface index
+*/
+autoreply define flow_range_disable_flow
+{
+  u32 client_index;
+  u32 context;
+  u32 range_index;
+  u32 range_flow_index;
+  u32 hw_if_index;
+};
+
+/** \brief bind an existing standalone flow into a range
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param range_index - range index
+    @param flow_index - standalone flow index to bind
+*/
+define flow_range_bind_flow
+{
+  u32 client_index;
+  u32 context;
+  u32 range_index;
+  u32 flow_index;
+};
+
+/** \brief reply for binding flow to a range
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+    @param range_flow_index - index within the range
+*/
+define flow_range_bind_flow_reply
+{
+  u32 context;
+  i32 retval;
+  u32 range_flow_index;
+};
+
+/** \brief unbind a flow from a range back to standalone
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param range_index - range index
+    @param range_flow_index - flow index within the range
+*/
+define flow_range_unbind_flow
+{
+  u32 client_index;
+  u32 context;
+  u32 range_index;
+  u32 range_flow_index;
+};
+
+/** \brief reply for unbinding flow from a range
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+    @param flow_index - standalone flow index
+*/
+define flow_range_unbind_flow_reply
+{
+  u32 context;
+  i32 retval;
+  u32 flow_index;
 };
 
 /*
