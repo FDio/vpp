@@ -1210,7 +1210,8 @@ stop_test:
       return error;
     }
   ec_wait_for_signal (EC_CLI_CFG_SYNC);
-  echo_print_final_stats (vm, delta, &ecm->cfg, &ecm->stats, ecm->wrk);
+  if (!error)
+    echo_print_final_stats (vm, delta, &ecm->cfg, &ecm->stats, ecm->wrk);
 
   /* disconnect control session */
   ec_ctrl_session_disconnect ();
