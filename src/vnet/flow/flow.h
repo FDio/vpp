@@ -312,13 +312,11 @@ typedef struct
   uword *private_data;
 } vnet_flow_t;
 
-int vnet_flow_get_range (vnet_main_t * vnm, char *owner, u32 count,
-			 u32 * start);
-int vnet_flow_add (vnet_main_t * vnm, vnet_flow_t * flow, u32 * flow_index);
-int vnet_flow_enable (vnet_main_t * vnm, u32 flow_index, u32 hw_if_index);
-int vnet_flow_disable (vnet_main_t * vnm, u32 flow_index, u32 hw_if_index);
-int vnet_flow_del (vnet_main_t * vnm, u32 flow_index);
-vnet_flow_t *vnet_get_flow (u32 flow_index);
+int vnet_flow_get_range (vnet_main_t *vnm, char *owner, u32 count, u32 *start);
+int vnet_flow_add (vnet_main_t *vnm, vnet_flow_t *flow, u32 *flow_index);
+int vnet_flow_enable (vnet_main_t *vnm, u32 flow_index, u32 hw_if_index);
+int vnet_flow_disable (vnet_main_t *vnm, u32 flow_index, u32 hw_if_index);
+int vnet_flow_del (vnet_main_t *vnm, u32 flow_index);
 
 typedef struct
 {
@@ -345,5 +343,15 @@ extern vnet_flow_main_t flow_main;
 
 format_function_t format_flow_actions;
 format_function_t format_flow_enabled_hw;
+
+always_inline vnet_flow_t *
+vnet_get_flow (u32 flow_index)
+{
+  vnet_flow_main_t *fm = &flow_main;
+  if (pool_is_free_index (fm->global_flow_pool, flow_index))
+    return 0;
+
+  return pool_elt_at_index (fm->global_flow_pool, flow_index);
+}
 
 #endif /* included_vnet_flow_flow_h */
