@@ -7,146 +7,129 @@
 #include <vnet/ip/ip.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/flow/flow.h>
+#include <vnet/flow/flow_inlines.h>
 
 vnet_flow_main_t flow_main;
 
 int
-vnet_flow_get_range (vnet_main_t * vnm, char *owner, u32 count, u32 * start)
+vnet_flow_add (vnet_main_t *vnm, vnet_flow_t *flow, u32 *flow_index)
 {
-  vnet_flow_main_t *fm = &flow_main;
-  vnet_flow_range_t *r;
-
-  /* skip 0 */
-  if (fm->flows_used == 0)
-    fm->flows_used = 1;
-
-  *start = fm->flows_used;
-  fm->flows_used += count;
-  vec_add2 (fm->ranges, r, 1);
-  r->start = *start;
-  r->count = count;
-  r->owner = format (0, "%s%c", owner, 0);
-  return 0;
-}
-
-int
-vnet_flow_add (vnet_main_t * vnm, vnet_flow_t * flow, u32 * flow_index)
-{
-  vnet_flow_main_t *fm = &flow_main;
-  vnet_flow_t *f;
-
-  pool_get (fm->global_flow_pool, f);
-  *flow_index = f - fm->global_flow_pool;
-  clib_memcpy_fast (f, flow, sizeof (vnet_flow_t));
-  f->private_data = 0;
-  f->index = *flow_index;
-  return 0;
+  return vnet_flow_add_inline (vnm, flow, flow_index);
 }
 
 vnet_flow_t *
 vnet_get_flow (u32 flow_index)
 {
-  vnet_flow_main_t *fm = &flow_main;
-  if (pool_is_free_index (fm->global_flow_pool, flow_index))
+  return vnet_get_flow_inline (flow_index);
+}
+
+vnet_flow_t *
+vnet_get_range_flow (vnet_flow_range_t *range, u32 range_flow_index)
+{
+
+  u32 *flow_index;
+  if (pool_is_free_index (range->flow_indices, range_flow_index))
     return 0;
 
-  return pool_elt_at_index (fm->global_flow_pool, flow_index);
+  flow_index = pool_elt_at_index (range->flow_indices, range_flow_index);
+  return vnet_get_flow_inline (*flow_index);
 }
 
 int
-vnet_flow_del (vnet_main_t * vnm, u32 flow_index)
+vnet_flow_del (vnet_main_t *vnm, u32 flow_index)
+{
+  return vnet_flow_del_inline (vnm, flow_index);
+}
+
+int
+vnet_flow_enable (vnet_main_t *vnm, u32 flow_index, u32 hw_if_index)
+{
+  return vnet_flow_enable_inline (vnm, flow_index, hw_if_index);
+}
+
+int
+vnet_flow_disable (vnet_main_t *vnm, u32 flow_index, u32 hw_if_index)
+{
+  return vnet_flow_disable_inline (vnm, flow_index, hw_if_index);
+}
+
+vnet_flow_range_t *
+vnet_flow_alloc_range (vnet_main_t *vnm, char *owner, u32 count)
 {
   vnet_flow_main_t *fm = &flow_main;
-  vnet_flow_t *f = vnet_get_flow (flow_index);
-  uword hw_if_index;
-  uword private_data;
+  vnet_flow_range_t *range;
 
-  if (f == 0)
-    return VNET_FLOW_ERROR_NO_SUCH_ENTRY;
+  pool_get (fm->ranges, range);
 
-  hash_foreach (hw_if_index, private_data, f->private_data,
-    ({
-     vnet_flow_disable (vnm, flow_index, hw_if_index);
-    }));
+  range->count = count;
+  range->owner = format (0, "%s%c", owner, 0);
+  pool_alloc (range->flow_indices, count);
+  return range;
+}
 
-  hash_free (f->private_data);
-  clib_memset (f, 0, sizeof (*f));
-  pool_put (fm->global_flow_pool, f);
+int
+vnet_flow_free_range (vnet_main_t *vnm, vnet_flow_range_t *range)
+{
+  vnet_flow_main_t *fm = &flow_main;
+
+  pool_free (range->flow_indices);
+  pool_put (fm->ranges, range);
   return 0;
 }
 
 int
-vnet_flow_enable (vnet_main_t * vnm, u32 flow_index, u32 hw_if_index)
+vnet_flow_range_add (vnet_main_t *vnm, vnet_flow_range_t *range, vnet_flow_t *flow,
+		     u32 *range_flow_index)
 {
-  vnet_flow_t *f = vnet_get_flow (flow_index);
-  vnet_hw_interface_t *hi;
-  vnet_device_class_t *dev_class;
-  uword private_data;
+  u32 flow_index;
+  u32 *f;
   int rv;
 
-  if (f == 0)
-    return VNET_FLOW_ERROR_NO_SUCH_ENTRY;
+  if (pool_len (range->flow_indices) + 1 >= range->count)
+    return -1;
 
-  if (!vnet_hw_interface_is_valid (vnm, hw_if_index))
-    return VNET_FLOW_ERROR_NO_SUCH_INTERFACE;
-
-  /* don't enable flow twice */
-  if (hash_get (f->private_data, hw_if_index) != 0)
-    return VNET_FLOW_ERROR_ALREADY_DONE;
-
-  hi = vnet_get_hw_interface (vnm, hw_if_index);
-  dev_class = vnet_get_device_class (vnm, hi->dev_class_index);
-
-  if (dev_class->flow_ops_function == 0)
-    return VNET_FLOW_ERROR_NOT_SUPPORTED;
-
-  if (f->actions & VNET_FLOW_ACTION_REDIRECT_TO_NODE)
-    {
-      vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
-      f->redirect_device_input_next_index =
-	vlib_node_add_next (vnm->vlib_main, hw->input_node_index,
-			    f->redirect_node_index);
-    }
-
-  rv = dev_class->flow_ops_function (vnm, VNET_FLOW_DEV_OP_ADD_FLOW,
-				     hi->dev_instance, flow_index,
-				     &private_data);
-
-  if (rv)
+  if ((rv = vnet_flow_add (vnm, flow, &flow_index)))
     return rv;
 
-  hash_set (f->private_data, hw_if_index, private_data);
+  pool_get (range->flow_indices, f);
+  *range_flow_index = f - range->flow_indices;
+  *f = flow_index;
   return 0;
 }
 
 int
-vnet_flow_disable (vnet_main_t * vnm, u32 flow_index, u32 hw_if_index)
+vnet_flow_range_del (vnet_main_t *vnm, vnet_flow_range_t *range, u32 range_flow_index)
 {
-  vnet_flow_t *f = vnet_get_flow (flow_index);
-  vnet_hw_interface_t *hi;
-  vnet_device_class_t *dev_class;
-  uword *p;
-  int rv;
+  u32 *flow_index;
+  if (pool_is_free_index (range->flow_indices, range_flow_index))
+    return 0;
 
-  if (f == 0)
-    return VNET_FLOW_ERROR_NO_SUCH_ENTRY;
+  flow_index = pool_elt_at_index (range->flow_indices, range_flow_index);
+  pool_put (range->flow_indices, flow_index);
 
-  if (!vnet_hw_interface_is_valid (vnm, hw_if_index))
-    return VNET_FLOW_ERROR_NO_SUCH_INTERFACE;
+  return vnet_flow_del_inline (vnm, *flow_index);
+}
 
-  /* don't disable if not enabled */
-  if ((p = hash_get (f->private_data, hw_if_index)) == 0)
-    return VNET_FLOW_ERROR_ALREADY_DONE;
+int
+vnet_flow_range_enable (vnet_main_t *vnm, vnet_flow_range_t *range, u32 range_flow_index,
+			u32 hw_if_index)
+{
+  u32 *flow_index;
+  if (pool_is_free_index (range->flow_indices, range_flow_index))
+    return 0;
 
-  hi = vnet_get_hw_interface (vnm, hw_if_index);
-  dev_class = vnet_get_device_class (vnm, hi->dev_class_index);
+  flow_index = pool_elt_at_index (range->flow_indices, range_flow_index);
+  return vnet_flow_enable_inline (vnm, *flow_index, hw_if_index);
+}
 
-  rv = dev_class->flow_ops_function (vnm, VNET_FLOW_DEV_OP_DEL_FLOW,
-				     hi->dev_instance, flow_index, p);
+int
+vnet_flow_range_disable (vnet_main_t *vnm, vnet_flow_range_t *range, u32 range_flow_index,
+			 u32 hw_if_index)
+{
+  u32 *flow_index;
+  if (pool_is_free_index (range->flow_indices, range_flow_index))
+    return 0;
 
-  if (rv)
-    return rv;
-
-  hash_unset (f->private_data, hw_if_index);
-  return 0;
+  flow_index = pool_elt_at_index (range->flow_indices, range_flow_index);
+  return vnet_flow_disable_inline (vnm, *flow_index, hw_if_index);
 }

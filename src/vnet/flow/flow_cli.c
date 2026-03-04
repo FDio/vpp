@@ -257,11 +257,11 @@ show_flow_ranges (vlib_main_t * vm, unformat_input_t * input,
   vnet_flow_main_t *fm = &flow_main;
   vnet_flow_range_t *r = 0;
 
-  vlib_cli_output (vm, "%8s  %8s  %s", "Start", "Count", "Owner");
+  vlib_cli_output (vm, "%8s  %8s  %s", "Used", "Count", "Owner");
 
-  vec_foreach (r, fm->ranges)
+  pool_foreach (r, fm->ranges)
     {
-      vlib_cli_output (vm, "%8u  %8u  %s", r->start, r->count, r->owner);
+      vlib_cli_output (vm, "%8u  %8u  %s", pool_len (r->flow_indices), r->count, r->owner);
     };
   return 0;
 }
