@@ -196,7 +196,7 @@ memif_validate_desc_data (memif_per_thread_data_t *ptd, memif_if_t *mif,
       if (region >= n_regions)
 	memif_desc_status_set_err (desc_status + i,
 				   MEMIF_DESC_STATUS_ERR_BAD_REGION);
-      else if (offset + len > r->region_size)
+      else if ((u64) offset + len > r->region_size)
 	memif_desc_status_set_err (desc_status + i,
 				   MEMIF_DESC_STATUS_ERR_REGION_OVERRUN);
       else if (is_ethernet && len > ETHERNET_MAX_PACKET_BYTES)
