@@ -378,6 +378,8 @@ esp_decrypt_prepare_sync_op (vlib_main_t *vm, ipsec_per_thread_data_t *ptd, ipse
       if (!irt->cipher_iv_size)
 	{
 	  vec_add_aligned (*ops, op, 1, CLIB_CACHE_LINE_BYTES);
+	  if (PREDICT_FALSE (b->flags & VLIB_BUFFER_IS_TRACED))
+	    vnet_crypto_add_trace (vm, vlib_get_buffer_index (vm, b), op);
 	  return ESP_DECRYPT_ERROR_RX_PKTS;
 	}
     }
@@ -438,6 +440,8 @@ esp_decrypt_prepare_sync_op (vlib_main_t *vm, ipsec_per_thread_data_t *ptd, ipse
 	}
 
       vec_add_aligned (*ops, op, 1, CLIB_CACHE_LINE_BYTES);
+      if (PREDICT_FALSE (b->flags & VLIB_BUFFER_IS_TRACED))
+	vnet_crypto_add_trace (vm, vlib_get_buffer_index (vm, b), op);
     }
 
   return ESP_DECRYPT_ERROR_RX_PKTS;
