@@ -77,18 +77,40 @@ u8 *
 format_vnet_crypto_op_status (u8 * s, va_list * args)
 {
   u8 st = va_arg (*args, int);
-  char *strings[] = {
-    [VNET_CRYPTO_OP_STATUS_COMPLETED] = "completed",
-    [VNET_CRYPTO_OP_STATUS_FAIL_NO_HANDLER] = "fail-no-handler",
-    [VNET_CRYPTO_OP_STATUS_FAIL_BAD_HMAC] = "fail-bad-hmac",
-    [VNET_CRYPTO_OP_STATUS_FAIL_ENGINE_ERR] = "fail-engine-err",
-    [VNET_CRYPTO_OP_STATUS_WORK_IN_PROGRESS] = "work-in-progress",
-  };
+  char *str;
 
-  if (st >= VNET_CRYPTO_OP_N_STATUS)
-    return format (s, "unknown");
+  switch (st)
+    {
+#define _(v, n, s)                                                                                 \
+  case VNET_CRYPTO_OP_STATUS_##n:                                                                  \
+    str = s;                                                                                       \
+    break;
+      foreach_crypto_op_status
+#undef _
+	default : str = "unknown";
+    }
 
-  return format (s, "%s", strings[st]);
+  return format (s, "%s", str);
+}
+
+u8 *
+format_vnet_crypto_op_flags (u8 *s, va_list *args)
+{
+  uint flags = va_arg (*args, uint); /* promotion of u8 to int */
+  bool printed = false;
+
+  if (flags & VNET_CRYPTO_OP_FLAG_HMAC_CHECK)
+    {
+      s = format (s, "%shmac_check", (printed ? "," : ""));
+      printed = true;
+    }
+
+  if (flags & VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS)
+    {
+      s = format (s, "%schained_buffers", (printed ? "," : ""));
+      printed = true;
+    }
+  return s;
 }
 
 u8 *
