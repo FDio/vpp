@@ -16,3 +16,4 @@
 geneve_error (DECAPSULATED, "good packets decapsulated")
 geneve_error (NO_SUCH_TUNNEL, "no such tunnel packets")
 geneve_error (BAD_FLAGS, "packets with bad flags field in geneve header")
+geneve_error (BAD_LENGTH, "packets with invalid options length")
