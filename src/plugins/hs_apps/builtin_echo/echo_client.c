@@ -990,7 +990,7 @@ ec_run (vlib_main_t *vm)
   ec_main_t *ecm = &ec_main;
   uword *event_data = 0, event_type;
   clib_error_t *error = 0;
-  f64 delta, wait_time = 0;
+  f64 delta = 0, wait_time = 0;
   echo_test_worker_t *wrk;
 
   vec_foreach (wrk, ecm->wrk)
@@ -1210,7 +1210,8 @@ stop_test:
       return error;
     }
   ec_wait_for_signal (EC_CLI_CFG_SYNC);
-  echo_print_final_stats (vm, delta, &ecm->cfg, &ecm->stats, ecm->wrk);
+  if (!error)
+    echo_print_final_stats (vm, delta, &ecm->cfg, &ecm->stats, ecm->wrk);
 
   /* disconnect control session */
   ec_ctrl_session_disconnect ();
