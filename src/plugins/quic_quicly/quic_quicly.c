@@ -1045,6 +1045,7 @@ quic_quicly_reset_connection (u64 udp_session_handle,
    * reset, then the next CID is highly likely to contain a non-authenticating
    * CID, ... */
   QUIC_DBG (2, "Sending stateless reset");
+  quic_quicly_main_t *qqm = &quic_quicly_main;
   int rv;
   session_t *udp_session;
   quicly_context_t *quicly_ctx;
@@ -1054,13 +1055,11 @@ quic_quicly_reset_connection (u64 udp_session_handle,
       return 0;
     }
   quicly_ctx = quic_quicly_get_quicly_ctx_from_udp (udp_session_handle);
-  quic_ctx_t *ctx =
-    quic_quicly_get_quic_ctx (pctx->ctx_index, pctx->thread_index);
+  udp_session = session_get_from_handle (udp_session_handle);
 
-  quicly_address_t src;
-  uint8_t payload[quicly_ctx->transport_params.max_udp_payload_size];
+  u8 *payload = qqm->tx_bufs[udp_session->thread_index];
   size_t payload_len =
-    quicly_send_stateless_reset (quicly_ctx, &src.sa, payload);
+    quicly_send_stateless_reset (quicly_ctx, pctx->packet.cid.dest.encrypted.base, payload);
   if (payload_len == 0)
     {
       return 1;
@@ -1070,10 +1069,7 @@ quic_quicly_reset_connection (u64 udp_session_handle,
   packet.iov_len = payload_len;
   packet.iov_base = payload;
 
-  udp_session = session_get_from_handle (udp_session_handle);
-  quic_quicly_addr_to_ip46_addr (&src, &ctx->rmt_ip, &ctx->rmt_port);
-  rv = quic_quicly_send_datagram (udp_session, &packet, &ctx->rmt_ip,
-				  ctx->rmt_port);
+  rv = quic_quicly_send_datagram (udp_session, &packet, &pctx->ph.rmt_ip, pctx->ph.rmt_port);
   quic_quicly_set_udp_tx_evt (udp_session);
   return rv;
 }
