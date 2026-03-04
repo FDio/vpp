@@ -1992,7 +1992,7 @@ gtpu_flow_input (vlib_main_t * vm,
 
 	  /* Manipulate packet 0 */
 	  ASSERT (b0->flow_id != 0);
-	  tunnel_index0 = b0->flow_id - gtm->flow_id_start;
+	  tunnel_index0 = b0->flow_id - 1;
 	  t0 = pool_elt_at_index (gtm->tunnels, tunnel_index0);
 	  b0->flow_id = 0;
 
@@ -2095,7 +2095,7 @@ trace0:
 
 	  /* Manipulate packet 1 */
 	  ASSERT (b1->flow_id != 0);
-	  tunnel_index1 = b1->flow_id - gtm->flow_id_start;
+	  tunnel_index1 = b1->flow_id - 1;
 	  t1 = pool_elt_at_index (gtm->tunnels, tunnel_index1);
 	  b1->flow_id = 0;
 
@@ -2268,7 +2268,7 @@ trace1:
 	    }
 
 	  ASSERT (b0->flow_id != 0);
-	  tunnel_index0 = b0->flow_id - gtm->flow_id_start;
+	  tunnel_index0 = b0->flow_id - 1;
 	  t0 = pool_elt_at_index (gtm->tunnels, tunnel_index0);
 	  b0->flow_id = 0;
 

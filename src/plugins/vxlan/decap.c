@@ -1139,10 +1139,10 @@ VLIB_NODE_FN (vxlan4_flow_input_node) (vlib_main_t * vm,
 	  ASSERT (b2->flow_id != 0);
 	  ASSERT (b3->flow_id != 0);
 
-	  u32 t_index0 = b0->flow_id - vxm->flow_id_start;
-	  u32 t_index1 = b1->flow_id - vxm->flow_id_start;
-	  u32 t_index2 = b2->flow_id - vxm->flow_id_start;
-	  u32 t_index3 = b3->flow_id - vxm->flow_id_start;
+	  u32 t_index0 = b0->flow_id - 1;
+	  u32 t_index1 = b1->flow_id - 1;
+	  u32 t_index2 = b2->flow_id - 1;
+	  u32 t_index3 = b3->flow_id - 1;
 
 	  vxlan_tunnel_t *t0 = &vxm->tunnels[t_index0];
 	  vxlan_tunnel_t *t1 = &vxm->tunnels[t_index1];
@@ -1252,7 +1252,7 @@ VLIB_NODE_FN (vxlan4_flow_input_node) (vlib_main_t * vm,
 	  vnet_update_l2_len (b0);
 
 	  ASSERT (b0->flow_id != 0);
-	  u32 t_index0 = b0->flow_id - vxm->flow_id_start;
+	  u32 t_index0 = b0->flow_id - 1;
 	  vxlan_tunnel_t *t0 = &vxm->tunnels[t_index0];
 	  b0->flow_id = 0;
 

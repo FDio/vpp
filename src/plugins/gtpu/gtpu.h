@@ -22,6 +22,7 @@
 #include <vnet/dpo/dpo.h>
 #include <vnet/adj/adj_types.h>
 #include <vnet/fib/fib_table.h>
+#include <vnet/flow/flow.h>
 
 /**
  *		Bits
@@ -301,7 +302,8 @@ typedef struct
   /* convenience */
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
-  u32 flow_id_start;
+  u32 flow_range_index;
+
   /* cache for last 8 gtpu tunnel */
   vtep4_cache_t vtep4_u512;
 
