@@ -509,6 +509,7 @@ list(APPEND VNET_SOURCES
   crypto/main.c
   crypto/node.c
   crypto/crypto_api.c
+  crypto/trace.c
 )
 
 list(APPEND VNET_HEADERS
