@@ -12,6 +12,23 @@
 
 #define ECHO_TEST_DELAY_DISCONNECT 1
 
+typedef enum
+{
+#define _(sym, str, sstr) ET_PROTO_##sym,
+  foreach_transport_proto
+#undef _
+    ET_PROTO_HTTP_CONNECT_TCP,
+  ET_PROTO_HTTP_CONNECT_UDP,
+  ET_N_PROTOS,
+} echo_test_proto_t;
+
+typedef enum
+{
+  ET_HTTP_CONNECT_PROTO_NONE,
+  ET_HTTP_CONNECT_PROTO_TCP,
+  ET_HTTP_CONNECT_PROTO_UDP,
+} et_http_connect_proto_t;
+
 typedef struct
 {
   hs_test_cfg_t test_cfg;     /**< Test parameters */
@@ -26,8 +43,9 @@ typedef struct
   u32 n_streams;	      /**< QUIC/HTTP streams per connection */
   u64 private_segment_size;   /**< Size of private segments  */
   u64 bytes_to_send;	      /**< Bytes to send */
-  transport_proto_t proto;    /**< Tested protocolo */
+  echo_test_proto_t proto;    /**< Tested protocol */
   http_version_t http_version; /**< HTTP version used for connects */
+  et_http_connect_proto_t http_connect_proto;
   u8 echo_bytes;	      /**< Don't use zero-copy mode */
   u8 report_interval_total;   /**< Shown data are totals since the start of the test */
   u8 report_interval_jitter;  /**< Report jitter in periodic reports */
@@ -50,6 +68,7 @@ typedef struct
 #undef _
     u64 vpp_session_handle;
 
+  u64 opaque;
   u64 dgrams_received;
   u64 bytes_received;
   u64 bytes_sent;
@@ -105,6 +124,7 @@ echo_test_session_alloc (echo_test_worker_t *wrk)
 
 typedef struct
 {
+  void (*test_init) (vlib_main_t *vm, u32 cli_node_index, echo_test_cfg_t *cfg);
   int (*listen) (vnet_listen_args_t *a, echo_test_cfg_t *cfg);
   int (*server_rx) (echo_test_session_t *es, session_t *s, u8 *rx_buf);
   int (*server_rx_test_bytes) (echo_test_session_t *es, session_t *s, u8 *rx_buf);
@@ -119,7 +139,7 @@ typedef struct
 
 typedef struct
 {
-  echo_test_proto_vft_t protos[TRANSPORT_PROTO_HTTP + 1];
+  echo_test_proto_vft_t protos[ET_N_PROTOS];
 } echo_test_main_t;
 
 extern echo_test_main_t echo_test_main;
@@ -141,5 +161,42 @@ echo_test_transport_needs_crypto (session_endpoint_cfg_t *sep)
 #define et_err(_fmt, _args...) clib_warning (_fmt, ##_args);
 
 #define echo_cli(_fmt, _args...) vlib_cli_output (vm, _fmt, ##_args)
+
+always_inline void
+echo_test_set_proto (echo_test_cfg_t *cfg)
+{
+  switch (cfg->sep.transport_proto)
+    {
+    case TRANSPORT_PROTO_TCP:
+      cfg->proto = ET_PROTO_TCP;
+      break;
+    case TRANSPORT_PROTO_UDP:
+      cfg->proto = ET_PROTO_UDP;
+      break;
+    case TRANSPORT_PROTO_TLS:
+      cfg->proto = ET_PROTO_TLS;
+      break;
+    case TRANSPORT_PROTO_QUIC:
+      cfg->proto = ET_PROTO_QUIC;
+      break;
+    case TRANSPORT_PROTO_HTTP:
+      switch (cfg->http_connect_proto)
+	{
+	case ET_HTTP_CONNECT_PROTO_NONE:
+	  cfg->proto = ET_PROTO_HTTP;
+	  break;
+	case ET_HTTP_CONNECT_PROTO_TCP:
+	  cfg->proto = ET_PROTO_HTTP_CONNECT_TCP;
+	  break;
+	case ET_HTTP_CONNECT_PROTO_UDP:
+	  cfg->proto = ET_PROTO_HTTP_CONNECT_UDP;
+	  break;
+	}
+      break;
+    default:
+      et_err ("unsupported protocol %U", format_transport_proto, cfg->sep.transport_proto);
+      break;
+    }
+}
 
 #endif /* SRC_PLUGINS_HSA_ECHO_TEST_H_ */

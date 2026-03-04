@@ -39,7 +39,7 @@ void echo_update_rtt_stats_tcp (echo_test_session_t *es, echo_rtt_stat_t *rtt_st
 
 void echo_update_rtt_stats_udp (echo_test_session_t *es, echo_rtt_stat_t *rtt_stats);
 
-void echo_print_footer (vlib_main_t *vm, transport_proto_t proto);
+void echo_print_footer (vlib_main_t *vm, echo_test_proto_t proto);
 
 void echo_print_final_stats (vlib_main_t *vm, f64 total_delta, echo_test_cfg_t *cfg,
 			     echo_stats_t *stats, echo_test_worker_t *wrks);
