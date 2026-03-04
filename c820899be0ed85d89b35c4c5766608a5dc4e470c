@@ -20,6 +20,23 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "a67fb1f0_b6ab2e08",
+        "filename": "src/plugins/dpdk/device/flow.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 221,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2026-03-04T14:45:04Z",
+      "side": 1,
+      "message": "we will have the same issue (it\u0027s not reentrant) if the device is multiqueue or flow are used on multiple device",
+      "revId": "c820899be0ed85d89b35c4c5766608a5dc4e470c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "db51c564_bbe6f7d9",
         "filename": "src/vnet/flow/flow.c",
         "patchSetId": 9
