@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import struct
 import unittest
 
 from framework import VppTestCase
@@ -10,6 +11,7 @@ from config import config
 from scapy.layers.inet import IP, UDP
 from scapy.layers.l2 import Ether
 from scapy.layers.dns import DNS, DNSQR
+from scapy.packet import Raw
 
 
 @unittest.skipIf("dns" in config.excluded_plugins, "Exclude DNS plugin tests")
@@ -35,6 +37,8 @@ class TestDns(VppTestCase):
             i.resolve_arp()
 
     def tearDown(self):
+        for i in self.pg_interfaces:
+            i.unconfig_ip4()
         super(TestDns, self).tearDown()
 
     def create_stream(self, src_if):
@@ -108,6 +112,80 @@ class TestDns(VppTestCase):
         str = self.vapi.cli("show dns cache verbose")
         self.assertIn("1.2.3.4", str)
         self.assertIn("[P] no.clown.org:", str)
+
+    def _build_raw_dns_request(self, src_if, qname_bytes):
+        """Build an Ethernet/IP/UDP frame carrying a hand-crafted DNS request.
+
+        qname_bytes is the raw QNAME field (no QTYPE/QCLASS — those are
+        appended here).  The DNS header has RD set and qdcount=1.
+        """
+        # DNS header: id, flags (RD), qdcount=1, ancount=0, nscount=0, arcount=0
+        dns_hdr = struct.pack("!HHHHHH", 0x1234, 0x0100, 1, 0, 0, 0)
+        # Question: QNAME + QTYPE=A(1) + QCLASS=IN(1)
+        dns_payload = dns_hdr + qname_bytes + struct.pack("!HH", 1, 1)
+        return (
+            Ether(dst=src_if.local_mac, src=src_if.remote_mac)
+            / IP(src=src_if.remote_ip4)
+            / UDP(sport=1234, dport=53)
+            / Raw(load=dns_payload)
+        )
+
+    def _dns_enable(self):
+        self.vapi.dns_name_server_add_del(
+            is_ip6=0, is_add=1, server_address=IPv4Address("8.8.8.8").packed
+        )
+        self.vapi.dns_enable_disable(enable=1)
+
+    def test_dns_cyclic_pointer(self):
+        """DNS: cyclic compressed pointer must not cause an infinite loop"""
+        self._dns_enable()
+
+        # QNAME at offset 12 (right after the 12-byte DNS header).
+        # \xc0\x0c is a pointer to offset 12, i.e. it points back to
+        # itself, creating an A→A cycle.
+        qname = b"\x03foo\xc0\x0c"
+        pkt = self._build_raw_dns_request(self.pg0, qname)
+
+        self.pg0.add_stream([pkt])
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        # VPP must drop the malformed packet — no DNS reply expected.
+        capture = self.pg0.get_capture(0)
+        self.assertEqual(len(capture), 0)
+
+    def test_dns_oob_pointer(self):
+        """DNS: compressed pointer with out-of-bounds offset must be rejected"""
+        self._dns_enable()
+
+        # \xc0\xff → pointer to offset 255.  The whole packet is ~22 bytes,
+        # so offset 255 is well past the end of the buffer.
+        qname = b"\xc0\xff"
+        pkt = self._build_raw_dns_request(self.pg0, qname)
+
+        self.pg0.add_stream([pkt])
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        capture = self.pg0.get_capture(0)
+        self.assertEqual(len(capture), 0)
+
+    def test_dns_oversized_name(self):
+        """DNS: name expanding beyond 253 chars must be rejected"""
+        self._dns_enable()
+
+        # 50 segments of 5 chars → "aaaaa.aaaaa.…" = 299 chars > 253.
+        # The check vec_len(reply) + len > DNS_MAX_NAME_LEN triggers at
+        # segment 43 (cumulative length would reach 257).
+        qname = b"\x05aaaaa" * 50 + b"\x00"
+        pkt = self._build_raw_dns_request(self.pg0, qname)
+
+        self.pg0.add_stream([pkt])
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        capture = self.pg0.get_capture(0)
+        self.assertEqual(len(capture), 0)
 
 
 if __name__ == "__main__":
