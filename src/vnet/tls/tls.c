@@ -95,34 +95,21 @@ tls_add_app_q_evt (app_worker_t *app_wrk, session_t *app_session)
 }
 
 u32
-tls_listener_ctx_alloc (void)
+tls_listener_ctx_alloc (crypto_engine_type_t engine_type)
 {
-  tls_main_t *tm = &tls_main;
-  tls_ctx_t *ctx;
-
-  pool_get (tm->listener_ctx_pool, ctx);
-  clib_memset (ctx, 0, sizeof (*ctx));
-  return ctx - tm->listener_ctx_pool;
+  return tls_ctx_alloc_w_thread (engine_type, 0);
 }
 
 void
 tls_listener_ctx_free (tls_ctx_t * ctx)
 {
-  if (CLIB_DEBUG)
-    memset (ctx, 0xfb, sizeof (*ctx));
-  pool_put (tls_main.listener_ctx_pool, ctx);
+  tls_ctx_free (ctx);
 }
 
 tls_ctx_t *
 tls_listener_ctx_get (u32 ctx_index)
 {
-  return pool_elt_at_index (tls_main.listener_ctx_pool, ctx_index);
-}
-
-u32
-tls_listener_ctx_index (tls_ctx_t * ctx)
-{
-  return (ctx - tls_main.listener_ctx_pool);
+  return tls_ctx_get_w_thread (ctx_index, 0);
 }
 
 u32
@@ -368,9 +355,9 @@ tls_session_accept_callback (session_t *ts)
   u32 ctx_handle;
 
   tls_listener = listen_session_get_from_handle (ts->listener_handle);
-  lctx = tls_listener_ctx_get (tls_listener->opaque);
 
-  ctx_handle = tls_ctx_alloc (lctx->tls_ctx_engine);
+  ctx_handle = tls_ctx_alloc (tls_ctx_engine_from_handle (tls_listener->opaque));
+  lctx = tls_listener_ctx_get (tls_listener->opaque);
   ctx = tls_ctx_get (ctx_handle);
   clib_memcpy (ctx, lctx, sizeof (*lctx));
   ctx->c_s_index = SESSION_INVALID_INDEX;
@@ -768,7 +755,7 @@ tls_start_listen (u32 app_listener_index, transport_endpoint_cfg_t *tep)
   if ((rv = vnet_listen (args)))
     return rv;
 
-  lctx_index = tls_listener_ctx_alloc ();
+  lctx_index = tls_listener_ctx_alloc (engine_type);
   tls_al_handle = args->handle;
   al = app_listener_get_w_handle (tls_al_handle);
   tls_listener = app_listener_get_session (al);
@@ -788,6 +775,7 @@ tls_start_listen (u32 app_listener_index, transport_endpoint_cfg_t *tep)
   lctx->ca_trust_index = ccfg->ca_trust_index;
   lctx->verify_cfg = ccfg->verify_cfg;
   lctx->c_s_index = app_listener_index;
+  lctx->c_c_index = lctx_index;
   lctx->c_flags |= TRANSPORT_CONNECTION_F_NO_LOOKUP;
   for (i = 0; i < sizeof (ccfg->alpn_protos) && ccfg->alpn_protos[i]; i++)
     {
