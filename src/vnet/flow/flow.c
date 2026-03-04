@@ -141,6 +141,9 @@ vnet_flow_disable (vnet_main_t * vnm, u32 flow_index, u32 hw_if_index)
   hi = vnet_get_hw_interface (vnm, hw_if_index);
   dev_class = vnet_get_device_class (vnm, hi->dev_class_index);
 
+  if (dev_class->flow_ops_function == 0)
+    return VNET_FLOW_ERROR_NOT_SUPPORTED;
+
   rv = dev_class->flow_ops_function (vnm, VNET_FLOW_DEV_OP_DEL_FLOW,
 				     hi->dev_instance, flow_index, p);
 
