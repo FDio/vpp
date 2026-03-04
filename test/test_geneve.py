@@ -334,5 +334,110 @@ class TestGeneveL3(VppTestCase):
         )
 
 
+@unittest.skipIf("geneve" in config.excluded_plugins, "Exclude GENEVE plugin tests")
+class TestGeneveSecurity(VppTestCase):
+    """GENEVE Security Test Case"""
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestGeneveSecurity, cls).setUpClass()
+        try:
+            cls.dport = 6081
+            cls.create_pg_interfaces(range(2))
+            for pg in cls.pg_interfaces:
+                pg.admin_up()
+            cls.pg0.config_ip4()
+            cls.pg0.resolve_arp()
+
+            # Create GENEVE tunnel
+            cls.single_tunnel_vni = 0x12345
+            cls.single_tunnel_bd = 1
+            r = cls.vapi.geneve_add_del_tunnel(
+                local_address=cls.pg0.local_ip4,
+                remote_address=cls.pg0.remote_ip4,
+                vni=cls.single_tunnel_vni,
+            )
+            cls.vapi.sw_interface_set_l2_bridge(
+                rx_sw_if_index=r.sw_if_index, bd_id=cls.single_tunnel_bd
+            )
+            cls.vapi.sw_interface_set_l2_bridge(
+                rx_sw_if_index=cls.pg1.sw_if_index, bd_id=cls.single_tunnel_bd
+            )
+        except Exception:
+            super(TestGeneveSecurity, cls).tearDownClass()
+            raise
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestGeneveSecurity, cls).tearDownClass()
+
+    def tearDown(self):
+        super(TestGeneveSecurity, self).tearDown()
+
+    def show_commands_at_teardown(self):
+        self.logger.info(self.vapi.cli("show geneve tunnel"))
+        self.logger.info(self.vapi.cli("show errors"))
+
+    def test_geneve_invalid_options_len(self):
+        """Test GENEVE packet with invalid options_len field"""
+        from scapy.packet import Raw
+        import struct
+
+        # Create inner packet
+        inner_pkt = (
+            Ether(dst="de:ad:be:ef:00:00", src="de:ad:be:ef:00:01")
+            / IP(src="192.168.1.1", dst="192.168.1.2")
+            / ICMP()
+        )
+
+        # Build a malicious GENEVE header manually
+        # Format: Ver(2)|OptLen(6)|O(1)|C(1)|Rsvd(6)|Protocol(16) | VNI(24)|Rsvd(8)
+        # Set OptLen to 63 (max value) = 252 bytes of options, but don't include them
+        version = 0
+        optlen = 63  # Invalid: claims 252 bytes of options but won't include them
+        oam_bit = 0
+        critical_bit = 0
+        rsvd = 0
+        protocol = 0x6558  # Ethernet
+
+        first_word = (
+            (version << 30)
+            | (optlen << 24)
+            | (oam_bit << 23)
+            | (critical_bit << 22)
+            | (rsvd << 16)
+            | protocol
+        )
+
+        vni = self.single_tunnel_vni
+        vni_rsvd = (vni << 8) | 0x00
+
+        # Pack GENEVE header (8 bytes base header only, no options)
+        geneve_hdr = struct.pack("!II", first_word, vni_rsvd)
+
+        # Build complete malicious packet
+        malicious_pkt = (
+            Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+            / IP(src=self.pg0.remote_ip4, dst=self.pg0.local_ip4)
+            / UDP(sport=self.dport, dport=self.dport, chksum=0)
+            / Raw(load=geneve_hdr)
+            / inner_pkt
+        )
+
+        # Get error counter before sending
+        error_counter_before = self.statistics.get_err_counter(
+            "/err/geneve4-input/packets with invalid options length"
+        )
+
+        # Send malicious packet and expect no replies (should be dropped)
+        self.send_and_assert_no_replies(self.pg0, malicious_pkt * 1)
+
+        # Verify error counter increased
+        error_counter_after = self.statistics.get_err_counter(
+            "/err/geneve4-input/packets with invalid options length"
+        )
+        self.assertEqual(error_counter_after, error_counter_before + 1)
+
+
 if __name__ == "__main__":
     unittest.main(testRunner=VppTestRunner)
