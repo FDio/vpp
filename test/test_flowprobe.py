@@ -165,6 +165,58 @@ class VppCFLOW(VppObject):
         return templates
 
 
+class VppCFLOWv2(VppCFLOW):
+    """CFLOW v2 object with count-based sampling support"""
+
+    def __init__(
+        self,
+        test,
+        intf="pg2",
+        active=0,
+        passive=0,
+        timeout=100,
+        mtu=1024,
+        datapath="l2",
+        layer="l2 l3 l4",
+        direction="tx",
+        interval_spacing=0,
+        interval_length=1,
+    ):
+        super().__init__(
+            test=test,
+            intf=intf,
+            active=active,
+            passive=passive,
+            timeout=timeout,
+            mtu=mtu,
+            datapath=datapath,
+            layer=layer,
+            direction=direction,
+        )
+        self._interval_spacing = interval_spacing
+        self._interval_length = interval_length
+
+    def _enable_disable_flowprobe_feature(self, is_add):
+        which_map = {
+            "l2": VppEnum.vl_api_flowprobe_which_t.FLOWPROBE_WHICH_L2,
+            "ip4": VppEnum.vl_api_flowprobe_which_t.FLOWPROBE_WHICH_IP4,
+            "ip6": VppEnum.vl_api_flowprobe_which_t.FLOWPROBE_WHICH_IP6,
+        }
+        direction_map = {
+            "rx": VppEnum.vl_api_flowprobe_direction_t.FLOWPROBE_DIRECTION_RX,
+            "tx": VppEnum.vl_api_flowprobe_direction_t.FLOWPROBE_DIRECTION_TX,
+            "both": VppEnum.vl_api_flowprobe_direction_t.FLOWPROBE_DIRECTION_BOTH,
+        }
+        self._test.vapi.flowprobe_interface_add_del_v2(
+            is_add=is_add,
+            which=which_map[self._datapath],
+            direction=direction_map[self._direction],
+            sw_if_index=self._intf_obj.sw_if_index,
+            interval_spacing=self._interval_spacing,
+            interval_length=self._interval_length,
+        )
+
+
 class MethodHolder(VppTestCase):
     """Flow-per-packet plugin: test L2, IP4, IP6 reporting"""
 
@@ -682,6 +734,202 @@ class Flowprobe(MethodHolder):
 
         ipfix.remove_vpp_config()
         self.logger.info("FFP_TEST_FINISH_0004")
+
+    def test_interface_dump_v2(self):
+        """Dump interfaces with IPFIX flow record generation enabled (v2 API)"""
+        self.logger.info("FFP_TEST_START_v2_dump")
+        self.pg_enable_capture(self.pg_interfaces)
+
+        # Enable feature using v2 API with sampling params
+        ipfix1 = VppCFLOWv2(
+            test=self,
+            intf="pg1",
+            datapath="l2",
+            direction="rx",
+            interval_spacing=0,
+            interval_length=1,
+        )
+        ipfix1.add_vpp_config()
+
+        ipfix2 = VppCFLOWv2(
+            test=self,
+            intf="pg2",
+            datapath="ip4",
+            direction="tx",
+            interval_spacing=5,
+            interval_length=2,
+        )
+        ipfix2.enable_flowprobe_feature()
+
+        ipfix3 = VppCFLOWv2(
+            test=self,
+            intf="pg3",
+            datapath="ip6",
+            direction="both",
+            interval_spacing=10,
+            interval_length=3,
+        )
+        ipfix3.enable_flowprobe_feature()
+
+        # Dump all interfaces using v2 dump; should contain all 3
+        dump = self.vapi.flowprobe_interface_v2_dump()
+        self.assertEqual(len(dump), 3)
+
+        # 1st interface
+        self.assertEqual(dump[0].sw_if_index, self.pg1.sw_if_index)
+        self.assertEqual(
+            dump[0].which, VppEnum.vl_api_flowprobe_which_t.FLOWPROBE_WHICH_L2
+        )
+        self.assertEqual(
+            dump[0].direction,
+            VppEnum.vl_api_flowprobe_direction_t.FLOWPROBE_DIRECTION_RX,
+        )
+        self.assertEqual(dump[0].interval_spacing, 0)
+        self.assertEqual(dump[0].interval_length, 1)
+
+        # 2nd interface
+        self.assertEqual(dump[1].sw_if_index, self.pg2.sw_if_index)
+        self.assertEqual(
+            dump[1].which, VppEnum.vl_api_flowprobe_which_t.FLOWPROBE_WHICH_IP4
+        )
+        self.assertEqual(
+            dump[1].direction,
+            VppEnum.vl_api_flowprobe_direction_t.FLOWPROBE_DIRECTION_TX,
+        )
+        self.assertEqual(dump[1].interval_spacing, 5)
+        self.assertEqual(dump[1].interval_length, 2)
+
+        # 3rd interface
+        self.assertEqual(dump[2].sw_if_index, self.pg3.sw_if_index)
+        self.assertEqual(
+            dump[2].which, VppEnum.vl_api_flowprobe_which_t.FLOWPROBE_WHICH_IP6
+        )
+        self.assertEqual(
+            dump[2].direction,
+            VppEnum.vl_api_flowprobe_direction_t.FLOWPROBE_DIRECTION_BOTH,
+        )
+        self.assertEqual(dump[2].interval_spacing, 10)
+        self.assertEqual(dump[2].interval_length, 3)
+
+        # Check if returned interface params match configuration
+        dump = self.vapi.flowprobe_interface_v2_dump(sw_if_index=self.pg2.sw_if_index)
+        self.assertEqual(len(dump), 1)
+        self.assertEqual(dump[0].sw_if_index, self.pg2.sw_if_index)
+        self.assertEqual(dump[0].interval_spacing, 5)
+        self.assertEqual(dump[0].interval_length, 2)
+
+        ipfix1.remove_vpp_config()
+        ipfix2.remove_vpp_config()
+        ipfix3.remove_vpp_config()
+        self.logger.info("FFP_TEST_FINISH_v2_dump")
+
+    def test_count_based_sampling(self):
+        """Count-based sampling: spacing=4 length=1 (every 5th packet reported)"""
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pkts = []
+
+        # 4:1,  packets 5 and 10 are sampled(10 pkts will be generated in total)
+        ipfix = VppCFLOWv2(
+            test=self,
+            intf="pg2",
+            datapath="l2",
+            layer="l2 l3 l4",
+            direction="tx",
+            interval_spacing=4,
+            interval_length=1,
+        )
+        ipfix.add_vpp_config()
+
+        ipfix_decoder = IPFIXDecoder()
+
+        templates = ipfix.verify_templates(ipfix_decoder, count=3)
+
+        self.create_stream(packets=10)
+        self.send_packets()
+
+        self.vapi.ipfix_flush()
+        cflow = self.wait_for_cflow_packet(self.collector, templates[1], timeout=5)
+
+        if cflow.haslayer(Data):
+            data = ipfix_decoder.decode_data_set(cflow.getlayer(Set))
+            # should be 2 packets(5th and 10th)
+            self.assertEqual(len(data), 2)
+            for record in data:
+                self.assertEqual(int(binascii.hexlify(record[2]), 16), 1)
+
+        self.collector.get_capture(4)
+
+        ipfix.remove_vpp_config()
+
+    def test_count_based_sampling_length(self):
+        """Count-based sampling: spacing=2 length=2 (2 sampled per 4 packets)"""
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pkts = []
+
+        # 2:2, should be 4 samples per 8 sent packets
+        ipfix = VppCFLOWv2(
+            test=self,
+            intf="pg2",
+            datapath="l2",
+            layer="l2 l3 l4",
+            direction="tx",
+            interval_spacing=2,
+            interval_length=2,
+        )
+        ipfix.add_vpp_config()
+
+        ipfix_decoder = IPFIXDecoder()
+        templates = ipfix.verify_templates(ipfix_decoder, count=3)
+
+        self.create_stream(packets=8)
+        self.send_packets()
+
+        self.vapi.ipfix_flush()
+        cflow = self.wait_for_cflow_packet(self.collector, templates[1], timeout=5)
+
+        if cflow.haslayer(Data):
+            data = ipfix_decoder.decode_data_set(cflow.getlayer(Set))
+            # 4 samples
+            self.assertEqual(len(data), 4)
+            for record in data:
+                self.assertEqual(int(binascii.hexlify(record[2]), 16), 1)
+
+        self.collector.get_capture(4)
+
+        ipfix.remove_vpp_config()
+
+    def test_count_based_sampling_no_sampling(self):
+        """Count-based sampling disabled (spacing=0): all packets reported"""
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pkts = []
+
+        # sampling is disabled. So it should work as v1 api, all packets reported
+        ipfix = VppCFLOWv2(
+            test=self,
+            intf="pg2",
+            datapath="l2",
+            layer="l2 l3 l4",
+            direction="tx",
+            interval_spacing=0,
+            interval_length=1,
+        )
+        ipfix.add_vpp_config()
+
+        ipfix_decoder = IPFIXDecoder()
+        templates = ipfix.verify_templates(ipfix_decoder, count=3)
+
+        # send 9 packets, expect 9
+        self.create_stream(packets=9)
+        capture = self.send_packets()
+
+        self.vapi.ipfix_flush()
+        cflow = self.wait_for_cflow_packet(self.collector, templates[1])
+
+        self.verify_cflow_data_notimer(ipfix_decoder, capture, [cflow])
+
+        self.collector.get_capture(4)
+
+        ipfix.remove_vpp_config()
 
 
 @tag_fixme_debian12

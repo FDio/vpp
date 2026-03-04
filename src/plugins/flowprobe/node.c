@@ -372,6 +372,30 @@ add_to_flow_record_state (vlib_main_t *vm, vlib_node_runtime_t *node,
   ASSERT (direction == FLOW_DIRECTION_RX || direction == FLOW_DIRECTION_TX);
 
   u32 my_cpu_number = vm->thread_index;
+  vlib_rx_or_tx_t rx_tx = (direction == FLOW_DIRECTION_RX) ? VLIB_RX : VLIB_TX;
+  u32 sw_if_index = vnet_buffer (b)->sw_if_index[rx_tx];
+
+  flowprobe_sampling_params_t *params = &fm->sampling_per_interface[sw_if_index];
+  flowprobe_sampling_state_t *state = &fm->sample_state_per_worker[my_cpu_number][sw_if_index];
+
+  /* Count-based sampling logic */
+  if (params && params->interval_spacing > 0 && state)
+    {
+      if (state->next_interval_counter > 0)
+	{
+	  state->next_interval_counter--;
+	  return;
+	}
+
+      state->packets_passed++;
+      if (state->packets_passed >= params->interval_length)
+	{
+	  /* Reset counters */
+	  state->next_interval_counter = params->interval_spacing;
+	  state->packets_passed = 0;
+	}
+    }
+
   u16 octets = 0;
 
   flowprobe_record_t flags = fm->context[which].flags;
@@ -742,10 +766,9 @@ flowprobe_export_entry (vlib_main_t * vm, flowprobe_entry_t * e)
     flowprobe_export_send (vm, b0, which);
 }
 
-uword
-flowprobe_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
-		   vlib_frame_t *frame, flowprobe_variant_t which,
-		   flowprobe_direction_t direction)
+static inline uword
+flowprobe_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame,
+		   flowprobe_variant_t which, flowprobe_direction_t direction)
 {
   u32 n_left_from, *from, *to_next;
   flowprobe_next_t next_index;
