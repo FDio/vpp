@@ -1169,12 +1169,12 @@ vnet_vxlan_add_del_rx_flow (u32 hw_if_index, u32 t_index, int is_add)
     {
       if (t->flow_index == ~0)
 	{
-	  vxlan_main_t *vxm = &vxlan_main;
+	  /* flow_id = 0 is a sentinel value */
 	  vnet_flow_t flow = {
 	    .actions =
 	      VNET_FLOW_ACTION_REDIRECT_TO_NODE | VNET_FLOW_ACTION_MARK |
 	      VNET_FLOW_ACTION_BUFFER_ADVANCE,
-	    .mark_flow_id = t->dev_instance + vxm->flow_id_start,
+	    .mark_flow_id = t->dev_instance + 1,
 	    .redirect_node_index = vxlan4_flow_input_node.index,
 	    .buffer_advance = sizeof (ethernet_header_t),
 	    .type = VNET_FLOW_TYPE_IP4_VXLAN,
@@ -1190,12 +1190,12 @@ vnet_vxlan_add_del_rx_flow (u32 hw_if_index, u32 t_index, int is_add)
 			  }
 	    ,
 	  };
-	  vnet_flow_add (vnm, &flow, &t->flow_index);
+	  vnet_flow_range_add (vnm, vxm->flow_range_index, &flow, &t->flow_index);
 	}
-      return vnet_flow_enable (vnm, t->flow_index, hw_if_index);
+      return vnet_flow_range_enable (vnm, vxm->flow_range_index, t->flow_index, hw_if_index);
     }
   /* flow index is removed when the tunnel is deleted */
-  return vnet_flow_disable (vnm, t->flow_index, hw_if_index);
+  return vnet_flow_range_disable (vnm, vxm->flow_range_index, t->flow_index, hw_if_index);
 }
 
 u32
@@ -1290,8 +1290,7 @@ vxlan_init (vlib_main_t * vm)
   vxm->vnet_main = vnet_get_main ();
   vxm->vlib_main = vm;
 
-  vnet_flow_get_range (vxm->vnet_main, "vxlan", 1024 * 1024,
-		       &vxm->flow_id_start);
+  vnet_flow_create_range (vxm->vnet_main, "vxlan", 1024 * 1024, &vxm->flow_range_index);
 
   vxm->bm_ip4_bypass_enabled_by_sw_if = 0;
   vxm->bm_ip6_bypass_enabled_by_sw_if = 0;
