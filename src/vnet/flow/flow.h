@@ -1,6 +1,6 @@
 /*
  * SPDX-License-Identifier: Apache-2.0
- * Copyright (c) 2016 Cisco and/or its affiliates.
+ * Copyright (c) 2016-2026 Cisco and/or its affiliates.
  */
 
 #ifndef included_vnet_flow_flow_h
@@ -159,6 +159,9 @@ typedef enum
 #undef _
 } vnet_flow_action_t;
 
+#define VNET_FLOW_VPP_SPECIFIC_ACTION_MASK                                                         \
+  (VNET_FLOW_ACTION_REDIRECT_TO_NODE | VNET_FLOW_ACTION_BUFFER_ADVANCE)
+
 #define foreach_flow_error                                                                         \
   _ (-1, NOT_SUPPORTED, "not supported")                                                           \
   _ (-2, ALREADY_DONE, "already done")                                                             \
@@ -312,11 +315,11 @@ typedef struct
 #undef _
   };
 
-  /* per-interface private data */
+  /* per-interface private data - vector indexed by hw_if_index, ~0 = not enabled */
   uword *private_data;
 } vnet_flow_t;
 
-typedef struct
+typedef struct vnet_flow_range_t_
 {
   u8 *owner;
   u32 *flow_indices;
@@ -329,6 +332,12 @@ int vnet_flow_add (vnet_main_t *vnm, vnet_flow_t *flow, u32 *flow_index);
 int vnet_flow_enable (vnet_main_t *vnm, u32 flow_index, u32 hw_if_index);
 int vnet_flow_disable (vnet_main_t *vnm, u32 flow_index, u32 hw_if_index);
 int vnet_flow_del (vnet_main_t *vnm, u32 flow_index);
+int vnet_flow_async_template_add (vnet_main_t *vnm, vnet_flow_t *template,
+				  u32 *flow_template_index);
+int vnet_flow_async_template_enable (vnet_main_t *vnm, u32 flow_template_index, u32 hw_if_index,
+				     u32 n_flows);
+int vnet_flow_async_template_disable (vnet_main_t *vnm, u32 flow_template_index, u32 hw_if_index);
+int vnet_flow_async_template_del (vnet_main_t *vnm, u32 flow_template_index);
 int vnet_flow_range_add (vnet_main_t *vnm, u32 range_index, vnet_flow_t *flow,
 			 u32 *range_flow_index);
 int vnet_flow_range_enable (vnet_main_t *vnm, u32 range_index, u32 range_flow_index,
@@ -339,7 +348,12 @@ int vnet_flow_range_del (vnet_main_t *vnm, u32 range_index, u32 range_flow_index
 int vnet_flow_range_bind (vnet_main_t *vnm, u32 range_index, u32 flow_index, u32 *range_flow_index);
 int vnet_flow_range_unbind (vnet_main_t *vnm, u32 range_index, u32 range_flow_index,
 			    u32 *flow_index);
+int vnet_flow_async_range_enable (vnet_main_t *vnm, u32 range_index, u32 flow_template_index,
+				  u32 hw_if_index);
+int vnet_flow_async_range_disable (vnet_main_t *vnm, u32 range_index, u32 flow_template_index,
+				   u32 hw_if_index);
 vnet_flow_t *vnet_get_flow (u32 flow_index);
+vnet_flow_t *vnet_get_flow_async_template (u32 flow_template_index);
 vnet_flow_range_t *vnet_get_flow_range (u32 range_index);
 vnet_flow_t *vnet_get_flow_range_flow (u32 range_index, u32 range_flow_index);
 
@@ -347,6 +361,7 @@ typedef struct
 {
   /* pool of device flow entries */
   vnet_flow_t *global_flow_pool;
+  vnet_flow_t *global_flow_template_pool;
 
   /* pool of ranges */
   vnet_flow_range_t *ranges;
