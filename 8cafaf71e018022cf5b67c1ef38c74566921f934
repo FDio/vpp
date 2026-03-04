@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "976a4eac_e1445c23",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1761
+      },
+      "writtenOn": "2026-03-04T12:24:03Z",
+      "side": 1,
+      "message": "Hello. Could you please review this patch?\nThanks!",
+      "revId": "8cafaf71e018022cf5b67c1ef38c74566921f934",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
