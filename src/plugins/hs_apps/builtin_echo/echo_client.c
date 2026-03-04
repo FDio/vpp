@@ -259,9 +259,9 @@ ec_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 
 	  if (s)
 	    {
-	      if (ecm->cfg.proto == TRANSPORT_PROTO_TCP)
+	      if (ecm->cfg.proto == ET_PROTO_TCP)
 		echo_update_rtt_stats_tcp (es, &ecm->stats.rtt_stats);
-	      else if (ecm->cfg.proto == TRANSPORT_PROTO_UDP)
+	      else if (ecm->cfg.proto == ET_PROTO_UDP)
 		echo_update_rtt_stats_udp (es, &ecm->stats.rtt_stats);
 
 	      vnet_disconnect_args_t _a, *a = &_a;
@@ -315,6 +315,7 @@ ec_reset_runtime_config (ec_main_t *ecm)
   ecm->test_failed = 0;
   ecm->cfg.tls_engine = CRYPTO_ENGINE_OPENSSL;
   ecm->cfg.http_version = HTTP_VERSION_1;
+  ecm->cfg.http_connect_proto = ET_HTTP_CONNECT_PROTO_NONE;
   ecm->run_test = EC_STARTING;
   ecm->end_test = false;
   ecm->ready_connections = 0;
@@ -520,7 +521,7 @@ ec_calc_tput (ec_main_t *ecm)
   /* find a suitable pacing window length & data chunk size */
   bytes_paced_target = ecm->throughput * ecm->pacing_window_len / ecm->cfg.n_clients;
   while (bytes_paced_target > target_size_threshold ||
-	 (ecm->cfg.proto == TRANSPORT_PROTO_UDP && bytes_paced_target > 1460))
+	 (ecm->cfg.proto == ET_PROTO_UDP && bytes_paced_target > 1460))
     {
       ecm->pacing_window_len /= 2;
       bytes_paced_target /= 2;
@@ -574,9 +575,6 @@ ec_session_connected_callback (u32 app_index, u32 api_context, session_t *s, ses
   clib_atomic_fetch_add (&ecm->ready_connections, n_connected);
   if (ecm->ready_connections == ecm->expected_connections)
     {
-      if (ecm->throughput)
-	ec_calc_tput (ecm);
-      ecm->run_test = EC_RUNNING;
       /* Signal the CLI process that the action is starting... */
       signal_evt_to_cli (EC_CLI_CONNECTS_DONE);
     }
@@ -705,12 +703,6 @@ ec_session_rx_callback (session_t *s)
 
   if (PREDICT_FALSE (s->opaque == HS_CTRL_HANDLE))
     return ec_ctrl_session_rx_callback (s);
-
-  if (PREDICT_FALSE (ecm->run_test != EC_RUNNING))
-    {
-      ec_session_disconnect (s);
-      return -1;
-    }
 
   ecm->rx_callback (s);
 
@@ -971,7 +963,7 @@ ec_print_timeout_stats (vlib_main_t *vm)
     }
   echo_cli ("Timeout at %.6f with %d sessions still active...", vlib_time_now (vm),
 	    ecm->ready_connections);
-  if (ecm->cfg.proto == TRANSPORT_PROTO_UDP)
+  if (ecm->cfg.proto == ET_PROTO_UDP)
     {
       echo_cli ("Received %llu bytes out of %llu sent (%llu target)", received_bytes, sent_bytes,
 		ecm->cfg.bytes_to_send * ecm->cfg.n_clients);
@@ -981,7 +973,7 @@ ec_print_timeout_stats (vlib_main_t *vm)
 static u8
 ec_transport_proto_is_cless ()
 {
-  return (ec_main.cfg.proto == TRANSPORT_PROTO_UDP || ec_main.cfg.proto == TRANSPORT_PROTO_SRTP);
+  return (ec_main.cfg.proto == ET_PROTO_UDP || ec_main.cfg.proto == ET_PROTO_SRTP);
 }
 
 clib_error_t *
@@ -992,6 +984,7 @@ ec_run (vlib_main_t *vm)
   clib_error_t *error = 0;
   f64 delta = 0, wait_time = 0;
   echo_test_worker_t *wrk;
+  const echo_test_proto_vft_t *tp = &echo_test_main.protos[ecm->cfg.proto];
 
   vec_foreach (wrk, ecm->wrk)
     {
@@ -1001,8 +994,7 @@ ec_run (vlib_main_t *vm)
       wrk->dgrams_sent = 0;
     }
 
-  if (ecm->cfg.test_cfg.test_bytes ||
-      (ecm->cfg.echo_bytes && ecm->cfg.proto == TRANSPORT_PROTO_UDP))
+  if (ecm->cfg.test_cfg.test_bytes || (ecm->cfg.echo_bytes && ecm->cfg.proto == ET_PROTO_UDP))
     {
       ecm->cfg.test_cfg.test_bytes = 1;
       ecm->include_buffer_offset = 1;
@@ -1038,6 +1030,9 @@ ec_run (vlib_main_t *vm)
   else
     ecm->cfg.test_cfg.test = HS_TEST_TYPE_UNI;
 
+  if (tp->test_init)
+    tp->test_init (vm, ecm->cli_node_index, &ecm->cfg);
+
   ec_ctrl_connect ();
   ec_wait_for_signal (EC_CLI_CFG_SYNC);
 
@@ -1070,6 +1065,10 @@ ec_run (vlib_main_t *vm)
       goto stop_test;
 
     case EC_CLI_CONNECTS_DONE:
+      ecm->ready_connections = ecm->expected_connections;
+      if (ecm->throughput)
+	ec_calc_tput (ecm);
+      ecm->run_test = EC_RUNNING;
       if (!ec_transport_proto_is_cless () && ecm->expected_connections > 1)
 	{
 	  delta = vlib_time_now (vm) - ecm->syn_start_time;
@@ -1136,7 +1135,7 @@ ec_run (vlib_main_t *vm)
 		  break;
 		}
 	      ec_print_timeout_stats (vm);
-	      if (ecm->cfg.proto != TRANSPORT_PROTO_UDP)
+	      if (ecm->cfg.proto != ET_PROTO_UDP)
 		error = clib_error_return (0, "failed: test timeout");
 	      else if (ecm->cfg.echo_bytes)
 		{

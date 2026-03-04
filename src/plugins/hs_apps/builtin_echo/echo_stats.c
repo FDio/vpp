@@ -48,9 +48,9 @@ echo_update_rtt_stats_udp (echo_test_session_t *es, echo_rtt_stat_t *rtt_stats)
   "------------------------------------------------------------------------------------"
 
 void
-echo_print_footer (vlib_main_t *vm, transport_proto_t proto)
+echo_print_footer (vlib_main_t *vm, echo_test_proto_t proto)
 {
-  if (proto == TRANSPORT_PROTO_UDP)
+  if (proto == ET_PROTO_UDP)
     echo_cli (ECHO_SEPARATOR_UDP);
   else
     echo_cli (ECHO_SEPARATOR);
@@ -73,7 +73,7 @@ echo_print_periodic_stats (vlib_main_t *vm, u8 print_header, echo_test_cfg_t *cf
 	{
 	  received_bytes += sess->bytes_received;
 	  sent_bytes += sess->bytes_sent;
-	  if (cfg->proto == TRANSPORT_PROTO_UDP)
+	  if (cfg->proto == ET_PROTO_UDP)
 	    {
 	      echo_update_rtt_stats_udp (sess, &stats->rtt_stats);
 	      dgrams_received += sess->dgrams_received;
@@ -82,7 +82,7 @@ echo_print_periodic_stats (vlib_main_t *vm, u8 print_header, echo_test_cfg_t *cf
 	      jitter += sess->jitter;
 	      n_sessions++;
 	    }
-	  else if (cfg->proto == TRANSPORT_PROTO_TCP)
+	  else if (cfg->proto == ET_PROTO_TCP)
 	    {
 	      session_t *s = session_get_from_handle_if_valid (sess->vpp_session_handle);
 	      if (s)
@@ -99,7 +99,7 @@ echo_print_periodic_stats (vlib_main_t *vm, u8 print_header, echo_test_cfg_t *cf
   total_bytes = received_bytes + sent_bytes;
   print_delta = time_now - stats->last_print_time;
 
-  if (cfg->proto == TRANSPORT_PROTO_UDP)
+  if (cfg->proto == ET_PROTO_UDP)
     {
       jitter = n_sessions ? jitter / n_sessions : 0.0;
       rtt = stats->rtt_stats.last_rtt * 1000;
@@ -183,8 +183,7 @@ echo_print_final_stats (vlib_main_t *vm, f64 total_delta, echo_test_cfg_t *cfg, 
       stats->tx_total += wrk->bytes_sent;
       stats->tx_total_dgrams += wrk->dgrams_sent;
     }
-  if ((cfg->proto == TRANSPORT_PROTO_TCP ||
-       (cfg->proto == TRANSPORT_PROTO_UDP && cfg->echo_bytes)) &&
+  if ((cfg->proto == ET_PROTO_TCP || (cfg->proto == ET_PROTO_UDP && cfg->echo_bytes)) &&
       !cfg->is_server)
     {
       /* display rtt stats in milliseconds */
@@ -197,7 +196,7 @@ echo_print_final_stats (vlib_main_t *vm, f64 total_delta, echo_test_cfg_t *cfg, 
       else
 	echo_cli ("error measuring roundtrip time");
     }
-  if (cfg->proto == TRANSPORT_PROTO_UDP)
+  if (cfg->proto == ET_PROTO_UDP || cfg->proto == ET_PROTO_HTTP_CONNECT_UDP)
     {
       if (cfg->echo_bytes)
 	{

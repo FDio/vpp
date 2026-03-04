@@ -493,8 +493,7 @@ echo_server_listen_ctrl ()
   vnet_listen_args_t _args = {}, *args = &_args;
   session_error_t rv;
 
-  if ((rv = parse_uri (esm->cfg.uri, &args->sep_ext)))
-    return -1;
+  clib_memcpy (&args->sep_ext, &esm->cfg.sep, sizeof (esm->cfg.sep));
   args->sep_ext.transport_proto = TRANSPORT_PROTO_TCP;
   args->app_index = esm->app_index;
 
@@ -508,16 +507,11 @@ echo_server_listen ()
 {
   i32 rv;
   echo_server_main_t *esm = &echo_server_main;
-  session_endpoint_cfg_t sep = SESSION_ENDPOINT_CFG_NULL;
   vnet_listen_args_t _args = {}, *args = &_args;
   const echo_test_proto_vft_t *tp;
 
-  if ((rv = parse_uri (esm->cfg.uri, &sep)))
-    {
-      return -1;
-    }
-  clib_memcpy (&args->sep_ext, &sep, sizeof (sep));
-  esm->cfg.proto = args->sep_ext.transport_proto;
+  clib_memcpy (&args->sep_ext, &esm->cfg.sep, sizeof (esm->cfg.sep));
+  echo_test_set_proto (&esm->cfg);
   tp = &echo_test_main.protos[esm->cfg.proto];
   args->app_index = esm->app_index;
   args->sep_ext.port = hs_make_data_port (args->sep_ext.port);
@@ -566,6 +560,7 @@ void
 echo_server_init (vlib_main_t *vm)
 {
   echo_server_main_t *esm = &echo_server_main;
+  session_endpoint_cfg_t sep_null = SESSION_ENDPOINT_CFG_NULL;
 
   /* Store cli process node index for signaling */
   esm->cli_node_index = vlib_get_current_process (vm)->node_runtime.node_index;
@@ -576,6 +571,8 @@ echo_server_init (vlib_main_t *vm)
   esm->cfg.tls_engine = CRYPTO_ENGINE_OPENSSL;
   esm->cfg.report_interval = 0;
   esm->cfg.is_server = 1;
+  esm->cfg.http_connect_proto = ET_HTTP_CONNECT_PROTO_NONE;
+  esm->cfg.sep = sep_null;
   if (esm->app_index == APP_INVALID_INDEX)
     clib_spinlock_init (&esm->stats.rtt_stats.w_lock);
   vec_free (esm->cfg.uri);
