@@ -11,7 +11,8 @@ func init() {
 	RegisterVethTests(EchoBuiltinTest, EchoBuiltinBandwidthTest, EchoBuiltinEchobytesTest, EchoBuiltinRoundtripTest,
 		EchoBuiltinTestbytesTest, EchoBuiltinPeriodicReportTest, EchoBuiltinPeriodicReportTotalTest, TlsSingleConnectionTest,
 		EchoBuiltinPeriodicReportUDPTest, EchoBuiltinUdpTest, EchoBuiltinHttpTest, EchoBuiltinHttpsTest, EchoBuiltinHttp2Test,
-		EchoBuiltinHttp3Test, EchoBuiltinHttpTestBytesTest)
+		EchoBuiltinHttp3Test, EchoBuiltinHttpTestBytesTest, EchoBuiltinHttp2ConnectTcpTest, EchoBuiltinHttp3ConnectTcpTest,
+		EchoBuiltinHttp2ConnectUdpTest, EchoBuiltinHttp3ConnectUdpTest)
 	RegisterVethMWTests(TcpWithLossMWTest)
 	RegisterSoloVeth6Tests(TcpWithLoss6Test)
 }
@@ -412,4 +413,71 @@ func EchoBuiltinHttp3Test(s *VethsSuite) {
 	Log(o)
 	AssertNotContains(o, "failed:")
 	httpVerifyPeriodicStats(o)
+}
+
+func httpTunnelVerifyPeriodicStats(stats string) {
+	regex := regexp.MustCompile(`(\d?\.\d)-(\d?.\d)\s+(\d+\.\d+)[KMG]\s+(\d+\.\d+)[KMG]\s+\d+\.\d+[KMG]b/s\s+(\d?\.\d+)ms`)
+	if regex.MatchString(stats) {
+		matches := regex.FindAllStringSubmatch(stats, -1)
+		// Check we got a correct number of reports
+		AssertEqual(5, len(matches))
+	} else {
+		AssertEmpty("invalid echo test client output")
+	}
+}
+
+func EchoBuiltinHttp2ConnectTcpTest(s *VethsSuite) {
+	serverVpp := s.Containers.ServerVpp.VppInstance
+
+	serverVpp.Vppctl("test echo server connect-tcp uri https://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1)
+
+	clientVpp := s.Containers.ClientVpp.VppInstance
+
+	o := clientVpp.Vppctl("test echo client run-time 5 echo-bytes http2 connect-tcp uri https://" +
+		s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1)
+	Log(o)
+	AssertNotContains(o, "failed:")
+	httpTunnelVerifyPeriodicStats(o)
+}
+
+func EchoBuiltinHttp3ConnectTcpTest(s *VethsSuite) {
+	serverVpp := s.Containers.ServerVpp.VppInstance
+
+	serverVpp.Vppctl("test echo server connect-tcp uri https://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1)
+
+	clientVpp := s.Containers.ClientVpp.VppInstance
+
+	o := clientVpp.Vppctl("test echo client run-time 5 echo-bytes http3 connect-tcp uri https://" +
+		s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1)
+	Log(o)
+	AssertNotContains(o, "failed:")
+	httpTunnelVerifyPeriodicStats(o)
+}
+
+func EchoBuiltinHttp2ConnectUdpTest(s *VethsSuite) {
+	serverVpp := s.Containers.ServerVpp.VppInstance
+
+	serverVpp.Vppctl("test echo server connect-udp uri https://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1)
+
+	clientVpp := s.Containers.ClientVpp.VppInstance
+
+	o := clientVpp.Vppctl("test echo client run-time 5 echo-bytes http2 connect-udp uri https://" +
+		s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1)
+	Log(o)
+	AssertNotContains(o, "failed:")
+	httpTunnelVerifyPeriodicStats(o)
+}
+
+func EchoBuiltinHttp3ConnectUdpTest(s *VethsSuite) {
+	serverVpp := s.Containers.ServerVpp.VppInstance
+
+	serverVpp.Vppctl("test echo server connect-udp uri https://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1)
+
+	clientVpp := s.Containers.ClientVpp.VppInstance
+
+	o := clientVpp.Vppctl("test echo client run-time 5 echo-bytes http3 connect-udp uri https://" +
+		s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1)
+	Log(o)
+	AssertNotContains(o, "failed:")
+	httpTunnelVerifyPeriodicStats(o)
 }
