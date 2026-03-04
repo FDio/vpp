@@ -209,6 +209,9 @@ crypto_sw_scheduler_convert (vlib_main_t *vm, crypto_sw_scheduler_per_thread_dat
       op->aad_len = md->aad_len;
       op->auth_len = md->icv_len;
     }
+
+  if (PREDICT_FALSE (b->flags & VLIB_BUFFER_IS_TRACED))
+    vnet_crypto_add_trace (vm, bi, op);
 }
 
 static_always_inline void

@@ -934,6 +934,8 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 		ipsec_build_integ_op_tmpl (op, &rt, payload, payload_len, seq_hi_be);
 	    }
 	  op->user_data = n_sync;
+	  if (PREDICT_FALSE (b[0]->flags & VLIB_BUFFER_IS_TRACED))
+	    vnet_crypto_add_trace (vm, vlib_get_buffer_index (vm, b[0]), op);
 	}
 
       if (rt.is_async)
