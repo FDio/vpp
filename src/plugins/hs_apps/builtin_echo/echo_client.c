@@ -990,7 +990,7 @@ ec_run (vlib_main_t *vm)
   ec_main_t *ecm = &ec_main;
   uword *event_data = 0, event_type;
   clib_error_t *error = 0;
-  f64 delta, wait_time = 0;
+  f64 delta = 0, wait_time = 0;
   echo_test_worker_t *wrk;
 
   vec_foreach (wrk, ecm->wrk)
