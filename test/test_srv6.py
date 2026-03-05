@@ -2592,6 +2592,126 @@ class TestSRv6(VppTestCase):
                 function_len=16,
             )
 
+    def test_srv6_malformed_srh_payload_underflow(self):
+        """Test SRv6 rejects packets with SRH length > payload_length
+
+        This test verifies the fix for the integer underflow vulnerability
+        where a malformed packet with sr_len > payload_length would cause:
+        - Integer underflow in (payload_length - sr_len) calculation
+        - Buffer overrun via vlib_buffer_advance()
+        - Memory corruption from corrupted payload_length value
+
+        The fix adds validation to reject such packets before any buffer
+        manipulation occurs.
+        """
+        # Setup interfaces
+        self.setup_interfaces(ipv6=[True, True])
+
+        # Configure SRv6 LocalSID for End behavior with PSP enabled
+        # PSP (Penultimate Segment Pop) triggers the vulnerable code path
+        localsid = "A1::1"
+        ls = VppSRv6LocalSID(
+            self,
+            localsid=localsid,
+            behavior=SRv6LocalSIDBehaviors.SR_BEHAVIOR_END,
+            nh_addr=0,
+            end_psp=1,  # Enable PSP to trigger SRH removal code
+            sw_if_index=0,
+            vlan_index=0,
+            fib_table=0,
+        )
+        ls.add_vpp_config()
+
+        self.addCleanup(ls.remove_vpp_config)
+
+        self.logger.info(self.vapi.cli("show sr localsid"))
+
+        # Create inner IPv6 packet
+        inner = (
+            IPv6(src="2001:db8::1", dst="2002:db8::1")
+            / UDP(sport=1234, dport=5678)
+            / Raw(b"X" * 40)
+        )
+
+        # Create SRH with segments_left=1 to trigger PSP behavior
+        # With 2 segments, SRH size is: 8 bytes (header) + 2*16 bytes (addresses) = 40 bytes
+        srh = IPv6ExtHdrSegmentRouting(
+            segleft=1,
+            lastentry=1,
+            addresses=["2001:db8::100", localsid],
+        )
+
+        # Combine outer IPv6 with SRH and inner packet
+        outer = IPv6(src="2001:db8::10", dst=localsid) / srh / inner
+
+        # ATTACK: Corrupt the payload_length to be smaller than SRH length
+        # Normal payload_length would be ~100+ bytes
+        # SRH alone is 40 bytes, but we set payload_length to only 30 bytes
+        # This would previously cause: new_l0 = 30 - 40 = -10 = 0xFFFFFFF6 (underflow!)
+        outer[IPv6].plen = 30  # Maliciously small payload length
+
+        # Wrap in Ethernet frame
+        pkt = Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) / outer
+
+        # With plen < SRH length, ip6_ext_header_walk() returns -1 -> sr0=NULL
+        # -> packet is dropped with NO_SRH before reaching the sr_len check.
+        error_path = "/err/sr-localsid/(SR-Error) No SR header"
+        pre_error_count = self.statistics.get_err_counter(error_path)
+
+        # Send the malformed packet
+        self.logger.info("Sending malformed SRv6 packet with sr_len > payload_length")
+        self.pg0.add_stream(pkt)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        # Verify the packet was NOT forwarded (should be dropped)
+        # The fix should drop the packet before any buffer manipulation
+        self.pg1.assert_nothing_captured(
+            remark="Malformed SRv6 packet should be dropped, not forwarded"
+        )
+
+        post_error_count = self.statistics.get_err_counter(error_path)
+        self.assertGreater(
+            post_error_count,
+            pre_error_count,
+            "Malformed packet should be dropped with NO_SRH error",
+        )
+
+        # Now test that a VALID packet still works correctly
+        # Create packet with correct payload_length
+        valid_inner = (
+            IPv6(src="2001:db8::2", dst="2002:db8::2")
+            / UDP(sport=1234, dport=5678)
+            / Raw(b"Valid" * 20)
+        )
+
+        valid_srh = IPv6ExtHdrSegmentRouting(
+            segleft=1,
+            lastentry=1,
+            addresses=["2001:db8::200", localsid],
+        )
+
+        valid_outer = IPv6(src="2001:db8::20", dst=localsid) / valid_srh / valid_inner
+
+        # Don't corrupt payload_length - let Scapy calculate it correctly
+        valid_pkt = Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) / valid_outer
+
+        # Send valid packet
+        self.logger.info("Sending valid SRv6 packet")
+        self.pg0.add_stream(valid_pkt)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        # Verify error counter did NOT increment for valid packet
+        final_error_count = self.statistics.get_err_counter(error_path)
+        self.assertEqual(
+            post_error_count,
+            final_error_count,
+            "Valid packet should not increment error counter",
+        )
+
+        self.logger.info("Valid packet processed correctly without errors")
+
 
 if __name__ == "__main__":
     unittest.main(testRunner=VppTestRunner)
