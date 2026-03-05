@@ -4,23 +4,28 @@
  */
 
 #include <vlib/vlib.h>
-
 #include <vnet/vnet.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/feature/feature.h>
+#include <vppinfra/error.h>
+
+#include <vnet/fib/ip6_fib.h>
 #include <vnet/ip/ip6_packet.h>
+#include <vnet/ip/ip6_ll_table.h>
+
 #include <vnet/ip-neighbor/ip6_neighbor.h>
 #include <vnet/ip-neighbor/ip_neighbor.h>
 #include <vnet/ip-neighbor/ip_neighbor_dp.h>
-#include <vnet/ip6-nd/ip6_nd_inline.h>
-#include <vnet/fib/ip6_fib.h>
-#include <vnet/ip/ip6_ll_table.h>
 
-#include <vppinfra/error.h>
+#include <vnet/ip6-nd/ip6_nd_inline.h>
+#include <vnet/ip6-nd/ip6_nd.h>
 
 int
-ip6_nd_proxy_enable_disable (u32 sw_if_index, u8 enable)
+ip6_nd_proxy_enable_disable (u32 sw_if_index, u8 enable,
+			     ip6_nd_proxy_if_flags_t flags)
 {
+  ip6_nd_main_t *i6ndm = &ip6_nd_main;
+  vec_validate_init_empty (i6ndm->i6nd_sw_if_indexes, sw_if_index, false);
 
   if (enable)
     {
@@ -28,6 +33,7 @@ ip6_nd_proxy_enable_disable (u32 sw_if_index, u8 enable)
 				   sw_if_index, 1, NULL, 0);
       vnet_feature_enable_disable ("ip6-multicast", "ip6-multicast-nd-proxy",
 				   sw_if_index, 1, NULL, 0);
+      i6ndm->i6nd_sw_if_indexes[sw_if_index] = flags;
     }
   else
     {
@@ -35,6 +41,7 @@ ip6_nd_proxy_enable_disable (u32 sw_if_index, u8 enable)
 				   sw_if_index, 0, NULL, 0);
       vnet_feature_enable_disable ("ip6-multicast", "ip6-multicast-nd-proxy",
 				   sw_if_index, 0, NULL, 0);
+      i6ndm->i6nd_sw_if_indexes[sw_if_index] = 0;
     }
   return 0;
 }
@@ -43,6 +50,7 @@ static clib_error_t *
 set_int_ip6_nd_proxy_command_fn (vlib_main_t *vm, unformat_input_t *input,
 				 vlib_cli_command_t *cmd)
 {
+  ip6_nd_proxy_if_flags_t flags = IP6_ND_PROXY_IF_FLAG_NONE;
   vnet_main_t *vnm = vnet_get_main ();
   u32 sw_if_index;
   int enable = 0;
@@ -58,6 +66,8 @@ set_int_ip6_nd_proxy_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	enable = 1;
       else if (unformat (input, "disable"))
 	enable = 0;
+      else if (unformat (input, "all-dst"))
+	flags |= IP6_ND_PROXY_IF_FLAG_NO_DST_FILTER;
       else
 	break;
     }
@@ -66,14 +76,15 @@ set_int_ip6_nd_proxy_command_fn (vlib_main_t *vm, unformat_input_t *input,
     return clib_error_return (0, "unknown input '%U'", format_unformat_error,
 			      input);
 
-  ip6_nd_proxy_enable_disable (sw_if_index, enable);
+  ip6_nd_proxy_enable_disable (sw_if_index, enable, flags);
 
   return 0;
 }
 
 VLIB_CLI_COMMAND (set_int_ip6_nd_proxy_enable_command, static) = {
   .path = "set interface ip6-nd proxy",
-  .short_help = "set interface ip6-nd proxy <intfc> [enable|disable]",
+  .short_help =
+    "set interface ip6-nd proxy <intfc> [enable|disable] [all-dst]",
   .function = set_int_ip6_nd_proxy_command_fn,
 };
 
@@ -102,6 +113,35 @@ format_ip6_nd_proxy_trace (u8 *s, va_list *args)
   return s;
 }
 
+static_always_inline int
+ip6_nd_proxy_unicast_is_valid (u32 sw_if_index, ip6_header_t *ip6)
+{
+  ip6_nd_main_t *i6ndm = &ip6_nd_main;
+  fib_node_index_t fei;
+  u32 fib_index;
+  if (i6ndm->i6nd_sw_if_indexes[sw_if_index] &
+      IP6_ND_PROXY_IF_FLAG_NO_DST_FILTER)
+    return true;
+
+  if (ip6_address_is_link_local_unicast (&ip6->dst_address))
+    {
+      fei = ip6_fib_table_lookup_exact_match (ip6_ll_fib_get (sw_if_index),
+					      &ip6->dst_address, 128);
+    }
+  else
+    {
+      fib_index = ip6_fib_table_get_index_for_sw_if_index (sw_if_index);
+      if (~0 == fib_index)
+	return 0;
+      fei =
+	ip6_fib_table_lookup_exact_match (fib_index, &ip6->dst_address, 128);
+    }
+
+  if (FIB_NODE_INDEX_INVALID != fei)
+    return true;
+  return 0;
+}
+
 static_always_inline void
 ip6_nd_proxy_unicast (vlib_main_t *vm, vlib_node_runtime_t *node,
 		      vlib_buffer_t *b0, ip6_header_t *ip6, u32 *next0)
@@ -110,79 +150,52 @@ ip6_nd_proxy_unicast (vlib_main_t *vm, vlib_node_runtime_t *node,
     {
       icmp46_header_t *icmp0;
       icmp6_type_t type0;
+      u32 sw_if_index0;
 
       icmp0 = ip6_next_header (ip6);
       type0 = icmp0->type;
-      if (type0 == ICMP6_neighbor_solicitation ||
-	  type0 == ICMP6_neighbor_advertisement)
+      sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+      if ((type0 == ICMP6_neighbor_solicitation ||
+	   type0 == ICMP6_neighbor_advertisement) &&
+	  ip6_nd_proxy_unicast_is_valid (sw_if_index0, ip6))
 	{
 	  icmp6_neighbor_solicitation_or_advertisement_header_t *icmp6_nsa;
 	  icmp6_neighbor_discovery_ethernet_link_layer_address_option_t
 	    *icmp6_nd_ell_addr;
-	  u32 sw_if_index0;
 
 	  icmp6_nsa = (void *) icmp0;
 	  icmp6_nd_ell_addr = (void *) (icmp6_nsa + 1);
 
-	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
-
 	  /* unicast neighbor solicitation */
-	  fib_node_index_t fei;
-	  u32 fib_index;
-
-	  fib_index = ip6_fib_table_get_index_for_sw_if_index (sw_if_index0);
-
-	  if (~0 == fib_index)
+	  if (type0 == ICMP6_neighbor_solicitation)
 	    {
-	      *next0 = ICMP6_NEIGHBOR_SOLICITATION_NEXT_DROP;
+	      /* Respond with a NA as in IPv6 ND (RFC 4861,
+	       * Sections 7.2.3 and 7.2.4), i.e. send a unicast NA back
+	       * to the soliciting node for the target address.
+	       */
+	      *next0 = ICMP6_NEIGHBOR_SOLICITATION_NEXT_REPLY;
+	      icmp6_send_neighbor_advertisement (
+		vm, b0, ip6, icmp6_nsa, icmp6_nd_ell_addr, sw_if_index0);
 	    }
-	  else
+	  else /* type0 == ICMP6_neighbor_advertisement */
 	    {
-	      if (ip6_address_is_link_local_unicast (&ip6->dst_address))
-		{
-		  fei = ip6_fib_table_lookup_exact_match (
-		    ip6_ll_fib_get (sw_if_index0), &ip6->dst_address, 128);
-		}
-	      else
-		{
-		  fei = ip6_fib_table_lookup_exact_match (
-		    fib_index, &ip6->dst_address, 128);
-		}
+	      /* Update the Neighbor Cache entry with the advertise
+	       * link- layer address and let normal IP/ND processing
+	       * continue as in IPv6 ND (RFC 4861, Section 7.2.5).
+	       */
+	      ip_neighbor_learn_t learn = { .sw_if_index = sw_if_index0,
+					    .ip = {
+					      .version = AF_IP6,
+					      .ip.ip6 =
+						icmp6_nsa->target_address,
+					    } };
+	      clib_memcpy (&learn.mac, icmp6_nd_ell_addr->ethernet_address,
+			   sizeof (learn.mac));
 
-	      if (FIB_NODE_INDEX_INVALID != fei)
-		{
-		  if (type0 == ICMP6_neighbor_solicitation)
-		    {
-		      /* Respond with a NA as in IPv6 ND (RFC 4861,
-		       * Sections 7.2.3 and 7.2.4), i.e. send a unicast NA back
-		       * to the soliciting node for the target address.
-		       */
-		      *next0 = ICMP6_NEIGHBOR_SOLICITATION_NEXT_REPLY;
-		      icmp6_send_neighbor_advertisement (
-			vm, b0, ip6, icmp6_nsa, icmp6_nd_ell_addr,
-			sw_if_index0);
-		    }
-		  else /* type0 == ICMP6_neighbor_advertisement */
-		    {
-		      /* Update the Neighbor Cache entry with the advertise
-		       * link- layer address and let normal IP/ND processing
-		       * continue as in IPv6 ND (RFC 4861, Section 7.2.5).
-		       */
-		      ip_neighbor_learn_t
-			learn = { .sw_if_index = sw_if_index0,
-				  .ip = {
-				    .version = AF_IP6,
-				    .ip.ip6 = icmp6_nsa->target_address,
-				  } };
-		      clib_memcpy (&learn.mac,
-				   icmp6_nd_ell_addr->ethernet_address,
-				   sizeof (learn.mac));
-
-		      ip_neighbor_learn_dp (&learn);
-		      /* Let packet continue to normal IP processing */
-		    }
-		}
+	      ip_neighbor_learn_dp (&learn);
+	      /* Let packet continue to normal IP processing */
 	    }
+
 	  if (b0->flags & VLIB_BUFFER_IS_TRACED)
 	    {
 	      vnet_ip6_nd_proxy_trace_t *t;

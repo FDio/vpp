@@ -49,7 +49,7 @@ typedef struct
   ip6_address_t *mcast_source_address_pool;
 } ip6_mldp_group_t;
 
-typedef struct ip6_nd_t_
+typedef struct ip6_mld_t_
 {
   /* local information */
   u32 sw_if_index;
