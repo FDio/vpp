@@ -421,6 +421,9 @@ typedef struct
    * See sfdp_set_eviction_sessions_margin function more information. */
   u32 eviction_sessions_margin;
 
+  /* Granularity of timer wheel expiration in milliseconds. */
+  u32 timer_interval_ms;
+
   /* If this is set, don't run polling nodes on main */
   int no_main;
 } sfdp_main_t;
