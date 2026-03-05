@@ -360,6 +360,7 @@ STATIC_ASSERT_SIZEOF (sfdp_timeout_t[8], 16 * 8);
 
 /* Maximum number of tenant timers configurable */
 #define SFDP_MAX_TIMEOUTS 8
+#define SFDP_DEFAULT_TIMER_INTERVAL_S ((f64) 1.0)
 
 typedef struct
 {
@@ -420,6 +421,9 @@ typedef struct
   /* Per-thread number of sessions margin before eviction.
    * See sfdp_set_eviction_sessions_margin function more information. */
   u32 eviction_sessions_margin;
+
+  /* Interval between timer wheel ticks in seconds. */
+  f64 timer_tick_interval_s;
 
   /* If this is set, don't run polling nodes on main */
   int no_main;
