@@ -16,6 +16,24 @@
       "message": "My previous comment is still valid: you need the hardware interface index, not the software one",
       "revId": "7c83999a7e0d5c90194f66e6f7c4a8911c730b77",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "98ac6bc0_b34e389d",
+        "filename": "src/vnet/sfdp/lookup/node.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 648,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2026-03-05T15:08:00Z",
+      "side": 1,
+      "message": "dpdk_input node set `vnet_buffer(b)-\u003esw_if_index[VLIB_RX] \u003d xd-\u003esw_if_index`\nthere are no vnet buffer opaque hw_if_index field, so hw interface write to sw_if_index",
+      "parentUuid": "245ef524_e84ae0ca",
+      "revId": "7c83999a7e0d5c90194f66e6f7c4a8911c730b77",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
