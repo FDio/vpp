@@ -69,14 +69,12 @@ timer_expiry_cb_expire_or_evict_sessions (u32 desired_expiries,
   {
     sfdp_session_t *session = sfdp_session_at_index (session_index);
     sfdp_session_timer_t *timer = SFDP_SESSION_TIMER (session);
-    f64 diff =
-      (timer->next_expiration - (ptd->current_time + SFDP_TIMER_INTERVAL)) /
-      SFDP_TIMER_INTERVAL;
-    if (diff > (f64) 1.)
+    f64 remaining_time = timer->next_expiration - (ptd->current_time + SFDP_TIMER_INTERVAL);
+    if (remaining_time > SFDP_TIMER_INTERVAL)
       {
 	/* Rearm the timer accordingly */
-	sfdp_session_timer_start (&ptd->wheel, timer, session_index,
-				  ptd->current_time, diff);
+	sfdp_session_timer_start (&ptd->wheel, timer, session_index, ptd->current_time,
+				  remaining_time);
       }
     else
       {
