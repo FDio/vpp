@@ -742,7 +742,7 @@ typedef struct
   _ (NO_PSP, "(SR-Error) PSP Not available (segments left > 0)")                                   \
   _ (NOT_LS, "(SR-Error) Decaps not available (segments left > 0)")                                \
   _ (L2, "(SR-Error) SRv6 decapsulated a L2 frame without dest")                                   \
-  _ (INVALID_SRH_LENGTH, "(SR-Error) SRH length exceeds payload length")
+  _ (SRH_LEN_EXCEEDS_IP_LEN, "(SR-Error) SRH length exceeds payload length")
 
 typedef enum
 {
@@ -858,7 +858,6 @@ end_srh_processing (vlib_node_runtime_t * node,
 		    u32 * next0, u8 psp, ip6_ext_header_t * prev0)
 {
   ip6_address_t *new_dst0;
-
   if (PREDICT_TRUE (sr0 && sr0->type == ROUTING_HEADER_TYPE_SR))
     {
       if (sr0->segments_left == 1 && psp)
@@ -867,6 +866,15 @@ end_srh_processing (vlib_node_runtime_t * node,
 	  u64 *copy_dst0, *copy_src0;
 	  u32 copy_len_u64s0 = 0;
 
+	  /* IMPORTANT: Validate SRH length BEFORE accessing sr0->segments or any SRH data */
+	  sr_len = ip6_ext_header_len (sr0);
+	  /* Check for underflow: sr_len must not exceed payload_length */
+	  if (PREDICT_FALSE (sr_len > clib_net_to_host_u16 (ip0->payload_length)))
+	    {
+	      *next0 = SR_LOCALSID_NEXT_ERROR;
+	      b0->error = node->errors[SR_LOCALSID_ERROR_SRH_LEN_EXCEEDS_IP_LEN];
+	      return;
+	    }
 	  ip0->dst_address.as_u64[0] = sr0->segments->as_u64[0];
 	  ip0->dst_address.as_u64[1] = sr0->segments->as_u64[1];
 
@@ -875,15 +883,6 @@ end_srh_processing (vlib_node_runtime_t * node,
 	    prev0->next_hdr = sr0->protocol;
 	  else
 	    ip0->protocol = sr0->protocol;
-
-	  sr_len = ip6_ext_header_len (sr0);
-	  /* Check for underflow: sr_len must not exceed payload_length */
-	  if (PREDICT_FALSE (sr_len > clib_net_to_host_u16 (ip0->payload_length)))
-	    {
-	      *next0 = SR_LOCALSID_NEXT_ERROR;
-	      b0->error = node->errors[SR_LOCALSID_ERROR_INVALID_SRH_LENGTH];
-	      return;
-	    }
 	  vlib_buffer_advance (b0, sr_len);
 	  new_l0 = clib_net_to_host_u16 (ip0->payload_length) - sr_len;
 	  ip0->payload_length = clib_host_to_net_u16 (new_l0);
@@ -966,7 +965,6 @@ end_un_srh_processing (vlib_node_runtime_t * node,
   u8 next_usid_index;
   u8 usid_len;
   u8 index;
-
   usid_len = ls0->usid_len;
   next_usid_index = ls0->usid_next_index;
 
@@ -1009,6 +1007,15 @@ end_un_srh_processing (vlib_node_runtime_t * node,
 	  u64 *copy_dst0, *copy_src0;
 	  u32 copy_len_u64s0 = 0;
 
+	  /* IMPORTANT: Validate SRH length BEFORE accessing sr0->segments or any SRH data */
+	  sr_len = ip6_ext_header_len (sr0);
+	  /* Check for underflow: sr_len must not exceed payload_length */
+	  if (PREDICT_FALSE (sr_len > clib_net_to_host_u16 (ip0->payload_length)))
+	    {
+	      *next0 = SR_LOCALSID_NEXT_ERROR;
+	      b0->error = node->errors[SR_LOCALSID_ERROR_SRH_LEN_EXCEEDS_IP_LEN];
+	      return;
+	    }
 	  ip0->dst_address.as_u64[0] = sr0->segments->as_u64[0];
 	  ip0->dst_address.as_u64[1] = sr0->segments->as_u64[1];
 
@@ -1017,15 +1024,6 @@ end_un_srh_processing (vlib_node_runtime_t * node,
 	    prev0->next_hdr = sr0->protocol;
 	  else
 	    ip0->protocol = sr0->protocol;
-
-	  sr_len = ip6_ext_header_len (sr0);
-	  /* Check for underflow: sr_len must not exceed payload_length */
-	  if (PREDICT_FALSE (sr_len > clib_net_to_host_u16 (ip0->payload_length)))
-	    {
-	      *next0 = SR_LOCALSID_NEXT_ERROR;
-	      b0->error = node->errors[SR_LOCALSID_ERROR_INVALID_SRH_LENGTH];
-	      return;
-	    }
 	  vlib_buffer_advance (b0, sr_len);
 	  new_l0 = clib_net_to_host_u16 (ip0->payload_length) - sr_len;
 	  ip0->payload_length = clib_host_to_net_u16 (new_l0);
@@ -1295,14 +1293,13 @@ sr_localsid_d_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      tr->behavior = ls0->behavior;
 	      if (ip0 == vlib_buffer_get_current (b0))
 		{
-		  if (ip0->protocol == IP_PROTOCOL_IPV6_ROUTE
-		      && sr0->type == ROUTING_HEADER_TYPE_SR)
-		    {
-		      clib_memcpy (tr->sr, sr0->segments, sr0->length * 8);
-		      tr->num_segments =
-			sr0->length * 8 / sizeof (ip6_address_t);
-		      tr->segments_left = sr0->segments_left;
-		    }
+		if (ip0->protocol == IP_PROTOCOL_IPV6_ROUTE && sr0 &&
+		    sr0->type == ROUTING_HEADER_TYPE_SR)
+		  {
+		    clib_memcpy (tr->sr, sr0->segments, sr0->length * 8);
+		    tr->num_segments = sr0->length * 8 / sizeof (ip6_address_t);
+		    tr->segments_left = sr0->segments_left;
+		  }
 		}
 	      else
 		tr->num_segments = 0xFF;
@@ -1318,14 +1315,13 @@ sr_localsid_d_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      tr->behavior = ls1->behavior;
 	      if (ip1 == vlib_buffer_get_current (b1))
 		{
-		  if (ip1->protocol == IP_PROTOCOL_IPV6_ROUTE
-		      && sr1->type == ROUTING_HEADER_TYPE_SR)
-		    {
-		      clib_memcpy (tr->sr, sr1->segments, sr1->length * 8);
-		      tr->num_segments =
-			sr1->length * 8 / sizeof (ip6_address_t);
-		      tr->segments_left = sr1->segments_left;
-		    }
+		if (ip1->protocol == IP_PROTOCOL_IPV6_ROUTE && sr1 &&
+		    sr1->type == ROUTING_HEADER_TYPE_SR)
+		  {
+		    clib_memcpy (tr->sr, sr1->segments, sr1->length * 8);
+		    tr->num_segments = sr1->length * 8 / sizeof (ip6_address_t);
+		    tr->segments_left = sr1->segments_left;
+		  }
 		}
 	      else
 		tr->num_segments = 0xFF;
@@ -1341,14 +1337,13 @@ sr_localsid_d_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      tr->behavior = ls2->behavior;
 	      if (ip2 == vlib_buffer_get_current (b2))
 		{
-		  if (ip2->protocol == IP_PROTOCOL_IPV6_ROUTE
-		      && sr2->type == ROUTING_HEADER_TYPE_SR)
-		    {
-		      clib_memcpy (tr->sr, sr2->segments, sr2->length * 8);
-		      tr->num_segments =
-			sr2->length * 8 / sizeof (ip6_address_t);
-		      tr->segments_left = sr2->segments_left;
-		    }
+		if (ip2->protocol == IP_PROTOCOL_IPV6_ROUTE && sr2 &&
+		    sr2->type == ROUTING_HEADER_TYPE_SR)
+		  {
+		    clib_memcpy (tr->sr, sr2->segments, sr2->length * 8);
+		    tr->num_segments = sr2->length * 8 / sizeof (ip6_address_t);
+		    tr->segments_left = sr2->segments_left;
+		  }
 		}
 	      else
 		tr->num_segments = 0xFF;
@@ -1364,14 +1359,13 @@ sr_localsid_d_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      tr->behavior = ls3->behavior;
 	      if (ip3 == vlib_buffer_get_current (b3))
 		{
-		  if (ip3->protocol == IP_PROTOCOL_IPV6_ROUTE
-		      && sr3->type == ROUTING_HEADER_TYPE_SR)
-		    {
-		      clib_memcpy (tr->sr, sr3->segments, sr3->length * 8);
-		      tr->num_segments =
-			sr3->length * 8 / sizeof (ip6_address_t);
-		      tr->segments_left = sr3->segments_left;
-		    }
+		if (ip3->protocol == IP_PROTOCOL_IPV6_ROUTE && sr3 &&
+		    sr3->type == ROUTING_HEADER_TYPE_SR)
+		  {
+		    clib_memcpy (tr->sr, sr3->segments, sr3->length * 8);
+		    tr->num_segments = sr3->length * 8 / sizeof (ip6_address_t);
+		    tr->segments_left = sr3->segments_left;
+		  }
 		}
 	      else
 		tr->num_segments = 0xFF;
@@ -1448,14 +1442,13 @@ sr_localsid_d_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      tr->behavior = ls0->behavior;
 	      if (ip0 == vlib_buffer_get_current (b0))
 		{
-		  if (ip0->protocol == IP_PROTOCOL_IPV6_ROUTE
-		      && sr0->type == ROUTING_HEADER_TYPE_SR)
-		    {
-		      clib_memcpy (tr->sr, sr0->segments, sr0->length * 8);
-		      tr->num_segments =
-			sr0->length * 8 / sizeof (ip6_address_t);
-		      tr->segments_left = sr0->segments_left;
-		    }
+		if (ip0->protocol == IP_PROTOCOL_IPV6_ROUTE && sr0 &&
+		    sr0->type == ROUTING_HEADER_TYPE_SR)
+		  {
+		    clib_memcpy (tr->sr, sr0->segments, sr0->length * 8);
+		    tr->num_segments = sr0->length * 8 / sizeof (ip6_address_t);
+		    tr->segments_left = sr0->segments_left;
+		  }
 		}
 	      else
 		tr->num_segments = 0xFF;
@@ -1605,14 +1598,13 @@ sr_localsid_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      tr->behavior = ls0->behavior;
 	      if (ip0 == vlib_buffer_get_current (b0))
 		{
-		  if (ip0->protocol == IP_PROTOCOL_IPV6_ROUTE
-		      && sr0->type == ROUTING_HEADER_TYPE_SR)
-		    {
-		      clib_memcpy (tr->sr, sr0->segments, sr0->length * 8);
-		      tr->num_segments =
-			sr0->length * 8 / sizeof (ip6_address_t);
-		      tr->segments_left = sr0->segments_left;
-		    }
+		if (ip0->protocol == IP_PROTOCOL_IPV6_ROUTE && sr0 &&
+		    sr0->type == ROUTING_HEADER_TYPE_SR)
+		  {
+		    clib_memcpy (tr->sr, sr0->segments, sr0->length * 8);
+		    tr->num_segments = sr0->length * 8 / sizeof (ip6_address_t);
+		    tr->segments_left = sr0->segments_left;
+		  }
 		}
 	      else
 		tr->num_segments = 0xFF;
@@ -1628,14 +1620,13 @@ sr_localsid_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      tr->behavior = ls1->behavior;
 	      if (ip1 == vlib_buffer_get_current (b1))
 		{
-		  if (ip1->protocol == IP_PROTOCOL_IPV6_ROUTE
-		      && sr1->type == ROUTING_HEADER_TYPE_SR)
-		    {
-		      clib_memcpy (tr->sr, sr1->segments, sr1->length * 8);
-		      tr->num_segments =
-			sr1->length * 8 / sizeof (ip6_address_t);
-		      tr->segments_left = sr1->segments_left;
-		    }
+		if (ip1->protocol == IP_PROTOCOL_IPV6_ROUTE && sr1 &&
+		    sr1->type == ROUTING_HEADER_TYPE_SR)
+		  {
+		    clib_memcpy (tr->sr, sr1->segments, sr1->length * 8);
+		    tr->num_segments = sr1->length * 8 / sizeof (ip6_address_t);
+		    tr->segments_left = sr1->segments_left;
+		  }
 		}
 	      else
 		tr->num_segments = 0xFF;
@@ -1651,14 +1642,13 @@ sr_localsid_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      tr->behavior = ls2->behavior;
 	      if (ip2 == vlib_buffer_get_current (b2))
 		{
-		  if (ip2->protocol == IP_PROTOCOL_IPV6_ROUTE
-		      && sr2->type == ROUTING_HEADER_TYPE_SR)
-		    {
-		      clib_memcpy (tr->sr, sr2->segments, sr2->length * 8);
-		      tr->num_segments =
-			sr2->length * 8 / sizeof (ip6_address_t);
-		      tr->segments_left = sr2->segments_left;
-		    }
+		if (ip2->protocol == IP_PROTOCOL_IPV6_ROUTE && sr2 &&
+		    sr2->type == ROUTING_HEADER_TYPE_SR)
+		  {
+		    clib_memcpy (tr->sr, sr2->segments, sr2->length * 8);
+		    tr->num_segments = sr2->length * 8 / sizeof (ip6_address_t);
+		    tr->segments_left = sr2->segments_left;
+		  }
 		}
 	      else
 		tr->num_segments = 0xFF;
@@ -1674,14 +1664,13 @@ sr_localsid_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      tr->behavior = ls3->behavior;
 	      if (ip3 == vlib_buffer_get_current (b3))
 		{
-		  if (ip3->protocol == IP_PROTOCOL_IPV6_ROUTE
-		      && sr3->type == ROUTING_HEADER_TYPE_SR)
-		    {
-		      clib_memcpy (tr->sr, sr3->segments, sr3->length * 8);
-		      tr->num_segments =
-			sr3->length * 8 / sizeof (ip6_address_t);
-		      tr->segments_left = sr3->segments_left;
-		    }
+		if (ip3->protocol == IP_PROTOCOL_IPV6_ROUTE && sr3 &&
+		    sr3->type == ROUTING_HEADER_TYPE_SR)
+		  {
+		    clib_memcpy (tr->sr, sr3->segments, sr3->length * 8);
+		    tr->num_segments = sr3->length * 8 / sizeof (ip6_address_t);
+		    tr->segments_left = sr3->segments_left;
+		  }
 		}
 	      else
 		tr->num_segments = 0xFF;
@@ -1758,14 +1747,13 @@ sr_localsid_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      tr->behavior = ls0->behavior;
 	      if (ip0 == vlib_buffer_get_current (b0))
 		{
-		  if (ip0->protocol == IP_PROTOCOL_IPV6_ROUTE
-		      && sr0->type == ROUTING_HEADER_TYPE_SR)
-		    {
-		      clib_memcpy (tr->sr, sr0->segments, sr0->length * 8);
-		      tr->num_segments =
-			sr0->length * 8 / sizeof (ip6_address_t);
-		      tr->segments_left = sr0->segments_left;
-		    }
+		if (ip0->protocol == IP_PROTOCOL_IPV6_ROUTE && sr0 &&
+		    sr0->type == ROUTING_HEADER_TYPE_SR)
+		  {
+		    clib_memcpy (tr->sr, sr0->segments, sr0->length * 8);
+		    tr->num_segments = sr0->length * 8 / sizeof (ip6_address_t);
+		    tr->segments_left = sr0->segments_left;
+		  }
 		}
 	      else
 		tr->num_segments = 0xFF;
@@ -1914,14 +1902,13 @@ sr_localsid_un_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      tr->behavior = ls0->behavior;
 	      if (ip0 == vlib_buffer_get_current (b0))
 		{
-		  if (ip0->protocol == IP_PROTOCOL_IPV6_ROUTE
-		      && sr0->type == ROUTING_HEADER_TYPE_SR)
-		    {
-		      clib_memcpy (tr->sr, sr0->segments, sr0->length * 8);
-		      tr->num_segments =
-			sr0->length * 8 / sizeof (ip6_address_t);
-		      tr->segments_left = sr0->segments_left;
-		    }
+		if (ip0->protocol == IP_PROTOCOL_IPV6_ROUTE && sr0 &&
+		    sr0->type == ROUTING_HEADER_TYPE_SR)
+		  {
+		    clib_memcpy (tr->sr, sr0->segments, sr0->length * 8);
+		    tr->num_segments = sr0->length * 8 / sizeof (ip6_address_t);
+		    tr->segments_left = sr0->segments_left;
+		  }
 		}
 	      else
 		tr->num_segments = 0xFF;
@@ -1937,14 +1924,13 @@ sr_localsid_un_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      tr->behavior = ls1->behavior;
 	      if (ip1 == vlib_buffer_get_current (b1))
 		{
-		  if (ip1->protocol == IP_PROTOCOL_IPV6_ROUTE
-		      && sr1->type == ROUTING_HEADER_TYPE_SR)
-		    {
-		      clib_memcpy (tr->sr, sr1->segments, sr1->length * 8);
-		      tr->num_segments =
-			sr1->length * 8 / sizeof (ip6_address_t);
-		      tr->segments_left = sr1->segments_left;
-		    }
+		if (ip1->protocol == IP_PROTOCOL_IPV6_ROUTE && sr1 &&
+		    sr1->type == ROUTING_HEADER_TYPE_SR)
+		  {
+		    clib_memcpy (tr->sr, sr1->segments, sr1->length * 8);
+		    tr->num_segments = sr1->length * 8 / sizeof (ip6_address_t);
+		    tr->segments_left = sr1->segments_left;
+		  }
 		}
 	      else
 		tr->num_segments = 0xFF;
@@ -1960,14 +1946,13 @@ sr_localsid_un_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      tr->behavior = ls2->behavior;
 	      if (ip2 == vlib_buffer_get_current (b2))
 		{
-		  if (ip2->protocol == IP_PROTOCOL_IPV6_ROUTE
-		      && sr2->type == ROUTING_HEADER_TYPE_SR)
-		    {
-		      clib_memcpy (tr->sr, sr2->segments, sr2->length * 8);
-		      tr->num_segments =
-			sr2->length * 8 / sizeof (ip6_address_t);
-		      tr->segments_left = sr2->segments_left;
-		    }
+		if (ip2->protocol == IP_PROTOCOL_IPV6_ROUTE && sr2 &&
+		    sr2->type == ROUTING_HEADER_TYPE_SR)
+		  {
+		    clib_memcpy (tr->sr, sr2->segments, sr2->length * 8);
+		    tr->num_segments = sr2->length * 8 / sizeof (ip6_address_t);
+		    tr->segments_left = sr2->segments_left;
+		  }
 		}
 	      else
 		tr->num_segments = 0xFF;
@@ -1983,14 +1968,13 @@ sr_localsid_un_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      tr->behavior = ls3->behavior;
 	      if (ip3 == vlib_buffer_get_current (b3))
 		{
-		  if (ip3->protocol == IP_PROTOCOL_IPV6_ROUTE
-		      && sr3->type == ROUTING_HEADER_TYPE_SR)
-		    {
-		      clib_memcpy (tr->sr, sr3->segments, sr3->length * 8);
-		      tr->num_segments =
-			sr3->length * 8 / sizeof (ip6_address_t);
-		      tr->segments_left = sr3->segments_left;
-		    }
+		if (ip3->protocol == IP_PROTOCOL_IPV6_ROUTE && sr3 &&
+		    sr3->type == ROUTING_HEADER_TYPE_SR)
+		  {
+		    clib_memcpy (tr->sr, sr3->segments, sr3->length * 8);
+		    tr->num_segments = sr3->length * 8 / sizeof (ip6_address_t);
+		    tr->segments_left = sr3->segments_left;
+		  }
 		}
 	      else
 		tr->num_segments = 0xFF;
@@ -2068,14 +2052,13 @@ sr_localsid_un_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      tr->behavior = ls0->behavior;
 	      if (ip0 == vlib_buffer_get_current (b0))
 		{
-		  if (ip0->protocol == IP_PROTOCOL_IPV6_ROUTE
-		      && sr0->type == ROUTING_HEADER_TYPE_SR)
-		    {
-		      clib_memcpy (tr->sr, sr0->segments, sr0->length * 8);
-		      tr->num_segments =
-			sr0->length * 8 / sizeof (ip6_address_t);
-		      tr->segments_left = sr0->segments_left;
-		    }
+		if (ip0->protocol == IP_PROTOCOL_IPV6_ROUTE && sr0 &&
+		    sr0->type == ROUTING_HEADER_TYPE_SR)
+		  {
+		    clib_memcpy (tr->sr, sr0->segments, sr0->length * 8);
+		    tr->num_segments = sr0->length * 8 / sizeof (ip6_address_t);
+		    tr->segments_left = sr0->segments_left;
+		  }
 		}
 	      else
 		tr->num_segments = 0xFF;
