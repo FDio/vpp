@@ -115,12 +115,40 @@ vl_api_ip6nd_proxy_enable_disable_t_handler (
   VALIDATE_SW_IF_INDEX (mp);
 
   if (mp->is_enable)
-    rv = ip6_nd_proxy_enable_disable (ntohl (mp->sw_if_index), 1);
+  rv = ip6_nd_proxy_enable_disable (ntohl (mp->sw_if_index), 1 /* enable */,
+				    IP6_ND_PROXY_IF_FLAG_NONE);
   else
-    rv = ip6_nd_proxy_enable_disable (ntohl (mp->sw_if_index), 0);
+  rv = ip6_nd_proxy_enable_disable (ntohl (mp->sw_if_index), 0 /* enable */,
+				    IP6_ND_PROXY_IF_FLAG_NONE);
 
   BAD_SW_IF_INDEX_LABEL;
   REPLY_MACRO (VL_API_IP6ND_PROXY_ENABLE_DISABLE_REPLY);
+}
+
+static void
+vl_api_ip6nd_proxy_enable_disable_v2_t_handler (vl_api_ip6nd_proxy_enable_disable_v2_t *mp)
+{
+  vl_api_ip6nd_proxy_enable_disable_v2_reply_t *rmp;
+  u8 valid_flags;
+  int rv = 0;
+
+  VALIDATE_SW_IF_INDEX (mp);
+  valid_flags = IP6_ND_PROXY_IF_FLAG_NO_DST_FILTER;
+
+  if (mp->flags & ~valid_flags)
+  {
+    rv = VNET_API_ERROR_INVALID_VALUE;
+    goto reply;
+  }
+
+  if (mp->is_enable)
+  rv = ip6_nd_proxy_enable_disable (ntohl (mp->sw_if_index), 1 /* enable */, mp->flags);
+  else
+  rv = ip6_nd_proxy_enable_disable (ntohl (mp->sw_if_index), 0 /* enable */, mp->flags);
+
+reply:
+  BAD_SW_IF_INDEX_LABEL;
+  REPLY_MACRO (VL_API_IP6ND_PROXY_ENABLE_DISABLE_V2_REPLY);
 }
 
 static void
