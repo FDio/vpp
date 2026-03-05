@@ -612,6 +612,15 @@ ip6_ext_header_walk (vlib_buffer_t *b, ip6_header_t *ip, int find_hdr_type,
 			     sizeof (ip6_header_t) +
 			       clib_net_to_host_u16 (ip->payload_length));
   u32 offset = sizeof (ip6_header_t);
+
+  /* SECURITY: Validate we can safely read extension header length field
+   * before accessing it. Extension headers have a minimum size of 8 bytes
+   * (next_hdr + length field + padding). */
+  if (offset + sizeof (ip6_ext_header_t) > max_offset)
+    {
+      return -1;
+    }
+
   if ((ip6_ext_header_len_s (ip->protocol, next_header) + offset) > max_offset)
     {
       return -1;
