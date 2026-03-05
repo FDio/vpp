@@ -170,8 +170,8 @@ sfdp_calc_key_v6 (vlib_buffer_t *b, u32 context_id,
 	  icmp46_header_t *icmp = next_header;
 	  type = icmp->type;
 	}
-      t = (1ULL << type);
-      t128 = (1ULL << ((u8) (type - 128)));
+      t = sfdp_bitmask_u64_if_lt64 (type);
+      t128 = type >= 128 ? sfdp_bitmask_u64_if_lt64 ((u32) (type - 128)) : 0;
       x = t128 & icmp6_type_ping_bitmask_128off;
       y = t & icmp6_type_errors_bitmask;
       y |= t128 & icmp6_type_errors_bitmask_128off;
@@ -195,7 +195,7 @@ sfdp_calc_key_v6 (vlib_buffer_t *b, u32 context_id,
     }
   else
     {
-      norm &= i64x2_splat ((1ULL << pr) & tcp_udp_bitmask) != zero;
+      norm &= i64x2_splat (sfdp_bitmask_u64_if_lt64 (pr) & tcp_udp_bitmask) != zero;
     }
   swap_A = key_ip6_shuff_no_norm_A;
   swap_B = key_ip6_shuff_no_norm_B;
