@@ -11,6 +11,12 @@
 #define u32x8_splat(i) ((u32) (i) & (u32x8){ ~0, ~0, ~0, ~0, ~0, ~0, ~0, ~0 })
 #endif
 
+static_always_inline u64
+sfdp_bitmask_u64_if_lt64 (u32 bit)
+{
+  return bit < 64 ? (1ULL << bit) : 0;
+}
+
 __clib_unused static const u8 l4_mask_bits[256] = {
   [IP_PROTOCOL_ICMP] = 16,     [IP_PROTOCOL_IGMP] = 8,
   [IP_PROTOCOL_ICMP6] = 16,    [IP_PROTOCOL_TCP] = 32,

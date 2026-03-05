@@ -137,7 +137,7 @@ sfdp_calc_key_v4 (vlib_buffer_t *b, u32 context_id,
     }
   else
     {
-      norm &= i64x2_splat ((1ULL << pr) & tcp_udp_bitmask) != zero;
+      norm &= i64x2_splat (sfdp_bitmask_u64_if_lt64 (pr) & tcp_udp_bitmask) != zero;
     }
   swap = key_ip4_shuff_no_norm;
   /* if norm is zero, we don't need to normalize so nothing happens here */
