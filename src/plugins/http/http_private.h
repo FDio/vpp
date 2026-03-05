@@ -269,7 +269,6 @@ typedef struct http_worker_
 typedef struct http_main_
 {
   http_worker_t *wrk;
-  http_conn_t *listener_pool;
   http_conn_t *ho_conn_pool;
   u32 *postponed_ho_free;
   u32 *ho_free_list;

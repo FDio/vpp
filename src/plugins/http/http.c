@@ -249,11 +249,12 @@ http_ho_conn_alloc (void)
 static u32
 http_listener_alloc (void)
 {
-  http_main_t *hm = &http_main;
   http_conn_t *lhc;
+  u32 lhc_index;
 
-  pool_get_zero (hm->listener_pool, lhc);
-  lhc->hc_hc_index = lhc - hm->listener_pool;
+  lhc_index = http_conn_alloc_w_thread (0);
+  lhc = http_conn_get_w_thread (lhc_index, 0);
+  lhc->hc_hc_index = lhc_index;
   lhc->timeout = HTTP_CONN_TIMEOUT;
   lhc->version = HTTP_VERSION_NA;
   lhc->hc_tl_handle_tcp = SESSION_INVALID_HANDLE;
@@ -264,18 +265,14 @@ http_listener_alloc (void)
 static http_conn_t *
 http_listener_get (u32 lhc_index)
 {
-  return pool_elt_at_index (http_main.listener_pool, lhc_index);
+  return http_conn_get_w_thread (lhc_index, 0);
 }
 
 static void
 http_listener_free (http_conn_t *lhc)
 {
-  http_main_t *hm = &http_main;
-
   vec_free (lhc->app_name);
-  if (CLIB_DEBUG)
-    memset (lhc, 0xfc, sizeof (*lhc));
-  pool_put (hm->listener_pool, lhc);
+  http_conn_free (lhc);
 }
 
 void
@@ -552,10 +549,9 @@ http_ts_accept_connection (session_t *ts)
   tls_alpn_proto_t alpn_proto;
 
   ts_listener = listen_session_get_from_handle (ts->listener_handle);
-  lhc = http_listener_get (ts_listener->opaque);
-
   hc_index = http_conn_alloc_w_thread (ts->thread_index);
   hc = http_conn_get_w_thread (hc_index, ts->thread_index);
+  lhc = http_listener_get (ts_listener->opaque);
   clib_memcpy_fast (hc, lhc, sizeof (*lhc));
   hc->timer_handle = HTTP_TIMER_HANDLE_INVALID;
   hc->c_thread_index = ts->thread_index;
