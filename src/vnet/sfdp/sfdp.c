@@ -164,6 +164,7 @@ sfdp_init (vlib_main_t *vm)
   _ (log2_sessions_cache_per_thread,
      SFDP_DEFAULT_LOG2_SESSIONS - SFDP_DEFAULT_LOG2_SESSIONS_CACHE_RATIO)
   _ (log2_tenants, SFDP_DEFAULT_LOG2_TENANTS)
+  _ (timer_interval_ms, SFDP_DEFAULT_TIMER_INTERVAL_MS)
 #undef _
   sfdp->no_main = sfdp->no_main && vlib_num_workers ();
 
@@ -526,6 +527,7 @@ sfdp_config (vlib_main_t *vm, unformat_input_t *input)
 {
   sfdp_main_t *sfdp = &sfdp_main;
   u32 eviction_sessions_margin = ~0;
+  u32 timer_interval_ms = 0;
   u8 sessions_cache_specified = 0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -541,6 +543,8 @@ sfdp_config (vlib_main_t *vm, unformat_input_t *input)
 	;
       else if (unformat (input, "eviction-sessions-margin %u",
 			 &eviction_sessions_margin))
+	;
+      else if (unformat (input, "timer-interval-ms %u", &timer_interval_ms))
 	;
       else if (unformat (input, "no-main"))
 	{
@@ -574,10 +578,18 @@ sfdp_config (vlib_main_t *vm, unformat_input_t *input)
 
   sfdp->eviction_sessions_margin = eviction_sessions_margin;
 
+  if (timer_interval_ms != 0)
+    {
+      if (timer_interval_ms > 60000)
+	return clib_error_return (0, "timer-interval-ms must be in [1..60000]");
+      sfdp->timer_interval_ms = timer_interval_ms;
+    }
+
   return 0;
 }
 
 /* sfdp { [sessions-log2 <n>] [tenants-log2 <n>] [eviction-sessions-margin <n>]
+ *        [timer-interval-ms <n>]
  * } config. */
 VLIB_EARLY_CONFIG_FUNCTION (sfdp_config, "sfdp");
 
