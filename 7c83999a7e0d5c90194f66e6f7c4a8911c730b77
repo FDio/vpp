@@ -34,6 +34,24 @@
       "parentUuid": "245ef524_e84ae0ca",
       "revId": "7c83999a7e0d5c90194f66e6f7c4a8911c730b77",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "958c0386_ae2a9dfe",
+        "filename": "src/vnet/sfdp/lookup/node.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 648,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-03-05T15:39:40Z",
+      "side": 1,
+      "message": "`hw_if_index \u003d vnet_get_sw_interface(vnm, rx_sw_if_index)-\u003ehw_if_index;`\n\nMy point is that you don\u0027t pass the correct value.",
+      "parentUuid": "98ac6bc0_b34e389d",
+      "revId": "7c83999a7e0d5c90194f66e6f7c4a8911c730b77",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
