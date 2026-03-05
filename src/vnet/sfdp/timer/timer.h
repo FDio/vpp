@@ -57,9 +57,36 @@ SFDP_EXPIRY_STATIC_ASSERT_FITS_IN_EXPIRY_OPAQUE (sfdp_session_timer_t);
 #define sfdp_timer_update_internal tw_timer_update_2t_1w_2048sl
 #define sfdp_expire_timers	   tw_timer_expire_timers_2t_1w_2048sl
 #define SFDP_TIMER_SI_MASK	   (0x7fffffff)
-#define SFDP_TIMER_INTERVAL	   ((f64) 1.0) /*in seconds*/
-#define SFDP_SECONDS_TO_TICKS	   (seconds) ((seconds) / SFDP_TIMER_INTERVAL)
-#define SFDP_TICKS_TO_SECONDS	   (ticks) ((ticks) *SFDP_TIMER_INTERVAL)
+
+static_always_inline f64
+sfdp_timer_interval_sec (void)
+{
+  return sfdp_main.timer_interval_s;
+}
+
+static_always_inline u32
+sfdp_seconds_to_ticks (f64 seconds)
+{
+  f64 interval = sfdp_timer_interval_sec ();
+  if (seconds <= 0)
+    return 0;
+
+  u32 ticks = (u32) (seconds / interval);
+  if (((f64) ticks * interval) < seconds)
+    ticks += 1;
+
+  return ticks ? ticks : 1;
+}
+
+static_always_inline f64
+sfdp_ticks_to_seconds (u32 ticks)
+{
+  return ((f64) ticks) * sfdp_timer_interval_sec ();
+}
+
+#define SFDP_TIMER_INTERVAL	       (sfdp_timer_interval_sec ())
+#define SFDP_SECONDS_TO_TICKS(seconds) (sfdp_seconds_to_ticks ((f64) (seconds)))
+#define SFDP_TICKS_TO_SECONDS(ticks)   (sfdp_ticks_to_seconds (ticks))
 
 static_always_inline sfdp_timer_per_thread_data_t *
 sfdp_timer_get_per_thread_data (u32 thread_index)
@@ -81,11 +108,12 @@ sfdp_tw_init (sfdp_tw_t *tw, void *expired_timer_callback, f64 timer_interval,
 u32 sfdp_timer_register_as_expiry_module ();
 
 static_always_inline void
-sfdp_session_timer_start (sfdp_tw_t *tw, sfdp_session_timer_t *timer,
-			  u32 session_index, f64 now, u32 ticks)
+sfdp_session_timer_start (sfdp_tw_t *tw, sfdp_session_timer_t *timer, u32 session_index, f64 now,
+			  f64 timeout_seconds)
 {
+  u32 ticks = SFDP_SECONDS_TO_TICKS (timeout_seconds);
   timer->handle = sfdp_timer_start_internal (tw, session_index, 0, ticks);
-  timer->next_expiration = now + ticks * SFDP_TIMER_INTERVAL;
+  timer->next_expiration = now + SFDP_TICKS_TO_SECONDS (ticks);
 }
 
 static_always_inline void
@@ -95,36 +123,39 @@ sfdp_session_timer_stop (sfdp_tw_t *tw, sfdp_session_timer_t *timer)
 }
 
 static_always_inline void
-sfdp_session_timer_update (sfdp_tw_t *tw, sfdp_session_timer_t *timer, f64 now,
-			   u32 ticks)
+sfdp_session_timer_update (sfdp_tw_t *tw, sfdp_session_timer_t *timer, f64 now, f64 timeout_seconds)
 {
+  u32 ticks = SFDP_SECONDS_TO_TICKS (timeout_seconds);
   if (PREDICT_FALSE (ticks == 0))
     vlib_node_set_interrupt_pending (vlib_get_main (), sfdp_expire_node.index);
-  timer->next_expiration = now + ticks * SFDP_TIMER_INTERVAL;
+  timer->next_expiration = now + SFDP_TICKS_TO_SECONDS (ticks);
 }
 
 static_always_inline void
-sfdp_session_timer_update_maybe_past (sfdp_tw_t *tw,
-				      sfdp_session_timer_t *timer, f64 now,
-				      u32 ticks)
+sfdp_session_timer_update_maybe_past (sfdp_tw_t *tw, sfdp_session_timer_t *timer, f64 now,
+				      f64 timeout_seconds)
 {
-  if (timer->next_expiration > now + (ticks * SFDP_TIMER_INTERVAL))
-    sfdp_timer_update_internal (tw, timer->handle, ticks);
+  u32 timeout_ticks = SFDP_SECONDS_TO_TICKS (timeout_seconds);
+  if (timer->next_expiration > now + SFDP_TICKS_TO_SECONDS (timeout_ticks))
+    sfdp_timer_update_internal (tw, timer->handle, timeout_ticks);
 
-  sfdp_session_timer_update (tw, timer, now, ticks);
+  if (PREDICT_FALSE (timeout_ticks == 0))
+    vlib_node_set_interrupt_pending (vlib_get_main (), sfdp_expire_node.index);
+  timer->next_expiration = now + SFDP_TICKS_TO_SECONDS (timeout_ticks);
 }
 
 static_always_inline void
-sfdp_session_timer_update_unlikely_past (sfdp_tw_t *tw,
-					 sfdp_session_timer_t *timer, f64 now,
-					 u32 ticks)
+sfdp_session_timer_update_unlikely_past (sfdp_tw_t *tw, sfdp_session_timer_t *timer, f64 now,
+					 f64 timeout_seconds)
 {
-  if (PREDICT_FALSE (timer->next_expiration >
-		     now + (ticks * SFDP_TIMER_INTERVAL)))
+  u32 timeout_ticks = SFDP_SECONDS_TO_TICKS (timeout_seconds);
+  if (PREDICT_FALSE (timer->next_expiration > now + SFDP_TICKS_TO_SECONDS (timeout_ticks)))
     {
-      sfdp_timer_update_internal (tw, timer->handle, ticks);
+      sfdp_timer_update_internal (tw, timer->handle, timeout_ticks);
     }
-  sfdp_session_timer_update (tw, timer, now, ticks);
+  if (PREDICT_FALSE (timeout_ticks == 0))
+    vlib_node_set_interrupt_pending (vlib_get_main (), sfdp_expire_node.index);
+  timer->next_expiration = now + SFDP_TICKS_TO_SECONDS (timeout_ticks);
 }
 
 static_always_inline uword
