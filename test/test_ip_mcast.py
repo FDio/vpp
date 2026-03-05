@@ -660,6 +660,112 @@ class TestIPMcast(VppTestCase):
         self.vapi.cli("packet mac-filter pg6 off")
         self.vapi.cli("packet mac-filter pg7 off")
 
+    def test_ip6_mcast_rpf_unnumbered_accept(self):
+        """IPv6 MFIB RPF accepts traffic on unnumbered RX interface"""
+
+        MRouteItfFlags = VppEnum.vl_api_mfib_itf_flags_t
+        MRouteEntryFlags = VppEnum.vl_api_mfib_entry_flags_t
+
+        route_ff3e_100 = VppIpMRoute(
+            self,
+            "::",
+            "ff3e::100",
+            128,
+            MRouteEntryFlags.MFIB_API_ENTRY_FLAG_NONE,
+            [
+                VppMRoutePath(
+                    self.pg0.sw_if_index,
+                    MRouteItfFlags.MFIB_API_ITF_FLAG_ACCEPT,
+                    proto=FibPathProto.FIB_PATH_NH_PROTO_IP6,
+                ),
+                VppMRoutePath(
+                    self.pg2.sw_if_index,
+                    MRouteItfFlags.MFIB_API_ITF_FLAG_FORWARD,
+                    proto=FibPathProto.FIB_PATH_NH_PROTO_IP6,
+                ),
+            ],
+        )
+
+        route_added = False
+        unnumbered_set = False
+
+        try:
+            route_ff3e_100.add_vpp_config()
+            route_added = True
+
+            self.pg1.unconfig_ip6()
+            self.pg1.set_unnumbered(self.pg0.sw_if_index)
+            unnumbered_set = True
+
+            self.vapi.cli("clear trace")
+            tx = self.create_stream_ip6(self.pg1, "2001:db8:1::1", "ff3e::100")
+            self.pg1.add_stream(tx)
+
+            self.pg_enable_capture(self.pg_interfaces)
+            self.pg_start()
+
+            # ACCEPT is configured on pg0, and pg1 is unnumbered to pg0.
+            # RPF should pass and packet should replicate to pg2.
+            self.verify_capture_ip6(self.pg2, tx)
+        finally:
+            if unnumbered_set:
+                self.pg1.unset_unnumbered(self.pg0.sw_if_index)
+            if route_added:
+                route_ff3e_100.remove_vpp_config()
+
+    def test_ip6_mcast_rpf_unnumbered_mismatch_drop(self):
+        """IPv6 MFIB RPF drops traffic if unnumbered parent is non-ACCEPT"""
+
+        MRouteItfFlags = VppEnum.vl_api_mfib_itf_flags_t
+        MRouteEntryFlags = VppEnum.vl_api_mfib_entry_flags_t
+
+        route_ff3e_100 = VppIpMRoute(
+            self,
+            "::",
+            "ff3e::100",
+            128,
+            MRouteEntryFlags.MFIB_API_ENTRY_FLAG_NONE,
+            [
+                VppMRoutePath(
+                    self.pg0.sw_if_index,
+                    MRouteItfFlags.MFIB_API_ITF_FLAG_ACCEPT,
+                    proto=FibPathProto.FIB_PATH_NH_PROTO_IP6,
+                ),
+                VppMRoutePath(
+                    self.pg2.sw_if_index,
+                    MRouteItfFlags.MFIB_API_ITF_FLAG_FORWARD,
+                    proto=FibPathProto.FIB_PATH_NH_PROTO_IP6,
+                ),
+            ],
+        )
+
+        route_added = False
+        unnumbered_set = False
+
+        try:
+            route_ff3e_100.add_vpp_config()
+            route_added = True
+
+            self.pg1.unconfig_ip6()
+            self.pg1.set_unnumbered(self.pg2.sw_if_index)
+            unnumbered_set = True
+
+            tx = self.create_stream_ip6(self.pg1, "2001:db8:1::1", "ff3e::100")
+
+            # ACCEPT is configured on pg0, and pg1 is unnumbered to pg2.
+            # RPF should fail and packet should drop.
+            before = self.statistics.get_err_counter("/err/ip6-input/rpf_failure")
+            self.send_and_assert_no_replies(
+                self.pg1, tx, "RPF miss on unnumbered interface mismatch"
+            )
+            after = self.statistics.get_err_counter("/err/ip6-input/rpf_failure")
+            self.assertEqual(after - before, len(tx))
+        finally:
+            if unnumbered_set:
+                self.pg1.unset_unnumbered(self.pg2.sw_if_index)
+            if route_added:
+                route_ff3e_100.remove_vpp_config()
+
     def _mcast_connected_send_stream(self, dst_ip):
         self.vapi.cli("clear trace")
         tx = self.create_stream_ip4(self.pg0, self.pg0.remote_ip4, dst_ip)

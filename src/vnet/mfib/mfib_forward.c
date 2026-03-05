@@ -226,6 +226,28 @@ typedef enum mfib_forward_rpf_next_t_ {
     MFIB_FORWARD_RPF_N_NEXT,
 } mfib_forward_rpf_next_t;
 
+static_always_inline mfib_itf_t *
+mfib_forward_get_itf (const mfib_entry_t *mfe, u32 rx_sw_if_index)
+{
+    mfib_itf_t *mfi;
+    vnet_main_t *vnm;
+    const vnet_sw_interface_t *sw;
+
+    mfi = mfib_entry_get_itf (mfe, rx_sw_if_index);
+    if (PREDICT_TRUE (NULL != mfi))
+        return mfi;
+
+    vnm = vnet_get_main ();
+    sw = vnet_get_sw_interface_or_null (vnm, rx_sw_if_index);
+    if (NULL == sw)
+        return NULL;
+
+    if (!(sw->flags & VNET_SW_INTERFACE_FLAG_UNNUMBERED))
+        return NULL;
+
+    return mfib_entry_get_itf (mfe, sw->unnumbered_sw_if_index);
+}
+
 static u8 *
 format_mfib_forward_rpf_trace (u8 * s, va_list * args)
 {
@@ -361,8 +383,8 @@ mfib_forward_rpf (vlib_main_t * vm,
             b0 = vlib_get_buffer (vm, pi0);
             mfei0 = vnet_buffer (b0)->ip.adj_index[VLIB_TX];
             mfe0 = mfib_entry_get(mfei0);
-            mfi0 = mfib_entry_get_itf(mfe0,
-                                      vnet_buffer(b0)->sw_if_index[VLIB_RX]);
+            mfi0 = mfib_forward_get_itf (mfe0,
+                                         vnet_buffer(b0)->sw_if_index[VLIB_RX]);
 
             /*
              * throughout this function we are 'PREDICT' optimising
