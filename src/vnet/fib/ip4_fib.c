@@ -349,7 +349,13 @@ ip4_show_fib (vlib_main_t * vm,
 
 	else if (unformat (input, "%U/%d",
 			   unformat_ip4_address, &matching_address, &matching_mask))
+	{
+	    if (matching_mask > 32)
+	    {
+		return clib_error_return (0, "Invalid mask length %d, must be between 0 and 32", matching_mask);
+	    }
 	    matching = 1;
+	}
 
 	else if (unformat (input, "%U", unformat_ip4_address, &matching_address))
 	    matching = 1;
