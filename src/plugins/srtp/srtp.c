@@ -504,7 +504,8 @@ srtp_migrate_ctx_reply (void *arg)
 static void
 srtp_migrate_ctx (void *arg)
 {
-  u32 ctx_handle, thread_index, old_thread_index, old_ctx_index;
+  u32 ctx_handle, old_ctx_index;
+  clib_thread_index_t old_thread_index, thread_index;
   srtp_tc_t *ctx = (srtp_tc_t *) arg;
   session_t *us, *new_app_session;
   void *rargs;
@@ -526,13 +527,12 @@ srtp_migrate_ctx (void *arg)
     session_program_tx_io_evt (us->handle, SESSION_IO_EVT_TX);
 
   /* Migrate app session as well */
-  session_dgram_connect_notify (&ctx->connection, old_thread_index,
-				&new_app_session);
+  session_dgram_connect_notify (&ctx->connection, ctx->app_session_handle, &new_app_session);
+  ctx->app_session_handle = session_handle (new_app_session);
 
   /* Call back original thread and ask for cleanup */
   rargs = uword_to_pointer ((uword) old_ctx_index, void *);
-  session_send_rpc_evt_to_thread (old_thread_index, srtp_migrate_ctx_reply,
-				  rargs);
+  session_send_rpc_evt_to_thread (old_thread_index, srtp_migrate_ctx_reply, rargs);
 }
 
 static void
