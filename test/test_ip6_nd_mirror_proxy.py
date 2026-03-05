@@ -49,6 +49,79 @@ class TestNDPROXY(VppTestCase):
                 i.unconfig_ip6()
                 i.admin_down()
 
+    def _setup_unnumbered_mirror_topology(self):
+        addr = self.pg0.remote_ip6
+        nsma = in6_getnsma(inet_pton(AF_INET6, addr))
+        d = inet_ntop(AF_INET6, nsma)
+
+        self.pg1.unconfig_ip6()
+        self.pg1.set_unnumbered(self.pg0.sw_if_index)
+
+        return addr, nsma, d
+
+    def _build_unicast_nd_req_from_host(self):
+        return (
+            Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac)
+            / IPv6(dst=self.pg0.remote_ip6, src=self.pg1.remote_ip6_ll)
+            / ICMPv6ND_NS(tgt=self.pg0.remote_ip6)
+            / ICMPv6NDOptSrcLLAddr(lladdr=self.pg1.remote_mac)
+        )
+
+    def test_nd_mirror_proxy_v2_default_flags(self):
+        """Interface (Mirror) Proxy ND v2 keeps default filtering behavior"""
+
+        # Verify Interface (Mirror) Proxy ND v2 rejects unsupported flags
+        with self.vapi.assert_negative_api_retval():
+            self.vapi.ip6nd_proxy_enable_disable_v2(
+                sw_if_index=self.pg1.sw_if_index, is_enable=1, flags=0x80
+            )
+
+        addr, nsma, d = self._setup_unnumbered_mirror_topology()
+
+        self.vapi.ip6nd_proxy_enable_disable_v2(
+            sw_if_index=self.pg1.sw_if_index, is_enable=1, flags=0
+        )
+
+        unicast_nd_req_from_host = self._build_unicast_nd_req_from_host()
+        rx = self.send_and_expect(self.pg1, [unicast_nd_req_from_host], self.pg0)
+
+        self.assertEqual(rx[0][Ether].src, self.pg0.local_mac)
+        self.assertEqual(rx[0][Ether].dst, in6_getnsmac(nsma))
+        self.assertEqual(rx[0][IPv6].src, self.pg0.local_ip6_ll)
+        self.assertEqual(rx[0][IPv6].dst, d)
+        self.assertEqual(ipv6nh[rx[0][IPv6].nh], "ICMPv6")
+        self.assertEqual(rx[0][ICMPv6ND_NS].tgt, addr)
+        self.assertTrue(rx[0].haslayer(ICMPv6NDOptSrcLLAddr))
+        self.assertEqual(rx[0][ICMPv6NDOptSrcLLAddr].lladdr, self.pg0.local_mac)
+
+        self.vapi.ip6nd_proxy_enable_disable_v2(
+            sw_if_index=self.pg1.sw_if_index, is_enable=0, flags=0
+        )
+
+    def test_nd_mirror_proxy_v2_all_dst(self):
+        """Interface (Mirror) Proxy ND v2 all-dst replies without dst lookup"""
+
+        self._setup_unnumbered_mirror_topology()
+
+        self.vapi.ip6nd_proxy_enable_disable_v2(
+            sw_if_index=self.pg1.sw_if_index, is_enable=1, flags=1
+        )
+
+        unicast_nd_req_from_host = self._build_unicast_nd_req_from_host()
+        rx = self.send_and_expect(self.pg1, [unicast_nd_req_from_host], self.pg1)
+        self.assertEqual(rx[0][Ether].src, self.pg1.local_mac)
+        self.assertEqual(rx[0][Ether].dst, self.pg1.remote_mac)
+        self.assertEqual(rx[0][IPv6].src, self.pg0.remote_ip6)
+        self.assertEqual(in6_ptop(rx[0][IPv6].dst), in6_ptop(self.pg1.remote_ip6_ll))
+        self.assertEqual(ipv6nh[rx[0][IPv6].nh], "ICMPv6")
+        self.assertEqual(rx[0][ICMPv6ND_NA].tgt, self.pg0.remote_ip6)
+        self.assertTrue(rx[0].haslayer(ICMPv6NDOptDstLLAddr))
+        self.assertEqual(rx[0][ICMPv6NDOptDstLLAddr].lladdr, self.pg1.local_mac)
+
+        self.vapi.ip6nd_proxy_enable_disable_v2(
+            sw_if_index=self.pg1.sw_if_index, is_enable=0, flags=1
+        )
+
     def test_nd_mirror_proxy(self):
         """Interface (Mirror) Proxy ND"""
 
@@ -59,14 +132,7 @@ class TestNDPROXY(VppTestCase):
         # the curious aspect of this setup is that ND requests from the host
         # will come from the VPP's own address.
         #
-        addr = self.pg0.remote_ip6
-        nsma = in6_getnsma(inet_pton(AF_INET6, addr))
-        d = inet_ntop(AF_INET6, nsma)
-
-        # Make pg1 un-numbered to pg0
-        #
-        self.pg1.unconfig_ip6()
-        self.pg1.set_unnumbered(self.pg0.sw_if_index)
+        addr, nsma, d = self._setup_unnumbered_mirror_topology()
 
         #
         # Enable ND proxy on pg1
@@ -98,12 +164,7 @@ class TestNDPROXY(VppTestCase):
         #
         # Send the unicast ND request
         #
-        unicast_nd_req_from_host = (
-            Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac)
-            / IPv6(dst=self.pg0.remote_ip6, src=self.pg1.remote_ip6_ll)
-            / ICMPv6ND_NS(tgt=self.pg0.remote_ip6)
-            / ICMPv6NDOptSrcLLAddr(lladdr=self.pg1.remote_mac)
-        )
+        unicast_nd_req_from_host = self._build_unicast_nd_req_from_host()
 
         rx = self.send_and_expect(self.pg1, [unicast_nd_req_from_host], self.pg0)
         self.assertEqual(rx[0][Ether].src, self.pg0.local_mac)

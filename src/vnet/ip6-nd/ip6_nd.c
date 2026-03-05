@@ -26,18 +26,8 @@
 #define DEF_MAX_RADV_INTERVAL 200
 #define DEF_MIN_RADV_INTERVAL .75 * DEF_MAX_RADV_INTERVAL
 
-typedef struct ip6_nd_t_
-{
-  /* local information */
-  u32 sw_if_index;
-
-  /* stats */
-  u32 n_solicitations_rcvd;
-  u32 n_solicitations_dropped;
-} ip6_nd_t;
-
 static ip6_link_delegate_id_t ip6_nd_delegate_id;
-static ip6_nd_t *ip6_nd_pool;
+ip6_nd_main_t ip6_nd_main;
 
 static_always_inline uword
 icmp6_neighbor_solicitation_or_advertisement (vlib_main_t * vm,
@@ -300,6 +290,7 @@ static void
 ip6_nd_link_enable (u32 sw_if_index)
 {
   const ethernet_interface_t *eth;
+  ip6_nd_main_t *i6ndm = &ip6_nd_main;
   ip6_nd_t *ind;
 
   eth = ip6_nd_get_eth_itf (sw_if_index);
@@ -310,22 +301,22 @@ ip6_nd_link_enable (u32 sw_if_index)
   ASSERT (INDEX_INVALID == ip6_link_delegate_get (sw_if_index,
 						  ip6_nd_delegate_id));
 
-  pool_get_zero (ip6_nd_pool, ind);
+  pool_get_zero (i6ndm->ip6_nd_pool, ind);
 
   ind->sw_if_index = sw_if_index;
 
-  ip6_link_delegate_update (sw_if_index, ip6_nd_delegate_id,
-			    ind - ip6_nd_pool);
+  ip6_link_delegate_update (sw_if_index, ip6_nd_delegate_id, ind - i6ndm->ip6_nd_pool);
 }
 
 static void
 ip6_nd_delegate_disable (index_t indi)
 {
+  ip6_nd_main_t *i6ndm = &ip6_nd_main;
   ip6_nd_t *ind;
 
-  ind = pool_elt_at_index (ip6_nd_pool, indi);
+  ind = pool_elt_at_index (i6ndm->ip6_nd_pool, indi);
 
-  pool_put (ip6_nd_pool, ind);
+  pool_put (i6ndm->ip6_nd_pool, ind);
 }
 
 static uword
@@ -417,6 +408,10 @@ const static ip6_link_delegate_vft_t ip6_nd_delegate_vft = {
 static clib_error_t *
 ip6_nd_init (vlib_main_t * vm)
 {
+  ip6_nd_main_t *i6ndm = &ip6_nd_main;
+  i6ndm->ip6_nd_pool = NULL;
+  i6ndm->i6nd_sw_if_indexes = NULL;
+
   icmp6_register_type (vm, ICMP6_neighbor_solicitation,
 		       ip6_icmp_neighbor_solicitation_node.index);
   icmp6_register_type (vm, ICMP6_neighbor_advertisement,
