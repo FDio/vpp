@@ -421,12 +421,12 @@ check_transport:
       session_get_transport_proto (s) != sf->transport_proto)
     return 0;
 
-  if (s->session_state >= SESSION_STATE_TRANSPORT_DELETED)
-    return 0;
-
   /* No explicit ip:port match requested */
   if (!sf->endpt_flags)
     return 1;
+
+  if (s->session_state >= SESSION_STATE_TRANSPORT_DELETED)
+    return 0;
 
   tc = session_get_transport (s);
   if (sf->endpt_flags & SESSION_CLI_FILTER_ENDPT_LOCAL)
@@ -645,6 +645,9 @@ session_cli_show_session_filter (vlib_main_t *vm, session_cli_filter_t *sf)
 	      output_suppressed = 1;
 	      continue;
 	    }
+	  /* supress printing of transport deleted sessions */
+	  if (s->session_state >= SESSION_STATE_TRANSPORT_DELETED)
+	    continue;
 	  vlib_cli_output (vm, "%U", format_session, s, sf->verbose);
 	}
     }
