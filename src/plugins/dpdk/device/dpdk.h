@@ -64,19 +64,20 @@ extern vlib_node_registration_t admin_up_down_process_node;
 
 typedef uint16_t dpdk_portid_t;
 
-#define foreach_dpdk_device_flags                                             \
-  _ (0, ADMIN_UP, "admin-up")                                                 \
-  _ (1, PROMISC, "promisc")                                                   \
-  _ (3, PMD_INIT_FAIL, "pmd-init-fail")                                       \
-  _ (4, MAYBE_MULTISEG, "maybe-multiseg")                                     \
-  _ (5, HAVE_SUBIF, "subif")                                                  \
-  _ (9, TX_OFFLOAD, "tx-offload")                                             \
-  _ (10, INTEL_PHDR_CKSUM, "intel-phdr-cksum")                                \
-  _ (11, RX_FLOW_OFFLOAD, "rx-flow-offload")                                  \
-  _ (12, RX_IP4_CKSUM, "rx-ip4-cksum")                                        \
-  _ (13, INT_SUPPORTED, "int-supported")                                      \
-  _ (14, INT_UNMASKABLE, "int-unmaskable")                                    \
-  _ (15, TX_PREPARE, "tx-prepare")
+#define foreach_dpdk_device_flags                                                                  \
+  _ (0, ADMIN_UP, "admin-up")                                                                      \
+  _ (1, PROMISC, "promisc")                                                                        \
+  _ (3, PMD_INIT_FAIL, "pmd-init-fail")                                                            \
+  _ (4, MAYBE_MULTISEG, "maybe-multiseg")                                                          \
+  _ (5, HAVE_SUBIF, "subif")                                                                       \
+  _ (9, TX_OFFLOAD, "tx-offload")                                                                  \
+  _ (10, INTEL_PHDR_CKSUM, "intel-phdr-cksum")                                                     \
+  _ (11, RX_FLOW_OFFLOAD, "rx-flow-offload")                                                       \
+  _ (12, RX_IP4_CKSUM, "rx-ip4-cksum")                                                             \
+  _ (13, INT_SUPPORTED, "int-supported")                                                           \
+  _ (14, INT_UNMASKABLE, "int-unmaskable")                                                         \
+  _ (15, TX_PREPARE, "tx-prepare")                                                                 \
+  _ (16, FLOW_TRANSFER, "flow-transfer")
 
 typedef enum
 {
@@ -215,7 +216,7 @@ typedef struct
   /* next node index if we decide to steal the rx graph arc */
   u32 per_interface_next_index;
 
-  u16 flags;
+  u32 flags;
 
   /* DPDK device port number */
   dpdk_portid_t port_id;

@@ -98,11 +98,40 @@
 #endif
 
 /* constant structs */
-static const struct rte_flow_attr ingress = { .ingress = 1 };
-static const struct rte_flow_actions_template_attr action_attr = { .ingress = 1 };
-static const struct rte_flow_pattern_template_attr pattern_attr = { .ingress = 1,
-								    .relaxed_matching = 1 };
 static const struct rte_flow_op_attr async_op = { .postpone = 1 };
+
+static inline void
+dpdk_flow_attr_init (dpdk_device_t *xd, struct rte_flow_attr *attr)
+{
+  clib_memset (attr, 0, sizeof (*attr));
+  if (xd->flags & DPDK_DEVICE_FLAG_FLOW_TRANSFER)
+    attr->transfer = 1;
+  else
+    attr->ingress = 1;
+}
+
+static inline void
+dpdk_flow_pattern_template_attr_init (dpdk_device_t *xd,
+				      struct rte_flow_pattern_template_attr *attr)
+{
+  clib_memset (attr, 0, sizeof (*attr));
+  attr->relaxed_matching = 1;
+  if (xd->flags & DPDK_DEVICE_FLAG_FLOW_TRANSFER)
+    attr->transfer = 1;
+  else
+    attr->ingress = 1;
+}
+
+static inline void
+dpdk_flow_actions_template_attr_init (dpdk_device_t *xd,
+				      struct rte_flow_actions_template_attr *attr)
+{
+  clib_memset (attr, 0, sizeof (*attr));
+  if (xd->flags & DPDK_DEVICE_FLAG_FLOW_TRANSFER)
+    attr->transfer = 1;
+  else
+    attr->ingress = 1;
+}
 
 static inline bool
 mac_address_is_all_zero (const u8 addr[6])
@@ -1310,7 +1339,10 @@ dpdk_flow_add (dpdk_device_t *xd, vnet_flow_t *f, dpdk_flow_entry_t *fe)
 {
   struct rte_flow_item items[DPDK_MAX_FLOW_ITEMS];
   struct rte_flow_action actions[DPDK_MAX_FLOW_ACTIONS];
+  struct rte_flow_attr flow_attr;
   int rv;
+
+  dpdk_flow_attr_init (xd, &flow_attr);
 
   if ((rv = dpdk_flow_fill_items (xd, f, fe, items)) != 0)
     return rv;
@@ -1318,7 +1350,7 @@ dpdk_flow_add (dpdk_device_t *xd, vnet_flow_t *f, dpdk_flow_entry_t *fe)
   if ((rv = dpdk_flow_fill_actions (xd, f, fe, actions)) != 0)
     return rv;
 
-  rv = rte_flow_validate (xd->port_id, &ingress, items, actions, &xd->last_flow_error);
+  rv = rte_flow_validate (xd->port_id, &flow_attr, items, actions, &xd->last_flow_error);
 
   if (rv)
     {
@@ -1334,7 +1366,7 @@ dpdk_flow_add (dpdk_device_t *xd, vnet_flow_t *f, dpdk_flow_entry_t *fe)
       return rv;
     }
 
-  fe->handle = rte_flow_create (xd->port_id, &ingress, items, actions, &xd->last_flow_error);
+  fe->handle = rte_flow_create (xd->port_id, &flow_attr, items, actions, &xd->last_flow_error);
 
   if (!fe->handle)
     {
@@ -1352,18 +1384,22 @@ dpdk_flow_async_template_add (dpdk_device_t *xd, vnet_flow_t *t, dpdk_flow_templ
   struct rte_flow_item items[DPDK_MAX_FLOW_ITEMS];
   struct rte_flow_action actions[DPDK_MAX_FLOW_ACTIONS];
   struct rte_flow_action actions_mask[DPDK_MAX_FLOW_ACTIONS];
+  struct rte_flow_pattern_template_attr pat_attr;
+  struct rte_flow_actions_template_attr act_attr;
   struct rte_flow_template_table_attr template_attr = {
     .nb_flows = nb_flows,
   };
   int rv = 0;
 
-  clib_memcpy (&template_attr.flow_attr, &ingress, sizeof (ingress));
+  dpdk_flow_attr_init (xd, &template_attr.flow_attr);
+  dpdk_flow_pattern_template_attr_init (xd, &pat_attr);
+  dpdk_flow_actions_template_attr_init (xd, &act_attr);
 
   if ((rv = dpdk_flow_fill_items_template (xd, t, fte, items)) != 0)
     return rv;
 
   fte->pattern_handle =
-    rte_flow_pattern_template_create (xd->port_id, &pattern_attr, items, &xd->last_flow_error);
+    rte_flow_pattern_template_create (xd->port_id, &pat_attr, items, &xd->last_flow_error);
   if (!fte->pattern_handle)
     {
       dpdk_device_flow_error (xd, "rte_flow_pattern_template_create");
@@ -1374,7 +1410,7 @@ dpdk_flow_async_template_add (dpdk_device_t *xd, vnet_flow_t *t, dpdk_flow_templ
   if ((rv = dpdk_flow_fill_actions_template (xd, t, fte, actions, actions_mask)) != 0)
     goto done_pattern_handle;
 
-  fte->actions_handle = rte_flow_actions_template_create (xd->port_id, &action_attr, actions,
+  fte->actions_handle = rte_flow_actions_template_create (xd->port_id, &act_attr, actions,
 							  actions_mask, &xd->last_flow_error);
   if (!fte->actions_handle)
     {
