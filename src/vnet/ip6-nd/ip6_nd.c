@@ -12,6 +12,7 @@
 #include <vnet/ip-neighbor/ip_neighbor_dp.h>
 
 #include <vnet/fib/ip6_fib.h>
+#include <vnet/fib/fib_entry_src.h>
 #include <vnet/ip/ip6_link.h>
 #include <vnet/ip/ip6_ll_table.h>
 
@@ -39,13 +40,127 @@ typedef struct ip6_nd_t_
 static ip6_link_delegate_id_t ip6_nd_delegate_id;
 static ip6_nd_t *ip6_nd_pool;
 
+static int
+ip6_nd_unnumbered (u32 input_sw_if_index, u32 conn_sw_if_index)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_interface_main_t *vim = &vnm->interface_main;
+  vnet_sw_interface_t *si;
+
+  /* verify that the input interface is unnumbered to the
+   * connected interface on which the subnet is configured */
+  si = &vim->sw_interfaces[input_sw_if_index];
+
+  if (!(si->flags & VNET_SW_INTERFACE_FLAG_UNNUMBERED &&
+	(si->unnumbered_sw_if_index == conn_sw_if_index)))
+    /* the input interface is not unnumbered to the interface on
+     * which the covering connected/attached prefix is configured;
+     * so, this is not the case for unnumbered */
+    return 0;
+
+  return !0;
+}
+
+static u32
+ip6_nd_src_is_on_link (u32 sw_if_index, const ip6_address_t *src_addr)
+{
+  fib_node_index_t src_fei, src_first_fei;
+  fib_entry_t *src_fib_entry;
+  fib_entry_src_t *src;
+  fib_entry_flag_t src_flags;
+  fib_source_t source;
+  const fib_prefix_t *pfx;
+  u32 fib_index, conn_sw_if_index;
+  int attached, mask;
+
+  fib_index = ip6_fib_table_get_index_for_sw_if_index (sw_if_index);
+  if (~0 == fib_index)
+    return ICMP6_ERROR_NEIGHBOR_SOLICITATION_SOURCE_NOT_ON_LINK;
+
+  attached = 0;
+  mask = 128;
+  src_first_fei = FIB_NODE_INDEX_INVALID;
+
+  /* walk towards shorter covering prefixes until an attached/connected
+   * source is found or the default route is reached */
+  do
+    {
+      src_fei = ip6_fib_table_lookup (fib_index, src_addr, mask);
+      src_fib_entry = fib_entry_get (src_fei);
+      if (FIB_NODE_INDEX_INVALID == src_first_fei)
+	src_first_fei = src_fei;
+
+      /*
+       * check all FIB entry sources; we only accept if any source marks the
+       * prefix connected/attached and reject if any source marks it local */
+      FOR_EACH_SRC_ADDED (src_fib_entry, src, source, ({
+			    src_flags = fib_entry_get_flags_for_source (src_fei, source);
+
+			    /* reject packets claiming one of our own addresses as the ND source */
+			    if (FIB_ENTRY_FLAG_LOCAL & src_flags)
+			      return ICMP6_ERROR_NEIGHBOR_SOLICITATION_SOURCE_NOT_ON_LINK;
+
+			    if (FIB_SOURCE_IP6_ND_PROXY == source)
+			      {
+				/* consider a source explicitly configured by ND proxy as valid */
+				attached = 1;
+				break;
+			      }
+
+			    if ((FIB_ENTRY_FLAG_ATTACHED & src_flags) ||
+				(FIB_ENTRY_FLAG_CONNECTED & src_flags))
+			      {
+				/* source must be local to the subnet of the receiving interface */
+				attached = 1;
+				break;
+			      }
+			    /*
+			     * else, the packet was sent from an address that is neither
+			     * connected nor attached, i.e. not covered by a link subnet
+			     * and not an already learned host response */
+			  }));
+      /* shorter mask lookup for the next iteration */
+      pfx = fib_entry_get_prefix (src_fei);
+      if (0 == pfx->fp_len)
+	break;
+      mask = pfx->fp_len - 1;
+    }
+  /* continue until we hit the default route or we find the attached we are looking for */
+  while (!attached && !fib_entry_is_sourced (src_fei, FIB_SOURCE_DEFAULT_ROUTE));
+
+  /* If no attached/connected cover is found, preserve ARP-like fallback
+   * based on the original source lookup result. */
+  conn_sw_if_index = fib_entry_get_any_resolving_interface (attached ? src_fei : src_first_fei);
+
+  if (!attached)
+    {
+      if (~0 == conn_sw_if_index)
+	{
+	  const vnet_sw_interface_t *si;
+
+	  si = vnet_get_sw_interface (vnet_get_main (), sw_if_index);
+	  if (!(si->flags & VNET_SW_INTERFACE_FLAG_UNNUMBERED))
+	    return ICMP6_ERROR_NEIGHBOR_SOLICITATION_SOURCE_NOT_ON_LINK;
+	}
+      else if (!ip6_nd_unnumbered (sw_if_index, conn_sw_if_index))
+	return ICMP6_ERROR_NEIGHBOR_SOLICITATION_SOURCE_NOT_ON_LINK;
+    }
+
+  /* if attached/connected source exists, it must resolve to RX interface
+   * unless RX interface is explicitly unnumbered to the resolving interface */
+  if (attached && sw_if_index != conn_sw_if_index &&
+      !ip6_nd_unnumbered (sw_if_index, conn_sw_if_index))
+    return ICMP6_ERROR_NEIGHBOR_SOLICITATION_SOURCE_NOT_ON_LINK;
+
+  return ICMP6_ERROR_NONE;
+}
+
 static_always_inline uword
 icmp6_neighbor_solicitation_or_advertisement (vlib_main_t * vm,
 					      vlib_node_runtime_t * node,
 					      vlib_frame_t * frame,
 					      uword is_solicitation)
 {
-  ip6_main_t *im = &ip6_main;
   uword n_packets = frame->n_vectors;
   u32 *from, *to_next;
   u32 n_left_from, n_left_to_next, next_index, n_advertisements_sent;
@@ -81,8 +196,6 @@ icmp6_neighbor_solicitation_or_advertisement (vlib_main_t * vm,
 	  u32 bi0, options_len0, sw_if_index0, next0, error0;
 	  u32 ip6_sadd_link_local, ip6_sadd_unspecified;
 	  ip_neighbor_counter_type_t c_type;
-	  int is_rewrite0;
-	  u32 ni0;
 
 	  bi0 = to_next[0] = from[0];
 
@@ -104,32 +217,10 @@ icmp6_neighbor_solicitation_or_advertisement (vlib_main_t * vm,
 	  ip6_sadd_unspecified =
 	    ip6_address_is_unspecified (&ip0->src_address);
 
-	  /* Check that source address is unspecified, link-local or else on-link. */
+	  /* For non-unspecified/non-link-local sources, validate on-link
+	   * using control-plane FIB flags (not forwarding adjacency) */
 	  if (!ip6_sadd_unspecified && !ip6_sadd_link_local)
-	    {
-	      u32 src_adj_index0 = ip6_src_lookup_for_packet (im, p0, ip0);
-
-	      if (ADJ_INDEX_INVALID != src_adj_index0)
-		{
-		  ip_adjacency_t *adj0 = adj_get (src_adj_index0);
-
-		  /* Allow all realistic-looking rewrite adjacencies to pass */
-		  ni0 = adj0->lookup_next_index;
-		  is_rewrite0 = (ni0 >= IP_LOOKUP_NEXT_ARP) &&
-		    (ni0 < IP6_LOOKUP_N_NEXT);
-
-		  error0 = ((adj0->rewrite_header.sw_if_index != sw_if_index0
-			     || !is_rewrite0)
-			    ?
-			    ICMP6_ERROR_NEIGHBOR_SOLICITATION_SOURCE_NOT_ON_LINK
-			    : error0);
-		}
-	      else
-		{
-		  error0 =
-		    ICMP6_ERROR_NEIGHBOR_SOLICITATION_SOURCE_NOT_ON_LINK;
-		}
-	    }
+	    error0 = ip6_nd_src_is_on_link (sw_if_index0, &ip0->src_address);
 
 	  o0 = (void *) (h0 + 1);
 	  o0 = ((options_len0 == 8 && o0->header.type == option_type
