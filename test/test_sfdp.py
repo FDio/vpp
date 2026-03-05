@@ -2,6 +2,7 @@
 
 # SPDX-License-Identifier: Apache-2.0
 # Copyright(c) 2025 Cisco Systems, Inc.
+import time
 import unittest
 from asfframework import VppTestRunner
 from framework import VppTestCase
@@ -838,6 +839,90 @@ class TestSfdp(VppTestCase):
         # Delete tenants
         self.vapi.sfdp_tenant_add_del(tenant_id=1, is_del=True)
         self.vapi.sfdp_tenant_add_del(tenant_id=2, is_del=True)
+
+
+@unittest.skipIf(
+    "sfdp_services" in config.excluded_plugins,
+    "SFDP_Services plugin is required to run SFDP tests",
+)
+class TestSfdpTimer(VppTestCase):
+    """SFDP timer wheel behavior"""
+
+    # 20ms makes one wheel turn (2048 slots) in 2.048s.
+    extra_vpp_config = ["sfdp { timer-interval 0.02 }"]
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestSfdpTimer, cls).setUpClass()
+        try:
+            cls.create_pg_interfaces(range(1))
+            cls.pg0.config_ip4()
+            cls.pg0.admin_up()
+        except Exception:
+            super(TestSfdpTimer, cls).tearDownClass()
+            raise
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.pg0.unconfig_ip4()
+        cls.pg0.admin_down()
+        super(TestSfdpTimer, cls).tearDownClass()
+
+    def setUp(self):
+        super(TestSfdpTimer, self).setUp()
+        self.vapi.cli("sfdp tenant add 1 context 100")
+        self.vapi.cli("set sfdp interface-input pg0 tenant 1")
+
+    def tearDown(self):
+        self.vapi.cli("set sfdp interface-input pg0 tenant 1 disable")
+        self.vapi.cli("sfdp tenant del 1")
+        super(TestSfdpTimer, self).tearDown()
+
+    def _session_ids(self):
+        return {sess.session_id for sess in self.vapi.sfdp_session_dump()}
+
+    def _wait_for_session_appear(self, timeout):
+        deadline = time.time() + timeout
+        session_ids = self._session_ids()
+        while not session_ids and time.time() < deadline:
+            time.sleep(0.1)
+            session_ids = self._session_ids()
+        self.assertTrue(session_ids, "No SFDP session created")
+        return next(iter(session_ids))
+
+    def _wait_for_session_disappear(self, session_id, timeout):
+        deadline = time.time() + timeout
+        session_ids = self._session_ids()
+        while session_id in session_ids and time.time() < deadline:
+            time.sleep(0.1)
+            session_ids = self._session_ids()
+        self.assertNotIn(session_id, session_ids)
+
+    def _send_embryonic_tcp_syn(self, dst_ip, sport):
+        pkt = (
+            Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+            / IP(src=self.pg0.remote_ip4, dst=dst_ip)
+            / TCP(sport=sport, dport=80, flags="S")
+        )
+
+        self.pg0.add_stream(pkt)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        self.pg0.assert_nothing_captured()
+
+    def test_sfdp_timer_interval_shown_in_status(self):
+        """Configured timer interval is reported by show sfdp status"""
+        status = self.vapi.cli("show sfdp status")
+
+        self.assertIn("timer tick interval (s): 0.020000", status)
+
+    def test_sfdp_timer_interval_rearm_after_wheel_turn(self):
+        """Session still expires after a timer wheel rearm"""
+        self.vapi.cli("set sfdp timeout tenant 1 embryonic 3")
+
+        self._send_embryonic_tcp_syn("198.51.100.2", 12346)
+        session_id = self._wait_for_session_appear(timeout=4.0)
+        self._wait_for_session_disappear(session_id, timeout=6.0)
 
 
 if __name__ == "__main__":
