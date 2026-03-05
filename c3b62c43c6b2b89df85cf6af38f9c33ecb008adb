@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "23a2f9a0_46cfb203",
+        "filename": "src/plugins/quic_quicly/quic_quicly.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1060,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-03-05T03:49:30Z",
+      "side": 1,
+      "message": "udp_session-\u003ethread_index?",
+      "revId": "c3b62c43c6b2b89df85cf6af38f9c33ecb008adb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
