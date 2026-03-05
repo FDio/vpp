@@ -99,26 +99,20 @@ srtp_ctx_detach (srtp_tc_t *ctx)
 u32
 srtp_listener_ctx_alloc (void)
 {
-  srtp_main_t *sm = &srtp_main;
-  srtp_tc_t *ctx;
-
-  pool_get_zero (sm->listener_ctx_pool, ctx);
-  return ctx - sm->listener_ctx_pool;
+  return srtp_ctx_alloc_w_thread (0);
 }
 
 void
 srtp_listener_ctx_free (srtp_tc_t *ctx)
 {
   srtp_ctx_free_policy (ctx);
-  if (CLIB_DEBUG)
-    clib_memset (ctx, 0xfb, sizeof (*ctx));
-  pool_put (srtp_main.listener_ctx_pool, ctx);
+  srtp_ctx_free (ctx);
 }
 
 srtp_tc_t *
 srtp_listener_ctx_get (u32 ctx_index)
 {
-  return pool_elt_at_index (srtp_main.listener_ctx_pool, ctx_index);
+  return srtp_ctx_get_w_thread (ctx_index, 0);
 }
 
 u32
@@ -426,10 +420,10 @@ srtp_session_accept_callback (session_t *us)
   u32 ctx_handle;
 
   srtp_listener = listen_session_get_from_handle (us->listener_handle);
-  lctx = srtp_listener_ctx_get (srtp_listener->opaque);
 
   ctx_handle = srtp_ctx_alloc_w_thread (us->thread_index);
   ctx = srtp_ctx_get_w_thread (ctx_handle, us->thread_index);
+  lctx = srtp_listener_ctx_get (srtp_listener->opaque);
   clib_memcpy_fast (ctx, lctx, sizeof (*lctx));
   ctx->c_thread_index = vlib_get_thread_index ();
   ctx->srtp_ctx_handle = ctx_handle;
