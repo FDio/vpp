@@ -612,6 +612,7 @@ ip6_ext_header_walk (vlib_buffer_t *b, ip6_header_t *ip, int find_hdr_type,
 			     sizeof (ip6_header_t) +
 			       clib_net_to_host_u16 (ip->payload_length));
   u32 offset = sizeof (ip6_header_t);
+
   if ((ip6_ext_header_len_s (ip->protocol, next_header) + offset) > max_offset)
     {
       return -1;
