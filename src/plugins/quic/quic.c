@@ -319,25 +319,23 @@ quic_start_listen (u32 quic_listen_session_index,
 static u32
 quic_stop_listen (u32 lctx_index)
 {
-  QUIC_DBG (2, "Called quic_stop_listen");
-  if (PREDICT_TRUE (lctx_index))
-    {
-      quic_ctx_t *lctx;
-      lctx = quic_ctx_get (lctx_index, 0);
-      QUIC_ASSERT (quic_ctx_is_listener (lctx));
-      vnet_unlisten_args_t a = {
-	.handle = lctx->udp_session_handle,
-	.app_index = quic_main.app_index,
-	.wrk_map_index = 0 /* default wrk */
-      };
-      if (vnet_unlisten (&a))
-	clib_warning ("unlisten errored");
+  quic_ctx_t *lctx;
 
-      quic_eng_crypto_context_release (
-	lctx->crypto_context_index,
-	QUIC_CRCTX_CTX_INDEX_DECODE_THREAD (lctx->crypto_context_index));
-      quic_ctx_free (&quic_main, lctx);
-    }
+  QUIC_DBG (2, "Called quic_stop_listen");
+
+  lctx = quic_ctx_get (lctx_index, 0);
+  QUIC_ASSERT (quic_ctx_is_listener (lctx));
+  vnet_unlisten_args_t a = {
+    .handle = lctx->udp_session_handle,
+    .app_index = quic_main.app_index,
+    .wrk_map_index = 0 /* default wrk */
+  };
+  if (vnet_unlisten (&a))
+    clib_warning ("unlisten errored");
+
+  quic_eng_crypto_context_release (lctx->crypto_context_index,
+				   QUIC_CRCTX_CTX_INDEX_DECODE_THREAD (lctx->crypto_context_index));
+  quic_ctx_free (&quic_main, lctx);
   return 0;
 }
 
