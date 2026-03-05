@@ -593,6 +593,109 @@ class TestIPv6(TestIPv6ND):
         )
         self.assertFalse(find_route(self, self.pg0._remote_hosts[3].ip6_ll, 128))
 
+    def test_ns_offlink_source_with_same_if_route(self):
+        """IPv6 NS source must be on-link, not just same-interface routed"""
+
+        off_link_src = "2002::1234"
+        # Install a routed cover via the same RX interface; this reproduces
+        # the adjacency-only acceptance path while source remains off-link.
+        off_link_cover = VppIpRoute(
+            self,
+            "2002::",
+            16,
+            [VppRoutePath(self.pg0.remote_ip6, self.pg0.sw_if_index)],
+        )
+        off_link_cover.add_vpp_config()
+
+        try:
+            nsma = in6_getnsma(inet_pton(AF_INET6, self.pg0.local_ip6))
+            ns_dst = inet_ntop(AF_INET6, nsma)
+
+            p = (
+                Ether(dst=in6_getnsmac(nsma), src=self.pg0.remote_mac)
+                / IPv6(dst=ns_dst, src=off_link_src)
+                / ICMPv6ND_NS(tgt=self.pg0.local_ip6)
+                / ICMPv6NDOptSrcLLAddr(lladdr=self.pg0.remote_mac)
+            )
+
+            self.send_and_assert_no_replies(
+                self.pg0,
+                [p],
+                "No response to NS from off-link source resolved via routed adjacency",
+            )
+            self.assertFalse(find_nbr(self, self.pg0.sw_if_index, off_link_src))
+        finally:
+            off_link_cover.remove_vpp_config()
+
+    def test_na_offlink_source_with_same_if_route(self):
+        """IPv6 NA source must be on-link before learning neighbor state"""
+
+        off_link_peer = "2002::1234"
+        # Install a routed cover via the same RX interface; this reproduces
+        # the adjacency-only acceptance path while source remains off-link.
+        off_link_cover = VppIpRoute(
+            self,
+            "2002::",
+            16,
+            [VppRoutePath(self.pg0.remote_ip6, self.pg0.sw_if_index)],
+        )
+        off_link_cover.add_vpp_config()
+
+        try:
+            na = (
+                Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+                / IPv6(dst=self.pg0.local_ip6, src=off_link_peer)
+                / ICMPv6ND_NA(tgt=off_link_peer)
+                / ICMPv6NDOptDstLLAddr(lladdr=self.pg0.remote_mac)
+            )
+
+            self.send_and_assert_no_replies(
+                self.pg0,
+                [na],
+                "No neighbor learning from NA with off-link source",
+            )
+            self.assertFalse(find_nbr(self, self.pg0.sw_if_index, off_link_peer))
+        finally:
+            off_link_cover.remove_vpp_config()
+
+    def test_ns_offlink_source_allowed_on_unnumbered(self):
+        """IPv6 NS off-link source is allowed when RX interface is unnumbered"""
+
+        off_link_src = "2002::1234"
+        off_link_cover = VppIpRoute(
+            self,
+            "2002::",
+            16,
+            [VppRoutePath(self.pg0.remote_ip6, self.pg0.sw_if_index)],
+        )
+        off_link_cover.add_vpp_config()
+
+        self.pg1.unconfig_ip6()
+        self.pg1.set_unnumbered(self.pg0.sw_if_index)
+
+        try:
+            nsma = in6_getnsma(inet_pton(AF_INET6, self.pg0.local_ip6))
+            ns_dst = inet_ntop(AF_INET6, nsma)
+
+            p = (
+                Ether(dst=in6_getnsmac(nsma), src=self.pg1.remote_mac)
+                / IPv6(dst=ns_dst, src=off_link_src)
+                / ICMPv6ND_NS(tgt=self.pg0.local_ip6)
+                / ICMPv6NDOptSrcLLAddr(lladdr=self.pg1.remote_mac)
+            )
+
+            self.send_and_expect_na(
+                self.pg1,
+                p,
+                "NS from off-link source on unnumbered interface",
+                dst_ip=off_link_src,
+                tgt_ip=self.pg0.local_ip6,
+            )
+            self.assertTrue(find_nbr(self, self.pg1.sw_if_index, off_link_src))
+        finally:
+            self.pg1.unset_unnumbered(self.pg0.sw_if_index)
+            off_link_cover.remove_vpp_config()
+
     def test_nd_incomplete(self):
         """IP6-ND Incomplete"""
         self.pg1.generate_remote_hosts(3)
