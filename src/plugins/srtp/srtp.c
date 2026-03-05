@@ -510,12 +510,13 @@ srtp_migrate_ctx_reply (void *arg)
 static void
 srtp_migrate_ctx (void *arg)
 {
-  u32 ctx_handle, thread_index, old_thread_index, old_ctx_index;
+  u32 ctx_handle, thread_index, old_ctx_index;
+  session_handle_tu_t old_thread_index;
   srtp_tc_t *ctx = (srtp_tc_t *) arg;
   session_t *us, *new_app_session;
   void *rargs;
 
-  old_thread_index = ctx->c_thread_index;
+  old_thread_index.thread_index = ctx->c_thread_index;
   old_ctx_index = ctx->c_c_index;
   thread_index = session_thread_from_handle (ctx->srtp_session_handle);
   ASSERT (thread_index == vlib_get_thread_index ());
@@ -537,8 +538,7 @@ srtp_migrate_ctx (void *arg)
 
   /* Call back original thread and ask for cleanup */
   rargs = uword_to_pointer ((uword) old_ctx_index, void *);
-  session_send_rpc_evt_to_thread (old_thread_index, srtp_migrate_ctx_reply,
-				  rargs);
+  session_send_rpc_evt_to_thread (old_thread_index.thread_index, srtp_migrate_ctx_reply, rargs);
 }
 
 static void
