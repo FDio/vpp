@@ -209,13 +209,14 @@ class Service(Processable):
 class Typedef(Processable):
     type = "Typedef"
 
-    def __init__(self, name, flags, block):
+    def __init__(self, name, flags, block, comment=None):
         self.name = name
         self.flags = flags
         self.block = block
         self.crc = str(block).encode()
         self.manual_print = False
         self.manual_endian = False
+        self.comment = comment
         for f in flags:
             if f == "manual_print":
                 self.manual_print = True
@@ -564,6 +565,7 @@ class VPPAPIParser:
         self.fields = []
         self.revision = revision
         self.last_comment = None
+        self.last_comment_end_lineno = 0
 
     def _parse_error(self, msg, coord):
         raise ParseError("%s: %s" % (coord, msg))
@@ -752,7 +754,12 @@ class VPPAPIParser:
     def p_define(self, p):
         """define : DEFINE ID '{' block_statements_opt '}' ';'"""
         self.fields = []
-        p[0] = Define(p[2], [], p[4], self.last_comment)
+        comment = (
+            self.last_comment
+            if p.lineno(1) <= self.last_comment_end_lineno + 1
+            else None
+        )
+        p[0] = Define(p[2], [], p[4], comment)
         self.last_comment = None
 
     def p_define_flist(self, p):
@@ -764,7 +771,12 @@ class VPPAPIParser:
                 self._token_coord(p, 1),
             )
         else:
-            p[0] = Define(p[3], p[1], p[5], self.last_comment)
+            comment = (
+                self.last_comment
+                if p.lineno(2) <= self.last_comment_end_lineno + 1
+                else None
+            )
+            p[0] = Define(p[3], p[1], p[5], comment)
             self.last_comment = None
 
     def p_flist(self, p):
@@ -788,11 +800,23 @@ class VPPAPIParser:
 
     def p_typedef(self, p):
         """typedef : TYPEDEF ID '{' block_statements_opt '}' ';'"""
-        p[0] = Typedef(p[2], [], p[4])
+        comment = (
+            self.last_comment
+            if p.lineno(1) <= self.last_comment_end_lineno + 1
+            else None
+        )
+        p[0] = Typedef(p[2], [], p[4], comment)
+        self.last_comment = None
 
     def p_typedef_flist(self, p):
         """typedef : flist TYPEDEF ID '{' block_statements_opt '}' ';'"""
-        p[0] = Typedef(p[3], p[1], p[5])
+        comment = (
+            self.last_comment
+            if p.lineno(3) <= self.last_comment_end_lineno + 1
+            else None
+        )
+        p[0] = Typedef(p[3], p[1], p[5], comment)
+        self.last_comment = None
 
     def p_typedef_alias(self, p):
         """typedef : TYPEDEF declaration"""
@@ -875,6 +899,7 @@ class VPPAPIParser:
     def p_comment(self, p):
         """comment : COMMENT"""
         self.last_comment = p[1]
+        self.last_comment_end_lineno = p.lineno(1) + p[1].count("\n")
         p[0] = []
 
     def p_declaration(self, p):
