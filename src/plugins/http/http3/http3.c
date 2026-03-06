@@ -2235,6 +2235,7 @@ http3_transport_connected_callback (http_conn_t *hc)
   if (PREDICT_FALSE (http3_conn_init (hc_index, thread_index, h3c)))
     return -1;
 
+  hc = http_conn_get_w_thread (hc_index, thread_index);
   sctx = http3_stream_ctx_alloc (hc, pointer_to_uword (hc->opaque), 1);
   sctx->stream_type = HTTP3_STREAM_TYPE_REQUEST;
   sctx->transport_rx_cb = http3_stream_transport_rx_req_client;
@@ -2243,7 +2244,6 @@ http3_transport_connected_callback (http_conn_t *hc)
   http_stats_connections_established_inc (thread_index);
   http_stats_app_streams_opened_inc (thread_index);
 
-  hc = http_conn_get_w_thread (hc_index, thread_index);
   return http_conn_established (hc, &sctx->base, hc->hc_pa_app_api_ctx);
 }
 
