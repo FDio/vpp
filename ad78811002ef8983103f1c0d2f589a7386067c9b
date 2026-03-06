@@ -33,6 +33,23 @@
       "message": "recheck",
       "revId": "ad78811002ef8983103f1c0d2f589a7386067c9b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "090a691d_bb28355d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-03-06T14:00:46Z",
+      "side": 1,
+      "message": "HST failed due to re-located hst directory:\nmake: *** /scratch/docker-build/vpp/test/hs-test: No such file or directory.  Stop.\n\nSince this branch is no longer supported, the GHA issue will not be fixed.\nOverriding the CI vote to merge this cherry-pick which was successfully verified in stable/2510 and stable/2602",
+      "revId": "ad78811002ef8983103f1c0d2f589a7386067c9b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
