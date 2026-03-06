@@ -18,7 +18,6 @@ atl_tx_one_batch (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_dev_t *dev,
   vlib_buffer_t *seg_buf[8 * 32];
   u32 seg_bi[8 * 32];
   u16 pkt_first_seg[32];
-  u8 pkt_n_desc[32];
   u32 pkt_len[32];
   u32 drop_indices[32];
   u32 n_drop = 0;
@@ -64,7 +63,6 @@ atl_tx_one_batch (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_dev_t *dev,
 	  b0 = vlib_get_buffer (vm, buffer_index);
 	}
 
-      pkt_n_desc[n_enq] = n_desc;
       pkt_len[n_enq] = total_len;
 
       for (u32 i = 0; i < n_desc; i++)
