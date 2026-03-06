@@ -611,16 +611,21 @@ quic_quicly_ack_rx_data (session_t *stream_session)
   max_deq = svm_fifo_max_dequeue (f);
 
   QUIC_ASSERT (stream_data->app_rx_data_len >= max_deq);
-  quicly_stream_sync_recvbuf (stream, stream_data->app_rx_data_len - max_deq);
-  QUIC_DBG (3, "Acking %u bytes", stream_data->app_rx_data_len - max_deq);
+  u32 acked = stream_data->app_rx_data_len - max_deq;
+  quicly_stream_sync_recvbuf (stream, acked);
+  QUIC_DBG (3, "Acking %u bytes", acked);
   stream_data->app_rx_data_len = max_deq;
 
-  /* Need to send packets (acks may never be sent otherwise) */
-  if (sctx->flags & QUIC_F_STREAM_TX_DRAINED)
-    {
-      quic_quicly_reschedule_ctx (quic_quicly_get_quic_ctx (
-	sctx->quic_connection_ctx_id, sctx->c_thread_index));
-    }
+  /* Need to send packets to update peer receive window (MAX_STREAM_DATA).
+   * Reschedule if TX is fully drained (need final packets) or if we acked
+   * bytes while TX is flow-control blocked (window=0). In the latter case no
+   * TX events will fire to piggyback the MAX_STREAM_DATA frame, so we must
+   * reschedule explicitly. When TX is not blocked, the next stream TX event
+   * will call reschedule_ctx and the queued MAX_STREAM_DATA will be sent. */
+  if ((sctx->flags & QUIC_F_STREAM_TX_DRAINED) ||
+      (acked && !quicly_stream_can_send (stream, 1 /* at_stream_level */)))
+    quic_quicly_reschedule_ctx (
+      quic_quicly_get_quic_ctx (sctx->quic_connection_ctx_id, sctx->c_thread_index));
 }
 
 static void
