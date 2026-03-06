@@ -2,8 +2,7 @@
  * Copyright(c) 2024 Cisco Systems, Inc.
  */
 
-#ifndef included_sha2_h
-#define included_sha2_h
+#pragma once
 
 #include <vppinfra/clib.h>
 #include <vppinfra/vector.h>
@@ -715,7 +714,4 @@ clib_sha2_hmac (clib_sha2_type_t type, const u8 *key, uword key_len,
 #define clib_hmac_sha512(...) clib_sha2_hmac (CLIB_SHA2_512, __VA_ARGS__)
 #define clib_hmac_sha512_224(...)                                             \
   clib_sha2_hmac (CLIB_SHA2_512_224, __VA_ARGS__)
-#define clib_hmac_sha512_256(...)                                             \
-  clib_sha2_hmac (CLIB_SHA2_512_256, __VA_ARGS__)
-
-#endif /* included_sha2_h */
+#define clib_hmac_sha512_256(...) clib_sha2_hmac (CLIB_SHA2_512_256, __VA_ARGS__)

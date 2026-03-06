@@ -356,8 +356,8 @@ static u64 inc_ct128[] = {
 static clib_error_t *
 test_clib_aes128_ctr (clib_error_t *err)
 {
-  aes_ctr_key_data_t kd;
-  aes_ctr_ctx_t ctx;
+  aes_ctr_key_data_t kd = {};
+  aes_ctr_ctx_t ctx = {};
   u8 pt[INC_TEST_BYTES];
   u8 ct[INC_TEST_BYTES];
 
@@ -408,7 +408,7 @@ REGISTER_TEST (clib_aes128_ctr) = {
 static clib_error_t *
 test_clib_aes192_ctr (clib_error_t *err)
 {
-  aes_ctr_key_data_t kd;
+  aes_ctr_key_data_t kd = {};
   u8 ct[MAX_TEST_DATA_LEN];
 
   FOREACH_ARRAY_ELT (tc, test_cases192)
@@ -438,12 +438,12 @@ REGISTER_TEST (clib_aes192_ctr) = {
 static clib_error_t *
 test_clib_aes256_ctr (clib_error_t *err)
 {
-  aes_ctr_key_data_t kd;
+  aes_ctr_key_data_t kd = {};
   u8 ct[MAX_TEST_DATA_LEN];
 
   FOREACH_ARRAY_ELT (tc, test_cases256)
     {
-      aes_ctr_ctx_t ctx;
+      aes_ctr_ctx_t ctx = {};
       u32 sz = tc->data_len / 3;
 
       clib_aes_ctr_key_expand (&kd, tc->key, AES_KEY_256);
