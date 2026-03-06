@@ -135,7 +135,7 @@ jobs:
       - start-verify
       - verify-checkstyle
     if: ${{ needs.verify-checkstyle.result == 'success' }}
-    uses: fdio/vpp/.github/workflows/vpp-verify-gcc.yml@eb4497824eab8f892014948c7553a1b6777735f5
+    uses: fdio/vpp/.github/workflows/vpp-verify-gcc.yml@76d98a50c18808ce641e28ab5cf7f5883495264f
     with:
       FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
       GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
