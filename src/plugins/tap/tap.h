@@ -89,6 +89,7 @@ tap_create_if (vlib_main_t *vm, tap_create_if_args_t *args)
     "tap_plugin.so", "tap_create_if");
   if (!fn)
     {
+      args->rv = VNET_API_ERROR_FEATURE_DISABLED;
       args->error = clib_error_return (0, "tap plugin not loaded");
       return;
     }
