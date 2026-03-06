@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0
  * Copyright (c) 2019 - 2021 Intel and/or its affiliates.
+ * Copyright (c) 2026 Cisco and/or its affiliates.
  */
 
 #ifndef included_cryptodev_h
@@ -37,32 +38,6 @@
   _ (CHACHA20_POLY1305, AEAD, CHACHA20_POLY1305, 12, 16, 0, 32)               \
   _ (CHACHA20_POLY1305, AEAD, CHACHA20_POLY1305, 12, 16, 8, 32)               \
   _ (CHACHA20_POLY1305, AEAD, CHACHA20_POLY1305, 12, 16, 12, 32)
-
-/**
- * crypto (alg, cryptodev_alg, key_size), hash (alg, digest-size)
- **/
-#define foreach_cryptodev_link_async_alg                                      \
-  _ (AES_128_CBC, AES_CBC, 16, MD5, 12)                                       \
-  _ (AES_192_CBC, AES_CBC, 24, MD5, 12)                                       \
-  _ (AES_256_CBC, AES_CBC, 32, MD5, 12)                                       \
-  _ (AES_128_CBC, AES_CBC, 16, SHA1, 12)                                      \
-  _ (AES_192_CBC, AES_CBC, 24, SHA1, 12)                                      \
-  _ (AES_256_CBC, AES_CBC, 32, SHA1, 12)                                      \
-  _ (AES_128_CBC, AES_CBC, 16, SHA224, 14)                                    \
-  _ (AES_192_CBC, AES_CBC, 24, SHA224, 14)                                    \
-  _ (AES_256_CBC, AES_CBC, 32, SHA224, 14)                                    \
-  _ (AES_128_CBC, AES_CBC, 16, SHA256, 16)                                    \
-  _ (AES_192_CBC, AES_CBC, 24, SHA256, 16)                                    \
-  _ (AES_256_CBC, AES_CBC, 32, SHA256, 16)                                    \
-  _ (AES_128_CBC, AES_CBC, 16, SHA384, 24)                                    \
-  _ (AES_192_CBC, AES_CBC, 24, SHA384, 24)                                    \
-  _ (AES_256_CBC, AES_CBC, 32, SHA384, 24)                                    \
-  _ (AES_128_CBC, AES_CBC, 16, SHA512, 32)                                    \
-  _ (AES_192_CBC, AES_CBC, 24, SHA512, 32)                                    \
-  _ (AES_256_CBC, AES_CBC, 32, SHA512, 32)                                    \
-  _ (AES_128_CTR, AES_CTR, 16, SHA1, 12)                                      \
-  _ (AES_192_CTR, AES_CTR, 24, SHA1, 12)                                      \
-  _ (AES_256_CTR, AES_CTR, 32, SHA1, 12)
 
 typedef enum
 {
@@ -345,8 +320,7 @@ cryptodev_cache_ring_pop (cryptodev_cache_ring_t *r)
 int cryptodev_session_create (vlib_main_t *vm, vnet_crypto_key_index_t idx,
 			      u32 aad_len);
 
-void cryptodev_sess_handler (vlib_main_t *vm, vnet_crypto_key_op_t kop,
-			     vnet_crypto_key_index_t idx, u32 aad_len);
+void cryptodev_sess_del (vlib_main_t *vm, vnet_crypto_key_index_t idx);
 
 int cryptodev_check_cap_support (struct rte_cryptodev_sym_capability_idx *idx,
 				 u32 key_size, u32 digest_size, u32 aad_size);

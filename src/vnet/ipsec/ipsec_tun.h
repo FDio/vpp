@@ -78,12 +78,24 @@ typedef struct ipsec6_tunnel_kv_t_
   ipsec_tun_lkup_result_t value;
 } __clib_packed ipsec6_tunnel_kv_t;
 
+typedef struct
+{
+  union
+  {
+    ipsec4_tunnel_kv_t kv4;
+    ipsec6_tunnel_kv_t kv6;
+  };
+  u8 is_ip6;
+  u32 seq;
+} ipsec_tun_protect_input_trace_t;
+
 STATIC_ASSERT_SIZEOF (ipsec6_tunnel_kv_t, sizeof (clib_bihash_kv_24_16_t));
 STATIC_ASSERT_OFFSET_OF (ipsec6_tunnel_kv_t, value,
 			 STRUCT_OFFSET_OF (clib_bihash_kv_24_16_t, value));
 
 extern u8 *format_ipsec4_tunnel_kv (u8 * s, va_list * args);
 extern u8 *format_ipsec6_tunnel_kv (u8 * s, va_list * args);
+format_function_t format_ipsec_tun_protect_input_trace;
 
 typedef struct ipsec_ep_t_
 {
