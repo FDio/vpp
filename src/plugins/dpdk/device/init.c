@@ -177,7 +177,7 @@ static dpdk_device_config_t *
 dpdk_find_startup_config (struct rte_eth_dev_info *di)
 {
   dpdk_main_t *dm = &dpdk_main;
-  struct rte_pci_device *pci_dev;
+  struct rte_pci_device *pci_dev = NULL;
   vlib_pci_addr_t pci_addr;
 #ifdef __linux__
   struct rte_vmbus_device *vmbus_dev;
@@ -329,7 +329,7 @@ dpdk_lib_init (dpdk_main_t * dm)
       u8 addr[6];
       int rv, q;
       struct rte_eth_dev_info di;
-      struct rte_pci_device *pci_dev;
+      struct rte_pci_device *pci_dev = NULL;
       dpdk_device_config_t *devconf = 0;
       vnet_eth_interface_registration_t eir = {};
       dpdk_driver_t *dr;
