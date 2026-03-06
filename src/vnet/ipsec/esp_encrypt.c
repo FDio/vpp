@@ -1516,50 +1516,6 @@ ipsec_build_integ_op_tmpl_chain (IPSEC_BUILD_OP_TMPL_ARGS)
     &op->integ_n_chunks);
 }
 
-static void
-ipsec_init_builder_callbacks (ipsec_main_t *im)
-{
-
-#define _(a, b)                                                               \
-  im->crypto_algs[a].bld_enc_op_tmpl[VNET_CRYPTO_HANDLER_TYPE_SIMPLE] =       \
-    ipsec_##b##_build_enc_op_tmpl;                                            \
-  im->crypto_algs[a].bld_enc_op_tmpl[VNET_CRYPTO_HANDLER_TYPE_CHAINED] =      \
-    ipsec_##b##_build_enc_op_tmpl_chain;
-
-  _ (IPSEC_CRYPTO_ALG_DES_CBC, cbc)
-  _ (IPSEC_CRYPTO_ALG_3DES_CBC, cbc)
-  _ (IPSEC_CRYPTO_ALG_AES_CBC_128, cbc)
-  _ (IPSEC_CRYPTO_ALG_AES_CBC_192, cbc)
-  _ (IPSEC_CRYPTO_ALG_AES_CBC_256, cbc)
-  _ (IPSEC_CRYPTO_ALG_AES_CTR_128, ctr)
-  _ (IPSEC_CRYPTO_ALG_AES_CTR_192, ctr)
-  _ (IPSEC_CRYPTO_ALG_AES_CTR_256, ctr)
-  _ (IPSEC_CRYPTO_ALG_AES_GCM_128, gcm)
-  _ (IPSEC_CRYPTO_ALG_AES_GCM_192, gcm)
-  _ (IPSEC_CRYPTO_ALG_AES_GCM_256, gcm)
-  _ (IPSEC_CRYPTO_ALG_CHACHA20_POLY1305, gcm)
-  _ (IPSEC_CRYPTO_ALG_AES_NULL_GMAC_128, null_gmac)
-  _ (IPSEC_CRYPTO_ALG_AES_NULL_GMAC_192, null_gmac)
-  _ (IPSEC_CRYPTO_ALG_AES_NULL_GMAC_256, null_gmac)
-
-#undef _
-
-#define _(a)                                                                  \
-  im->integ_algs[a].bld_integ_op_tmpl[VNET_CRYPTO_HANDLER_TYPE_SIMPLE] =      \
-    ipsec_build_integ_op_tmpl;                                                \
-  im->integ_algs[a].bld_integ_op_tmpl[VNET_CRYPTO_HANDLER_TYPE_CHAINED] =     \
-    ipsec_build_integ_op_tmpl_chain;
-
-  _ (IPSEC_INTEG_ALG_MD5_96)
-  _ (IPSEC_INTEG_ALG_SHA1_96)
-  _ (IPSEC_INTEG_ALG_SHA_256_96)
-  _ (IPSEC_INTEG_ALG_SHA_256_128)
-  _ (IPSEC_INTEG_ALG_SHA_384_192)
-  _ (IPSEC_INTEG_ALG_SHA_512_256)
-
-#undef _
-}
-
 static clib_error_t *
 esp_encrypt_init (vlib_main_t *vm)
 {
@@ -1575,9 +1531,6 @@ esp_encrypt_init (vlib_main_t *vm)
     esp6_encrypt_tun_node.index, im->handoff_queue_size);
   im->esp_mpls_enc_tun_fq_index = vlib_frame_queue_main_init (
     esp_mpls_encrypt_tun_node.index, im->handoff_queue_size);
-
-  /* Initialize builder callback function pointers */
-  ipsec_init_builder_callbacks (im);
 
   return 0;
 }

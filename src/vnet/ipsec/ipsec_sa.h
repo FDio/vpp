@@ -238,16 +238,11 @@ typedef struct
   /* elements with u32 size */
   u32 id;
   u32 stat_index;
-  vnet_crypto_alg_t integ_calg;
-  vnet_crypto_alg_t crypto_calg;
-  u32 crypto_sync_key_index;
-  u32 integ_sync_key_index;
-  u32 linked_key_index;
+  u32 key_index;
 
   /* elements with u16 size */
   u16 crypto_sync_enc_op_id;
   u16 crypto_sync_dec_op_id;
-  u16 integ_sync_op_id;
   u16 crypto_async_enc_op_id;
   u16 crypto_async_dec_op_id;
 
@@ -316,10 +311,6 @@ extern int ipsec_sa_unlock_id (u32 id);
 extern void ipsec_sa_unlock (index_t sai);
 extern void ipsec_sa_lock (index_t sai);
 extern void ipsec_sa_clear (index_t sai);
-extern void ipsec_sa_set_crypto_alg (ipsec_sa_t *sa,
-				     ipsec_crypto_alg_t crypto_alg);
-extern void ipsec_sa_set_integ_alg (ipsec_sa_t *sa,
-				    ipsec_integ_alg_t integ_alg);
 extern void ipsec_sa_set_async_mode (ipsec_sa_t *sa, int is_enabled);
 
 typedef walk_rc_t (*ipsec_sa_walk_cb_t) (ipsec_sa_t *sa, void *ctx);
