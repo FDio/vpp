@@ -1079,13 +1079,14 @@ lcp_itf_pair_create (u32 phy_sw_if_index, u8 *host_if_name,
        * Therefore we can't use it to manage admin state.
        * force the tap in promiscuous mode.
        */
+      hw = vnet_get_sup_hw_interface (vnm, args.sw_if_index);
+      vif_index = tap_get_ifindex (vm, args.sw_if_index);
+
       if (host_if_type == LCP_ITF_HOST_TAP)
 	{
 	  ei = pool_elt_at_index (ethernet_main.interfaces, hw->hw_instance);
 	  ei->flags |= ETHERNET_INTERFACE_FLAG_STATUS_L3;
 	}
-
-      vif_index = tap_get_ifindex (vm, args.sw_if_index);
       host_sw_if_index = args.sw_if_index;
     }
 
