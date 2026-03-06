@@ -101,8 +101,7 @@ ptls_vpp_crypto_cipher_setup_crypto (ptls_cipher_context_t * _ctx, int is_enc,
     }
 
   clib_rwlock_writer_lock (&picotls_main.crypto_keys_rw_lock);
-  ctx->key_index = vnet_crypto_key_add (vm, algo,
-					(u8 *) key, _ctx->algo->key_size);
+  ctx->key_index = vnet_crypto_key_add (vm, algo, key, _ctx->algo->key_size, 0, 0);
   clib_rwlock_writer_unlock (&picotls_main.crypto_keys_rw_lock);
 
   return 0;
@@ -223,7 +222,7 @@ ptls_vpp_crypto_aead_setup_crypto (ptls_aead_context_t *_ctx, int is_enc,
   clib_memcpy (ctx->static_iv, iv, ctx->super.algo->iv_size);
 
   clib_rwlock_writer_lock (&picotls_main.crypto_keys_rw_lock);
-  ctx->key_index = vnet_crypto_key_add (vm, alg, (void *) key, key_len);
+  ctx->key_index = vnet_crypto_key_add (vm, alg, key, key_len, 0, 0);
   clib_rwlock_writer_unlock (&picotls_main.crypto_keys_rw_lock);
 
   if (is_enc)

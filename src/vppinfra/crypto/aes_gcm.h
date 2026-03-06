@@ -872,9 +872,15 @@ static_always_inline void
 clib_aes_gcm_key_expand (aes_gcm_key_data_t *kd, const u8 *key,
 			 aes_key_size_t ks)
 {
+  typedef struct
+  {
+    u8x16 Hi[NUM_HI];
+    aes_expaned_key_t Ke[AES_KEY_ROUNDS (AES_KEY_256) + 1];
+  } aes_gcm_key_data_rw_t;
+  aes_gcm_key_data_rw_t kd_rw = {};
   u8x16 H;
   u8x16 ek[AES_KEY_ROUNDS (AES_KEY_256) + 1];
-  aes_expaned_key_t *Ke = (aes_expaned_key_t *) kd->Ke;
+  aes_expaned_key_t *Ke = kd_rw.Ke;
 
   /* expand AES key */
   aes_key_expand (ek, key, ks);
@@ -884,7 +890,8 @@ clib_aes_gcm_key_expand (aes_gcm_key_data_t *kd, const u8 *key,
   /* pre-calculate H */
   H = aes_encrypt_block (u8x16_zero (), ek, ks);
   H = u8x16_reflect (H);
-  ghash_precompute (H, (u8x16 *) kd->Hi, ARRAY_LEN (kd->Hi));
+  ghash_precompute (H, (u8x16 *) kd_rw.Hi, ARRAY_LEN (kd_rw.Hi));
+  clib_memcpy_fast ((void *) kd, &kd_rw, sizeof (kd_rw));
 }
 
 static_always_inline void
