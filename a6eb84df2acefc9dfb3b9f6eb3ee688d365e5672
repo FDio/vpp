@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4762bfbb_c471d6f9",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 6
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-03-06T14:50:38Z",
+      "side": 1,
+      "message": "The commit message should reflect the actual changes, not the intermediate changes :)",
+      "revId": "a6eb84df2acefc9dfb3b9f6eb3ee688d365e5672",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
