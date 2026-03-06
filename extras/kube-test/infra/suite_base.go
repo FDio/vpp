@@ -14,6 +14,8 @@ import (
 	"github.com/joho/godotenv"
 	. "github.com/onsi/ginkgo/v2"
 
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -172,11 +174,12 @@ func (s *BaseSuite) WaitForComponents() {
 }
 
 // sets CALICO_NETWORK_CONFIG, ADDITIONAL_VPP_CONFIG, env vars, applies configs and rollout restarts cluster
-func (s *BaseSuite) SetMtuAndRestart(CALICO_NETWORK_CONFIG string, ADDITIONAL_VPP_CONFIG string) {
+func (s *BaseSuite) ReconfigureAndRestart(CALICO_NETWORK_CONFIG string, ADDITIONAL_VPP_CONFIG string, CALICOVPP_ENABLE_MEMIF bool) {
 	if os.Getenv("SKIP_CONFIG") == "true" {
 		Log("** SKIP_CONFIG=true, not updating configuration! **")
 		return
 	}
+	os.Setenv("CALICOVPP_ENABLE_MEMIF", fmt.Sprintf("\"%v\"", CALICOVPP_ENABLE_MEMIF))
 	os.Setenv("CALICO_NETWORK_CONFIG", CALICO_NETWORK_CONFIG)
 	os.Setenv("ADDITIONAL_VPP_CONFIG", ADDITIONAL_VPP_CONFIG)
 
@@ -228,4 +231,59 @@ func (s *BaseSuite) SkipIfBareMetalCluster() {
 	if !KindCluster {
 		Skip("Kube-Test running on a bare metal cluster. Skipping")
 	}
+}
+
+func (s *BaseSuite) getPodsByName(podName string) *Pod {
+	return s.AllPods[podName+Ppid]
+}
+
+// ListPodsInNamespace lists all pods in a specific namespace
+func (s *BaseSuite) ListPodsInNamespace(ctx context.Context, namespace string) ([]string, error) {
+	podList, err := ClientSet.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	var podNames []string
+	for _, pod := range podList.Items {
+		podNames = append(podNames, pod.Name)
+	}
+
+	return podNames, nil
+}
+
+func (s *BaseSuite) loadDockerImages() {
+	if !KindCluster {
+		return
+	}
+	Log("This may take a while. If you encounter problems, " +
+		"try loading docker images manually: 'kind load docker-image [image]'")
+
+	var cmd *exec.Cmd
+	var out []byte
+	var err error
+	for _, image := range s.images {
+		Log("loading docker image %s...", image)
+		cmd = exec.Command("go", "run", "sigs.k8s.io/kind@v0.29.0", "load", "docker-image", image)
+		out, err = cmd.CombinedOutput()
+		Log(string(out))
+		AssertNil(err, string(out))
+	}
+}
+
+func (s *BaseSuite) createNamespace(name string) {
+	namespace := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+		},
+	}
+
+	// Create the namespace in the cluster
+	_, err := ClientSet.CoreV1().Namespaces().Create(context.TODO(), namespace, metav1.CreateOptions{})
+	AssertNil(err)
+	Log("Namespace '%s' created", name)
+}
+
+func (s *BaseSuite) DeleteNamespace(namespace string) error {
+	return ClientSet.CoreV1().Namespaces().Delete(context.TODO(), namespace, metav1.DeleteOptions{})
 }

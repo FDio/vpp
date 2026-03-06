@@ -11,6 +11,7 @@ import (
 	"text/template"
 	"time"
 
+	. "github.com/onsi/ginkgo/v2"
 	"gopkg.in/yaml.v3"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -50,6 +51,38 @@ type PodYaml struct {
 }
 type Config struct {
 	Pods []PodYaml `yaml:"pods"`
+}
+
+type PodAnnotations struct {
+	EnableVcl       *bool
+	ExtraMemifPorts string
+	ExtraMemifSpec  string
+}
+
+func buildAnnotations(pa *PodAnnotations) map[string]string {
+	annotations := make(map[string]string)
+
+	if pa == nil {
+		return annotations
+	}
+
+	if pa.EnableVcl != nil {
+		if *pa.EnableVcl {
+			annotations["cni.projectcalico.org/vppVcl"] = "enable"
+		} else {
+			annotations["cni.projectcalico.org/vppVcl"] = "disable"
+		}
+	}
+
+	if pa.ExtraMemifPorts != "" {
+		annotations["cni.projectcalico.org/vppExtraMemifPorts"] = pa.ExtraMemifPorts
+	}
+
+	if pa.ExtraMemifSpec != "" {
+		annotations["cni.projectcalico.org/vppExtraMemifSpec"] = pa.ExtraMemifSpec
+	}
+
+	return annotations
 }
 
 func (s *BaseSuite) LoadPodConfigs() {
@@ -106,10 +139,6 @@ func newPod(suite *BaseSuite, input PodYaml) (*Pod, error) {
 	}
 
 	return pod, nil
-}
-
-func (s *BaseSuite) getPodsByName(podName string) *Pod {
-	return s.AllPods[podName+Ppid]
 }
 
 func (pod *Pod) CopyToPod(src string, dst string) {
@@ -187,6 +216,66 @@ func (pod *Pod) CreateConfigFromTemplate(targetConfigName string, templateName s
 	pod.CopyToPod(f.Name(), targetConfigName)
 }
 
+func (s *BaseSuite) DeployPod(pod *Pod, annotations *PodAnnotations) {
+	pod.CreatedPod = &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: s.Namespace,
+			Name:      pod.Name,
+			Labels: map[string]string{
+				"app": "Kube-Test",
+			},
+			Annotations: buildAnnotations(annotations),
+		},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{
+				{
+					Name:  pod.ContainerName,
+					Image: pod.Image,
+					SecurityContext: &corev1.SecurityContext{
+						Privileged: BoolPtr(true),
+					},
+					Command:         []string{"tail", "-f", "/dev/null"},
+					ImagePullPolicy: corev1.PullIfNotPresent,
+					Ports: []corev1.ContainerPort{
+						{
+							ContainerPort: 6081,
+							Protocol:      corev1.ProtocolUDP,
+						},
+					},
+				},
+			},
+			NodeName: pod.Worker,
+		},
+	}
+
+	// Create the Pod
+	_, err := ClientSet.CoreV1().Pods(s.Namespace).Create(context.TODO(), pod.CreatedPod, metav1.CreateOptions{})
+	AssertNil(err)
+	s.CurrentlyRunning[pod.Name] = pod
+	Log("Pod '%s' created", pod.Name)
+
+	// Get IP
+	Log("Obtaining IP from '%s'", pod.Name)
+	pod.IpAddress = ""
+	counter := 1
+	for pod.IpAddress == "" {
+		pod.CreatedPod, err = ClientSet.CoreV1().Pods(s.Namespace).Get(context.TODO(), pod.Name, metav1.GetOptions{})
+		pod.IpAddress = pod.CreatedPod.Status.PodIP
+		time.Sleep(time.Second * 1)
+		counter++
+		if counter >= 40 {
+			Fail("Unable to get IP. Check if all pods are running. " + fmt.Sprint(err))
+		}
+	}
+
+	Log("IP: %s\n", pod.IpAddress)
+}
+
+func (pod *Pod) deletePod() error {
+	delete(pod.suite.CurrentlyRunning, pod.Name)
+	return ClientSet.CoreV1().Pods(pod.Namespace).Delete(context.TODO(), pod.Name, metav1.DeleteOptions{GracePeriodSeconds: int64Ptr(0)})
+}
+
 // CreateDynamicPod creates a simple busybox pod for testing purposes in the specified namespace
 func (s *BaseSuite) CreateDynamicPod(ctx context.Context, namespace, podName, appName string) error {
 	pod := &corev1.Pod{
@@ -243,48 +332,4 @@ func (s *BaseSuite) DeleteDynamicPod(ctx context.Context, namespace, podName str
 
 	Log("Deleted dynamic pod: %s", podName)
 	return nil
-}
-
-// ListPodsInNamespace lists all pods in a specific namespace
-func (s *BaseSuite) ListPodsInNamespace(ctx context.Context, namespace string) ([]string, error) {
-	podList, err := ClientSet.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return nil, err
-	}
-
-	var podNames []string
-	for _, pod := range podList.Items {
-		podNames = append(podNames, pod.Name)
-	}
-
-	return podNames, nil
-}
-
-func (pod *Pod) InitVpp() {
-	ctx, cancel := context.WithTimeout(pod.suite.MainContext, time.Second*10)
-	defer cancel()
-
-	o, err := pod.Exec(ctx, []string{"/bin/bash", "-c", "echo " + VppCliConf + " > /vppcliconf.conf"})
-	AssertNil(err, o)
-
-	o, err = pod.Exec(ctx, []string{"/bin/bash", "-c", "echo " + VppStartupConf + " > /startup.conf"})
-	AssertNil(err, o)
-
-	_, err = pod.ExecServer(ctx, []string{"/bin/bash", "-c", "vpp -c /startup.conf"})
-	AssertNil(err)
-
-	// temporary workaround: VPP has to start without creating interfaces (without running 'exec XYZ.conf'),
-	// exec interface config
-	// delete interface + route
-	// exec interface config again
-	// otherwise, VPP ping sends 5 packets but receives 15
-	time.Sleep(time.Second * 1)
-	o, err = pod.ExecVppctl(ctx, "exec /vppcliconf.conf")
-	AssertNil(err, o)
-	o, err = pod.ExecVppctl(ctx, "delete host-interface name eth0")
-	AssertNil(err, o)
-	o, err = pod.ExecVppctl(ctx, "ip route del 0.0.0.0/0")
-	AssertNil(err, o)
-	o, err = pod.ExecVppctl(ctx, "exec /vppcliconf.conf")
-	AssertNil(err, o)
 }

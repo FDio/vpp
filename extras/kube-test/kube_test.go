@@ -21,13 +21,13 @@ const vcl string = "VCL_CONFIG=/vcl.conf"
 const ldp string = "LD_PRELOAD=/usr/lib/libvcl_ldpreload.so"
 
 type iperfVclInterface interface {
-	DeployPod(*Pod, bool)
+	DeployPod(*Pod, *PodAnnotations)
 	FixVersionNumber(...*Pod)
 }
 
 func kubeIperfVclTest(ctx context.Context, clnPod *Pod, srvPod *Pod, s iperfVclInterface, clientArgs string) IPerfResult {
-	s.DeployPod(clnPod, true)
-	s.DeployPod(srvPod, true)
+	s.DeployPod(clnPod, &PodAnnotations{EnableVcl: BoolPtr(true)})
+	s.DeployPod(srvPod, &PodAnnotations{EnableVcl: BoolPtr(true)})
 	ctx, cancel := context.WithTimeout(ctx, time.Minute*2)
 	defer cancel()
 	defer func() {
@@ -50,7 +50,7 @@ func kubeIperfVclTest(ctx context.Context, clnPod *Pod, srvPod *Pod, s iperfVclI
 		vcl + " " + ldp + " iperf3 -s -D --logfile /iperf_server.log -B " + srvPod.IpAddress})
 	Log("Sleeping for 2s")
 	time.Sleep(time.Second * 2)
-	AssertNil(err)
+	AssertNil(err, o)
 	out, err := srvPod.Exec(ctx, []string{"/bin/bash", "-c", "pidof iperf3"})
 	Log(out)
 	AssertNil(err)
@@ -96,8 +96,8 @@ func nginxRps(s *KubeSuite, isVcl bool) {
 	ctx, cancel := context.WithTimeout(s.MainContext, time.Minute*3)
 	defer cancel()
 
-	s.DeployPod(s.Pods.Nginx, isVcl)
-	s.DeployPod(s.Pods.Ab, isVcl)
+	s.DeployPod(s.Pods.Nginx, &PodAnnotations{EnableVcl: BoolPtr(isVcl)})
+	s.DeployPod(s.Pods.Ab, &PodAnnotations{EnableVcl: BoolPtr(isVcl)})
 	s.CreateNginxConfig(s.Pods.Nginx)
 
 	if isVcl {
@@ -131,9 +131,9 @@ func NginxProxyMirroringTest(s *KubeSuite) {
 	ctx, cancel := context.WithTimeout(s.MainContext, time.Minute*3)
 	defer cancel()
 
-	s.DeployPod(s.Pods.Nginx, true)
-	s.DeployPod(s.Pods.NginxProxy, true)
-	s.DeployPod(s.Pods.ClientGeneric, true)
+	s.DeployPod(s.Pods.Nginx, &PodAnnotations{EnableVcl: BoolPtr(true)})
+	s.DeployPod(s.Pods.NginxProxy, &PodAnnotations{EnableVcl: BoolPtr(true)})
+	s.DeployPod(s.Pods.ClientGeneric, &PodAnnotations{EnableVcl: BoolPtr(true)})
 	s.CreateNginxConfig(s.Pods.Nginx)
 	s.CreateNginxProxyConfig(s.Pods.NginxProxy)
 
@@ -166,8 +166,8 @@ func NginxProxyMirroringTest(s *KubeSuite) {
 }
 
 func VppPingTest(s *KubeSuite) {
-	s.DeployPod(s.Pods.ClientGeneric, false)
-	s.DeployPod(s.Pods.ServerGeneric, false)
+	s.DeployPod(s.Pods.ClientGeneric, nil)
+	s.DeployPod(s.Pods.ServerGeneric, nil)
 	ctx, cancel := context.WithTimeout(s.MainContext, time.Minute*2)
 	defer cancel()
 
@@ -182,8 +182,8 @@ func VppPingTest(s *KubeSuite) {
 }
 
 func EchoBuiltinEchobytesTest(s *KubeSuite) {
-	s.DeployPod(s.Pods.ClientGeneric, false)
-	s.DeployPod(s.Pods.ServerGeneric, false)
+	s.DeployPod(s.Pods.ClientGeneric, nil)
+	s.DeployPod(s.Pods.ServerGeneric, nil)
 	ctx, cancel := context.WithTimeout(s.MainContext, time.Minute*2)
 	defer cancel()
 
@@ -202,8 +202,8 @@ func EchoBuiltinEchobytesTest(s *KubeSuite) {
 }
 
 func HttpClientStaticServerTest(s *KubeSuite) {
-	s.DeployPod(s.Pods.ClientGeneric, false)
-	s.DeployPod(s.Pods.ServerGeneric, false)
+	s.DeployPod(s.Pods.ClientGeneric, nil)
+	s.DeployPod(s.Pods.ServerGeneric, nil)
 	ctx, cancel := context.WithTimeout(s.MainContext, time.Minute*2)
 	defer cancel()
 

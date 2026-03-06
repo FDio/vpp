@@ -26,25 +26,6 @@ var imagesLoaded bool
 var kubeTests = map[string][]func(s *KubeSuite){}
 var kubeMWTests = map[string][]func(s *KubeSuite){}
 
-const VclConfIperf = "echo \"vcl {\n" +
-	"rx-fifo-size 4000000\n" +
-	"tx-fifo-size 4000000\n" +
-	"app-scope-local\n" +
-	"app-scope-global\n" +
-	"app-socket-api abstract:vpp/session\n" +
-	"}\" > /vcl.conf"
-
-const VclConfNginx = "echo \"vcl {\n" +
-	"heapsize 64M\n" +
-	"rx-fifo-size 4000000\n" +
-	"tx-fifo-size 4000000\n" +
-	"segment-size 4000000000\n" +
-	"add-segment-size 4000000000\n" +
-	"event-queue-size 100000\n" +
-	"use-mq-eventfd\n" +
-	"app-socket-api abstract:vpp/session\n" +
-	"}\" > /vcl.conf"
-
 func RegisterKubeTests(tests ...func(s *KubeSuite)) {
 	kubeTests[GetTestFilename()] = tests
 }
@@ -73,7 +54,7 @@ func (s *KubeSuite) TeardownTest() {
 		Log("Removing pods:")
 		for _, pod := range s.CurrentlyRunning {
 			Log("   %s", pod.Name)
-			AssertNil(s.deletePod(s.Namespace, pod.Name))
+			AssertNil(pod.deletePod())
 		}
 	}
 }
@@ -162,7 +143,7 @@ var _ = Describe("KubeSuite", Ordered, ContinueOnFailure, func() {
 	var s KubeSuite
 	BeforeAll(func() {
 		s.SetupSuite()
-		s.SetMtuAndRestart("mtu: 0", "tcp { mtu 1460 }\n    cpu { workers 0 }")
+		s.ReconfigureAndRestart("mtu: 0", "tcp { mtu 1460 }\n    cpu { workers 0 }", false)
 	})
 	BeforeEach(func() {
 		s.SetupTest()
@@ -192,7 +173,7 @@ var _ = Describe("KubeMWSuite", Ordered, ContinueOnFailure, Label("Perf", "Multi
 	var s KubeSuite
 	BeforeAll(func() {
 		s.SetupSuite()
-		s.SetMtuAndRestart("mtu: 0", "tcp { mtu 1460 }\n    cpu { workers 2 }")
+		s.ReconfigureAndRestart("mtu: 0", "tcp { mtu 1460 }\n    cpu { workers 2 }", false)
 	})
 	BeforeEach(func() {
 		s.SetupTest()
