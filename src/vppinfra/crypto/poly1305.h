@@ -32,8 +32,7 @@ clib_poly1305_init (clib_poly1305_ctx *ctx, const u8 key[32])
 {
   u64u *k = (u64u *) key;
   u64 *h = (u64 *) ctx->h;
-  u64 *r = (u64 *) ctx->r;
-  u64 *s = (u64 *) ctx->s;
+  u64 r[3], s[2];
 
   /* initialize accumulator */
   h[0] = h[1] = h[2] = 0;
@@ -46,6 +45,8 @@ clib_poly1305_init (clib_poly1305_ctx *ctx, const u8 key[32])
 
   /* precompute (r[1] >> 2) * 5 */
   r[2] = r[1] + (r[1] >> 2);
+  clib_memcpy_fast ((u64 *) ctx->r, r, sizeof (r));
+  clib_memcpy_fast ((u64 *) ctx->s, s, sizeof (s));
 
   ctx->n_partial_bytes = 0;
 }
@@ -225,7 +226,7 @@ clib_poly1305_final (clib_poly1305_ctx *ctx, u8 *out)
 static_always_inline void
 clib_poly1305 (const u8 *key, const u8 *msg, uword len, u8 *out)
 {
-  clib_poly1305_ctx ctx;
+  clib_poly1305_ctx ctx = {};
   clib_poly1305_init (&ctx, key);
   clib_poly1305_update (&ctx, msg, len);
   clib_poly1305_final (&ctx, out);
