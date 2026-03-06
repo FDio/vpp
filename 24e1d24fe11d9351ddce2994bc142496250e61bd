@@ -16,6 +16,57 @@
       "message": "LGTM. Thanks!",
       "revId": "24e1d24fe11d9351ddce2994bc142496250e61bd",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0a3ba87e_420a3207",
+        "filename": "src/vnet/ip/ip6_packet.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 619,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-03-06T10:20:34Z",
+      "side": 1,
+      "message": "Isn\u0027t it redundant ith check on line 624?\nip6_ext_header_len_s() only reads from p when ip6_ext_hdr(nh) is true or nh \u003d\u003d IPSEC_AH; in both cases the minimum returned value is 8 ((0+1)\u003c\u003c3 and (0+2)\u003c\u003c2 respectively, with n_data_u64s being u8). So the existing check ip6_ext_header_len_s() + offset \u003e max_offset always fires first for any value of the length byte. For all other protocols the function returns a fixed constant or 0 without reading from p at all.",
+      "revId": "24e1d24fe11d9351ddce2994bc142496250e61bd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "331990f6_77a66822",
+        "filename": "src/vnet/srv6/sr_localsid.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 869,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-03-06T10:20:34Z",
+      "side": 1,
+      "message": "If I am not mistaken, in every callsite, sr0 is set via ip6_ext_header_find(), which calls ip6_ext_header_walk() and returns NULL if it returns -1. For ip6_ext_header_walk() to succeed and return a non-NULL sr0, it must have passed: sr_len + offset \u003c\u003d max_offset \u003c\u003d sizeof(ip6_header_t) + payload_length\nSince offset \u003e\u003d sizeof(ip6_header_t), this guarantees sr_len \u003c\u003d payload_length. The new guard sr_len \u003e payload_length can therefore never be true when sr0 is non-NULL. The underflow in payload_length - sr_len is already prevented by ip6_ext_header_walk() rejecting the packet before any of these functions are reached.\nMaybe replace the if (PREDICT_FALSE(...)) { error; return; } blocks with an ASSERT?\nThis is true for the other checks below too.",
+      "revId": "24e1d24fe11d9351ddce2994bc142496250e61bd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "208d641e_c60e9955",
+        "filename": "test/test_srv6.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 2683,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-03-06T10:20:34Z",
+      "side": 1,
+      "message": "We should assert on the expected error instead of log I think.\nTracing through the test case (plen\u003d30, 40-byte SRH in the buffer):\n - max_offset \u003d min(buffer_size, 40+30) \u003d 70\n - ip6_ext_header_len(srh) + 40 \u003d 40 + 40 \u003d 80 \u003e 70 → ip6_ext_header_walk() returns -1\n - sr0 \u003d NULL → packet dropped with SR_LOCALSID_ERROR_NO_SRH\n\nThe test checks for SRH_LEN_EXCEEDS_IP_LEN but I think the counter actually incremented is NO_SRH?",
+      "revId": "24e1d24fe11d9351ddce2994bc142496250e61bd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
