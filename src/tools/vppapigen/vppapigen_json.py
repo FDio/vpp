@@ -75,12 +75,16 @@ def walk_defs(s, is_message=False):
             else:
                 raise ValueError("Error in processing array type %s" % b)
 
+        c = {}
         if is_message and t.crc:
-            c = {}
             c["crc"] = "{0:#0{1}x}".format(t.crc, 10)
             c["options"] = t.options
+        try:
             if t.comment:
                 c["comment"] = t.comment
+        except AttributeError:
+            pass
+        if c:
             d.append(c)
 
         r.append(d)

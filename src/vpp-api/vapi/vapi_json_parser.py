@@ -241,6 +241,8 @@ class StructType(Type, Struct):
             if len(field) == 1 and "crc" in field:
                 self.crc = field["crc"]
                 continue
+            if isinstance(field, dict):
+                continue
             field_type = json_parser.lookup_type_like_id(field[0])
             logger.debug("Parsing type field `%s'" % field)
             if len(field) == 2:

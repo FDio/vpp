@@ -144,6 +144,8 @@ class VPPAPILexer:
     def t_newline(self, t):
         r"\n+"
         t.lexer.lineno += len(t.value)
+        if len(t.value) > 1:
+            t.lexer.blank_seen = True
 
     literals = ":{}[];=.,"
 
@@ -209,13 +211,14 @@ class Service(Processable):
 class Typedef(Processable):
     type = "Typedef"
 
-    def __init__(self, name, flags, block):
+    def __init__(self, name, flags, block, comment=None):
         self.name = name
         self.flags = flags
         self.block = block
         self.crc = str(block).encode()
         self.manual_print = False
         self.manual_endian = False
+        self.comment = comment
         for f in flags:
             if f == "manual_print":
                 self.manual_print = True
@@ -752,7 +755,8 @@ class VPPAPIParser:
     def p_define(self, p):
         """define : DEFINE ID '{' block_statements_opt '}' ';'"""
         self.fields = []
-        p[0] = Define(p[2], [], p[4], self.last_comment)
+        comment = None if getattr(p.lexer, "blank_seen", False) else self.last_comment
+        p[0] = Define(p[2], [], p[4], comment)
         self.last_comment = None
 
     def p_define_flist(self, p):
@@ -764,7 +768,8 @@ class VPPAPIParser:
                 self._token_coord(p, 1),
             )
         else:
-            p[0] = Define(p[3], p[1], p[5], self.last_comment)
+            comment = None if getattr(p.lexer, "blank_seen", False) else self.last_comment
+            p[0] = Define(p[3], p[1], p[5], comment)
             self.last_comment = None
 
     def p_flist(self, p):
@@ -788,11 +793,15 @@ class VPPAPIParser:
 
     def p_typedef(self, p):
         """typedef : TYPEDEF ID '{' block_statements_opt '}' ';'"""
-        p[0] = Typedef(p[2], [], p[4])
+        comment = None if getattr(p.lexer, "blank_seen", False) else self.last_comment
+        p[0] = Typedef(p[2], [], p[4], comment)
+        self.last_comment = None
 
     def p_typedef_flist(self, p):
         """typedef : flist TYPEDEF ID '{' block_statements_opt '}' ';'"""
-        p[0] = Typedef(p[3], p[1], p[5])
+        comment = None if getattr(p.lexer, "blank_seen", False) else self.last_comment
+        p[0] = Typedef(p[3], p[1], p[5], comment)
+        self.last_comment = None
 
     def p_typedef_alias(self, p):
         """typedef : TYPEDEF declaration"""
@@ -875,6 +884,7 @@ class VPPAPIParser:
     def p_comment(self, p):
         """comment : COMMENT"""
         self.last_comment = p[1]
+        p.lexer.blank_seen = False
         p[0] = []
 
     def p_declaration(self, p):
