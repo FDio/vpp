@@ -130,7 +130,7 @@ jobs:
     secrets: inherit
 
   verify-gcc:
-    name: gcc
+    name: GCC
     needs:
       - start-verify
       - verify-checkstyle

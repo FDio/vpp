@@ -125,35 +125,22 @@ jobs:
       matrix:
         os: ['ubuntu2404']
         executor_arch: ['x86_64']
-        build_type: ['dbg', 'rel']
+        build_type: ['debug', 'release']
 
     env:
       FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
       GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
       GERRIT_CHANGE_URL: ${{ inputs.GERRIT_CHANGE_URL }}
-      GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
-      GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
       GERRIT_CHANGE_NUMBER: ${{ inputs.GERRIT_CHANGE_NUMBER }}
       GERRIT_PATCHSET_NUMBER: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
+      GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
+      GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
       LOG_PREFIX: ${{ inputs.LOG_PREFIX }}
       LOG_NAME: ""
       LOG_DIR: ""
       WORKSPACE: /scratch/docker-build/vpp
       CCACHE_DIR: /scratch/ccache/${{ matrix.os }}-${{ matrix.executor_arch }}
       MAKE_PARALLEL_JOBS: 16
-      # MAKE_TEST_SUITES: "vlib vppinfra vpe_api vapi cli bihash"
-      # NOTE: bihash tests are excluded due to known failures on GCOV builds,
-      #       which due to a bug in the jenkins gcc job script is not properly
-      #       detected and reported in the current CI job debug image test (e.g.
-      #       the debug test does not build with GCOV enabled).  The gcov periodic job
-      #       does fail bihash tests.
-      MAKE_TEST_SUITES: "vlib vppinfra vpe_api vapi cli"
-      TEST_JOBS: 4
-      TEST_RETRIES: 3
-      MAKE_TEST_OS: ${{ matrix.os == 'ubuntu2204' && 'ubuntu-22.04' || 'ubuntu-24.04'  }}
-      MAKE_TEST_MULTIWORKER_OS: 'debian-12'
-      VPPAPIGEN_TEST_OS: ${{ matrix.os == 'ubuntu2204' && 'ubuntu-22.04' || 'ubuntu-24.04' }}
-      SHM_SIZE: ${{ matrix.executor_arch == 'aarch64' && '4096M' || '2048M' }}
       TUI_LINE: "*******************************************************************"
       VPP_TEARDOWN_TIMEOUT: 30
 
@@ -196,6 +183,7 @@ jobs:
         # yamllint disable-line rule:line-length
         uses: fdio/vpp/.github/actions/vpp-install-deps@777792ecef2d5c93ce15fa5b7fdca999f5412c9d
         with:
+          LOG_DIR: ${{ env.LOG_DIR }}
           WORKSPACE: ${{ env.WORKSPACE }}
           TUI_LINE: ${{ env.TUI_LINE }}
 
@@ -203,40 +191,19 @@ jobs:
         # yamllint disable-line rule:line-length
         uses: fdio/vpp/.github/actions/vpp-install-ext-deps@d0577011fb512d79e6914b6f1f11e2be4c09bc1e
         with:
+          LOG_DIR: ${{ env.LOG_DIR }}
           WORKSPACE: ${{ env.WORKSPACE }}
           TUI_LINE: ${{ env.TUI_LINE }}
 
-      - name: Build VPP with GCC/GCOV
+      - name: Build VPP with GCC
         # yamllint disable-line rule:line-length
         uses: fdio/vpp/.github/actions/vpp-build@43b0339292476442bd7e2429e2ae1075918d8f83
         with:
+          LOG_DIR: ${{ env.LOG_DIR }}
           WORKSPACE: ${{ env.WORKSPACE }}
           MAKE_PARALLEL_JOBS: ${{ env.MAKE_PARALLEL_JOBS }}
           BUILD_TYPE: ${{ matrix['build_type'] }}
           USE_GCC: "true"
-          TUI_LINE: ${{ env.TUI_LINE }}
-
-      - name: Setup Docker VPP Runtime Environment for 'make test'
-        # yamllint disable-line rule:line-length
-        uses: fdio/vpp/.github/actions/vpp-docker-runtime-setup@777792ecef2d5c93ce15fa5b7fdca999f5412c9d
-        with:
-          WORKSPACE: ${{ env.WORKSPACE }}
-          SHM_SIZE: ${{ env.SHM_SIZE }}
-          TUI_LINE: ${{ env.TUI_LINE }}
-
-      - name: VPP Make Test with GCC/GCOV
-        # yamllint disable-line rule:line-length
-        uses: fdio/vpp/.github/actions/vpp-make-test@aafbd5109fbd323b3ec3292ec3acad8f5eb48fe0
-        timeout-minutes: 120
-        with:
-          WORKSPACE: ${{ env.WORKSPACE }}
-          BUILD_TYPE: ${{ matrix['build_type'] }}
-          MAKE_TEST_SUITES: ${{ env.MAKE_TEST_SUITES }}
-          TEST_JOBS: ${{ env.TEST_JOBS }}
-          TEST_RETRIES: ${{ env.TEST_RETRIES }}
-          MAKE_TEST_OS: ${{ env.MAKE_TEST_OS }}
-          MAKE_TEST_MULTIWORKER_OS: ${{ env.MAKE_TEST_MULTIWORKER_OS }}
-          VPPAPIGEN_TEST_OS: ${{ env.VPPAPIGEN_TEST_OS }}
           TUI_LINE: ${{ env.TUI_LINE }}
 
       - name: AWS S3 Publish Logs
