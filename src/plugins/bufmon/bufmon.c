@@ -172,6 +172,7 @@ bufmon_enable_disable (vlib_main_t *vm, int enable)
     {
       if (bm->enabled)
 	return 0;
+      bufmon_unregister_callbacks (vm);
       clib_error_t *error = bufmon_register_callbacks (vm);
       if (error)
 	return error;
