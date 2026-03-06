@@ -611,16 +611,20 @@ quic_quicly_ack_rx_data (session_t *stream_session)
   max_deq = svm_fifo_max_dequeue (f);
 
   QUIC_ASSERT (stream_data->app_rx_data_len >= max_deq);
-  quicly_stream_sync_recvbuf (stream, stream_data->app_rx_data_len - max_deq);
-  QUIC_DBG (3, "Acking %u bytes", stream_data->app_rx_data_len - max_deq);
+  u32 acked = stream_data->app_rx_data_len - max_deq;
+  quicly_stream_sync_recvbuf (stream, acked);
+  QUIC_DBG (3, "Acking %u bytes", acked);
   stream_data->app_rx_data_len = max_deq;
 
-  /* Need to send packets (acks may never be sent otherwise) */
-  if (sctx->flags & QUIC_F_STREAM_TX_DRAINED)
-    {
-      quic_quicly_reschedule_ctx (quic_quicly_get_quic_ctx (
-	sctx->quic_connection_ctx_id, sctx->c_thread_index));
-    }
+  /* Reschedule to ensure pending packets are sent. Two cases:
+   * - TX drained: no further stream TX events will fire, so reschedule to send final packets.
+   * - MAX_STREAM_DATA queued (sync_recvbuf crossed the half-window threshold): reschedule so the
+   *   frame is delivered promptly. If TX is active it would eventually reschedule too, but we
+   *   cannot rely on that — TX may be idle or flow-control blocked. */
+  if ((sctx->flags & QUIC_F_STREAM_TX_DRAINED) ||
+      quicly_linklist_is_linked (&stream->_send_aux.pending_link.control))
+    quic_quicly_reschedule_ctx (
+      quic_quicly_get_quic_ctx (sctx->quic_connection_ctx_id, sctx->c_thread_index));
 }
 
 static void
