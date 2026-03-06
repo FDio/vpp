@@ -125,6 +125,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "0a24b0fa_2ff01b1e",
+        "filename": "src/vpp/app/dump_metrics.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 140,
+      "author": {
+        "id": 3296
+      },
+      "writtenOn": "2026-03-06T18:10:52Z",
+      "side": 1,
+      "message": "To add some color on why there are two, applying isalnum to every dimension in prometheus converts anything that is not [a-zA-Z0-9_] to _. Strings containing PCI IDs, vpp node IDs, VLAN interface names, etc will be renamed. The original commit introduced sanitization of the field where there was none before. prometheus does not require this strict renaming, nor it is explained anywhere else why.\n\nSo I think it all boils down to what is the backwards compatibility policy for changes like this.",
+      "parentUuid": "d6ab461a_f07c23db",
+      "revId": "8a1e6a83a47dc708acfacf4778226012d20fe743",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "94a1f94c_eebd56dc",
         "filename": "src/vpp/app/dump_metrics.c",
         "patchSetId": 3
