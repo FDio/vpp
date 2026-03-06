@@ -188,12 +188,20 @@ RPM_DEPENDS += socat
 ifeq ($(OS_ID),fedora)
 	RPM_DEPENDS += dnf-utils
 	RPM_DEPENDS += subunit subunit-devel
+ifeq ($(shell test "$(OS_VERSION_ID)" -ge 34 2>/dev/null && echo y),y)
+	RPM_DEPENDS += openssl-devel
+else
 	RPM_DEPENDS += compat-openssl10-devel
+endif
 	RPM_DEPENDS += python3-devel  # needed for python3 -m pip install psutil
 	RPM_DEPENDS += python3-ply  # for vppapigen
 	RPM_DEPENDS += python3-virtualenv python3-jsonschema
 	RPM_DEPENDS += cmake
+ifeq ($(shell test "$(OS_VERSION_ID)" -ge 41 2>/dev/null && echo y),y)
+	RPM_DEPENDS_GROUPS = c-development
+else
 	RPM_DEPENDS_GROUPS = 'C Development Tools and Libraries'
+endif
 else ifeq ($(OS_ID),rocky)
 	RPM_DEPENDS += yum-utils
 	RPM_DEPENDS += subunit subunit-devel
@@ -464,7 +472,11 @@ else ifeq ($(OS_ID),centos)
 	@sudo -E yum install $(CONFIRM) $(RPM_DEPENDS)
 	@sudo -E yum install $(CONFIRM) --enablerepo=base-debuginfo $(RPM_DEPENDS_DEBUG)
 else ifeq ($(OS_ID),fedora)
+ifeq ($(shell test "$(OS_VERSION_ID)" -ge 41 2>/dev/null && echo y),y)
+	@sudo -E dnf group install $(CONFIRM) $(RPM_DEPENDS_GROUPS)
+else
 	@sudo -E dnf groupinstall $(CONFIRM) $(RPM_DEPENDS_GROUPS)
+endif
 	@sudo -E dnf install $(CONFIRM) $(RPM_DEPENDS)
 	@sudo -E debuginfo-install $(CONFIRM) glibc openssl-libs zlib
 endif

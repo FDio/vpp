@@ -3,7 +3,9 @@
 %define _vpp_build_dir   build-tool-native
 %define _unitdir         /lib/systemd/system
 %define _builddir        %{_topdir}
-%define _mu_build_dir    %{_topdir}/%{name}-%{_version}/build-root
+# Disable RPM 6 build subdirectory feature
+%{?_build_subdirectory:%undefine _build_subdirectory}
+%define _mu_build_dir    build-root
 %define _vpp_tag	 %{getenv:TAG}
 %if "%{_vpp_tag}" == ""
 %define _vpp_tag	 vpp
@@ -39,27 +41,37 @@ BuildRequires: systemd, chrpath
 BuildRequires: check, check-devel
 %if 0%{?fedora}
 Requires: vpp-lib = %{_version}-%{_release}, vpp-selinux-policy = %{_version}-%{_release}, net-tools, pciutils
-Requires: compat-openssl10
 Requires: libffi-devel
 BuildRequires: subunit, subunit-devel
+%if 0%{?fedora} >= 34
+BuildRequires: openssl-devel
+%else
+Requires: compat-openssl10
 BuildRequires: compat-openssl10-devel
+%endif
+%if 0%{?fedora} >= 30
+BuildRequires: python3-devel
+BuildRequires: python3-ply
+BuildRequires: python3-virtualenv
+%else
 BuildRequires: python, python-devel, python-virtualenv, python-ply
 BuildRequires: python3, python36-devel, python3-virtualenv
+%endif
 BuildRequires: cmake
 %else
-%if 0%{rhel} >= 7
+%if 0%{?rhel} >= 7
 Requires: vpp-lib = %{_version}-%{_release}, vpp-selinux-policy = %{_version}-%{_release}, net-tools, pciutils
 Requires: libffi-devel
 BuildRequires: epel-release
 BuildREquires: openssl-devel
-%if 0%{rhel} == 7
+%if 0%{?rhel} == 7
 Requires: python36
 BuildRequires: devtoolset-9-toolchain
 BuildRequires: cmake3
 BuildRequires: glibc-static, yum-utils
 BuildRequires: python36-devel
 %else
-%if 0%{rhel} == 8
+%if 0%{?rhel} == 8
 Requires: python36
 BuildRequires: cmake
 BuildRequires: dnf-utils
@@ -145,7 +157,7 @@ This package contains the python3 bindings for the vpp api
 Summary: VPP Security-Enhanced Linux (SELinux) policy
 Group: System Environment/Base
 Requires(post): selinux-policy-base >= %{selinux_policyver}, selinux-policy-targeted >= %{selinux_policyver}, policycoreutils, libselinux-utils
-%if 0%{rhel} < 8
+%if 0%{?rhel} && 0%{?rhel} < 8
 Requires(post): policycoreutils-python
 %else
 Requires(post): python3-policycoreutils
@@ -165,18 +177,18 @@ cd -
 groupadd -f -r vpp
 
 %build
-%if 0%{rhel} < 8
+unset CFLAGS CXXFLAGS FFLAGS FCFLAGS LDFLAGS
+%if 0%{?rhel} && 0%{?rhel} < 8
 . /opt/rh/devtoolset-9/enable
 %endif
 %if %{with aesni}
-    make install-dep
     make -C build-root PLATFORM=vpp TAG=%{_vpp_tag} install-packages
 %else
     make bootstrap AESNI=n
     make -C build-root PLATFORM=vpp AESNI=n TAG=%{_vpp_tag} install-packages
 %endif
-cd %{_mu_build_dir}/../src/vpp-api/python && %py3_build
-cd %{_mu_build_dir}/../extras/selinux && make -f %{_datadir}/selinux/devel/Makefile
+( cd %{_mu_build_dir}/../src/vpp-api/python && %py3_build )
+( cd %{_mu_build_dir}/../extras/selinux && make -f %{_datadir}/selinux/devel/Makefile )
 
 %install
 #
