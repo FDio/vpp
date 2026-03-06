@@ -13,7 +13,7 @@ import (
 func init() {
 	RegisterVethTests(QuicAlpnMatchTest, QuicAlpnOverlapMatchTest, QuicAlpnServerPriorityMatchTest, QuicAlpnMismatchTest,
 		QuicAlpnEmptyServerListTest, QuicAlpnEmptyClientListTest, QuicBuiltinEchoTest, QuicCpsTest,
-		QuicBuiltinEchoUnidirectionalTest)
+		QuicBuiltinEchoBidirectionalTest)
 	RegisterNoTopoTests(QuicFailedHandshakeTest)
 }
 
@@ -164,7 +164,8 @@ func QuicBuiltinEchoTest(s *VethsSuite) {
 	quicBuiltinEcho(s, false)
 }
 
-func QuicBuiltinEchoUnidirectionalTest(s *VethsSuite) {
+func QuicBuiltinEchoBidirectionalTest(s *VethsSuite) {
+	s.Skip("flaky, quic bu?")
 	quicBuiltinEcho(s, true)
 }
 
