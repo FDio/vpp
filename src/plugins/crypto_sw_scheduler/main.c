@@ -39,29 +39,6 @@ crypto_sw_scheduler_set_worker_crypto (u32 worker_idx, u8 enabled)
   return 0;
 }
 
-static void
-crypto_sw_scheduler_key_handler (vnet_crypto_key_op_t kop,
-				 vnet_crypto_key_index_t idx)
-{
-  crypto_sw_scheduler_main_t *cm = &crypto_sw_scheduler_main;
-  vnet_crypto_key_t *key = vnet_crypto_get_key (idx);
-
-  vec_validate (cm->keys, idx);
-
-  if (key->is_link)
-    {
-      if (kop == VNET_CRYPTO_KEY_OP_DEL)
-	{
-	  cm->keys[idx].index_crypto = UINT32_MAX;
-	  cm->keys[idx].index_integ = UINT32_MAX;
-	}
-      else
-	{
-	  cm->keys[idx] = *key;
-	}
-    }
-}
-
 static int
 crypto_sw_scheduler_frame_enqueue (vlib_main_t *vm,
 				   vnet_crypto_async_frame_t *frame, u8 is_enc)
@@ -190,10 +167,10 @@ crypto_sw_scheduler_convert_aead (vlib_main_t * vm,
 }
 
 static_always_inline void
-crypto_sw_scheduler_convert_link_crypto (
-  vlib_main_t *vm, crypto_sw_scheduler_per_thread_data_t *ptd,
-  vnet_crypto_key_t *key, vnet_crypto_async_frame_elt_t *fe, u32 index, u32 bi,
-  vnet_crypto_op_id_t op_id, u32 digest_len, u8 is_enc)
+crypto_sw_scheduler_convert_combined_crypto (vlib_main_t *vm,
+					     crypto_sw_scheduler_per_thread_data_t *ptd,
+					     vnet_crypto_async_frame_elt_t *fe, u32 index, u32 bi,
+					     vnet_crypto_op_id_t op_id, u32 digest_len)
 {
   vlib_buffer_t *b = vlib_get_buffer (vm, bi);
   vnet_crypto_op_t *crypto_op = 0;
@@ -223,7 +200,7 @@ crypto_sw_scheduler_convert_link_crypto (
 
   crypto_op->op = op_id;
   crypto_op->iv = fe->iv;
-  crypto_op->key_index = key->index;
+  crypto_op->key_index = fe->key_index;
   crypto_op->digest = fe->digest;
   crypto_op->digest_len = digest_len;
   crypto_op->flags = fe->flags;
@@ -329,11 +306,8 @@ crypto_sw_scheduler_process_aead (vlib_main_t *vm,
 }
 
 static_always_inline void
-crypto_sw_scheduler_process_link (vlib_main_t *vm,
-				  crypto_sw_scheduler_main_t *cm,
-				  crypto_sw_scheduler_per_thread_data_t *ptd,
-				  vnet_crypto_async_frame_t *f, u32 op_id,
-				  u16 digest_len, u8 is_enc)
+crypto_sw_scheduler_process_combined (vlib_main_t *vm, crypto_sw_scheduler_per_thread_data_t *ptd,
+				      vnet_crypto_async_frame_t *f, u32 op_id, u16 digest_len)
 {
   vnet_crypto_async_frame_elt_t *fe;
   u32 *bi;
@@ -351,9 +325,8 @@ crypto_sw_scheduler_process_link (vlib_main_t *vm,
       if (n_elts > 1)
 	clib_prefetch_load (fe + 1);
 
-      crypto_sw_scheduler_convert_link_crypto (
-	vm, ptd, cm->keys + fe->key_index, fe, fe - f->elts, bi[0], op_id,
-	digest_len, is_enc);
+      crypto_sw_scheduler_convert_combined_crypto (vm, ptd, fe, fe - f->elts, bi[0], op_id,
+						   digest_len);
       bi++;
       fe++;
     }
@@ -364,41 +337,32 @@ crypto_sw_scheduler_process_link (vlib_main_t *vm,
 }
 
 static_always_inline int
-convert_async_crypto_id (vnet_crypto_op_id_t async_op_id, u32 *crypto_op,
-			 u32 *auth_op_or_aad_len, u16 *digest_len, u8 *is_enc)
+async_op_get_params (vnet_crypto_op_id_t op_id, u32 *aad_len, u16 *digest_len)
 {
-  switch (async_op_id)
+  switch (op_id)
     {
-#define _(n, s, k, t, a)                                                      \
-  case VNET_CRYPTO_OP_##n##_TAG##t##_AAD##a##_ENC:                            \
-    *crypto_op = VNET_CRYPTO_OP_##n##_ENC;                                    \
-    *auth_op_or_aad_len = a;                                                  \
-    *digest_len = t;                                                          \
-    *is_enc = 1;                                                              \
-    return 1;                                                                 \
-  case VNET_CRYPTO_OP_##n##_TAG##t##_AAD##a##_DEC:                            \
-    *crypto_op = VNET_CRYPTO_OP_##n##_DEC;                                    \
-    *auth_op_or_aad_len = a;                                                  \
-    *digest_len = t;                                                          \
-    *is_enc = 0;                                                              \
+#define _(n, s, k, t, a)                                                                           \
+  case VNET_CRYPTO_OP_##n##_TAG##t##_AAD##a##_ENC:                                                 \
+    *aad_len = a;                                                                                  \
+    *digest_len = t;                                                                               \
+    return 1;                                                                                      \
+  case VNET_CRYPTO_OP_##n##_TAG##t##_AAD##a##_DEC:                                                 \
+    *aad_len = a;                                                                                  \
+    *digest_len = t;                                                                               \
     return 1;
       foreach_crypto_aead_async_alg
 #undef _
 
-#define _(c, h, s, k, d)                                                      \
-  case VNET_CRYPTO_OP_##c##_##h##_TAG##d##_ENC:                               \
-    *crypto_op = VNET_CRYPTO_OP_##c##_ENC;                                    \
-    *auth_op_or_aad_len = VNET_CRYPTO_OP_##h##_HMAC;                          \
-    *digest_len = d;                                                          \
-    *is_enc = 1;                                                              \
-    return 0;                                                                 \
-  case VNET_CRYPTO_OP_##c##_##h##_TAG##d##_DEC:                               \
-    *crypto_op = VNET_CRYPTO_OP_##c##_DEC;                                    \
-    *auth_op_or_aad_len = VNET_CRYPTO_OP_##h##_HMAC;                          \
-    *digest_len = d;                                                          \
-    *is_enc = 0;                                                              \
+#define _(c, h, s, k, d)                                                                           \
+  case VNET_CRYPTO_OP_##c##_##h##_TAG##d##_ENC:                                                    \
+    *aad_len = 0;                                                                                  \
+    *digest_len = d;                                                                               \
+    return 0;                                                                                      \
+  case VNET_CRYPTO_OP_##c##_##h##_TAG##d##_DEC:                                                    \
+    *aad_len = 0;                                                                                  \
+    *digest_len = d;                                                                               \
     return 0;
-	foreach_crypto_link_async_alg
+	foreach_crypto_combined_async_alg
 #undef _
 
 	default : return -1;
@@ -486,20 +450,16 @@ run_next_queues:
 
   if (found)
     {
-      u32 crypto_op, auth_op_or_aad_len;
+      u32 aad_len;
       u16 digest_len;
-      u8 is_enc;
       int ret;
 
-      ret = convert_async_crypto_id (f->op, &crypto_op, &auth_op_or_aad_len,
-				     &digest_len, &is_enc);
+      ret = async_op_get_params (f->op, &aad_len, &digest_len);
 
       if (ret == 1)
-	crypto_sw_scheduler_process_aead (vm, ptd, f, crypto_op,
-					  auth_op_or_aad_len, digest_len);
+	crypto_sw_scheduler_process_aead (vm, ptd, f, f->op, aad_len, digest_len);
       else if (ret == 0)
-	crypto_sw_scheduler_process_link (vm, cm, ptd, f, f->op, digest_len,
-					  is_enc);
+	crypto_sw_scheduler_process_combined (vm, ptd, f, f->op, digest_len);
 
       *enqueue_thread_idx = f->enqueue_thread_index;
       *nb_elts_processed = f->n_elts;
@@ -655,9 +615,6 @@ crypto_sw_scheduler_init (vlib_main_t * vm)
     vnet_crypto_register_engine (vm, "sw_scheduler", 100,
 				 "SW Scheduler Async Engine");
 
-  vnet_crypto_register_key_handler (vm, cm->crypto_engine_index,
-				    crypto_sw_scheduler_key_handler);
-
   crypto_sw_scheduler_api_init (vm);
 
 #define _(n, s, k, t, a)                                                      \
@@ -677,7 +634,7 @@ crypto_sw_scheduler_init (vlib_main_t * vm)
   vnet_crypto_register_enqueue_handler (                                      \
     vm, cm->crypto_engine_index, VNET_CRYPTO_OP_##c##_##h##_TAG##d##_DEC,     \
     crypto_sw_scheduler_frame_enqueue_decrypt);
-    foreach_crypto_link_async_alg
+    foreach_crypto_combined_async_alg
 #undef _
 
       vnet_crypto_register_dequeue_handler (vm, cm->crypto_engine_index,

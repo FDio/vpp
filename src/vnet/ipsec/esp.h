@@ -76,7 +76,7 @@ u8 *format_esp_header (u8 * s, va_list * args);
 always_inline int
 esp_seq_advance (ipsec_sa_outb_rt_t *ort)
 {
-  u64 max = ort->use_esn ? CLIB_U64_MAX : CLIB_U32_MAX;
+  u64 max = ort->cached.use_esn ? CLIB_U64_MAX : CLIB_U32_MAX;
   if (ort->seq64 == max)
     return 1;
   ort->seq64++;
