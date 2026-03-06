@@ -522,6 +522,9 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
   ipsec_sa_t *sa;
   u32 sa_index, irt_sz;
   clib_thread_index_t thread_index = (vlib_num_workers ()) ? ~0 : 0;
+  vnet_crypto_alg_t linked_alg = ~0;
+  u8 *linked_key_data = 0;
+  u32 linked_key_len = 0;
   u64 rand[2];
   uword *p;
   int rv;
@@ -620,11 +623,31 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
     }
 
   if (sa->crypto_sync_enc_op_id && sa->integ_sync_op_id)
-    sa->linked_key_index =
-      vnet_crypto_key_add_linked (vm, sa->crypto_sync_key_index,
-				  sa->integ_sync_key_index); // AES-CBC & HMAC
+    {
+      linked_alg = vnet_crypto_link_algs (sa->crypto_calg, sa->integ_calg);
+      if (linked_alg != ~0)
+	{
+	  linked_key_len = ck->len + ik->len;
+	  vec_validate (linked_key_data, linked_key_len - 1);
+	  clib_memcpy_fast (linked_key_data, ck->data, ck->len);
+	  clib_memcpy_fast (linked_key_data + ck->len, ik->data, ik->len);
+
+	  sa->linked_key_index =
+	    vnet_crypto_key_add (vm, linked_alg, linked_key_data, linked_key_len);
+	  if (~0 == sa->linked_key_index)
+	    {
+	      vec_free (linked_key_data);
+	      pool_put (im->sa_pool, sa);
+	      return VNET_API_ERROR_KEY_LENGTH;
+	    }
+	}
+      else
+	sa->linked_key_index = ~0;
+    }
   else
     sa->linked_key_index = ~0;
+
+  vec_free (linked_key_data);
 
   if (im->async_mode)
     {

@@ -106,7 +106,7 @@ typedef struct
   u64 cpt_inst_w7;
   /* initialise as part of first packet */
   u8 initialised;
-  /* store link key index in case of linked algo */
+  /* store key index */
   vnet_crypto_key_index_t key_index;
   oct_crypto_dev_t *crypto_dev;
   struct roc_se_ctx cpt_ctx;
@@ -191,9 +191,6 @@ void oct_crypto_key_del_handler (vlib_main_t *vm,
 
 void oct_crypto_key_add_handler (vlib_main_t *vm,
 				 vnet_crypto_key_index_t key_index);
-
-void oct_crypto_key_handler (vnet_crypto_key_op_t kop,
-			     vnet_crypto_key_index_t idx);
 
 int oct_crypto_enqueue_linked_alg_enc (vlib_main_t *vm,
 				       vnet_crypto_async_frame_t *frame);
