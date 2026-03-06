@@ -34,25 +34,6 @@ static char *ipsec_output_error_strings[] = {
 #undef _
 };
 
-typedef struct
-{
-  u32 spd_id;
-  u32 policy_id;
-} ipsec_output_trace_t;
-
-/* packet trace format function */
-static u8 *
-format_ipsec_output_trace (u8 * s, va_list * args)
-{
-  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
-  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
-  ipsec_output_trace_t *t = va_arg (*args, ipsec_output_trace_t *);
-
-  s = format (s, "spd %u policy %d", t->spd_id, t->policy_id);
-
-  return s;
-}
-
 static inline uword
 ipsec_output_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		     vlib_frame_t * from_frame, int is_ipv6)
@@ -364,4 +345,3 @@ VLIB_REGISTER_NODE (ipsec6_output_node) = {
 #undef _
   },
 };
-

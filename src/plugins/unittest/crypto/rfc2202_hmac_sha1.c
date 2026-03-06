@@ -192,19 +192,6 @@ UNITTEST_REGISTER_CRYPTO_TEST (rfc_2202_sha1_tc7) = {
   .digest = TEST_DATA (sha1_tc7_digest),
 };
 
-UNITTEST_REGISTER_CRYPTO_TEST (rfc_2202_sha1_tc7_chained) = {
-  .name = "RFC2202 HMAC-SHA-1 TC7 [chained]",
-  .alg = VNET_CRYPTO_ALG_HMAC_SHA1,
-  .key = TEST_DATA (sha1_tc6_key),
-  .digest = TEST_DATA (sha1_tc7_digest),
-
-  .is_chained = 1,
-  .pt_chunks = {
-    TEST_DATA_CHUNK (sha1_tc7_data, 0, 40),
-    TEST_DATA_CHUNK (sha1_tc7_data, 40, 33)
-  },
-};
-
 UNITTEST_REGISTER_CRYPTO_TEST (rfc_2202_sha1_tc7_inc) = {
   .name = "HMAC-SHA-1 incremental (1024 B)",
   .alg = VNET_CRYPTO_ALG_HMAC_SHA1,

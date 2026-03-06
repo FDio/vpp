@@ -1,6 +1,6 @@
 /*
  * SPDX-License-Identifier: Apache-2.0
- * Copyright (c) 2015 Cisco and/or its affiliates.
+ * Copyright (c) 2015-2026 Cisco and/or its affiliates.
  */
 
 #ifndef __IPSEC_H__
@@ -23,10 +23,6 @@
 
 #define IPSEC_FP_IP4_HASHES_POOL_SIZE 128
 #define IPSEC_FP_IP6_HASHES_POOL_SIZE 128
-
-typedef clib_error_t *(*add_del_sa_sess_cb_t) (u32 sa_index, u8 is_add);
-typedef clib_error_t *(*check_support_cb_t) (ipsec_sa_t * sa);
-typedef clib_error_t *(*enable_disable_cb_t) (int is_enable);
 
 typedef struct
 {
@@ -59,69 +55,6 @@ typedef union
   }; // 16 bytes total
   ipsec4_hash_kv_16_8_t kv_16_8;
 } ipsec4_inbound_spd_tuple_t;
-
-typedef struct
-{
-  u8 *name;
-  /* add/del callback */
-  add_del_sa_sess_cb_t add_del_sa_sess_cb;
-  /* check support function */
-  check_support_cb_t check_support_cb;
-  u32 ah4_encrypt_node_index;
-  u32 ah4_decrypt_node_index;
-  u32 ah4_encrypt_next_index;
-  u32 ah4_decrypt_next_index;
-  u32 ah6_encrypt_node_index;
-  u32 ah6_decrypt_node_index;
-  u32 ah6_encrypt_next_index;
-  u32 ah6_decrypt_next_index;
-} ipsec_ah_backend_t;
-
-typedef struct
-{
-  u8 *name;
-  /* add/del callback */
-  add_del_sa_sess_cb_t add_del_sa_sess_cb;
-  /* check support function */
-  check_support_cb_t check_support_cb;
-  u32 esp4_encrypt_node_index;
-  u32 esp4_decrypt_node_index;
-  u32 esp4_encrypt_next_index;
-  u32 esp4_decrypt_next_index;
-  u32 esp6_encrypt_node_index;
-  u32 esp6_decrypt_node_index;
-  u32 esp6_encrypt_next_index;
-  u32 esp6_decrypt_next_index;
-  u32 esp4_decrypt_tun_node_index;
-  u32 esp4_decrypt_tun_next_index;
-  u32 esp4_encrypt_tun_node_index;
-  u32 esp6_decrypt_tun_node_index;
-  u32 esp6_decrypt_tun_next_index;
-  u32 esp6_encrypt_tun_node_index;
-  u32 esp_mpls_encrypt_tun_node_index;
-} ipsec_esp_backend_t;
-
-typedef struct
-{
-  const vnet_crypto_op_id_t enc_op_id;
-  const vnet_crypto_op_id_t dec_op_id;
-  const vnet_crypto_alg_t alg;
-  const u8 iv_size;
-  const u8 block_align;
-  const u8 icv_size;
-  const u8 is_aead : 1;
-  const u8 is_ctr : 1;
-  const u8 is_null_gmac : 1;
-  ipsec_build_op_tmpl_fn_t bld_enc_op_tmpl[VNET_CRYPTO_HANDLER_N_TYPES];
-} ipsec_main_crypto_alg_t;
-
-typedef struct
-{
-  const vnet_crypto_op_id_t op_id;
-  const vnet_crypto_alg_t alg;
-  const u8 icv_size;
-  ipsec_build_op_tmpl_fn_t bld_integ_op_tmpl[VNET_CRYPTO_HANDLER_N_TYPES];
-} ipsec_main_integ_alg_t;
 
 typedef struct
 {
@@ -203,25 +136,6 @@ typedef struct
   u32 ah6_encrypt_next_index;
   u32 ah6_decrypt_next_index;
 
-  /* pool of ah backends */
-  ipsec_ah_backend_t *ah_backends;
-  /* pool of esp backends */
-  ipsec_esp_backend_t *esp_backends;
-  /* index of current ah backend */
-  u32 ah_current_backend;
-  /* index of current esp backend */
-  u32 esp_current_backend;
-  /* index of default ah backend */
-  u32 ah_default_backend;
-  /* index of default esp backend */
-  u32 esp_default_backend;
-
-  /* crypto alg data */
-  ipsec_main_crypto_alg_t crypto_algs[IPSEC_CRYPTO_N_ALG];
-
-  /* crypto integ data */
-  ipsec_main_integ_alg_t integ_algs[IPSEC_INTEG_N_ALG];
-
   /* per-thread data */
   ipsec_per_thread_data_t *ptd;
 
@@ -269,12 +183,67 @@ typedef enum ipsec_format_flags_t_
   IPSEC_FORMAT_INSECURE = (1 << 1),
 } ipsec_format_flags_t;
 
+typedef struct
+{
+  u32 sa_index;
+  u32 spi;
+  u64 seq;
+  u8 udp_encap;
+  ipsec_crypto_alg_t crypto_alg;
+  ipsec_integ_alg_t integ_alg;
+} esp_encrypt_trace_t;
+
+typedef struct
+{
+  u32 next_index;
+} esp_encrypt_post_trace_t;
+
+typedef struct
+{
+  u32 seq;
+  u64 sa_seq64;
+  u32 pkt_seq_hi;
+  ipsec_crypto_alg_t crypto_alg;
+  ipsec_integ_alg_t integ_alg;
+} esp_decrypt_trace_t;
+
+typedef struct
+{
+  u32 sa_index;
+  u32 spi;
+  u64 seq;
+  ipsec_integ_alg_t integ_alg;
+} ah_encrypt_trace_t;
+
+typedef struct
+{
+  ipsec_integ_alg_t integ_alg;
+  u32 seq_num;
+} ah_decrypt_trace_t;
+
+typedef struct ipsec_handoff_trace_t_
+{
+  u32 next_worker_index;
+} ipsec_handoff_trace_t;
+
+typedef struct
+{
+  ip_protocol_t proto;
+  u32 spd;
+  u32 policy_index;
+  u32 policy_type;
+  u32 sa_id;
+  u32 spi;
+  u32 seq;
+} ipsec_input_trace_t;
+
+typedef struct
+{
+  u32 spd_id;
+  u32 policy_id;
+} ipsec_output_trace_t;
+
 extern ipsec_main_t ipsec_main;
-
-clib_error_t *ipsec_add_del_sa_sess_cb (ipsec_main_t * im, u32 sa_index,
-					u8 is_add);
-
-clib_error_t *ipsec_check_support_cb (ipsec_main_t * im, ipsec_sa_t * sa);
 
 extern vlib_node_registration_t ipsec4_tun_input_node;
 extern vlib_node_registration_t ipsec6_tun_input_node;
@@ -282,6 +251,14 @@ extern vlib_node_registration_t ipsec6_tun_input_node;
 /*
  * functions
  */
+format_function_t format_esp_encrypt_trace;
+format_function_t format_esp_post_encrypt_trace;
+format_function_t format_esp_decrypt_trace;
+format_function_t format_ah_encrypt_trace;
+format_function_t format_ah_decrypt_trace;
+format_function_t format_ipsec_handoff_trace;
+format_function_t format_ipsec_input_trace;
+format_function_t format_ipsec_output_trace;
 
 /*
  *  inline functions
@@ -362,29 +339,6 @@ ipsec_set_next_index (vlib_buffer_t *b, vlib_node_runtime_t *node,
 				   thread_index, sa_index, 1);
 }
 
-u32 ipsec_register_ah_backend (vlib_main_t * vm, ipsec_main_t * im,
-			       const char *name,
-			       const char *ah4_encrypt_node_name,
-			       const char *ah4_decrypt_node_name,
-			       const char *ah6_encrypt_node_name,
-			       const char *ah6_decrypt_node_name,
-			       check_support_cb_t ah_check_support_cb,
-			       add_del_sa_sess_cb_t ah_add_del_sa_sess_cb);
-
-u32 ipsec_register_esp_backend (
-  vlib_main_t *vm, ipsec_main_t *im, const char *name,
-  const char *esp4_encrypt_node_name, const char *esp4_encrypt_tun_node_name,
-  const char *esp4_decrypt_node_name, const char *esp4_decrypt_tun_node_name,
-  const char *esp6_encrypt_node_name, const char *esp6_encrypt_tun_node_name,
-  const char *esp6_decrypt_node_name, const char *esp6_decrypt_tun_node_name,
-  const char *esp_mpls_encrypt_tun_node_name,
-  check_support_cb_t esp_check_support_cb,
-  add_del_sa_sess_cb_t esp_add_del_sa_sess_cb);
-
-int ipsec_select_ah_backend (ipsec_main_t * im, u32 ah_backend_idx);
-int ipsec_select_esp_backend (ipsec_main_t * im, u32 esp_backend_idx);
-
-clib_error_t *ipsec_rsc_in_use (ipsec_main_t * im);
 void ipsec_set_async_mode (u32 is_enabled);
 
 extern void ipsec_register_udp_port (u16 udp_port, u8 is_ip4);

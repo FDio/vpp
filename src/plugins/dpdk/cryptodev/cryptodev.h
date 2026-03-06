@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0
  * Copyright (c) 2019 - 2021 Intel and/or its affiliates.
+ * Copyright (c) 2026 Cisco and/or its affiliates.
  */
 
 #ifndef included_cryptodev_h
@@ -27,42 +28,16 @@
 
 /* VNET_CRYPTO_ALGO, TYPE, DPDK_CRYPTO_ALGO, IV_LEN, TAG_LEN, AAD_LEN, KEY_LEN
  */
-#define foreach_vnet_aead_crypto_conversion                                   \
-  _ (AES_128_GCM, AEAD, AES_GCM, 12, 16, 8, 16)                               \
-  _ (AES_128_GCM, AEAD, AES_GCM, 12, 16, 12, 16)                              \
-  _ (AES_192_GCM, AEAD, AES_GCM, 12, 16, 8, 24)                               \
-  _ (AES_192_GCM, AEAD, AES_GCM, 12, 16, 12, 24)                              \
-  _ (AES_256_GCM, AEAD, AES_GCM, 12, 16, 8, 32)                               \
-  _ (AES_256_GCM, AEAD, AES_GCM, 12, 16, 12, 32)                              \
-  _ (CHACHA20_POLY1305, AEAD, CHACHA20_POLY1305, 12, 16, 0, 32)               \
-  _ (CHACHA20_POLY1305, AEAD, CHACHA20_POLY1305, 12, 16, 8, 32)               \
-  _ (CHACHA20_POLY1305, AEAD, CHACHA20_POLY1305, 12, 16, 12, 32)
-
-/**
- * crypto (alg, cryptodev_alg, key_size), hash (alg, digest-size)
- **/
-#define foreach_cryptodev_link_async_alg                                      \
-  _ (AES_128_CBC, AES_CBC, 16, MD5, 12)                                       \
-  _ (AES_192_CBC, AES_CBC, 24, MD5, 12)                                       \
-  _ (AES_256_CBC, AES_CBC, 32, MD5, 12)                                       \
-  _ (AES_128_CBC, AES_CBC, 16, SHA1, 12)                                      \
-  _ (AES_192_CBC, AES_CBC, 24, SHA1, 12)                                      \
-  _ (AES_256_CBC, AES_CBC, 32, SHA1, 12)                                      \
-  _ (AES_128_CBC, AES_CBC, 16, SHA224, 14)                                    \
-  _ (AES_192_CBC, AES_CBC, 24, SHA224, 14)                                    \
-  _ (AES_256_CBC, AES_CBC, 32, SHA224, 14)                                    \
-  _ (AES_128_CBC, AES_CBC, 16, SHA256, 16)                                    \
-  _ (AES_192_CBC, AES_CBC, 24, SHA256, 16)                                    \
-  _ (AES_256_CBC, AES_CBC, 32, SHA256, 16)                                    \
-  _ (AES_128_CBC, AES_CBC, 16, SHA384, 24)                                    \
-  _ (AES_192_CBC, AES_CBC, 24, SHA384, 24)                                    \
-  _ (AES_256_CBC, AES_CBC, 32, SHA384, 24)                                    \
-  _ (AES_128_CBC, AES_CBC, 16, SHA512, 32)                                    \
-  _ (AES_192_CBC, AES_CBC, 24, SHA512, 32)                                    \
-  _ (AES_256_CBC, AES_CBC, 32, SHA512, 32)                                    \
-  _ (AES_128_CTR, AES_CTR, 16, SHA1, 12)                                      \
-  _ (AES_192_CTR, AES_CTR, 24, SHA1, 12)                                      \
-  _ (AES_256_CTR, AES_CTR, 32, SHA1, 12)
+#define foreach_vnet_aead_crypto_conversion                                                        \
+  _ (AES_128_GCM_TAG16_AAD8, AEAD, AES_GCM, 12, 16, 8, 16)                                         \
+  _ (AES_128_GCM_TAG16_AAD12, AEAD, AES_GCM, 12, 16, 12, 16)                                       \
+  _ (AES_192_GCM_TAG16_AAD8, AEAD, AES_GCM, 12, 16, 8, 24)                                         \
+  _ (AES_192_GCM_TAG16_AAD12, AEAD, AES_GCM, 12, 16, 12, 24)                                       \
+  _ (AES_256_GCM_TAG16_AAD8, AEAD, AES_GCM, 12, 16, 8, 32)                                         \
+  _ (AES_256_GCM_TAG16_AAD12, AEAD, AES_GCM, 12, 16, 12, 32)                                       \
+  _ (CHACHA20_POLY1305_TAG16_AAD0, AEAD, CHACHA20_POLY1305, 12, 16, 0, 32)                         \
+  _ (CHACHA20_POLY1305_TAG16_AAD8, AEAD, CHACHA20_POLY1305, 12, 16, 8, 32)                         \
+  _ (CHACHA20_POLY1305_TAG16_AAD12, AEAD, CHACHA20_POLY1305, 12, 16, 12, 32)
 
 typedef enum
 {
@@ -71,13 +46,15 @@ typedef enum
   CRYPTODEV_N_OP_TYPES,
 } cryptodev_op_type_t;
 
-#if RTE_VERSION >= RTE_VERSION_NUM(22, 11, 0, 0)
-typedef void cryptodev_session_t;
-#else
-typedef struct rte_cryptodev_sym_session cryptodev_session_t;
-#endif
+typedef enum
+{
+  CRYPTODEV_RESOURCE_ASSIGN_AUTO = 0,
+  CRYPTODEV_RESOURCE_ASSIGN_UPDATE,
+} cryptodev_resource_assign_op_t;
 
-/* Cryptodev session data, one data per direction per numa */
+typedef void cryptodev_session_t;
+
+/* Cryptodev session data, one data per direction per thread */
 typedef struct
 {
   cryptodev_session_t ***keys;
@@ -121,9 +98,6 @@ typedef struct
 typedef struct
 {
   struct rte_mempool *sess_pool;
-#if RTE_VERSION < RTE_VERSION_NUM(22, 11, 0, 0)
-  struct rte_mempool *sess_priv_pool;
-#endif
 } cryptodev_session_pool_t;
 
 typedef struct
@@ -227,9 +201,7 @@ typedef struct
   u32 sess_sz;
   u32 drivers_cnt;
   u8 is_raw_api;
-#if RTE_VERSION >= RTE_VERSION_NUM(22, 11, 0, 0)
   u8 driver_id;
-#endif
 } cryptodev_main_t;
 
 extern cryptodev_main_t cryptodev_main;
@@ -345,11 +317,13 @@ cryptodev_cache_ring_pop (cryptodev_cache_ring_t *r)
 int cryptodev_session_create (vlib_main_t *vm, vnet_crypto_key_index_t idx,
 			      u32 aad_len);
 
-void cryptodev_sess_handler (vlib_main_t *vm, vnet_crypto_key_op_t kop,
-			     vnet_crypto_key_index_t idx, u32 aad_len);
+void cryptodev_sess_del (vlib_main_t *vm, vnet_crypto_key_index_t idx);
 
 int cryptodev_check_cap_support (struct rte_cryptodev_sym_capability_idx *idx,
 				 u32 key_size, u32 digest_size, u32 aad_size);
+
+int cryptodev_assign_resource (cryptodev_engine_thread_t *cet, u32 cryptodev_inst_index,
+			       cryptodev_resource_assign_op_t op);
 
 clib_error_t *cryptodev_register_cop_hdl (vlib_main_t *vm, u32 eidx);
 
