@@ -345,8 +345,7 @@ cryptodev_cache_ring_pop (cryptodev_cache_ring_t *r)
 int cryptodev_session_create (vlib_main_t *vm, vnet_crypto_key_index_t idx,
 			      u32 aad_len);
 
-void cryptodev_sess_handler (vlib_main_t *vm, vnet_crypto_key_op_t kop,
-			     vnet_crypto_key_index_t idx, u32 aad_len);
+void cryptodev_sess_del (vlib_main_t *vm, vnet_crypto_key_index_t idx);
 
 int cryptodev_check_cap_support (struct rte_cryptodev_sym_capability_idx *idx,
 				 u32 key_size, u32 digest_size, u32 aad_size);

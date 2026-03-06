@@ -811,7 +811,7 @@ static const struct
 static clib_error_t *
 test_clib_aes128_gcm_enc (clib_error_t *err)
 {
-  aes_gcm_key_data_t kd;
+  aes_gcm_key_data_t kd = {};
   u8 pt[MAX_TEST_DATA_LEN];
   u8 ct[MAX_TEST_DATA_LEN];
   u8 tag[16];
@@ -861,7 +861,7 @@ REGISTER_TEST (clib_aes128_gcm_enc) = {
 static clib_error_t *
 test_clib_aes256_gcm_enc (clib_error_t *err)
 {
-  aes_gcm_key_data_t kd;
+  aes_gcm_key_data_t kd = {};
   u8 pt[MAX_TEST_DATA_LEN];
   u8 ct[MAX_TEST_DATA_LEN];
   u8 tag[16];
@@ -910,7 +910,7 @@ REGISTER_TEST (clib_aes256_gcm_enc) = {
 static clib_error_t *
 test_clib_aes128_gcm_dec (clib_error_t *err)
 {
-  aes_gcm_key_data_t kd;
+  aes_gcm_key_data_t kd = {};
   u8 pt[MAX_TEST_DATA_LEN];
   u8 ct[MAX_TEST_DATA_LEN];
   u8 tag[16];
@@ -963,7 +963,7 @@ REGISTER_TEST (clib_aes128_gcm_dec) = {
 static clib_error_t *
 test_clib_aes256_gcm_dec (clib_error_t *err)
 {
-  aes_gcm_key_data_t kd;
+  aes_gcm_key_data_t kd = {};
   u8 pt[MAX_TEST_DATA_LEN];
   u8 ct[MAX_TEST_DATA_LEN];
   u8 tag[16];
@@ -1081,7 +1081,7 @@ static clib_error_t *
 test_clib_aes128_gmac (clib_error_t *err)
 {
   u8 data[MAX_TEST_DATA_LEN];
-  aes_gcm_key_data_t kd;
+  aes_gcm_key_data_t kd = {};
   u8 tag[16];
 
   FOREACH_ARRAY_ELT (tc, gmac_test_cases)
@@ -1139,7 +1139,7 @@ static clib_error_t *
 test_clib_aes256_gmac (clib_error_t *err)
 {
   u8 data[MAX_TEST_DATA_LEN];
-  aes_gcm_key_data_t kd;
+  aes_gcm_key_data_t kd = {};
   u8 tag[16];
 
 #if 0

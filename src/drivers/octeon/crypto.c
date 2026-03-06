@@ -186,19 +186,19 @@ oct_crypto_key_add_handler (vlib_main_t *vm, vnet_crypto_key_index_t key_index)
     }
 }
 
-void
-oct_crypto_key_handler (vnet_crypto_key_op_t kop, vnet_crypto_key_index_t idx)
+static void
+oct_crypto_key_add_data_handler (vnet_crypto_key_t *key)
 {
   oct_crypto_main_t *ocm = &oct_crypto_main;
 
-  if (kop == VNET_CRYPTO_KEY_OP_DEL)
-    {
-      oct_crypto_key_del_handler (vlib_get_main (), idx);
-      return;
-    }
-  oct_crypto_key_add_handler (vlib_get_main (), idx);
-
+  oct_crypto_key_add_handler (vlib_get_main (), key->index);
   ocm->started = 1;
+}
+
+static void
+oct_crypto_key_del_data_handler (vnet_crypto_key_t *key)
+{
+  oct_crypto_key_del_handler (vlib_get_main (), key->index);
 }
 
 static_always_inline void
@@ -1934,7 +1934,8 @@ oct_init_crypto_engine_handlers (vlib_main_t *vm, vnet_dev_t *dev)
   vnet_crypto_register_dequeue_handler (vm, engine_index,
 					oct_crypto_frame_dequeue);
 
-  vnet_crypto_register_key_handler (vm, engine_index, oct_crypto_key_handler);
+  vnet_crypto_register_async_key_add_handler (vm, engine_index, oct_crypto_key_add_data_handler);
+  vnet_crypto_register_async_key_del_handler (vm, engine_index, oct_crypto_key_del_data_handler);
 
   return 0;
 }
