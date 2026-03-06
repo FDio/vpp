@@ -107,6 +107,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "d6ab461a_f07c23db",
+        "filename": "src/vpp/app/dump_metrics.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 140,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-03-06T15:06:25Z",
+      "side": 1,
+      "message": "My point is we could just call sanitize() in place of sanitize_slash_only() to replace /, as sanitize() will replace /. No need for 2 different functions.",
+      "parentUuid": "027a218f_1bcf178c",
+      "revId": "8a1e6a83a47dc708acfacf4778226012d20fe743",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "94a1f94c_eebd56dc",
         "filename": "src/vpp/app/dump_metrics.c",
         "patchSetId": 3
@@ -136,6 +154,24 @@
       "side": 1,
       "message": "Done",
       "parentUuid": "94a1f94c_eebd56dc",
+      "revId": "8a1e6a83a47dc708acfacf4778226012d20fe743",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "667a587a_9eac0ad9",
+        "filename": "src/vpp/app/dump_metrics.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 154,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-03-06T15:06:25Z",
+      "side": 1,
+      "message": "It looks the same to me? Or am I missing something?",
+      "parentUuid": "bec196a0_f8e87c62",
       "revId": "8a1e6a83a47dc708acfacf4778226012d20fe743",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
