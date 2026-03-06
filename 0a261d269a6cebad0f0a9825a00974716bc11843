@@ -16,6 +16,40 @@
       "message": "Good enough to me for now.",
       "revId": "0a261d269a6cebad0f0a9825a00974716bc11843",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "249e1da1_a4038a52",
+        "filename": "src/plugins/sfdp_services/base/tcp-check/node.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 120,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-03-06T21:25:08Z",
+      "side": 1,
+      "message": "Also, this is probably a different issue, but if the initiator was to re-send a SYN packet (e.g. first SYN or associated ACK are dropped) then the session would be removed immediately upon seeing the re-transmitted SYN from the initiator with the current logic.",
+      "revId": "0a261d269a6cebad0f0a9825a00974716bc11843",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "53ce938d_63ada9fc",
+        "filename": "src/plugins/sfdp_services/base/tcp-check/node.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 205,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-03-06T21:25:08Z",
+      "side": 1,
+      "message": "If a connection is left in TIME_WAIT state in SFDP, and we subsequently receive an attempt to establish a connection on the same 5-tuple with a SYN in the forward direction - then we will trigger an error state in the state machine which will remove the session from SFDP and ignore the first SYN sent by the new connection. i.e.\n\n```\n      if (flags \u0026 SFDP_TCP_CHECK_TCP_FLAGS_SYN)\n\t{\n\t  /* New session, must be a SYN otherwise bad */\n\t  if (sf[0] \u003d\u003d 0)\n\t    nsf[0] \u003d SFDP_TCP_CHECK_SESSION_FLAG_WAIT_FOR_RESP_SYN |\n\t\t     SFDP_TCP_CHECK_SESSION_FLAG_WAIT_FOR_RESP_ACK_TO_SYN;\n\t  else\n\t    {\n\t      remove_session \u003d 1;\n\t      goto out;\n\t    }\n\t}\n```\n\nI think we should check whether we are in TIME_WAIT state when handling SYN packets in forward flow packets to properly handle this \u0026 reset session state.",
+      "revId": "0a261d269a6cebad0f0a9825a00974716bc11843",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
