@@ -170,7 +170,7 @@ Modifying the framework
 
 #. In suite file, implement ``SetupSuite`` method which Ginkgo runs once before starting any of the tests.
    Initialize all pods that are in the ``Pods`` struct using ``s.getPodsByName([name from kubernetes/pod-definitions-template.yaml])``.
-   ``s.SetMtuAndRestart()`` sets Calico's and VPP's MTU. However, it is also possible to add more options to VPP's stanza, like worker count.
+   ``s.ReconfigureAndRestart()`` sets Calico's and VPP's MTU. However, it is also possible to add more options to VPP's stanza, like worker count.
    It is necessary to call this function; otherwise, the cluster will keep the previous configuration.
 
         ::
@@ -181,7 +181,7 @@ Modifying the framework
                         s.Pods.Client = s.getPodsByName("client-generic")
 	                s.Pods.Server = s.getPodsByName("server-generic")
                         ...
-                        s.SetMtuAndRestart("mtu: 0", "tcp { mtu 8960 }\n    cpu { workers 0 }")
+                        s.ReconfigureAndRestart("mtu: 0", "tcp { mtu 8960 }\n    cpu { workers 0 }", false)
                         // Add custom setup code here
                 }
 
