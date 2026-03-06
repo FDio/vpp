@@ -241,7 +241,7 @@ VLIB_NODE_FN (snort_enq_node)
   u16 next_index = sa->dequeue_node_next_index;
   daq_vpp_desc_t descs[VLIB_FRAME_SIZE];
   void *ip_hdrs[VLIB_FRAME_SIZE];
-  u32 hashes[VLIB_FRAME_SIZE];
+  u32 hashes[VLIB_FRAME_SIZE] = {};
 
   uword rv = 0;
 
