@@ -8,23 +8,23 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 )
 
-type LargeMtuSuite struct {
+type MemifSuite struct {
 	KubeSuite
 }
 
-var largeMtuTests = map[string][]func(s *LargeMtuSuite){}
+var memifTests = map[string][]func(s *MemifSuite){}
 
-func RegisterLargeMtuTests(tests ...func(s *LargeMtuSuite)) {
-	largeMtuTests[GetTestFilename()] = tests
+func RegisterMemifTests(tests ...func(s *MemifSuite)) {
+	memifTests[GetTestFilename()] = tests
 }
 
-func (s *LargeMtuSuite) SetupSuite() {
+func (s *MemifSuite) SetupSuite() {
 	s.KubeSuite.SetupSuite()
-	s.ReconfigureAndRestart("mtu: 0", "tcp { mtu 8960 }\n    cpu { workers 0 }", false)
+	s.ReconfigureAndRestart("mtu: 0", "tcp { mtu 1460 }\n    cpu { workers 0 }", true)
 }
 
-var _ = Describe("LargeMtuSuite", Ordered, ContinueOnFailure, Label("Large MTU"), func() {
-	var s LargeMtuSuite
+var _ = Describe("MemifSuite", Ordered, ContinueOnFailure, Label("Memif"), func() {
+	var s MemifSuite
 	BeforeAll(func() {
 		s.SkipIfBareMetalCluster()
 		s.SetupSuite()
@@ -41,7 +41,7 @@ var _ = Describe("LargeMtuSuite", Ordered, ContinueOnFailure, Label("Large MTU")
 		s.TeardownSuite()
 	})
 
-	for filename, tests := range largeMtuTests {
+	for filename, tests := range memifTests {
 		for _, test := range tests {
 			test := test
 			pc := reflect.ValueOf(test).Pointer()
