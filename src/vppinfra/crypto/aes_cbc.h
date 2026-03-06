@@ -20,7 +20,8 @@ clib_aes_cbc_encrypt (const aes_cbc_key_data_t *kd, const u8 *src, uword len,
 		      const u8 *iv, aes_key_size_t ks, u8 *dst)
 {
   int rounds = AES_KEY_ROUNDS (ks);
-  u8x16 r, *k = (u8x16 *) kd->encrypt_key;
+  u8x16 r;
+  const u8x16 *k = kd->encrypt_key;
 
   r = *(u8x16u *) iv;
 
@@ -474,14 +475,21 @@ static_always_inline void
 clib_aes_cbc_key_expand (aes_cbc_key_data_t *kd, const u8 *key,
 			 aes_key_size_t ks)
 {
+  typedef struct
+  {
+    u8x16 encrypt_key[15];
+    u8x16 decrypt_key[15];
+  } aes_cbc_key_data_rw_t;
+  aes_cbc_key_data_rw_t kd_rw = {};
   u8x16 e[15], d[15];
   aes_key_expand (e, key, ks);
   aes_key_enc_to_dec (e, d, ks);
   for (int i = 0; i < AES_KEY_ROUNDS (ks) + 1; i++)
     {
-      ((u8x16 *) kd->decrypt_key)[i] = d[i];
-      ((u8x16 *) kd->encrypt_key)[i] = e[i];
+      kd_rw.decrypt_key[i] = d[i];
+      kd_rw.encrypt_key[i] = e[i];
     }
+  clib_memcpy_fast ((void *) kd, &kd_rw, sizeof (kd_rw));
 }
 
 static_always_inline void

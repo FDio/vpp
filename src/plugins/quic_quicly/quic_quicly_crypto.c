@@ -557,24 +557,18 @@ Exit:
 static u32
 quic_quicly_crypto_set_key (crypto_key_t *key)
 {
+  vlib_main_t *vm = vlib_get_main ();
   u8 thread_index = vlib_get_thread_index ();
   quic_quicly_crypto_main_t *qqcm = &quic_quicly_crypto_main;
   u32 key_id = qqcm->per_thread_crypto_key_indices[thread_index];
   vnet_crypto_key_t *vnet_key = vnet_crypto_get_key (key_id);
-  vnet_crypto_engine_t *engine;
-
-  vec_foreach (engine, cm->engines)
-    if (engine->key_op_handler)
-      engine->key_op_handler (VNET_CRYPTO_KEY_OP_DEL, key_id);
 
   ASSERT (key->algo);
   ASSERT (key->key_len);
   vnet_key->alg = key->algo;
+  vnet_key->length = key->key_len;
   clib_memcpy (vnet_key->data, key->key, key->key_len);
-
-  vec_foreach (engine, cm->engines)
-    if (engine->key_op_handler)
-      engine->key_op_handler (VNET_CRYPTO_KEY_OP_ADD, key_id);
+  vnet_crypto_key_update (vm, key_id);
 
   return key_id;
 }

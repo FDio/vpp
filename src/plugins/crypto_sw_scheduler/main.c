@@ -39,29 +39,6 @@ crypto_sw_scheduler_set_worker_crypto (u32 worker_idx, u8 enabled)
   return 0;
 }
 
-static void
-crypto_sw_scheduler_key_handler (vnet_crypto_key_op_t kop,
-				 vnet_crypto_key_index_t idx)
-{
-  crypto_sw_scheduler_main_t *cm = &crypto_sw_scheduler_main;
-  vnet_crypto_key_t *key = vnet_crypto_get_key (idx);
-
-  vec_validate (cm->keys, idx);
-
-  if (key->is_link)
-    {
-      if (kop == VNET_CRYPTO_KEY_OP_DEL)
-	{
-	  cm->keys[idx].index_crypto = UINT32_MAX;
-	  cm->keys[idx].index_integ = UINT32_MAX;
-	}
-      else
-	{
-	  cm->keys[idx] = *key;
-	}
-    }
-}
-
 static int
 crypto_sw_scheduler_frame_enqueue (vlib_main_t *vm,
 				   vnet_crypto_async_frame_t *frame, u8 is_enc)
@@ -654,9 +631,6 @@ crypto_sw_scheduler_init (vlib_main_t * vm)
   cm->crypto_engine_index =
     vnet_crypto_register_engine (vm, "sw_scheduler", 100,
 				 "SW Scheduler Async Engine");
-
-  vnet_crypto_register_key_handler (vm, cm->crypto_engine_index,
-				    crypto_sw_scheduler_key_handler);
 
   crypto_sw_scheduler_api_init (vm);
 

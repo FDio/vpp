@@ -336,8 +336,7 @@ cryptodev_raw_aead_enqueue_internal (vlib_main_t *vm,
 #endif
 		))
 	    {
-	      cryptodev_sess_handler (vm, VNET_CRYPTO_KEY_OP_DEL,
-				      fe->key_index, aad_len);
+	      cryptodev_sess_del (vm, fe->key_index);
 	      status = cryptodev_session_create (vm, fe->key_index, aad_len);
 	      if (PREDICT_FALSE (status < 0))
 		goto error_exit;
