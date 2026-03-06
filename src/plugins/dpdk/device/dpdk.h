@@ -403,6 +403,17 @@ typedef enum
 #define dpdk_log_debug(...)                                                   \
   vlib_log (VLIB_LOG_LEVEL_DEBUG, dpdk_main.log_default, __VA_ARGS__)
 
+#define dpdk_cryptodev_log_err(...)                                                                \
+  vlib_log (VLIB_LOG_LEVEL_ERR, dpdk_main.log_cryptodev, __VA_ARGS__)
+#define dpdk_cryptodev_log_warn(...)                                                               \
+  vlib_log (VLIB_LOG_LEVEL_WARNING, dpdk_main.log_cryptodev, __VA_ARGS__)
+#define dpdk_cryptodev_log_notice(...)                                                             \
+  vlib_log (VLIB_LOG_LEVEL_NOTICE, dpdk_main.log_cryptodev, __VA_ARGS__)
+#define dpdk_cryptodev_log_info(...)                                                               \
+  vlib_log (VLIB_LOG_LEVEL_INFO, dpdk_main.log_cryptodev, __VA_ARGS__)
+#define dpdk_cryptodev_log_debug(...)                                                              \
+  vlib_log (VLIB_LOG_LEVEL_DEBUG, dpdk_main.log_cryptodev, __VA_ARGS__)
+
 void dpdk_update_link_state (dpdk_device_t * xd, f64 now);
 
 #define foreach_dpdk_rss_hf                                                   \
