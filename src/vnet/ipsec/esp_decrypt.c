@@ -660,7 +660,7 @@ esp_decrypt_prepare_async_frame (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
 
   if (!irt->is_aead)
     {
-      /* linked algs */
+      /* combined algs */
       integ_start_offset = payload - b->data;
       integ_len = len;
       if (PREDICT_TRUE (irt->integ_icv_size))

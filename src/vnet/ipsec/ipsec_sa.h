@@ -163,17 +163,6 @@ typedef struct
 /* Forward declarations and builder callback typedef */
 typedef struct ipsec_sa_outb_rt_t_ ipsec_sa_outb_rt_t;
 
-/* Function signature and pointer type for IPsec builder callbacks */
-#define IPSEC_BUILD_OP_TMPL_ARGS                                              \
-  vnet_crypto_op_t *op, ipsec_sa_outb_rt_t *ort, vlib_main_t *vm, void *ptd,  \
-    vlib_buffer_t **b, vlib_buffer_t *lb, u8 *payload, u16 payload_len,       \
-    u32 hdr_len, void *esp
-
-#define IPSEC_BUILD_OP_ARGS IPSEC_BUILD_OP_TMPL_ARGS
-
-typedef void ipsec_build_op_tmpl_sig (IPSEC_BUILD_OP_TMPL_ARGS);
-typedef ipsec_build_op_tmpl_sig *ipsec_build_op_tmpl_fn_t;
-
 typedef struct ipsec_sa_outb_rt_t_
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
@@ -193,7 +182,6 @@ typedef struct ipsec_sa_outb_rt_t_
   u16 op_id;
   vnet_crypto_op_t op_tmpl_single;
   vnet_crypto_op_t op_tmpl_chained;
-  ipsec_build_op_tmpl_fn_t *bld_op_tmpl[VNET_CRYPTO_OP_N_TYPES];
   u8 cipher_iv_size;
   u8 esp_block_align;
   u8 integ_icv_size;
@@ -238,16 +226,11 @@ typedef struct
   /* elements with u32 size */
   u32 id;
   u32 stat_index;
-  vnet_crypto_alg_t integ_calg;
-  vnet_crypto_alg_t crypto_calg;
-  u32 crypto_sync_key_index;
-  u32 integ_sync_key_index;
-  u32 linked_key_index;
+  u32 key_index;
 
   /* elements with u16 size */
   u16 crypto_sync_enc_op_id;
   u16 crypto_sync_dec_op_id;
-  u16 integ_sync_op_id;
   u16 crypto_async_enc_op_id;
   u16 crypto_async_dec_op_id;
 
@@ -316,10 +299,6 @@ extern int ipsec_sa_unlock_id (u32 id);
 extern void ipsec_sa_unlock (index_t sai);
 extern void ipsec_sa_lock (index_t sai);
 extern void ipsec_sa_clear (index_t sai);
-extern void ipsec_sa_set_crypto_alg (ipsec_sa_t *sa,
-				     ipsec_crypto_alg_t crypto_alg);
-extern void ipsec_sa_set_integ_alg (ipsec_sa_t *sa,
-				    ipsec_integ_alg_t integ_alg);
 extern void ipsec_sa_set_async_mode (ipsec_sa_t *sa, int is_enabled);
 
 typedef walk_rc_t (*ipsec_sa_walk_cb_t) (ipsec_sa_t *sa, void *ctx);

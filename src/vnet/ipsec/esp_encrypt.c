@@ -473,26 +473,145 @@ set_ip6_udp_cksum_offload (vlib_buffer_t *b, i16 l3_hdr_offset,
   vnet_buffer_offload_flags_set (b, VNET_BUFFER_OFFLOAD_F_UDP_CKSUM);
 }
 
-static_always_inline void
-esp_prepare_sync_op_chained (IPSEC_BUILD_OP_ARGS)
+/* Common helper functions to reduce code duplication */
+static_always_inline esp_ctr_nonce_t *
+ipsec_setup_ctr_nonce (vnet_crypto_op_t *op, ipsec_sa_outb_rt_t *ort, void *pkt_iv, u32 hdr_len)
 {
-  ort->bld_op_tmpl[VNET_CRYPTO_OP_TYPE_ENCRYPT]
-		  [VNET_CRYPTO_HANDLER_TYPE_CHAINED](op, ort, vm, ptd, b, lb,
-						     payload, payload_len,
-						     hdr_len, esp);
-  ort->bld_op_tmpl[VNET_CRYPTO_OP_TYPE_HMAC][VNET_CRYPTO_HANDLER_TYPE_CHAINED](
-    op, ort, vm, ptd, b, lb, payload, payload_len, hdr_len, esp);
+  esp_ctr_nonce_t *nonce = (esp_ctr_nonce_t *) (pkt_iv - hdr_len - sizeof (*nonce));
+  nonce->ctr = clib_host_to_net_u32 (1);
+  nonce->salt = ort->salt;
+  nonce->iv = *(u64 *) pkt_iv;
+  op->iv = (u8 *) nonce;
+  return nonce;
 }
 
 static_always_inline void
-esp_prepare_sync_op (IPSEC_BUILD_OP_ARGS)
+ipsec_setup_chained_crypto (vnet_crypto_op_t *op, vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
+			    vlib_buffer_t *b, vlib_buffer_t *lb, ipsec_sa_outb_rt_t *ort,
+			    u8 *crypto_start, u16 crypto_len)
 {
-  ort->bld_op_tmpl[VNET_CRYPTO_OP_TYPE_ENCRYPT]
-		  [VNET_CRYPTO_HANDLER_TYPE_SIMPLE](op, ort, vm, ptd, b, lb,
-						    payload, payload_len,
-						    hdr_len, esp);
-  ort->bld_op_tmpl[VNET_CRYPTO_OP_TYPE_HMAC][VNET_CRYPTO_HANDLER_TYPE_SIMPLE](
-    op, ort, vm, ptd, b, lb, payload, payload_len, hdr_len, esp);
+  op->digest = vlib_buffer_get_tail (lb) - ort->integ_icv_size;
+  op->chunk_index = vec_len (ptd->chunks);
+  esp_encrypt_chain_crypto (vm, ptd, b, lb, ort->integ_icv_size, crypto_start, crypto_len,
+			    &op->n_chunks);
+}
+
+static_always_inline void
+ipsec_setup_aead_fields (vnet_crypto_op_t *op, ipsec_sa_outb_rt_t *ort, u8 *payload,
+			 u16 payload_len, u8 *aad, esp_header_t *esp)
+{
+  u32 seq_hi = ort->seq64 >> 32;
+  op->aad = aad;
+  esp_aad_fill (op->aad, esp, ort->use_esn, seq_hi);
+  op->tag = payload + payload_len - ort->integ_icv_size;
+}
+
+static_always_inline void
+ipsec_build_enc_op_tmpl (vnet_crypto_op_t *op, ipsec_sa_outb_rt_t *ort, vlib_main_t *vm, void *ptd,
+			 vlib_buffer_t **b, vlib_buffer_t *lb, u8 *payload, u16 payload_len,
+			 u32 hdr_len, void *esp, u8 is_chain, u8 is_cbc, u8 is_gcm)
+{
+  u8 *crypto_start;
+  u16 crypto_len;
+  void *pkt_iv;
+  esp_ctr_nonce_t *nonce;
+  u8 *aad;
+
+  if (is_cbc)
+    {
+      crypto_start = payload - ort->cipher_iv_size;
+      crypto_len = payload_len + ort->cipher_iv_size;
+
+      if (!is_chain)
+	{
+	  op->len = payload_len - ort->integ_icv_size + ort->cipher_iv_size;
+	  op->src = op->dst = crypto_start;
+	}
+
+      clib_memset_u8 (crypto_start, 0, ort->cipher_iv_size);
+      *crypto_start = clib_pcg64i_random_r (&ort->iv_prng);
+      op->iv = crypto_start - hdr_len - ort->cipher_iv_size;
+      clib_memset_u8 (op->iv, 0, ort->cipher_iv_size);
+
+      if (is_chain)
+	ipsec_setup_chained_crypto (op, vm, ptd, b[0], lb, ort, crypto_start, crypto_len);
+      return;
+    }
+
+  if (!is_chain)
+    {
+      op->src = op->dst = payload;
+      op->len = payload_len - ort->integ_icv_size;
+    }
+
+  pkt_iv = esp_generate_iv (ort, payload, ort->cipher_iv_size);
+  nonce = ipsec_setup_ctr_nonce (op, ort, pkt_iv, hdr_len);
+  if (is_gcm)
+    {
+      aad = (u8 *) nonce - sizeof (esp_aead_t);
+      ipsec_setup_aead_fields (op, ort, payload, payload_len, aad, esp);
+    }
+
+  if (is_chain)
+    ipsec_setup_chained_crypto (op, vm, ptd, b[0], lb, ort, payload, payload_len);
+}
+
+static_always_inline void
+ipsec_null_gmac_build_enc_op_tmpl (vnet_crypto_op_t *op, ipsec_sa_outb_rt_t *ort, u8 *payload,
+				   u16 payload_len, u32 hdr_len, void *esp)
+{
+  op->src = op->dst = payload - ort->cipher_iv_size;
+  op->len = payload_len - ort->integ_icv_size + ort->cipher_iv_size;
+
+  void *pkt_iv = esp_generate_iv (ort, payload, ort->cipher_iv_size);
+  esp_ctr_nonce_t *nonce = ipsec_setup_ctr_nonce (op, ort, pkt_iv, hdr_len);
+  u8 *aad = (u8 *) nonce - sizeof (esp_aead_t);
+  ipsec_setup_aead_fields (op, ort, payload, payload_len, aad, esp);
+}
+
+static_always_inline void
+ipsec_null_gmac_build_enc_op_tmpl_chain (vnet_crypto_op_t *op, ipsec_sa_outb_rt_t *ort,
+					 vlib_main_t *vm, void *ptd, vlib_buffer_t **b,
+					 vlib_buffer_t *lb, u8 *payload, u16 payload_len,
+					 u32 hdr_len, void *esp)
+{
+  void *pkt_iv = esp_generate_iv (ort, payload, ort->cipher_iv_size);
+  esp_ctr_nonce_t *nonce = ipsec_setup_ctr_nonce (op, ort, pkt_iv, hdr_len);
+  u8 *aad = (u8 *) nonce - sizeof (esp_aead_t);
+  ipsec_setup_aead_fields (op, ort, payload, payload_len, aad, esp);
+  ipsec_setup_chained_crypto (op, vm, ptd, b[0], lb, ort, payload - ort->cipher_iv_size,
+			      payload_len + ort->cipher_iv_size);
+}
+
+static_always_inline void
+ipsec_build_integ_op_tmpl (vnet_crypto_op_t *op, ipsec_sa_outb_rt_t *ort, u8 *payload,
+			   u16 payload_len)
+{
+  op->integ_src = payload - ort->cipher_iv_size - sizeof (esp_header_t);
+  op->integ_len = payload_len - ort->integ_icv_size + ort->cipher_iv_size + sizeof (esp_header_t);
+
+  op->digest = payload + payload_len - ort->integ_icv_size;
+
+  if (ort->use_esn)
+    {
+      u32 seq_hi = ort->seq64 >> 32;
+      u32 tmp = clib_net_to_host_u32 (seq_hi);
+      clib_memcpy_fast (op->digest, &tmp, sizeof (seq_hi));
+      op->integ_len += sizeof (seq_hi);
+    }
+}
+
+static_always_inline void
+ipsec_build_integ_op_tmpl_chain (vnet_crypto_op_t *op, ipsec_sa_outb_rt_t *ort, vlib_main_t *vm,
+				 void *ptd, vlib_buffer_t **b, vlib_buffer_t *lb, u8 *payload,
+				 u16 payload_len)
+{
+  op->digest = vlib_buffer_get_tail (lb) - ort->integ_icv_size;
+  op->integ_chunk_index = vec_len (((ipsec_per_thread_data_t *) ptd)->chunks);
+  esp_encrypt_chain_integ (vm, (ipsec_per_thread_data_t *) ptd, ort, b[0], lb, ort->integ_icv_size,
+			   payload - ort->cipher_iv_size - sizeof (esp_header_t),
+			   payload_len + ort->cipher_iv_size + sizeof (esp_header_t), op->digest,
+			   &op->integ_n_chunks);
 }
 
 always_inline uword
@@ -916,16 +1035,41 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      ops = &((ipsec_per_thread_data_t *) ptd)->chained_crypto_ops;
 	      vec_add2_aligned (ops[0], op, 1, CLIB_CACHE_LINE_BYTES);
 	      *op = ort->op_tmpl_chained;
-	      esp_prepare_sync_op_chained (op, ort, vm, ptd, b, lb, payload,
-					   payload_len, hdr_len, esp);
+	      if (ort->is_null_gmac)
+		ipsec_null_gmac_build_enc_op_tmpl_chain (op, ort, vm, ptd, b, lb, payload,
+							 payload_len, hdr_len, esp);
+	      else if (ort->is_aead)
+		ipsec_build_enc_op_tmpl (op, ort, vm, ptd, b, lb, payload, payload_len, hdr_len,
+					 esp, 1, 0, 1);
+	      else if (ort->is_ctr)
+		ipsec_build_enc_op_tmpl (op, ort, vm, ptd, b, lb, payload, payload_len, hdr_len,
+					 esp, 1, 0, 0);
+	      else if (ort->cipher_iv_size)
+		ipsec_build_enc_op_tmpl (op, ort, vm, ptd, b, lb, payload, payload_len, hdr_len,
+					 esp, 1, 1, 0);
+
+	      if (!ort->is_aead && ort->integ_icv_size)
+		ipsec_build_integ_op_tmpl_chain (op, ort, vm, ptd, b, lb, payload, payload_len);
 	    }
 	  else
 	    {
 	      ops = &((ipsec_per_thread_data_t *) ptd)->crypto_ops;
 	      vec_add2_aligned (ops[0], op, 1, CLIB_CACHE_LINE_BYTES);
 	      *op = ort->op_tmpl_single;
-	      esp_prepare_sync_op (op, ort, vm, ptd, b, lb, payload,
-				   payload_len, hdr_len, esp);
+	      if (ort->is_null_gmac)
+		ipsec_null_gmac_build_enc_op_tmpl (op, ort, payload, payload_len, hdr_len, esp);
+	      else if (ort->is_aead)
+		ipsec_build_enc_op_tmpl (op, ort, vm, ptd, b, lb, payload, payload_len, hdr_len,
+					 esp, 0, 0, 1);
+	      else if (ort->is_ctr)
+		ipsec_build_enc_op_tmpl (op, ort, vm, ptd, b, lb, payload, payload_len, hdr_len,
+					 esp, 0, 0, 0);
+	      else if (ort->cipher_iv_size)
+		ipsec_build_enc_op_tmpl (op, ort, vm, ptd, b, lb, payload, payload_len, hdr_len,
+					 esp, 0, 1, 0);
+
+	      if (!ort->is_aead && ort->integ_icv_size)
+		ipsec_build_integ_op_tmpl (op, ort, payload, payload_len);
 	    }
 	  op->user_data = n_sync;
 	}
@@ -1356,210 +1500,6 @@ VLIB_REGISTER_NODE (esp_mpls_encrypt_tun_post_node) = {
 
 #ifndef CLIB_MARCH_VARIANT
 
-/* Common helper functions to reduce code duplication */
-static_always_inline esp_ctr_nonce_t *
-ipsec_setup_ctr_nonce (vnet_crypto_op_t *op, ipsec_sa_outb_rt_t *ort,
-		       void *pkt_iv, u32 hdr_len)
-{
-  esp_ctr_nonce_t *nonce =
-    (esp_ctr_nonce_t *) (pkt_iv - hdr_len - sizeof (*nonce));
-  nonce->ctr = clib_host_to_net_u32 (1);
-  nonce->salt = ort->salt;
-  nonce->iv = *(u64 *) pkt_iv;
-  op->iv = (u8 *) nonce;
-  return nonce;
-}
-
-static_always_inline void
-ipsec_setup_chained_crypto (vnet_crypto_op_t *op, vlib_main_t *vm,
-			    ipsec_per_thread_data_t *ptd, vlib_buffer_t *b,
-			    vlib_buffer_t *lb, ipsec_sa_outb_rt_t *ort,
-			    u8 *crypto_start, u16 crypto_len)
-{
-  op->digest = vlib_buffer_get_tail (lb) - ort->integ_icv_size;
-  op->chunk_index = vec_len (ptd->chunks);
-  esp_encrypt_chain_crypto (vm, ptd, b, lb, ort->integ_icv_size, crypto_start,
-			    crypto_len, &op->n_chunks);
-}
-
-static_always_inline void
-ipsec_setup_aead_fields (vnet_crypto_op_t *op, ipsec_sa_outb_rt_t *ort,
-			 u8 *payload, u16 payload_len, u8 *aad,
-			 esp_header_t *esp)
-{
-  u32 seq_hi = ort->seq64 >> 32;
-  op->aad = aad;
-  esp_aad_fill (op->aad, esp, ort->use_esn, seq_hi);
-  op->tag = payload + payload_len - ort->integ_icv_size;
-}
-
-void
-ipsec_cbc_build_enc_op_tmpl (IPSEC_BUILD_OP_TMPL_ARGS)
-{
-  op->len = payload_len - ort->integ_icv_size + ort->cipher_iv_size;
-  op->src = op->dst = payload - ort->cipher_iv_size;
-  clib_memset_u8 (op->src, 0, ort->cipher_iv_size);
-  *op->src = clib_pcg64i_random_r (&ort->iv_prng);
-
-  op->iv = op->src - hdr_len - ort->cipher_iv_size;
-  clib_memset_u8 (op->iv, 0, ort->cipher_iv_size);
-}
-
-void
-ipsec_cbc_build_enc_op_tmpl_chain (IPSEC_BUILD_OP_TMPL_ARGS)
-{
-  u8 *crypto_start = payload - ort->cipher_iv_size;
-
-  clib_memset_u8 (crypto_start, 0, ort->cipher_iv_size);
-  *crypto_start = clib_pcg64i_random_r (&ort->iv_prng);
-  op->iv = crypto_start - hdr_len - ort->cipher_iv_size;
-  clib_memset_u8 (op->iv, 0, ort->cipher_iv_size);
-
-  ipsec_setup_chained_crypto (op, vm, ptd, b[0], lb, ort, crypto_start,
-			      payload_len + ort->cipher_iv_size);
-}
-
-void
-ipsec_ctr_build_enc_op_tmpl (IPSEC_BUILD_OP_TMPL_ARGS)
-{
-  op->src = op->dst = payload;
-  op->len = payload_len - ort->integ_icv_size;
-
-  void *pkt_iv = esp_generate_iv (ort, payload, ort->cipher_iv_size);
-  ipsec_setup_ctr_nonce (op, ort, pkt_iv, hdr_len);
-}
-
-void
-ipsec_ctr_build_enc_op_tmpl_chain (IPSEC_BUILD_OP_TMPL_ARGS)
-{
-
-  void *pkt_iv = esp_generate_iv (ort, payload, ort->cipher_iv_size);
-  ipsec_setup_ctr_nonce (op, ort, pkt_iv, hdr_len);
-  ipsec_setup_chained_crypto (op, vm, ptd, b[0], lb, ort, payload,
-			      payload_len);
-}
-
-void
-ipsec_gcm_build_enc_op_tmpl (IPSEC_BUILD_OP_TMPL_ARGS)
-{
-  op->src = op->dst = payload;
-  op->len = payload_len - ort->integ_icv_size;
-
-  void *pkt_iv = esp_generate_iv (ort, payload, ort->cipher_iv_size);
-  esp_ctr_nonce_t *nonce = ipsec_setup_ctr_nonce (op, ort, pkt_iv, hdr_len);
-  u8 *aad = (u8 *) nonce - sizeof (esp_aead_t);
-  ipsec_setup_aead_fields (op, ort, payload, payload_len, aad, esp);
-}
-
-void
-ipsec_gcm_build_enc_op_tmpl_chain (IPSEC_BUILD_OP_TMPL_ARGS)
-{
-  void *pkt_iv = esp_generate_iv (ort, payload, ort->cipher_iv_size);
-  esp_ctr_nonce_t *nonce = ipsec_setup_ctr_nonce (op, ort, pkt_iv, hdr_len);
-  u8 *aad = (u8 *) nonce - sizeof (esp_aead_t);
-  ipsec_setup_aead_fields (op, ort, payload, payload_len, aad, esp);
-  ipsec_setup_chained_crypto (op, vm, ptd, b[0], lb, ort, payload,
-			      payload_len);
-}
-
-void
-ipsec_null_gmac_build_enc_op_tmpl (IPSEC_BUILD_OP_TMPL_ARGS)
-{
-  op->src = op->dst = payload - ort->cipher_iv_size;
-  op->len = payload_len - ort->integ_icv_size + ort->cipher_iv_size;
-
-  void *pkt_iv = esp_generate_iv (ort, payload, ort->cipher_iv_size);
-  esp_ctr_nonce_t *nonce = ipsec_setup_ctr_nonce (op, ort, pkt_iv, hdr_len);
-  u8 *aad = (u8 *) nonce - sizeof (esp_aead_t);
-  ipsec_setup_aead_fields (op, ort, payload, payload_len, aad, esp);
-}
-
-void
-ipsec_null_gmac_build_enc_op_tmpl_chain (IPSEC_BUILD_OP_TMPL_ARGS)
-{
-  void *pkt_iv = esp_generate_iv (ort, payload, ort->cipher_iv_size);
-  esp_ctr_nonce_t *nonce = ipsec_setup_ctr_nonce (op, ort, pkt_iv, hdr_len);
-  u8 *aad = (u8 *) nonce - sizeof (esp_aead_t);
-  ipsec_setup_aead_fields (op, ort, payload, payload_len, aad, esp);
-  ipsec_setup_chained_crypto (op, vm, ptd, b[0], lb, ort,
-			      payload - ort->cipher_iv_size,
-			      payload_len + ort->cipher_iv_size);
-}
-
-void
-ipsec_build_integ_op_tmpl (IPSEC_BUILD_OP_TMPL_ARGS)
-{
-  op->integ_src = payload - ort->cipher_iv_size - sizeof (esp_header_t);
-  op->integ_len = payload_len - ort->integ_icv_size + ort->cipher_iv_size +
-		  sizeof (esp_header_t);
-
-  op->digest = payload + payload_len - ort->integ_icv_size;
-
-  if (ort->use_esn)
-    {
-      u32 seq_hi = ort->seq64 >> 32;
-      u32 tmp = clib_net_to_host_u32 (seq_hi);
-      clib_memcpy_fast (op->digest, &tmp, sizeof (seq_hi));
-      op->integ_len += sizeof (seq_hi);
-    }
-}
-
-void
-ipsec_build_integ_op_tmpl_chain (IPSEC_BUILD_OP_TMPL_ARGS)
-{
-  op->digest = vlib_buffer_get_tail (lb) - ort->integ_icv_size;
-  op->integ_chunk_index = vec_len (((ipsec_per_thread_data_t *) ptd)->chunks);
-  esp_encrypt_chain_integ (
-    vm, (ipsec_per_thread_data_t *) ptd, ort, b[0], lb, ort->integ_icv_size,
-    payload - ort->cipher_iv_size - sizeof (esp_header_t),
-    payload_len + ort->cipher_iv_size + sizeof (esp_header_t), op->digest,
-    &op->integ_n_chunks);
-}
-
-static void
-ipsec_init_builder_callbacks (ipsec_main_t *im)
-{
-
-#define _(a, b)                                                               \
-  im->crypto_algs[a].bld_enc_op_tmpl[VNET_CRYPTO_HANDLER_TYPE_SIMPLE] =       \
-    ipsec_##b##_build_enc_op_tmpl;                                            \
-  im->crypto_algs[a].bld_enc_op_tmpl[VNET_CRYPTO_HANDLER_TYPE_CHAINED] =      \
-    ipsec_##b##_build_enc_op_tmpl_chain;
-
-  _ (IPSEC_CRYPTO_ALG_DES_CBC, cbc)
-  _ (IPSEC_CRYPTO_ALG_3DES_CBC, cbc)
-  _ (IPSEC_CRYPTO_ALG_AES_CBC_128, cbc)
-  _ (IPSEC_CRYPTO_ALG_AES_CBC_192, cbc)
-  _ (IPSEC_CRYPTO_ALG_AES_CBC_256, cbc)
-  _ (IPSEC_CRYPTO_ALG_AES_CTR_128, ctr)
-  _ (IPSEC_CRYPTO_ALG_AES_CTR_192, ctr)
-  _ (IPSEC_CRYPTO_ALG_AES_CTR_256, ctr)
-  _ (IPSEC_CRYPTO_ALG_AES_GCM_128, gcm)
-  _ (IPSEC_CRYPTO_ALG_AES_GCM_192, gcm)
-  _ (IPSEC_CRYPTO_ALG_AES_GCM_256, gcm)
-  _ (IPSEC_CRYPTO_ALG_CHACHA20_POLY1305, gcm)
-  _ (IPSEC_CRYPTO_ALG_AES_NULL_GMAC_128, null_gmac)
-  _ (IPSEC_CRYPTO_ALG_AES_NULL_GMAC_192, null_gmac)
-  _ (IPSEC_CRYPTO_ALG_AES_NULL_GMAC_256, null_gmac)
-
-#undef _
-
-#define _(a)                                                                  \
-  im->integ_algs[a].bld_integ_op_tmpl[VNET_CRYPTO_HANDLER_TYPE_SIMPLE] =      \
-    ipsec_build_integ_op_tmpl;                                                \
-  im->integ_algs[a].bld_integ_op_tmpl[VNET_CRYPTO_HANDLER_TYPE_CHAINED] =     \
-    ipsec_build_integ_op_tmpl_chain;
-
-  _ (IPSEC_INTEG_ALG_MD5_96)
-  _ (IPSEC_INTEG_ALG_SHA1_96)
-  _ (IPSEC_INTEG_ALG_SHA_256_96)
-  _ (IPSEC_INTEG_ALG_SHA_256_128)
-  _ (IPSEC_INTEG_ALG_SHA_384_192)
-  _ (IPSEC_INTEG_ALG_SHA_512_256)
-
-#undef _
-}
-
 static clib_error_t *
 esp_encrypt_init (vlib_main_t *vm)
 {
@@ -1575,9 +1515,6 @@ esp_encrypt_init (vlib_main_t *vm)
     esp6_encrypt_tun_node.index, im->handoff_queue_size);
   im->esp_mpls_enc_tun_fq_index = vlib_frame_queue_main_init (
     esp_mpls_encrypt_tun_node.index, im->handoff_queue_size);
-
-  /* Initialize builder callback function pointers */
-  ipsec_init_builder_callbacks (im);
 
   return 0;
 }
