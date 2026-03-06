@@ -50,7 +50,6 @@ VLIB_REGISTER_NODE (cnat_lookup_feature_ip4_node) = {
 VNET_FEATURE_INIT (cnat_in_ip4_feature, static) = {
   .arc_name = "ip4-unicast",
   .node_name = "cnat-lookup-ip4",
-  .runs_after = VNET_FEATURES ("vxlan4-input", "ipip4-input"),
 };
 
 VLIB_NODE_FN (cnat_lookup_feature_ip6_node)
@@ -76,7 +75,6 @@ VLIB_REGISTER_NODE (cnat_lookup_feature_ip6_node) = {
 VNET_FEATURE_INIT (cnat_in_ip6_feature, static) = {
   .arc_name = "ip6-unicast",
   .node_name = "cnat-lookup-ip6",
-  .runs_after = VNET_FEATURES ("vxlan6-input", "ipip6-input"),
 };
 
 always_inline void
