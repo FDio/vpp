@@ -1,6 +1,6 @@
 /*
  * SPDX-License-Identifier: Apache-2.0
- * Copyright (c) 2019 Cisco and/or its affiliates.
+ * Copyright (c) 2019-2026 Cisco and/or its affiliates.
  */
 
 #ifndef included_vnet_crypto_crypto_h
@@ -12,25 +12,27 @@
 #define VNET_CRYPTO_FRAME_POOL_SIZE 1024
 
 /* CRYPTO_ID, PRETTY_NAME, ARGS*/
-#define foreach_crypto_cipher_alg                                             \
-  _ (DES_CBC, "des-cbc", .key_length = 7)                                     \
-  _ (3DES_CBC, "3des-cbc", .key_length = 24)                                  \
-  _ (AES_128_CBC, "aes-128-cbc", .key_length = 16)                            \
-  _ (AES_192_CBC, "aes-192-cbc", .key_length = 24)                            \
-  _ (AES_256_CBC, "aes-256-cbc", .key_length = 32)                            \
-  _ (AES_128_CTR, "aes-128-ctr", .key_length = 16)                            \
-  _ (AES_192_CTR, "aes-192-ctr", .key_length = 24)                            \
+#define foreach_crypto_cipher_alg_non_ctr                                                          \
+  _ (DES_CBC, "des-cbc", .key_length = 7)                                                          \
+  _ (3DES_CBC, "3des-cbc", .key_length = 24)                                                       \
+  _ (AES_128_CBC, "aes-128-cbc", .key_length = 16)                                                 \
+  _ (AES_192_CBC, "aes-192-cbc", .key_length = 24)                                                 \
+  _ (AES_256_CBC, "aes-256-cbc", .key_length = 32)
+
+#define foreach_crypto_cipher_alg_ctr                                                              \
+  _ (AES_128_CTR, "aes-128-ctr", .key_length = 16)                                                 \
+  _ (AES_192_CTR, "aes-192-ctr", .key_length = 24)                                                 \
   _ (AES_256_CTR, "aes-256-ctr", .key_length = 32)
 
 /* CRYPTO_ID, PRETTY_NAME,  ARGS */
-#define foreach_crypto_aead_alg                                               \
-  _ (AES_128_GCM, "aes-128-gcm", .is_aead = 1, .key_length = 16)              \
-  _ (AES_192_GCM, "aes-192-gcm", .is_aead = 1, .key_length = 24)              \
-  _ (AES_256_GCM, "aes-256-gcm", .is_aead = 1, .key_length = 32)              \
-  _ (AES_128_NULL_GMAC, "aes-128-null-gmac", .is_aead = 1, .key_length = 16)  \
-  _ (AES_192_NULL_GMAC, "aes-192-null-gmac", .is_aead = 1, .key_length = 24)  \
-  _ (AES_256_NULL_GMAC, "aes-256-null-gmac", .is_aead = 1, .key_length = 32)  \
-  _ (CHACHA20_POLY1305, "chacha20-poly1305", .is_aead = 1, .key_length = 32)
+#define foreach_crypto_aead_alg                                                                    \
+  _ (AES_128_GCM, "aes-128-gcm", .key_length = 16)                                                 \
+  _ (AES_192_GCM, "aes-192-gcm", .key_length = 24)                                                 \
+  _ (AES_256_GCM, "aes-256-gcm", .key_length = 32)                                                 \
+  _ (AES_128_NULL_GMAC, "aes-128-null-gmac", .key_length = 16)                                     \
+  _ (AES_192_NULL_GMAC, "aes-192-null-gmac", .key_length = 24)                                     \
+  _ (AES_256_NULL_GMAC, "aes-256-null-gmac", .key_length = 32)                                     \
+  _ (CHACHA20_POLY1305, "chacha20-poly1305", .key_length = 32)
 
 #define foreach_crypto_hash_alg                                               \
   _ (MD5, "md5")                                                              \
@@ -84,50 +86,54 @@ typedef enum
   _ (CHACHA20_POLY1305, "chacha20-poly1305-aad0", 32, 16, 0)
 
 /* CRYPTO_ID, INTEG_ID, PRETTY_NAME, KEY_LENGTH_IN_BYTES, DIGEST_LEN */
-#define foreach_crypto_link_async_alg                                         \
-  _ (3DES_CBC, MD5, "3des-cbc-hmac-md5", 24, 12)                              \
-  _ (AES_128_CBC, MD5, "aes-128-cbc-hmac-md5", 16, 12)                        \
-  _ (AES_192_CBC, MD5, "aes-192-cbc-hmac-md5", 24, 12)                        \
-  _ (AES_256_CBC, MD5, "aes-256-cbc-hmac-md5", 32, 12)                        \
-  _ (3DES_CBC, SHA1, "3des-cbc-hmac-sha-1", 24, 12)                           \
-  _ (AES_128_CBC, SHA1, "aes-128-cbc-hmac-sha-1", 16, 12)                     \
-  _ (AES_192_CBC, SHA1, "aes-192-cbc-hmac-sha-1", 24, 12)                     \
-  _ (AES_256_CBC, SHA1, "aes-256-cbc-hmac-sha-1", 32, 12)                     \
-  _ (3DES_CBC, SHA224, "3des-cbc-hmac-sha-224", 24, 14)                       \
-  _ (AES_128_CBC, SHA224, "aes-128-cbc-hmac-sha-224", 16, 14)                 \
-  _ (AES_192_CBC, SHA224, "aes-192-cbc-hmac-sha-224", 24, 14)                 \
-  _ (AES_256_CBC, SHA224, "aes-256-cbc-hmac-sha-224", 32, 14)                 \
-  _ (3DES_CBC, SHA256, "3des-cbc-hmac-sha-256", 24, 16)                       \
-  _ (AES_128_CBC, SHA256, "aes-128-cbc-hmac-sha-256", 16, 16)                 \
-  _ (AES_192_CBC, SHA256, "aes-192-cbc-hmac-sha-256", 24, 16)                 \
-  _ (AES_256_CBC, SHA256, "aes-256-cbc-hmac-sha-256", 32, 16)                 \
-  _ (3DES_CBC, SHA384, "3des-cbc-hmac-sha-384", 24, 24)                       \
-  _ (AES_128_CBC, SHA384, "aes-128-cbc-hmac-sha-384", 16, 24)                 \
-  _ (AES_192_CBC, SHA384, "aes-192-cbc-hmac-sha-384", 24, 24)                 \
-  _ (AES_256_CBC, SHA384, "aes-256-cbc-hmac-sha-384", 32, 24)                 \
-  _ (3DES_CBC, SHA512, "3des-cbc-hmac-sha-512", 24, 32)                       \
-  _ (AES_128_CBC, SHA512, "aes-128-cbc-hmac-sha-512", 16, 32)                 \
-  _ (AES_192_CBC, SHA512, "aes-192-cbc-hmac-sha-512", 24, 32)                 \
-  _ (AES_256_CBC, SHA512, "aes-256-cbc-hmac-sha-512", 32, 32)                 \
-  _ (AES_128_CTR, SHA1, "aes-128-ctr-hmac-sha-1", 16, 12)                     \
-  _ (AES_192_CTR, SHA1, "aes-192-ctr-hmac-sha-1", 24, 12)                     \
-  _ (AES_256_CTR, SHA1, "aes-256-ctr-hmac-sha-1", 32, 12)                     \
-  _ (AES_128_CTR, SHA256, "aes-128-ctr-hmac-sha-256", 16, 16)                 \
-  _ (AES_192_CTR, SHA256, "aes-192-ctr-hmac-sha-256", 24, 16)                 \
-  _ (AES_256_CTR, SHA256, "aes-256-ctr-hmac-sha-256", 32, 16)                 \
-  _ (AES_128_CTR, SHA384, "aes-128-ctr-hmac-sha-384", 16, 24)                 \
-  _ (AES_192_CTR, SHA384, "aes-192-ctr-hmac-sha-384", 24, 24)                 \
-  _ (AES_256_CTR, SHA384, "aes-256-ctr-hmac-sha-384", 32, 24)                 \
-  _ (AES_128_CTR, SHA512, "aes-128-ctr-hmac-sha-512", 16, 32)                 \
-  _ (AES_192_CTR, SHA512, "aes-192-ctr-hmac-sha-512", 24, 32)                 \
+#define foreach_crypto_combined_fixed_alg_non_ctr                                                  \
+  _ (3DES_CBC, MD5, "3des-cbc-hmac-md5", 24, 12)                                                   \
+  _ (AES_128_CBC, MD5, "aes-128-cbc-hmac-md5", 16, 12)                                             \
+  _ (AES_192_CBC, MD5, "aes-192-cbc-hmac-md5", 24, 12)                                             \
+  _ (AES_256_CBC, MD5, "aes-256-cbc-hmac-md5", 32, 12)                                             \
+  _ (3DES_CBC, SHA1, "3des-cbc-hmac-sha-1", 24, 12)                                                \
+  _ (AES_128_CBC, SHA1, "aes-128-cbc-hmac-sha-1", 16, 12)                                          \
+  _ (AES_192_CBC, SHA1, "aes-192-cbc-hmac-sha-1", 24, 12)                                          \
+  _ (AES_256_CBC, SHA1, "aes-256-cbc-hmac-sha-1", 32, 12)                                          \
+  _ (3DES_CBC, SHA224, "3des-cbc-hmac-sha-224", 24, 14)                                            \
+  _ (AES_128_CBC, SHA224, "aes-128-cbc-hmac-sha-224", 16, 14)                                      \
+  _ (AES_192_CBC, SHA224, "aes-192-cbc-hmac-sha-224", 24, 14)                                      \
+  _ (AES_256_CBC, SHA224, "aes-256-cbc-hmac-sha-224", 32, 14)                                      \
+  _ (3DES_CBC, SHA256, "3des-cbc-hmac-sha-256", 24, 16)                                            \
+  _ (AES_128_CBC, SHA256, "aes-128-cbc-hmac-sha-256", 16, 16)                                      \
+  _ (AES_192_CBC, SHA256, "aes-192-cbc-hmac-sha-256", 24, 16)                                      \
+  _ (AES_256_CBC, SHA256, "aes-256-cbc-hmac-sha-256", 32, 16)                                      \
+  _ (3DES_CBC, SHA384, "3des-cbc-hmac-sha-384", 24, 24)                                            \
+  _ (AES_128_CBC, SHA384, "aes-128-cbc-hmac-sha-384", 16, 24)                                      \
+  _ (AES_192_CBC, SHA384, "aes-192-cbc-hmac-sha-384", 24, 24)                                      \
+  _ (AES_256_CBC, SHA384, "aes-256-cbc-hmac-sha-384", 32, 24)                                      \
+  _ (3DES_CBC, SHA512, "3des-cbc-hmac-sha-512", 24, 32)                                            \
+  _ (AES_128_CBC, SHA512, "aes-128-cbc-hmac-sha-512", 16, 32)                                      \
+  _ (AES_192_CBC, SHA512, "aes-192-cbc-hmac-sha-512", 24, 32)                                      \
+  _ (AES_256_CBC, SHA512, "aes-256-cbc-hmac-sha-512", 32, 32)
+
+#define foreach_crypto_combined_fixed_alg_ctr                                                      \
+  _ (AES_128_CTR, SHA1, "aes-128-ctr-hmac-sha-1", 16, 12)                                          \
+  _ (AES_192_CTR, SHA1, "aes-192-ctr-hmac-sha-1", 24, 12)                                          \
+  _ (AES_256_CTR, SHA1, "aes-256-ctr-hmac-sha-1", 32, 12)                                          \
+  _ (AES_128_CTR, SHA256, "aes-128-ctr-hmac-sha-256", 16, 16)                                      \
+  _ (AES_192_CTR, SHA256, "aes-192-ctr-hmac-sha-256", 24, 16)                                      \
+  _ (AES_256_CTR, SHA256, "aes-256-ctr-hmac-sha-256", 32, 16)                                      \
+  _ (AES_128_CTR, SHA384, "aes-128-ctr-hmac-sha-384", 16, 24)                                      \
+  _ (AES_192_CTR, SHA384, "aes-192-ctr-hmac-sha-384", 24, 24)                                      \
+  _ (AES_256_CTR, SHA384, "aes-256-ctr-hmac-sha-384", 32, 24)                                      \
+  _ (AES_128_CTR, SHA512, "aes-128-ctr-hmac-sha-512", 16, 32)                                      \
+  _ (AES_192_CTR, SHA512, "aes-192-ctr-hmac-sha-512", 24, 32)                                      \
   _ (AES_256_CTR, SHA512, "aes-256-ctr-hmac-sha-512", 32, 32)
 
-typedef enum
+#define foreach_crypto_combined_fixed_alg                                                          \
+  foreach_crypto_combined_fixed_alg_non_ctr foreach_crypto_combined_fixed_alg_ctr
+
+typedef struct
 {
-  VNET_CRYPTO_KEY_OP_ADD,
-  VNET_CRYPTO_KEY_OP_DEL,
-  VNET_CRYPTO_KEY_OP_MODIFY,
-} vnet_crypto_key_op_t;
+  u8 data[256];
+} __clib_aligned (CLIB_CACHE_LINE_BYTES)
+vnet_crypto_key_data_t;
 
 typedef enum
 {
@@ -141,7 +147,7 @@ typedef enum
 {
   VNET_CRYPTO_ALG_NONE = 0,
 #define _(n, s, ...) VNET_CRYPTO_ALG_##n,
-  foreach_crypto_cipher_alg foreach_crypto_aead_alg
+  foreach_crypto_cipher_alg_non_ctr foreach_crypto_cipher_alg_ctr foreach_crypto_aead_alg
 #undef _
 #define _(n, s) VNET_CRYPTO_ALG_HASH_##n, VNET_CRYPTO_ALG_HMAC_##n,
     foreach_crypto_hash_alg
@@ -152,7 +158,7 @@ typedef enum
 #undef _
 #define _(c, h, s, k ,d) \
   VNET_CRYPTO_ALG_##c##_##h##_TAG##d,
-	foreach_crypto_link_async_alg
+	foreach_crypto_combined_fixed_alg
 #undef _
 	  VNET_CRYPTO_N_ALGS,
 } vnet_crypto_alg_t;
@@ -160,25 +166,35 @@ typedef enum
 typedef struct
 {
   u32 index;
-  u16 length;
-  u8 is_link : 1;
+  u16 cipher_key_sz;
+  u16 integ_key_sz;
+  u16 cipher_key_offset;
+  u16 integ_key_offset;
+  u16 simple_key_data_offset;
+  u16 chained_key_data_offset;
+  u16 simple_key_data_stride;
+  u16 chained_key_data_stride;
   vnet_crypto_alg_t alg : 8;
-  union
-  {
-    struct
-    {
-      u32 index_crypto;
-      u32 index_integ;
-    };
-  };
-  u8 data[];
+  u8 _data[];
 } vnet_crypto_key_t;
+
+static_always_inline const u8 *
+vnet_crypto_get_cypher_key (const vnet_crypto_key_t *k)
+{
+  return k->_data + k->cipher_key_offset;
+}
+
+static_always_inline const u8 *
+vnet_crypto_get_integ_key (const vnet_crypto_key_t *k)
+{
+  return k->_data + k->integ_key_offset;
+}
 
 typedef enum
 {
   VNET_CRYPTO_OP_NONE = 0,
 #define _(n, s, ...) VNET_CRYPTO_OP_##n##_ENC, VNET_CRYPTO_OP_##n##_DEC,
-  foreach_crypto_cipher_alg foreach_crypto_aead_alg
+  foreach_crypto_cipher_alg_non_ctr foreach_crypto_cipher_alg_ctr foreach_crypto_aead_alg
 #undef _
 #define _(n, s) VNET_CRYPTO_OP_##n##_HASH, VNET_CRYPTO_OP_##n##_HMAC,
     foreach_crypto_hash_alg
@@ -191,43 +207,22 @@ typedef enum
 #define _(c, h, s, k, d)                                                      \
   VNET_CRYPTO_OP_##c##_##h##_TAG##d##_ENC,                                    \
     VNET_CRYPTO_OP_##c##_##h##_TAG##d##_DEC,
-	foreach_crypto_link_async_alg
+	foreach_crypto_combined_fixed_alg
 #undef _
 	  VNET_CRYPTO_N_OP_IDS,
 } __clib_packed vnet_crypto_op_id_t;
 
-#define foreach_crypto_handler_type                                                                \
-  _ (SIMPLE, "simple")                                                                             \
-  _ (CHAINED, "chained")                                                                           \
-  _ (ASYNC, "async")
+typedef struct vnet_crypto_alg_data_t_ vnet_crypto_alg_data_t;
 
-typedef enum
+typedef enum __clib_packed
 {
-#define _(n, s) VNET_CRYPTO_HANDLER_TYPE_##n,
-  foreach_crypto_handler_type
-#undef _
-    VNET_CRYPTO_HANDLER_N_TYPES
-
-} vnet_crypto_handler_type_t;
-
-typedef struct
-{
-  char *name;
-  u16 key_length;
-  /* per-engine key data size */
-  u16 per_engine_data_sz;
-  /* per-thread key data size */
-  u16 per_thread_key_size[VNET_CRYPTO_HANDLER_N_TYPES];
-  u8 active_eidx[VNET_CRYPTO_HANDLER_N_TYPES];
-
-  u8 is_aead : 1;
-  u8 variable_key_length : 1;
-  u8 is_link : 1;
-  vnet_crypto_alg_t link_crypto_alg : 8;
-  vnet_crypto_alg_t link_integ_alg : 8;
-  vnet_crypto_op_id_t op_by_type[VNET_CRYPTO_OP_N_TYPES];
-
-} vnet_crypto_alg_data_t;
+  VNET_CRYPTO_ALG_T_NONE = 0,
+  VNET_CRYPTO_ALG_T_AEAD,
+  VNET_CRYPTO_ALG_T_INTEG,
+  VNET_CRYPTO_ALG_T_CYPHER,
+  VNET_CRYPTO_ALG_T_COMBINED,
+  VNET_CRYPTO_ALG_T_HASH,
+} vnet_crypto_alg_type_t;
 
 typedef struct
 {
@@ -300,6 +295,21 @@ typedef struct
 
 STATIC_ASSERT_SIZEOF (vnet_crypto_op_t, CLIB_CACHE_LINE_BYTES);
 
+#define foreach_crypto_handler_type                                                                \
+  _ (SIMPLE, "simple")                                                                             \
+  _ (CHAINED, "chained")                                                                           \
+  _ (ASYNC, "async")                                                                               \
+  _ (THREAD_SAFE, "thread-safe")
+
+typedef enum
+{
+#define _(n, s) VNET_CRYPTO_HANDLER_TYPE_##n,
+  foreach_crypto_handler_type
+#undef _
+    VNET_CRYPTO_HANDLER_N_TYPES
+
+} vnet_crypto_handler_type_t;
+
 typedef struct
 {
   u8 *iv;
@@ -317,10 +327,12 @@ typedef struct
   i16 integ_length_adj;
   vnet_crypto_op_status_t status : 8;
   u8 flags; /**< share same VNET_CRYPTO_OP_FLAG_* values */
+  u8 aad_len;
+  u8 digest_len;
 } vnet_crypto_async_frame_elt_t;
 
 /* Assert the size so the compiler will warn us when it changes */
-STATIC_ASSERT_SIZEOF (vnet_crypto_async_frame_elt_t, 5 * sizeof (u64));
+STATIC_ASSERT_SIZEOF (vnet_crypto_async_frame_elt_t, 6 * sizeof (u64));
 
 typedef enum vnet_crypto_async_frame_state_t_
 {
@@ -354,16 +366,47 @@ typedef struct
 
 typedef u32 vnet_crypto_key_index_t;
 
-typedef u32 (vnet_crypto_chained_op_fn_t) (vlib_main_t *vm,
-					   vnet_crypto_op_t *ops[],
-					   vnet_crypto_op_chunk_t *chunks,
-					   u32 n_ops);
+typedef u32 (vnet_crypto_chained_op_fn_t) (vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks,
+					   vnet_crypto_key_data_t *key_data[], u32 n_ops);
 
-typedef u32 (vnet_crypto_simple_op_fn_t) (vlib_main_t *vm,
-					  vnet_crypto_op_t *ops[], u32 n_ops);
+typedef u32 (vnet_crypto_simple_op_fn_t) (vnet_crypto_op_t *ops[],
+					  vnet_crypto_key_data_t *key_data[], u32 n_ops);
 
-typedef void (vnet_crypto_key_fn_t) (vnet_crypto_key_op_t kop,
-				     vnet_crypto_key_index_t idx);
+typedef void (vnet_crypto_key_data_fn_t) (vnet_crypto_key_t *key, vnet_crypto_key_data_t *key_data);
+typedef void (vnet_crypto_async_key_data_fn_t) (vnet_crypto_key_t *key);
+
+typedef struct vnet_crypto_alg_data_t_
+{
+  char *name;
+  u16 key_length;
+  vnet_crypto_alg_type_t alg_type;
+  u8 variable_cypher_key_length : 1;
+  u8 variable_integ_key_length : 1;
+  u8 simple_key_data_per_thread : 1;
+  u8 chained_key_data_per_thread : 1;
+  vnet_crypto_op_id_t op_by_type[VNET_CRYPTO_OP_N_TYPES];
+  vnet_crypto_key_data_fn_t *key_add_fn[VNET_CRYPTO_HANDLER_N_TYPES];
+  vnet_crypto_key_data_fn_t *key_del_fn[VNET_CRYPTO_HANDLER_N_TYPES];
+  u16 key_data_sz[VNET_CRYPTO_HANDLER_N_TYPES];
+  u8 key_fn_engine[VNET_CRYPTO_HANDLER_N_TYPES];
+} vnet_crypto_alg_data_t;
+
+static_always_inline u8
+vnet_crypto_alg_key_data_is_per_thread (vnet_crypto_alg_data_t *ad, vnet_crypto_handler_type_t t)
+{
+  return t == VNET_CRYPTO_HANDLER_TYPE_SIMPLE ? ad->simple_key_data_per_thread :
+						ad->chained_key_data_per_thread;
+}
+
+static_always_inline void
+vnet_crypto_alg_key_data_set_per_thread (vnet_crypto_alg_data_t *ad, vnet_crypto_handler_type_t t,
+					 u8 is_per_thread)
+{
+  if (t == VNET_CRYPTO_HANDLER_TYPE_SIMPLE)
+    ad->simple_key_data_per_thread = is_per_thread != 0;
+  else
+    ad->chained_key_data_per_thread = is_per_thread != 0;
+}
 
 /** async crypto function handlers **/
 typedef int (vnet_crypto_frame_enq_fn_t) (vlib_main_t *vm,
@@ -390,8 +433,17 @@ void vnet_crypto_register_ops_handlers (vlib_main_t *vm, u32 engine_index,
 					vnet_crypto_simple_op_fn_t *fn,
 					vnet_crypto_chained_op_fn_t *cfn);
 
-void vnet_crypto_register_key_handler (vlib_main_t *vm, u32 engine_index,
-				       vnet_crypto_key_fn_t *keyh);
+void vnet_crypto_register_key_handlers (vlib_main_t *vm, u32 engine_index,
+					vnet_crypto_key_data_fn_t *key_add_fn,
+					vnet_crypto_key_data_fn_t *key_del_fn);
+void vnet_crypto_register_key_add_handler (vlib_main_t *vm, u32 engine_index,
+					   vnet_crypto_key_data_fn_t *key_add_fn);
+void vnet_crypto_register_key_del_handler (vlib_main_t *vm, u32 engine_index,
+					   vnet_crypto_key_data_fn_t *key_del_fn);
+void vnet_crypto_register_async_key_add_handler (vlib_main_t *vm, u32 engine_index,
+						 vnet_crypto_async_key_data_fn_t *key_add_fn);
+void vnet_crypto_register_async_key_del_handler (vlib_main_t *vm, u32 engine_index,
+						 vnet_crypto_async_key_data_fn_t *key_del_fn);
 
 /** async crypto register functions */
 u32 vnet_crypto_register_post_node (vlib_main_t * vm, char *post_node_name);
@@ -415,10 +467,12 @@ typedef struct
   char *desc;
   int priority;
   vnet_crypto_engine_op_t ops[VNET_CRYPTO_N_OP_IDS];
-  u16 key_data_sz[VNET_CRYPTO_N_ALGS];
-  void *per_thread_data;
-  u32 per_thread_data_sz;
-  vnet_crypto_key_fn_t *key_op_handler;
+  vnet_crypto_key_data_fn_t *key_add_fn[VNET_CRYPTO_HANDLER_N_TYPES][VNET_CRYPTO_N_ALGS];
+  vnet_crypto_key_data_fn_t *key_del_fn[VNET_CRYPTO_HANDLER_N_TYPES][VNET_CRYPTO_N_ALGS];
+  vnet_crypto_async_key_data_fn_t *async_key_add_fn;
+  vnet_crypto_async_key_data_fn_t *async_key_del_fn;
+  u16 key_data_sz[VNET_CRYPTO_HANDLER_N_TYPES][VNET_CRYPTO_N_ALGS];
+  u8 key_data_per_thread[VNET_CRYPTO_HANDLER_N_TYPES][VNET_CRYPTO_N_ALGS];
   vnet_crypto_frame_dequeue_t *dequeue_handler;
 } vnet_crypto_engine_t;
 
@@ -432,6 +486,10 @@ typedef struct
 {
   vnet_crypto_op_type_t type;
   vnet_crypto_alg_t alg;
+  u8 is_aead : 1;
+  u8 is_ctr : 1;
+  u8 aad_len;
+  u8 digest_len;
   u8 active_engine_index[VNET_CRYPTO_HANDLER_N_TYPES];
   void *handlers[VNET_CRYPTO_HANDLER_N_TYPES];
 } vnet_crypto_op_data_t;
@@ -459,6 +517,8 @@ typedef struct
   vnet_crypto_async_next_node_t *next_nodes;
   vnet_crypto_alg_data_t algs[VNET_CRYPTO_N_ALGS];
   vnet_crypto_op_data_t opt_data[VNET_CRYPTO_N_OP_IDS];
+  u32 key_data_size[VNET_CRYPTO_HANDLER_N_TYPES];
+  u32 key_data_offset[VNET_CRYPTO_HANDLER_N_TYPES];
   u8 default_disabled;
 } vnet_crypto_main_t;
 
@@ -484,21 +544,13 @@ typedef struct
 int vnet_crypto_set_handlers (vnet_crypto_set_handlers_args_t *);
 int vnet_crypto_is_set_handler (vnet_crypto_alg_t alg);
 
-u32 vnet_crypto_key_add (vlib_main_t * vm, vnet_crypto_alg_t alg,
-			 u8 * data, u16 length);
+u32 vnet_crypto_key_add (vlib_main_t *vm, vnet_crypto_alg_t alg, const u8 *crypto_data,
+			 u16 crypto_length, const u8 *integ_data, u16 integ_length);
 void vnet_crypto_key_del (vlib_main_t * vm, vnet_crypto_key_index_t index);
 void vnet_crypto_key_update (vlib_main_t *vm, vnet_crypto_key_index_t index);
 
-/**
- * Use 2 created keys to generate new key for linked algs (cipher + integ)
- * The returned key index is to be used for linked alg only.
- **/
-u32 vnet_crypto_key_add_linked (vlib_main_t * vm,
-				vnet_crypto_key_index_t index_crypto,
-				vnet_crypto_key_index_t index_integ);
-
-vnet_crypto_alg_t vnet_crypto_link_algs (vnet_crypto_alg_t crypto_alg,
-					 vnet_crypto_alg_t integ_alg);
+vnet_crypto_alg_t vnet_crypto_combined_alg (vnet_crypto_alg_t crypto_alg,
+					    vnet_crypto_alg_t integ_alg);
 
 vnet_crypto_op_id_t *vnet_crypto_ops_from_alg (vnet_crypto_alg_t alg);
 
@@ -520,12 +572,18 @@ vnet_crypto_op_init (vnet_crypto_op_t * op, vnet_crypto_op_id_t type)
   op->n_chunks = 0;
 }
 
-static_always_inline vnet_crypto_op_type_t
-vnet_crypto_get_op_type (vnet_crypto_op_id_t id)
+static_always_inline vnet_crypto_op_data_t *
+vnet_crypto_get_op_data (vnet_crypto_op_id_t id)
 {
   vnet_crypto_main_t *cm = &crypto_main;
   ASSERT (id < VNET_CRYPTO_N_OP_IDS);
-  vnet_crypto_op_data_t *od = cm->opt_data + id;
+  return cm->opt_data + id;
+}
+
+static_always_inline vnet_crypto_op_type_t
+vnet_crypto_get_op_type (vnet_crypto_op_id_t id)
+{
+  vnet_crypto_op_data_t *od = vnet_crypto_get_op_data (id);
   return od->type;
 }
 
@@ -618,12 +676,14 @@ vnet_crypto_async_add_to_frame (vlib_main_t *vm, vnet_crypto_async_frame_t *f,
 				u8 flags)
 {
   vnet_crypto_async_frame_elt_t *fe;
+  vnet_crypto_op_data_t *od;
   u16 index;
 
   ASSERT (f->n_elts < VNET_CRYPTO_FRAME_SIZE);
 
   index = f->n_elts;
   fe = &f->elts[index];
+  od = vnet_crypto_get_op_data (f->op);
   f->n_elts++;
   fe->key_index = key_index;
   fe->crypto_total_length = crypto_len;
@@ -633,6 +693,8 @@ vnet_crypto_async_add_to_frame (vlib_main_t *vm, vnet_crypto_async_frame_t *f,
   fe->iv = iv;
   fe->tag = tag;
   fe->aad = aad;
+  fe->aad_len = od->aad_len;
+  fe->digest_len = od->digest_len;
   fe->flags = flags;
   f->buffer_indices[index] = buffer_index;
   f->next_node_index[index] = next_node;

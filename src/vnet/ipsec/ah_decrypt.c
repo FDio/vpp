@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0
- * Copyright (c) 2015 Cisco and/or its affiliates.
+ * Copyright (c) 2015-2026 Cisco and/or its affiliates.
  */
 
 /* ah_decrypt.c : IPSec AH decrypt node */
@@ -26,25 +26,6 @@ typedef enum
 #undef _
     AH_DECRYPT_N_NEXT,
 } ah_decrypt_next_t;
-
-typedef struct
-{
-  ipsec_integ_alg_t integ_alg;
-  u32 seq_num;
-} ah_decrypt_trace_t;
-
-/* packet trace format function */
-static u8 *
-format_ah_decrypt_trace (u8 * s, va_list * args)
-{
-  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
-  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
-  ah_decrypt_trace_t *t = va_arg (*args, ah_decrypt_trace_t *);
-
-  s = format (s, "ah: integrity %U seq-num %d",
-	      format_ipsec_integ_alg, t->integ_alg, t->seq_num);
-  return s;
-}
 
 typedef struct
 {
@@ -222,8 +203,6 @@ ah_decrypt_inline (vlib_main_t * vm,
 	  vnet_crypto_op_t *op;
 	  vec_add2_aligned (ptd->crypto_ops, op, 1, CLIB_CACHE_LINE_BYTES);
 	  vnet_crypto_key_t *key = vnet_crypto_get_key (irt->key_index);
-	  if (key->is_link)
-	    key = vnet_crypto_get_key (key->index_integ);
 	  vnet_crypto_op_id_t *op_ids = vnet_crypto_ops_from_alg (key->alg);
 	  vnet_crypto_op_init (op, op_ids[VNET_CRYPTO_OP_TYPE_HMAC]);
 
