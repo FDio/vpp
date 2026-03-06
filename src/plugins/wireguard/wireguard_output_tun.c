@@ -253,6 +253,8 @@ wg_output_tun_add_to_frame (vlib_main_t *vm, vnet_crypto_async_frame_t *f,
   fe->crypto_start_offset = crypto_start_offset;
   fe->iv = iv;
   fe->tag = tag;
+  fe->aad_len = 0;
+  fe->digest_len = NOISE_AUTHTAG_LEN;
   fe->flags = flags;
   f->buffer_indices[index] = buffer_index;
   f->next_node_index[index] = next_node;
