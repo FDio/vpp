@@ -71,6 +71,8 @@ typedef struct _spacer
 } spacer_t;
 
 #define TRANSPORT_CONN_ID_LEN	44
+/* This includes proto and ip4 flag which should not be overwritten */
+#define TRANSPORT_CONN_ID_AND_TYPE_LEN 48
 
 /*
  * Protocol independent transport properties associated to a session
@@ -151,6 +153,8 @@ typedef struct _transport_connection
 
 STATIC_ASSERT (STRUCT_OFFSET_OF (transport_connection_t, is_ip4) == TRANSPORT_CONN_ID_LEN,
 	       "update conn id len");
+STATIC_ASSERT (STRUCT_OFFSET_OF (transport_connection_t, s_index) == TRANSPORT_CONN_ID_AND_TYPE_LEN,
+	       "update conn id type len");
 
 /* Warn if size changes. Two cache lines is already generous, hopefully we
  * won't have to outgrow that. */

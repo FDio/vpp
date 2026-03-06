@@ -82,7 +82,7 @@ typedef enum app_evt_session_stats_close_reason_
 
 typedef struct tcp_transport_stats_
 {
-  u8 conn_id[TRANSPORT_CONN_ID_LEN];
+  u8 conn_id[TRANSPORT_CONN_ID_AND_TYPE_LEN];
 #define _(type, name) type name;
   foreach_tcp_transport_stat
 #undef _
@@ -101,7 +101,7 @@ typedef struct tcp_transport_stats_
 
 typedef struct udp_transport_stats_
 {
-  u8 conn_id[TRANSPORT_CONN_ID_LEN];
+  u8 conn_id[TRANSPORT_CONN_ID_AND_TYPE_LEN];
 #define _(type, name) type name;
   foreach_udp_transport_stat
 #undef _
@@ -111,7 +111,7 @@ typedef struct udp_transport_stats_
 
 typedef struct ct_transport_stats_
 {
-  u8 conn_id[TRANSPORT_CONN_ID_LEN];
+  u8 conn_id[TRANSPORT_CONN_ID_AND_TYPE_LEN];
   transport_proto_t actual_proto;
   f64 end_ts;
   app_evt_session_stats_close_reason_t close_reason;
