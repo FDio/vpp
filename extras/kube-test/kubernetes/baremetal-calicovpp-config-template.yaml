@@ -133,6 +133,8 @@ spec:
         - mountPath: /host
           name: host-root
       - env:
+        - name: CALICOVPP_ENABLE_MEMIF
+          value: ${CALICOVPP_ENABLE_MEMIF}
         - name: DATASTORE_TYPE
           value: kubernetes
         - name: WAIT_FOR_DATASTORE
