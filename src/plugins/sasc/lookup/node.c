@@ -55,7 +55,7 @@ sasc_lookup_inline(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *fra
     f64 now = vlib_time_now(vm);
     bool hits[VLIB_FRAME_SIZE], *hit = hits;
     u32 session_indices[VLIB_FRAME_SIZE], *si = session_indices;
-    bool is_icmp_error[VLIB_FRAME_SIZE], *is_icmp_error_p = is_icmp_error;
+    bool is_icmp_error[VLIB_FRAME_SIZE] = {}, *is_icmp_error_p = is_icmp_error;
     vlib_get_buffers(vm, from, bufs, n_left);
     b = bufs;
 
