@@ -16,6 +16,24 @@
       "message": "I suggest to use SRH_LEN_EXCEEDS_IP_LEN instead of INVALID_SRH_LENGTH.",
       "revId": "325d3a4b238dad30c48a6ceeb99054b876a39962",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "dca814a6_4dd5ca4f",
+        "filename": "src/vnet/srv6/sr_localsid.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 745,
+      "author": {
+        "id": 1776
+      },
+      "writtenOn": "2026-03-06T09:36:58Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "8aa2004d_d26a542f",
+      "revId": "325d3a4b238dad30c48a6ceeb99054b876a39962",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
