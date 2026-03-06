@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3b11c332_69598361",
+        "filename": "src/plugins/geneve/decap.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 185,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2026-03-06T05:20:25Z",
+      "side": 1,
+      "message": "you could combine this with the same condition above with an else clause.",
+      "revId": "84490703e0c1a7f5438541e08504c13f9c97eadd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
