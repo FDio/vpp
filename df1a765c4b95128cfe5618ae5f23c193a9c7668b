@@ -16,6 +16,24 @@
       "message": "it looks bit weird when QuicBuiltinEchoBidirectionalTest fail, so I\u0027m not sure if we can trust quicly_stream_can_send or quicly_linklist_is_linked (\u0026stream-\u003e_send_aux.pending_link.control)\n\nclient:\nctx flags 0x1 (QUIC_F_IS_STREAM)\ncan send stream level 0 (quicly_stream_can_send (stream, 1))\ncan send connection level 0 (quicly_is_blocked (stream-\u003econn))\npending control 0 (quicly_linklist_is_linked (\u0026stream-\u003e_send_aux.pending_link.control))\nacked: 0 - 329993214\npending: 329993214 - 18446744073709551615\n\nserver:\nctx flags 0x5 (QUIC_F_IS_STREAM | QUIC_F_STREAM_TX_DRAINED)\ncan send stream level 0\ncan send connection level 0\npending control 0\nacked: 0 - 325798911",
       "revId": "df1a765c4b95128cfe5618ae5f23c193a9c7668b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "603436f8_7051c456",
+        "filename": "src/plugins/quic_quicly/quic_quicly.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 624,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-03-07T09:19:12Z",
+      "side": 1,
+      "message": "and it looks same with this patch",
+      "parentUuid": "d121a79b_64e80b03",
+      "revId": "df1a765c4b95128cfe5618ae5f23c193a9c7668b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
