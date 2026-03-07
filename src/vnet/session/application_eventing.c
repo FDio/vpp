@@ -143,8 +143,7 @@ app_evt_collector_log_session (app_evt_collector_t *c, session_t *s)
 	  chunk, sizeof (tcp_session_stats_t));
 	sess_stats->msg_len = sizeof (app_evt_msg_data_session_stats_t) +
 			      sizeof (tcp_session_stats_t);
-	clib_memcpy_fast (tcp_stats->conn_id, tc->opaque_conn_id,
-			  sizeof (tc->opaque_conn_id));
+	clib_memcpy_fast (tcp_stats->conn_id, tc->opaque_conn_id, TRANSPORT_CONN_ID_AND_TYPE_LEN);
 	tcp_stats->end_ts = transport_time_now (s->thread_index);
 	tcp_stats->close_reason = s->flags & SESSION_F_TPT_INIT_CLOSE ?
 				    APP_EVT_SESSION_STAT_TRANSPORT_CLOSED :
@@ -162,8 +161,7 @@ app_evt_collector_log_session (app_evt_collector_t *c, session_t *s)
 	  chunk, sizeof (udp_session_stats_t));
 	sess_stats->msg_len = sizeof (app_evt_msg_data_session_stats_t) +
 			      sizeof (udp_session_stats_t);
-	clib_memcpy_fast (udp_stats->conn_id, tc->opaque_conn_id,
-			  sizeof (tc->opaque_conn_id));
+	clib_memcpy_fast (udp_stats->conn_id, tc->opaque_conn_id, TRANSPORT_CONN_ID_AND_TYPE_LEN);
 	udp_stats->end_ts = transport_time_now (s->thread_index);
 
 #define _(type, name) udp_stats->name = udp_conn->name;
@@ -178,8 +176,7 @@ app_evt_collector_log_session (app_evt_collector_t *c, session_t *s)
 	  app_evt_buf_chunk_append_uninit (chunk, sizeof (ct_session_stats_t));
 	sess_stats->msg_len = sizeof (app_evt_msg_data_session_stats_t) +
 			      sizeof (ct_session_stats_t);
-	clib_memcpy_fast (ct_stats->conn_id, tc->opaque_conn_id,
-			  sizeof (tc->opaque_conn_id));
+	clib_memcpy_fast (ct_stats->conn_id, tc->opaque_conn_id, TRANSPORT_CONN_ID_AND_TYPE_LEN);
 	ct_stats->actual_proto = ct_conn->actual_tp;
 	ct_stats->end_ts = transport_time_now (s->thread_index);
 	ct_stats->close_reason = s->flags & SESSION_F_TPT_INIT_CLOSE ?
@@ -316,9 +313,12 @@ check_map:
 
   num_workers = vlib_num_workers ();
 
-  /* If no workers and we have a session, accept it */
+  /* If no workers and we have a session, mark ready */
   if (!num_workers && (session_map != 0))
-    return 0;
+    {
+      c->is_ready = 1;
+      return 0;
+    }
 
   /* If not all threads apart from 0 (main) are set
    * then we need to connect more sessions */
