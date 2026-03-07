@@ -34,6 +34,24 @@
       "parentUuid": "d121a79b_64e80b03",
       "revId": "df1a765c4b95128cfe5618ae5f23c193a9c7668b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "435f510d_9b51b9ab",
+        "filename": "src/plugins/quic_quicly/quic_quicly.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 624,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-03-07T17:31:06Z",
+      "side": 1,
+      "message": "Oh great ... so MAX_STREAM_DATA is set to some huge value? Wonder then if we actually need anything more than QUIC_F_STREAM_TX_DRAINED.",
+      "parentUuid": "603436f8_7051c456",
+      "revId": "df1a765c4b95128cfe5618ae5f23c193a9c7668b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
