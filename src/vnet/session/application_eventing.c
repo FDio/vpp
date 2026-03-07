@@ -316,9 +316,12 @@ check_map:
 
   num_workers = vlib_num_workers ();
 
-  /* If no workers and we have a session, accept it */
+  /* If no workers and we have a session, mark ready */
   if (!num_workers && (session_map != 0))
-    return 0;
+    {
+      c->is_ready = 1;
+      return 0;
+    }
 
   /* If not all threads apart from 0 (main) are set
    * then we need to connect more sessions */
