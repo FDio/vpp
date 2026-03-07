@@ -21,21 +21,35 @@ tcp_node_inc_counter_i (vlib_main_t *vm, u32 tcp4_node, u32 tcp6_node,
 #define tcp_inc_counter(node_id, err, count)                                  \
   tcp_node_inc_counter_i (vm, tcp4_##node_id##_node.index,                    \
 			  tcp6_##node_id##_node.index, is_ip4, err, count)
-#define tcp_maybe_inc_err_counter(cnts, err)                                  \
-  {                                                                           \
-    cnts[err] += (next0 != tcp_next_drop (is_ip4));                           \
-  }
-#define tcp_inc_err_counter(cnts, err, val)                                   \
-  {                                                                           \
-    cnts[err] += val;                                                         \
-  }
-#define tcp_store_err_counters(node_id, cnts)                                 \
-  {                                                                           \
-    int i;                                                                    \
-    for (i = 0; i < TCP_N_ERROR; i++)                                         \
-      if (cnts[i])                                                            \
-	tcp_inc_counter (node_id, i, cnts[i]);                                \
-  }
+
+/* Per-node frame error counters. */
+typedef struct
+{
+  /* Mask of non-zero counters. */
+  u64 valid_mask;
+  /* One counter for each error. 16-bits plenty since counts over max 256 packets per frame. */
+  u16 counts[TCP_N_ERROR];
+} tcp_error_counters_t;
+
+always_inline void
+tcp_inc_err_counter (tcp_error_counters_t *c, tcp_error_t e, u16 n)
+{
+  c->counts[e] += n;
+  c->valid_mask |= (u64) (n != 0) << e;
+}
+
+always_inline void
+tcp_store_err_counters (vlib_main_t *vm, tcp_error_counters_t *c, u32 node_index)
+{
+  u64 v = c->valid_mask;
+  while (v != 0)
+    {
+      uword f = first_set (v);
+      uword i = min_log2 (f);
+      v ^= f;
+      vlib_node_increment_counter (vm, node_index, i, c->counts[i]);
+    }
+}
 
 always_inline tcp_header_t *
 tcp_buffer_hdr (vlib_buffer_t * b)

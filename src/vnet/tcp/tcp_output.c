@@ -2199,7 +2199,7 @@ tcp46_output_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   u32 n_left_from, *from, thread_index = vm->thread_index;
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
   u16 nexts[VLIB_FRAME_SIZE], *next;
-  u16 err_counters[TCP_N_ERROR] = { 0 };
+  tcp_error_counters_t err_counters = { 0 };
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -2250,8 +2250,7 @@ tcp46_output_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 	  else
 	    {
-	      tcp_inc_err_counter (err_counters, TCP_ERROR_INVALID_CONNECTION,
-				   1);
+	      tcp_inc_err_counter (&err_counters, TCP_ERROR_INVALID_CONNECTION, 1);
 	      next[0] = TCP_OUTPUT_NEXT_DROP;
 	    }
 	  if (tc1 != 0)
@@ -2262,8 +2261,7 @@ tcp46_output_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 	  else
 	    {
-	      tcp_inc_err_counter (err_counters, TCP_ERROR_INVALID_CONNECTION,
-				   1);
+	      tcp_inc_err_counter (&err_counters, TCP_ERROR_INVALID_CONNECTION, 1);
 	      next[1] = TCP_OUTPUT_NEXT_DROP;
 	    }
 	}
@@ -2293,7 +2291,7 @@ tcp46_output_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	}
       else
 	{
-	  tcp_inc_err_counter (err_counters, TCP_ERROR_INVALID_CONNECTION, 1);
+	  tcp_inc_err_counter (&err_counters, TCP_ERROR_INVALID_CONNECTION, 1);
 	  next[0] = TCP_OUTPUT_NEXT_DROP;
 	}
 
@@ -2302,7 +2300,7 @@ tcp46_output_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       n_left_from -= 1;
     }
 
-  tcp_store_err_counters (output, err_counters);
+  tcp_store_err_counters (vm, &err_counters, node->node_index);
   vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
   vlib_node_increment_counter (vm, tcp_node_index (output, is_ip4),
 			       TCP_ERROR_PKTS_SENT, frame->n_vectors);
