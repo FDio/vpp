@@ -335,7 +335,41 @@ ikev2_sa_free_all_vec (ikev2_sa_t * sa)
 
   vec_free (sa->del);
 
+  /* free rekey internal fields */
+  ikev2_rekey_t *r;
+  vec_foreach (r, sa->rekey)
+    {
+    ikev2_sa_free_proposal_vector (&r->i_proposal);
+    ikev2_sa_free_proposal_vector (&r->r_proposal);
+    vec_free (r->tsi);
+    vec_free (r->tsr);
+    }
   vec_free (sa->rekey);
+
+  /* free new_child internal fields */
+  vec_foreach (r, sa->new_child)
+    {
+    ikev2_sa_free_proposal_vector (&r->i_proposal);
+    ikev2_sa_free_proposal_vector (&r->r_proposal);
+    vec_free (r->tsi);
+    vec_free (r->tsr);
+    }
+  vec_free (sa->new_child);
+
+  /* free sa_rekey internal fields */
+  ikev2_sa_rekey_t *sr;
+  vec_foreach (sr, sa->sa_rekey)
+    {
+    vec_free (sr->i_nonce);
+    vec_free (sr->r_nonce);
+    vec_free (sr->dh_shared_key);
+    vec_free (sr->dh_private_key);
+    vec_free (sr->i_dh_data);
+    vec_free (sr->r_dh_data);
+    ikev2_sa_free_proposal_vector (&sr->i_proposals);
+    ikev2_sa_free_proposal_vector (&sr->r_proposals);
+    }
+  vec_free (sa->sa_rekey);
 
   vec_free (sa->last_sa_init_req_packet_data);
   vec_free (sa->last_sa_init_res_packet_data);
