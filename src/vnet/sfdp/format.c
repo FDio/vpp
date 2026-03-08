@@ -96,9 +96,8 @@ format_sfdp_ipv6_egress (u8 *s, va_list *args)
 void
 sfdp_table_format_add_header_col (table_t *session_table)
 {
-  table_add_header_col (session_table, 11, "id", "tenant", "thread", "index",
-			"type", "proto", "context", "ingress", "egress",
-			"state", "TTL(s)");
+  table_add_hdr_row (session_table, 11, "id", "tenant", "thread", "index", "type", "proto",
+		     "context", "ingress", "egress", "state", "TTL(s)");
 }
 
 u32

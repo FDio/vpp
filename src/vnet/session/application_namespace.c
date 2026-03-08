@@ -615,7 +615,7 @@ show_app_ns_fn (vlib_main_t * vm, unformat_input_t * main_input,
     }
 
 do_ns_list:
-  table_add_header_col (t, 5, "Index", "Secret", "Interface", "Id", "Socket");
+  table_add_hdr_row (t, 5, "Index", "Secret", "Interface", "Id", "Socket");
   int i = 0;
   pool_foreach (app_ns, app_namespace_pool)
     {

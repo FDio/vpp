@@ -260,7 +260,7 @@ table_free (table_t *t)
 }
 
 void
-table_add_header_col (table_t *t, int n_strings, ...)
+table_add_hdr_row (table_t *t, int n_strings, ...)
 {
   va_list arg;
   int r, c = t->n_header_cols++;
@@ -282,7 +282,7 @@ table_add_header_col (table_t *t, int n_strings, ...)
 }
 
 void
-table_add_header_row (table_t *t, int n_strings, ...)
+table_add_hdr_col (table_t *t, int n_strings, ...)
 {
   va_list arg;
   int c, r = t->n_header_rows++;
