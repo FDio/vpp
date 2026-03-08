@@ -193,6 +193,17 @@ ipsec_sa_set_async_mode (ipsec_sa_t *sa, int is_enabled)
       ort->key_index = key_index;
       ort->op_id = outb_op_id;
       ort->is_async = is_async;
+      ort->cached.is_async = is_async;
+      if (ort->key_index == ~0 || !ort->op_id || ort->cached.is_async)
+	{
+	  ort->prepare_sync_op = 0;
+	  ort->cached.prepare_sync_op = 0;
+	}
+      else
+	{
+	  ort->prepare_sync_op = 1;
+	  ort->cached.prepare_sync_op = 1;
+	}
     }
 }
 
@@ -292,22 +303,50 @@ ipsec_sa_init_runtime (ipsec_sa_t *sa)
       ipsec_sa_outb_rt_t *ort = ipsec_sa_get_outb_rt (sa);
       ort->use_anti_replay = ipsec_sa_is_set_USE_ANTI_REPLAY (sa);
       ort->use_esn = ipsec_sa_is_set_USE_ESN (sa);
+      ort->cached.use_esn = ort->use_esn;
+      ort->cached.integ_add_seq_hi = ort->cached.use_esn && !alg->is_aead;
       ort->is_ctr = alg->is_ctr;
+      ort->cached.is_ctr = ort->is_ctr;
       ort->is_aead = alg->is_aead;
+      ort->cached.is_aead = ort->is_aead;
       ort->is_null_gmac = alg->is_null_gmac;
+      ort->cached.is_null_gmac = ort->is_null_gmac;
       ort->op_id = alg->is_null_gmac ? sa->crypto_sync_enc_op_id : ort->op_id;
       ort->is_tunnel = ipsec_sa_is_set_IS_TUNNEL (sa);
+      ort->cached.is_tunnel = ort->is_tunnel;
       ort->is_tunnel_v6 = ipsec_sa_is_set_IS_TUNNEL_V6 (sa);
+      ort->cached.is_tunnel_v6 = ort->is_tunnel_v6;
       ort->udp_encap = ipsec_sa_is_set_UDP_ENCAP (sa);
+      ort->cached.udp_encap = ort->udp_encap;
       ort->esp_block_align =
 	clib_max (4, im->crypto_algs[sa->crypto_alg].block_align);
+      ort->cached.esp_block_align = ort->esp_block_align;
       ort->need_udp_cksum = ort->udp_encap && ort->is_tunnel_v6;
+      ort->cached.need_udp_cksum = ort->need_udp_cksum;
       ort->cipher_iv_size = im->crypto_algs[sa->crypto_alg].iv_size;
+      ort->cached.cipher_iv_size = ort->cipher_iv_size;
+      ort->cached.esp_iv_bytes = ort->cached.cipher_iv_size + sizeof (esp_header_t);
+      ort->cached.cbc_src_pre_bytes = ort->cached.cipher_iv_size;
+      ort->cached.cbc_len_pre_bytes = ort->cached.cipher_iv_size;
+      ort->cached.integ_src_pre_bytes = ort->cached.cipher_iv_size + sizeof (esp_header_t);
+      ort->cached.integ_len_pre_bytes = ort->cached.cipher_iv_size + sizeof (esp_header_t);
       ort->integ_icv_size = integ_icv_size;
+      ort->cached.integ_icv_size = ort->integ_icv_size;
+      ort->cached.has_cipher = ort->cached.cipher_iv_size != 0 && !ort->cached.is_null_gmac;
+      ort->cached.needs_integ = ort->cached.integ_icv_size != 0 && !ort->cached.is_aead;
+      ort->cached.needs_sync_enc =
+	ort->cached.has_cipher || ort->cached.is_null_gmac || ort->cached.is_aead;
       ort->salt = sa->salt;
       ort->spi_be = clib_host_to_net_u32 (sa->spi);
+      ort->cached.spi_be = ort->spi_be;
       ort->tunnel_flags = sa->tunnel.t_encap_decap_flags;
       ort->need_tunnel_fixup = (ort->tunnel_flags != 0);
+      ort->cached.need_tunnel_fixup = ort->need_tunnel_fixup;
+      ort->cached.next_hdr_protocol =
+	ort->cached.udp_encap ? IP_PROTOCOL_UDP : IP_PROTOCOL_IPSEC_ESP;
+      ort->cached.tunnel_fixed_hdr_bytes =
+	ort->cached.esp_iv_bytes + (ort->cached.udp_encap ? sizeof (udp_header_t) : 0) +
+	(ort->cached.is_tunnel_v6 ? sizeof (ip6_header_t) : sizeof (ip4_header_t));
       ort->async_op_id = sa->crypto_async_enc_op_id;
       ort->t_dscp = sa->tunnel.t_dscp;
       vnet_crypto_op_init (&ort->op_tmpl_single, ort->op_id);
@@ -317,36 +356,39 @@ ipsec_sa_init_runtime (ipsec_sa_t *sa)
       ort->op_tmpl_chained.flags |= VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS;
       if (ort->is_aead)
 	{
-	  u8 aad_len = ort->use_esn ? 12 : 8;
+	  u8 aad_len = ort->cached.use_esn ? 12 : 8;
 	  ort->op_tmpl_single.aad_len = aad_len;
 	  ort->op_tmpl_chained.aad_len = aad_len;
 	  ort->op_tmpl_single.digest_len = 0;
 	  ort->op_tmpl_chained.digest_len = 0;
-	  u8 tag_len = ort->integ_icv_size;
+	  u8 tag_len = ort->cached.integ_icv_size;
 	  ort->op_tmpl_single.tag_len = tag_len;
 	  ort->op_tmpl_chained.tag_len = tag_len;
 	}
-      else if (ort->integ_icv_size)
+      else if (ort->cached.integ_icv_size)
 	{
-	  ort->op_tmpl_single.digest_len = ort->integ_icv_size;
-	  ort->op_tmpl_chained.digest_len = ort->integ_icv_size;
+	  ort->op_tmpl_single.digest_len = ort->cached.integ_icv_size;
+	  ort->op_tmpl_chained.digest_len = ort->cached.integ_icv_size;
 	}
       else
 	{
 	  ort->op_tmpl_single.digest_len = 0;
 	  ort->op_tmpl_chained.digest_len = 0;
 	}
-      ort->bld_op_tmpl[VNET_CRYPTO_OP_TYPE_ENCRYPT] =
-	im->crypto_algs[sa->crypto_alg].bld_enc_op_tmpl;
-      ort->bld_op_tmpl[VNET_CRYPTO_OP_TYPE_HMAC] =
-	im->integ_algs[sa->integ_alg].bld_integ_op_tmpl;
-      if (ort->key_index == ~0 || !ort->op_id || ort->is_async)
-	ort->prepare_sync_op = 0;
+      ort->cached.is_async = ort->is_async;
+      if (ort->key_index == ~0 || !ort->op_id || ort->cached.is_async)
+	{
+	  ort->prepare_sync_op = 0;
+	  ort->cached.prepare_sync_op = 0;
+	}
       else
-	ort->prepare_sync_op = 1;
+	{
+	  ort->prepare_sync_op = 1;
+	  ort->cached.prepare_sync_op = 1;
+	}
 
-      ASSERT (ort->cipher_iv_size <= ESP_MAX_IV_SIZE);
-      ASSERT (ort->esp_block_align <= ESP_MAX_BLOCK_SIZE);
+      ASSERT (ort->cached.cipher_iv_size <= ESP_MAX_IV_SIZE);
+      ASSERT (ort->cached.esp_block_align <= ESP_MAX_BLOCK_SIZE);
     }
   ipsec_sa_update_runtime (sa);
 }
@@ -365,6 +407,7 @@ ipsec_sa_update_runtime (ipsec_sa_t *sa)
       ort->drop_no_crypto = sa->crypto_alg == IPSEC_CRYPTO_ALG_NONE &&
 			    sa->integ_alg == IPSEC_INTEG_ALG_NONE &&
 			    !ipsec_sa_is_set_NO_ALGO_NO_DROP (sa);
+      ort->cached.drop_no_crypto = ort->drop_no_crypto;
     }
 }
 
@@ -451,6 +494,8 @@ ipsec_sa_update (u32 id, u16 src_port, u16 dst_port, const tunnel_t *tun,
 	  ort->tunnel_flags = sa->tunnel.t_encap_decap_flags;
 	  ort->need_tunnel_fixup = (ort->tunnel_flags != 0);
 	  ort->need_udp_cksum = ort->udp_encap && ort->is_tunnel_v6;
+	  ort->cached.need_tunnel_fixup = ort->need_tunnel_fixup;
+	  ort->cached.need_udp_cksum = ort->need_udp_cksum;
 
 	  rv = tunnel_resolve (&sa->tunnel, FIB_NODE_TYPE_IPSEC_SA, sa_index);
 
