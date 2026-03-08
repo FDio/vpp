@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0
- * Copyright (c) 2015 Cisco and/or its affiliates.
+ * Copyright (c) 2015-2026 Cisco and/or its affiliates.
  */
 
 /* ah_encrypt.c : IPSec AH encrypt node */
@@ -27,28 +27,6 @@ typedef enum
 #undef _
     AH_ENCRYPT_N_NEXT,
 } ah_encrypt_next_t;
-
-typedef struct
-{
-  u32 sa_index;
-  u32 spi;
-  u64 seq;
-  ipsec_integ_alg_t integ_alg;
-} ah_encrypt_trace_t;
-
-/* packet trace format function */
-static u8 *
-format_ah_encrypt_trace (u8 * s, va_list * args)
-{
-  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
-  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
-  ah_encrypt_trace_t *t = va_arg (*args, ah_encrypt_trace_t *);
-
-  s = format (s, "ah: sa-index %d spi %u (0x%08x) seq %lu integrity %U",
-	      t->sa_index, t->spi, t->spi, t->seq, format_ipsec_integ_alg,
-	      t->integ_alg);
-  return s;
-}
 
 static_always_inline void
 ah_process_ops (vlib_main_t * vm, vlib_node_runtime_t * node,

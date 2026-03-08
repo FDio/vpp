@@ -24,23 +24,6 @@ static char *ipsec_handoff_error_strings[] = {
 #undef _
 };
 
-typedef struct ipsec_handoff_trace_t_
-{
-  u32 next_worker_index;
-} ipsec_handoff_trace_t;
-
-static u8 *
-format_ipsec_handoff_trace (u8 * s, va_list * args)
-{
-  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
-  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
-  ipsec_handoff_trace_t *t = va_arg (*args, ipsec_handoff_trace_t *);
-
-  s = format (s, "next-worker %d", t->next_worker_index);
-
-  return s;
-}
-
 /* do worker handoff based on thread_index in NAT HA protcol header */
 static_always_inline uword
 ipsec_handoff (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame,
