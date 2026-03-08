@@ -1,6 +1,6 @@
 /*
  * SPDX-License-Identifier: Apache-2.0
- * Copyright (c) 2015 Cisco and/or its affiliates.
+ * Copyright (c) 2015-2026 Cisco and/or its affiliates.
  */
 
 #ifndef __IPSEC_H__
@@ -23,8 +23,6 @@
 
 #define IPSEC_FP_IP4_HASHES_POOL_SIZE 128
 #define IPSEC_FP_IP6_HASHES_POOL_SIZE 128
-
-typedef clib_error_t *(*enable_disable_cb_t) (int is_enable);
 
 typedef struct
 {
@@ -57,26 +55,6 @@ typedef union
   }; // 16 bytes total
   ipsec4_hash_kv_16_8_t kv_16_8;
 } ipsec4_inbound_spd_tuple_t;
-
-typedef struct
-{
-  const vnet_crypto_op_id_t enc_op_id;
-  const vnet_crypto_op_id_t dec_op_id;
-  const vnet_crypto_alg_t alg;
-  const u8 iv_size;
-  const u8 block_align;
-  const u8 icv_size;
-  const u8 is_aead : 1;
-  const u8 is_ctr : 1;
-  const u8 is_null_gmac : 1;
-} ipsec_main_crypto_alg_t;
-
-typedef struct
-{
-  const vnet_crypto_op_id_t op_id;
-  const vnet_crypto_alg_t alg;
-  const u8 icv_size;
-} ipsec_main_integ_alg_t;
 
 typedef struct
 {
@@ -158,12 +136,6 @@ typedef struct
   u32 ah6_encrypt_next_index;
   u32 ah6_decrypt_next_index;
 
-  /* crypto alg data */
-  ipsec_main_crypto_alg_t crypto_algs[IPSEC_CRYPTO_N_ALG];
-
-  /* crypto integ data */
-  ipsec_main_integ_alg_t integ_algs[IPSEC_INTEG_N_ALG];
-
   /* per-thread data */
   ipsec_per_thread_data_t *ptd;
 
@@ -226,15 +198,52 @@ typedef struct
   u32 next_index;
 } esp_encrypt_post_trace_t;
 
+typedef struct
+{
+  u32 seq;
+  u64 sa_seq64;
+  u32 pkt_seq_hi;
+  ipsec_crypto_alg_t crypto_alg;
+  ipsec_integ_alg_t integ_alg;
+} esp_decrypt_trace_t;
+
+typedef struct
+{
+  u32 sa_index;
+  u32 spi;
+  u64 seq;
+  ipsec_integ_alg_t integ_alg;
+} ah_encrypt_trace_t;
+
+typedef struct
+{
+  ipsec_integ_alg_t integ_alg;
+  u32 seq_num;
+} ah_decrypt_trace_t;
+
+typedef struct ipsec_handoff_trace_t_
+{
+  u32 next_worker_index;
+} ipsec_handoff_trace_t;
+
+typedef struct
+{
+  ip_protocol_t proto;
+  u32 spd;
+  u32 policy_index;
+  u32 policy_type;
+  u32 sa_id;
+  u32 spi;
+  u32 seq;
+} ipsec_input_trace_t;
+
+typedef struct
+{
+  u32 spd_id;
+  u32 policy_id;
+} ipsec_output_trace_t;
+
 extern ipsec_main_t ipsec_main;
-
-u8 *format_esp_encrypt_trace (u8 *s, va_list *args);
-u8 *format_esp_post_encrypt_trace (u8 *s, va_list *args);
-
-clib_error_t *ipsec_add_del_sa_sess_cb (ipsec_main_t * im, u32 sa_index,
-					u8 is_add);
-
-clib_error_t *ipsec_check_support_cb (ipsec_main_t * im, ipsec_sa_t * sa);
 
 extern vlib_node_registration_t ipsec4_tun_input_node;
 extern vlib_node_registration_t ipsec6_tun_input_node;
@@ -242,6 +251,14 @@ extern vlib_node_registration_t ipsec6_tun_input_node;
 /*
  * functions
  */
+format_function_t format_esp_encrypt_trace;
+format_function_t format_esp_post_encrypt_trace;
+format_function_t format_esp_decrypt_trace;
+format_function_t format_ah_encrypt_trace;
+format_function_t format_ah_decrypt_trace;
+format_function_t format_ipsec_handoff_trace;
+format_function_t format_ipsec_input_trace;
+format_function_t format_ipsec_output_trace;
 
 /*
  *  inline functions

@@ -26,34 +26,6 @@ typedef enum ipsec_tun_next_t_
     IPSEC_TUN_PROTECT_N_NEXT,
 } ipsec_tun_next_t;
 
-typedef struct
-{
-  union
-  {
-    ipsec4_tunnel_kv_t kv4;
-    ipsec6_tunnel_kv_t kv6;
-  };
-  u8 is_ip6;
-  u32 seq;
-} ipsec_tun_protect_input_trace_t;
-
-static u8 *
-format_ipsec_tun_protect_input_trace (u8 * s, va_list * args)
-{
-  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
-  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
-  ipsec_tun_protect_input_trace_t *t =
-    va_arg (*args, ipsec_tun_protect_input_trace_t *);
-
-  if (t->is_ip6)
-    s = format (s, "IPSec: %U seq %u",
-		format_ipsec6_tunnel_kv, &t->kv6, t->seq);
-  else
-    s =
-      format (s, "IPSec: %U seq %u", format_ipsec4_tunnel_kv, &t->kv4, t->seq);
-  return s;
-}
-
 always_inline u16
 ipsec_ip4_if_no_tunnel (vlib_node_runtime_t * node,
 			vlib_buffer_t * b,
