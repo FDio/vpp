@@ -1650,27 +1650,15 @@ dpdk_update_link_state (dpdk_device_t * xd, f64 now)
 static uword
 dpdk_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 {
-  clib_error_t *error;
   dpdk_main_t *dm = &dpdk_main;
   dpdk_device_t *xd;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
 
   vlib_worker_thread_barrier_sync (vm);
-  error = dpdk_lib_init (dm);
+  clib_error_t *error = dpdk_lib_init (dm);
 
   if (error)
     clib_error_report (error);
-
-  if (dpdk_cryptodev_init)
-    {
-      error = dpdk_cryptodev_init (vm);
-      if (error)
-	{
-	  vlib_log_warn (dpdk_main.log_cryptodev, "%U", format_clib_error,
-			 error);
-	  clib_error_free (error);
-	}
-    }
 
   vlib_worker_thread_barrier_release (vm);
   tm->worker_thread_release = 1;
@@ -1750,7 +1738,6 @@ dpdk_init (vlib_main_t * vm)
   dm->link_state_poll_interval = DPDK_LINK_POLL_INTERVAL;
 
   dm->log_default = vlib_log_register_class ("dpdk", 0);
-  dm->log_cryptodev = vlib_log_register_class ("dpdk", "cryptodev");
 
   return error;
 }

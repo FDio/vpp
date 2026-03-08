@@ -72,6 +72,17 @@ UNITTEST_REGISTER_CRYPTO_TEST (chacha20_poly1305_tc1) = {
   .ciphertext = TEST_DATA (tc1_ciphertext),
 };
 
+UNITTEST_REGISTER_CRYPTO_TEST (chacha20_poly1305_tc1_aad12) = {
+  .name = "CHACHA20-POLY1305 TC1 [aad12]",
+  .alg = VNET_CRYPTO_ALG_CHACHA20_POLY1305_TAG16_AAD12,
+  .key = TEST_DATA (tc1_key),
+  .iv = TEST_DATA (tc1_iv),
+  .aad = TEST_DATA (tc1_aad),
+  .tag = TEST_DATA (tc1_tag),
+  .plaintext = TEST_DATA (tc1_plaintext),
+  .ciphertext = TEST_DATA (tc1_ciphertext),
+};
+
 static u8 tc2_key[] = {
     0x2d, 0xb0, 0x5d, 0x40, 0xc8, 0xed, 0x44, 0x88,
     0x34, 0xd1, 0x13, 0xaf, 0x57, 0xa1, 0xeb, 0x3a,
@@ -101,6 +112,17 @@ static u8 tc2_ciphertext[] = { };
 UNITTEST_REGISTER_CRYPTO_TEST (chacha20_poly1305_tc2) = {
   .name = "CHACHA20-POLY1305 TC2",
   .alg = VNET_CRYPTO_ALG_CHACHA20_POLY1305,
+  .key = TEST_DATA (tc2_key),
+  .iv = TEST_DATA (tc2_iv),
+  .aad = TEST_DATA (tc2_aad),
+  .tag = TEST_DATA (tc2_tag),
+  .plaintext = TEST_DATA (tc2_plaintext),
+  .ciphertext = TEST_DATA (tc2_ciphertext),
+};
+
+UNITTEST_REGISTER_CRYPTO_TEST (chacha20_poly1305_tc2_aad8) = {
+  .name = "CHACHA20-POLY1305 TC2 [aad8]",
+  .alg = VNET_CRYPTO_ALG_CHACHA20_POLY1305_TAG16_AAD8,
   .key = TEST_DATA (tc2_key),
   .iv = TEST_DATA (tc2_iv),
   .aad = TEST_DATA (tc2_aad),
@@ -144,3 +166,13 @@ UNITTEST_REGISTER_CRYPTO_TEST (chacha20_poly1305_tc3) = {
   .ciphertext = TEST_DATA (tc3_ciphertext),
 };
 
+UNITTEST_REGISTER_CRYPTO_TEST (chacha20_poly1305_tc3_aad0) = {
+  .name = "CHACHA20-POLY1305 TC3 [aad0]",
+  .alg = VNET_CRYPTO_ALG_CHACHA20_POLY1305_TAG16_AAD0,
+  .key = TEST_DATA (tc3_key),
+  .iv = TEST_DATA (tc3_iv),
+  .aad = TEST_DATA (tc3_aad),
+  .tag = TEST_DATA (tc3_tag),
+  .plaintext = TEST_DATA (tc3_plaintext),
+  .ciphertext = TEST_DATA (tc3_ciphertext),
+};
