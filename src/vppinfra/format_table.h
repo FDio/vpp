@@ -93,7 +93,7 @@ __clib_export void table_set_cell_fg_color (table_t *t, int c, int r,
 __clib_export void table_set_cell_bg_color (table_t *t, int c, int r,
 					    table_text_attr_color_t v);
 __clib_export void table_free (table_t *t);
-__clib_export void table_add_header_col (table_t *t, int n_strings, ...);
-__clib_export void table_add_header_row (table_t *t, int n_strings, ...);
+__clib_export void table_add_hdr_row (table_t *t, int n_strings, ...);
+__clib_export void table_add_hdr_col (table_t *t, int n_strings, ...);
 
 #endif

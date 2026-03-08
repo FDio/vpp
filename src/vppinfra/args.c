@@ -317,7 +317,7 @@ format_clib_args (u8 *s, va_list *va)
   clib_arg_t *a, *args = h ? h->args : 0;
   table_t t = { .no_ansi = 1 };
 
-  table_add_header_col (&t, 4, "Name", "Value", "Default", "Description");
+  table_add_hdr_row (&t, 4, "Name", "Value", "Default", "Description");
   table_set_cell_align (&t, -1, 0, TTAA_LEFT);
   table_set_cell_align (&t, -1, 3, TTAA_LEFT);
   vec_foreach (a, args)

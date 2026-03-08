@@ -403,8 +403,7 @@ show_device_drivers_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
       return 0;
     }
 
-  table_add_header_col (t, 5, "name", "bus", "priority", "shared object",
-			"description");
+  table_add_hdr_row (t, 5, "name", "bus", "priority", "shared object", "description");
   table_set_cell_align (t, -1, 0, TTAA_LEFT);
   table_set_cell_align (t, -1, 3, TTAA_LEFT);
   table_set_cell_align (t, -1, 4, TTAA_LEFT);

@@ -136,8 +136,7 @@ sfdp_show_services_fn (vlib_main_t *vm, unformat_input_t *input,
       table_format_title (service_table,
 			  "Registered SFDP services for scope '%s'",
 			  vsm->scope_names[scope_index]);
-      table_add_header_col (service_table, 3, "Node name", "Index",
-			    "Terminal");
+      table_add_hdr_row (service_table, 3, "Node name", "Index", "Terminal");
 
       u32 n = 0;
       vec_foreach (service, *services_for_scope)

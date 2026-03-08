@@ -40,8 +40,8 @@ sfdp_tcp_check_show_sessions_command_fn (vlib_main_t *vm,
     {
       table_t session_table_ = {}, *session_table = &session_table_;
       u32 n = 0;
-      table_add_header_col (session_table, 8, "id", "tenant", "index", "type",
-			    "context", "ingress", "egress", "flags");
+      table_add_hdr_row (session_table, 8, "id", "tenant", "index", "type", "context", "ingress",
+			 "egress", "flags");
       sfdp_foreach_session (sfdp, session_index, session)
       {
 	tenant = sfdp_tenant_at_index (sfdp, session->tenant_idx);

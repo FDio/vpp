@@ -192,7 +192,7 @@ format_perfmon_bundle (u8 *s, va_list *args)
   table_t _t = {}, *t = &_t;
   u32 n_row = 0, col = 0;
 
-  table_add_header_row (t, 0);
+  table_add_hdr_col (t, 0);
 
   for (char **h = ctx->bundle->column_headers; h[0]; h++)
     n_row++;

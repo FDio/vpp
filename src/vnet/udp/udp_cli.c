@@ -279,7 +279,7 @@ show_udp_ports (vlib_main_t *vm, unformat_input_t *input,
 	}
     }
 
-  table_add_header_col (t, 4, "port", "proto", "node", "desc");
+  table_add_hdr_row (t, 4, "port", "proto", "node", "desc");
 
   if (port > 65535)
     {
@@ -370,7 +370,7 @@ show_udp_transport_ports (vlib_main_t *vm, unformat_input_t *input,
 	}
     }
 
-  table_add_header_col (t, 3, "port", "proto", "ref-cnt");
+  table_add_hdr_row (t, 3, "port", "proto", "ref-cnt");
 
   if (port > 65535)
     {

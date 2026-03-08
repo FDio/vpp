@@ -3651,7 +3651,7 @@ unix_cli_show_cli_sessions (vlib_main_t * vm,
   unix_cli_file_t *cf;
   clib_file_t *uf;
 
-  table_add_header_col (t, 4, "PNI  ", "FD   ", "Name", "Flags");
+  table_add_hdr_row (t, 4, "PNI  ", "FD   ", "Name", "Flags");
 
 #define fl(x, y) ( (x) ? toupper((y)) : tolower((y)) )
   int i = 0;

@@ -375,8 +375,8 @@ show_perfmon_stats_command_fn (vlib_main_t *vm, unformat_input_t *input,
 
   table_format_title (t, "%s", b->description);
 
-  table_add_header_col (t, 0);
-  table_add_header_row (t, 0);
+  table_add_hdr_row (t, 0);
+  table_add_hdr_col (t, 0);
 
   if (b->column_headers)
     {
