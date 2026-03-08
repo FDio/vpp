@@ -114,6 +114,7 @@ set(VPPINFRA_SRCS
   tw_timer_1t_3w_1024sl_ov.c
   tw_timer_2t_1w_2048sl.c
   tw_timer_4t_3w_256sl.c
+  unicode.c
   unformat.c
   unix-formats.c
   unix-misc.c
@@ -220,6 +221,7 @@ set(VPPINFRA_HEADERS
   tw_timer_template.c
   tw_timer_template.h
   types.h
+  unicode.h
   atomics.h
   unix.h
   valloc.h
