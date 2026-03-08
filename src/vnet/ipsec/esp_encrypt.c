@@ -189,10 +189,8 @@ esp_generate_iv (ipsec_sa_outb_rt_t *ort, void *payload, int iv_sz)
 }
 
 static_always_inline void
-esp_process_chained_ops (vlib_main_t * vm, vlib_node_runtime_t * node,
-			 vnet_crypto_op_t * ops, vlib_buffer_t * b[],
-			 u16 * nexts, vnet_crypto_op_chunk_t * chunks,
-			 u16 drop_next)
+esp_process_ops (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_crypto_op_t *ops,
+		 vlib_buffer_t *b[], u16 *nexts, vnet_crypto_op_chunk_t *chunks, u16 drop_next)
 {
   u32 n_fail, n_ops = vec_len (ops);
   vnet_crypto_op_t *op = ops;
@@ -200,37 +198,7 @@ esp_process_chained_ops (vlib_main_t * vm, vlib_node_runtime_t * node,
   if (n_ops == 0)
     return;
 
-  n_fail = n_ops - vnet_crypto_process_chained_ops (vm, op, chunks, n_ops);
-
-  while (n_fail)
-    {
-      ASSERT (op - ops < n_ops);
-
-      if (op->status != VNET_CRYPTO_OP_STATUS_COMPLETED)
-	{
-	  u32 bi = op->user_data;
-	  esp_encrypt_set_next_index (b[bi], node, vm->thread_index,
-				      ESP_ENCRYPT_ERROR_CRYPTO_ENGINE_ERROR,
-				      bi, nexts, drop_next,
-				      vnet_buffer (b[bi])->ipsec.sad_index);
-	  n_fail--;
-	}
-      op++;
-    }
-}
-
-static_always_inline void
-esp_process_ops (vlib_main_t * vm, vlib_node_runtime_t * node,
-		 vnet_crypto_op_t * ops, vlib_buffer_t * b[], u16 * nexts,
-		 u16 drop_next)
-{
-  u32 n_fail, n_ops = vec_len (ops);
-  vnet_crypto_op_t *op = ops;
-
-  if (n_ops == 0)
-    return;
-
-  n_fail = n_ops - vnet_crypto_process_ops (vm, op, n_ops);
+  n_fail = n_ops - vnet_crypto_process_ops (vm, op, chunks, n_ops);
 
   while (n_fail)
     {
@@ -340,7 +308,7 @@ esp_prepare_async_frame (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
   esp_post_data_t *post = esp_post_data (b);
   u8 *tag, *iv, *aad = 0;
   u8 flag = 0;
-  const u32 key_index = ort->key_index;
+  vnet_crypto_ctx_t *ctx = ort->ctx;
   i16 crypto_start_offset, integ_start_offset;
   u16 crypto_total_len, integ_total_len;
 
@@ -419,10 +387,9 @@ esp_prepare_async_frame (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
     }
 
   /* this always succeeds because we know the frame is not full */
-  vnet_crypto_async_add_to_frame (vm, async_frame, key_index, crypto_total_len,
-				  integ_total_len - crypto_total_len,
-				  crypto_start_offset, integ_start_offset, bi,
-				  async_next, iv, tag, aad, flag);
+  vnet_crypto_async_add_to_frame (vm, async_frame, ctx, crypto_total_len, integ_total_len,
+				  crypto_start_offset, integ_start_offset, bi, async_next, iv, tag,
+				  aad, flag);
 }
 
 /* Per RFC6935 section 5, the UDP checksum must be computed when originating
@@ -458,7 +425,7 @@ ipsec_setup_chained_crypto (vnet_crypto_op_t *op, vlib_main_t *vm, ipsec_per_thr
 			    vlib_buffer_t *b, vlib_buffer_t *lb,
 			    const ipsec_sa_outb_rt_cached_t *rt, u8 *crypto_start, u16 crypto_len)
 {
-  op->digest = vlib_buffer_get_tail (lb) - rt->integ_icv_size;
+  op->auth = vlib_buffer_get_tail (lb) - rt->integ_icv_size;
   op->chunk_index = vec_len (ptd->chunks);
   esp_encrypt_chain_crypto (vm, ptd, b, lb, rt->integ_icv_size, crypto_start, crypto_len,
 			    &op->n_chunks);
@@ -471,7 +438,7 @@ ipsec_setup_aead_fields (vnet_crypto_op_t *op, ipsec_sa_outb_rt_t *ort,
 {
   op->aad = aad;
   esp_aad_fill (op->aad, esp, rt->use_esn, seq_hi);
-  op->tag = payload + payload_len - rt->integ_icv_size;
+  op->auth = payload + payload_len - rt->integ_icv_size;
 }
 
 static_always_inline void
@@ -558,15 +525,15 @@ static_always_inline void
 ipsec_build_integ_op_tmpl (vnet_crypto_op_t *op, const ipsec_sa_outb_rt_cached_t *rt, u8 *payload,
 			   u16 payload_len, u32 seq_hi_be)
 {
-  op->integ_src = payload - rt->integ_src_pre_bytes;
-  op->integ_len = payload_len - rt->integ_icv_size + rt->integ_len_pre_bytes;
+  op->auth_src = payload - rt->integ_src_pre_bytes;
+  op->auth_src_len = payload_len - rt->integ_icv_size + rt->integ_len_pre_bytes;
 
-  op->digest = payload + payload_len - rt->integ_icv_size;
+  op->auth = payload + payload_len - rt->integ_icv_size;
 
   if (rt->integ_add_seq_hi)
     {
-      clib_memcpy_fast (op->digest, &seq_hi_be, sizeof (seq_hi_be));
-      op->integ_len += sizeof (seq_hi_be);
+      clib_memcpy_fast (op->auth, &seq_hi_be, sizeof (seq_hi_be));
+      op->auth_src_len += sizeof (seq_hi_be);
     }
 }
 
@@ -575,11 +542,11 @@ ipsec_build_integ_op_tmpl_chain (vnet_crypto_op_t *op, const ipsec_sa_outb_rt_ca
 				 vlib_main_t *vm, void *ptd, u32 seq_hi_be, vlib_buffer_t **b,
 				 vlib_buffer_t *lb, u8 *payload, u16 payload_len)
 {
-  op->digest = vlib_buffer_get_tail (lb) - rt->integ_icv_size;
-  op->integ_chunk_index = vec_len (((ipsec_per_thread_data_t *) ptd)->chunks);
+  op->auth = vlib_buffer_get_tail (lb) - rt->integ_icv_size;
+  op->auth_chunk_index = vec_len (((ipsec_per_thread_data_t *) ptd)->chunks);
   esp_encrypt_chain_integ (vm, (ipsec_per_thread_data_t *) ptd, rt, seq_hi_be, b[0], lb,
 			   rt->integ_icv_size, payload - rt->integ_src_pre_bytes,
-			   payload_len + rt->integ_len_pre_bytes, op->digest, &op->integ_n_chunks);
+			   payload_len + rt->integ_len_pre_bytes, op->auth, &op->auth_n_chunks);
 }
 
 always_inline uword
@@ -587,6 +554,12 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 		    vlib_frame_t *frame, vnet_link_t lt, int is_tun,
 		    u16 async_next_node)
 {
+  typedef struct
+  {
+    vnet_crypto_alg_t alg;
+    vnet_crypto_engine_id_t engine;
+    vnet_crypto_async_frame_t *frame;
+  } async_frame_t;
   ipsec_main_t *im = &ipsec_main;
   ipsec_per_thread_data_t *ptd = vec_elt_at_index (im->ptd, vm->thread_index);
   u32 *from = vlib_frame_vector_args (frame);
@@ -598,8 +571,11 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   u32 current_sa_bytes = 0;
   ipsec_sa_outb_rt_t *ort = 0;
   vlib_buffer_t *lb;
-  vnet_crypto_async_frame_t *async_frames[VNET_CRYPTO_N_OP_IDS];
-  vnet_crypto_op_id_t async_op = ~0;
+  async_frame_t async_frames[VLIB_FRAME_SIZE];
+  vnet_crypto_alg_t async_alg = ~0;
+  vnet_crypto_engine_id_t async_engine = VNET_CRYPTO_ENGINE_ID_NONE;
+  vnet_crypto_async_frame_t *async_f = 0;
+  u32 n_async_frames = 0;
   u16 drop_next =
     (lt == VNET_LINK_IP6 ? ESP_ENCRYPT_NEXT_DROP6 :
 			   (lt == VNET_LINK_IP4 ? ESP_ENCRYPT_NEXT_DROP4 :
@@ -1009,7 +985,8 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	    {
 	      ops = &((ipsec_per_thread_data_t *) ptd)->chained_crypto_ops;
 	      vec_add2_aligned (ops[0], op, 1, CLIB_CACHE_LINE_BYTES);
-	      *op = ort->op_tmpl_chained;
+	      *op = ort->op_tmpl;
+	      op->flags |= VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS;
 	      if (PREDICT_TRUE (rt.needs_sync_enc))
 		{
 		  if (PREDICT_TRUE (rt.has_cipher))
@@ -1037,7 +1014,7 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	    {
 	      ops = &((ipsec_per_thread_data_t *) ptd)->crypto_ops;
 	      vec_add2_aligned (ops[0], op, 1, CLIB_CACHE_LINE_BYTES);
-	      *op = ort->op_tmpl_single;
+	      *op = ort->op_tmpl;
 	      if (PREDICT_TRUE (rt.needs_sync_enc))
 		{
 		  if (PREDICT_TRUE (rt.has_cipher))
@@ -1065,17 +1042,27 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
       if (rt.is_async)
 	{
-	  async_op = ort->async_op_id;
+	  u32 i;
+
+	  async_alg = ort->ctx->alg;
+	  async_engine = vnet_crypto_ctx_get_engine (ort->ctx, VNET_CRYPTO_HANDLER_TYPE_ASYNC);
+	  async_f = 0;
+
+	  for (i = 0; i < n_async_frames; i++)
+	    if (async_frames[i].alg == async_alg && async_frames[i].engine == async_engine &&
+		!vnet_crypto_async_frame_is_full (async_frames[i].frame))
+	      {
+		async_f = async_frames[i].frame;
+		break;
+	      }
 
 	  /* get a frame for this op if we don't yet have one or it's full
 	   */
-	  if (NULL == async_frames[async_op] ||
-	      vnet_crypto_async_frame_is_full (async_frames[async_op]))
+	  if (async_f == 0)
 	    {
-	      async_frames[async_op] =
-		vnet_crypto_async_get_frame (vm, async_op);
+	      async_f = vnet_crypto_async_get_frame (vm, async_alg, VNET_CRYPTO_OP_TYPE_ENCRYPT);
 
-	      if (PREDICT_FALSE (!async_frames[async_op]))
+	      if (PREDICT_FALSE (!async_f))
 		{
 		  err = ESP_ENCRYPT_ERROR_NO_AVAIL_FRAME;
 		  esp_encrypt_set_next_index (b[0], node, thread_index, err,
@@ -1085,13 +1072,16 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 		}
 
 	      /* Save the frame to the list we'll submit at the end */
-	      vec_add1 (ptd->async_frames, async_frames[async_op]);
+	      vec_add1 (ptd->async_frames, async_f);
+	      async_frames[n_async_frames].alg = async_alg;
+	      async_frames[n_async_frames].engine = async_engine;
+	      async_frames[n_async_frames].frame = async_f;
+	      n_async_frames++;
 	    }
 
-	  esp_prepare_async_frame (vm, ptd, async_frames[async_op], ort, &rt, b[0], esp, payload,
-				   payload_len, rt.cipher_iv_size, rt.integ_icv_size,
-				   from[b - bufs], sync_next[0], hdr_len, async_next_node, lb,
-				   seq_hi, seq_hi_be);
+	  esp_prepare_async_frame (vm, ptd, async_f, ort, &rt, b[0], esp, payload, payload_len,
+				   rt.cipher_iv_size, rt.integ_icv_size, from[b - bufs],
+				   sync_next[0], hdr_len, async_next_node, lb, seq_hi, seq_hi_be);
 	}
 
       vlib_buffer_advance (b[0], 0LL - hdr_len);
@@ -1145,10 +1135,9 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 				     current_sa_bytes);
   if (n_sync)
     {
-      esp_process_ops (vm, node, ptd->crypto_ops, sync_bufs, sync_nexts,
+      esp_process_ops (vm, node, ptd->chained_crypto_ops, sync_bufs, sync_nexts, ptd->chunks,
 		       drop_next);
-      esp_process_chained_ops (vm, node, ptd->chained_crypto_ops, sync_bufs,
-			       sync_nexts, ptd->chunks, drop_next);
+      esp_process_ops (vm, node, ptd->crypto_ops, sync_bufs, sync_nexts, 0, drop_next);
 
       vlib_buffer_enqueue_to_next (vm, node, sync_bi, sync_nexts, n_sync);
     }

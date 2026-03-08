@@ -9,16 +9,20 @@
 
 typedef enum
 {
-#define _(sym,str) VNET_CRYPTO_ASYNC_ERROR_##sym,
-  foreach_crypto_op_status
-#undef _
-    VNET_CRYPTO_ASYNC_N_ERROR,
+  VNET_CRYPTO_ASYNC_ERROR_COMPLETED,
+  VNET_CRYPTO_ASYNC_ERROR_FAIL_NO_HANDLER,
+  VNET_CRYPTO_ASYNC_ERROR_FAIL_BAD_HMAC,
+  VNET_CRYPTO_ASYNC_ERROR_FAIL_ENGINE_ERR,
+  VNET_CRYPTO_ASYNC_ERROR_WORK_IN_PROGRESS,
+  VNET_CRYPTO_ASYNC_N_ERROR,
 } vnet_crypto_async_error_t;
 
 static char *vnet_crypto_async_error_strings[] = {
-#define _(sym,string) string,
-  foreach_crypto_op_status
-#undef _
+  [VNET_CRYPTO_ASYNC_ERROR_COMPLETED] = "completed",
+  [VNET_CRYPTO_ASYNC_ERROR_FAIL_NO_HANDLER] = "no-handler",
+  [VNET_CRYPTO_ASYNC_ERROR_FAIL_BAD_HMAC] = "bad-hmac",
+  [VNET_CRYPTO_ASYNC_ERROR_FAIL_ENGINE_ERR] = "engine-err",
+  [VNET_CRYPTO_ASYNC_ERROR_WORK_IN_PROGRESS] = "work-in-progress",
 };
 
 #define foreach_crypto_dispatch_next \
@@ -34,8 +38,9 @@ typedef enum
 
 typedef struct
 {
-  vnet_crypto_op_status_t op_status;
-  vnet_crypto_op_id_t op;
+  u8 op_status;
+  vnet_crypto_alg_t alg;
+  vnet_crypto_op_type_t type;
 } crypto_dispatch_trace_t;
 
 static u8 *
@@ -45,19 +50,19 @@ format_crypto_dispatch_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   crypto_dispatch_trace_t *t = va_arg (*args, crypto_dispatch_trace_t *);
 
-  s = format (s, "%U: %U", format_vnet_crypto_op, t->op,
+  s = format (s, "%U-%U: %U", format_vnet_crypto_op_type, t->type, format_vnet_crypto_alg, t->alg,
 	      format_vnet_crypto_op_status, t->op_status);
   return s;
 }
 
 static void
-vnet_crypto_async_add_trace (vlib_main_t *vm, vlib_node_runtime_t *node,
-			     vlib_buffer_t *b, vnet_crypto_op_id_t op_id,
-			     vnet_crypto_op_status_t status)
+vnet_crypto_async_add_trace (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *b,
+			     vnet_crypto_alg_t alg, vnet_crypto_op_type_t type, u8 status)
 {
   crypto_dispatch_trace_t *tr = vlib_add_trace (vm, node, b, sizeof (*tr));
   tr->op_status = status;
-  tr->op = op_id;
+  tr->alg = alg;
+  tr->type = type;
 }
 
 static_always_inline u32
@@ -80,7 +85,8 @@ crypto_dequeue_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  vec_validate (ct->nexts, n_cache + cf->n_elts);
 	  clib_memcpy_fast (ct->buffer_indices + n_cache, cf->buffer_indices,
 			    sizeof (u32) * cf->n_elts);
-	  if (cf->state == VNET_CRYPTO_FRAME_STATE_SUCCESS)
+	  if (vnet_crypto_async_frame_bitmap_count_set_bits (cf->bad_hmac_bitmap) == 0 &&
+	      vnet_crypto_async_frame_bitmap_count_set_bits (cf->engine_error_bitmap) == 0)
 	    {
 	      clib_memcpy_fast (ct->nexts + n_cache, cf->next_node_index,
 				sizeof (u16) * cf->n_elts);
@@ -90,11 +96,17 @@ crypto_dequeue_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      u32 i;
 	      for (i = 0; i < cf->n_elts; i++)
 		{
-		  if (cf->elts[i].status != VNET_CRYPTO_OP_STATUS_COMPLETED)
+		  if (uword_bitmap_is_bit_set (cf->engine_error_bitmap, i))
 		    {
 		      ct->nexts[i + n_cache] = CRYPTO_DISPATCH_NEXT_ERR_DROP;
 		      vlib_node_increment_counter (vm, node->node_index,
-						   cf->elts[i].status, 1);
+						   VNET_CRYPTO_ASYNC_ERROR_FAIL_ENGINE_ERR, 1);
+		    }
+		  else if (uword_bitmap_is_bit_set (cf->bad_hmac_bitmap, i))
+		    {
+		      ct->nexts[i + n_cache] = CRYPTO_DISPATCH_NEXT_ERR_DROP;
+		      vlib_node_increment_counter (vm, node->node_index,
+						   VNET_CRYPTO_ASYNC_ERROR_FAIL_BAD_HMAC, 1);
 		    }
 		  else
 		    ct->nexts[i + n_cache] = cf->next_node_index[i];
@@ -114,11 +126,15 @@ crypto_dequeue_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	      for (i = 0; i < cf->n_elts; i++)
 		{
+		  u8 status = VNET_CRYPTO_OP_STATUS_COMPLETED;
 		  vlib_buffer_t *b = vlib_get_buffer (vm,
 						      cf->buffer_indices[i]);
+		  if (uword_bitmap_is_bit_set (cf->engine_error_bitmap, i))
+		    status = VNET_CRYPTO_OP_STATUS_FAIL_ENGINE_ERR;
+		  else if (uword_bitmap_is_bit_set (cf->bad_hmac_bitmap, i))
+		    status = VNET_CRYPTO_OP_STATUS_FAIL_BAD_HMAC;
 		  if (b->flags & VLIB_BUFFER_IS_TRACED)
-		    vnet_crypto_async_add_trace (vm, node, b, cf->op,
-						 cf->elts[i].status);
+		    vnet_crypto_async_add_trace (vm, node, b, cf->alg, cf->type, status);
 		}
 	    }
 	  vnet_crypto_async_free_frame (vm, cf);
@@ -151,25 +167,19 @@ VLIB_NODE_FN (crypto_dispatch_node) (vlib_main_t * vm,
   vnet_crypto_main_t *cm = &crypto_main;
   vnet_crypto_thread_t *ct = cm->threads + vm->thread_index;
   u32 n_dispatched = 0, n_cache = 0, index;
+
+  vnet_crypto_async_free_frames (vm);
+
   vec_foreach_index (index, cm->dequeue_handlers)
     {
       n_cache = crypto_dequeue_frame (
 	vm, node, ct, cm->dequeue_handlers[index], n_cache, &n_dispatched);
     }
   if (n_cache)
-    vlib_buffer_enqueue_to_next_vec (vm, node, &ct->buffer_indices, &ct->nexts,
-				     n_cache);
+    vlib_buffer_enqueue_to_next_vec (vm, node, &ct->buffer_indices, &ct->nexts, n_cache);
 
-  /* if there are still pending tasks and node in interrupt mode,
-  sending current thread signal to dequeue next loop */
-  if (pool_elts (ct->frame_pool) > 0 &&
-      ((node->state == VLIB_NODE_STATE_POLLING &&
-	(node->flags &
-	 VLIB_NODE_FLAG_SWITCH_FROM_POLLING_TO_INTERRUPT_MODE)) ||
-       node->state == VLIB_NODE_STATE_INTERRUPT))
-    {
-      vlib_node_set_interrupt_pending (vm, node->node_index);
-    }
+  if (pool_elts (ct->frame_pool) > 0)
+    vlib_node_set_interrupt_pending (vm, node->node_index);
 
   return n_dispatched;
 }
@@ -177,11 +187,10 @@ VLIB_NODE_FN (crypto_dispatch_node) (vlib_main_t * vm,
 VLIB_REGISTER_NODE (crypto_dispatch_node) = {
   .name = "crypto-dispatch",
   .type = VLIB_NODE_TYPE_INPUT,
-  .flags = VLIB_NODE_FLAG_ADAPTIVE_MODE,
   .state = VLIB_NODE_STATE_INTERRUPT,
   .format_trace = format_crypto_dispatch_trace,
 
-  .n_errors = ARRAY_LEN(vnet_crypto_async_error_strings),
+  .n_errors = ARRAY_LEN (vnet_crypto_async_error_strings),
   .error_strings = vnet_crypto_async_error_strings,
 
   .n_next_nodes = CRYPTO_DISPATCH_N_NEXT,
