@@ -27,11 +27,23 @@ static table_text_attr_t default_header_row = {
   .align = TTAA_LEFT,
 };
 
+static u8 *
+table_format_spaces (u8 *s, int n_spaces)
+{
+  for (int i = 0; i < n_spaces; i++)
+    s = format (s, " ");
+
+  return s;
+}
+
 u8 *
 format_text_cell (table_t *t, u8 *s, table_cell_t *c, table_text_attr_t *def,
 		  int size)
 {
   table_text_attr_t _a = {}, *a = &_a;
+  table_text_attr_align_t align;
+  int visible_len;
+  int left_pad = 0, right_pad = 0;
 
   if (c == 0)
     return format (s, t->no_ansi ? "" : "\x1b[0m");
@@ -85,18 +97,26 @@ format_text_cell (table_t *t, u8 *s, table_cell_t *c, table_text_attr_t *def,
 	}
     }
 
-  u8 *fmt = 0;
-  table_text_attr_align_t align = c->attr.align;
+  align = c->attr.align;
   if (align == TTAA_DEFAULT)
     align = a->align;
-  if (align == TTAA_LEFT)
-    fmt = format (fmt, "%%-%uv%c", size, 0);
-  else if (align == TTAA_CENTER)
-    fmt = format (fmt, "%%=%uv%c", size, 0);
-  else
-    fmt = format (fmt, "%%%uv%c", size, 0);
-  s = format (s, (char *) fmt, c->text);
-  vec_free (fmt);
+  visible_len = format_get_visible_length (c->text);
+  if (visible_len < size)
+    {
+      if (align == TTAA_LEFT)
+	right_pad = size - visible_len;
+      else if (align == TTAA_CENTER)
+	{
+	  left_pad = (size - visible_len) / 2;
+	  right_pad = size - visible_len - left_pad;
+	}
+      else
+	left_pad = size - visible_len;
+    }
+
+  s = table_format_spaces (s, left_pad);
+  s = format (s, "%v", c->text);
+  s = table_format_spaces (s, right_pad);
   return format (s, t->no_ansi ? "" : "\x1b[0m");
 }
 
@@ -116,7 +136,9 @@ format_table (u8 *s, va_list *args)
       title_default =
 	t->default_title.as_u32 ? &t->default_title : &default_title;
       /* fixup table width, in case title is larger than combined row sizes */
-      table_width = vec_len (t->title) > table_width ? vec_len (t->title) : table_width;
+      table_width = format_get_visible_length (t->title) > table_width ?
+		      format_get_visible_length (t->title) :
+		      table_width;
       s = format_text_cell (t, s, &title_cell, title_default, table_width);
       s = format (s, "\n%U", format_white_space, indent);
     }
@@ -188,7 +210,7 @@ table_format_cell (table_t *t, int c, int r, char *fmt, ...)
   va_end (va);
 
   vec_validate (t->row_sizes, r);
-  t->row_sizes[r] = clib_max (t->row_sizes[r], vec_len (t->cells[c][r].text));
+  t->row_sizes[r] = clib_max (t->row_sizes[r], format_get_visible_length (t->cells[c][r].text));
 }
 
 void

@@ -31,6 +31,7 @@
 #include <vppinfra/string.h>
 #include <vppinfra/os.h>	/* os_puts */
 #include <vppinfra/math.h>
+#include <vppinfra/unicode.h>
 
 typedef struct
 {
@@ -52,6 +53,43 @@ static u8 *format_integer (u8 * s, u64 number,
 static u8 *format_float (u8 * s, f64 x, uword n_digits_to_print,
 			 uword output_style);
 
+u32
+format_get_visible_length (u8 *s)
+{
+  u32 len = 0;
+  u32 cp, n;
+  u8 *p;
+  uword slen;
+
+  if (s == 0)
+    return 0;
+
+  slen = vec_len (s);
+  p = s;
+  while (p < s + slen)
+    {
+      if (*p == 0x1b && p + 1 < s + slen && p[1] == '[')
+	{
+	  p += 2;
+	  while (p < s + slen)
+	    {
+	      if (*p >= '@' && *p <= '~')
+		{
+		  p++;
+		  break;
+		}
+	      p++;
+	    }
+	  continue;
+	}
+
+      n = clib_unicode_get_utf8_char (p, &cp);
+      len += clib_unicode_get_visible_len (cp);
+      p += clib_min (n, s + slen - p);
+    }
+
+  return len;
+}
 typedef struct
 {
   /* String justification: + => right, - => left, = => center. */
