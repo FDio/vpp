@@ -52,6 +52,24 @@
       "parentUuid": "603436f8_7051c456",
       "revId": "df1a765c4b95128cfe5618ae5f23c193a9c7668b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "76801e3f_08dc8012",
+        "filename": "src/plugins/quic_quicly/quic_quicly.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 624,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-03-08T18:26:20Z",
+      "side": 1,
+      "message": "on stream level it\u0027s set to fifo size and on connection to maximum",
+      "parentUuid": "435f510d_9b51b9ab",
+      "revId": "df1a765c4b95128cfe5618ae5f23c193a9c7668b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
