@@ -6,8 +6,6 @@
 #ifndef included_unittest_crypto_crypto_h
 #define included_unittest_crypto_crypto_h
 
-#define CRYPTO_TEST_MAX_OP_CHUNKS 8
-
 typedef struct
 {
   u32 length;
@@ -21,11 +19,6 @@ typedef struct unittest_crypto_test_registration
   unittest_crypto_test_data_t iv, key, digest, plaintext, ciphertext, aad,
     tag;
   u32 plaintext_incremental;
-  u8 is_chained;
-
-  /* plaintext and cipher text data used for testing chained buffers */
-  unittest_crypto_test_data_t pt_chunks[CRYPTO_TEST_MAX_OP_CHUNKS + 1];
-  unittest_crypto_test_data_t ct_chunks[CRYPTO_TEST_MAX_OP_CHUNKS + 1];
 
   /* next */
   struct unittest_crypto_test_registration *next;
@@ -35,7 +28,10 @@ typedef struct unittest_crypto_test_registration
 typedef struct
 {
   int verbose;
+  int quiet;
+  u8 *engine;
   u8 *inc_data;
+  u8 async;
 
   /* perf */
   vnet_crypto_alg_t alg;
@@ -48,6 +44,8 @@ typedef struct
 } crypto_test_main_t;
 
 extern crypto_test_main_t crypto_test_main;
+
+clib_error_t *test_crypto_async (vlib_main_t *vm, crypto_test_main_t *tm);
 
 #define TEST_DATA(n) { .data = (u8 *) n, .length = sizeof (n)}
 #define TEST_DATA_STR(n)                                                      \
