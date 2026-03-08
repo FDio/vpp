@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0
  * Copyright (c) 2020 Doc.ai and/or its affiliates.
- * Copyright (c) 2020 Cisco and/or its affiliates.
+ * Copyright (c) 2020-2026 Cisco and/or its affiliates.
  */
 
 #include <vlib/vlib.h>
@@ -139,11 +139,10 @@ wg_output_chain_crypto (vlib_main_t *vm, wg_per_thread_data_t *ptd,
 }
 
 static_always_inline void
-wg_prepare_sync_enc_op (vlib_main_t *vm, wg_per_thread_data_t *ptd,
-			vlib_buffer_t *b, vlib_buffer_t *lb,
-			vnet_crypto_op_t **crypto_ops, u8 *src, u32 src_len,
-			u8 *dst, u8 *aad, u32 aad_len, u64 nonce,
-			vnet_crypto_key_index_t key_index, u32 bi, u8 *iv)
+wg_prepare_sync_enc_op (vlib_main_t *vm, wg_per_thread_data_t *ptd, vlib_buffer_t *b,
+			vlib_buffer_t *lb, vnet_crypto_op_t **crypto_ops, u8 *src, u32 src_len,
+			u8 *dst, u8 *aad, u32 aad_len, u64 nonce, vnet_crypto_key_t *key, u32 bi,
+			u8 *iv)
 {
   vnet_crypto_op_t _op, *op = &_op;
   u8 src_[] = {};
@@ -154,9 +153,9 @@ wg_prepare_sync_enc_op (vlib_main_t *vm, wg_per_thread_data_t *ptd,
   vec_add2_aligned (crypto_ops[0], op, 1, CLIB_CACHE_LINE_BYTES);
   vnet_crypto_op_init (op, VNET_CRYPTO_OP_CHACHA20_POLY1305_ENC);
 
-  op->tag_len = NOISE_AUTHTAG_LEN;
-  op->tag = vlib_buffer_get_tail (lb) - NOISE_AUTHTAG_LEN;
-  op->key_index = key_index;
+  op->auth_len = NOISE_AUTHTAG_LEN;
+  op->auth = vlib_buffer_get_tail (lb) - NOISE_AUTHTAG_LEN;
+  op->key = key;
   op->aad = aad;
   op->aad_len = aad_len;
   op->iv = iv;
@@ -235,27 +234,14 @@ wg_output_process_ops (vlib_main_t *vm, vlib_node_runtime_t *node,
 }
 
 static_always_inline void
-wg_output_tun_add_to_frame (vlib_main_t *vm, vnet_crypto_async_frame_t *f,
-			    u32 key_index, u32 crypto_len,
-			    i16 crypto_start_offset, u32 buffer_index,
-			    u16 next_node, u8 *iv, u8 *tag, u8 flags)
+wg_output_tun_add_to_frame (vlib_main_t *vm, vnet_crypto_async_frame_t *f, vnet_crypto_key_t *key,
+			    u32 crypto_len, i16 crypto_start_offset, u32 buffer_index,
+			    u16 next_node, u8 *iv, i16 tag_offset, u8 flags)
 {
-  vnet_crypto_async_frame_elt_t *fe;
-  u16 index;
+  vlib_buffer_t *b = vlib_get_buffer (vm, buffer_index);
 
-  ASSERT (f->n_elts < VNET_CRYPTO_FRAME_SIZE);
-
-  index = f->n_elts;
-  fe = &f->elts[index];
-  f->n_elts++;
-  fe->key_index = key_index;
-  fe->crypto_total_length = crypto_len;
-  fe->crypto_start_offset = crypto_start_offset;
-  fe->iv = iv;
-  fe->tag = tag;
-  fe->flags = flags;
-  f->buffer_indices[index] = buffer_index;
-  f->next_node_index[index] = next_node;
+  vnet_crypto_async_add_to_frame (vm, f, key, crypto_len, 0, crypto_start_offset, 0, buffer_index,
+				  next_node, iv - b->data, tag_offset, 0, flags);
 }
 
 static_always_inline enum noise_state_crypt
@@ -289,8 +275,8 @@ wg_output_tun_process (vlib_main_t *vm, wg_per_thread_data_t *ptd,
    * are passed back out to the caller through the provided data pointer. */
   *r_idx = kp->kp_remote_index;
 
-  wg_prepare_sync_enc_op (vm, ptd, b, lb, crypto_ops, src, srclen, dst, NULL,
-			  0, *nonce, kp->kp_send_index, bi, iv);
+  wg_prepare_sync_enc_op (vm, ptd, b, lb, crypto_ops, src, srclen, dst, NULL, 0, *nonce,
+			  kp->kp_send_key, bi, iv);
 
   /* If our values are still within tolerances, but we are approaching
    * the tolerances, we notify the caller with ESTALE that they should
@@ -321,6 +307,7 @@ wg_add_to_async_frame (vlib_main_t *vm, wg_per_thread_data_t *ptd,
   wg_post_data_t *post = wg_post_data (b);
   u8 flag = 0;
   u8 *tag;
+  i16 tag_offset;
   noise_keypair_t *kp;
 
   post->next_index = next;
@@ -367,11 +354,11 @@ wg_add_to_async_frame (vlib_main_t *vm, wg_per_thread_data_t *ptd,
     flag |= VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS;
 
   tag = vlib_buffer_get_tail (lb) - NOISE_AUTHTAG_LEN;
+  tag_offset = vnet_crypto_async_chain_offset (vm, b, lb, tag);
 
   /* this always succeeds because we know the frame is not full */
-  wg_output_tun_add_to_frame (vm, *async_frame, kp->kp_send_index, payload_len,
-			      payload - b->data, bi, async_next, iv, tag,
-			      flag);
+  wg_output_tun_add_to_frame (vm, *async_frame, kp->kp_send_key, payload_len, payload - b->data, bi,
+			      async_next, iv, tag_offset, flag);
 
   /* If our values are still within tolerances, but we are approaching
    * the tolerances, we notify the caller with ESTALE that they should

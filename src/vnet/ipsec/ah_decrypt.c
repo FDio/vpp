@@ -202,28 +202,25 @@ ah_decrypt_inline (vlib_main_t * vm,
 
 	  vnet_crypto_op_t *op;
 	  vec_add2_aligned (ptd->crypto_ops, op, 1, CLIB_CACHE_LINE_BYTES);
-	  vnet_crypto_key_t *key = vnet_crypto_get_key (irt->key_index);
-	  if (key->is_link)
-	    key = vnet_crypto_get_key (key->index_integ);
+	  vnet_crypto_key_t *key = irt->key;
 	  vnet_crypto_op_id_t *op_ids = vnet_crypto_ops_from_alg (key->alg);
 	  vnet_crypto_op_init (op, op_ids[VNET_CRYPTO_OP_TYPE_HMAC]);
 
-	  op->integ_src = (u8 *) ih4;
-	  op->integ_len = b[0]->current_length;
-	  op->digest = (u8 *) ih4 - pd->icv_size;
+	  op->auth_src = (u8 *) ih4;
+	  op->auth_src_len = b[0]->current_length;
+	  op->auth = (u8 *) ih4 - pd->icv_size;
 	  op->flags = VNET_CRYPTO_OP_FLAG_HMAC_CHECK;
-	  op->digest_len = pd->icv_size;
-	  op->key_index = key->index;
+	  op->auth_len = pd->icv_size;
+	  op->key = key;
 	  op->user_data = b - bufs;
 	  if (irt->use_esn)
 	    {
 	      u32 seq_hi = clib_host_to_net_u32 (pd->seq_hi);
 
-	      op->integ_len += sizeof (seq_hi);
-	      clib_memcpy (op->integ_src + b[0]->current_length, &seq_hi,
-			   sizeof (seq_hi));
+	      op->auth_src_len += sizeof (seq_hi);
+	      clib_memcpy (op->auth_src + b[0]->current_length, &seq_hi, sizeof (seq_hi));
 	    }
-	  clib_memcpy (op->digest, ah0->auth_data, pd->icv_size);
+	  clib_memcpy (op->auth, ah0->auth_data, pd->icv_size);
 	  clib_memset (ah0->auth_data, 0, pd->icv_size);
 
 	  if (is_ip6)

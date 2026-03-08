@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0
- * Copyright(c) 2025 Cisco Systems, Inc.
+ * Copyright(c) 2025-2026 Cisco Systems, Inc.
  */
 
 #include <quic_quicly/quic_quicly.h>
@@ -313,11 +313,11 @@ quic_quicly_crypto_context_init_data (quic_quicly_crypto_ctx_t *crctx, quic_ctx_
 	      u32 i;
 	      qm->default_crypto_engine = ctx->crypto_engine =
 		CRYPTO_ENGINE_VPP;
-	      vec_validate (qqcm->per_thread_crypto_key_indices, qm->num_threads);
+	      vec_validate (qqcm->per_thread_crypto_keys, qm->num_threads);
 	      for (i = 0; i < qm->num_threads; i++)
 		{
-		  qqcm->per_thread_crypto_key_indices[i] = vnet_crypto_key_add (
-		    vlib_get_main (), VNET_CRYPTO_ALG_AES_256_CTR, empty_key, 32);
+		  qqcm->per_thread_crypto_keys[i] = vnet_crypto_key_add (
+		    vlib_get_main (), VNET_CRYPTO_ALG_AES_256_CTR, empty_key, 32, 0, 0);
 		}
 	    }
 	}
@@ -554,29 +554,23 @@ Exit:
   return ret;
 }
 
-static u32
+static vnet_crypto_key_t *
 quic_quicly_crypto_set_key (crypto_key_t *key)
 {
+  vlib_main_t *vm = vlib_get_main ();
   u8 thread_index = vlib_get_thread_index ();
   quic_quicly_crypto_main_t *qqcm = &quic_quicly_crypto_main;
-  u32 key_id = qqcm->per_thread_crypto_key_indices[thread_index];
-  vnet_crypto_key_t *vnet_key = vnet_crypto_get_key (key_id);
-  vnet_crypto_engine_t *engine;
-
-  vec_foreach (engine, cm->engines)
-    if (engine->key_op_handler)
-      engine->key_op_handler (VNET_CRYPTO_KEY_OP_DEL, key_id);
+  vnet_crypto_key_t *vnet_key = qqcm->per_thread_crypto_keys[thread_index];
 
   ASSERT (key->algo);
   ASSERT (key->key_len);
   vnet_key->alg = key->algo;
-  clib_memcpy (vnet_key->data, key->key, key->key_len);
+  vnet_key->cipher_key_sz = key->key_len;
+  vnet_key->auth_key_sz = 0;
+  clib_memcpy ((u8 *) vnet_crypto_get_cipher_key (vnet_key), key->key, key->key_len);
+  vnet_crypto_key_update (vm, vnet_key);
 
-  vec_foreach (engine, cm->engines)
-    if (engine->key_op_handler)
-      engine->key_op_handler (VNET_CRYPTO_KEY_OP_ADD, key_id);
-
-  return key_id;
+  return vnet_key;
 }
 
 static void
@@ -615,12 +609,12 @@ quic_quicly_crypto_encrypt_packet (struct st_quicly_crypto_engine_t *engine,
     aead_crctx->key.key_len, *(u64 *) &aead_crctx->key.key[0],
     *(u64 *) &aead_crctx->key.key[8], *(u64 *) &aead_crctx->key.key[16],
     *(u64 *) &aead_crctx->key.key[24]);
-  aead_crctx->op.key_index = quic_quicly_crypto_set_key (&aead_crctx->key);
+  aead_crctx->op.key = quic_quicly_crypto_set_key (&aead_crctx->key);
   aead_crctx->op.src = (u8 *) input;
   aead_crctx->op.dst = output;
   aead_crctx->op.len = inlen;
-  aead_crctx->op.tag_len = aead_crctx->super.algo->tag_size;
-  aead_crctx->op.tag = aead_crctx->op.src + inlen;
+  aead_crctx->op.auth_len = aead_crctx->super.algo->tag_size;
+  aead_crctx->op.auth = aead_crctx->op.src + inlen;
   vnet_crypto_process_ops (vm, &(aead_crctx->op), 1);
   assert (aead_crctx->op.status == VNET_CRYPTO_OP_STATUS_COMPLETED);
 
@@ -635,7 +629,7 @@ quic_quicly_crypto_encrypt_packet (struct st_quicly_crypto_engine_t *engine,
   vnet_crypto_op_init (&hp_ctx->op, hp_ctx->id);
   memset (supp.output, 0, sizeof (supp.output));
   hp_ctx->op.iv = (u8 *) supp.input;
-  hp_ctx->op.key_index = quic_quicly_crypto_set_key (&hp_ctx->key);
+  hp_ctx->op.key = quic_quicly_crypto_set_key (&hp_ctx->key);
   ;
   hp_ctx->op.src = (u8 *) supp.output;
   hp_ctx->op.dst = (u8 *) supp.output;
@@ -676,10 +670,10 @@ quic_quicly_crypto_aead_decrypt (quic_ctx_t *qctx, ptls_aead_context_t *_ctx,
     aead_crctx->key.key_len, *(u64 *) &aead_crctx->key.key[0],
     *(u64 *) &aead_crctx->key.key[8], *(u64 *) &aead_crctx->key.key[16],
     *(u64 *) &aead_crctx->key.key[24]);
-  aead_crctx->op.key_index = quic_quicly_crypto_set_key (&aead_crctx->key);
+  aead_crctx->op.key = quic_quicly_crypto_set_key (&aead_crctx->key);
   aead_crctx->op.len = inlen - aead_crctx->super.algo->tag_size;
-  aead_crctx->op.tag_len = aead_crctx->super.algo->tag_size;
-  aead_crctx->op.tag = aead_crctx->op.src + aead_crctx->op.len;
+  aead_crctx->op.auth_len = aead_crctx->super.algo->tag_size;
+  aead_crctx->op.auth = aead_crctx->op.src + aead_crctx->op.len;
 
   vnet_crypto_process_ops (vm, &(aead_crctx->op), 1);
 

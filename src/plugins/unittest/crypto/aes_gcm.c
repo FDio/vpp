@@ -124,6 +124,11 @@ static u8 tc4_aad[] = {
   0xab, 0xad, 0xda, 0xd2
 };
 
+static u8 tc4_key192[] = {
+  0xfe, 0xff, 0xe9, 0x92, 0x86, 0x65, 0x73, 0x1c, 0x6d, 0x6a, 0x8f, 0x94,
+  0x67, 0x30, 0x83, 0x08, 0xfe, 0xff, 0xe9, 0x92, 0x86, 0x65, 0x73, 0x1c,
+};
+
 static u8 tc4_ciphertext128[] = {
   0x42, 0x83, 0x1e, 0xc2, 0x21, 0x77, 0x74, 0x24,
   0x4b, 0x72, 0x21, 0xb7, 0x84, 0xd0, 0xd4, 0x9c,
@@ -151,9 +156,40 @@ static u8 tc4_ciphertext256[] = {
   0xbc, 0xc9, 0xf6, 0x62
 };
 
+static u8 tc4_ciphertext192[] = {
+  0x39, 0x80, 0xca, 0x0b, 0x3c, 0x00, 0xe8, 0x41, 0xeb, 0x06, 0xfa, 0xc4, 0x87, 0x2a, 0x27,
+  0x57, 0x85, 0x9e, 0x1c, 0xea, 0xa6, 0xef, 0xd9, 0x84, 0x62, 0x85, 0x93, 0xb4, 0x0c, 0xa1,
+  0xe1, 0x9c, 0x7d, 0x77, 0x3d, 0x00, 0xc1, 0x44, 0xc5, 0x25, 0xac, 0x61, 0x9d, 0x18, 0xc8,
+  0x4a, 0x3f, 0x47, 0x18, 0xe2, 0x44, 0x8b, 0x2f, 0xe3, 0x24, 0xd9, 0xcc, 0xda, 0x27, 0x10,
+};
+
 static u8 tc4_tag256[] = {
   0x76, 0xfc, 0x6e, 0xce, 0x0f, 0x4e, 0x17, 0x68,
   0xcd, 0xdf, 0x88, 0x53, 0xbb, 0x2d, 0x55, 0x1b
+};
+
+static u8 tc4_tag128_aad8[] = {
+  0xc5, 0x2d, 0xfb, 0x54, 0xaf, 0xbb, 0x07, 0xa1, 0x9a, 0xff, 0xbe, 0xe0, 0x61, 0x4c, 0xe7, 0xa5,
+};
+
+static u8 tc4_tag128_aad12[] = {
+  0xe9, 0xe4, 0xab, 0x76, 0xb7, 0xff, 0xea, 0xdc, 0x69, 0x79, 0x38, 0xa2, 0x0d, 0xca, 0xf5, 0x92,
+};
+
+static u8 tc4_tag192_aad8[] = {
+  0xb6, 0x35, 0x56, 0xe7, 0xba, 0x46, 0xa3, 0x38, 0xed, 0xad, 0x79, 0x9f, 0xb3, 0x5b, 0x34, 0xa8,
+};
+
+static u8 tc4_tag192_aad12[] = {
+  0xc2, 0xd8, 0x4c, 0x6b, 0xa8, 0x3b, 0xa5, 0x6b, 0x18, 0x9f, 0xe6, 0xef, 0x66, 0x24, 0xdd, 0xda,
+};
+
+static u8 tc4_tag256_aad8[] = {
+  0x64, 0xae, 0x60, 0xe4, 0x5a, 0xa3, 0x0f, 0x58, 0xfa, 0x78, 0x78, 0x5e, 0xbf, 0xac, 0x0e, 0x82,
+};
+
+static u8 tc4_tag256_aad12[] = {
+  0x03, 0xe8, 0x46, 0x2a, 0x5f, 0x22, 0x10, 0xe2, 0xa8, 0xd4, 0x4f, 0x3d, 0x66, 0xcd, 0x04, 0xed,
 };
 
 UNITTEST_REGISTER_CRYPTO_TEST (aes_gcm128_tc1) = {
@@ -234,24 +270,70 @@ UNITTEST_REGISTER_CRYPTO_TEST (aes_gcm256_tc4) = {
   .tag = TEST_DATA (tc4_tag256),
 };
 
-UNITTEST_REGISTER_CRYPTO_TEST (aes_gcm256_tc4_chain) = {
-  .name = "256-GCM Spec. TC4 [chained]",
-  .alg = VNET_CRYPTO_ALG_AES_256_GCM,
+UNITTEST_REGISTER_CRYPTO_TEST (aes_gcm128_tc4_aad8) = {
+  .name = "128-GCM TC4 [aad8]",
+  .alg = VNET_CRYPTO_ALG_AES_128_GCM_TAG16_AAD8,
+  .iv = TEST_DATA (tc3_iv),
+  .key = TEST_DATA (tc3_key128),
+  .plaintext = TEST_DATA (tc4_plaintext),
+  .ciphertext = TEST_DATA (tc4_ciphertext128),
+  .aad = TEST_DATA_CHUNK (tc4_aad, 0, 8),
+  .tag = TEST_DATA (tc4_tag128_aad8),
+};
+
+UNITTEST_REGISTER_CRYPTO_TEST (aes_gcm128_tc4_aad12) = {
+  .name = "128-GCM TC4 [aad12]",
+  .alg = VNET_CRYPTO_ALG_AES_128_GCM_TAG16_AAD12,
+  .iv = TEST_DATA (tc3_iv),
+  .key = TEST_DATA (tc3_key128),
+  .plaintext = TEST_DATA (tc4_plaintext),
+  .ciphertext = TEST_DATA (tc4_ciphertext128),
+  .aad = TEST_DATA_CHUNK (tc4_aad, 0, 12),
+  .tag = TEST_DATA (tc4_tag128_aad12),
+};
+
+UNITTEST_REGISTER_CRYPTO_TEST (aes_gcm192_tc4_aad8) = {
+  .name = "192-GCM TC4 [aad8]",
+  .alg = VNET_CRYPTO_ALG_AES_192_GCM_TAG16_AAD8,
+  .iv = TEST_DATA (tc3_iv),
+  .key = TEST_DATA (tc4_key192),
+  .plaintext = TEST_DATA (tc4_plaintext),
+  .ciphertext = TEST_DATA (tc4_ciphertext192),
+  .aad = TEST_DATA_CHUNK (tc4_aad, 0, 8),
+  .tag = TEST_DATA (tc4_tag192_aad8),
+};
+
+UNITTEST_REGISTER_CRYPTO_TEST (aes_gcm192_tc4_aad12) = {
+  .name = "192-GCM TC4 [aad12]",
+  .alg = VNET_CRYPTO_ALG_AES_192_GCM_TAG16_AAD12,
+  .iv = TEST_DATA (tc3_iv),
+  .key = TEST_DATA (tc4_key192),
+  .plaintext = TEST_DATA (tc4_plaintext),
+  .ciphertext = TEST_DATA (tc4_ciphertext192),
+  .aad = TEST_DATA_CHUNK (tc4_aad, 0, 12),
+  .tag = TEST_DATA (tc4_tag192_aad12),
+};
+
+UNITTEST_REGISTER_CRYPTO_TEST (aes_gcm256_tc4_aad8) = {
+  .name = "256-GCM TC4 [aad8]",
+  .alg = VNET_CRYPTO_ALG_AES_256_GCM_TAG16_AAD8,
   .iv = TEST_DATA (tc3_iv),
   .key = TEST_DATA (tc3_key256),
-  .aad = TEST_DATA(tc4_aad),
-  .tag = TEST_DATA (tc4_tag256),
-  .is_chained = 1,
-  .pt_chunks = {
-    TEST_DATA_CHUNK (tc4_plaintext, 0, 20),
-    TEST_DATA_CHUNK (tc4_plaintext, 20, 20),
-    TEST_DATA_CHUNK (tc4_plaintext, 40, 20),
-  },
-  .ct_chunks = {
-    TEST_DATA_CHUNK (tc4_ciphertext256, 0, 20),
-    TEST_DATA_CHUNK (tc4_ciphertext256, 20, 20),
-    TEST_DATA_CHUNK (tc4_ciphertext256, 40, 20),
-  },
+  .plaintext = TEST_DATA (tc4_plaintext),
+  .ciphertext = TEST_DATA (tc4_ciphertext256),
+  .aad = TEST_DATA_CHUNK (tc4_aad, 0, 8),
+  .tag = TEST_DATA (tc4_tag256_aad8),
+};
+
+UNITTEST_REGISTER_CRYPTO_TEST (aes_gcm256_tc4_aad12) = {
+  .name = "256-GCM TC4 [aad12]",
+  .alg = VNET_CRYPTO_ALG_AES_256_GCM_TAG16_AAD12,
+  .iv = TEST_DATA (tc3_iv),
+  .key = TEST_DATA (tc3_key256),
+  .plaintext = TEST_DATA (tc4_plaintext),
+  .ciphertext = TEST_DATA (tc4_ciphertext256),
+  .aad = TEST_DATA_CHUNK (tc4_aad, 0, 12),
+  .tag = TEST_DATA (tc4_tag256_aad12),
 };
 
 UNITTEST_REGISTER_CRYPTO_TEST (aes_gcm256_inc_1024) = {
