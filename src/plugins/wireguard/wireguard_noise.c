@@ -159,13 +159,10 @@ error:
 }
 
 bool
-noise_consume_initiation (vlib_main_t * vm, noise_local_t * l,
-			  noise_remote_t ** rp, uint32_t s_idx,
-			  uint8_t ue[NOISE_PUBLIC_KEY_LEN],
-			  uint8_t es[NOISE_PUBLIC_KEY_LEN +
-				     NOISE_AUTHTAG_LEN],
-			  uint8_t ets[NOISE_TIMESTAMP_LEN +
-				      NOISE_AUTHTAG_LEN])
+noise_consume_initiation (vlib_main_t *vm, noise_local_t *l, noise_remote_t **rp, bool with_cookie,
+			  uint32_t s_idx, uint8_t ue[NOISE_PUBLIC_KEY_LEN],
+			  uint8_t es[NOISE_PUBLIC_KEY_LEN + NOISE_AUTHTAG_LEN],
+			  uint8_t ets[NOISE_TIMESTAMP_LEN + NOISE_AUTHTAG_LEN])
 {
   noise_remote_t *r;
   noise_handshake_t hs;
@@ -226,7 +223,7 @@ noise_consume_initiation (vlib_main_t * vm, noise_local_t * l,
     goto error;
 
   /* Flood attack */
-  if (wg_birthdate_has_expired (r->r_last_init, REJECT_INTERVAL))
+  if (with_cookie || wg_birthdate_has_expired (r->r_last_init, REJECT_INTERVAL))
     r->r_last_init = vlib_time_now (vm);
   else
     goto error;
