@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0
  * Copyright (c) 2020 Doc.ai and/or its affiliates.
- * Copyright (c) 2020 Cisco and/or its affiliates.
+ * Copyright (c) 2020-2026 Cisco and/or its affiliates.
  */
 
 #include <vlib/vlib.h>
@@ -111,6 +111,7 @@ typedef enum
   WG_INPUT_NEXT_IP6_INPUT,
   WG_INPUT_NEXT_PUNT,
   WG_INPUT_NEXT_ERROR,
+  WG_INPUT_NEXT_CRYPTO_ENQ,
   WG_INPUT_N_NEXT,
 } wg_input_next_t;
 
@@ -401,9 +402,8 @@ wg_input_post_process (vlib_main_t *vm, vlib_buffer_t *b, u16 *next,
 }
 
 static_always_inline void
-wg_input_process_ops (vlib_main_t *vm, vlib_node_runtime_t *node,
-		      vnet_crypto_op_t *ops, vlib_buffer_t *b[], u16 *nexts,
-		      u16 drop_next)
+wg_input_process_ops (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_crypto_op_t *ops,
+		      vlib_buffer_t *b[], u16 *nexts, vnet_crypto_op_chunk_t *chunks, u16 drop_next)
 {
   u32 n_fail, n_ops = vec_len (ops);
   vnet_crypto_op_t *op = ops;
@@ -411,36 +411,7 @@ wg_input_process_ops (vlib_main_t *vm, vlib_node_runtime_t *node,
   if (n_ops == 0)
     return;
 
-  n_fail = n_ops - vnet_crypto_process_ops (vm, op, n_ops);
-
-  while (n_fail)
-    {
-      ASSERT (op - ops < n_ops);
-
-      if (op->status != VNET_CRYPTO_OP_STATUS_COMPLETED)
-	{
-	  u32 bi = op->user_data;
-	  b[bi]->error = node->errors[WG_INPUT_ERROR_DECRYPTION];
-	  nexts[bi] = drop_next;
-	  n_fail--;
-	}
-      op++;
-    }
-}
-
-static_always_inline void
-wg_input_process_chained_ops (vlib_main_t *vm, vlib_node_runtime_t *node,
-			      vnet_crypto_op_t *ops, vlib_buffer_t *b[],
-			      u16 *nexts, vnet_crypto_op_chunk_t *chunks,
-			      u16 drop_next)
-{
-  u32 n_fail, n_ops = vec_len (ops);
-  vnet_crypto_op_t *op = ops;
-
-  if (n_ops == 0)
-    return;
-
-  n_fail = n_ops - vnet_crypto_process_chained_ops (vm, op, chunks, n_ops);
+  n_fail = n_ops - vnet_crypto_process_ops (vm, op, chunks, n_ops);
 
   while (n_fail)
     {
@@ -493,21 +464,19 @@ wg_input_chain_crypto (vlib_main_t *vm, wg_per_thread_data_t *ptd,
 }
 
 always_inline void
-wg_prepare_sync_dec_op (vlib_main_t *vm, wg_per_thread_data_t *ptd,
-			vlib_buffer_t *b, vlib_buffer_t *lb,
-			vnet_crypto_op_t **crypto_ops, u8 *src, u32 src_len,
-			u8 *dst, u8 *aad, u32 aad_len,
-			vnet_crypto_key_index_t key_index, u32 bi, u8 *iv)
+wg_prepare_sync_dec_op (vlib_main_t *vm, wg_per_thread_data_t *ptd, vlib_buffer_t *b,
+			vlib_buffer_t *lb, vnet_crypto_op_t **crypto_ops, u8 *src, u32 src_len,
+			u8 *dst, u8 *aad, u32 aad_len, vnet_crypto_ctx_t *ctx, u32 bi, u8 *iv)
 {
   vnet_crypto_op_t _op, *op = &_op;
   u8 src_[] = {};
 
   vec_add2_aligned (crypto_ops[0], op, 1, CLIB_CACHE_LINE_BYTES);
-  vnet_crypto_op_init (op, VNET_CRYPTO_OP_CHACHA20_POLY1305_DEC);
+  vnet_crypto_op_init (ctx, op);
+  op->type = VNET_CRYPTO_OP_TYPE_DECRYPT;
 
-  op->tag_len = NOISE_AUTHTAG_LEN;
-  op->tag = vlib_buffer_get_tail (lb) - NOISE_AUTHTAG_LEN;
-  op->key_index = key_index;
+  op->auth_len = NOISE_AUTHTAG_LEN;
+  op->auth = vlib_buffer_get_tail (lb) - NOISE_AUTHTAG_LEN;
   op->aad = aad;
   op->aad_len = aad_len;
   op->iv = iv;
@@ -530,38 +499,12 @@ wg_prepare_sync_dec_op (vlib_main_t *vm, wg_per_thread_data_t *ptd,
     }
 }
 
-static_always_inline void
-wg_input_add_to_frame (vlib_main_t *vm, vnet_crypto_async_frame_t *f,
-		       u32 key_index, u32 crypto_len, i16 crypto_start_offset,
-		       u32 buffer_index, u16 next_node, u8 *iv, u8 *tag,
-		       u8 flags)
-{
-  vnet_crypto_async_frame_elt_t *fe;
-  u16 index;
-
-  ASSERT (f->n_elts < VNET_CRYPTO_FRAME_SIZE);
-
-  index = f->n_elts;
-  fe = &f->elts[index];
-  f->n_elts++;
-  fe->key_index = key_index;
-  fe->crypto_total_length = crypto_len;
-  fe->crypto_start_offset = crypto_start_offset;
-  fe->iv = iv;
-  fe->tag = tag;
-  fe->flags = flags;
-  f->buffer_indices[index] = buffer_index;
-  f->next_node_index[index] = next_node;
-}
-
 static_always_inline enum noise_state_crypt
-wg_input_process (vlib_main_t *vm, wg_per_thread_data_t *ptd,
-		  vnet_crypto_op_t **crypto_ops,
-		  vnet_crypto_async_frame_t **async_frame, vlib_buffer_t *b,
-		  vlib_buffer_t *lb, u32 buf_idx, noise_remote_t *r,
-		  uint32_t r_idx, uint64_t nonce, uint8_t *src, size_t srclen,
-		  size_t srclen_total, uint8_t *dst, u32 from_idx, u8 *iv,
-		  f64 time, u8 is_async, u16 async_next_node)
+wg_input_process (vlib_main_t *vm, wg_per_thread_data_t *ptd, vnet_crypto_op_t **crypto_ops,
+		  u32 *async_bi, u64 *async_ctx, vlib_buffer_t *b, vlib_buffer_t *lb, u32 buf_idx,
+		  noise_remote_t *r, uint32_t r_idx, uint64_t nonce, uint8_t *src, size_t srclen,
+		  size_t srclen_total, uint8_t *dst, u32 from_idx, u8 *iv, f64 time, u8 is_async,
+		  u16 async_next_node)
 {
   noise_keypair_t *kp;
   enum noise_state_crypt ret = SC_FAILED;
@@ -589,31 +532,28 @@ wg_input_process (vlib_main_t *vm, wg_per_thread_data_t *ptd,
 
   if (is_async)
     {
-      u8 flags = VNET_CRYPTO_OP_FLAG_HMAC_CHECK;
-      u8 *tag = vlib_buffer_get_tail (lb) - NOISE_AUTHTAG_LEN;
+      u8 *current = vlib_buffer_get_current (b);
+      u8 is_chained = b != lb;
+      wg_post_data_t *post = wg_post_data (b);
+      vnet_crypto_buffer_metadata_t md = {
+	.cipher_data_len = srclen_total,
+	.cipher_data_start_off = src - current,
+	.iv_off = vnet_crypto_buffer_metadata_pre_data_off (b),
+	.icv_off = src - current + srclen_total,
+	.icv_len = NOISE_AUTHTAG_LEN,
+	.is_hmac_check = 1,
+	.is_chained_buffers = is_chained,
+      };
 
-      if (b != lb)
-	flags |= VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS;
-
-      if (NULL == *async_frame ||
-	  vnet_crypto_async_frame_is_full (*async_frame))
-	{
-	  *async_frame = vnet_crypto_async_get_frame (
-	    vm, VNET_CRYPTO_OP_CHACHA20_POLY1305_TAG16_AAD0_DEC);
-	  if (PREDICT_FALSE (NULL == *async_frame))
-	    goto error;
-	  /* Save the frame to the list we'll submit at the end */
-	  vec_add1 (ptd->async_frames, *async_frame);
-	}
-
-      wg_input_add_to_frame (vm, *async_frame, kp->kp_recv_index, srclen_total,
-			     src - b->data, buf_idx, async_next_node, iv, tag,
-			     flags);
+      post->next_index = async_next_node;
+      *vnet_crypto_buffer_get_metadata (b) = md;
+      async_bi[0] = buf_idx;
+      async_ctx[0] = pointer_to_uword (kp->recv_ctx);
     }
   else
     {
-      wg_prepare_sync_dec_op (vm, ptd, b, lb, crypto_ops, src, srclen, dst,
-			      NULL, 0, kp->kp_recv_index, from_idx, iv);
+      wg_prepare_sync_dec_op (vm, ptd, b, lb, crypto_ops, src, srclen, dst, NULL, 0, kp->recv_ctx,
+			      from_idx, iv);
     }
 
   /* If we've received the handshake confirming data packet then move the
@@ -698,13 +638,13 @@ wg_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   u16 data_nexts[VLIB_FRAME_SIZE], *data_next = data_nexts, n_data = 0;
   u16 n_async = 0;
   const u8 is_async = wg_op_mode_is_set_ASYNC ();
-  vnet_crypto_async_frame_t *async_frame = NULL;
+  u32 async_bi[VLIB_FRAME_SIZE];
+  u64 async_ctx[VLIB_FRAME_SIZE];
 
   vlib_get_buffers (vm, from, bufs, n_left_from);
   vec_reset_length (ptd->crypto_ops);
   vec_reset_length (ptd->chained_crypto_ops);
   vec_reset_length (ptd->chunks);
-  vec_reset_length (ptd->async_frames);
 
   f64 time = clib_time_now (&vm->clib_time) + vm->time_offset;
 
@@ -837,12 +777,10 @@ wg_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  else
 	    crypto_ops = &ptd->crypto_ops;
 
-	  enum noise_state_crypt state_cr =
-	    wg_input_process (vm, ptd, crypto_ops, &async_frame, b[0], lb,
-			      buf_idx, &peer->remote, data->receiver_index,
-			      data->counter, data->encrypted_data, decr_len,
-			      decr_len_total, data->encrypted_data, n_data,
-			      iv_data, time, is_async, async_next_node);
+	  enum noise_state_crypt state_cr = wg_input_process (
+	    vm, ptd, crypto_ops, async_bi + n_async, async_ctx + n_async, b[0], lb, buf_idx,
+	    &peer->remote, data->receiver_index, data->counter, data->encrypted_data, decr_len,
+	    decr_len_total, data->encrypted_data, n_data, iv_data, time, is_async, async_next_node);
 
 	  if (PREDICT_FALSE (state_cr == SC_FAILED))
 	    {
@@ -921,10 +859,9 @@ wg_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
     }
 
   /* decrypt packets */
-  wg_input_process_ops (vm, node, ptd->crypto_ops, data_bufs, data_nexts,
+  wg_input_process_ops (vm, node, ptd->chained_crypto_ops, data_bufs, data_nexts, ptd->chunks,
 			drop_next);
-  wg_input_process_chained_ops (vm, node, ptd->chained_crypto_ops, data_bufs,
-				data_nexts, ptd->chunks, drop_next);
+  wg_input_process_ops (vm, node, ptd->crypto_ops, data_bufs, data_nexts, 0, drop_next);
 
   /* process after decryption */
   b = data_bufs;
@@ -1022,31 +959,13 @@ wg_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
   if (n_async)
     {
-      /* submit all of the open frames */
-      vnet_crypto_async_frame_t **async_frame;
-      vec_foreach (async_frame, ptd->async_frames)
-	{
-	  if (PREDICT_FALSE (
-		vnet_crypto_async_submit_open_frame (vm, *async_frame) < 0))
-	    {
-	      u32 n_drop = (*async_frame)->n_elts;
-	      u32 *bi = (*async_frame)->buffer_indices;
-	      u16 index = n_other;
-	      while (n_drop--)
-		{
-		  other_bi[index] = bi[0];
-		  vlib_buffer_t *b = vlib_get_buffer (vm, bi[0]);
-		  other_nexts[index] = drop_next;
-		  b->error = node->errors[WG_INPUT_ERROR_CRYPTO_ENGINE_ERROR];
-		  bi++;
-		  index++;
-		}
-	      n_other += (*async_frame)->n_elts;
-
-	      vnet_crypto_async_reset_frame (*async_frame);
-	      vnet_crypto_async_free_frame (vm, *async_frame);
-	    }
-	}
+      vnet_crypto_deq_scalar_data_t scalar = {
+	.next_node_index =
+	  is_ip4 ? wg_decrypt_async_next.wg4_post_next : wg_decrypt_async_next.wg6_post_next,
+	.op_type = VNET_CRYPTO_OP_TYPE_DECRYPT,
+      };
+      vlib_buffer_enqueue_to_single_next_with_aux64_and_scalar (
+	vm, node, async_bi, async_ctx, WG_INPUT_NEXT_CRYPTO_ENQ, n_async, &scalar);
     }
 
   /* enqueue other bufs */
@@ -1213,6 +1132,7 @@ VLIB_REGISTER_NODE (wg4_input_node) =
         [WG_INPUT_NEXT_IP6_INPUT] = "ip6-input",
         [WG_INPUT_NEXT_PUNT] = "error-punt",
         [WG_INPUT_NEXT_ERROR] = "error-drop",
+        [WG_INPUT_NEXT_CRYPTO_ENQ] = "crypto-enq",
   },
 };
 
@@ -1233,6 +1153,7 @@ VLIB_REGISTER_NODE (wg6_input_node) =
         [WG_INPUT_NEXT_IP6_INPUT] = "ip6-input",
         [WG_INPUT_NEXT_PUNT] = "error-punt",
         [WG_INPUT_NEXT_ERROR] = "error-drop",
+        [WG_INPUT_NEXT_CRYPTO_ENQ] = "crypto-enq",
   },
 };
 

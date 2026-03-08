@@ -362,7 +362,7 @@ class IpsecTra4(object):
         count = self.statistics.get_err_counter(hash_failed_node_name)
 
         if p.async_mode:
-            count += self.statistics.get_err_counter("/err/crypto-dispatch/bad-hmac")
+            count += self.statistics.get_err_counter("/err/crypto-deq/bad-hmac")
 
         return count
 

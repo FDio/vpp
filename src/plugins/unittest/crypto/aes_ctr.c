@@ -16,6 +16,11 @@ static u8 tc1_key[] = {
   0xab, 0xf7, 0x15, 0x88, 0x09, 0xcf, 0x4f, 0x3c,
 };
 
+static u8 tc1_hmac_key[] = {
+  0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6, 0xab, 0xf7, 0x15, 0x88, 0x09, 0xcf, 0x4f, 0x3c,
+  0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6, 0xab, 0xf7, 0x15, 0x88, 0x09, 0xcf, 0x4f, 0x3c,
+};
+
 static u8 tc1_iv[] = {
   0xf0, 0xf1, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7,
   0xf8, 0xf9, 0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff,
@@ -31,6 +36,28 @@ static u8 tc1_ciphertext[] = {
   0x1b, 0xef, 0x68, 0x64, 0x99, 0x0d, 0xb6, 0xce,
 };
 
+static u8 tc1_ciphertext_sha1_96[] = {
+  0x0f, 0x19, 0x92, 0x28, 0x59, 0x57, 0xba, 0x65, 0x1a, 0x1c, 0xbc, 0xf1,
+};
+
+static u8 tc1_ciphertext_sha1[] = {
+  0x0f, 0x19, 0x92, 0x28, 0x59, 0x57, 0xba, 0x65, 0x1a, 0x1c,
+  0xbc, 0xf1, 0x88, 0xdf, 0xcd, 0xf6, 0xd9, 0x94, 0x61, 0xd4,
+};
+
+static u8 tc1_ciphertext_sha256_128[] = {
+  0x34, 0x5d, 0x18, 0x71, 0xf8, 0x70, 0x4f, 0xbe, 0x3e, 0x5a, 0x4c, 0x7e, 0xca, 0x1f, 0xce, 0x98,
+};
+
+static u8 tc1_ciphertext_sha256_96[] = {
+  0x34, 0x5d, 0x18, 0x71, 0xf8, 0x70, 0x4f, 0xbe, 0x3e, 0x5a, 0x4c, 0x7e,
+};
+
+static u8 tc1_ciphertext_sha256[] = {
+  0x34, 0x5d, 0x18, 0x71, 0xf8, 0x70, 0x4f, 0xbe, 0x3e, 0x5a, 0x4c, 0x7e, 0xca, 0x1f, 0xce, 0x98,
+  0x07, 0x0f, 0x78, 0xbb, 0x89, 0xb3, 0xca, 0xf3, 0xc8, 0x69, 0x96, 0x91, 0x12, 0x35, 0x07, 0x18,
+};
+
 UNITTEST_REGISTER_CRYPTO_TEST (nist_aes128_ctr_tc1) = {
   .name = "CTR-AES128 TC1",
   .alg = VNET_CRYPTO_ALG_AES_128_CTR,
@@ -38,6 +65,56 @@ UNITTEST_REGISTER_CRYPTO_TEST (nist_aes128_ctr_tc1) = {
   .iv = TEST_DATA (tc1_iv),
   .plaintext = TEST_DATA (tc1_plaintext),
   .ciphertext = TEST_DATA (tc1_ciphertext),
+};
+
+UNITTEST_REGISTER_CRYPTO_TEST (nist_aes128_ctr_sha1_96) = {
+  .name = "CTR-AES128 TC1 HMAC-SHA1",
+  .alg = VNET_CRYPTO_ALG_AES_128_CTR_SHA1_160_ICV12,
+  .key = TEST_DATA (tc1_hmac_key),
+  .iv = TEST_DATA (tc1_iv),
+  .plaintext = TEST_DATA (tc1_plaintext),
+  .ciphertext = TEST_DATA (tc1_ciphertext),
+  .digest = TEST_DATA (tc1_ciphertext_sha1_96),
+};
+
+UNITTEST_REGISTER_CRYPTO_TEST (nist_aes128_ctr_sha1_160) = {
+  .name = "CTR-AES128 TC1 HMAC-SHA1",
+  .alg = VNET_CRYPTO_ALG_AES_128_CTR_SHA1_160,
+  .key = TEST_DATA (tc1_hmac_key),
+  .iv = TEST_DATA (tc1_iv),
+  .plaintext = TEST_DATA (tc1_plaintext),
+  .ciphertext = TEST_DATA (tc1_ciphertext),
+  .digest = TEST_DATA (tc1_ciphertext_sha1),
+};
+
+UNITTEST_REGISTER_CRYPTO_TEST (nist_aes128_ctr_sha256_128) = {
+  .name = "CTR-AES128 TC1 HMAC-SHA_256",
+  .alg = VNET_CRYPTO_ALG_AES_128_CTR_SHA2_256_ICV16,
+  .key = TEST_DATA (tc1_hmac_key),
+  .iv = TEST_DATA (tc1_iv),
+  .plaintext = TEST_DATA (tc1_plaintext),
+  .ciphertext = TEST_DATA (tc1_ciphertext),
+  .digest = TEST_DATA (tc1_ciphertext_sha256_128),
+};
+
+UNITTEST_REGISTER_CRYPTO_TEST (nist_aes128_ctr_sha256_96) = {
+  .name = "CTR-AES128 TC1 HMAC-SHA_256",
+  .alg = VNET_CRYPTO_ALG_AES_128_CTR_SHA2_256_ICV12,
+  .key = TEST_DATA (tc1_hmac_key),
+  .iv = TEST_DATA (tc1_iv),
+  .plaintext = TEST_DATA (tc1_plaintext),
+  .ciphertext = TEST_DATA (tc1_ciphertext),
+  .digest = TEST_DATA (tc1_ciphertext_sha256_96),
+};
+
+UNITTEST_REGISTER_CRYPTO_TEST (nist_aes128_ctr_sha256_256) = {
+  .name = "CTR-AES128 TC1 HMAC-SHA_256",
+  .alg = VNET_CRYPTO_ALG_AES_128_CTR_SHA2_256,
+  .key = TEST_DATA (tc1_hmac_key),
+  .iv = TEST_DATA (tc1_iv),
+  .plaintext = TEST_DATA (tc1_plaintext),
+  .ciphertext = TEST_DATA (tc1_ciphertext),
+  .digest = TEST_DATA (tc1_ciphertext_sha256),
 };
 
 static u8 tc1_192_key[] = {

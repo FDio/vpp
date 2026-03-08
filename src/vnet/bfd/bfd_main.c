@@ -807,8 +807,10 @@ static void
 bfd_add_sha1_auth_section (vlib_main_t *vm, vlib_buffer_t *b,
 			   bfd_session_t *bs)
 {
+  vnet_crypto_hash_ctx_t *ctx;
   bfd_pkt_with_sha1_auth_t *pkt = vlib_buffer_get_current (b);
   bfd_auth_sha1_t *auth = &pkt->sha1_auth;
+  vnet_crypto_hash_op_t op;
   b->current_length += sizeof (*auth);
   pkt->pkt.head.length += sizeof (*auth);
   bfd_pkt_set_auth_present (&pkt->pkt);
@@ -830,12 +832,15 @@ bfd_add_sha1_auth_section (vlib_main_t *vm, vlib_buffer_t *b,
 	       sizeof (bs->auth.curr_key->key));
   unsigned char hash[sizeof (auth->hash)];
 
-  vnet_crypto_op_t op;
-  vnet_crypto_op_init (&op, VNET_CRYPTO_OP_SHA1_HASH);
+  ctx = vnet_crypto_hash_ctx_create (VNET_CRYPTO_HASH_ALG_SHA1_160);
+  ASSERT (ctx != 0);
+  vnet_crypto_hash_op_init (&op);
+  op.ctx = ctx;
   op.src = (u8 *) pkt;
   op.len = sizeof (*pkt);
   op.digest = hash;
-  vnet_crypto_process_ops (vm, &op, 1);
+  vnet_crypto_process_hash_ops (vm, &op, 0, 1);
+  vnet_crypto_hash_ctx_destroy (ctx);
   BFD_DBG ("hashing: %U", format_hex_bytes, pkt, sizeof (*pkt));
   clib_memcpy (auth->hash, hash, sizeof (hash));
 }
@@ -1724,16 +1729,21 @@ bfd_verify_pkt_auth_key_sha1 (vlib_main_t *vm, const bfd_pkt_t *pkt,
 
   u8 hash_from_packet[STRUCT_SIZE_OF (bfd_auth_sha1_t, hash)];
   u8 calculated_hash[STRUCT_SIZE_OF (bfd_auth_sha1_t, hash)];
+  vnet_crypto_hash_ctx_t *ctx;
+  vnet_crypto_hash_op_t op;
   clib_memcpy (hash_from_packet, with_sha1->sha1_auth.hash,
 	       sizeof (with_sha1->sha1_auth.hash));
   clib_memcpy (with_sha1->sha1_auth.hash, auth_key->key,
 	       sizeof (auth_key->key));
-  vnet_crypto_op_t op;
-  vnet_crypto_op_init (&op, VNET_CRYPTO_OP_SHA1_HASH);
+  ctx = vnet_crypto_hash_ctx_create (VNET_CRYPTO_HASH_ALG_SHA1_160);
+  ASSERT (ctx != 0);
+  vnet_crypto_hash_op_init (&op);
+  op.ctx = ctx;
   op.src = (u8 *) with_sha1;
   op.len = sizeof (*with_sha1);
   op.digest = calculated_hash;
-  vnet_crypto_process_ops (vm, &op, 1);
+  vnet_crypto_process_hash_ops (vm, &op, 0, 1);
+  vnet_crypto_hash_ctx_destroy (ctx);
 
   /* Restore the modified data within the packet */
   clib_memcpy (with_sha1->sha1_auth.hash, hash_from_packet,

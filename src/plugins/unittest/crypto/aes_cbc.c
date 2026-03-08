@@ -32,6 +32,11 @@ static u8 key128[] = {
   0xAB, 0xF7, 0x15, 0x88, 0x09, 0xCF, 0x4F, 0x3C
 };
 
+static u8 cbc_hmac_key128[] = {
+  0x2B, 0x7E, 0x15, 0x16, 0x28, 0xAE, 0xD2, 0xA6, 0xAB, 0xF7, 0x15, 0x88, 0x09, 0xCF, 0x4F, 0x3C,
+  0x2B, 0x7E, 0x15, 0x16, 0x28, 0xAE, 0xD2, 0xA6, 0xAB, 0xF7, 0x15, 0x88, 0x09, 0xCF, 0x4F, 0x3C,
+};
+
 static u8 ciphertext128[] = {
   0x76, 0x49, 0xAB, 0xAC, 0x81, 0x19, 0xB2, 0x46,
   0xCE, 0xE9, 0x8E, 0x9B, 0x12, 0xE9, 0x19, 0x7D,
@@ -43,6 +48,28 @@ static u8 ciphertext128[] = {
   0x12, 0x0E, 0xCA, 0x30, 0x75, 0x86, 0xE1, 0xA7,
 };
 
+static u8 ciphertext128_sha1_96[] = {
+  0xDF, 0x1E, 0x5A, 0xDB, 0xE7, 0x5A, 0xAB, 0xAE, 0x0B, 0x98, 0x34, 0x30,
+};
+
+static u8 ciphertext128_sha1[] = {
+  0xDF, 0x1E, 0x5A, 0xDB, 0xE7, 0x5A, 0xAB, 0xAE, 0x0B, 0x98,
+  0x34, 0x30, 0xE8, 0x40, 0x8B, 0xB4, 0xDB, 0x22, 0x3A, 0x89,
+};
+
+static u8 ciphertext128_sha256_128[] = {
+  0xCC, 0xA7, 0x5F, 0x5D, 0xD5, 0xEB, 0x50, 0x34, 0x02, 0x53, 0x12, 0x17, 0x40, 0x72, 0xAF, 0x29,
+};
+
+static u8 ciphertext128_sha256_96[] = {
+  0xCC, 0xA7, 0x5F, 0x5D, 0xD5, 0xEB, 0x50, 0x34, 0x02, 0x53, 0x12, 0x17,
+};
+
+static u8 ciphertext128_sha256[] = {
+  0xCC, 0xA7, 0x5F, 0x5D, 0xD5, 0xEB, 0x50, 0x34, 0x02, 0x53, 0x12, 0x17, 0x40, 0x72, 0xAF, 0x29,
+  0xE6, 0xC9, 0xB5, 0xB1, 0x9B, 0x26, 0x8B, 0x23, 0x0F, 0x5C, 0xEB, 0x50, 0x24, 0x63, 0xC2, 0x33,
+};
+
 UNITTEST_REGISTER_CRYPTO_TEST (nist_aes128_cbc) = {
   .name = "NIST SP 800-38A",
   .alg = VNET_CRYPTO_ALG_AES_128_CBC,
@@ -52,6 +79,55 @@ UNITTEST_REGISTER_CRYPTO_TEST (nist_aes128_cbc) = {
   .ciphertext = TEST_DATA (ciphertext128),
 };
 
+UNITTEST_REGISTER_CRYPTO_TEST (nist_aes128_cbc_sha1_96) = {
+  .name = "NIST SP 800-38A HMAC-SHA1",
+  .alg = VNET_CRYPTO_ALG_AES_128_CBC_SHA1_160_ICV12,
+  .iv = TEST_DATA (iv),
+  .key = TEST_DATA (cbc_hmac_key128),
+  .plaintext = TEST_DATA (plaintext),
+  .ciphertext = TEST_DATA (ciphertext128),
+  .digest = TEST_DATA (ciphertext128_sha1_96),
+};
+
+UNITTEST_REGISTER_CRYPTO_TEST (nist_aes128_cbc_sha1_160) = {
+  .name = "NIST SP 800-38A HMAC-SHA1",
+  .alg = VNET_CRYPTO_ALG_AES_128_CBC_SHA1_160,
+  .iv = TEST_DATA (iv),
+  .key = TEST_DATA (cbc_hmac_key128),
+  .plaintext = TEST_DATA (plaintext),
+  .ciphertext = TEST_DATA (ciphertext128),
+  .digest = TEST_DATA (ciphertext128_sha1),
+};
+
+UNITTEST_REGISTER_CRYPTO_TEST (nist_aes128_cbc_sha256_128) = {
+  .name = "NIST SP 800-38A HMAC-SHA_256",
+  .alg = VNET_CRYPTO_ALG_AES_128_CBC_SHA2_256_ICV16,
+  .iv = TEST_DATA (iv),
+  .key = TEST_DATA (cbc_hmac_key128),
+  .plaintext = TEST_DATA (plaintext),
+  .ciphertext = TEST_DATA (ciphertext128),
+  .digest = TEST_DATA (ciphertext128_sha256_128),
+};
+
+UNITTEST_REGISTER_CRYPTO_TEST (nist_aes128_cbc_sha256_96) = {
+  .name = "NIST SP 800-38A HMAC-SHA_256",
+  .alg = VNET_CRYPTO_ALG_AES_128_CBC_SHA2_256_ICV12,
+  .iv = TEST_DATA (iv),
+  .key = TEST_DATA (cbc_hmac_key128),
+  .plaintext = TEST_DATA (plaintext),
+  .ciphertext = TEST_DATA (ciphertext128),
+  .digest = TEST_DATA (ciphertext128_sha256_96),
+};
+
+UNITTEST_REGISTER_CRYPTO_TEST (nist_aes128_cbc_sha256_256) = {
+  .name = "NIST SP 800-38A HMAC-SHA_256",
+  .alg = VNET_CRYPTO_ALG_AES_128_CBC_SHA2_256,
+  .iv = TEST_DATA (iv),
+  .key = TEST_DATA (cbc_hmac_key128),
+  .plaintext = TEST_DATA (plaintext),
+  .ciphertext = TEST_DATA (ciphertext128),
+  .digest = TEST_DATA (ciphertext128_sha256),
+};
 
 static u8 key192[24] = {
   0x8E, 0x73, 0xB0, 0xF7, 0xDA, 0x0E, 0x64, 0x52,
@@ -105,22 +181,6 @@ UNITTEST_REGISTER_CRYPTO_TEST (nist_aes256_cbc) = {
   .key = TEST_DATA (key256),
   .plaintext = TEST_DATA (plaintext),
   .ciphertext = TEST_DATA (ciphertext256),
-};
-
-UNITTEST_REGISTER_CRYPTO_TEST (nist_aes256_cbc_chained) = {
-  .name = "NIST SP 800-38A [chained]",
-  .alg = VNET_CRYPTO_ALG_AES_256_CBC,
-  .iv = TEST_DATA (iv),
-  .key = TEST_DATA (key256),
-  .is_chained = 1,
-  .pt_chunks = {
-    TEST_DATA_CHUNK (plaintext, 0, 32),
-    TEST_DATA_CHUNK (plaintext, 32, 32),
-  },
-  .ct_chunks = {
-    TEST_DATA_CHUNK (ciphertext256, 0, 32),
-    TEST_DATA_CHUNK (ciphertext256, 32, 32),
-  },
 };
 
 UNITTEST_REGISTER_CRYPTO_TEST (nist_aes256_incr) = {

@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0
  * Copyright (c) 2020 Doc.ai and/or its affiliates.
- * Copyright (c) 2020 Cisco and/or its affiliates.
+ * Copyright (c) 2020-2026 Cisco and/or its affiliates.
  */
 
 #include <vlib/vlib.h>
@@ -36,6 +36,7 @@ typedef enum
   WG_OUTPUT_NEXT_ERROR,
   WG_OUTPUT_NEXT_HANDOFF,
   WG_OUTPUT_NEXT_INTERFACE_OUTPUT,
+  WG_OUTPUT_NEXT_CRYPTO_ENQ,
   WG_OUTPUT_N_NEXT,
 } wg_output_next_t;
 
@@ -139,11 +140,10 @@ wg_output_chain_crypto (vlib_main_t *vm, wg_per_thread_data_t *ptd,
 }
 
 static_always_inline void
-wg_prepare_sync_enc_op (vlib_main_t *vm, wg_per_thread_data_t *ptd,
-			vlib_buffer_t *b, vlib_buffer_t *lb,
-			vnet_crypto_op_t **crypto_ops, u8 *src, u32 src_len,
-			u8 *dst, u8 *aad, u32 aad_len, u64 nonce,
-			vnet_crypto_key_index_t key_index, u32 bi, u8 *iv)
+wg_prepare_sync_enc_op (vlib_main_t *vm, wg_per_thread_data_t *ptd, vlib_buffer_t *b,
+			vlib_buffer_t *lb, vnet_crypto_op_t **crypto_ops, u8 *src, u32 src_len,
+			u8 *dst, u8 *aad, u32 aad_len, u64 nonce, vnet_crypto_ctx_t *ctx, u32 bi,
+			u8 *iv)
 {
   vnet_crypto_op_t _op, *op = &_op;
   u8 src_[] = {};
@@ -152,11 +152,11 @@ wg_prepare_sync_enc_op (vlib_main_t *vm, wg_per_thread_data_t *ptd,
   clib_memcpy (iv + 4, &nonce, sizeof (nonce));
 
   vec_add2_aligned (crypto_ops[0], op, 1, CLIB_CACHE_LINE_BYTES);
-  vnet_crypto_op_init (op, VNET_CRYPTO_OP_CHACHA20_POLY1305_ENC);
+  vnet_crypto_op_init (ctx, op);
+  op->type = VNET_CRYPTO_OP_TYPE_ENCRYPT;
 
-  op->tag_len = NOISE_AUTHTAG_LEN;
-  op->tag = vlib_buffer_get_tail (lb) - NOISE_AUTHTAG_LEN;
-  op->key_index = key_index;
+  op->auth_len = NOISE_AUTHTAG_LEN;
+  op->auth = vlib_buffer_get_tail (lb) - NOISE_AUTHTAG_LEN;
   op->aad = aad;
   op->aad_len = aad_len;
   op->iv = iv;
@@ -178,37 +178,8 @@ wg_prepare_sync_enc_op (vlib_main_t *vm, wg_per_thread_data_t *ptd,
 }
 
 static_always_inline void
-wg_output_process_chained_ops (vlib_main_t *vm, vlib_node_runtime_t *node,
-			       vnet_crypto_op_t *ops, vlib_buffer_t *b[],
-			       u16 *nexts, vnet_crypto_op_chunk_t *chunks,
-			       u16 drop_next)
-{
-  u32 n_fail, n_ops = vec_len (ops);
-  vnet_crypto_op_t *op = ops;
-
-  if (n_ops == 0)
-    return;
-
-  n_fail = n_ops - vnet_crypto_process_chained_ops (vm, op, chunks, n_ops);
-
-  while (n_fail)
-    {
-      ASSERT (op - ops < n_ops);
-
-      if (op->status != VNET_CRYPTO_OP_STATUS_COMPLETED)
-	{
-	  u32 bi = op->user_data;
-	  b[bi]->error = node->errors[WG_OUTPUT_ERROR_CRYPTO_ENGINE_ERROR];
-	  nexts[bi] = drop_next;
-	  n_fail--;
-	}
-      op++;
-    }
-}
-
-static_always_inline void
-wg_output_process_ops (vlib_main_t *vm, vlib_node_runtime_t *node,
-		       vnet_crypto_op_t *ops, vlib_buffer_t *b[], u16 *nexts,
+wg_output_process_ops (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_crypto_op_t *ops,
+		       vlib_buffer_t *b[], u16 *nexts, vnet_crypto_op_chunk_t *chunks,
 		       u16 drop_next)
 {
   u32 n_fail, n_ops = vec_len (ops);
@@ -217,7 +188,7 @@ wg_output_process_ops (vlib_main_t *vm, vlib_node_runtime_t *node,
   if (n_ops == 0)
     return;
 
-  n_fail = n_ops - vnet_crypto_process_ops (vm, op, n_ops);
+  n_fail = n_ops - vnet_crypto_process_ops (vm, op, chunks, n_ops);
 
   while (n_fail)
     {
@@ -232,30 +203,6 @@ wg_output_process_ops (vlib_main_t *vm, vlib_node_runtime_t *node,
 	}
       op++;
     }
-}
-
-static_always_inline void
-wg_output_tun_add_to_frame (vlib_main_t *vm, vnet_crypto_async_frame_t *f,
-			    u32 key_index, u32 crypto_len,
-			    i16 crypto_start_offset, u32 buffer_index,
-			    u16 next_node, u8 *iv, u8 *tag, u8 flags)
-{
-  vnet_crypto_async_frame_elt_t *fe;
-  u16 index;
-
-  ASSERT (f->n_elts < VNET_CRYPTO_FRAME_SIZE);
-
-  index = f->n_elts;
-  fe = &f->elts[index];
-  f->n_elts++;
-  fe->key_index = key_index;
-  fe->crypto_total_length = crypto_len;
-  fe->crypto_start_offset = crypto_start_offset;
-  fe->iv = iv;
-  fe->tag = tag;
-  fe->flags = flags;
-  f->buffer_indices[index] = buffer_index;
-  f->next_node_index[index] = next_node;
 }
 
 static_always_inline enum noise_state_crypt
@@ -289,8 +236,8 @@ wg_output_tun_process (vlib_main_t *vm, wg_per_thread_data_t *ptd,
    * are passed back out to the caller through the provided data pointer. */
   *r_idx = kp->kp_remote_index;
 
-  wg_prepare_sync_enc_op (vm, ptd, b, lb, crypto_ops, src, srclen, dst, NULL,
-			  0, *nonce, kp->kp_send_index, bi, iv);
+  wg_prepare_sync_enc_op (vm, ptd, b, lb, crypto_ops, src, srclen, dst, NULL, 0, *nonce,
+			  kp->send_ctx, bi, iv);
 
   /* If our values are still within tolerances, but we are approaching
    * the tolerances, we notify the caller with ESTALE that they should
@@ -311,16 +258,12 @@ error:
 }
 
 static_always_inline enum noise_state_crypt
-wg_add_to_async_frame (vlib_main_t *vm, wg_per_thread_data_t *ptd,
-		       vnet_crypto_async_frame_t **async_frame,
-		       vlib_buffer_t *b, vlib_buffer_t *lb, u8 *payload,
-		       u32 payload_len, u32 bi, u16 next, u16 async_next,
-		       noise_remote_t *r, uint32_t *r_idx, uint64_t *nonce,
-		       u8 *iv, f64 time)
+wg_add_to_async_frame (vlib_main_t *vm, wg_per_thread_data_t *ptd, u32 *async_bi, u64 *async_ctx,
+		       vlib_buffer_t *b, vlib_buffer_t *lb, u8 *payload, u32 payload_len, u32 bi,
+		       u16 next, u16 async_next, noise_remote_t *r, uint32_t *r_idx,
+		       uint64_t *nonce, u8 *iv, f64 time)
 {
   wg_post_data_t *post = wg_post_data (b);
-  u8 flag = 0;
-  u8 *tag;
   noise_keypair_t *kp;
 
   post->next_index = next;
@@ -352,26 +295,20 @@ wg_add_to_async_frame (vlib_main_t *vm, wg_per_thread_data_t *ptd,
   clib_memset (iv, 0, 4);
   clib_memcpy (iv + 4, nonce, sizeof (*nonce));
 
-  /* get a frame for this op if we don't yet have one or it's full  */
-  if (NULL == *async_frame || vnet_crypto_async_frame_is_full (*async_frame))
-    {
-      *async_frame = vnet_crypto_async_get_frame (
-	vm, VNET_CRYPTO_OP_CHACHA20_POLY1305_TAG16_AAD0_ENC);
-      if (PREDICT_FALSE (NULL == *async_frame))
-	goto error;
-      /* Save the frame to the list we'll submit at the end */
-      vec_add1 (ptd->async_frames, *async_frame);
-    }
-
-  if (b != lb)
-    flag |= VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS;
-
-  tag = vlib_buffer_get_tail (lb) - NOISE_AUTHTAG_LEN;
-
   /* this always succeeds because we know the frame is not full */
-  wg_output_tun_add_to_frame (vm, *async_frame, kp->kp_send_index, payload_len,
-			      payload - b->data, bi, async_next, iv, tag,
-			      flag);
+  u8 *current = vlib_buffer_get_current (b);
+  vnet_crypto_buffer_metadata_t md = {
+    .cipher_data_len = payload_len,
+    .cipher_data_start_off = payload - current,
+    .iv_off = vnet_crypto_buffer_metadata_pre_data_off (b),
+    .icv_off = payload - current + payload_len,
+    .icv_len = NOISE_AUTHTAG_LEN,
+    .is_chained_buffers = b != lb,
+  };
+
+  *vnet_crypto_buffer_get_metadata (b) = md;
+  async_bi[0] = bi;
+  async_ctx[0] = pointer_to_uword (kp->send_ctx);
 
   /* If our values are still within tolerances, but we are approaching
    * the tolerances, we notify the caller with ESTALE that they should
@@ -429,10 +366,11 @@ wg_output_tun_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   u16 n_sync = 0;
   const u16 drop_next = WG_OUTPUT_NEXT_ERROR;
   const u8 is_async = wg_op_mode_is_set_ASYNC ();
-  vnet_crypto_async_frame_t *async_frame = NULL;
   u16 n_async = 0;
   u16 noop_nexts[VLIB_FRAME_SIZE], *noop_next = noop_nexts, n_noop = 0;
   u16 err = !0;
+  u32 async_bi[VLIB_FRAME_SIZE];
+  u64 async_ctx[VLIB_FRAME_SIZE];
   u32 sync_bi[VLIB_FRAME_SIZE];
   u32 noop_bi[VLIB_FRAME_SIZE];
 
@@ -440,7 +378,6 @@ wg_output_tun_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   vec_reset_length (ptd->crypto_ops);
   vec_reset_length (ptd->chained_crypto_ops);
   vec_reset_length (ptd->chunks);
-  vec_reset_length (ptd->async_frames);
 
   wg_peer_t *peer = NULL;
   u32 adj_index = 0;
@@ -614,10 +551,9 @@ wg_output_tun_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       if (is_async)
 	{
 	  state = wg_add_to_async_frame (
-	    vm, ptd, &async_frame, b[0], lb, plain_data, plain_data_len_total,
-	    bi, next[0], async_next_node, &peer->remote,
-	    &message_data_wg->receiver_index, &message_data_wg->counter,
-	    iv_data, time);
+	    vm, ptd, async_bi + n_async, async_ctx + n_async, b[0], lb, plain_data,
+	    plain_data_len_total, bi, next[0], async_next_node, &peer->remote,
+	    &message_data_wg->receiver_index, &message_data_wg->counter, iv_data, time);
 	}
       else
 	{
@@ -633,7 +569,6 @@ wg_output_tun_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	}
       else if (PREDICT_FALSE (state == SC_FAILED))
 	{
-	  // TODO: Maybe wrong
 	  wg_send_handshake_from_mt (peeri, false);
 	  wg_peer_update_flags (peeri, WG_PEER_ESTABLISHED, false);
 	  noop_next[0] = WG_OUTPUT_NEXT_ERROR;
@@ -701,10 +636,9 @@ wg_output_tun_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   if (n_sync)
     {
       /* wg-output-process-ops */
-      wg_output_process_ops (vm, node, ptd->crypto_ops, sync_bufs, nexts,
+      wg_output_process_ops (vm, node, ptd->crypto_ops, sync_bufs, nexts, 0, drop_next);
+      wg_output_process_ops (vm, node, ptd->chained_crypto_ops, sync_bufs, nexts, ptd->chunks,
 			     drop_next);
-      wg_output_process_chained_ops (vm, node, ptd->chained_crypto_ops,
-				     sync_bufs, nexts, ptd->chunks, drop_next);
 
       int n_left_from_sync_bufs = n_sync;
       while (n_left_from_sync_bufs > 0)
@@ -717,32 +651,13 @@ wg_output_tun_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
     }
   if (n_async)
     {
-      /* submit all of the open frames */
-      vnet_crypto_async_frame_t **async_frame;
-
-      vec_foreach (async_frame, ptd->async_frames)
-	{
-	  if (PREDICT_FALSE (
-		vnet_crypto_async_submit_open_frame (vm, *async_frame) < 0))
-	    {
-	      u32 n_drop = (*async_frame)->n_elts;
-	      u32 *bi = (*async_frame)->buffer_indices;
-	      u16 index = n_noop;
-	      while (n_drop--)
-		{
-		  noop_bi[index] = bi[0];
-		  vlib_buffer_t *b = vlib_get_buffer (vm, bi[0]);
-		  noop_nexts[index] = drop_next;
-		  b->error = node->errors[WG_OUTPUT_ERROR_CRYPTO_ENGINE_ERROR];
-		  bi++;
-		  index++;
-		}
-	      n_noop += (*async_frame)->n_elts;
-
-	      vnet_crypto_async_reset_frame (*async_frame);
-	      vnet_crypto_async_free_frame (vm, *async_frame);
-	    }
-	}
+      vnet_crypto_deq_scalar_data_t scalar = {
+	.next_node_index =
+	  is_ip4 ? wg_encrypt_async_next.wg4_post_next : wg_encrypt_async_next.wg6_post_next,
+	.op_type = VNET_CRYPTO_OP_TYPE_ENCRYPT,
+      };
+      vlib_buffer_enqueue_to_single_next_with_aux64_and_scalar (
+	vm, node, async_bi, async_ctx, WG_OUTPUT_NEXT_CRYPTO_ENQ, n_async, &scalar);
     }
   if (n_noop)
     {
@@ -915,6 +830,7 @@ VLIB_REGISTER_NODE (wg4_output_tun_node) =
         [WG_OUTPUT_NEXT_HANDOFF] = "wg4-output-tun-handoff",
         [WG_OUTPUT_NEXT_INTERFACE_OUTPUT] = "adj-midchain-tx",
         [WG_OUTPUT_NEXT_ERROR] = "error-drop",
+        [WG_OUTPUT_NEXT_CRYPTO_ENQ] = "crypto-enq",
   },
 };
 
@@ -931,5 +847,6 @@ VLIB_REGISTER_NODE (wg6_output_tun_node) =
         [WG_OUTPUT_NEXT_HANDOFF] = "wg6-output-tun-handoff",
         [WG_OUTPUT_NEXT_INTERFACE_OUTPUT] = "adj-midchain-tx",
         [WG_OUTPUT_NEXT_ERROR] = "error-drop",
+        [WG_OUTPUT_NEXT_CRYPTO_ENQ] = "crypto-enq",
   },
 };

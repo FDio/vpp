@@ -1,6 +1,6 @@
 /*
  * SPDX-License-Identifier: Apache-2.0
- * Copyright (c) 2015 Cisco and/or its affiliates.
+ * Copyright (c) 2015-2026 Cisco and/or its affiliates.
  */
 
 #ifndef __ESP_H__
@@ -76,7 +76,7 @@ u8 *format_esp_header (u8 * s, va_list * args);
 always_inline int
 esp_seq_advance (ipsec_sa_outb_rt_t *ort)
 {
-  u64 max = ort->use_esn ? CLIB_U64_MAX : CLIB_U32_MAX;
+  u64 max = ort->cached.use_esn ? CLIB_U64_MAX : CLIB_U32_MAX;
   if (ort->seq64 == max)
     return 1;
   ort->seq64++;
@@ -185,38 +185,16 @@ esp_decrypt_set_next_index (vlib_buffer_t *b, vlib_node_runtime_t *node,
  **/
 typedef struct
 {
-  union
-  {
-    struct
-    {
-      u8 icv_sz;
-      u8 iv_sz;
-      u8 esp_advance;
-      u8 tail_base;
-      u32 sa_index;
-    };
-    u64 sa_data;
-  };
-
+  vlib_buffer_t *lb;
+  u32 sa_index;
   u32 seq;
-  i16 current_data;
-  i16 current_length;
-  u16 hdr_sz;
-  u16 is_chain;
   u32 seq_hi;
+  u16 hdr_sz;
+  u8 is_chain : 1;
 } esp_decrypt_packet_data_t;
 
 STATIC_ASSERT_SIZEOF (esp_decrypt_packet_data_t, 3 * sizeof (u64));
-STATIC_ASSERT_OFFSET_OF (esp_decrypt_packet_data_t, seq, sizeof (u64));
-
-/* we are forced to store the decrypt post data into 2 separate places -
-   vlib_opaque and opaque2. */
-typedef struct
-{
-  vlib_buffer_t *lb;
-  u32 free_buffer_index;
-  u8 icv_removed;
-} esp_decrypt_packet_data2_t;
+STATIC_ASSERT_OFFSET_OF (esp_decrypt_packet_data_t, sa_index, sizeof (u64));
 
 typedef union
 {
@@ -231,14 +209,6 @@ STATIC_ASSERT (sizeof (esp_post_data_t) <=
 #define esp_post_data(b) \
     ((esp_post_data_t *)((u8 *)((b)->opaque) \
         + STRUCT_OFFSET_OF (vnet_buffer_opaque_t, unused)))
-
-STATIC_ASSERT (sizeof (esp_decrypt_packet_data2_t) <=
-	       STRUCT_SIZE_OF (vnet_buffer_opaque2_t, unused),
-	       "Custom meta-data too large for vnet_buffer_opaque2_t");
-
-#define esp_post_data2(b) \
-    ((esp_decrypt_packet_data2_t *)((u8 *)((b)->opaque2) \
-        + STRUCT_OFFSET_OF (vnet_buffer_opaque2_t, unused)))
 
 typedef struct
 {
