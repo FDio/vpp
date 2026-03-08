@@ -340,7 +340,7 @@ esp_prepare_async_frame (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
   esp_post_data_t *post = esp_post_data (b);
   u8 *tag, *iv, *aad = 0;
   u8 flag = 0;
-  const u32 key_index = ort->key_index;
+  vnet_crypto_key_t *key = ort->key;
   i16 crypto_start_offset, integ_start_offset;
   u16 crypto_total_len, integ_total_len;
 
@@ -419,10 +419,9 @@ esp_prepare_async_frame (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
     }
 
   /* this always succeeds because we know the frame is not full */
-  vnet_crypto_async_add_to_frame (vm, async_frame, key_index, crypto_total_len,
-				  integ_total_len - crypto_total_len,
-				  crypto_start_offset, integ_start_offset, bi,
-				  async_next, iv, tag, aad, flag);
+  vnet_crypto_async_add_to_frame (vm, async_frame, key, crypto_total_len, integ_total_len,
+				  crypto_start_offset, integ_start_offset, bi, async_next, iv, tag,
+				  aad, flag);
 }
 
 /* Per RFC6935 section 5, the UDP checksum must be computed when originating
@@ -458,7 +457,7 @@ ipsec_setup_chained_crypto (vnet_crypto_op_t *op, vlib_main_t *vm, ipsec_per_thr
 			    vlib_buffer_t *b, vlib_buffer_t *lb,
 			    const ipsec_sa_outb_rt_cached_t *rt, u8 *crypto_start, u16 crypto_len)
 {
-  op->digest = vlib_buffer_get_tail (lb) - rt->integ_icv_size;
+  op->auth = vlib_buffer_get_tail (lb) - rt->integ_icv_size;
   op->chunk_index = vec_len (ptd->chunks);
   esp_encrypt_chain_crypto (vm, ptd, b, lb, rt->integ_icv_size, crypto_start, crypto_len,
 			    &op->n_chunks);
@@ -471,7 +470,7 @@ ipsec_setup_aead_fields (vnet_crypto_op_t *op, ipsec_sa_outb_rt_t *ort,
 {
   op->aad = aad;
   esp_aad_fill (op->aad, esp, rt->use_esn, seq_hi);
-  op->tag = payload + payload_len - rt->integ_icv_size;
+  op->auth = payload + payload_len - rt->integ_icv_size;
 }
 
 static_always_inline void
@@ -558,15 +557,15 @@ static_always_inline void
 ipsec_build_integ_op_tmpl (vnet_crypto_op_t *op, const ipsec_sa_outb_rt_cached_t *rt, u8 *payload,
 			   u16 payload_len, u32 seq_hi_be)
 {
-  op->integ_src = payload - rt->integ_src_pre_bytes;
-  op->integ_len = payload_len - rt->integ_icv_size + rt->integ_len_pre_bytes;
+  op->auth_src = payload - rt->integ_src_pre_bytes;
+  op->auth_src_len = payload_len - rt->integ_icv_size + rt->integ_len_pre_bytes;
 
-  op->digest = payload + payload_len - rt->integ_icv_size;
+  op->auth = payload + payload_len - rt->integ_icv_size;
 
   if (rt->integ_add_seq_hi)
     {
-      clib_memcpy_fast (op->digest, &seq_hi_be, sizeof (seq_hi_be));
-      op->integ_len += sizeof (seq_hi_be);
+      clib_memcpy_fast (op->auth, &seq_hi_be, sizeof (seq_hi_be));
+      op->auth_src_len += sizeof (seq_hi_be);
     }
 }
 
@@ -575,11 +574,11 @@ ipsec_build_integ_op_tmpl_chain (vnet_crypto_op_t *op, const ipsec_sa_outb_rt_ca
 				 vlib_main_t *vm, void *ptd, u32 seq_hi_be, vlib_buffer_t **b,
 				 vlib_buffer_t *lb, u8 *payload, u16 payload_len)
 {
-  op->digest = vlib_buffer_get_tail (lb) - rt->integ_icv_size;
-  op->integ_chunk_index = vec_len (((ipsec_per_thread_data_t *) ptd)->chunks);
+  op->auth = vlib_buffer_get_tail (lb) - rt->integ_icv_size;
+  op->auth_chunk_index = vec_len (((ipsec_per_thread_data_t *) ptd)->chunks);
   esp_encrypt_chain_integ (vm, (ipsec_per_thread_data_t *) ptd, rt, seq_hi_be, b[0], lb,
 			   rt->integ_icv_size, payload - rt->integ_src_pre_bytes,
-			   payload_len + rt->integ_len_pre_bytes, op->digest, &op->integ_n_chunks);
+			   payload_len + rt->integ_len_pre_bytes, op->auth, &op->auth_n_chunks);
 }
 
 always_inline uword

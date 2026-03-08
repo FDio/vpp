@@ -834,7 +834,7 @@ bfd_add_sha1_auth_section (vlib_main_t *vm, vlib_buffer_t *b,
   vnet_crypto_op_init (&op, VNET_CRYPTO_OP_SHA1_HASH);
   op.src = (u8 *) pkt;
   op.len = sizeof (*pkt);
-  op.digest = hash;
+  op.auth = hash;
   vnet_crypto_process_ops (vm, &op, 1);
   BFD_DBG ("hashing: %U", format_hex_bytes, pkt, sizeof (*pkt));
   clib_memcpy (auth->hash, hash, sizeof (hash));
@@ -1732,7 +1732,7 @@ bfd_verify_pkt_auth_key_sha1 (vlib_main_t *vm, const bfd_pkt_t *pkt,
   vnet_crypto_op_init (&op, VNET_CRYPTO_OP_SHA1_HASH);
   op.src = (u8 *) with_sha1;
   op.len = sizeof (*with_sha1);
-  op.digest = calculated_hash;
+  op.auth = calculated_hash;
   vnet_crypto_process_ops (vm, &op, 1);
 
   /* Restore the modified data within the packet */

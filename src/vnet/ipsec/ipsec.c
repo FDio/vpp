@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0
- * Copyright (c) 2015 Cisco and/or its affiliates.
+ * Copyright (c) 2015-2026 Cisco and/or its affiliates.
  */
 
 /* ipsec.c : IPSEC module functions */
@@ -22,6 +22,8 @@
 /* Flow cache is sized for 1 million flows with a load factor of .25.
  */
 #define IPSEC4_SPD_DEFAULT_HASH_NUM_BUCKETS (1 << 22)
+
+ipsec_main_t ipsec_main = {};
 
 esp_async_post_next_t esp_encrypt_async_next;
 esp_async_post_next_t esp_decrypt_async_next;

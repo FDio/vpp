@@ -1,19 +1,16 @@
 /* SPDX-License-Identifier: Apache-2.0
- * Copyright (c) 2025 Cisco and/or its affiliates.
+ * Copyright (c) 2025-2026 Cisco and/or its affiliates.
  */
 
-#ifndef __sha2_h__
-#define __sha2_h__
+#pragma once
 #include <vppinfra/crypto/sha2.h>
 #include <vnet/crypto/crypto.h>
 #include <native/crypto_native.h>
 
 static_always_inline u32
-crypto_native_ops_hmac_sha2 (vlib_main_t *vm, vnet_crypto_op_t *ops[],
-			     u32 n_ops, vnet_crypto_op_chunk_t *chunks,
-			     clib_sha2_type_t type)
+crypto_native_ops_hmac_sha2 (vnet_crypto_op_t *ops[], u32 n_ops, vnet_crypto_op_chunk_t *chunks,
+			     clib_sha2_type_t type, clib_thread_index_t thread_index)
 {
-  crypto_native_main_t *cm = &crypto_native_main;
   vnet_crypto_op_t *op = ops[0];
   u32 n_left = n_ops;
   clib_sha2_hmac_ctx_t ctx;
@@ -23,24 +20,24 @@ crypto_native_ops_hmac_sha2 (vlib_main_t *vm, vnet_crypto_op_t *ops[],
   for (; n_left; n_left--, op++)
     {
       clib_sha2_hmac_init (
-	&ctx, type, (clib_sha2_hmac_key_data_t *) cm->key_data[op->key_index]);
+	&ctx, type, (clib_sha2_hmac_key_data_t *) vnet_crypto_get_simple_key_data (op->key, 0));
       if (op->flags & VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS)
 	{
-	  vnet_crypto_op_chunk_t *chp = chunks + op->integ_chunk_index;
-	  for (int j = 0; j < op->integ_n_chunks; j++, chp++)
+	  vnet_crypto_op_chunk_t *chp = chunks + op->auth_chunk_index;
+	  for (int j = 0; j < op->auth_n_chunks; j++, chp++)
 	    clib_sha2_hmac_update (&ctx, chp->src, chp->len);
 	}
       else
-	clib_sha2_hmac_update (&ctx, op->integ_src, op->integ_len);
+	clib_sha2_hmac_update (&ctx, op->auth_src, op->auth_src_len);
 
       clib_sha2_hmac_final (&ctx, buffer);
 
-      if (op->digest_len)
+      if (op->auth_len)
 	{
-	  sz = op->digest_len;
+	  sz = op->auth_len;
 	  if (op->flags & VNET_CRYPTO_OP_FLAG_HMAC_CHECK)
 	    {
-	      if ((memcmp (op->digest, buffer, sz)))
+	      if ((memcmp (op->auth, buffer, sz)))
 		{
 		  n_fail++;
 		  op->status = VNET_CRYPTO_OP_STATUS_FAIL_BAD_HMAC;
@@ -48,14 +45,14 @@ crypto_native_ops_hmac_sha2 (vlib_main_t *vm, vnet_crypto_op_t *ops[],
 		}
 	    }
 	  else
-	    clib_memcpy_fast (op->digest, buffer, sz);
+	    clib_memcpy_fast (op->auth, buffer, sz);
 	}
       else
 	{
 	  sz = clib_sha2_variants[type].digest_size;
 	  if (op->flags & VNET_CRYPTO_OP_FLAG_HMAC_CHECK)
 	    {
-	      if ((memcmp (op->digest, buffer, sz)))
+	      if ((memcmp (op->auth, buffer, sz)))
 		{
 		  n_fail++;
 		  op->status = VNET_CRYPTO_OP_STATUS_FAIL_BAD_HMAC;
@@ -63,7 +60,7 @@ crypto_native_ops_hmac_sha2 (vlib_main_t *vm, vnet_crypto_op_t *ops[],
 		}
 	    }
 	  else
-	    clib_memcpy_fast (op->digest, buffer, sz);
+	    clib_memcpy_fast (op->auth, buffer, sz);
 	}
 
       op->status = VNET_CRYPTO_OP_STATUS_COMPLETED;
@@ -96,5 +93,3 @@ sha2_probe ()
 #endif
   return -1;
 }
-
-#endif /* __sha2_h__ */
