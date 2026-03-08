@@ -2,6 +2,7 @@
  * Copyright (c) 2024 Marvell.
  * SPDX-License-Identifier: Apache-2.0
  * https://spdx.org/licenses/Apache-2.0.html
+ * Copyright (c) 2026 Cisco and/or its affiliates.
  */
 
 #ifndef _CRYPTO_H_
@@ -29,38 +30,38 @@
   _ (CHACHA20_POLY1305, 32, 16, 0)
 
 /* CRYPTO_ID, INTEG_ID, KEY_LENGTH_IN_BYTES, DIGEST_LEN */
-#define foreach_oct_crypto_link_async_alg                                     \
-  _ (AES_128_CBC, SHA1, 16, 12)                                               \
-  _ (AES_192_CBC, SHA1, 24, 12)                                               \
-  _ (AES_256_CBC, SHA1, 32, 12)                                               \
-  _ (AES_128_CBC, SHA256, 16, 16)                                             \
-  _ (AES_192_CBC, SHA256, 24, 16)                                             \
-  _ (AES_256_CBC, SHA256, 32, 16)                                             \
-  _ (AES_128_CBC, SHA384, 16, 24)                                             \
-  _ (AES_192_CBC, SHA384, 24, 24)                                             \
-  _ (AES_256_CBC, SHA384, 32, 24)                                             \
-  _ (AES_128_CBC, SHA512, 16, 32)                                             \
-  _ (AES_192_CBC, SHA512, 24, 32)                                             \
-  _ (AES_256_CBC, SHA512, 32, 32)                                             \
-  _ (AES_128_CBC, MD5, 16, 12)                                                \
-  _ (AES_192_CBC, MD5, 24, 12)                                                \
-  _ (AES_256_CBC, MD5, 32, 12)                                                \
-  _ (3DES_CBC, MD5, 24, 12)                                                   \
-  _ (3DES_CBC, SHA1, 24, 12)                                                  \
-  _ (3DES_CBC, SHA256, 24, 16)                                                \
-  _ (3DES_CBC, SHA384, 24, 24)                                                \
-  _ (3DES_CBC, SHA512, 24, 32)                                                \
-  _ (AES_128_CTR, SHA1, 16, 12)                                               \
-  _ (AES_192_CTR, SHA1, 24, 12)                                               \
-  _ (AES_256_CTR, SHA1, 32, 12)                                               \
-  _ (AES_128_CTR, SHA256, 16, 16)                                             \
-  _ (AES_192_CTR, SHA256, 24, 16)                                             \
-  _ (AES_256_CTR, SHA256, 32, 16)                                             \
-  _ (AES_128_CTR, SHA384, 16, 24)                                             \
-  _ (AES_192_CTR, SHA384, 24, 24)                                             \
-  _ (AES_256_CTR, SHA384, 32, 24)                                             \
-  _ (AES_128_CTR, SHA512, 16, 32)                                             \
-  _ (AES_192_CTR, SHA512, 24, 32)                                             \
+#define foreach_oct_crypto_combined_async_alg                                                      \
+  _ (AES_128_CBC, SHA1, 16, 12)                                                                    \
+  _ (AES_192_CBC, SHA1, 24, 12)                                                                    \
+  _ (AES_256_CBC, SHA1, 32, 12)                                                                    \
+  _ (AES_128_CBC, SHA256, 16, 16)                                                                  \
+  _ (AES_192_CBC, SHA256, 24, 16)                                                                  \
+  _ (AES_256_CBC, SHA256, 32, 16)                                                                  \
+  _ (AES_128_CBC, SHA384, 16, 24)                                                                  \
+  _ (AES_192_CBC, SHA384, 24, 24)                                                                  \
+  _ (AES_256_CBC, SHA384, 32, 24)                                                                  \
+  _ (AES_128_CBC, SHA512, 16, 32)                                                                  \
+  _ (AES_192_CBC, SHA512, 24, 32)                                                                  \
+  _ (AES_256_CBC, SHA512, 32, 32)                                                                  \
+  _ (AES_128_CBC, MD5, 16, 12)                                                                     \
+  _ (AES_192_CBC, MD5, 24, 12)                                                                     \
+  _ (AES_256_CBC, MD5, 32, 12)                                                                     \
+  _ (3DES_CBC, MD5, 24, 12)                                                                        \
+  _ (3DES_CBC, SHA1, 24, 12)                                                                       \
+  _ (3DES_CBC, SHA256, 24, 16)                                                                     \
+  _ (3DES_CBC, SHA384, 24, 24)                                                                     \
+  _ (3DES_CBC, SHA512, 24, 32)                                                                     \
+  _ (AES_128_CTR, SHA1, 16, 12)                                                                    \
+  _ (AES_192_CTR, SHA1, 24, 12)                                                                    \
+  _ (AES_256_CTR, SHA1, 32, 12)                                                                    \
+  _ (AES_128_CTR, SHA256, 16, 16)                                                                  \
+  _ (AES_192_CTR, SHA256, 24, 16)                                                                  \
+  _ (AES_256_CTR, SHA256, 32, 16)                                                                  \
+  _ (AES_128_CTR, SHA384, 16, 24)                                                                  \
+  _ (AES_192_CTR, SHA384, 24, 24)                                                                  \
+  _ (AES_256_CTR, SHA384, 32, 24)                                                                  \
+  _ (AES_128_CTR, SHA512, 16, 32)                                                                  \
+  _ (AES_192_CTR, SHA512, 24, 32)                                                                  \
   _ (AES_256_CTR, SHA512, 32, 32)
 
 #define OCT_MOD_INC(i, l) ((i) == (l - 1) ? (i) = 0 : (i)++)
@@ -106,7 +107,8 @@ typedef struct
   u64 cpt_inst_w7;
   /* initialise as part of first packet */
   u8 initialised;
-  /* store link key index in case of linked algo */
+  vnet_crypto_op_id_t op_id;
+  /* store key index */
   vnet_crypto_key_index_t key_index;
   oct_crypto_dev_t *crypto_dev;
   struct roc_se_ctx cpt_ctx;
@@ -141,7 +143,7 @@ typedef struct
   u8 mac_len;
   /** aead */
   bool aead_algo;
-  /** Set when encrypting linked algo with esn.
+  /** Set when encrypting combined algo with esn.
    * To move digest data */
   bool esn_enabled;
   /** Set if this is last element in frame */
@@ -192,13 +194,8 @@ void oct_crypto_key_del_handler (vlib_main_t *vm,
 void oct_crypto_key_add_handler (vlib_main_t *vm,
 				 vnet_crypto_key_index_t key_index);
 
-void oct_crypto_key_handler (vnet_crypto_key_op_t kop,
-			     vnet_crypto_key_index_t idx);
-
-int oct_crypto_enqueue_linked_alg_enc (vlib_main_t *vm,
-				       vnet_crypto_async_frame_t *frame);
-int oct_crypto_enqueue_linked_alg_dec (vlib_main_t *vm,
-				       vnet_crypto_async_frame_t *frame);
+int oct_crypto_enqueue_combined_alg_enc (vlib_main_t *vm, vnet_crypto_async_frame_t *frame);
+int oct_crypto_enqueue_combined_alg_dec (vlib_main_t *vm, vnet_crypto_async_frame_t *frame);
 int oct_crypto_enqueue_aead_aad_8_enc (vlib_main_t *vm,
 				       vnet_crypto_async_frame_t *frame);
 int oct_crypto_enqueue_aead_aad_12_enc (vlib_main_t *vm,

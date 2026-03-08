@@ -53,12 +53,14 @@ cryptodev_frame_build_sgl (vlib_main_t *vm, enum rte_iova_mode iova_mode,
 			   vlib_buffer_t *b, u32 size)
 {
   struct rte_crypto_vec *vec = data_vec + 1;
-  if (vlib_buffer_chain_linearize (vm, b) > CRYPTODEV_MAX_N_SGL)
-    return -1;
 
   while ((b->flags & VLIB_BUFFER_NEXT_PRESENT) && size)
     {
       u32 len;
+
+      if (*n_seg >= CRYPTODEV_MAX_N_SGL)
+	return -1;
+
       b = vlib_get_buffer (vm, b->next_buffer);
       len = clib_min (b->current_length, size);
       vec->base = (void *) vlib_buffer_get_current (b);
@@ -149,6 +151,15 @@ cryptodev_frame_linked_algs_enqueue_internal (vlib_main_t *vm,
     {
       union rte_crypto_sym_ofs cofs;
       u16 n_seg = 1;
+      u32 key_index = fe->key->index;
+      vnet_crypto_alg_data_t *ad = crypto_main.algs + fe->key->alg;
+      cryptodev_op_type_t sess_op_type = op_type;
+      u8 *iv = vnet_crypto_async_get_data_ptr (b[0], fe->iv_offset);
+      u8 *tag = vnet_crypto_async_get_data_ptr (b[0], fe->tag_offset);
+
+      if (ad->alg_type == VNET_CRYPTO_ALG_T_INTEG)
+	sess_op_type = fe->flags & VNET_CRYPTO_OP_FLAG_HMAC_CHECK ? VNET_CRYPTO_OP_TYPE_DECRYPT :
+								    VNET_CRYPTO_OP_TYPE_ENCRYPT;
 
       if (n_elts > 2)
 	{
@@ -158,14 +169,24 @@ cryptodev_frame_linked_algs_enqueue_internal (vlib_main_t *vm,
 	  vlib_prefetch_buffer_header (b[2], LOAD);
 	}
 
-      if (PREDICT_FALSE (last_key_index != fe->key_index))
+      if (PREDICT_FALSE (last_key_index != key_index))
 	{
-	  cryptodev_key_t *key = vec_elt_at_index (cmt->keys, fe->key_index);
+	  cryptodev_key_data_t *key = cryptodev_get_key_data (fe->key);
 	  union rte_cryptodev_session_ctx sess_ctx;
 
-	  if (PREDICT_FALSE (key->keys[vm->numa_node][op_type] == 0))
+	  if (PREDICT_FALSE (key->sessions[vm->numa_node][sess_op_type] == 0))
 	    {
-	      status = cryptodev_session_create (vm, fe->key_index, 0);
+	      status = cryptodev_session_create (vm, key_index, 0, fe->digest_len);
+	      if (PREDICT_FALSE (status < 0))
+		goto error_exit;
+	    }
+	  else if (ad->alg_type == VNET_CRYPTO_ALG_T_INTEG &&
+		   PREDICT_FALSE (rte_cryptodev_sym_session_opaque_data_get (
+				    key->sessions[vm->numa_node][sess_op_type]) !=
+				  (u64) fe->digest_len))
+	    {
+	      cryptodev_sess_handler (vm, key_index);
+	      status = cryptodev_session_create (vm, key_index, 0, fe->digest_len);
 	      if (PREDICT_FALSE (status < 0))
 		goto error_exit;
 	    }
@@ -174,9 +195,9 @@ cryptodev_frame_linked_algs_enqueue_internal (vlib_main_t *vm,
 	   * assumption that the session reset won't happen until first valid
 	   * packet is processed */
 	  if (PREDICT_FALSE (cet->reset_sess == 0))
-	    cet->reset_sess = key->keys[vm->numa_node][op_type];
+	    cet->reset_sess = key->sessions[vm->numa_node][sess_op_type];
 
-	  sess_ctx.crypto_sess = key->keys[vm->numa_node][op_type];
+	  sess_ctx.crypto_sess = key->sessions[vm->numa_node][sess_op_type];
 
 	  status = rte_cryptodev_configure_raw_dp_ctx (
 	    cet->cryptodev_id, cet->cryptodev_q, cet->ctx,
@@ -184,7 +205,7 @@ cryptodev_frame_linked_algs_enqueue_internal (vlib_main_t *vm,
 	  if (PREDICT_FALSE (status < 0))
 	    goto error_exit;
 
-	  last_key_index = fe->key_index;
+	  last_key_index = key_index;
 	  is_update = 1;
 	}
 
@@ -195,24 +216,25 @@ cryptodev_frame_linked_algs_enqueue_internal (vlib_main_t *vm,
 	{
 	  vec[0].base = (void *) (b[0]->data + min_ofs);
 	  vec[0].iova = pointer_to_uword (b[0]->data) + min_ofs;
-	  iv_vec.va = (void *) fe->iv;
-	  iv_vec.iova = pointer_to_uword (fe->iv);
-	  digest_vec.va = (void *) fe->tag;
-	  digest_vec.iova = pointer_to_uword (fe->tag);
+	  iv_vec.va = (void *) iv;
+	  iv_vec.iova = pointer_to_uword (iv);
+	  digest_vec.va = (void *) tag;
+	  digest_vec.iova = pointer_to_uword (tag);
 	}
       else
 	{
 	  vec[0].base = (void *) (b[0]->data + min_ofs);
 	  vec[0].iova = vlib_buffer_get_pa (vm, b[0]) + min_ofs;
-	  iv_vec.va = (void *) fe->iv;
-	  iv_vec.iova = vlib_physmem_get_pa (vm, fe->iv);
-	  digest_vec.va = (void *) fe->tag;
-	  digest_vec.iova = vlib_physmem_get_pa (vm, fe->digest);
+	  iv_vec.va = (void *) iv;
+	  iv_vec.iova = vlib_physmem_get_pa (vm, iv);
+	  digest_vec.va = (void *) tag;
+	  digest_vec.iova = vlib_physmem_get_pa (vm, tag);
 	}
 
       if (PREDICT_FALSE (fe->flags & VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS))
 	{
-	  vec[0].len = b[0]->current_data + b[0]->current_length - min_ofs;
+	  vec[0].len = clib_min ((u32) (b[0]->current_data + b[0]->current_length - min_ofs),
+				 max_end - min_ofs);
 	  if (cryptodev_frame_build_sgl (vm, cmt->iova_mode, vec, &n_seg, b[0],
 					 max_end - min_ofs - vec->len) < 0)
 	    goto error_exit;
@@ -306,8 +328,14 @@ cryptodev_raw_aead_enqueue_internal (vlib_main_t *vm,
 
   while (n_elts)
     {
+      vnet_crypto_alg_data_t *ad = crypto_main.algs + fe->key->alg;
+      u8 is_gmac = ad->cipher_family == VNET_CRYPTO_ALG_FAMILY_AES_NULL_GMAC;
       u32 aad_offset = ((cet->aad_index++) & CRYPTODEV_AAD_MASK) << 4;
       u16 n_seg = 1;
+      u32 key_index = fe->key->index;
+      u8 *iv = vnet_crypto_async_get_data_ptr (b[0], fe->iv_offset);
+      u8 *tag = vnet_crypto_async_get_data_ptr (b[0], fe->tag_offset);
+      u8 *aad = vnet_crypto_async_get_data_ptr (b[0], fe->aad_offset);
 
       if (n_elts > 1)
 	{
@@ -315,24 +343,23 @@ cryptodev_raw_aead_enqueue_internal (vlib_main_t *vm,
 	  vlib_prefetch_buffer_header (b[1], LOAD);
 	}
 
-      if (PREDICT_FALSE (last_key_index != fe->key_index))
+      if (PREDICT_FALSE (last_key_index != key_index))
 	{
-	  cryptodev_key_t *key = vec_elt_at_index (cmt->keys, fe->key_index);
+	  cryptodev_key_data_t *key = cryptodev_get_key_data (fe->key);
 	  union rte_cryptodev_session_ctx sess_ctx;
 
-	  if (PREDICT_FALSE (key->keys[vm->numa_node][op_type] == 0))
+	  if (PREDICT_FALSE (key->sessions[vm->numa_node][op_type] == 0))
 	    {
-	      status = cryptodev_session_create (vm, fe->key_index, aad_len);
+	      status = cryptodev_session_create (vm, key_index, aad_len, fe->digest_len);
 	      if (PREDICT_FALSE (status < 0))
 		goto error_exit;
 	    }
 
-	  if (PREDICT_FALSE (rte_cryptodev_sym_session_opaque_data_get (
-			       key->keys[vm->numa_node][op_type]) != (u64) aad_len))
+	  if (!is_gmac && PREDICT_FALSE (rte_cryptodev_sym_session_opaque_data_get (
+					   key->sessions[vm->numa_node][op_type]) != (u64) aad_len))
 	    {
-	      cryptodev_sess_handler (vm, VNET_CRYPTO_KEY_OP_DEL,
-				      fe->key_index, aad_len);
-	      status = cryptodev_session_create (vm, fe->key_index, aad_len);
+	      cryptodev_sess_handler (vm, key_index);
+	      status = cryptodev_session_create (vm, key_index, aad_len, fe->digest_len);
 	      if (PREDICT_FALSE (status < 0))
 		goto error_exit;
 	    }
@@ -342,9 +369,9 @@ cryptodev_raw_aead_enqueue_internal (vlib_main_t *vm,
 	   * packet is processed */
 
 	  if (PREDICT_FALSE (cet->reset_sess == 0))
-	    cet->reset_sess = key->keys[vm->numa_node][op_type];
+	    cet->reset_sess = key->sessions[vm->numa_node][op_type];
 
-	  sess_ctx.crypto_sess = key->keys[vm->numa_node][op_type];
+	  sess_ctx.crypto_sess = key->sessions[vm->numa_node][op_type];
 
 	  status = rte_cryptodev_configure_raw_dp_ctx (
 	    cet->cryptodev_id, cet->cryptodev_q, cet->ctx,
@@ -352,59 +379,125 @@ cryptodev_raw_aead_enqueue_internal (vlib_main_t *vm,
 	  if (PREDICT_FALSE (status < 0))
 	    goto error_exit;
 
-	  last_key_index = fe->key_index;
+	  last_key_index = key_index;
 	  is_update = 1;
 	}
 
       if (cmt->iova_mode == RTE_IOVA_VA)
 	{
-	  vec[0].base = (void *) (b[0]->data + fe->crypto_start_offset);
-	  vec[0].iova = pointer_to_uword (vec[0].base);
-	  vec[0].len = fe->crypto_total_length;
-	  iv_vec.va = (void *) fe->iv;
-	  iv_vec.iova = pointer_to_uword (fe->iv);
-	  digest_vec.va = (void *) fe->tag;
-	  digest_vec.iova = pointer_to_uword (fe->tag);
+	  iv_vec.va = (void *) iv;
+	  iv_vec.iova = pointer_to_uword (iv);
+	  digest_vec.va = (void *) tag;
+	  digest_vec.iova = pointer_to_uword (tag);
 	  aad_vec.va = (void *) (cet->aad_buf + aad_offset);
-	  aad_vec.iova = cet->aad_phy_addr + aad_offset;
+	  aad_vec.iova = pointer_to_uword (cet->aad_buf + aad_offset);
 	}
       else
 	{
-	  vec[0].base = (void *) (b[0]->data + fe->crypto_start_offset);
-	  vec[0].iova =
-	    vlib_buffer_get_pa (vm, b[0]) + fe->crypto_start_offset;
-	  vec[0].len = fe->crypto_total_length;
-	  iv_vec.va = (void *) fe->iv;
-	  iv_vec.iova = vlib_physmem_get_pa (vm, fe->iv);
+	  iv_vec.va = (void *) iv;
+	  iv_vec.iova = vlib_physmem_get_pa (vm, iv);
 	  aad_vec.va = (void *) (cet->aad_buf + aad_offset);
 	  aad_vec.iova = cet->aad_phy_addr + aad_offset;
-	  digest_vec.va = (void *) fe->tag;
-	  digest_vec.iova = vlib_physmem_get_pa (vm, fe->tag);
+	  digest_vec.va = (void *) tag;
+	  digest_vec.iova = vlib_physmem_get_pa (vm, tag);
 	}
 
       if (aad_len == 8)
-	*(u64 *) (cet->aad_buf + aad_offset) = *(u64 *) fe->aad;
+	*(u64 *) (cet->aad_buf + aad_offset) = *(u64 *) aad;
       else if (aad_len != 0)
 	{
 	  /* aad_len == 12 */
-	  *(u64 *) (cet->aad_buf + aad_offset) = *(u64 *) fe->aad;
-	  *(u32 *) (cet->aad_buf + aad_offset + 8) = *(u32 *) (fe->aad + 8);
+	  *(u64 *) (cet->aad_buf + aad_offset) = *(u64 *) aad;
+	  *(u32 *) (cet->aad_buf + aad_offset + 8) = *(u32 *) (aad + 8);
 	}
 
-      if (PREDICT_FALSE (fe->flags & VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS))
+      if (is_gmac)
 	{
-	  vec[0].len = b[0]->current_data + b[0]->current_length -
-		       fe->crypto_start_offset;
+	  u32 first_len, size;
+	  struct rte_crypto_vec *sgv = vec + 2;
+	  vlib_buffer_t *lb = b[0];
+
+	  vec[0].base = (void *) (cet->aad_buf + aad_offset);
+	  vec[0].iova = aad_vec.iova;
+	  vec[0].len = aad_len;
+
+	  first_len =
+	    clib_min ((u32) (b[0]->current_data + b[0]->current_length - fe->crypto_start_offset),
+		      fe->crypto_total_length);
+	  vec[1].base = (void *) (b[0]->data + fe->crypto_start_offset);
+	  if (cmt->iova_mode == RTE_IOVA_VA)
+	    vec[1].iova = pointer_to_uword (vec[1].base);
+	  else
+	    vec[1].iova = vlib_buffer_get_pa (vm, b[0]) + fe->crypto_start_offset;
+	  vec[1].len = first_len;
+	  n_seg = 2;
+	  size = fe->crypto_total_length - first_len;
+
+	  while ((lb->flags & VLIB_BUFFER_NEXT_PRESENT) && size)
+	    {
+	      u32 len;
+
+	      if (n_seg >= CRYPTODEV_MAX_N_SGL)
+		goto error_exit;
+
+	      lb = vlib_get_buffer (vm, lb->next_buffer);
+	      len = clib_min (lb->current_length, size);
+	      sgv->base = (void *) vlib_buffer_get_current (lb);
+	      if (cmt->iova_mode == RTE_IOVA_VA)
+		sgv->iova = pointer_to_uword (sgv->base);
+	      else
+		sgv->iova = vlib_buffer_get_current_pa (vm, lb);
+	      sgv->len = len;
+	      size -= len;
+	      sgv++;
+	      n_seg += 1;
+	    }
+
+	  if (size)
+	    goto error_exit;
+	}
+      else if (PREDICT_FALSE (fe->crypto_total_length == 0))
+	{
+	  vec[0].base = (void *) (b[0]->data + fe->crypto_start_offset);
+	  if (cmt->iova_mode == RTE_IOVA_VA)
+	    vec[0].iova = pointer_to_uword (vec[0].base);
+	  else
+	    vec[0].iova = vlib_buffer_get_pa (vm, b[0]) + fe->crypto_start_offset;
+	  vec[0].len = 1;
+	  cofs.ofs.auth.tail = 1;
+	  cofs.ofs.cipher.tail = 1;
+	}
+      else if (PREDICT_FALSE (fe->flags & VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS))
+	{
+	  vec[0].base = (void *) (b[0]->data + fe->crypto_start_offset);
+	  vec[0].len = fe->crypto_total_length;
+	  if (cmt->iova_mode == RTE_IOVA_VA)
+	    vec[0].iova = pointer_to_uword (vec[0].base);
+	  else
+	    vec[0].iova = vlib_buffer_get_pa (vm, b[0]) + fe->crypto_start_offset;
+
+	  vec[0].len =
+	    clib_min ((u32) (b[0]->current_data + b[0]->current_length - fe->crypto_start_offset),
+		      fe->crypto_total_length);
 	  status =
 	    cryptodev_frame_build_sgl (vm, cmt->iova_mode, vec, &n_seg, b[0],
 				       fe->crypto_total_length - vec[0].len);
 	  if (status < 0)
 	    goto error_exit;
 	}
+      else
+	{
+	  vec[0].base = (void *) (b[0]->data + fe->crypto_start_offset);
+	  vec[0].len = fe->crypto_total_length;
+	  if (cmt->iova_mode == RTE_IOVA_VA)
+	    vec[0].iova = pointer_to_uword (vec[0].base);
+	  else
+	    vec[0].iova = vlib_buffer_get_pa (vm, b[0]) + fe->crypto_start_offset;
+	}
 
       status =
-	rte_cryptodev_raw_enqueue (cet->ctx, vec, n_seg, cofs, &iv_vec,
-				   &digest_vec, &aad_vec, (void *) frame);
+	rte_cryptodev_raw_enqueue (cet->ctx, vec, n_seg, cofs, is_gmac ? 0 : &iv_vec, &digest_vec,
+				   is_gmac ? &iv_vec : &aad_vec, (void *) frame);
       if (PREDICT_FALSE (status < 0))
 	goto error_exit;
 
@@ -551,56 +644,92 @@ static_always_inline int
 cryptodev_raw_enq_aead_aad_0_enc (vlib_main_t *vm,
 				  vnet_crypto_async_frame_t *frame)
 {
-  return cryptodev_raw_aead_enqueue (vm, frame, CRYPTODEV_OP_TYPE_ENCRYPT, 0);
+  return cryptodev_raw_aead_enqueue (vm, frame, VNET_CRYPTO_OP_TYPE_ENCRYPT, 0);
 }
 
 static_always_inline int
 cryptodev_raw_enq_aead_aad_8_enc (vlib_main_t *vm,
 				  vnet_crypto_async_frame_t *frame)
 {
-  return cryptodev_raw_aead_enqueue (vm, frame, CRYPTODEV_OP_TYPE_ENCRYPT, 8);
+  return cryptodev_raw_aead_enqueue (vm, frame, VNET_CRYPTO_OP_TYPE_ENCRYPT, 8);
 }
 static_always_inline int
 cryptodev_raw_enq_aead_aad_12_enc (vlib_main_t *vm,
 				   vnet_crypto_async_frame_t *frame)
 {
-  return cryptodev_raw_aead_enqueue (vm, frame, CRYPTODEV_OP_TYPE_ENCRYPT, 12);
+  return cryptodev_raw_aead_enqueue (vm, frame, VNET_CRYPTO_OP_TYPE_ENCRYPT, 12);
 }
 
 static_always_inline int
 cryptodev_raw_enq_aead_aad_0_dec (vlib_main_t *vm,
 				  vnet_crypto_async_frame_t *frame)
 {
-  return cryptodev_raw_aead_enqueue (vm, frame, CRYPTODEV_OP_TYPE_DECRYPT, 0);
+  return cryptodev_raw_aead_enqueue (vm, frame, VNET_CRYPTO_OP_TYPE_DECRYPT, 0);
 }
 
 static_always_inline int
 cryptodev_raw_enq_aead_aad_8_dec (vlib_main_t *vm,
 				  vnet_crypto_async_frame_t *frame)
 {
-  return cryptodev_raw_aead_enqueue (vm, frame, CRYPTODEV_OP_TYPE_DECRYPT, 8);
+  return cryptodev_raw_aead_enqueue (vm, frame, VNET_CRYPTO_OP_TYPE_DECRYPT, 8);
 }
 static_always_inline int
 cryptodev_raw_enq_aead_aad_12_dec (vlib_main_t *vm,
 				   vnet_crypto_async_frame_t *frame)
 {
-  return cryptodev_raw_aead_enqueue (vm, frame, CRYPTODEV_OP_TYPE_DECRYPT, 12);
+  return cryptodev_raw_aead_enqueue (vm, frame, VNET_CRYPTO_OP_TYPE_DECRYPT, 12);
 }
 
 static_always_inline int
 cryptodev_raw_enq_linked_alg_enc (vlib_main_t *vm,
 				  vnet_crypto_async_frame_t *frame)
 {
-  return cryptodev_frame_linked_algs_enqueue (vm, frame,
-					      CRYPTODEV_OP_TYPE_ENCRYPT);
+  return cryptodev_frame_linked_algs_enqueue (vm, frame, VNET_CRYPTO_OP_TYPE_ENCRYPT);
 }
 
 static_always_inline int
 cryptodev_raw_enq_linked_alg_dec (vlib_main_t *vm,
 				  vnet_crypto_async_frame_t *frame)
 {
-  return cryptodev_frame_linked_algs_enqueue (vm, frame,
-					      CRYPTODEV_OP_TYPE_DECRYPT);
+  return cryptodev_frame_linked_algs_enqueue (vm, frame, VNET_CRYPTO_OP_TYPE_DECRYPT);
+}
+
+static_always_inline int
+cryptodev_raw_enq_hmac (vlib_main_t *vm, vnet_crypto_async_frame_t *frame)
+{
+  return cryptodev_frame_linked_algs_enqueue (vm, frame, VNET_CRYPTO_OP_TYPE_HMAC);
+}
+
+static vnet_crypto_frame_enq_fn_t *
+cryptodev_raw_get_enq_fn (const vnet_crypto_alg_data_t *ad, vnet_crypto_op_type_t op_type)
+{
+  u8 is_enc = op_type == VNET_CRYPTO_OP_TYPE_ENCRYPT;
+
+  if (ad->alg_type == VNET_CRYPTO_ALG_T_AEAD)
+    {
+      switch (ad->aad_len)
+	{
+	case 0:
+	  return is_enc ? cryptodev_raw_enq_aead_aad_0_enc : cryptodev_raw_enq_aead_aad_0_dec;
+	case 8:
+	  return is_enc ? cryptodev_raw_enq_aead_aad_8_enc : cryptodev_raw_enq_aead_aad_8_dec;
+	case 12:
+	  return is_enc ? cryptodev_raw_enq_aead_aad_12_enc : cryptodev_raw_enq_aead_aad_12_dec;
+	default:
+	  return 0;
+	}
+    }
+
+  if (ad->alg_type == VNET_CRYPTO_ALG_T_COMBINED)
+    return is_enc ? cryptodev_raw_enq_linked_alg_enc : cryptodev_raw_enq_linked_alg_dec;
+
+  if (ad->alg_type == VNET_CRYPTO_ALG_T_CYPHER)
+    return is_enc ? cryptodev_raw_enq_linked_alg_enc : cryptodev_raw_enq_linked_alg_dec;
+
+  if (ad->alg_type == VNET_CRYPTO_ALG_T_INTEG && op_type == VNET_CRYPTO_OP_TYPE_HMAC)
+    return cryptodev_raw_enq_hmac;
+
+  return 0;
 }
 
 clib_error_t *
@@ -610,12 +739,9 @@ cryptodev_register_raw_hdl (vlib_main_t *vm, u32 eidx)
   cryptodev_engine_thread_t *cet;
   cryptodev_inst_t *cinst;
   struct rte_cryptodev_info info;
-  struct rte_cryptodev_sym_capability_idx cap_auth_idx;
-  struct rte_cryptodev_sym_capability_idx cap_cipher_idx;
-  struct rte_cryptodev_sym_capability_idx cap_aead_idx;
   u32 support_raw_api = 1, max_ctx_size = 0;
   clib_error_t *error = 0;
-  u8 ref_cnt = 0;
+  u32 ref_cnt = 0;
 
   vec_foreach (cinst, cmt->cryptodev_inst)
     {
@@ -659,44 +785,10 @@ cryptodev_register_raw_hdl (vlib_main_t *vm, u32 eidx)
 	}
       vec_free (name);
     }
+  ref_cnt = cryptodev_register_async_algs (vm, eidx, cryptodev_raw_get_enq_fn, "raw");
 
-#define _(a, b, c, d, e, f, g)                                                \
-  cap_aead_idx.type = RTE_CRYPTO_SYM_XFORM_AEAD;                              \
-  cap_aead_idx.algo.aead = RTE_CRYPTO_##b##_##c;                              \
-  if (cryptodev_check_cap_support (&cap_aead_idx, g, e, f))                   \
-    {                                                                         \
-      vnet_crypto_register_enqueue_handler (                                  \
-	vm, eidx, VNET_CRYPTO_OP_##a##_TAG##e##_AAD##f##_ENC,                 \
-	cryptodev_raw_enq_aead_aad_##f##_enc);                                \
-      vnet_crypto_register_enqueue_handler (                                  \
-	vm, eidx, VNET_CRYPTO_OP_##a##_TAG##e##_AAD##f##_DEC,                 \
-	cryptodev_raw_enq_aead_aad_##f##_dec);                                \
-      ref_cnt++;                                                              \
-    }
-  foreach_vnet_aead_crypto_conversion
-#undef _
-
-#define _(a, b, c, d, e)                                                      \
-  cap_auth_idx.type = RTE_CRYPTO_SYM_XFORM_AUTH;                              \
-  cap_auth_idx.algo.auth = RTE_CRYPTO_AUTH_##d##_HMAC;                        \
-  cap_cipher_idx.type = RTE_CRYPTO_SYM_XFORM_CIPHER;                          \
-  cap_cipher_idx.algo.cipher = RTE_CRYPTO_CIPHER_##b;                         \
-  if (cryptodev_check_cap_support (&cap_cipher_idx, c, -1, -1) &&             \
-      cryptodev_check_cap_support (&cap_auth_idx, -1, e, -1))                 \
-    {                                                                         \
-      vnet_crypto_register_enqueue_handler (                                  \
-	vm, eidx, VNET_CRYPTO_OP_##a##_##d##_TAG##e##_ENC,                    \
-	cryptodev_raw_enq_linked_alg_enc);                                    \
-      vnet_crypto_register_enqueue_handler (                                  \
-	vm, eidx, VNET_CRYPTO_OP_##a##_##d##_TAG##e##_DEC,                    \
-	cryptodev_raw_enq_linked_alg_dec);                                    \
-      ref_cnt++;                                                              \
-    }
-    foreach_cryptodev_link_async_alg
-#undef _
-
-    if (ref_cnt)
-      vnet_crypto_register_dequeue_handler (vm, eidx, cryptodev_raw_dequeue);
+  if (ref_cnt)
+    vnet_crypto_register_dequeue_handler (vm, eidx, cryptodev_raw_dequeue);
 
   cmt->is_raw_api = 1;
 

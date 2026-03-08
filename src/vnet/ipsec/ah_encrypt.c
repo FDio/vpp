@@ -164,7 +164,7 @@ ah_encrypt_inline (vlib_main_t * vm,
       ssize_t adv;
       ih0 = vlib_buffer_get_current (b[0]);
 
-      if (PREDICT_TRUE (ort->is_tunnel))
+      if (PREDICT_TRUE (ort->cached.is_tunnel))
 	{
 	  if (is_ip6)
 	    adv = -sizeof (ip6_and_ah_header_t);
@@ -176,11 +176,11 @@ ah_encrypt_inline (vlib_main_t * vm,
 	  adv = -sizeof (ah_header_t);
 	}
 
-      icv_size = ort->integ_icv_size;
+      icv_size = ort->cached.integ_icv_size;
       const u8 padding_len = ah_calc_icv_padding_len (icv_size, is_ip6);
       adv -= padding_len;
       /* transport mode save the eth header before it is overwritten */
-      if (PREDICT_FALSE (!ort->is_tunnel))
+      if (PREDICT_FALSE (!ort->cached.is_tunnel))
 	{
 	  const u32 l2_len = vnet_buffer (b[0])->ip.save_rewrite_length;
 	  u8 *l2_hdr_in = (u8 *) vlib_buffer_get_current (b[0]) - l2_len;
@@ -203,7 +203,7 @@ ah_encrypt_inline (vlib_main_t * vm,
 	  oh6_0->ip6.ip_version_traffic_class_and_flow_label =
 	    ih6_0->ip6.ip_version_traffic_class_and_flow_label;
 
-	  if (PREDICT_FALSE (ort->is_tunnel))
+	  if (PREDICT_FALSE (ort->cached.is_tunnel))
 	    {
 	      ip6_set_dscp_network_order (&oh6_0->ip6, ort->t_dscp);
 	      tunnel_encap_fixup_6o6 (ort->tunnel_flags, &ih6_0->ip6,
@@ -212,7 +212,7 @@ ah_encrypt_inline (vlib_main_t * vm,
 	  pd->ip_version_traffic_class_and_flow_label =
 	    oh6_0->ip6.ip_version_traffic_class_and_flow_label;
 
-	  if (PREDICT_TRUE (ort->is_tunnel))
+	  if (PREDICT_TRUE (ort->cached.is_tunnel))
 	    {
 	      next_hdr_type = IP_PROTOCOL_IPV6;
 	    }
@@ -225,7 +225,7 @@ ah_encrypt_inline (vlib_main_t * vm,
 	  clib_memcpy_fast (&oh6_0->ip6, &ip6_hdr_template, 8);
 	  oh6_0->ah.reserved = 0;
 	  oh6_0->ah.nexthdr = next_hdr_type;
-	  oh6_0->ah.spi = ort->spi_be;
+	  oh6_0->ah.spi = ort->cached.spi_be;
 	  oh6_0->ah.seq_no = clib_net_to_host_u32 (ort->seq64);
 	  oh6_0->ip6.payload_length =
 	    clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b[0]) -
@@ -239,7 +239,7 @@ ah_encrypt_inline (vlib_main_t * vm,
 	  oh0 = vlib_buffer_get_current (b[0]);
 	  pd->ttl = ih0->ip4.ttl;
 
-	  if (PREDICT_FALSE (ort->is_tunnel))
+	  if (PREDICT_FALSE (ort->cached.is_tunnel))
 	    {
 	      if (ort->t_dscp)
 		pd->tos = ort->t_dscp << 2;
@@ -263,7 +263,7 @@ ah_encrypt_inline (vlib_main_t * vm,
 	  pd->current_data = b[0]->current_data;
 	  clib_memset (oh0, 0, sizeof (ip4_and_ah_header_t));
 
-	  if (PREDICT_TRUE (ort->is_tunnel))
+	  if (PREDICT_TRUE (ort->cached.is_tunnel))
 	    {
 	      next_hdr_type = IP_PROTOCOL_IP_IN_IP;
 	    }
@@ -279,14 +279,14 @@ ah_encrypt_inline (vlib_main_t * vm,
 
 	  oh0->ip4.length =
 	    clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b[0]));
-	  oh0->ah.spi = ort->spi_be;
+	  oh0->ah.spi = ort->cached.spi_be;
 	  oh0->ah.seq_no = clib_net_to_host_u32 (ort->seq64);
 	  oh0->ah.nexthdr = next_hdr_type;
 	  oh0->ah.hdrlen =
 	    (sizeof (ah_header_t) + icv_size + padding_len) / 4 - 2;
 	}
 
-      if (PREDICT_TRUE (!is_ip6 && ort->is_tunnel && !ort->is_tunnel_v6))
+      if (PREDICT_TRUE (!is_ip6 && ort->cached.is_tunnel && !ort->cached.is_tunnel_v6))
 	{
 	  clib_memcpy_fast (&oh0->ip4.address_pair, &ort->ip4_hdr.address_pair,
 			    sizeof (ip4_address_pair_t));
@@ -294,7 +294,7 @@ ah_encrypt_inline (vlib_main_t * vm,
 	  next[0] = ort->dpo.dpoi_next_node;
 	  vnet_buffer (b[0])->ip.adj_index[VLIB_TX] = ort->dpo.dpoi_index;
 	}
-      else if (is_ip6 && ort->is_tunnel && ort->is_tunnel_v6)
+      else if (is_ip6 && ort->cached.is_tunnel && ort->cached.is_tunnel_v6)
 	{
 	  clib_memcpy_fast (&oh6_0->ip6.src_address, &ort->ip6_hdr.src_address,
 			    sizeof (ip6_address_t) * 2);
@@ -302,13 +302,11 @@ ah_encrypt_inline (vlib_main_t * vm,
 	  vnet_buffer (b[0])->ip.adj_index[VLIB_TX] = ort->dpo.dpoi_index;
 	}
 
-      if (PREDICT_TRUE (ort->integ_icv_size && !ort->is_aead))
+      if (PREDICT_TRUE (ort->cached.integ_icv_size && !ort->cached.is_aead))
 	{
 	  vnet_crypto_op_t *op;
 	  vec_add2_aligned (ptd->crypto_ops, op, 1, CLIB_CACHE_LINE_BYTES);
-	  vnet_crypto_key_t *key = vnet_crypto_get_key (ort->key_index);
-	  if (key->is_link)
-	    key = vnet_crypto_get_key (key->index_integ);
+	  vnet_crypto_key_t *key = ort->key;
 	  vnet_crypto_op_id_t *op_ids = vnet_crypto_ops_from_alg (key->alg);
 	  vnet_crypto_op_init (op, op_ids[VNET_CRYPTO_OP_TYPE_HMAC]);
 	  op->integ_src = vlib_buffer_get_current (b[0]);
@@ -317,9 +315,9 @@ ah_encrypt_inline (vlib_main_t * vm,
 	    sizeof (ah_header_t);
 	  clib_memset (op->digest, 0, icv_size);
 	  op->digest_len = icv_size;
-	  op->key_index = key->index;
+	  op->key = key;
 	  op->user_data = b - bufs;
-	  if (ort->use_esn)
+	  if (ort->cached.use_esn)
 	    {
 	      *(u32u *) (op->integ_src + b[0]->current_length) =
 		clib_host_to_net_u32 (ort->seq64 >> 32);
@@ -327,7 +325,7 @@ ah_encrypt_inline (vlib_main_t * vm,
 	    }
 	}
 
-      if (!ort->is_tunnel)
+      if (!ort->cached.is_tunnel)
 	{
 	  next[0] = AH_ENCRYPT_NEXT_INTERFACE_OUTPUT;
 	  vlib_buffer_advance (b[0], -sizeof (ethernet_header_t));
