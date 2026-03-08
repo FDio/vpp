@@ -18,18 +18,18 @@ class TestCrypto(VppAsfTestCase):
 
     def test_crypto(self):
         """Crypto Unit Tests"""
-        error = self.vapi.cli("test crypto")
+        error = self.vapi.cli("test crypto quiet")
 
         if error:
             self.logger.critical(error)
-        self.assertNotIn("FAIL", error)
+        self.assertEqual("OK", error.strip())
 
     def test_crypto_perf(self):
         """Crypto+HMAC Performance Tests"""
 
         algorithms = [
-            "aes-128-cbc-hmac-sha-1",
-            "aes-128-ctr-hmac-sha-1",
+            "aes-128-cbc-sha1-160",
+            "aes-128-ctr-sha1-160",
         ]
         buffer_sizes = [64, 1024, 2048]
 

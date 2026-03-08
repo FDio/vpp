@@ -254,6 +254,110 @@ CLIB_MULTIARCH_FN (vlib_buffer_enqueue_to_single_next_with_aux_fn)
 }
 CLIB_MARCH_FN_REGISTRATION (vlib_buffer_enqueue_to_single_next_with_aux_fn);
 
+static_always_inline void
+vlib_buffer_enqueue_to_single_next_aux64_fn_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+						    u32 *buffers, u64 *aux_data, u16 next_index,
+						    u32 count)
+{
+  u32 *to_next, n_left_to_next, n_enq;
+  u64 *to_next_aux;
+
+  vlib_get_next_frame_with_aux (vm, node, next_index, to_next, to_next_aux, n_left_to_next);
+
+  if (PREDICT_TRUE (n_left_to_next >= count))
+    {
+      vlib_buffer_copy_indices (to_next, buffers, count);
+      clib_memcpy_fast (to_next_aux, aux_data, count * sizeof (aux_data[0]));
+      n_left_to_next -= count;
+      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+      return;
+    }
+
+  n_enq = n_left_to_next;
+next:
+  vlib_buffer_copy_indices (to_next, buffers, n_enq);
+  clib_memcpy_fast (to_next_aux, aux_data, n_enq * sizeof (aux_data[0]));
+  n_left_to_next -= n_enq;
+
+  if (PREDICT_FALSE (count > n_enq))
+    {
+      count -= n_enq;
+      buffers += n_enq;
+      aux_data += n_enq;
+
+      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+      vlib_get_next_frame_with_aux (vm, node, next_index, to_next, to_next_aux, n_left_to_next);
+      n_enq = clib_min (n_left_to_next, count);
+      goto next;
+    }
+  vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+}
+
+static_always_inline void
+vlib_buffer_enqueue_to_single_next_aux64_and_scalar_fn_inline (vlib_main_t *vm,
+							       vlib_node_runtime_t *node,
+							       u32 *buffers, u64 *aux_data,
+							       void *scalar_data, u16 scalar_size,
+							       u16 next_index, u32 count)
+{
+  u32 *to_next, n_left_to_next, n_enq;
+  u64 *to_next_aux;
+  vlib_next_frame_t *nf;
+
+  vlib_get_next_frame_with_aux (vm, node, next_index, to_next, to_next_aux, n_left_to_next);
+  nf = vlib_node_runtime_get_next_frame (vm, node, next_index);
+  clib_memcpy_fast (vlib_frame_scalar_args (nf->frame), scalar_data, scalar_size);
+
+  if (PREDICT_TRUE (n_left_to_next >= count))
+    {
+      vlib_buffer_copy_indices (to_next, buffers, count);
+      clib_memcpy_fast (to_next_aux, aux_data, count * sizeof (aux_data[0]));
+      n_left_to_next -= count;
+      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+      return;
+    }
+
+  n_enq = n_left_to_next;
+next:
+  vlib_buffer_copy_indices (to_next, buffers, n_enq);
+  clib_memcpy_fast (to_next_aux, aux_data, n_enq * sizeof (aux_data[0]));
+  n_left_to_next -= n_enq;
+
+  if (PREDICT_FALSE (count > n_enq))
+    {
+      count -= n_enq;
+      buffers += n_enq;
+      aux_data += n_enq;
+
+      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+      vlib_get_next_frame_with_aux (vm, node, next_index, to_next, to_next_aux, n_left_to_next);
+      nf = vlib_node_runtime_get_next_frame (vm, node, next_index);
+      clib_memcpy_fast (vlib_frame_scalar_args (nf->frame), scalar_data, scalar_size);
+      n_enq = clib_min (n_left_to_next, count);
+      goto next;
+    }
+  vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+}
+
+void __clib_section (".vlib_buffer_enqueue_to_single_next_with_aux64_fn")
+CLIB_MULTIARCH_FN (vlib_buffer_enqueue_to_single_next_with_aux64_fn)
+(vlib_main_t *vm, vlib_node_runtime_t *node, u32 *buffers, u64 *aux_data, u16 next_index, u32 count)
+{
+  vlib_buffer_enqueue_to_single_next_aux64_fn_inline (vm, node, buffers, aux_data, next_index,
+						      count);
+}
+CLIB_MARCH_FN_REGISTRATION (vlib_buffer_enqueue_to_single_next_with_aux64_fn);
+
+void __clib_section (".vlib_buffer_enqueue_to_single_next_with_aux64_and_scalar_fn")
+CLIB_MULTIARCH_FN (vlib_buffer_enqueue_to_single_next_with_aux64_and_scalar_fn)
+(vlib_main_t *vm, vlib_node_runtime_t *node, u32 *buffers, u64 *aux_data, void *scalar_data,
+ u16 scalar_size, u16 next_index, u32 count)
+{
+  vlib_buffer_enqueue_to_single_next_aux64_and_scalar_fn_inline (
+    vm, node, buffers, aux_data, scalar_data, scalar_size, next_index, count);
+}
+CLIB_MARCH_FN_REGISTRATION (vlib_buffer_enqueue_to_single_next_with_aux64_and_scalar_fn);
+
 static inline vlib_frame_queue_elt_t *
 vlib_get_frame_queue_elt (vlib_frame_queue_main_t *fqm, u32 index,
 			  int dont_wait)
@@ -577,6 +681,10 @@ vlib_buffer_funcs_init (vlib_main_t *vm)
     CLIB_MARCH_FN_POINTER (vlib_buffer_enqueue_to_single_next_fn);
   bfm->buffer_enqueue_to_single_next_with_aux_fn =
     CLIB_MARCH_FN_POINTER (vlib_buffer_enqueue_to_single_next_with_aux_fn);
+  bfm->buffer_enqueue_to_single_next_with_aux64_fn =
+    CLIB_MARCH_FN_POINTER (vlib_buffer_enqueue_to_single_next_with_aux64_fn);
+  bfm->buffer_enqueue_to_single_next_with_aux64_and_scalar_fn =
+    CLIB_MARCH_FN_POINTER (vlib_buffer_enqueue_to_single_next_with_aux64_and_scalar_fn);
   bfm->buffer_enqueue_to_thread_fn =
     CLIB_MARCH_FN_POINTER (vlib_buffer_enqueue_to_thread_fn);
   bfm->buffer_enqueue_to_thread_with_aux_fn =

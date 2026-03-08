@@ -24,8 +24,6 @@
 #define IPSEC_FP_IP4_HASHES_POOL_SIZE 128
 #define IPSEC_FP_IP6_HASHES_POOL_SIZE 128
 
-typedef clib_error_t *(*enable_disable_cb_t) (int is_enable);
-
 typedef struct
 {
   u64 key[2]; // 16 bytes
@@ -60,31 +58,10 @@ typedef union
 
 typedef struct
 {
-  const vnet_crypto_op_id_t enc_op_id;
-  const vnet_crypto_op_id_t dec_op_id;
-  const vnet_crypto_alg_t alg;
-  const u8 iv_size;
-  const u8 block_align;
-  const u8 icv_size;
-  const u8 is_aead : 1;
-  const u8 is_ctr : 1;
-  const u8 is_null_gmac : 1;
-} ipsec_main_crypto_alg_t;
-
-typedef struct
-{
-  const vnet_crypto_op_id_t op_id;
-  const vnet_crypto_alg_t alg;
-  const u8 icv_size;
-} ipsec_main_integ_alg_t;
-
-typedef struct
-{
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   vnet_crypto_op_t *crypto_ops;
   vnet_crypto_op_t *chained_crypto_ops;
   vnet_crypto_op_chunk_t *chunks;
-  vnet_crypto_async_frame_t **async_frames;
 } ipsec_per_thread_data_t;
 typedef struct
 {
@@ -157,12 +134,6 @@ typedef struct
   u32 esp6_decrypt_tun_next_index;
   u32 ah6_encrypt_next_index;
   u32 ah6_decrypt_next_index;
-
-  /* crypto alg data */
-  ipsec_main_crypto_alg_t crypto_algs[IPSEC_CRYPTO_N_ALG];
-
-  /* crypto integ data */
-  ipsec_main_integ_alg_t integ_algs[IPSEC_INTEG_N_ALG];
 
   /* per-thread data */
   ipsec_per_thread_data_t *ptd;
@@ -272,14 +243,6 @@ typedef struct
 } ipsec_output_trace_t;
 
 extern ipsec_main_t ipsec_main;
-
-u8 *format_esp_encrypt_trace (u8 *s, va_list *args);
-u8 *format_esp_post_encrypt_trace (u8 *s, va_list *args);
-
-clib_error_t *ipsec_add_del_sa_sess_cb (ipsec_main_t * im, u32 sa_index,
-					u8 is_add);
-
-clib_error_t *ipsec_check_support_cb (ipsec_main_t * im, ipsec_sa_t * sa);
 
 extern vlib_node_registration_t ipsec4_tun_input_node;
 extern vlib_node_registration_t ipsec6_tun_input_node;

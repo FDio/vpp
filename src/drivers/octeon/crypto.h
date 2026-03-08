@@ -2,6 +2,7 @@
  * Copyright (c) 2024 Marvell.
  * SPDX-License-Identifier: Apache-2.0
  * https://spdx.org/licenses/Apache-2.0.html
+ * Copyright (c) 2026 Cisco and/or its affiliates.
  */
 
 #ifndef _CRYPTO_H_
@@ -15,53 +16,6 @@
 
 #define OCT_CPT_LF_MIN_NB_DESC 1024
 #define OCT_CPT_LF_MAX_NB_DESC 128000
-
-/* CRYPTO_ID, KEY_LENGTH_IN_BYTES, TAG_LEN, AAD_LEN */
-#define foreach_oct_crypto_aead_async_alg                                     \
-  _ (AES_128_GCM, 16, 16, 8)                                                  \
-  _ (AES_128_GCM, 16, 16, 12)                                                 \
-  _ (AES_192_GCM, 24, 16, 8)                                                  \
-  _ (AES_192_GCM, 24, 16, 12)                                                 \
-  _ (AES_256_GCM, 32, 16, 8)                                                  \
-  _ (AES_256_GCM, 32, 16, 12)                                                 \
-  _ (CHACHA20_POLY1305, 32, 16, 8)                                            \
-  _ (CHACHA20_POLY1305, 32, 16, 12)                                           \
-  _ (CHACHA20_POLY1305, 32, 16, 0)
-
-/* CRYPTO_ID, INTEG_ID, KEY_LENGTH_IN_BYTES, DIGEST_LEN */
-#define foreach_oct_crypto_link_async_alg                                     \
-  _ (AES_128_CBC, SHA1, 16, 12)                                               \
-  _ (AES_192_CBC, SHA1, 24, 12)                                               \
-  _ (AES_256_CBC, SHA1, 32, 12)                                               \
-  _ (AES_128_CBC, SHA256, 16, 16)                                             \
-  _ (AES_192_CBC, SHA256, 24, 16)                                             \
-  _ (AES_256_CBC, SHA256, 32, 16)                                             \
-  _ (AES_128_CBC, SHA384, 16, 24)                                             \
-  _ (AES_192_CBC, SHA384, 24, 24)                                             \
-  _ (AES_256_CBC, SHA384, 32, 24)                                             \
-  _ (AES_128_CBC, SHA512, 16, 32)                                             \
-  _ (AES_192_CBC, SHA512, 24, 32)                                             \
-  _ (AES_256_CBC, SHA512, 32, 32)                                             \
-  _ (AES_128_CBC, MD5, 16, 12)                                                \
-  _ (AES_192_CBC, MD5, 24, 12)                                                \
-  _ (AES_256_CBC, MD5, 32, 12)                                                \
-  _ (3DES_CBC, MD5, 24, 12)                                                   \
-  _ (3DES_CBC, SHA1, 24, 12)                                                  \
-  _ (3DES_CBC, SHA256, 24, 16)                                                \
-  _ (3DES_CBC, SHA384, 24, 24)                                                \
-  _ (3DES_CBC, SHA512, 24, 32)                                                \
-  _ (AES_128_CTR, SHA1, 16, 12)                                               \
-  _ (AES_192_CTR, SHA1, 24, 12)                                               \
-  _ (AES_256_CTR, SHA1, 32, 12)                                               \
-  _ (AES_128_CTR, SHA256, 16, 16)                                             \
-  _ (AES_192_CTR, SHA256, 24, 16)                                             \
-  _ (AES_256_CTR, SHA256, 32, 16)                                             \
-  _ (AES_128_CTR, SHA384, 16, 24)                                             \
-  _ (AES_192_CTR, SHA384, 24, 24)                                             \
-  _ (AES_256_CTR, SHA384, 32, 24)                                             \
-  _ (AES_128_CTR, SHA512, 16, 32)                                             \
-  _ (AES_192_CTR, SHA512, 24, 32)                                             \
-  _ (AES_256_CTR, SHA512, 32, 32)
 
 #define OCT_MOD_INC(i, l) ((i) == (l - 1) ? (i) = 0 : (i)++)
 
@@ -96,18 +50,10 @@ typedef struct
   u16 aes_gcm : 1;
   /** IV length in bytes */
   u8 iv_length;
-  /** Auth IV length in bytes */
-  u8 auth_iv_length;
-  /** IV offset in bytes */
-  u16 iv_offset;
-  /** Auth IV offset in bytes */
-  u16 auth_iv_offset;
   /** CPT inst word 7 */
   u64 cpt_inst_w7;
   /* initialise as part of first packet */
   u8 initialised;
-  /* store link key index in case of linked algo */
-  vnet_crypto_key_index_t key_index;
   oct_crypto_dev_t *crypto_dev;
   struct roc_se_ctx cpt_ctx;
 } oct_crypto_sess_t;
@@ -115,8 +61,7 @@ typedef struct
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-  oct_crypto_sess_t *sess;
-  oct_crypto_dev_t *crypto_dev;
+  oct_crypto_sess_t *sess[VNET_CRYPTO_OP_N_TYPES];
 } oct_crypto_key_t;
 
 typedef struct oct_crypto_scatter_gather
@@ -131,19 +76,6 @@ typedef struct
   volatile union cpt_res_s res;
   /** Frame pointer */
   vnet_crypto_async_frame_t *frame;
-  /** Async frame element */
-  vnet_crypto_async_frame_elt_t *fe;
-  /** AAD meta data */
-  u8 aad[8];
-  /** IV meta data */
-  u8 iv[16];
-  /** Digest len */
-  u8 mac_len;
-  /** aead */
-  bool aead_algo;
-  /** Set when encrypting linked algo with esn.
-   * To move digest data */
-  bool esn_enabled;
   /** Set if this is last element in frame */
   bool last_elts;
   /** Index of element in frame */
@@ -171,46 +103,14 @@ typedef struct
 typedef struct
 {
   oct_crypto_dev_t *crypto_dev[OCT_MAX_N_CPT_DEV];
-  oct_crypto_key_t *keys[VNET_CRYPTO_OP_N_TYPES];
   oct_crypto_pending_queue_t *pend_q;
   int n_cpt;
   u8 started;
 } oct_crypto_main_t;
 
-static_always_inline bool
-oct_hw_ctx_cache_enable (void)
-{
-  return roc_errata_cpt_hang_on_mixed_ctx_val () ||
-	 roc_model_is_cn10ka_b0 () || roc_model_is_cn10kb_a0 ();
-}
-
 extern oct_crypto_main_t oct_crypto_main;
 
-void oct_crypto_key_del_handler (vlib_main_t *vm,
-				 vnet_crypto_key_index_t key_index);
-
-void oct_crypto_key_add_handler (vlib_main_t *vm,
-				 vnet_crypto_key_index_t key_index);
-
-void oct_crypto_key_handler (vnet_crypto_key_op_t kop,
-			     vnet_crypto_key_index_t idx);
-
-int oct_crypto_enqueue_linked_alg_enc (vlib_main_t *vm,
-				       vnet_crypto_async_frame_t *frame);
-int oct_crypto_enqueue_linked_alg_dec (vlib_main_t *vm,
-				       vnet_crypto_async_frame_t *frame);
-int oct_crypto_enqueue_aead_aad_8_enc (vlib_main_t *vm,
-				       vnet_crypto_async_frame_t *frame);
-int oct_crypto_enqueue_aead_aad_12_enc (vlib_main_t *vm,
-					vnet_crypto_async_frame_t *frame);
-int oct_crypto_enqueue_aead_aad_0_enc (vlib_main_t *vm,
-				       vnet_crypto_async_frame_t *frame);
-int oct_crypto_enqueue_aead_aad_8_dec (vlib_main_t *vm,
-				       vnet_crypto_async_frame_t *frame);
-int oct_crypto_enqueue_aead_aad_12_dec (vlib_main_t *vm,
-					vnet_crypto_async_frame_t *frame);
-int oct_crypto_enqueue_aead_aad_0_dec (vlib_main_t *vm,
-				       vnet_crypto_async_frame_t *frame);
+void oct_crypto_key_change_handler (vnet_crypto_ctx_t *ctx, vnet_crypto_key_change_args_t *args);
 vnet_crypto_async_frame_t *
 oct_crypto_frame_dequeue (vlib_main_t *vm, u32 *nb_elts_processed,
 			  clib_thread_index_t *enqueue_thread_idx);

@@ -415,6 +415,28 @@ vlib_buffer_enqueue_to_single_next_with_aux (vlib_main_t *vm,
   (fn) (vm, node, buffers, aux_data, next_index, count);
 }
 
+static_always_inline void
+vlib_buffer_enqueue_to_single_next_with_aux64 (vlib_main_t *vm, vlib_node_runtime_t *node,
+					       u32 *buffers, u64 *aux_data, u16 next_index,
+					       u32 count)
+{
+  vlib_buffer_enqueue_to_single_next_with_aux64_fn_t *fn;
+  fn = vlib_buffer_func_main.buffer_enqueue_to_single_next_with_aux64_fn;
+  (fn) (vm, node, buffers, aux_data, next_index, count);
+}
+
+static_always_inline void
+vlib_buffer_enqueue_to_single_next_with_aux64_and_scalar_size (vlib_main_t *vm,
+							       vlib_node_runtime_t *node,
+							       u32 *buffers, u64 *aux_data,
+							       void *scalar_data, u16 scalar_size,
+							       u16 next_index, u32 count)
+{
+  vlib_buffer_enqueue_to_single_next_with_aux64_and_scalar_fn_t *fn;
+  fn = vlib_buffer_func_main.buffer_enqueue_to_single_next_with_aux64_and_scalar_fn;
+  (fn) (vm, node, buffers, aux_data, scalar_data, scalar_size, next_index, count);
+}
+
 static_always_inline u32
 vlib_buffer_enqueue_to_thread (vlib_main_t *vm, vlib_node_runtime_t *node,
 			       u32 frame_queue_index, u32 *buffer_indices,

@@ -21,12 +21,24 @@ static u8 md5_tc1_digest[] = {
   0x13, 0xf4, 0x8e, 0xf8, 0x15, 0x8b, 0xfc, 0x9d
 };
 
+static u8 md5_tc1_digest_96[] = {
+  0x92, 0x94, 0x72, 0x7a, 0x36, 0x38, 0xbb, 0x1c, 0x13, 0xf4, 0x8e, 0xf8,
+};
+
 UNITTEST_REGISTER_CRYPTO_TEST (rfc_2202_md5_tc1) = {
   .name = "RFC2202 HMAC-MD5 TC1",
-  .alg = VNET_CRYPTO_ALG_HMAC_MD5,
+  .alg = VNET_CRYPTO_ALG_MD5,
   .key = TEST_DATA (md5_tc1_key),
   .plaintext = TEST_DATA (md5_tc1_data),
   .digest = TEST_DATA (md5_tc1_digest),
+};
+
+UNITTEST_REGISTER_CRYPTO_TEST (rfc_2202_md5_tc1_trunc) = {
+  .name = "RFC2202 HMAC-MD5-96 TC1-trunc",
+  .alg = VNET_CRYPTO_ALG_MD5_ICV12,
+  .key = TEST_DATA (md5_tc1_key),
+  .plaintext = TEST_DATA (md5_tc1_data),
+  .digest = TEST_DATA (md5_tc1_digest_96),
 };
 
 static char md5_tc2_key[4] = "Jefe";
@@ -40,7 +52,7 @@ static u8 md5_tc2_digest[] = {
 
 UNITTEST_REGISTER_CRYPTO_TEST (rfc_2202_md5_tc2) = {
   .name = "RFC2202 HMAC-MD5 TC2",
-  .alg = VNET_CRYPTO_ALG_HMAC_MD5,
+  .alg = VNET_CRYPTO_ALG_MD5,
   .key = TEST_DATA (md5_tc2_key),
   .plaintext = TEST_DATA (md5_tc2_data),
   .digest = TEST_DATA (md5_tc2_digest),
@@ -68,7 +80,7 @@ static u8 md5_tc3_digest[] = {
 
 UNITTEST_REGISTER_CRYPTO_TEST (rfc_2202_md5_tc3) = {
   .name = "RFC2202 HMAC-MD5 TC3",
-  .alg = VNET_CRYPTO_ALG_HMAC_MD5,
+  .alg = VNET_CRYPTO_ALG_MD5,
   .key = TEST_DATA (md5_tc3_key),
   .plaintext = TEST_DATA (md5_tc3_data),
   .digest = TEST_DATA (md5_tc3_digest),
@@ -98,7 +110,7 @@ static u8 md5_tc4_digest[] = {
 
 UNITTEST_REGISTER_CRYPTO_TEST (rfc_2202_md5_tc4) = {
   .name = "RFC2202 HMAC-MD5 TC4",
-  .alg = VNET_CRYPTO_ALG_HMAC_MD5,
+  .alg = VNET_CRYPTO_ALG_MD5,
   .key = TEST_DATA (md5_tc4_key),
   .plaintext = TEST_DATA (md5_tc4_data),
   .digest = TEST_DATA (md5_tc4_digest),
@@ -118,7 +130,7 @@ static u8 md5_tc5_digest[] = {
 
 UNITTEST_REGISTER_CRYPTO_TEST (rfc_2202_md5_tc5) = {
   .name = "RFC2202 HMAC-MD5 TC5",
-  .alg = VNET_CRYPTO_ALG_HMAC_MD5,
+  .alg = VNET_CRYPTO_ALG_MD5,
   .key = TEST_DATA (md5_tc5_key),
   .plaintext = TEST_DATA (md5_tc5_data),
   .digest = TEST_DATA (md5_tc5_digest),
@@ -147,7 +159,7 @@ static u8 md5_tc6_digest[] = {
 
 UNITTEST_REGISTER_CRYPTO_TEST (rfc_2202_md5_tc6) = {
   .name = "RFC2202 HMAC-MD5 TC6",
-  .alg = VNET_CRYPTO_ALG_HMAC_MD5,
+  .alg = VNET_CRYPTO_ALG_MD5,
   .key = TEST_DATA (md5_tc6_key),
   .plaintext = TEST_DATA (md5_tc6_data),
   .digest = TEST_DATA (md5_tc6_digest),
@@ -163,18 +175,8 @@ static u8 md5_tc7_digest[] = {
 
 UNITTEST_REGISTER_CRYPTO_TEST (rfc_2202_md5_tc7) = {
   .name = "RFC2202 HMAC-MD5 TC7",
-  .alg = VNET_CRYPTO_ALG_HMAC_MD5,
+  .alg = VNET_CRYPTO_ALG_MD5,
   .key = TEST_DATA (md5_tc6_key),
   .plaintext = TEST_DATA (md5_tc7_data),
   .digest = TEST_DATA (md5_tc7_digest),
-};
-
-UNITTEST_REGISTER_CRYPTO_TEST (rfc_2202_md5_tc7_chained) = {
-  .name = "RFC2202 HMAC-MD5 TC7 [chained]",
-  .alg = VNET_CRYPTO_ALG_HMAC_MD5,
-  .key = TEST_DATA (md5_tc6_key),
-  .digest = TEST_DATA (md5_tc7_digest),
-  .is_chained = 1,
-  .pt_chunks = { TEST_DATA_CHUNK (md5_tc7_data, 0, 40),
-		 TEST_DATA_CHUNK (md5_tc7_data, 40, 33) },
 };
