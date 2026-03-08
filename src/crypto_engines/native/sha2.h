@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0
- * Copyright (c) 2025 Cisco and/or its affiliates.
+ * Copyright (c) 2025-2026 Cisco and/or its affiliates.
  */
 
 #ifndef __sha2_h__
@@ -9,12 +9,11 @@
 #include <native/crypto_native.h>
 
 static_always_inline u32
-crypto_native_ops_hmac_sha2 (vlib_main_t *vm, vnet_crypto_op_t *ops[],
-			     u32 n_ops, vnet_crypto_op_chunk_t *chunks,
-			     clib_sha2_type_t type)
+crypto_native_ops_hmac_sha2 (vnet_crypto_op_t *ops[], vnet_crypto_key_data_t *key_data[], u32 n_ops,
+			     vnet_crypto_op_chunk_t *chunks, clib_sha2_type_t type)
 {
-  crypto_native_main_t *cm = &crypto_native_main;
   vnet_crypto_op_t *op = ops[0];
+  vnet_crypto_key_data_t **kdp = key_data;
   u32 n_left = n_ops;
   clib_sha2_hmac_ctx_t ctx;
   u8 buffer[64];
@@ -22,8 +21,7 @@ crypto_native_ops_hmac_sha2 (vlib_main_t *vm, vnet_crypto_op_t *ops[],
 
   for (; n_left; n_left--, op++)
     {
-      clib_sha2_hmac_init (
-	&ctx, type, (clib_sha2_hmac_key_data_t *) cm->key_data[op->key_index]);
+      clib_sha2_hmac_init (&ctx, type, (clib_sha2_hmac_key_data_t *) kdp[0]);
       if (op->flags & VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS)
 	{
 	  vnet_crypto_op_chunk_t *chp = chunks + op->integ_chunk_index;
@@ -67,6 +65,7 @@ crypto_native_ops_hmac_sha2 (vlib_main_t *vm, vnet_crypto_op_t *ops[],
 	}
 
       op->status = VNET_CRYPTO_OP_STATUS_COMPLETED;
+      kdp += 1;
     }
 
   return n_ops - n_fail;

@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0
- * Copyright(c) 2025 Cisco Systems, Inc.
+ * Copyright(c) 2025-2026 Cisco Systems, Inc.
  */
 
 #include <quic_quicly/quic_quicly.h>
@@ -317,7 +317,7 @@ quic_quicly_crypto_context_init_data (quic_quicly_crypto_ctx_t *crctx, quic_ctx_
 	      for (i = 0; i < qm->num_threads; i++)
 		{
 		  qqcm->per_thread_crypto_key_indices[i] = vnet_crypto_key_add (
-		    vlib_get_main (), VNET_CRYPTO_ALG_AES_256_CTR, empty_key, 32);
+		    vlib_get_main (), VNET_CRYPTO_ALG_AES_256_CTR, empty_key, 32, 0, 0);
 		}
 	    }
 	}
@@ -557,24 +557,19 @@ Exit:
 static u32
 quic_quicly_crypto_set_key (crypto_key_t *key)
 {
+  vlib_main_t *vm = vlib_get_main ();
   u8 thread_index = vlib_get_thread_index ();
   quic_quicly_crypto_main_t *qqcm = &quic_quicly_crypto_main;
   u32 key_id = qqcm->per_thread_crypto_key_indices[thread_index];
   vnet_crypto_key_t *vnet_key = vnet_crypto_get_key (key_id);
-  vnet_crypto_engine_t *engine;
-
-  vec_foreach (engine, cm->engines)
-    if (engine->key_op_handler)
-      engine->key_op_handler (VNET_CRYPTO_KEY_OP_DEL, key_id);
 
   ASSERT (key->algo);
   ASSERT (key->key_len);
   vnet_key->alg = key->algo;
-  clib_memcpy (vnet_key->data, key->key, key->key_len);
-
-  vec_foreach (engine, cm->engines)
-    if (engine->key_op_handler)
-      engine->key_op_handler (VNET_CRYPTO_KEY_OP_ADD, key_id);
+  vnet_key->cipher_key_sz = key->key_len;
+  vnet_key->integ_key_sz = 0;
+  clib_memcpy ((u8 *) vnet_crypto_get_cypher_key (vnet_key), key->key, key->key_len);
+  vnet_crypto_key_update (vm, key_id);
 
   return key_id;
 }

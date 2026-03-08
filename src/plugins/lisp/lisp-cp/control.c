@@ -1,6 +1,6 @@
 /*
  * SPDX-License-Identifier: Apache-2.0
- * Copyright (c) 2016 Cisco and/or its affiliates.
+ * Copyright (c) 2016-2026 Cisco and/or its affiliates.
  */
 
 #include <vlibmemory/api.h>
@@ -2664,9 +2664,9 @@ lisp_key_type_to_crypto_alg (lisp_key_type_t key_id)
   switch (key_id)
     {
     case HMAC_SHA_1_96:
-      return VNET_CRYPTO_ALG_HMAC_SHA1;
+    return VNET_CRYPTO_ALG_SHA1;
     case HMAC_SHA_256_128:
-      return VNET_CRYPTO_ALG_HMAC_SHA256;
+    return VNET_CRYPTO_ALG_SHA256;
     default:
       clib_warning ("unsupported encryption key type: %d!", key_id);
       break;
@@ -2708,9 +2708,8 @@ update_map_register_auth_data (map_register_hdr_t * map_reg_hdr,
   op->digest_len = 0;
   op->iv = 0;
 
-  ki = vnet_crypto_key_add (lcm->vlib_main,
-			    lisp_key_type_to_crypto_alg (key_id), key,
-			    vec_len (key));
+  ki = vnet_crypto_key_add (lcm->vlib_main, lisp_key_type_to_crypto_alg (key_id), key,
+			    vec_len (key), 0, 0);
 
   op->key_index = ki;
 
@@ -3894,9 +3893,8 @@ is_auth_data_valid (map_notify_hdr_t * h, u32 msg_len,
   op->digest_len = 0;
   op->iv = 0;
 
-  ki = vnet_crypto_key_add (lcm->vlib_main,
-			    lisp_key_type_to_crypto_alg (key_id), key,
-			    vec_len (key));
+  ki = vnet_crypto_key_add (lcm->vlib_main, lisp_key_type_to_crypto_alg (key_id), key,
+			    vec_len (key), 0, 0);
 
   op->key_index = ki;
 
