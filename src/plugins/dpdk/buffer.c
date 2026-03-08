@@ -106,9 +106,7 @@ dpdk_buffer_pool_init (vlib_main_t * vm, vlib_buffer_pool_t * bp)
       mp->populated_size++;
       nmp->populated_size++;
     }
-#if RTE_VERSION >= RTE_VERSION_NUM(22, 3, 0, 0)
   mp->flags &= ~RTE_MEMPOOL_F_NON_IO;
-#endif
 
   /* call the object initializers */
   rte_mempool_obj_iter (mp, rte_pktmbuf_init, 0);
@@ -145,13 +143,8 @@ dpdk_buffer_pool_init (vlib_main_t * vm, vlib_buffer_pool_t * bp)
 	  uword pa = (iova_mode == RTE_IOVA_VA) ?
 	    pointer_to_uword (va) : pm->page_table[i];
 
-	  if (do_vfio_map &&
-#if RTE_VERSION < RTE_VERSION_NUM(19, 11, 0, 0)
-	      rte_vfio_dma_map (pointer_to_uword (va), pa, page_sz))
-#else
-	      rte_vfio_container_dma_map (RTE_VFIO_DEFAULT_CONTAINER_FD,
-					  pointer_to_uword (va), pa, page_sz))
-#endif
+	  if (do_vfio_map && rte_vfio_container_dma_map (RTE_VFIO_DEFAULT_CONTAINER_FD,
+							 pointer_to_uword (va), pa, page_sz))
 	    do_vfio_map = 0;
 
 	  struct rte_mempool_memhdr *memhdr;

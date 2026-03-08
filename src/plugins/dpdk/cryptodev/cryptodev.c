@@ -138,14 +138,8 @@ cryptodev_session_del (cryptodev_session_t *sess)
   n_devs = rte_cryptodev_count ();
 
   for (i = 0; i < n_devs; i++)
-#if RTE_VERSION >= RTE_VERSION_NUM(22, 11, 0, 0)
     if (rte_cryptodev_sym_session_free (i, sess) == 0)
       break;
-#else
-    rte_cryptodev_sym_session_clear (i, sess);
-
-  rte_cryptodev_sym_session_free (sess);
-#endif
 }
 
 static int
@@ -328,13 +322,8 @@ allocate_session_pools (u32 numa_node,
   clib_error_t *error = NULL;
 
   name = format (0, "vcrypto_sess_pool_%u_%04x%c", numa_node, len, 0);
-#if RTE_VERSION >= RTE_VERSION_NUM(22, 11, 0, 0)
   sess_pools_elt->sess_pool = rte_cryptodev_sym_session_pool_create (
     (char *) name, CRYPTODEV_NB_SESSION, cmt->sess_sz, 0, 0, numa_node);
-#else
-  sess_pools_elt->sess_pool = rte_cryptodev_sym_session_pool_create (
-    (char *) name, CRYPTODEV_NB_SESSION, 0, 0, 0, numa_node);
-#endif
 
   if (!sess_pools_elt->sess_pool)
     {
@@ -343,30 +332,12 @@ allocate_session_pools (u32 numa_node,
     }
   vec_free (name);
 
-#if RTE_VERSION < RTE_VERSION_NUM(22, 11, 0, 0)
-  name = format (0, "crypto_sess_pool_%u_%04x%c", numa_node, len, 0);
-  sess_pools_elt->sess_priv_pool = rte_mempool_create (
-    (char *) name, CRYPTODEV_NB_SESSION * (cmt->drivers_cnt), cmt->sess_sz, 0,
-    0, NULL, NULL, NULL, NULL, numa_node, 0);
-
-  if (!sess_pools_elt->sess_priv_pool)
-    {
-      error = clib_error_return (0, "Not enough memory for mp %s", name);
-      goto clear_mempools;
-    }
-  vec_free (name);
-#endif
-
 clear_mempools:
   if (error)
     {
       vec_free (name);
       if (sess_pools_elt->sess_pool)
 	rte_mempool_free (sess_pools_elt->sess_pool);
-#if RTE_VERSION < RTE_VERSION_NUM(22, 11, 0, 0)
-      if (sess_pools_elt->sess_priv_pool)
-	rte_mempool_free (sess_pools_elt->sess_priv_pool);
-#endif
       return error;
     }
   return 0;
@@ -386,10 +357,6 @@ cryptodev_session_create (vlib_main_t *vm, vnet_crypto_key_index_t idx,
   struct rte_crypto_sym_xform xforms_enc[2] = { { 0 } };
   struct rte_crypto_sym_xform xforms_dec[2] = { { 0 } };
   cryptodev_session_t *sessions[CRYPTODEV_N_OP_TYPES] = { 0 };
-#if RTE_VERSION < RTE_VERSION_NUM(22, 11, 0, 0)
-  struct rte_mempool *sess_priv_pool;
-  struct rte_cryptodev_info dev_info;
-#endif
   u32 numa_node = vm->numa_node;
   clib_error_t *error;
   int ret = 0;
@@ -430,15 +397,6 @@ cryptodev_session_create (vlib_main_t *vm, vnet_crypto_key_index_t idx,
     }
 
   sess_pool = sess_pools_elt->sess_pool;
-#if RTE_VERSION < RTE_VERSION_NUM(22, 11, 0, 0)
-  sess_priv_pool = sess_pools_elt->sess_priv_pool;
-
-  sessions[CRYPTODEV_OP_TYPE_ENCRYPT] =
-    rte_cryptodev_sym_session_create (sess_pool);
-
-  sessions[CRYPTODEV_OP_TYPE_DECRYPT] =
-    rte_cryptodev_sym_session_create (sess_pool);
-#endif
 
   if (key->is_link)
     ret = prepare_linked_xform (xforms_enc, CRYPTODEV_OP_TYPE_ENCRYPT, key);
@@ -456,7 +414,6 @@ cryptodev_session_create (vlib_main_t *vm, vnet_crypto_key_index_t idx,
   else
     prepare_aead_xform (xforms_dec, CRYPTODEV_OP_TYPE_DECRYPT, key, aad_len);
 
-#if RTE_VERSION >= RTE_VERSION_NUM(22, 11, 0, 0)
   dev_inst = vec_elt_at_index (cmt->cryptodev_inst, 0);
   u32 dev_id = dev_inst->dev_id;
   sessions[CRYPTODEV_OP_TYPE_ENCRYPT] =
@@ -472,34 +429,7 @@ cryptodev_session_create (vlib_main_t *vm, vnet_crypto_key_index_t idx,
 
   rte_cryptodev_sym_session_opaque_data_set (
     sessions[CRYPTODEV_OP_TYPE_ENCRYPT], aad_len);
-  rte_cryptodev_sym_session_opaque_data_set (
-    sessions[CRYPTODEV_OP_TYPE_DECRYPT], aad_len);
-#else
-  vec_foreach (dev_inst, cmt->cryptodev_inst)
-    {
-      u32 dev_id = dev_inst->dev_id;
-      rte_cryptodev_info_get (dev_id, &dev_info);
-      u32 driver_id = dev_info.driver_id;
-
-      /* if the session is already configured for the driver type, avoid
-	 configuring it again to increase the session data's refcnt */
-      if (sessions[CRYPTODEV_OP_TYPE_ENCRYPT]->sess_data[driver_id].data &&
-	  sessions[CRYPTODEV_OP_TYPE_DECRYPT]->sess_data[driver_id].data)
-	continue;
-
-      ret = rte_cryptodev_sym_session_init (
-	dev_id, sessions[CRYPTODEV_OP_TYPE_ENCRYPT], xforms_enc,
-	sess_priv_pool);
-      ret = rte_cryptodev_sym_session_init (
-	dev_id, sessions[CRYPTODEV_OP_TYPE_DECRYPT], xforms_dec,
-	sess_priv_pool);
-      if (ret < 0)
-	goto clear_key;
-    }
-
-  sessions[CRYPTODEV_OP_TYPE_ENCRYPT]->opaque_data = aad_len;
-  sessions[CRYPTODEV_OP_TYPE_DECRYPT]->opaque_data = aad_len;
-#endif
+  rte_cryptodev_sym_session_opaque_data_set (sessions[CRYPTODEV_OP_TYPE_DECRYPT], aad_len);
 
   CLIB_MEMORY_STORE_BARRIER ();
   ckey->keys[numa_node][CRYPTODEV_OP_TYPE_ENCRYPT] =
@@ -837,10 +767,8 @@ cryptodev_configure (vlib_main_t *vm, u32 cryptodev_id)
      anymore. Only devices that have the same driver type as the first
      initialized device can be initialized.
    */
-#if RTE_VERSION >= RTE_VERSION_NUM(22, 11, 0, 0)
   if (cmt->drivers_cnt == 1 && cmt->driver_id != info.driver_id)
     return -1;
-#endif
 
   if (!(info.feature_flags & RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO))
     return -1;
@@ -855,9 +783,6 @@ cryptodev_configure (vlib_main_t *vm, u32 cryptodev_id)
       struct rte_cryptodev_qp_conf qp_cfg;
 
       qp_cfg.mp_session = 0;
-#if RTE_VERSION < RTE_VERSION_NUM(22, 11, 0, 0)
-      qp_cfg.mp_session_private = 0;
-#endif
       qp_cfg.nb_descriptors = CRYPTODEV_NB_CRYPTO_OPS;
 
       ret = rte_cryptodev_queue_pair_setup (cryptodev_id, i, &qp_cfg,
@@ -876,30 +801,23 @@ cryptodev_configure (vlib_main_t *vm, u32 cryptodev_id)
   /* start the device */
   rte_cryptodev_start (cryptodev_id);
 
-#if RTE_VERSION >= RTE_VERSION_NUM(22, 11, 0, 0)
   if (cmt->drivers_cnt == 0)
     {
       cmt->drivers_cnt = 1;
       cmt->driver_id = info.driver_id;
       cmt->sess_sz = rte_cryptodev_sym_get_private_session_size (cryptodev_id);
     }
-#endif
 
   for (i = 0; i < info.max_nb_queue_pairs; i++)
     {
       cryptodev_inst_t *cdev_inst;
-#if RTE_VERSION >= RTE_VERSION_NUM(22, 11, 0, 0)
       const char *dev_name = rte_dev_name (info.device);
-#else
-      const char *dev_name = info.device->name;
-#endif
       vec_add2(cmt->cryptodev_inst, cdev_inst, 1);
       cdev_inst->desc = vec_new (char, strlen (dev_name) + 10);
       cdev_inst->dev_id = cryptodev_id;
       cdev_inst->q_id = i;
 
-      snprintf (cdev_inst->desc, strlen (dev_name) + 9, "%s_q%u",
-		info.device->name, i);
+      snprintf (cdev_inst->desc, strlen (dev_name) + 9, "%s_q%u", dev_name, i);
     }
 
   return 0;
@@ -1231,27 +1149,6 @@ cryptodev_probe (vlib_main_t *vm, u32 n_workers)
   return 0;
 }
 
-#if RTE_VERSION < RTE_VERSION_NUM(22, 11, 0, 0)
-static void
-is_drv_unique (u32 driver_id, u32 **unique_drivers)
-{
-  u32 *unique_elt;
-  u8 found = 0;
-
-  vec_foreach (unique_elt, *unique_drivers)
-    {
-      if (*unique_elt == driver_id)
-	{
-	  found = 1;
-	  break;
-	}
-    }
-
-  if (!found)
-    vec_add1 (*unique_drivers, driver_id);
-}
-#endif
-
 clib_error_t *
 dpdk_cryptodev_init (vlib_main_t * vm)
 {
@@ -1284,26 +1181,6 @@ dpdk_cryptodev_init (vlib_main_t * vm)
   /* probe all cryptodev devices and get queue info */
   if (cryptodev_probe (vm, n_workers) < 0)
     return 0;
-
-#if RTE_VERSION < RTE_VERSION_NUM(22, 11, 0, 0)
-  struct rte_cryptodev_info dev_info;
-  cryptodev_inst_t *dev_inst;
-  u32 *unique_drivers = 0;
-  vec_foreach (dev_inst, cmt->cryptodev_inst)
-    {
-      u32 dev_id = dev_inst->dev_id;
-      rte_cryptodev_info_get (dev_id, &dev_info);
-      u32 driver_id = dev_info.driver_id;
-      is_drv_unique (driver_id, &unique_drivers);
-
-      u32 sess_sz =
-	rte_cryptodev_sym_get_private_session_size (dev_inst->dev_id);
-      cmt->sess_sz = clib_max (cmt->sess_sz, sess_sz);
-    }
-
-  cmt->drivers_cnt = vec_len (unique_drivers);
-  vec_free (unique_drivers);
-#endif
 
   clib_bitmap_vec_validate (cmt->active_cdev_inst_mask, n_workers);
   clib_spinlock_init (&cmt->tlock);

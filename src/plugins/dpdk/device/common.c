@@ -99,9 +99,6 @@ dpdk_device_setup (dpdk_device_t * xd)
     {
       txo |= RTE_ETH_TX_OFFLOAD_MULTI_SEGS;
       rxo |= RTE_ETH_RX_OFFLOAD_SCATTER;
-#if RTE_VERSION < RTE_VERSION_NUM(21, 11, 0, 0)
-      rxo |= DEV_RX_OFFLOAD_JUMBO_FRAME;
-#endif
     }
 
   if (xd->conf.enable_lro)
@@ -149,30 +146,15 @@ dpdk_device_setup (dpdk_device_t * xd)
 	}
     }
 
-#if RTE_VERSION < RTE_VERSION_NUM(21, 11, 0, 0)
-  if (rxo & DEV_RX_OFFLOAD_JUMBO_FRAME)
-    {
-      conf.rxmode.max_rx_pkt_len = dev_info.max_rx_pktlen;
-      xd->max_supported_frame_size = dev_info.max_rx_pktlen;
-    }
-  else
-    {
-      xd->max_supported_frame_size =
-	clib_min (1500 + xd->driver_frame_overhead, buf_sz);
-    }
-#else
   if (xd->conf.disable_multi_seg)
     xd->max_supported_frame_size = clib_min (dev_info.max_rx_pktlen, buf_sz);
   else
     xd->max_supported_frame_size = dev_info.max_rx_pktlen;
-#endif
 
   max_frame_size = clib_min (xd->max_supported_frame_size,
 			     ethernet_main.default_mtu + hi->frame_overhead);
 
-#if RTE_VERSION >= RTE_VERSION_NUM(21, 11, 0, 0)
   conf.rxmode.mtu = max_frame_size - xd->driver_frame_overhead;
-#endif
 
 retry:
   rv = rte_eth_dev_configure (xd->port_id, xd->conf.n_rx_queues,
@@ -182,11 +164,6 @@ retry:
       conf.intr_conf.rxq = 0;
       goto retry;
     }
-
-#if RTE_VERSION < RTE_VERSION_NUM(21, 11, 0, 0)
-  rte_eth_dev_set_mtu (xd->port_id,
-		       max_frame_size - xd->driver_frame_overhead);
-#endif
 
   hi->max_frame_size = 0;
   vnet_hw_interface_set_max_frame_size (vnm, xd->hw_if_index, max_frame_size);
@@ -474,11 +451,7 @@ dpdk_get_pci_device (const struct rte_eth_dev_info *info)
   const struct rte_bus *bus;
 
   bus = rte_bus_find_by_device (info->device);
-#if RTE_VERSION >= RTE_VERSION_NUM(22, 11, 0, 0)
   if (bus && !strcmp (rte_bus_name (bus), "pci"))
-#else
-  if (bus && !strcmp (bus->name, "pci"))
-#endif
     return RTE_DEV_TO_PCI (info->device);
   else
     return NULL;
@@ -492,11 +465,7 @@ dpdk_get_vmbus_device (const struct rte_eth_dev_info *info)
   const struct rte_bus *bus;
 
   bus = rte_bus_find_by_device (info->device);
-#if RTE_VERSION >= RTE_VERSION_NUM(22, 11, 0, 0)
   if (bus && !strcmp (rte_bus_name (bus), "vmbus"))
-#else
-  if (bus && !strcmp (bus->name, "vmbus"))
-#endif
     return container_of (info->device, struct rte_vmbus_device, device);
   else
     return NULL;

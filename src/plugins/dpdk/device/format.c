@@ -32,10 +32,6 @@
   _ (tx_bytes_ok, q_obytes)                     \
   _ (rx_errors, q_errors)
 
-#if RTE_VERSION < RTE_VERSION_NUM(21, 5, 0, 0)
-#define PKT_RX_OUTER_IP_CKSUM_BAD PKT_RX_EIP_CKSUM_BAD
-#endif
-
 #define foreach_dpdk_pkt_rx_offload_flag                                      \
   _ (RX_FDIR, "RX packet with FDIR infos")                                    \
   _ (RX_FDIR_FLX, "RX packet with FDIR_FLX info")                             \
@@ -337,10 +333,6 @@ format_dpdk_burst_fn (u8 *s, va_list *args)
   void *p;
   clib_elf_symbol_t sym;
 
-#if RTE_VERSION < RTE_VERSION_NUM(21, 11, 0, 0)
-#define rte_eth_fp_ops rte_eth_devices
-#endif
-
   p = (dir == VLIB_TX) ? rte_eth_fp_ops[xd->port_id].tx_pkt_burst :
 			 rte_eth_fp_ops[xd->port_id].rx_pkt_burst;
 
@@ -376,7 +368,6 @@ format_dpdk_rte_device (u8 *s, va_list *args)
   if (!d)
     return format (s, "not available");
 
-#if RTE_VERSION >= RTE_VERSION_NUM(22, 11, 0, 0)
   s =
     format (s, "name: %s, numa: %d", rte_dev_name (d), rte_dev_numa_node (d));
 
@@ -385,15 +376,6 @@ format_dpdk_rte_device (u8 *s, va_list *args)
 
   if (rte_dev_bus (d))
     s = format (s, ", bus: %s", rte_bus_name (rte_dev_bus (d)));
-#else
-  s = format (s, "name: %s, numa: %d", d->name, d->numa_node);
-
-  if (d->driver)
-    s = format (s, ", driver: %s", d->driver->name);
-
-  if (d->bus)
-    s = format (s, ", bus: %s", d->bus->name);
-#endif
 
   return s;
 }
@@ -424,17 +406,10 @@ format_dpdk_device (u8 * s, va_list * args)
   s = format (s, "%U\n%Ucarrier %U",
 	      format_dpdk_device_type, dev_instance,
 	      format_white_space, indent + 2, format_dpdk_link_status, xd);
-  s = format (s, "%Uflags: %U\n",
-	      format_white_space, indent + 2, format_dpdk_device_flags, xd);
-#if RTE_VERSION >= RTE_VERSION_NUM(22, 11, 0, 0)
+  s = format (s, "%Uflags: %U\n", format_white_space, indent + 2, format_dpdk_device_flags, xd);
   if (rte_dev_devargs (di.device) && rte_dev_devargs (di.device)->args)
     s = format (s, "%UDevargs: %s\n", format_white_space, indent + 2,
 		rte_dev_devargs (di.device)->args);
-#else
-  if (di.device->devargs && di.device->devargs->args)
-    s = format (s, "%UDevargs: %s\n",
-		format_white_space, indent + 2, di.device->devargs->args);
-#endif
   s = format (s,
 	      "%Urx: queues %d (max %d), desc %d "
 	      "(min %d max %d align %d)\n",

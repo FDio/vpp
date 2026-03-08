@@ -71,11 +71,7 @@ typedef enum
   CRYPTODEV_N_OP_TYPES,
 } cryptodev_op_type_t;
 
-#if RTE_VERSION >= RTE_VERSION_NUM(22, 11, 0, 0)
 typedef void cryptodev_session_t;
-#else
-typedef struct rte_cryptodev_sym_session cryptodev_session_t;
-#endif
 
 /* Cryptodev session data, one data per direction per numa */
 typedef struct
@@ -121,9 +117,6 @@ typedef struct
 typedef struct
 {
   struct rte_mempool *sess_pool;
-#if RTE_VERSION < RTE_VERSION_NUM(22, 11, 0, 0)
-  struct rte_mempool *sess_priv_pool;
-#endif
 } cryptodev_session_pool_t;
 
 typedef struct
@@ -227,9 +220,7 @@ typedef struct
   u32 sess_sz;
   u32 drivers_cnt;
   u8 is_raw_api;
-#if RTE_VERSION >= RTE_VERSION_NUM(22, 11, 0, 0)
   u8 driver_id;
-#endif
 } cryptodev_main_t;
 
 extern cryptodev_main_t cryptodev_main;

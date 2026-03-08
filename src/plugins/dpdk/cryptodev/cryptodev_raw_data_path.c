@@ -327,14 +327,8 @@ cryptodev_raw_aead_enqueue_internal (vlib_main_t *vm,
 		goto error_exit;
 	    }
 
-	  if (PREDICT_FALSE (
-#if RTE_VERSION >= RTE_VERSION_NUM(22, 11, 0, 0)
-		rte_cryptodev_sym_session_opaque_data_get (
-		  key->keys[vm->numa_node][op_type]) != (u64) aad_len
-#else
-		(u8) key->keys[vm->numa_node][op_type]->opaque_data != aad_len
-#endif
-		))
+	  if (PREDICT_FALSE (rte_cryptodev_sym_session_opaque_data_get (
+			       key->keys[vm->numa_node][op_type]) != (u64) aad_len))
 	    {
 	      cryptodev_sess_handler (vm, VNET_CRYPTO_KEY_OP_DEL,
 				      fe->key_index, aad_len);
