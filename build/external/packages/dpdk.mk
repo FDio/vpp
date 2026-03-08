@@ -61,14 +61,17 @@ DPDK_DRIVERS_DISABLED := baseband/\*,	\
 	compress/isal,						\
 	compress/octeontx,					\
 	compress/zlib,						\
-	crypto/ccp,							\
 	crypto/cnxk,						\
 	crypto/dpaa_sec,					\
+	crypto/ipsec_mb,					\
+	crypto/null,						\
 	crypto/openssl,						\
+	crypto/scheduler,					\
 	crypto/aesni_mb,						\
 	crypto/aesni_gcm,						\
 	crypto/kasumi,						\
 	crypto/snow3g,						\
+	crypto/virtio,						\
 	crypto/zuc,						\
 	event/\*,							\
 	mempool/dpaa,						\

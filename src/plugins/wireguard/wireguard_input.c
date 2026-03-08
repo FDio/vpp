@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0
  * Copyright (c) 2020 Doc.ai and/or its affiliates.
- * Copyright (c) 2020 Cisco and/or its affiliates.
+ * Copyright (c) 2020-2026 Cisco and/or its affiliates.
  */
 
 #include <vlib/vlib.h>
@@ -493,21 +493,19 @@ wg_input_chain_crypto (vlib_main_t *vm, wg_per_thread_data_t *ptd,
 }
 
 always_inline void
-wg_prepare_sync_dec_op (vlib_main_t *vm, wg_per_thread_data_t *ptd,
-			vlib_buffer_t *b, vlib_buffer_t *lb,
-			vnet_crypto_op_t **crypto_ops, u8 *src, u32 src_len,
-			u8 *dst, u8 *aad, u32 aad_len,
-			vnet_crypto_key_index_t key_index, u32 bi, u8 *iv)
+wg_prepare_sync_dec_op (vlib_main_t *vm, wg_per_thread_data_t *ptd, vlib_buffer_t *b,
+			vlib_buffer_t *lb, vnet_crypto_op_t **crypto_ops, u8 *src, u32 src_len,
+			u8 *dst, u8 *aad, u32 aad_len, vnet_crypto_ctx_t *ctx, u32 bi, u8 *iv)
 {
   vnet_crypto_op_t _op, *op = &_op;
   u8 src_[] = {};
 
   vec_add2_aligned (crypto_ops[0], op, 1, CLIB_CACHE_LINE_BYTES);
-  vnet_crypto_op_init (op, VNET_CRYPTO_OP_CHACHA20_POLY1305_DEC);
+  vnet_crypto_op_init (ctx, op);
+  op->type = VNET_CRYPTO_OP_TYPE_DECRYPT;
 
-  op->tag_len = NOISE_AUTHTAG_LEN;
-  op->tag = vlib_buffer_get_tail (lb) - NOISE_AUTHTAG_LEN;
-  op->key_index = key_index;
+  op->auth_len = NOISE_AUTHTAG_LEN;
+  op->auth = vlib_buffer_get_tail (lb) - NOISE_AUTHTAG_LEN;
   op->aad = aad;
   op->aad_len = aad_len;
   op->iv = iv;
@@ -531,27 +529,12 @@ wg_prepare_sync_dec_op (vlib_main_t *vm, wg_per_thread_data_t *ptd,
 }
 
 static_always_inline void
-wg_input_add_to_frame (vlib_main_t *vm, vnet_crypto_async_frame_t *f,
-		       u32 key_index, u32 crypto_len, i16 crypto_start_offset,
-		       u32 buffer_index, u16 next_node, u8 *iv, u8 *tag,
-		       u8 flags)
+wg_input_add_to_frame (vlib_main_t *vm, vnet_crypto_async_frame_t *f, vnet_crypto_ctx_t *ctx,
+		       u32 crypto_len, i16 crypto_start_offset, u32 buffer_index, u16 next_node,
+		       u8 *iv, u8 *tag, u8 flags)
 {
-  vnet_crypto_async_frame_elt_t *fe;
-  u16 index;
-
-  ASSERT (f->n_elts < VNET_CRYPTO_FRAME_SIZE);
-
-  index = f->n_elts;
-  fe = &f->elts[index];
-  f->n_elts++;
-  fe->key_index = key_index;
-  fe->crypto_total_length = crypto_len;
-  fe->crypto_start_offset = crypto_start_offset;
-  fe->iv = iv;
-  fe->tag = tag;
-  fe->flags = flags;
-  f->buffer_indices[index] = buffer_index;
-  f->next_node_index[index] = next_node;
+  vnet_crypto_async_add_to_frame (vm, f, ctx, crypto_len, 0, crypto_start_offset, 0, buffer_index,
+				  next_node, iv, tag, 0, flags);
 }
 
 static_always_inline enum noise_state_crypt
@@ -599,21 +582,20 @@ wg_input_process (vlib_main_t *vm, wg_per_thread_data_t *ptd,
 	  vnet_crypto_async_frame_is_full (*async_frame))
 	{
 	  *async_frame = vnet_crypto_async_get_frame (
-	    vm, VNET_CRYPTO_OP_CHACHA20_POLY1305_TAG16_AAD0_DEC);
+	    vm, VNET_CRYPTO_ALG_CHACHA20_POLY1305_TAG16_AAD0, VNET_CRYPTO_OP_TYPE_DECRYPT);
 	  if (PREDICT_FALSE (NULL == *async_frame))
 	    goto error;
 	  /* Save the frame to the list we'll submit at the end */
 	  vec_add1 (ptd->async_frames, *async_frame);
 	}
 
-      wg_input_add_to_frame (vm, *async_frame, kp->kp_recv_index, srclen_total,
-			     src - b->data, buf_idx, async_next_node, iv, tag,
-			     flags);
+      wg_input_add_to_frame (vm, *async_frame, kp->recv_ctx, srclen_total, src - b->data, buf_idx,
+			     async_next_node, iv, tag, flags);
     }
   else
     {
-      wg_prepare_sync_dec_op (vm, ptd, b, lb, crypto_ops, src, srclen, dst,
-			      NULL, 0, kp->kp_recv_index, from_idx, iv);
+      wg_prepare_sync_dec_op (vm, ptd, b, lb, crypto_ops, src, srclen, dst, NULL, 0, kp->recv_ctx,
+			      from_idx, iv);
     }
 
   /* If we've received the handshake confirming data packet then move the
