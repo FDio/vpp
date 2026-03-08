@@ -46,7 +46,7 @@ typedef struct
 {
   u32 crypto_engine_index;
   crypto_sw_scheduler_per_thread_data_t *per_thread_data;
-  vnet_crypto_key_t *keys;
+  vnet_crypto_ctx_t *ctxs;
   u32 crypto_sw_scheduler_queue_mask;
 } crypto_sw_scheduler_main_t;
 
