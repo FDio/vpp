@@ -1134,8 +1134,9 @@ def get_test_description(descriptions, test):
     short_description = test.shortDescription()
     if descriptions and short_description:
         return short_description
-    else:
-        return str(test)
+    if descriptions:
+        return get_testcase_doc_name(test)
+    return str(test)
 
 
 def get_failed_testcase_linkname(failed_dir, testcase_dirname):
