@@ -2,6 +2,7 @@
  * Copyright (c) 2024 Marvell.
  * SPDX-License-Identifier: Apache-2.0
  * https://spdx.org/licenses/Apache-2.0.html
+ * Copyright (c) 2026 Cisco and/or its affiliates.
  */
 
 #include <vnet/dev/dev.h>
@@ -61,39 +62,14 @@ oct_crypto_session_create (vlib_main_t *vm, vnet_crypto_key_index_t key_index,
 {
   oct_crypto_main_t *ocm = &oct_crypto_main;
   oct_crypto_sess_t *session;
-  vnet_crypto_key_t *key;
-  oct_crypto_key_t *ckey;
   oct_crypto_dev_t *ocd;
 
   ocd = ocm->crypto_dev[op_type];
 
-  key = vnet_crypto_get_key (key_index);
-
-  if (key->is_link)
-    {
-      /*
-       * Read crypto or integ key session. And map link key index to same.
-       */
-      if (key->index_crypto != UINT32_MAX)
-	{
-	  ckey = vec_elt_at_index (ocm->keys[op_type], key->index_crypto);
-	  session = ckey->sess;
-	}
-      else if (key->index_integ != UINT32_MAX)
-	{
-	  ckey = vec_elt_at_index (ocm->keys[op_type], key->index_integ);
-	  session = ckey->sess;
-	}
-      else
-	return -1;
-    }
-  else
-    {
-      session = oct_crypto_session_alloc (vm, op_type);
-      if (session == NULL)
-	return -1;
-      session->crypto_dev = ocd;
-    }
+  session = oct_crypto_session_alloc (vm, op_type);
+  if (session == NULL)
+    return -1;
+  session->crypto_dev = ocd;
 
   oct_map_keyindex_to_session (session, key_index, op_type);
   return 0;
@@ -104,7 +80,6 @@ oct_crypto_key_del_handler (vlib_main_t *vm, vnet_crypto_key_index_t key_index)
 {
   extern oct_plt_init_param_t oct_plt_init_param;
   oct_crypto_main_t *ocm = &oct_crypto_main;
-  oct_crypto_key_t *ckey_linked;
   oct_crypto_key_t *ckey;
 
   vec_validate (ocm->keys[VNET_CRYPTO_OP_TYPE_ENCRYPT], key_index);
@@ -112,16 +87,6 @@ oct_crypto_key_del_handler (vlib_main_t *vm, vnet_crypto_key_index_t key_index)
   ckey = vec_elt_at_index (ocm->keys[VNET_CRYPTO_OP_TYPE_ENCRYPT], key_index);
   if (ckey->sess)
     {
-      /*
-       * If in case link algo is pointing to same sesison, reset the pointer.
-       */
-      if (ckey->sess->key_index != key_index)
-	{
-	  ckey_linked = vec_elt_at_index (
-	    ocm->keys[VNET_CRYPTO_OP_TYPE_ENCRYPT], ckey->sess->key_index);
-	  ckey_linked->sess = NULL;
-	}
-
       /* Trigger CTX flush + invalidate to remove from CTX_CACHE */
       if (oct_hw_ctx_cache_enable ())
 	roc_cpt_lf_ctx_flush (&ckey->sess->crypto_dev->lf,
@@ -134,16 +99,6 @@ oct_crypto_key_del_handler (vlib_main_t *vm, vnet_crypto_key_index_t key_index)
   ckey = vec_elt_at_index (ocm->keys[VNET_CRYPTO_OP_TYPE_DECRYPT], key_index);
   if (ckey->sess)
     {
-      /*
-       * If in case link algo is pointing to same sesison, reset the pointer.
-       */
-      if (ckey->sess->key_index != key_index)
-	{
-	  ckey_linked = vec_elt_at_index (
-	    ocm->keys[VNET_CRYPTO_OP_TYPE_DECRYPT], ckey->sess->key_index);
-	  ckey_linked->sess = NULL;
-	}
-
       /* Trigger CTX flush + invalidate to remove from CTX_CACHE */
       if (oct_hw_ctx_cache_enable ())
 	roc_cpt_lf_ctx_flush (&ckey->sess->crypto_dev->lf,
@@ -186,19 +141,19 @@ oct_crypto_key_add_handler (vlib_main_t *vm, vnet_crypto_key_index_t key_index)
     }
 }
 
-void
-oct_crypto_key_handler (vnet_crypto_key_op_t kop, vnet_crypto_key_index_t idx)
+static void
+oct_crypto_key_add_data_handler (vnet_crypto_key_t *key)
 {
   oct_crypto_main_t *ocm = &oct_crypto_main;
 
-  if (kop == VNET_CRYPTO_KEY_OP_DEL)
-    {
-      oct_crypto_key_del_handler (vlib_get_main (), idx);
-      return;
-    }
-  oct_crypto_key_add_handler (vlib_get_main (), idx);
-
+  oct_crypto_key_add_handler (vlib_get_main (), key->index);
   ocm->started = 1;
+}
+
+static void
+oct_crypto_key_del_data_handler (vnet_crypto_key_t *key)
+{
+  oct_crypto_key_del_handler (vlib_get_main (), key->index);
 }
 
 static_always_inline void
@@ -1187,13 +1142,15 @@ oct_cpt_inst_w7_get (oct_crypto_sess_t *sess, struct roc_cpt *roc_cpt)
 }
 
 static_always_inline i32
-oct_crypto_link_session_update (vlib_main_t *vm, oct_crypto_sess_t *sess,
-				u32 key_index, u8 type)
+oct_crypto_combined_session_update (vlib_main_t *vm, oct_crypto_sess_t *sess, u32 key_index,
+				    u8 type)
 {
-  vnet_crypto_key_t *crypto_key, *auth_key;
+  u8 *crypto_key_data, *auth_key_data;
   roc_se_cipher_type enc_type = 0;
   roc_se_auth_type auth_type = 0;
   vnet_crypto_key_t *key;
+  u16 crypto_key_len = 0;
+  u16 auth_key_len = 0;
   u32 digest_len = ~0;
   i32 rv = 0;
 
@@ -1202,109 +1159,224 @@ oct_crypto_link_session_update (vlib_main_t *vm, oct_crypto_sess_t *sess,
   switch (key->alg)
     {
     case VNET_CRYPTO_ALG_AES_128_CBC_SHA1_TAG12:
+      crypto_key_len = 16;
+      enc_type = ROC_SE_AES_CBC;
+      auth_type = ROC_SE_SHA1_TYPE;
+      digest_len = 12;
+      break;
     case VNET_CRYPTO_ALG_AES_192_CBC_SHA1_TAG12:
+      crypto_key_len = 24;
+      enc_type = ROC_SE_AES_CBC;
+      auth_type = ROC_SE_SHA1_TYPE;
+      digest_len = 12;
+      break;
     case VNET_CRYPTO_ALG_AES_256_CBC_SHA1_TAG12:
+      crypto_key_len = 32;
       enc_type = ROC_SE_AES_CBC;
       auth_type = ROC_SE_SHA1_TYPE;
       digest_len = 12;
       break;
     case VNET_CRYPTO_ALG_AES_128_CBC_SHA224_TAG14:
+      crypto_key_len = 16;
+      enc_type = ROC_SE_AES_CBC;
+      auth_type = ROC_SE_SHA2_SHA224;
+      digest_len = 14;
+      break;
     case VNET_CRYPTO_ALG_AES_192_CBC_SHA224_TAG14:
+      crypto_key_len = 24;
+      enc_type = ROC_SE_AES_CBC;
+      auth_type = ROC_SE_SHA2_SHA224;
+      digest_len = 14;
+      break;
     case VNET_CRYPTO_ALG_AES_256_CBC_SHA224_TAG14:
+      crypto_key_len = 32;
       enc_type = ROC_SE_AES_CBC;
       auth_type = ROC_SE_SHA2_SHA224;
       digest_len = 14;
       break;
     case VNET_CRYPTO_ALG_AES_128_CBC_SHA256_TAG16:
+      crypto_key_len = 16;
+      enc_type = ROC_SE_AES_CBC;
+      auth_type = ROC_SE_SHA2_SHA256;
+      digest_len = 16;
+      break;
     case VNET_CRYPTO_ALG_AES_192_CBC_SHA256_TAG16:
+      crypto_key_len = 24;
+      enc_type = ROC_SE_AES_CBC;
+      auth_type = ROC_SE_SHA2_SHA256;
+      digest_len = 16;
+      break;
     case VNET_CRYPTO_ALG_AES_256_CBC_SHA256_TAG16:
+      crypto_key_len = 32;
       enc_type = ROC_SE_AES_CBC;
       auth_type = ROC_SE_SHA2_SHA256;
       digest_len = 16;
       break;
     case VNET_CRYPTO_ALG_AES_128_CBC_SHA384_TAG24:
+      crypto_key_len = 16;
+      enc_type = ROC_SE_AES_CBC;
+      auth_type = ROC_SE_SHA2_SHA384;
+      digest_len = 24;
+      break;
     case VNET_CRYPTO_ALG_AES_192_CBC_SHA384_TAG24:
+      crypto_key_len = 24;
+      enc_type = ROC_SE_AES_CBC;
+      auth_type = ROC_SE_SHA2_SHA384;
+      digest_len = 24;
+      break;
     case VNET_CRYPTO_ALG_AES_256_CBC_SHA384_TAG24:
+      crypto_key_len = 32;
       enc_type = ROC_SE_AES_CBC;
       auth_type = ROC_SE_SHA2_SHA384;
       digest_len = 24;
       break;
     case VNET_CRYPTO_ALG_AES_128_CBC_SHA512_TAG32:
+      crypto_key_len = 16;
+      enc_type = ROC_SE_AES_CBC;
+      auth_type = ROC_SE_SHA2_SHA512;
+      digest_len = 32;
+      break;
     case VNET_CRYPTO_ALG_AES_192_CBC_SHA512_TAG32:
+      crypto_key_len = 24;
+      enc_type = ROC_SE_AES_CBC;
+      auth_type = ROC_SE_SHA2_SHA512;
+      digest_len = 32;
+      break;
     case VNET_CRYPTO_ALG_AES_256_CBC_SHA512_TAG32:
+      crypto_key_len = 32;
       enc_type = ROC_SE_AES_CBC;
       auth_type = ROC_SE_SHA2_SHA512;
       digest_len = 32;
       break;
     case VNET_CRYPTO_ALG_AES_128_CBC_MD5_TAG12:
+      crypto_key_len = 16;
+      enc_type = ROC_SE_AES_CBC;
+      auth_type = ROC_SE_MD5_TYPE;
+      digest_len = 12;
+      break;
     case VNET_CRYPTO_ALG_AES_192_CBC_MD5_TAG12:
+      crypto_key_len = 24;
+      enc_type = ROC_SE_AES_CBC;
+      auth_type = ROC_SE_MD5_TYPE;
+      digest_len = 12;
+      break;
     case VNET_CRYPTO_ALG_AES_256_CBC_MD5_TAG12:
+      crypto_key_len = 32;
       enc_type = ROC_SE_AES_CBC;
       auth_type = ROC_SE_MD5_TYPE;
       digest_len = 12;
       break;
     case VNET_CRYPTO_ALG_AES_128_CTR_SHA1_TAG12:
+      crypto_key_len = 16;
+      enc_type = ROC_SE_AES_CTR;
+      auth_type = ROC_SE_SHA1_TYPE;
+      digest_len = 12;
+      break;
     case VNET_CRYPTO_ALG_AES_192_CTR_SHA1_TAG12:
+      crypto_key_len = 24;
+      enc_type = ROC_SE_AES_CTR;
+      auth_type = ROC_SE_SHA1_TYPE;
+      digest_len = 12;
+      break;
     case VNET_CRYPTO_ALG_AES_256_CTR_SHA1_TAG12:
+      crypto_key_len = 32;
       enc_type = ROC_SE_AES_CTR;
       auth_type = ROC_SE_SHA1_TYPE;
       digest_len = 12;
       break;
     case VNET_CRYPTO_ALG_AES_128_CTR_SHA256_TAG16:
+      crypto_key_len = 16;
+      enc_type = ROC_SE_AES_CTR;
+      auth_type = ROC_SE_SHA2_SHA256;
+      digest_len = 16;
+      break;
     case VNET_CRYPTO_ALG_AES_192_CTR_SHA256_TAG16:
+      crypto_key_len = 24;
+      enc_type = ROC_SE_AES_CTR;
+      auth_type = ROC_SE_SHA2_SHA256;
+      digest_len = 16;
+      break;
     case VNET_CRYPTO_ALG_AES_256_CTR_SHA256_TAG16:
+      crypto_key_len = 32;
       enc_type = ROC_SE_AES_CTR;
       auth_type = ROC_SE_SHA2_SHA256;
       digest_len = 16;
       break;
     case VNET_CRYPTO_ALG_AES_128_CTR_SHA384_TAG24:
+      crypto_key_len = 16;
+      enc_type = ROC_SE_AES_CTR;
+      auth_type = ROC_SE_SHA2_SHA384;
+      digest_len = 24;
+      break;
     case VNET_CRYPTO_ALG_AES_192_CTR_SHA384_TAG24:
+      crypto_key_len = 24;
+      enc_type = ROC_SE_AES_CTR;
+      auth_type = ROC_SE_SHA2_SHA384;
+      digest_len = 24;
+      break;
     case VNET_CRYPTO_ALG_AES_256_CTR_SHA384_TAG24:
+      crypto_key_len = 32;
       enc_type = ROC_SE_AES_CTR;
       auth_type = ROC_SE_SHA2_SHA384;
       digest_len = 24;
       break;
     case VNET_CRYPTO_ALG_AES_128_CTR_SHA512_TAG32:
+      crypto_key_len = 16;
+      enc_type = ROC_SE_AES_CTR;
+      auth_type = ROC_SE_SHA2_SHA512;
+      digest_len = 32;
+      break;
     case VNET_CRYPTO_ALG_AES_192_CTR_SHA512_TAG32:
+      crypto_key_len = 24;
+      enc_type = ROC_SE_AES_CTR;
+      auth_type = ROC_SE_SHA2_SHA512;
+      digest_len = 32;
+      break;
     case VNET_CRYPTO_ALG_AES_256_CTR_SHA512_TAG32:
+      crypto_key_len = 32;
       enc_type = ROC_SE_AES_CTR;
       auth_type = ROC_SE_SHA2_SHA512;
       digest_len = 32;
       break;
     case VNET_CRYPTO_ALG_3DES_CBC_MD5_TAG12:
+      crypto_key_len = 24;
       enc_type = ROC_SE_DES3_CBC;
       auth_type = ROC_SE_MD5_TYPE;
       digest_len = 12;
       break;
     case VNET_CRYPTO_ALG_3DES_CBC_SHA1_TAG12:
+      crypto_key_len = 24;
       enc_type = ROC_SE_DES3_CBC;
       auth_type = ROC_SE_SHA1_TYPE;
       digest_len = 12;
       break;
     case VNET_CRYPTO_ALG_3DES_CBC_SHA224_TAG14:
+      crypto_key_len = 24;
       enc_type = ROC_SE_DES3_CBC;
       auth_type = ROC_SE_SHA2_SHA224;
       digest_len = 14;
       break;
     case VNET_CRYPTO_ALG_3DES_CBC_SHA256_TAG16:
+      crypto_key_len = 24;
       enc_type = ROC_SE_DES3_CBC;
       auth_type = ROC_SE_SHA2_SHA256;
       digest_len = 16;
       break;
     case VNET_CRYPTO_ALG_3DES_CBC_SHA384_TAG24:
+      crypto_key_len = 24;
       enc_type = ROC_SE_DES3_CBC;
       auth_type = ROC_SE_SHA2_SHA384;
       digest_len = 24;
       break;
     case VNET_CRYPTO_ALG_3DES_CBC_SHA512_TAG32:
+      crypto_key_len = 24;
       enc_type = ROC_SE_DES3_CBC;
       auth_type = ROC_SE_SHA2_SHA512;
       digest_len = 32;
       break;
     default:
-      clib_warning (
-	"Cryptodev: Undefined link algo %u specified. Key index %u", key->alg,
-	key_index);
+      clib_warning ("Cryptodev: Undefined combined algo %u specified. Key index %u", key->alg,
+		    key_index);
       return -1;
     }
 
@@ -1316,9 +1388,17 @@ oct_crypto_link_session_update (vlib_main_t *vm, oct_crypto_sess_t *sess,
   sess->iv_length = 16;
   sess->cpt_op = type;
 
-  crypto_key = vnet_crypto_get_key (key->index_crypto);
-  rv = roc_se_ciph_key_set (&sess->cpt_ctx, enc_type, crypto_key->data,
-			    crypto_key->length);
+  if (key->length < crypto_key_len)
+    return -1;
+
+  auth_key_len = key->length - crypto_key_len;
+  if (auth_key_len == 0)
+    return -1;
+
+  crypto_key_data = key->data;
+  auth_key_data = key->data + crypto_key_len;
+
+  rv = roc_se_ciph_key_set (&sess->cpt_ctx, enc_type, crypto_key_data, crypto_key_len);
   if (rv)
     {
       clib_warning ("Cryptodev: Error in setting cipher key for enc type %u",
@@ -1326,10 +1406,7 @@ oct_crypto_link_session_update (vlib_main_t *vm, oct_crypto_sess_t *sess,
       return -1;
     }
 
-  auth_key = vnet_crypto_get_key (key->index_integ);
-
-  rv = roc_se_auth_key_set (&sess->cpt_ctx, auth_type, auth_key->data,
-			    auth_key->length, digest_len);
+  rv = roc_se_auth_key_set (&sess->cpt_ctx, auth_type, auth_key_data, auth_key_len, digest_len);
   if (rv)
     {
       clib_warning ("Cryptodev: Error in setting auth key for auth type %u",
@@ -1423,10 +1500,17 @@ oct_crypto_session_init (vlib_main_t *vm, oct_crypto_sess_t *session,
 
   key = vnet_crypto_get_key (key_index);
 
-  if (key->is_link)
-    rv = oct_crypto_link_session_update (vm, session, key_index, op_type);
-  else
-    rv = oct_crypto_aead_session_update (vm, session, key_index, op_type);
+  switch (key->alg)
+    {
+#define _(c, h, s, k, d) case VNET_CRYPTO_ALG_##c##_##h##_TAG##d:
+      foreach_oct_crypto_combined_async_alg
+#undef _
+	rv = oct_crypto_combined_session_update (vm, session, key_index, op_type);
+      break;
+    default:
+      rv = oct_crypto_aead_session_update (vm, session, key_index, op_type);
+      break;
+    }
 
   if (rv)
     {
@@ -1461,9 +1545,9 @@ oct_crypto_update_frame_error_status (vnet_crypto_async_frame_t *f, u32 index,
 }
 
 static_always_inline void
-oct_crypto_direct_mode_linked (vlib_buffer_t *buffer, struct cpt_inst_s *inst,
-			       oct_crypto_sess_t *sess,
-			       oct_crypto_inflight_req_t *infl_req, u8 aad_len)
+oct_crypto_direct_mode_combined (vlib_buffer_t *buffer, struct cpt_inst_s *inst,
+				 oct_crypto_sess_t *sess, oct_crypto_inflight_req_t *infl_req,
+				 u8 aad_len)
 {
   u32 encr_offset, auth_offset, iv_offset;
   vnet_crypto_async_frame_elt_t *elts;
@@ -1731,8 +1815,7 @@ oct_crypto_enqueue_enc_dec (vlib_main_t *vm, vnet_crypto_async_frame_t *frame,
 	    }
 	  else
 	    {
-	      oct_crypto_direct_mode_linked (buffer, inst + i, sess, infl_req,
-					     aad_len);
+	      oct_crypto_direct_mode_combined (buffer, inst + i, sess, infl_req, aad_len);
 	    }
 	}
 
@@ -1752,16 +1835,14 @@ oct_crypto_enqueue_enc_dec (vlib_main_t *vm, vnet_crypto_async_frame_t *frame,
 }
 
 int
-oct_crypto_enqueue_linked_alg_enc (vlib_main_t *vm,
-				   vnet_crypto_async_frame_t *frame)
+oct_crypto_enqueue_combined_alg_enc (vlib_main_t *vm, vnet_crypto_async_frame_t *frame)
 {
   return oct_crypto_enqueue_enc_dec (
     vm, frame, 0 /* is_aead */, 0 /* aad_len */, VNET_CRYPTO_OP_TYPE_ENCRYPT);
 }
 
 int
-oct_crypto_enqueue_linked_alg_dec (vlib_main_t *vm,
-				   vnet_crypto_async_frame_t *frame)
+oct_crypto_enqueue_combined_alg_dec (vlib_main_t *vm, vnet_crypto_async_frame_t *frame)
 {
   return oct_crypto_enqueue_enc_dec (
     vm, frame, 0 /* is_aead */, 0 /* aad_len */, VNET_CRYPTO_OP_TYPE_DECRYPT);
@@ -1870,7 +1951,7 @@ oct_crypto_frame_dequeue (vlib_main_t *vm, u32 *nb_elts_processed,
 
       /*
        * For AEAD, copy the AAD and IV back to their original positions.
-       * If ESN is enabled (in case of linked algo), overwrite the ESN
+       * If ESN is enabled (in case of combined algo), overwrite the ESN
        * seqhi at the end of the cipher with the digest data.
        */
       if (infl_req->aead_algo)
@@ -1921,20 +2002,19 @@ oct_init_crypto_engine_handlers (vlib_main_t *vm, vnet_dev_t *dev)
   foreach_oct_crypto_aead_async_alg
 #undef _
 
-#define _(c, h, k, d)                                                         \
-  vnet_crypto_register_enqueue_handler (                                      \
-    vm, engine_index, VNET_CRYPTO_OP_##c##_##h##_TAG##d##_ENC,                \
-    oct_crypto_enqueue_linked_alg_enc);                                       \
-  vnet_crypto_register_enqueue_handler (                                      \
-    vm, engine_index, VNET_CRYPTO_OP_##c##_##h##_TAG##d##_DEC,                \
-    oct_crypto_enqueue_linked_alg_dec);
-    foreach_oct_crypto_link_async_alg;
+#define _(c, h, k, d)                                                                              \
+  vnet_crypto_register_enqueue_handler (vm, engine_index, VNET_CRYPTO_OP_##c##_##h##_TAG##d##_ENC, \
+					oct_crypto_enqueue_combined_alg_enc);                      \
+  vnet_crypto_register_enqueue_handler (vm, engine_index, VNET_CRYPTO_OP_##c##_##h##_TAG##d##_DEC, \
+					oct_crypto_enqueue_combined_alg_dec);
+    foreach_oct_crypto_combined_async_alg;
 #undef _
 
   vnet_crypto_register_dequeue_handler (vm, engine_index,
 					oct_crypto_frame_dequeue);
 
-  vnet_crypto_register_key_handler (vm, engine_index, oct_crypto_key_handler);
+  vnet_crypto_register_async_key_add_handler (vm, engine_index, oct_crypto_key_add_data_handler);
+  vnet_crypto_register_async_key_del_handler (vm, engine_index, oct_crypto_key_del_data_handler);
 
   return 0;
 }

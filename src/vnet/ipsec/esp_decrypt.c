@@ -635,7 +635,7 @@ esp_decrypt_prepare_async_frame (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
 
   if (!irt->is_aead)
     {
-      /* linked algs */
+      /* combined algs */
       integ_start_offset = payload - b->data;
       integ_len = len;
       if (PREDICT_TRUE (irt->integ_icv_size))
@@ -1419,6 +1419,7 @@ esp_decrypt_post_inline (vlib_main_t * vm,
 	  tr->integ_alg = sa->integ_alg;
 	  tr->seq = pd->seq;
 	  tr->sa_seq64 = irt->seq64;
+	  tr->pkt_seq_hi = pd->seq_hi;
 	}
 
       n_left--;

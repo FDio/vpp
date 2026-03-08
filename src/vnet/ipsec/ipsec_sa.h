@@ -199,36 +199,19 @@ STATIC_ASSERT (sizeof (ipsec_sa_outb_rt_cached_t) == 16,
 typedef struct ipsec_sa_outb_rt_t_
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-  u16 is_aead : 1;
-  u16 is_ctr : 1;
-  u16 is_null_gmac : 1;
-  u16 is_tunnel : 1;
-  u16 is_tunnel_v6 : 1;
-  u16 udp_encap : 1;
-  u16 use_esn : 1;
-  u16 use_anti_replay : 1;
-  u16 drop_no_crypto : 1;
-  u16 is_async : 1;
-  u16 need_udp_cksum : 1;
-  u16 need_tunnel_fixup : 1;
-  u16 prepare_sync_op : 1;
   u16 op_id;
-  vnet_crypto_op_t op_tmpl_single;
-  vnet_crypto_op_t op_tmpl_chained;
-  u8 cipher_iv_size;
-  u8 esp_block_align;
-  u8 integ_icv_size;
   ip_dscp_t t_dscp;
   tunnel_encap_decap_flags_t tunnel_flags;
   clib_thread_index_t thread_index;
   u16 async_op_id;
   u32 salt;
-  u32 spi_be;
   ipsec_sa_outb_rt_cached_t cached;
   u64 seq64;
   dpo_id_t dpo;
   clib_pcg64i_random_t iv_prng;
   vnet_crypto_key_index_t key_index;
+  vnet_crypto_op_t op_tmpl_single;
+  vnet_crypto_op_t op_tmpl_chained;
   union
   {
     ip4_header_t ip4_hdr;
@@ -260,18 +243,11 @@ typedef struct
   /* elements with u32 size */
   u32 id;
   u32 stat_index;
-  vnet_crypto_alg_t integ_calg;
-  vnet_crypto_alg_t crypto_calg;
-  u32 crypto_sync_key_index;
-  u32 integ_sync_key_index;
-  u32 linked_key_index;
+  u32 key_index;
 
   /* elements with u16 size */
   u16 crypto_sync_enc_op_id;
   u16 crypto_sync_dec_op_id;
-  u16 integ_sync_op_id;
-  u16 crypto_async_enc_op_id;
-  u16 crypto_async_dec_op_id;
 
   /* else u8 packed */
   ipsec_crypto_alg_t crypto_alg;
@@ -338,10 +314,6 @@ extern int ipsec_sa_unlock_id (u32 id);
 extern void ipsec_sa_unlock (index_t sai);
 extern void ipsec_sa_lock (index_t sai);
 extern void ipsec_sa_clear (index_t sai);
-extern void ipsec_sa_set_crypto_alg (ipsec_sa_t *sa,
-				     ipsec_crypto_alg_t crypto_alg);
-extern void ipsec_sa_set_integ_alg (ipsec_sa_t *sa,
-				    ipsec_integ_alg_t integ_alg);
 extern void ipsec_sa_set_async_mode (ipsec_sa_t *sa, int is_enabled);
 
 typedef walk_rc_t (*ipsec_sa_walk_cb_t) (ipsec_sa_t *sa, void *ctx);

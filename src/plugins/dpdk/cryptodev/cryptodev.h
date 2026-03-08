@@ -1,11 +1,13 @@
 /* SPDX-License-Identifier: Apache-2.0
  * Copyright (c) 2019 - 2021 Intel and/or its affiliates.
+ * Copyright (c) 2026 Cisco and/or its affiliates.
  */
 
 #ifndef included_cryptodev_h
 #define included_cryptodev_h
 
 #include <vnet/crypto/crypto.h>
+#include <dpdk/device/dpdk.h>
 #undef always_inline
 #include <rte_cryptodev.h>
 
@@ -25,44 +27,64 @@
 #define CRYPTODEV_IV_OFFSET  (offsetof (cryptodev_op_t, iv))
 #define CRYPTODEV_AAD_OFFSET (offsetof (cryptodev_op_t, aad))
 
+#define log_err(...)	vlib_log (VLIB_LOG_LEVEL_ERR, dpdk_main.log_cryptodev, __VA_ARGS__)
+#define log_warn(...)	vlib_log (VLIB_LOG_LEVEL_WARNING, dpdk_main.log_cryptodev, __VA_ARGS__)
+#define log_notice(...) vlib_log (VLIB_LOG_LEVEL_NOTICE, dpdk_main.log_cryptodev, __VA_ARGS__)
+#define log_info(...)	vlib_log (VLIB_LOG_LEVEL_INFO, dpdk_main.log_cryptodev, __VA_ARGS__)
+#define log_debug(...)	vlib_log (VLIB_LOG_LEVEL_DEBUG, dpdk_main.log_cryptodev, __VA_ARGS__)
+
 /* VNET_CRYPTO_ALGO, TYPE, DPDK_CRYPTO_ALGO, IV_LEN, TAG_LEN, AAD_LEN, KEY_LEN
  */
-#define foreach_vnet_aead_crypto_conversion                                   \
-  _ (AES_128_GCM, AEAD, AES_GCM, 12, 16, 8, 16)                               \
-  _ (AES_128_GCM, AEAD, AES_GCM, 12, 16, 12, 16)                              \
-  _ (AES_192_GCM, AEAD, AES_GCM, 12, 16, 8, 24)                               \
-  _ (AES_192_GCM, AEAD, AES_GCM, 12, 16, 12, 24)                              \
-  _ (AES_256_GCM, AEAD, AES_GCM, 12, 16, 8, 32)                               \
-  _ (AES_256_GCM, AEAD, AES_GCM, 12, 16, 12, 32)                              \
-  _ (CHACHA20_POLY1305, AEAD, CHACHA20_POLY1305, 12, 16, 0, 32)               \
-  _ (CHACHA20_POLY1305, AEAD, CHACHA20_POLY1305, 12, 16, 8, 32)               \
-  _ (CHACHA20_POLY1305, AEAD, CHACHA20_POLY1305, 12, 16, 12, 32)
+#define foreach_vnet_aead_crypto_conversion                                                        \
+  _ (AES_128_GCM_TAG16_AAD8, AEAD, AES_GCM, 12, 16, 8, 16)                                         \
+  _ (AES_128_GCM_TAG16_AAD12, AEAD, AES_GCM, 12, 16, 12, 16)                                       \
+  _ (AES_192_GCM_TAG16_AAD8, AEAD, AES_GCM, 12, 16, 8, 24)                                         \
+  _ (AES_192_GCM_TAG16_AAD12, AEAD, AES_GCM, 12, 16, 12, 24)                                       \
+  _ (AES_256_GCM_TAG16_AAD8, AEAD, AES_GCM, 12, 16, 8, 32)                                         \
+  _ (AES_256_GCM_TAG16_AAD12, AEAD, AES_GCM, 12, 16, 12, 32)                                       \
+  _ (CHACHA20_POLY1305_TAG16_AAD0, AEAD, CHACHA20_POLY1305, 12, 16, 0, 32)                         \
+  _ (CHACHA20_POLY1305_TAG16_AAD8, AEAD, CHACHA20_POLY1305, 12, 16, 8, 32)                         \
+  _ (CHACHA20_POLY1305_TAG16_AAD12, AEAD, CHACHA20_POLY1305, 12, 16, 12, 32)
 
-/**
- * crypto (alg, cryptodev_alg, key_size), hash (alg, digest-size)
- **/
-#define foreach_cryptodev_link_async_alg                                      \
-  _ (AES_128_CBC, AES_CBC, 16, MD5, 12)                                       \
-  _ (AES_192_CBC, AES_CBC, 24, MD5, 12)                                       \
-  _ (AES_256_CBC, AES_CBC, 32, MD5, 12)                                       \
-  _ (AES_128_CBC, AES_CBC, 16, SHA1, 12)                                      \
-  _ (AES_192_CBC, AES_CBC, 24, SHA1, 12)                                      \
-  _ (AES_256_CBC, AES_CBC, 32, SHA1, 12)                                      \
-  _ (AES_128_CBC, AES_CBC, 16, SHA224, 14)                                    \
-  _ (AES_192_CBC, AES_CBC, 24, SHA224, 14)                                    \
-  _ (AES_256_CBC, AES_CBC, 32, SHA224, 14)                                    \
-  _ (AES_128_CBC, AES_CBC, 16, SHA256, 16)                                    \
-  _ (AES_192_CBC, AES_CBC, 24, SHA256, 16)                                    \
-  _ (AES_256_CBC, AES_CBC, 32, SHA256, 16)                                    \
-  _ (AES_128_CBC, AES_CBC, 16, SHA384, 24)                                    \
-  _ (AES_192_CBC, AES_CBC, 24, SHA384, 24)                                    \
-  _ (AES_256_CBC, AES_CBC, 32, SHA384, 24)                                    \
-  _ (AES_128_CBC, AES_CBC, 16, SHA512, 32)                                    \
-  _ (AES_192_CBC, AES_CBC, 24, SHA512, 32)                                    \
-  _ (AES_256_CBC, AES_CBC, 32, SHA512, 32)                                    \
-  _ (AES_128_CTR, AES_CTR, 16, SHA1, 12)                                      \
-  _ (AES_192_CTR, AES_CTR, 24, SHA1, 12)                                      \
-  _ (AES_256_CTR, AES_CTR, 32, SHA1, 12)
+/* VNET_CRYPTO_ALGO, DPDK_CIPHER_ALGO, IV_LEN, DPDK_AUTH_ALGO, TAG_LEN, KEY_LEN
+ */
+#define foreach_vnet_combined_crypto_conversion                                                    \
+  _ (3DES_CBC_MD5_TAG12, 3DES_CBC, 8, MD5_HMAC, 12, 24)                                            \
+  _ (AES_128_CBC_MD5_TAG12, AES_CBC, 16, MD5_HMAC, 12, 16)                                         \
+  _ (AES_192_CBC_MD5_TAG12, AES_CBC, 16, MD5_HMAC, 12, 24)                                         \
+  _ (AES_256_CBC_MD5_TAG12, AES_CBC, 16, MD5_HMAC, 12, 32)                                         \
+  _ (3DES_CBC_SHA1_TAG12, 3DES_CBC, 8, SHA1_HMAC, 12, 24)                                          \
+  _ (AES_128_CBC_SHA1_TAG12, AES_CBC, 16, SHA1_HMAC, 12, 16)                                       \
+  _ (AES_192_CBC_SHA1_TAG12, AES_CBC, 16, SHA1_HMAC, 12, 24)                                       \
+  _ (AES_256_CBC_SHA1_TAG12, AES_CBC, 16, SHA1_HMAC, 12, 32)                                       \
+  _ (3DES_CBC_SHA224_TAG14, 3DES_CBC, 8, SHA224_HMAC, 14, 24)                                      \
+  _ (AES_128_CBC_SHA224_TAG14, AES_CBC, 16, SHA224_HMAC, 14, 16)                                   \
+  _ (AES_192_CBC_SHA224_TAG14, AES_CBC, 16, SHA224_HMAC, 14, 24)                                   \
+  _ (AES_256_CBC_SHA224_TAG14, AES_CBC, 16, SHA224_HMAC, 14, 32)                                   \
+  _ (3DES_CBC_SHA256_TAG16, 3DES_CBC, 8, SHA256_HMAC, 16, 24)                                      \
+  _ (AES_128_CBC_SHA256_TAG16, AES_CBC, 16, SHA256_HMAC, 16, 16)                                   \
+  _ (AES_192_CBC_SHA256_TAG16, AES_CBC, 16, SHA256_HMAC, 16, 24)                                   \
+  _ (AES_256_CBC_SHA256_TAG16, AES_CBC, 16, SHA256_HMAC, 16, 32)                                   \
+  _ (3DES_CBC_SHA384_TAG24, 3DES_CBC, 8, SHA384_HMAC, 24, 24)                                      \
+  _ (AES_128_CBC_SHA384_TAG24, AES_CBC, 16, SHA384_HMAC, 24, 16)                                   \
+  _ (AES_192_CBC_SHA384_TAG24, AES_CBC, 16, SHA384_HMAC, 24, 24)                                   \
+  _ (AES_256_CBC_SHA384_TAG24, AES_CBC, 16, SHA384_HMAC, 24, 32)                                   \
+  _ (3DES_CBC_SHA512_TAG32, 3DES_CBC, 8, SHA512_HMAC, 32, 24)                                      \
+  _ (AES_128_CBC_SHA512_TAG32, AES_CBC, 16, SHA512_HMAC, 32, 16)                                   \
+  _ (AES_192_CBC_SHA512_TAG32, AES_CBC, 16, SHA512_HMAC, 32, 24)                                   \
+  _ (AES_256_CBC_SHA512_TAG32, AES_CBC, 16, SHA512_HMAC, 32, 32)                                   \
+  _ (AES_128_CTR_SHA1_TAG12, AES_CTR, 16, SHA1_HMAC, 12, 16)                                       \
+  _ (AES_192_CTR_SHA1_TAG12, AES_CTR, 16, SHA1_HMAC, 12, 24)                                       \
+  _ (AES_256_CTR_SHA1_TAG12, AES_CTR, 16, SHA1_HMAC, 12, 32)                                       \
+  _ (AES_128_CTR_SHA256_TAG16, AES_CTR, 16, SHA256_HMAC, 16, 16)                                   \
+  _ (AES_192_CTR_SHA256_TAG16, AES_CTR, 16, SHA256_HMAC, 16, 24)                                   \
+  _ (AES_256_CTR_SHA256_TAG16, AES_CTR, 16, SHA256_HMAC, 16, 32)                                   \
+  _ (AES_128_CTR_SHA384_TAG24, AES_CTR, 16, SHA384_HMAC, 24, 16)                                   \
+  _ (AES_192_CTR_SHA384_TAG24, AES_CTR, 16, SHA384_HMAC, 24, 24)                                   \
+  _ (AES_256_CTR_SHA384_TAG24, AES_CTR, 16, SHA384_HMAC, 24, 32)                                   \
+  _ (AES_128_CTR_SHA512_TAG32, AES_CTR, 16, SHA512_HMAC, 32, 16)                                   \
+  _ (AES_192_CTR_SHA512_TAG32, AES_CTR, 16, SHA512_HMAC, 32, 24)                                   \
+  _ (AES_256_CTR_SHA512_TAG32, AES_CTR, 16, SHA512_HMAC, 32, 32)
 
 typedef enum
 {
@@ -71,9 +93,15 @@ typedef enum
   CRYPTODEV_N_OP_TYPES,
 } cryptodev_op_type_t;
 
+typedef enum
+{
+  CRYPTODEV_RESOURCE_ASSIGN_AUTO = 0,
+  CRYPTODEV_RESOURCE_ASSIGN_UPDATE,
+} cryptodev_resource_assign_op_t;
+
 typedef void cryptodev_session_t;
 
-/* Cryptodev session data, one data per direction per numa */
+/* Cryptodev session data, one data per direction per thread */
 typedef struct
 {
   cryptodev_session_t ***keys;
@@ -336,11 +364,16 @@ cryptodev_cache_ring_pop (cryptodev_cache_ring_t *r)
 int cryptodev_session_create (vlib_main_t *vm, vnet_crypto_key_index_t idx,
 			      u32 aad_len);
 
-void cryptodev_sess_handler (vlib_main_t *vm, vnet_crypto_key_op_t kop,
-			     vnet_crypto_key_index_t idx, u32 aad_len);
+void cryptodev_sess_del (vlib_main_t *vm, vnet_crypto_key_index_t idx);
 
 int cryptodev_check_cap_support (struct rte_cryptodev_sym_capability_idx *idx,
 				 u32 key_size, u32 digest_size, u32 aad_size);
+
+int cryptodev_check_feature_support (u64 feature_flag);
+u8 cryptodev_get_iv_len (vnet_crypto_alg_t alg);
+
+int cryptodev_assign_resource (cryptodev_engine_thread_t *cet, u32 cryptodev_inst_index,
+			       cryptodev_resource_assign_op_t op);
 
 clib_error_t *cryptodev_register_cop_hdl (vlib_main_t *vm, u32 eidx);
 

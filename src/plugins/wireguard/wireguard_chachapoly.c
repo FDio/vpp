@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0
  * Copyright (c) 2022 Rubicon Communications, LLC.
+ * Copyright (c) 2026 Cisco and/or its affiliates.
  */
 
 #include <wireguard/wireguard.h>
@@ -69,9 +70,8 @@ wg_xchacha20poly1305_encrypt (vlib_main_t *vm, u8 *src, u32 src_len, u8 *dst,
 
   uint32_t key_idx;
 
-  key_idx =
-    vnet_crypto_key_add (vm, VNET_CRYPTO_ALG_CHACHA20_POLY1305,
-			 (uint8_t *) derived_key, CHACHA20POLY1305_KEY_SIZE);
+  key_idx = vnet_crypto_key_add (vm, VNET_CRYPTO_ALG_CHACHA20_POLY1305, (uint8_t *) derived_key,
+				 CHACHA20POLY1305_KEY_SIZE, 0, 0);
 
   wg_chacha20poly1305_calc (vm, src, src_len, dst, aad, aad_len, h_nonce,
 			    VNET_CRYPTO_OP_CHACHA20_POLY1305_ENC, key_idx);
@@ -99,9 +99,8 @@ wg_xchacha20poly1305_decrypt (vlib_main_t *vm, u8 *src, u32 src_len, u8 *dst,
 
   uint32_t key_idx;
 
-  key_idx =
-    vnet_crypto_key_add (vm, VNET_CRYPTO_ALG_CHACHA20_POLY1305,
-			 (uint8_t *) derived_key, CHACHA20POLY1305_KEY_SIZE);
+  key_idx = vnet_crypto_key_add (vm, VNET_CRYPTO_ALG_CHACHA20_POLY1305, (uint8_t *) derived_key,
+				 CHACHA20POLY1305_KEY_SIZE, 0, 0);
 
   ret =
     wg_chacha20poly1305_calc (vm, src, src_len, dst, aad, aad_len, h_nonce,

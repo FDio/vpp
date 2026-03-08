@@ -3,6 +3,8 @@
  */
 
 #include <vlib/vlib.h>
+#include <vppinfra/format_ansi.h>
+#include <vppinfra/format_table.h>
 #include <vnet/crypto/crypto.h>
 
 static clib_error_t *
@@ -45,46 +47,72 @@ show_crypto_handlers_command_fn (vlib_main_t * vm,
 {
   vnet_crypto_main_t *cm = &crypto_main;
   unformat_input_t _line_input, *line_input = &_line_input;
+  table_t table = {}, *t = &table;
+  u8 *cell = 0;
   u8 *s = 0;
-  char *handler_type_str[] = {
-#define _(n, s) [VNET_CRYPTO_HANDLER_TYPE_##n] = s,
-    foreach_crypto_handler_type
-  };
+  int row = 0;
 
   if (unformat_user (input, unformat_line_input, line_input))
     unformat_free (line_input);
 
+  table_add_hdr_col (t, 0);
+  table_add_hdr_row (t, 5, "Algorithm", "Op", "Simple", "Chained", "Async");
+  for (int i = -1; i <= 3; i++)
+    table_set_cell_align (t, -1, i, TTAA_LEFT);
+
   FOREACH_ARRAY_ELT (a, cm->algs)
     {
+      int first = 1;
+
       if (a == cm->algs)
 	continue;
 
-      vlib_cli_output (vm, "\n%s:", a->name);
       for (u32 i = 0; i < VNET_CRYPTO_OP_N_TYPES; i++)
 	if (a->op_by_type[i] != VNET_CRYPTO_OP_NONE)
 	  {
-	    vlib_cli_output (vm, "  %U:", format_vnet_crypto_op_type, i);
 	    vnet_crypto_op_id_t id = a->op_by_type[i];
 	    vnet_crypto_op_data_t *od = cm->opt_data + id;
-	    vnet_crypto_engine_t *e;
+	    vnet_crypto_handler_type_t ht;
 
-	    for (u32 i = 0; i < VNET_CRYPTO_HANDLER_N_TYPES; i++)
+	    table_format_cell (t, row, -1, first ? "%s" : "", a->name);
+	    table_format_cell (t, row, 0, "%U", format_crypto_op_type_short, i);
+	    first = 0;
+
+	    for (ht = 0; ht < VNET_CRYPTO_HANDLER_N_TYPES; ht++)
 	      {
+		vnet_crypto_engine_t *e;
+
 		vec_foreach (e, cm->engines)
 		  {
-		    if (e->ops[id].handlers[i])
+		    if (e->ops[id].handlers[ht])
 		      {
-			s = format (s, " %s", e->name);
-			if (e->ops[id].handlers[i] == od->handlers[i])
-			  s = format (s, "*");
+			if (vec_len (cell))
+			  cell = format (cell, " ");
+			if (e->ops[id].handlers[ht] == od->handlers[ht])
+			  cell = format (cell, ANSI_FG_CYAN "%s*" ANSI_RESET, e->name);
+			else
+			  cell = format (cell, "%s", e->name);
 		      }
 		  }
 
-		vlib_cli_output (vm, "    %s:%v", handler_type_str[i], s);
-		vec_reset_length (s);
+		if (vec_len (cell))
+		  table_format_cell (t, row, 1 + ht,
+				     ht == VNET_CRYPTO_HANDLER_TYPE_ASYNC ? "%v" : "%v  ", cell);
+		else
+		  table_format_cell (t, row, 1 + ht,
+				     ht == VNET_CRYPTO_HANDLER_TYPE_ASYNC ? "%s" : "%s  ", "-");
+		vec_reset_length (cell);
 	      }
+
+	    for (int i = -1; i <= 3; i++)
+	      table_set_cell_align (t, row, i, TTAA_LEFT);
+	    row++;
 	  }
     }
+  s = format (s, "%U", format_table, t);
+  vlib_cli_output (vm, "%v", s);
+  table_free (t);
+  vec_free (cell);
   vec_free (s);
 
   return 0;
