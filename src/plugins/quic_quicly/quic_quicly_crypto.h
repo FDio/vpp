@@ -30,7 +30,7 @@ struct aead_crypto_context_t
   vnet_crypto_op_t op;
   crypto_key_t key;
 
-  vnet_crypto_op_id_t id;
+  vnet_crypto_op_type_t type;
   uint8_t iv[PTLS_MAX_IV_SIZE];
 };
 
@@ -38,7 +38,7 @@ struct cipher_context_t
 {
   ptls_cipher_context_t super;
   vnet_crypto_op_t op;
-  vnet_crypto_op_id_t id;
+  vnet_crypto_op_type_t type;
   crypto_key_t key;
 };
 
@@ -72,7 +72,7 @@ typedef struct quic_quicly_crypto_main_
 {
   quic_quicly_main_t *qqm;
   ptls_cipher_suite_t ***quic_ciphers;
-  u32 *per_thread_crypto_key_indices;
+  vnet_crypto_ctx_t **per_thread_crypto_ctxs;
   quic_quicly_crypto_ctx_t **crypto_ctx_pool;
   clib_bihash_24_8_t crypto_ctx_hash;
   uword *available_crypto_engines; /**< Bitmap for registered engines */

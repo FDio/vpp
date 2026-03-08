@@ -504,6 +504,7 @@ list(APPEND VNET_SOURCES
   crypto/config.c
   crypto/crypto.c
   crypto/format.c
+  crypto/context.c
   crypto/main.c
   crypto/node.c
   crypto/crypto_api.c
@@ -533,7 +534,6 @@ list(APPEND VNET_SOURCES
   ipsec/ipsec_spd_policy.c
   ipsec/ipsec_tun.c
   ipsec/ipsec_tun_in.c
-  ipsec/main.c
   ipsec/esp_format.c
   ipsec/esp_encrypt.c
   ipsec/esp_decrypt.c

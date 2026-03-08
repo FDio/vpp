@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0
- * Copyright(c) 2025 Cisco Systems, Inc.
+ * Copyright(c) 2025-2026 Cisco Systems, Inc.
  */
 
 #include <vlib/vlib.h>
@@ -9,115 +9,101 @@
 vnet_crypto_main_t crypto_main =
 {
   .algs = {
-#define _(n, s, ...)                                                          \
-  [VNET_CRYPTO_ALG_##n] = {                                                   \
-    .name = (s),                                                              \
-    .is_link = 0,                                                             \
-    .link_crypto_alg = VNET_CRYPTO_ALG_NONE,                                  \
-    .link_integ_alg = VNET_CRYPTO_ALG_NONE,                                   \
-    .op_by_type[VNET_CRYPTO_OP_TYPE_ENCRYPT] = VNET_CRYPTO_OP_##n##_ENC,      \
-    .op_by_type[VNET_CRYPTO_OP_TYPE_DECRYPT] = VNET_CRYPTO_OP_##n##_DEC,      \
-    __VA_ARGS__,                                                              \
+#define _(n, s, f, k, b)                                                                           \
+  [VNET_CRYPTO_ALG_##n] = {                                                                        \
+    .name = (s),                                                                                   \
+    .cipher_key_len = (k),                                                                         \
+    .block_len = (b),                                                                              \
+    .alg_type = VNET_CRYPTO_ALG_T_CIPHER,                                                          \
+    .cipher_family = VNET_CRYPTO_ALG_FAMILY_##f,                                                   \
+    .auth_family = VNET_CRYPTO_ALG_FAMILY_NONE,                                                    \
   },
-  foreach_crypto_cipher_alg foreach_crypto_aead_alg
+  foreach_crypto_cipher_alg_non_ctr foreach_crypto_cipher_alg_ctr
 #undef _
 
-#define _(n, s)                                                               \
-  [VNET_CRYPTO_ALG_HASH_##n] = {                                              \
-    .name = (s),                                                              \
-    .is_link = 0,                                                             \
-    .link_crypto_alg = VNET_CRYPTO_ALG_NONE,                                  \
-    .link_integ_alg = VNET_CRYPTO_ALG_NONE,                                   \
-    .op_by_type[VNET_CRYPTO_OP_TYPE_HASH] = VNET_CRYPTO_OP_##n##_HASH,        \
-  },                                                                          \
-  [VNET_CRYPTO_ALG_HMAC_##n] = {                                              \
-    .name = ("hmac-" s),                                                      \
-    .is_link = 0,                                                             \
-    .link_crypto_alg = VNET_CRYPTO_ALG_NONE,                                  \
-    .link_integ_alg = VNET_CRYPTO_ALG_NONE,                                   \
-    .op_by_type[VNET_CRYPTO_OP_TYPE_HMAC] = VNET_CRYPTO_OP_##n##_HMAC,        \
-    .variable_key_length = 1,                                                 \
+#define _(n, s, f, k, b)                                                                           \
+  [VNET_CRYPTO_ALG_##n] = {                                                                        \
+    .name = (s),                                                                                   \
+    .cipher_key_len = (k),                                                                         \
+    .block_len = (b),                                                                              \
+    .alg_type = VNET_CRYPTO_ALG_T_AEAD,                                                            \
+    .cipher_family = VNET_CRYPTO_ALG_FAMILY_##f,                                                   \
+    .auth_family = VNET_CRYPTO_ALG_FAMILY_##f,                                                     \
+    .variable_aad_len = 1,                                                                         \
+  },
+  foreach_crypto_aead_alg
+#undef _
+
+#define _(n, s, cf, inf, d, b)                                                                     \
+  [VNET_CRYPTO_ALG_##n] = {                                                                        \
+    .name = (s),                                                                                   \
+    .auth_key_len = (b),                                                                           \
+    .block_len = (b),                                                                              \
+    .alg_type = VNET_CRYPTO_ALG_T_AUTH,                                                            \
+    .cipher_family = VNET_CRYPTO_ALG_FAMILY_##cf,                                                  \
+    .auth_family = VNET_CRYPTO_ALG_FAMILY_##inf,                                                   \
+    .auth_len = d,                                                                                 \
+    .variable_auth_key_len = 1,                                                                    \
   },
   foreach_crypto_hash_alg
 #undef _
 
-#define _(n, s, k, t, a)                                                      \
-  [VNET_CRYPTO_ALG_##n##_TAG##t##_AAD##a] = {                                 \
-    .name = (s),                                                              \
-    .is_link = 0,                                                             \
-    .link_crypto_alg = VNET_CRYPTO_ALG_NONE,                                  \
-    .link_integ_alg = VNET_CRYPTO_ALG_NONE,                                   \
-    .op_by_type[VNET_CRYPTO_OP_TYPE_ENCRYPT] =                                \
-      VNET_CRYPTO_OP_##n##_TAG##t##_AAD##a##_ENC,                             \
-    .op_by_type[VNET_CRYPTO_OP_TYPE_DECRYPT] =                                \
-      VNET_CRYPTO_OP_##n##_TAG##t##_AAD##a##_DEC,                             \
+#define _(n, s, cf, inf, d, b)                                                                     \
+  [VNET_CRYPTO_ALG_##n] = {                                                                        \
+    .name = (s),                                                                                   \
+    .auth_key_len = (b),                                                                           \
+    .block_len = (b),                                                                              \
+    .alg_type = VNET_CRYPTO_ALG_T_AUTH,                                                            \
+    .cipher_family = VNET_CRYPTO_ALG_FAMILY_##cf,                                                  \
+    .auth_family = VNET_CRYPTO_ALG_FAMILY_##inf,                                                   \
+    .auth_len = d,                                                                                 \
+    .variable_auth_key_len = 1,                                                                    \
+  },
+  foreach_crypto_hash_fixed_alg
+#undef _
+
+#define _(n, s, f, k, t, a, b)                                                                     \
+  [VNET_CRYPTO_ALG_##n##_ICV##t##_AAD##a] = {                                                      \
+    .name = (s),                                                                                   \
+    .cipher_key_len = (k),                                                                         \
+    .block_len = (b),                                                                              \
+    .alg_type = VNET_CRYPTO_ALG_T_AEAD,                                                            \
+    .cipher_family = VNET_CRYPTO_ALG_FAMILY_##f,                                                   \
+    .auth_family = VNET_CRYPTO_ALG_FAMILY_##f,                                                     \
+    .aad_len = a,                                                                                  \
+    .auth_len = t,                                                                                 \
   },
   foreach_crypto_aead_async_alg
 #undef _
 
-#define _(c, h, s, k, d)                                                      \
-  [VNET_CRYPTO_ALG_##c##_##h##_TAG##d] = {                                    \
-    .name = (s),                                                              \
-    .is_link = 1,                                                             \
-    .link_crypto_alg = VNET_CRYPTO_ALG_##c,                                   \
-    .link_integ_alg = VNET_CRYPTO_ALG_HMAC_##h,                               \
-    .op_by_type[VNET_CRYPTO_OP_TYPE_ENCRYPT] =                                \
-      VNET_CRYPTO_OP_##c##_##h##_TAG##d##_ENC,                                \
-    .op_by_type[VNET_CRYPTO_OP_TYPE_DECRYPT] =                                \
-      VNET_CRYPTO_OP_##c##_##h##_TAG##d##_DEC,                                \
+#define _(c, h, s, cf, inf, k, d, ak, b)                                                           \
+  [VNET_CRYPTO_ALG_##c##_##h] = {                                                                  \
+    .name = (s),                                                                                   \
+    .cipher_key_len = (k),                                                                         \
+    .auth_key_len = (ak),                                                                          \
+    .block_len = (b),                                                                              \
+    .alg_type = VNET_CRYPTO_ALG_T_COMBINED,                                                        \
+    .cipher_family = VNET_CRYPTO_ALG_FAMILY_##cf,                                                  \
+    .auth_family = VNET_CRYPTO_ALG_FAMILY_##inf,                                                   \
+    .auth_len = d,                                                                                 \
+    .variable_auth_key_len = 1,                                                                    \
   },
-  foreach_crypto_link_async_alg
+  foreach_crypto_combined_alg
 #undef _
 
+#define _(c, h, s, cf, inf, k, d, ak, b)                                                           \
+  [VNET_CRYPTO_ALG_##c##_##h##_ICV##d] = {                                                         \
+    .name = (s),                                                                                   \
+    .cipher_key_len = (k),                                                                         \
+    .auth_key_len = (ak),                                                                          \
+    .block_len = (b),                                                                              \
+    .alg_type = VNET_CRYPTO_ALG_T_COMBINED,                                                        \
+    .cipher_family = VNET_CRYPTO_ALG_FAMILY_##cf,                                                  \
+    .auth_family = VNET_CRYPTO_ALG_FAMILY_##inf,                                                   \
+    .auth_len = d,                                                                                 \
+    .variable_auth_key_len = 1,                                                                    \
   },
-  .opt_data = {
-#define _(n, s, ...)                                                          \
-  [VNET_CRYPTO_OP_##n##_ENC] = {                                              \
-      .alg = VNET_CRYPTO_ALG_##n,                                             \
-      .type = VNET_CRYPTO_OP_TYPE_ENCRYPT,                                    \
-  },                                                                          \
-  [VNET_CRYPTO_OP_##n##_DEC] = {                                              \
-      .alg = VNET_CRYPTO_ALG_##n,                                             \
-      .type = VNET_CRYPTO_OP_TYPE_DECRYPT,                                    \
-  },
-  foreach_crypto_cipher_alg foreach_crypto_aead_alg
+  foreach_crypto_combined_fixed_alg
 #undef _
-
-#define _(n, s)                                                               \
-  [VNET_CRYPTO_OP_##n##_HASH] = {                                             \
-    .alg = VNET_CRYPTO_ALG_HASH_##n,                                          \
-    .type = VNET_CRYPTO_OP_TYPE_HASH,                                         \
-  },                                                                          \
-  [VNET_CRYPTO_OP_##n##_HMAC] = {                                             \
-    .alg = VNET_CRYPTO_ALG_HMAC_##n,                                          \
-    .type = VNET_CRYPTO_OP_TYPE_HMAC,                                         \
-  },
-  foreach_crypto_hash_alg
-#undef _
-
-#define _(n, s, k, t, a)                                                      \
-  [VNET_CRYPTO_OP_##n##_TAG##t##_AAD##a##_ENC] = {                            \
-      .alg = VNET_CRYPTO_ALG_##n##_TAG##t##_AAD##a,                           \
-      .type = VNET_CRYPTO_OP_TYPE_ENCRYPT,                                    \
-  },                                                                          \
-  [VNET_CRYPTO_OP_##n##_TAG##t##_AAD##a##_DEC] = {                            \
-      .alg = VNET_CRYPTO_ALG_##n##_TAG##t##_AAD##a,                           \
-      .type = VNET_CRYPTO_OP_TYPE_DECRYPT,                                    \
-  },
-  foreach_crypto_aead_async_alg
-#undef _
-
-#define _(c, h, s, k, d)                                                      \
-  [VNET_CRYPTO_OP_##c##_##h##_TAG##d##_ENC] = {                               \
-      .alg = VNET_CRYPTO_ALG_##c##_##h##_TAG##d,                              \
-      .type = VNET_CRYPTO_OP_TYPE_ENCRYPT,                                    \
-  } ,                                                                         \
-  [VNET_CRYPTO_OP_##c##_##h##_TAG##d##_DEC] = {                               \
-      .alg = VNET_CRYPTO_ALG_##c##_##h##_TAG##d,                              \
-      .type = VNET_CRYPTO_OP_TYPE_DECRYPT,                                    \
-  },
-    foreach_crypto_link_async_alg
-#undef _
-
   },
 };

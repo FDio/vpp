@@ -1,6 +1,6 @@
 /*
  * SPDX-License-Identifier: Apache-2.0
- * Copyright (c) 2016 Cisco and/or its affiliates.
+ * Copyright (c) 2016-2026 Cisco and/or its affiliates.
  */
 
 #include <vlibmemory/api.h>
@@ -2664,30 +2664,14 @@ lisp_key_type_to_crypto_alg (lisp_key_type_t key_id)
   switch (key_id)
     {
     case HMAC_SHA_1_96:
-      return VNET_CRYPTO_ALG_HMAC_SHA1;
+    return VNET_CRYPTO_ALG_SHA1_160;
     case HMAC_SHA_256_128:
-      return VNET_CRYPTO_ALG_HMAC_SHA256;
+    return VNET_CRYPTO_ALG_SHA_256;
     default:
       clib_warning ("unsupported encryption key type: %d!", key_id);
       break;
     }
   return VNET_CRYPTO_ALG_NONE;
-}
-
-static vnet_crypto_op_id_t
-lisp_key_type_to_crypto_op (lisp_key_type_t key_id)
-{
-  switch (key_id)
-    {
-    case HMAC_SHA_1_96:
-      return VNET_CRYPTO_OP_SHA1_HMAC;
-    case HMAC_SHA_256_128:
-      return VNET_CRYPTO_OP_SHA256_HMAC;
-    default:
-      clib_warning ("unsupported encryption key type: %d!", key_id);
-      break;
-    }
-  return VNET_CRYPTO_OP_NONE;
 }
 
 static int
@@ -2699,23 +2683,21 @@ update_map_register_auth_data (map_register_hdr_t * map_reg_hdr,
   MREG_KEY_ID (map_reg_hdr) = clib_host_to_net_u16 (key_id);
   MREG_AUTH_DATA_LEN (map_reg_hdr) = clib_host_to_net_u16 (auth_data_len);
   vnet_crypto_op_t _op, *op = &_op;
-  vnet_crypto_key_index_t ki;
+  vnet_crypto_ctx_t *ctx;
 
-  vnet_crypto_op_init (op, lisp_key_type_to_crypto_op (key_id));
+  ctx = vnet_crypto_ctx_create (lisp_key_type_to_crypto_alg (key_id));
+  if (ctx)
+    vnet_crypto_ctx_set_auth_key (ctx, key, vec_len (key));
+  vnet_crypto_op_init (ctx, op);
+  op->type = VNET_CRYPTO_OP_TYPE_HMAC;
   op->len = msg_len;
-  op->digest = MREG_DATA (map_reg_hdr);
+  op->auth = MREG_DATA (map_reg_hdr);
   op->src = (u8 *) map_reg_hdr;
-  op->digest_len = 0;
+  op->auth_len = 0;
   op->iv = 0;
 
-  ki = vnet_crypto_key_add (lcm->vlib_main,
-			    lisp_key_type_to_crypto_alg (key_id), key,
-			    vec_len (key));
-
-  op->key_index = ki;
-
-  vnet_crypto_process_ops (lcm->vlib_main, op, 1);
-  vnet_crypto_key_del (lcm->vlib_main, ki);
+  vnet_crypto_process_ops (lcm->vlib_main, op, 0, 1);
+  vnet_crypto_ctx_destroy (lcm->vlib_main, ctx);
 
   return 0;
 }
@@ -3870,7 +3852,7 @@ is_auth_data_valid (map_notify_hdr_t * h, u32 msg_len,
   u16 auth_data_len;
   int result;
   vnet_crypto_op_t _op, *op = &_op;
-  vnet_crypto_key_index_t ki;
+  vnet_crypto_ctx_t *ctx;
   u8 out[EVP_MAX_MD_SIZE] = { 0, };
 
   auth_data_len = auth_data_len_by_key_id (key_id);
@@ -3887,21 +3869,19 @@ is_auth_data_valid (map_notify_hdr_t * h, u32 msg_len,
   /* clear auth data */
   clib_memset (MNOTIFY_DATA (h), 0, auth_data_len);
 
-  vnet_crypto_op_init (op, lisp_key_type_to_crypto_op (key_id));
+  ctx = vnet_crypto_ctx_create (lisp_key_type_to_crypto_alg (key_id));
+  if (ctx)
+    vnet_crypto_ctx_set_auth_key (ctx, key, vec_len (key));
+  vnet_crypto_op_init (ctx, op);
+  op->type = VNET_CRYPTO_OP_TYPE_HMAC;
   op->len = msg_len;
-  op->digest = out;
+  op->auth = out;
   op->src = (u8 *) h;
-  op->digest_len = 0;
+  op->auth_len = 0;
   op->iv = 0;
 
-  ki = vnet_crypto_key_add (lcm->vlib_main,
-			    lisp_key_type_to_crypto_alg (key_id), key,
-			    vec_len (key));
-
-  op->key_index = ki;
-
-  vnet_crypto_process_ops (lcm->vlib_main, op, 1);
-  vnet_crypto_key_del (lcm->vlib_main, ki);
+  vnet_crypto_process_ops (lcm->vlib_main, op, 0, 1);
+  vnet_crypto_ctx_destroy (lcm->vlib_main, ctx);
 
   result = memcmp (out, auth_data, auth_data_len);
 

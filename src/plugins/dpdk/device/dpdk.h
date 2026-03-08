@@ -340,7 +340,6 @@ typedef struct
 
   /* logging */
   vlib_log_class_t log_default;
-  vlib_log_class_t log_cryptodev;
 } dpdk_main_t;
 
 extern dpdk_main_t dpdk_main;
