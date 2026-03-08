@@ -1,6 +1,6 @@
 /*
  * SPDX-License-Identifier: Apache-2.0
- * Copyright (c) 2015 Cisco and/or its affiliates.
+ * Copyright (c) 2015-2026 Cisco and/or its affiliates.
  */
 
 #ifndef __IPSEC_H__
@@ -226,6 +226,51 @@ typedef struct
   u32 next_index;
 } esp_encrypt_post_trace_t;
 
+typedef struct
+{
+  u32 seq;
+  u64 sa_seq64;
+  u32 pkt_seq_hi;
+  ipsec_crypto_alg_t crypto_alg;
+  ipsec_integ_alg_t integ_alg;
+} esp_decrypt_trace_t;
+
+typedef struct
+{
+  u32 sa_index;
+  u32 spi;
+  u64 seq;
+  ipsec_integ_alg_t integ_alg;
+} ah_encrypt_trace_t;
+
+typedef struct
+{
+  ipsec_integ_alg_t integ_alg;
+  u32 seq_num;
+} ah_decrypt_trace_t;
+
+typedef struct ipsec_handoff_trace_t_
+{
+  u32 next_worker_index;
+} ipsec_handoff_trace_t;
+
+typedef struct
+{
+  ip_protocol_t proto;
+  u32 spd;
+  u32 policy_index;
+  u32 policy_type;
+  u32 sa_id;
+  u32 spi;
+  u32 seq;
+} ipsec_input_trace_t;
+
+typedef struct
+{
+  u32 spd_id;
+  u32 policy_id;
+} ipsec_output_trace_t;
+
 extern ipsec_main_t ipsec_main;
 
 u8 *format_esp_encrypt_trace (u8 *s, va_list *args);
@@ -242,6 +287,14 @@ extern vlib_node_registration_t ipsec6_tun_input_node;
 /*
  * functions
  */
+format_function_t format_esp_encrypt_trace;
+format_function_t format_esp_post_encrypt_trace;
+format_function_t format_esp_decrypt_trace;
+format_function_t format_ah_encrypt_trace;
+format_function_t format_ah_decrypt_trace;
+format_function_t format_ipsec_handoff_trace;
+format_function_t format_ipsec_input_trace;
+format_function_t format_ipsec_output_trace;
 
 /*
  *  inline functions

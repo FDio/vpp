@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0
- * Copyright (c) 2015 Cisco and/or its affiliates.
+ * Copyright (c) 2015-2026 Cisco and/or its affiliates.
  */
 
 /* esp_decrypt.c : IPSec ESP decrypt node */
@@ -47,35 +47,10 @@ typedef enum
     ESP_DECRYPT_POST_N_NEXT,
 } esp_decrypt_post_next_t;
 
-typedef struct
-{
-  u32 seq;
-  u64 sa_seq64;
-  u32 pkt_seq_hi;
-  ipsec_crypto_alg_t crypto_alg;
-  ipsec_integ_alg_t integ_alg;
-} esp_decrypt_trace_t;
-
 typedef vl_counter_esp_decrypt_enum_t esp_decrypt_error_t;
 
-/* The number of byres in the hisequence number */
+/* The number of bytes in the hi sequence number */
 #define N_HI_ESN_BYTES 4
-
-/* packet trace format function */
-static u8 *
-format_esp_decrypt_trace (u8 * s, va_list * args)
-{
-  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
-  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
-  esp_decrypt_trace_t *t = va_arg (*args, esp_decrypt_trace_t *);
-
-  s = format (s,
-	      "esp: crypto %U integrity %U pkt-seq %d sa-seq %lu "
-	      "pkt-seq-hi %u",
-	      format_ipsec_crypto_alg, t->crypto_alg, format_ipsec_integ_alg,
-	      t->integ_alg, t->seq, t->sa_seq64, t->pkt_seq_hi);
-  return s;
-}
 
 #define ESP_ENCRYPT_PD_F_FD_TRANSPORT (1 << 2)
 
