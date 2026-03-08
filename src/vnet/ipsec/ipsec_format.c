@@ -627,3 +627,112 @@ format_ipsec_itf (u8 * s, va_list * a)
 
   return (s);
 }
+
+u8 *
+format_esp_encrypt_trace (u8 *s, va_list *args)
+{
+  vlib_main_t *vm __clib_unused = va_arg (*args, vlib_main_t *);
+  vlib_node_t *node __clib_unused = va_arg (*args, vlib_node_t *);
+  esp_encrypt_trace_t *t = va_arg (*args, esp_encrypt_trace_t *);
+
+  s = format (s, "esp: sa-index %d spi %u (0x%08x) seq %lu crypto %U integrity %U%s", t->sa_index,
+	      t->spi, t->spi, t->seq, format_ipsec_crypto_alg, t->crypto_alg,
+	      format_ipsec_integ_alg, t->integ_alg, t->udp_encap ? " udp-encap-enabled" : "");
+  return s;
+}
+
+u8 *
+format_esp_post_encrypt_trace (u8 *s, va_list *args)
+{
+  vlib_main_t *vm __clib_unused = va_arg (*args, vlib_main_t *);
+  vlib_node_t *node __clib_unused = va_arg (*args, vlib_node_t *);
+  esp_encrypt_post_trace_t *t = va_arg (*args, esp_encrypt_post_trace_t *);
+
+  s = format (s, "esp-post: next node index %u", t->next_index);
+  return s;
+}
+
+u8 *
+format_esp_decrypt_trace (u8 *s, va_list *args)
+{
+  vlib_main_t *vm __clib_unused = va_arg (*args, vlib_main_t *);
+  vlib_node_t *node __clib_unused = va_arg (*args, vlib_node_t *);
+  esp_decrypt_trace_t *t = va_arg (*args, esp_decrypt_trace_t *);
+
+  s = format (s, "esp: crypto %U integrity %U pkt-seq %d sa-seq %lu pkt-seq-hi %u",
+	      format_ipsec_crypto_alg, t->crypto_alg, format_ipsec_integ_alg, t->integ_alg, t->seq,
+	      t->sa_seq64, t->pkt_seq_hi);
+  return s;
+}
+
+u8 *
+format_ah_encrypt_trace (u8 *s, va_list *args)
+{
+  vlib_main_t *vm __clib_unused = va_arg (*args, vlib_main_t *);
+  vlib_node_t *node __clib_unused = va_arg (*args, vlib_node_t *);
+  ah_encrypt_trace_t *t = va_arg (*args, ah_encrypt_trace_t *);
+
+  s = format (s, "ah: sa-index %d spi %u (0x%08x) seq %lu integrity %U", t->sa_index, t->spi,
+	      t->spi, t->seq, format_ipsec_integ_alg, t->integ_alg);
+  return s;
+}
+
+u8 *
+format_ah_decrypt_trace (u8 *s, va_list *args)
+{
+  vlib_main_t *vm __clib_unused = va_arg (*args, vlib_main_t *);
+  vlib_node_t *node __clib_unused = va_arg (*args, vlib_node_t *);
+  ah_decrypt_trace_t *t = va_arg (*args, ah_decrypt_trace_t *);
+
+  s = format (s, "ah: integrity %U seq-num %d", format_ipsec_integ_alg, t->integ_alg, t->seq_num);
+  return s;
+}
+
+u8 *
+format_ipsec_handoff_trace (u8 *s, va_list *args)
+{
+  vlib_main_t *vm __clib_unused = va_arg (*args, vlib_main_t *);
+  vlib_node_t *node __clib_unused = va_arg (*args, vlib_node_t *);
+  ipsec_handoff_trace_t *t = va_arg (*args, ipsec_handoff_trace_t *);
+
+  s = format (s, "next-worker %d", t->next_worker_index);
+  return s;
+}
+
+u8 *
+format_ipsec_input_trace (u8 *s, va_list *args)
+{
+  vlib_main_t *vm __clib_unused = va_arg (*args, vlib_main_t *);
+  vlib_node_t *node __clib_unused = va_arg (*args, vlib_node_t *);
+  ipsec_input_trace_t *t = va_arg (*args, ipsec_input_trace_t *);
+
+  s =
+    format (s, "%U: sa_id %u type: %u spd %u policy %d spi %u (0x%08x) seq %u", format_ip_protocol,
+	    t->proto, t->sa_id, t->policy_type, t->spd, t->policy_index, t->spi, t->spi, t->seq);
+  return s;
+}
+
+u8 *
+format_ipsec_output_trace (u8 *s, va_list *args)
+{
+  vlib_main_t *vm __clib_unused = va_arg (*args, vlib_main_t *);
+  vlib_node_t *node __clib_unused = va_arg (*args, vlib_node_t *);
+  ipsec_output_trace_t *t = va_arg (*args, ipsec_output_trace_t *);
+
+  s = format (s, "spd %u policy %d", t->spd_id, t->policy_id);
+  return s;
+}
+
+u8 *
+format_ipsec_tun_protect_input_trace (u8 *s, va_list *args)
+{
+  vlib_main_t *vm __clib_unused = va_arg (*args, vlib_main_t *);
+  vlib_node_t *node __clib_unused = va_arg (*args, vlib_node_t *);
+  ipsec_tun_protect_input_trace_t *t = va_arg (*args, ipsec_tun_protect_input_trace_t *);
+
+  if (t->is_ip6)
+    s = format (s, "IPSec: %U seq %u", format_ipsec6_tunnel_kv, &t->kv6, t->seq);
+  else
+    s = format (s, "IPSec: %U seq %u", format_ipsec4_tunnel_kv, &t->kv4, t->seq);
+  return s;
+}

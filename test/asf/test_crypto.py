@@ -18,11 +18,11 @@ class TestCrypto(VppAsfTestCase):
 
     def test_crypto(self):
         """Crypto Unit Tests"""
-        error = self.vapi.cli("test crypto")
+        error = self.vapi.cli("test crypto quiet")
 
         if error:
             self.logger.critical(error)
-        self.assertNotIn("FAIL", error)
+        self.assertEqual("OK", error.strip())
 
     def test_crypto_perf(self):
         """Crypto+HMAC Performance Tests"""

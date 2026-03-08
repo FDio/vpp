@@ -37,21 +37,25 @@ define  ipsec-mb_build_cmds
 endef
 
 ifneq   ($(ipsec-mb_system_header), )
-	ipsec-mb_system_ver_str := $(shell awk '/^#define\s+IMB_VERSION_STR/ { print $$3 }' \
-	$(ipsec-mb_system_header))
+	ipsec-mb_system_ver_str := $(shell awk '/^#define[[:space:]]+IMB_VERSION_STR/ { gsub(/"/, "", $$3); print $$3; exit }' \
+	$(ipsec-mb_system_header) 2>/dev/null)
+endif
+
+ifneq   ($(ipsec-mb_system_ver_str), )
+define ipsec-mb_version_check_cmd
+	if [[ "$(ipsec-mb_system_ver_str)" != "$(ipsec-mb_version_str)" ]]; then \
+	echo "Intel-ipsec-mb build Error: System installed Intel IPsec-mb lib \
+	version mismatch with target version, \
+	expecting $(ipsec-mb_version_str), \
+	but system has $(ipsec-mb_system_ver_str) \
+	please align/remove system installed $(ipsec-mb_system_header) before building."; \
+	exit 1; \
+	fi
+endef
 endif
 
 define  ipsec-mb_install_cmds
-	if [[ -n "$(ipsec-mb_system_header)" ]]; then \
-		if [[ "$(ipsec-mb_system_ver_str)" != "$(ipsec-mb_version_str)" ]]; then \
-		echo "Intel-ipsec-mb build Error: System installed Intel IPsec-mb lib \
-		version mismatch with target version, \
-		expecting $(ipsec-mb_version_str), \
-		but system has $(ipsec-mb_system_ver_str) \
-		please align/remove system installed $(ipsec-mb_system_header) before building."; \
-		exit 1; \
-		fi \
-	fi
+	$(ipsec-mb_version_check_cmd)
 	@mkdir -p $(ipsec-mb_install_dir)/include
 	@mkdir -p $(ipsec-mb_install_dir)/lib
 	@cp $(ipsec-mb_src_dir)/lib/intel-ipsec-mb.h $(ipsec-mb_install_dir)/include
@@ -59,5 +63,3 @@ define  ipsec-mb_install_cmds
 endef
 
 $(eval $(call package,ipsec-mb))
-
-

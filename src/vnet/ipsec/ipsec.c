@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0
- * Copyright (c) 2015 Cisco and/or its affiliates.
+ * Copyright (c) 2015-2026 Cisco and/or its affiliates.
  */
 
 /* ipsec.c : IPSEC module functions */
@@ -205,33 +205,29 @@ ipsec_init (vlib_main_t * vm)
   ASSERT (node);
   im->error_drop_node_index = node->index;
 
-  ipsec_add_node (vm, "ah4-encrypt", "ipsec4-output-feature",
-		  &im->ah4_encrypt_node_index, &im->ah4_encrypt_next_index);
-  ipsec_add_node (vm, "ah4-decrypt", "ipsec4-input-feature",
-		  &im->ah4_decrypt_node_index, &im->ah4_decrypt_next_index);
-  ipsec_add_node (vm, "ah6-encrypt", "ipsec6-output-feature",
-		  &im->ah6_encrypt_node_index, &im->ah6_encrypt_next_index);
-  ipsec_add_node (vm, "ah6-decrypt", "ipsec6-input-feature",
-		  &im->ah6_decrypt_node_index, &im->ah6_decrypt_next_index);
+  ipsec_add_node (vm, "ah4-encrypt", "ipsec4-output-feature", &im->ah4_encrypt_node_index,
+		  &im->ah4_encrypt_next_index);
+  ipsec_add_node (vm, "ah4-decrypt", "ipsec4-input-feature", &im->ah4_decrypt_node_index,
+		  &im->ah4_decrypt_next_index);
+  ipsec_add_node (vm, "ah6-encrypt", "ipsec6-output-feature", &im->ah6_encrypt_node_index,
+		  &im->ah6_encrypt_next_index);
+  ipsec_add_node (vm, "ah6-decrypt", "ipsec6-input-feature", &im->ah6_decrypt_node_index,
+		  &im->ah6_decrypt_next_index);
 
-  ipsec_add_node (vm, "esp4-encrypt", "ipsec4-output-feature",
-		  &im->esp4_encrypt_node_index, &im->esp4_encrypt_next_index);
-  ipsec_add_node (vm, "esp4-decrypt", "ipsec4-input-feature",
-		  &im->esp4_decrypt_node_index, &im->esp4_decrypt_next_index);
-  ipsec_add_node (vm, "esp6-encrypt", "ipsec6-output-feature",
-		  &im->esp6_encrypt_node_index, &im->esp6_encrypt_next_index);
-  ipsec_add_node (vm, "esp6-decrypt", "ipsec6-input-feature",
-		  &im->esp6_decrypt_node_index, &im->esp6_decrypt_next_index);
-  ipsec_add_node (vm, "esp4-decrypt-tun", "ipsec4-tun-input",
-		  &im->esp4_decrypt_tun_node_index,
+  ipsec_add_node (vm, "esp4-encrypt", "ipsec4-output-feature", &im->esp4_encrypt_node_index,
+		  &im->esp4_encrypt_next_index);
+  ipsec_add_node (vm, "esp4-decrypt", "ipsec4-input-feature", &im->esp4_decrypt_node_index,
+		  &im->esp4_decrypt_next_index);
+  ipsec_add_node (vm, "esp6-encrypt", "ipsec6-output-feature", &im->esp6_encrypt_node_index,
+		  &im->esp6_encrypt_next_index);
+  ipsec_add_node (vm, "esp6-decrypt", "ipsec6-input-feature", &im->esp6_decrypt_node_index,
+		  &im->esp6_decrypt_next_index);
+  ipsec_add_node (vm, "esp4-decrypt-tun", "ipsec4-tun-input", &im->esp4_decrypt_tun_node_index,
 		  &im->esp4_decrypt_tun_next_index);
-  ipsec_add_node (vm, "esp6-decrypt-tun", "ipsec6-tun-input",
-		  &im->esp6_decrypt_tun_node_index,
+  ipsec_add_node (vm, "esp6-decrypt-tun", "ipsec6-tun-input", &im->esp6_decrypt_tun_node_index,
 		  &im->esp6_decrypt_tun_next_index);
-  im->esp4_encrypt_tun_node_index =
-    vlib_get_node_by_name (vm, (u8 *) "esp4-encrypt-tun")->index;
-  im->esp6_encrypt_tun_node_index =
-    vlib_get_node_by_name (vm, (u8 *) "esp6-encrypt-tun")->index;
+  im->esp4_encrypt_tun_node_index = vlib_get_node_by_name (vm, (u8 *) "esp4-encrypt-tun")->index;
+  im->esp6_encrypt_tun_node_index = vlib_get_node_by_name (vm, (u8 *) "esp6-encrypt-tun")->index;
   im->esp_mpls_encrypt_tun_node_index =
     vlib_get_node_by_name (vm, (u8 *) "esp-mpls-encrypt-tun")->index;
 
