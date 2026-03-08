@@ -75,24 +75,34 @@ ipsec_sa_inb_refresh_op_tmpl (ipsec_sa_inb_rt_t *irt)
 }
 
 static clib_error_t *
-ipsec_call_add_del_callbacks (ipsec_main_t * im, ipsec_sa_t * sa,
-			      u32 sa_index, int is_add)
+ipsec_sa_check_support (ipsec_sa_t *sa)
 {
-  ipsec_ah_backend_t *ab;
-  ipsec_esp_backend_t *eb;
-  switch (sa->protocol)
+  ipsec_main_t *im = &ipsec_main;
+
+  if (sa->protocol == IPSEC_PROTOCOL_AH)
     {
-    case IPSEC_PROTOCOL_AH:
-      ab = pool_elt_at_index (im->ah_backends, im->ah_current_backend);
-      if (ab->add_del_sa_sess_cb)
-	return ab->add_del_sa_sess_cb (sa_index, is_add);
-      break;
-    case IPSEC_PROTOCOL_ESP:
-      eb = pool_elt_at_index (im->esp_backends, im->esp_current_backend);
-      if (eb->add_del_sa_sess_cb)
-	return eb->add_del_sa_sess_cb (sa_index, is_add);
-      break;
+      if (sa->integ_alg == IPSEC_INTEG_ALG_NONE)
+	return clib_error_return (0, "unsupported none integ-alg");
+
+      if (!vnet_crypto_is_set_handler (im->integ_algs[sa->integ_alg].alg))
+	return clib_error_return (0, "No crypto engine support for %U", format_ipsec_integ_alg,
+				  sa->integ_alg);
+      return 0;
     }
+
+  if (IPSEC_INTEG_ALG_NONE != sa->integ_alg)
+    {
+      if (!vnet_crypto_is_set_handler (im->integ_algs[sa->integ_alg].alg))
+	return clib_error_return (0, "No crypto engine support for %U", format_ipsec_integ_alg,
+				  sa->integ_alg);
+    }
+  if (IPSEC_CRYPTO_ALG_NONE != sa->crypto_alg)
+    {
+      if (!vnet_crypto_is_set_handler (im->crypto_algs[sa->crypto_alg].alg))
+	return clib_error_return (0, "No crypto engine support for %U", format_ipsec_crypto_alg,
+				  sa->crypto_alg);
+    }
+
   return 0;
 }
 
@@ -684,19 +694,12 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
       ipsec_sa_set_async_mode (sa, 0 /* is_enabled */);
     }
 
-  err = ipsec_check_support_cb (im, sa);
+  err = ipsec_sa_check_support (sa);
   if (err)
     {
       clib_warning ("%v", err->what);
       pool_put (im->sa_pool, sa);
       return VNET_API_ERROR_UNIMPLEMENTED;
-    }
-
-  err = ipsec_call_add_del_callbacks (im, sa, sa_index, 1);
-  if (err)
-    {
-      pool_put (im->sa_pool, sa);
-      return VNET_API_ERROR_SYSCALL_ERROR_1;
     }
 
   if (ipsec_sa_is_set_IS_TUNNEL (sa) &&
@@ -777,9 +780,6 @@ ipsec_sa_del (ipsec_sa_t * sa)
   sa_index = sa - im->sa_pool;
   hash_unset (im->sa_index_by_sa_id, sa->id);
   tunnel_unresolve (&sa->tunnel);
-
-  /* no recovery possible when deleting an SA */
-  (void) ipsec_call_add_del_callbacks (im, sa, sa_index, 0);
 
   if (sa->linked_key_index != ~0)
     vnet_crypto_key_del (vm, sa->linked_key_index);
