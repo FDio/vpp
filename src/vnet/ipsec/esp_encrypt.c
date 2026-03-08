@@ -340,7 +340,8 @@ esp_prepare_async_frame (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
   esp_post_data_t *post = esp_post_data (b);
   u8 *tag, *iv, *aad = 0;
   u8 flag = 0;
-  const u32 key_index = ort->key_index;
+  vnet_crypto_key_t *key = ort->key;
+  i16 aad_offset = 0, iv_offset, tag_offset;
   i16 crypto_start_offset, integ_start_offset;
   u16 crypto_total_len, integ_total_len;
 
@@ -390,6 +391,9 @@ esp_prepare_async_frame (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
       crypto_total_len += iv_sz;
     }
 
+  iv_offset = iv - b->data;
+  aad_offset = aad ? aad - b->data : 0;
+
   if (lb != b)
     {
       /* chain */
@@ -399,6 +403,8 @@ esp_prepare_async_frame (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
 	vm, ptd, b, lb, icv_sz, b->data + crypto_start_offset,
 	crypto_total_len + icv_sz, 0);
     }
+
+  tag_offset = tag - b->data;
 
   if (rt->integ_icv_size && !rt->is_aead)
     {
@@ -419,10 +425,9 @@ esp_prepare_async_frame (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
     }
 
   /* this always succeeds because we know the frame is not full */
-  vnet_crypto_async_add_to_frame (vm, async_frame, key_index, crypto_total_len,
-				  integ_total_len - crypto_total_len,
-				  crypto_start_offset, integ_start_offset, bi,
-				  async_next, iv, tag, aad, flag);
+  vnet_crypto_async_add_to_frame (
+    vm, async_frame, key, crypto_total_len, integ_total_len - crypto_total_len, crypto_start_offset,
+    integ_start_offset, bi, async_next, iv_offset, tag_offset, aad_offset, flag);
 }
 
 /* Per RFC6935 section 5, the UDP checksum must be computed when originating

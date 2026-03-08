@@ -1661,15 +1661,11 @@ dpdk_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
   if (error)
     clib_error_report (error);
 
-  if (dpdk_cryptodev_init)
+  error = dpdk_cryptodev_init (vm);
+  if (error)
     {
-      error = dpdk_cryptodev_init (vm);
-      if (error)
-	{
-	  vlib_log_warn (dpdk_main.log_cryptodev, "%U", format_clib_error,
-			 error);
-	  clib_error_free (error);
-	}
+      vlib_log_warn (dpdk_main.log_cryptodev, "%U", format_clib_error, error);
+      clib_error_free (error);
     }
 
   vlib_worker_thread_barrier_release (vm);
