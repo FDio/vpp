@@ -199,11 +199,7 @@ dpdk_find_startup_config (struct rte_eth_dev_info *di)
   if ((vmbus_dev = dpdk_get_vmbus_device (di)))
     {
       unformat_input_t input_vmbus;
-#if RTE_VERSION >= RTE_VERSION_NUM(22, 11, 0, 0)
       const char *dev_name = rte_dev_name (di->device);
-#else
-      const char *dev_name = di->device->name;
-#endif
       unformat_init_string (&input_vmbus, dev_name, strlen (dev_name));
       if (unformat (&input_vmbus, "%U", unformat_vlib_vmbus_addr, &vmbus_addr))
 	p = mhash_get (&dm->conf->device_config_index_by_vmbus_addr,
@@ -508,22 +504,17 @@ dpdk_lib_init (dpdk_main_t * dm)
 #ifndef RTE_VLAN_HLEN
 #define RTE_VLAN_HLEN 4
 #endif
-      xd->driver_frame_overhead =
-	RTE_ETHER_HDR_LEN + 2 * RTE_VLAN_HLEN + RTE_ETHER_CRC_LEN;
-#if RTE_VERSION >= RTE_VERSION_NUM(21, 11, 0, 0)
+      xd->driver_frame_overhead = RTE_ETHER_HDR_LEN + 2 * RTE_VLAN_HLEN + RTE_ETHER_CRC_LEN;
       q = di.max_rx_pktlen - di.max_mtu;
 
       /* attempt to protect from bogus value provided by pmd */
-      if (q < (2 * xd->driver_frame_overhead) && q > 0 &&
-	  di.max_mtu != UINT16_MAX)
+      if (q < (2 * xd->driver_frame_overhead) && q > 0 && di.max_mtu != UINT16_MAX)
 	xd->driver_frame_overhead = q;
       dpdk_log_debug ("[%u] min_mtu: %u, max_mtu: %u, min_rx_bufsize: %u, "
 		      "max_rx_pktlen: %u, max_lro_pkt_size: %u",
-		      xd->port_id, di.min_mtu, di.max_mtu, di.min_rx_bufsize,
-		      di.max_rx_pktlen, di.max_lro_pkt_size);
-#endif
-      dpdk_log_debug ("[%u] driver frame overhead is %u", port_id,
-		      xd->driver_frame_overhead);
+		      xd->port_id, di.min_mtu, di.max_mtu, di.min_rx_bufsize, di.max_rx_pktlen,
+		      di.max_lro_pkt_size);
+      dpdk_log_debug ("[%u] driver frame overhead is %u", port_id, xd->driver_frame_overhead);
 
       /* number of RX and TX tescriptors */
       if (devconf->num_rx_desc)
