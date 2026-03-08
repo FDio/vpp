@@ -2446,7 +2446,9 @@ class TestResponderVrf(TestResponderPsk, Ikev2Params):
         self.config_params({"dpd_disabled": False})
 
     def test_responder(self):
-        self.vapi.ikev2_profile_set_liveness(period=2, max_retries=3)
+        # Set liveness with reasonable max_retries to prevent SA deletion during test
+        # (2 seconds * 10 retries = 20 seconds timeout, sufficient for test to complete)
+        self.vapi.ikev2_profile_set_liveness(period=2, max_retries=10)
         super(TestResponderVrf, self).test_responder()
         self.pg0.enable_capture()
         self.pg_start()
