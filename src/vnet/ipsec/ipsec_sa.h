@@ -160,19 +160,41 @@ typedef struct
   uword replay_window[];
 } ipsec_sa_inb_rt_t;
 
-/* Forward declarations and builder callback typedef */
 typedef struct ipsec_sa_outb_rt_t_ ipsec_sa_outb_rt_t;
 
-/* Function signature and pointer type for IPsec builder callbacks */
-#define IPSEC_BUILD_OP_TMPL_ARGS                                              \
-  vnet_crypto_op_t *op, ipsec_sa_outb_rt_t *ort, vlib_main_t *vm, void *ptd,  \
-    vlib_buffer_t **b, vlib_buffer_t *lb, u8 *payload, u16 payload_len,       \
-    u32 hdr_len, void *esp
+typedef struct
+{
+  u32 spi_be;
+  u16 is_tunnel : 1;
+  u16 use_esn : 1;
+  u16 integ_add_seq_hi : 1;
+  u16 drop_no_crypto : 1;
+  u16 is_async : 1;
+  u16 prepare_sync_op : 1;
+  u16 is_null_gmac : 1;
+  u16 is_aead : 1;
+  u16 is_ctr : 1;
+  u16 has_cipher : 1;
+  u16 needs_integ : 1;
+  u16 needs_sync_enc : 1;
+  u16 is_tunnel_v6 : 1;
+  u16 udp_encap : 1;
+  u16 need_udp_cksum : 1;
+  u16 need_tunnel_fixup : 1;
+  u8 integ_icv_size;
+  u8 esp_block_align;
+  u8 cipher_iv_size;
+  u8 cbc_src_pre_bytes;
+  u8 cbc_len_pre_bytes;
+  u8 integ_src_pre_bytes;
+  u8 integ_len_pre_bytes;
+  u8 next_hdr_protocol;
+  u8 esp_iv_bytes;
+  u8 tunnel_fixed_hdr_bytes;
+} ipsec_sa_outb_rt_cached_t;
 
-#define IPSEC_BUILD_OP_ARGS IPSEC_BUILD_OP_TMPL_ARGS
-
-typedef void ipsec_build_op_tmpl_sig (IPSEC_BUILD_OP_TMPL_ARGS);
-typedef ipsec_build_op_tmpl_sig *ipsec_build_op_tmpl_fn_t;
+STATIC_ASSERT (sizeof (ipsec_sa_outb_rt_cached_t) == 16,
+	       "ipsec_sa_outb_rt_cached_t must be 16 bytes");
 
 typedef struct ipsec_sa_outb_rt_t_
 {
@@ -193,7 +215,6 @@ typedef struct ipsec_sa_outb_rt_t_
   u16 op_id;
   vnet_crypto_op_t op_tmpl_single;
   vnet_crypto_op_t op_tmpl_chained;
-  ipsec_build_op_tmpl_fn_t *bld_op_tmpl[VNET_CRYPTO_OP_N_TYPES];
   u8 cipher_iv_size;
   u8 esp_block_align;
   u8 integ_icv_size;
@@ -203,6 +224,7 @@ typedef struct ipsec_sa_outb_rt_t_
   u16 async_op_id;
   u32 salt;
   u32 spi_be;
+  ipsec_sa_outb_rt_cached_t cached;
   u64 seq64;
   dpo_id_t dpo;
   clib_pcg64i_random_t iv_prng;

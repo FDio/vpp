@@ -922,6 +922,8 @@ esp_decrypt_post_crypto (vlib_main_t *vm, vlib_node_runtime_t *node,
 				ip4_header_t, protocol);
 	  sum = ip_csum_update (sum, ip4->length, len, ip4_header_t, length);
 	  ip4->checksum = ip_csum_fold (sum);
+	  if (ip4->checksum == 0xffff)
+	    ip4->checksum = 0;
 	  ip4->protocol = next_header;
 	  ip4->length = len;
 	  next[0] = ESP_DECRYPT_NEXT_IP4_INPUT;

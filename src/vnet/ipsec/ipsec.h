@@ -112,7 +112,6 @@ typedef struct
   const u8 is_aead : 1;
   const u8 is_ctr : 1;
   const u8 is_null_gmac : 1;
-  ipsec_build_op_tmpl_fn_t bld_enc_op_tmpl[VNET_CRYPTO_HANDLER_N_TYPES];
 } ipsec_main_crypto_alg_t;
 
 typedef struct
@@ -120,7 +119,6 @@ typedef struct
   const vnet_crypto_op_id_t op_id;
   const vnet_crypto_alg_t alg;
   const u8 icv_size;
-  ipsec_build_op_tmpl_fn_t bld_integ_op_tmpl[VNET_CRYPTO_HANDLER_N_TYPES];
 } ipsec_main_integ_alg_t;
 
 typedef struct
@@ -269,7 +267,25 @@ typedef enum ipsec_format_flags_t_
   IPSEC_FORMAT_INSECURE = (1 << 1),
 } ipsec_format_flags_t;
 
+typedef struct
+{
+  u32 sa_index;
+  u32 spi;
+  u64 seq;
+  u8 udp_encap;
+  ipsec_crypto_alg_t crypto_alg;
+  ipsec_integ_alg_t integ_alg;
+} esp_encrypt_trace_t;
+
+typedef struct
+{
+  u32 next_index;
+} esp_encrypt_post_trace_t;
+
 extern ipsec_main_t ipsec_main;
+
+u8 *format_esp_encrypt_trace (u8 *s, va_list *args);
+u8 *format_esp_post_encrypt_trace (u8 *s, va_list *args);
 
 clib_error_t *ipsec_add_del_sa_sess_cb (ipsec_main_t * im, u32 sa_index,
 					u8 is_add);
