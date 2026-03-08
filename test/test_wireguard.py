@@ -557,6 +557,7 @@ class TestWg(VppTestCase):
 
     def setUp(self):
         super(VppTestCase, self).setUp()
+        self.vapi.wg_set_async_mode(async_enable=False)
         self.base_kp4_err = self.statistics.get_err_counter(self.kp4_error)
         self.base_mac4_err = self.statistics.get_err_counter(self.mac4_error)
         self.base_peer4_in_err = self.statistics.get_err_counter(self.peer4_in_err)
@@ -577,6 +578,10 @@ class TestWg(VppTestCase):
         self.base_ratelimited6_err = self.statistics.get_err_counter(
             self.ratelimited6_err
         )
+
+    def tearDown(self):
+        self.vapi.wg_set_async_mode(async_enable=False)
+        super(VppTestCase, self).tearDown()
 
     def send_and_assert_no_replies_ignoring_init(
         self, intf, pkts, remark="", timeout=None

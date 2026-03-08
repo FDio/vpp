@@ -236,10 +236,10 @@ wg_handshake_process (vlib_main_t *vm, wg_main_t *wmp, vlib_buffer_t *b,
 	  }
 
 	noise_remote_t *rp;
-	if (noise_consume_initiation
-	    (vm, noise_local_get (wg_if->local_idx), &rp,
-	     message->sender_index, message->unencrypted_ephemeral,
-	     message->encrypted_static, message->encrypted_timestamp))
+	if (noise_consume_initiation (vm, noise_local_get (wg_if->local_idx), &rp,
+				      mac_state == VALID_MAC_WITH_COOKIE, message->sender_index,
+				      message->unencrypted_ephemeral, message->encrypted_static,
+				      message->encrypted_timestamp))
 	  {
 	    peer = wg_peer_get (rp->r_peer_idx);
 	  }
