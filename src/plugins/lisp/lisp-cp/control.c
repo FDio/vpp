@@ -1,6 +1,6 @@
 /*
  * SPDX-License-Identifier: Apache-2.0
- * Copyright (c) 2016 Cisco and/or its affiliates.
+ * Copyright (c) 2016-2026 Cisco and/or its affiliates.
  */
 
 #include <vlibmemory/api.h>
@@ -2664,9 +2664,9 @@ lisp_key_type_to_crypto_alg (lisp_key_type_t key_id)
   switch (key_id)
     {
     case HMAC_SHA_1_96:
-      return VNET_CRYPTO_ALG_HMAC_SHA1;
+    return VNET_CRYPTO_ALG_SHA1;
     case HMAC_SHA_256_128:
-      return VNET_CRYPTO_ALG_HMAC_SHA256;
+    return VNET_CRYPTO_ALG_SHA256;
     default:
       clib_warning ("unsupported encryption key type: %d!", key_id);
       break;
@@ -2699,7 +2699,7 @@ update_map_register_auth_data (map_register_hdr_t * map_reg_hdr,
   MREG_KEY_ID (map_reg_hdr) = clib_host_to_net_u16 (key_id);
   MREG_AUTH_DATA_LEN (map_reg_hdr) = clib_host_to_net_u16 (auth_data_len);
   vnet_crypto_op_t _op, *op = &_op;
-  vnet_crypto_key_index_t ki;
+  vnet_crypto_key_t *key_data;
 
   vnet_crypto_op_init (op, lisp_key_type_to_crypto_op (key_id));
   op->len = msg_len;
@@ -2708,14 +2708,13 @@ update_map_register_auth_data (map_register_hdr_t * map_reg_hdr,
   op->digest_len = 0;
   op->iv = 0;
 
-  ki = vnet_crypto_key_add (lcm->vlib_main,
-			    lisp_key_type_to_crypto_alg (key_id), key,
-			    vec_len (key));
+  key_data = vnet_crypto_key_add (lcm->vlib_main, lisp_key_type_to_crypto_alg (key_id), key,
+				  vec_len (key), 0, 0);
 
-  op->key_index = ki;
+  op->key = key_data;
 
   vnet_crypto_process_ops (lcm->vlib_main, op, 1);
-  vnet_crypto_key_del (lcm->vlib_main, ki);
+  vnet_crypto_key_del (lcm->vlib_main, key_data);
 
   return 0;
 }
@@ -3870,7 +3869,7 @@ is_auth_data_valid (map_notify_hdr_t * h, u32 msg_len,
   u16 auth_data_len;
   int result;
   vnet_crypto_op_t _op, *op = &_op;
-  vnet_crypto_key_index_t ki;
+  vnet_crypto_key_t *ki;
   u8 out[EVP_MAX_MD_SIZE] = { 0, };
 
   auth_data_len = auth_data_len_by_key_id (key_id);
@@ -3894,11 +3893,10 @@ is_auth_data_valid (map_notify_hdr_t * h, u32 msg_len,
   op->digest_len = 0;
   op->iv = 0;
 
-  ki = vnet_crypto_key_add (lcm->vlib_main,
-			    lisp_key_type_to_crypto_alg (key_id), key,
-			    vec_len (key));
+  ki = vnet_crypto_key_add (lcm->vlib_main, lisp_key_type_to_crypto_alg (key_id), key,
+			    vec_len (key), 0, 0);
 
-  op->key_index = ki;
+  op->key = ki;
 
   vnet_crypto_process_ops (lcm->vlib_main, op, 1);
   vnet_crypto_key_del (lcm->vlib_main, ki);

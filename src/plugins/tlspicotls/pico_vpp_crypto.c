@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0
  * Copyright (c) 2021 Intel and/or its affiliates.
+ * Copyright (c) 2026 Cisco and/or its affiliates.
  */
 
 #include <vnet/crypto/crypto.h>
@@ -21,7 +22,7 @@ struct cipher_context_t
   ptls_cipher_context_t super;
   vnet_crypto_op_t op;
   vnet_crypto_op_id_t id;
-  u32 key_index;
+  vnet_crypto_key_t *key;
 };
 
 struct vpp_aead_context_t
@@ -30,7 +31,7 @@ struct vpp_aead_context_t
   EVP_CIPHER_CTX *evp_ctx;
   uint8_t static_iv[PTLS_MAX_IV_SIZE];
   vnet_crypto_op_t op;
-  u32 key_index;
+  vnet_crypto_key_t *key;
   vnet_crypto_op_id_t id;
   vnet_crypto_op_chunk_t chunks[2];
   vnet_crypto_alg_t alg;
@@ -45,7 +46,7 @@ ptls_vpp_crypto_cipher_do_init (ptls_cipher_context_t * _ctx, const void *iv)
 
   vnet_crypto_op_init (&ctx->op, ctx->id);
   ctx->op.iv = (u8 *) iv;
-  ctx->op.key_index = ctx->key_index;
+  ctx->op.key = ctx->key;
 }
 
 static void
@@ -101,8 +102,7 @@ ptls_vpp_crypto_cipher_setup_crypto (ptls_cipher_context_t * _ctx, int is_enc,
     }
 
   clib_rwlock_writer_lock (&picotls_main.crypto_keys_rw_lock);
-  ctx->key_index = vnet_crypto_key_add (vm, algo,
-					(u8 *) key, _ctx->algo->key_size);
+  ctx->key = vnet_crypto_key_add (vm, algo, key, _ctx->algo->key_size, 0, 0);
   clib_rwlock_writer_unlock (&picotls_main.crypto_keys_rw_lock);
 
   return 0;
@@ -124,7 +124,7 @@ ptls_vpp_crypto_aead_decrypt (ptls_aead_context_t *_ctx, void *_output,
   ptls_aead__build_iv (ctx->super.algo, ctx->op.iv, ctx->static_iv, seq);
   ctx->op.src = (u8 *) input;
   ctx->op.dst = _output;
-  ctx->op.key_index = ctx->key_index;
+  ctx->op.key = ctx->key;
   ctx->op.len = inlen - tag_size;
   ctx->op.tag_len = tag_size;
   ctx->op.tag = ctx->op.src + ctx->op.len;
@@ -146,7 +146,7 @@ ptls_vpp_crypto_aead_encrypt_init (ptls_aead_context_t *_ctx, uint64_t seq,
   ctx->op.aad_len = aadlen;
   ctx->op.iv = ctx->iv;
   ptls_aead__build_iv (ctx->super.algo, ctx->op.iv, ctx->static_iv, seq);
-  ctx->op.key_index = ctx->key_index;
+  ctx->op.key = ctx->key;
   ctx->op.n_chunks = 2;
   ctx->op.chunk_index = 0;
 
@@ -189,7 +189,7 @@ ptls_vpp_crypto_aead_dispose_crypto (ptls_aead_context_t * _ctx)
   struct vpp_aead_context_t *ctx = (struct vpp_aead_context_t *) _ctx;
 
   clib_rwlock_writer_lock (&picotls_main.crypto_keys_rw_lock);
-  vnet_crypto_key_del (vm, ctx->key_index);
+  vnet_crypto_key_del (vm, ctx->key);
   clib_rwlock_writer_unlock (&picotls_main.crypto_keys_rw_lock);
 }
 
@@ -223,7 +223,7 @@ ptls_vpp_crypto_aead_setup_crypto (ptls_aead_context_t *_ctx, int is_enc,
   clib_memcpy (ctx->static_iv, iv, ctx->super.algo->iv_size);
 
   clib_rwlock_writer_lock (&picotls_main.crypto_keys_rw_lock);
-  ctx->key_index = vnet_crypto_key_add (vm, alg, (void *) key, key_len);
+  ctx->key = vnet_crypto_key_add (vm, alg, key, key_len, 0, 0);
   clib_rwlock_writer_unlock (&picotls_main.crypto_keys_rw_lock);
 
   if (is_enc)

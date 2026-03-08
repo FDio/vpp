@@ -2,6 +2,7 @@
  * Copyright (c) 2020 Doc.ai and/or its affiliates.
  * Copyright (c) 2015-2020 Jason A. Donenfeld <Jason@zx2c4.com>.
  * Copyright (c) 2019-2020 Matt Dunwoodie <ncon@noconroy.net>.
+ * Copyright (c) 2026 Cisco and/or its affiliates.
  */
 
 #include <openssl/hmac.h>
@@ -49,10 +50,10 @@ static void noise_param_init (uint8_t[NOISE_HASH_LEN],
 			      uint8_t[NOISE_HASH_LEN],
 			      const uint8_t[NOISE_PUBLIC_KEY_LEN]);
 
-static void noise_msg_encrypt (vlib_main_t * vm, uint8_t *, uint8_t *, size_t,
-			       uint32_t key_idx, uint8_t[NOISE_HASH_LEN]);
-static bool noise_msg_decrypt (vlib_main_t * vm, uint8_t *, uint8_t *, size_t,
-			       uint32_t key_idx, uint8_t[NOISE_HASH_LEN]);
+static void noise_msg_encrypt (vlib_main_t *vm, uint8_t *, uint8_t *, size_t,
+			       vnet_crypto_key_t *key, uint8_t[NOISE_HASH_LEN]);
+static bool noise_msg_decrypt (vlib_main_t *vm, uint8_t *, uint8_t *, size_t,
+			       vnet_crypto_key_t *key, uint8_t[NOISE_HASH_LEN]);
 static void noise_msg_ephemeral (uint8_t[NOISE_HASH_LEN],
 				 uint8_t[NOISE_HASH_LEN],
 				 const uint8_t src[NOISE_PUBLIC_KEY_LEN]);
@@ -113,14 +114,13 @@ noise_create_initiation (vlib_main_t * vm, noise_remote_t * r,
   noise_handshake_t *hs = &r->r_handshake;
   noise_local_t *l = noise_local_get (r->r_local_idx);
   uint8_t _key[NOISE_SYMMETRIC_KEY_LEN] = { 0 };
-  uint32_t key_idx;
+  vnet_crypto_key_t *key_idx;
   uint8_t *key;
   int ret = false;
 
-  key_idx =
-    vnet_crypto_key_add (vm, VNET_CRYPTO_ALG_CHACHA20_POLY1305, _key,
-			 NOISE_SYMMETRIC_KEY_LEN);
-  key = vnet_crypto_get_key (key_idx)->data;
+  key_idx = vnet_crypto_key_add (vm, VNET_CRYPTO_ALG_CHACHA20_POLY1305, _key,
+				 NOISE_SYMMETRIC_KEY_LEN, 0, 0);
+  key = (u8 *) vnet_crypto_get_cipher_key (key_idx);
 
   noise_param_init (hs->hs_ck, hs->hs_hash, r->r_public);
 
@@ -169,14 +169,13 @@ noise_consume_initiation (vlib_main_t *vm, noise_local_t *l, noise_remote_t **rp
   uint8_t _key[NOISE_SYMMETRIC_KEY_LEN] = { 0 };
   uint8_t r_public[NOISE_PUBLIC_KEY_LEN] = { 0 };
   uint8_t timestamp[NOISE_TIMESTAMP_LEN] = { 0 };
-  u32 key_idx;
+  vnet_crypto_key_t *key_idx;
   uint8_t *key;
   int ret = false;
 
-  key_idx =
-    vnet_crypto_key_add (vm, VNET_CRYPTO_ALG_CHACHA20_POLY1305, _key,
-			 NOISE_SYMMETRIC_KEY_LEN);
-  key = vnet_crypto_get_key (key_idx)->data;
+  key_idx = vnet_crypto_key_add (vm, VNET_CRYPTO_ALG_CHACHA20_POLY1305, _key,
+				 NOISE_SYMMETRIC_KEY_LEN, 0, 0);
+  key = (u8 *) vnet_crypto_get_cipher_key (key_idx);
 
   noise_param_init (hs.hs_ck, hs.hs_hash, l->l_public);
 
@@ -249,14 +248,13 @@ noise_create_response (vlib_main_t * vm, noise_remote_t * r, uint32_t * s_idx,
   noise_handshake_t *hs = &r->r_handshake;
   uint8_t _key[NOISE_SYMMETRIC_KEY_LEN] = { 0 };
   uint8_t e[NOISE_PUBLIC_KEY_LEN] = { 0 };
-  uint32_t key_idx;
+  vnet_crypto_key_t *key_idx;
   uint8_t *key;
   int ret = false;
 
-  key_idx =
-    vnet_crypto_key_add (vm, VNET_CRYPTO_ALG_CHACHA20_POLY1305, _key,
-			 NOISE_SYMMETRIC_KEY_LEN);
-  key = vnet_crypto_get_key (key_idx)->data;
+  key_idx = vnet_crypto_key_add (vm, VNET_CRYPTO_ALG_CHACHA20_POLY1305, _key,
+				 NOISE_SYMMETRIC_KEY_LEN, 0, 0);
+  key = (u8 *) vnet_crypto_get_cipher_key (key_idx);
 
   if (hs->hs_state != CONSUMED_INITIATION)
     goto error;
@@ -304,14 +302,13 @@ noise_consume_response (vlib_main_t * vm, noise_remote_t * r, uint32_t s_idx,
   noise_handshake_t hs;
   uint8_t _key[NOISE_SYMMETRIC_KEY_LEN] = { 0 };
   uint8_t preshared_key[NOISE_PUBLIC_KEY_LEN] = { 0 };
-  uint32_t key_idx;
+  vnet_crypto_key_t *key_idx;
   uint8_t *key;
   int ret = false;
 
-  key_idx =
-    vnet_crypto_key_add (vm, VNET_CRYPTO_ALG_CHACHA20_POLY1305, _key,
-			 NOISE_SYMMETRIC_KEY_LEN);
-  key = vnet_crypto_get_key (key_idx)->data;
+  key_idx = vnet_crypto_key_add (vm, VNET_CRYPTO_ALG_CHACHA20_POLY1305, _key,
+				 NOISE_SYMMETRIC_KEY_LEN, 0, 0);
+  key = (u8 *) vnet_crypto_get_cipher_key (key_idx);
 
   hs = r->r_handshake;
   clib_memcpy (preshared_key, r->r_psk, NOISE_SYMMETRIC_KEY_LEN);
@@ -387,12 +384,10 @@ noise_remote_begin_session (vlib_main_t * vm, noise_remote_t * r)
     }
 
   kp.kp_valid = 1;
-  kp.kp_send_index = vnet_crypto_key_add (vm,
-					  VNET_CRYPTO_ALG_CHACHA20_POLY1305,
-					  key_send, NOISE_SYMMETRIC_KEY_LEN);
-  kp.kp_recv_index = vnet_crypto_key_add (vm,
-					  VNET_CRYPTO_ALG_CHACHA20_POLY1305,
-					  key_recv, NOISE_SYMMETRIC_KEY_LEN);
+  kp.kp_send_key = vnet_crypto_key_add (vm, VNET_CRYPTO_ALG_CHACHA20_POLY1305, key_send,
+					NOISE_SYMMETRIC_KEY_LEN, 0, 0);
+  kp.kp_recv_key = vnet_crypto_key_add (vm, VNET_CRYPTO_ALG_CHACHA20_POLY1305, key_recv,
+					NOISE_SYMMETRIC_KEY_LEN, 0, 0);
   kp.kp_local_index = hs->hs_local_index;
   kp.kp_remote_index = hs->hs_remote_index;
   kp.kp_birthdate = vlib_time_now (vm);
@@ -517,8 +512,7 @@ noise_remote_encrypt (vlib_main_t * vm, noise_remote_t * r, uint32_t * r_idx,
   *r_idx = kp->kp_remote_index;
 
   wg_chacha20poly1305_calc (vm, src, srclen, dst, NULL, 0, *nonce,
-			    VNET_CRYPTO_OP_CHACHA20_POLY1305_ENC,
-			    kp->kp_send_index);
+			    VNET_CRYPTO_OP_CHACHA20_POLY1305_ENC, kp->kp_send_key);
 
   /* If our values are still within tolerances, but we are approaching
    * the tolerances, we notify the caller with ESTALE that they should
@@ -689,25 +683,22 @@ noise_param_init (uint8_t ck[NOISE_HASH_LEN], uint8_t hash[NOISE_HASH_LEN],
 }
 
 static void
-noise_msg_encrypt (vlib_main_t * vm, uint8_t * dst, uint8_t * src,
-		   size_t src_len, uint32_t key_idx,
-		   uint8_t hash[NOISE_HASH_LEN])
+noise_msg_encrypt (vlib_main_t *vm, uint8_t *dst, uint8_t *src, size_t src_len,
+		   vnet_crypto_key_t *key, uint8_t hash[NOISE_HASH_LEN])
 {
   /* Nonce always zero for Noise_IK */
   wg_chacha20poly1305_calc (vm, src, src_len, dst, hash, NOISE_HASH_LEN, 0,
-			    VNET_CRYPTO_OP_CHACHA20_POLY1305_ENC, key_idx);
+			    VNET_CRYPTO_OP_CHACHA20_POLY1305_ENC, key);
   noise_mix_hash (hash, dst, src_len + NOISE_AUTHTAG_LEN);
 }
 
 static bool
-noise_msg_decrypt (vlib_main_t * vm, uint8_t * dst, uint8_t * src,
-		   size_t src_len, uint32_t key_idx,
-		   uint8_t hash[NOISE_HASH_LEN])
+noise_msg_decrypt (vlib_main_t *vm, uint8_t *dst, uint8_t *src, size_t src_len,
+		   vnet_crypto_key_t *key, uint8_t hash[NOISE_HASH_LEN])
 {
   /* Nonce always zero for Noise_IK */
-  if (!wg_chacha20poly1305_calc (vm, src, src_len, dst, hash, NOISE_HASH_LEN,
-				 0, VNET_CRYPTO_OP_CHACHA20_POLY1305_DEC,
-				 key_idx))
+  if (!wg_chacha20poly1305_calc (vm, src, src_len, dst, hash, NOISE_HASH_LEN, 0,
+				 VNET_CRYPTO_OP_CHACHA20_POLY1305_DEC, key))
     return false;
   noise_mix_hash (hash, src, src_len);
   return true;

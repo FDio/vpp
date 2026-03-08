@@ -72,7 +72,7 @@ typedef struct quic_quicly_crypto_main_
 {
   quic_quicly_main_t *qqm;
   ptls_cipher_suite_t ***quic_ciphers;
-  u32 *per_thread_crypto_key_indices;
+  vnet_crypto_key_t **per_thread_crypto_keys;
   quic_quicly_crypto_ctx_t **crypto_ctx_pool;
   clib_bihash_24_8_t crypto_ctx_hash;
   uword *available_crypto_engines; /**< Bitmap for registered engines */
