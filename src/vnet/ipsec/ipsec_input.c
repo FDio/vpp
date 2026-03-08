@@ -36,33 +36,6 @@ static char *ipsec_input_error_strings[] = {
 #undef _
 };
 
-typedef struct
-{
-  ip_protocol_t proto;
-  u32 spd;
-  u32 policy_index;
-  u32 policy_type;
-  u32 sa_id;
-  u32 spi;
-  u32 seq;
-} ipsec_input_trace_t;
-
-/* packet trace format function */
-static u8 *
-format_ipsec_input_trace (u8 * s, va_list * args)
-{
-  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
-  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
-  ipsec_input_trace_t *t = va_arg (*args, ipsec_input_trace_t *);
-
-  s =
-    format (s, "%U: sa_id %u type: %u spd %u policy %d spi %u (0x%08x) seq %u",
-	    format_ip_protocol, t->proto, t->sa_id, t->policy_type, t->spd,
-	    t->policy_index, t->spi, t->spi, t->seq);
-
-  return s;
-}
-
 always_inline void
 ipsec4_input_spd_add_flow_cache_entry (ipsec_main_t *im, u32 sa, u32 da,
 				       ipsec_spd_policy_type_t policy_type,
