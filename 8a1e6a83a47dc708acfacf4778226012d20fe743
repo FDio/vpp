@@ -141,6 +141,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "5f68ee1e_862e62d5",
+        "filename": "src/vpp/app/dump_metrics.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 140,
+      "author": {
+        "id": 3270
+      },
+      "writtenOn": "2026-03-09T14:32:26Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "0a24b0fa_2ff01b1e",
+      "revId": "8a1e6a83a47dc708acfacf4778226012d20fe743",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "94a1f94c_eebd56dc",
@@ -190,6 +208,24 @@
       "side": 1,
       "message": "It looks the same to me? Or am I missing something?",
       "parentUuid": "bec196a0_f8e87c62",
+      "revId": "8a1e6a83a47dc708acfacf4778226012d20fe743",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b16c5436_4e5f53c4",
+        "filename": "src/vpp/app/dump_metrics.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 154,
+      "author": {
+        "id": 3270
+      },
+      "writtenOn": "2026-03-09T14:32:26Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "667a587a_9eac0ad9",
       "revId": "8a1e6a83a47dc708acfacf4778226012d20fe743",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
