@@ -169,6 +169,7 @@ typedef struct
   u32 use_intel_phdr_cksum : 1;
   u32 int_unmaskable : 1;
   u32 need_tx_prepare : 1;
+  u32 install_default_jump : 1;
 } dpdk_driver_t;
 
 dpdk_driver_t *dpdk_driver_find (const char *name, const char **desc);
@@ -243,6 +244,7 @@ typedef struct
   u16 async_flow_offload_queue_size;
   u16 async_flow_offload_queue_batch;
   u8 async_flow_offload_n_queues;
+  struct rte_flow *default_jump_flow;
   struct rte_flow_error last_flow_error;
 
   struct rte_eth_link link;
