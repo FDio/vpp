@@ -1,6 +1,6 @@
 ---
 extra-config:
-  - configured-by-host: false
+  - configured-by-host: true
 devices:
   - name: "hstcln"
     type: "tap"

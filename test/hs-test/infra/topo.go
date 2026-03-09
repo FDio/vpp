@@ -4,11 +4,13 @@ import (
 	"fmt"
 )
 
+type ExtraConfig map[string]any
 type NetDevConfig map[string]any
 type ContainerConfig map[string]any
 type VolumeConfig map[string]any
 
 type YamlTopology struct {
+	Extra      []ExtraConfig     `yaml:"extra-config"`
 	Devices    []NetDevConfig    `yaml:"devices"`
 	Containers []ContainerConfig `yaml:"containers"`
 	Volumes    []VolumeConfig    `yaml:"volumes"`

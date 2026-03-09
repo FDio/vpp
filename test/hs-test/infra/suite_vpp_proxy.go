@@ -62,7 +62,7 @@ func RegisterVppProxyMWTests(tests ...func(s *VppProxySuite)) {
 
 func (s *VppProxySuite) SetupSuite() {
 	s.HstSuite.SetupSuite()
-	s.LoadNetworkTopology("2taps")
+	s.ConfigureNetworkTopology("2taps")
 	s.LoadContainerTopology("vppProxy")
 	s.Ports.Server = s.GeneratePortAsInt()
 	s.Ports.ServerSsl = s.GeneratePortAsInt()

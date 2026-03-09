@@ -1,4 +1,6 @@
 ---
+extra-config:
+  - configured-by-host: true
 devices:
   - name: "client-ns"
     type: "netns"

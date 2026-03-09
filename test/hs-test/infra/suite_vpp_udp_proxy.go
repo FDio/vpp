@@ -50,7 +50,7 @@ func RegisterVppUdpProxyMWTests(tests ...func(s *VppUdpProxySuite)) {
 
 func (s *VppUdpProxySuite) SetupSuite() {
 	s.HstSuite.SetupSuite()
-	s.LoadNetworkTopology("2taps")
+	s.ConfigureNetworkTopology("2taps")
 	s.LoadContainerTopology("single")
 	s.Interfaces.Client = s.GetInterfaceByName("hstcln")
 	s.Interfaces.Server = s.GetInterfaceByName("hstsrv")
