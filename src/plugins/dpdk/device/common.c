@@ -80,6 +80,35 @@ dpdk_device_flow_offload_probe_transfer (dpdk_device_t *xd)
     }
 }
 
+static void
+dpdk_device_install_default_jump_rule (dpdk_device_t *xd)
+{
+  struct rte_flow_attr attr = {};
+  struct rte_flow_item pattern[] = {
+    { .type = RTE_FLOW_ITEM_TYPE_END },
+  };
+  struct rte_flow_action_jump jump = { .group = 1 };
+  struct rte_flow_action actions[] = {
+    { .type = RTE_FLOW_ACTION_TYPE_JUMP, .conf = &jump },
+    { .type = RTE_FLOW_ACTION_TYPE_END },
+  };
+  struct rte_flow_error error = {};
+
+  if (!xd->driver || !xd->driver->install_default_jump)
+    return;
+
+  if (xd->flags & DPDK_DEVICE_FLAG_FLOW_TRANSFER)
+    attr.transfer = 1;
+  else
+    attr.ingress = 1;
+
+  xd->default_jump_flow = rte_flow_create (xd->port_id, &attr, pattern, actions, &error);
+  if (xd->default_jump_flow)
+    dpdk_log_debug ("[%u] Default jump-to-group-1 rule installed", xd->port_id);
+  else
+    dpdk_log_warn ("[%u] Failed to install default jump rule: %s", xd->port_id, error.message);
+}
+
 /*
  * Check for async flow offload support.
  * The only way to tell, is to check if rte_flow_info_get and rte_flow_configure does not return
@@ -502,6 +531,8 @@ dpdk_device_start (dpdk_device_t * xd)
       return;
     }
 
+  dpdk_device_install_default_jump_rule (xd);
+
   dpdk_log_debug ("[%u] RX burst function: %U", xd->port_id,
 		  format_dpdk_burst_fn, xd, VLIB_RX);
   dpdk_log_debug ("[%u] TX burst function: %U", xd->port_id,
@@ -532,6 +563,12 @@ dpdk_device_stop (dpdk_device_t * xd)
 {
   if (xd->flags & DPDK_DEVICE_FLAG_PMD_INIT_FAIL)
     return;
+
+  if (xd->default_jump_flow)
+    {
+      rte_flow_destroy (xd->port_id, xd->default_jump_flow, NULL);
+      xd->default_jump_flow = NULL;
+    }
 
   rte_eth_allmulticast_disable (xd->port_id);
   rte_eth_dev_stop (xd->port_id);
