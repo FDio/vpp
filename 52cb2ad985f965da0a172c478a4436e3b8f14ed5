@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c48db6f3_96ea120c",
+        "filename": "src/vnet/sfdp/sfdp.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 425,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-03-09T11:31:43Z",
+      "side": 1,
+      "message": "With the current approach, we expect users to provide a timer interval in milliseconds.\n\nRather than doing so, could we let the user provide a timer_interval in seconds and store it in an f64 value ? This would also avoids redundant calls to \u0027sfdp_timer_interval_sec\u0027.",
+      "revId": "52cb2ad985f965da0a172c478a4436e3b8f14ed5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "35bdcafe_57016336",
+        "filename": "test/test_sfdp_timer.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-03-09T11:31:43Z",
+      "side": 1,
+      "message": "Can these tests be made part of \u0027test_sfdp, rather than creating a new test file ?",
+      "revId": "52cb2ad985f965da0a172c478a4436e3b8f14ed5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
