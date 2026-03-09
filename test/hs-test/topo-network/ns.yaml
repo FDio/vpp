@@ -1,4 +1,6 @@
 ---
+extraConfig:
+  - configuredByHost: true
 devices:
   - name: "cln"
     type: "netns"

@@ -1,4 +1,6 @@
 ---
+extraConfig:
+  - configuredByHost: false
 devices:
   - name: "hstcln"
     type: "tap"

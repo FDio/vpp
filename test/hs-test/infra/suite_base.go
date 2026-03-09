@@ -574,7 +574,8 @@ func (s *HstSuite) LoadContainerTopology(topologyName string) {
 	}
 }
 
-func (s *HstSuite) LoadNetworkTopology(topologyName string) {
+func (s *HstSuite) loadNetworkTopology(topologyName string) bool {
+	var configuredByHost bool
 	data, err := os.ReadFile(networkTopologyDir + topologyName + ".yaml")
 	if err != nil {
 		Fail("read error: " + fmt.Sprint(err))
@@ -588,7 +589,13 @@ func (s *HstSuite) LoadNetworkTopology(topologyName string) {
 	s.Ip6AddrAllocator = NewIp6AddressAllocator()
 	s.Ip4AddrAllocator = NewIp4AddressAllocator()
 	s.NetInterfaces = make(map[string]*NetInterface)
-
+	for _, elem := range yamlTopo.Extra {
+		if _, ok := elem["configuredByHost"]; ok {
+			configuredByHost = elem["configuredByHost"].(bool)
+		} else {
+			configuredByHost = false
+		}
+	}
 	for _, elem := range yamlTopo.Devices {
 		if _, ok := elem["ipv6"]; ok {
 			elem["ipv6"] = elem["ipv6"].(bool)
@@ -659,19 +666,23 @@ func (s *HstSuite) LoadNetworkTopology(topologyName string) {
 			}
 		}
 	}
+	return configuredByHost
 }
 
+// Set 'configureOnHost' to true if suite is using tap interfaces without VPP (e.g. IperfSuite)
+// or veth interfaces
 func (s *HstSuite) ConfigureNetworkTopology(topologyName string) {
-	s.LoadNetworkTopology(topologyName)
+	configuredByHost := s.loadNetworkTopology(topologyName)
+	if configuredByHost {
+		if *IsUnconfiguring {
+			return
+		}
 
-	if *IsUnconfiguring {
-		return
-	}
-
-	for _, nc := range s.NetConfigs {
-		Log(nc.Name())
-		if err := nc.configure(); err != nil {
-			Fail("Network config error: " + fmt.Sprint(err))
+		for _, nc := range s.NetConfigs {
+			Log(nc.Name())
+			if err := nc.configure(); err != nil {
+				Fail("Network config error: " + fmt.Sprint(err))
+			}
 		}
 	}
 }

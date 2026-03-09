@@ -1,4 +1,6 @@
 ---
+extraConfig:
+  - configuredByHost: true
 devices:
   - name: "srv"
     type: "veth"
