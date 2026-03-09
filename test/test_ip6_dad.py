@@ -33,9 +33,6 @@ from vpp_papi import VppEnum
 class TestIP6DAD(VppTestCase):
     """IPv6 Duplicate Address Detection (DAD) - RFC 4862"""
 
-    # DAD state enum alias for readability
-    DS = VppEnum.vl_api_ip6_dad_state_t
-
     @classmethod
     def setUpClass(cls):
         super(TestIP6DAD, cls).setUpClass()
@@ -53,6 +50,9 @@ class TestIP6DAD(VppTestCase):
         # Set up interfaces
         for i in self.pg_interfaces:
             i.admin_up()
+
+        # DAD state enum alias for readability
+        self.DS = VppEnum.vl_api_ip6_dad_state_t
 
     def tearDown(self):
         # Disable DAD after each test
@@ -477,9 +477,6 @@ if __name__ == "__main__":
 class TestIP6DADEvents(VppTestCase):
     """IPv6 DAD Event Notifications Tests"""
 
-    # DAD state enum alias for readability
-    DS = VppEnum.vl_api_ip6_dad_state_t
-
     @classmethod
     def setUpClass(cls):
         super(TestIP6DADEvents, cls).setUpClass()
@@ -497,6 +494,9 @@ class TestIP6DADEvents(VppTestCase):
         # Set up interface
         for i in self.pg_interfaces:
             i.admin_up()
+
+        # DAD state enum alias for readability
+        self.DS = VppEnum.vl_api_ip6_dad_state_t
 
         # Register for DAD events
         self.vapi.want_ip6_dad_events(enable_disable=True)
