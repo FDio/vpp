@@ -156,7 +156,7 @@ jobs:
       - start-verify
       - verify-checkstyle
     if: ${{ needs.verify-checkstyle.result == 'success' }}
-    uses: fdio/vpp/.github/workflows/vpp-csit-verify-api.yml@1d3c4f761e2c0d2fa8b20d8653d4614a4fbaea49
+    uses: fdio/vpp/.github/workflows/vpp-csit-verify-api.yml@95329f46298ee4fbb6da62396582b0b3059f64b2
     with:
       FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
       GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
