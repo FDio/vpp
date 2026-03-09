@@ -71,7 +71,7 @@ func EvtCollectorSinkTest(s *VethsSuite) {
 	o = serverVpp.Vppctl("app evt-collector add uri tcp://%s/%s",
 		sinkAddr, sinkPort)
 	Log(o)
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		time.Sleep(500 * time.Millisecond)
 		o = serverVpp.Vppctl("show app evt-collector")
 		if strings.Contains(o, "is ready: 1") {
@@ -116,7 +116,7 @@ func EvtCollectorSinkTest(s *VethsSuite) {
 
 	/* Every evt-collector stat line must carry is_ip4=1 and proto=0 */
 	var statLines []string
-	for _, l := range strings.Split(sinkOut, "\n") {
+	for l := range strings.SplitSeq(sinkOut, "\n") {
 		if strings.HasPrefix(l, "[tcp]") || strings.HasPrefix(l, "[udp]") {
 			statLines = append(statLines, l)
 		}
