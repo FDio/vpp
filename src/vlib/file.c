@@ -61,7 +61,9 @@ vlib_file_update (clib_file_t *f, clib_file_update_type_t update_type)
 
   if (epoll_ctl (vm->epoll_fd, op, (int) f->file_descriptor, &e) < 0)
     {
-      log_err ("%s: epoll_ctl() failed, errno %d", __func__, errno);
+      log_err ("%s: epoll_ctl() failed on epfd (%d), file '%v' (fd %d), errno %d", __func__,
+	       vm->epoll_fd, f->description, f->file_descriptor, errno);
+
       return;
     }
 
