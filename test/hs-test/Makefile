@@ -110,7 +110,7 @@ DOCKER_COMMON_ARGS:=$(DOCKER_TTY) --rm $(DOCKER_CAPABILITIES) $(DOCKER_DEVICES) 
 		-e GITHUB_REPO_URL=$(GITHUB_REPO_URL) $(DOCKER_VOLUMES) --name ginkgo hs-test/ginkgo \
 		.$(HS_ROOT)/hs_test.sh --persist=$(PERSIST) --verbose=$(VERBOSE) \
 		--unconfigure=$(UNCONFIGURE) --debug=$(DEBUG) --cpus=$(CPUS) \
-		--vppsrc=$(VPPSRC) --parallel=$(PARALLEL) --repeat=$(REPEAT) --cpu0=$(CPU0) \
+		--vppsrc=$(VPPSRC) --parallel=4 --repeat=$(REPEAT) --cpu0=$(CPU0) \
 		--dryrun=$(DRYRUN) --skip=$(SKIP) --no_color=$(NO_COLOR) --timeout=$(TIMEOUT) \
 		--ginkgo_timeout=$(GINKGO_TIMEOUT) --vpp_cpus=$(VPP_CPUS) --hs_root=$(HS_ROOT) \
 		$(LABEL_ARG) --host_ppid=$$PPID $(SEED_ARG) --hyperthread=$(HT)
