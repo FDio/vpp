@@ -1925,6 +1925,7 @@ quic_quicly_udp_session_rx_packets (session_t *udp_session)
   clib_thread_index_t thread_index = udp_session->thread_index;
   u32 cur_deq, fifo_offset, max_packets, i;
   quic_quicly_rx_packet_ctx_t *packet_ctx;
+  quic_worker_ctx_t *wc = quic_wrk_ctx_get (qqm->qm, thread_index);
 
   ASSERT (thread_index == vlib_get_thread_index ());
   ASSERT (vec_len (qqm->rx_packets[thread_index]) >= QUIC_QUICLY_RCV_MAX_PACKETS);
@@ -2022,7 +2023,8 @@ rx_start:
 	}
       if (ctx != prev_ctx)
 	{
-	  if (!quic_ctx_is_stream (ctx))
+	  ASSERT (!quic_ctx_is_stream (ctx));
+	  if (quicly_get_first_timeout (ctx->conn) <= wc->time_now)
 	    quic_quicly_send_packets (ctx);
 	  else
 	    quic_quicly_reschedule_ctx (ctx);
