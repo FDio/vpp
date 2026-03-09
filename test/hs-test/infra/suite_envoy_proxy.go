@@ -49,7 +49,7 @@ func RegisterEnvoyProxySoloTests(tests ...func(s *EnvoyProxySuite)) {
 
 func (s *EnvoyProxySuite) SetupSuite() {
 	s.HstSuite.SetupSuite()
-	s.LoadNetworkTopology("2taps")
+	s.ConfigureNetworkTopology("2taps")
 	s.LoadContainerTopology("envoyProxy")
 
 	if *IsVppDebug {

@@ -264,6 +264,7 @@ func (vpp *VppInstance) Stop() {
 }
 
 func (vpp *VppInstance) Vppctl(command any, arguments ...any) string {
+	defer GinkgoRecover()
 	defer func() {
 		if r := recover(); r != nil {
 			Log("\n*******************************************************************************\n"+
