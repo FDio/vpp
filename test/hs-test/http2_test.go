@@ -34,7 +34,7 @@ func Http2TcpGetTest(s *Http2Suite) {
 	/* test session cleanup */
 	httpStreamCleanupDone := false
 	tcpSessionCleanupDone := false
-	for nTries := 0; nTries < 30; nTries++ {
+	for range 30 {
 		o := vpp.Vppctl("show session verbose 2")
 		if !strings.Contains(o, "[T] "+serverAddress+"->10.") {
 			tcpSessionCleanupDone = true
@@ -332,7 +332,7 @@ func Http2ClientMultiplexingTest(s *Http2Suite) {
 	/* test session cleanup */
 	httpStreamCleanupDone := false
 	tcpSessionCleanupDone := false
-	for nTries := 0; nTries < 30; nTries++ {
+	for range 30 {
 		o := vpp.Vppctl("show session verbose")
 		if !strings.Contains(o, "[T]") {
 			tcpSessionCleanupDone = true
