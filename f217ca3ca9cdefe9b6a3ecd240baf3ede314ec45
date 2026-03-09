@@ -22,6 +22,30 @@
       },
       "revId": "f217ca3ca9cdefe9b6a3ecd240baf3ede314ec45",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cf402ded_1d5bc600",
+        "filename": "test/hs-test/infra/suite_base.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 666,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2026-03-09T15:15:23Z",
+      "side": 1,
+      "message": "It would be possible but this is the easiest way without really changing anything. If we wanted it to be done internally, I\u0027d have to modify yaml topo files and add a line that would specify if the network topo should be configured by the host (because of IperfSuite, which uses tap interfaces that are configured by the host).",
+      "parentUuid": "b6352558_76d2c22b",
+      "range": {
+        "startLine": 666,
+        "startChar": 65,
+        "endLine": 666,
+        "endChar": 85
+      },
+      "revId": "f217ca3ca9cdefe9b6a3ecd240baf3ede314ec45",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
