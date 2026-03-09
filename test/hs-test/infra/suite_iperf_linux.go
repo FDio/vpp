@@ -35,7 +35,7 @@ func RegisterIperfSoloTests(tests ...func(s *IperfSuite)) {
 
 func (s *IperfSuite) SetupSuite() {
 	s.HstSuite.SetupSuite()
-	s.ConfigureNetworkTopology("2taps")
+	s.ConfigureNetworkTopology("2tapsHost")
 	s.LoadContainerTopology("2containers")
 	s.Interfaces.Client = s.GetInterfaceByName("hstcln")
 	s.Interfaces.Server = s.GetInterfaceByName("hstsrv")

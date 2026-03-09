@@ -272,7 +272,7 @@ Modifying the framework
 
 Topology configuration exists as ``yaml`` files in the ``test/hs-test/topo-network`` and
 ``test/hs-test/topo-containers`` folders. Processing of a network topology file for a particular test suite
-is started by the ``configureNetworkTopology`` method depending on which file's name is passed to it.
+is started by the ``ConfigureNetworkTopology()`` method depending on which file's name is passed to it.
 Specified file is loaded and converted into internal data structures which represent various elements of the topology.
 After parsing the configuration, framework loops over the elements and configures them one by one on the host system.
 

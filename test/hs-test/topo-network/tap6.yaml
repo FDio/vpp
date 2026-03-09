@@ -1,4 +1,6 @@
 ---
+extra-config:
+  - configured-by-host: false
 devices:
   - name: "htapvpp"
     type: "tap"
