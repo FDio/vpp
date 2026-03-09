@@ -409,8 +409,7 @@ virtio_pci_send_ctrl_msg_split (vlib_main_t * vm, virtio_if_t * vif,
 }
 
 static int
-virtio_pci_send_ctrl_msg (vlib_main_t * vm, virtio_if_t * vif,
-			  virtio_ctrl_msg_t * data, u32 len)
+virtio_pci_send_ctrl_msg (vlib_main_t *vm, virtio_if_t *vif, virtio_ctrl_msg_t *data, u32 len)
 {
   if (vif->is_packed)
     return virtio_pci_send_ctrl_msg_packed (vm, vif, data, len);
@@ -595,6 +594,41 @@ virtio_pci_enable_multiqueue_rss (vlib_main_t *vm, virtio_if_t *vif,
   return status;
 }
 
+static int
+virtio_pci_ctrl_mac_addr_set (vlib_main_t *vm, virtio_if_t *vif, const u8 *address)
+{
+
+  virtio_ctrl_msg_t msg;
+  virtio_net_ctrl_ack_t status = VIRTIO_NET_ERR;
+
+  /* Check if VIRTIO_NET_F_CTRL_MAC_ADDR feature is negotiated */
+  if (vif->features & VIRTIO_FEATURE (VIRTIO_NET_F_CTRL_MAC_ADDR))
+    {
+      clib_memset (&msg, 0, sizeof (msg));
+      msg.ctrl.class = VIRTIO_NET_CTRL_MAC;
+      msg.ctrl.cmd = VIRTIO_NET_CTRL_MAC_ADDR_SET;
+      msg.status = VIRTIO_NET_ERR;
+      clib_memcpy (msg.data, address, 6);
+
+      /* Send control message to change MAC via control queue */
+      status = virtio_pci_send_ctrl_msg (vm, vif, &msg, 6);
+
+      if (status == VIRTIO_NET_OK)
+	{
+	  clib_memcpy (vif->mac_addr, address, sizeof (vif->mac_addr));
+	  virtio_log_debug (vif, "set the mac address %U through control channel",
+			    format_mac_address, address);
+	}
+      else
+	{
+	  virtio_log_debug (vif, "failed to set the mac address %U through control channel",
+			    format_mac_address, address);
+	}
+    }
+
+  return status;
+}
+
 static u8
 virtio_pci_queue_size_valid (u16 qsz)
 {
@@ -603,6 +637,22 @@ virtio_pci_queue_size_valid (u16 qsz)
   if ((qsz % 64) != 0)
     return 0;
   return 1;
+}
+
+clib_error_t *
+virtio_pci_set_mac_addr (vlib_main_t *vm, virtio_if_t *vif, const u8 *address)
+{
+  if (virtio_pci_ctrl_mac_addr_set (vm, vif, address) != 0)
+    {
+      /* Fallback: Write to device configuration space if control queue not supported */
+      /* Note: Backend must support direct config write for this to work */
+      clib_memcpy (vif->mac_addr, address, sizeof (vif->mac_addr));
+      virtio_pci_set_mac (vm, vif);
+    }
+  virtio_pci_get_mac (vm, vif);
+  if (clib_memcmp (vif->mac_addr, address, sizeof (vif->mac_addr)) != 0)
+    return clib_error_return (0, "Failed to set MAC address for virtio device");
+  return 0;
 }
 
 clib_error_t *
@@ -924,24 +974,17 @@ virtio_negotiate_features (vlib_main_t * vm, virtio_if_t * vif,
    * default: all supported features
    */
   u64 supported_features =
-    VIRTIO_FEATURE (VIRTIO_NET_F_CSUM) |
-    VIRTIO_FEATURE (VIRTIO_NET_F_GUEST_CSUM) |
-    VIRTIO_FEATURE (VIRTIO_NET_F_CTRL_GUEST_OFFLOADS) |
-    VIRTIO_FEATURE (VIRTIO_NET_F_MTU) | VIRTIO_FEATURE (VIRTIO_NET_F_MAC) |
-    VIRTIO_FEATURE (VIRTIO_NET_F_GSO) |
-    VIRTIO_FEATURE (VIRTIO_NET_F_GUEST_TSO4) |
-    VIRTIO_FEATURE (VIRTIO_NET_F_GUEST_TSO6) |
-    VIRTIO_FEATURE (VIRTIO_NET_F_GUEST_UFO) |
-    VIRTIO_FEATURE (VIRTIO_NET_F_HOST_TSO4) |
-    VIRTIO_FEATURE (VIRTIO_NET_F_HOST_TSO6) |
-    VIRTIO_FEATURE (VIRTIO_NET_F_HOST_UFO) |
-    VIRTIO_FEATURE (VIRTIO_NET_F_MRG_RXBUF) |
-    VIRTIO_FEATURE (VIRTIO_NET_F_STATUS) |
-    VIRTIO_FEATURE (VIRTIO_NET_F_CTRL_VQ) | VIRTIO_FEATURE (VIRTIO_NET_F_MQ) |
-    VIRTIO_FEATURE (VIRTIO_F_NOTIFY_ON_EMPTY) |
-    VIRTIO_FEATURE (VIRTIO_F_ANY_LAYOUT) |
-    VIRTIO_FEATURE (VIRTIO_RING_F_INDIRECT_DESC) |
-    VIRTIO_FEATURE (VIRTIO_F_VERSION_1);
+    VIRTIO_FEATURE (VIRTIO_NET_F_CSUM) | VIRTIO_FEATURE (VIRTIO_NET_F_GUEST_CSUM) |
+    VIRTIO_FEATURE (VIRTIO_NET_F_CTRL_GUEST_OFFLOADS) | VIRTIO_FEATURE (VIRTIO_NET_F_MTU) |
+    VIRTIO_FEATURE (VIRTIO_NET_F_MAC) | VIRTIO_FEATURE (VIRTIO_NET_F_GSO) |
+    VIRTIO_FEATURE (VIRTIO_NET_F_GUEST_TSO4) | VIRTIO_FEATURE (VIRTIO_NET_F_GUEST_TSO6) |
+    VIRTIO_FEATURE (VIRTIO_NET_F_GUEST_UFO) | VIRTIO_FEATURE (VIRTIO_NET_F_HOST_TSO4) |
+    VIRTIO_FEATURE (VIRTIO_NET_F_HOST_TSO6) | VIRTIO_FEATURE (VIRTIO_NET_F_HOST_UFO) |
+    VIRTIO_FEATURE (VIRTIO_NET_F_MRG_RXBUF) | VIRTIO_FEATURE (VIRTIO_NET_F_STATUS) |
+    VIRTIO_FEATURE (VIRTIO_NET_F_CTRL_VQ) | VIRTIO_FEATURE (VIRTIO_NET_F_CTRL_RX) |
+    VIRTIO_FEATURE (VIRTIO_NET_F_MQ) | VIRTIO_FEATURE (VIRTIO_NET_F_CTRL_MAC_ADDR) |
+    VIRTIO_FEATURE (VIRTIO_F_NOTIFY_ON_EMPTY) | VIRTIO_FEATURE (VIRTIO_F_ANY_LAYOUT) |
+    VIRTIO_FEATURE (VIRTIO_RING_F_INDIRECT_DESC) | VIRTIO_FEATURE (VIRTIO_F_VERSION_1);
 
   if (vif->rss_enabled)
     supported_features |= VIRTIO_FEATURE (VIRTIO_NET_F_RSS);
@@ -1199,22 +1242,6 @@ virtio_pci_device_init (vlib_main_t * vm, virtio_if_t * vif,
 				"Device doesn't support requested features");
     }
   vif->status = status;
-
-  /*
-   * get or set the mac address
-   */
-  if (virtio_pci_get_mac (vm, vif))
-    {
-      f64 now = vlib_time_now (vm);
-      u32 rnd;
-      rnd = (u32) (now * 1e6);
-      rnd = random_u32 (&rnd);
-
-      memcpy (vif->mac_addr + 2, &rnd, sizeof (rnd));
-      vif->mac_addr[0] = 2;
-      vif->mac_addr[1] = 0xfe;
-      virtio_pci_set_mac (vm, vif);
-    }
 
   virtio_set_net_hdr_size (vif);
 
@@ -1487,6 +1514,24 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
     {
       virtio_log_error (vif, "error encountered on device init");
       goto error;
+    }
+
+  if (virtio_pci_get_mac (vm, vif))
+    {
+      f64 now = vlib_time_now (vm);
+      u32 rnd;
+      u8 mac_addr[6];
+      rnd = (u32) (now * 1e6);
+      rnd = random_u32 (&rnd);
+
+      memcpy (mac_addr + 2, &rnd, sizeof (rnd));
+      mac_addr[0] = 2;
+      mac_addr[1] = 0xfe;
+      if ((error = virtio_pci_set_mac_addr (vm, vif, mac_addr)))
+	{
+	  virtio_log_error (vif, "error encountered while setting the mac address");
+	  goto error;
+	}
     }
 
   /* create interface */

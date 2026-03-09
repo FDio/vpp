@@ -66,6 +66,10 @@ typedef enum
 #define VIRTIO_NET_CTRL_GUEST_OFFLOADS 5
 #define VIRTIO_NET_CTRL_GUEST_OFFLOADS_SET 0
 
+#define VIRTIO_NET_CTRL_MAC	      1
+#define VIRTIO_NET_CTRL_MAC_TABLE_SET 0
+#define VIRTIO_NET_CTRL_MAC_ADDR_SET  1
+
 /* Common configuration */
 #define VIRTIO_PCI_CAP_COMMON_CFG       1
 /* Notifications */
@@ -301,6 +305,7 @@ void virtio_pci_notify_queue (vlib_main_t *vm, virtio_if_t *vif, u16 queue_id,
 			      u16 queue_notify_offset);
 
 extern void device_status (vlib_main_t * vm, virtio_if_t * vif);
+clib_error_t *virtio_pci_set_mac_addr (vlib_main_t *vm, virtio_if_t *vif, const u8 *address);
 void virtio_pci_create_if (vlib_main_t * vm,
 			   virtio_pci_create_if_args_t * args);
 int virtio_pci_delete_if (vlib_main_t * vm, virtio_if_t * ad);

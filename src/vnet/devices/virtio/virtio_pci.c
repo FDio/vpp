@@ -304,7 +304,7 @@ virtio_pci_get_mac (vlib_main_t *vm, virtio_if_t *vif)
 {
   vif->mac_addr32 = virtio_pci_reg_read_u32 (vif, VIRTIO_MAC_OFFSET (vif));
   vif->mac_addr16 = virtio_pci_reg_read_u16 (vif, VIRTIO_MAC_OFFSET (vif) + 4);
-  return 0;
+  return (vif->mac_addr32 == 0 && vif->mac_addr16 == 0);
 }
 
 void
