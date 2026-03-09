@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b6352558_76d2c22b",
+        "filename": "test/hs-test/infra/suite_base.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 666,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-03-09T14:54:14Z",
+      "side": 1,
+      "message": "can this be done somehow internally without this parameter? e.g you know interface type used in topo file",
+      "range": {
+        "startLine": 666,
+        "startChar": 65,
+        "endLine": 666,
+        "endChar": 85
+      },
+      "revId": "f217ca3ca9cdefe9b6a3ecd240baf3ede314ec45",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
