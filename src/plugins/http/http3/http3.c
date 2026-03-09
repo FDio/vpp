@@ -443,6 +443,8 @@ http3_stream_app_close_parent (http3_stream_ctx_t *sctx, http_conn_t *stream, u8
 static void
 http3_stream_app_close_tunnel (http3_stream_ctx_t *sctx, http_conn_t *stream, u8 is_shutdown)
 {
+  http_conn_t *hc;
+
   sctx->flags |= is_shutdown ? HTTP3_STREAM_F_SHUTDOWN_TUNNEL : 0;
   /* Wait for all data to be written to ts */
   if (http_io_as_max_read (&sctx->base))
@@ -459,6 +461,13 @@ http3_stream_app_close_tunnel (http3_stream_ctx_t *sctx, http_conn_t *stream, u8
       HTTP_DBG (1, "app want to close tunnel");
       if (!is_shutdown && http_io_ts_max_read (stream))
 	{
+	  if (sctx->flags & HTTP3_STREAM_F_IS_PARENT)
+	    {
+	      HTTP_DBG (1, "app closed parent, going to reset connection");
+	      hc = http_conn_get_w_thread (stream->hc_http_conn_index, stream->c_thread_index);
+	      session_reset (session_get_from_handle (hc->hc_tc_session_handle));
+	      return;
+	    }
 	  HTTP_DBG (1, "app has unread data, going to reset stream");
 	  http3_stream_terminate (stream, sctx, HTTP3_ERROR_CONNECT_ERROR);
 	  return;
