@@ -16,6 +16,24 @@
       "message": "Probably \"Failed to get enabled OSI protos (%d)\"?",
       "revId": "8d4ab10b19e91d3644e0f4eda6d1b9515b06018e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "51c3f0a6_046410aa",
+        "filename": "src/plugins/linux-cp/lcp_cli.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 447,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2026-03-09T15:36:59Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "86c5f7e2_0d2c316b",
+      "revId": "8d4ab10b19e91d3644e0f4eda6d1b9515b06018e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
