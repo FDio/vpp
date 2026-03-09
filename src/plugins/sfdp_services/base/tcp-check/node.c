@@ -119,7 +119,7 @@ update_state_one_pkt (sfdp_tw_t *tw, sfdp_tenant_t *tenant,
       if (flags & SFDP_TCP_CHECK_TCP_FLAGS_SYN)
 	{
 	  /* New session, must be a SYN otherwise bad */
-	  if (sf[0] == 0)
+	  if (sf[0] == 0 || sf[0] & SFDP_TCP_CHECK_SESSION_FLAG_TIME_WAIT)
 	    nsf[0] = SFDP_TCP_CHECK_SESSION_FLAG_WAIT_FOR_RESP_SYN |
 		     SFDP_TCP_CHECK_SESSION_FLAG_WAIT_FOR_RESP_ACK_TO_SYN;
 	  else
@@ -141,11 +141,13 @@ update_state_one_pkt (sfdp_tw_t *tw, sfdp_tenant_t *tenant,
 	}
       if (flags & SFDP_TCP_CHECK_TCP_FLAGS_FIN)
 	{
-	  /*If we were up, we are not anymore */
+	  /* If we were established or time-wait, we are not anymore */
 	  nsf[0] &= ~SFDP_TCP_CHECK_SESSION_FLAG_ESTABLISHED;
+	  nsf[0] &= ~SFDP_TCP_CHECK_SESSION_FLAG_TIME_WAIT;
 	  /*Seen our FIN, wait for the other FIN and for an ACK*/
 	  tcp_session->fin_num[SFDP_FLOW_FORWARD] = seqnum + 1;
 	  nsf[0] |= SFDP_TCP_CHECK_SESSION_FLAG_SEEN_FIN_INIT;
+	  nsf[0] &= ~SFDP_TCP_CHECK_SESSION_FLAG_SEEN_ACK_TO_FIN_INIT;
 	}
       if (flags & SFDP_TCP_CHECK_TCP_FLAGS_RST)
 	{
@@ -177,11 +179,13 @@ update_state_one_pkt (sfdp_tw_t *tw, sfdp_tenant_t *tenant,
 	}
       if (flags & SFDP_TCP_CHECK_TCP_FLAGS_FIN)
 	{
-	  /*If we were up, we are not anymore */
+	  /* If we were established or time-wait, we are not anymore */
 	  nsf[0] &= ~SFDP_TCP_CHECK_SESSION_FLAG_ESTABLISHED;
+	  nsf[0] &= ~SFDP_TCP_CHECK_SESSION_FLAG_TIME_WAIT;
 	  /* Seen our FIN, wait for the other FIN and for an ACK */
 	  tcp_session->fin_num[SFDP_FLOW_REVERSE] = seqnum + 1;
 	  nsf[0] |= SFDP_TCP_CHECK_SESSION_FLAG_SEEN_FIN_RESP;
+	  nsf[0] &= ~SFDP_TCP_CHECK_SESSION_FLAG_SEEN_ACK_TO_FIN_RESP;
 	}
       if (flags & SFDP_TCP_CHECK_TCP_FLAGS_RST)
 	{
@@ -218,6 +222,7 @@ out:
     next_timeout = tenant->timeouts[SFDP_TIMEOUT_SECURITY];
   else
     next_timeout = tenant->timeouts[SFDP_TIMEOUT_EMBRYONIC];
+  /* TODO: Distinguish FIN-WAIT states in the last branch. */
 
   sfdp_session_timer_update_maybe_past (tw, SFDP_SESSION_TIMER (session),
 					current_time, next_timeout);
