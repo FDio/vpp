@@ -1675,6 +1675,51 @@ quic_quicly_connection_get_stats (void *conn, quic_stats_t *conn_stats)
 }
 
 static u8 *
+quic_quicly_format_rx_frame_stats (u8 *s, va_list *args)
+{
+  quicly_stats_t *quicly_stats = va_arg (*args, quicly_stats_t *);
+  u32 indent = format_get_indent (s);
+
+  s = format (
+    s, "reset-stream %lu stop-sending %lu max-data %lu max-stream-data %lu\n",
+    quicly_stats->num_frames_received.reset_stream, quicly_stats->num_frames_received.stop_sending,
+    quicly_stats->num_frames_received.max_data, quicly_stats->num_frames_received.max_stream_data);
+  s = format (s, "%Udata-blocked %lu stream-data-blocked %lu transport-close %lu app-close %lu\n",
+	      format_white_space, indent, quicly_stats->num_frames_received.data_blocked,
+	      quicly_stats->num_frames_received.stream_data_blocked,
+	      quicly_stats->num_frames_received.transport_close,
+	      quicly_stats->num_frames_received.application_close);
+  s =
+    format (s, "%Unew-conn-id %lu retire-conn-id %lu crypto %lu new-token %u\n", format_white_space,
+	    indent, quicly_stats->num_frames_received.new_connection_id,
+	    quicly_stats->num_frames_received.retire_connection_id,
+	    quicly_stats->num_frames_received.crypto, quicly_stats->num_frames_received.new_token);
+  return s;
+}
+
+static u8 *
+quic_quicly_format_tx_frame_stats (u8 *s, va_list *args)
+{
+  quicly_stats_t *quicly_stats = va_arg (*args, quicly_stats_t *);
+  u32 indent = format_get_indent (s);
+
+  s =
+    format (s, "reset-stream %lu stop-sending %lu max-data %lu max-stream-data %lu\n",
+	    quicly_stats->num_frames_sent.reset_stream, quicly_stats->num_frames_sent.stop_sending,
+	    quicly_stats->num_frames_sent.max_data, quicly_stats->num_frames_sent.max_stream_data);
+  s = format (s, "%Udata-blocked %lu stream-data-blocked %lu transport-close %lu app-close %lu\n",
+	      format_white_space, indent, quicly_stats->num_frames_sent.data_blocked,
+	      quicly_stats->num_frames_sent.stream_data_blocked,
+	      quicly_stats->num_frames_sent.transport_close,
+	      quicly_stats->num_frames_sent.application_close);
+  s = format (s, "%Unew-conn-id %lu retire-conn-id %lu crypto %lu new-token %u\n",
+	      format_white_space, indent, quicly_stats->num_frames_sent.new_connection_id,
+	      quicly_stats->num_frames_sent.retire_connection_id,
+	      quicly_stats->num_frames_sent.crypto, quicly_stats->num_frames_sent.new_token);
+  return s;
+}
+
+static u8 *
 quic_quicly_format_connection_stats (u8 *s, va_list *args)
 {
   quic_ctx_t *ctx = va_arg (*args, quic_ctx_t *);
@@ -1708,6 +1753,8 @@ quic_quicly_format_connection_stats (u8 *s, va_list *args)
   s = format (s, " cwnd-init %u cwnd-min %u cwnd-max %u\n",
 	      quicly_stats.cc.cwnd_initial, quicly_stats.cc.cwnd_minimum,
 	      quicly_stats.cc.cwnd_maximum);
+  s = format (s, " rx frames: %U", quic_quicly_format_rx_frame_stats, &quicly_stats);
+  s = format (s, " tx frames: %U", quic_quicly_format_tx_frame_stats, &quicly_stats);
   return s;
 }
 
