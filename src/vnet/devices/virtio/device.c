@@ -19,6 +19,7 @@
 #include <vnet/tcp/tcp_packet.h>
 #include <vnet/udp/udp_packet.h>
 #include <vnet/devices/virtio/virtio.h>
+#include <vnet/devices/virtio/pci.h>
 
 #define VIRTIO_TX_MAX_CHAIN_LEN 127
 
@@ -1099,6 +1100,31 @@ virtio_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
   return 0;
 }
 
+static clib_error_t *
+virtio_set_mac_address (vnet_hw_interface_t *hi, const u8 *old_address, const u8 *address)
+{
+  // Implement MAC address change for virtio devices.
+  virtio_main_t *mm = &virtio_main;
+  virtio_if_t *vif = pool_elt_at_index (mm->interfaces, hi->dev_instance);
+
+  clib_memcpy (vif->mac_addr, address, sizeof (vif->mac_addr));
+  virtio_pci_set_mac (vlib_get_main (), vif);
+  virtio_pci_get_mac (vlib_get_main (), vif);
+  if (clib_memcmp (vif->mac_addr, address, sizeof (vif->mac_addr)) != 0)
+    return clib_error_return (0, "Failed to set MAC address for virtio device");
+
+  return 0;
+}
+
+static clib_error_t *
+virtio_add_del_mac_address (vnet_hw_interface_t *hi, const u8 *address, u8 is_add)
+{
+
+  // Implement virtio MAC adddress filtering for virtio devices.
+
+  return 0;
+}
+
 VNET_DEVICE_CLASS (virtio_device_class) = {
   .name = "virtio",
   .format_device_name = format_virtio_device_name,
@@ -1110,4 +1136,6 @@ VNET_DEVICE_CLASS (virtio_device_class) = {
   .clear_counters = virtio_clear_hw_interface_counters,
   .admin_up_down_function = virtio_interface_admin_up_down,
   .rx_mode_change_function = virtio_interface_rx_mode_change,
+  .mac_addr_change_function = virtio_set_mac_address,
+  .mac_addr_add_del_function = virtio_add_del_mac_address,
 };
