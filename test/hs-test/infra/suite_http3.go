@@ -40,7 +40,7 @@ func RegisterH3MWTests(tests ...func(s *Http3Suite)) {
 
 func (s *Http3Suite) SetupSuite() {
 	s.HstSuite.SetupSuite()
-	s.LoadNetworkTopology("tap")
+	s.ConfigureNetworkTopology("tap", false)
 	s.LoadContainerTopology("http3")
 	s.Interfaces.Tap = s.GetInterfaceByName("htapvpp")
 	s.Containers.Vpp = s.GetContainerByName("vpp")

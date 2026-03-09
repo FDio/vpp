@@ -62,7 +62,7 @@ func RegisterH2MWTests(tests ...func(s *Http2Suite)) {
 
 func (s *Http2Suite) SetupSuite() {
 	s.HstSuite.SetupSuite()
-	s.LoadNetworkTopology("tap")
+	s.ConfigureNetworkTopology("tap", false)
 	s.LoadContainerTopology("single")
 	s.Interfaces.Tap = s.GetInterfaceByName("htapvpp")
 	s.Containers.Vpp = s.GetContainerByName("vpp")

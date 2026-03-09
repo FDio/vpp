@@ -42,7 +42,7 @@ func RegisterNginxProxySoloTests(tests ...func(s *NginxProxySuite)) {
 
 func (s *NginxProxySuite) SetupSuite() {
 	s.HstSuite.SetupSuite()
-	s.LoadNetworkTopology("2taps")
+	s.ConfigureNetworkTopology("2taps", false)
 	s.LoadContainerTopology("nginxProxy")
 
 	if *IsVppDebug {

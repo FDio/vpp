@@ -54,7 +54,7 @@ func RegisterMasqueMWTests(tests ...func(s *MasqueSuite)) {
 
 func (s *MasqueSuite) SetupSuite() {
 	s.HstSuite.SetupSuite()
-	s.ConfigureNetworkTopology("masque")
+	s.ConfigureNetworkTopology("masque", true)
 	s.LoadContainerTopology("masque")
 	s.Ports.Nginx = s.GeneratePort()
 	s.Ports.NginxSsl = s.GeneratePort()

@@ -48,7 +48,7 @@ func RegisterHsiMWTests(tests ...func(s *HsiSuite)) {
 
 func (s *HsiSuite) SetupSuite() {
 	s.HstSuite.SetupSuite()
-	s.ConfigureNetworkTopology("ns")
+	s.ConfigureNetworkTopology("ns", true)
 	s.LoadContainerTopology("single")
 	s.Ports.Server = s.GeneratePortAsInt()
 	s.Ports.ServerSsl = s.GeneratePortAsInt()

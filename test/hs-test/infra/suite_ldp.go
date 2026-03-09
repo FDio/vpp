@@ -45,7 +45,7 @@ func RegisterLdpMWTests(tests ...func(s *LdpSuite)) {
 func (s *LdpSuite) SetupSuite() {
 	time.Sleep(1 * time.Second)
 	s.HstSuite.SetupSuite()
-	s.LoadNetworkTopology("2taps")
+	s.ConfigureNetworkTopology("2taps", false)
 	s.LoadContainerTopology("2peerVeth")
 	s.Interfaces.Client = s.GetInterfaceByName("hstcln")
 	s.Interfaces.Server = s.GetInterfaceByName("hstsrv")

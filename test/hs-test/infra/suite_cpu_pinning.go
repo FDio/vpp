@@ -32,7 +32,7 @@ func RegisterCpuPinningSoloTests(tests ...func(s *CpuPinningSuite)) {
 
 func (s *CpuPinningSuite) SetupSuite() {
 	s.HstSuite.SetupSuite()
-	s.LoadNetworkTopology("tap")
+	s.ConfigureNetworkTopology("tap", false)
 	s.LoadContainerTopology("singleCpuPinning")
 	s.Interfaces.Tap = s.GetInterfaceByName("htapvpp")
 	s.Containers.Vpp = s.GetContainerByName("vpp")

@@ -40,7 +40,7 @@ func RegisterSoloVeth6Tests(tests ...func(s *Veths6Suite)) {
 func (s *Veths6Suite) SetupSuite() {
 	time.Sleep(1 * time.Second)
 	s.HstSuite.SetupSuite()
-	s.ConfigureNetworkTopology("2peerVeth6")
+	s.ConfigureNetworkTopology("2peerVeth6", true)
 	s.LoadContainerTopology("2peerVeth")
 	s.Interfaces.Client = s.GetInterfaceByName("cln")
 	s.Interfaces.Server = s.GetInterfaceByName("srv")

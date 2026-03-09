@@ -574,7 +574,7 @@ func (s *HstSuite) LoadContainerTopology(topologyName string) {
 	}
 }
 
-func (s *HstSuite) LoadNetworkTopology(topologyName string) {
+func (s *HstSuite) loadNetworkTopology(topologyName string) {
 	data, err := os.ReadFile(networkTopologyDir + topologyName + ".yaml")
 	if err != nil {
 		Fail("read error: " + fmt.Sprint(err))
@@ -661,17 +661,21 @@ func (s *HstSuite) LoadNetworkTopology(topologyName string) {
 	}
 }
 
-func (s *HstSuite) ConfigureNetworkTopology(topologyName string) {
-	s.LoadNetworkTopology(topologyName)
+// Set 'configureOnHost' to true if suite is using tap interfaces without VPP (e.g. IperfSuite)
+// or veth interfaces
+func (s *HstSuite) ConfigureNetworkTopology(topologyName string, configureOnHost bool) {
+	s.loadNetworkTopology(topologyName)
 
-	if *IsUnconfiguring {
-		return
-	}
+	if configureOnHost {
+		if *IsUnconfiguring {
+			return
+		}
 
-	for _, nc := range s.NetConfigs {
-		Log(nc.Name())
-		if err := nc.configure(); err != nil {
-			Fail("Network config error: " + fmt.Sprint(err))
+		for _, nc := range s.NetConfigs {
+			Log(nc.Name())
+			if err := nc.configure(); err != nil {
+				Fail("Network config error: " + fmt.Sprint(err))
+			}
 		}
 	}
 }

@@ -42,7 +42,7 @@ func RegisterNoTopo6SoloTests(tests ...func(s *NoTopo6Suite)) {
 
 func (s *NoTopo6Suite) SetupSuite() {
 	s.HstSuite.SetupSuite()
-	s.LoadNetworkTopology("tap6")
+	s.ConfigureNetworkTopology("tap6", false)
 	s.LoadContainerTopology("single")
 	s.Interfaces.Tap = s.GetInterfaceByName("htapvpp")
 	s.Containers.Vpp = s.GetContainerByName("vpp")

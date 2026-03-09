@@ -50,7 +50,7 @@ func RegisterNoTopoMWTests(tests ...func(s *NoTopoSuite)) {
 
 func (s *NoTopoSuite) SetupSuite() {
 	s.HstSuite.SetupSuite()
-	s.LoadNetworkTopology("tap")
+	s.ConfigureNetworkTopology("tap", false)
 	s.LoadContainerTopology("single")
 	s.Interfaces.Tap = s.GetInterfaceByName("htapvpp")
 	s.Containers.Vpp = s.GetContainerByName("vpp")
