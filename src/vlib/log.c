@@ -385,7 +385,7 @@ vlib_log_init (vlib_main_t *vm)
 
   lm->kmsg_filp = fopen ("/dev/kmsg", "w");
   if (lm->kmsg_filp)
-    setbuf (lm->kmsg_filp, NULL); // unbuffered
+    setline (lm->kmsg_filp);
 
   while (r)
     {
