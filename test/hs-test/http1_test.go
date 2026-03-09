@@ -277,7 +277,7 @@ func HttpCliTest(s *VethsSuite) {
 
 	/* test client session cleanup */
 	clientCleanupDone := false
-	for nTries := 0; nTries < 30; nTries++ {
+	for range 30 {
 		o := s.Containers.ClientVpp.VppInstance.Vppctl("show session verbose 2")
 		if !strings.Contains(o, "->"+serverAddress) {
 			clientCleanupDone = true
@@ -435,7 +435,7 @@ func HttpClientInvalidHeaderNameTest(s *Http1Suite) {
 	/* wait until cleanup to be sure we don't crash */
 	httpCleanupDone := false
 	tcpSessionCleanupDone := false
-	for nTries := 0; nTries < 60; nTries++ {
+	for range 60 {
 		o := vpp.Vppctl("show session verbose 2")
 		if !strings.Contains(o, "[T]") {
 			tcpSessionCleanupDone = true
@@ -2050,7 +2050,7 @@ func HttpHeadersTest(s *Http1Suite) {
 
 	/* test cleanup */
 	client.CloseIdleConnections()
-	for nTries := 0; nTries < 10; nTries++ {
+	for range 10 {
 		o := vpp.Vppctl("show session verbose 2")
 		if !strings.Contains(o, serverAddress+"->"+s.HostAddr()) {
 			break
