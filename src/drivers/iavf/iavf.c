@@ -154,8 +154,7 @@ iavf_init (vlib_main_t *vm, vnet_dev_t *dev)
     }
   else
     /* reverse of PF driver MTU calculation */
-    max_frame_sz = res.max_mtu + 14 /* ethernet header */ + 4 /* FCS */ +
-		   2 * 4 /* two VLAN tags */;
+    max_frame_sz = res.max_mtu + sizeof (ethernet_header_t) + IAVF_ETH_MAX_FRAME_OVERHEAD;
 
   iavf_port_t iavf_port = {
     .vf_cap_flags = res.vf_cap_flags,

@@ -25,12 +25,11 @@ iavf_rx_queue_alloc (vlib_main_t *vm, vnet_dev_rx_queue_t *rxq)
   iavf_rxq_t *arq = vnet_dev_get_rx_queue_data (rxq);
   vnet_dev_rv_t rv;
 
-  arq->buffer_indices = clib_mem_alloc_aligned (
-    rxq->size * sizeof (arq->buffer_indices[0]), CLIB_CACHE_LINE_BYTES);
+  arq->buffer_indices =
+    clib_mem_alloc_aligned (rxq->size * sizeof (arq->buffer_indices[0]), CLIB_CACHE_LINE_BYTES);
 
-  if ((rv =
-	 vnet_dev_dma_mem_alloc (vm, dev, sizeof (iavf_rx_desc_t) * rxq->size,
-				 0, (void **) &arq->descs)))
+  if ((rv = vnet_dev_dma_mem_alloc (vm, dev, sizeof (iavf_rx_desc_t) * rxq->size, 0,
+				    (void **) &arq->descs)))
     return rv;
 
   arq->qrx_tail = ad->bar0 + IAVF_QRX_TAIL (rxq->queue_id);
@@ -60,20 +59,26 @@ iavf_tx_queue_alloc (vlib_main_t *vm, vnet_dev_tx_queue_t *txq)
   vnet_dev_t *dev = txq->port->dev;
   iavf_device_t *ad = vnet_dev_get_data (dev);
   iavf_txq_t *atq = vnet_dev_get_tx_queue_data (txq);
+  /* See IAVF_TX_DESCS_PER_PLACEHOLDER_BUF in iavf.h for the derivation. */
+  u16 n_ph = (txq->size / IAVF_TX_DESCS_PER_PLACEHOLDER_BUF) + 1;
+  u8 bpi = vlib_buffer_pool_get_default_for_numa (vm, dev->numa_node);
   vnet_dev_rv_t rv;
 
-  if ((rv =
-	 vnet_dev_dma_mem_alloc (vm, dev, sizeof (iavf_tx_desc_t) * txq->size,
-				 0, (void **) &atq->descs)))
+  if ((rv = vnet_dev_dma_mem_alloc (vm, dev, sizeof (iavf_tx_desc_t) * txq->size, 0,
+				    (void **) &atq->descs)))
     return rv;
 
   clib_ring_new_aligned (atq->rs_slots, 32, CLIB_CACHE_LINE_BYTES);
-  atq->buffer_indices = clib_mem_alloc_aligned (
-    txq->size * sizeof (atq->buffer_indices[0]), CLIB_CACHE_LINE_BYTES);
-  atq->tmp_descs = clib_mem_alloc_aligned (
-    sizeof (atq->tmp_descs[0]) * txq->size, CLIB_CACHE_LINE_BYTES);
-  atq->tmp_bufs = clib_mem_alloc_aligned (
-    sizeof (atq->tmp_bufs[0]) * txq->size, CLIB_CACHE_LINE_BYTES);
+  atq->buffer_indices =
+    clib_mem_alloc_aligned (txq->size * sizeof (atq->buffer_indices[0]), CLIB_CACHE_LINE_BYTES);
+  atq->tmp_descs =
+    clib_mem_alloc_aligned (sizeof (atq->tmp_descs[0]) * txq->size, CLIB_CACHE_LINE_BYTES);
+  atq->tmp_bufs =
+    clib_mem_alloc_aligned (sizeof (atq->tmp_bufs[0]) * txq->size, CLIB_CACHE_LINE_BYTES);
+  vec_validate_aligned (atq->ph_bufs, n_ph - 1, CLIB_CACHE_LINE_BYTES);
+
+  if (!vlib_buffer_alloc_from_pool (vm, atq->ph_bufs, n_ph, bpi))
+    return VNET_DEV_ERR_BUFFER_ALLOC_FAIL;
 
   atq->qtx_tail = ad->bar0 + IAVF_QTX_TAIL (txq->queue_id);
 
@@ -91,6 +96,8 @@ iavf_tx_queue_free (vlib_main_t *vm, vnet_dev_tx_queue_t *txq)
   log_debug (dev, "queue %u", txq->queue_id);
   vnet_dev_dma_mem_free (vm, dev, aq->descs);
   clib_ring_free (atq->rs_slots);
+
+  vec_free (aq->ph_bufs);
 
   foreach_pointer (p, aq->tmp_descs, aq->tmp_bufs, aq->buffer_indices)
     if (p)
@@ -136,10 +143,10 @@ iavf_rx_queue_stop (vlib_main_t *vm, vnet_dev_rx_queue_t *rxq)
   __atomic_store_n (arq->qrx_tail, 0, __ATOMIC_RELAXED);
   if (arq->n_enqueued)
     {
-      vlib_buffer_free_from_ring_no_next (vm, arq->buffer_indices, arq->next,
-					  rxq->size, arq->n_enqueued);
-      log_debug (rxq->port->dev, "%u buffers freed from rx queue %u",
-		 arq->n_enqueued, rxq->queue_id);
+      vlib_buffer_free_from_ring_no_next (vm, arq->buffer_indices, arq->next, rxq->size,
+					  arq->n_enqueued);
+      log_debug (rxq->port->dev, "%u buffers freed from rx queue %u", arq->n_enqueued,
+		 rxq->queue_id);
     }
   arq->n_enqueued = arq->next = 0;
 }
@@ -165,11 +172,10 @@ iavf_tx_queue_stop (vlib_main_t *vm, vnet_dev_tx_queue_t *txq)
   __atomic_store_n (atq->qtx_tail, 0, __ATOMIC_RELAXED);
   if (atq->n_enqueued)
     {
-      vlib_buffer_free_from_ring_no_next (vm, atq->buffer_indices,
-					  atq->next - atq->n_enqueued,
+      vlib_buffer_free_from_ring_no_next (vm, atq->buffer_indices, atq->next - atq->n_enqueued,
 					  txq->size, atq->n_enqueued);
-      log_debug (txq->port->dev, "%u buffers freed from tx queue %u",
-		 atq->n_enqueued, txq->queue_id);
+      log_debug (txq->port->dev, "%u buffers freed from tx queue %u", atq->n_enqueued,
+		 txq->queue_id);
     }
   atq->n_enqueued = atq->next = 0;
 }
