@@ -53,7 +53,6 @@ void ip4_session_table_walk (clib_bihash_16_8_t * hash,
 			     ip4_session_table_walk_fn_t fn, void *arg);
 
 session_table_t *session_table_alloc (void);
-session_table_t *session_table_get (u32 table_index);
 u32 session_table_index (session_table_t * slt);
 void session_table_init (session_table_t * slt, u8 fib_proto);
 void session_table_free (session_table_t *slt, u8 fib_proto);
@@ -61,11 +60,20 @@ void session_table_free (session_table_t *slt, u8 fib_proto);
 u32 session_table_memory_size (session_table_t *st);
 u8 *format_session_table (u8 *s, va_list *args);
 
-/* Internal, try not to use it! */
-session_table_t *_get_session_tables ();
+extern session_table_t *lookup_tables;
 
-#define session_table_foreach(VAR, BODY)		\
-  pool_foreach (VAR, _get_session_tables ()) BODY
+always_inline session_table_t *
+session_table_get (u32 table_index)
+{
+    session_table_t *rv = 0;
+    if (table_index != SESSION_TABLE_INVALID_INDEX)
+      rv = pool_elt_at_index (lookup_tables, table_index);
+    return rv;
+}
+
+#define session_table_foreach(VAR, BODY)                                                           \
+  pool_foreach (VAR, lookup_tables)                                                                \
+  BODY
 
 void session_lookup_table_cleanup (u32 fib_proto, u32 fib_index, u32 ns_index);
 
