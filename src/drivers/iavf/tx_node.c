@@ -133,9 +133,17 @@ next:
   /* Acquire a reference on the placeholder buffer */
   ctx_ph->ref_count++;
 
-  u16 l234hdr_sz = vnet_buffer (b)->l4_hdr_offset - b->current_data +
-		   vnet_buffer2 (b)->gso_l4_hdr_sz;
-  u16 tlen = vlib_buffer_length_in_chain (vm, b) - l234hdr_sz;
+  ASSERT ((b->flags & VNET_BUFFER_F_L4_HDR_OFFSET_VALID) != 0);
+
+  /* Calculate header size from current_data (which should point to L2 header)
+   * to end of L4 header. vlib_buffer_length_in_chain() also uses current_data
+   * as reference, so both calculations are consistent. */
+  u16 hdr_sz = vnet_buffer (b)->l4_hdr_offset - b->current_data + vnet_buffer2 (b)->gso_l4_hdr_sz;
+  u16 tlen = vlib_buffer_length_in_chain (vm, b) - hdr_sz;
+
+  /* Sanity check: all headers must fit in first buffer for TSO */
+  ASSERT (hdr_sz <= b->current_length);
+
   d[0].qword[0] = 0;
   d[0].qword[1] = IAVF_TXD_DTYP_CTX | IAVF_TXD_CTX_CMD_TSO |
 		  IAVF_TXD_CTX_SEG_MSS (vnet_buffer2 (b)->gso_size) |

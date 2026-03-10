@@ -19,6 +19,15 @@
 #define IAVF_MAX_RSS_LUT_SIZE	  64
 #define IIAVF_AQ_POLL_INTERVAL	  0.2
 #define IIAVF_AQ_BUF_SIZE	  4096
+#define IAVF_ETH_FCS_BYTES	  4
+#define IAVF_ETH_VLAN_TAG_BYTES	  4
+#define IAVF_ETH_MAX_VLAN_TAGS	  2
+#define IAVF_ETH_MAX_FRAME_OVERHEAD                                                                \
+  (IAVF_ETH_FCS_BYTES + IAVF_ETH_MAX_VLAN_TAGS * IAVF_ETH_VLAN_TAG_BYTES)
+#define IAVF_TX_MIN_DESCS_PER_TSO_PACKET 2
+#define IAVF_TX_PLACEHOLDER_BUF_MAX_REFS CLIB_U8_MAX
+#define IAVF_TX_DESCS_PER_PLACEHOLDER_BUF                                                          \
+  (IAVF_TX_MIN_DESCS_PER_TSO_PACKET * IAVF_TX_PLACEHOLDER_BUF_MAX_REFS)
 
 typedef struct iavf_adminq_dma_mem iavf_adminq_dma_mem_t;
 

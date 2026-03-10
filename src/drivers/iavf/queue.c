@@ -60,6 +60,10 @@ iavf_tx_queue_alloc (vlib_main_t *vm, vnet_dev_tx_queue_t *txq)
   vnet_dev_t *dev = txq->port->dev;
   iavf_device_t *ad = vnet_dev_get_data (dev);
   iavf_txq_t *atq = vnet_dev_get_tx_queue_data (txq);
+  /* One placeholder buffer can cover up to CLIB_U8_MAX in-flight TSO context
+   * descriptors, and each TSO packet consumes at least two descriptors. */
+  u16 n_ph = (txq->size / IAVF_TX_DESCS_PER_PLACEHOLDER_BUF) + 1;
+  u8 bpi = vlib_buffer_pool_get_default_for_numa (vm, dev->numa_node);
   vnet_dev_rv_t rv;
 
   if ((rv =
@@ -74,6 +78,10 @@ iavf_tx_queue_alloc (vlib_main_t *vm, vnet_dev_tx_queue_t *txq)
     sizeof (atq->tmp_descs[0]) * txq->size, CLIB_CACHE_LINE_BYTES);
   atq->tmp_bufs = clib_mem_alloc_aligned (
     sizeof (atq->tmp_bufs[0]) * txq->size, CLIB_CACHE_LINE_BYTES);
+  vec_validate_aligned (atq->ph_bufs, n_ph - 1, CLIB_CACHE_LINE_BYTES);
+
+  if (!vlib_buffer_alloc_from_pool (vm, atq->ph_bufs, n_ph, bpi))
+    return VNET_DEV_ERR_BUFFER_ALLOC_FAIL;
 
   atq->qtx_tail = ad->bar0 + IAVF_QTX_TAIL (txq->queue_id);
 
@@ -91,6 +99,8 @@ iavf_tx_queue_free (vlib_main_t *vm, vnet_dev_tx_queue_t *txq)
   log_debug (dev, "queue %u", txq->queue_id);
   vnet_dev_dma_mem_free (vm, dev, aq->descs);
   clib_ring_free (atq->rs_slots);
+
+  vec_free (aq->ph_bufs);
 
   foreach_pointer (p, aq->tmp_descs, aq->tmp_bufs, aq->buffer_indices)
     if (p)
