@@ -70,6 +70,30 @@
       },
       "revId": "f217ca3ca9cdefe9b6a3ecd240baf3ede314ec45",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2d72f1f7_5ea0ab1b",
+        "filename": "test/hs-test/infra/suite_base.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 666,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2026-03-10T11:16:26Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "73b6b5bc_ee1ae8a0",
+      "range": {
+        "startLine": 666,
+        "startChar": 65,
+        "endLine": 666,
+        "endChar": 85
+      },
+      "revId": "f217ca3ca9cdefe9b6a3ecd240baf3ede314ec45",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
