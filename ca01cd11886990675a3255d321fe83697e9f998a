@@ -52,6 +52,24 @@
       "parentUuid": "253025b9_dba31249",
       "revId": "ca01cd11886990675a3255d321fe83697e9f998a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5155f36e_671794ea",
+        "filename": "src/plugins/ip6_dad_autoremove/ip6_dad_autoremove.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 226,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-03-10T22:09:57Z",
+      "side": 1,
+      "message": "Yes, agreed.\nI changed it so that loading the plugin is now enough to enable the auto-remove behavior. I kept `set ip6 dad autoremove disable|enable` as runtime control, so a user can still turn it off explicitly and re-enable it later if needed.\nI also updated the test to load the plugin explicitly, and `make TEST\u003dtest_ip6_dad_autoremove test` now passes.",
+      "parentUuid": "f0d98a0a_c230e8b0",
+      "revId": "ca01cd11886990675a3255d321fe83697e9f998a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
