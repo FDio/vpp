@@ -34,6 +34,24 @@
       "parentUuid": "280ece24_9e78d68d",
       "revId": "ca01cd11886990675a3255d321fe83697e9f998a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f0d98a0a_c230e8b0",
+        "filename": "src/plugins/ip6_dad_autoremove/ip6_dad_autoremove.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 226,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2026-03-10T21:38:56Z",
+      "side": 1,
+      "message": "i asked the wrong question 😊\nShould we make it so that loading the plugin (which is by default not loaded) is enough to enable the functionality of the autoremove.\nI\u0027m not sure what the use case would be for a client to disable the autoremove capability.",
+      "parentUuid": "253025b9_dba31249",
+      "revId": "ca01cd11886990675a3255d321fe83697e9f998a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
