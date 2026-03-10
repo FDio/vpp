@@ -1395,9 +1395,8 @@ ip4_local_l4_csum_validate (vlib_main_t * vm, vlib_buffer_t * p,
     (_b->flags & VNET_BUFFER_F_L4_CHECKSUM_CORRECT			\
 	|| (ip4_local_csum_is_offloaded (_b))) != 0
 
-static inline void
-ip4_local_check_l4_csum (vlib_main_t * vm, vlib_buffer_t * b,
-			 ip4_header_t * ih, u8 * error)
+always_inline void
+ip4_local_check_l4_csum (vlib_main_t *vm, vlib_buffer_t *b, ip4_header_t *ih, u8 *error)
 {
   u8 is_udp, is_tcp_udp, good_tcp_udp;
 
@@ -1414,9 +1413,8 @@ ip4_local_check_l4_csum (vlib_main_t * vm, vlib_buffer_t * b,
 	    ? IP4_ERROR_TCP_CHECKSUM + is_udp : *error);
 }
 
-static inline void
-ip4_local_check_l4_csum_x2 (vlib_main_t * vm, vlib_buffer_t ** b,
-			    ip4_header_t ** ih, u8 * error)
+always_inline void
+ip4_local_check_l4_csum_x2 (vlib_main_t *vm, vlib_buffer_t **b, ip4_header_t **ih, u8 *error)
 {
   u8 is_udp[2], is_tcp_udp[2], good_tcp_udp[2];
 
@@ -1446,10 +1444,9 @@ ip4_local_check_l4_csum_x2 (vlib_main_t * vm, vlib_buffer_t ** b,
 	      IP4_ERROR_TCP_CHECKSUM + is_udp[1] : error[1]);
 }
 
-static inline void
-ip4_local_set_next_and_error (vlib_node_runtime_t * error_node,
-			      vlib_buffer_t * b, u16 * next, u8 error,
-			      u8 head_of_feature_arc)
+always_inline void
+ip4_local_set_next_and_error (vlib_node_runtime_t *error_node, vlib_buffer_t *b, u16 *next,
+			      u8 error, u8 head_of_feature_arc)
 {
   u8 arc_index = vnet_feat_arc_ip4_local.feature_arc_index;
   u32 next_index;
@@ -1478,10 +1475,9 @@ typedef struct
   u8 first;
 } ip4_local_last_check_t;
 
-static inline void
-ip4_local_check_src (vlib_buffer_t *b, ip4_header_t *ip0,
-		     ip4_local_last_check_t *last_check, u8 *error0,
-		     int is_receive_dpo)
+always_inline void
+ip4_local_check_src (vlib_buffer_t *b, ip4_header_t *ip0, ip4_local_last_check_t *last_check,
+		     u8 *error0, int is_receive_dpo)
 {
   const dpo_id_t *dpo0;
   load_balance_t *lb0;
@@ -1557,10 +1553,9 @@ ip4_local_check_src (vlib_buffer_t *b, ip4_header_t *ip0,
     }
 }
 
-static inline void
-ip4_local_check_src_x2 (vlib_buffer_t **b, ip4_header_t **ip,
-			ip4_local_last_check_t *last_check, u8 *error,
-			int is_receive_dpo)
+always_inline void
+ip4_local_check_src_x2 (vlib_buffer_t **b, ip4_header_t **ip, ip4_local_last_check_t *last_check,
+			u8 *error, int is_receive_dpo)
 {
   const dpo_id_t *dpo[2];
   load_balance_t *lb[2];
