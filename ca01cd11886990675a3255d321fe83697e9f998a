@@ -16,6 +16,24 @@
       "message": "is loading the plugin enough to enable the auto-remove functionality?\nwhen would a client enable or even disable this functionality?",
       "revId": "ca01cd11886990675a3255d321fe83697e9f998a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "253025b9_dba31249",
+        "filename": "src/plugins/ip6_dad_autoremove/ip6_dad_autoremove.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 226,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-03-10T21:36:09Z",
+      "side": 1,
+      "message": "No, loading the plugin is not sufficient to enable the auto-remove functionality.\nThe plugin is initialized in a disabled state by default. DAD will be turned on when auto-remove will explicitely be turned on.",
+      "parentUuid": "280ece24_9e78d68d",
+      "revId": "ca01cd11886990675a3255d321fe83697e9f998a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
