@@ -16,6 +16,24 @@
       "message": "If `timer_interval_s` you need to set it to the default to match the behavior from the previous patch. Otherwise, you allow zero as a value and have a division by zero in `sfdp_seconds_to_ticks`.",
       "revId": "79f04ccf42ba6014a0371499d915943b3b78790d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6b2e85da_9c819e7c",
+        "filename": "src/vnet/sfdp/sfdp.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 584,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-03-10T16:06:50Z",
+      "side": 1,
+      "message": "is zero*",
+      "parentUuid": "921c52bc_2b81b24e",
+      "revId": "79f04ccf42ba6014a0371499d915943b3b78790d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
