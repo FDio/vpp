@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "921c52bc_2b81b24e",
+        "filename": "src/vnet/sfdp/sfdp.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 584,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-03-10T16:06:10Z",
+      "side": 1,
+      "message": "If `timer_interval_s` you need to set it to the default to match the behavior from the previous patch. Otherwise, you allow zero as a value and have a division by zero in `sfdp_seconds_to_ticks`.",
+      "revId": "79f04ccf42ba6014a0371499d915943b3b78790d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
