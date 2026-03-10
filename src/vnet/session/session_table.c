@@ -10,13 +10,7 @@
 /**
  * Pool of session tables
  */
-static session_table_t *lookup_tables;
-
-session_table_t *
-_get_session_tables (void)
-{
-  return lookup_tables;
-}
+session_table_t *lookup_tables;
 
 session_table_t *
 session_table_alloc (void)
@@ -31,14 +25,6 @@ u32
 session_table_index (session_table_t * slt)
 {
   return (slt - lookup_tables);
-}
-
-session_table_t *
-session_table_get (u32 table_index)
-{
-  if (pool_is_free_index (lookup_tables, table_index))
-    return 0;
-  return pool_elt_at_index (lookup_tables, table_index);
 }
 
 #define foreach_hash_table_parameter            \
