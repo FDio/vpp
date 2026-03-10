@@ -486,7 +486,7 @@ oct_init (vlib_main_t *vm, vnet_dev_t *dev)
   if (rv != VNET_DEV_OK)
     return rv;
 
-  if (cd->type != OCT_DEVICE_TYPE_O10K_CPT_VF)
+  if (!(roc_model_is_cn10k () && OCT_DEVTYPE_IS_VF (cd->type)))
     {
       rv = vnet_dev_pci_map_region (vm, dev, 4, &cd->plt_pci_dev.mem_resource[4].addr);
       if (rv != VNET_DEV_OK)
