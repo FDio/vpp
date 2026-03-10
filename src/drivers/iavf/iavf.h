@@ -19,6 +19,37 @@
 #define IAVF_MAX_RSS_LUT_SIZE	  64
 #define IIAVF_AQ_POLL_INTERVAL	  0.2
 #define IIAVF_AQ_BUF_SIZE	  4096
+#define IAVF_ETH_FCS_BYTES	  4
+#define IAVF_ETH_VLAN_TAG_BYTES	  4
+#define IAVF_ETH_MAX_VLAN_TAGS	  2
+#define IAVF_ETH_MAX_FRAME_OVERHEAD                                                                \
+  (IAVF_ETH_FCS_BYTES + IAVF_ETH_MAX_VLAN_TAGS * IAVF_ETH_VLAN_TAG_BYTES)
+/* Minimum number of TX descriptors consumed by one TSO packet:
+ * one context descriptor + one data descriptor. */
+#define IAVF_TX_MIN_DESCS_PER_TSO_PACKET 2
+
+/* vlib_buffer_t::ref_count is a u8, so a single placeholder buffer can be
+ * referenced by at most 255 in-flight TSO context descriptors before it must
+ * be replaced by a fresh one. */
+#define IAVF_TX_PLACEHOLDER_BUF_MAX_REFS CLIB_U8_MAX
+STATIC_ASSERT (sizeof (((vlib_buffer_t *) 0)->ref_count) == 1,
+	       "vlib_buffer_t::ref_count is no longer a u8 — "
+	       "update IAVF_TX_PLACEHOLDER_BUF_MAX_REFS accordingly");
+
+/* Maximum number of TX descriptors that can share one placeholder buffer.
+ *
+ * Worst-case scenario: every packet in the queue is a TSO packet using the
+ * fewest possible descriptors (IAVF_TX_MIN_DESCS_PER_TSO_PACKET).  In that
+ * case the ring holds txq->size / IAVF_TX_MIN_DESCS_PER_TSO_PACKET packets,
+ * each needing one context-descriptor reference on a placeholder buffer.
+ * Because ref_count saturates at IAVF_TX_PLACEHOLDER_BUF_MAX_REFS, we need:
+ *
+ *   n_ph = txq->size / IAVF_TX_DESCS_PER_PLACEHOLDER_BUF + 1
+ *
+ * The +1 ensures at least one buffer is always available even for small
+ * queue sizes, and acts as a safety margin for the saturating ref_count. */
+#define IAVF_TX_DESCS_PER_PLACEHOLDER_BUF                                                          \
+  (IAVF_TX_MIN_DESCS_PER_TSO_PACKET * IAVF_TX_PLACEHOLDER_BUF_MAX_REFS)
 
 typedef struct iavf_adminq_dma_mem iavf_adminq_dma_mem_t;
 
@@ -94,10 +125,8 @@ void iavf_aq_poll_on (vlib_main_t *, vnet_dev_t *);
 void iavf_aq_poll_off (vlib_main_t *, vnet_dev_t *);
 void iavf_aq_deinit (vlib_main_t *, vnet_dev_t *);
 void iavf_aq_free (vlib_main_t *, vnet_dev_t *);
-vnet_dev_rv_t iavf_aq_atq_enq (vlib_main_t *, vnet_dev_t *, iavf_aq_desc_t *,
-			       const u8 *, u16, f64);
-int iavf_aq_arq_next_acq (vlib_main_t *, vnet_dev_t *, iavf_aq_desc_t **,
-			  u8 **, f64);
+vnet_dev_rv_t iavf_aq_atq_enq (vlib_main_t *, vnet_dev_t *, iavf_aq_desc_t *, const u8 *, u16, f64);
+int iavf_aq_arq_next_acq (vlib_main_t *, vnet_dev_t *, iavf_aq_desc_t **, u8 **, f64);
 void iavf_aq_arq_next_rel (vlib_main_t *, vnet_dev_t *);
 format_function_t format_virtchnl_op_name;
 format_function_t format_virtchnl_status;
@@ -155,25 +184,24 @@ static inline void
 iavf_reg_flush (iavf_device_t *ad)
 {
   iavf_reg_read (ad, IAVF_VFGEN_RSTAT);
-  asm volatile("" ::: "memory");
+  asm volatile ("" ::: "memory");
 }
 
-#define log_debug(dev, f, ...)                                                \
-  vlib_log (VLIB_LOG_LEVEL_DEBUG, iavf_log.class, "%U" f,                     \
-	    format_vnet_dev_log, (dev),                                       \
+#define log_debug(dev, f, ...)                                                                     \
+  vlib_log (VLIB_LOG_LEVEL_DEBUG, iavf_log.class, "%U" f, format_vnet_dev_log, (dev),              \
 	    clib_string_skip_prefix (__func__, "iavf_"), ##__VA_ARGS__)
-#define log_info(dev, f, ...)                                                 \
-  vlib_log (VLIB_LOG_LEVEL_INFO, iavf_log.class, "%U: " f,                    \
-	    format_vnet_dev_addr, (dev), ##__VA_ARGS__)
-#define log_notice(dev, f, ...)                                               \
-  vlib_log (VLIB_LOG_LEVEL_NOTICE, iavf_log.class, "%U: " f,                  \
-	    format_vnet_dev_addr, (dev), ##__VA_ARGS__)
-#define log_warn(dev, f, ...)                                                 \
-  vlib_log (VLIB_LOG_LEVEL_WARNING, iavf_log.class, "%U: " f,                 \
-	    format_vnet_dev_addr, (dev), ##__VA_ARGS__)
-#define log_err(dev, f, ...)                                                  \
-  vlib_log (VLIB_LOG_LEVEL_ERR, iavf_log.class, "%U: " f,                     \
-	    format_vnet_dev_addr, (dev), ##__VA_ARGS__)
+#define log_info(dev, f, ...)                                                                      \
+  vlib_log (VLIB_LOG_LEVEL_INFO, iavf_log.class, "%U: " f, format_vnet_dev_addr, (dev),            \
+	    ##__VA_ARGS__)
+#define log_notice(dev, f, ...)                                                                    \
+  vlib_log (VLIB_LOG_LEVEL_NOTICE, iavf_log.class, "%U: " f, format_vnet_dev_addr, (dev),          \
+	    ##__VA_ARGS__)
+#define log_warn(dev, f, ...)                                                                      \
+  vlib_log (VLIB_LOG_LEVEL_WARNING, iavf_log.class, "%U: " f, format_vnet_dev_addr, (dev),         \
+	    ##__VA_ARGS__)
+#define log_err(dev, f, ...)                                                                       \
+  vlib_log (VLIB_LOG_LEVEL_ERR, iavf_log.class, "%U: " f, format_vnet_dev_addr, (dev),             \
+	    ##__VA_ARGS__)
 
 /* temp */
 #define IAVF_RX_VECTOR_SZ VLIB_FRAME_SIZE
@@ -194,8 +222,8 @@ typedef struct
   iavf_rx_tail_t tails[IAVF_RX_VECTOR_SZ];
 } iavf_rt_data_t;
 
-#define foreach_iavf_tx_node_counter                                          \
-  _ (SEG_SZ_EXCEEDED, seg_sz_exceeded, ERROR, "segment size exceeded")        \
+#define foreach_iavf_tx_node_counter                                                               \
+  _ (SEG_SZ_EXCEEDED, seg_sz_exceeded, ERROR, "segment size exceeded")                             \
   _ (NO_FREE_SLOTS, no_free_slots, ERROR, "no free tx slots")
 
 typedef enum
@@ -205,8 +233,7 @@ typedef enum
 #undef _
 } iavf_tx_node_counter_t;
 
-#define foreach_iavf_rx_node_counter                                          \
-  _ (BUFFER_ALLOC, buffer_alloc, ERROR, "buffer alloc error")
+#define foreach_iavf_rx_node_counter _ (BUFFER_ALLOC, buffer_alloc, ERROR, "buffer alloc error")
 
 typedef enum
 {
