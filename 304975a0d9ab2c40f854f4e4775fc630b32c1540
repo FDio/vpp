@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "9ba50189_ffc90481",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-03-10T05:46:44Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "913748ab_44c48dde",
+      "revId": "304975a0d9ab2c40f854f4e4775fc630b32c1540",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "2f697a5a_b588e690",
@@ -48,6 +66,24 @@
       "writtenOn": "2026-03-10T05:14:40Z",
       "side": 1,
       "message": "This is guaranteed to fail on older distro\u0027s which have python 3.10 as the base version of python.\n\nI\u0027ll update this gerrit change accordingly as it would be good to update pip as well.",
+      "revId": "304975a0d9ab2c40f854f4e4775fc630b32c1540",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ef75a358_1e0f2dda",
+        "filename": "test/requirements-3.txt",
+        "patchSetId": 2
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-03-10T05:46:44Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "2f697a5a_b588e690",
       "revId": "304975a0d9ab2c40f854f4e4775fc630b32c1540",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
