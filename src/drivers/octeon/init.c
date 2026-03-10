@@ -442,6 +442,31 @@ oct_init_cpt (vlib_main_t *vm, vnet_dev_t *dev)
   return VNET_DEV_OK;
 }
 
+static bool
+oct_is_nix_bar_mappable (vnet_dev_t *dev, u32 bar)
+{
+  oct_device_t *cd = vnet_dev_get_data (dev);
+  struct roc_nix *nix = cd->nix;
+
+  /*
+   * Device-BARs mapping table
+   * +----+--------+---------+
+   * |    |OCTEON9 |OCTEON10 |
+   * +----+--------+---------+
+   * | PF |  BAR2  |  BAR2   |
+   * |    |  BAR4  |  BAR4   |
+   * +----+--------+---------+
+   * | VF |  BAR2  |  BAR2   |
+   * |    |  BAR4  |         |
+   * +----+--------+---------+
+   */
+
+  if (roc_model_is_cn10k () && !roc_nix_is_pf (nix))
+    return false;
+
+  return true;
+}
+
 static vnet_dev_rv_t
 oct_init (vlib_main_t *vm, vnet_dev_t *dev)
 {
@@ -484,10 +509,12 @@ oct_init (vlib_main_t *vm, vnet_dev_t *dev)
 
   foreach_int (i, 2, 4)
     {
-      rv = vnet_dev_pci_map_region (vm, dev, i,
-				    &cd->plt_pci_dev.mem_resource[i].addr);
-      if (rv != VNET_DEV_OK)
-	return rv;
+      if (oct_is_nix_bar_mappable (dev, i))
+	{
+	  rv = vnet_dev_pci_map_region (vm, dev, i, &cd->plt_pci_dev.mem_resource[i].addr);
+	  if (rv != VNET_DEV_OK)
+	    return rv;
+	}
     }
 
   STATIC_ASSERT (sizeof (cd->plt_pci_dev.name) == sizeof (dev->device_id), "");
