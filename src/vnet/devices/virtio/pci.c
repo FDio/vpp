@@ -594,6 +594,186 @@ virtio_pci_enable_multiqueue_rss (vlib_main_t *vm, virtio_if_t *vif,
   return status;
 }
 
+/* MAC filter management */
+static clib_error_t *
+virtio_pci_check_mac_filter_features (virtio_if_t *vif)
+{
+  if ((vif->features & VIRTIO_FEATURE (VIRTIO_NET_F_CTRL_VQ)) == 0)
+    return clib_error_return (0, "VIRTIO_NET_F_CTRL_VQ not supported");
+
+  if ((vif->features & VIRTIO_FEATURE (VIRTIO_NET_F_CTRL_RX)) == 0)
+    return clib_error_return (0, "VIRTIO_NET_F_CTRL_RX not supported");
+
+  return 0;
+}
+
+static u32
+virtio_pci_build_mac_table_payload (virtio_if_t *vif, u8 *payload, u32 skip_index,
+				    const u8 *new_mac)
+{
+  /* Build payload as <u32 n_unicast><unicast><u32 n_multicast><multicast> */
+  u32 i, unicast_entries = 0, multicast_entries = 0;
+  u32 entries_le32;
+  u8 *data = payload;
+
+  /* Count unicast and multicast entries (excluding skip_index if set) */
+  for (i = 0; i < vif->mac_table_entries; i++)
+    {
+      if (i == skip_index)
+	continue;
+      if (ethernet_address_cast (vif->mac_filter[i]))
+	multicast_entries++;
+      else
+	unicast_entries++;
+    }
+
+  /* Include new_mac in count if provided */
+  if (new_mac)
+    {
+      if (ethernet_address_cast (new_mac))
+	multicast_entries++;
+      else
+	unicast_entries++;
+    }
+
+  /* Build unicast section: <u32 count><mac1><mac2>... */
+  entries_le32 = clib_host_to_little_u32 (unicast_entries);
+  clib_memcpy (data, &entries_le32, sizeof (entries_le32));
+  data += sizeof (entries_le32);
+
+  for (i = 0; i < vif->mac_table_entries; i++)
+    {
+      if (i != skip_index && !ethernet_address_cast (vif->mac_filter[i]))
+	{
+	  clib_memcpy (data, vif->mac_filter[i], 6);
+	  data += 6;
+	}
+    }
+
+  if (new_mac && !ethernet_address_cast (new_mac))
+    {
+      clib_memcpy (data, new_mac, 6);
+      data += 6;
+    }
+
+  /* Build multicast section: <u32 count><mac1><mac2>... */
+  entries_le32 = clib_host_to_little_u32 (multicast_entries);
+  clib_memcpy (data, &entries_le32, sizeof (entries_le32));
+  data += sizeof (entries_le32);
+
+  for (i = 0; i < vif->mac_table_entries; i++)
+    {
+      if (i != skip_index && ethernet_address_cast (vif->mac_filter[i]))
+	{
+	  clib_memcpy (data, vif->mac_filter[i], 6);
+	  data += 6;
+	}
+    }
+
+  if (new_mac && ethernet_address_cast (new_mac))
+    {
+      clib_memcpy (data, new_mac, 6);
+      data += 6;
+    }
+
+  return data - payload;
+}
+
+clib_error_t *
+virtio_pci_add_mac_filter (vlib_main_t *vm, virtio_if_t *vif, const u8 *mac)
+{
+  virtio_ctrl_msg_t msg;
+  clib_error_t *error;
+  virtio_net_ctrl_ack_t status = VIRTIO_NET_ERR;
+  u32 i, len;
+
+  STATIC_ASSERT (sizeof (virtio_net_ctrl_mac_t) <= sizeof (msg.data),
+		 "virtio_net_ctrl_mac_t size too big");
+  STATIC_ASSERT ((sizeof (virtio_net_ctrl_mac_t) + sizeof (u32)) <= sizeof (msg.data),
+		 "virtio MAC table payload size too big");
+
+  error = virtio_pci_check_mac_filter_features (vif);
+  if (error)
+    return error;
+
+  if (vif->mac_table_entries >= VIRTIO_PCI_MAC_TABLE_MAX_ENTRIES)
+    return clib_error_return (0, "MAC filter table full (%u entries)",
+			      VIRTIO_PCI_MAC_TABLE_MAX_ENTRIES);
+
+  /* Check if MAC already exists */
+  for (i = 0; i < vif->mac_table_entries; i++)
+    if (ethernet_mac_address_equal (vif->mac_filter[i], mac))
+      return clib_error_return (0, "MAC address already in filter table");
+
+  /* Build MAC table payload with new MAC included */
+  clib_memset (&msg, 0, sizeof (msg));
+  len = virtio_pci_build_mac_table_payload (vif, msg.data, ~0U, mac);
+
+  /* Send control message */
+  msg.ctrl.class = VIRTIO_NET_CTRL_MAC;
+  msg.ctrl.cmd = VIRTIO_NET_CTRL_MAC_TABLE_SET;
+  msg.status = VIRTIO_NET_ERR;
+  status = virtio_pci_send_ctrl_msg (vm, vif, &msg, len);
+
+  if (status != VIRTIO_NET_OK)
+    return clib_error_return (0, "Device rejected MAC filter update (status=%d)", status);
+
+  /* Update local filter list on success */
+  clib_memcpy_fast (vif->mac_filter[vif->mac_table_entries], mac, 6);
+  vif->mac_table_entries++;
+  return 0;
+}
+
+clib_error_t *
+virtio_pci_remove_mac_filter (vlib_main_t *vm, virtio_if_t *vif, const u8 *mac)
+{
+  virtio_ctrl_msg_t msg;
+  clib_error_t *error;
+  virtio_net_ctrl_ack_t status = VIRTIO_NET_ERR;
+  u32 i, len, remove_index = ~0U;
+
+  STATIC_ASSERT (sizeof (virtio_net_ctrl_mac_t) <= sizeof (msg.data),
+		 "virtio_net_ctrl_mac_t size too big");
+  STATIC_ASSERT ((sizeof (virtio_net_ctrl_mac_t) + sizeof (u32)) <= sizeof (msg.data),
+		 "virtio MAC table payload size too big");
+
+  error = virtio_pci_check_mac_filter_features (vif);
+  if (error)
+    return error;
+
+  /* Find MAC in filter table */
+  for (i = 0; i < vif->mac_table_entries; i++)
+    if (ethernet_mac_address_equal (vif->mac_filter[i], mac))
+      {
+	remove_index = i;
+	break;
+      }
+
+  if (remove_index == ~0U)
+    return clib_error_return (0, "MAC address not found in filter table");
+
+  /* Build MAC table payload excluding the MAC to remove */
+  clib_memset (&msg, 0, sizeof (msg));
+  len = virtio_pci_build_mac_table_payload (vif, msg.data, remove_index, NULL);
+
+  /* Send control message */
+  msg.ctrl.class = VIRTIO_NET_CTRL_MAC;
+  msg.ctrl.cmd = VIRTIO_NET_CTRL_MAC_TABLE_SET;
+  msg.status = VIRTIO_NET_ERR;
+  status = virtio_pci_send_ctrl_msg (vm, vif, &msg, len);
+
+  if (status != VIRTIO_NET_OK)
+    return clib_error_return (0, "Device rejected MAC filter update (status=%d)", status);
+
+  /* Update local filter table on success: shift remaining entries down */
+  for (i = remove_index; i + 1 < vif->mac_table_entries; i++)
+    clib_memcpy_fast (vif->mac_filter[i], vif->mac_filter[i + 1], 6);
+
+  clib_memset (vif->mac_filter[vif->mac_table_entries - 1], 0, 6);
+  vif->mac_table_entries--;
+  return 0;
+}
+
 static int
 virtio_pci_ctrl_mac_addr_set (vlib_main_t *vm, virtio_if_t *vif, const u8 *address)
 {
@@ -1407,6 +1587,9 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
   vif->per_interface_next_index = ~0;
   vif->pci_addr.as_u32 = args->addr;
   vif->rss_enabled = args->rss_enabled;
+  vif->mac_filter_enabled = args->mac_filter_enabled;
+  vif->mac_table_entries = 0;
+
   if (args->virtio_flags & VIRTIO_FLAG_PACKED)
     vif->is_packed = 1;
 

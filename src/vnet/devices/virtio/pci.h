@@ -67,6 +67,7 @@ typedef enum
 #define VIRTIO_NET_CTRL_GUEST_OFFLOADS_SET 0
 
 #define VIRTIO_NET_CTRL_MAC	     1
+#define VIRTIO_NET_CTRL_MAC_TABLE_SET 0
 #define VIRTIO_NET_CTRL_MAC_ADDR_SET 1
 
 /* Common configuration */
@@ -205,6 +206,11 @@ typedef struct
   u8 hash_key_data[VIRTIO_NET_RSS_MAX_KEY_SIZE];
 } virtio_net_rss_config;
 
+typedef CLIB_PACKED (struct virtio_net_ctrl_mac {
+  u32 entries;
+  u8 macs[VIRTIO_PCI_MAC_TABLE_MAX_ENTRIES][6];
+}) virtio_net_ctrl_mac_t;
+
 /*
  * Control virtqueue data structures
  *
@@ -263,6 +269,7 @@ typedef struct
   u8 gso_enabled;
   u8 checksum_offload_enabled;
   u8 rss_enabled;
+  u8 mac_filter_enabled;
   u32 tx_queue_size;
   virtio_bind_t bind;
   u32 buffering_size;
@@ -305,6 +312,9 @@ void virtio_pci_notify_queue (vlib_main_t *vm, virtio_if_t *vif, u16 queue_id,
 
 extern void device_status (vlib_main_t * vm, virtio_if_t * vif);
 clib_error_t *virtio_pci_set_mac_addr (vlib_main_t *vm, virtio_if_t *vif, const u8 *address);
+clib_error_t *virtio_pci_add_mac_filter (vlib_main_t *vm, virtio_if_t *vif, const u8 *mac);
+clib_error_t *virtio_pci_remove_mac_filter (vlib_main_t *vm, virtio_if_t *vif, const u8 *mac);
+
 void virtio_pci_create_if (vlib_main_t * vm,
 			   virtio_pci_create_if_args_t * args);
 int virtio_pci_delete_if (vlib_main_t * vm, virtio_if_t * ad);
