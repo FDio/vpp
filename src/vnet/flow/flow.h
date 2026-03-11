@@ -266,6 +266,12 @@ foreach_flow_type;
 #undef _
 #undef _fe
 
+typedef struct
+{
+  u32 hw_if_index;
+  uword private_data;
+} vnet_flow_if_data_t;
+
 /* main flow struct */
 typedef struct
 {
@@ -309,7 +315,7 @@ typedef struct
   };
 
   /* per-interface private data */
-  uword *private_data;
+  vnet_flow_if_data_t *if_data;
 } vnet_flow_t;
 
 int vnet_flow_add (vnet_main_t * vnm, vnet_flow_t * flow, u32 * flow_index);

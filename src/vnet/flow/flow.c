@@ -10,6 +10,16 @@
 
 vnet_flow_main_t flow_main;
 
+static_always_inline vnet_flow_if_data_t *
+vnet_flow_get_if_data (vnet_flow_t *f, u32 hw_if_index)
+{
+  vnet_flow_if_data_t *d;
+  vec_foreach (d, f->if_data)
+    if (d->hw_if_index == hw_if_index)
+      return d;
+  return 0;
+}
+
 int
 vnet_flow_add (vnet_main_t * vnm, vnet_flow_t * flow, u32 * flow_index)
 {
@@ -19,7 +29,7 @@ vnet_flow_add (vnet_main_t * vnm, vnet_flow_t * flow, u32 * flow_index)
   pool_get (fm->global_flow_pool, f);
   *flow_index = f - fm->global_flow_pool;
   clib_memcpy_fast (f, flow, sizeof (vnet_flow_t));
-  f->private_data = 0;
+  f->if_data = 0;
   f->index = *flow_index;
   return 0;
 }
@@ -39,18 +49,15 @@ vnet_flow_del (vnet_main_t * vnm, u32 flow_index)
 {
   vnet_flow_main_t *fm = &flow_main;
   vnet_flow_t *f = vnet_get_flow (flow_index);
-  uword hw_if_index;
-  uword private_data;
 
   if (f == 0)
     return VNET_FLOW_ERROR_NO_SUCH_ENTRY;
 
-  hash_foreach (hw_if_index, private_data, f->private_data,
-    ({
-     vnet_flow_disable (vnm, flow_index, hw_if_index);
-    }));
+  /* vnet_flow_del remove the element from the vector */
+  for (int i = vec_len (f->if_data) - 1; i >= 0; i--)
+    vnet_flow_disable (vnm, flow_index, f->if_data[i].hw_if_index);
 
-  hash_free (f->private_data);
+  vec_free (f->if_data);
   clib_memset (f, 0, sizeof (*f));
   pool_put (fm->global_flow_pool, f);
   return 0;
@@ -62,6 +69,7 @@ vnet_flow_enable (vnet_main_t * vnm, u32 flow_index, u32 hw_if_index)
   vnet_flow_t *f = vnet_get_flow (flow_index);
   vnet_hw_interface_t *hi;
   vnet_device_class_t *dev_class;
+  vnet_flow_if_data_t *d;
   uword private_data;
   int rv;
 
@@ -72,7 +80,7 @@ vnet_flow_enable (vnet_main_t * vnm, u32 flow_index, u32 hw_if_index)
     return VNET_FLOW_ERROR_NO_SUCH_INTERFACE;
 
   /* don't enable flow twice */
-  if (hash_get (f->private_data, hw_if_index) != 0)
+  if (vnet_flow_get_if_data (f, hw_if_index) != 0)
     return VNET_FLOW_ERROR_ALREADY_DONE;
 
   hi = vnet_get_hw_interface (vnm, hw_if_index);
@@ -96,7 +104,9 @@ vnet_flow_enable (vnet_main_t * vnm, u32 flow_index, u32 hw_if_index)
   if (rv)
     return rv;
 
-  hash_set (f->private_data, hw_if_index, private_data);
+  vec_add2 (f->if_data, d, 1);
+  d->hw_if_index = hw_if_index;
+  d->private_data = private_data;
   return 0;
 }
 
@@ -106,7 +116,7 @@ vnet_flow_disable (vnet_main_t * vnm, u32 flow_index, u32 hw_if_index)
   vnet_flow_t *f = vnet_get_flow (flow_index);
   vnet_hw_interface_t *hi;
   vnet_device_class_t *dev_class;
-  uword *p;
+  vnet_flow_if_data_t *d;
   int rv;
 
   if (f == 0)
@@ -116,7 +126,7 @@ vnet_flow_disable (vnet_main_t * vnm, u32 flow_index, u32 hw_if_index)
     return VNET_FLOW_ERROR_NO_SUCH_INTERFACE;
 
   /* don't disable if not enabled */
-  if ((p = hash_get (f->private_data, hw_if_index)) == 0)
+  if ((d = vnet_flow_get_if_data (f, hw_if_index)) == 0)
     return VNET_FLOW_ERROR_ALREADY_DONE;
 
   hi = vnet_get_hw_interface (vnm, hw_if_index);
@@ -125,12 +135,12 @@ vnet_flow_disable (vnet_main_t * vnm, u32 flow_index, u32 hw_if_index)
   if (dev_class->flow_ops_function == 0)
     return VNET_FLOW_ERROR_NOT_SUPPORTED;
 
-  rv = dev_class->flow_ops_function (vnm, VNET_FLOW_DEV_OP_DEL_FLOW,
-				     hi->dev_instance, flow_index, p);
+  rv = dev_class->flow_ops_function (vnm, VNET_FLOW_DEV_OP_DEL_FLOW, hi->dev_instance, flow_index,
+				     &d->private_data);
 
   if (rv)
     return rv;
 
-  hash_unset (f->private_data, hw_if_index);
+  vec_del1 (f->if_data, d - f->if_data);
   return 0;
 }
