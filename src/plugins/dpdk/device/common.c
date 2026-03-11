@@ -17,6 +17,7 @@
 #include <dpdk/buffer.h>
 #include <dpdk/device/dpdk.h>
 #include <dpdk/device/dpdk_priv.h>
+#include <dpdk/device/flow.h>
 #include <vppinfra/error.h>
 
 /* DPDK TX offload to vnet hw interface caps mapppings */
@@ -44,7 +45,7 @@ dpdk_device_error (dpdk_device_t * xd, char *str, int rv)
 				  str, xd->port_id, rv, rte_strerror (rv));
 }
 
-static void
+void
 dpdk_device_flow_warning (dpdk_device_t *xd, char *str, int rv)
 {
   dpdk_log_warn ("Interface %U error %d: %s", format_dpdk_device_name, xd->device_index, rv,
@@ -64,11 +65,10 @@ dpdk_device_configure_async_flow_offload (dpdk_device_t *xd)
   struct rte_flow_port_info flow_port_info = {};
   struct rte_flow_queue_info flow_queue_info = {};
   struct rte_flow_port_attr port_attr = {};
-  struct rte_flow_queue_attr queue_attr = {
-    .size = DPDK_DEFAULT_ASYNC_FLOW_QUEUE_SIZE,
-  };
-  const struct rte_flow_queue_attr *queue_attr_list[] = { &queue_attr };
+  struct rte_flow_queue_attr queue_attr = {};
+  const struct rte_flow_queue_attr **queue_attr_list;
   int rv;
+  u32 j;
 
   if (xd->flags & DPDK_DEVICE_FLAG_ASYNC_FLOW_OFFLOAD)
     return;
@@ -86,17 +86,30 @@ dpdk_device_configure_async_flow_offload (dpdk_device_t *xd)
       return;
     }
 
-  if (DPDK_DEFAULT_ASYNC_FLOW_N_QUEUES > flow_port_info.max_nb_queues ||
-      DPDK_DEFAULT_ASYNC_FLOW_QUEUE_SIZE > flow_queue_info.max_size)
+  if (flow_port_info.max_nb_queues < xd->async_flow_offload_n_queues)
     {
       dpdk_log_warn ("[%u] async flow offload supported with max %u queues of size %u", xd->port_id,
 		     flow_port_info.max_nb_queues, flow_queue_info.max_size);
       return;
     }
 
-  /* at least one queue is needed, of size DPDK_DEFAULT_ASYNC_FLOW_QUEUE_SIZE for now */
-  rv = rte_flow_configure (xd->port_id, &port_attr, DPDK_DEFAULT_ASYNC_FLOW_N_QUEUES,
+  if (flow_queue_info.max_size < xd->async_flow_offload_queue_size)
+    {
+      dpdk_log_notice ("[%u] Supported async flow queues of size %u, %u requested", xd->port_id,
+		       flow_queue_info.max_size, xd->async_flow_offload_queue_size);
+      xd->async_flow_offload_queue_size = min_pow2 (flow_queue_info.max_size);
+    }
+
+  queue_attr.size = xd->async_flow_offload_queue_size;
+  queue_attr_list = clib_mem_alloc (sizeof (*queue_attr_list) * xd->async_flow_offload_n_queues);
+  for (j = 0; j < xd->async_flow_offload_n_queues; j++)
+    queue_attr_list[j] = &queue_attr;
+
+  rv = rte_flow_configure (xd->port_id, &port_attr, xd->async_flow_offload_n_queues,
 			   queue_attr_list, &xd->last_flow_error);
+
+  clib_mem_free (queue_attr_list);
+
   if (rv == -ENOTSUP)
     {
       return;
