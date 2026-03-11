@@ -222,6 +222,12 @@ min_log2_u64 (u64 x)
 }
 
 always_inline uword
+min_pow2 (uword x)
+{
+  return 1 << min_log2 (x);
+}
+
+always_inline uword
 max_pow2 (uword x)
 {
   word y = (word) 1 << min_log2 (x);

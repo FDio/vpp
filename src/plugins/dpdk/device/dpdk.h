@@ -40,10 +40,15 @@
 
 #include <vlib/pci/pci.h>
 #include <vlib/vmbus/vmbus.h>
-#include <vnet/flow/flow.h>
+#include <dpdk/device/flow.h>
 
+#define DPDK_DEFAULT_ASYNC_FLOW_QUEUE_INDEX 0
 #define DPDK_DEFAULT_ASYNC_FLOW_N_QUEUES   1
 #define DPDK_DEFAULT_ASYNC_FLOW_QUEUE_SIZE 64
+#define DPDK_DEFAULT_ASYNC_FLOW_PUSH_BATCH  32
+#define DPDK_MAX_CORES			    FRAME_QUEUE_MAX_NELTS
+#define DPDK_MAX_FLOW_PULL_RETRIES	    (1 << 12)
+#define DPDK_MAX_FLOW_QUEUE_SIZE	    (1 << 12)
 
 extern vnet_device_class_t dpdk_device_class;
 extern vlib_node_registration_t dpdk_input_node;
@@ -73,20 +78,6 @@ typedef enum
   foreach_dpdk_device_flags
 #undef _
 } dpdk_device_flag_t;
-
-typedef struct
-{
-  u32 flow_index;
-  u32 mark;
-  struct rte_flow *handle;
-} dpdk_flow_entry_t;
-
-typedef struct
-{
-  u32 flow_id;
-  u16 next_index;
-  i16 buffer_advance;
-} dpdk_flow_lookup_entry_t;
 
 typedef struct
 {
@@ -193,9 +184,13 @@ typedef struct
   /* flow related */
   u32 supported_flow_actions;
   dpdk_flow_entry_t *flow_entries;	/* pool */
+  dpdk_flow_template_entry_t *flow_template_entries;	/* pool */
   dpdk_flow_lookup_entry_t *flow_lookup_entries;	/* pool */
   u32 *parked_lookup_indexes;	/* vector */
   u32 parked_loop_count;
+  u16 async_flow_offload_queue_size;
+  u16 async_flow_offload_queue_batch;
+  u8 async_flow_offload_n_queues;
   struct rte_flow_error last_flow_error;
 
   struct rte_eth_link link;
@@ -231,14 +226,17 @@ typedef struct
 #define DPDK_LINK_POLL_INTERVAL       (3.0)
 #define DPDK_MIN_LINK_POLL_INTERVAL   DPDK_MIN_POLL_INTERVAL
 
-#define foreach_dpdk_device_config_item                                       \
-  _ (num_rx_queues)                                                           \
-  _ (num_tx_queues)                                                           \
-  _ (num_rx_desc)                                                             \
-  _ (num_tx_desc)                                                             \
-  _ (max_lro_pkt_size)                                                        \
-  _ (disable_rxq_int)                                                         \
-  _ (rss_fn)
+#define foreach_dpdk_device_config_item                                                            \
+  _ (num_rx_queues)                                                                                \
+  _ (num_tx_queues)                                                                                \
+  _ (num_rx_desc)                                                                                  \
+  _ (num_tx_desc)                                                                                  \
+  _ (max_lro_pkt_size)                                                                             \
+  _ (disable_rxq_int)                                                                              \
+  _ (rss_fn)                                                                                       \
+  _ (async_flow_offload_queue_size)                                                                \
+  _ (async_flow_offload_queue_batch)                                                               \
+  _ (async_flow_offload_n_queues)
 
 typedef enum
 {
@@ -453,6 +451,8 @@ format_function_t format_dpdk_burst_fn;
 format_function_t format_dpdk_rte_device;
 format_function_t format_dpdk_rte_err;
 vnet_flow_dev_ops_function_t dpdk_flow_ops_fn;
+vnet_flow_dev_ops_function_t dpdk_flow_template_ops_fn;
+vnet_flow_async_dev_ops_function_t dpdk_flow_async_ops_fn;
 
 clib_error_t *unformat_rss_fn (unformat_input_t * input, uword * rss_fn);
 
@@ -464,6 +464,7 @@ struct rte_pci_device *dpdk_get_pci_device (const struct rte_eth_dev_info
 struct rte_vmbus_device *
 dpdk_get_vmbus_device (const struct rte_eth_dev_info *info);
 void dpdk_cli_reference (void);
+void dpdk_device_flow_warning (dpdk_device_t *xd, char *str);
 
 #if CLI_DEBUG
 int dpdk_buffer_validate_trajectory_all (u32 * uninitialized);
