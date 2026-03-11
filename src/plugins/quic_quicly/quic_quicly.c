@@ -506,6 +506,7 @@ quic_quicly_fifo_egress_shift (quicly_stream_t *stream, size_t delta)
 	{
 	  rv = quicly_stream_sync_sendbuf (stream, 1);
 	  QUIC_ASSERT (!rv);
+	  sctx->flags &= ~QUIC_F_STREAM_TX_DRAINED;
 	  quic_quicly_reschedule_ctx (quic_quicly_get_quic_ctx (
 	    sctx->quic_connection_ctx_id, sctx->c_thread_index));
 	}
@@ -636,14 +637,15 @@ quic_quicly_on_receive (quicly_stream_t *stream, size_t off, const void *src,
   quic_stream_data_t *stream_data;
   int rlen;
 
-  if (PREDICT_FALSE (!len))
-    return;
-
   stream_data = (quic_stream_data_t *) stream->data;
   sctx =
     quic_quicly_get_quic_ctx (stream_data->ctx_id, stream_data->thread_index);
   stream_session = session_get (sctx->c_s_index, stream_data->thread_index);
   f = stream_session->rx_fifo;
+
+  /* this happen only when we receive EOS without any data */
+  if (PREDICT_FALSE (!len))
+    goto check_eos;
 
   max_enq = svm_fifo_max_enqueue_prod (f);
   QUIC_DBG (3, "Enqueuing %u at off %u in %u space", len, off, max_enq);
@@ -655,8 +657,7 @@ quic_quicly_on_receive (quicly_stream_t *stream, size_t off, const void *src,
 		"DUPLICATE PACKET (max_enq %u, len %u, "
 		"app_rx_data_len %u, off %u, ToBeNQ %u)",
 		stream_session->session_index, stream_session->app_wrk_index,
-		stream_session->thread_index, f, max_enq, len,
-		stream_data->app_rx_data_len, off,
+		stream_session->thread_index, f, max_enq, len, stream_data->app_rx_data_len, off,
 		off - stream_data->app_rx_data_len + len);
       return;
     }
@@ -671,6 +672,7 @@ quic_quicly_on_receive (quicly_stream_t *stream, size_t off, const void *src,
 		off - stream_data->app_rx_data_len + len);
       return; /* This shouldn't happen */
     }
+
   if (off == stream_data->app_rx_data_len)
     {
       /* Streams live on the same thread so (f, stream_data) should stay
@@ -691,33 +693,10 @@ quic_quicly_on_receive (quicly_stream_t *stream, size_t off, const void *src,
 		stream_session->thread_index, f, len, rlen, off, max_enq);
       stream_data->app_rx_data_len += rlen;
       QUIC_ASSERT (rlen >= len);
-      if (!(stream_session->flags & SESSION_F_RX_EVT))
-	{
-	  app_wrk = app_worker_get_if_valid (stream_session->app_wrk_index);
-	  if (PREDICT_TRUE (app_wrk != 0))
-	    {
-	      stream_session->flags |= SESSION_F_RX_EVT;
-	      app_worker_rx_notify (app_wrk, stream_session);
-	    }
-	}
-      /* Ask app for deq ntf because we sent zero-window to our peer */
-      if (quicly_stream_get_receive_window (stream) == stream_data->app_rx_data_len)
-	svm_fifo_add_want_deq_ntf (f, SVM_FIFO_WANT_DEQ_NOTIF);
-      /* send half-close notification to app */
-      if (!(sctx->flags & QUIC_F_APP_CLOSED_TX) &&
-	  quicly_recvstate_transfer_complete (&stream->recvstate))
-	{
-	  QUIC_DBG (2,
-		    "stream half-close: rcv side closed, ctx_index %u, "
-		    "thread_index %u",
-		    sctx->c_c_index, sctx->c_thread_index);
-	  session_transport_closing_notify (&sctx->connection);
-	}
     }
   else
     {
-      rlen = svm_fifo_enqueue_with_offset (
-	f, off - stream_data->app_rx_data_len, len, (u8 *) src);
+      rlen = svm_fifo_enqueue_with_offset (f, off - stream_data->app_rx_data_len, len, (u8 *) src);
       if (PREDICT_FALSE (rlen < 0))
 	{
 	  /*
@@ -727,6 +706,31 @@ quic_quicly_on_receive (quicly_stream_t *stream, size_t off, const void *src,
 	  return;
 	}
       QUIC_ASSERT (rlen == 0);
+      /* we are done if no new data is available */
+      u32 bytes_available = quicly_recvstate_bytes_available (&stream->recvstate);
+      if (stream_data->app_rx_data_len == bytes_available)
+	return;
+      stream_data->app_rx_data_len = bytes_available;
+    }
+
+  if (!(stream_session->flags & SESSION_F_RX_EVT))
+    {
+      app_wrk = app_worker_get_if_valid (stream_session->app_wrk_index);
+      if (PREDICT_TRUE (app_wrk != 0))
+	{
+	  stream_session->flags |= SESSION_F_RX_EVT;
+	  app_worker_rx_notify (app_wrk, stream_session);
+	}
+    }
+
+check_eos:
+  /* send half-close notification to app */
+  if (!(sctx->flags & QUIC_F_APP_CLOSED_TX) &&
+      quicly_recvstate_transfer_complete (&stream->recvstate))
+    {
+      QUIC_DBG (2, "stream half-close: rcv side closed, ctx_index %u, thread_index %u",
+		sctx->c_c_index, sctx->c_thread_index);
+      session_transport_closing_notify (&sctx->connection);
     }
 }
 
@@ -1543,7 +1547,7 @@ quic_quicly_process_one_rx_packet (u64 udp_session_handle, svm_fifo_t *f,
 			       pctx->ph.data_length, &off);
   if (plen == SIZE_MAX)
     {
-      QUIC_DBG (0, "invalid plen");
+      QUIC_ERR ("invalid plen");
       return 1;
     }
 
@@ -1636,23 +1640,46 @@ quic_quicly_format_stream_stats (u8 *s, va_list *args)
   quic_ctx_t *ctx = va_arg (*args, quic_ctx_t *);
   quicly_stream_t *stream = (quicly_stream_t *) ctx->stream;
   quic_stream_data_t *stream_data;
+  u32 i;
 
   if (!stream)
     s = format (s, " destroyed\n");
   else
     {
       stream_data = (quic_stream_data_t *) stream->data;
-      s = format (s, " snd-wnd %lu rcv-wnd %lu app_rx_data_len %u",
+      s = format (s, " snd-wnd %lu rcv-wnd %lu app_rx_data_len %u app_tx_data_len %u\n",
 		  stream->_send_aux.max_stream_data, stream->_recv_aux.window,
-		  stream_data->app_rx_data_len);
+		  stream_data->app_rx_data_len, stream_data->app_tx_data_len);
       int is_client = quicly_is_client (stream->conn);
-      if (quicly_stream_has_send_side (is_client, stream->stream_id) &&
-	  !quicly_sendstate_is_open (&stream->sendstate))
-	s = format (s, " snd-side-closed");
-      if (quicly_stream_has_receive_side (is_client, stream->stream_id) &&
-	  quicly_recvstate_transfer_complete (&stream->recvstate))
-	s = format (s, " rcv-side-closed");
-      s = format (s, "\n");
+      if (quicly_stream_has_receive_side (is_client, stream->stream_id))
+	{
+	  if (quicly_recvstate_transfer_complete (&stream->recvstate))
+	    s = format (s, " rcv-side-closed\n");
+	  s = format (s, " received-ranges");
+	  for (i = 0; i < stream->recvstate.received.num_ranges; i++)
+	    s = format (s, " [%lu - %lu]", stream->recvstate.received.ranges[i].start,
+			stream->recvstate.received.ranges[i].end);
+	  s = format (s, "\n");
+	  s = format (s, " data-offset %lu\n", stream->recvstate.data_off);
+	  if (stream->recvstate.eos != UINT64_MAX)
+	    s = format (s, " eos-offset %lu\n", stream->recvstate.eos);
+	}
+      if (quicly_stream_has_send_side (is_client, stream->stream_id))
+	{
+	  if (!quicly_sendstate_is_open (&stream->sendstate))
+	    s = format (s, " snd-side-closed\n");
+	  s = format (s, " snd-blocked %u\n", stream->_send_aux.blocked);
+	  s = format (s, " acked-ranges");
+	  for (i = 0; i < stream->sendstate.acked.num_ranges; i++)
+	    s = format (s, " [%lu - %lu]", stream->sendstate.acked.ranges[i].start,
+			stream->sendstate.acked.ranges[i].end);
+	  s = format (s, "\n");
+	  s = format (s, " pending-ranges");
+	  for (i = 0; i < stream->sendstate.pending.num_ranges; i++)
+	    s = format (s, " [%lu - %lu]", stream->sendstate.pending.ranges[i].start,
+			stream->sendstate.pending.ranges[i].end);
+	  s = format (s, "\n");
+	}
     }
   return s;
 }
