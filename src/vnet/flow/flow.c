@@ -11,25 +11,6 @@
 vnet_flow_main_t flow_main;
 
 int
-vnet_flow_get_range (vnet_main_t * vnm, char *owner, u32 count, u32 * start)
-{
-  vnet_flow_main_t *fm = &flow_main;
-  vnet_flow_range_t *r;
-
-  /* skip 0 */
-  if (fm->flows_used == 0)
-    fm->flows_used = 1;
-
-  *start = fm->flows_used;
-  fm->flows_used += count;
-  vec_add2 (fm->ranges, r, 1);
-  r->start = *start;
-  r->count = count;
-  r->owner = format (0, "%s%c", owner, 0);
-  return 0;
-}
-
-int
 vnet_flow_add (vnet_main_t * vnm, vnet_flow_t * flow, u32 * flow_index)
 {
   vnet_flow_main_t *fm = &flow_main;

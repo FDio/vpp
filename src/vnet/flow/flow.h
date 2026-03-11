@@ -312,8 +312,6 @@ typedef struct
   uword *private_data;
 } vnet_flow_t;
 
-int vnet_flow_get_range (vnet_main_t * vnm, char *owner, u32 count,
-			 u32 * start);
 int vnet_flow_add (vnet_main_t * vnm, vnet_flow_t * flow, u32 * flow_index);
 int vnet_flow_enable (vnet_main_t * vnm, u32 flow_index, u32 hw_if_index);
 int vnet_flow_disable (vnet_main_t * vnm, u32 flow_index, u32 hw_if_index);
@@ -322,21 +320,8 @@ vnet_flow_t *vnet_get_flow (u32 flow_index);
 
 typedef struct
 {
-  u32 start;
-  u32 count;
-  u8 *owner;
-} vnet_flow_range_t;
-
-typedef struct
-{
   /* pool of device flow entries */
   vnet_flow_t *global_flow_pool;
-
-  /* flow ids allocated */
-  u32 flows_used;
-
-  /* vector of flow ranges */
-  vnet_flow_range_t *ranges;
 
   u16 msg_id_base;
 } vnet_flow_main_t;
