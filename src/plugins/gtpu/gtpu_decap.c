@@ -5,6 +5,7 @@
 /* decap.c: gtpu tunnel decap packet processing */
 
 #include <vlib/vlib.h>
+#include <vnet/flow/flow.h>
 #include <gtpu/gtpu.h>
 
 extern vlib_node_registration_t gtpu4_input_node;
@@ -1991,10 +1992,10 @@ gtpu_flow_input (vlib_main_t * vm,
 	    }
 
 	  /* Manipulate packet 0 */
-	  ASSERT (b0->flow_id != 0);
-	  tunnel_index0 = b0->flow_id - gtm->flow_id_start;
+	  ASSERT (b0->flow_id != VNET_FLOW_MARK_INVALID);
+	  tunnel_index0 = VNET_FLOW_INDEX_FROM_MARK (b0->flow_id);
 	  t0 = pool_elt_at_index (gtm->tunnels, tunnel_index0);
-	  b0->flow_id = 0;
+	  b0->flow_id = VNET_FLOW_MARK_INVALID;
 
 	  /* Pop gtpu header */
 	  vlib_buffer_advance (b0, gtpu_hdr_len0);
@@ -2094,10 +2095,10 @@ trace0:
 	    }
 
 	  /* Manipulate packet 1 */
-	  ASSERT (b1->flow_id != 0);
-	  tunnel_index1 = b1->flow_id - gtm->flow_id_start;
+	  ASSERT (b1->flow_id != VNET_FLOW_MARK_INVALID);
+	  tunnel_index1 = VNET_FLOW_INDEX_FROM_MARK (b1->flow_id);
 	  t1 = pool_elt_at_index (gtm->tunnels, tunnel_index1);
-	  b1->flow_id = 0;
+	  b1->flow_id = VNET_FLOW_MARK_INVALID;
 
 	  /* Pop gtpu header */
 	  vlib_buffer_advance (b1, gtpu_hdr_len1);
@@ -2267,10 +2268,10 @@ trace1:
 	      goto trace00;
 	    }
 
-	  ASSERT (b0->flow_id != 0);
-	  tunnel_index0 = b0->flow_id - gtm->flow_id_start;
+	  ASSERT (b0->flow_id != VNET_FLOW_MARK_INVALID);
+	  tunnel_index0 = VNET_FLOW_INDEX_FROM_MARK (b0->flow_id);
 	  t0 = pool_elt_at_index (gtm->tunnels, tunnel_index0);
-	  b0->flow_id = 0;
+	  b0->flow_id = VNET_FLOW_MARK_INVALID;
 
 	  /* Pop gtpu header */
 	  vlib_buffer_advance (b0, gtpu_hdr_len0);

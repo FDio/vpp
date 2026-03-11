@@ -45,7 +45,152 @@ dpdk_device_error (dpdk_device_t * xd, char *str, int rv)
 }
 
 void
-dpdk_device_setup (dpdk_device_t * xd)
+dpdk_device_flow_warning (dpdk_device_t *xd, char *str)
+{
+  dpdk_log_warn ("Interface %U error %d: %s", format_dpdk_device_name, xd->device_index, rte_errno,
+		 rte_strerror (rte_errno));
+  dpdk_log_warn ("[%u] %s - type: %d, message: %s", xd->port_id, str, xd->last_flow_error.type,
+		 xd->last_flow_error.message);
+}
+
+static void
+dpdk_device_flow_offload_probe_transfer (dpdk_device_t *xd)
+{
+  struct rte_flow_attr probe_attr = { .transfer = 1 };
+  struct rte_flow_item probe_items[] = {
+    { .type = RTE_FLOW_ITEM_TYPE_ETH },
+    { .type = RTE_FLOW_ITEM_TYPE_END },
+  };
+  struct rte_flow_action probe_actions[] = {
+    { .type = RTE_FLOW_ACTION_TYPE_DROP },
+    { .type = RTE_FLOW_ACTION_TYPE_END },
+  };
+  struct rte_flow_error probe_error = {};
+  int rv;
+
+  /* Probe for transfer attribute support */
+  rv = rte_flow_validate (xd->port_id, &probe_attr, probe_items, probe_actions, &probe_error);
+  if (rv == 0)
+    {
+      xd->flags |= DPDK_DEVICE_FLAG_FLOW_TRANSFER;
+      dpdk_log_debug ("[%u] Flow transfer attribute supported", xd->port_id);
+    }
+  else
+    {
+      dpdk_log_debug ("[%u] Flow transfer attribute not supported, using ingress: %s", xd->port_id,
+		      probe_error.message);
+    }
+}
+
+static void
+dpdk_device_install_default_jump_rule (dpdk_device_t *xd)
+{
+  struct rte_flow_attr attr = {};
+  struct rte_flow_item pattern[] = {
+    { .type = RTE_FLOW_ITEM_TYPE_END },
+  };
+  struct rte_flow_action_jump jump = { .group = 1 };
+  struct rte_flow_action actions[] = {
+    { .type = RTE_FLOW_ACTION_TYPE_JUMP, .conf = &jump },
+    { .type = RTE_FLOW_ACTION_TYPE_END },
+  };
+  struct rte_flow_error error = {};
+
+  if (!xd->driver || !xd->driver->install_default_jump)
+    return;
+
+  if (xd->flags & DPDK_DEVICE_FLAG_FLOW_TRANSFER)
+    attr.transfer = 1;
+  else
+    attr.ingress = 1;
+
+  xd->default_jump_flow = rte_flow_create (xd->port_id, &attr, pattern, actions, &error);
+  if (xd->default_jump_flow)
+    dpdk_log_debug ("[%u] Default jump-to-group-1 rule installed", xd->port_id);
+  else
+    dpdk_log_warn ("[%u] Failed to install default jump rule: %s", xd->port_id, error.message);
+}
+
+/*
+ * Check for async flow offload support.
+ * The only way to tell, is to check if rte_flow_info_get and rte_flow_configure does not return
+ * -ENOTSUP.
+ */
+static void
+dpdk_device_configure_flow_offload (dpdk_device_t *xd)
+{
+  struct rte_flow_port_info flow_port_info = {};
+  struct rte_flow_queue_info flow_queue_info = {};
+  struct rte_flow_port_attr port_attr = {};
+  struct rte_flow_queue_attr queue_attr = {};
+  const struct rte_flow_queue_attr **queue_attr_list;
+  int rv;
+  u32 j;
+
+  if (xd->flags & DPDK_DEVICE_FLAG_ASYNC_FLOW_OFFLOAD_CONFIGURED)
+    return;
+
+  dpdk_device_flow_offload_probe_transfer (xd);
+
+  rv = rte_flow_info_get (xd->port_id, &flow_port_info, &flow_queue_info, &xd->last_flow_error);
+  if (rv == -ENOTSUP)
+    {
+      return;
+    }
+  else if (rv)
+    {
+      dpdk_device_flow_warning (xd, "rte_flow_info_get");
+      dpdk_log_warn ("[%u] disabling flow offload due to flow informations error", xd->port_id);
+      xd->supported_flow_actions = 0;
+      return;
+    }
+
+  if (flow_port_info.max_nb_queues < xd->async_flow_offload_n_queues)
+    {
+      dpdk_log_warn ("[%u] async flow offload supported with max %u queues of size %u", xd->port_id,
+		     flow_port_info.max_nb_queues, flow_queue_info.max_size);
+      return;
+    }
+
+  if (flow_queue_info.max_size < xd->async_flow_offload_queue_size)
+    {
+      dpdk_log_notice ("[%u] Supported async flow queues of size %u, %u requested", xd->port_id,
+		       flow_queue_info.max_size, xd->async_flow_offload_queue_size);
+      xd->async_flow_offload_queue_size = min_pow2 (flow_queue_info.max_size);
+    }
+
+  queue_attr.size = xd->async_flow_offload_queue_size;
+  queue_attr_list = clib_mem_alloc (sizeof (*queue_attr_list) * xd->async_flow_offload_n_queues);
+  for (j = 0; j < xd->async_flow_offload_n_queues; j++)
+    queue_attr_list[j] = &queue_attr;
+
+  rv = rte_flow_configure (xd->port_id, &port_attr, xd->async_flow_offload_n_queues,
+			   queue_attr_list, &xd->last_flow_error);
+
+  clib_mem_free (queue_attr_list);
+
+  if (rv == -ENOTSUP)
+    {
+      return;
+    }
+  else if (rv)
+    {
+      dpdk_device_flow_warning (xd, "rte_flow_configure");
+      dpdk_log_warn ("[%u] disabling flow offload due to flow configure error", xd->port_id);
+      xd->supported_flow_actions = 0;
+      return;
+    }
+
+  xd->flags |= DPDK_DEVICE_FLAG_ASYNC_FLOW_OFFLOAD_CONFIGURED;
+
+  dpdk_log_debug ("[%u] Async flow port info: %U", xd->port_id, format_dpdk_flow_port_info,
+		  &flow_port_info);
+  dpdk_log_debug ("[%u] Async flow queue info: %U", xd->port_id, format_dpdk_flow_queue_info,
+		  &flow_queue_info);
+}
+
+void
+dpdk_device_setup (dpdk_device_t *xd)
 {
   vlib_main_t *vm = vlib_get_main ();
   vnet_main_t *vnm = vnet_get_main ();
@@ -217,6 +362,9 @@ retry:
   if (vec_len (xd->errors))
     goto error;
 
+  if (xd->supported_flow_actions != 0)
+    dpdk_device_configure_flow_offload (xd);
+
   xd->buffer_flags =
     (VLIB_BUFFER_TOTAL_LENGTH_VALID | VLIB_BUFFER_EXT_HDR_VALID);
 
@@ -367,6 +515,8 @@ dpdk_device_start (dpdk_device_t * xd)
       return;
     }
 
+  dpdk_device_install_default_jump_rule (xd);
+
   dpdk_log_debug ("[%u] RX burst function: %U", xd->port_id,
 		  format_dpdk_burst_fn, xd, VLIB_RX);
   dpdk_log_debug ("[%u] TX burst function: %U", xd->port_id,
@@ -397,6 +547,12 @@ dpdk_device_stop (dpdk_device_t * xd)
 {
   if (xd->flags & DPDK_DEVICE_FLAG_PMD_INIT_FAIL)
     return;
+
+  if (xd->default_jump_flow)
+    {
+      rte_flow_destroy (xd->port_id, xd->default_jump_flow, NULL);
+      xd->default_jump_flow = NULL;
+    }
 
   rte_eth_allmulticast_disable (xd->port_id);
   rte_eth_dev_stop (xd->port_id);

@@ -125,17 +125,9 @@ format_flow_enabled_hw (u8 * s, va_list * args)
   if (f == 0)
     return format (s, "not found");
 
-  u8 *t = 0;
-  u32 hw_if_index;
-  uword private_data;
   vnet_main_t *vnm = vnet_get_main ();
-  hash_foreach (hw_if_index, private_data, f->private_data,
-    ({
-     t = format (t, "%s%U", t ? ", " : "",
-                 format_vnet_hw_if_index_name, vnm, hw_if_index);
-     }));
-  s = format (s, "%v", t);
-  vec_free (t);
+  if (f->driver_data.hw_if_index != ~0)
+    s = format (s, "%U", format_vnet_hw_if_index_name, vnm, f->driver_data.hw_if_index);
   return s;
 }
 
@@ -187,8 +179,7 @@ show_flow_entry (vlib_main_t * vm, unformat_input_t * input,
   vnet_hw_interface_t *hi;
   vnet_device_class_t *dev_class;
   vnet_flow_t *f;
-  uword private_data;
-  u32 index = ~0, hw_if_index;
+  u32 index = ~0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     goto no_args;
@@ -214,19 +205,19 @@ show_flow_entry (vlib_main_t * vm, unformat_input_t * input,
       vlib_cli_output (vm, "%-10s: %U", "match", format_flow, f);
       if (f->type == VNET_FLOW_TYPE_GENERIC)
 	{
-	  vlib_cli_output (vm, "%s: %s", "spec", f->generic.pattern.spec);
-	  vlib_cli_output (vm, "%s: %s", "mask", f->generic.pattern.mask);
+	  vlib_cli_output (vm, "%s: %s", "spec", f->generic_pattern->spec);
+	  vlib_cli_output (vm, "%s: %s", "mask", f->generic_pattern->mask);
 	}
-      hash_foreach (hw_if_index, private_data, f->private_data,
-        ({
-	 hi = vnet_get_hw_interface (vnm, hw_if_index);
+      if (f->driver_data.hw_if_index != ~0)
+	{
+	  hi = vnet_get_hw_interface (vnm, f->driver_data.hw_if_index);
 	  dev_class = vnet_get_device_class (vnm, hi->dev_class_index);
-	  vlib_cli_output (vm,  "interface %U\n",
-			   format_vnet_hw_if_index_name, vnm, hw_if_index);
+	  vlib_cli_output (vm, "interface %U\n", format_vnet_hw_if_index_name, vnm,
+			   f->driver_data.hw_if_index);
 	  if (dev_class->format_flow)
-	    vlib_cli_output (vm,  "  %U\n", dev_class->format_flow,
-			     hi->dev_instance, f->index, private_data);
-         }));
+	    vlib_cli_output (vm, "  %U\n", dev_class->format_flow, hi->dev_instance, f->index,
+			     f->driver_data.opaque);
+	}
       return 0;
     }
 
@@ -236,8 +227,8 @@ no_args:
       vlib_cli_output (vm, "%U\n", format_flow, f);
       if (f->type == VNET_FLOW_TYPE_GENERIC)
 	{
-	  vlib_cli_output (vm, "%s: %s", "spec", f->generic.pattern.spec);
-	  vlib_cli_output (vm, "%s: %s", "mask", f->generic.pattern.mask);
+	  vlib_cli_output (vm, "%s: %s", "spec", f->generic_pattern->spec);
+	  vlib_cli_output (vm, "%s: %s", "mask", f->generic_pattern->mask);
 	}
     }
 
@@ -251,25 +242,63 @@ VLIB_CLI_COMMAND (show_flow_entry_command, static) = {
 };
 
 static clib_error_t *
-show_flow_ranges (vlib_main_t * vm, unformat_input_t * input,
-		  vlib_cli_command_t * cmd_arg)
+show_flow_template (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd_arg)
 {
+  vnet_main_t *vnm = vnet_get_main ();
   vnet_flow_main_t *fm = &flow_main;
-  vnet_flow_range_t *r = 0;
+  unformat_input_t _line_input, *line_input = &_line_input;
+  vnet_hw_interface_t *hi;
+  vnet_device_class_t *dev_class;
+  vnet_flow_t *f;
+  u32 index = ~0;
 
-  vlib_cli_output (vm, "%8s  %8s  %s", "Start", "Count", "Owner");
+  if (!unformat_user (input, unformat_line_input, line_input))
+    goto no_args;
 
-  vec_foreach (r, fm->ranges)
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      vlib_cli_output (vm, "%8u  %8u  %s", r->start, r->count, r->owner);
-    };
+      if (unformat (line_input, "index %u", &index))
+	;
+      else
+	return clib_error_return (0, "parse error: '%U'", format_unformat_error, line_input);
+    }
+
+  unformat_free (line_input);
+
+  if (index != ~0)
+    {
+      if ((f = vnet_get_flow_template (index)) == 0)
+	return clib_error_return (0, "no such flow template");
+
+      vlib_cli_output (vm, "%-10s: %u", "index", f->index);
+      vlib_cli_output (vm, "%-10s: %s", "type", flow_type_strings[f->type]);
+      vlib_cli_output (vm, "%-10s: %U", "match", format_flow, f);
+      if (f->driver_data.hw_if_index != ~0)
+	{
+	  hi = vnet_get_hw_interface (vnm, f->driver_data.hw_if_index);
+	  dev_class = vnet_get_device_class (vnm, hi->dev_class_index);
+	  vlib_cli_output (vm, "interface %U\n", format_vnet_hw_if_index_name, vnm,
+			   f->driver_data.hw_if_index);
+	  if (dev_class->format_flow)
+	    vlib_cli_output (vm, "  %U\n", dev_class->format_flow, hi->dev_instance, f->index,
+			     f->driver_data.opaque);
+	}
+      return 0;
+    }
+
+no_args:
+  pool_foreach (f, fm->global_flow_template_pool)
+    {
+      vlib_cli_output (vm, "%U\n", format_flow, f);
+    }
+
   return 0;
 }
 
-VLIB_CLI_COMMAND (show_flow_ranges_command, static) = {
-    .path = "show flow ranges",
-    .short_help = "show flow ranges",
-    .function = show_flow_ranges,
+VLIB_CLI_COMMAND (show_flow_template_command, static) = {
+  .path = "show flow template",
+  .short_help = "show flow template [index <index>]",
+  .function = show_flow_template,
 };
 
 static clib_error_t *
@@ -315,8 +344,7 @@ VLIB_CLI_COMMAND (show_flow_interface_command, static) = {
 };
 
 static clib_error_t *
-test_flow (vlib_main_t * vm, unformat_input_t * input,
-	   vlib_cli_command_t * cmd_arg)
+flow_cli (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd_arg)
 {
   vnet_flow_t flow;
   vnet_main_t *vnm = vnet_get_main ();
@@ -327,7 +355,13 @@ test_flow (vlib_main_t * vm, unformat_input_t * input,
     FLOW_ADD,
     FLOW_DEL,
     FLOW_ENABLE,
-    FLOW_DISABLE
+    FLOW_DISABLE,
+    FLOW_TEMPLATE_ADD,
+    FLOW_TEMPLATE_DEL,
+    FLOW_TEMPLATE_ENABLE,
+    FLOW_TEMPLATE_DISABLE,
+    FLOW_ASYNC_RANGE_ENABLE,
+    FLOW_ASYNC_RANGE_DISABLE,
   } action = FLOW_UNKNOWN_ACTION;
   enum
   {
@@ -338,6 +372,8 @@ test_flow (vlib_main_t * vm, unformat_input_t * input,
   } flow_class = FLOW_UNKNOWN_CLASS;
 
   u32 hw_if_index = ~0, flow_index = ~0;
+  u32 template_index = ~0, n_flows = 0;
+  u32 *flow_indices = 0;
   int rv;
   u32 teid = 0, session_id = 0, spi = 0;
   u32 vni = 0;
@@ -350,6 +386,7 @@ test_flow (vlib_main_t * vm, unformat_input_t * input,
   ip_port_and_mask_t sport = {}, in_sport = {};
   ip_port_and_mask_t dport = {}, in_dport = {};
   ip_prot_and_mask_t protocol = {}, in_proto = {};
+  generic_pattern_t generic = {};
   u16 eth_type;
   bool inner_ip4_set = false, inner_ip6_set = false;
   bool tcp_udp_port_set = false, inner_port_set = false;
@@ -358,10 +395,9 @@ test_flow (vlib_main_t * vm, unformat_input_t * input,
   bool vni_set = false;
   bool l2tpv3oip_set = false;
   bool ipsec_esp_set = false, ipsec_ah_set = false;
+  bool generic_spec_set = false, generic_mask_set = false;
   u8 *rss_type[3] = { };
   u8 *type_str = NULL;
-  u8 *spec = NULL;
-  u8 *mask = NULL;
 
   clib_memset (&flow, 0, sizeof (vnet_flow_t));
   flow.index = ~0;
@@ -372,7 +408,19 @@ test_flow (vlib_main_t * vm, unformat_input_t * input,
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "add"))
+      if (unformat (line_input, "template-add"))
+	action = FLOW_TEMPLATE_ADD;
+      else if (unformat (line_input, "template-del"))
+	action = FLOW_TEMPLATE_DEL;
+      else if (unformat (line_input, "template-enable"))
+	action = FLOW_TEMPLATE_ENABLE;
+      else if (unformat (line_input, "template-disable"))
+	action = FLOW_TEMPLATE_DISABLE;
+      else if (unformat (line_input, "async-range-enable"))
+	action = FLOW_ASYNC_RANGE_ENABLE;
+      else if (unformat (line_input, "async-range-disable"))
+	action = FLOW_ASYNC_RANGE_DISABLE;
+      else if (unformat (line_input, "add"))
 	action = FLOW_ADD;
       else if (unformat (line_input, "del"))
 	action = FLOW_DEL;
@@ -380,10 +428,10 @@ test_flow (vlib_main_t * vm, unformat_input_t * input,
 	action = FLOW_ENABLE;
       else if (unformat (line_input, "disable"))
 	action = FLOW_DISABLE;
-      else if (unformat (line_input, "spec %s", &spec))
-	;
-      else if (unformat (line_input, "mask %s", &mask))
-	;
+      else if (unformat (line_input, "spec %s", &generic.spec))
+	generic_spec_set = true;
+      else if (unformat (line_input, "mask %s", &generic.mask))
+	generic_mask_set = true;
       else if (unformat (line_input, "eth-type %U",
 			 unformat_ethernet_type_host_byte_order, &eth_type))
 	flow_class = FLOW_ETHERNET_CLASS;
@@ -451,6 +499,16 @@ test_flow (vlib_main_t * vm, unformat_input_t * input,
 	}
       else if (unformat (line_input, "index %u", &flow_index))
 	;
+      else if (unformat (line_input, "template-index %u", &template_index))
+	;
+      else if (unformat (line_input, "n-flows %u", &n_flows))
+	;
+      else if (unformat (line_input, "flow-indices"))
+	{
+	  u32 idx;
+	  while (unformat (line_input, "%u", &idx))
+	    vec_add1 (flow_indices, idx);
+	}
       else if (unformat (line_input, "next-node %U", unformat_vlib_node, vm,
 			 &flow.redirect_node_index))
 	flow.actions |= VNET_FLOW_ACTION_REDIRECT_TO_NODE;
@@ -547,15 +605,23 @@ test_flow (vlib_main_t * vm, unformat_input_t * input,
 
   unformat_free (line_input);
 
-  if (hw_if_index == ~0 && (action == FLOW_ENABLE || action == FLOW_DISABLE))
+  if (hw_if_index == ~0 &&
+      (action == FLOW_ENABLE || action == FLOW_TEMPLATE_ENABLE ||
+       action == FLOW_ASYNC_RANGE_ENABLE || action == FLOW_ASYNC_RANGE_DISABLE))
     return clib_error_return (0, "Please specify interface name");
 
   if (flow_index == ~0 && (action == FLOW_ENABLE || action == FLOW_DISABLE ||
 			   action == FLOW_DEL))
     return clib_error_return (0, "Please specify flow index");
 
+  if (template_index == ~0 &&
+      (action == FLOW_TEMPLATE_DEL || action == FLOW_TEMPLATE_ENABLE ||
+       action == FLOW_TEMPLATE_DISABLE || action == FLOW_ASYNC_RANGE_ENABLE))
+    return clib_error_return (0, "Please specify template-index");
+
   switch (action)
     {
+    case FLOW_TEMPLATE_ADD:
     case FLOW_ADD:
       if (flow.actions == 0)
 	return clib_error_return (0, "Please specify at least one action");
@@ -636,9 +702,10 @@ test_flow (vlib_main_t * vm, unformat_input_t * input,
 	  break;
 
 	default:
-	  if (spec && mask)
+	  if (generic_spec_set && generic_mask_set)
 	    {
 	      type = VNET_FLOW_TYPE_GENERIC;
+	      flow.generic_pattern = &generic;
 	      break;
 	    }
 	  return clib_error_return (0,
@@ -648,11 +715,11 @@ test_flow (vlib_main_t * vm, unformat_input_t * input,
       /* Assign specific field values per flow type */
       if (flow_class == FLOW_ETHERNET_CLASS)
 	{
-	  flow.ethernet.eth_hdr.type = eth_type;
+	  flow.pattern.ethernet.eth_hdr.type = eth_type;
 	}
       else if (flow_class == FLOW_IPV4_CLASS)
 	{
-	  vnet_flow_ip4_t *ip4_ptr = &flow.ip4;
+	  vnet_flow_ip4_t *ip4_ptr = &flow.pattern.ip4;
 
 	  clib_memcpy (&ip4_ptr->src_addr, &ip4s,
 		       sizeof (ip4_address_and_mask_t));
@@ -672,47 +739,47 @@ test_flow (vlib_main_t * vm, unformat_input_t * input,
 	      /* ip4-n-tuple */
 	    case IP_PROTOCOL_TCP:
 	    case IP_PROTOCOL_UDP:
-	      flow.ip4_n_tuple.src_port = sport;
-	      flow.ip4_n_tuple.dst_port = dport;
+	      flow.pattern.ip4_n_tuple.src_port = sport;
+	      flow.pattern.ip4_n_tuple.dst_port = dport;
 
 	      if (type == VNET_FLOW_TYPE_IP4_GTPC)
-		flow.ip4_gtpc.teid = teid;
+		flow.pattern.ip4_gtpc.teid = teid;
 	      else if (type == VNET_FLOW_TYPE_IP4_GTPU)
-		flow.ip4_gtpu.teid = teid;
+		flow.pattern.ip4_gtpu.teid = teid;
 	      else if (type == VNET_FLOW_TYPE_IP4_VXLAN)
-		flow.ip4_vxlan.vni = vni;
+		flow.pattern.ip4_vxlan.vni = vni;
 	      break;
 	    case IP_PROTOCOL_L2TP:
-	      flow.ip4_l2tpv3oip.session_id = session_id;
+	      flow.pattern.ip4_l2tpv3oip.session_id = session_id;
 	      break;
 	    case IP_PROTOCOL_IPSEC_ESP:
-	      flow.ip4_ipsec_esp.spi = spi;
+	      flow.pattern.ip4_ipsec_esp.spi = spi;
 	      break;
 	    case IP_PROTOCOL_IPSEC_AH:
-	      flow.ip4_ipsec_esp.spi = spi;
+	      flow.pattern.ip4_ipsec_ah.spi = spi;
 	      break;
 	    case IP_PROTOCOL_IP_IN_IP:
-	      clib_memcpy (&flow.ip4_ip4.in_src_addr, &in_ip4s,
+	      clib_memcpy (&flow.pattern.ip4_ip4.in_src_addr, &in_ip4s,
 			   sizeof (ip4_address_and_mask_t));
-	      clib_memcpy (&flow.ip4_ip4.in_dst_addr, &in_ip4d,
+	      clib_memcpy (&flow.pattern.ip4_ip4.in_dst_addr, &in_ip4d,
 			   sizeof (ip4_address_and_mask_t));
 	      if (type == VNET_FLOW_TYPE_IP4_IP4_N_TUPLE)
 		{
-		  flow.ip4_ip4.in_protocol.prot = in_proto.prot;
-		  flow.ip4_ip4_n_tuple.in_src_port = in_sport;
-		  flow.ip4_ip4_n_tuple.in_dst_port = in_dport;
+		  flow.pattern.ip4_ip4.in_protocol.prot = in_proto.prot;
+		  flow.pattern.ip4_ip4_n_tuple.in_src_port = in_sport;
+		  flow.pattern.ip4_ip4_n_tuple.in_dst_port = in_dport;
 		}
 	      break;
 	    case IP_PROTOCOL_IPV6:
-	      clib_memcpy (&flow.ip4_ip6.in_src_addr, &in_ip6s,
+	      clib_memcpy (&flow.pattern.ip4_ip6.in_src_addr, &in_ip6s,
 			   sizeof (ip6_address_and_mask_t));
-	      clib_memcpy (&flow.ip4_ip6.in_dst_addr, &in_ip6d,
+	      clib_memcpy (&flow.pattern.ip4_ip6.in_dst_addr, &in_ip6d,
 			   sizeof (ip6_address_and_mask_t));
 	      if (type == VNET_FLOW_TYPE_IP4_IP6_N_TUPLE)
 		{
-		  flow.ip4_ip6.in_protocol.prot = in_proto.prot;
-		  flow.ip4_ip6_n_tuple.in_src_port = in_sport;
-		  flow.ip4_ip6_n_tuple.in_dst_port = in_dport;
+		  flow.pattern.ip4_ip6.in_protocol.prot = in_proto.prot;
+		  flow.pattern.ip4_ip6_n_tuple.in_src_port = in_sport;
+		  flow.pattern.ip4_ip6_n_tuple.in_dst_port = in_dport;
 		}
 	      break;
 	    default:
@@ -721,12 +788,10 @@ test_flow (vlib_main_t * vm, unformat_input_t * input,
 	}
       else if (flow_class == FLOW_IPV6_CLASS)
 	{
-	  vnet_flow_ip6_t *ip6_ptr = &flow.ip6;
+	  vnet_flow_ip6_t *ip6_ptr = &flow.pattern.ip6;
 
-	  clib_memcpy (&flow.ip6_n_tuple.src_addr, &ip6s,
-		       sizeof (ip6_address_and_mask_t));
-	  clib_memcpy (&flow.ip6_n_tuple.dst_addr, &ip6d,
-		       sizeof (ip6_address_and_mask_t));
+	  clib_memcpy (&flow.pattern.ip6_n_tuple.src_addr, &ip6s, sizeof (ip6_address_and_mask_t));
+	  clib_memcpy (&flow.pattern.ip6_n_tuple.dst_addr, &ip6d, sizeof (ip6_address_and_mask_t));
 
 	  ip6_ptr->protocol.prot = protocol.prot;
 
@@ -742,52 +807,54 @@ test_flow (vlib_main_t * vm, unformat_input_t * input,
 	      /* ip6-n-tuple */
 	    case IP_PROTOCOL_TCP:
 	    case IP_PROTOCOL_UDP:
-	      flow.ip6_n_tuple.src_port = sport;
-	      flow.ip6_n_tuple.dst_port = dport;
+	      flow.pattern.ip6_n_tuple.src_port = sport;
+	      flow.pattern.ip6_n_tuple.dst_port = dport;
 
 	      if (type == VNET_FLOW_TYPE_IP6_VXLAN)
-		flow.ip6_vxlan.vni = vni;
+		flow.pattern.ip6_vxlan.vni = vni;
 	      break;
 	    case IP_PROTOCOL_IP_IN_IP:
-	      clib_memcpy (&flow.ip6_ip4.in_src_addr, &in_ip4s,
+	      clib_memcpy (&flow.pattern.ip6_ip4.in_src_addr, &in_ip4s,
 			   sizeof (ip4_address_and_mask_t));
-	      clib_memcpy (&flow.ip6_ip4.in_dst_addr, &in_ip4d,
+	      clib_memcpy (&flow.pattern.ip6_ip4.in_dst_addr, &in_ip4d,
 			   sizeof (ip4_address_and_mask_t));
 	      if (type == VNET_FLOW_TYPE_IP6_IP4_N_TUPLE)
 		{
-		  flow.ip6_ip4.in_protocol.prot = in_proto.prot;
-		  flow.ip6_ip4_n_tuple.in_src_port = in_sport;
-		  flow.ip6_ip4_n_tuple.in_dst_port = in_dport;
+		  flow.pattern.ip6_ip4.in_protocol.prot = in_proto.prot;
+		  flow.pattern.ip6_ip4_n_tuple.in_src_port = in_sport;
+		  flow.pattern.ip6_ip4_n_tuple.in_dst_port = in_dport;
 		}
 	      break;
 	    case IP_PROTOCOL_IPV6:
-	      clib_memcpy (&flow.ip6_ip6.in_src_addr, &in_ip6s,
+	      clib_memcpy (&flow.pattern.ip6_ip6.in_src_addr, &in_ip6s,
 			   sizeof (ip6_address_and_mask_t));
-	      clib_memcpy (&flow.ip6_ip6.in_dst_addr, &in_ip6d,
+	      clib_memcpy (&flow.pattern.ip6_ip6.in_dst_addr, &in_ip6d,
 			   sizeof (ip6_address_and_mask_t));
 	      if (type == VNET_FLOW_TYPE_IP6_IP6_N_TUPLE)
 		{
-		  flow.ip6_ip6.in_protocol.prot = in_proto.prot;
-		  flow.ip6_ip6_n_tuple.in_src_port = in_sport;
-		  flow.ip6_ip6_n_tuple.in_dst_port = in_dport;
+		  flow.pattern.ip6_ip6.in_protocol.prot = in_proto.prot;
+		  flow.pattern.ip6_ip6_n_tuple.in_src_port = in_sport;
+		  flow.pattern.ip6_ip6_n_tuple.in_dst_port = in_dport;
 		}
 	      break;
 	    default:
 	      break;
 	    }
 	}
-      if (type == VNET_FLOW_TYPE_GENERIC)
-	{
-	  clib_memcpy (flow.generic.pattern.spec, spec,
-		       sizeof (flow.generic.pattern.spec));
-	  clib_memcpy (flow.generic.pattern.mask, mask,
-		       sizeof (flow.generic.pattern.mask));
-	}
 
       flow.type = type;
-      rv = vnet_flow_add (vnm, &flow, &flow_index);
-      if (!rv)
-	vlib_cli_output (vm, "flow %u added", flow_index);
+      if (action == FLOW_TEMPLATE_ADD)
+	{
+	  rv = vnet_flow_template_add (vnm, &flow, &template_index);
+	  if (!rv)
+	    vlib_cli_output (vm, "flow template %u added", template_index);
+	}
+      else
+	{
+	  rv = vnet_flow_add (vnm, &flow, &flow_index);
+	  if (!rv)
+	    vlib_cli_output (vm, "flow %u added", flow_index);
+	}
 
       break;
     case FLOW_DEL:
@@ -797,22 +864,52 @@ test_flow (vlib_main_t * vm, unformat_input_t * input,
       rv = vnet_flow_enable (vnm, flow_index, hw_if_index);
       break;
     case FLOW_DISABLE:
-      rv = vnet_flow_disable (vnm, flow_index, hw_if_index);
+      rv = vnet_flow_disable (vnm, flow_index);
+      break;
+    case FLOW_TEMPLATE_DEL:
+      rv = vnet_flow_template_del (vnm, template_index);
+      break;
+    case FLOW_TEMPLATE_ENABLE:
+      rv = vnet_flow_template_enable (vnm, template_index, hw_if_index, n_flows);
+      break;
+    case FLOW_TEMPLATE_DISABLE:
+      rv = vnet_flow_template_disable (vnm, template_index);
+      break;
+    case FLOW_ASYNC_RANGE_ENABLE:
+      if (vec_len (flow_indices) == 0)
+	return clib_error_return (0, "Please specify flow-indices");
+      n_flows = vec_len (flow_indices);
+      rv = vnet_flow_async_range_enable (vnm, template_index, flow_indices, hw_if_index);
+      break;
+    case FLOW_ASYNC_RANGE_DISABLE:
+      if (vec_len (flow_indices) == 0)
+	return clib_error_return (0, "Please specify flow-indices");
+      n_flows = vec_len (flow_indices);
+      rv = vnet_flow_async_range_disable (vnm, flow_indices, hw_if_index);
       break;
     default:
       return clib_error_return (0, "please specify action (add, del, enable,"
 				" disable)");
     }
 
+  vec_free (flow_indices);
+
   if (rv < 0)
     return clib_error_return (0, "flow error: %U", format_flow_error, rv);
+  else if ((action == FLOW_ASYNC_RANGE_ENABLE || action == FLOW_ASYNC_RANGE_DISABLE) &&
+	   rv < n_flows)
+    return clib_error_return (0, "only %d / %d success", rv, n_flows);
 
   return 0;
 }
 
-VLIB_CLI_COMMAND (test_flow_command, static) = {
-  .path = "test flow",
-  .short_help = "test flow [add|del|enable|disable] [index <id>] "
+VLIB_CLI_COMMAND (flow_command, static) = {
+  .path = "flow",
+  .short_help = "flow [add|del|enable|disable] [index <id>] "
+		"[template-add|template-del|template-enable|template-disable] "
+		"[async-range-enable|async-range-disable] "
+		"[template-index <id>] [n-flows <count>] "
+		"[flow-indices <idx1> <idx2> ...] "
 		"[src-ip <ip-addr/mask>] [dst-ip <ip-addr/mask>] "
 		"[ip6-src-ip <ip-addr/mask>] [ip6-dst-ip <ip-addr/mask>] "
 		"[src-port <port/mask>] [dst-port <port/mask>] "
@@ -824,7 +921,7 @@ VLIB_CLI_COMMAND (test_flow_command, static) = {
 		"[redirect-to-queue <queue>] [drop] "
 		"[rss function <name>] [rss types <flow type>]"
 		"[rss queues <queue_start> to <queue_end>]",
-  .function = test_flow,
+  .function = flow_cli,
 };
 
 static u8 *
@@ -894,11 +991,14 @@ format_flow_match (u8 * s, va_list * args)
 {
   vnet_flow_t *f = va_arg (*args, vnet_flow_t *);
 
-#define _(a,b,c) \
-  if (f->type == VNET_FLOW_TYPE_##a) \
-    return format (s, "%U", format_flow_match_##b, &f->b);
-  foreach_flow_type;
+#define _(a, b, c)                                                                                 \
+  if (f->type == VNET_FLOW_TYPE_##a)                                                               \
+    return format (s, "%U", format_flow_match_##b, &f->pattern.b);
+  foreach_flow_type_inline;
 #undef _
+
+  if (f->type == VNET_FLOW_TYPE_GENERIC && f->generic_pattern)
+    return format (s, "%U", format_flow_match_generic, f->generic_pattern);
 
   return s;
 }
@@ -911,11 +1011,9 @@ format_flow (u8 * s, va_list * args)
   u32 indent = format_get_indent (s);
   u8 *t = 0;
 
-  s = format (s, "flow-index %u type %s active %u",
-	      f->index, flow_type_strings[f->type],
-	      hash_elts (f->private_data)),
-    s = format (s, "\n%Umatch: %U", format_white_space, indent + 2,
-		format_flow_match, f);
+  s = format (s, "flow-index %u type %s %sactive", f->index, flow_type_strings[f->type],
+	      f->driver_data.hw_if_index == ~0 ? "in" : ""),
+  s = format (s, "\n%Umatch: %U", format_white_space, indent + 2, format_flow_match, f);
   s = format (s, "\n%Uaction: %U", format_white_space, indent + 2,
 	      format_flow_actions, f->actions);
 
