@@ -594,6 +594,138 @@ virtio_pci_enable_multiqueue_rss (vlib_main_t *vm, virtio_if_t *vif,
   return status;
 }
 
+/* MAC filter management */
+clib_error_t *
+virtio_pci_add_mac_filter (vlib_main_t *vm, virtio_if_t *vif, const u8 *mac)
+{
+  virtio_ctrl_msg_t msg;
+  virtio_net_ctrl_mac_t *mac_table = (virtio_net_ctrl_mac_t *) msg.data;
+  virtio_net_ctrl_ack_t status = VIRTIO_NET_ERR;
+  u32 i, len;
+
+  /* Check if VIRTIO_NET_F_CTRL_MAC_ADDR feature is negotiated */
+  if (!(vif->features & VIRTIO_FEATURE (VIRTIO_NET_F_CTRL_MAC_ADDR)))
+    return clib_error_return (0, "VIRTIO_NET_F_CTRL_MAC_ADDR not supported");
+
+  /* Check if adding this MAC would exceed the limit */
+  if (vif->mac_table_entries >= VIRTIO_PCI_MAC_TABLE_MAX_ENTERIES)
+    return clib_error_return (0, "Maximum MAC filter limit reached");
+
+  /* Check if MAC already exists */
+  for (i = 0; i < vif->mac_table_entries; i++)
+    {
+      if (ethernet_mac_address_equal (vif->mac_filter[i], mac))
+	{
+	  return clib_error_return (0, "MAC address already in filter list");
+	}
+    }
+
+  /* Build new MAC table with existing entries + new entry */
+  mac_table->entries = vif->mac_table_entries + 1;
+
+  /* Copy existing MACs */
+  for (i = 0; i < vif->mac_table_entries; i++)
+    {
+      clib_memcpy (mac_table->macs[i], vif->mac_filter[i], 6);
+    }
+
+  /* Add new MAC */
+  clib_memcpy (mac_table->macs[vif->mac_table_entries], mac, 6);
+  /* Send control message */
+  msg.ctrl.class = VIRTIO_NET_CTRL_MAC;
+  msg.ctrl.cmd = VIRTIO_NET_CTRL_MAC_TABLE_SET;
+  msg.status = VIRTIO_NET_ERR;
+  len = 4 + (vif->mac_table_entries + 1) * 6;
+  *(u32 *) (msg.data + len) = 0;
+  len += 4;
+  status = virtio_pci_send_ctrl_msg (vm, vif, &msg, len);
+
+  if (status != VIRTIO_NET_OK)
+    {
+      return clib_error_return (0, "Failed to add MAC filter via control queue");
+    }
+
+  /* Update local filter list */
+  clib_memcpy_fast (vif->mac_filter[vif->mac_table_entries], mac, 6);
+  vif->mac_table_entries++;
+
+  return 0;
+}
+
+clib_error_t *
+virtio_pci_remove_mac_filter (vlib_main_t *vm, virtio_if_t *vif, const u8 *mac)
+{
+  virtio_ctrl_msg_t msg;
+  virtio_net_ctrl_mac_t *mac_table = (virtio_net_ctrl_mac_t *) msg.data;
+  virtio_net_ctrl_ack_t status = VIRTIO_NET_ERR;
+  u32 i, j, len;
+
+  /* Check if VIRTIO_NET_F_CTRL_MAC_ADDR feature is negotiated */
+  if (!(vif->features & VIRTIO_FEATURE (VIRTIO_NET_F_CTRL_MAC_ADDR)))
+    return clib_error_return (0, "VIRTIO_NET_F_CTRL_MAC_ADDR not supported");
+
+  /* Check if MAC exists in filter list */
+  for (i = 0; i < vif->mac_table_entries; i++)
+    {
+      if (ethernet_mac_address_equal (vif->mac_filter[i], mac))
+	{
+	  break;
+	}
+    }
+
+  if (i >= vif->mac_table_entries)
+    return clib_error_return (0, "MAC address not in filter list");
+
+  /* Build new MAC table without the removed entry */
+  mac_table->entries = vif->mac_table_entries - 1;
+
+  /* Copy existing MACs excluding the one to remove */
+  j = 0;
+  for (i = 0; i < vif->mac_table_entries; i++)
+    {
+      if (ethernet_mac_address_equal (vif->mac_filter[i], mac))
+	{
+	  continue; /* Skip this MAC */
+	}
+      clib_memcpy (mac_table->macs[j], vif->mac_filter[i], 6);
+      j++;
+    }
+
+  /* Send control message */
+  msg.ctrl.class = VIRTIO_NET_CTRL_MAC;
+  msg.ctrl.cmd = VIRTIO_NET_CTRL_MAC_TABLE_SET;
+  msg.status = VIRTIO_NET_ERR;
+  len = 4 + (vif->mac_table_entries - 1) * 6;
+  *(u32 *) (msg.data + len) = 0;
+  len += 4;
+
+  status = virtio_pci_send_ctrl_msg (vm, vif, &msg, len);
+
+  if (status != VIRTIO_NET_OK)
+    {
+      return clib_error_return (0, "Failed to remove MAC filter via control queue");
+    }
+
+  /* Update local filter list - remove the MAC by shifting remaining entries */
+  for (i = 0; i < vif->mac_table_entries - 1; i++)
+    {
+      if (ethernet_mac_address_equal (vif->mac_filter[i], mac))
+	{
+	  /* Found the MAC, shift remaining entries */
+	  for (j = i; j < vif->mac_table_entries - 1; j++)
+	    {
+	      clib_memcpy (vif->mac_filter[j], vif->mac_filter[j + 1], 6);
+	    }
+	  /* Clear the last entry */
+	  clib_memset (vif->mac_filter[vif->mac_table_entries - 1], 0, 6);
+	  vif->mac_table_entries--;
+	  break;
+	}
+    }
+
+  return 0;
+}
+
 static int
 virtio_pci_ctrl_mac_addr_set (vlib_main_t *vm, virtio_if_t *vif, const u8 *address)
 {
@@ -1404,6 +1536,9 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
   vif->per_interface_next_index = ~0;
   vif->pci_addr.as_u32 = args->addr;
   vif->rss_enabled = args->rss_enabled;
+  vif->mac_filter_enabled = args->mac_filter_enabled;
+  vif->mac_table_entries = 0;
+
   if (args->virtio_flags & VIRTIO_FLAG_PACKED)
     vif->is_packed = 1;
 

@@ -32,6 +32,8 @@ typedef enum
 
 #define VIRTIO_RING_FLAG_MASK_INT 1
 
+#define VIRTIO_PCI_MAC_TABLE_MAX_ENTERIES 64
+
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
@@ -118,6 +120,7 @@ typedef struct
   u8 gso_enabled : 1;
   u8 csum_offload_enabled : 1;
   u8 rss_enabled : 1;
+  u8 mac_filter_enabled : 1;
 
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
   int packet_buffering;
@@ -149,6 +152,10 @@ typedef struct
   u16 msix_table_size;
   u8 support_int_mode; /* support interrupt mode */
   u8 status;
+
+  /* MAC filter list - up to 64 MAC addresses */
+  u32 mac_table_entries;
+  u8 mac_filter[VIRTIO_PCI_MAC_TABLE_MAX_ENTERIES][6];
 } virtio_if_t;
 
 typedef struct

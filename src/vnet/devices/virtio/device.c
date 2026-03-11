@@ -1114,10 +1114,21 @@ virtio_set_mac_address (vnet_hw_interface_t *hi, const u8 *old_address, const u8
 static clib_error_t *
 virtio_add_del_mac_address (vnet_hw_interface_t *hi, const u8 *address, u8 is_add)
 {
-
   // Implement virtio MAC adddress filtering for virtio devices.
+  virtio_main_t *mm = &virtio_main;
+  virtio_if_t *vif = pool_elt_at_index (mm->interfaces, hi->dev_instance);
+  vlib_main_t *vm = vlib_get_main ();
+  clib_error_t *error = 0;
 
-  return 0;
+  if (vif->mac_filter_enabled == 0)
+    return clib_error_return (0, "mac table filtering is disabled");
+
+  if (is_add)
+    error = virtio_pci_add_mac_filter (vm, vif, address);
+  else
+    error = virtio_pci_remove_mac_filter (vm, vif, address);
+
+  return error;
 }
 
 VNET_DEVICE_CLASS (virtio_device_class) = {

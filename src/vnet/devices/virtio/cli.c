@@ -51,6 +51,8 @@ virtio_pci_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	args.bind = VIRTIO_BIND_FORCE;
       else if (unformat (line_input, "bind"))
 	args.bind = VIRTIO_BIND_DEFAULT;
+      else if (unformat (line_input, "mac-filter-enabled"))
+	args.mac_filter_enabled = 1;
       else if (unformat (line_input, "rss-enabled"))
 	args.rss_enabled = 1;
       else if (unformat (line_input, "consistent-qp"))
@@ -72,7 +74,7 @@ VLIB_CLI_COMMAND (virtio_pci_create_command, static) = {
   .path = "create interface virtio",
   .short_help = "create interface virtio <pci-address> [if-name <if-name>] "
 		"[feature-mask <hex-mask>] [tx-queue-size <size>] "
-		"[gso-enabled] [csum-enabled] [rss-enabled] "
+		"[gso-enabled] [csum-enabled] [rss-enabled] [mac-filter-enabled]"
 		"[buffering [size <buffering-szie>]] [packed] [bind [force]]",
   .function = virtio_pci_create_command_fn,
 };
