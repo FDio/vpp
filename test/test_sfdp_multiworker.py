@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright(c) 2025 Cisco Systems, Inc.
 #
-# Multi-worker test for SFDP kill immediacy.
+# Multi-worker tests for SFDP handoff and kill immediacy.
 #
 # This test validates that sfdp_expire_session_now sends the interrupt to the
 # correct worker thread (via vlib_get_main_by_index) so that killing a session
@@ -23,9 +23,78 @@ import unittest
 from asfframework import VppTestRunner
 from framework import VppTestCase
 from config import config
+from test_sfdp import BaseSfdpTest
 
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, TCP
+
+
+@unittest.skipIf(
+    "sfdp_services" in config.excluded_plugins,
+    "SFDP_Services plugin is required to run SFDP tests",
+)
+class TestSfdpTwoWorkers(BaseSfdpTest):
+    """SFDP packet handoff between two workers"""
+
+    vpp_worker_count = 2
+
+    # Increase stats-segment memory, as 32M default
+    # is not sufficient with SFDP running with two workers
+    extra_vpp_config = ["statseg {size 64M}"]
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestSfdpTwoWorkers, cls).setUpClass()
+        try:
+            cls.create_pg_interfaces(range(4))
+            for i in cls.pg_interfaces:
+                i.config_ip4()
+                i.config_ip6()
+                i.resolve_arp()
+                i.resolve_ndp()
+                i.admin_up()
+        except Exception:
+            super(TestSfdpTwoWorkers, cls).tearDownClass()
+            raise
+
+    @classmethod
+    def tearDownClass(cls):
+        for i in cls.pg_interfaces:
+            i.unconfig_ip4()
+            i.unconfig_ip6()
+            i.admin_down()
+        super(TestSfdpTwoWorkers, cls).tearDownClass()
+
+    def test_session_handoff_between_workers(self):
+        self._configure_sfdp()
+        # Create SFDP session on first worker
+        packet = self.create_tcp_packet(
+            self.pg0.remote_mac,
+            self.pg0.local_mac,
+            self.pg0.remote_ip4,
+            self.pg1.remote_ip4,
+            sport=12345,
+            dport=80,
+        )
+
+        self.send_and_expect(self.pg0, packet, self.pg1, worker=0)
+        sessions = self.sessions()
+        self.assertEqual(len(sessions), 1)
+
+        # Send packet associated with session on second worker
+        # Handoff counter should increase
+        remote_before = self.statistics.get_err_counter(
+            "/err/sfdp-lookup-ip4/remote flow"
+        )
+        self.send_and_expect(self.pg0, packet, self.pg1, worker=1)
+
+        self.assertEqual(
+            self.statistics.get_err_counter("/err/sfdp-lookup-ip4/remote flow"),
+            remote_before + 1,
+        )
+
+        # Cleanup
+        self._cleanup_sfdp()
 
 
 @unittest.skipIf(
