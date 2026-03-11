@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b71ac7f6_f7c36894",
+        "filename": "src/plugins/dpdk/buffer.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 358,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2026-03-11T15:13:02Z",
+      "side": 1,
+      "message": "Should we free the total number of buffers already allocated which is done instead of n_alloc?",
+      "revId": "308df166f5bfeb10f5054df900b3ab7182605246",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
