@@ -52,6 +52,206 @@ dpdk_device_flow_warning (dpdk_device_t *xd, char *str)
   dpdk_log_warn ("[%u] %s - type: %d, message: %s", xd->port_id, str, xd->last_flow_error.type,
 		 xd->last_flow_error.message);
 }
+static int
+dpdk_device_flow_async_push_pull (dpdk_device_t *xd)
+{
+  struct rte_flow_op_result result = {};
+  int rv = 0;
+  rv = rte_flow_push (xd->port_id, DPDK_DEFAULT_ASYNC_FLOW_QUEUE_INDEX, &xd->last_flow_error);
+  if (rv)
+    {
+      dpdk_device_flow_warning (xd, "rte_flow_push");
+      goto done;
+    }
+
+  /* pull completion */
+  while (rte_flow_pull (xd->port_id, DPDK_DEFAULT_ASYNC_FLOW_QUEUE_INDEX, &result, 1,
+			&xd->last_flow_error) == 0)
+    CLIB_PAUSE ();
+
+  if (result.status != RTE_FLOW_OP_SUCCESS)
+    {
+      dpdk_log_warn ("[%u] Async flow creation failed (status %d)", xd->port_id, result.status);
+      rv = VNET_FLOW_ERROR_INTERNAL;
+      goto done;
+    }
+
+done:
+  return rv;
+}
+
+static int
+dpdk_device_flow_async_destroy (dpdk_device_t *xd, struct rte_flow *flow)
+{
+  struct rte_flow_op_attr op_attr = { .postpone = 0 };
+  int rv;
+
+  rv = rte_flow_async_destroy (xd->port_id, DPDK_DEFAULT_ASYNC_FLOW_QUEUE_INDEX, &op_attr, flow,
+			       NULL, &xd->last_flow_error);
+  if (rv)
+    {
+      dpdk_device_flow_warning (xd, "rte_flow_async_destroy");
+      return rv;
+    }
+
+  rv = dpdk_device_flow_async_push_pull (xd);
+  if (rv)
+    return rv;
+  return 0;
+}
+
+static struct rte_flow *
+dpdk_device_flow_async_create (dpdk_device_t *xd, struct rte_flow_template_table *tbl,
+			       struct rte_flow_item pattern[], struct rte_flow_action actions[])
+{
+  struct rte_flow_op_attr op_attr = { .postpone = 0 };
+  struct rte_flow *flow = NULL;
+  int rv;
+
+  flow =
+    rte_flow_async_create (xd->port_id, DPDK_DEFAULT_ASYNC_FLOW_QUEUE_INDEX, &op_attr, tbl, pattern,
+			   /* pattern_template_index= */ 0, actions,
+			   /* actions_template_index= */ 0, NULL, &xd->last_flow_error);
+  if (!flow)
+    {
+      dpdk_device_flow_warning (xd, "rte_flow_async_create");
+      return NULL;
+    }
+
+  rv = dpdk_device_flow_async_push_pull (xd);
+  if (rv)
+    {
+      dpdk_device_flow_async_destroy (xd, flow);
+      return NULL;
+    }
+  return flow;
+}
+
+static void
+dpdk_device_install_default_jump_rule (dpdk_device_t *xd)
+{
+  struct rte_flow_item jump_pattern[] = {
+    { .type = RTE_FLOW_ITEM_TYPE_ETH },
+    { .type = RTE_FLOW_ITEM_TYPE_END },
+  };
+  struct rte_flow_action_jump jump_act = { .group = 1 };
+  struct rte_flow_action_jump jump_mask = { .group = 1 };
+  struct rte_flow_action jump_actions[] = {
+    { .type = RTE_FLOW_ACTION_TYPE_JUMP, .conf = &jump_act },
+    { .type = RTE_FLOW_ACTION_TYPE_END },
+  };
+  struct rte_flow_action jump_masks[] = {
+    { .type = RTE_FLOW_ACTION_TYPE_JUMP, .conf = &jump_mask },
+    { .type = RTE_FLOW_ACTION_TYPE_END },
+  };
+  u16 queues[xd->conf.n_rx_queues];
+  struct rte_flow_action_rss rss = {
+    .func = RTE_ETH_HASH_FUNCTION_SYMMETRIC_TOEPLITZ,
+    .types = RTE_ETH_RSS_IP,
+    .queue_num = xd->conf.n_rx_queues,
+    .queue = queues,
+  };
+  struct rte_flow_item miss_pattern[] = {
+    { .type = RTE_FLOW_ITEM_TYPE_ETH },
+    { .type = RTE_FLOW_ITEM_TYPE_END },
+  };
+  struct rte_flow_action miss_actions[] = {
+    { .type = RTE_FLOW_ACTION_TYPE_RSS, .conf = &rss },
+    { .type = RTE_FLOW_ACTION_TYPE_END },
+  };
+  struct rte_flow_action miss_masks[] = {
+    { .type = RTE_FLOW_ACTION_TYPE_RSS },
+    { .type = RTE_FLOW_ACTION_TYPE_END },
+  };
+  struct rte_flow_template_table_attr jump_tbl_attr = {
+    .flow_attr = { .ingress = 1, .group = 0 },
+    .nb_flows = 1,
+  };
+  struct rte_flow_template_table_attr miss_tbl_attr = {
+    .flow_attr = { .ingress = 1, .group = 1, .priority = ~0 },
+    .nb_flows = 1,
+  };
+  int rv = 0;
+  int i;
+
+  for (i = 0; i < xd->conf.n_rx_queues; i++)
+    queues[i] = i;
+
+  if (!xd->driver || !xd->driver->install_default_jump)
+    return;
+
+  if ((xd->flags & DPDK_DEVICE_FLAG_ASYNC_FLOW_OFFLOAD) == 0)
+    {
+      dpdk_log_warn (
+	"[%u] Default jump/miss rules cannot be installed without async offload support",
+	xd->port_id);
+      return;
+    }
+
+  rv =
+    dpdk_flow_async_template_table_create (xd->port_id, &jump_tbl_attr, jump_pattern, jump_actions,
+					   jump_masks, &xd->default_jump_tbl, &xd->last_flow_error);
+  if (!rv)
+    {
+      dpdk_log_debug ("[%u] Default jump rule table to group 1 installed", xd->port_id);
+    }
+  else
+    {
+      dpdk_log_warn ("[%u] Failed to install default jump rule table", xd->port_id);
+      return;
+    }
+
+  xd->default_jump_flow = dpdk_device_flow_async_create (xd, xd->default_jump_tbl.table_handle,
+							 jump_pattern, jump_actions);
+  if (xd->default_jump_flow)
+    {
+      dpdk_log_debug ("[%u] Default jump rule to group 1 installed", xd->port_id);
+    }
+  else
+    {
+      dpdk_log_warn ("[%u] Failed to install default jump rule", xd->port_id);
+      goto error_jump_tbl;
+    }
+
+  rv =
+    dpdk_flow_async_template_table_create (xd->port_id, &miss_tbl_attr, miss_pattern, miss_actions,
+					   miss_masks, &xd->default_miss_tbl, &xd->last_flow_error);
+  if (!rv)
+    {
+      dpdk_log_debug ("[%u] Default catch-all rule table to group 1 installed", xd->port_id);
+    }
+  else
+    {
+      dpdk_log_warn ("[%u] Failed to install catch-all rule table", xd->port_id);
+      goto error_jump_flow;
+    }
+
+  xd->default_miss_flow = dpdk_device_flow_async_create (xd, xd->default_miss_tbl.table_handle,
+							 miss_pattern, miss_actions);
+  if (xd->default_miss_flow)
+    {
+      dpdk_log_debug ("[%u] Default catch-all rule to group 1 installed", xd->port_id);
+    }
+  else
+    {
+      dpdk_log_warn ("[%u] Failed to install catch-all rule", xd->port_id);
+      goto error_miss_tbl;
+    }
+
+  return;
+
+error_miss_tbl:
+  dpdk_flow_async_template_table_destroy (xd->port_id, &xd->default_miss_tbl, &xd->last_flow_error);
+
+error_jump_flow:
+  dpdk_device_flow_async_destroy (xd, xd->default_jump_flow);
+  xd->default_jump_flow = NULL;
+
+error_jump_tbl:
+  dpdk_flow_async_template_table_destroy (xd->port_id, &xd->default_jump_tbl, &xd->last_flow_error);
+
+  return;
+}
 
 /*
  * Check for async flow offload support.
@@ -455,6 +655,8 @@ dpdk_device_start (dpdk_device_t * xd)
       return;
     }
 
+  dpdk_device_install_default_jump_rule (xd);
+
   dpdk_log_debug ("[%u] RX burst function: %U", xd->port_id,
 		  format_dpdk_burst_fn, xd, VLIB_RX);
   dpdk_log_debug ("[%u] TX burst function: %U", xd->port_id,
@@ -485,6 +687,26 @@ dpdk_device_stop (dpdk_device_t * xd)
 {
   if (xd->flags & DPDK_DEVICE_FLAG_PMD_INIT_FAIL)
     return;
+
+  if (xd->default_jump_flow)
+    {
+      dpdk_device_flow_async_destroy (xd, xd->default_jump_flow);
+      xd->default_jump_flow = NULL;
+    }
+
+  if (xd->default_jump_tbl.table_handle)
+    dpdk_flow_async_template_table_destroy (xd->port_id, &xd->default_jump_tbl,
+					    &xd->last_flow_error);
+
+  if (xd->default_miss_flow)
+    {
+      dpdk_device_flow_async_destroy (xd, xd->default_miss_flow);
+      xd->default_miss_flow = NULL;
+    }
+
+  if (xd->default_miss_tbl.table_handle)
+    dpdk_flow_async_template_table_destroy (xd->port_id, &xd->default_miss_tbl,
+					    &xd->last_flow_error);
 
   rte_eth_allmulticast_disable (xd->port_id);
   rte_eth_dev_stop (xd->port_id);

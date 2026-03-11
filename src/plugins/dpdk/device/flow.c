@@ -94,8 +94,11 @@
 #define IP6_DST_ADDR(ip6) ip6.hdr.dst_addr
 #endif
 
+#define dpdk_flow_attr(_xd) ((_xd)->default_jump_flow ? &ingress_group_1 : &ingress)
+
 /* constant structs */
 static const struct rte_flow_attr ingress = {.ingress = 1 };
+static const struct rte_flow_attr ingress_group_1 = { .ingress = 1, .group = 1 };
 struct rte_flow_pattern_template_attr pattern_attr = { .ingress = 1 };
 struct rte_flow_actions_template_attr action_attr = { .ingress = 1 };
 static const struct rte_flow_op_attr async_op = { .postpone = 1 };
@@ -1278,7 +1281,7 @@ dpdk_flow_add (dpdk_device_t *xd, vnet_flow_t *f, dpdk_flow_entry_t *fe)
   if ((rv = dpdk_flow_fill_actions (xd, f, fe, &action_args)) != 0)
     return rv;
 
-  rv = rte_flow_validate (xd->port_id, &ingress, item_args.items, action_args.actions,
+  rv = rte_flow_validate (xd->port_id, dpdk_flow_attr (xd), item_args.items, action_args.actions,
 			  &xd->last_flow_error);
 
   if (rv)
@@ -1295,8 +1298,8 @@ dpdk_flow_add (dpdk_device_t *xd, vnet_flow_t *f, dpdk_flow_entry_t *fe)
       return rv;
     }
 
-  fe->handle = rte_flow_create (xd->port_id, &ingress, item_args.items, action_args.actions,
-				&xd->last_flow_error);
+  fe->handle = rte_flow_create (xd->port_id, dpdk_flow_attr (xd), item_args.items,
+				action_args.actions, &xd->last_flow_error);
 
   if (!fe->handle)
     {
@@ -1366,14 +1369,23 @@ int
 dpdk_flow_async_template_table_destroy (int port_id, dpdk_flow_template_table_t *table,
 					struct rte_flow_error *error)
 {
-  rte_flow_template_table_destroy (port_id, table->table_handle, error);
-  table->table_handle = NULL;
+  if (table->table_handle)
+    {
+      rte_flow_template_table_destroy (port_id, table->table_handle, error);
+      table->table_handle = NULL;
+    }
 
-  rte_flow_actions_template_destroy (port_id, table->actions_handle, error);
-  table->actions_handle = NULL;
+  if (table->actions_handle)
+    {
+      rte_flow_actions_template_destroy (port_id, table->actions_handle, error);
+      table->actions_handle = NULL;
+    }
 
-  rte_flow_pattern_template_destroy (port_id, table->pattern_handle, error);
-  table->pattern_handle = NULL;
+  if (table->pattern_handle)
+    {
+      rte_flow_pattern_template_destroy (port_id, table->pattern_handle, error);
+      table->pattern_handle = NULL;
+    }
 
   return 0;
 }
@@ -1389,8 +1401,7 @@ dpdk_flow_template_add (dpdk_device_t *xd, vnet_flow_t *t, dpdk_flow_template_en
   };
   int rv = 0;
 
-  clib_memcpy_fast (&template_attr.flow_attr, &ingress,
-		    sizeof (struct rte_flow_attr));
+  clib_memcpy_fast (&template_attr.flow_attr, dpdk_flow_attr (xd), sizeof (struct rte_flow_attr));
 
   if ((rv = dpdk_flow_fill_items_template (xd, t, fte, &item_args)) != 0)
     return rv;
