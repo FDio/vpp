@@ -160,9 +160,22 @@ typedef enum
   VNET_FLOW_DEV_OP_RESET_COUNTER,
 } vnet_flow_dev_op_t;
 
-/* Interface flow operations callback. */
+/* Interface flow operations callback.
+ * Caller must serialize operations on the same flow as vnet flow ops are not atomic.
+ */
 typedef int (vnet_flow_dev_ops_function_t) (struct vnet_main_t *vnm, vnet_flow_dev_op_t op,
 					    u32 dev_instance, u32 index);
+
+/* Caller contract:
+ *   - flow index uniqueness
+ *   - operations serialization on the same flow as vnet flow ops are not atomic
+ *   - check flows installation state post async ops
+ *
+ * Callee returns the number of flows for which the operation has succeeded.
+ */
+typedef int (vnet_flow_async_dev_ops_function_t) (struct vnet_main_t *vnm, vnet_flow_dev_op_t op,
+						  u32 dev_instance, u32 *flow_indices,
+						  u32 template_index);
 
 typedef enum vnet_interface_function_priority_t_
 {
@@ -313,6 +326,8 @@ typedef struct _vnet_device_class
 
   /* Interface flow offload operations */
   vnet_flow_dev_ops_function_t *flow_ops_function;
+  vnet_flow_dev_ops_function_t *flow_template_ops_function;
+  vnet_flow_async_dev_ops_function_t *flow_async_ops_function;
 
   /* Format device instance as name. */
   format_function_t *format_device_name;
