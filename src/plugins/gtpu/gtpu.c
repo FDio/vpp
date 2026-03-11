@@ -570,7 +570,7 @@ int vnet_gtpu_add_mod_del_tunnel
       ip_udp_gtpu_rewrite (t, is_ip6);
 
       /* clear the flow index */
-      t->flow_index = ~0;
+      t->flow_index_by_hw_if_index = 0;
 
       /* copy the key */
       if (is_ip6)
@@ -767,8 +767,10 @@ int vnet_gtpu_add_mod_del_tunnel
 
       if (!ip46_address_is_multicast (&t->dst))
 	{
-	  if (t->flow_index != ~0)
-	    vnet_flow_del (vnm, t->flow_index);
+	  for (u32 i = 0; i < vec_len (t->flow_index_by_hw_if_index); i++)
+	    if (t->flow_index_by_hw_if_index[i] != ~0)
+	      vnet_flow_del (vnm, t->flow_index_by_hw_if_index[i]);
+	  vec_free (t->flow_index_by_hw_if_index);
 
 	  vtep_addr_unref (&gtm->vtep_table, t->encap_fib_index, &t->src);
 	  fib_entry_untrack (t->fib_entry_index, t->sibling_index);
@@ -1304,20 +1306,25 @@ vnet_gtpu_add_del_rx_flow (u32 hw_if_index, u32 t_index, int is_add)
   gtpu_main_t *gtm = &gtpu_main;
   gtpu_tunnel_t *t = pool_elt_at_index (gtm->tunnels, t_index);
   vnet_main_t *vnm = vnet_get_main ();
+  u32 flow_index;
+  int rv;
+
   if (is_add)
     {
-      if (t->flow_index == ~0)
+      vec_validate_init_empty (t->flow_index_by_hw_if_index, hw_if_index, ~0);
+      flow_index = vec_elt (t->flow_index_by_hw_if_index, hw_if_index);
+      if (flow_index == ~0)
 	{
 	  vnet_flow_t flow = {
 	    .actions =
 	      VNET_FLOW_ACTION_REDIRECT_TO_NODE | VNET_FLOW_ACTION_MARK |
 	      VNET_FLOW_ACTION_BUFFER_ADVANCE,
-	    .mark_flow_id = t_index + gtm->flow_id_start,
+	    .mark_flow_id = VNET_FLOW_MARK_FROM_INDEX(t_index),
 	    .redirect_node_index = gtpu4_flow_input_node.index,
 	    .buffer_advance = sizeof (ethernet_header_t)
 	      + sizeof (ip4_header_t) + sizeof (udp_header_t),
 	    .type = VNET_FLOW_TYPE_IP4_GTPU,
-	    .ip4_gtpu = {
+	    .pattern.ip4_gtpu = {
 			 .protocol.prot = IP_PROTOCOL_UDP,
 			 .src_addr.addr = t->dst.ip4,
 			 .src_addr.mask.as_u32 = ~0,
@@ -1327,14 +1334,27 @@ vnet_gtpu_add_del_rx_flow (u32 hw_if_index, u32 t_index, int is_add)
 			 }
 	    ,
 	  };
-	  vnet_flow_add (vnm, &flow, &t->flow_index);
+	  vnet_flow_add (vnm, &flow, &flow_index);
+	  vec_elt (t->flow_index_by_hw_if_index, hw_if_index) = flow_index;
 	}
 
-      return vnet_flow_enable (vnm, t->flow_index, hw_if_index);
+      return vnet_flow_enable (vnm, flow_index, hw_if_index);
     }
 
-  /* flow index is removed when the tunnel is deleted */
-  return vnet_flow_disable (vnm, t->flow_index, hw_if_index);
+  /* disable and delete flow for this hw_if_index */
+  if (hw_if_index >= vec_len (t->flow_index_by_hw_if_index))
+    return VNET_API_ERROR_INVALID_VALUE;
+
+  flow_index = vec_elt (t->flow_index_by_hw_if_index, hw_if_index);
+  if (flow_index == ~0)
+    return VNET_API_ERROR_INVALID_VALUE;
+
+  rv = vnet_flow_del (vnm, flow_index);
+  if (rv)
+    return rv;
+
+  vec_elt (t->flow_index_by_hw_if_index, hw_if_index) = ~0;
+  return 0;
 }
 
 u32
@@ -1566,9 +1586,6 @@ gtpu_init (vlib_main_t * vm)
 
   gtm->vnet_main = vnet_get_main ();
   gtm->vlib_main = vm;
-
-  vnet_flow_get_range (gtm->vnet_main, "gtpu", 1024 * 1024,
-		       &gtm->flow_id_start);
 
   /* initialize the ip6 hash */
   gtm->gtpu6_tunnel_by_key = hash_create_mem (0,

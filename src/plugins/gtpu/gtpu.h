@@ -230,7 +230,7 @@ typedef struct
    */
   u32 sibling_index;
 
-  u32 flow_index;		/* infra flow index */
+  u32 *flow_index_by_hw_if_index; /* per-interface flow indices */
 } gtpu_tunnel_t;
 
 #define foreach_gtpu_input_next        \
@@ -301,7 +301,7 @@ typedef struct
   /* convenience */
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
-  u32 flow_id_start;
+
   /* cache for last 8 gtpu tunnel */
   vtep4_cache_t vtep4_u512;
 
