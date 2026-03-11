@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "345fb8e8_3046d2f8",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 8
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 765
+      },
+      "writtenOn": "2026-03-11T20:06:02Z",
+      "side": 1,
+      "message": "So, this falls under the category of \"VPP is not your message bus\".  I am pretty sure that Neale is opposed to such a change as this sort of behavior should be relegated to an independent management service.",
+      "revId": "89f206a589abe4b486026398fe3f085cd05679ba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
