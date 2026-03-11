@@ -284,6 +284,31 @@ dpdk_counters_xstats_init (dpdk_device_t *xd)
   vec_free (xstats_names);
 }
 
+static void
+dpdk_configure_flow_queues (dpdk_device_t *xd, const dpdk_device_config_t *devconf)
+{
+  /* Apply built-in fallbacks only after dev default inheritance has finished. */
+  u32 n_queues = devconf->async_flow_offload_n_queues ?: DPDK_DEFAULT_ASYNC_FLOW_N_QUEUES;
+  u32 size = devconf->async_flow_offload_queue_size ?: DPDK_DEFAULT_ASYNC_FLOW_QUEUE_SIZE;
+  u32 batch = devconf->async_flow_offload_queue_batch;
+
+  xd->async_flow_offload_n_queues = min_pow2 (clib_min (n_queues, (u32) UINT8_MAX));
+  xd->async_flow_offload_queue_size =
+    clib_max (2, min_pow2 (clib_min (size, DPDK_MAX_FLOW_QUEUE_SIZE)));
+  u32 max_batch = clib_max (1, xd->async_flow_offload_queue_size >> 1);
+  xd->async_flow_offload_queue_batch = batch ? clib_min (min_pow2 (batch), max_batch) : max_batch;
+
+  if (n_queues != xd->async_flow_offload_n_queues)
+    dpdk_log_warn ("[%u] async flow offload #queues adjusted to %u", xd->port_id,
+		   xd->async_flow_offload_n_queues);
+  if (size != xd->async_flow_offload_queue_size)
+    dpdk_log_warn ("[%u] async flow offload queue size adjusted to %u", xd->port_id,
+		   xd->async_flow_offload_queue_size);
+  if (!batch || batch != xd->async_flow_offload_queue_batch)
+    dpdk_log_warn ("[%u] async flow offload queue batch set to %u", xd->port_id,
+		   xd->async_flow_offload_queue_batch);
+}
+
 static clib_error_t *
 dpdk_lib_init (dpdk_main_t * dm)
 {
@@ -626,6 +651,8 @@ dpdk_lib_init (dpdk_main_t * dm)
 
       if (devconf->disable_rxq_int)
 	xd->conf.enable_rxq_int = 0;
+
+      dpdk_configure_flow_queues (xd, devconf);
 
       dpdk_device_setup (xd);
 
@@ -1063,6 +1090,12 @@ dpdk_device_config (dpdk_config_main_t *conf, void *addr,
 	;
       else if (unformat (input, "max-lro-pkt-size %u",
 			 &devconf->max_lro_pkt_size))
+	;
+      else if (unformat (input, "async-fo-queues %u", &devconf->async_flow_offload_n_queues))
+	;
+      else if (unformat (input, "async-fo-qsize %u", &devconf->async_flow_offload_queue_size))
+	;
+      else if (unformat (input, "async-fo-batch %u", &devconf->async_flow_offload_queue_batch))
 	;
       else
 	{

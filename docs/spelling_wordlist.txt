@@ -363,6 +363,7 @@ extranet
 Extranets
 failover
 fallback
+fallbacks
 fateshare
 favour
 favoured
@@ -713,6 +714,7 @@ misprograms
 MITRE
 mk
 mldv
+mlx
 mmap
 modelled
 modernisation
@@ -1393,6 +1395,7 @@ wi
 wiki
 Wiki
 Wikipedia
+Wildcarding
 wireguard
 Wireguard
 wireshark
