@@ -16,6 +16,24 @@
       "message": "Should we free the total number of buffers already allocated which is done instead of n_alloc?",
       "revId": "308df166f5bfeb10f5054df900b3ab7182605246",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2502c89b_673639f2",
+        "filename": "src/plugins/dpdk/buffer.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 358,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-03-11T16:26:20Z",
+      "side": 1,
+      "message": "The buffers should be returned to vpp by rte_mempool_ops_enqueue_bulk lower, i.e., dpdk_ops_vpp_enqueue gets called which in turn would call vlib_buffer_pool_put",
+      "parentUuid": "b71ac7f6_f7c36894",
+      "revId": "308df166f5bfeb10f5054df900b3ab7182605246",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
