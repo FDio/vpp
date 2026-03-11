@@ -313,8 +313,8 @@ func tcpWithLossAndNoLoss(s tcpWithLossInterface, clientVpp *VppInstance,
 	AssertNil(err)
 
 	Log("\nBaseline:  %d bytes/s\nWith loss: %d bytes/s", baseline, withLoss)
-	AssertGreaterEqualUnlessCoverageBuild(baseline, withLoss)
-	AssertGreaterEqualUnlessCoverageBuild(withLoss, uint64(float64(baseline)*0.15))
+	AssertGreaterEqualUnlessCoverageBuild(baseline, withLoss, "Tcp echo: baseline bitrate is lower than bitrate with loss applied")
+	AssertGreaterEqualUnlessCoverageBuild(withLoss, uint64(float64(baseline)*0.15), "Tcp echo: bitrate below threshold")
 }
 
 func TlsSingleConnectionTest(s *VethsSuite) {
