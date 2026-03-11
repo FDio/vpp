@@ -66,7 +66,8 @@ typedef uint16_t dpdk_portid_t;
   _ (15, TX_PREPARE, "tx-prepare")                                                                 \
   _ (16, FLOW_OFFLOAD, "flow-offload")                                                             \
   _ (17, ASYNC_FLOW_OFFLOAD, "async-flow-offload")                                                 \
-  _ (18, REPRESENTOR, "representor")
+  _ (18, REPRESENTOR, "representor")                                                               \
+  _ (19, FLOW_TRANSFER, "flow-transfer")
 
 typedef enum
 {
@@ -197,6 +198,7 @@ typedef struct
   dpdk_flow_lookup_entry_t *flow_lookup_entries;	/* pool */
   u32 *parked_lookup_indexes;	/* vector */
   u32 parked_loop_count;
+  u16 flow_port_id;
   struct rte_flow_error last_flow_error;
 
   struct rte_eth_link link;

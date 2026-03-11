@@ -53,6 +53,50 @@ dpdk_device_flow_warning (dpdk_device_t *xd, char *str)
 		 xd->last_flow_error.message);
 }
 
+static void
+dpdk_device_flow_offload_probe_transfer (dpdk_device_t *xd)
+{
+  struct rte_flow_attr probe_attr = { .transfer = 1 };
+  struct rte_flow_item probe_items[] = {
+    { .type = RTE_FLOW_ITEM_TYPE_ETH },
+    { .type = RTE_FLOW_ITEM_TYPE_END },
+  };
+  struct rte_flow_action probe_actions[] = {
+    { .type = RTE_FLOW_ACTION_TYPE_DROP },
+    { .type = RTE_FLOW_ACTION_TYPE_END },
+  };
+  struct rte_flow_error error = {};
+  int rv;
+
+  /* Port to use to install flow rule.
+   * Can be different that the current port if the transfer attribute is supported, because the
+   * hardware might allow only specific port to configure the eswitch fdb (e.g. on BF3, only the PF
+   * port can add rule in transfer mode)
+   */
+  rv = rte_flow_pick_transfer_proxy (xd->port_id, &xd->flow_port_id, &error);
+  if (rv)
+    {
+      dpdk_log_warn ("[%u] Flow transfer proxy probe failed: %s", xd->port_id, error.message);
+      return;
+    }
+
+  /* Probe for transfer attribute support */
+  rv = rte_flow_validate (xd->flow_port_id, &probe_attr, probe_items, probe_actions, &error);
+
+  if (rv == 0)
+    {
+      dpdk_device_flag_set (xd, DPDK_DEVICE_FLAG_FLOW_TRANSFER, 1);
+      dpdk_log_debug ("[%u] Flow transfer attribute supported", xd->port_id);
+      if (xd->flow_port_id != xd->port_id)
+	dpdk_log_debug ("[%u] Flow transfer proxied to port %u", xd->port_id, xd->flow_port_id);
+    }
+  else
+    {
+      dpdk_log_debug ("[%u] Flow transfer attribute not supported, using ingress: %s", xd->port_id,
+		      error.message);
+    }
+}
+
 /*
  * Check for async flow offload support.
  * The only way to tell, is to check if rte_flow_info_get and rte_flow_configure does not return
@@ -294,7 +338,10 @@ retry:
     goto error;
 
   if (xd->supported_flow_actions != 0)
-    dpdk_device_configure_flow_offload (xd);
+    {
+      dpdk_device_configure_flow_offload (xd);
+      dpdk_device_flow_offload_probe_transfer (xd);
+    }
 
   xd->buffer_flags =
     (VLIB_BUFFER_TOTAL_LENGTH_VALID | VLIB_BUFFER_EXT_HDR_VALID);
