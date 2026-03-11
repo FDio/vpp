@@ -109,6 +109,14 @@ typedef int (vnet_flow_dev_ops_function_t) (struct vnet_main_t * vnm,
 					    u32 hw_if_index, u32 index,
 					    uword * private_data);
 
+typedef int (vnet_flow_dev_ops_function_t) (struct vnet_main_t *vnm, vnet_flow_dev_op_t op,
+					    u32 hw_if_index, u32 flow_index, uword *private_data);
+
+typedef int (vnet_flow_async_dev_ops_function_t) (struct vnet_main_t *vnm, vnet_flow_dev_op_t op,
+						  u32 hw_if_index, u32 *flow_indices,
+						  uword *private_template_data,
+						  uword *private_data);
+
 typedef enum vnet_interface_function_priority_t_
 {
   VNET_ITF_FUNC_PRIORITY_LOW,
@@ -258,6 +266,8 @@ typedef struct _vnet_device_class
 
   /* Interface flow offload operations */
   vnet_flow_dev_ops_function_t *flow_ops_function;
+  vnet_flow_dev_ops_function_t *flow_template_ops_function;
+  vnet_flow_async_dev_ops_function_t *flow_async_ops_function;
 
   /* Format device instance as name. */
   format_function_t *format_device_name;
