@@ -373,24 +373,33 @@ sfdp_kill_session (sfdp_main_t *sfdp, u32 session_index, u8 is_all)
 {
   vlib_main_t *vm = vlib_get_main ();
   f64 now = vlib_time_now (vm);
+  clib_error_t *err = 0;
   sfdp_session_t *session;
   uword index;
 
   if (vec_len (sfdp_timer_main.per_thread_data) == 0)
     return clib_error_return (0, "sfdp timer module is not initialized");
 
+  vlib_worker_thread_barrier_sync (vm);
+
   if (is_all)
     {
       sfdp_foreach_session (sfdp, index, session) { sfdp_expire_session_now (session, now); }
-      return 0;
+    }
+  else
+    {
+      session = sfdp_session_at_index_if_valid (session_index);
+      if (!session)
+	{
+	  err = clib_error_return (0, "Session index %u not found", session_index);
+	  goto done;
+	}
+      sfdp_expire_session_now (session, now);
     }
 
-  session = sfdp_session_at_index_if_valid (session_index);
-  if (!session)
-    return clib_error_return (0, "Session index %u not found", session_index);
-
-  sfdp_expire_session_now (session, now);
-  return 0;
+done:
+  vlib_worker_thread_barrier_release (vm);
+  return err;
 }
 
 int
