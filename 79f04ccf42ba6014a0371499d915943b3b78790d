@@ -3,6 +3,23 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "cb568ccd_284692d4",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 9
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-03-11T12:15:30Z",
+      "side": 1,
+      "message": "Thanks, left some comments.\n\nsfdp-expire currently relies on a hardcoded interval of 1 second. Could you update it to rely on the configurable interval ?\n\ni.e. in `expiry.c`\n\n```\nvlib_node_schedule (vm, node-\u003enode_index, 1.0 /* replace with SFDP_TIMER_INTERVAL */ );\n```",
+      "revId": "79f04ccf42ba6014a0371499d915943b3b78790d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "921c52bc_2b81b24e",
         "filename": "src/vnet/sfdp/sfdp.c",
         "patchSetId": 9
@@ -32,6 +49,91 @@
       "side": 1,
       "message": "is zero*",
       "parentUuid": "921c52bc_2b81b24e",
+      "revId": "79f04ccf42ba6014a0371499d915943b3b78790d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a4c54625_519d0cc5",
+        "filename": "src/vnet/sfdp/sfdp.h",
+        "patchSetId": 9
+      },
+      "lineNbr": 426,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-03-11T12:15:30Z",
+      "side": 1,
+      "message": "This is an interval between timer ticks, rather than timer wheel expiration. Could the comment be updated, and the variable name updated to reflect this ? i.e. `timer_tick_interval_s`",
+      "revId": "79f04ccf42ba6014a0371499d915943b3b78790d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1f619f30_677241cc",
+        "filename": "src/vnet/sfdp/timer/timer.h",
+        "patchSetId": 9
+      },
+      "lineNbr": 68,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-03-11T12:15:30Z",
+      "side": 1,
+      "message": "After our offline discussion, it seems that this function actually resolves the concern with the different timeouts provided in seconds (embryonic, established..) being synced with a configured tick interval.",
+      "revId": "79f04ccf42ba6014a0371499d915943b3b78790d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "97f91830_656c5fc1",
+        "filename": "src/vnet/sfdp/timer/timer.h",
+        "patchSetId": 9
+      },
+      "lineNbr": 78,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-03-11T12:15:30Z",
+      "side": 1,
+      "message": "The last check `return ticks ? ticks : 1;` seems redundant, as we\u0027ve already checked that the number of seconds is non-zero.\n\nCould we simplify the logic ? i.e.\n\n```\n  sfdp_seconds_to_ticks (f64 seconds)\n  {\n    if (seconds \u003c\u003d 0)\n      return 0;\n\n    f64 interval \u003d sfdp_timer_interval_sec ();\n    u32 ticks \u003d (u32) (seconds / interval);\n    if (ticks * interval \u003c seconds)\n      ticks++;\n\n    return ticks;\n  }\n```",
+      "revId": "79f04ccf42ba6014a0371499d915943b3b78790d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7709769d_9a400232",
+        "filename": "src/vnet/sfdp/timer/timer.h",
+        "patchSetId": 9
+      },
+      "lineNbr": 143,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-03-11T12:15:30Z",
+      "side": 1,
+      "message": "Calling node sfdp-expire every time a session timeouts could be quite expensive. I think this call can be removed, and we can rely on periodic calls to sfdp-expire to cleanup this session if needed.",
+      "revId": "79f04ccf42ba6014a0371499d915943b3b78790d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e28a124f_0d9399cc",
+        "filename": "src/vnet/sfdp/timer/timer.h",
+        "patchSetId": 9
+      },
+      "lineNbr": 157,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-03-11T12:15:30Z",
+      "side": 1,
+      "message": "Same comment as above.",
       "revId": "79f04ccf42ba6014a0371499d915943b3b78790d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
