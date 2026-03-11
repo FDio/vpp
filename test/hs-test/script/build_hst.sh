@@ -93,6 +93,7 @@ echo "=== Building all containers using build-images.sh ==="
     export NO_PROXY
     export DOCKER_CACHE_DIR="${DOCKER_CACHE_DIR}"
     export DOCKER_HST_BUILDER="${DOCKER_HST_BUILDER}"
+    export GO_VERSION=$(go env GOVERSION | sed 's/^go//')
 
     # Run the build script
     ./script/build-images.sh

@@ -83,6 +83,7 @@ build_image() {
     # Build the image
     # shellcheck disable=2086
     docker build \
+        --build-arg GO_VERSION="$GO_VERSION" \
         --build-arg UBUNTU_VERSION="${UBUNTU_VERSION:-22.04}" \
         --build-arg OS_ARCH="$ARCH" \
         --build-arg CODENAME="$CODENAME" \
