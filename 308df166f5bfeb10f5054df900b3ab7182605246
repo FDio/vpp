@@ -34,6 +34,24 @@
       "parentUuid": "b71ac7f6_f7c36894",
       "revId": "308df166f5bfeb10f5054df900b3ab7182605246",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "437f2752_4bf90050",
+        "filename": "src/plugins/dpdk/buffer.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 358,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2026-03-11T16:37:54Z",
+      "side": 1,
+      "message": "Ah, so we only need to free the last batch that fails. Never mind.",
+      "parentUuid": "2502c89b_673639f2",
+      "revId": "308df166f5bfeb10f5054df900b3ab7182605246",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
