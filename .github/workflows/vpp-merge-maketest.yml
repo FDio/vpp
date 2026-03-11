@@ -294,6 +294,15 @@ jobs:
         run: |
           set -euxo pipefail
           archives_dir="$WORKSPACE/archives"
+          unittest_failed_dir="/tmp/vpp-failed-unittests"
+          for failed_test in $(ls "$unittest_failed_dir")
+          do
+            failed_test_dir="$archives_dir"/"$failed_test"
+            if [ ! -e "$failed_test_dir" ] ; then
+              mkdir -p "$failed_test_dir"
+              cp -a "$unittest_failed_dir"/"$failed_test"/* "$failed_test_dir"
+            fi
+          done
           if [[ -d "$archives_dir" ]] && find "$archives_dir" -type f -print -quit | grep -q . ; then
             echo "has_archives=true" >> "$GITHUB_OUTPUT"
           else
