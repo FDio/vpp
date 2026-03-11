@@ -315,8 +315,7 @@ VLIB_CLI_COMMAND (show_flow_interface_command, static) = {
 };
 
 static clib_error_t *
-test_flow (vlib_main_t * vm, unformat_input_t * input,
-	   vlib_cli_command_t * cmd_arg)
+flow_cli (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd_arg)
 {
   vnet_flow_t flow;
   vnet_main_t *vnm = vnet_get_main ();
@@ -810,9 +809,9 @@ test_flow (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-VLIB_CLI_COMMAND (test_flow_command, static) = {
-  .path = "test flow",
-  .short_help = "test flow [add|del|enable|disable] [index <id>] "
+VLIB_CLI_COMMAND (flow_command, static) = {
+  .path = "flow",
+  .short_help = "flow [add|del|enable|disable] [index <id>] "
 		"[src-ip <ip-addr/mask>] [dst-ip <ip-addr/mask>] "
 		"[ip6-src-ip <ip-addr/mask>] [ip6-dst-ip <ip-addr/mask>] "
 		"[src-port <port/mask>] [dst-port <port/mask>] "
@@ -824,7 +823,7 @@ VLIB_CLI_COMMAND (test_flow_command, static) = {
 		"[redirect-to-queue <queue>] [drop] "
 		"[rss function <name>] [rss types <flow type>]"
 		"[rss queues <queue_start> to <queue_end>]",
-  .function = test_flow,
+  .function = flow_cli,
 };
 
 static u8 *

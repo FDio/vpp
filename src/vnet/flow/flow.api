@@ -31,7 +31,7 @@ define flow_add
   u32 client_index;
   u32 context;
   vl_api_flow_rule_t flow;
-  option vat_help = "test flow add [src-ip <ip-addr/mask>] [dst-ip <ip-addr/mask>] [src-port <port/mask>] [dst-port <port/mask>] [proto <ip-proto>]";
+  option vat_help = "flow add [src-ip <ip-addr/mask>] [dst-ip <ip-addr/mask>] [src-port <port/mask>] [dst-port <port/mask>] [proto <ip-proto>]";
 };
 
 /** \brief flow add request v2
@@ -44,7 +44,7 @@ define flow_add_v2
   u32 client_index;
   u32 context;
   vl_api_flow_rule_v2_t flow;
-  option vat_help = "test flow add [src-ip <ip-addr/mask>] [dst-ip <ip-addr/mask>] [src-port <port/mask>] [dst-port <port/mask>] [proto <ip-proto>] [spec <spec-string>] [mask <mask-string>]";
+  option vat_help = "flow add [src-ip <ip-addr/mask>] [dst-ip <ip-addr/mask>] [src-port <port/mask>] [dst-port <port/mask>] [proto <ip-proto>] [spec <spec-string>] [mask <mask-string>]";
 };
 
 /** \brief reply for adding flow
@@ -83,7 +83,7 @@ autoreply define flow_del
   u32 client_index;
   u32 context;
   u32 flow_index;
-  option vat_help = "test flow del index <index>";
+  option vat_help = "flow del index <index>";
 };
 
 /** \brief flow enable request
@@ -98,7 +98,7 @@ autoreply define flow_enable
   u32 context;
   u32 flow_index;
   u32 hw_if_index;
-  option vat_help = "test flow enable index <index> <interface name>";
+  option vat_help = "flow enable index <index> <interface name>";
 };
 
 /** \brief flow disable request
@@ -113,7 +113,7 @@ autoreply define flow_disable
   u32 context;
   u32 flow_index;
   u32 hw_if_index;
-  option vat_help = "test flow disable index <index> <interface name>";
+  option vat_help = "flow disable index <index> <interface name>";
 };
 
 /*
