@@ -375,6 +375,7 @@ extranet
 Extranets
 failover
 fallback
+fallbacks
 fateshare
 favour
 favoured
@@ -1430,6 +1431,7 @@ wi
 wiki
 Wiki
 Wikipedia
+Wildcarding
 wireguard
 Wireguard
 wireshark
