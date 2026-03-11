@@ -310,7 +310,9 @@ typedef struct
 
   /* single-interface binding */
   vnet_flow_driver_data_t driver_data;
-  u32 __pad0;
+
+  /* template only */
+  u32 n_flows;
 
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
 
@@ -334,11 +336,20 @@ int vnet_flow_add (vnet_main_t *vnm, vnet_flow_t *flow, u32 *flow_index);
 int vnet_flow_enable (vnet_main_t *vnm, u32 flow_index, u32 hw_if_index);
 int vnet_flow_disable (vnet_main_t *vnm, u32 flow_index);
 int vnet_flow_del (vnet_main_t *vnm, u32 flow_index);
+int vnet_flow_template_add (vnet_main_t *vnm, vnet_flow_t *flow, u32 *flow_template_index);
+int vnet_flow_template_del (vnet_main_t *vnm, u32 flow_template_index);
+int vnet_flow_template_enable (vnet_main_t *vnm, u32 flow_template_index, u32 hw_if_index,
+			       u32 n_flows);
+int vnet_flow_template_disable (vnet_main_t *vnm, u32 flow_template_index, u32 hw_if_index);
+int vnet_flow_async_range_enable (vnet_main_t *vnm, u32 flow_template_index, u32 *flow_indices,
+				  u32 hw_if_index);
+int vnet_flow_async_range_disable (vnet_main_t *vnm, u32 *flow_indices, u32 hw_if_index);
 
 typedef struct
 {
   /* pool of device flow entries */
   vnet_flow_t *global_flow_pool;
+  vnet_flow_t *global_flow_template_pool;
 
   u16 msg_id_base;
 } vnet_flow_main_t;
@@ -356,6 +367,16 @@ vnet_get_flow (u32 flow_index)
     return 0;
 
   return pool_elt_at_index (fm->global_flow_pool, flow_index);
+}
+
+always_inline vnet_flow_t *
+vnet_get_flow_template (u32 flow_template_index)
+{
+  vnet_flow_main_t *fm = &flow_main;
+  if (pool_is_free_index (fm->global_flow_template_pool, flow_template_index))
+    return 0;
+
+  return pool_elt_at_index (fm->global_flow_template_pool, flow_template_index);
 }
 
 #endif /* included_vnet_flow_flow_h */

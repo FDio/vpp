@@ -131,6 +131,130 @@ autoreply define flow_disable_v2
   option vat_help = "test flow disable index <index>";
 };
 
+/** \brief flow template add request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param flow - flow rule v2 (template definition)
+*/
+define flow_template_add
+{
+  u32 client_index;
+  u32 context;
+  vl_api_flow_rule_v2_t flow;
+};
+
+/** \brief reply for adding flow template
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+    @param template_index - flow template index
+*/
+define flow_template_add_reply
+{
+  u32 context;
+  i32 retval;
+  u32 template_index;
+};
+
+/** \brief flow template del request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param template_index - flow template index
+*/
+autoreply define flow_template_del
+{
+  u32 client_index;
+  u32 context;
+  u32 template_index;
+};
+
+/** \brief flow template enable request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param template_index - flow template index
+    @param hw_if_index - hardware interface index
+    @param n_flows - number of flows to allocate
+*/
+autoreply define flow_template_enable
+{
+  u32 client_index;
+  u32 context;
+  u32 template_index;
+  u32 hw_if_index;
+  u32 n_flows;
+};
+
+/** \brief flow template disable request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param template_index - flow template index
+    @param hw_if_index - hardware interface index
+*/
+autoreply define flow_template_disable
+{
+  u32 client_index;
+  u32 context;
+  u32 template_index;
+  u32 hw_if_index;
+};
+
+/** \brief flow async range enable request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param template_index - flow template index
+    @param hw_if_index - hardware interface index
+    @param count - number of flow indices
+    @param flow_indices - array of flow indices
+*/
+define flow_async_range_enable
+{
+  u32 client_index;
+  u32 context;
+  u32 template_index;
+  u32 hw_if_index;
+  u32 count;
+  u32 flow_indices[count];
+};
+
+/** \brief reply for enabling flow range async
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+    @param n_success - number of flows that were enabled
+*/
+define flow_async_range_enable_reply
+{
+  u32 context;
+  i32 retval;
+  u16 n_success;
+};
+
+/** \brief flow async range disable request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param hw_if_index - hardware interface index
+    @param count - number of flow indices
+    @param flow_indices - array of flow indices
+*/
+define flow_async_range_disable
+{
+  u32 client_index;
+  u32 context;
+  u32 hw_if_index;
+  u32 count;
+  u32 flow_indices[count];
+};
+
+/** \brief reply for disabling flow range async
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+    @param n_success - number of flows that were disabled
+*/
+define flow_async_range_disable_reply
+{
+  u32 context;
+  i32 retval;
+  u16 n_success;
+};
+
 /*
  * Local Variables:
  * eval: (c-set-style "gnu")

@@ -242,6 +242,66 @@ VLIB_CLI_COMMAND (show_flow_entry_command, static) = {
 };
 
 static clib_error_t *
+show_flow_template (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd_arg)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_flow_main_t *fm = &flow_main;
+  unformat_input_t _line_input, *line_input = &_line_input;
+  vnet_hw_interface_t *hi;
+  vnet_device_class_t *dev_class;
+  vnet_flow_t *f;
+  u32 index = ~0;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    goto no_args;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "index %u", &index))
+	;
+      else
+	return clib_error_return (0, "parse error: '%U'", format_unformat_error, line_input);
+    }
+
+  unformat_free (line_input);
+
+  if (index != ~0)
+    {
+      if ((f = vnet_get_flow_template (index)) == 0)
+	return clib_error_return (0, "no such flow template");
+
+      vlib_cli_output (vm, "%-10s: %u", "index", f->index);
+      vlib_cli_output (vm, "%-10s: %s", "type", flow_type_strings[f->type]);
+      vlib_cli_output (vm, "%-10s: %U", "match", format_flow, f);
+      if (f->driver_data.hw_if_index != ~0)
+	{
+	  hi = vnet_get_hw_interface (vnm, f->driver_data.hw_if_index);
+	  dev_class = vnet_get_device_class (vnm, hi->dev_class_index);
+	  vlib_cli_output (vm, "interface %U\n", format_vnet_hw_if_index_name, vnm,
+			   f->driver_data.hw_if_index);
+	  if (dev_class->format_flow)
+	    vlib_cli_output (vm, "  %U\n", dev_class->format_flow, hi->dev_instance, f->index,
+			     f->driver_data.opaque);
+	}
+      return 0;
+    }
+
+no_args:
+  pool_foreach (f, fm->global_flow_template_pool)
+    {
+      vlib_cli_output (vm, "%U\n", format_flow, f);
+    }
+
+  return 0;
+}
+
+VLIB_CLI_COMMAND (show_flow_template_command, static) = {
+  .path = "show flow template",
+  .short_help = "show flow template [index <index>]",
+  .function = show_flow_template,
+};
+
+static clib_error_t *
 show_flow_interface (vlib_main_t * vm, unformat_input_t * input,
 		     vlib_cli_command_t * cmd_arg)
 {
@@ -295,7 +355,13 @@ flow_cli (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd_arg)
     FLOW_ADD,
     FLOW_DEL,
     FLOW_ENABLE,
-    FLOW_DISABLE
+    FLOW_DISABLE,
+    FLOW_TEMPLATE_ADD,
+    FLOW_TEMPLATE_DEL,
+    FLOW_TEMPLATE_ENABLE,
+    FLOW_TEMPLATE_DISABLE,
+    FLOW_ASYNC_RANGE_ENABLE,
+    FLOW_ASYNC_RANGE_DISABLE,
   } action = FLOW_UNKNOWN_ACTION;
   enum
   {
@@ -306,6 +372,8 @@ flow_cli (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd_arg)
   } flow_class = FLOW_UNKNOWN_CLASS;
 
   u32 hw_if_index = ~0, flow_index = ~0;
+  u32 template_index = ~0, n_flows = 0;
+  u32 *flow_indices = 0;
   int rv;
   u32 teid = 0, session_id = 0, spi = 0;
   u32 vni = 0;
@@ -340,7 +408,19 @@ flow_cli (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd_arg)
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "add"))
+      if (unformat (line_input, "template-add"))
+	action = FLOW_TEMPLATE_ADD;
+      else if (unformat (line_input, "template-del"))
+	action = FLOW_TEMPLATE_DEL;
+      else if (unformat (line_input, "template-enable"))
+	action = FLOW_TEMPLATE_ENABLE;
+      else if (unformat (line_input, "template-disable"))
+	action = FLOW_TEMPLATE_DISABLE;
+      else if (unformat (line_input, "async-range-enable"))
+	action = FLOW_ASYNC_RANGE_ENABLE;
+      else if (unformat (line_input, "async-range-disable"))
+	action = FLOW_ASYNC_RANGE_DISABLE;
+      else if (unformat (line_input, "add"))
 	action = FLOW_ADD;
       else if (unformat (line_input, "del"))
 	action = FLOW_DEL;
@@ -515,15 +595,23 @@ flow_cli (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd_arg)
 
   unformat_free (line_input);
 
-  if (hw_if_index == ~0 && action == FLOW_ENABLE)
+  if (hw_if_index == ~0 &&
+      (action == FLOW_ENABLE || action == FLOW_TEMPLATE_ENABLE || action == FLOW_TEMPLATE_DISABLE ||
+       action == FLOW_ASYNC_RANGE_ENABLE || action == FLOW_ASYNC_RANGE_DISABLE))
     return clib_error_return (0, "Please specify interface name");
 
   if (flow_index == ~0 && (action == FLOW_ENABLE || action == FLOW_DISABLE ||
 			   action == FLOW_DEL))
     return clib_error_return (0, "Please specify flow index");
 
+  if (template_index == ~0 &&
+      (action == FLOW_TEMPLATE_DEL || action == FLOW_TEMPLATE_ENABLE ||
+       action == FLOW_TEMPLATE_DISABLE || action == FLOW_ASYNC_RANGE_ENABLE))
+    return clib_error_return (0, "Please specify template-index");
+
   switch (action)
     {
+    case FLOW_TEMPLATE_ADD:
     case FLOW_ADD:
       if (flow.actions == 0)
 	return clib_error_return (0, "Please specify at least one action");
@@ -745,9 +833,18 @@ flow_cli (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd_arg)
 	}
 
       flow.type = type;
-      rv = vnet_flow_add (vnm, &flow, &flow_index);
-      if (!rv)
-	vlib_cli_output (vm, "flow %u added", flow_index);
+      if (action == FLOW_TEMPLATE_ADD)
+	{
+	  rv = vnet_flow_template_add (vnm, &flow, &template_index);
+	  if (!rv)
+	    vlib_cli_output (vm, "flow template %u added", template_index);
+	}
+      else
+	{
+	  rv = vnet_flow_add (vnm, &flow, &flow_index);
+	  if (!rv)
+	    vlib_cli_output (vm, "flow %u added", flow_index);
+	}
 
       break;
     case FLOW_DEL:
@@ -759,13 +856,39 @@ flow_cli (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd_arg)
     case FLOW_DISABLE:
       rv = vnet_flow_disable (vnm, flow_index);
       break;
+    case FLOW_TEMPLATE_DEL:
+      rv = vnet_flow_template_del (vnm, template_index);
+      break;
+    case FLOW_TEMPLATE_ENABLE:
+      rv = vnet_flow_template_enable (vnm, template_index, hw_if_index, n_flows);
+      break;
+    case FLOW_TEMPLATE_DISABLE:
+      rv = vnet_flow_template_disable (vnm, template_index, hw_if_index);
+      break;
+    case FLOW_ASYNC_RANGE_ENABLE:
+      if (vec_len (flow_indices) == 0)
+	return clib_error_return (0, "Please specify flow-indices");
+      n_flows = vec_len (flow_indices);
+      rv = vnet_flow_async_range_enable (vnm, template_index, flow_indices, hw_if_index);
+      break;
+    case FLOW_ASYNC_RANGE_DISABLE:
+      if (vec_len (flow_indices) == 0)
+	return clib_error_return (0, "Please specify flow-indices");
+      n_flows = vec_len (flow_indices);
+      rv = vnet_flow_async_range_disable (vnm, flow_indices, hw_if_index);
+      break;
     default:
       return clib_error_return (0, "please specify action (add, del, enable,"
 				" disable)");
     }
 
+  vec_free (flow_indices);
+
   if (rv < 0)
     return clib_error_return (0, "flow error: %U", format_flow_error, rv);
+  else if ((action == FLOW_ASYNC_RANGE_ENABLE || action == FLOW_ASYNC_RANGE_DISABLE) &&
+	   rv < n_flows)
+    return clib_error_return (0, "only %d / %d success", rv, n_flows);
 
   return 0;
 }
@@ -773,6 +896,10 @@ flow_cli (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd_arg)
 VLIB_CLI_COMMAND (flow_command, static) = {
   .path = "flow",
   .short_help = "flow [add|del|enable|disable] [index <id>] "
+		"[template-add|template-del|template-enable|template-disable] "
+		"[async-range-enable|async-range-disable] "
+		"[template-index <id>] [n-flows <count>] "
+		"[flow-indices <idx1> <idx2> ...] "
 		"[src-ip <ip-addr/mask>] [dst-ip <ip-addr/mask>] "
 		"[ip6-src-ip <ip-addr/mask>] [ip6-dst-ip <ip-addr/mask>] "
 		"[src-port <port/mask>] [dst-port <port/mask>] "
