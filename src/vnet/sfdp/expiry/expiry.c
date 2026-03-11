@@ -43,8 +43,7 @@ sfdp_enable_disable_expiry_node (u8 is_disable, int skip_main)
       vlib_main_t *vm = vlib_get_main_by_index (i);
       vlib_node_t *node = vlib_get_node_by_name (vm, (u8 *) "sfdp-expire");
       vlib_node_set_state (vm, node->index,
-			   is_disable ? VLIB_NODE_STATE_DISABLED :
-					VLIB_NODE_STATE_POLLING);
+			   is_disable ? VLIB_NODE_STATE_DISABLED : VLIB_NODE_STATE_INTERRUPT);
       if (!is_disable)
 	vlib_node_set_interrupt_pending (vm, node->index);
     }
@@ -134,7 +133,7 @@ VLIB_NODE_FN (sfdp_expire_node)
   vec_reset_length (ptd->expired_sessions);
 
 done:
-  vlib_node_schedule (vm, node->node_index, 1.0);
+  vlib_node_schedule (vm, node->node_index, SFDP_EXPIRY_SCHEDULE_INTERVAL);
   return 0;
 }
 

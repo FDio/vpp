@@ -11,6 +11,9 @@
 /* Default margin before eviction is requested to expiry module. */
 #define SFDP_DEFAULT_EVICTION_SESSIONS_MARGIN (256 * 256) /* 256 vectors */
 
+/* Interval in seconds at which the sfdp-expire node is re-scheduled */
+#define SFDP_EXPIRY_SCHEDULE_INTERVAL ((f64) 1.0)
+
 /* Defined in sfdp.h, but needed in callback functions definitions */
 typedef struct sfdp_session sfdp_session_t;
 typedef struct sfdp_timeout sfdp_timeout_t;
