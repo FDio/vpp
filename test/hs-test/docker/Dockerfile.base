@@ -3,6 +3,11 @@ FROM ubuntu:${UBUNTU_VERSION} AS base
 
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive
+# set proxy env vars because nginx might fail to download without them
+ENV http_proxy=${http_proxy}
+ENV https_proxy=${http_proxy}
+ENV HTTP_PROXY=${http_proxy}
+ENV HTTPS_PROXY=${http_proxy}
 
 # Install common dependencies needed across multiple containers
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -55,12 +60,12 @@ RUN /build_curl.sh
 RUN curl https://nginx.org/keys/nginx_signing.key | gpg --dearmor \
 | tee /usr/share/keyrings/nginx-archive-keyring.gpg >/dev/null
 RUN echo "deb [signed-by=/usr/share/keyrings/nginx-archive-keyring.gpg] \
- http://nginx.org/packages/ubuntu `lsb_release -cs` nginx" \
+ https://nginx.org/packages/ubuntu `lsb_release -cs` nginx" \
  | tee /etc/apt/sources.list.d/nginx.list
 RUN bash -c 'echo -e "Package: *\nPin: origin nginx.org\nPin: release o=nginx\nPin-Priority: 900\n" \
 | tee /etc/apt/preferences.d/99nginx'
 
-RUN apt update && apt install -y nginx=1.28.0* \
+RUN apt-get update && apt-get install -y nginx=1.28.2* \
     # Clean up
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*

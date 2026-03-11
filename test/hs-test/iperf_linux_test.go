@@ -32,5 +32,5 @@ func IperfUdpLinuxTest(s *IperfSuite) {
 	result, err := ParseIperfText(o)
 	AssertNil(err)
 
-	AssertGreaterEqualUnlessCoverageBuild(result.BitrateMbps, 400)
+	AssertGreaterEqualUnlessCoverageBuild(result.BitrateMbps, 400, "Iperf bitrate below threshold")
 }
