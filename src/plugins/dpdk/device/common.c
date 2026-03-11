@@ -44,6 +44,30 @@ dpdk_device_error (dpdk_device_t * xd, char *str, int rv)
 				  str, xd->port_id, rv, rte_strerror (rv));
 }
 
+static void
+dpdk_device_install_default_jump_rule (dpdk_device_t *xd)
+{
+  struct rte_flow_attr attr = {.ingress = 1};
+  struct rte_flow_item pattern[] = {
+    { .type = RTE_FLOW_ITEM_TYPE_END },
+  };
+  struct rte_flow_action_jump jump = { .group = 1 };
+  struct rte_flow_action actions[] = {
+    { .type = RTE_FLOW_ACTION_TYPE_JUMP, .conf = &jump },
+    { .type = RTE_FLOW_ACTION_TYPE_END },
+  };
+  struct rte_flow_error error = {};
+
+  if (!xd->driver || !xd->driver->install_default_jump)
+    return;
+
+  xd->default_jump_flow = rte_flow_create (xd->port_id, &attr, pattern, actions, &error);
+  if (xd->default_jump_flow)
+    dpdk_log_debug ("[%u] Default jump-to-group-1 rule installed", xd->port_id);
+  else
+    dpdk_log_warn ("[%u] Failed to install default jump rule: %s", xd->port_id, error.message);
+}
+
 void
 dpdk_device_setup (dpdk_device_t * xd)
 {
@@ -367,6 +391,8 @@ dpdk_device_start (dpdk_device_t * xd)
       return;
     }
 
+  dpdk_device_install_default_jump_rule (xd);
+
   dpdk_log_debug ("[%u] RX burst function: %U", xd->port_id,
 		  format_dpdk_burst_fn, xd, VLIB_RX);
   dpdk_log_debug ("[%u] TX burst function: %U", xd->port_id,
@@ -397,6 +423,12 @@ dpdk_device_stop (dpdk_device_t * xd)
 {
   if (xd->flags & DPDK_DEVICE_FLAG_PMD_INIT_FAIL)
     return;
+
+  if (xd->default_jump_flow)
+    {
+      rte_flow_destroy (xd->port_id, xd->default_jump_flow, NULL);
+      xd->default_jump_flow = NULL;
+    }
 
   rte_eth_allmulticast_disable (xd->port_id);
   rte_eth_dev_stop (xd->port_id);

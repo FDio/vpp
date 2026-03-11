@@ -93,8 +93,11 @@
 #define IP6_DST_ADDR(ip6) ip6.hdr.dst_addr
 #endif
 
+#define dpdk_device_flow_attr(_xd) ((_xd)->default_jump_flow ? &ingress_group_1 : &ingress)
+
 /* constant structs */
 static const struct rte_flow_attr ingress = {.ingress = 1 };
+static const struct rte_flow_attr ingress_group_1 = { .ingress = 1, .group = 1 };
 
 static inline bool
 mac_address_is_all_zero (const u8 addr[6])
@@ -692,7 +695,8 @@ pattern_end:
   vec_add2 (actions, action, 1);
   action->type = RTE_FLOW_ACTION_TYPE_END;
 
-  rv = rte_flow_validate (xd->port_id, &ingress, items, actions, &xd->last_flow_error);
+  rv = rte_flow_validate (xd->port_id, dpdk_device_flow_attr (xd), items, actions,
+			  &xd->last_flow_error);
 
   if (rv)
     {
@@ -706,7 +710,8 @@ pattern_end:
       goto done;
     }
 
-  fe->handle = rte_flow_create (xd->port_id, &ingress, items, actions, &xd->last_flow_error);
+  fe->handle =
+    rte_flow_create (xd->port_id, dpdk_device_flow_attr (xd), items, actions, &xd->last_flow_error);
 
   if (!fe->handle)
     rv = VNET_FLOW_ERROR_NOT_SUPPORTED;
