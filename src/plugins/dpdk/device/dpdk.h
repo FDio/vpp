@@ -64,7 +64,8 @@ typedef uint16_t dpdk_portid_t;
   _ (13, INT_SUPPORTED, "int-supported")                                                           \
   _ (14, INT_UNMASKABLE, "int-unmaskable")                                                         \
   _ (15, TX_PREPARE, "tx-prepare")                                                                 \
-  _ (16, ASYNC_FLOW_OFFLOAD_CONFIGURED, "async-flow-offload-configured")
+  _ (16, ASYNC_FLOW_OFFLOAD_CONFIGURED, "async-flow-offload-configured")                           \
+  _ (17, FLOW_TRANSFER, "flow-transfer")
 
 typedef enum
 {
