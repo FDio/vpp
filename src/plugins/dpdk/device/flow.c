@@ -93,8 +93,15 @@
 #define IP6_DST_ADDR(ip6) ip6.hdr.dst_addr
 #endif
 
-/* constant structs */
-static const struct rte_flow_attr ingress = {.ingress = 1 };
+static inline void
+dpdk_flow_attr_init (dpdk_device_t *xd, struct rte_flow_attr *attr)
+{
+  clib_memset (attr, 0, sizeof (*attr));
+  if (xd->flags & DPDK_DEVICE_FLAG_FLOW_TRANSFER)
+    attr->transfer = 1;
+  else
+    attr->ingress = 1;
+}
 
 static inline bool
 mac_address_is_all_zero (const u8 addr[6])
@@ -190,7 +197,10 @@ dpdk_flow_add (dpdk_device_t * xd, vnet_flow_t * f, dpdk_flow_entry_t * fe)
   struct rte_flow_action_rss rss = { 0 };
   struct rte_flow_item *item, *items = 0;
   struct rte_flow_action *action, *actions = 0;
+  struct rte_flow_attr flow_attr;
   bool fate = false;
+
+  dpdk_flow_attr_init (xd, &flow_attr);
 
   enum
   {
@@ -690,7 +700,7 @@ pattern_end:
   vec_add2 (actions, action, 1);
   action->type = RTE_FLOW_ACTION_TYPE_END;
 
-  rv = rte_flow_validate (xd->port_id, &ingress, items, actions, &xd->last_flow_error);
+  rv = rte_flow_validate (xd->port_id, &flow_attr, items, actions, &xd->last_flow_error);
 
   if (rv)
     {
@@ -704,7 +714,7 @@ pattern_end:
       goto done;
     }
 
-  fe->handle = rte_flow_create (xd->port_id, &ingress, items, actions, &xd->last_flow_error);
+  fe->handle = rte_flow_create (xd->port_id, &flow_attr, items, actions, &xd->last_flow_error);
 
   if (!fe->handle)
     rv = VNET_FLOW_ERROR_NOT_SUPPORTED;
