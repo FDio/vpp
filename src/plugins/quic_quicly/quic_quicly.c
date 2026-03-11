@@ -640,6 +640,7 @@ quic_quicly_on_receive (quicly_stream_t *stream, size_t off, const void *src,
     return;
 
   stream_data = (quic_stream_data_t *) stream->data;
+  ASSERT (off >= stream_data->app_rx_data_len);
   sctx =
     quic_quicly_get_quic_ctx (stream_data->ctx_id, stream_data->thread_index);
   stream_session = session_get (sctx->c_s_index, stream_data->thread_index);
@@ -647,19 +648,7 @@ quic_quicly_on_receive (quicly_stream_t *stream, size_t off, const void *src,
 
   max_enq = svm_fifo_max_enqueue_prod (f);
   QUIC_DBG (3, "Enqueuing %u at off %u in %u space", len, off, max_enq);
-  /* Handle duplicate packet/chunk from quicly */
-  if (off < stream_data->app_rx_data_len)
-    {
-      QUIC_DBG (3,
-		"Session [idx %u, app_wrk %u, thread %u, rx-fifo 0x%llx]: "
-		"DUPLICATE PACKET (max_enq %u, len %u, "
-		"app_rx_data_len %u, off %u, ToBeNQ %u)",
-		stream_session->session_index, stream_session->app_wrk_index,
-		stream_session->thread_index, f, max_enq, len,
-		stream_data->app_rx_data_len, off,
-		off - stream_data->app_rx_data_len + len);
-      return;
-    }
+
   if (PREDICT_FALSE ((off - stream_data->app_rx_data_len + len) > max_enq))
     {
       QUIC_ERR ("Session [idx %u, app_wrk %u, thread %u, rx-fifo 0x%llx]: "
@@ -671,6 +660,7 @@ quic_quicly_on_receive (quicly_stream_t *stream, size_t off, const void *src,
 		off - stream_data->app_rx_data_len + len);
       return; /* This shouldn't happen */
     }
+
   if (off == stream_data->app_rx_data_len)
     {
       /* Streams live on the same thread so (f, stream_data) should stay
@@ -691,33 +681,10 @@ quic_quicly_on_receive (quicly_stream_t *stream, size_t off, const void *src,
 		stream_session->thread_index, f, len, rlen, off, max_enq);
       stream_data->app_rx_data_len += rlen;
       QUIC_ASSERT (rlen >= len);
-      if (!(stream_session->flags & SESSION_F_RX_EVT))
-	{
-	  app_wrk = app_worker_get_if_valid (stream_session->app_wrk_index);
-	  if (PREDICT_TRUE (app_wrk != 0))
-	    {
-	      stream_session->flags |= SESSION_F_RX_EVT;
-	      app_worker_rx_notify (app_wrk, stream_session);
-	    }
-	}
-      /* Ask app for deq ntf because we sent zero-window to our peer */
-      if (quicly_stream_get_receive_window (stream) == stream_data->app_rx_data_len)
-	svm_fifo_add_want_deq_ntf (f, SVM_FIFO_WANT_DEQ_NOTIF);
-      /* send half-close notification to app */
-      if (!(sctx->flags & QUIC_F_APP_CLOSED_TX) &&
-	  quicly_recvstate_transfer_complete (&stream->recvstate))
-	{
-	  QUIC_DBG (2,
-		    "stream half-close: rcv side closed, ctx_index %u, "
-		    "thread_index %u",
-		    sctx->c_c_index, sctx->c_thread_index);
-	  session_transport_closing_notify (&sctx->connection);
-	}
     }
   else
     {
-      rlen = svm_fifo_enqueue_with_offset (
-	f, off - stream_data->app_rx_data_len, len, (u8 *) src);
+      rlen = svm_fifo_enqueue_with_offset (f, off - stream_data->app_rx_data_len, len, (u8 *) src);
       if (PREDICT_FALSE (rlen < 0))
 	{
 	  /*
@@ -727,6 +694,30 @@ quic_quicly_on_receive (quicly_stream_t *stream, size_t off, const void *src,
 	  return;
 	}
       QUIC_ASSERT (rlen == 0);
+      /* we are done if no new data is available */
+      u32 bytes_available = quicly_recvstate_bytes_available (&stream->recvstate);
+      if (stream_data->app_rx_data_len == bytes_available)
+	return;
+      stream_data->app_rx_data_len = bytes_available;
+    }
+
+  if (!(stream_session->flags & SESSION_F_RX_EVT))
+    {
+      app_wrk = app_worker_get_if_valid (stream_session->app_wrk_index);
+      if (PREDICT_TRUE (app_wrk != 0))
+	{
+	  stream_session->flags |= SESSION_F_RX_EVT;
+	  app_worker_rx_notify (app_wrk, stream_session);
+	}
+    }
+
+  /* send half-close notification to app */
+  if (!(sctx->flags & QUIC_F_APP_CLOSED_TX) &&
+      quicly_recvstate_transfer_complete (&stream->recvstate))
+    {
+      QUIC_DBG (2, "stream half-close: rcv side closed, ctx_index %u, thread_index %u",
+		sctx->c_c_index, sctx->c_thread_index);
+      session_transport_closing_notify (&sctx->connection);
     }
 }
 
@@ -1543,7 +1534,7 @@ quic_quicly_process_one_rx_packet (u64 udp_session_handle, svm_fifo_t *f,
 			       pctx->ph.data_length, &off);
   if (plen == SIZE_MAX)
     {
-      QUIC_DBG (0, "invalid plen");
+      QUIC_ERR ("invalid plen");
       return 1;
     }
 

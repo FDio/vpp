@@ -165,7 +165,6 @@ func QuicBuiltinEchoTest(s *VethsSuite) {
 }
 
 func QuicBuiltinEchoBidirectionalTest(s *VethsSuite) {
-	s.Skip("flaky, quic bu?")
 	quicBuiltinEcho(s, true)
 }
 
