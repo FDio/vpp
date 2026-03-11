@@ -14,35 +14,7 @@ from scapy.layers.inet import IP, UDP, TCP, ICMP
 from scapy.layers.inet6 import IPv6
 
 
-@unittest.skipIf(
-    "sfdp_services" in config.excluded_plugins,
-    "SFDP_Services plugin is required to run SFDP tests",
-)
-class TestSfdp(VppTestCase):
-    """SFDP Infrastructure tests"""
-
-    @classmethod
-    def setUpClass(cls):
-        super(TestSfdp, cls).setUpClass()
-        try:
-            cls.create_pg_interfaces(range(4))
-            for i in cls.pg_interfaces:
-                i.config_ip4()
-                i.config_ip6()
-                i.resolve_arp()
-                i.resolve_ndp()
-                i.admin_up()
-        except Exception:
-            super(TestSfdp, cls).tearDownClass()
-            raise
-
-    @classmethod
-    def tearDownClass(cls):
-        for i in cls.pg_interfaces:
-            i.unconfig_ip4()
-            i.unconfig_ip6()
-            i.admin_down()
-        super(TestSfdp, cls).tearDownClass()
+class SFDPHelpers:
 
     def create_tcp_packet(
         self, src_mac, dst_mac, src_ip, dst_ip, sport, dport, flags="S", ttl=64
@@ -81,6 +53,71 @@ class TestSfdp(VppTestCase):
             / UDP(sport=sport, dport=dport)
             / Raw(b"\xa5" * 100)
         )
+
+    def _verify_basic_session_state(
+        self,
+        sess,
+        expected_protocol,
+        expected_state,
+        expected_session_type,
+        expected_src_ip=None,
+        expected_dst_ip=None,
+    ):
+        """Verify basic session state"""
+        self.assertEqual(
+            sess.protocol, expected_protocol, f"Protocol should be {expected_protocol}"
+        )
+        self.assertEqual(sess.state, expected_state, "Unexpected session state")
+        self.assertEqual(
+            sess.session_type, expected_session_type, "Unexpected session type"
+        )
+
+        # Verify session detail via CLI if IPs are provided
+        if expected_src_ip and expected_dst_ip:
+            detail_output = self.vapi.cli(
+                f"show sfdp session-detail {hex(sess.session_id)}"
+            )
+            self.assertIn(
+                expected_src_ip,
+                detail_output,
+                "cli output does not show expected source IP",
+            )
+            self.assertIn(
+                expected_dst_ip,
+                detail_output,
+                "cli output does not show expected destination IP",
+            )
+
+
+@unittest.skipIf(
+    "sfdp_services" in config.excluded_plugins,
+    "SFDP_Services plugin is required to run SFDP tests",
+)
+class TestSfdp(SFDPHelpers, VppTestCase):
+    """SFDP Infrastructure tests"""
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestSfdp, cls).setUpClass()
+        try:
+            cls.create_pg_interfaces(range(4))
+            for i in cls.pg_interfaces:
+                i.config_ip4()
+                i.config_ip6()
+                i.resolve_arp()
+                i.resolve_ndp()
+                i.admin_up()
+        except Exception:
+            super(TestSfdp, cls).tearDownClass()
+            raise
+
+    @classmethod
+    def tearDownClass(cls):
+        for i in cls.pg_interfaces:
+            i.unconfig_ip4()
+            i.unconfig_ip6()
+            i.admin_down()
+        super(TestSfdp, cls).tearDownClass()
 
     # SFDP is configured on IPv4 feat-arc by default
     def _configure_sfdp(self, enable_ip4=True, enable_ip6=False):
@@ -185,7 +222,7 @@ class TestSfdp(VppTestCase):
         self.vapi.sfdp_kill_session(is_all=True)
         # Sleep one second to ensure expired sessions
         # are removed by process node 'sfdp_expire_node'
-        self.virtual_sleep(1)
+        self.virtual_sleep(2)
 
         sessions = self.vapi.sfdp_session_dump()
         self.assertEqual(
@@ -237,40 +274,6 @@ class TestSfdp(VppTestCase):
             tenant_id=self.tenant_id_ip6,
             is_del=True,
         )
-
-    def _verify_basic_session_state(
-        self,
-        sess,
-        expected_protocol,
-        expected_state,
-        expected_session_type,
-        expected_src_ip=None,
-        expected_dst_ip=None,
-    ):
-        """Verify basic session state"""
-        self.assertEqual(
-            sess.protocol, expected_protocol, f"Protocol should be {expected_protocol}"
-        )
-        self.assertEqual(sess.state, expected_state, "Unexpected session state")
-        self.assertEqual(
-            sess.session_type, expected_session_type, "Unexpected session type"
-        )
-
-        # Verify session detail via CLI if IPs are provided
-        if expected_src_ip and expected_dst_ip:
-            detail_output = self.vapi.cli(
-                f"show sfdp session-detail {hex(sess.session_id)}"
-            )
-            self.assertIn(
-                expected_src_ip,
-                detail_output,
-                "cli output does not show expected source IP",
-            )
-            self.assertIn(
-                expected_dst_ip,
-                detail_output,
-                "cli output does not show expected destination IP",
-            )
 
     def test_sfdp_api_configuration(self):
         """Test SFDP configuration"""
@@ -821,7 +824,7 @@ class TestSfdp(VppTestCase):
         # Cleanup - expire sessions + wait until they
         # are deleted by expiry node
         self.vapi.sfdp_kill_session(is_all=True)
-        self.virtual_sleep(1)
+        self.virtual_sleep(2)
 
         # Disable SFDP on interfaces
         self.vapi.sfdp_interface_input_set(
@@ -838,6 +841,129 @@ class TestSfdp(VppTestCase):
         # Delete tenants
         self.vapi.sfdp_tenant_add_del(tenant_id=1, is_del=True)
         self.vapi.sfdp_tenant_add_del(tenant_id=2, is_del=True)
+
+
+@unittest.skipIf(
+    "sfdp_services" in config.excluded_plugins,
+    "SFDP_Services plugin is required to run SFDP tests",
+)
+class TestSfdpHandoff(SFDPHelpers, VppTestCase):
+    """SFDP Handoff tests"""
+
+    vpp_worker_count = 2
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestSfdpHandoff, cls).setUpClass()
+        try:
+            cls.create_pg_interfaces(range(2))
+            for i in cls.pg_interfaces:
+                i.config_ip4()
+                i.resolve_arp()
+                i.admin_up()
+        except Exception:
+            super(TestSfdpHandoff, cls).tearDownClass()
+            raise
+
+    @classmethod
+    def setUpConstants(cls):
+        # Bump statseg memory from default 32M to 128M
+        # to handle SFDP requirements with two workers
+        cls.extra_vpp_statseg_config = "size 128M"
+        super(TestSfdpHandoff, cls).setUpConstants()
+
+    @classmethod
+    def tearDownClass(cls):
+        for i in cls.pg_interfaces:
+            i.unconfig_ip4()
+            i.admin_down()
+        super(TestSfdpHandoff, cls).tearDownClass()
+
+    def _configure_sfdp(self):
+        """Configure SFDP with a single ip4 tenant on pg0"""
+        self.tenant_id = 1
+        reply = self.vapi.sfdp_tenant_add_del(
+            tenant_id=self.tenant_id,
+            context_id=1,
+            is_del=False,
+        )
+        self.assertEqual(reply.retval, 0)
+
+        service_chain = [{"data": "sfdp-l4-lifecycle"}, {"data": "ip4-lookup"}]
+        reply = self.vapi.sfdp_set_services(
+            tenant_id=self.tenant_id,
+            dir=VppEnum.vl_api_sfdp_session_direction_t.SFDP_API_FORWARD,
+            n_services=len(service_chain),
+            services=service_chain,
+        )
+        self.assertEqual(reply.retval, 0)
+
+        reply = self.vapi.sfdp_set_services(
+            tenant_id=self.tenant_id,
+            dir=VppEnum.vl_api_sfdp_session_direction_t.SFDP_API_REVERSE,
+            n_services=len(service_chain),
+            services=service_chain,
+        )
+        self.assertEqual(reply.retval, 0)
+
+        reply = self.vapi.sfdp_interface_input_set(
+            sw_if_index=self.pg0.sw_if_index,
+            tenant_id=self.tenant_id,
+            is_disable=False,
+        )
+        self.assertEqual(reply.retval, 0)
+
+    def _cleanup_sfdp(self):
+        """Cleanup SFDP configuration"""
+        self.vapi.sfdp_kill_session(is_all=True)
+        self.virtual_sleep(2)
+
+        self.vapi.sfdp_interface_input_set(
+            sw_if_index=self.pg0.sw_if_index,
+            tenant_id=self.tenant_id,
+            is_disable=True,
+        )
+        self.vapi.sfdp_tenant_add_del(tenant_id=self.tenant_id, is_del=True)
+
+    def test_sfdp_session_handoff(self):
+        """Test SFDP session handoff between workers"""
+        self._configure_sfdp()
+
+        # Create a TCP SYN packet
+        pkt = (
+            Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+            / IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4)
+            / TCP(sport=12345, dport=80, flags="S")
+            / Raw(b"\xa5" * 100)
+        )
+
+        # Send on worker 0 to create the session
+        self.send_and_expect(self.pg0, pkt, self.pg1, worker=0)
+
+        # Verify session was created
+        sessions = self.vapi.sfdp_session_dump()
+        self.assertEqual(len(sessions), 1, "Session should have been created")
+
+        # Record the remote flow counter before triggering handoff
+        remote_flow_before = self.statistics.get_err_counter(
+            "/err/sfdp-lookup-ip4/remote flow"
+        )
+
+        # Send the same flow on worker 1 — this should trigger a handoff
+        # since the session is owned by worker 0
+        self.send_and_expect(self.pg0, pkt, self.pg1, worker=1)
+
+        # Verify the remote flow counter incremented, confirming handoff occurred
+        remote_flow_after = self.statistics.get_err_counter(
+            "/err/sfdp-lookup-ip4/remote flow"
+        )
+        self.assertEqual(
+            remote_flow_after,
+            remote_flow_before + 1,
+            "Remote flow counter should have incremented after handoff",
+        )
+
+        self._cleanup_sfdp()
 
 
 if __name__ == "__main__":
