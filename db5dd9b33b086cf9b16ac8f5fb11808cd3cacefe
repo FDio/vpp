@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ee143f93_1d3bb460",
+        "filename": "src/plugins/ip6_dad_autoremove/ip6_dad_autoremove.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 231,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2026-03-11T00:06:32Z",
+      "side": 1,
+      "message": "it should be:\n`  .default_disabled \u003d 1,`",
+      "revId": "db5dd9b33b086cf9b16ac8f5fb11808cd3cacefe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
