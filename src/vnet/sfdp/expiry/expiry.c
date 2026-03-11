@@ -134,7 +134,7 @@ VLIB_NODE_FN (sfdp_expire_node)
   vec_reset_length (ptd->expired_sessions);
 
 done:
-  vlib_node_schedule (vm, node->node_index, 1.0);
+  vlib_node_schedule (vm, node->node_index, SFDP_EXPIRY_SCHEDULE_INTERVAL);
   return 0;
 }
 
