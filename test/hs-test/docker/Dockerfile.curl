@@ -7,4 +7,11 @@ FROM localhost:5001/vpp-test-base:latest
 COPY resources/curl/* /tmp/
 RUN fallocate -l 10MB /tmp/testFile
 
+# unset proxy vars to avoid "HTTP/3 is not supported over an HTTP proxy" error 
+# (using --noproxy arg doesn't work)
+ENV http_proxy=""
+ENV https_proxy=""
+ENV HTTP_PROXY=""
+ENV HTTPS_PROXY=""
+
 CMD ["/bin/sh"]
