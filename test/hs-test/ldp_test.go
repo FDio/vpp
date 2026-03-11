@@ -20,11 +20,11 @@ func init() {
 func LdpIperfUdpMWTest(s *LdpSuite) {
 	s.CpusPerVppContainer = 3
 	s.SetupTest()
-	AssertGreaterEqualUnlessCoverageBuild(ldPreloadIperf(s, "-u -b 1g -P 5", false), 50)
+	AssertGreaterEqualUnlessCoverageBuild(ldPreloadIperf(s, "-u -b 1g -P 5", false), 50, "Iperf bitrate below threshold")
 }
 
 func LdpIperfUdpVppInterruptModeTest(s *LdpSuite) {
-	AssertGreaterEqualUnlessCoverageBuild(ldPreloadIperf(s, "-u -b 1g", false), 100)
+	AssertGreaterEqualUnlessCoverageBuild(ldPreloadIperf(s, "-u -b 1g", false), 100, "Iperf bitrate below threshold")
 }
 
 func ldpIperfTcpReorder(s *LdpSuite, netInterface *NetInterface, extraIperfArgs string) {
@@ -46,7 +46,7 @@ func ldpIperfTcpReorder(s *LdpSuite, netInterface *NetInterface, extraIperfArgs 
 	delete(s.Containers.ClientApp.EnvVars, "VCL_DEBUG")
 	delete(s.Containers.ClientApp.EnvVars, "LDP_DEBUG")
 
-	AssertGreaterEqualUnlessCoverageBuild(ldPreloadIperf(s, extraIperfArgs, true), 20)
+	AssertGreaterEqualUnlessCoverageBuild(ldPreloadIperf(s, extraIperfArgs, true), 20, "Iperf bitrate below threshold")
 }
 
 func LdpIperfTcpReorderTest(s *LdpSuite) {
@@ -75,15 +75,15 @@ func LdpIperfTlsTcpTest(s *LdpSuite) {
 		c.AddEnvVar("LDP_TLS_CERT_FILE", "/crt.crt")
 		c.AddEnvVar("LDP_TLS_KEY_FILE", "/key.key")
 	}
-	AssertGreaterEqualUnlessCoverageBuild(ldPreloadIperf(s, "", false), 100)
+	AssertGreaterEqualUnlessCoverageBuild(ldPreloadIperf(s, "", false), 100, "Iperf bitrate below threshold")
 }
 
 func LdpIperfTcpTest(s *LdpSuite) {
-	AssertGreaterEqualUnlessCoverageBuild(ldPreloadIperf(s, "", false), 100)
+	AssertGreaterEqualUnlessCoverageBuild(ldPreloadIperf(s, "", false), 100, "Iperf bitrate below threshold")
 }
 
 func LdpIperfUdpTest(s *LdpSuite) {
-	AssertGreaterEqualUnlessCoverageBuild(ldPreloadIperf(s, "-u -b 1g", false), 100)
+	AssertGreaterEqualUnlessCoverageBuild(ldPreloadIperf(s, "-u -b 1g", false), 100, "Iperf bitrate below threshold")
 }
 
 func ldPreloadIperf(s *LdpSuite, extraClientArgs string, isReorder bool) float64 {

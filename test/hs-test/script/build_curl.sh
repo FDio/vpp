@@ -1,7 +1,7 @@
 #!/bin/bash
 set -x
 OS_ARCH="$(uname -m)"
-CURL_VERSION="8.17.0"
+CURL_VERSION="8.19.0"
 CURL_TARBALL=curl-linux-"${OS_ARCH}"-glibc-"$CURL_VERSION".tar.xz
 DOWNLOADS_DIR=~/Downloads
 mkdir -p "$DOWNLOADS_DIR"
