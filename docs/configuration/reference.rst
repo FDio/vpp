@@ -778,6 +778,96 @@ Enable UDP / TCP TX checksum offload This is the reversed option of
 
    enable-tcp-udp-checksum
 
+Asynchronous flow offload
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Asynchronous programming requires a PMD, NIC and firmware combination supporting
+the DPDK flow template API; support for ordinary flow rules is not sufficient.
+For mlx5, enable hardware steering with ``devargs dv_flow_en=2`` and check the
+other prerequisites in the `DPDK mlx5 documentation
+<https://github.com/DPDK/dpdk/blob/v26.07/doc/guides/nics/mlx5.rst>`_. This is a
+configuration prerequisite, not a hardware-tested VPP support matrix.
+
+The following options belong inside a DPDK device block or ``dev default``:
+
+* ``async-fo-queues <n>``: number of flow-operation queues. The default is 1.
+  Values are rounded down to a power of two, with a software maximum of 128.
+  A queue count exceeding the PMD's supported count prevents async configuration.
+* ``async-fo-qsize <n>``: operations per queue. The default is 64. Values are
+  rounded down to a power of two and capped at 4096. The PMD may reduce the
+  effective queue size further.
+* ``async-fo-batch <n>``: operations prepared before pushing to hardware. If
+  unset after inheritance, this selects half the effective queue size. Explicit
+  values are rounded down to a power of two and capped at half that size, with
+  a minimum batch size of 1.
+
+Nonzero device-specific values override ``dev default``; zero is treated as
+unset during inheritance. Built-in fallbacks are applied after inheritance.
+These queues are separate from RX/TX packet queues. Public VPP async flow
+requests currently use queue 0, so allocating additional queues
+does not automatically distribute requests or provide parallel queue ownership.
+Access to each flow-operation queue must be serialized.
+
+For example, a device using mlx5 hardware steering can be configured with:
+
+.. code-block:: console
+
+   dpdk {
+      dev 0000:02:00.1 {
+         devargs dv_flow_en=2
+         async-fo-queues 1
+         async-fo-qsize 64
+         async-fo-batch 32
+      }
+   }
+
+Create a flow template and enable it on the target interface with its
+``n-flows`` capacity before using ``flow async-range-enable``. Members must
+have the same flow type and actions as the template. All members share the
+template's match layout and masks; per-flow masks are not independently
+applied. Use separate templates for different mask or layout requirements.
+Async RSS actions accept at most 128 explicitly selected queue indices.
+
+Async templates use DPDK's standard matching policy (``relaxed_matching = 0``).
+Protocol items without field masks still require the corresponding protocol
+layer to be present, as with synchronous flow rules. Wildcarding a protocol's
+fields does not remove that protocol-presence requirement.
+
+Batches are not atomic: successful operations remain applied when another
+operation fails. The API reply's ``n_success`` counts successful completions,
+not merely enqueued requests. Inspect individual flow states before retrying
+the remaining work.
+
+An accepted destroy request consumes its DPDK handle, but hardware removal is
+only confirmed by a successful completion. Driver entries and lookup marks
+remain reserved until then; lookup marks also retain the packet-drain grace
+period before reuse.
+
+The driver makes a final drain attempt before returning from an async request.
+If a push/pull error or timeout still leaves outstanding work, a subsequent
+async request reaching the same queue attempts to drain it before submitting
+new work. Bindings for pending creates remain reserved: retrying an enable on
+those flows returns already enabled without polling hardware or submitting
+duplicates. That response does not confirm hardware installation. Inspection
+commands, template commands, and requests rejected by VNET validation do not
+drain outstanding work. There is no background drain or dedicated drain command.
+
+If a destroy operation fails, its consumed handle cannot be safely retried. The
+driver quarantines the entry and retains its mark and template reference
+instead of reporting the flow as removed.
+
+Use ``show flow interface <interface>`` to inspect pending and quarantined
+flow counts, and ``show flow entry index <index>`` for individual flow states.
+Individual driver states are shown only for bound entries. A pending interface
+binding reserves ownership; it does not confirm the corresponding hardware
+state. Failed creates are detached before handle cleanup completes, so their
+outstanding cleanup or quarantine may appear only in interface counts and logs.
+
+Quarantined entries require coordinated hardware/software recovery, such as
+restarting VPP after addressing the underlying device fault. No automatic
+port flush or reset is performed, and an interface down/up does not clear
+quarantined software state.
+
 The plugins Section
 -------------------
 
