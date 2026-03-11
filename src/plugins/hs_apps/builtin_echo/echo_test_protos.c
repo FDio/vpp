@@ -728,6 +728,7 @@ et_quic_server_rx_inline (echo_test_session_t *es, session_t *s, u8 *rx_buf, u8 
   ASSERT (vec_len (rx_buf) >= max_transfer);
   actual_transfer = app_recv_stream ((app_session_t *) es, rx_buf, max_transfer);
   ASSERT (actual_transfer == max_transfer);
+  es->bytes_received += actual_transfer;
   if (svm_fifo_needs_deq_ntf (rx_fifo, actual_transfer))
     {
       svm_fifo_clear_deq_ntf (rx_fifo);
@@ -759,7 +760,7 @@ et_quic_server_rx (echo_test_session_t *es, session_t *s, u8 *rx_buf)
 static int
 et_quic_server_rx_test_bytes (echo_test_session_t *es, session_t *s, u8 *rx_buf)
 {
-  return et_server_stream_rx_inline (es, s, rx_buf, 1);
+  return et_quic_server_rx_inline (es, s, rx_buf, 1);
 }
 
 static int
