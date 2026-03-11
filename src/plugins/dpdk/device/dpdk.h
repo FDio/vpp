@@ -47,8 +47,13 @@
    VNET_FLOW_ACTION_REDIRECT_TO_QUEUE | VNET_FLOW_ACTION_BUFFER_ADVANCE | VNET_FLOW_ACTION_COUNT | \
    VNET_FLOW_ACTION_DROP | VNET_FLOW_ACTION_RSS)
 
-#define DPDK_DEFAULT_ASYNC_FLOW_N_QUEUES   1
-#define DPDK_DEFAULT_ASYNC_FLOW_QUEUE_SIZE 64
+#define DPDK_DEFAULT_ASYNC_FLOW_QUEUE_INDEX 0
+#define DPDK_DEFAULT_ASYNC_FLOW_N_QUEUES    1
+#define DPDK_DEFAULT_ASYNC_FLOW_QUEUE_SIZE  64
+#define DPDK_DEFAULT_ASYNC_FLOW_PUSH_BATCH  32
+#define DPDK_MAX_CORES			    FRAME_QUEUE_MAX_NELTS
+#define DPDK_MAX_FLOW_PULL_RETRIES	    (1 << 12)
+#define DPDK_MAX_FLOW_QUEUE_SIZE	    (1 << 12)
 
 extern vnet_device_class_t dpdk_device_class;
 extern vlib_node_registration_t dpdk_input_node;
@@ -84,6 +89,37 @@ typedef struct
   u32 mark;
   struct rte_flow *handle;
 } dpdk_flow_entry_t;
+
+/* Per-queue slot ring — tracks which slot to use next */
+typedef struct
+{
+  struct rte_flow_op_result *results; /* store results of operation pushed in the queue */
+  u8 *slots;			      /* pointer to this queue's region within slot_pool */
+  u32 push_counter;		      /* how many time this queue has been pushed */
+  u32 slot_size;		      /* cache-line aligned */
+  u32 in_slot_actions_offset;	      /* offset to get to actions in a slot */
+  u16 head;			      /* next slot index (wraps mod slots_per_queue) */
+  u16 enqueued;			      /* number of slots currently used */
+  u16 batch_size;		      /* number of slots to use before pushing */
+  u16 n_slots;			      /* number of slots */
+  u16 id;			      /* queue id */
+} dpdk_flow_async_queue_t;
+
+typedef struct
+{
+  struct rte_flow_actions_template *actions_handle;
+  struct rte_flow_pattern_template *pattern_handle;
+  struct rte_flow_template_table *table_handle;
+
+  u8 *slot_pool;		      /* flat buffer pool for all slots */
+  u8 *shared_masks;		      /* shared item mask data (one copy for all slots) */
+  struct rte_flow_op_result *results; /* results pool for all queues */
+  u32 in_slot_actions_offset;
+  u32 slot_size;
+  u8 n_items;
+  u8 n_actions;
+  vnet_flow_type_t template_type;
+} dpdk_flow_template_entry_t;
 
 typedef struct
 {
@@ -198,9 +234,13 @@ typedef struct
   /* flow related */
   u32 supported_flow_actions;
   dpdk_flow_entry_t *flow_entries;	/* pool */
+  dpdk_flow_template_entry_t *flow_template_entries;	/* pool */
   dpdk_flow_lookup_entry_t *flow_lookup_entries;	/* pool */
   u32 *parked_lookup_indexes;	/* vector */
   u32 parked_loop_count;
+  u16 async_flow_offload_queue_size;
+  u16 async_flow_offload_queue_batch;
+  u8 async_flow_offload_n_queues;
   struct rte_flow *default_jump_flow;
   struct rte_flow_error last_flow_error;
 
@@ -237,14 +277,17 @@ typedef struct
 #define DPDK_LINK_POLL_INTERVAL       (3.0)
 #define DPDK_MIN_LINK_POLL_INTERVAL   DPDK_MIN_POLL_INTERVAL
 
-#define foreach_dpdk_device_config_item                                       \
-  _ (num_rx_queues)                                                           \
-  _ (num_tx_queues)                                                           \
-  _ (num_rx_desc)                                                             \
-  _ (num_tx_desc)                                                             \
-  _ (max_lro_pkt_size)                                                        \
-  _ (disable_rxq_int)                                                         \
-  _ (rss_fn)
+#define foreach_dpdk_device_config_item                                                            \
+  _ (num_rx_queues)                                                                                \
+  _ (num_tx_queues)                                                                                \
+  _ (num_rx_desc)                                                                                  \
+  _ (num_tx_desc)                                                                                  \
+  _ (max_lro_pkt_size)                                                                             \
+  _ (disable_rxq_int)                                                                              \
+  _ (rss_fn)                                                                                       \
+  _ (async_flow_offload_queue_size)                                                                \
+  _ (async_flow_offload_queue_batch)                                                               \
+  _ (async_flow_offload_n_queues)
 
 typedef enum
 {
@@ -458,6 +501,8 @@ format_function_t format_dpdk_flow_queue_info;
 format_function_t format_dpdk_burst_fn;
 format_function_t format_dpdk_rte_device;
 vnet_flow_dev_ops_function_t dpdk_flow_ops_fn;
+vnet_flow_dev_ops_function_t dpdk_flow_template_ops_fn;
+vnet_flow_async_dev_ops_function_t dpdk_flow_async_ops_fn;
 
 clib_error_t *unformat_rss_fn (unformat_input_t * input, uword * rss_fn);
 
@@ -469,6 +514,7 @@ struct rte_pci_device *dpdk_get_pci_device (const struct rte_eth_dev_info
 struct rte_vmbus_device *
 dpdk_get_vmbus_device (const struct rte_eth_dev_info *info);
 void dpdk_cli_reference (void);
+void dpdk_device_flow_warning (dpdk_device_t *xd, char *str);
 
 #if CLI_DEBUG
 int dpdk_buffer_validate_trajectory_all (u32 * uninitialized);
