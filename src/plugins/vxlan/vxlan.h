@@ -177,7 +177,6 @@ typedef struct
 
   /* Record used instances */
   uword *instance_used;
-  u32 flow_id_start;
 
   /* cache for last 8 vxlan tunnel */
   vtep4_cache_t vtep4_u512;

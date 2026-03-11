@@ -251,28 +251,6 @@ VLIB_CLI_COMMAND (show_flow_entry_command, static) = {
 };
 
 static clib_error_t *
-show_flow_ranges (vlib_main_t * vm, unformat_input_t * input,
-		  vlib_cli_command_t * cmd_arg)
-{
-  vnet_flow_main_t *fm = &flow_main;
-  vnet_flow_range_t *r = 0;
-
-  vlib_cli_output (vm, "%8s  %8s  %s", "Start", "Count", "Owner");
-
-  vec_foreach (r, fm->ranges)
-    {
-      vlib_cli_output (vm, "%8u  %8u  %s", r->start, r->count, r->owner);
-    };
-  return 0;
-}
-
-VLIB_CLI_COMMAND (show_flow_ranges_command, static) = {
-    .path = "show flow ranges",
-    .short_help = "show flow ranges",
-    .function = show_flow_ranges,
-};
-
-static clib_error_t *
 show_flow_interface (vlib_main_t * vm, unformat_input_t * input,
 		     vlib_cli_command_t * cmd_arg)
 {
