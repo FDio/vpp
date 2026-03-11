@@ -967,11 +967,16 @@ ec_print_timeout_stats (vlib_main_t *vm)
 	{
 	  received_bytes += sess->bytes_received;
 	  sent_bytes += sess->bytes_sent;
+#if CLIB_DEBUG > 0
+	  session_t *s = session_get_from_handle_if_valid (sess->vpp_session_handle);
+	  if (s)
+	    et_err ("%U", format_session, s, 2);
+#endif
 	}
     }
   echo_cli ("Timeout at %.6f with %d sessions still active...", vlib_time_now (vm),
 	    ecm->ready_connections);
-  if (ecm->cfg.proto == TRANSPORT_PROTO_UDP)
+  if (ecm->cfg.echo_bytes)
     {
       echo_cli ("Received %llu bytes out of %llu sent (%llu target)", received_bytes, sent_bytes,
 		ecm->cfg.bytes_to_send * ecm->cfg.n_clients);

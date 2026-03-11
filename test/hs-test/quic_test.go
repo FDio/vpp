@@ -13,7 +13,7 @@ import (
 func init() {
 	RegisterVethTests(QuicAlpnMatchTest, QuicAlpnOverlapMatchTest, QuicAlpnServerPriorityMatchTest, QuicAlpnMismatchTest,
 		QuicAlpnEmptyServerListTest, QuicAlpnEmptyClientListTest, QuicBuiltinEchoTest, QuicCpsTest,
-		QuicBuiltinEchoBidirectionalTest)
+		QuicBuiltinEchoBidirectionalTest, QuicBuiltinEchoTestBytesTest, QuicBuiltinEchoTestBytesBidirectionalTest)
 	RegisterNoTopoTests(QuicFailedHandshakeTest)
 }
 
@@ -165,8 +165,37 @@ func QuicBuiltinEchoTest(s *VethsSuite) {
 }
 
 func QuicBuiltinEchoBidirectionalTest(s *VethsSuite) {
-	s.Skip("flaky, quic bu?")
 	quicBuiltinEcho(s, true)
+}
+
+func QuicBuiltinEchoTestBytesTest(s *VethsSuite) {
+	serverVpp := s.Containers.ServerVpp.VppInstance
+	clientVpp := s.Containers.ClientVpp.VppInstance
+
+	Log(serverVpp.Vppctl("test echo server " +
+		" uri quic://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1))
+
+	cmd := "test echo client test-bytes bytes 8388608 "
+	cmd += "uri quic://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1
+
+	o := clientVpp.Vppctl(cmd)
+	Log(o)
+	AssertNotContains(o, "failed")
+}
+
+func QuicBuiltinEchoTestBytesBidirectionalTest(s *VethsSuite) {
+	serverVpp := s.Containers.ServerVpp.VppInstance
+	clientVpp := s.Containers.ClientVpp.VppInstance
+
+	Log(serverVpp.Vppctl("test echo server " +
+		" uri quic://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1))
+
+	cmd := "test echo client echo-bytes test-bytes bytes 8388608 "
+	cmd += "uri quic://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1
+
+	o := clientVpp.Vppctl(cmd)
+	Log(o)
+	AssertNotContains(o, "failed")
 }
 
 func QuicCpsTest(s *VethsSuite) {
