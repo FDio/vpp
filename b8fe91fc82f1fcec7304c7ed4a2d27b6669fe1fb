@@ -16,6 +16,24 @@
       "message": "I am not convinced it\u0027s necessary to detangle l2input_intf_config() even for the setters, assuming sw_if_index already exists due to its interface creation. But please take a look and let me know if you\u0027d like to continue with PS#4 or without it. Tests pass in both cases. My take: we do not need the clib_atonic_* stuff from PS#4.",
       "revId": "b8fe91fc82f1fcec7304c7ed4a2d27b6669fe1fb",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "30aad7d7_62965d74",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2026-03-11T16:27:11Z",
+      "side": 1,
+      "message": "Good homework on finding l2input_intf_config calling vec_validate which is not thread safe. It looks like everybody is calling it with barrier_sync. So let\u0027s stick with PS#3 and I\u0027ll +1 to it. Can you please revert PS#4?",
+      "parentUuid": "14fad16b_132c5efd",
+      "revId": "b8fe91fc82f1fcec7304c7ed4a2d27b6669fe1fb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
