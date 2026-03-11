@@ -126,8 +126,6 @@ static_always_inline void
 sfdp_session_timer_update (sfdp_tw_t *tw, sfdp_session_timer_t *timer, f64 now, f64 timeout_seconds)
 {
   u32 ticks = SFDP_SECONDS_TO_TICKS (timeout_seconds);
-  if (PREDICT_FALSE (ticks == 0))
-    vlib_node_set_interrupt_pending (vlib_get_main (), sfdp_expire_node.index);
   timer->next_expiration = now + SFDP_TICKS_TO_SECONDS (ticks);
 }
 
@@ -139,8 +137,6 @@ sfdp_session_timer_update_maybe_past (sfdp_tw_t *tw, sfdp_session_timer_t *timer
   if (timer->next_expiration > now + SFDP_TICKS_TO_SECONDS (timeout_ticks))
     sfdp_timer_update_internal (tw, timer->handle, timeout_ticks);
 
-  if (PREDICT_FALSE (timeout_ticks == 0))
-    vlib_node_set_interrupt_pending (vlib_get_main (), sfdp_expire_node.index);
   timer->next_expiration = now + SFDP_TICKS_TO_SECONDS (timeout_ticks);
 }
 
@@ -153,8 +149,6 @@ sfdp_session_timer_update_unlikely_past (sfdp_tw_t *tw, sfdp_session_timer_t *ti
     {
       sfdp_timer_update_internal (tw, timer->handle, timeout_ticks);
     }
-  if (PREDICT_FALSE (timeout_ticks == 0))
-    vlib_node_set_interrupt_pending (vlib_get_main (), sfdp_expire_node.index);
   timer->next_expiration = now + SFDP_TICKS_TO_SECONDS (timeout_ticks);
 }
 

@@ -848,8 +848,8 @@ class TestSfdp(VppTestCase):
 class TestSfdpTimer(VppTestCase):
     """SFDP timer wheel behavior"""
 
-    # 1ms makes one wheel turn (2048 slots) in 2.048s.
-    extra_vpp_config = ["sfdp { timer-interval 0.001 }"]
+    # 20ms makes one wheel turn (2048 slots) in 2.048s.
+    extra_vpp_config = ["sfdp { timer-interval 0.02 }"]
 
     @classmethod
     def setUpClass(cls):
