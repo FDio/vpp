@@ -1169,12 +1169,11 @@ vnet_vxlan_add_del_rx_flow (u32 hw_if_index, u32 t_index, int is_add)
     {
       if (t->flow_index == ~0)
 	{
-	  vxlan_main_t *vxm = &vxlan_main;
 	  vnet_flow_t flow = {
 	    .actions =
 	      VNET_FLOW_ACTION_REDIRECT_TO_NODE | VNET_FLOW_ACTION_MARK |
 	      VNET_FLOW_ACTION_BUFFER_ADVANCE,
-	    .mark_flow_id = t->dev_instance + vxm->flow_id_start,
+	    .mark_flow_id = VNET_FLOW_MARK_FROM_INDEX(t->dev_instance),
 	    .redirect_node_index = vxlan4_flow_input_node.index,
 	    .buffer_advance = sizeof (ethernet_header_t),
 	    .type = VNET_FLOW_TYPE_IP4_VXLAN,
@@ -1289,9 +1288,6 @@ vxlan_init (vlib_main_t * vm)
 
   vxm->vnet_main = vnet_get_main ();
   vxm->vlib_main = vm;
-
-  vnet_flow_get_range (vxm->vnet_main, "vxlan", 1024 * 1024,
-		       &vxm->flow_id_start);
 
   vxm->bm_ip4_bypass_enabled_by_sw_if = 0;
   vxm->bm_ip6_bypass_enabled_by_sw_if = 0;

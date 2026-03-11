@@ -14,6 +14,11 @@
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/ethernet/packet.h>
 
+/* 0 is a sentinel value for buffer without marking */
+#define VNET_FLOW_MARK_INVALID	     0
+#define VNET_FLOW_MARK_FROM_INDEX(i) ((i) + 1)
+#define VNET_FLOW_INDEX_FROM_MARK(m) ((m) -1)
+
 #define foreach_flow_type                                                     \
   /* l2 flow*/                                                                \
   _ (ETHERNET, ethernet, "ethernet")                                          \
@@ -159,13 +164,14 @@ typedef enum
 #undef _
 } vnet_flow_action_t;
 
-#define foreach_flow_error \
-  _( -1, NOT_SUPPORTED, "not supported")			\
-  _( -2, ALREADY_DONE, "already done")				\
-  _( -3, ALREADY_EXISTS, "already exists")			\
-  _( -4, NO_SUCH_ENTRY, "no such entry")			\
-  _( -5, NO_SUCH_INTERFACE, "no such interface")		\
-  _( -6, INTERNAL, "internal error")
+#define foreach_flow_error                                                                         \
+  _ (-1, NOT_SUPPORTED, "not supported")                                                           \
+  _ (-2, ALREADY_DONE, "already done")                                                             \
+  _ (-3, ALREADY_EXISTS, "already exists")                                                         \
+  _ (-4, NO_SUCH_ENTRY, "no such entry")                                                           \
+  _ (-5, NO_SUCH_INTERFACE, "no such interface")                                                   \
+  _ (-6, INTERNAL, "internal error")                                                               \
+  _ (-7, INVALID_VALUE, "invalid value")
 
 #define foreach_flow_rss_types                                                \
   _ (0, FRAG_IPV4, "ipv4-frag")                                               \
@@ -312,7 +318,6 @@ typedef struct
   uword *private_data;
 } vnet_flow_t;
 
-int vnet_flow_get_range (vnet_main_t *vnm, char *owner, u32 count, u32 *start);
 int vnet_flow_add (vnet_main_t *vnm, vnet_flow_t *flow, u32 *flow_index);
 int vnet_flow_enable (vnet_main_t *vnm, u32 flow_index, u32 hw_if_index);
 int vnet_flow_disable (vnet_main_t *vnm, u32 flow_index, u32 hw_if_index);
@@ -320,21 +325,8 @@ int vnet_flow_del (vnet_main_t *vnm, u32 flow_index);
 
 typedef struct
 {
-  u32 start;
-  u32 count;
-  u8 *owner;
-} vnet_flow_range_t;
-
-typedef struct
-{
   /* pool of device flow entries */
   vnet_flow_t *global_flow_pool;
-
-  /* flow ids allocated */
-  u32 flows_used;
-
-  /* vector of flow ranges */
-  vnet_flow_range_t *ranges;
 
   u16 msg_id_base;
 } vnet_flow_main_t;

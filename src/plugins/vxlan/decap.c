@@ -5,6 +5,7 @@
 /* decap.c: vxlan tunnel decap packet processing */
 
 #include <vlib/vlib.h>
+#include <vnet/flow/flow.h>
 #include <vxlan/vxlan.h>
 #include <vnet/udp/udp_local.h>
 
@@ -1134,15 +1135,15 @@ VLIB_NODE_FN (vxlan4_flow_input_node) (vlib_main_t * vm,
 	  vnet_update_l2_len (b2);
 	  vnet_update_l2_len (b3);
 
-	  ASSERT (b0->flow_id != 0);
-	  ASSERT (b1->flow_id != 0);
-	  ASSERT (b2->flow_id != 0);
-	  ASSERT (b3->flow_id != 0);
+	  ASSERT (b0->flow_id != VNET_FLOW_MARK_INVALID);
+	  ASSERT (b1->flow_id != VNET_FLOW_MARK_INVALID);
+	  ASSERT (b2->flow_id != VNET_FLOW_MARK_INVALID);
+	  ASSERT (b3->flow_id != VNET_FLOW_MARK_INVALID);
 
-	  u32 t_index0 = b0->flow_id - vxm->flow_id_start;
-	  u32 t_index1 = b1->flow_id - vxm->flow_id_start;
-	  u32 t_index2 = b2->flow_id - vxm->flow_id_start;
-	  u32 t_index3 = b3->flow_id - vxm->flow_id_start;
+	  u32 t_index0 = VNET_FLOW_MARK_FROM_INDEX (b0->flow_id);
+	  u32 t_index1 = VNET_FLOW_MARK_FROM_INDEX (b1->flow_id);
+	  u32 t_index2 = VNET_FLOW_MARK_FROM_INDEX (b2->flow_id);
+	  u32 t_index3 = VNET_FLOW_MARK_FROM_INDEX (b3->flow_id);
 
 	  vxlan_tunnel_t *t0 = &vxm->tunnels[t_index0];
 	  vxlan_tunnel_t *t1 = &vxm->tunnels[t_index1];
@@ -1150,10 +1151,10 @@ VLIB_NODE_FN (vxlan4_flow_input_node) (vlib_main_t * vm,
 	  vxlan_tunnel_t *t3 = &vxm->tunnels[t_index3];
 
 	  /* flow id consumed */
-	  b0->flow_id = 0;
-	  b1->flow_id = 0;
-	  b2->flow_id = 0;
-	  b3->flow_id = 0;
+	  b0->flow_id = VNET_FLOW_MARK_INVALID;
+	  b1->flow_id = VNET_FLOW_MARK_INVALID;
+	  b2->flow_id = VNET_FLOW_MARK_INVALID;
+	  b3->flow_id = VNET_FLOW_MARK_INVALID;
 
 	  u32 sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX] =
 	    t0->sw_if_index;
@@ -1251,10 +1252,10 @@ VLIB_NODE_FN (vxlan4_flow_input_node) (vlib_main_t * vm,
 
 	  vnet_update_l2_len (b0);
 
-	  ASSERT (b0->flow_id != 0);
-	  u32 t_index0 = b0->flow_id - vxm->flow_id_start;
+	  ASSERT (b0->flow_id != VNET_FLOW_MARK_INVALID);
+	  u32 t_index0 = VNET_FLOW_MARK_FROM_INDEX (b0->flow_id);
 	  vxlan_tunnel_t *t0 = &vxm->tunnels[t_index0];
-	  b0->flow_id = 0;
+	  b0->flow_id = VNET_FLOW_MARK_INVALID;
 
 	  u32 sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX] =
 	    t0->sw_if_index;
