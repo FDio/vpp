@@ -16,6 +16,24 @@
       "message": "Are the new APIs multi-thread-safe? It appears to me the getters are. If that is the case, please mark them thread-safe.",
       "revId": "725c408e078e80774e5ac80ef6a12ace5852a25e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c0ded1ba_849733f1",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2026-03-11T15:36:15Z",
+      "side": 1,
+      "message": "I think the answer is yes, because l2input_intf_config() calls vec_validate() although it does it on sw_if_index which has already been added when the interface was created.\n\nI\u0027m going to upload PS #4 which uses clib_atomic_load_* and clib_atomic_fetch_* but I am not sure they are necessary. Can you take a look please? I\u0027m not super familiar with this stuff.",
+      "parentUuid": "d41342dc_9a3f26a4",
+      "revId": "725c408e078e80774e5ac80ef6a12ace5852a25e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
