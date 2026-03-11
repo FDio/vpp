@@ -273,6 +273,7 @@ virtio_show (vlib_main_t *vm, u32 *hw_if_indices, u8 show_descr)
       vlib_cli_output (vm, "  gso-enabled %d", vif->gso_enabled);
       vlib_cli_output (vm, "  csum-enabled %d", vif->csum_offload_enabled);
       vlib_cli_output (vm, "  packet-buffering %d", vif->packet_buffering);
+      vlib_cli_output (vm, "  mac-table-filtering %d", vif->mac_filter_enabled);
       vlib_cli_output (vm, "  rss-enabled %d", vif->rss_enabled);
       vlib_cli_output (vm, "  Mac Address: %U", format_ethernet_address,
 		       vif->mac_addr);
@@ -493,6 +494,12 @@ virtio_show (vlib_main_t *vm, u32 *hw_if_indices, u8 show_descr)
 		  }
 	      }
 	  }
+      }
+      if (vif->mac_filter_enabled)
+      {
+	vlib_cli_output (vm, "MAC Filters:");
+	for (i = 0; i < vif->mac_table_entries; i++)
+	  vlib_cli_output (vm, "  %U", format_ethernet_address, vif->mac_filter[i]);
       }
     }
 
