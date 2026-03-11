@@ -55,6 +55,105 @@ dpdk_device_flow_warning (dpdk_device_t *xd, char *str, int rv)
 }
 
 /*
+ * Install two NIC Rx ingress rules per representor:
+ *
+ *   group 0 (root):  ETH catch-all → JUMP to group 1
+ *   group 1 (non-root, priority max): ETH catch-all → RSS
+ *
+ * Group 0 is the firmware root table — slow and limited (16 priorities).
+ * It holds only the jump rule. Group 1 is a non-root HW table — fast,
+ * hash-based, supports millions of rules and priorities 0..UINT32_MAX.
+ * User rules are installed in group 1 at lower priority numbers,
+ * taking precedence over the catch-all RSS.
+ *
+ * The patterns appear to be plain ETH catch-all, but the mlx5 template API
+ * silently prepends a REPRESENTED_PORT match (see block comment above),
+ * so each representor's rules only match its own traffic in the shared
+ * root table.
+ */
+static void
+dpdk_device_install_default_jump_rule (dpdk_device_t *xd)
+{
+  struct rte_flow_item jump_pattern[] = {
+    { .type = RTE_FLOW_ITEM_TYPE_ETH },
+    { .type = RTE_FLOW_ITEM_TYPE_END },
+  };
+  struct rte_flow_action_jump jump_act = { .group = 1 };
+  struct rte_flow_action jump_actions[] = {
+    { .type = RTE_FLOW_ACTION_TYPE_JUMP, .conf = &jump_act },
+    { .type = RTE_FLOW_ACTION_TYPE_END },
+  };
+  u16 queues[xd->conf.n_rx_queues];
+  struct rte_flow_action_rss rss = {
+    .func = RTE_ETH_HASH_FUNCTION_SYMMETRIC_TOEPLITZ,
+    .types = RTE_ETH_RSS_IP,
+    .queue_num = xd->conf.n_rx_queues,
+    .queue = queues,
+  };
+  struct rte_flow_item miss_pattern[] = {
+    { .type = RTE_FLOW_ITEM_TYPE_ETH },
+    { .type = RTE_FLOW_ITEM_TYPE_END },
+  };
+  struct rte_flow_action miss_actions[] = {
+    { .type = RTE_FLOW_ACTION_TYPE_RSS, .conf = &rss },
+    { .type = RTE_FLOW_ACTION_TYPE_END },
+  };
+  struct rte_flow_attr jump_attr = { .ingress = 1, .group = 0 };
+  struct rte_flow_attr miss_attr = { .ingress = 1, .group = 1, .priority = ~0 };
+  int i;
+
+  for (i = 0; i < xd->conf.n_rx_queues; i++)
+    queues[i] = i;
+
+  if (!xd->driver || !xd->driver->install_default_jump)
+    return;
+
+  /* The async template API requires the HWS DR context created by
+   * rte_flow_configure() — DPDK_DEVICE_FLAG_ASYNC_FLOW_OFFLOAD indicates
+   * that rte_flow_configure() succeeded on this port. */
+  if ((xd->flags & DPDK_DEVICE_FLAG_ASYNC_FLOW_OFFLOAD) == 0)
+    {
+      dpdk_log_warn (
+	"[%u] Default jump/miss rules cannot be installed without async offload support",
+	xd->port_id);
+      return;
+    }
+
+  xd->default_jump_flow =
+    rte_flow_create (xd->port_id, &jump_attr, jump_pattern, jump_actions, &xd->last_flow_error);
+  if (xd->default_jump_flow)
+    {
+      dpdk_log_debug ("[%u] Default jump rule to group 1 installed", xd->port_id);
+    }
+  else
+    {
+      dpdk_device_flow_warning (xd, "Failed to install jump rule", rte_errno);
+      goto error_jump;
+    }
+
+  xd->default_miss_flow =
+    rte_flow_create (xd->port_id, &miss_attr, miss_pattern, miss_actions, &xd->last_flow_error);
+  if (xd->default_miss_flow)
+    {
+      dpdk_log_debug ("[%u] Default catch-all rule to group 1 installed", xd->port_id);
+    }
+  else
+    {
+      dpdk_device_flow_warning (xd, "Failed to install catch-all rule", rte_errno);
+      goto error_miss;
+    }
+
+  return;
+
+error_miss:
+  rte_flow_destroy (xd->port_id, xd->default_jump_flow, &xd->last_flow_error);
+  xd->default_jump_flow = NULL;
+
+error_jump:
+  return;
+}
+
+/*
  * Check for async flow offload support.
  * The only way to tell, is to check if rte_flow_info_get and rte_flow_configure does not return
  * -ENOTSUP.
@@ -478,6 +577,8 @@ dpdk_device_start (dpdk_device_t * xd)
       return;
     }
 
+  dpdk_device_install_default_jump_rule (xd);
+
   dpdk_log_debug ("[%u] RX burst function: %U", xd->port_id,
 		  format_dpdk_burst_fn, xd, VLIB_RX);
   dpdk_log_debug ("[%u] TX burst function: %U", xd->port_id,
@@ -508,6 +609,22 @@ dpdk_device_stop (dpdk_device_t * xd)
 {
   if (xd->flags & DPDK_DEVICE_FLAG_PMD_INIT_FAIL)
     return;
+
+  /* Tear down default rules. Destroy jump first so traffic returns to the
+   * firmware-default RSS in group 0. If we destroyed the catch-all first,
+   * the jump would still be active and traffic arriving in group 1 would
+   * have no matching rule — causing a blackhole until the jump is removed. */
+  if (xd->default_jump_flow)
+    {
+      rte_flow_destroy (xd->port_id, xd->default_jump_flow, &xd->last_flow_error);
+      xd->default_jump_flow = NULL;
+    }
+
+  if (xd->default_miss_flow)
+    {
+      rte_flow_destroy (xd->port_id, xd->default_miss_flow, &xd->last_flow_error);
+      xd->default_miss_flow = NULL;
+    }
 
   rte_eth_allmulticast_disable (xd->port_id);
   rte_eth_dev_stop (xd->port_id);
