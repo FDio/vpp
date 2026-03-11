@@ -53,6 +53,33 @@ dpdk_device_flow_warning (dpdk_device_t *xd, char *str)
 		xd->last_flow_error.message);
 }
 
+static void
+dpdk_device_flow_offload_probe_transfer (dpdk_device_t *xd)
+{
+  struct rte_flow_attr probe_attr = { .transfer = 1 };
+  struct rte_flow_item probe_items[] = {
+    { .type = RTE_FLOW_ITEM_TYPE_END },
+  };
+  struct rte_flow_action probe_actions[] = {
+    { .type = RTE_FLOW_ACTION_TYPE_END },
+  };
+  struct rte_flow_error probe_error = {};
+  int rv;
+
+  /* Probe for transfer attribute support */
+  rv = rte_flow_validate (xd->port_id, &probe_attr, probe_items, probe_actions, &probe_error);
+  if (rv == 0)
+    {
+      xd->flags |= DPDK_DEVICE_FLAG_FLOW_TRANSFER;
+      dpdk_log_debug ("[%u] Flow transfer attribute supported", xd->port_id);
+    }
+  else
+    {
+      dpdk_log_debug ("[%u] Flow transfer attribute not supported, using ingress: %s", xd->port_id,
+		      probe_error.message);
+    }
+}
+
 /*
  * Check for async flow offload support.
  * The only way to tell, is to check if rte_flow_info_get and rte_flow_configure does not return
@@ -105,6 +132,8 @@ dpdk_device_configure_flow_offload (dpdk_device_t *xd)
       xd->supported_flow_actions = 0;
       return;
     }
+
+  dpdk_device_flow_offload_probe_transfer (xd);
 
   dpdk_log_debug ("[%u] Async flow port info: %U", xd->port_id, format_dpdk_flow_port_info,
 		  &flow_port_info);
