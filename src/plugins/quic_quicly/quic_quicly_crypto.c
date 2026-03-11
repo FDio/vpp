@@ -83,8 +83,8 @@ quic_quicly_crypto_context_make_key_from_ctx (clib_bihash_kv_24_8_t *kv,
   application_t *app = application_get (ctx->parent_app_id);
   kv->key[0] =
     ((u64) ctx->ckpair_index) << 32 | (u64) (ctx->verify_cfg << 24) | (u64) ctx->crypto_engine;
-  kv->key[1] = app->sm_properties.rx_fifo_size - 1;
-  kv->key[2] = app->sm_properties.tx_fifo_size - 1;
+  kv->key[1] = app->sm_properties.rx_fifo_size;
+  kv->key[2] = app->sm_properties.tx_fifo_size;
 }
 
 static_always_inline void
@@ -390,14 +390,10 @@ quic_quicly_crypto_context_init_data (quic_quicly_crypto_ctx_t *crctx, quic_ctx_
 			  &quicly_cc_reno_init;
 
   app = application_get (ctx->parent_app_id);
-  quicly_ctx->transport_params.max_stream_data.bidi_local =
-    app->sm_properties.rx_fifo_size - 1;
-  quicly_ctx->transport_params.max_stream_data.bidi_remote =
-    app->sm_properties.tx_fifo_size - 1;
+  quicly_ctx->transport_params.max_stream_data.bidi_local = app->sm_properties.rx_fifo_size;
+  quicly_ctx->transport_params.max_stream_data.bidi_remote = app->sm_properties.tx_fifo_size;
   quicly_ctx->transport_params.max_stream_data.uni =
-    clib_min (app->sm_properties.rx_fifo_size,
-	      app->sm_properties.tx_fifo_size) -
-    1;
+    clib_min (app->sm_properties.rx_fifo_size, app->sm_properties.tx_fifo_size);
 
   quicly_ctx->transport_params.max_udp_payload_size = QUIC_MAX_PACKET_SIZE;
   app_cctx = app_crypto_ctx_get (app);
