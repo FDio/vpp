@@ -101,6 +101,8 @@ dpdk_flow_attr_init (dpdk_device_t *xd, struct rte_flow_attr *attr)
     attr->transfer = 1;
   else
     attr->ingress = 1;
+  if (xd->default_jump_flow)
+    attr->group = 1;
 }
 
 static inline bool
