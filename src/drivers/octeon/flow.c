@@ -808,7 +808,7 @@ parse_flow_actions:
 
   if (flow->actions & VNET_FLOW_ACTION_MARK)
     {
-      if (flow->mark_flow_id == 0 ||
+      if (flow->mark_flow_id == VNET_FLOW_MARK_INVALID ||
 	  flow->mark_flow_id > (NPC_FLOW_FLAG_VAL - 2))
 	{
 	  log_err (port->dev, "mark flow id must be > 0 and < 0xfffe");

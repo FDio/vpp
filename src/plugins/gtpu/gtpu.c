@@ -1312,7 +1312,7 @@ vnet_gtpu_add_del_rx_flow (u32 hw_if_index, u32 t_index, int is_add)
 	    .actions =
 	      VNET_FLOW_ACTION_REDIRECT_TO_NODE | VNET_FLOW_ACTION_MARK |
 	      VNET_FLOW_ACTION_BUFFER_ADVANCE,
-	    .mark_flow_id = t_index + gtm->flow_id_start,
+	    .mark_flow_id = VNET_FLOW_MARK_FROM_INDEX(t_index),
 	    .redirect_node_index = gtpu4_flow_input_node.index,
 	    .buffer_advance = sizeof (ethernet_header_t)
 	      + sizeof (ip4_header_t) + sizeof (udp_header_t),
@@ -1566,9 +1566,6 @@ gtpu_init (vlib_main_t * vm)
 
   gtm->vnet_main = vnet_get_main ();
   gtm->vlib_main = vm;
-
-  vnet_flow_get_range (gtm->vnet_main, "gtpu", 1024 * 1024,
-		       &gtm->flow_id_start);
 
   /* initialize the ip6 hash */
   gtm->gtpu6_tunnel_by_key = hash_create_mem (0,
