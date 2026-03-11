@@ -320,21 +320,8 @@ int vnet_flow_del (vnet_main_t *vnm, u32 flow_index);
 
 typedef struct
 {
-  u32 start;
-  u32 count;
-  u8 *owner;
-} vnet_flow_range_t;
-
-typedef struct
-{
   /* pool of device flow entries */
   vnet_flow_t *global_flow_pool;
-
-  /* flow ids allocated */
-  u32 flows_used;
-
-  /* vector of flow ranges */
-  vnet_flow_range_t *ranges;
 
   u16 msg_id_base;
 } vnet_flow_main_t;
