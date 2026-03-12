@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "54666002_ef7a94bf",
+        "filename": "src/vnet/crypto/crypto.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 574,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2026-03-12T15:25:26Z",
+      "side": 1,
+      "message": "Why do we need per thread key? Symmetric crypto key should be read-only after initialized (expanded) and there should be ~no perf impact for all threads sharing the same key.",
+      "revId": "4f92b9bbfd10b31f3fb14f0b72a5053a3364b96d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
