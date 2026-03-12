@@ -1,0 +1,76 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "649f382d_281648fe",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-03-12T10:26:31Z",
+      "side": 1,
+      "message": "Done.",
+      "parentUuid": "4762bfbb_c471d6f9",
+      "revId": "0f787d63b6c7ee5c20e5efbf7c14fbcb410ecefc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e9d11363_9d292be6",
+        "filename": "src/vnet/ip/ip6_packet.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-03-12T10:26:31Z",
+      "side": 1,
+      "message": "Done — the check was removed.",
+      "parentUuid": "0a3ba87e_420a3207",
+      "revId": "0f787d63b6c7ee5c20e5efbf7c14fbcb410ecefc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "bf147e3e_5d5fc35f",
+        "filename": "src/vnet/srv6/sr_localsid.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-03-12T10:26:31Z",
+      "side": 1,
+      "message": "Done.",
+      "parentUuid": "331990f6_77a66822",
+      "revId": "0f787d63b6c7ee5c20e5efbf7c14fbcb410ecefc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0d35bd0e_951fbbcf",
+        "filename": "test/test_srv6.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-03-12T10:26:31Z",
+      "side": 1,
+      "message": "Done.",
+      "parentUuid": "208d641e_c60e9955",
+      "revId": "0f787d63b6c7ee5c20e5efbf7c14fbcb410ecefc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
