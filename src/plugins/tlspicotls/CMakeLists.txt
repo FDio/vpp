@@ -10,7 +10,7 @@ endif()
 # it's reasonable to make this check to avoid breaking
 # existing builds when upgrading the quicly/picotls
 # versions
-set(EXPECTED_QUICLY_VERSION "0.1.5-vpp")
+set(EXPECTED_QUICLY_VERSION "0.1.6-vpp")
 
 
 vpp_find_path(QUICLY_INCLUDE_DIR NAMES quicly.h)

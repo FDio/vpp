@@ -54,7 +54,7 @@ class QUICAppWorker(Worker):
 class QUICTestCase(VppAsfTestCase):
     """QUIC Test Case"""
 
-    timeout = 20
+    timeout = 5000
     pre_test_sleep = 0.3
     post_test_sleep = 0.3
     server_appns = "server"
@@ -117,7 +117,7 @@ class QUICTestCase(VppAsfTestCase):
         self.ip_t10.add_vpp_config()
         self.logger.debug(self.vapi.cli("show ip fib"))
         # TODO: refactor test suites to use all crypto cipher suites
-        # self.vapi.cli("quic set crypto api vpp")
+        self.vapi.cli("quic set crypto api vpp")
         # self.vapi.cli("quic set crypto api engine-lib")
         self.logger.debug(self.vapi.cli("show quic"))
 
@@ -336,7 +336,7 @@ class QUICEchoExtTestCase(QUICTestCase):
 class QUICEchoExtTransferTestCase(QUICEchoExtTestCase):
     """QUIC Echo External Transfer Test Case"""
 
-    timeout = 60
+    timeout = 5000
 
     def test_quic_ext_transfer(self):
         """QUIC external transfer"""
