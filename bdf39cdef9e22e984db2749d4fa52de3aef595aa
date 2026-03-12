@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9c825a05_0f4399e2",
+        "filename": "src/plugins/quic_quicly/quic_quicly.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 704,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-03-12T04:21:55Z",
+      "side": 0,
+      "message": "Not needed anymore?",
+      "revId": "bdf39cdef9e22e984db2749d4fa52de3aef595aa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "aaff5862_ad970f5e",
+        "filename": "src/plugins/quic_quicly/quic_quicly_crypto.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 86,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-03-12T04:21:55Z",
+      "side": 0,
+      "message": "Did we ever figure out why we had that -1?",
+      "revId": "bdf39cdef9e22e984db2749d4fa52de3aef595aa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
