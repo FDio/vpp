@@ -74,6 +74,14 @@ format_policer_handoff_trace (u8 *s, va_list *args)
 }
 #endif
 
+static_always_inline u16
+policer_l2_overhead (policer_main_t *pm, vlib_dir_t dir, u32 sw_if_index, u8 is_l2)
+{
+  u16 overhead = pm->l2_overhead_by_sw_if_index[dir][sw_if_index];
+  ASSERT ((dir != VLIB_TX || overhead == 0) && "l2_overhead must be 0 on TX path");
+  return (is_l2 || dir == VLIB_TX) ? 0 : overhead;
+}
+
 static inline uword
 policer_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame,
 		     vlib_dir_t dir, u8 is_l2)
@@ -133,8 +141,8 @@ policer_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *f
 	  pi0 = pm->policer_index_by_sw_if_index[dir][sw_if_index0];
 	  pi1 = pm->policer_index_by_sw_if_index[dir][sw_if_index1];
 
-	  u16 l2_overhead0 = (is_l2) ? 0 : pm->l2_overhead_by_sw_if_index[dir][sw_if_index0];
-	  u16 l2_overhead1 = (is_l2) ? 0 : pm->l2_overhead_by_sw_if_index[dir][sw_if_index1];
+	  u16 l2_overhead0 = policer_l2_overhead (pm, dir, sw_if_index0, is_l2);
+	  u16 l2_overhead1 = policer_l2_overhead (pm, dir, sw_if_index1, is_l2);
 
 	  act0 = policer_police (vm, b0, pi0, time_in_policer_periods, POLICE_CONFORM, true,
 				 l2_overhead0);
@@ -248,7 +256,7 @@ policer_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *f
 	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[dir];
 	  pi0 = pm->policer_index_by_sw_if_index[dir][sw_if_index0];
 
-	  u16 l2_overhead0 = (is_l2) ? 0 : pm->l2_overhead_by_sw_if_index[dir][sw_if_index0];
+	  u16 l2_overhead0 = policer_l2_overhead (pm, dir, sw_if_index0, is_l2);
 
 	  act0 = policer_police (vm, b0, pi0, time_in_policer_periods, POLICE_CONFORM, true,
 				 l2_overhead0);
