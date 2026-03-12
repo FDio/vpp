@@ -16,6 +16,23 @@
       "message": "Yeah, VppEnum is populated only after a connection is established to VPP.",
       "revId": "75211520d02128da7813801ed7ccbb84118f879c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4a4197a2_89b7ac19",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-03-12T13:27:39Z",
+      "side": 1,
+      "message": "LGTM",
+      "revId": "75211520d02128da7813801ed7ccbb84118f879c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
