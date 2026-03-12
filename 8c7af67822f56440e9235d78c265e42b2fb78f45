@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "830c08a4_2a1adc9b",
+        "filename": "test/hs-test/docker/Dockerfile.ginkgo",
+        "patchSetId": 3
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-03-12T13:32:48Z",
+      "side": 1,
+      "message": "can we somehow use version defined in go.mod? looks like we forget update this few times",
+      "range": {
+        "startLine": 9,
+        "startChar": 15,
+        "endLine": 9,
+        "endChar": 21
+      },
+      "revId": "8c7af67822f56440e9235d78c265e42b2fb78f45",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
