@@ -20,6 +20,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "aaacb9a8_40db606b",
+        "filename": "src/plugins/quic_quicly/quic_quicly.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 704,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-03-12T08:18:37Z",
+      "side": 0,
+      "message": "it maybe solved issue in some cases but with new logic not needed anymore. I think it might also break logic in quic_quicly_ack_rx_data if we get read notification other than \"from full\" or \"to empty\"",
+      "parentUuid": "9c825a05_0f4399e2",
+      "revId": "bdf39cdef9e22e984db2749d4fa52de3aef595aa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "aaff5862_ad970f5e",
         "filename": "src/plugins/quic_quicly/quic_quicly_crypto.c",
         "patchSetId": 2
@@ -31,6 +49,24 @@
       "writtenOn": "2026-03-12T04:21:55Z",
       "side": 0,
       "message": "Did we ever figure out why we had that -1?",
+      "revId": "bdf39cdef9e22e984db2749d4fa52de3aef595aa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3d3d834d_78ce78d3",
+        "filename": "src/plugins/quic_quicly/quic_quicly_crypto.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 86,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-03-12T08:18:37Z",
+      "side": 0,
+      "message": "no idea, I don\u0027t see any reason why there should be -1. it only prevent to fully fill rx fifo (we fill only up to window size)",
+      "parentUuid": "aaff5862_ad970f5e",
       "revId": "bdf39cdef9e22e984db2749d4fa52de3aef595aa",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
