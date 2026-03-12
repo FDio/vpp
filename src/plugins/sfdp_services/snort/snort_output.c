@@ -69,6 +69,29 @@ format_sfdp_snort_output_trace (u8 *s, va_list *args)
 }
 
 SFDP_SERVICE_DECLARE (drop)
+SFDP_SERVICE_DECLARE (sfdp_snort_input)
+
+static_always_inline void
+sfdp_snort_cache_verdict (vlib_buffer_t *b, daq_vpp_pkt_metadata_t metadata)
+{
+  u32 session_idx = sfdp_session_from_flow_index (b->flow_id);
+  u8 dir = sfdp_direction_from_flow_index (b->flow_id);
+  sfdp_session_t *session = sfdp_session_at_index (session_idx);
+
+  switch (metadata.verdict)
+    {
+    case SFDP_DAQ_VERDICT_WHITELIST:
+      session->bitmaps[dir] &= ~SFDP_SERVICE_MASK (sfdp_snort_input);
+      break;
+    case SFDP_DAQ_VERDICT_BLACKLIST:
+      session->bitmaps[dir] |= SFDP_SERVICE_MASK (drop);
+      session->bitmaps[dir] &= ~SFDP_SERVICE_MASK (sfdp_snort_input);
+      sfdp_buffer (b)->service_bitmap = SFDP_SERVICE_MASK (drop);
+      break;
+    default:
+      break;
+    }
+}
 
 static_always_inline uword
 sfdp_snort_output_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
@@ -112,24 +135,32 @@ sfdp_snort_output_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame
 	  sfdp_buffer (b0)->service_bitmap = SFDP_SERVICE_MASK (drop);
 	  n_invalid_session_pkt_drop++;
 	}
+      else
+	sfdp_snort_cache_verdict (b0, metadata0);
 
       if (sfdp_snort_is_session_not_valid (ptd, b1))
 	{
 	  sfdp_buffer (b1)->service_bitmap = SFDP_SERVICE_MASK (drop);
 	  n_invalid_session_pkt_drop++;
 	}
+      else
+	sfdp_snort_cache_verdict (b1, metadata1);
 
       if (sfdp_snort_is_session_not_valid (ptd, b2))
 	{
 	  sfdp_buffer (b2)->service_bitmap = SFDP_SERVICE_MASK (drop);
 	  n_invalid_session_pkt_drop++;
 	}
+      else
+	sfdp_snort_cache_verdict (b2, metadata2);
 
       if (sfdp_snort_is_session_not_valid (ptd, b3))
 	{
 	  sfdp_buffer (b3)->service_bitmap = SFDP_SERVICE_MASK (drop);
 	  n_invalid_session_pkt_drop++;
 	}
+      else
+	sfdp_snort_cache_verdict (b3, metadata3);
 
       sfdp_next (b0, ni + 0);
       sfdp_next (b1, ni + 1);
@@ -186,6 +217,8 @@ sfdp_snort_output_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame
 	  sfdp_buffer (b0)->service_bitmap = SFDP_SERVICE_MASK (drop);
 	  n_invalid_session_pkt_drop++;
 	}
+      else
+	sfdp_snort_cache_verdict (b0, metadata0);
 
       sfdp_next (b0, ni + 0);
 

@@ -791,10 +791,12 @@ daq_vpp_get_capabilities (void __unused *handle)
 {
   return DAQ_CAPA_BLOCK |	 /* can block packets */
 	 DAQ_CAPA_INJECT |	 /* can inject packets */
+	 DAQ_CAPA_WHITELIST |	 /* can whitelist packets */
+	 DAQ_CAPA_BLACKLIST |	 /* can blacklist packets */
 	 DAQ_CAPA_UNPRIV_START | /* can start without root privileges */
 	 DAQ_CAPA_INTERRUPT |	 /* can be interrupted */
-	 DAQ_CAPA_DEVICE_INDEX; /* can consistently fill the device index field
-				   in DAQ_PktHdr */
+	 DAQ_CAPA_DEVICE_INDEX;	 /* can consistently fill the device index field
+				    in DAQ_PktHdr */
 }
 
 static int
