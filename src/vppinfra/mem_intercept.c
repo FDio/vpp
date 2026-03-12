@@ -244,10 +244,10 @@ malloc_usable_size (void *p)
   if (clib_mem_main.alloc_free_intercept == 0)
     {
       static size_t (*__malloc_usable_size) (void *) = 0;
-      return __malloc_usable_size (p);
       if (!__malloc_usable_size)
 	__malloc_usable_size = (typeof (__malloc_usable_size)) dlsym (
 	  RTLD_NEXT, "malloc_usable_size");
+      return __malloc_usable_size (p);
     }
   return clib_mem_size (p);
 }
