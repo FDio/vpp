@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7b55fdc2_878b7d66",
+        "filename": "src/plugins/sfdp_services/base/tcp-check/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 122,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-03-12T10:23:59Z",
+      "side": 1,
+      "message": "If a SYN packet is received for a session that was previously in TIME_WAIT state, we assume we have a new session re-using the same 5-tuple.\n\nI think in this case we should also reset session-specific information in SFDP, such as bi-directional packet and bytes counts associated with the session\n\ni.e. similarly to sfdp_create_session_inline:\n\n```\n  /* Bidirectional counter zeroing */\n  vlib_zero_combined_counter (\u0026sfdp-\u003eper_session_ctr[SFDP_FLOW_COUNTER_LOOKUP],\n\t\t\t      lookup_val[0]);\n  vlib_zero_combined_counter (\u0026sfdp-\u003eper_session_ctr[SFDP_FLOW_COUNTER_LOOKUP],\n\t\t\t      lookup_val[0] | 0x1);\n  vlib_increment_simple_counter (\n    \u0026sfdp-\u003etenant_session_ctr[SFDP_TENANT_SESSION_COUNTER_CREATED],\n    thread_index, tenant_idx, 1);\n```",
+      "revId": "d557b77cccaeb86874074e3aac37a11c8a6a996a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1be96083_ee6f657e",
+        "filename": "src/plugins/sfdp_services/base/tcp-check/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 122,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-03-12T10:23:59Z",
+      "side": 1,
+      "message": "If we reach SFDP\u0027s session count limit with a large number of sessions in TIME_WAIT state, then default behavior will be to drop new sessions (i.e on new 5-tuples) since SFDP has no capacity for additional sessions.\n\nMy assumption is that we are fine with this behavior ?",
+      "revId": "d557b77cccaeb86874074e3aac37a11c8a6a996a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d425d910_28f54c6f",
+        "filename": "src/plugins/sfdp_services/base/tcp-check/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 225,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-03-12T10:23:59Z",
+      "side": 1,
+      "message": "If tracking FIN-WAIT states, we will need to account that either initiator or responder could start the connection tear-down (i.e. we cannot assume that initiator will start connection tear-down) and track states on either side accordingly.\n\nAlso, there is still a possibility that simultaneous close scenario will occur (i.e initiator and responder both send a FIN a the same time).",
+      "revId": "d557b77cccaeb86874074e3aac37a11c8a6a996a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
