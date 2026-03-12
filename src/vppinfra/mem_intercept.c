@@ -25,14 +25,74 @@ static void (*__libc_free) (void *);
 static void *(*__libc_memalign) (size_t, size_t);
 #endif
 
+static int clib_mem_intercept_guard;
+
+static_always_inline clib_mem_heap_t *
+clib_mem_intercept_get_heap (void *p)
+{
+  clib_mem_heap_t *h;
+  int i;
+
+  if (!p)
+    return 0;
+
+  h = clib_mem_main.main_heap;
+  if (h && clib_mem_heap_is_heap_object (h, p))
+    return h;
+
+  for (i = 0; i < vec_len (clib_mem_main.heaps); i++)
+    {
+      h = clib_mem_main.heaps[i];
+      if (h && clib_mem_heap_is_heap_object (h, p))
+	return h;
+    }
+
+  return 0;
+}
+
+static_always_inline void *
+clib_mem_intercept_libc_alloc (void *oldp, size_t size, size_t align, int align_check, int *err)
+{
+  int rv;
+  void *p;
+
+  rv = ENOMEM;
+  p = 0;
+
+  if (oldp)
+    p = __libc_realloc (oldp, size);
+  else if (align_check || align > CLIB_MEM_MIN_ALIGN)
+    p = __libc_memalign (align, size);
+  else
+    p = __libc_malloc (size);
+
+  if (p)
+    return p;
+
+  rv = errno ? errno : ENOMEM;
+  if (err)
+    *err = rv;
+
+  return 0;
+}
+
 static_always_inline void
 clib_mem_intercept_free_inline (void *p)
 {
+  clib_mem_heap_t *h;
+
   if (!p)
     return;
 
-  if (clib_mem_main.alloc_free_intercept == 1)
-    clib_mem_free (p);
+  if (clib_mem_main.alloc_free_intercept == 0)
+    {
+      __libc_free (p);
+      return;
+    }
+
+  h = clib_mem_intercept_get_heap (p);
+  if (h)
+    clib_mem_heap_free (h, p);
   else
     __libc_free (p);
 }
@@ -42,6 +102,8 @@ clib_mem_intercept_alloc_inline (void *oldp, size_t size, size_t align,
 				 int abort_on_fail, int align_check,
 				 int size_check, int *err)
 {
+  clib_mem_heap_t *h;
+  int intercepted;
   int rv = ENOMEM;
   void *p = 0;
 
@@ -77,25 +139,30 @@ clib_mem_intercept_alloc_inline (void *oldp, size_t size, size_t align,
   size = clib_max (size, 1);
 
   if (clib_mem_main.alloc_free_intercept == 0)
+    return clib_mem_intercept_libc_alloc (oldp, size, align, align_check, err);
+
+  h = clib_mem_intercept_get_heap (oldp);
+  if (oldp && h == 0)
+    return clib_mem_intercept_libc_alloc (oldp, size, align, align_check, err);
+
+  intercepted = __atomic_fetch_add (&clib_mem_intercept_guard, 1, __ATOMIC_RELAXED);
+  if (PREDICT_FALSE (intercepted))
     {
-      if (oldp)
-	p = __libc_realloc (oldp, size);
-      else if (align_check || align > CLIB_MEM_MIN_ALIGN)
-	p = __libc_memalign (align, size);
-      else
-	p = __libc_malloc (size);
+      __atomic_fetch_sub (&clib_mem_intercept_guard, 1, __ATOMIC_RELAXED);
 
-      if (p)
-	return p;
+      if (oldp == 0)
+	return clib_mem_intercept_libc_alloc (0, size, align, align_check, err);
 
-      rv = errno ? errno : ENOMEM;
+      rv = ENOMEM;
       goto error;
     }
 
   if (oldp)
-    p = clib_mem_realloc_aligned (oldp, size, align);
+    p = clib_mem_heap_realloc_aligned (h, oldp, size, align);
   else
     p = clib_mem_alloc_aligned_or_null (size, align);
+
+  __atomic_fetch_sub (&clib_mem_intercept_guard, 1, __ATOMIC_RELAXED);
 
   if (p)
     return p;
