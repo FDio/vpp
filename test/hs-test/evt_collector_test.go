@@ -26,6 +26,7 @@ func init() {
 //     connects to the sink and pushes per-session TCP stats when sessions close.
 //  3. Client VPP runs test echo client to generate traffic.
 //  4. After the run the sink output must contain at least one "[tcp]" stat line.
+//  5. The collector is deleted and must no longer appear in show output.
 func EvtCollectorSinkTest(s *VethsSuite) {
 	s.SetupAppContainers()
 
@@ -126,4 +127,12 @@ func EvtCollectorSinkTest(s *VethsSuite) {
 		AssertContains(l, "is_ip4=1")
 		AssertContains(l, "proto=0")
 	}
+
+	/* Exercise the collector delete API — the entry must disappear */
+	o = serverVpp.Vppctl("app evt-collector del uri tcp://%s/%s",
+		sinkAddr, sinkPort)
+	Log("del collector: " + o)
+	o = serverVpp.Vppctl("show app evt-collector")
+	Log("evt-collector state after del:\n" + o)
+	AssertNotContains(o, "is ready:")
 }
