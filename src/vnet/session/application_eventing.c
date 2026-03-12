@@ -470,7 +470,6 @@ app_evt_collector_del (app_evt_collector_cfg_t *cfg)
 	  c->cfg.sep.port == cfg->sep.port &&
 	  ip46_address_cmp (&c->cfg.sep.ip, &cfg->sep.ip) == 0)
 	{
-	  pool_put (app_evt_main.collectors, c);
 	  vec_foreach (cwrk, c->wrk)
 	    {
 	      if (cwrk->session_handle != SESSION_INVALID_HANDLE)
@@ -479,7 +478,11 @@ app_evt_collector_del (app_evt_collector_cfg_t *cfg)
 					       app_evt_main.app_index };
 		  vnet_disconnect_session (&a);
 		}
+	      pool_free (cwrk->buf.chunks);
+	      vec_free (cwrk->segs);
 	    }
+	  vec_free (c->wrk);
+	  pool_put (app_evt_main.collectors, c);
 	  return 0;
 	}
     }
