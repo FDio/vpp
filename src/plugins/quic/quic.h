@@ -22,7 +22,7 @@
  * 4 - timer events
  **/
 
-#define QUIC_DEBUG		  0
+#define QUIC_DEBUG		  3
 #define QUIC_CTX_INVALID_INDEX	  ((u32) ~0)
 #define QUIC_TIMER_HANDLE_INVALID ((u32) ~0)
 #define QUIC_SESSION_INVALID ((u32) ~0 - 1)
