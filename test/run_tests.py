@@ -10,6 +10,7 @@ import threading
 import traceback
 import signal
 import re
+import warnings
 from multiprocessing import Process, Pipe, get_context
 from multiprocessing.queues import Queue
 from multiprocessing.managers import BaseManager
@@ -38,6 +39,18 @@ from discover_tests import discover_tests
 import sanity_run_vpp
 from subprocess import check_output, CalledProcessError
 from util import check_core_path, get_core_path, is_core_present
+
+try:
+    from cryptography.utils import CryptographyDeprecationWarning
+except ImportError:
+    CryptographyDeprecationWarning = None
+
+if CryptographyDeprecationWarning:
+    warnings.filterwarnings(
+        "ignore",
+        category=CryptographyDeprecationWarning,
+        module=r"scapy\.layers\.ipsec",
+    )
 
 # timeout which controls how long the child has to finish after seeing
 # a core dump in test temporary directory. If this is exceeded, parent assumes
