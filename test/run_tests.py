@@ -157,11 +157,20 @@ class TestResult(dict):
 
 
 def test_runner_wrapper(
-    suite, keep_alive_pipe, stdouterr_queue, finished_pipe, result_pipe, logger
+    suite,
+    keep_alive_pipe,
+    stdouterr_queue,
+    finished_pipe,
+    result_pipe,
+    logger,
+    descriptions,
 ):
     sys.stdout = stdouterr_queue
     sys.stderr = stdouterr_queue
-    VppTestCase.parallel_handler = logger.handlers[0]
+    if logger.handlers:
+        VppTestCase.parallel_handler = logger.handlers[0]
+    else:
+        VppTestCase.parallel_handler = get_parallel_logger(stdouterr_queue).handlers[0]
     result = VppTestRunner(
         keep_alive_pipe=keep_alive_pipe,
         descriptions=descriptions,
@@ -192,6 +201,7 @@ class TestCaseWrapper(object):
                 self.finished_child_end,
                 self.result_child_end,
                 self.logger,
+                descriptions,
             ),
         )
         self.child.start()
