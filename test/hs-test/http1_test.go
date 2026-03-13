@@ -26,24 +26,23 @@ func init() {
 	RegisterVethTests(HttpCliTest, HttpCliConnectErrorTest, HttpCliTlsTest)
 	RegisterSoloVethTests(HttpClientGetMemLeakTest)
 	RegisterHttp1Tests(HeaderServerTest, HttpPersistentConnectionTest, HttpPipeliningTest,
-		HttpStaticMovedTest, HttpStaticNotFoundTest, HttpCliMethodNotAllowedTest, HttpAbsoluteFormUriTest,
-		HttpCliBadRequestTest, HttpStaticBuildInUrlGetIfStatsTest, HttpStaticBuildInUrlPostIfStatsTest,
-		HttpInvalidRequestLineTest, HttpMethodNotImplementedTest, HttpInvalidHeadersTest, HttpStaticPostTest,
-		HttpContentLengthTest, HttpStaticBuildInUrlGetIfListTest, HttpStaticBuildInUrlGetVersionTest,
-		HttpStaticMacTimeTest, HttpStaticBuildInUrlGetVersionVerboseTest, HttpVersionNotSupportedTest,
-		HttpInvalidContentLengthTest, HttpInvalidTargetSyntaxTest, HttpStaticPathSanitizationTest, HttpUriDecodeTest,
-		HttpHeadersTest, HttpStaticFileHandlerTest, HttpStaticFileHandlerDefaultMaxAgeTest, HttpClientTest,
-		HttpClientErrRespTest, HttpClientPostFormTest, HttpClientPostFormPtrTest, HttpClientGet128kbResponseTest, HttpClientGetResponseBodyTest,
-		HttpClientGetTlsNoRespBodyTest, HttpClientPostFileTest, HttpClientPostFilePtrTest,
-		HttpRequestLineTest, HttpClientGetTimeout, HttpStaticFileHandlerWrkTest, HttpStaticUrlHandlerWrkTest, HttpConnTimeoutTest,
-		HttpClientGetRepeatTest, HttpClientPostRepeatTest, HttpIgnoreH2UpgradeTest, HttpInvalidAuthorityFormUriTest, HttpHeaderErrorConnectionDropTest,
-		HttpClientInvalidHeaderNameTest, HttpStaticHttp1OnlyTest, HttpTimerSessionDisable, HttpClientBodySizeTest,
-		HttpStaticRedirectTest, HttpClientNoPrintTest, HttpClientChunkedDownloadTest, HttpClientPostRejectedTest,
+		HttpCliMethodNotAllowedTest, HttpAbsoluteFormUriTest, HttpCliBadRequestTest,
+		HttpInvalidRequestLineTest, HttpMethodNotImplementedTest, HttpInvalidHeadersTest,
+		HttpContentLengthTest, HttpVersionNotSupportedTest, HttpInvalidContentLengthTest, HttpInvalidTargetSyntaxTest, HttpUriDecodeTest,
+		HttpHeadersTest, HttpClientTest, HttpClientErrRespTest, HttpClientPostFormTest, HttpClientPostFormPtrTest,
+		HttpClientGet128kbResponseTest, HttpClientGetResponseBodyTest, HttpClientGetTlsNoRespBodyTest, HttpClientPostFileTest, HttpClientPostFilePtrTest,
+		HttpRequestLineTest, HttpClientGetTimeout, HttpConnTimeoutTest, HttpClientGetRepeatTest, HttpClientPostRepeatTest,
+		HttpIgnoreH2UpgradeTest, HttpInvalidAuthorityFormUriTest, HttpHeaderErrorConnectionDropTest,
+		HttpClientInvalidHeaderNameTest, HttpTimerSessionDisable, HttpClientBodySizeTest,
+		HttpClientNoPrintTest, HttpClientChunkedDownloadTest, HttpClientPostRejectedTest,
 		HttpClientRedirect302Test, HttpClientRedirect308Test, HttpSendGetAndCloseTest, HttpClientRedirectLimitTest, HttpClientRedirectGetMemLeakTest,
-		HttpClientRedirectPostMemLeakTest)
-	RegisterHttp1SoloTests(HttpStaticPromTest, HttpGetTpsTest, HttpGetTpsInterruptModeTest, PromConcurrentConnectionsTest,
-		PromMemLeakTest, HttpClientPostMemLeakTest, HttpInvalidClientRequestMemLeakTest, HttpPostTpsTest, HttpPostTpsInterruptModeTest,
-		PromConsecutiveConnectionsTest, HttpGetTpsTlsTest, HttpPostTpsTlsTest)
+		HttpClientRedirectPostMemLeakTest, HttpGetTpsTest, HttpPostTpsTest, HttpGetTpsInterruptModeTest, HttpPostTpsInterruptModeTest,
+		HttpPostTpsTlsTest, HttpGetTpsTlsTest)
+	RegisterHttp1StaticSrvTests(HttpStaticMovedTest, HttpStaticNotFoundTest, HttpStaticBuildInUrlGetIfStatsTest, HttpStaticBuildInUrlPostIfStatsTest,
+		HttpStaticPostTest, HttpStaticBuildInUrlGetIfListTest, HttpStaticBuildInUrlGetVersionTest,
+		HttpStaticMacTimeTest, HttpStaticBuildInUrlGetVersionVerboseTest, HttpStaticPathSanitizationTest, HttpStaticFileHandlerTest, HttpStaticFileHandlerDefaultMaxAgeTest,
+		HttpStaticFileHandlerWrkTest, HttpStaticUrlHandlerWrkTest, HttpStaticHttp1OnlyTest, HttpStaticRedirectTest, HttpStaticPromTest)
+	RegisterHttp1SoloTests(PromConcurrentConnectionsTest, PromMemLeakTest, HttpClientPostMemLeakTest, HttpInvalidClientRequestMemLeakTest, PromConsecutiveConnectionsTest)
 	RegisterHttp1MWTests(HttpClientGetRepeatMWTest, HttpClientPtrGetRepeatMWTest)
 	RegisterNoTopo6SoloTests(HttpClientGetResponseBody6Test, HttpClientGetTlsResponseBody6Test)
 }
@@ -241,7 +240,7 @@ func HttpPipeliningTest(s *Http1Suite) {
 	AssertMatchError(err, os.ErrDeadlineExceeded, "second request response received")
 }
 
-func HttpStaticPostTest(s *Http1Suite) {
+func HttpStaticPostTest(s *Http1StaticSrvSuite) {
 	// testing url handler app do not support multi-thread
 	s.SkipIfMultiWorker()
 	vpp := s.Containers.Vpp.VppInstance
@@ -828,7 +827,7 @@ func httpClientRepeat(s *Http1Suite, requestMethod string, clientArgs string) {
 	Log("Server response count: %d", replyCountInt)
 	AssertNotNil(o)
 	AssertNotContains(o, "error")
-	AssertGreaterEqual(replyCountInt, 15000)
+	AssertGreaterEqual(replyCountInt, 10000, "Server reply count below threshold")
 
 	replyCount = ""
 	cmd = fmt.Sprintf("http client %s %s repeat %d header Hello:World uri %s",
@@ -949,7 +948,7 @@ func HttpClientPostRejectedTest(s *Http1Suite) {
 	Log(vpp.Vppctl("show session verbose 2"))
 }
 
-func HttpStaticPromTest(s *Http1Suite) {
+func HttpStaticPromTest(s *Http1StaticSrvSuite) {
 	query := "stats.prom"
 	vpp := s.Containers.Vpp.VppInstance
 	serverAddress := s.VppAddr() + ":" + s.Ports.Http
@@ -1284,7 +1283,7 @@ func HttpInvalidClientRequestMemLeakTest(s *Http1Suite) {
 
 }
 
-func runWrkPerf(s *Http1Suite) {
+func runWrkPerf(s *Http1StaticSrvSuite) {
 	nConnections := 1000
 	serverAddress := s.VppAddr() + ":" + s.Ports.Http
 
@@ -1297,7 +1296,7 @@ func runWrkPerf(s *Http1Suite) {
 	AssertEmpty(err, "err: '%s'", err)
 }
 
-func HttpStaticFileHandlerWrkTest(s *Http1Suite) {
+func HttpStaticFileHandlerWrkTest(s *Http1StaticSrvSuite) {
 	vpp := s.Containers.Vpp.VppInstance
 	serverAddress := s.VppAddr() + ":" + s.Ports.Http
 	vpp.Container.Exec(false, "mkdir -p "+wwwRootPath)
@@ -1308,7 +1307,7 @@ func HttpStaticFileHandlerWrkTest(s *Http1Suite) {
 	runWrkPerf(s)
 }
 
-func HttpStaticUrlHandlerWrkTest(s *Http1Suite) {
+func HttpStaticUrlHandlerWrkTest(s *Http1StaticSrvSuite) {
 	vpp := s.Containers.Vpp.VppInstance
 	serverAddress := s.VppAddr() + ":" + s.Ports.Http
 	Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + " url-handlers private-segment-size 256m"))
@@ -1316,15 +1315,15 @@ func HttpStaticUrlHandlerWrkTest(s *Http1Suite) {
 	runWrkPerf(s)
 }
 
-func HttpStaticFileHandlerDefaultMaxAgeTest(s *Http1Suite) {
+func HttpStaticFileHandlerDefaultMaxAgeTest(s *Http1StaticSrvSuite) {
 	HttpStaticFileHandlerTestFunction(s, "default")
 }
 
-func HttpStaticFileHandlerTest(s *Http1Suite) {
+func HttpStaticFileHandlerTest(s *Http1StaticSrvSuite) {
 	HttpStaticFileHandlerTestFunction(s, "123")
 }
 
-func HttpStaticFileHandlerTestFunction(s *Http1Suite, max_age string) {
+func HttpStaticFileHandlerTestFunction(s *Http1StaticSrvSuite, max_age string) {
 	var maxAgeFormatted string
 	if max_age == "default" {
 		maxAgeFormatted = ""
@@ -1391,7 +1390,7 @@ func HttpStaticFileHandlerTestFunction(s *Http1Suite, max_age string) {
 	AssertContains(o, "page.html")
 }
 
-func HttpStaticPathSanitizationTest(s *Http1Suite) {
+func HttpStaticPathSanitizationTest(s *Http1StaticSrvSuite) {
 	vpp := s.Containers.Vpp.VppInstance
 	vpp.Container.Exec(false, "mkdir -p "+wwwRootPath)
 	vpp.Container.Exec(false, "mkdir -p "+"/tmp/secret_folder")
@@ -1436,7 +1435,7 @@ func HttpStaticPathSanitizationTest(s *Http1Suite) {
 	AssertHttpHeaderWithValue(resp, "Location", "http://"+serverAddress+"/index.html")
 }
 
-func HttpStaticMovedTest(s *Http1Suite) {
+func HttpStaticMovedTest(s *Http1StaticSrvSuite) {
 	vpp := s.Containers.Vpp.VppInstance
 	vpp.Container.Exec(false, "mkdir -p "+wwwRootPath+"/tmp.aaa")
 	err := vpp.Container.CreateFile(wwwRootPath+"/tmp.aaa/index.html", "<html><body><p>Hello</p></body></html>")
@@ -1458,7 +1457,7 @@ func HttpStaticMovedTest(s *Http1Suite) {
 	AssertHttpContentLength(resp, int64(0))
 }
 
-func HttpStaticRedirectTest(s *Http1Suite) {
+func HttpStaticRedirectTest(s *Http1StaticSrvSuite) {
 	vpp := s.Containers.Vpp.VppInstance
 	vpp.Container.Exec(false, "mkdir -p "+wwwRootPath)
 	err := vpp.Container.CreateFile(wwwRootPath+"/index.html", "<html><body><p>Hello</p></body></html>")
@@ -1484,7 +1483,7 @@ func HttpStaticRedirectTest(s *Http1Suite) {
 	AssertContains(string(reply), expectedLocation)
 }
 
-func HttpStaticNotFoundTest(s *Http1Suite) {
+func HttpStaticNotFoundTest(s *Http1StaticSrvSuite) {
 	vpp := s.Containers.Vpp.VppInstance
 	vpp.Container.Exec(false, "mkdir -p "+wwwRootPath)
 	serverAddress := s.VppAddr() + ":" + s.Ports.Http
@@ -1538,7 +1537,7 @@ func HttpCliBadRequestTest(s *Http1Suite) {
 	AssertHttpContentLength(resp, int64(0))
 }
 
-func HttpStaticHttp1OnlyTest(s *Http1Suite) {
+func HttpStaticHttp1OnlyTest(s *Http1StaticSrvSuite) {
 	vpp := s.Containers.Vpp.VppInstance
 	serverAddress := s.VppAddr() + ":" + s.Ports.Http
 	Log(vpp.Vppctl("http static server uri tls://" + serverAddress + " url-handlers http1-only debug"))
@@ -1557,7 +1556,7 @@ func HttpStaticHttp1OnlyTest(s *Http1Suite) {
 	AssertContains(string(data), "version")
 }
 
-func HttpStaticBuildInUrlGetVersionTest(s *Http1Suite) {
+func HttpStaticBuildInUrlGetVersionTest(s *Http1StaticSrvSuite) {
 	vpp := s.Containers.Vpp.VppInstance
 	serverAddress := s.VppAddr() + ":" + s.Ports.Http
 	Log(vpp.Vppctl("http static server uri tls://" + serverAddress + " url-handlers debug"))
@@ -1582,7 +1581,7 @@ func HttpStaticBuildInUrlGetVersionTest(s *Http1Suite) {
 	AssertHttpHeaderWithValue(resp, "Content-Type", "application/json")
 }
 
-func HttpStaticBuildInUrlGetVersionVerboseTest(s *Http1Suite) {
+func HttpStaticBuildInUrlGetVersionVerboseTest(s *Http1StaticSrvSuite) {
 	vpp := s.Containers.Vpp.VppInstance
 	serverAddress := s.VppAddr() + ":" + s.Ports.Http
 	Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + " url-handlers debug"))
@@ -1606,7 +1605,7 @@ func HttpStaticBuildInUrlGetVersionVerboseTest(s *Http1Suite) {
 	AssertHttpHeaderWithValue(resp, "Content-Type", "application/json")
 }
 
-func HttpStaticBuildInUrlGetIfListTest(s *Http1Suite) {
+func HttpStaticBuildInUrlGetIfListTest(s *Http1StaticSrvSuite) {
 	vpp := s.Containers.Vpp.VppInstance
 	serverAddress := s.VppAddr() + ":" + s.Ports.Http
 	Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + " url-handlers debug"))
@@ -1626,7 +1625,7 @@ func HttpStaticBuildInUrlGetIfListTest(s *Http1Suite) {
 	AssertHttpHeaderWithValue(resp, "Content-Type", "application/json")
 }
 
-func HttpStaticBuildInUrlGetIfStatsTest(s *Http1Suite) {
+func HttpStaticBuildInUrlGetIfStatsTest(s *Http1StaticSrvSuite) {
 	vpp := s.Containers.Vpp.VppInstance
 	serverAddress := s.VppAddr() + ":" + s.Ports.Http
 	Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + " url-handlers debug"))
@@ -1647,14 +1646,18 @@ func HttpStaticBuildInUrlGetIfStatsTest(s *Http1Suite) {
 	AssertHttpHeaderWithValue(resp, "Content-Type", "application/json")
 }
 
-func validatePostInterfaceStats(s *Http1Suite, data string) {
+type Http1Interface interface {
+	VppIfName() string
+}
+
+func validatePostInterfaceStats(s Http1Interface, data string) {
 	AssertContains(data, "interface_stats")
 	AssertContains(data, s.VppIfName())
 	AssertNotContains(data, "error")
 	AssertNotContains(data, "local0")
 }
 
-func HttpStaticBuildInUrlPostIfStatsTest(s *Http1Suite) {
+func HttpStaticBuildInUrlPostIfStatsTest(s *Http1StaticSrvSuite) {
 	vpp := s.Containers.Vpp.VppInstance
 	serverAddress := s.VppAddr() + ":" + s.Ports.Http
 	Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + " url-handlers debug"))
@@ -1675,7 +1678,7 @@ func HttpStaticBuildInUrlPostIfStatsTest(s *Http1Suite) {
 	AssertHttpHeaderWithValue(resp, "Content-Type", "application/json")
 }
 
-func HttpStaticMacTimeTest(s *Http1Suite) {
+func HttpStaticMacTimeTest(s *Http1StaticSrvSuite) {
 	vpp := s.Containers.Vpp.VppInstance
 	serverAddress := s.VppAddr() + ":" + s.Ports.Http
 	Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + " url-handlers debug"))

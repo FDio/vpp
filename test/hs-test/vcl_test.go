@@ -18,8 +18,7 @@ func init() {
 		VclQuicBidirectionalStreamTest, VclQuicUnidirectionalStreamClientResetTest,
 		VclQuicUnidirectionalStreamServerResetTest, VclQuicBidirectionalStreamClientResetTest,
 		VclQuicBidirectionalStreamServerResetTest, VclQuicClientCloseConnectionTest, VclQuicServerCloseConnectionTest,
-		VclDtlsOverMTUTest)
-	RegisterSoloVethTests(VclRetryAttachTest)
+		VclDtlsOverMTUTest, VclRetryAttachTest)
 	RegisterVethMWTests(VclQuicUnidirectionalStreamsMWTest)
 }
 
@@ -305,7 +304,6 @@ func VclDtlsOverMTUTest(s *VethsSuite) {
 	AssertNil(err)
 }
 
-// solo because binding server to an IP makes the test fail in the CI
 func VclRetryAttachTest(s *VethsSuite) {
 	testRetryAttach(s, "tcp")
 }
@@ -320,8 +318,8 @@ func testRetryAttach(s *VethsSuite, proto string) {
 	echoSrvContainer.CreateFile("/vcl.conf", getVclConfig(echoSrvContainer))
 	echoSrvContainer.AddEnvVar("VCL_CONFIG", "/vcl.conf")
 
-	vclSrvCmd := fmt.Sprintf("vcl_test_server -p %s %s > %s 2>&1",
-		proto, s.Ports.Port1, VclTestSrvLogFileName(echoSrvContainer))
+	vclSrvCmd := fmt.Sprintf("vcl_test_server -p %s -B %s %s > %s 2>&1",
+		proto, serverVethAddress, s.Ports.Port1, VclTestSrvLogFileName(echoSrvContainer))
 	echoSrvContainer.ExecServer(true, WrapCmdWithLineBuffering(vclSrvCmd))
 	srvVppContainer.VppInstance.WaitForApp("vcl_test_server", 3)
 

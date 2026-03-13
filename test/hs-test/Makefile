@@ -307,16 +307,6 @@ cleanup-hst:
 	@-sudo docker rm $$(sudo docker stop $$(sudo docker ps -a -q --filter "name=$$(cat .last_hst_ppid)") -t 0)
 	@-sudo docker rm -f ginkgo
 	@echo "****************************"
-	@echo "Removing IP address files:"
-	@find . -type f -regextype egrep -regex '.*[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' -exec sudo rm -v {} \;
-	@find . -type f -name "fd00:0*" -exec sudo rm -v {} \;
-	@echo "****************************"
-	@echo "Removing network namespaces:"
-	@for ns in $$(ip netns list | grep $$(cat .last_hst_ppid) | awk '{print $$1}'); do \
-		echo $$ns; \
-    	sudo ip netns delete $$ns; \
-	done
-	@echo "****************************"
 	@echo "Done."
 	@echo "****************************"
 
