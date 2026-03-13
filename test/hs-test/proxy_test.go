@@ -33,7 +33,8 @@ func init() {
 	RegisterVppUdpProxySoloTests(VppConnectUdpStressTest)
 	RegisterVppUdpProxyMWTests(VppProxyUdpMigrationMWTest, VppConnectUdpStressMWTest)
 	RegisterEnvoyProxyTests(EnvoyHttpGetTcpTest, EnvoyHttpPutTcpTest)
-	RegisterNginxProxySoloTests(NginxMirroringTest, MirrorMultiThreadTest)
+	RegisterNginxProxyTests(NginxMirroringTest)
+	RegisterNginxProxySoloTests(MirrorMultiThreadTest)
 	RegisterMasqueTests(VppConnectProxyClientDownloadUdpTest,
 		VppConnectProxyClientUploadUdpTest, VppConnectProxyMemLeakTest)
 	RegisterMasqueSoloTests(VppConnectProxyIperfTcpTest, VppConnectProxyIperfUdpTest)
