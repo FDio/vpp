@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "93af9e04_5bb883e6",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2026-03-13T12:49:59Z",
+      "side": 1,
+      "message": "Steven, I rebased (for Dave\u0027s CI issue) and also realized that I am missing a bounds check on the getter and setter (if an L3 interface is queried with an sw_if_index higher than the largest L2 interface\u0027s).\nBecause I can\u0027t be certain that l2{in,out}put_intf_config() won\u0027t be called in another thread, there is a thread safety issue afterall. PS #5 adds bounds check and avoids any race that I could think of.\n\nPTAL",
+      "revId": "1568dec7195b2ce5ee5eb365450a43301a044db1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
