@@ -36,6 +36,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "3a14d1b8_ffa26d49",
+        "filename": "src/plugins/quic_quicly/quic_quicly.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 704,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-03-13T07:54:08Z",
+      "side": 0,
+      "message": "all looks good. QuicBuiltinEcho* and VclQuic* passed 200 times 😊",
+      "parentUuid": "aaacb9a8_40db606b",
+      "revId": "bdf39cdef9e22e984db2749d4fa52de3aef595aa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "aaff5862_ad970f5e",
