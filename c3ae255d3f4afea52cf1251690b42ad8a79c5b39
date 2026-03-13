@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c82953d7_76ac109a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 11
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-03-13T15:21:11Z",
+      "side": 1,
+      "message": "Could you update the CLI command \"show sfdp status\" to display the current timer interval ?",
+      "revId": "c3ae255d3f4afea52cf1251690b42ad8a79c5b39",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
