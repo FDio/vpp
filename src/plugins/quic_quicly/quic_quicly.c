@@ -723,6 +723,10 @@ quic_quicly_on_receive (quicly_stream_t *stream, size_t off, const void *src,
 	}
     }
 
+  /* Ask app for deq ntf because we sent zero-window to our peer */
+  if (quicly_stream_get_receive_window (stream) == stream_data->app_rx_data_len)
+    svm_fifo_add_want_deq_ntf (f, SVM_FIFO_WANT_DEQ_NOTIF);
+
 check_eos:
   /* send half-close notification to app */
   if (!(sctx->flags & QUIC_F_APP_CLOSED_TX) &&
