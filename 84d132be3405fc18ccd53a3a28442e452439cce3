@@ -1,0 +1,61 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3a70f0e6_f2b274b2",
+        "filename": "test/hs-test/http1_test.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 44,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-03-13T15:49:06Z",
+      "side": 1,
+      "message": "can we move static server tests to separate file? e.g. http_static_srv_test.go",
+      "range": {
+        "startLine": 41,
+        "startChar": 0,
+        "endLine": 44,
+        "endChar": 129
+      },
+      "revId": "84d132be3405fc18ccd53a3a28442e452439cce3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "02c99ed2_adda3f13",
+        "filename": "test/hs-test/http1_test.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-03-13T15:49:06Z",
+      "side": 1,
+      "message": "prom plugin tests can be included in http static server suite and I think expect PromMemLeakTest don\u0027t need to be solo",
+      "revId": "84d132be3405fc18ccd53a3a28442e452439cce3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4ed3cd22_f57d9680",
+        "filename": "test/hs-test/infra/suite_http1_static_srv.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-03-13T15:49:06Z",
+      "side": 1,
+      "message": "just HttpStaticSrvSuite and suite_http_static_srv.go, like app name, this has nothing to with http version",
+      "revId": "84d132be3405fc18ccd53a3a28442e452439cce3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
