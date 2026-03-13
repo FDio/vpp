@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "75225161_27dfca4e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 10
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2026-03-13T12:56:14Z",
+      "side": 1,
+      "message": "I have resolved the merge conflict with L2 subint policer and rebased to master to handle Dave\u0027s CI changes.\n\nIf tests and CI passes, can this be merged please?",
+      "revId": "f1b7da2585ca53eaf2a3be4122e015dd49728161",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
