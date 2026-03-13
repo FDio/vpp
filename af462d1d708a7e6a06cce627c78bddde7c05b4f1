@@ -16,6 +16,24 @@
       "message": "Thanks for clarifying! Last question: wouldn\u0027t this cause a regression for stats such as /buffer-pools/default/cached with buffer-pools_cached instead of buffer_pools_cached? If yes, maybe we should improve the test to catch that.\nAnd beside that, is this change still needed now that sanitize_slash_only() is applied on token[2]?",
       "revId": "af462d1d708a7e6a06cce627c78bddde7c05b4f1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "36fece46_c7b57a57",
+        "filename": "src/vpp/app/dump_metrics.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 154,
+      "author": {
+        "id": 3270
+      },
+      "writtenOn": "2026-03-13T14:04:30Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c8519c10_d622f01a",
+      "revId": "af462d1d708a7e6a06cce627c78bddde7c05b4f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
