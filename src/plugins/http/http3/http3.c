@@ -2477,6 +2477,7 @@ http3_conn_accept_callback (http_conn_t *hc)
   clib_thread_index_t thread_index = hc->c_thread_index;
 
   HTTP_DBG (1, "hc [%u]%x", hc->c_thread_index, hc->hc_hc_index);
+  hc->hc_http_conn_index = hc->hc_hc_index;
   h3c = http3_conn_ctx_alloc (hc);
   h3c->flags |= HTTP3_CONN_F_EXPECT_PEER_SETTINGS;
   if (PREDICT_FALSE (http3_conn_init (hc_index, thread_index, h3c)))
