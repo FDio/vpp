@@ -519,7 +519,7 @@ class VppPGInterface(VppInterface):
     def create_arp_req(self):
         """Create ARP request applicable for this interface"""
         return Ether(dst="ff:ff:ff:ff:ff:ff", src=self.remote_mac) / ARP(
-            op=ARP.who_has,
+            op=getattr(ARP, "who_has", 1),
             pdst=self.local_ip4,
             psrc=self.remote_ip4,
             hwsrc=self.remote_mac,
@@ -567,7 +567,7 @@ class VppPGInterface(VppInterface):
             raise UnexpectedPacketError(
                 ppp("Unexpected response to ARP request:", captured_packet)
             )
-        if arp_reply[ARP].op == ARP.is_at:
+        if arp_reply[ARP].op == getattr(ARP, "is_at", 2):
             self.test.logger.info(
                 "VPP %s MAC address is %s " % (self.name, arp_reply[ARP].hwsrc)
             )
