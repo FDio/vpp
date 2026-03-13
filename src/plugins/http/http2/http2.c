@@ -777,6 +777,13 @@ http2_sched_dispatch_tunnel (http2_req_t *req, http_conn_t *hc,
       transport_connection_reschedule (&req->base.connection);
       return;
     }
+  if (req->peer_window == 0)
+    {
+      /* mark that we need window update on stream */
+      HTTP_DBG (1, "stream window is full");
+      req->flags |= HTTP2_REQ_F_NEED_WINDOW_UPDATE;
+      return;
+    }
   max_write = http_io_ts_max_write (hc, 0);
   max_write -= HTTP2_FRAME_HEADER_SIZE;
   max_write = clib_min (max_write, (u32) req->peer_window);
@@ -801,13 +808,7 @@ http2_sched_dispatch_tunnel (http2_req_t *req, http_conn_t *hc,
   h2c->peer_window -= n_written;
   HTTP_DBG (1, "written %lu", n_written);
 
-  if (req->peer_window == 0)
-    {
-      /* mark that we need window update on stream */
-      HTTP_DBG (1, "stream window is full");
-      req->flags |= HTTP2_REQ_F_NEED_WINDOW_UPDATE;
-    }
-  else if (max_read - n_written)
+  if (max_read - n_written)
     {
       /* schedule for next round if we have more data */
       HTTP_DBG (1, "adding to data queue req_index %x",
