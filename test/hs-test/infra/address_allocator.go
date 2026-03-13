@@ -1,12 +1,10 @@
 package hst
 
 import (
-	"errors"
 	"fmt"
 	"os"
-	"strings"
 
-	"github.com/edwarnicke/exechelper"
+	. "github.com/onsi/ginkgo/v2"
 )
 
 type AddressCounter = int
@@ -44,41 +42,9 @@ func (a *Ip4AddressAllocator) NewIp4InterfaceAddress(inputNetworkNumber ...int) 
 	return address + "/24", err
 }
 
-// Creates a file every time an IP is assigned: used to keep track of addresses in use.
-// If an address is not in use, 'counter' is then copied to 'chosenOctet' and it is used for the remaining tests.
-// Also checks host IP addresses.
 func (a *Ip4AddressAllocator) createIpAddress(networkNumber int, numberOfAddresses int) (string, error) {
-	hostIps, _ := exechelper.CombinedOutput("ip -4 a")
-	counter := 10
-	var address string
-
-	for {
-		if a.chosenOctet != 0 {
-			address = fmt.Sprintf("10.%v.%v.%v", a.chosenOctet, networkNumber, numberOfAddresses)
-			file, err := os.Create(address)
-			if err != nil {
-				return "", errors.New("unable to create file: " + fmt.Sprint(err))
-			}
-			file.Close()
-			break
-		} else {
-			address = fmt.Sprintf("10.%v.%v.%v", counter, networkNumber, numberOfAddresses)
-			_, err := os.Stat(address)
-			if err == nil || strings.Contains(string(hostIps), address) {
-				counter++
-			} else if os.IsNotExist(err) {
-				file, err := os.Create(address)
-				if err != nil {
-					return "", errors.New("unable to create file: " + fmt.Sprint(err))
-				}
-				file.Close()
-				a.chosenOctet = counter
-				break
-			} else {
-				return "", errors.New("an error occurred while checking if a file exists: " + fmt.Sprint(err))
-			}
-		}
-	}
+	// "GinkgoParallelProcess()+9" so the first process uses 10.10.x.y
+	address := fmt.Sprintf("10.%v.%v.%v", GinkgoParallelProcess()+9, networkNumber, numberOfAddresses)
 
 	a.assignedIps = append(a.assignedIps, address)
 	return address, nil
@@ -131,37 +97,7 @@ func (a *Ip6AddressAllocator) NewIp6InterfaceAddress(inputNetworkNumber ...int) 
 }
 
 func (a *Ip6AddressAllocator) createIpAddress(networkNumber int, numberOfAddresses int) (string, error) {
-	hostIps, _ := exechelper.CombinedOutput("ip -6 a")
-	counter := 0xAAAA
-	var address string
-
-	for {
-		if a.chosenSegment != "" {
-			address = fmt.Sprintf("fd00:0:%s:%x::%x", a.chosenSegment, networkNumber, numberOfAddresses)
-			file, err := os.Create(address)
-			if err != nil {
-				return "", errors.New("unable to create file: " + fmt.Sprint(err))
-			}
-			file.Close()
-			break
-		} else {
-			address = fmt.Sprintf("fd00:0:%x:%x::%x", counter, networkNumber, numberOfAddresses)
-			_, err := os.Stat(address)
-			if err == nil || strings.Contains(string(hostIps), address) {
-				counter++
-			} else if os.IsNotExist(err) {
-				file, err := os.Create(address)
-				if err != nil {
-					return "", errors.New("unable to create file: " + fmt.Sprint(err))
-				}
-				file.Close()
-				a.chosenSegment = fmt.Sprintf("%x", counter)
-				break
-			} else {
-				return "", errors.New("an error occurred while checking if a file exists: " + fmt.Sprint(err))
-			}
-		}
-	}
+	address := fmt.Sprintf("fd00:0:%x:%x::%x", GinkgoParallelProcess(), networkNumber, numberOfAddresses)
 
 	a.assignedIps = append(a.assignedIps, address)
 	return address, nil
