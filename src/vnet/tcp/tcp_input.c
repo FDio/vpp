@@ -1164,7 +1164,7 @@ static int
 tcp_buffer_discard_bytes (vlib_buffer_t * b, u32 n_bytes_to_drop)
 {
   /* Handle multi-buffer segments */
-  if (n_bytes_to_drop > b->current_length)
+  if (n_bytes_to_drop >= b->current_length)
     {
       u32 n_to_drop, first = b->current_length;
       vlib_main_t *vm = vlib_get_main ();
