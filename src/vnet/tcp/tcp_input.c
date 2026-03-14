@@ -1661,8 +1661,7 @@ tcp46_syn_sent_trace_frame (vlib_main_t *vm, vlib_node_runtime_t *node,
       b = vlib_get_buffer (vm, from[i]);
       if (!(b->flags & VLIB_BUFFER_IS_TRACED))
 	continue;
-      tc =
-	tcp_half_open_connection_get (vnet_buffer (b)->tcp.connection_index);
+      tc = tcp_ho_connection_get (vnet_buffer (b)->tcp.connection_index);
       t = vlib_add_trace (vm, node, b, sizeof (*t));
       tcp_set_rx_trace_data (t, tc, tcp_buffer_hdr (b), b, 1);
     }
@@ -1730,8 +1729,7 @@ tcp_input_trace_frame (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  if (flags == TCP_STATE_LISTEN)
 	    tc = tcp_listener_get (vnet_buffer (bs[i])->tcp.connection_index);
 	  else if (flags == TCP_STATE_SYN_SENT)
-	    tc = tcp_half_open_connection_get (
-	      vnet_buffer (bs[i])->tcp.connection_index);
+	    tc = tcp_ho_connection_get (vnet_buffer (bs[i])->tcp.connection_index);
 	  else
 	    tc = tcp_connection_get (vnet_buffer (bs[i])->tcp.connection_index,
 				     vm->thread_index);
@@ -1764,8 +1762,7 @@ tcp46_syn_sent_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       tcp_connection_t *tc, *new_tc;
       tcp_header_t *tcp;
 
-      tc = tcp_half_open_connection_get (
-	vnet_buffer (b[0])->tcp.connection_index);
+      tc = tcp_ho_connection_get_if_valid (vnet_buffer (b[0])->tcp.connection_index);
       if (PREDICT_FALSE (tc == 0))
 	{
 	  error = TCP_ERROR_INVALID_CONNECTION;
@@ -2076,8 +2073,7 @@ tcp46_rcv_process_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       tcp_connection_t *tc;
       u8 is_fin;
 
-      tc = tcp_connection_get (vnet_buffer (b[0])->tcp.connection_index,
-			       thread_index);
+      tc = tcp_connection_get_if_valid (vnet_buffer (b[0])->tcp.connection_index, thread_index);
       if (PREDICT_FALSE (tc == 0))
 	{
 	  error = TCP_ERROR_INVALID_CONNECTION;
@@ -2574,8 +2570,7 @@ tcp46_listen_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	{
 	  u32 fib_index;
 	  tcp_connection_t *tc;
-	  tc = tcp_connection_get (vnet_buffer (b[0])->tcp.connection_index,
-				   thread_index);
+	  tc = tcp_connection_get_if_valid (vnet_buffer (b[0])->tcp.connection_index, thread_index);
 	  if (!tc)
 	    {
 	      tcp_inc_counter (listen, TCP_ERROR_INVALID_CONNECTION, 1);
