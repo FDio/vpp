@@ -488,7 +488,6 @@ tcp_estimate_initial_rtt (tcp_connection_t * tc)
 static void
 tcp_handle_postponed_dequeues (tcp_worker_ctx_t * wrk)
 {
-  clib_thread_index_t thread_index = wrk->vm->thread_index;
   u32 *pending_deq_acked;
   tcp_connection_t *tc;
   int i;
@@ -499,7 +498,7 @@ tcp_handle_postponed_dequeues (tcp_worker_ctx_t * wrk)
   pending_deq_acked = wrk->pending_deq_acked;
   for (i = 0; i < vec_len (pending_deq_acked); i++)
     {
-      tc = tcp_connection_get (pending_deq_acked[i], thread_index);
+      tc = tcp_worker_connection_get (wrk, pending_deq_acked[i]);
       tc->flags &= ~TCP_CONN_DEQ_PENDING;
 
       if (PREDICT_FALSE (!tc->burst_acked))
@@ -1001,18 +1000,16 @@ tcp_program_disconnect (tcp_worker_ctx_t * wrk, tcp_connection_t * tc)
 static void
 tcp_handle_disconnects (tcp_worker_ctx_t * wrk)
 {
-  clib_thread_index_t thread_index;
   u32 *pending_disconnects, *pending_resets;
   tcp_connection_t *tc;
   int i;
 
   if (vec_len (wrk->pending_disconnects))
     {
-      thread_index = wrk->vm->thread_index;
       pending_disconnects = wrk->pending_disconnects;
       for (i = 0; i < vec_len (pending_disconnects); i++)
 	{
-	  tc = tcp_connection_get (pending_disconnects[i], thread_index);
+	  tc = tcp_worker_connection_get (wrk, pending_disconnects[i]);
 	  tcp_disconnect_pending_off (tc);
 	  session_transport_closing_notify (&tc->connection);
 	}
@@ -1021,11 +1018,10 @@ tcp_handle_disconnects (tcp_worker_ctx_t * wrk)
 
   if (vec_len (wrk->pending_resets))
     {
-      thread_index = wrk->vm->thread_index;
       pending_resets = wrk->pending_resets;
       for (i = 0; i < vec_len (pending_resets); i++)
 	{
-	  tc = tcp_connection_get (pending_resets[i], thread_index);
+	  tc = tcp_worker_connection_get (wrk, pending_resets[i]);
 	  tcp_disconnect_pending_off (tc);
 	  tcp_handle_rst (tc);
 	}
@@ -1332,6 +1328,7 @@ static void
 tcp_established_trace_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
 			     vlib_frame_t * frame, u8 is_ip4)
 {
+  tcp_worker_ctx_t *wrk = tcp_get_worker (vm->thread_index);
   u32 *from, n_left;
 
   n_left = frame->n_vectors;
@@ -1351,8 +1348,7 @@ tcp_established_trace_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
       if (b0->flags & VLIB_BUFFER_IS_TRACED)
 	{
 	  t0 = vlib_add_trace (vm, node, b0, sizeof (*t0));
-	  tc0 = tcp_connection_get (vnet_buffer (b0)->tcp.connection_index,
-				    vm->thread_index);
+	  tc0 = tcp_worker_connection_get (wrk, vnet_buffer (b0)->tcp.connection_index);
 	  th0 = tcp_buffer_hdr (b0);
 	  tcp_set_rx_trace_data (t0, tc0, th0, b0, is_ip4);
 	}
@@ -1428,8 +1424,7 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  CLIB_PREFETCH (b[1]->data, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
 	}
 
-      tc = tcp_connection_get (vnet_buffer (b[0])->tcp.connection_index,
-			       thread_index);
+      tc = tcp_worker_connection_get (wrk, vnet_buffer (b[0])->tcp.connection_index);
       th = tcp_buffer_hdr (b[0]);
 
       if (PREDICT_FALSE (tcp_segment_is_exception (tc, th)))
@@ -1661,8 +1656,7 @@ tcp46_syn_sent_trace_frame (vlib_main_t *vm, vlib_node_runtime_t *node,
       b = vlib_get_buffer (vm, from[i]);
       if (!(b->flags & VLIB_BUFFER_IS_TRACED))
 	continue;
-      tc =
-	tcp_half_open_connection_get (vnet_buffer (b)->tcp.connection_index);
+      tc = tcp_ho_connection_get (vnet_buffer (b)->tcp.connection_index);
       t = vlib_add_trace (vm, node, b, sizeof (*t));
       tcp_set_rx_trace_data (t, tc, tcp_buffer_hdr (b), b, 1);
     }
@@ -1706,6 +1700,7 @@ static void
 tcp_input_trace_frame (vlib_main_t *vm, vlib_node_runtime_t *node,
 		       vlib_buffer_t **bs, u16 *nexts, u32 n_bufs, u8 is_ip4)
 {
+  tcp_worker_ctx_t *wrk = tcp_get_worker (vm->thread_index);
   tcp_connection_t *tc;
   tcp_header_t *tcp;
   tcp_rx_trace_t *t;
@@ -1730,11 +1725,9 @@ tcp_input_trace_frame (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  if (flags == TCP_STATE_LISTEN)
 	    tc = tcp_listener_get (vnet_buffer (bs[i])->tcp.connection_index);
 	  else if (flags == TCP_STATE_SYN_SENT)
-	    tc = tcp_half_open_connection_get (
-	      vnet_buffer (bs[i])->tcp.connection_index);
+	    tc = tcp_ho_connection_get (vnet_buffer (bs[i])->tcp.connection_index);
 	  else
-	    tc = tcp_connection_get (vnet_buffer (bs[i])->tcp.connection_index,
-				     vm->thread_index);
+	    tc = tcp_worker_connection_get (wrk, vnet_buffer (bs[i])->tcp.connection_index);
 	}
       tcp = tcp_buffer_hdr (bs[i]);
       tcp_set_rx_trace_data (t, tc, tcp, bs[i], is_ip4);
@@ -1764,8 +1757,7 @@ tcp46_syn_sent_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       tcp_connection_t *tc, *new_tc;
       tcp_header_t *tcp;
 
-      tc = tcp_half_open_connection_get (
-	vnet_buffer (b[0])->tcp.connection_index);
+      tc = tcp_ho_connection_get_if_valid (vnet_buffer (b[0])->tcp.connection_index);
       if (PREDICT_FALSE (tc == 0))
 	{
 	  error = TCP_ERROR_INVALID_CONNECTION;
@@ -2029,7 +2021,7 @@ static void
 tcp46_rcv_process_trace_frame (vlib_main_t *vm, vlib_node_runtime_t *node,
 			       u32 *from, u32 n_bufs)
 {
-  clib_thread_index_t thread_index = vm->thread_index;
+  tcp_worker_ctx_t *wrk = tcp_get_worker (vm->thread_index);
   tcp_connection_t *tc = 0;
   tcp_rx_trace_t *t;
   vlib_buffer_t *b;
@@ -2040,8 +2032,7 @@ tcp46_rcv_process_trace_frame (vlib_main_t *vm, vlib_node_runtime_t *node,
       b = vlib_get_buffer (vm, from[i]);
       if (!(b->flags & VLIB_BUFFER_IS_TRACED))
 	continue;
-      tc = tcp_connection_get (vnet_buffer (b)->tcp.connection_index,
-			       thread_index);
+      tc = tcp_worker_connection_get (wrk, vnet_buffer (b)->tcp.connection_index);
       t = vlib_add_trace (vm, node, b, sizeof (*t));
       tcp_set_rx_trace_data (t, tc, tcp_buffer_hdr (b), b, 1);
     }
@@ -2076,8 +2067,7 @@ tcp46_rcv_process_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       tcp_connection_t *tc;
       u8 is_fin;
 
-      tc = tcp_connection_get (vnet_buffer (b[0])->tcp.connection_index,
-			       thread_index);
+      tc = tcp_connection_get_if_valid (vnet_buffer (b[0])->tcp.connection_index, thread_index);
       if (PREDICT_FALSE (tc == 0))
 	{
 	  error = TCP_ERROR_INVALID_CONNECTION;
@@ -2574,8 +2564,7 @@ tcp46_listen_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	{
 	  u32 fib_index;
 	  tcp_connection_t *tc;
-	  tc = tcp_connection_get (vnet_buffer (b[0])->tcp.connection_index,
-				   thread_index);
+	  tc = tcp_connection_get_if_valid (vnet_buffer (b[0])->tcp.connection_index, thread_index);
 	  if (!tc)
 	    {
 	      tcp_inc_counter (listen, TCP_ERROR_INVALID_CONNECTION, 1);

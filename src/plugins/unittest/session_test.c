@@ -2830,7 +2830,7 @@ session_test_reconn_while_closed (vlib_main_t *vm, unformat_input_t *input)
 
   /* force server side to get CLOSED state */
   transport_reset (tc->proto, tc->c_index, tc->thread_index);
-  tcp_connection_t *tcp = tcp_connection_get (tc->c_index, tc->thread_index);
+  tcp_connection_t *tcp = tcp_connection_get_if_valid (tc->c_index, tc->thread_index);
   SESSION_TEST ((tcp && tcp->state == TCP_STATE_CLOSED),
 		"the server connection is in CLOSED");
 

@@ -154,7 +154,7 @@ tcp_connection_unbind (u32 listener_index)
 {
   tcp_connection_t *tc;
 
-  tc = tcp_connection_get (listener_index, 0);
+  tc = tcp_listener_get (listener_index);
 
   if (!(tc->cfg_flags & TCP_CFG_F_NO_ENDPOINT))
     transport_release_local_endpoint (TRANSPORT_PROTO_TCP, tc->c_fib_index, &tc->c_lcl_ip,
@@ -175,7 +175,7 @@ tcp_session_unbind (u32 listener_index)
 static transport_connection_t *
 tcp_session_get_listener (u32 listener_index)
 {
-  tcp_connection_t *tc = tcp_connection_get (listener_index, 0);
+  tcp_connection_t *tc = tcp_listener_get (listener_index);
   return &tc->connection;
 }
 
@@ -314,7 +314,7 @@ tcp_connection_alloc_w_base (u8 thread_index, tcp_connection_t **base)
     {
       u32 base_index = (*base)->c_c_index;
       pool_get_aligned_safe (wrk->connections, tc, CLIB_CACHE_LINE_BYTES);
-      *base = tcp_connection_get (base_index, thread_index);
+      *base = tcp_worker_connection_get (wrk, base_index);
     }
   else
     {
@@ -437,8 +437,8 @@ tcp_session_half_close (u32 conn_index, clib_thread_index_t thread_index)
   tcp_worker_ctx_t *wrk;
   tcp_connection_t *tc;
 
-  tc = tcp_connection_get (conn_index, thread_index);
-  wrk = tcp_get_worker (tc->c_thread_index);
+  wrk = tcp_get_worker (thread_index);
+  tc = tcp_worker_connection_get (wrk, conn_index);
 
   /* If the connection is not in ESTABLISHED state, ignore it */
   if (tc->state != TCP_STATE_ESTABLISHED)
@@ -467,7 +467,7 @@ static void
 tcp_session_cleanup (u32 conn_index, clib_thread_index_t thread_index)
 {
   tcp_connection_t *tc;
-  tc = tcp_connection_get (conn_index, thread_index);
+  tc = tcp_connection_get_if_valid (conn_index, thread_index);
   if (!tc)
     return;
   tcp_connection_set_state (tc, TCP_STATE_CLOSED);
@@ -480,7 +480,7 @@ tcp_session_cleanup_ho (u32 conn_index)
   tcp_worker_ctx_t *wrk;
   tcp_connection_t *tc;
 
-  tc = tcp_half_open_connection_get (conn_index);
+  tc = tcp_ho_connection_get (conn_index);
   wrk = tcp_get_worker (tc->c_thread_index);
   tcp_timer_reset (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT_SYN);
   tcp_half_open_connection_free (tc);
@@ -860,7 +860,7 @@ format_tcp_session (u8 * s, va_list * args)
   u32 verbose = va_arg (*args, u32);
   tcp_connection_t *tc;
 
-  tc = tcp_connection_get (tci, thread_index);
+  tc = tcp_connection_get_if_valid (tci, thread_index);
   if (tc)
     s = format (s, "%U", format_tcp_connection, tc, verbose);
   else
@@ -893,7 +893,7 @@ format_tcp_half_open_session (u8 * s, va_list * args)
   tcp_connection_t *tc;
   u8 *state = 0;
 
-  tc = tcp_half_open_connection_get (tci);
+  tc = tcp_ho_connection_get (tci);
   if (tc->flags & TCP_CONN_HALF_OPEN_DONE)
     state = format (state, "%s", "CLOSED");
   else
@@ -908,7 +908,7 @@ format_tcp_half_open_session (u8 * s, va_list * args)
 static transport_connection_t *
 tcp_session_get_transport (u32 conn_index, clib_thread_index_t thread_index)
 {
-  tcp_connection_t *tc = tcp_connection_get (conn_index, thread_index);
+  tcp_connection_t *tc = tcp_connection_get_if_valid (conn_index, thread_index);
   if (PREDICT_FALSE (!tc))
     return 0;
   return &tc->connection;
@@ -917,7 +917,7 @@ tcp_session_get_transport (u32 conn_index, clib_thread_index_t thread_index)
 static transport_connection_t *
 tcp_half_open_session_get_transport (u32 conn_index)
 {
-  tcp_connection_t *tc = tcp_half_open_connection_get (conn_index);
+  tcp_connection_t *tc = tcp_ho_connection_get_if_valid (conn_index);
   return &tc->connection;
 }
 
@@ -1019,7 +1019,7 @@ static int
 tcp_session_attribute (u32 conn_index, clib_thread_index_t thread_index,
 		       u8 is_get, transport_endpt_attr_t *attr)
 {
-  tcp_connection_t *tc = tcp_connection_get (conn_index, thread_index);
+  tcp_connection_t *tc = tcp_connection_get_if_valid (conn_index, thread_index);
 
   if (PREDICT_FALSE (!tc))
     return -1;
@@ -1251,9 +1251,9 @@ tcp_dispatch_pending_timers (tcp_worker_ctx_t * wrk)
       timer_id = timer_handle >> 28;
 
       if (PREDICT_TRUE (timer_id != TCP_TIMER_RETRANSMIT_SYN))
-	tc = tcp_connection_get (connection_index, thread_index);
+	tc = tcp_connection_get_if_valid (connection_index, thread_index);
       else
-	tc = tcp_half_open_connection_get (connection_index);
+	tc = tcp_ho_connection_get_if_valid (connection_index);
 
       if (PREDICT_FALSE (!tc))
 	continue;
@@ -1289,7 +1289,7 @@ tcp_handle_cleanups (tcp_worker_ctx_t * wrk, clib_time_type_t now)
       if (req->free_time > now)
 	break;
       clib_fifo_sub2 (wrk->pending_cleanups, req);
-      tc = tcp_connection_get (req->connection_index, thread_index);
+      tc = tcp_connection_get_if_valid (req->connection_index, thread_index);
       if (PREDICT_FALSE (!tc))
 	continue;
       tcp_connection_cleanup_and_notify (tc);
@@ -1425,9 +1425,9 @@ tcp_expired_timers_dispatch (u32 * expired_timers)
       timer_id = expired_timers[i] >> 28;
 
       if (timer_id != TCP_TIMER_RETRANSMIT_SYN)
-	tc = tcp_connection_get (connection_index, thread_index);
+	tc = tcp_worker_connection_get (wrk, connection_index);
       else
-	tc = tcp_half_open_connection_get (connection_index);
+	tc = tcp_ho_connection_get (connection_index);
 
       TCP_EVT (TCP_EVT_TIMER_POP, connection_index, timer_id);
 
