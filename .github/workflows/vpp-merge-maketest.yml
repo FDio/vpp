@@ -205,7 +205,7 @@ jobs:
           } | tee "$LOG_DIR/build-all-packages.log"
 
       - name: Push Packages to Packagecloud
-        if: always()
+        if: ${{ always() && inputs.FDIO_NAMESPACE == 'prod' }}
         run: |
           set -euxo pipefail
           pkgcloud_cmd=""
@@ -240,8 +240,6 @@ jobs:
               for pkg in $vpp_pkgs ; do
                   $pkgcloud_cmd $pkg || true
               done
-              # remove vpp-opt-deps before running make test
-              apt-get remove -y vpp-opt-deps || true
           else
               echo -e "\n$TUI_LINE\n* ERROR: Missing '~/.packagecloud' for user '$(id)'\n* PACKAGECLOUD PUSH FAILED!\n$TUI_LINE\n"
               exit 1
@@ -249,9 +247,15 @@ jobs:
           echo -e "\n$TUI_LINE\n* PACKAGECLOUD PUSH COMPLETE\n$TUI_LINE\n"
 
       - name: Post Packagecloud Push
-        if: always()
+        if: ${{ always() && inputs.FDIO_NAMESPACE == 'prod' }}
         run: |
           echo '{"url":"https://packagecloud.io","token":"$token"}' > /root/.packagecloud
+
+      - name: Remove vpp-opt-deps Before Make Test
+        if: always()
+        run: |
+          set -euxo pipefail
+          apt-get remove -y vpp-opt-deps || true
 
       - name: Setup Docker VPP Runtime Environment for 'make test'
         # yamllint disable-line rule:line-length
