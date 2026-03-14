@@ -16,6 +16,24 @@
       "message": "It would be better contain two different functions about key_update for the next cases:\n1. [quic_quicly_crypto] When key-\u003ealg is updated (need to call key_del_fn -- actual for openssl EVP_CIPHER_CTX_free when new alg has another active engine).\n2. [wireguard_chachapoly] When key-\u003ealg is not updated (and active engine will not be changes).",
       "revId": "e851eaecb84163cafbff3e7406a4c10d8efd67b8",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "95640479_28e18a2d",
+        "filename": "src/vnet/crypto/crypto.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 1175,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-03-14T21:09:33Z",
+      "side": 1,
+      "message": "work in progress patch",
+      "parentUuid": "70c0a1d8_5b2569db",
+      "revId": "e851eaecb84163cafbff3e7406a4c10d8efd67b8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }

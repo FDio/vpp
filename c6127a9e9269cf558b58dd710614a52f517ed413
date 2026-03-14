@@ -20,6 +20,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "508128c3_81989424",
+        "filename": "src/crypto_engines/native/aes_cbc.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 154,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-03-14T21:09:33Z",
+      "side": 1,
+      "message": "work in progress patch",
+      "parentUuid": "b8f65d51_0b50715b",
+      "revId": "c6127a9e9269cf558b58dd710614a52f517ed413",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "da5e7bc9_d2223b8d",
         "filename": "src/plugins/quic_quicly/quic_quicly_crypto.c",
         "patchSetId": 7
@@ -31,6 +49,24 @@
       "writtenOn": "2026-03-11T22:01:08Z",
       "side": 1,
       "message": "Here is problem when alg is updated. Because vnet_crypto_key_update doesn\u0027t use vnet_crypto_key_del_call.\nThis is not good for the next scenario: previous key_data was on openssl engine and the new one key_data on native/ipsecmb engine. Then \u0027EVP_CIPHER_CTX_free\u0027 will not be called for previous key_data.",
+      "revId": "c6127a9e9269cf558b58dd710614a52f517ed413",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d00e6241_45d5f753",
+        "filename": "src/plugins/quic_quicly/quic_quicly_crypto.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 572,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-03-14T21:09:33Z",
+      "side": 1,
+      "message": "work in progress patch",
+      "parentUuid": "da5e7bc9_d2223b8d",
       "revId": "c6127a9e9269cf558b58dd710614a52f517ed413",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -54,6 +90,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "9f2053bf_9ee06c1b",
+        "filename": "src/vnet/crypto/crypto.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 1100,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-03-14T21:09:33Z",
+      "side": 1,
+      "message": "work in progress patch",
+      "parentUuid": "bf38e7b4_cb1a68be",
+      "revId": "c6127a9e9269cf558b58dd710614a52f517ed413",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "58353cdd_a27b2ba0",
         "filename": "src/vnet/crypto/crypto.h",
         "patchSetId": 7
@@ -65,6 +119,30 @@
       "writtenOn": "2026-03-11T22:01:08Z",
       "side": 1,
       "message": "What about union of { uword key_data + u32 key_index } (there is no problem with STATIC_ASSERT_SIZEOF because op-\u003euser_data can be u32 instead of uword) inside vnet_crypto_op_t.\nAs a result:\n1. There is no need to use additional parameter of key_data for these function type and key_data will be bind to op.\n2. Prepare SIMPLE \u0026 CHAINED key_data before data path.\n3. Prepare key_data for specific thread_index for more then one op object (for example esp_encrypt.c inside condition \u0027if (sa_index0 !\u003d current_sa_index)\u0027)\n4. Minimize processing inside vnet_crypto_process_ops_call_handler\n5. There is no need to get key object via op-\u003ekey_index for each op inside vnet_crypto_process_ops_call_handler.",
+      "range": {
+        "startLine": 446,
+        "startChar": 32,
+        "endLine": 446,
+        "endChar": 40
+      },
+      "revId": "c6127a9e9269cf558b58dd710614a52f517ed413",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "65494cca_fe97ef84",
+        "filename": "src/vnet/crypto/crypto.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 446,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-03-14T21:09:33Z",
+      "side": 1,
+      "message": "work in progress patch",
+      "parentUuid": "58353cdd_a27b2ba0",
       "range": {
         "startLine": 446,
         "startChar": 32,
