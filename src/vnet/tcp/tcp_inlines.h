@@ -60,21 +60,22 @@ tcp_buffer_hdr (vlib_buffer_t * b)
 }
 
 always_inline tcp_connection_t *
+tcp_worker_connection_get (tcp_worker_ctx_t *wrk, u32 conn_index)
+{
+  return pool_elt_at_index (wrk->connections, conn_index);
+}
+
+always_inline tcp_connection_t *
 tcp_connection_get (u32 conn_index, clib_thread_index_t thread_index)
 {
   tcp_worker_ctx_t *wrk = tcp_get_worker (thread_index);
-  if (PREDICT_FALSE (pool_is_free_index (wrk->connections, conn_index)))
-    return 0;
   return pool_elt_at_index (wrk->connections, conn_index);
 }
 
 always_inline tcp_connection_t *
 tcp_connection_get_if_valid (u32 conn_index, clib_thread_index_t thread_index)
 {
-  tcp_worker_ctx_t *wrk;
-  if (thread_index >= vec_len (tcp_main.wrk))
-    return 0;
-  wrk = tcp_get_worker (thread_index);
+  tcp_worker_ctx_t *wrk = tcp_get_worker (thread_index);
   if (pool_is_free_index (wrk->connections, conn_index))
     return 0;
   return pool_elt_at_index (wrk->connections, conn_index);
@@ -94,7 +95,13 @@ tcp_listener_get (u32 tli)
 }
 
 always_inline tcp_connection_t *
-tcp_half_open_connection_get (u32 conn_index)
+tcp_ho_connection_get_if_valid (u32 conn_index)
+{
+  return tcp_connection_get_if_valid (conn_index, transport_cl_thread ());
+}
+
+always_inline tcp_connection_t *
+tcp_ho_connection_get (u32 conn_index)
 {
   return tcp_connection_get (conn_index, transport_cl_thread ());
 }
@@ -338,10 +345,8 @@ tcp_input_lookup_buffer (vlib_buffer_t * b, u8 thread_index, u32 * error,
   vnet_buffer (b)->sw_if_index[VLIB_RX] = vnet_buffer (b)->ip.rx_sw_if_index;
 
   if (is_nolookup)
-    tc =
-      (transport_connection_t *) tcp_connection_get (vnet_buffer (b)->
-						     tcp.connection_index,
-						     thread_index);
+    tc = (transport_connection_t *) tcp_connection_get_if_valid (
+      vnet_buffer (b)->tcp.connection_index, thread_index);
 
   vnet_buffer (b)->tcp.seq_number = clib_net_to_host_u32 (tcp->seq_number);
   vnet_buffer (b)->tcp.ack_number = clib_net_to_host_u32 (tcp->ack_number);
