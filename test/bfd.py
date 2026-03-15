@@ -11,6 +11,7 @@ from scapy.fields import (
     XByteField,
     FlagsField,
     ConditionalField,
+    MultipleTypeField,
     StrField,
 )
 from vpp_object import VppObject
@@ -146,8 +147,13 @@ class BFD(Packet):
         ConditionalField(BitField("auth_key_id", 0, 8), bfd_is_auth_used),
         ConditionalField(BitField("auth_reserved", 0, 8), bfd_is_md5_or_sha1_used),
         ConditionalField(BitField("auth_seq_num", 0, 32), bfd_is_md5_or_sha1_used),
-        ConditionalField(StrField("auth_key_hash", "0" * 16), bfd_is_md5_used),
-        ConditionalField(StrField("auth_key_hash", "0" * 20), bfd_is_sha1_used),
+        MultipleTypeField(
+            [
+                (StrField("auth_key_hash", "0" * 16), bfd_is_md5_used),
+                (StrField("auth_key_hash", "0" * 20), bfd_is_sha1_used),
+            ],
+            StrField("auth_key_hash", ""),
+        ),
     ]
 
     def mysummary(self):
