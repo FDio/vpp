@@ -101,6 +101,23 @@
       "message": "Could we use \u0027sfdp_session_at_index()\u0027 here ?",
       "revId": "9b9d00694fe21f3aac73baad82a248e11f9a0555",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b7c874c2_685b1ce9",
+        "filename": "src/vnet/sfdp/lookup/node.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 642,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-03-16T11:55:37Z",
+      "side": 1,
+      "message": "Would it be for `sfdp_flow_offload_create` to be registered with `SFDP_REGISTER_NEW_SESSIONS_CALLBACK` \u0026 called through `sfdp_notify_new_sessions` ?\n\nThis would be better IMO, but I can also see how it could conflict with the check `is_offloaded \u003d\u003d SFDP_LOOKUP_OFFLOAD_1ST_PACKET`",
+      "revId": "9b9d00694fe21f3aac73baad82a248e11f9a0555",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
