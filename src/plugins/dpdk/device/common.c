@@ -17,6 +17,7 @@
 #include <dpdk/buffer.h>
 #include <dpdk/device/dpdk.h>
 #include <dpdk/device/dpdk_priv.h>
+#include <dpdk/device/flow.h>
 #include <vppinfra/error.h>
 
 /* DPDK TX offload to vnet hw interface caps mapppings */
@@ -44,13 +45,256 @@ dpdk_device_error (dpdk_device_t * xd, char *str, int rv)
 				  str, xd->port_id, rv, rte_strerror (rv));
 }
 
-static void
+void
 dpdk_device_flow_warning (dpdk_device_t *xd, char *str, int rv)
 {
   dpdk_log_warn ("Interface %U error %d: %s", format_dpdk_device_name, xd->device_index, rv,
 		 rte_strerror (rv));
   dpdk_log_warn ("[%u] %s - type: %d, message: %s", xd->port_id, str, xd->last_flow_error.type,
 		 xd->last_flow_error.message);
+}
+
+/*
+ * Default jump and catch-all rules: why the async template API is required.
+ *
+ * In switchdev mode with dv_flow_en=2 (HW Steering), the NIC Rx root flow
+ * table (group 0) is a single firmware table shared across all representors.
+ * Without per-port matching, a catch-all rule from one representor captures
+ * traffic destined for all others (confirmed: causes packet duplication).
+ *
+ * Per-port isolation requires a REPRESENTED_PORT match item. However:
+ *
+ *  - The sync API (rte_flow_create, NTA path) rejects REPRESENTED_PORT
+ *    in ingress rules at validation time (mlx5_flow_hw.c:8791), and adds
+ *    no implicit source-port matching (unlike dv_flow_en=1's DV path which
+ *    auto-adds source_port/vport_meta at mlx5_flow_dv.c:14903).
+ *
+ *  - The async template API (rte_flow_pattern_template_create) auto-prepends
+ *    a REPRESENTED_PORT item with mask AFTER validation (mlx5_flow_hw.c:9274),
+ *    and fills the spec with dev->data->port_id at rule creation time
+ *    (mlx5_flow_hw.c:3953). This is the only API path that provides per-port
+ *    isolation for ingress rules in the shared root table.
+ *
+ * Therefore, the default rules must use the template-based async API despite
+ * being simple static rules. The sync API cannot be used here.
+ */
+static int
+dpdk_device_flow_async_push_pull (dpdk_device_t *xd)
+{
+  struct rte_flow_op_result result = {};
+  int rv = 0;
+  rv = rte_flow_push (xd->port_id, DPDK_MAIN_ASYNC_FLOW_QUEUE_INDEX, &xd->last_flow_error);
+  if (rv)
+    {
+      dpdk_device_flow_warning (xd, "rte_flow_push", rv);
+      goto done;
+    }
+
+  /* pull completion */
+  while (rte_flow_pull (xd->port_id, DPDK_MAIN_ASYNC_FLOW_QUEUE_INDEX, &result, 1,
+			&xd->last_flow_error) == 0)
+    CLIB_PAUSE ();
+
+  if (result.status != RTE_FLOW_OP_SUCCESS)
+    {
+      dpdk_log_warn ("[%u] Async flow creation failed (status %d)", xd->port_id, result.status);
+      rv = VNET_FLOW_ERROR_INTERNAL;
+      goto done;
+    }
+
+done:
+  return rv;
+}
+
+static int
+dpdk_device_flow_async_destroy (dpdk_device_t *xd, struct rte_flow *flow)
+{
+  struct rte_flow_op_attr op_attr = { .postpone = 0 };
+  int rv;
+
+  rv = rte_flow_async_destroy (xd->port_id, DPDK_MAIN_ASYNC_FLOW_QUEUE_INDEX, &op_attr, flow, NULL,
+			       &xd->last_flow_error);
+  if (rv)
+    {
+      dpdk_device_flow_warning (xd, "rte_flow_async_destroy", rv);
+      return rv;
+    }
+
+  rv = dpdk_device_flow_async_push_pull (xd);
+  if (rv)
+    return rv;
+  return 0;
+}
+
+static struct rte_flow *
+dpdk_device_flow_async_create (dpdk_device_t *xd, struct rte_flow_template_table *tbl,
+			       struct rte_flow_item pattern[], struct rte_flow_action actions[])
+{
+  struct rte_flow_op_attr op_attr = { .postpone = 0 };
+  struct rte_flow *flow = NULL;
+  int rv;
+
+  flow =
+    rte_flow_async_create (xd->port_id, DPDK_MAIN_ASYNC_FLOW_QUEUE_INDEX, &op_attr, tbl, pattern,
+			   /* pattern_template_index= */ 0, actions,
+			   /* actions_template_index= */ 0, NULL, &xd->last_flow_error);
+  if (!flow)
+    {
+      dpdk_device_flow_warning (xd, "rte_flow_async_create", rte_errno);
+      return NULL;
+    }
+
+  rv = dpdk_device_flow_async_push_pull (xd);
+  if (rv)
+    {
+      dpdk_device_flow_async_destroy (xd, flow);
+      return NULL;
+    }
+  return flow;
+}
+
+/*
+ * Install two NIC Rx ingress rules per representor:
+ *
+ *   group 0 (root):  ETH catch-all → JUMP to group 1
+ *   group 1 (non-root, priority max): ETH catch-all → RSS
+ *
+ * Group 0 is the firmware root table — slow and limited (16 priorities).
+ * It holds only the jump rule. Group 1 is a non-root HW table — fast,
+ * hash-based, supports millions of rules and priorities 0..UINT32_MAX.
+ * User rules are installed in group 1 at lower priority numbers,
+ * taking precedence over the catch-all RSS.
+ *
+ * The patterns appear to be plain ETH catch-all, but the mlx5 template API
+ * silently prepends a REPRESENTED_PORT match (see block comment above),
+ * so each representor's rules only match its own traffic in the shared
+ * root table.
+ */
+static void
+dpdk_device_install_default_jump_rule (dpdk_device_t *xd)
+{
+  struct rte_flow_item jump_pattern[] = {
+    { .type = RTE_FLOW_ITEM_TYPE_ETH },
+    { .type = RTE_FLOW_ITEM_TYPE_END },
+  };
+  struct rte_flow_action_jump jump_act = { .group = 1 };
+  struct rte_flow_action_jump jump_mask = { .group = 1 };
+  struct rte_flow_action jump_actions[] = {
+    { .type = RTE_FLOW_ACTION_TYPE_JUMP, .conf = &jump_act },
+    { .type = RTE_FLOW_ACTION_TYPE_END },
+  };
+  struct rte_flow_action jump_masks[] = {
+    { .type = RTE_FLOW_ACTION_TYPE_JUMP, .conf = &jump_mask },
+    { .type = RTE_FLOW_ACTION_TYPE_END },
+  };
+  u16 queues[xd->conf.n_rx_queues];
+  struct rte_flow_action_rss rss = {
+    .func = RTE_ETH_HASH_FUNCTION_SYMMETRIC_TOEPLITZ,
+    .types = RTE_ETH_RSS_IP,
+    .queue_num = xd->conf.n_rx_queues,
+    .queue = queues,
+  };
+  struct rte_flow_item miss_pattern[] = {
+    { .type = RTE_FLOW_ITEM_TYPE_ETH },
+    { .type = RTE_FLOW_ITEM_TYPE_END },
+  };
+  struct rte_flow_action miss_actions[] = {
+    { .type = RTE_FLOW_ACTION_TYPE_RSS, .conf = &rss },
+    { .type = RTE_FLOW_ACTION_TYPE_END },
+  };
+  struct rte_flow_action miss_masks[] = {
+    { .type = RTE_FLOW_ACTION_TYPE_RSS },
+    { .type = RTE_FLOW_ACTION_TYPE_END },
+  };
+  struct rte_flow_template_table_attr jump_tbl_attr = {
+    .flow_attr = { .ingress = 1, .group = 0 },
+    .nb_flows = 1,
+  };
+  struct rte_flow_template_table_attr miss_tbl_attr = {
+    .flow_attr = { .ingress = 1, .group = 1, .priority = ~0 },
+    .nb_flows = 1,
+  };
+  int rv = 0;
+  int i;
+
+  for (i = 0; i < xd->conf.n_rx_queues; i++)
+    queues[i] = i;
+
+  if (!xd->driver || !xd->driver->install_default_jump)
+    return;
+
+  /* The async template API requires the HWS DR context created by
+   * rte_flow_configure() — DPDK_DEVICE_FLAG_ASYNC_FLOW_OFFLOAD indicates
+   * that rte_flow_configure() succeeded on this port. */
+  if ((xd->flags & DPDK_DEVICE_FLAG_ASYNC_FLOW_OFFLOAD) == 0)
+    {
+      dpdk_log_warn (
+	"[%u] Default jump/miss rules cannot be installed without async offload support",
+	xd->port_id);
+      return;
+    }
+
+  rv = dpdk_flow_async_template_table_create (xd, &jump_tbl_attr, jump_pattern, jump_actions,
+					      jump_masks, &xd->default_jump_tbl);
+  if (!rv)
+    {
+      dpdk_log_debug ("[%u] Default jump rule table to group 1 installed", xd->port_id);
+    }
+  else
+    {
+      dpdk_log_warn ("[%u] Failed to install default jump rule table", xd->port_id);
+      return;
+    }
+
+  xd->default_jump_flow = dpdk_device_flow_async_create (xd, xd->default_jump_tbl.table_handle,
+							 jump_pattern, jump_actions);
+  if (xd->default_jump_flow)
+    {
+      dpdk_log_debug ("[%u] Default jump rule to group 1 installed", xd->port_id);
+    }
+  else
+    {
+      dpdk_log_warn ("[%u] Failed to install default jump rule", xd->port_id);
+      goto error_jump_tbl;
+    }
+
+  rv = dpdk_flow_async_template_table_create (xd, &miss_tbl_attr, miss_pattern, miss_actions,
+					      miss_masks, &xd->default_miss_tbl);
+  if (!rv)
+    {
+      dpdk_log_debug ("[%u] Default catch-all rule table to group 1 installed", xd->port_id);
+    }
+  else
+    {
+      dpdk_log_warn ("[%u] Failed to install catch-all rule table", xd->port_id);
+      goto error_jump_flow;
+    }
+
+  xd->default_miss_flow = dpdk_device_flow_async_create (xd, xd->default_miss_tbl.table_handle,
+							 miss_pattern, miss_actions);
+  if (xd->default_miss_flow)
+    {
+      dpdk_log_debug ("[%u] Default catch-all rule to group 1 installed", xd->port_id);
+    }
+  else
+    {
+      dpdk_log_warn ("[%u] Failed to install catch-all rule", xd->port_id);
+      goto error_miss_tbl;
+    }
+
+  return;
+
+error_miss_tbl:
+  dpdk_flow_async_template_table_destroy (xd, &xd->default_miss_tbl);
+
+error_jump_flow:
+  dpdk_device_flow_async_destroy (xd, xd->default_jump_flow);
+  xd->default_jump_flow = NULL;
+
+error_jump_tbl:
+  dpdk_flow_async_template_table_destroy (xd, &xd->default_jump_tbl);
+
+  return;
 }
 
 /*
@@ -64,11 +308,10 @@ dpdk_device_configure_async_flow_offload (dpdk_device_t *xd)
   struct rte_flow_port_info flow_port_info = {};
   struct rte_flow_queue_info flow_queue_info = {};
   struct rte_flow_port_attr port_attr = {};
-  struct rte_flow_queue_attr queue_attr = {
-    .size = DPDK_DEFAULT_ASYNC_FLOW_QUEUE_SIZE,
-  };
-  const struct rte_flow_queue_attr *queue_attr_list[] = { &queue_attr };
+  struct rte_flow_queue_attr queue_attr = {};
+  const struct rte_flow_queue_attr **queue_attr_list;
   int rv;
+  u32 j;
 
   if (xd->flags & DPDK_DEVICE_FLAG_ASYNC_FLOW_OFFLOAD)
     return;
@@ -86,17 +329,38 @@ dpdk_device_configure_async_flow_offload (dpdk_device_t *xd)
       return;
     }
 
-  if (DPDK_DEFAULT_ASYNC_FLOW_N_QUEUES > flow_port_info.max_nb_queues ||
-      DPDK_DEFAULT_ASYNC_FLOW_QUEUE_SIZE > flow_queue_info.max_size)
+  /* 0 = auto: one async flow queue per VPP thread (main + workers) */
+  if (xd->async_flow_offload_n_queues == 0)
+    xd->async_flow_offload_n_queues = vlib_thread_main.n_vlib_mains;
+
+  /* more queues than threads is wasteful — clamp */
+  xd->async_flow_offload_n_queues =
+    clib_min (xd->async_flow_offload_n_queues, vlib_thread_main.n_vlib_mains);
+
+  if (flow_port_info.max_nb_queues < xd->async_flow_offload_n_queues)
     {
-      dpdk_log_warn ("[%u] async flow offload supported with max %u queues of size %u", xd->port_id,
-		     flow_port_info.max_nb_queues, flow_queue_info.max_size);
-      return;
+      dpdk_log_warn ("[%u] NIC supports max %u async flow queues, clamping from %u", xd->port_id,
+		     flow_port_info.max_nb_queues, xd->async_flow_offload_n_queues);
+      xd->async_flow_offload_n_queues = flow_port_info.max_nb_queues;
     }
 
-  /* at least one queue is needed, of size DPDK_DEFAULT_ASYNC_FLOW_QUEUE_SIZE for now */
-  rv = rte_flow_configure (xd->port_id, &port_attr, DPDK_DEFAULT_ASYNC_FLOW_N_QUEUES,
+  if (flow_queue_info.max_size < xd->async_flow_offload_queue_size)
+    {
+      dpdk_log_notice ("[%u] Supported async flow queues of size %u, %u requested", xd->port_id,
+		       flow_queue_info.max_size, xd->async_flow_offload_queue_size);
+      xd->async_flow_offload_queue_size = min_pow2 (flow_queue_info.max_size);
+    }
+
+  queue_attr.size = xd->async_flow_offload_queue_size;
+  queue_attr_list = clib_mem_alloc (sizeof (*queue_attr_list) * xd->async_flow_offload_n_queues);
+  for (j = 0; j < xd->async_flow_offload_n_queues; j++)
+    queue_attr_list[j] = &queue_attr;
+
+  rv = rte_flow_configure (xd->port_id, &port_attr, xd->async_flow_offload_n_queues,
 			   queue_attr_list, &xd->last_flow_error);
+
+  clib_mem_free (queue_attr_list);
+
   if (rv == -ENOTSUP)
     {
       return;
@@ -110,11 +374,20 @@ dpdk_device_configure_async_flow_offload (dpdk_device_t *xd)
     }
 
   dpdk_device_flag_set (xd, DPDK_DEVICE_FLAG_ASYNC_FLOW_OFFLOAD, 1);
+  clib_spinlock_init (&xd->flow_lock);
+  vec_validate (xd->flow_per_thread, vlib_thread_main.n_vlib_mains - 1);
+  vec_validate (xd->flow_queue_locks, xd->async_flow_offload_n_queues - 1);
+  for (j = 0; j < xd->async_flow_offload_n_queues; j++)
+    clib_spinlock_init (&xd->flow_queue_locks[j]);
+  xd->flow_cache_size = 2 * xd->async_flow_offload_queue_size;
 
   dpdk_log_debug ("[%u] Async flow port info: %U", xd->port_id, format_dpdk_flow_port_info,
 		  &flow_port_info);
   dpdk_log_debug ("[%u] Async flow queue info: %U", xd->port_id, format_dpdk_flow_queue_info,
 		  &flow_queue_info);
+  dpdk_log_debug ("[%u] Async flow: %u queues of size %u (batch %u, cache %u)", xd->port_id,
+		  xd->async_flow_offload_n_queues, xd->async_flow_offload_queue_size,
+		  xd->async_flow_offload_queue_batch, xd->flow_cache_size);
 }
 
 void
@@ -443,6 +716,8 @@ dpdk_device_start (dpdk_device_t * xd)
       return;
     }
 
+  dpdk_device_install_default_jump_rule (xd);
+
   dpdk_log_debug ("[%u] RX burst function: %U", xd->port_id,
 		  format_dpdk_burst_fn, xd, VLIB_RX);
   dpdk_log_debug ("[%u] TX burst function: %U", xd->port_id,
@@ -473,6 +748,28 @@ dpdk_device_stop (dpdk_device_t * xd)
 {
   if (xd->flags & DPDK_DEVICE_FLAG_PMD_INIT_FAIL)
     return;
+
+  /* Tear down default rules. Destroy jump first so traffic returns to the
+   * firmware-default RSS in group 0. If we destroyed the catch-all first,
+   * the jump would still be active and traffic arriving in group 1 would
+   * have no matching rule — causing a blackhole until the jump is removed. */
+  if (xd->default_jump_flow)
+    {
+      dpdk_device_flow_async_destroy (xd, xd->default_jump_flow);
+      xd->default_jump_flow = NULL;
+    }
+
+  if (xd->default_jump_tbl.table_handle)
+    dpdk_flow_async_template_table_destroy (xd, &xd->default_jump_tbl);
+
+  if (xd->default_miss_flow)
+    {
+      dpdk_device_flow_async_destroy (xd, xd->default_miss_flow);
+      xd->default_miss_flow = NULL;
+    }
+
+  if (xd->default_miss_tbl.table_handle)
+    dpdk_flow_async_template_table_destroy (xd, &xd->default_miss_tbl);
 
   rte_eth_allmulticast_disable (xd->port_id);
   rte_eth_dev_stop (xd->port_id);
