@@ -67,6 +67,7 @@ u8 *
 format_vxlan_tunnel (u8 * s, va_list * args)
 {
   vxlan_tunnel_t *t = va_arg (*args, vxlan_tunnel_t *);
+  u32 *flow_index;
 
   s = format (s,
 	      "[%d] instance %d src %U dst %U src_port %d dst_port %d vni %d "
@@ -84,9 +85,9 @@ format_vxlan_tunnel (u8 * s, va_list * args)
   if (PREDICT_FALSE (ip46_address_is_multicast (&t->dst)))
     s = format (s, "mcast-sw-if-idx %d ", t->mcast_sw_if_index);
 
-  if (t->flow_index != ~0)
-    s = format (s, "flow-index %d [%U]", t->flow_index,
-		format_flow_enabled_hw, t->flow_index);
+  vec_foreach (flow_index, t->flow_index_by_hw_if_index)
+    if (*flow_index != ~0)
+      s = format (s, "flow-index %d [%U] ", *flow_index, format_flow_enabled_hw, *flow_index);
 
   return s;
 }
@@ -354,6 +355,7 @@ int vnet_vxlan_add_del_tunnel
   vnet_main_t *vnm = vxm->vnet_main;
   vxlan_decap_info_t *p;
   u32 sw_if_index = ~0;
+  u32 *flow_index;
   vxlan4_tunnel_key_t key4;
   vxlan6_tunnel_key_t key6;
   u32 is_ip6 = a->is_ip6;
@@ -439,7 +441,7 @@ int vnet_vxlan_add_del_tunnel
 
       t->dev_instance = dev_instance;	/* actual */
       t->user_instance = user_instance; /* name */
-      t->flow_index = ~0;
+      t->flow_index_by_hw_if_index = 0;
 
       if (a->is_l3)
 	t->hw_if_index =
@@ -635,8 +637,10 @@ int vnet_vxlan_add_del_tunnel
 
       if (!ip46_address_is_multicast (&t->dst))
 	{
-	  if (t->flow_index != ~0)
-	    vnet_flow_del (vnm, t->flow_index);
+	  vec_foreach (flow_index, t->flow_index_by_hw_if_index)
+	    if (*flow_index != ~0)
+	      vnet_flow_del (vnm, *flow_index);
+	  vec_free (t->flow_index_by_hw_if_index);
 
 	  vtep_addr_unref (&vxm->vtep_table, t->encap_fib_index, &t->src);
 	  fib_entry_untrack (t->fib_entry_index, t->sibling_index);
@@ -1165,9 +1169,14 @@ vnet_vxlan_add_del_rx_flow (u32 hw_if_index, u32 t_index, int is_add)
   vxlan_main_t *vxm = &vxlan_main;
   vxlan_tunnel_t *t = pool_elt_at_index (vxm->tunnels, t_index);
   vnet_main_t *vnm = vnet_get_main ();
+  u32 flow_index;
+  int rv;
+
   if (is_add)
     {
-      if (t->flow_index == ~0)
+      vec_validate_init_empty (t->flow_index_by_hw_if_index, hw_if_index, ~0);
+      flow_index = vec_elt (t->flow_index_by_hw_if_index, hw_if_index);
+      if (flow_index == ~0)
 	{
 	  vxlan_main_t *vxm = &vxlan_main;
 	  vnet_flow_t flow = {
@@ -1190,12 +1199,26 @@ vnet_vxlan_add_del_rx_flow (u32 hw_if_index, u32 t_index, int is_add)
 			  }
 	    ,
 	  };
-	  vnet_flow_add (vnm, &flow, &t->flow_index);
+	  vnet_flow_add (vnm, &flow, &flow_index);
+	  vec_elt (t->flow_index_by_hw_if_index, hw_if_index) = flow_index;
 	}
-      return vnet_flow_enable (vnm, t->flow_index, hw_if_index);
+      return vnet_flow_enable (vnm, flow_index, hw_if_index);
     }
-  /* flow index is removed when the tunnel is deleted */
-  return vnet_flow_disable (vnm, t->flow_index, hw_if_index);
+
+  /* disable and delete flow for this hw_if_index */
+  if (hw_if_index >= vec_len (t->flow_index_by_hw_if_index))
+    return VNET_API_ERROR_INVALID_VALUE;
+
+  flow_index = vec_elt (t->flow_index_by_hw_if_index, hw_if_index);
+  if (flow_index == ~0)
+    return VNET_API_ERROR_INVALID_VALUE;
+
+  rv = vnet_flow_del (vnm, flow_index);
+  if (rv)
+    return rv;
+
+  vec_elt (t->flow_index_by_hw_if_index, hw_if_index) = ~0;
+  return 0;
 }
 
 u32
