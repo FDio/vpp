@@ -92,7 +92,7 @@ jobs:
     name: Merge Maketest
     needs:
       - start-merge
-    uses: fdio/vpp/.github/workflows/vpp-merge-maketest.yml@b3b1c6860e7309ece1b8f36c30ab6ef82b82e920
+    uses: fdio/vpp/.github/workflows/vpp-merge-maketest.yml@36107d7946ec6d35543ec600def2a574d4c6fff4
     with:
       FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
       GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
