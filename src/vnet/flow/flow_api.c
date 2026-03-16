@@ -204,16 +204,6 @@ ipv4_gtpc_flow_convert (vl_api_flow_ip4_gtpc_t * vl_api_flow,
   f->teid = ntohl (vl_api_flow->teid);
 }
 
-static inline void
-generic_flow_convert (vl_api_flow_generic_t *vl_api_flow,
-		      vnet_flow_generic_t *f)
-{
-  clib_memcpy (f->pattern.spec, vl_api_flow->pattern.spec,
-	       sizeof (vl_api_flow->pattern.spec));
-  clib_memcpy (f->pattern.mask, vl_api_flow->pattern.mask,
-	       sizeof (vl_api_flow->pattern.mask));
-}
-
 static void
 vl_api_flow_add_t_handler (vl_api_flow_add_t * mp)
 {
@@ -237,47 +227,45 @@ vl_api_flow_add_t_handler (vl_api_flow_add_t * mp)
   switch (flow.type)
     {
     case VNET_FLOW_TYPE_IP4:
-      ipv4_flow_convert (&f->flow.ip4, &flow.ip4);
+      ipv4_flow_convert (&f->flow.ip4, &flow.pattern.ip4);
       break;
     case VNET_FLOW_TYPE_IP6:
-      ipv6_flow_convert (&f->flow.ip6, &flow.ip6);
+      ipv6_flow_convert (&f->flow.ip6, &flow.pattern.ip6);
       break;
     case VNET_FLOW_TYPE_IP4_N_TUPLE:
-      ipv4_n_tuple_flow_convert (&f->flow.ip4_n_tuple, &flow.ip4_n_tuple);
+      ipv4_n_tuple_flow_convert (&f->flow.ip4_n_tuple, &flow.pattern.ip4_n_tuple);
       break;
     case VNET_FLOW_TYPE_IP6_N_TUPLE:
-      ipv6_n_tuple_flow_convert (&f->flow.ip6_n_tuple, &flow.ip6_n_tuple);
+      ipv6_n_tuple_flow_convert (&f->flow.ip6_n_tuple, &flow.pattern.ip6_n_tuple);
       break;
     case VNET_FLOW_TYPE_IP4_N_TUPLE_TAGGED:
       ipv4_n_tuple_tagged_flow_convert (&f->flow.ip4_n_tuple_tagged,
-					&flow.ip4_n_tuple_tagged);
+					&flow.pattern.ip4_n_tuple_tagged);
       break;
     case VNET_FLOW_TYPE_IP6_N_TUPLE_TAGGED:
       ipv6_n_tuple_tagged_flow_convert (&f->flow.ip6_n_tuple_tagged,
-					&flow.ip6_n_tuple_tagged);
+					&flow.pattern.ip6_n_tuple_tagged);
       break;
     case VNET_FLOW_TYPE_IP4_L2TPV3OIP:
-      ipv4_l2tpv3oip_flow_convert (&f->flow.ip4_l2tpv3oip,
-				   &flow.ip4_l2tpv3oip);
+      ipv4_l2tpv3oip_flow_convert (&f->flow.ip4_l2tpv3oip, &flow.pattern.ip4_l2tpv3oip);
       break;
     case VNET_FLOW_TYPE_IP4_IPSEC_ESP:
-      ipv4_ipsec_esp_flow_convert (&f->flow.ip4_ipsec_esp,
-				   &flow.ip4_ipsec_esp);
+      ipv4_ipsec_esp_flow_convert (&f->flow.ip4_ipsec_esp, &flow.pattern.ip4_ipsec_esp);
       break;
     case VNET_FLOW_TYPE_IP4_IPSEC_AH:
-      ipv4_ipsec_ah_flow_convert (&f->flow.ip4_ipsec_ah, &flow.ip4_ipsec_ah);
+      ipv4_ipsec_ah_flow_convert (&f->flow.ip4_ipsec_ah, &flow.pattern.ip4_ipsec_ah);
       break;
     case VNET_FLOW_TYPE_IP4_VXLAN:
-      ipv4_vxlan_flow_convert (&f->flow.ip4_vxlan, &flow.ip4_vxlan);
+      ipv4_vxlan_flow_convert (&f->flow.ip4_vxlan, &flow.pattern.ip4_vxlan);
       break;
     case VNET_FLOW_TYPE_IP6_VXLAN:
-      ipv6_vxlan_flow_convert (&f->flow.ip6_vxlan, &flow.ip6_vxlan);
+      ipv6_vxlan_flow_convert (&f->flow.ip6_vxlan, &flow.pattern.ip6_vxlan);
       break;
     case VNET_FLOW_TYPE_IP4_GTPU:
-      ipv4_gtpu_flow_convert (&f->flow.ip4_gtpu, &flow.ip4_gtpu);
+      ipv4_gtpu_flow_convert (&f->flow.ip4_gtpu, &flow.pattern.ip4_gtpu);
       break;
     case VNET_FLOW_TYPE_IP4_GTPC:
-      ipv4_gtpc_flow_convert (&f->flow.ip4_gtpc, &flow.ip4_gtpc);
+      ipv4_gtpc_flow_convert (&f->flow.ip4_gtpc, &flow.pattern.ip4_gtpc);
       break;
     default:
       rv = VNET_FLOW_ERROR_NOT_SUPPORTED;
@@ -321,50 +309,49 @@ vl_api_flow_add_v2_t_handler (vl_api_flow_add_v2_t *mp)
   switch (flow.type)
     {
     case VNET_FLOW_TYPE_IP4:
-      ipv4_flow_convert (&f->flow.ip4, &flow.ip4);
+      ipv4_flow_convert (&f->flow.ip4, &flow.pattern.ip4);
       break;
     case VNET_FLOW_TYPE_IP6:
-      ipv6_flow_convert (&f->flow.ip6, &flow.ip6);
+      ipv6_flow_convert (&f->flow.ip6, &flow.pattern.ip6);
       break;
     case VNET_FLOW_TYPE_IP4_N_TUPLE:
-      ipv4_n_tuple_flow_convert (&f->flow.ip4_n_tuple, &flow.ip4_n_tuple);
+      ipv4_n_tuple_flow_convert (&f->flow.ip4_n_tuple, &flow.pattern.ip4_n_tuple);
       break;
     case VNET_FLOW_TYPE_IP6_N_TUPLE:
-      ipv6_n_tuple_flow_convert (&f->flow.ip6_n_tuple, &flow.ip6_n_tuple);
+      ipv6_n_tuple_flow_convert (&f->flow.ip6_n_tuple, &flow.pattern.ip6_n_tuple);
       break;
     case VNET_FLOW_TYPE_IP4_N_TUPLE_TAGGED:
       ipv4_n_tuple_tagged_flow_convert (&f->flow.ip4_n_tuple_tagged,
-					&flow.ip4_n_tuple_tagged);
+					&flow.pattern.ip4_n_tuple_tagged);
       break;
     case VNET_FLOW_TYPE_IP6_N_TUPLE_TAGGED:
       ipv6_n_tuple_tagged_flow_convert (&f->flow.ip6_n_tuple_tagged,
-					&flow.ip6_n_tuple_tagged);
+					&flow.pattern.ip6_n_tuple_tagged);
       break;
     case VNET_FLOW_TYPE_IP4_L2TPV3OIP:
-      ipv4_l2tpv3oip_flow_convert (&f->flow.ip4_l2tpv3oip,
-				   &flow.ip4_l2tpv3oip);
+      ipv4_l2tpv3oip_flow_convert (&f->flow.ip4_l2tpv3oip, &flow.pattern.ip4_l2tpv3oip);
       break;
     case VNET_FLOW_TYPE_IP4_IPSEC_ESP:
-      ipv4_ipsec_esp_flow_convert (&f->flow.ip4_ipsec_esp,
-				   &flow.ip4_ipsec_esp);
+      ipv4_ipsec_esp_flow_convert (&f->flow.ip4_ipsec_esp, &flow.pattern.ip4_ipsec_esp);
       break;
     case VNET_FLOW_TYPE_IP4_IPSEC_AH:
-      ipv4_ipsec_ah_flow_convert (&f->flow.ip4_ipsec_ah, &flow.ip4_ipsec_ah);
+      ipv4_ipsec_ah_flow_convert (&f->flow.ip4_ipsec_ah, &flow.pattern.ip4_ipsec_ah);
       break;
     case VNET_FLOW_TYPE_IP4_VXLAN:
-      ipv4_vxlan_flow_convert (&f->flow.ip4_vxlan, &flow.ip4_vxlan);
+      ipv4_vxlan_flow_convert (&f->flow.ip4_vxlan, &flow.pattern.ip4_vxlan);
       break;
     case VNET_FLOW_TYPE_IP6_VXLAN:
-      ipv6_vxlan_flow_convert (&f->flow.ip6_vxlan, &flow.ip6_vxlan);
+      ipv6_vxlan_flow_convert (&f->flow.ip6_vxlan, &flow.pattern.ip6_vxlan);
       break;
     case VNET_FLOW_TYPE_IP4_GTPU:
-      ipv4_gtpu_flow_convert (&f->flow.ip4_gtpu, &flow.ip4_gtpu);
+      ipv4_gtpu_flow_convert (&f->flow.ip4_gtpu, &flow.pattern.ip4_gtpu);
       break;
     case VNET_FLOW_TYPE_IP4_GTPC:
-      ipv4_gtpc_flow_convert (&f->flow.ip4_gtpc, &flow.ip4_gtpc);
+      ipv4_gtpc_flow_convert (&f->flow.ip4_gtpc, &flow.pattern.ip4_gtpc);
       break;
     case VNET_FLOW_TYPE_GENERIC:
-      generic_flow_convert (&f->flow.generic, &flow.generic);
+      /* vl_api_generic_pattern_t and generic_pattern_t are the same struct */
+      flow.generic_pattern = (generic_pattern_t *) &f->flow.generic;
       break;
     default:
       rv = VNET_FLOW_ERROR_NOT_SUPPORTED;
