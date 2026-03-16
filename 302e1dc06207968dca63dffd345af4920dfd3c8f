@@ -50,6 +50,24 @@
       "message": "is this correct? 3s / 0.02s \u003d 150 ticks \u003c 2048 tw slots.",
       "revId": "302e1dc06207968dca63dffd345af4920dfd3c8f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "793aa438_3c3e95af",
+        "filename": "test/test_sfdp.py",
+        "patchSetId": 16
+      },
+      "lineNbr": 921,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-03-16T16:04:30Z",
+      "side": 1,
+      "message": "Also agree, we could use an interval beyond a timer wheel turn for embryonic (i.e. 50 seconds) and verify it is rearmed properly.\n\nWould it also make sense to add comment in the code concerning support for re-arming ? (i.e. in timer.c:68-83)",
+      "parentUuid": "b4126ee2_fdc5c0f6",
+      "revId": "302e1dc06207968dca63dffd345af4920dfd3c8f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
