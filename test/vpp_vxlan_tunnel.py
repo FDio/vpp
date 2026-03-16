@@ -6,6 +6,11 @@ DEFAULT_PORT = 4789
 UNDEFINED_PORT = 0
 
 
+def find_vxlan_tunnel_endpoints(test, sw_if_index):
+    """Return list of endpoint details for a given tunnel sw_if_index."""
+    return list(test.vapi.vxlan_tunnel_endpoint_dump(sw_if_index=sw_if_index))
+
+
 def find_vxlan_tunnel(test, src, dst, s_port, d_port, vni):
     ts = test.vapi.vxlan_tunnel_v2_dump(INDEX_INVALID)
 
@@ -38,8 +43,8 @@ class VppVxlanTunnel(VppInterface):
         self,
         test,
         src,
-        dst,
         vni,
+        dst=None,
         src_port=UNDEFINED_PORT,
         dst_port=UNDEFINED_PORT,
         mcast_itf=None,
@@ -48,6 +53,7 @@ class VppVxlanTunnel(VppInterface):
         encap_vrf_id=None,
         instance=0xFFFFFFFF,
         is_l3=False,
+        is_p2mp=False,
     ):
         """Create VXLAN Tunnel interface"""
         super(VppVxlanTunnel, self).__init__(test)
@@ -62,45 +68,80 @@ class VppVxlanTunnel(VppInterface):
         self.decap_next_index = decap_next_index
         self.instance = instance
         self.is_l3 = is_l3
+        self.is_p2mp = is_p2mp
 
         if self.mcast_itf:
             self.mcast_sw_if_index = self.mcast_itf.sw_if_index
 
     def add_vpp_config(self):
-        reply = self.test.vapi.vxlan_add_del_tunnel_v3(
-            is_add=1,
-            src_address=self.src,
-            dst_address=self.dst,
-            vni=self.vni,
-            src_port=self.src_port,
-            dst_port=self.dst_port,
-            mcast_sw_if_index=self.mcast_sw_if_index,
-            encap_vrf_id=self.encap_vrf_id,
-            is_l3=self.is_l3,
-            instance=self.instance,
-            decap_next_index=self.decap_next_index,
-        )
+        if self.is_p2mp:
+            reply = self.test.vapi.vxlan_add_del_tunnel_v4(
+                is_add=1,
+                src_address=self.src,
+                vni=self.vni,
+                src_port=self.src_port,
+                dst_port=self.dst_port,
+                mcast_sw_if_index=self.mcast_sw_if_index,
+                encap_vrf_id=self.encap_vrf_id,
+                decap_next_index=self.decap_next_index,
+                instance=self.instance,
+                is_l3=self.is_l3,
+                is_p2mp=True,
+            )
+        else:
+            reply = self.test.vapi.vxlan_add_del_tunnel_v3(
+                is_add=1,
+                src_address=self.src,
+                dst_address=self.dst,
+                vni=self.vni,
+                src_port=self.src_port,
+                dst_port=self.dst_port,
+                mcast_sw_if_index=self.mcast_sw_if_index,
+                encap_vrf_id=self.encap_vrf_id,
+                is_l3=self.is_l3,
+                instance=self.instance,
+                decap_next_index=self.decap_next_index,
+            )
         self.set_sw_if_index(reply.sw_if_index)
         self._test.registry.register(self, self._test.logger)
 
     def remove_vpp_config(self):
-        self.test.vapi.vxlan_add_del_tunnel_v2(
-            is_add=0,
-            src_address=self.src,
-            dst_address=self.dst,
-            vni=self.vni,
-            src_port=self.src_port,
-            dst_port=self.dst_port,
-            mcast_sw_if_index=self.mcast_sw_if_index,
-            encap_vrf_id=self.encap_vrf_id,
-            instance=self.instance,
-            decap_next_index=self.decap_next_index,
-        )
+        if self.is_p2mp:
+            self.test.vapi.vxlan_add_del_tunnel_v4(
+                is_add=0,
+                src_address=self.src,
+                vni=self.vni,
+                src_port=self.src_port,
+                dst_port=self.dst_port,
+                mcast_sw_if_index=self.mcast_sw_if_index,
+                encap_vrf_id=self.encap_vrf_id,
+                decap_next_index=self.decap_next_index,
+                instance=self.instance,
+                is_p2mp=True,
+            )
+        else:
+            self.test.vapi.vxlan_add_del_tunnel_v2(
+                is_add=0,
+                src_address=self.src,
+                dst_address=self.dst,
+                vni=self.vni,
+                src_port=self.src_port,
+                dst_port=self.dst_port,
+                mcast_sw_if_index=self.mcast_sw_if_index,
+                encap_vrf_id=self.encap_vrf_id,
+                instance=self.instance,
+                decap_next_index=self.decap_next_index,
+            )
 
     def query_vpp_config(self):
+        if self.is_p2mp:
+            # A p2mp tunnel exists if its sw_if_index appears in the tunnel dump
+            ts = self._test.vapi.vxlan_tunnel_v2_dump(INDEX_INVALID)
+            return any(t.sw_if_index == self.sw_if_index for t in ts)
         return INDEX_INVALID != find_vxlan_tunnel(
             self._test, self.src, self.dst, self.src_port, self.dst_port, self.vni
         )
 
     def object_id(self):
-        return "vxlan-%d-%d-%s-%s" % (self.sw_if_index, self.vni, self.src, self.dst)
+        dst_str = self.dst if self.dst else "p2mp"
+        return "vxlan-%d-%d-%s-%s" % (self.sw_if_index, self.vni, self.src, dst_str)

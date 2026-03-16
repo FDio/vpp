@@ -17,7 +17,7 @@ from scapy.contrib.mpls import MPLS
 
 import util
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable, FibPathType, find_route
-from vpp_vxlan_tunnel import VppVxlanTunnel
+from vpp_vxlan_tunnel import VppVxlanTunnel, find_vxlan_tunnel_endpoints
 from vpp_ip import INVALID_INDEX
 from vpp_neighbor import VppNeighbor
 from config import config
@@ -687,6 +687,494 @@ class TestVxlanRouting(VppTestCase):
         tunnels[2].admin_down()
         tunnels[2].remove_vpp_config()
         self.assertFalse(table.query_vpp_config())
+
+
+@unittest.skipIf("vxlan" in config.excluded_plugins, "Exclude VXLAN plugin tests")
+class TestVxlanP2MP(VppTestCase):
+    """VXLAN P2MP Test Case"""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.create_pg_interfaces(range(3))
+        for pg in cls.pg_interfaces:
+            pg.admin_up()
+        cls.pg0.config_ip4()
+        cls.pg0.resolve_arp()
+        cls.pg2.config_ip4()
+        cls.pg2.resolve_arp()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.pg0.unconfig_ip4()
+        cls.pg2.unconfig_ip4()
+        for pg in cls.pg_interfaces:
+            pg.admin_down()
+        super().tearDownClass()
+
+    def test_p2mp_decap(self):
+        """P2MP: two remote VTEPs decap to the same tunnel"""
+        remote1 = self.pg0.remote_ip4
+        remote2 = "172.16.1.100"
+
+        # Route remote2 via pg0 nexthop so the tunnel dst is resolvable
+        VppIpRoute(
+            self,
+            remote2,
+            32,
+            [VppRoutePath(self.pg0.remote_ip4, self.pg0.sw_if_index)],
+            register=False,
+        ).add_vpp_config()
+
+        # Create tunnel with the first remote VTEP
+        t = VppVxlanTunnel(self, src=self.pg0.local_ip4, dst=remote1, vni=100)
+        t.add_vpp_config()
+        t.admin_up()
+
+        # Add second remote VTEP to the same tunnel
+        self.vapi.vxlan_add_del_tunnel_endpoint(
+            sw_if_index=t.sw_if_index, is_add=True, dst=remote2
+        )
+
+        # Bridge the tunnel and pg1 together
+        self.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=t.sw_if_index, bd_id=1)
+        self.vapi.sw_interface_set_l2_bridge(
+            rx_sw_if_index=self.pg1.sw_if_index, bd_id=1
+        )
+
+        inner = (
+            Ether(src="00:11:22:33:44:55", dst="00:00:00:11:22:33")
+            / IP(src="10.0.0.1", dst="10.0.0.2")
+            / UDP(sport=1000, dport=2000)
+            / Raw(b"\xab" * 64)
+        )
+
+        def send_vxlan(src_vtep):
+            return (
+                Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+                / IP(src=src_vtep, dst=self.pg0.local_ip4)
+                / UDP(sport=4789, dport=4789, chksum=0)
+                / VXLAN(vni=100, flags=0x8)
+                / inner
+            )
+
+        # Frames from remote1 must arrive on pg1
+        rx = self.send_and_expect(self.pg0, [send_vxlan(remote1)], self.pg1)
+        self.assertEqual(rx[0][Ether].src, inner[Ether].src)
+        self.assertEqual(rx[0][Ether].dst, inner[Ether].dst)
+
+        # Frames from remote2 must also arrive on pg1 via the same tunnel
+        rx = self.send_and_expect(self.pg0, [send_vxlan(remote2)], self.pg1)
+        self.assertEqual(rx[0][Ether].src, inner[Ether].src)
+        self.assertEqual(rx[0][Ether].dst, inner[Ether].dst)
+
+        # Remove second endpoint; frames from remote2 must now be dropped
+        self.vapi.vxlan_add_del_tunnel_endpoint(
+            sw_if_index=t.sw_if_index, is_add=False, dst=remote2
+        )
+        self.send_and_assert_no_replies(self.pg0, [send_vxlan(remote2)])
+
+    def test_p2mp_dump(self):
+        """P2MP: endpoint dump returns all endpoints"""
+        remote1 = self.pg0.remote_ip4
+        remote2 = "172.16.3.1"
+
+        VppIpRoute(
+            self,
+            remote2,
+            32,
+            [VppRoutePath(self.pg0.remote_ip4, self.pg0.sw_if_index)],
+            register=False,
+        ).add_vpp_config()
+
+        t = VppVxlanTunnel(self, src=self.pg0.local_ip4, dst=remote1, vni=500)
+        t.add_vpp_config()
+
+        # Initially one endpoint (the original dst)
+        eps = find_vxlan_tunnel_endpoints(self, t.sw_if_index)
+        self.assertEqual(len(eps), 1)
+        self.assertEqual(str(eps[0].dst), remote1)
+
+        # Add second endpoint
+        self.vapi.vxlan_add_del_tunnel_endpoint(
+            sw_if_index=t.sw_if_index, is_add=True, dst=remote2
+        )
+
+        eps = find_vxlan_tunnel_endpoints(self, t.sw_if_index)
+        self.assertEqual(len(eps), 2)
+        dsts = {str(e.dst) for e in eps}
+        self.assertIn(remote1, dsts)
+        self.assertIn(remote2, dsts)
+
+        # Verify all details fields are populated
+        for e in eps:
+            self.assertEqual(str(e.src), self.pg0.local_ip4)
+            self.assertEqual(e.vni, 500)
+            self.assertEqual(e.sw_if_index, t.sw_if_index)
+
+        # v2 dump still returns exactly one entry (first endpoint)
+        v2 = list(self.vapi.vxlan_tunnel_v2_dump(sw_if_index=t.sw_if_index))
+        self.assertEqual(len(v2), 1)
+
+        # Remove second endpoint; dump returns one again
+        self.vapi.vxlan_add_del_tunnel_endpoint(
+            sw_if_index=t.sw_if_index, is_add=False, dst=remote2
+        )
+        eps = find_vxlan_tunnel_endpoints(self, t.sw_if_index)
+        self.assertEqual(len(eps), 1)
+        self.assertEqual(str(eps[0].dst), remote1)
+
+    def test_p2mp_create_no_dst(self):
+        """P2MP: create tunnel without dst, add endpoint later"""
+        t = VppVxlanTunnel(self, src=self.pg0.local_ip4, vni=600, is_p2mp=True)
+        t.add_vpp_config()
+        t.admin_up()
+
+        # Bridge tunnel and pg1 into BD 6
+        self.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=t.sw_if_index, bd_id=6)
+        self.vapi.sw_interface_set_l2_bridge(
+            rx_sw_if_index=self.pg1.sw_if_index, bd_id=6
+        )
+
+        frame = (
+            Ether(src="00:11:22:33:44:55", dst="ff:ff:ff:ff:ff:ff")
+            / IP(src="10.0.0.1", dst="10.0.0.255")
+            / Raw(b"\xab" * 64)
+        )
+
+        # No endpoints: frame sent into the BD should not leave on pg0
+        self.send_and_assert_no_replies(self.pg1, [frame])
+
+        # Add one endpoint
+        remote = self.pg0.remote_ip4
+        self.vapi.vxlan_add_del_tunnel_endpoint(
+            sw_if_index=t.sw_if_index, is_add=True, dst=remote
+        )
+
+        # Endpoint dump returns the new endpoint
+        eps = find_vxlan_tunnel_endpoints(self, t.sw_if_index)
+        self.assertEqual(len(eps), 1)
+        self.assertEqual(str(eps[0].dst), remote)
+        self.assertEqual(eps[0].vni, 600)
+
+    def test_p2mp_route_change(self):
+        """P2MP: per-endpoint DPO restacking on route change"""
+        remote1 = "172.16.7.1"
+        remote2 = "172.16.7.2"
+
+        r1_route = VppIpRoute(
+            self,
+            remote1,
+            32,
+            [VppRoutePath(self.pg0.remote_ip4, self.pg0.sw_if_index)],
+            register=False,
+        )
+        r2_route = VppIpRoute(
+            self,
+            remote2,
+            32,
+            [VppRoutePath(self.pg0.remote_ip4, self.pg0.sw_if_index)],
+            register=False,
+        )
+        r1_route.add_vpp_config()
+        r2_route.add_vpp_config()
+
+        t = VppVxlanTunnel(self, src=self.pg0.local_ip4, dst=remote1, vni=700)
+        t.add_vpp_config()
+        t.admin_up()
+        self.vapi.vxlan_add_del_tunnel_endpoint(
+            sw_if_index=t.sw_if_index, is_add=True, dst=remote2
+        )
+
+        self.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=t.sw_if_index, bd_id=7)
+        self.vapi.sw_interface_set_l2_bridge(
+            rx_sw_if_index=self.pg1.sw_if_index, bd_id=7
+        )
+
+        frame = (
+            Ether(src="00:11:22:33:44:55", dst="00:00:00:11:22:33")
+            / IP(src="10.0.0.1", dst="10.0.0.2")
+            / Raw(b"\xab" * 64)
+        )
+
+        # Both routes up: encap uses ep[0]=remote1, packet goes to remote1
+        rx = self.send_and_expect(self.pg1, [frame], self.pg0)
+        self.assertEqual(rx[0][IP].dst, remote1)
+
+        # Withdraw remote2's route: ep[1] DPO restacks, ep[0] is unaffected
+        r2_route.remove_vpp_config()
+        rx = self.send_and_expect(self.pg1, [frame], self.pg0)
+        self.assertEqual(rx[0][IP].dst, remote1)
+
+        # Withdraw remote1's route: ep[0] DPO restacks to drop
+        r1_route.remove_vpp_config()
+        self.send_and_assert_no_replies(self.pg1, [frame])
+
+        # Restore remote1's route: ep[0] DPO restacks, forwarding resumes
+        r1_route.add_vpp_config()
+        rx = self.send_and_expect(self.pg1, [frame], self.pg0)
+        self.assertEqual(rx[0][IP].dst, remote1)
+
+    def test_p2mp_route_change_nexthop(self):
+        """P2MP: DPO restacks when route moves from one interface to another"""
+        remote1 = "172.16.8.1"
+
+        r1_via_pg0 = VppIpRoute(
+            self,
+            remote1,
+            32,
+            [VppRoutePath(self.pg0.remote_ip4, self.pg0.sw_if_index)],
+            register=False,
+        )
+        r1_via_pg2 = VppIpRoute(
+            self,
+            remote1,
+            32,
+            [VppRoutePath(self.pg2.remote_ip4, self.pg2.sw_if_index)],
+            register=False,
+        )
+        r1_via_pg0.add_vpp_config()
+
+        t = VppVxlanTunnel(self, src=self.pg0.local_ip4, dst=remote1, vni=800)
+        t.add_vpp_config()
+        t.admin_up()
+        self.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=t.sw_if_index, bd_id=8)
+        self.vapi.sw_interface_set_l2_bridge(
+            rx_sw_if_index=self.pg1.sw_if_index, bd_id=8
+        )
+
+        frame = (
+            Ether(src="00:11:22:33:44:55", dst="00:00:00:11:22:33")
+            / IP(src="10.0.0.1", dst="10.0.0.2")
+            / Raw(b"\xab" * 64)
+        )
+
+        # Route via pg0: encapped packet exits on pg0
+        rx = self.send_and_expect(self.pg1, [frame], self.pg0)
+        self.assertEqual(rx[0][IP].dst, remote1)
+
+        # Move route to pg2: DPO restacks, encapped packet now exits on pg2
+        r1_via_pg0.remove_vpp_config()
+        r1_via_pg2.add_vpp_config()
+        rx = self.send_and_expect(self.pg1, [frame], self.pg2)
+        self.assertEqual(rx[0][IP].dst, remote1)
+
+    def test_p2mp_mac_endpoint_dump(self):
+        """P2MP: MAC→endpoint dump returns all programmed mappings"""
+        remote1 = self.pg0.remote_ip4
+        remote2 = "172.16.11.1"
+
+        VppIpRoute(
+            self,
+            remote2,
+            32,
+            [VppRoutePath(self.pg0.remote_ip4, self.pg0.sw_if_index)],
+            register=False,
+        ).add_vpp_config()
+
+        t = VppVxlanTunnel(self, src=self.pg0.local_ip4, vni=1100, is_p2mp=True)
+        t.add_vpp_config()
+        self.vapi.vxlan_add_del_tunnel_endpoint(
+            sw_if_index=t.sw_if_index, is_add=True, dst=remote1
+        )
+        self.vapi.vxlan_add_del_tunnel_endpoint(
+            sw_if_index=t.sw_if_index, is_add=True, dst=remote2
+        )
+
+        mac_a = bytes.fromhex("aabbccddee11")
+        mac_b = bytes.fromhex("aabbccddee22")
+
+        # No mappings yet: dump returns empty
+        entries = list(
+            self.vapi.vxlan_p2mp_mac_endpoint_dump(sw_if_index=t.sw_if_index)
+        )
+        self.assertEqual(len(entries), 0)
+
+        # Add two mappings
+        self.vapi.vxlan_p2mp_add_del_mac_endpoint(
+            sw_if_index=t.sw_if_index, is_add=True, mac=mac_a, ep_dst=remote1
+        )
+        self.vapi.vxlan_p2mp_add_del_mac_endpoint(
+            sw_if_index=t.sw_if_index, is_add=True, mac=mac_b, ep_dst=remote2
+        )
+
+        entries = list(
+            self.vapi.vxlan_p2mp_mac_endpoint_dump(sw_if_index=t.sw_if_index)
+        )
+        self.assertEqual(len(entries), 2)
+        by_mac = {bytes(e.mac).hex(): str(e.ep_dst) for e in entries}
+        self.assertEqual(by_mac[mac_a.hex()], remote1)
+        self.assertEqual(by_mac[mac_b.hex()], remote2)
+
+        # Remove one mapping: dump returns one
+        self.vapi.vxlan_p2mp_add_del_mac_endpoint(
+            sw_if_index=t.sw_if_index, is_add=False, mac=mac_a, ep_dst=remote1
+        )
+        entries = list(
+            self.vapi.vxlan_p2mp_mac_endpoint_dump(sw_if_index=t.sw_if_index)
+        )
+        self.assertEqual(len(entries), 1)
+        self.assertEqual(bytes(entries[0].mac), mac_b)
+        self.assertEqual(str(entries[0].ep_dst), remote2)
+
+        # Dump all tunnels (~0): at least our tunnel's entry is included
+        all_entries = list(self.vapi.vxlan_p2mp_mac_endpoint_dump())
+        self.assertGreaterEqual(len(all_entries), 1)
+        all_macs = {bytes(e.mac).hex() for e in all_entries}
+        self.assertIn(mac_b.hex(), all_macs)
+
+    def test_p2mp_encap_bum(self):
+        """P2MP: BUM traffic is replicated to all endpoints"""
+        remote1 = self.pg0.remote_ip4
+        remote2 = "172.16.9.1"
+
+        VppIpRoute(
+            self,
+            remote2,
+            32,
+            [VppRoutePath(self.pg0.remote_ip4, self.pg0.sw_if_index)],
+            register=False,
+        ).add_vpp_config()
+
+        t = VppVxlanTunnel(self, src=self.pg0.local_ip4, vni=900, is_p2mp=True)
+        t.add_vpp_config()
+        t.admin_up()
+        self.vapi.vxlan_add_del_tunnel_endpoint(
+            sw_if_index=t.sw_if_index, is_add=True, dst=remote1
+        )
+        self.vapi.vxlan_add_del_tunnel_endpoint(
+            sw_if_index=t.sw_if_index, is_add=True, dst=remote2
+        )
+
+        self.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=t.sw_if_index, bd_id=9)
+        self.vapi.sw_interface_set_l2_bridge(
+            rx_sw_if_index=self.pg1.sw_if_index, bd_id=9
+        )
+
+        # Broadcast frame — no MAC→endpoint mapping, so BUM flood to both VTEPs
+        frame = (
+            Ether(src="00:11:22:33:44:55", dst="ff:ff:ff:ff:ff:ff")
+            / IP(src="10.0.0.1", dst="10.0.0.255")
+            / Raw(b"\xab" * 64)
+        )
+
+        rx = self.send_and_expect(self.pg1, [frame], self.pg0, n_rx=2)
+        self.assertEqual(len(rx), 2)
+        dsts = {pkt[IP].dst for pkt in rx}
+        self.assertIn(remote1, dsts)
+        self.assertIn(remote2, dsts)
+        for pkt in rx:
+            self.assertIn(VXLAN, pkt)
+            self.assertEqual(pkt[VXLAN].vni, 900)
+
+    def test_p2mp_encap_unicast(self):
+        """P2MP: MAC→endpoint lookup steers known-unicast to a single endpoint"""
+        remote1 = self.pg0.remote_ip4
+        remote2 = "172.16.10.1"
+
+        VppIpRoute(
+            self,
+            remote2,
+            32,
+            [VppRoutePath(self.pg0.remote_ip4, self.pg0.sw_if_index)],
+            register=False,
+        ).add_vpp_config()
+
+        t = VppVxlanTunnel(self, src=self.pg0.local_ip4, vni=1000, is_p2mp=True)
+        t.add_vpp_config()
+        t.admin_up()
+        self.vapi.vxlan_add_del_tunnel_endpoint(
+            sw_if_index=t.sw_if_index, is_add=True, dst=remote1
+        )
+        self.vapi.vxlan_add_del_tunnel_endpoint(
+            sw_if_index=t.sw_if_index, is_add=True, dst=remote2
+        )
+
+        self.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=t.sw_if_index, bd_id=10)
+        self.vapi.sw_interface_set_l2_bridge(
+            rx_sw_if_index=self.pg1.sw_if_index, bd_id=10
+        )
+
+        mac_a = "aa:bb:cc:dd:ee:01"
+        mac_b = "aa:bb:cc:dd:ee:02"
+        mac_a_bytes = bytes.fromhex("aabbccddee01")
+        mac_b_bytes = bytes.fromhex("aabbccddee02")
+
+        # Program MAC-A → remote1, MAC-B → remote2
+        self.vapi.vxlan_p2mp_add_del_mac_endpoint(
+            sw_if_index=t.sw_if_index,
+            is_add=True,
+            mac=mac_a_bytes,
+            ep_dst=remote1,
+        )
+        self.vapi.vxlan_p2mp_add_del_mac_endpoint(
+            sw_if_index=t.sw_if_index,
+            is_add=True,
+            mac=mac_b_bytes,
+            ep_dst=remote2,
+        )
+
+        inner = IP(src="10.0.0.1", dst="10.0.0.2") / Raw(b"\xab" * 64)
+
+        # Unicast to MAC-A: expect exactly one copy, encapped toward remote1
+        frame_a = Ether(src="00:11:22:33:44:55", dst=mac_a) / inner
+        rx = self.send_and_expect(self.pg1, [frame_a], self.pg0)
+        self.assertEqual(len(rx), 1)
+        self.assertEqual(rx[0][IP].dst, remote1)
+        self.assertEqual(rx[0][VXLAN].vni, 1000)
+
+        # Unicast to MAC-B: expect exactly one copy, encapped toward remote2
+        frame_b = Ether(src="00:11:22:33:44:55", dst=mac_b) / inner
+        rx = self.send_and_expect(self.pg1, [frame_b], self.pg0)
+        self.assertEqual(len(rx), 1)
+        self.assertEqual(rx[0][IP].dst, remote2)
+        self.assertEqual(rx[0][VXLAN].vni, 1000)
+
+    def test_p2mp_endpoint_del_cleans_macs(self):
+        """P2MP: removing an endpoint purges its MAC→endpoint mappings"""
+        remote1 = self.pg0.remote_ip4
+        remote2 = "172.16.20.1"
+
+        VppIpRoute(
+            self,
+            remote2,
+            32,
+            [VppRoutePath(self.pg0.remote_ip4, self.pg0.sw_if_index)],
+            register=False,
+        ).add_vpp_config()
+
+        t = VppVxlanTunnel(self, src=self.pg0.local_ip4, vni=1100, is_p2mp=True)
+        t.add_vpp_config()
+        t.admin_up()
+        self.vapi.vxlan_add_del_tunnel_endpoint(
+            sw_if_index=t.sw_if_index, is_add=True, dst=remote1
+        )
+        self.vapi.vxlan_add_del_tunnel_endpoint(
+            sw_if_index=t.sw_if_index, is_add=True, dst=remote2
+        )
+
+        mac_a_bytes = bytes.fromhex("aabbccddee01")
+        mac_b_bytes = bytes.fromhex("aabbccddee02")
+
+        self.vapi.vxlan_p2mp_add_del_mac_endpoint(
+            sw_if_index=t.sw_if_index, is_add=True, mac=mac_a_bytes, ep_dst=remote1
+        )
+        self.vapi.vxlan_p2mp_add_del_mac_endpoint(
+            sw_if_index=t.sw_if_index, is_add=True, mac=mac_b_bytes, ep_dst=remote2
+        )
+
+        # Both mappings should be present
+        entries = self.vapi.vxlan_p2mp_mac_endpoint_dump(sw_if_index=t.sw_if_index)
+        self.assertEqual(len(entries), 2)
+
+        # Remove the second endpoint — its MAC mapping should be automatically purged
+        self.vapi.vxlan_add_del_tunnel_endpoint(
+            sw_if_index=t.sw_if_index, is_add=False, dst=remote2
+        )
+
+        entries = self.vapi.vxlan_p2mp_mac_endpoint_dump(sw_if_index=t.sw_if_index)
+        self.assertEqual(len(entries), 1)
+        self.assertEqual(bytes(entries[0].mac), mac_a_bytes)
 
 
 if __name__ == "__main__":

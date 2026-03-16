@@ -67,22 +67,35 @@ u8 *
 format_vxlan_tunnel (u8 * s, va_list * args)
 {
   vxlan_tunnel_t *t = va_arg (*args, vxlan_tunnel_t *);
+  vxlan_main_t *vxm = &vxlan_main;
 
   s = format (s,
-	      "[%d] instance %d src %U dst %U src_port %d dst_port %d vni %d "
+	      "[%d] instance %d src %U src_port %d dst_port %d vni %d "
 	      "fib-idx %d sw-if-idx %d ",
-	      t->dev_instance, t->user_instance, format_ip46_address, &t->src,
-	      IP46_TYPE_ANY, format_ip46_address, &t->dst, IP46_TYPE_ANY,
-	      t->src_port, t->dst_port, t->vni, t->encap_fib_index,
-	      t->sw_if_index);
+	      t->dev_instance, t->user_instance, format_ip46_address, &t->src, IP46_TYPE_ANY,
+	      t->src_port, t->dst_port, t->vni, t->encap_fib_index, t->sw_if_index);
 
-  s = format (s, "encap-dpo-idx %d ", t->next_dpo.dpoi_index);
+  if (vec_len (t->endpoint_indices) == 0)
+    {
+      s = format (s, "p2mp (no endpoints)");
+      return s;
+    }
+
+  if (t->is_p2mp)
+    s = format (s, "p2mp ");
+
+  u32 *ep_idx;
+  vec_foreach (ep_idx, t->endpoint_indices)
+    {
+      vxlan_endpoint_t *ep = pool_elt_at_index (vxm->endpoint_pool, *ep_idx);
+      s = format (s, "dst %U encap-dpo-idx %d ", format_ip46_address, &ep->dst, IP46_TYPE_ANY,
+		  ep->next_dpo.dpoi_index);
+      if (PREDICT_FALSE (ip46_address_is_multicast (&ep->dst)))
+	s = format (s, "mcast-sw-if-idx %d ", t->mcast_sw_if_index);
+    }
 
   if (PREDICT_FALSE (t->decap_next_index != VXLAN_INPUT_NEXT_L2_INPUT))
     s = format (s, "decap-next-%U ", format_decap_next, t->decap_next_index);
-
-  if (PREDICT_FALSE (ip46_address_is_multicast (&t->dst)))
-    s = format (s, "mcast-sw-if-idx %d ", t->mcast_sw_if_index);
 
   if (t->flow_index != ~0)
     s = format (s, "flow-index %d [%U]", t->flow_index,
@@ -140,15 +153,18 @@ VNET_HW_INTERFACE_CLASS (vxlan_hw_class) = {
   .build_rewrite = default_build_rewrite,
 };
 
+/* Dynamic FIB node type for vxlan endpoints — registered in vxlan_init. */
+static fib_node_type_t vxlan_endpoint_fib_node_type;
+
 static void
-vxlan_tunnel_restack_dpo (vxlan_tunnel_t * t)
+vxlan_endpoint_restack_dpo (vxlan_endpoint_t *ep)
 {
-  u8 is_ip4 = ip46_address_is_ip4 (&t->dst);
+  u8 is_ip4 = ip46_address_is_ip4 (&ep->dst);
   dpo_id_t dpo = DPO_INVALID;
   fib_forward_chain_type_t forw_type = is_ip4 ?
     FIB_FORW_CHAIN_TYPE_UNICAST_IP4 : FIB_FORW_CHAIN_TYPE_UNICAST_IP6;
 
-  fib_entry_contribute_forwarding (t->fib_entry_index, forw_type, &dpo);
+  fib_entry_contribute_forwarding (ep->fib_entry_index, forw_type, &dpo);
 
   /* vxlan uses the payload hash as the udp source port
    * hence the packet's hash is unknown
@@ -170,18 +186,18 @@ vxlan_tunnel_restack_dpo (vxlan_tunnel_t * t)
 	dpo_copy (&dpo, choice);
     }
 
-  u32 encap_index = is_ip4 ?
-    vxlan4_encap_node.index : vxlan6_encap_node.index;
-  dpo_stack_from_node (encap_index, &t->next_dpo, &dpo);
+  vxlan_main_t *vxm = &vxlan_main;
+  vxlan_tunnel_t *t = pool_elt_at_index (vxm->tunnels, ep->tunnel_index);
+  u32 encap_index = is_ip4 ? (t->is_p2mp ? vxlan4_p2mp_encap_node.index : vxlan4_encap_node.index) :
+			     (t->is_p2mp ? vxlan6_p2mp_encap_node.index : vxlan6_encap_node.index);
+  dpo_stack_from_node (encap_index, &ep->next_dpo, &dpo);
   dpo_reset (&dpo);
 }
 
-static vxlan_tunnel_t *
-vxlan_tunnel_from_fib_node (fib_node_t * node)
+static vxlan_endpoint_t *
+vxlan_endpoint_from_fib_node (fib_node_t *node)
 {
-  ASSERT (FIB_NODE_TYPE_VXLAN_TUNNEL == node->fn_type);
-  return ((vxlan_tunnel_t *) (((char *) node) -
-			      STRUCT_OFFSET_OF (vxlan_tunnel_t, node)));
+  return ((vxlan_endpoint_t *) (((char *) node) - STRUCT_OFFSET_OF (vxlan_endpoint_t, node)));
 }
 
 /**
@@ -189,61 +205,59 @@ vxlan_tunnel_from_fib_node (fib_node_t * node)
  * Here we will restack the new dpo of VXLAN DIP to encap node.
  */
 static fib_node_back_walk_rc_t
-vxlan_tunnel_back_walk (fib_node_t * node, fib_node_back_walk_ctx_t * ctx)
+vxlan_endpoint_back_walk (fib_node_t *node, fib_node_back_walk_ctx_t *ctx)
 {
-  vxlan_tunnel_restack_dpo (vxlan_tunnel_from_fib_node (node));
+  vxlan_endpoint_restack_dpo (vxlan_endpoint_from_fib_node (node));
   return (FIB_NODE_BACK_WALK_CONTINUE);
 }
 
 /**
- * Function definition to get a FIB node from its index
+ * Function definition to get a FIB node from its index.
+ * index == pool index into vxlan_main.endpoint_pool.
+ * Pool elements never move so the fib_node_t pointer is always valid.
  */
 static fib_node_t *
-vxlan_tunnel_fib_node_get (fib_node_index_t index)
+vxlan_endpoint_fib_node_get (fib_node_index_t index)
 {
-  vxlan_tunnel_t *t;
   vxlan_main_t *vxm = &vxlan_main;
-
-  t = pool_elt_at_index (vxm->tunnels, index);
-
-  return (&t->node);
+  vxlan_endpoint_t *ep = pool_elt_at_index (vxm->endpoint_pool, index);
+  return (&ep->node);
 }
 
 /**
  * Function definition to inform the FIB node that its last lock has gone.
  */
 static void
-vxlan_tunnel_last_lock_gone (fib_node_t * node)
+vxlan_endpoint_last_lock_gone (fib_node_t *node)
 {
   /*
-   * The VXLAN tunnel is a root of the graph. As such
-   * it never has children and thus is never locked.
+   * VXLAN endpoints are roots of the graph. As such they never have
+   * children and thus are never locked.
    */
   ASSERT (0);
 }
 
 /*
- * Virtual function table registered by VXLAN tunnels
+ * Virtual function table registered by VXLAN endpoints
  * for participation in the FIB object graph.
  */
-const static fib_node_vft_t vxlan_vft = {
-  .fnv_get = vxlan_tunnel_fib_node_get,
-  .fnv_last_lock = vxlan_tunnel_last_lock_gone,
-  .fnv_back_walk = vxlan_tunnel_back_walk,
+const static fib_node_vft_t vxlan_endpoint_vft = {
+  .fnv_get = vxlan_endpoint_fib_node_get,
+  .fnv_last_lock = vxlan_endpoint_last_lock_gone,
+  .fnv_back_walk = vxlan_endpoint_back_walk,
 };
 
-#define foreach_copy_field                                                    \
-  _ (vni)                                                                     \
-  _ (mcast_sw_if_index)                                                       \
-  _ (encap_fib_index)                                                         \
-  _ (decap_next_index)                                                        \
-  _ (src)                                                                     \
-  _ (dst)                                                                     \
-  _ (src_port)                                                                \
+#define foreach_copy_field                                                                         \
+  _ (vni)                                                                                          \
+  _ (mcast_sw_if_index)                                                                            \
+  _ (encap_fib_index)                                                                              \
+  _ (decap_next_index)                                                                             \
+  _ (src)                                                                                          \
+  _ (src_port)                                                                                     \
   _ (dst_port)
 
 static void
-vxlan_rewrite (vxlan_tunnel_t * t, bool is_ip6)
+vxlan_rewrite (vxlan_tunnel_t *t, vxlan_endpoint_t *ep, bool is_ip6)
 {
   union
   {
@@ -266,7 +280,7 @@ vxlan_rewrite (vxlan_tunnel_t * t, bool is_ip6)
       ip->protocol = IP_PROTOCOL_UDP;
 
       ip->src_address = t->src.ip4;
-      ip->dst_address = t->dst.ip4;
+      ip->dst_address = ep->dst.ip4;
 
       /* we fix up the ip4 header length and checksum after-the-fact */
       ip->checksum = ip4_header_checksum (ip);
@@ -281,7 +295,7 @@ vxlan_rewrite (vxlan_tunnel_t * t, bool is_ip6)
       ip->protocol = IP_PROTOCOL_UDP;
 
       ip->src_address = t->src.ip6;
-      ip->dst_address = t->dst.ip6;
+      ip->dst_address = ep->dst.ip6;
     }
 
   /* UDP header, randomize src port on something, maybe? */
@@ -290,7 +304,7 @@ vxlan_rewrite (vxlan_tunnel_t * t, bool is_ip6)
 
   /* VXLAN header */
   vnet_set_vni_and_flags (vxlan, t->vni);
-  vnet_rewrite_set_data (*t, &h, len);
+  vnet_rewrite_set_data (*ep, &h, len);
 }
 
 static bool
@@ -421,8 +435,23 @@ int vnet_vxlan_add_del_tunnel
 #define _(x) t->x = a->x;
       foreach_copy_field;
 #undef _
+      t->is_p2mp = a->is_p2mp;
 
-      vxlan_rewrite (t, is_ip6);
+      /* For P2P: allocate the initial endpoint from the global pool.
+       * For P2MP: start with no endpoints; they are added via
+       * vnet_vxlan_add_del_endpoint. */
+      vxlan_endpoint_t *ep = NULL;
+      u32 ep_pool_index = ~0;
+      if (!a->is_p2mp)
+	{
+	  pool_get_zero (vxm->endpoint_pool, ep);
+	  ep_pool_index = ep - vxm->endpoint_pool;
+	  ep->dst = a->dst;
+	  ep->tunnel_index = dev_instance;
+	  ep->ep_index = ep_pool_index;
+	  vxlan_rewrite (t, ep, is_ip6);
+	}
+
       /*
        * Reconcile the real dev_instance and a possible requested instance.
        */
@@ -431,6 +460,8 @@ int vnet_vxlan_add_del_tunnel
 	user_instance = dev_instance;
       if (hash_get (vxm->instance_used, user_instance))
 	{
+	  if (!a->is_p2mp)
+	    pool_put (vxm->endpoint_pool, ep);
 	  pool_put (vxm->tunnels, t);
 	  return VNET_API_ERROR_INSTANCE_IN_USE;
 	}
@@ -468,7 +499,8 @@ int vnet_vxlan_add_del_tunnel
 
       /* Set vxlan tunnel output node */
       u32 encap_index = !is_ip6 ?
-	vxlan4_encap_node.index : vxlan6_encap_node.index;
+			  (a->is_p2mp ? vxlan4_p2mp_encap_node.index : vxlan4_encap_node.index) :
+			  (a->is_p2mp ? vxlan6_p2mp_encap_node.index : vxlan6_encap_node.index);
       vnet_set_interface_output_node (vnm, t->hw_if_index, encap_index);
 
       t->sw_if_index = sw_if_index = hi->sw_if_index;
@@ -484,10 +516,13 @@ int vnet_vxlan_add_del_tunnel
       else
 	{
 	  vxlan_decap_info_t di = {.sw_if_index = t->sw_if_index, };
-	  if (ip46_address_is_multicast (&t->dst))
-	    di.local_ip = t->src.ip4;
-	  else
-	    di.next_index = t->decap_next_index;
+	  if (!a->is_p2mp)
+	    {
+	      if (ip46_address_is_multicast (&ep->dst))
+		di.local_ip = t->src.ip4;
+	      else
+		di.next_index = t->decap_next_index;
+	    }
 	  key4.value = di.as_u64;
 	  add_failed = clib_bihash_add_del_16_8 (&vxm->vxlan4_tunnel_by_key,
 						 &key4, 1 /*add */ );
@@ -500,9 +535,15 @@ int vnet_vxlan_add_del_tunnel
 	  else
 	    ethernet_delete_interface (vnm, t->hw_if_index);
 	  hash_unset (vxm->instance_used, t->user_instance);
+	  if (!a->is_p2mp)
+	    pool_put (vxm->endpoint_pool, ep);
 	  pool_put (vxm->tunnels, t);
 	  return VNET_API_ERROR_INVALID_REGISTRATION;
 	}
+
+      /* For P2P: commit the initial endpoint. For P2MP: leave vec empty. */
+      if (!a->is_p2mp)
+	vec_add1 (t->endpoint_indices, ep_pool_index);
 
       vec_validate_init_empty (vxm->tunnel_index_by_sw_if_index, sw_if_index,
 			       ~0);
@@ -518,94 +559,88 @@ int vnet_vxlan_add_del_tunnel
       vnet_sw_interface_set_flags (vnm, sw_if_index,
 				   VNET_SW_INTERFACE_FLAG_ADMIN_UP);
 
-      fib_node_init (&t->node, FIB_NODE_TYPE_VXLAN_TUNNEL);
-      fib_prefix_t tun_dst_pfx;
       vnet_flood_class_t flood_class = VNET_FLOOD_CLASS_TUNNEL_NORMAL;
-
-      fib_protocol_t fp = fib_ip_proto (is_ip6);
-      fib_prefix_from_ip46_addr (fp, &t->dst, &tun_dst_pfx);
-      if (!ip46_address_is_multicast (&t->dst))
+      if (!a->is_p2mp)
 	{
-	  /* Unicast tunnel -
-	   * source the FIB entry for the tunnel's destination
-	   * and become a child thereof. The tunnel will then get poked
-	   * when the forwarding for the entry updates, and the tunnel can
-	   * re-stack accordingly
-	   */
-	  vtep_addr_ref (&vxm->vtep_table, t->encap_fib_index, &t->src);
-	  t->fib_entry_index = fib_entry_track (t->encap_fib_index,
-						&tun_dst_pfx,
-						FIB_NODE_TYPE_VXLAN_TUNNEL,
-						dev_instance,
-						&t->sibling_index);
-	  vxlan_tunnel_restack_dpo (t);
-	}
-      else
-	{
-	  /* Multicast tunnel -
-	   * as the same mcast group can be used for multiple mcast tunnels
-	   * with different VNIs, create the output fib adjacency only if
-	   * it does not already exist
-	   */
-	  if (vtep_addr_ref (&vxm->vtep_table,
-			     t->encap_fib_index, &t->dst) == 1)
+	  fib_node_init (&ep->node, vxlan_endpoint_fib_node_type);
+	  fib_prefix_t tun_dst_pfx;
+	  fib_protocol_t fp = fib_ip_proto (is_ip6);
+	  fib_prefix_from_ip46_addr (fp, &ep->dst, &tun_dst_pfx);
+	  if (!ip46_address_is_multicast (&ep->dst))
 	    {
-	      fib_node_index_t mfei;
-	      adj_index_t ai;
-	      fib_route_path_t path = {
-		.frp_proto = fib_proto_to_dpo (fp),
-		.frp_addr = zero_addr,
-		.frp_sw_if_index = 0xffffffff,
-		.frp_fib_index = ~0,
-		.frp_weight = 1,
-		.frp_flags = FIB_ROUTE_PATH_LOCAL,
-		.frp_mitf_flags = MFIB_ITF_FLAG_FORWARD,
-	      };
-	      const mfib_prefix_t mpfx = {
-		.fp_proto = fp,
-		.fp_len = (is_ip6 ? 128 : 32),
-		.fp_grp_addr = tun_dst_pfx.fp_addr,
-	      };
-
-	      /*
-	       * Setup the (*,G) to receive traffic on the mcast group
-	       *  - the forwarding interface is for-us
-	       *  - the accepting interface is that from the API
+	      /* Unicast tunnel -
+	       * source the FIB entry for the tunnel's destination
+	       * and become a child thereof. The tunnel will then get poked
+	       * when the forwarding for the entry updates, and the tunnel can
+	       * re-stack accordingly
 	       */
-	      mfib_table_entry_path_update (t->encap_fib_index, &mpfx,
-					    MFIB_SOURCE_VXLAN,
-					    MFIB_ENTRY_FLAG_NONE, &path);
-
-	      path.frp_sw_if_index = a->mcast_sw_if_index;
-	      path.frp_flags = FIB_ROUTE_PATH_FLAG_NONE;
-	      path.frp_mitf_flags = MFIB_ITF_FLAG_ACCEPT;
-	      mfei = mfib_table_entry_path_update (
-		t->encap_fib_index, &mpfx, MFIB_SOURCE_VXLAN,
-		MFIB_ENTRY_FLAG_NONE, &path);
-
-	      /*
-	       * Create the mcast adjacency to send traffic to the group
-	       */
-	      ai = adj_mcast_add_or_lock (fp,
-					  fib_proto_to_link (fp),
-					  a->mcast_sw_if_index);
-
-	      /*
-	       * create a new end-point
-	       */
-	      mcast_shared_add (&t->dst, mfei, ai);
+	      vtep_addr_ref (&vxm->vtep_table, t->encap_fib_index, &t->src);
+	      ep->fib_entry_index =
+		fib_entry_track (t->encap_fib_index, &tun_dst_pfx, vxlan_endpoint_fib_node_type,
+				 ep_pool_index, &ep->sibling_index);
+	      vxlan_endpoint_restack_dpo (ep);
 	    }
+	  else
+	    {
+	      /* Multicast tunnel -
+	       * as the same mcast group can be used for multiple mcast tunnels
+	       * with different VNIs, create the output fib adjacency only if
+	       * it does not already exist
+	       */
+	      if (vtep_addr_ref (&vxm->vtep_table, t->encap_fib_index, &ep->dst) == 1)
+		{
+		  fib_node_index_t mfei;
+		  adj_index_t ai;
+		  fib_route_path_t path = {
+		    .frp_proto = fib_proto_to_dpo (fp),
+		    .frp_addr = zero_addr,
+		    .frp_sw_if_index = 0xffffffff,
+		    .frp_fib_index = ~0,
+		    .frp_weight = 1,
+		    .frp_flags = FIB_ROUTE_PATH_LOCAL,
+		    .frp_mitf_flags = MFIB_ITF_FLAG_FORWARD,
+		  };
+		  const mfib_prefix_t mpfx = {
+		    .fp_proto = fp,
+		    .fp_len = (is_ip6 ? 128 : 32),
+		    .fp_grp_addr = tun_dst_pfx.fp_addr,
+		  };
 
-	  dpo_id_t dpo = DPO_INVALID;
-	  mcast_shared_t ep = mcast_shared_get (&t->dst);
+		  /*
+		   * Setup the (*,G) to receive traffic on the mcast group
+		   *  - the forwarding interface is for-us
+		   *  - the accepting interface is that from the API
+		   */
+		  mfib_table_entry_path_update (t->encap_fib_index, &mpfx, MFIB_SOURCE_VXLAN,
+						MFIB_ENTRY_FLAG_NONE, &path);
 
-	  /* Stack shared mcast dst mac addr rewrite on encap */
-	  dpo_set (&dpo, DPO_ADJACENCY_MCAST,
-		   fib_proto_to_dpo (fp), ep.mcast_adj_index);
+		  path.frp_sw_if_index = a->mcast_sw_if_index;
+		  path.frp_flags = FIB_ROUTE_PATH_FLAG_NONE;
+		  path.frp_mitf_flags = MFIB_ITF_FLAG_ACCEPT;
+		  mfei = mfib_table_entry_path_update (t->encap_fib_index, &mpfx, MFIB_SOURCE_VXLAN,
+						       MFIB_ENTRY_FLAG_NONE, &path);
 
-	  dpo_stack_from_node (encap_index, &t->next_dpo, &dpo);
-	  dpo_reset (&dpo);
-	  flood_class = VNET_FLOOD_CLASS_TUNNEL_MASTER;
+		  /*
+		   * Create the mcast adjacency to send traffic to the group
+		   */
+		  ai = adj_mcast_add_or_lock (fp, fib_proto_to_link (fp), a->mcast_sw_if_index);
+
+		  /*
+		   * create a new end-point
+		   */
+		  mcast_shared_add (&ep->dst, mfei, ai);
+		}
+
+	      dpo_id_t dpo = DPO_INVALID;
+	      mcast_shared_t ms = mcast_shared_get (&ep->dst);
+
+	      /* Stack shared mcast dst mac addr rewrite on encap */
+	      dpo_set (&dpo, DPO_ADJACENCY_MCAST, fib_proto_to_dpo (fp), ms.mcast_adj_index);
+
+	      dpo_stack_from_node (encap_index, &ep->next_dpo, &dpo);
+	      dpo_reset (&dpo);
+	      flood_class = VNET_FLOOD_CLASS_TUNNEL_MASTER;
+	    }
 	}
 
       vnet_get_sw_interface (vnet_get_main (), sw_if_index)->flood_class =
@@ -633,18 +668,50 @@ int vnet_vxlan_add_del_tunnel
 	clib_bihash_add_del_24_8 (&vxm->vxlan6_tunnel_by_key, &key6,
 				  0 /*del */ );
 
-      if (!ip46_address_is_multicast (&t->dst))
-	{
-	  if (t->flow_index != ~0)
-	    vnet_flow_del (vnm, t->flow_index);
+      if (t->flow_index != ~0)
+	vnet_flow_del (vnm, t->flow_index);
 
-	  vtep_addr_unref (&vxm->vtep_table, t->encap_fib_index, &t->src);
-	  fib_entry_untrack (t->fib_entry_index, t->sibling_index);
-	}
-      else if (vtep_addr_unref (&vxm->vtep_table,
-				t->encap_fib_index, &t->dst) == 0)
+      u32 *ep_idxp;
+      vec_foreach (ep_idxp, t->endpoint_indices)
 	{
-	  mcast_shared_remove (&t->dst);
+	  vxlan_endpoint_t *ep = pool_elt_at_index (vxm->endpoint_pool, *ep_idxp);
+	  /* For P2MP tunnels, remove the per-endpoint decap entry that was
+	   * inserted by vnet_vxlan_add_del_endpoint. */
+	  if (a->is_p2mp)
+	    {
+	      if (!is_ip6)
+		{
+		  vxlan4_tunnel_key_t ep_key4;
+		  ep_key4.key[0] = ep->dst.ip4.as_u32 | (((u64) t->src.ip4.as_u32) << 32);
+		  ep_key4.key[1] = key4.key[1];
+		  clib_bihash_add_del_16_8 (&vxm->vxlan4_tunnel_by_key, &ep_key4, 0 /*del*/);
+		}
+	      else
+		{
+		  vxlan6_tunnel_key_t ep_key6;
+		  ep_key6.key[0] = ep->dst.ip6.as_u64[0];
+		  ep_key6.key[1] = ep->dst.ip6.as_u64[1];
+		  ep_key6.key[2] = key6.key[2];
+		  clib_bihash_add_del_24_8 (&vxm->vxlan6_tunnel_by_key, &ep_key6, 0 /*del*/);
+		}
+	    }
+	  if (!ip46_address_is_multicast (&ep->dst))
+	    {
+	      vtep_addr_unref (&vxm->vtep_table, t->encap_fib_index, &t->src);
+	      fib_entry_untrack (ep->fib_entry_index, ep->sibling_index);
+	    }
+	  else if (vtep_addr_unref (&vxm->vtep_table, t->encap_fib_index, &ep->dst) == 0)
+	    mcast_shared_remove (&ep->dst);
+	  dpo_reset (&ep->next_dpo);
+	  fib_node_deinit (&ep->node);
+	  pool_put (vxm->endpoint_pool, ep);
+	}
+      vec_free (t->endpoint_indices);
+
+      if (t->mac_to_ep_initialized)
+	{
+	  clib_bihash_free_8_8 (&t->mac_to_ep);
+	  t->mac_to_ep_initialized = 0;
 	}
 
       vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, t->hw_if_index);
@@ -654,7 +721,6 @@ int vnet_vxlan_add_del_tunnel
 	ethernet_delete_interface (vnm, t->hw_if_index);
       hash_unset (vxm->instance_used, t->user_instance);
 
-      fib_node_deinit (&t->node);
       pool_put (vxm->tunnels, t);
     }
 
@@ -722,6 +788,7 @@ vxlan_add_del_tunnel_command_fn (vlib_main_t * vm,
   u8 ipv4_set = 0;
   u8 ipv6_set = 0;
   u8 is_l3 = 0;
+  u8 is_p2mp = 0;
   u32 instance = ~0;
   u32 encap_fib_index = 0;
   u32 mcast_sw_if_index = ~0;
@@ -771,6 +838,8 @@ vxlan_add_del_tunnel_command_fn (vlib_main_t * vm,
 	}
       else if (unformat (line_input, "l3"))
 	is_l3 = 1;
+      else if (unformat (line_input, "p2mp"))
+	is_p2mp = 1;
       else if (unformat (line_input, "decap-next %U", unformat_decap_next,
 			 &decap_next_index, ipv4_set))
 	;
@@ -806,13 +875,16 @@ vxlan_add_del_tunnel_command_fn (vlib_main_t * vm,
   if (src_set == 0)
     return clib_error_return (0, "tunnel src address not specified");
 
-  if (dst_set == 0)
+  if (is_p2mp && dst_set)
+    return clib_error_return (0, "p2mp and dst are mutually exclusive");
+
+  if (!is_p2mp && dst_set == 0)
     return clib_error_return (0, "tunnel dst address not specified");
 
   if (grp_set && !ip46_address_is_multicast (&dst))
     return clib_error_return (0, "tunnel group address not multicast");
 
-  if (grp_set == 0 && ip46_address_is_multicast (&dst))
+  if (grp_set == 0 && dst_set && ip46_address_is_multicast (&dst))
     return clib_error_return (0, "dst address must be unicast");
 
   if (grp_set && mcast_sw_if_index == ~0)
@@ -821,7 +893,7 @@ vxlan_add_del_tunnel_command_fn (vlib_main_t * vm,
   if (ipv4_set && ipv6_set)
     return clib_error_return (0, "both IPv4 and IPv6 addresses specified");
 
-  if (ip46_address_cmp (&src, &dst) == 0)
+  if (!is_p2mp && ip46_address_cmp (&src, &dst) == 0)
     return clib_error_return (0, "src and dst addresses are identical");
 
   if (decap_next_index == ~0)
@@ -836,7 +908,9 @@ vxlan_add_del_tunnel_command_fn (vlib_main_t * vm,
   vnet_vxlan_add_del_tunnel_args_t a = { .is_add = is_add,
 					 .is_ip6 = ipv6_set,
 					 .is_l3 = is_l3,
+					 .is_p2mp = is_p2mp,
 					 .instance = instance,
+					 .dst = dst,
 #define _(x) .x = x,
 					 foreach_copy_field
 #undef _
@@ -902,12 +976,11 @@ vxlan_add_del_tunnel_command_fn (vlib_main_t * vm,
  ?*/
 VLIB_CLI_COMMAND (create_vxlan_tunnel_command, static) = {
   .path = "create vxlan tunnel",
-  .short_help =
-    "create vxlan tunnel src <local-vtep-addr>"
-    " {dst <remote-vtep-addr>|group <mcast-vtep-addr> <intf-name>} vni <nn>"
-    " [instance <id>]"
-    " [encap-vrf-id <nn>] [decap-next [l2|node <name>]] [del] [l3]"
-    " [src_port <local-vtep-udp-port>] [dst_port <remote-vtep-udp-port>]",
+  .short_help = "create vxlan tunnel src <local-vtep-addr>"
+		" {dst <remote-vtep-addr>|group <mcast-vtep-addr> <intf-name>|p2mp} vni <nn>"
+		" [instance <id>]"
+		" [encap-vrf-id <nn>] [decap-next [l2|node <name>]] [del] [l3]"
+		" [src_port <local-vtep-udp-port>] [dst_port <remote-vtep-udp-port>]",
   .function = vxlan_add_del_tunnel_command_fn,
 };
 
@@ -966,6 +1039,52 @@ VLIB_CLI_COMMAND (show_vxlan_tunnel_command, static) = {
     .function = show_vxlan_tunnel_command_fn,
 };
 
+static clib_error_t *
+show_vxlan_tunnel_endpoints_command_fn (vlib_main_t *vm, unformat_input_t *input,
+					vlib_cli_command_t *cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  vnet_main_t *vnm = vnet_get_main ();
+  vxlan_main_t *vxm = &vxlan_main;
+  u32 sw_if_index = ~0;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return clib_error_return (0, "interface not specified");
+
+  if (!unformat (line_input, "%U", unformat_vnet_sw_interface, vnm, &sw_if_index))
+    {
+      unformat_free (line_input);
+      return clib_error_return (0, "interface not specified");
+    }
+  unformat_free (line_input);
+
+  u32 tunnel_index = vnet_vxlan_get_tunnel_index (sw_if_index);
+  if (tunnel_index == ~0)
+    return clib_error_return (0, "%U is not a VXLAN tunnel interface", format_vnet_sw_if_index_name,
+			      vnm, sw_if_index);
+
+  vxlan_tunnel_t *t = pool_elt_at_index (vxm->tunnels, tunnel_index);
+
+  vlib_cli_output (vm, "%U: %d endpoint(s)", format_vnet_sw_if_index_name, vnm, sw_if_index,
+		   vec_len (t->endpoint_indices));
+
+  u32 *ep_idxp;
+  u32 i = 0;
+  vec_foreach (ep_idxp, t->endpoint_indices)
+    {
+      vxlan_endpoint_t *ep = pool_elt_at_index (vxm->endpoint_pool, *ep_idxp);
+      vlib_cli_output (vm, "  [%d] dst %U dpo-idx %d", i++, format_ip46_address, &ep->dst,
+		       IP46_TYPE_ANY, ep->next_dpo.dpoi_index);
+    }
+
+  return 0;
+}
+
+VLIB_CLI_COMMAND (show_vxlan_tunnel_endpoints_command, static) = {
+  .path = "show vxlan tunnel endpoints",
+  .short_help = "show vxlan tunnel endpoints <interface>",
+  .function = show_vxlan_tunnel_endpoints_command_fn,
+};
 
 void
 vnet_int_vxlan_bypass_mode (u32 sw_if_index, u8 is_ip6, u8 is_enable)
@@ -1170,6 +1289,7 @@ vnet_vxlan_add_del_rx_flow (u32 hw_if_index, u32 t_index, int is_add)
       if (t->flow_index == ~0)
 	{
 	  vxlan_main_t *vxm = &vxlan_main;
+	  vxlan_endpoint_t *ep0 = pool_elt_at_index (vxm->endpoint_pool, t->endpoint_indices[0]);
 	  vnet_flow_t flow = {
 	    .actions =
 	      VNET_FLOW_ACTION_REDIRECT_TO_NODE | VNET_FLOW_ACTION_MARK |
@@ -1180,7 +1300,7 @@ vnet_vxlan_add_del_rx_flow (u32 hw_if_index, u32 t_index, int is_add)
 	    .type = VNET_FLOW_TYPE_IP4_VXLAN,
 	    .ip4_vxlan = {
 			  .protocol.prot = IP_PROTOCOL_UDP,
-			  .src_addr.addr = t->dst.ip4,
+			  .src_addr.addr = ep0->dst.ip4,
 			  .dst_addr.addr = t->src.ip4,
 			  .src_addr.mask.as_u32 = ~0,
 			  .dst_addr.mask.as_u32 = ~0,
@@ -1207,6 +1327,460 @@ vnet_vxlan_get_tunnel_index (u32 sw_if_index)
     return ~0;
   return vxm->tunnel_index_by_sw_if_index[sw_if_index];
 }
+
+typedef struct
+{
+  u32 ep_pool_index;
+  u64 *keys;
+} vxlan_mac_collect_ctx_t;
+
+static int
+vxlan_mac_collect_by_ep_cb (clib_bihash_kv_8_8_t *kv, void *arg)
+{
+  vxlan_mac_collect_ctx_t *ctx = arg;
+  if ((u32) kv->value == ctx->ep_pool_index)
+    vec_add1 (ctx->keys, kv->key);
+  return BIHASH_WALK_CONTINUE;
+}
+
+int
+vnet_vxlan_add_del_endpoint (u32 tunnel_sw_if_index, ip46_address_t *dst, bool is_add)
+{
+  vxlan_main_t *vxm = &vxlan_main;
+
+  if (tunnel_sw_if_index >= vec_len (vxm->tunnel_index_by_sw_if_index) ||
+      vxm->tunnel_index_by_sw_if_index[tunnel_sw_if_index] == ~0)
+    return VNET_API_ERROR_NO_SUCH_ENTRY;
+
+  u32 tunnel_index = vxm->tunnel_index_by_sw_if_index[tunnel_sw_if_index];
+  vxlan_tunnel_t *t = pool_elt_at_index (vxm->tunnels, tunnel_index);
+  u8 is_ip6 = !ip46_address_is_ip4 (dst);
+
+  /* dst must be the same address family as the tunnel src */
+  if (is_ip6 != !ip46_address_is_ip4 (&t->src))
+    return VNET_API_ERROR_INVALID_ADDRESS_FAMILY;
+
+  if (is_add)
+    {
+      /* Check for duplicate endpoint */
+      u32 *ep_idxp;
+      vec_foreach (ep_idxp, t->endpoint_indices)
+	{
+	  vxlan_endpoint_t *existing = pool_elt_at_index (vxm->endpoint_pool, *ep_idxp);
+	  if (ip46_address_cmp (&existing->dst, dst) == 0)
+	    return VNET_API_ERROR_TUNNEL_EXIST;
+	}
+
+      /* Allocate endpoint from pool */
+      vxlan_endpoint_t *ep;
+      pool_get_zero (vxm->endpoint_pool, ep);
+      u32 ep_pool_index = ep - vxm->endpoint_pool;
+      ep->dst = *dst;
+      ep->tunnel_index = tunnel_index;
+      ep->ep_index = ep_pool_index;
+
+      /* Build rewrite template for this (src, dst) pair */
+      vxlan_rewrite (t, ep, is_ip6);
+
+      /* Track FIB entry for dst /32 so route changes restack this endpoint */
+      fib_prefix_t tun_dst_pfx;
+      fib_protocol_t fp = fib_ip_proto (is_ip6);
+      fib_prefix_from_ip46_addr (fp, dst, &tun_dst_pfx);
+
+      vtep_addr_ref (&vxm->vtep_table, t->encap_fib_index, &t->src);
+      fib_node_init (&ep->node, vxlan_endpoint_fib_node_type);
+      ep->fib_entry_index =
+	fib_entry_track (t->encap_fib_index, &tun_dst_pfx, vxlan_endpoint_fib_node_type,
+			 ep_pool_index, &ep->sibling_index);
+      vxlan_endpoint_restack_dpo (ep);
+
+      /* Commit endpoint to tunnel */
+      vec_add1 (t->endpoint_indices, ep_pool_index);
+
+      /* Insert decap hash entry so inbound packets from this VTEP are accepted */
+      if (!is_ip6)
+	{
+	  vxlan4_tunnel_key_t key4;
+	  key4.key[0] = dst->ip4.as_u32 | (((u64) t->src.ip4.as_u32) << 32);
+	  key4.key[1] = ((u64) clib_host_to_net_u16 (t->src_port) << 48) |
+			(((u64) t->encap_fib_index) << 32) | clib_host_to_net_u32 (t->vni << 8);
+	  vxlan_decap_info_t di = { .sw_if_index = t->sw_if_index,
+				    .next_index = t->decap_next_index };
+	  key4.value = di.as_u64;
+	  clib_bihash_add_del_16_8 (&vxm->vxlan4_tunnel_by_key, &key4, 1 /*add */);
+	}
+      else
+	{
+	  vxlan6_tunnel_key_t key6;
+	  key6.key[0] = dst->ip6.as_u64[0];
+	  key6.key[1] = dst->ip6.as_u64[1];
+	  key6.key[2] =
+	    (((u64) clib_host_to_net_u16 (t->src_port) << 48) | ((u64) t->encap_fib_index) << 32) |
+	    clib_host_to_net_u32 (t->vni << 8);
+	  key6.value = (u64) tunnel_index;
+	  clib_bihash_add_del_24_8 (&vxm->vxlan6_tunnel_by_key, &key6, 1 /*add */);
+	}
+    }
+  else /* del */
+    {
+      /* Find endpoint by dst */
+      u32 found_i = ~0;
+      u32 *ep_idxp;
+      vec_foreach (ep_idxp, t->endpoint_indices)
+	{
+	  vxlan_endpoint_t *existing = pool_elt_at_index (vxm->endpoint_pool, *ep_idxp);
+	  if (ip46_address_cmp (&existing->dst, dst) == 0)
+	    {
+	      found_i = ep_idxp - t->endpoint_indices;
+	      break;
+	    }
+	}
+      if (found_i == ~0)
+	return VNET_API_ERROR_NO_SUCH_ENTRY;
+
+      u32 ep_pool_index = t->endpoint_indices[found_i];
+      vxlan_endpoint_t *ep = pool_elt_at_index (vxm->endpoint_pool, ep_pool_index);
+
+      /* Remove decap hash entry */
+      if (!is_ip6)
+	{
+	  vxlan4_tunnel_key_t key4;
+	  key4.key[0] = dst->ip4.as_u32 | (((u64) t->src.ip4.as_u32) << 32);
+	  key4.key[1] = ((u64) clib_host_to_net_u16 (t->src_port) << 48) |
+			(((u64) t->encap_fib_index) << 32) | clib_host_to_net_u32 (t->vni << 8);
+	  clib_bihash_add_del_16_8 (&vxm->vxlan4_tunnel_by_key, &key4, 0 /*del */);
+	}
+      else
+	{
+	  vxlan6_tunnel_key_t key6;
+	  key6.key[0] = dst->ip6.as_u64[0];
+	  key6.key[1] = dst->ip6.as_u64[1];
+	  key6.key[2] =
+	    (((u64) clib_host_to_net_u16 (t->src_port) << 48) | ((u64) t->encap_fib_index) << 32) |
+	    clib_host_to_net_u32 (t->vni << 8);
+	  clib_bihash_add_del_24_8 (&vxm->vxlan6_tunnel_by_key, &key6, 0 /*del */);
+	}
+
+      /* Remove any MAC->endpoint mappings pointing to this endpoint */
+      if (t->mac_to_ep_initialized)
+	{
+	  vxlan_mac_collect_ctx_t mctx = { .ep_pool_index = ep_pool_index };
+	  clib_bihash_foreach_key_value_pair_8_8 (&t->mac_to_ep, vxlan_mac_collect_by_ep_cb, &mctx);
+	  u64 *kp;
+	  vec_foreach (kp, mctx.keys)
+	    {
+	      clib_bihash_kv_8_8_t del_kv = { .key = *kp };
+	      clib_bihash_add_del_8_8 (&t->mac_to_ep, &del_kv, 0 /* del */);
+	    }
+	  vec_free (mctx.keys);
+	}
+
+      vtep_addr_unref (&vxm->vtep_table, t->encap_fib_index, &t->src);
+      fib_entry_untrack (ep->fib_entry_index, ep->sibling_index);
+      dpo_reset (&ep->next_dpo);
+      fib_node_deinit (&ep->node);
+      pool_put (vxm->endpoint_pool, ep);
+
+      vec_del1 (t->endpoint_indices, found_i);
+    }
+
+  return 0;
+}
+
+int
+vnet_vxlan_p2mp_add_del_mac_ep (u32 tunnel_sw_if_index, const u8 *mac, u32 ep_pool_index,
+				bool is_add)
+{
+  vxlan_main_t *vxm = &vxlan_main;
+
+  u32 t_index = vnet_vxlan_get_tunnel_index (tunnel_sw_if_index);
+  if (t_index == ~0)
+    return VNET_API_ERROR_NO_SUCH_ENTRY;
+
+  vxlan_tunnel_t *t = pool_elt_at_index (vxm->tunnels, t_index);
+  if (!t->is_p2mp)
+    return VNET_API_ERROR_INVALID_VALUE;
+
+  if (is_add)
+    {
+      /* Validate that ep_pool_index belongs to this tunnel */
+      if (pool_is_free_index (vxm->endpoint_pool, ep_pool_index))
+	return VNET_API_ERROR_INVALID_VALUE_2;
+      vxlan_endpoint_t *ep = pool_elt_at_index (vxm->endpoint_pool, ep_pool_index);
+      if (ep->tunnel_index != t_index)
+	return VNET_API_ERROR_INVALID_VALUE_2;
+
+      /* Lazy-initialise the hash on first use */
+      if (!t->mac_to_ep_initialized)
+	{
+	  clib_bihash_init_8_8 (&t->mac_to_ep, "vxlan-p2mp-mac-to-ep", 64, 1 << 16);
+	  t->mac_to_ep_initialized = 1;
+	}
+    }
+  else if (!t->mac_to_ep_initialized)
+    return VNET_API_ERROR_NO_SUCH_ENTRY;
+
+  u64 key = 0;
+  clib_memcpy (&key, mac, 6);
+  clib_bihash_kv_8_8_t kv = { .key = key, .value = ep_pool_index };
+  clib_bihash_add_del_8_8 (&t->mac_to_ep, &kv, is_add ? 1 : 0);
+  return 0;
+}
+
+static clib_error_t *
+vxlan_add_del_endpoint_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				   vlib_cli_command_t *cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  vnet_main_t *vnm = vnet_get_main ();
+  u32 sw_if_index = ~0;
+  ip46_address_t dst = ip46_address_initializer;
+  u8 dst_set = 0;
+  u8 is_add = 1;
+  clib_error_t *parse_error = NULL;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "del"))
+	is_add = 0;
+      else if (unformat (line_input, "%U", unformat_vnet_sw_interface, vnm, &sw_if_index))
+	;
+      else if (unformat (line_input, "dst %U", unformat_ip46_address, &dst, IP46_TYPE_ANY))
+	dst_set = 1;
+      else
+	{
+	  parse_error =
+	    clib_error_return (0, "parse error: '%U'", format_unformat_error, line_input);
+	  break;
+	}
+    }
+
+  unformat_free (line_input);
+
+  if (parse_error)
+    return parse_error;
+  if (sw_if_index == ~0)
+    return clib_error_return (0, "interface not specified");
+  if (!dst_set)
+    return clib_error_return (0, "dst address not specified");
+
+  if (vnet_vxlan_get_tunnel_index (sw_if_index) == ~0)
+    return clib_error_return (0, "%U is not a VXLAN tunnel interface", format_vnet_sw_if_index_name,
+			      vnm, sw_if_index);
+
+  int rv = vnet_vxlan_add_del_endpoint (sw_if_index, &dst, is_add);
+  switch (rv)
+    {
+    case 0:
+      break;
+    case VNET_API_ERROR_NO_SUCH_ENTRY:
+      return clib_error_return (0, "tunnel or endpoint does not exist");
+    case VNET_API_ERROR_TUNNEL_EXIST:
+      return clib_error_return (0, "endpoint already exists");
+    case VNET_API_ERROR_INVALID_ADDRESS_FAMILY:
+      return clib_error_return (0, "dst address family does not match tunnel src");
+    default:
+      return clib_error_return (0, "vnet_vxlan_add_del_endpoint returned %d", rv);
+    }
+
+  return 0;
+}
+
+VLIB_CLI_COMMAND (vxlan_add_del_endpoint_command, static) = {
+  .path = "vxlan tunnel endpoint",
+  .short_help = "vxlan tunnel endpoint [del] <interface> dst <ip-addr>",
+  .function = vxlan_add_del_endpoint_command_fn,
+};
+
+/*
+ * Resolve a dst IP to the ep_pool_index for a given tunnel.
+ * Returns ~0 if not found.
+ */
+static u32
+vxlan_tunnel_find_ep_by_dst (vxlan_tunnel_t *t, ip46_address_t *dst)
+{
+  vxlan_main_t *vxm = &vxlan_main;
+  u32 *ep_idxp;
+  vec_foreach (ep_idxp, t->endpoint_indices)
+    {
+      vxlan_endpoint_t *ep = pool_elt_at_index (vxm->endpoint_pool, *ep_idxp);
+      if (ip46_address_cmp (&ep->dst, dst) == 0)
+	return *ep_idxp;
+    }
+  return ~0;
+}
+
+static clib_error_t *
+vxlan_add_del_mac_endpoint_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				       vlib_cli_command_t *cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  vnet_main_t *vnm = vnet_get_main ();
+  vxlan_main_t *vxm = &vxlan_main;
+  u32 sw_if_index = ~0;
+  u8 mac[6];
+  u8 mac_set = 0;
+  ip46_address_t ep_dst = ip46_address_initializer;
+  u8 ep_set = 0;
+  u8 is_add = 1;
+  clib_error_t *parse_error = NULL;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "del"))
+	is_add = 0;
+      else if (unformat (line_input, "%U", unformat_vnet_sw_interface, vnm, &sw_if_index))
+	;
+      else if (unformat (line_input, "%U", unformat_ethernet_address, mac))
+	mac_set = 1;
+      else if (unformat (line_input, "dst %U", unformat_ip46_address, &ep_dst, IP46_TYPE_ANY))
+	ep_set = 1;
+      else
+	{
+	  parse_error =
+	    clib_error_return (0, "parse error: '%U'", format_unformat_error, line_input);
+	  break;
+	}
+    }
+
+  unformat_free (line_input);
+
+  if (parse_error)
+    return parse_error;
+  if (sw_if_index == ~0)
+    return clib_error_return (0, "interface not specified");
+  if (!mac_set)
+    return clib_error_return (0, "MAC address not specified");
+  if (is_add && !ep_set)
+    return clib_error_return (0, "dst <ip-addr> required when adding a mapping");
+
+  u32 t_index = vnet_vxlan_get_tunnel_index (sw_if_index);
+  if (t_index == ~0)
+    return clib_error_return (0, "%U is not a VXLAN tunnel interface", format_vnet_sw_if_index_name,
+			      vnm, sw_if_index);
+
+  vxlan_tunnel_t *t = pool_elt_at_index (vxm->tunnels, t_index);
+  if (!t->is_p2mp)
+    return clib_error_return (0, "tunnel is not P2MP");
+
+  u32 ep_pool_index = 0; /* unused for del */
+  if (is_add)
+    {
+      ep_pool_index = vxlan_tunnel_find_ep_by_dst (t, &ep_dst);
+      if (ep_pool_index == ~0)
+	return clib_error_return (0, "no endpoint with dst %U on this tunnel", format_ip46_address,
+				  &ep_dst, IP46_TYPE_ANY);
+    }
+
+  int rv = vnet_vxlan_p2mp_add_del_mac_ep (sw_if_index, mac, ep_pool_index, is_add);
+  switch (rv)
+    {
+    case 0:
+      break;
+    case VNET_API_ERROR_NO_SUCH_ENTRY:
+      return clib_error_return (0, "MAC entry not found");
+    default:
+      return clib_error_return (0, "error %d", rv);
+    }
+
+  return 0;
+}
+
+VLIB_CLI_COMMAND (vxlan_add_del_mac_endpoint_command, static) = {
+  .path = "vxlan tunnel mac",
+  .short_help = "vxlan tunnel mac [del] <interface> <mac-addr> [dst <ip-addr>]",
+  .function = vxlan_add_del_mac_endpoint_command_fn,
+};
+
+typedef struct
+{
+  vlib_main_t *vm;
+  vxlan_tunnel_t *t;
+} vxlan_show_mac_walk_ctx_t;
+
+static int
+vxlan_show_mac_walk_cb (clib_bihash_kv_8_8_t *kv, void *arg)
+{
+  vxlan_show_mac_walk_ctx_t *ctx = arg;
+  vxlan_main_t *vxm = &vxlan_main;
+
+  u32 ep_pool_index = (u32) kv->value;
+  if (pool_is_free_index (vxm->endpoint_pool, ep_pool_index))
+    return BIHASH_WALK_CONTINUE; /* stale, skip */
+
+  vxlan_endpoint_t *ep = pool_elt_at_index (vxm->endpoint_pool, ep_pool_index);
+
+  u8 mac[6];
+  clib_memcpy (mac, &kv->key, 6);
+
+  vlib_cli_output (ctx->vm, "  %U -> %U", format_ethernet_address, mac, format_ip46_address,
+		   &ep->dst, IP46_TYPE_ANY);
+  return BIHASH_WALK_CONTINUE;
+}
+
+static void
+vxlan_show_mac_one_tunnel (vlib_main_t *vm, vxlan_tunnel_t *t)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  vlib_cli_output (vm, "%U:", format_vnet_sw_if_index_name, vnm, t->sw_if_index);
+  if (!t->is_p2mp)
+    {
+      vlib_cli_output (vm, "  (not a P2MP tunnel)");
+      return;
+    }
+  if (!t->mac_to_ep_initialized)
+    {
+      vlib_cli_output (vm, "  (no MAC mappings)");
+      return;
+    }
+  vxlan_show_mac_walk_ctx_t ctx = { .vm = vm, .t = t };
+  clib_bihash_foreach_key_value_pair_8_8 (&t->mac_to_ep, vxlan_show_mac_walk_cb, &ctx);
+}
+
+static clib_error_t *
+vxlan_show_mac_endpoint_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				    vlib_cli_command_t *cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  vnet_main_t *vnm = vnet_get_main ();
+  vxlan_main_t *vxm = &vxlan_main;
+  u32 sw_if_index = ~0;
+
+  if (unformat_user (input, unformat_line_input, line_input))
+    {
+      unformat (line_input, "%U", unformat_vnet_sw_interface, vnm, &sw_if_index);
+      unformat_free (line_input);
+    }
+
+  if (~0 == sw_if_index)
+    {
+      vxlan_tunnel_t *t;
+      pool_foreach (t, vxm->tunnels)
+	vxlan_show_mac_one_tunnel (vm, t);
+    }
+  else
+    {
+      u32 t_index = vnet_vxlan_get_tunnel_index (sw_if_index);
+      if (t_index == ~0)
+	return clib_error_return (0, "%U is not a VXLAN tunnel interface",
+				  format_vnet_sw_if_index_name, vnm, sw_if_index);
+      vxlan_show_mac_one_tunnel (vm, pool_elt_at_index (vxm->tunnels, t_index));
+    }
+
+  return 0;
+}
+
+VLIB_CLI_COMMAND (vxlan_show_mac_endpoint_command, static) = {
+  .path = "show vxlan tunnel mac",
+  .short_help = "show vxlan tunnel mac [<interface>]",
+  .function = vxlan_show_mac_endpoint_command_fn,
+};
 
 static clib_error_t *
 vxlan_offload_command_fn (vlib_main_t * vm,
@@ -1254,7 +1828,8 @@ vxlan_offload_command_fn (vlib_main_t * vm,
   vxlan_main_t *vxm = &vxlan_main;
   vxlan_tunnel_t *t = pool_elt_at_index (vxm->tunnels, t_index);
 
-  if (!ip46_address_is_ip4 (&t->dst))
+  vxlan_endpoint_t *ep0_ = pool_elt_at_index (vxm->endpoint_pool, t->endpoint_indices[0]);
+  if (!ip46_address_is_ip4 (&ep0_->dst))
     return clib_error_return (0, "currently only IPV4 tunnels are supported");
 
   vnet_hw_interface_t *hw_if = vnet_get_hw_interface (vnm, hw_if_index);
@@ -1306,7 +1881,7 @@ vxlan_init (vlib_main_t * vm)
 				       sizeof (ip46_address_t),
 				       sizeof (mcast_shared_t));
 
-  fib_node_register_type (FIB_NODE_TYPE_VXLAN_TUNNEL, &vxlan_vft);
+  vxlan_endpoint_fib_node_type = fib_node_register_new_type ("vxlan-endpoint", &vxlan_endpoint_vft);
 
   return 0;
 }
