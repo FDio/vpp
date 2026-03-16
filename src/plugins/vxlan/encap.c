@@ -72,6 +72,7 @@ vxlan_encap_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   u32 sw_if_index0 = 0, sw_if_index1 = 0;
   u32 next0 = 0, next1 = 0;
   vxlan_tunnel_t *t0 = NULL, *t1 = NULL;
+  vxlan_endpoint_t *ep0 = NULL, *ep1 = NULL;
   index_t dpoi_idx0 = INDEX_INVALID, dpoi_idx1 = INDEX_INVALID;
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE];
   vlib_buffer_t **b = bufs;
@@ -135,9 +136,9 @@ vxlan_encap_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      vnet_hw_interface_t *hi0 =
 		vnet_get_sup_hw_interface (vnm, sw_if_index0);
 	      t0 = &vxm->tunnels[hi0->dev_instance];
-	      /* Note: change to always set next0 if it may set to drop */
-	      next0 = t0->next_dpo.dpoi_next_node;
-	      dpoi_idx0 = t0->next_dpo.dpoi_index;
+	      ep0 = pool_elt_at_index (vxm->endpoint_pool, t0->endpoint_indices[0]);
+	      next0 = ep0->next_dpo.dpoi_next_node;
+	      dpoi_idx0 = ep0->next_dpo.dpoi_index;
 	    }
 
 	  /* Get next node index and adj index from tunnel next_dpo */
@@ -147,6 +148,7 @@ vxlan_encap_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 		{
 		  sw_if_index1 = sw_if_index0;
 		  t1 = t0;
+		  ep1 = ep0;
 		  next1 = next0;
 		  dpoi_idx1 = dpoi_idx0;
 		}
@@ -156,20 +158,19 @@ vxlan_encap_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 		  vnet_hw_interface_t *hi1 =
 		    vnet_get_sup_hw_interface (vnm, sw_if_index1);
 		  t1 = &vxm->tunnels[hi1->dev_instance];
-		  /* Note: change to always set next1 if it may set to drop */
-		  next1 = t1->next_dpo.dpoi_next_node;
-		  dpoi_idx1 = t1->next_dpo.dpoi_index;
+		  ep1 = pool_elt_at_index (vxm->endpoint_pool, t1->endpoint_indices[0]);
+		  next1 = ep1->next_dpo.dpoi_next_node;
+		  dpoi_idx1 = ep1->next_dpo.dpoi_index;
 		}
 	    }
 
 	  vnet_buffer (b0)->ip.adj_index[VLIB_TX] = dpoi_idx0;
 	  vnet_buffer (b1)->ip.adj_index[VLIB_TX] = dpoi_idx1;
 
-	  ASSERT (t0->rewrite_header.data_bytes == underlay_hdr_len);
-	  ASSERT (t1->rewrite_header.data_bytes == underlay_hdr_len);
-	  vnet_rewrite_two_headers (*t0, *t1, vlib_buffer_get_current (b0),
-				    vlib_buffer_get_current (b1),
-				    underlay_hdr_len);
+	  ASSERT (ep0->rewrite_header.data_bytes == underlay_hdr_len);
+	  ASSERT (ep1->rewrite_header.data_bytes == underlay_hdr_len);
+	  vnet_rewrite_two_headers (*ep0, *ep1, vlib_buffer_get_current (b0),
+				    vlib_buffer_get_current (b1), underlay_hdr_len);
 
 	  vlib_buffer_advance (b0, -underlay_hdr_len);
 	  vlib_buffer_advance (b1, -underlay_hdr_len);
@@ -360,15 +361,14 @@ vxlan_encap_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      vnet_hw_interface_t *hi0 =
 		vnet_get_sup_hw_interface (vnm, sw_if_index0);
 	      t0 = &vxm->tunnels[hi0->dev_instance];
-	      /* Note: change to always set next0 if it may be set to drop */
-	      next0 = t0->next_dpo.dpoi_next_node;
-	      dpoi_idx0 = t0->next_dpo.dpoi_index;
+	      ep0 = pool_elt_at_index (vxm->endpoint_pool, t0->endpoint_indices[0]);
+	      next0 = ep0->next_dpo.dpoi_next_node;
+	      dpoi_idx0 = ep0->next_dpo.dpoi_index;
 	    }
 	  vnet_buffer (b0)->ip.adj_index[VLIB_TX] = dpoi_idx0;
 
-	  ASSERT (t0->rewrite_header.data_bytes == underlay_hdr_len);
-	  vnet_rewrite_one_header (*t0, vlib_buffer_get_current (b0),
-				   underlay_hdr_len);
+	  ASSERT (ep0->rewrite_header.data_bytes == underlay_hdr_len);
+	  vnet_rewrite_one_header (*ep0, vlib_buffer_get_current (b0), underlay_hdr_len);
 
 	  vlib_buffer_advance (b0, -underlay_hdr_len);
 	  void *underlay0 = vlib_buffer_get_current (b0);
@@ -516,5 +516,233 @@ VLIB_REGISTER_NODE (vxlan6_encap_node) = {
   .n_next_nodes = VXLAN_ENCAP_N_NEXT,
   .next_nodes = {
         [VXLAN_ENCAP_NEXT_DROP] = "error-drop",
+  },
+};
+
+/*
+ * P2MP encap node.
+ *
+ * Current behavior: BUM flood.  Every input buffer is replicated to all
+ * configured remote VTEPs (N endpoints → N-1 copies + original).  This is
+ * correct for BUM traffic: the bridge domain selected this tunnel as one of
+ * its member interfaces; we fan-out here to all remote VTEPs.
+ *
+ * It is incorrect for known-unicast traffic.  The L2 FIB has already
+ * resolved the destination MAC to a specific remote VTEP (ep_pool_index),
+ * but the encap node has no way to act on that yet because l2-output does
+ * not yet populate vnet_buffer(b)->ip.adj_index[VLIB_TX] with that index.
+ * Note that ip.adj_index[VLIB_TX] overlaps l2.bd_index (bits [15:0]) and
+ * l2.l2fib_sn (bits [31:16]) in the vnet_buffer opaque union, so its value
+ * on arrival is not a valid ep_pool_index.
+ *
+ * Future work: modify l2-output to write ep_pool_index into
+ * ip.adj_index[VLIB_TX] after the L2 FIB lookup (~0 = BUM, real index =
+ * unicast).  Once that is in place, this node must:
+ *   - if adj_index == ~0: flood as today (BUM path);
+ *   - if adj_index is a valid ep_pool_index in t->endpoint_indices: encap
+ *     the original buffer for that single endpoint only (unicast path);
+ *   - if adj_index is not found in the tunnel's endpoints pool: DROP.
+ */
+always_inline uword
+vxlan_p2mp_encap_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame,
+			 u8 is_ip4)
+{
+  u32 n_left_from, *from;
+  vxlan_main_t *vxm = &vxlan_main;
+  vnet_main_t *vnm = vxm->vnet_main;
+  vnet_interface_main_t *im = &vnm->interface_main;
+  vlib_combined_counter_main_t *tx_counter =
+    im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_TX;
+  clib_thread_index_t thread_index = vlib_get_thread_index ();
+  u32 pkts_encapsulated = 0;
+
+  u8 const underlay_hdr_len = is_ip4 ? sizeof (ip4_vxlan_header_t) : sizeof (ip6_vxlan_header_t);
+  u16 const l3_len = is_ip4 ? sizeof (ip4_header_t) : sizeof (ip6_header_t);
+  u32 const outer_packet_csum_offload_flags =
+    is_ip4 ? (VNET_BUFFER_OFFLOAD_F_OUTER_IP_CKSUM | VNET_BUFFER_OFFLOAD_F_TNL_VXLAN) :
+	     (VNET_BUFFER_OFFLOAD_F_OUTER_UDP_CKSUM | VNET_BUFFER_OFFLOAD_F_TNL_VXLAN);
+
+  from = vlib_frame_vector_args (from_frame);
+  n_left_from = from_frame->n_vectors;
+
+  u32 next_index = node->cached_next_index;
+  u32 *to_next;
+  u32 n_left_to_next = 0;
+
+  vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
+
+  while (n_left_from > 0)
+    {
+      u32 bi0 = from[0];
+      from++;
+      n_left_from--;
+
+      vlib_buffer_t *b0 = vlib_get_buffer (vm, bi0);
+      u32 sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_TX];
+      vnet_hw_interface_t *hi0 = vnet_get_sup_hw_interface (vnm, sw_if_index0);
+      vxlan_tunnel_t *t0 = &vxm->tunnels[hi0->dev_instance];
+      u32 n_eps = vec_len (t0->endpoint_indices);
+      u32 flow_hash0 = vnet_l2_compute_flow_hash (b0);
+
+      if (PREDICT_FALSE (n_eps == 0))
+	{
+	  if (PREDICT_FALSE (n_left_to_next == 0))
+	    {
+	      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+	      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
+	    }
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next, n_left_to_next, bi0,
+					   VXLAN_ENCAP_NEXT_DROP);
+	  continue;
+	}
+
+      /* Replicate to each endpoint: copy for all but the last, use
+       * original buffer for the last endpoint. */
+      for (u32 ei = 0; ei < n_eps; ei++)
+	{
+	  vxlan_endpoint_t *ep = pool_elt_at_index (vxm->endpoint_pool, t0->endpoint_indices[ei]);
+
+	  u32 bic;
+	  vlib_buffer_t *bc;
+
+	  if (ei < n_eps - 1)
+	    {
+	      bc = vlib_buffer_copy (vm, b0);
+	      if (PREDICT_FALSE (bc == NULL))
+		continue; /* drop this copy on buffer alloc failure */
+	      bic = vlib_get_buffer_index (vm, bc);
+	    }
+	  else
+	    {
+	      bic = bi0;
+	      bc = b0;
+	    }
+
+	  /* Encapsulate bc with ep */
+	  vnet_buffer (bc)->ip.adj_index[VLIB_TX] = ep->next_dpo.dpoi_index;
+	  ASSERT (ep->rewrite_header.data_bytes == underlay_hdr_len);
+	  vnet_rewrite_one_header (*ep, vlib_buffer_get_current (bc), underlay_hdr_len);
+	  vlib_buffer_advance (bc, -underlay_hdr_len);
+	  void *underlay = vlib_buffer_get_current (bc);
+	  u32 len = vlib_buffer_length_in_chain (vm, bc);
+	  u16 payload_l = clib_host_to_net_u16 (len - l3_len);
+
+	  udp_header_t *udp;
+	  ip4_header_t *ip4 = NULL;
+	  qos_bits_t ip4_tos = 0;
+	  ip6_header_t *ip6 = NULL;
+	  u8 *l3;
+	  if (is_ip4)
+	    {
+	      ip4_vxlan_header_t *hdr = underlay;
+	      ip4 = &hdr->ip4;
+	      ip4->length = clib_host_to_net_u16 (len);
+	      if (PREDICT_FALSE (bc->flags & VNET_BUFFER_F_QOS_DATA_VALID))
+		{
+		  ip4_tos = vnet_buffer2 (bc)->qos.bits;
+		  ip4->tos = ip4_tos;
+		}
+	      l3 = (u8 *) ip4;
+	      udp = &hdr->udp;
+	    }
+	  else
+	    {
+	      ip6_vxlan_header_t *hdr = underlay;
+	      ip6 = &hdr->ip6;
+	      ip6->payload_length = payload_l;
+	      l3 = (u8 *) ip6;
+	      udp = &hdr->udp;
+	    }
+
+	  udp->length = payload_l;
+	  udp->src_port = flow_hash0;
+
+	  if (bc->flags & VNET_BUFFER_F_OFFLOAD)
+	    {
+	      vnet_buffer2 (bc)->outer_l3_hdr_offset = l3 - bc->data;
+	      vnet_buffer2 (bc)->outer_l4_hdr_offset = (u8 *) udp - bc->data;
+	      vnet_buffer_offload_flags_set (bc, outer_packet_csum_offload_flags);
+	    }
+	  else if (is_ip4)
+	    {
+	      ip_csum_t sum = ip4->checksum;
+	      sum = ip_csum_update (sum, 0, ip4->length, ip4_header_t, length /* changed member */);
+	      if (PREDICT_FALSE (ip4_tos))
+		sum = ip_csum_update (sum, 0, ip4_tos, ip4_header_t, tos /* changed member */);
+	      ip4->checksum = ip_csum_fold (sum);
+	    }
+	  else
+	    {
+	      int bogus = 0;
+	      udp->checksum = ip6_tcp_udp_icmp_compute_checksum (vm, bc, ip6, &bogus);
+	      ASSERT (bogus == 0);
+	      if (udp->checksum == 0)
+		udp->checksum = 0xffff;
+	    }
+
+	  vnet_buffer (bc)->ip.flow_hash = flow_hash0;
+	  vlib_increment_combined_counter (tx_counter, thread_index, sw_if_index0, 1, len);
+	  pkts_encapsulated++;
+
+	  if (PREDICT_FALSE (bc->flags & VLIB_BUFFER_IS_TRACED))
+	    {
+	      vxlan_encap_trace_t *tr = vlib_add_trace (vm, node, bc, sizeof (*tr));
+	      tr->tunnel_index = t0 - vxm->tunnels;
+	      tr->vni = t0->vni;
+	    }
+
+	  u32 next = ep->next_dpo.dpoi_next_node;
+	  if (PREDICT_FALSE (n_left_to_next == 0))
+	    {
+	      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+	      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
+	    }
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next, n_left_to_next, bic,
+					   next);
+	}
+    }
+
+  vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+
+  vlib_node_increment_counter (vm, node->node_index, VXLAN_ENCAP_ERROR_ENCAPSULATED,
+			       pkts_encapsulated);
+  return from_frame->n_vectors;
+}
+
+VLIB_NODE_FN (vxlan4_p2mp_encap_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
+{
+  return vxlan_p2mp_encap_inline (vm, node, from_frame, /* is_ip4 */ 1);
+}
+
+VLIB_NODE_FN (vxlan6_p2mp_encap_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
+{
+  return vxlan_p2mp_encap_inline (vm, node, from_frame, /* is_ip4 */ 0);
+}
+
+VLIB_REGISTER_NODE (vxlan4_p2mp_encap_node) = {
+  .name = "vxlan4-p2mp-encap",
+  .vector_size = sizeof (u32),
+  .format_trace = format_vxlan_encap_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = ARRAY_LEN (vxlan_encap_error_strings),
+  .error_strings = vxlan_encap_error_strings,
+  .n_next_nodes = VXLAN_ENCAP_N_NEXT,
+  .next_nodes = {
+    [VXLAN_ENCAP_NEXT_DROP] = "error-drop",
+  },
+};
+
+VLIB_REGISTER_NODE (vxlan6_p2mp_encap_node) = {
+  .name = "vxlan6-p2mp-encap",
+  .vector_size = sizeof (u32),
+  .format_trace = format_vxlan_encap_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = ARRAY_LEN (vxlan_encap_error_strings),
+  .error_strings = vxlan_encap_error_strings,
+  .n_next_nodes = VXLAN_ENCAP_N_NEXT,
+  .next_nodes = {
+    [VXLAN_ENCAP_NEXT_DROP] = "error-drop",
   },
 };
