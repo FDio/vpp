@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-option version = "2.1.0";
+option version = "2.6.0";
 
 import "vnet/interface_types.api";
 import "vnet/ip/ip_types.api";
@@ -126,6 +126,47 @@ define vxlan_add_del_tunnel_v2_reply
   i32 retval;
   vl_api_interface_index_t sw_if_index;
 };
+/** \brief Create or delete a VXLAN tunnel (v4 — adds P2MP support)
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - Use 1 to create the tunnel, 0 to remove it
+    @param instance - optional unique custom device instance, else ~0
+    @param src_address - Source IP address
+    @param dst_address - Destination IP address (ignored when is_p2mp=true)
+    @param src_port - Source UDP port
+    @param dst_port - Destination UDP port
+    @param mcast_sw_if_index - Interface for multicast destination
+    @param encap_vrf_id - Encap route table FIB index
+    @param decap_next_index - index of decap next graph node
+    @param vni - The VXLAN Network Identifier, uint24
+    @param is_l3 - if true, create the interface in L3 mode, w/o MAC
+    @param is_p2mp - if true, create a P2MP tunnel with no initial endpoint;
+                     mutually exclusive with dst_address
+*/
+define vxlan_add_del_tunnel_v4
+{
+  u32 client_index;
+  u32 context;
+  bool is_add [default=true];
+  u32 instance [default=0xffffffff];
+  vl_api_address_t src_address;
+  vl_api_address_t dst_address;
+  u16 src_port;
+  u16 dst_port;
+  vl_api_interface_index_t mcast_sw_if_index [default=0xffffffff];
+  u32 encap_vrf_id;
+  u32 decap_next_index [default=0xffffffff];
+  u32 vni;
+  bool is_l3 [default=false];
+  bool is_p2mp [default=false];
+};
+define vxlan_add_del_tunnel_v4_reply
+{
+  u32 context;
+  i32 retval;
+  vl_api_interface_index_t sw_if_index;
+};
+
 define vxlan_add_del_tunnel_v3_reply
 {
   u32 context;
@@ -175,6 +216,103 @@ define vxlan_tunnel_v2_details
   u32 encap_vrf_id;
   u32 decap_next_index;
   u32 vni;
+};
+
+/** \brief Add or remove a remote endpoint from a VXLAN P2MP tunnel
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - existing vxlan tunnel sw_if_index
+    @param is_add - true to add, false to remove
+    @param dst - remote VTEP address to add/remove
+*/
+autoreply define vxlan_add_del_tunnel_endpoint
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+  bool is_add [default=true];
+  vl_api_address_t dst;
+};
+
+/** \brief Dump all remote endpoints of a VXLAN tunnel
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - tunnel sw_if_index (~0 for all tunnels)
+*/
+define vxlan_tunnel_endpoint_dump
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+};
+
+/** \brief One endpoint detail per reply
+    @param context - sender context
+    @param sw_if_index - tunnel this endpoint belongs to
+    @param dst - remote VTEP address
+    @param src - local VTEP source address
+    @param src_port - UDP source port
+    @param dst_port - UDP destination port
+    @param vni - VXLAN Network Identifier
+    @param encap_vrf_id - encap route table ID
+*/
+define vxlan_tunnel_endpoint_details
+{
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+  vl_api_address_t dst;
+  vl_api_address_t src;
+  u16 src_port;
+  u16 dst_port;
+  u32 vni;
+  u32 encap_vrf_id;
+};
+
+/** \brief Add or remove a static MAC→endpoint mapping for a VXLAN P2MP tunnel.
+    The mapping tells the encap node to send frames destined for @mac to the
+    specific remote VTEP identified by @ep_dst rather than flooding to all
+    endpoints (BUM).  The endpoint must already exist on the tunnel.
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - existing p2mp vxlan tunnel sw_if_index
+    @param is_add - true to add, false to remove
+    @param mac - inner destination MAC address to match
+    @param ep_dst - remote VTEP address identifying the target endpoint
+*/
+autoreply define vxlan_p2mp_add_del_mac_endpoint
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+  bool is_add [default=true];
+  u8 mac[6];
+  vl_api_address_t ep_dst;
+};
+
+/** \brief Dump all static MAC→endpoint mappings for a VXLAN P2MP tunnel.
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - tunnel sw_if_index (~0 for all tunnels)
+*/
+define vxlan_p2mp_mac_endpoint_dump
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index [default=0xffffffff];
+};
+
+/** \brief One MAC→endpoint mapping per reply
+    @param context - sender context
+    @param sw_if_index - tunnel this mapping belongs to
+    @param mac - inner destination MAC address
+    @param ep_dst - remote VTEP address for this MAC
+*/
+define vxlan_p2mp_mac_endpoint_details
+{
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+  u8 mac[6];
+  vl_api_address_t ep_dst;
 };
 
 /** \brief Interface set vxlan-bypass request
