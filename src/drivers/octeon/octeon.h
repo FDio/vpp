@@ -161,11 +161,9 @@ format_function_t format_oct_rxq_info;
 format_function_t format_oct_txq_info;
 
 /* flow.c */
-vnet_dev_rv_t oct_flow_ops_fn (vlib_main_t *, vnet_dev_port_t *,
-			       vnet_dev_port_cfg_type_t, u32, uword *);
-vnet_dev_rv_t oct_flow_validate_params (vlib_main_t *, vnet_dev_port_t *,
-					vnet_dev_port_cfg_type_t, u32,
-					uword *);
+vnet_dev_rv_t oct_flow_ops_fn (vlib_main_t *, vnet_dev_port_t *, vnet_dev_port_cfg_type_t, u32);
+vnet_dev_rv_t oct_flow_validate_params (vlib_main_t *, vnet_dev_port_t *, vnet_dev_port_cfg_type_t,
+					u32);
 vnet_dev_rv_t oct_flow_query (vlib_main_t *, vnet_dev_port_t *, u32, uword,
 			      u64 *);
 
