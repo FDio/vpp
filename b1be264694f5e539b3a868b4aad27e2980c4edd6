@@ -16,6 +16,24 @@
       "message": "is the removal of vpp_prometheus_push intentional here?",
       "revId": "b1be264694f5e539b3a868b4aad27e2980c4edd6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "001ee7d2_b0c0abfa",
+        "filename": "src/vpp/CMakeLists.txt",
+        "patchSetId": 12
+      },
+      "lineNbr": 129,
+      "author": {
+        "id": 3270
+      },
+      "writtenOn": "2026-03-16T20:03:23Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "0635aca4_2ebe8104",
+      "revId": "b1be264694f5e539b3a868b4aad27e2980c4edd6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
