@@ -49,7 +49,8 @@ vl_api_vxlan_offload_rx_t_handler (vl_api_vxlan_offload_rx_t * mp)
 
   vxlan_main_t *vxm = &vxlan_main;
   vxlan_tunnel_t *t = pool_elt_at_index (vxm->tunnels, t_index);
-  if (!ip46_address_is_ip4 (&t->dst))
+  vxlan_endpoint_t *ep0 = pool_elt_at_index (vxm->endpoint_pool, t->endpoint_indices[0]);
+  if (!ip46_address_is_ip4 (&ep0->dst))
     {
       rv = VNET_API_ERROR_INVALID_ADDRESS_FAMILY;
       goto err;
@@ -220,15 +221,19 @@ static void send_vxlan_tunnel_details
   vl_api_vxlan_tunnel_details_t *rmp;
   ip4_main_t *im4 = &ip4_main;
   ip6_main_t *im6 = &ip6_main;
+  vxlan_main_t *vxm = &vxlan_main;
+  if (vec_len (t->endpoint_indices) == 0)
+    return;
+  vxlan_endpoint_t *ep0 = pool_elt_at_index (vxm->endpoint_pool, t->endpoint_indices[0]);
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   clib_memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_VXLAN_TUNNEL_DETAILS);
 
   ip_address_encode (&t->src, IP46_TYPE_ANY, &rmp->src_address);
-  ip_address_encode (&t->dst, IP46_TYPE_ANY, &rmp->dst_address);
+  ip_address_encode (&ep0->dst, IP46_TYPE_ANY, &rmp->dst_address);
 
-  if (ip46_address_is_ip4 (&t->dst))
+  if (ip46_address_is_ip4 (&ep0->dst))
     rmp->encap_vrf_id = htonl (im4->fibs[t->encap_fib_index].ft_table_id);
   else
     rmp->encap_vrf_id = htonl (im6->fibs[t->encap_fib_index].ft_table_id);
@@ -281,17 +286,29 @@ send_vxlan_tunnel_v2_details (vxlan_tunnel_t *t, vl_api_registration_t *reg,
   vl_api_vxlan_tunnel_v2_details_t *rmp;
   ip4_main_t *im4 = &ip4_main;
   ip6_main_t *im6 = &ip6_main;
+  vxlan_main_t *vxm = &vxlan_main;
+  /* For P2MP tunnels with no endpoints, emit a record with all-zero dst */
+  ip46_address_t zero_dst;
+  clib_memset (&zero_dst, 0, sizeof (zero_dst));
+  ip46_address_t *dst_addr = &zero_dst;
+  if (vec_len (t->endpoint_indices) > 0)
+    {
+      vxlan_endpoint_t *ep0 = pool_elt_at_index (vxm->endpoint_pool, t->endpoint_indices[0]);
+      dst_addr = &ep0->dst;
+    }
+  else if (!t->is_p2mp)
+    return; /* P2P tunnel must always have an endpoint */
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   clib_memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_VXLAN_TUNNEL_V2_DETAILS);
 
   ip_address_encode (&t->src, IP46_TYPE_ANY, &rmp->src_address);
-  ip_address_encode (&t->dst, IP46_TYPE_ANY, &rmp->dst_address);
+  ip_address_encode (dst_addr, IP46_TYPE_ANY, &rmp->dst_address);
   rmp->src_port = htons (t->src_port);
   rmp->dst_port = htons (t->dst_port);
 
-  if (ip46_address_is_ip4 (&t->dst))
+  if (ip46_address_is_ip4 (dst_addr))
     rmp->encap_vrf_id = htonl (im4->fibs[t->encap_fib_index].ft_table_id);
   else
     rmp->encap_vrf_id = htonl (im6->fibs[t->encap_fib_index].ft_table_id);
@@ -335,6 +352,135 @@ vl_api_vxlan_tunnel_v2_dump_t_handler (vl_api_vxlan_tunnel_v2_dump_t *mp)
       t = &vxm->tunnels[vxm->tunnel_index_by_sw_if_index[sw_if_index]];
       send_vxlan_tunnel_v2_details (t, reg, mp->context);
     }
+}
+
+static void
+send_vxlan_tunnel_endpoint_details (vxlan_tunnel_t *t, vxlan_endpoint_t *ep,
+				    vl_api_registration_t *reg, u32 context)
+{
+  vl_api_vxlan_tunnel_endpoint_details_t *rmp;
+  ip4_main_t *im4 = &ip4_main;
+  ip6_main_t *im6 = &ip6_main;
+
+  rmp = vl_msg_api_alloc (sizeof (*rmp));
+  clib_memset (rmp, 0, sizeof (*rmp));
+  rmp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_VXLAN_TUNNEL_ENDPOINT_DETAILS);
+
+  rmp->context = context;
+  rmp->sw_if_index = htonl (t->sw_if_index);
+  ip_address_encode (&ep->dst, IP46_TYPE_ANY, &rmp->dst);
+  ip_address_encode (&t->src, IP46_TYPE_ANY, &rmp->src);
+  rmp->src_port = htons (t->src_port);
+  rmp->dst_port = htons (t->dst_port);
+  rmp->vni = htonl (t->vni);
+  if (ip46_address_is_ip4 (&ep->dst))
+    rmp->encap_vrf_id = htonl (im4->fibs[t->encap_fib_index].ft_table_id);
+  else
+    rmp->encap_vrf_id = htonl (im6->fibs[t->encap_fib_index].ft_table_id);
+
+  vl_api_send_msg (reg, (u8 *) rmp);
+}
+
+static void
+vl_api_vxlan_tunnel_endpoint_dump_t_handler (vl_api_vxlan_tunnel_endpoint_dump_t *mp)
+{
+  vl_api_registration_t *reg;
+  vxlan_main_t *vxm = &vxlan_main;
+  vxlan_tunnel_t *t;
+  u32 sw_if_index = ntohl (mp->sw_if_index);
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  if (~0 == sw_if_index)
+    {
+      pool_foreach (t, vxm->tunnels)
+	{
+	  u32 *ep_idx;
+	  vec_foreach (ep_idx, t->endpoint_indices)
+	    {
+	      vxlan_endpoint_t *ep = pool_elt_at_index (vxm->endpoint_pool, *ep_idx);
+	      send_vxlan_tunnel_endpoint_details (t, ep, reg, mp->context);
+	    }
+	}
+    }
+  else
+    {
+      if (sw_if_index >= vec_len (vxm->tunnel_index_by_sw_if_index) ||
+	  ~0 == vxm->tunnel_index_by_sw_if_index[sw_if_index])
+	return;
+      t = &vxm->tunnels[vxm->tunnel_index_by_sw_if_index[sw_if_index]];
+      u32 *ep_idx;
+      vec_foreach (ep_idx, t->endpoint_indices)
+	{
+	  vxlan_endpoint_t *ep = pool_elt_at_index (vxm->endpoint_pool, *ep_idx);
+	  send_vxlan_tunnel_endpoint_details (t, ep, reg, mp->context);
+	}
+    }
+}
+
+static void
+vl_api_vxlan_add_del_tunnel_endpoint_t_handler (vl_api_vxlan_add_del_tunnel_endpoint_t *mp)
+{
+  vl_api_vxlan_add_del_tunnel_endpoint_reply_t *rmp;
+  int rv = 0;
+  u32 sw_if_index = ntohl (mp->sw_if_index);
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  ip46_address_t dst;
+  ip_address_decode (&mp->dst, &dst);
+  rv = vnet_vxlan_add_del_endpoint (sw_if_index, &dst, mp->is_add);
+
+  BAD_SW_IF_INDEX_LABEL;
+  REPLY_MACRO (VL_API_VXLAN_ADD_DEL_TUNNEL_ENDPOINT_REPLY);
+}
+
+static void
+vl_api_vxlan_add_del_tunnel_v4_t_handler (vl_api_vxlan_add_del_tunnel_v4_t *mp)
+{
+  vl_api_vxlan_add_del_tunnel_v4_reply_t *rmp;
+  u32 sw_if_index = ~0;
+  int rv = 0;
+
+  vnet_vxlan_add_del_tunnel_args_t a = {
+    .is_add = mp->is_add,
+    .instance = ntohl (mp->instance),
+    .mcast_sw_if_index = ntohl (mp->mcast_sw_if_index),
+    .decap_next_index = ntohl (mp->decap_next_index),
+    .vni = ntohl (mp->vni),
+    .dst_port = ntohs (mp->dst_port),
+    .src_port = ntohs (mp->src_port),
+    .is_l3 = mp->is_l3,
+    .is_p2mp = mp->is_p2mp,
+  };
+
+  ip_address_decode (&mp->src_address, &a.src);
+  if (!mp->is_p2mp)
+    ip_address_decode (&mp->dst_address, &a.dst);
+
+  if (!mp->is_p2mp)
+    {
+      rv = vxlan_add_del_tunnel_clean_input (&a, ntohl (mp->encap_vrf_id));
+      if (rv)
+	goto out;
+    }
+  else
+    {
+      a.is_ip6 = !ip46_address_is_ip4 (&a.src);
+      a.encap_fib_index = fib_table_find (fib_ip_proto (a.is_ip6), ntohl (mp->encap_vrf_id));
+      if (a.encap_fib_index == ~0)
+	{
+	  rv = VNET_API_ERROR_NO_SUCH_FIB;
+	  goto out;
+	}
+    }
+
+  rv = vnet_vxlan_add_del_tunnel (&a, &sw_if_index);
+out:
+  REPLY_MACRO2 (VL_API_VXLAN_ADD_DEL_TUNNEL_V4_REPLY,
+		({ rmp->sw_if_index = ntohl (sw_if_index); }));
 }
 
 #include <vxlan/vxlan.api.c>
