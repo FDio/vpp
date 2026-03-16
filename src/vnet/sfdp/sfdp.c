@@ -119,6 +119,10 @@ sfdp_init_main_if_needed (sfdp_main_t *sfdp)
 				 << (template_shift + log_n_thread);
       ptd->session_id_template |= (u64) i << template_shift;
       ptd->session_freelist = 0;
+
+      vec_validate (ptd->flow_indices_tcp, 2 * VLIB_FRAME_SIZE - 1);
+      vec_validate (ptd->flow_indices_udp, 2 * VLIB_FRAME_SIZE - 1);
+      vec_validate (ptd->flow_indices_del, 2 * sfdp_num_sessions () - 1);
     }
   if (vlib_num_workers ())
     clib_spinlock_init (&sfdp->session_lock);
@@ -153,11 +157,113 @@ sfdp_init_main_if_needed (sfdp_main_t *sfdp)
   done = 1;
 }
 
+int
+sfdp_flow_offload_configure (vnet_main_t *vnm, u32 hw_if_index, u32 n_flows)
+{
+  vnet_flow_t templ_tcp = {
+        .type = VNET_FLOW_TYPE_IP4_N_TUPLE,
+        .actions = VNET_FLOW_ACTION_MARK | VNET_FLOW_ACTION_RSS,
+        .pattern = {
+                .ip4_n_tuple.src_addr.mask.data_u32 = ~0,
+                .ip4_n_tuple.dst_addr.mask.data_u32 = ~0,
+                .ip4_n_tuple.protocol.prot = IP_PROTOCOL_TCP,
+                .ip4_n_tuple.protocol.mask = ~0,
+                .ip4_n_tuple.src_port.mask = ~0,
+                .ip4_n_tuple.dst_port.mask = ~0,
+        },
+  };
+  vnet_flow_t templ_udp = {
+        .type = VNET_FLOW_TYPE_IP4_N_TUPLE,
+        .actions = VNET_FLOW_ACTION_MARK | VNET_FLOW_ACTION_RSS,
+        .pattern = {
+                .ip4_n_tuple.src_addr.mask.data_u32 = ~0,
+                .ip4_n_tuple.dst_addr.mask.data_u32 = ~0,
+                .ip4_n_tuple.protocol.prot = IP_PROTOCOL_UDP,
+                .ip4_n_tuple.protocol.mask = ~0,
+                .ip4_n_tuple.src_port.mask = ~0,
+                .ip4_n_tuple.dst_port.mask = ~0,
+        },
+  };
+  sfdp_main_t *sfdp = &sfdp_main;
+  u32 *tcp_index, *udp_index;
+  int rv = 0;
+
+  if (vec_len (sfdp->flow_template_index_tcp_by_hw_if_index) > hw_if_index &&
+      vec_elt (sfdp->flow_template_index_tcp_by_hw_if_index, hw_if_index) != ~0)
+    return 0;
+
+  vec_validate_init_empty (sfdp->flow_template_index_tcp_by_hw_if_index, hw_if_index, ~0);
+  vec_validate_init_empty (sfdp->flow_template_index_udp_by_hw_if_index, hw_if_index, ~0);
+
+  tcp_index = vec_elt_at_index (sfdp->flow_template_index_tcp_by_hw_if_index, hw_if_index);
+  udp_index = vec_elt_at_index (sfdp->flow_template_index_udp_by_hw_if_index, hw_if_index);
+
+  rv = vnet_flow_template_add (vnm, &templ_tcp, tcp_index);
+  if (rv)
+    return rv;
+
+  rv = vnet_flow_template_add (vnm, &templ_udp, udp_index);
+  if (rv)
+    goto error_udp;
+
+  rv = vnet_flow_template_enable (vnm, *tcp_index, hw_if_index, n_flows);
+  if (rv)
+    goto error_tcp_enable;
+
+  rv = vnet_flow_template_enable (vnm, *udp_index, hw_if_index, n_flows);
+  if (rv)
+    goto error_udp_enable;
+
+  return 0;
+
+error_udp_enable:
+  vnet_flow_disable (vnm, *tcp_index);
+
+error_tcp_enable:
+  vnet_flow_template_del (vnm, *udp_index);
+  *udp_index = ~0;
+
+error_udp:
+  vnet_flow_template_del (vnm, *tcp_index);
+  *tcp_index = ~0;
+  return rv;
+}
+
+int
+sfdp_flow_offload_deconfigure (vnet_main_t *vnm, u32 hw_if_index)
+{
+  sfdp_main_t *sfdp = &sfdp_main;
+  u32 *tcp_index, *udp_index;
+  int rv = 0;
+
+  if (vec_len (sfdp->flow_template_index_tcp_by_hw_if_index) <= hw_if_index ||
+      vec_elt (sfdp->flow_template_index_tcp_by_hw_if_index, hw_if_index) == ~0)
+    return 0;
+
+  tcp_index = vec_elt_at_index (sfdp->flow_template_index_tcp_by_hw_if_index, hw_if_index);
+  udp_index = vec_elt_at_index (sfdp->flow_template_index_udp_by_hw_if_index, hw_if_index);
+
+  rv = vnet_flow_template_del (vnm, *tcp_index);
+  if (rv)
+    return rv;
+
+  *tcp_index = ~0;
+
+  rv = vnet_flow_template_del (vnm, *udp_index);
+  if (rv)
+    return rv;
+
+  *udp_index = ~0;
+
+  return 0;
+}
+
 static clib_error_t *
 sfdp_init (vlib_main_t *vm)
 {
   sfdp_main_t *sfdp = &sfdp_main;
   clib_error_t *err;
+
 #define _(val, default) sfdp->val = sfdp->val ? sfdp->val : default;
 
   _ (log2_sessions, SFDP_DEFAULT_LOG2_SESSIONS)
