@@ -230,7 +230,7 @@ typedef struct
    */
   u32 sibling_index;
 
-  u32 flow_index;		/* infra flow index */
+  u32 *flow_index_by_hw_if_index; /* per-interface flow indices */
 } gtpu_tunnel_t;
 
 #define foreach_gtpu_input_next        \

@@ -405,16 +405,27 @@ vl_api_flow_enable_t_handler (vl_api_flow_enable_t * mp)
 }
 
 static void
-vl_api_flow_disable_t_handler (vl_api_flow_disable_t * mp)
+vl_api_flow_disable_t_handler (vl_api_flow_disable_t *mp)
 {
-  vl_api_flow_add_reply_t *rmp;
+  vl_api_flow_disable_reply_t *rmp;
   int rv = 0;
 
   vnet_main_t *vnm = vnet_get_main ();
-  rv =
-    vnet_flow_disable (vnm, ntohl (mp->flow_index), ntohl (mp->hw_if_index));
+  rv = vnet_flow_disable (vnm, ntohl (mp->flow_index));
 
   REPLY_MACRO (VL_API_FLOW_DISABLE_REPLY);
+}
+
+static void
+vl_api_flow_disable_v2_t_handler (vl_api_flow_disable_v2_t *mp)
+{
+  vl_api_flow_disable_v2_reply_t *rmp;
+  int rv = 0;
+
+  vnet_main_t *vnm = vnet_get_main ();
+  rv = vnet_flow_disable (vnm, ntohl (mp->flow_index));
+
+  REPLY_MACRO (VL_API_FLOW_DISABLE_V2_REPLY);
 }
 
 #include <vnet/flow/flow.api.c>
