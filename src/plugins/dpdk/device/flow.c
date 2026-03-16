@@ -718,8 +718,7 @@ done:
 }
 
 int
-dpdk_flow_ops_fn (vnet_main_t * vnm, vnet_flow_dev_op_t op, u32 dev_instance,
-		  u32 flow_index, uword * private_data)
+dpdk_flow_ops_fn (vnet_main_t *vnm, vnet_flow_dev_op_t op, u32 dev_instance, u32 flow_index)
 {
   vlib_main_t *vm = vlib_get_main ();
   dpdk_main_t *dm = &dpdk_main;
@@ -743,7 +742,7 @@ dpdk_flow_ops_fn (vnet_main_t * vnm, vnet_flow_dev_op_t op, u32 dev_instance,
 
   if (op == VNET_FLOW_DEV_OP_DEL_FLOW)
     {
-      fe = vec_elt_at_index (xd->flow_entries, *private_data);
+      fe = vec_elt_at_index (xd->flow_entries, flow->driver_private_data);
 
       if ((rv = rte_flow_destroy (xd->port_id, fe->handle, &xd->last_flow_error)))
 	return VNET_FLOW_ERROR_INTERNAL;
@@ -833,7 +832,7 @@ dpdk_flow_ops_fn (vnet_main_t * vnm, vnet_flow_dev_op_t op, u32 dev_instance,
       goto done;
     }
 
-  *private_data = fe - xd->flow_entries;
+  flow->driver_private_data = fe - xd->flow_entries;
 
 done:
   if (rv)

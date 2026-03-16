@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-option version = "1.0.3";
+option version = "1.0.4";
 
 import "vnet/interface_types.api";
 import "vnet/ip/ip_types.api";
@@ -109,11 +109,26 @@ autoreply define flow_enable
 */
 autoreply define flow_disable
 {
+  option deprecated;
+
   u32 client_index;
   u32 context;
   u32 flow_index;
   u32 hw_if_index;
   option vat_help = "test flow disable index <index> <interface name>";
+};
+
+/** \brief flow disable v2 request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param flow_index - flow index
+*/
+autoreply define flow_disable_v2
+{
+  u32 client_index;
+  u32 context;
+  u32 flow_index;
+  option vat_help = "test flow disable index <index>";
 };
 
 /*
