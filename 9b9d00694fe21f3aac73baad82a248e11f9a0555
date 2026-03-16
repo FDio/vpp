@@ -141,6 +141,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "d5c016fd_12e975cf",
+        "filename": "src/vnet/sfdp/expiry/expiry.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 168,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-03-16T14:54:35Z",
+      "side": 1,
+      "message": "In hindsight, I see the issue and think that relying on SFDP callbacks would be problematic. Therefore, the current approach is fine.",
+      "parentUuid": "6655b64b_d5d73471",
+      "revId": "9b9d00694fe21f3aac73baad82a248e11f9a0555",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "cc73e52e_3e5744b3",
