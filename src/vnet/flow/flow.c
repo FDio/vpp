@@ -10,8 +10,8 @@
 
 vnet_flow_main_t flow_main;
 
-int
-vnet_flow_add (vnet_main_t *vnm, vnet_flow_t *flow, u32 *flow_index)
+static_always_inline int
+vnet_flow_add_inline (vnet_main_t *vnm, vnet_flow_t *flow, u32 *flow_index)
 {
   vnet_flow_main_t *fm = &flow_main;
   vnet_flow_t *f;
@@ -19,13 +19,48 @@ vnet_flow_add (vnet_main_t *vnm, vnet_flow_t *flow, u32 *flow_index)
   if ((flow->actions & VNET_FLOW_ACTION_MARK) && flow->mark_flow_id == VNET_FLOW_MARK_INVALID)
     return VNET_FLOW_ERROR_INVALID_VALUE;
 
-  pool_get (fm->global_flow_pool, f);
+  pool_get_aligned (fm->global_flow_pool, f, CLIB_CACHE_LINE_BYTES);
   *flow_index = f - fm->global_flow_pool;
-  clib_memcpy_fast (f, flow, sizeof (vnet_flow_t));
+
+  /* copy CL0 hot fields */
+  f->type = flow->type;
+  f->index = *flow_index;
+  f->actions = flow->actions;
+  f->mark_flow_id = flow->mark_flow_id;
+  f->redirect_node_index = flow->redirect_node_index;
+  f->redirect_device_input_next_index = flow->redirect_device_input_next_index;
+  f->redirect_queue = flow->redirect_queue;
+  f->buffer_advance = flow->buffer_advance;
   f->driver_data.opaque = ~0;
   f->driver_data.hw_if_index = ~0;
-  f->index = *flow_index;
+
+  /* copy pattern */
+  if (flow->type == VNET_FLOW_TYPE_GENERIC)
+    {
+      f->generic_pattern = clib_mem_alloc (sizeof (generic_pattern_t));
+      clib_memcpy_fast (f->generic_pattern, flow->generic_pattern, sizeof (generic_pattern_t));
+    }
+  else
+    {
+      uword sz = vnet_flow_pattern_size (flow->type);
+      if (sz)
+	clib_memcpy_fast (&f->pattern, &flow->pattern, sz);
+      f->generic_pattern = 0;
+    }
+
+  /* copy cold fields */
+  f->rss_types = flow->rss_types;
+  f->rss_fun = flow->rss_fun;
+  f->queue_index = flow->queue_index;
+  f->queue_num = flow->queue_num;
+
   return 0;
+}
+
+int
+vnet_flow_add (vnet_main_t *vnm, vnet_flow_t *flow, u32 *flow_index)
+{
+  return vnet_flow_add_inline (vnm, flow, flow_index);
 }
 
 static_always_inline int
@@ -69,8 +104,8 @@ vnet_flow_enable_disable (vnet_main_t *vnm, u32 flow_index, u32 hw_if_index, boo
   return 0;
 }
 
-int
-vnet_flow_del (vnet_main_t *vnm, u32 flow_index)
+static_always_inline int
+vnet_flow_del_inline (vnet_main_t *vnm, u32 flow_index)
 {
   vnet_flow_main_t *fm = &flow_main;
   vnet_flow_t *f = vnet_get_flow (flow_index);
@@ -80,9 +115,18 @@ vnet_flow_del (vnet_main_t *vnm, u32 flow_index)
   if (rv && rv != VNET_FLOW_ERROR_ALREADY_DONE)
     return rv;
 
+  if (f->generic_pattern)
+    clib_mem_free (f->generic_pattern);
+
   clib_memset (f, 0, sizeof (*f));
   pool_put (fm->global_flow_pool, f);
   return 0;
+}
+
+int
+vnet_flow_del (vnet_main_t *vnm, u32 flow_index)
+{
+  return vnet_flow_del_inline (vnm, flow_index);
 }
 
 int
