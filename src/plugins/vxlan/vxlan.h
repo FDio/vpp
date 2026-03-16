@@ -8,6 +8,7 @@
 
 #include <vppinfra/error.h>
 #include <vppinfra/hash.h>
+#include <vppinfra/bihash_8_8.h>
 #include <vppinfra/bihash_16_8.h>
 #include <vppinfra/bihash_24_8.h>
 #include <vnet/vnet.h>
@@ -67,20 +68,55 @@ typedef union
   u64 as_u64;
 } vxlan_decap_info_t;
 
+/*
+ * Per-endpoint state. P2P tunnels have exactly one; P2MP tunnels have a
+ * vector of these (one per remote VTEP), stored in vxlan_tunnel_t.endpoints.
+ */
+typedef struct
+{
+  /* remote VTEP address (tunnel dst) */
+  ip46_address_t dst;
+
+  /* FIB DPO for IP forwarding of encap packets toward this endpoint */
+  dpo_id_t next_dpo;
+
+  /**
+   * Linkage into the FIB object graph.
+   * For unicast endpoints this is tracked as a child of the FIB entry
+   * for dst so we get back-walked when the route changes.
+   */
+  fib_node_t node;
+
+  /* FIB entry index and sibling for dst /32 route tracking */
+  fib_node_index_t fib_entry_index;
+  u32 sibling_index;
+
+  /* back-pointers to recover vxlan_tunnel_t from fib_node_t */
+  u32 tunnel_index; /* index into vxlan_main.tunnels pool */
+  u32 ep_index;	    /* pool index into vxlan_main.endpoint_pool (self-index) */
+
+  /* pre-built outer header template: ip4+udp+vxlan or ip6+udp+vxlan */
+  VNET_DECLARE_REWRITE;
+} vxlan_endpoint_t;
+
 typedef struct
 {
   /* Required for pool_get_aligned */
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
 
-  /* FIB DPO for IP forwarding of VXLAN encap packet */
-  dpo_id_t next_dpo;
+  /*
+   * Indices into vxlan_main.endpoint_pool, one per remote VTEP.
+   * P2P tunnels have exactly one element; P2MP tunnels have one per VTEP.
+   * Pool indices are used (rather than direct pointers) so that pool
+   * reallocation never invalidates fib_node_t pointers within each endpoint.
+   */
+  u32 *endpoint_indices;
 
   /* vxlan VNI in HOST byte order */
   u32 vni;
 
-  /* tunnel src and dst addresses */
+  /* local VTEP source address */
   ip46_address_t src;
-  ip46_address_t dst;
 
   /* udp-ports */
   u16 src_port;
@@ -99,31 +135,25 @@ typedef struct
   u32 sw_if_index;
   u32 hw_if_index;
 
-  /**
-   * Linkage into the FIB object graph
-   */
-  fib_node_t node;
-
-  /*
-   * The FIB entry for (depending on VXLAN tunnel is unicast or mcast)
-   * sending unicast VXLAN encap packets or receiving mcast VXLAN packets
-   */
-  fib_node_index_t fib_entry_index;
+  /* kept for ABI compatibility */
   adj_index_t mcast_adj_index;
-
-  /**
-   * The tunnel is a child of the FIB entry for its destination. This is
-   * so it receives updates when the forwarding information for that entry
-   * changes.
-   * The tunnels sibling index on the FIB entry's dependency list.
-   */
-  u32 sibling_index;
 
   u32 flow_index;		/* infra flow index */
   u32 dev_instance;		/* Real device instance in tunnel vector */
   u32 user_instance;		/* Instance name being shown to user */
 
-  VNET_DECLARE_REWRITE;
+  /* true for P2MP tunnels (no fixed dst endpoint) */
+  u8 is_p2mp;
+
+  /*
+   * Per-tunnel MAC->ep_pool_index hash for P2MP unicast forwarding.
+   * Key:   destination MAC as u64, 48-bit MAC in bytes [0..5], zero-padded.
+   * Value: ep_pool_index into vxlan_main.endpoint_pool.
+   * Absence in the hash means BUM (flood to all endpoints).
+   * Only allocated when the first entry is programmed; freed on tunnel delete.
+   */
+  clib_bihash_8_8_t mac_to_ep;
+  u8 mac_to_ep_initialized;
 } vxlan_tunnel_t;
 
 #define foreach_vxlan_input_next        \
@@ -167,6 +197,11 @@ typedef struct
   /* Mapping from sw_if_index to tunnel index */
   u32 *tunnel_index_by_sw_if_index;
 
+  /* Global pool of per-endpoint state. Using a pool ensures elements never
+   * move after allocation, which is required because each embeds a fib_node_t
+   * that may be linked into the FIB dependency graph. */
+  vxlan_endpoint_t *endpoint_pool;
+
   /* graph node state */
   uword *bm_ip4_bypass_enabled_by_sw_if;
   uword *bm_ip6_bypass_enabled_by_sw_if;
@@ -190,6 +225,8 @@ extern vlib_node_registration_t vxlan4_input_node;
 extern vlib_node_registration_t vxlan6_input_node;
 extern vlib_node_registration_t vxlan4_encap_node;
 extern vlib_node_registration_t vxlan6_encap_node;
+extern vlib_node_registration_t vxlan4_p2mp_encap_node;
+extern vlib_node_registration_t vxlan6_p2mp_encap_node;
 extern vlib_node_registration_t vxlan4_flow_input_node;
 
 u8 *format_vxlan_encap_trace (u8 * s, va_list * args);
@@ -202,6 +239,8 @@ typedef struct
    * structure, this seems less of a breaking change */
   u8 is_ip6;
   u8 is_l3;
+  /* if set, create a P2MP tunnel with no initial endpoint */
+  u8 is_p2mp;
   u32 instance;
   ip46_address_t src, dst;
   u32 mcast_sw_if_index;
@@ -214,6 +253,14 @@ typedef struct
 
 int vnet_vxlan_add_del_tunnel
   (vnet_vxlan_add_del_tunnel_args_t * a, u32 * sw_if_indexp);
+
+int vnet_vxlan_add_del_endpoint (u32 tunnel_sw_if_index, ip46_address_t *dst, bool is_add);
+
+/* Add or remove a static MAC->endpoint mapping for a P2MP tunnel.
+ * ep_pool_index must be a valid index into vxlan_main.endpoint_pool that
+ * belongs to the tunnel identified by tunnel_sw_if_index. */
+int vnet_vxlan_p2mp_add_del_mac_ep (u32 tunnel_sw_if_index, const u8 *mac, u32 ep_pool_index,
+				    bool is_add);
 
 void vnet_int_vxlan_bypass_mode (u32 sw_if_index, u8 is_ip6, u8 is_enable);
 
