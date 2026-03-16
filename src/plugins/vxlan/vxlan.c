@@ -1186,7 +1186,7 @@ vnet_vxlan_add_del_rx_flow (u32 hw_if_index, u32 t_index, int is_add)
 	    .redirect_node_index = vxlan4_flow_input_node.index,
 	    .buffer_advance = sizeof (ethernet_header_t),
 	    .type = VNET_FLOW_TYPE_IP4_VXLAN,
-	    .ip4_vxlan = {
+	    .pattern.ip4_vxlan = {
 			  .protocol.prot = IP_PROTOCOL_UDP,
 			  .src_addr.addr = t->dst.ip4,
 			  .dst_addr.addr = t->src.ip4,
