@@ -1325,7 +1325,7 @@ vnet_gtpu_add_del_rx_flow (u32 hw_if_index, u32 t_index, int is_add)
 	    .buffer_advance = sizeof (ethernet_header_t)
 	      + sizeof (ip4_header_t) + sizeof (udp_header_t),
 	    .type = VNET_FLOW_TYPE_IP4_GTPU,
-	    .ip4_gtpu = {
+	    .pattern.ip4_gtpu = {
 			 .protocol.prot = IP_PROTOCOL_UDP,
 			 .src_addr.addr = t->dst.ip4,
 			 .src_addr.mask.as_u32 = ~0,
