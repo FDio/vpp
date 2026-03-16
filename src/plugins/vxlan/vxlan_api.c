@@ -49,7 +49,7 @@ vl_api_vxlan_offload_rx_t_handler (vl_api_vxlan_offload_rx_t * mp)
 
   vxlan_main_t *vxm = &vxlan_main;
   vxlan_tunnel_t *t = pool_elt_at_index (vxm->tunnels, t_index);
-  if (!ip46_address_is_ip4 (&t->dst))
+  if (!ip46_address_is_ip4 (&t->endpoints[0].dst))
     {
       rv = VNET_API_ERROR_INVALID_ADDRESS_FAMILY;
       goto err;
@@ -226,9 +226,9 @@ static void send_vxlan_tunnel_details
   rmp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_VXLAN_TUNNEL_DETAILS);
 
   ip_address_encode (&t->src, IP46_TYPE_ANY, &rmp->src_address);
-  ip_address_encode (&t->dst, IP46_TYPE_ANY, &rmp->dst_address);
+  ip_address_encode (&t->endpoints[0].dst, IP46_TYPE_ANY, &rmp->dst_address);
 
-  if (ip46_address_is_ip4 (&t->dst))
+  if (ip46_address_is_ip4 (&t->endpoints[0].dst))
     rmp->encap_vrf_id = htonl (im4->fibs[t->encap_fib_index].ft_table_id);
   else
     rmp->encap_vrf_id = htonl (im6->fibs[t->encap_fib_index].ft_table_id);
@@ -287,11 +287,11 @@ send_vxlan_tunnel_v2_details (vxlan_tunnel_t *t, vl_api_registration_t *reg,
   rmp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_VXLAN_TUNNEL_V2_DETAILS);
 
   ip_address_encode (&t->src, IP46_TYPE_ANY, &rmp->src_address);
-  ip_address_encode (&t->dst, IP46_TYPE_ANY, &rmp->dst_address);
+  ip_address_encode (&t->endpoints[0].dst, IP46_TYPE_ANY, &rmp->dst_address);
   rmp->src_port = htons (t->src_port);
   rmp->dst_port = htons (t->dst_port);
 
-  if (ip46_address_is_ip4 (&t->dst))
+  if (ip46_address_is_ip4 (&t->endpoints[0].dst))
     rmp->encap_vrf_id = htonl (im4->fibs[t->encap_fib_index].ft_table_id);
   else
     rmp->encap_vrf_id = htonl (im6->fibs[t->encap_fib_index].ft_table_id);

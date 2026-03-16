@@ -136,8 +136,8 @@ vxlan_encap_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 		vnet_get_sup_hw_interface (vnm, sw_if_index0);
 	      t0 = &vxm->tunnels[hi0->dev_instance];
 	      /* Note: change to always set next0 if it may set to drop */
-	      next0 = t0->next_dpo.dpoi_next_node;
-	      dpoi_idx0 = t0->next_dpo.dpoi_index;
+	      next0 = t0->endpoints[0].next_dpo.dpoi_next_node;
+	      dpoi_idx0 = t0->endpoints[0].next_dpo.dpoi_index;
 	    }
 
 	  /* Get next node index and adj index from tunnel next_dpo */
@@ -157,18 +157,18 @@ vxlan_encap_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 		    vnet_get_sup_hw_interface (vnm, sw_if_index1);
 		  t1 = &vxm->tunnels[hi1->dev_instance];
 		  /* Note: change to always set next1 if it may set to drop */
-		  next1 = t1->next_dpo.dpoi_next_node;
-		  dpoi_idx1 = t1->next_dpo.dpoi_index;
+		  next1 = t1->endpoints[0].next_dpo.dpoi_next_node;
+		  dpoi_idx1 = t1->endpoints[0].next_dpo.dpoi_index;
 		}
 	    }
 
 	  vnet_buffer (b0)->ip.adj_index[VLIB_TX] = dpoi_idx0;
 	  vnet_buffer (b1)->ip.adj_index[VLIB_TX] = dpoi_idx1;
 
-	  ASSERT (t0->rewrite_header.data_bytes == underlay_hdr_len);
-	  ASSERT (t1->rewrite_header.data_bytes == underlay_hdr_len);
-	  vnet_rewrite_two_headers (*t0, *t1, vlib_buffer_get_current (b0),
-				    vlib_buffer_get_current (b1),
+	  ASSERT (t0->endpoints[0].rewrite_header.data_bytes == underlay_hdr_len);
+	  ASSERT (t1->endpoints[0].rewrite_header.data_bytes == underlay_hdr_len);
+	  vnet_rewrite_two_headers (t0->endpoints[0], t1->endpoints[0],
+				    vlib_buffer_get_current (b0), vlib_buffer_get_current (b1),
 				    underlay_hdr_len);
 
 	  vlib_buffer_advance (b0, -underlay_hdr_len);
@@ -361,13 +361,13 @@ vxlan_encap_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 		vnet_get_sup_hw_interface (vnm, sw_if_index0);
 	      t0 = &vxm->tunnels[hi0->dev_instance];
 	      /* Note: change to always set next0 if it may be set to drop */
-	      next0 = t0->next_dpo.dpoi_next_node;
-	      dpoi_idx0 = t0->next_dpo.dpoi_index;
+	      next0 = t0->endpoints[0].next_dpo.dpoi_next_node;
+	      dpoi_idx0 = t0->endpoints[0].next_dpo.dpoi_index;
 	    }
 	  vnet_buffer (b0)->ip.adj_index[VLIB_TX] = dpoi_idx0;
 
-	  ASSERT (t0->rewrite_header.data_bytes == underlay_hdr_len);
-	  vnet_rewrite_one_header (*t0, vlib_buffer_get_current (b0),
+	  ASSERT (t0->endpoints[0].rewrite_header.data_bytes == underlay_hdr_len);
+	  vnet_rewrite_one_header (t0->endpoints[0], vlib_buffer_get_current (b0),
 				   underlay_hdr_len);
 
 	  vlib_buffer_advance (b0, -underlay_hdr_len);
