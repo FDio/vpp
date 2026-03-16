@@ -16,6 +16,40 @@
       "message": "recheck",
       "revId": "302e1dc06207968dca63dffd345af4920dfd3c8f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "db6aa5e8_0044ede1",
+        "filename": "test/test_sfdp.py",
+        "patchSetId": 16
+      },
+      "lineNbr": 851,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-03-16T14:25:37Z",
+      "side": 1,
+      "message": "I am not sure to understand this comment: with a 20ms interval, shouldn´t it be 20 ms × 2048 slots \u003d 40,960 ms ≈ 40.96 s?",
+      "revId": "302e1dc06207968dca63dffd345af4920dfd3c8f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b4126ee2_fdc5c0f6",
+        "filename": "test/test_sfdp.py",
+        "patchSetId": 16
+      },
+      "lineNbr": 921,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-03-16T14:25:37Z",
+      "side": 1,
+      "message": "is this correct? 3s / 0.02s \u003d 150 ticks \u003c 2048 tw slots.",
+      "revId": "302e1dc06207968dca63dffd345af4920dfd3c8f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
