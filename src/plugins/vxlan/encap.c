@@ -72,6 +72,7 @@ vxlan_encap_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   u32 sw_if_index0 = 0, sw_if_index1 = 0;
   u32 next0 = 0, next1 = 0;
   vxlan_tunnel_t *t0 = NULL, *t1 = NULL;
+  vxlan_endpoint_t *ep0 = NULL, *ep1 = NULL;
   index_t dpoi_idx0 = INDEX_INVALID, dpoi_idx1 = INDEX_INVALID;
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE];
   vlib_buffer_t **b = bufs;
@@ -135,9 +136,19 @@ vxlan_encap_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      vnet_hw_interface_t *hi0 =
 		vnet_get_sup_hw_interface (vnm, sw_if_index0);
 	      t0 = &vxm->tunnels[hi0->dev_instance];
-	      /* Note: change to always set next0 if it may set to drop */
-	      next0 = t0->next_dpo.dpoi_next_node;
-	      dpoi_idx0 = t0->next_dpo.dpoi_index;
+	      if (PREDICT_FALSE (vec_len (t0->endpoint_indices) == 0))
+		{
+		  ep0 = NULL;
+		  next0 = VXLAN_ENCAP_NEXT_DROP;
+		  dpoi_idx0 = 0;
+		}
+	      else
+		{
+		  ep0 = pool_elt_at_index (vxm->endpoint_pool, t0->endpoint_indices[0]);
+		  /* Note: change to always set next0 if it may set to drop */
+		  next0 = ep0->next_dpo.dpoi_next_node;
+		  dpoi_idx0 = ep0->next_dpo.dpoi_index;
+		}
 	    }
 
 	  /* Get next node index and adj index from tunnel next_dpo */
@@ -147,6 +158,7 @@ vxlan_encap_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 		{
 		  sw_if_index1 = sw_if_index0;
 		  t1 = t0;
+		  ep1 = ep0;
 		  next1 = next0;
 		  dpoi_idx1 = dpoi_idx0;
 		}
@@ -156,20 +168,40 @@ vxlan_encap_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 		  vnet_hw_interface_t *hi1 =
 		    vnet_get_sup_hw_interface (vnm, sw_if_index1);
 		  t1 = &vxm->tunnels[hi1->dev_instance];
-		  /* Note: change to always set next1 if it may set to drop */
-		  next1 = t1->next_dpo.dpoi_next_node;
-		  dpoi_idx1 = t1->next_dpo.dpoi_index;
+		  if (PREDICT_FALSE (vec_len (t1->endpoint_indices) == 0))
+		    {
+		      ep1 = NULL;
+		      next1 = VXLAN_ENCAP_NEXT_DROP;
+		      dpoi_idx1 = 0;
+		    }
+		  else
+		    {
+		      ep1 = pool_elt_at_index (vxm->endpoint_pool, t1->endpoint_indices[0]);
+		      /* Note: change to always set next1 if it may set to drop */
+		      next1 = ep1->next_dpo.dpoi_next_node;
+		      dpoi_idx1 = ep1->next_dpo.dpoi_index;
+		    }
 		}
+	    }
+
+	  if (PREDICT_FALSE (ep0 == NULL || ep1 == NULL))
+	    {
+	      /* Rewind and let single-loop handle these two buffers */
+	      n_left_from += 2;
+	      from -= 2;
+	      to_next -= 2;
+	      n_left_to_next += 2;
+	      b -= 2;
+	      break;
 	    }
 
 	  vnet_buffer (b0)->ip.adj_index[VLIB_TX] = dpoi_idx0;
 	  vnet_buffer (b1)->ip.adj_index[VLIB_TX] = dpoi_idx1;
 
-	  ASSERT (t0->rewrite_header.data_bytes == underlay_hdr_len);
-	  ASSERT (t1->rewrite_header.data_bytes == underlay_hdr_len);
-	  vnet_rewrite_two_headers (*t0, *t1, vlib_buffer_get_current (b0),
-				    vlib_buffer_get_current (b1),
-				    underlay_hdr_len);
+	  ASSERT (ep0->rewrite_header.data_bytes == underlay_hdr_len);
+	  ASSERT (ep1->rewrite_header.data_bytes == underlay_hdr_len);
+	  vnet_rewrite_two_headers (*ep0, *ep1, vlib_buffer_get_current (b0),
+				    vlib_buffer_get_current (b1), underlay_hdr_len);
 
 	  vlib_buffer_advance (b0, -underlay_hdr_len);
 	  vlib_buffer_advance (b1, -underlay_hdr_len);
@@ -360,15 +392,31 @@ vxlan_encap_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      vnet_hw_interface_t *hi0 =
 		vnet_get_sup_hw_interface (vnm, sw_if_index0);
 	      t0 = &vxm->tunnels[hi0->dev_instance];
-	      /* Note: change to always set next0 if it may be set to drop */
-	      next0 = t0->next_dpo.dpoi_next_node;
-	      dpoi_idx0 = t0->next_dpo.dpoi_index;
+	      if (PREDICT_FALSE (vec_len (t0->endpoint_indices) == 0))
+		{
+		  ep0 = NULL;
+		  next0 = VXLAN_ENCAP_NEXT_DROP;
+		  dpoi_idx0 = 0;
+		}
+	      else
+		{
+		  ep0 = pool_elt_at_index (vxm->endpoint_pool, t0->endpoint_indices[0]);
+		  /* Note: change to always set next0 if it may be set to drop */
+		  next0 = ep0->next_dpo.dpoi_next_node;
+		  dpoi_idx0 = ep0->next_dpo.dpoi_index;
+		}
 	    }
 	  vnet_buffer (b0)->ip.adj_index[VLIB_TX] = dpoi_idx0;
 
-	  ASSERT (t0->rewrite_header.data_bytes == underlay_hdr_len);
-	  vnet_rewrite_one_header (*t0, vlib_buffer_get_current (b0),
-				   underlay_hdr_len);
+	  if (PREDICT_FALSE (ep0 == NULL))
+	    {
+	      vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next, n_left_to_next, bi0,
+					       next0);
+	      continue;
+	    }
+
+	  ASSERT (ep0->rewrite_header.data_bytes == underlay_hdr_len);
+	  vnet_rewrite_one_header (*ep0, vlib_buffer_get_current (b0), underlay_hdr_len);
 
 	  vlib_buffer_advance (b0, -underlay_hdr_len);
 	  void *underlay0 = vlib_buffer_get_current (b0);
