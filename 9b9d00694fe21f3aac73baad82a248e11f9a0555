@@ -226,6 +226,24 @@
       "message": "Would it be for `sfdp_flow_offload_create` to be registered with `SFDP_REGISTER_NEW_SESSIONS_CALLBACK` \u0026 called through `sfdp_notify_new_sessions` ?\n\nThis would be better IMO, but I can also see how it could conflict with the check `is_offloaded \u003d\u003d SFDP_LOOKUP_OFFLOAD_1ST_PACKET`",
       "revId": "9b9d00694fe21f3aac73baad82a248e11f9a0555",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4821bf75_6c6d3a44",
+        "filename": "src/vnet/sfdp/lookup/node.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 642,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2026-03-16T14:38:56Z",
+      "side": 1,
+      "message": "`is_offloaded` is a const so this will be optimized at compile time\nref: `sfdp_lookup_ip4_offload_1st_packet_node` `sfdp_lookup_ip4_offload_node`",
+      "parentUuid": "b7c874c2_685b1ce9",
+      "revId": "9b9d00694fe21f3aac73baad82a248e11f9a0555",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
