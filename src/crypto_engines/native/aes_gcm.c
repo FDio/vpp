@@ -63,6 +63,73 @@ aes_ops_dec_aes_gcm (vnet_crypto_op_t *ops[], u32 n_ops, aes_key_size_t ks, i32 
   return n_ops - n_fail;
 }
 
+static_always_inline u32
+aes_ops_enc_aes_gcm_chained (vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks, u32 n_ops,
+			     aes_key_size_t ks, i32 aad_len, u32 auth_len,
+			     clib_thread_index_t thread_index)
+{
+  aes_gcm_key_data_t *kd;
+  u32 i;
+
+  for (i = 0; i < n_ops; i++)
+    {
+      vnet_crypto_op_t *op = ops[i];
+      aes_gcm_ctx_t ctx = {};
+      vnet_crypto_op_chunk_t *chp;
+
+      kd = (aes_gcm_key_data_t *) vnet_crypto_get_chained_key_data (op->ctx, 0);
+      clib_aes_gcm_init (&ctx, kd, op->iv, ks, AES_GCM_OP_ENCRYPT);
+      clib_aes_gcm_add_aad (&ctx, op->aad, aad_len >= 0 ? aad_len : op->aad_len, ks);
+      clib_aes_gcm_aad_finalize (&ctx, ks);
+      chp = chunks + op->chunk_index;
+      for (int j = 0; j < op->n_chunks; j++, chp++)
+	clib_aes_gcm_enc_transform (&ctx, chp->src, chp->dst, chp->len, ks);
+
+      clib_aes_gcm_enc_finalize (&ctx, op->auth, auth_len ? auth_len : op->auth_len);
+      op->status = VNET_CRYPTO_OP_STATUS_COMPLETED;
+    }
+
+  return n_ops;
+}
+
+static_always_inline u32
+aes_ops_dec_aes_gcm_chained (vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks, u32 n_ops,
+			     aes_key_size_t ks, i32 aad_len, u32 auth_len,
+			     clib_thread_index_t thread_index)
+{
+  aes_gcm_key_data_t *kd;
+  u32 i;
+  u32 n_fail = 0;
+  int rv;
+
+  for (i = 0; i < n_ops; i++)
+    {
+      vnet_crypto_op_t *op = ops[i];
+      aes_gcm_ctx_t ctx = {};
+      vnet_crypto_op_chunk_t *chp;
+
+      kd = (aes_gcm_key_data_t *) vnet_crypto_get_chained_key_data (op->ctx, 0);
+      clib_aes_gcm_init (&ctx, kd, op->iv, ks, AES_GCM_OP_DECRYPT);
+      clib_aes_gcm_add_aad (&ctx, op->aad, aad_len >= 0 ? aad_len : op->aad_len, ks);
+      clib_aes_gcm_aad_finalize (&ctx, ks);
+      chp = chunks + op->chunk_index;
+      for (int j = 0; j < op->n_chunks; j++, chp++)
+	clib_aes_gcm_dec_transform (&ctx, chp->src, chp->dst, chp->len, ks);
+
+      rv = clib_aes_gcm_dec_finalize (&ctx, op->auth, auth_len ? auth_len : op->auth_len);
+
+      if (rv)
+	op->status = VNET_CRYPTO_OP_STATUS_COMPLETED;
+      else
+	{
+	  op->status = VNET_CRYPTO_OP_STATUS_FAIL_BAD_HMAC;
+	  n_fail++;
+	}
+    }
+
+  return n_ops - n_fail;
+}
+
 static_always_inline void
 aes_gcm_key_exp (vnet_crypto_ctx_t *ctx, u8 *key_data, aes_key_size_t ks)
 {
@@ -78,11 +145,23 @@ aes_gcm_key_exp (vnet_crypto_ctx_t *ctx, u8 *key_data, aes_key_size_t ks)
   {                                                                                                \
     return aes_ops_dec_aes_gcm (ops, n_ops, AES_KEY_##x, -1, 0, thread_index);                     \
   }                                                                                                \
+  static u32 aes_ops_dec_aes_gcm_##x##_chained (vnet_crypto_op_t *ops[],                           \
+						vnet_crypto_op_chunk_t *chunks, u32 n_ops,         \
+						clib_thread_index_t thread_index)                  \
+  {                                                                                                \
+    return aes_ops_dec_aes_gcm_chained (ops, chunks, n_ops, AES_KEY_##x, -1, 0, thread_index);     \
+  }                                                                                                \
   static u32 aes_ops_enc_aes_gcm_##x (vnet_crypto_op_t *ops[],                                     \
 				      vnet_crypto_op_chunk_t *chunks __clib_unused, u32 n_ops,     \
 				      clib_thread_index_t thread_index)                            \
   {                                                                                                \
     return aes_ops_enc_aes_gcm (ops, n_ops, AES_KEY_##x, -1, 0, thread_index);                     \
+  }                                                                                                \
+  static u32 aes_ops_enc_aes_gcm_##x##_chained (vnet_crypto_op_t *ops[],                           \
+						vnet_crypto_op_chunk_t *chunks, u32 n_ops,         \
+						clib_thread_index_t thread_index)                  \
+  {                                                                                                \
+    return aes_ops_enc_aes_gcm_chained (ops, chunks, n_ops, AES_KEY_##x, -1, 0, thread_index);     \
   }                                                                                                \
   static u32 aes_ops_dec_aes_gcm_##x##_tag16_aad8 (vnet_crypto_op_t *ops[],                        \
 						   vnet_crypto_op_chunk_t *chunks __clib_unused,   \
@@ -90,11 +169,23 @@ aes_gcm_key_exp (vnet_crypto_ctx_t *ctx, u8 *key_data, aes_key_size_t ks)
   {                                                                                                \
     return aes_ops_dec_aes_gcm (ops, n_ops, AES_KEY_##x, 8, 16, thread_index);                     \
   }                                                                                                \
+  static u32 aes_ops_dec_aes_gcm_##x##_tag16_aad8_chained (                                        \
+    vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks, u32 n_ops,                            \
+    clib_thread_index_t thread_index)                                                              \
+  {                                                                                                \
+    return aes_ops_dec_aes_gcm_chained (ops, chunks, n_ops, AES_KEY_##x, 8, 16, thread_index);     \
+  }                                                                                                \
   static u32 aes_ops_enc_aes_gcm_##x##_tag16_aad8 (vnet_crypto_op_t *ops[],                        \
 						   vnet_crypto_op_chunk_t *chunks __clib_unused,   \
 						   u32 n_ops, clib_thread_index_t thread_index)    \
   {                                                                                                \
     return aes_ops_enc_aes_gcm (ops, n_ops, AES_KEY_##x, 8, 16, thread_index);                     \
+  }                                                                                                \
+  static u32 aes_ops_enc_aes_gcm_##x##_tag16_aad8_chained (                                        \
+    vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks, u32 n_ops,                            \
+    clib_thread_index_t thread_index)                                                              \
+  {                                                                                                \
+    return aes_ops_enc_aes_gcm_chained (ops, chunks, n_ops, AES_KEY_##x, 8, 16, thread_index);     \
   }                                                                                                \
   static u32 aes_ops_dec_aes_gcm_##x##_tag16_aad12 (vnet_crypto_op_t *ops[],                       \
 						    vnet_crypto_op_chunk_t *chunks __clib_unused,  \
@@ -102,11 +193,23 @@ aes_gcm_key_exp (vnet_crypto_ctx_t *ctx, u8 *key_data, aes_key_size_t ks)
   {                                                                                                \
     return aes_ops_dec_aes_gcm (ops, n_ops, AES_KEY_##x, 12, 16, thread_index);                    \
   }                                                                                                \
+  static u32 aes_ops_dec_aes_gcm_##x##_tag16_aad12_chained (                                       \
+    vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks, u32 n_ops,                            \
+    clib_thread_index_t thread_index)                                                              \
+  {                                                                                                \
+    return aes_ops_dec_aes_gcm_chained (ops, chunks, n_ops, AES_KEY_##x, 12, 16, thread_index);    \
+  }                                                                                                \
   static u32 aes_ops_enc_aes_gcm_##x##_tag16_aad12 (vnet_crypto_op_t *ops[],                       \
 						    vnet_crypto_op_chunk_t *chunks __clib_unused,  \
 						    u32 n_ops, clib_thread_index_t thread_index)   \
   {                                                                                                \
     return aes_ops_enc_aes_gcm (ops, n_ops, AES_KEY_##x, 12, 16, thread_index);                    \
+  }                                                                                                \
+  static u32 aes_ops_enc_aes_gcm_##x##_tag16_aad12_chained (                                       \
+    vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks, u32 n_ops,                            \
+    clib_thread_index_t thread_index)                                                              \
+  {                                                                                                \
+    return aes_ops_enc_aes_gcm_chained (ops, chunks, n_ops, AES_KEY_##x, 12, 16, thread_index);    \
   }
 
 foreach_aes_gcm_handler_type;
@@ -208,6 +311,10 @@ VNET_CRYPTO_REGISTER_ALG_GROUP (native_gcm256_group) = {
       .enc_fn = aes_ops_enc_aes_gcm_##b,                                                           \
       .dec_fn = aes_ops_dec_aes_gcm_##b,                                                           \
     },                                                                                             \
+    .chained = {                                                                                   \
+      .enc_fn = aes_ops_enc_aes_gcm_##b##_chained,                                                 \
+      .dec_fn = aes_ops_dec_aes_gcm_##b##_chained,                                                 \
+    },                                                                                             \
   }; \
                                                                                                           \
   VNET_CRYPTO_REGISTER_ALG (aes_##b##_gcm_tag16_aad8) = {                                               \
@@ -217,6 +324,10 @@ VNET_CRYPTO_REGISTER_ALG_GROUP (native_gcm256_group) = {
       .enc_fn = aes_ops_enc_aes_gcm_##b##_tag16_aad8,                                              \
       .dec_fn = aes_ops_dec_aes_gcm_##b##_tag16_aad8,                                              \
     },                                                                                             \
+    .chained = {                                                                                   \
+      .enc_fn = aes_ops_enc_aes_gcm_##b##_tag16_aad8_chained,                                      \
+      .dec_fn = aes_ops_dec_aes_gcm_##b##_tag16_aad8_chained,                                      \
+    },                                                                                             \
   }; \
                                                                                                           \
   VNET_CRYPTO_REGISTER_ALG (aes_##b##_gcm_tag16_aad12) = {                                              \
@@ -225,6 +336,10 @@ VNET_CRYPTO_REGISTER_ALG_GROUP (native_gcm256_group) = {
     .simple = {                                                                                    \
       .enc_fn = aes_ops_enc_aes_gcm_##b##_tag16_aad12,                                             \
       .dec_fn = aes_ops_dec_aes_gcm_##b##_tag16_aad12,                                             \
+    },                                                                                             \
+    .chained = {                                                                                   \
+      .enc_fn = aes_ops_enc_aes_gcm_##b##_tag16_aad12_chained,                                     \
+      .dec_fn = aes_ops_dec_aes_gcm_##b##_tag16_aad12_chained,                                     \
     },                                                                                             \
   };
 

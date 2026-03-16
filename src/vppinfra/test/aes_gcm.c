@@ -808,6 +808,72 @@ static const struct
     test_perf_event_disable (tp);                                             \
   }
 
+#define perftest_aesXXX_enc_mb_var_sz(a)                                                           \
+  void __test_perf_fn perftest_aes##a##_enc_mb_var_sz (test_perf_t *tp)                            \
+  {                                                                                                \
+    u32 n = tp->n_ops;                                                                             \
+    u32 n1 = n / 3;                                                                                \
+    u32 n2 = (n - n1) / 2;                                                                         \
+    u32 n3 = n - n1 - n2;                                                                          \
+    aes_gcm_key_data_t *kd = test_mem_alloc (sizeof (*kd));                                        \
+    aes_gcm_ctx_t *ctx = test_mem_alloc (sizeof (*ctx));                                           \
+    u8 *dst1 = test_mem_alloc (n1 + 16);                                                           \
+    u8 *dst2 = test_mem_alloc (n2 + 16);                                                           \
+    u8 *dst3 = test_mem_alloc (n3 + 16);                                                           \
+    u8 *src1 = test_mem_alloc_and_fill_inc_u8 (n1 + 16, 0, 0);                                     \
+    u8 *src2 = test_mem_alloc_and_fill_inc_u8 (n2 + 16, n1, 0);                                    \
+    u8 *src3 = test_mem_alloc_and_fill_inc_u8 (n3 + 16, n1 + n2, 0);                               \
+    u8 *tag = test_mem_alloc (16);                                                                 \
+    u8 *key = test_mem_alloc_and_fill_inc_u8 (32, 192, 0);                                         \
+    u8 *iv = test_mem_alloc_and_fill_inc_u8 (16, 128, 0);                                          \
+                                                                                                   \
+    clib_aes_gcm_key_expand (kd, key, AES_KEY_##a);                                                \
+                                                                                                   \
+    test_perf_event_enable (tp);                                                                   \
+    clib_aes##a##_gcm_enc_init (ctx, kd, iv);                                                      \
+    clib_aes##a##_gcm_aad_finalize (ctx);                                                          \
+    clib_aes##a##_gcm_transform (ctx, src1, dst1, n1);                                             \
+    clib_aes##a##_gcm_transform (ctx, src2, dst2, n2);                                             \
+    clib_aes##a##_gcm_transform (ctx, src3, dst3, n3);                                             \
+    clib_aes##a##_gcm_finalize (ctx, tag, 16);                                                     \
+    test_perf_event_disable (tp);                                                                  \
+  }
+
+#define perftest_aesXXX_dec_mb_var_sz(a)                                                           \
+  void __test_perf_fn perftest_aes##a##_dec_mb_var_sz (test_perf_t *tp)                            \
+  {                                                                                                \
+    u32 n = tp->n_ops;                                                                             \
+    u32 n1 = n / 3;                                                                                \
+    u32 n2 = (n - n1) / 2;                                                                         \
+    u32 n3 = n - n1 - n2;                                                                          \
+    aes_gcm_key_data_t *kd = test_mem_alloc (sizeof (*kd));                                        \
+    aes_gcm_ctx_t *ctx = test_mem_alloc (sizeof (*ctx));                                           \
+    u8 *ct1 = test_mem_alloc (n1 + 16);                                                            \
+    u8 *ct2 = test_mem_alloc (n2 + 16);                                                            \
+    u8 *ct3 = test_mem_alloc (n3 + 16);                                                            \
+    u8 *pt1 = test_mem_alloc_and_fill_inc_u8 (n1 + 16, 0, 0);                                      \
+    u8 *pt2 = test_mem_alloc_and_fill_inc_u8 (n2 + 16, n1, 0);                                     \
+    u8 *pt3 = test_mem_alloc_and_fill_inc_u8 (n3 + 16, n1 + n2, 0);                                \
+    u8 *tag = test_mem_alloc (16);                                                                 \
+    u8 *key = test_mem_alloc_and_fill_inc_u8 (32, 192, 0);                                         \
+    u8 *iv = test_mem_alloc_and_fill_inc_u8 (16, 128, 0);                                          \
+    int *rv = test_mem_alloc (sizeof (*rv));                                                       \
+                                                                                                   \
+    clib_aes_gcm_key_expand (kd, key, AES_KEY_##a);                                                \
+    clib_aes##a##_gcm_enc (kd, pt1, n1, 0, 0, iv, 16, ct1, tag);                                   \
+    clib_aes##a##_gcm_enc (kd, pt2, n2, 0, 0, iv, 16, ct2, tag);                                   \
+    clib_aes##a##_gcm_enc (kd, pt3, n3, 0, 0, iv, 16, ct3, tag);                                   \
+                                                                                                   \
+    test_perf_event_enable (tp);                                                                   \
+    clib_aes##a##_gcm_dec_init (ctx, kd, iv);                                                      \
+    clib_aes##a##_gcm_aad_finalize (ctx);                                                          \
+    clib_aes##a##_gcm_transform (ctx, ct1, pt1, n1);                                               \
+    clib_aes##a##_gcm_transform (ctx, ct2, pt2, n2);                                               \
+    clib_aes##a##_gcm_transform (ctx, ct3, pt3, n3);                                               \
+    rv[0] = clib_aes##a##_gcm_finalize_and_check (ctx, tag, 16);                                   \
+    test_perf_event_disable (tp);                                                                  \
+  }
+
 static clib_error_t *
 test_clib_aes128_gcm_enc (clib_error_t *err)
 {
@@ -1010,6 +1076,168 @@ REGISTER_TEST (clib_aes256_gcm_dec) = {
 			    { .name = "variable size (per byte)",
 			      .n_ops = 1 << 20,
 			      .fn = perftest_aes256_dec_var_sz }),
+};
+
+perftest_aesXXX_enc_mb_var_sz (128);
+perftest_aesXXX_dec_mb_var_sz (128);
+
+static clib_error_t *
+test_clib_aes128_gcm_enc_mb (clib_error_t *err)
+{
+  aes_gcm_key_data_t kd;
+  aes_gcm_ctx_t ctx = {};
+  u8 ct[MAX_TEST_DATA_LEN];
+  u8 tag[16];
+  u32 n1 = 22;
+  u32 n2 = 21;
+  u32 n3 = sizeof (tc3_plaintext) - n1 - n2;
+
+  clib_aes_gcm_key_expand (&kd, tc3_key128, AES_KEY_128);
+
+  clib_aes128_gcm_enc_init (&ctx, &kd, tc3_iv);
+  clib_aes128_gcm_aad_finalize (&ctx);
+  clib_aes_gcm_transform (&ctx, tc3_plaintext, ct, n1, AES_KEY_128);
+  clib_aes_gcm_transform (&ctx, tc3_plaintext + n1, ct + n1, n2, AES_KEY_128);
+  clib_aes_gcm_transform (&ctx, tc3_plaintext + n1 + n2, ct + n1 + n2, n3, AES_KEY_128);
+  clib_aes_gcm_enc_finalize (&ctx, tag, sizeof (tc3_tag128));
+
+  if (memcmp (tc3_ciphertext128, ct, sizeof (tc3_ciphertext128)) != 0)
+    return clib_error_return (err, "invalid mb ciphertext");
+
+  if (memcmp (tc3_tag128, tag, sizeof (tc3_tag128)) != 0)
+    return clib_error_return (err, "invalid mb tag");
+
+  return err;
+}
+
+REGISTER_TEST (clib_aes128_gcm_enc_mb) = {
+  .name = "clib_aes128_gcm_enc_mb",
+  .fn = test_clib_aes128_gcm_enc_mb,
+  .perf_tests = PERF_TESTS ({ .name = "variable size 3-chunk (per byte)",
+			      .n_ops = 1424,
+			      .fn = perftest_aes128_enc_mb_var_sz },
+			    { .name = "variable size 3-chunk (per byte)",
+			      .n_ops = 1 << 20,
+			      .fn = perftest_aes128_enc_mb_var_sz }),
+};
+
+static clib_error_t *
+test_clib_aes128_gcm_dec_mb (clib_error_t *err)
+{
+  aes_gcm_key_data_t kd;
+  aes_gcm_ctx_t ctx = {};
+  u8 pt[MAX_TEST_DATA_LEN];
+  u32 n1 = 22;
+  u32 n2 = 21;
+  u32 n3 = sizeof (tc3_ciphertext128) - n1 - n2;
+
+  clib_aes_gcm_key_expand (&kd, tc3_key128, AES_KEY_128);
+
+  clib_aes128_gcm_dec_init (&ctx, &kd, tc3_iv);
+  clib_aes128_gcm_aad_finalize (&ctx);
+  clib_aes_gcm_transform (&ctx, tc3_ciphertext128, pt, n1, AES_KEY_128);
+  clib_aes_gcm_transform (&ctx, tc3_ciphertext128 + n1, pt + n1, n2, AES_KEY_128);
+  clib_aes_gcm_transform (&ctx, tc3_ciphertext128 + n1 + n2, pt + n1 + n2, n3, AES_KEY_128);
+
+  if (!clib_aes_gcm_dec_finalize (&ctx, tc3_tag128, sizeof (tc3_tag128)))
+    return clib_error_return (err, "invalid mb decrypt tag");
+
+  if (memcmp (tc3_plaintext, pt, sizeof (tc3_plaintext)) != 0)
+    return clib_error_return (err, "invalid mb plaintext");
+
+  return err;
+}
+
+REGISTER_TEST (clib_aes128_gcm_dec_mb) = {
+  .name = "clib_aes128_gcm_dec_mb",
+  .fn = test_clib_aes128_gcm_dec_mb,
+  .perf_tests = PERF_TESTS ({ .name = "variable size 3-chunk (per byte)",
+			      .n_ops = 1424,
+			      .fn = perftest_aes128_dec_mb_var_sz },
+			    { .name = "variable size 3-chunk (per byte)",
+			      .n_ops = 1 << 20,
+			      .fn = perftest_aes128_dec_mb_var_sz }),
+};
+
+perftest_aesXXX_enc_mb_var_sz (256);
+perftest_aesXXX_dec_mb_var_sz (256);
+
+static clib_error_t *
+test_clib_aes256_gcm_enc_mb (clib_error_t *err)
+{
+  aes_gcm_key_data_t kd;
+  aes_gcm_ctx_t ctx = {};
+  u8 ct[MAX_TEST_DATA_LEN];
+  u8 tag[16];
+  u32 n1 = 22;
+  u32 n2 = 21;
+  u32 n3 = sizeof (tc3_plaintext) - n1 - n2;
+
+  clib_aes_gcm_key_expand (&kd, tc3_key256, AES_KEY_256);
+
+  clib_aes256_gcm_enc_init (&ctx, &kd, tc3_iv);
+  clib_aes256_gcm_aad_finalize (&ctx);
+  clib_aes_gcm_transform (&ctx, tc3_plaintext, ct, n1, AES_KEY_256);
+  clib_aes_gcm_transform (&ctx, tc3_plaintext + n1, ct + n1, n2, AES_KEY_256);
+  clib_aes_gcm_transform (&ctx, tc3_plaintext + n1 + n2, ct + n1 + n2, n3, AES_KEY_256);
+  clib_aes_gcm_enc_finalize (&ctx, tag, sizeof (tc3_tag256));
+
+  if (memcmp (tc3_ciphertext256, ct, sizeof (tc3_ciphertext256)) != 0)
+    return clib_error_return (err, "invalid mb ciphertext");
+
+  if (memcmp (tc3_tag256, tag, sizeof (tc3_tag256)) != 0)
+    return clib_error_return (err, "invalid mb tag");
+
+  return err;
+}
+
+REGISTER_TEST (clib_aes256_gcm_enc_mb) = {
+  .name = "clib_aes256_gcm_enc_mb",
+  .fn = test_clib_aes256_gcm_enc_mb,
+  .perf_tests = PERF_TESTS ({ .name = "variable size 3-buffers (per byte)",
+			      .n_ops = 1424,
+			      .fn = perftest_aes256_enc_mb_var_sz },
+			    { .name = "variable size 3-buffers (per byte)",
+			      .n_ops = 1 << 20,
+			      .fn = perftest_aes256_enc_mb_var_sz }),
+};
+
+static clib_error_t *
+test_clib_aes256_gcm_dec_mb (clib_error_t *err)
+{
+  aes_gcm_key_data_t kd;
+  aes_gcm_ctx_t ctx = {};
+  u8 pt[MAX_TEST_DATA_LEN];
+  u32 n1 = 22;
+  u32 n2 = 21;
+  u32 n3 = sizeof (tc3_ciphertext256) - n1 - n2;
+
+  clib_aes_gcm_key_expand (&kd, tc3_key256, AES_KEY_256);
+
+  clib_aes256_gcm_dec_init (&ctx, &kd, tc3_iv);
+  clib_aes256_gcm_aad_finalize (&ctx);
+  clib_aes_gcm_transform (&ctx, tc3_ciphertext256, pt, n1, AES_KEY_256);
+  clib_aes_gcm_transform (&ctx, tc3_ciphertext256 + n1, pt + n1, n2, AES_KEY_256);
+  clib_aes_gcm_transform (&ctx, tc3_ciphertext256 + n1 + n2, pt + n1 + n2, n3, AES_KEY_256);
+
+  if (!clib_aes_gcm_dec_finalize (&ctx, tc3_tag256, sizeof (tc3_tag256)))
+    return clib_error_return (err, "invalid mb decrypt tag");
+
+  if (memcmp (tc3_plaintext, pt, sizeof (tc3_plaintext)) != 0)
+    return clib_error_return (err, "invalid mb plaintext");
+
+  return err;
+}
+
+REGISTER_TEST (clib_aes256_gcm_dec_mb) = {
+  .name = "clib_aes256_gcm_dec_mb",
+  .fn = test_clib_aes256_gcm_dec_mb,
+  .perf_tests = PERF_TESTS ({ .name = "variable size 3-buffers (per byte)",
+			      .n_ops = 1424,
+			      .fn = perftest_aes256_dec_mb_var_sz },
+			    { .name = "variable size 3-buffers (per byte)",
+			      .n_ops = 1 << 20,
+			      .fn = perftest_aes256_dec_mb_var_sz }),
 };
 
 static const u8 gmac1_key[] = {
