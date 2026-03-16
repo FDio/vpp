@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b52a50f9_1248bf63",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-03-16T20:36:37Z",
+      "side": 1,
+      "message": "metadata recovery should not be duty of snort-deq node",
+      "revId": "8e744cc1e6f573658b5226acf3472028af22b16a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
