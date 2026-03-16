@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "51338235_ad6e66dd",
+        "filename": "src/plugins/sfdp_services/base/interface_input/cli.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 49,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2026-03-16T14:35:49Z",
+      "side": 1,
+      "message": "yes it would make sense in an additional patch",
+      "parentUuid": "37a0dad0_17247afa",
+      "revId": "9b9d00694fe21f3aac73baad82a248e11f9a0555",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "b416de34_266f0507",
@@ -35,6 +53,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "7f1aff23_c0918051",
+        "filename": "src/plugins/sfdp_services/base/interface_input/interface_input.h",
+        "patchSetId": 13
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2026-03-16T14:35:49Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b416de34_266f0507",
+      "revId": "9b9d00694fe21f3aac73baad82a248e11f9a0555",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "a3e65b36_7884cd9f",
@@ -48,6 +84,24 @@
       "writtenOn": "2026-03-16T11:45:48Z",
       "side": 1,
       "message": "I assume we do not support flow offload for IPv6 traffic ? If so, could you please adds comment to clarify this, and maybe return an error if a user attempts to set parameter \u0027is_ip6\u0027 and \u0027is_lookup_offload\u0027 when configuring SFDP on an inteface ?",
+      "revId": "9b9d00694fe21f3aac73baad82a248e11f9a0555",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "98ba33f1_5a1a5127",
+        "filename": "src/plugins/sfdp_services/base/interface_input/node.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 109,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2026-03-16T14:35:49Z",
+      "side": 1,
+      "message": "good catch, it untested but the rest of the code and vnet_flow and rte_flow support ipv6 API exist\nSo I updated this path",
+      "parentUuid": "a3e65b36_7884cd9f",
       "revId": "9b9d00694fe21f3aac73baad82a248e11f9a0555",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -71,6 +125,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "6655b64b_d5d73471",
+        "filename": "src/vnet/sfdp/expiry/expiry.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 168,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2026-03-16T14:35:49Z",
+      "side": 1,
+      "message": "the issue with the callback is I cannot update stats for the node  `vlib_node_increment_counter (vm, node-\u003enode_index, SFDP_EXPIRE_ERROR_FLOW_OFFLOAD_UNSET, 1);`\n\nany idea in mind to update error counters ?",
+      "parentUuid": "dd3cc0ae_c2dd2242",
+      "revId": "9b9d00694fe21f3aac73baad82a248e11f9a0555",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "cc73e52e_3e5744b3",
         "filename": "src/vnet/sfdp/lookup/node.c",
         "patchSetId": 13
@@ -82,6 +154,24 @@
       "writtenOn": "2026-03-16T11:45:48Z",
       "side": 1,
       "message": "Can we use `sfdp_session_at_index()` here ?",
+      "revId": "9b9d00694fe21f3aac73baad82a248e11f9a0555",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "803f3054_54d2ac63",
+        "filename": "src/vnet/sfdp/lookup/node.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 347,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2026-03-16T14:35:49Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "cc73e52e_3e5744b3",
       "revId": "9b9d00694fe21f3aac73baad82a248e11f9a0555",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -99,6 +189,24 @@
       "writtenOn": "2026-03-16T11:45:48Z",
       "side": 1,
       "message": "Could we use \u0027sfdp_session_at_index()\u0027 here ?",
+      "revId": "9b9d00694fe21f3aac73baad82a248e11f9a0555",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e9c875cb_c0eb3c13",
+        "filename": "src/vnet/sfdp/lookup/node.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 611,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2026-03-16T14:35:49Z",
+      "side": 1,
+      "message": "done",
+      "parentUuid": "f895b96d_aa72a0c5",
       "revId": "9b9d00694fe21f3aac73baad82a248e11f9a0555",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
