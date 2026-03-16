@@ -343,6 +343,7 @@ ghash4_final (ghash_ctx_t *gd)
   t = u8x64_extract_lo (r) ^ u8x64_extract_hi (r);
   return u8x32_extract_hi (t) ^ u8x32_extract_lo (t);
 }
+
 #endif
 
 #if defined(__VPCLMULQDQ__)
@@ -454,6 +455,7 @@ ghash2_final (ghash_ctx_t *gd)
   /* horizontal XOR of 2 128-bit lanes */
   return u8x32_extract_hi (r) ^ u8x32_extract_lo (r);
 }
+
 #endif
 
 static_always_inline void
@@ -480,4 +482,3 @@ ghash_precompute (u8x16 H, u8x16 * Hi, int n)
 }
 
 #endif /* __ghash_h__ */
-
