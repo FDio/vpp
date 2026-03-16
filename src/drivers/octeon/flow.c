@@ -575,15 +575,13 @@ oct_flow_add (vlib_main_t *vm, vnet_dev_port_t *port, vnet_flow_t *flow)
       unformat_input_t input;
       int rc;
 
-      unformat_init_string (
-	&input, (const char *) flow->generic.pattern.spec,
-	strlen ((const char *) flow->generic.pattern.spec));
+      unformat_init_string (&input, (const char *) flow->generic_pattern->spec,
+			    strlen ((const char *) flow->generic_pattern->spec));
       unformat_user (&input, unformat_hex_string, &flow_spec);
       unformat_free (&input);
 
-      unformat_init_string (
-	&input, (const char *) flow->generic.pattern.mask,
-	strlen ((const char *) flow->generic.pattern.mask));
+      unformat_init_string (&input, (const char *) flow->generic_pattern->mask,
+			    strlen ((const char *) flow->generic_pattern->mask));
       unformat_user (&input, unformat_hex_string, &flow_mask);
       unformat_free (&input);
 
@@ -614,7 +612,7 @@ oct_flow_add (vlib_main_t *vm, vnet_dev_port_t *port, vnet_flow_t *flow)
 
   if (FLOW_IS_ETHERNET_CLASS (flow))
     {
-      eth_spec.type = clib_host_to_net_u16 (flow->ethernet.eth_hdr.type);
+      eth_spec.type = clib_host_to_net_u16 (flow->pattern.ethernet.eth_hdr.type);
       eth_mask.type = 0xFFFF;
 
       item_info[layer].spec = (void *) &eth_spec;
@@ -626,7 +624,7 @@ oct_flow_add (vlib_main_t *vm, vnet_dev_port_t *port, vnet_flow_t *flow)
 
   else if (FLOW_IS_IPV4_CLASS (flow))
     {
-      vnet_flow_ip4_t *ip4_hdr = &flow->ip4;
+      vnet_flow_ip4_t *ip4_hdr = &flow->pattern.ip4;
       proto = ip4_hdr->protocol.prot;
 
       ip4_spec.src_address = ip4_hdr->src_addr.addr;
@@ -642,7 +640,7 @@ oct_flow_add (vlib_main_t *vm, vnet_dev_port_t *port, vnet_flow_t *flow)
 
       if (FLOW_IS_L4_TYPE (flow))
 	{
-	  vnet_flow_ip4_n_tuple_t *ip4_tuple_hdr = &flow->ip4_n_tuple;
+	  vnet_flow_ip4_n_tuple_t *ip4_tuple_hdr = &flow->pattern.ip4_n_tuple;
 
 	  l4_src_port = clib_host_to_net_u16 (ip4_tuple_hdr->src_port.port);
 	  l4_dst_port = clib_host_to_net_u16 (ip4_tuple_hdr->dst_port.port);
@@ -652,7 +650,7 @@ oct_flow_add (vlib_main_t *vm, vnet_dev_port_t *port, vnet_flow_t *flow)
     }
   else if (FLOW_IS_IPV6_CLASS (flow))
     {
-      vnet_flow_ip6_t *ip6_hdr = &flow->ip6;
+      vnet_flow_ip6_t *ip6_hdr = &flow->pattern.ip6;
       proto = ip6_hdr->protocol.prot;
 
       ip6_spec.src_address = ip6_hdr->src_addr.addr;
@@ -668,7 +666,7 @@ oct_flow_add (vlib_main_t *vm, vnet_dev_port_t *port, vnet_flow_t *flow)
 
       if (FLOW_IS_L4_TYPE (flow))
 	{
-	  vnet_flow_ip6_n_tuple_t *ip6_tuple_hdr = &flow->ip6_n_tuple;
+	  vnet_flow_ip6_n_tuple_t *ip6_tuple_hdr = &flow->pattern.ip6_n_tuple;
 
 	  l4_src_port = clib_host_to_net_u16 (ip6_tuple_hdr->src_port.port);
 	  l4_dst_port = clib_host_to_net_u16 (ip6_tuple_hdr->dst_port.port);
@@ -699,7 +697,7 @@ oct_flow_add (vlib_main_t *vm, vnet_dev_port_t *port, vnet_flow_t *flow)
 	  switch (flow->type)
 	    {
 	    case VNET_FLOW_TYPE_IP4_GTPU:
-	      gtpu_spec.teid = clib_host_to_net_u32 (flow->ip4_gtpu.teid);
+	      gtpu_spec.teid = clib_host_to_net_u32 (flow->pattern.ip4_gtpu.teid);
 	      gtpu_mask.teid = 0XFFFFFFFF;
 
 	      item_info[layer].spec = (void *) &gtpu_spec;
@@ -743,7 +741,7 @@ oct_flow_add (vlib_main_t *vm, vnet_dev_port_t *port, vnet_flow_t *flow)
       break;
 
     case IP_PROTOCOL_IPSEC_ESP:
-      esp_spec.spi = clib_host_to_net_u32 (flow->ip4_ipsec_esp.spi);
+      esp_spec.spi = clib_host_to_net_u32 (flow->pattern.ip4_ipsec_esp.spi);
       esp_mask.spi = 0xFFFFFFFF;
 
       item_info[layer].spec = (void *) &esp_spec;
@@ -813,7 +811,7 @@ parse_flow_actions:
 	  return VNET_DEV_ERR_NOT_SUPPORTED;
 	}
       /* RoC library adds 1 to id, so subtract 1 */
-      mark.id = flow->mark_flow_id - 1;
+      mark.id = VNET_FLOW_INDEX_FROM_MARK (flow->mark_flow_id);
       actions[action].type = ROC_NPC_ACTION_TYPE_MARK;
       actions[action].conf = &mark;
       action++;
