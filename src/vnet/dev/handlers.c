@@ -161,8 +161,7 @@ vnet_dev_add_del_mac_address (vnet_hw_interface_t *hi, const u8 *address,
 }
 
 int
-vnet_dev_flow_ops_fn (vnet_main_t *vnm, vnet_flow_dev_op_t op,
-		      u32 dev_instance, u32 flow_index, uword *private_data)
+vnet_dev_flow_ops_fn (vnet_main_t *vnm, vnet_flow_dev_op_t op, u32 dev_instance, u32 flow_index)
 {
   vlib_main_t *vm = vlib_get_main ();
   vnet_dev_instance_t *di = vnet_dev_get_dev_instance (dev_instance);
@@ -198,7 +197,6 @@ vnet_dev_flow_ops_fn (vnet_main_t *vnm, vnet_flow_dev_op_t op,
     }
 
   req.flow_index = flow_index;
-  req.private_data = private_data;
 
   rv = vnet_dev_port_cfg_change_req_validate (vm, p, &req);
   if (rv != VNET_DEV_OK)
