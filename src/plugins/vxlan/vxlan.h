@@ -119,7 +119,7 @@ typedef struct
    */
   u32 sibling_index;
 
-  u32 flow_index;		/* infra flow index */
+  u32 *flow_index_by_hw_if_index; /* per-interface flow indices */
   u32 dev_instance;		/* Real device instance in tunnel vector */
   u32 user_instance;		/* Instance name being shown to user */
 
