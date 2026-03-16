@@ -24,6 +24,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "24ac9c52_1cfabc8c",
+        "filename": "test/hs-test/http1_test.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 44,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2026-03-16T09:14:29Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3a70f0e6_f2b274b2",
+      "range": {
+        "startLine": 41,
+        "startChar": 0,
+        "endLine": 44,
+        "endChar": 129
+      },
+      "revId": "84d132be3405fc18ccd53a3a28442e452439cce3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "02c99ed2_adda3f13",
@@ -41,6 +65,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "1d0c0d7e_a92dd8d9",
+        "filename": "test/hs-test/http1_test.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2026-03-16T09:14:29Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "02c99ed2_adda3f13",
+      "revId": "84d132be3405fc18ccd53a3a28442e452439cce3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "4ed3cd22_f57d9680",
@@ -54,6 +96,24 @@
       "writtenOn": "2026-03-13T15:49:06Z",
       "side": 1,
       "message": "just HttpStaticSrvSuite and suite_http_static_srv.go, like app name, this has nothing to with http version",
+      "revId": "84d132be3405fc18ccd53a3a28442e452439cce3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "00422534_c781c053",
+        "filename": "test/hs-test/infra/suite_http1_static_srv.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2026-03-16T09:14:29Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "4ed3cd22_f57d9680",
       "revId": "84d132be3405fc18ccd53a3a28442e452439cce3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
