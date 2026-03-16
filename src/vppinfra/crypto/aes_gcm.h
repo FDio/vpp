@@ -70,6 +70,10 @@ typedef struct
   u32 counter;
   u8x16 EY0;
   aes_counter_t Y;
+  u8 keystream[N_AES_BYTES];
+  u8 buf[N_AES_BYTES];
+  u8 n_counter_bytes;
+  u8 buf_bytes;
 
   /* ghash */
   ghash_ctx_t gd;
@@ -136,6 +140,262 @@ aes_gcm_enc_ctr0_round (aes_gcm_ctx_t *ctx, int aes_round)
     ctx->EY0 = aes_enc_last_round_x1 (ctx->EY0, ctx->Ke[aes_round].x1);
   else
     ctx->EY0 = aes_enc_round_x1 (ctx->EY0, ctx->Ke[aes_round].x1);
+}
+
+static_always_inline void aes_gcm_mask_bytes (aes_data_t *d, uword n_bytes);
+static_always_inline void aes_gcm_calc (aes_gcm_ctx_t *ctx, aes_data_t *d, const u8 *src, u8 *dst,
+					u32 n, u32 n_bytes, int with_ghash);
+static_always_inline void aes_gcm_calc_double (aes_gcm_ctx_t *ctx, aes_data_t *d, const u8 *src,
+					       u8 *dst);
+
+static_always_inline void
+aes_gcm_ghash_block (aes_gcm_ctx_t *ctx, const u8 *data)
+{
+  ctx->T = ghash_mul (u8x16_reflect (*(u8x16u *) data) ^ ctx->T, ctx->Hi[NUM_HI - 1]);
+}
+
+static_always_inline void
+aes_gcm_ghash_blocks_scalar (aes_gcm_ctx_t *ctx, const u8 *data, u32 n_bytes)
+{
+  while (n_bytes >= 16)
+    {
+      aes_gcm_ghash_block (ctx, data);
+      data += 16;
+      n_bytes -= 16;
+    }
+}
+
+static_always_inline void
+aes_gcm_ghash_buf_final (aes_gcm_ctx_t *ctx, u8 *buf, u32 n_bytes)
+{
+  u8 tmp[16] = {};
+
+  if (n_bytes == 0)
+    return;
+
+  aes_gcm_ghash_blocks_scalar (ctx, buf, n_bytes & ~0xf);
+  buf += n_bytes & ~0xf;
+  n_bytes &= 0xf;
+
+  for (u32 i = 0; i < n_bytes; i++)
+    tmp[i] = buf[i];
+
+  if (n_bytes)
+    aes_gcm_ghash_block (ctx, tmp);
+}
+
+static_always_inline void
+aes_gcm_gen_counter_blocks (aes_gcm_ctx_t *ctx)
+{
+  static const u8 zero[N_AES_BYTES];
+  aes_data_t d[1];
+
+  ctx->last = 0;
+  aes_gcm_calc (ctx, d, zero, ctx->keystream, 1, N_AES_BYTES, 0);
+  ctx->n_counter_bytes = N_AES_BYTES;
+}
+
+static_always_inline void
+aes_gcm_enc_ctr_bytes (aes_gcm_ctx_t *ctx, const u8 *src, u8 *dst, u32 n_bytes)
+{
+  while (n_bytes)
+    {
+      u32 n;
+      u8 *ks;
+
+      if (ctx->n_counter_bytes == 0)
+	aes_gcm_gen_counter_blocks (ctx);
+
+      ks = ctx->keystream + sizeof (ctx->keystream) - ctx->n_counter_bytes;
+      n = clib_min (n_bytes, (u32) ctx->n_counter_bytes);
+      n = clib_min (n, (u32) (N_AES_BYTES - ctx->buf_bytes));
+
+      for (u32 i = 0; i < n; i++)
+	{
+	  u8 c = src[i] ^ ks[i];
+
+	  dst[i] = c;
+	  ctx->buf[ctx->buf_bytes + i] = c;
+	}
+
+      ctx->buf_bytes += n;
+      ctx->n_counter_bytes -= n;
+      src += n;
+      dst += n;
+      n_bytes -= n;
+
+      if (ctx->buf_bytes == N_AES_BYTES)
+	{
+	  aes_gcm_ghash_blocks_scalar (ctx, ctx->buf, N_AES_BYTES);
+	  ctx->buf_bytes = 0;
+	}
+    }
+}
+
+static_always_inline void
+aes_gcm_dec_ctr_bytes (aes_gcm_ctx_t *ctx, const u8 *src, u8 *dst, u32 n_bytes)
+{
+  while (n_bytes)
+    {
+      u32 n;
+      u8 *ks;
+
+      if (ctx->n_counter_bytes == 0)
+	aes_gcm_gen_counter_blocks (ctx);
+
+      ks = ctx->keystream + sizeof (ctx->keystream) - ctx->n_counter_bytes;
+      n = clib_min (n_bytes, (u32) ctx->n_counter_bytes);
+      n = clib_min (n, (u32) (N_AES_BYTES - ctx->buf_bytes));
+
+      for (u32 i = 0; i < n; i++)
+	{
+	  dst[i] = src[i] ^ ks[i];
+	  ctx->buf[ctx->buf_bytes + i] = src[i];
+	}
+
+      ctx->buf_bytes += n;
+      ctx->n_counter_bytes -= n;
+      src += n;
+      dst += n;
+      n_bytes -= n;
+
+      if (ctx->buf_bytes == N_AES_BYTES)
+	{
+	  aes_gcm_ghash_blocks_scalar (ctx, ctx->buf, N_AES_BYTES);
+	  ctx->buf_bytes = 0;
+	}
+    }
+}
+
+static_always_inline void
+aes_gcm_ghash_flush_encrypt (aes_gcm_ctx_t *ctx, aes_data_t *d, int n_blocks, u32 n_bytes)
+{
+  int n_lanes = N_AES_LANES == 1 ? n_blocks : (n_bytes + 15) / 16;
+
+  n_bytes -= (n_blocks - 1) * N_AES_BYTES;
+  if (n_bytes != N_AES_BYTES)
+    aes_gcm_mask_bytes (d + n_blocks - 1, n_bytes);
+
+  aes_gcm_ghash_mul_first (ctx, d[0], n_lanes);
+  if (n_blocks > 1)
+    aes_gcm_ghash_mul_next (ctx, d[1]);
+  if (n_blocks > 2)
+    aes_gcm_ghash_mul_next (ctx, d[2]);
+  if (n_blocks > 3)
+    aes_gcm_ghash_mul_next (ctx, d[3]);
+  aes_gcm_ghash_reduce (ctx);
+  aes_gcm_ghash_reduce2 (ctx);
+  aes_gcm_ghash_final (ctx);
+}
+
+static_always_inline void
+aes_gcm_enc_blocks (aes_gcm_ctx_t *ctx, const u8 *src, u8 *dst, u32 n_left)
+{
+  aes_data_t d[4];
+
+  ASSERT (n_left >= N_AES_BYTES);
+  ASSERT ((n_left & (N_AES_BYTES - 1)) == 0);
+
+  ctx->last = 0;
+
+  if (n_left < 4 * N_AES_BYTES)
+    {
+      if (n_left > 3 * N_AES_BYTES)
+	{
+	  aes_gcm_calc (ctx, d, src, dst, 4, n_left, /* with_ghash */ 0);
+	  aes_gcm_ghash_flush_encrypt (ctx, d, 4, n_left);
+	}
+      else if (n_left > 2 * N_AES_BYTES)
+	{
+	  aes_gcm_calc (ctx, d, src, dst, 3, n_left, /* with_ghash */ 0);
+	  aes_gcm_ghash_flush_encrypt (ctx, d, 3, n_left);
+	}
+      else if (n_left > N_AES_BYTES)
+	{
+	  aes_gcm_calc (ctx, d, src, dst, 2, n_left, /* with_ghash */ 0);
+	  aes_gcm_ghash_flush_encrypt (ctx, d, 2, n_left);
+	}
+      else
+	{
+	  aes_gcm_calc (ctx, d, src, dst, 1, n_left, /* with_ghash */ 0);
+	  aes_gcm_ghash_flush_encrypt (ctx, d, 1, n_left);
+	}
+      return;
+    }
+
+  aes_gcm_calc (ctx, d, src, dst, 4, 4 * N_AES_BYTES, /* with_ghash */ 0);
+  n_left -= 4 * N_AES_BYTES;
+  dst += 4 * N_AES_BYTES;
+  src += 4 * N_AES_BYTES;
+
+  for (int n = 8 * N_AES_BYTES; n_left >= n; n_left -= n, src += n, dst += n)
+    aes_gcm_calc_double (ctx, d, src, dst);
+
+  if (n_left >= 4 * N_AES_BYTES)
+    {
+      aes_gcm_calc (ctx, d, src, dst, 4, 4 * N_AES_BYTES, /* with_ghash */ 1);
+      n_left -= 4 * N_AES_BYTES;
+      dst += 4 * N_AES_BYTES;
+      src += 4 * N_AES_BYTES;
+    }
+
+  if (n_left == 0)
+    {
+      aes_gcm_ghash_flush_encrypt (ctx, d, 4, 4 * N_AES_BYTES);
+      return;
+    }
+
+  if (n_left > 3 * N_AES_BYTES)
+    {
+      aes_gcm_calc (ctx, d, src, dst, 4, n_left, /* with_ghash */ 1);
+      aes_gcm_ghash_flush_encrypt (ctx, d, 4, n_left);
+    }
+  else if (n_left > 2 * N_AES_BYTES)
+    {
+      aes_gcm_calc (ctx, d, src, dst, 3, n_left, /* with_ghash */ 1);
+      aes_gcm_ghash_flush_encrypt (ctx, d, 3, n_left);
+    }
+  else if (n_left > N_AES_BYTES)
+    {
+      aes_gcm_calc (ctx, d, src, dst, 2, n_left, /* with_ghash */ 1);
+      aes_gcm_ghash_flush_encrypt (ctx, d, 2, n_left);
+    }
+  else
+    {
+      aes_gcm_calc (ctx, d, src, dst, 1, n_left, /* with_ghash */ 1);
+      aes_gcm_ghash_flush_encrypt (ctx, d, 1, n_left);
+    }
+}
+
+static_always_inline void
+aes_gcm_dec_blocks (aes_gcm_ctx_t *ctx, const u8 *src, u8 *dst, u32 n_left)
+{
+  aes_data_t d[4] = {};
+
+  ASSERT (n_left >= N_AES_BYTES);
+  ASSERT ((n_left & (N_AES_BYTES - 1)) == 0);
+
+  ctx->last = 0;
+
+  for (int n = 8 * N_AES_BYTES; n_left >= n; n_left -= n, dst += n, src += n)
+    aes_gcm_calc_double (ctx, d, src, dst);
+
+  if (n_left >= 4 * N_AES_BYTES)
+    {
+      aes_gcm_calc (ctx, d, src, dst, 4, 4 * N_AES_BYTES, /* with_ghash */ 1);
+      n_left -= 4 * N_AES_BYTES;
+      dst += 4 * N_AES_BYTES;
+      src += 4 * N_AES_BYTES;
+    }
+
+  if (n_left > 3 * N_AES_BYTES)
+    aes_gcm_calc (ctx, d, src, dst, 4, n_left, /* with_ghash */ 1);
+  else if (n_left > 2 * N_AES_BYTES)
+    aes_gcm_calc (ctx, d, src, dst, 3, n_left, /* with_ghash */ 1);
+  else if (n_left > N_AES_BYTES)
+    aes_gcm_calc (ctx, d, src, dst, 2, n_left, /* with_ghash */ 1);
+  else if (n_left)
+    aes_gcm_calc (ctx, d, src, dst, 1, n_left, /* with_ghash */ 1);
 }
 
 static_always_inline void
@@ -865,7 +1125,237 @@ aes_gcm (const u8 *src, u8 *dst, const u8 *aad, u8 *ivp, u8 *tag,
 	    return 1;
 	}
     }
+
   return 0;
+}
+
+static_always_inline void
+clib_aes_gcm_init (aes_gcm_ctx_t *ctx, const aes_gcm_key_data_t *kd, const u8 *ivp,
+		   aes_key_size_t ks, aes_gcm_op_t op)
+{
+  u32x4 Y0;
+
+  *ctx = (aes_gcm_ctx_t){
+    .counter = 2,
+    .rounds = AES_KEY_ROUNDS (ks),
+    .operation = op,
+    .Ke = kd->Ke,
+    .Hi = kd->Hi,
+  };
+
+  /* initalize counter */
+  Y0 = (u32x4) (u64x2){ *(u64u *) ivp, 0 };
+  Y0[2] = *(u32u *) (ivp + 8);
+  Y0[3] = 1 << 24;
+  ctx->EY0 = (u8x16) Y0;
+
+#if N_AES_LANES == 4
+  ctx->Y = u32x16_splat_u32x4 (Y0) + (u32x16){
+    0, 0, 0, 1 << 24, 0, 0, 0, 2 << 24, 0, 0, 0, 3 << 24, 0, 0, 0, 4 << 24,
+  };
+#elif N_AES_LANES == 2
+  ctx->Y = u32x8_splat_u32x4 (Y0) + (u32x8){ 0, 0, 0, 1 << 24, 0, 0, 0, 2 << 24 };
+#else
+  ctx->Y = Y0 + (u32x4){ 0, 0, 0, 1 << 24 };
+#endif
+}
+
+static_always_inline void
+clib_aes_gcm_add_aad (aes_gcm_ctx_t *ctx, const u8 *src, u32 n_bytes, aes_key_size_t ks)
+{
+  u32 n;
+
+  ASSERT (ctx->rounds == AES_KEY_ROUNDS (ks));
+  ASSERT (ctx->data_bytes == 0);
+
+  if (n_bytes == 0)
+    return;
+
+  ctx->aad_bytes += n_bytes;
+
+  while (n_bytes)
+    {
+      n = clib_min (n_bytes, (u32) (N_AES_BYTES - ctx->buf_bytes));
+      clib_memcpy_fast (ctx->buf + ctx->buf_bytes, src, n);
+      ctx->buf_bytes += n;
+      src += n;
+      n_bytes -= n;
+
+      if (ctx->buf_bytes == N_AES_BYTES)
+	{
+	  aes_gcm_ghash (ctx, ctx->buf, N_AES_BYTES);
+	  ctx->buf_bytes = 0;
+	}
+    }
+}
+
+static_always_inline void
+clib_aes_gcm_aad_finalize (aes_gcm_ctx_t *ctx, aes_key_size_t ks)
+{
+  ASSERT (ctx->rounds == AES_KEY_ROUNDS (ks));
+
+  if (ctx->buf_bytes)
+    {
+      aes_gcm_ghash_buf_final (ctx, ctx->buf, ctx->buf_bytes);
+      ctx->buf_bytes = 0;
+    }
+}
+
+static_always_inline void
+clib_aes_gcm_enc_transform (aes_gcm_ctx_t *ctx, const u8 *src, u8 *dst, u32 n_bytes,
+			    aes_key_size_t ks)
+{
+  u32 n;
+  u32 bulk_bytes;
+
+  ASSERT (ctx->rounds == AES_KEY_ROUNDS (ks));
+  ASSERT (ctx->operation == AES_GCM_OP_ENCRYPT);
+  ASSERT (ctx->buf_bytes == 0);
+
+  ctx->data_bytes += n_bytes;
+
+  if (ctx->buf_bytes)
+    {
+      n = clib_min (n_bytes, (u32) (N_AES_BYTES - ctx->buf_bytes));
+      aes_gcm_enc_ctr_bytes (ctx, src, dst, n);
+      src += n;
+      dst += n;
+      n_bytes -= n;
+    }
+
+  bulk_bytes = n_bytes & ~(N_AES_BYTES - 1);
+  if (bulk_bytes)
+    {
+      aes_gcm_enc_blocks (ctx, src, dst, bulk_bytes);
+      src += bulk_bytes;
+      dst += bulk_bytes;
+      n_bytes -= bulk_bytes;
+    }
+
+  if (n_bytes)
+    aes_gcm_enc_ctr_bytes (ctx, src, dst, n_bytes);
+}
+
+static_always_inline void
+clib_aes_gcm_dec_transform (aes_gcm_ctx_t *ctx, const u8 *src, u8 *dst, u32 n_bytes,
+			    aes_key_size_t ks)
+{
+  u32 n;
+  u32 bulk_bytes;
+
+  ASSERT (ctx->rounds == AES_KEY_ROUNDS (ks));
+  ASSERT (ctx->operation == AES_GCM_OP_DECRYPT);
+  ASSERT (ctx->buf_bytes == 0);
+
+  if (n_bytes == 0)
+    return;
+
+  ctx->data_bytes += n_bytes;
+
+  if (ctx->buf_bytes)
+    {
+      n = clib_min (n_bytes, (u32) (N_AES_BYTES - ctx->buf_bytes));
+      aes_gcm_dec_ctr_bytes (ctx, src, dst, n);
+      src += n;
+      dst += n;
+      n_bytes -= n;
+    }
+
+  bulk_bytes = n_bytes & ~(N_AES_BYTES - 1);
+  if (bulk_bytes)
+    {
+      aes_gcm_dec_blocks (ctx, src, dst, bulk_bytes);
+      src += bulk_bytes;
+      dst += bulk_bytes;
+      n_bytes -= bulk_bytes;
+    }
+
+  if (n_bytes)
+    aes_gcm_dec_ctr_bytes (ctx, src, dst, n_bytes);
+}
+
+static_always_inline void
+clib_aes_gcm_enc_finalize (aes_gcm_ctx_t *ctx, u8 *tag, u8 tag_len)
+{
+  ASSERT (ctx->buf_bytes == 0);
+
+  if (ctx->buf_bytes)
+    aes_gcm_ghash_buf_final (ctx, ctx->buf, ctx->buf_bytes);
+
+  ctx->buf_bytes = 0;
+
+  if (ctx->operation != AES_GCM_OP_GMAC || ctx->aad_bytes || ctx->data_bytes)
+    {
+      ctx->T = ghash_mul (aes_gcm_final_block (ctx) ^ ctx->T, ctx->Hi[NUM_HI - 1]);
+
+      for (int i = 0; i < ctx->rounds + 1; i++)
+	aes_gcm_enc_ctr0_round (ctx, i);
+    }
+
+  /* final tag is */
+  ctx->T = u8x16_reflect (ctx->T) ^ ctx->EY0;
+
+  /* tag_len 16 -> 0 */
+  tag_len &= 0xf;
+
+  /* store tag */
+  if (tag_len)
+    u8x16_store_partial (ctx->T, tag, tag_len);
+  else
+    ((u8x16u *) tag)[0] = ctx->T;
+}
+
+static_always_inline int
+clib_aes_gcm_dec_finalize (aes_gcm_ctx_t *ctx, const u8 *tag, u8 tag_len)
+{
+  ASSERT (ctx->buf_bytes == 0);
+
+  if (ctx->buf_bytes)
+    aes_gcm_ghash_buf_final (ctx, ctx->buf, ctx->buf_bytes);
+
+  ctx->buf_bytes = 0;
+
+  if (ctx->operation != AES_GCM_OP_GMAC || ctx->aad_bytes || ctx->data_bytes)
+    {
+      ctx->T = ghash_mul (aes_gcm_final_block (ctx) ^ ctx->T, ctx->Hi[NUM_HI - 1]);
+
+      for (int i = 0; i < ctx->rounds + 1; i++)
+	aes_gcm_enc_ctr0_round (ctx, i);
+    }
+
+  /* final tag is */
+  ctx->T = u8x16_reflect (ctx->T) ^ ctx->EY0;
+
+  /* tag_len 16 -> 0 */
+  tag_len &= 0xf;
+
+  if (tag_len)
+    {
+      u16 mask = pow2_mask (tag_len);
+      u8 expected[16] = {};
+      clib_memcpy_fast (expected, tag, tag_len);
+      u8x16 expectedv = *(u8x16u *) expected;
+      if ((u8x16_msb_mask (expectedv == ctx->T) & mask) == mask)
+	return 1;
+    }
+  else if (u8x16_is_equal (ctx->T, *(u8x16u *) tag))
+    {
+      return 1;
+    }
+
+  return 0;
+}
+
+static_always_inline void
+clib_aes_gcm_finalize (aes_gcm_ctx_t *ctx, u8 *tag, u8 tag_len)
+{
+  clib_aes_gcm_enc_finalize (ctx, tag, tag_len);
+}
+
+static_always_inline int
+clib_aes_gcm_finalize_and_check (aes_gcm_ctx_t *ctx, const u8 *tag, u8 tag_len)
+{
+  return clib_aes_gcm_dec_finalize (ctx, tag, tag_len);
 }
 
 static_always_inline void
@@ -885,6 +1375,225 @@ clib_aes_gcm_key_expand (aes_gcm_key_data_t *kd, const u8 *key,
   H = aes_encrypt_block (u8x16_zero (), ek, ks);
   H = u8x16_reflect (H);
   ghash_precompute (H, (u8x16 *) kd->Hi, ARRAY_LEN (kd->Hi));
+}
+
+static_always_inline void
+clib_aes128_gcm_init (aes_gcm_ctx_t *ctx, const aes_gcm_key_data_t *kd, const u8 *iv,
+		      aes_gcm_op_t op)
+{
+  clib_aes_gcm_init (ctx, kd, iv, AES_KEY_128, op);
+}
+
+static_always_inline void
+clib_aes128_gcm_enc_init (aes_gcm_ctx_t *ctx, const aes_gcm_key_data_t *kd, const u8 *iv)
+{
+  clib_aes_gcm_init (ctx, kd, iv, AES_KEY_128, AES_GCM_OP_ENCRYPT);
+}
+
+static_always_inline void
+clib_aes128_gcm_dec_init (aes_gcm_ctx_t *ctx, const aes_gcm_key_data_t *kd, const u8 *iv)
+{
+  clib_aes_gcm_init (ctx, kd, iv, AES_KEY_128, AES_GCM_OP_DECRYPT);
+}
+
+static_always_inline void
+clib_aes128_gmac_init (aes_gcm_ctx_t *ctx, const aes_gcm_key_data_t *kd, const u8 *iv)
+{
+  clib_aes_gcm_init (ctx, kd, iv, AES_KEY_128, AES_GCM_OP_GMAC);
+}
+
+static_always_inline void
+clib_aes192_gcm_init (aes_gcm_ctx_t *ctx, const aes_gcm_key_data_t *kd, const u8 *iv,
+		      aes_gcm_op_t op)
+{
+  clib_aes_gcm_init (ctx, kd, iv, AES_KEY_192, op);
+}
+
+static_always_inline void
+clib_aes192_gcm_enc_init (aes_gcm_ctx_t *ctx, const aes_gcm_key_data_t *kd, const u8 *iv)
+{
+  clib_aes_gcm_init (ctx, kd, iv, AES_KEY_192, AES_GCM_OP_ENCRYPT);
+}
+
+static_always_inline void
+clib_aes192_gcm_dec_init (aes_gcm_ctx_t *ctx, const aes_gcm_key_data_t *kd, const u8 *iv)
+{
+  clib_aes_gcm_init (ctx, kd, iv, AES_KEY_192, AES_GCM_OP_DECRYPT);
+}
+
+static_always_inline void
+clib_aes192_gmac_init (aes_gcm_ctx_t *ctx, const aes_gcm_key_data_t *kd, const u8 *iv)
+{
+  clib_aes_gcm_init (ctx, kd, iv, AES_KEY_192, AES_GCM_OP_GMAC);
+}
+
+static_always_inline void
+clib_aes256_gcm_init (aes_gcm_ctx_t *ctx, const aes_gcm_key_data_t *kd, const u8 *iv,
+		      aes_gcm_op_t op)
+{
+  clib_aes_gcm_init (ctx, kd, iv, AES_KEY_256, op);
+}
+
+static_always_inline void
+clib_aes256_gcm_enc_init (aes_gcm_ctx_t *ctx, const aes_gcm_key_data_t *kd, const u8 *iv)
+{
+  clib_aes_gcm_init (ctx, kd, iv, AES_KEY_256, AES_GCM_OP_ENCRYPT);
+}
+
+static_always_inline void
+clib_aes256_gcm_dec_init (aes_gcm_ctx_t *ctx, const aes_gcm_key_data_t *kd, const u8 *iv)
+{
+  clib_aes_gcm_init (ctx, kd, iv, AES_KEY_256, AES_GCM_OP_DECRYPT);
+}
+
+static_always_inline void
+clib_aes256_gmac_init (aes_gcm_ctx_t *ctx, const aes_gcm_key_data_t *kd, const u8 *iv)
+{
+  clib_aes_gcm_init (ctx, kd, iv, AES_KEY_256, AES_GCM_OP_GMAC);
+}
+
+static_always_inline void
+clib_aes128_gcm_add_aad (aes_gcm_ctx_t *ctx, const u8 *src, u32 n_bytes)
+{
+  clib_aes_gcm_add_aad (ctx, src, n_bytes, AES_KEY_128);
+}
+
+static_always_inline void
+clib_aes128_gcm_aad_finalize (aes_gcm_ctx_t *ctx)
+{
+  clib_aes_gcm_aad_finalize (ctx, AES_KEY_128);
+}
+
+static_always_inline void
+clib_aes128_gcm_enc_transform (aes_gcm_ctx_t *ctx, const u8 *src, u8 *dst, u32 n_bytes)
+{
+  clib_aes_gcm_enc_transform (ctx, src, dst, n_bytes, AES_KEY_128);
+}
+
+static_always_inline void
+clib_aes128_gcm_dec_transform (aes_gcm_ctx_t *ctx, const u8 *src, u8 *dst, u32 n_bytes)
+{
+  clib_aes_gcm_dec_transform (ctx, src, dst, n_bytes, AES_KEY_128);
+}
+
+static_always_inline void
+clib_aes192_gcm_add_aad (aes_gcm_ctx_t *ctx, const u8 *src, u32 n_bytes)
+{
+  clib_aes_gcm_add_aad (ctx, src, n_bytes, AES_KEY_192);
+}
+
+static_always_inline void
+clib_aes192_gcm_aad_finalize (aes_gcm_ctx_t *ctx)
+{
+  clib_aes_gcm_aad_finalize (ctx, AES_KEY_192);
+}
+
+static_always_inline void
+clib_aes192_gcm_enc_transform (aes_gcm_ctx_t *ctx, const u8 *src, u8 *dst, u32 n_bytes)
+{
+  clib_aes_gcm_enc_transform (ctx, src, dst, n_bytes, AES_KEY_192);
+}
+
+static_always_inline void
+clib_aes192_gcm_dec_transform (aes_gcm_ctx_t *ctx, const u8 *src, u8 *dst, u32 n_bytes)
+{
+  clib_aes_gcm_dec_transform (ctx, src, dst, n_bytes, AES_KEY_192);
+}
+
+static_always_inline void
+clib_aes256_gcm_add_aad (aes_gcm_ctx_t *ctx, const u8 *src, u32 n_bytes)
+{
+  clib_aes_gcm_add_aad (ctx, src, n_bytes, AES_KEY_256);
+}
+
+static_always_inline void
+clib_aes256_gcm_aad_finalize (aes_gcm_ctx_t *ctx)
+{
+  clib_aes_gcm_aad_finalize (ctx, AES_KEY_256);
+}
+
+static_always_inline void
+clib_aes256_gcm_enc_transform (aes_gcm_ctx_t *ctx, const u8 *src, u8 *dst, u32 n_bytes)
+{
+  clib_aes_gcm_enc_transform (ctx, src, dst, n_bytes, AES_KEY_256);
+}
+
+static_always_inline void
+clib_aes256_gcm_dec_transform (aes_gcm_ctx_t *ctx, const u8 *src, u8 *dst, u32 n_bytes)
+{
+  clib_aes_gcm_dec_transform (ctx, src, dst, n_bytes, AES_KEY_256);
+}
+
+static_always_inline void
+clib_aes128_gcm_finalize (aes_gcm_ctx_t *ctx, u8 *tag, u8 tag_len)
+{
+  clib_aes_gcm_enc_finalize (ctx, tag, tag_len);
+}
+
+static_always_inline int
+clib_aes128_gcm_finalize_and_check (aes_gcm_ctx_t *ctx, const u8 *tag, u8 tag_len)
+{
+  return clib_aes_gcm_dec_finalize (ctx, tag, tag_len);
+}
+
+static_always_inline void
+clib_aes128_gcm_enc_finalize (aes_gcm_ctx_t *ctx, u8 *tag, u8 tag_len)
+{
+  clib_aes_gcm_enc_finalize (ctx, tag, tag_len);
+}
+
+static_always_inline int
+clib_aes128_gcm_dec_finalize (aes_gcm_ctx_t *ctx, const u8 *tag, u8 tag_len)
+{
+  return clib_aes_gcm_dec_finalize (ctx, tag, tag_len);
+}
+
+static_always_inline void
+clib_aes192_gcm_finalize (aes_gcm_ctx_t *ctx, u8 *tag, u8 tag_len)
+{
+  clib_aes_gcm_enc_finalize (ctx, tag, tag_len);
+}
+
+static_always_inline int
+clib_aes192_gcm_finalize_and_check (aes_gcm_ctx_t *ctx, const u8 *tag, u8 tag_len)
+{
+  return clib_aes_gcm_dec_finalize (ctx, tag, tag_len);
+}
+
+static_always_inline void
+clib_aes192_gcm_enc_finalize (aes_gcm_ctx_t *ctx, u8 *tag, u8 tag_len)
+{
+  clib_aes_gcm_enc_finalize (ctx, tag, tag_len);
+}
+
+static_always_inline int
+clib_aes192_gcm_dec_finalize (aes_gcm_ctx_t *ctx, const u8 *tag, u8 tag_len)
+{
+  return clib_aes_gcm_dec_finalize (ctx, tag, tag_len);
+}
+
+static_always_inline void
+clib_aes256_gcm_finalize (aes_gcm_ctx_t *ctx, u8 *tag, u8 tag_len)
+{
+  clib_aes_gcm_enc_finalize (ctx, tag, tag_len);
+}
+
+static_always_inline int
+clib_aes256_gcm_finalize_and_check (aes_gcm_ctx_t *ctx, const u8 *tag, u8 tag_len)
+{
+  return clib_aes_gcm_dec_finalize (ctx, tag, tag_len);
+}
+
+static_always_inline void
+clib_aes256_gcm_enc_finalize (aes_gcm_ctx_t *ctx, u8 *tag, u8 tag_len)
+{
+  clib_aes_gcm_enc_finalize (ctx, tag, tag_len);
+}
+
+static_always_inline int
+clib_aes256_gcm_dec_finalize (aes_gcm_ctx_t *ctx, const u8 *tag, u8 tag_len)
+{
+  return clib_aes_gcm_dec_finalize (ctx, tag, tag_len);
 }
 
 static_always_inline void
