@@ -12,8 +12,16 @@
 #include <vnet/sfdp/common.h>
 #include <vnet/sfdp/service.h>
 #include <vnet/sfdp/sfdp_funcs.h>
+#include <vnet/flow/flow.h>
 #include "lookup_inlines.h"
 #include "lookup.h"
+
+typedef enum
+{
+  SFDP_LOOKUP_OFFLOAD_DISABLED = 0,
+  SFDP_LOOKUP_OFFLOAD_1ST_PACKET = 1,
+  SFDP_LOOKUP_OFFLOAD_FAST = 2,
+} sfdp_lookup_offload_type_t;
 
 #define foreach_sfdp_handoff_error                                            \
   _ (SESS_DROP, sess_drop, INFO, "Session expired during handoff")            \
@@ -330,10 +338,145 @@ sfdp_prepare_all_keys_v6_fast (vlib_buffer_t **b, sfdp_session_ip6_key_t *k,
   return sfdp_prepare_all_keys_v6 (b, k, lv, h, l4_hdr_offset, n_left, 0);
 }
 
-static_always_inline uword
-sfdp_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
-		    vlib_frame_t *frame, u8 is_ipv6)
+static int
+sfdp_flow_offload_create (vlib_main_t *vm, vlib_node_runtime_t *node, sfdp_per_thread_data_t *ptd,
+			  u32 session_index, u32 hw_if_index, u16 *tcp_proto, u16 *udp_proto,
+			  bool enable_flow)
 {
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
+  sfdp_session_t *session = sfdp_session_at_index (session_index);
+  vnet_flow_t flow = {};
+  u32 *flow_index[SFDP_FLOW_F_B_N] = { 0 };
+  int rv = 0;
+
+  if (session->proto == IP_PROTOCOL_TCP)
+    {
+      flow_index[SFDP_FLOW_FORWARD] = vec_elt_at_index (ptd->flow_indices_tcp, (*tcp_proto)++);
+      flow_index[SFDP_FLOW_REVERSE] = vec_elt_at_index (ptd->flow_indices_tcp, (*tcp_proto)++);
+    }
+  else if (session->proto == IP_PROTOCOL_UDP)
+    {
+      flow_index[SFDP_FLOW_FORWARD] = vec_elt_at_index (ptd->flow_indices_udp, (*udp_proto)++);
+      flow_index[SFDP_FLOW_REVERSE] = vec_elt_at_index (ptd->flow_indices_udp, (*udp_proto)++);
+    }
+  else
+    return VNET_FLOW_ERROR_NOT_SUPPORTED;
+
+  /* common between forward and reverse flow rule */
+  flow.type = VNET_FLOW_TYPE_IP4_N_TUPLE;
+  flow.pattern.ip4_n_tuple.src_addr.mask.data_u32 = 0xFFFFFFFF;
+  flow.pattern.ip4_n_tuple.dst_addr.mask.data_u32 = 0xFFFFFFFF;
+  flow.pattern.ip4_n_tuple.protocol.prot = (ip_protocol_t) session->proto;
+  flow.pattern.ip4_n_tuple.protocol.mask = 0xFF;
+  flow.pattern.ip4_n_tuple.src_port.mask = 0xFFFF;
+  flow.pattern.ip4_n_tuple.dst_port.mask = 0xFFFF;
+  flow.actions = VNET_FLOW_ACTION_MARK | VNET_FLOW_ACTION_RSS;
+  flow.rss_fun = VNET_RSS_FUNC_SYMMETRIC_TOEPLITZ;
+  flow.rss_types = VNET_FLOW_RSS_TYPES_IPV4 | VNET_FLOW_RSS_TYPES_IPV6;
+  flow.queue_index = 0;
+  flow.queue_num = vec_len (hw->rx_queue_indices);
+  flow.mark_flow_id = session_index + 1; /* +1 because b->flow_id == 0 means first packet */
+
+  flow.pattern.ip4_n_tuple.src_addr.addr.data_u32 =
+    session->keys[SFDP_SESSION_KEY_PRIMARY].key4.ip4_key.ip_addr_hi;
+  flow.pattern.ip4_n_tuple.dst_addr.addr.data_u32 =
+    session->keys[SFDP_SESSION_KEY_PRIMARY].key4.ip4_key.ip_addr_lo;
+
+  flow.pattern.ip4_n_tuple.src_port.port =
+    clib_net_to_host_u16 (session->keys[SFDP_SESSION_KEY_PRIMARY].key4.ip4_key.port_hi);
+  flow.pattern.ip4_n_tuple.dst_port.port =
+    clib_net_to_host_u16 (session->keys[SFDP_SESSION_KEY_PRIMARY].key4.ip4_key.port_lo);
+
+  rv = vnet_flow_add (vnm, &flow, flow_index[SFDP_FLOW_FORWARD]);
+  if (rv != 0)
+    {
+      vlib_node_increment_counter (vm, node->node_index, SFDP_LOOKUP_ERROR_FLOW_OFFLOAD_ADD_FAILED,
+				   1);
+      return rv;
+    }
+
+  flow.pattern.ip4_n_tuple.src_addr.addr.data_u32 =
+    session->keys[SFDP_SESSION_KEY_PRIMARY].key4.ip4_key.ip_addr_lo;
+  flow.pattern.ip4_n_tuple.dst_addr.addr.data_u32 =
+    session->keys[SFDP_SESSION_KEY_PRIMARY].key4.ip4_key.ip_addr_hi;
+
+  flow.pattern.ip4_n_tuple.src_port.port =
+    clib_net_to_host_u16 (session->keys[SFDP_SESSION_KEY_PRIMARY].key4.ip4_key.port_lo);
+  flow.pattern.ip4_n_tuple.dst_port.port =
+    clib_net_to_host_u16 (session->keys[SFDP_SESSION_KEY_PRIMARY].key4.ip4_key.port_hi);
+
+  rv = vnet_flow_add (vnm, &flow, flow_index[SFDP_FLOW_REVERSE]);
+  if (rv != 0)
+    {
+      vlib_node_increment_counter (vm, node->node_index, SFDP_LOOKUP_ERROR_FLOW_OFFLOAD_ADD_FAILED,
+				   1);
+      goto error_add_reverse_flow;
+    }
+
+  session->flow_index[SFDP_FLOW_FORWARD] = *flow_index[SFDP_FLOW_FORWARD];
+  session->flow_index[SFDP_FLOW_REVERSE] = *flow_index[SFDP_FLOW_REVERSE];
+  session->rx_hw_if_index = hw_if_index;
+
+  if (!enable_flow)
+    return 0;
+
+  /* Enable the flow on the hardware interface */
+  rv = vnet_flow_enable (vnm, *flow_index[SFDP_FLOW_FORWARD], hw_if_index);
+  if (rv != 0)
+    {
+      vlib_node_increment_counter (vm, node->node_index,
+				   SFDP_LOOKUP_ERROR_FLOW_OFFLOAD_ENABLE_FAILED, 1);
+      goto error_enable_forward_flow;
+    }
+
+  /* Enable the flow on the hardware interface */
+  rv = vnet_flow_enable (vnm, *flow_index[SFDP_FLOW_REVERSE], hw_if_index);
+  if (rv != 0)
+    {
+      vlib_node_increment_counter (vm, node->node_index,
+				   SFDP_LOOKUP_ERROR_FLOW_OFFLOAD_ENABLE_FAILED, 1);
+      goto error_enable_reverse_flow;
+    }
+
+error_enable_reverse_flow:
+  vnet_flow_disable (vnm, *flow_index[SFDP_FLOW_FORWARD]);
+
+error_enable_forward_flow:
+  vnet_flow_del (vnm, *flow_index[SFDP_FLOW_REVERSE]);
+
+error_add_reverse_flow:
+  vnet_flow_del (vnm, *flow_index[SFDP_FLOW_FORWARD]);
+
+  return rv;
+}
+
+static_always_inline void
+sfdp_enable_async_flows (vnet_main_t *vnm, sfdp_main_t *sfdp, sfdp_per_thread_data_t *ptd,
+			 u32 hw_if_index, u16 tcp_proto, u16 udp_proto)
+{
+  u32 flow_template_index;
+  if (tcp_proto)
+    {
+      vec_set_len (ptd->flow_indices_tcp, tcp_proto);
+      flow_template_index = vec_elt (sfdp->flow_template_index_tcp_by_hw_if_index, hw_if_index);
+      vnet_flow_async_range_enable (vnm, flow_template_index, ptd->flow_indices_tcp, hw_if_index);
+      vec_set_len (ptd->flow_indices_tcp, VLIB_FRAME_SIZE);
+    }
+  if (udp_proto)
+    {
+      vec_set_len (ptd->flow_indices_udp, udp_proto);
+      flow_template_index = vec_elt (sfdp->flow_template_index_udp_by_hw_if_index, hw_if_index);
+      vnet_flow_async_range_enable (vnm, flow_template_index, ptd->flow_indices_udp, hw_if_index);
+      vec_set_len (ptd->flow_indices_udp, VLIB_FRAME_SIZE);
+    }
+}
+
+static_always_inline uword
+sfdp_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame, u8 is_ipv6,
+		    sfdp_lookup_offload_type_t is_offloaded)
+{
+  vnet_main_t *vnm = vnet_get_main ();
   sfdp_main_t *sfdp = &sfdp_main;
   u32 thread_index = vm->thread_index;
   sfdp_per_thread_data_t *ptd =
@@ -342,6 +485,7 @@ sfdp_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   sfdp_bihash_kv46_t kv = {};
   sfdp_tenant_t *tenant;
   sfdp_session_t *session;
+  vnet_sw_interface_t *sw;
   u32 session_index;
   u32 *bi, *from = vlib_frame_vector_args (frame);
   u32 n_left = frame->n_vectors;
@@ -357,6 +501,11 @@ sfdp_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   u32 local_flow_indices[VLIB_FRAME_SIZE];
   u32 created_session_indices[VLIB_FRAME_SIZE], n_created = 0;
   SFDP_SESSION_IP46_KEYS_TYPE (VLIB_FRAME_SIZE) keys;
+
+  /* flow related */
+  u32 hw_if_index_in_use = ~0;
+  bool same_hw_if_index = true;
+  u16 tcp_proto = 0, udp_proto = 0;
 
   sfdp_session_ip4_key_t *k4 = keys.keys4;
   sfdp_session_ip6_key_t *k6 = keys.keys6;
@@ -383,9 +532,42 @@ sfdp_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   u32 scope_index = rt->scope_index;
   u32 fqi =
     vec_elt_at_index (sfdp->frame_queue_index_per_scope, scope_index)[0];
+  u32 sw_if_index;
 
   vlib_get_buffers (vm, from, bufs, n_left);
   b = bufs;
+
+  if (is_offloaded == SFDP_LOOKUP_OFFLOAD_FAST)
+    {
+      n_left = frame->n_vectors;
+      lv = lookup_vals;
+      b = bufs;
+      l4o = l4_hdr_off;
+      len = lengths;
+      while (n_left)
+	{
+	  /* b->flow_id contains the session index+1 marked in the packet buffer */
+	  session = sfdp_session_at_index (b[0]->flow_id - 1);
+	  lv[0] = session->lv;
+
+	  ip4_header_t *ip = vlib_buffer_get_current (b[0]);
+	  u8 *next_header = ip4_next_header (ip);
+	  i16 l4_hdr_offset = (u8 *) next_header - b[0]->data;
+
+	  l4o[0] = l4_hdr_offset;
+	  b[0]->flow_id = sfdp_pseudo_flow_index_from_lookup (lv[0]);
+	  b[0]->flags |= VNET_BUFFER_F_L4_HDR_OFFSET_VALID;
+	  vnet_buffer (b[0])->l4_hdr_offset = l4o[0];
+	  len[0] = vlib_buffer_length_in_chain (vm, b[0]);
+
+	  lv += 1;
+	  b += 1;
+	  l4o += 1;
+	  len += 1;
+	  n_left -= 1;
+	}
+      goto offloaded_lookup;
+    }
 
   if (is_ipv6)
     {
@@ -508,6 +690,36 @@ sfdp_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      }
 	    created_session_indices[n_created] =
 	      sfdp_session_index_from_lookup (lv[0]);
+	    sfdp_session_t *session = sfdp_session_at_index (created_session_indices[n_created]);
+	    session->flow_index[SFDP_FLOW_FORWARD] = ~0;
+	    session->flow_index[SFDP_FLOW_REVERSE] = ~0;
+	    session->lv = (lv[0] & ~(SFDP_LV_TO_SP));
+
+	    if (PREDICT_FALSE (is_offloaded == SFDP_LOOKUP_OFFLOAD_1ST_PACKET))
+	      {
+		sw_if_index = vnet_buffer (b[0])->sw_if_index[VLIB_RX];
+		sw = vnet_get_sw_interface (vnm, sw_if_index);
+
+		if (PREDICT_FALSE (n_created == 0))
+		  hw_if_index_in_use = sw->hw_if_index;
+
+		/* we hope all packets share the same hw_if_index,
+		 * if not we will enable previous flows that indeed share the same index
+		 * asynchronously and enable later ones synchronously */
+		if (PREDICT_FALSE (same_hw_if_index && hw_if_index_in_use != sw->hw_if_index))
+		  {
+		    same_hw_if_index = false;
+		    /* we need to enable previous flows before counting the new one in tcp_proto and
+		     * udp_proto */
+		    sfdp_enable_async_flows (vnm, sfdp, ptd, hw_if_index_in_use, tcp_proto,
+					     udp_proto);
+		  }
+
+		sfdp_flow_offload_create (vm, node, ptd, created_session_indices[n_created],
+					  sw->hw_if_index, &tcp_proto, &udp_proto,
+					  !same_hw_if_index);
+	      }
+
 	    n_created++;
 	  }
 	else
@@ -532,11 +744,15 @@ sfdp_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	l4o += 1;
       }
 
-  // Notify created sessions
+  /* Notify created sessions */
   if (n_created)
     {
+      if (is_offloaded == SFDP_LOOKUP_OFFLOAD_1ST_PACKET && same_hw_if_index)
+	sfdp_enable_async_flows (vnm, sfdp, ptd, hw_if_index_in_use, tcp_proto, udp_proto);
       sfdp_notify_new_sessions (sfdp, created_session_indices, n_created);
     }
+
+offloaded_lookup:
 
   n_left = frame->n_vectors;
   lv = lookup_vals;
@@ -550,7 +766,7 @@ sfdp_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       session_version_t session_version;
       vlib_combined_counter_main_t *vcm;
 
-      if (lv[0] & SFDP_LV_TO_SP)
+      if (is_offloaded < SFDP_LOOKUP_OFFLOAD_FAST && lv[0] & SFDP_LV_TO_SP)
 	{
 	  to_sp[n_to_sp] = bi[0];
 	  sp_indices[n_to_sp] = (lv[0] & ~(SFDP_LV_TO_SP)) >> 32;
@@ -654,7 +870,7 @@ sfdp_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 				   SFDP_LOOKUP_ERROR_LOCAL, n_local);
     }
 
-  if (n_to_sp)
+  if (is_offloaded < SFDP_LOOKUP_OFFLOAD_FAST && n_to_sp)
     {
       vlib_frame_t *f = NULL;
       u32 *current_next_slot = NULL;
@@ -760,13 +976,37 @@ sfdp_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 VLIB_NODE_FN (sfdp_lookup_ip4_node)
 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
-  return sfdp_lookup_inline (vm, node, frame, 0);
+  return sfdp_lookup_inline (vm, node, frame, 0, SFDP_LOOKUP_OFFLOAD_DISABLED);
 }
 
 VLIB_NODE_FN (sfdp_lookup_ip6_node)
 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
-  return sfdp_lookup_inline (vm, node, frame, 1);
+  return sfdp_lookup_inline (vm, node, frame, 1, SFDP_LOOKUP_OFFLOAD_DISABLED);
+}
+
+VLIB_NODE_FN (sfdp_lookup_ip4_offload_1st_packet_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  return sfdp_lookup_inline (vm, node, frame, 0, SFDP_LOOKUP_OFFLOAD_1ST_PACKET);
+}
+
+VLIB_NODE_FN (sfdp_lookup_ip6_offload_1st_packet_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  return sfdp_lookup_inline (vm, node, frame, 1, SFDP_LOOKUP_OFFLOAD_1ST_PACKET);
+}
+
+VLIB_NODE_FN (sfdp_lookup_ip4_offload_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  return sfdp_lookup_inline (vm, node, frame, 0, SFDP_LOOKUP_OFFLOAD_FAST);
+}
+
+VLIB_NODE_FN (sfdp_lookup_ip6_offload_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  return sfdp_lookup_inline (vm, node, frame, 1, SFDP_LOOKUP_OFFLOAD_FAST);
 }
 
 VLIB_NODE_FN (sfdp_handoff_node)
@@ -792,7 +1032,7 @@ VLIB_NODE_FN (sfdp_handoff_node)
       u32 flow_index = b[0]->flow_id;
       u32 session_index = flow_index >> 1;
 
-      // Get session if valid and if session_version didn't change
+      /* Get session if valid and if session_version didn't change */
       sfdp_session_t *session = sfdp_session_at_index_if_valid (session_index);
       if (PREDICT_TRUE (session &&
 			session->session_version ==
@@ -817,7 +1057,7 @@ VLIB_NODE_FN (sfdp_handoff_node)
 	}
       else
 	{
-	  // drop if session doesn't exist anymore
+	  /* drop if session doesn't exist anymore */
 	  *drop_buffer = *bi;
 	  drop_buffer += 1;
 	  n_drop++;
@@ -829,8 +1069,7 @@ VLIB_NODE_FN (sfdp_handoff_node)
     }
   vlib_buffer_enqueue_to_next (vm, node, next_buffers, next_indices, n_next);
   vlib_buffer_free (vm, drop_buffers, n_drop);
-  vlib_node_increment_counter (vm, node->node_index,
-			       SFDP_HANDOFF_ERROR_SESS_DROP, n_drop);
+  vlib_node_increment_counter (vm, node->node_index, SFDP_HANDOFF_ERROR_SESS_DROP, n_drop);
   if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
     {
       int i;
@@ -923,6 +1162,57 @@ VLIB_REGISTER_NODE (sfdp_lookup_ip6_node) = {
   .runtime_data_bytes = sizeof (lookup_rt_data_default),
   .n_errors = ARRAY_LEN (sfdp_lookup_error_strings),
   .error_strings = sfdp_lookup_error_strings,
+};
+
+VLIB_REGISTER_NODE (sfdp_lookup_ip4_offload_1st_packet_node) = {
+  .name = "sfdp-lookup-ip4-offload-1st-packet",
+  .vector_size = sizeof (u32),
+  .format_trace = format_sfdp_lookup_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .flags = VLIB_NODE_FLAG_ALLOW_LAZY_NEXT_NODES,
+  .runtime_data = &lookup_rt_data_default,
+  .runtime_data_bytes = sizeof (lookup_rt_data_default),
+  .n_errors = ARRAY_LEN (sfdp_lookup_error_strings),
+  .error_strings = sfdp_lookup_error_strings,
+  .sibling_of = "sfdp-lookup-ip4",
+};
+
+VLIB_REGISTER_NODE (sfdp_lookup_ip6_offload_1st_packet_node) = {
+  .name = "sfdp-lookup-ip6-offload-1st-packet",
+  .vector_size = sizeof (u32),
+  .format_trace = format_sfdp_lookup_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .flags = VLIB_NODE_FLAG_ALLOW_LAZY_NEXT_NODES,
+  .runtime_data = &lookup_rt_data_default,
+  .runtime_data_bytes = sizeof (lookup_rt_data_default),
+  .n_errors = ARRAY_LEN (sfdp_lookup_error_strings),
+  .error_strings = sfdp_lookup_error_strings,
+  .sibling_of = "sfdp-lookup-ip6",
+};
+VLIB_REGISTER_NODE (sfdp_lookup_ip4_offload_node) = {
+  .name = "sfdp-lookup-ip4-offload",
+  .vector_size = sizeof (u32),
+  .format_trace = format_sfdp_lookup_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .flags = VLIB_NODE_FLAG_ALLOW_LAZY_NEXT_NODES,
+  .runtime_data = &lookup_rt_data_default,
+  .runtime_data_bytes = sizeof (lookup_rt_data_default),
+  .n_errors = ARRAY_LEN (sfdp_lookup_error_strings),
+  .error_strings = sfdp_lookup_error_strings,
+  .sibling_of = "sfdp-lookup-ip4",
+};
+
+VLIB_REGISTER_NODE (sfdp_lookup_ip6_offload_node) = {
+  .name = "sfdp-lookup-ip6-offload",
+  .vector_size = sizeof (u32),
+  .format_trace = format_sfdp_lookup_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .flags = VLIB_NODE_FLAG_ALLOW_LAZY_NEXT_NODES,
+  .runtime_data = &lookup_rt_data_default,
+  .runtime_data_bytes = sizeof (lookup_rt_data_default),
+  .n_errors = ARRAY_LEN (sfdp_lookup_error_strings),
+  .error_strings = sfdp_lookup_error_strings,
+  .sibling_of = "sfdp-lookup-ip6",
 };
 
 VLIB_REGISTER_NODE (sfdp_handoff_node) = {
