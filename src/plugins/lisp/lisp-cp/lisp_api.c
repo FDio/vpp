@@ -657,7 +657,7 @@ send_lisp_eid_table_details (mapping_t * mapit,
   rmp->context = context;
   rmp->vni = clib_host_to_net_u32 (gid_address_vni (gid));
   rmp->key.id = clib_host_to_net_u16 (mapit->key_id);
-  memcpy (rmp->key.key, mapit->key, vec_len (mapit->key));
+  memcpy (rmp->key.key, mapit->key, clib_min (vec_len (mapit->key), sizeof (rmp->key.key)));
   vl_api_send_msg (reg, (u8 *) rmp);
 }
 
