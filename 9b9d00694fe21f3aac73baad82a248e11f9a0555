@@ -1,0 +1,106 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "37a0dad0_17247afa",
+        "filename": "src/plugins/sfdp_services/base/interface_input/cli.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 49,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-03-16T11:45:48Z",
+      "side": 1,
+      "message": "nit: would it make sense to add a \u0027show sfdp interface-input \u003cinterface\u003e` command to list interfaces configured with SFDP enabled / their properties ?\n\nThis could also be addressed in a later patch.",
+      "revId": "9b9d00694fe21f3aac73baad82a248e11f9a0555",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b416de34_266f0507",
+        "filename": "src/plugins/sfdp_services/base/interface_input/interface_input.h",
+        "patchSetId": 13
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-03-16T11:45:48Z",
+      "side": 1,
+      "message": "Rather than maintaining two separate vectors by sw_if_index, could they be merged into a single vector ? i.e. `sfdp_config_by_sw_if_idx`\n\nI think it would also simplify much of the logic in `interface_input.c` and `node.c`",
+      "revId": "9b9d00694fe21f3aac73baad82a248e11f9a0555",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a3e65b36_7884cd9f",
+        "filename": "src/plugins/sfdp_services/base/interface_input/node.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 109,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-03-16T11:45:48Z",
+      "side": 1,
+      "message": "I assume we do not support flow offload for IPv6 traffic ? If so, could you please adds comment to clarify this, and maybe return an error if a user attempts to set parameter \u0027is_ip6\u0027 and \u0027is_lookup_offload\u0027 when configuring SFDP on an inteface ?",
+      "revId": "9b9d00694fe21f3aac73baad82a248e11f9a0555",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "dd3cc0ae_c2dd2242",
+        "filename": "src/vnet/sfdp/expiry/expiry.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 168,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-03-16T11:45:48Z",
+      "side": 1,
+      "message": "Rather than adding an explicit check and call to `sfdp_flow_offload_delete` here, could we leverage SFDP\u0027s callback system to register this function to be called upon session deletion ?\n\ni.e. register `sfdp_flow_offload_delete` using macro `SFDP_REGISTER_DELETED_SESSIONS_CALLBACK()`, which should be called by `sfdp_notify_deleted_sessions` right above.",
+      "revId": "9b9d00694fe21f3aac73baad82a248e11f9a0555",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cc73e52e_3e5744b3",
+        "filename": "src/vnet/sfdp/lookup/node.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 347,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-03-16T11:45:48Z",
+      "side": 1,
+      "message": "Can we use `sfdp_session_at_index()` here ?",
+      "revId": "9b9d00694fe21f3aac73baad82a248e11f9a0555",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f895b96d_aa72a0c5",
+        "filename": "src/vnet/sfdp/lookup/node.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 611,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-03-16T11:45:48Z",
+      "side": 1,
+      "message": "Could we use \u0027sfdp_session_at_index()\u0027 here ?",
+      "revId": "9b9d00694fe21f3aac73baad82a248e11f9a0555",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
