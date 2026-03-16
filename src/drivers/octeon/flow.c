@@ -127,9 +127,8 @@ oct_flow_convert_rss_types (u64 *key, u64 rss_types)
 }
 
 vnet_dev_rv_t
-oct_flow_validate_params (vlib_main_t *vm, vnet_dev_port_t *port,
-			  vnet_dev_port_cfg_type_t type, u32 flow_index,
-			  uword *priv_data)
+oct_flow_validate_params (vlib_main_t *vm, vnet_dev_port_t *port, vnet_dev_port_cfg_type_t type,
+			  u32 flow_index)
 {
   vnet_dev_port_interfaces_t *ifs = port->interfaces;
   vnet_flow_t *flow = vnet_get_flow (flow_index);
@@ -178,8 +177,7 @@ oct_flow_validate_params (vlib_main_t *vm, vnet_dev_port_t *port,
 
 static vnet_dev_rv_t
 oct_flow_rule_create (vnet_dev_port_t *port, struct roc_npc_action *actions,
-		      struct roc_npc_item_info *item_info, vnet_flow_t *flow,
-		      uword *private_data)
+		      struct roc_npc_item_info *item_info, vnet_flow_t *flow)
 {
   oct_port_t *oct_port = vnet_dev_get_port_data (port);
   struct roc_npc_attr attr = { .priority = 1, .ingress = 1 };
@@ -222,7 +220,7 @@ oct_flow_rule_create (vnet_dev_port_t *port, struct roc_npc_action *actions,
   flow_entry->vnet_flow_index = flow->index;
   flow_entry->npc_flow = npc_flow;
 
-  *private_data = flow_entry->index;
+  flow->driver_private_data = flow_entry->index;
 
   return VNET_DEV_OK;
 }
@@ -542,8 +540,7 @@ err:
 }
 
 static vnet_dev_rv_t
-oct_flow_add (vlib_main_t *vm, vnet_dev_port_t *port, vnet_flow_t *flow,
-	      uword *private_data)
+oct_flow_add (vlib_main_t *vm, vnet_dev_port_t *port, vnet_flow_t *flow)
 {
   struct roc_npc_item_info item_info[ROC_NPC_ITEM_TYPE_END] = {};
   struct roc_npc_action actions[ROC_NPC_ITEM_TYPE_END] = {};
@@ -825,7 +822,7 @@ parse_flow_actions:
   actions[action].type = ROC_NPC_ACTION_TYPE_COUNT;
   actions[action + 1].type = ROC_NPC_ACTION_TYPE_END;
 
-  rv = oct_flow_rule_create (port, actions, item_info, flow, private_data);
+  rv = oct_flow_rule_create (port, actions, item_info, flow);
 
   if (queues)
     clib_mem_free (queues);
@@ -839,8 +836,7 @@ parse_flow_actions:
 }
 
 static vnet_dev_rv_t
-oct_flow_del (vlib_main_t *vm, vnet_dev_port_t *port, vnet_flow_t *flow,
-	      uword *private_data)
+oct_flow_del (vlib_main_t *vm, vnet_dev_port_t *port, vnet_flow_t *flow)
 {
   oct_port_t *oct_port = vnet_dev_get_port_data (port);
   struct roc_npc *npc = &oct_port->npc;
@@ -848,7 +844,7 @@ oct_flow_del (vlib_main_t *vm, vnet_dev_port_t *port, vnet_flow_t *flow,
   oct_flow_entry_t *flow_entry;
   int rv = 0, index;
 
-  index = *private_data;
+  index = flow->driver_private_data;
   flow_entry = pool_elt_at_index (oct_port->flow_entries, index);
   npc_flow = flow_entry->npc_flow;
   rv = roc_npc_flow_destroy (npc, npc_flow);
@@ -902,17 +898,16 @@ oct_flow_query (vlib_main_t *vm, vnet_dev_port_t *port, u32 flow_index,
 }
 
 vnet_dev_rv_t
-oct_flow_ops_fn (vlib_main_t *vm, vnet_dev_port_t *port,
-		 vnet_dev_port_cfg_type_t type, u32 flow_index,
-		 uword *priv_data)
+oct_flow_ops_fn (vlib_main_t *vm, vnet_dev_port_t *port, vnet_dev_port_cfg_type_t type,
+		 u32 flow_index)
 {
   vnet_flow_t *flow = vnet_get_flow (flow_index);
 
   if (type == VNET_DEV_PORT_CFG_ADD_RX_FLOW)
-    return oct_flow_add (vm, port, flow, priv_data);
+    return oct_flow_add (vm, port, flow);
 
   if (type == VNET_DEV_PORT_CFG_DEL_RX_FLOW)
-    return oct_flow_del (vm, port, flow, priv_data);
+    return oct_flow_del (vm, port, flow);
 
   return VNET_DEV_ERR_NOT_SUPPORTED;
 }

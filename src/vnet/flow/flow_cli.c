@@ -125,17 +125,9 @@ format_flow_enabled_hw (u8 * s, va_list * args)
   if (f == 0)
     return format (s, "not found");
 
-  u8 *t = 0;
-  u32 hw_if_index;
-  uword private_data;
   vnet_main_t *vnm = vnet_get_main ();
-  hash_foreach (hw_if_index, private_data, f->private_data,
-    ({
-     t = format (t, "%s%U", t ? ", " : "",
-                 format_vnet_hw_if_index_name, vnm, hw_if_index);
-     }));
-  s = format (s, "%v", t);
-  vec_free (t);
+  if (f->hw_if_index != ~0)
+    s = format (s, "%U", format_vnet_hw_if_index_name, vnm, f->hw_if_index);
   return s;
 }
 
@@ -187,8 +179,7 @@ show_flow_entry (vlib_main_t * vm, unformat_input_t * input,
   vnet_hw_interface_t *hi;
   vnet_device_class_t *dev_class;
   vnet_flow_t *f;
-  uword private_data;
-  u32 index = ~0, hw_if_index;
+  u32 index = ~0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     goto no_args;
@@ -217,16 +208,15 @@ show_flow_entry (vlib_main_t * vm, unformat_input_t * input,
 	  vlib_cli_output (vm, "%s: %s", "spec", f->generic.pattern.spec);
 	  vlib_cli_output (vm, "%s: %s", "mask", f->generic.pattern.mask);
 	}
-      hash_foreach (hw_if_index, private_data, f->private_data,
-        ({
-	 hi = vnet_get_hw_interface (vnm, hw_if_index);
+      if (f->hw_if_index != ~0)
+	{
+	  hi = vnet_get_hw_interface (vnm, f->hw_if_index);
 	  dev_class = vnet_get_device_class (vnm, hi->dev_class_index);
-	  vlib_cli_output (vm,  "interface %U\n",
-			   format_vnet_hw_if_index_name, vnm, hw_if_index);
+	  vlib_cli_output (vm, "interface %U\n", format_vnet_hw_if_index_name, vnm, f->hw_if_index);
 	  if (dev_class->format_flow)
-	    vlib_cli_output (vm,  "  %U\n", dev_class->format_flow,
-			     hi->dev_instance, f->index, private_data);
-         }));
+	    vlib_cli_output (vm, "  %U\n", dev_class->format_flow, hi->dev_instance, f->index,
+			     f->driver_private_data);
+	}
       return 0;
     }
 
@@ -524,7 +514,7 @@ flow_cli (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd_arg)
 
   unformat_free (line_input);
 
-  if (hw_if_index == ~0 && (action == FLOW_ENABLE || action == FLOW_DISABLE))
+  if (hw_if_index == ~0 && action == FLOW_ENABLE)
     return clib_error_return (0, "Please specify interface name");
 
   if (flow_index == ~0 && (action == FLOW_ENABLE || action == FLOW_DISABLE ||
@@ -774,7 +764,7 @@ flow_cli (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd_arg)
       rv = vnet_flow_enable (vnm, flow_index, hw_if_index);
       break;
     case FLOW_DISABLE:
-      rv = vnet_flow_disable (vnm, flow_index, hw_if_index);
+      rv = vnet_flow_disable (vnm, flow_index);
       break;
     default:
       return clib_error_return (0, "please specify action (add, del, enable,"
@@ -888,11 +878,9 @@ format_flow (u8 * s, va_list * args)
   u32 indent = format_get_indent (s);
   u8 *t = 0;
 
-  s = format (s, "flow-index %u type %s active %u",
-	      f->index, flow_type_strings[f->type],
-	      hash_elts (f->private_data)),
-    s = format (s, "\n%Umatch: %U", format_white_space, indent + 2,
-		format_flow_match, f);
+  s = format (s, "flow-index %u type %s %sactive", f->index, flow_type_strings[f->type],
+	      f->hw_if_index == ~0 ? "in" : ""),
+  s = format (s, "\n%Umatch: %U", format_white_space, indent + 2, format_flow_match, f);
   s = format (s, "\n%Uaction: %U", format_white_space, indent + 2,
 	      format_flow_actions, f->actions);
 
