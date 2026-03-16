@@ -314,13 +314,13 @@ typedef struct
 #undef _
   };
 
-  /* per-interface private data */
-  uword *private_data;
+  uword driver_private_data;
+  u32 hw_if_index;
 } vnet_flow_t;
 
 int vnet_flow_add (vnet_main_t *vnm, vnet_flow_t *flow, u32 *flow_index);
 int vnet_flow_enable (vnet_main_t *vnm, u32 flow_index, u32 hw_if_index);
-int vnet_flow_disable (vnet_main_t *vnm, u32 flow_index, u32 hw_if_index);
+int vnet_flow_disable (vnet_main_t *vnm, u32 flow_index);
 int vnet_flow_del (vnet_main_t *vnm, u32 flow_index);
 
 typedef struct
