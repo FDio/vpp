@@ -730,8 +730,7 @@ oct_port_cfg_change_validate (vlib_main_t *vm, vnet_dev_port_t *port,
     case VNET_DEV_PORT_CFG_DEL_RX_FLOW:
     case VNET_DEV_PORT_CFG_GET_RX_FLOW_COUNTER:
     case VNET_DEV_PORT_CFG_RESET_RX_FLOW_COUNTER:
-      rv = oct_flow_validate_params (vm, port, req->type, req->flow_index,
-				     req->private_data);
+      rv = oct_flow_validate_params (vm, port, req->type, req->flow_index);
       break;
 
     default:
@@ -777,8 +776,7 @@ oct_port_cfg_change (vlib_main_t *vm, vnet_dev_port_t *port,
     case VNET_DEV_PORT_CFG_DEL_RX_FLOW:
     case VNET_DEV_PORT_CFG_GET_RX_FLOW_COUNTER:
     case VNET_DEV_PORT_CFG_RESET_RX_FLOW_COUNTER:
-      rv = oct_flow_ops_fn (vm, port, req->type, req->flow_index,
-			    req->private_data);
+      rv = oct_flow_ops_fn (vm, port, req->type, req->flow_index);
 
       break;
 
