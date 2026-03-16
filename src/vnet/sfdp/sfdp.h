@@ -19,6 +19,8 @@
 
 #include <vppinfra/format_table.h>
 
+#include <vnet/flow/flow.h>
+
 #include <vnet/sfdp/expiry/expiry.h>
 #include <vnet/sfdp/common.h>
 #include <vnet/sfdp/callbacks.h>
@@ -289,8 +291,11 @@ typedef struct sfdp_session
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cache0);
   sfdp_bitmap_t bitmaps[SFDP_FLOW_F_B_N];
+  u64 lv;
   u64 session_id;
   u64 expiry_opaque[2];
+  u32 flow_index[SFDP_FLOW_F_B_N];
+  u32 rx_hw_if_index;
   session_version_t session_version;
   u8 state; /* see sfdp_session_state_t */
   u8 proto;
@@ -302,7 +307,7 @@ typedef struct sfdp_session
   u8 key_flags;
   u16 parser_index[SFDP_SESSION_N_KEY];
   u8 scope_index;
-  u8 unused1[55];
+  u8 unused1[35];
   CLIB_CACHE_LINE_ALIGN_MARK (cache1);
   union
   {
@@ -343,6 +348,10 @@ typedef struct
   u64 session_id_template;
   u32 *session_freelist;
   u32 n_sessions; /* Number of sessions belonging to this thread */
+  /* we have per thread range to avoid them adding/removing flows from one another */
+  u32 *flow_indices_tcp;
+  u32 *flow_indices_udp;
+  u32 *flow_indices_del;
 } sfdp_per_thread_data_t;
 
 // TODO: Find a way to abstract, or share, timeout definition.
@@ -417,6 +426,10 @@ typedef struct
   u32 log2_sessions;
   u32 log2_sessions_cache_per_thread;
   u32 log2_tenants;
+
+  /* flow related */
+  u32 *flow_template_index_tcp_by_hw_if_index;
+  u32 *flow_template_index_udp_by_hw_if_index;
 
   /* Per-thread number of sessions margin before eviction.
    * See sfdp_set_eviction_sessions_margin function more information. */
@@ -890,6 +903,8 @@ void
 sfdp_ip4_full_reass_custom_context_register_next_err_node (u16 node_index);
 void
 sfdp_ip6_full_reass_custom_context_register_next_err_node (u16 node_index);
+int sfdp_flow_offload_configure (vnet_main_t *vnm, u32 hw_if_index, u32 n_flows);
+int sfdp_flow_offload_deconfigure (vnet_main_t *vnm, u32 hw_if_index);
 
 #define SFDP_CORE_PLUGIN_BUILD_VER "1.0"
 

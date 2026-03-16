@@ -169,7 +169,7 @@ format_oct_port_flow (u8 *s, va_list *args)
   vlib_main_t *vm = vlib_get_main ();
   vnet_dev_port_t *port = va_arg (*args, vnet_dev_port_t *);
   u32 flow_index = va_arg (*args, u32);
-  uword private_data = va_arg (*args, uword);
+  uword private_data = va_arg (*args, u32);
   u64 hits;
 
   if (flow_index == ~0)
