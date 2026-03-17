@@ -10,6 +10,7 @@
 
 #include <policer/internal.h>
 #include <policer/policer_op.h>
+#include <policer/ip_punt.h>
 
 int
 policer_add (vlib_main_t *vm, const u8 *name, const qos_pol_cfg_params_st *cfg, u32 *policer_index)
@@ -67,6 +68,11 @@ policer_del (vlib_main_t *vm, u32 policer_index)
 
   if (pool_is_free_index (pm->policers, policer_index))
     return VNET_API_ERROR_NO_SUCH_ENTRY;
+
+  /* Reject if this policer is in use by IP punt policing */
+  if (ip4_punt_policer_cfg.policer_index == policer_index ||
+      ip6_punt_policer_cfg.policer_index == policer_index)
+    return VNET_API_ERROR_INSTANCE_IN_USE;
 
   policer = &pm->policers[policer_index];
 

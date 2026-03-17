@@ -10,6 +10,7 @@ from framework import VppTestCase
 from asfframework import VppTestRunner
 from vpp_papi import VppEnum
 from vpp_policer import VppPolicer, PolicerAction, Dir
+from vpp_ip import VppIpPuntPolicer
 
 NUM_PKTS = 67
 
@@ -260,6 +261,66 @@ class TestPolicerInput(VppTestCase):
     def test_policer_handoff_output(self):
         """Worker thread handoff policer output"""
         self.policer_handoff_test(Dir.TX)
+
+    def test_policer_del_while_punt_ip4(self):
+        """Delete policer while used by IPv4 punt policing"""
+        action_tx = PolicerAction(
+            VppEnum.vl_api_sse2_qos_action_type_t.SSE2_QOS_ACTION_API_TRANSMIT, 0
+        )
+        policer = VppPolicer(
+            self,
+            "pol-punt4",
+            80,
+            0,
+            1000,
+            0,
+            conform_action=action_tx,
+            exceed_action=action_tx,
+            violate_action=action_tx,
+        )
+        policer.add_vpp_config()
+
+        # Apply as IPv4 punt policer
+        punt_policer = VppIpPuntPolicer(self, policer.policer_index, is_ip6=False)
+        punt_policer.add_vpp_config()
+
+        # Attempt to delete policer while in use — should fail
+        with self.vapi.assert_negative_api_retval():
+            self.vapi.policer_del(policer_index=policer.policer_index)
+
+        # Remove punt policer, then delete should succeed
+        punt_policer.remove_vpp_config()
+        policer.remove_vpp_config()
+
+    def test_policer_del_while_punt_ip6(self):
+        """Delete policer while used by IPv6 punt policing"""
+        action_tx = PolicerAction(
+            VppEnum.vl_api_sse2_qos_action_type_t.SSE2_QOS_ACTION_API_TRANSMIT, 0
+        )
+        policer = VppPolicer(
+            self,
+            "pol-punt6",
+            80,
+            0,
+            1000,
+            0,
+            conform_action=action_tx,
+            exceed_action=action_tx,
+            violate_action=action_tx,
+        )
+        policer.add_vpp_config()
+
+        # Apply as IPv6 punt policer
+        punt_policer = VppIpPuntPolicer(self, policer.policer_index, is_ip6=True)
+        punt_policer.add_vpp_config()
+
+        # Attempt to delete policer while in use — should fail
+        with self.vapi.assert_negative_api_retval():
+            self.vapi.policer_del(policer_index=policer.policer_index)
+
+        # Remove punt policer, then delete should succeed
+        punt_policer.remove_vpp_config()
+        policer.remove_vpp_config()
 
 
 if __name__ == "__main__":

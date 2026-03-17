@@ -91,7 +91,7 @@ VNET_FEATURE_INIT (ip4_punt_policer_node) = {
 void
 ip4_punt_policer_add_del (u8 is_add, u32 policer_index)
 {
-  ip4_punt_policer_cfg.policer_index = policer_index;
+  ip4_punt_policer_cfg.policer_index = is_add ? policer_index : ~0;
 
   vnet_feature_enable_disable ("ip4-punt", "ip4-punt-policer", 0, is_add, 0, 0);
 }
@@ -131,8 +131,6 @@ ip4_punt_police_cmd (vlib_main_t *vm, unformat_input_t *main_input, vlib_cli_com
 	clib_error_return (0, "expected policer index `%U'", format_unformat_error, line_input);
       goto done;
     }
-  if (!is_add)
-    policer_index = ~0;
 
   ip4_punt_policer_add_del (is_add, policer_index);
 
