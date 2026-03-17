@@ -48,6 +48,7 @@ policer_add (vlib_main_t *vm, const u8 *name, const qos_pol_cfg_params_st *cfg, 
   hash_set_mem (pm->policer_index_by_name, policer->name, pi);
   *policer_index = pi;
   policer->thread_index = ~0;
+  policer->refcount = 0;
 
   for (i = 0; i < NUM_POLICE_RESULTS; i++)
     {
@@ -64,22 +65,14 @@ policer_del (vlib_main_t *vm, u32 policer_index)
   policer_main_t *pm = &policer_main;
   policer_t *policer;
   uword *p;
-  u32 ii;
 
   if (pool_is_free_index (pm->policers, policer_index))
     return VNET_API_ERROR_NO_SUCH_ENTRY;
 
-  /* Reject deletion if policer is still applied to any interface */
-  for (int dir = 0; dir < VLIB_N_RX_TX; dir++)
-    {
-      vec_foreach_index (ii, pm->policer_index_by_sw_if_index[dir])
-	{
-	  if (pm->policer_index_by_sw_if_index[dir][ii] == policer_index)
-	    return VNET_API_ERROR_INSTANCE_IN_USE;
-	}
-    }
+  policer = vec_elt_at_index (pm->policers, policer_index);
 
-  policer = &pm->policers[policer_index];
+  if (policer->refcount)
+    return VNET_API_ERROR_INSTANCE_IN_USE;
 
   p = hash_get_mem (pm->policer_config_by_name, policer->name);
 
@@ -229,6 +222,7 @@ policer_input (u32 policer_index, u32 sw_if_index, vlib_dir_t dir, bool apply)
     {
       vec_validate_init_empty (pm->policer_index_by_sw_if_index[dir], sw_if_index, ~0);
       pm->policer_index_by_sw_if_index[dir][sw_if_index] = policer_index;
+      policer_lock (policer_index);
 
       /* Pre-compute L2 overhead for this interface (used by L3 input path) */
       vec_validate (pm->l2_overhead_by_sw_if_index[dir], sw_if_index);
@@ -239,9 +233,14 @@ policer_input (u32 policer_index, u32 sw_if_index, vlib_dir_t dir, bool apply)
     {
       return VNET_API_ERROR_INVALID_SW_IF_INDEX;
     }
+  else if (vec_elt (pm->policer_index_by_sw_if_index[dir], sw_if_index) != policer_index)
+    {
+      return VNET_API_ERROR_INVALID_ARGUMENT;
+    }
   else
     {
       pm->policer_index_by_sw_if_index[dir][sw_if_index] = ~0;
+      policer_unlock (policer_index);
     }
 
   /* Enable policer on both L2 feature bitmap and L3 feature arcs */
@@ -258,4 +257,38 @@ policer_input (u32 policer_index, u32 sw_if_index, vlib_dir_t dir, bool apply)
       vnet_feature_enable_disable ("ip6-output", "policer-output", sw_if_index, apply, 0, 0);
     }
   return 0;
+}
+
+static_always_inline int
+policer_lock_unlock (u32 policer_index, bool lock)
+{
+  policer_main_t *pm = &policer_main;
+  policer_t *policer;
+
+  if (pool_is_free_index (pm->policers, policer_index))
+    return VNET_API_ERROR_NO_SUCH_ENTRY;
+
+  policer = pool_elt_at_index (pm->policers, policer_index);
+
+  if (lock)
+    {
+      policer->refcount++;
+      return 0;
+    }
+
+  policer->refcount--;
+  ASSERT (policer->refcount >= 0);
+  return policer->refcount == 0;
+}
+
+int
+policer_lock (u32 policer_index)
+{
+  return policer_lock_unlock (policer_index, true);
+}
+
+int
+policer_unlock (u32 policer_index)
+{
+  return policer_lock_unlock (policer_index, false);
 }
