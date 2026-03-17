@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "46cfcaab_100c3db6",
+        "filename": "src/vnet/sfdp/lookup/node.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 466,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-03-17T10:25:35Z",
+      "side": 1,
+      "message": "Please use C style comment",
+      "revId": "aaa7d25aae233d4be1f965359d216015d7717733",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "444d0808_b416f93e",
+        "filename": "src/vnet/sfdp/lookup/node.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 646,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-03-17T10:25:35Z",
+      "side": 1,
+      "message": "It seems you overwrote the changes to use the hardware interface index",
+      "revId": "aaa7d25aae233d4be1f965359d216015d7717733",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
