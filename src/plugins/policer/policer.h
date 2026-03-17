@@ -68,7 +68,8 @@ typedef struct
   u32 scale;	   // power-of-2 shift amount for lower rates
   qos_action_type_en action[3];
   ip_dscp_t mark_dscp[3];
-  u8 pad[2];
+  u8 refcount;
+  u8 pad;
 
   // Fields are marked as 2R if they are only used for a 2-rate policer,
   // and MOD if they are modified as part of the update operation.
