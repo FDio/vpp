@@ -16,6 +16,24 @@
       "message": "we probably need that to have tx hw checksum working properly, basically calling dpdk-\u003etx_prepare",
       "revId": "472b141949627a0484745a35e98ce93a40a2616b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f13181d8_91154cf9",
+        "filename": "src/plugins/dpdk/device/driver.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 97,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-03-17T18:58:20Z",
+      "side": 0,
+      "message": "I thing you misread for `need_tx_prepare`, adding this flag only do call `rte_net_intel_cksum_flags_prepare` in `dpdk_buffer_tx_offload` which seems really for intel",
+      "parentUuid": "d4b1835a_d99ef54a",
+      "revId": "472b141949627a0484745a35e98ce93a40a2616b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
