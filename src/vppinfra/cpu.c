@@ -62,22 +62,45 @@
   _ (0x06, 0x17, "Penryn", "Yorkfield,Wolfdale,Penryn,Harpertown")
 
 /* _(implementor-id, part-id, vendor-name, cpu-name, show CPU pass as string) */
-#define foreach_aarch64_cpu_uarch                                             \
-  _ (0x41, 0xd03, "ARM", "Cortex-A53", 0)                                     \
-  _ (0x41, 0xd07, "ARM", "Cortex-A57", 0)                                     \
-  _ (0x41, 0xd08, "ARM", "Cortex-A72", 0)                                     \
-  _ (0x41, 0xd09, "ARM", "Cortex-A73", 0)                                     \
-  _ (0x41, 0xd0a, "ARM", "Cortex-A75", 0)                                     \
-  _ (0x41, 0xd0b, "ARM", "Cortex-A76", 0)                                     \
-  _ (0x41, 0xd0c, "ARM", "Neoverse-N1", 0)                                    \
-  _ (0x41, 0xd49, "ARM", "Neoverse-N2", 0)                                    \
-  _ (0x41, 0xd4f, "ARM", "Neoverse-V2", 0)                                    \
-  _ (0x41, 0xd4a, "ARM", "Neoverse-E1", 0)                                    \
-  _ (0x43, 0x0a1, "Marvell", "THUNDERX CN88XX", 0)                            \
-  _ (0x43, 0x0a2, "Marvell", "OCTEON TX CN81XX", 0)                           \
-  _ (0x43, 0x0a3, "Marvell", "OCTEON TX CN83XX", 0)                           \
-  _ (0x43, 0x0af, "Marvell", "THUNDERX2 CN99XX", 1)                           \
-  _ (0x43, 0x0b1, "Marvell", "OCTEON TX2 CN98XX", 1)                          \
+#define foreach_aarch64_cpu_uarch                                                                  \
+  _ (0x41, 0xd03, "ARM", "Cortex-A53", 0)                                                          \
+  _ (0x41, 0xd04, "ARM", "Cortex-A35", 0)                                                          \
+  _ (0x41, 0xd05, "ARM", "Cortex-A55", 0)                                                          \
+  _ (0x41, 0xd07, "ARM", "Cortex-A57", 0)                                                          \
+  _ (0x41, 0xd08, "ARM", "Cortex-A72", 0)                                                          \
+  _ (0x41, 0xd09, "ARM", "Cortex-A73", 0)                                                          \
+  _ (0x41, 0xd0a, "ARM", "Cortex-A75", 0)                                                          \
+  _ (0x41, 0xd0b, "ARM", "Cortex-A76", 0)                                                          \
+  _ (0x41, 0xd0c, "ARM", "Neoverse-N1", 0)                                                         \
+  _ (0x41, 0xd0d, "ARM", "Cortex-A77", 0)                                                          \
+  _ (0x41, 0xd0e, "ARM", "Cortex-A76AE", 0)                                                        \
+  _ (0x41, 0xd40, "ARM", "Neoverse-V1", 0)                                                         \
+  _ (0x41, 0xd41, "ARM", "Cortex-A78", 0)                                                          \
+  _ (0x41, 0xd42, "ARM", "Cortex-A78AE", 0)                                                        \
+  _ (0x41, 0xd44, "ARM", "Cortex-X1", 0)                                                           \
+  _ (0x41, 0xd46, "ARM", "Cortex-A510", 0)                                                         \
+  _ (0x41, 0xd47, "ARM", "Cortex-A710", 0)                                                         \
+  _ (0x41, 0xd48, "ARM", "Cortex-X2", 0)                                                           \
+  _ (0x41, 0xd49, "ARM", "Neoverse-N2", 0)                                                         \
+  _ (0x41, 0xd4b, "ARM", "Cortex-A78C", 0)                                                         \
+  _ (0x41, 0xd4c, "ARM", "Cortex-X1C", 0)                                                          \
+  _ (0x41, 0xd4d, "ARM", "Cortex-A715", 0)                                                         \
+  _ (0x41, 0xd4e, "ARM", "Cortex-X3", 0)                                                           \
+  _ (0x41, 0xd4f, "ARM", "Neoverse-V2", 0)                                                         \
+  _ (0x41, 0xd4a, "ARM", "Neoverse-E1", 0)                                                         \
+  _ (0x41, 0xd80, "ARM", "Cortex-A520", 0)                                                         \
+  _ (0x41, 0xd81, "ARM", "Cortex-A720", 0)                                                         \
+  _ (0x41, 0xd82, "ARM", "Cortex-X4", 0)                                                           \
+  _ (0x41, 0xd83, "ARM", "Neoverse-V3AE", 0)                                                       \
+  _ (0x41, 0xd84, "ARM", "Neoverse-V3", 0)                                                         \
+  _ (0x41, 0xd85, "ARM", "Cortex-X925", 0)                                                         \
+  _ (0x41, 0xd87, "ARM", "Cortex-A725", 0)                                                         \
+  _ (0x41, 0xd8e, "ARM", "Neoverse-N3", 0)                                                         \
+  _ (0x43, 0x0a1, "Marvell", "THUNDERX CN88XX", 0)                                                 \
+  _ (0x43, 0x0a2, "Marvell", "OCTEON TX CN81XX", 0)                                                \
+  _ (0x43, 0x0a3, "Marvell", "OCTEON TX CN83XX", 0)                                                \
+  _ (0x43, 0x0af, "Marvell", "THUNDERX2 CN99XX", 1)                                                \
+  _ (0x43, 0x0b1, "Marvell", "OCTEON TX2 CN98XX", 1)                                               \
   _ (0x43, 0x0b2, "Marvell", "OCTEON TX2 CN96XX", 1)
 
 __clib_export u8 *
@@ -230,10 +253,9 @@ format_cpu_flags (u8 *s, va_list *args)
   foreach_x86_64_flags return s;
 #undef _
 #elif defined(__aarch64__)
-#define _(flag, bit)                                                          \
-  if (clib_cpu_supports_##flag ())                                            \
-    s = format (s, "%s ",                                                     \
-		flag_skip_prefix (#flag, "aarch64_", sizeof ("aarch64_")));
+#define _(flag, hwcap_at, bit)                                                                     \
+  if (clib_cpu_supports_##flag ())                                                                 \
+    s = format (s, "%s ", flag_skip_prefix (#flag, "aarch64_", sizeof ("aarch64_")));
   foreach_aarch64_flags return s;
 #undef _
 #else /* ! ! __x86_64__ && ! __aarch64__ */
