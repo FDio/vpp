@@ -25,8 +25,8 @@ vlib_simple_counter_main_t ipsec_sa_err_counters[IPSEC_SA_N_ERRORS];
 
 typedef struct
 {
-  vnet_crypto_alg_t alg __clib_packed;
-  vnet_crypto_alg_t esn_alg __clib_packed;
+  vnet_crypto_alg_t alg;
+  vnet_crypto_alg_t esn_alg;
   u8 integ_icv_size;
   u8 iv_size;
   u8 block_align;
