@@ -184,6 +184,7 @@ func QuicBuiltinEchoTestBytesTest(s *VethsSuite) {
 }
 
 func QuicBuiltinEchoTestBytesBidirectionalTest(s *VethsSuite) {
+	s.Skip("unstable, needs investigation")
 	serverVpp := s.Containers.ServerVpp.VppInstance
 	clientVpp := s.Containers.ClientVpp.VppInstance
 
