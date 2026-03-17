@@ -253,6 +253,37 @@ class TestPolicerInput(VppTestCase):
 
         policer.remove_vpp_config()
 
+    def test_policer_unapply_never_applied(self):
+        """Unapply policer from interface that was never applied"""
+        action_tx = PolicerAction(
+            VppEnum.vl_api_sse2_qos_action_type_t.SSE2_QOS_ACTION_API_TRANSMIT, 0
+        )
+        policer = VppPolicer(
+            self,
+            "pol1",
+            80,
+            0,
+            1000,
+            0,
+            conform_action=action_tx,
+            exceed_action=action_tx,
+            violate_action=action_tx,
+        )
+        policer.add_vpp_config()
+
+        # Create a loopback interface that has never had a policer applied.
+        loop0 = self.vapi.create_loopback()
+
+        with self.vapi.assert_negative_api_retval():
+            self.vapi.policer_input_v2(
+                policer_index=policer.policer_index,
+                sw_if_index=loop0.sw_if_index,
+                apply=False,
+            )
+
+        self.vapi.delete_loopback(sw_if_index=loop0.sw_if_index)
+        policer.remove_vpp_config()
+
     def test_policer_handoff_input(self):
         """Worker thread handoff policer input"""
         self.policer_handoff_test(Dir.RX)
