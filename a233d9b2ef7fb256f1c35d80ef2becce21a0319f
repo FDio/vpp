@@ -16,6 +16,24 @@
       "message": "why changing this type, artifact from another patch ?",
       "revId": "a233d9b2ef7fb256f1c35d80ef2becce21a0319f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b22cc0ef_0f3c30e1",
+        "filename": "src/plugins/dpdk/device/dpdk.h",
+        "patchSetId": 8
+      },
+      "lineNbr": 180,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-03-17T18:48:06Z",
+      "side": 1,
+      "message": "I introduce the FLOW_TRANSFER flag on the bit 16, hence I need more space",
+      "parentUuid": "9011b263_88d91ca6",
+      "revId": "a233d9b2ef7fb256f1c35d80ef2becce21a0319f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
