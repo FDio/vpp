@@ -126,8 +126,8 @@ format_flow_enabled_hw (u8 * s, va_list * args)
     return format (s, "not found");
 
   vnet_main_t *vnm = vnet_get_main ();
-  if (f->hw_if_index != ~0)
-    s = format (s, "%U", format_vnet_hw_if_index_name, vnm, f->hw_if_index);
+  if (f->driver_data.hw_if_index != ~0)
+    s = format (s, "%U", format_vnet_hw_if_index_name, vnm, f->driver_data.hw_if_index);
   return s;
 }
 
@@ -208,14 +208,15 @@ show_flow_entry (vlib_main_t * vm, unformat_input_t * input,
 	  vlib_cli_output (vm, "%s: %s", "spec", f->generic.pattern.spec);
 	  vlib_cli_output (vm, "%s: %s", "mask", f->generic.pattern.mask);
 	}
-      if (f->hw_if_index != ~0)
+      if (f->driver_data.hw_if_index != ~0)
 	{
-	  hi = vnet_get_hw_interface (vnm, f->hw_if_index);
+	  hi = vnet_get_hw_interface (vnm, f->driver_data.hw_if_index);
 	  dev_class = vnet_get_device_class (vnm, hi->dev_class_index);
-	  vlib_cli_output (vm, "interface %U\n", format_vnet_hw_if_index_name, vnm, f->hw_if_index);
+	  vlib_cli_output (vm, "interface %U\n", format_vnet_hw_if_index_name, vnm,
+			   f->driver_data.hw_if_index);
 	  if (dev_class->format_flow)
 	    vlib_cli_output (vm, "  %U\n", dev_class->format_flow, hi->dev_instance, f->index,
-			     f->driver_private_data);
+			     f->driver_data.opaque);
 	}
       return 0;
     }
@@ -879,7 +880,7 @@ format_flow (u8 * s, va_list * args)
   u8 *t = 0;
 
   s = format (s, "flow-index %u type %s %sactive", f->index, flow_type_strings[f->type],
-	      f->hw_if_index == ~0 ? "in" : ""),
+	      f->driver_data.hw_if_index == ~0 ? "in" : ""),
   s = format (s, "\n%Umatch: %U", format_white_space, indent + 2, format_flow_match, f);
   s = format (s, "\n%Uaction: %U", format_white_space, indent + 2,
 	      format_flow_actions, f->actions);
