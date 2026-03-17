@@ -255,29 +255,23 @@ quic_plugin_crypto_command_fn (vlib_main_t *vm, unformat_input_t *input,
     {
       if (unformat (line_input, "vpp"))
 	{
+	  if (!qm->enable_vnet_crypto)
+	    {
+	      e = clib_error_return (0, "vnet crypto was not enabled");
+	      goto done;
+	    }
 	  qm->default_crypto_engine = CRYPTO_ENGINE_VPP;
-	  qm->vnet_crypto_init = 0;
 	}
       else if (unformat (line_input, "engine-lib"))
 	{
 	  qm->default_crypto_engine =
 	    (qm->engine_type == QUIC_ENGINE_QUICLY) ?
 	      CRYPTO_ENGINE_PICOTLS :
-	      ((qm->engine_type == QUIC_ENGINE_OPENSSL) ?
-		 CRYPTO_ENGINE_OPENSSL :
-		 CRYPTO_ENGINE_NONE);
-	  if (qm->default_crypto_engine != CRYPTO_ENGINE_NONE)
+	      ((qm->engine_type == QUIC_ENGINE_OPENSSL) ? CRYPTO_ENGINE_OPENSSL :
+							  CRYPTO_ENGINE_NONE);
+	  if (qm->default_crypto_engine == CRYPTO_ENGINE_NONE)
 	    {
-	      qm->vnet_crypto_init = 0;
-	    }
-	  else
-	    {
-	      e = clib_error_return (0,
-				     "No quic engine available, using default "
-				     "crypto engine '%U' (%u)",
-				     format_crypto_engine,
-				     qm->default_crypto_engine,
-				     qm->default_crypto_engine);
+	      e = clib_error_return (0, "No quic engine available");
 	      goto done;
 	    }
 	}
@@ -543,6 +537,8 @@ quic_config_fn (vlib_main_t *vm, unformat_input_t *input)
 	qm->udp_fifo_prealloc = i;
       else if (unformat (line_input, "no-tx-pacing"))
 	qm->enable_tx_pacing = 0;
+      else if (unformat (line_input, "enable-vnet-crypto"))
+	qm->enable_vnet_crypto = 1;
       /* TODO: add cli selection of quic_eng_<types> */
       else
 	{
