@@ -69,6 +69,24 @@
       "parentUuid": "444d0808_b416f93e",
       "revId": "aaa7d25aae233d4be1f965359d216015d7717733",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c2fb3aeb_374763e3",
+        "filename": "src/vnet/sfdp/lookup/node.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 646,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-03-17T19:01:10Z",
+      "side": 1,
+      "message": "no it is not. `sfdp_flow_offload_create` has as 4th parameter `hw_if_index` which is not what are passing here.",
+      "parentUuid": "86b03dbd_e15bf277",
+      "revId": "aaa7d25aae233d4be1f965359d216015d7717733",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
