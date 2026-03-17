@@ -149,30 +149,119 @@ _CLIB_MARCH_FN_REGISTRATION(fn)
   _ (invariant_tsc, 0x80000007, edx, 8)                                                            \
   _ (monitorx, 0x80000001, ecx, 29)
 
-#define foreach_aarch64_flags \
-_ (fp,          0) \
-_ (asimd,       1) \
-_ (evtstrm,     2) \
-_ (aarch64_aes, 3) \
-_ (pmull,       4) \
-_ (sha1,        5) \
-_ (sha2,        6) \
-_ (crc32,       7) \
-_ (atomics,     8) \
-_ (fphp,        9) \
-_ (asimdhp,    10) \
-_ (cpuid,      11) \
-_ (asimdrdm,   12) \
-_ (jscvt,      13) \
-_ (fcma,       14) \
-_ (lrcpc,      15) \
-_ (dcpop,      16) \
-_ (sha3,       17) \
-_ (sm3,        18) \
-_ (sm4,        19) \
-_ (asimddp,    20) \
-_ (sha512,     21) \
-_ (sve,        22)
+#define foreach_aarch64_flags                                                                      \
+  _ (fp, AT_HWCAP, 0)                                                                              \
+  _ (asimd, AT_HWCAP, 1)                                                                           \
+  _ (evtstrm, AT_HWCAP, 2)                                                                         \
+  _ (aarch64_aes, AT_HWCAP, 3)                                                                     \
+  _ (pmull, AT_HWCAP, 4)                                                                           \
+  _ (sha1, AT_HWCAP, 5)                                                                            \
+  _ (sha2, AT_HWCAP, 6)                                                                            \
+  _ (crc32, AT_HWCAP, 7)                                                                           \
+  _ (atomics, AT_HWCAP, 8)                                                                         \
+  _ (fphp, AT_HWCAP, 9)                                                                            \
+  _ (asimdhp, AT_HWCAP, 10)                                                                        \
+  _ (cpuid, AT_HWCAP, 11)                                                                          \
+  _ (asimdrdm, AT_HWCAP, 12)                                                                       \
+  _ (jscvt, AT_HWCAP, 13)                                                                          \
+  _ (fcma, AT_HWCAP, 14)                                                                           \
+  _ (lrcpc, AT_HWCAP, 15)                                                                          \
+  _ (dcpop, AT_HWCAP, 16)                                                                          \
+  _ (sha3, AT_HWCAP, 17)                                                                           \
+  _ (sm3, AT_HWCAP, 18)                                                                            \
+  _ (sm4, AT_HWCAP, 19)                                                                            \
+  _ (asimddp, AT_HWCAP, 20)                                                                        \
+  _ (sha512, AT_HWCAP, 21)                                                                         \
+  _ (sve, AT_HWCAP, 22)                                                                            \
+  _ (asimdfhm, AT_HWCAP, 23)                                                                       \
+  _ (dit, AT_HWCAP, 24)                                                                            \
+  _ (uscat, AT_HWCAP, 25)                                                                          \
+  _ (ilrcpc, AT_HWCAP, 26)                                                                         \
+  _ (flagm, AT_HWCAP, 27)                                                                          \
+  _ (ssbs, AT_HWCAP, 28)                                                                           \
+  _ (sb, AT_HWCAP, 29)                                                                             \
+  _ (paca, AT_HWCAP, 30)                                                                           \
+  _ (pacg, AT_HWCAP, 31)                                                                           \
+  _ (gcs, AT_HWCAP, 32)                                                                            \
+  _ (cmpbr, AT_HWCAP, 33)                                                                          \
+  _ (fprcvt, AT_HWCAP, 34)                                                                         \
+  _ (f8mm8, AT_HWCAP, 35)                                                                          \
+  _ (f8mm4, AT_HWCAP, 36)                                                                          \
+  _ (sve_f16mm, AT_HWCAP, 37)                                                                      \
+  _ (sve_eltperm, AT_HWCAP, 38)                                                                    \
+  _ (sve_aes2, AT_HWCAP, 39)                                                                       \
+  _ (sve_bfscale, AT_HWCAP, 40)                                                                    \
+  _ (sve2p2, AT_HWCAP, 41)                                                                         \
+  _ (sme2p2, AT_HWCAP, 42)                                                                         \
+  _ (sme_sbitperm, AT_HWCAP, 43)                                                                   \
+  _ (sme_aes, AT_HWCAP, 44)                                                                        \
+  _ (sme_sfexpa, AT_HWCAP, 45)                                                                     \
+  _ (sme_stmop, AT_HWCAP, 46)                                                                      \
+  _ (sme_smop4, AT_HWCAP, 47)                                                                      \
+  _ (dcpodp, AT_HWCAP2, 0)                                                                         \
+  _ (sve2, AT_HWCAP2, 1)                                                                           \
+  _ (sveaes, AT_HWCAP2, 2)                                                                         \
+  _ (svepmull, AT_HWCAP2, 3)                                                                       \
+  _ (svebitperm, AT_HWCAP2, 4)                                                                     \
+  _ (svesha3, AT_HWCAP2, 5)                                                                        \
+  _ (svesm4, AT_HWCAP2, 6)                                                                         \
+  _ (flagm2, AT_HWCAP2, 7)                                                                         \
+  _ (frint, AT_HWCAP2, 8)                                                                          \
+  _ (svei8mm, AT_HWCAP2, 9)                                                                        \
+  _ (svef32mm, AT_HWCAP2, 10)                                                                      \
+  _ (svef64mm, AT_HWCAP2, 11)                                                                      \
+  _ (svebf16, AT_HWCAP2, 12)                                                                       \
+  _ (i8mm, AT_HWCAP2, 13)                                                                          \
+  _ (bf16, AT_HWCAP2, 14)                                                                          \
+  _ (dgh, AT_HWCAP2, 15)                                                                           \
+  _ (rng, AT_HWCAP2, 16)                                                                           \
+  _ (bti, AT_HWCAP2, 17)                                                                           \
+  _ (mte, AT_HWCAP2, 18)                                                                           \
+  _ (ecv, AT_HWCAP2, 19)                                                                           \
+  _ (afp, AT_HWCAP2, 20)                                                                           \
+  _ (rpres, AT_HWCAP2, 21)                                                                         \
+  _ (mte3, AT_HWCAP2, 22)                                                                          \
+  _ (sme, AT_HWCAP2, 23)                                                                           \
+  _ (sme_i16i64, AT_HWCAP2, 24)                                                                    \
+  _ (sme_f64f64, AT_HWCAP2, 25)                                                                    \
+  _ (sme_i8i32, AT_HWCAP2, 26)                                                                     \
+  _ (sme_f16f32, AT_HWCAP2, 27)                                                                    \
+  _ (sme_b16f32, AT_HWCAP2, 28)                                                                    \
+  _ (sme_f32f32, AT_HWCAP2, 29)                                                                    \
+  _ (sme_fa64, AT_HWCAP2, 30)                                                                      \
+  _ (wfxt, AT_HWCAP2, 31)                                                                          \
+  _ (ebf16, AT_HWCAP2, 32)                                                                         \
+  _ (sve_ebf16, AT_HWCAP2, 33)                                                                     \
+  _ (cssc, AT_HWCAP2, 34)                                                                          \
+  _ (rprfm, AT_HWCAP2, 35)                                                                         \
+  _ (sve2p1, AT_HWCAP2, 36)                                                                        \
+  _ (sme2, AT_HWCAP2, 37)                                                                          \
+  _ (sme2p1, AT_HWCAP2, 38)                                                                        \
+  _ (sme_i16i32, AT_HWCAP2, 39)                                                                    \
+  _ (sme_bi32i32, AT_HWCAP2, 40)                                                                   \
+  _ (sme_b16b16, AT_HWCAP2, 41)                                                                    \
+  _ (sme_f16f16, AT_HWCAP2, 42)                                                                    \
+  _ (mops, AT_HWCAP2, 43)                                                                          \
+  _ (hbc, AT_HWCAP2, 44)                                                                           \
+  _ (sve_b16b16, AT_HWCAP2, 45)                                                                    \
+  _ (lrcpc3, AT_HWCAP2, 46)                                                                        \
+  _ (lse128, AT_HWCAP2, 47)                                                                        \
+  _ (fpmr, AT_HWCAP2, 48)                                                                          \
+  _ (lut, AT_HWCAP2, 49)                                                                           \
+  _ (faminmax, AT_HWCAP2, 50)                                                                      \
+  _ (f8cvt, AT_HWCAP2, 51)                                                                         \
+  _ (f8fma, AT_HWCAP2, 52)                                                                         \
+  _ (f8dp4, AT_HWCAP2, 53)                                                                         \
+  _ (f8dp2, AT_HWCAP2, 54)                                                                         \
+  _ (f8e4m3, AT_HWCAP2, 55)                                                                        \
+  _ (f8e5m2, AT_HWCAP2, 56)                                                                        \
+  _ (sme_lutv2, AT_HWCAP2, 57)                                                                     \
+  _ (sme_f8f16, AT_HWCAP2, 58)                                                                     \
+  _ (sme_f8f32, AT_HWCAP2, 59)                                                                     \
+  _ (sme_sf8fma, AT_HWCAP2, 60)                                                                    \
+  _ (sme_sf8dp4, AT_HWCAP2, 61)                                                                    \
+  _ (sme_sf8dp2, AT_HWCAP2, 62)                                                                    \
+  _ (poe, AT_HWCAP2, 63)
 
 u32 clib_get_current_cpu_id (void);
 u32 clib_get_current_numa_node (void);
@@ -214,28 +303,30 @@ foreach_x86_64_flags
 #endif /* __x86_64__ */
 #if defined(__aarch64__)
 #include <sys/auxv.h>
-#define _(flag, bit) \
-static inline int							\
-clib_cpu_supports_ ## flag()						\
-{									\
-  unsigned long hwcap = getauxval(AT_HWCAP);				\
-  return (hwcap & (1 << bit));						\
-}
+#define _(flag, hwcap_at, bit)                                                                     \
+  static inline int clib_cpu_supports_##flag ()                                                    \
+  {                                                                                                \
+    unsigned long hwcap = getauxval (hwcap_at);                                                    \
+    return (hwcap & (1UL << bit));                                                                 \
+  }
   foreach_aarch64_flags
 #undef _
 #else /* ! __x86_64__ && !__aarch64__ */
-#define _(flag, bit) \
-static inline int clib_cpu_supports_ ## flag() { return 0; }
+#define _(flag, hwcap_at, bit)                                                                     \
+  static inline int clib_cpu_supports_##flag ()                                                    \
+  {                                                                                                \
+    return 0;                                                                                      \
+  }
   foreach_aarch64_flags
 #undef _
 #endif /* __x86_64__, __aarch64__ */
-/*
- * aes is the only feature with the same name in both flag lists
- * handle this by prefixing it with the arch name, and handling it
- * with the custom function below
- */
+       /*
+	* aes is the only feature with the same name in both flag lists
+	* handle this by prefixing it with the arch name, and handling it
+	* with the custom function below
+	*/
   static inline int
-clib_cpu_supports_aes ()
+  clib_cpu_supports_aes ()
 {
 #if defined(__x86_64__)
   return clib_cpu_supports_x86_aes ();
