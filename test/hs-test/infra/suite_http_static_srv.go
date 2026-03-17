@@ -26,7 +26,7 @@ func RegisterHttpStaticSrvMWTests(tests ...func(s *HttpStaticSrvSuite)) {
 	httpStaticSrvMWTests[GetTestFilename()] = tests
 }
 
-var _ = Describe("HttpStaticSrvSuite", Ordered, ContinueOnFailure, Label("HTTP", "Static Server"), func() {
+var _ = Describe("HttpStaticSrvSuite", Ordered, ContinueOnFailure, Label("HTTP", "StaticServer"), func() {
 	var s HttpStaticSrvSuite
 	BeforeAll(func() {
 		s.Http1Suite.SetupSuite()
@@ -55,7 +55,7 @@ var _ = Describe("HttpStaticSrvSuite", Ordered, ContinueOnFailure, Label("HTTP",
 	}
 })
 
-var _ = Describe("HttpStaticSrvSuiteSolo", Ordered, ContinueOnFailure, Serial, Label("HTTP", "Static Server"), func() {
+var _ = Describe("HttpStaticSrvSuiteSolo", Ordered, ContinueOnFailure, Serial, Label("HTTP", "StaticServer"), func() {
 	var s HttpStaticSrvSuite
 	BeforeAll(func() {
 		s.Http1Suite.SetupSuite()
@@ -84,7 +84,7 @@ var _ = Describe("HttpStaticSrvSuiteSolo", Ordered, ContinueOnFailure, Serial, L
 	}
 })
 
-var _ = Describe("HttpStaticSrvMWSuite", Ordered, ContinueOnFailure, Serial, Label("HTTP", "Static Server", "MW"), func() {
+var _ = Describe("HttpStaticSrvMWSuite", Ordered, ContinueOnFailure, Serial, Label("HTTP", "StaticServer", "MW"), func() {
 	var s HttpStaticSrvSuite
 	BeforeAll(func() {
 		s.Http1Suite.SetupSuite()

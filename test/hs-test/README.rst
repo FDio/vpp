@@ -27,9 +27,9 @@ Anatomy of a test case
 
 **Action flow when running a test case**:
 
-#. It starts with running ``make test``. Optional arguments are VERBOSE, PERSIST (topology configuration isn't cleaned up after test run, use ``make cleanup-hst`` to clean up),
-   TEST=<test-name> to run a specific test and PARALLEL=[n-cpus]. If you want to run multiple specific tests, separate their names with a comma.
-#. ``make list-tests`` (or ``make help``) shows all tests.
+#. It starts with running ``make test``. Optional arguments are ``V`` (verbose), ``PERSIST`` (topology configuration isn't cleaned up after test run, use ``make cleanup-hst`` to clean up),
+   TEST=<test-name> to run a specific test and PARALLEL=[n-cpus]. If you want to run multiple specific tests, separate their names with a comma. Other arguments can be viewed by running ``make help``.
+#. ``make list-tests`` shows all tests.
 #. ``Ginkgo`` looks for a spec suite in the current directory and then compiles it to a .test binary.
 #. The Ginkgo test framework runs each function that was registered manually using ``Register[SuiteName]Test()``. Each of these functions correspond to a suite.
 #. Ginkgo's ``RunSpecs(t, "Suite description")`` function is the entry point and does the following:
@@ -128,6 +128,13 @@ They can also be left out:
 * ``make test TEST=Nginx`` will run everything that has 'Nginx' in its name - suites, files and tests.
 * ``make test TEST=HeaderServerTest`` will only run the header server test
 
+Tests can also be filtered using labels. In our case, operators have to be escaped with ``\``:
+
+* ``make test LABEL=http\&\&staticserver``
+* ``make test LABEL=\!veth``
+
+See `<https://onsi.github.io/ginkgo/#spec-labels>`_ for more information.
+
 
 Modifying the framework
 -----------------------
@@ -197,15 +204,22 @@ Modifying the framework
                         ...
                 }
 
-#. In suite file, implement ``SetupTest`` method which gets executed before each test. Starting containers and
-   configuring VPP is usually placed here
+#. In suite file, implement ``SetupTest`` method which gets executed before each test. VPP configuration and startup is usually placed here.
+   Containers are started by ``s.HstSuite.SetupTest()`` and CPUs are allocated during container creation.
 
         ::
 
                 func (s *MySuite) SetupTest() {
-                        s.HstSuite.setupTest()
-                        s.SetupVolumes()
-                        s.SetupContainers()
+                        s.HstSuite.SetupTest()
+
+                        vpp, _ := s.Containers.Vpp.newVppInstance(s.Containers.ServerVpp.AllocatedCpus, sessionConfig)
+	                AssertNil(vpp.Start())
+
+	                AssertNil(vpp.CreateTap(s.Interfaces.Server, false, 1), "failed to create tap interface")
+                        // or if using a veth interface:
+                        idx, err = vpp.createAfPacket(s.Interfaces.Server, false, WithNumRxQueues(numWorkers), WithNumTxQueues(numCpus))
+	                AssertNil(err, fmt.Sprint(err))
+	                AssertNotEqual(0, idx)
                 }
 
 #. In order for ``Ginkgo`` to run this suite, we need to create a ``Describe`` container node with setup nodes and an ``It`` subject node.
@@ -274,7 +288,9 @@ Topology configuration exists as ``yaml`` files in the ``test/hs-test/topo-netwo
 ``test/hs-test/topo-containers`` folders. Processing of a network topology file for a particular test suite
 is started by the ``ConfigureNetworkTopology()`` method depending on which file's name is passed to it.
 Specified file is loaded and converted into internal data structures which represent various elements of the topology.
-After parsing the configuration, framework loops over the elements and configures them one by one on the host system.
+Interfaces are then created and configured in the ``ginkgo`` container, if ``- configured-by-host: true`` is in the yaml topology file.
+Otherwise, VPP handles creating interfaces in ``SetupTest()``. Topologies with ``veth`` interfaces must always be configured in Linux
+in the ``ginkgo`` container - configuration process can be viewed in ``infra/netconfig.go - configure()``.
 
 These are currently supported types of network elements.
 
@@ -283,7 +299,7 @@ These are currently supported types of network elements.
 * ``bridge`` - ethernet bridge to connect created interfaces, optionally with target network namespace
 * ``tap`` - tap network interface with IP address
 
-Similarly, container topology is started by ``loadContainerTopology()``, configuration file is processed
+Similarly, container topology is started by ``LoadContainerTopology()``, configuration file is processed
 so that test suite retains map of defined containers and uses that to start them at the beginning
 of each test case and stop containers after the test finishes. Container configuration can specify
 also volumes which allow to share data between containers or between host system and containers.
@@ -297,8 +313,8 @@ This should be implemented in ``netconfig.go`` for network and in ``container.go
 When two VPP instances or other applications, each in its own Docker container,
 want to communicate there are typically two ways this can be done within *hs-test*.
 
-* Network interfaces. Containers are being created with ``-d --network host`` options,
-  so they are connected with interfaces created in host system
+* Network interfaces. Containers are being created with ``--network=ginkgo`` options,
+  so they are connected with interfaces created in the ``ginkgo`` container
 * Shared folders. Containers are being created with ``-v`` option to create shared `volumes`_ between host system and containers
   or just between containers
 
@@ -321,9 +337,8 @@ test run time it is not advisable to use aforementioned skip methods and instead
 
 **External dependencies**
 
-* Linux tools ``ip``, ``brctl``
 * Standalone programs ``wget``, ``iperf3`` - since these are downloaded when Docker image is made,
-  they are reasonably up-to-date automatically
+  they are reasonably up-to-date automatically. Full list of dependencies can be viewed in ``docker/Dockerfile.base``
 * Programs in Docker images  - ``envoyproxy/envoy-contrib`` and ``nginx``
 * Non-standard Go libraries - see ``test/hs-test/go.mod``
 
@@ -342,7 +357,7 @@ configured automatically once you start VPP with the generated startup.conf file
 GDB
 ^^^
 
-It is possible to debug VPP by attaching ``gdb`` before test execution by adding ``DEBUG=true`` like follows:
+It is possible to debug VPP by attaching ``gdb`` before test execution by adding ``DEBUG=true``:
 
 ::
 
