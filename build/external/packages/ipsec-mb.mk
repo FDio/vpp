@@ -20,8 +20,6 @@ ipsec-mb_tarball_sha256sum_2.0  := 0c60e56f63b14212c7b388668acc219cbc6b79e5e7973
 ipsec-mb_tarball_sha256sum   := $(ipsec-mb_tarball_sha256sum_$(ipsec-mb_version))
 ipsec-mb_tarball_strip_dirs  := 1
 ipsec-mb_url                 := http://github.com/intel/intel-ipsec-mb/archive/$(ipsec-mb_tarball)
-ipsec-mb_system_header       := $(wildcard /usr/include/intel-ipsec-mb.h)
-
 define  ipsec-mb_config_cmds
 	@true
 endef
@@ -36,26 +34,7 @@ define  ipsec-mb_build_cmds
 	  EXTRA_CFLAGS="-g -msse4.2" > $(ipsec-mb_build_log)
 endef
 
-ifneq   ($(ipsec-mb_system_header), )
-	ipsec-mb_system_ver_str := $(shell awk '/^#define[[:space:]]+IMB_VERSION_STR/ { gsub(/"/, "", $$3); print $$3; exit }' \
-	$(ipsec-mb_system_header) 2>/dev/null)
-endif
-
-ifneq   ($(ipsec-mb_system_ver_str), )
-define ipsec-mb_version_check_cmd
-	if [[ "$(ipsec-mb_system_ver_str)" != "$(ipsec-mb_version_str)" ]]; then \
-	echo "Intel-ipsec-mb build Error: System installed Intel IPsec-mb lib \
-	version mismatch with target version, \
-	expecting $(ipsec-mb_version_str), \
-	but system has $(ipsec-mb_system_ver_str) \
-	please align/remove system installed $(ipsec-mb_system_header) before building."; \
-	exit 1; \
-	fi
-endef
-endif
-
 define  ipsec-mb_install_cmds
-	$(ipsec-mb_version_check_cmd)
 	@mkdir -p $(ipsec-mb_install_dir)/include
 	@mkdir -p $(ipsec-mb_install_dir)/lib
 	@cp $(ipsec-mb_src_dir)/lib/intel-ipsec-mb.h $(ipsec-mb_install_dir)/include
