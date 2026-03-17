@@ -24,5 +24,7 @@ int policer_del (vlib_main_t *vm, u32 policer_index);
 int policer_reset (vlib_main_t *vm, u32 policer_index);
 int policer_bind_worker (u32 policer_index, u32 worker, bool bind);
 int policer_input (u32 policer_index, u32 sw_if_index, vlib_dir_t dir, bool apply);
+int policer_lock (u32 policer_index);
+int policer_unlock (u32 policer_index);
 
 #endif
