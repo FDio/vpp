@@ -38,8 +38,8 @@ vnet_flow_add (vnet_main_t * vnm, vnet_flow_t * flow, u32 * flow_index)
   pool_get (fm->global_flow_pool, f);
   *flow_index = f - fm->global_flow_pool;
   clib_memcpy_fast (f, flow, sizeof (vnet_flow_t));
-  f->driver_private_data = 0;
-  f->hw_if_index = ~0;
+  f->driver_data.opaque = ~0;
+  f->driver_data.hw_if_index = ~0;
   f->index = *flow_index;
   return 0;
 }
@@ -57,11 +57,11 @@ vnet_flow_enable_disable (vnet_main_t *vnm, u32 flow_index, u32 hw_if_index, boo
     return VNET_FLOW_ERROR_NO_SUCH_ENTRY;
 
   /* don't enable flow twice or don't disable if not enabled */
-  if ((enable && f->hw_if_index != ~0) || (!enable && f->hw_if_index == ~0))
+  if ((enable && f->driver_data.hw_if_index != ~0) || (!enable && f->driver_data.hw_if_index == ~0))
     return VNET_FLOW_ERROR_ALREADY_DONE;
 
   if (!enable)
-    hw_if_index = f->hw_if_index;
+    hw_if_index = f->driver_data.hw_if_index;
 
   if (!vnet_hw_interface_is_valid (vnm, hw_if_index))
     return VNET_FLOW_ERROR_NO_SUCH_INTERFACE;
@@ -83,7 +83,11 @@ vnet_flow_enable_disable (vnet_main_t *vnm, u32 flow_index, u32 hw_if_index, boo
   if (rv)
     return rv;
 
-  f->hw_if_index = enable ? hw_if_index : ~0;
+  if (enable)
+    ASSERT (f->driver_data.hw_if_index != ~0);
+  else
+    ASSERT (f->driver_data.hw_if_index == ~0);
+
   return 0;
 }
 

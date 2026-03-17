@@ -220,7 +220,8 @@ oct_flow_rule_create (vnet_dev_port_t *port, struct roc_npc_action *actions,
   flow_entry->vnet_flow_index = flow->index;
   flow_entry->npc_flow = npc_flow;
 
-  flow->driver_private_data = flow_entry->index;
+  flow->driver_data.opaque = flow_entry->index;
+  flow->driver_data.hw_if_index = vnet_dev_port_get_primary_if (port)->hw_if_index;
 
   return VNET_DEV_OK;
 }
@@ -844,7 +845,7 @@ oct_flow_del (vlib_main_t *vm, vnet_dev_port_t *port, vnet_flow_t *flow)
   oct_flow_entry_t *flow_entry;
   int rv = 0, index;
 
-  index = flow->driver_private_data;
+  index = flow->driver_data.opaque;
   flow_entry = pool_elt_at_index (oct_port->flow_entries, index);
   npc_flow = flow_entry->npc_flow;
   rv = roc_npc_flow_destroy (npc, npc_flow);
@@ -855,6 +856,9 @@ oct_flow_del (vlib_main_t *vm, vnet_dev_port_t *port, vnet_flow_t *flow)
       return VNET_DEV_ERR_NOT_SUPPORTED;
     }
   pool_put (oct_port->flow_entries, flow_entry);
+
+  flow->driver_data.opaque = ~0;
+  flow->driver_data.hw_if_index = ~0;
 
   return VNET_DEV_OK;
 }
