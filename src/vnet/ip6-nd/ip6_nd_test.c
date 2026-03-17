@@ -308,6 +308,105 @@ api_sw_interface_ip6nd_ra_config (vat_main_t * vam)
   W (ret);
   return ret;
 }
+
+static int
+api_sw_interface_ip6nd_ra_config_v2 (vat_main_t *vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_sw_interface_ip6nd_ra_config_v2_t *mp;
+  u32 sw_if_index;
+  u8 sw_if_index_set = 0;
+  u8 suppress = 0;
+  u8 managed = 0;
+  u8 other = 0;
+  u8 ll_option = 0;
+  u8 send_unicast = 0;
+  u8 cease = 0;
+  u8 accept_ra = 0;
+  u8 is_no = 0;
+  u8 default_router = 0;
+  u32 max_interval = 0;
+  u32 min_interval = 0;
+  u32 lifetime = 0;
+  u32 initial_count = 0;
+  u32 initial_interval = 0;
+  int ret;
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "%U", unformat_sw_if_index, vam, &sw_if_index))
+	sw_if_index_set = 1;
+      else if (unformat (i, "sw_if_index %d", &sw_if_index))
+	sw_if_index_set = 1;
+      else if (unformat (i, "maxint %d", &max_interval))
+	;
+      else if (unformat (i, "minint %d", &min_interval))
+	;
+      else if (unformat (i, "life %d", &lifetime))
+	;
+      else if (unformat (i, "count %d", &initial_count))
+	;
+      else if (unformat (i, "interval %d", &initial_interval))
+	;
+      else if (unformat (i, "suppress") || unformat (i, "surpress"))
+	suppress = 1;
+      else if (unformat (i, "managed"))
+	managed = 1;
+      else if (unformat (i, "other"))
+	other = 1;
+      else if (unformat (i, "ll"))
+	ll_option = 1;
+      else if (unformat (i, "send"))
+	send_unicast = 1;
+      else if (unformat (i, "cease"))
+	cease = 1;
+      else if (unformat (i, "ra-accept"))
+	accept_ra = 1;
+      else if (unformat (i, "isno"))
+	is_no = 1;
+      else if (unformat (i, "def"))
+	default_router = 1;
+      else
+	{
+	  clib_warning ("parse error '%U'", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  if (sw_if_index_set == 0)
+    {
+      errmsg ("missing interface name or sw_if_index");
+      return -99;
+    }
+
+  /* Construct the API message */
+  M (SW_INTERFACE_IP6ND_RA_CONFIG_V2, mp);
+
+  mp->sw_if_index = ntohl (sw_if_index);
+  mp->max_interval = ntohl (max_interval);
+  mp->min_interval = ntohl (min_interval);
+  mp->lifetime = ntohl (lifetime);
+  mp->initial_count = ntohl (initial_count);
+  mp->initial_interval = ntohl (initial_interval);
+  mp->suppress = suppress;
+  mp->managed = managed;
+  mp->other = other;
+  mp->ll_option = ll_option;
+  mp->send_unicast = send_unicast;
+  mp->cease = cease;
+  mp->accept_ra = accept_ra;
+  mp->is_no = is_no;
+  mp->default_router = default_router;
+
+  /* send it... */
+  S (mp);
+
+  /* Wait for a reply, return good/bad news  */
+  W (ret);
+  return ret;
+}
+
 static int
 api_ip6nd_proxy_enable_disable (vat_main_t *vam)
 {

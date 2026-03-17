@@ -731,6 +731,12 @@ icmp6_router_advertisement (vlib_main_t * vm,
 
 		  if (error0 == ICMP6_ERROR_NONE)
 		    {
+		      if (!radv_info->accept_ra)
+			{
+			  error0 = ICMP6_ERROR_ROUTER_ADVERTISEMENT_ACCEPT_RA_DISABLED;
+			  goto drop0;
+			}
+
 		      radv_info->keep_sending_rs = 0;
 
 		      ip6_ra_report_t r;
@@ -978,6 +984,7 @@ icmp6_router_advertisement (vlib_main_t * vm,
 		}
 	    }
 
+	drop0:
 	  p0->error = error_node->errors[error0];
 
 	  if (error0 != ICMP6_ERROR_NONE)
@@ -1299,6 +1306,9 @@ ip6_ra_link_enable (u32 sw_if_index)
   radv_info->curr_hop_limit = DEF_CURR_HOP_LIMIT;
   radv_info->adv_router_lifetime_in_sec = DEF_DEF_RTR_LIFETIME;
 
+  /* accept incoming RAs by default */
+  radv_info->accept_ra = 1;
+
   /* send ll address source address option */
   radv_info->adv_link_layer_address = 1;
 
@@ -1591,12 +1601,9 @@ ip6_ra_publish (ip6_ra_report_t * r)
 
 /* API support functions */
 int
-ip6_ra_config (vlib_main_t * vm, u32 sw_if_index,
-	       u8 suppress, u8 managed, u8 other,
-	       u8 ll_option, u8 send_unicast, u8 cease,
-	       u8 use_lifetime, u32 lifetime,
-	       u32 initial_count, u32 initial_interval,
-	       u32 max_interval, u32 min_interval, u8 is_no)
+ip6_ra_config (vlib_main_t *vm, u32 sw_if_index, u8 suppress, u8 managed, u8 other, u8 ll_option,
+	       u8 send_unicast, u8 cease, u8 use_lifetime, u32 lifetime, u32 initial_count,
+	       u32 initial_interval, u32 max_interval, u32 min_interval, u8 is_no, u8 accept_ra)
 {
   ip6_ra_t *radv_info;
 
@@ -1660,6 +1667,7 @@ ip6_ra_config (vlib_main_t * vm, u32 sw_if_index,
     (send_unicast != 0) ? ((is_no) ? 0 : 1) : radv_info->send_unicast;
   radv_info->cease_radv =
     (cease != 0) ? ((is_no) ? 0 : 1) : radv_info->cease_radv;
+  radv_info->accept_ra = (accept_ra != 0) ? ((is_no) ? 0 : 1) : radv_info->accept_ra;
 
   radv_info->min_radv_interval = min_interval;
   radv_info->max_radv_interval = max_interval;
@@ -1821,7 +1829,7 @@ ip6_ra_cmd (vlib_main_t * vm,
   clib_error_t *error = 0;
   u8 is_no = 0;
   u8 suppress = 0, managed = 0, other = 0;
-  u8 suppress_ll_option = 0, send_unicast = 0, cease = 0;
+  u8 suppress_ll_option = 0, send_unicast = 0, cease = 0, accept_ra = 0;
   u8 use_lifetime = 0;
   u32 sw_if_index, ra_lifetime = 0, ra_initial_count =
     0, ra_initial_interval = 0;
@@ -1932,6 +1940,10 @@ ip6_ra_cmd (vlib_main_t * vm,
 	{
 	  cease = 1;
 	}
+      else if (unformat (line_input, "ra-accept"))
+	{
+	  accept_ra = 1;
+	}
       else
 	{
 	  break;
@@ -1940,12 +1952,9 @@ ip6_ra_cmd (vlib_main_t * vm,
 
   if (add_radv_info)
     {
-      ip6_ra_config (vm, sw_if_index,
-		     suppress, managed, other,
-		     suppress_ll_option, send_unicast, cease,
-		     use_lifetime, ra_lifetime,
-		     ra_initial_count, ra_initial_interval,
-		     ra_max_interval, ra_min_interval, is_no);
+      ip6_ra_config (vm, sw_if_index, suppress, managed, other, suppress_ll_option, send_unicast,
+		     cease, use_lifetime, ra_lifetime, ra_initial_count, ra_initial_interval,
+		     ra_max_interval, ra_min_interval, is_no, accept_ra);
     }
   else
     {
@@ -2064,6 +2073,8 @@ format_ip6_ra (u8 * s, va_list * args)
     format (s, "%UHosts %s stateless autoconfig for addresses\n",
 	    format_white_space, indent,
 	    (radv_info->adv_managed_flag) ? "use" : " don't use");
+  s = format (s, "%UHosts %s incoming router advertisements\n", format_white_space, indent,
+	      (radv_info->accept_ra) ? "accept" : "ignore");
   s =
     format (s, "%UND router advertisements sent %d\n", format_white_space,
 	    indent, radv_info->n_advertisements_sent);
@@ -2092,7 +2103,8 @@ format_ip6_ra (u8 * s, va_list * args)
  *   [ra-other-config-flag] | [ra-suppress] | [ra-suppress-link-layer] |
  *   [ra-send-unicast] | [ra-lifetime <lifetime>] |
  *   [ra-initial <cnt> <interval>] |
- *   [ra-interval <max-interval> [<min-interval>]] | [ra-cease]
+ *   [ra-interval <max-interval> [<min-interval>]] | [ra-cease] |
+ *   [ra-accept]
  * @cliend
  *
  * Where:
@@ -2146,6 +2158,10 @@ format_ip6_ra (u8 * s, va_list * args)
  * <em>[no] ra-cease</em> - Cease sending ICMPv6 router-advertisement messages.
  * The '<em>no</em>' options implies to start (or restart) sending
  * ICMPv6 router-advertisement messages.
+ *
+ * <em>[no] ra-accept</em> - Accept incoming ICMPv6 router-advertisement
+ * messages. The '<em>no</em>' option implies to ignore incoming router-
+ * advertisement messages.
  *
  *
  * <b>Format 2 - Prefix Options:</b>

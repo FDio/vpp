@@ -163,18 +163,44 @@ static void
 
   VALIDATE_SW_IF_INDEX (mp);
 
-  rv = ip6_ra_config (vm, ntohl (mp->sw_if_index),
-		      suppress, managed, other,
-		      ll_option, send_unicast, cease,
-		      default_router, ntohl (mp->lifetime),
-		      ntohl (mp->initial_count),
-		      ntohl (mp->initial_interval),
-		      ntohl (mp->max_interval),
-		      ntohl (mp->min_interval), is_no);
+  rv = ip6_ra_config (vm, ntohl (mp->sw_if_index), suppress, managed, other, ll_option,
+		      send_unicast, cease, default_router, ntohl (mp->lifetime),
+		      ntohl (mp->initial_count), ntohl (mp->initial_interval),
+		      ntohl (mp->max_interval), ntohl (mp->min_interval), is_no, 0 /* accept_ra */);
 
   BAD_SW_IF_INDEX_LABEL;
 
   REPLY_MACRO (VL_API_SW_INTERFACE_IP6ND_RA_CONFIG_REPLY);
+}
+
+static void
+vl_api_sw_interface_ip6nd_ra_config_v2_t_handler (vl_api_sw_interface_ip6nd_ra_config_v2_t *mp)
+{
+  vl_api_sw_interface_ip6nd_ra_config_v2_reply_t *rmp;
+  vlib_main_t *vm = vlib_get_main ();
+  int rv = 0;
+  u8 is_no, suppress, managed, other, ll_option, send_unicast, cease, accept_ra, default_router;
+
+  is_no = mp->is_no == 1;
+  suppress = mp->suppress == 1;
+  managed = mp->managed == 1;
+  other = mp->other == 1;
+  ll_option = mp->ll_option == 1;
+  send_unicast = mp->send_unicast == 1;
+  cease = mp->cease == 1;
+  accept_ra = mp->accept_ra == 1;
+  default_router = mp->default_router == 1;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  rv = ip6_ra_config (vm, ntohl (mp->sw_if_index), suppress, managed, other, ll_option,
+		      send_unicast, cease, default_router, ntohl (mp->lifetime),
+		      ntohl (mp->initial_count), ntohl (mp->initial_interval),
+		      ntohl (mp->max_interval), ntohl (mp->min_interval), is_no, accept_ra);
+
+  BAD_SW_IF_INDEX_LABEL;
+
+  REPLY_MACRO (VL_API_SW_INTERFACE_IP6ND_RA_CONFIG_V2_REPLY);
 }
 
 static void

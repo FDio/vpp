@@ -79,6 +79,16 @@ NUM_PKTS = 67
 
 
 class TestIPv6ND(VppTestCase):
+    def set_ip6_ra_event_subscription(self, enable):
+        reply = self.vapi.papi.want_ip6_ra_events(enable=enable)
+        self.assertIn(
+            reply.retval,
+            (0, -31),  # VNET_API_ERROR_INVALID_REGISTRATION
+            "want_ip6_ra_events(enable={}) returned unexpected retval {}".format(
+                enable, reply.retval
+            ),
+        )
+
     def validate_ra(self, intf, rx, dst_ip=None):
         if not dst_ip:
             dst_ip = intf.remote_ip6
@@ -1519,7 +1529,8 @@ class TestIPv6RD(TestIPv6ND):
     def test_rd_receive_router_advertisement(self):
         """Verify events triggered by received RA packets"""
 
-        self.vapi.want_ip6_ra_events(enable=1)
+        self.set_ip6_ra_event_subscription(enable=1)
+        self.addCleanup(self.set_ip6_ra_event_subscription, enable=0)
 
         prefix_info_1 = ICMPv6NDOptPrefixInfo(
             prefix="1::2",
@@ -1563,6 +1574,64 @@ class TestIPv6RD(TestIPv6ND):
 
         self.verify_prefix_info(ev.prefixes[0], prefix_info_1)
         self.verify_prefix_info(ev.prefixes[1], prefix_info_2)
+
+    def test_rd_receive_router_advertisement_accept_toggle(self):
+        """Verify RA processing can be disabled per interface"""
+
+        self.set_ip6_ra_event_subscription(enable=1)
+        self.addCleanup(self.set_ip6_ra_event_subscription, enable=0)
+
+        self.vapi.collect_events()
+        err_counter = "/err/ip6-icmp-input/router_advertisement_accept_ra_disabled"
+        err_before = self.statistics.get_err_counter(err_counter)
+
+        prefix_info = ICMPv6NDOptPrefixInfo(
+            prefix="2001:db8::",
+            prefixlen=64,
+            validlifetime=120,
+            preferredlifetime=60,
+            L=1,
+            A=1,
+        )
+
+        p = (
+            Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac)
+            / IPv6(dst=self.pg1.local_ip6_ll, src=mk_ll_addr(self.pg1.remote_mac))
+            / ICMPv6ND_RA()
+            / prefix_info
+        )
+
+        # disable RA acceptance
+        # accept_ra=1, is_no=1 -> explicitly sets runtime accept to 0 (drop)
+        self.vapi.sw_interface_ip6nd_ra_config_v2(
+            sw_if_index=self.pg1.sw_if_index, accept_ra=1, is_no=1
+        )
+        self.pg1.add_stream([p])
+        self.pg_start()
+
+        # verify no RA event is delivered when RA acceptance is disabled
+        with self.assertRaises(Exception):
+            self.vapi.wait_for_event(1, "ip6_ra_event")
+        # verify RA packet was actually seen and dropped with the disabled-RA reason
+        err_after = self.statistics.get_err_counter(err_counter)
+        self.assertGreaterEqual(
+            err_after,
+            err_before + 1,
+            "Expected RA disabled drop counter to increase",
+        )
+
+        # enable RA acceptance
+        # accept_ra=1 (with implicit is_no=0) -> explicitly sets runtime accept to 1 (accept)
+        self.vapi.sw_interface_ip6nd_ra_config_v2(
+            sw_if_index=self.pg1.sw_if_index, accept_ra=1
+        )
+        self.pg1.add_stream([p])
+        self.pg_start()
+
+        # verify RA event is received and one prefix is present which matches the expected value
+        ev = self.vapi.wait_for_event(10, "ip6_ra_event")
+        self.assert_equal(ev.n_prefixes, 1)
+        self.verify_prefix_info(ev.prefixes[0], prefix_info)
 
 
 class TestIPv6RDControlPlane(TestIPv6ND):

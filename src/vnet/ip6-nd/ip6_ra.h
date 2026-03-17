@@ -61,6 +61,7 @@ typedef struct ip6_ra_t_
   u32 sw_if_index;
   int send_radv;  /* radv on/off on this interface -  set by config */
   int cease_radv; /* we are ceasing  to send  - set byf config */
+  int accept_ra;  /* accept/reject incoming RAs on this interface - set by config */
   int send_unicast;
   int adv_link_layer_address;
   int prefix_option;
@@ -108,12 +109,10 @@ typedef struct ip6_ra_t_
 
 extern ip6_ra_t *ip6_ra_get_itf (u32 sw_if_index);
 
-extern int ip6_ra_config (vlib_main_t * vm, u32 sw_if_index,
-			  u8 suppress, u8 managed, u8 other,
-			  u8 ll_option, u8 send_unicast, u8 cease,
-			  u8 use_lifetime, u32 lifetime,
-			  u32 initial_count, u32 initial_interval,
-			  u32 max_interval, u32 min_interval, u8 is_no);
+extern int ip6_ra_config (vlib_main_t *vm, u32 sw_if_index, u8 suppress, u8 managed, u8 other,
+			  u8 ll_option, u8 send_unicast, u8 cease, u8 use_lifetime, u32 lifetime,
+			  u32 initial_count, u32 initial_interval, u32 max_interval,
+			  u32 min_interval, u8 is_no, u8 accept_ra);
 
 extern int ip6_ra_prefix (vlib_main_t * vm, u32 sw_if_index,
 			  ip6_address_t * prefix_addr, u8 prefix_len,

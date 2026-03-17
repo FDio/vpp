@@ -1689,6 +1689,12 @@ counters icmp6 {
     units "packets";
     description "router advertisement source not link local";
   };
+  router_advertisement_accept_ra_disabled {
+    severity error;
+    type counter64;
+    units "packets";
+    description "router advertisement dropped since ra-accept is disabled";
+  };
   router_advertisements_tx {
     severity info;
     type counter64;
