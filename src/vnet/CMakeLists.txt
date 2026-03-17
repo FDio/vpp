@@ -513,6 +513,7 @@ list(APPEND VNET_SOURCES
 
 list(APPEND VNET_HEADERS
   crypto/crypto.h
+  crypto/hash.h
 )
 
 list(APPEND VNET_MULTIARCH_SOURCES crypto/node.c)
