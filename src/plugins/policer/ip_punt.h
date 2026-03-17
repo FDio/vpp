@@ -8,6 +8,7 @@
 
 #include <policer/policer.h>
 #include <policer/police_inlines.h>
+#include <policer/policer_op.h>
 
 /**
  * IP4 punt policer configuration
@@ -48,8 +49,49 @@ extern ip_punt_policer_t ip4_punt_policer_cfg;
 extern vlib_node_registration_t ip6_punt_policer_node;
 extern ip_punt_policer_t ip6_punt_policer_cfg;
 
-void ip4_punt_policer_add_del (u8 is_add, u32 policer_index);
-void ip6_punt_policer_add_del (u8 is_add, u32 policer_index);
+int ip4_punt_policer_add_del (u8 is_add, u32 policer_index);
+int ip6_punt_policer_add_del (u8 is_add, u32 policer_index);
+
+static_always_inline int
+ip46_punt_policer_add_del (u8 is_add, u32 policer_index, u8 is_v6)
+{
+  const char *ip_punt_feature_name = is_v6 ? "ip6-punt" : "ip4-punt";
+  const char *ip_punt_node_name = is_v6 ? "ip6-punt-policer" : "ip4-punt-policer";
+  ip_punt_policer_t *ip_punt_policer_cfg = is_v6 ? &ip6_punt_policer_cfg : &ip4_punt_policer_cfg;
+  int call_feature_enable_disable = 1;
+
+  if (is_add)
+    {
+      int err = policer_lock (policer_index);
+      if (err < 0)
+	return err;
+
+      if (ip_punt_policer_cfg->policer_index != ~0)
+	{
+	  policer_unlock (ip_punt_policer_cfg->policer_index);
+	  call_feature_enable_disable = 0;
+	}
+
+      ip_punt_policer_cfg->policer_index = policer_index;
+    }
+  else if (ip_punt_policer_cfg->policer_index != ~0)
+    {
+      int err = policer_unlock (ip_punt_policer_cfg->policer_index);
+      if (err < 0)
+	return err;
+
+      ip_punt_policer_cfg->policer_index = ~0;
+    }
+  else
+    {
+      call_feature_enable_disable = 0;
+    }
+
+  if (call_feature_enable_disable)
+    vnet_feature_enable_disable (ip_punt_feature_name, ip_punt_node_name, 0, is_add, 0, 0);
+
+  return 0;
+}
 
 /**
  * IP punt policing node function

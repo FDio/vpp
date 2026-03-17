@@ -63,12 +63,13 @@ typedef enum
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-  u32 single_rate; // 1 = single rate policer, 0 = two rate policer
-  u32 color_aware; // for hierarchical policing
   u32 scale;	   // power-of-2 shift amount for lower rates
+  u32 refcount;
   qos_action_type_en action[3];
   ip_dscp_t mark_dscp[3];
-  u8 pad[2];
+  u8 single_rate; // 1 = single rate policer, 0 = two rate policer
+  u8 color_aware; // for hierarchical policing
+  u8 pad[4];
 
   // Fields are marked as 2R if they are only used for a 2-rate policer,
   // and MOD if they are modified as part of the update operation.
