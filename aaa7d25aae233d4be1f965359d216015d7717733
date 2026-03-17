@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "65ec62ef_a02e99fe",
+        "filename": "src/vnet/sfdp/lookup/node.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 466,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2026-03-17T17:33:20Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "46cfcaab_100c3db6",
+      "revId": "aaa7d25aae233d4be1f965359d216015d7717733",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "444d0808_b416f93e",
@@ -31,6 +49,24 @@
       "writtenOn": "2026-03-17T10:25:35Z",
       "side": 1,
       "message": "It seems you overwrote the changes to use the hardware interface index",
+      "revId": "aaa7d25aae233d4be1f965359d216015d7717733",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "86b03dbd_e15bf277",
+        "filename": "src/vnet/sfdp/lookup/node.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 646,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2026-03-17T17:33:20Z",
+      "side": 1,
+      "message": "no, it\u0027s done in `sfdp_flow_offload_create()`",
+      "parentUuid": "444d0808_b416f93e",
       "revId": "aaa7d25aae233d4be1f965359d216015d7717733",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
