@@ -204,7 +204,7 @@ jobs:
 
       - name: Build VPP
         # yamllint disable-line rule:line-length
-        uses: fdio/vpp/.github/actions/vpp-build@43b0339292476442bd7e2429e2ae1075918d8f83
+        uses: fdio/vpp/.github/actions/vpp-build@3c0b690a135be65922fec705983478351a1b80b6
         with:
           LOG_DIR: ${{ env.LOG_DIR }}
           WORKSPACE: ${{ env.WORKSPACE }}
