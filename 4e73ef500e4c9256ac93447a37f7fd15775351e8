@@ -34,6 +34,24 @@
       "parentUuid": "0740818c_b7ebdddd",
       "revId": "4e73ef500e4c9256ac93447a37f7fd15775351e8",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "66474a96_922c436b",
+        "filename": "src/plugins/policer/policer_op.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 227,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-03-17T14:20:50Z",
+      "side": 1,
+      "message": "No it should be\n\n    vec_len (pm-\u003epolicer_index_by_sw_if_index[dir]) \u003c\u003d sw_if_index\n\nNote the `[dir]`.",
+      "parentUuid": "da55aebe_24b0b057",
+      "revId": "4e73ef500e4c9256ac93447a37f7fd15775351e8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
