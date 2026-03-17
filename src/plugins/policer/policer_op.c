@@ -216,13 +216,17 @@ policer_input (u32 policer_index, u32 sw_if_index, vlib_dir_t dir, bool apply)
 
   if (apply)
     {
-      vec_validate (pm->policer_index_by_sw_if_index[dir], sw_if_index);
+      vec_validate_init_empty (pm->policer_index_by_sw_if_index[dir], sw_if_index, ~0);
       pm->policer_index_by_sw_if_index[dir][sw_if_index] = policer_index;
 
       /* Pre-compute L2 overhead for this interface (used by L3 input path) */
       vec_validate (pm->l2_overhead_by_sw_if_index[dir], sw_if_index);
       pm->l2_overhead_by_sw_if_index[dir][sw_if_index] =
 	policer_compute_l2_overhead (pm->vnet_main, sw_if_index, dir);
+    }
+  else if (vec_len (pm->policer_index_by_sw_if_index) <= sw_if_index)
+    {
+      return VNET_API_ERROR_INVALID_SW_IF_INDEX;
     }
   else
     {
