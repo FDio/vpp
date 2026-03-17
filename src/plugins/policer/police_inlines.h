@@ -8,6 +8,7 @@
 
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
+#include <vnet/ethernet/ethernet.h>
 #include <policer/policer.h>
 
 #define IP4_NON_DSCP_BITS 0x03
@@ -18,31 +19,41 @@
 static_always_inline void
 policer_mark (vlib_buffer_t *b, ip_dscp_t dscp)
 {
-  ethernet_header_t *eh;
   ip4_header_t *ip4h;
   ip6_header_t *ip6h;
+  u16 eh_size = sizeof (ethernet_header_t);
   u16 type;
 
-  eh = (ethernet_header_t *) b->data;
-  type = clib_net_to_host_u16 (eh->type);
+  /*
+   * The Ethernet header is always at b->data (buffer start), regardless of
+   * current_data position. Parse VLAN tags to find the actual EtherType
+   * and IP header offset.
+   */
+  type = clib_net_to_host_u16 (*(u16 *) &b->data[eh_size - sizeof (u16)]);
+  if (PREDICT_FALSE (ethernet_frame_is_tagged (type)))
+    {
+      eh_size += sizeof (ethernet_vlan_header_t);
+      type = clib_net_to_host_u16 (*(u16 *) &b->data[eh_size - sizeof (u16)]);
+      if (PREDICT_FALSE (ethernet_frame_is_tagged (type)))
+	{
+	  eh_size += sizeof (ethernet_vlan_header_t);
+	  type = clib_net_to_host_u16 (*(u16 *) &b->data[eh_size - sizeof (u16)]);
+	}
+    }
 
   if (PREDICT_TRUE (type == ETHERNET_TYPE_IP4))
     {
-      ip4h = (ip4_header_t *) &(b->data[sizeof (ethernet_header_t)]);
-      ;
+      ip4h = (ip4_header_t *) &(b->data[eh_size]);
       ip4h->tos &= IP4_NON_DSCP_BITS;
       ip4h->tos |= dscp << IP4_DSCP_SHIFT;
       ip4h->checksum = ip4_header_checksum (ip4h);
     }
-  else
+  else if (PREDICT_TRUE (type == ETHERNET_TYPE_IP6))
     {
-      if (PREDICT_TRUE (type == ETHERNET_TYPE_IP6))
-	{
-	  ip6h = (ip6_header_t *) &(b->data[sizeof (ethernet_header_t)]);
-	  ip6h->ip_version_traffic_class_and_flow_label &= clib_host_to_net_u32 (IP6_NON_DSCP_BITS);
-	  ip6h->ip_version_traffic_class_and_flow_label |=
-	    clib_host_to_net_u32 (dscp << IP6_DSCP_SHIFT);
-	}
+      ip6h = (ip6_header_t *) &(b->data[eh_size]);
+      ip6h->ip_version_traffic_class_and_flow_label &= clib_host_to_net_u32 (IP6_NON_DSCP_BITS);
+      ip6h->ip_version_traffic_class_and_flow_label |=
+	clib_host_to_net_u32 (dscp << IP6_DSCP_SHIFT);
     }
 }
 
