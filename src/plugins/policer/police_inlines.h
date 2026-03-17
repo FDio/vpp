@@ -16,33 +16,29 @@
 #define IP6_DSCP_SHIFT	  22
 
 static_always_inline void
-policer_mark (vlib_buffer_t *b, ip_dscp_t dscp)
+policer_mark (vlib_buffer_t *b, ip_dscp_t dscp, u16 l2_overhead)
 {
-  ethernet_header_t *eh;
   ip4_header_t *ip4h;
   ip6_header_t *ip6h;
+  u16 eh_size;
   u16 type;
 
-  eh = (ethernet_header_t *) b->data;
-  type = clib_net_to_host_u16 (eh->type);
+  eh_size = clib_max (l2_overhead, sizeof (ethernet_header_t));
+  type = clib_net_to_host_u16 (*(u16 *) &b->data[eh_size - sizeof (u16)]);
 
   if (PREDICT_TRUE (type == ETHERNET_TYPE_IP4))
     {
-      ip4h = (ip4_header_t *) &(b->data[sizeof (ethernet_header_t)]);
-      ;
+      ip4h = (ip4_header_t *) &(b->data[eh_size]);
       ip4h->tos &= IP4_NON_DSCP_BITS;
       ip4h->tos |= dscp << IP4_DSCP_SHIFT;
       ip4h->checksum = ip4_header_checksum (ip4h);
     }
-  else
+  else if (PREDICT_TRUE (type == ETHERNET_TYPE_IP6))
     {
-      if (PREDICT_TRUE (type == ETHERNET_TYPE_IP6))
-	{
-	  ip6h = (ip6_header_t *) &(b->data[sizeof (ethernet_header_t)]);
-	  ip6h->ip_version_traffic_class_and_flow_label &= clib_host_to_net_u32 (IP6_NON_DSCP_BITS);
-	  ip6h->ip_version_traffic_class_and_flow_label |=
-	    clib_host_to_net_u32 (dscp << IP6_DSCP_SHIFT);
-	}
+      ip6h = (ip6_header_t *) &(b->data[eh_size]);
+      ip6h->ip_version_traffic_class_and_flow_label &= clib_host_to_net_u32 (IP6_NON_DSCP_BITS);
+      ip6h->ip_version_traffic_class_and_flow_label |=
+	clib_host_to_net_u32 (dscp << IP6_DSCP_SHIFT);
     }
 }
 
@@ -84,7 +80,7 @@ policer_police (vlib_main_t *vm, vlib_buffer_t *b, u32 policer_index, u64 time_i
   act = pol->action[col];
   vlib_increment_combined_counter (&policer_counters[col], vm->thread_index, policer_index, 1, len);
   if (PREDICT_TRUE (act == QOS_ACTION_MARK_AND_TRANSMIT))
-    policer_mark (b, pol->mark_dscp[col]);
+    policer_mark (b, pol->mark_dscp[col], l2_overhead);
 
   return act;
 }
