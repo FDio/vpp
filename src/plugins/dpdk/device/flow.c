@@ -742,7 +742,7 @@ dpdk_flow_ops_fn (vnet_main_t *vnm, vnet_flow_dev_op_t op, u32 dev_instance, u32
 
   if (op == VNET_FLOW_DEV_OP_DEL_FLOW)
     {
-      fe = vec_elt_at_index (xd->flow_entries, flow->driver_private_data);
+      fe = vec_elt_at_index (xd->flow_entries, flow->driver_data.opaque);
 
       if ((rv = rte_flow_destroy (xd->port_id, fe->handle, &xd->last_flow_error)))
 	return VNET_FLOW_ERROR_INTERNAL;
@@ -758,6 +758,8 @@ dpdk_flow_ops_fn (vnet_main_t *vnm, vnet_flow_dev_op_t op, u32 dev_instance, u32
 
       clib_memset (fe, 0, sizeof (*fe));
       pool_put (xd->flow_entries, fe);
+      flow->driver_data.hw_if_index = ~0;
+      flow->driver_data.opaque = ~0;
 
       goto disable_rx_offload;
     }
@@ -828,7 +830,8 @@ dpdk_flow_ops_fn (vnet_main_t *vnm, vnet_flow_dev_op_t op, u32 dev_instance, u32
       goto done;
     }
 
-  flow->driver_private_data = fe - xd->flow_entries;
+  flow->driver_data.opaque = fe - xd->flow_entries;
+  flow->driver_data.hw_if_index = xd->hw_if_index;
 
 done:
   if (rv)
@@ -854,7 +857,7 @@ format_dpdk_flow (u8 * s, va_list * args)
 {
   u32 dev_instance = va_arg (*args, u32);
   u32 flow_index = va_arg (*args, u32);
-  uword private_data = va_arg (*args, uword);
+  uword flow_entry_index = va_arg (*args, u32);
   dpdk_main_t *dm = &dpdk_main;
   dpdk_device_t *xd = vec_elt_at_index (dm->devices, dev_instance);
   dpdk_flow_entry_t *fe;
@@ -871,10 +874,10 @@ format_dpdk_flow (u8 * s, va_list * args)
       return s;
     }
 
-  if (private_data >= vec_len (xd->flow_entries))
+  if (flow_entry_index >= vec_len (xd->flow_entries))
     return format (s, "unknown flow");
 
-  fe = vec_elt_at_index (xd->flow_entries, private_data);
+  fe = vec_elt_at_index (xd->flow_entries, flow_entry_index);
   s = format (s, "mark %u", fe->mark);
   return s;
 }
