@@ -196,6 +196,8 @@ typedef enum
   _ (62, L3_DST_ONLY, "l3-dst-only")                                          \
   _ (63, L3_SRC_ONLY, "l3-src-only")
 
+#define IS_FLOW_ENABLED(_f) ((_f)->driver_data.hw_if_index != ~0)
+
 typedef enum
 {
 #define _(v, n, s) VNET_FLOW_RSS_TYPES_##n = v,
@@ -266,6 +268,15 @@ foreach_flow_type;
 #undef _
 #undef _fe
 
+/* hw_if_index is written by the backing driver.
+ * ~0 is a sentinel value to know if the flow has
+ * been successfully installed or not. */
+typedef struct
+{
+  uword opaque;
+  u32 hw_if_index;
+} vnet_flow_driver_data_t;
+
 /* main flow struct */
 typedef struct
 {
@@ -308,8 +319,7 @@ typedef struct
 #undef _
   };
 
-  uword driver_private_data;
-  u32 hw_if_index;
+  vnet_flow_driver_data_t driver_data;
 } vnet_flow_t;
 
 int vnet_flow_get_range (vnet_main_t *vnm, char *owner, u32 count, u32 *start);
