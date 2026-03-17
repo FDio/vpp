@@ -64,9 +64,20 @@ policer_del (vlib_main_t *vm, u32 policer_index)
   policer_main_t *pm = &policer_main;
   policer_t *policer;
   uword *p;
+  u32 ii;
 
   if (pool_is_free_index (pm->policers, policer_index))
     return VNET_API_ERROR_NO_SUCH_ENTRY;
+
+  /* Reject deletion if policer is still applied to any interface */
+  for (int dir = 0; dir < VLIB_N_RX_TX; dir++)
+    {
+      vec_foreach_index (ii, pm->policer_index_by_sw_if_index[dir])
+	{
+	  if (pm->policer_index_by_sw_if_index[dir][ii] == policer_index)
+	    return VNET_API_ERROR_INSTANCE_IN_USE;
+	}
+    }
 
   policer = &pm->policers[policer_index];
 
@@ -216,7 +227,7 @@ policer_input (u32 policer_index, u32 sw_if_index, vlib_dir_t dir, bool apply)
 
   if (apply)
     {
-      vec_validate (pm->policer_index_by_sw_if_index[dir], sw_if_index);
+      vec_validate_init_empty (pm->policer_index_by_sw_if_index[dir], sw_if_index, ~0);
       pm->policer_index_by_sw_if_index[dir][sw_if_index] = policer_index;
 
       /* Pre-compute L2 overhead for this interface (used by L3 input path) */

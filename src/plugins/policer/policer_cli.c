@@ -434,6 +434,9 @@ policer_del_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_comma
     case VNET_API_ERROR_NO_SUCH_ENTRY:
       error = clib_error_return (0, "No such policer");
       break;
+    case VNET_API_ERROR_INSTANCE_IN_USE:
+      error = clib_error_return (0, "Policer still applied to an interface");
+      break;
     }
 
 done:
