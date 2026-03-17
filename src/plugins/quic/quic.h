@@ -263,11 +263,9 @@ typedef struct quic_main_
   vlib_node_registration_t *quic_input_node;
   u32 app_index;
   quic_worker_ctx_t *wrk_ctx;
-  u8 vnet_crypto_init;
-  u8 default_crypto_engine; /**< Used if you do connect with CRYPTO_ENGINE_NONE
-			       (0) */
-  u64 max_packets_per_key;  /**< number of packets that can be sent without a
-			       key update */
+  u8 enable_vnet_crypto;
+  u8 default_crypto_engine; /**< Used if you do connect with CRYPTO_ENGINE_NONE (0) */
+  u64 max_packets_per_key;  /**< number of packets that can be sent without a key update */
   u8 default_quic_cc;
   u8 enable_tx_pacing; /**< enable tx pacing for connections */
 

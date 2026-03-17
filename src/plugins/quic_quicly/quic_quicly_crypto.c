@@ -51,9 +51,11 @@ void
 quic_quicly_crypto_init (quic_quicly_main_t *qqm)
 {
   quic_quicly_crypto_main_t *qqcm = &quic_quicly_crypto_main;
+  quic_main_t *qm = qqm->qm;
   u8 seed[32];
 
   QUIC_DBG (2, "quic_quicly_crypto init");
+
   qqcm->qqm = qqm;
 
   if (syscall (SYS_getrandom, &seed, sizeof (seed), 0) != sizeof (seed))
@@ -62,6 +64,30 @@ quic_quicly_crypto_init (quic_quicly_main_t *qqm)
 
   clib_bihash_init_24_8 (&qqcm->crypto_ctx_hash, "quic (quicly engine) crypto ctx", 64, 128 << 10);
   quic_quicly_register_cipher_suite (CRYPTO_ENGINE_PICOTLS, ptls_openssl_cipher_suites);
+
+  if (qm->enable_vnet_crypto)
+    {
+      if (vec_len (cm->engines) == 0)
+	{
+	  clib_warning ("No crypto engines available");
+	  return;
+	}
+      if (quic_quicly_register_cipher_suite (CRYPTO_ENGINE_VPP, quic_quicly_crypto_cipher_suites))
+	{
+	  u8 empty_key[32] = {};
+	  u32 i;
+	  vec_validate (qqcm->per_thread_crypto_ctxs, qm->num_threads);
+	  for (i = 0; i < qm->num_threads; i++)
+	    {
+	      qqcm->per_thread_crypto_ctxs[i] =
+		vnet_crypto_ctx_create (VNET_CRYPTO_ALG_AES_256_CTR);
+	      if (qqcm->per_thread_crypto_ctxs[i])
+		vnet_crypto_ctx_set_cipher_key (qqcm->per_thread_crypto_ctxs[i], empty_key, 32);
+	    }
+
+	  qqcm->vnet_crypto_enabled = 1;
+	}
+    }
 }
 
 void
@@ -292,38 +318,6 @@ quic_quicly_crypto_context_init_data (quic_quicly_crypto_ctx_t *crctx, quic_ctx_
   app_certkey_int_ctx_t *cki;
 
   QUIC_DBG (2, "Init crctx: crctx_ndx 0x%08lx", crctx->ctx.ctx_index);
-
-  if (PREDICT_FALSE (!qm->vnet_crypto_init))
-    {
-      qm->vnet_crypto_init = 1;
-      if ((vec_len (cm->engines) == 0) ||
-	  (qm->default_crypto_engine == CRYPTO_ENGINE_PICOTLS))
-	{
-	  qqcm->vnet_crypto_enabled = 0;
-	  (void) quic_quicly_register_cipher_suite (
-	    CRYPTO_ENGINE_PICOTLS, ptls_openssl_cipher_suites);
-	}
-      else
-	{
-	  qqcm->vnet_crypto_enabled = 1;
-	  if (quic_quicly_register_cipher_suite (
-		CRYPTO_ENGINE_VPP, quic_quicly_crypto_cipher_suites))
-	    {
-	      u8 empty_key[32] = {};
-	      u32 i;
-	      qm->default_crypto_engine = ctx->crypto_engine =
-		CRYPTO_ENGINE_VPP;
-	      vec_validate (qqcm->per_thread_crypto_ctxs, qm->num_threads);
-	      for (i = 0; i < qm->num_threads; i++)
-		{
-		  qqcm->per_thread_crypto_ctxs[i] =
-		    vnet_crypto_ctx_create (VNET_CRYPTO_ALG_AES_256_CTR);
-		  if (qqcm->per_thread_crypto_ctxs[i])
-		    vnet_crypto_ctx_set_cipher_key (qqcm->per_thread_crypto_ctxs[i], empty_key, 32);
-		}
-	    }
-	}
-    }
 
   quicly_ctx = &crctx->quicly_ctx;
   ptls_ctx = &crctx->ptls_ctx;

@@ -98,7 +98,7 @@ quic_quicly_crypto_context_reserve_data (quic_quicly_crypto_ctx_t *crctx)
 
 #define quic_quicly_crypto_engine_is_vpp()                                                         \
   (quic_quicly_crypto_main.vnet_crypto_enabled &&                                                  \
-   quic_quicly_crypto_main.qqm->qm->default_crypto_engine)
+   quic_quicly_crypto_main.qqm->qm->default_crypto_engine == CRYPTO_ENGINE_VPP)
 
 extern quicly_crypto_engine_t quic_quicly_crypto_engine;
 extern ptls_cipher_suite_t *quic_quicly_crypto_cipher_suites[];
