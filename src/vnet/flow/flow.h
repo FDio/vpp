@@ -266,6 +266,12 @@ foreach_flow_type;
 #undef _
 #undef _fe
 
+typedef struct
+{
+  u32 hw_if_index;
+  u32 opaque;
+} vnet_flow_driver_data_t;
+
 /* main flow struct */
 typedef struct
 {
@@ -308,8 +314,7 @@ typedef struct
 #undef _
   };
 
-  uword driver_private_data;
-  u32 hw_if_index;
+  vnet_flow_driver_data_t driver_data;
 } vnet_flow_t;
 
 int vnet_flow_get_range (vnet_main_t *vnm, char *owner, u32 count, u32 *start);

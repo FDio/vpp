@@ -742,7 +742,7 @@ dpdk_flow_ops_fn (vnet_main_t *vnm, vnet_flow_dev_op_t op, u32 dev_instance, u32
 
   if (op == VNET_FLOW_DEV_OP_DEL_FLOW)
     {
-      fe = vec_elt_at_index (xd->flow_entries, flow->driver_private_data);
+      fe = vec_elt_at_index (xd->flow_entries, flow->driver_data.opaque);
 
       if ((rv = rte_flow_destroy (xd->port_id, fe->handle, &xd->last_flow_error)))
 	return VNET_FLOW_ERROR_INTERNAL;
@@ -758,6 +758,8 @@ dpdk_flow_ops_fn (vnet_main_t *vnm, vnet_flow_dev_op_t op, u32 dev_instance, u32
 
       clib_memset (fe, 0, sizeof (*fe));
       pool_put (xd->flow_entries, fe);
+      flow->driver_data.hw_if_index = ~0;
+      flow->driver_data.opaque = ~0;
 
       goto disable_rx_offload;
     }
@@ -832,7 +834,8 @@ dpdk_flow_ops_fn (vnet_main_t *vnm, vnet_flow_dev_op_t op, u32 dev_instance, u32
       goto done;
     }
 
-  flow->driver_private_data = fe - xd->flow_entries;
+  flow->driver_data.opaque = fe - xd->flow_entries;
+  flow->driver_data.hw_if_index = xd->hw_if_index;
 
 done:
   if (rv)
