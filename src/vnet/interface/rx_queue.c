@@ -76,7 +76,7 @@ vnet_hw_if_register_rx_queue (vnet_main_t *vnm, u32 hw_if_index, u32 queue_id,
   rxq->dev_instance = hi->dev_instance;
   rxq->queue_id = queue_id;
   rxq->thread_index = thread_index;
-  rxq->mode = VNET_HW_IF_RX_MODE_POLLING;
+  rxq->mode = hi->default_rx_mode;
   rxq->file_index = ~0;
 
   log_debug ("register: interface %v queue-id %u thread %u", hi->name,
