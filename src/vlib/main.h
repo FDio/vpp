@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 OR MIT
- * Copyright (c) 2015 Cisco and/or its affiliates.
+ * Copyright (c) 2015-2026 Cisco and/or its affiliates.
  * Copyright (c) 2008 Eliot Dresselhaus
  */
 
@@ -225,7 +225,7 @@ typedef struct vlib_main_t
     (struct vlib_main_t *, u64 t, int leave);
 
   /* Need to check the frame queues */
-  volatile uword check_frame_queues;
+  u8 check_frame_queues;
 
   /* RPC requests, main thread only */
   uword *pending_rpc_requests;
