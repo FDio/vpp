@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "ca3066c1_182b57de",
+        "filename": "src/plugins/gtpu/gtpu.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1354,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-03-18T13:04:12Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9dd62c9f_2de41787",
+      "revId": "02ef3fd589c8789e6a6bdda151b76e2514e5831e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "5bf51440_d0025f5d",
@@ -35,6 +53,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "0db17976_53e5dd00",
+        "filename": "src/plugins/vxlan/vxlan.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1216,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-03-18T13:04:12Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5bf51440_d0025f5d",
+      "revId": "02ef3fd589c8789e6a6bdda151b76e2514e5831e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "325c4add_076e8877",
@@ -48,6 +84,24 @@
       "writtenOn": "2026-03-18T10:30:21Z",
       "side": 1,
       "message": "I think this check might be too strong, it prevents doing flow add and then flow del for example",
+      "revId": "02ef3fd589c8789e6a6bdda151b76e2514e5831e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3782e39c_ab098d58",
+        "filename": "src/vnet/flow/flow.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 41,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-03-18T13:04:12Z",
+      "side": 1,
+      "message": "I don\u0027t think this check is the issue, rather I should check for the returned value in vnet_flow_del",
+      "parentUuid": "325c4add_076e8877",
       "revId": "02ef3fd589c8789e6a6bdda151b76e2514e5831e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
