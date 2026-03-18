@@ -30,6 +30,24 @@ vl (void *p)
 vlib_worker_thread_t *vlib_worker_threads;
 vlib_thread_main_t vlib_thread_main;
 
+void
+vlib_worker_thread_register_one_time_release_fn (vlib_worker_thread_one_time_release_fn_t *fn,
+						 uword arg)
+{
+  vlib_global_main_t *vgm = vlib_get_global_main ();
+  vlib_worker_thread_one_time_release_fn_elt_t *elt;
+
+  ASSERT (fn);
+
+  elt = clib_mem_alloc_no_fail (sizeof (*elt));
+  elt[0] = (vlib_worker_thread_one_time_release_fn_elt_t){
+    .fn = fn,
+    .arg = arg,
+  };
+
+  elt->next = __atomic_exchange_n (&vgm->worker_thread_one_time_release_fns, elt, __ATOMIC_ACQ_REL);
+}
+
 /*
  * Barrier tracing can be enabled on a normal build to collect information
  * on barrier use, including timings and call stacks.  Deliberately not
@@ -1452,6 +1470,22 @@ vlib_worker_thread_barrier_release (vlib_main_t * vm)
 			     (vlib_get_n_threads () - 1));
       now = vlib_time_now (vm);
       t_update_main = now - vm->barrier_epoch;
+    }
+
+  if (PREDICT_FALSE (vgm->worker_thread_one_time_release_fns != 0))
+    {
+      vlib_worker_thread_one_time_release_fn_elt_t *rfn, *rfn_next;
+
+      rfn = vgm->worker_thread_one_time_release_fns;
+      vgm->worker_thread_one_time_release_fns = 0;
+
+      while (rfn)
+	{
+	  rfn_next = rfn->next;
+	  rfn->fn (vm, rfn->arg);
+	  clib_mem_free (rfn);
+	  rfn = rfn_next;
+	}
     }
 
   deadline = now + BARRIER_SYNC_TIMEOUT;

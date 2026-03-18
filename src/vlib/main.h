@@ -246,6 +246,15 @@ typedef struct vlib_main_t
 #endif
 } vlib_main_t;
 
+typedef void (vlib_worker_thread_one_time_release_fn_t) (vlib_main_t *vm, uword arg);
+
+typedef struct vlib_worker_thread_one_time_release_fn_elt_t
+{
+  struct vlib_worker_thread_one_time_release_fn_elt_t *next;
+  vlib_worker_thread_one_time_release_fn_t *fn;
+  uword arg;
+} vlib_worker_thread_one_time_release_fn_elt_t;
+
 typedef struct vlib_global_main_t
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
@@ -267,6 +276,9 @@ typedef struct vlib_global_main_t
 
   /* post-mortem callbacks */
   void (**post_mortem_callbacks) (void);
+
+  /* One-time callbacks invoked before releasing the worker barrier */
+  vlib_worker_thread_one_time_release_fn_elt_t *worker_thread_one_time_release_fns;
 
   /*
    * Need to call vlib_worker_thread_node_runtime_update before
