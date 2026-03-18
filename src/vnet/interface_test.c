@@ -438,6 +438,24 @@ api_sw_interface_set_rx_mode (vat_main_t *vam)
 }
 
 static int
+api_sw_interface_set_default_rx_mode (vat_main_t *vam)
+{
+  return -1;
+}
+
+static int
+api_sw_interface_get_default_rx_mode (vat_main_t *vam)
+{
+  return -1;
+}
+
+static void
+vl_api_sw_interface_get_default_rx_mode_reply_t_handler (
+  vl_api_sw_interface_get_default_rx_mode_reply_t *mp)
+{
+}
+
+static int
 api_sw_interface_set_unnumbered (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;

@@ -841,7 +841,7 @@ vnet_register_interface (vnet_main_t * vnm,
 
   hw_index = hw - im->hw_interfaces;
   hw->hw_if_index = hw_index;
-  hw->default_rx_mode = VNET_HW_IF_RX_MODE_POLLING;
+  hw->default_rx_mode = im->default_rx_mode;
 
   if (hw_class->tx_hash_fn_type == VNET_HASH_FN_TYPE_ETHERNET ||
       hw_class->tx_hash_fn_type == VNET_HASH_FN_TYPE_IP)
@@ -1405,6 +1405,9 @@ vnet_interface_init (vlib_main_t * vm)
   clib_spinlock_init (&im->sw_if_counter_lock);
   clib_spinlock_lock (&im->sw_if_counter_lock);	/* should be no need */
 
+  /* default global rx-mode for newly created interfaces */
+  im->default_rx_mode = VNET_HW_IF_RX_MODE_POLLING;
+
   vec_validate (im->sw_if_counters, VNET_N_SIMPLE_INTERFACE_COUNTER - 1);
 #define _(E,n,p)							\
   im->sw_if_counters[VNET_INTERFACE_COUNTER_##E].name = #n;		\
@@ -1469,6 +1472,28 @@ vnet_interface_init (vlib_main_t * vm)
 }
 
 VLIB_INIT_FUNCTION (vnet_interface_init);
+
+static clib_error_t *
+vnet_interface_config (vlib_main_t *vm, unformat_input_t *input)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_interface_main_t *im = &vnm->interface_main;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "default-rx-mode polling"))
+	im->default_rx_mode = VNET_HW_IF_RX_MODE_POLLING;
+      else if (unformat (input, "default-rx-mode interrupt"))
+	im->default_rx_mode = VNET_HW_IF_RX_MODE_INTERRUPT;
+      else if (unformat (input, "default-rx-mode adaptive"))
+	im->default_rx_mode = VNET_HW_IF_RX_MODE_ADAPTIVE;
+      else
+	return clib_error_return (0, "unknown input '%U'", format_unformat_error, input);
+    }
+  return 0;
+}
+
+VLIB_CONFIG_FUNCTION (vnet_interface_config, "interface");
 
 /* Kludge to renumber interface names [only!] */
 int
