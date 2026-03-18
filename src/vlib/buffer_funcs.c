@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0
- * Copyright(c) 2021 Cisco Systems, Inc.
+ * Copyright(c) 2021-2026 Cisco Systems, Inc.
  */
 
 #include <vppinfra/clib.h>
@@ -358,38 +358,6 @@ CLIB_MULTIARCH_FN (vlib_buffer_enqueue_to_single_next_with_aux64_and_scalar_fn)
 }
 CLIB_MARCH_FN_REGISTRATION (vlib_buffer_enqueue_to_single_next_with_aux64_and_scalar_fn);
 
-static inline vlib_frame_queue_elt_t *
-vlib_get_frame_queue_elt (vlib_frame_queue_main_t *fqm, u32 index,
-			  int dont_wait)
-{
-  vlib_frame_queue_t *fq;
-  u64 nelts, tail, new_tail;
-
-  fq = vec_elt (fqm->vlib_frame_queues, index);
-  ASSERT (fq);
-  nelts = fq->nelts;
-
-retry:
-  tail = __atomic_load_n (&fq->tail, __ATOMIC_ACQUIRE);
-  new_tail = tail + 1;
-
-  if (new_tail >= fq->head + nelts)
-    {
-      if (dont_wait)
-	return 0;
-
-      /* Wait until a ring slot is available */
-      while (new_tail >= fq->head + nelts)
-	vlib_worker_thread_barrier_check ();
-    }
-
-  if (!__atomic_compare_exchange_n (&fq->tail, &tail, new_tail, 0 /* weak */,
-				    __ATOMIC_RELAXED, __ATOMIC_RELAXED))
-    goto retry;
-
-  return fq->elts + (new_tail & (nelts - 1));
-}
-
 static_always_inline u32
 vlib_buffer_enqueue_to_thread_inline (vlib_main_t *vm,
 				      vlib_node_runtime_t *node,
@@ -400,32 +368,71 @@ vlib_buffer_enqueue_to_thread_inline (vlib_main_t *vm,
 {
   u32 drop_list[VLIB_FRAME_SIZE], n_drop = 0;
   vlib_frame_bitmap_t mask, used_elts = {};
+  vlib_frame_queue_t *fq;
   vlib_frame_queue_elt_t *hf = 0;
   clib_thread_index_t thread_index;
+  u8 do_wakeup = 0;
+  u64 nelts, tail, new_tail, head;
   u32 n_comp, off = 0, n_left = n_packets;
 
   thread_index = thread_indices[0];
 
 more:
   clib_mask_compare_u16 (thread_index, thread_indices, mask, n_packets);
-  hf = vlib_get_frame_queue_elt (fqm, thread_index, drop_on_congestion);
+  fq = vec_elt (fqm->vlib_frame_queues, thread_index);
+  ASSERT (fq);
+  nelts = fq->nelts;
 
-  n_comp = clib_compress_u32 (hf ? hf->buffer_index : drop_list + n_drop,
-			      buffer_indices, mask, n_packets);
-  if (with_aux)
-    clib_compress_u32 (hf ? hf->aux_data : drop_list + n_drop, aux_data, mask,
-		       n_packets);
+retry:
+  tail = __atomic_load_n (&fq->tail, __ATOMIC_RELAXED);
+  new_tail = tail + 1;
+  head = __atomic_load_n (&fq->head, __ATOMIC_ACQUIRE);
+
+  if (new_tail >= head + nelts)
+    {
+      if (drop_on_congestion)
+	hf = 0;
+      else
+	{
+	  /* Wait until a ring slot is available */
+	  while (new_tail >= head + nelts)
+	    {
+	      vlib_worker_thread_barrier_check ();
+	      head = __atomic_load_n (&fq->head, __ATOMIC_ACQUIRE);
+	    }
+
+	  goto retry;
+	}
+    }
+  else if (!__atomic_compare_exchange_n (&fq->tail, &tail, new_tail, 0 /* weak */, __ATOMIC_RELAXED,
+					 __ATOMIC_RELAXED))
+    goto retry;
+  else
+    {
+      do_wakeup = (tail == head);
+      hf = fq->elts + (new_tail & (nelts - 1));
+    }
 
   if (hf)
     {
+      n_comp = clib_compress_u32 (hf->buffer_index, buffer_indices, mask, n_packets);
+      if (with_aux)
+	clib_compress_u32 (hf->aux_data, aux_data, mask, n_packets);
+
       if (node->flags & VLIB_NODE_FLAG_TRACE)
 	hf->maybe_trace = 1;
       hf->n_vectors = n_comp;
       __atomic_store_n (&hf->valid, 1, __ATOMIC_RELEASE);
-      vlib_get_main_by_index (thread_index)->check_frame_queues = 1;
+      __atomic_store_n (&vlib_get_main_by_index (thread_index)->check_frame_queues, 1,
+			__ATOMIC_RELAXED);
+      if (do_wakeup)
+	vlib_thread_wakeup (thread_index);
     }
   else
-    n_drop += n_comp;
+    {
+      n_comp = clib_compress_u32 (drop_list + n_drop, buffer_indices, mask, n_packets);
+      n_drop += n_comp;
+    }
 
   n_left -= n_comp;
 
@@ -574,7 +581,8 @@ vlib_frame_queue_dequeue_inline (vlib_main_t *vm, vlib_frame_queue_main_t *fqm,
 
   while (1)
     {
-      if (fq->head == fq->tail)
+      if (__atomic_load_n (&fq->head, __ATOMIC_RELAXED) ==
+	  __atomic_load_n (&fq->tail, __ATOMIC_RELAXED))
 	break;
 
       elt = fq->elts + ((fq->head + 1) & mask);

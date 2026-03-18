@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 OR MIT
- * Copyright (c) 2015 Cisco and/or its affiliates.
+ * Copyright (c) 2015-2026 Cisco and/or its affiliates.
  * Copyright (c) 2008 Eliot Dresselhaus
  */
 
@@ -1497,6 +1497,7 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
   while (1)
     {
       vlib_node_runtime_t *n;
+      uword check_frame_queues;
 
       if (PREDICT_FALSE (_vec_len (vm->pending_rpc_requests) > 0))
 	{
@@ -1509,15 +1510,16 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
       if (!is_main)
 	vlib_worker_thread_barrier_check ();
 
-      if (PREDICT_FALSE (vm->check_frame_queues + frame_queue_check_counter))
+      check_frame_queues = __atomic_exchange_n (&vm->check_frame_queues, 0, __ATOMIC_RELAXED);
+
+      if (PREDICT_FALSE (check_frame_queues + frame_queue_check_counter))
 	{
 	  u32 processed = 0;
 	  vlib_frame_queue_dequeue_fn_t *fn;
 
-	  if (vm->check_frame_queues)
+	  if (check_frame_queues)
 	    {
 	      frame_queue_check_counter = 100;
-	      vm->check_frame_queues = 0;
 	    }
 
 	  vec_foreach (fqm, tm->frame_queue_mains)
