@@ -1072,6 +1072,9 @@ typedef struct
   u8 output_feature_arc_index;
   u8 drop_feature_arc_index;
 
+  /* Default rx-mode for newly created hardware interfaces. */
+  vnet_hw_if_rx_mode default_rx_mode;
+
   /* fast lookup tables */
   u32 *hw_if_index_by_sw_if_index;
   u16 *if_out_arc_end_next_index_by_sw_if_index;
