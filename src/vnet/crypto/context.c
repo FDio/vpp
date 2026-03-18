@@ -15,6 +15,37 @@ VLIB_REGISTER_LOG_CLASS (crypto_log, static) = {
   .subclass_name = "ctx",
 };
 
+static void
+vnet_crypto_ctx_destroy_cb (vlib_main_t *vm __clib_unused, uword arg)
+{
+  vnet_crypto_main_t *cm = &crypto_main;
+  vnet_crypto_ctx_t *ctx = (vnet_crypto_ctx_t *) arg;
+  u8 **indirect_auth_key = 0;
+  vnet_crypto_handler_type_t t;
+  uword key_sz = sizeof (vnet_crypto_ctx_t) + ctx->total_data_sz;
+  u32 index = ctx->index;
+
+  for (t = 0; t < VNET_CRYPTO_HANDLER_N_TYPES; t++)
+    vnet_crypto_ctx_set_engine (ctx, t, VNET_CRYPTO_ENGINE_ID_NONE);
+
+  if (ctx->indirect_auth_key)
+    {
+      indirect_auth_key = (u8 **) (ctx->_data + ctx->auth_key_offset);
+      if (indirect_auth_key[0])
+	{
+	  clib_memset_u8 (indirect_auth_key[0], 0, ctx->auth_key_sz);
+	  clib_mem_free (indirect_auth_key[0]);
+	  indirect_auth_key[0] = 0;
+	}
+    }
+
+  clib_memset_u8 (ctx->_data, 0, ctx->total_data_sz);
+
+  clib_memset (ctx, 0xfe, key_sz);
+  clib_mem_free (ctx);
+  pool_put_index (cm->ctxs, index);
+}
+
 static_always_inline void
 vnet_crypto_key_call (vnet_crypto_ctx_t *ctx, vnet_crypto_key_change_fn_t *fn,
 		      vnet_crypto_handler_type_t t, u8 is_add, u8 key_data_per_thread)
@@ -393,29 +424,10 @@ vnet_crypto_ctx_set_auth_key (vnet_crypto_ctx_t *ctx, const u8 *auth_key, u16 au
 void
 vnet_crypto_ctx_destroy (vlib_main_t *vm __clib_unused, vnet_crypto_ctx_t *ctx)
 {
-  vnet_crypto_main_t *cm = &crypto_main;
-  u8 **indirect_auth_key = 0;
-  vnet_crypto_handler_type_t t;
-  uword key_sz = sizeof (vnet_crypto_ctx_t) + ctx->total_data_sz;
-  u32 index = ctx->index;
+  if (ctx->pending_destroy)
+    return;
 
-  for (t = 0; t < VNET_CRYPTO_HANDLER_N_TYPES; t++)
-    vnet_crypto_ctx_set_engine (ctx, t, VNET_CRYPTO_ENGINE_ID_NONE);
+  ctx->pending_destroy = 1;
 
-  if (ctx->indirect_auth_key)
-    {
-      indirect_auth_key = (u8 **) (ctx->_data + ctx->auth_key_offset);
-      if (indirect_auth_key[0])
-	{
-	  clib_memset_u8 (indirect_auth_key[0], 0, ctx->auth_key_sz);
-	  clib_mem_free (indirect_auth_key[0]);
-	  indirect_auth_key[0] = 0;
-	}
-    }
-
-  clib_memset_u8 (ctx->_data, 0, ctx->total_data_sz);
-
-  clib_memset (ctx, 0xfe, key_sz);
-  clib_mem_free (ctx);
-  pool_put_index (cm->ctxs, index);
+  vlib_worker_thread_register_one_time_release_fn (vnet_crypto_ctx_destroy_cb, (uword) ctx);
 }

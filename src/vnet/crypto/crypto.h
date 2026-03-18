@@ -352,6 +352,7 @@ typedef struct
   void *handlers[VNET_CRYPTO_OP_N_TYPES][VNET_CRYPTO_HANDLER_N_TYPES];
   vnet_crypto_alg_t alg : 8;
   u8 indirect_auth_key : 1;
+  u8 pending_destroy : 1;
   u8 _data[] __clib_aligned (64);
 } __clib_aligned (64)
 vnet_crypto_ctx_t;
