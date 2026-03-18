@@ -16,6 +16,24 @@
       "message": "I think we should document the guard value and id shift better, maybe with something like\n\n    #define VNET_FLOW_MARK_INVALID 0\n    #define VNET_FLOW_MARK_FROM_INDEX(i) ((i) + 1)\n    #define VNET_FLOW_INDEX_FROM_MARK(m) ((m) - 1)\n\nand a check in vnet_flow_add for VNET_FLOW_MARK_INVALID",
       "revId": "431e70a968b181b1b2f827120b6f16bdfe7e80dc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d4123561_fd1da1dd",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 8
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-03-18T10:11:58Z",
+      "side": 1,
+      "message": "_",
+      "parentUuid": "719acf30_4f66e210",
+      "revId": "431e70a968b181b1b2f827120b6f16bdfe7e80dc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
