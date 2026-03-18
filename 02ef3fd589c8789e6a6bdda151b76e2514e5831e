@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9dd62c9f_2de41787",
+        "filename": "src/plugins/gtpu/gtpu.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1354,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-03-18T10:30:21Z",
+      "side": 1,
+      "message": "if del fails (rv !\u003d 0) we loose the flow index even though it is still present",
+      "revId": "02ef3fd589c8789e6a6bdda151b76e2514e5831e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5bf51440_d0025f5d",
+        "filename": "src/plugins/vxlan/vxlan.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1216,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-03-18T10:30:21Z",
+      "side": 1,
+      "message": "same as gtpu",
+      "revId": "02ef3fd589c8789e6a6bdda151b76e2514e5831e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "325c4add_076e8877",
+        "filename": "src/vnet/flow/flow.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 41,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-03-18T10:30:21Z",
+      "side": 1,
+      "message": "I think this check might be too strong, it prevents doing flow add and then flow del for example",
+      "revId": "02ef3fd589c8789e6a6bdda151b76e2514e5831e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
