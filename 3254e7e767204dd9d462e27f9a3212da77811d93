@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "61355e3d_d77b5ba8",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 11
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2026-03-18T12:10:11Z",
+      "side": 1,
+      "message": "This is ready to be merged. Ahmed, my latest rebase wiped your +1\nCan a committer also take a look and merge please?",
+      "revId": "3254e7e767204dd9d462e27f9a3212da77811d93",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
