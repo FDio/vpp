@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ede7022b_06b6858f",
+        "filename": "src/vnet/flow/flow_api.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 360,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-03-18T11:09:07Z",
+      "side": 1,
+      "message": "this is allocated and never freed. Maybe a simpler design could be to make sure both vl_api_generic_pattern_t and generic_pattern_t are the same struct and just pass it directly",
+      "revId": "496087ae06aaedc4b6b6a67d34caf9542d1c4ab2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5e48aa66_9b858f5f",
+        "filename": "src/vnet/flow/flow_cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 660,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-03-18T11:09:07Z",
+      "side": 1,
+      "message": "no directly related but should be ip4_ipsec_ah.spi",
+      "revId": "496087ae06aaedc4b6b6a67d34caf9542d1c4ab2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0ac3caea_4271a36f",
+        "filename": "src/vnet/flow/flow_cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 747,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-03-18T11:09:07Z",
+      "side": 1,
+      "message": "this is allocated and never freed. Maybe a simpler design could be to just pass it directly",
+      "revId": "496087ae06aaedc4b6b6a67d34caf9542d1c4ab2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
