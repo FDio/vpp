@@ -56,6 +56,10 @@ permissions:
   contents: read
   actions: read
 
+concurrency:
+  group: ${{ inputs.GERRIT_PROJECT }}-${{ inputs.GERRIT_BRANCH }}-${{ inputs.GERRIT_CHANGE_NUMBER }}-${{ inputs.FDIO_NAMESPACE }}
+  cancel-in-progress: true
+
 jobs:
   start-merge:
     name: Start Merge
