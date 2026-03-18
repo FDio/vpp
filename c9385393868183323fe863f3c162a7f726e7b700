@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "dc7bca65_e9b812d5",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-03-18T13:39:20Z",
+      "side": 1,
+      "message": "Can you add a test?",
+      "revId": "c9385393868183323fe863f3c162a7f726e7b700",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c0a7e220_bdbb53dd",
+        "filename": "src/vnet/devices/virtio/cli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 77,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-03-18T13:39:20Z",
+      "side": 1,
+      "message": "int: missing space at the end",
+      "revId": "c9385393868183323fe863f3c162a7f726e7b700",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ab34080b_27057079",
+        "filename": "src/vnet/devices/virtio/pci.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 607,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-03-18T13:39:20Z",
+      "side": 1,
+      "message": "shouldn\u0027t it be VIRTIO_NET_F_CTRL_RX? We should also check for VIRTIO_NET_F_CTRL_VQ I think?",
+      "revId": "c9385393868183323fe863f3c162a7f726e7b700",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "26cfce0f_9199bf2f",
+        "filename": "src/vnet/devices/virtio/pci.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 611,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-03-18T13:39:20Z",
+      "side": 1,
+      "message": "nit: ENTRIES",
+      "revId": "c9385393868183323fe863f3c162a7f726e7b700",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "871fe5ff_ee05690d",
+        "filename": "src/vnet/devices/virtio/pci.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 710,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-03-18T13:39:20Z",
+      "side": 1,
+      "message": "won\u0027t we miss the last slot here? Why not use the already computed index?",
+      "revId": "c9385393868183323fe863f3c162a7f726e7b700",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
