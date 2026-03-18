@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ab489d54_11ae700e",
+        "filename": "src/vnet/flow/flow.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 44,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-03-18T10:50:41Z",
+      "side": 1,
+      "message": "doesn\u0027t it break vnet_flow_disable()?",
+      "revId": "7ff1c2fcc2c04aba062c6ebe883944e876070961",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
