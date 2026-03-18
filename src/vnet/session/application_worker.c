@@ -144,13 +144,17 @@ app_worker_get_app (u32 wrk_index)
 }
 
 static segment_manager_t *
-app_worker_alloc_segment_manager (app_worker_t * app_wrk)
+app_worker_alloc_listener_segment_manager (app_worker_t *app_wrk)
 {
   segment_manager_t *sm;
 
   sm = segment_manager_alloc ();
   sm->app_wrk_index = app_wrk->wrk_index;
   segment_manager_init (sm);
+
+  /* Once the first segment is mapped, don't remove it until unlisten */
+  sm->first_is_protected = 1;
+  sm->flags |= SEG_MANAGER_F_LISTENER;
   return sm;
 }
 
@@ -224,20 +228,8 @@ app_worker_free_wrk_cl_session (app_worker_t *app_wrk, session_t *ls)
 }
 
 int
-app_worker_init_listener (app_worker_t * app_wrk, session_t * ls)
+app_worker_init_listener (app_worker_t *app_wrk, session_t *ls, segment_manager_t *sm)
 {
-  segment_manager_t *sm;
-
-  /* Allocate segment manager. All sessions derived out of a listen session
-   * have fifos allocated by the same segment manager.
-   * TODO(fcoras): limit memory consumption by cless listeners */
-  if (!(sm = app_worker_alloc_segment_manager (app_wrk)))
-    return SESSION_E_ALLOC;
-
-  /* Once the first segment is mapped, don't remove it until unlisten */
-  sm->first_is_protected = 1;
-  sm->flags |= SEG_MANAGER_F_LISTENER;
-
   /* Keep track of the segment manager for the listener or this worker */
   hash_set (app_wrk->listeners_table, listen_session_get_handle (ls),
 	    segment_manager_index (sm));
@@ -253,6 +245,7 @@ app_worker_start_listen (app_worker_t *app_wrk, app_listener_t *app_listener)
 {
   session_t *ls;
   int rv;
+  segment_manager_t *sm;
 
   if (clib_bitmap_get (app_listener->workers, app_wrk->wrk_map_index))
     return SESSION_E_ALREADY_LISTENING;
@@ -260,17 +253,24 @@ app_worker_start_listen (app_worker_t *app_wrk, app_listener_t *app_listener)
   app_listener->workers = clib_bitmap_set (app_listener->workers,
 					   app_wrk->wrk_map_index, 1);
 
+  /* Allocate segment manager. All sessions derived out of a listen session,
+   * local and global scopes, have fifos allocated by the same segment manager.
+   * TODO(fcoras): limit memory consumption by cless listeners */
+  sm = app_worker_alloc_listener_segment_manager (app_wrk);
+  if (sm == 0)
+    return SESSION_E_SEG_CREATE;
+
   if (app_listener->session_index != SESSION_INVALID_INDEX)
     {
       ls = session_get (app_listener->session_index, 0);
-      if ((rv = app_worker_init_listener (app_wrk, ls)))
+      if ((rv = app_worker_init_listener (app_wrk, ls, sm)))
 	return rv;
     }
 
   if (app_listener->local_index != SESSION_INVALID_INDEX)
     {
       ls = session_get (app_listener->local_index, 0);
-      if ((rv = app_worker_init_listener (app_wrk, ls)))
+      if ((rv = app_worker_init_listener (app_wrk, ls, sm)))
 	return rv;
     }
 
@@ -280,6 +280,13 @@ app_worker_start_listen (app_worker_t *app_wrk, app_listener_t *app_listener)
 static void
 app_worker_add_detached_sm (app_worker_t * app_wrk, u32 sm_index)
 {
+  u32 i;
+
+  for (i = 0; i < vec_len (app_wrk->detached_seg_managers); i++)
+    {
+      if (app_wrk->detached_seg_managers[i] == sm_index)
+	return;
+    }
   vec_add1 (app_wrk->detached_seg_managers, sm_index);
 }
 
@@ -316,8 +323,11 @@ app_worker_stop_listen_session (app_worker_t * app_wrk, session_t * ls)
   if (ls->flags & SESSION_F_IS_CLESS)
     app_worker_free_wrk_cl_session (app_wrk, ls);
 
-  /* Try to cleanup segment manager */
-  sm = segment_manager_get (*sm_indexp);
+  /* Try to cleanup segment manager.
+   * sm may not be valid because the same sm is used for both local and global
+   * scope listeners. When this routine is called by the second scope, the first
+   * scope might have already freed it. */
+  sm = segment_manager_get_if_valid (*sm_indexp);
   if (sm)
     {
       sm->first_is_protected = 0;
