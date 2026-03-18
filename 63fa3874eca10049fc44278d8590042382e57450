@@ -16,6 +16,108 @@
       "message": "recheck",
       "revId": "63fa3874eca10049fc44278d8590042382e57450",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "44b6d4dd_98eb44a8",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-03-18T13:35:59Z",
+      "side": 1,
+      "message": "Can you add a test?",
+      "revId": "63fa3874eca10049fc44278d8590042382e57450",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "340fb481_b8c96ea6",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1106,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-03-18T13:35:59Z",
+      "side": 1,
+      "message": "nit: VPP style uses C comments usually",
+      "revId": "63fa3874eca10049fc44278d8590042382e57450",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "46ac3f13_86af12b4",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1115,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-03-18T13:35:59Z",
+      "side": 1,
+      "message": "this belongs to the next patch? or maybe easier to just combine both?",
+      "revId": "63fa3874eca10049fc44278d8590042382e57450",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9b44834f_148498fe",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1118,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-03-18T13:35:59Z",
+      "side": 1,
+      "message": "nit: C comment, address instead of adddress",
+      "revId": "63fa3874eca10049fc44278d8590042382e57450",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "27083974_3f12e44f",
+        "filename": "src/vnet/devices/virtio/pci.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 600,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-03-18T13:35:59Z",
+      "side": 1,
+      "message": "nit: spurious blank line",
+      "revId": "63fa3874eca10049fc44278d8590042382e57450",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "670a808d_d336d0e9",
+        "filename": "src/vnet/devices/virtio/pci.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 647,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-03-18T13:35:59Z",
+      "side": 1,
+      "message": "should we log a warning here?",
+      "revId": "63fa3874eca10049fc44278d8590042382e57450",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
