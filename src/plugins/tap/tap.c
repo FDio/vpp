@@ -158,6 +158,7 @@ tap_vring_set_rx_queues (vlib_main_t *vm, tap_if_t *tif)
   tap_rxq_t *rxq;
 
   vnet_hw_if_set_input_node (vnm, tif->hw_if_index, tap_input_node.index);
+  vnet_hw_interface_t *hw_if = vnet_get_hw_interface (vnm, tif->hw_if_index);
 
   vec_foreach (rxq, tif->rx_queues)
     {
@@ -178,8 +179,7 @@ tap_vring_set_rx_queues (vlib_main_t *vm, tap_if_t *tif)
       rxq->call_file_index = clib_file_add (&file_main, &f);
       vnet_hw_if_set_rx_queue_file_index (vnm, rxq->queue_index,
 					  rxq->call_file_index);
-      vnet_hw_if_set_rx_queue_mode (vnm, rxq->queue_index,
-				    VNET_HW_IF_RX_MODE_POLLING);
+      vnet_hw_if_set_rx_queue_mode (vnm, rxq->queue_index, hw_if->default_rx_mode);
       tap_vring_fill (vm, tif, rxq);
     }
   vnet_hw_if_update_runtime_data (vnm, tif->hw_if_index);
