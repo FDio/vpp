@@ -438,6 +438,65 @@ api_sw_interface_set_rx_mode (vat_main_t *vam)
 }
 
 static int
+api_sw_interface_set_default_rx_mode (vat_main_t *vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_sw_interface_set_default_rx_mode_t *mp;
+  vnet_hw_if_rx_mode mode = VNET_HW_IF_RX_MODE_UNKNOWN;
+  int ret;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "polling"))
+	mode = VNET_HW_IF_RX_MODE_POLLING;
+      else if (unformat (i, "interrupt"))
+	mode = VNET_HW_IF_RX_MODE_INTERRUPT;
+      else if (unformat (i, "adaptive"))
+	mode = VNET_HW_IF_RX_MODE_ADAPTIVE;
+      else
+	break;
+    }
+
+  if (mode == VNET_HW_IF_RX_MODE_UNKNOWN)
+    {
+      errmsg ("missing rx-mode");
+      return -99;
+    }
+
+  M (SW_INTERFACE_SET_DEFAULT_RX_MODE, mp);
+  mp->mode = (vl_api_rx_mode_t) mode;
+
+  S (mp);
+  W (ret);
+  return ret;
+}
+
+static int
+api_sw_interface_get_default_rx_mode (vat_main_t *vam)
+{
+  vl_api_sw_interface_get_default_rx_mode_t *mp;
+  int ret;
+
+  M (SW_INTERFACE_GET_DEFAULT_RX_MODE, mp);
+
+  S (mp);
+  W (ret);
+  return ret;
+}
+
+static void
+vl_api_sw_interface_get_default_rx_mode_reply_t_handler (
+  vl_api_sw_interface_get_default_rx_mode_reply_t *mp)
+{
+  vat_main_t *vam = interface_test_main.vat_main;
+
+  fformat (vam->ofp, "%d", ntohl (mp->mode));
+
+  vam->retval = ntohl (mp->retval);
+  vam->result_ready = 1;
+}
+
+static int
 api_sw_interface_set_unnumbered (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;

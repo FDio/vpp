@@ -39,38 +39,39 @@ static u16 msg_id_base;
 
 vpe_api_main_t vpe_api_main;
 
-#define foreach_vpe_api_msg                                                   \
-  _ (SW_INTERFACE_SET_FLAGS, sw_interface_set_flags)                          \
-  _ (SW_INTERFACE_SET_PROMISC, sw_interface_set_promisc)                      \
-  _ (HW_INTERFACE_SET_MTU, hw_interface_set_mtu)                              \
-  _ (SW_INTERFACE_SET_MTU, sw_interface_set_mtu)                              \
-  _ (WANT_INTERFACE_EVENTS, want_interface_events)                            \
-  _ (SW_INTERFACE_DUMP, sw_interface_dump)                                    \
-  _ (SW_INTERFACE_ADD_DEL_ADDRESS, sw_interface_add_del_address)              \
-  _ (SW_INTERFACE_SET_RX_MODE, sw_interface_set_rx_mode)                      \
-  _ (SW_INTERFACE_RX_PLACEMENT_DUMP, sw_interface_rx_placement_dump)          \
-  _ (SW_INTERFACE_TX_PLACEMENT_GET, sw_interface_tx_placement_get)            \
-  _ (SW_INTERFACE_SET_RX_PLACEMENT, sw_interface_set_rx_placement)            \
-  _ (SW_INTERFACE_SET_TX_PLACEMENT, sw_interface_set_tx_placement)            \
-  _ (SW_INTERFACE_SET_TABLE, sw_interface_set_table)                          \
-  _ (SW_INTERFACE_GET_TABLE, sw_interface_get_table)                          \
-  _ (SW_INTERFACE_SET_UNNUMBERED, sw_interface_set_unnumbered)                \
-  _ (SW_INTERFACE_CLEAR_STATS, sw_interface_clear_stats)                      \
-  _ (SW_INTERFACE_TAG_ADD_DEL, sw_interface_tag_add_del)                      \
-  _ (SW_INTERFACE_ADD_DEL_MAC_ADDRESS, sw_interface_add_del_mac_address)      \
-  _ (SW_INTERFACE_SET_MAC_ADDRESS, sw_interface_set_mac_address)              \
-  _ (SW_INTERFACE_GET_MAC_ADDRESS, sw_interface_get_mac_address)              \
-  _ (CREATE_VLAN_SUBIF, create_vlan_subif)                                    \
-  _ (CREATE_SUBIF, create_subif)                                              \
-  _ (DELETE_SUBIF, delete_subif)                                              \
-  _ (CREATE_LOOPBACK, create_loopback)                                        \
-  _ (CREATE_LOOPBACK_INSTANCE, create_loopback_instance)                      \
-  _ (DELETE_LOOPBACK, delete_loopback)                                        \
-  _ (INTERFACE_NAME_RENUMBER, interface_name_renumber)                        \
-  _ (COLLECT_DETAILED_INTERFACE_STATS, collect_detailed_interface_stats)      \
-  _ (SW_INTERFACE_SET_IP_DIRECTED_BROADCAST,                                  \
-     sw_interface_set_ip_directed_broadcast)                                  \
-  _ (SW_INTERFACE_ADDRESS_REPLACE_BEGIN, sw_interface_address_replace_begin)  \
+#define foreach_vpe_api_msg                                                                        \
+  _ (SW_INTERFACE_SET_FLAGS, sw_interface_set_flags)                                               \
+  _ (SW_INTERFACE_SET_PROMISC, sw_interface_set_promisc)                                           \
+  _ (HW_INTERFACE_SET_MTU, hw_interface_set_mtu)                                                   \
+  _ (SW_INTERFACE_SET_MTU, sw_interface_set_mtu)                                                   \
+  _ (WANT_INTERFACE_EVENTS, want_interface_events)                                                 \
+  _ (SW_INTERFACE_DUMP, sw_interface_dump)                                                         \
+  _ (SW_INTERFACE_ADD_DEL_ADDRESS, sw_interface_add_del_address)                                   \
+  _ (SW_INTERFACE_SET_RX_MODE, sw_interface_set_rx_mode)                                           \
+  _ (SW_INTERFACE_SET_DEFAULT_RX_MODE, sw_interface_set_default_rx_mode)                           \
+  _ (SW_INTERFACE_GET_DEFAULT_RX_MODE, sw_interface_get_default_rx_mode)                           \
+  _ (SW_INTERFACE_RX_PLACEMENT_DUMP, sw_interface_rx_placement_dump)                               \
+  _ (SW_INTERFACE_TX_PLACEMENT_GET, sw_interface_tx_placement_get)                                 \
+  _ (SW_INTERFACE_SET_RX_PLACEMENT, sw_interface_set_rx_placement)                                 \
+  _ (SW_INTERFACE_SET_TX_PLACEMENT, sw_interface_set_tx_placement)                                 \
+  _ (SW_INTERFACE_SET_TABLE, sw_interface_set_table)                                               \
+  _ (SW_INTERFACE_GET_TABLE, sw_interface_get_table)                                               \
+  _ (SW_INTERFACE_SET_UNNUMBERED, sw_interface_set_unnumbered)                                     \
+  _ (SW_INTERFACE_CLEAR_STATS, sw_interface_clear_stats)                                           \
+  _ (SW_INTERFACE_TAG_ADD_DEL, sw_interface_tag_add_del)                                           \
+  _ (SW_INTERFACE_ADD_DEL_MAC_ADDRESS, sw_interface_add_del_mac_address)                           \
+  _ (SW_INTERFACE_SET_MAC_ADDRESS, sw_interface_set_mac_address)                                   \
+  _ (SW_INTERFACE_GET_MAC_ADDRESS, sw_interface_get_mac_address)                                   \
+  _ (CREATE_VLAN_SUBIF, create_vlan_subif)                                                         \
+  _ (CREATE_SUBIF, create_subif)                                                                   \
+  _ (DELETE_SUBIF, delete_subif)                                                                   \
+  _ (CREATE_LOOPBACK, create_loopback)                                                             \
+  _ (CREATE_LOOPBACK_INSTANCE, create_loopback_instance)                                           \
+  _ (DELETE_LOOPBACK, delete_loopback)                                                             \
+  _ (INTERFACE_NAME_RENUMBER, interface_name_renumber)                                             \
+  _ (COLLECT_DETAILED_INTERFACE_STATS, collect_detailed_interface_stats)                           \
+  _ (SW_INTERFACE_SET_IP_DIRECTED_BROADCAST, sw_interface_set_ip_directed_broadcast)               \
+  _ (SW_INTERFACE_ADDRESS_REPLACE_BEGIN, sw_interface_address_replace_begin)                       \
   _ (SW_INTERFACE_ADDRESS_REPLACE_END, sw_interface_address_replace_end)
 
 static void
@@ -1034,6 +1035,42 @@ vl_api_sw_interface_set_interface_name_t_handler (
 out:
   BAD_SW_IF_INDEX_LABEL;
   REPLY_MACRO (VL_API_SW_INTERFACE_SET_INTERFACE_NAME_REPLY);
+}
+
+static void
+vl_api_sw_interface_set_default_rx_mode_t_handler (vl_api_sw_interface_set_default_rx_mode_t *mp)
+{
+  vl_api_sw_interface_set_default_rx_mode_reply_t *rmp;
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_interface_main_t *im = &vnm->interface_main;
+  vnet_hw_if_rx_mode mode;
+  int rv = 0;
+
+  mode = (vnet_hw_if_rx_mode) ntohl (mp->mode);
+
+  if (mode != VNET_HW_IF_RX_MODE_POLLING && mode != VNET_HW_IF_RX_MODE_INTERRUPT &&
+      mode != VNET_HW_IF_RX_MODE_ADAPTIVE)
+    {
+      rv = VNET_API_ERROR_INVALID_VALUE;
+      goto out;
+    }
+
+  im->default_rx_mode = mode;
+
+out:
+  REPLY_MACRO (VL_API_SW_INTERFACE_SET_DEFAULT_RX_MODE_REPLY);
+}
+
+static void
+vl_api_sw_interface_get_default_rx_mode_t_handler (vl_api_sw_interface_get_default_rx_mode_t *mp)
+{
+  vl_api_sw_interface_get_default_rx_mode_reply_t *rmp;
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_interface_main_t *im = &vnm->interface_main;
+  int rv = 0;
+
+  REPLY_MACRO2 (VL_API_SW_INTERFACE_GET_DEFAULT_RX_MODE_REPLY,
+		({ rmp->mode = htonl (im->default_rx_mode); }));
 }
 
 static void vl_api_sw_interface_set_rx_mode_t_handler

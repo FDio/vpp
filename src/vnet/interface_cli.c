@@ -1594,6 +1594,49 @@ VLIB_CLI_COMMAND (cmd_set_if_rx_mode,static) = {
 };
 
 static clib_error_t *
+set_interface_default_rx_mode (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_interface_main_t *im = &vnm->interface_main;
+  vnet_hw_if_rx_mode mode = VNET_HW_IF_RX_MODE_UNKNOWN;
+
+  if (unformat (input, "polling"))
+    mode = VNET_HW_IF_RX_MODE_POLLING;
+  else if (unformat (input, "interrupt"))
+    mode = VNET_HW_IF_RX_MODE_INTERRUPT;
+  else if (unformat (input, "adaptive"))
+    mode = VNET_HW_IF_RX_MODE_ADAPTIVE;
+  else
+    return clib_error_return (0, "parse error: expected polling|interrupt|adaptive");
+
+  im->default_rx_mode = mode;
+  vlib_cli_output (vm, "Default interface rx-mode set to %U", format_vnet_hw_if_rx_mode, mode);
+  return 0;
+}
+
+VLIB_CLI_COMMAND (cmd_set_if_default_rx_mode, static) = {
+  .path = "set interface default rx-mode",
+  .short_help = "set interface default rx-mode [polling|interrupt|adaptive]",
+  .function = set_interface_default_rx_mode,
+};
+
+static clib_error_t *
+show_interface_default_rx_mode (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_interface_main_t *im = &vnm->interface_main;
+  vlib_cli_output (vm, "Default interface rx-mode: %U", format_vnet_hw_if_rx_mode,
+		   im->default_rx_mode);
+  return 0;
+}
+
+VLIB_CLI_COMMAND (cmd_show_if_default_rx_mode, static) = {
+  .path = "show interface default rx-mode",
+  .short_help = "show interface default rx-mode",
+  .function = show_interface_default_rx_mode,
+};
+
+static clib_error_t *
 show_interface_rx_placement_fn (vlib_main_t * vm, unformat_input_t * input,
 				vlib_cli_command_t * cmd)
 {
