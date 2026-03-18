@@ -1166,6 +1166,77 @@ class TestIPv6(TestIPv6ND):
         self.pg0.ip6_ra_config(suppress=1)
         self.pg0.ip6_ra_config(no=1, send_unicast=1)
 
+    def test_rs_offlink_source_with_same_if_route(self):
+        """IPv6 RS source must be on-link, not just same-interface routed"""
+
+        off_link_src = "2002::1234"
+        # Install a routed cover via the same RX interface; this reproduces
+        # the adjacency-only acceptance path while source remains off-link.
+        off_link_cover = VppIpRoute(
+            self,
+            "2002::",
+            16,
+            [VppRoutePath(self.pg0.remote_ip6, self.pg0.sw_if_index)],
+        )
+        off_link_cover.add_vpp_config()
+
+        try:
+            self.pg0.ip6_ra_config(no=1, suppress=1)
+            self.pg0.ip6_ra_config(send_unicast=1)
+
+            p = (
+                Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+                / IPv6(dst=self.pg0.local_ip6, src=off_link_src)
+                / ICMPv6ND_RS()
+                / ICMPv6NDOptSrcLLAddr(lladdr=self.pg0.remote_mac)
+            )
+
+            self.send_and_assert_no_replies(
+                self.pg0,
+                [p],
+                "No response to RS from off-link source resolved via routed adjacency",
+            )
+            self.assertFalse(find_nbr(self, self.pg0.sw_if_index, off_link_src))
+        finally:
+            off_link_cover.remove_vpp_config()
+
+    def test_rs_offlink_source_allowed_on_unnumbered(self):
+        """IPv6 RS off-link source is allowed when RX interface is unnumbered"""
+
+        off_link_src = "2002::1234"
+        off_link_cover = VppIpRoute(
+            self,
+            "2002::",
+            16,
+            [VppRoutePath(self.pg0.remote_ip6, self.pg0.sw_if_index)],
+        )
+        off_link_cover.add_vpp_config()
+
+        self.pg1.set_unnumbered(self.pg0.sw_if_index)
+
+        try:
+            self.pg1.ip6_ra_config(no=1, suppress=1)
+            self.pg1.ip6_ra_config(send_unicast=1)
+            dmac = in6_getnsmac(inet_pton(AF_INET6, "ff02::2"))
+
+            p = (
+                Ether(dst=dmac, src=self.pg1.remote_mac)
+                / IPv6(dst="ff02::2", src=off_link_src)
+                / ICMPv6ND_RS()
+                / ICMPv6NDOptSrcLLAddr(lladdr=self.pg1.remote_mac)
+            )
+
+            self.send_and_expect_ra(
+                self.pg1,
+                [p],
+                "RS from off-link source on unnumbered interface",
+                dst_ip=off_link_src,
+            )
+            self.assertTrue(find_nbr(self, self.pg1.sw_if_index, off_link_src))
+        finally:
+            self.pg1.unset_unnumbered(self.pg0.sw_if_index)
+            off_link_cover.remove_vpp_config()
+
     def test_mld(self):
         """MLD Report"""
         #
