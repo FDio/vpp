@@ -34,6 +34,24 @@
       "parentUuid": "9011b263_88d91ca6",
       "revId": "a233d9b2ef7fb256f1c35d80ef2becce21a0319f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a4010b3c_f6c7cf26",
+        "filename": "src/plugins/dpdk/device/dpdk.h",
+        "patchSetId": 8
+      },
+      "lineNbr": 180,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-03-18T12:20:59Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "b22cc0ef_0f3c30e1",
+      "revId": "a233d9b2ef7fb256f1c35d80ef2becce21a0319f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
