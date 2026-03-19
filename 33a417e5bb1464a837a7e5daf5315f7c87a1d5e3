@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c6c6480f_a67fdc11",
+        "filename": "src/plugins/linux-cp/lcp_interface.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1040,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2026-03-19T15:36:48Z",
+      "side": 1,
+      "message": "It\u0027s not clear why this is necessary. The two possible values of host_if_type are LCP_ITF_HOST_TUN and LCP_ITF_HOST_TAP. Earlier in this function at lines 848-849, it is validated that `hw-\u003ehw_class_index \u003d\u003d ethernet_hw_interface_class.index` when `host_if_type \u003d\u003d LCP_ITF_HOST_TAP`. The `if (host_if_type !\u003d LCP_ITF_HOST_TUN)` here implies that `host_if_type \u003d\u003d LCP_ITF_HOST_TAP`. So `(hw-\u003ehw_class_index \u003d\u003d ethernet_hw_interface_class.index)` should be guaranteed to evaluate true.\n\nAm I misunderstanding something? Can you describe a sequence of configurations that I could use to reproduce a seg fault here?",
+      "revId": "33a417e5bb1464a837a7e5daf5315f7c87a1d5e3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
