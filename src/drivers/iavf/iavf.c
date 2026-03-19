@@ -275,14 +275,6 @@ iavf_deinit (vlib_main_t *vm, vnet_dev_t *dev)
   log_debug (dev, "deinit");
   iavf_aq_poll_off (vm, dev);
   iavf_aq_deinit (vm, dev);
-  iavf_aq_free (vm, dev);
-}
-
-static void
-iavf_free (vlib_main_t *vm, vnet_dev_t *dev)
-{
-  log_debug (dev, "free");
-  iavf_aq_free (vm, dev);
 }
 
 VNET_DEV_REGISTER_DRIVER (avf) = {
@@ -296,7 +288,6 @@ VNET_DEV_REGISTER_DRIVER (avf) = {
       .alloc = iavf_alloc,
       .init = iavf_init,
       .deinit = iavf_deinit,
-      .free = iavf_free,
       .probe = iavf_probe,
     },
   },

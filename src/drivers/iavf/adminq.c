@@ -150,13 +150,6 @@ iavf_aq_alloc (vlib_main_t *vm, vnet_dev_t *dev)
 				 (void **) &ad->aq_mem);
 }
 
-void
-iavf_aq_free (vlib_main_t *vm, vnet_dev_t *dev)
-{
-  iavf_device_t *ad = vnet_dev_get_data (dev);
-  vnet_dev_dma_mem_free (vm, dev, ad->aq_mem);
-}
-
 static void
 iavf_aq_arq_slot_init (vlib_main_t *vm, vnet_dev_t *dev, u16 slot)
 {

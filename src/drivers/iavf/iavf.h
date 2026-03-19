@@ -93,7 +93,6 @@ void iavf_aq_init (vlib_main_t *, vnet_dev_t *);
 void iavf_aq_poll_on (vlib_main_t *, vnet_dev_t *);
 void iavf_aq_poll_off (vlib_main_t *, vnet_dev_t *);
 void iavf_aq_deinit (vlib_main_t *, vnet_dev_t *);
-void iavf_aq_free (vlib_main_t *, vnet_dev_t *);
 vnet_dev_rv_t iavf_aq_atq_enq (vlib_main_t *, vnet_dev_t *, iavf_aq_desc_t *,
 			       const u8 *, u16, f64);
 int iavf_aq_arq_next_acq (vlib_main_t *, vnet_dev_t *, iavf_aq_desc_t **,
