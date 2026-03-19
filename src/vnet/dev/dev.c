@@ -206,6 +206,7 @@ vnet_dev_deinit (vlib_main_t *vm, vnet_dev_t *dev)
   vec_foreach_pointer (p, dev->dma_allocs)
     if (p)
       bus->ops.dma_mem_free_fn (vm, dev, p);
+  vec_free (dev->dma_allocs);
 
   dev->initialized = 0;
 }
@@ -218,6 +219,15 @@ vnet_dev_free (vlib_main_t *vm, vnet_dev_t *dev)
   vnet_dev_validate (vm, dev);
 
   ASSERT (dev->initialized == 0);
+
+  if (dev->dma_allocs)
+    {
+      vnet_dev_bus_t *bus = vnet_dev_get_bus (dev);
+      vec_foreach_pointer (p, dev->dma_allocs)
+	if (p)
+	  bus->ops.dma_mem_free_fn (vm, dev, p);
+      vec_free (dev->dma_allocs);
+    }
 
   foreach_vnet_dev_port (p, dev)
     vnet_dev_port_free (vm, p);
