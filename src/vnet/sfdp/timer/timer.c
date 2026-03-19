@@ -106,6 +106,7 @@ timer_expiry_cb_notify_new_sessions (const u32 *new_sessions, u32 len)
       sfdp_session_t *session = sfdp_session_at_index (*session_index);
       sfdp_session_timer_t *timer = SFDP_SESSION_TIMER (session);
       sfdp_tenant_t *tenant = sfdp_tenant_at_index (sfdp, session->tenant_idx);
+      session->expiry_reason = SFDP_SESSION_EXPIRY_REASON_TIMEOUT_EMBRYONIC;
       sfdp_session_timer_start (&ptd->wheel, timer, *session_index, time_now,
 				tenant->timeouts[SFDP_TIMEOUT_EMBRYONIC]);
 

@@ -126,6 +126,11 @@ VLIB_NODE_FN (sfdp_expire_node)
   vec_foreach (session_index, ptd->expired_sessions)
     {
       sfdp_session_t *session = sfdp_session_at_index (*session_index);
+      u8 reason = session->expiry_reason;
+      if (PREDICT_FALSE (reason >= SFDP_SESSION_N_EXPIRY_REASON))
+	reason = SFDP_SESSION_EXPIRY_REASON_UNKNOWN;
+      vlib_increment_simple_counter (&sfdp->tenant_expiry_reason_ctr[reason], thread_index,
+				     session->tenant_idx, 1);
       sfdp_session_remove (sfdp, ptd, session, thread_index, *session_index);
     }
 

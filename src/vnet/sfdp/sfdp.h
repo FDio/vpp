@@ -79,6 +79,27 @@ typedef enum
     SFDP_SESSION_N_STATE
 } sfdp_session_state_t;
 
+#define foreach_sfdp_session_expiry_reason                                                         \
+  _ (UNKNOWN, "unknown")                                                                           \
+  /* Timer-based expirations */                                                                    \
+  _ (TIMEOUT_EMBRYONIC, "timeout-embryonic")                                                       \
+  _ (TIMEOUT_ESTABLISHED, "timeout-established")                                                   \
+  _ (TIMEOUT_TCP_ESTABLISHED, "timeout-tcp-established")                                           \
+  _ (TIMEOUT_BLOCKED, "timeout-blocked")                                                           \
+  /* Event-based expirations */                                                                    \
+  _ (EVENT_TCP_RST, "event-tcp-rst")                                                               \
+  _ (EVENT_TCP_FIN, "event-tcp-fin")                                                               \
+  _ (EVENT_TCP_SYN_REPLAY, "event-tcp-syn-replay")                                                 \
+  _ (EVENT_FORCE_KILL, "event-force-kill")
+
+typedef enum
+{
+#define _(val, str) SFDP_SESSION_EXPIRY_REASON_##val,
+  foreach_sfdp_session_expiry_reason
+#undef _
+    SFDP_SESSION_N_EXPIRY_REASON
+} sfdp_session_expiry_reason_t;
+
 #define foreach_sfdp_flow_counter _ (LOOKUP, "lookup")
 
 typedef enum
@@ -296,7 +317,8 @@ typedef struct sfdp_session
   u8 proto;
   u16 tenant_idx;
   u16 owning_thread_index;
-  u8 unused0[16];
+  u8 expiry_reason; /* see sfdp_session_expiry_reason_t */
+  u8 unused0[15];
   u8 pseudo_dir[SFDP_SESSION_N_KEY];
   u8 type; /* see sfdp_session_type_t */
   u8 key_flags;
@@ -399,6 +421,7 @@ typedef struct
   u32 icmp6_error_frame_queue_index;
   u64 session_id_ctr_mask;
   vlib_simple_counter_main_t tenant_session_ctr[SFDP_TENANT_SESSION_N_COUNTER];
+  vlib_simple_counter_main_t tenant_expiry_reason_ctr[SFDP_SESSION_N_EXPIRY_REASON];
   vlib_combined_counter_main_t tenant_data_ctr[SFDP_TENANT_DATA_N_COUNTER];
 
   /* pool of tenants */
@@ -815,6 +838,7 @@ sfdp_create_session_inline (sfdp_main_t *sfdp, sfdp_per_thread_data_t *ptd,
   session->session_version += 1;
   session->tenant_idx = tenant_idx;
   session->state = SFDP_SESSION_STATE_FSOL;
+  session->expiry_reason = SFDP_SESSION_EXPIRY_REASON_TIMEOUT_EMBRYONIC;
   session->owning_thread_index = thread_index;
   session->scope_index = scope_index;
   if (ptd)

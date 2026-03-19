@@ -89,6 +89,7 @@ VLIB_NODE_FN (sfdp_l4_lifecycle_node)
 	  if (session->state == SFDP_SESSION_STATE_ESTABLISHED)
 	    {
 	      /* TODO: must be configurable per tenant */
+	      session->expiry_reason = SFDP_SESSION_EXPIRY_REASON_TIMEOUT_ESTABLISHED;
 	      sfdp_session_timer_update (
 		&tptd->wheel, SFDP_SESSION_TIMER (session), tptd->current_time,
 		tenant->timeouts[SFDP_TIMEOUT_ESTABLISHED]);

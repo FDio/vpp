@@ -94,6 +94,16 @@ sfdp_init_tenant_counters (sfdp_main_t *sfdp)
 
     foreach_sfdp_tenant_data_counter
 #undef _
+
+#define _(x, y)                                                                                    \
+  sfdp->tenant_expiry_reason_ctr[SFDP_SESSION_EXPIRY_REASON_##x].name = y;                         \
+  sfdp->tenant_expiry_reason_ctr[SFDP_SESSION_EXPIRY_REASON_##x].stat_segment_name =               \
+    "/sfdp/per_tenant_counters/expiry_" y;                                                         \
+  vlib_validate_simple_counter (&sfdp->tenant_expiry_reason_ctr[SFDP_SESSION_EXPIRY_REASON_##x],   \
+				1ULL << (1 + sfdp->log2_tenants));
+
+      foreach_sfdp_session_expiry_reason
+#undef _
 }
 
 static void
@@ -360,6 +370,8 @@ sfdp_expire_session_now (sfdp_session_t *session, f64 now)
   u16 thread_index = session->owning_thread_index;
   if (thread_index == SFDP_UNBOUND_THREAD_INDEX)
     thread_index = 0;
+
+  session->expiry_reason = SFDP_SESSION_EXPIRY_REASON_EVENT_FORCE_KILL;
 
   sfdp_timer_per_thread_data_t *tptd = sfdp_timer_get_per_thread_data (thread_index);
   sfdp_session_timer_t *timer = SFDP_SESSION_TIMER (session);

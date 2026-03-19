@@ -217,6 +217,7 @@ sfdp_parser_create_session_inline (const sfdp_parser_registration_t *reg,
   session->session_version += 1;
   session->tenant_idx = tenant_idx;
   session->state = SFDP_SESSION_STATE_FSOL;
+  session->expiry_reason = SFDP_SESSION_EXPIRY_REASON_TIMEOUT_EMBRYONIC;
   session->owning_thread_index = thread_index;
   session->scope_index = scope_index;
   if (ptd)
