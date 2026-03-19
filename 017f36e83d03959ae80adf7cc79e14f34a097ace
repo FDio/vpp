@@ -16,6 +16,24 @@
       "message": "please rebase, also enable in engines and add unittests",
       "revId": "017f36e83d03959ae80adf7cc79e14f34a097ace",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a7e2393d_75630cdc",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3200
+      },
+      "writtenOn": "2026-03-19T20:22:53Z",
+      "side": 1,
+      "message": "It looks like there have been some significant changes to crypto. Beyond the commit message, is there any writeup on what is different, both for the engine side as well as for the client side?\n\nI\u0027m studying the diffs but wondering if there is additional documentation.\n\nThanks!",
+      "parentUuid": "ea558471_ecc3ebb2",
+      "revId": "017f36e83d03959ae80adf7cc79e14f34a097ace",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
