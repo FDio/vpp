@@ -16,6 +16,40 @@
       "message": "Hi @Damjan, The patches are ready for review, including the Octeon implementation patch.\nPlease take a look when you get a chance.",
       "revId": "5df859cdda4cbe16ca00b72309d3efb964cb574f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c2664fce_f3399a2f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 13
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2026-03-19T22:05:19Z",
+      "side": 1,
+      "message": "Hi Venkata and Alok,\n\nI think it would be nice to add CLI commands that are equivalent to the API operations provided by this framework to vppctl. vppctl seems to be the primary way that some users manage VPP.\n\nIt might also be good to add a FEATURE.yaml file to describe the feature, what it supports and how it works. You could probably take a lot of the information in the commit log message and put it in that file.\n\nThanks,\n-Matt",
+      "revId": "5df859cdda4cbe16ca00b72309d3efb964cb574f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8ef4164f_0b59c4d9",
+        "filename": "src/vnet/tm/tm.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 74,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2026-03-19T22:05:19Z",
+      "side": 1,
+      "message": "All of these functions like tm_sys_node_add(), tm_sys_node_suspend(), etc return 0 unconditionally. The callbacks being invoked (node_add, node_suspend, etc) have an integer return value. I presume that it might be possible for the callbacks to fail. Why not return the value returned by the callback?\n\nI also think that you should check if dev_class-\u003etm_sys_impl is null and return VNET_API_ERR_UNIMPLEMENTED if that\u0027s true before trying to invoke one of the callbacks.",
+      "revId": "5df859cdda4cbe16ca00b72309d3efb964cb574f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
