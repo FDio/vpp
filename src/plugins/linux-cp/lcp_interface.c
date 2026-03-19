@@ -1037,8 +1037,11 @@ lcp_itf_pair_create (u32 phy_sw_if_index, u8 *host_if_name,
       /* align with public TAP flag bit for TUN */
       if (host_if_type != LCP_ITF_HOST_TUN)
 	{
-	  ei = pool_elt_at_index (ethernet_main.interfaces, hw->hw_instance);
-	  mac_address_copy (&args.host_mac_addr, &ei->address.mac);
+	  if (hw->hw_class_index == ethernet_hw_interface_class.index)
+	    {
+	      ei = pool_elt_at_index (ethernet_main.interfaces, hw->hw_instance);
+	      mac_address_copy (&args.host_mac_addr, &ei->address.mac);
+	    }
 	}
 
       /*

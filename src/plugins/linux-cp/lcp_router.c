@@ -305,6 +305,11 @@ lcp_router_link_addr (struct rtnl_link *rl, lcp_itf_pair_t *lip)
     return;
 
   hw = vnet_get_sup_hw_interface (vnm, lip->lip_phy_sw_if_index);
+
+  /* Skip MAC address synchronization for non-Ethernet interfaces (like WireGuard) */
+  if (hw->hw_class_index != ethernet_hw_interface_class.index)
+    return;
+
   if (!vec_len (hw->hw_address))
     return;
 
