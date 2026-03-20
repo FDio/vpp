@@ -665,4 +665,58 @@ ip6_ext_header_find (vlib_main_t *vm, vlib_buffer_t *b, ip6_header_t *ip,
   return 0;
 }
 
+/*
+ * Walks the EH chain starting from the fixed IPv6 header and returns the
+ * L4 protocol number and the byte offset (from the start of ip6_header_t)
+ * to the L4 header.  Does not require a vlib_buffer_t — operates on a raw
+ * pointer, making it usable in GSO header-offset parsing and RX-node
+ * offload paths.
+ *
+ * Mirrors ip6_ext_header_walk() logic, reusing ip6_ext_next_header_s()
+ * for all EH traversal.  Bounded by IP6_EXT_HDR_MAX (4) iterations,
+ * not IP6_EXT_HDR_MAX_DEPTH which is a byte-depth limit.
+ *
+ * Returns 0 on success, -1 on malformed / non-first-fragment packets.
+ */
+static_always_inline int
+ip6_skip_ext_hdrs (ip6_header_t *ip6, u16 payload_len, u8 *l4_proto, u16 *l4_offset)
+{
+  void *next_header = ip6_next_header (ip6);
+  int next_proto = ip6->protocol;
+  u32 max_offset = clib_min (sizeof (ip6_header_t) + payload_len, IP6_EXT_HDR_MAX_DEPTH);
+  u32 offset = sizeof (ip6_header_t);
+  bool last = false;
+  int proto = next_proto;
+  u32 off = offset;
+  int i = 0;
+
+  if ((ip6_ext_header_len_s (next_proto, next_header) + offset) > max_offset)
+    return -1;
+
+  while (next_header)
+    {
+      proto = next_proto;
+      off = offset;
+      i++;
+      if (last)
+	break;
+      if (i >= IP6_EXT_HDR_MAX)
+	break;
+      next_header =
+	ip6_ext_next_header_s (next_proto, next_header, max_offset, &offset, &next_proto, &last);
+    }
+
+  if (PREDICT_FALSE (last))
+    return -1;
+
+  /* Truncated or too many EHs: proto is still an extension header */
+  if (PREDICT_FALSE (ip6_ext_hdr (proto) || proto == IP_PROTOCOL_IPV6_FRAGMENTATION ||
+		     proto == IP_PROTOCOL_IPSEC_AH))
+    return -1;
+
+  *l4_proto = proto;
+  *l4_offset = off;
+  return 0;
+}
+
 #endif /* included_ip6_packet_h */

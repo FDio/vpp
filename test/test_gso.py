@@ -14,6 +14,12 @@ from scapy.packet import Raw
 from scapy.layers.l2 import GRE
 from scapy.layers.inet6 import IPv6, Ether, IP, ICMPv6PacketTooBig
 from scapy.layers.inet6 import ipv6nh, IPerror6
+from scapy.layers.inet6 import (
+    IPv6ExtHdrHopByHop,
+    IPv6ExtHdrRouting,
+    IPv6ExtHdrDestOpt,
+    IPv6ExtHdrFragment,
+)
 from scapy.layers.inet import TCP, ICMP, UDP, defragment
 from scapy.layers.vxlan import VXLAN
 from scapy.layers.ipsec import ESP
@@ -1555,6 +1561,143 @@ class TestGSO(VppTestCase):
         self.ipip6_0.remove_vpp_config()
 
         self.vapi.feature_gso_enable_disable(self.pg0.sw_if_index, enable_disable=0)
+
+class TestGSOIPv6ExtHdr(VppTestCase):
+    """IPv6 extension header handling tests for GSO / header-offset parsing.
+
+    Exercises ip6_skip_ext_hdrs() through VPP's GSO segmentation pipeline by
+    sending jumbo IPv6 packets with various extension header combinations and
+    verifying correct TCP segmentation.  The pg input node calls
+    ip6_skip_ext_hdrs() to set l4_hdr_offset — if the EH walker is broken
+    (or missing, as on master), the GSO node will segment at the wrong offset,
+    producing garbled TCP headers (wrong sport/dport) in each segment.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestGSOIPv6ExtHdr, cls).setUpClass()
+        # pg0: GSO-enabled input (gso_size=1460) — marks buffers as GSO
+        cls.create_pg_interfaces(range(1), gso=1, gso_size=1460)
+        # pg1: plain output — forces GSO segmentation
+        cls.pg_interfaces += cls.create_pg_interfaces(range(1, 2))
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestGSOIPv6ExtHdr, cls).tearDownClass()
+
+    def setUp(self):
+        super(TestGSOIPv6ExtHdr, self).setUp()
+        for i in self.pg_interfaces:
+            i.admin_up()
+            i.config_ip6()
+            i.resolve_ndp()
+        self.vapi.feature_gso_enable_disable(
+            sw_if_index=self.pg1.sw_if_index, enable_disable=1
+        )
+
+    def tearDown(self):
+        self.vapi.feature_gso_enable_disable(
+            sw_if_index=self.pg1.sw_if_index, enable_disable=0
+        )
+        for i in self.pg_interfaces:
+            i.unconfig_ip6()
+            i.admin_down()
+        super(TestGSOIPv6ExtHdr, self).tearDown()
+
+    def send_and_verify_gso_ipv6_eh(self, eh_layers, payload_size=65200):
+        """Send a jumbo IPv6+EH+TCP packet via GSO and verify each segment
+        has correct TCP sport/dport and the EH chain intact.
+
+        Without EH traversal, l4_hdr_offset points inside the
+        extension headers, so the GSO node reads/writes TCP fields at
+        the wrong position — sport/dport will be garbage.
+
+        :param eh_layers: list of scapy EH layer instances
+        :param payload_size: TCP payload bytes (must exceed gso_size for
+                             chained buffers and GSO segmentation)
+        """
+
+        p = Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) / IPv6(
+            src=self.pg0.remote_ip6, dst=self.pg1.remote_ip6
+        )
+        for eh in eh_layers:
+            p = p / eh
+        p = p / TCP(sport=1234, dport=4321) / Raw(b"\xa5" * payload_size)
+
+        # Expect multiple segments from one jumbo frame.
+        # gso_size=1460, so n_segments ≈ ceil(payload_size / 1460).
+        n_segments = (payload_size + 1459) // 1460
+        rxs = self.send_and_expect(self.pg0, [p], self.pg1, n_segments)
+
+        size = 0
+        for rx in rxs:
+            # Verify IPv6 addresses preserved
+            self.assertEqual(rx[IPv6].src, self.pg0.remote_ip6)
+            self.assertEqual(rx[IPv6].dst, self.pg1.remote_ip6)
+
+            # Verify each EH type is present — proves the template
+            # included the full EH chain, not just sizeof(ip6_header_t).
+            for eh in eh_layers:
+                self.assertTrue(
+                    rx.haslayer(type(eh)),
+                    f"Missing {type(eh).__name__} in segment",
+                )
+
+            # Verify TCP sport/dport — the key assertion.
+            # Without EH traversal, l4_hdr_offset = sizeof(ip6_header_t) = 40,
+            # ignoring the EH bytes, so VPP reads "TCP" from inside
+            # the extension header → sport/dport will be garbage.
+            # With the fix, l4_hdr_offset = 40 + eh_size, pointing
+            # to the real TCP header → sport=1234, dport=4321.
+            self.assertTrue(rx.haslayer(TCP), "TCP layer missing in segment")
+            self.assertEqual(
+                rx[TCP].sport,
+                1234,
+                f"TCP sport mismatch: got {rx[TCP].sport}, "
+                f"expected 1234 (l4_hdr_offset likely wrong)",
+            )
+            self.assertEqual(
+                rx[TCP].dport,
+                4321,
+                f"TCP dport mismatch: got {rx[TCP].dport}, "
+                f"expected 4321 (l4_hdr_offset likely wrong)",
+            )
+
+            # Accumulate payload
+            if rx.haslayer(Raw):
+                size += len(rx[Raw])
+
+        self.assertEqual(size, payload_size)
+
+    def test_no_ext_hdr_tcp(self):
+        """GSO: IPv6 (no extension headers) -> TCP"""
+        self.send_and_verify_gso_ipv6_eh([])
+
+    def test_hbh_tcp(self):
+        """GSO: IPv6 / Hop-by-Hop -> TCP"""
+        self.send_and_verify_gso_ipv6_eh([IPv6ExtHdrHopByHop()])
+
+    def test_hbh_routing_tcp(self):
+        """GSO: IPv6 / Hop-by-Hop / Routing -> TCP"""
+        self.send_and_verify_gso_ipv6_eh([IPv6ExtHdrHopByHop(), IPv6ExtHdrRouting()])
+
+    def test_fragment_first_tcp(self):
+        """GSO: IPv6 / Fragment (first, offset=0) -> TCP"""
+        self.send_and_verify_gso_ipv6_eh([IPv6ExtHdrFragment(offset=0, m=0, id=0x1234)])
+
+    def test_dest_opt_tcp(self):
+        """GSO: IPv6 / Destination Options -> TCP"""
+        self.send_and_verify_gso_ipv6_eh([IPv6ExtHdrDestOpt()])
+
+    def test_hbh_dest_opt_tcp(self):
+        """GSO: IPv6 / Hop-by-Hop / Destination Options -> TCP"""
+        self.send_and_verify_gso_ipv6_eh([IPv6ExtHdrHopByHop(), IPv6ExtHdrDestOpt()])
+
+    def test_hbh_routing_dest_opt_tcp(self):
+        """GSO: IPv6 / Hop-by-Hop / Routing / Destination Options -> TCP"""
+        self.send_and_verify_gso_ipv6_eh(
+            [IPv6ExtHdrHopByHop(), IPv6ExtHdrRouting(), IPv6ExtHdrDestOpt()]
+        )
 
 
 if __name__ == "__main__":
