@@ -1139,6 +1139,7 @@ openssl_start_listen (tls_ctx_t * lctx)
   openssl_listen_ctx_t *olc;
   app_cert_key_pair_t *ckpair;
   app_certkey_int_ctx_t *cki = 0;
+  app_tls_profile_t *prof;
 
   if (lctx->ckpair_index)
     {
@@ -1186,7 +1187,35 @@ openssl_start_listen (tls_ctx_t * lctx)
   SSL_CTX_set_options (ssl_ctx, flags);
   SSL_CTX_set_ecdh_auto (ssl_ctx, 1);
 
-  rv = SSL_CTX_set_cipher_list (ssl_ctx, (const char *) om->ciphers);
+  /* Apply cipher config from profile or defaults */
+  prof = app_crypto_get_tls_profile_if_valid (lctx->parent_app_wrk_index, lctx->tls_profile_index);
+  if (prof)
+    {
+      if (prof->cipher_list)
+	rv = SSL_CTX_set_cipher_list (ssl_ctx, (char *) prof->cipher_list);
+      else
+	rv = SSL_CTX_set_cipher_list (ssl_ctx, (char *) om->ciphers);
+
+      /* Apply TLS version constraints from profile */
+      if (prof->min_version)
+	SSL_CTX_set_min_proto_version (ssl_ctx, prof->min_version);
+      if (prof->max_version)
+	SSL_CTX_set_max_proto_version (ssl_ctx, prof->max_version);
+
+      /* Apply TLS 1.3 ciphersuites from profile */
+      if (prof->ciphersuites)
+	SSL_CTX_set_ciphersuites (ssl_ctx, (char *) prof->ciphersuites);
+
+      /* Apply groups/curves from profile */
+      if (prof->groups)
+	SSL_CTX_set1_groups_list (ssl_ctx, (char *) prof->groups);
+    }
+  else
+    {
+      /* Use global defaults */
+      rv = SSL_CTX_set_cipher_list (ssl_ctx, (char *) om->ciphers);
+    }
+
   if (rv != 1)
     {
       TLS_DBG (1, "Couldn't set cipher");

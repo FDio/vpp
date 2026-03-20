@@ -49,6 +49,26 @@ typedef struct app_crypto_ca_trust_
   app_crypto_ca_trust_int_ctx_t *cti; /**< per-thread internal ca trust */
 } app_crypto_ca_trust_t;
 
+typedef struct app_tls_profile_
+{
+  u8 *cipher_list;   /**< OpenSSL cipher list, e.g., "HIGH:!aNULL" */
+  u8 *ciphersuites;  /**< TLS 1.3 ciphersuites, e.g., "TLS_AES_128_GCM_SHA256" */
+  u8 *groups;	     /**< supported groups, e.g., "X25519:P-256" */
+  u8 min_version;    /**< minimum TLS version, e.g., TLS1_2_VERSION */
+  u8 max_version;    /**< maximum TLS version, e.g., TLS1_3_VERSION */
+  u32 profile_index; /**< index in profile pool */
+} app_tls_profile_t;
+
+typedef struct app_tls_profile_add_args_
+{
+  u8 *cipher_list;
+  u8 *ciphersuites;
+  u8 *groups;
+  u8 min_version;
+  u8 max_version;
+  u32 index; /**< OUT: allocated profile index */
+} app_tls_profile_add_args_t;
+
 typedef enum crypto_engine_type_
 {
   CRYPTO_ENGINE_NONE,
@@ -153,6 +173,7 @@ typedef struct app_crypto_ctx_
 {
   app_crypto_wrk_t *wrk;
   app_crypto_ca_trust_t *ca_trust_stores;
+  app_tls_profile_t *tls_profiles;
   /** Preferred tls engine */
   u8 tls_engine;
   /** quic initialization vector */
@@ -183,6 +204,15 @@ app_crypto_get_int_ca_trust (app_crypto_ca_trust_t *ct,
 
 int vnet_app_add_cert_key_pair (vnet_app_add_cert_key_pair_args_t *a);
 int vnet_app_del_cert_key_pair (u32 index);
+
+/*
+ * TLS profile management
+ */
+
+int app_crypto_add_tls_profile (u32 app_index, app_tls_profile_add_args_t *args);
+void app_crypto_del_tls_profile (u32 app_index, u32 profile_index);
+app_tls_profile_t *app_crypto_get_tls_profile (u32 app_wrk_index, u32 profile_index);
+app_tls_profile_t *app_crypto_get_tls_profile_if_valid (u32 app_wrk_index, u32 profile_index);
 
 static inline app_certkey_int_ctx_t *
 app_certkey_get_int_ctx (app_cert_key_pair_t *ck,
