@@ -4,18 +4,20 @@ set -e
 COMMAND=$1
 CALICOVPP_DIR=${CALICOVPP_DIR:-"$HOME/vpp-dataplane"}
 VPP_DIR=${VPP_DIR:-"$CALICOVPP_DIR/vpp-manager/vpp_build"}
-reg_name='kind-registry'
-reg_port='5000'
-COMMIT_HASH=$(git rev-parse HEAD)
 BASE=${BASE:-"$COMMIT_HASH"}
-[ "$BASE" = "default" ] && BASE=""
-STASH_SAVED=0
-
+# set to false to skip resetting vpp-dataplane directory, useful for testing changes
+RESTORE_CV=${RESTORE_CV:-"true"}
 # TAG "kt-master" (kube-test master) is only used when setting up a master cluster.
 # "kt-master" is then written to .vars, from where kube-test parses it
 TAG=${TAG:-"kt-master"}
 echo "CALICOVPP_DIR=$CALICOVPP_DIR"
 echo "VPP_DIR=$VPP_DIR"
+
+reg_name='kind-registry'
+reg_port='5000'
+COMMIT_HASH=$(git rev-parse HEAD)
+[ "$BASE" = "default" ] && BASE=""
+STASH_SAVED=0
 
 # [KinD only] sets VPP's mtu. Only works if kind network is configured to use MTU=9000
 export CALICO_NETWORK_CONFIG=${CALICO_NETWORK_CONFIG:-"mtu: 9000"}
@@ -24,9 +26,8 @@ export TIGERA_VERSION="${TIGERA_VERSION:-"v3.31.0"}"
 export KIND_CALICO_VERSION=$TIGERA_VERSION
 export TIGERA_OPERATOR_VERSION=$KIND_CALICO_VERSION
 export DOCKER_BUILD_PROXY=$HTTP_PROXY
-export BASE=$BASE
-export TAG=$TAG
 export DOCKER_BUILD_PROXY=$HTTP_PROXY
+export TAG=$TAG
 export VPP_DIR=$VPP_DIR
 
 kind_config=$(cat kubernetes/kind-config.yaml)
@@ -72,7 +73,8 @@ help() {
   echo -e "  make master-cluster | rebuild-master-cluster | release-cluster\n"
 
   echo "'master-cluster' pulls CalicoVPP and builds VPP from this directory, then brings up a KinD cluster. You can
-    override the version with: BASE=[(remote or local branch) | (commit hash)], e.g. BASE=origin/master"
+    override the version with: BASE=[(remote or local branch) | (commit hash)], e.g. BASE=origin/master.
+    To test changes made in the vpp-dataplane repo, use RESTORE_CV=false"
   echo "'rebuild-master-cluster' stops CalicoVPP pods, rebuilds VPP and restarts CalicoVPP pods. Cluster keeps running."
   echo "'release-cluster' starts up a KinD cluster and uses latest CalicoVPP release (e.g. v3.29),
     or you can override versions by using env variables 'CALICOVPP_VERSION' and 'TIGERA_VERSION':
@@ -116,16 +118,18 @@ build_calicovpp() {
   if [ ! -d "$CALICOVPP_DIR" ]; then
       git clone https://github.com/projectcalico/vpp-dataplane.git $CALICOVPP_DIR
   else
-      echo "Repo found, resetting"
-      cd $CALICOVPP_DIR
-      git reset --hard origin/master
-      git fetch --tags --force
+      if [ "$RESTORE_CV" = "true" ]; then
+        echo "Repo found, resetting"
+        cd $CALICOVPP_DIR
+        git fetch --tags --force
+        git reset --hard origin/master
+        cd $tmp_path
+        fi
   fi
-  cd $tmp_path
 
-  make -C $CALICOVPP_DIR/vpp-manager vpp && \
-  make -C $CALICOVPP_DIR dev && \
-  make -C $CALICOVPP_DIR image-kind
+  make -C $CALICOVPP_DIR/vpp-manager vpp BASE=$BASE && \
+  make -C $CALICOVPP_DIR dev TAG=$TAG && \
+  make -C $CALICOVPP_DIR image-kind TAG=$TAG
 }
 
 start_cni() {
@@ -146,7 +150,7 @@ save_stash() {
 restore_repo() {
   tmp_path=$(pwd)
   cd $VPP_DIR
-  git reset --hard $COMMIT_HASH
+  git reset --hard $COMMIT_HASH || true
   if [ "$STASH_SAVED" -eq 1 ]; then
     git stash pop
   fi

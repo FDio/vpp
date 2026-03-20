@@ -28,6 +28,7 @@ type Pod struct {
 	Namespace     string
 	IpAddress     string
 	CreatedPod    *corev1.Pod
+	Vpp           *VppInstance
 }
 
 type Image struct {
@@ -148,22 +149,14 @@ func (pod *Pod) CopyToPod(src string, dst string) {
 }
 
 func (pod *Pod) Exec(ctx context.Context, command []string) (string, error) {
-	return pod.execTemplate(ctx, true, command)
+	return execTemplate(ctx, pod, true, command)
 }
 
 func (pod *Pod) ExecServer(ctx context.Context, command []string) (string, error) {
-	return pod.execTemplate(ctx, false, command)
+	return execTemplate(ctx, pod, false, command)
 }
 
-func (pod *Pod) ExecVppctl(ctx context.Context, command string) (string, error) {
-	return pod.execTemplate(ctx, true, []string{"/bin/bash", "-c", "vppctl -s /cli.sock " + command})
-}
-
-func (pod *Pod) ExecServerVppctl(ctx context.Context, command string) (string, error) {
-	return pod.execTemplate(ctx, false, []string{"/bin/bash", "-c", "vppctl -s /cli.sock " + command})
-}
-
-func (pod *Pod) execTemplate(ctx context.Context, tty bool, command []string) (string, error) {
+func execTemplate(ctx context.Context, pod *Pod, tty bool, command []string) (string, error) {
 	var stdout, stderr bytes.Buffer
 
 	// Prepare the request

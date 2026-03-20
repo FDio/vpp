@@ -173,10 +173,10 @@ func VppPingTest(s *KubeSuite) {
 
 	s.FixVersionNumber(s.Pods.ClientGeneric, s.Pods.ServerGeneric)
 
-	s.Pods.ClientGeneric.InitVpp()
+	clnVpp := s.Pods.ClientGeneric.InitVpp()
 	s.Pods.ServerGeneric.InitVpp()
 
-	o, _ := s.Pods.ClientGeneric.ExecVppctl(ctx, "ping "+s.Pods.ServerGeneric.IpAddress)
+	o, _ := clnVpp.Vppctl(ctx, "ping "+s.Pods.ServerGeneric.IpAddress)
 	Log(o)
 	AssertContains(o, "5 sent, 5 received")
 }
@@ -189,13 +189,13 @@ func EchoBuiltinEchobytesTest(s *KubeSuite) {
 
 	s.FixVersionNumber(s.Pods.ClientGeneric, s.Pods.ServerGeneric)
 
-	s.Pods.ClientGeneric.InitVpp()
-	s.Pods.ServerGeneric.InitVpp()
+	vppCln := s.Pods.ClientGeneric.InitVpp()
+	vppSrv := s.Pods.ServerGeneric.InitVpp()
 
-	o, err := s.Pods.ServerGeneric.ExecServerVppctl(ctx, "test echo server uri tcp://"+s.Pods.ServerGeneric.IpAddress+"/1234")
+	o, err := vppSrv.VppctlBackground(ctx, "test echo server uri tcp://"+s.Pods.ServerGeneric.IpAddress+"/1234")
 	Log(o)
 	AssertNil(err)
-	o, err = s.Pods.ClientGeneric.ExecVppctl(ctx, "test echo client echo-bytes run-time 10 verbose uri tcp://"+s.Pods.ServerGeneric.IpAddress+"/1234")
+	o, err = vppCln.Vppctl(ctx, "test echo client echo-bytes run-time 10 verbose uri tcp://"+s.Pods.ServerGeneric.IpAddress+"/1234")
 	Log(o)
 	AssertContains(o, "Test started")
 	AssertContains(o, "Test finished")
@@ -209,15 +209,15 @@ func HttpClientStaticServerTest(s *KubeSuite) {
 
 	s.FixVersionNumber(s.Pods.ClientGeneric, s.Pods.ServerGeneric)
 
-	s.Pods.ClientGeneric.InitVpp()
-	s.Pods.ServerGeneric.InitVpp()
+	vppCln := s.Pods.ClientGeneric.InitVpp()
+	vppSrv := s.Pods.ServerGeneric.InitVpp()
 
-	o, err := s.Pods.ServerGeneric.ExecServerVppctl(ctx, "http static server http1-only url-handlers uri tcp://"+s.Pods.ServerGeneric.IpAddress+"/8080")
+	o, err := vppSrv.VppctlBackground(ctx, "http static server http1-only url-handlers uri tcp://"+s.Pods.ServerGeneric.IpAddress+"/8080")
 	AssertNil(err, o)
-	o, err = s.Pods.ServerGeneric.ExecVppctl(ctx, "test-url-handler enable")
+	o, err = vppSrv.Vppctl(ctx, "test-url-handler enable")
 	AssertNil(err, o)
 	time.Sleep(time.Second * 2)
-	o, err = s.Pods.ClientGeneric.ExecVppctl(ctx, "http client uri http://"+s.Pods.ServerGeneric.IpAddress+":8080/version.json verbose duration 10")
+	o, err = vppCln.Vppctl(ctx, "http client uri http://"+s.Pods.ServerGeneric.IpAddress+":8080/version.json verbose duration 10")
 	Log(o)
 	AssertNotContains(o, "error")
 	AssertNil(err, o)

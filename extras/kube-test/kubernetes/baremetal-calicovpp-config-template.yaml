@@ -41,6 +41,7 @@ data:
     }
   CALICOVPP_FEATURE_GATES: |-
     {
+      "memifEnabled": true,
       "vclEnabled": true
     }
   CALICOVPP_INTERFACES: |-

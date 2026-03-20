@@ -5,6 +5,10 @@ import (
 	"time"
 )
 
+type VppInstance struct {
+	Pod *Pod
+}
+
 const VppStartupConf string = `"unix {
   log /tmp/vpp.log
   full-coredump
@@ -98,7 +102,11 @@ const VclConfNginx = "echo \"vcl {\n" +
 	"app-socket-api abstract:vpp/session\n" +
 	"}\" > /vcl.conf"
 
-func (pod *Pod) InitVpp() {
+func (pod *Pod) InitVpp() *VppInstance {
+	vpp := VppInstance{}
+	vpp.Pod = pod
+	pod.Vpp = &vpp
+
 	ctx, cancel := context.WithTimeout(pod.suite.MainContext, time.Second*10)
 	defer cancel()
 
@@ -117,17 +125,22 @@ func (pod *Pod) InitVpp() {
 	// exec interface config again
 	// otherwise, VPP ping sends 5 packets but receives 15
 	time.Sleep(time.Second * 1)
-	o, err = pod.ExecVppctl(ctx, "exec /vppcliconf.conf")
+	o, err = vpp.Vppctl(ctx, "exec /vppcliconf.conf")
 	AssertNil(err, o)
-	o, err = pod.ExecVppctl(ctx, "delete host-interface name eth0")
+	o, err = vpp.Vppctl(ctx, "delete host-interface name eth0")
 	AssertNil(err, o)
-	o, err = pod.ExecVppctl(ctx, "ip route del 0.0.0.0/0")
+	o, err = vpp.Vppctl(ctx, "ip route del 0.0.0.0/0")
 	AssertNil(err, o)
-	o, err = pod.ExecVppctl(ctx, "exec /vppcliconf.conf")
+	o, err = vpp.Vppctl(ctx, "exec /vppcliconf.conf")
 	AssertNil(err, o)
+
+	return &vpp
 }
 
-func (pod *Pod) InitMemifVpp() {
+func (pod *Pod) InitMemifVpp() *VppInstance {
+	vpp := VppInstance{}
+	vpp.Pod = pod
+	pod.Vpp = &vpp
 	ctx, cancel := context.WithTimeout(pod.suite.MainContext, time.Second*10)
 	defer cancel()
 
@@ -140,6 +153,16 @@ func (pod *Pod) InitMemifVpp() {
 	_, err = pod.ExecServer(ctx, []string{"/bin/bash", "-c", "vpp -c /startup.conf"})
 	AssertNil(err)
 	time.Sleep(time.Second * 1)
-	o, err = pod.ExecVppctl(ctx, "exec /vppcliconf.conf")
+	o, err = vpp.Vppctl(ctx, "exec /vppcliconf.conf")
 	AssertNil(err, o)
+
+	return &vpp
+}
+
+func (vpp *VppInstance) Vppctl(ctx context.Context, command string) (string, error) {
+	return execTemplate(ctx, vpp.Pod, true, []string{"/bin/bash", "-c", "vppctl -s /cli.sock " + command})
+}
+
+func (vpp *VppInstance) VppctlBackground(ctx context.Context, command string) (string, error) {
+	return execTemplate(ctx, vpp.Pod, false, []string{"/bin/bash", "-c", "vppctl -s /cli.sock " + command})
 }
