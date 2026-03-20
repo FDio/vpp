@@ -933,6 +933,118 @@ openssl_init_client_ctx (clib_thread_index_t thread_index,
   return 0;
 }
 
+static int
+openssl_apply_tls_profile_to_ctx (SSL_CTX *ssl_ctx, u32 app_wrk_index, u32 profile_index)
+{
+  openssl_main_t *om = &openssl_main;
+  app_tls_profile_t *prof;
+  int rv;
+
+  prof = app_crypto_get_tls_profile_if_valid (app_wrk_index, profile_index);
+  if (!prof)
+    {
+      /* Use global defaults */
+      rv = SSL_CTX_set_cipher_list (ssl_ctx, (char *) om->ciphers);
+      if (rv != 1)
+	{
+	  TLS_DBG (1, "Couldn't set cipher");
+	  return -1;
+	}
+      return 0;
+    }
+
+  if (prof->cipher_list)
+    rv = SSL_CTX_set_cipher_list (ssl_ctx, (char *) prof->cipher_list);
+  else
+    rv = SSL_CTX_set_cipher_list (ssl_ctx, (char *) om->ciphers);
+
+  if (rv != 1)
+    {
+      TLS_DBG (1, "Couldn't set cipher list from profile");
+      return -1;
+    }
+
+  if (prof->min_version)
+    SSL_CTX_set_min_proto_version (ssl_ctx, prof->min_version);
+  if (prof->max_version)
+    SSL_CTX_set_max_proto_version (ssl_ctx, prof->max_version);
+
+  if (prof->ciphersuites)
+    {
+      rv = SSL_CTX_set_ciphersuites (ssl_ctx, (char *) prof->ciphersuites);
+      if (rv != 1)
+	{
+	  TLS_DBG (1, "Couldn't set ciphersuites from profile");
+	  return -1;
+	}
+    }
+
+  if (prof->groups)
+    {
+      rv = SSL_CTX_set1_groups_list (ssl_ctx, (char *) prof->groups);
+      if (rv != 1)
+	{
+	  TLS_DBG (1, "Couldn't set groups from profile");
+	  return -1;
+	}
+    }
+
+  return 0;
+}
+
+static int
+openssl_apply_tls_profile_to_ssl (SSL *ssl, u32 app_wrk_index, u32 profile_index)
+{
+  openssl_main_t *om = &openssl_main;
+  app_tls_profile_t *prof;
+  int rv;
+
+  if (profile_index == ~0)
+    return 0;
+
+  prof = app_crypto_get_tls_profile_if_valid (app_wrk_index, profile_index);
+  if (!prof)
+    return 0;
+
+  if (prof->cipher_list)
+    rv = SSL_set_cipher_list (ssl, (char *) prof->cipher_list);
+  else
+    rv = SSL_set_cipher_list (ssl, (char *) om->ciphers);
+
+  if (rv != 1)
+    {
+      TLS_DBG (1, "Couldn't set cipher list from profile");
+      return -1;
+    }
+
+  if (prof->min_version)
+    SSL_set_min_proto_version (ssl, prof->min_version);
+  if (prof->max_version)
+    SSL_set_max_proto_version (ssl, prof->max_version);
+
+  if (prof->ciphersuites)
+    {
+      rv = SSL_set_ciphersuites (ssl, (char *) prof->ciphersuites);
+      if (rv != 1)
+	{
+	  TLS_DBG (1, "Couldn't set ciphersuites from profile");
+	  return -1;
+	}
+    }
+
+  if (prof->groups)
+    {
+      rv = SSL_set1_groups_list (ssl, (char *) prof->groups);
+      if (rv != 1)
+	{
+	  TLS_DBG (1, "Couldn't set groups from profile");
+	  return -1;
+	}
+    }
+
+  return 0;
+}
+
 static inline SSL_CTX *
 openssl_get_client_ssl_ctx (clib_thread_index_t thread_index,
 			    transport_proto_t proto)
@@ -1013,6 +1125,13 @@ openssl_ctx_init_client (tls_ctx_t *ctx)
   if (oc->ssl == NULL)
     {
       TLS_DBG (1, "Couldn't initialize ssl struct");
+      return -1;
+    }
+
+  /* Apply TLS profile configuration if specified */
+  if (openssl_apply_tls_profile_to_ssl (oc->ssl, ctx->parent_app_wrk_index, ctx->tls_profile_index))
+    {
+      TLS_DBG (1, "Failed to apply TLS profile");
       return -1;
     }
 
@@ -1186,10 +1305,11 @@ openssl_start_listen (tls_ctx_t * lctx)
   SSL_CTX_set_options (ssl_ctx, flags);
   SSL_CTX_set_ecdh_auto (ssl_ctx, 1);
 
-  rv = SSL_CTX_set_cipher_list (ssl_ctx, (const char *) om->ciphers);
-  if (rv != 1)
+  /* Apply TLS profile configuration if specified */
+  if (openssl_apply_tls_profile_to_ctx (ssl_ctx, lctx->parent_app_wrk_index,
+					lctx->tls_profile_index))
     {
-      TLS_DBG (1, "Couldn't set cipher");
+      TLS_DBG (1, "Failed to apply TLS profile");
       return -1;
     }
 
@@ -1618,6 +1738,54 @@ openssl_tls_ctx_attribute (tls_ctx_t *ctx, u8 is_get,
 	    break;
 	  }
 	attr->tls_peer_cert.cert = peer_cert;
+      }
+      break;
+    case TRANSPORT_ENDPT_ATTR_TLS_PROFILE_INFO:
+      {
+	const char *cipher_name;
+	int version, group_id, sigalg_nid;
+	const char *group_name, *sigalg_name;
+
+	if (!oc->ssl)
+	  {
+	    rv = -1;
+	    break;
+	  }
+
+	cipher_name = SSL_get_cipher (oc->ssl);
+	if (cipher_name)
+	  attr->tls_profile_info.cipher = format (0, "%s", cipher_name);
+	else
+	  attr->tls_profile_info.cipher = 0;
+
+	version = SSL_version (oc->ssl);
+	attr->tls_profile_info.tls_version = (u16) version;
+
+	/* Get negotiated group (key agreement algorithm) */
+	group_id = SSL_get_negotiated_group (oc->ssl);
+	if (group_id != NID_undef)
+	  {
+	    group_name = OBJ_nid2sn (group_id);
+	    if (group_name)
+	      attr->tls_profile_info.key_agreement = format (0, "%s", group_name);
+	    else
+	      attr->tls_profile_info.key_agreement = 0;
+	  }
+	else
+	  attr->tls_profile_info.key_agreement = 0;
+
+	/* Get peer signature algorithm */
+	sigalg_nid = NID_undef;
+	if (SSL_get_peer_signature_nid (oc->ssl, &sigalg_nid) == 1 && sigalg_nid != NID_undef)
+	  {
+	    sigalg_name = OBJ_nid2sn (sigalg_nid);
+	    if (sigalg_name)
+	      attr->tls_profile_info.signature_algo = format (0, "%s", sigalg_name);
+	    else
+	      attr->tls_profile_info.signature_algo = 0;
+	  }
+	else
+	  attr->tls_profile_info.signature_algo = 0;
       }
       break;
     default:

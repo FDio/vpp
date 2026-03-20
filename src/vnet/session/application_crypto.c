@@ -255,6 +255,22 @@ app_crypto_ca_stores_cleanup (app_crypto_ca_trust_t *ca_stores)
     }
 }
 
+static void
+app_crypto_tls_profiles_cleanup (app_tls_profile_t *tls_profiles)
+{
+  app_tls_profile_t *profile;
+
+  if (!tls_profiles)
+    return;
+
+  pool_foreach (profile, tls_profiles)
+    {
+      vec_free (profile->cipher_list);
+      vec_free (profile->ciphersuites);
+      vec_free (profile->groups);
+    }
+}
+
 void
 app_crypto_ctx_free (app_crypto_ctx_t *crypto_ctx)
 {
@@ -266,9 +282,90 @@ app_crypto_ctx_free (app_crypto_ctx_t *crypto_ctx)
       pool_free (crypto_ctx->ca_trust_stores);
     }
 
+  if (crypto_ctx->tls_profiles)
+    {
+      app_crypto_tls_profiles_cleanup (crypto_ctx->tls_profiles);
+      pool_free (crypto_ctx->tls_profiles);
+    }
+
   vec_foreach (crypto_wrk, crypto_ctx->wrk)
     pool_free (crypto_wrk->reqs);
   vec_free (crypto_ctx->wrk);
+}
+
+/*
+ * TLS profile management
+ */
+
+int
+app_crypto_add_tls_profile (u32 app_index, app_tls_profile_add_args_t *args)
+{
+  application_t *app;
+  app_tls_profile_t *profile;
+
+  app = application_get (app_index);
+  if (!app)
+    return -1;
+
+  pool_get_zero (app->crypto_ctx.tls_profiles, profile);
+  profile->profile_index = profile - app->crypto_ctx.tls_profiles;
+
+  profile->cipher_list = vec_dup (args->cipher_list);
+  profile->ciphersuites = vec_dup (args->ciphersuites);
+  profile->groups = vec_dup (args->groups);
+  profile->min_version = args->min_version;
+  profile->max_version = args->max_version;
+
+  args->index = profile->profile_index;
+  return 0;
+}
+
+void
+app_crypto_del_tls_profile (u32 app_index, u32 profile_index)
+{
+  application_t *app;
+  app_tls_profile_t *profile;
+
+  app = application_get (app_index);
+  if (!app || pool_is_free_index (app->crypto_ctx.tls_profiles, profile_index))
+    return;
+
+  profile = pool_elt_at_index (app->crypto_ctx.tls_profiles, profile_index);
+
+  vec_free (profile->cipher_list);
+  vec_free (profile->ciphersuites);
+  vec_free (profile->groups);
+  pool_put (app->crypto_ctx.tls_profiles, profile);
+}
+
+app_tls_profile_t *
+app_crypto_get_tls_profile (u32 app_wrk_index, u32 profile_index)
+{
+  app_worker_t *app_wrk;
+  application_t *app;
+
+  app_wrk = app_worker_get (app_wrk_index);
+  app = application_get (app_wrk->app_index);
+
+  return pool_elt_at_index (app->crypto_ctx.tls_profiles, profile_index);
+}
+
+app_tls_profile_t *
+app_crypto_get_tls_profile_if_valid (u32 app_wrk_index, u32 profile_index)
+{
+  app_worker_t *app_wrk;
+  application_t *app;
+
+  if (profile_index == ~0)
+    return 0;
+
+  app_wrk = app_worker_get (app_wrk_index);
+  app = application_get (app_wrk->app_index);
+
+  if (pool_is_free_index (app->crypto_ctx.tls_profiles, profile_index))
+    return 0;
+
+  return pool_elt_at_index (app->crypto_ctx.tls_profiles, profile_index);
 }
 
 u8 *
@@ -304,6 +401,214 @@ VLIB_CLI_COMMAND (show_certificate_command, static) = {
   .path = "show app certificate",
   .short_help = "list app certs and keys present in store",
   .function = show_certificate_command_fn,
+};
+
+static uword
+unformat_app_tls_version (unformat_input_t *input, va_list *args)
+{
+  u16 *version = va_arg (*args, u16 *);
+
+  if (unformat (input, "ssl3"))
+    *version = APP_TLS_VERSION_SSL3;
+  else if (unformat (input, "1.0"))
+    *version = APP_TLS_VERSION_1_0;
+  else if (unformat (input, "1.1"))
+    *version = APP_TLS_VERSION_1_1;
+  else if (unformat (input, "1.2"))
+    *version = APP_TLS_VERSION_1_2;
+  else if (unformat (input, "1.3"))
+    *version = APP_TLS_VERSION_1_3;
+  else
+    return 0;
+
+  return 1;
+}
+
+u8 *
+format_app_tls_version (u8 *s, va_list *args)
+{
+  u16 version = va_arg (*args, u32);
+
+  switch (version)
+    {
+    case APP_TLS_VERSION_SSL3:
+      s = format (s, "ssl3");
+      break;
+    case APP_TLS_VERSION_1_0:
+      s = format (s, "1.0");
+      break;
+    case APP_TLS_VERSION_1_1:
+      s = format (s, "1.1");
+      break;
+    case APP_TLS_VERSION_1_2:
+      s = format (s, "1.2");
+      break;
+    case APP_TLS_VERSION_1_3:
+      s = format (s, "1.3");
+      break;
+    default:
+      s = format (s, "0x%x", version);
+      break;
+    }
+
+  return s;
+}
+
+static clib_error_t *
+app_crypto_add_tls_profile_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				       vlib_cli_command_t *cmd)
+{
+  app_tls_profile_add_args_t args = { 0 };
+  u8 *cipher_list = 0, *ciphersuites = 0, *groups = 0;
+  u32 app_index = 0;
+  application_t *app;
+
+  session_cli_return_if_not_enabled ();
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "app %U", unformat_app_index, &app_index))
+	;
+      else if (unformat (input, "cipher-list %s", &cipher_list))
+	;
+      else if (unformat (input, "ciphersuites %s", &ciphersuites))
+	;
+      else if (unformat (input, "groups %s", &groups))
+	;
+      else if (unformat (input, "min-version %U", unformat_app_tls_version, &args.min_version))
+	;
+      else if (unformat (input, "max-version %U", unformat_app_tls_version, &args.max_version))
+	;
+      else
+	return clib_error_return (0, "unknown input '%U'", format_unformat_error, input);
+    }
+
+  app = application_get_if_valid (app_index);
+  if (!app)
+    {
+      vec_free (cipher_list);
+      vec_free (ciphersuites);
+      vec_free (groups);
+      return clib_error_return (0, "invalid application index %u", app_index);
+    }
+
+  args.cipher_list = cipher_list;
+  args.ciphersuites = ciphersuites;
+  args.groups = groups;
+
+  if (app_crypto_add_tls_profile (app_index, &args))
+    {
+      vec_free (cipher_list);
+      vec_free (ciphersuites);
+      vec_free (groups);
+      return clib_error_return (0, "failed to add TLS profile");
+    }
+
+  vlib_cli_output (vm, "Added TLS profile %u to app %u", args.index, app_index);
+  return 0;
+}
+
+VLIB_CLI_COMMAND (app_crypto_add_tls_profile_cmd, static) = {
+  .path = "app crypto add tls-profile",
+  .short_help = "app crypto add tls-profile app <app-name|app-index> "
+		"[cipher-list <list>] [ciphersuites <suites>] "
+		"[groups <groups>] [min-version <1.0|1.1|1.2|1.3>] "
+		"[max-version <1.0|1.1|1.2|1.3>]",
+  .function = app_crypto_add_tls_profile_command_fn,
+};
+
+static clib_error_t *
+app_crypto_del_tls_profile_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				       vlib_cli_command_t *cmd)
+{
+  u32 profile_index, app_index = 0;
+  application_t *app;
+
+  session_cli_return_if_not_enabled ();
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "app %U", unformat_app_index, &app_index))
+	;
+      else if (unformat (input, "%u", &profile_index))
+	;
+      else
+	return clib_error_return (0, "unknown input '%U'", format_unformat_error, input);
+    }
+
+  app = application_get_if_valid (app_index);
+  if (!app)
+    return clib_error_return (0, "invalid application index %u", app_index);
+
+  app_crypto_del_tls_profile (app_index, profile_index);
+  vlib_cli_output (vm, "Deleted TLS profile %u from app %u", profile_index, app_index);
+  return 0;
+}
+
+VLIB_CLI_COMMAND (app_crypto_del_tls_profile_cmd, static) = {
+  .path = "app crypto del tls-profile",
+  .short_help = "app crypto del tls-profile app <app-name|app-index> <profile-index>",
+  .function = app_crypto_del_tls_profile_command_fn,
+};
+
+static u8 *
+format_tls_profile (u8 *s, va_list *args)
+{
+  app_tls_profile_t *prof = va_arg (*args, app_tls_profile_t *);
+
+  s = format (s, "[%u] ", prof->profile_index);
+
+  if (prof->cipher_list)
+    s = format (s, "cipher-list: %s ", prof->cipher_list);
+  if (prof->ciphersuites)
+    s = format (s, "ciphersuites: %s ", prof->ciphersuites);
+  if (prof->groups)
+    s = format (s, "groups: %s ", prof->groups);
+  if (prof->min_version || prof->max_version)
+    s = format (s, "versions: %U-%U ", format_app_tls_version, prof->min_version,
+		format_app_tls_version, prof->max_version);
+
+  return s;
+}
+
+static clib_error_t *
+show_tls_profile_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
+{
+  u32 app_index = 0;
+  application_t *app;
+  app_tls_profile_t *profile;
+
+  session_cli_return_if_not_enabled ();
+
+  if (unformat (input, "app %U", unformat_app_index, &app_index))
+    ;
+
+  app = application_get_if_valid (app_index);
+  if (!app)
+    {
+      vlib_cli_output (vm, "Invalid application index %u", app_index);
+      return 0;
+    }
+
+  if (!app->crypto_ctx.tls_profiles)
+    {
+      vlib_cli_output (vm, "No TLS profiles for app %u", app_index);
+      return 0;
+    }
+
+  vlib_cli_output (vm, "TLS Profiles for app %u:", app_index);
+  pool_foreach (profile, app->crypto_ctx.tls_profiles)
+    {
+      vlib_cli_output (vm, "  %U", format_tls_profile, profile);
+    }
+
+  return 0;
+}
+
+VLIB_CLI_COMMAND (show_tls_profile_command, static) = {
+  .path = "show app tls-profile",
+  .short_help = "show app tls-profile [app <app-name|app-index>]",
+  .function = show_tls_profile_command_fn,
 };
 
 crypto_engine_type_t
