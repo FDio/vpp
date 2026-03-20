@@ -206,9 +206,19 @@ vnet_ipip_inner_header_parser_inline (vlib_buffer_t * b0,
   else if (PREDICT_TRUE (gho->gho_flags & GHO_F_IPIP6_TUNNEL))
     {
       ip6_header_t *ip6 = (ip6_header_t *) vlib_buffer_get_current (b0);
-      /* FIXME IPv6 EH traversal */
-      gho->l4_hdr_offset = sizeof (ip6_header_t);
-      l4_proto = ip6->protocol;
+      u8 proto;
+      u16 l4_off;
+      if (PREDICT_TRUE (ip6_skip_ext_hdrs (ip6, clib_net_to_host_u16 (ip6->payload_length), &proto,
+					   &l4_off) == 0))
+	{
+	  gho->l4_hdr_offset = l4_off;
+	  l4_proto = proto;
+	}
+      else
+	{
+	  gho->l4_hdr_offset = sizeof (ip6_header_t);
+	  l4_proto = ip6->protocol;
+	}
       gho->gho_flags |= GHO_F_IP6;
     }
   if (l4_proto == IP_PROTOCOL_TCP)
@@ -309,9 +319,19 @@ vnet_vxlan_inner_header_parser_inline (vlib_buffer_t * b0,
     {
       ip6_header_t *ip6 =
 	(ip6_header_t *) (vlib_buffer_get_current (b0) + gho->l3_hdr_offset);
-      /* FIXME IPv6 EH traversal */
-      gho->l4_hdr_offset = gho->l3_hdr_offset + sizeof (ip6_header_t);
-      l4_proto = ip6->protocol;
+      u8 proto;
+      u16 l4_off;
+      if (PREDICT_TRUE (ip6_skip_ext_hdrs (ip6, clib_net_to_host_u16 (ip6->payload_length), &proto,
+					   &l4_off) == 0))
+	{
+	  gho->l4_hdr_offset = gho->l3_hdr_offset + l4_off;
+	  l4_proto = proto;
+	}
+      else
+	{
+	  gho->l4_hdr_offset = gho->l3_hdr_offset + sizeof (ip6_header_t);
+	  l4_proto = ip6->protocol;
+	}
       gho->gho_flags |= GHO_F_IP6;
     }
   if (l4_proto == IP_PROTOCOL_TCP)
@@ -404,9 +424,19 @@ vnet_generic_outer_header_parser_inline (vlib_buffer_t * b0,
     {
       ip6_header_t *ip6 =
 	(ip6_header_t *) (vlib_buffer_get_current (b0) + l2hdr_sz);
-      /* FIXME IPv6 EH traversal */
-      gho->l4_hdr_offset = l2hdr_sz + sizeof (ip6_header_t);
-      l4_proto = ip6->protocol;
+      u8 proto;
+      u16 l4_off;
+      if (PREDICT_TRUE (ip6_skip_ext_hdrs (ip6, clib_net_to_host_u16 (ip6->payload_length), &proto,
+					   &l4_off) == 0))
+	{
+	  gho->l4_hdr_offset = l2hdr_sz + l4_off;
+	  l4_proto = proto;
+	}
+      else
+	{
+	  gho->l4_hdr_offset = l2hdr_sz + sizeof (ip6_header_t);
+	  l4_proto = ip6->protocol;
+	}
       gho->gho_flags |= GHO_F_IP6;
     }
   if (l4_proto == IP_PROTOCOL_TCP)

@@ -152,9 +152,19 @@ tap_rx_offloads (vlib_buffer_t *b0, vnet_virtio_net_hdr_v1_t *hdr, int is_tun)
   else if (PREDICT_TRUE (ethertype == ETHERNET_TYPE_IP6))
     {
       ip6_header_t *ip6 = (ip6_header_t *) (data + l2hdr_sz);
-      vnet_buffer (b0)->l4_hdr_offset = l2hdr_sz + sizeof (ip6_header_t);
-      /* FIXME IPv6 EH traversal */
-      l4_proto = ip6->protocol;
+      u8 proto;
+      u16 l4_off;
+      if (PREDICT_TRUE (ip6_skip_ext_hdrs (ip6, clib_net_to_host_u16 (ip6->payload_length), &proto,
+					   &l4_off) == 0))
+	{
+	  vnet_buffer (b0)->l4_hdr_offset = l2hdr_sz + l4_off;
+	  l4_proto = proto;
+	}
+      else
+	{
+	  vnet_buffer (b0)->l4_hdr_offset = l2hdr_sz + sizeof (ip6_header_t);
+	  l4_proto = ip6->protocol;
+	}
       b0->flags |= (VNET_BUFFER_F_IS_IP6 | VNET_BUFFER_F_L2_HDR_OFFSET_VALID |
 		    VNET_BUFFER_F_L3_HDR_OFFSET_VALID |
 		    VNET_BUFFER_F_L4_HDR_OFFSET_VALID);
