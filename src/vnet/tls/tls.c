@@ -1139,6 +1139,10 @@ tls_session_attribute (u32 ctx_handle, clib_thread_index_t thread_index,
     case TRANSPORT_ENDPT_ATTR_TLS_ALPN:
       attr->tls_alpn = ctx->alpn_selected;
       break;
+    case TRANSPORT_ENDPT_ATTR_TLS_PROFILE_INFO:
+      if (tls_ctx_attribute (ctx, 1 /* is_get */, attr) < 0)
+	return -1;
+      break;
     case TRANSPORT_ENDPT_ATTR_NEXT_TRANSPORT:
       attr->next_transport = ctx->tls_session_handle;
       break;

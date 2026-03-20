@@ -20,8 +20,8 @@ endif()
 ##############################################################################
 add_vpp_plugin(hs_apps
   SOURCES
-  alpn_client.c
-  alpn_server.c
+  tls_client.c
+  tls_server.c
   builtin_echo/echo_cli.c
   builtin_echo/echo_client.c
   builtin_echo/echo_server.c

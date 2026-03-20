@@ -19,10 +19,10 @@ func init() {
 
 func QuicAlpnMatchTest(s *VethsSuite) {
 	serverAddress := s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1
-	Log(s.Containers.ServerVpp.VppInstance.Vppctl("test alpn server alpn-proto1 3 uri quic://" + serverAddress))
+	Log(s.Containers.ServerVpp.VppInstance.Vppctl("test tls server alpn-proto1 3 uri quic://" + serverAddress))
 
 	uri := "quic://" + serverAddress
-	o := s.Containers.ClientVpp.VppInstance.Vppctl("test alpn client alpn-proto1 3 uri " + uri)
+	o := s.Containers.ClientVpp.VppInstance.Vppctl("test tls client alpn-proto1 3 uri " + uri)
 	Log(o)
 	AssertNotContains(o, "connect failed")
 	AssertNotContains(o, "timeout")
@@ -32,10 +32,10 @@ func QuicAlpnMatchTest(s *VethsSuite) {
 
 func QuicAlpnOverlapMatchTest(s *VethsSuite) {
 	serverAddress := s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1
-	Log(s.Containers.ServerVpp.VppInstance.Vppctl("test alpn server alpn-proto1 3 alpn-proto2 1 uri quic://" + serverAddress))
+	Log(s.Containers.ServerVpp.VppInstance.Vppctl("test tls server alpn-proto1 3 alpn-proto2 1 uri quic://" + serverAddress))
 
 	uri := "quic://" + serverAddress
-	o := s.Containers.ClientVpp.VppInstance.Vppctl("test alpn client alpn-proto1 2 alpn-proto2 3 uri " + uri)
+	o := s.Containers.ClientVpp.VppInstance.Vppctl("test tls client alpn-proto1 2 alpn-proto2 3 uri " + uri)
 	Log(o)
 	AssertNotContains(o, "connect failed")
 	AssertNotContains(o, "timeout")
@@ -45,10 +45,10 @@ func QuicAlpnOverlapMatchTest(s *VethsSuite) {
 
 func QuicAlpnServerPriorityMatchTest(s *VethsSuite) {
 	serverAddress := s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1
-	Log(s.Containers.ServerVpp.VppInstance.Vppctl("test alpn server alpn-proto1 3 alpn-proto2 1 uri quic://" + serverAddress))
+	Log(s.Containers.ServerVpp.VppInstance.Vppctl("test tls server alpn-proto1 3 alpn-proto2 1 uri quic://" + serverAddress))
 
 	uri := "quic://" + serverAddress
-	o := s.Containers.ClientVpp.VppInstance.Vppctl("test alpn client alpn-proto1 1 alpn-proto2 3 uri " + uri)
+	o := s.Containers.ClientVpp.VppInstance.Vppctl("test tls client alpn-proto1 1 alpn-proto2 3 uri " + uri)
 	Log(o)
 	AssertNotContains(o, "connect failed")
 	AssertNotContains(o, "timeout")
@@ -60,10 +60,10 @@ func QuicAlpnMismatchTest(s *VethsSuite) {
 	serverVpp := s.Containers.ServerVpp.VppInstance
 	clientVpp := s.Containers.ClientVpp.VppInstance
 	serverAddress := s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1
-	Log(serverVpp.Vppctl("test alpn server alpn-proto1 2 alpn-proto2 1 uri quic://" + serverAddress))
+	Log(serverVpp.Vppctl("test tls server alpn-proto1 2 alpn-proto2 1 uri quic://" + serverAddress))
 
 	uri := "quic://" + serverAddress
-	o := clientVpp.Vppctl("test alpn client alpn-proto1 3 alpn-proto2 4 uri " + uri)
+	o := clientVpp.Vppctl("test tls client alpn-proto1 3 alpn-proto2 4 uri " + uri)
 	Log(o)
 	AssertNotContains(o, "timeout")
 	AssertNotContains(o, "ALPN selected")
@@ -71,7 +71,7 @@ func QuicAlpnMismatchTest(s *VethsSuite) {
 	AssertContains(o, "connect error failed tls handshake")
 	// check if everything is cleanup
 	// server should have only 2 listener sessions (udp and quic) and app no accepted connection
-	o = serverVpp.Vppctl("show test alpn server")
+	o = serverVpp.Vppctl("show test tls server")
 	Log(o)
 	AssertContains(o, "accepted connections 0")
 	o = serverVpp.Vppctl("show session verbose 2")
@@ -85,10 +85,10 @@ func QuicAlpnMismatchTest(s *VethsSuite) {
 
 func QuicAlpnEmptyServerListTest(s *VethsSuite) {
 	serverAddress := s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1
-	Log(s.Containers.ServerVpp.VppInstance.Vppctl("test alpn server uri quic://" + serverAddress))
+	Log(s.Containers.ServerVpp.VppInstance.Vppctl("test tls server uri quic://" + serverAddress))
 
 	uri := "quic://" + serverAddress
-	o := s.Containers.ClientVpp.VppInstance.Vppctl("test alpn client alpn-proto1 3 alpn-proto2 2 uri " + uri)
+	o := s.Containers.ClientVpp.VppInstance.Vppctl("test tls client alpn-proto1 3 alpn-proto2 2 uri " + uri)
 	Log(o)
 	AssertNotContains(o, "connect failed")
 	AssertNotContains(o, "timeout")
@@ -98,10 +98,10 @@ func QuicAlpnEmptyServerListTest(s *VethsSuite) {
 
 func QuicAlpnEmptyClientListTest(s *VethsSuite) {
 	serverAddress := s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1
-	Log(s.Containers.ServerVpp.VppInstance.Vppctl("test alpn server alpn-proto1 3 alpn-proto2 1 uri quic://" + serverAddress))
+	Log(s.Containers.ServerVpp.VppInstance.Vppctl("test tls server alpn-proto1 3 alpn-proto2 1 uri quic://" + serverAddress))
 
 	uri := "quic://" + serverAddress
-	o := s.Containers.ClientVpp.VppInstance.Vppctl("test alpn client uri " + uri)
+	o := s.Containers.ClientVpp.VppInstance.Vppctl("test tls client uri " + uri)
 	Log(o)
 	AssertNotContains(o, "connect failed")
 	AssertNotContains(o, "timeout")
@@ -111,7 +111,7 @@ func QuicAlpnEmptyClientListTest(s *VethsSuite) {
 
 func QuicFailedHandshakeTest(s *NoTopoSuite) {
 	serverAddress := s.Interfaces.Tap.Ip4AddressString() + ":" + s.Ports.Http
-	Log(s.Containers.Vpp.VppInstance.Vppctl("test alpn server uri quic://" + serverAddress))
+	Log(s.Containers.Vpp.VppInstance.Vppctl("test tls server uri quic://" + serverAddress))
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
