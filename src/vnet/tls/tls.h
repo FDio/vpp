@@ -113,6 +113,7 @@ typedef struct tls_ctx_
   u8 *srv_hostname;
   u32 ckpair_index;
   u32 ca_trust_index;
+  u32 tls_profile_index; /**< TLS profile index, ~0 = use defaults */
   transport_proto_t tls_type;
   u8 *alpn_list;
   tls_alpn_proto_t alpn_selected;

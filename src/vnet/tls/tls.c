@@ -643,6 +643,7 @@ tls_connect (transport_endpoint_cfg_t * tep)
   ctx->tls_type = sep->transport_proto;
   ctx->ckpair_index = ccfg->ckpair_index;
   ctx->ca_trust_index = ccfg->ca_trust_index;
+  ctx->tls_profile_index = ccfg->tls_profile_index;
   ctx->verify_cfg = ccfg->verify_cfg;
   ctx->c_proto = TRANSPORT_PROTO_TLS;
   ctx->c_flags |= TRANSPORT_CONNECTION_F_NO_LOOKUP;
@@ -773,6 +774,7 @@ tls_start_listen (u32 app_listener_index, transport_endpoint_cfg_t *tep)
   lctx->tls_type = sep->transport_proto;
   lctx->ckpair_index = ccfg->ckpair_index;
   lctx->ca_trust_index = ccfg->ca_trust_index;
+  lctx->tls_profile_index = ccfg->tls_profile_index;
   lctx->verify_cfg = ccfg->verify_cfg;
   lctx->c_s_index = app_listener_index;
   lctx->c_c_index = lctx_index;
@@ -1138,6 +1140,10 @@ tls_session_attribute (u32 ctx_handle, clib_thread_index_t thread_index,
       break;
     case TRANSPORT_ENDPT_ATTR_TLS_ALPN:
       attr->tls_alpn = ctx->alpn_selected;
+      break;
+    case TRANSPORT_ENDPT_ATTR_TLS_PROFILE_INFO:
+      if (tls_ctx_attribute (ctx, 1 /* is_get */, attr) < 0)
+	return -1;
       break;
     case TRANSPORT_ENDPT_ATTR_NEXT_TRANSPORT:
       attr->next_transport = ctx->tls_session_handle;

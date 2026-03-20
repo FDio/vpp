@@ -49,6 +49,35 @@ typedef struct app_crypto_ca_trust_
   app_crypto_ca_trust_int_ctx_t *cti; /**< per-thread internal ca trust */
 } app_crypto_ca_trust_t;
 
+typedef enum app_tls_version_
+{
+  APP_TLS_VERSION_SSL3 = 0x0300,
+  APP_TLS_VERSION_1_0 = 0x0301,
+  APP_TLS_VERSION_1_1 = 0x0302,
+  APP_TLS_VERSION_1_2 = 0x0303,
+  APP_TLS_VERSION_1_3 = 0x0304,
+} app_tls_version_t;
+
+typedef struct app_tls_profile_
+{
+  u8 *cipher_list;   /**< OpenSSL cipher list, e.g., "HIGH:!aNULL" */
+  u8 *ciphersuites;  /**< TLS 1.3 ciphersuites, e.g., "TLS_AES_128_GCM_SHA256" */
+  u8 *groups;	     /**< supported groups, e.g., "X25519:P-256" */
+  u16 min_version;   /**< minimum TLS version, e.g., TLS1_2_VERSION */
+  u16 max_version;   /**< maximum TLS version, e.g., TLS1_3_VERSION */
+  u32 profile_index; /**< index in profile pool */
+} app_tls_profile_t;
+
+typedef struct app_tls_profile_add_args_
+{
+  u8 *cipher_list;
+  u8 *ciphersuites;
+  u8 *groups;
+  u16 min_version;
+  u16 max_version;
+  u32 index; /**< OUT: allocated profile index */
+} app_tls_profile_add_args_t;
+
 typedef enum crypto_engine_type_
 {
   CRYPTO_ENGINE_NONE,
@@ -153,6 +182,7 @@ typedef struct app_crypto_ctx_
 {
   app_crypto_wrk_t *wrk;
   app_crypto_ca_trust_t *ca_trust_stores;
+  app_tls_profile_t *tls_profiles;
   /** Preferred tls engine */
   u8 tls_engine;
   /** quic initialization vector */
@@ -183,6 +213,15 @@ app_crypto_get_int_ca_trust (app_crypto_ca_trust_t *ct,
 
 int vnet_app_add_cert_key_pair (vnet_app_add_cert_key_pair_args_t *a);
 int vnet_app_del_cert_key_pair (u32 index);
+
+/*
+ * TLS profile management
+ */
+
+int app_crypto_add_tls_profile (u32 app_index, app_tls_profile_add_args_t *args);
+void app_crypto_del_tls_profile (u32 app_index, u32 profile_index);
+app_tls_profile_t *app_crypto_get_tls_profile (u32 app_wrk_index, u32 profile_index);
+app_tls_profile_t *app_crypto_get_tls_profile_if_valid (u32 app_wrk_index, u32 profile_index);
 
 static inline app_certkey_int_ctx_t *
 app_certkey_get_int_ctx (app_cert_key_pair_t *ck,
@@ -220,6 +259,7 @@ crypto_engine_type_t app_crypto_engine_type_add (void);
 u8 app_crypto_engine_n_types (void);
 u8 *format_crypto_engine (u8 *s, va_list *args);
 uword unformat_crypto_engine (unformat_input_t *input, va_list *args);
+u8 *format_app_tls_version (u8 *s, va_list *args);
 
 clib_error_t *application_crypto_init ();
 
