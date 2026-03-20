@@ -732,15 +732,15 @@ vnet_crypto_get_key_data (vnet_crypto_ctx_t *ctx, vnet_crypto_handler_type_t t,
 }
 
 static_always_inline vnet_crypto_key_data_t
-vnet_crypto_get_simple_key_data (vnet_crypto_ctx_t *ctx, uword per_thread_offset)
+vnet_crypto_get_simple_key_data (vnet_crypto_ctx_t *ctx)
 {
-  return vnet_crypto_get_key_data (ctx, VNET_CRYPTO_HANDLER_TYPE_SIMPLE, per_thread_offset);
+  return vnet_crypto_get_key_data (ctx, VNET_CRYPTO_HANDLER_TYPE_SIMPLE, 0);
 }
 
 static_always_inline vnet_crypto_key_data_t
-vnet_crypto_get_chained_key_data (vnet_crypto_ctx_t *ctx, uword per_thread_offset)
+vnet_crypto_get_chained_key_data (vnet_crypto_ctx_t *ctx)
 {
-  return vnet_crypto_get_key_data (ctx, VNET_CRYPTO_HANDLER_TYPE_CHAINED, per_thread_offset);
+  return vnet_crypto_get_key_data (ctx, VNET_CRYPTO_HANDLER_TYPE_CHAINED, 0);
 }
 
 static_always_inline vnet_crypto_thread_key_data_t

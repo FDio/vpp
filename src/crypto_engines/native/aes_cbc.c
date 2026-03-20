@@ -22,13 +22,13 @@ typedef struct
 static_always_inline aes_cbc_key_data_t *
 aes_cbc_get_key_data (vnet_crypto_op_t *op, clib_thread_index_t thread_index)
 {
-  return (aes_cbc_key_data_t *) vnet_crypto_get_simple_key_data (op->ctx, 0);
+  return (aes_cbc_key_data_t *) vnet_crypto_get_simple_key_data (op->ctx);
 }
 
 static_always_inline aes_cbc_hmac_key_data_t *
 aes_cbc_hmac_get_key_data (vnet_crypto_op_t *op, clib_thread_index_t thread_index)
 {
-  return (aes_cbc_hmac_key_data_t *) vnet_crypto_get_simple_key_data (op->ctx, 0);
+  return (aes_cbc_hmac_key_data_t *) vnet_crypto_get_simple_key_data (op->ctx);
 }
 
 static_always_inline u32

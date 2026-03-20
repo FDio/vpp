@@ -23,7 +23,7 @@ aes_ops_enc_aes_gcm (vnet_crypto_op_t *ops[], u32 n_ops, aes_key_size_t ks, i32 
     {
       vnet_crypto_op_t *op = ops[i];
 
-      kd = (aes_gcm_key_data_t *) vnet_crypto_get_simple_key_data (op->ctx, 0);
+      kd = (aes_gcm_key_data_t *) vnet_crypto_get_simple_key_data (op->ctx);
       aes_gcm (op->src, op->dst, op->aad, (u8 *) op->iv, op->auth, op->len,
 	       aad_len >= 0 ? aad_len : op->aad_len, auth_len ? auth_len : op->auth_len, kd,
 	       AES_KEY_ROUNDS (ks), AES_GCM_OP_ENCRYPT);
@@ -46,7 +46,7 @@ aes_ops_dec_aes_gcm (vnet_crypto_op_t *ops[], u32 n_ops, aes_key_size_t ks, i32 
     {
       vnet_crypto_op_t *op = ops[i];
 
-      kd = (aes_gcm_key_data_t *) vnet_crypto_get_simple_key_data (op->ctx, 0);
+      kd = (aes_gcm_key_data_t *) vnet_crypto_get_simple_key_data (op->ctx);
       rv = aes_gcm (op->src, op->dst, op->aad, (u8 *) op->iv, op->auth, op->len,
 		    aad_len >= 0 ? aad_len : op->aad_len, auth_len ? auth_len : op->auth_len, kd,
 		    AES_KEY_ROUNDS (ks), AES_GCM_OP_DECRYPT);
