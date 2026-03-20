@@ -381,7 +381,6 @@ openssl_ops_hmac_dec_cbc_chained (vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_
 
 static_always_inline u32
 openssl_ops_enc_cbc (vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks, u32 n_ops,
-		     const EVP_CIPHER *cipher, u32 fixed, u32 aad_len,
 		     clib_thread_index_t thread_index)
 {
   EVP_CIPHER_CTX *ctx;
@@ -440,7 +439,6 @@ openssl_ops_enc_cbc (vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks, u3
 
 static_always_inline u32
 openssl_ops_dec_cbc (vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks, u32 n_ops,
-		     const EVP_CIPHER *cipher, u32 fixed, u32 aad_len,
 		     clib_thread_index_t thread_index)
 {
   EVP_CIPHER_CTX *ctx;
@@ -582,8 +580,7 @@ openssl_ops_enc_chacha20_poly1305 (vnet_crypto_op_t *ops[], vnet_crypto_op_chunk
 
 static_always_inline u32
 openssl_ops_dec_aead (vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks, u32 n_ops,
-		      const EVP_CIPHER *cipher, int is_gcm, int is_gmac, i32 aadlen, u32 taglen,
-		      clib_thread_index_t thread_index)
+		      int is_gmac, i32 aadlen, u32 taglen, clib_thread_index_t thread_index)
 {
   EVP_CIPHER_CTX *ctx;
   vnet_crypto_op_chunk_t *chp;
@@ -635,29 +632,24 @@ openssl_ops_dec_aead (vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks, u
 
 static_always_inline u32
 openssl_ops_dec_null_gmac (vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks, u32 n_ops,
-			   const EVP_CIPHER *cipher, i32 aad_len, u32 taglen,
-			   clib_thread_index_t thread_index)
+			   i32 aad_len, u32 taglen, clib_thread_index_t thread_index)
 {
-  return openssl_ops_dec_aead (ops, chunks, n_ops, cipher, /* is_gcm */ 1,
-			       /* is_gmac */ 1, aad_len, taglen, thread_index);
+  return openssl_ops_dec_aead (ops, chunks, n_ops, /* is_gmac */ 1, aad_len, taglen, thread_index);
 }
 
 static_always_inline u32
 openssl_ops_dec_gcm (vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks, u32 n_ops,
-		     const EVP_CIPHER *cipher, i32 aad_len, u32 taglen,
-		     clib_thread_index_t thread_index)
+		     i32 aad_len, u32 taglen, clib_thread_index_t thread_index)
 {
-  return openssl_ops_dec_aead (ops, chunks, n_ops, cipher, /* is_gcm */ 1,
-			       /* is_gmac */ 0, aad_len, taglen, thread_index);
+  return openssl_ops_dec_aead (ops, chunks, n_ops, /* is_gmac */ 0, aad_len, taglen, thread_index);
 }
 
 static_always_inline __clib_unused u32
 openssl_ops_dec_chacha20_poly1305 (vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks,
-				   u32 n_ops, const EVP_CIPHER *cipher, i32 aad_len, u32 taglen,
+				   u32 n_ops, i32 aad_len, u32 taglen,
 				   clib_thread_index_t thread_index)
 {
-  return openssl_ops_dec_aead (ops, chunks, n_ops, cipher, /* is_gcm */ 0,
-			       /* is_gmac */ 0, aad_len, taglen, thread_index);
+  return openssl_ops_dec_aead (ops, chunks, n_ops, /* is_gmac */ 0, aad_len, taglen, thread_index);
 }
 
 static_always_inline u32
@@ -1085,13 +1077,42 @@ openssl_ctx_change_hmac_group (vnet_crypto_ctx_t *ctx, vnet_crypto_key_change_ar
 				  vnet_crypto_op_chunk_t *chunks __clib_unused, u32 n_ops,         \
 				  clib_thread_index_t thread_index)                                \
   {                                                                                                \
+    return openssl_ops_enc_cbc (ops, 0, n_ops, thread_index);                                      \
+  }                                                                                                \
+                                                                                                   \
+  u32 openssl_ops_dec_##a (vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks __clib_unused,  \
+			   u32 n_ops, clib_thread_index_t thread_index)                            \
+  {                                                                                                \
+    return openssl_ops_dec_cbc (ops, 0, n_ops, thread_index);                                      \
+  }                                                                                                \
+                                                                                                   \
+  static u32 openssl_ops_enc_chained_##a (vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks, \
+					  u32 n_ops, clib_thread_index_t thread_index)             \
+  {                                                                                                \
+    return openssl_ops_enc_cbc (ops, chunks, n_ops, thread_index);                                 \
+  }                                                                                                \
+                                                                                                   \
+  static u32 openssl_ops_dec_chained_##a (vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks, \
+					  u32 n_ops, clib_thread_index_t thread_index)             \
+  {                                                                                                \
+    return openssl_ops_dec_cbc (ops, chunks, n_ops, thread_index);                                 \
+  }
+
+foreach_openssl_aes_evp_op;
+#undef _
+
+#define _(m, a, b, f, l)                                                                           \
+  static u32 openssl_ops_enc_##a (vnet_crypto_op_t *ops[],                                         \
+				  vnet_crypto_op_chunk_t *chunks __clib_unused, u32 n_ops,         \
+				  clib_thread_index_t thread_index)                                \
+  {                                                                                                \
     return openssl_ops_enc_##m (ops, 0, n_ops, b (), f ? l : -1, f ? 16 : 0, thread_index);        \
   }                                                                                                \
                                                                                                    \
   u32 openssl_ops_dec_##a (vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks __clib_unused,  \
 			   u32 n_ops, clib_thread_index_t thread_index)                            \
   {                                                                                                \
-    return openssl_ops_dec_##m (ops, 0, n_ops, b (), f ? l : -1, f ? 16 : 0, thread_index);        \
+    return openssl_ops_dec_##m (ops, 0, n_ops, f ? l : -1, f ? 16 : 0, thread_index);              \
   }                                                                                                \
                                                                                                    \
   static u32 openssl_ops_enc_chained_##a (vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks, \
@@ -1103,10 +1124,13 @@ openssl_ctx_change_hmac_group (vnet_crypto_ctx_t *ctx, vnet_crypto_key_change_ar
   static u32 openssl_ops_dec_chained_##a (vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks, \
 					  u32 n_ops, clib_thread_index_t thread_index)             \
   {                                                                                                \
-    return openssl_ops_dec_##m (ops, chunks, n_ops, b (), f ? l : -1, f ? 16 : 0, thread_index);   \
+    return openssl_ops_dec_##m (ops, chunks, n_ops, f ? l : -1, f ? 16 : 0, thread_index);         \
   }
 
-foreach_openssl_evp_op;
+foreach_openssl_aes_gcm_evp_op;
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+foreach_openssl_chacha20_evp_op;
+#endif
 #undef _
 
 #define _(a, c, h, k, d)                                                                           \

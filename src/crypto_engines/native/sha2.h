@@ -19,8 +19,8 @@ crypto_native_ops_hmac_sha2 (vnet_crypto_op_t *ops[], u32 n_ops, vnet_crypto_op_
     {
       vnet_crypto_op_t *op = ops[i];
 
-      clib_sha2_hmac_init (
-	&ctx, type, (clib_sha2_hmac_key_data_t *) vnet_crypto_get_simple_key_data (op->ctx, 0));
+      clib_sha2_hmac_init (&ctx, type,
+			   (clib_sha2_hmac_key_data_t *) vnet_crypto_get_simple_key_data (op->ctx));
       if (op->flags & VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS)
 	{
 	  vnet_crypto_op_chunk_t *chp = chunks + op->auth_chunk_index;

@@ -20,20 +20,20 @@ typedef struct
 } aes_cbc_hmac_key_data_t;
 
 static_always_inline aes_cbc_key_data_t *
-aes_cbc_get_key_data (vnet_crypto_op_t *op, clib_thread_index_t thread_index)
+aes_cbc_get_key_data (vnet_crypto_op_t *op)
 {
-  return (aes_cbc_key_data_t *) vnet_crypto_get_simple_key_data (op->ctx, 0);
+  return (aes_cbc_key_data_t *) vnet_crypto_get_simple_key_data (op->ctx);
 }
 
 static_always_inline aes_cbc_hmac_key_data_t *
-aes_cbc_hmac_get_key_data (vnet_crypto_op_t *op, clib_thread_index_t thread_index)
+aes_cbc_hmac_get_key_data (vnet_crypto_op_t *op)
 {
-  return (aes_cbc_hmac_key_data_t *) vnet_crypto_get_simple_key_data (op->ctx, 0);
+  return (aes_cbc_hmac_key_data_t *) vnet_crypto_get_simple_key_data (op->ctx);
 }
 
 static_always_inline u32
 aes_ops_enc_aes_cbc_hmac (vnet_crypto_op_t *ops[], u32 n_ops, aes_key_size_t ks,
-			  clib_sha2_type_t type, u32 auth_len, clib_thread_index_t thread_index)
+			  clib_sha2_type_t type, u32 auth_len)
 {
   u32 i, n_left = n_ops;
   uword key_indices[CRYPTO_NATIVE_AES_CBC_ENC_VEC_SIZE] = {};
@@ -51,7 +51,7 @@ aes_ops_enc_aes_cbc_hmac (vnet_crypto_op_t *ops[], u32 n_ops, aes_key_size_t ks,
       while (n_left && i < CRYPTO_NATIVE_AES_CBC_ENC_VEC_SIZE)
 	{
 	  vnet_crypto_op_t *op = ops[i];
-	  aes_cbc_hmac_key_data_t *kd = aes_cbc_hmac_get_key_data (op, thread_index);
+	  aes_cbc_hmac_key_data_t *kd = aes_cbc_hmac_get_key_data (op);
 	  clib_sha2_hmac_init (&ctx[i], type, &kd->integ_key);
 	  key_indices[i] = i;
 	  keys[i] = &kd->crypto_key;
@@ -81,7 +81,7 @@ aes_ops_enc_aes_cbc_hmac (vnet_crypto_op_t *ops[], u32 n_ops, aes_key_size_t ks,
 
 static_always_inline u32
 aes_ops_hmac_dec_aes_cbc (vnet_crypto_op_t *ops[], u32 n_ops, aes_key_size_t ks,
-			  clib_sha2_type_t type, u32 auth_len, clib_thread_index_t thread_index)
+			  clib_sha2_type_t type, u32 auth_len)
 {
   int rounds = AES_KEY_ROUNDS (ks);
   clib_sha2_hmac_ctx_t ctx;
@@ -94,7 +94,7 @@ aes_ops_hmac_dec_aes_cbc (vnet_crypto_op_t *ops[], u32 n_ops, aes_key_size_t ks,
   for (i = 0; i < n_ops; i++)
     {
       vnet_crypto_op_t *op = ops[i];
-      aes_cbc_hmac_key_data_t *kd = aes_cbc_hmac_get_key_data (op, thread_index);
+      aes_cbc_hmac_key_data_t *kd = aes_cbc_hmac_get_key_data (op);
 
       len = auth_len ? auth_len : op->auth_len;
 
@@ -126,8 +126,7 @@ aes_ops_hmac_dec_aes_cbc (vnet_crypto_op_t *ops[], u32 n_ops, aes_key_size_t ks,
 }
 
 static_always_inline u32
-aes_ops_enc_aes_cbc (vnet_crypto_op_t *ops[], u32 n_ops, aes_key_size_t ks,
-		     clib_thread_index_t thread_index)
+aes_ops_enc_aes_cbc (vnet_crypto_op_t *ops[], u32 n_ops, aes_key_size_t ks)
 {
   u32 i, n_left = n_ops;
   aes_cbc_key_data_t *keys[CRYPTO_NATIVE_AES_CBC_ENC_VEC_SIZE] = {};
@@ -144,7 +143,7 @@ aes_ops_enc_aes_cbc (vnet_crypto_op_t *ops[], u32 n_ops, aes_key_size_t ks,
 	{
 	  vnet_crypto_op_t *op = ops[i];
 	  key_indices[i] = i;
-	  keys[i] = aes_cbc_get_key_data (op, thread_index);
+	  keys[i] = aes_cbc_get_key_data (op);
 	  plaintext[i] = op->src;
 	  ciphertext[i] = op->dst;
 	  oplen[i] = op->len;
@@ -159,8 +158,7 @@ aes_ops_enc_aes_cbc (vnet_crypto_op_t *ops[], u32 n_ops, aes_key_size_t ks,
 }
 
 static_always_inline u32
-aes_ops_dec_aes_cbc (vnet_crypto_op_t *ops[], u32 n_ops, aes_key_size_t ks,
-		     clib_thread_index_t thread_index)
+aes_ops_dec_aes_cbc (vnet_crypto_op_t *ops[], u32 n_ops, aes_key_size_t ks)
 {
   int rounds = AES_KEY_ROUNDS (ks);
   u32 i;
@@ -170,7 +168,7 @@ aes_ops_dec_aes_cbc (vnet_crypto_op_t *ops[], u32 n_ops, aes_key_size_t ks,
   for (i = 0; i < n_ops; i++)
     {
       vnet_crypto_op_t *op = ops[i];
-      aes_cbc_key_data_t *kd = aes_cbc_get_key_data (op, thread_index);
+      aes_cbc_key_data_t *kd = aes_cbc_get_key_data (op);
 
 #if defined(__VAES__) && defined(__AVX512F__)
       aes4_cbc_dec (kd->decrypt_key, (u8x64u *) op->src, (u8x64u *) op->dst, (u8x16u *) op->iv,
@@ -416,14 +414,14 @@ VNET_CRYPTO_REGISTER_ALG_GROUP (native_cbc256_sha256_group) = {
 				      vnet_crypto_op_chunk_t *chunks __clib_unused, u32 n_ops,     \
 				      clib_thread_index_t thread_index)                            \
   {                                                                                                \
-    return aes_ops_enc_aes_cbc (ops, n_ops, AES_KEY_##x, thread_index);                            \
+    return aes_ops_enc_aes_cbc (ops, n_ops, AES_KEY_##x);                                          \
   }                                                                                                \
                                                                                                    \
   static u32 aes_ops_dec_aes_cbc_##x (vnet_crypto_op_t *ops[],                                     \
 				      vnet_crypto_op_chunk_t *chunks __clib_unused, u32 n_ops,     \
 				      clib_thread_index_t thread_index)                            \
   {                                                                                                \
-    return aes_ops_dec_aes_cbc (ops, n_ops, AES_KEY_##x, thread_index);                            \
+    return aes_ops_dec_aes_cbc (ops, n_ops, AES_KEY_##x);                                          \
   }                                                                                                \
                                                                                                    \
   VNET_CRYPTO_REGISTER_ALG (aes_##x##_cbc) = {                                                          \
@@ -443,28 +441,28 @@ foreach_aes_cbc_handler_type;
     vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks __clib_unused, u32 n_ops,                     \
     clib_thread_index_t thread_index)                                                                     \
   {                                                                                                       \
-    return aes_ops_enc_aes_cbc_hmac (ops, n_ops, AES_KEY_##a, CLIB_SHA2_##b, 0, thread_index);            \
+    return aes_ops_enc_aes_cbc_hmac (ops, n_ops, AES_KEY_##a, CLIB_SHA2_##b, 0);                          \
   }                                                                                                       \
                                                                                                           \
   static u32 crypto_native_ops_dec_aes_cbc_##a##_hmac_sha##b (                                            \
     vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks __clib_unused, u32 n_ops,                     \
     clib_thread_index_t thread_index)                                                                     \
   {                                                                                                       \
-    return aes_ops_hmac_dec_aes_cbc (ops, n_ops, AES_KEY_##a, CLIB_SHA2_##b, 0, thread_index);            \
+    return aes_ops_hmac_dec_aes_cbc (ops, n_ops, AES_KEY_##a, CLIB_SHA2_##b, 0);                          \
   }                                                                                                       \
                                                                                                           \
   static u32 crypto_native_ops_enc_aes_cbc_##a##_hmac_sha##b##_tag##c (                                   \
     vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks __clib_unused, u32 n_ops,                     \
     clib_thread_index_t thread_index)                                                                     \
   {                                                                                                       \
-    return aes_ops_enc_aes_cbc_hmac (ops, n_ops, AES_KEY_##a, CLIB_SHA2_##b, c, thread_index);            \
+    return aes_ops_enc_aes_cbc_hmac (ops, n_ops, AES_KEY_##a, CLIB_SHA2_##b, c);                          \
   }                                                                                                       \
                                                                                                           \
   static u32 crypto_native_ops_dec_aes_cbc_##a##_hmac_sha##b##_tag##c (                                   \
     vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks __clib_unused, u32 n_ops,                     \
     clib_thread_index_t thread_index)                                                                     \
   {                                                                                                       \
-    return aes_ops_hmac_dec_aes_cbc (ops, n_ops, AES_KEY_##a, CLIB_SHA2_##b, c, thread_index);            \
+    return aes_ops_hmac_dec_aes_cbc (ops, n_ops, AES_KEY_##a, CLIB_SHA2_##b, c);                          \
   }                                                                                                       \
                                                                                                           \
   VNET_CRYPTO_REGISTER_ALG (aes_##a##_cbc_hmac_sha##b) = {                                              \
@@ -498,14 +496,14 @@ _ (256, SHA2_256, 256, 16)
     vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks __clib_unused, u32 n_ops,              \
     clib_thread_index_t thread_index)                                                              \
   {                                                                                                \
-    return aes_ops_enc_aes_cbc_hmac (ops, n_ops, AES_KEY_##a, CLIB_SHA2_256, c, thread_index);     \
+    return aes_ops_enc_aes_cbc_hmac (ops, n_ops, AES_KEY_##a, CLIB_SHA2_256, c);                   \
   }                                                                                                \
                                                                                                    \
   static u32 crypto_native_ops_dec_aes_cbc_##a##_hmac_sha256_tag##c##_extra (                      \
     vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks __clib_unused, u32 n_ops,              \
     clib_thread_index_t thread_index)                                                              \
   {                                                                                                \
-    return aes_ops_hmac_dec_aes_cbc (ops, n_ops, AES_KEY_##a, CLIB_SHA2_256, c, thread_index);     \
+    return aes_ops_hmac_dec_aes_cbc (ops, n_ops, AES_KEY_##a, CLIB_SHA2_256, c);                   \
   }                                                                                                \
                                                                                                    \
   VNET_CRYPTO_REGISTER_ALG (aes_##a##_cbc_hmac_sha256_tag##c##_extra) = {                              \

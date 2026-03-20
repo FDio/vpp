@@ -8,8 +8,7 @@
 
 static_always_inline u32
 crypto_native_ops_hash_sha2 (vnet_crypto_hash_op_t *ops[], u32 n_ops,
-			     vnet_crypto_op_chunk_t *chunks, clib_sha2_type_t type,
-			     int maybe_chained __clib_unused)
+			     vnet_crypto_op_chunk_t *chunks, clib_sha2_type_t type)
 {
   clib_sha2_ctx_t ctx;
   u32 i;
@@ -76,14 +75,14 @@ VNET_CRYPTO_REGISTER_HASH_ALG_GROUP (native_hash_group) = {
     vnet_crypto_hash_op_t *ops[], vnet_crypto_op_chunk_t *chunks __clib_unused, u32 n_ops,         \
     clib_thread_index_t thread_index __clib_unused)                                                \
   {                                                                                                \
-    return crypto_native_ops_hash_sha2 (ops, n_ops, 0, CLIB_SHA2_##b, 0);                          \
+    return crypto_native_ops_hash_sha2 (ops, n_ops, 0, CLIB_SHA2_##b);                             \
   }                                                                                                \
                                                                                                    \
   static u32 crypto_native_ops_chained_hash_sha##b (                                               \
     vnet_crypto_hash_op_t *ops[], vnet_crypto_op_chunk_t *chunks, u32 n_ops,                       \
     clib_thread_index_t thread_index __clib_unused)                                                \
   {                                                                                                \
-    return crypto_native_ops_hash_sha2 (ops, n_ops, chunks, CLIB_SHA2_##b, 1);                     \
+    return crypto_native_ops_hash_sha2 (ops, n_ops, chunks, CLIB_SHA2_##b);                        \
   }                                                                                                \
                                                                                                    \
   static u32 crypto_native_ops_hmac_sha##b (vnet_crypto_op_t *ops[],                               \

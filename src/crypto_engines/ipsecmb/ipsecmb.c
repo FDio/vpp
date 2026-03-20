@@ -224,7 +224,7 @@ ipsecmb_ops_hmac_inline (vnet_crypto_op_t *ops[], u32 n_ops, u32 hash_size, u32 
       for (i = 0; i < n; i++, ops_index++)
 	{
 	  vnet_crypto_op_t *op = ops[ops_index];
-	  const u8 *kd = vnet_crypto_get_simple_key_data (op->ctx, 0) + key_data_offset;
+	  const u8 *kd = vnet_crypto_get_simple_key_data (op->ctx) + key_data_offset;
 
 	  job = &ptd->burst_jobs[i];
 
@@ -302,7 +302,7 @@ ipsecmb_ops_aes_cipher_inline (vnet_crypto_op_t *ops[], u32 n_ops, u32 key_len,
 	{
 	  ipsecmb_aes_key_data_t *kd;
 	  vnet_crypto_op_t *op = ops[ops_index++];
-	  kd = (ipsecmb_aes_key_data_t *) vnet_crypto_get_simple_key_data (op->ctx, 0);
+	  kd = (ipsecmb_aes_key_data_t *) vnet_crypto_get_simple_key_data (op->ctx);
 
 	  job = &ptd->burst_jobs[i];
 
@@ -355,8 +355,8 @@ foreach_ipsecmb_cipher_op;
 
 static_always_inline u32
 ipsecmb_ops_combined_enc (vnet_crypto_op_t *ops[], u32 n_ops, u32 key_len,
-			  IMB_CIPHER_MODE cipher_mode, u32 block_size, u32 hash_size,
-			  u32 digest_size, IMB_HASH_ALG hash_alg)
+			  IMB_CIPHER_MODE cipher_mode, u32 hash_size, u32 digest_size,
+			  IMB_HASH_ALG hash_alg)
 {
   vnet_crypto_op_t *hmac_ops[n_ops];
   u32 i;
@@ -383,8 +383,8 @@ ipsecmb_ops_combined_enc (vnet_crypto_op_t *ops[], u32 n_ops, u32 key_len,
 
 static_always_inline u32
 ipsecmb_ops_combined_dec (vnet_crypto_op_t *ops[], u32 n_ops, u32 key_len,
-			  IMB_CIPHER_MODE cipher_mode, u32 block_size, u32 hash_size,
-			  u32 digest_size, IMB_HASH_ALG hash_alg)
+			  IMB_CIPHER_MODE cipher_mode, u32 hash_size, u32 digest_size,
+			  IMB_HASH_ALG hash_alg)
 {
   vnet_crypto_op_t *cipher_ops[n_ops];
   vnet_crypto_op_t *hmac_ops[n_ops];
@@ -424,14 +424,14 @@ ipsecmb_ops_combined_dec (vnet_crypto_op_t *ops[], u32 n_ops, u32 key_len,
     vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks __clib_unused, u32 n_ops,              \
     clib_thread_index_t thread_index)                                                              \
   {                                                                                                \
-    return ipsecmb_ops_combined_enc (ops, n_ops, b, IMB_CIPHER_##c, f, g, h, IMB_AUTH_HMAC_##d);   \
+    return ipsecmb_ops_combined_enc (ops, n_ops, b, IMB_CIPHER_##c, g, h, IMB_AUTH_HMAC_##d);      \
   }                                                                                                \
                                                                                                    \
   static_always_inline u32 ipsecmb_ops_combined_dec_##a (                                          \
     vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks __clib_unused, u32 n_ops,              \
     clib_thread_index_t thread_index)                                                              \
   {                                                                                                \
-    return ipsecmb_ops_combined_dec (ops, n_ops, b, IMB_CIPHER_##c, f, g, h, IMB_AUTH_HMAC_##d);   \
+    return ipsecmb_ops_combined_dec (ops, n_ops, b, IMB_CIPHER_##c, g, h, IMB_AUTH_HMAC_##d);      \
   }
 
 foreach_ipsecmb_combined_cipher_op;
@@ -465,9 +465,9 @@ ipsecmb_ops_gcm (vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks, u32 n_
       u32 taglen = a.taglen ? a.taglen : op->auth_len;
       u32 aadlen = a.aadlen >= 0 ? a.aadlen : op->aad_len;
 
-      kd = (struct gcm_key_data *) vnet_crypto_get_chained_key_data (op->ctx, 0);
+      kd = (struct gcm_key_data *) vnet_crypto_get_chained_key_data (op->ctx);
       if (!a.chained)
-	kd = (struct gcm_key_data *) vnet_crypto_get_simple_key_data (op->ctx, 0);
+	kd = (struct gcm_key_data *) vnet_crypto_get_simple_key_data (op->ctx);
       if (a.chained)
 	{
 	  ASSERT (op->flags & VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS);
@@ -618,7 +618,7 @@ ipsecmb_ops_chacha_poly (vnet_crypto_op_t *ops[], u32 n_ops, IMB_CIPHER_DIRECTIO
 	  u8 *key;
 
 	  job = IMB_GET_NEXT_JOB (m);
-	  key = vnet_crypto_get_simple_key_data (op->ctx, 0);
+	  key = vnet_crypto_get_simple_key_data (op->ctx);
 
 	  job->cipher_direction = dir;
 	  job->chain_order = IMB_ORDER_HASH_CIPHER;
@@ -710,7 +710,7 @@ foreach_chacha_poly_fixed_aad_lengths
 
 	  ASSERT (op->flags & VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS);
 
-	  u8 *key = vnet_crypto_get_chained_key_data (op->ctx, 0);
+	  u8 *key = vnet_crypto_get_chained_key_data (op->ctx);
 
 	  IMB_CHACHA20_POLY1305_INIT (m, key, &ctx, op->iv, op->aad,
 				      aad_len >= 0 ? aad_len : op->aad_len);
@@ -740,7 +740,7 @@ foreach_chacha_poly_fixed_aad_lengths
 
 	  ASSERT (op->flags & VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS);
 
-	  u8 *key = vnet_crypto_get_chained_key_data (op->ctx, 0);
+	  u8 *key = vnet_crypto_get_chained_key_data (op->ctx);
 
 	  IMB_CHACHA20_POLY1305_INIT (m, key, &ctx, op->iv, op->aad,
 				      aad_len >= 0 ? aad_len : op->aad_len);
