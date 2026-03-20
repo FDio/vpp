@@ -12,31 +12,32 @@ typedef struct
   u8 *uri;
   u32 tls_engine;
   u32 ckpair_index;
+  u32 tls_profile_index;
   u8 alpn_protos[4];
   vlib_main_t *vlib_main;
   u32 accepted_count;
-} alpn_server_main_t;
+} tls_server_main_t;
 
-alpn_server_main_t alpn_server_main;
+tls_server_main_t tls_server_main;
 
 static int
-as_ts_rx_callback (session_t *ts)
+ts_ts_rx_callback (session_t *ts)
 {
   clib_warning ("called...");
   return -1;
 }
 
 static int
-as_ts_tx_callback (session_t *ts)
+ts_ts_tx_callback (session_t *ts)
 {
   clib_warning ("called...");
   return -1;
 }
 
 static int
-as_ts_accept_callback (session_t *ts)
+ts_ts_accept_callback (session_t *ts)
 {
-  alpn_server_main_t *sm = &alpn_server_main;
+  tls_server_main_t *sm = &tls_server_main;
   tls_alpn_proto_t alpn_proto;
   transport_endpt_attr_t attr = { .type = TRANSPORT_ENDPT_ATTR_TLS_ALPN };
 
@@ -51,17 +52,16 @@ as_ts_accept_callback (session_t *ts)
 }
 
 static int
-as_ts_connected_callback (u32 app_index, u32 api_context, session_t *s,
-			  session_error_t err)
+ts_ts_connected_callback (u32 app_index, u32 api_context, session_t *s, session_error_t err)
 {
   clib_warning ("called...");
   return -1;
 }
 
 static void
-as_ts_disconnect_callback (session_t *s)
+ts_ts_disconnect_callback (session_t *s)
 {
-  alpn_server_main_t *sm = &alpn_server_main;
+  tls_server_main_t *sm = &tls_server_main;
   vnet_disconnect_args_t _a = { 0 }, *a = &_a;
 
   a->handle = session_handle (s);
@@ -70,9 +70,9 @@ as_ts_disconnect_callback (session_t *s)
 }
 
 static void
-as_ts_reset_callback (session_t *s)
+ts_ts_reset_callback (session_t *s)
 {
-  alpn_server_main_t *sm = &alpn_server_main;
+  tls_server_main_t *sm = &tls_server_main;
   vnet_disconnect_args_t _a = { 0 }, *a = &_a;
 
   a->handle = session_handle (s);
@@ -81,39 +81,39 @@ as_ts_reset_callback (session_t *s)
 }
 
 static void
-as_ts_cleanup_callback (session_t *s, session_cleanup_ntf_t ntf)
+ts_ts_cleanup_callback (session_t *s, session_cleanup_ntf_t ntf)
 {
   return;
 }
 
 static int
-as_add_segment_callback (u32 client_index, u64 segment_handle)
+ts_add_segment_callback (u32 client_index, u64 segment_handle)
 {
   return 0;
 }
 
 static int
-as_del_segment_callback (u32 client_index, u64 segment_handle)
+ts_del_segment_callback (u32 client_index, u64 segment_handle)
 {
   return 0;
 }
 
-static session_cb_vft_t as_session_cb_vft = {
-  .session_accept_callback = as_ts_accept_callback,
-  .session_disconnect_callback = as_ts_disconnect_callback,
-  .session_connected_callback = as_ts_connected_callback,
-  .add_segment_callback = as_add_segment_callback,
-  .del_segment_callback = as_del_segment_callback,
-  .builtin_app_rx_callback = as_ts_rx_callback,
-  .builtin_app_tx_callback = as_ts_tx_callback,
-  .session_reset_callback = as_ts_reset_callback,
-  .session_cleanup_callback = as_ts_cleanup_callback,
+static session_cb_vft_t ts_session_cb_vft = {
+  .session_accept_callback = ts_ts_accept_callback,
+  .session_disconnect_callback = ts_ts_disconnect_callback,
+  .session_connected_callback = ts_ts_connected_callback,
+  .add_segment_callback = ts_add_segment_callback,
+  .del_segment_callback = ts_del_segment_callback,
+  .builtin_app_rx_callback = ts_ts_rx_callback,
+  .builtin_app_tx_callback = ts_ts_tx_callback,
+  .session_reset_callback = ts_ts_reset_callback,
+  .session_cleanup_callback = ts_ts_cleanup_callback,
 };
 
 static int
-as_attach ()
+ts_attach ()
 {
-  alpn_server_main_t *sm = &alpn_server_main;
+  tls_server_main_t *sm = &tls_server_main;
   vnet_app_add_cert_key_pair_args_t _ck_pair, *ck_pair = &_ck_pair;
   u64 options[APP_OPTIONS_N_OPTIONS];
   vnet_app_attach_args_t _a, *a = &_a;
@@ -122,8 +122,8 @@ as_attach ()
   clib_memset (options, 0, sizeof (options));
 
   a->api_client_index = ~0;
-  a->name = format (0, "test_alpn_server");
-  a->session_cb_vft = &as_session_cb_vft;
+  a->name = format (0, "test_tls_server");
+  a->session_cb_vft = &ts_session_cb_vft;
   a->options = options;
   a->options[APP_OPTIONS_SEGMENT_SIZE] = 128 << 20;
   a->options[APP_OPTIONS_ADD_SEGMENT_SIZE] = 128 << 20;
@@ -154,9 +154,9 @@ as_attach ()
 }
 
 static int
-as_listen ()
+ts_listen ()
 {
-  alpn_server_main_t *sm = &alpn_server_main;
+  tls_server_main_t *sm = &tls_server_main;
   vnet_listen_args_t _a, *a = &_a;
   transport_endpt_ext_cfg_t *ext_cfg;
   char *uri;
@@ -175,6 +175,7 @@ as_listen ()
     session_endpoint_add_ext_cfg (&a->sep_ext, TRANSPORT_ENDPT_EXT_CFG_CRYPTO,
 				  sizeof (transport_endpt_crypto_cfg_t));
   ext_cfg->crypto.ckpair_index = sm->ckpair_index;
+  ext_cfg->crypto.tls_profile_index = sm->tls_profile_index;
   clib_memcpy (ext_cfg->crypto.alpn_protos, sm->alpn_protos, 4);
 
   rv = vnet_listen (a);
@@ -189,14 +190,14 @@ as_listen ()
 }
 
 static clib_error_t *
-alpn_server_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
-			       vlib_cli_command_t *cmd)
+tls_server_create_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 {
-  alpn_server_main_t *sm = &alpn_server_main;
+  tls_server_main_t *sm = &tls_server_main;
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error = 0;
 
   sm->tls_engine = CRYPTO_ENGINE_OPENSSL;
+  sm->tls_profile_index = ~0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return clib_error_return (0, "expected URI");
@@ -215,6 +216,8 @@ alpn_server_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	;
       else if (unformat (line_input, "alpn-proto4 %d", &sm->alpn_protos[3]))
 	;
+      else if (unformat (line_input, "profile-index %d", &sm->tls_profile_index))
+	;
       else
 	{
 	  error = clib_error_return (0, "failed: unknown input `%U'",
@@ -228,12 +231,12 @@ alpn_server_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
 					   RT_BACKEND_ENGINE_RULE_TABLE };
   vnet_session_enable_disable (vm, &args);
 
-  if (as_attach ())
+  if (ts_attach ())
     {
       error = clib_error_return (0, "attach failed");
       goto done;
     }
-  if (as_listen ())
+  if (ts_listen ())
     {
       error = clib_error_return (0, "lsiten failed");
       goto done;
@@ -248,17 +251,17 @@ done:
   return error;
 }
 
-VLIB_CLI_COMMAND (alpn_server_create_command, static) = {
-  .path = "test alpn server",
-  .short_help = "test alpn server uri <tls://ip/port> [tls-engine %d]",
-  .function = alpn_server_create_command_fn,
+VLIB_CLI_COMMAND (tls_server_create_command, static) = {
+  .path = "test tls server",
+  .short_help = "test tls server uri <tls://ip/port> [tls-engine %d] "
+		"[profile-index %d]",
+  .function = tls_server_create_command_fn,
 };
 
 static clib_error_t *
-show_alpn_server_fn (vlib_main_t *vm, unformat_input_t *input,
-		     vlib_cli_command_t *cmd)
+show_tls_server_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 {
-  alpn_server_main_t *sm = &alpn_server_main;
+  tls_server_main_t *sm = &tls_server_main;
 
   if (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     return clib_error_return (0, "unknown input `%U'", format_unformat_error,
@@ -268,18 +271,18 @@ show_alpn_server_fn (vlib_main_t *vm, unformat_input_t *input,
   return 0;
 }
 
-VLIB_CLI_COMMAND (show_alpn_server, static) = {
-  .path = "show test alpn server",
-  .short_help = "show test alpn server",
-  .function = show_alpn_server_fn,
+VLIB_CLI_COMMAND (show_tls_server, static) = {
+  .path = "show test tls server",
+  .short_help = "show test tls server",
+  .function = show_tls_server_fn,
 };
 
 clib_error_t *
-alpn_server_main_init (vlib_main_t *vm)
+tls_server_main_init (vlib_main_t *vm)
 {
-  alpn_server_main_t *sm = &alpn_server_main;
+  tls_server_main_t *sm = &tls_server_main;
   sm->vlib_main = vm;
   return 0;
 }
 
-VLIB_INIT_FUNCTION (alpn_server_main_init);
+VLIB_INIT_FUNCTION (tls_server_main_init);

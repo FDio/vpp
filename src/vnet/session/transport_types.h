@@ -344,10 +344,11 @@ format_function_t format_tls_alpn_proto;
 
 typedef struct transport_endpt_crypto_cfg_
 {
-  u32 ckpair_index;   /**< index of ck pair in application crypto layer */
-  u32 ca_trust_index; /**< index of ca trust in application crypto layer */
-  u8 alpn_protos[4];  /**< ordered by preference for server */
-  u8 crypto_engine;   /**< crypto engine requested */
+  u32 ckpair_index;	       /**< index of ck pair in application crypto layer */
+  u32 ca_trust_index;	       /**< index of ca trust in application crypto layer */
+  u32 tls_profile_index;       /**< index of tls profile, ~0 = use defaults */
+  u8 alpn_protos[4];	       /**< ordered by preference for server */
+  u8 crypto_engine;	       /**< crypto engine requested */
   tls_verify_cfg_t verify_cfg; /**< cert verification mode */
   u8 hostname[256];	       /**< full domain len is 255 as per rfc 3986 */
 } transport_endpt_crypto_cfg_t;
@@ -356,6 +357,12 @@ typedef struct tls_cert_
 {
   void *cert;
 } tls_cert_t;
+
+typedef struct tls_profile_info_
+{
+  u8 *cipher;	   /**< negotiated cipher name */
+  u16 tls_version; /**< negotiated TLS version */
+} tls_profile_info_t;
 
 typedef struct transport_endpt_ext_cfg_
 {
@@ -385,15 +392,16 @@ typedef struct transport_endpt_ext_cfgs_
     .len = 0, .tail_offset = 0, .data = 0,                                    \
   }
 
-#define foreach_transport_attr_fields                                         \
-  _ (u64, next_output_node, NEXT_OUTPUT_NODE)                                 \
-  _ (u16, mss, MSS)                                                           \
-  _ (u8, flags, FLAGS)                                                        \
-  _ (u8, cc_algo, CC_ALGO)                                                    \
-  _ (transport_endpoint_t, ext_endpt, EXT_ENDPT)                              \
-  _ (tls_cert_t, tls_peer_cert, TLS_PEER_CERT)                                \
-  _ (tls_alpn_proto_t, tls_alpn, TLS_ALPN)                                    \
-  _ (u64, next_transport, NEXT_TRANSPORT)                                     \
+#define foreach_transport_attr_fields                                                              \
+  _ (u64, next_output_node, NEXT_OUTPUT_NODE)                                                      \
+  _ (u16, mss, MSS)                                                                                \
+  _ (u8, flags, FLAGS)                                                                             \
+  _ (u8, cc_algo, CC_ALGO)                                                                         \
+  _ (transport_endpoint_t, ext_endpt, EXT_ENDPT)                                                   \
+  _ (tls_cert_t, tls_peer_cert, TLS_PEER_CERT)                                                     \
+  _ (tls_alpn_proto_t, tls_alpn, TLS_ALPN)                                                         \
+  _ (tls_profile_info_t, tls_profile_info, TLS_PROFILE_INFO)                                       \
+  _ (u64, next_transport, NEXT_TRANSPORT)                                                          \
   _ (u64, app_proto_err_code, APP_PROTO_ERR_CODE)
 
 typedef enum transport_endpt_attr_type_

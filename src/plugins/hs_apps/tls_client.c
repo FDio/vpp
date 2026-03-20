@@ -5,6 +5,7 @@
 #include <vnet/session/application_interface.h>
 #include <vnet/session/application.h>
 #include <vnet/session/session.h>
+#include <vnet/session/application_crypto.h>
 
 typedef struct
 {
@@ -12,74 +13,87 @@ typedef struct
   u8 *uri;
   u32 tls_engine;
   u32 ckpair_index;
+  u32 tls_profile_index;
   u32 cli_node_index;
   session_endpoint_cfg_t connect_sep;
   tls_alpn_proto_t alpn_proto_selected;
+  u8 *negotiated_cipher;
+  u16 negotiated_tls_version;
   u8 alpn_protos[4];
   vlib_main_t *vlib_main;
-} alpn_client_main_t;
+} tls_client_main_t;
 
 typedef enum
 {
-  AC_CLI_TEST_DONE = 1,
-  AC_CLI_CONNECT_FAILED,
-} ac_cli_signal_t;
+  TC_CLI_TEST_DONE = 1,
+  TC_CLI_CONNECT_FAILED,
+} tc_cli_signal_t;
 
-alpn_client_main_t alpn_client_main;
+tls_client_main_t tls_client_main;
 
 static int
-ac_ts_rx_callback (session_t *ts)
+tc_ts_rx_callback (session_t *ts)
 {
   clib_warning ("called...");
   return -1;
 }
 
 static int
-ac_ts_tx_callback (session_t *ts)
+tc_ts_tx_callback (session_t *ts)
 {
   clib_warning ("called...");
   return -1;
 }
 
 static int
-ac_ts_accept_callback (session_t *ts)
+tc_ts_accept_callback (session_t *ts)
 {
   clib_warning ("called...");
   return -1;
 }
 
 static int
-ac_ts_connected_callback (u32 app_index, u32 api_context, session_t *s,
-			  session_error_t err)
+tc_ts_connected_callback (u32 app_index, u32 api_context, session_t *s, session_error_t err)
 {
-  alpn_client_main_t *cm = &alpn_client_main;
+  tls_client_main_t *cm = &tls_client_main;
   vnet_disconnect_args_t _a = { 0 }, *a = &_a;
+  transport_endpt_attr_t attr;
 
   if (err)
     {
-      vlib_process_signal_event_mt (cm->vlib_main, cm->cli_node_index,
-				    AC_CLI_CONNECT_FAILED, err);
+      vlib_process_signal_event_mt (cm->vlib_main, cm->cli_node_index, TC_CLI_CONNECT_FAILED, err);
       return -1;
     }
 
-  transport_endpt_attr_t attr = { .type = TRANSPORT_ENDPT_ATTR_TLS_ALPN };
+  attr.type = TRANSPORT_ENDPT_ATTR_TLS_ALPN;
   session_transport_attribute (s, 1 /* is_get */, &attr);
   cm->alpn_proto_selected = attr.tls_alpn;
+
+  attr.type = TRANSPORT_ENDPT_ATTR_TLS_PROFILE_INFO;
+  if (session_transport_attribute (s, 1 /* is_get */, &attr) == 0)
+    {
+      cm->negotiated_cipher = attr.tls_profile_info.cipher;
+      cm->negotiated_tls_version = attr.tls_profile_info.tls_version;
+    }
+  else
+    {
+      cm->negotiated_cipher = 0;
+      cm->negotiated_tls_version = 0;
+    }
 
   a->handle = session_handle (s);
   a->app_index = cm->app_index;
   vnet_disconnect_session (a);
 
-  vlib_process_signal_event_mt (cm->vlib_main, cm->cli_node_index,
-				AC_CLI_TEST_DONE, 0);
+  vlib_process_signal_event_mt (cm->vlib_main, cm->cli_node_index, TC_CLI_TEST_DONE, 0);
 
   return 0;
 }
 
 static void
-ac_ts_disconnect_callback (session_t *s)
+tc_ts_disconnect_callback (session_t *s)
 {
-  alpn_client_main_t *cm = &alpn_client_main;
+  tls_client_main_t *cm = &tls_client_main;
   vnet_disconnect_args_t _a = { 0 }, *a = &_a;
 
   a->handle = session_handle (s);
@@ -88,9 +102,9 @@ ac_ts_disconnect_callback (session_t *s)
 }
 
 static void
-ac_ts_reset_callback (session_t *s)
+tc_ts_reset_callback (session_t *s)
 {
-  alpn_client_main_t *cm = &alpn_client_main;
+  tls_client_main_t *cm = &tls_client_main;
   vnet_disconnect_args_t _a = { 0 }, *a = &_a;
 
   a->handle = session_handle (s);
@@ -99,39 +113,39 @@ ac_ts_reset_callback (session_t *s)
 }
 
 static void
-ac_ts_cleanup_callback (session_t *s, session_cleanup_ntf_t ntf)
+tc_ts_cleanup_callback (session_t *s, session_cleanup_ntf_t ntf)
 {
   return;
 }
 
 static int
-ac_add_segment_callback (u32 client_index, u64 segment_handle)
+tc_add_segment_callback (u32 client_index, u64 segment_handle)
 {
   return 0;
 }
 
 static int
-ac_del_segment_callback (u32 client_index, u64 segment_handle)
+tc_del_segment_callback (u32 client_index, u64 segment_handle)
 {
   return 0;
 }
 
-static session_cb_vft_t ac_session_cb_vft = {
-  .session_accept_callback = ac_ts_accept_callback,
-  .session_disconnect_callback = ac_ts_disconnect_callback,
-  .session_connected_callback = ac_ts_connected_callback,
-  .add_segment_callback = ac_add_segment_callback,
-  .del_segment_callback = ac_del_segment_callback,
-  .builtin_app_rx_callback = ac_ts_rx_callback,
-  .builtin_app_tx_callback = ac_ts_tx_callback,
-  .session_reset_callback = ac_ts_reset_callback,
-  .session_cleanup_callback = ac_ts_cleanup_callback,
+static session_cb_vft_t tc_session_cb_vft = {
+  .session_accept_callback = tc_ts_accept_callback,
+  .session_disconnect_callback = tc_ts_disconnect_callback,
+  .session_connected_callback = tc_ts_connected_callback,
+  .add_segment_callback = tc_add_segment_callback,
+  .del_segment_callback = tc_del_segment_callback,
+  .builtin_app_rx_callback = tc_ts_rx_callback,
+  .builtin_app_tx_callback = tc_ts_tx_callback,
+  .session_reset_callback = tc_ts_reset_callback,
+  .session_cleanup_callback = tc_ts_cleanup_callback,
 };
 
 static int
-ac_attach ()
+tc_attach ()
 {
-  alpn_client_main_t *cm = &alpn_client_main;
+  tls_client_main_t *cm = &tls_client_main;
   vnet_app_attach_args_t _a, *a = &_a;
   u64 options[18];
   vnet_app_add_cert_key_pair_args_t _ck_pair, *ck_pair = &_ck_pair;
@@ -140,8 +154,8 @@ ac_attach ()
   clib_memset (options, 0, sizeof (options));
 
   a->api_client_index = ~0;
-  a->name = format (0, "test_alpn_client");
-  a->session_cb_vft = &ac_session_cb_vft;
+  a->name = format (0, "test_tls_client");
+  a->session_cb_vft = &tc_session_cb_vft;
   a->options = options;
   a->options[APP_OPTIONS_SEGMENT_SIZE] = 128 << 20;
   a->options[APP_OPTIONS_ADD_SEGMENT_SIZE] = 128 << 20;
@@ -169,7 +183,7 @@ ac_attach ()
 }
 
 static int
-ac_connect_rpc (void *rpc_args)
+tc_connect_rpc (void *rpc_args)
 {
   vnet_connect_args_t *a = rpc_args;
   int rv;
@@ -185,16 +199,15 @@ ac_connect_rpc (void *rpc_args)
 }
 
 static void
-ac_program_connect (vnet_connect_args_t *a)
+tc_program_connect (vnet_connect_args_t *a)
 {
-  session_send_rpc_evt_to_thread_force (transport_cl_thread (), ac_connect_rpc,
-					a);
+  session_send_rpc_evt_to_thread_force (transport_cl_thread (), tc_connect_rpc, a);
 }
 
 static void
-ac_connect ()
+tc_connect ()
 {
-  alpn_client_main_t *cm = &alpn_client_main;
+  tls_client_main_t *cm = &tls_client_main;
   vnet_connect_args_t *a = 0;
   transport_endpt_ext_cfg_t *ext_cfg;
 
@@ -208,22 +221,23 @@ ac_connect ()
     session_endpoint_add_ext_cfg (&a->sep_ext, TRANSPORT_ENDPT_EXT_CFG_CRYPTO,
 				  sizeof (transport_endpt_crypto_cfg_t));
   ext_cfg->crypto.ckpair_index = cm->ckpair_index;
+  ext_cfg->crypto.tls_profile_index = cm->tls_profile_index;
   clib_memcpy (ext_cfg->crypto.alpn_protos, cm->alpn_protos, 4);
 
-  ac_program_connect (a);
+  tc_program_connect (a);
 }
 
 static clib_error_t *
-ac_run (vlib_main_t *vm)
+tc_run (vlib_main_t *vm)
 {
-  alpn_client_main_t *cm = &alpn_client_main;
+  tls_client_main_t *cm = &tls_client_main;
   uword event_type, *event_data = 0;
   clib_error_t *error = 0;
 
-  if (ac_attach ())
+  if (tc_attach ())
     return clib_error_return (0, "attach failed");
 
-  ac_connect ();
+  tc_connect ();
 
   vlib_process_wait_for_event_or_clock (vm, 10);
   event_type = vlib_process_get_events (vm, &event_data);
@@ -232,11 +246,15 @@ ac_run (vlib_main_t *vm)
     case ~0:
       error = clib_error_return (0, "timeout");
       break;
-    case AC_CLI_TEST_DONE:
+    case TC_CLI_TEST_DONE:
       vlib_cli_output (vm, "ALPN selected: %U", format_tls_alpn_proto,
 		       cm->alpn_proto_selected);
+      if (cm->negotiated_cipher)
+	vlib_cli_output (vm, "Cipher: %s", cm->negotiated_cipher);
+      if (cm->negotiated_tls_version)
+	vlib_cli_output (vm, "TLS version: %U", format_app_tls_version, cm->negotiated_tls_version);
       break;
-    case AC_CLI_CONNECT_FAILED:
+    case TC_CLI_CONNECT_FAILED:
       error = clib_error_return (0, "connect error %U", format_session_error,
 				 event_data[0]);
       break;
@@ -250,9 +268,9 @@ ac_run (vlib_main_t *vm)
 }
 
 static int
-ac_detach ()
+tc_detach ()
 {
-  alpn_client_main_t *cm = &alpn_client_main;
+  tls_client_main_t *cm = &tls_client_main;
   vnet_app_detach_args_t _da, *da = &_da;
   int rv;
 
@@ -268,14 +286,14 @@ ac_detach ()
 }
 
 static clib_error_t *
-alpn_client_run_command_fn (vlib_main_t *vm, unformat_input_t *input,
-			    vlib_cli_command_t *cmd)
+tls_client_run_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 {
-  alpn_client_main_t *cm = &alpn_client_main;
+  tls_client_main_t *cm = &tls_client_main;
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error = 0;
 
   cm->tls_engine = CRYPTO_ENGINE_OPENSSL;
+  cm->tls_profile_index = ~0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return clib_error_return (0, "expected URI");
@@ -293,6 +311,8 @@ alpn_client_run_command_fn (vlib_main_t *vm, unformat_input_t *input,
       else if (unformat (line_input, "alpn-proto3 %d", &cm->alpn_protos[2]))
 	;
       else if (unformat (line_input, "alpn-proto4 %d", &cm->alpn_protos[3]))
+	;
+      else if (unformat (line_input, "profile-index %d", &cm->tls_profile_index))
 	;
       else
 	{
@@ -323,9 +343,9 @@ alpn_client_run_command_fn (vlib_main_t *vm, unformat_input_t *input,
   vnet_session_enable_disable (vm, &args);
   vlib_worker_thread_barrier_release (vm);
 
-  error = ac_run (vm);
+  error = tc_run (vm);
 
-  if (ac_detach ())
+  if (tc_detach ())
     {
       if (!error)
 	error = clib_error_return (0, "detach failed");
@@ -335,23 +355,25 @@ alpn_client_run_command_fn (vlib_main_t *vm, unformat_input_t *input,
 
 done:
   vec_free (cm->uri);
+  vec_free (cm->negotiated_cipher);
   unformat_free (line_input);
   return error;
 }
 
-VLIB_CLI_COMMAND (alpn_client_run_command, static) = {
-  .path = "test alpn client",
-  .short_help = "test alpn client [uri <tls://ip/port>] [tls-engine %d]",
-  .function = alpn_client_run_command_fn,
+VLIB_CLI_COMMAND (tls_client_run_command, static) = {
+  .path = "test tls client",
+  .short_help = "test tls client [uri <tls://ip/port>] [tls-engine %d] "
+		"[profile-index %d]",
+  .function = tls_client_run_command_fn,
 };
 
 clib_error_t *
-alpn_client_main_init (vlib_main_t *vm)
+tls_client_main_init (vlib_main_t *vm)
 {
-  alpn_client_main_t *cm = &alpn_client_main;
+  tls_client_main_t *cm = &tls_client_main;
   cm->vlib_main = vm;
   cm->app_index = APP_INVALID_INDEX;
   return 0;
 }
 
-VLIB_INIT_FUNCTION (alpn_client_main_init);
+VLIB_INIT_FUNCTION (tls_client_main_init);
