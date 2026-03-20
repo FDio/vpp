@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0d9a4f62_57be6953",
+        "filename": "src/plugins/bufmon/bufmon.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 175,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-03-20T14:27:10Z",
+      "side": 1,
+      "message": "Maybe instead of a silent unregister we should throw an \nerror so that we do not miss a requirement",
+      "revId": "99314cd60ff547bb9eb55729a757ab2687d96dbb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}

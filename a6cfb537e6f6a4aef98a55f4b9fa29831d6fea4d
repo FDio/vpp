@@ -1,0 +1,565 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8c552787_f0870e7b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 28
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-03-20T14:27:10Z",
+      "side": 1,
+      "message": "Thanks ! A couple comments inline, tell me if anything seems unclear !",
+      "revId": "a6cfb537e6f6a4aef98a55f4b9fa29831d6fea4d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3a540fa0_23b51625",
+        "filename": "src/plugins/cnat/cnat_api.c",
+        "patchSetId": 28
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-03-20T14:27:10Z",
+      "side": 1,
+      "message": "let\u0027s name this `cnat_sw_interface_enable_disable()`\nCan we also move it to e.g. `cnat_type.c` and add a corresponding CLI ?",
+      "revId": "a6cfb537e6f6a4aef98a55f4b9fa29831d6fea4d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a66c5cef_3f8637e0",
+        "filename": "src/plugins/cnat/cnat_api.c",
+        "patchSetId": 28
+      },
+      "lineNbr": 92,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-03-20T14:27:10Z",
+      "side": 1,
+      "message": "Couldn\u0027t we overload `cnat_set_snat` instead of defining an additional API call ?",
+      "revId": "a6cfb537e6f6a4aef98a55f4b9fa29831d6fea4d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ad3ca93d_812cc064",
+        "filename": "src/plugins/cnat/cnat_api.c",
+        "patchSetId": 28
+      },
+      "lineNbr": 100,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-03-20T14:27:10Z",
+      "side": 1,
+      "message": "I think we\u0027ll run into issues here if we want to have the same port allocator regardless of the fib",
+      "revId": "a6cfb537e6f6a4aef98a55f4b9fa29831d6fea4d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "87eb4038_bb57c8ee",
+        "filename": "src/plugins/cnat/cnat_inline.h",
+        "patchSetId": 28
+      },
+      "lineNbr": 64,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-03-20T14:27:10Z",
+      "side": 1,
+      "message": "Can we have the vec_validate outside of the datapath. We could listen on fib_index creations as done in `teib_table_bind_v4` and vec_validate at this point",
+      "revId": "a6cfb537e6f6a4aef98a55f4b9fa29831d6fea4d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7f5e0351_1cbb729a",
+        "filename": "src/plugins/cnat/cnat_node.h",
+        "patchSetId": 28
+      },
+      "lineNbr": 717,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-03-20T14:27:10Z",
+      "side": 1,
+      "message": "We probably can make a custom function for making the 5tuple out of the timestamp, e.g. `cnat_make_timestamp_5tuple()` that would consume the timestamp directly.\n\nplus imho the `rewrite_from` argument name is a bit confusing to me",
+      "revId": "a6cfb537e6f6a4aef98a55f4b9fa29831d6fea4d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "da69a7a0_c6450581",
+        "filename": "src/plugins/cnat/cnat_node.h",
+        "patchSetId": 28
+      },
+      "lineNbr": 770,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-03-20T14:27:10Z",
+      "side": 1,
+      "message": "imho we should always use the `rewrite_from` in this function, as we are not guaranteed to have a valid packet at hand. i.e. even for icmp packets",
+      "revId": "a6cfb537e6f6a4aef98a55f4b9fa29831d6fea4d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1294e5b0_b6b77e67",
+        "filename": "src/plugins/cnat/cnat_node.h",
+        "patchSetId": 28
+      },
+      "lineNbr": 783,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-03-20T14:27:10Z",
+      "side": 1,
+      "message": "Do we really need `IP_PROTOCOL_IP_IN_IP` ?",
+      "revId": "a6cfb537e6f6a4aef98a55f4b9fa29831d6fea4d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "72e43bd8_f297c764",
+        "filename": "src/plugins/cnat/cnat_node.h",
+        "patchSetId": 28
+      },
+      "lineNbr": 895,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-03-20T14:27:10Z",
+      "side": 1,
+      "message": "Maybe we could return `pool_elt_at_index (cnat_ep_trk_pool, idx);`\nTo avoid changing the function signature",
+      "revId": "a6cfb537e6f6a4aef98a55f4b9fa29831d6fea4d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d1dce169_0a8360d0",
+        "filename": "src/plugins/cnat/cnat_node_feature.c",
+        "patchSetId": 28
+      },
+      "lineNbr": 86,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-03-20T14:27:10Z",
+      "side": 1,
+      "message": "We probably need to move this after the index validity check",
+      "revId": "a6cfb537e6f6a4aef98a55f4b9fa29831d6fea4d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "38acbc6d_1ae59e60",
+        "filename": "src/plugins/cnat/cnat_node_lookup.c",
+        "patchSetId": 28
+      },
+      "lineNbr": 106,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-03-20T14:27:10Z",
+      "side": 1,
+      "message": "Good catch",
+      "revId": "a6cfb537e6f6a4aef98a55f4b9fa29831d6fea4d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "808f3de1_6da4ae1e",
+        "filename": "src/plugins/cnat/cnat_node_lookup.c",
+        "patchSetId": 28
+      },
+      "lineNbr": 116,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-03-20T14:27:10Z",
+      "side": 1,
+      "message": "We should probably use the same logic as in `cnat_reverse_session_free`,\ninclude `CNAT_LOCATION_FIB`, check the `ts_rw_bm` ; check for `CNAT_TS_RW_FLAG_NO_NAT` etc...",
+      "revId": "a6cfb537e6f6a4aef98a55f4b9fa29831d6fea4d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6f2fa977_55b92f8e",
+        "filename": "src/plugins/cnat/cnat_node_lookup.c",
+        "patchSetId": 28
+      },
+      "lineNbr": 143,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-03-20T14:27:10Z",
+      "side": 1,
+      "message": "I\u0027m not sure why we need to do this, even for IPIP we will have a return session with the timestamp carried 5tuple right ?",
+      "revId": "a6cfb537e6f6a4aef98a55f4b9fa29831d6fea4d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8df36c93_b73f36ec",
+        "filename": "src/plugins/cnat/cnat_node_lookup.c",
+        "patchSetId": 28
+      },
+      "lineNbr": 151,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-03-20T14:27:10Z",
+      "side": 1,
+      "message": "Case in point, this should protect us no ?",
+      "revId": "a6cfb537e6f6a4aef98a55f4b9fa29831d6fea4d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a22da5e5_41829013",
+        "filename": "src/plugins/cnat/cnat_node_lookup.c",
+        "patchSetId": 28
+      },
+      "lineNbr": 156,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-03-20T14:27:10Z",
+      "side": 1,
+      "message": "Neat !",
+      "revId": "a6cfb537e6f6a4aef98a55f4b9fa29831d6fea4d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ffffd53b_9ba03101",
+        "filename": "src/plugins/cnat/cnat_scanner.c",
+        "patchSetId": 28
+      },
+      "lineNbr": 88,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-03-20T14:27:10Z",
+      "side": 1,
+      "message": "`cnat_buffer_set_alloc_free_callback()` ?",
+      "revId": "a6cfb537e6f6a4aef98a55f4b9fa29831d6fea4d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "87ec0830_59e8fb27",
+        "filename": "src/plugins/cnat/cnat_session.c",
+        "patchSetId": 28
+      },
+      "lineNbr": 422,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-03-20T14:27:10Z",
+      "side": 1,
+      "message": "We\u0027ll probably need a RPC for this as iirc the scanner runs without holding the worker barrier",
+      "revId": "a6cfb537e6f6a4aef98a55f4b9fa29831d6fea4d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "751c4a84_b3e80350",
+        "filename": "src/plugins/cnat/cnat_session.c",
+        "patchSetId": 28
+      },
+      "lineNbr": 432,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-03-20T14:27:10Z",
+      "side": 1,
+      "message": "Instead of having the two pools we could have an array[2] of vecs,\nThat way we could:\n- append to `cnat_ep_trk_idx_deleted[ep_trk_del_state]`\n- while we free `cnat_ep_trk_idx_deleted[ep_trk_del_state ^ 1]`\n- every cycle, we do `ep_trk_del_state ^\u003d 1`",
+      "revId": "a6cfb537e6f6a4aef98a55f4b9fa29831d6fea4d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "94ce0727_fa4bfd1a",
+        "filename": "src/plugins/cnat/cnat_session.c",
+        "patchSetId": 28
+      },
+      "lineNbr": 483,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-03-20T14:27:10Z",
+      "side": 1,
+      "message": "This is weird, we should probably understand why before merging",
+      "revId": "a6cfb537e6f6a4aef98a55f4b9fa29831d6fea4d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6a039ffd_4ef38069",
+        "filename": "src/plugins/cnat/cnat_session.c",
+        "patchSetId": 28
+      },
+      "lineNbr": 502,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-03-20T14:27:10Z",
+      "side": 1,
+      "message": "Is this allowed to happen ?",
+      "revId": "a6cfb537e6f6a4aef98a55f4b9fa29831d6fea4d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8769a6c4_c266f861",
+        "filename": "src/plugins/cnat/cnat_session.c",
+        "patchSetId": 28
+      },
+      "lineNbr": 506,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-03-20T14:27:10Z",
+      "side": 1,
+      "message": "Can we make the logic computing whether the session is \"expirable\" into a function ? e.g. `static_always_inline bool cnat_session_is_stale()` ?",
+      "revId": "a6cfb537e6f6a4aef98a55f4b9fa29831d6fea4d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c4f11391_410d876b",
+        "filename": "src/plugins/cnat/cnat_snat_policy.c",
+        "patchSetId": 28
+      },
+      "lineNbr": 547,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-03-20T14:27:10Z",
+      "side": 1,
+      "message": "`cnat_tr_flags` ?",
+      "revId": "a6cfb537e6f6a4aef98a55f4b9fa29831d6fea4d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "43aed3fe_3e437ef1",
+        "filename": "src/plugins/cnat/cnat_translation.c",
+        "patchSetId": 28
+      },
+      "lineNbr": 255,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-03-20T14:27:10Z",
+      "side": 1,
+      "message": "I think it\u0027s `ct-\u003ect_paths_indexes`",
+      "revId": "a6cfb537e6f6a4aef98a55f4b9fa29831d6fea4d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9ed30dcc_bc5c560a",
+        "filename": "src/plugins/cnat/cnat_translation.c",
+        "patchSetId": 28
+      },
+      "lineNbr": 274,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-03-20T14:27:10Z",
+      "side": 1,
+      "message": "Can we move this to cnat_types.h ?",
+      "revId": "a6cfb537e6f6a4aef98a55f4b9fa29831d6fea4d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1b029744_03882774",
+        "filename": "src/plugins/cnat/cnat_translation.c",
+        "patchSetId": 28
+      },
+      "lineNbr": 335,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-03-20T14:27:10Z",
+      "side": 1,
+      "message": "Same this is probably `ct-\u003ect_paths_indexes`",
+      "revId": "a6cfb537e6f6a4aef98a55f4b9fa29831d6fea4d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "597e93b8_c438d170",
+        "filename": "src/plugins/cnat/cnat_translation.c",
+        "patchSetId": 28
+      },
+      "lineNbr": 342,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-03-20T14:27:10Z",
+      "side": 1,
+      "message": "As we are now doing this, we can also only call `cnat_tracker_release()` for the paths that were removed, and `cnat_tracker_track()` for those that were added.",
+      "revId": "a6cfb537e6f6a4aef98a55f4b9fa29831d6fea4d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "97b6819f_4a28f988",
+        "filename": "src/plugins/cnat/cnat_translation.c",
+        "patchSetId": 28
+      },
+      "lineNbr": 380,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-03-20T14:27:10Z",
+      "side": 1,
+      "message": "We need to do this only for the paths that were added",
+      "revId": "a6cfb537e6f6a4aef98a55f4b9fa29831d6fea4d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cb7914dc_2c771d51",
+        "filename": "src/plugins/cnat/cnat_translation.h",
+        "patchSetId": 28
+      },
+      "lineNbr": 151,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-03-20T14:27:10Z",
+      "side": 1,
+      "message": "I don\u0027t think we need to export it, we can keep this local to the session scanner.\nAlso, let\u0027s make it a vec instead of a pool",
+      "revId": "a6cfb537e6f6a4aef98a55f4b9fa29831d6fea4d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "570373af_4dce5589",
+        "filename": "src/plugins/cnat/cnat_translation.h",
+        "patchSetId": 28
+      },
+      "lineNbr": 153,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-03-20T14:27:10Z",
+      "side": 1,
+      "message": "Same thing here, let\u0027s make this local to the scanner and create a function that notifies from the trk deletion",
+      "revId": "a6cfb537e6f6a4aef98a55f4b9fa29831d6fea4d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d2b8ea87_0fea8870",
+        "filename": "src/plugins/cnat/cnat_types.h",
+        "patchSetId": 28
+      },
+      "lineNbr": 118,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-03-20T14:27:10Z",
+      "side": 1,
+      "message": "Do we really need `index` ?",
+      "revId": "a6cfb537e6f6a4aef98a55f4b9fa29831d6fea4d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a695a50b_66b654c9",
+        "filename": "src/plugins/cnat/cnat_types.h",
+        "patchSetId": 28
+      },
+      "lineNbr": 132,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-03-20T14:27:10Z",
+      "side": 1,
+      "message": "This can probably be a flag",
+      "revId": "a6cfb537e6f6a4aef98a55f4b9fa29831d6fea4d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1e93bce4_096ae5ec",
+        "filename": "src/plugins/cnat/cnat_types.h",
+        "patchSetId": 28
+      },
+      "lineNbr": 265,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-03-20T14:27:10Z",
+      "side": 1,
+      "message": "Maybe `CNAT_LOOKUP_IS_DONE` or `CNAT_LOOKUP_IS_COMPLETED`\nAlso we should probably add this comment:\n```\n  /* Reset session state so encap processing does not traverse output nodes\n   * twice */\n```\nin the enum to clarify",
+      "revId": "a6cfb537e6f6a4aef98a55f4b9fa29831d6fea4d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "838bb2a2_1ef22658",
+        "filename": "src/plugins/cnat/cnat_types.h",
+        "patchSetId": 28
+      },
+      "lineNbr": 276,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-03-20T14:27:10Z",
+      "side": 1,
+      "message": "ts_trk_index ?",
+      "revId": "a6cfb537e6f6a4aef98a55f4b9fa29831d6fea4d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
