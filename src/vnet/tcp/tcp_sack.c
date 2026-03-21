@@ -199,7 +199,7 @@ scoreboard_next_rxt_hole (sack_scoreboard_t * sb,
     }
 
   /* Rule (1): if higher than rxt, less than high_sacked and lost */
-  if (hole->is_lost && seq_lt (hole->start, sb->high_sacked))
+  if (hole->is_lost && seq_leq (hole->start, sb->high_sacked))
     {
       sb->cur_rxt_hole = scoreboard_hole_index (sb, hole);
     }
