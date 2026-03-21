@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "11e26f32_26c1684c",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 12,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-03-21T20:24:29Z",
+      "side": 1,
+      "message": "That\u0027s expected with any type of recovery as long as cwnd/pipe/inflight allows us to send. Those should not stall the connection as long as sacks keep on flowing and holes are filled. Even if retransmits fail, timer based retransmit should start recovery",
+      "revId": "6f32013f1b35917dad6eb5a240934ee478c2bb24",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "79649e1d_de0b72cb",
+        "filename": "src/vnet/tcp/tcp_output.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1010,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-03-21T20:24:29Z",
+      "side": 1,
+      "message": "TCP is self pacing, so as long as the input path does not try to reschedule tx, we should not try to do it speculatively during ack/dupack sending. On the retransmit path, tcp_program_retransmit will handle it if we do need to retransmit",
+      "revId": "6f32013f1b35917dad6eb5a240934ee478c2bb24",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1c190ee5_392e5c85",
+        "filename": "src/vnet/tcp/tcp_output.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1815,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-03-21T20:24:29Z",
+      "side": 1,
+      "message": "At his point we must wait for ack feedback. The logic here is to release new data in case acks are lost, such that we can keep the ack clock going. Also tcp_program_retransmit would just get us back here.",
+      "revId": "6f32013f1b35917dad6eb5a240934ee478c2bb24",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
