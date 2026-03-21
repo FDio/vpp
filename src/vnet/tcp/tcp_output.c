@@ -1007,12 +1007,29 @@ tcp_send_ack (tcp_connection_t * tc)
 }
 
 void
+tcp_maybe_rearm_custom_tx (tcp_connection_t * tc, u8 has_prio)
+{
+  session_t *s;
+
+  s = session_get (tc->c_s_index, tc->c_thread_index);
+  if (!(s->flags & SESSION_F_CUSTOM_TX))
+    {
+      session_add_self_custom_tx_evt (&tc->connection, has_prio);
+      return;
+    }
+}
+
+void
 tcp_program_ack (tcp_connection_t * tc)
 {
   if (!(tc->flags & TCP_CONN_SNDACK))
     {
       session_add_self_custom_tx_evt (&tc->connection, 1);
       tc->flags |= TCP_CONN_SNDACK;
+    }
+  else
+    {
+      tcp_maybe_rearm_custom_tx (tc, 1);
     }
 }
 
@@ -1023,6 +1040,10 @@ tcp_program_dupack (tcp_connection_t * tc)
     {
       session_add_self_custom_tx_evt (&tc->connection, 1);
       tc->flags |= TCP_CONN_SNDACK;
+    }
+  else
+    {
+      tcp_maybe_rearm_custom_tx (tc, 1);
     }
   if (tc->pending_dupacks < 255)
     tc->pending_dupacks += 1;
@@ -1035,6 +1056,10 @@ tcp_program_retransmit (tcp_connection_t * tc)
     {
       session_add_self_custom_tx_evt (&tc->connection, 0);
       tc->flags |= TCP_CONN_RXT_PENDING;
+    }
+  else
+    {
+      tcp_maybe_rearm_custom_tx (tc, 0);
     }
 }
 
@@ -1642,7 +1667,6 @@ tcp_transmit_unsent (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
       n_written = tcp_prepare_segment (wrk, tc, offset, tc->snd_mss, &b);
       if (!n_written)
 	goto done;
-
       bi = vlib_get_buffer_index (vm, b);
       tcp_enqueue_to_output (wrk, b, bi, tc->c_is_ip4);
       offset += n_written;
@@ -1787,6 +1811,16 @@ tcp_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 	    {
 	      u32 n_segs_new;
 	      int av_wnd;
+
+	      /* Do not release new data while the scoreboard still tracks
+	       * outstanding holes. In the Linux jumbo repro this creates
+	       * large sequence gaps during recovery and eventually stalls
+	       * the connection. */
+	      if (pool_elts (sb->holes))
+		{
+		  tcp_program_retransmit (tc);
+		  goto done;
+		}
 
 	      /* Make sure we don't exceed available window and leave space
 	       * for one more packet, to avoid zero window acks */
