@@ -237,20 +237,10 @@ VLIB_NODE_FN (bond_input_node) (vlib_main_t * vm,
       if (PREDICT_TRUE (x == 0))
 	{
 	  /*
-	   * Optimize to call update_next only if there is a feature arc
-	   * after bond-input. Test feature count greater than 1 because
-	   * bond-input itself is a feature arc for this member interface.
+	   * bond_update_next_x4() handles the no-extra-feature case, so
+	   * always call it instead of depending on buffer feature arc state.
 	   */
-	  ASSERT ((vnet_buffer (b[0])->feature_arc_index ==
-		   vnet_buffer (b[1])->feature_arc_index) &&
-		  (vnet_buffer (b[0])->feature_arc_index ==
-		   vnet_buffer (b[2])->feature_arc_index) &&
-		  (vnet_buffer (b[0])->feature_arc_index ==
-		   vnet_buffer (b[3])->feature_arc_index));
-	  if (PREDICT_FALSE (vnet_get_feature_count
-			     (vnet_buffer (b[0])->feature_arc_index,
-			      last_member_sw_if_index) > 1))
-	    bond_update_next_x4 (b[0], b[1], b[2], b[3]);
+	  bond_update_next_x4 (b[0], b[1], b[2], b[3]);
 
 	  next[0] = next[1] = next[2] = next[3] = next_index;
 	  if (next_index == BOND_INPUT_NEXT_DROP)

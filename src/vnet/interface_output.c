@@ -234,13 +234,9 @@ vnet_interface_output_node_inline (vlib_main_t *vm, u32 sw_if_index,
 
 	  if (PREDICT_FALSE (config_index != ~0))
 	    {
-	      vnet_buffer (b[0])->feature_arc_index = arc;
 	      b[0]->current_config_index = config_index;
-	      vnet_buffer (b[1])->feature_arc_index = arc;
 	      b[1]->current_config_index = config_index;
-	      vnet_buffer (b[2])->feature_arc_index = arc;
 	      b[2]->current_config_index = config_index;
-	      vnet_buffer (b[3])->feature_arc_index = arc;
 	      b[3]->current_config_index = config_index;
 	    }
 	}
@@ -277,7 +273,6 @@ vnet_interface_output_node_inline (vlib_main_t *vm, u32 sw_if_index,
 
 	  if (PREDICT_FALSE (config_index != ~0))
 	    {
-	      vnet_buffer (b[0])->feature_arc_index = arc;
 	      b[0]->current_config_index = config_index;
 	    }
 

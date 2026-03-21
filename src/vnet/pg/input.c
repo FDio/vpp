@@ -1731,7 +1731,6 @@ pg_generate_packets (vlib_node_runtime_t * node,
 	    vlib_buffer_t *b;
 	    b = vlib_get_buffer (vm, to_next[i]);
 	    b->current_config_index = current_config_index;
-	    vnet_buffer (b)->feature_arc_index = feature_arc_index;
 	  }
 
       if (pi->gso_enabled || pi->csum_offload_enabled ||
