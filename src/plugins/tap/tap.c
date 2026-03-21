@@ -414,12 +414,10 @@ tap_template_update (tap_if_t *tif)
     {
       tif->next_index = (u16) tif->feature_arc_next_index;
       bt->current_config_index = tif->feature_arc_config_index;
-      vnet_buffer (bt_buf)->feature_arc_index = tif->feature_arc_index;
       return;
     }
 
   bt->current_config_index = 0;
-  vnet_buffer (bt_buf)->feature_arc_index = 0;
 
   tif->next_index = tif->per_interface_next_index != ~0 ?
 		      tif->per_interface_next_index :

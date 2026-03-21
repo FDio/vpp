@@ -338,8 +338,6 @@ virtio_device_input_gso_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
 	  /* copy feature arc data from template */
 	  b0->current_config_index = bt.current_config_index;
-	  vnet_buffer (b0)->feature_arc_index =
-	    vnet_buffer (&bt)->feature_arc_index;
 
 	  /* trace */
 	  if (PREDICT_FALSE (n_trace > 0 && vlib_trace_buffer (vm, node, next0, b0,	/* follow_chain */

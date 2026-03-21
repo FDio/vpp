@@ -114,14 +114,11 @@ find_config_with_features (vlib_main_t * vm,
       /* Allocate copy of config string in heap.
          VLIB buffers will maintain pointers to heap as they read out
          configuration data. */
-      c->config_string_heap_index
-	= heap_alloc (cm->config_string_heap, vec_len (config_string) + 1,
-		      c->config_string_heap_handle);
+      c->config_string_heap_index = heap_alloc (
+	*vnet_get_config_heap (cm), vec_len (config_string) + 1, c->config_string_heap_handle);
 
       /* First element in heap points back to pool index. */
-      d =
-	vec_elt_at_index (cm->config_string_heap,
-			  c->config_string_heap_index);
+      d = vec_elt_at_index (*vnet_get_config_heap (cm), c->config_string_heap_index);
       d[0] = c->index;
       clib_memcpy (d + 1, config_string, vec_bytes (config_string));
       hash_set_mem (cm->config_string_hash, config_string, c->index);
@@ -145,10 +142,16 @@ vnet_config_init (vlib_main_t * vm,
 		  int n_start_node_names,
 		  char *feature_node_names[], int n_feature_node_names)
 {
+  u32 *config_string_heap;
+  u32 **external_string_heap_ptr;
   vlib_node_t *n;
   u32 i;
 
+  config_string_heap = cm->config_string_heap;
+  external_string_heap_ptr = cm->external_string_heap_ptr;
   clib_memset (cm, 0, sizeof (cm[0]));
+  cm->config_string_heap = config_string_heap;
+  cm->external_string_heap_ptr = external_string_heap_ptr;
 
   cm->config_string_hash =
     hash_create_vec (0,
@@ -210,15 +213,15 @@ feature_cmp (void *a1, void *a2)
 }
 
 always_inline u32 *
-vnet_get_config_heap (vnet_config_main_t * cm, u32 ci)
+vnet_get_config_heap_entry (vnet_config_main_t *cm, u32 ci)
 {
-  return heap_elt_at_index (cm->config_string_heap, ci);
+  return heap_elt_at_index (*vnet_get_config_heap (cm), ci);
 }
 
 void
 vnet_config_del (vnet_config_main_t * cm, u32 config_id)
 {
-  u32 *p = vnet_get_config_heap (cm, config_id);
+  u32 *p = vnet_get_config_heap_entry (cm, config_id);
   vnet_config_t *old = pool_elt_at_index (cm->config_pool, p[-1]);
   remove_reference (cm, old);
 }
@@ -250,7 +253,7 @@ vnet_config_modify_end_node (vlib_main_t * vm,
     }
   else
     {
-      u32 *p = vnet_get_config_heap (cm, config_string_heap_index);
+      u32 *p = vnet_get_config_heap_entry (cm, config_string_heap_index);
       old = pool_elt_at_index (cm->config_pool, p[-1]);
       new_features = old->features;
       if (new_features)
@@ -321,7 +324,7 @@ vnet_config_add_feature (vlib_main_t * vm,
     }
   else
     {
-      u32 *p = vnet_get_config_heap (cm, config_string_heap_index);
+      u32 *p = vnet_get_config_heap_entry (cm, config_string_heap_index);
       old = pool_elt_at_index (cm->config_pool, p[-1]);
       new_features = old->features;
       end_node_index =
@@ -379,7 +382,7 @@ vnet_config_del_feature (vlib_main_t * vm,
   u32 n_feature_config_u32s;
 
   {
-    u32 *p = vnet_get_config_heap (cm, config_string_heap_index);
+    u32 *p = vnet_get_config_heap_entry (cm, config_string_heap_index);
 
     old = pool_elt_at_index (cm->config_pool, p[-1]);
   }
