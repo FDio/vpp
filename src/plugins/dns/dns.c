@@ -2828,33 +2828,17 @@ vnet_send_dns4_reply (vlib_main_t * vm, dns_main_t * dm,
       return;
     }
 
-  /* Initialize a buffer */
-  if (b0 == 0)
-    {
-      if (vlib_buffer_alloc (vm, &bi, 1) != 1)
-	return;
-      b0 = vlib_get_buffer (vm, bi);
-    }
-  else
-    {
-      /* Use the buffer we were handed. Reinitialize it... */
-      vlib_buffer_t bt = { };
-      /* push/pop the reference count */
-      u8 save_ref_count = b0->ref_count;
-      vlib_buffer_copy_template (b0, &bt);
-      b0->ref_count = save_ref_count;
-      bi = vlib_get_buffer_index (vm, b0);
-    }
+  /* Initialize a fresh buffer for the reply. */
+  if (b0)
+    vlib_buffer_free_one (vm, vlib_get_buffer_index (vm, b0));
 
-  if (b0->flags & VLIB_BUFFER_NEXT_PRESENT)
-    vlib_buffer_free_one (vm, b0->next_buffer);
+  if (vlib_buffer_alloc (vm, &bi, 1) != 1)
+    return;
+
+  b0 = vlib_get_buffer (vm, bi);
 
   /*
-   * Reset the buffer. We recycle the DNS request packet in the cache
-   * hit case, and reply immediately from the request node.
-   *
-   * In the resolution-required / deferred case, resetting a freshly-allocated
-   * buffer won't hurt. We hope.
+   * Reset the freshly-allocated reply buffer.
    */
   b0->flags |= (VNET_BUFFER_F_LOCALLY_ORIGINATED
 		| VLIB_BUFFER_TOTAL_LENGTH_VALID);
