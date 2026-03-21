@@ -62,7 +62,7 @@ vnet_in_out_acl_feature_enable (in_out_acl_main_t *am, u32 sw_if_index,
 
   arc = vnet_get_feature_arc_index (arc_name);
   fcm = vnet_get_feature_arc_config_main (arc);
-  am->vnet_config_main[is_output][tid] = &fcm->config_main;
+  am->vnet_config_main[is_output][tid] = fcm->config_main;
 
   return 0;
 }

@@ -408,18 +408,15 @@ static void
 tap_template_update (tap_if_t *tif)
 {
   vlib_buffer_template_t *bt = &tif->buffer_template;
-  vlib_buffer_t *bt_buf = (vlib_buffer_t *) bt;
 
   if (tif->feature_arc_enabled)
     {
       tif->next_index = (u16) tif->feature_arc_next_index;
       bt->current_config_index = tif->feature_arc_config_index;
-      vnet_buffer (bt_buf)->feature_arc_index = tif->feature_arc_index;
       return;
     }
 
   bt->current_config_index = 0;
-  vnet_buffer (bt_buf)->feature_arc_index = 0;
 
   tif->next_index = tif->per_interface_next_index != ~0 ?
 		      tif->per_interface_next_index :
@@ -1315,12 +1312,12 @@ tap_feature_update (u32 sw_if_index, u8 arc_index, u8 is_enable, void *data)
 
   tif = pool_elt_at_index (tm->interfaces, hw->dev_instance);
 
-  cm = &fm->feature_config_mains[arc_index];
+  cm = &fm->feature_arcs[arc_index];
   if (sw_if_index < vec_len (cm->config_index_by_sw_if_index))
     config_index = cm->config_index_by_sw_if_index[sw_if_index];
 
   if (config_index != ~0)
-    vnet_get_config_data (&cm->config_main, &config_index, &next_index, 0);
+    vnet_get_config_data (cm->config_main, &config_index, &next_index, 0);
 
   tif->feature_arc_config_index = config_index;
   tif->feature_arc_next_index = next_index;

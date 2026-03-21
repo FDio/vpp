@@ -78,8 +78,7 @@ VLIB_NODE_FN (syn_filter4_node) (vlib_main_t * vm,
   syn_filter_next_t next_index;
   u32 ok_syn_packets = 0;
   vnet_feature_main_t *fm = &feature_main;
-  u8 arc_index = vnet_feat_arc_ip4_local.feature_arc_index;
-  vnet_feature_config_main_t *cm = &fm->feature_config_mains[arc_index];
+  vnet_config_main_t *cm = &fm->feature_config_main;
   syn_filter4_runtime_t *rt = (syn_filter4_runtime_t *) node->runtime_data;
   f64 now = vlib_time_now (vm);
   /* Shut up spurious gcc warnings. */
@@ -146,18 +145,10 @@ VLIB_NODE_FN (syn_filter4_node) (vlib_main_t * vm,
 	  b2 = vlib_get_buffer (vm, bi2);
 	  b3 = vlib_get_buffer (vm, bi3);
 
-	  vnet_get_config_data
-	    (&cm->config_main, &b0->current_config_index,
-	     &next0, 0 /* sizeof (c0[0]) */ );
-	  vnet_get_config_data
-	    (&cm->config_main, &b1->current_config_index,
-	     &next1, 0 /* sizeof (c0[0]) */ );
-	  vnet_get_config_data
-	    (&cm->config_main, &b2->current_config_index,
-	     &next2, 0 /* sizeof (c0[0]) */ );
-	  vnet_get_config_data
-	    (&cm->config_main, &b3->current_config_index,
-	     &next3, 0 /* sizeof (c0[0]) */ );
+	  vnet_get_config_data (cm, &b0->current_config_index, &next0, 0 /* sizeof (c0[0]) */);
+	  vnet_get_config_data (cm, &b1->current_config_index, &next1, 0 /* sizeof (c0[0]) */);
+	  vnet_get_config_data (cm, &b2->current_config_index, &next2, 0 /* sizeof (c0[0]) */);
+	  vnet_get_config_data (cm, &b3->current_config_index, &next3, 0 /* sizeof (c0[0]) */);
 
 	  /* Not TCP? */
 	  ip0 = vlib_buffer_get_current (b0);
@@ -333,9 +324,7 @@ VLIB_NODE_FN (syn_filter4_node) (vlib_main_t * vm,
 
 	  b0 = vlib_get_buffer (vm, bi0);
 
-	  vnet_get_config_data
-	    (&cm->config_main, &b0->current_config_index,
-	     &next0, 0 /* sizeof (c0[0]) */ );
+	  vnet_get_config_data (cm, &b0->current_config_index, &next0, 0 /* sizeof (c0[0]) */);
 
 	  /* Not TCP? */
 	  ip0 = vlib_buffer_get_current (b0);

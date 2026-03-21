@@ -62,12 +62,8 @@ typedef struct
   /* Global heap of configuration data. */
   u32 *config_string_heap;
 
-  /* Node index which starts/ends feature processing. */
-  u32 *start_node_indices, *end_node_indices_by_user_index,
-    default_end_node_index;
-
-  /* Interior feature processing nodes (not including start and end nodes). */
-  u32 *node_index_by_feature_index;
+  /* End node index by config heap index. */
+  u32 *end_node_indices_by_user_index;
 
   /* vnet_config pool index by user index */
   u32 *config_pool_index_by_user_index;
@@ -76,6 +72,17 @@ typedef struct
      allocating vectors. */
   u32 *config_string_temp;
 } vnet_config_main_t;
+
+typedef struct
+{
+  vnet_config_main_t *config_main;
+
+  /* Node index which starts/ends feature processing. */
+  u32 *start_node_indices, default_end_node_index;
+
+  /* Interior feature processing nodes (not including start and end nodes). */
+  u32 *node_index_by_feature_index;
+} vnet_config_arc_t;
 
 always_inline void
 vnet_config_free (vnet_config_main_t * cm, vnet_config_t * c)
@@ -88,8 +95,7 @@ vnet_config_free (vnet_config_main_t * cm, vnet_config_t * c)
 }
 
 always_inline void *
-vnet_get_config_data (vnet_config_main_t * cm,
-		      u32 * config_index, u32 * next_index, u32 n_data_bytes)
+vnet_get_config_data (vnet_config_main_t *cm, u32 *config_index, u32 *next_index, u32 n_data_bytes)
 {
   u32 i, n, *d;
 
@@ -109,42 +115,27 @@ vnet_get_config_data (vnet_config_main_t * cm,
   return (void *) d;
 }
 
-void vnet_config_init (vlib_main_t * vm,
-		       vnet_config_main_t * cm,
-		       char *start_node_names[],
-		       int n_start_node_names,
-		       char *feature_node_names[], int n_feature_node_names);
+void vnet_config_arc_init (vlib_main_t *vm, vnet_config_arc_t *ca, vnet_config_main_t *cm,
+			   char *start_node_names[], int n_start_node_names,
+			   char *feature_node_names[], int n_feature_node_names);
 
 void vnet_config_del (vnet_config_main_t * cm, u32 config_id);
 
 /* Calls to add/delete features from configurations. */
-u32 vnet_config_add_feature (vlib_main_t * vm,
-			     vnet_config_main_t * cm,
-			     u32 config_id,
-			     u32 feature_index,
-			     void *feature_config,
-			     u32 n_feature_config_bytes);
+u32 vnet_config_add_feature (vlib_main_t *vm, vnet_config_arc_t *ca, u32 config_id,
+			     u32 feature_index, void *feature_config, u32 n_feature_config_bytes);
 
-u32 vnet_config_del_feature (vlib_main_t * vm,
-			     vnet_config_main_t * cm,
-			     u32 config_id,
-			     u32 feature_index,
-			     void *feature_config,
-			     u32 n_feature_config_bytes);
+u32 vnet_config_del_feature (vlib_main_t *vm, vnet_config_arc_t *ca, u32 config_id,
+			     u32 feature_index, void *feature_config, u32 n_feature_config_bytes);
 
-u32 vnet_config_modify_end_node (vlib_main_t * vm,
-				 vnet_config_main_t * cm,
-				 u32 config_string_heap_index,
-				 u32 end_node_index);
+u32 vnet_config_modify_end_node (vlib_main_t *vm, vnet_config_arc_t *ca,
+				 u32 config_string_heap_index, u32 end_node_index);
 
-u32 vnet_config_reset_end_node (vlib_main_t *vm, vnet_config_main_t *cm,
+u32 vnet_config_reset_end_node (vlib_main_t *vm, vnet_config_arc_t *ca,
 				u32 config_string_heap_index);
 
-u32 vnet_config_get_end_node (vlib_main_t *vm, vnet_config_main_t *cm,
-			      u32 config_string_heap_index);
+u32 vnet_config_get_end_node (vlib_main_t *vm, vnet_config_arc_t *ca, u32 config_string_heap_index);
 
-u8 *vnet_config_format_features (vlib_main_t * vm,
-				 vnet_config_main_t * cm,
-				 u32 config_index, u8 * s);
+u8 *vnet_config_format_features (vlib_main_t *vm, vnet_config_arc_t *ca, u32 config_index, u8 *s);
 
 #endif /* included_vnet_config_h */

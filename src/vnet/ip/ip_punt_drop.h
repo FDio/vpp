@@ -100,7 +100,7 @@ ip_punt_redirect (vlib_main_t * vm,
 {
   u32 *from, *to_next, n_left_from, n_left_to_next, next_index;
   vnet_feature_main_t *fm = &feature_main;
-  vnet_feature_config_main_t *cm = &fm->feature_config_mains[arc_index];
+  vnet_feature_config_main_t *cm = &fm->feature_arcs[arc_index];
   index_t *redirects;
 
   from = vlib_frame_vector_args (frame);
@@ -131,8 +131,7 @@ ip_punt_redirect (vlib_main_t * vm,
 
 	  b0 = vlib_get_buffer (vm, bi0);
 
-	  vnet_get_config_data (&cm->config_main,
-				&b0->current_config_index, &next0, 0);
+	  vnet_get_config_data (cm->config_main, &b0->current_config_index, &next0, 0);
 
 	  rx_sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 

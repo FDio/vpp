@@ -378,7 +378,6 @@ dpdk_device_input (vlib_main_t *vm, dpdk_main_t *dm, dpdk_device_t *xd,
      start for each queue, it is safe to store this in the template */
   bt->buffer_pool_index = rxq->buffer_pool_index;
   bt->ref_count = 1;
-  vnet_buffer (bt)->feature_arc_index = 0;
   bt->current_config_index = 0;
 
   /* receive burst of packets from DPDK PMD */

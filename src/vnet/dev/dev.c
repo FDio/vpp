@@ -381,11 +381,10 @@ vnet_dev_feature_update_cb (u32 sw_if_index, u8 arc_index, u8 is_enable,
 
   if (vnet_have_features (arc_index, sw_if_index))
     {
-      cm = &fm->feature_config_mains[arc_index];
+      cm = &fm->feature_arcs[arc_index];
       current_config_index =
 	vec_elt (cm->config_index_by_sw_if_index, sw_if_index);
-      vnet_get_config_data (&cm->config_main, &current_config_index,
-			    &next_index, 0);
+      vnet_get_config_data (cm->config_main, &current_config_index, &next_index, 0);
       if (intf->feature_arc == 0 || intf->rx_next_index != next_index ||
 	  intf->current_config_index != current_config_index)
 	{

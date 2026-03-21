@@ -213,7 +213,7 @@ adj_nbr_evaluate_feature (adj_index_t ai)
             vnet_feature_config_main_t *cm;
 
             adj->rewrite_header.flags |= VNET_REWRITE_HAS_FEATURES;
-            cm = &fm->feature_config_mains[arc_index];
+            cm = &fm->feature_arcs[arc_index];
 
             adj->ia_cfg_index = vec_elt (cm->config_index_by_sw_if_index,
                                          sw_if_index);

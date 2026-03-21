@@ -136,8 +136,7 @@ nsim_dispatch_buffer (vlib_main_t * vm, vlib_node_runtime_t * node,
   if (vnet_buffer (b)->ip.flow_hash == NSIM_PKT_TAG)
     {
       u32 next;
-      vnet_get_config_data (&ctx->fcm->config_main, &b->current_config_index,
-			    &next, 0);
+      vnet_get_config_data (ctx->fcm->config_main, &b->current_config_index, &next, 0);
 
       ctx->fwd[0] = bi;
       ctx->fwd_nexts[0] = next;
@@ -152,8 +151,7 @@ nsim_dispatch_buffer (vlib_main_t * vm, vlib_node_runtime_t * node,
       if (PREDICT_FALSE (ctx->action[0] & NSIM_ACTION_REORDER))
 	{
 	  u32 next;
-	  vnet_get_config_data (&ctx->fcm->config_main,
-				&b->current_config_index, &next, 0);
+	  vnet_get_config_data (ctx->fcm->config_main, &b->current_config_index, &next, 0);
 	  ctx->reord[0] = bi;
 	  ctx->reord_nexts[0] = next;
 	  ctx->reord += 1;

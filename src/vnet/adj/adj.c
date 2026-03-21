@@ -425,7 +425,7 @@ adj_feature_update_walk_cb (adj_index_t ai,
         vnet_feature_main_t *fm = &feature_main;
         vnet_feature_config_main_t *cm;
 
-        cm = &fm->feature_config_mains[ctx->arc];
+        cm = &fm->feature_arcs[ctx->arc];
 
         if (ctx->enable)
             adj->rewrite_header.flags |= VNET_REWRITE_HAS_FEATURES;
