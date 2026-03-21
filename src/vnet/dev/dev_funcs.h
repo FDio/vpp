@@ -363,16 +363,11 @@ foreach_vnet_dev_rx_queue_runtime_helper (vlib_node_runtime_t *node,
 	rxq->port->interfaces->secondary_interfaces;
       vlib_buffer_template_t *bt = &rxq->if_rt_data.buffer_template;
       bt->current_config_index = ifs->primary_interface.current_config_index;
-      vnet_buffer (bt)->feature_arc_index =
-	ifs->primary_interface.feature_arc_index;
       vec_foreach_pointer (rtd, rxq->sec_if_rt_data)
 	if (rtd)
 	  {
 	    vlib_buffer_template_t *bt = &rtd->buffer_template;
-	    bt->current_config_index =
-	      si[rtd->sec_if_index]->current_config_index;
-	    vnet_buffer (bt)->feature_arc_index =
-	      si[rtd->sec_if_index]->feature_arc_index;
+	    bt->current_config_index = si[rtd->sec_if_index]->current_config_index;
 	  }
     }
 

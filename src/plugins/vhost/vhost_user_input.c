@@ -702,7 +702,6 @@ vhost_user_if_input (vlib_main_t *vm, vhost_user_main_t *vum,
       if (current_config_index != ~(u32) 0)
 	{
 	  b_head->current_config_index = current_config_index;
-	  vnet_buffer (b_head)->feature_arc_index = feature_arc_idx;
 	}
 
       n_left--;
@@ -1340,7 +1339,6 @@ vhost_user_if_input_packed (vlib_main_t *vm, vhost_user_main_t *vum,
       if (current_config_index != ~0)
 	{
 	  b_head->current_config_index = current_config_index;
-	  vnet_buffer (b_head)->feature_arc_index = feature_arc_idx;
 	}
 
     out:
