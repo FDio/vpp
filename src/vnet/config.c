@@ -56,14 +56,15 @@ find_config_with_features (vlib_main_t * vm,
 			   vnet_config_feature_t * feature_vector,
 			   u32 end_node_index)
 {
+  vnet_config_main_shared_t *shared = vnet_config_main_shared (cm);
   u32 last_node_index = ~0;
   vnet_config_feature_t *f;
   u32 *config_string;
   uword *p;
   vnet_config_t *c;
 
-  config_string = cm->config_string_temp;
-  cm->config_string_temp = 0;
+  config_string = shared->config_string_temp;
+  shared->config_string_temp = 0;
   if (config_string)
     vec_set_len (config_string, 0);
 
@@ -94,45 +95,40 @@ find_config_with_features (vlib_main_t * vm,
   vec_add1 (config_string, end_node_index);
 
   /* See if config string is unique. */
-  p = hash_get_mem (cm->config_string_hash, config_string);
+  p = hash_get_mem (shared->config_string_hash, config_string);
   if (p)
     {
       /* Not unique.  Share existing config. */
-      cm->config_string_temp = config_string;	/* we'll use it again later. */
+      shared->config_string_temp = config_string;
       free_feature_vector (feature_vector);
-      c = pool_elt_at_index (cm->config_pool, p[0]);
+      c = pool_elt_at_index (shared->config_pool, p[0]);
     }
   else
     {
       u32 *d;
 
-      pool_get (cm->config_pool, c);
-      c->index = c - cm->config_pool;
+      pool_get (shared->config_pool, c);
+      c->index = c - shared->config_pool;
       c->features = feature_vector;
       c->config_string_vector = config_string;
 
       /* Allocate copy of config string in heap.
          VLIB buffers will maintain pointers to heap as they read out
          configuration data. */
-      c->config_string_heap_index
-	= heap_alloc (cm->config_string_heap, vec_len (config_string) + 1,
-		      c->config_string_heap_handle);
+      c->config_string_heap_index = heap_alloc (
+	shared->config_string_heap, vec_len (config_string) + 1, c->config_string_heap_handle);
 
       /* First element in heap points back to pool index. */
-      d =
-	vec_elt_at_index (cm->config_string_heap,
-			  c->config_string_heap_index);
+      d = vec_elt_at_index (shared->config_string_heap, c->config_string_heap_index);
       d[0] = c->index;
       clib_memcpy (d + 1, config_string, vec_bytes (config_string));
-      hash_set_mem (cm->config_string_hash, config_string, c->index);
+      hash_set_mem (shared->config_string_hash, config_string, c->index);
 
       c->reference_count = 0;	/* will be incremented by caller. */
 
-      vec_validate_init_empty (cm->end_node_indices_by_user_index,
-			       c->config_string_heap_index + 1,
-			       cm->default_end_node_index);
-      cm->end_node_indices_by_user_index[c->config_string_heap_index + 1]
-	= end_node_index;
+      vec_validate_init_empty (shared->end_node_indices_by_user_index,
+			       c->config_string_heap_index + 1, cm->default_end_node_index);
+      shared->end_node_indices_by_user_index[c->config_string_heap_index + 1] = end_node_index;
     }
 
   return c;
@@ -145,15 +141,19 @@ vnet_config_init (vlib_main_t * vm,
 		  int n_start_node_names,
 		  char *feature_node_names[], int n_feature_node_names)
 {
+  vnet_config_main_shared_t *shared = cm->shared;
   vlib_node_t *n;
   u32 i;
 
   clib_memset (cm, 0, sizeof (cm[0]));
+  cm->shared = shared;
+  if (cm->shared == 0)
+    cm->shared = &cm->local_data;
+  shared = vnet_config_main_shared (cm);
 
-  cm->config_string_hash =
-    hash_create_vec (0,
-		     STRUCT_SIZE_OF (vnet_config_t, config_string_vector[0]),
-		     sizeof (uword));
+  if (shared->config_string_hash == 0)
+    shared->config_string_hash =
+      hash_create_vec (0, STRUCT_SIZE_OF (vnet_config_t, config_string_vector[0]), sizeof (uword));
 
   ASSERT (n_feature_node_names >= 1);
 
@@ -190,13 +190,14 @@ vnet_config_init (vlib_main_t * vm,
 static void
 remove_reference (vnet_config_main_t * cm, vnet_config_t * c)
 {
+  vnet_config_main_shared_t *shared = vnet_config_main_shared (cm);
   ASSERT (c->reference_count > 0);
   c->reference_count -= 1;
   if (c->reference_count == 0)
     {
-      hash_unset (cm->config_string_hash, c->config_string_vector);
+      hash_unset (shared->config_string_hash, c->config_string_vector);
       vnet_config_free (cm, c);
-      pool_put (cm->config_pool, c);
+      pool_put (shared->config_pool, c);
     }
 }
 
@@ -212,21 +213,24 @@ feature_cmp (void *a1, void *a2)
 always_inline u32 *
 vnet_get_config_heap (vnet_config_main_t * cm, u32 ci)
 {
-  return heap_elt_at_index (cm->config_string_heap, ci);
+  return heap_elt_at_index (vnet_config_main_shared (cm)->config_string_heap, ci);
 }
 
 void
 vnet_config_del (vnet_config_main_t * cm, u32 config_id)
 {
+  vnet_config_main_shared_t *shared = vnet_config_main_shared (cm);
   u32 *p = vnet_get_config_heap (cm, config_id);
-  vnet_config_t *old = pool_elt_at_index (cm->config_pool, p[-1]);
+  vnet_config_t *old = pool_elt_at_index (shared->config_pool, p[-1]);
   remove_reference (cm, old);
 }
 
 u32
 vnet_config_reset_end_node (vlib_main_t *vm, vnet_config_main_t *cm, u32 ci)
 {
-  cm->end_node_indices_by_user_index[ci] = cm->default_end_node_index;
+  vnet_config_main_shared_t *shared = vnet_config_main_shared (cm);
+
+  shared->end_node_indices_by_user_index[ci] = cm->default_end_node_index;
 
   return (
     vnet_config_modify_end_node (vm, cm, ci, cm->default_end_node_index));
@@ -237,6 +241,7 @@ vnet_config_modify_end_node (vlib_main_t * vm,
 			     vnet_config_main_t * cm,
 			     u32 config_string_heap_index, u32 end_node_index)
 {
+  vnet_config_main_shared_t *shared = vnet_config_main_shared (cm);
   vnet_config_feature_t *new_features;
   vnet_config_t *old, *new;
 
@@ -251,7 +256,7 @@ vnet_config_modify_end_node (vlib_main_t * vm,
   else
     {
       u32 *p = vnet_get_config_heap (cm, config_string_heap_index);
-      old = pool_elt_at_index (cm->config_pool, p[-1]);
+      old = pool_elt_at_index (shared->config_pool, p[-1]);
       new_features = old->features;
       if (new_features)
 	new_features = duplicate_feature_vector (new_features);
@@ -279,10 +284,9 @@ vnet_config_modify_end_node (vlib_main_t * vm,
    * (which defines the pool index
    * this config string comes from).
    */
-  vec_validate (cm->config_pool_index_by_user_index,
-		new->config_string_heap_index + 1);
-  cm->config_pool_index_by_user_index[new->config_string_heap_index + 1]
-    = new - cm->config_pool;
+  vec_validate (shared->config_pool_index_by_user_index, new->config_string_heap_index + 1);
+  shared->config_pool_index_by_user_index[new->config_string_heap_index + 1] =
+    new - shared->config_pool;
   return new->config_string_heap_index + 1;
 }
 
@@ -290,12 +294,14 @@ u32
 vnet_config_get_end_node (vlib_main_t *vm, vnet_config_main_t *cm,
 			  u32 config_string_heap_index)
 {
-  if (config_string_heap_index >= vec_len (cm->end_node_indices_by_user_index))
+  vnet_config_main_shared_t *shared = vnet_config_main_shared (cm);
+
+  if (config_string_heap_index >= vec_len (shared->end_node_indices_by_user_index))
     return cm->default_end_node_index;
-  if (~0 == cm->end_node_indices_by_user_index[config_string_heap_index])
+  if (~0 == shared->end_node_indices_by_user_index[config_string_heap_index])
     return cm->default_end_node_index;
 
-  return (cm->end_node_indices_by_user_index[config_string_heap_index]);
+  return (shared->end_node_indices_by_user_index[config_string_heap_index]);
 }
 
 u32
@@ -305,6 +311,7 @@ vnet_config_add_feature (vlib_main_t * vm,
 			 u32 feature_index,
 			 void *feature_config, u32 n_feature_config_bytes)
 {
+  vnet_config_main_shared_t *shared = vnet_config_main_shared (cm);
   vnet_config_t *old, *new;
   vnet_config_feature_t *new_features, *f;
   u32 n_feature_config_u32s, end_node_index;
@@ -322,10 +329,9 @@ vnet_config_add_feature (vlib_main_t * vm,
   else
     {
       u32 *p = vnet_get_config_heap (cm, config_string_heap_index);
-      old = pool_elt_at_index (cm->config_pool, p[-1]);
+      old = pool_elt_at_index (shared->config_pool, p[-1]);
       new_features = old->features;
-      end_node_index =
-	cm->end_node_indices_by_user_index[config_string_heap_index];
+      end_node_index = shared->end_node_indices_by_user_index[config_string_heap_index];
       if (new_features)
 	new_features = duplicate_feature_vector (new_features);
     }
@@ -360,10 +366,9 @@ vnet_config_add_feature (vlib_main_t * vm,
    * (which defines the pool index
    * this config string comes from).
    */
-  vec_validate (cm->config_pool_index_by_user_index,
-		new->config_string_heap_index + 1);
-  cm->config_pool_index_by_user_index[new->config_string_heap_index + 1]
-    = new - cm->config_pool;
+  vec_validate (shared->config_pool_index_by_user_index, new->config_string_heap_index + 1);
+  shared->config_pool_index_by_user_index[new->config_string_heap_index + 1] =
+    new - shared->config_pool;
   return new->config_string_heap_index + 1;
 }
 
@@ -374,6 +379,7 @@ vnet_config_del_feature (vlib_main_t * vm,
 			 u32 feature_index,
 			 void *feature_config, u32 n_feature_config_bytes)
 {
+  vnet_config_main_shared_t *shared = vnet_config_main_shared (cm);
   vnet_config_t *old, *new;
   vnet_config_feature_t *new_features, *f;
   u32 n_feature_config_u32s;
@@ -381,7 +387,7 @@ vnet_config_del_feature (vlib_main_t * vm,
   {
     u32 *p = vnet_get_config_heap (cm, config_string_heap_index);
 
-    old = pool_elt_at_index (cm->config_pool, p[-1]);
+    old = pool_elt_at_index (shared->config_pool, p[-1]);
   }
 
   n_feature_config_u32s =
@@ -414,14 +420,12 @@ vnet_config_del_feature (vlib_main_t * vm,
      adds a new config because none of existing config's has matching features
      and so can be reused */
   remove_reference (cm, old);
-  new = find_config_with_features (vm, cm, new_features,
-				   cm->end_node_indices_by_user_index
-				   [config_string_heap_index]);
+  new = find_config_with_features (
+    vm, cm, new_features, shared->end_node_indices_by_user_index[config_string_heap_index]);
   new->reference_count += 1;
 
-  vec_validate (cm->config_pool_index_by_user_index,
-		new->config_string_heap_index + 1);
-  cm->config_pool_index_by_user_index[new->config_string_heap_index + 1]
-    = new - cm->config_pool;
+  vec_validate (shared->config_pool_index_by_user_index, new->config_string_heap_index + 1);
+  shared->config_pool_index_by_user_index[new->config_string_heap_index + 1] =
+    new - shared->config_pool;
   return new->config_string_heap_index + 1;
 }

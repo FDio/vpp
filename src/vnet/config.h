@@ -62,12 +62,8 @@ typedef struct
   /* Global heap of configuration data. */
   u32 *config_string_heap;
 
-  /* Node index which starts/ends feature processing. */
-  u32 *start_node_indices, *end_node_indices_by_user_index,
-    default_end_node_index;
-
-  /* Interior feature processing nodes (not including start and end nodes). */
-  u32 *node_index_by_feature_index;
+  /* End node index by config heap index. */
+  u32 *end_node_indices_by_user_index;
 
   /* vnet_config pool index by user index */
   u32 *config_pool_index_by_user_index;
@@ -75,15 +71,46 @@ typedef struct
   /* Temporary vector for holding config strings.  Used to avoid continually
      allocating vectors. */
   u32 *config_string_temp;
+} vnet_config_main_shared_t;
+
+typedef struct
+{
+  vnet_config_main_shared_t *shared;
+  vnet_config_main_shared_t local_data;
+
+  /* Node index which starts/ends feature processing. */
+  u32 *start_node_indices, default_end_node_index;
+
+  /* Interior feature processing nodes (not including start and end nodes). */
+  u32 *node_index_by_feature_index;
 } vnet_config_main_t;
+
+always_inline vnet_config_main_shared_t *
+vnet_config_main_shared (vnet_config_main_t *cm)
+{
+  if (cm->shared)
+    return cm->shared;
+
+  return &cm->local_data;
+}
+
+always_inline const vnet_config_main_shared_t *
+vnet_config_main_shared_const (const vnet_config_main_t *cm)
+{
+  if (cm->shared)
+    return cm->shared;
+
+  return &cm->local_data;
+}
 
 always_inline void
 vnet_config_free (vnet_config_main_t * cm, vnet_config_t * c)
 {
+  vnet_config_main_shared_t *shared = vnet_config_main_shared (cm);
   vnet_config_feature_t *f;
   vec_foreach (f, c->features) vnet_config_feature_free (f);
   vec_free (c->features);
-  heap_dealloc (cm->config_string_heap, c->config_string_heap_handle);
+  heap_dealloc (shared->config_string_heap, c->config_string_heap_handle);
   vec_free (c->config_string_vector);
 }
 
@@ -91,11 +118,12 @@ always_inline void *
 vnet_get_config_data (vnet_config_main_t * cm,
 		      u32 * config_index, u32 * next_index, u32 n_data_bytes)
 {
+  vnet_config_main_shared_t *shared = vnet_config_main_shared (cm);
   u32 i, n, *d;
 
   i = *config_index;
 
-  d = heap_elt_at_index (cm->config_string_heap, i);
+  d = heap_elt_at_index (shared->config_string_heap, i);
 
   n = round_pow2 (n_data_bytes, sizeof (d[0])) / sizeof (d[0]);
 

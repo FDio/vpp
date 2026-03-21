@@ -262,78 +262,77 @@ _(next_buffer)                                  \
 _(current_config_index)                         \
 _(punt_reason)
 
-#define foreach_opaque_metadata_field           \
-_(sw_if_index[0])                               \
-_(sw_if_index[1])                               \
-_(l2_hdr_offset)                                \
-_(l3_hdr_offset)                                \
-_(l4_hdr_offset)                                \
-_(feature_arc_index)                            \
-_(ip.adj_index[0])                              \
-_(ip.adj_index[1])                              \
-_(ip.flow_hash)                                 \
-_(ip.save_protocol)                             \
-_(ip.fib_index)                                 \
-_(ip.icmp.type)                                 \
-_(ip.icmp.code)                                 \
-_(ip.icmp.data)                                 \
-_(ip.reass.next_index)                          \
-_(ip.reass.error_next_index)                    \
-_(ip.reass.owner_thread_index)                  \
-_(ip.reass.ip_proto)                            \
-_(ip.reass.l4_src_port)                         \
-_(ip.reass.l4_dst_port)                         \
-_(ip.reass.estimated_mtu)                       \
-_(ip.reass.fragment_first)                      \
-_(ip.reass.fragment_last)                       \
-_(ip.reass.range_first)                         \
-_(ip.reass.range_last)                          \
-_(ip.reass.next_range_bi)                       \
-_(ip.reass.ip6_frag_hdr_offset)                 \
-_(mpls.ttl)                                     \
-_(mpls.exp)                                     \
-_(mpls.first)                                   \
-_(mpls.save_rewrite_length)                     \
-_(mpls.mpls_hdr_length)                         \
-_(mpls.bier.n_bytes)                            \
-_(l2.feature_bitmap)                            \
-_(l2.bd_index)                                  \
-_(l2.l2fib_sn)                                  \
-_(l2.l2_len)                                    \
-_(l2.shg)                                       \
-_(l2.bd_age)                                    \
-_(l2t.next_index)                               \
-_(l2t.session_index)                            \
-_(l2_classify.table_index)                      \
-_(l2_classify.opaque_index)                     \
-_(l2_classify.hash)                             \
-_(policer.index)                                \
-_(ipsec.sad_index)                              \
-_(ipsec.protect_index)                          \
-_(map.mtu)                                      \
-_(map_t.map_domain_index)			\
-_(map_t.v6.saddr)                               \
-_(map_t.v6.daddr)                               \
-_(map_t.v6.frag_offset)                         \
-_(map_t.v6.l4_offset)                           \
-_(map_t.v6.l4_protocol)                         \
-_(map_t.checksum_offset)			\
-_(map_t.mtu)                                    \
-_(ip_frag.mtu)                                  \
-_(ip_frag.next_index)                           \
-_(ip_frag.flags)                                \
-_(cop.current_config_index)                     \
-_(lisp.overlay_afi)                             \
-_(tcp.connection_index)                         \
-_(tcp.seq_number)                               \
-_(tcp.next_node_opaque)                         \
-_(tcp.seq_end)                                  \
-_(tcp.ack_number)                               \
-_(tcp.hdr_offset)                               \
-_(tcp.data_offset)                              \
-_(tcp.data_len)                                 \
-_(tcp.flags)                                    \
-_(snat.flags)
+#define foreach_opaque_metadata_field                                                              \
+  _ (sw_if_index[0])                                                                               \
+  _ (sw_if_index[1])                                                                               \
+  _ (l2_hdr_offset)                                                                                \
+  _ (l3_hdr_offset)                                                                                \
+  _ (l4_hdr_offset)                                                                                \
+  _ (ip.adj_index[0])                                                                              \
+  _ (ip.adj_index[1])                                                                              \
+  _ (ip.flow_hash)                                                                                 \
+  _ (ip.save_protocol)                                                                             \
+  _ (ip.fib_index)                                                                                 \
+  _ (ip.icmp.type)                                                                                 \
+  _ (ip.icmp.code)                                                                                 \
+  _ (ip.icmp.data)                                                                                 \
+  _ (ip.reass.next_index)                                                                          \
+  _ (ip.reass.error_next_index)                                                                    \
+  _ (ip.reass.owner_thread_index)                                                                  \
+  _ (ip.reass.ip_proto)                                                                            \
+  _ (ip.reass.l4_src_port)                                                                         \
+  _ (ip.reass.l4_dst_port)                                                                         \
+  _ (ip.reass.estimated_mtu)                                                                       \
+  _ (ip.reass.fragment_first)                                                                      \
+  _ (ip.reass.fragment_last)                                                                       \
+  _ (ip.reass.range_first)                                                                         \
+  _ (ip.reass.range_last)                                                                          \
+  _ (ip.reass.next_range_bi)                                                                       \
+  _ (ip.reass.ip6_frag_hdr_offset)                                                                 \
+  _ (mpls.ttl)                                                                                     \
+  _ (mpls.exp)                                                                                     \
+  _ (mpls.first)                                                                                   \
+  _ (mpls.save_rewrite_length)                                                                     \
+  _ (mpls.mpls_hdr_length)                                                                         \
+  _ (mpls.bier.n_bytes)                                                                            \
+  _ (l2.feature_bitmap)                                                                            \
+  _ (l2.bd_index)                                                                                  \
+  _ (l2.l2fib_sn)                                                                                  \
+  _ (l2.l2_len)                                                                                    \
+  _ (l2.shg)                                                                                       \
+  _ (l2.bd_age)                                                                                    \
+  _ (l2t.next_index)                                                                               \
+  _ (l2t.session_index)                                                                            \
+  _ (l2_classify.table_index)                                                                      \
+  _ (l2_classify.opaque_index)                                                                     \
+  _ (l2_classify.hash)                                                                             \
+  _ (policer.index)                                                                                \
+  _ (ipsec.sad_index)                                                                              \
+  _ (ipsec.protect_index)                                                                          \
+  _ (map.mtu)                                                                                      \
+  _ (map_t.map_domain_index)                                                                       \
+  _ (map_t.v6.saddr)                                                                               \
+  _ (map_t.v6.daddr)                                                                               \
+  _ (map_t.v6.frag_offset)                                                                         \
+  _ (map_t.v6.l4_offset)                                                                           \
+  _ (map_t.v6.l4_protocol)                                                                         \
+  _ (map_t.checksum_offset)                                                                        \
+  _ (map_t.mtu)                                                                                    \
+  _ (ip_frag.mtu)                                                                                  \
+  _ (ip_frag.next_index)                                                                           \
+  _ (ip_frag.flags)                                                                                \
+  _ (cop.current_config_index)                                                                     \
+  _ (lisp.overlay_afi)                                                                             \
+  _ (tcp.connection_index)                                                                         \
+  _ (tcp.seq_number)                                                                               \
+  _ (tcp.next_node_opaque)                                                                         \
+  _ (tcp.seq_end)                                                                                  \
+  _ (tcp.ack_number)                                                                               \
+  _ (tcp.hdr_offset)                                                                               \
+  _ (tcp.data_offset)                                                                              \
+  _ (tcp.data_len)                                                                                 \
+  _ (tcp.flags)                                                                                    \
+  _ (snat.flags)
 
 #define foreach_opaque2_metadata_field                                        \
   _ (qos.bits)                                                                \

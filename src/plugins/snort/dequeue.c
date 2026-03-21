@@ -43,8 +43,6 @@ snort_deq_node_inject (vlib_main_t *vm, vlib_node_runtime_t *node,
       *snort_get_buffer_metadata (b) = ref_d->metadata;
 
       b->current_config_index = ref_b->current_config_index;
-      vnet_buffer (b)->feature_arc_index =
-	vnet_buffer (ref_b)->feature_arc_index;
 
       from[i] = bi;
       nexts[i] = ref_qpe->next_index;

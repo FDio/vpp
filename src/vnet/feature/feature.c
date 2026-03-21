@@ -137,6 +137,7 @@ vnet_feature_init (vlib_main_t * vm)
 
       arc_index = areg->feature_arc_index;
       cm = &fm->feature_config_mains[arc_index];
+      cm->config_main.shared = &fm->feature_config_main.local_data;
       vcm = &cm->config_main;
       if ((error = vnet_feature_arc_init
 	   (vm, vcm, areg->start_nodes, areg->n_start_nodes,
@@ -318,6 +319,7 @@ vnet_feature_is_enabled (const char *arc_name, const char *feature_node_name,
   vnet_feature_main_t *fm = &feature_main;
   vnet_feature_config_main_t *cm;
   vnet_config_main_t *ccm;
+  const vnet_config_main_shared_t *shared;
   vnet_config_t *current_config;
   vnet_config_feature_t *f;
   u32 feature_index;
@@ -350,10 +352,11 @@ vnet_feature_is_enabled (const char *arc_name, const char *feature_node_name,
     return 0;
 
   ccm = &cm->config_main;
+  shared = vnet_config_main_shared_const (ccm);
 
-  p = heap_elt_at_index (ccm->config_string_heap, ci);
+  p = heap_elt_at_index (shared->config_string_heap, ci);
 
-  current_config = pool_elt_at_index (ccm->config_pool, p[-1]);
+  current_config = pool_elt_at_index (shared->config_pool, p[-1]);
 
   /* Find feature with the required index */
   vec_foreach (f, current_config->features)
@@ -542,6 +545,7 @@ vnet_interface_features_show (vlib_main_t * vm, u32 sw_if_index, int verbose)
   vnet_feature_config_main_t *cm = fm->feature_config_mains;
   vnet_feature_arc_registration_t *areg;
   vnet_config_main_t *vcm;
+  const vnet_config_main_shared_t *shared;
   vnet_config_t *cfg;
   u32 cfg_index;
   vnet_config_feature_t *feat;
@@ -557,6 +561,7 @@ vnet_interface_features_show (vlib_main_t * vm, u32 sw_if_index, int verbose)
     {
       feature_arc = areg->feature_arc_index;
       vcm = &(cm[feature_arc].config_main);
+      shared = vnet_config_main_shared_const (vcm);
 
       vlib_cli_output (vm, "\n%s:", areg->arc_name);
       areg = areg->next;
@@ -569,9 +574,8 @@ vnet_interface_features_show (vlib_main_t * vm, u32 sw_if_index, int verbose)
 
       current_config_index =
 	vec_elt (cm[feature_arc].config_index_by_sw_if_index, sw_if_index);
-      cfg_index =
-	vec_elt (vcm->config_pool_index_by_user_index, current_config_index);
-      cfg = pool_elt_at_index (vcm->config_pool, cfg_index);
+      cfg_index = vec_elt (shared->config_pool_index_by_user_index, current_config_index);
+      cfg = pool_elt_at_index (shared->config_pool, cfg_index);
 
       for (i = 0; i < vec_len (cfg->features); i++)
 	{
@@ -585,10 +589,7 @@ vnet_interface_features_show (vlib_main_t * vm, u32 sw_if_index, int verbose)
 	}
       if (verbose)
 	{
-	  n =
-	    vlib_get_node (vm,
-			   vcm->end_node_indices_by_user_index
-			   [current_config_index]);
+	  n = vlib_get_node (vm, shared->end_node_indices_by_user_index[current_config_index]);
 	  vlib_cli_output (vm, "  [end] %v", n->name);
 	}
     }
