@@ -137,6 +137,7 @@ vnet_feature_init (vlib_main_t * vm)
 
       arc_index = areg->feature_arc_index;
       cm = &fm->feature_config_mains[arc_index];
+      cm->config_main.external_string_heap_ptr = &fm->shared_feature_config_heap;
       vcm = &cm->config_main;
       if ((error = vnet_feature_arc_init
 	   (vm, vcm, areg->start_nodes, areg->n_start_nodes,
@@ -270,9 +271,7 @@ vnet_feature_enable_disable_with_index (u8 arc_index, u32 feature_index,
     (vlib_get_main (), &cm->config_main, ci, feature_index, feature_config,
      n_feature_config_bytes);
   if (ci == ~0)
-    {
-      return 0;
-    }
+    return 0;
   cm->config_index_by_sw_if_index[sw_if_index] = ci;
 
   /* update feature count */
@@ -351,7 +350,7 @@ vnet_feature_is_enabled (const char *arc_name, const char *feature_node_name,
 
   ccm = &cm->config_main;
 
-  p = heap_elt_at_index (ccm->config_string_heap, ci);
+  p = heap_elt_at_index (*vnet_get_config_heap (ccm), ci);
 
   current_config = pool_elt_at_index (ccm->config_pool, p[-1]);
 

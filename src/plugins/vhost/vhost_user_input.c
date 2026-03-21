@@ -403,7 +403,6 @@ vhost_user_if_input (vlib_main_t *vm, vhost_user_main_t *vum,
 		     vlib_node_runtime_t *node, u8 enable_csum)
 {
   vhost_user_vring_t *txvq = &vui->vrings[VHOST_VRING_IDX_TX (qid)];
-  vnet_feature_main_t *fm = &feature_main;
   u16 n_rx_packets = 0;
   u32 n_rx_bytes = 0;
   u16 n_left;
@@ -414,7 +413,6 @@ vhost_user_if_input (vlib_main_t *vm, vhost_user_main_t *vum,
   u32 map_hint = 0;
   vhost_cpu_t *cpu = &vum->cpus[vm->thread_index];
   u16 copy_len = 0;
-  u8 feature_arc_idx = fm->device_input_feature_arc_index;
   u32 current_config_index = ~(u32) 0;
   u16 mask = txvq->qsz_mask;
 
@@ -702,7 +700,6 @@ vhost_user_if_input (vlib_main_t *vm, vhost_user_main_t *vum,
       if (current_config_index != ~(u32) 0)
 	{
 	  b_head->current_config_index = current_config_index;
-	  vnet_buffer (b_head)->feature_arc_index = feature_arc_idx;
 	}
 
       n_left--;
@@ -1105,8 +1102,6 @@ vhost_user_if_input_packed (vlib_main_t *vm, vhost_user_main_t *vum,
 			    vlib_node_runtime_t *node, u8 enable_csum)
 {
   vhost_user_vring_t *txvq = &vui->vrings[VHOST_VRING_IDX_TX (qid)];
-  vnet_feature_main_t *fm = &feature_main;
-  u8 feature_arc_idx = fm->device_input_feature_arc_index;
   u16 n_rx_packets = 0;
   u32 n_rx_bytes = 0;
   u16 n_left = 0;
@@ -1340,7 +1335,6 @@ vhost_user_if_input_packed (vlib_main_t *vm, vhost_user_main_t *vum,
       if (current_config_index != ~0)
 	{
 	  b_head->current_config_index = current_config_index;
-	  vnet_buffer (b_head)->feature_arc_index = feature_arc_idx;
 	}
 
     out:

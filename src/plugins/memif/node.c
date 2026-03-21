@@ -615,7 +615,6 @@ memif_device_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
   /* prepare buffer template and next indices */
   vnet_buffer (&ptd->buffer_template)->sw_if_index[VLIB_RX] = mif->sw_if_index;
-  vnet_buffer (&ptd->buffer_template)->feature_arc_index = 0;
   ptd->buffer_template.current_data = start_offset;
   ptd->buffer_template.current_config_index = 0;
   ptd->buffer_template.buffer_pool_index = mq->buffer_pool_index;
@@ -1068,7 +1067,6 @@ CLIB_MARCH_FN (memif_dma_completion_cb, void, vlib_main_t *vm,
   i16 start_offset =
     (dma_info->mode == MEMIF_INTERFACE_MODE_IP) ? MEMIF_IP_OFFSET : 0;
   vnet_buffer (&ptd->buffer_template)->sw_if_index[VLIB_RX] = mif->sw_if_index;
-  vnet_buffer (&ptd->buffer_template)->feature_arc_index = 0;
   ptd->buffer_template.current_data = start_offset;
   ptd->buffer_template.current_config_index = 0;
   ptd->buffer_template.buffer_pool_index = mq->buffer_pool_index;
