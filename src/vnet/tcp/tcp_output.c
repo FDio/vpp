@@ -1009,21 +1009,15 @@ tcp_send_ack (tcp_connection_t * tc)
 void
 tcp_program_ack (tcp_connection_t * tc)
 {
-  if (!(tc->flags & TCP_CONN_SNDACK))
-    {
-      session_add_self_custom_tx_evt (&tc->connection, 1);
-      tc->flags |= TCP_CONN_SNDACK;
-    }
+  session_add_self_custom_tx_evt (&tc->connection, 1);
+  tc->flags |= TCP_CONN_SNDACK;
 }
 
 void
 tcp_program_dupack (tcp_connection_t * tc)
 {
-  if (!(tc->flags & TCP_CONN_SNDACK))
-    {
-      session_add_self_custom_tx_evt (&tc->connection, 1);
-      tc->flags |= TCP_CONN_SNDACK;
-    }
+  session_add_self_custom_tx_evt (&tc->connection, 1);
+  tc->flags |= TCP_CONN_SNDACK;
   if (tc->pending_dupacks < 255)
     tc->pending_dupacks += 1;
 }
@@ -1031,11 +1025,8 @@ tcp_program_dupack (tcp_connection_t * tc)
 void
 tcp_program_retransmit (tcp_connection_t * tc)
 {
-  if (!(tc->flags & TCP_CONN_RXT_PENDING))
-    {
-      session_add_self_custom_tx_evt (&tc->connection, 0);
-      tc->flags |= TCP_CONN_RXT_PENDING;
-    }
+  session_add_self_custom_tx_evt (&tc->connection, 0);
+  tc->flags |= TCP_CONN_RXT_PENDING;
 }
 
 /**
@@ -1689,10 +1680,15 @@ static inline u8
 tcp_retransmit_should_retry_head (tcp_connection_t * tc,
 				  sack_scoreboard_t * sb)
 {
+  sack_scoreboard_hole_t *hole;
   u32 tx_adv_sack = sb->high_sacked - tc->snd_congestion;
   f64 rr = (f64) tc->ssthresh / tc->prev_cwnd;
 
   if (tcp_fastrecovery_first (tc))
+    return 1;
+
+  hole = scoreboard_first_hole (sb);
+  if (hole && hole->start == tc->snd_una)
     return 1;
 
   return (tx_adv_sack > (tc->snd_una - tc->prr_start) * rr);
@@ -1740,10 +1736,10 @@ tcp_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
   else
     snd_space = tcp_fastrecovery_prr_snd_space (tc);
 
+  sb = &tc->sack_sb;
+
   if (snd_space < tc->snd_mss)
     goto done;
-
-  sb = &tc->sack_sb;
 
   /* Check if snd_una is a lost retransmit */
   if (pool_elts (sb->holes)
@@ -2040,7 +2036,7 @@ tcp_session_custom_tx (void *conn, transport_send_params_t * sp)
     }
 
   if (!(tc->flags & TCP_CONN_SNDACK))
-    return n_segs;
+    goto maybe_rearm;
 
   tc->flags &= ~TCP_CONN_SNDACK;
 
@@ -2055,6 +2051,12 @@ tcp_session_custom_tx (void *conn, transport_send_params_t * sp)
     }
 
   n_segs += tcp_send_acks (tc, sp->max_burst_size - n_segs);
+
+maybe_rearm:
+  if (tcp_in_cong_recovery (tc) &&
+      transport_connection_is_descheduled (&tc->connection) &&
+      (tc->sack_sb.lost_bytes || tcp_available_cc_snd_space (tc) >= tc->snd_mss))
+    tcp_program_retransmit (tc);
 
   return n_segs;
 }

@@ -174,6 +174,19 @@ session_add_self_custom_tx_evt (transport_connection_t * tc, u8 has_prio)
   ASSERT (s->thread_index == vlib_get_thread_index ());
   ASSERT (s->session_state != SESSION_STATE_TRANSPORT_DELETED);
 
+  if (s->flags & SESSION_F_CUSTOM_TX)
+    {
+      /*
+       * Transport-side TX work may be requested again while a previous
+       * custom-tx cycle is still marked in progress. Re-post an explicit TX
+       * event so ACK/retransmit work is not silently dropped while the
+       * session-level custom-tx latch is still set.
+       */
+      if (!transport_connection_is_descheduled (tc))
+	session_program_transport_io_evt (s->handle, SESSION_IO_EVT_TX);
+      return;
+    }
+
   if (!(s->flags & SESSION_F_CUSTOM_TX))
     {
       s->flags |= SESSION_F_CUSTOM_TX;
@@ -195,6 +208,16 @@ session_add_self_custom_tx_evt (transport_connection_t * tc, u8 has_prio)
 	  if (PREDICT_FALSE (wrk->state == SESSION_WRK_INTERRUPT))
 	    vlib_node_set_interrupt_pending (wrk->vm,
 					     session_queue_node.index);
+	}
+      else
+	{
+	  /*
+	   * Transport-driven custom TX (ACKs / retransmits) can be raised while
+	   * the fifo event bit is still set from a previous TX scheduling cycle.
+	   * In that case re-post an explicit TX event through the worker MQ so
+	   * the request is not lost behind a stale fifo event bit.
+	   */
+	  session_program_transport_io_evt (s->handle, SESSION_IO_EVT_TX);
 	}
     }
 }
