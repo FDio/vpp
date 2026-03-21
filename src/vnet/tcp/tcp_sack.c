@@ -198,8 +198,10 @@ scoreboard_next_rxt_hole (sack_scoreboard_t * sb,
       return 0;
     }
 
-  /* Rule (1): if higher than rxt, less than high_sacked and lost */
-  if (hole->is_lost && seq_lt (hole->start, sb->high_sacked))
+  /* Rule (1): if the hole is already considered lost and starts at or below
+   * the current SACK frontier, keep using the normal retransmit path instead
+   * of falling back to rescue handling. */
+  if (hole->is_lost && seq_leq (hole->start, sb->high_sacked))
     {
       sb->cur_rxt_hole = scoreboard_hole_index (sb, hole);
     }
