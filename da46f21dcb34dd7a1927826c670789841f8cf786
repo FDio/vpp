@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3661a09d_1605520d",
+        "filename": "src/vnet/tcp/tcp_sack.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 204,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-03-21T20:45:57Z",
+      "side": 1,
+      "message": "Interesting but RFC 6675 Section 4.3, Rule (1.b) is strict on this. Also rules 2, 3 are not rescue, only 4 is.",
+      "revId": "da46f21dcb34dd7a1927826c670789841f8cf786",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
