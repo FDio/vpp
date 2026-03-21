@@ -43,7 +43,7 @@ adl_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
        * use a unified adl_feature_type_t enumeration.
        */
 
-      if (!(acm->config_main.node_index_by_feature_index))
+      if (!(acm->config_arc.node_index_by_feature_index))
 	{
 	  switch (address_family)
 	    {
@@ -55,8 +55,8 @@ adl_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
 		  [IP4_RX_ADL_INPUT] = "ip4-input",
 		};
 
-		vnet_config_init (vm, &acm->config_main,
-				  start_nodes, ARRAY_LEN (start_nodes),
+		acm->config_main.arc = &acm->config_arc;
+		vnet_config_init (vm, &acm->config_main, start_nodes, ARRAY_LEN (start_nodes),
 				  feature_nodes, ARRAY_LEN (feature_nodes));
 	      }
 	      break;
@@ -67,8 +67,8 @@ adl_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
 		  [IP6_RX_ADL_ALLOWLIST] = "ip6-adl-allowlist",
 		  [IP6_RX_ADL_INPUT] = "ip6-input",
 		};
-		vnet_config_init (vm, &acm->config_main,
-				  start_nodes, ARRAY_LEN (start_nodes),
+		acm->config_main.arc = &acm->config_arc;
+		vnet_config_init (vm, &acm->config_main, start_nodes, ARRAY_LEN (start_nodes),
 				  feature_nodes, ARRAY_LEN (feature_nodes));
 	      }
 	      break;
@@ -80,8 +80,8 @@ adl_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
 		  [DEFAULT_RX_ADL_ALLOWLIST] = "default-adl-allowlist",
 		  [DEFAULT_RX_ADL_INPUT] = "ethernet-input",
 		};
-		vnet_config_init (vm, &acm->config_main,
-				  start_nodes, ARRAY_LEN (start_nodes),
+		acm->config_main.arc = &acm->config_arc;
+		vnet_config_init (vm, &acm->config_main, start_nodes, ARRAY_LEN (start_nodes),
 				  feature_nodes, ARRAY_LEN (feature_nodes));
 	      }
 	      break;
@@ -105,15 +105,18 @@ adl_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
 	default_next = DEFAULT_RX_ADL_INPUT;
 
       if (is_add)
-	ci = vnet_config_add_feature (vm, &acm->config_main,
-				      ci, default_next, data, sizeof (*data));
+	{
+	  acm->config_main.arc = &acm->config_arc;
+	  ci =
+	    vnet_config_add_feature (vm, &acm->config_main, ci, default_next, data, sizeof (*data));
+	}
       else
 	{
 	  /* If the feature was actually configured */
 	  if (ci != ~0)
 	    {
-	      ci = vnet_config_del_feature (vm, &acm->config_main,
-					    ci, default_next, data,
+	      acm->config_main.arc = &acm->config_arc;
+	      ci = vnet_config_del_feature (vm, &acm->config_main, ci, default_next, data,
 					    sizeof (*data));
 	    }
 	}
@@ -287,22 +290,22 @@ int adl_allowlist_enable_disable (adl_allowlist_enable_disable_args_t *a)
       data->fib_index = fib_index;
 
       if (is_add)
-	ci = vnet_config_add_feature (vm, &acm->config_main,
-				      ci,
-                                      next_to_add_del,
-                                      data, sizeof (*data));
+	{
+	  acm->config_main.arc = &acm->config_arc;
+	  ci = vnet_config_add_feature (vm, &acm->config_main, ci, next_to_add_del, data,
+					sizeof (*data));
+	}
       else
         {
           /* If the feature was actually configured... */
           if (ci != ~0)
             {
               /* delete it */
-              ci = vnet_config_del_feature (vm, &acm->config_main,
-                                            ci,
-                                            next_to_add_del,
-                                            data, sizeof (*data));
-            }
-        }
+	      acm->config_main.arc = &acm->config_arc;
+	      ci = vnet_config_del_feature (vm, &acm->config_main, ci, next_to_add_del, data,
+					    sizeof (*data));
+	    }
+	}
 
       acm->config_index_by_sw_if_index[a->sw_if_index] = ci;
     }

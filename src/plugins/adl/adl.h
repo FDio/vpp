@@ -44,6 +44,7 @@ typedef enum {
 
 typedef struct {
   vnet_config_main_t config_main;
+  vnet_config_arc_t config_arc;
   u32 * config_index_by_sw_if_index;
 } adl_config_main_t;
 
@@ -84,7 +85,6 @@ typedef struct {
     i16 l2_hdr_offset;
     i16 l3_hdr_offset;
     i16 l4_hdr_offset;
-    u8 feature_arc_index;
     u8 dont_waste_me;
     /* end of must be in sync with .../src/vnet/buffer.h */
     union

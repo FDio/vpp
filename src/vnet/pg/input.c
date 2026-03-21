@@ -1631,7 +1631,7 @@ pg_generate_packets (vlib_node_runtime_t * node,
   vnet_feature_main_t *fm = &feature_main;
   vnet_feature_config_main_t *cm;
   u8 feature_arc_index = fm->device_input_feature_arc_index;
-  cm = &fm->feature_config_mains[feature_arc_index];
+  cm = &fm->feature_arcs[feature_arc_index];
   u32 current_config_index = ~(u32) 0;
   pg_interface_t *pi;
   int i;
@@ -1649,8 +1649,7 @@ pg_generate_packets (vlib_node_runtime_t * node,
     {
       current_config_index =
 	vec_elt (cm->config_index_by_sw_if_index, s->sw_if_index[VLIB_RX]);
-      vnet_get_config_data (&cm->config_main, &current_config_index,
-			    &next_index, 0);
+      vnet_get_config_data (cm->config_main, &current_config_index, &next_index, 0);
     }
 
   if (PREDICT_FALSE (pi->coalesce_enabled))
@@ -1731,7 +1730,6 @@ pg_generate_packets (vlib_node_runtime_t * node,
 	    vlib_buffer_t *b;
 	    b = vlib_get_buffer (vm, to_next[i]);
 	    b->current_config_index = current_config_index;
-	    vnet_buffer (b)->feature_arc_index = feature_arc_index;
 	  }
 
       if (pi->gso_enabled || pi->csum_offload_enabled ||

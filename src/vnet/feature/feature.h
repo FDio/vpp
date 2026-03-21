@@ -67,11 +67,14 @@ typedef struct _vnet_feature_constraint_registration
   char **node_names;
 } vnet_feature_constraint_registration_t;
 
-typedef struct vnet_feature_config_main_t_
+typedef struct vnet_feature_arc_t_
 {
-  vnet_config_main_t config_main;
+  vnet_config_main_t *config_main;
+  vnet_config_arc_t config_arc;
   u32 *config_index_by_sw_if_index;
-} vnet_feature_config_main_t;
+} vnet_feature_arc_t;
+
+typedef vnet_feature_arc_t vnet_feature_config_main_t;
 
 typedef struct
 {
@@ -87,7 +90,8 @@ typedef struct
   uword **next_feature_by_name;
 
   /** feature config main objects */
-  vnet_feature_config_main_t *feature_config_mains;
+  vnet_config_main_t feature_config_main;
+  vnet_feature_arc_t *feature_arcs;
 
   /** Save partial order results for show command */
   char ***feature_nodes;
@@ -223,7 +227,7 @@ vnet_get_feature_count (u8 arc, u32 sw_if_index)
   return (fm->feature_count_by_sw_if_index[arc][sw_if_index]);
 }
 
-static inline vnet_feature_config_main_t *
+static inline vnet_feature_arc_t *
 vnet_get_feature_arc_config_main (u8 arc_index)
 {
   vnet_feature_main_t *fm = &feature_main;
@@ -231,14 +235,14 @@ vnet_get_feature_arc_config_main (u8 arc_index)
   if (arc_index == (u8) ~ 0)
     return 0;
 
-  return &fm->feature_config_mains[arc_index];
+  return &fm->feature_arcs[arc_index];
 }
 
-static_always_inline vnet_feature_config_main_t *
+static_always_inline vnet_feature_arc_t *
 vnet_feature_get_config_main (u16 arc)
 {
   vnet_feature_main_t *fm = &feature_main;
-  return &fm->feature_config_mains[arc];
+  return &fm->feature_arcs[arc];
 }
 
 static_always_inline int
@@ -252,7 +256,7 @@ static_always_inline u32
 vnet_get_feature_config_index (u8 arc, u32 sw_if_index)
 {
   vnet_feature_main_t *fm = &feature_main;
-  vnet_feature_config_main_t *cm = &fm->feature_config_mains[arc];
+  vnet_feature_arc_t *cm = &fm->feature_arcs[arc];
   return vec_elt (cm->config_index_by_sw_if_index, sw_if_index);
 }
 
@@ -261,16 +265,14 @@ vnet_feature_arc_start_with_data (u8 arc, u32 sw_if_index, u32 * next,
 				  vlib_buffer_t * b, u32 n_data_bytes)
 {
   vnet_feature_main_t *fm = &feature_main;
-  vnet_feature_config_main_t *cm;
-  cm = &fm->feature_config_mains[arc];
+  vnet_feature_arc_t *cm;
+  cm = &fm->feature_arcs[arc];
 
   if (PREDICT_FALSE (vnet_have_features (arc, sw_if_index)))
     {
-      vnet_buffer (b)->feature_arc_index = arc;
       b->current_config_index =
 	vec_elt (cm->config_index_by_sw_if_index, sw_if_index);
-      return vnet_get_config_data (&cm->config_main, &b->current_config_index,
-				   next, n_data_bytes);
+      return vnet_get_config_data (cm->config_main, &b->current_config_index, next, n_data_bytes);
     }
   return 0;
 }
@@ -282,14 +284,12 @@ vnet_feature_arc_start_w_cfg_index (u8 arc,
 				    vlib_buffer_t * b, u32 cfg_index)
 {
   vnet_feature_main_t *fm = &feature_main;
-  vnet_feature_config_main_t *cm;
-  cm = &fm->feature_config_mains[arc];
+  vnet_feature_arc_t *cm;
+  cm = &fm->feature_arcs[arc];
 
-  vnet_buffer (b)->feature_arc_index = arc;
   b->current_config_index = cfg_index;
 
-  return vnet_get_config_data (&cm->config_main, &b->current_config_index,
-			       next, 0);
+  return vnet_get_config_data (cm->config_main, &b->current_config_index, next, 0);
 }
 
 static_always_inline void
@@ -304,11 +304,8 @@ vnet_feature_next_with_data (u32 * next0, vlib_buffer_t * b0,
 			     u32 n_data_bytes)
 {
   vnet_feature_main_t *fm = &feature_main;
-  u8 arc = vnet_buffer (b0)->feature_arc_index;
-  vnet_feature_config_main_t *cm = &fm->feature_config_mains[arc];
 
-  return vnet_get_config_data (&cm->config_main,
-			       &b0->current_config_index, next0,
+  return vnet_get_config_data (&fm->feature_config_main, &b0->current_config_index, next0,
 			       n_data_bytes);
 }
 
@@ -338,33 +335,28 @@ vnet_feature_start_device_input (u32 sw_if_index, u32 *next0,
 				 vlib_buffer_t *b0)
 {
   vnet_feature_main_t *fm = &feature_main;
-  vnet_feature_config_main_t *cm;
+  vnet_feature_arc_t *cm;
   u8 feature_arc_index = fm->device_input_feature_arc_index;
-  cm = &fm->feature_config_mains[feature_arc_index];
+  cm = &fm->feature_arcs[feature_arc_index];
 
   if (PREDICT_FALSE
       (clib_bitmap_get
        (fm->sw_if_index_has_features[feature_arc_index], sw_if_index)))
     {
-      vnet_buffer (b0)->feature_arc_index = feature_arc_index;
       b0->current_config_index =
 	vec_elt (cm->config_index_by_sw_if_index, sw_if_index);
-      vnet_get_config_data (&cm->config_main, &b0->current_config_index,
-			    next0, /* # bytes of config data */ 0);
+      vnet_get_config_data (cm->config_main, &b0->current_config_index, next0,
+			    /* # bytes of config data */ 0);
     }
 }
 
 #define VNET_FEATURES(...)  (char*[]) { __VA_ARGS__, 0}
 
-clib_error_t *vnet_feature_arc_init
-  (vlib_main_t * vm,
-   vnet_config_main_t * vcm,
-   char **feature_start_nodes,
-   int num_feature_start_nodes,
-   char *last_in_arc,
-   vnet_feature_registration_t * first_reg,
-   vnet_feature_constraint_registration_t * first_const_set,
-   char ***in_feature_nodes);
+clib_error_t *vnet_feature_arc_init (vlib_main_t *vm, vnet_config_main_t *vcm,
+				     char **feature_start_nodes, int num_feature_start_nodes,
+				     char *last_in_arc, vnet_feature_registration_t *first_reg,
+				     vnet_feature_constraint_registration_t *first_const_set,
+				     char ***in_feature_nodes);
 
 void vnet_interface_features_show (vlib_main_t * vm, u32 sw_if_index,
 				   int verbose);

@@ -61,7 +61,7 @@ ip_punt_policer (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame
   u32 *from, *to_next, n_left_from, n_left_to_next, next_index;
   u64 time_in_policer_periods;
   vnet_feature_main_t *fm = &feature_main;
-  vnet_feature_config_main_t *cm = &fm->feature_config_mains[arc_index];
+  vnet_feature_config_main_t *cm = &fm->feature_arcs[arc_index];
 
   time_in_policer_periods = clib_cpu_time_now () >> POLICER_TICKS_PER_PERIOD_SHIFT;
 
@@ -104,8 +104,8 @@ ip_punt_policer (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame
 	  else
 	    {
 
-	      vnet_get_config_data (&cm->config_main, &b0->current_config_index, &next0, 0);
-	      vnet_get_config_data (&cm->config_main, &b1->current_config_index, &next1, 0);
+	      vnet_get_config_data (cm->config_main, &b0->current_config_index, &next0, 0);
+	      vnet_get_config_data (cm->config_main, &b1->current_config_index, &next1, 0);
 
 	      if (PREDICT_FALSE (act0 == QOS_ACTION_DROP))
 		{
@@ -160,7 +160,7 @@ ip_punt_policer (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame
 	    }
 	  else
 	    {
-	      vnet_get_config_data (&cm->config_main, &b0->current_config_index, &next0, 0);
+	      vnet_get_config_data (cm->config_main, &b0->current_config_index, &next0, 0);
 
 	      if (PREDICT_FALSE (act0 == QOS_ACTION_DROP))
 		{

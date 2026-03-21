@@ -476,11 +476,8 @@ format_vnet_buffer_opaque (u8 * s, va_list * args)
 	      o->sw_if_index[0], o->sw_if_index[1]);
   vec_add1 (s, '\n');
 
-  s = format (s,
-	      "L2 offset %d, L3 offset %d, L4 offset %d, feature arc index %d",
-	      (u32) (o->l2_hdr_offset),
-	      (u32) (o->l3_hdr_offset),
-	      (u32) (o->l4_hdr_offset), (u32) (o->feature_arc_index));
+  s = format (s, "L2 offset %d, L3 offset %d, L4 offset %d", (u32) (o->l2_hdr_offset),
+	      (u32) (o->l3_hdr_offset), (u32) (o->l4_hdr_offset));
   vec_add1 (s, '\n');
 
   s = format (s, "offload flags: ");

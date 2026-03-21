@@ -344,11 +344,10 @@ vhost_user_input_setup_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
   if (PREDICT_FALSE (vnet_have_features (feature_arc_idx, vui->sw_if_index)))
     {
       vnet_feature_config_main_t *cm;
-      cm = &fm->feature_config_mains[feature_arc_idx];
+      cm = &fm->feature_arcs[feature_arc_idx];
       *current_config_index = vec_elt (cm->config_index_by_sw_if_index,
 				       vui->sw_if_index);
-      vnet_get_config_data (&cm->config_main, current_config_index,
-			    next_index, 0);
+      vnet_get_config_data (cm->config_main, current_config_index, next_index, 0);
     }
 
   vlib_get_new_next_frame (vm, node, *next_index, *to_next, *n_left_to_next);
@@ -403,7 +402,6 @@ vhost_user_if_input (vlib_main_t *vm, vhost_user_main_t *vum,
 		     vlib_node_runtime_t *node, u8 enable_csum)
 {
   vhost_user_vring_t *txvq = &vui->vrings[VHOST_VRING_IDX_TX (qid)];
-  vnet_feature_main_t *fm = &feature_main;
   u16 n_rx_packets = 0;
   u32 n_rx_bytes = 0;
   u16 n_left;
@@ -414,7 +412,6 @@ vhost_user_if_input (vlib_main_t *vm, vhost_user_main_t *vum,
   u32 map_hint = 0;
   vhost_cpu_t *cpu = &vum->cpus[vm->thread_index];
   u16 copy_len = 0;
-  u8 feature_arc_idx = fm->device_input_feature_arc_index;
   u32 current_config_index = ~(u32) 0;
   u16 mask = txvq->qsz_mask;
 
@@ -702,7 +699,6 @@ vhost_user_if_input (vlib_main_t *vm, vhost_user_main_t *vum,
       if (current_config_index != ~(u32) 0)
 	{
 	  b_head->current_config_index = current_config_index;
-	  vnet_buffer (b_head)->feature_arc_index = feature_arc_idx;
 	}
 
       n_left--;
@@ -1105,8 +1101,6 @@ vhost_user_if_input_packed (vlib_main_t *vm, vhost_user_main_t *vum,
 			    vlib_node_runtime_t *node, u8 enable_csum)
 {
   vhost_user_vring_t *txvq = &vui->vrings[VHOST_VRING_IDX_TX (qid)];
-  vnet_feature_main_t *fm = &feature_main;
-  u8 feature_arc_idx = fm->device_input_feature_arc_index;
   u16 n_rx_packets = 0;
   u32 n_rx_bytes = 0;
   u16 n_left = 0;
@@ -1340,7 +1334,6 @@ vhost_user_if_input_packed (vlib_main_t *vm, vhost_user_main_t *vum,
       if (current_config_index != ~0)
 	{
 	  b_head->current_config_index = current_config_index;
-	  vnet_buffer (b_head)->feature_arc_index = feature_arc_idx;
 	}
 
     out:

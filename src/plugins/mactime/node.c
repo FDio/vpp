@@ -124,8 +124,7 @@ mactime_node_inline (vlib_main_t * vm,
 
 	  /* Set next0 to e.g. interface-tx */
 	  if (is_tx)
-	    vnet_get_config_data (&fcm->config_main,
-				  &b0->current_config_index, &next0,
+	    vnet_get_config_data (fcm->config_main, &b0->current_config_index, &next0,
 				  /* # bytes of config data */ 0);
 	  else
 	    next0 = MACTIME_NEXT_ETHERNET_INPUT;

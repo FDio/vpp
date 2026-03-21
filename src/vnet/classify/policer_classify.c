@@ -40,7 +40,7 @@ vnet_policer_classify_feature_enable (vlib_main_t * vnm,
 	}
 
       fcm = vnet_get_feature_arc_config_main (arc);
-      pcm->vnet_config_main[tid] = &fcm->config_main;
+      pcm->vnet_config_main[tid] = fcm->config_main;
     }
 }
 

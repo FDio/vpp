@@ -32,7 +32,7 @@ vnet_flow_classify_feature_enable (vlib_main_t * vnm,
     }
 
   vfcm = vnet_get_feature_arc_config_main (arc);
-  fcm->vnet_config_main[tid] = &vfcm->config_main;
+  fcm->vnet_config_main[tid] = vfcm->config_main;
 }
 
 int

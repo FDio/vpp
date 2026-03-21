@@ -108,14 +108,11 @@ comma_split (u8 * s, u8 ** a, u8 ** b)
  *        genuinely missing node-names
  */
 clib_error_t *
-vnet_feature_arc_init (vlib_main_t * vm,
-		       vnet_config_main_t * vcm,
-		       char **feature_start_nodes,
-		       int num_feature_start_nodes,
-		       char *last_in_arc,
-		       vnet_feature_registration_t * first_reg,
-		       vnet_feature_constraint_registration_t *
-		       first_const_set, char ***in_feature_nodes)
+vnet_feature_arc_init (vlib_main_t *vm, vnet_config_main_t *vcm, char **feature_start_nodes,
+		       int num_feature_start_nodes, char *last_in_arc,
+		       vnet_feature_registration_t *first_reg,
+		       vnet_feature_constraint_registration_t *first_const_set,
+		       char ***in_feature_nodes)
 {
   uword *index_by_name;
   uword *reg_by_index;
@@ -332,10 +329,8 @@ again:
     }
 
   /* Set up the config infrastructure */
-  vnet_config_init (vm, vcm,
-		    feature_start_nodes,
-		    num_feature_start_nodes,
-		    feature_nodes, vec_len (feature_nodes));
+  vnet_config_init (vm, vcm, feature_start_nodes, num_feature_start_nodes, feature_nodes,
+		    vec_len (feature_nodes));
 
   /* Save a copy for show command */
   *in_feature_nodes = feature_nodes;

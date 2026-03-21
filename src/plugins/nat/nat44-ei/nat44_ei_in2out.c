@@ -2131,7 +2131,7 @@ VLIB_NODE_FN (nat44_ei_hairpinning_node)
   nat44_ei_main_t *nm = &nat44_ei_main;
   vnet_feature_main_t *fm = &feature_main;
   u8 arc_index = vnet_feat_arc_ip4_local.feature_arc_index;
-  vnet_feature_config_main_t *cm = &fm->feature_config_mains[arc_index];
+  vnet_feature_config_main_t *cm = &fm->feature_arcs[arc_index];
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -2187,8 +2187,7 @@ VLIB_NODE_FN (nat44_ei_hairpinning_node)
 	    }
 
 	  if (!next0_resolved)
-	    vnet_get_config_data (&cm->config_main, &b0->current_config_index,
-				  &next0, 0);
+	    vnet_get_config_data (cm->config_main, &b0->current_config_index, &next0, 0);
 
 	  if (next0 != NAT44_EI_HAIRPIN_NEXT_DROP)
 	    {

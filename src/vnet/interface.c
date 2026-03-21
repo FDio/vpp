@@ -830,7 +830,7 @@ vnet_register_interface (vnet_main_t * vnm,
     vnet_get_hw_interface_class (vnm, hw_class_index);
   vlib_main_t *vm = vnm->vlib_main;
   vnet_feature_config_main_t *fcm;
-  vnet_config_main_t *cm;
+  vnet_config_arc_t *ca;
   u32 hw_index, i;
   vlib_node_t *if_out_node =
     vlib_get_node (vm, vnet_interface_output_node.index);
@@ -1016,10 +1016,10 @@ vnet_register_interface (vnet_main_t * vnm,
       /* add interface to the list of "output-interface" feature arc start nodes
          and clone nexts from 1st interface if it exists */
       fcm = vnet_feature_get_config_main (im->output_feature_arc_index);
-      cm = &fcm->config_main;
-      i = vec_len (cm->start_node_indices);
-      vec_validate (cm->start_node_indices, i);
-      cm->start_node_indices[i] = hw->output_node_index;
+      ca = &fcm->config_arc;
+      i = vec_len (ca->start_node_indices);
+      vec_validate (ca->start_node_indices, i);
+      ca->start_node_indices[i] = hw->output_node_index;
       if (hw_index)
 	{
 	  /* copy nexts from 1st interface */

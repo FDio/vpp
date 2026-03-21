@@ -73,7 +73,7 @@ vnet_feature_init (vlib_main_t * vm)
 
   vec_validate (fm->next_feature_by_arc, arc_index - 1);
   vec_validate (fm->feature_nodes, arc_index - 1);
-  vec_validate (fm->feature_config_mains, arc_index - 1);
+  vec_validate (fm->feature_arcs, arc_index - 1);
   vec_validate (fm->next_feature_by_name, arc_index - 1);
   vec_validate (fm->sw_if_index_has_features, arc_index - 1);
   vec_validate (fm->feature_count_by_sw_if_index, arc_index - 1);
@@ -131,19 +131,17 @@ vnet_feature_init (vlib_main_t * vm)
   while (areg)
     {
       clib_error_t *error;
-      vnet_feature_config_main_t *cm;
-      vnet_config_main_t *vcm;
+      vnet_feature_arc_t *cm;
       char **features_in_order, *last_feature;
 
       arc_index = areg->feature_arc_index;
-      cm = &fm->feature_config_mains[arc_index];
-      vcm = &cm->config_main;
-      if ((error = vnet_feature_arc_init
-	   (vm, vcm, areg->start_nodes, areg->n_start_nodes,
-	    areg->last_in_arc,
-	    fm->next_feature_by_arc[arc_index],
-	    fm->next_constraint_by_arc[arc_index],
-	    &fm->feature_nodes[arc_index])))
+      cm = &fm->feature_arcs[arc_index];
+      cm->config_main = &fm->feature_config_main;
+      cm->config_main->arc = &cm->config_arc;
+      if ((error = vnet_feature_arc_init (
+	     vm, cm->config_main, areg->start_nodes, areg->n_start_nodes, areg->last_in_arc,
+	     fm->next_feature_by_arc[arc_index], fm->next_constraint_by_arc[arc_index],
+	     &fm->feature_nodes[arc_index])))
 	{
 	  clib_error_report (error);
 	  os_exit (1);
@@ -244,7 +242,7 @@ vnet_feature_enable_disable_with_index (u8 arc_index, u32 feature_index,
 					u32 n_feature_config_bytes)
 {
   vnet_feature_main_t *fm = &feature_main;
-  vnet_feature_config_main_t *cm;
+  vnet_feature_arc_t *cm;
   i16 feature_count;
   u32 ci;
 
@@ -254,7 +252,7 @@ vnet_feature_enable_disable_with_index (u8 arc_index, u32 feature_index,
   if (feature_index == ~0)
     return VNET_API_ERROR_INVALID_VALUE_2;
 
-  cm = &fm->feature_config_mains[arc_index];
+  cm = &fm->feature_arcs[arc_index];
   vec_validate_init_empty (cm->config_index_by_sw_if_index, sw_if_index, ~0);
   ci = cm->config_index_by_sw_if_index[sw_if_index];
 
@@ -264,11 +262,9 @@ vnet_feature_enable_disable_with_index (u8 arc_index, u32 feature_index,
   if (!enable_disable && feature_count < 1)
     return 0;
 
-  ci = (enable_disable
-	? vnet_config_add_feature
-	: vnet_config_del_feature)
-    (vlib_get_main (), &cm->config_main, ci, feature_index, feature_config,
-     n_feature_config_bytes);
+  cm->config_main->arc = &cm->config_arc;
+  ci = (enable_disable ? vnet_config_add_feature : vnet_config_del_feature) (
+    vlib_get_main (), cm->config_main, ci, feature_index, feature_config, n_feature_config_bytes);
   if (ci == ~0)
     {
       return 0;
@@ -316,7 +312,7 @@ vnet_feature_is_enabled (const char *arc_name, const char *feature_node_name,
 			 u32 sw_if_index)
 {
   vnet_feature_main_t *fm = &feature_main;
-  vnet_feature_config_main_t *cm;
+  vnet_feature_arc_t *cm;
   vnet_config_main_t *ccm;
   vnet_config_t *current_config;
   vnet_config_feature_t *f;
@@ -337,7 +333,7 @@ vnet_feature_is_enabled (const char *arc_name, const char *feature_node_name,
   if (feature_index == (u32) ~ 0)
     return VNET_API_ERROR_INVALID_VALUE_2;
 
-  cm = &fm->feature_config_mains[arc_index];
+  cm = &fm->feature_arcs[arc_index];
 
   if (sw_if_index < vec_len (cm->config_index_by_sw_if_index))
     ci = vec_elt (cm->config_index_by_sw_if_index, sw_if_index);
@@ -349,10 +345,8 @@ vnet_feature_is_enabled (const char *arc_name, const char *feature_node_name,
   if (ci == ~0)
     return 0;
 
-  ccm = &cm->config_main;
-
+  ccm = cm->config_main;
   p = heap_elt_at_index (ccm->config_string_heap, ci);
-
   current_config = pool_elt_at_index (ccm->config_pool, p[-1]);
 
   /* Find feature with the required index */
@@ -370,31 +364,33 @@ u32
 vnet_feature_get_end_node (u8 arc_index, u32 sw_if_index)
 {
   vnet_feature_main_t *fm = &feature_main;
-  vnet_feature_config_main_t *cm;
+  vnet_feature_arc_t *cm;
   u32 ci;
 
   if (arc_index == (u8) ~0)
     return VNET_API_ERROR_INVALID_VALUE;
 
-  cm = &fm->feature_config_mains[arc_index];
+  cm = &fm->feature_arcs[arc_index];
   vec_validate_init_empty (cm->config_index_by_sw_if_index, sw_if_index, ~0);
   ci = cm->config_index_by_sw_if_index[sw_if_index];
 
-  return (vnet_config_get_end_node (vlib_get_main (), &cm->config_main, ci));
+  cm->config_main->arc = &cm->config_arc;
+  return (vnet_config_get_end_node (vlib_get_main (), cm->config_main, ci));
 }
 
 u32
 vnet_feature_reset_end_node (u8 arc_index, u32 sw_if_index)
 {
   vnet_feature_main_t *fm = &feature_main;
-  vnet_feature_config_main_t *cm;
+  vnet_feature_arc_t *cm;
   u32 ci;
 
-  cm = &fm->feature_config_mains[arc_index];
+  cm = &fm->feature_arcs[arc_index];
   vec_validate_init_empty (cm->config_index_by_sw_if_index, sw_if_index, ~0);
   ci = cm->config_index_by_sw_if_index[sw_if_index];
 
-  ci = vnet_config_reset_end_node (vlib_get_main (), &cm->config_main, ci);
+  cm->config_main->arc = &cm->config_arc;
+  ci = vnet_config_reset_end_node (vlib_get_main (), cm->config_main, ci);
 
   if (ci != ~0)
     cm->config_index_by_sw_if_index[sw_if_index] = ci;
@@ -418,7 +414,7 @@ vnet_feature_modify_end_node (u8 arc_index,
 			      u32 sw_if_index, u32 end_node_index)
 {
   vnet_feature_main_t *fm = &feature_main;
-  vnet_feature_config_main_t *cm;
+  vnet_feature_arc_t *cm;
   u32 ci;
 
   if (arc_index == (u8) ~ 0)
@@ -427,12 +423,12 @@ vnet_feature_modify_end_node (u8 arc_index,
   if (end_node_index == ~0)
     return VNET_API_ERROR_INVALID_VALUE_2;
 
-  cm = &fm->feature_config_mains[arc_index];
+  cm = &fm->feature_arcs[arc_index];
   vec_validate_init_empty (cm->config_index_by_sw_if_index, sw_if_index, ~0);
   ci = cm->config_index_by_sw_if_index[sw_if_index];
 
-  ci = vnet_config_modify_end_node (vlib_get_main (), &cm->config_main,
-				    ci, end_node_index);
+  cm->config_main->arc = &cm->config_arc;
+  ci = vnet_config_modify_end_node (vlib_get_main (), cm->config_main, ci, end_node_index);
 
   if (ci != ~0)
     cm->config_index_by_sw_if_index[sw_if_index] = ci;
@@ -539,7 +535,7 @@ vnet_interface_features_show (vlib_main_t * vm, u32 sw_if_index, int verbose)
   vnet_feature_main_t *fm = &feature_main;
   u32 node_index, current_config_index;
   u16 feature_arc;
-  vnet_feature_config_main_t *cm = fm->feature_config_mains;
+  vnet_feature_arc_t *cm = fm->feature_arcs;
   vnet_feature_arc_registration_t *areg;
   vnet_config_main_t *vcm;
   vnet_config_t *cfg;
@@ -556,7 +552,7 @@ vnet_interface_features_show (vlib_main_t * vm, u32 sw_if_index, int verbose)
   while (areg)
     {
       feature_arc = areg->feature_arc_index;
-      vcm = &(cm[feature_arc].config_main);
+      vcm = cm[feature_arc].config_main;
 
       vlib_cli_output (vm, "\n%s:", areg->arc_name);
       areg = areg->next;
@@ -585,10 +581,7 @@ vnet_interface_features_show (vlib_main_t * vm, u32 sw_if_index, int verbose)
 	}
       if (verbose)
 	{
-	  n =
-	    vlib_get_node (vm,
-			   vcm->end_node_indices_by_user_index
-			   [current_config_index]);
+	  n = vlib_get_node (vm, vcm->end_node_indices_by_user_index[current_config_index]);
 	  vlib_cli_output (vm, "  [end] %v", n->name);
 	}
     }
@@ -711,8 +704,7 @@ vnet_feature_add_del_sw_interface (vnet_main_t * vnm, u32 sw_if_index,
   for (far = fm->next_arc; far != 0; far = far->next)
     {
       const u8 arc_index = far->feature_arc_index;
-      vnet_feature_config_main_t *cm =
-	vec_elt_at_index (fm->feature_config_mains, arc_index);
+      vnet_feature_arc_t *cm = vec_elt_at_index (fm->feature_arcs, arc_index);
       const u32 ci =
 	vec_len (cm->config_index_by_sw_if_index) <=
 	sw_if_index ? ~0 : vec_elt (cm->config_index_by_sw_if_index,
@@ -732,7 +724,7 @@ vnet_feature_add_del_sw_interface (vnet_main_t * vnm, u32 sw_if_index,
 	  0;
 
       vec_elt (cm->config_index_by_sw_if_index, sw_if_index) = ~0;
-      vnet_config_del (&cm->config_main, ci);
+      vnet_config_del (cm->config_main, ci);
     }
 
   return 0;
