@@ -1,0 +1,29 @@
+/*
+ * Copyright (c) 2017 RaydoNetworks.
+ */
+
+/** \brief Set pppox auth used by ppp (can be used by pap/chap and etc.)
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - pppox software if index
+    @param username - ppp username
+    @param password - ppp password
+*/
+define pppox_set_auth
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  u8 username[64];
+  u8 password[64];
+};
+
+/** \brief reply for set pppox auth
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+*/
+define pppox_set_auth_reply
+{
+  u32 context;
+  i32 retval;
+  };

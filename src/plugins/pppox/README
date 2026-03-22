@@ -1,0 +1,10 @@
+Here comes RaydoNetworks' implementation of PPPOE client.
+
+### CLI
+vppctl pppox set auth sw-if-index 4 username "yourusername" password "yourpassword"
+
+# LICENSE
+
+Code in pppd directory follow the license of it's original copyright holder.
+
+Glue code and vpp pppox implementation code follow license of vpp project.
