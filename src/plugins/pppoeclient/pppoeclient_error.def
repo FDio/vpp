@@ -1,0 +1,14 @@
+/*
+ * Copyright (c) 2017 RaydoNetworks.
+ */
+pppoeclient_error (DISCOVERY_PKT_RCVED, "pkts received in pppoe discovery stage")
+pppoeclient_error (NO_SUCH_CLIENT, "no such client")
+pppoeclient_error (BAD_CODE_IN_DISCOVERY, "invalid pppoe code for discovery stage")
+pppoeclient_error (BAD_VER_TYPE, "bad version and type in pppoe header")
+pppoeclient_error (SESSION_PKT_RCVED, "pkts received in pppoe session stage")
+pppoeclient_error (BAD_CODE_IN_SESSION, "invalid pppoe code for session stage")
+pppoeclient_error (NO_SUCH_SESSION, "no such session")
+pppoeclient_error (UNSUPPORTED_PPP_PROTOCOL, "unsupported ppp protocol")
+pppoeclient_error (LINK_DOWN, "link down when transmitting pkt")
+pppoeclient_error (SESSION_OUTPUT_PKTS, "pkts output in pppoe session stage")
+pppoeclient_error (CLIENT_DELETED, "client deleted when output pppoe pkt")
