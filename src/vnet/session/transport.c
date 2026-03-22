@@ -928,7 +928,7 @@ format_clib_us_time (u8 * s, va_list * args)
 {
   clib_us_time_t t = va_arg (*args, clib_us_time_t);
   if (t < 1e3)
-    s = format (s, "%u us", t);
+    s = format (s, "%u us", (u32) t);
   else
     s = format (s, "%.3f s", (f64) t * CLIB_US_TIME_PERIOD);
   return s;
