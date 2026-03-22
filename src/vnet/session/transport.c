@@ -972,7 +972,8 @@ spacer_update_bucket (spacer_t * pacer, u32 bytes)
 
 static inline void
 spacer_set_pace_rate (spacer_t * pacer, u64 rate_bytes_per_sec,
-		      clib_us_time_t rtt, clib_time_type_t sec_per_loop)
+		      clib_us_time_t rtt, clib_time_type_t sec_per_loop,
+		      u32 min_burst)
 {
   clib_us_time_t max_time;
 
@@ -993,8 +994,9 @@ spacer_set_pace_rate (spacer_t * pacer, u64 rate_bytes_per_sec,
 		       (clib_us_time_t) (sec_per_loop * CLIB_US_TIME_FREQ));
   max_time = clib_clamp (max_time, 1 /* 1us */ , 1000 /* 1ms */ );
   pacer->max_burst = (rate_bytes_per_sec * max_time) * CLIB_US_TIME_PERIOD;
-  pacer->max_burst = clib_clamp (pacer->max_burst, TRANSPORT_PACER_MIN_BURST,
-				 TRANSPORT_PACER_MAX_BURST);
+  min_burst = clib_max (min_burst, (u32) TRANSPORT_PACER_MIN_BURST);
+  pacer->max_burst =
+    clib_clamp (pacer->max_burst, min_burst, TRANSPORT_PACER_MAX_BURST);
 }
 
 static inline u64
@@ -1013,10 +1015,11 @@ spacer_reset (spacer_t * pacer, clib_us_time_t time_now, u64 bucket)
 void
 transport_connection_tx_pacer_reset (transport_connection_t * tc,
 				     u64 rate_bytes_per_sec, u32 start_bucket,
-				     clib_us_time_t rtt)
+				     clib_us_time_t rtt, u32 min_burst)
 {
   spacer_set_pace_rate (&tc->pacer, rate_bytes_per_sec, rtt,
-			transport_seconds_per_loop (tc->thread_index));
+			transport_seconds_per_loop (tc->thread_index),
+			min_burst);
   spacer_reset (&tc->pacer, transport_us_time_now (tc->thread_index),
 		start_bucket);
 }
@@ -1031,19 +1034,21 @@ transport_connection_tx_pacer_reset_bucket (transport_connection_t * tc,
 void
 transport_connection_tx_pacer_init (transport_connection_t * tc,
 				    u64 rate_bytes_per_sec,
-				    u32 initial_bucket)
+				    u32 initial_bucket, u32 min_burst)
 {
   tc->flags |= TRANSPORT_CONNECTION_F_IS_TX_PACED;
   transport_connection_tx_pacer_reset (tc, rate_bytes_per_sec,
-				       initial_bucket, 1e6);
+				       initial_bucket, 1e6, min_burst);
 }
 
 void
 transport_connection_tx_pacer_update (transport_connection_t * tc,
-				      u64 bytes_per_sec, clib_us_time_t rtt)
+				      u64 bytes_per_sec, clib_us_time_t rtt,
+				      u32 min_burst)
 {
   spacer_set_pace_rate (&tc->pacer, bytes_per_sec, rtt,
-			transport_seconds_per_loop (tc->thread_index));
+			transport_seconds_per_loop (tc->thread_index),
+			min_burst);
 }
 
 u32

@@ -273,7 +273,8 @@ transport_elog_track_index (transport_connection_t * tc)
 void transport_connection_tx_pacer_reset (transport_connection_t * tc,
 					  u64 rate_bytes_per_sec,
 					  u32 initial_bucket,
-					  clib_us_time_t rtt);
+					  clib_us_time_t rtt,
+					  u32 min_burst);
 /**
  * Initialize tx pacer for connection
  *
@@ -283,7 +284,8 @@ void transport_connection_tx_pacer_reset (transport_connection_t * tc,
  */
 void transport_connection_tx_pacer_init (transport_connection_t * tc,
 					 u64 rate_bytes_per_sec,
-					 u32 initial_bucket);
+					 u32 initial_bucket,
+					 u32 min_burst);
 
 /**
  * Update tx pacer pacing rate
@@ -296,7 +298,8 @@ void transport_connection_tx_pacer_init (transport_connection_t * tc,
  */
 void transport_connection_tx_pacer_update (transport_connection_t * tc,
 					   u64 bytes_per_sec,
-					   clib_us_time_t rtt);
+					   clib_us_time_t rtt,
+					   u32 min_burst);
 
 /**
  * Get tx pacer max burst

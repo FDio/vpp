@@ -1028,7 +1028,8 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
   /* Init data structures */
   memset (tc, 0, sizeof (*tc));
   tcp_test_set_time (thread_index, 1);
-  transport_connection_tx_pacer_update (&tc->connection, rate, 1e6);
+  transport_connection_tx_pacer_update (&tc->connection, rate, 1e6,
+					tc->snd_mss);
 
   tcp_bt_init (tc);
   bt = tc->bt;
