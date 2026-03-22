@@ -1,0 +1,9 @@
+Here comes RaydoNetworks' implementation of PPPOE client.
+
+### Status
+1. support pap/chap
+2. support ipcp
+3. support lcp
+
+### CLI
+vppctl create pppoe client sw-if-index 1 host-uniq 8888
