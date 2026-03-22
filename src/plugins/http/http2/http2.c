@@ -91,6 +91,12 @@ typedef enum http2_conn_flags_
 #undef _
 } __clib_packed http2_conn_flags_t;
 
+typedef struct
+{
+  u32 stream_id;
+  http2_error_t error;
+} http2_rst_stream_t;
+
 typedef struct http2_conn_ctx_
 {
   u32 hc_index;
@@ -112,6 +118,7 @@ typedef struct http2_conn_ctx_
   u32 req_num;
   u32 parent_req_index;
   u32 *pending_win_updates;
+  http2_rst_stream_t *pending_rst_stream;
 } http2_conn_ctx_t;
 
 typedef struct http2_worker_ctx_
@@ -233,6 +240,7 @@ http2_conn_ctx_free (http_conn_t *hc)
   pool_put_index (wrk->req_pool, h2c->old_tx_streams);
   hash_free (h2c->req_by_stream_id);
   vec_free (h2c->pending_win_updates);
+  vec_free (h2c->pending_rst_stream);
   if (hc->flags & HTTP_CONN_F_HAS_REQUEST)
     hpack_dynamic_table_free (&h2c->decoder_dynamic_table);
   if (CLIB_DEBUG)
@@ -462,10 +470,14 @@ http2_connection_error (http_conn_t *hc, http2_error_t error,
   HTTP_DBG (1, "hc [%u]%x connection error %U (last streamId %u)",
 	    hc->c_thread_index, hc->hc_hc_index, format_http2_error, error,
 	    h2c->last_processed_stream_id);
-  response = http_get_tx_buf (hc);
-  http2_frame_write_goaway (error, h2c->last_processed_stream_id, &response);
-  http_io_ts_write (hc, response, vec_len (response), sp);
-  http_io_ts_after_write (hc, 1);
+  /* check if we have enough space in fifo, otherwise just close connection */
+  if (http_io_ts_max_write (hc, 0) >= (HTTP2_FRAME_HEADER_SIZE + HTTP2_GOAWAY_MIN_SIZE))
+    {
+      response = http_get_tx_buf (hc);
+      http2_frame_write_goaway (error, h2c->last_processed_stream_id, &response);
+      http_io_ts_write (hc, response, vec_len (response), sp);
+      http_io_ts_after_write (hc, 1);
+    }
 
   if (hc->flags & HTTP_CONN_F_IS_SERVER)
     {
@@ -512,6 +524,20 @@ http2_send_stream_error (http_conn_t *hc, u32 stream_id, http2_error_t error,
 			 transport_send_params_t *sp)
 {
   u8 *response;
+  http2_conn_ctx_t *h2c;
+  http2_rst_stream_t *rst_stream;
+
+  /* check if we have enough space in fifo */
+  if (http_io_ts_max_write (hc, 0) < HTTP2_RST_STREAM_FRAME_SIZE)
+    {
+      HTTP_DBG (1, "transport fifo full postponing stream %d reset", req->stream_id);
+      http_io_ts_add_want_deq_ntf (hc);
+      h2c = http2_conn_ctx_get_w_thread (hc);
+      vec_add2 (h2c->pending_rst_stream, rst_stream, 1);
+      rst_stream->stream_id = stream_id;
+      rst_stream->error = error;
+      return;
+    }
 
   HTTP_DBG (1, "hc [%u]%x streamId %u error %U", hc->c_thread_index,
 	    hc->hc_hc_index, stream_id, format_http2_error, error);
@@ -3374,6 +3400,7 @@ http2_transport_conn_reschedule_callback (http_conn_t *hc)
   http2_req_t *req;
   u32 max_write, need_write, increment, *stream_id = 0;
   u8 *tx_buf;
+  http2_rst_stream_t *rst_stream;
 
   HTTP_DBG (1, "hc [%u]%x", hc->c_thread_index, hc->hc_hc_index);
   ASSERT (hc->flags & HTTP_CONN_F_HAS_REQUEST);
@@ -3381,7 +3408,25 @@ http2_transport_conn_reschedule_callback (http_conn_t *hc)
   h2c = http2_conn_ctx_get_w_thread (hc);
   max_write = http_io_ts_max_write (hc, 0);
 
-  /* first checkif we have some pending stream window updates */
+  /* checkif we have some pending stream resets */
+  if (vec_len (h2c->pending_rst_stream))
+    {
+      need_write = vec_len (h2c->pending_rst_stream) * HTTP2_RST_STREAM_FRAME_SIZE;
+      if (max_write >= need_write)
+	{
+	  tx_buf = http_get_tx_buf (hc);
+	  vec_foreach (rst_stream, h2c->pending_rst_stream)
+	    {
+	      http2_frame_write_rst_stream (rst_stream->error, rst_stream->stream_id, &tx_buf);
+	    }
+	  vec_reset_length (h2c->pending_rst_stream);
+	  http_io_ts_write (hc, tx_buf, vec_len (tx_buf), 0);
+	  http_io_ts_after_write (hc, 1);
+	  max_write -= need_write;
+	}
+    }
+
+  /* checkif we have some pending stream window updates */
   if (vec_len (h2c->pending_win_updates))
     {
       need_write =

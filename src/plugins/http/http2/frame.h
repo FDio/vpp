@@ -16,6 +16,7 @@
 #define HTTP2_RST_STREAM_LENGTH	   4
 #define HTTP2_WINDOW_UPDATE_FRAME_SIZE                                        \
   (HTTP2_FRAME_HEADER_SIZE + HTTP2_WINDOW_UPDATE_LENGTH)
+#define HTTP2_RST_STREAM_FRAME_SIZE (HTTP2_FRAME_HEADER_SIZE + HTTP2_RST_STREAM_LENGTH)
 
 #define foreach_http2_frame_type                                              \
   _ (0x00, DATA, "DATA")                                                      \
