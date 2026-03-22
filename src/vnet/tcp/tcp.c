@@ -736,7 +736,8 @@ tcp_enable_pacing (tcp_connection_t * tc)
 {
   u32 byte_rate;
   byte_rate = tc->cwnd / (tc->srtt * TCP_TICK);
-  transport_connection_tx_pacer_init (&tc->connection, byte_rate, tc->cwnd);
+  transport_connection_tx_pacer_init (&tc->connection, byte_rate, tc->cwnd,
+				      tc->snd_mss);
   tc->mrtt_us = (u32) ~ 0;
 }
 
@@ -1379,7 +1380,7 @@ tcp_connection_tx_pacer_update (tcp_connection_t * tc)
 
   transport_connection_tx_pacer_update (&tc->connection,
 					tcp_cc_get_pacing_rate (tc),
-					srtt * CLIB_US_TIME_FREQ);
+					srtt * CLIB_US_TIME_FREQ, tc->snd_mss);
 }
 
 void
@@ -1390,7 +1391,8 @@ tcp_connection_tx_pacer_reset (tcp_connection_t * tc, u32 window,
   transport_connection_tx_pacer_reset (&tc->connection,
 				       tcp_cc_get_pacing_rate (tc),
 				       start_bucket,
-				       srtt * CLIB_US_TIME_FREQ);
+				       srtt * CLIB_US_TIME_FREQ,
+				       tc->snd_mss);
 }
 
 void
