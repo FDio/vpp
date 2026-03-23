@@ -91,15 +91,15 @@ func EchoBuiltinPeriodicReportTotalTest(s *VethsSuite) {
 		// Verify TX numbers
 		for i := range 4 {
 			mbytes, _ := strconv.ParseFloat(matches[i][2], 32)
-			AssertEqualWithinThreshold(mbytes, 2*(i+1), 0.1)
+			AssertEqualWithinThreshold(mbytes, 2*(i+1), 0.1, "amount of transmitted data outside of threshold")
 			rtt, _ := strconv.ParseFloat(matches[i][3], 32)
-			AssertGreaterThan(rtt, 0.0)
+			AssertGreaterThan(rtt, 0.0, "roundtrip time must be greater than 0.0")
 		}
 		// Verify reporting times
-		AssertEqual(matches[0][1], "1.0")
-		AssertEqual(matches[1][1], "2.0")
-		AssertEqual(matches[2][1], "3.0")
-		AssertEqual(matches[3][1], "4.0")
+		AssertEqual(matches[0][1], "1.0", "invalid report time")
+		AssertEqual(matches[1][1], "2.0", "invalid report time")
+		AssertEqual(matches[2][1], "3.0", "invalid report time")
+		AssertEqual(matches[3][1], "4.0", "invalid report time")
 	} else {
 		AssertEmpty("invalid echo test client output")
 	}
@@ -124,13 +124,13 @@ func EchoBuiltinPeriodicReportUDPTest(s *VethsSuite) {
 		// Verify TX numbers
 		for i := range 4 {
 			mbytes, _ := strconv.ParseFloat(matches[i][3], 32)
-			AssertEqualWithinThreshold(mbytes, 1.5, 0.1)
+			AssertEqualWithinThreshold(mbytes, 1.5, 0.1, "amount of transmitted data outside of threshold")
 			rtt, _ := strconv.ParseFloat(matches[i][4], 32)
-			AssertGreaterThan(rtt, 0.0)
+			AssertGreaterThan(rtt, 0.0, "roundtrip time must be greater than 0.0")
 			dgramsSent, _ := strconv.ParseUint(matches[i][5], 10, 32)
-			AssertEqualWithinThreshold(dgramsSent, 2048, 20)
+			AssertEqualWithinThreshold(dgramsSent, 2048, 20, "sent dgrams outside of threshold")
 			dgramsReceived, _ := strconv.ParseUint(matches[i][6], 10, 32)
-			AssertEqualWithinThreshold(dgramsReceived, 2048, 50)
+			AssertEqualWithinThreshold(dgramsReceived, 2048, 50, "received dgrams outside of threshold")
 		}
 		// Verify time interval numbers
 		AssertEqual(matches[0][1], "0.0")
@@ -167,17 +167,17 @@ func EchoBuiltinPeriodicReportTest(s *VethsSuite) {
 			mbytes, _ := strconv.ParseFloat(matches[i][3], 32)
 			AssertEqualWithinThreshold(mbytes, 2, 0.1)
 			rtt, _ := strconv.ParseFloat(matches[i][4], 32)
-			AssertGreaterThan(rtt, 0.0)
+			AssertGreaterThan(rtt, 0.0, "roundtrip time must be greater than 0.0")
 		}
 		// Verify time interval numbers
-		AssertEqual(matches[0][1], "0.0")
-		AssertEqual(matches[0][2], "1.0")
-		AssertEqual(matches[1][1], "1.0")
-		AssertEqual(matches[1][2], "2.0")
-		AssertEqual(matches[2][1], "2.0")
-		AssertEqual(matches[2][2], "3.0")
-		AssertEqual(matches[3][1], "3.0")
-		AssertEqual(matches[3][2], "4.0")
+		AssertEqual(matches[0][1], "0.0", "invalid report time")
+		AssertEqual(matches[0][2], "1.0", "invalid report time")
+		AssertEqual(matches[1][1], "1.0", "invalid report time")
+		AssertEqual(matches[1][2], "2.0", "invalid report time")
+		AssertEqual(matches[2][1], "2.0", "invalid report time")
+		AssertEqual(matches[2][2], "3.0", "invalid report time")
+		AssertEqual(matches[3][1], "3.0", "invalid report time")
+		AssertEqual(matches[3][2], "4.0", "invalid report time")
 	} else {
 		AssertEmpty("invalid echo test client output")
 	}
@@ -330,7 +330,7 @@ func TlsSingleConnectionTest(s *VethsSuite) {
 	Log(o)
 	throughput, err := ParseEchoClientTransfer(o)
 	AssertNil(err)
-	AssertGreaterThan(throughput, uint64(0))
+	AssertGreaterThan(throughput, uint64(0), "throughput must be > 0")
 }
 
 func httpVerifyPeriodicStats(stats string) {

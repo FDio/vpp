@@ -122,7 +122,7 @@ func EvtCollectorSinkTest(s *VethsSuite) {
 			statLines = append(statLines, l)
 		}
 	}
-	AssertGreaterThan(uint64(len(statLines)), uint64(0))
+	AssertGreaterThan(uint64(len(statLines)), uint64(0), "no stat lines found")
 	for _, l := range statLines {
 		AssertContains(l, "is_ip4=1")
 		AssertContains(l, "proto=0")
