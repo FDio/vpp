@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8df81c28_4dd25d0b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-03-23T05:32:28Z",
+      "side": 1,
+      "message": "Timer retransmit should unblock the connection, but the issue is real for mss \u003e 1460, i.e., jumbo segments, and bytes per second is so low during fast recovery that we can\u0027t release a single segment. \nI\u0027m not completely convinced by the solution, i.e., we could store min_burst in spacer_t and the change would be less invasive. Maybe that\u0027s cleaner.",
+      "revId": "1afd34b18ef6c02d0f106747fa512e566682e024",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
