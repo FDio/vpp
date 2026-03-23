@@ -128,4 +128,50 @@ static const char test_ca_crl[] =
   "-----END X509 CRL-----\r\n";
 static const u32 test_ca_crl_len = sizeof (test_ca_crl);
 
+/*
+ * Ed25519 server cert and key for testing only.
+ * Self-signed, same subject as RSA cert. Ed25519 is the signing algorithm
+ * on Curve25519 — the same curve family as X25519 key exchange.
+ */
+static const char test_srv_crt_ecdsa[] =
+  "-----BEGIN CERTIFICATE-----\r\n"
+  "MIICJjCCAdigAwIBAgIUe6Z9FBO4c9R8aMsXZo3FtNR9e24wBQYDK2VwMIGJMQsw\r\n"
+  "CQYDVQQGEwJVUzELMAkGA1UECAwCQ0ExETAPBgNVBAcMCFNhbiBKb3NlMQ4wDAYD\r\n"
+  "VQQKDAVDaXNjbzEOMAwGA1UECwwFZmQuaW8xFjAUBgNVBAMMDXRlc3R0bHMuZmQu\r\n"
+  "aW8xIjAgBgkqhkiG9w0BCQEWE3ZwcC1kZXZAbGlzdHMuZmQuaW8wHhcNMjYwMzIz\r\n"
+  "MjA1NDQwWhcNMzYwMzIwMjA1NDQwWjCBiTELMAkGA1UEBhMCVVMxCzAJBgNVBAgM\r\n"
+  "AkNBMREwDwYDVQQHDAhTYW4gSm9zZTEOMAwGA1UECgwFQ2lzY28xDjAMBgNVBAsM\r\n"
+  "BWZkLmlvMRYwFAYDVQQDDA10ZXN0dGxzLmZkLmlvMSIwIAYJKoZIhvcNAQkBFhN2\r\n"
+  "cHAtZGV2QGxpc3RzLmZkLmlvMCowBQYDK2VwAyEAuP96ZgWY1cPRA+HaOYj8bu07\r\n"
+  "CQg/ZHz7u8IHhIcHUqCjUDBOMB0GA1UdDgQWBBQvOG9l28YCNeRWQO6uAr93jsNz\r\n"
+  "nTAfBgNVHSMEGDAWgBQvOG9l28YCNeRWQO6uAr93jsNznTAMBgNVHRMEBTADAQH/\r\n"
+  "MAUGAytlcANBAGueMt/WoOWRYx8Qy2Vi42Bi/yavP+sn4/E7jJbUEgo8XA4Wq0m5\r\n"
+  "Zy8N1qMcxwG2pSJbZJkzUtdbwwyc4s2tegw=\r\n"
+  "-----END CERTIFICATE-----\r\n";
+static const u32 test_srv_crt_ecdsa_len = sizeof (test_srv_crt_ecdsa);
+
+static const char test_srv_key_ecdsa[] =
+  "-----BEGIN PRIVATE KEY-----\r\n"
+  "MC4CAQAwBQYDK2VwBCIEICXBnbVI4lTDai4nZ4U0agMzFk3P9apq/g0fwebKLlGA\r\n"
+  "-----END PRIVATE KEY-----\r\n";
+static const u32 test_srv_key_ecdsa_len = sizeof (test_srv_key_ecdsa);
+
+/* CA chain is the same self-signed cert (CA:TRUE, self-signed) */
+static const char test_ca_chain_ecdsa[] =
+  "-----BEGIN CERTIFICATE-----\r\n"
+  "MIICJjCCAdigAwIBAgIUe6Z9FBO4c9R8aMsXZo3FtNR9e24wBQYDK2VwMIGJMQsw\r\n"
+  "CQYDVQQGEwJVUzELMAkGA1UECAwCQ0ExETAPBgNVBAcMCFNhbiBKb3NlMQ4wDAYD\r\n"
+  "VQQKDAVDaXNjbzEOMAwGA1UECwwFZmQuaW8xFjAUBgNVBAMMDXRlc3R0bHMuZmQu\r\n"
+  "aW8xIjAgBgkqhkiG9w0BCQEWE3ZwcC1kZXZAbGlzdHMuZmQuaW8wHhcNMjYwMzIz\r\n"
+  "MjA1NDQwWhcNMzYwMzIwMjA1NDQwWjCBiTELMAkGA1UEBhMCVVMxCzAJBgNVBAgM\r\n"
+  "AkNBMREwDwYDVQQHDAhTYW4gSm9zZTEOMAwGA1UECgwFQ2lzY28xDjAMBgNVBAsM\r\n"
+  "BWZkLmlvMRYwFAYDVQQDDA10ZXN0dGxzLmZkLmlvMSIwIAYJKoZIhvcNAQkBFhN2\r\n"
+  "cHAtZGV2QGxpc3RzLmZkLmlvMCowBQYDK2VwAyEAuP96ZgWY1cPRA+HaOYj8bu07\r\n"
+  "CQg/ZHz7u8IHhIcHUqCjUDBOMB0GA1UdDgQWBBQvOG9l28YCNeRWQO6uAr93jsNz\r\n"
+  "nTAfBgNVHSMEGDAWgBQvOG9l28YCNeRWQO6uAr93jsNznTAMBgNVHRMEBTADAQH/\r\n"
+  "MAUGAytlcANBAGueMt/WoOWRYx8Qy2Vi42Bi/yavP+sn4/E7jJbUEgo8XA4Wq0m5\r\n"
+  "Zy8N1qMcxwG2pSJbZJkzUtdbwwyc4s2tegw=\r\n"
+  "-----END CERTIFICATE-----\r\n";
+static const u32 test_ca_chain_ecdsa_len = sizeof (test_ca_chain_ecdsa);
+
 #endif /* SRC_VNET_TLS_TLS_TEST_H_ */

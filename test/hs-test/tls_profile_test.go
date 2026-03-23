@@ -20,6 +20,7 @@ func init() {
 		TlsProfileFallbackDefaultTest,
 		TlsProfileNegotiatedParamsTest,
 		TlsProfileNegotiatedVersionTest,
+		TlsProfileX25519EcdsaTest,
 	)
 }
 
@@ -332,5 +333,52 @@ func TlsProfileNegotiatedVersionTest(s *VethsSuite) {
 	// Should get TLS 1.2 or 1.3 (modern defaults)
 	if !strings.Contains(o, "1.2") && !strings.Contains(o, "1.3") {
 		AssertNil(fmt.Errorf("Expected TLS version 1.2 or 1.3, got: %s", o))
+	}
+}
+
+// Verify that a TLS profile specifying groups=X25519 with ECDSA certificates
+// results in X25519 as the negotiated key agreement group and an ECDSA/SHA
+// signature algorithm.
+func TlsProfileX25519EcdsaTest(s *VethsSuite) {
+	serverVpp := s.Containers.ServerVpp.VppInstance
+	clientVpp := s.Containers.ClientVpp.VppInstance
+
+	serverAddress := s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1
+
+	// Start server with ECDSA certificates
+	Log(serverVpp.Vppctl("test tls server cert-type ecdsa uri tls://" + serverAddress))
+
+	// Create a TLS profile that restricts key agreement to X25519
+	o := serverVpp.Vppctl("app crypto add tls-profile app test_tls_server groups X25519")
+	Log(o)
+	AssertNotContains(o, "error")
+	AssertContains(o, "profile 0")
+
+	// Start a second listener on a fresh port using the profile
+	serverAddress2 := s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port2
+	Log(serverVpp.Vppctl("test tls server cert-type ecdsa profile-index 0 uri tls://" + serverAddress2))
+
+	// Client connects using ECDSA certificates so it trusts the server cert
+	uri := "tls://" + serverAddress2
+	o = clientVpp.Vppctl("test tls client cert-type ecdsa uri " + uri)
+	Log(o)
+	AssertNotContains(o, "connect failed")
+	AssertNotContains(o, "timeout")
+
+	// Key agreement must be X25519 (as mandated by the profile)
+	AssertContains(o, "Key agreement: X25519")
+
+	// Signature algorithm must be ED25519
+	AssertContains(o, "Signature algorithm:")
+	ecdsaSigAlgs := []string{"ED25519", "Ed25519"}
+	foundSig := false
+	for _, alg := range ecdsaSigAlgs {
+		if strings.Contains(o, alg) {
+			foundSig = true
+			break
+		}
+	}
+	if !foundSig {
+		AssertNil(fmt.Errorf("Expected ECDSA-related signature algorithm, got: %s", o))
 	}
 }
