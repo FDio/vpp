@@ -16,6 +16,24 @@
       "message": "Comment here to remember that we did this to avoid trying to delete a segment manager twice?",
       "revId": "1847b014556eb399dc9a73ee9102c4567b9e4bb0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0f9ef64c_cb6d5c9d",
+        "filename": "src/vnet/session/application_worker.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 285,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2026-03-23T21:01:30Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "bdc6a39c_5a6081cb",
+      "revId": "1847b014556eb399dc9a73ee9102c4567b9e4bb0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
