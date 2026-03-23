@@ -198,6 +198,7 @@ VLIB_NODE_FN (l2_efp_filter_node) (vlib_main_t * vm,
 	  main_intf_t *main_intf0, *main_intf1;
 	  vlan_intf_t *vlan_intf0, *vlan_intf1;
 	  qinq_intf_t *qinq_intf0, *qinq_intf1;
+	  qinq_intf_t *outer_any_qinq_intf0, *outer_any_qinq_intf1;
 	  u32 is_l20, is_l21;
 	  __attribute__ ((unused)) u32 matched0, matched1;
 	  u8 error0, error1;
@@ -276,39 +277,21 @@ VLIB_NODE_FN (l2_efp_filter_node) (vlib_main_t * vm,
 			&first_ethertype1,
 			&outer_id1, &inner_id1, &match_flags1);
 
-	  eth_vlan_table_lookups (&ethernet_main,
-				  msm->vnet_main,
-				  port_sw_if_index0,
-				  first_ethertype0,
-				  outer_id0,
-				  inner_id0,
-				  &hi0,
-				  &main_intf0, &vlan_intf0, &qinq_intf0);
+	  eth_vlan_table_lookups (&ethernet_main, msm->vnet_main, port_sw_if_index0,
+				  first_ethertype0, outer_id0, inner_id0, &hi0, &main_intf0,
+				  &vlan_intf0, &qinq_intf0, &outer_any_qinq_intf0);
 
-	  eth_vlan_table_lookups (&ethernet_main,
-				  msm->vnet_main,
-				  port_sw_if_index1,
-				  first_ethertype1,
-				  outer_id1,
-				  inner_id1,
-				  &hi1,
-				  &main_intf1, &vlan_intf1, &qinq_intf1);
+	  eth_vlan_table_lookups (&ethernet_main, msm->vnet_main, port_sw_if_index1,
+				  first_ethertype1, outer_id1, inner_id1, &hi1, &main_intf1,
+				  &vlan_intf1, &qinq_intf1, &outer_any_qinq_intf1);
 
-	  matched0 = eth_identify_subint (hi0,
-					  match_flags0,
-					  main_intf0,
-					  vlan_intf0,
-					  qinq_intf0,
-					  &subint_sw_if_index0,
-					  &error0, &is_l20);
+	  matched0 =
+	    eth_identify_subint (hi0, match_flags0, main_intf0, vlan_intf0, qinq_intf0,
+				 outer_any_qinq_intf0, &subint_sw_if_index0, &error0, &is_l20);
 
-	  matched1 = eth_identify_subint (hi1,
-					  match_flags1,
-					  main_intf1,
-					  vlan_intf1,
-					  qinq_intf1,
-					  &subint_sw_if_index1,
-					  &error1, &is_l21);
+	  matched1 =
+	    eth_identify_subint (hi1, match_flags1, main_intf1, vlan_intf1, qinq_intf1,
+				 outer_any_qinq_intf1, &subint_sw_if_index1, &error1, &is_l21);
 
 	  if (PREDICT_FALSE (sw_if_index0 != subint_sw_if_index0))
 	    {
@@ -369,6 +352,7 @@ VLIB_NODE_FN (l2_efp_filter_node) (vlib_main_t * vm,
 	  main_intf_t *main_intf0;
 	  vlan_intf_t *vlan_intf0;
 	  qinq_intf_t *qinq_intf0;
+	  qinq_intf_t *outer_any_qinq_intf0;
 	  u32 is_l20;
 	  __attribute__ ((unused)) u32 matched0;
 	  u8 error0;
@@ -401,22 +385,13 @@ VLIB_NODE_FN (l2_efp_filter_node) (vlib_main_t * vm,
 			&first_ethertype0,
 			&outer_id0, &inner_id0, &match_flags0);
 
-	  eth_vlan_table_lookups (&ethernet_main,
-				  msm->vnet_main,
-				  port_sw_if_index0,
-				  first_ethertype0,
-				  outer_id0,
-				  inner_id0,
-				  &hi0,
-				  &main_intf0, &vlan_intf0, &qinq_intf0);
+	  eth_vlan_table_lookups (&ethernet_main, msm->vnet_main, port_sw_if_index0,
+				  first_ethertype0, outer_id0, inner_id0, &hi0, &main_intf0,
+				  &vlan_intf0, &qinq_intf0, &outer_any_qinq_intf0);
 
-	  matched0 = eth_identify_subint (hi0,
-					  match_flags0,
-					  main_intf0,
-					  vlan_intf0,
-					  qinq_intf0,
-					  &subint_sw_if_index0,
-					  &error0, &is_l20);
+	  matched0 =
+	    eth_identify_subint (hi0, match_flags0, main_intf0, vlan_intf0, qinq_intf0,
+				 outer_any_qinq_intf0, &subint_sw_if_index0, &error0, &is_l20);
 
 	  if (PREDICT_FALSE (sw_if_index0 != subint_sw_if_index0))
 	    {

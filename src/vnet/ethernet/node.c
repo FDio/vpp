@@ -172,20 +172,15 @@ ethernet_input_inline_dmac_check (vnet_hw_interface_t * hi,
 // vlan table lookups and vlan header parsing. Check the most specific
 // matches first.
 static_always_inline void
-identify_subint (ethernet_main_t * em,
-		 vnet_hw_interface_t * hi,
-		 vlib_buffer_t * b0,
-		 u32 match_flags,
-		 main_intf_t * main_intf,
-		 vlan_intf_t * vlan_intf,
-		 qinq_intf_t * qinq_intf,
-		 u32 * new_sw_if_index, u8 * error0, u32 * is_l2)
+identify_subint (ethernet_main_t *em, vnet_hw_interface_t *hi, vlib_buffer_t *b0, u32 match_flags,
+		 main_intf_t *main_intf, vlan_intf_t *vlan_intf, qinq_intf_t *qinq_intf,
+		 qinq_intf_t *outer_any_qinq_intf, u32 *new_sw_if_index, u8 *error0, u32 *is_l2)
 {
   u32 matched;
   ethernet_interface_t *ei = ethernet_get_interface (em, hi->hw_if_index);
 
-  matched = eth_identify_subint (hi, match_flags, main_intf, vlan_intf,
-				 qinq_intf, new_sw_if_index, error0, is_l2);
+  matched = eth_identify_subint (hi, match_flags, main_intf, vlan_intf, qinq_intf,
+				 outer_any_qinq_intf, new_sw_if_index, error0, is_l2);
 
   if (matched)
     {
@@ -480,14 +475,18 @@ eth_input_tag_lookup (vlib_main_t * vm, vnet_main_t * vnm,
 
   if ((tag ^ l->tag) & l->mask)
     {
+      static qinq_intf_t empty_qinq_intf = { 0 };
       main_intf_t *mif = vec_elt_at_index (em->main_intfs, hi->hw_if_index);
       vlan_intf_t *vif;
       qinq_intf_t *qif;
+      qinq_intf_t *outer_any_qif = &empty_qinq_intf;
       vlan_table_t *vlan_table;
       qinq_table_t *qinq_table;
-      u16 *t = (u16 *) & tag;
+      qinq_table_t *oaq_table;
+      u16 *t = (u16 *) &tag;
       u16 vlan1 = clib_net_to_host_u16 (t[0]) & 0xFFF;
       u16 vlan2 = clib_net_to_host_u16 (t[2]) & 0xFFF;
+      u16 outer_any_qinqs_id;
       u32 matched, is_l2, new_sw_if_index;
 
       vlan_table = vec_elt_at_index (em->vlan_pool, is_dot1ad ?
@@ -495,6 +494,15 @@ eth_input_tag_lookup (vlib_main_t * vm, vnet_main_t * vnm,
       vif = &vlan_table->vlans[vlan1];
       qinq_table = vec_elt_at_index (em->qinq_pool, vif->qinqs);
       qif = &qinq_table->vlans[vlan2];
+
+      // Look up the "any outer + specific inner" qinq table
+      outer_any_qinqs_id = is_dot1ad ? mif->dot1ad_outer_any_qinqs : mif->dot1q_outer_any_qinqs;
+      if (outer_any_qinqs_id)
+	{
+	  oaq_table = vec_elt_at_index (em->qinq_pool, outer_any_qinqs_id);
+	  outer_any_qif = &oaq_table->vlans[vlan2];
+	}
+
       l->err = ETHERNET_ERROR_NONE;
       l->type = clib_net_to_host_u16 (t[1]);
 
@@ -502,10 +510,9 @@ eth_input_tag_lookup (vlib_main_t * vm, vnet_main_t * vnm,
 	{
 	  l->type = clib_net_to_host_u16 (t[3]);
 	  l->n_tags = 2;
-	  matched = eth_identify_subint (hi, SUBINT_CONFIG_VALID |
-					 SUBINT_CONFIG_MATCH_2_TAG, mif, vif,
-					 qif, &new_sw_if_index, &l->err,
-					 &is_l2);
+	  matched =
+	    eth_identify_subint (hi, SUBINT_CONFIG_VALID | SUBINT_CONFIG_MATCH_2_TAG, mif, vif, qif,
+				 outer_any_qif, &new_sw_if_index, &l->err, &is_l2);
 	}
       else
 	{
@@ -518,10 +525,9 @@ eth_input_tag_lookup (vlib_main_t * vm, vnet_main_t * vnm,
 	      is_l2 = main_is_l3 == 0;
 	    }
 	  else
-	    matched = eth_identify_subint (hi, SUBINT_CONFIG_VALID |
-					   SUBINT_CONFIG_MATCH_1_TAG, mif,
-					   vif, qif, &new_sw_if_index,
-					   &l->err, &is_l2);
+	    matched =
+	      eth_identify_subint (hi, SUBINT_CONFIG_VALID | SUBINT_CONFIG_MATCH_1_TAG, mif, vif,
+				   qif, outer_any_qif, &new_sw_if_index, &l->err, &is_l2);
 	}
 
       if (l->sw_if_index != new_sw_if_index)
@@ -1227,6 +1233,7 @@ ethernet_input_inline (vlib_main_t * vm,
 	  main_intf_t *main_intf0, *main_intf1;
 	  vlan_intf_t *vlan_intf0, *vlan_intf1;
 	  qinq_intf_t *qinq_intf0, *qinq_intf1;
+	  qinq_intf_t *outer_any_qinq_intf0, *outer_any_qinq_intf1;
 	  u32 is_l20, is_l21;
 	  ethernet_header_t *e0, *e1;
 	  u64 dmacs[2];
@@ -1361,39 +1368,17 @@ ethernet_input_inline (vlib_main_t * vm,
 	  old_sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 	  old_sw_if_index1 = vnet_buffer (b1)->sw_if_index[VLIB_RX];
 
-	  eth_vlan_table_lookups (em,
-				  vnm,
-				  old_sw_if_index0,
-				  orig_type0,
-				  outer_id0,
-				  inner_id0,
-				  &hi0,
-				  &main_intf0, &vlan_intf0, &qinq_intf0);
+	  eth_vlan_table_lookups (em, vnm, old_sw_if_index0, orig_type0, outer_id0, inner_id0, &hi0,
+				  &main_intf0, &vlan_intf0, &qinq_intf0, &outer_any_qinq_intf0);
 
-	  eth_vlan_table_lookups (em,
-				  vnm,
-				  old_sw_if_index1,
-				  orig_type1,
-				  outer_id1,
-				  inner_id1,
-				  &hi1,
-				  &main_intf1, &vlan_intf1, &qinq_intf1);
+	  eth_vlan_table_lookups (em, vnm, old_sw_if_index1, orig_type1, outer_id1, inner_id1, &hi1,
+				  &main_intf1, &vlan_intf1, &qinq_intf1, &outer_any_qinq_intf1);
 
-	  identify_subint (em,
-			   hi0,
-			   b0,
-			   match_flags0,
-			   main_intf0,
-			   vlan_intf0,
-			   qinq_intf0, &new_sw_if_index0, &error0, &is_l20);
+	  identify_subint (em, hi0, b0, match_flags0, main_intf0, vlan_intf0, qinq_intf0,
+			   outer_any_qinq_intf0, &new_sw_if_index0, &error0, &is_l20);
 
-	  identify_subint (em,
-			   hi1,
-			   b1,
-			   match_flags1,
-			   main_intf1,
-			   vlan_intf1,
-			   qinq_intf1, &new_sw_if_index1, &error1, &is_l21);
+	  identify_subint (em, hi1, b1, match_flags1, main_intf1, vlan_intf1, qinq_intf1,
+			   outer_any_qinq_intf1, &new_sw_if_index1, &error1, &is_l21);
 
 	  // Save RX sw_if_index for later nodes
 	  vnet_buffer (b0)->sw_if_index[VLIB_RX] =
@@ -1492,6 +1477,7 @@ ethernet_input_inline (vlib_main_t * vm,
 	  main_intf_t *main_intf0;
 	  vlan_intf_t *vlan_intf0;
 	  qinq_intf_t *qinq_intf0;
+	  qinq_intf_t *outer_any_qinq_intf0;
 	  ethernet_header_t *e0;
 	  u32 is_l20;
 	  u64 dmacs[2];
@@ -1591,22 +1577,11 @@ ethernet_input_inline (vlib_main_t * vm,
 
 	  old_sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 
-	  eth_vlan_table_lookups (em,
-				  vnm,
-				  old_sw_if_index0,
-				  orig_type0,
-				  outer_id0,
-				  inner_id0,
-				  &hi0,
-				  &main_intf0, &vlan_intf0, &qinq_intf0);
+	  eth_vlan_table_lookups (em, vnm, old_sw_if_index0, orig_type0, outer_id0, inner_id0, &hi0,
+				  &main_intf0, &vlan_intf0, &qinq_intf0, &outer_any_qinq_intf0);
 
-	  identify_subint (em,
-			   hi0,
-			   b0,
-			   match_flags0,
-			   main_intf0,
-			   vlan_intf0,
-			   qinq_intf0, &new_sw_if_index0, &error0, &is_l20);
+	  identify_subint (em, hi0, b0, match_flags0, main_intf0, vlan_intf0, qinq_intf0,
+			   outer_any_qinq_intf0, &new_sw_if_index0, &error0, &is_l20);
 
 	  // Save RX sw_if_index for later nodes
 	  vnet_buffer (b0)->sw_if_index[VLIB_RX] =
@@ -1845,9 +1820,9 @@ ethernet_sw_interface_get_config (vnet_main_t * vnm,
 
 	  if (si->sub.eth.flags.outer_vlan_id_any)
 	    {
-	      // not implemented yet
-	      *unsupported = 1;
-	      goto done;
+	      // any single tag
+	      subint = si->sub.eth.flags.dot1ad ? &main_intf->dot1ad_outer_any_subint :
+						  &main_intf->dot1q_outer_any_subint;
 	    }
 	  else
 	    {
@@ -1868,12 +1843,29 @@ ethernet_sw_interface_get_config (vnet_main_t * vnm,
 	  if (si->sub.eth.flags.outer_vlan_id_any
 	      && si->sub.eth.flags.inner_vlan_id_any)
 	    {
-	      // not implemented yet
-	      *unsupported = 1;
-	      goto done;
+	      // any outer + any inner
+	      subint = si->sub.eth.flags.dot1ad ? &main_intf->dot1ad_outer_any_inner_any_subint :
+						  &main_intf->dot1q_outer_any_inner_any_subint;
 	    }
-
-	  if (si->sub.eth.flags.inner_vlan_id_any)
+	  else if (si->sub.eth.flags.outer_vlan_id_any)
+	    {
+	      // any outer + specific inner: use qinq table on main_intf
+	      u16 *qinqs_id = si->sub.eth.flags.dot1ad ? &main_intf->dot1ad_outer_any_qinqs :
+							 &main_intf->dot1q_outer_any_qinqs;
+	      if (*qinqs_id == 0)
+		{
+		  // Allocate a qinq table from the pool
+		  pool_get (em->qinq_pool, qinq_table);
+		  *qinqs_id = qinq_table - em->qinq_pool;
+		}
+	      else
+		{
+		  // Get ptr to existing qinq table
+		  qinq_table = vec_elt_at_index (em->qinq_pool, *qinqs_id);
+		}
+	      subint = &qinq_table->vlans[si->sub.eth.inner_vlan_id].subint;
+	    }
+	  else if (si->sub.eth.flags.inner_vlan_id_any)
 	    {
 	      // a specific outer and "any" inner
 	      // don't need a qinq table for this

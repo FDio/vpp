@@ -206,8 +206,14 @@ typedef struct
 {
   subint_config_t untagged_subint;
   subint_config_t default_subint;
+  subint_config_t dot1q_outer_any_subint;	     // dot1q any (single tag)
+  subint_config_t dot1ad_outer_any_subint;	     // dot1ad any (single tag)
+  subint_config_t dot1q_outer_any_inner_any_subint;  // dot1q any + any (double tag)
+  subint_config_t dot1ad_outer_any_inner_any_subint; // dot1ad any + any (double tag)
   u16 dot1q_vlans;		// pool id for vlan table
   u16 dot1ad_vlans;		// pool id for vlan table
+  u16 dot1q_outer_any_qinqs;	// dot1q any-outer qinq table
+  u16 dot1ad_outer_any_qinqs;	// dot1ad any-outer qinq table
 } main_intf_t;
 
 typedef struct
@@ -446,19 +452,17 @@ int vnet_delete_sub_interface (u32 sw_if_index);
 // the ports's sw_if_index and fields extracted from the ethernet header.
 // The resulting tables are used by identify_subint().
 always_inline void
-eth_vlan_table_lookups (ethernet_main_t * em,
-			vnet_main_t * vnm,
-			u32 port_sw_if_index0,
-			u16 first_ethertype,
-			u16 outer_id,
-			u16 inner_id,
-			vnet_hw_interface_t ** hi,
-			main_intf_t ** main_intf,
-			vlan_intf_t ** vlan_intf, qinq_intf_t ** qinq_intf)
+eth_vlan_table_lookups (ethernet_main_t *em, vnet_main_t *vnm, u32 port_sw_if_index0,
+			u16 first_ethertype, u16 outer_id, u16 inner_id, vnet_hw_interface_t **hi,
+			main_intf_t **main_intf, vlan_intf_t **vlan_intf, qinq_intf_t **qinq_intf,
+			qinq_intf_t **outer_any_qinq_intf)
 {
+  static qinq_intf_t empty_qinq_intf = { 0 };
   vlan_table_t *vlan_table;
   qinq_table_t *qinq_table;
+  qinq_table_t *outer_any_qinq_table;
   u32 vlan_table_id;
+  u16 outer_any_qinqs_id;
 
   // Read the main, vlan, and qinq interface table entries
   // TODO: Consider if/how to prefetch tables. Also consider
@@ -466,17 +470,33 @@ eth_vlan_table_lookups (ethernet_main_t * em,
   // processing.
   *hi = vnet_get_sup_hw_interface (vnm, port_sw_if_index0);
   *main_intf = vec_elt_at_index (em->main_intfs, (*hi)->hw_if_index);
+  *outer_any_qinq_intf = &empty_qinq_intf;
 
   // Always read the vlan and qinq tables, even if there are not that
   // many tags on the packet. This makes the lookups and comparisons
   // easier (and less branchy).
-  vlan_table_id = (first_ethertype == ETHERNET_TYPE_DOT1AD) ?
-    (*main_intf)->dot1ad_vlans : (*main_intf)->dot1q_vlans;
+  if (first_ethertype == ETHERNET_TYPE_DOT1AD)
+    {
+      vlan_table_id = (*main_intf)->dot1ad_vlans;
+      outer_any_qinqs_id = (*main_intf)->dot1ad_outer_any_qinqs;
+    }
+  else
+    {
+      vlan_table_id = (*main_intf)->dot1q_vlans;
+      outer_any_qinqs_id = (*main_intf)->dot1q_outer_any_qinqs;
+    }
+
   vlan_table = vec_elt_at_index (em->vlan_pool, vlan_table_id);
   *vlan_intf = &vlan_table->vlans[outer_id];
 
   qinq_table = vec_elt_at_index (em->qinq_pool, (*vlan_intf)->qinqs);
   *qinq_intf = &qinq_table->vlans[inner_id];
+
+  if (outer_any_qinqs_id)
+    {
+      outer_any_qinq_table = vec_elt_at_index (em->qinq_pool, outer_any_qinqs_id);
+      *outer_any_qinq_intf = &outer_any_qinq_table->vlans[inner_id];
+    }
 }
 
 
@@ -485,12 +505,9 @@ eth_vlan_table_lookups (ethernet_main_t * em,
 // matches first.
 // Returns 1 if a matching subinterface was found, otherwise returns 0.
 always_inline u32
-eth_identify_subint (vnet_hw_interface_t * hi,
-		     u32 match_flags,
-		     main_intf_t * main_intf,
-		     vlan_intf_t * vlan_intf,
-		     qinq_intf_t * qinq_intf,
-		     u32 * new_sw_if_index, u8 * error0, u32 * is_l2)
+eth_identify_subint (vnet_hw_interface_t *hi, u32 match_flags, main_intf_t *main_intf,
+		     vlan_intf_t *vlan_intf, qinq_intf_t *qinq_intf,
+		     qinq_intf_t *outer_any_qinq_intf, u32 *new_sw_if_index, u8 *error0, u32 *is_l2)
 {
   subint_config_t *subint;
 
@@ -509,6 +526,29 @@ eth_identify_subint (vnet_hw_interface_t * hi,
 
   // check for specific single tag
   subint = &vlan_intf->single_tag_subint;
+  if ((subint->flags & match_flags) == match_flags)
+    goto matched;
+
+  // check for any outer + specific inner
+  subint = &outer_any_qinq_intf->subint;
+  if ((subint->flags & match_flags) == match_flags)
+    goto matched;
+
+  // check for any outer + any inner (dot1ad first, then dot1q)
+  subint = &main_intf->dot1ad_outer_any_inner_any_subint;
+  if ((subint->flags & match_flags) == match_flags)
+    goto matched;
+
+  subint = &main_intf->dot1q_outer_any_inner_any_subint;
+  if ((subint->flags & match_flags) == match_flags)
+    goto matched;
+
+  // check for any outer single tag (dot1ad first, then dot1q)
+  subint = &main_intf->dot1ad_outer_any_subint;
+  if ((subint->flags & match_flags) == match_flags)
+    goto matched;
+
+  subint = &main_intf->dot1q_outer_any_subint;
   if ((subint->flags & match_flags) == match_flags)
     goto matched;
 

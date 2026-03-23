@@ -166,7 +166,10 @@ l2vtr_configure (vlib_main_t * vlib_main, vnet_main_t * vnet_main, u32 sw_if_ind
   vtr_tag1 = clib_net_to_host_u16 (vtr_tag1);
   vtr_tag2 = clib_net_to_host_u16 (vtr_tag2);
 
-  /* Determine number of vlan tags with explicitly configured values */
+  /* Determine number of vlan tags on the wire for this sub-interface.
+   * Wildcard (any) VLAN IDs still have tags present - "any" means
+   * "match any VLAN value", not "no tag". The tag count is determined
+   * by the one_tag/two_tags flags. */
   cfg_tags = 0;
   if (hw_no_tags || si->sub.eth.flags.no_tags)
     {
@@ -175,22 +178,10 @@ l2vtr_configure (vlib_main_t * vlib_main, vnet_main_t * vnet_main, u32 sw_if_ind
   else if (si->sub.eth.flags.one_tag)
     {
       cfg_tags = 1;
-      if (si->sub.eth.flags.outer_vlan_id_any)
-	{
-	  cfg_tags = 0;
-	}
     }
   else if (si->sub.eth.flags.two_tags)
     {
       cfg_tags = 2;
-      if (si->sub.eth.flags.inner_vlan_id_any)
-	{
-	  cfg_tags = 1;
-	}
-      if (si->sub.eth.flags.outer_vlan_id_any)
-	{
-	  cfg_tags = 0;
-	}
     }
 
   switch (vtr_op)
