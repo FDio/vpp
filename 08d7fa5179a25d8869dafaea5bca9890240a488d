@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "abd2eedd_031c32b7",
+        "filename": "src/plugins/dpdk/device/dpdk.h",
+        "patchSetId": 23
+      },
+      "lineNbr": 67,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-03-23T23:50:18Z",
+      "side": 1,
+      "message": "please make it shorter....",
+      "revId": "08d7fa5179a25d8869dafaea5bca9890240a488d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
