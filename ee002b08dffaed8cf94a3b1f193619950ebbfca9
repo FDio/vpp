@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "bf1f2d4f_7acb5e40",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 15
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-03-23T23:42:49Z",
+      "side": 1,
+      "message": "few initial comments:\n- VPP have native support for md5, use it\n- whole purpose of SPDX is that you dont need to pull whole license to each file, so remove it\n\nAlso please explain why multiple plugins while commit message says just \"client plugin\"",
+      "revId": "ee002b08dffaed8cf94a3b1f193619950ebbfca9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
