@@ -3,6 +3,7 @@
  */
 
 #include <vnet/session/application_interface.h>
+#include <vnet/session/application.h>
 #include <vnet/session/session.h>
 
 typedef struct
@@ -13,6 +14,7 @@ typedef struct
   u32 tls_engine;
   u32 ckpair_index;
   u32 tls_profile_index;
+  u8 cert_type; /* 0 = RSA (default), 1 = ECDSA */
   u8 alpn_protos[4];
   vlib_main_t *vlib_main;
   u32 accepted_count;
@@ -135,18 +137,40 @@ ts_attach ()
 
   if (vnet_application_attach (a))
     {
+      /* App already attached (e.g. second listener on the same app) -
+       * look it up by name and reuse it. Note: a->name is still a valid
+       * VPP vector here because the attach function returns early without
+       * touching it. */
+      application_t *app = application_lookup_name (a->name);
+      if (!app)
+	{
+	  vec_free (a->name);
+	  return -1;
+	}
+      sm->app_index = app->app_index;
       vec_free (a->name);
-      return -1;
+      goto add_ckpair;
     }
 
   vec_free (a->name);
   sm->app_index = a->app_index;
 
+add_ckpair:
   clib_memset (ck_pair, 0, sizeof (*ck_pair));
-  ck_pair->cert = (u8 *) test_srv_crt_rsa;
-  ck_pair->key = (u8 *) test_srv_key_rsa;
-  ck_pair->cert_len = test_srv_crt_rsa_len;
-  ck_pair->key_len = test_srv_key_rsa_len;
+  if (sm->cert_type == 1)
+    {
+      ck_pair->cert = (u8 *) test_srv_crt_ecdsa;
+      ck_pair->key = (u8 *) test_srv_key_ecdsa;
+      ck_pair->cert_len = test_srv_crt_ecdsa_len;
+      ck_pair->key_len = test_srv_key_ecdsa_len;
+    }
+  else
+    {
+      ck_pair->cert = (u8 *) test_srv_crt_rsa;
+      ck_pair->key = (u8 *) test_srv_key_rsa;
+      ck_pair->cert_len = test_srv_crt_rsa_len;
+      ck_pair->key_len = test_srv_key_rsa_len;
+    }
   vnet_app_add_cert_key_pair (ck_pair);
   sm->ckpair_index = ck_pair->index;
 
@@ -198,6 +222,7 @@ tls_server_create_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli
 
   sm->tls_engine = CRYPTO_ENGINE_OPENSSL;
   sm->tls_profile_index = ~0;
+  sm->cert_type = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return clib_error_return (0, "expected URI");
@@ -218,6 +243,10 @@ tls_server_create_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli
 	;
       else if (unformat (line_input, "profile-index %d", &sm->tls_profile_index))
 	;
+      else if (unformat (line_input, "cert-type ecdsa"))
+	sm->cert_type = 1;
+      else if (unformat (line_input, "cert-type rsa"))
+	sm->cert_type = 0;
       else
 	{
 	  error = clib_error_return (0, "failed: unknown input `%U'",
