@@ -1877,18 +1877,7 @@ ethernet_sw_interface_get_config (vnet_main_t * vnm,
 	    {
 	      // a specific outer and "any" inner
 	      // don't need a qinq table for this
-	      subint =
-		&vlan_table->vlans[si->sub.eth.
-				   outer_vlan_id].inner_any_subint;
-	      if (si->sub.eth.flags.exact_match)
-		{
-		  *flags = SUBINT_CONFIG_MATCH_2_TAG;
-		}
-	      else
-		{
-		  *flags = SUBINT_CONFIG_MATCH_2_TAG |
-		    SUBINT_CONFIG_MATCH_3_TAG;
-		}
+	      subint = &vlan_table->vlans[si->sub.eth.outer_vlan_id].inner_any_subint;
 	    }
 	  else
 	    {
