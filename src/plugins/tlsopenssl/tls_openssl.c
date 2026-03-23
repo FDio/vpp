@@ -1774,9 +1774,14 @@ openssl_tls_ctx_attribute (tls_ctx_t *ctx, u8 is_get,
 	else
 	  attr->tls_profile_info.key_agreement = 0;
 
-	/* Get peer signature algorithm */
+	/* Get peer signature algorithm. SSL_get_peer_signature_nid returns the
+	 * hash digest NID (e.g. NID_sha256), which works for RSA/ECDSA but
+	 * not for Ed25519/Ed448 (pure EdDSA, no separate hash). Fall back to
+	 * SSL_get_peer_signature_type_nid which returns the full scheme NID. */
 	sigalg_nid = NID_undef;
-	if (SSL_get_peer_signature_nid (oc->ssl, &sigalg_nid) == 1 && sigalg_nid != NID_undef)
+	if (SSL_get_peer_signature_nid (oc->ssl, &sigalg_nid) != 1 || sigalg_nid == NID_undef)
+	  SSL_get_peer_signature_type_nid (oc->ssl, &sigalg_nid);
+	if (sigalg_nid != NID_undef)
 	  {
 	    sigalg_name = OBJ_nid2sn (sigalg_nid);
 	    if (sigalg_name)

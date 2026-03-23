@@ -13,7 +13,9 @@ typedef struct
   u8 *uri;
   u32 tls_engine;
   u32 ckpair_index;
+  u32 ca_trust_index;
   u32 tls_profile_index;
+  u8 cert_type; /* 0 = RSA (default), 1 = ECDSA */
   u32 cli_node_index;
   session_endpoint_cfg_t connect_sep;
   tls_alpn_proto_t alpn_proto_selected;
@@ -116,6 +118,8 @@ tc_ts_reset_callback (session_t *s)
   a->handle = session_handle (s);
   a->app_index = cm->app_index;
   vnet_disconnect_session (a);
+  vlib_process_signal_event_mt (cm->vlib_main, cm->cli_node_index, TC_CLI_CONNECT_FAILED,
+				SESSION_E_REFUSED);
 }
 
 static void
@@ -178,12 +182,30 @@ tc_attach ()
   vec_free (a->name);
 
   clib_memset (ck_pair, 0, sizeof (*ck_pair));
-  ck_pair->cert = (u8 *) test_srv_crt_rsa;
-  ck_pair->key = (u8 *) test_srv_key_rsa;
-  ck_pair->cert_len = test_srv_crt_rsa_len;
-  ck_pair->key_len = test_srv_key_rsa_len;
-  vnet_app_add_cert_key_pair (ck_pair);
-  cm->ckpair_index = ck_pair->index;
+  if (cm->cert_type == 1)
+    {
+      app_ca_trust_add_args_t _ca_args = {}, *ca_args = &_ca_args;
+      ck_pair->cert = (u8 *) test_srv_crt_ecdsa;
+      ck_pair->key = (u8 *) test_srv_key_ecdsa;
+      ck_pair->cert_len = test_srv_crt_ecdsa_len;
+      ck_pair->key_len = test_srv_key_ecdsa_len;
+      vnet_app_add_cert_key_pair (ck_pair);
+      cm->ckpair_index = ck_pair->index;
+      vec_validate (ca_args->ca_chain, test_ca_chain_ecdsa_len - 1);
+      clib_memcpy (ca_args->ca_chain, test_ca_chain_ecdsa, test_ca_chain_ecdsa_len);
+      app_crypto_add_ca_trust (cm->app_index, ca_args);
+      cm->ca_trust_index = ca_args->index;
+    }
+  else
+    {
+      ck_pair->cert = (u8 *) test_srv_crt_rsa;
+      ck_pair->key = (u8 *) test_srv_key_rsa;
+      ck_pair->cert_len = test_srv_crt_rsa_len;
+      ck_pair->key_len = test_srv_key_rsa_len;
+      vnet_app_add_cert_key_pair (ck_pair);
+      cm->ckpair_index = ck_pair->index;
+      cm->ca_trust_index = 0;
+    }
 
   return 0;
 }
@@ -228,6 +250,7 @@ tc_connect ()
 				  sizeof (transport_endpt_crypto_cfg_t));
   ext_cfg->crypto.ckpair_index = cm->ckpair_index;
   ext_cfg->crypto.tls_profile_index = cm->tls_profile_index;
+  ext_cfg->crypto.ca_trust_index = cm->ca_trust_index;
   clib_memcpy (ext_cfg->crypto.alpn_protos, cm->alpn_protos, 4);
 
   tc_program_connect (a);
@@ -304,6 +327,8 @@ tls_client_run_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_co
 
   cm->tls_engine = CRYPTO_ENGINE_OPENSSL;
   cm->tls_profile_index = ~0;
+  cm->ca_trust_index = 0;
+  cm->cert_type = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return clib_error_return (0, "expected URI");
@@ -324,6 +349,10 @@ tls_client_run_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_co
 	;
       else if (unformat (line_input, "profile-index %d", &cm->tls_profile_index))
 	;
+      else if (unformat (line_input, "cert-type ecdsa"))
+	cm->cert_type = 1;
+      else if (unformat (line_input, "cert-type rsa"))
+	cm->cert_type = 0;
       else
 	{
 	  error = clib_error_return (0, "failed: unknown input `%U'",
