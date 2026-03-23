@@ -73,7 +73,8 @@ sfdp_session_remove (sfdp_main_t *sfdp, sfdp_per_thread_data_t *ptd,
       SFDP_PARSER_BIHASH_CALL_FN (parser, sfdp_parser_bihash_add_del_fn,
 				  parser_table, kvdata, 0);
     }
-  clib_bihash_add_del_8_8 (&sfdp->session_index_by_id, &kv2, 0);
+  if (PREDICT_TRUE (!sfdp->no_session_id_table))
+    clib_bihash_add_del_8_8 (&sfdp->session_index_by_id, &kv2, 0);
   vlib_increment_simple_counter (
     &sfdp->tenant_session_ctr[SFDP_TENANT_SESSION_COUNTER_REMOVED],
     thread_index, session->tenant_idx, 1);

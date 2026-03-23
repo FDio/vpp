@@ -423,6 +423,10 @@ typedef struct
 
   /* If this is set, don't run polling nodes on main */
   int no_main;
+
+  /* If set, skip session_index_by_id bihash writes on sessio create/remove. */
+  int no_session_id_table;
+
 } sfdp_main_t;
 
 typedef struct
@@ -744,11 +748,13 @@ sfdp_session_generate_and_set_id (sfdp_main_t *sfdp,
   ptd->session_id_ctr +=
     2; /* two at a time, because last bit is reserved for direction */
   session->session_id = session_id;
-  value = sfdp_session_mk_table_value (thread_index, pseudo_flow_idx,
-				       session->session_version);
-  kv2.key = session_id;
-  kv2.value = value;
-  clib_bihash_add_del_8_8 (&sfdp->session_index_by_id, &kv2, 1);
+  if (PREDICT_TRUE (!sfdp->no_session_id_table))
+    {
+      value = sfdp_session_mk_table_value (thread_index, pseudo_flow_idx, session->session_version);
+      kv2.key = session_id;
+      kv2.value = value;
+      clib_bihash_add_del_8_8 (&sfdp->session_index_by_id, &kv2, 1);
+    }
 }
 
 /* Internal function to create a new session.

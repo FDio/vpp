@@ -385,17 +385,22 @@ sfdp_show_session_detail_command_fn (vlib_main_t *vm, unformat_input_t *input,
 
   if (!err)
     {
-      kv.key = session_id;
-      if (!clib_bihash_search_inline_8_8 (&sfdp->session_index_by_id, &kv))
+      if (sfdp->no_session_id_table)
 	{
-	  session_index = sfdp_session_index_from_lookup (kv.value);
-	  vlib_cli_output (vm, "%U", format_sfdp_session_detail, session_index,
-			   now);
+	  err = clib_error_return (0, "session-id table disabled");
 	}
       else
 	{
-	  err =
-	    clib_error_return (0, "Session id 0x%llx not found", session_id);
+	  kv.key = session_id;
+	  if (!clib_bihash_search_inline_8_8 (&sfdp->session_index_by_id, &kv))
+	    {
+	      session_index = sfdp_session_index_from_lookup (kv.value);
+	      vlib_cli_output (vm, "%U", format_sfdp_session_detail, session_index, now);
+	    }
+	  else
+	    {
+	      err = clib_error_return (0, "Session id 0x%llx not found", session_id);
+	    }
 	}
     }
   return err;

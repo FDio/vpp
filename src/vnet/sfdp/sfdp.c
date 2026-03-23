@@ -542,6 +542,8 @@ sfdp_config (vlib_main_t *vm, unformat_input_t *input)
       else if (unformat (input, "eviction-sessions-margin %u",
 			 &eviction_sessions_margin))
 	;
+      else if (unformat (input, "no-session-id-table"))
+	sfdp->no_session_id_table = 1;
       else if (unformat (input, "no-main"))
 	{
 	  /* Disable only if there are workers */
@@ -578,7 +580,7 @@ sfdp_config (vlib_main_t *vm, unformat_input_t *input)
 }
 
 /* sfdp { [sessions-log2 <n>] [tenants-log2 <n>] [eviction-sessions-margin <n>]
- * } config. */
+ * [no-session-id-table]} config. */
 VLIB_EARLY_CONFIG_FUNCTION (sfdp_config, "sfdp");
 
 VLIB_INIT_FUNCTION (sfdp_init);
