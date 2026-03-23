@@ -33,11 +33,12 @@ typedef struct
   u32 __unused;
 } __attribute__ ((may_alias)) sfdp_session_timer_t;
 
-#define foreach_sfdp_timeout                                                  \
-  _ (EMBRYONIC, 5, "embryonic")                                               \
-  _ (ESTABLISHED, 120, "established")                                         \
-  _ (TCP_ESTABLISHED, 3600, "tcp-established")                                \
-  _ (SECURITY, 30, "security")
+#define foreach_sfdp_timeout                                                                       \
+  _ (EMBRYONIC, 5, "embryonic")                                                                    \
+  _ (ESTABLISHED, 120, "established")                                                              \
+  _ (TCP_ESTABLISHED, 3600, "tcp-established")                                                     \
+  _ (SECURITY, 30, "security")                                                                     \
+  _ (TIME_WAIT, 120, "time-wait")
 
 typedef enum
 {

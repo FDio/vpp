@@ -96,6 +96,7 @@ update_state_one_pkt (sfdp_tw_t *tw, sfdp_tenant_t *tenant,
   u32 seqnum = clib_net_to_host_u32 (tcph->seq_number);
   u32 next_timeout = 0;
   u8 remove_session = 0;
+  u8 time_wait = 0;
   if (PREDICT_FALSE (tcp_session->version != session->session_version))
     {
       tcp_session->version = session->session_version;
@@ -205,14 +206,19 @@ update_state_one_pkt (sfdp_tw_t *tw, sfdp_tenant_t *tenant,
   if ((nsf[0] & (SFDP_TCP_CHECK_SESSION_FLAG_SEEN_ACK_TO_FIN_INIT)) &&
       (nsf[0] & SFDP_TCP_CHECK_SESSION_FLAG_SEEN_ACK_TO_FIN_RESP))
     {
-      session->expiry_reason = SFDP_SESSION_EXPIRY_REASON_EVENT_TCP_FIN;
-      nsf[0] = SFDP_TCP_CHECK_SESSION_FLAG_REMOVING;
-      remove_session = 1;
+      nsf[0] = SFDP_TCP_CHECK_SESSION_FLAG_TIME_WAIT;
+      session->state = SFDP_SESSION_STATE_TIME_WAIT;
+      time_wait = 1;
     }
 out:
   tcp_session->flags = nsf[0];
   if (remove_session)
     next_timeout = 0;
+  else if (time_wait)
+    {
+      session->expiry_reason = SFDP_SESSION_EXPIRY_REASON_EVENT_TCP_FIN;
+      next_timeout = tenant->timeouts[SFDP_TIMEOUT_TIME_WAIT];
+    }
   else if (nsf[0] & SFDP_TCP_CHECK_SESSION_FLAG_ESTABLISHED)
     {
       session->expiry_reason = SFDP_SESSION_EXPIRY_REASON_TIMEOUT_TCP_ESTABLISHED;
