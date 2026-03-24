@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "06e8cc60_7e44cada",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-03-24T20:21:47Z",
+      "side": 1,
+      "message": "This should be submitted to the master branch not a release branch.",
+      "revId": "67a0f57a3f99d1514c3545e4a37b3f929d3b2c15",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
