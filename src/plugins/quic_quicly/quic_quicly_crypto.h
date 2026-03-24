@@ -66,6 +66,10 @@ typedef struct quic_quicly_crypto_ctx_
   tls_verify_cfg_t verify_cfg;
   quic_quicly_verify_certificate_t verify_cert;
   quic_quicly_on_client_hello_t client_hello_ctx;
+  u32 tls_profile_index; /**< TLS profile index baked into this context (~0 = defaults) */
+  /* Profile-filtered arrays (NULL if no profile applied, freed on context free) */
+  ptls_cipher_suite_t **filtered_cipher_suites;
+  ptls_key_exchange_algorithm_t **filtered_key_exchanges;
 } quic_quicly_crypto_ctx_t;
 
 typedef struct quic_quicly_crypto_main_
