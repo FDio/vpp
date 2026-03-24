@@ -281,9 +281,8 @@ void transport_connection_tx_pacer_reset (transport_connection_t * tc,
  * @param rate_bytes_per_second		initial byte rate
  * @param burst_bytes			initial burst size in bytes
  */
-void transport_connection_tx_pacer_init (transport_connection_t * tc,
-					 u64 rate_bytes_per_sec,
-					 u32 initial_bucket);
+void transport_connection_tx_pacer_init (transport_connection_t *tc, u64 rate_bytes_per_sec,
+					 u32 initial_bucket, u32 min_burst);
 
 /**
  * Update tx pacer pacing rate

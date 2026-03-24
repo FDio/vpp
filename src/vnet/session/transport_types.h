@@ -67,6 +67,7 @@ typedef struct _spacer
   i64 bucket;
   clib_us_time_t last_update;
   f32 tokens_per_period;
+  u32 min_burst;
   u32 max_burst;
 } spacer_t;
 
