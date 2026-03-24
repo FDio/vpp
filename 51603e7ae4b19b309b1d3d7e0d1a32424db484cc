@@ -20,6 +20,23 @@
     {
       "unresolved": false,
       "key": {
+        "uuid": "5c5412d7_ab090fe1",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 17
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-03-24T11:38:59Z",
+      "side": 1,
+      "message": "recheck",
+      "revId": "51603e7ae4b19b309b1d3d7e0d1a32424db484cc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
         "uuid": "457d256f_4f29bda2",
         "filename": "test/test_sfdp.py",
         "patchSetId": 17
