@@ -16,6 +16,24 @@
       "message": "It would be better to set sfdp-\u003etimer_interval_s to the default when it is zero. You\u0027ll avoid a condition by calling `sfdp_timer_interval_sec`",
       "revId": "a1f7fb7700dcf1257eb537ffa0dd6f0194177dec",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "fceb02a3_d08537df",
+        "filename": "src/vnet/sfdp/sfdp.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 585,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-03-24T11:28:57Z",
+      "side": 1,
+      "message": "Done. I changed the config handling so timer_interval_s is always initialized to the default value, and removed the fallback in sfdp_timer_interval_sec(). I also kept explicit validation when the option is provided, so timer-interval 0 is now rejected instead of being silently accepted.",
+      "parentUuid": "f5a95170_83259d32",
+      "revId": "a1f7fb7700dcf1257eb537ffa0dd6f0194177dec",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }

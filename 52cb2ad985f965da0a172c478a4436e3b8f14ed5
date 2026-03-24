@@ -38,6 +38,24 @@
     {
       "unresolved": false,
       "key": {
+        "uuid": "2b16240b_6cc589ec",
+        "filename": "src/vnet/sfdp/sfdp.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 425,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-03-24T11:28:57Z",
+      "side": 1,
+      "message": "done.",
+      "parentUuid": "c48db6f3_96ea120c",
+      "revId": "52cb2ad985f965da0a172c478a4436e3b8f14ed5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
         "uuid": "2c4e039e_36c77862",
         "filename": "test/test_sfdp_timer.py",
         "patchSetId": 7
@@ -85,6 +103,24 @@
       "writtenOn": "2026-03-09T19:13:18Z",
       "side": 1,
       "message": "Done in patch set 8. I moved the timer coverage into test_sfdp.py and removed the separate test_sfdp_timer.py file. I also added a rearm case to cover expirations that span more than one timer-wheel turn.",
+      "parentUuid": "35bdcafe_57016336",
+      "revId": "52cb2ad985f965da0a172c478a4436e3b8f14ed5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "858fa897_a52d89b6",
+        "filename": "test/test_sfdp_timer.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-03-24T11:28:57Z",
+      "side": 1,
+      "message": "done",
       "parentUuid": "35bdcafe_57016336",
       "revId": "52cb2ad985f965da0a172c478a4436e3b8f14ed5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
