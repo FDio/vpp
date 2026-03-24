@@ -943,9 +943,9 @@ format_transport_pacer (u8 * s, va_list * args)
 
   now = transport_us_time_now (thread_index);
   diff = now - pacer->last_update;
-  s = format (s, "rate %lu bucket %ld t/p %.3f last_update %U burst %u",
+  s = format (s, "rate %lu bucket %ld t/p %.3f last_update %U min-burst %u burst %u",
 	      pacer->bytes_per_sec, pacer->bucket, pacer->tokens_per_period,
-	      format_clib_us_time, diff, pacer->max_burst);
+	      format_clib_us_time, diff, pacer->min_burst, pacer->max_burst);
   return s;
 }
 
@@ -975,6 +975,7 @@ spacer_set_pace_rate (spacer_t * pacer, u64 rate_bytes_per_sec,
 		      clib_us_time_t rtt, clib_time_type_t sec_per_loop)
 {
   clib_us_time_t max_time;
+  u32 min_burst;
 
   ASSERT (rate_bytes_per_sec != 0);
   pacer->bytes_per_sec = rate_bytes_per_sec;
@@ -993,8 +994,9 @@ spacer_set_pace_rate (spacer_t * pacer, u64 rate_bytes_per_sec,
 		       (clib_us_time_t) (sec_per_loop * CLIB_US_TIME_FREQ));
   max_time = clib_clamp (max_time, 1 /* 1us */ , 1000 /* 1ms */ );
   pacer->max_burst = (rate_bytes_per_sec * max_time) * CLIB_US_TIME_PERIOD;
-  pacer->max_burst = clib_clamp (pacer->max_burst, TRANSPORT_PACER_MIN_BURST,
-				 TRANSPORT_PACER_MAX_BURST);
+  min_burst = clib_max (pacer->min_burst, (u32) TRANSPORT_PACER_MIN_BURST);
+  pacer->max_burst =
+    clib_clamp (pacer->max_burst, min_burst, TRANSPORT_PACER_MAX_BURST);
 }
 
 static inline u64
@@ -1031,9 +1033,10 @@ transport_connection_tx_pacer_reset_bucket (transport_connection_t * tc,
 void
 transport_connection_tx_pacer_init (transport_connection_t * tc,
 				    u64 rate_bytes_per_sec,
-				    u32 initial_bucket)
+				    u32 initial_bucket, u32 min_burst)
 {
   tc->flags |= TRANSPORT_CONNECTION_F_IS_TX_PACED;
+  tc->pacer.min_burst = min_burst;
   transport_connection_tx_pacer_reset (tc, rate_bytes_per_sec,
 				       initial_bucket, 1e6);
 }
