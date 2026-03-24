@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7489e92f_7016f1f5",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-03-24T05:41:21Z",
+      "side": 1,
+      "message": "Quick nits",
+      "revId": "574ec20f89800a013e29429ac07e3e6aa3dd773e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4e9aded4_aadb8f8b",
+        "filename": "src/vnet/config.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 64,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-03-24T05:41:21Z",
+      "side": 1,
+      "message": "Quick comment here to explain what this shared heap is?",
+      "revId": "574ec20f89800a013e29429ac07e3e6aa3dd773e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "87d936f0_c3d9b384",
+        "filename": "src/vnet/feature/feature.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 91,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-03-24T05:41:21Z",
+      "side": 1,
+      "message": "Same here.",
+      "revId": "574ec20f89800a013e29429ac07e3e6aa3dd773e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
