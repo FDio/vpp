@@ -24,6 +24,7 @@
 #include <vnet/fib/fib_entry_src.h>
 #include <vnet/fib/fib_path_list.h>
 #include <vnet/fib/fib_table.h>
+#include <vnet/api_errno.h>
 #include <vnet/mfib/mfib_table.h>
 #include <vnet/ip/ip6_ll_table.h>
 #include <vnet/ip-neighbor/ip_neighbor.h>
@@ -780,7 +781,14 @@ lcp_router_neigh_del (struct rtnl_neigh *rn)
 
       rv = ip_neighbor_del (&nh, sw_if_index);
 
-      if (rv)
+      if (rv == VNET_API_ERROR_NO_SUCH_ENTRY)
+	{
+	  LCP_ROUTER_DBG ("ignore neighbor del missing: %U %U",
+			  format_ip_address, &nh,
+			  format_vnet_sw_if_index_name, vnet_get_main (),
+			  sw_if_index);
+	}
+      else if (rv)
 	{
 	  LCP_ROUTER_ERROR (
 	    "Failed to delete neighbor: %U %U", format_ip_address, &nh,
