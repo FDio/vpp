@@ -21,6 +21,9 @@ func init() {
 		TlsProfileNegotiatedParamsTest,
 		TlsProfileNegotiatedVersionTest,
 		TlsProfileX25519EcdsaTest,
+		QuicTlsProfileNegotiatedParamsTest,
+		QuicTlsProfileCipherFilterTest,
+		QuicTlsProfileGroupRestrictionTest,
 	)
 }
 
@@ -381,4 +384,153 @@ func TlsProfileX25519EcdsaTest(s *VethsSuite) {
 	if !foundSig {
 		AssertNil(fmt.Errorf("Expected ECDSA-related signature algorithm, got: %s", o))
 	}
+}
+
+// QuicTlsProfileNegotiatedParamsTest verifies that cipher suite, key exchange
+// group, and TLS version are returned for a QUIC connection.  QUIC always uses
+// TLS 1.3, so version must always be "1.3".
+func QuicTlsProfileNegotiatedParamsTest(s *VethsSuite) {
+	serverVpp := s.Containers.ServerVpp.VppInstance
+	clientVpp := s.Containers.ClientVpp.VppInstance
+
+	serverAddress := s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1
+
+	// Start QUIC server (no profile — use defaults)
+	Log(serverVpp.Vppctl("test tls server uri quic://" + serverAddress))
+
+	// Connect QUIC client
+	uri := "quic://" + serverAddress
+	o := clientVpp.Vppctl("test tls client uri " + uri)
+	Log(o)
+	AssertNotContains(o, "connect failed")
+	AssertNotContains(o, "timeout")
+
+	// Cipher must be a TLS 1.3 AEAD suite
+	AssertContains(o, "Cipher:")
+	quicCiphers := []string{
+		"TLS_AES_128_GCM_SHA256",
+		"TLS_AES_256_GCM_SHA384",
+		"TLS_CHACHA20_POLY1305_SHA256",
+	}
+	foundCipher := false
+	for _, c := range quicCiphers {
+		if strings.Contains(o, c) {
+			foundCipher = true
+			break
+		}
+	}
+	AssertEqual(true, foundCipher, "Expected TLS 1.3 cipher suite in QUIC output")
+
+	// QUIC always runs TLS 1.3
+	AssertContains(o, "TLS version: 1.3")
+
+	// Key agreement group must be known; picotls returns lowercase names
+	AssertContains(o, "Key agreement:")
+	knownGroups := []string{"x25519", "secp256r1", "secp384r1", "secp521r1", "X25519", "P-256", "P-384", "P-521"}
+	foundGroup := false
+	for _, g := range knownGroups {
+		if strings.Contains(o, g) {
+			foundGroup = true
+			break
+		}
+	}
+	AssertEqual(true, foundGroup, "Expected a known key agreement group in QUIC output")
+
+	// picotls does not expose the negotiated signature algorithm, so the field
+	// may be absent — but if present it must not be empty
+	if strings.Contains(o, "Signature algorithm:") {
+		lines := strings.Split(o, "\n")
+		for _, l := range lines {
+			if strings.HasPrefix(strings.TrimSpace(l), "Signature algorithm:") {
+				parts := strings.SplitN(l, ":", 2)
+				if len(parts) == 2 && strings.TrimSpace(parts[1]) == "" {
+					AssertNil(fmt.Errorf("Signature algorithm line is empty: %s", l))
+				}
+			}
+		}
+	}
+}
+
+// QuicTlsProfileCipherFilterTest verifies that a QUIC TLS profile with a
+// ciphersuites restriction does not break the handshake. Note: QUIC always
+// requires TLS_AES_128_GCM_SHA256 for Initial packet protection, so that
+// cipher is retained even when the profile restricts to TLS_AES_256_GCM_SHA384.
+func QuicTlsProfileCipherFilterTest(s *VethsSuite) {
+	serverVpp := s.Containers.ServerVpp.VppInstance
+	clientVpp := s.Containers.ClientVpp.VppInstance
+
+	serverAddress := s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1
+
+	// Create app + profile on server VPP
+	Log(serverVpp.Vppctl("test tls server uri quic://" + serverAddress))
+
+	// Restrict to TLS_AES_256_GCM_SHA384 only.  AES-128 will be kept by the
+	// implementation because quicly requires it for Initial packet processing.
+	o := serverVpp.Vppctl("app crypto add tls-profile app test_tls_server " +
+		"ciphersuites TLS_AES_256_GCM_SHA384")
+	Log(o)
+	AssertNotContains(o, "error")
+	AssertContains(o, "profile 0")
+
+	// Start a second listener with the profile
+	serverAddress2 := s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port2
+	Log(serverVpp.Vppctl("test tls server profile-index 0 uri quic://" + serverAddress2))
+
+	// Client connects
+	uri := "quic://" + serverAddress2
+	o = clientVpp.Vppctl("test tls client uri " + uri)
+	Log(o)
+	AssertNotContains(o, "connect failed")
+	AssertNotContains(o, "timeout")
+	AssertNotContains(o, "failed tls handshake")
+
+	// A cipher must be reported; the exact value depends on client preference
+	AssertContains(o, "Cipher:")
+
+	// QUIC always uses TLS 1.3
+	AssertContains(o, "TLS version: 1.3")
+}
+
+// QuicTlsProfileGroupRestrictionTest verifies that a QUIC TLS profile restricting
+// the key exchange group to X25519 does not break connectivity and that a key
+// agreement group is reported.
+//
+// Note: picotls has no public API to retrieve the negotiated key exchange group
+// after the handshake.  The key_agreement field reported by tls_profile_info is
+// the first group from the *client*'s configured list, not necessarily the one
+// that was actually negotiated.  This test therefore only checks that the
+// connection succeeds and that the field is populated.
+func QuicTlsProfileGroupRestrictionTest(s *VethsSuite) {
+	serverVpp := s.Containers.ServerVpp.VppInstance
+	clientVpp := s.Containers.ClientVpp.VppInstance
+
+	serverAddress := s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1
+
+	// Create app first (initialises the app name "test_tls_server")
+	Log(serverVpp.Vppctl("test tls server uri quic://" + serverAddress))
+
+	// Create profile restricting key exchange to X25519 only
+	o := serverVpp.Vppctl("app crypto add tls-profile app test_tls_server groups X25519")
+	Log(o)
+	AssertNotContains(o, "error")
+	AssertContains(o, "profile 0")
+
+	// Start a second listener with the X25519-only profile
+	serverAddress2 := s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port2
+	Log(serverVpp.Vppctl("test tls server profile-index 0 uri quic://" + serverAddress2))
+
+	// Client connects (uses ptls_openssl_key_exchanges_all which includes x25519)
+	uri := "quic://" + serverAddress2
+	o = clientVpp.Vppctl("test tls client uri " + uri)
+	Log(o)
+	AssertNotContains(o, "connect failed")
+	AssertNotContains(o, "timeout")
+	AssertNotContains(o, "failed tls handshake")
+
+	// A key agreement group must be reported; the exact value matches the
+	// client's first configured group (not necessarily the negotiated one)
+	AssertContains(o, "Key agreement:")
+
+	// QUIC always uses TLS 1.3
+	AssertContains(o, "TLS version: 1.3")
 }

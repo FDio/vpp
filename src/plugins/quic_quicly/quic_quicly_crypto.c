@@ -6,6 +6,7 @@
 #include <quic_quicly/quic_quicly_error.h>
 #include <quic_quicly/quic_quicly_crypto.h>
 #include <vnet/session/application.h>
+#include <vnet/session/application_crypto.h>
 #include <vnet/session/session.h>
 
 #include <quic/quic_timer.h>
@@ -107,8 +108,8 @@ quic_quicly_crypto_context_make_key_from_ctx (clib_bihash_kv_24_8_t *kv,
 					      quic_ctx_t *ctx)
 {
   application_t *app = application_get (ctx->parent_app_id);
-  kv->key[0] =
-    ((u64) ctx->ckpair_index) << 32 | (u64) (ctx->verify_cfg << 24) | (u64) ctx->crypto_engine;
+  kv->key[0] = ((u64) ctx->ckpair_index) << 32 | (u64) (ctx->verify_cfg << 24) |
+	       ((u64) (ctx->tls_profile_index & 0xFFFF)) << 8 | (u64) ctx->crypto_engine;
   kv->key[1] = app->sm_properties.rx_fifo_size;
   kv->key[2] = app->sm_properties.tx_fifo_size;
 }
@@ -118,7 +119,7 @@ quic_quicly_crypto_context_make_key_from_crctx (clib_bihash_kv_24_8_t *kv,
 						quic_quicly_crypto_ctx_t *crctx)
 {
   kv->key[0] = ((u64) crctx->ctx.ckpair_index) << 32 | (u64) (crctx->verify_cfg << 24) |
-	       (u64) crctx->ctx.crypto_engine;
+	       ((u64) (crctx->tls_profile_index & 0xFFFF)) << 8 | (u64) crctx->ctx.crypto_engine;
   kv->key[1] = crctx->quicly_ctx.transport_params.max_stream_data.bidi_local;
   kv->key[2] = crctx->quicly_ctx.transport_params.max_stream_data.bidi_remote;
 }
@@ -159,6 +160,16 @@ quic_quicly_crypto_context_free_if_needed (quic_quicly_crypto_ctx_t *crctx)
   QUIC_DBG (2, "Free crctx: crctx_ndx 0x%08lx, index %u", crctx->ctx.ctx_index, idx);
   quic_quicly_crypto_context_make_key_from_crctx (&kv, crctx);
   clib_bihash_add_del_24_8 (&qqcm->crypto_ctx_hash, &kv, 0 /* is_add */);
+  if (crctx->filtered_cipher_suites)
+    {
+      clib_mem_free (crctx->filtered_cipher_suites);
+      crctx->filtered_cipher_suites = NULL;
+    }
+  if (crctx->filtered_key_exchanges)
+    {
+      clib_mem_free (crctx->filtered_key_exchanges);
+      crctx->filtered_key_exchanges = NULL;
+    }
   if (CLIB_DEBUG)
     memset (crctx, 0xfe, sizeof (*crctx));
   pool_put_index (qqcm->crypto_ctx_pool, idx);
@@ -304,6 +315,138 @@ quic_quicly_certkey_init_ctx (app_cert_key_pair_t *ckpair,
 }
 
 static int
+quic_quicly_group_name_matches (const char *ptls_name, const char *ossl_name)
+{
+  /* Case-insensitive match covers "x25519" vs "X25519", "secp256r1" vs
+   * "secp256r1", etc. */
+  if (strcasecmp (ptls_name, ossl_name) == 0)
+    return 1;
+  /* Handle OpenSSL short names: P-256, P-384, P-521 */
+  if (strcmp (ptls_name, PTLS_GROUP_NAME_SECP256R1) == 0 &&
+      (strcasecmp (ossl_name, "P-256") == 0 || strcasecmp (ossl_name, "prime256v1") == 0))
+    return 1;
+  if (strcmp (ptls_name, PTLS_GROUP_NAME_SECP384R1) == 0 && strcasecmp (ossl_name, "P-384") == 0)
+    return 1;
+  if (strcmp (ptls_name, PTLS_GROUP_NAME_SECP521R1) == 0 && strcasecmp (ossl_name, "P-521") == 0)
+    return 1;
+  return 0;
+}
+
+/* Returns 1 if the ptls group name appears anywhere in the colon-separated
+ * OpenSSL-format groups list (e.g. "X25519:P-256"). */
+static int
+quic_quicly_group_in_list (const char *ptls_name, const u8 *groups_list)
+{
+  const char *p = (const char *) groups_list;
+  const char *q;
+  char name[64];
+  uword len;
+
+  while (*p)
+    {
+      q = p;
+      while (*q && *q != ':')
+	q++;
+      len = q - p;
+      if (len > 0 && len < sizeof (name))
+	{
+	  clib_memcpy (name, p, len);
+	  name[len] = '\0';
+	  if (quic_quicly_group_name_matches (ptls_name, name))
+	    return 1;
+	}
+      p = *q ? q + 1 : q;
+    }
+  return 0;
+}
+
+static_always_inline app_tls_profile_t *
+quic_quicly_get_tls_profile (quic_ctx_t *ctx)
+{
+  if (ctx->parent_app_wrk_id != SESSION_INVALID_INDEX)
+    return app_crypto_get_tls_profile_if_valid (ctx->parent_app_wrk_id, ctx->tls_profile_index);
+  /* Listener path: parent_app_wrk_id is not set (SESSION_INVALID_INDEX);
+   * access the profile directly through the application. */
+  application_t *app = application_get (ctx->parent_app_id);
+  u32 pi = ctx->tls_profile_index;
+  if (pi == ~0 || pool_is_free_index (app->crypto_ctx.tls_profiles, pi))
+    return NULL;
+  return pool_elt_at_index (app->crypto_ctx.tls_profiles, pi);
+}
+
+/* Apply a TLS profile's cipher suite and key exchange restrictions to the
+ * picotls context.  Allocates NULL-terminated filtered arrays stored in
+ * crctx->filtered_* and frees any previous ones. */
+static void
+quic_quicly_apply_tls_profile (quic_quicly_crypto_ctx_t *crctx, quic_ctx_t *ctx)
+{
+  quic_quicly_crypto_main_t *qqcm = &quic_quicly_crypto_main;
+  ptls_context_t *ptls_ctx = &crctx->ptls_ctx;
+  app_tls_profile_t *prof = NULL;
+  int i, n;
+
+  prof = quic_quicly_get_tls_profile (ctx);
+  if (!prof)
+    return;
+
+  /* Filter TLS 1.3 cipher suites based on profile->ciphersuites.
+   * Note: QUIC always requires TLS_AES_128_GCM_SHA256 for Initial packet
+   * protection (quicly calls get_aes128gcmsha256() unconditionally); it is
+   * always retained in the filtered list regardless of the profile. */
+  if (prof->ciphersuites)
+    {
+      ptls_cipher_suite_t **all = qqcm->quic_ciphers[ctx->crypto_engine];
+      ptls_cipher_suite_t **filtered;
+
+      n = 0;
+      for (i = 0; all[i]; i++)
+	if (all[i]->id == PTLS_CIPHER_SUITE_AES_128_GCM_SHA256 ||
+	    (all[i]->name && strstr ((char *) prof->ciphersuites, all[i]->name)))
+	  n++;
+
+      filtered = clib_mem_alloc ((n + 1) * sizeof (*filtered));
+      n = 0;
+      for (i = 0; all[i]; i++)
+	if (all[i]->id == PTLS_CIPHER_SUITE_AES_128_GCM_SHA256 ||
+	    (all[i]->name && strstr ((char *) prof->ciphersuites, all[i]->name)))
+	  filtered[n++] = all[i];
+      filtered[n] = NULL;
+
+      if (crctx->filtered_cipher_suites)
+	clib_mem_free (crctx->filtered_cipher_suites);
+      crctx->filtered_cipher_suites = filtered;
+      ptls_ctx->cipher_suites = filtered;
+    }
+
+  /* Filter key exchange groups based on profile->groups.
+   * Filter from the full key exchange list (ptls_openssl_key_exchanges_all)
+   * so that groups like x25519 that are absent from the minimal default list
+   * (ptls_openssl_key_exchanges) are still reachable. */
+  if (prof->groups)
+    {
+      ptls_key_exchange_algorithm_t **all = ptls_openssl_key_exchanges_all;
+      ptls_key_exchange_algorithm_t **filtered;
+
+      n = 0;
+      for (i = 0; all[i]; i++)
+	if (quic_quicly_group_in_list (all[i]->name, prof->groups))
+	  n++;
+
+      filtered = clib_mem_alloc ((n + 1) * sizeof (*filtered));
+      n = 0;
+      for (i = 0; all[i]; i++)
+	if (quic_quicly_group_in_list (all[i]->name, prof->groups))
+	  filtered[n++] = all[i];
+      filtered[n] = NULL;
+
+      if (crctx->filtered_key_exchanges)
+	clib_mem_free (crctx->filtered_key_exchanges);
+      crctx->filtered_key_exchanges = filtered;
+      ptls_ctx->key_exchanges = filtered;
+    }
+}
+
+static int
 quic_quicly_crypto_context_init_data (quic_quicly_crypto_ctx_t *crctx, quic_ctx_t *ctx)
 {
   quic_quicly_crypto_main_t *qqcm = &quic_quicly_crypto_main;
@@ -327,7 +470,9 @@ quic_quicly_crypto_context_init_data (quic_quicly_crypto_ctx_t *crctx, quic_ctx_
 
   ptls_ctx->random_bytes = ptls_openssl_random_bytes;
   ptls_ctx->get_time = &ptls_get_time;
-  ptls_ctx->key_exchanges = ptls_openssl_key_exchanges;
+  /* Use the full key exchange list so that x25519 and other modern groups are
+   * available by default; a TLS profile can restrict to a subset. */
+  ptls_ctx->key_exchanges = ptls_openssl_key_exchanges_all;
   ptls_ctx->cipher_suites = qqcm->quic_ciphers[ctx->crypto_engine];
   QUIC_DBG (2, "Init crctx: engine_type %U (%u), cipher_suites %p", format_crypto_engine,
 	    ctx->crypto_engine, ctx->crypto_engine, ptls_ctx->cipher_suites);
@@ -336,6 +481,9 @@ quic_quicly_crypto_context_init_data (quic_quicly_crypto_ctx_t *crctx, quic_ctx_
   ptls_ctx->on_client_hello = &crctx->client_hello_ctx.super;
   ptls_ctx->emit_certificate = NULL;
   ptls_ctx->sign_certificate = NULL;
+
+  /* Apply TLS profile restrictions (cipher suites, key exchanges) */
+  quic_quicly_apply_tls_profile (crctx, ctx);
 
   if (crctx->verify_cfg)
     {
@@ -467,6 +615,7 @@ quic_quicly_crypto_context_get_or_alloc (quic_ctx_t *ctx)
   crctx->ctx.crypto_engine = ctx->crypto_engine;
   crctx->ctx.ckpair_index = ctx->ckpair_index;
   crctx->verify_cfg = ctx->verify_cfg;
+  crctx->tls_profile_index = ctx->tls_profile_index;
   clib_bihash_add_del_24_8 (&qqcm->crypto_ctx_hash, &kv, 1 /* is_add */);
   quic_quicly_crypto_context_init_data (crctx, ctx);
   clib_atomic_add_fetch (&crctx->ctx.n_subscribers, 1);
