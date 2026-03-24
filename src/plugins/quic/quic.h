@@ -177,6 +177,7 @@ typedef struct quic_ctx_
   u32 parent_app_wrk_id;
   u32 parent_app_id;
   u32 ckpair_index;
+  u32 tls_profile_index; /**< TLS profile index, ~0 = use defaults */
   crypto_engine_type_t crypto_engine;
   tls_verify_cfg_t verify_cfg;
   u32 crypto_context_index;
