@@ -24,6 +24,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "fb751fe6_570ed8f4",
+        "filename": "src/plugins/quic_quicly/quic_quicly.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 2132,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-03-24T15:03:46Z",
+      "side": 1,
+      "message": "For now, let\u0027s leave it like this. I\u0027d like to avoid doing more work/inflating our structs to compensate for picotls. But we may have to revisit in the future",
+      "parentUuid": "92bc8183_1fb3850a",
+      "range": {
+        "startLine": 2130,
+        "startChar": 0,
+        "endLine": 2132,
+        "endChar": 43
+      },
+      "revId": "20bb0d2f5c08235d6081cc0c4625e63c00b673ef",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "aec7eeba_859728de",
@@ -47,6 +71,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "ae56f00f_13a59275",
+        "filename": "test/hs-test/tls_profile_test.go",
+        "patchSetId": 3
+      },
+      "lineNbr": 424,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-03-24T15:03:46Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "aec7eeba_859728de",
+      "range": {
+        "startLine": 422,
+        "startChar": 1,
+        "endLine": 424,
+        "endChar": 2
+      },
+      "revId": "20bb0d2f5c08235d6081cc0c4625e63c00b673ef",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "af6d0cbc_e5482e04",
@@ -60,6 +108,30 @@
       "writtenOn": "2026-03-24T09:59:55Z",
       "side": 1,
       "message": "AssertEqual(true, foundGroup, ...",
+      "range": {
+        "startLine": 439,
+        "startChar": 0,
+        "endLine": 441,
+        "endChar": 2
+      },
+      "revId": "20bb0d2f5c08235d6081cc0c4625e63c00b673ef",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "488d84da_8851d941",
+        "filename": "test/hs-test/tls_profile_test.go",
+        "patchSetId": 3
+      },
+      "lineNbr": 441,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-03-24T15:03:46Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "af6d0cbc_e5482e04",
       "range": {
         "startLine": 439,
         "startChar": 0,
