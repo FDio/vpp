@@ -2095,6 +2095,44 @@ quic_quicly_ctx_attribute (quic_ctx_t *ctx, u8 is_get, transport_endpt_attr_t *a
 	  }
 	return -1;
       }
+    case TRANSPORT_ENDPT_ATTR_TLS_PROFILE_INFO:
+      {
+	ptls_t *tls;
+	ptls_cipher_suite_t *cipher;
+	ptls_key_exchange_algorithm_t **kexs;
+
+	if (quic_ctx_is_stream (ctx))
+	  ctx = quic_quicly_get_quic_ctx (ctx->quic_connection_ctx_id, ctx->c_thread_index);
+	if (!ctx->conn || !ptls_handshake_is_complete (quicly_get_tls (ctx->conn)))
+	  return -1;
+
+	tls = quicly_get_tls (ctx->conn);
+
+	cipher = ptls_get_cipher (tls);
+	if (cipher)
+	  attr->tls_profile_info.cipher = format (0, "%s", cipher->name);
+	else
+	  attr->tls_profile_info.cipher = 0;
+
+	/* QUIC always uses TLS 1.3 */
+	attr->tls_profile_info.tls_version = ptls_get_protocol_version (tls);
+
+	/* Picotls has no public API to retrieve the negotiated key exchange
+	 * group after the handshake.  As a best-effort, return the first
+	 * group from the configured key_exchanges list — which is what was
+	 * selected when the profile restricts to a single group. */
+	kexs = ptls_get_context (tls)->key_exchanges;
+	if (kexs && kexs[0])
+	  attr->tls_profile_info.key_agreement = format (0, "%s", kexs[0]->name);
+	else
+	  attr->tls_profile_info.key_agreement = 0;
+
+	/* Picotls has no public API for the negotiated signature algorithm;
+	 * leave NULL and extend when picotls exposes this information. */
+	attr->tls_profile_info.signature_algo = 0;
+
+	return 0;
+      }
     default:
       return -1;
     }
