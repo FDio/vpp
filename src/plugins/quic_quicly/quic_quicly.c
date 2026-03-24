@@ -615,6 +615,7 @@ quic_quicly_ack_rx_data (session_t *stream_session)
   quicly_stream_sync_recvbuf (stream, stream_data->app_rx_data_len - max_deq);
   QUIC_DBG (3, "Acking %u bytes", stream_data->app_rx_data_len - max_deq);
   stream_data->app_rx_data_len = max_deq;
+  ASSERT (stream_data->app_rx_data_len == quicly_recvstate_bytes_available (&stream->recvstate));
 
   /* Need to send packets (acks may never be sent otherwise) */
   if (sctx->flags & QUIC_F_STREAM_TX_DRAINED)
@@ -649,7 +650,7 @@ quic_quicly_on_receive (quicly_stream_t *stream, size_t off, const void *src,
 
   max_enq = svm_fifo_max_enqueue_prod (f);
   QUIC_DBG (3, "Enqueuing %u at off %u in %u space", len, off, max_enq);
-  /* Handle duplicate packet/chunk from quicly */
+  /* handle overlapping data */
   if (off < stream_data->app_rx_data_len)
     {
       QUIC_DBG (3,
@@ -659,7 +660,12 @@ quic_quicly_on_receive (quicly_stream_t *stream, size_t off, const void *src,
 		stream_session->session_index, stream_session->app_wrk_index,
 		stream_session->thread_index, f, max_enq, len, stream_data->app_rx_data_len, off,
 		off - stream_data->app_rx_data_len + len);
-      return;
+      /* do we already have exactly same piece of the data? */
+      if ((off + len) <= stream_data->app_rx_data_len)
+	return;
+      /* if we get something new adjust offset and length before enqueue (partially overlapping) */
+      len = (off + len) - stream_data->app_rx_data_len;
+      off = stream_data->app_rx_data_len;
     }
   if (PREDICT_FALSE ((off - stream_data->app_rx_data_len + len) > max_enq))
     {
@@ -693,6 +699,8 @@ quic_quicly_on_receive (quicly_stream_t *stream, size_t off, const void *src,
 		stream_session->thread_index, f, len, rlen, off, max_enq);
       stream_data->app_rx_data_len += rlen;
       QUIC_ASSERT (rlen >= len);
+      ASSERT (stream_data->app_rx_data_len ==
+	      quicly_recvstate_bytes_available (&stream->recvstate));
     }
   else
     {
@@ -706,11 +714,8 @@ quic_quicly_on_receive (quicly_stream_t *stream, size_t off, const void *src,
 	  return;
 	}
       QUIC_ASSERT (rlen == 0);
-      /* we are done if no new data is available */
-      u32 bytes_available = quicly_recvstate_bytes_available (&stream->recvstate);
-      if (stream_data->app_rx_data_len == bytes_available)
-	return;
-      stream_data->app_rx_data_len = bytes_available;
+      ASSERT (stream_data->app_rx_data_len ==
+	      quicly_recvstate_bytes_available (&stream->recvstate));
     }
 
   if (!(stream_session->flags & SESSION_F_RX_EVT))

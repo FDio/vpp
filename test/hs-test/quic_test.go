@@ -13,7 +13,8 @@ import (
 func init() {
 	RegisterVethTests(QuicAlpnMatchTest, QuicAlpnOverlapMatchTest, QuicAlpnServerPriorityMatchTest, QuicAlpnMismatchTest,
 		QuicAlpnEmptyServerListTest, QuicAlpnEmptyClientListTest, QuicBuiltinEchoTest, QuicCpsTest,
-		QuicBuiltinEchoBidirectionalTest, QuicBuiltinEchoTestBytesTest, QuicBuiltinEchoTestBytesBidirectionalTest)
+		QuicBuiltinEchoBidirectionalTest, QuicBuiltinEchoTestBytesTest, QuicBuiltinEchoTestBytesBidirectionalTest,
+		QuicReorderTest)
 	RegisterNoTopoTests(QuicFailedHandshakeTest)
 }
 
@@ -184,7 +185,6 @@ func QuicBuiltinEchoTestBytesTest(s *VethsSuite) {
 }
 
 func QuicBuiltinEchoTestBytesBidirectionalTest(s *VethsSuite) {
-	s.Skip("unstable, needs investigation")
 	serverVpp := s.Containers.ServerVpp.VppInstance
 	clientVpp := s.Containers.ClientVpp.VppInstance
 
@@ -216,4 +216,22 @@ func QuicCpsTest(s *VethsSuite) {
 	Log(clientVpp.Vppctl("show quic"))
 	Log(serverVpp.Vppctl("show quic crypto context"))
 	Log(clientVpp.Vppctl("show quic crypto context"))
+}
+
+func QuicReorderTest(s *VethsSuite) {
+	serverVpp := s.Containers.ServerVpp.VppInstance
+	clientVpp := s.Containers.ClientVpp.VppInstance
+	clientVpp.Vppctl("set nsim poll-main-thread delay 0.1 ms bandwidth 10 gbps packet-size 1460 packets-per-drop 100 packets-per-reorder 5")
+	clientVpp.Vppctl("nsim output-feature enable-disable " + s.Interfaces.Client.VppName())
+	Log(clientVpp.Vppctl("show nsim"))
+
+	serverVpp.Vppctl("set nsim poll-main-thread delay 0.1 ms bandwidth 10 gbps packet-size 1460 packets-per-drop 100 packets-per-reorder 5")
+	serverVpp.Vppctl("nsim output-feature enable-disable " + s.Interfaces.Server.VppName())
+	Log(serverVpp.Vppctl("show nsim"))
+
+	quicBuiltinEcho(s, true)
+	Log(serverVpp.Vppctl("show session verbose 2"))
+	Log(clientVpp.Vppctl("show session verbose 2"))
+	Log(serverVpp.Vppctl("show error"))
+	Log(clientVpp.Vppctl("show error"))
 }

@@ -912,6 +912,7 @@ func vppConnectProxyIperfUdp(s *MasqueSuite, extraArgs ...string) {
 	fileLog, _ := s.Containers.IperfServer.Exec(false, "cat "+IperfLogFileName(s.Containers.IperfServer))
 	Log("*** Server logs: \n%s\n***", fileLog)
 	AssertNil(err)
+	AssertNotContains(fileLog, "0.00 Bytes  0.00 bits/sec")
 }
 
 func VppConnectProxyIperfUdpTest(s *MasqueSuite) {
