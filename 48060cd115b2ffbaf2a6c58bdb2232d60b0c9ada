@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b1b17962_0445743b",
+        "filename": "src/vnet/session/transport.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1039,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-03-24T06:05:15Z",
+      "side": 1,
+      "message": "Let\u0027s do apply the `clib_max (pacer-\u003emin_burst, (u32) TRANSPORT_PACER_MIN_BURST)` constraint here not in spacer_set_pace_rate",
+      "revId": "48060cd115b2ffbaf2a6c58bdb2232d60b0c9ada",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
