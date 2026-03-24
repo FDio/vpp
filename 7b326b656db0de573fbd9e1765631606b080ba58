@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "cd3effa2_280f8eb5",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 19
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3306
+      },
+      "writtenOn": "2026-03-24T02:37:59Z",
+      "side": 1,
+      "message": "Addressed in the latest patch set.\n\n- Replaced the vendored MD5 implementation with VPP native crypto/hash support in CHAP-MD5.\n- Updated SPDX headers for the imported pppd files to satisfy checkstyle.\n- Updated the commit message to explain why this change includes both pppoeclient and the supporting pppox plugin.\n\nLatest CI is now passing.",
+      "revId": "7b326b656db0de573fbd9e1765631606b080ba58",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
