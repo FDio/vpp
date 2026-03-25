@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "50fac5ed_2bdcf395",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 16
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-03-25T21:49:50Z",
+      "side": 1,
+      "message": "After trying myself, this cannot work with workers, as today, dpdk plugin expect flows to be installed from main thread only (dpdk_flow_ops_fn calls dpdk_device_setup in the very first flow, which is expected to run on the main worker)",
+      "revId": "76f57c20e9654d9e2c6ce3c4915ef40914fcbfa2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
