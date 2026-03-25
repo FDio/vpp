@@ -118,7 +118,7 @@ cnat_timestamp_destroy (u32 index, bool is_v6)
 }
 
 always_inline index_t
-cnat_timestamp_new (u32 t, u32 fib_index, bool is_v6)
+cnat_timestamp_new (u32 t, u32 fib_index, u32 scope_id, bool is_v6)
 {
   index_t index = cnat_timestamp_alloc (fib_index, is_v6);
   if (PREDICT_FALSE (INDEX_INVALID == index))
@@ -126,6 +126,7 @@ cnat_timestamp_new (u32 t, u32 fib_index, bool is_v6)
   cnat_timestamp_t *ts = cnat_timestamp_get (index);
   ts->last_seen = t;
   ts->lifetime = cnat_main.session_max_age;
+  ts->scope_id = scope_id;
   /* Initial number of timestamps for a session
    * this will be incremented when adding the reverse
    * session in cnat_rsession_create */
@@ -191,7 +192,8 @@ cnat_lookup_create_or_return (vlib_buffer_t *b, int rv, cnat_bihash_kv_t *bkey,
     {
       if (!alloc_if_not_found)
 	goto err;
-      index_t session_index = cnat_timestamp_new (now, ksession->key.fib_index, is_v6);
+      index_t session_index =
+	cnat_timestamp_new (now, ksession->key.cs_fib_index, ksession->key.cs_scope_id, is_v6);
       ASSERT ((session_index < CNAT_MAX_SESSIONS || INDEX_INVALID == session_index));
       if (PREDICT_FALSE (session_index >= CNAT_MAX_SESSIONS))
 	goto err; /* too many sessions */
@@ -209,7 +211,7 @@ cnat_lookup_create_or_return (vlib_buffer_t *b, int rv, cnat_bihash_kv_t *bkey,
       ts->cts_rewrites[CNAT_LOCATION_INPUT].tuple = ksession->key.cs_5tuple;
       /* store the forward fib_index in the canonical FIB slot so
        * cnat_get_rsession_from_ts can reconstruct the reverse session key */
-      ts->cts_rewrites[CNAT_LOCATION_FIB].rw_fib_index = ksession->key.fib_index;
+      ts->cts_rewrites[CNAT_LOCATION_FIB].rw_fib_index = ksession->key.cs_fib_index;
     }
   else
     goto err;
@@ -245,7 +247,7 @@ cnat_get_rsession_from_ts (cnat_timestamp_t *ts, const cnat_timestamp_direction_
   cnat_timestamp_direction_t rdir = (dir == CNAT_IS_FWD) ? CNAT_IS_RETURN : CNAT_IS_FWD;
   /* fib_index always comes from the dedicated FIB slot, independent of
    * which rewrite location provides the 5-tuple below */
-  session->key.fib_index = ts->cts_rewrites[CNAT_LOCATION_FIB + rdir].rw_fib_index;
+  session->key.cs_fib_index = ts->cts_rewrites[CNAT_LOCATION_FIB + rdir].rw_fib_index;
   u8 locations[] = { CNAT_LOCATION_OUTPUT, CNAT_LOCATION_FIB, CNAT_LOCATION_INPUT };
   int i;
   for (i = 0; i < ARRAY_LEN (locations); i++)

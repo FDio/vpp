@@ -37,7 +37,19 @@ typedef struct cnat_session_t_
        * IP 4/6 address, ports in the rx/tx direction & iproto
        */
       cnat_5tuple_t cs_5tuple;
-      u32 fib_index;
+      /**
+       * FIB index for VRF scoping.
+       */
+      u32 cs_fib_index;
+      /**
+       * Caller-defined scope identifier to disambiguate sessions
+       * with identical 5-tuples and fib_index (e.g. overlays,
+       * multi-tenant contexts). CNAT_SCOPE_ID_NONE means no scope;
+       * effective range for an active scope is the value an
+       * external feature stores in the vlib buffer's generic
+       * flow_id field before CNAT lookup.
+       */
+      u32 cs_scope_id;
     };
     u64 as_u64[6];
   } key;
@@ -93,13 +105,32 @@ typedef enum cnat_session_flag_t_
 
 } cnat_session_flag_t;
 
-/* flags for vnet_buffer(b)->session.flags */
+/* flags for vnet_buffer2(b)->session.flags (4-bit field) */
 typedef enum cnat_buffer_session_flag_t_
 {
   /* do not create a return session in output */
   CNAT_BUFFER_SESSION_FLAG_NO_RETURN = (1 << 1),
 } cnat_buffer_session_flag_t;
 STATIC_ASSERT (CNAT_BUFFER_SESSION_FLAG_NO_RETURN < (1 << 4), "Value too big");
+
+/*
+ * Scope is carried in the generic vlib buffer flow_id field by external
+ * features (eg. multi-tenant overlays) before CNAT lookup, and used to
+ * populate cs_scope_id in the session key. CNAT_SCOPE_ID_NONE means
+ * the session has no scope set.
+ *
+ * The flow_id slot has no other meaning to CNAT before lookup; CNAT
+ * itself does not write it pre-lookup. Features that need to carry a
+ * different value through CNAT must use a different buffer field.
+ */
+#define CNAT_SCOPE_ID_NONE 0
+#define cnat_scope_id(b)   ((u32) (b)->flow_id)
+
+static_always_inline void
+cnat_set_scope_id (vlib_buffer_t *b, u32 scope_id)
+{
+  b->flow_id = scope_id;
+}
 
 extern u8 *format_cnat_timestamp (u8 *s, va_list *args);
 extern u8 *format_cnat_session (u8 * s, va_list * args);
