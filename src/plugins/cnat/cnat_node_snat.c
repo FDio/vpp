@@ -104,9 +104,8 @@ cnat_snat_feature_new_flow_inline (vlib_main_t *vm, vlib_node_runtime_t *node, v
   clib_atomic_add_fetch (&ts->ts_session_refcnt, 1);
 
   int sport_retries, sport_failures;
-  cnat_rsession_create (rw, vnet_buffer2 (b)->session.generic_flow_id, ret_fib_index,
-			0 /* add client */, &rw->tuple.port[VLIB_RX], &sport_retries,
-			&sport_failures);
+  cnat_rsession_create (rw, vnet_buffer2 (b)->session.generic_flow_id, ret_fib_index, 0 /* add client */,
+			&rw->tuple.port[VLIB_RX], &sport_retries, &sport_failures);
   if (sport_retries)
     {
       vlib_node_increment_counter (vm, node->node_index, CNAT_ERROR_RETRIES_PORTS, 1);
