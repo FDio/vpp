@@ -1727,7 +1727,10 @@ tcp_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 
   ASSERT (tcp_in_cong_recovery (tc));
 
-  burst_bytes = transport_connection_tx_pacer_burst (&tc->connection);
+  if (transport_connection_is_tx_paced (&tc->connection))
+    burst_bytes = transport_connection_tx_pacer_burst (&tc->connection);
+  else
+    burst_bytes = burst_size * tc->snd_mss;
   burst_size = clib_min (burst_size, burst_bytes / tc->snd_mss);
   if (!burst_size)
     {
@@ -1865,7 +1868,8 @@ tcp_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 
 done:
 
-  transport_connection_tx_pacer_reset_bucket (&tc->connection, 0);
+  if (transport_connection_is_tx_paced (&tc->connection))
+    transport_connection_tx_pacer_reset_bucket (&tc->connection, 0);
   return n_segs;
 }
 
@@ -1886,7 +1890,10 @@ tcp_retransmit_no_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
   ASSERT (tcp_in_cong_recovery (tc));
   TCP_EVT (TCP_EVT_CC_EVT, tc, 0);
 
-  burst_bytes = transport_connection_tx_pacer_burst (&tc->connection);
+  if (transport_connection_is_tx_paced (&tc->connection))
+    burst_bytes = transport_connection_tx_pacer_burst (&tc->connection);
+  else
+    burst_bytes = burst_size * tc->snd_mss;
   burst_size = clib_min (burst_size, burst_bytes / tc->snd_mss);
   if (!burst_size)
     {
@@ -1948,7 +1955,8 @@ done:
 
   sent_bytes = clib_min (n_segs * tc->snd_mss, burst_bytes);
   sent_bytes = cc_limited ? burst_bytes : sent_bytes;
-  transport_connection_tx_pacer_update_bytes (&tc->connection, sent_bytes);
+  if (transport_connection_is_tx_paced (&tc->connection))
+    transport_connection_tx_pacer_update_bytes (&tc->connection, sent_bytes);
 
   return n_segs;
 }
