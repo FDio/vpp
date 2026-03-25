@@ -37,6 +37,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "db724d3e_bb63ab72",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 13
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1863
+      },
+      "writtenOn": "2026-03-25T07:09:46Z",
+      "side": 1,
+      "message": "Agreed. We’ll take this forward and incorporate it in the updated patch set. \nThanks.",
+      "parentUuid": "c2664fce_f3399a2f",
+      "revId": "5df859cdda4cbe16ca00b72309d3efb964cb574f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "8ef4164f_0b59c4d9",
         "filename": "src/vnet/tm/tm.c",
         "patchSetId": 13
@@ -48,6 +66,24 @@
       "writtenOn": "2026-03-19T22:05:19Z",
       "side": 1,
       "message": "All of these functions like tm_sys_node_add(), tm_sys_node_suspend(), etc return 0 unconditionally. The callbacks being invoked (node_add, node_suspend, etc) have an integer return value. I presume that it might be possible for the callbacks to fail. Why not return the value returned by the callback?\n\nI also think that you should check if dev_class-\u003etm_sys_impl is null and return VNET_API_ERR_UNIMPLEMENTED if that\u0027s true before trying to invoke one of the callbacks.",
+      "revId": "5df859cdda4cbe16ca00b72309d3efb964cb574f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5ac0385d_29c4f610",
+        "filename": "src/vnet/tm/tm.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 74,
+      "author": {
+        "id": 1863
+      },
+      "writtenOn": "2026-03-25T07:09:46Z",
+      "side": 1,
+      "message": "Yes, I am updating the patch to propagate the callback return values and also to handle the NULL callbacks properly. Will post an updated version shortly.",
+      "parentUuid": "8ef4164f_0b59c4d9",
       "revId": "5df859cdda4cbe16ca00b72309d3efb964cb574f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
