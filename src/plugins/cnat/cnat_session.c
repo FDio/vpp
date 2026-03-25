@@ -118,7 +118,12 @@ format_cnat_session (u8 * s, va_list * args)
   cnat_timestamp_t *ts = NULL;
 
   ts = cnat_timestamp_get (sess->value.cs_session_index);
-  s = format (s, "%U => [%U]\n%U%U", format_cnat_5tuple, &sess->key.cs_5tuple,
+  s = format (s, "fib:%d", sess->key.cs_fib_index);
+  if (sess->key.cs_scope_id != CNAT_SCOPE_ID_NONE)
+    s = format (s, " scope:%u", sess->key.cs_scope_id);
+  else
+    s = format (s, " scope:none");
+  s = format (s, " %U => [%U]\n%U%U", format_cnat_5tuple, &sess->key.cs_5tuple,
 	      format_cnat_session_flags, sess->value.cs_flags, format_white_space, indent + 2,
 	      format_cnat_timestamp, ts, indent + 2);
 
@@ -147,6 +152,7 @@ typedef struct
   ip46_address_t ip;
   f64 start;
   u32 fib_index;
+  u32 scope_id;
   u32 flags;
   int verbose;
   int max;
@@ -163,7 +169,10 @@ cnat_session_show_cbak (BVT (clib_bihash_kv) * kvp, void *arg)
 
   cnat_show_yield (a->vm, &a->start);
 
-  if (a->fib_index != ~0 && a->fib_index != s->key.fib_index)
+  if (a->fib_index != ~0u && a->fib_index != s->key.cs_fib_index)
+    return BIHASH_WALK_CONTINUE;
+
+  if (a->scope_id != ~0u && a->scope_id != s->key.cs_scope_id)
     return BIHASH_WALK_CONTINUE;
 
   if (a->flags && a->flags != (a->flags & s->value.cs_flags))
@@ -209,7 +218,8 @@ cnat_session_show (vlib_main_t * vm,
 
   arg.vm = vm;
   arg.start = vlib_time_now (vm);
-  arg.fib_index = ~0;
+  arg.fib_index = ~0u;
+  arg.scope_id = ~0u;
   arg.max = 50;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -245,7 +255,15 @@ cnat_session_show (vlib_main_t * vm,
 	{
 	  arg.verbose = 1;
 	}
+      else if (unformat (input, "ctx %u", &arg.fib_index))
+	{
+	  arg.verbose = 1;
+	}
       else if (unformat (input, "fib %u", &arg.fib_index))
+	{
+	  arg.verbose = 1;
+	}
+      else if (unformat (input, "scope %u", &arg.scope_id))
 	{
 	  arg.verbose = 1;
 	}
@@ -268,7 +286,8 @@ VLIB_CLI_COMMAND (cnat_session_show_cmd_node, static) = {
   .path = "show cnat session",
   .function = cnat_session_show,
   .short_help = "show cnat session [verbose] [return] [ip <ip>] [port <port>] "
-		"[proto <proto>] [ref <ref>] [max <max>]",
+		"[proto <proto>] [ref <ref>] [max <max>] [ctx <id>] [fib <id>] "
+		"[scope <id>]",
   .is_mp_safe = 1,
 };
 
@@ -278,7 +297,7 @@ cnat_session_free__ (cnat_session_t *session)
   cnat_log_session_free (session);
   if (session->value.cs_flags & CNAT_SESSION_FLAG_HAS_CLIENT)
     {
-      cnat_client_free_by_ip (&session->key.cs_5tuple.ip[VLIB_TX], session->key.fib_index,
+      cnat_client_free_by_ip (&session->key.cs_5tuple.ip[VLIB_TX], session->key.cs_fib_index,
 			      1 /* is_session */);
     }
   cnat_timestamp_free (session->value.cs_session_index,
@@ -340,7 +359,8 @@ cnat_reverse_session_key (cnat_session_t *rsession, const cnat_timestamp_t *ts,
   rrw = &ts->cts_rewrites[rrw_index];
 
   cnat_5tuple_copy (&rsession->key.cs_5tuple, &rw->tuple, 1);
-  rsession->key.fib_index = rrw->fib_index;
+  rsession->key.cs_fib_index = rrw->fib_index;
+  rsession->key.cs_scope_id = ts->scope_id;
   return 1;
 }
 
@@ -383,7 +403,8 @@ cnat_reverse_session_free (cnat_session_t *session)
     {
       /* nothing found, try to just swap the 5tuple... */
       cnat_5tuple_copy (&rsession->key.cs_5tuple, &session->key.cs_5tuple, 1 /* swap */);
-      rsession->key.fib_index = session->key.fib_index;
+      rsession->key.cs_fib_index = session->key.cs_fib_index;
+      rsession->key.cs_scope_id = session->key.cs_scope_id;
     }
 
   if (memcmp (&rsession->key, &session->key, sizeof (session->key)) == 0)

@@ -48,6 +48,8 @@ typedef struct cnat_trace_element_t_
   u32 snat_policy_result;
   u32 generic_flow_id;
   u32 flow_state;
+  u32 lookup_fib_index;
+  u32 lookup_scope_id;
   u8 flags;
 } cnat_trace_element_t;
 
@@ -55,7 +57,8 @@ typedef enum cnat_trace_element_flag_t_
 {
   CNAT_TRACE_SESSION_FOUND = (1 << 0),
   CNAT_TRACE_SESSION_CREATED = (1 << 1),
-  CNAT_TRACE_REWRITE_FOUND = (1 << 3)
+  CNAT_TRACE_REWRITE_FOUND = (1 << 3),
+  CNAT_TRACE_LOOKUP_KEY = (1 << 4),
 } cnat_trace_element_flag_t;
 
 static_always_inline void
@@ -77,7 +80,9 @@ cnat_add_trace (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *b,
   if (ts)
     clib_memcpy (&t->ts, ts, sizeof (cnat_timestamp_t));
 
-  t->flags = 0;
+  t->lookup_fib_index = vnet_buffer (b)->ip.fib_index;
+  t->lookup_scope_id = ts ? ts->scope_id : CNAT_SCOPE_ID_NONE;
+  t->flags = CNAT_TRACE_LOOKUP_KEY;
   if (rw)
     {
       clib_memcpy (&t->rw, rw, sizeof (cnat_timestamp_rewrite_t));
@@ -919,8 +924,8 @@ cnat_rsession_create_client (cnat_timestamp_rewrite_t *rw, u32 ret_fib_index)
  * the ingress traffic with the rewrite operation 'rw' applied
  * */
 static_always_inline void
-cnat_rsession_create (cnat_timestamp_rewrite_t *rw, u32 flow_id, u32 ret_fib_index, int add_client,
-		      u16 *sport, int *sport_retries, int *sport_failures)
+cnat_rsession_create (cnat_timestamp_rewrite_t *rw, u32 flow_id, u32 ret_fib_index, u32 scope_id,
+		      int add_client, u16 *sport, int *sport_retries, int *sport_failures)
 {
   cnat_bihash_kv_t rkey = { 0 };
   cnat_session_t *rsession = (cnat_session_t *) &rkey;
@@ -934,7 +939,8 @@ cnat_rsession_create (cnat_timestamp_rewrite_t *rw, u32 flow_id, u32 ret_fib_ind
 
   /* create the reverse flow key */
   cnat_5tuple_copy (&rsession->key.cs_5tuple, &rw->tuple, 1 /* swap */);
-  rsession->key.fib_index = ret_fib_index;
+  rsession->key.cs_fib_index = ret_fib_index;
+  rsession->key.cs_scope_id = scope_id;
 
   rsession->value.cs_session_index = flow_id;
   rsession->value.cs_flags = CNAT_SESSION_IS_RETURN;
@@ -1087,10 +1093,14 @@ cnat_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *fr
       ip_lookup_set_buffer_fib_index (fib_index_by_sw_if_index, b[2]);
       ip_lookup_set_buffer_fib_index (fib_index_by_sw_if_index, b[3]);
 
-      session[0]->key.fib_index = vnet_buffer (b[0])->ip.fib_index;
-      session[1]->key.fib_index = vnet_buffer (b[1])->ip.fib_index;
-      session[2]->key.fib_index = vnet_buffer (b[2])->ip.fib_index;
-      session[3]->key.fib_index = vnet_buffer (b[3])->ip.fib_index;
+      session[0]->key.cs_fib_index = vnet_buffer (b[0])->ip.fib_index;
+      session[0]->key.cs_scope_id = cnat_scope_id (b[0]);
+      session[1]->key.cs_fib_index = vnet_buffer (b[1])->ip.fib_index;
+      session[1]->key.cs_scope_id = cnat_scope_id (b[1]);
+      session[2]->key.cs_fib_index = vnet_buffer (b[2])->ip.fib_index;
+      session[2]->key.cs_scope_id = cnat_scope_id (b[2]);
+      session[3]->key.cs_fib_index = vnet_buffer (b[3])->ip.fib_index;
+      session[3]->key.cs_scope_id = cnat_scope_id (b[3]);
 
       hash[0] = cnat_bihash_hash (&bkey[0]);
       hash[1] = cnat_bihash_hash (&bkey[1]);
@@ -1120,8 +1130,7 @@ cnat_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *fr
       rv[0] = cnat_bihash_search_i2_hash (&cnat_session_db, hash[0], &bkey[0], &bvalue[0]);
       cnat_lookup_create_or_return (b[0], rv[0], &bkey[0], &bvalue[0], now, hash[0], is_v6,
 				    alloc_if_not_found);
-      rv[1] = cnat_bihash_search_i2_hash (&cnat_session_db, hash[1], &bkey[1],
-					  &bvalue[1]);
+      rv[1] = cnat_bihash_search_i2_hash (&cnat_session_db, hash[1], &bkey[1], &bvalue[1]);
       cnat_lookup_create_or_return (b[1], rv[1], &bkey[1], &bvalue[1], now, hash[1], is_v6,
 				    alloc_if_not_found);
       rv[2] = cnat_bihash_search_i2_hash (&cnat_session_db, hash[2], &bkey[2], &bvalue[2]);
@@ -1151,10 +1160,14 @@ cnat_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *fr
 	  ip_lookup_set_buffer_fib_index (fib_index_by_sw_if_index, b[6]);
 	  ip_lookup_set_buffer_fib_index (fib_index_by_sw_if_index, b[7]);
 
-	  session[0]->key.fib_index = vnet_buffer (b[4])->ip.fib_index;
-	  session[1]->key.fib_index = vnet_buffer (b[5])->ip.fib_index;
-	  session[2]->key.fib_index = vnet_buffer (b[6])->ip.fib_index;
-	  session[3]->key.fib_index = vnet_buffer (b[7])->ip.fib_index;
+	  session[0]->key.cs_fib_index = vnet_buffer (b[4])->ip.fib_index;
+	  session[0]->key.cs_scope_id = cnat_scope_id (b[4]);
+	  session[1]->key.cs_fib_index = vnet_buffer (b[5])->ip.fib_index;
+	  session[1]->key.cs_scope_id = cnat_scope_id (b[5]);
+	  session[2]->key.cs_fib_index = vnet_buffer (b[6])->ip.fib_index;
+	  session[2]->key.cs_scope_id = cnat_scope_id (b[6]);
+	  session[3]->key.cs_fib_index = vnet_buffer (b[7])->ip.fib_index;
+	  session[3]->key.cs_scope_id = cnat_scope_id (b[7]);
 
 	  hash[0] = cnat_bihash_hash (&bkey[0]);
 	  hash[1] = cnat_bihash_hash (&bkey[1]);
@@ -1203,7 +1216,8 @@ cnat_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *fr
 
       cnat_make_buffer_5tuple (b[0], af, (cnat_5tuple_t *) &bkey[0], 0, 0);
       ip_lookup_set_buffer_fib_index (fib_index_by_sw_if_index, b[0]);
-      session[0]->key.fib_index = vnet_buffer (b[0])->ip.fib_index;
+      session[0]->key.cs_fib_index = vnet_buffer (b[0])->ip.fib_index;
+      session[0]->key.cs_scope_id = cnat_scope_id (b[0]);
       hash[0] = cnat_bihash_hash (&bkey[0]);
 
       rv[0] = cnat_bihash_search_i2_hash (&cnat_session_db, hash[0], &bkey[0], &bvalue[0]);
