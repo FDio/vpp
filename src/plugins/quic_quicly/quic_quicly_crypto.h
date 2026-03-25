@@ -64,6 +64,7 @@ typedef struct quic_quicly_crypto_ctx_
   char cid_key[QUIC_IV_LEN];
   ptls_context_t ptls_ctx;
   tls_verify_cfg_t verify_cfg;
+  u32 ca_trust_index;
   quic_quicly_verify_certificate_t verify_cert;
   quic_quicly_on_client_hello_t client_hello_ctx;
   u32 tls_profile_index; /**< TLS profile index baked into this context (~0 = defaults) */

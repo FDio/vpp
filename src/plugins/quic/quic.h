@@ -180,6 +180,7 @@ typedef struct quic_ctx_
   u32 tls_profile_index; /**< TLS profile index, ~0 = use defaults */
   crypto_engine_type_t crypto_engine;
   tls_verify_cfg_t verify_cfg;
+  u32 ca_trust_index;
   u32 crypto_context_index;
   u8 alpn_protos[4];
   tls_alpn_proto_t alpn_selected;

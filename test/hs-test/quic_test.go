@@ -3,7 +3,9 @@ package main
 import (
 	"context"
 	"crypto/tls"
+	"fmt"
 	"regexp"
+	"strings"
 	"time"
 
 	. "fd.io/hs-test/infra"
@@ -14,8 +16,44 @@ func init() {
 	RegisterVethTests(QuicAlpnMatchTest, QuicAlpnOverlapMatchTest, QuicAlpnServerPriorityMatchTest, QuicAlpnMismatchTest,
 		QuicAlpnEmptyServerListTest, QuicAlpnEmptyClientListTest, QuicBuiltinEchoTest, QuicCpsTest,
 		QuicBuiltinEchoBidirectionalTest, QuicBuiltinEchoTestBytesTest, QuicBuiltinEchoTestBytesBidirectionalTest,
-		QuicReorderTest)
+		QuicReorderTest, QuicCrlRejectThenAllowTest)
 	RegisterNoTopoTests(QuicFailedHandshakeTest)
+}
+
+func QuicCrlRejectThenAllowTest(s *VethsSuite) {
+	serverVpp := s.Containers.ServerVpp.VppInstance
+	clientVpp := s.Containers.ClientVpp.VppInstance
+	serverAddress := s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1
+	a := createTlsCrlTestArtifacts(s, "quic")
+
+	Log(serverVpp.Vppctl("test tls server cert " + a.serverCert + " key " + a.serverKey + " uri quic://" + serverAddress))
+
+	uri := "quic://" + serverAddress
+	o := clientVpp.Vppctl("test tls client verify peer ca-cert " + a.caCert + " crl " + a.crl + " uri " + uri)
+	Log(o)
+	AssertContains(o, "connect error failed tls handshake")
+
+	o = serverVpp.Vppctl("show test tls server")
+	Log(o)
+	acceptedAfterFail := quicGetAcceptedConnections(o)
+
+	o = clientVpp.Vppctl("test tls client verify peer ca-cert " + a.caCert + " uri " + uri)
+	Log(o)
+	AssertNotContains(o, "connect failed")
+	AssertNotContains(o, "timeout")
+	AssertNotContains(o, "failed tls handshake")
+
+	o = serverVpp.Vppctl("show test tls server")
+	Log(o)
+	acceptedAfterSuccess := quicGetAcceptedConnections(o)
+	AssertEqual(acceptedAfterFail+1, acceptedAfterSuccess)
+}
+
+func quicGetAcceptedConnections(out string) int {
+	var accepted int
+	_, err := fmt.Sscanf(strings.TrimSpace(out), "accepted connections %d", &accepted)
+	AssertNil(err)
+	return accepted
 }
 
 func QuicAlpnMatchTest(s *VethsSuite) {

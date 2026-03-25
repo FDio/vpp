@@ -6,6 +6,7 @@
 #include <vnet/session/application.h>
 #include <vnet/session/session.h>
 #include <vnet/session/application_crypto.h>
+#include <vppinfra/unix.h>
 
 typedef struct
 {
@@ -16,6 +17,9 @@ typedef struct
   u32 ca_trust_index;
   u32 tls_profile_index;
   u8 cert_type; /* 0 = RSA (default), 1 = ECDSA */
+  u8 *ca_cert_file;
+  u8 *crl_file;
+  tls_verify_cfg_t verify_cfg;
   u32 cli_node_index;
   session_endpoint_cfg_t connect_sep;
   tls_alpn_proto_t alpn_proto_selected;
@@ -157,6 +161,9 @@ tc_attach ()
 {
   tls_client_main_t *cm = &tls_client_main;
   vnet_app_attach_args_t _a, *a = &_a;
+  app_ca_trust_add_args_t _ca_args = {}, *ca_args = &_ca_args;
+  clib_error_t *error;
+  u8 *ca_chain = 0, *crl = 0;
   u64 options[18];
   vnet_app_add_cert_key_pair_args_t _ck_pair, *ck_pair = &_ck_pair;
 
@@ -184,17 +191,10 @@ tc_attach ()
   clib_memset (ck_pair, 0, sizeof (*ck_pair));
   if (cm->cert_type == 1)
     {
-      app_ca_trust_add_args_t _ca_args = {}, *ca_args = &_ca_args;
       ck_pair->cert = (u8 *) test_srv_crt_ecdsa;
       ck_pair->key = (u8 *) test_srv_key_ecdsa;
       ck_pair->cert_len = test_srv_crt_ecdsa_len;
       ck_pair->key_len = test_srv_key_ecdsa_len;
-      vnet_app_add_cert_key_pair (ck_pair);
-      cm->ckpair_index = ck_pair->index;
-      vec_validate (ca_args->ca_chain, test_ca_chain_ecdsa_len - 1);
-      clib_memcpy (ca_args->ca_chain, test_ca_chain_ecdsa, test_ca_chain_ecdsa_len);
-      app_crypto_add_ca_trust (cm->app_index, ca_args);
-      cm->ca_trust_index = ca_args->index;
     }
   else
     {
@@ -202,8 +202,59 @@ tc_attach ()
       ck_pair->key = (u8 *) test_srv_key_rsa;
       ck_pair->cert_len = test_srv_crt_rsa_len;
       ck_pair->key_len = test_srv_key_rsa_len;
-      vnet_app_add_cert_key_pair (ck_pair);
-      cm->ckpair_index = ck_pair->index;
+    }
+
+  if (vnet_app_add_cert_key_pair (ck_pair))
+    return -1;
+  cm->ckpair_index = ck_pair->index;
+
+  if (cm->ca_cert_file)
+    {
+      error = clib_file_contents ((char *) cm->ca_cert_file, &ca_chain);
+      if (error)
+	{
+	  clib_warning ("failed to read ca cert file %s: %U", cm->ca_cert_file, format_clib_error,
+			error);
+	  clib_error_free (error);
+	  return -1;
+	}
+
+      if (cm->crl_file)
+	{
+	  error = clib_file_contents ((char *) cm->crl_file, &crl);
+	  if (error)
+	    {
+	      clib_warning ("failed to read crl file %s: %U", cm->crl_file, format_clib_error,
+			    error);
+	      clib_error_free (error);
+	      vec_free (ca_chain);
+	      return -1;
+	    }
+	}
+
+      ca_args->ca_chain = ca_chain;
+      ca_args->crl = crl;
+      if (app_crypto_add_ca_trust (cm->app_index, ca_args))
+	{
+	  vec_free (ca_chain);
+	  vec_free (crl);
+	  return -1;
+	}
+      cm->ca_trust_index = ca_args->index;
+    }
+  else if (cm->cert_type == 1)
+    {
+      vec_validate (ca_args->ca_chain, test_ca_chain_ecdsa_len - 1);
+      clib_memcpy (ca_args->ca_chain, test_ca_chain_ecdsa, test_ca_chain_ecdsa_len);
+      if (app_crypto_add_ca_trust (cm->app_index, ca_args))
+	{
+	  vec_free (ca_args->ca_chain);
+	  return -1;
+	}
+      cm->ca_trust_index = ca_args->index;
+    }
+  else
+    {
       cm->ca_trust_index = 0;
     }
 
@@ -251,6 +302,7 @@ tc_connect ()
   ext_cfg->crypto.ckpair_index = cm->ckpair_index;
   ext_cfg->crypto.tls_profile_index = cm->tls_profile_index;
   ext_cfg->crypto.ca_trust_index = cm->ca_trust_index;
+  ext_cfg->crypto.verify_cfg = cm->verify_cfg;
   clib_memcpy (ext_cfg->crypto.alpn_protos, cm->alpn_protos, 4);
 
   tc_program_connect (a);
@@ -329,6 +381,9 @@ tls_client_run_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_co
   cm->tls_profile_index = ~0;
   cm->ca_trust_index = 0;
   cm->cert_type = 0;
+  cm->verify_cfg = 0;
+  cm->ca_cert_file = 0;
+  cm->crl_file = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return clib_error_return (0, "expected URI");
@@ -349,6 +404,20 @@ tls_client_run_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_co
 	;
       else if (unformat (line_input, "profile-index %d", &cm->tls_profile_index))
 	;
+      else if (unformat (line_input, "ca-cert %s", &cm->ca_cert_file))
+	;
+      else if (unformat (line_input, "crl %s", &cm->crl_file))
+	;
+      else if (unformat (line_input, "verify none"))
+	cm->verify_cfg = TLS_VERIFY_F_NONE;
+      else if (unformat (line_input, "verify peer-cert"))
+	cm->verify_cfg |= TLS_VERIFY_F_PEER_CERT;
+      else if (unformat (line_input, "verify peer"))
+	cm->verify_cfg |= TLS_VERIFY_F_PEER;
+      else if (unformat (line_input, "verify hostname-strict"))
+	cm->verify_cfg |= TLS_VERIFY_F_HOSTNAME_STRICT;
+      else if (unformat (line_input, "verify hostname"))
+	cm->verify_cfg |= TLS_VERIFY_F_HOSTNAME;
       else if (unformat (line_input, "cert-type ecdsa"))
 	cm->cert_type = 1;
       else if (unformat (line_input, "cert-type rsa"))
@@ -366,6 +435,11 @@ tls_client_run_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_co
   if (cm->uri == 0)
     {
       error = clib_error_return (0, "uri not defined");
+      goto done;
+    }
+  if (cm->crl_file && !cm->ca_cert_file)
+    {
+      error = clib_error_return (0, "crl requires ca-cert");
       goto done;
     }
 
@@ -394,6 +468,8 @@ tls_client_run_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_co
 
 done:
   vec_free (cm->uri);
+  vec_free (cm->ca_cert_file);
+  vec_free (cm->crl_file);
   vec_free (cm->negotiated_cipher);
   vec_free (cm->negotiated_key_agreement);
   vec_free (cm->negotiated_signature_algo);
@@ -404,7 +480,8 @@ done:
 VLIB_CLI_COMMAND (tls_client_run_command, static) = {
   .path = "test tls client",
   .short_help = "test tls client [uri <tls://ip/port>] [tls-engine %d] "
-		"[profile-index %d]",
+		"[profile-index %d] [verify <mode>] [ca-cert <ca-cert-file>] "
+		"[crl <crl-file>]",
   .function = tls_client_run_command_fn,
 };
 
