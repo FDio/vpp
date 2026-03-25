@@ -1554,11 +1554,22 @@ session_reset (session_t * s)
     return;
   s->flags |= SESSION_F_APP_CLOSED;
   s->flags &= ~SESSION_F_CUSTOM_FIFO_TUNING;
-  /* Drop all outstanding tx data
+
+  if (s->session_state >= SESSION_STATE_CLOSING)
+    {
+      /* Session will only be removed once both app and transport
+       * acknowledge the close */
+      if (s->session_state == SESSION_STATE_TRANSPORT_CLOSED ||
+	  s->session_state == SESSION_STATE_TRANSPORT_DELETED)
+	session_program_transport_ctrl_evt (s, SESSION_CTRL_EVT_RESET);
+      return;
+    }
+
+  /* App closed so stop propagating dequeue notifications.
    * App might disconnect session before connected, in this case,
    * tx_fifo may not be setup yet, so clear only it's inited. */
   if (s->tx_fifo)
-    svm_fifo_dequeue_drop_all (s->tx_fifo);
+    svm_fifo_clear_deq_ntf (s->tx_fifo);
   session_set_state (s, SESSION_STATE_CLOSING);
   session_program_transport_ctrl_evt (s, SESSION_CTRL_EVT_RESET);
 }
