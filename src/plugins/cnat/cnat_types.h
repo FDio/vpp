@@ -226,6 +226,12 @@ typedef struct cnat_timestamp_t_
 
   u32 fib_index;
 
+  /* Scope identifier for diagnostic tracing. Stored at forward session
+   * creation because the buffer's HAS_SCOPE flag is cleared before trace
+   * runs. Adds 4 bytes per timestamp (+64 MB worst-case at 16M sessions).
+   * CNAT_SCOPE_ID_NONE when unscoped. */
+  u32 scope_id;
+
   /* expire after N seconds */
   u16 lifetime;
 
