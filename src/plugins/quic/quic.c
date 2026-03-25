@@ -122,6 +122,7 @@ quic_connect_connection (transport_endpoint_cfg_t *tep)
   quic_ctx_set_alpn_protos (ctx, ccfg);
   ctx->crypto_engine = ccfg->crypto_engine;
   ctx->verify_cfg = ccfg->verify_cfg;
+  ctx->ca_trust_index = ccfg->ca_trust_index;
   ctx->ckpair_index = ccfg->ckpair_index;
   ctx->tls_profile_index = ccfg->tls_profile_index;
   error = quic_eng_crypto_context_acquire_connect (ctx);
@@ -299,6 +300,7 @@ quic_start_listen (u32 quic_listen_session_index,
   quic_ctx_set_alpn_protos (lctx, ccfg);
   lctx->crypto_engine = ccfg->crypto_engine;
   lctx->verify_cfg = ccfg->verify_cfg;
+  lctx->ca_trust_index = ccfg->ca_trust_index;
   lctx->ckpair_index = ccfg->ckpair_index;
   lctx->tls_profile_index = ccfg->tls_profile_index;
   if ((rv = quic_eng_crypto_context_acquire_listen (lctx)))
