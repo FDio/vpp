@@ -1778,8 +1778,10 @@ tcp_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 
   while (snd_space > 0 && n_segs < burst_size)
     {
-      hole = scoreboard_next_rxt_hole (sb, hole, max_deq != 0, &can_rescue,
-				       &snd_limited);
+      /* If holes remain, do not let available unsent data delay recovery. */
+      hole = scoreboard_next_rxt_hole (sb, hole,
+				       pool_elts (sb->holes) ? 0 : max_deq != 0,
+				       &can_rescue, &snd_limited);
       if (!hole)
 	{
 	  /* We are out of lost holes to retransmit so send some new data. */
@@ -1787,6 +1789,12 @@ tcp_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 	    {
 	      u32 n_segs_new;
 	      int av_wnd;
+
+	      if (pool_elts (sb->holes))
+		{
+		  tcp_program_retransmit (tc);
+		  goto done;
+		}
 
 	      /* Make sure we don't exceed available window and leave space
 	       * for one more packet, to avoid zero window acks */
