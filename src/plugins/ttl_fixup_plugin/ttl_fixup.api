@@ -1,0 +1,72 @@
+/* Hey Emacs use -*- mode: C -*- */
+/* SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2025 Cisco Systems, Inc.
+ */
+
+option version = "1.0.0";
+import "vnet/interface_types.api";
+
+/** \brief Enable/Disable TTL fixup input features on a source
+    interface. Sets VNET_BUFFER_F_LOCALLY_ORIGINATED on incoming
+    packets so ip4/ip6-rewrite skips TTL/hop-limit decrement.
+    Also marks the interface in the input-enabled bitmap so output
+    nodes can identify traffic originating from this interface.
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - source interface (typically tap) on which
+                         input features will be enabled
+    @param enable - 1 to enable, 0 to disable
+*/
+autoreply define ttl_fixup_input_enable_disable {
+    u32 client_index;
+    u32 context;
+    vl_api_interface_index_t sw_if_index;
+    bool enable;
+};
+
+/** \brief Enable/Disable TTL fixup output features on a destination
+    interface. Decrements TTL/hop-limit for packets that arrived from
+    a source interface, restoring normal router-hop TTL behaviour
+    for traffic which does not require transparent forwarding.
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - destination interface on which
+                         output features will be enabled
+    @param enable - 1 to enable, 0 to disable
+*/
+autoreply define ttl_fixup_output_enable_disable {
+    u32 client_index;
+    u32 context;
+    vl_api_interface_index_t sw_if_index;
+    bool enable;
+};
+
+counters ttl_fixup {
+  ttl_preserved {
+    severity info;
+    type counter64;
+    units "packets";
+    description "packets with TTL/hop-limit preserved (flag set on input)";
+  };
+  ttl_decremented {
+    severity info;
+    type counter64;
+    units "packets";
+    description "packets with TTL/hop-limit decremented on output";
+  };
+  ttl_exceeded {
+    severity error;
+    type counter64;
+    units "packets";
+    description "packets dropped on output due to TTL/hop-limit exceeded";
+  };
+};
+
+paths {
+  "/err/ttl-fixup-ip4-in" "ttl-fixup";
+  "/err/ttl-fixup-ip6-in" "ttl-fixup";
+  "/err/ttl-fixup-ip4-mcast-in" "ttl-fixup";
+  "/err/ttl-fixup-ip6-mcast-in" "ttl-fixup";
+  "/err/ttl-fixup-ip4-out" "ttl-fixup";
+  "/err/ttl-fixup-ip6-out" "ttl-fixup";
+};
