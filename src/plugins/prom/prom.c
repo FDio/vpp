@@ -68,7 +68,7 @@ dump_counter_vector_combined (stat_segment_data_t *res, u8 *s, u8 used_only)
 
   name = make_stat_name (res->name);
 
-  for (k = 0; k < vec_len (res->simple_counter_vec); k++)
+  for (k = 0; k < vec_len (res->combined_counter_vec); k++)
     for (j = 0; j < vec_len (res->combined_counter_vec[k]); j++)
       {
 	if (used_only && !res->combined_counter_vec[k][j].packets)

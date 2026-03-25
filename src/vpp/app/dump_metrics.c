@@ -97,7 +97,7 @@ print_metric_v1 (FILE *stream, stat_segment_data_t *res)
     case STAT_DIR_TYPE_COUNTER_VECTOR_COMBINED:
       fformat (stream, "# TYPE %s_packets counter\n", prom_string (res->name));
       fformat (stream, "# TYPE %s_bytes counter\n", prom_string (res->name));
-      for (k = 0; k < vec_len (res->simple_counter_vec); k++)
+      for (k = 0; k < vec_len (res->combined_counter_vec); k++)
 	for (j = 0; j < vec_len (res->combined_counter_vec[k]); j++)
 	  {
 	    fformat (stream,
