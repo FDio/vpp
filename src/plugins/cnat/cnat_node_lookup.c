@@ -117,7 +117,9 @@ cnat_writeback_new_flow (vlib_buffer_t *b, ip_address_family_t af, u16 *next)
   u32 *fib_index_by_sw_if_index =
     AF_IP6 == af ? ip6_main.fib_index_by_sw_if_index : ip4_main.fib_index_by_sw_if_index;
   set_buffer_fib_index_from_interface (fib_index_by_sw_if_index, b);
-  session->key.fib_index = vnet_buffer (b)->ip.fib_index;
+  session->key.cs_fib_index = vnet_buffer (b)->ip.fib_index;
+  /* return session: no scope */
+  session->key.cs_scope_id = 0;
   session->value.cs_session_index = b->flow_id;
   session->value.cs_flags = CNAT_SESSION_IS_RETURN;
   /* record the return-direction fib_index; used by cnat_get_rsession_from_ts

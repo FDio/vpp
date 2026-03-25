@@ -276,6 +276,12 @@ typedef struct cnat_timestamp_t_
   /* identifies which translation endpoint is used for these sessions */
   index_t ts_trk_index;
 
+  /* Scope identifier for diagnostic tracing. Stored at forward session
+   * creation because the buffer's flow_id is overwritten with the
+   * session index post-lookup. Adds 4 bytes per timestamp (+64 MB
+   * worst-case at 16M sessions). 0 when unscoped. */
+  u32 scope_id;
+
   /* expire after N seconds */
   u16 lifetime;
 
