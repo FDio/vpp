@@ -32,14 +32,14 @@ cnat_vip_default_source_policy (ip_protocol_t iproto, u16 *sport)
 }
 
 always_inline cnat_src_port_allocator_t *
-cnat_get_src_port_allocator (u32 fib_index, ip_protocol_t iproto)
+cnat_get_src_port_allocator (u32 scope_id, ip_protocol_t iproto)
 {
   cnat_src_policy_main_t *cspm = &cnat_src_policy_main;
   cnat_src_port_allocator_t *src_ports;
-  if (fib_index >= vec_len (cspm->src_ports))
+  if (scope_id >= vec_len (cspm->src_ports))
     src_ports = cspm->default_src_ports;
   else
-    src_ports = vec_elt (cspm->src_ports, fib_index);
+    src_ports = vec_elt (cspm->src_ports, scope_id);
 
   if (!src_ports->lock)
     return 0; /* not port allocator not initialized */
@@ -60,10 +60,10 @@ cnat_get_src_port_allocator (u32 fib_index, ip_protocol_t iproto)
 }
 
 void
-cnat_free_port (u32 fib_index, u16 port, ip_protocol_t iproto)
+cnat_free_port (u32 scope_id, u16 port, ip_protocol_t iproto)
 {
   cnat_src_port_allocator_t *ca;
-  ca = cnat_get_src_port_allocator (fib_index, iproto);
+  ca = cnat_get_src_port_allocator (scope_id, iproto);
   if (!ca)
     return;
   clib_spinlock_lock (&ca->lock);
@@ -72,13 +72,13 @@ cnat_free_port (u32 fib_index, u16 port, ip_protocol_t iproto)
 }
 
 int
-cnat_allocate_port (u32 fib_index, u16 *port, ip_protocol_t iproto)
+cnat_allocate_port (u32 scope_id, u16 *port, ip_protocol_t iproto)
 {
   *port = clib_net_to_host_u16 (*port);
   if (*port == 0)
     *port = MIN_SRC_PORT;
   cnat_src_port_allocator_t *ca;
-  ca = cnat_get_src_port_allocator (fib_index, iproto);
+  ca = cnat_get_src_port_allocator (scope_id, iproto);
   if (!ca)
     return -1;
   clib_spinlock_lock (&ca->lock);
@@ -100,11 +100,11 @@ cnat_allocate_port (u32 fib_index, u16 *port, ip_protocol_t iproto)
 }
 
 void
-cnat_init_port_allocator (u32 fib_index, cnat_snat_policy_flags_t flags)
+cnat_init_port_allocator (u32 scope_id, cnat_snat_policy_flags_t flags)
 {
   cnat_src_policy_main_t *cspm = &cnat_src_policy_main;
-  vec_validate_aligned (cspm->src_ports, fib_index, CLIB_CACHE_LINE_BYTES);
-  cnat_src_port_allocator_t *src_ports = vec_elt (cspm->src_ports, fib_index);
+  vec_validate_aligned (cspm->src_ports, scope_id, CLIB_CACHE_LINE_BYTES);
+  cnat_src_port_allocator_t *src_ports = vec_elt (cspm->src_ports, scope_id);
   for (int i = 0; i < CNAT_N_SPORT_PROTO; i++)
     {
       clib_spinlock_init (&src_ports[i].lock);
@@ -117,10 +117,10 @@ cnat_init_port_allocator (u32 fib_index, cnat_snat_policy_flags_t flags)
 }
 
 void
-cnat_free_port_allocator (u32 fib_index)
+cnat_free_port_allocator (u32 scope_id)
 {
   cnat_src_policy_main_t *cspm = &cnat_src_policy_main;
-  cnat_src_port_allocator_t *src_ports = vec_elt (cspm->src_ports, fib_index);
+  cnat_src_port_allocator_t *src_ports = vec_elt (cspm->src_ports, scope_id);
   for (int i = 0; i < CNAT_N_SPORT_PROTO; i++)
     {
       clib_bitmap_free (src_ports[i].bmap);
