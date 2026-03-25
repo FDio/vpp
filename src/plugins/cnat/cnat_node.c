@@ -28,6 +28,9 @@ format_cnat_trace (u8 *s, va_list *args)
   s = format (s, "\n%Uin:%U out:%U ", format_white_space, indent, format_vnet_sw_if_index_name, vnm,
 	      t->sw_if_index[VLIB_RX], format_vnet_sw_if_index_name, vnm, t->sw_if_index[VLIB_TX]);
 
+  if (t->flags & CNAT_TRACE_LOOKUP_KEY)
+    s = format (s, "ctx:%u fib:%u", t->lookup_context_id, t->lookup_fib_index);
+
   s = format (s, "\n%U%U", format_white_space, indent, format_cnat_timestamp, &t->ts, indent);
 
   if (t->flags & CNAT_TRACE_REWRITE_FOUND)
