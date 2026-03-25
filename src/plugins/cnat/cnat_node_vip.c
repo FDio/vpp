@@ -121,7 +121,7 @@ cnat_vip_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_address_
 
       clib_atomic_add_fetch (&ts->ts_session_refcnt, 1);
 
-      cnat_rsession_create (rw, vnet_buffer2 (b)->session.generic_flow_id, CNAT_FIB_TABLE,
+      cnat_rsession_create (rw, vnet_buffer2 (b)->session.scope_or_flow_id, CNAT_FIB_TABLE,
 			    1 /* add client */, 0, 0, 0);
     }
 
@@ -143,7 +143,7 @@ cnat_vip_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *b, 
   vnet_buffer (b)->ip.adj_index[VLIB_TX] = cc->cc_parent.dpoi_index;
   *next0 = cc->cc_parent.dpoi_next_node;
 
-  ts = cnat_timestamp_update (vnet_buffer2 (b)->session.generic_flow_id, now);
+  ts = cnat_timestamp_update (vnet_buffer2 (b)->session.scope_or_flow_id, now);
   if (vnet_buffer2 (b)->session.state == CNAT_LOOKUP_IS_OK)
     {
       /* Translate & follow the translation given LB */
@@ -228,7 +228,7 @@ cnat_return_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *
 
   if (CNAT_LOOKUP_IS_RETURN != vnet_buffer2 (b)->session.state)
     {
-      ASSERT (0 == vnet_buffer2 (b)->session.generic_flow_id);
+      ASSERT (0 == vnet_buffer2 (b)->session.scope_or_flow_id);
       ASSERT (CNAT_LOOKUP_IS_ERR == vnet_buffer2 (b)->session.state);
       /* not a return session: expire & drop */
       b->error = node->errors[CNAT_ERROR_UNKNOWN_SESSION];
@@ -240,7 +240,7 @@ cnat_return_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *
   vnet_buffer (b)->ip.adj_index[VLIB_TX] = cc->cc_parent.dpoi_index;
   *next0 = cc->cc_parent.dpoi_next_node;
 
-  ts = cnat_timestamp_update (vnet_buffer2 (b)->session.generic_flow_id, now);
+  ts = cnat_timestamp_update (vnet_buffer2 (b)->session.scope_or_flow_id, now);
   rw = (ts->ts_rw_bm & (1 << (CNAT_IS_RETURN + CNAT_LOCATION_FIB))) ?
 	 &ts->cts_rewrites[CNAT_IS_RETURN + CNAT_LOCATION_FIB] :
 	 NULL;
