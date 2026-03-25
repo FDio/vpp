@@ -12,6 +12,8 @@
 #include <quic/quic_timer.h>
 #include <quicly.h>
 #include <picotls/openssl.h>
+#include <openssl/err.h>
+#include <openssl/pem.h>
 #include <openssl/rand.h>
 #include <pthread.h>
 
@@ -110,8 +112,8 @@ quic_quicly_crypto_context_make_key_from_ctx (clib_bihash_kv_24_8_t *kv,
   application_t *app = application_get (ctx->parent_app_id);
   kv->key[0] = ((u64) ctx->ckpair_index) << 32 | (u64) (ctx->verify_cfg << 24) |
 	       ((u64) (ctx->tls_profile_index & 0xFFFF)) << 8 | (u64) ctx->crypto_engine;
-  kv->key[1] = app->sm_properties.rx_fifo_size;
-  kv->key[2] = app->sm_properties.tx_fifo_size;
+  kv->key[1] = ((u64) app->sm_properties.tx_fifo_size << 32) | app->sm_properties.rx_fifo_size;
+  kv->key[2] = ctx->ca_trust_index;
 }
 
 static_always_inline void
@@ -120,8 +122,9 @@ quic_quicly_crypto_context_make_key_from_crctx (clib_bihash_kv_24_8_t *kv,
 {
   kv->key[0] = ((u64) crctx->ctx.ckpair_index) << 32 | (u64) (crctx->verify_cfg << 24) |
 	       ((u64) (crctx->tls_profile_index & 0xFFFF)) << 8 | (u64) crctx->ctx.crypto_engine;
-  kv->key[1] = crctx->quicly_ctx.transport_params.max_stream_data.bidi_local;
-  kv->key[2] = crctx->quicly_ctx.transport_params.max_stream_data.bidi_remote;
+  kv->key[1] = ((u64) crctx->quicly_ctx.transport_params.max_stream_data.bidi_remote << 32) |
+	       crctx->quicly_ctx.transport_params.max_stream_data.bidi_local;
+  kv->key[2] = crctx->ca_trust_index;
 }
 
 static quic_quicly_crypto_ctx_t *
@@ -169,6 +172,11 @@ quic_quicly_crypto_context_free_if_needed (quic_quicly_crypto_ctx_t *crctx)
     {
       clib_mem_free (crctx->filtered_key_exchanges);
       crctx->filtered_key_exchanges = NULL;
+    }
+  if (crctx->verify_cfg)
+    {
+      ptls_openssl_dispose_verify_certificate (&crctx->verify_cert.super);
+      crctx->ptls_ctx.verify_certificate = NULL;
     }
   if (CLIB_DEBUG)
     memset (crctx, 0xfe, sizeof (*crctx));
@@ -287,6 +295,101 @@ quic_quicly_verify_cert_cb (ptls_verify_certificate_t *_self, ptls_t *tls, const
     }
 
   return ret;
+}
+
+static void
+quic_quicly_cleanup_ca_trust_int_ctx (app_crypto_ca_trust_int_ctx_t *cti)
+{
+  X509_STORE_free (cti->ca_store);
+}
+
+static app_crypto_ca_trust_int_ctx_t *
+quic_quicly_init_int_ca_trust_ctx (app_crypto_ca_trust_t *ca_trust,
+				   clib_thread_index_t thread_index)
+{
+  app_crypto_ca_trust_int_ctx_t *cti;
+  X509_STORE *store;
+  X509 *cert;
+  BIO *bio;
+
+  cti = app_crypto_alloc_int_ca_trust (ca_trust, thread_index);
+  store = X509_STORE_new ();
+  if (!store)
+    {
+      clib_warning ("unable to create x509 store");
+      return 0;
+    }
+
+  bio = BIO_new (BIO_s_mem ());
+  BIO_write (bio, ca_trust->ca_chain, vec_len (ca_trust->ca_chain));
+  while ((cert = PEM_read_bio_X509 (bio, NULL, NULL, NULL)) != NULL)
+    {
+      if (X509_STORE_add_cert (store, cert) != 1)
+	{
+	  char err_buf[512];
+	  ERR_error_string (ERR_get_error (), err_buf);
+	  clib_warning ("unable to add certificate to store: %s", err_buf);
+	  X509_free (cert);
+	  BIO_free (bio);
+	  X509_STORE_free (store);
+	  return 0;
+	}
+      X509_free (cert);
+    }
+  BIO_free (bio);
+
+  if (ca_trust->crl && vec_len (ca_trust->crl) > 0)
+    {
+      X509_CRL *crl;
+
+      bio = BIO_new (BIO_s_mem ());
+      BIO_write (bio, ca_trust->crl, vec_len (ca_trust->crl));
+      while ((crl = PEM_read_bio_X509_CRL (bio, NULL, NULL, NULL)) != NULL)
+	{
+	  if (X509_STORE_add_crl (store, crl) != 1)
+	    {
+	      char err_buf[512];
+	      ERR_error_string (ERR_get_error (), err_buf);
+	      clib_warning ("unable to add CRL to store: %s", err_buf);
+	      X509_CRL_free (crl);
+	      BIO_free (bio);
+	      X509_STORE_free (store);
+	      return 0;
+	    }
+	  X509_CRL_free (crl);
+	}
+      BIO_free (bio);
+
+      X509_STORE_set_flags (store, X509_V_FLAG_CRL_CHECK | X509_V_FLAG_CRL_CHECK_ALL);
+    }
+
+  cti->ca_store = store;
+  cti->cleanup_cb = quic_quicly_cleanup_ca_trust_int_ctx;
+  return cti;
+}
+
+static app_crypto_ca_trust_int_ctx_t *
+quic_quicly_get_int_ca_trust (quic_ctx_t *ctx)
+{
+  app_crypto_ca_trust_int_ctx_t *cti;
+  app_crypto_ca_trust_t *ca_trust;
+  application_t *app;
+
+  if (ctx->parent_app_wrk_id != SESSION_INVALID_INDEX)
+    ca_trust = app_crypto_get_wrk_ca_trust (ctx->parent_app_wrk_id, ctx->ca_trust_index);
+  else
+    {
+      app = application_get (ctx->parent_app_id);
+      ca_trust = app_get_crypto_ca_trust (app, ctx->ca_trust_index);
+    }
+  if (!ca_trust)
+    return 0;
+
+  cti = app_crypto_get_int_ca_trust (ca_trust, ctx->c_thread_index);
+  if (!cti || !cti->ca_store)
+    cti = quic_quicly_init_int_ca_trust_ctx (ca_trust, ctx->c_thread_index);
+
+  return cti;
 }
 
 static app_certkey_int_ctx_t *
@@ -458,6 +561,7 @@ quic_quicly_crypto_context_init_data (quic_quicly_crypto_ctx_t *crctx, quic_ctx_
   application_t *app;
   ptls_context_t *ptls_ctx;
   app_crypto_ctx_t *app_cctx;
+  app_crypto_ca_trust_int_ctx_t *cti;
   app_certkey_int_ctx_t *cki;
 
   QUIC_DBG (2, "Init crctx: crctx_ndx 0x%08lx", crctx->ctx.ctx_index);
@@ -487,11 +591,28 @@ quic_quicly_crypto_context_init_data (quic_quicly_crypto_ctx_t *crctx, quic_ctx_
 
   if (crctx->verify_cfg)
     {
+      X509_STORE *ca_store = NULL;
+
+      if (ctx->ca_trust_index)
+	{
+	  cti = quic_quicly_get_int_ca_trust (ctx);
+	  if (!cti || !cti->ca_store)
+	    {
+	      clib_warning ("unable to initialize ca trust context");
+	      return -1;
+	    }
+	  ca_store = cti->ca_store;
+	}
+
       /* Set up custom verify certificate callback to capture peer certificates
        * Enable for both client and server (mutual TLS support) */
       /* Allocate verify certificate context (freed when crypto context is freed) */
       quic_quicly_verify_certificate_t *verify_cert = &crctx->verify_cert;
-      ptls_openssl_init_verify_certificate (&verify_cert->super, NULL);
+      if (ptls_openssl_init_verify_certificate (&verify_cert->super, ca_store))
+	{
+	  clib_warning ("unable to initialize verify certificate callback");
+	  return -1;
+	}
       /* Save the original callback and replace with our wrapper */
       verify_cert->orig_cb = verify_cert->super.super.cb;
       verify_cert->super.super.cb = quic_quicly_verify_cert_cb;
@@ -615,6 +736,7 @@ quic_quicly_crypto_context_get_or_alloc (quic_ctx_t *ctx)
   crctx->ctx.crypto_engine = ctx->crypto_engine;
   crctx->ctx.ckpair_index = ctx->ckpair_index;
   crctx->verify_cfg = ctx->verify_cfg;
+  crctx->ca_trust_index = ctx->ca_trust_index;
   crctx->tls_profile_index = ctx->tls_profile_index;
   clib_bihash_add_del_24_8 (&qqcm->crypto_ctx_hash, &kv, 1 /* is_add */);
   quic_quicly_crypto_context_init_data (crctx, ctx);
