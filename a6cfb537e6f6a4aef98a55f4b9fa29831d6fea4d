@@ -122,6 +122,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "911f2b68_f0317b23",
+        "filename": "src/plugins/cnat/cnat_inline.h",
+        "patchSetId": 28
+      },
+      "lineNbr": 64,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-03-25T17:50:17Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "87eb4038_bb57c8ee",
+      "revId": "a6cfb537e6f6a4aef98a55f4b9fa29831d6fea4d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "7f5e0351_1cbb729a",
@@ -309,6 +327,24 @@
       "writtenOn": "2026-03-20T14:27:10Z",
       "side": 1,
       "message": "We should probably use the same logic as in `cnat_reverse_session_free`,\ninclude `CNAT_LOCATION_FIB`, check the `ts_rw_bm` ; check for `CNAT_TS_RW_FLAG_NO_NAT` etc...",
+      "revId": "a6cfb537e6f6a4aef98a55f4b9fa29831d6fea4d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "171d0cd5_6c405058",
+        "filename": "src/plugins/cnat/cnat_node_lookup.c",
+        "patchSetId": 28
+      },
+      "lineNbr": 116,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-03-25T17:50:17Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "808f3de1_6da4ae1e",
       "revId": "a6cfb537e6f6a4aef98a55f4b9fa29831d6fea4d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -557,6 +593,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "b32842d0_d8f21c73",
+        "filename": "src/plugins/cnat/cnat_session.c",
+        "patchSetId": 28
+      },
+      "lineNbr": 502,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-03-25T17:50:17Z",
+      "side": 1,
+      "message": "will add a comment",
+      "parentUuid": "f8e0b89c_32e0a049",
+      "revId": "a6cfb537e6f6a4aef98a55f4b9fa29831d6fea4d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "8769a6c4_c266f861",
@@ -570,6 +624,24 @@
       "writtenOn": "2026-03-20T14:27:10Z",
       "side": 1,
       "message": "Can we make the logic computing whether the session is \"expirable\" into a function ? e.g. `static_always_inline bool cnat_session_is_stale()` ?",
+      "revId": "a6cfb537e6f6a4aef98a55f4b9fa29831d6fea4d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6e184cac_4a121586",
+        "filename": "src/plugins/cnat/cnat_session.c",
+        "patchSetId": 28
+      },
+      "lineNbr": 506,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-03-25T17:50:17Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "8769a6c4_c266f861",
       "revId": "a6cfb537e6f6a4aef98a55f4b9fa29831d6fea4d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -867,6 +939,24 @@
       "side": 1,
       "message": "index is needed for the trk pool, otherwise we can\u0027t safely check trk_-\u003emarked_for_delete from the scanner, the vector could be reallocated, moving all the structs to a new memory location",
       "parentUuid": "d2b8ea87_0fea8870",
+      "revId": "a6cfb537e6f6a4aef98a55f4b9fa29831d6fea4d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2d084386_e347e091",
+        "filename": "src/plugins/cnat/cnat_types.h",
+        "patchSetId": 28
+      },
+      "lineNbr": 118,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-03-25T17:50:17Z",
+      "side": 1,
+      "message": "we don\u0027t need it, you\u0027re right",
+      "parentUuid": "701f4e57_3505b6e4",
       "revId": "a6cfb537e6f6a4aef98a55f4b9fa29831d6fea4d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
