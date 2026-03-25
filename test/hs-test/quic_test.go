@@ -14,8 +14,36 @@ func init() {
 	RegisterVethTests(QuicAlpnMatchTest, QuicAlpnOverlapMatchTest, QuicAlpnServerPriorityMatchTest, QuicAlpnMismatchTest,
 		QuicAlpnEmptyServerListTest, QuicAlpnEmptyClientListTest, QuicBuiltinEchoTest, QuicCpsTest,
 		QuicBuiltinEchoBidirectionalTest, QuicBuiltinEchoTestBytesTest, QuicBuiltinEchoTestBytesBidirectionalTest,
-		QuicReorderTest)
+		QuicReorderTest, QuicCrlRejectThenAllowTest)
 	RegisterNoTopoTests(QuicFailedHandshakeTest)
+}
+
+func QuicCrlRejectThenAllowTest(s *VethsSuite) {
+	serverVpp := s.Containers.ServerVpp.VppInstance
+	clientVpp := s.Containers.ClientVpp.VppInstance
+	serverAddress := s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1
+	a := createTlsCrlTestArtifacts(s, "quic")
+
+	Log(serverVpp.Vppctl("test tls server cert " + a.serverCert + " key " + a.serverKey + " uri quic://" + serverAddress))
+
+	uri := "quic://" + serverAddress
+	o := clientVpp.Vppctl("test tls client verify peer ca-cert " + a.caCert + " crl " + a.crl + " uri " + uri)
+	Log(o)
+	AssertContains(o, "connect error failed tls handshake")
+
+	o = serverVpp.Vppctl("show test tls server")
+	Log(o)
+	AssertContains(o, "accepted connections 0")
+
+	o = clientVpp.Vppctl("test tls client verify peer ca-cert " + a.caCert + " uri " + uri)
+	Log(o)
+	AssertNotContains(o, "connect failed")
+	AssertNotContains(o, "timeout")
+	AssertNotContains(o, "failed tls handshake")
+
+	o = serverVpp.Vppctl("show test tls server")
+	Log(o)
+	AssertContains(o, "accepted connections 1")
 }
 
 func QuicAlpnMatchTest(s *VethsSuite) {

@@ -5,6 +5,7 @@
 #include <vnet/session/application_interface.h>
 #include <vnet/session/application.h>
 #include <vnet/session/session.h>
+#include <vppinfra/unix.h>
 
 typedef struct
 {
@@ -15,6 +16,8 @@ typedef struct
   u32 ckpair_index;
   u32 tls_profile_index;
   u8 cert_type; /* 0 = RSA (default), 1 = ECDSA */
+  u8 *cert_file;
+  u8 *key_file;
   u8 alpn_protos[4];
   vlib_main_t *vlib_main;
   u32 accepted_count;
@@ -117,6 +120,8 @@ ts_attach ()
 {
   tls_server_main_t *sm = &tls_server_main;
   vnet_app_add_cert_key_pair_args_t _ck_pair, *ck_pair = &_ck_pair;
+  clib_error_t *error;
+  u8 *cert_data = 0, *key_data = 0;
   u64 options[APP_OPTIONS_N_OPTIONS];
   vnet_app_attach_args_t _a, *a = &_a;
 
@@ -157,7 +162,35 @@ ts_attach ()
 
 add_ckpair:
   clib_memset (ck_pair, 0, sizeof (*ck_pair));
-  if (sm->cert_type == 1)
+  if ((sm->cert_file && !sm->key_file) || (!sm->cert_file && sm->key_file))
+    return -1;
+
+  if (sm->cert_file && sm->key_file)
+    {
+      error = clib_file_contents ((char *) sm->cert_file, &cert_data);
+      if (error)
+	{
+	  clib_warning ("failed to read certificate file %s: %U", sm->cert_file, format_clib_error,
+			error);
+	  clib_error_free (error);
+	  return -1;
+	}
+
+      error = clib_file_contents ((char *) sm->key_file, &key_data);
+      if (error)
+	{
+	  clib_warning ("failed to read key file %s: %U", sm->key_file, format_clib_error, error);
+	  clib_error_free (error);
+	  vec_free (cert_data);
+	  return -1;
+	}
+
+      ck_pair->cert = cert_data;
+      ck_pair->key = key_data;
+      ck_pair->cert_len = vec_len (cert_data);
+      ck_pair->key_len = vec_len (key_data);
+    }
+  else if (sm->cert_type == 1)
     {
       ck_pair->cert = (u8 *) test_srv_crt_ecdsa;
       ck_pair->key = (u8 *) test_srv_key_ecdsa;
@@ -171,8 +204,16 @@ add_ckpair:
       ck_pair->cert_len = test_srv_crt_rsa_len;
       ck_pair->key_len = test_srv_key_rsa_len;
     }
-  vnet_app_add_cert_key_pair (ck_pair);
+
+  if (vnet_app_add_cert_key_pair (ck_pair))
+    {
+      vec_free (cert_data);
+      vec_free (key_data);
+      return -1;
+    }
   sm->ckpair_index = ck_pair->index;
+  vec_free (cert_data);
+  vec_free (key_data);
 
   return 0;
 }
@@ -223,6 +264,8 @@ tls_server_create_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli
   sm->tls_engine = CRYPTO_ENGINE_OPENSSL;
   sm->tls_profile_index = ~0;
   sm->cert_type = 0;
+  sm->cert_file = 0;
+  sm->key_file = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return clib_error_return (0, "expected URI");
@@ -247,6 +290,10 @@ tls_server_create_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli
 	sm->cert_type = 1;
       else if (unformat (line_input, "cert-type rsa"))
 	sm->cert_type = 0;
+      else if (unformat (line_input, "cert %s", &sm->cert_file))
+	;
+      else if (unformat (line_input, "key %s", &sm->key_file))
+	;
       else
 	{
 	  error = clib_error_return (0, "failed: unknown input `%U'",
@@ -275,6 +322,8 @@ tls_server_create_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli
 
 done:
   vec_free (sm->uri);
+  vec_free (sm->cert_file);
+  vec_free (sm->key_file);
   unformat_free (line_input);
 
   return error;
@@ -283,7 +332,7 @@ done:
 VLIB_CLI_COMMAND (tls_server_create_command, static) = {
   .path = "test tls server",
   .short_help = "test tls server uri <tls://ip/port> [tls-engine %d] "
-		"[profile-index %d]",
+		"[profile-index %d] [cert <cert-file> key <key-file>]",
   .function = tls_server_create_command_fn,
 };
 
