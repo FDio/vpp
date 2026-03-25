@@ -455,10 +455,17 @@ typedef struct
       };
     } nat;
 
-    /* cnat session */
+    /* cnat session
+     *
+     * flow_id serves dual purpose:
+     *   BEFORE cnat lookup: scope_id (tunnel context) when HAS_SCOPE flag set
+     *   AFTER  cnat lookup: session index (timestamp pool index)
+     * cnat_lookup_create_or_return() clears flags and overwrites flow_id
+     * with the session index, completing the transition.
+     */
     struct
     {
-      u64 generic_flow_id : 24; /* unique identifier for the flow */
+      u64 flow_id : 24;	/* scope_id before lookup, session index after */
       u64 rrw_next_index : 24;	/* next adj-index to be used for reverse flow */
       u64 rrw_next_node : 8;	/* next-node to be used for reverse flow */
       u64 state : 4;		/* new flow / return / etc... */

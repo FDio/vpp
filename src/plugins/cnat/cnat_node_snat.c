@@ -104,7 +104,7 @@ cnat_snat_feature_new_flow_inline (vlib_main_t *vm, vlib_node_runtime_t *node, v
   clib_atomic_add_fetch (&ts->ts_session_refcnt, 1);
 
   int sport_retries, sport_failures;
-  cnat_rsession_create (rw, vnet_buffer2 (b)->session.generic_flow_id, ret_fib_index,
+  cnat_rsession_create (rw, vnet_buffer2 (b)->session.flow_id, ret_fib_index,
 			0 /* add client */, &rw->tuple.port[VLIB_RX], &sport_retries,
 			&sport_failures);
   if (sport_retries)
@@ -141,7 +141,7 @@ cnat_snat_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *b,
       fwd_fib_index = vnet_buffer (b)->ip.fib_index;
     }
 
-  ts = cnat_timestamp_update (vnet_buffer2 (b)->session.generic_flow_id, now);
+  ts = cnat_timestamp_update (vnet_buffer2 (b)->session.flow_id, now);
   if (vnet_buffer2 (b)->session.state == CNAT_LOOKUP_IS_OK)
     {
       /* Translate & follow the translation given LB */
