@@ -174,10 +174,10 @@ cnat_input_feature_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t 
       vnet_feature_next_u16 (&next[2], b[2]);
       vnet_feature_next_u16 (&next[3], b[3]);
 
-      ts[0] = cnat_timestamp_get (vnet_buffer2 (b[0])->session.generic_flow_id);
-      ts[1] = cnat_timestamp_get (vnet_buffer2 (b[1])->session.generic_flow_id);
-      ts[2] = cnat_timestamp_get (vnet_buffer2 (b[2])->session.generic_flow_id);
-      ts[3] = cnat_timestamp_get (vnet_buffer2 (b[3])->session.generic_flow_id);
+      ts[0] = cnat_timestamp_get (vnet_buffer2 (b[0])->session.flow_id);
+      ts[1] = cnat_timestamp_get (vnet_buffer2 (b[1])->session.flow_id);
+      ts[2] = cnat_timestamp_get (vnet_buffer2 (b[2])->session.flow_id);
+      ts[3] = cnat_timestamp_get (vnet_buffer2 (b[3])->session.flow_id);
     }
 
   while (n_left >= 4)
@@ -214,10 +214,10 @@ cnat_input_feature_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t 
 	  vnet_feature_next_u16 (&next[6], b[6]);
 	  vnet_feature_next_u16 (&next[7], b[7]);
 
-	  ts[0] = cnat_timestamp_get (vnet_buffer2 (b[4])->session.generic_flow_id);
-	  ts[1] = cnat_timestamp_get (vnet_buffer2 (b[5])->session.generic_flow_id);
-	  ts[2] = cnat_timestamp_get (vnet_buffer2 (b[6])->session.generic_flow_id);
-	  ts[3] = cnat_timestamp_get (vnet_buffer2 (b[7])->session.generic_flow_id);
+	  ts[0] = cnat_timestamp_get (vnet_buffer2 (b[4])->session.flow_id);
+	  ts[1] = cnat_timestamp_get (vnet_buffer2 (b[5])->session.flow_id);
+	  ts[2] = cnat_timestamp_get (vnet_buffer2 (b[6])->session.flow_id);
+	  ts[3] = cnat_timestamp_get (vnet_buffer2 (b[7])->session.flow_id);
 
 	  vlib_prefetch_buffer_data (b[4], LOAD);
 	  vlib_prefetch_buffer_data (b[5], LOAD);
@@ -241,7 +241,7 @@ cnat_input_feature_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t 
   while (n_left > 0)
     {
       vnet_feature_next_u16 (&next[0], b[0]);
-      ts[0] = cnat_timestamp_get (vnet_buffer2 (b[0])->session.generic_flow_id);
+      ts[0] = cnat_timestamp_get (vnet_buffer2 (b[0])->session.flow_id);
 
       rw[0] = cnat_input_feature_get_rw (vm, b[0], af, ts[0]);
       cnat_translation (b[0], af, rw[0], &ts[0]->lifetime, cm->tcp_max_age, 0 /* iph_offset */);
@@ -437,10 +437,10 @@ cnat_output_feature_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t
       vnet_feature_next_u16 (&next[2], b[2]);
       vnet_feature_next_u16 (&next[3], b[3]);
 
-      ts[0] = cnat_timestamp_get (vnet_buffer2 (b[0])->session.generic_flow_id);
-      ts[1] = cnat_timestamp_get (vnet_buffer2 (b[1])->session.generic_flow_id);
-      ts[2] = cnat_timestamp_get (vnet_buffer2 (b[2])->session.generic_flow_id);
-      ts[3] = cnat_timestamp_get (vnet_buffer2 (b[3])->session.generic_flow_id);
+      ts[0] = cnat_timestamp_get (vnet_buffer2 (b[0])->session.flow_id);
+      ts[1] = cnat_timestamp_get (vnet_buffer2 (b[1])->session.flow_id);
+      ts[2] = cnat_timestamp_get (vnet_buffer2 (b[2])->session.flow_id);
+      ts[3] = cnat_timestamp_get (vnet_buffer2 (b[3])->session.flow_id);
     }
 
   while (n_left >= 4)
@@ -468,10 +468,10 @@ cnat_output_feature_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t
 	  vnet_feature_next_u16 (&next[6], b[6]);
 	  vnet_feature_next_u16 (&next[7], b[7]);
 
-	  ts[0] = cnat_timestamp_get (vnet_buffer2 (b[4])->session.generic_flow_id);
-	  ts[1] = cnat_timestamp_get (vnet_buffer2 (b[5])->session.generic_flow_id);
-	  ts[2] = cnat_timestamp_get (vnet_buffer2 (b[6])->session.generic_flow_id);
-	  ts[3] = cnat_timestamp_get (vnet_buffer2 (b[7])->session.generic_flow_id);
+	  ts[0] = cnat_timestamp_get (vnet_buffer2 (b[4])->session.flow_id);
+	  ts[1] = cnat_timestamp_get (vnet_buffer2 (b[5])->session.flow_id);
+	  ts[2] = cnat_timestamp_get (vnet_buffer2 (b[6])->session.flow_id);
+	  ts[3] = cnat_timestamp_get (vnet_buffer2 (b[7])->session.flow_id);
 
 	  vlib_prefetch_buffer_data (b[4], LOAD);
 	  vlib_prefetch_buffer_data (b[5], LOAD);
@@ -505,7 +505,7 @@ cnat_output_feature_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t
       /* By default follow arc default next */
       vnet_feature_next_u16 (&next[0], b[0]);
 
-      ts[0] = cnat_timestamp_get (vnet_buffer2 (b[0])->session.generic_flow_id);
+      ts[0] = cnat_timestamp_get (vnet_buffer2 (b[0])->session.flow_id);
       rw[0] = cnat_output_feature_get_rw (vm, b[0], af, ts[0]);
       cnat_translation (b[0], af, rw[0], &ts[0]->lifetime, cm->tcp_max_age,
 			vnet_buffer (b[0])->ip.save_rewrite_length);

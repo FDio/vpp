@@ -88,7 +88,7 @@ cnat_writeback_new_flow (vlib_buffer_t *b, ip_address_family_t af, u16 *next)
   if (vnet_buffer2 (b)->session.flags & CNAT_BUFFER_SESSION_FLAG_NO_RETURN)
     return;
 
-  ts = cnat_timestamp_get_if_exists (vnet_buffer2 (b)->session.generic_flow_id);
+  ts = cnat_timestamp_get_if_exists (vnet_buffer2 (b)->session.flow_id);
   if (ts == NULL)
     {
       *next = 0; // DROP, probably needs improvement
@@ -99,7 +99,7 @@ cnat_writeback_new_flow (vlib_buffer_t *b, ip_address_family_t af, u16 *next)
   iph_offset = vnet_buffer (b)->ip.save_rewrite_length;
   cnat_make_buffer_5tuple (b, af, &session->key.cs_5tuple, iph_offset, 1 /* swap */);
 
-  session->value.cs_session_index = vnet_buffer2 (b)->session.generic_flow_id;
+  session->value.cs_session_index = vnet_buffer2 (b)->session.flow_id;
   session->value.cs_flags = CNAT_SESSION_IS_RETURN;
 
   clib_atomic_add_fetch (&ts->ts_session_refcnt, 1);
