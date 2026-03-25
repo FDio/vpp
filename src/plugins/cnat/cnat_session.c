@@ -133,10 +133,15 @@ format_cnat_session (u8 * s, va_list * args)
   cnat_timestamp_t *ts = NULL;
 
   ts = cnat_timestamp_get (sess->value.cs_session_index);
-  s = format (s, "%U => [%U]\n%Uindex:%d fib:%d\n%U%U", format_cnat_5tuple, &sess->key.cs_5tuple,
+  s = format (s, "fib:%d", sess->key.cs_fib_index);
+  if (sess->key.cs_scope_id != CNAT_SCOPE_ID_NONE)
+    s = format (s, " scope:%u", sess->key.cs_scope_id);
+  else
+    s = format (s, " scope:none");
+  s = format (s, " %U => [%U]\n%Uindex:%d\n%U%U", format_cnat_5tuple, &sess->key.cs_5tuple,
 	      format_cnat_session_flags, sess->value.cs_flags, format_white_space, indent + 2,
-	      sess->value.cs_session_index, sess->key.fib_index, format_white_space, indent + 2,
-	      format_cnat_timestamp, ts, indent + 2, verbose);
+	      sess->value.cs_session_index, format_white_space, indent + 2, format_cnat_timestamp,
+	      ts, indent + 2, verbose);
 
   return (s);
 }
@@ -163,6 +168,7 @@ typedef struct
   ip46_address_t ip;
   f64 start;
   u32 fib_index;
+  u32 scope_id;
   u32 flags;
   int verbose;
   int max;
@@ -179,7 +185,10 @@ cnat_session_show_cbak (BVT (clib_bihash_kv) * kvp, void *arg)
 
   cnat_show_yield (a->vm, &a->start);
 
-  if (a->fib_index != ~0 && a->fib_index != s->key.fib_index)
+  if (a->fib_index != ~0 && a->fib_index != s->key.cs_fib_index)
+    return BIHASH_WALK_CONTINUE;
+
+  if (a->scope_id != ~0 && a->scope_id != s->key.cs_scope_id)
     return BIHASH_WALK_CONTINUE;
 
   if (a->flags && a->flags != (a->flags & s->value.cs_flags))
@@ -226,6 +235,7 @@ cnat_session_show (vlib_main_t * vm,
   arg.vm = vm;
   arg.start = vlib_time_now (vm);
   arg.fib_index = ~0;
+  arg.scope_id = ~0;
   arg.max = 50;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -251,6 +261,8 @@ cnat_session_show (vlib_main_t * vm,
 	;
       else if (unformat (input, "fib %u", &arg.fib_index))
 	;
+      else if (unformat (input, "scope %u", &arg.scope_id))
+	;
       else
 	{
 	  return clib_error_return (0, "unknown input '%U'", format_unformat_error, input);
@@ -270,7 +282,7 @@ VLIB_CLI_COMMAND (cnat_session_show_cmd_node, static) = {
   .path = "show cnat session",
   .function = cnat_session_show,
   .short_help = "show cnat session [verbose <N>] [return] [ip <ip>] [port <port>] "
-		"[proto <proto>] [ref <ref>] [max <max>]",
+		"[proto <proto>] [ref <ref>] [max <max>] [fib <id>] [scope <id>]",
   .is_mp_safe = 1,
 };
 
@@ -283,7 +295,7 @@ cnat_session_free__ (cnat_session_t *session)
   cnat_log_session_free (session);
   if (session->value.cs_flags & CNAT_SESSION_FLAG_HAS_CLIENT)
     {
-      cnat_client_free_by_ip (&session->key.cs_5tuple.ip[VLIB_TX], session->key.fib_index,
+      cnat_client_free_by_ip (&session->key.cs_5tuple.ip[VLIB_TX], session->key.cs_fib_index,
 			      1 /* is_session */);
     }
   /* Credit the per-VRF session budget back when the non-return (forward) session is freed.
@@ -294,7 +306,7 @@ cnat_session_free__ (cnat_session_t *session)
     {
       int *sessions_per_vrf = is_v6 ? ctm->sessions_per_vrf_ip6 : ctm->sessions_per_vrf_ip4;
       clib_rwlock_writer_lock (&ctm->ts_lock);
-      vec_elt (sessions_per_vrf, session->key.fib_index)++;
+      vec_elt (sessions_per_vrf, session->key.cs_fib_index)++;
       clib_rwlock_writer_unlock (&ctm->ts_lock);
     }
   cnat_timestamp_free (session->value.cs_session_index, is_v6);
@@ -351,8 +363,13 @@ cnat_reverse_session_free (cnat_session_t *session)
     (session->value.cs_flags & CNAT_SESSION_IS_RETURN) ? CNAT_IS_RETURN : CNAT_IS_FWD;
 
   if (cnat_get_rsession_from_ts (ts, dir, rsession))
-    /* no rewrite found, fallback: swap the session's own 5-tuple */
-    cnat_5tuple_copy (&rsession->key.cs_5tuple, &session->key.cs_5tuple, 1 /* swap */);
+    {
+      /* no rewrite found, fallback: swap the session's own 5-tuple */
+      cnat_5tuple_copy (&rsession->key.cs_5tuple, &session->key.cs_5tuple, 1 /* swap */);
+      rsession->key.cs_fib_index = session->key.cs_fib_index;
+    }
+  /* reverse sessions are always unscoped */
+  rsession->key.cs_scope_id = CNAT_SCOPE_ID_NONE;
 
   if (memcmp (&rsession->key, &session->key, sizeof (session->key)) == 0)
     {
