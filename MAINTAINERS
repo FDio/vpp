@@ -965,6 +965,11 @@ M:	Ole Troan <otroan@employees.org>
 M:	Mohammed Hawari <mohammed@hawari.fr>
 F:	src/plugins/sasc/
 
+Plugin - TTL Fixup
+I:	ttl-fixup
+M:	Nathan Skrzypczak <nathan.skrzypczak@gmail.com>
+F:	src/plugins/ttl_fixup_plugin
+
 GitHub Actions
 I: gha
 M: Dave Wallace <dwallacelf@gmail.com>
