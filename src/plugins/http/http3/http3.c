@@ -1773,7 +1773,7 @@ http3_stream_transport_rx_req (http3_stream_ctx_t *sctx, http_conn_t *stream,
   max_deq = http_io_ts_max_read (stream);
   left_deq = max_deq;
 
-  do
+  while (res == HTTP_SM_CONTINUE && left_deq)
     {
       if (sctx->fh.length == 0)
 	{
@@ -1820,7 +1820,6 @@ http3_stream_transport_rx_req (http3_stream_ctx_t *sctx, http_conn_t *stream,
       left_deq -= n_deq;
       ASSERT (left_deq == http_io_ts_max_read (stream));
     }
-  while (res == HTTP_SM_CONTINUE && left_deq);
 
   if (res == HTTP_SM_ERROR)
     {
