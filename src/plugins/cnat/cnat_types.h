@@ -180,12 +180,7 @@ typedef struct cnat_timestamp_rewrite_t_
 
   cnat_cksum_diff_t cksum;
 
-  /* FIB index for this rewrite. Used for port deallocation (when
-   * CNAT_TS_RW_FLAG_HAS_ALLOCATED_PORT is set) and, in the CNAT_LOCATION_FIB
-   * slots, as the authoritative per-direction fib_index for reverse session
-   * reconstruction via cnat_get_rsession_from_ts. */
-  u32 rw_fib_index : 24;
-  u32 cts_flags : 8;
+  u32 cts_flags;
 } cnat_timestamp_rewrite_t;
 
 typedef enum cnat_session_location_t_
@@ -227,6 +222,21 @@ typedef struct cnat_timestamp_t_
   /* identifies which translation endpoint is used for these sessions */
   index_t ts_trk_index;
 
+  /* Per-direction session-key scope_id, captured at install time.
+   *  [VLIB_RX] = forward session scope — b->flow_id ?: ip.fib_index
+   *              at lookup. Also the index used for bookkeeping
+   *              (per-scope session budget, client cleanup,
+   *              port-pool deallocation).
+   *  [VLIB_TX] = reverse session scope — for SNAT'd flows staged by
+   *              cnat-output (= cpe->ret_scope_id); for plain
+   *              VIP/DNAT translations mirrored from [VLIB_RX] in
+   *              cnat_writeback_new_flow. Initialised to ~0 (not
+   *              staged); the writeback node uses this sentinel to
+   *              decide when to mirror from [VLIB_RX].
+   * Read by cnat_get_rsession_from_ts / cnat_reverse_session_free to
+   * reconstruct the opposite direction's key on cleanup. */
+  u32 ts_scope_id[VLIB_N_DIR];
+
   /* expire after N seconds */
   u16 lifetime;
 
@@ -262,11 +272,11 @@ typedef struct cnat_timestamp_mpool_t_
   cnat_timestamp_t **ts_pools;
   /* Bitmap of pools with free space */
   clib_bitmap_t *ts_free;
-  /* How many sessions per VRF */
-  int *sessions_per_vrf_ip4;
-  int *sessions_per_vrf_ip6;
-  /* max number of sessions per vrf */
-  int max_sessions_per_vrf;
+  /* How many sessions per scope */
+  int *sessions_per_scope_ip4;
+  int *sessions_per_scope_ip6;
+  /* max number of sessions per scope */
+  int max_sessions_per_scope;
   /* max number of pools */
   u32 pool_max;
   /* fixed pool size */

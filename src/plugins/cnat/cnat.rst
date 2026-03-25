@@ -138,6 +138,39 @@ This plugin is built to be extensible. For now two NAT types are defined, ``cnat
 
 Creating a session will also create reverse session matching return traffic unless told otherwise by setting ``CNAT_TR_FLAG_NO_RETURN_SESSION`` on the translation. This will call the NAT nodes on the return flow and perform the inverse translation.
 
+Session scope and ``b->flow_id``
+________________________________
+
+CNAT keys sessions by ``(5-tuple, cs_scope_id)``. ``cs_scope_id`` is opaque
+to the dataplane — it can be a fib_index, a tenant id, or a tunnel-peer id.
+
+Forward keying (at lookup time)::
+
+    key.cs_scope_id = b->flow_id ? b->flow_id : vnet_buffer(b)->ip.fib_index;
+
+Features that need a non-fib scope stamp it on the buffer's generic
+``flow_id`` field before CNAT lookup; CNAT reads ``b->flow_id`` and falls
+back to the RX fib_index when zero. After the lookup, ``b->flow_id``
+carries the session index — the slot is reused across pipeline stages
+and has no other meaning to CNAT before lookup.
+
+Reverse keying happens on the ``ip4-output`` arc across two cooperating
+nodes:
+
+* ``cnat-output-ip4`` (``cnat_node_feature.c``) — for SNAT'd flows, stages
+  ``ts->ts_scope_id[VLIB_TX] = cpe->ret_scope_id`` from the matching SNAT
+  policy. The control plane declares the return-side scope when calling
+  ``cnat_set_snat()``.
+* ``cnat-writeback-ip4`` (``cnat_node_lookup.c``) — inserts the reverse
+  bihash entry. Uses the staged ``ts->ts_scope_id[VLIB_TX]``; for plain
+  VIP translations (no SNAT policy) the staged value is ``~0`` (not set),
+  and writeback mirrors from ``ts->ts_scope_id[VLIB_RX]`` so the return
+  packet re-enters under the same scope as the forward path.
+
+The same ``ts->ts_scope_id[VLIB_RX]`` value is reused for bookkeeping that
+used to be fib-keyed: per-scope session budget, client cleanup, and
+source-port pool deallocation.
+
 Known limitations
 _________________
 

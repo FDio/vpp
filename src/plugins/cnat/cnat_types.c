@@ -32,8 +32,8 @@ format_cnat_rewrite (u8 *s, va_list *args)
 {
   cnat_timestamp_rewrite_t *rw = va_arg (*args, cnat_timestamp_rewrite_t *);
 
-  s = format (s, "%U node:%u lbi:%u fl:%u fib:%u", format_cnat_5tuple, &rw->tuple,
-	      rw->cts_dpoi_next_node, rw->cts_lbi, rw->cts_flags, rw->rw_fib_index);
+  s = format (s, "%U node:%u lbi:%u fl:%u", format_cnat_5tuple, &rw->tuple, rw->cts_dpoi_next_node,
+	      rw->cts_lbi, rw->cts_flags);
 
   return (s);
 }
@@ -203,21 +203,21 @@ cnat_enable_disable_scanner (cnat_scanner_cmd_t event_type)
 }
 
 static void
-init_session_per_vrf_v4 (ip4_main_t *im, uword opaque, u32 sw_if_index, u32 new_fib_index,
-			 u32 old_fib_index)
+init_session_per_scope_v4 (ip4_main_t *im, uword opaque, u32 sw_if_index, u32 new_fib_index,
+			   u32 old_fib_index)
 {
   cnat_timestamp_mpool_t *ctm = &cnat_timestamps;
-  vec_validate_init_empty_aligned (ctm->sessions_per_vrf_ip4, new_fib_index,
-				   ctm->max_sessions_per_vrf, CLIB_CACHE_LINE_BYTES);
+  vec_validate_init_empty_aligned (ctm->sessions_per_scope_ip4, new_fib_index,
+				   ctm->max_sessions_per_scope, CLIB_CACHE_LINE_BYTES);
 }
 
 static void
-init_session_per_vrf_v6 (ip6_main_t *im, uword opaque, u32 sw_if_index, u32 new_fib_index,
-			 u32 old_fib_index)
+init_session_per_scope_v6 (ip6_main_t *im, uword opaque, u32 sw_if_index, u32 new_fib_index,
+			   u32 old_fib_index)
 {
   cnat_timestamp_mpool_t *ctm = &cnat_timestamps;
-  vec_validate_init_empty_aligned (ctm->sessions_per_vrf_ip6, new_fib_index,
-				   ctm->max_sessions_per_vrf, CLIB_CACHE_LINE_BYTES);
+  vec_validate_init_empty_aligned (ctm->sessions_per_scope_ip6, new_fib_index,
+				   ctm->max_sessions_per_scope, CLIB_CACHE_LINE_BYTES);
 }
 
 void
@@ -230,12 +230,12 @@ cnat_lazy_init (void)
     return;
 
   ip4_table_bind_callback_t cb4 = {
-    .function = init_session_per_vrf_v4,
+    .function = init_session_per_scope_v4,
   };
   vec_add1 (ip4_main.table_bind_callbacks, cb4);
 
   ip6_table_bind_callback_t cb6 = {
-    .function = init_session_per_vrf_v6,
+    .function = init_session_per_scope_v6,
   };
   vec_add1 (ip6_main.table_bind_callbacks, cb6);
 
@@ -248,8 +248,8 @@ cnat_lazy_init (void)
   ASSERT (eptrk - cnat_ep_trk_pool == CNAT_EP_TRK_INVALID_INDEX);
   /* timestamp 0 is default */
   cnat_timestamp_alloc (CNAT_FIB_TABLE, false /* is_v6 */);
-  /* timestamp 0 should not count toward per vrf limit */
-  vec_elt (ctm->sessions_per_vrf_ip4, 0)++;
+  /* timestamp 0 should not count toward per scope limit */
+  vec_elt (ctm->sessions_per_scope_ip4, 0)++;
 
   cnat_enable_disable_scanner (cm->default_scanner_state);
 
@@ -318,7 +318,10 @@ cnat_config (vlib_main_t * vm, unformat_input_t * input)
 	;
       else if (unformat (input, "session-max %u", &session_max))
 	;
-      else if (unformat (input, "session-max-per-vrf %u", &ctm->max_sessions_per_vrf))
+      else if (unformat (input, "session-max-per-scope %u", &ctm->max_sessions_per_scope))
+	;
+      /* keep for backward-compatibility */
+      else if (unformat (input, "session-max-per-vrf %u", &ctm->max_sessions_per_scope))
 	;
       else
 	return clib_error_return (0, "unknown input '%U'",
@@ -328,10 +331,10 @@ cnat_config (vlib_main_t * vm, unformat_input_t * input)
   if (session_max > CNAT_MAX_SESSIONS)
     return clib_error_return (0, "cnat session-max %u > %u", session_max, CNAT_MAX_SESSIONS);
 
-  if (0 == ctm->max_sessions_per_vrf)
-    ctm->max_sessions_per_vrf = session_max;
-  else if (ctm->max_sessions_per_vrf > session_max)
-    return clib_error_return (0, "cnat session-max-per-vrf %u > %u", ctm->max_sessions_per_vrf,
+  if (0 == ctm->max_sessions_per_scope)
+    ctm->max_sessions_per_scope = session_max;
+  else if (ctm->max_sessions_per_scope > session_max)
+    return clib_error_return (0, "cnat session-max-per-scope %u > %u", ctm->max_sessions_per_scope,
 			      session_max);
 
   /* session index is 32-bits and made of pool index + object index */

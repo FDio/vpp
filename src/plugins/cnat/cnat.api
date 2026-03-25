@@ -163,8 +163,8 @@ autoreply define cnat_set_snat_addresses_v2
 {
   u32 client_index;
   u32 context;
-  u32 fwd_fib_index;
-  u32 ret_fib_index;
+  u32 fwd_scope_id;
+  u32 ret_scope_id;
   vl_api_ip4_address_t snat_ip4;
   vl_api_ip6_address_t snat_ip6;
   vl_api_interface_index_t sw_if_index;
@@ -199,8 +199,8 @@ define cnat_snat_addresses_details
   i32 retval;
   u32 fwd_table_id4;
   u32 fwd_table_id6;
-  u32 ret_table_id4;
-  u32 ret_table_id6;
+  u32 ret_scope_id4;
+  u32 ret_scope_id6;
   vl_api_ip4_address_t snat_ip4;
   vl_api_ip6_address_t snat_ip6;
   vl_api_interface_index_t sw_if_index;

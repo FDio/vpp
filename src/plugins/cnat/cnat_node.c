@@ -30,6 +30,8 @@ format_cnat_trace (u8 *s, va_list *args)
   s = format (s, "\n%Uin:%U out:%U ", format_white_space, indent, format_vnet_sw_if_index_name, vnm,
 	      t->sw_if_index[VLIB_RX], format_vnet_sw_if_index_name, vnm, t->sw_if_index[VLIB_TX]);
 
+  s = format (s, "scope:[rx:%u tx:%u]", t->ct_scope_id[VLIB_RX], t->ct_scope_id[VLIB_TX]);
+
   s = format (s, "\n%U%U", format_white_space, indent, format_cnat_timestamp, &t->ts, indent,
 	      0 /* verbose */);
 
