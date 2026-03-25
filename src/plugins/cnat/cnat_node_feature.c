@@ -78,8 +78,6 @@ cnat_input_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_addres
 
   rw->cts_lbi = (u32) ~0;
   rw->cts_dpoi_next_node = (u16) ~0;
-  /* record the forward-direction fib_index in the canonical FIB slot */
-  ts->cts_rewrites[CNAT_LOCATION_FIB].rw_fib_index = vnet_buffer (b)->ip.fib_index;
 
   cnat_make_buffer_5tuple (b, af, &rw->tuple, 0 /* iph_offset */, 0 /* swap */);
 
@@ -342,7 +340,6 @@ cnat_output_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_addre
 
   rw->cts_lbi = (u32) ~0;
   rw->cts_dpoi_next_node = (u16) ~0;
-  rw->rw_fib_index = ~0;
 
   if (AF_IP4 == af)
     {
@@ -385,11 +382,6 @@ cnat_output_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_addre
 
   rw->cts_lbi = INDEX_INVALID;
   rw->cts_flags |= CNAT_TS_RW_FLAG_HAS_ALLOCATED_PORT;
-  /* needed by cnat_timestamp_rewrite_free to return the allocated port */
-  rw->rw_fib_index = fwd_fib_index;
-  /* record the forward-direction fib_index in the canonical FIB slot
-   * for reverse session reconstruction via cnat_get_rsession_from_ts */
-  ts->cts_rewrites[CNAT_LOCATION_FIB].rw_fib_index = fwd_fib_index;
 
   /*
    * Add the reverse flow, located in input
@@ -401,9 +393,9 @@ cnat_output_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_addre
 
   rrw->cts_lbi = (u32) ~0;
   rrw->cts_dpoi_next_node = (u16) ~0;
-  /* record the return-direction fib_index in the canonical FIB slot */
-  ts->cts_rewrites[CNAT_IS_RETURN + CNAT_LOCATION_FIB].rw_fib_index =
-    AF_IP4 == af ? cpe->ret_fib_index4 : cpe->ret_fib_index6;
+  /* record the return-direction fib_index as the reverse session's
+   * cs_scope_id for cnat_get_rsession_from_ts on deletion. */
+  ts->cs_scope_id[VLIB_TX] = AF_IP4 == af ? cpe->ret_fib_index4 : cpe->ret_fib_index6;
 
   cnat_make_buffer_5tuple (b, af, &rrw->tuple, iph_offset, 1 /* swap */);
 

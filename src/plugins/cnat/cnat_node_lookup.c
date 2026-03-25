@@ -117,12 +117,13 @@ cnat_writeback_new_flow (vlib_buffer_t *b, ip_address_family_t af, u16 *next)
   u32 *fib_index_by_sw_if_index =
     AF_IP6 == af ? ip6_main.fib_index_by_sw_if_index : ip4_main.fib_index_by_sw_if_index;
   set_buffer_fib_index_from_interface (fib_index_by_sw_if_index, b);
-  session->key.fib_index = vnet_buffer (b)->ip.fib_index;
+  /* Reverse session is keyed by the TX fib_index of the forward packet
+   * (equal to the return-arc RX fib_index under symmetric routing).
+   * Stash on ts for cnat_get_rsession_from_ts / cnat_reverse_session_free. */
+  session->key.cs_scope_id = vnet_buffer (b)->ip.fib_index;
   session->value.cs_session_index = b->flow_id;
   session->value.cs_flags = CNAT_SESSION_IS_RETURN;
-  /* record the return-direction fib_index; used by cnat_get_rsession_from_ts
-   * to reconstruct the reverse session key on deletion */
-  ts->cts_rewrites[CNAT_LOCATION_FIB + CNAT_IS_RETURN].rw_fib_index = vnet_buffer (b)->ip.fib_index;
+  ts->cs_scope_id[VLIB_TX] = vnet_buffer (b)->ip.fib_index;
 
   clib_atomic_add_fetch (&ts->ts_session_refcnt, 1);
 

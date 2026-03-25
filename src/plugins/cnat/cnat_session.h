@@ -37,7 +37,17 @@ typedef struct cnat_session_t_
        * IP 4/6 address, ports in the rx/tx direction & iproto
        */
       cnat_5tuple_t cs_5tuple;
-      u32 fib_index;
+      /**
+       * Sole session disambiguator. Features that want a scope
+       * (eg. multi-tenant overlays) write it to
+       * vlib_buffer_t::flow_id before CNAT lookup. Otherwise CNAT
+       * falls back to the RX fib_index so sessions stay keyed by
+       * VRF. Reverse sessions installed at cnat_writeback_new_flow
+       * are keyed by the TX fib_index (the swapped 5-tuple's IPs
+       * already uniquely identify the return flow, and the return
+       * arc typically has no CNAT scope feature).
+       */
+      u32 cs_scope_id;
     };
     u64 as_u64[6];
   } key;
@@ -93,13 +103,22 @@ typedef enum cnat_session_flag_t_
 
 } cnat_session_flag_t;
 
-/* flags for vnet_buffer(b)->session.flags */
+/* flags for vnet_buffer2(b)->session.flags (4-bit field) */
 typedef enum cnat_buffer_session_flag_t_
 {
   /* do not create a return session in output */
   CNAT_BUFFER_SESSION_FLAG_NO_RETURN = (1 << 1),
 } cnat_buffer_session_flag_t;
 STATIC_ASSERT (CNAT_BUFFER_SESSION_FLAG_NO_RETURN < (1 << 4), "Value too big");
+
+/*
+ * Scope is carried in the vlib buffer's generic flow_id field by
+ * external features before CNAT lookup, and populates cs_scope_id in
+ * the session key. A flow_id of 0 means the feature did not set one;
+ * CNAT then falls back to the RX fib_index so sessions stay keyed by
+ * VRF. The flow_id slot has no other meaning to CNAT before lookup;
+ * features set it directly:  b->flow_id = scope_id;
+ */
 
 extern u8 *format_cnat_timestamp (u8 *s, va_list *args);
 extern u8 *format_cnat_session (u8 * s, va_list * args);

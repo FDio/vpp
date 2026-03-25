@@ -126,6 +126,7 @@ cnat_timestamp_new (u32 t, u32 fib_index, bool is_v6)
   cnat_timestamp_t *ts = cnat_timestamp_get (index);
   ts->last_seen = t;
   ts->lifetime = cnat_main.session_max_age;
+  ts->fib_index = fib_index;
   /* Initial number of timestamps for a session
    * this will be incremented when adding the reverse
    * session in cnat_rsession_create */
@@ -149,10 +150,10 @@ cnat_timestamp_exp (u32 index)
 }
 
 always_inline void
-cnat_timestamp_rewrite_free (cnat_timestamp_rewrite_t *rw)
+cnat_timestamp_rewrite_free (cnat_timestamp_rewrite_t *rw, u32 fib_index)
 {
   if (rw->cts_flags & CNAT_TS_RW_FLAG_HAS_ALLOCATED_PORT)
-    cnat_free_port_cb (rw->rw_fib_index, rw->tuple.port[VLIB_RX], rw->tuple.iproto);
+    cnat_free_port_cb (fib_index, rw->tuple.port[VLIB_RX], rw->tuple.iproto);
 }
 
 always_inline void
@@ -164,7 +165,7 @@ cnat_timestamp_free (u32 index, bool is_v6)
     {
       for (int i = 0; i < CNAT_N_LOCATIONS * VLIB_N_DIR; i++)
 	if (ts->ts_rw_bm & (1 << i))
-	  cnat_timestamp_rewrite_free (&ts->cts_rewrites[i]);
+	  cnat_timestamp_rewrite_free (&ts->cts_rewrites[i], ts->fib_index);
 
       cnat_timestamp_destroy (index, is_v6);
     }
@@ -191,7 +192,7 @@ cnat_lookup_create_or_return (vlib_buffer_t *b, int rv, cnat_bihash_kv_t *bkey,
     {
       if (!alloc_if_not_found)
 	goto err;
-      index_t session_index = cnat_timestamp_new (now, ksession->key.fib_index, is_v6);
+      index_t session_index = cnat_timestamp_new (now, vnet_buffer (b)->ip.fib_index, is_v6);
       ASSERT ((session_index < CNAT_MAX_SESSIONS || INDEX_INVALID == session_index));
       if (PREDICT_FALSE (session_index >= CNAT_MAX_SESSIONS))
 	goto err; /* too many sessions */
@@ -207,9 +208,10 @@ cnat_lookup_create_or_return (vlib_buffer_t *b, int rv, cnat_bihash_kv_t *bkey,
        * the case where we have actual rewrites this is going to be overridden.
        * Also this is used to find a reverse session of a non-natted session*/
       ts->cts_rewrites[CNAT_LOCATION_INPUT].tuple = ksession->key.cs_5tuple;
-      /* store the forward fib_index in the canonical FIB slot so
-       * cnat_get_rsession_from_ts can reconstruct the reverse session key */
-      ts->cts_rewrites[CNAT_LOCATION_FIB].rw_fib_index = ksession->key.fib_index;
+      /* capture the forward session's cs_scope_id so
+       * cnat_get_rsession_from_ts can reconstruct the forward key when
+       * freeing the reverse session */
+      ts->cs_scope_id[VLIB_RX] = ksession->key.cs_scope_id;
     }
   else
     goto err;
@@ -230,22 +232,21 @@ static const cnat_session_location_t cnat_paired_location[] = {
   [CNAT_LOCATION_FIB] = CNAT_LOCATION_FIB,
 };
 
-/* Reconstruct the reverse session key (5-tuple + fib_index) from the
+/* Reconstruct the reverse session key (5-tuple + scope) from the
  * timestamp's rewrite array.
  *
- * fib_index: always read from cts_rewrites[CNAT_LOCATION_FIB + rdir].rw_fib_index,
- *            decoupled from the 5-tuple search below.
- * 5-tuple:   chosen from the highest-priority rewrite pair that has both
- *            a forward and a matching return entry populated in ts_rw_bm.
- *            Priority: OUTPUT > FIB > INPUT. */
+ * cs_scope_id: always read from ts->cs_scope_id[] (RX when reconstructing
+ *              the forward key, TX when reconstructing the reverse key),
+ *              decoupled from the 5-tuple search below.
+ * 5-tuple:     chosen from the highest-priority rewrite pair that has both
+ *              a forward and a matching return entry populated in ts_rw_bm.
+ *              Priority: OUTPUT > FIB > INPUT. */
 static_always_inline int
 cnat_get_rsession_from_ts (cnat_timestamp_t *ts, const cnat_timestamp_direction_t dir,
 			   cnat_session_t *session)
 {
   cnat_timestamp_direction_t rdir = (dir == CNAT_IS_FWD) ? CNAT_IS_RETURN : CNAT_IS_FWD;
-  /* fib_index always comes from the dedicated FIB slot, independent of
-   * which rewrite location provides the 5-tuple below */
-  session->key.fib_index = ts->cts_rewrites[CNAT_LOCATION_FIB + rdir].rw_fib_index;
+  session->key.cs_scope_id = ts->cs_scope_id[rdir == CNAT_IS_FWD ? VLIB_RX : VLIB_TX];
   u8 locations[] = { CNAT_LOCATION_OUTPUT, CNAT_LOCATION_FIB, CNAT_LOCATION_INPUT };
   int i;
   for (i = 0; i < ARRAY_LEN (locations); i++)

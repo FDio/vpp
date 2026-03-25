@@ -235,12 +235,7 @@ typedef struct cnat_timestamp_rewrite_t_
 
   cnat_cksum_diff_t cksum;
 
-  /* FIB index for this rewrite. Used for port deallocation (when
-   * CNAT_TS_RW_FLAG_HAS_ALLOCATED_PORT is set) and, in the CNAT_LOCATION_FIB
-   * slots, as the authoritative per-direction fib_index for reverse session
-   * reconstruction via cnat_get_rsession_from_ts. */
-  u32 rw_fib_index : 24;
-  u32 cts_flags : 8;
+  u32 cts_flags;
 } cnat_timestamp_rewrite_t;
 
 typedef enum cnat_session_location_t_
@@ -275,6 +270,21 @@ typedef struct cnat_timestamp_t_
 
   /* identifies which translation endpoint is used for these sessions */
   index_t ts_trk_index;
+
+  /* Per-direction session key cs_scope_id.
+   *  [VLIB_RX] = forward  session scope — caller's b->flow_id (or the
+   *              RX fib_index fallback), captured at session install.
+   *  [VLIB_TX] = reverse  session scope — TX fib_index captured at
+   *              cnat_writeback_new_flow. Read by cnat_get_rsession_
+   *              from_ts / cnat_reverse_session_free to reconstruct
+   *              the opposite direction's key. */
+  u32 cs_scope_id[2];
+
+  /* RX fib_index of the forward packet, captured at session alloc.
+   * Used by fib-indexed bookkeeping (per-VRF session budget, client
+   * cleanup, port-pool deallocation). Orthogonal to the session-key
+   * scope above. */
+  u32 fib_index;
 
   /* expire after N seconds */
   u16 lifetime;
