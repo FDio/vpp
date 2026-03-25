@@ -464,6 +464,9 @@ typedef struct
       u64 state : 4;		/* new flow / return / etc... */
       u64 flags : 4;		/* session flags to set */
     } session;
+
+    /* cnat scope_id: tunnel identifier set by CNHE before CNAT processing */
+    u32 cnat_scope_id;
   };
 
   struct
