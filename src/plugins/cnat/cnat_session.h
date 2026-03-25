@@ -37,7 +37,13 @@ typedef struct cnat_session_t_
        * IP 4/6 address, ports in the rx/tx direction & iproto
        */
       cnat_5tuple_t cs_5tuple;
-      u32 fib_index;
+      /**
+       * Sole session disambiguator. See cnat.rst (Session scope and
+       * b->flow_id) for the lookup-time derivation rule and the
+       * forward / reverse keying contract across the three CNAT
+       * pipelines.
+       */
+      u32 cs_scope_id;
     };
     u64 as_u64[6];
   } key;
@@ -93,7 +99,7 @@ typedef enum cnat_session_flag_t_
 
 } cnat_session_flag_t;
 
-/* flags for vnet_buffer(b)->session.flags */
+/* flags for vnet_buffer2(b)->session.flags (4-bit field) */
 typedef enum cnat_buffer_session_flag_t_
 {
   /* do not create a return session in output */
@@ -156,6 +162,6 @@ extern void cnat_session_free_stale_cb (cnat_bihash_kv_t *kv, void *opaque);
 /**
  * Port cleanup callback
  */
-extern void (*cnat_free_port_cb) (u32 fib_index, u16 port, ip_protocol_t iproto);
+extern void (*cnat_free_port_cb) (u32 scope_id, u16 port, ip_protocol_t iproto);
 
 #endif

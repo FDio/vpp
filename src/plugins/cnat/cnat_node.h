@@ -47,7 +47,8 @@ typedef struct cnat_trace_element_t_
   u32 sw_if_index[VLIB_N_RX_TX];
   u32 snat_policy_result;
   u32 generic_flow_id;
-  u32 flow_state;
+  u32 ct_scope_id[VLIB_N_DIR];
+  u8 flow_state;
   u8 flags;
 } cnat_trace_element_t;
 
@@ -55,7 +56,7 @@ typedef enum cnat_trace_element_flag_t_
 {
   CNAT_TRACE_SESSION_FOUND = (1 << 0),
   CNAT_TRACE_SESSION_CREATED = (1 << 1),
-  CNAT_TRACE_REWRITE_FOUND = (1 << 3)
+  CNAT_TRACE_REWRITE_FOUND = (1 << 3),
 } cnat_trace_element_flag_t;
 
 static_always_inline void
@@ -75,8 +76,19 @@ cnat_add_trace (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *b,
   t->flow_state = vnet_buffer2 (b)->session.state;
 
   if (ts)
-    clib_memcpy (&t->ts, ts, sizeof (cnat_timestamp_t));
-
+    {
+      clib_memcpy (&t->ts, ts, sizeof (cnat_timestamp_t));
+      t->ct_scope_id[VLIB_RX] = ts->ts_scope_id[VLIB_RX];
+      t->ct_scope_id[VLIB_TX] = ts->ts_scope_id[VLIB_TX];
+    }
+  else
+    {
+      /* No timestamp yet (pre-install lookup): show the effective
+       * forward-direction disambiguator computed the same way as the
+       * session key. */
+      t->ct_scope_id[VLIB_RX] = b->flow_id ? b->flow_id : vnet_buffer (b)->ip.fib_index;
+      t->ct_scope_id[VLIB_TX] = 0;
+    }
   t->flags = 0;
   if (rw)
     {
@@ -871,14 +883,14 @@ cnat_load_balance (const cnat_translation_t *ct, ip_address_family_t af, ip4_hea
  */
 
 static_always_inline void
-cnat_rsession_create_client (cnat_timestamp_rewrite_t *rw, u32 ret_fib_index)
+cnat_rsession_create_client (cnat_timestamp_rewrite_t *rw, u32 ret_scope_id)
 {
   cnat_client_t *cc;
   const ip_address_family_t af = ip46_address_is_ip4 (&rw->tuple.ip[VLIB_RX]) ? AF_IP4 : AF_IP6;
 
   /* is this the first time we've seen this source address */
-  cc = (AF_IP4 == af ? cnat_client_ip4_find (&rw->tuple.ip[VLIB_RX].ip4, ret_fib_index) :
-		       cnat_client_ip6_find (&rw->tuple.ip[VLIB_RX].ip6, ret_fib_index));
+  cc = (AF_IP4 == af ? cnat_client_ip4_find (&rw->tuple.ip[VLIB_RX].ip4, ret_scope_id) :
+		       cnat_client_ip6_find (&rw->tuple.ip[VLIB_RX].ip6, ret_scope_id));
 
   if (cc)
     {
@@ -895,7 +907,7 @@ cnat_rsession_create_client (cnat_timestamp_rewrite_t *rw, u32 ret_fib_index)
 
   cl_args.addr.version = af;
   ip46_address_copy (&ip_addr_46 (&cl_args.addr), &rw->tuple.ip[VLIB_RX]);
-  cl_args.fib_index = ret_fib_index;
+  cl_args.fib_index = ret_scope_id;
 
   /* Throttle */
   clib_spinlock_lock (&cnat_client_db.throttle_lock);
@@ -921,7 +933,7 @@ cnat_rsession_create_client (cnat_timestamp_rewrite_t *rw, u32 ret_fib_index)
  * the ingress traffic with the rewrite operation 'rw' applied
  * */
 static_always_inline void
-cnat_rsession_create (cnat_timestamp_rewrite_t *rw, u32 flow_id, u32 ret_fib_index, int add_client,
+cnat_rsession_create (cnat_timestamp_rewrite_t *rw, u32 flow_id, u32 ret_scope_id, int add_client,
 		      u16 *sport, int *sport_retries, int *sport_failures)
 {
   cnat_bihash_kv_t rkey = { 0 };
@@ -934,9 +946,17 @@ cnat_rsession_create (cnat_timestamp_rewrite_t *rw, u32 flow_id, u32 ret_fib_ind
   if (PREDICT_FALSE (rw->tuple.iproto == IP_PROTOCOL_ICMP || rw->tuple.iproto == IP_PROTOCOL_ICMP6))
     rw->tuple.port[VLIB_TX] = rw->tuple.port[VLIB_RX];
 
-  /* create the reverse flow key */
+  /* Reverse session key: caller declares the scope return packets
+   * will arrive with (eg. cpe->ret_scope_id from the SNAT policy, or
+   * a fib for unscoped flows). The swapped 5-tuple already uniquely
+   * identifies the return flow within that scope. */
   cnat_5tuple_copy (&rsession->key.cs_5tuple, &rw->tuple, 1 /* swap */);
-  rsession->key.fib_index = ret_fib_index;
+  rsession->key.cs_scope_id = ret_scope_id;
+
+  /* Stage the return-side scope on the timestamp so cnat_session_free__
+   * can find the client under the correct key when evicting stale sessions. */
+  cnat_timestamp_t *ts = cnat_timestamp_get (flow_id);
+  ts->ts_scope_id[VLIB_TX] = ret_scope_id;
 
   rsession->value.cs_session_index = flow_id;
   rsession->value.cs_flags = CNAT_SESSION_IS_RETURN;
@@ -1089,10 +1109,14 @@ cnat_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *fr
       ip_lookup_set_buffer_fib_index (fib_index_by_sw_if_index, b[2]);
       ip_lookup_set_buffer_fib_index (fib_index_by_sw_if_index, b[3]);
 
-      session[0]->key.fib_index = vnet_buffer (b[0])->ip.fib_index;
-      session[1]->key.fib_index = vnet_buffer (b[1])->ip.fib_index;
-      session[2]->key.fib_index = vnet_buffer (b[2])->ip.fib_index;
-      session[3]->key.fib_index = vnet_buffer (b[3])->ip.fib_index;
+      session[0]->key.cs_scope_id =
+	b[0]->flow_id ? b[0]->flow_id : vnet_buffer (b[0])->ip.fib_index;
+      session[1]->key.cs_scope_id =
+	b[1]->flow_id ? b[1]->flow_id : vnet_buffer (b[1])->ip.fib_index;
+      session[2]->key.cs_scope_id =
+	b[2]->flow_id ? b[2]->flow_id : vnet_buffer (b[2])->ip.fib_index;
+      session[3]->key.cs_scope_id =
+	b[3]->flow_id ? b[3]->flow_id : vnet_buffer (b[3])->ip.fib_index;
 
       hash[0] = cnat_bihash_hash (&bkey[0]);
       hash[1] = cnat_bihash_hash (&bkey[1]);
@@ -1152,10 +1176,14 @@ cnat_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *fr
 	  ip_lookup_set_buffer_fib_index (fib_index_by_sw_if_index, b[6]);
 	  ip_lookup_set_buffer_fib_index (fib_index_by_sw_if_index, b[7]);
 
-	  session[0]->key.fib_index = vnet_buffer (b[4])->ip.fib_index;
-	  session[1]->key.fib_index = vnet_buffer (b[5])->ip.fib_index;
-	  session[2]->key.fib_index = vnet_buffer (b[6])->ip.fib_index;
-	  session[3]->key.fib_index = vnet_buffer (b[7])->ip.fib_index;
+	  session[0]->key.cs_scope_id =
+	    b[4]->flow_id ? b[4]->flow_id : vnet_buffer (b[4])->ip.fib_index;
+	  session[1]->key.cs_scope_id =
+	    b[5]->flow_id ? b[5]->flow_id : vnet_buffer (b[5])->ip.fib_index;
+	  session[2]->key.cs_scope_id =
+	    b[6]->flow_id ? b[6]->flow_id : vnet_buffer (b[6])->ip.fib_index;
+	  session[3]->key.cs_scope_id =
+	    b[7]->flow_id ? b[7]->flow_id : vnet_buffer (b[7])->ip.fib_index;
 
 	  hash[0] = cnat_bihash_hash (&bkey[0]);
 	  hash[1] = cnat_bihash_hash (&bkey[1]);
@@ -1204,7 +1232,8 @@ cnat_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *fr
 
       cnat_make_buffer_5tuple (b[0], af, (cnat_5tuple_t *) &bkey[0], 0, 0);
       ip_lookup_set_buffer_fib_index (fib_index_by_sw_if_index, b[0]);
-      session[0]->key.fib_index = vnet_buffer (b[0])->ip.fib_index;
+      session[0]->key.cs_scope_id =
+	b[0]->flow_id ? b[0]->flow_id : vnet_buffer (b[0])->ip.fib_index;
       hash[0] = cnat_bihash_hash (&bkey[0]);
 
       rv[0] = cnat_bihash_search_i2_hash (&cnat_session_db, hash[0], &bkey[0], &bvalue[0]);

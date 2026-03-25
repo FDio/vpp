@@ -152,8 +152,7 @@ cnat_client_translation_deleted (index_t cci, u32 fib_index)
 }
 
 __clib_export index_t
-cnat_client_add_pfx (const ip_address_t *pfx, u8 pfx_len, u32 fib_index, u32 fwd_fib_index,
-		     u8 flags)
+cnat_client_add_pfx (const ip_address_t *pfx, u8 pfx_len, u32 fib_index, u32 fwd_scope_id, u8 flags)
 {
   cnat_client_t *cc;
   dpo_id_t tmp = DPO_INVALID;
@@ -178,7 +177,7 @@ cnat_client_add_pfx (const ip_address_t *pfx, u8 pfx_len, u32 fib_index, u32 fwd
   cc->flags = flags;
   cc->tr_refcnt = 0;
   cc->session_refcnt = 0;
-  cc->fwd_fib_index = fwd_fib_index;
+  cc->fwd_scope_id = fwd_scope_id;
 
   if (flags & CNAT_TR_FLAG_RETURN_ONLY)
     cc->dpo_type = cnat_client_return_dpo;
@@ -216,7 +215,7 @@ index_t
 cnat_client_add (const ip_address_t *ip, u32 fib_index, u8 flags)
 {
   u8 pfx_len = AF_IP4 == ip_addr_version (ip) ? 32 : 128;
-  return cnat_client_add_pfx (ip, pfx_len, fib_index, ~0 /* fwd_fib_index */, flags);
+  return cnat_client_add_pfx (ip, pfx_len, fib_index, ~0 /* fwd_scope_id */, flags);
 }
 
 void
@@ -247,7 +246,7 @@ cnat_client_dpo_interpose (const dpo_id_t * original,
   cc_clone->cc_fei = FIB_NODE_INDEX_INVALID;
   cc_clone->parent_cci = cc->parent_cci;
   cc_clone->flags = cc->flags;
-  cc_clone->fwd_fib_index = cc->fwd_fib_index;
+  cc_clone->fwd_scope_id = cc->fwd_scope_id;
   cc_clone->dpo_type = cc->dpo_type;
   ip_address_copy (&cc_clone->cc_ip, &cc->cc_ip);
 
@@ -306,7 +305,7 @@ cnat_client_add_cli (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_
   unformat_input_t _line_input, *line_input = &_line_input;
   ip_prefix_t pfx;
   u32 fib_index = CNAT_FIB_TABLE;
-  u32 fwd_fib_index = CNAT_FIB_TABLE;
+  u32 fwd_scope_id = CNAT_FIB_TABLE;
   u8 flags = 0;
   clib_error_t *error = 0;
 
@@ -323,7 +322,7 @@ cnat_client_add_cli (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_
     {
       if (unformat (line_input, "fib %d", &fib_index))
 	;
-      else if (unformat (line_input, "fwd-fib %d", &fwd_fib_index))
+      else if (unformat (line_input, "fwd-scope %d", &fwd_scope_id))
 	;
       else if (unformat (line_input, "return"))
 	flags |= CNAT_TR_FLAG_RETURN_ONLY;
@@ -340,7 +339,7 @@ cnat_client_add_cli (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_
 	}
     }
 
-  cnat_client_add_pfx (&pfx.addr, pfx.len, fib_index, fwd_fib_index, flags);
+  cnat_client_add_pfx (&pfx.addr, pfx.len, fib_index, fwd_scope_id, flags);
 
 done:
   unformat_free (line_input);
@@ -350,8 +349,8 @@ done:
 VLIB_CLI_COMMAND (cnat_client_add_cmd, static) = {
   .path = "cnat client add",
   .function = cnat_client_add_cli,
-  .short_help = "cnat client add <prefix> [fib <fib-index>] [fwd-fib "
-		"<fib-index>] [return] [snat] [exclusive] [no-client]",
+  .short_help = "cnat client add <prefix> [fib <fib-index>] [fwd-scope "
+		"<scope-id>] [return] [snat] [exclusive] [no-client]",
 };
 
 static clib_error_t *

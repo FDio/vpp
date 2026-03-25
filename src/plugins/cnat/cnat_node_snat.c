@@ -22,14 +22,14 @@ vlib_node_registration_t cnat_snat_ip6_node;
 
 static_always_inline cnat_timestamp_rewrite_t *
 cnat_snat_feature_new_flow_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *b,
-				   ip_address_family_t af, cnat_timestamp_t *ts, u32 fwd_fib_index)
+				   ip_address_family_t af, cnat_timestamp_t *ts, u32 fwd_scope_id)
 {
   cnat_timestamp_rewrite_t *rw = NULL;
   cnat_snat_policy_action_t action;
 
-  cnat_snat_policy_entry_t *cpe = cnat_snat_policy_entry_get__ (af, fwd_fib_index);
+  cnat_snat_policy_entry_t *cpe = cnat_snat_policy_entry_get__ (af, fwd_scope_id);
   if (!cpe)
-    return 0; /* no policy for this vrf */
+    return 0; /* no policy for this scope */
 
   if (!cpe->snat_policy)
     return (NULL);
@@ -75,7 +75,6 @@ cnat_snat_feature_new_flow_inline (vlib_main_t *vm, vlib_node_runtime_t *node, v
     }
 
   rw->cts_lbi = INDEX_INVALID;
-  rw->rw_fib_index = fwd_fib_index;
 
   /*
    * Add the reverse flow, located in FIB
@@ -96,15 +95,18 @@ cnat_snat_feature_new_flow_inline (vlib_main_t *vm, vlib_node_runtime_t *node, v
       rrw->cts_dpoi_next_node = CNAT_NODE_VIP_NEXT_LOOKUP;
     }
 
-  u32 ret_fib_index = AF_IP4 == af ? cpe->ret_fib_index4 : cpe->ret_fib_index6;
-  rrw->rw_fib_index = ret_fib_index;
+  u32 ret_scope_id = AF_IP4 == af ? cpe->ret_scope_id4 : cpe->ret_scope_id6;
+  /* Reverse session is keyed by the policy-declared return scope.
+   * Stash on ts so cnat_get_rsession_from_ts can rebuild the reverse
+   * key at deletion time. */
+  ts->ts_scope_id[VLIB_TX] = ret_scope_id;
 
   cnat_make_buffer_5tuple (b, af, &rrw->tuple, 0 /* iph_offset */, 1 /* swap */);
 
   clib_atomic_add_fetch (&ts->ts_session_refcnt, 1);
 
   int sport_retries, sport_failures;
-  cnat_rsession_create (rw, b->flow_id, ret_fib_index, 0 /* add client */, &rw->tuple.port[VLIB_RX],
+  cnat_rsession_create (rw, b->flow_id, ret_scope_id, 0 /* add client */, &rw->tuple.port[VLIB_RX],
 			&sport_retries, &sport_failures);
   if (sport_retries)
     {
@@ -126,18 +128,18 @@ cnat_snat_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *b,
   cnat_timestamp_rewrite_t *rw = NULL;
   cnat_main_t *cm = &cnat_main;
   cnat_timestamp_t *ts;
-  u32 fwd_fib_index;
+  u32 fwd_scope_id;
 
   if (is_client)
     {
       cnat_client_t *cc = cnat_client_get (vnet_buffer (b)->ip.adj_index[VLIB_TX]);
-      fwd_fib_index = cc->fwd_fib_index;
+      fwd_scope_id = cc->fwd_scope_id;
       vnet_buffer (b)->ip.adj_index[VLIB_TX] = cc->cc_parent.dpoi_index;
       *next0 = cc->cc_parent.dpoi_next_node;
     }
   else
     {
-      fwd_fib_index = vnet_buffer (b)->ip.fib_index;
+      fwd_scope_id = vnet_buffer (b)->ip.fib_index;
     }
 
   ts = cnat_timestamp_update (b->flow_id, now);
@@ -148,7 +150,7 @@ cnat_snat_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *b,
     }
   else if (vnet_buffer2 (b)->session.state == CNAT_LOOKUP_IS_NEW)
     {
-      rw = cnat_snat_feature_new_flow_inline (vm, node, b, af, ts, fwd_fib_index);
+      rw = cnat_snat_feature_new_flow_inline (vm, node, b, af, ts, fwd_scope_id);
     }
   else if (is_return && vnet_buffer2 (b)->session.state == CNAT_LOOKUP_IS_RETURN)
     {
