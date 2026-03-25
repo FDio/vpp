@@ -61,7 +61,7 @@ stat_poll_loop (u8 ** patterns)
 	      break;
 
 	    case STAT_DIR_TYPE_COUNTER_VECTOR_COMBINED:
-	      for (k = 0; k < vec_len (res[i].simple_counter_vec); k++)
+	      for (k = 0; k < vec_len (res[i].combined_counter_vec); k++)
 		for (j = 0; j < vec_len (res[i].combined_counter_vec[k]); j++)
 		  fformat (stdout, "[%d]: %llu packets, %llu bytes %s\n",
 			   j, res[i].combined_counter_vec[k][j].packets,

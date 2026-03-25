@@ -70,7 +70,7 @@ static void
 update_counter_vector_combined (stat_segment_data_t *res,
 				sflow_counters_t *ifCtrs, u32 hw_if_index)
 {
-  for (int th = 0; th < vec_len (res->simple_counter_vec); th++)
+  for (int th = 0; th < vec_len (res->combined_counter_vec); th++)
     {
       for (int intf = 0; intf < vec_len (res->combined_counter_vec[th]);
 	   intf++)
