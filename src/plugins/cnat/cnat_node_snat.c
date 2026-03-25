@@ -75,7 +75,6 @@ cnat_snat_feature_new_flow_inline (vlib_main_t *vm, vlib_node_runtime_t *node, v
     }
 
   rw->cts_lbi = INDEX_INVALID;
-  rw->rw_fib_index = fwd_fib_index;
 
   /*
    * Add the reverse flow, located in FIB
@@ -96,15 +95,18 @@ cnat_snat_feature_new_flow_inline (vlib_main_t *vm, vlib_node_runtime_t *node, v
       rrw->cts_dpoi_next_node = CNAT_NODE_VIP_NEXT_LOOKUP;
     }
 
-  u32 ret_fib_index = AF_IP4 == af ? cpe->ret_fib_index4 : cpe->ret_fib_index6;
-  rrw->rw_fib_index = ret_fib_index;
+  u32 ret_scope_id = AF_IP4 == af ? cpe->ret_scope_id4 : cpe->ret_scope_id6;
+  /* Reverse session is keyed by the policy-declared return scope.
+   * Stash on ts so cnat_get_rsession_from_ts can rebuild the reverse
+   * key at deletion time. */
+  ts->ts_scope_id[VLIB_TX] = ret_scope_id;
 
   cnat_make_buffer_5tuple (b, af, &rrw->tuple, 0 /* iph_offset */, 1 /* swap */);
 
   clib_atomic_add_fetch (&ts->ts_session_refcnt, 1);
 
   int sport_retries, sport_failures;
-  cnat_rsession_create (rw, b->flow_id, ret_fib_index, 0 /* add client */, &rw->tuple.port[VLIB_RX],
+  cnat_rsession_create (rw, b->flow_id, ret_scope_id, 0 /* add client */, &rw->tuple.port[VLIB_RX],
 			&sport_retries, &sport_failures);
   if (sport_retries)
     {
