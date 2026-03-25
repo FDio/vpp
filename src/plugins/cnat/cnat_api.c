@@ -365,13 +365,11 @@ vl_api_cnat_snat_addresses_dump_t_handler (vl_api_cnat_snat_addresses_dump_t *mp
     rmp->_vl_msg_id = msg_id;
     rmp->context = mp->context;
     rmp->fwd_table_id4 =
-      clib_host_to_net_u32 (fib_table_get_table_id (cpe->fwd_fib_index4, FIB_PROTOCOL_IP4));
+      clib_host_to_net_u32 (fib_table_get_table_id (cpe->fwd_scope_id4, FIB_PROTOCOL_IP4));
     rmp->fwd_table_id6 =
-      clib_host_to_net_u32 (fib_table_get_table_id (cpe->fwd_fib_index6, FIB_PROTOCOL_IP6));
-    rmp->ret_table_id4 =
-      clib_host_to_net_u32 (fib_table_get_table_id (cpe->ret_fib_index4, FIB_PROTOCOL_IP4));
-    rmp->ret_table_id6 =
-      clib_host_to_net_u32 (fib_table_get_table_id (cpe->ret_fib_index6, FIB_PROTOCOL_IP6));
+      clib_host_to_net_u32 (fib_table_get_table_id (cpe->fwd_scope_id6, FIB_PROTOCOL_IP6));
+    rmp->ret_scope_id4 = clib_host_to_net_u32 (cpe->ret_scope_id4);
+    rmp->ret_scope_id6 = clib_host_to_net_u32 (cpe->ret_scope_id6);
     ip6_address_encode (&ip_addr_v6 (&cpe->snat_ip6.ce_ip), rmp->snat_ip6);
     ip4_address_encode (&ip_addr_v4 (&cpe->snat_ip4.ce_ip), rmp->snat_ip4);
     rmp->sw_if_index = clib_host_to_net_u32 (cpe->snat_ip6.ce_sw_if_index);
@@ -402,8 +400,8 @@ vl_api_cnat_set_snat_addresses_v2_t_handler (vl_api_cnat_set_snat_addresses_v2_t
 {
   vl_api_cnat_set_snat_addresses_v2_reply_t *rmp;
   u32 sw_if_index = clib_net_to_host_u32 (mp->sw_if_index);
-  u32 fwd_fib_index = clib_net_to_host_u32 (mp->fwd_fib_index);
-  u32 ret_fib_index = clib_net_to_host_u32 (mp->ret_fib_index);
+  u32 fwd_scope_id = clib_net_to_host_u32 (mp->fwd_scope_id);
+  u32 ret_scope_id = clib_net_to_host_u32 (mp->ret_scope_id);
   ip4_address_t ip4;
   ip6_address_t ip6;
   int rv;
@@ -411,7 +409,7 @@ vl_api_cnat_set_snat_addresses_v2_t_handler (vl_api_cnat_set_snat_addresses_v2_t
   ip4_address_decode (mp->snat_ip4, &ip4);
   ip6_address_decode (mp->snat_ip6, &ip6);
 
-  rv = cnat_set_snat (fwd_fib_index, ret_fib_index, &ip4, 32, &ip6, 128, sw_if_index,
+  rv = cnat_set_snat (fwd_scope_id, ret_scope_id, &ip4, 32, &ip6, 128, sw_if_index,
 		      (cnat_snat_policy_flags_t) mp->flags);
 
   REPLY_MACRO (VL_API_CNAT_SET_SNAT_ADDRESSES_V2_REPLY);
