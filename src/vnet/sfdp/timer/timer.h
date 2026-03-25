@@ -58,8 +58,8 @@ SFDP_EXPIRY_STATIC_ASSERT_FITS_IN_EXPIRY_OPAQUE (sfdp_session_timer_t);
 #define sfdp_expire_timers	   tw_timer_expire_timers_2t_1w_2048sl
 #define SFDP_TIMER_SI_MASK	   (0x7fffffff)
 #define SFDP_TIMER_INTERVAL	   ((f64) 1.0) /*in seconds*/
-#define SFDP_SECONDS_TO_TICKS	   (seconds) ((seconds) / SFDP_TIMER_INTERVAL)
-#define SFDP_TICKS_TO_SECONDS	   (ticks) ((ticks) *SFDP_TIMER_INTERVAL)
+#define SFDP_SECONDS_TO_TICKS(seconds) ((u32) ((seconds) / SFDP_TIMER_INTERVAL))
+#define SFDP_TICKS_TO_SECONDS(ticks)   ((f64) (ticks) *SFDP_TIMER_INTERVAL)
 
 static_always_inline sfdp_timer_per_thread_data_t *
 sfdp_timer_get_per_thread_data (u32 thread_index)
@@ -85,7 +85,7 @@ sfdp_session_timer_start (sfdp_tw_t *tw, sfdp_session_timer_t *timer,
 			  u32 session_index, f64 now, u32 ticks)
 {
   timer->handle = sfdp_timer_start_internal (tw, session_index, 0, ticks);
-  timer->next_expiration = now + ticks * SFDP_TIMER_INTERVAL;
+  timer->next_expiration = now + SFDP_TICKS_TO_SECONDS (ticks);
 }
 
 static_always_inline void
@@ -100,7 +100,7 @@ sfdp_session_timer_update (sfdp_tw_t *tw, sfdp_session_timer_t *timer, f64 now,
 {
   if (PREDICT_FALSE (ticks == 0))
     vlib_node_set_interrupt_pending (vlib_get_main (), sfdp_expire_node.index);
-  timer->next_expiration = now + ticks * SFDP_TIMER_INTERVAL;
+  timer->next_expiration = now + SFDP_TICKS_TO_SECONDS (ticks);
 }
 
 static_always_inline void
@@ -108,7 +108,7 @@ sfdp_session_timer_update_maybe_past (sfdp_tw_t *tw,
 				      sfdp_session_timer_t *timer, f64 now,
 				      u32 ticks)
 {
-  if (timer->next_expiration > now + (ticks * SFDP_TIMER_INTERVAL))
+  if (timer->next_expiration > now + SFDP_TICKS_TO_SECONDS (ticks))
     sfdp_timer_update_internal (tw, timer->handle, ticks);
 
   sfdp_session_timer_update (tw, timer, now, ticks);
@@ -119,8 +119,7 @@ sfdp_session_timer_update_unlikely_past (sfdp_tw_t *tw,
 					 sfdp_session_timer_t *timer, f64 now,
 					 u32 ticks)
 {
-  if (PREDICT_FALSE (timer->next_expiration >
-		     now + (ticks * SFDP_TIMER_INTERVAL)))
+  if (PREDICT_FALSE (timer->next_expiration > now + SFDP_TICKS_TO_SECONDS (ticks)))
     {
       sfdp_timer_update_internal (tw, timer->handle, ticks);
     }

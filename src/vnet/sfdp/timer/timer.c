@@ -69,14 +69,13 @@ timer_expiry_cb_expire_or_evict_sessions (u32 desired_expiries,
   {
     sfdp_session_t *session = sfdp_session_at_index (session_index);
     sfdp_session_timer_t *timer = SFDP_SESSION_TIMER (session);
-    f64 diff =
-      (timer->next_expiration - (ptd->current_time + SFDP_TIMER_INTERVAL)) /
-      SFDP_TIMER_INTERVAL;
-    if (diff > (f64) 1.)
+    f64 remaining_seconds = timer->next_expiration - (ptd->current_time + SFDP_TIMER_INTERVAL);
+    u32 remaining_ticks = SFDP_SECONDS_TO_TICKS (remaining_seconds);
+    if (remaining_ticks > 1)
       {
 	/* Rearm the timer accordingly */
-	sfdp_session_timer_start (&ptd->wheel, timer, session_index,
-				  ptd->current_time, diff);
+	sfdp_session_timer_start (&ptd->wheel, timer, session_index, ptd->current_time,
+				  remaining_ticks);
       }
     else
       {
@@ -106,8 +105,8 @@ timer_expiry_cb_notify_new_sessions (const u32 *new_sessions, u32 len)
       sfdp_session_t *session = sfdp_session_at_index (*session_index);
       sfdp_session_timer_t *timer = SFDP_SESSION_TIMER (session);
       sfdp_tenant_t *tenant = sfdp_tenant_at_index (sfdp, session->tenant_idx);
-      sfdp_session_timer_start (&ptd->wheel, timer, *session_index, time_now,
-				tenant->timeouts[SFDP_TIMEOUT_EMBRYONIC]);
+      u32 ticks = SFDP_SECONDS_TO_TICKS (tenant->timeouts[SFDP_TIMEOUT_EMBRYONIC]);
+      sfdp_session_timer_start (&ptd->wheel, timer, *session_index, time_now, ticks);
 
       len--;
       session_index++;
