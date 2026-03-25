@@ -1338,7 +1338,9 @@ hcpc_http_rx_callback (session_t *s)
 
   /* send event for intercept tx fifo */
   listener_tx_fifo = s->rx_fifo;
-  ASSERT (svm_fifo_max_dequeue (listener_tx_fifo));
+  if (!svm_fifo_max_dequeue (listener_tx_fifo))
+    return 0;
+
   if (svm_fifo_set_event (listener_tx_fifo))
     session_program_tx_io_evt (sh, SESSION_IO_EVT_TX);
 
