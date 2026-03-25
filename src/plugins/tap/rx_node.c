@@ -224,6 +224,11 @@ tap_rx_dequeue (vlib_main_t *vm, vlib_node_runtime_t *node, tap_if_t *tif,
       hdr = (vnet_virtio_net_hdr_v1_t *) (b0->data + off - hdr_sz);
       num_buffers = hdr->num_buffers;
       b0->template = bt;
+      /*
+       * Treat host->VPP tap traffic as locally originated so L3 forward nodes
+       * do not decrement TTL/hop-limit. This preserves protocols (e.g. DHCPv6)
+       * that transmit with 1 when VPP sits between Linux host and uplink */
+      b0->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
       b0->current_length = len;
 
       tap_rx_offloads (b0, hdr, is_tun);
