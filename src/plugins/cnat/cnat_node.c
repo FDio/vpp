@@ -28,6 +28,15 @@ format_cnat_trace (u8 *s, va_list *args)
   s = format (s, "\n%Uin:%U out:%U ", format_white_space, indent, format_vnet_sw_if_index_name, vnm,
 	      t->sw_if_index[VLIB_RX], format_vnet_sw_if_index_name, vnm, t->sw_if_index[VLIB_TX]);
 
+  if (t->flags & CNAT_TRACE_LOOKUP_KEY)
+    {
+      s = format (s, "fib:%u", t->lookup_fib_index);
+      if (t->lookup_scope_id != CNAT_SCOPE_ID_NONE)
+	s = format (s, " scope:%u", t->lookup_scope_id);
+      else
+	s = format (s, " scope:none");
+    }
+
   s = format (s, "\n%U%U", format_white_space, indent, format_cnat_timestamp, &t->ts, indent);
 
   if (t->flags & CNAT_TRACE_REWRITE_FOUND)
