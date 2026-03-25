@@ -37,7 +37,18 @@ typedef struct cnat_session_t_
        * IP 4/6 address, ports in the rx/tx direction & iproto
        */
       cnat_5tuple_t cs_5tuple;
-      u32 fib_index;
+      /**
+       * FIB index for VRF scoping.
+       */
+      u32 cs_fib_index;
+      /**
+       * Caller-defined scope identifier to disambiguate sessions
+       * with identical 5-tuples and fib_index (e.g. overlays,
+       * multi-tenant contexts). Effective range is 24-bit
+       * (matching generic_flow_id in the buffer opaque).
+       * Set to CNAT_SCOPE_ID_NONE when unused.
+       */
+      u32 cs_scope_id;
     };
     u64 as_u64[6];
   } key;
@@ -93,13 +104,40 @@ typedef enum cnat_session_flag_t_
 
 } cnat_session_flag_t;
 
-/* flags for vnet_buffer(b)->session.flags */
+/* flags for vnet_buffer2(b)->session.flags (4-bit field) */
 typedef enum cnat_buffer_session_flag_t_
 {
+  /* generic_flow_id contains a scope_id rather than a session index.
+   * Set by external plugins before CNAT lookup; cleared by
+   * cnat_lookup_create_or_return(). */
+  CNAT_BUFFER_SESSION_FLAG_HAS_SCOPE = (1 << 0),
+
   /* do not create a return session in output */
   CNAT_BUFFER_SESSION_FLAG_NO_RETURN = (1 << 1),
 } cnat_buffer_session_flag_t;
 STATIC_ASSERT (CNAT_BUFFER_SESSION_FLAG_NO_RETURN < (1 << 4), "Value too big");
+STATIC_ASSERT (CNAT_BUFFER_SESSION_FLAG_HAS_SCOPE < (1 << 4), "Value too big");
+
+#define CNAT_SCOPE_ID_NONE ((u32) ~0)
+
+#define cnat_scope_id(b)                                                                           \
+  ((vnet_buffer2 (b)->session.flags & CNAT_BUFFER_SESSION_FLAG_HAS_SCOPE) ?                        \
+     (u32) vnet_buffer2 (b)->session.generic_flow_id :                                             \
+     CNAT_SCOPE_ID_NONE)
+
+static_always_inline void
+cnat_set_scope_id (vlib_buffer_t *b, u32 scope_id)
+{
+  if (scope_id)
+    {
+      vnet_buffer2 (b)->session.generic_flow_id = scope_id;
+      vnet_buffer2 (b)->session.flags |= CNAT_BUFFER_SESSION_FLAG_HAS_SCOPE;
+    }
+  else
+    {
+      vnet_buffer2 (b)->session.flags &= ~CNAT_BUFFER_SESSION_FLAG_HAS_SCOPE;
+    }
+}
 
 extern u8 *format_cnat_timestamp (u8 *s, va_list *args);
 extern u8 *format_cnat_session (u8 * s, va_list * args);

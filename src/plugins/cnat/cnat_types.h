@@ -226,6 +226,10 @@ typedef struct cnat_timestamp_t_
 
   u32 fib_index;
 
+  /* Scope identifier carried from forward session creation to return
+   * session creation. CNAT_SCOPE_ID_NONE when unscoped. */
+  u32 scope_id;
+
   /* expire after N seconds */
   u16 lifetime;
 
