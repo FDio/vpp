@@ -383,13 +383,6 @@ quic_disconnect_transport (quic_ctx_t *ctx, u32 app_index)
 		  ctx->udp_session_handle);
 }
 
-typedef enum quic_session_connected_
-{
-  QUIC_SESSION_CONNECTED_NONE,
-  QUIC_SESSION_CONNECTED_CLIENT,
-  QUIC_SESSION_CONNECTED_SERVER,
-} quic_session_connected_t;
-
 /* TODO: Define appropriate QUIC return values for quic_engine_vft functions!
  */
 typedef struct quic_engine_vft_
