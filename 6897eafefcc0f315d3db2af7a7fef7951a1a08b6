@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9f5db4ea_fde6589d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 28
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3308
+      },
+      "writtenOn": "2026-03-26T09:27:37Z",
+      "side": 1,
+      "message": "I had similar in-progress code, so I\u0027m quite interested in this patch.\nIt\u0027s very close to what I had, and I can see that the bugs I found (CHAP authentication being broken, checking that the parent interface is actually an Ethernet interface, ...) are fixed here.\n\nMy local patches include changes to export more information in pppoeclient_dump. That\u0027s pretty straightforward, and seems like it\u0027d be generally useful (but can clearly be done in a follow-up commit).\n\nI\u0027ve also added an \u0027instance\u0027 field which makes the integration easier for us (in Netgate\u0027s TNSR). That\u0027s something that may or may not be generally applicable though.\n\nAdditionally, I have some basic python test code for my version of the pppoeclient plugin. I\u0027ll try to make that usable for this version instead.\n\nOne issue I see, unless I\u0027m missing something, is the pppox API call is not available. As far as I can see authentication can only be configured via the CLI, not via the API. So I think the pppox API call should be registered after all.",
+      "revId": "6897eafefcc0f315d3db2af7a7fef7951a1a08b6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
