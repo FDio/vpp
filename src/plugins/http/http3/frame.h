@@ -94,8 +94,7 @@ void http3_frame_goaway_write (u64 stream_or_push_id, u8 **dst);
  *
  * @return @c HTTP3_ERROR_NO_ERROR on success
  */
-http3_error_t http3_frame_settings_read (u8 *payload, u64 len,
-					 http3_conn_settings_t *settings);
+http3_error_t http3_frame_settings_read (u8 *payload, u64 len, http_conn_settings_t *settings);
 
 /**
  * Write SETTINGS frame to the end of given vector
@@ -103,6 +102,6 @@ http3_error_t http3_frame_settings_read (u8 *payload, u64 len,
  * @param settings HTTP/3 settings used for payload
  * @param dst      Vector where SETTINGS frame will be written
  */
-void http3_frame_settings_write (http3_conn_settings_t *settings, u8 **dst);
+void http3_frame_settings_write (http_conn_settings_t *settings, u8 **dst);
 
 #endif /* SRC_PLUGINS_HTTP_HTTP3_FRAME_H_ */
