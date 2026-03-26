@@ -9,13 +9,6 @@
 #include <http/http2/hpack.h>
 #include <http/http3/http3.h>
 
-typedef struct
-{
-  uword req_insert_count;
-  uword delta_base;
-  u8 delta_base_sign;
-} qpack_decoder_ctx_t;
-
 /**
  * Request parser
  *

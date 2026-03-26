@@ -62,8 +62,7 @@ http2_frame_header_write (http2_frame_header_t *fh, u8 *dst)
 }
 
 __clib_export http2_error_t
-http2_frame_read_settings (http2_conn_settings_t *settings, u8 *payload,
-			   u32 payload_len)
+http2_frame_read_settings (http_conn_settings_t *settings, u8 *payload, u32 payload_len)
 {
   http2_settings_entry_t *entry;
   u32 value;
