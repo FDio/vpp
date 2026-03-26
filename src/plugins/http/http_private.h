@@ -63,7 +63,7 @@ STATIC_ASSERT (sizeof (http_conn_handle_t) == sizeof (u32), "must fit in u32");
   _ (APP_CLOSED, "APP-CLOSED")                                                \
   _ (CLOSED, "CLOSED")
 
-typedef enum http_conn_state_
+typedef enum http_conn_state_ : u8
 {
 #define _(s, str) HTTP_CONN_STATE_##s,
   foreach_http_conn_state
@@ -171,14 +171,15 @@ typedef struct http_req_
   http_upgrade_proto_t upgrade_proto;
 } http_req_t;
 
-#define foreach_http_conn_flags                                               \
-  _ (HO_DONE, "ho-done")                                                      \
-  _ (NO_APP_SESSION, "no-app-session")                                        \
-  _ (PENDING_TIMER, "pending-timer")                                          \
-  _ (IS_SERVER, "is-server")                                                  \
-  _ (HAS_REQUEST, "has-request")                                              \
-  _ (UNIDIRECTIONAL_STREAM, "unidirectional-stream")                          \
-  _ (BIDIRECTIONAL_STREAM, "bidirectional-stream")
+#define foreach_http_conn_flags                                                                    \
+  _ (HO_DONE, "ho-done")                                                                           \
+  _ (NO_APP_SESSION, "no-app-session")                                                             \
+  _ (PENDING_TIMER, "pending-timer")                                                               \
+  _ (IS_SERVER, "is-server")                                                                       \
+  _ (HAS_REQUEST, "has-request")                                                                   \
+  _ (UNIDIRECTIONAL_STREAM, "unidirectional-stream")                                               \
+  _ (BIDIRECTIONAL_STREAM, "bidirectional-stream")                                                 \
+  _ (EXPECT_PEER_SETTINGS, "expect-peer-settings")
 
 typedef enum http_conn_flags_bit_
 {
@@ -204,7 +205,13 @@ typedef struct http_conn_id_
   };
   union
   {
-    session_handle_t tc_session_handle;
+    struct
+    {
+      /* connection case */
+      session_handle_t tc_session_handle;
+      u32 ho_index;
+      u32 http_connection_index;
+    };
     struct
     {
       /* listener case */
@@ -213,19 +220,50 @@ typedef struct http_conn_id_
     };
   };
   u32 parent_app_wrk_index;
-  u32 ho_index;
-  u32 http_connection_index; /* stream case */
-} http_conn_id_t;
+} http_ctx_id_t;
 
-STATIC_ASSERT (sizeof (http_conn_id_t) <= TRANSPORT_CONN_ID_LEN,
+STATIC_ASSERT (sizeof (http_ctx_id_t) <= TRANSPORT_CONN_ID_LEN,
 	       "ctx id must be less than TRANSPORT_CONN_ID_LEN");
+
+#define HTTP3_SETTING_VALUE_UNLIMITED (((u64) 1) << 62)
+
+/* value, label, member, min, max, default_value, server, client */
+#define foreach_http3_settings                                                                     \
+  _ (0x01, QPACK_MAX_TABLE_CAPACITY, qpack_max_table_capacity, 0, HTTP_VARINT_MAX, 0, 1, 1)        \
+  _ (0x06, MAX_FIELD_SECTION_SIZE, max_field_section_size, 0, HTTP_VARINT_MAX,                     \
+     HTTP3_SETTING_VALUE_UNLIMITED, 1, 1)                                                          \
+  _ (0x07, QPACK_BLOCKED_STREAMS, qpack_blocked_streams, 0, HTTP_VARINT_MAX, 0, 1, 1)              \
+  _ (0x08, ENABLE_CONNECT_PROTOCOL, enable_connect_protocol, 0, 1, 0, 1, 0)                        \
+  _ (0x33, H3_DATAGRAM, h3_datagram, 0, 1, 0, 1, 1)
+
+typedef enum
+{
+#define _(value, label, member, min, max, default_value, server, client)                           \
+  HTTP3_SETTINGS_##label = value,
+  foreach_http3_settings
+#undef _
+} http3_settings_t;
+
+typedef struct
+{
+#define _(value, label, member, min, max, default_value, server, client) u64 member;
+  foreach_http3_settings
+#undef _
+} http3_conn_settings_t;
+
+typedef struct
+{
+  uword req_insert_count;
+  uword delta_base;
+  u8 delta_base_sign;
+} qpack_decoder_ctx_t;
 
 typedef struct http_tc_
 {
   union
   {
     transport_connection_t connection;
-    http_conn_id_t c_http_conn_id;
+    http_ctx_id_t c_http_conn_id;
   };
 #define hc_tc_session_handle c_http_conn_id.tc_session_handle
 #define hc_tl_handle_tcp     c_http_conn_id.tl_handle_tcp
@@ -239,14 +277,28 @@ typedef struct http_tc_
 
   http_version_t version;
   http_conn_state_t state;
+  http_conn_flags_t flags;
+  http_udp_tunnel_mode_t udp_tunnel_mode;
   u32 timer_handle;
   u32 timeout;
   u32 app_rx_fifo_size;
   u8 *app_name;
   u8 *host;
-  http_conn_flags_t flags;
-  http_udp_tunnel_mode_t udp_tunnel_mode;
 
+  union
+  {
+    struct
+    {
+      /* http3 case */
+      u32 our_ctrl_stream_hc_index;
+      u32 peer_ctrl_stream_sctx_index;
+      u32 peer_decoder_stream_sctx_index;
+      u32 peer_encoder_stream_sctx_index;
+      u32 parent_sctx_index;
+      http3_conn_settings_t peer_settings;
+      qpack_decoder_ctx_t qpack_decoder_ctx;
+    };
+  };
   void *opaque; /* version specific data */
 } http_conn_t;
 
