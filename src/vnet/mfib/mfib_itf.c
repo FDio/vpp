@@ -147,6 +147,7 @@ mfib_itf_mac_add_del (mfib_itf_t *itf,
                       int add)
 {
     vnet_sw_interface_t *si;
+    vnet_hw_interface_t *hi;
     vnet_main_t *vnm;
     mac_address_t mac;
 
@@ -154,6 +155,17 @@ mfib_itf_mac_add_del (mfib_itf_t *itf,
     mfib_itf_prefix_to_mac(pfx, &mac);
 
     si = vnet_get_sw_interface(vnm, itf->mfi_sw_if_index);
+    hi = vnet_get_hw_interface(vnm, si->hw_if_index);
+
+    /*
+     * Non-Ethernet interfaces, such as PPP/PPPoX, do not support
+     * programming secondary MAC filters. Skip the add/del request
+     * instead of emitting a spurious error each time multicast state
+     * changes on the interface.
+     */
+    if (!hi->hw_address)
+        return;
+
     vnet_hw_interface_add_del_mac_address (vnet_get_main(),
                                            si->hw_if_index,
                                            mac.bytes, add);
