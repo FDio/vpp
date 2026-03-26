@@ -30,7 +30,7 @@ void http_timers_init (vlib_main_t *vm, http_conn_timeout_fn *rpc_cb,
 void http_timers_set_state (vlib_main_t *vm, bool enabled);
 
 static inline void
-http_conn_timer_start (http_conn_t *hc)
+http_conn_timer_start (http_ctx_t *hc)
 {
   http_tw_ctx_t *twc = &http_tw_ctx;
   u32 hs_handle;
@@ -46,7 +46,7 @@ http_conn_timer_start (http_conn_t *hc)
 }
 
 static inline void
-http_conn_timer_stop (http_conn_t *hc)
+http_conn_timer_stop (http_ctx_t *hc)
 {
   http_tw_ctx_t *twc = &http_tw_ctx;
 
@@ -61,7 +61,7 @@ http_conn_timer_stop (http_conn_t *hc)
 }
 
 static inline void
-http_conn_timer_update (http_conn_t *hc)
+http_conn_timer_update (http_ctx_t *hc)
 {
   http_tw_ctx_t *twc = &http_tw_ctx;
   u32 hs_handle;
