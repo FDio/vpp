@@ -16,6 +16,24 @@
       "message": "I had similar in-progress code, so I\u0027m quite interested in this patch.\nIt\u0027s very close to what I had, and I can see that the bugs I found (CHAP authentication being broken, checking that the parent interface is actually an Ethernet interface, ...) are fixed here.\n\nMy local patches include changes to export more information in pppoeclient_dump. That\u0027s pretty straightforward, and seems like it\u0027d be generally useful (but can clearly be done in a follow-up commit).\n\nI\u0027ve also added an \u0027instance\u0027 field which makes the integration easier for us (in Netgate\u0027s TNSR). That\u0027s something that may or may not be generally applicable though.\n\nAdditionally, I have some basic python test code for my version of the pppoeclient plugin. I\u0027ll try to make that usable for this version instead.\n\nOne issue I see, unless I\u0027m missing something, is the pppox API call is not available. As far as I can see authentication can only be configured via the CLI, not via the API. So I think the pppox API call should be registered after all.",
       "revId": "6897eafefcc0f315d3db2af7a7fef7951a1a08b6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7f002dad_f2e67ae5",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 28
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3306
+      },
+      "writtenOn": "2026-03-26T14:59:11Z",
+      "side": 1,
+      "message": "Thanks, this was very helpful feedback.\n\nThe main issue you pointed out is fixed now:\n- the pppox auth API is registered and usable\n- pppoeclient_dump/details now exports a bit more runtime state as well, including pppox_sw_if_index, session_id and client_state\n- pppoeclient_dump also honors the sw_if_index filter now\n\nThe Ethernet parent-interface check and the CHAP authentication issue are also covered in the current patch set, and the result has been validated on a real PPPoE line.\n\nI did not add the instance field in this patch, because that seems more integration-specific and may be better handled separately if we decide it is generally useful upstream.\n\nIf your Python test code can be adapted cleanly to this version, that would be very useful as a follow-up as well.",
+      "parentUuid": "9f5db4ea_fde6589d",
+      "revId": "6897eafefcc0f315d3db2af7a7fef7951a1a08b6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
