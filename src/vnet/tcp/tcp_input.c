@@ -406,11 +406,9 @@ tcp_update_rtt (tcp_connection_t * tc, tcp_rate_sample_t * rs, u32 ack)
   if (tcp_in_cong_recovery (tc))
     {
       /* Accept rtt estimates for samples that have not been retransmitted */
-      if (!(tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
-	  || (rs->flags & TCP_BTS_IS_RXT))
+      if (!(tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE) || (rs->flags & TCP_BTS_IS_RXT) || !rs->rtt_time)
 	goto done;
-      if (rs->rtt_time)
-	tcp_estimate_rtt_us (tc, rs->rtt_time);
+      tcp_estimate_rtt_us (tc, rs->rtt_time);
       mrtt = rs->rtt_time * THZ;
       goto estimate_rtt;
     }
@@ -440,12 +438,11 @@ estimate_rtt:
 
   tcp_estimate_rtt (tc, mrtt);
 
-done:
-
-  /* If we got here something must've been ACKed so make sure boff is 0,
-   * even if mrtt is not valid since we update the rto lower */
+  /* RFC6298, Sec. 5: reset only if valid RTT measurement */
   tc->rto_boff = 0;
   tcp_update_rto (tc);
+
+done:
 
   return 0;
 }
