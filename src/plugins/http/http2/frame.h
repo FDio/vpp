@@ -103,8 +103,8 @@ http2_frame_header_alloc (u8 **dst)
  *
  * @return @c HTTP2_ERROR_NO_ERROR on success, error otherwise
  */
-http2_error_t http2_frame_read_settings (http2_conn_settings_t *settings,
-					 u8 *payload, u32 payload_len);
+http2_error_t http2_frame_read_settings (http_conn_settings_t *settings, u8 *payload,
+					 u32 payload_len);
 
 /**
  * Write SETTINGS ACK frame to the end of given vector

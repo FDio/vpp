@@ -1343,15 +1343,15 @@ http_test_h2_frame (vlib_main_t *vm)
 
   vlib_cli_output (vm, "http2_frame_read_settings");
 
-  static http2_error_t (*_http2_frame_read_settings) (
-    http2_conn_settings_t * settings, u8 * payload, u32 payload_len);
+  static http2_error_t (*_http2_frame_read_settings) (http_conn_settings_t * settings, u8 * payload,
+						      u32 payload_len);
 
   _http2_frame_read_settings =
     vlib_get_plugin_symbol ("http_plugin.so", "http2_frame_read_settings");
 
   http2_error_t rv;
   http2_frame_header_t fh = { 0 };
-  http2_conn_settings_t conn_settings = http2_default_conn_settings;
+  http_conn_settings_t conn_settings = http2_default_conn_settings;
 
   u8 settings[] = { 0x0, 0x0, 0x12, 0x4, 0x0, 0x0,  0x0, 0x0, 0x0,
 		    0x0, 0x3, 0x0,  0x0, 0x0, 0x64, 0x0, 0x4, 0x40,
@@ -1994,13 +1994,13 @@ http_test_h3_frame (vlib_main_t *vm)
 
   vlib_cli_output (vm, "http3_frame_settings_read");
 
-  static http3_error_t (*_http3_frame_settings_read) (
-    u8 * payload, u64 len, http3_conn_settings_t * settings);
+  static http3_error_t (*_http3_frame_settings_read) (u8 * payload, u64 len,
+						      http_conn_settings_t * settings);
 
   _http3_frame_settings_read =
     vlib_get_plugin_symbol ("http_plugin.so", "http3_frame_settings_read");
 
-  http3_conn_settings_t h3_settings = {};
+  http_conn_settings_t h3_settings = {};
   u8 settings[] = {
     0x04, 0x04, 0x07, 0x05, 0x08, 0x01, 0x33, 0x02,
   };
@@ -2022,8 +2022,7 @@ http_test_h3_frame (vlib_main_t *vm)
 
   vlib_cli_output (vm, "http3_frame_settings_write");
 
-  static void (*_http3_frame_settings_write) (http3_conn_settings_t * settings,
-					      u8 * *dst);
+  static void (*_http3_frame_settings_write) (http_conn_settings_t * settings, u8 * *dst);
   _http3_frame_settings_write =
     vlib_get_plugin_symbol ("http_plugin.so", "http3_frame_settings_write");
   h3_settings = http3_default_conn_settings;
