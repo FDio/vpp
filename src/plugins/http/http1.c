@@ -67,7 +67,7 @@ static const char *put_chunked_request_template =
   "Transfer-Encoding: chunked\r\n";
 
 always_inline http_req_t *
-http1_conn_alloc_req (http_conn_t *hc)
+http1_conn_alloc_req (http_ctx_t *hc)
 {
   http1_main_t *h1m = &http1_main;
   http_req_t *req;
@@ -109,7 +109,7 @@ http1_req_get_if_valid (u32 req_index, clib_thread_index_t thread_index)
 }
 
 always_inline http_req_t *
-http1_conn_get_req (http_conn_t *hc)
+http1_conn_get_req (http_ctx_t *hc)
 {
   http1_main_t *h1m = &http1_main;
   u32 req_index;
@@ -119,7 +119,7 @@ http1_conn_get_req (http_conn_t *hc)
 }
 
 always_inline void
-http1_conn_free_req (http_conn_t *hc)
+http1_conn_free_req (http_ctx_t *hc)
 {
   http1_main_t *h1m = &http1_main;
   http_req_t *req;
@@ -139,8 +139,7 @@ http1_conn_free_req (http_conn_t *hc)
 /* Deschedule http session and wait for deq notification if underlying ts tx
  * fifo almost full */
 static_always_inline void
-http1_check_and_deschedule (http_conn_t *hc, http_req_t *req,
-			    transport_send_params_t *sp)
+http1_check_and_deschedule (http_ctx_t *hc, http_req_t *req, transport_send_params_t *sp)
 {
   if (http_io_ts_check_write_thresh (hc))
     {
@@ -150,8 +149,7 @@ http1_check_and_deschedule (http_conn_t *hc, http_req_t *req,
 }
 
 static void
-http1_send_error (http_conn_t *hc, http_status_code_t ec,
-		  transport_send_params_t *sp)
+http1_send_error (http_ctx_t *hc, http_status_code_t ec, transport_send_params_t *sp)
 {
   u8 *data;
 
@@ -167,7 +165,7 @@ http1_send_error (http_conn_t *hc, http_status_code_t ec,
 }
 
 static int
-http1_read_message (http_conn_t *hc, u8 *rx_buf)
+http1_read_message (http_ctx_t *hc, u8 *rx_buf)
 {
   u32 max_deq;
 
@@ -772,7 +770,7 @@ http1_check_connection_upgrade (http_req_t *req, u8 *rx_buf)
 }
 
 static void
-http1_target_fixup (http_conn_t *hc, http_req_t *req)
+http1_target_fixup (http_ctx_t *hc, http_req_t *req)
 {
   http_field_line_t *host;
 
@@ -848,8 +846,7 @@ http1_write_app_headers (http_req_t *req, http_msg_t *msg, u8 **tx_buf)
 /*************************************/
 
 static http_sm_result_t
-http1_req_state_wait_transport_reply (http_conn_t *hc, http_req_t *req,
-				      transport_send_params_t *sp)
+http1_req_state_wait_transport_reply (http_ctx_t *hc, http_req_t *req, transport_send_params_t *sp)
 {
   int rv;
   http_msg_t msg = {};
@@ -942,8 +939,7 @@ error:
 }
 
 static http_sm_result_t
-http1_req_state_wait_transport_method (http_conn_t *hc, http_req_t *req,
-				       transport_send_params_t *sp)
+http1_req_state_wait_transport_method (http_ctx_t *hc, http_req_t *req, transport_send_params_t *sp)
 {
   http_status_code_t ec;
   http_msg_t msg;
@@ -1052,7 +1048,7 @@ error:
 }
 
 static http_sm_result_t
-http1_req_state_transport_io_more_data (http_conn_t *hc, http_req_t *req,
+http1_req_state_transport_io_more_data (http_ctx_t *hc, http_req_t *req,
 					transport_send_params_t *sp)
 {
   u32 max_len, max_deq, max_enq, n_segs = 2;
@@ -1108,8 +1104,7 @@ http1_req_state_transport_io_more_data (http_conn_t *hc, http_req_t *req,
 }
 
 static http_sm_result_t
-http1_req_state_tunnel_rx (http_conn_t *hc, http_req_t *req,
-			   transport_send_params_t *sp)
+http1_req_state_tunnel_rx (http_ctx_t *hc, http_req_t *req, transport_send_params_t *sp)
 {
   u32 max_deq, max_enq, max_read, n_segs = 2;
   svm_fifo_seg_t segs[n_segs];
@@ -1142,8 +1137,7 @@ http1_req_state_tunnel_rx (http_conn_t *hc, http_req_t *req,
 }
 
 static http_sm_result_t
-http1_req_state_udp_tunnel_rx (http_conn_t *hc, http_req_t *req,
-			       transport_send_params_t *sp)
+http1_req_state_udp_tunnel_rx (http_ctx_t *hc, http_req_t *req, transport_send_params_t *sp)
 {
   u32 to_deq, capsule_size, dgram_size, n_read, n_written = 0;
   int rv;
@@ -1258,8 +1252,7 @@ done:
 /*************************************/
 
 static http_sm_result_t
-http1_req_state_wait_app_reply (http_conn_t *hc, http_req_t *req,
-				transport_send_params_t *sp)
+http1_req_state_wait_app_reply (http_ctx_t *hc, http_req_t *req, transport_send_params_t *sp)
 {
   u8 *response;
   u32 max_enq;
@@ -1375,8 +1368,7 @@ error:
 }
 
 static http_sm_result_t
-http1_req_state_wait_app_method (http_conn_t *hc, http_req_t *req,
-				 transport_send_params_t *sp)
+http1_req_state_wait_app_method (http_ctx_t *hc, http_req_t *req, transport_send_params_t *sp)
 {
   http_msg_t msg;
   u8 *request = 0, *target;
@@ -1545,8 +1537,7 @@ done:
 }
 
 static http_sm_result_t
-http1_req_state_app_io_more_data (http_conn_t *hc, http_req_t *req,
-				  transport_send_params_t *sp)
+http1_req_state_app_io_more_data (http_ctx_t *hc, http_req_t *req, transport_send_params_t *sp)
 {
   u32 max_write, n_read, n_segs, n_written = 0;
   http_buffer_t *hb = &req->tx_buf;
@@ -1591,7 +1582,7 @@ check_fifo:
 }
 
 static http_sm_result_t
-http1_req_state_app_io_more_streaming_data (http_conn_t *hc, http_req_t *req,
+http1_req_state_app_io_more_streaming_data (http_ctx_t *hc, http_req_t *req,
 					    transport_send_params_t *sp)
 {
   u32 max_write, chunk_size, n_segs, n_written = 0;
@@ -1660,8 +1651,7 @@ check_fifo:
 }
 
 static http_sm_result_t
-http1_req_state_tunnel_tx (http_conn_t *hc, http_req_t *req,
-			   transport_send_params_t *sp)
+http1_req_state_tunnel_tx (http_ctx_t *hc, http_req_t *req, transport_send_params_t *sp)
 {
   u32 max_deq, max_enq, max_read, n_segs = 2;
   svm_fifo_seg_t segs[n_segs];
@@ -1693,8 +1683,7 @@ check_fifo:
 }
 
 static http_sm_result_t
-http1_req_state_udp_tunnel_tx (http_conn_t *hc, http_req_t *req,
-			       transport_send_params_t *sp)
+http1_req_state_udp_tunnel_tx (http_ctx_t *hc, http_req_t *req, transport_send_params_t *sp)
 {
   u32 to_deq, capsule_size, dgram_size;
   u8 written = 0;
@@ -1789,8 +1778,7 @@ http1_req_state_is_rx_valid (http_req_t *req)
 }
 
 static_always_inline void
-http1_req_run_state_machine (http_conn_t *hc, http_req_t *req,
-			     transport_send_params_t *sp, u8 is_tx)
+http1_req_run_state_machine (http_ctx_t *hc, http_req_t *req, transport_send_params_t *sp, u8 is_tx)
 {
   http_sm_result_t res;
 
@@ -1838,7 +1826,7 @@ static u8 *
 format_http1_req (u8 *s, va_list *args)
 {
   http_req_t *req = va_arg (*args, http_req_t *);
-  http_conn_t *hc = va_arg (*args, http_conn_t *);
+  http_ctx_t *hc = va_arg (*args, http_ctx_t *);
   session_t *ts;
 
   ts = session_get_from_handle (hc->hc_tc_session_handle);
@@ -1854,7 +1842,7 @@ http1_format_req (u8 *s, va_list *args)
 {
   u32 req_index = va_arg (*args, u32);
   clib_thread_index_t thread_index = va_arg (*args, u32);
-  http_conn_t *hc = va_arg (*args, http_conn_t *);
+  http_ctx_t *hc = va_arg (*args, http_ctx_t *);
   u32 verbose = va_arg (*args, u32);
   http_req_t *req;
 
@@ -1873,8 +1861,7 @@ http1_format_req (u8 *s, va_list *args)
 }
 
 static void
-http1_app_tx_callback (http_conn_t *hc, u32 req_index,
-		       transport_send_params_t *sp)
+http1_app_tx_callback (http_ctx_t *hc, u32 req_index, transport_send_params_t *sp)
 {
   http_req_t *req;
 
@@ -1907,8 +1894,7 @@ http1_app_tx_callback (http_conn_t *hc, u32 req_index,
 }
 
 static void
-http1_app_rx_evt_callback (http_conn_t *hc, u32 req_index,
-			   clib_thread_index_t thread_index)
+http1_app_rx_evt_callback (http_ctx_t *hc, u32 req_index, clib_thread_index_t thread_index)
 {
   http_req_t *req;
 
@@ -1919,8 +1905,8 @@ http1_app_rx_evt_callback (http_conn_t *hc, u32 req_index,
 }
 
 static void
-http1_app_close_callback (http_conn_t *hc, u32 req_index,
-			  clib_thread_index_t thread_index, u8 is_shutdown)
+http1_app_close_callback (http_ctx_t *hc, u32 req_index, clib_thread_index_t thread_index,
+			  u8 is_shutdown)
 {
   http_req_t *req;
 
@@ -1945,8 +1931,7 @@ http1_app_close_callback (http_conn_t *hc, u32 req_index,
 }
 
 static void
-http1_app_reset_callback (http_conn_t *hc, u32 req_index,
-			  clib_thread_index_t thread_index)
+http1_app_reset_callback (http_ctx_t *hc, u32 req_index, clib_thread_index_t thread_index)
 {
   http_req_t *req;
   req = http1_req_get (req_index, thread_index);
@@ -1956,7 +1941,7 @@ http1_app_reset_callback (http_conn_t *hc, u32 req_index,
 }
 
 static int
-http1_transport_connected_callback (http_conn_t *hc)
+http1_transport_connected_callback (http_ctx_t *hc)
 {
   http_req_t *req;
 
@@ -1969,7 +1954,7 @@ http1_transport_connected_callback (http_conn_t *hc)
 }
 
 static void
-http1_transport_rx_callback (http_conn_t *hc)
+http1_transport_rx_callback (http_ctx_t *hc)
 {
   http_req_t *req;
 
@@ -2022,7 +2007,7 @@ run_sm:
 }
 
 static void
-http1_transport_close_callback (http_conn_t *hc)
+http1_transport_close_callback (http_ctx_t *hc)
 {
   if (!(hc->flags & HTTP_CONN_F_HAS_REQUEST))
     return;
@@ -2035,7 +2020,7 @@ http1_transport_close_callback (http_conn_t *hc)
 }
 
 static void
-http1_transport_reset_callback (http_conn_t *hc)
+http1_transport_reset_callback (http_ctx_t *hc)
 {
   if (!(hc->flags & HTTP_CONN_F_HAS_REQUEST))
     return;
@@ -2045,7 +2030,7 @@ http1_transport_reset_callback (http_conn_t *hc)
 }
 
 static void
-http1_transport_conn_reschedule_callback (http_conn_t *hc)
+http1_transport_conn_reschedule_callback (http_ctx_t *hc)
 {
   ASSERT (hc->flags & HTTP_CONN_F_HAS_REQUEST);
   http_req_t *req = http1_conn_get_req (hc);
@@ -2053,13 +2038,13 @@ http1_transport_conn_reschedule_callback (http_conn_t *hc)
 }
 
 static void
-http1_conn_accept_callback (http_conn_t *hc)
+http1_conn_accept_callback (http_ctx_t *hc)
 {
   /* nothing to do */
 }
 
 static void
-http1_conn_cleanup_callback (http_conn_t *hc)
+http1_conn_cleanup_callback (http_ctx_t *hc)
 {
   http_req_t *req;
   if (!(hc->flags & HTTP_CONN_F_HAS_REQUEST))

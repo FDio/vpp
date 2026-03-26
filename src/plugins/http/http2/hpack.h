@@ -20,24 +20,6 @@
 #define HPACK_DYNAMIC_TABLE_ENTRY_OVERHEAD 32
 #define HPACK_ENCODER_SKIP_CONTENT_LEN	   ((u64) ~0)
 
-typedef struct
-{
-  u8 *buf;
-  uword name_len;
-} hpack_dynamic_table_entry_t;
-
-typedef struct
-{
-  /* SETTINGS_HEADER_TABLE_SIZE */
-  u32 max_size;
-  /* dynamic table size update */
-  u32 size;
-  /* current usage (each entry = 32 + name len + value len) */
-  u32 used;
-  /* ring buffer */
-  hpack_dynamic_table_entry_t *entries;
-} hpack_dynamic_table_t;
-
 enum
 {
 #define _(bit, name, str) HPACK_PSEUDO_HEADER_##name##_PARSED = (1 << bit),
