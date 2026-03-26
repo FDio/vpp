@@ -104,6 +104,9 @@ typedef struct
 
   /* Pad character.  Defaults to space. */
   uword pad_char;
+
+  /* Precision was explicitly specified with '.'. */
+  u8 precision_set;
 } format_info_t;
 
 static u8 *
@@ -167,9 +170,10 @@ do_percent (u8 ** _s, const u8 * fmt, va_list * va)
 
   format_info_t fi = {
     .justify = '+',
-    .width = {0},
+    .width = { 0 },
     .pad_char = ' ',
     .how_long = 0,
+    .precision_set = 0,
   };
 
   uword i;
@@ -217,6 +221,7 @@ do_percent (u8 ** _s, const u8 * fmt, va_list * va)
 	  }
 	if (c != '.')
 	  break;
+	fi.precision_set = 1;
 	c = *++f;
       }
   }
@@ -336,8 +341,8 @@ do_percent (u8 ** _s, const u8 * fmt, va_list * va)
 		cstring = "(nil)";
 		len = 5;
 	      }
-	    else if (fi.width[1] != 0)
-	      len = clib_min (strlen (cstring), fi.width[1]);
+	    else if (fi.precision_set)
+	      len = clib_strnlen (cstring, fi.width[1]);
 	    else
 	      len = strlen (cstring);
 
@@ -357,7 +362,7 @@ do_percent (u8 ** _s, const u8 * fmt, va_list * va)
 	    u8 *v = va_arg (*va, u8 *);
 	    uword len;
 
-	    if (fi.width[1] != 0)
+	    if (fi.precision_set)
 	      len = clib_min (vec_len (v), fi.width[1]);
 	    else
 	      len = vec_len (v);
@@ -371,7 +376,7 @@ do_percent (u8 ** _s, const u8 * fmt, va_list * va)
 	case 'e':
 	  /* Floating point. */
 	  ASSERT (fi.how_long == 0 || fi.how_long == 'l');
-	  s = format_float (s, va_arg (*va, double), fi.width[1], c);
+	  s = format_float (s, va_arg (*va, double), fi.precision_set ? fi.width[1] : ~0, c);
 	  break;
 
 	case 'U':
@@ -719,7 +724,7 @@ format_float (u8 * s, f64 x, uword n_fraction_digits, uword output_style)
 
   /* Default number of digits to print when its not specified. */
   if (n_fraction_digits == ~0)
-    n_fraction_digits = 7;
+    n_fraction_digits = 6;
   n_fraction_done = 0;
   decimal_point = 0;
   added_decimal_point = 0;

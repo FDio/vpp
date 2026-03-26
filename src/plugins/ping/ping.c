@@ -1323,9 +1323,8 @@ double_break:
       (0 ==
        n_requests) ? 0 : 100.0 * ((float) n_requests -
 				  (float) n_replies) / (float) n_requests;
-    vlib_cli_output (vm,
-		     "Statistics: %u sent, %u received, %f%% packet loss\n",
-		     n_requests, n_replies, loss);
+    vlib_cli_output (vm, "Statistics: %u sent, %u received, %.0f%% packet loss\n", n_requests,
+		     n_replies, loss);
     clear_cli_process_id_by_icmp_id_mt (vm, icmp_id);
   }
 }
