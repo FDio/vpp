@@ -30,22 +30,16 @@ set_bpf_trace_filter_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	is_del = 1;
       else if (unformat (line_input, "no-optimize"))
 	optimize = 0;
-      else if (unformat (line_input, "%s", &bpf_expr))
-	;
       else
 	{
-	  err = clib_error_return (0, "unknown input `%U'",
-				   format_unformat_error, input);
+	  bpf_expr = format (0, "%U", format_unformat_input, line_input);
 	  break;
 	}
     }
   unformat_free (line_input);
-
-  if (err != 0)
-    return err;
-
   err = bpf_trace_filter_set_unset ((char *) bpf_expr, is_del, optimize);
 
+  vec_free (bpf_expr);
   return err;
 }
 
