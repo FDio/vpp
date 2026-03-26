@@ -37,7 +37,7 @@
 
 typedef enum
 {
-#define _(sym, str, val) HTTP3_ERROR_##sym = val,
+#define _(sym, str, val) HTTP3_ERROR_##sym = (val),
   foreach_http3_errors
 #undef _
 } http3_error_t;
@@ -50,9 +50,9 @@ format_http3_error (u8 *s, va_list *va)
 
   switch (e)
     {
-#define _(sym, str, val)                                                      \
-  case HTTP3_ERROR_##sym:                                                     \
-    t = (u8 *) str;                                                           \
+#define _(sym, str, val)                                                                           \
+  case HTTP3_ERROR_##sym:                                                                          \
+    t = (u8 *) (str);                                                                              \
     break;
       foreach_http3_errors
 #undef _
@@ -64,35 +64,24 @@ format_http3_error (u8 *s, va_list *va)
 #define HTTP3_SETTING_VALUE_UNLIMITED (((u64) 1) << 62)
 
 /* value, label, member, min, max, default_value, server, client */
-#define foreach_http3_settings                                                \
-  _ (0x01, QPACK_MAX_TABLE_CAPACITY, qpack_max_table_capacity, 0,             \
-     HTTP_VARINT_MAX, 0, 1, 1)                                                \
-  _ (0x06, MAX_FIELD_SECTION_SIZE, max_field_section_size, 0,                 \
-     HTTP_VARINT_MAX, HTTP3_SETTING_VALUE_UNLIMITED, 1, 1)                    \
-  _ (0x07, QPACK_BLOCKED_STREAMS, qpack_blocked_streams, 0, HTTP_VARINT_MAX,  \
-     0, 1, 1)                                                                 \
-  _ (0x08, ENABLE_CONNECT_PROTOCOL, enable_connect_protocol, 0, 1, 0, 1, 0)   \
+#define foreach_http3_settings                                                                     \
+  _ (0x01, QPACK_MAX_TABLE_CAPACITY, qpack_max_table_capacity, 0, HTTP_VARINT_MAX, 0, 1, 1)        \
+  _ (0x06, MAX_FIELD_SECTION_SIZE, max_field_section_size, 0, HTTP_VARINT_MAX,                     \
+     HTTP3_SETTING_VALUE_UNLIMITED, 1, 1)                                                          \
+  _ (0x07, QPACK_BLOCKED_STREAMS, qpack_blocked_streams, 0, HTTP_VARINT_MAX, 0, 1, 1)              \
+  _ (0x08, ENABLE_CONNECT_PROTOCOL, enable_connect_protocol, 0, 1, 0, 1, 0)                        \
   _ (0x33, H3_DATAGRAM, h3_datagram, 0, 1, 0, 1, 1)
 
 typedef enum
 {
-#define _(value, label, member, min, max, default_value, server, client)      \
-  HTTP3_SETTINGS_##label = value,
+#define _(value, label, member, min, max, default_value, server, client)                           \
+  HTTP3_SETTINGS_##label = (value),
   foreach_http3_settings
 #undef _
 } http3_settings_t;
 
-typedef struct
-{
-#define _(value, label, member, min, max, default_value, server, client)      \
-  u64 member;
-  foreach_http3_settings
-#undef _
-} http3_conn_settings_t;
-
-static const http3_conn_settings_t http3_default_conn_settings = {
-#define _(value, label, member, min, max, default_value, server, client)      \
-  default_value,
+static const http_conn_settings_t http3_default_conn_settings = {
+#define _(value, label, member, min, max, default_value, server, client) .member = (default_value),
   foreach_http3_settings
 #undef _
 };
@@ -129,7 +118,7 @@ format_http3_stream_type (u8 *s, va_list *va)
 }
 
 static_always_inline int
-http3_get_application_error_code (http_conn_t *hc)
+http3_get_application_error_code (http_ctx_t *hc)
 {
   session_t *ts = session_get_from_handle (hc->hc_tc_session_handle);
   transport_endpt_attr_t attr = { .type =

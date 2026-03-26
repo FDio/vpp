@@ -7,6 +7,7 @@
 
 #include <vppinfra/format.h>
 #include <vppinfra/types.h>
+#include <http/http_private.h>
 
 /* RFC9113 section 7 */
 #define foreach_http2_error                                                   \
@@ -25,7 +26,7 @@
   _ (INADEQUATE_SECURITY, "INADEQUATE_SECURITY")                              \
   _ (HTTP_1_1_REQUIRED, "HTTP_1_1_REQUIRED")
 
-typedef enum http2_error_
+typedef enum http2_error_ : u32
 {
 #define _(s, str) HTTP2_ERROR_##s,
   foreach_http2_error
@@ -35,14 +36,14 @@ typedef enum http2_error_
 static inline u8 *
 format_http2_error (u8 *s, va_list *va)
 {
-  http2_error_t e = va_arg (*va, http2_error_t);
+  http2_error_t e = va_arg (*va, int);
   u8 *t = 0;
 
   switch (e)
     {
-#define _(s, str)                                                             \
-  case HTTP2_ERROR_##s:                                                       \
-    t = (u8 *) str;                                                           \
+#define _(s, str)                                                                                  \
+  case HTTP2_ERROR_##s:                                                                            \
+    t = (u8 *) (str);                                                                              \
     break;
       foreach_http2_error
 #undef _
@@ -77,9 +78,8 @@ format_http2_error (u8 *s, va_list *va)
 
 typedef enum
 {
-#define _(value, label, member, min, max, default_value, err_code, server,    \
-	  client)                                                             \
-  HTTP2_SETTINGS_##label = value,
+#define _(value, label, member, min, max, default_value, err_code, server, client)                 \
+  HTTP2_SETTINGS_##label = (value),
   foreach_http2_settings
 #undef _
 } http_settings_t;
@@ -93,10 +93,9 @@ typedef struct
 #undef _
 } http2_conn_settings_t;
 
-static const http2_conn_settings_t http2_default_conn_settings = {
-#define _(value, label, member, min, max, default_value, err_code, server,    \
-	  client)                                                             \
-  default_value,
+static const http_conn_settings_t http2_default_conn_settings = {
+#define _(value, label, member, min, max, default_value, err_code, server, client)                 \
+  .member = (default_value),
   foreach_http2_settings
 #undef _
 };
