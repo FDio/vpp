@@ -67,7 +67,7 @@ typedef struct quic_quicly_main_
 
 extern quic_quicly_main_t quic_quicly_main;
 extern quic_ctx_t *quic_quicly_get_conn_ctx (void *conn);
-extern void quic_quicly_check_quic_session_connected (quic_ctx_t *ctx);
+void quic_quicly_try_establish (quic_ctx_t *ctx);
 
 static_always_inline quic_ctx_t *
 quic_quicly_get_quic_ctx (u32 ctx_index, u32 thread_index)
@@ -76,19 +76,18 @@ quic_quicly_get_quic_ctx (u32 ctx_index, u32 thread_index)
     quic_wrk_ctx_get (quic_quicly_main.qm, thread_index)->ctx_pool, ctx_index);
 }
 
-static_always_inline quic_session_connected_t
-quic_quicly_is_session_connected (quic_ctx_t *ctx)
+static_always_inline int
+quic_quicly_handshake_is_complete (quicly_conn_t *conn)
 {
-  quic_session_connected_t session_connected = QUIC_SESSION_CONNECTED_NONE;
+  quicly_stats_t stats;
 
-  if (quicly_connection_is_ready (ctx->conn))
-    {
-      session_connected = quicly_is_client (ctx->conn) ?
-			    QUIC_SESSION_CONNECTED_CLIENT :
-			    QUIC_SESSION_CONNECTED_SERVER;
-    }
+  if (!conn)
+    return 0;
 
-  return (session_connected);
+  if (quicly_get_stats (conn, &stats))
+    return 0;
+
+  return stats.handshake_confirmed_msec != UINT64_MAX;
 }
 
 #endif /* __included_quic_quicly_h__ */
