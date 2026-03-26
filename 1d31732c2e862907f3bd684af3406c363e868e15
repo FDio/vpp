@@ -16,6 +16,24 @@
       "message": "Compilation on RHEL8 failed:\n\n/builddir/build/BUILD/vpp-26.06/src/plugins/tlsopenssl/tls_openssl.c:1765:13: error: call to undeclared function \u0027SSL_get_negotiated_group\u0027; ISO C99 and later do not support implicit function declarations [-Wimplicit-function-declaration]\n 1765 |         group_id \u003d SSL_get_negotiated_group (oc-\u003essl);\n      |                    ^",
       "revId": "1d31732c2e862907f3bd684af3406c363e868e15",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d42f672c_43636abc",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-03-26T22:23:13Z",
+      "side": 1,
+      "message": "What openssl version? We\u0027ve moved to openssl 3.x.x",
+      "parentUuid": "2ff351cc_26435afc",
+      "revId": "1d31732c2e862907f3bd684af3406c363e868e15",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
