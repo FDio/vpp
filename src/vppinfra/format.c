@@ -337,7 +337,7 @@ do_percent (u8 ** _s, const u8 * fmt, va_list * va)
 		len = 5;
 	      }
 	    else if (fi.width[1] != 0)
-	      len = clib_min (strlen (cstring), fi.width[1]);
+	      len = clib_strnlen (cstring, fi.width[1]);
 	    else
 	      len = strlen (cstring);
 
