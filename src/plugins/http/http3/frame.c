@@ -103,8 +103,7 @@ http3_frame_goaway_write (u64 stream_or_push_id, u8 **dst)
 }
 
 __clib_export http3_error_t
-http3_frame_settings_read (u8 *payload, u64 len,
-			   http3_conn_settings_t *settings)
+http3_frame_settings_read (u8 *payload, u64 len, http_conn_settings_t *settings)
 {
   u8 *p = payload;
   u8 *end = payload + len;
@@ -150,7 +149,7 @@ http3_frame_settings_read (u8 *payload, u64 len,
 }
 
 __clib_export void
-http3_frame_settings_write (http3_conn_settings_t *settings, u8 **dst)
+http3_frame_settings_write (http_conn_settings_t *settings, u8 **dst)
 {
   u64 payload_len = 0;
   u8 *p;

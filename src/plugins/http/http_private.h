@@ -63,7 +63,7 @@ STATIC_ASSERT (sizeof (http_conn_handle_t) == sizeof (u32), "must fit in u32");
   _ (APP_CLOSED, "APP-CLOSED")                                                \
   _ (CLOSED, "CLOSED")
 
-typedef enum http_conn_state_
+typedef enum http_conn_state_ : u8
 {
 #define _(s, str) HTTP_CONN_STATE_##s,
   foreach_http_conn_state
@@ -171,14 +171,20 @@ typedef struct http_req_
   http_upgrade_proto_t upgrade_proto;
 } http_req_t;
 
-#define foreach_http_conn_flags                                               \
-  _ (HO_DONE, "ho-done")                                                      \
-  _ (NO_APP_SESSION, "no-app-session")                                        \
-  _ (PENDING_TIMER, "pending-timer")                                          \
-  _ (IS_SERVER, "is-server")                                                  \
-  _ (HAS_REQUEST, "has-request")                                              \
-  _ (UNIDIRECTIONAL_STREAM, "unidirectional-stream")                          \
-  _ (BIDIRECTIONAL_STREAM, "bidirectional-stream")
+#define foreach_http_conn_flags                                                                    \
+  _ (HO_DONE, "ho-done")                                                                           \
+  _ (NO_APP_SESSION, "no-app-session")                                                             \
+  _ (PENDING_TIMER, "pending-timer")                                                               \
+  _ (IS_SERVER, "is-server")                                                                       \
+  _ (HAS_REQUEST, "has-request")                                                                   \
+  _ (UNIDIRECTIONAL_STREAM, "unidirectional-stream")                                               \
+  _ (BIDIRECTIONAL_STREAM, "bidirectional-stream")                                                 \
+  _ (EXPECT_PREFACE, "expect-preface")                                                             \
+  _ (EXPECT_CONTINUATION, "expect-continuation")                                                   \
+  _ (EXPECT_SERVER_SETTINGS, "expect-server-settings")                                             \
+  _ (PREFACE_VERIFIED, "preface-verified")                                                         \
+  _ (TS_DESCHED, "ts-descheduled")                                                                 \
+  _ (EXPECT_PEER_SETTINGS, "expect-peer-settings")
 
 typedef enum http_conn_flags_bit_
 {
@@ -188,12 +194,12 @@ typedef enum http_conn_flags_bit_
     HTTP_CONN_N_F_BITS
 } http_conn_flags_bit_t;
 
-typedef enum http_conn_flags_
+typedef enum http_conn_flags_ : u16
 {
 #define _(sym, str) HTTP_CONN_F_##sym = 1 << HTTP_CONN_F_BIT_##sym,
   foreach_http_conn_flags
 #undef _
-} __clib_packed http_conn_flags_t;
+} http_conn_flags_t;
 
 typedef struct http_conn_id_
 {
@@ -204,7 +210,13 @@ typedef struct http_conn_id_
   };
   union
   {
-    session_handle_t tc_session_handle;
+    struct
+    {
+      /* connection case */
+      session_handle_t tc_session_handle;
+      u32 ho_index;
+      u32 http_connection_index;
+    };
     struct
     {
       /* listener case */
@@ -213,19 +225,78 @@ typedef struct http_conn_id_
     };
   };
   u32 parent_app_wrk_index;
-  u32 ho_index;
-  u32 http_connection_index; /* stream case */
-} http_conn_id_t;
+} http_ctx_id_t;
 
-STATIC_ASSERT (sizeof (http_conn_id_t) <= TRANSPORT_CONN_ID_LEN,
+STATIC_ASSERT (sizeof (http_ctx_id_t) <= TRANSPORT_CONN_ID_LEN,
 	       "ctx id must be less than TRANSPORT_CONN_ID_LEN");
 
-typedef struct http_tc_
+typedef struct
+{
+  u8 *buf;
+  uword name_len;
+} hpack_dynamic_table_entry_t;
+
+typedef struct
+{
+  /* SETTINGS_HEADER_TABLE_SIZE */
+  u32 max_size;
+  /* dynamic table size update */
+  u32 size;
+  /* current usage (each entry = 32 + name len + value len) */
+  u32 used;
+  /* ring buffer */
+  hpack_dynamic_table_entry_t *entries;
+} hpack_dynamic_table_t;
+
+typedef struct
+{
+  u32 stream_id;
+  u32 error;
+} http2_rst_stream_t;
+
+typedef struct
+{
+  uword req_insert_count;
+  uword delta_base;
+  u8 delta_base_sign;
+} qpack_decoder_ctx_t;
+
+typedef struct
+{
+  union
+  {
+    struct
+    {
+      u32 header_table_size;
+      u32 max_concurrent_streams;
+    };
+    u64 qpack_max_table_capacity;
+  };
+  union
+  {
+    struct
+    {
+      u32 max_header_list_size;
+      u32 initial_window_size;
+    };
+    u64 max_field_section_size;
+  };
+  union
+  {
+    u32 max_frame_size;
+    u64 qpack_blocked_streams;
+  };
+  u8 enable_connect_protocol;
+  u8 h3_datagram;
+  u8 enable_push;
+} http_conn_settings_t;
+
+typedef struct http_conn_
 {
   union
   {
     transport_connection_t connection;
-    http_conn_id_t c_http_conn_id;
+    http_ctx_id_t c_http_conn_id;
   };
 #define hc_tc_session_handle c_http_conn_id.tc_session_handle
 #define hc_tl_handle_tcp     c_http_conn_id.tl_handle_tcp
@@ -237,16 +308,50 @@ typedef struct http_tc_
 #define hc_http_conn_index   c_http_conn_id.http_connection_index
 #define hc_hc_index	     connection.c_index
 
+  http_conn_flags_t flags;
   http_version_t version;
   http_conn_state_t state;
+  http_udp_tunnel_mode_t udp_tunnel_mode;
   u32 timer_handle;
   u32 timeout;
   u32 app_rx_fifo_size;
   u8 *app_name;
   u8 *host;
-  http_conn_flags_t flags;
-  http_udp_tunnel_mode_t udp_tunnel_mode;
 
+  http_conn_settings_t peer_settings;
+  http_conn_settings_t settings;
+  union
+  {
+    struct
+    {
+      u32 last_opened_stream_id;
+      u32 last_processed_stream_id;
+      u32 peer_window;
+      u32 our_window;
+      u32 unsent_headers_offset;
+      u32 req_num;
+      u32 parent_req_index;
+      clib_llist_index_t new_tx_streams; /* headers */
+      clib_llist_index_t old_tx_streams; /* data */
+      clib_llist_anchor_t sched_list;
+      uword *req_by_stream_id;
+      u8 *unparsed_headers; /* temporary storing rx fragmented headers */
+      u8 *unsent_headers;   /* temporary storing tx fragmented headers */
+      u32 *pending_win_updates;
+      http2_rst_stream_t *pending_rst_stream;
+      hpack_dynamic_table_t decoder_dynamic_table;
+    };
+    struct
+    {
+      /* http3 case */
+      u32 our_ctrl_stream_hc_index;
+      u32 peer_ctrl_stream_sctx_index;
+      u32 peer_decoder_stream_sctx_index;
+      u32 peer_encoder_stream_sctx_index;
+      u32 parent_sctx_index;
+      qpack_decoder_ctx_t qpack_decoder_ctx;
+    };
+  };
   void *opaque; /* version specific data */
 } http_conn_t;
 
@@ -263,6 +368,7 @@ typedef struct http_pending_connect_stream_
 typedef struct http_worker_
 {
   http_conn_t *conn_pool;
+  clib_llist_index_t sched_head;
   http_wrk_stats_t stats;
 } http_worker_t;
 

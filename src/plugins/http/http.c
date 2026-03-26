@@ -1048,6 +1048,7 @@ http_transport_enable (vlib_main_t *vm, u8 is_en)
   vec_foreach (wrk, hm->wrk)
     {
       clib_memset (&wrk->stats, 0, sizeof (wrk->stats));
+      wrk->sched_head = clib_llist_make_head (wrk->conn_pool, sched_list);
     }
   vec_validate (hm->rx_bufs, num_threads - 1);
   vec_validate (hm->tx_bufs, num_threads - 1);
