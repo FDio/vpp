@@ -22,7 +22,7 @@
 #define HTTP_DBG(_lvl, _fmt, _args...)
 #endif
 
-typedef enum http_version_
+typedef enum http_version_ : u8
 {
   HTTP_VERSION_1,
   HTTP_VERSION_2,
@@ -30,7 +30,7 @@ typedef enum http_version_
   HTTP_VERSION_NA = 7,
 } http_version_t;
 
-typedef enum http_udp_tunnel_mode_
+typedef enum http_udp_tunnel_mode_ : u8
 {
   HTTP_UDP_TUNNEL_CAPSULE, /**< app receive raw capsule */
   HTTP_UDP_TUNNEL_DGRAM,   /**< convert capsule to datagram (zc proxy) */
@@ -475,7 +475,7 @@ http_session_get_version (session_t *s)
 always_inline u8 *
 format_http_version (u8 *s, va_list *va)
 {
-  http_version_t v = va_arg (*va, http_version_t);
+  http_version_t v = va_arg (*va, int);
   switch (v)
     {
     case HTTP_VERSION_1:
