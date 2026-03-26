@@ -817,7 +817,7 @@ quic_quicly_on_stream_open (quicly_stream_open_t *self, quicly_stream_t *stream)
 
   /* Might need to signal that the connection is ready if the first thing the
    * server does is open a stream */
-  quic_quicly_check_quic_session_connected (qctx);
+  quic_quicly_try_establish (qctx);
   /* ctx might be invalidated */
   qctx = quic_quicly_get_conn_ctx (stream->conn);
   QUIC_DBG (2, "qctx->c_s_index %u, qctx->c_c_index %u", qctx->c_s_index,
@@ -1502,7 +1502,7 @@ quic_quicly_accept_connection (quic_quicly_rx_packet_ctx_t *pctx)
       ctx->conn_state = QUIC_CONN_STATE_ACTIVE_CLOSING;
       return;
     }
-  if (!quicly_connection_is_ready (conn))
+  if (!quic_quicly_handshake_is_complete (conn))
     {
       QUIC_DBG (2, "Handshake not yet completed: ctx_index %u, thread %u",
 		ctx->c_c_index, ctx->c_thread_index);
@@ -1921,23 +1921,18 @@ quic_quicly_engine_init (quic_main_t *qm)
 }
 
 void
-quic_quicly_check_quic_session_connected (quic_ctx_t *ctx)
+quic_quicly_try_establish (quic_ctx_t *ctx)
 {
-  /* Called when we need to trigger quic session connected
-   * we may call this function on the server side / at
-   * stream opening */
-  quic_session_connected_t session_connected;
-
   /* Conn may be set to null if the connection is terminated */
   if (!ctx->conn || ctx->conn_state != QUIC_CONN_STATE_HANDSHAKE)
     return;
 
-  session_connected = quic_quicly_is_session_connected (ctx);
-  if (session_connected == QUIC_SESSION_CONNECTED_NONE)
+  if (!quic_quicly_handshake_is_complete (ctx->conn))
     return;
 
   ctx->conn_state = QUIC_CONN_STATE_READY;
-  if (session_connected == QUIC_SESSION_CONNECTED_CLIENT)
+
+  if (quicly_is_client (ctx->conn))
     {
       if (quic_quicly_notify_app_connected (ctx, SESSION_E_NONE))
 	quic_quicly_conn_app_init_failed (ctx, "notify app connected failed");
@@ -2042,7 +2037,7 @@ rx_start:
 	  ctx = quic_quicly_get_quic_ctx (packet_ctx->ctx_index, packet_ctx->thread_index);
 	  if (ctx->conn_state <= QUIC_CONN_STATE_HANDSHAKE)
 	    {
-	      quic_quicly_check_quic_session_connected (ctx);
+	      quic_quicly_try_establish (ctx);
 	      ctx = quic_quicly_get_quic_ctx (packet_ctx->ctx_index, packet_ctx->thread_index);
 	    }
 	  break;
