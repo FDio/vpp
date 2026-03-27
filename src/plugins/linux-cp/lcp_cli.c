@@ -245,7 +245,6 @@ lcp_default_netns_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	;
       else
 	{
-	  vec_free (ns);
 	  error = clib_error_return (0, "unknown input `%U'",
 				     format_unformat_error, line_input);
 	  goto done;
@@ -257,9 +256,10 @@ lcp_default_netns_command_fn (vlib_main_t *vm, unformat_input_t *input,
   r = lcp_set_default_ns (ns);
 
   if (r)
-    return clib_error_return (0, "linux-cp set default netns failed (%d)", r);
+    error = clib_error_return (0, "linux-cp set default netns failed (%d)", r);
 
 done:
+  vec_free (ns);
   unformat_free (line_input);
 
   return error;
