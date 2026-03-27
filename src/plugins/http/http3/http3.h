@@ -86,8 +86,6 @@ static const http_conn_settings_t http3_default_conn_settings = {
 #undef _
 };
 
-typedef u64 http3_stream_type_t;
-
 #define HTTP3_STREAM_TYPE_CONTROL 0x00
 #define HTTP3_STREAM_TYPE_PUSH	  0x01
 #define HTTP3_STREAM_TYPE_ENCODER 0x02

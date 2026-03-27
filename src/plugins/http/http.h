@@ -381,10 +381,9 @@ typedef enum http_header_name_ : u16
   _ (CONNECT_IP, "connect-ip")                                                \
   _ (WEBSOCKET, "websocket")
 
-typedef enum http_upgrade_proto_
+typedef enum http_upgrade_proto_ : u8
 {
-  HTTP_UPGRADE_PROTO_NA =
-    0, /* indicating standard CONNECT where protocol is omitted */
+  HTTP_UPGRADE_PROTO_NA = 0, /* indicating standard CONNECT where protocol is omitted */
 #define _(sym, str) HTTP_UPGRADE_PROTO_##sym,
   foreach_http_upgrade_proto
 #undef _
@@ -408,7 +407,7 @@ typedef struct http_field_line_
   u32 value_len;
 } http_field_line_t;
 
-typedef enum http_url_scheme_
+typedef enum http_url_scheme_ : u8
 {
   HTTP_URL_SCHEME_HTTP,
   HTTP_URL_SCHEME_HTTPS,
