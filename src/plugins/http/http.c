@@ -709,8 +709,7 @@ http_ts_connected_callback (u32 http_app_index, u32 ho_hc_index, session_t *ts,
 
   if (err)
     {
-      clib_warning ("half-open hc index %d, error: %U", ho_hc_index,
-		    format_session_error, err);
+      HTTP_DBG (0, "half-open hc index %d, error: %U", ho_hc_index, format_session_error, err);
       ho_hc->flags |= HTTP_CONN_F_HO_DONE;
       app_wrk = app_worker_get_if_valid (ho_hc->hc_pa_wrk_index);
       if (app_wrk)
