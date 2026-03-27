@@ -148,14 +148,24 @@ vlib_buffer_enqueue_to_single_next_with_aux64_and_scalar (
 
 /** async crypto **/
 
+/*
+ * AES_192_GCM aad20, aad28 variants added only because native crypto
+ * engine internal macros require symmetry.
+ */
 /* CRYPTO_ID, PRETTY_NAME, FAMILY, KEY_LEN, ICV_LEN, AAD_LEN, BLOCK_LEN */
 #define foreach_crypto_aead_async_alg                                                              \
   _ (AES_128_GCM, "aes-128-gcm-icv16-aad8", AES_GCM, 16, 16, 8, 16)                                \
   _ (AES_128_GCM, "aes-128-gcm-icv16-aad12", AES_GCM, 16, 16, 12, 16)                              \
+  _ (AES_128_GCM, "aes-128-gcm-icv16-aad20", AES_GCM, 16, 16, 20, 16)                              \
+  _ (AES_128_GCM, "aes-128-gcm-icv16-aad28", AES_GCM, 16, 16, 28, 16)                              \
   _ (AES_192_GCM, "aes-192-gcm-icv16-aad8", AES_GCM, 24, 16, 8, 16)                                \
   _ (AES_192_GCM, "aes-192-gcm-icv16-aad12", AES_GCM, 24, 16, 12, 16)                              \
+  _ (AES_192_GCM, "aes-192-gcm-icv16-aad20", AES_GCM, 24, 16, 20, 16)                              \
+  _ (AES_192_GCM, "aes-192-gcm-icv16-aad28", AES_GCM, 24, 16, 28, 16)                              \
   _ (AES_256_GCM, "aes-256-gcm-icv16-aad8", AES_GCM, 32, 16, 8, 16)                                \
   _ (AES_256_GCM, "aes-256-gcm-icv16-aad12", AES_GCM, 32, 16, 12, 16)                              \
+  _ (AES_256_GCM, "aes-256-gcm-icv16-aad20", AES_GCM, 32, 16, 20, 16)                              \
+  _ (AES_256_GCM, "aes-256-gcm-icv16-aad28", AES_GCM, 32, 16, 28, 16)                              \
   _ (AES_128_NULL_GMAC, "aes-128-null-gmac-icv16-aad8", AES_NULL_GMAC, 16, 16, 8, 16)              \
   _ (AES_128_NULL_GMAC, "aes-128-null-gmac-icv16-aad12", AES_NULL_GMAC, 16, 16, 12, 16)            \
   _ (AES_192_NULL_GMAC, "aes-192-null-gmac-icv16-aad8", AES_NULL_GMAC, 24, 16, 8, 16)              \

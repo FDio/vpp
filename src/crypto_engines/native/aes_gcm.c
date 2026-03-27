@@ -107,6 +107,30 @@ aes_gcm_key_exp (vnet_crypto_ctx_t *ctx, u8 *key_data, aes_key_size_t ks)
 						    u32 n_ops, clib_thread_index_t thread_index)   \
   {                                                                                                \
     return aes_ops_enc_aes_gcm (ops, n_ops, AES_KEY_##x, 12, 16);                                  \
+  }                                                                                                \
+  static u32 aes_ops_dec_aes_gcm_##x##_tag16_aad20 (vnet_crypto_op_t *ops[],                       \
+						    vnet_crypto_op_chunk_t *chunks __clib_unused,  \
+						    u32 n_ops, clib_thread_index_t thread_index)   \
+  {                                                                                                \
+    return aes_ops_dec_aes_gcm (ops, n_ops, AES_KEY_##x, 20, 16);                                  \
+  }                                                                                                \
+  static u32 aes_ops_enc_aes_gcm_##x##_tag16_aad20 (vnet_crypto_op_t *ops[],                       \
+						    vnet_crypto_op_chunk_t *chunks __clib_unused,  \
+						    u32 n_ops, clib_thread_index_t thread_index)   \
+  {                                                                                                \
+    return aes_ops_enc_aes_gcm (ops, n_ops, AES_KEY_##x, 20, 16);                                  \
+  }                                                                                                \
+  static u32 aes_ops_dec_aes_gcm_##x##_tag16_aad28 (vnet_crypto_op_t *ops[],                       \
+						    vnet_crypto_op_chunk_t *chunks __clib_unused,  \
+						    u32 n_ops, clib_thread_index_t thread_index)   \
+  {                                                                                                \
+    return aes_ops_dec_aes_gcm (ops, n_ops, AES_KEY_##x, 28, 16);                                  \
+  }                                                                                                \
+  static u32 aes_ops_enc_aes_gcm_##x##_tag16_aad28 (vnet_crypto_op_t *ops[],                       \
+						    vnet_crypto_op_chunk_t *chunks __clib_unused,  \
+						    u32 n_ops, clib_thread_index_t thread_index)   \
+  {                                                                                                \
+    return aes_ops_enc_aes_gcm (ops, n_ops, AES_KEY_##x, 28, 16);                                  \
   }
 
 foreach_aes_gcm_handler_type;
@@ -225,6 +249,24 @@ VNET_CRYPTO_REGISTER_ALG_GROUP (native_gcm256_group) = {
     .simple = {                                                                                    \
       .enc_fn = aes_ops_enc_aes_gcm_##b##_tag16_aad12,                                             \
       .dec_fn = aes_ops_dec_aes_gcm_##b##_tag16_aad12,                                             \
+    },                                                                                             \
+  }; \
+                                                                                                          \
+  VNET_CRYPTO_REGISTER_ALG (aes_##b##_gcm_tag16_aad20) = {                                              \
+    .group = &native_gcm##b##_group,                                                               \
+    .alg_id = VNET_CRYPTO_ALG_AES_##b##_GCM_ICV16_AAD20,                                           \
+    .simple = {                                                                                    \
+      .enc_fn = aes_ops_enc_aes_gcm_##b##_tag16_aad20,                                             \
+      .dec_fn = aes_ops_dec_aes_gcm_##b##_tag16_aad20,                                             \
+    },                                                                                             \
+  }; \
+                                                                                                          \
+  VNET_CRYPTO_REGISTER_ALG (aes_##b##_gcm_tag16_aad28) = {                                              \
+    .group = &native_gcm##b##_group,                                                               \
+    .alg_id = VNET_CRYPTO_ALG_AES_##b##_GCM_ICV16_AAD28,                                           \
+    .simple = {                                                                                    \
+      .enc_fn = aes_ops_enc_aes_gcm_##b##_tag16_aad28,                                             \
+      .dec_fn = aes_ops_dec_aes_gcm_##b##_tag16_aad28,                                             \
     },                                                                                             \
   };
 

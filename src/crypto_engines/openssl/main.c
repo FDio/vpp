@@ -43,12 +43,16 @@ typedef struct
   _ (gcm, AES_128_GCM, EVP_aes_128_gcm, 0, 0)                                                      \
   _ (gcm, AES_128_GCM_ICV16_AAD8, EVP_aes_128_gcm, 1, 8)                                           \
   _ (gcm, AES_128_GCM_ICV16_AAD12, EVP_aes_128_gcm, 1, 12)                                         \
+  _ (gcm, AES_128_GCM_ICV16_AAD20, EVP_aes_128_gcm, 1, 20)                                         \
+  _ (gcm, AES_128_GCM_ICV16_AAD28, EVP_aes_128_gcm, 1, 28)                                         \
   _ (gcm, AES_192_GCM, EVP_aes_192_gcm, 0, 0)                                                      \
   _ (gcm, AES_192_GCM_ICV16_AAD8, EVP_aes_192_gcm, 1, 8)                                           \
   _ (gcm, AES_192_GCM_ICV16_AAD12, EVP_aes_192_gcm, 1, 12)                                         \
   _ (gcm, AES_256_GCM, EVP_aes_256_gcm, 0, 0)                                                      \
   _ (gcm, AES_256_GCM_ICV16_AAD8, EVP_aes_256_gcm, 1, 8)                                           \
   _ (gcm, AES_256_GCM_ICV16_AAD12, EVP_aes_256_gcm, 1, 12)                                         \
+  _ (gcm, AES_256_GCM_ICV16_AAD20, EVP_aes_256_gcm, 1, 20)                                         \
+  _ (gcm, AES_256_GCM_ICV16_AAD28, EVP_aes_256_gcm, 1, 28)                                         \
   _ (null_gmac, AES_128_NULL_GMAC, EVP_aes_128_gcm, 0, 0)                                          \
   _ (null_gmac, AES_128_NULL_GMAC_ICV16_AAD8, EVP_aes_128_gcm, 1, 8)                               \
   _ (null_gmac, AES_128_NULL_GMAC_ICV16_AAD12, EVP_aes_128_gcm, 1, 12)                             \

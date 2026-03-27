@@ -105,12 +105,16 @@ ipsecmb_get_per_thread_data (void)
   _ (AES_128_GCM, 128, 0, 0)                                                                       \
   _ (AES_128_GCM_ICV16_AAD8, 128, 1, 8)                                                            \
   _ (AES_128_GCM_ICV16_AAD12, 128, 1, 12)                                                          \
+  _ (AES_128_GCM_ICV16_AAD20, 128, 1, 20)                                                          \
+  _ (AES_128_GCM_ICV16_AAD28, 128, 1, 28)                                                          \
   _ (AES_192_GCM, 192, 0, 0)                                                                       \
   _ (AES_192_GCM_ICV16_AAD8, 192, 1, 8)                                                            \
   _ (AES_192_GCM_ICV16_AAD12, 192, 1, 12)                                                          \
   _ (AES_256_GCM, 256, 0, 0)                                                                       \
   _ (AES_256_GCM_ICV16_AAD8, 256, 1, 8)                                                            \
-  _ (AES_256_GCM_ICV16_AAD12, 256, 1, 12)
+  _ (AES_256_GCM_ICV16_AAD12, 256, 1, 12)                                                          \
+  _ (AES_256_GCM_ICV16_AAD20, 256, 1, 20)                                                          \
+  _ (AES_256_GCM_ICV16_AAD28, 256, 1, 28)
 
 #define foreach_ipsecmb_combined_cipher_op                                                         \
   _ (AES_128_CBC_SHA1_160, 128, CBC, CBC, SHA_1, SHA1_160, 64, 20, 20, 12)                         \
