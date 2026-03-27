@@ -70,6 +70,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "ddff1d28_8b015311",
+        "filename": "src/plugins/cnat/cnat_api.c",
+        "patchSetId": 28
+      },
+      "lineNbr": 92,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-03-27T11:00:12Z",
+      "side": 1,
+      "message": "We can add a default policy and allocator flag and use it when fib is out of range",
+      "parentUuid": "a66c5cef_3f8637e0",
+      "revId": "a6cfb537e6f6a4aef98a55f4b9fa29831d6fea4d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "ad3ca93d_812cc064",
@@ -157,6 +175,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "601ca038_f8b59228",
+        "filename": "src/plugins/cnat/cnat_node.h",
+        "patchSetId": 28
+      },
+      "lineNbr": 717,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-03-27T11:00:12Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "7f5e0351_1cbb729a",
+      "revId": "a6cfb537e6f6a4aef98a55f4b9fa29831d6fea4d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "da69a7a0_c6450581",
@@ -170,6 +206,24 @@
       "writtenOn": "2026-03-20T14:27:10Z",
       "side": 1,
       "message": "imho we should always use the `rewrite_from` in this function, as we are not guaranteed to have a valid packet at hand. i.e. even for icmp packets",
+      "revId": "a6cfb537e6f6a4aef98a55f4b9fa29831d6fea4d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "cb611bb2_e75ed12a",
+        "filename": "src/plugins/cnat/cnat_node.h",
+        "patchSetId": 28
+      },
+      "lineNbr": 770,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-03-27T11:00:12Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "da69a7a0_c6450581",
       "revId": "a6cfb537e6f6a4aef98a55f4b9fa29831d6fea4d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -541,6 +595,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "33d4720d_f9d57d8c",
+        "filename": "src/plugins/cnat/cnat_session.c",
+        "patchSetId": 28
+      },
+      "lineNbr": 432,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-03-27T11:00:12Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "751c4a84_b3e80350",
+      "revId": "a6cfb537e6f6a4aef98a55f4b9fa29831d6fea4d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "94ce0727_fa4bfd1a",
@@ -908,6 +980,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "8c5963b9_8635842a",
+        "filename": "src/plugins/cnat/cnat_translation.h",
+        "patchSetId": 28
+      },
+      "lineNbr": 153,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-03-27T11:00:12Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "570373af_4dce5589",
+      "revId": "a6cfb537e6f6a4aef98a55f4b9fa29831d6fea4d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "d2b8ea87_0fea8870",
@@ -974,6 +1064,24 @@
       "writtenOn": "2026-03-20T14:27:10Z",
       "side": 1,
       "message": "This can probably be a flag",
+      "revId": "a6cfb537e6f6a4aef98a55f4b9fa29831d6fea4d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4345e66d_e3be297c",
+        "filename": "src/plugins/cnat/cnat_types.h",
+        "patchSetId": 28
+      },
+      "lineNbr": 132,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-03-27T11:00:12Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "a695a50b_66b654c9",
       "revId": "a6cfb537e6f6a4aef98a55f4b9fa29831d6fea4d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },

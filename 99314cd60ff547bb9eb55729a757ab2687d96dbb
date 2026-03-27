@@ -16,6 +16,24 @@
       "message": "Maybe instead of a silent unregister we should throw an \nerror so that we do not miss a requirement",
       "revId": "99314cd60ff547bb9eb55729a757ab2687d96dbb",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1f52dac1_ff068f8e",
+        "filename": "src/plugins/bufmon/bufmon.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 175,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-03-27T11:00:12Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "0d9a4f62_57be6953",
+      "revId": "99314cd60ff547bb9eb55729a757ab2687d96dbb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
