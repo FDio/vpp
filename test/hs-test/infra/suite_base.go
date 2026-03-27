@@ -215,12 +215,12 @@ func (s *HstSuite) AllocateCpus(containerName string) []int {
 	var err error
 
 	if strings.Contains(containerName, "vpp") {
-		// CPUs are allocated based on s.CpusPerVppContainer/s.CpusPerContainer (defaults can be overridden globally
-		// or per test) and 'lastCpu' which serves as an offset. 'lastCpu' is incremented by 4 for each
-		// GinkgoParallelProcess() in SetupTest() in hst_suite, because all suites use 4 containers
-		// at most with 1 CPU each. GinkgoParallelProcess() offset doesn't impact MW or solo tests.
-		// Numa aware cpu allocation will use the second numa
-		// node if a container doesn't "fit" into the first node.
+		// CPUs are allocated sequentially using 'lastCpu' as the offset.
+		// Each parallel Ginkgo process gets a non-overlapping slot via
+		// lastCpu = (GinkgoParallelProcess() - 1) * 4 set in SetupTest().
+		// In the NUMA-aware path, if the allocation doesn't fit in numa0,
+		// it falls back to numa1 with an independent offset.
+		// 'lastCpu' is reset on test teardown.make
 		cpuCtx, err = s.CpuAllocator.Allocate(s.CpusPerVppContainer, s.CpuAllocator.lastCpu)
 	} else {
 		cpuCtx, err = s.CpuAllocator.Allocate(s.CpusPerContainer, s.CpuAllocator.lastCpu)
