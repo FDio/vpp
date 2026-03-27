@@ -18,6 +18,8 @@ hs_root=
 label=
 verbose=0
 hyperthread=false
+parallel=
+use_cpu0=false
 
 for i in "$@"
 do
@@ -80,7 +82,7 @@ case "${i}" in
         IFS=',' read -r -a skip_names <<< "$skip_list"
         ;;
     --parallel=*)
-        ginkgo_args="$ginkgo_args -procs=${i#*=}"
+        parallel="${i#*=}"
         ;;
     --ginkgo_timeout=*)
         ginkgo_args="$ginkgo_args --timeout=${i#*=}"
@@ -92,6 +94,7 @@ case "${i}" in
         cpu0="${i#*=}"
         if [ "$cpu0" = "true" ]; then
             args="$args -cpu0"
+            use_cpu0=true
         fi
         ;;
     --dryrun=*)
@@ -210,45 +213,132 @@ mkdir -p summary
 rm -f summary/*
 # shellcheck disable=SC2086
 
+CPUS_PER_SLOT=4
 REQUIRED_PHYSICAL_CORES=20
 CORES_TO_USE=10
-CMD="go run github.com/onsi/ginkgo/v2/ginkgo --json-report=summary/report.json $ginkgo_args -- $args"
 
+# Get physical (or all, if HT enabled) core IDs for a given NUMA node.
+# Falls back to non-NUMA-aware listing if NODE field is unavailable.
 get_cores_on_node() {
     local node_id=$1
-    # sort -t, -k3,3n | \ - sort by CPU ID numerically to ensure lowest ID is first
-    # sort -u -t, -k2,2 | \ - unique Sort by Core ID to remove siblings (keeping the top/lowest one)
-    if [ "$hyperthread" = true ]; then
-        lscpu -p=NODE,CORE,CPU | \
-        grep "^$node_id," | \
-        sort -t, -k3,3n | \
-        cut -d, -f3
+
+    # Check if lscpu reports NODE field
+    local has_node
+    has_node=$(lscpu -p=NODE,CORE,CPU 2>/dev/null | grep -v '^#' | head -1 | cut -d, -f1)
+
+    if [ -z "$has_node" ]; then
+        # NODE field is empty — get all cores without node filtering
+        if [ "$hyperthread" = true ]; then
+            lscpu -p=CORE,CPU | grep -v '^#' | sort -t, -k2,2n | cut -d, -f2
+        else
+            lscpu -p=CORE,CPU | grep -v '^#' | sort -t, -k2,2n | sort -u -t, -k1,1n | cut -d, -f2
+        fi
     else
-        lscpu -p=NODE,CORE,CPU | \
-        grep "^$node_id," | \
-        sort -t, -k3,3n | \
-        sort -u -n -t, -k2,2 | \
-        cut -d, -f3
+        if [ "$hyperthread" = true ]; then
+            lscpu -p=NODE,CORE,CPU | \
+            grep "^$node_id," | \
+            sort -t, -k3,3n | \
+            cut -d, -f3
+        else
+            lscpu -p=NODE,CORE,CPU | \
+            grep "^$node_id," | \
+            sort -t, -k3,3n | \
+            sort -u -n -t, -k2,2 | \
+            cut -d, -f3
+        fi
     fi
 }
 
-for node in /sys/devices/system/node/node*; do
-    node_id=$(basename "$node" | sed 's/node//')
+# Get list of NUMA node IDs, falling back to "0" if NUMA is not available
+get_numa_nodes() {
+    if [ -d /sys/devices/system/node ] && ls /sys/devices/system/node/node* &>/dev/null; then
+        for node in /sys/devices/system/node/node*; do
+            basename "$node" | sed 's/node//'
+        done
+    else
+        # No NUMA topology exposed — treat as single node 0
+        echo "0"
+    fi
+}
 
-    # get list of cores in a node into an array
+# Determine available cores and set up taskset
+taskset_cmd=""
+total_usable_cores=0
+
+mapfile -t numa_nodes < <(get_numa_nodes)
+
+for node_id in "${numa_nodes[@]}"; do
     mapfile -t phys_cores < <(get_cores_on_node "$node_id")
     count=${#phys_cores[@]}
 
     if [ "$count" -ge "$REQUIRED_PHYSICAL_CORES" ]; then
-        # skip core 0
-        selected_cores=("${phys_cores[@]:1:$CORES_TO_USE}")
-        cpu_list=$(IFS=,; echo "${selected_cores[*]}")
+        if [ "$use_cpu0" = true ]; then
+            # Include core 0: take CORES_TO_USE starting from index 0
+            selected_cores=("${phys_cores[@]:0:$CORES_TO_USE}")
+            node_usable=$((count - CORES_TO_USE))
+        else
+            # Skip core 0: take CORES_TO_USE starting from index 1
+            selected_cores=("${phys_cores[@]:1:$CORES_TO_USE}")
+            node_usable=$((count - 1 - CORES_TO_USE))
+        fi
 
-        CMD="taskset -c $cpu_list $CMD -cpu_offset=$CORES_TO_USE"
+        cpu_list=$(IFS=,; echo "${selected_cores[*]}")
+        taskset_cmd="taskset -c $cpu_list"
+        args="$args -cpu_offset=$CORES_TO_USE"
+
+        total_usable_cores=$((total_usable_cores + node_usable))
+        echo "* Node $node_id: $count cores, $node_usable usable for tests"
+
+        # Add all other NUMA nodes entirely
+        for other_id in "${numa_nodes[@]}"; do
+            if [ "$other_id" != "$node_id" ]; then
+                mapfile -t other_cores < <(get_cores_on_node "$other_id")
+                other_count=${#other_cores[@]}
+                total_usable_cores=$((total_usable_cores + other_count))
+                echo "* Node $other_id: $other_count cores, all usable for tests"
+            fi
+        done
+
         echo "* System has enough CPUs to run Ginkgo with taskset!"
+        echo "* Total usable cores for tests: $total_usable_cores"
         break
     fi
 done
+
+# Resolve parallel process count
+if [ "$parallel" = "auto" ]; then
+    if [ "$total_usable_cores" -gt 0 ]; then
+        auto_procs=$((total_usable_cores / CPUS_PER_SLOT))
+    else
+        # No taskset / small system fallback: count all physical cores,
+        # no offset reservation since taskset is not used
+        if [ "$hyperthread" = true ]; then
+            total_cores=$(lscpu -p=CPU | grep -vc '^#')
+        else
+            total_cores=$(lscpu -p=CORE,CPU | grep -v '^#' | sort -u -t, -k1,1 | wc -l)
+        fi
+        if [ "$use_cpu0" = true ]; then
+            usable_cores=$total_cores
+        else
+            usable_cores=$((total_cores - 1))
+        fi
+        auto_procs=$((usable_cores / CPUS_PER_SLOT))
+        total_usable_cores=$usable_cores
+    fi
+    if [ "$auto_procs" -lt 1 ]; then
+        auto_procs=1
+    fi
+    echo "* PARALLEL=auto resolved to $auto_procs processes ($total_usable_cores usable cores / $CPUS_PER_SLOT CPUs per slot)"
+    ginkgo_args="$ginkgo_args -procs=$auto_procs"
+elif [ -n "$parallel" ]; then
+    ginkgo_args="$ginkgo_args -procs=$parallel"
+fi
+
+CMD="go run github.com/onsi/ginkgo/v2/ginkgo --json-report=summary/report.json $ginkgo_args -- $args"
+
+if [ -n "$taskset_cmd" ]; then
+    CMD="$taskset_cmd $CMD"
+fi
 
 echo $CMD
 $CMD
