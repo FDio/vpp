@@ -82,21 +82,67 @@ typedef enum http_conn_state_ : u8
   _ (8, UDP_TUNNEL, "udp tunnel")                                             \
   _ (9, APP_IO_MORE_STREAMING_DATA, "app io more streaming data")
 
-typedef enum http_req_state_
+typedef enum http_req_state_ : u8
 {
-#define _(n, s, str) HTTP_REQ_STATE_##s = n,
+#define _(n, s, str) HTTP_REQ_STATE_##s = (n),
   foreach_http_req_state
 #undef _
     HTTP_REQ_N_STATES
 } http_req_state_t;
 
-typedef enum http_target_form_
+typedef enum http_target_form_ : u8
 {
   HTTP_TARGET_ORIGIN_FORM,
   HTTP_TARGET_ABSOLUTE_FORM,
   HTTP_TARGET_AUTHORITY_FORM,
   HTTP_TARGET_ASTERISK_FORM
 } http_target_form_t;
+
+#define foreach_http_req_flags                                                                     \
+  _ (APP_CLOSED, "app-closed")                                                                     \
+  _ (SHUTDOWN_TUNNEL, "shutdown-tunnel")                                                           \
+  _ (NEED_WINDOW_UPDATE, "need-window-update")                                                     \
+  _ (IS_PARENT, "is-parent")                                                                       \
+  _ (PENDING_SND_WIN_UPDATE, "pending-snd-win-update")                                             \
+  _ (IS_TUNNEL, "is-tunnel")
+
+typedef enum http_req_flags_bit_
+{
+#define _(sym, str) HTTP_REQ_F_BIT_##sym,
+  foreach_http_req_flags
+#undef _
+    HTTP_REQ_N_F_BITS
+} http_req_flags_bit_t;
+
+typedef enum http_req_flags_ : u8
+{
+#define _(sym, str) HTTP_REQ_F_##sym = 1 << HTTP_REQ_F_BIT_##sym,
+  foreach_http_req_flags
+#undef _
+} http_req_flags_t;
+
+#define foreach_http2_stream_state                                                                 \
+  _ (IDLE, "IDLE")                                                                                 \
+  _ (OPEN, "OPEN")                                                                                 \
+  _ (HALF_CLOSED, "HALF-CLOSED")                                                                   \
+  _ (CLOSED, "CLOSED")
+
+typedef enum http2_stream_state_ : u8
+{
+#define _(s, str) HTTP2_STREAM_STATE_##s,
+  foreach_http2_stream_state
+#undef _
+} http2_stream_state_t;
+
+typedef u64 http3_stream_type_t;
+
+typedef struct
+{
+  u64 type;
+  u64 length;
+  u8 *payload;
+  u8 header_len;
+} http3_frame_header_t;
 
 typedef struct http_req_id_
 {
@@ -107,69 +153,6 @@ typedef struct http_req_id_
 
 STATIC_ASSERT (sizeof (http_req_id_t) <= TRANSPORT_CONN_ID_LEN,
 	       "ctx id must be less than TRANSPORT_CONN_ID_LEN");
-
-typedef struct http_req_
-{
-  union
-  {
-    transport_connection_t connection;
-    http_req_id_t c_http_req_id;
-  };
-#define hr_pa_wrk_index	     c_http_req_id.parent_app_wrk_index
-#define hr_hc_index	     c_http_req_id.hc_index
-#define hr_req_handle	     connection.c_index
-
-  http_req_state_t state; /* state-machine state */
-
-  http_buffer_t tx_buf; /* message body from app to be sent */
-
-  /*
-   * for parsing of incoming message from transport
-   */
-  u32 rx_buf_offset;	/* current offset during parsing */
-  u32 control_data_len; /* start line + headers + empty line */
-
-  union
-  {
-    u64 to_recv; /* remaining bytes of body to receive from transport */
-    u64 to_skip; /* remaining bytes of capsule to skip */
-  };
-
-  u8 is_tunnel;
-
-  /*
-   * parsed metadata for app
-   */
-  union
-  {
-    http_status_code_t status_code;
-    http_req_method_t method;
-  };
-
-  http_target_form_t target_form;
-  u8 *target;
-  http_url_scheme_t scheme;
-  u32 target_authority_offset;
-  u32 target_authority_len;
-  u32 target_path_offset;
-  u32 target_path_len;
-  u32 target_query_offset;
-  u32 target_query_len;
-
-  u32 headers_offset;
-  u32 headers_len;
-
-  u32 body_offset;
-  u64 body_len;
-
-  http_field_line_t *headers;
-  uword content_len_header_index;
-  uword connection_header_index;
-  uword upgrade_header_index;
-  uword host_header_index;
-
-  http_upgrade_proto_t upgrade_proto;
-} http_req_t;
 
 #define foreach_http_conn_flags                                                                    \
   _ (HO_DONE, "ho-done")                                                                           \
@@ -356,6 +339,95 @@ typedef struct http_conn_
   void *opaque; /* version specific data */
 } http_ctx_t;
 
+typedef struct http_req_
+{
+  union
+  {
+    transport_connection_t connection;
+    http_req_id_t c_http_req_id;
+  };
+#define hr_pa_wrk_index c_http_req_id.parent_app_wrk_index
+#define hr_hc_index	c_http_req_id.hc_index
+#define hr_req_handle	connection.c_index
+
+  http_buffer_t tx_buf; /* message body from app to be sent */
+
+  /*
+   * for parsing of incoming message from transport
+   */
+  u32 rx_buf_offset;	/* current offset during parsing */
+  u32 control_data_len; /* start line + headers + empty line */
+
+  union
+  {
+    u64 to_recv; /* remaining bytes of body to receive from transport */
+    u64 to_skip; /* remaining bytes of capsule to skip */
+  };
+
+  /*
+   * parsed metadata for app
+   */
+  union
+  {
+    http_status_code_t status_code;
+    http_req_method_t method;
+  };
+
+  http_req_state_t state; /* state-machine state */
+  http_req_flags_t flags;
+
+  http_upgrade_proto_t upgrade_proto;
+
+  http_target_form_t target_form;
+  http_url_scheme_t scheme;
+  u32 target_authority_offset;
+  u32 target_authority_len;
+  u32 target_path_offset;
+  u32 target_path_len;
+  u32 target_query_offset;
+  u32 target_query_len;
+
+  u32 headers_offset;
+  u32 headers_len;
+
+  u32 body_offset;
+  u64 body_len;
+
+  u8 *target;
+  http_field_line_t *headers;
+  uword content_len_header_index;
+  uword connection_header_index;
+  uword upgrade_header_index;
+  uword host_header_index;
+
+  union
+  {
+    struct
+    {
+      /* http2 */
+      http2_stream_state_t stream_state;
+      http_req_state_t app_reply_next_state;
+      u32 stream_id;
+      i32 peer_window; /* can become negative after settings change */
+      u32 our_window;
+      u32 payload_len;
+      u8 *payload;
+      clib_llist_anchor_t sched_list;
+      void (*dispatch_headers_cb) (struct http_req_ *req, http_ctx_t *hc, u8 *n_emissions,
+				   clib_llist_index_t *next_ri);
+      void (*dispatch_data_cb) (struct http_req_ *req, http_ctx_t *hc, u8 *n_emissions);
+    };
+    struct
+    {
+      /* http3 */
+      http3_stream_type_t stream_type;
+      http3_frame_header_t fh;
+      u32 (*transport_rx_cb) (struct http_req_ *sctx, http_ctx_t *stream);
+      void (*app_closed_cb) (struct http_req_ *sctx, http_ctx_t *stream, u8 is_shutdown);
+    };
+  };
+} http_req_t;
+
 #define http_ctx_is_stream(_hc)                                                                    \
   ((_hc)->flags & (HTTP_CONN_F_UNIDIRECTIONAL_STREAM | HTTP_CONN_F_BIDIRECTIONAL_STREAM))
 
@@ -469,6 +541,7 @@ typedef http_sm_result_t (*http_sm_handler) (http_ctx_t *hc, http_req_t *req,
 u8 *format_http_req_state (u8 *s, va_list *va);
 u8 *format_http_conn_state (u8 *s, va_list *args);
 u8 *format_http_conn_flags (u8 *s, va_list *args);
+u8 *format_http_req_flags (u8 *s, va_list *args);
 u8 *format_http_time_now (u8 *s, va_list *args);
 
 http_ctx_t *http_conn_get_w_thread (u32 hc_index, clib_thread_index_t thread_index);
