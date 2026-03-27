@@ -854,8 +854,9 @@ openssl_get_int_ca_trust (tls_ctx_t *ctx)
   app_crypto_ca_trust_int_ctx_t *cti;
   app_crypto_ca_trust_t *ca_trust;
 
-  ca_trust = app_crypto_get_wrk_ca_trust (ctx->parent_app_wrk_index,
-					  ctx->ca_trust_index);
+  ASSERT (ctx->crypto_owner_app_wrk_index != SESSION_INVALID_INDEX);
+
+  ca_trust = app_crypto_get_wrk_ca_trust (ctx->crypto_owner_app_wrk_index, ctx->ca_trust_index);
   if (!ca_trust)
     return 0;
 
@@ -1128,8 +1129,11 @@ openssl_ctx_init_client (tls_ctx_t *ctx)
       return -1;
     }
 
+  ASSERT (ctx->crypto_owner_app_wrk_index != SESSION_INVALID_INDEX);
+
   /* Apply TLS profile configuration if specified */
-  if (openssl_apply_tls_profile_to_ssl (oc->ssl, ctx->parent_app_wrk_index, ctx->tls_profile_index))
+  if (openssl_apply_tls_profile_to_ssl (oc->ssl, ctx->crypto_owner_app_wrk_index,
+					ctx->tls_profile_index))
     {
       TLS_DBG (1, "Failed to apply TLS profile");
       return -1;
@@ -1258,6 +1262,7 @@ openssl_start_listen (tls_ctx_t * lctx)
   openssl_listen_ctx_t *olc;
   app_cert_key_pair_t *ckpair;
   app_certkey_int_ctx_t *cki = 0;
+  u32 app_wrk_index;
 
   if (lctx->ckpair_index)
     {
@@ -1305,9 +1310,12 @@ openssl_start_listen (tls_ctx_t * lctx)
   SSL_CTX_set_options (ssl_ctx, flags);
   SSL_CTX_set_ecdh_auto (ssl_ctx, 1);
 
+  app_wrk_index = lctx->crypto_owner_app_wrk_index != SESSION_INVALID_INDEX ?
+		    lctx->crypto_owner_app_wrk_index :
+		    lctx->parent_app_wrk_index;
+
   /* Apply TLS profile configuration if specified */
-  if (openssl_apply_tls_profile_to_ctx (ssl_ctx, lctx->parent_app_wrk_index,
-					lctx->tls_profile_index))
+  if (openssl_apply_tls_profile_to_ctx (ssl_ctx, app_wrk_index, lctx->tls_profile_index))
     {
       TLS_DBG (1, "Failed to apply TLS profile");
       return -1;

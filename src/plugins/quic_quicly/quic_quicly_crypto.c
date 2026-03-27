@@ -110,10 +110,12 @@ quic_quicly_crypto_context_make_key_from_ctx (clib_bihash_kv_24_8_t *kv,
 					      quic_ctx_t *ctx)
 {
   application_t *app = application_get (ctx->parent_app_id);
+  ASSERT (ctx->crypto_owner_app_wrk_id != SESSION_INVALID_INDEX);
+
   kv->key[0] = ((u64) ctx->ckpair_index) << 32 | (u64) (ctx->verify_cfg << 24) |
 	       ((u64) (ctx->tls_profile_index & 0xFFFF)) << 8 | (u64) ctx->crypto_engine;
   kv->key[1] = ((u64) app->sm_properties.tx_fifo_size << 32) | app->sm_properties.rx_fifo_size;
-  kv->key[2] = ctx->ca_trust_index;
+  kv->key[2] = ((u64) ctx->crypto_owner_app_wrk_id << 32) | ctx->ca_trust_index;
 }
 
 static_always_inline void
@@ -124,7 +126,7 @@ quic_quicly_crypto_context_make_key_from_crctx (clib_bihash_kv_24_8_t *kv,
 	       ((u64) (crctx->tls_profile_index & 0xFFFF)) << 8 | (u64) crctx->ctx.crypto_engine;
   kv->key[1] = ((u64) crctx->quicly_ctx.transport_params.max_stream_data.bidi_remote << 32) |
 	       crctx->quicly_ctx.transport_params.max_stream_data.bidi_local;
-  kv->key[2] = crctx->ca_trust_index;
+  kv->key[2] = ((u64) crctx->crypto_owner_app_wrk_id << 32) | crctx->ca_trust_index;
 }
 
 static quic_quicly_crypto_ctx_t *
@@ -373,15 +375,8 @@ quic_quicly_get_int_ca_trust (quic_ctx_t *ctx)
 {
   app_crypto_ca_trust_int_ctx_t *cti;
   app_crypto_ca_trust_t *ca_trust;
-  application_t *app;
-
-  if (ctx->parent_app_wrk_id != SESSION_INVALID_INDEX)
-    ca_trust = app_crypto_get_wrk_ca_trust (ctx->parent_app_wrk_id, ctx->ca_trust_index);
-  else
-    {
-      app = application_get (ctx->parent_app_id);
-      ca_trust = app_get_crypto_ca_trust (app, ctx->ca_trust_index);
-    }
+  ASSERT (ctx->crypto_owner_app_wrk_id != SESSION_INVALID_INDEX);
+  ca_trust = app_crypto_get_wrk_ca_trust (ctx->crypto_owner_app_wrk_id, ctx->ca_trust_index);
   if (!ca_trust)
     return 0;
 
@@ -466,15 +461,8 @@ quic_quicly_group_in_list (const char *ptls_name, const u8 *groups_list)
 static_always_inline app_tls_profile_t *
 quic_quicly_get_tls_profile (quic_ctx_t *ctx)
 {
-  if (ctx->parent_app_wrk_id != SESSION_INVALID_INDEX)
-    return app_crypto_get_tls_profile_if_valid (ctx->parent_app_wrk_id, ctx->tls_profile_index);
-  /* Listener path: parent_app_wrk_id is not set (SESSION_INVALID_INDEX);
-   * access the profile directly through the application. */
-  application_t *app = application_get (ctx->parent_app_id);
-  u32 pi = ctx->tls_profile_index;
-  if (pi == ~0 || pool_is_free_index (app->crypto_ctx.tls_profiles, pi))
-    return NULL;
-  return pool_elt_at_index (app->crypto_ctx.tls_profiles, pi);
+  ASSERT (ctx->crypto_owner_app_wrk_id != SESSION_INVALID_INDEX);
+  return app_crypto_get_tls_profile_if_valid (ctx->crypto_owner_app_wrk_id, ctx->tls_profile_index);
 }
 
 /* Apply a TLS profile's cipher suite and key exchange restrictions to the
@@ -737,6 +725,7 @@ quic_quicly_crypto_context_get_or_alloc (quic_ctx_t *ctx)
   crctx->ctx.ckpair_index = ctx->ckpair_index;
   crctx->verify_cfg = ctx->verify_cfg;
   crctx->ca_trust_index = ctx->ca_trust_index;
+  crctx->crypto_owner_app_wrk_id = ctx->crypto_owner_app_wrk_id;
   crctx->tls_profile_index = ctx->tls_profile_index;
   clib_bihash_add_del_24_8 (&qqcm->crypto_ctx_hash, &kv, 1 /* is_add */);
   quic_quicly_crypto_context_init_data (crctx, ctx);

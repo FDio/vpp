@@ -348,6 +348,7 @@ typedef struct transport_endpt_crypto_cfg_
   u32 ckpair_index;	       /**< index of ck pair in application crypto layer */
   u32 ca_trust_index;	       /**< index of ca trust in application crypto layer */
   u32 tls_profile_index;       /**< index of tls profile, ~0 = use defaults */
+  u32 owner_app_wrk_index;     /**< app worker owning app-scoped crypto objects */
   u8 alpn_protos[4];	       /**< ordered by preference for server */
   u8 crypto_engine;	       /**< crypto engine requested */
   tls_verify_cfg_t verify_cfg; /**< cert verification mode */

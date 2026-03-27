@@ -946,6 +946,8 @@ session_endpoint_add_ext_cfg (session_endpoint_cfg_t *sep_ext,
 					   sep_ext->ext_cfgs.tail_offset);
   ext_cfg->len = len;
   ext_cfg->type = type;
+  if (type == TRANSPORT_ENDPT_EXT_CFG_CRYPTO && len >= sizeof (transport_endpt_crypto_cfg_t))
+    ext_cfg->crypto.owner_app_wrk_index = ENDPOINT_INVALID_INDEX;
   sep_ext->ext_cfgs.tail_offset += len + TRANSPORT_ENDPT_EXT_CFG_HEADER_SIZE;
   return ext_cfg;
 }

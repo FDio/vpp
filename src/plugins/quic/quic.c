@@ -116,6 +116,9 @@ quic_connect_connection (transport_endpoint_cfg_t *tep)
   app_wrk = app_worker_get (sep->app_wrk_index);
   app = application_get (app_wrk->app_index);
   ctx->parent_app_id = app_wrk->app_index;
+  ctx->crypto_owner_app_wrk_id = ccfg->owner_app_wrk_index != ENDPOINT_INVALID_INDEX ?
+				   ccfg->owner_app_wrk_index :
+				   sep->app_wrk_index;
   cargs->sep_ext.ns_index = app->ns_index;
   cargs->sep_ext.transport_flags = TRANSPORT_CFG_F_CONNECTED;
 
@@ -177,6 +180,7 @@ quic_connect_stream (transport_endpoint_cfg_t *tep, session_t *stream_session,
 
   sctx->parent_app_wrk_id = qctx->parent_app_wrk_id;
   sctx->parent_app_id = qctx->parent_app_id;
+  sctx->crypto_owner_app_wrk_id = qctx->crypto_owner_app_wrk_id;
   sctx->quic_connection_ctx_id = qctx->c_c_index;
   sctx->c_c_index = sctx_index;
   sctx->c_flags |= TRANSPORT_CONNECTION_F_NO_LOOKUP;
@@ -294,6 +298,9 @@ quic_start_listen (u32 quic_listen_session_index,
   lctx->c_proto = TRANSPORT_PROTO_QUIC;
   lctx->parent_app_wrk_id = SESSION_INVALID_INDEX;
   lctx->parent_app_id = app_wrk->app_index;
+  lctx->crypto_owner_app_wrk_id = ccfg->owner_app_wrk_index != ENDPOINT_INVALID_INDEX ?
+				    ccfg->owner_app_wrk_index :
+				    sep->app_wrk_index;
   lctx->udp_session_handle = udp_handle;
   lctx->c_s_index = quic_listen_session_index;
   lctx->listener_ctx_id = lctx_index;
@@ -527,6 +534,7 @@ quic_udp_session_accepted_callback (session_t * udp_session)
 		       udp_listen_session->thread_index);
   ctx->udp_is_ip4 = lctx->c_is_ip4;
   ctx->parent_app_id = lctx->parent_app_id;
+  ctx->crypto_owner_app_wrk_id = lctx->crypto_owner_app_wrk_id;
   ctx->timer_handle = QUIC_TIMER_HANDLE_INVALID;
   ctx->conn_state = QUIC_CONN_STATE_OPENED;
   ctx->c_flags |= TRANSPORT_CONNECTION_F_NO_LOOKUP;

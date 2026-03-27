@@ -114,6 +114,7 @@ typedef struct tls_ctx_
   u32 ckpair_index;
   u32 ca_trust_index;
   u32 tls_profile_index; /**< TLS profile index, ~0 = use defaults */
+  u32 crypto_owner_app_wrk_index;
   transport_proto_t tls_type;
   u8 *alpn_list;
   tls_alpn_proto_t alpn_selected;

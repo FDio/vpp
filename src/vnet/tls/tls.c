@@ -644,6 +644,9 @@ tls_connect (transport_endpoint_cfg_t * tep)
   ctx->ckpair_index = ccfg->ckpair_index;
   ctx->ca_trust_index = ccfg->ca_trust_index;
   ctx->tls_profile_index = ccfg->tls_profile_index;
+  ctx->crypto_owner_app_wrk_index = ccfg->owner_app_wrk_index != ENDPOINT_INVALID_INDEX ?
+				      ccfg->owner_app_wrk_index :
+				      sep->app_wrk_index;
   ctx->verify_cfg = ccfg->verify_cfg;
   ctx->c_proto = TRANSPORT_PROTO_TLS;
   ctx->c_flags |= TRANSPORT_CONNECTION_F_NO_LOOKUP;
@@ -775,6 +778,9 @@ tls_start_listen (u32 app_listener_index, transport_endpoint_cfg_t *tep)
   lctx->ckpair_index = ccfg->ckpair_index;
   lctx->ca_trust_index = ccfg->ca_trust_index;
   lctx->tls_profile_index = ccfg->tls_profile_index;
+  lctx->crypto_owner_app_wrk_index = ccfg->owner_app_wrk_index != ENDPOINT_INVALID_INDEX ?
+				       ccfg->owner_app_wrk_index :
+				       sep->app_wrk_index;
   lctx->verify_cfg = ccfg->verify_cfg;
   lctx->c_s_index = app_listener_index;
   lctx->c_c_index = lctx_index;
@@ -1218,6 +1224,9 @@ dtls_connect (transport_endpoint_cfg_t *tep)
   ctx->parent_app_api_context = sep->opaque;
   ctx->tcp_is_ip4 = sep->is_ip4;
   ctx->ckpair_index = ccfg->ckpair_index;
+  ctx->crypto_owner_app_wrk_index = ccfg->owner_app_wrk_index != ENDPOINT_INVALID_INDEX ?
+				      ccfg->owner_app_wrk_index :
+				      sep->app_wrk_index;
   ctx->tls_type = sep->transport_proto;
   ctx->tls_ctx_handle = ctx_handle;
   ctx->c_proto = TRANSPORT_PROTO_DTLS;

@@ -1125,6 +1125,9 @@ http_connect_connection (session_endpoint_cfg_t *sep)
   ext_cfg = session_endpoint_get_ext_cfg (sep, TRANSPORT_ENDPT_EXT_CFG_CRYPTO);
   if (ext_cfg)
     {
+      if (ext_cfg->crypto.owner_app_wrk_index == ENDPOINT_INVALID_INDEX)
+	ext_cfg->crypto.owner_app_wrk_index = sep->app_wrk_index;
+
       HTTP_DBG (1, "app want secure connection");
       switch (ext_cfg->crypto.alpn_protos[0])
 	{
@@ -1275,6 +1278,8 @@ http_start_listen (u32 app_listener_index, transport_endpoint_cfg_t *tep)
     {
       HTTP_DBG (1, "app want secure listen");
       cc = &ext_cfg->crypto;
+      if (cc->owner_app_wrk_index == ENDPOINT_INVALID_INDEX)
+	cc->owner_app_wrk_index = sep->app_wrk_index;
       if (cc->alpn_protos[0] == TLS_ALPN_PROTO_NONE)
 	{
 	  HTTP_DBG (1,
