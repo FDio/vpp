@@ -12,6 +12,7 @@ from config import config
 from framework import VppTestCase
 from asfframework import (
     tag_fixme_vpp_workers,
+    tag_fixme_debian12,
     VppTestRunner,
 )
 from ipfix import IPFIX, Set, Template, Data, IPFIXDecoder
@@ -38,6 +39,7 @@ from config import config
 
 
 @tag_fixme_vpp_workers
+@tag_fixme_debian12
 @unittest.skipIf("nat" in config.excluded_plugins, "Exclude NAT plugin tests")
 class TestNAT64(VppTestCase):
     """NAT64 Test Cases"""
