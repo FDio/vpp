@@ -33,7 +33,6 @@ ipsec_proto_encode (ipsec_protocol_t p)
     case IPSEC_PROTOCOL_AH:
       return clib_host_to_net_u32 (IPSEC_API_PROTO_AH);
     }
-  ASSERT (0);
   return clib_host_to_net_u32 (IPSEC_API_PROTO_ESP);
 }
 
