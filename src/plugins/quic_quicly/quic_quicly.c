@@ -836,6 +836,7 @@ quic_quicly_on_stream_open (quicly_stream_open_t *self, quicly_stream_t *stream)
   sctx = quic_quicly_get_quic_ctx (sctx_id, qctx->c_thread_index);
   sctx->parent_app_wrk_id = qctx->parent_app_wrk_id;
   sctx->parent_app_id = qctx->parent_app_id;
+  sctx->crypto_owner_app_wrk_id = qctx->crypto_owner_app_wrk_id;
   sctx->quic_connection_ctx_id = qctx->c_c_index;
   sctx->c_c_index = sctx_id;
   sctx->c_s_index = stream_session->session_index;
