@@ -42,10 +42,12 @@ set_bpf_trace_filter_command_fn (vlib_main_t *vm, unformat_input_t *input,
   unformat_free (line_input);
 
   if (err != 0)
-    return err;
+    goto done;
 
   err = bpf_trace_filter_set_unset ((char *) bpf_expr, is_del, optimize);
 
+done:
+  vec_free (bpf_expr);
   return err;
 }
 
