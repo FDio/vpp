@@ -28,10 +28,18 @@ type CpuAllocatorT struct {
 
 var cpuAllocator *CpuAllocatorT = nil
 
+/*
+On a 128 thread, 2 numa system, CPUs will be allocated like this (HT=false):
+[11 12 13 14	15 16 17 18		19 20 21 22		23 24 25 26		27 28 29 30 	31 - this core is used, subsequent containers will use cpus from numa1]
+[	32 33 34	35 36 37 38		39 40 41 42		43 44 45 46		47 48 49 50		51 52 53 54		55 56 57 58		59 60 61 62		63 (unused)]
+
+suite 1 will use cores 11-14, suite 6 will use cores 31-34...
+*/
+
 func (c *CpuAllocatorT) Allocate(nCpus int, offset int) (*CpuContext, error) {
 	var cpuCtx CpuContext
 	// indexes, not actual cores
-	var minCpu, maxCpu int
+	var minCpu, maxCpu, minCpu1, maxCpu1 int
 
 	minCpu = offset
 	maxCpu = nCpus - 1 + offset
@@ -47,12 +55,19 @@ func (c *CpuAllocatorT) Allocate(nCpus int, offset int) (*CpuContext, error) {
 	}
 
 	if NumaAwareCpuAlloc {
+		minCpu1 = minCpu - len(c.numa0)
+		maxCpu1 = maxCpu - len(c.numa0)
+		if minCpu1 < 0 {
+			minCpu1 = 0
+			maxCpu1 = nCpus - 1
+		}
+
 		if len(c.numa0) > maxCpu {
 			Log("Allocating CPUs from numa #0")
 			cpuCtx.cpus = c.numa0[minCpu : minCpu+nCpus]
-		} else if len(c.numa1) > maxCpu {
+		} else if len(c.numa1) > maxCpu1 {
 			Log("Allocating CPUs from numa #1")
-			cpuCtx.cpus = c.numa1[minCpu : minCpu+nCpus]
+			cpuCtx.cpus = c.numa1[minCpu1 : minCpu1+nCpus]
 		} else {
 			err := fmt.Errorf("could not allocate %d CPUs; not enough CPUs in either numa node", nCpus)
 			return nil, err

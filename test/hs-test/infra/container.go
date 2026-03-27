@@ -245,7 +245,9 @@ func (c *Container) Start() error {
 	}
 
 	Log("Container '%s': %s", c.Name, containers[0].Status)
-	if !(strings.Contains(strings.ToLower(containers[0].Status), "up") || strings.Contains(strings.ToLower(containers[0].Status), "exited (0)")) {
+	if !(strings.Contains(strings.ToLower(containers[0].Status), "up") ||
+		strings.Contains(strings.ToLower(containers[0].Status), "created") ||
+		strings.Contains(strings.ToLower(containers[0].Status), "exited (")) {
 		Log("Container details: " + fmt.Sprint(containers[0]))
 		return fmt.Errorf("Container %s exited: '%s'", c.Name, containers[0].Status)
 	}
