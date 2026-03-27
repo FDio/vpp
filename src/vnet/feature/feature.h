@@ -88,7 +88,6 @@ typedef struct
 
   /** feature config main objects */
   vnet_feature_config_main_t *feature_config_mains;
-  u32 *shared_feature_config_heap;
 
   /** Save partial order results for show command */
   char ***feature_nodes;
@@ -267,6 +266,7 @@ vnet_feature_arc_start_with_data (u8 arc, u32 sw_if_index, u32 * next,
 
   if (PREDICT_FALSE (vnet_have_features (arc, sw_if_index)))
     {
+      vnet_buffer (b)->feature_arc_index = arc;
       b->current_config_index =
 	vec_elt (cm->config_index_by_sw_if_index, sw_if_index);
       return vnet_get_config_data (&cm->config_main, &b->current_config_index,
@@ -285,6 +285,7 @@ vnet_feature_arc_start_w_cfg_index (u8 arc,
   vnet_feature_config_main_t *cm;
   cm = &fm->feature_config_mains[arc];
 
+  vnet_buffer (b)->feature_arc_index = arc;
   b->current_config_index = cfg_index;
 
   return vnet_get_config_data (&cm->config_main, &b->current_config_index,
@@ -303,9 +304,12 @@ vnet_feature_next_with_data (u32 * next0, vlib_buffer_t * b0,
 			     u32 n_data_bytes)
 {
   vnet_feature_main_t *fm = &feature_main;
+  u8 arc = vnet_buffer (b0)->feature_arc_index;
+  vnet_feature_config_main_t *cm = &fm->feature_config_mains[arc];
 
-  return vnet_get_config_shared_data (fm->shared_feature_config_heap, &b0->current_config_index,
-				      next0, n_data_bytes);
+  return vnet_get_config_data (&cm->config_main,
+			       &b0->current_config_index, next0,
+			       n_data_bytes);
 }
 
 static_always_inline void
@@ -342,6 +346,7 @@ vnet_feature_start_device_input (u32 sw_if_index, u32 *next0,
       (clib_bitmap_get
        (fm->sw_if_index_has_features[feature_arc_index], sw_if_index)))
     {
+      vnet_buffer (b0)->feature_arc_index = feature_arc_index;
       b0->current_config_index =
 	vec_elt (cm->config_index_by_sw_if_index, sw_if_index);
       vnet_get_config_data (&cm->config_main, &b0->current_config_index,
