@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -euo pipefail
+drv_name=macb
+
+drv=/sys/bus/platform/drivers/$drv_name
+
+for dev in 29f80000.ethernet; do
+  sys=/sys/bus/platform/devices/$dev
+  [[ -L $sys/driver ]] && echo "$dev" > "$sys/driver/unbind"
+  sleep 1
+  echo $drv_name > "$sys/driver_override"
+  sleep 1
+  echo "$dev" > "$drv/bind"
+done

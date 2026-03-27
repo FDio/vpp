@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+set -euo pipefail
+drv_name=uio_pdrv_genirq
+drv_name=cdn-uio
+
+drv=/sys/bus/platform/drivers/$drv_name
+mdio_dev=/dev/mdio_ctl0
+mdio_ctl_bin=/tmp/mdioctl
+mdio_ctl_src=$(dirname "$0")/src/tools/mdioctl.c
+
+build_mdioctl ()
+{
+  [[ -x $mdio_ctl_bin ]] && return
+  cc -Wall -Werror -O0 -g -o "$mdio_ctl_bin" "$mdio_ctl_src"
+}
+
+mdio_write ()
+{
+  "$mdio_ctl_bin" write "$mdio_dev" "$1" "$2" "$3"
+}
+
+program_combo_phy ()
+{
+  [[ -c $mdio_dev ]] || return
+
+  build_mdioctl
+
+  mdio_write 0x8 22 0x12
+  mdio_write 0x8 20 0x8005
+  mdio_write 0x8 22 0x0001
+
+  mdio_write 0x9 22 0x12
+  mdio_write 0x9 20 0x8017
+  mdio_write 0x9 22 0x0004
+  mdio_write 0x9 22 0x0001
+  mdio_write 0x9 16 0x2a05
+  mdio_write 0x9 0 0x9340
+  mdio_write 0x9 18 0x0000
+
+  mdio_write 0x8 16 0x2806
+  mdio_write 0x8 0 0x9b40
+  mdio_write 0x8 18 0x0000
+  mdio_write 0x8 0 0x1140
+}
+
+for dev in 29f80000.ethernet; do
+  sys=/sys/bus/platform/devices/$dev
+  [[ -L $sys/driver ]] && echo "$dev" > "$sys/driver/unbind"
+  sleep 1
+  echo $drv_name > "$sys/driver_override"
+  sleep 1
+  echo "$dev" > "$drv/bind"
+done
+
+sleep 1
+program_combo_phy

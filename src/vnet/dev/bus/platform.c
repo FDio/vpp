@@ -5,6 +5,7 @@
 #include <vnet/vnet.h>
 #include <vnet/dev/dev.h>
 #include <vnet/dev/bus/platform.h>
+#include <vlib/physmem_funcs.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -126,6 +127,37 @@ vnet_dev_bus_platform_close (vlib_main_t *vm, vnet_dev_t *dev)
 }
 
 static vnet_dev_rv_t
+vnet_dev_bus_platform_dma_mem_alloc (vlib_main_t *vm, vnet_dev_t *dev, u32 size, u32 align,
+				     void **pp)
+{
+  clib_error_t *err;
+  void *p;
+
+  align = align ? align : CLIB_CACHE_LINE_BYTES;
+  size = round_pow2 (size, align);
+
+  p = vlib_physmem_alloc_aligned_on_numa (vm, size, align, dev->numa_node);
+  if (p == 0)
+    {
+      err = vlib_physmem_last_error (vm);
+      log_err (dev, "dev_dma_mem_alloc: physmem_alloc_aligned error %U", format_clib_error, err);
+      clib_error_free (err);
+      return VNET_DEV_ERR_DMA_MEM_ALLOC_FAIL;
+    }
+
+  clib_memset (p, 0, size);
+  pp[0] = p;
+  return VNET_DEV_OK;
+}
+
+static void
+vnet_dev_bus_platform_dma_mem_free (vlib_main_t *vm, vnet_dev_t *dev __clib_unused, void *p)
+{
+  if (p)
+    vlib_physmem_free (vm, p);
+}
+
+static vnet_dev_rv_t
 vnet_dev_bus_platform_open (vlib_main_t *vm, vnet_dev_t *dev)
 {
   clib_dt_node_t *n = 0;
@@ -167,6 +199,8 @@ VNET_DEV_REGISTER_BUS (pp2) = {
     .free_device_info = vnet_dev_bus_platform_free_device_info,
     .device_open = vnet_dev_bus_platform_open,
     .device_close = vnet_dev_bus_platform_close,
+    .dma_mem_alloc_fn = vnet_dev_bus_platform_dma_mem_alloc,
+    .dma_mem_free_fn = vnet_dev_bus_platform_dma_mem_free,
     .format_device_info = format_dev_bus_platform_device_info,
     .format_device_addr = format_dev_bus_platform_device_addr,
   },
