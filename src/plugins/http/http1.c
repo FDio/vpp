@@ -325,7 +325,7 @@ http1_parse_request_line (http_req_t *req, u8 *rx_buf, http_status_code_t *ec)
       req->method = HTTP_REQ_CONNECT;
       req->upgrade_proto = HTTP_UPGRADE_PROTO_NA;
       req->target_path_offset = method_offset + 8;
-      req->is_tunnel = 1;
+      req->flags |= HTTP_REQ_F_IS_TUNNEL;
     }
   else
     {
@@ -704,7 +704,7 @@ http1_identify_message_body (http_req_t *req, u8 *rx_buf,
       HTTP_DBG (2, "no header, no message-body");
       return 0;
     }
-  if (req->is_tunnel)
+  if (req->flags & HTTP_REQ_F_IS_TUNNEL)
     {
       HTTP_DBG (2, "tunnel, no message-body");
       return 0;
@@ -764,7 +764,7 @@ http1_check_connection_upgrade (http_req_t *req, u8 *rx_buf)
 #undef _
 	else return;
 
-      req->is_tunnel = 1;
+      req->flags |= HTTP_REQ_F_IS_TUNNEL;
       req->method = HTTP_REQ_CONNECT;
     }
 }
@@ -1300,8 +1300,8 @@ http1_req_state_wait_app_reply (http_ctx_t *hc, http_req_t *req, transport_send_
   /* RFC9110 8.6: A server MUST NOT send Content-Length header field in a
    * 2xx (Successful) response to CONNECT or with a status code of 101
    * (Switching Protocols). */
-  if (req->is_tunnel && (http_status_code_str[msg.code][0] == '2' ||
-			 msg.code == HTTP_STATUS_SWITCHING_PROTOCOLS))
+  if ((req->flags & HTTP_REQ_F_IS_TUNNEL) &&
+      (http_status_code_str[msg.code][0] == '2' || msg.code == HTTP_STATUS_SWITCHING_PROTOCOLS))
     {
       ASSERT (msg.data.body_len == 0);
       next_state = HTTP_REQ_STATE_TUNNEL;

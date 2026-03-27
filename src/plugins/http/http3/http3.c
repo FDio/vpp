@@ -33,7 +33,6 @@ typedef enum http3_req_flags_
 typedef struct http3_stream_ctx_
 {
   http_req_t base;
-  u32 h3c_index;
   http3_stream_type_t stream_type;
   http3_frame_header_t fh;
   http3_req_flags_t flags;
@@ -430,7 +429,7 @@ http3_req_state_wait_app_reply (http_ctx_t *stream, http3_stream_ctx_t *sctx,
   control_data.date = date;
   control_data.date_len = vec_len (date);
 
-  if (sctx->base.is_tunnel)
+  if (sctx->base.flags & HTTP_REQ_F_IS_TUNNEL)
     {
       switch (msg.code)
 	{
@@ -451,7 +450,7 @@ http3_req_state_wait_app_reply (http_ctx_t *stream, http3_stream_ctx_t *sctx,
 	  break;
 	default:
 	  /* tunnel not established */
-	  sctx->base.is_tunnel = 0;
+	  sctx->base.flags &= ~HTTP_REQ_F_IS_TUNNEL;
 	  break;
 	}
     }
@@ -474,7 +473,7 @@ http3_req_state_wait_app_reply (http_ctx_t *stream, http3_stream_ctx_t *sctx,
 
   if (msg.data.body_len)
     {
-      ASSERT (sctx->base.is_tunnel == 0);
+      ASSERT (!(sctx->base.flags & HTTP_REQ_F_IS_TUNNEL));
       http_req_tx_buffer_init (&sctx->base, &msg);
       http_req_state_change (&sctx->base, HTTP_REQ_STATE_APP_IO_MORE_DATA);
       rv = HTTP_SM_CONTINUE;
@@ -482,7 +481,7 @@ http3_req_state_wait_app_reply (http_ctx_t *stream, http3_stream_ctx_t *sctx,
   else
     {
       /* all done, close stream */
-      if (!sctx->base.is_tunnel)
+      if (!(sctx->base.flags & HTTP_REQ_F_IS_TUNNEL))
 	http3_stream_close (stream, sctx);
     }
 
@@ -529,7 +528,7 @@ http3_req_state_wait_app_method (http_ctx_t *hc, http3_stream_ctx_t *sctx,
   control_data.parsed_bitmap = HPACK_PSEUDO_HEADER_AUTHORITY_PARSED;
   if (msg.method_type == HTTP_REQ_CONNECT)
     {
-      sctx->base.is_tunnel = 1;
+      sctx->base.flags |= HTTP_REQ_F_IS_TUNNEL;
       sctx->base.upgrade_proto = msg.data.upgrade_proto;
       /* deschedule until connect response, app might start enqueue tunneled data */
       http_req_deschedule (&sctx->base, sp);
@@ -591,11 +590,11 @@ http3_req_state_wait_app_method (http_ctx_t *hc, http3_stream_ctx_t *sctx,
 
   if (msg.data.body_len)
     {
-      ASSERT (sctx->base.is_tunnel == 0);
+      ASSERT (!(sctx->base.flags & HTTP_REQ_F_IS_TUNNEL));
       http_req_tx_buffer_init (&sctx->base, &msg);
       new_state = HTTP_REQ_STATE_APP_IO_MORE_DATA;
     }
-  else if (!sctx->base.is_tunnel)
+  else if (!(sctx->base.flags & HTTP_REQ_F_IS_TUNNEL))
     {
       /* all done, close stream for sending */
       http_half_close_transport_stream (stream);
@@ -951,7 +950,7 @@ http3_req_state_wait_transport_method (http_ctx_t *stream, http3_stream_ctx_t *s
 	    }
 	  sctx->base.upgrade_proto = HTTP_UPGRADE_PROTO_NA;
 	}
-      sctx->base.is_tunnel = 1;
+      sctx->base.flags |= HTTP_REQ_F_IS_TUNNEL;
     }
   if (control_data.content_len_header_index != ~0)
     {
@@ -1079,7 +1078,8 @@ http3_req_state_wait_transport_reply (http_ctx_t *stream, http3_stream_ctx_t *sc
       return HTTP_SM_STOP;
     }
 
-  if (sctx->base.is_tunnel && http_status_code_str[sctx->base.status_code][0] == '2')
+  if ((sctx->base.flags & HTTP_REQ_F_IS_TUNNEL) &&
+      http_status_code_str[sctx->base.status_code][0] == '2')
     {
       new_state = (sctx->base.upgrade_proto == HTTP_UPGRADE_PROTO_CONNECT_UDP &&
 		   stream->udp_tunnel_mode == HTTP_UDP_TUNNEL_DGRAM) ?
@@ -1872,8 +1872,7 @@ format_http3_req_vars (u8 *s, va_list *args)
 
   if (!(stream->flags & HTTP_CONN_F_IS_SERVER &&
 	sctx->flags & HTTP3_STREAM_F_IS_PARENT))
-    s = format (s, " %U is_tunnel %u\n", format_http3_stream_type,
-		sctx->stream_type, sctx->base.is_tunnel);
+    s = format (s, " %U\n", format_http3_stream_type, sctx->stream_type);
   s = format (s, " req state: %U\n", format_http_req_state, sctx->base.state);
   s = format (s, " flags: %U\n", format_http3_stream_flags, sctx);
   if (sctx->flags & HTTP3_STREAM_F_IS_PARENT)
@@ -2063,8 +2062,9 @@ http3_app_reset_callback (http_ctx_t *stream, u32 req_index, clib_thread_index_t
     {
       sctx->flags |= HTTP3_STREAM_F_APP_CLOSED;
       http3_stream_terminate (stream, sctx,
-			      sctx->base.is_tunnel ? HTTP3_ERROR_CONNECT_ERROR :
-						     HTTP3_ERROR_REQUEST_CANCELLED);
+			      (sctx->base.flags & HTTP_REQ_F_IS_TUNNEL) ?
+				HTTP3_ERROR_CONNECT_ERROR :
+				HTTP3_ERROR_REQUEST_CANCELLED);
     }
   if (sctx->flags & HTTP3_STREAM_F_IS_PARENT)
     {
@@ -2259,7 +2259,7 @@ http3_transport_stream_close_callback (http_ctx_t *stream)
 	      return;
 	    }
 	  sctx = http3_stream_ctx_get (pointer_to_uword (stream->opaque), stream->c_thread_index);
-	  if (sctx->base.is_tunnel)
+	  if (sctx->base.flags & HTTP_REQ_F_IS_TUNNEL)
 	    {
 	      if (sctx->flags & HTTP3_STREAM_F_APP_CLOSED)
 		{

@@ -60,7 +60,7 @@ http_v_find_index (u8 *vec, u32 offset, u32 num, char *str)
 u8 *
 format_http_req_state (u8 *s, va_list *va)
 {
-  http_req_state_t state = va_arg (*va, http_req_state_t);
+  http_req_state_t state = va_arg (*va, int);
   u8 *t = 0;
 
   switch (state)
@@ -120,6 +120,35 @@ format_http_conn_flags (u8 *s, va_list *args)
     }
   if (last >= 0)
     s = format (s, "%s", http_conn_flags_str[i]);
+
+  return s;
+}
+
+const char *http_req_flags_str[] = {
+#define _(sym, str) str,
+  foreach_http_req_flags
+#undef _
+};
+
+u8 *
+format_http_req_flags (u8 *s, va_list *args)
+{
+  http_req_t *req = va_arg (*args, http_req_t *);
+  int i, last = -1;
+
+  for (i = 0; i < HTTP_REQ_N_F_BITS; i++)
+    {
+      if (req->flags & (1 << i))
+	last = i;
+    }
+
+  for (i = 0; i < last; i++)
+    {
+      if (req->flags & (1 << i))
+	s = format (s, "%s | ", http_req_flags_str[i]);
+    }
+  if (last >= 0)
+    s = format (s, "%s", http_req_flags_str[i]);
 
   return s;
 }
