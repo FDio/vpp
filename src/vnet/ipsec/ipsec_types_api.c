@@ -33,7 +33,7 @@ ipsec_proto_encode (ipsec_protocol_t p)
     case IPSEC_PROTOCOL_AH:
       return clib_host_to_net_u32 (IPSEC_API_PROTO_AH);
     }
-  return (VNET_API_ERROR_UNIMPLEMENTED);
+  return (vl_api_ipsec_proto_t) 0;
 }
 
 int
@@ -66,7 +66,7 @@ ipsec_crypto_algo_encode (ipsec_crypto_alg_t c)
       break;
     }
   ASSERT (0);
-  return (VNET_API_ERROR_UNIMPLEMENTED);
+  return clib_host_to_net_u32 (IPSEC_API_CRYPTO_ALG_NONE);
 }
 
 int
@@ -98,7 +98,7 @@ ipsec_integ_algo_encode (ipsec_integ_alg_t i)
       break;
     }
   ASSERT (0);
-  return (VNET_API_ERROR_UNIMPLEMENTED);
+  return clib_host_to_net_u32 (IPSEC_API_INTEG_ALG_NONE);
 }
 
 void
