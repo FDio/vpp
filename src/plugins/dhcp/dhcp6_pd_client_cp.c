@@ -1202,6 +1202,147 @@ VLIB_CLI_COMMAND (ip6_pd_clients_show_command, static) = {
   .function = ip6_pd_clients_show_command_function,
 };
 
+u8 __clib_export
+dhcp6_pd_client_get_runtime (u32 sw_if_index, dhcp6_pd_client_runtime_t *rt)
+{
+  dhcp6_pd_client_cp_main_t *rm = &dhcp6_pd_client_cp_main;
+  ip6_prefix_main_t *pm = &ip6_prefix_main;
+  client_state_t *cs;
+  f64 current_time;
+  const u8 *prefix_group;
+
+  if (rt == 0)
+    return 0;
+
+  clib_memset (rt, 0, sizeof (*rt));
+
+  if (sw_if_index >= vec_len (rm->client_state_by_sw_if_index))
+    return 1;
+
+  cs = &rm->client_state_by_sw_if_index[sw_if_index];
+  rt->enabled = cs->enabled;
+  rt->rebinding = cs->rebinding;
+  rt->server_index = cs->server_index;
+  rt->T1 = cs->T1;
+  rt->T2 = cs->T2;
+  rt->prefix_count = cs->prefix_count;
+
+  if (cs->prefix_group_index != ~0 &&
+      cs->prefix_group_index < vec_len (pm->prefix_group_name_by_index) &&
+      pm->prefix_group_name_by_index[cs->prefix_group_index])
+    {
+      prefix_group = pm->prefix_group_name_by_index[cs->prefix_group_index];
+      clib_strncpy ((char *) rt->prefix_group, (const char *) prefix_group,
+		    sizeof (rt->prefix_group) - 1);
+    }
+
+  if (!cs->enabled || rm->vlib_main == 0)
+    return 1;
+
+  current_time = vlib_time_now (rm->vlib_main);
+  if (cs->T1_due_time != DBL_MAX && cs->T1_due_time > current_time)
+    rt->t1_remaining = (u32) round (cs->T1_due_time - current_time);
+  if (cs->T2_due_time != DBL_MAX && cs->T2_due_time > current_time)
+    rt->t2_remaining = (u32) round (cs->T2_due_time - current_time);
+
+  return 1;
+}
+
+u8 __clib_export
+dhcp6_pd_client_get_active_prefix_runtime (u32 sw_if_index,
+					   dhcp6_pd_active_prefix_runtime_t *rt)
+{
+  dhcp6_pd_client_cp_main_t *rm = &dhcp6_pd_client_cp_main;
+  ip6_prefix_main_t *pm = &ip6_prefix_main;
+  client_state_t *cs;
+  prefix_info_t *prefix_info;
+  u32 prefix_index;
+  f64 current_time;
+
+  if (rt == 0)
+    return 0;
+
+  clib_memset (rt, 0, sizeof (*rt));
+
+  if (sw_if_index >= vec_len (rm->client_state_by_sw_if_index))
+    return 1;
+
+  cs = &rm->client_state_by_sw_if_index[sw_if_index];
+  if (!cs->enabled || cs->prefix_group_index == ~0)
+    return 1;
+
+  prefix_index =
+    active_prefix_index_by_prefix_group_index_get (cs->prefix_group_index);
+  if (prefix_index == ~0 || pool_is_free_index (pm->prefix_pool, prefix_index))
+    return 1;
+
+  prefix_info = pool_elt_at_index (pm->prefix_pool, prefix_index);
+  rt->present = 1;
+  rt->prefix = prefix_info->prefix;
+  rt->prefix_length = prefix_info->prefix_length;
+  rt->preferred_lt = prefix_info->preferred_lt;
+  rt->valid_lt = prefix_info->valid_lt;
+
+  if (rm->vlib_main)
+    {
+      current_time = vlib_time_now (rm->vlib_main);
+      if (prefix_info->due_time > current_time)
+	rt->valid_remaining = (u32) round (prefix_info->due_time - current_time);
+    }
+
+  return 1;
+}
+
+u8 __clib_export
+dhcp6_pd_client_get_consumer_runtime (u32 sw_if_index,
+				      dhcp6_pd_consumer_runtime_t *rt)
+{
+  dhcp6_pd_client_cp_main_t *rm = &dhcp6_pd_client_cp_main;
+  ip6_address_with_prefix_main_t *apm = &ip6_address_with_prefix_main;
+  ip6_prefix_main_t *pm = &ip6_prefix_main;
+  client_state_t *cs;
+  ip6_address_info_t *address_info;
+  u32 prefix_index = ~0;
+
+  if (rt == 0)
+    return 0;
+
+  clib_memset (rt, 0, sizeof (*rt));
+
+  if (sw_if_index >= vec_len (rm->client_state_by_sw_if_index))
+    return 1;
+
+  cs = &rm->client_state_by_sw_if_index[sw_if_index];
+  if (!cs->enabled || cs->prefix_group_index == ~0)
+    return 1;
+
+  prefix_index =
+    active_prefix_index_by_prefix_group_index_get (cs->prefix_group_index);
+
+  vec_foreach (address_info, apm->addresses)
+    {
+      if (address_info->prefix_group_index != cs->prefix_group_index ||
+	  !address_info->configured_in_data_plane)
+	continue;
+
+      rt->consumer_count++;
+      if (!rt->present)
+	{
+	  rt->present = 1;
+	  rt->sw_if_index = address_info->sw_if_index;
+	  rt->prefix_length = address_info->prefix_length;
+
+	  if (prefix_index != ~0 && !pool_is_free_index (pm->prefix_pool, prefix_index) &&
+	      cp_ip6_construct_address (address_info, prefix_index, &rt->address) == 0)
+	    ;
+	  else
+	    rt->address = address_info->address;
+	}
+    }
+
+  return 1;
+}
+
 
 
 int

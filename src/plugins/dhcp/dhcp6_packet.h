@@ -59,6 +59,7 @@ typedef enum dhcpv6_msg_type_
   _(INTERFACE_ID     , 18 , 0 ) \
   _(RECONF_MSG       , 19 , 1 ) \
   _(RECONF_ACCEPT    , 20 , 0 ) \
+  _(DNS_SERVERS      , 23 , 16) \
   _(DNS_SEARCH       , 24 , 0 ) \
   _(IA_PD            , 25 , 12) \
   _(IAPREFIX         , 26 , 25) \

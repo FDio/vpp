@@ -402,6 +402,15 @@ dhcp6_client_cp_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
                   {
                     client_state->rebinding = 0;
                     client_state->server_index = ~0;
+                    if (sw_if_index < vec_len (dhcp6_ia_na_client_main.client_state_by_sw_if_index))
+                      {
+                        dhcp6_ia_na_client_main.client_state_by_sw_if_index[sw_if_index].dns_server_count = 0;
+                        clib_memset (
+                          dhcp6_ia_na_client_main.client_state_by_sw_if_index[sw_if_index].dns_servers,
+                          0,
+                          sizeof (dhcp6_ia_na_client_main.client_state_by_sw_if_index[sw_if_index]
+                                    .dns_servers));
+                      }
                     send_client_message_start_stop (sw_if_index, ~0,
                                                     DHCPV6_MSG_SOLICIT,
                                                     0, 1);
@@ -585,6 +594,65 @@ VLIB_CLI_COMMAND (dhcp6_clients_show_command, static) = {
   .function = dhcp6_clients_show_command_function,
 };
 
+u8 __clib_export
+dhcp6_ia_na_client_get_runtime (u32 sw_if_index, dhcp6_ia_na_client_runtime_t *rt)
+{
+  dhcp6_client_cp_main_t *rm = &dhcp6_client_cp_main;
+  client_state_t *cs;
+  address_info_t *address_info;
+  f64 current_time;
+
+  if (rt == 0)
+    return 0;
+
+  clib_memset (rt, 0, sizeof (*rt));
+
+  if (sw_if_index >= vec_len (rm->client_state_by_sw_if_index))
+    return 1;
+
+  cs = &rm->client_state_by_sw_if_index[sw_if_index];
+  rt->enabled = cs->enabled;
+  if (!cs->enabled || rm->vlib_main == 0)
+    return 1;
+
+  rt->rebinding = cs->rebinding;
+  rt->server_index = cs->server_index;
+  rt->T1 = cs->T1;
+  rt->T2 = cs->T2;
+  rt->address_count = cs->address_count;
+  rt->dns_server_count = 0;
+
+  pool_foreach (address_info, rm->address_pool)
+   {
+    if (address_info->sw_if_index != sw_if_index)
+      continue;
+
+    rt->first_address_present = 1;
+    rt->first_address = address_info->address;
+    rt->first_address_preferred_lt = address_info->preferred_lt;
+    rt->first_address_valid_lt = address_info->valid_lt;
+    break;
+  }
+
+  if (sw_if_index < vec_len (dhcp6_ia_na_client_main.client_state_by_sw_if_index))
+    {
+      dhcp6_ia_na_client_state_t *dp_cs =
+	&dhcp6_ia_na_client_main.client_state_by_sw_if_index[sw_if_index];
+      rt->dns_server_count = dp_cs->dns_server_count;
+      if (dp_cs->dns_server_count > 0)
+	clib_memcpy (rt->dns_servers, dp_cs->dns_servers,
+		     dp_cs->dns_server_count * sizeof (ip6_address_t));
+    }
+
+  current_time = vlib_time_now (rm->vlib_main);
+  if (cs->T1_due_time != DBL_MAX && cs->T1_due_time > current_time)
+    rt->t1_remaining = (u32) round (cs->T1_due_time - current_time);
+  if (cs->T2_due_time != DBL_MAX && cs->T2_due_time > current_time)
+    rt->t2_remaining = (u32) round (cs->T2_due_time - current_time);
+
+  return 1;
+}
+
 int
 dhcp6_client_enable_disable (u32 sw_if_index, u8 enable)
 {
@@ -655,6 +723,19 @@ dhcp6_client_enable_disable (u32 sw_if_index, u8 enable)
             pool_put (rm->address_pool, address_info);
           }
       }
+      if (sw_if_index < vec_len (dhcp6_ia_na_client_main.client_state_by_sw_if_index))
+	{
+	  dhcp6_ia_na_client_main.client_state_by_sw_if_index[sw_if_index].dns_server_count = 0;
+	  clib_memset (dhcp6_ia_na_client_main.client_state_by_sw_if_index[sw_if_index].dns_servers,
+		       0, sizeof (dhcp6_ia_na_client_main.client_state_by_sw_if_index[sw_if_index].dns_servers));
+	}
+      client_state->server_index = ~0;
+      client_state->T1 = 0;
+      client_state->T2 = 0;
+      client_state->T1_due_time = DBL_MAX;
+      client_state->T2_due_time = DBL_MAX;
+      client_state->address_count = 0;
+      client_state->rebinding = 0;
     }
 
   if (!enable)

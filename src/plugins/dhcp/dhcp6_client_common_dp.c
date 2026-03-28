@@ -135,6 +135,8 @@ dhcpv6_client_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  dhcp6_report_common_t report;
 	  dhcp6_address_info_t *addresses = 0;
 	  dhcp6_prefix_info_t *prefixes = 0;
+	  ip6_address_t dns_servers[2] = { 0 };
+	  u32 n_dns_servers = 0;
 	  u32 next0 = DHCPV6_CLIENT_NEXT_DROP;
 	  u32 bi0;
 	  u32 xid;
@@ -344,6 +346,21 @@ dhcpv6_client_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		      report.status_code =
 			clib_net_to_host_u16 (sc->status_code);
 		    }
+		  else if (oo == DHCPV6_OPTION_DNS_SERVERS && !is_pd_packet)
+		    {
+		      u16 ol = clib_net_to_host_u16 (option->length);
+		      u16 consumed = 0;
+
+		      while (consumed + sizeof (ip6_address_t) <= ol &&
+			     n_dns_servers < ARRAY_LEN (dns_servers))
+			{
+			  clib_memcpy (&dns_servers[n_dns_servers],
+				       option->data + consumed,
+				       sizeof (ip6_address_t));
+			  n_dns_servers++;
+			  consumed += sizeof (ip6_address_t);
+			}
+		    }
 		  options_length -=
 		    sizeof (*option) + clib_net_to_host_u16 (option->length);
 		  option =
@@ -366,6 +383,15 @@ dhcpv6_client_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	      if (!discard)
 		{
+		  if (!is_pd_packet && ia_na_client_state)
+		    {
+		      ia_na_client_state->dns_server_count = n_dns_servers;
+		      clib_memset (ia_na_client_state->dns_servers, 0,
+				   sizeof (ia_na_client_state->dns_servers));
+		      if (n_dns_servers)
+			clib_memcpy (ia_na_client_state->dns_servers, dns_servers,
+				     n_dns_servers * sizeof (ip6_address_t));
+		    }
 		  if (!is_pd_packet)
 		    {
 		      address_report_t r;
