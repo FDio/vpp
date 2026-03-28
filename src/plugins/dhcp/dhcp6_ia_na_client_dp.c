@@ -166,6 +166,16 @@ create_buffer_for_client_message (vlib_main_t * vm, u32 sw_if_index,
 	(char *) vlib_buffer_get_current (b);
       d += sizeof (*elapsed);
 
+      if (type == DHCPV6_MSG_SOLICIT || type == DHCPV6_MSG_REQUEST ||
+	  type == DHCPV6_MSG_RENEW || type == DHCPV6_MSG_REBIND)
+	{
+	  dhcpv6_oro_t *oro = (dhcpv6_oro_t *) d;
+	  oro->opt.option = clib_host_to_net_u16 (DHCPV6_OPTION_ORO);
+	  oro->opt.length = clib_host_to_net_u16 (sizeof (u16));
+	  oro->options[0] = clib_host_to_net_u16 (DHCPV6_OPTION_DNS_SERVERS);
+	  d += sizeof (*oro) + sizeof (u16);
+	}
+
       ia_hdr = (dhcpv6_ia_header_t *) d;
       ia_hdr->opt.option = clib_host_to_net_u16 (DHCPV6_OPTION_IA_NA);
       ia_hdr->iaid = clib_host_to_net_u32 (DHCPV6_CLIENT_IAID);
