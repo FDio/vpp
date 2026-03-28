@@ -1751,8 +1751,8 @@ openssl_tls_ctx_attribute (tls_ctx_t *ctx, u8 is_get,
     case TRANSPORT_ENDPT_ATTR_TLS_PROFILE_INFO:
       {
 	const char *cipher_name;
-	int version, group_id, sigalg_nid;
-	const char *group_name, *sigalg_name;
+	int version, sigalg_nid;
+	const char *sigalg_name;
 
 	if (!oc->ssl)
 	  {
@@ -1770,7 +1770,9 @@ openssl_tls_ctx_attribute (tls_ctx_t *ctx, u8 is_get,
 	attr->tls_profile_info.tls_version = (u16) version;
 
 	/* Get negotiated group (key agreement algorithm) */
-	group_id = SSL_get_negotiated_group (oc->ssl);
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	const char *group_name;
+	int group_id = SSL_get_negotiated_group (oc->ssl);
 	if (group_id != NID_undef)
 	  {
 	    group_name = OBJ_nid2sn (group_id);
@@ -1780,6 +1782,7 @@ openssl_tls_ctx_attribute (tls_ctx_t *ctx, u8 is_get,
 	      attr->tls_profile_info.key_agreement = 0;
 	  }
 	else
+#endif
 	  attr->tls_profile_info.key_agreement = 0;
 
 	/* Get peer signature algorithm. SSL_get_peer_signature_nid returns the
