@@ -642,6 +642,7 @@ ikev2_calc_child_keys (ikev2_sa_t *sa, ikev2_child_sa_t *child, u8 kex)
   u8 *s = 0;
   u16 integ_key_len = 0;
   u8 salt_len = 0;
+  int is_gmac = 0;
 
   ikev2_sa_transform_t *tr_prf, *ctr_encr, *ctr_integ;
   tr_prf =
@@ -652,9 +653,14 @@ ikev2_calc_child_keys (ikev2_sa_t *sa, ikev2_child_sa_t *child, u8 kex)
     ikev2_sa_get_td_for_type (child->r_proposals, IKEV2_TRANSFORM_TYPE_INTEG);
 
   if (ctr_integ)
-    integ_key_len = ctr_integ->key_len;
+    {
+      integ_key_len = ctr_integ->key_len;
+      is_gmac = ctr_integ->integ_type == IKEV2_TRANSFORM_INTEG_TYPE_AUTH_AES_128_GMAC ||
+		ctr_integ->integ_type == IKEV2_TRANSFORM_INTEG_TYPE_AUTH_AES_192_GMAC ||
+		ctr_integ->integ_type == IKEV2_TRANSFORM_INTEG_TYPE_AUTH_AES_256_GMAC;
+    }
 
-  if (!ctr_integ || ctr_encr->encr_type == IKEV2_TRANSFORM_ENCR_TYPE_AES_CTR)
+  if (!ctr_integ || ctr_encr->encr_type == IKEV2_TRANSFORM_ENCR_TYPE_AES_CTR || is_gmac)
     salt_len = sizeof (u32);
 
   if (kex)
@@ -2392,8 +2398,6 @@ ikev2_create_tunnel_interface (vlib_main_t *vm, ikev2_sa_t *sa,
       ikev2_set_state (sa, IKEV2_STATE_NO_PROPOSAL_CHOSEN);
       return 1;
     }
-  a.encr_type = encr_type;
-
   if (!is_aead)
     {
       tr = ikev2_sa_get_td_for_type (proposals, IKEV2_TRANSFORM_TYPE_INTEG);
@@ -2401,6 +2405,36 @@ ikev2_create_tunnel_interface (vlib_main_t *vm, ikev2_sa_t *sa,
 	{
 	  switch (tr->integ_type)
 	    {
+	    case IKEV2_TRANSFORM_INTEG_TYPE_AUTH_AES_128_GMAC:
+	      if (encr_type != IPSEC_CRYPTO_ALG_NONE)
+		{
+		  ikev2_set_state (sa, IKEV2_STATE_NO_PROPOSAL_CHOSEN);
+		  return 1;
+		}
+	      encr_type = IPSEC_CRYPTO_ALG_AES_NULL_GMAC_128;
+	      integ_type = IPSEC_INTEG_ALG_NONE;
+	      is_aead = 1;
+	      break;
+	    case IKEV2_TRANSFORM_INTEG_TYPE_AUTH_AES_192_GMAC:
+	      if (encr_type != IPSEC_CRYPTO_ALG_NONE)
+		{
+		  ikev2_set_state (sa, IKEV2_STATE_NO_PROPOSAL_CHOSEN);
+		  return 1;
+		}
+	      encr_type = IPSEC_CRYPTO_ALG_AES_NULL_GMAC_192;
+	      integ_type = IPSEC_INTEG_ALG_NONE;
+	      is_aead = 1;
+	      break;
+	    case IKEV2_TRANSFORM_INTEG_TYPE_AUTH_AES_256_GMAC:
+	      if (encr_type != IPSEC_CRYPTO_ALG_NONE)
+		{
+		  ikev2_set_state (sa, IKEV2_STATE_NO_PROPOSAL_CHOSEN);
+		  return 1;
+		}
+	      encr_type = IPSEC_CRYPTO_ALG_AES_NULL_GMAC_256;
+	      integ_type = IPSEC_INTEG_ALG_NONE;
+	      is_aead = 1;
+	      break;
 	    case IKEV2_TRANSFORM_INTEG_TYPE_AUTH_HMAC_SHA2_256_128:
 	      integ_type = IPSEC_INTEG_ALG_SHA_256_128;
 	      break;
@@ -2429,15 +2463,26 @@ ikev2_create_tunnel_interface (vlib_main_t *vm, ikev2_sa_t *sa,
       integ_type = IPSEC_INTEG_ALG_NONE;
     }
 
+  a.encr_type = encr_type;
   a.integ_type = integ_type;
   ikev2_calc_child_keys (sa, child, kex);
 
   if (sa->is_initiator)
     {
-      ipsec_mk_key (&a.loc_ikey, child->sk_ai, vec_len (child->sk_ai));
-      ipsec_mk_key (&a.rem_ikey, child->sk_ar, vec_len (child->sk_ar));
-      ipsec_mk_key (&a.loc_ckey, child->sk_ei, vec_len (child->sk_ei));
-      ipsec_mk_key (&a.rem_ckey, child->sk_er, vec_len (child->sk_er));
+      if (encr_type == IPSEC_CRYPTO_ALG_AES_NULL_GMAC_128 ||
+	  encr_type == IPSEC_CRYPTO_ALG_AES_NULL_GMAC_192 ||
+	  encr_type == IPSEC_CRYPTO_ALG_AES_NULL_GMAC_256)
+	{
+	  ipsec_mk_key (&a.loc_ckey, child->sk_ai, vec_len (child->sk_ai));
+	  ipsec_mk_key (&a.rem_ckey, child->sk_ar, vec_len (child->sk_ar));
+	}
+      else
+	{
+	  ipsec_mk_key (&a.loc_ikey, child->sk_ai, vec_len (child->sk_ai));
+	  ipsec_mk_key (&a.rem_ikey, child->sk_ar, vec_len (child->sk_ar));
+	  ipsec_mk_key (&a.loc_ckey, child->sk_ei, vec_len (child->sk_ei));
+	  ipsec_mk_key (&a.rem_ckey, child->sk_er, vec_len (child->sk_er));
+	}
       if (is_aead)
 	{
 	  a.salt_remote = child->salt_er;
@@ -2447,10 +2492,20 @@ ikev2_create_tunnel_interface (vlib_main_t *vm, ikev2_sa_t *sa,
     }
   else
     {
-      ipsec_mk_key (&a.loc_ikey, child->sk_ar, vec_len (child->sk_ar));
-      ipsec_mk_key (&a.rem_ikey, child->sk_ai, vec_len (child->sk_ai));
-      ipsec_mk_key (&a.loc_ckey, child->sk_er, vec_len (child->sk_er));
-      ipsec_mk_key (&a.rem_ckey, child->sk_ei, vec_len (child->sk_ei));
+      if (encr_type == IPSEC_CRYPTO_ALG_AES_NULL_GMAC_128 ||
+	  encr_type == IPSEC_CRYPTO_ALG_AES_NULL_GMAC_192 ||
+	  encr_type == IPSEC_CRYPTO_ALG_AES_NULL_GMAC_256)
+	{
+	  ipsec_mk_key (&a.loc_ckey, child->sk_ar, vec_len (child->sk_ar));
+	  ipsec_mk_key (&a.rem_ckey, child->sk_ai, vec_len (child->sk_ai));
+	}
+      else
+	{
+	  ipsec_mk_key (&a.loc_ikey, child->sk_ar, vec_len (child->sk_ar));
+	  ipsec_mk_key (&a.rem_ikey, child->sk_ai, vec_len (child->sk_ai));
+	  ipsec_mk_key (&a.loc_ckey, child->sk_er, vec_len (child->sk_er));
+	  ipsec_mk_key (&a.rem_ckey, child->sk_ei, vec_len (child->sk_ei));
+	}
       if (is_aead)
 	{
 	  a.salt_remote = child->salt_ei;
@@ -4569,6 +4624,11 @@ ikev2_set_profile_ike_transforms (vlib_main_t * vm, u8 * name,
   if (crypto_alg == IKEV2_TRANSFORM_ENCR_TYPE_AES_CTR)
     return clib_error_return (0, "AES-CTR is not supported for IKE SAs");
 
+  if (integ_alg == IKEV2_TRANSFORM_INTEG_TYPE_AUTH_AES_128_GMAC ||
+      integ_alg == IKEV2_TRANSFORM_INTEG_TYPE_AUTH_AES_192_GMAC ||
+      integ_alg == IKEV2_TRANSFORM_INTEG_TYPE_AUTH_AES_256_GMAC)
+    return clib_error_return (0, "AES-GMAC is not supported for IKE SAs");
+
   p->ike_ts.crypto_alg = crypto_alg;
   p->ike_ts.integ_alg = integ_alg;
   p->ike_ts.dh_type = dh_type;
@@ -4592,6 +4652,12 @@ ikev2_set_profile_esp_transforms (vlib_main_t * vm, u8 * name,
       r = clib_error_return (0, "unknown profile %v", name);
       return r;
     }
+
+  if ((integ_alg == IKEV2_TRANSFORM_INTEG_TYPE_AUTH_AES_128_GMAC ||
+       integ_alg == IKEV2_TRANSFORM_INTEG_TYPE_AUTH_AES_192_GMAC ||
+       integ_alg == IKEV2_TRANSFORM_INTEG_TYPE_AUTH_AES_256_GMAC) &&
+      crypto_alg != IKEV2_TRANSFORM_ENCR_TYPE_NULL)
+    return clib_error_return (0, "AES-GMAC requires null encryption");
 
   p->esp_ts.crypto_alg = crypto_alg;
   p->esp_ts.integ_alg = integ_alg;
