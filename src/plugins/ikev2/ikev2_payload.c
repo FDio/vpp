@@ -4,6 +4,7 @@
  */
 
 #include <ctype.h>
+#include <openssl/sha.h>
 
 #include <vnet/vnet.h>
 #include <vnet/api_errno.h>
@@ -536,6 +537,10 @@ ikev2_parse_notify_payload (ike_payload_header_t * ikep, u32 rlen)
         goto cleanup;
 
       u32 data_len = plen - sizeof (*n) - n->spi_size;
+      if ((r->msg_type == IKEV2_NOTIFY_MSG_NAT_DETECTION_SOURCE_IP ||
+	   r->msg_type == IKEV2_NOTIFY_MSG_NAT_DETECTION_DESTINATION_IP) &&
+	  data_len != SHA_DIGEST_LENGTH)
+	goto cleanup;
       vec_add (r->data, n->payload + n->spi_size, data_len);
     }
   return r;
