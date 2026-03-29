@@ -167,7 +167,8 @@ STATIC_ASSERT (sizeof (http_req_id_t) <= TRANSPORT_CONN_ID_LEN,
   _ (EXPECT_SERVER_SETTINGS, "expect-server-settings")                                             \
   _ (PREFACE_VERIFIED, "preface-verified")                                                         \
   _ (TS_DESCHED, "ts-descheduled")                                                                 \
-  _ (EXPECT_PEER_SETTINGS, "expect-peer-settings")
+  _ (EXPECT_PEER_SETTINGS, "expect-peer-settings")                                                 \
+  _ (UDP_TUNNEL_DGRAM, "udp-tunnel-dgram")
 
 typedef enum http_conn_flags_bit_
 {
@@ -208,6 +209,9 @@ typedef struct http_conn_id_
     };
   };
   u32 parent_app_wrk_index;
+  u32 app_rx_fifo_size;
+  u32 timeout;
+  u32 parent_req_index;
 } http_ctx_id_t;
 
 STATIC_ASSERT (sizeof (http_ctx_id_t) <= TRANSPORT_CONN_ID_LEN,
@@ -289,15 +293,15 @@ typedef struct http_conn_
 #define hc_pa_app_api_ctx    c_http_ctx_id.parent_app_api_ctx
 #define hc_ho_index	     c_http_ctx_id.ho_index
 #define hc_http_conn_index   c_http_ctx_id.http_connection_index
+#define hc_app_rx_fifo_size  c_http_ctx_id.app_rx_fifo_size
+#define hc_timeout	     c_http_ctx_id.timeout
+#define hc_parent_req_index  c_http_ctx_id.parent_req_index
 #define hc_hc_index	     connection.c_index
 
   http_conn_flags_t flags;
   http_version_t version;
   http_conn_state_t state;
-  http_udp_tunnel_mode_t udp_tunnel_mode;
   u32 timer_handle;
-  u32 timeout;
-  u32 app_rx_fifo_size;
   u8 *app_name;
   u8 *host;
 
@@ -314,7 +318,6 @@ typedef struct http_conn_
       u32 our_window;
       u32 unsent_headers_offset;
       u32 req_num;
-      u32 parent_req_index;
       clib_llist_index_t new_tx_streams; /* headers */
       clib_llist_index_t old_tx_streams; /* data */
       clib_llist_anchor_t sched_list;
@@ -332,11 +335,10 @@ typedef struct http_conn_
       u32 peer_ctrl_stream_sctx_index;
       u32 peer_decoder_stream_sctx_index;
       u32 peer_encoder_stream_sctx_index;
-      u32 parent_sctx_index;
+      u32 http_req_index;
       qpack_decoder_ctx_t qpack_decoder_ctx;
     };
   };
-  void *opaque; /* version specific data */
 } http_ctx_t;
 
 typedef struct http_req_
@@ -351,57 +353,46 @@ typedef struct http_req_
 #define hr_req_handle	connection.c_index
 
   http_buffer_t tx_buf; /* message body from app to be sent */
-
-  /*
-   * for parsing of incoming message from transport
-   */
-  u32 rx_buf_offset;	/* current offset during parsing */
-  u32 control_data_len; /* start line + headers + empty line */
-
+  u32 control_data_len; /* start line / pseudo-headers + headers */
+  u32 content_len_header_index;
   union
   {
     u64 to_recv; /* remaining bytes of body to receive from transport */
     u64 to_skip; /* remaining bytes of capsule to skip */
   };
-
-  /*
-   * parsed metadata for app
-   */
   union
   {
     http_status_code_t status_code;
     http_req_method_t method;
   };
-
   http_req_state_t state; /* state-machine state */
   http_req_flags_t flags;
-
   http_upgrade_proto_t upgrade_proto;
-
-  http_target_form_t target_form;
-  http_url_scheme_t scheme;
-  u32 target_authority_offset;
-  u32 target_authority_len;
   u32 target_path_offset;
-  u32 target_path_len;
   u32 target_query_offset;
-  u32 target_query_len;
-
+  u16 target_path_len;
+  u16 target_query_len;
   u32 headers_offset;
   u32 headers_len;
-
-  u32 body_offset;
   u64 body_len;
-
   u8 *target;
   http_field_line_t *headers;
-  uword content_len_header_index;
-  uword connection_header_index;
-  uword upgrade_header_index;
-  uword host_header_index;
 
   union
   {
+    struct
+    {
+      /* http1 */
+      u32 body_offset;
+      u32 rx_buf_offset; /* current offset during parsing */
+      u32 target_authority_offset;
+      u32 target_authority_len;
+      u32 host_header_index;
+      u32 connection_header_index;
+      u32 upgrade_header_index;
+      http_target_form_t target_form;
+      http_url_scheme_t scheme;
+    };
     struct
     {
       /* http2 */
