@@ -133,12 +133,19 @@ ikev2_find_transform_data (ikev2_sa_transform_t * t)
 
     if (td->type == IKEV2_TRANSFORM_TYPE_ENCR)
       {
-	if (vec_len (t->attrs) != 4 || t->attrs[0] != 0x80
-	    || t->attrs[1] != 14)
-	  continue;
+	if (td->key_len == 0)
+	  {
+	    if (vec_len (t->attrs) != 0)
+	      continue;
+	  }
+	else
+	  {
+	    if (vec_len (t->attrs) != 4 || t->attrs[0] != 0x80 || t->attrs[1] != 14)
+	      continue;
 
-	if (((t->attrs[2] << 8 | t->attrs[3]) / 8) != td->key_len)
-	  continue;
+	    if (((t->attrs[2] << 8 | t->attrs[3]) / 8) != td->key_len)
+	      continue;
+	  }
       }
     return td;
   }
@@ -2309,7 +2316,9 @@ ikev2_create_tunnel_interface (vlib_main_t *vm, ikev2_sa_t *sa,
   tr = ikev2_sa_get_td_for_type (proposals, IKEV2_TRANSFORM_TYPE_ENCR);
   if (tr)
     {
-      if (tr->encr_type == IKEV2_TRANSFORM_ENCR_TYPE_AES_CBC && tr->key_len)
+      if (tr->encr_type == IKEV2_TRANSFORM_ENCR_TYPE_NULL)
+	encr_type = IPSEC_CRYPTO_ALG_NONE;
+      else if (tr->encr_type == IKEV2_TRANSFORM_ENCR_TYPE_AES_CBC && tr->key_len)
 	{
 	  switch (tr->key_len)
 	    {
@@ -3880,10 +3889,13 @@ ikev2_set_initiator_proposals (vlib_main_t * vm, ikev2_sa_t * sa,
 	&& td->encr_type == ts->crypto_alg
 	&& td->key_len == ts->crypto_key_size / 8)
       {
-	u16 attr[2];
-	attr[0] = clib_host_to_net_u16 (14 | (1 << 15));
-	attr[1] = clib_host_to_net_u16 (td->key_len << 3);
-	vec_add (td->attrs, (u8 *) attr, 4);
+	  if (td->key_len)
+	    {
+	      u16 attr[2];
+	      attr[0] = clib_host_to_net_u16 (14 | (1 << 15));
+	      attr[1] = clib_host_to_net_u16 (td->key_len << 3);
+	      vec_add (td->attrs, (u8 *) attr, 4);
+	    }
 	vec_add1 (proposal->transforms, *td);
 	td->attrs = 0;
 

@@ -166,8 +166,19 @@ PRF_ALGOS = {
 }
 
 CRYPTO_IDS = {
+    11: "NULL",
     12: "AES-CBC",
     20: "AES-GCM-16ICV",
+}
+
+ENCR_TRANSFORM_IDS = {
+    "NULL": 11,
+    "AES-CBC": 12,
+    "AES-GCM-16ICV": 20,
+}
+
+PRF_TRANSFORM_IDS = {
+    "PRF_HMAC_SHA2_256": 5,
 }
 
 INTEG_IDS = {
@@ -175,6 +186,14 @@ INTEG_IDS = {
     12: "SHA2-256-128",
     13: "SHA2-384-192",
     14: "SHA2-512-256",
+}
+
+INTEG_TRANSFORM_IDS = {
+    "NULL": 0,
+    "HMAC-SHA1-96": 2,
+    "SHA2-256-128": 12,
+    "SHA2-384-192": 13,
+    "SHA2-512-256": 14,
 }
 
 
@@ -355,6 +374,7 @@ class IKEv2SA(object):
 
     def calc_keys(self, sk_d=None):
         prf = self.ike_prf_alg.mod()
+
         if sk_d is None:
             # SKEYSEED = prf(Ni | Nr, g^ir)
             self.skeyseed = self.calc_prf(
@@ -568,6 +588,8 @@ class IKEv2SA(object):
     def crypto_attr(self, crypto, key_len):
         if crypto in ["AES-CBC", "AES-GCM-16ICV"]:
             return (0x800E << 16 | key_len << 3, 12)
+        if crypto == "NULL":
+            return None
         raise Exception("unsupported attribute type")
 
     def ike_crypto_attr(self):
@@ -575,6 +597,24 @@ class IKEv2SA(object):
 
     def esp_crypto_attr(self):
         return self.crypto_attr(self.esp_crypto, self.esp_crypto_key_len)
+
+    def encr_transform(self, crypto, tr_attr):
+        kwargs = {
+            "transform_type": "Encryption",
+            "transform_id": ENCR_TRANSFORM_IDS.get(crypto, crypto),
+        }
+        if tr_attr is not None:
+            kwargs["length"] = tr_attr[1]
+            kwargs["key_length"] = tr_attr[0]
+        return ikev2.IKEv2_payload_Transform(**kwargs)
+
+    def integ_transform(self, integ):
+        if integ is None:
+            return None
+        return ikev2.IKEv2_payload_Transform(
+            transform_type="Integrity",
+            transform_id=INTEG_TRANSFORM_IDS.get(integ, integ),
+        )
 
     def compute_nat_sha1(self, ip, port, rspi=None):
         if rspi is None:
@@ -1215,25 +1255,21 @@ class TemplateInitiator(IkePeer):
 
     def send_init_response(self):
         tr_attr = self.sa.ike_crypto_attr()
-        trans = (
-            ikev2.IKEv2_payload_Transform(
-                transform_type="Encryption",
-                transform_id=self.sa.ike_crypto,
-                length=tr_attr[1],
-                key_length=tr_attr[0],
-            )
-            / ikev2.IKEv2_payload_Transform(
-                transform_type="Integrity", transform_id=self.sa.ike_integ
-            )
-            / ikev2.IKEv2_payload_Transform(
-                transform_type="PRF", transform_id=self.sa.ike_prf_alg.name
-            )
-            / ikev2.IKEv2_payload_Transform(
-                transform_type="GroupDesc", transform_id=self.sa.ike_dh
-            )
+        trans_nb = 3
+        trans = self.sa.encr_transform(self.sa.ike_crypto, tr_attr)
+        integ = self.sa.integ_transform(self.sa.ike_integ)
+        if integ is not None:
+            trans /= integ
+            trans_nb += 1
+        trans /= ikev2.IKEv2_payload_Transform(
+            transform_type="PRF",
+            transform_id=PRF_TRANSFORM_IDS.get(self.sa.ike_prf, self.sa.ike_prf),
+        )
+        trans /= ikev2.IKEv2_payload_Transform(
+            transform_type="GroupDesc", transform_id=self.sa.ike_dh
         )
         props = ikev2.IKEv2_payload_Proposal(
-            proposal=1, proto="IKEv2", trans_nb=4, trans=trans
+            proposal=1, proto="IKEv2", trans_nb=trans_nb, trans=trans
         )
 
         src_address = inet_pton(socket.AF_INET, self.pg0.remote_ip4)
@@ -1287,27 +1323,27 @@ class TemplateInitiator(IkePeer):
 
     def send_auth_response(self):
         tr_attr = self.sa.esp_crypto_attr()
-        trans = (
-            ikev2.IKEv2_payload_Transform(
-                transform_type="Encryption",
-                transform_id=self.sa.esp_crypto,
-                length=tr_attr[1],
-                key_length=tr_attr[0],
-            )
-            / ikev2.IKEv2_payload_Transform(
-                transform_type="Integrity", transform_id=self.sa.esp_integ
-            )
-            / ikev2.IKEv2_payload_Transform(
-                transform_type="Extended Sequence Number", transform_id="No ESN"
-            )
-            / ikev2.IKEv2_payload_Transform(
-                transform_type="Extended Sequence Number", transform_id="ESN"
-            )
+        trans_nb = 3
+        trans = self.sa.encr_transform(self.sa.esp_crypto, tr_attr)
+        integ = self.sa.integ_transform(self.sa.esp_integ)
+        if integ is not None:
+            trans /= integ
+            trans_nb += 1
+        trans /= ikev2.IKEv2_payload_Transform(
+            transform_type="Extended Sequence Number", transform_id="No ESN"
+        )
+        trans /= ikev2.IKEv2_payload_Transform(
+            transform_type="Extended Sequence Number", transform_id="ESN"
         )
 
         c = self.sa.child_sas[0]
         props = ikev2.IKEv2_payload_Proposal(
-            proposal=1, proto="ESP", SPIsize=4, SPI=c.rspi, trans_nb=4, trans=trans
+            proposal=1,
+            proto="ESP",
+            SPIsize=4,
+            SPI=c.rspi,
+            trans_nb=trans_nb,
+            trans=trans,
         )
 
         tsi, tsr = self.sa.generate_ts(self.p.ts_is_ip4)
@@ -1419,22 +1455,18 @@ class TemplateResponder(IkePeer):
         self, spi=None, dh_pub_key=None, nonce=None, next_payload=None
     ):
         tr_attr = self.sa.ike_crypto_attr()
-        trans = (
-            ikev2.IKEv2_payload_Transform(
-                transform_type="Encryption",
-                transform_id=self.sa.ike_crypto,
-                length=tr_attr[1],
-                key_length=tr_attr[0],
-            )
-            / ikev2.IKEv2_payload_Transform(
-                transform_type="Integrity", transform_id=self.sa.ike_integ
-            )
-            / ikev2.IKEv2_payload_Transform(
-                transform_type="PRF", transform_id=self.sa.ike_prf_alg.name
-            )
-            / ikev2.IKEv2_payload_Transform(
-                transform_type="GroupDesc", transform_id=self.sa.ike_dh
-            )
+        trans_nb = 3
+        trans = self.sa.encr_transform(self.sa.ike_crypto, tr_attr)
+        integ = self.sa.integ_transform(self.sa.ike_integ)
+        if integ is not None:
+            trans /= integ
+            trans_nb += 1
+        trans /= ikev2.IKEv2_payload_Transform(
+            transform_type="PRF",
+            transform_id=PRF_TRANSFORM_IDS.get(self.sa.ike_prf, self.sa.ike_prf),
+        )
+        trans /= ikev2.IKEv2_payload_Transform(
+            transform_type="GroupDesc", transform_id=self.sa.ike_dh
         )
 
         if spi is None:
@@ -1444,7 +1476,7 @@ class TemplateResponder(IkePeer):
         props = ikev2.IKEv2_payload_Proposal(
             proposal=1,
             proto="IKEv2",
-            trans_nb=4,
+            trans_nb=trans_nb,
             trans=trans,
             **pargs,
         )
@@ -1507,23 +1539,17 @@ class TemplateResponder(IkePeer):
     def generate_auth_payload(self, last_payload=None, is_rekey=False, kex=False):
         tr_attr = self.sa.esp_crypto_attr()
         last_payload = last_payload or "Notify"
-        trans_nb = 4
-        trans = (
-            ikev2.IKEv2_payload_Transform(
-                transform_type="Encryption",
-                transform_id=self.sa.esp_crypto,
-                length=tr_attr[1],
-                key_length=tr_attr[0],
-            )
-            / ikev2.IKEv2_payload_Transform(
-                transform_type="Integrity", transform_id=self.sa.esp_integ
-            )
-            / ikev2.IKEv2_payload_Transform(
-                transform_type="Extended Sequence Number", transform_id="No ESN"
-            )
-            / ikev2.IKEv2_payload_Transform(
-                transform_type="Extended Sequence Number", transform_id="ESN"
-            )
+        trans_nb = 3
+        trans = self.sa.encr_transform(self.sa.esp_crypto, tr_attr)
+        integ = self.sa.integ_transform(self.sa.esp_integ)
+        if integ is not None:
+            trans /= integ
+            trans_nb += 1
+        trans /= ikev2.IKEv2_payload_Transform(
+            transform_type="Extended Sequence Number", transform_id="No ESN"
+        )
+        trans /= ikev2.IKEv2_payload_Transform(
+            transform_type="Extended Sequence Number", transform_id="ESN"
         )
 
         if kex:
@@ -1682,6 +1708,7 @@ class Ikev2Params(object):
         ec = VppEnum.vl_api_ipsec_crypto_alg_t
         ei = VppEnum.vl_api_ipsec_integ_alg_t
         self.vpp_enums = {
+            "NULL-0": ec.IPSEC_API_CRYPTO_ALG_NONE,
             "AES-CBC-128": ec.IPSEC_API_CRYPTO_ALG_AES_CBC_128,
             "AES-CBC-192": ec.IPSEC_API_CRYPTO_ALG_AES_CBC_192,
             "AES-CBC-256": ec.IPSEC_API_CRYPTO_ALG_AES_CBC_256,
@@ -2238,6 +2265,13 @@ class TestResponderPsk(TemplateResponder, Ikev2Params):
 
     def config_tc(self):
         self.config_params()
+
+
+class TestResponderPskNullEsp(TestResponderPsk):
+    """test ikev2 responder - ESP null encryption"""
+
+    def config_tc(self):
+        self.config_params({"esp-crypto": ("NULL", 0), "esp-integ": "SHA2-256-128"})
 
 
 class TestResponderDpd(TestResponderPsk):
