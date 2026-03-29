@@ -832,6 +832,8 @@ ikev2_process_sa_init_req (vlib_main_t *vm, ikev2_sa_t *sa, ike_header_t *ike,
 	{
 	  ikev2_notify_t *n =
 	    ikev2_parse_notify_payload (ikep, current_length);
+	  if (!n)
+	    return 0;
 	  if (n->msg_type == IKEV2_NOTIFY_MSG_NAT_DETECTION_SOURCE_IP)
 	    {
 	      u8 *src_sha = ikev2_compute_nat_sha1 (ike->ispi, 0, &sa->iaddr,
@@ -952,6 +954,8 @@ ikev2_process_sa_init_resp (vlib_main_t * vm,
 	{
 	  ikev2_notify_t *n =
 	    ikev2_parse_notify_payload (ikep, current_length);
+	  if (!n)
+	    return;
 	  if (n->msg_type == IKEV2_NOTIFY_MSG_NAT_DETECTION_SOURCE_IP)
 	    {
 	      u8 *src_sha = ikev2_compute_nat_sha1 (ike->ispi, ike->rspi,
@@ -1306,6 +1310,8 @@ ikev2_process_auth_req (vlib_main_t * vm, ikev2_sa_t * sa,
 	{
 	  ikev2_notify_t *n =
 	    ikev2_parse_notify_payload (ikep, current_length);
+	  if (!n)
+	    goto malformed;
 	  if (n->msg_type == IKEV2_NOTIFY_MSG_INITIAL_CONTACT)
 	    {
 	      sa->initial_contact = 1;
@@ -1634,6 +1640,8 @@ ikev2_process_create_child_sa_req (vlib_main_t * vm,
 	{
 	  ikev2_notify_t *n0;
 	  n0 = ikev2_parse_notify_payload (ikep, current_length);
+	  if (!n0)
+	    goto cleanup_and_exit;
 	  if (n0->msg_type == IKEV2_NOTIFY_MSG_REKEY_SA)
 	    {
 	      vec_free (n);
