@@ -155,6 +155,15 @@ CRYPTO_ALGOS = {
 
 AUTH_ALGOS = {
     "NULL": AuthAlgo("NULL", mac=None, mod=None, key_len=0, trunc_len=0),
+    "AES-128-GMAC": AuthAlgo(
+        "AES-128-GMAC", mac=None, mod=None, key_len=16, trunc_len=16
+    ),
+    "AES-192-GMAC": AuthAlgo(
+        "AES-192-GMAC", mac=None, mod=None, key_len=24, trunc_len=16
+    ),
+    "AES-256-GMAC": AuthAlgo(
+        "AES-256-GMAC", mac=None, mod=None, key_len=32, trunc_len=16
+    ),
     "HMAC-SHA1-96": AuthAlgo("HMAC-SHA1-96", hmac.HMAC, hashes.SHA1, 20, 12),
     "SHA2-256-128": AuthAlgo("SHA2-256-128", hmac.HMAC, hashes.SHA256, 32, 16),
     "SHA2-384-192": AuthAlgo("SHA2-384-192", hmac.HMAC, hashes.SHA256, 48, 24),
@@ -186,6 +195,9 @@ PRF_TRANSFORM_IDS = {
 
 INTEG_IDS = {
     2: "HMAC-SHA1-96",
+    9: "AES-128-GMAC",
+    10: "AES-192-GMAC",
+    11: "AES-256-GMAC",
     12: "SHA2-256-128",
     13: "SHA2-384-192",
     14: "SHA2-512-256",
@@ -194,10 +206,15 @@ INTEG_IDS = {
 INTEG_TRANSFORM_IDS = {
     "NULL": 0,
     "HMAC-SHA1-96": 2,
+    "AES-128-GMAC": 9,
+    "AES-192-GMAC": 10,
+    "AES-256-GMAC": 11,
     "SHA2-256-128": 12,
     "SHA2-384-192": 13,
     "SHA2-512-256": 14,
 }
+
+GMAC_INTEG_ALGOS = {"AES-128-GMAC", "AES-192-GMAC", "AES-256-GMAC"}
 
 
 class IKEv2ChildSA(object):
@@ -326,7 +343,13 @@ class IKEv2SA(object):
 
         encr_key_len = self.esp_crypto_key_len
         integ_key_len = self.esp_integ_alg.key_len
-        salt_len = 4 if self.esp_crypto in ["AES-CTR"] or not integ_key_len else 0
+        salt_len = (
+            4
+            if self.esp_crypto in ["AES-CTR"]
+            or self.esp_integ in GMAC_INTEG_ALGOS
+            or not integ_key_len
+            else 0
+        )
 
         l = integ_key_len * 2 + (encr_key_len + salt_len) * 2
         keymat = self.calc_prfplus(prf, self.sk_d, s, l)
@@ -497,6 +520,8 @@ class IKEv2SA(object):
 
     @property
     def vpp_esp_cypto_alg(self):
+        if self.esp_integ in GMAC_INTEG_ALGOS:
+            return "AES-NULL-GMAC-" + str(self.esp_integ_alg.key_len * 8)
         return self.concat(self.esp_crypto, self.esp_crypto_key_len)
 
     def verify_hmac(self, ikemsg):
@@ -894,7 +919,7 @@ class IkePeer(VppTestCase):
         self.assertEqual(sa0.crypto_algorithm, vpp_crypto_alg)
         self.assertEqual(sa1.crypto_algorithm, vpp_crypto_alg)
 
-        if self.sa.esp_integ is None:
+        if self.sa.esp_integ is None or self.sa.esp_integ in GMAC_INTEG_ALGOS:
             vpp_integ_alg = 0
         else:
             vpp_integ_alg = self.vpp_enums[self.sa.esp_integ]
@@ -902,13 +927,22 @@ class IkePeer(VppTestCase):
         self.assertEqual(sa1.integrity_algorithm, vpp_integ_alg)
 
         # verify crypto keys
-        self.assertEqual(sa0.crypto_key.length, len(c.sk_er))
-        self.assertEqual(sa1.crypto_key.length, len(c.sk_ei))
-        self.assertEqual(sa0.crypto_key.data[: len(c.sk_er)], c.sk_er)
-        self.assertEqual(sa1.crypto_key.data[: len(c.sk_ei)], c.sk_ei)
+        if self.sa.esp_integ in GMAC_INTEG_ALGOS:
+            self.assertEqual(sa0.crypto_key.length, len(c.sk_ar))
+            self.assertEqual(sa1.crypto_key.length, len(c.sk_ai))
+            self.assertEqual(sa0.crypto_key.data[: len(c.sk_ar)], c.sk_ar)
+            self.assertEqual(sa1.crypto_key.data[: len(c.sk_ai)], c.sk_ai)
+        else:
+            self.assertEqual(sa0.crypto_key.length, len(c.sk_er))
+            self.assertEqual(sa1.crypto_key.length, len(c.sk_ei))
+            self.assertEqual(sa0.crypto_key.data[: len(c.sk_er)], c.sk_er)
+            self.assertEqual(sa1.crypto_key.data[: len(c.sk_ei)], c.sk_ei)
 
         # verify integ keys
-        if vpp_integ_alg:
+        if self.sa.esp_integ in GMAC_INTEG_ALGOS:
+            self.assertEqual(sa0.salt.to_bytes(4, "little"), c.salt_er)
+            self.assertEqual(sa1.salt.to_bytes(4, "little"), c.salt_ei)
+        elif vpp_integ_alg:
             self.assertEqual(sa0.integrity_key.length, len(c.sk_ar))
             self.assertEqual(sa1.integrity_key.length, len(c.sk_ai))
             self.assertEqual(sa0.integrity_key.data[: len(c.sk_ar)], c.sk_ar)
@@ -1717,6 +1751,9 @@ class Ikev2Params(object):
         ei = VppEnum.vl_api_ipsec_integ_alg_t
         self.vpp_enums = {
             "NULL-0": ec.IPSEC_API_CRYPTO_ALG_NONE,
+            "AES-NULL-GMAC-128": ec.IPSEC_API_CRYPTO_ALG_AES_NULL_GMAC_128,
+            "AES-NULL-GMAC-192": ec.IPSEC_API_CRYPTO_ALG_AES_NULL_GMAC_192,
+            "AES-NULL-GMAC-256": ec.IPSEC_API_CRYPTO_ALG_AES_NULL_GMAC_256,
             "AES-CBC-128": ec.IPSEC_API_CRYPTO_ALG_AES_CBC_128,
             "AES-CBC-192": ec.IPSEC_API_CRYPTO_ALG_AES_CBC_192,
             "AES-CBC-256": ec.IPSEC_API_CRYPTO_ALG_AES_CBC_256,
@@ -2290,6 +2327,13 @@ class TestResponderPskAesCtrEsp(TestResponderPsk):
 
     def config_tc(self):
         self.config_params({"esp-crypto": ("AES-CTR", 32), "esp-integ": "SHA2-256-128"})
+
+
+class TestResponderPskAesGmacEsp(TestResponderPsk):
+    """test ikev2 responder - ESP AES-GMAC authentication"""
+
+    def config_tc(self):
+        self.config_params({"esp-crypto": ("NULL", 0), "esp-integ": "AES-256-GMAC"})
 
 
 class TestResponderDpd(TestResponderPsk):
