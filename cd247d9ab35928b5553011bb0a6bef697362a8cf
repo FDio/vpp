@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8d1762c0_c9721583",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 51
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-03-29T14:17:57Z",
+      "side": 1,
+      "message": "dhcp plugin changes should be submitted as spearate patch with clear explanation why those changes are needed\n\nIn general, i don\u0027t like  how this s patch looks like. Looks like a hack to get 3rd party code in the repo. It doesn\u0027t follow vpp coding style.\n\nSPD-X headers are still wrong.\n\nSetting -2 until issues are resolved.",
+      "revId": "cd247d9ab35928b5553011bb0a6bef697362a8cf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0b502402_a355c3a5",
+        "filename": "src/plugins/pppox/CMakeLists.txt",
+        "patchSetId": 51
+      },
+      "lineNbr": 32,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-03-29T14:17:57Z",
+      "side": 1,
+      "message": "this is unacceptable, fix the code so it doens\u0027t produce errors or warning",
+      "revId": "cd247d9ab35928b5553011bb0a6bef697362a8cf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
