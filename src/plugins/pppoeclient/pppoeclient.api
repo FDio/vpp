@@ -1,0 +1,187 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * Copyright (c) 2017 RaydoNetworks.
+ * Copyright (c) 2026 Hi-Jiajun.
+ */
+
+option version = "1.3.0";
+import "vnet/interface_types.api";
+import "vnet/ethernet/ethernet_types.api";
+import "vnet/ip/ip_types.api";
+
+/** \brief Set or delete an PPPOE client
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - add address if non-zero, else delete
+    @param sw_if_index - client bound ethernet if index
+    @param host_uniq - tag identifying a PPPOE client on the the sw_if_index
+    @param configured_ac_name - required AC-Name; empty means accept any AC
+    @param service_name - requested Service-Name; empty means "any"
+*/
+define pppoeclient_add_del
+{
+  u32 client_index;
+  u32 context;
+  u8 is_add;
+  vl_api_interface_index_t sw_if_index;
+  u32 host_uniq;
+  string configured_ac_name[64];
+  string service_name[64];
+};
+
+/** \brief reply for set or delete an PPPOE client
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+    @param pppox_sw_if_index - software index of the pppox interface
+*/
+define pppoeclient_add_del_reply
+{
+  u32 context;
+  i32 retval;
+  vl_api_interface_index_t pppox_sw_if_index;
+};
+
+/** \brief Set PPPoE client options after creation
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param pppoeclient_index - client pool index (from pppoeclient_details)
+    @param username - PPP authentication username; empty means no change
+    @param password - PPP authentication password; empty means no change
+    @param use_peer_dns - request DNS from peer via IPCP
+    @param add_default_route4 - add IPv4 default route via peer
+    @param add_default_route6 - add IPv6 default route via peer
+    @param mtu - PPPoE MTU override; 0 means no change
+    @param mru - PPP MRU override; 0 means no change
+*/
+autoreply define pppoeclient_set_options
+{
+  u32 client_index;
+  u32 context;
+  u32 pppoeclient_index;
+  string username[64];
+  string password[64];
+  bool use_peer_dns;
+  bool add_default_route4;
+  bool add_default_route6;
+  u32 mtu;
+  u32 mru;
+};
+
+enum pppoeclient_session_action_type : u8
+{
+  PPPOECLIENT_SESSION_ACTION_RESTART = 1,
+  PPPOECLIENT_SESSION_ACTION_STOP = 2,
+};
+
+/** \brief Perform an action on a PPPoE client session
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param pppoeclient_index - client pool index
+    @param action - restart (PADT + re-discover) or stop (PADT + idle)
+*/
+autoreply define pppoeclient_session_action
+{
+  u32 client_index;
+  u32 context;
+  u32 pppoeclient_index;
+  vl_api_pppoeclient_session_action_type_t action;
+};
+
+/** \brief Dump PPPOE session
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - software index of the interface
+*/
+define pppoeclient_dump
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+};
+
+/** \brief dump details of an PPPOE client
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - software index of the interface
+    @param host_uniq - tag identifying a PPPOE client on the the sw_if_index
+    @param pppox_sw_if_index - software index of the corresponding pppox interface
+    @param session_id - current PPPoE session ID, if present
+    @param client_state - current PPPoE client state
+*/
+define pppoeclient_details
+{
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+  u32 host_uniq;
+  vl_api_interface_index_t pppox_sw_if_index;
+  u32 pppox_unit;
+  bool pppox_session_allocated;
+  u16 session_id;
+  u8 client_state;
+  vl_api_mac_address_t ac_mac_address;
+  string ac_name[64];
+  string configured_ac_name[64];
+  string service_name[64];
+
+  vl_api_ip4_address_t ipv4_local;
+  vl_api_ip4_address_t ipv4_peer;
+  vl_api_ip4_address_t peer_dns4_primary;
+  vl_api_ip4_address_t peer_dns4_secondary;
+  vl_api_ip6_address_t peer_dns6_primary;
+  vl_api_ip6_address_t peer_dns6_secondary;
+  u8 peer_dns6_count;
+
+  vl_api_ip6_address_t ipv6cp_local;
+  vl_api_ip6_address_t ipv6cp_peer;
+  vl_api_ip6_address_t wan_ipv6;
+  u8 wan_ipv6_prefix_len;
+  bool wan_ipv6_observed;
+  bool peer_host_route6;
+  bool use_peer_ipv6;
+
+  bool use_peer_dns4;
+  bool add_default_route4;
+  bool add_default_route6;
+  string auth_user[64];
+  u32 mtu;
+  u32 mru;
+  u32 timeout;
+
+  bool dhcp6_ia_na_enabled;
+  bool dhcp6_ia_na_rebinding;
+  u32 dhcp6_ia_na_server_index;
+  u32 dhcp6_ia_na_address_count;
+  u32 dhcp6_ia_na_t1;
+  u32 dhcp6_ia_na_t2;
+  u32 dhcp6_ia_na_t1_remaining;
+  u32 dhcp6_ia_na_t2_remaining;
+  vl_api_ip6_address_t dhcp6_ia_na_first_address;
+  bool dhcp6_ia_na_first_address_present;
+  u32 dhcp6_ia_na_first_address_preferred_lt;
+  u32 dhcp6_ia_na_first_address_valid_lt;
+
+  bool dhcp6_pd_enabled;
+  bool dhcp6_pd_rebinding;
+  string dhcp6_pd_prefix_group[64];
+  u32 dhcp6_pd_server_index;
+  u32 dhcp6_pd_prefix_count;
+  u32 dhcp6_pd_t1;
+  u32 dhcp6_pd_t2;
+  u32 dhcp6_pd_t1_remaining;
+  u32 dhcp6_pd_t2_remaining;
+  vl_api_ip6_prefix_t dhcp6_delegated_prefix;
+  bool dhcp6_delegated_prefix_present;
+  u32 dhcp6_delegated_prefix_preferred_lt;
+  u32 dhcp6_delegated_prefix_valid_lt;
+  u32 dhcp6_delegated_prefix_valid_remaining;
+  vl_api_interface_index_t dhcp6_pd_consumer_sw_if_index;
+  vl_api_ip6_address_t dhcp6_pd_consumer_address;
+  u8 dhcp6_pd_consumer_prefix_len;
+  u32 dhcp6_pd_consumer_count;
+  bool dhcp6_pd_consumer_present;
+};
+
+/*
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
