@@ -447,55 +447,69 @@ ikev2_parse_ts_payload (ike_payload_header_t * ikep, u32 rlen)
   ikev2_ts_t *r = 0, *ts;
   ikev2_ip4_addr_pair_t *pair4;
   ikev2_ip6_addr_pair_t *pair6;
-  int p = 0, n_left;
+  u32 p = 0, ts_len, entry_len, expected_len;
+  int n_left;
   ikev2_ts_payload_entry_t *pe;
+  u16 plen = clib_net_to_host_u16 (tsp->length);
 
-  if (sizeof (*tsp) > rlen)
+  if (sizeof (*tsp) > rlen || plen < sizeof (*tsp) || plen > rlen)
     return 0;
 
-  rlen -= sizeof (*tsp);
+  ts_len = plen - sizeof (*tsp);
   n_left = tsp->num_ts;
 
-  while (n_left && p + sizeof (*pe) < rlen)
+  while (n_left && p + sizeof (*pe) <= ts_len)
     {
       pe = (ikev2_ts_payload_entry_t *) (((u8 *)tsp->ts) + p);
-      p += sizeof (*pe);
+      entry_len = clib_net_to_host_u16 (pe->selector_len);
 
       if (pe->ts_type != TS_IPV4_ADDR_RANGE &&
           pe->ts_type != TS_IPV6_ADDR_RANGE)
         {
           ikev2_elog_uint (IKEV2_LOG_ERROR,
               "unsupported TS type received (%u)", pe->ts_type);
-          return 0;
-        }
+	  goto data_corrupted;
+	}
+
+      expected_len = sizeof (*pe);
+      if (pe->ts_type == TS_IPV4_ADDR_RANGE)
+	expected_len += sizeof (*pair4);
+      else
+	expected_len += sizeof (*pair6);
+
+      if (entry_len != expected_len || p + entry_len > ts_len)
+	goto data_corrupted;
 
       vec_add2 (r, ts, 1);
       ts->ts_type = pe->ts_type;
       ts->protocol_id = pe->protocol_id;
-      ts->start_port = pe->start_port;
-      ts->end_port = pe->end_port;
+      ts->start_port = clib_net_to_host_u16 (pe->start_port);
+      ts->end_port = clib_net_to_host_u16 (pe->end_port);
 
       if (pe->ts_type == TS_IPV4_ADDR_RANGE)
         {
           pair4 = (ikev2_ip4_addr_pair_t*) pe->addr_pair;
           ip_address_set (&ts->start_addr, &pair4->start_addr, AF_IP4);
-          ip_address_set (&ts->end_addr, &pair4->end_addr, AF_IP4);
-          p += sizeof (*pair4);
-        }
+	  ip_address_set (&ts->end_addr, &pair4->end_addr, AF_IP4);
+	}
       else
         {
           pair6 = (ikev2_ip6_addr_pair_t*) pe->addr_pair;
           ip_address_set (&ts->start_addr, &pair6->start_addr, AF_IP6);
-          ip_address_set (&ts->end_addr, &pair6->end_addr, AF_IP6);
-          p += sizeof (*pair6);
-        }
+	  ip_address_set (&ts->end_addr, &pair6->end_addr, AF_IP6);
+	}
+      p += entry_len;
       n_left--;
     }
 
   if (n_left)
-    return 0;
+    goto data_corrupted;
 
   return r;
+
+data_corrupted:
+  vec_free (r);
+  return 0;
 }
 
 ikev2_notify_t *

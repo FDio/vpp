@@ -524,6 +524,7 @@ class IKEv2SA(object):
             ts_data.update(self.build_ts_addr(c.remote_ts, "4"))
             ts2 = ikev2.IPv4TrafficSelector(**ts_data)
         else:
+            ts_data["length"] = 40
             ts_data.update(self.build_ts_addr(c.local_ts, "6"))
             ts1 = ikev2.IPv6TrafficSelector(**ts_data)
             ts_data.update(self.build_ts_addr(c.remote_ts, "6"))
