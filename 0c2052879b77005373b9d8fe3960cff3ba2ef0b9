@@ -16,6 +16,24 @@
       "message": "can we keep this?",
       "revId": "0c2052879b77005373b9d8fe3960cff3ba2ef0b9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "bfda70e3_28e70006",
+        "filename": "test/hs-test/hs_test.sh",
+        "patchSetId": 3
+      },
+      "lineNbr": 211,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2026-03-29T18:33:51Z",
+      "side": 0,
+      "message": "Done",
+      "parentUuid": "b9c51dc9_7d22e004",
+      "revId": "0c2052879b77005373b9d8fe3960cff3ba2ef0b9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }

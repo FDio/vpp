@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "a5693d92_d5ef9854",
+        "filename": "test/hs-test/hs_test.sh",
+        "patchSetId": 3
+      },
+      "lineNbr": 287,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2026-03-29T18:33:51Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "0f3b21ab_1b5a7c93",
+      "revId": "5f003a610b15662dd147705a50c91ba75ec77d5b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "a32751ed_6a7ad88f",
@@ -31,6 +49,30 @@
       "writtenOn": "2026-03-27T14:08:04Z",
       "side": 1,
       "message": "consider using \u0027grep -c\u0027 instead of \u0027grep|wc -l\u0027",
+      "range": {
+        "startLine": 317,
+        "startChar": 41,
+        "endLine": 317,
+        "endChar": 61
+      },
+      "revId": "5f003a610b15662dd147705a50c91ba75ec77d5b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "34c1ce9b_d318487a",
+        "filename": "test/hs-test/hs_test.sh",
+        "patchSetId": 3
+      },
+      "lineNbr": 317,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2026-03-29T18:33:51Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "a32751ed_6a7ad88f",
       "range": {
         "startLine": 317,
         "startChar": 41,
