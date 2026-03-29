@@ -565,17 +565,16 @@ class IKEv2SA(object):
         self.esp_integ = None if integ == "NULL" else integ
         self.esp_integ_alg = AUTH_ALGOS[integ]
 
-    def crypto_attr(self, key_len):
-        if self.ike_crypto in ["AES-CBC", "AES-GCM-16ICV"]:
+    def crypto_attr(self, crypto, key_len):
+        if crypto in ["AES-CBC", "AES-GCM-16ICV"]:
             return (0x800E << 16 | key_len << 3, 12)
-        else:
-            raise Exception("unsupported attribute type")
+        raise Exception("unsupported attribute type")
 
     def ike_crypto_attr(self):
-        return self.crypto_attr(self.ike_crypto_key_len)
+        return self.crypto_attr(self.ike_crypto, self.ike_crypto_key_len)
 
     def esp_crypto_attr(self):
-        return self.crypto_attr(self.esp_crypto_key_len)
+        return self.crypto_attr(self.esp_crypto, self.esp_crypto_key_len)
 
     def compute_nat_sha1(self, ip, port, rspi=None):
         if rspi is None:
