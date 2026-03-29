@@ -1,0 +1,859 @@
+/* SPDX-License-Identifier: Mackerras-3-Clause-acknowledgment */
+/*
+ * utils.c - various utility functions used in pppd.
+ *
+ * Copyright (c) 1999-2002 Paul Mackerras. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *
+ * 2. The name(s) of the authors of this software must not be used to
+ *    endorse or promote products derived from this software without
+ *    prior written permission.
+ *
+ * 3. Redistributions of any form whatsoever must retain the following
+ *    acknowledgment:
+ *    "This product includes software developed by Paul Mackerras
+ *     <paulus@samba.org>".
+ *
+ * THE AUTHORS OF THIS SOFTWARE DISCLAIM ALL WARRANTIES WITH REGARD TO
+ * THIS SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS, IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY
+ * SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN
+ * AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
+ * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+#define RCSID "$Id: utils.c,v 1.25 2008/06/03 12:06:37 paulus Exp $"
+
+#include <stdio.h>
+#include <ctype.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <signal.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <syslog.h>
+#include <netdb.h>
+#include <time.h>
+#include <utmp.h>
+#include <pwd.h>
+#include <sys/param.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <sys/time.h>
+#include <sys/resource.h>
+#include <sys/stat.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+
+#include "pppd.h"
+#include "fsm.h"
+#include "lcp.h"
+
+// static const char rcsid[] = RCSID;
+
+#if defined(SUNOS4)
+extern char *strerror ();
+#endif
+
+static void logit __P ((int, char *, va_list));
+static void log_write __P ((int, char *) );
+static void vslp_printer __P ((void *, char *, ...));
+static void format_packet __P ((u_char *, int, printer_func, void *) );
+
+struct buffer_info
+{
+  char *ptr;
+  int len;
+};
+
+/*
+ * strlcpy - like strcpy/strncpy, doesn't overflow destination buffer,
+ * always leaves destination null-terminated (for len > 0).
+ */
+size_t
+strlcpy (dest, src, len)
+char *dest;
+const char *src;
+size_t len;
+{
+  size_t ret = strlen (src);
+
+  if (len != 0)
+    {
+      if (ret < len)
+	strcpy (dest, src);
+      else
+	{
+	  strncpy (dest, src, len - 1);
+	  dest[len - 1] = 0;
+	}
+    }
+  return ret;
+}
+
+/*
+ * strlcat - like strcat/strncat, doesn't overflow destination buffer,
+ * always leaves destination null-terminated (for len > 0).
+ */
+size_t
+strlcat (dest, src, len)
+char *dest;
+const char *src;
+size_t len;
+{
+  size_t dlen = strlen (dest);
+
+  return dlen + strlcpy (dest + dlen, src, (len > dlen ? len - dlen : 0));
+}
+
+/*
+ * slprintf - format a message into a buffer.  Like sprintf except we
+ * also specify the length of the output buffer, and we handle
+ * %m (error message), %v (visible string),
+ * %q (quoted string), %t (current time) and %I (IP address) formats.
+ * Doesn't do floating-point formats.
+ * Returns the number of chars put into buf.
+ */
+int slprintf __V ((char *buf, int buflen, char *fmt, ...))
+{
+  va_list args;
+  int n;
+
+#if defined(__STDC__)
+  va_start (args, fmt);
+#else
+  char *buf;
+  int buflen;
+  char *fmt;
+  va_start (args);
+  buf = va_arg (args, char *);
+  buflen = va_arg (args, int);
+  fmt = va_arg (args, char *);
+#endif
+  n = vslprintf (buf, buflen, fmt, args);
+  va_end (args);
+  return n;
+}
+
+/*
+ * vslprintf - like slprintf, takes a va_list instead of a list of args.
+ */
+#define OUTCHAR(c) (buflen > 0 ? (--buflen, *buf++ = (c)) : 0)
+
+int
+vslprintf (buf, buflen, fmt, args)
+char *buf;
+int buflen;
+char *fmt;
+va_list args;
+{
+  int c, i, n;
+  int width, prec, fillch;
+  int base, len, neg, quoted;
+  unsigned long val = 0;
+  char *str, *f, *buf0;
+  unsigned char *p;
+  char num[32];
+  time_t t;
+  u_int32_t ip;
+  static char hexchars[] = "0123456789abcdef";
+  struct buffer_info bufinfo;
+
+  buf0 = buf;
+  --buflen;
+  while (buflen > 0)
+    {
+      for (f = fmt; *f != '%' && *f != 0; ++f)
+	;
+      if (f > fmt)
+	{
+	  len = f - fmt;
+	  if (len > buflen)
+	    len = buflen;
+	  memcpy (buf, fmt, len);
+	  buf += len;
+	  buflen -= len;
+	  fmt = f;
+	}
+      if (*fmt == 0)
+	break;
+      c = *++fmt;
+      width = 0;
+      prec = -1;
+      fillch = ' ';
+      if (c == '0')
+	{
+	  fillch = '0';
+	  c = *++fmt;
+	}
+      if (c == '*')
+	{
+	  width = va_arg (args, int);
+	  c = *++fmt;
+	}
+      else
+	{
+	  while (isdigit (c))
+	    {
+	      width = width * 10 + c - '0';
+	      c = *++fmt;
+	    }
+	}
+      if (c == '.')
+	{
+	  c = *++fmt;
+	  if (c == '*')
+	    {
+	      prec = va_arg (args, int);
+	      c = *++fmt;
+	    }
+	  else
+	    {
+	      prec = 0;
+	      while (isdigit (c))
+		{
+		  prec = prec * 10 + c - '0';
+		  c = *++fmt;
+		}
+	    }
+	}
+      str = 0;
+      base = 0;
+      neg = 0;
+      ++fmt;
+      switch (c)
+	{
+	case 'l':
+	  c = *fmt++;
+	  switch (c)
+	    {
+	    case 'd':
+	      val = va_arg (args, long);
+	      if (val < 0)
+		{
+		  neg = 1;
+		  val = -val;
+		}
+	      base = 10;
+	      break;
+	    case 'u':
+	      val = va_arg (args, unsigned long);
+	      base = 10;
+	      break;
+	    default:
+	      OUTCHAR ('%');
+	      OUTCHAR ('l');
+	      --fmt; /* so %lz outputs %lz etc. */
+	      continue;
+	    }
+	  break;
+	case 'd':
+	  i = va_arg (args, int);
+	  if (i < 0)
+	    {
+	      neg = 1;
+	      val = -i;
+	    }
+	  else
+	    val = i;
+	  base = 10;
+	  break;
+	case 'u':
+	  val = va_arg (args, unsigned int);
+	  base = 10;
+	  break;
+	case 'o':
+	  val = va_arg (args, unsigned int);
+	  base = 8;
+	  break;
+	case 'x':
+	case 'X':
+	  val = va_arg (args, unsigned int);
+	  base = 16;
+	  break;
+	case 'p':
+	  val = (unsigned long) va_arg (args, void *);
+	  base = 16;
+	  neg = 2;
+	  break;
+	case 's':
+	  str = va_arg (args, char *);
+	  break;
+	case 'c':
+	  num[0] = va_arg (args, int);
+	  num[1] = 0;
+	  str = num;
+	  break;
+	case 'm':
+	  str = strerror (errno);
+	  break;
+	case 'I':
+	  ip = va_arg (args, u_int32_t);
+	  ip = ntohl (ip);
+	  slprintf (num, sizeof (num), "%d.%d.%d.%d", (ip >> 24) & 0xff, (ip >> 16) & 0xff,
+		    (ip >> 8) & 0xff, ip & 0xff);
+	  str = num;
+	  break;
+	case 't':
+	  time (&t);
+	  str = ctime (&t);
+	  str += 4;    /* chop off the day name */
+	  str[15] = 0; /* chop off year and newline */
+	  break;
+	case 'v': /* "visible" string */
+	case 'q': /* quoted string */
+	  quoted = c == 'q';
+	  p = va_arg (args, unsigned char *);
+	  if (p == NULL)
+	    p = (unsigned char *) "<NULL>";
+	  if (fillch == '0' && prec >= 0)
+	    {
+	      n = prec;
+	    }
+	  else
+	    {
+	      n = strlen ((char *) p);
+	      if (prec >= 0 && n > prec)
+		n = prec;
+	    }
+	  while (n > 0 && buflen > 0)
+	    {
+	      c = *p++;
+	      --n;
+	      if (!quoted && c >= 0x80)
+		{
+		  OUTCHAR ('M');
+		  OUTCHAR ('-');
+		  c -= 0x80;
+		}
+	      if (quoted && (c == '"' || c == '\\'))
+		OUTCHAR ('\\');
+	      if (c < 0x20 || (0x7f <= c && c < 0xa0))
+		{
+		  if (quoted)
+		    {
+		      OUTCHAR ('\\');
+		      switch (c)
+			{
+			case '\t':
+			  OUTCHAR ('t');
+			  break;
+			case '\n':
+			  OUTCHAR ('n');
+			  break;
+			case '\b':
+			  OUTCHAR ('b');
+			  break;
+			case '\f':
+			  OUTCHAR ('f');
+			  break;
+			default:
+			  OUTCHAR ('x');
+			  OUTCHAR (hexchars[c >> 4]);
+			  OUTCHAR (hexchars[c & 0xf]);
+			}
+		    }
+		  else
+		    {
+		      if (c == '\t')
+			OUTCHAR (c);
+		      else
+			{
+			  OUTCHAR ('^');
+			  OUTCHAR (c ^ 0x40);
+			}
+		    }
+		}
+	      else
+		OUTCHAR (c);
+	    }
+	  continue;
+	case 'P': /* print PPP packet */
+	  bufinfo.ptr = buf;
+	  bufinfo.len = buflen + 1;
+	  p = va_arg (args, unsigned char *);
+	  n = va_arg (args, int);
+	  format_packet (p, n, vslp_printer, &bufinfo);
+	  buf = bufinfo.ptr;
+	  buflen = bufinfo.len - 1;
+	  continue;
+	case 'B':
+	  p = va_arg (args, unsigned char *);
+	  for (n = prec; n > 0; --n)
+	    {
+	      c = *p++;
+	      if (fillch == ' ')
+		OUTCHAR (' ');
+	      OUTCHAR (hexchars[(c >> 4) & 0xf]);
+	      OUTCHAR (hexchars[c & 0xf]);
+	    }
+	  continue;
+	default:
+	  *buf++ = '%';
+	  if (c != '%')
+	    --fmt; /* so %z outputs %z etc. */
+	  --buflen;
+	  continue;
+	}
+      if (base != 0)
+	{
+	  str = num + sizeof (num);
+	  *--str = 0;
+	  while (str > num + neg)
+	    {
+	      *--str = hexchars[val % base];
+	      val = val / base;
+	      if (--prec <= 0 && val == 0)
+		break;
+	    }
+	  switch (neg)
+	    {
+	    case 1:
+	      *--str = '-';
+	      break;
+	    case 2:
+	      *--str = 'x';
+	      *--str = '0';
+	      break;
+	    }
+	  len = num + sizeof (num) - 1 - str;
+	}
+      else
+	{
+	  len = strlen (str);
+	  if (prec >= 0 && len > prec)
+	    len = prec;
+	}
+      if (width > 0)
+	{
+	  if (width > buflen)
+	    width = buflen;
+	  if ((n = width - len) > 0)
+	    {
+	      buflen -= n;
+	      for (; n > 0; --n)
+		*buf++ = fillch;
+	    }
+	}
+      if (len > buflen)
+	len = buflen;
+      memcpy (buf, str, len);
+      buf += len;
+      buflen -= len;
+    }
+  *buf = 0;
+  return buf - buf0;
+}
+
+/*
+ * vslp_printer - used in processing a %P format
+ */
+static void vslp_printer __V ((void *arg, char *fmt, ...))
+{
+  int n;
+  va_list pvar;
+  struct buffer_info *bi;
+
+#if defined(__STDC__)
+  va_start (pvar, fmt);
+#else
+  void *arg;
+  char *fmt;
+  va_start (pvar);
+  arg = va_arg (pvar, void *);
+  fmt = va_arg (pvar, char *);
+#endif
+
+  bi = (struct buffer_info *) arg;
+  n = vslprintf (bi->ptr, bi->len, fmt, pvar);
+  va_end (pvar);
+
+  bi->ptr += n;
+  bi->len -= n;
+}
+
+#ifdef unused
+/*
+ * log_packet - format a packet and log it.
+ */
+
+void log_packet (p, len, prefix, level) u_char *p;
+int len;
+char *prefix;
+int level;
+{
+  init_pr_log (prefix, level);
+  format_packet (p, len, pr_log, &level);
+  end_pr_log ();
+}
+#endif /* unused */
+
+/*
+ * format_packet - make a readable representation of a packet,
+ * calling `printer(arg, format, ...)' to output it.
+ */
+static void format_packet (p, len, printer, arg) u_char *p;
+int len;
+printer_func printer;
+void *arg;
+{
+  int i, n;
+  u_short proto;
+  struct protent *protp;
+
+  if (len >= PPP_HDRLEN && p[0] == PPP_ALLSTATIONS && p[1] == PPP_UI)
+    {
+      p += 2;
+      GETSHORT (proto, p);
+      len -= PPP_HDRLEN;
+      for (i = 0; (protp = protocols[i]) != NULL; ++i)
+	if (proto == protp->protocol)
+	  break;
+      if (protp != NULL)
+	{
+	  printer (arg, "[%s", protp->name);
+	  n = (*protp->printpkt) (p, len, printer, arg);
+	  printer (arg, "]");
+	  p += n;
+	  len -= n;
+	}
+      else
+	{
+	  for (i = 0; (protp = protocols[i]) != NULL; ++i)
+	    if (proto == (protp->protocol & ~0x8000))
+	      break;
+	  if (protp != 0 && protp->data_name != 0)
+	    {
+	      printer (arg, "[%s data]", protp->data_name);
+	      if (len > 8)
+		printer (arg, "%.8B ...", p);
+	      else
+		printer (arg, "%.*B", len, p);
+	      len = 0;
+	    }
+	  else
+	    printer (arg, "[proto=0x%x]", proto);
+	}
+    }
+
+  if (len > 32)
+    printer (arg, "%.32B ...", p);
+  else
+    printer (arg, "%.*B", len, p);
+}
+
+/*
+ * init_pr_log, end_pr_log - initialize and finish use of pr_log.
+ */
+
+static char line[256]; /* line to be logged accumulated here */
+static char *linep;    /* current pointer within line */
+static int llevel;     /* level for logging */
+
+void init_pr_log (prefix, level) const char *prefix;
+int level;
+{
+  linep = line;
+  if (prefix != NULL)
+    {
+      strlcpy (line, prefix, sizeof (line));
+      linep = line + strlen (line);
+    }
+  llevel = level;
+}
+
+void
+end_pr_log ()
+{
+  if (linep != line)
+    {
+      *linep = 0;
+      log_write (llevel, line);
+    }
+}
+
+/*
+ * pr_log - printer routine for outputting to syslog
+ */
+void pr_log __V ((void *arg, char *fmt, ...))
+{
+  int l, n;
+  va_list pvar;
+  char *p, *eol;
+  char buf[256];
+
+#if defined(__STDC__)
+  va_start (pvar, fmt);
+#else
+  void *arg;
+  char *fmt;
+  va_start (pvar);
+  arg = va_arg (pvar, void *);
+  fmt = va_arg (pvar, char *);
+#endif
+
+  n = vslprintf (buf, sizeof (buf), fmt, pvar);
+  va_end (pvar);
+
+  p = buf;
+  eol = strchr (buf, '\n');
+  if (linep != line)
+    {
+      l = (eol == NULL) ? n : eol - buf;
+      if (linep + l < line + sizeof (line))
+	{
+	  if (l > 0)
+	    {
+	      memcpy (linep, buf, l);
+	      linep += l;
+	    }
+	  if (eol == NULL)
+	    return;
+	  p = eol + 1;
+	  eol = strchr (p, '\n');
+	}
+      *linep = 0;
+      log_write (llevel, line);
+      linep = line;
+    }
+
+  while (eol != NULL)
+    {
+      *eol = 0;
+      log_write (llevel, p);
+      p = eol + 1;
+      eol = strchr (p, '\n');
+    }
+
+  /* assumes sizeof(buf) <= sizeof(line) */
+  l = buf + n - p;
+  if (l > 0)
+    {
+      memcpy (line, p, n);
+      linep = line + l;
+    }
+}
+
+/*
+ * print_string - print a readable representation of a string using
+ * printer.
+ */
+void print_string (p, len, printer, arg) char *p;
+int len;
+printer_func printer;
+void *arg;
+{
+  int c;
+
+  printer (arg, "\"");
+  for (; len > 0; --len)
+    {
+      c = *p++;
+      if (' ' <= c && c <= '~')
+	{
+	  if (c == '\\' || c == '"')
+	    printer (arg, "\\");
+	  printer (arg, "%c", c);
+	}
+      else
+	{
+	  switch (c)
+	    {
+	    case '\n':
+	      printer (arg, "\\n");
+	      break;
+	    case '\r':
+	      printer (arg, "\\r");
+	      break;
+	    case '\t':
+	      printer (arg, "\\t");
+	      break;
+	    default:
+	      printer (arg, "\\%.3o", c);
+	    }
+	}
+    }
+  printer (arg, "\"");
+}
+
+/*
+ * logit - does the hard work for fatal et al.
+ */
+static void logit (level, fmt, args) int level;
+char *fmt;
+va_list args;
+{
+  char buf[1024];
+
+  vslprintf (buf, sizeof (buf), fmt, args);
+  log_write (level, buf);
+}
+
+static void log_write (level, buf) int level;
+char *buf;
+{
+  // syslog(level, "%s", buf);
+  //  ZDY: simplew write to console.
+  //  TODO: later we may add a cicylic log buffer for each pppox interface
+  //  and add a cli to dump them.
+  printf ("%s\n", buf);
+}
+
+/*
+ * fatal - log an error message and die horribly.
+ */
+void fatal __V ((char *fmt, ...))
+{
+  va_list pvar;
+
+#if defined(__STDC__)
+  va_start (pvar, fmt);
+#else
+  char *fmt;
+  va_start (pvar);
+  fmt = va_arg (pvar, char *);
+#endif
+
+  logit (LOG_ERR, fmt, pvar);
+  va_end (pvar);
+
+  die (1); /* as promised */
+}
+
+// ZDY: glibc 2.23 provide an error function, rename this function
+// and reference to xerror in case it does not crash.
+// ZDY: this log might affect performance, need consider add a
+// log buffer and sync log to control plane for debug/monitor.
+/*
+ * error - log an error message.
+ */
+void xerror __V ((char *fmt, ...))
+{
+  va_list pvar;
+
+#if defined(__STDC__)
+  va_start (pvar, fmt);
+#else
+  char *fmt;
+  va_start (pvar);
+  fmt = va_arg (pvar, char *);
+#endif
+
+  logit (LOG_ERR, fmt, pvar);
+  va_end (pvar);
+  ++error_count;
+}
+
+// Change to xwarn based on the same reason above.
+/*
+ * xwarn - log a warning message.
+ */
+void xwarn __V ((char *fmt, ...))
+{
+  va_list pvar;
+
+#if defined(__STDC__)
+  va_start (pvar, fmt);
+#else
+  char *fmt;
+  va_start (pvar);
+  fmt = va_arg (pvar, char *);
+#endif
+
+  logit (LOG_WARNING, fmt, pvar);
+  va_end (pvar);
+}
+
+/*
+ * notice - log a notice-level message.
+ */
+void notice __V ((char *fmt, ...))
+{
+  va_list pvar;
+
+#if defined(__STDC__)
+  va_start (pvar, fmt);
+#else
+  char *fmt;
+  va_start (pvar);
+  fmt = va_arg (pvar, char *);
+#endif
+
+  logit (LOG_NOTICE, fmt, pvar);
+  va_end (pvar);
+}
+
+/*
+ * info - log an informational message.
+ */
+void info __V ((char *fmt, ...))
+{
+  va_list pvar;
+
+#if defined(__STDC__)
+  va_start (pvar, fmt);
+#else
+  char *fmt;
+  va_start (pvar);
+  fmt = va_arg (pvar, char *);
+#endif
+
+  logit (LOG_INFO, fmt, pvar);
+  va_end (pvar);
+}
+
+/*
+ * dbglog - log a debug message.
+ */
+void dbglog __V ((char *fmt, ...))
+{
+  va_list pvar;
+
+#if defined(__STDC__)
+  va_start (pvar, fmt);
+#else
+  char *fmt;
+  va_start (pvar);
+  fmt = va_arg (pvar, char *);
+#endif
+
+  logit (LOG_DEBUG, fmt, pvar);
+  va_end (pvar);
+}
+
+/*
+ * dump_packet - print out a packet in readable form if it is interesting.
+ * Assumes len >= PPP_HDRLEN.
+ */
+void
+dump_packet (const char *tag, unsigned char *p, int len)
+{
+  int proto;
+
+  if (!debug)
+    return;
+
+  /*
+   * don't print LCP echo request/reply packets if debug <= 1
+   * and the link is up.
+   */
+  proto = (p[2] << 8) + p[3];
+  if (debug <= 1 && unsuccess == 0 && proto == PPP_LCP && len >= PPP_HDRLEN + HEADERLEN)
+    {
+      unsigned char *lcp = p + PPP_HDRLEN;
+      int l = (lcp[2] << 8) + lcp[3];
+
+      if ((lcp[0] == ECHOREQ || lcp[0] == ECHOREP) && l >= HEADERLEN && l <= len - PPP_HDRLEN)
+	return;
+    }
+
+  dbglog ("%s %P", tag, p, len);
+}
