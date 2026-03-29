@@ -16,7 +16,7 @@ static const char *http_status_code_str[] = {
 static inline u8 *
 format_http_status_code (u8 *s, va_list *va)
 {
-  http_status_code_t status_code = va_arg (*va, http_status_code_t);
+  http_status_code_t status_code = va_arg (*va, int);
   if (status_code < HTTP_N_STATUS)
     s = format (s, "%s", http_status_code_str[status_code]);
   else

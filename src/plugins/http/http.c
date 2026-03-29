@@ -65,9 +65,9 @@ format_http_req_state (u8 *s, va_list *va)
 
   switch (state)
     {
-#define _(n, s, str)                                                          \
-  case HTTP_REQ_STATE_##s:                                                    \
-    t = (u8 *) str;                                                           \
+#define _(n, s, str)                                                                               \
+  case HTTP_REQ_STATE_##s:                                                                         \
+    t = (u8 *) (str);                                                                              \
     break;
       foreach_http_req_state
 #undef _
@@ -84,9 +84,9 @@ format_http_conn_state (u8 *s, va_list *args)
 
   switch (hc->state)
     {
-#define _(s, str)                                                             \
-  case HTTP_CONN_STATE_##s:                                                   \
-    t = (u8 *) str;                                                           \
+#define _(s, str)                                                                                  \
+  case HTTP_CONN_STATE_##s:                                                                        \
+    t = (u8 *) (str);                                                                              \
     break;
       foreach_http_conn_state
 #undef _
@@ -270,7 +270,7 @@ http_ho_conn_alloc (void)
   hc->c_thread_index = transport_cl_thread ();
   hc->hc_pa_session_handle = SESSION_INVALID_HANDLE;
   hc->hc_tc_session_handle = SESSION_INVALID_HANDLE;
-  hc->timeout = HTTP_CONN_TIMEOUT;
+  hc->hc_timeout = HTTP_CONN_TIMEOUT;
   hc->version = HTTP_VERSION_NA;
   return hc->hc_hc_index;
 }
@@ -284,7 +284,7 @@ http_listener_alloc (void)
   lhc_index = http_conn_alloc_w_thread (0);
   lhc = http_conn_get_w_thread (lhc_index, 0);
   lhc->hc_hc_index = lhc_index;
-  lhc->timeout = HTTP_CONN_TIMEOUT;
+  lhc->hc_timeout = HTTP_CONN_TIMEOUT;
   lhc->version = HTTP_VERSION_NA;
   lhc->hc_tl_handle_tcp = SESSION_INVALID_HANDLE;
   lhc->hc_tl_handle_quic = SESSION_INVALID_HANDLE;
@@ -1141,8 +1141,9 @@ http_connect_connection (session_endpoint_cfg_t *sep)
       transport_endpt_cfg_http_t *http_cfg =
 	(transport_endpt_cfg_http_t *) ext_cfg->data;
       HTTP_DBG (1, "app set timeout %u", http_cfg->timeout);
-      hc->timeout = http_cfg->timeout;
-      hc->udp_tunnel_mode = http_cfg->udp_tunnel_mode;
+      hc->hc_timeout = http_cfg->timeout;
+      hc->flags |=
+	http_cfg->udp_tunnel_mode == HTTP_UDP_TUNNEL_DGRAM ? HTTP_CONN_F_UDP_TUNNEL_DGRAM : 0;
       if (http_cfg->flags & HTTP_ENDPT_CFG_F_HTTP2_PRIOR_KNOWLEDGE)
 	{
 	  HTTP_DBG (1, "app want http2 with prior knowledge");
@@ -1195,7 +1196,7 @@ http_connect_connection (session_endpoint_cfg_t *sep)
 
   hc->hc_tc_session_handle = cargs->sh;
   props = application_segment_manager_properties (app);
-  hc->app_rx_fifo_size = props->rx_fifo_size;
+  hc->hc_app_rx_fifo_size = props->rx_fifo_size;
 
   return hc_index;
 }
@@ -1398,8 +1399,9 @@ http_start_listen (u32 app_listener_index, transport_endpoint_cfg_t *tep)
       transport_endpt_cfg_http_t *http_cfg =
 	(transport_endpt_cfg_http_t *) ext_cfg->data;
       HTTP_DBG (1, "app set timeout %u", http_cfg->timeout);
-      lhc->timeout = http_cfg->timeout;
-      lhc->udp_tunnel_mode = http_cfg->udp_tunnel_mode;
+      lhc->hc_timeout = http_cfg->timeout;
+      lhc->flags |=
+	http_cfg->udp_tunnel_mode == HTTP_UDP_TUNNEL_DGRAM ? HTTP_CONN_F_UDP_TUNNEL_DGRAM : 0;
     }
 
   /* Grab application listener and link to http listener */
@@ -1412,7 +1414,7 @@ http_start_listen (u32 app_listener_index, transport_endpoint_cfg_t *tep)
   lhc->flags |= HTTP_CONN_F_IS_SERVER;
 
   props = application_segment_manager_properties (app);
-  lhc->app_rx_fifo_size = props->rx_fifo_size;
+  lhc->hc_app_rx_fifo_size = props->rx_fifo_size;
 
   if (vec_len (app->name))
     lhc->app_name = vec_dup (app->name);
