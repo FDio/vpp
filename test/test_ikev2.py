@@ -149,6 +149,7 @@ class AuthAlgo(object):
 CRYPTO_ALGOS = {
     "NULL": CryptoAlgo("NULL", cipher=None, mode=None),
     "AES-CBC": CryptoAlgo("AES-CBC", cipher=algorithms.AES, mode=modes.CBC),
+    "AES-CTR": CryptoAlgo("AES-CTR", cipher=algorithms.AES, mode=modes.CTR),
     "AES-GCM-16ICV": CryptoAlgo("AES-GCM-16ICV", cipher=algorithms.AES, mode=modes.GCM),
 }
 
@@ -168,12 +169,14 @@ PRF_ALGOS = {
 CRYPTO_IDS = {
     11: "NULL",
     12: "AES-CBC",
+    13: "AES-CTR",
     20: "AES-GCM-16ICV",
 }
 
 ENCR_TRANSFORM_IDS = {
     "NULL": 11,
     "AES-CBC": 12,
+    "AES-CTR": 13,
     "AES-GCM-16ICV": 20,
 }
 
@@ -323,31 +326,33 @@ class IKEv2SA(object):
 
         encr_key_len = self.esp_crypto_key_len
         integ_key_len = self.esp_integ_alg.key_len
-        salt_len = 0 if integ_key_len else 4
+        salt_len = 4 if self.esp_crypto in ["AES-CTR"] or not integ_key_len else 0
 
-        l = integ_key_len * 2 + encr_key_len * 2 + salt_len * 2
+        l = integ_key_len * 2 + (encr_key_len + salt_len) * 2
         keymat = self.calc_prfplus(prf, self.sk_d, s, l)
 
         pos = 0
         c.sk_ei = keymat[pos : pos + encr_key_len]
         pos += encr_key_len
 
+        if salt_len:
+            c.salt_ei = keymat[pos : pos + salt_len]
+            pos += salt_len
+
         if integ_key_len:
             c.sk_ai = keymat[pos : pos + integ_key_len]
             pos += integ_key_len
-        else:
-            c.salt_ei = keymat[pos : pos + salt_len]
-            pos += salt_len
 
         c.sk_er = keymat[pos : pos + encr_key_len]
         pos += encr_key_len
 
+        if salt_len:
+            c.salt_er = keymat[pos : pos + salt_len]
+            pos += salt_len
+
         if integ_key_len:
             c.sk_ar = keymat[pos : pos + integ_key_len]
             pos += integ_key_len
-        else:
-            c.salt_er = keymat[pos : pos + salt_len]
-            pos += salt_len
 
     def calc_prfplus(self, prf, key, seed, length):
         r = b""
@@ -586,7 +591,7 @@ class IKEv2SA(object):
         self.esp_integ_alg = AUTH_ALGOS[integ]
 
     def crypto_attr(self, crypto, key_len):
-        if crypto in ["AES-CBC", "AES-GCM-16ICV"]:
+        if crypto in ["AES-CBC", "AES-CTR", "AES-GCM-16ICV"]:
             return (0x800E << 16 | key_len << 3, 12)
         if crypto == "NULL":
             return None
@@ -908,6 +913,9 @@ class IkePeer(VppTestCase):
             self.assertEqual(sa1.integrity_key.length, len(c.sk_ai))
             self.assertEqual(sa0.integrity_key.data[: len(c.sk_ar)], c.sk_ar)
             self.assertEqual(sa1.integrity_key.data[: len(c.sk_ai)], c.sk_ai)
+        elif self.sa.esp_crypto == "AES-CTR":
+            self.assertEqual(sa0.salt.to_bytes(4, "little"), c.salt_er)
+            self.assertEqual(sa1.salt.to_bytes(4, "little"), c.salt_ei)
         else:
             self.assertEqual(sa0.salt.to_bytes(4, "little"), c.salt_er)
             self.assertEqual(sa1.salt.to_bytes(4, "little"), c.salt_ei)
@@ -1712,6 +1720,9 @@ class Ikev2Params(object):
             "AES-CBC-128": ec.IPSEC_API_CRYPTO_ALG_AES_CBC_128,
             "AES-CBC-192": ec.IPSEC_API_CRYPTO_ALG_AES_CBC_192,
             "AES-CBC-256": ec.IPSEC_API_CRYPTO_ALG_AES_CBC_256,
+            "AES-CTR-128": ec.IPSEC_API_CRYPTO_ALG_AES_CTR_128,
+            "AES-CTR-192": ec.IPSEC_API_CRYPTO_ALG_AES_CTR_192,
+            "AES-CTR-256": ec.IPSEC_API_CRYPTO_ALG_AES_CTR_256,
             "AES-GCM-16ICV-128": ec.IPSEC_API_CRYPTO_ALG_AES_GCM_128,
             "AES-GCM-16ICV-192": ec.IPSEC_API_CRYPTO_ALG_AES_GCM_192,
             "AES-GCM-16ICV-256": ec.IPSEC_API_CRYPTO_ALG_AES_GCM_256,
@@ -2272,6 +2283,13 @@ class TestResponderPskNullEsp(TestResponderPsk):
 
     def config_tc(self):
         self.config_params({"esp-crypto": ("NULL", 0), "esp-integ": "SHA2-256-128"})
+
+
+class TestResponderPskAesCtrEsp(TestResponderPsk):
+    """test ikev2 responder - ESP AES-CTR encryption"""
+
+    def config_tc(self):
+        self.config_params({"esp-crypto": ("AES-CTR", 32), "esp-integ": "SHA2-256-128"})
 
 
 class TestResponderDpd(TestResponderPsk):

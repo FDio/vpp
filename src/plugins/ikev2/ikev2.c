@@ -532,7 +532,8 @@ ikev2_calc_keys_internal (ikev2_sa_t *sa, u8 *skeyseed)
 
   if (tr_integ)
     integ_key_len = tr_integ->key_len;
-  else
+
+  if (!tr_integ || tr_encr->encr_type == IKEV2_TRANSFORM_ENCR_TYPE_AES_CTR)
     salt_len = sizeof (u32);
 
   vec_append (s, sa->i_nonce);
@@ -652,7 +653,8 @@ ikev2_calc_child_keys (ikev2_sa_t *sa, ikev2_child_sa_t *child, u8 kex)
 
   if (ctr_integ)
     integ_key_len = ctr_integ->key_len;
-  else
+
+  if (!ctr_integ || ctr_encr->encr_type == IKEV2_TRANSFORM_ENCR_TYPE_AES_CTR)
     salt_len = sizeof (u32);
 
   if (kex)
@@ -661,7 +663,7 @@ ikev2_calc_child_keys (ikev2_sa_t *sa, ikev2_child_sa_t *child, u8 kex)
   vec_append (s, sa->r_nonce);
   /* calculate PRFplus */
   u8 *keymat;
-  int len = ctr_encr->key_len * 2 + integ_key_len * 2 + salt_len * 2;
+  int len = (ctr_encr->key_len + salt_len) * 2 + integ_key_len * 2;
 
   keymat = ikev2_calc_prfplus (tr_prf, sa->sk_d, s, len);
 
@@ -672,6 +674,12 @@ ikev2_calc_child_keys (ikev2_sa_t *sa, ikev2_child_sa_t *child, u8 kex)
   clib_memcpy_fast (child->sk_ei, keymat + pos, ctr_encr->key_len);
   pos += ctr_encr->key_len;
 
+  if (salt_len)
+    {
+      clib_memcpy (&child->salt_ei, keymat + pos, salt_len);
+      pos += salt_len;
+    }
+
   if (ctr_integ)
     {
       /* SK_ai */
@@ -679,16 +687,17 @@ ikev2_calc_child_keys (ikev2_sa_t *sa, ikev2_child_sa_t *child, u8 kex)
       clib_memcpy_fast (child->sk_ai, keymat + pos, ctr_integ->key_len);
       pos += ctr_integ->key_len;
     }
-  else
-    {
-      clib_memcpy (&child->salt_ei, keymat + pos, salt_len);
-      pos += salt_len;
-    }
 
   /* SK_er */
   child->sk_er = vec_new (u8, ctr_encr->key_len);
   clib_memcpy_fast (child->sk_er, keymat + pos, ctr_encr->key_len);
   pos += ctr_encr->key_len;
+
+  if (salt_len)
+    {
+      clib_memcpy (&child->salt_er, keymat + pos, salt_len);
+      pos += salt_len;
+    }
 
   if (ctr_integ)
     {
@@ -696,11 +705,6 @@ ikev2_calc_child_keys (ikev2_sa_t *sa, ikev2_child_sa_t *child, u8 kex)
       child->sk_ar = vec_new (u8, integ_key_len);
       clib_memcpy_fast (child->sk_ar, keymat + pos, integ_key_len);
       pos += integ_key_len;
-    }
-  else
-    {
-      clib_memcpy (&child->salt_er, keymat + pos, salt_len);
-      pos += salt_len;
     }
 
   ASSERT (pos == len);
@@ -2330,6 +2334,25 @@ ikev2_create_tunnel_interface (vlib_main_t *vm, ikev2_sa_t *sa,
 	      break;
 	    case 32:
 	      encr_type = IPSEC_CRYPTO_ALG_AES_CBC_256;
+	      break;
+	    default:
+	      ikev2_set_state (sa, IKEV2_STATE_NO_PROPOSAL_CHOSEN);
+	      return 1;
+	      break;
+	    }
+	}
+      else if (tr->encr_type == IKEV2_TRANSFORM_ENCR_TYPE_AES_CTR && tr->key_len)
+	{
+	  switch (tr->key_len)
+	    {
+	    case 16:
+	      encr_type = IPSEC_CRYPTO_ALG_AES_CTR_128;
+	      break;
+	    case 24:
+	      encr_type = IPSEC_CRYPTO_ALG_AES_CTR_192;
+	      break;
+	    case 32:
+	      encr_type = IPSEC_CRYPTO_ALG_AES_CTR_256;
 	      break;
 	    default:
 	      ikev2_set_state (sa, IKEV2_STATE_NO_PROPOSAL_CHOSEN);
@@ -4542,6 +4565,9 @@ ikev2_set_profile_ike_transforms (vlib_main_t * vm, u8 * name,
 	(IKEV2_TRANSFORM_ENCR_TYPE_AES_GCM_16 == crypto_alg) !=
       1)
     return clib_error_return (0, "invalid cipher + integrity algorithm");
+
+  if (crypto_alg == IKEV2_TRANSFORM_ENCR_TYPE_AES_CTR)
+    return clib_error_return (0, "AES-CTR is not supported for IKE SAs");
 
   p->ike_ts.crypto_alg = crypto_alg;
   p->ike_ts.integ_alg = integ_alg;
