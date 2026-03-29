@@ -997,6 +997,26 @@ ikev2_crypto_init (ikev2_main_t * km)
   tr->key_trunc = 96 / 8;
   tr->md = EVP_sha1 ();
 
+  vec_add2 (km->supported_transforms, tr, 1);
+  tr->type = IKEV2_TRANSFORM_TYPE_INTEG;
+  tr->integ_type = IKEV2_TRANSFORM_INTEG_TYPE_AUTH_AES_256_GMAC;
+  tr->key_len = 256 / 8;
+  tr->key_trunc = 128 / 8;
+  tr->md = 0;
+
+  vec_add2 (km->supported_transforms, tr, 1);
+  tr->type = IKEV2_TRANSFORM_TYPE_INTEG;
+  tr->integ_type = IKEV2_TRANSFORM_INTEG_TYPE_AUTH_AES_192_GMAC;
+  tr->key_len = 192 / 8;
+  tr->key_trunc = 128 / 8;
+  tr->md = 0;
+
+  vec_add2 (km->supported_transforms, tr, 1);
+  tr->type = IKEV2_TRANSFORM_TYPE_INTEG;
+  tr->integ_type = IKEV2_TRANSFORM_INTEG_TYPE_AUTH_AES_128_GMAC;
+  tr->key_len = 128 / 8;
+  tr->key_trunc = 128 / 8;
+  tr->md = 0;
 
 #if defined(OPENSSL_NO_CISCO_FECDH)
   vec_add2 (km->supported_transforms, tr, 1);
