@@ -166,6 +166,7 @@ PRF_ALGOS = {
 }
 
 CRYPTO_IDS = {
+    11: "NULL",
     12: "AES-CBC",
     20: "AES-GCM-16ICV",
 }
@@ -567,6 +568,8 @@ class IKEv2SA(object):
     def crypto_attr(self, crypto, key_len):
         if crypto in ["AES-CBC", "AES-GCM-16ICV"]:
             return (0x800E << 16 | key_len << 3, 12)
+        if crypto == "NULL":
+            return None
         raise Exception("unsupported attribute type")
 
     def ike_crypto_attr(self):
@@ -574,6 +577,13 @@ class IKEv2SA(object):
 
     def esp_crypto_attr(self):
         return self.crypto_attr(self.esp_crypto, self.esp_crypto_key_len)
+
+    def encr_transform(self, crypto, tr_attr):
+        kwargs = {"transform_type": "Encryption", "transform_id": crypto}
+        if tr_attr is not None:
+            kwargs["length"] = tr_attr[1]
+            kwargs["key_length"] = tr_attr[0]
+        return ikev2.IKEv2_payload_Transform(**kwargs)
 
     def compute_nat_sha1(self, ip, port, rspi=None):
         if rspi is None:
@@ -1215,12 +1225,7 @@ class TemplateInitiator(IkePeer):
     def send_init_response(self):
         tr_attr = self.sa.ike_crypto_attr()
         trans = (
-            ikev2.IKEv2_payload_Transform(
-                transform_type="Encryption",
-                transform_id=self.sa.ike_crypto,
-                length=tr_attr[1],
-                key_length=tr_attr[0],
-            )
+            self.sa.encr_transform(self.sa.ike_crypto, tr_attr)
             / ikev2.IKEv2_payload_Transform(
                 transform_type="Integrity", transform_id=self.sa.ike_integ
             )
@@ -1287,12 +1292,7 @@ class TemplateInitiator(IkePeer):
     def send_auth_response(self):
         tr_attr = self.sa.esp_crypto_attr()
         trans = (
-            ikev2.IKEv2_payload_Transform(
-                transform_type="Encryption",
-                transform_id=self.sa.esp_crypto,
-                length=tr_attr[1],
-                key_length=tr_attr[0],
-            )
+            self.sa.encr_transform(self.sa.esp_crypto, tr_attr)
             / ikev2.IKEv2_payload_Transform(
                 transform_type="Integrity", transform_id=self.sa.esp_integ
             )
@@ -1419,12 +1419,7 @@ class TemplateResponder(IkePeer):
     ):
         tr_attr = self.sa.ike_crypto_attr()
         trans = (
-            ikev2.IKEv2_payload_Transform(
-                transform_type="Encryption",
-                transform_id=self.sa.ike_crypto,
-                length=tr_attr[1],
-                key_length=tr_attr[0],
-            )
+            self.sa.encr_transform(self.sa.ike_crypto, tr_attr)
             / ikev2.IKEv2_payload_Transform(
                 transform_type="Integrity", transform_id=self.sa.ike_integ
             )
@@ -1508,12 +1503,7 @@ class TemplateResponder(IkePeer):
         last_payload = last_payload or "Notify"
         trans_nb = 4
         trans = (
-            ikev2.IKEv2_payload_Transform(
-                transform_type="Encryption",
-                transform_id=self.sa.esp_crypto,
-                length=tr_attr[1],
-                key_length=tr_attr[0],
-            )
+            self.sa.encr_transform(self.sa.esp_crypto, tr_attr)
             / ikev2.IKEv2_payload_Transform(
                 transform_type="Integrity", transform_id=self.sa.esp_integ
             )
@@ -1681,6 +1671,7 @@ class Ikev2Params(object):
         ec = VppEnum.vl_api_ipsec_crypto_alg_t
         ei = VppEnum.vl_api_ipsec_integ_alg_t
         self.vpp_enums = {
+            "NULL-0": ec.IPSEC_API_CRYPTO_ALG_NONE,
             "AES-CBC-128": ec.IPSEC_API_CRYPTO_ALG_AES_CBC_128,
             "AES-CBC-192": ec.IPSEC_API_CRYPTO_ALG_AES_CBC_192,
             "AES-CBC-256": ec.IPSEC_API_CRYPTO_ALG_AES_CBC_256,
@@ -2237,6 +2228,13 @@ class TestResponderPsk(TemplateResponder, Ikev2Params):
 
     def config_tc(self):
         self.config_params()
+
+
+class TestResponderPskNullEsp(TestResponderPsk):
+    """test ikev2 responder - ESP null encryption"""
+
+    def config_tc(self):
+        self.config_params({"esp-crypto": ("NULL", 0), "esp-integ": "SHA2-256-128"})
 
 
 class TestResponderDpd(TestResponderPsk):
