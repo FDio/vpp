@@ -40,8 +40,7 @@ http_conn_timer_start (http_ctx_t *hc)
   hs_handle = hc->c_thread_index << 24 | hc->hc_hc_index;
 
   clib_spinlock_lock (&twc->tw_lock);
-  hc->timer_handle =
-    tw_timer_start_2t_1w_2048sl (&twc->tw, hs_handle, 0, hc->timeout);
+  hc->timer_handle = tw_timer_start_2t_1w_2048sl (&twc->tw, hs_handle, 0, hc->hc_timeout);
   clib_spinlock_unlock (&twc->tw_lock);
 }
 
@@ -68,13 +67,12 @@ http_conn_timer_update (http_ctx_t *hc)
 
   clib_spinlock_lock (&twc->tw_lock);
   if (hc->timer_handle != HTTP_TIMER_HANDLE_INVALID)
-    tw_timer_update_2t_1w_2048sl (&twc->tw, hc->timer_handle, hc->timeout);
+    tw_timer_update_2t_1w_2048sl (&twc->tw, hc->timer_handle, hc->hc_timeout);
   else
     {
       ASSERT (hc->hc_hc_index <= 0x00FFFFFF);
       hs_handle = hc->c_thread_index << 24 | hc->hc_hc_index;
-      hc->timer_handle =
-	tw_timer_start_2t_1w_2048sl (&twc->tw, hs_handle, 0, hc->timeout);
+      hc->timer_handle = tw_timer_start_2t_1w_2048sl (&twc->tw, hs_handle, 0, hc->hc_timeout);
     }
   clib_spinlock_unlock (&twc->tw_lock);
 }

@@ -75,7 +75,7 @@ typedef struct
   _ (CONNECT, "CONNECT")                                                      \
   _ (UNKNOWN, "UNKNOWN") /* for internal use */
 
-typedef enum http_req_method_
+typedef enum http_req_method_ : u8
 {
 #define _(s, str) HTTP_REQ_##s,
   foreach_http_method
@@ -239,7 +239,7 @@ typedef enum http_content_type_
   _ (511, NETWORK_AUTHENTICATION_REQUIRED,                                    \
      "511 Network Authentication Required")
 
-typedef enum http_status_code_
+typedef enum http_status_code_ : u8
 {
 #define _(c, s, str) HTTP_STATUS_##s,
   foreach_http_status_code
@@ -496,14 +496,14 @@ format_http_version (u8 *s, va_list *va)
 always_inline u8 *
 format_http_method (u8 *s, va_list *va)
 {
-  http_req_method_t method = va_arg (*va, http_req_method_t);
+  http_req_method_t method = va_arg (*va, int);
   u8 *t = 0;
 
   switch (method)
     {
-#define _(s, str)                                                             \
-  case HTTP_REQ_##s:                                                          \
-    t = (u8 *) str;                                                           \
+#define _(s, str)                                                                                  \
+  case HTTP_REQ_##s:                                                                               \
+    t = (u8 *) (str);                                                                              \
     break;
       foreach_http_method
 #undef _
@@ -603,7 +603,7 @@ http_validate_query_syntax (u8 *query, int *is_encoded)
   return http_validate_target_syntax (query, vec_len (query), 1, is_encoded);
 }
 
-#define htoi(x) (isdigit (x) ? (x - '0') : (tolower (x) - 'a' + 10))
+#define htoi(x) (isdigit (x) ? ((x) - '0') : (tolower (x) - 'a' + 10))
 
 /**
  * Decode percent-encoded data.
@@ -1631,7 +1631,7 @@ http_parse_masque_host_port (u8 *path, u32 path_len,
 
 typedef enum http_capsule_type_
 {
-#define _(n, s) HTTP_CAPSULE_TYPE_##s = n,
+#define _(n, s) HTTP_CAPSULE_TYPE_##s = (n),
   foreach_http_capsule_type
 #undef _
 } __clib_packed http_capsule_type_t;

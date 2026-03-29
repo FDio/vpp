@@ -86,12 +86,13 @@ http2_conn_init (http_ctx_t *hc)
   hc->settings = h2m->settings;
   /* adjust settings according to app rx_fifo size */
   hc->settings.max_header_list_size =
-    clib_min (hc->settings.max_header_list_size, (hc->app_rx_fifo_size >> 1));
-  hc->settings.initial_window_size = clib_min (
-    hc->settings.initial_window_size, (hc->app_rx_fifo_size - hc->settings.max_header_list_size));
+    clib_min (hc->settings.max_header_list_size, (hc->hc_app_rx_fifo_size >> 1));
+  hc->settings.initial_window_size =
+    clib_min (hc->settings.initial_window_size,
+	      (hc->hc_app_rx_fifo_size - hc->settings.max_header_list_size));
   hc->req_by_stream_id = hash_create (0, sizeof (uword));
   http2_sched_init_conn (hc, wrk);
-  hc->parent_req_index = SESSION_INVALID_INDEX;
+  hc->hc_parent_req_index = SESSION_INVALID_INDEX;
   cnt = clib_atomic_fetch_add_relax (&h2m->n_sessions, 1);
   /* (re)start stream tx scheduler if this is first connection */
   /* TODO: update session infra to do this on per thread basis */
@@ -106,7 +107,7 @@ http2_conn_destroy (http_ctx_t *hc)
   http2_worker_ctx_t *wrk = http2_get_worker (hc->c_thread_index);
   u32 cnt;
 
-  ASSERT (hc->parent_req_index == SESSION_INVALID_INDEX);
+  ASSERT (hc->hc_parent_req_index == SESSION_INVALID_INDEX);
   ASSERT (!clib_llist_elt_is_linked (hc, sched_list));
   ASSERT (hc->req_num == 0);
   pool_put_index (wrk->req_pool, hc->new_tx_streams);
@@ -156,9 +157,9 @@ http2_conn_alloc_req (http_ctx_t *hc, u8 is_parent)
   if (is_parent)
     {
       HTTP_DBG (1, "is parent");
-      ASSERT (hc->parent_req_index == SESSION_INVALID_INDEX);
+      ASSERT (hc->hc_parent_req_index == SESSION_INVALID_INDEX);
       req->flags |= HTTP_REQ_F_IS_PARENT;
-      hc->parent_req_index = req_index;
+      hc->hc_parent_req_index = req_index;
     }
   return req;
 }
@@ -189,7 +190,7 @@ http2_conn_free_req (http_ctx_t *hc, http_req_t *req, clib_thread_index_t thread
   if (req->stream_id)
     hash_unset (hc->req_by_stream_id, req->stream_id);
   if (req->flags & HTTP_REQ_F_IS_PARENT)
-    hc->parent_req_index = SESSION_INVALID_INDEX;
+    hc->hc_parent_req_index = SESSION_INVALID_INDEX;
   if (!(hc->flags & HTTP_CONN_F_IS_SERVER && req->flags & HTTP_REQ_F_IS_PARENT))
     {
       hc->req_num--;
@@ -332,9 +333,9 @@ http2_connection_error (http_ctx_t *hc, http2_error_t error, transport_send_para
 		      if (req->stream_state != HTTP2_STREAM_STATE_CLOSED)
 			session_transport_reset_notify (&req->connection);
 		    }));
-      if (hc->parent_req_index != SESSION_INVALID_INDEX)
+      if (hc->hc_parent_req_index != SESSION_INVALID_INDEX)
 	{
-	  req = http2_req_get (hc->parent_req_index, hc->c_thread_index);
+	  req = http2_req_get (hc->hc_parent_req_index, hc->c_thread_index);
 	  session_transport_reset_notify (&req->connection);
 	}
     }
@@ -350,7 +351,7 @@ http2_connection_error (http_ctx_t *hc, http2_error_t error, transport_send_para
 	}
       else if (!(hc->flags & HTTP_CONN_F_NO_APP_SESSION))
 	{
-	  req = http2_req_get (hc->parent_req_index, hc->c_thread_index);
+	  req = http2_req_get (hc->hc_parent_req_index, hc->c_thread_index);
 	  session_transport_reset_notify (&req->connection);
 	}
       else
@@ -458,7 +459,7 @@ http2_req_get_win_increment (http_req_t *req, http_ctx_t *hc)
 
   increment = http_io_as_max_write (req) - req->our_window;
   /* keep some space for dgram headers */
-  if ((req->flags & HTTP_REQ_F_IS_TUNNEL) && hc->udp_tunnel_mode == HTTP_UDP_TUNNEL_DGRAM)
+  if ((req->flags & HTTP_REQ_F_IS_TUNNEL) && (hc->flags & HTTP_CONN_F_UDP_TUNNEL_DGRAM))
     increment = increment >> 1;
   HTTP_DBG (1, "stream %u window increment %u", req->stream_id, increment);
   return increment;
@@ -936,7 +937,7 @@ http2_sched_dispatch_resp_headers (http_req_t *req, http_ctx_t *hc, u8 *n_emissi
       else if (req->flags & HTTP_REQ_F_IS_TUNNEL)
 	{
 	  if (req->upgrade_proto == HTTP_UPGRADE_PROTO_CONNECT_UDP &&
-	      hc->udp_tunnel_mode == HTTP_UDP_TUNNEL_DGRAM)
+	      (hc->flags & HTTP_CONN_F_UDP_TUNNEL_DGRAM))
 	    req->dispatch_data_cb = http2_sched_dispatch_udp_tunnel;
 	  else
 	    req->dispatch_data_cb = http2_sched_dispatch_tunnel;
@@ -1007,7 +1008,7 @@ http2_sched_dispatch_req_headers (http_req_t *req, http_ctx_t *hc, u8 *n_emissio
       req->upgrade_proto = msg.data.upgrade_proto;
       if (msg.data.upgrade_proto != HTTP_UPGRADE_PROTO_NA)
 	{
-	  if (hc->udp_tunnel_mode == HTTP_UDP_TUNNEL_DGRAM)
+	  if (hc->flags & HTTP_CONN_F_UDP_TUNNEL_DGRAM)
 	    req->dispatch_data_cb = http2_sched_dispatch_udp_tunnel;
 	  control_data.authority = hc->host;
 	  control_data.authority_len = vec_len (hc->host);
@@ -1253,7 +1254,7 @@ http2_req_state_wait_transport_reply (http_ctx_t *hc, http_req_t *req, transport
   if ((req->flags & HTTP_REQ_F_IS_TUNNEL) && http_status_code_str[req->status_code][0] == '2')
     {
       if (req->upgrade_proto == HTTP_UPGRADE_PROTO_CONNECT_UDP &&
-	  hc->udp_tunnel_mode == HTTP_UDP_TUNNEL_DGRAM)
+	  (hc->flags & HTTP_CONN_F_UDP_TUNNEL_DGRAM))
 	new_state = HTTP_REQ_STATE_UDP_TUNNEL;
       else
 	new_state = HTTP_REQ_STATE_TUNNEL;
@@ -1413,7 +1414,7 @@ http2_req_state_wait_transport_method (http_ctx_t *hc, http_req_t *req, transpor
 	    return HTTP_SM_STOP;
 	  }
 	  if (req->upgrade_proto == HTTP_UPGRADE_PROTO_CONNECT_UDP &&
-	      hc->udp_tunnel_mode == HTTP_UDP_TUNNEL_DGRAM)
+	      (hc->flags & HTTP_CONN_F_UDP_TUNNEL_DGRAM))
 	    req->app_reply_next_state = HTTP_REQ_STATE_UDP_TUNNEL;
 	}
       else
@@ -2406,9 +2407,9 @@ http2_handle_goaway_frame (http_ctx_t *hc, http2_frame_header_t *fh)
 			  session_transport_reset_notify (&req->connection);
 			}));
 	}
-      if (hc->parent_req_index != SESSION_INVALID_INDEX)
+      if (hc->hc_parent_req_index != SESSION_INVALID_INDEX)
 	{
-	  req = http2_req_get (hc->parent_req_index, hc->c_thread_index);
+	  req = http2_req_get (hc->hc_parent_req_index, hc->c_thread_index);
 	  session_transport_reset_notify (&req->connection);
 	}
       if (clib_llist_elt_is_linked (hc, sched_list))
@@ -2822,7 +2823,7 @@ http2_transport_rx_callback (http_ctx_t *hc)
       if (http_conn_accept_request (hc, req, 0))
 	{
 	  http2_conn_free_req (hc, req, hc->c_thread_index);
-	  hc->parent_req_index = SESSION_INVALID_INDEX;
+	  hc->hc_parent_req_index = SESSION_INVALID_INDEX;
 	  http_disconnect_transport (hc);
 	  return;
 	}
@@ -2988,9 +2989,9 @@ http2_transport_close_callback (http_ctx_t *hc)
       /* Notify app that transport for parent req is closing to avoid
        * potentially deleting the connection in ready state on transport
        * cleanup */
-      if (hc->parent_req_index != SESSION_INVALID_INDEX)
+      if (hc->hc_parent_req_index != SESSION_INVALID_INDEX)
 	{
-	  req = http2_req_get (hc->parent_req_index, hc->c_thread_index);
+	  req = http2_req_get (hc->hc_parent_req_index, hc->c_thread_index);
 	  session_transport_closing_notify (&req->connection);
 	}
     }
@@ -3014,9 +3015,9 @@ http2_transport_reset_callback (http_ctx_t *hc)
 		    }
 		}));
 
-  if (hc->parent_req_index != SESSION_INVALID_INDEX)
+  if (hc->hc_parent_req_index != SESSION_INVALID_INDEX)
     {
-      req = http2_req_get (hc->parent_req_index, hc->c_thread_index);
+      req = http2_req_get (hc->hc_parent_req_index, hc->c_thread_index);
       session_transport_reset_notify (&req->connection);
     }
 
@@ -3150,9 +3151,9 @@ http2_conn_cleanup_callback (http_ctx_t *hc)
       session_transport_delete_notify (&req->connection);
       http2_conn_free_req (hc, req, hc->c_thread_index);
     }
-  if ((hc->parent_req_index != SESSION_INVALID_INDEX))
+  if ((hc->hc_parent_req_index != SESSION_INVALID_INDEX))
     {
-      req = http2_req_get (hc->parent_req_index, hc->c_thread_index);
+      req = http2_req_get (hc->hc_parent_req_index, hc->c_thread_index);
       if (req->stream_state != HTTP2_STREAM_STATE_CLOSED)
 	session_transport_closing_notify (&req->connection);
       session_transport_delete_notify (&req->connection);

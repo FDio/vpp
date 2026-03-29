@@ -85,7 +85,7 @@ http1_conn_alloc_req (http_ctx_t *hc)
   req->hr_hc_index = hc->hc_hc_index;
   req->c_thread_index = hc->c_thread_index;
   req->c_flags |= TRANSPORT_CONNECTION_F_NO_LOOKUP;
-  hc->opaque = uword_to_pointer (req_index, void *);
+  hc->hc_parent_req_index = req_index;
   hc->flags |= HTTP_CONN_F_HAS_REQUEST;
   return req;
 }
@@ -112,10 +112,8 @@ always_inline http_req_t *
 http1_conn_get_req (http_ctx_t *hc)
 {
   http1_main_t *h1m = &http1_main;
-  u32 req_index;
 
-  req_index = pointer_to_uword (hc->opaque);
-  return pool_elt_at_index (h1m->req_pool[hc->c_thread_index], req_index);
+  return pool_elt_at_index (h1m->req_pool[hc->c_thread_index], hc->hc_parent_req_index);
 }
 
 always_inline void
@@ -123,10 +121,8 @@ http1_conn_free_req (http_ctx_t *hc)
 {
   http1_main_t *h1m = &http1_main;
   http_req_t *req;
-  u32 req_index;
 
-  req_index = pointer_to_uword (hc->opaque);
-  req = pool_elt_at_index (h1m->req_pool[hc->c_thread_index], req_index);
+  req = pool_elt_at_index (h1m->req_pool[hc->c_thread_index], hc->hc_parent_req_index);
   vec_free (req->headers);
   vec_free (req->target);
   http_buffer_free (&req->tx_buf);
@@ -609,9 +605,8 @@ http1_identify_headers (http_req_t *req, u8 *rx_buf, http_status_code_t *ec)
 {
   int rv;
   u8 *p, *end, *name_start, *value_start;
-  u32 name_len, value_len;
+  u32 name_len, value_len, header_index;
   http_field_line_t *field_line;
-  uword header_index;
 
   vec_reset_length (req->headers);
   req->content_len_header_index = ~0;
@@ -1310,7 +1305,7 @@ http1_req_state_wait_app_reply (http_ctx_t *hc, http_req_t *req, transport_send_
 	  response = format (response, connection_upgrade_template,
 			     http1_upgrade_proto_str[req->upgrade_proto]);
 	  if (req->upgrade_proto == HTTP_UPGRADE_PROTO_CONNECT_UDP &&
-	      hc->udp_tunnel_mode == HTTP_UDP_TUNNEL_DGRAM)
+	      (hc->flags & HTTP_CONN_F_UDP_TUNNEL_DGRAM))
 	    next_state = HTTP_REQ_STATE_UDP_TUNNEL;
 	}
       /* cleanup some stuff we don't need anymore in tunnel mode */
