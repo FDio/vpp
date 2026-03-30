@@ -156,6 +156,7 @@ CRYPTO_ALGOS = {
 
 AUTH_ALGOS = {
     "NULL": AuthAlgo("NULL", mac=None, mod=None, key_len=0, trunc_len=0),
+    "AES-CMAC-96": AuthAlgo("AES-CMAC-96", CMAC, algorithms.AES, 16, 12),
     "AES-128-GMAC": AuthAlgo(
         "AES-128-GMAC", mac=None, mod=None, key_len=16, trunc_len=16
     ),
@@ -198,6 +199,7 @@ PRF_TRANSFORM_IDS = {
 
 INTEG_IDS = {
     2: "HMAC-SHA1-96",
+    8: "AES-CMAC-96",
     9: "AES-128-GMAC",
     10: "AES-192-GMAC",
     11: "AES-256-GMAC",
@@ -218,6 +220,17 @@ INTEG_TRANSFORM_IDS = {
 }
 
 GMAC_INTEG_ALGOS = {"AES-128-GMAC", "AES-192-GMAC", "AES-256-GMAC"}
+INTEG_TRANSFORM_IDS = {
+    "NULL": 0,
+    "HMAC-SHA1-96": 2,
+    "AES-CMAC-96": 8,
+    "AES-128-GMAC": 9,
+    "AES-192-GMAC": 10,
+    "AES-256-GMAC": 11,
+    "SHA2-256-128": 12,
+    "SHA2-384-192": 13,
+    "SHA2-512-256": 14,
+}
 
 
 class IKEv2ChildSA(object):
@@ -2353,6 +2366,13 @@ class TestResponderPskPrfAesCmac(TestResponderPsk):
 
     def config_tc(self):
         self.config_params({"ike-prf": "PRF_AES128_CMAC"})
+
+
+class TestResponderPskIntegAesCmac(TestResponderPsk):
+    """test ikev2 responder - integrity AES-CMAC"""
+
+    def config_tc(self):
+        self.config_params({"ike-integ": "AES-CMAC-96"})
 
 
 class TestResponderDpd(TestResponderPsk):
