@@ -330,8 +330,6 @@ ikev2_calc_prfplus (ikev2_sa_transform_t * tr, u8 * key, u8 * seed, int len)
 v8 *
 ikev2_calc_integr (ikev2_sa_transform_t * tr, v8 * key, u8 * data, int len)
 {
-  ikev2_main_per_thread_data_t *ptd = ikev2_get_per_thread_data ();
-  HMAC_CTX *ctx = ptd->hmac_ctx;
   v8 *r;
   unsigned int l;
 
@@ -348,10 +346,27 @@ ikev2_calc_integr (ikev2_sa_transform_t * tr, v8 * key, u8 * data, int len)
       ikev2_elog_debug ("integrity checking with sha256");
     }
 
-  /* verify integrity of data */
-  HMAC_Init_ex (ctx, key, vec_len (key), tr->md, NULL);
-  HMAC_Update (ctx, (const u8 *) data, len);
-  HMAC_Final (ctx, r, &l);
+  if (tr->integ_type == IKEV2_TRANSFORM_INTEG_TYPE_AUTH_AES_CMAC_96)
+    {
+      size_t cmac_len = 0;
+      CMAC_CTX *ctx = CMAC_CTX_new ();
+
+      CMAC_Init (ctx, key, vec_len (key), tr->cipher, NULL);
+      CMAC_Update (ctx, (const u8 *) data, len);
+      CMAC_Final (ctx, r, &cmac_len);
+      CMAC_CTX_free (ctx);
+      l = cmac_len;
+    }
+  else
+    {
+      ikev2_main_per_thread_data_t *ptd = ikev2_get_per_thread_data ();
+      HMAC_CTX *ctx = ptd->hmac_ctx;
+
+      /* verify integrity of data */
+      HMAC_Init_ex (ctx, key, vec_len (key), tr->md, NULL);
+      HMAC_Update (ctx, (const u8 *) data, len);
+      HMAC_Final (ctx, r, &l);
+    }
   ASSERT (l == tr->key_len);
 
   return r;
@@ -1031,6 +1046,14 @@ ikev2_crypto_init (ikev2_main_t * km)
   tr->key_len = 160 / 8;
   tr->key_trunc = 96 / 8;
   tr->md = EVP_sha1 ();
+
+  vec_add2 (km->supported_transforms, tr, 1);
+  tr->type = IKEV2_TRANSFORM_TYPE_INTEG;
+  tr->integ_type = IKEV2_TRANSFORM_INTEG_TYPE_AUTH_AES_CMAC_96;
+  tr->key_len = 128 / 8;
+  tr->key_trunc = 96 / 8;
+  tr->md = 0;
+  tr->cipher = EVP_aes_128_cbc ();
 
   vec_add2 (km->supported_transforms, tr, 1);
   tr->type = IKEV2_TRANSFORM_TYPE_INTEG;
