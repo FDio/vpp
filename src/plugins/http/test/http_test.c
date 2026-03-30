@@ -2144,7 +2144,7 @@ http_test_http_headers_rx_to_tx (vlib_main_t *vm)
 static int
 http_test_parse_content_length (vlib_main_t *vm)
 {
-  http_req_t req = {};
+  http_ctx_t req = {};
   http_field_line_t *field_line;
   int rv;
 
