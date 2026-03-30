@@ -300,7 +300,7 @@ class VppPGInterface(VppInterface):
         return output
 
     def get_capture(
-        self, expected_count=None, remark=None, timeout=1, filter_out_fn=is_ipv6_misc
+        self, expected_count=None, remark=None, timeout=1.0, filter_out_fn=is_ipv6_misc
     ):
         """Get captured packets
 
@@ -370,7 +370,7 @@ class VppPGInterface(VppInterface):
             )
 
     def assert_nothing_captured(
-        self, timeout=1, remark=None, filter_out_fn=is_ipv6_misc
+        self, timeout=1.0, remark=None, filter_out_fn=is_ipv6_misc
     ):
         """Assert that nothing unfiltered was captured on interface
 
@@ -399,7 +399,7 @@ class VppPGInterface(VppInterface):
                 self.test.logger.debug("Timeout waiting for pg to stop")
                 break
 
-    def wait_for_capture_file(self, timeout=1):
+    def wait_for_capture_file(self, timeout=1.0):
         """
         Wait until pcap capture file appears
 
@@ -575,7 +575,7 @@ class VppPGInterface(VppInterface):
         else:
             self.test.logger.info("No ARP received on port %s" % pg_interface.name)
 
-    def resolve_ndp(self, pg_interface=None, timeout=1, link_layer=False):
+    def resolve_ndp(self, pg_interface=None, timeout=1.0, link_layer=False):
         """Resolve NDP using provided packet-generator interface
 
         :param pg_interface: interface used to resolve, if None then this
