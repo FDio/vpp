@@ -70,6 +70,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "db4f8931_f66c84a8",
+        "filename": "src/plugins/cnat/cnat_session.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 20,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-03-30T08:33:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "67be2014_8bc66457",
+      "revId": "af9540b9ab768fe844ba9b346af7411296f04164",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "b5d93d34_9ae904dc",
@@ -83,6 +101,24 @@
       "writtenOn": "2026-02-27T14:44:40Z",
       "side": 1,
       "message": "rather than extending the key, I\u0027d prefer to replace/rename the fib_index field by a context_id. If a custom context_id is passed then use it as-is, otherwise default to fib_index",
+      "revId": "af9540b9ab768fe844ba9b346af7411296f04164",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "60487ec7_efed8251",
+        "filename": "src/plugins/cnat/cnat_session.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 53,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-03-30T08:33:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b5d93d34_9ae904dc",
       "revId": "af9540b9ab768fe844ba9b346af7411296f04164",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }

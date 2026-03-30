@@ -1,0 +1,157 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c960e488_e5767eea",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 19
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-03-30T08:33:06Z",
+      "side": 1,
+      "message": "Please make sure it passes the CI",
+      "revId": "2359c3a2e98ce1d1e3324c17dd7b83f67a098e29",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "018e04fa_a401b938",
+        "filename": "src/plugins/cnat/cnat_node.h",
+        "patchSetId": 19
+      },
+      "lineNbr": 83,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-03-30T08:33:06Z",
+      "side": 1,
+      "message": "cnat_add_trace() is called from cnat_sub callbacks, which run after cnat_lookup_create_or_return(). That function starts with: vnet_buffer2 (b)-\u003esession.flags \u003d 0;\nThis unconditionally clears all flags including HAS_SCOPE. So when cnat_add_trace() runs and evaluates cnat_scope_id(b), the flag is gone and it always returns 0. The trace will always show lookup_context_id \u003d fib_index, never the actual scope_id that was used for the lookup. The trace is misleading/broken for scoped packets.",
+      "revId": "2359c3a2e98ce1d1e3324c17dd7b83f67a098e29",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "64c826bc_2a71784b",
+        "filename": "src/plugins/cnat/cnat_node.h",
+        "patchSetId": 19
+      },
+      "lineNbr": 1055,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-03-30T08:33:06Z",
+      "side": 1,
+      "message": "I think this should be discarded",
+      "revId": "2359c3a2e98ce1d1e3324c17dd7b83f67a098e29",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9aae7e88_09a72550",
+        "filename": "src/plugins/cnat/cnat_node.h",
+        "patchSetId": 19
+      },
+      "lineNbr": 1123,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-03-30T08:33:06Z",
+      "side": 1,
+      "message": "cnat_scope_id macro should return scope id or fib_index directly",
+      "revId": "2359c3a2e98ce1d1e3324c17dd7b83f67a098e29",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c33abc67_b64162df",
+        "filename": "src/plugins/cnat/cnat_node.h",
+        "patchSetId": 19
+      },
+      "lineNbr": 1151,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-03-30T08:33:06Z",
+      "side": 1,
+      "message": "why is it needed?",
+      "revId": "2359c3a2e98ce1d1e3324c17dd7b83f67a098e29",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a12531b0_77ad1802",
+        "filename": "src/plugins/cnat/cnat_session.c",
+        "patchSetId": 19
+      },
+      "lineNbr": 280,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-03-30T08:33:06Z",
+      "side": 1,
+      "message": "this passes session-\u003ekey.context_id to cnat_client_free_by_ip as a fib_index. This should be safe today because HAS_CLIENT is only set on return sessions, which always store fib_index as context_id. But this invariant is not enforced. Please add an assert to catch any future regression:               \n\n    ASSERT (session-\u003ekey.context_id \u003d\u003d cnat_timestamp_get (session-\u003evalue.cs_session_index)-\u003efib_index);",
+      "revId": "2359c3a2e98ce1d1e3324c17dd7b83f67a098e29",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a9d5f2d6_790c79e4",
+        "filename": "src/plugins/cnat/cnat_session.h",
+        "patchSetId": 19
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-03-30T08:33:06Z",
+      "side": 1,
+      "message": "we call it context_id here but we also use scope_id - we should use the same name everywhere",
+      "revId": "2359c3a2e98ce1d1e3324c17dd7b83f67a098e29",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5799eb5b_82273934",
+        "filename": "src/plugins/cnat/cnat_session.h",
+        "patchSetId": 19
+      },
+      "lineNbr": 115,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-03-30T08:33:06Z",
+      "side": 1,
+      "message": "this should return fib_index if no scope id avail",
+      "revId": "2359c3a2e98ce1d1e3324c17dd7b83f67a098e29",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c58e4e0c_91ae7d51",
+        "filename": "src/vnet/buffer.h",
+        "patchSetId": 19
+      },
+      "lineNbr": 461,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-03-30T08:33:06Z",
+      "side": 1,
+      "message": "field should be renamed for clarity eg. scope_or_flow_id",
+      "revId": "2359c3a2e98ce1d1e3324c17dd7b83f67a098e29",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
