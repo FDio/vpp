@@ -97,13 +97,13 @@ func (s *LdpSuite) SetupTest() {
 	arp := fmt.Sprintf("set ip neighbor %s %s %s",
 		s.Interfaces.Server.Name(),
 		s.Interfaces.Client.Ip4AddressString(),
-		s.Interfaces.Client.Host.HwAddress)
+		s.Interfaces.Client.HwAddress)
 	Log(serverVpp.Vppctl(arp))
 
 	arp = fmt.Sprintf("set ip neighbor %s %s %s",
 		s.Interfaces.Client.Name(),
 		s.Interfaces.Server.Ip4AddressString(),
-		s.Interfaces.Server.Host.HwAddress)
+		s.Interfaces.Server.HwAddress)
 	Log(clientVpp.Vppctl(arp))
 
 	_, ipNet, err := net.ParseCIDR(s.Interfaces.Client.Ip4Address)

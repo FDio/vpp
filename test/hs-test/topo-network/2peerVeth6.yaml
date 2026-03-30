@@ -5,7 +5,7 @@ devices:
   - name: "srv"
     ipv6: true
     type: "veth"
-    preset-hw-address: "00:00:5e:00:53:01"
+    preset-hw-address: "00:00:5e:00:02:01"
     host:
       name: "srv_veth"
 

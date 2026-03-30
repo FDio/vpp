@@ -139,7 +139,7 @@ func (vpp *VppInstance) getEtcDir() string {
 func (vpp *VppInstance) AppendToCliConfig(vppCliConfig string) {
 	f, err := os.OpenFile(vpp.Container.GetHostWorkDir()+"/cli-config.conf", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	AssertNil(err)
-	_, err = f.Write([]byte(vppCliConfig))
+	_, err = f.Write([]byte(vppCliConfig + "\n"))
 	AssertNil(err)
 	err = f.Close()
 	AssertNil(err)
@@ -280,6 +280,11 @@ func (vpp *VppInstance) Vppctl(command any, arguments ...any) string {
 		vppCliCommand = fmt.Sprint(command)
 	}
 
+	if *DryRun {
+		vpp.AppendToCliConfig(vppCliCommand)
+		return fmt.Sprintf("Command added to '%s/cli-config.conf': %s", vpp.Container.GetContainerWorkDir(), vppCliCommand)
+	}
+
 	containerExecCommand := fmt.Sprintf("docker exec --detach=false %[1]s vppctl -s %[2]s %[3]s",
 		vpp.Container.Name, vpp.getCliSocket(), vppCliCommand)
 	Log(containerExecCommand)
@@ -352,6 +357,7 @@ func (vpp *VppInstance) createAfPacket(veth *NetInterface, IPv6 bool, opts ...Af
 	var ipAddress string
 	var err error
 	veth.vppName = "host-" + veth.Name()
+	hwAddressCmd := ""
 
 	if *DryRun {
 		if IPv6 {
@@ -367,11 +373,16 @@ func (vpp *VppInstance) createAfPacket(veth *NetInterface, IPv6 bool, opts ...Af
 			return 0, err
 		}
 
+		if veth.HwAddress != (MacAddress{}) {
+			hwAddressCmd = fmt.Sprintf("hw-addr %s", veth.HwAddress.String())
+		}
+
 		vppCliConfig := fmt.Sprintf(
-			"create host-interface name %s\n"+
+			"create host-interface name %s %s\n"+
 				"set int state %s up\n"+
 				"set int ip addr %s %s\n",
 			veth.Name(),
+			hwAddressCmd,
 			veth.VppName(),
 			veth.VppName(), ipAddress)
 		vpp.AppendToCliConfig(vppCliConfig)
@@ -530,11 +541,15 @@ func (vpp *VppInstance) addAppNamespace(
 func (vpp *VppInstance) CreateTap(tap *NetInterface, IPv6 bool, tapId uint32) error {
 	numRxQueues := uint16(max(1, vpp.CpuConfig.NumWorkers))
 	tapFlags := Consistent_qp
+	// manually set here because of dryrun mode - otherwise dryrun uses host name (until vpp.CreateTap finishes)
+	// name is properly overwritten (just in case) on normal runs
+	tap.name = fmt.Sprintf("tap%d", tapId)
 
 	if *DryRun {
 		flagsCli := "consistent-qp"
 		ipAddressVpp := ""
 		ipAddressHost := ""
+		hwAddressCmd := ""
 
 		if IPv6 {
 			ipAddressHost = "host-ip6-addr " + tap.Host.Ip6Address
@@ -544,7 +559,11 @@ func (vpp *VppInstance) CreateTap(tap *NetInterface, IPv6 bool, tapId uint32) er
 			ipAddressVpp = tap.Ip4Address
 		}
 
-		vppCliConfig := fmt.Sprintf("create tap id %d host-if-name %s %s num-rx-queues %d num-tx-queues %d %s\n"+
+		if tap.HwAddress != (MacAddress{}) {
+			hwAddressCmd = "hw-addr " + tap.HwAddress.String()
+		}
+
+		vppCliConfig := fmt.Sprintf("create tap id %d host-if-name %s %s num-rx-queues %d num-tx-queues %d hw-addr %s %s\n"+
 			"set int ip addr tap%d %s\n"+
 			"set int state tap%d up\n",
 			tapId,
@@ -552,6 +571,7 @@ func (vpp *VppInstance) CreateTap(tap *NetInterface, IPv6 bool, tapId uint32) er
 			ipAddressHost,
 			numRxQueues,
 			numRxQueues+1,
+			hwAddressCmd,
 			flagsCli,
 			tapId,
 			ipAddressVpp,
@@ -573,6 +593,12 @@ func (vpp *VppInstance) CreateTap(tap *NetInterface, IPv6 bool, tapId uint32) er
 		NumRxQueues:      numRxQueues,
 		NumTxQueues:      numRxQueues + 1,
 		TapFlags:         tapv2.TapFlags(tapFlags),
+		UseRandomMac:     true,
+	}
+
+	if tap.HwAddress != (MacAddress{}) {
+		createTapReq.UseRandomMac = false
+		createTapReq.MacAddress = tap.HwAddress
 	}
 
 	Log("create tap interface " + tap.Name() + " num-rx-queues " + strconv.Itoa(int(numRxQueues)))
