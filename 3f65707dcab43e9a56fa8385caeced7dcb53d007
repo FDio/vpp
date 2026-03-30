@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5a36af9c_ef7659c7",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-03-30T02:02:14Z",
+      "side": 1,
+      "message": "How is pppoe code going to access data from dhcpv6 plugin knowing that each plugin have symbols in private namespace?",
+      "revId": "3f65707dcab43e9a56fa8385caeced7dcb53d007",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
