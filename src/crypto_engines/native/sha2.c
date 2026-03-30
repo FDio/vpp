@@ -89,14 +89,14 @@ VNET_CRYPTO_REGISTER_HASH_ALG_GROUP (native_hash_group) = {
 					    vnet_crypto_op_chunk_t *chunks __clib_unused,          \
 					    u32 n_ops, clib_thread_index_t thread_index)           \
   {                                                                                                \
-    return crypto_native_ops_hmac_sha2 (ops, n_ops, 0, CLIB_SHA2_##b, thread_index);               \
+    return crypto_native_ops_hmac_sha2 (ops, n_ops, 0, CLIB_SHA2_##b, 0, thread_index);            \
   }                                                                                                \
                                                                                                    \
   static u32 crypto_native_ops_chained_hmac_sha##b (vnet_crypto_op_t *ops[],                       \
 						    vnet_crypto_op_chunk_t *chunks, u32 n_ops,     \
 						    clib_thread_index_t thread_index)              \
   {                                                                                                \
-    return crypto_native_ops_hmac_sha2 (ops, n_ops, chunks, CLIB_SHA2_##b, thread_index);          \
+    return crypto_native_ops_hmac_sha2 (ops, n_ops, chunks, CLIB_SHA2_##b, 0, thread_index);       \
   }                                                                                                \
                                                                                                    \
   VNET_CRYPTO_REGISTER_HASH_ALG (crypto_native_hash_sha##b) = {                                    \
@@ -117,16 +117,48 @@ _ (SHA2_256, 256)
 
 #undef _
 
+static u32
+crypto_native_ops_hmac_sha256_icv12 (vnet_crypto_op_t *ops[],
+				     vnet_crypto_op_chunk_t *chunks __clib_unused, u32 n_ops,
+				     clib_thread_index_t thread_index)
+{
+  return crypto_native_ops_hmac_sha2 (ops, n_ops, 0, CLIB_SHA2_256, 12, thread_index);
+}
+
+static u32
+crypto_native_ops_chained_hmac_sha256_icv12 (vnet_crypto_op_t *ops[],
+					     vnet_crypto_op_chunk_t *chunks, u32 n_ops,
+					     clib_thread_index_t thread_index)
+{
+  return crypto_native_ops_hmac_sha2 (ops, n_ops, chunks, CLIB_SHA2_256, 12, thread_index);
+}
+
+static u32
+crypto_native_ops_hmac_sha256_icv16 (vnet_crypto_op_t *ops[],
+				     vnet_crypto_op_chunk_t *chunks __clib_unused, u32 n_ops,
+				     clib_thread_index_t thread_index)
+{
+  return crypto_native_ops_hmac_sha2 (ops, n_ops, 0, CLIB_SHA2_256, 16, thread_index);
+}
+
+static u32
+crypto_native_ops_chained_hmac_sha256_icv16 (vnet_crypto_op_t *ops[],
+					     vnet_crypto_op_chunk_t *chunks, u32 n_ops,
+					     clib_thread_index_t thread_index)
+{
+  return crypto_native_ops_hmac_sha2 (ops, n_ops, chunks, CLIB_SHA2_256, 16, thread_index);
+}
+
 VNET_CRYPTO_REGISTER_ALG (crypto_native_hmac_sha256_icv12) = {
   .group = &native_sha2_group,
   .alg_id = VNET_CRYPTO_ALG_SHA2_256_ICV12,
-  .simple = { .hmac_fn = crypto_native_ops_hmac_sha256, },
-  .chained = { .hmac_fn = crypto_native_ops_chained_hmac_sha256, },
+  .simple = { .hmac_fn = crypto_native_ops_hmac_sha256_icv12, },
+  .chained = { .hmac_fn = crypto_native_ops_chained_hmac_sha256_icv12, },
 };
 
 VNET_CRYPTO_REGISTER_ALG (crypto_native_hmac_sha256_icv16) = {
   .group = &native_sha2_group,
   .alg_id = VNET_CRYPTO_ALG_SHA2_256_ICV16,
-  .simple = { .hmac_fn = crypto_native_ops_hmac_sha256, },
-  .chained = { .hmac_fn = crypto_native_ops_chained_hmac_sha256, },
+  .simple = { .hmac_fn = crypto_native_ops_hmac_sha256_icv16, },
+  .chained = { .hmac_fn = crypto_native_ops_chained_hmac_sha256_icv16, },
 };

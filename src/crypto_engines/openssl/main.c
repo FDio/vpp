@@ -161,11 +161,11 @@ typedef struct
 #endif
 
 #define foreach_openssl_hash_op                                                                    \
-  _ (SHA1_160, EVP_sha1)                                                                           \
-  _ (SHA2_224, EVP_sha224)                                                                         \
-  _ (SHA2_256, EVP_sha256)                                                                         \
-  _ (SHA2_384, EVP_sha384)                                                                         \
-  _ (SHA2_512, EVP_sha512)
+  _ (SHA1_160, EVP_sha1, 20)                                                                       \
+  _ (SHA2_224, EVP_sha224, 28)                                                                     \
+  _ (SHA2_256, EVP_sha256, 32)                                                                     \
+  _ (SHA2_384, EVP_sha384, 48)                                                                     \
+  _ (SHA2_512, EVP_sha512, 64)
 
 #define foreach_openssl_hmac_op                                                                    \
   _ (MD5, EVP_md5)                                                                                 \
@@ -654,7 +654,7 @@ openssl_ops_dec_chacha20_poly1305 (vnet_crypto_op_t *ops[], vnet_crypto_op_chunk
 
 static_always_inline u32
 openssl_ops_hash (vnet_crypto_hash_op_t *ops[], vnet_crypto_op_chunk_t *chunks, u32 n_ops,
-		  const EVP_MD *md)
+		  const EVP_MD *md, u32 digest_len)
 {
   EVP_MD_CTX *ctx = EVP_MD_CTX_create ();
   vnet_crypto_op_chunk_t *chp;
@@ -685,7 +685,7 @@ openssl_ops_hash (vnet_crypto_hash_op_t *ops[], vnet_crypto_op_chunk_t *chunks, 
 	EVP_DigestUpdate (ctx, op->src, op->len);
 
       EVP_DigestFinal_ex (ctx, op->digest, &md_len);
-      ASSERT (md_len == crypto_main.hash_algs[op->ctx->alg].digest_len);
+      ASSERT (md_len == digest_len);
       op->status = VNET_CRYPTO_OP_STATUS_COMPLETED;
     }
   EVP_MD_CTX_destroy (ctx);
@@ -697,7 +697,7 @@ static_always_inline void openssl_ctx_hmac_add (const u8 *key_bytes, u16 key_len
 
 static_always_inline u32
 openssl_ops_hmac (vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks, u32 n_ops,
-		  const EVP_MD *md, clib_thread_index_t thread_index)
+		  const EVP_MD *md, u32 out_len, clib_thread_index_t thread_index)
 {
   u8 buffer[64];
   HMAC_CTX *ctx;
@@ -713,7 +713,7 @@ openssl_ops_hmac (vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks, u32 n
 	  (openssl_hmac_key_data_t *) vnet_crypto_get_simple_key_data_for_thread (op->ctx,
 										  thread_index);
       unsigned int out_len = 0;
-      size_t sz = op->auth_len ? op->auth_len : EVP_MD_size (md);
+      size_t sz = out_len ? out_len : op->auth_len ? op->auth_len : EVP_MD_size (md);
 
       ctx = kd->hmac_ctx;
       if (ctx == 0)
@@ -1162,18 +1162,18 @@ foreach_openssl_chacha20_evp_op;
 foreach_openssl_combined_evp_op;
 #undef _
 
-#define _(a, b)                                                                                    \
+#define _(a, b, d)                                                                                 \
   static u32 openssl_ops_hash_##a (vnet_crypto_hash_op_t *ops[],                                   \
 				   vnet_crypto_op_chunk_t *chunks __clib_unused, u32 n_ops,        \
 				   clib_thread_index_t thread_index __clib_unused)                 \
   {                                                                                                \
-    return openssl_ops_hash (ops, 0, n_ops, b ());                                                 \
+    return openssl_ops_hash (ops, 0, n_ops, b (), d);                                              \
   }                                                                                                \
   static u32 openssl_ops_hash_chained_##a (vnet_crypto_hash_op_t *ops[],                           \
 					   vnet_crypto_op_chunk_t *chunks, u32 n_ops,              \
 					   clib_thread_index_t thread_index __clib_unused)         \
   {                                                                                                \
-    return openssl_ops_hash (ops, chunks, n_ops, b ());                                            \
+    return openssl_ops_hash (ops, chunks, n_ops, b (), d);                                         \
   }
 
   foreach_openssl_hash_op;
@@ -1184,17 +1184,106 @@ foreach_openssl_combined_evp_op;
 				   vnet_crypto_op_chunk_t *chunks __clib_unused, u32 n_ops,        \
 				   clib_thread_index_t thread_index)                               \
   {                                                                                                \
-    return openssl_ops_hmac (ops, 0, n_ops, b (), thread_index);                                   \
+    return openssl_ops_hmac (ops, 0, n_ops, b (), 0, thread_index);                                \
   }                                                                                                \
   static u32 openssl_ops_hmac_chained_##a (vnet_crypto_op_t *ops[],                                \
 					   vnet_crypto_op_chunk_t *chunks, u32 n_ops,              \
 					   clib_thread_index_t thread_index)                       \
   {                                                                                                \
-    return openssl_ops_hmac (ops, chunks, n_ops, b (), thread_index);                              \
+    return openssl_ops_hmac (ops, chunks, n_ops, b (), 0, thread_index);                           \
   }
 
 foreach_openssl_hmac_op;
 #undef _
+
+static u32
+openssl_ops_hmac_md5_icv12 (vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks __clib_unused,
+			    u32 n_ops, clib_thread_index_t thread_index)
+{
+  return openssl_ops_hmac (ops, 0, n_ops, EVP_md5 (), 12, thread_index);
+}
+
+static u32
+openssl_ops_hmac_chained_md5_icv12 (vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks,
+				    u32 n_ops, clib_thread_index_t thread_index)
+{
+  return openssl_ops_hmac (ops, chunks, n_ops, EVP_md5 (), 12, thread_index);
+}
+
+static u32
+openssl_ops_hmac_sha1_160_icv12 (vnet_crypto_op_t *ops[],
+				 vnet_crypto_op_chunk_t *chunks __clib_unused, u32 n_ops,
+				 clib_thread_index_t thread_index)
+{
+  return openssl_ops_hmac (ops, 0, n_ops, EVP_sha1 (), 12, thread_index);
+}
+
+static u32
+openssl_ops_hmac_chained_sha1_160_icv12 (vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks,
+					 u32 n_ops, clib_thread_index_t thread_index)
+{
+  return openssl_ops_hmac (ops, chunks, n_ops, EVP_sha1 (), 12, thread_index);
+}
+
+static u32
+openssl_ops_hmac_sha2_256_icv12 (vnet_crypto_op_t *ops[],
+				 vnet_crypto_op_chunk_t *chunks __clib_unused, u32 n_ops,
+				 clib_thread_index_t thread_index)
+{
+  return openssl_ops_hmac (ops, 0, n_ops, EVP_sha256 (), 12, thread_index);
+}
+
+static u32
+openssl_ops_hmac_chained_sha2_256_icv12 (vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks,
+					 u32 n_ops, clib_thread_index_t thread_index)
+{
+  return openssl_ops_hmac (ops, chunks, n_ops, EVP_sha256 (), 12, thread_index);
+}
+
+static u32
+openssl_ops_hmac_sha2_256_icv16 (vnet_crypto_op_t *ops[],
+				 vnet_crypto_op_chunk_t *chunks __clib_unused, u32 n_ops,
+				 clib_thread_index_t thread_index)
+{
+  return openssl_ops_hmac (ops, 0, n_ops, EVP_sha256 (), 16, thread_index);
+}
+
+static u32
+openssl_ops_hmac_chained_sha2_256_icv16 (vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks,
+					 u32 n_ops, clib_thread_index_t thread_index)
+{
+  return openssl_ops_hmac (ops, chunks, n_ops, EVP_sha256 (), 16, thread_index);
+}
+
+static u32
+openssl_ops_hmac_sha2_384_icv24 (vnet_crypto_op_t *ops[],
+				 vnet_crypto_op_chunk_t *chunks __clib_unused, u32 n_ops,
+				 clib_thread_index_t thread_index)
+{
+  return openssl_ops_hmac (ops, 0, n_ops, EVP_sha384 (), 24, thread_index);
+}
+
+static u32
+openssl_ops_hmac_chained_sha2_384_icv24 (vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks,
+					 u32 n_ops, clib_thread_index_t thread_index)
+{
+  return openssl_ops_hmac (ops, chunks, n_ops, EVP_sha384 (), 24, thread_index);
+}
+
+static u32
+openssl_ops_hmac_sha2_512_icv32 (vnet_crypto_op_t *ops[],
+				 vnet_crypto_op_chunk_t *chunks __clib_unused, u32 n_ops,
+				 clib_thread_index_t thread_index)
+{
+  return openssl_ops_hmac (ops, 0, n_ops, EVP_sha512 (), 32, thread_index);
+}
+
+static u32
+openssl_ops_hmac_chained_sha2_512_icv32 (vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks,
+					 u32 n_ops, clib_thread_index_t thread_index)
+{
+  return openssl_ops_hmac (ops, chunks, n_ops, EVP_sha512 (), 32, thread_index);
+}
 
 static char *
 crypto_openssl_init (vnet_crypto_engine_registration_t *r __clib_unused)
@@ -1296,46 +1385,46 @@ foreach_openssl_aes_evp_op foreach_openssl_chacha20_evp_op
 VNET_CRYPTO_REGISTER_ALG (openssl_hmac_md5_icv12) = {
   .group = &openssl_hmac_group,
   .alg_id = VNET_CRYPTO_ALG_MD5_ICV12,
-  .simple = { .hmac_fn = openssl_ops_hmac_MD5, },
-  .chained = { .hmac_fn = openssl_ops_hmac_chained_MD5, },
+  .simple = { .hmac_fn = openssl_ops_hmac_md5_icv12, },
+  .chained = { .hmac_fn = openssl_ops_hmac_chained_md5_icv12, },
 };
 
 VNET_CRYPTO_REGISTER_ALG (openssl_hmac_sha1_icv12) = {
   .group = &openssl_hmac_group,
   .alg_id = VNET_CRYPTO_ALG_SHA1_160_ICV12,
-  .simple = { .hmac_fn = openssl_ops_hmac_SHA1_160, },
-  .chained = { .hmac_fn = openssl_ops_hmac_chained_SHA1_160, },
+  .simple = { .hmac_fn = openssl_ops_hmac_sha1_160_icv12, },
+  .chained = { .hmac_fn = openssl_ops_hmac_chained_sha1_160_icv12, },
 };
 
 VNET_CRYPTO_REGISTER_ALG (openssl_hmac_sha256_icv12) = {
   .group = &openssl_hmac_group,
   .alg_id = VNET_CRYPTO_ALG_SHA2_256_ICV12,
-  .simple = { .hmac_fn = openssl_ops_hmac_SHA2_256, },
-  .chained = { .hmac_fn = openssl_ops_hmac_chained_SHA2_256, },
+  .simple = { .hmac_fn = openssl_ops_hmac_sha2_256_icv12, },
+  .chained = { .hmac_fn = openssl_ops_hmac_chained_sha2_256_icv12, },
 };
 
 VNET_CRYPTO_REGISTER_ALG (openssl_hmac_sha256_icv16) = {
   .group = &openssl_hmac_group,
   .alg_id = VNET_CRYPTO_ALG_SHA2_256_ICV16,
-  .simple = { .hmac_fn = openssl_ops_hmac_SHA2_256, },
-  .chained = { .hmac_fn = openssl_ops_hmac_chained_SHA2_256, },
+  .simple = { .hmac_fn = openssl_ops_hmac_sha2_256_icv16, },
+  .chained = { .hmac_fn = openssl_ops_hmac_chained_sha2_256_icv16, },
 };
 
 VNET_CRYPTO_REGISTER_ALG (openssl_hmac_sha384_icv24) = {
   .group = &openssl_hmac_group,
   .alg_id = VNET_CRYPTO_ALG_SHA2_384_ICV24,
-  .simple = { .hmac_fn = openssl_ops_hmac_SHA2_384, },
-  .chained = { .hmac_fn = openssl_ops_hmac_chained_SHA2_384, },
+  .simple = { .hmac_fn = openssl_ops_hmac_sha2_384_icv24, },
+  .chained = { .hmac_fn = openssl_ops_hmac_chained_sha2_384_icv24, },
 };
 
 VNET_CRYPTO_REGISTER_ALG (openssl_hmac_sha512_icv32) = {
   .group = &openssl_hmac_group,
   .alg_id = VNET_CRYPTO_ALG_SHA2_512_ICV32,
-  .simple = { .hmac_fn = openssl_ops_hmac_SHA2_512, },
-  .chained = { .hmac_fn = openssl_ops_hmac_chained_SHA2_512, },
+  .simple = { .hmac_fn = openssl_ops_hmac_sha2_512_icv32, },
+  .chained = { .hmac_fn = openssl_ops_hmac_chained_sha2_512_icv32, },
 };
 
-#define _(a, b)                                                                                    \
+#define _(a, b, d)                                                                                 \
   VNET_CRYPTO_REGISTER_HASH_ALG (openssl_hash_##a) = {                                             \
     .group = &openssl_hash_group,                                                                  \
     .alg_id = VNET_CRYPTO_HASH_ALG_##a,                                                            \

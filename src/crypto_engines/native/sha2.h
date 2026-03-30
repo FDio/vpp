@@ -9,7 +9,7 @@
 
 static_always_inline u32
 crypto_native_ops_hmac_sha2 (vnet_crypto_op_t *ops[], u32 n_ops, vnet_crypto_op_chunk_t *chunks,
-			     clib_sha2_type_t type, clib_thread_index_t thread_index)
+			     clib_sha2_type_t type, u32 out_len, clib_thread_index_t thread_index)
 {
   clib_sha2_hmac_ctx_t ctx;
   u8 buffer[64];
@@ -32,36 +32,21 @@ crypto_native_ops_hmac_sha2 (vnet_crypto_op_t *ops[], u32 n_ops, vnet_crypto_op_
 
       clib_sha2_hmac_final (&ctx, buffer);
 
-      if (op->auth_len)
+      sz = out_len ? out_len : op->auth_len;
+      if (sz == 0)
+	sz = clib_sha2_variants[type].digest_size;
+
+      if (op->flags & VNET_CRYPTO_OP_FLAG_HMAC_CHECK)
 	{
-	  sz = op->auth_len;
-	  if (op->flags & VNET_CRYPTO_OP_FLAG_HMAC_CHECK)
+	  if ((memcmp (op->auth, buffer, sz)))
 	    {
-	      if ((memcmp (op->auth, buffer, sz)))
-		{
-		  n_fail++;
-		  op->status = VNET_CRYPTO_OP_STATUS_FAIL_BAD_HMAC;
-		  continue;
-		}
+	      n_fail++;
+	      op->status = VNET_CRYPTO_OP_STATUS_FAIL_BAD_HMAC;
+	      continue;
 	    }
-	  else
-	    clib_memcpy_fast (op->auth, buffer, sz);
 	}
       else
-	{
-	  sz = clib_sha2_variants[type].digest_size;
-	  if (op->flags & VNET_CRYPTO_OP_FLAG_HMAC_CHECK)
-	    {
-	      if ((memcmp (op->auth, buffer, sz)))
-		{
-		  n_fail++;
-		  op->status = VNET_CRYPTO_OP_STATUS_FAIL_BAD_HMAC;
-		  continue;
-		}
-	    }
-	  else
-	    clib_memcpy_fast (op->auth, buffer, sz);
-	}
+	clib_memcpy_fast (op->auth, buffer, sz);
 
       op->status = VNET_CRYPTO_OP_STATUS_COMPLETED;
     }

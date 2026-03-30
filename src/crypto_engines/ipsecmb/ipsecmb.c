@@ -143,13 +143,14 @@ ipsecmb_get_per_thread_data (void)
 
 #define foreach_chacha_poly_fixed_aad_lengths _ (0) _ (8) _ (12)
 
+/* Additional versions of some of the above, with ICV=12 instead of ICV=16 */
 #define foreach_ipsecmb_combined_fixed_extra_op                                                    \
-  _ (AES_128_CBC_SHA2_256, 12)                                                                     \
-  _ (AES_192_CBC_SHA2_256, 12)                                                                     \
-  _ (AES_256_CBC_SHA2_256, 12)                                                                     \
-  _ (AES_128_CTR_SHA2_256, 12)                                                                     \
-  _ (AES_192_CTR_SHA2_256, 12)                                                                     \
-  _ (AES_256_CTR_SHA2_256, 12)
+  _ (AES_128_CBC_SHA2_256, 128, CBC, CBC, SHA_256, SHA2_256, 64, 32, 32, 12)                       \
+  _ (AES_192_CBC_SHA2_256, 192, CBC, CBC, SHA_256, SHA2_256, 64, 32, 32, 12)                       \
+  _ (AES_256_CBC_SHA2_256, 256, CBC, CBC, SHA_256, SHA2_256, 64, 32, 32, 12)                       \
+  _ (AES_128_CTR_SHA2_256, 128, CNTR, CTR, SHA_256, SHA2_256, 64, 32, 32, 12)                      \
+  _ (AES_192_CTR_SHA2_256, 192, CNTR, CTR, SHA_256, SHA2_256, 64, 32, 32, 12)                      \
+  _ (AES_256_CTR_SHA2_256, 256, CNTR, CTR, SHA_256, SHA2_256, 64, 32, 32, 12)
 
 static_always_inline vnet_crypto_op_status_t
 ipsecmb_status_job (IMB_STATUS status)
@@ -171,11 +172,19 @@ ipsecmb_status_job (IMB_STATUS status)
   return VNET_CRYPTO_OP_STATUS_FAIL_ENGINE_ERR;
 }
 
+static_always_inline u32
+ipsecmb_auth_out_len (vnet_crypto_op_t *op, u32 digest_size, u32 out_len)
+{
+  u32 len = out_len ? out_len : op->auth_len ? op->auth_len : digest_size;
+
+  return len;
+}
+
 always_inline void
-ipsecmb_retire_hmac_job (IMB_JOB *job, u32 *n_fail, u32 digest_size)
+ipsecmb_retire_hmac_job (IMB_JOB *job, u32 *n_fail, u32 digest_size, u32 out_len)
 {
   vnet_crypto_op_t *op = job->user_data;
-  u32 len = op->auth_len ? op->auth_len : digest_size;
+  u32 len = ipsecmb_auth_out_len (op, digest_size, out_len);
 
   if (PREDICT_FALSE (IMB_STATUS_COMPLETED != job->status))
     {
@@ -203,7 +212,7 @@ ipsecmb_retire_hmac_job (IMB_JOB *job, u32 *n_fail, u32 digest_size)
 
 static_always_inline u32
 ipsecmb_ops_hmac_inline (vnet_crypto_op_t *ops[], u32 n_ops, u32 hash_size, u32 digest_size,
-			 IMB_HASH_ALG alg, u32 key_data_offset)
+			 IMB_HASH_ALG alg, u32 key_data_offset, u32 out_len)
 {
   ipsecmb_per_thread_data_t *ptd = ipsecmb_get_per_thread_data ();
   IMB_JOB *job;
@@ -247,7 +256,7 @@ ipsecmb_ops_hmac_inline (vnet_crypto_op_t *ops[], u32 n_ops, u32 hash_size, u32 
       for (i = 0; i < n; i++)
 	{
 	  job = &ptd->burst_jobs[i];
-	  ipsecmb_retire_hmac_job (job, &n_fail, digest_size);
+	  ipsecmb_retire_hmac_job (job, &n_fail, digest_size, out_len);
 	}
 
       n_ops -= n;
@@ -261,11 +270,51 @@ ipsecmb_ops_hmac_inline (vnet_crypto_op_t *ops[], u32 n_ops, u32 hash_size, u32 
 						 vnet_crypto_op_chunk_t *chunks __clib_unused,     \
 						 u32 n_ops, clib_thread_index_t thread_index)      \
   {                                                                                                \
-    return ipsecmb_ops_hmac_inline (ops, n_ops, e, f, IMB_AUTH_HMAC_##b, 0);                       \
+    return ipsecmb_ops_hmac_inline (ops, n_ops, e, f, IMB_AUTH_HMAC_##b, 0, 0);                    \
   }
 
 foreach_ipsecmb_hmac_op;
 #undef _
+
+static_always_inline u32
+ipsecmb_ops_hmac_SHA1_160_icv12 (vnet_crypto_op_t *ops[],
+				 vnet_crypto_op_chunk_t *chunks __clib_unused, u32 n_ops,
+				 clib_thread_index_t thread_index)
+{
+  return ipsecmb_ops_hmac_inline (ops, n_ops, 20, 20, IMB_AUTH_HMAC_SHA_1, 0, 12);
+}
+
+static_always_inline u32
+ipsecmb_ops_hmac_SHA2_256_icv12 (vnet_crypto_op_t *ops[],
+				 vnet_crypto_op_chunk_t *chunks __clib_unused, u32 n_ops,
+				 clib_thread_index_t thread_index)
+{
+  return ipsecmb_ops_hmac_inline (ops, n_ops, 32, 32, IMB_AUTH_HMAC_SHA_256, 0, 12);
+}
+
+static_always_inline u32
+ipsecmb_ops_hmac_SHA2_256_icv16 (vnet_crypto_op_t *ops[],
+				 vnet_crypto_op_chunk_t *chunks __clib_unused, u32 n_ops,
+				 clib_thread_index_t thread_index)
+{
+  return ipsecmb_ops_hmac_inline (ops, n_ops, 32, 32, IMB_AUTH_HMAC_SHA_256, 0, 16);
+}
+
+static_always_inline u32
+ipsecmb_ops_hmac_SHA2_384_icv24 (vnet_crypto_op_t *ops[],
+				 vnet_crypto_op_chunk_t *chunks __clib_unused, u32 n_ops,
+				 clib_thread_index_t thread_index)
+{
+  return ipsecmb_ops_hmac_inline (ops, n_ops, 64, 48, IMB_AUTH_HMAC_SHA_384, 0, 24);
+}
+
+static_always_inline u32
+ipsecmb_ops_hmac_SHA2_512_icv32 (vnet_crypto_op_t *ops[],
+				 vnet_crypto_op_chunk_t *chunks __clib_unused, u32 n_ops,
+				 clib_thread_index_t thread_index)
+{
+  return ipsecmb_ops_hmac_inline (ops, n_ops, 64, 64, IMB_AUTH_HMAC_SHA_512, 0, 32);
+}
 
 always_inline void
 ipsecmb_retire_cipher_job (IMB_JOB *job, u32 *n_fail)
@@ -356,7 +405,7 @@ foreach_ipsecmb_cipher_op;
 static_always_inline u32
 ipsecmb_ops_combined_enc (vnet_crypto_op_t *ops[], u32 n_ops, u32 key_len,
 			  IMB_CIPHER_MODE cipher_mode, u32 hash_size, u32 digest_size,
-			  IMB_HASH_ALG hash_alg)
+			  IMB_HASH_ALG hash_alg, u32 out_len)
 {
   vnet_crypto_op_t *hmac_ops[n_ops];
   u32 i;
@@ -376,7 +425,7 @@ ipsecmb_ops_combined_enc (vnet_crypto_op_t *ops[], u32 n_ops, u32 key_len,
     }
 
   n_success = ipsecmb_ops_hmac_inline (hmac_ops, n_hmac_ops, hash_size, digest_size, hash_alg,
-				       sizeof (ipsecmb_aes_key_data_t));
+				       sizeof (ipsecmb_aes_key_data_t), out_len);
 
   return n_success;
 }
@@ -384,7 +433,7 @@ ipsecmb_ops_combined_enc (vnet_crypto_op_t *ops[], u32 n_ops, u32 key_len,
 static_always_inline u32
 ipsecmb_ops_combined_dec (vnet_crypto_op_t *ops[], u32 n_ops, u32 key_len,
 			  IMB_CIPHER_MODE cipher_mode, u32 hash_size, u32 digest_size,
-			  IMB_HASH_ALG hash_alg)
+			  IMB_HASH_ALG hash_alg, u32 out_len)
 {
   vnet_crypto_op_t *cipher_ops[n_ops];
   vnet_crypto_op_t *hmac_ops[n_ops];
@@ -401,7 +450,7 @@ ipsecmb_ops_combined_dec (vnet_crypto_op_t *ops[], u32 n_ops, u32 key_len,
     }
 
   if (ipsecmb_ops_hmac_inline (hmac_ops, n_hmac_ops, hash_size, digest_size, hash_alg,
-			       sizeof (ipsecmb_aes_key_data_t)) == 0)
+			       sizeof (ipsecmb_aes_key_data_t), out_len) == 0)
     return 0;
 
   n_cipher_ops = 0;
@@ -424,17 +473,49 @@ ipsecmb_ops_combined_dec (vnet_crypto_op_t *ops[], u32 n_ops, u32 key_len,
     vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks __clib_unused, u32 n_ops,              \
     clib_thread_index_t thread_index)                                                              \
   {                                                                                                \
-    return ipsecmb_ops_combined_enc (ops, n_ops, b, IMB_CIPHER_##c, g, h, IMB_AUTH_HMAC_##d);      \
+    return ipsecmb_ops_combined_enc (ops, n_ops, b, IMB_CIPHER_##c, g, h, IMB_AUTH_HMAC_##d, 0);   \
   }                                                                                                \
                                                                                                    \
   static_always_inline u32 ipsecmb_ops_combined_dec_##a (                                          \
     vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks __clib_unused, u32 n_ops,              \
     clib_thread_index_t thread_index)                                                              \
   {                                                                                                \
-    return ipsecmb_ops_combined_dec (ops, n_ops, b, IMB_CIPHER_##c, g, h, IMB_AUTH_HMAC_##d);      \
+    return ipsecmb_ops_combined_dec (ops, n_ops, b, IMB_CIPHER_##c, g, h, IMB_AUTH_HMAC_##d, 0);   \
+  }                                                                                                \
+                                                                                                   \
+  static_always_inline u32 ipsecmb_ops_combined_enc_##a##_icv##i (                                 \
+    vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks __clib_unused, u32 n_ops,              \
+    clib_thread_index_t thread_index)                                                              \
+  {                                                                                                \
+    return ipsecmb_ops_combined_enc (ops, n_ops, b, IMB_CIPHER_##c, g, h, IMB_AUTH_HMAC_##d, i);   \
+  }                                                                                                \
+                                                                                                   \
+  static_always_inline u32 ipsecmb_ops_combined_dec_##a##_icv##i (                                 \
+    vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks __clib_unused, u32 n_ops,              \
+    clib_thread_index_t thread_index)                                                              \
+  {                                                                                                \
+    return ipsecmb_ops_combined_dec (ops, n_ops, b, IMB_CIPHER_##c, g, h, IMB_AUTH_HMAC_##d, i);   \
   }
 
 foreach_ipsecmb_combined_cipher_op;
+#undef _
+
+#define _(a, b, c, j, d, e, f, g, h, i)                                                            \
+  static_always_inline u32 ipsecmb_ops_combined_enc_##a##_icv##i (                                 \
+    vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks __clib_unused, u32 n_ops,              \
+    clib_thread_index_t thread_index)                                                              \
+  {                                                                                                \
+    return ipsecmb_ops_combined_enc (ops, n_ops, b, IMB_CIPHER_##c, g, h, IMB_AUTH_HMAC_##d, i);   \
+  }                                                                                                \
+                                                                                                   \
+  static_always_inline u32 ipsecmb_ops_combined_dec_##a##_icv##i (                                 \
+    vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks __clib_unused, u32 n_ops,              \
+    clib_thread_index_t thread_index)                                                              \
+  {                                                                                                \
+    return ipsecmb_ops_combined_dec (ops, n_ops, b, IMB_CIPHER_##c, g, h, IMB_AUTH_HMAC_##d, i);   \
+  }
+
+foreach_ipsecmb_combined_fixed_extra_op;
 #undef _
 
   typedef struct
@@ -1038,31 +1119,31 @@ foreach_ipsecmb_gcm_cipher_op
 VNET_CRYPTO_REGISTER_ALG (ipsecmb_hmac_sha1_icv12) = {
   .group = &ipsecmb_auth_SHA1_160_group,
   .alg_id = VNET_CRYPTO_ALG_SHA1_160_ICV12,
-  .simple = { .hmac_fn = ipsecmb_ops_hmac_SHA1_160, },
+  .simple = { .hmac_fn = ipsecmb_ops_hmac_SHA1_160_icv12, },
 };
 
 VNET_CRYPTO_REGISTER_ALG (ipsecmb_hmac_sha256_icv12) = {
   .group = &ipsecmb_auth_SHA2_256_group,
   .alg_id = VNET_CRYPTO_ALG_SHA2_256_ICV12,
-  .simple = { .hmac_fn = ipsecmb_ops_hmac_SHA2_256, },
+  .simple = { .hmac_fn = ipsecmb_ops_hmac_SHA2_256_icv12, },
 };
 
 VNET_CRYPTO_REGISTER_ALG (ipsecmb_hmac_sha256_icv16) = {
   .group = &ipsecmb_auth_SHA2_256_group,
   .alg_id = VNET_CRYPTO_ALG_SHA2_256_ICV16,
-  .simple = { .hmac_fn = ipsecmb_ops_hmac_SHA2_256, },
+  .simple = { .hmac_fn = ipsecmb_ops_hmac_SHA2_256_icv16, },
 };
 
 VNET_CRYPTO_REGISTER_ALG (ipsecmb_hmac_sha384_icv24) = {
   .group = &ipsecmb_auth_SHA2_384_group,
   .alg_id = VNET_CRYPTO_ALG_SHA2_384_ICV24,
-  .simple = { .hmac_fn = ipsecmb_ops_hmac_SHA2_384, },
+  .simple = { .hmac_fn = ipsecmb_ops_hmac_SHA2_384_icv24, },
 };
 
 VNET_CRYPTO_REGISTER_ALG (ipsecmb_hmac_sha512_icv32) = {
   .group = &ipsecmb_auth_SHA2_512_group,
   .alg_id = VNET_CRYPTO_ALG_SHA2_512_ICV32,
-  .simple = { .hmac_fn = ipsecmb_ops_hmac_SHA2_512, },
+  .simple = { .hmac_fn = ipsecmb_ops_hmac_SHA2_512_icv32, },
 };
 
 #define _(a, b, c)                                                                                 \
@@ -1086,24 +1167,24 @@ foreach_ipsecmb_cipher_op
       .dec_fn = ipsecmb_ops_combined_dec_##a,                                                      \
     },                                                                                             \
   }; \
-  VNET_CRYPTO_REGISTER_ALG (ipsecmb_##a##_icv##i) = {                                                   \
+  VNET_CRYPTO_REGISTER_ALG (ipsecmb_##a##_icv##i) = {                                              \
     .group = &ipsecmb_combined_##a##_group,                                                        \
     .alg_id = VNET_CRYPTO_ALG_##a##_ICV##i,                                                        \
     .simple = {                                                                                    \
-      .enc_fn = ipsecmb_ops_combined_enc_##a,                                                      \
-      .dec_fn = ipsecmb_ops_combined_dec_##a,                                                      \
+      .enc_fn = ipsecmb_ops_combined_enc_##a##_icv##i,                                             \
+      .dec_fn = ipsecmb_ops_combined_dec_##a##_icv##i,                                             \
     },                                                                                             \
   };
       foreach_ipsecmb_combined_cipher_op
 #undef _
 
-#define _(a, i)                                                                                    \
-  VNET_CRYPTO_REGISTER_ALG (ipsecmb_##a##_icv##i##_extra) = {                                           \
+#define _(a, b, c, j, d, e, f, g, h, i)                                                            \
+  VNET_CRYPTO_REGISTER_ALG (ipsecmb_##a##_icv##i##_extra) = {                                      \
     .group = &ipsecmb_combined_##a##_group,                                                        \
     .alg_id = VNET_CRYPTO_ALG_##a##_ICV##i,                                                        \
     .simple = {                                                                                    \
-      .enc_fn = ipsecmb_ops_combined_enc_##a,                                                      \
-      .dec_fn = ipsecmb_ops_combined_dec_##a,                                                      \
+      .enc_fn = ipsecmb_ops_combined_enc_##a##_icv##i,                                             \
+      .dec_fn = ipsecmb_ops_combined_dec_##a##_icv##i,                                             \
     },                                                                                             \
   };
 foreach_ipsecmb_combined_fixed_extra_op
