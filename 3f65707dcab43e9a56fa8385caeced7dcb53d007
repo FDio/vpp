@@ -16,6 +16,24 @@
       "message": "How is pppoe code going to access data from dhcpv6 plugin knowing that each plugin have symbols in private namespace?",
       "revId": "3f65707dcab43e9a56fa8385caeced7dcb53d007",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "23e1c9c5_b3d6ca15",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3306
+      },
+      "writtenOn": "2026-03-30T09:41:26Z",
+      "side": 1,
+      "message": "pppoeclient accesses the DHCPv6 runtime helpers through explicit exported entry points resolved from dhcp_plugin.so with vlib_get_plugin_symbol(), not by directly referencing private symbols from the DHCP plugin. The exported helper declarations live in the public dp.h headers added in this dependency change, and the actual lookups are done on the PPPoE side in 45289.",
+      "parentUuid": "5a36af9c_ef7659c7",
+      "revId": "3f65707dcab43e9a56fa8385caeced7dcb53d007",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
