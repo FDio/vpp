@@ -4660,6 +4660,9 @@ ikev2_set_profile_esp_transforms (vlib_main_t * vm, u8 * name,
       crypto_alg != IKEV2_TRANSFORM_ENCR_TYPE_NULL)
     return clib_error_return (0, "AES-GMAC requires null encryption");
 
+  if (integ_alg == IKEV2_TRANSFORM_INTEG_TYPE_AUTH_AES_CMAC_96)
+    return clib_error_return (0, "AES-CMAC-96 is not supported for ESP SAs");
+
   p->esp_ts.crypto_alg = crypto_alg;
   p->esp_ts.integ_alg = integ_alg;
   p->esp_ts.crypto_key_size = crypto_key_size;
