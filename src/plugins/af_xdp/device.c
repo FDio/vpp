@@ -426,23 +426,51 @@ af_xdp_get_numa (const char *ifname)
   return numa;
 }
 
+static int
+af_xdp_ioctl (const char *ifname, unsigned long __request, void *data)
+{
+  int fd, err;
+
+  fd = socket (AF_INET, SOCK_DGRAM, 0);
+  if (fd < 0)
+    return VNET_API_ERROR_UNSPECIFIED;
+
+  err = ioctl (fd, __request, data);
+
+  close (fd);
+
+  if (err)
+    return VNET_API_ERROR_UNSPECIFIED;
+
+  return 0;
+}
+
+static int
+af_xdp_get_mac_address (const char *ifname, unsigned char *ifmac)
+{
+  struct ifreq ifr;
+  int err;
+
+  err = af_xdp_ioctl (ifname, SIOCGIFHWADDR, &ifr);
+
+  if (err)
+    return VNET_API_ERROR_UNSPECIFIED;
+
+  clib_memcpy (ifmac, ifr.ifr_hwaddr.sa_data, IFHWADDRLEN);
+
+  return 0;
+}
+
 static void
 af_xdp_get_q_count (const char *ifname, int *rxq_num, int *txq_num)
 {
   struct ethtool_channels ec = { .cmd = ETHTOOL_GCHANNELS };
   struct ifreq ifr = { .ifr_data = (void *) &ec };
-  int fd, err;
+  int err;
 
   *rxq_num = *txq_num = 1;
 
-  fd = socket (AF_INET, SOCK_DGRAM, 0);
-  if (fd < 0)
-    return;
-
-  snprintf (ifr.ifr_name, sizeof (ifr.ifr_name), "%s", ifname);
-  err = ioctl (fd, SIOCETHTOOL, &ifr);
-
-  close (fd);
+  err = af_xdp_ioctl (ifname, SIOCETHTOOL, &ifr);
 
   if (err)
     return;
@@ -713,7 +741,19 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
   else
     ad->name = (char *) format (0, "%s", args->name);
 
-  ethernet_mac_address_generate (ad->hwaddr);
+  if (args->flags & AF_XDP_CREATE_FLAGS_MAC_REUSE)
+    {
+      if (0 != af_xdp_get_mac_address (args->linux_ifname, ad->hwaddr))
+	{ /* in case of failed to get mac address return error */
+	  args->rv = VNET_API_ERROR_INVALID_VALUE;
+	  args->error = clib_error_create ("get MAC address of '%s' failed", args->linux_ifname);
+	  goto err2;
+	}
+    }
+  else /* generate mac address */
+    {
+      ethernet_mac_address_generate (ad->hwaddr);
+    }
 
   /* create interface */
   eir.dev_class_index = af_xdp_device_class.index;
