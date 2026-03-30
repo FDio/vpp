@@ -26,6 +26,7 @@ from struct import pack, unpack
 
 import scapy.compat
 from scapy.packet import Raw, Packet
+from scapy.plist import PacketList
 from vpp_pg_interface import VppPGInterface, is_ipv6_misc
 from vpp_sub_interface import VppSubInterface
 from vpp_lo_interface import VppLoInterface
@@ -34,7 +35,8 @@ from vpp_papi_provider import VppPapiProvider
 from vpp_papi import VppEnum
 import vpp_papi
 from vpp_object import VppObjectRegistry
-from util import ppp, is_core_present
+from util import ppp, ppc, is_core_present, StatsDiff
+from scapy.layers.l2 import Ether
 from scapy.layers.inet import IPerror, TCPerror, UDPerror, ICMPerror
 from scapy.layers.inet6 import ICMPv6DestUnreach, ICMPv6EchoRequest
 from scapy.layers.inet6 import ICMPv6EchoReply
@@ -78,6 +80,36 @@ class _PacketInfo(object):
         dst = self.dst == other.dst
         data = self.data == other.data
         return index and src and dst and data
+
+
+class Send:
+    def __init__(
+        self,
+        interface: VppPGInterface,
+        packets: list[Ether] | list[Packet] | Packet,
+        worker: int | None = None,
+    ):
+        self.interface = interface
+        if isinstance(packets, Packet):
+            self.packets = [packets]
+        else:
+            self.packets = packets
+        self.worker = worker
+
+
+class Expect:
+    def __init__(
+        self, interface: VppPGInterface, expected_count: int, filter_out_fn=is_ipv6_misc
+    ):
+        self.interface = interface
+        self.expected_count = expected_count
+        self.filter_out_fn = filter_out_fn
+
+
+class Capture:
+    def __init__(self, interface: VppPGInterface, packets: PacketList | None):
+        self.interface = interface
+        self.packets = packets
 
 
 class VppTestCase(VppAsfTestCase):
@@ -164,7 +196,7 @@ class VppTestCase(VppAsfTestCase):
     @classmethod
     def create_pg_interfaces_internal(
         cls, interfaces, csum_offload=0, gso=0, gso_size=0, mode=None
-    ):
+    ) -> list[VppPGInterface]:
         """
         Create packet-generator interfaces.
 
@@ -201,7 +233,9 @@ class VppTestCase(VppAsfTestCase):
         )
 
     @classmethod
-    def create_pg_interfaces(cls, interfaces, csum_offload=0, gso=0, gso_size=0):
+    def create_pg_interfaces(
+        cls, interfaces, csum_offload=0, gso=0, gso_size=0
+    ) -> list[VppPGInterface]:
         if not hasattr(cls, "vpp"):
             cls.pg_interfaces = []
             return cls.pg_interfaces
@@ -546,25 +580,57 @@ class VppTestCase(VppAsfTestCase):
         if stats_diff:
             self.compare_stats_with_snapshot(stats_diff, stats_snapshot)
 
-    def send_and_expect(
+    def send_and_expect_multi(
         self,
-        intf,
-        pkts,
-        output,
-        n_rx=None,
-        worker=None,
-        trace=True,
-        msg=None,
-        stats_diff=None,
-        filter_out_fn=is_ipv6_misc,
-    ):
+        send: list[Send],
+        expect: list[Expect],
+        trace: bool = True,
+        log_packets: bool = True,
+        msg: str | None = None,
+        stats_diff: StatsDiff | None = None,
+        timeout: float | None = None,
+        assert_nothing_captured: list[VppPGInterface] | None = None,
+    ) -> list[Capture]:
         if stats_diff:
             stats_snapshot = self.snapshot_stats(stats_diff)
 
-        if not n_rx:
-            n_rx = 1 if isinstance(pkts, Packet) else len(pkts)
-        self.pg_send(intf, pkts, worker=worker, trace=trace)
-        rx = output.get_capture(n_rx, filter_out_fn=filter_out_fn)
+        for s in send:
+            s.interface.add_stream(s.packets, worker=s.worker)
+            if log_packets:
+                self.logger.debug(
+                    ppc(f"Adding stream '{msg}' to worker {s.worker}:", s.packets)
+                )
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start(trace=trace)
+
+        if timeout is not None:
+            deadline = time.time() + timeout
+
+        if expect:
+            capture = [
+                Capture(
+                    interface=e.interface,
+                    packets=e.interface.get_capture(
+                        expected_count=e.expected_count,
+                        timeout=None if timeout is None else deadline - time.time(),
+                        filter_out_fn=e.filter_out_fn,
+                    ),
+                )
+                for e in expect
+            ]
+        else:
+            capture = []
+
+        if assert_nothing_captured is None:
+            assert_nothing_captured = self.pg_interfaces
+        expect_intfs = {e.interface for e in expect} if expect else set()
+        for i in assert_nothing_captured:
+            if i not in expect_intfs:
+                i.assert_nothing_captured(
+                    timeout=None if timeout is None else deadline - time.time()
+                )
+
         if trace:
             if msg:
                 self.logger.debug(f"send_and_expect: {msg}")
@@ -573,7 +639,47 @@ class VppTestCase(VppAsfTestCase):
         if stats_diff:
             self.compare_stats_with_snapshot(stats_diff, stats_snapshot)
 
-        return rx
+        return capture
+
+    def send_and_expect(
+        self,
+        intf: VppPGInterface,
+        pkts,
+        output: VppPGInterface,
+        n_rx: int | None = None,
+        worker: int | None = None,
+        trace: bool = True,
+        log_packets: bool = True,
+        msg: str | None = None,
+        stats_diff: StatsDiff | None = None,
+        filter_out_fn=is_ipv6_misc,
+        assert_nothing_captured=[],
+    ) -> PacketList | None:
+        send = Send(interface=intf, packets=pkts, worker=worker)
+        if n_rx is None:
+            n_rx = 1 if isinstance(pkts, Packet) else len(pkts)
+        expect = Expect(
+            interface=output, expected_count=n_rx, filter_out_fn=filter_out_fn
+        )
+
+        if stats_diff:
+            stats_snapshot = self.snapshot_stats(stats_diff)
+
+        capture = self.send_and_expect_multi(
+            [send],
+            [expect],
+            trace=trace,
+            log_packets=log_packets,
+            msg=msg,
+            stats_diff=stats_diff,
+            assert_nothing_captured=assert_nothing_captured,
+        )
+
+        if stats_diff:
+            self.compare_stats_with_snapshot(stats_diff, stats_snapshot)
+
+        self.assert_equal(len(capture), 1, "number of capture contexts")
+        return capture[0].packets
 
     def send_and_expect_load_balancing(
         self, input, pkts, outputs, worker=None, trace=True
@@ -599,11 +705,13 @@ class VppTestCase(VppAsfTestCase):
         )
         return rx
 
-    def send_and_expect_only(self, intf, pkts, output, timeout=None, stats_diff=None):
+    def send_and_expect_only(
+        self, intf, pkts, output, timeout=None, stats_diff=None, worker=None, trace=True
+    ):
         if stats_diff:
             stats_snapshot = self.snapshot_stats(stats_diff)
 
-        self.pg_send(intf, pkts)
+        self.pg_send(intf, pkts, worker=worker)
         rx = output.get_capture(len(pkts))
         outputs = [output]
 
@@ -615,6 +723,9 @@ class VppTestCase(VppAsfTestCase):
                 i.assert_nothing_captured(
                     timeout=None if timeout is None else deadline - time.time()
                 )
+
+        if trace:
+            self.logger.debug(self.vapi.cli("show trace"))
 
         if stats_diff:
             self.compare_stats_with_snapshot(stats_diff, stats_snapshot)
