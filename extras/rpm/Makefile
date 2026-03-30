@@ -29,6 +29,8 @@ all: RPM
 # SUSE osleap15
 ifeq ($(filter opensuse-leap,$(OS_ID)),$(OS_ID))
 SRC_SPEC_DIR="opensuse"
+else ifeq ($(filter kylin,$(OS_ID)),$(OS_ID))
+SRC_SPEC_DIR="kylin"
 else
 SRC_SPEC_DIR="."
 endif
