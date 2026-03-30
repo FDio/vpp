@@ -254,6 +254,12 @@ echo $CMD
 $CMD
 exit_status=$?
 
+if [ "$dryrun_set" = "1" ] || [ "$persist_set" = "1" ]; then
+    trap 'exit 0' SIGINT
+    echo -e "\e[1;33mDRYRUN=true or PERSIST=true, sleeping to keep Ginkgo container alive\e[1;0m"
+    sleep infinity
+fi
+
 if [ $exit_status != 0 ]; then
     jq -r '.[0] | .SpecReports[] | select((.State == "failed") or (.State == "timedout") or (.State == "panicked")) | select(.Failure != null) |
 "TestName:

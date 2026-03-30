@@ -16,6 +16,7 @@ devices:
 
   - name: "cln-tun"
     type: "veth"
+    preset-hw-address: "00:00:5e:00:54:03"
     host:
       name: "mtuncln"
       ip4:
@@ -23,6 +24,7 @@ devices:
 
   - name: "srv-tun"
     type: "veth"
+    preset-hw-address: "00:00:5e:00:55:03"
     host:
       name: "mtunsrv"
       ip4:

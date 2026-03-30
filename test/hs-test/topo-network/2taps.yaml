@@ -4,6 +4,7 @@ extra-config:
 devices:
   - name: "hstcln"
     type: "tap"
+    preset-hw-address: "00:00:5e:00:01:01"
     ip4:
       network: 1
     host:
@@ -12,6 +13,7 @@ devices:
         network: 1
   - name: "hstsrv"
     type: "tap"
+    preset-hw-address: "00:00:5e:00:01:02"
     ip4:
       network: 2
     host:
