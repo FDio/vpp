@@ -4,6 +4,7 @@ import time
 from socket import inet_pton
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives.cmac import CMAC
 from cryptography.hazmat.primitives import hashes, hmac
 from cryptography.hazmat.primitives.asymmetric import dh, padding
 from cryptography.hazmat.primitives.serialization import load_pem_private_key
@@ -167,6 +168,7 @@ AUTH_ALGOS = {
 PRF_ALGOS = {
     "NULL": AuthAlgo("NULL", mac=None, mod=None, key_len=0, trunc_len=0),
     "PRF_HMAC_SHA2_256": AuthAlgo("PRF_HMAC_SHA2_256", hmac.HMAC, hashes.SHA256, 32),
+    "PRF_AES128_CMAC": AuthAlgo("PRF_AES128_CMAC", CMAC, algorithms.AES, 16),
 }
 
 CRYPTO_IDS = {
@@ -181,6 +183,11 @@ ENCR_TRANSFORM_IDS = {
     "AES-CBC": 12,
     "AES-CTR": 13,
     "AES-GCM-16ICV": 20,
+}
+
+PRF_TRANSFORM_IDS = {
+    "PRF_HMAC_SHA2_256": 5,
+    "PRF_AES128_CMAC": 8,
 }
 
 INTEG_IDS = {
@@ -314,7 +321,6 @@ class IKEv2SA(object):
         self.dh_shared_secret = self.compute_secret()
 
     def calc_child_keys(self, kex=False):
-        prf = self.ike_prf_alg.mod()
         s = self.i_nonce + self.r_nonce
         if kex:
             s = self.dh_shared_secret + s
@@ -331,7 +337,7 @@ class IKEv2SA(object):
         )
 
         l = integ_key_len * 2 + (encr_key_len + salt_len) * 2
-        keymat = self.calc_prfplus(prf, self.sk_d, s, l)
+        keymat = self.calc_prfplus(self.sk_d, s, l)
 
         pos = 0
         c.sk_ei = keymat[pos : pos + encr_key_len]
@@ -356,7 +362,7 @@ class IKEv2SA(object):
             c.sk_ar = keymat[pos : pos + integ_key_len]
             pos += integ_key_len
 
-    def calc_prfplus(self, prf, key, seed, length):
+    def calc_prfplus(self, key, seed, length):
         r = b""
         t = None
         x = 1
@@ -366,7 +372,7 @@ class IKEv2SA(object):
             else:
                 s = b""
             s = s + seed + bytes([x])
-            t = self.calc_prf(prf, key, s)
+            t = self.calc_prf(key, s)
             r = r + t
             x = x + 1
 
@@ -374,24 +380,28 @@ class IKEv2SA(object):
             return None
         return r
 
-    def calc_prf(self, prf, key, data):
-        h = self.ike_prf_alg.mac(key, prf, backend=default_backend())
+    def compute_mac(self, algo, key, data):
+        if algo.mac is hmac.HMAC:
+            h = algo.mac(key, algo.mod(), backend=default_backend())
+        else:
+            if algo.name == "PRF_AES128_CMAC" and len(key) != algo.key_len:
+                h = algo.mac(algo.mod(b"\x00" * algo.key_len), backend=default_backend())
+                h.update(key)
+                key = h.finalize()
+            h = algo.mac(algo.mod(key), backend=default_backend())
         h.update(data)
         return h.finalize()
 
-    def calc_keys(self, sk_d=None):
-        prf = self.ike_prf_alg.mod()
+    def calc_prf(self, key, data):
+        return self.compute_mac(self.ike_prf_alg, key, data)
 
+    def calc_keys(self, sk_d=None):
         if sk_d is None:
             # SKEYSEED = prf(Ni | Nr, g^ir)
-            self.skeyseed = self.calc_prf(
-                prf, self.i_nonce + self.r_nonce, self.dh_shared_secret
-            )
+            self.skeyseed = self.calc_prf(self.i_nonce + self.r_nonce, self.dh_shared_secret)
         else:
             # SKEYSEED = prf(SK_d (old), g^ir (new) | Ni | Nr)
-            self.skeyseed = self.calc_prf(
-                prf, sk_d, self.dh_shared_secret + self.i_nonce + self.r_nonce
-            )
+            self.skeyseed = self.calc_prf(sk_d, self.dh_shared_secret + self.i_nonce + self.r_nonce)
 
         # calculate S = Ni | Nr | SPIi SPIr
         s = self.i_nonce + self.r_nonce + self.ispi + self.rspi
@@ -412,7 +422,7 @@ class IKEv2SA(object):
             + tr_prf_key_len * 2
             + salt_size * 2
         )
-        keymat = self.calc_prfplus(prf, self.skeyseed, s, l)
+        keymat = self.calc_prfplus(self.skeyseed, s, l)
 
         pos = 0
         self.sk_d = keymat[: pos + prf_key_trunc]
@@ -432,7 +442,7 @@ class IKEv2SA(object):
         pos += tr_prf_key_len
         self.sk_pr = keymat[pos : pos + tr_prf_key_len]
 
-    def generate_authmsg(self, prf, packet):
+    def generate_authmsg(self, packet):
         if self.is_initiator:
             id = self.i_id
             nonce = self.r_nonce
@@ -442,19 +452,18 @@ class IKEv2SA(object):
             nonce = self.i_nonce
             key = self.sk_pr
         data = bytes([self.id_type, 0, 0, 0]) + id
-        id_hash = self.calc_prf(prf, key, data)
+        id_hash = self.calc_prf(key, data)
         return packet + nonce + id_hash
 
     def auth_init(self):
-        prf = self.ike_prf_alg.mod()
         if self.is_initiator:
             packet = self.init_req_packet
         else:
             packet = self.init_resp_packet
-        authmsg = self.generate_authmsg(prf, raw(packet))
+        authmsg = self.generate_authmsg(raw(packet))
         if self.auth_method == "shared-key":
-            psk = self.calc_prf(prf, self.auth_data, KEY_PAD)
-            self.auth_data = self.calc_prf(prf, psk, authmsg)
+            psk = self.calc_prf(self.auth_data, KEY_PAD)
+            self.auth_data = self.calc_prf(psk, authmsg)
         elif self.auth_method == "rsa-sig":
             self.auth_data = self.priv_key.sign(
                 authmsg, padding.PKCS1v15(), hashes.SHA1()
@@ -507,15 +516,11 @@ class IKEv2SA(object):
         integ_trunc = self.ike_integ_alg.trunc_len
         exp_hmac = ikemsg[-integ_trunc:]
         data = ikemsg[:-integ_trunc]
-        computed_hmac = self.compute_hmac(
-            self.ike_integ_alg.mod(), self.peer_authkey, data
-        )
+        computed_hmac = self.compute_hmac(self.peer_authkey, data)
         self.test.assertEqual(computed_hmac[:integ_trunc], exp_hmac)
 
-    def compute_hmac(self, integ, key, data):
-        h = self.ike_integ_alg.mac(key, integ, backend=default_backend())
-        h.update(data)
-        return h.finalize()
+    def compute_hmac(self, key, data):
+        return self.compute_mac(self.ike_integ_alg, key, data)
 
     def decrypt(self, data, aad=None, icv=None):
         return self.ike_crypto_alg.decrypt(data, self.peer_cryptokey, aad, icv)
@@ -850,9 +855,7 @@ class IkePeer(VppTestCase):
             res = header / sk_p
 
             integ_data = raw(res)
-            hmac_data = self.sa.compute_hmac(
-                self.sa.ike_integ_alg.mod(), self.sa.my_authkey, integ_data
-            )
+            hmac_data = self.sa.compute_hmac(self.sa.my_authkey, integ_data)
             res = res / Raw(hmac_data[:trunc_len])
         assert len(res) == tlen
         return res
@@ -1221,7 +1224,9 @@ class TemplateInitiator(IkePeer):
             prop.trans[0].transform_id, self.p.ike_transforms["crypto_alg"]
         )
         self.assertEqual(prop.trans[1].transform_type, 2)  # prf
-        self.assertEqual(prop.trans[1].transform_id, 5)  # "hmac-sha2-256"
+        self.assertEqual(
+            prop.trans[1].transform_id, self.p.ike_transforms.get("prf_alg", 5)
+        )
         self.assertEqual(prop.trans[2].transform_type, 4)  # dh
         self.assertEqual(prop.trans[2].transform_id, self.p.ike_transforms["dh_group"])
 
@@ -1856,6 +1861,9 @@ class Ikev2Params(object):
             ike_integ = (
                 "HMAC-SHA1-96" if "ike-integ" not in params else params["ike-integ"]
             )
+            ike_prf = (
+                "PRF_HMAC_SHA2_256" if "ike-prf" not in params else params["ike-prf"]
+            )
             ike_dh = "2048MODPgr" if "ike-dh" not in params else params["ike-dh"]
 
             esp_crypto = (
@@ -1869,7 +1877,7 @@ class Ikev2Params(object):
                 crypto=ike_crypto[0],
                 crypto_key_len=ike_crypto[1],
                 integ=ike_integ,
-                prf="PRF_HMAC_SHA2_256",
+                prf=ike_prf,
                 dh=ike_dh,
             )
             self.sa.set_esp_props(
@@ -2025,6 +2033,8 @@ class TestApi(VppTestCase):
 
     def verify_ike_transforms(self, api_ts, cfg_ts):
         self.verify_transforms(api_ts, cfg_ts)
+        if "prf_alg" in cfg_ts:
+            self.assertEqual(api_ts.prf_alg, cfg_ts["prf_alg"])
         self.assertEqual(api_ts.dh_group, cfg_ts["dh_group"])
 
     def verify_esp_transforms(self, api_ts, cfg_ts):
@@ -2309,6 +2319,13 @@ class TestResponderPskAesGmacEsp(TestResponderPsk):
 
     def config_tc(self):
         self.config_params({"esp-crypto": ("NULL", 0), "esp-integ": "AES-256-GMAC"})
+
+
+class TestResponderPskPrfAesCmac(TestResponderPsk):
+    """test ikev2 responder - PRF AES-CMAC"""
+
+    def config_tc(self):
+        self.config_params({"ike-prf": "PRF_AES128_CMAC"})
 
 
 class TestResponderDpd(TestResponderPsk):

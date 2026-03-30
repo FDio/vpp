@@ -53,6 +53,7 @@ cp_ike_transforms (vl_api_ikev2_ike_transforms_t * vl_api_ts,
 {
   vl_api_ts->crypto_alg = ts->crypto_alg;
   vl_api_ts->integ_alg = ts->integ_alg;
+  vl_api_ts->prf_alg = ts->prf_alg;
   vl_api_ts->dh_group = ts->dh_type;
   vl_api_ts->crypto_key_size = ts->crypto_key_size;
 }
@@ -1005,10 +1006,8 @@ vl_api_ikev2_set_ike_transforms_t_handler (vl_api_ikev2_set_ike_transforms_t *
   u8 *tmp = format (0, "%s", mp->name);
 
   error =
-    ikev2_set_profile_ike_transforms (vm, tmp, mp->tr.crypto_alg,
-				      mp->tr.integ_alg,
-				      mp->tr.dh_group,
-				      ntohl (mp->tr.crypto_key_size));
+    ikev2_set_profile_ike_transforms (vm, tmp, mp->tr.crypto_alg, mp->tr.integ_alg, mp->tr.prf_alg,
+				      mp->tr.dh_group, ntohl (mp->tr.crypto_key_size));
   vec_free (tmp);
   if (error)
     {
