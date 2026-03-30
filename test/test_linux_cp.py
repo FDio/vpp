@@ -2,6 +2,7 @@
 
 import unittest
 import socket
+from ipaddress import ip_address, ip_interface
 
 from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6, Raw
@@ -38,11 +39,20 @@ from vpp_ip_route import FibPathType
 from vpp_qemu_utils import (
     add_namespace_route,
     add_namespace_multipath_route,
+    del_namespace_route,
+    add_namespace_address,
+    del_namespace_address,
+    add_namespace_neighbor,
+    del_namespace_neighbor,
     NextHop,
     create_namespace,
     delete_all_namespaces,
     set_interface_up,
     set_interface_down,
+    get_interface_addresses,
+    interface_exists,
+    is_interface_up,
+    get_interface_mtu,
 )
 
 
@@ -595,9 +605,8 @@ class TestLinuxCPEthertype(VppTestCase):
 CLIB_U32_MAX = 4294967295
 
 
-@unittest.skipIf(config.skip_netns_tests, "netns not available or disabled from cli")
-class TestLinuxCPRoutes(VppTestCase):
-    """Linux CP Routes"""
+class TestLinuxCPNetNSBase(VppTestCase):
+    """Base class for LCP tests that use real Linux namespaces."""
 
     extra_vpp_plugin_config = [
         "plugin",
@@ -636,31 +645,28 @@ class TestLinuxCPRoutes(VppTestCase):
     @classmethod
     def attach_vpp(cls):
         cls.setUpNetNS()
-        super(TestLinuxCPRoutes, cls).attach_vpp()
+        super().attach_vpp()
 
     @classmethod
     def run_vpp(cls):
         cls.setUpNetNS()
-        super(TestLinuxCPRoutes, cls).run_vpp()
-
-    @classmethod
-    def setUpClass(cls):
-        super(TestLinuxCPRoutes, cls).setUpClass()
-        cls.create_loopback_interfaces(2)
-
-        cls.vapi.cli(f"lcp create loop0 host-if hloop0 netns {cls.ns_name}")
-        cls.vapi.cli(f"lcp create loop1 host-if hloop1 netns {cls.ns_name}")
-
-        cls.vapi.cli("set int ip address loop0 10.10.1.2/24")
-        cls.vapi.cli("set int ip address loop1 10.20.1.2/24")
-
-        for lo in cls.lo_interfaces:
-            lo.admin_up()
+        super().run_vpp()
 
     @classmethod
     def tearDownClass(cls):
         delete_all_namespaces(cls.ns_history_name)
-        super(TestLinuxCPRoutes, cls).tearDownClass()
+        super().tearDownClass()
+
+    def poll_for(self, description, fn, expected, timeout=2.0, interval=0.1):
+        """Poll fn() until it returns expected, or fail after timeout."""
+        iterations = int(timeout / interval)
+        actual = None
+        for i in range(iterations):
+            actual = fn()
+            if actual == expected:
+                return
+            self.sleep(interval)
+        self.assertEqual(actual, expected, description)
 
     def route_lookup(self, prefix):
         return self.vapi.api(
@@ -692,6 +698,25 @@ class TestLinuxCPRoutes(VppTestCase):
             self.sleep(0.1)
         else:
             self.assertEqual(paths, expected_paths)
+
+
+@unittest.skipIf(config.skip_netns_tests, "netns not available or disabled from cli")
+class TestLinuxCPRoutes(TestLinuxCPNetNSBase):
+    """Linux CP Routes"""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.create_loopback_interfaces(2)
+
+        cls.vapi.cli(f"lcp create loop0 host-if hloop0 netns {cls.ns_name}")
+        cls.vapi.cli(f"lcp create loop1 host-if hloop1 netns {cls.ns_name}")
+
+        cls.vapi.cli("set int ip address loop0 10.10.1.2/24")
+        cls.vapi.cli("set int ip address loop1 10.20.1.2/24")
+
+        for lo in cls.lo_interfaces:
+            lo.admin_up()
 
     def test_linux_cp_route(self):
         """Linux CP Route"""
@@ -926,3 +951,686 @@ class TestLinuxCPOSINotLoaded(VppTestCase):
             reply = self.vapi.lcp_osi_proto_enable(osi_proto=ISIS_PROTO)
 
         self.assertEqual(reply.retval, self.VNET_API_ERROR_FEATURE_DISABLED)
+
+
+def _prefix_tuple(prefix):
+    """Split a prefix string like "10.10.1.2/24" into ("10.10.1.2", 24)."""
+    iface = ip_interface(prefix)
+    return (str(iface.ip), iface.network.prefixlen)
+
+
+@unittest.skipIf(config.skip_netns_tests, "netns not available or disabled from cli")
+class TestLinuxCPSync(TestLinuxCPNetNSBase):
+    """Linux CP VPP-to-Linux State Sync"""
+
+    # Addresses assigned to loop0 in the IPv4/IPv6 address sync tests.
+    loop0_prefixes_v4 = ["10.10.1.2/24", "10.10.2.2/24"]
+    loop0_prefixes_v6 = ["2001:db8:1::2/64", "2001:db8:2::2/64"]
+    # State applied to loop0 in the lcp-sync toggle test.
+    loop0_toggle_prefix_v4 = "10.30.1.2/24"
+    loop0_toggle_mtu = 3000
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.create_loopback_interfaces(2)
+        cls.vapi.cli(f"lcp create loop0 host-if hloop0 netns {cls.ns_name}")
+        cls.vapi.cli(f"lcp create loop1 host-if hloop1 netns {cls.ns_name}")
+
+    def _get_ipv6_global_addresses(self, ifname):
+        """Get non-link-local IPv6 addresses."""
+        addrs = get_interface_addresses(self.ns_name, ifname, family="inet6")
+        return sorted(
+            [(addr, plen) for addr, plen in addrs if not addr.startswith("fe80:")]
+        )
+
+    def _add_addr(self, sw_if_index, prefix):
+        self.vapi.sw_interface_add_del_address(sw_if_index=sw_if_index, prefix=prefix)
+
+    def _del_addr(self, sw_if_index, prefix):
+        self.vapi.sw_interface_add_del_address(
+            sw_if_index=sw_if_index, prefix=prefix, is_add=0
+        )
+
+    def test_lcp_sync_admin_state(self):
+        """VPP admin state changes sync to Linux"""
+        # Loopbacks default to admin-down, so the host side should already
+        # be down without waiting.
+        self.assertFalse(is_interface_up(self.ns_name, "hloop0"))
+        self.assertFalse(is_interface_up(self.ns_name, "hloop1"))
+
+        # Bring loop0 up in VPP, verify Linux side
+        self.lo_interfaces[0].admin_up()
+        self.poll_for(
+            "hloop0 up after VPP admin_up",
+            lambda: is_interface_up(self.ns_name, "hloop0"),
+            True,
+        )
+        self.assertFalse(is_interface_up(self.ns_name, "hloop1"))
+
+        # Bring loop0 down in VPP, verify Linux side
+        self.lo_interfaces[0].admin_down()
+        self.poll_for(
+            "hloop0 down after VPP admin_down",
+            lambda: is_interface_up(self.ns_name, "hloop0"),
+            False,
+        )
+
+        # Bring both up
+        for lo in self.lo_interfaces:
+            lo.admin_up()
+        self.poll_for(
+            "hloop0 up", lambda: is_interface_up(self.ns_name, "hloop0"), True
+        )
+        self.poll_for(
+            "hloop1 up", lambda: is_interface_up(self.ns_name, "hloop1"), True
+        )
+
+        # Bring both down (cleanup)
+        for lo in self.lo_interfaces:
+            lo.admin_down()
+        self.poll_for(
+            "hloop0 down", lambda: is_interface_up(self.ns_name, "hloop0"), False
+        )
+        self.poll_for(
+            "hloop1 down", lambda: is_interface_up(self.ns_name, "hloop1"), False
+        )
+
+    def test_lcp_sync_mtu(self):
+        """VPP MTU changes sync to Linux"""
+        loop0 = self.lo_interfaces[0]
+        loop0.admin_up()
+        self.poll_for(
+            "hloop0 up", lambda: is_interface_up(self.ns_name, "hloop0"), True
+        )
+
+        for mtu in (4000, 1500, 9000):
+            loop0.set_l3_mtu(mtu)
+            self.poll_for(
+                f"hloop0 mtu {mtu}",
+                lambda: get_interface_mtu(self.ns_name, "hloop0"),
+                mtu,
+            )
+
+        # Cleanup
+        loop0.admin_down()
+
+    def test_lcp_sync_ipv4_addr(self):
+        """VPP IPv4 address changes sync to Linux"""
+        loop0 = self.lo_interfaces[0]
+        prefix_a, prefix_b = self.loop0_prefixes_v4
+        tuple_a = _prefix_tuple(prefix_a)
+        tuple_b = _prefix_tuple(prefix_b)
+
+        loop0.admin_up()
+        self.poll_for(
+            "hloop0 up", lambda: is_interface_up(self.ns_name, "hloop0"), True
+        )
+
+        # Initially no IPv4 addresses
+        self.poll_for(
+            "hloop0 no initial ipv4",
+            lambda: get_interface_addresses(self.ns_name, "hloop0", family="inet"),
+            [],
+        )
+
+        # Add first IPv4 address
+        self._add_addr(loop0.sw_if_index, prefix_a)
+        self.poll_for(
+            f"hloop0 has {prefix_a}",
+            lambda: sorted(
+                get_interface_addresses(self.ns_name, "hloop0", family="inet")
+            ),
+            [tuple_a],
+        )
+
+        # Add second IPv4 address
+        self._add_addr(loop0.sw_if_index, prefix_b)
+        self.poll_for(
+            "hloop0 has both ipv4",
+            lambda: sorted(
+                get_interface_addresses(self.ns_name, "hloop0", family="inet")
+            ),
+            sorted([tuple_a, tuple_b]),
+        )
+
+        # Delete first address
+        self._del_addr(loop0.sw_if_index, prefix_a)
+        self.poll_for(
+            f"hloop0 only {prefix_b}",
+            lambda: sorted(
+                get_interface_addresses(self.ns_name, "hloop0", family="inet")
+            ),
+            [tuple_b],
+        )
+
+        # Delete second address
+        self._del_addr(loop0.sw_if_index, prefix_b)
+        self.poll_for(
+            "hloop0 no ipv4",
+            lambda: get_interface_addresses(self.ns_name, "hloop0", family="inet"),
+            [],
+        )
+
+        # Cleanup
+        loop0.admin_down()
+
+    def test_lcp_sync_ipv6_addr(self):
+        """VPP IPv6 address changes sync to Linux"""
+        loop0 = self.lo_interfaces[0]
+        prefix_a, prefix_b = self.loop0_prefixes_v6
+        tuple_a = _prefix_tuple(prefix_a)
+        tuple_b = _prefix_tuple(prefix_b)
+
+        loop0.admin_up()
+        self.poll_for(
+            "hloop0 up", lambda: is_interface_up(self.ns_name, "hloop0"), True
+        )
+
+        # Initially no global IPv6 addresses (link-local may exist)
+        self.poll_for(
+            "hloop0 no initial global ipv6",
+            lambda: self._get_ipv6_global_addresses("hloop0"),
+            [],
+        )
+
+        # Add first IPv6 address
+        self._add_addr(loop0.sw_if_index, prefix_a)
+        self.poll_for(
+            f"hloop0 has {prefix_a}",
+            lambda: self._get_ipv6_global_addresses("hloop0"),
+            [tuple_a],
+        )
+
+        # Add second IPv6 address
+        self._add_addr(loop0.sw_if_index, prefix_b)
+        self.poll_for(
+            "hloop0 has both ipv6",
+            lambda: self._get_ipv6_global_addresses("hloop0"),
+            sorted([tuple_a, tuple_b]),
+        )
+
+        # Delete first address
+        self._del_addr(loop0.sw_if_index, prefix_a)
+        self.poll_for(
+            f"hloop0 only {prefix_b}",
+            lambda: self._get_ipv6_global_addresses("hloop0"),
+            [tuple_b],
+        )
+
+        # Delete second address
+        self._del_addr(loop0.sw_if_index, prefix_b)
+        self.poll_for(
+            "hloop0 no global ipv6",
+            lambda: self._get_ipv6_global_addresses("hloop0"),
+            [],
+        )
+
+        # Cleanup
+        loop0.admin_down()
+
+    def test_lcp_sync_toggle(self):
+        """Disabling and re-enabling lcp-sync triggers full state push"""
+        loop0 = self.lo_interfaces[0]
+        prefix = self.loop0_toggle_prefix_v4
+        prefix_tuple = _prefix_tuple(prefix)
+        mtu = self.loop0_toggle_mtu
+
+        # Disable sync
+        self.vapi.cli("lcp lcp-sync off")
+        try:
+            # Make changes while sync is off
+            loop0.admin_up()
+            loop0.set_l3_mtu(mtu)
+            self._add_addr(loop0.sw_if_index, prefix)
+
+            # Give time for any spurious sync
+            self.sleep(0.5)
+
+            # Verify Linux side did NOT get the changes
+            self.assertFalse(is_interface_up(self.ns_name, "hloop0"))
+            self.assertNotEqual(get_interface_mtu(self.ns_name, "hloop0"), mtu)
+            ipv4_addrs = get_interface_addresses(self.ns_name, "hloop0", family="inet")
+            self.assertNotIn(prefix_tuple, ipv4_addrs)
+
+            # Re-enable sync (triggers lcp_itf_pair_sync_state_all)
+            self.vapi.cli("lcp lcp-sync on")
+
+            # Now poll for the state to appear
+            self.poll_for(
+                "hloop0 up after re-sync",
+                lambda: is_interface_up(self.ns_name, "hloop0"),
+                True,
+            )
+            self.poll_for(
+                f"hloop0 mtu {mtu} after re-sync",
+                lambda: get_interface_mtu(self.ns_name, "hloop0"),
+                mtu,
+            )
+            self.poll_for(
+                f"hloop0 has {prefix} after re-sync",
+                lambda: get_interface_addresses(self.ns_name, "hloop0", family="inet"),
+                [prefix_tuple],
+            )
+
+            # Cleanup VPP state
+            self._del_addr(loop0.sw_if_index, prefix)
+            loop0.admin_down()
+        finally:
+            self.vapi.cli("lcp lcp-sync on")
+
+
+@unittest.skipIf(config.skip_netns_tests, "netns not available or disabled from cli")
+class TestLinuxCPLinuxToVPP(TestLinuxCPNetNSBase):
+    """Linux CP Linux-to-VPP Sync"""
+
+    # Initial IPv4 assignments so routes/neighbors can be added on the Linux side.
+    loop0_prefix_v4 = "10.10.1.2/24"
+    loop1_prefix_v4 = "10.20.1.2/24"
+    # IPv6 address needed on loop0 for the NDP neighbor test.
+    loop0_prefix_v6 = "2001:db8:10::2/64"
+    # Neighbors added from the Linux side to verify they sync to VPP.
+    loop0_neighbor_v4 = "10.10.1.100"
+    loop0_neighbor_v4_mac = "02:01:02:03:04:05"
+    loop0_neighbor_v6 = "2001:db8:10::100"
+    loop0_neighbor_v6_mac = "02:01:02:03:04:06"
+    # Addresses added on the Linux side to verify they sync to VPP.
+    loop0_linux_added_v4 = "10.10.5.1/24"
+    loop0_linux_added_v6 = "2001:db8:20::1/64"
+    # Special route types synced from Linux to VPP.
+    route_blackhole = "192.168.50.0/24"
+    route_unreachable = "192.168.51.0/24"
+    route_prohibit = "192.168.52.0/24"
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.create_loopback_interfaces(2)
+        cls.vapi.cli(f"lcp create loop0 host-if hloop0 netns {cls.ns_name}")
+        cls.vapi.cli(f"lcp create loop1 host-if hloop1 netns {cls.ns_name}")
+
+        # Configure IPs and bring up so routes/neighbors can be added
+        cls.vapi.sw_interface_add_del_address(
+            sw_if_index=cls.lo_interfaces[0].sw_if_index, prefix=cls.loop0_prefix_v4
+        )
+        cls.vapi.sw_interface_add_del_address(
+            sw_if_index=cls.lo_interfaces[1].sw_if_index, prefix=cls.loop1_prefix_v4
+        )
+        for lo in cls.lo_interfaces:
+            lo.admin_up()
+
+    def _route_exists(self, prefix):
+        """Check if an exact route exists in VPP FIB."""
+        try:
+            self.vapi.api(
+                self.vapi.papi.ip_route_lookup,
+                {"table_id": 0, "exact": True, "prefix": prefix},
+            )
+            return True
+        except Exception:
+            return False
+
+    def test_linux_to_vpp_route_blackhole(self):
+        """Linux blackhole route syncs to VPP as DROP"""
+        add_namespace_route(self.ns_name, self.route_blackhole, route_type="blackhole")
+
+        lookup_addr = str(ip_interface(self.route_blackhole).network[1]) + "/32"
+        self.verify_paths(lookup_addr, dict(type=FibPathType.FIB_PATH_TYPE_DROP))
+
+        # Verify delete is also synced
+        del_namespace_route(self.ns_name, self.route_blackhole)
+        self.poll_for(
+            "blackhole route removed from VPP",
+            lambda: self._route_exists(self.route_blackhole),
+            False,
+        )
+
+    def test_linux_to_vpp_route_unreachable(self):
+        """Linux unreachable route syncs to VPP as ICMP_UNREACH"""
+        add_namespace_route(
+            self.ns_name, self.route_unreachable, route_type="unreachable"
+        )
+
+        lookup_addr = str(ip_interface(self.route_unreachable).network[1]) + "/32"
+        self.verify_paths(
+            lookup_addr, dict(type=FibPathType.FIB_PATH_TYPE_ICMP_UNREACH)
+        )
+
+        # Verify delete is also synced
+        del_namespace_route(self.ns_name, self.route_unreachable)
+        self.poll_for(
+            "unreachable route removed from VPP",
+            lambda: self._route_exists(self.route_unreachable),
+            False,
+        )
+
+    def test_linux_to_vpp_route_prohibit(self):
+        """Linux prohibit route syncs to VPP as ICMP_PROHIBIT"""
+        add_namespace_route(self.ns_name, self.route_prohibit, route_type="prohibit")
+
+        lookup_addr = str(ip_interface(self.route_prohibit).network[1]) + "/32"
+        self.verify_paths(
+            lookup_addr, dict(type=FibPathType.FIB_PATH_TYPE_ICMP_PROHIBIT)
+        )
+
+        # Verify delete is also synced
+        del_namespace_route(self.ns_name, self.route_prohibit)
+        self.poll_for(
+            "prohibit route removed from VPP",
+            lambda: self._route_exists(self.route_prohibit),
+            False,
+        )
+
+    def _find_neighbor(self, sw_if_index, nbr_addr, mac=None):
+        """Find a neighbor entry in VPP regardless of static/dynamic flag."""
+        ip_addr = ip_address(nbr_addr)
+        nbrs = self.vapi.ip_neighbor_dump(sw_if_index=sw_if_index, af=ip_addr.vapi_af)
+        for n in nbrs:
+            if (
+                sw_if_index == n.neighbor.sw_if_index
+                and ip_addr == n.neighbor.ip_address
+            ):
+                if mac is None or mac == str(n.neighbor.mac_address):
+                    return True
+        return False
+
+    def test_linux_to_vpp_neighbor_ipv4(self):
+        """Linux ARP neighbor entries sync to VPP"""
+        lo0_idx = self.lo_interfaces[0].sw_if_index
+        nbr = self.loop0_neighbor_v4
+
+        # Add static ARP entry in namespace
+        add_namespace_neighbor(self.ns_name, "hloop0", nbr, self.loop0_neighbor_v4_mac)
+
+        self.poll_for(
+            f"neighbor {nbr} in VPP",
+            lambda: self._find_neighbor(lo0_idx, nbr, mac=self.loop0_neighbor_v4_mac),
+            True,
+        )
+
+        # Delete the neighbor
+        del_namespace_neighbor(self.ns_name, "hloop0", nbr)
+
+        self.poll_for(
+            f"neighbor {nbr} removed from VPP",
+            lambda: self._find_neighbor(lo0_idx, nbr),
+            False,
+        )
+
+    def test_linux_to_vpp_neighbor_ipv6(self):
+        """Linux NDP neighbor entries sync to VPP"""
+        loop0 = self.lo_interfaces[0]
+        nbr = self.loop0_neighbor_v6
+
+        # Need an IPv6 address on the interface for NDP
+        self.vapi.sw_interface_add_del_address(
+            sw_if_index=loop0.sw_if_index, prefix=self.loop0_prefix_v6
+        )
+
+        add_namespace_neighbor(self.ns_name, "hloop0", nbr, self.loop0_neighbor_v6_mac)
+
+        self.poll_for(
+            f"neighbor {nbr} in VPP",
+            lambda: self._find_neighbor(
+                loop0.sw_if_index, nbr, mac=self.loop0_neighbor_v6_mac
+            ),
+            True,
+        )
+
+        del_namespace_neighbor(self.ns_name, "hloop0", nbr)
+
+        self.poll_for(
+            f"neighbor {nbr} removed from VPP",
+            lambda: self._find_neighbor(loop0.sw_if_index, nbr),
+            False,
+        )
+
+        # Cleanup
+        self.vapi.sw_interface_add_del_address(
+            sw_if_index=loop0.sw_if_index, prefix=self.loop0_prefix_v6, is_add=0
+        )
+
+    def test_linux_to_vpp_ipv4_addr(self):
+        """Linux IPv4 address changes sync to VPP"""
+        lo0_idx = self.lo_interfaces[0].sw_if_index
+        prefix = self.loop0_linux_added_v4
+
+        # Add an address from the Linux side
+        add_namespace_address(self.ns_name, "hloop0", prefix)
+
+        self.poll_for(
+            f"{prefix} on loop0 in VPP",
+            lambda: any(
+                str(a.prefix) == prefix
+                for a in self.vapi.ip_address_dump(lo0_idx, is_ipv6=False)
+            ),
+            True,
+        )
+
+        # Delete the address from Linux side
+        del_namespace_address(self.ns_name, "hloop0", prefix)
+
+        self.poll_for(
+            f"{prefix} removed from loop0 in VPP",
+            lambda: any(
+                str(a.prefix) == prefix
+                for a in self.vapi.ip_address_dump(lo0_idx, is_ipv6=False)
+            ),
+            False,
+        )
+
+    def test_linux_to_vpp_ipv6_addr(self):
+        """Linux IPv6 address changes sync to VPP"""
+        lo0_idx = self.lo_interfaces[0].sw_if_index
+        prefix = self.loop0_linux_added_v6
+
+        # Add an IPv6 address from the Linux side
+        add_namespace_address(self.ns_name, "hloop0", prefix)
+
+        self.poll_for(
+            f"{prefix} on loop0 in VPP",
+            lambda: any(
+                str(a.prefix) == prefix
+                for a in self.vapi.ip_address_dump(lo0_idx, is_ipv6=True)
+            ),
+            True,
+        )
+
+        # Delete the address from Linux side
+        del_namespace_address(self.ns_name, "hloop0", prefix)
+
+        self.poll_for(
+            f"{prefix} removed from loop0 in VPP",
+            lambda: any(
+                str(a.prefix) == prefix
+                for a in self.vapi.ip_address_dump(lo0_idx, is_ipv6=True)
+            ),
+            False,
+        )
+
+
+@unittest.skipIf(config.skip_netns_tests, "netns not available or disabled from cli")
+class TestLinuxCPPairManagement(TestLinuxCPNetNSBase):
+    """Linux CP Interface Pair Management"""
+
+    def _get_lcp_pairs(self):
+        """Get all LCP pairs as a list of dicts."""
+        return list(self.vapi.vpp.details_iter(self.vapi.lcp_itf_pair_get))
+
+    def _find_lcp_pair(self, phy_sw_if_index):
+        """Find an LCP pair by phy sw_if_index."""
+        for p in self._get_lcp_pairs():
+            if p.phy_sw_if_index == phy_sw_if_index:
+                return p
+        return None
+
+    def test_pair_create_delete_tun(self):
+        """Create and delete TUN LCP pair on loopback"""
+        self.create_loopback_interfaces(1)
+        lo = self.lo_interfaces[0]
+
+        # Create LCP pair in TUN mode
+        self.vapi.cli(f"lcp create {lo.name} host-if htun0 netns {self.ns_name} tun")
+
+        # Verify pair exists in API with correct type
+        pair = self._find_lcp_pair(lo.sw_if_index)
+        self.assertIsNotNone(pair, "LCP pair should exist")
+        self.assertEqual(pair.host_if_name, "htun0")
+        self.assertEqual(pair.host_if_type, 1, "host_if_type should be TUN (1)")
+
+        # Verify host interface exists in namespace
+        self.assertTrue(
+            interface_exists(self.ns_name, "htun0"),
+            "htun0 should exist in namespace",
+        )
+
+        # Delete the pair
+        self.vapi.cli(f"lcp delete {lo.name}")
+
+        # Verify pair is gone
+        self.assertIsNone(
+            self._find_lcp_pair(lo.sw_if_index),
+            "LCP pair should be gone after delete",
+        )
+
+        # Verify host interface is gone
+        self.poll_for(
+            "htun0 gone from namespace",
+            lambda: interface_exists(self.ns_name, "htun0"),
+            False,
+        )
+
+    def test_pair_create_delete_tap(self):
+        """Create and delete TAP LCP pair on pg interface"""
+        self.create_pg_interfaces(range(1))
+        pg = self.pg_interfaces[0]
+
+        # Create LCP pair (TAP mode, default for ethernet)
+        self.vapi.cli(f"lcp create {pg.name} host-if htap0 netns {self.ns_name}")
+
+        # Verify pair exists in API with correct type
+        pair = self._find_lcp_pair(pg.sw_if_index)
+        self.assertIsNotNone(pair, "LCP pair should exist")
+        self.assertEqual(pair.host_if_name, "htap0")
+        self.assertEqual(pair.host_if_type, 0, "host_if_type should be TAP (0)")
+
+        # Verify host interface exists in namespace
+        self.assertTrue(
+            interface_exists(self.ns_name, "htap0"),
+            "htap0 should exist in namespace",
+        )
+
+        # Delete the pair
+        self.vapi.cli(f"lcp delete {pg.name}")
+
+        # Verify pair is gone
+        self.assertIsNone(
+            self._find_lcp_pair(pg.sw_if_index),
+            "LCP pair should be gone after delete",
+        )
+
+        # Verify host interface is gone
+        self.poll_for(
+            "htap0 gone from namespace",
+            lambda: interface_exists(self.ns_name, "htap0"),
+            False,
+        )
+
+    def test_pair_vlan_subinterface(self):
+        """Create LCP pairs for VLAN sub-interfaces"""
+        self.create_pg_interfaces(range(1))
+        pg = self.pg_interfaces[0]
+
+        # Create parent LCP pair
+        self.vapi.cli(f"lcp create {pg.name} host-if hpg0 netns {self.ns_name}")
+        self.assertTrue(interface_exists(self.ns_name, "hpg0"))
+
+        # Create VLAN sub-interface via API (sets exact-match)
+        r = self.vapi.create_vlan_subif(pg.sw_if_index, 100)
+        sub_sw_if_index = r.sw_if_index
+
+        # Create LCP pair for the sub-interface
+        self.vapi.cli(f"lcp create pg0.100 host-if hpg0.100 netns {self.ns_name}")
+
+        # Verify sub-interface pair exists
+        pair = self._find_lcp_pair(sub_sw_if_index)
+        self.assertIsNotNone(pair, "sub-interface LCP pair should exist")
+
+        # Verify VLAN host interface exists in namespace
+        self.poll_for(
+            "hpg0.100 exists in namespace",
+            lambda: interface_exists(self.ns_name, "hpg0.100"),
+            True,
+        )
+
+        # Delete sub-interface pair
+        self.vapi.cli("lcp delete pg0.100")
+        self.assertIsNone(self._find_lcp_pair(sub_sw_if_index))
+        self.poll_for(
+            "hpg0.100 gone from namespace",
+            lambda: interface_exists(self.ns_name, "hpg0.100"),
+            False,
+        )
+
+        # Clean up
+        self.vapi.delete_subif(sub_sw_if_index)
+        self.vapi.cli(f"lcp delete {pg.name}")
+
+    def test_pair_auto_subinterface(self):
+        """lcp-auto-subint creates pairs automatically for new sub-interfaces"""
+        self.create_pg_interfaces(range(1))
+        pg = self.pg_interfaces[0]
+
+        # Enable auto sub-interface creation
+        self.vapi.cli("lcp lcp-auto-subint on")
+        try:
+            # Create parent LCP pair
+            self.vapi.cli(f"lcp create {pg.name} host-if hauto0 netns {self.ns_name}")
+            self.assertTrue(interface_exists(self.ns_name, "hauto0"))
+
+            # Create VLAN sub-interface — LCP pair should be auto-created
+            r = self.vapi.create_vlan_subif(pg.sw_if_index, 200)
+            sub_sw_if_index = r.sw_if_index
+
+            # Poll for the auto-created LCP pair
+            self.poll_for(
+                "auto sub-interface LCP pair exists",
+                lambda: self._find_lcp_pair(sub_sw_if_index) is not None,
+                True,
+            )
+
+            # Verify the auto-created host interface name is hauto0.200
+            pair = self._find_lcp_pair(sub_sw_if_index)
+            self.assertIsNotNone(pair)
+            self.assertEqual(
+                pair.host_if_name,
+                "hauto0.200",
+                "auto-created host interface should be named hauto0.200",
+            )
+
+            # Verify the VLAN interface exists in namespace
+            self.poll_for(
+                "hauto0.200 exists in namespace",
+                lambda: interface_exists(self.ns_name, "hauto0.200"),
+                True,
+            )
+
+            # Delete the VPP sub-interface — auto pair should be cleaned up
+            self.vapi.delete_subif(sub_sw_if_index)
+
+            self.poll_for(
+                "auto sub-interface LCP pair removed",
+                lambda: self._find_lcp_pair(sub_sw_if_index) is not None,
+                False,
+            )
+
+            # Verify the Linux VLAN interface is also removed
+            self.poll_for(
+                "hauto0.200 gone from namespace",
+                lambda: interface_exists(self.ns_name, "hauto0.200"),
+                False,
+            )
+
+            self.vapi.cli(f"lcp delete {pg.name}")
+        finally:
+            self.vapi.cli("lcp lcp-auto-subint off")
