@@ -848,45 +848,10 @@ done:
 }
 
 VLIB_CLI_COMMAND (ikev2_initiate_command, static) = {
-    .path = "ikev2 initiate",
-    .short_help =
-        "ikev2 initiate sa-init <profile id>\n"
-        "ikev2 initiate del-child-sa <child sa ispi>\n"
-        "ikev2 initiate del-sa <sa ispi>\n"
-        "ikev2 initiate rekey-child-sa <child sa ispi>\n",
-    .function = ikev2_initiate_command_fn,
-};
-
-static clib_error_t *
-ikev2_set_log_level_command_fn (vlib_main_t * vm,
-				unformat_input_t * input,
-				vlib_cli_command_t * cmd)
-{
-  unformat_input_t _line_input, *line_input = &_line_input;
-  u32 log_level = IKEV2_LOG_NONE;
-  clib_error_t *error = 0;
-
-  /* Get a line of input. */
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
-
-  if (!unformat (line_input, "%d", &log_level))
-    {
-      error = clib_error_return (0, "unknown input '%U'",
-				 format_unformat_error, line_input);
-      goto done;
-    }
-  int rc = ikev2_set_log_level (log_level);
-  if (rc < 0)
-    error = clib_error_return (0, "setting log level failed!");
-
-done:
-  unformat_free (line_input);
-  return error;
-}
-
-VLIB_CLI_COMMAND (ikev2_set_log_level_command, static) = {
-  .path = "ikev2 set logging level",
-  .function = ikev2_set_log_level_command_fn,
-  .short_help = "ikev2 set logging level <0-5>",
+  .path = "ikev2 initiate",
+  .short_help = "ikev2 initiate sa-init <profile id>\n"
+		"ikev2 initiate del-child-sa <child sa ispi>\n"
+		"ikev2 initiate del-sa <sa ispi>\n"
+		"ikev2 initiate rekey-child-sa <child sa ispi>\n",
+  .function = ikev2_initiate_command_fn,
 };

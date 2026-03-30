@@ -339,11 +339,11 @@ ikev2_calc_integr (ikev2_sa_transform_t * tr, v8 * key, u8 * data, int len)
 
   if (tr->md == EVP_sha1 ())
     {
-      ikev2_elog_debug ("integrity checking with sha1");
+      log_debug ("integrity checking with sha1");
     }
   else if (tr->md == EVP_sha256 ())
     {
-      ikev2_elog_debug ("integrity checking with sha256");
+      log_debug ("integrity checking with sha256");
     }
 
   if (tr->integ_type == IKEV2_TRANSFORM_INTEG_TYPE_AUTH_AES_CMAC_96)
@@ -431,7 +431,7 @@ ikev2_decrypt_data (ikev2_main_per_thread_data_t * ptd, ikev2_sa_t * sa,
   /* check if data is multiplier of cipher block size */
   if (len % block_size)
     {
-      ikev2_elog_error ("wrong data length");
+      log_err ("wrong data length");
       return 0;
     }
   data += block_size;
@@ -852,7 +852,7 @@ ikev2_load_cert_file (u8 * file)
   fp = fopen ((char *) file, "r");
   if (!fp)
     {
-      ikev2_log_error ("open %s failed", file);
+      log_err ("open %s failed", file);
       goto end;
     }
 
@@ -860,14 +860,14 @@ ikev2_load_cert_file (u8 * file)
   fclose (fp);
   if (x509 == NULL)
     {
-      ikev2_log_error ("read cert %s failed", file);
+      log_err ("read cert %s failed", file);
       goto end;
     }
 
   pkey = X509_get_pubkey (x509);
   X509_free (x509);
   if (pkey == NULL)
-    ikev2_log_error ("get pubkey %s failed", file);
+    log_err ("get pubkey %s failed", file);
 
 end:
   return pkey;
@@ -882,14 +882,14 @@ ikev2_load_key_file (u8 * file)
   fp = fopen ((char *) file, "r");
   if (!fp)
     {
-      ikev2_log_error ("open %s failed", file);
+      log_err ("open %s failed", file);
       goto end;
     }
 
   pkey = PEM_read_PrivateKey (fp, NULL, NULL, NULL);
   fclose (fp);
   if (pkey == NULL)
-    ikev2_log_error ("read %s failed", file);
+    log_err ("read %s failed", file);
 
 end:
   return pkey;

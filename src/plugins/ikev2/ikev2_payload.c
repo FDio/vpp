@@ -435,7 +435,7 @@ ikev2_parse_sa_payload (ike_payload_header_t * ikep, u32 rlen)
   return v;
 
 data_corrupted:
-  ikev2_elog_detail ("SA payload data corrupted");
+  log_debug ("SA payload data corrupted");
   ikev2_sa_free_proposal_vector (&v);
   return 0;
 }
@@ -466,8 +466,7 @@ ikev2_parse_ts_payload (ike_payload_header_t * ikep, u32 rlen)
       if (pe->ts_type != TS_IPV4_ADDR_RANGE &&
           pe->ts_type != TS_IPV6_ADDR_RANGE)
         {
-          ikev2_elog_uint (IKEV2_LOG_ERROR,
-              "unsupported TS type received (%u)", pe->ts_type);
+	  log_err ("unsupported TS type received (%u)", pe->ts_type);
 	  goto data_corrupted;
 	}
 
@@ -568,7 +567,7 @@ void
 ikev2_parse_vendor_payload (ike_payload_header_t * ikep)
 {
   u32 plen = clib_net_to_host_u16 (ikep->length);
-  ikev2_elog_uint (IKEV2_LOG_DEBUG, "vendor payload skipped, len %d", plen);
+  log_debug ("vendor payload skipped, len %d", plen);
 }
 
 ikev2_delete_t *
