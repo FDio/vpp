@@ -1,0 +1,140 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "dfc4431e_ade9cb02",
+        "filename": "src/plugins/af_xdp/af_xdp.api",
+        "patchSetId": 24
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-03-30T16:36:01Z",
+      "side": 1,
+      "message": "you can add your flag to the existing flags with [backwards_compatible] that way you do not need to add a v2 and no v4 create either",
+      "revId": "e3af360be008e1970040d7b7ea8e0d9328f5584f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "570ccb29_eff55aeb",
+        "filename": "src/plugins/af_xdp/af_xdp.h",
+        "patchSetId": 24
+      },
+      "lineNbr": 74,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-03-30T16:36:01Z",
+      "side": 1,
+      "message": "if this is used in datapath that should be moved above",
+      "revId": "e3af360be008e1970040d7b7ea8e0d9328f5584f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "db1ed679_8a842fdd",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 24
+      },
+      "lineNbr": 141,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-03-30T16:36:01Z",
+      "side": 1,
+      "message": "why __u32?",
+      "revId": "e3af360be008e1970040d7b7ea8e0d9328f5584f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b87edf92_affcd2db",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 24
+      },
+      "lineNbr": 245,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-03-30T16:36:01Z",
+      "side": 1,
+      "message": "this will probably fail for user-specified file as it search only in standard path.",
+      "revId": "e3af360be008e1970040d7b7ea8e0d9328f5584f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "40a2d19c_a915b98c",
+        "filename": "src/plugins/af_xdp/input.c",
+        "patchSetId": 24
+      },
+      "lineNbr": 195,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-03-30T16:36:01Z",
+      "side": 1,
+      "message": "can we use af_xdp_device_input_bufs() with an is_mb constant?",
+      "revId": "e3af360be008e1970040d7b7ea8e0d9328f5584f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5dad6f9a_71168798",
+        "filename": "src/plugins/af_xdp/output.c",
+        "patchSetId": 24
+      },
+      "lineNbr": 127,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-03-30T16:36:01Z",
+      "side": 1,
+      "message": "could we just use af_xdp_device_output_free() with a is_mb parameter? Looks mostly a duplicate",
+      "revId": "e3af360be008e1970040d7b7ea8e0d9328f5584f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "351db6b9_cd1137a6",
+        "filename": "src/plugins/af_xdp/output.c",
+        "patchSetId": 24
+      },
+      "lineNbr": 181,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-03-30T16:36:01Z",
+      "side": 1,
+      "message": "can we use af_xdp_device_output_tx_try() with a is_mb constant?",
+      "revId": "e3af360be008e1970040d7b7ea8e0d9328f5584f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "68ffcdf4_374068b2",
+        "filename": "test/vm_vpp_interfaces.py",
+        "patchSetId": 24
+      },
+      "lineNbr": 976,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-03-30T16:36:01Z",
+      "side": 1,
+      "message": "please use explicit constant names",
+      "revId": "e3af360be008e1970040d7b7ea8e0d9328f5584f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
