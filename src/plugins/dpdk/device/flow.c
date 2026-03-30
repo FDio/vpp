@@ -797,11 +797,7 @@ dpdk_flow_ops_fn (vnet_main_t * vnm, vnet_flow_dev_op_t op, u32 dev_instance,
   else
     fe->mark = 0;
 
-  if ((xd->flags & DPDK_DEVICE_FLAG_RX_FLOW_OFFLOAD) == 0)
-    {
-      xd->flags |= DPDK_DEVICE_FLAG_RX_FLOW_OFFLOAD;
-      dpdk_device_setup (xd);
-    }
+  xd->flags |= DPDK_DEVICE_FLAG_RX_FLOW_OFFLOAD;
 
   switch (flow->type)
     {
@@ -849,10 +845,7 @@ done:
 disable_rx_offload:
   if ((xd->flags & DPDK_DEVICE_FLAG_RX_FLOW_OFFLOAD) != 0
       && pool_elts (xd->flow_entries) == 0)
-    {
-      xd->flags &= ~DPDK_DEVICE_FLAG_RX_FLOW_OFFLOAD;
-      dpdk_device_setup (xd);
-    }
+    xd->flags &= ~DPDK_DEVICE_FLAG_RX_FLOW_OFFLOAD;
 
   return rv;
 }
