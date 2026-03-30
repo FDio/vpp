@@ -13,7 +13,6 @@
 #include <plugins/ikev2/ikev2.h>
 
 #include <vppinfra/hash.h>
-#include <vppinfra/elog.h>
 #include <vppinfra/error.h>
 
 #include <openssl/rand.h>
@@ -21,166 +20,20 @@
 #include <openssl/hmac.h>
 #include <openssl/evp.h>
 
-#define foreach_ikev2_log_level \
-  _(0x00, LOG_NONE)             \
-  _(0x01, LOG_ERROR)            \
-  _(0x02, LOG_WARNING)          \
-  _(0x03, LOG_INFO)             \
-  _(0x04, LOG_DEBUG)            \
-  _(0x05, LOG_DETAIL)           \
+#define IKEV2_LOG_SENSITIVE_DATA 0
 
-
-typedef enum ikev2_log_level_t_
-{
-#define _(n,f) IKEV2_##f = n,
-  foreach_ikev2_log_level
-#undef _
-  IKEV2_LOG_MAX
-} ikev2_log_level_t;
-
-/* dataplane logging */
-#define _ikev2_elog(_level, _msg)                                             \
-  do                                                                          \
-    {                                                                         \
-      ikev2_main_t *km = &ikev2_main;                                         \
-      if (PREDICT_FALSE (km->log_level >= _level))                            \
-	{                                                                     \
-	  ELOG_TYPE_DECLARE (e) = {                                           \
-	    .format = "ikev2 " _msg,                                          \
-	    .format_args = "",                                                \
-	  };                                                                  \
-	  ELOG_DATA (vlib_get_elog_main (), e);                               \
-	}                                                                     \
-    }                                                                         \
+#define log_err(...)   vlib_log (VLIB_LOG_LEVEL_ERR, ikev2_main.log_class, __VA_ARGS__)
+#define log_warn(...)  vlib_log (VLIB_LOG_LEVEL_WARNING, ikev2_main.log_class, __VA_ARGS__)
+#define log_debug(...) vlib_log (VLIB_LOG_LEVEL_DEBUG, ikev2_main.log_class, __VA_ARGS__)
+#if IKEV2_LOG_SENSITIVE_DATA
+#define log_sensitive(...) log_debug (__VA_ARGS__)
+#else
+#define log_sensitive(...)                                                                         \
+  do                                                                                               \
+    {                                                                                              \
+    }                                                                                              \
   while (0)
-
-#define ikev2_elog_sa_state(_format, _ispi)                                   \
-  do                                                                          \
-    {                                                                         \
-      ikev2_main_t *km = &ikev2_main;                                         \
-      if (PREDICT_FALSE (km->log_level >= IKEV2_LOG_DEBUG))                   \
-	{                                                                     \
-	  ELOG_TYPE_DECLARE (e) = {                                           \
-	    .format = "ikev2: " _format,                                      \
-	    .format_args = "i8",                                              \
-	  };                                                                  \
-	  CLIB_PACKED (struct { u64 ispi; }) * ed;                            \
-	  ed = ELOG_DATA (vlib_get_elog_main (), e);                          \
-	  ed->ispi = _ispi;                                                   \
-	}                                                                     \
-    }                                                                         \
-  while (0)
-
-#define ikev2_elog_exchange_internal(_format, _ispi, _rspi, _addr)            \
-  do                                                                          \
-    {                                                                         \
-      ikev2_main_t *km = &ikev2_main;                                         \
-      if (PREDICT_FALSE (km->log_level >= IKEV2_LOG_DEBUG))                   \
-	{                                                                     \
-	  ELOG_TYPE_DECLARE (e) = {                                           \
-	    .format = "ikev2: " _format,                                      \
-	    .format_args = "i8i8i1i1i1i1",                                    \
-	  };                                                                  \
-	  CLIB_PACKED (struct {                                               \
-	    u64 ispi;                                                         \
-	    u64 rspi;                                                         \
-	    u8 oct1;                                                          \
-	    u8 oct2;                                                          \
-	    u8 oct3;                                                          \
-	    u8 oct4;                                                          \
-	  }) *                                                                \
-	    ed;                                                               \
-	  ed = ELOG_DATA (vlib_get_elog_main (), e);                          \
-	  ed->ispi = _ispi;                                                   \
-	  ed->rspi = _rspi;                                                   \
-	  ed->oct4 = (_addr) >> 24;                                           \
-	  ed->oct3 = (_addr) >> 16;                                           \
-	  ed->oct2 = (_addr) >> 8;                                            \
-	  ed->oct1 = (_addr);                                                 \
-	}                                                                     \
-    }                                                                         \
-  while (0)
-
-#define IKE_ELOG_IP4_FMT "%d.%d.%d.%d"
-#define IKE_ELOG_IP6_FMT "[v6]:%x%x:%x%x"
-
-#define ikev2_elog_exchange(_fmt, _ispi, _rspi, _addr, _v4)                   \
-do {                                                                          \
-  if (_v4)                                                                    \
-    ikev2_elog_exchange_internal (_fmt IKE_ELOG_IP4_FMT, _ispi, _rspi, _addr);\
-  else                                                                        \
-    ikev2_elog_exchange_internal (_fmt IKE_ELOG_IP6_FMT, _ispi, _rspi, _addr);\
-} while (0)
-
-#define ikev2_elog_uint(_level, _format, _val)                                \
-  do                                                                          \
-    {                                                                         \
-      ikev2_main_t *km = &ikev2_main;                                         \
-      if (PREDICT_FALSE (km->log_level >= _level))                            \
-	{                                                                     \
-	  ELOG_TYPE_DECLARE (e) = {                                           \
-	    .format = "ikev2: " _format,                                      \
-	    .format_args = "i8",                                              \
-	  };                                                                  \
-	  CLIB_PACKED (struct { u64 val; }) * ed;                             \
-	  ed = ELOG_DATA (vlib_get_elog_main (), e);                          \
-	  ed->val = _val;                                                     \
-	}                                                                     \
-    }                                                                         \
-  while (0)
-
-#define ikev2_elog_uint_peers(_level, _format, _val, _ip1, _ip2)              \
-  do                                                                          \
-    {                                                                         \
-      ikev2_main_t *km = &ikev2_main;                                         \
-      if (PREDICT_FALSE (km->log_level >= _level))                            \
-	{                                                                     \
-	  ELOG_TYPE_DECLARE (e) = {                                           \
-	    .format = "ikev2: " _format,                                      \
-	    .format_args = "i8i1i1i1i1i1i1i1i1",                              \
-	  };                                                                  \
-	  CLIB_PACKED (struct {                                               \
-	    u64 val;                                                          \
-	    u8 i11;                                                           \
-	    u8 i12;                                                           \
-	    u8 i13;                                                           \
-	    u8 i14;                                                           \
-	    u8 i21;                                                           \
-	    u8 i22;                                                           \
-	    u8 i23;                                                           \
-	    u8 i24;                                                           \
-	  }) *                                                                \
-	    ed;                                                               \
-	  ed = ELOG_DATA (vlib_get_elog_main (), e);                          \
-	  ed->val = _val;                                                     \
-	  ed->i14 = (_ip1) >> 24;                                             \
-	  ed->i13 = (_ip1) >> 16;                                             \
-	  ed->i12 = (_ip1) >> 8;                                              \
-	  ed->i11 = (_ip1);                                                   \
-	  ed->i24 = (_ip2) >> 24;                                             \
-	  ed->i23 = (_ip2) >> 16;                                             \
-	  ed->i22 = (_ip2) >> 8;                                              \
-	  ed->i21 = (_ip2);                                                   \
-	}                                                                     \
-    }                                                                         \
-  while (0)
-
-#define ikev2_elog_error(_msg) \
-  _ikev2_elog(IKEV2_LOG_ERROR, "[error] " _msg)
-#define ikev2_elog_warning(_msg) \
-  _ikev2_elog(IKEV2_LOG_WARNING, "[warning] " _msg)
-#define ikev2_elog_debug(_msg) \
-  _ikev2_elog(IKEV2_LOG_DEBUG, "[debug] " _msg)
-#define ikev2_elog_detail(_msg) \
-  _ikev2_elog(IKEV2_LOG_DETAIL, "[detail] " _msg)
-
-/* logging for main thread */
-#define ikev2_log_error(...) \
-  vlib_log(VLIB_LOG_LEVEL_ERR, ikev2_main.log_class, __VA_ARGS__)
-#define ikev2_log_warning(...) \
-  vlib_log(VLIB_LOG_LEVEL_WARNING, ikev2_main.log_class, __VA_ARGS__)
-#define ikev2_log_debug(...) \
-  vlib_log(VLIB_LOG_LEVEL_DEBUG, ikev2_main.log_class, __VA_ARGS__)
+#endif
 
 #define foreach_ikev2_state                                                   \
   _ (0, UNKNOWN, "UNKNOWN")                                                   \
@@ -546,9 +399,6 @@ typedef struct
   /* log class used for main thread */
   vlib_log_class_t log_class;
 
-  /* logging level */
-  ikev2_log_level_t log_level;
-
   /* sleep interval for ikev2_manager_process node, in seconds */
   f64 sleep_interval;
 
@@ -650,9 +500,7 @@ ikev2_sa_proposal_t *ikev2_parse_sa_payload (ike_payload_header_t * ikep,
 ikev2_ts_t *ikev2_parse_ts_payload (ike_payload_header_t * ikep, u32 rlen);
 ikev2_delete_t *ikev2_parse_delete_payload (ike_payload_header_t * ikep,
 					    u32 rlen);
-ikev2_notify_t *ikev2_parse_notify_payload (ike_payload_header_t * ikep,
-					    u32 rlen);
-int ikev2_set_log_level (ikev2_log_level_t log_level);
+ikev2_notify_t *ikev2_parse_notify_payload (ike_payload_header_t *ikep, u32 rlen);
 u8 *ikev2_find_ike_notify_payload (ike_header_t * ike, u32 msg_type);
 void ikev2_disable_dpd (void);
 clib_error_t *ikev2_profile_natt_disable (u8 * name);

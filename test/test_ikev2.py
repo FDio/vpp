@@ -758,7 +758,6 @@ class IkePeer(VppTestCase):
         self.assertIsNotNone(self.p.query_vpp_config())
         if self.sa.is_initiator:
             self.sa.generate_dh_data()
-        self.vapi.cli("ikev2 set logging level 5")
         self.vapi.cli("event-lo clear")
 
     def assert_counter(self, count, name, version="ip4"):
