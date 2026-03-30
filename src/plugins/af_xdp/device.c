@@ -426,24 +426,50 @@ af_xdp_get_numa (const char *ifname)
   return numa;
 }
 
+static int
+af_xdp_ioctl (unsigned long request, void *data)
+{
+  int fd, err;
+
+  fd = socket (AF_INET, SOCK_DGRAM, 0);
+  if (fd < 0)
+    return VNET_API_ERROR_UNSPECIFIED;
+
+  err = ioctl (fd, request, data);
+  close (fd);
+  if (err)
+    return VNET_API_ERROR_UNSPECIFIED;
+
+  return 0;
+}
+
+static int
+af_xdp_get_mac_address (const char *ifname, u8 *ifmac)
+{
+  struct ifreq ifr;
+  int err;
+
+  snprintf (ifr.ifr_name, sizeof (ifr.ifr_name), "%s", ifname);
+  err = af_xdp_ioctl (SIOCGIFHWADDR, &ifr);
+  if (err)
+    return VNET_API_ERROR_UNSPECIFIED;
+
+  clib_memcpy (ifmac, ifr.ifr_hwaddr.sa_data, IFHWADDRLEN);
+
+  return 0;
+}
+
 static void
 af_xdp_get_q_count (const char *ifname, int *rxq_num, int *txq_num)
 {
   struct ethtool_channels ec = { .cmd = ETHTOOL_GCHANNELS };
   struct ifreq ifr = { .ifr_data = (void *) &ec };
-  int fd, err;
+  int err;
 
   *rxq_num = *txq_num = 1;
 
-  fd = socket (AF_INET, SOCK_DGRAM, 0);
-  if (fd < 0)
-    return;
-
   snprintf (ifr.ifr_name, sizeof (ifr.ifr_name), "%s", ifname);
-  err = ioctl (fd, SIOCETHTOOL, &ifr);
-
-  close (fd);
-
+  err = af_xdp_ioctl (SIOCETHTOOL, &ifr);
   if (err)
     return;
 
@@ -564,8 +590,9 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   vnet_eth_interface_registration_t eir = {};
   af_xdp_main_t *am = &af_xdp_main;
-  af_xdp_device_t *ad;
+  af_xdp_device_t *ad = NULL;
   vnet_sw_interface_t *sw;
+  u8 reuse_mac[IFHWADDRLEN];
   int rxq_num, txq_num, q_num;
   int ns_fds[2];
   int i, ret;
@@ -600,6 +627,14 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
       args->error = clib_error_return (0, "enter netns %s failed, ret %d",
 				       args->netns, args->rv);
       goto err0;
+    }
+
+  if ((args->flags & AF_XDP_CREATE_FLAGS_MAC_REUSE) &&
+      (af_xdp_get_mac_address (args->linux_ifname, reuse_mac) != 0))
+    {
+      args->rv = VNET_API_ERROR_INVALID_VALUE;
+      args->error = clib_error_create ("get MAC address of '%s' failed", args->linux_ifname);
+      goto err1;
     }
 
   af_xdp_get_q_count (args->linux_ifname, &rxq_num, &txq_num);
@@ -713,7 +748,10 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
   else
     ad->name = (char *) format (0, "%s", args->name);
 
-  ethernet_mac_address_generate (ad->hwaddr);
+  if (args->flags & AF_XDP_CREATE_FLAGS_MAC_REUSE)
+    clib_memcpy (ad->hwaddr, reuse_mac, sizeof (reuse_mac));
+  else
+    ethernet_mac_address_generate (ad->hwaddr);
 
   /* create interface */
   eir.dev_class_index = af_xdp_device_class.index;
