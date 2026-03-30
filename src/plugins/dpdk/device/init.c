@@ -435,10 +435,12 @@ dpdk_lib_init (dpdk_main_t * dm)
 	    xd->name = format (xd->name, "%u", port_id);
 
 	  /* Handle representor devices that share the same PCI ID */
-	  if ((di.switch_info.domain_id !=
-	       RTE_ETH_DEV_SWITCH_DOMAIN_ID_INVALID) &&
+	  if ((di.switch_info.domain_id != RTE_ETH_DEV_SWITCH_DOMAIN_ID_INVALID) &&
 	      (di.switch_info.port_id != (uint16_t) -1))
-	    xd->name = format (xd->name, "/%d", di.switch_info.port_id);
+	    {
+	      xd->name = format (xd->name, "/%d", di.switch_info.port_id);
+	      dpdk_device_flag_set (xd, DPDK_DEVICE_FLAG_REPRESENTOR, 1);
+	    }
 	}
 
       /* Check for interface name collision */
