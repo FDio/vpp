@@ -57,6 +57,7 @@ typedef ikev2_ike_transforms
   u8 crypto_alg;
   u32 crypto_key_size;
   u8 integ_alg;
+  u8 prf_alg;
   u8 dh_group;
 };
 

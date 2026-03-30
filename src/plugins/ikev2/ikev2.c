@@ -4016,8 +4016,9 @@ ikev2_set_initiator_proposals (vlib_main_t * vm, ikev2_sa_t * sa,
       error = 1;
       vec_foreach (td, km->supported_transforms)
       {
-	if (td->type == IKEV2_TRANSFORM_TYPE_PRF
-	    && td->prf_type == IKEV2_TRANSFORM_PRF_TYPE_PRF_HMAC_SHA2_256)
+	  if (td->type == IKEV2_TRANSFORM_TYPE_PRF &&
+	      td->prf_type ==
+		(ts->prf_alg ? ts->prf_alg : IKEV2_TRANSFORM_PRF_TYPE_PRF_HMAC_SHA2_256))
 	  {
 	    vec_add1 (proposal->transforms, *td);
 	    error = 0;
@@ -4604,11 +4605,10 @@ ikev2_set_profile_responder (vlib_main_t * vm, u8 * name,
 }
 
 clib_error_t *
-ikev2_set_profile_ike_transforms (vlib_main_t * vm, u8 * name,
-				  ikev2_transform_encr_type_t crypto_alg,
+ikev2_set_profile_ike_transforms (vlib_main_t *vm, u8 *name, ikev2_transform_encr_type_t crypto_alg,
 				  ikev2_transform_integ_type_t integ_alg,
-				  ikev2_transform_dh_type_t dh_type,
-				  u32 crypto_key_size)
+				  ikev2_transform_prf_type_t prf_alg,
+				  ikev2_transform_dh_type_t dh_type, u32 crypto_key_size)
 {
   ikev2_profile_t *p;
 
@@ -4631,6 +4631,7 @@ ikev2_set_profile_ike_transforms (vlib_main_t * vm, u8 * name,
 
   p->ike_ts.crypto_alg = crypto_alg;
   p->ike_ts.integ_alg = integ_alg;
+  p->ike_ts.prf_alg = prf_alg;
   p->ike_ts.dh_type = dh_type;
   p->ike_ts.crypto_key_size = crypto_key_size;
   return 0;

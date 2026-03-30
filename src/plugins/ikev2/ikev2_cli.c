@@ -480,9 +480,9 @@ ikev2_profile_add_del_command_fn (vlib_main_t * vm,
 	     unformat_ikev2_transform_integ_type, &integ_alg,
 	     unformat_ikev2_transform_dh_type, &dh_type))
 	{
-	  r =
-	    ikev2_set_profile_ike_transforms (vm, name, crypto_alg, integ_alg,
-					      dh_type, tmp1);
+	  r = ikev2_set_profile_ike_transforms (vm, name, crypto_alg, integ_alg,
+						IKEV2_TRANSFORM_PRF_TYPE_PRF_HMAC_SHA2_256, dh_type,
+						tmp1);
 	  goto done;
 	}
       else
@@ -493,10 +493,9 @@ ikev2_profile_add_del_command_fn (vlib_main_t * vm,
 	     unformat_ikev2_transform_encr_type, &crypto_alg, &tmp1,
 	     unformat_ikev2_transform_dh_type, &dh_type))
 	{
-	  r =
-	    ikev2_set_profile_ike_transforms (vm, name, crypto_alg,
-					      IKEV2_TRANSFORM_INTEG_TYPE_NONE,
-					      dh_type, tmp1);
+	  r = ikev2_set_profile_ike_transforms (
+	    vm, name, crypto_alg, IKEV2_TRANSFORM_INTEG_TYPE_NONE,
+	    IKEV2_TRANSFORM_PRF_TYPE_PRF_HMAC_SHA2_256, dh_type, tmp1);
 	  goto done;
 	}
       else

@@ -268,6 +268,7 @@ typedef struct
 {
   ikev2_transform_encr_type_t crypto_alg;
   ikev2_transform_integ_type_t integ_alg;
+  ikev2_transform_prf_type_t prf_alg;
   ikev2_transform_dh_type_t dh_type;
   u32 crypto_key_size;
 } ikev2_transforms_set;
