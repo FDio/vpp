@@ -426,6 +426,29 @@ af_xdp_get_numa (const char *ifname)
   return numa;
 }
 
+static int
+af_xdp_get_mac_address (const char *ifname, unsigned char *ifmac)
+{
+  struct ifreq ifr;
+  int fd, err;
+
+  fd = socket (AF_INET, SOCK_DGRAM, 0);
+  if (fd < 0)
+    return -1;
+
+  snprintf (ifr.ifr_name, sizeof (ifr.ifr_name), "%s", ifname);
+  err = ioctl (fd, SIOCGIFHWADDR, &ifr);
+
+  close (fd);
+
+  if (err)
+    return -1;
+
+  clib_memcpy (ifmac, ifr.ifr_hwaddr.sa_data, IFHWADDRLEN);
+
+  return 0;
+}
+
 static void
 af_xdp_get_q_count (const char *ifname, int *rxq_num, int *txq_num)
 {
@@ -713,7 +736,14 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
   else
     ad->name = (char *) format (0, "%s", args->name);
 
-  ethernet_mac_address_generate (ad->hwaddr);
+  if (args->flags & AF_XDP_CREATE_FLAGS_MAC_REUSE)
+    {
+      af_xdp_get_mac_address (args->linux_ifname, ad->hwaddr);
+    }
+  else /* generate mac address */
+    {
+      ethernet_mac_address_generate (ad->hwaddr);
+    }
 
   /* create interface */
   eir.dev_class_index = af_xdp_device_class.index;
