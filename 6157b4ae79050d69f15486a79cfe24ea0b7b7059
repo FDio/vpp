@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7dba636f_9a001286",
+        "filename": "test/hs-test/hs_test.sh",
+        "patchSetId": 1
+      },
+      "lineNbr": 257,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-03-30T10:46:47Z",
+      "side": 1,
+      "message": "where we stop ginkgo container in this case? could you please add comment?",
+      "revId": "6157b4ae79050d69f15486a79cfe24ea0b7b7059",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "20752b1a_f5546d6f",
+        "filename": "test/hs-test/infra/vppinstance.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 286,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-03-30T10:46:47Z",
+      "side": 1,
+      "message": "remove",
+      "revId": "6157b4ae79050d69f15486a79cfe24ea0b7b7059",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
