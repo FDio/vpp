@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "628ab60a_38a4f864",
+        "filename": "test/hs-test/hs_test.sh",
+        "patchSetId": 1
+      },
+      "lineNbr": 257,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2026-03-30T11:15:55Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "7dba636f_9a001286",
+      "revId": "6157b4ae79050d69f15486a79cfe24ea0b7b7059",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "20752b1a_f5546d6f",
@@ -31,6 +49,24 @@
       "writtenOn": "2026-03-30T10:46:47Z",
       "side": 1,
       "message": "remove",
+      "revId": "6157b4ae79050d69f15486a79cfe24ea0b7b7059",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6739f193_101e869a",
+        "filename": "test/hs-test/infra/vppinstance.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 286,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2026-03-30T11:15:55Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "20752b1a_f5546d6f",
       "revId": "6157b4ae79050d69f15486a79cfe24ea0b7b7059",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
