@@ -3,7 +3,7 @@
 import unittest
 from random import shuffle, randrange
 
-from framework import VppTestCase
+from framework import VppTestCase, Send, Expect
 from asfframework import VppTestRunner
 
 from scapy.packet import Raw
@@ -176,22 +176,18 @@ class TestIPv4Reassembly(VppTestCase):
     def test_reassembly(self):
         """basic reassembly"""
 
-        self.pg_enable_capture()
-        self.src_if.add_stream(self.fragments_200)
-        self.pg_start()
-
-        packets = self.dst_if.get_capture(len(self.pkt_infos))
+        packets = self.send_and_expect_multi(
+            send=[Send(self.src_if, self.fragments_200)],
+            expect=[Expect(self.dst_if, len(self.pkt_infos))],
+        )[0].packets
         self.verify_capture(packets)
-        self.src_if.assert_nothing_captured()
 
         # run it all again to verify correctness
-        self.pg_enable_capture()
-        self.src_if.add_stream(self.fragments_200)
-        self.pg_start()
-
-        packets = self.dst_if.get_capture(len(self.pkt_infos))
+        packets = self.send_and_expect_multi(
+            send=[Send(self.src_if, self.fragments_200)],
+            expect=[Expect(self.dst_if, len(self.pkt_infos))],
+        )[0].packets
         self.verify_capture(packets)
-        self.src_if.assert_nothing_captured()
 
     def test_verify_clear_trace_mid_reassembly(self):
         """verify clear trace works mid-reassembly"""
@@ -214,22 +210,18 @@ class TestIPv4Reassembly(VppTestCase):
         fragments = list(self.fragments_200)
         fragments.reverse()
 
-        self.pg_enable_capture()
-        self.src_if.add_stream(fragments)
-        self.pg_start()
-
-        packets = self.dst_if.get_capture(len(self.packet_infos))
+        packets = self.send_and_expect_multi(
+            send=[Send(self.src_if, fragments)],
+            expect=[Expect(self.dst_if, len(self.packet_infos))],
+        )[0].packets
         self.verify_capture(packets)
-        self.src_if.assert_nothing_captured()
 
         # run it all again to verify correctness
-        self.pg_enable_capture()
-        self.src_if.add_stream(fragments)
-        self.pg_start()
-
-        packets = self.dst_if.get_capture(len(self.packet_infos))
+        packets = self.send_and_expect_multi(
+            send=[Send(self.src_if, fragments)],
+            expect=[Expect(self.dst_if, len(self.packet_infos))],
+        )[0].packets
         self.verify_capture(packets)
-        self.src_if.assert_nothing_captured()
 
     def test_long_fragment_chain(self):
         """long fragment chain"""
@@ -399,22 +391,20 @@ Ethernet-Payload.IPv4-Packet.IPv4-Header.Fragment-Offset; Test-case: 5737"""
         fragments = list(self.fragments_200)
         shuffle(fragments)
 
-        self.pg_enable_capture()
-        self.src_if.add_stream(fragments)
-        self.pg_start()
+        packets = self.send_and_expect_multi(
+            send=[Send(self.src_if, fragments)],
+            expect=[Expect(self.dst_if, len(self.packet_infos))],
+        )[0].packets
 
-        packets = self.dst_if.get_capture(len(self.packet_infos))
         self.verify_capture(packets)
-        self.src_if.assert_nothing_captured()
 
         # run it all again to verify correctness
-        self.pg_enable_capture()
-        self.src_if.add_stream(fragments)
-        self.pg_start()
+        packets = self.send_and_expect_multi(
+            send=[Send(self.src_if, fragments)],
+            expect=[Expect(self.dst_if, len(self.packet_infos))],
+        )[0].packets
 
-        packets = self.dst_if.get_capture(len(self.packet_infos))
         self.verify_capture(packets)
-        self.src_if.assert_nothing_captured()
 
     def test_duplicates(self):
         """duplicate fragments"""
@@ -426,13 +416,11 @@ Ethernet-Payload.IPv4-Packet.IPv4-Header.Fragment-Offset; Test-case: 5737"""
             for _ in range(0, min(2, len(frags)))
         ]
 
-        self.pg_enable_capture()
-        self.src_if.add_stream(fragments)
-        self.pg_start()
-
-        packets = self.dst_if.get_capture(len(self.pkt_infos))
+        packets = self.send_and_expect_multi(
+            send=[Send(self.src_if, fragments)],
+            expect=[Expect(self.dst_if, len(self.pkt_infos))],
+        )[0].packets
         self.verify_capture(packets)
-        self.src_if.assert_nothing_captured()
 
     def test_overlap1(self):
         """overlapping fragments case #1"""
@@ -446,22 +434,18 @@ Ethernet-Payload.IPv4-Packet.IPv4-Header.Fragment-Offset; Test-case: 5737"""
                     fragments.extend(i)
                     fragments.extend(j)
 
-        self.pg_enable_capture()
-        self.src_if.add_stream(fragments)
-        self.pg_start()
-
-        packets = self.dst_if.get_capture(len(self.pkt_infos))
+        packets = self.send_and_expect_multi(
+            send=[Send(self.src_if, fragments)],
+            expect=[Expect(self.dst_if, len(self.pkt_infos))],
+        )[0].packets
         self.verify_capture(packets)
-        self.src_if.assert_nothing_captured()
 
         # run it all to verify correctness
-        self.pg_enable_capture()
-        self.src_if.add_stream(fragments)
-        self.pg_start()
-
-        packets = self.dst_if.get_capture(len(self.pkt_infos))
+        packets = self.send_and_expect_multi(
+            send=[Send(self.src_if, fragments)],
+            expect=[Expect(self.dst_if, len(self.pkt_infos))],
+        )[0].packets
         self.verify_capture(packets)
-        self.src_if.assert_nothing_captured()
 
     def test_overlap2(self):
         """overlapping fragments case #2"""
@@ -481,22 +465,18 @@ Ethernet-Payload.IPv4-Packet.IPv4-Header.Fragment-Offset; Test-case: 5737"""
                     fragments.extend(j)
                 fragments.pop()
 
-        self.pg_enable_capture()
-        self.src_if.add_stream(fragments)
-        self.pg_start()
-
-        packets = self.dst_if.get_capture(len(self.pkt_infos))
+        packets = self.send_and_expect_multi(
+            send=[Send(self.src_if, fragments)],
+            expect=[Expect(self.dst_if, len(self.pkt_infos))],
+        )[0].packets
         self.verify_capture(packets)
-        self.src_if.assert_nothing_captured()
 
         # run it all to verify correctness
-        self.pg_enable_capture()
-        self.src_if.add_stream(fragments)
-        self.pg_start()
-
-        packets = self.dst_if.get_capture(len(self.pkt_infos))
+        packets = self.send_and_expect_multi(
+            send=[Send(self.src_if, fragments)],
+            expect=[Expect(self.dst_if, len(self.pkt_infos))],
+        )[0].packets
         self.verify_capture(packets)
-        self.src_if.assert_nothing_captured()
 
     def test_timeout_inline(self):
         """timeout (inline)"""
@@ -512,15 +492,13 @@ Ethernet-Payload.IPv4-Packet.IPv4-Header.Fragment-Offset; Test-case: 5737"""
             expire_walk_interval_ms=10000,
         )
 
-        self.pg_enable_capture()
-        self.src_if.add_stream(self.fragments_400)
-        self.pg_start()
-
-        packets = self.dst_if.get_capture(
-            len(self.pkt_infos) - len(dropped_packet_indexes)
-        )
+        packets = self.send_and_expect_multi(
+            send=[Send(self.src_if, self.fragments_400)],
+            expect=[
+                Expect(self.dst_if, len(self.pkt_infos) - len(dropped_packet_indexes))
+            ],
+        )[0].packets
         self.verify_capture(packets, dropped_packet_indexes)
-        self.src_if.assert_nothing_captured()
 
     def test_timeout_cleanup(self):
         """timeout (cleanup)"""
@@ -579,15 +557,13 @@ Ethernet-Payload.IPv4-Packet.IPv4-Header.Fragment-Offset; Test-case: 5737"""
             expire_walk_interval_ms=10000,
         )
 
-        self.pg_enable_capture()
-        self.src_if.add_stream(self.fragments_400)
-        self.pg_start()
-
-        packets = self.dst_if.get_capture(
-            len(self.pkt_infos) - len(dropped_packet_indexes)
-        )
+        packets = self.send_and_expect_multi(
+            send=[Send(self.src_if, self.fragments_400)],
+            expect=[
+                Expect(self.dst_if, len(self.pkt_infos) - len(dropped_packet_indexes))
+            ],
+        )[0].packets
         self.verify_capture(packets, dropped_packet_indexes)
-        self.src_if.assert_nothing_captured()
 
     @unittest.skipIf(
         "ping" in config.excluded_plugins, "Exclude tests requiring Ping plugin"
@@ -1278,22 +1254,18 @@ class TestIPv6Reassembly(VppTestCase):
     def test_reassembly(self):
         """basic reassembly"""
 
-        self.pg_enable_capture()
-        self.src_if.add_stream(self.fragments_400)
-        self.pg_start()
-
-        packets = self.dst_if.get_capture(len(self.pkt_infos))
+        packets = self.send_and_expect_multi(
+            send=[Send(self.src_if, self.fragments_400)],
+            expect=[Expect(self.dst_if, len(self.pkt_infos))],
+        )[0].packets
         self.verify_capture(packets)
-        self.src_if.assert_nothing_captured()
 
         # run it all again to verify correctness
-        self.pg_enable_capture()
-        self.src_if.add_stream(self.fragments_400)
-        self.pg_start()
-
-        packets = self.dst_if.get_capture(len(self.pkt_infos))
+        packets = self.send_and_expect_multi(
+            send=[Send(self.src_if, self.fragments_400)],
+            expect=[Expect(self.dst_if, len(self.pkt_infos))],
+        )[0].packets
         self.verify_capture(packets)
-        self.src_if.assert_nothing_captured()
 
     def test_buffer_boundary(self):
         """fragment header crossing buffer boundary"""
@@ -1333,22 +1305,18 @@ class TestIPv6Reassembly(VppTestCase):
         fragments = list(self.fragments_400)
         fragments.reverse()
 
-        self.pg_enable_capture()
-        self.src_if.add_stream(fragments)
-        self.pg_start()
-
-        packets = self.dst_if.get_capture(len(self.pkt_infos))
+        packets = self.send_and_expect_multi(
+            send=[Send(self.src_if, fragments)],
+            expect=[Expect(self.dst_if, len(self.pkt_infos))],
+        )[0].packets
         self.verify_capture(packets)
-        self.src_if.assert_nothing_captured()
 
         # run it all again to verify correctness
-        self.pg_enable_capture()
-        self.src_if.add_stream(fragments)
-        self.pg_start()
-
-        packets = self.dst_if.get_capture(len(self.pkt_infos))
+        packets = self.send_and_expect_multi(
+            send=[Send(self.src_if, fragments)],
+            expect=[Expect(self.dst_if, len(self.pkt_infos))],
+        )[0].packets
         self.verify_capture(packets)
-        self.src_if.assert_nothing_captured()
 
     def test_random(self):
         """random order reassembly"""
@@ -1356,22 +1324,21 @@ class TestIPv6Reassembly(VppTestCase):
         fragments = list(self.fragments_400)
         shuffle(fragments)
 
-        self.pg_enable_capture()
-        self.src_if.add_stream(fragments)
-        self.pg_start()
+        packets = self.send_and_expect_multi(
+            send=[Send(self.src_if, fragments)],
+            expect=[Expect(self.dst_if, len(self.pkt_infos))],
+        )[0].packets
 
-        packets = self.dst_if.get_capture(len(self.pkt_infos))
         self.verify_capture(packets)
-        self.src_if.assert_nothing_captured()
 
         # run it all again to verify correctness
-        self.pg_enable_capture()
-        self.src_if.add_stream(fragments)
-        self.pg_start()
 
-        packets = self.dst_if.get_capture(len(self.pkt_infos))
+        packets = self.send_and_expect_multi(
+            send=[Send(self.src_if, fragments)],
+            expect=[Expect(self.dst_if, len(self.pkt_infos))],
+        )[0].packets
+
         self.verify_capture(packets)
-        self.src_if.assert_nothing_captured()
 
     def test_duplicates(self):
         """duplicate fragments"""
@@ -1383,13 +1350,11 @@ class TestIPv6Reassembly(VppTestCase):
             for _ in range(0, min(2, len(frags)))
         ]
 
-        self.pg_enable_capture()
-        self.src_if.add_stream(fragments)
-        self.pg_start()
-
-        packets = self.dst_if.get_capture(len(self.pkt_infos))
+        packets = self.send_and_expect_multi(
+            send=[Send(self.src_if, fragments)],
+            expect=[Expect(self.dst_if, len(self.pkt_infos))],
+        )[0].packets
         self.verify_capture(packets)
-        self.src_if.assert_nothing_captured()
 
     def test_long_fragment_chain(self):
         """long fragment chain"""
@@ -1437,15 +1402,13 @@ class TestIPv6Reassembly(VppTestCase):
             index for (index, _, frags) in self.pkt_infos if len(frags) > 1
         )
 
-        self.pg_enable_capture()
-        self.src_if.add_stream(fragments)
-        self.pg_start()
-
-        packets = self.dst_if.get_capture(
-            len(self.pkt_infos) - len(dropped_packet_indexes)
-        )
+        packets = self.send_and_expect_multi(
+            send=[Send(self.src_if, fragments)],
+            expect=[
+                Expect(self.dst_if, len(self.pkt_infos) - len(dropped_packet_indexes))
+            ],
+        )[0].packets
         self.verify_capture(packets, dropped_packet_indexes)
-        self.src_if.assert_nothing_captured()
 
     def test_overlap2(self):
         """overlapping fragments case #2"""
@@ -1469,15 +1432,13 @@ class TestIPv6Reassembly(VppTestCase):
             index for (index, _, frags) in self.pkt_infos if len(frags) > 1
         )
 
-        self.pg_enable_capture()
-        self.src_if.add_stream(fragments)
-        self.pg_start()
-
-        packets = self.dst_if.get_capture(
-            len(self.pkt_infos) - len(dropped_packet_indexes)
-        )
+        packets = self.send_and_expect_multi(
+            send=[Send(self.src_if, fragments)],
+            expect=[
+                Expect(self.dst_if, len(self.pkt_infos) - len(dropped_packet_indexes))
+            ],
+        )[0].packets
         self.verify_capture(packets, dropped_packet_indexes)
-        self.src_if.assert_nothing_captured()
 
     def test_timeout_inline(self):
         """timeout (inline)"""
@@ -1578,19 +1539,16 @@ class TestIPv6Reassembly(VppTestCase):
             is_ip6=1,
         )
 
-        self.pg_enable_capture()
-        self.src_if.add_stream(self.fragments_400)
-        self.pg_start()
-
-        packets = self.dst_if.get_capture(
-            len(self.pkt_infos) - len(dropped_packet_indexes)
-        )
+        packets = self.send_and_expect_multi(
+            send=[Send(self.src_if, self.fragments_400)],
+            expect=[
+                Expect(self.dst_if, len(self.pkt_infos) - len(dropped_packet_indexes))
+            ],
+        )[0].packets
         self.verify_capture(packets, dropped_packet_indexes)
-        self.src_if.assert_nothing_captured()
 
     def test_missing_upper(self):
         """missing upper layer"""
-        optdata = "\x00" * 100
         p = (
             Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac)
             / IPv6(src=self.src_if.remote_ip6, dst=self.src_if.local_ip6)
@@ -2643,13 +2601,10 @@ class TestFIFReassembly(VppTestCase):
             x for p in encapped_fragments for x in fragment_rfc791(p, 200)
         ]
 
-        self.src_if.add_stream(fragmented_encapped_fragments)
-
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-
-        self.src_if.assert_nothing_captured()
-        packets = self.dst_if.get_capture(len(self._packet_infos))
+        packets = self.send_and_expect_multi(
+            send=[Send(self.src_if, fragmented_encapped_fragments)],
+            expect=[Expect(self.dst_if, len(self._packet_infos))],
+        )[0].packets
         self.verify_capture(packets, IP)
 
         # TODO remove gre vpp config by hand until VppIpRoute gets fixed
@@ -2728,13 +2683,10 @@ class TestFIFReassembly(VppTestCase):
             )
         ]
 
-        self.src_if.add_stream(fragmented_encapped_fragments)
-
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-
-        self.src_if.assert_nothing_captured()
-        packets = self.dst_if.get_capture(len(self._packet_infos))
+        packets = self.send_and_expect_multi(
+            send=[Send(self.src_if, fragmented_encapped_fragments)],
+            expect=[Expect(self.dst_if, len(self._packet_infos))],
+        )[0].packets
         self.verify_capture(packets, IPv6)
 
         # TODO remove gre vpp config by hand until VppIpRoute gets fixed
