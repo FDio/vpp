@@ -1256,7 +1256,7 @@ openssl_start_listen (tls_ctx_t * lctx)
   u64 flags = SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_COMPRESSION;
   openssl_main_t *om = &openssl_main;
   const SSL_METHOD *method;
-  SSL_CTX *ssl_ctx;
+  SSL_CTX *ssl_ctx = 0;
   int rv;
   u32 olc_index;
   openssl_listen_ctx_t *olc;
@@ -1268,13 +1268,13 @@ openssl_start_listen (tls_ctx_t * lctx)
     {
       ckpair = app_cert_key_pair_get_if_valid (lctx->ckpair_index);
       if (!ckpair)
-	return -1;
+	goto err;
 
       if (!ckpair->cert || !ckpair->key)
 	{
 	  TLS_DBG (1, "tls cert and/or key not configured %d",
 		   lctx->parent_app_wrk_index);
-	  return -1;
+	  goto err;
 	}
 
       cki = app_certkey_get_int_ctx (ckpair, lctx->c_thread_index,
@@ -1285,7 +1285,7 @@ openssl_start_listen (tls_ctx_t * lctx)
 	  if (!cki)
 	    {
 	      clib_warning ("unable to initialize certificate/key pair");
-	      return -1;
+	      goto err;
 	    }
 	}
     }
@@ -1296,7 +1296,7 @@ openssl_start_listen (tls_ctx_t * lctx)
   if (!ssl_ctx)
     {
       clib_warning ("Unable to create SSL context");
-      return -1;
+      goto err;
     }
 
   SSL_CTX_set_mode (ssl_ctx, SSL_MODE_ENABLE_PARTIAL_WRITE);
@@ -1318,7 +1318,7 @@ openssl_start_listen (tls_ctx_t * lctx)
   if (openssl_apply_tls_profile_to_ctx (ssl_ctx, app_wrk_index, lctx->tls_profile_index))
     {
       TLS_DBG (1, "Failed to apply TLS profile");
-      return -1;
+      goto err;
     }
 
   /* use the default OpenSSL built-in DH parameters */
@@ -1326,7 +1326,7 @@ openssl_start_listen (tls_ctx_t * lctx)
   if (rv != 1)
     {
       TLS_DBG (1, "Couldn't set temp DH parameters");
-      return -1;
+      goto err;
     }
 
   if (lctx->verify_cfg)
@@ -1340,7 +1340,7 @@ openssl_start_listen (tls_ctx_t * lctx)
 	  if (!cti)
 	    {
 	      TLS_DBG (1, "Couldn't get trusted CA");
-	      return -1;
+	      goto err;
 	    }
 	  SSL_CTX_set1_verify_cert_store (ssl_ctx, cti->ca_store);
 	}
@@ -1357,7 +1357,7 @@ openssl_start_listen (tls_ctx_t * lctx)
       if (rv != 1)
 	{
 	  TLS_DBG (1, "Couldn't set TLS record-size");
-	  return -1;
+	  goto err;
 	}
     }
 
@@ -1368,7 +1368,7 @@ openssl_start_listen (tls_ctx_t * lctx)
       if (rv != 1)
 	{
 	  TLS_DBG (1, "Couldn't set TLS record-split-size");
-	  return -1;
+	  goto err;
 	}
     }
 
@@ -1379,7 +1379,7 @@ openssl_start_listen (tls_ctx_t * lctx)
       if (rv != 1)
 	{
 	  TLS_DBG (1, "Couldn't set TLS max-pipelines");
-	  return -1;
+	  goto err;
 	}
     }
 
@@ -1420,6 +1420,9 @@ openssl_start_listen (tls_ctx_t * lctx)
   return 0;
 
 err:
+  if (ssl_ctx)
+    SSL_CTX_free (ssl_ctx);
+  lctx->flags |= TLS_CONN_F_MIGRATED;
   return -1;
 }
 
