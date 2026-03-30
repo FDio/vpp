@@ -1,0 +1,40 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4c0c2ee8_39616599",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 57
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3306
+      },
+      "writtenOn": "2026-03-30T09:40:42Z",
+      "side": 1,
+      "message": "Addressed in the latest patch sets. The DHCP-related runtime export work was split into the separate dependent change 45358 with its rationale documented there; the pppox warning-suppression compile flags were removed; the imported pppd subtree was updated to build without those suppressions; and the remaining SPDX/copyright gaps plus bundled license texts/import documentation were completed. The latest 45289 patch set is 57.",
+      "parentUuid": "8d1762c0_c9721583",
+      "revId": "7d53c52f5de336369b6bb2adebbdb600a28d855a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "84e336dc_2f7af57d",
+        "filename": "src/plugins/pppox/CMakeLists.txt",
+        "patchSetId": 57
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3306
+      },
+      "writtenOn": "2026-03-30T09:40:42Z",
+      "side": 1,
+      "message": "Fixed in the later patch sets. The pppox-specific warning-suppression flags were removed, and the underlying compiler warnings/errors in the imported pppd sources were fixed instead. The current patch set no longer relies on that CMake workaround.",
+      "parentUuid": "0b502402_a355c3a5",
+      "revId": "7d53c52f5de336369b6bb2adebbdb600a28d855a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
