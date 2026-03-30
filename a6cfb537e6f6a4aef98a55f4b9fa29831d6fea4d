@@ -648,6 +648,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "d06a1c1d_295953b6",
+        "filename": "src/plugins/cnat/cnat_session.c",
+        "patchSetId": 28
+      },
+      "lineNbr": 483,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-03-30T17:20:32Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "94ce0727_fa4bfd1a",
+      "revId": "a6cfb537e6f6a4aef98a55f4b9fa29831d6fea4d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "6a039ffd_4ef38069",
