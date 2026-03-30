@@ -144,16 +144,6 @@ typedef struct
   u8 header_len;
 } http3_frame_header_t;
 
-typedef struct http_req_id_
-{
-  session_handle_t app_session_handle;
-  u32 parent_app_wrk_index;
-  u32 hc_index;
-} http_req_id_t;
-
-STATIC_ASSERT (sizeof (http_req_id_t) <= TRANSPORT_CONN_ID_LEN,
-	       "ctx id must be less than TRANSPORT_CONN_ID_LEN");
-
 #define foreach_http_conn_flags                                                                    \
   _ (HO_DONE, "ho-done")                                                                           \
   _ (NO_APP_SESSION, "no-app-session")                                                             \
@@ -189,8 +179,8 @@ typedef struct http_conn_id_
 {
   union
   {
-    session_handle_t app_session_handle;
-    u32 parent_app_api_ctx;
+    session_handle_t app_session_handle; /* server */
+    u32 parent_app_api_ctx;		 /* client */
   };
   union
   {
@@ -211,7 +201,11 @@ typedef struct http_conn_id_
   u32 parent_app_wrk_index;
   u32 app_rx_fifo_size;
   u32 timeout;
-  u32 parent_req_index;
+  union
+  {
+    u32 parent_req_index; /* connection/stream case */
+    u32 hc_index;	  /* request case */
+  };
 } http_ctx_id_t;
 
 STATIC_ASSERT (sizeof (http_ctx_id_t) <= TRANSPORT_CONN_ID_LEN,
@@ -264,7 +258,7 @@ typedef struct
     struct
     {
       u32 max_header_list_size;
-      u32 initial_window_size;
+      i32 initial_window_size;
     };
     u64 max_field_section_size;
   };
@@ -278,7 +272,7 @@ typedef struct
   u8 enable_push;
 } http_conn_settings_t;
 
-typedef struct http_conn_
+typedef struct http_ctx_
 {
   union
   {
@@ -297,127 +291,126 @@ typedef struct http_conn_
 #define hc_timeout	     c_http_ctx_id.timeout
 #define hc_parent_req_index  c_http_ctx_id.parent_req_index
 #define hc_hc_index	     connection.c_index
+#define hr_pa_wrk_index	     c_http_ctx_id.parent_app_wrk_index
+#define hr_hc_index	     c_http_ctx_id.hc_index
+#define hr_req_handle	     connection.c_index
 
-  http_conn_flags_t flags;
-  http_version_t version;
-  http_conn_state_t state;
-  u32 timer_handle;
-  u8 *app_name;
-  u8 *host;
-
-  http_conn_settings_t peer_settings;
-  http_conn_settings_t settings;
   union
   {
     struct
     {
-      /* http2 */
-      u32 last_opened_stream_id;
-      u32 last_processed_stream_id;
-      u32 peer_window;
-      u32 our_window;
-      u32 unsent_headers_offset;
-      u32 req_num;
-      clib_llist_index_t new_tx_streams; /* headers */
-      clib_llist_index_t old_tx_streams; /* data */
-      clib_llist_anchor_t sched_list;
-      uword *req_by_stream_id;
-      u8 *unparsed_headers; /* temporary storing rx fragmented headers */
-      u8 *unsent_headers;   /* temporary storing tx fragmented headers */
-      u32 *pending_win_updates;
-      http2_rst_stream_t *pending_rst_stream;
-      hpack_dynamic_table_t decoder_dynamic_table;
+      /* transport connection/stream */
+      http_conn_flags_t flags;
+      http_version_t version;
+      http_conn_state_t state;
+      u32 timer_handle;
+      u8 *app_name;
+      u8 *host;
+      http_conn_settings_t peer_settings;
+      http_conn_settings_t settings;
+      union
+      {
+	struct
+	{
+	  /* http2 */
+	  u32 last_opened_stream_id;
+	  u32 last_processed_stream_id;
+	  u32 peer_window;
+	  u32 our_window;
+	  u32 unsent_headers_offset;
+	  u32 req_num;
+	  clib_llist_index_t new_tx_streams; /* headers */
+	  clib_llist_index_t old_tx_streams; /* data */
+	  clib_llist_anchor_t sched_list;
+	  uword *req_by_stream_id;
+	  u8 *unparsed_headers; /* temporary storing rx fragmented headers */
+	  u8 *unsent_headers;	/* temporary storing tx fragmented headers */
+	  u32 *pending_win_updates;
+	  http2_rst_stream_t *pending_rst_stream;
+	  hpack_dynamic_table_t decoder_dynamic_table;
+	};
+	struct
+	{
+	  /* http3 */
+	  u32 our_ctrl_stream_index;
+	  u32 peer_ctrl_stream_index;
+	  u32 peer_decoder_stream_index;
+	  u32 peer_encoder_stream_index;
+	  u32 http_req_index;
+	  qpack_decoder_ctx_t qpack_decoder_ctx;
+	};
+      };
     };
     struct
     {
-      /* http3 */
-      u32 our_ctrl_stream_hc_index;
-      u32 peer_ctrl_stream_sctx_index;
-      u32 peer_decoder_stream_sctx_index;
-      u32 peer_encoder_stream_sctx_index;
-      u32 http_req_index;
-      qpack_decoder_ctx_t qpack_decoder_ctx;
+      /* request (app session) */
+      http_buffer_t tx_buf; /* message body from app to be sent */
+      u32 control_data_len; /* start line / pseudo-headers + headers */
+      u32 content_len_header_index;
+      union
+      {
+	u64 to_recv; /* remaining bytes of body to receive from transport */
+	u64 to_skip; /* remaining bytes of capsule to skip */
+      };
+      union
+      {
+	http_status_code_t status_code;
+	http_req_method_t method;
+      };
+      http_req_state_t req_state; /* state-machine state */
+      http_req_flags_t req_flags;
+      http_upgrade_proto_t upgrade_proto;
+      u32 target_path_offset;
+      u32 target_query_offset;
+      u16 target_path_len;
+      u16 target_query_len;
+      u32 headers_offset;
+      u32 headers_len;
+      u64 body_len;
+      u8 *target;
+      http_field_line_t *headers;
+      union
+      {
+	struct
+	{
+	  /* http1 */
+	  u32 body_offset;
+	  u32 rx_buf_offset; /* current offset during parsing */
+	  u32 target_authority_offset;
+	  u32 target_authority_len;
+	  u32 host_header_index;
+	  u32 connection_header_index;
+	  u32 upgrade_header_index;
+	  http_target_form_t target_form;
+	  http_url_scheme_t scheme;
+	};
+	struct
+	{
+	  /* http2 */
+	  http2_stream_state_t stream_state;
+	  http_req_state_t app_reply_next_state;
+	  u32 stream_id;
+	  i32 peer_stream_window; /* can become negative after settings change */
+	  u32 our_stream_window;
+	  u32 payload_len;
+	  u8 *payload;
+	  clib_llist_anchor_t stream_sched_list;
+	  void (*dispatch_headers_cb) (struct http_ctx_ *req, struct http_ctx_ *hc, u8 *n_emissions,
+				       clib_llist_index_t *next_ri);
+	  void (*dispatch_data_cb) (struct http_ctx_ *req, struct http_ctx_ *hc, u8 *n_emissions);
+	};
+	struct
+	{
+	  /* http3 */
+	  http3_stream_type_t stream_type;
+	  http3_frame_header_t fh;
+	  u32 (*transport_rx_cb) (struct http_ctx_ *sctx, struct http_ctx_ *stream);
+	  void (*app_closed_cb) (struct http_ctx_ *sctx, struct http_ctx_ *stream, u8 is_shutdown);
+	};
+      };
     };
   };
 } http_ctx_t;
-
-typedef struct http_req_
-{
-  union
-  {
-    transport_connection_t connection;
-    http_req_id_t c_http_req_id;
-  };
-#define hr_pa_wrk_index c_http_req_id.parent_app_wrk_index
-#define hr_hc_index	c_http_req_id.hc_index
-#define hr_req_handle	connection.c_index
-
-  http_buffer_t tx_buf; /* message body from app to be sent */
-  u32 control_data_len; /* start line / pseudo-headers + headers */
-  u32 content_len_header_index;
-  union
-  {
-    u64 to_recv; /* remaining bytes of body to receive from transport */
-    u64 to_skip; /* remaining bytes of capsule to skip */
-  };
-  union
-  {
-    http_status_code_t status_code;
-    http_req_method_t method;
-  };
-  http_req_state_t state; /* state-machine state */
-  http_req_flags_t flags;
-  http_upgrade_proto_t upgrade_proto;
-  u32 target_path_offset;
-  u32 target_query_offset;
-  u16 target_path_len;
-  u16 target_query_len;
-  u32 headers_offset;
-  u32 headers_len;
-  u64 body_len;
-  u8 *target;
-  http_field_line_t *headers;
-
-  union
-  {
-    struct
-    {
-      /* http1 */
-      u32 body_offset;
-      u32 rx_buf_offset; /* current offset during parsing */
-      u32 target_authority_offset;
-      u32 target_authority_len;
-      u32 host_header_index;
-      u32 connection_header_index;
-      u32 upgrade_header_index;
-      http_target_form_t target_form;
-      http_url_scheme_t scheme;
-    };
-    struct
-    {
-      /* http2 */
-      http2_stream_state_t stream_state;
-      http_req_state_t app_reply_next_state;
-      u32 stream_id;
-      i32 peer_window; /* can become negative after settings change */
-      u32 our_window;
-      u32 payload_len;
-      u8 *payload;
-      clib_llist_anchor_t sched_list;
-      void (*dispatch_headers_cb) (struct http_req_ *req, http_ctx_t *hc, u8 *n_emissions,
-				   clib_llist_index_t *next_ri);
-      void (*dispatch_data_cb) (struct http_req_ *req, http_ctx_t *hc, u8 *n_emissions);
-    };
-    struct
-    {
-      /* http3 */
-      http3_stream_type_t stream_type;
-      http3_frame_header_t fh;
-      u32 (*transport_rx_cb) (struct http_req_ *sctx, http_ctx_t *stream);
-      void (*app_closed_cb) (struct http_req_ *sctx, http_ctx_t *stream, u8 is_shutdown);
-    };
-  };
-} http_req_t;
 
 #define http_ctx_is_stream(_hc)                                                                    \
   ((_hc)->flags & (HTTP_CONN_F_UNIDIRECTIONAL_STREAM | HTTP_CONN_F_BIDIRECTIONAL_STREAM))
@@ -431,6 +424,7 @@ typedef struct http_pending_connect_stream_
 typedef struct http_worker_
 {
   http_ctx_t *ctx_pool;
+  u8 *header_list; /* buffer for headers decompression */
   clib_llist_index_t sched_head;
   http_wrk_stats_t stats;
 } http_worker_t;
@@ -461,13 +455,17 @@ typedef struct http_main_
   u64 first_seg_size;
   u64 add_seg_size;
   u32 fifo_size;
+
+  /* http/2 */
+  http_conn_settings_t h2_settings;
+  u32 n_sessions;
+  /* http/3 */
+  http_conn_settings_t h3_settings;
 } http_main_t;
 
 typedef struct http_engine_vft_
 {
   const char *name;
-  u32 (*hc_index_get_by_req_index) (u32 req_index,
-				    clib_thread_index_t thread_index);
   transport_connection_t *(*req_get_connection) (
     u32 req_index, clib_thread_index_t thread_index);
   u8 *(*format_req) (u8 *s, va_list *args);
@@ -488,7 +486,6 @@ typedef struct http_engine_vft_
   int (*conn_connect_stream_callback) (http_ctx_t *hc, u32 *req_index); /* optional */
   void (*conn_cleanup_callback) (http_ctx_t *hc);
   void (*stream_cleanup_callback) (http_ctx_t *stream);
-  void (*enable_callback) (void);			    /* optional */
   uword (*unformat_cfg_callback) (unformat_input_t *input); /* optional */
 } http_engine_vft_t;
 
@@ -503,26 +500,26 @@ typedef enum http_sm_result_t_
   HTTP_SM_ERROR = -1,
 } http_sm_result_t;
 
-typedef http_sm_result_t (*http_sm_handler) (http_ctx_t *hc, http_req_t *req,
+typedef http_sm_result_t (*http_sm_handler) (http_ctx_t *hc, http_ctx_t *req,
 					     transport_send_params_t *sp);
 
-#define expect_char(c)                                                        \
-  if (*p++ != c)                                                              \
-    {                                                                         \
-      clib_warning ("unexpected character");                                  \
-      return -1;                                                              \
+#define expect_char(c)                                                                             \
+  if (*p++ != (c))                                                                                 \
+    {                                                                                              \
+      clib_warning ("unexpected character");                                                       \
+      return -1;                                                                                   \
     }
 
-#define parse_int(val, mul)                                                   \
-  do                                                                          \
-    {                                                                         \
-      if (!isdigit (*p))                                                      \
-	{                                                                     \
-	  clib_warning ("expected digit");                                    \
-	  return -1;                                                          \
-	}                                                                     \
-      val += mul * (*p++ - '0');                                              \
-    }                                                                         \
+#define parse_int(val, mul)                                                                        \
+  do                                                                                               \
+    {                                                                                              \
+      if (!isdigit (*p))                                                                           \
+	{                                                                                          \
+	  clib_warning ("expected digit");                                                         \
+	  return -1;                                                                               \
+	}                                                                                          \
+      (val) += (mul) * (*p++ - '0');                                                               \
+    }                                                                                              \
   while (0)
 
 #define http_field_line_value_token(_fl, _req, _rx_buf)                       \
@@ -535,7 +532,11 @@ u8 *format_http_conn_flags (u8 *s, va_list *args);
 u8 *format_http_req_flags (u8 *s, va_list *args);
 u8 *format_http_time_now (u8 *s, va_list *args);
 
-http_ctx_t *http_conn_get_w_thread (u32 hc_index, clib_thread_index_t thread_index);
+u32 http_ctx_alloc_w_thread (clib_thread_index_t thread_index);
+http_ctx_t *http_ctx_get_w_thread (u32 hc_index, clib_thread_index_t thread_index);
+http_ctx_t *http_ctx_get_w_thread_if_valid (u32 hc_index, clib_thread_index_t thread_index);
+void http_ctx_free (http_ctx_t *hc);
+void http_ctx_free_w_index (u32 hc_index, clib_thread_index_t thread_index);
 
 http_ctx_t *http_ho_conn_get (u32 ho_hc_index);
 
@@ -587,7 +588,7 @@ http_status_code_t http_sc_by_u16 (u16 status_code);
  *
  * @note For immediate processing, not for buffering.
  */
-u8 *http_get_app_header_list (http_req_t *req, http_msg_t *msg);
+u8 *http_get_app_header_list (http_ctx_t *req, http_msg_t *msg);
 
 /**
  * Get pre-allocated TX buffer/vector.
@@ -621,7 +622,7 @@ u8 *http_get_rx_buf (http_ctx_t *hc);
  *
  * @note Valid only with request lifetime.
  */
-u8 *http_get_app_target (http_req_t *req, http_msg_t *msg);
+u8 *http_get_app_target (http_ctx_t *req, http_msg_t *msg);
 
 /**
  * Initialize per-request HTTP TX buffer.
@@ -631,7 +632,7 @@ u8 *http_get_app_target (http_req_t *req, http_msg_t *msg);
  *
  * @note Use for streaming of body sent by app.
  */
-void http_req_tx_buffer_init (http_req_t *req, http_msg_t *msg);
+void http_req_tx_buffer_init (http_ctx_t *req, http_msg_t *msg);
 
 /**
  * Open new stream on existing transport connection.
@@ -674,12 +675,12 @@ void http_half_close_transport_stream (http_ctx_t *stream);
  * @param state New state.
  */
 always_inline void
-http_req_state_change (http_req_t *req, http_req_state_t state)
+http_req_state_change (http_ctx_t *req, http_req_state_t state)
 {
   HTTP_DBG (1, "changing http req state: %U -> %U", format_http_req_state,
 	    req->state, format_http_req_state, state);
-  ASSERT (req->state != HTTP_REQ_STATE_TUNNEL);
-  req->state = state;
+  ASSERT (req->req_state != HTTP_REQ_STATE_TUNNEL);
+  req->req_state = state;
 }
 
 /**
@@ -688,7 +689,7 @@ http_req_state_change (http_req_t *req, http_req_state_t state)
  * @param req HTTP request.
  */
 always_inline void
-http_app_worker_rx_notify (http_req_t *req)
+http_app_worker_rx_notify (http_ctx_t *req)
 {
   session_t *as;
   app_worker_t *app_wrk;
@@ -726,7 +727,7 @@ http_get_transport_proto (http_ctx_t *hc)
  * @param msg HTTP msq will be stored here.
  */
 always_inline void
-http_get_app_msg (http_req_t *req, http_msg_t *msg)
+http_get_app_msg (http_ctx_t *req, http_msg_t *msg)
 {
   session_t *as;
   int rv;
@@ -737,7 +738,7 @@ http_get_app_msg (http_req_t *req, http_msg_t *msg)
 }
 
 always_inline void
-http_identify_optional_query (http_req_t *req, u8 *rx_buf)
+http_identify_optional_query (http_ctx_t *req, u8 *rx_buf)
 {
   int i;
   for (i = req->target_path_offset;
@@ -757,7 +758,7 @@ http_identify_optional_query (http_req_t *req, u8 *rx_buf)
 }
 
 always_inline int
-http_parse_content_length (http_req_t *req, u8 *rx_buf)
+http_parse_content_length (http_ctx_t *req, u8 *rx_buf)
 {
   int i;
   http_field_line_t *field_line;
@@ -791,7 +792,7 @@ http_parse_content_length (http_req_t *req, u8 *rx_buf)
 }
 
 always_inline void
-http_req_deschedule (http_req_t *req, transport_send_params_t *sp)
+http_req_deschedule (http_ctx_t *req, transport_send_params_t *sp)
 {
   transport_connection_deschedule (&req->connection);
   sp->flags |= TRANSPORT_SND_F_DESCHED;
@@ -802,7 +803,7 @@ http_hc_is_valid (u32 hc_index, clib_thread_index_t thread_index)
 {
   http_ctx_t *hc;
 
-  hc = http_conn_get_w_thread (hc_index, thread_index);
+  hc = http_ctx_get_w_thread (hc_index, thread_index);
   if (hc->c_thread_index != thread_index || hc->hc_hc_index != hc_index)
     return 0;
 
@@ -815,14 +816,14 @@ http_hc_is_valid (u32 hc_index, clib_thread_index_t thread_index)
 /* Abstraction of app session fifo operations */
 
 always_inline void
-http_io_as_add_want_deq_ntf (http_req_t *req)
+http_io_as_add_want_deq_ntf (http_ctx_t *req)
 {
   session_t *as = session_get (req->c_s_index, req->c_thread_index);
   svm_fifo_add_want_deq_ntf (as->rx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
 }
 
 always_inline void
-http_io_as_add_want_read_ntf (http_req_t *req)
+http_io_as_add_want_read_ntf (http_ctx_t *req)
 {
   session_t *as = session_get (req->c_s_index, req->c_thread_index);
   svm_fifo_add_want_deq_ntf (as->rx_fifo, SVM_FIFO_WANT_DEQ_NOTIF_IF_FULL |
@@ -830,7 +831,7 @@ http_io_as_add_want_read_ntf (http_req_t *req)
 }
 
 always_inline void
-http_io_as_del_want_read_ntf (http_req_t *req)
+http_io_as_del_want_read_ntf (http_ctx_t *req)
 {
   session_t *as = session_get (req->c_s_index, req->c_thread_index);
   svm_fifo_del_want_deq_ntf (as->rx_fifo, SVM_FIFO_WANT_DEQ_NOTIF_IF_FULL |
@@ -838,14 +839,14 @@ http_io_as_del_want_read_ntf (http_req_t *req)
 }
 
 always_inline void
-http_io_as_reset_has_read_ntf (http_req_t *req)
+http_io_as_reset_has_read_ntf (http_ctx_t *req)
 {
   session_t *as = session_get (req->c_s_index, req->c_thread_index);
   svm_fifo_reset_has_deq_ntf (as->rx_fifo);
 }
 
 always_inline void
-http_io_as_dequeue_notify (http_req_t *req, u32 n_last_deq)
+http_io_as_dequeue_notify (http_ctx_t *req, u32 n_last_deq)
 {
   session_t *as = session_get (req->c_s_index, req->c_thread_index);
   if (svm_fifo_needs_deq_ntf (as->tx_fifo, n_last_deq))
@@ -853,21 +854,21 @@ http_io_as_dequeue_notify (http_req_t *req, u32 n_last_deq)
 }
 
 always_inline u32
-http_io_as_max_write (http_req_t *req)
+http_io_as_max_write (http_ctx_t *req)
 {
   session_t *as = session_get (req->c_s_index, req->c_thread_index);
   return svm_fifo_max_enqueue_prod (as->rx_fifo);
 }
 
 always_inline u32
-http_io_as_max_read (http_req_t *req)
+http_io_as_max_read (http_ctx_t *req)
 {
   session_t *as = session_get (req->c_s_index, req->c_thread_index);
   return svm_fifo_max_dequeue_cons (as->tx_fifo);
 }
 
 always_inline void
-http_io_as_write (http_req_t *req, u8 *data, u32 len)
+http_io_as_write (http_ctx_t *req, u8 *data, u32 len)
 {
   int n_written;
   session_t *as = session_get (req->c_s_index, req->c_thread_index);
@@ -877,8 +878,7 @@ http_io_as_write (http_req_t *req, u8 *data, u32 len)
 }
 
 always_inline u32
-http_io_as_write_segs (http_req_t *req, const svm_fifo_seg_t segs[],
-		       u32 n_segs)
+http_io_as_write_segs (http_ctx_t *req, const svm_fifo_seg_t segs[], u32 n_segs)
 {
   int n_written;
   session_t *as = session_get (req->c_s_index, req->c_thread_index);
@@ -888,7 +888,7 @@ http_io_as_write_segs (http_req_t *req, const svm_fifo_seg_t segs[],
 }
 
 always_inline u32
-http_io_as_peek (http_req_t *req, u8 *buf, u32 len, u32 offset)
+http_io_as_peek (http_ctx_t *req, u8 *buf, u32 len, u32 offset)
 {
   int n_read;
   session_t *as = session_get (req->c_s_index, req->c_thread_index);
@@ -899,8 +899,7 @@ http_io_as_peek (http_req_t *req, u8 *buf, u32 len, u32 offset)
 }
 
 always_inline u32
-http_io_as_read_segs (http_req_t *req, svm_fifo_seg_t *segs, u32 *n_segs,
-		      u32 max_bytes)
+http_io_as_read_segs (http_ctx_t *req, svm_fifo_seg_t *segs, u32 *n_segs, u32 max_bytes)
 {
   int n_read;
   session_t *as = session_get (req->c_s_index, req->c_thread_index);
@@ -910,21 +909,21 @@ http_io_as_read_segs (http_req_t *req, svm_fifo_seg_t *segs, u32 *n_segs,
 }
 
 always_inline void
-http_io_as_drain (http_req_t *req, u32 len)
+http_io_as_drain (http_ctx_t *req, u32 len)
 {
   session_t *as = session_get (req->c_s_index, req->c_thread_index);
   svm_fifo_dequeue_drop (as->tx_fifo, len);
 }
 
 always_inline void
-http_io_as_drain_all (http_req_t *req)
+http_io_as_drain_all (http_ctx_t *req)
 {
   session_t *as = session_get (req->c_s_index, req->c_thread_index);
   svm_fifo_dequeue_drop_all (as->tx_fifo);
 }
 
 always_inline void
-http_io_as_drain_unread (http_req_t *req)
+http_io_as_drain_unread (http_ctx_t *req)
 {
   session_t *as = session_get (req->c_s_index, req->c_thread_index);
   svm_fifo_dequeue_drop_all (as->rx_fifo);
@@ -1092,7 +1091,7 @@ http_io_ts_after_write (http_ctx_t *hc, u8 flush)
 }
 
 always_inline int
-http_conn_accept_request (http_ctx_t *hc, http_req_t *req, u8 is_stream)
+http_conn_accept_request (http_ctx_t *hc, http_ctx_t *req, u8 is_stream)
 {
   session_t *as, *asl, *asp;
   app_worker_t *app_wrk;
@@ -1153,7 +1152,7 @@ http_conn_accept_request (http_ctx_t *hc, http_req_t *req, u8 is_stream)
 }
 
 always_inline int
-http_conn_established (http_ctx_t *hc, http_req_t *req, u32 parent_app_api_ctx)
+http_conn_established (http_ctx_t *hc, http_ctx_t *req, u32 parent_app_api_ctx)
 {
   session_t *as;
   app_worker_t *app_wrk;
