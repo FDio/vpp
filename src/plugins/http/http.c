@@ -133,18 +133,18 @@ const char *http_req_flags_str[] = {
 u8 *
 format_http_req_flags (u8 *s, va_list *args)
 {
-  http_req_t *req = va_arg (*args, http_req_t *);
+  http_ctx_t *req = va_arg (*args, http_ctx_t *);
   int i, last = -1;
 
   for (i = 0; i < HTTP_REQ_N_F_BITS; i++)
     {
-      if (req->flags & (1 << i))
+      if (req->req_flags & (1 << i))
 	last = i;
     }
 
   for (i = 0; i < last; i++)
     {
-      if (req->flags & (1 << i))
+      if (req->req_flags & (1 << i))
 	s = format (s, "%s | ", http_req_flags_str[i]);
     }
   if (last >= 0)
@@ -162,25 +162,26 @@ format_http_time_now (u8 *s, va_list *args)
   return format (s, "%U", format_clib_timebase_time, now);
 }
 
-static inline u32
-http_conn_alloc_w_thread (clib_thread_index_t thread_index)
+u32
+http_ctx_alloc_w_thread (clib_thread_index_t thread_index)
 {
   http_worker_t *wrk = http_worker_get (thread_index);
   http_ctx_t *hc;
 
   pool_get_aligned_safe (wrk->ctx_pool, hc, CLIB_CACHE_LINE_BYTES);
+  clib_memset (hc, 0, sizeof (*hc));
   return (hc - wrk->ctx_pool);
 }
 
 http_ctx_t *
-http_conn_get_w_thread (u32 hc_index, clib_thread_index_t thread_index)
+http_ctx_get_w_thread (u32 hc_index, clib_thread_index_t thread_index)
 {
   http_worker_t *wrk = http_worker_get (thread_index);
   return pool_elt_at_index (wrk->ctx_pool, hc_index);
 }
 
-static inline http_ctx_t *
-http_conn_get_w_thread_if_valid (u32 hc_index, clib_thread_index_t thread_index)
+http_ctx_t *
+http_ctx_get_w_thread_if_valid (u32 hc_index, clib_thread_index_t thread_index)
 {
   http_worker_t *wrk = http_worker_get (thread_index);
   if (pool_is_free_index (wrk->ctx_pool, hc_index))
@@ -188,10 +189,21 @@ http_conn_get_w_thread_if_valid (u32 hc_index, clib_thread_index_t thread_index)
   return pool_elt_at_index (wrk->ctx_pool, hc_index);
 }
 
-static void
-http_conn_free (http_ctx_t *hc)
+void
+http_ctx_free (http_ctx_t *hc)
 {
   http_worker_t *wrk = http_worker_get (hc->c_thread_index);
+  if (CLIB_DEBUG)
+    memset (hc, 0xba, sizeof (*hc));
+  pool_put (wrk->ctx_pool, hc);
+}
+
+void
+http_ctx_free_w_index (u32 hc_index, clib_thread_index_t thread_index)
+{
+  http_worker_t *wrk = http_worker_get (thread_index);
+  http_ctx_t *hc = pool_elt_at_index (wrk->ctx_pool, hc_index);
+
   if (CLIB_DEBUG)
     memset (hc, 0xba, sizeof (*hc));
   pool_put (wrk->ctx_pool, hc);
@@ -280,8 +292,8 @@ http_listener_alloc (void)
   http_ctx_t *lhc;
   u32 lhc_index;
 
-  lhc_index = http_conn_alloc_w_thread (0);
-  lhc = http_conn_get_w_thread (lhc_index, 0);
+  lhc_index = http_ctx_alloc_w_thread (0);
+  lhc = http_ctx_get_w_thread (lhc_index, 0);
   lhc->hc_hc_index = lhc_index;
   lhc->hc_timeout = HTTP_CONN_TIMEOUT;
   lhc->version = HTTP_VERSION_NA;
@@ -293,14 +305,14 @@ http_listener_alloc (void)
 static http_ctx_t *
 http_listener_get (u32 lhc_index)
 {
-  return http_conn_get_w_thread (lhc_index, 0);
+  return http_ctx_get_w_thread (lhc_index, 0);
 }
 
 static void
 http_listener_free (http_ctx_t *lhc)
 {
   vec_free (lhc->app_name);
-  http_conn_free (lhc);
+  http_ctx_free (lhc);
 }
 
 void
@@ -342,9 +354,9 @@ http_connect_transport_stream (u32 parent_index, clib_thread_index_t thread_inde
   u32 hc_index;
   int error;
 
-  hc_index = http_conn_alloc_w_thread (thread_index);
-  hc = http_conn_get_w_thread (hc_index, thread_index);
-  parent = http_conn_get_w_thread (parent_index, thread_index);
+  hc_index = http_ctx_alloc_w_thread (thread_index);
+  hc = http_ctx_get_w_thread (hc_index, thread_index);
+  parent = http_ctx_get_w_thread (parent_index, thread_index);
   clib_memcpy_fast (hc, parent, sizeof (*parent));
   hc->hc_hc_index = hc_index;
   hc->hc_http_conn_index = parent->hc_hc_index;
@@ -368,7 +380,7 @@ http_connect_transport_stream (u32 parent_index, clib_thread_index_t thread_inde
   if ((error = vnet_connect_stream (cargs)))
     {
       HTTP_DBG (1, "stream connect failed: %U", format_session_error, error);
-      http_conn_free (hc);
+      http_ctx_free (hc);
       return error;
     }
 
@@ -428,7 +440,7 @@ http_sc_by_u16 (u16 status_code)
 }
 
 u8 *
-http_get_app_header_list (http_req_t *req, http_msg_t *msg)
+http_get_app_header_list (http_ctx_t *req, http_msg_t *msg)
 {
   http_main_t *hm = &http_main;
   session_t *as;
@@ -457,7 +469,7 @@ http_get_app_header_list (http_req_t *req, http_msg_t *msg)
 }
 
 u8 *
-http_get_app_target (http_req_t *req, http_msg_t *msg)
+http_get_app_target (http_ctx_t *req, http_msg_t *msg)
 {
   session_t *as;
   u8 *target;
@@ -504,7 +516,7 @@ http_get_rx_buf (http_ctx_t *hc)
 }
 
 void
-http_req_tx_buffer_init (http_req_t *req, http_msg_t *msg)
+http_ctx_tx_buffer_init (http_ctx_t *req, http_msg_t *msg)
 {
   session_t *as = session_get (req->c_s_index, req->c_thread_index);
   http_buffer_init (&req->tx_buf, msg_to_buf_type[msg->data.type], as->tx_fifo,
@@ -516,8 +528,7 @@ http_conn_invalidate_timer_cb (u32 hs_handle)
 {
   http_ctx_t *hc;
 
-  hc =
-    http_conn_get_w_thread_if_valid (hs_handle & 0x00FFFFFF, hs_handle >> 24);
+  hc = http_ctx_get_w_thread_if_valid (hs_handle & 0x00FFFFFF, hs_handle >> 24);
 
   HTTP_DBG (1, "hc [%u]%x", hs_handle >> 24, hs_handle & 0x00FFFFFF);
   if (!hc)
@@ -537,8 +548,7 @@ http_conn_timeout_cb (void *hc_handlep)
   uword hs_handle;
 
   hs_handle = pointer_to_uword (hc_handlep);
-  hc =
-    http_conn_get_w_thread_if_valid (hs_handle & 0x00FFFFFF, hs_handle >> 24);
+  hc = http_ctx_get_w_thread_if_valid (hs_handle & 0x00FFFFFF, hs_handle >> 24);
 
   HTTP_DBG (1, "hc [%u]%x", hs_handle >> 24, hs_handle & 0x00FFFFFF);
   if (!hc)
@@ -576,8 +586,8 @@ http_ts_accept_connection (session_t *ts)
   tls_alpn_proto_t alpn_proto;
 
   ts_listener = listen_session_get_from_handle (ts->listener_handle);
-  hc_index = http_conn_alloc_w_thread (ts->thread_index);
-  hc = http_conn_get_w_thread (hc_index, ts->thread_index);
+  hc_index = http_ctx_alloc_w_thread (ts->thread_index);
+  hc = http_ctx_get_w_thread (hc_index, ts->thread_index);
   lhc = http_listener_get (ts_listener->opaque);
   clib_memcpy_fast (hc, lhc, sizeof (*lhc));
   hc->timer_handle = HTTP_TIMER_HANDLE_INVALID;
@@ -665,14 +675,13 @@ http_ts_accept_stream (session_t *stream_session)
   ASSERT (stream_session->thread_index ==
 	  session_thread_from_handle (stream_session->listener_handle));
 
-  stream_index = http_conn_alloc_w_thread (stream_session->thread_index);
+  stream_index = http_ctx_alloc_w_thread (stream_session->thread_index);
   conn_session = session_get_from_handle (stream_session->listener_handle);
-  hc = http_conn_get_w_thread (
-    ((http_conn_handle_t) conn_session->opaque).conn_index,
-    conn_session->thread_index);
+  hc = http_ctx_get_w_thread (((http_conn_handle_t) conn_session->opaque).conn_index,
+			      conn_session->thread_index);
   ASSERT (hc->version == HTTP_VERSION_3);
 
-  stream = http_conn_get_w_thread (stream_index, stream_session->thread_index);
+  stream = http_ctx_get_w_thread (stream_index, stream_session->thread_index);
   clib_memcpy_fast (stream, hc, sizeof (*hc));
   stream->hc_hc_index = stream_index;
   stream->flags |= HTTP_CONN_F_NO_APP_SESSION;
@@ -686,7 +695,7 @@ http_ts_accept_stream (session_t *stream_session)
 
   if ((rv = http_vfts[stream->version].transport_stream_accept_callback (stream, hc)))
     {
-      http_conn_free (stream);
+      http_ctx_free (stream);
       return rv;
     }
 
@@ -744,8 +753,8 @@ http_ts_connected_callback (u32 http_app_index, u32 ho_hc_index, session_t *ts,
       return 0;
     }
 
-  new_hc_index = http_conn_alloc_w_thread (ts->thread_index);
-  hc = http_conn_get_w_thread (new_hc_index, ts->thread_index);
+  new_hc_index = http_ctx_alloc_w_thread (ts->thread_index);
+  hc = http_ctx_get_w_thread (new_hc_index, ts->thread_index);
 
   clib_memcpy_fast (hc, ho_hc, sizeof (*hc));
 
@@ -812,7 +821,7 @@ http_ts_disconnect_callback (session_t *ts)
   HTTP_DBG (1, "hc [%u]%x", ts->thread_index, hc_handle.conn_index);
 
   ASSERT (http_hc_is_valid (hc_handle.conn_index, ts->thread_index));
-  hc = http_conn_get_w_thread (hc_handle.conn_index, ts->thread_index);
+  hc = http_ctx_get_w_thread (hc_handle.conn_index, ts->thread_index);
 
   if (hc->state < HTTP_CONN_STATE_TRANSPORT_CLOSED)
     hc->state = HTTP_CONN_STATE_TRANSPORT_CLOSED;
@@ -838,7 +847,7 @@ http_ts_reset_callback (session_t *ts)
   HTTP_DBG (1, "hc [%u]%x", ts->thread_index, hc_handle.conn_index);
 
   ASSERT (http_hc_is_valid (hc_handle.conn_index, ts->thread_index));
-  hc = http_conn_get_w_thread (hc_handle.conn_index, ts->thread_index);
+  hc = http_ctx_get_w_thread (hc_handle.conn_index, ts->thread_index);
   hc->state = HTTP_CONN_STATE_CLOSED;
 
   if (http_ctx_is_stream (hc))
@@ -868,7 +877,7 @@ http_ts_rx_callback (session_t *ts)
   HTTP_DBG (1, "hc [%u]%x", ts->thread_index, hc_handle.conn_index);
 
   ASSERT (http_hc_is_valid (hc_handle.conn_index, ts->thread_index));
-  hc = http_conn_get_w_thread (hc_handle.conn_index, ts->thread_index);
+  hc = http_ctx_get_w_thread (hc_handle.conn_index, ts->thread_index);
 
   if (hc->state == HTTP_CONN_STATE_CLOSED)
     {
@@ -891,22 +900,23 @@ http_ts_rx_callback (session_t *ts)
 	  if (memcmp (rx_buf, http2_conn_preface.base,
 		      http2_conn_preface.len) == 0)
 	    {
-	      hc->version = HTTP_VERSION_2;
+	      /* store version in handle, pool might grow in accept cb */
+	      hc_handle.version = hc->version = HTTP_VERSION_2;
 	      http_vfts[hc->version].conn_accept_callback (hc);
 	    }
 	  else
-	    hc->version = HTTP_VERSION_1;
+	    hc_handle.version = hc->version = HTTP_VERSION_1;
 	}
       else
-	hc->version = HTTP_VERSION_1;
+	hc_handle.version = hc->version = HTTP_VERSION_1;
 
-      HTTP_DBG (1, "identified HTTP/%u",
-		hc->version == HTTP_VERSION_1 ? 1 : 2);
-      hc_handle.version = hc->version;
+      HTTP_DBG (1, "identified HTTP/%u", hc_handle.version == HTTP_VERSION_1 ? 1 : 2);
       ts->opaque = hc_handle.as_u32;
     }
   http_vfts[hc_handle.version].transport_rx_callback (hc);
 
+  /* pool might grow, regrab connection */
+  hc = http_ctx_get_w_thread (hc_handle.conn_index, ts->thread_index);
   if (hc->state == HTTP_CONN_STATE_TRANSPORT_CLOSED)
     http_vfts[hc->version].transport_close_callback (hc);
   return 0;
@@ -921,7 +931,7 @@ http_ts_builtin_tx_callback (session_t *ts)
   hc_handle.as_u32 = ts->opaque;
 
   ASSERT (http_hc_is_valid (hc_handle.conn_index, ts->thread_index));
-  hc = http_conn_get_w_thread (hc_handle.conn_index, ts->thread_index);
+  hc = http_ctx_get_w_thread (hc_handle.conn_index, ts->thread_index);
   HTTP_DBG (1, "transport connection reschedule");
   http_vfts[hc->version].transport_conn_reschedule_callback (hc);
 
@@ -937,7 +947,7 @@ http_ts_closed_callback (session_t *ts)
   hc_handle.as_u32 = ts->opaque;
   HTTP_DBG (1, "hc [%u]%x", ts->thread_index, hc_handle.conn_index);
   ASSERT (http_hc_is_valid (hc_handle.conn_index, ts->thread_index));
-  hc = http_conn_get_w_thread (hc_handle.conn_index, ts->thread_index);
+  hc = http_ctx_get_w_thread (hc_handle.conn_index, ts->thread_index);
 
   http_disconnect_transport (hc);
   hc->state = HTTP_CONN_STATE_CLOSED;
@@ -954,7 +964,7 @@ http_ts_cleanup_callback (session_t *ts, session_cleanup_ntf_t ntf)
 
   hc_handle.as_u32 = ts->opaque;
   ASSERT (http_hc_is_valid (hc_handle.conn_index, ts->thread_index));
-  hc = http_conn_get_w_thread (hc_handle.conn_index, ts->thread_index);
+  hc = http_ctx_get_w_thread (hc_handle.conn_index, ts->thread_index);
 
   HTTP_DBG (1, "going to free hc [%u]%x", ts->thread_index,
 	    hc_handle.conn_index);
@@ -979,7 +989,7 @@ http_ts_cleanup_callback (session_t *ts, session_cleanup_ntf_t ntf)
 	  vec_free (hc->host);
 	}
     }
-  http_conn_free (hc);
+  http_ctx_free (hc);
 }
 
 static void
@@ -1227,7 +1237,7 @@ http_connect_stream (u64 parent_handle, u32 *req_index)
     rh.req_index, hs->thread_index);
   HTTP_DBG (1, "hc [%u]%x", hs->thread_index, hc_index);
 
-  hc = http_conn_get_w_thread (hc_index, hs->thread_index);
+  hc = http_ctx_get_w_thread (hc_index, hs->thread_index);
 
   if (hc->state == HTTP_CONN_STATE_CLOSED)
     {
@@ -1477,7 +1487,7 @@ http_app_close (u32 rh, clib_thread_index_t thread_index, u8 is_shutdown)
 	    hc_index, is_shutdown);
 
   ASSERT (http_hc_is_valid (hc_index, thread_index));
-  hc = http_conn_get_w_thread (hc_index, thread_index);
+  hc = http_ctx_get_w_thread (hc_index, thread_index);
   if (hc->state == HTTP_CONN_STATE_CONNECTING)
     {
       HTTP_DBG (1, "in connecting state, close now");
@@ -1520,7 +1530,7 @@ http_transport_reset (u32 rh, clib_thread_index_t thread_index)
   HTTP_DBG (1, "App disconnecting [%u]%x", thread_index, hc_index);
 
   ASSERT (http_hc_is_valid (hc_index, thread_index));
-  hc = http_conn_get_w_thread (hc_index, thread_index);
+  hc = http_ctx_get_w_thread (hc_index, thread_index);
   if (hc->state == HTTP_CONN_STATE_CLOSED)
     {
       HTTP_DBG (1, "nothing to do, already closed");
@@ -1562,7 +1572,7 @@ http_app_tx_callback (void *session, transport_send_params_t *sp)
   HTTP_DBG (1, "hc [%u]%x", as->thread_index, hc_index);
 
   ASSERT (http_hc_is_valid (hc_index, as->thread_index));
-  hc = http_conn_get_w_thread (hc_index, as->thread_index);
+  hc = http_ctx_get_w_thread (hc_index, as->thread_index);
 
   if (hc->state == HTTP_CONN_STATE_CLOSED)
     {
@@ -1588,7 +1598,7 @@ http_app_tx_callback (void *session, transport_send_params_t *sp)
 static int
 http_app_rx_evt_cb (transport_connection_t *tc)
 {
-  http_req_t *req = (http_req_t *) tc;
+  http_ctx_t *req = (http_ctx_t *) tc;
   http_ctx_t *hc;
   http_req_handle_t hr_handle;
 
@@ -1596,7 +1606,7 @@ http_app_rx_evt_cb (transport_connection_t *tc)
 
   hr_handle.as_u32 = req->hr_req_handle;
   ASSERT (http_hc_is_valid (req->hr_hc_index, req->c_thread_index));
-  hc = http_conn_get_w_thread (req->hr_hc_index, req->c_thread_index);
+  hc = http_ctx_get_w_thread (req->hr_hc_index, req->c_thread_index);
   http_vfts[hr_handle.version].app_rx_evt_callback (hc, hr_handle.req_index,
 						    req->c_thread_index);
 
@@ -1616,7 +1626,7 @@ http_transport_get_endpoint (u32 rh, clib_thread_index_t thread_index,
   hr_handle.as_u32 = rh;
   hc_index = http_vfts[hr_handle.version].hc_index_get_by_req_index (
     hr_handle.req_index, thread_index);
-  hc = http_conn_get_w_thread (hc_index, thread_index);
+  hc = http_ctx_get_w_thread (hc_index, thread_index);
 
   ts = session_get_from_handle (hc->hc_tc_session_handle);
   session_get_endpoint (ts, tep_rmt, tep_lcl);
@@ -1660,7 +1670,7 @@ format_http_transport_connection (u8 *s, va_list *args)
 
   hc_index = http_vfts[rh.version].hc_index_get_by_req_index (rh.req_index,
 							      thread_index);
-  hc = http_conn_get_w_thread (hc_index, thread_index);
+  hc = http_ctx_get_w_thread (hc_index, thread_index);
 
   s = format (s, "%U", http_vfts[rh.version].format_req, rh.req_index,
 	      thread_index, hc, verbose);
@@ -1751,7 +1761,7 @@ http_session_attribute (u32 rh, clib_thread_index_t thread_index, u8 is_get,
   http_req_handle_t hr_handle = { .as_u32 = rh };
   u32 hc_index = http_vfts[hr_handle.version].hc_index_get_by_req_index (
     hr_handle.req_index, thread_index);
-  http_ctx_t *hc = http_conn_get_w_thread (hc_index, thread_index);
+  http_ctx_t *hc = http_ctx_get_w_thread (hc_index, thread_index);
   session_t *ts;
 
   if (!is_get)
