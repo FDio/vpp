@@ -1434,12 +1434,17 @@ api_ikev2_set_ike_transforms (vat_main_t * vam)
   vl_api_ikev2_set_ike_transforms_t *mp;
   int ret;
   u8 *name = 0;
-  u32 crypto_alg, crypto_key_size, integ_alg, dh_group;
+  u32 crypto_alg, crypto_key_size, integ_alg, dh_group, prf_alg;
+  int rv;
+
+  prf_alg = IKEV2_TRANSFORM_PRF_TYPE_PRF_HMAC_SHA2_256;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (i, "%U %d %d %d %d", unformat_token, valid_chars, &name,
-		    &crypto_alg, &crypto_key_size, &integ_alg, &dh_group))
+      rv = unformat (i, "%U %d %d %d %d %d", unformat_token, valid_chars, &name, &crypto_alg,
+		     &crypto_key_size, &integ_alg, &prf_alg, &dh_group);
+      if (rv || unformat (i, "%U %d %d %d %d", unformat_token, valid_chars, &name, &crypto_alg,
+			  &crypto_key_size, &integ_alg, &dh_group))
 	vec_add1 (name, 0);
       else
 	{
@@ -1467,6 +1472,7 @@ api_ikev2_set_ike_transforms (vat_main_t * vam)
   mp->tr.crypto_alg = crypto_alg;
   mp->tr.crypto_key_size = clib_host_to_net_u32 (crypto_key_size);
   mp->tr.integ_alg = integ_alg;
+  mp->tr.prf_alg = prf_alg;
   mp->tr.dh_group = dh_group;
 
   S (mp);
