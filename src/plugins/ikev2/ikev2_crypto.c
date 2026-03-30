@@ -8,6 +8,7 @@
 #include <vppinfra/error.h>
 #include <plugins/ikev2/ikev2.h>
 #include <plugins/ikev2/ikev2_priv.h>
+#include <openssl/cmac.h>
 #include <openssl/obj_mac.h>
 #include <openssl/ec.h>
 #include <openssl/x509.h>
@@ -244,15 +245,30 @@ static const char modp_dh_2048_256_generator[] =
 v8 *
 ikev2_calc_prf (ikev2_sa_transform_t * tr, v8 * key, v8 * data)
 {
-  ikev2_main_per_thread_data_t *ptd = ikev2_get_per_thread_data ();
-  HMAC_CTX *ctx = ptd->hmac_ctx;
   v8 *prf;
   unsigned int len = 0;
 
   prf = vec_new (u8, tr->key_trunc);
-  HMAC_Init_ex (ctx, key, vec_len (key), tr->md, NULL);
-  HMAC_Update (ctx, data, vec_len (data));
-  HMAC_Final (ctx, prf, &len);
+  if (tr->prf_type == IKEV2_TRANSFORM_PRF_TYPE_PRF_AES128_CMAC)
+    {
+      size_t cmac_len = 0;
+      CMAC_CTX *ctx = CMAC_CTX_new ();
+
+      CMAC_Init (ctx, key, vec_len (key), tr->cipher, NULL);
+      CMAC_Update (ctx, data, vec_len (data));
+      CMAC_Final (ctx, prf, &cmac_len);
+      CMAC_CTX_free (ctx);
+      len = cmac_len;
+    }
+  else
+    {
+      ikev2_main_per_thread_data_t *ptd = ikev2_get_per_thread_data ();
+      HMAC_CTX *ctx = ptd->hmac_ctx;
+
+      HMAC_Init_ex (ctx, key, vec_len (key), tr->md, NULL);
+      HMAC_Update (ctx, data, vec_len (data));
+      HMAC_Final (ctx, prf, &len);
+    }
   ASSERT (len == tr->key_trunc);
 
   return prf;
@@ -960,6 +976,14 @@ ikev2_crypto_init (ikev2_main_t * km)
   tr->key_len = 160 / 8;
   tr->key_trunc = 160 / 8;
   tr->md = EVP_sha1 ();
+
+  vec_add2 (km->supported_transforms, tr, 1);
+  tr->type = IKEV2_TRANSFORM_TYPE_PRF;
+  tr->prf_type = IKEV2_TRANSFORM_PRF_TYPE_PRF_AES128_CMAC;
+  tr->key_len = 128 / 8;
+  tr->key_trunc = 128 / 8;
+  tr->md = 0;
+  tr->cipher = EVP_aes_128_cbc ();
 
   //Integrity
   vec_add2 (km->supported_transforms, tr, 1);
