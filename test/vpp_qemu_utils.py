@@ -8,6 +8,7 @@ import os
 import time
 import random
 import string
+import json
 from multiprocessing import Lock, Process
 
 lock = Lock()
@@ -82,17 +83,21 @@ def create_namespace(history_file, ns=None):
         return ns
 
 
-def add_namespace_route(ns, prefix, gw_ip=None, dev=None, check=True):
+def add_namespace_route(ns, prefix, gw_ip=None, dev=None, route_type=None, check=True):
     """Add a route to a namespace.
     arguments:
     ns -- namespace string value
     prefix -- NETWORK/MASK or "default"
     gw_ip -- Gateway IP
     dev -- Output Device
+    route_type -- Route type (e.g. "blackhole", "unreachable", "prohibit")
     """
     with lock:
         try:
-            cmd = ["ip", "netns", "exec", ns, "ip", "route", "add", prefix]
+            cmd = ["ip", "netns", "exec", ns, "ip", "route", "add"]
+            if route_type is not None:
+                cmd += [route_type]
+            cmd += [prefix]
             if gw_ip is not None:
                 cmd += ["via", gw_ip]
             if dev is not None:
@@ -136,6 +141,118 @@ def add_namespace_multipath_route(ns, prefix, *next_hops):
         except subprocess.CalledProcessError as e:
             raise Exception(
                 f"Error adding route to namespace: {e.stderr.decode()}"
+            ) from e
+
+
+def del_namespace_route(ns, prefix, check=True):
+    """Delete a route from a namespace."""
+    with lock:
+        try:
+            cmd = ["ip", "netns", "exec", ns, "ip", "route", "del", prefix]
+            subprocess.run(cmd, capture_output=True, check=check)
+        except subprocess.CalledProcessError as e:
+            raise Exception(
+                f"Error deleting route from namespace: {e.stderr.decode()}"
+            ) from e
+
+
+def add_namespace_address(ns, ifname, prefix):
+    """Add an IP address to an interface in a namespace."""
+    with lock:
+        try:
+            cmd = [
+                "ip",
+                "netns",
+                "exec",
+                ns,
+                "ip",
+                "addr",
+                "add",
+                prefix,
+                "dev",
+                ifname,
+            ]
+            subprocess.run(cmd, capture_output=True, check=True)
+        except subprocess.CalledProcessError as e:
+            raise Exception(
+                f"Error adding address {prefix} to {ifname} in namespace {ns}: "
+                f"{e.stderr.decode()}"
+            ) from e
+
+
+def del_namespace_address(ns, ifname, prefix):
+    """Delete an IP address from an interface in a namespace."""
+    with lock:
+        try:
+            cmd = [
+                "ip",
+                "netns",
+                "exec",
+                ns,
+                "ip",
+                "addr",
+                "del",
+                prefix,
+                "dev",
+                ifname,
+            ]
+            subprocess.run(cmd, capture_output=True, check=True)
+        except subprocess.CalledProcessError as e:
+            raise Exception(
+                f"Error deleting address {prefix} from {ifname} in namespace {ns}: "
+                f"{e.stderr.decode()}"
+            ) from e
+
+
+def add_namespace_neighbor(ns, ifname, ip_addr, mac_addr):
+    """Add a static neighbor (ARP/NDP) entry in a namespace."""
+    with lock:
+        try:
+            cmd = [
+                "ip",
+                "netns",
+                "exec",
+                ns,
+                "ip",
+                "neigh",
+                "replace",
+                ip_addr,
+                "dev",
+                ifname,
+                "lladdr",
+                mac_addr,
+                "nud",
+                "permanent",
+            ]
+            subprocess.run(cmd, capture_output=True, check=True)
+        except subprocess.CalledProcessError as e:
+            raise Exception(
+                f"Error adding neighbor {ip_addr} -> {mac_addr} on {ifname} "
+                f"in namespace {ns}: {e.stderr.decode()}"
+            ) from e
+
+
+def del_namespace_neighbor(ns, ifname, ip_addr):
+    """Delete a neighbor (ARP/NDP) entry from a namespace."""
+    with lock:
+        try:
+            cmd = [
+                "ip",
+                "netns",
+                "exec",
+                ns,
+                "ip",
+                "neigh",
+                "del",
+                ip_addr,
+                "dev",
+                ifname,
+            ]
+            subprocess.run(cmd, capture_output=True, check=True)
+        except subprocess.CalledProcessError as e:
+            raise Exception(
+                f"Error deleting neighbor {ip_addr} on {ifname} "
+                f"in namespace {ns}: {e.stderr.decode()}"
             ) from e
 
 
@@ -419,6 +536,65 @@ def list_namespace(ns):
             raise Exception(
                 f"Error listing IP addresses in namespace {ns}: {result.stderr.decode()}"
             )
+
+
+def interface_exists(ns, ifname):
+    """Check if an interface exists in a namespace."""
+    args = ["ip", "netns", "exec", ns, "ip", "link", "show", "dev", ifname]
+    with lock:
+        result = subprocess.run(args, capture_output=True)
+        return result.returncode == 0
+
+
+def get_interface_info(ns, ifname):
+    """Get interface link info as a dict from 'ip -j link show' output."""
+    args = ["ip", "netns", "exec", ns, "ip", "-j", "link", "show", "dev", ifname]
+    with lock:
+        result = subprocess.run(args, capture_output=True, text=True)
+        if result.returncode != 0:
+            raise Exception(
+                f"Error getting interface info for {ifname} in namespace {ns}: "
+                f"{result.stderr}"
+            )
+    data = json.loads(result.stdout)
+    if not data:
+        raise Exception(f"No data returned for interface {ifname} in namespace {ns}")
+    return data[0]
+
+
+def get_interface_addresses(ns, ifname, family=None):
+    """Get interface addresses as a list of (addr, prefix_len) tuples.
+
+    family can be "inet" (IPv4) or "inet6" (IPv6) to filter, or None for all.
+    """
+    args = ["ip", "netns", "exec", ns, "ip", "-j", "addr", "show", "dev", ifname]
+    with lock:
+        result = subprocess.run(args, capture_output=True, text=True)
+        if result.returncode != 0:
+            raise Exception(
+                f"Error getting addresses for {ifname} in namespace {ns}: "
+                f"{result.stderr}"
+            )
+    data = json.loads(result.stdout)
+    addresses = []
+    for iface in data:
+        for addr_info in iface.get("addr_info", []):
+            if family and addr_info.get("family") != family:
+                continue
+            addresses.append((addr_info["local"], addr_info["prefixlen"]))
+    return addresses
+
+
+def is_interface_up(ns, ifname):
+    """Check if interface has UP flag set in a namespace."""
+    info = get_interface_info(ns, ifname)
+    return "UP" in info.get("flags", [])
+
+
+def get_interface_mtu(ns, ifname):
+    """Get interface MTU as an integer from a namespace."""
+    info = get_interface_info(ns, ifname)
+    return info["mtu"]
 
 
 def libmemif_test_app(memif_sock_path, logger):
