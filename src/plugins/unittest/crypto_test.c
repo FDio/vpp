@@ -11,6 +11,8 @@
 #include <vlib/unix/unix.h>
 #include <vnet/crypto/crypto.h>
 #include <unittest/crypto/crypto.h>
+#include <sys/mman.h>
+#include <unistd.h>
 
 crypto_test_main_t crypto_test_main;
 
@@ -45,6 +47,13 @@ typedef struct
   u8 is_chained;
   u8 is_hash;
 } crypto_test_result_row_t;
+
+typedef struct
+{
+  void *base;
+  uword mmap_size;
+  u8 *data;
+} crypto_test_auth_buffer_t;
 
 typedef struct
 {
@@ -672,6 +681,50 @@ crypto_test_print_not_supported (unittest_crypto_test_registration_t *r, vnet_cr
 				CRYPTO_TEST_RESULT_NOT_SUPPORTED);
 }
 
+static clib_error_t *
+crypto_test_auth_buffer_alloc (crypto_test_auth_buffer_t *b, u32 len)
+{
+  long page_size;
+
+  page_size = sysconf (_SC_PAGESIZE);
+  if (page_size <= 0)
+    return clib_error_return (0, "failed to get page size");
+  if (len > page_size)
+    return clib_error_return (0, "auth buffer larger than page size");
+
+  b->mmap_size = 2 * page_size;
+  b->base = mmap (0, b->mmap_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+  if (b->base == MAP_FAILED)
+    {
+      b->base = 0;
+      b->mmap_size = 0;
+      return clib_error_return (0, "mmap failed");
+    }
+
+  if (mprotect ((u8 *) b->base + page_size, page_size, PROT_NONE) != 0)
+    {
+      munmap (b->base, b->mmap_size);
+      b->base = 0;
+      b->mmap_size = 0;
+      return clib_error_return (0, "mprotect failed");
+    }
+
+  b->data = (u8 *) b->base + page_size - len;
+  return 0;
+}
+
+static void
+crypto_test_auth_buffers_free (crypto_test_auth_buffer_t *buffers)
+{
+  crypto_test_auth_buffer_t *b;
+
+  vec_foreach (b, buffers)
+    if (b->base)
+      munmap (b->base, b->mmap_size);
+
+  vec_free (buffers);
+}
+
 static void
 print_results (unittest_crypto_test_registration_t **rv, vnet_crypto_op_t *ops,
 	       vnet_crypto_op_chunk_t *chunks, u32 n_ops, crypto_test_main_t *tm,
@@ -859,8 +912,10 @@ test_crypto_hash_static (vlib_main_t *vm, unittest_crypto_test_registration_t **
 			 vnet_crypto_engine_id_t engine, crypto_test_engine_summary_t *summary,
 			 crypto_test_result_table_t *results)
 {
+  clib_error_t *err = 0;
   vnet_crypto_hash_ctx_t **ctxs = 0;
   vnet_crypto_op_chunk_t *chunks = 0;
+  crypto_test_auth_buffer_t *auth_buffers = 0;
   unittest_crypto_test_registration_t *r;
   vnet_crypto_hash_op_t *ops = 0, *op;
   vnet_crypto_hash_op_t *current_chained_op, *current_op;
@@ -876,6 +931,8 @@ test_crypto_hash_static (vlib_main_t *vm, unittest_crypto_test_registration_t **
     vec_validate_aligned (computed_data, computed_data_total_len - 1, CLIB_CACHE_LINE_BYTES);
   if (n_ops + n_chained_ops)
     vec_validate_aligned (ops, n_ops + n_chained_ops - 1, CLIB_CACHE_LINE_BYTES);
+  if (n_ops + n_chained_ops)
+    vec_validate (auth_buffers, n_ops + n_chained_ops - 1);
 
   current_op = ops;
   current_chained_op = ops + n_ops;
@@ -906,8 +963,11 @@ test_crypto_hash_static (vlib_main_t *vm, unittest_crypto_test_registration_t **
 					   is_chained ? VNET_CRYPTO_HANDLER_TYPE_CHAINED :
 							VNET_CRYPTO_HANDLER_TYPE_SIMPLE,
 					   engine);
-	  op->digest = computed_data + computed_data_total_len;
-	  computed_data_total_len += r->hash.length;
+	  err = crypto_test_auth_buffer_alloc (vec_elt_at_index (auth_buffers, op - ops),
+					       r->hash.length);
+	  if (err)
+	    goto done;
+	  op->digest = vec_elt_at_index (auth_buffers, op - ops)->data;
 	  op->user_data = i;
 	  if (is_chained)
 	    {
@@ -929,13 +989,15 @@ test_crypto_hash_static (vlib_main_t *vm, unittest_crypto_test_registration_t **
 
   print_hash_results (rv, ops, vec_len (ops), summary, engine, results);
 
+done:
   vec_foreach_index (i, ctxs)
     vnet_crypto_hash_ctx_destroy (ctxs[i]);
   vec_free (ctxs);
   vec_free (computed_data);
   vec_free (ops);
   vec_free (chunks);
-  return 0;
+  crypto_test_auth_buffers_free (auth_buffers);
+  return err;
 }
 
 static void
@@ -1112,6 +1174,7 @@ test_crypto_incremental (vlib_main_t *vm, crypto_test_main_t *tm,
 			 u32 computed_data_total_len, vnet_crypto_engine_id_t engine,
 			 crypto_test_engine_summary_t *summary, crypto_test_result_table_t *results)
 {
+  clib_error_t *err = 0;
   vnet_crypto_main_t *cm = &crypto_main;
   vnet_crypto_alg_data_t *ad;
   vnet_crypto_ctx_t **ctxs = 0;
@@ -1120,6 +1183,8 @@ test_crypto_incremental (vlib_main_t *vm, crypto_test_main_t *tm,
   u32 n_check_ops = 0;
   unittest_crypto_test_registration_t *r;
   vnet_crypto_op_t *encrypt_ops = 0, *ops = 0, *op;
+  crypto_test_auth_buffer_t *encrypt_auth_buffers = 0, *auth_buffers = 0;
+  crypto_test_auth_buffer_t **encrypt_aead_tags = 0;
   u8 *encrypted_data = 0, *decrypted_data = 0;
 
   if (n_ops == 0)
@@ -1129,6 +1194,9 @@ test_crypto_incremental (vlib_main_t *vm, crypto_test_main_t *tm,
   vec_validate_aligned (decrypted_data, computed_data_total_len - 1, CLIB_CACHE_LINE_BYTES);
   vec_validate_aligned (encrypt_ops, n_ops - 1, CLIB_CACHE_LINE_BYTES);
   vec_validate_aligned (ops, n_ops - 1, CLIB_CACHE_LINE_BYTES);
+  vec_validate (encrypt_auth_buffers, n_ops - 1);
+  vec_validate (auth_buffers, n_ops - 1);
+  vec_validate (encrypt_aead_tags, vec_len (rv) - 1);
   computed_data_total_len = 0;
 
   vec_foreach_index (i, rv)
@@ -1165,14 +1233,17 @@ test_crypto_incremental (vlib_main_t *vm, crypto_test_main_t *tm,
 		{
 		  op->aad = tm->inc_data;
 		  op->aad_len = r->aad.length;
-		  op->auth = encrypted_data + computed_data_total_len;
-		  computed_data_total_len += r->tag.length;
+		  err = crypto_test_auth_buffer_alloc (
+		    vec_elt_at_index (encrypt_auth_buffers, op - encrypt_ops), r->tag.length);
+		  if (err)
+		    goto done;
+		  op->auth = vec_elt_at_index (encrypt_auth_buffers, op - encrypt_ops)->data;
+		  encrypt_aead_tags[i] = vec_elt_at_index (encrypt_auth_buffers, op - encrypt_ops);
 		  op->auth_len = r->tag.length;
 		}
 	      op->user_data = i;
 	      break;
 	    case VNET_CRYPTO_OP_TYPE_HMAC:
-	      computed_data_total_len += r->digest.length;
 	      break;
 	    default:
 	      break;
@@ -1240,8 +1311,12 @@ test_crypto_incremental (vlib_main_t *vm, crypto_test_main_t *tm,
 		{
 		  op->aad = tm->inc_data;
 		  op->aad_len = r->aad.length;
-		  op->auth = encrypted_data + computed_data_total_len;
-		  computed_data_total_len += r->tag.length;
+		  if (encrypt_aead_tags[i] == 0)
+		    {
+		      err = clib_error_return (0, "missing encrypt auth buffer");
+		      goto done;
+		    }
+		  op->auth = encrypt_aead_tags[i]->data;
 		  op->auth_len = r->tag.length;
 		}
 	      op->user_data = i;
@@ -1256,8 +1331,11 @@ test_crypto_incremental (vlib_main_t *vm, crypto_test_main_t *tm,
 	      op->auth_src = tm->inc_data;
 	      op->auth_src_len = r->plaintext_incremental;
 	      op->auth_len = r->digest.length;
-	      op->auth = encrypted_data + computed_data_total_len;
-	      computed_data_total_len += r->digest.length;
+	      err = crypto_test_auth_buffer_alloc (vec_elt_at_index (auth_buffers, op - ops),
+						   r->digest.length);
+	      if (err)
+		goto done;
+	      op->auth = vec_elt_at_index (auth_buffers, op - ops)->data;
 	      op->user_data = i;
 	      break;
 	    default:
@@ -1272,13 +1350,17 @@ test_crypto_incremental (vlib_main_t *vm, crypto_test_main_t *tm,
       print_results (rv, ops, 0, n_check_ops, tm, summary, engine, results);
     }
 
+done:
   vec_foreach_index (i, ctxs)
     vnet_crypto_ctx_destroy (vm, ctxs[i]);
   vec_free (ops);
   vec_free (encrypt_ops);
   vec_free (encrypted_data);
   vec_free (decrypted_data);
-  return 0;
+  vec_free (encrypt_aead_tags);
+  crypto_test_auth_buffers_free (auth_buffers);
+  crypto_test_auth_buffers_free (encrypt_auth_buffers);
+  return err;
 }
 
 static clib_error_t *
@@ -1287,6 +1369,7 @@ test_crypto_static (vlib_main_t *vm, crypto_test_main_t *tm,
 		    u32 computed_data_total_len, vnet_crypto_engine_id_t engine,
 		    crypto_test_engine_summary_t *summary, crypto_test_result_table_t *results)
 {
+  clib_error_t *err = 0;
   vnet_crypto_op_chunk_t *chunks = 0, ch;
   unittest_crypto_test_registration_t *r;
   vnet_crypto_op_t *ops = 0, *op;
@@ -1294,6 +1377,7 @@ test_crypto_static (vlib_main_t *vm, crypto_test_main_t *tm,
   vnet_crypto_main_t *cm = &crypto_main;
   vnet_crypto_alg_data_t *ad;
   vnet_crypto_ctx_t **ctxs = 0;
+  crypto_test_auth_buffer_t *auth_buffers = 0;
   u8 *computed_data = 0;
   u32 i, j;
 
@@ -1306,6 +1390,8 @@ test_crypto_static (vlib_main_t *vm, crypto_test_main_t *tm,
     vec_validate_aligned (computed_data, computed_data_total_len - 1, CLIB_CACHE_LINE_BYTES);
   if (n_ops + n_chained_ops)
     vec_validate_aligned (ops, n_ops + n_chained_ops - 1, CLIB_CACHE_LINE_BYTES);
+  if (n_ops + n_chained_ops)
+    vec_validate (auth_buffers, n_ops + n_chained_ops - 1);
   computed_data_total_len = 0;
 
   current_op = ops;
@@ -1370,8 +1456,11 @@ test_crypto_static (vlib_main_t *vm, crypto_test_main_t *tm,
 			      op->auth_len = r->digest.length;
 			      if (t == VNET_CRYPTO_OP_TYPE_ENCRYPT)
 				{
-				  op->auth = computed_data + computed_data_total_len;
-				  computed_data_total_len += r->digest.length;
+				  err = crypto_test_auth_buffer_alloc (
+				    vec_elt_at_index (auth_buffers, op - ops), r->digest.length);
+				  if (err)
+				    goto done;
+				  op->auth = vec_elt_at_index (auth_buffers, op - ops)->data;
 				  op->auth_chunk_index = vec_len (chunks);
 				  op->auth_n_chunks = 0;
 				  for (j = 0; j < op->n_chunks; j++)
@@ -1407,8 +1496,11 @@ test_crypto_static (vlib_main_t *vm, crypto_test_main_t *tm,
 			      op->auth_len = r->digest.length;
 			      if (t == VNET_CRYPTO_OP_TYPE_ENCRYPT)
 				{
-				  op->auth = computed_data + computed_data_total_len;
-				  computed_data_total_len += r->digest.length;
+				  err = crypto_test_auth_buffer_alloc (
+				    vec_elt_at_index (auth_buffers, op - ops), r->digest.length);
+				  if (err)
+				    goto done;
+				  op->auth = vec_elt_at_index (auth_buffers, op - ops)->data;
 				}
 			      else
 				{
@@ -1440,8 +1532,11 @@ test_crypto_static (vlib_main_t *vm, crypto_test_main_t *tm,
 			    computed_data, &computed_data_total_len, &op->n_chunks);
 			  if (t == VNET_CRYPTO_OP_TYPE_ENCRYPT)
 			    {
-			      op->auth = computed_data + computed_data_total_len;
-			      computed_data_total_len += r->tag.length;
+			      err = crypto_test_auth_buffer_alloc (
+				vec_elt_at_index (auth_buffers, op - ops), r->tag.length);
+			      if (err)
+				goto done;
+			      op->auth = vec_elt_at_index (auth_buffers, op - ops)->data;
 			    }
 			  else
 			    op->auth = r->tag.data;
@@ -1455,8 +1550,11 @@ test_crypto_static (vlib_main_t *vm, crypto_test_main_t *tm,
 			  if (t == VNET_CRYPTO_OP_TYPE_ENCRYPT)
 			    {
 			      op->src = r->plaintext.data;
-			      op->auth = computed_data + computed_data_total_len;
-			      computed_data_total_len += r->tag.length;
+			      err = crypto_test_auth_buffer_alloc (
+				vec_elt_at_index (auth_buffers, op - ops), r->tag.length);
+			      if (err)
+				goto done;
+			      op->auth = vec_elt_at_index (auth_buffers, op - ops)->data;
 			    }
 			  else
 			    {
@@ -1473,8 +1571,11 @@ test_crypto_static (vlib_main_t *vm, crypto_test_main_t *tm,
 		  vnet_crypto_op_init (op->ctx, op);
 		  op->type = VNET_CRYPTO_OP_TYPE_HMAC;
 		  op->auth_len = r->digest.length;
-		  op->auth = computed_data + computed_data_total_len;
-		  computed_data_total_len += r->digest.length;
+		  err = crypto_test_auth_buffer_alloc (vec_elt_at_index (auth_buffers, op - ops),
+						       r->digest.length);
+		  if (err)
+		    goto done;
+		  op->auth = vec_elt_at_index (auth_buffers, op - ops)->data;
 		  if (is_chained)
 		    {
 		      op->flags |= VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS;
@@ -1503,12 +1604,14 @@ test_crypto_static (vlib_main_t *vm, crypto_test_main_t *tm,
 
   print_results (rv, ops, chunks, vec_len (ops), tm, summary, engine, results);
 
+done:
   vec_foreach_index (i, ctxs)
     vnet_crypto_ctx_destroy (vm, ctxs[i]);
   vec_free (computed_data);
   vec_free (ops);
   vec_free (chunks);
-  return 0;
+  crypto_test_auth_buffers_free (auth_buffers);
+  return err;
 }
 
 static clib_error_t *
@@ -1593,7 +1696,6 @@ test_crypto_engine (vlib_main_t *vm, crypto_test_main_t *tm, vnet_crypto_engine_
 		      else
 			{
 			  computed_data_total_len += r->ciphertext.length;
-			  computed_data_total_len += r->tag.length;
 			  if (is_chained)
 			    n_chained_ops += 1;
 			  else
@@ -1612,9 +1714,6 @@ test_crypto_engine (vlib_main_t *vm, crypto_test_main_t *tm, vnet_crypto_engine_
 		  if (!r->plaintext_incremental)
 		    {
 		      computed_data_total_len += r->ciphertext.length;
-		      if (i == VNET_CRYPTO_OP_TYPE_ENCRYPT &&
-			  cm->algs[r->alg].alg_type == VNET_CRYPTO_ALG_T_COMBINED)
-			computed_data_total_len += r->digest.length;
 		      if (is_chained)
 			n_chained_ops += 1;
 		      else
@@ -1624,12 +1723,10 @@ test_crypto_engine (vlib_main_t *vm, crypto_test_main_t *tm, vnet_crypto_engine_
 		case VNET_CRYPTO_OP_TYPE_HMAC:
 		  if (r->plaintext_incremental)
 		    {
-		      computed_data_total_incr_len += r->digest.length;
 		      n_ops_incr += 1;
 		    }
 		  else
 		    {
-		      computed_data_total_len += r->digest.length;
 		      if (is_chained)
 			n_chained_ops += 1;
 		      else
