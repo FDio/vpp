@@ -366,6 +366,7 @@ sfdp_expire_session_now (sfdp_session_t *session, f64 now)
 
   sfdp_session_timer_update_maybe_past (&tptd->wheel, timer, now, 0);
   tptd->current_time = now;
+  vlib_node_set_interrupt_pending (vlib_get_main_by_index (thread_index), sfdp_expire_node.index);
 }
 
 clib_error_t *
