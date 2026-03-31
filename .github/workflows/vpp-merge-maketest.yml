@@ -159,7 +159,7 @@ jobs:
 
     steps:
       - name: Actions Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98  # v6.0.2
 
       - name: Setup Environment
         # yamllint disable-line rule:line-length
@@ -205,7 +205,7 @@ jobs:
           } | tee "$LOG_DIR/build-all-packages.log"
 
       - name: Push Packages to Packagecloud
-        if: always()
+        if: ${{ always() && inputs.FDIO_NAMESPACE == 'prod' }}
         run: |
           set -euxo pipefail
           pkgcloud_cmd=""
@@ -240,8 +240,6 @@ jobs:
               for pkg in $vpp_pkgs ; do
                   $pkgcloud_cmd $pkg || true
               done
-              # remove vpp-opt-deps before running make test
-              apt-get remove -y vpp-opt-deps || true
           else
               echo -e "\n$TUI_LINE\n* ERROR: Missing '~/.packagecloud' for user '$(id)'\n* PACKAGECLOUD PUSH FAILED!\n$TUI_LINE\n"
               exit 1
@@ -249,9 +247,15 @@ jobs:
           echo -e "\n$TUI_LINE\n* PACKAGECLOUD PUSH COMPLETE\n$TUI_LINE\n"
 
       - name: Post Packagecloud Push
-        if: always()
+        if: ${{ always() && inputs.FDIO_NAMESPACE == 'prod' }}
         run: |
           echo '{"url":"https://packagecloud.io","token":"$token"}' > /root/.packagecloud
+
+      - name: Remove vpp-opt-deps Before Make Test
+        if: always()
+        run: |
+          set -euxo pipefail
+          apt-get remove -y vpp-opt-deps || true
 
       - name: Setup Docker VPP Runtime Environment for 'make test'
         # yamllint disable-line rule:line-length
@@ -279,7 +283,7 @@ jobs:
       - name: AWS S3 Publish Logs
         if: always()
         # yamllint disable-line rule:line-length
-        uses: fdio/.github/.github/actions/aws-s3-publish-logs@c2df5c7959a8415f7dd730315a40b058748b4c84
+        uses: fdio/.github/.github/actions/aws-s3-publish-logs@1b8eff3ffd9d355b28052be9ad22acc57b3430b5
         with:
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -294,6 +298,15 @@ jobs:
         run: |
           set -euxo pipefail
           archives_dir="$WORKSPACE/archives"
+          unittest_failed_dir="/tmp/vpp-failed-unittests"
+          for failed_test in $(ls "$unittest_failed_dir")
+          do
+            failed_test_dir="$archives_dir"/"$failed_test"
+            if [ ! -e "$failed_test_dir" ] ; then
+              mkdir -p "$failed_test_dir"
+              cp -a "$unittest_failed_dir"/"$failed_test"/* "$failed_test_dir"
+            fi
+          done
           if [[ -d "$archives_dir" ]] && find "$archives_dir" -type f -print -quit | grep -q . ; then
             echo "has_archives=true" >> "$GITHUB_OUTPUT"
           else
@@ -303,7 +316,7 @@ jobs:
       - name: AWS S3 Publish Archives
         if: ${{ always() && steps.check-archives.outputs.has_archives == 'true' }}
         # yamllint disable-line rule:line-length
-        uses: fdio/.github/.github/actions/aws-s3-publish-logs@c2df5c7959a8415f7dd730315a40b058748b4c84
+        uses: fdio/.github/.github/actions/aws-s3-publish-logs@1b8eff3ffd9d355b28052be9ad22acc57b3430b5
         with:
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
