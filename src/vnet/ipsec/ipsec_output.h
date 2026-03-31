@@ -9,83 +9,49 @@
 #include <vnet/ipsec/ipsec_spd.h>
 #include <vnet/ipsec/ipsec_spd_fp_lookup.h>
 
-always_inline void
-ipsec4_out_spd_add_flow_cache_entry (ipsec_main_t *im, u8 pr, u32 la, u32 ra,
-				     u16 lp, u16 rp, u32 pol_id)
+always_inline int
+ipsec4_out_proto_is_tcp_udp_or_sctp (u8 proto)
 {
-  u64 hash;
-  u8 overwrite = 0, stale_overwrite = 0;
+  return (proto == IP_PROTOCOL_TCP || proto == IP_PROTOCOL_UDP || proto == IP_PROTOCOL_SCTP);
+}
+
+always_inline void
+ipsec4_out_spd_add_flow_cache_entry (ipsec4_flow_cache_bucket_t *tbl, u8 pr, u32 la, u32 ra, u16 lp,
+				     u16 rp, u32 policy_index, u64 flow_cache_mask)
+{
+  ipsec4_flow_cache_bucket_t *bucket;
   ipsec4_spd_5tuple_t ip4_5tuple = { .ip4_addr = { (ip4_address_t) la,
 						   (ip4_address_t) ra },
 				     .port = { lp, rp },
 				     .proto = pr };
 
-  ip4_5tuple.kv_16_8.value = (((u64) pol_id) << 32) | ((u64) im->epoch_count);
+  ip4_5tuple.kv_16_8.value = policy_index;
 
-  hash = ipsec4_hash_16_8 (&ip4_5tuple.kv_16_8);
-  hash &= (im->ipsec4_out_spd_hash_num_buckets - 1);
+  bucket = tbl + (ipsec4_hash_16_8 (&ip4_5tuple.kv_16_8) & flow_cache_mask);
 
-  ipsec_spinlock_lock (&im->ipsec4_out_spd_hash_tbl[hash].bucket_lock);
-  /* Check if we are overwriting an existing entry so we know
-  whether to increment the flow cache counter. Since flow
-  cache counter is reset on any policy add/remove, but
-  hash table values are not, we also need to check if the entry
-  we are overwriting is stale or not. If it's a stale entry
-  overwrite, we still want to increment flow cache counter */
-  overwrite = (im->ipsec4_out_spd_hash_tbl[hash].value != 0);
-  /* Check for stale entry by comparing with current epoch count */
-  if (PREDICT_FALSE (overwrite))
-    stale_overwrite =
-      (im->epoch_count !=
-       ((u32) (im->ipsec4_out_spd_hash_tbl[hash].value & 0xFFFFFFFF)));
-  clib_memcpy_fast (&im->ipsec4_out_spd_hash_tbl[hash], &ip4_5tuple.kv_16_8,
-		    sizeof (ip4_5tuple.kv_16_8));
-  ipsec_spinlock_unlock (&im->ipsec4_out_spd_hash_tbl[hash].bucket_lock);
-
-  /* Increment the counter to track active flow cache entries
-    when entering a fresh entry or overwriting a stale one */
-  if (!overwrite || stale_overwrite)
-    clib_atomic_fetch_add_relax (&im->ipsec4_out_spd_flow_cache_entries, 1);
-
-  return;
+  CLIB_SPINLOCK_LOCK (bucket->writer_lock);
+  __atomic_fetch_add (&bucket->seq, 1, __ATOMIC_RELAXED);
+  bucket->kv = ip4_5tuple.kv_16_8;
+  __atomic_fetch_add (&bucket->seq, 1, __ATOMIC_RELEASE);
+  CLIB_SPINLOCK_UNLOCK (bucket->writer_lock);
 }
 
 always_inline void
-ipsec4_out_spd_add_flow_cache_entry_n (ipsec_main_t *im,
-				       ipsec4_spd_5tuple_t *ip4_5tuple,
-				       u32 pol_id)
+ipsec4_out_spd_add_flow_cache_entry_n (ipsec4_flow_cache_bucket_t *tbl,
+				       ipsec4_spd_5tuple_t *ip4_5tuple, u32 policy_index,
+				       u64 flow_cache_mask)
 {
-  u64 hash;
-  u8 overwrite = 0, stale_overwrite = 0;
+  ipsec4_flow_cache_bucket_t *bucket;
 
-  ip4_5tuple->kv_16_8.value = (((u64) pol_id) << 32) | ((u64) im->epoch_count);
+  ip4_5tuple->kv_16_8.value = policy_index;
 
-  hash = ipsec4_hash_16_8 (&ip4_5tuple->kv_16_8);
-  hash &= (im->ipsec4_out_spd_hash_num_buckets - 1);
+  bucket = tbl + (ipsec4_hash_16_8 (&ip4_5tuple->kv_16_8) & flow_cache_mask);
 
-  ipsec_spinlock_lock (&im->ipsec4_out_spd_hash_tbl[hash].bucket_lock);
-  /* Check if we are overwriting an existing entry so we know
-  whether to increment the flow cache counter. Since flow
-  cache counter is reset on any policy add/remove, but
-  hash table values are not, we also need to check if the entry
-  we are overwriting is stale or not. If it's a stale entry
-  overwrite, we still want to increment flow cache counter */
-  overwrite = (im->ipsec4_out_spd_hash_tbl[hash].value != 0);
-  /* Check for stale entry by comparing with current epoch count */
-  if (PREDICT_FALSE (overwrite))
-    stale_overwrite =
-      (im->epoch_count !=
-       ((u32) (im->ipsec4_out_spd_hash_tbl[hash].value & 0xFFFFFFFF)));
-  clib_memcpy_fast (&im->ipsec4_out_spd_hash_tbl[hash], &ip4_5tuple->kv_16_8,
-		    sizeof (ip4_5tuple->kv_16_8));
-  ipsec_spinlock_unlock (&im->ipsec4_out_spd_hash_tbl[hash].bucket_lock);
-
-  /* Increment the counter to track active flow cache entries
-    when entering a fresh entry or overwriting a stale one */
-  if (!overwrite || stale_overwrite)
-    clib_atomic_fetch_add_relax (&im->ipsec4_out_spd_flow_cache_entries, 1);
-
-  return;
+  CLIB_SPINLOCK_LOCK (bucket->writer_lock);
+  __atomic_fetch_add (&bucket->seq, 1, __ATOMIC_RELAXED);
+  bucket->kv = ip4_5tuple->kv_16_8;
+  __atomic_fetch_add (&bucket->seq, 1, __ATOMIC_RELEASE);
+  CLIB_SPINLOCK_UNLOCK (bucket->writer_lock);
 }
 
 always_inline void
@@ -93,19 +59,18 @@ ipsec_fp_5tuple_from_ip4_range (ipsec_fp_5tuple_t *tuple, u32 la, u32 ra,
 				u16 lp, u16 rp, u8 pr)
 {
   clib_memset (tuple->l3_zero_pad, 0, sizeof (tuple->l3_zero_pad));
-  tuple->laddr.as_u32 = clib_host_to_net_u32 (la);
-  tuple->raddr.as_u32 = clib_host_to_net_u32 (ra);
+  tuple->laddr.as_u32 = la;
+  tuple->raddr.as_u32 = ra;
 
-  if (PREDICT_FALSE ((pr != IP_PROTOCOL_TCP) && (pr != IP_PROTOCOL_UDP) &&
-		     (pr != IP_PROTOCOL_SCTP)))
+  if (PREDICT_FALSE (!ipsec4_out_proto_is_tcp_udp_or_sctp (pr)))
     {
       tuple->lport = 0;
       tuple->rport = 0;
     }
   else
     {
-      tuple->lport = lp;
-      tuple->rport = rp;
+      tuple->lport = clib_net_to_host_u16 (lp);
+      tuple->rport = clib_net_to_host_u16 (rp);
     }
 
   tuple->protocol = pr;
@@ -122,21 +87,17 @@ ipsec_fp_5tuple_from_ip4_range_n (ipsec_fp_5tuple_t *tuples,
   while (n_left)
     {
       clib_memset (tuple->l3_zero_pad, 0, sizeof (tuple->l3_zero_pad));
-      tuple->laddr.as_u32 =
-	clib_host_to_net_u32 (ip4_5tuple->ip4_addr[0].as_u32);
-      tuple->raddr.as_u32 =
-	clib_host_to_net_u32 (ip4_5tuple->ip4_addr[1].as_u32);
-      if (PREDICT_FALSE ((ip4_5tuple->proto != IP_PROTOCOL_TCP) &&
-			 (ip4_5tuple->proto != IP_PROTOCOL_UDP) &&
-			 (ip4_5tuple->proto != IP_PROTOCOL_SCTP)))
+      tuple->laddr.as_u32 = ip4_5tuple->ip4_addr[0].as_u32;
+      tuple->raddr.as_u32 = ip4_5tuple->ip4_addr[1].as_u32;
+      if (PREDICT_FALSE (!ipsec4_out_proto_is_tcp_udp_or_sctp (ip4_5tuple->proto)))
 	{
 	  tuple->lport = 0;
 	  tuple->rport = 0;
 	}
       else
 	{
-	  tuple->lport = ip4_5tuple->port[0];
-	  tuple->rport = ip4_5tuple->port[1];
+	  tuple->lport = clib_net_to_host_u16 (ip4_5tuple->port[0]);
+	  tuple->rport = clib_net_to_host_u16 (ip4_5tuple->port[1]);
 	}
       tuple->protocol = ip4_5tuple->proto;
       tuple->is_ipv6 = 0;
@@ -146,10 +107,8 @@ ipsec_fp_5tuple_from_ip4_range_n (ipsec_fp_5tuple_t *tuples,
 }
 
 always_inline int
-ipsec_output_policy_match_n (ipsec_spd_t *spd,
-			     ipsec4_spd_5tuple_t *ip4_5tuples,
-			     ipsec_policy_t **policies, u32 n,
-			     u8 flow_cache_enabled)
+ipsec_output_policy_match_n (ipsec_spd_t *spd, ipsec4_spd_5tuple_t *ip4_5tuples,
+			     ipsec_policy_t **policies, u32 n, u64 flow_cache_mask)
 {
   ipsec_main_t *im = &ipsec_main;
   ipsec_policy_t *p;
@@ -158,7 +117,10 @@ ipsec_output_policy_match_n (ipsec_spd_t *spd,
   ipsec4_spd_5tuple_t *ip4_5tuple = ip4_5tuples;
   u32 policy_ids[n], *policy_id = policy_ids;
   ipsec_fp_5tuple_t tuples[n];
-  u32 *i;
+  u32 *policy_indices;
+  u32 chunk;
+  u32 lane;
+  u32 policy_index;
   u32 counter = 0;
 
   if (!spd)
@@ -176,58 +138,54 @@ ipsec_output_policy_match_n (ipsec_spd_t *spd,
 
   while (n_left)
     {
+      u16 lph = clib_net_to_host_u16 (ip4_5tuple->port[0]);
+      u16 rph = clib_net_to_host_u16 (ip4_5tuple->port[1]);
+
       if (*pp != 0)
 	goto next;
 
-      vec_foreach (i, spd->policies[IPSEC_SPD_POLICY_IP4_OUTBOUND])
+      policy_indices = spd->policies[IPSEC_SPD_POLICY_IP4_OUTBOUND];
+      vec_foreach_index (chunk, spd->ip4_policies[IPSEC_SPD_POLICY_IP4_OUTBOUND])
 	{
-	  p = pool_elt_at_index (im->policies, *i);
-	  if (PREDICT_FALSE (p->protocol &&
-			     (p->protocol != ip4_5tuple->proto)))
-	    continue;
+	  u32 slot;
 
-	  if (ip4_5tuple->ip4_addr[0].as_u32 <
-	      clib_net_to_host_u32 (p->raddr.start.ip4.as_u32))
-	    continue;
+	  slot = ipsec_spd_ip4_range_match_slot (
+	    &spd->ip4_policies[IPSEC_SPD_POLICY_IP4_OUTBOUND][chunk],
+	    ip4_5tuple->ip4_addr[0].as_u32, ip4_5tuple->ip4_addr[1].as_u32);
+	  policy_index = chunk << 2;
+	  lane = slot;
 
-	  if (ip4_5tuple->ip4_addr[1].as_u32 >
-	      clib_net_to_host_u32 (p->raddr.stop.ip4.as_u32))
-	    continue;
-
-	  if (ip4_5tuple->ip4_addr[0].as_u32 <
-	      clib_net_to_host_u32 (p->laddr.start.ip4.as_u32))
-	    continue;
-
-	  if (ip4_5tuple->ip4_addr[1].as_u32 >
-	      clib_net_to_host_u32 (p->laddr.stop.ip4.as_u32))
-	    continue;
-
-	  if (PREDICT_FALSE ((ip4_5tuple->proto != IP_PROTOCOL_TCP) &&
-			     (ip4_5tuple->proto != IP_PROTOCOL_UDP) &&
-			     (ip4_5tuple->proto != IP_PROTOCOL_SCTP)))
+	  if (slot != ~0 && policy_index + lane < vec_len (policy_indices))
 	    {
-	      ip4_5tuple->port[0] = 0;
-	      ip4_5tuple->port[1] = 0;
-	      goto add_policy;
+	      p = pool_elt_at_index (im->policies, policy_indices[policy_index + lane]);
+	      if (PREDICT_FALSE (p->protocol && (p->protocol != ip4_5tuple->proto)))
+		continue;
+
+	      if (PREDICT_FALSE (!ipsec4_out_proto_is_tcp_udp_or_sctp (ip4_5tuple->proto)))
+		{
+		  ip4_5tuple->port[0] = 0;
+		  ip4_5tuple->port[1] = 0;
+		  goto add_policy;
+		}
+
+	      if (lph < p->lport.start)
+		continue;
+
+	      if (lph > p->lport.stop)
+		continue;
+
+	      if (rph < p->rport.start)
+		continue;
+
+	      if (rph > p->rport.stop)
+		continue;
+
+	    add_policy:
+	      *pp = p;
+	      *policy_id = policy_indices[policy_index + lane];
+	      counter++;
+	      goto next;
 	    }
-
-	  if (ip4_5tuple->port[0] < p->lport.start)
-	    continue;
-
-	  if (ip4_5tuple->port[0] > p->lport.stop)
-	    continue;
-
-	  if (ip4_5tuple->port[1] < p->rport.start)
-	    continue;
-
-	  if (ip4_5tuple->port[1] > p->rport.stop)
-	    continue;
-
-	add_policy:
-	  *pp = p;
-	  *policy_id = *i;
-	  counter++;
-	  break;
 	}
 
     next:
@@ -237,7 +195,7 @@ ipsec_output_policy_match_n (ipsec_spd_t *spd,
       policy_id++;
     }
 
-  if (flow_cache_enabled)
+  if (flow_cache_mask)
     {
       n_left = n;
       policy_id = policy_ids;
@@ -249,8 +207,8 @@ ipsec_output_policy_match_n (ipsec_spd_t *spd,
 	  if (*pp != NULL)
 	    {
 	      /* Add an Entry in Flow cache */
-	      ipsec4_out_spd_add_flow_cache_entry_n (im, ip4_5tuple,
-						     *policy_id);
+	      ipsec4_out_spd_add_flow_cache_entry_n (im->ipsec4_out_spd_hash_tbl, ip4_5tuple,
+						     *policy_id, flow_cache_mask);
 	    }
 
 	  n_left--;
@@ -264,56 +222,62 @@ ipsec_output_policy_match_n (ipsec_spd_t *spd,
 }
 
 always_inline ipsec_policy_t *
-ipsec4_out_spd_find_flow_cache_entry (ipsec_main_t *im, u8 pr, u32 la, u32 ra,
-				      u16 lp, u16 rp)
+ipsec4_out_spd_find_flow_cache_entry (ipsec4_flow_cache_bucket_t *tbl, ipsec_main_t *im, u8 pr,
+				      u32 la, u32 ra, u16 lp, u16 rp, u64 flow_cache_mask)
 {
   ipsec_policy_t *p = NULL;
+  ipsec4_flow_cache_bucket_t *bucket;
   ipsec4_hash_kv_16_8_t kv_result;
-  u64 hash;
 
-  if (PREDICT_FALSE ((pr != IP_PROTOCOL_TCP) && (pr != IP_PROTOCOL_UDP) &&
-		     (pr != IP_PROTOCOL_SCTP)))
+  if (PREDICT_FALSE (!ipsec4_out_proto_is_tcp_udp_or_sctp (pr)))
     {
       lp = 0;
       rp = 0;
     }
-  ipsec4_spd_5tuple_t ip4_5tuple = { .ip4_addr = { (ip4_address_t) la,
-						   (ip4_address_t) ra },
-				     .port = { lp, rp },
-				     .proto = pr };
+  ipsec4_spd_5tuple_t ip4_5tuple = {
+    .ip4_addr = { (ip4_address_t) la, (ip4_address_t) ra },
+    .port = { lp, rp },
+    .proto = pr,
+  };
 
-  hash = ipsec4_hash_16_8 (&ip4_5tuple.kv_16_8);
-  hash &= (im->ipsec4_out_spd_hash_num_buckets - 1);
+  bucket = tbl + (ipsec4_hash_16_8 (&ip4_5tuple.kv_16_8) & flow_cache_mask);
 
-  ipsec_spinlock_lock (&im->ipsec4_out_spd_hash_tbl[hash].bucket_lock);
-  kv_result = im->ipsec4_out_spd_hash_tbl[hash];
-  ipsec_spinlock_unlock (&im->ipsec4_out_spd_hash_tbl[hash].bucket_lock);
-
-  if (ipsec4_hash_key_compare_16_8 ((u64 *) &ip4_5tuple.kv_16_8,
-				    (u64 *) &kv_result))
+  while (1)
     {
-      if (im->epoch_count == ((u32) (kv_result.value & 0xFFFFFFFF)))
-	{
-	  /* Get the policy based on the index */
-	  p =
-	    pool_elt_at_index (im->policies, ((u32) (kv_result.value >> 32)));
-	}
+      u32 seq = __atomic_load_n (&bucket->seq, __ATOMIC_ACQUIRE);
+      if (PREDICT_FALSE (seq == 0))
+	return 0;
+      if (PREDICT_FALSE (seq & 1))
+	goto again;
+
+      kv_result = bucket->kv;
+      if (PREDICT_FALSE (seq != __atomic_load_n (&bucket->seq, __ATOMIC_ACQUIRE)))
+	goto again;
+      break;
+    again:
+      CLIB_PAUSE ();
     }
+
+  if (ipsec4_hash_key_compare_16_8 ((u64 *) &ip4_5tuple.kv_16_8, (u64 *) &kv_result))
+    p = pool_elt_at_index (im->policies, kv_result.value);
 
   return p;
 }
 
 always_inline ipsec_policy_t *
-ipsec_output_policy_match (ipsec_spd_t *spd, u8 pr, u32 la, u32 ra, u16 lp,
-			   u16 rp, u8 flow_cache_enabled)
+ipsec_output_policy_match (ipsec_spd_t *spd, u8 pr, u32 la, u32 ra, u16 lp, u16 rp,
+			   u64 flow_cache_mask)
 {
   ipsec_main_t *im = &ipsec_main;
   ipsec_policy_t *p;
   ipsec_policy_t *policies[1];
   ipsec_fp_5tuple_t tuples[1];
   u32 fp_policy_ids[1];
-
-  u32 *i;
+  u32 matched_policy_index;
+  u32 *policy_indices;
+  u32 policy_index;
+  u32 lah, rah;
+  u16 lph, rph;
 
   if (!spd)
     return 0;
@@ -325,9 +289,10 @@ ipsec_output_policy_match (ipsec_spd_t *spd, u8 pr, u32 la, u32 ra, u16 lp,
       ipsec_fp_out_policy_match_n (&spd->fp_spd, 0, tuples, policies,
 				   fp_policy_ids, 1);
       p = policies[0];
-      i = fp_policy_ids;
-      if (PREDICT_FALSE ((pr != IP_PROTOCOL_TCP) && (pr != IP_PROTOCOL_UDP) &&
-			 (pr != IP_PROTOCOL_SCTP)))
+      if (!p)
+	return 0;
+      matched_policy_index = fp_policy_ids[0];
+      if (PREDICT_FALSE (!ipsec4_out_proto_is_tcp_udp_or_sctp (pr)))
 	{
 	  lp = 0;
 	  rp = 0;
@@ -335,57 +300,63 @@ ipsec_output_policy_match (ipsec_spd_t *spd, u8 pr, u32 la, u32 ra, u16 lp,
       goto add_flow_cache;
     }
 
-  vec_foreach (i, spd->policies[IPSEC_SPD_POLICY_IP4_OUTBOUND])
+  policy_indices = spd->policies[IPSEC_SPD_POLICY_IP4_OUTBOUND];
+  policy_index = ipsec_spd_ip4_find_range_match (spd, IPSEC_SPD_POLICY_IP4_OUTBOUND, la, ra);
+
+  if (policy_index == ~0)
+    return 0;
+
+  lph = clib_net_to_host_u16 (lp);
+  rph = clib_net_to_host_u16 (rp);
+  lah = clib_net_to_host_u32 (la);
+  rah = clib_net_to_host_u32 (ra);
+
+  for (; policy_index < vec_len (policy_indices); policy_index++)
     {
-      p = pool_elt_at_index (im->policies, *i);
-      if (PREDICT_FALSE ((p->protocol != IPSEC_POLICY_PROTOCOL_ANY) &&
-			 (p->protocol != pr)))
+      p = pool_elt_at_index (im->policies, policy_indices[policy_index]);
+
+      if (lah < clib_net_to_host_u32 (p->laddr.start.ip4.as_u32))
 	continue;
 
-      if (ra < clib_net_to_host_u32 (p->raddr.start.ip4.as_u32))
+      if (lah > clib_net_to_host_u32 (p->laddr.stop.ip4.as_u32))
 	continue;
 
-      if (ra > clib_net_to_host_u32 (p->raddr.stop.ip4.as_u32))
+      if (rah < clib_net_to_host_u32 (p->raddr.start.ip4.as_u32))
 	continue;
 
-      if (la < clib_net_to_host_u32 (p->laddr.start.ip4.as_u32))
+      if (rah > clib_net_to_host_u32 (p->raddr.stop.ip4.as_u32))
 	continue;
 
-      if (la > clib_net_to_host_u32 (p->laddr.stop.ip4.as_u32))
+      if (PREDICT_FALSE ((p->protocol != IPSEC_POLICY_PROTOCOL_ANY) && (p->protocol != pr)))
 	continue;
 
-      if (PREDICT_FALSE ((pr != IP_PROTOCOL_TCP) && (pr != IP_PROTOCOL_UDP) &&
-			 (pr != IP_PROTOCOL_SCTP)))
+      matched_policy_index = policy_indices[policy_index];
+
+      if (PREDICT_FALSE (!ipsec4_out_proto_is_tcp_udp_or_sctp (pr)))
 	{
 	  lp = 0;
 	  rp = 0;
 	  goto add_flow_cache;
 	}
 
-      if (lp < p->lport.start)
+      if (lph < p->lport.start || lph > p->lport.stop || rph < p->rport.start ||
+	  rph > p->rport.stop)
 	continue;
 
-      if (lp > p->lport.stop)
-	continue;
-
-      if (rp < p->rport.start)
-	continue;
-
-      if (rp > p->rport.stop)
-	continue;
-
-    add_flow_cache:
-      if (flow_cache_enabled)
-	{
-	  /* Add an Entry in Flow cache */
-	  ipsec4_out_spd_add_flow_cache_entry (
-	    im, pr, clib_host_to_net_u32 (la), clib_host_to_net_u32 (ra),
-	    clib_host_to_net_u16 (lp), clib_host_to_net_u16 (rp), *i);
-	}
-
-      return p;
+      goto add_flow_cache;
     }
+
   return 0;
+
+add_flow_cache:
+  if (flow_cache_mask)
+    {
+      /* Add an Entry in Flow cache */
+      ipsec4_out_spd_add_flow_cache_entry (im->ipsec4_out_spd_hash_tbl, pr, la, ra, lp, rp,
+					   matched_policy_index, flow_cache_mask);
+    }
+
+  return p;
 }
 
 always_inline uword
@@ -425,6 +396,9 @@ ipsec6_output_policy_match (ipsec_spd_t *spd, ip6_address_t *la,
 
   if (!spd)
     return 0;
+
+  lp = clib_net_to_host_u16 (lp);
+  rp = clib_net_to_host_u16 (rp);
 
   if (im->fp_spd_ipv6_out_is_enabled &&
       PREDICT_TRUE (INDEX_INVALID != spd->fp_spd.ip6_out_lookup_hash_idx))

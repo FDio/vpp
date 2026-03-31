@@ -13,7 +13,7 @@ ipsec_add_del_spd (vlib_main_t * vm, u32 spd_id, int is_add)
   ipsec_spd_t *spd = 0;
   ipsec_spd_fp_t *fp_spd = 0;
   uword *p;
-  u32 spd_index, k, v;
+  u32 spd_index;
 
   p = hash_get (im->spd_index_by_spd_id, spd_id);
   if (p && is_add)
@@ -28,16 +28,21 @@ ipsec_add_del_spd (vlib_main_t * vm, u32 spd_id, int is_add)
       if (!spd)
 	return VNET_API_ERROR_INVALID_VALUE;
 
-      hash_foreach (k, v, im->spd_index_by_sw_if_index, ({
-        if (v == spd_index)
-          ipsec_set_interface_spd(vm, k, spd_id, 0);
-      }));
+      for (u32 k = 0; k < vec_len (im->spd_index_by_sw_if_index); k++)
+	{
+	  if (im->spd_index_by_sw_if_index[k] == spd_index)
+	    ipsec_set_interface_spd (vm, k, spd_id, 0);
+	}
       hash_unset (im->spd_index_by_spd_id, spd_id);
 #define _(s,v) vec_free(spd->policies[IPSEC_SPD_POLICY_##s]);
-      foreach_ipsec_spd_policy_type
+      foreach_ipsec_spd_policy_type;
 #undef _
+#define _(s, v) vec_free (spd->ip4_policies[IPSEC_SPD_POLICY_##s]);
+      foreach_ipsec_spd_policy_type;
+#undef _
+      vec_free (spd->ip4_inbound_tun_protect_policies);
 
-	fp_spd = &spd->fp_spd;
+      fp_spd = &spd->fp_spd;
 
       if (im->fp_spd_ipv4_out_is_enabled)
 	{
@@ -201,17 +206,19 @@ ipsec_set_interface_spd (vlib_main_t * vm, u32 sw_if_index, u32 spd_id,
 
   spd_index = p[0];
 
-  p = hash_get (im->spd_index_by_sw_if_index, sw_if_index);
-  if (p && is_add)
+  if (sw_if_index < vec_len (im->spd_index_by_sw_if_index) &&
+      im->spd_index_by_sw_if_index[sw_if_index] != INDEX_INVALID && is_add)
     return VNET_API_ERROR_SYSCALL_ERROR_2;	/* spd already assigned */
 
   if (is_add)
     {
-      hash_set (im->spd_index_by_sw_if_index, sw_if_index, spd_index);
+      vec_validate_init_empty (im->spd_index_by_sw_if_index, sw_if_index, INDEX_INVALID);
+      im->spd_index_by_sw_if_index[sw_if_index] = spd_index;
     }
   else
     {
-      hash_unset (im->spd_index_by_sw_if_index, sw_if_index);
+      if (sw_if_index < vec_len (im->spd_index_by_sw_if_index))
+	im->spd_index_by_sw_if_index[sw_if_index] = INDEX_INVALID;
     }
 
   /* enable IPsec on TX */

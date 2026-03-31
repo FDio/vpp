@@ -398,9 +398,12 @@ u8 *
 format_ipsec_out_spd_flow_cache (u8 *s, va_list *args)
 {
   ipsec_main_t *im = &ipsec_main;
+  u32 count = 0;
 
-  s = format (s, "\nipv4-outbound-spd-flow-cache-entries: %u",
-	      im->ipsec4_out_spd_flow_cache_entries);
+  for (u32 i = 0; i < im->ipsec4_out_spd_hash_num_buckets; i++)
+    count += im->ipsec4_out_spd_hash_tbl[i].seq != 0;
+
+  s = format (s, "\nipv4-outbound-spd-flow-cache-entries: %u", count);
 
   return (s);
 }
@@ -409,9 +412,12 @@ u8 *
 format_ipsec_in_spd_flow_cache (u8 *s, va_list *args)
 {
   ipsec_main_t *im = &ipsec_main;
+  u32 count = 0;
 
-  s = format (s, "\nipv4-inbound-spd-flow-cache-entries: %u",
-	      im->ipsec4_in_spd_flow_cache_entries);
+  for (u32 i = 0; i < im->ipsec4_in_spd_hash_num_buckets; i++)
+    count += im->ipsec4_in_spd_hash_tbl[i].seq != 0;
+
+  s = format (s, "\nipv4-inbound-spd-flow-cache-entries: %u", count);
 
   return (s);
 }

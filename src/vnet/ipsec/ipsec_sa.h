@@ -202,6 +202,8 @@ typedef struct ipsec_sa_outb_rt_t_
   ip_dscp_t t_dscp;
   tunnel_encap_decap_flags_t tunnel_flags;
   clib_thread_index_t thread_index;
+  u16 ipsec4_output_next_index;
+  u16 ipsec6_output_next_index;
   u32 salt;
   u8 is_hmac_only;
   ipsec_sa_outb_rt_cached_t cached;

@@ -19,22 +19,19 @@ single_rule_out_match_5tuple (ipsec_policy_t *policy, ipsec_fp_5tuple_t *match)
 
   if (!policy->is_ipv6)
     {
-      if (PREDICT_FALSE (
-	    clib_net_to_host_u32 (match->laddr.as_u32) <
-	    clib_net_to_host_u32 (policy->laddr.start.ip4.as_u32)))
+      u32 lah = clib_net_to_host_u32 (match->laddr.as_u32);
+      u32 rah = clib_net_to_host_u32 (match->raddr.as_u32);
+
+      if (PREDICT_FALSE (lah < clib_net_to_host_u32 (policy->laddr.start.ip4.as_u32)))
 	return (0);
 
-      if (PREDICT_FALSE (clib_net_to_host_u32 (match->laddr.as_u32) >
-			 clib_net_to_host_u32 (policy->laddr.stop.ip4.as_u32)))
+      if (PREDICT_FALSE (lah > clib_net_to_host_u32 (policy->laddr.stop.ip4.as_u32)))
 	return (0);
 
-      if (PREDICT_FALSE (
-	    clib_net_to_host_u32 (match->raddr.as_u32) <
-	    clib_net_to_host_u32 (policy->raddr.start.ip4.as_u32)))
+      if (PREDICT_FALSE (rah < clib_net_to_host_u32 (policy->raddr.start.ip4.as_u32)))
 	return (0);
 
-      if (PREDICT_FALSE (clib_net_to_host_u32 (match->raddr.as_u32) >
-			 clib_net_to_host_u32 (policy->raddr.stop.ip4.as_u32)))
+      if (PREDICT_FALSE (rah > clib_net_to_host_u32 (policy->raddr.stop.ip4.as_u32)))
 	return (0);
     }
   else
@@ -83,7 +80,7 @@ single_rule_out_match_5tuple (ipsec_policy_t *policy, ipsec_fp_5tuple_t *match)
 static_always_inline int
 single_rule_in_match_5tuple (ipsec_policy_t *policy, ipsec_fp_5tuple_t *match)
 {
-  u32 da, sa;
+  u32 dah, sah;
 
   if (policy->policy == IPSEC_POLICY_ACTION_PROTECT)
     {
@@ -96,13 +93,13 @@ single_rule_in_match_5tuple (ipsec_policy_t *policy, ipsec_fp_5tuple_t *match)
 	{
 	  if (!policy->is_ipv6)
 	    {
-	      da = clib_net_to_host_u32 (match->laddr.as_u32);
-	      sa = clib_net_to_host_u32 (match->raddr.as_u32);
+	      dah = clib_net_to_host_u32 (match->laddr.as_u32);
+	      sah = clib_net_to_host_u32 (match->raddr.as_u32);
 
-	      if (da != clib_net_to_host_u32 (s->tunnel.t_dst.ip.ip4.as_u32))
+	      if (dah != clib_net_to_host_u32 (s->tunnel.t_dst.ip.ip4.as_u32))
 		return (0);
 
-	      if (sa != clib_net_to_host_u32 (s->tunnel.t_src.ip.ip4.as_u32))
+	      if (sah != clib_net_to_host_u32 (s->tunnel.t_src.ip.ip4.as_u32))
 		return (0);
 	    }
 	  else
@@ -120,19 +117,19 @@ single_rule_in_match_5tuple (ipsec_policy_t *policy, ipsec_fp_5tuple_t *match)
 	{
 	  if (!policy->is_ipv6)
 	    {
-	      da = clib_net_to_host_u32 (match->laddr.as_u32);
-	      sa = clib_net_to_host_u32 (match->raddr.as_u32);
+	      dah = clib_net_to_host_u32 (match->laddr.as_u32);
+	      sah = clib_net_to_host_u32 (match->raddr.as_u32);
 
-	      if (sa < clib_net_to_host_u32 (policy->raddr.start.ip4.as_u32))
+	      if (sah < clib_net_to_host_u32 (policy->raddr.start.ip4.as_u32))
 		return (0);
 
-	      if (sa > clib_net_to_host_u32 (policy->raddr.stop.ip4.as_u32))
+	      if (sah > clib_net_to_host_u32 (policy->raddr.stop.ip4.as_u32))
 		return (0);
 
-	      if (da < clib_net_to_host_u32 (policy->laddr.start.ip4.as_u32))
+	      if (dah < clib_net_to_host_u32 (policy->laddr.start.ip4.as_u32))
 		return (0);
 
-	      if (da > clib_net_to_host_u32 (policy->laddr.stop.ip4.as_u32))
+	      if (dah > clib_net_to_host_u32 (policy->laddr.stop.ip4.as_u32))
 		return (0);
 	    }
 	  else
@@ -159,19 +156,19 @@ single_rule_in_match_5tuple (ipsec_policy_t *policy, ipsec_fp_5tuple_t *match)
     {
       if (!policy->is_ipv6)
 	{
-	  da = clib_net_to_host_u32 (match->laddr.as_u32);
-	  sa = clib_net_to_host_u32 (match->raddr.as_u32);
+	  dah = clib_net_to_host_u32 (match->laddr.as_u32);
+	  sah = clib_net_to_host_u32 (match->raddr.as_u32);
 
-	  if (sa < clib_net_to_host_u32 (policy->raddr.start.ip4.as_u32))
+	  if (sah < clib_net_to_host_u32 (policy->raddr.start.ip4.as_u32))
 	    return (0);
 
-	  if (sa > clib_net_to_host_u32 (policy->raddr.stop.ip4.as_u32))
+	  if (sah > clib_net_to_host_u32 (policy->raddr.stop.ip4.as_u32))
 	    return (0);
 
-	  if (da < clib_net_to_host_u32 (policy->laddr.start.ip4.as_u32))
+	  if (dah < clib_net_to_host_u32 (policy->laddr.start.ip4.as_u32))
 	    return (0);
 
-	  if (da > clib_net_to_host_u32 (policy->laddr.stop.ip4.as_u32))
+	  if (dah > clib_net_to_host_u32 (policy->laddr.stop.ip4.as_u32))
 	    return (0);
 	}
       else
