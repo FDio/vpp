@@ -19,6 +19,23 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": true,
+      "key": {
+        "uuid": "49a31c3b_0a3e627a",
+        "filename": "src/plugins/pppoeclient/pppoeclient.api",
+        "patchSetId": 57
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 3308
+      },
+      "writtenOn": "2026-03-31T09:50:36Z",
+      "side": 1,
+      "message": "Most of the infrastructure is there to allow service names to be configured, but right now it can only be done via the CLI, not via the API. It\u0027d be nice to have that here too.",
+      "revId": "7d53c52f5de336369b6bb2adebbdb600a28d855a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": false,
       "key": {
         "uuid": "84e336dc_2f7af57d",
