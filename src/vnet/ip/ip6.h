@@ -237,7 +237,33 @@ void ip6_sw_interface_enable_disable (u32 sw_if_index, u32 is_enable);
  */
 ip6_address_t *ip6_interface_first_address (ip6_main_t * im, u32 sw_if_index);
 
-int ip6_address_compare (ip6_address_t * a1, ip6_address_t * a2);
+static_always_inline int
+ip6_address_compare (ip6_address_t *a1, ip6_address_t *a2)
+{
+#if defined(CLIB_HAVE_VEC128)
+  {
+    u16x8 v1 = a1->as_u128;
+    u16x8 v2 = a2->as_u128;
+    u32 mask, i;
+
+    mask = u8x16_msb_mask ((u8x16) (v1 != v2));
+    if (!mask)
+      return 0;
+
+    i = count_trailing_zeros (mask) >> 1;
+
+    return clib_net_to_host_u16 (v1[i]) - clib_net_to_host_u16 (v2[i]);
+  }
+#else
+  for (int i = 0; i < ARRAY_LEN (a1->as_u16); i++)
+    {
+      int cmp = clib_net_to_host_u16 (a1->as_u16[i]) - clib_net_to_host_u16 (a2->as_u16[i]);
+      if (cmp != 0)
+	return cmp;
+    }
+  return 0;
+#endif
+}
 
 uword
 ip6_udp_register_listener (vlib_main_t * vm,

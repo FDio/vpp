@@ -16,29 +16,6 @@
  * Configure an IPv4 or IPv6 address for on an interface.
  */
 
-
-int
-ip4_address_compare (ip4_address_t * a1, ip4_address_t * a2)
-{
-  return clib_net_to_host_u32 (a1->data_u32) -
-    clib_net_to_host_u32 (a2->data_u32);
-}
-
-int
-ip6_address_compare (ip6_address_t * a1, ip6_address_t * a2)
-{
-  int i;
-  for (i = 0; i < ARRAY_LEN (a1->as_u16); i++)
-    {
-      int cmp =
-	clib_net_to_host_u16 (a1->as_u16[i]) -
-	clib_net_to_host_u16 (a2->as_u16[i]);
-      if (cmp != 0)
-	return cmp;
-    }
-  return 0;
-}
-
 VLIB_CLI_COMMAND (set_interface_ip_command, static) = {
   .path = "set interface ip",
   .short_help = "IP4/IP6 commands",

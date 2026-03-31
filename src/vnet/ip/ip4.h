@@ -207,7 +207,11 @@ void ip4_directed_broadcast (u32 sw_if_index, u8 enable);
 
 void ip4_sw_interface_enable_disable (u32 sw_if_index, u32 is_enable);
 
-int ip4_address_compare (ip4_address_t * a1, ip4_address_t * a2);
+static_always_inline int
+ip4_address_compare (ip4_address_t *a1, ip4_address_t *a2)
+{
+  return clib_net_to_host_u32 (a1->data_u32) - clib_net_to_host_u32 (a2->data_u32);
+}
 
 uword
 ip4_udp_register_listener (vlib_main_t * vm,
