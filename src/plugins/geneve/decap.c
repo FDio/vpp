@@ -95,8 +95,8 @@ geneve_input (vlib_main_t * vm,
 	  u32 bi0, bi1;
 	  vlib_buffer_t *b0, *b1;
 	  u32 next0 = 0, next1 = 0;
-	  ip4_header_t *ip4_0, *ip4_1;
-	  ip6_header_t *ip6_0, *ip6_1;
+	  ip4_header_t *ip4_0, *ip4_1 = 0;
+	  ip6_header_t *ip6_0, *ip6_1 = 0;
 	  geneve_header_t *geneve0, *geneve1;
 	  uword *p0, *p1;
 	  u32 tunnel_index0, tunnel_index1;
@@ -537,7 +537,7 @@ geneve_input (vlib_main_t * vm,
 	  ip6_header_t *ip6_0;
 	  geneve_header_t *geneve0;
 	  uword *p0;
-	  u32 tunnel_index0;
+	  u32 tunnel_index0 = ~0;
 	  geneve_tunnel_t *t0, *mt0 = NULL;
 	  geneve4_tunnel_key_t key4_0;
 	  geneve6_tunnel_key_t key6_0;
