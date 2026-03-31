@@ -50,6 +50,59 @@
       "message": "like masking bit by 0x3f if I am not mistaken...",
       "revId": "066f11c7b9df28bedbc3083aeb34d0e2d49f127d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "077d0d26_9a166f2b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-03-31T09:32:26Z",
+      "side": 1,
+      "message": "Comments addressed.",
+      "revId": "066f11c7b9df28bedbc3083aeb34d0e2d49f127d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4c3103d0_cf0cf43c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-03-31T09:32:26Z",
+      "side": 1,
+      "message": "Masking with 0x3f would not be equivalent here. It would alias out-of-range protocol/type values back into [0..63], while this fix intentionally maps them to 0 to avoid false matches. I also checked codegen: both x86_64 and AArch64 lower the guarded form to a branch-free conditional select/move at -O3 (cmov on x86, csel on arm64), so I’d prefer to keep the explicit range check.",
+      "parentUuid": "7be8af82_e85f731f",
+      "revId": "066f11c7b9df28bedbc3083aeb34d0e2d49f127d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "969aa510_00b2ff17",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-03-31T09:32:26Z",
+      "side": 1,
+      "message": "both x86_64 and AArch64 lower the guarded form to a branch-free conditional",
+      "parentUuid": "3cde4023_7655b0aa",
+      "revId": "066f11c7b9df28bedbc3083aeb34d0e2d49f127d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
