@@ -20,6 +20,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "7884d367_4e2543a0",
+        "filename": "src/plugins/af_xdp/af_xdp.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 138,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-03-31T16:08:10Z",
+      "side": 1,
+      "message": "it is missing from the API",
+      "parentUuid": "2862c6a4_02dc54c5",
+      "revId": "529fcb25f499982f818d5b4a0a5b49a4d4ac163b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "6dead2e6_40d0f483",
         "filename": "src/plugins/af_xdp/device.c",
         "patchSetId": 2
@@ -31,6 +49,24 @@
       "writtenOn": "2026-03-30T14:13:53Z",
       "side": 1,
       "message": "can we have a common af_xdp_ioctl() or similar for both get_mac and get_q_count?",
+      "revId": "529fcb25f499982f818d5b4a0a5b49a4d4ac163b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "56bb00e7_96277674",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 429,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-03-31T16:08:10Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "6dead2e6_40d0f483",
       "revId": "529fcb25f499982f818d5b4a0a5b49a4d4ac163b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -48,6 +84,24 @@
       "writtenOn": "2026-03-30T14:13:53Z",
       "side": 1,
       "message": "what happens if this fails? we get 0-ed MAC? I think we should log an error and either hard fail or fail gracefully by generating a MAC?",
+      "revId": "529fcb25f499982f818d5b4a0a5b49a4d4ac163b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "08595766_76650e21",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 741,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-03-31T16:08:10Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3af3a738_531f409f",
       "revId": "529fcb25f499982f818d5b4a0a5b49a4d4ac163b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
