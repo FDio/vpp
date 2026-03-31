@@ -33,6 +33,9 @@ timer_expiry_cb_enable ()
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   vec_validate (t->per_thread_data, tm->n_vlib_mains - 1);
   sfdp_timer_per_thread_data_t *ptd;
+  /* SFDP_TIMER_INTERVAL is derived from sfdp_main.timer_tick_interval_s, which
+   * is set once in sfdp_config() before workers are initialized and cannot be
+   * changed at runtime. The wheels are initialized here with the final value. */
   vec_foreach (ptd, t->per_thread_data)
     {
       ptd->expired_sessions = 0;
@@ -69,14 +72,14 @@ timer_expiry_cb_expire_or_evict_sessions (u32 desired_expiries,
   {
     sfdp_session_t *session = sfdp_session_at_index (session_index);
     sfdp_session_timer_t *timer = SFDP_SESSION_TIMER (session);
-    f64 diff =
-      (timer->next_expiration - (ptd->current_time + SFDP_TIMER_INTERVAL)) /
-      SFDP_TIMER_INTERVAL;
-    if (diff > (f64) 1.)
+    f64 remaining_time = timer->next_expiration - (ptd->current_time + SFDP_TIMER_INTERVAL);
+    if (remaining_time > SFDP_TIMER_INTERVAL)
       {
-	/* Rearm the timer accordingly */
-	sfdp_session_timer_start (&ptd->wheel, timer, session_index,
-				  ptd->current_time, diff);
+	/* The timer wheel only reports expirations one wheel turn ahead.
+	 * Keep sessions with a later absolute expiration alive by rearming
+	 * them with their remaining time until the final turn is reached. */
+	sfdp_session_timer_start (&ptd->wheel, timer, session_index, ptd->current_time,
+				  remaining_time);
       }
     else
       {
