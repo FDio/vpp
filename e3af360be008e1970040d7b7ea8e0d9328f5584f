@@ -1,6 +1,23 @@
 {
   "comments": [
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "d863cb30_3525bb80",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 24
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-03-31T09:31:37Z",
+      "side": 1,
+      "message": "All comments addressed.",
+      "revId": "e3af360be008e1970040d7b7ea8e0d9328f5584f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "dfc4431e_ade9cb02",
@@ -14,6 +31,24 @@
       "writtenOn": "2026-03-30T16:36:01Z",
       "side": 1,
       "message": "you can add your flag to the existing flags with [backwards_compatible] that way you do not need to add a v2 and no v4 create either",
+      "revId": "e3af360be008e1970040d7b7ea8e0d9328f5584f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2e8a6b5d_1d02e46a",
+        "filename": "src/plugins/af_xdp/af_xdp.api",
+        "patchSetId": 24
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-03-31T09:31:37Z",
+      "side": 1,
+      "message": "Done. Removed af_xdp_flag_v2, af_xdp_create_v4 and af_xdp_create_v4_reply. Added AF_XDP_API_FLAGS_MULTI_BUFFER \u003d 2 [backwards_compatible] to the existing af_xdp_flag enum, bumped version to 1.1.0, and updated api.c, test_api.c and vm_vpp_interfaces.py accordingly.",
+      "parentUuid": "dfc4431e_ade9cb02",
       "revId": "e3af360be008e1970040d7b7ea8e0d9328f5584f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -35,6 +70,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "6d17ecb4_62f6f24f",
+        "filename": "src/plugins/af_xdp/af_xdp.h",
+        "patchSetId": 24
+      },
+      "lineNbr": 74,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-03-31T09:31:37Z",
+      "side": 1,
+      "message": "Done.",
+      "parentUuid": "570ccb29_eff55aeb",
+      "revId": "e3af360be008e1970040d7b7ea8e0d9328f5584f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "db1ed679_8a842fdd",
@@ -48,6 +101,24 @@
       "writtenOn": "2026-03-30T16:36:01Z",
       "side": 1,
       "message": "why __u32?",
+      "revId": "e3af360be008e1970040d7b7ea8e0d9328f5584f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2d281208_32b760d2",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 24
+      },
+      "lineNbr": 141,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-03-31T09:31:37Z",
+      "side": 1,
+      "message": "Fixed.",
+      "parentUuid": "db1ed679_8a842fdd",
       "revId": "e3af360be008e1970040d7b7ea8e0d9328f5584f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -69,6 +140,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "d6518cd9_5264884f",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 24
+      },
+      "lineNbr": 245,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-03-31T09:31:37Z",
+      "side": 1,
+      "message": "Done. The distinction is made by checking for / in the prog name: if present, xdp_program__open_file() is used (direct filesystem path); otherwise xdp_program__find_file() is used (searches LIBXDP_OBJECT_PATH).",
+      "parentUuid": "b87edf92_affcd2db",
+      "revId": "e3af360be008e1970040d7b7ea8e0d9328f5584f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "40a2d19c_a915b98c",
@@ -82,6 +171,24 @@
       "writtenOn": "2026-03-30T16:36:01Z",
       "side": 1,
       "message": "can we use af_xdp_device_input_bufs() with an is_mb constant?",
+      "revId": "e3af360be008e1970040d7b7ea8e0d9328f5584f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9cc4babb_dbd9664a",
+        "filename": "src/plugins/af_xdp/input.c",
+        "patchSetId": 24
+      },
+      "lineNbr": 195,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-03-31T09:31:37Z",
+      "side": 1,
+      "message": "Done. Merged af_xdp_device_input_bufs_mb into af_xdp_device_input_bufs with a const int is_mb compile-time constant parameter.",
+      "parentUuid": "40a2d19c_a915b98c",
       "revId": "e3af360be008e1970040d7b7ea8e0d9328f5584f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -103,6 +210,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "d11c4bb7_e0067dd3",
+        "filename": "src/plugins/af_xdp/output.c",
+        "patchSetId": 24
+      },
+      "lineNbr": 127,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-03-31T09:31:37Z",
+      "side": 1,
+      "message": "Done. Merged af_xdp_device_output_free_mb into af_xdp_device_output_free with a const int is_mb parameter.",
+      "parentUuid": "5dad6f9a_71168798",
+      "revId": "e3af360be008e1970040d7b7ea8e0d9328f5584f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "351db6b9_cd1137a6",
@@ -120,6 +245,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "c784a268_51e66b32",
+        "filename": "src/plugins/af_xdp/output.c",
+        "patchSetId": 24
+      },
+      "lineNbr": 181,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-03-31T09:31:37Z",
+      "side": 1,
+      "message": "Done. Merged af_xdp_device_output_tx_try_mb into af_xdp_device_output_tx_try with a const int is_mb parameter.",
+      "parentUuid": "351db6b9_cd1137a6",
+      "revId": "e3af360be008e1970040d7b7ea8e0d9328f5584f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "68ffcdf4_374068b2",
@@ -133,6 +276,24 @@
       "writtenOn": "2026-03-30T16:36:01Z",
       "side": 1,
       "message": "please use explicit constant names",
+      "revId": "e3af360be008e1970040d7b7ea8e0d9328f5584f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "fb0ce8e7_5da750c8",
+        "filename": "test/vm_vpp_interfaces.py",
+        "patchSetId": 24
+      },
+      "lineNbr": 976,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-03-31T09:31:37Z",
+      "side": 1,
+      "message": "Done. Replaced api_args[\"flags\"] \u003d 2 with VppEnum.vl_api_af_xdp_flag_t.AF_XDP_API_FLAGS_MULTI_BUFFER.",
+      "parentUuid": "68ffcdf4_374068b2",
       "revId": "e3af360be008e1970040d7b7ea8e0d9328f5584f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
