@@ -120,11 +120,9 @@ runs:
         else
             build_vpp
         fi
-        {
-          if [ -n "${BUILD_ERROR}" ] ; then
-              BUILD_RESULT="${BUILD_ERROR}"
-              RETVAL="1"
-          fi
-          echo -e "\n$TUI_LINE\n* VPP ${OS_ID^^}-${OS_VERSION_ID}-${OS_ARCH^^} BUILD $BUILD_RESULT\n$TUI_LINE\n"
-        } | tee build_results.log
+        if [ -n "${BUILD_ERROR}" ] ; then
+            BUILD_RESULT="${BUILD_ERROR}"
+            RETVAL="1"
+        fi
+        echo -e "\n$TUI_LINE\n* VPP ${OS_ID^^}-${OS_VERSION_ID}-${OS_ARCH^^} BUILD $BUILD_RESULT\n$TUI_LINE\n"
         exit $RETVAL
