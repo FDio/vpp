@@ -840,5 +840,139 @@ class TestSfdp(VppTestCase):
         self.vapi.sfdp_tenant_add_del(tenant_id=2, is_del=True)
 
 
+@unittest.skipIf(
+    "sfdp_services" in config.excluded_plugins,
+    "SFDP_Services plugin is required to run SFDP tests",
+)
+class TestSfdpTimer(VppTestCase):
+    """SFDP timer wheel behavior"""
+
+    # 20ms makes one wheel turn (2048 slots) in 40.96s.
+    extra_vpp_config = ["sfdp { timer-interval 0.02 }"]
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestSfdpTimer, cls).setUpClass()
+        try:
+            cls.create_pg_interfaces(range(1))
+            cls.pg0.config_ip4()
+            cls.pg0.admin_up()
+        except Exception:
+            super(TestSfdpTimer, cls).tearDownClass()
+            raise
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.pg0.unconfig_ip4()
+        cls.pg0.admin_down()
+        super(TestSfdpTimer, cls).tearDownClass()
+
+    def setUp(self):
+        super(TestSfdpTimer, self).setUp()
+        self.vapi.cli("sfdp tenant add 1 context 100")
+        self.vapi.cli("set sfdp interface-input pg0 tenant 1")
+
+    def tearDown(self):
+        self.vapi.sfdp_kill_session(is_all=True)
+        # One tick to let the expire node process the killed sessions
+        self.virtual_sleep(0.02)
+        self.vapi.cli("set sfdp interface-input pg0 tenant 1 disable")
+        self.vapi.cli("sfdp tenant del 1")
+        super(TestSfdpTimer, self).tearDown()
+
+    def _session_ids(self):
+        # session_idx is the u32 pool index used by the kill API
+        return {sess.session_idx for sess in self.vapi.sfdp_session_dump()}
+
+    def _wait_for_session_appear(self):
+        session_ids = self._session_ids()
+        self.assertTrue(session_ids, "No SFDP session created")
+        return next(iter(session_ids))
+
+    def _wait_for_session_disappear(self, session_id, timeout):
+        self.virtual_sleep(timeout)
+        # Extra tick: ensures the expire node has been dispatched after the
+        # clock advance, without relying on wall-clock time
+        self.virtual_sleep(0.02)
+        self.assertNotIn(session_id, self._session_ids())
+
+    def _send_embryonic_tcp_syn(self, dst_ip, sport):
+        pkt = (
+            Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+            / IP(src=self.pg0.remote_ip4, dst=dst_ip)
+            / TCP(sport=sport, dport=80, flags="S")
+        )
+
+        self.pg0.add_stream(pkt)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        self.pg0.assert_nothing_captured()
+
+    def test_sfdp_timer_interval_shown_in_status(self):
+        """Configured timer interval is reported by show sfdp status"""
+        status = self.vapi.cli("show sfdp status")
+
+        self.assertRegex(status, r"timer tick interval \(s\): 0?\.020000")
+
+    def test_sfdp_timer_interval_rearm_after_wheel_turn(self):
+        """Session still expires after a rearm beyond one wheel turn"""
+        self.vapi.cli("set sfdp timeout tenant 1 embryonic 50")
+
+        self._send_embryonic_tcp_syn("198.51.100.2", 12346)
+        session_id = self._wait_for_session_appear()
+        self._wait_for_session_disappear(session_id, timeout=55.0)
+
+    def test_sfdp_kill_is_faster_than_timeout(self):
+        """Killing a session expires it within one tick, not after its timeout"""
+        # Very long timeout so natural expiry won't interfere
+        self.vapi.cli("set sfdp timeout tenant 1 embryonic 3600")
+
+        self._send_embryonic_tcp_syn("198.51.100.2", 12346)
+        session_id = self._wait_for_session_appear()
+
+        self.vapi.sfdp_kill_session(
+            session_index=session_id, is_all=False
+        )  # session_id is session_idx (u32)
+
+        # One tick is enough: kill moves the timer to the current wheel slot
+        # and sends an interrupt to the expire node
+        self.virtual_sleep(0.02)
+        self.assertNotIn(session_id, self._session_ids())
+
+    def test_sfdp_kill_all_is_faster_than_timeout(self):
+        """kill_all expires all sessions within one tick"""
+        self.vapi.cli("set sfdp timeout tenant 1 embryonic 3600")
+
+        for sport in [12346, 12347, 12348]:
+            self._send_embryonic_tcp_syn("198.51.100.2", sport)
+
+        session_ids = self._session_ids()
+        self.assertGreater(len(session_ids), 0)
+
+        self.vapi.sfdp_kill_session(is_all=True)
+
+        self.virtual_sleep(0.02)
+        self.assertEqual(len(self._session_ids()), 0)
+
+    def test_sfdp_kill_rearmed_session(self):
+        """Killing a rearmed session (past first wheel revolution) works within one tick"""
+        # Timeout > one wheel turn (2048 * 0.02 = 40.96s) to force a rearm
+        self.vapi.cli("set sfdp timeout tenant 1 embryonic 50")
+
+        self._send_embryonic_tcp_syn("198.51.100.2", 12346)
+        session_id = self._wait_for_session_appear()
+
+        # Advance past the first wheel revolution: session is rearmed, still alive
+        self.virtual_sleep(41)
+        self.assertIn(session_id, self._session_ids())
+
+        # Kill it: should be gone within one tick despite the rearmed state
+        self.vapi.sfdp_kill_session(
+            session_index=session_id, is_all=False
+        )  # session_id is session_idx (u32)
+        self.virtual_sleep(0.02)
+        self.assertNotIn(session_id, self._session_ids())
+
+
 if __name__ == "__main__":
     unittest.main(testRunner=VppTestRunner)
