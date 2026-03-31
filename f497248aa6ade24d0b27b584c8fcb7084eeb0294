@@ -24,6 +24,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "4fc53afd_0d653961",
+        "filename": "src/drivers/iavf/port.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 144,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-03-31T09:33:12Z",
+      "side": 1,
+      "message": "Done. I replaced the inline FCS/VLAN sizes with self-descriptive driver defines and reused the same frame-overhead constant in the MTU-derived max frame size path as well.",
+      "parentUuid": "737993c8_d2993577",
+      "range": {
+        "startLine": 144,
+        "startChar": 46,
+        "endLine": 144,
+        "endChar": 79
+      },
+      "revId": "f497248aa6ade24d0b27b584c8fcb7084eeb0294",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "f9034ad6_1fd8a976",
@@ -41,6 +65,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "16cf2e82_a0316451",
+        "filename": "src/drivers/iavf/queue.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 63,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-03-31T09:33:12Z",
+      "side": 1,
+      "message": "Done. I replaced 510 with a named constant derived from the placeholder buffer refcount limit and the minimum number of descriptors consumed by a TSO packet, and added a short comment at the allocation site.",
+      "parentUuid": "f9034ad6_1fd8a976",
+      "revId": "f497248aa6ade24d0b27b584c8fcb7084eeb0294",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "9f806aed_12d9bc8b",
@@ -54,6 +96,30 @@
       "writtenOn": "2026-03-10T21:53:56Z",
       "side": 1,
       "message": "Perhaps use hdr_sz, this name is hard to read as I first thought the L was a 1.\nThe comment should suffice to describe what the variable contains.",
+      "range": {
+        "startLine": 141,
+        "startChar": 6,
+        "endLine": 141,
+        "endChar": 16
+      },
+      "revId": "f497248aa6ade24d0b27b584c8fcb7084eeb0294",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d9077715_42119326",
+        "filename": "src/drivers/iavf/tx_node.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 141,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-03-31T09:33:12Z",
+      "side": 1,
+      "message": "Done. Renamed `l234hdr_sz` to `hdr_sz`.",
+      "parentUuid": "9f806aed_12d9bc8b",
       "range": {
         "startLine": 141,
         "startChar": 6,
