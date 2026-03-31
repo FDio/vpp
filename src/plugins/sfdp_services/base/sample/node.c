@@ -146,8 +146,7 @@ VLIB_NODE_FN (sample_non_terminal_node)
       session->state = SFDP_SESSION_STATE_ESTABLISHED;
       /* Rearm the session timeout to
        * tenant->timeouts[SFDP_TIMEOUT_ESTABLISHED] from now */
-      sfdp_session_timer_update (&ptd->wheel, &session->timer,
-				 ptd->current_time,
+      sfdp_session_timer_update (&session->timer, ptd->current_time,
 				 tenant->timeouts[SFDP_TIMEOUT_ESTABLISHED]);
       /* Next service in chain for this packet */
       sfdp_next (b[0], to_next);
