@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "428331a0_687ce2c0",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 19
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3301
+      },
+      "writtenOn": "2026-03-31T14:03:14Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c960e488_e5767eea",
+      "revId": "2359c3a2e98ce1d1e3324c17dd7b83f67a098e29",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "018e04fa_a401b938",
@@ -31,6 +49,24 @@
       "writtenOn": "2026-03-30T08:33:06Z",
       "side": 1,
       "message": "cnat_add_trace() is called from cnat_sub callbacks, which run after cnat_lookup_create_or_return(). That function starts with: vnet_buffer2 (b)-\u003esession.flags \u003d 0;\nThis unconditionally clears all flags including HAS_SCOPE. So when cnat_add_trace() runs and evaluates cnat_scope_id(b), the flag is gone and it always returns 0. The trace will always show lookup_context_id \u003d fib_index, never the actual scope_id that was used for the lookup. The trace is misleading/broken for scoped packets.",
+      "revId": "2359c3a2e98ce1d1e3324c17dd7b83f67a098e29",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "aa28dd06_dea4f4cc",
+        "filename": "src/plugins/cnat/cnat_node.h",
+        "patchSetId": 19
+      },
+      "lineNbr": 83,
+      "author": {
+        "id": 3301
+      },
+      "writtenOn": "2026-03-31T14:03:14Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "018e04fa_a401b938",
       "revId": "2359c3a2e98ce1d1e3324c17dd7b83f67a098e29",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -63,6 +99,24 @@
         "id": 361
       },
       "writtenOn": "2026-03-31T13:01:35Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "64c826bc_2a71784b",
+      "revId": "2359c3a2e98ce1d1e3324c17dd7b83f67a098e29",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d1828a1f_80aa82d7",
+        "filename": "src/plugins/cnat/cnat_node.h",
+        "patchSetId": 19
+      },
+      "lineNbr": 1055,
+      "author": {
+        "id": 3301
+      },
+      "writtenOn": "2026-03-31T14:03:14Z",
       "side": 1,
       "message": "Done",
       "parentUuid": "64c826bc_2a71784b",
@@ -105,6 +159,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "3d51d804_505b697c",
+        "filename": "src/plugins/cnat/cnat_node.h",
+        "patchSetId": 19
+      },
+      "lineNbr": 1123,
+      "author": {
+        "id": 3301
+      },
+      "writtenOn": "2026-03-31T14:03:14Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9aae7e88_09a72550",
+      "revId": "2359c3a2e98ce1d1e3324c17dd7b83f67a098e29",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "c33abc67_b64162df",
@@ -140,6 +212,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "70c31d6b_4548ff39",
+        "filename": "src/plugins/cnat/cnat_node.h",
+        "patchSetId": 19
+      },
+      "lineNbr": 1151,
+      "author": {
+        "id": 3301
+      },
+      "writtenOn": "2026-03-31T14:03:14Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c33abc67_b64162df",
+      "revId": "2359c3a2e98ce1d1e3324c17dd7b83f67a098e29",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "a12531b0_77ad1802",
@@ -157,6 +247,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "30e75de5_363f0408",
+        "filename": "src/plugins/cnat/cnat_session.c",
+        "patchSetId": 19
+      },
+      "lineNbr": 280,
+      "author": {
+        "id": 3301
+      },
+      "writtenOn": "2026-03-31T14:03:14Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "a12531b0_77ad1802",
+      "revId": "2359c3a2e98ce1d1e3324c17dd7b83f67a098e29",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "a9d5f2d6_790c79e4",
@@ -170,6 +278,24 @@
       "writtenOn": "2026-03-30T08:33:06Z",
       "side": 1,
       "message": "we call it context_id here but we also use scope_id - we should use the same name everywhere",
+      "revId": "2359c3a2e98ce1d1e3324c17dd7b83f67a098e29",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2a6f35f2_849e3f34",
+        "filename": "src/plugins/cnat/cnat_session.h",
+        "patchSetId": 19
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 3301
+      },
+      "writtenOn": "2026-03-31T14:03:14Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "a9d5f2d6_790c79e4",
       "revId": "2359c3a2e98ce1d1e3324c17dd7b83f67a098e29",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -202,6 +328,24 @@
         "id": 361
       },
       "writtenOn": "2026-03-31T13:01:35Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5799eb5b_82273934",
+      "revId": "2359c3a2e98ce1d1e3324c17dd7b83f67a098e29",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "64551ac9_2f362c68",
+        "filename": "src/plugins/cnat/cnat_session.h",
+        "patchSetId": 19
+      },
+      "lineNbr": 115,
+      "author": {
+        "id": 3301
+      },
+      "writtenOn": "2026-03-31T14:03:14Z",
       "side": 1,
       "message": "Done",
       "parentUuid": "5799eb5b_82273934",

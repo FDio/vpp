@@ -67,6 +67,24 @@
       "message": "why is it needed?",
       "revId": "20709a7fcc73352b5bd76aeb0b6184c2bb9e530c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1846ac0c_7551db11",
+        "filename": "src/plugins/cnat/cnat_types.h",
+        "patchSetId": 22
+      },
+      "lineNbr": 231,
+      "author": {
+        "id": 3301
+      },
+      "writtenOn": "2026-03-31T14:03:14Z",
+      "side": 1,
+      "message": "Used in the trace of the return session to show which scope_id the matching forward session belongs to. Without it, return session traces would only show scope:none, making it harder to identify the originating peer. If you feel it\u0027s unnecessary, I can remove it.",
+      "parentUuid": "60a898ca_cbba9623",
+      "revId": "20709a7fcc73352b5bd76aeb0b6184c2bb9e530c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
