@@ -3,6 +3,7 @@
  */
 
 #include <vnet/sfdp/expiry/expiry.h>
+#include <vnet/sfdp/timer/timer.h>
 
 #include <vlib/vlib.h>
 #include <vnet/sfdp/sfdp_funcs.h>
@@ -134,7 +135,7 @@ VLIB_NODE_FN (sfdp_expire_node)
   vec_reset_length (ptd->expired_sessions);
 
 done:
-  vlib_node_schedule (vm, node->node_index, 1.0);
+  vlib_node_schedule (vm, node->node_index, SFDP_TIMER_INTERVAL);
   return 0;
 }
 
