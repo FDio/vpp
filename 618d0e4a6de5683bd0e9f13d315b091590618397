@@ -33,6 +33,23 @@
       "message": "recheck",
       "revId": "618d0e4a6de5683bd0e9f13d315b091590618397",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "07031c3a_15f213bb",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-03-31T19:32:53Z",
+      "side": 1,
+      "message": "Unable to rebase this gerrit change because the commit message does not contain the Author email signoff:\n\nSigned-off-by: Vladimir Zhigulin \u003cscripath96@gmail.com\u003e",
+      "revId": "618d0e4a6de5683bd0e9f13d315b091590618397",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
