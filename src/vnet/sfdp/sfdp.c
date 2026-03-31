@@ -164,6 +164,7 @@ sfdp_init (vlib_main_t *vm)
   _ (log2_sessions_cache_per_thread,
      SFDP_DEFAULT_LOG2_SESSIONS - SFDP_DEFAULT_LOG2_SESSIONS_CACHE_RATIO)
   _ (log2_tenants, SFDP_DEFAULT_LOG2_TENANTS)
+  _ (timer_tick_interval_s, SFDP_DEFAULT_TIMER_INTERVAL_S)
 #undef _
   sfdp->no_main = sfdp->no_main && vlib_num_workers ();
 
@@ -366,6 +367,7 @@ sfdp_expire_session_now (sfdp_session_t *session, f64 now)
 
   sfdp_session_timer_update_maybe_past (&tptd->wheel, timer, now, 0);
   tptd->current_time = now;
+  vlib_node_set_interrupt_pending (vlib_get_main_by_index (thread_index), sfdp_expire_node.index);
 }
 
 clib_error_t *
@@ -526,7 +528,9 @@ sfdp_config (vlib_main_t *vm, unformat_input_t *input)
 {
   sfdp_main_t *sfdp = &sfdp_main;
   u32 eviction_sessions_margin = ~0;
+  f64 timer_tick_interval_s = SFDP_DEFAULT_TIMER_INTERVAL_S;
   u8 sessions_cache_specified = 0;
+  u8 timer_interval_specified = 0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -542,6 +546,8 @@ sfdp_config (vlib_main_t *vm, unformat_input_t *input)
       else if (unformat (input, "eviction-sessions-margin %u",
 			 &eviction_sessions_margin))
 	;
+      else if (unformat (input, "timer-interval %f", &timer_tick_interval_s))
+	timer_interval_specified = 1;
       else if (unformat (input, "no-main"))
 	{
 	  /* Disable only if there are workers */
@@ -574,10 +580,18 @@ sfdp_config (vlib_main_t *vm, unformat_input_t *input)
 
   sfdp->eviction_sessions_margin = eviction_sessions_margin;
 
+  if (timer_interval_specified)
+    {
+      if (timer_tick_interval_s <= 0 || timer_tick_interval_s > 60.0)
+	return clib_error_return (0, "timer-interval must be in (0..60]");
+    }
+  sfdp->timer_tick_interval_s = timer_tick_interval_s;
+
   return 0;
 }
 
 /* sfdp { [sessions-log2 <n>] [tenants-log2 <n>] [eviction-sessions-margin <n>]
+ *        [timer-interval <seconds>]
  * } config. */
 VLIB_EARLY_CONFIG_FUNCTION (sfdp_config, "sfdp");
 
