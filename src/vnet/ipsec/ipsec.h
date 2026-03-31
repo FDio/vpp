@@ -26,11 +26,20 @@
 
 typedef struct
 {
-  u64 key[2]; // 16 bytes
+  u64 key[2];
   u64 value;
-  i32 bucket_lock;
-  u32 un_used;
 } ipsec4_hash_kv_16_8_t;
+
+STATIC_ASSERT_SIZEOF (ipsec4_hash_kv_16_8_t, 24);
+
+typedef struct
+{
+  u32 seq;
+  u8 writer_lock;
+  ipsec4_hash_kv_16_8_t kv;
+} ipsec4_flow_cache_bucket_t;
+
+STATIC_ASSERT_SIZEOF (ipsec4_flow_cache_bucket_t, 32);
 
 typedef union
 {
@@ -103,8 +112,8 @@ typedef struct
   uword *ipsec_if_real_dev_by_show_dev;
   uword *ipsec_if_by_sw_if_index;
 
-  ipsec4_hash_kv_16_8_t *ipsec4_out_spd_hash_tbl;
-  ipsec4_hash_kv_16_8_t *ipsec4_in_spd_hash_tbl;
+  ipsec4_flow_cache_bucket_t *ipsec4_out_spd_hash_tbl;
+  ipsec4_flow_cache_bucket_t *ipsec4_in_spd_hash_tbl;
   clib_bihash_8_16_t tun4_protect_by_key;
   clib_bihash_24_16_t tun6_protect_by_key;
 
@@ -159,12 +168,10 @@ typedef struct
   /* Number of buckets for flow cache */
   u32 ipsec4_out_spd_hash_num_buckets;
   u32 ipsec4_out_spd_flow_cache_entries;
-  u32 epoch_count;
   u8 output_flow_cache_flag;
 
   u32 ipsec4_in_spd_hash_num_buckets;
   u32 ipsec4_in_spd_flow_cache_entries;
-  u32 input_epoch_count;
   u8 input_flow_cache_flag;
 
   u8 async_mode;
@@ -296,28 +303,6 @@ ipsec4_hash_key_compare_16_8 (u64 *a, u64 *b)
 #else
   return ((a[0] ^ b[0]) | (a[1] ^ b[1])) == 0;
 #endif
-}
-
-/* clib_spinlock_lock is not used to save another memory indirection */
-static_always_inline void
-ipsec_spinlock_lock (i32 *lock)
-{
-  i32 free = 0;
-  while (!clib_atomic_cmp_and_swap_acq_relax_n (lock, &free, 1, 0))
-    {
-      /* atomic load limits number of compare_exchange executions */
-      while (clib_atomic_load_relax_n (lock))
-	CLIB_PAUSE ();
-      /* on failure, compare_exchange writes lock into free */
-      free = 0;
-    }
-}
-
-static_always_inline void
-ipsec_spinlock_unlock (i32 *lock)
-{
-  /* Make sure all reads/writes are complete before releasing the lock */
-  clib_atomic_release (lock);
 }
 
 /* Special case to drop or hand off packets for sync/async modes.

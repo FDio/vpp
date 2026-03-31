@@ -34,10 +34,14 @@ ipsec_add_del_spd (vlib_main_t * vm, u32 spd_id, int is_add)
       }));
       hash_unset (im->spd_index_by_spd_id, spd_id);
 #define _(s,v) vec_free(spd->policies[IPSEC_SPD_POLICY_##s]);
-      foreach_ipsec_spd_policy_type
+      foreach_ipsec_spd_policy_type;
 #undef _
+#define _(s, v) vec_free (spd->ip4_policies[IPSEC_SPD_POLICY_##s]);
+      foreach_ipsec_spd_policy_type;
+#undef _
+      vec_free (spd->ip4_inbound_tun_protect_policies);
 
-	fp_spd = &spd->fp_spd;
+      fp_spd = &spd->fp_spd;
 
       if (im->fp_spd_ipv4_out_is_enabled)
 	{

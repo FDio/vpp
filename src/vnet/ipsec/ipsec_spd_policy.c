@@ -92,6 +92,86 @@ ipsec_is_fp_enabled (ipsec_main_t *im, ipsec_spd_t *spd,
   return 0;
 }
 
+void
+ipsec_spd_ip4_range_cache_rebuild (ipsec_spd_t *spd, ipsec_spd_policy_type_t type)
+{
+  ipsec_main_t *im = &ipsec_main;
+  ipsec_policy_ip4_match4_t *matches;
+  u32 *policy_indices;
+  u32 n_policy_chunks;
+  u32 i;
+
+  if (!ipsec_spd_policy_type_is_ipv4 (type))
+    return;
+
+  matches = spd->ip4_policies[type];
+  policy_indices = spd->policies[type];
+  n_policy_chunks = (vec_len (policy_indices) + 3) / 4;
+
+  if (n_policy_chunks == 0)
+    {
+      vec_free (matches);
+      spd->ip4_policies[type] = 0;
+      return;
+    }
+
+  vec_validate_aligned (matches, n_policy_chunks - 1, CLIB_CACHE_LINE_BYTES);
+
+  vec_foreach_index (i, matches)
+    ipsec_spd_ip4_range_pad (&matches[i]);
+
+  vec_foreach_index (i, policy_indices)
+    {
+      ipsec_policy_t *p;
+      u32 lane, chunk;
+
+      p = pool_elt_at_index (im->policies, policy_indices[i]);
+      chunk = i >> 2;
+      lane = i & 3;
+
+      matches[chunk].start.pair[lane].laddr = clib_net_to_host_u32 (p->laddr.start.ip4.as_u32);
+      matches[chunk].start.pair[lane].raddr = clib_net_to_host_u32 (p->raddr.start.ip4.as_u32);
+      matches[chunk].stop.pair[lane].laddr = clib_net_to_host_u32 (p->laddr.stop.ip4.as_u32);
+      matches[chunk].stop.pair[lane].raddr = clib_net_to_host_u32 (p->raddr.stop.ip4.as_u32);
+    }
+
+  spd->ip4_policies[type] = matches;
+}
+
+static void
+ipsec_spd_ip4_tun_protect_cache_rebuild (ipsec_spd_t *spd)
+{
+  ipsec_main_t *im = &ipsec_main;
+  u32 *policy_indices;
+  ipsec_tun_protect4_t *matches = 0;
+  u32 i;
+
+  policy_indices = spd->policies[IPSEC_SPD_POLICY_IP4_INBOUND_PROTECT];
+
+  vec_foreach_index (i, policy_indices)
+    {
+      ipsec_policy_t *p;
+      ipsec_sa_t *s;
+
+      p = pool_elt_at_index (im->policies, policy_indices[i]);
+      s = ipsec_sa_get (p->sa_index);
+
+      if (ipsec_sa_is_set_IS_TUNNEL (s))
+	{
+	  ipsec_tun_protect4_t match = {
+	    .policy_index = policy_indices[i],
+	    .spi = s->spi,
+	    .sa = clib_net_to_host_u32 (s->tunnel.t_src.ip.ip4.as_u32),
+	    .da = clib_net_to_host_u32 (s->tunnel.t_dst.ip.ip4.as_u32),
+	  };
+	  vec_add1 (matches, match);
+	}
+    }
+
+  vec_free (spd->ip4_inbound_tun_protect_policies);
+  spd->ip4_inbound_tun_protect_policies = matches;
+}
+
 int
 ipsec_add_del_policy (vlib_main_t * vm,
 		      ipsec_policy_t * policy, int is_add, u32 * stat_index)
@@ -115,23 +195,10 @@ ipsec_add_del_policy (vlib_main_t * vm,
   if (im->output_flow_cache_flag && !policy->is_ipv6 &&
       policy->type == IPSEC_SPD_POLICY_IP4_OUTBOUND)
     {
-      /*
-       * Flow cache entry is valid only when epoch_count value in control
-       * plane and data plane match. Otherwise, flow cache entry is considered
-       * stale. To avoid the race condition of using old epoch_count value
-       * in data plane after the roll over of epoch_count in control plane,
-       * entire flow cache is reset.
-       */
-      if (im->epoch_count == 0xFFFFFFFF)
-	{
-	  /* Reset all the entries in flow cache */
-	  clib_memset_u8 (im->ipsec4_out_spd_hash_tbl, 0,
-			  im->ipsec4_out_spd_hash_num_buckets *
-			    (sizeof (*(im->ipsec4_out_spd_hash_tbl))));
-	}
-      /* Increment epoch counter by 1 */
-      clib_atomic_fetch_add_relax (&im->epoch_count, 1);
-      /* Reset spd flow cache counter since all old entries are stale */
+      u32 i;
+
+      for (i = 0; i < im->ipsec4_out_spd_hash_num_buckets; i++)
+	im->ipsec4_out_spd_hash_tbl[i].seq = 0;
       clib_atomic_store_relax_n (&im->ipsec4_out_spd_flow_cache_entries, 0);
     }
 
@@ -140,23 +207,10 @@ ipsec_add_del_policy (vlib_main_t * vm,
        policy->type == IPSEC_SPD_POLICY_IP4_INBOUND_DISCARD) &&
       im->input_flow_cache_flag && !policy->is_ipv6)
     {
-      /*
-       * Flow cache entry is valid only when input_epoch_count value in control
-       * plane and data plane match. Otherwise, flow cache entry is considered
-       * stale. To avoid the race condition of using old input_epoch_count
-       * value in data plane after the roll over of input_epoch_count in
-       * control plane, entire flow cache is reset.
-       */
-      if (im->input_epoch_count == 0xFFFFFFFF)
-	{
-	  /* Reset all the entries in flow cache */
-	  clib_memset_u8 (im->ipsec4_in_spd_hash_tbl, 0,
-			  im->ipsec4_in_spd_hash_num_buckets *
-			    (sizeof (*(im->ipsec4_in_spd_hash_tbl))));
-	}
-      /* Increment epoch counter by 1 */
-      clib_atomic_fetch_add_relax (&im->input_epoch_count, 1);
-      /* Reset spd flow cache counter since all old entries are stale */
+      u32 i;
+
+      for (i = 0; i < im->ipsec4_in_spd_hash_num_buckets; i++)
+	im->ipsec4_in_spd_hash_tbl[i].seq = 0;
       im->ipsec4_in_spd_flow_cache_entries = 0;
     }
 
@@ -204,6 +258,9 @@ ipsec_add_del_policy (vlib_main_t * vm,
 	}
 
       vec_insert_elts (spd->policies[policy->type], &policy_index, 1, i);
+      ipsec_spd_ip4_range_cache_rebuild (spd, policy->type);
+      if (policy->type == IPSEC_SPD_POLICY_IP4_INBOUND_PROTECT)
+	ipsec_spd_ip4_tun_protect_cache_rebuild (spd);
 
       *stat_index = policy_index;
     }
@@ -240,12 +297,15 @@ ipsec_add_del_policy (vlib_main_t * vm,
 	vp = pool_elt_at_index (im->policies,
 				spd->policies[policy->type][ii]);
 	if (ipsec_policy_is_equal (vp, policy))
-	  {
-	    vec_delete (spd->policies[policy->type], 1, ii);
-	    ipsec_sa_unlock (vp->sa_index);
-	    pool_put (im->policies, vp);
-	    break;
-	  }
+	    {
+	      vec_delete (spd->policies[policy->type], 1, ii);
+	      ipsec_spd_ip4_range_cache_rebuild (spd, policy->type);
+	      if (policy->type == IPSEC_SPD_POLICY_IP4_INBOUND_PROTECT)
+		ipsec_spd_ip4_tun_protect_cache_rebuild (spd);
+	      ipsec_sa_unlock (vp->sa_index);
+	      pool_put (im->policies, vp);
+	      break;
+	    }
       }
     }
 

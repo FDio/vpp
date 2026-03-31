@@ -41,6 +41,42 @@ typedef struct
   u32 refcount;
 } ipsec_fp_mask_id_t;
 
+typedef union
+{
+  struct
+  {
+    u32 laddr;
+    u32 raddr;
+  };
+  u64 as_u64;
+} ipsec_policy_ip4_addr_pair_t;
+
+typedef struct
+{
+  union
+  {
+    ipsec_policy_ip4_addr_pair_t pair[4];
+    u32x4 as_u32x4[2];
+    u32x8 as_u32x8;
+  } start;
+  union
+  {
+    ipsec_policy_ip4_addr_pair_t pair[4];
+    u32x4 as_u32x4[2];
+    u32x8 as_u32x8;
+  } stop;
+} __clib_packed ipsec_policy_ip4_match4_t;
+
+STATIC_ASSERT_SIZEOF (ipsec_policy_ip4_match4_t, CLIB_CACHE_LINE_BYTES);
+
+typedef struct
+{
+  u32 policy_index;
+  u32 spi;
+  u32 sa;
+  u32 da;
+} ipsec_tun_protect4_t;
+
 /**
  * @brief A fast path Security Policy Database
  */
@@ -67,6 +103,8 @@ typedef struct
   u32 id;
   /** vectors for each of the policy types */
   u32 *policies[IPSEC_SPD_POLICY_N_TYPES];
+  ipsec_policy_ip4_match4_t *ip4_policies[IPSEC_SPD_POLICY_N_TYPES];
+  ipsec_tun_protect4_t *ip4_inbound_tun_protect_policies;
   ipsec_spd_fp_t fp_spd;
 } ipsec_spd_t;
 

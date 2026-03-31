@@ -179,6 +179,114 @@ typedef union
 int ipsec_fp_add_del_policy (void *fp_spd, ipsec_policy_t *policy, int is_add,
 			     u32 *stat_index);
 
+static_always_inline void
+ipsec_spd_ip4_range_pad (ipsec_policy_ip4_match4_t *match)
+{
+  u32 i;
+
+  for (i = 0; i < ARRAY_LEN (match->start.pair); i++)
+    {
+      match->start.pair[i].laddr = ~0;
+      match->start.pair[i].raddr = ~0;
+      match->stop.pair[i].laddr = 0;
+      match->stop.pair[i].raddr = 0;
+    }
+}
+
+static_always_inline int
+ipsec_spd_policy_type_is_ipv4 (ipsec_spd_policy_type_t type)
+{
+  const u64 bmp =
+    (1ULL << IPSEC_SPD_POLICY_IP4_OUTBOUND) | (1ULL << IPSEC_SPD_POLICY_IP4_INBOUND_PROTECT) |
+    (1ULL << IPSEC_SPD_POLICY_IP4_INBOUND_BYPASS) | (1ULL << IPSEC_SPD_POLICY_IP4_INBOUND_DISCARD);
+
+  return (((1ULL << type) & bmp) != 0);
+}
+
+static_always_inline u32
+ipsec_spd_ip4_range_match_slot (const ipsec_policy_ip4_match4_t *match, u32 la, u32 ra)
+{
+  u32 rv;
+
+#if defined(CLIB_HAVE_VEC256)
+  {
+    ipsec_policy_ip4_addr_pair_t pair = {
+      .laddr = la,
+      .raddr = ra,
+    };
+    u32x8 addr = (u32x8) u64x4_splat (pair.as_u64);
+    u32x8 cmp = (addr >= match->start.as_u32x8) & (addr <= match->stop.as_u32x8);
+    rv = u8x32_msb_mask ((u8x32) ((u64x4) cmp == u64x4_splat (~0)));
+    return rv ? count_trailing_zeros (rv) >> 3 : ~0;
+  }
+#elif defined(CLIB_HAVE_VEC128)
+  {
+    ipsec_policy_ip4_addr_pair_t pair = {
+      .laddr = la,
+      .raddr = ra,
+    };
+    u32x4 addr = (u32x4) u64x2_splat (pair.as_u64);
+    u32x4 cmp = (addr >= match->start.as_u32x4[0]) & (addr <= match->stop.as_u32x4[0]);
+
+    rv = u8x16_msb_mask ((u8x16) ((u64x2) cmp == u64x2_splat (~0)));
+    if (rv)
+      return count_trailing_zeros (rv) >> 3;
+
+    cmp = (addr >= match->start.as_u32x4[1]) & (addr <= match->stop.as_u32x4[1]);
+    rv = u8x16_msb_mask ((u8x16) ((u64x2) cmp == u64x2_splat (~0)));
+    return rv ? 2 + (count_trailing_zeros (rv) >> 3) : ~0;
+  }
+#else
+  {
+    for (rv = 0; rv < ARRAY_LEN (match->start.pair); rv++)
+      {
+	if (la < match->start.pair[rv].laddr)
+	  continue;
+	if (la > match->stop.pair[rv].laddr)
+	  continue;
+	if (ra < match->start.pair[rv].raddr)
+	  continue;
+	if (ra > match->stop.pair[rv].raddr)
+	  continue;
+
+	return rv;
+      }
+
+    return ~0;
+  }
+#endif
+}
+
+static_always_inline u32
+ipsec_spd_ip4_find_range_match (const ipsec_spd_t *spd, ipsec_spd_policy_type_t type, u32 la,
+				u32 ra)
+{
+  u32 len = vec_len (spd->policies[type]);
+  typeof (spd->ip4_policies[type][0]) *p = spd->ip4_policies[type];
+
+  for (u32 i = 0; i < len; i += 4, p += 1)
+    {
+      for (u32 slot = 0; slot < 4 && i + slot < len; slot++)
+	{
+	  if (la < p->start.pair[slot].laddr)
+	    continue;
+
+	  if (la > p->stop.pair[slot].laddr)
+	    continue;
+
+	  if (ra < p->start.pair[slot].raddr)
+	    continue;
+
+	  if (ra > p->stop.pair[slot].raddr)
+	    continue;
+
+	  return i + slot;
+	}
+    }
+
+  return ~0;
+}
+
 static_always_inline int
 ipsec_policy_is_equal (ipsec_policy_t *p1, ipsec_policy_t *p2)
 {
