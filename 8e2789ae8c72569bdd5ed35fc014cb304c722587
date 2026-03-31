@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ccb3dbbb_285f67c1",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-03-31T19:22:57Z",
+      "side": 1,
+      "message": "I\u0027m unable to rebase this change because the Signed-off-by email (stanislav.zaikin@46labs.com) is different from the \u0027Owner\u0027 email address (zstaseg@gmail.com).",
+      "revId": "8e2789ae8c72569bdd5ed35fc014cb304c722587",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
