@@ -13,3 +13,5 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    # Disable all pull requests for github-actions
+    open-pull-requests-limit: 0

@@ -138,7 +138,7 @@ jobs:
 
     steps:
       - name: Actions Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98  # v6.0.2
 
       - name: Setup Environment
         # yamllint disable-line rule:line-length
@@ -190,7 +190,7 @@ jobs:
 
       - name: HST VPP Build
         # yamllint disable-line rule:line-length
-        uses: fdio/vpp/.github/actions/vpp-build@43b0339292476442bd7e2429e2ae1075918d8f83
+        uses: fdio/vpp/.github/actions/vpp-build@3c0b690a135be65922fec705983478351a1b80b6
         with:
           LOG_DIR: ${{ env.LOG_DIR }}
           WORKSPACE: ${{ env.WORKSPACE }}
@@ -220,7 +220,7 @@ jobs:
       - name: AWS S3 Publish Logs
         if: always()
         # yamllint disable-line rule:line-length
-        uses: fdio/.github/.github/actions/aws-s3-publish-logs@c2df5c7959a8415f7dd730315a40b058748b4c84
+        uses: fdio/.github/.github/actions/aws-s3-publish-logs@1b8eff3ffd9d355b28052be9ad22acc57b3430b5
         with:
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -244,7 +244,7 @@ jobs:
       - name: AWS S3 Publish Archives
         if: ${{ always() && steps.check-archives.outputs.has_archives == 'true' }}
         # yamllint disable-line rule:line-length
-        uses: fdio/.github/.github/actions/aws-s3-publish-logs@c2df5c7959a8415f7dd730315a40b058748b4c84
+        uses: fdio/.github/.github/actions/aws-s3-publish-logs@1b8eff3ffd9d355b28052be9ad22acc57b3430b5
         with:
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
