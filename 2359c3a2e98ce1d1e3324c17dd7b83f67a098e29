@@ -52,6 +52,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "1bd4f5db_b8a7f60b",
+        "filename": "src/plugins/cnat/cnat_node.h",
+        "patchSetId": 19
+      },
+      "lineNbr": 1055,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-03-31T13:01:35Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "64c826bc_2a71784b",
+      "revId": "2359c3a2e98ce1d1e3324c17dd7b83f67a098e29",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "9aae7e88_09a72550",
@@ -69,6 +87,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "41670083_b624c37c",
+        "filename": "src/plugins/cnat/cnat_node.h",
+        "patchSetId": 19
+      },
+      "lineNbr": 1123,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-03-31T13:01:35Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9aae7e88_09a72550",
+      "revId": "2359c3a2e98ce1d1e3324c17dd7b83f67a098e29",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "c33abc67_b64162df",
@@ -82,6 +118,24 @@
       "writtenOn": "2026-03-30T08:33:06Z",
       "side": 1,
       "message": "why is it needed?",
+      "revId": "2359c3a2e98ce1d1e3324c17dd7b83f67a098e29",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "677adce1_920ceff7",
+        "filename": "src/plugins/cnat/cnat_node.h",
+        "patchSetId": 19
+      },
+      "lineNbr": 1151,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-03-31T13:01:35Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c33abc67_b64162df",
       "revId": "2359c3a2e98ce1d1e3324c17dd7b83f67a098e29",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -133,6 +187,24 @@
       "writtenOn": "2026-03-30T08:33:06Z",
       "side": 1,
       "message": "this should return fib_index if no scope id avail",
+      "revId": "2359c3a2e98ce1d1e3324c17dd7b83f67a098e29",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ff6ef243_09e38821",
+        "filename": "src/plugins/cnat/cnat_session.h",
+        "patchSetId": 19
+      },
+      "lineNbr": 115,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-03-31T13:01:35Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5799eb5b_82273934",
       "revId": "2359c3a2e98ce1d1e3324c17dd7b83f67a098e29",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
