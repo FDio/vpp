@@ -325,7 +325,7 @@ dpdk_lib_init (dpdk_main_t * dm)
       u8 addr[6];
       int rv, q;
       struct rte_eth_dev_info di;
-      struct rte_pci_device *pci_dev;
+      struct rte_pci_device *pci_dev = 0;
       dpdk_device_config_t *devconf = 0;
       vnet_eth_interface_registration_t eir = {};
       dpdk_driver_t *dr;
