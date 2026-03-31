@@ -34,258 +34,166 @@ static char *ipsec_output_error_strings[] = {
 #undef _
 };
 
+static_always_inline void
+ipsec_output_fix_offloads (vlib_main_t *vm, vlib_buffer_t **b, void *l3hdr, void *l4hdr,
+			   int is_ipv6)
+{
+  int bogus;
+  udp_header_t *udp0 = l4hdr;
+  tcp_header_t *tcp0 = l4hdr;
+  vnet_buffer_oflags_t oflags;
+
+  if (PREDICT_TRUE ((b[0]->flags & VNET_BUFFER_F_OFFLOAD) == 0))
+    return;
+
+  oflags = vnet_buffer (b[0])->oflags;
+
+  vnet_buffer_offload_flags_clear (b[0], oflags);
+
+  if (is_ipv6)
+    {
+      ip6_header_t *ip0 = l3hdr;
+      if (PREDICT_FALSE (oflags & VNET_BUFFER_OFFLOAD_F_TCP_CKSUM))
+	tcp0->checksum = ip6_tcp_udp_icmp_compute_checksum (vm, b[0], ip0, &bogus);
+      if (PREDICT_FALSE (oflags & VNET_BUFFER_OFFLOAD_F_UDP_CKSUM))
+	udp0->checksum = ip6_tcp_udp_icmp_compute_checksum (vm, b[0], ip0, &bogus);
+    }
+  else
+    {
+      ip4_header_t *ip0 = l3hdr;
+      if (PREDICT_FALSE (oflags & VNET_BUFFER_OFFLOAD_F_IP_CKSUM))
+	ip0->checksum = ip4_header_checksum (ip0);
+      if (PREDICT_FALSE (oflags & VNET_BUFFER_OFFLOAD_F_TCP_CKSUM))
+	tcp0->checksum = ip4_tcp_udp_compute_checksum (vm, b[0], ip0);
+      if (PREDICT_FALSE (oflags & VNET_BUFFER_OFFLOAD_F_UDP_CKSUM))
+	udp0->checksum = ip4_tcp_udp_compute_checksum (vm, b[0], ip0);
+    }
+}
+
 static inline uword
 ipsec_output_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		     vlib_frame_t * from_frame, int is_ipv6)
 {
   ipsec_main_t *im = &ipsec_main;
+  vlib_buffer_t *buffers[VLIB_FRAME_SIZE + 4], **b = buffers;
+  u16 nexts[VLIB_FRAME_SIZE], *next = nexts;
 
-  u32 *from, *to_next = 0, thread_index;
-  u32 n_left_from, sw_if_index0, last_sw_if_index = (u32) ~ 0;
-  u32 next_node_index = (u32) ~ 0, last_next_node_index = (u32) ~ 0;
-  vlib_frame_t *f = 0;
+  u32 *buffer_indices, thread_index;
+  u32 n_pkts, sw_if_index0, last_sw_if_index = (u32) ~0;
   u32 spd_index0 = ~0;
   ipsec_spd_t *spd0 = 0;
-  int bogus;
+  ipsec4_flow_cache_bucket_t *flow_cache_tbl = im->ipsec4_out_spd_hash_tbl;
   u64 nc_protect = 0, nc_bypass = 0, nc_discard = 0, nc_nomatch = 0;
-  u8 flow_cache_enabled = im->output_flow_cache_flag;
+  u64 flow_cache_mask = im->output_flow_cache_flag ? im->ipsec4_out_spd_hash_num_buckets - 1 : 0;
 
-  from = vlib_frame_vector_args (from_frame);
-  n_left_from = from_frame->n_vectors;
+  buffer_indices = vlib_frame_vector_args (from_frame);
+  n_pkts = from_frame->n_vectors;
   thread_index = vm->thread_index;
 
-  while (n_left_from > 0)
+  vlib_get_buffers (vm, buffer_indices, buffers, n_pkts);
+  b[n_pkts] = b[n_pkts + 1] = b[n_pkts + 2] = b[n_pkts + 3] = b[n_pkts - 1];
+
+  for (u32 n_left = n_pkts; n_left > 0; b += 1, next += 1, n_left -= 1)
     {
-      u32 bi0, pi0, bi1;
-      vlib_buffer_t *b0, *b1;
+      u32 pi0;
       ipsec_policy_t *p0 = NULL;
-      ip4_header_t *ip0;
-      ip6_header_t *ip6_0 = 0;
-      udp_header_t *udp0;
+      void *l3hdr;
+      void *l4hdr;
       u32 iph_offset = 0;
-      tcp_header_t *tcp0;
       u64 bytes0;
 
-      bi0 = from[0];
-      b0 = vlib_get_buffer (vm, bi0);
-      if (n_left_from > 1)
-	{
-	  bi1 = from[1];
-	  b1 = vlib_get_buffer (vm, bi1);
-	  CLIB_PREFETCH (b1, CLIB_CACHE_LINE_BYTES * 2, STORE);
-	  vlib_prefetch_buffer_data (b1, LOAD);
-	}
-      sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_TX];
-      iph_offset = vnet_buffer (b0)->ip.save_rewrite_length;
-      ip0 = (ip4_header_t *) ((u8 *) vlib_buffer_get_current (b0)
-			      + iph_offset);
+      CLIB_PREFETCH (b[4], CLIB_CACHE_LINE_BYTES * 2, STORE);
+      vlib_prefetch_buffer_data (b[4], LOAD);
+
+      sw_if_index0 = vnet_buffer (b[0])->sw_if_index[VLIB_TX];
+      iph_offset = vnet_buffer (b[0])->ip.save_rewrite_length;
+      l3hdr = (u8 *) vlib_buffer_get_current (b[0]) + iph_offset;
 
       /* lookup for SPD only if sw_if_index is changed */
       if (PREDICT_FALSE (last_sw_if_index != sw_if_index0))
 	{
-	  uword *p = hash_get (im->spd_index_by_sw_if_index, sw_if_index0);
-	  ALWAYS_ASSERT (p);
-	  spd_index0 = p[0];
+	  ASSERT (sw_if_index0 < vec_len (im->spd_index_by_sw_if_index));
+	  spd_index0 = im->spd_index_by_sw_if_index[sw_if_index0];
+	  ASSERT (spd_index0 != INDEX_INVALID);
 	  spd0 = pool_elt_at_index (im->spds, spd_index0);
 	  last_sw_if_index = sw_if_index0;
 	}
 
       if (is_ipv6)
 	{
-	  ip6_0 = (ip6_header_t *) ((u8 *) vlib_buffer_get_current (b0)
-				    + iph_offset);
-
-	  udp0 = ip6_next_header (ip6_0);
-#if 0
-	  clib_warning
-	    ("packet received from %U port %u to %U port %u spd_id %u",
-	     format_ip6_address, &ip6_0->src_address,
-	     clib_net_to_host_u16 (udp0->src_port), format_ip6_address,
-	     &ip6_0->dst_address, clib_net_to_host_u16 (udp0->dst_port),
-	     spd0->id);
-#endif
-
-	  p0 = ipsec6_output_policy_match (spd0,
-					   &ip6_0->src_address,
-					   &ip6_0->dst_address,
-					   clib_net_to_host_u16
-					   (udp0->src_port),
-					   clib_net_to_host_u16
-					   (udp0->dst_port), ip6_0->protocol);
+	  ip6_header_t *ip0 = l3hdr;
+	  udp_header_t *udp0 = l4hdr = ip6_next_header (ip0);
+	  bytes0 = clib_net_to_host_u16 (ip0->payload_length) + sizeof (ip6_header_t);
+	  p0 = ipsec6_output_policy_match (spd0, &ip0->src_address, &ip0->dst_address,
+					   udp0->src_port, udp0->dst_port, ip0->protocol);
 	}
       else
 	{
-	  udp0 = (udp_header_t *) ((u8 *) ip0 + ip4_header_bytes (ip0));
-
-#if 0
-	  clib_warning ("packet received from %U to %U port %u",
-			format_ip4_address, ip0->src_address.as_u8,
-			format_ip4_address, ip0->dst_address.as_u8,
-			clib_net_to_host_u16 (udp0->dst_port));
-	  clib_warning ("sw_if_index0 %u spd_index0 %u spd_id %u",
-			sw_if_index0, spd_index0, spd0->id);
-#endif
-
+	  ip4_header_t *ip0 = l3hdr;
+	  udp_header_t *udp0 = l4hdr = (u8 *) ip0 + ip4_header_bytes (ip0);
+	  u32 sa = ip0->src_address.as_u32;
+	  u32 da = ip0->dst_address.as_u32;
+	  u16 sp = udp0->src_port;
+	  u16 dp = udp0->dst_port;
+	  bytes0 = clib_net_to_host_u16 (ip0->length);
 	  /*
 	   * Check whether flow cache is enabled.
 	   */
-	  if (flow_cache_enabled)
-	    {
-	      p0 = ipsec4_out_spd_find_flow_cache_entry (
-		im, ip0->protocol, ip0->src_address.as_u32,
-		ip0->dst_address.as_u32, udp0->src_port, udp0->dst_port);
-	    }
+	  if (flow_cache_mask)
+	    p0 = ipsec4_out_spd_find_flow_cache_entry (flow_cache_tbl, im, ip0->protocol, sa, da,
+						       sp, dp, flow_cache_mask);
 
 	  /* Fall back to linear search if flow cache lookup fails */
 	  if (p0 == NULL)
-	    {
-	      p0 = ipsec_output_policy_match (
-		spd0, ip0->protocol,
-		clib_net_to_host_u32 (ip0->src_address.as_u32),
-		clib_net_to_host_u32 (ip0->dst_address.as_u32),
-		clib_net_to_host_u16 (udp0->src_port),
-		clib_net_to_host_u16 (udp0->dst_port), flow_cache_enabled);
-	    }
+	    p0 = ipsec_output_policy_match (spd0, ip0->protocol, sa, da, sp, dp, flow_cache_mask);
 	}
-      tcp0 = (void *) udp0;
 
       if (PREDICT_TRUE (p0 != NULL))
 	{
 	  pi0 = p0 - im->policies;
 
-	  vlib_prefetch_combined_counter (&ipsec_spd_policy_counters,
-					  thread_index, pi0);
-
-	  if (is_ipv6)
-	    {
-	      bytes0 = clib_net_to_host_u16 (ip6_0->payload_length);
-	      bytes0 += sizeof (ip6_header_t);
-	    }
-	  else
-	    {
-	      bytes0 = clib_net_to_host_u16 (ip0->length);
-	    }
+	  vlib_prefetch_combined_counter (&ipsec_spd_policy_counters, thread_index, pi0);
 
 	  if (p0->policy == IPSEC_POLICY_ACTION_PROTECT)
 	    {
-	      ipsec_sa_t *sa = 0;
+	      ipsec_sa_outb_rt_t *ort = ipsec_sa_get_outb_rt_by_index (p0->sa_index);
 	      nc_protect++;
-	      sa = ipsec_sa_get (p0->sa_index);
-	      if (sa->protocol == IPSEC_PROTOCOL_ESP)
-		if (is_ipv6)
-		  next_node_index = im->esp6_encrypt_node_index;
-		else
-		  next_node_index = im->esp4_encrypt_node_index;
-	      else if (is_ipv6)
-		next_node_index = im->ah6_encrypt_node_index;
-	      else
-		next_node_index = im->ah4_encrypt_node_index;
-	      vnet_buffer (b0)->ipsec.sad_index = p0->sa_index;
-
-	      if (PREDICT_FALSE (b0->flags & VNET_BUFFER_F_OFFLOAD))
-		{
-		  vnet_buffer_oflags_t oflags = vnet_buffer (b0)->oflags;
-
-		  /*
-		   * Clearing offload flags before checksum is computed
-		   * It guarantees the cache hit!
-		   */
-		  vnet_buffer_offload_flags_clear (b0, oflags);
-
-		  if (is_ipv6)
-		    {
-		      if (PREDICT_FALSE (oflags &
-					 VNET_BUFFER_OFFLOAD_F_TCP_CKSUM))
-			{
-			  tcp0->checksum = ip6_tcp_udp_icmp_compute_checksum (
-			    vm, b0, ip6_0, &bogus);
-			}
-		      if (PREDICT_FALSE (oflags &
-					 VNET_BUFFER_OFFLOAD_F_UDP_CKSUM))
-			{
-			  udp0->checksum = ip6_tcp_udp_icmp_compute_checksum (
-			    vm, b0, ip6_0, &bogus);
-			}
-		    }
-		  else
-		    {
-		      if (PREDICT_FALSE (oflags &
-					 VNET_BUFFER_OFFLOAD_F_IP_CKSUM))
-			{
-			  ip0->checksum = ip4_header_checksum (ip0);
-			}
-		      if (PREDICT_FALSE (oflags &
-					 VNET_BUFFER_OFFLOAD_F_TCP_CKSUM))
-			{
-			  tcp0->checksum =
-			    ip4_tcp_udp_compute_checksum (vm, b0, ip0);
-			}
-		      if (PREDICT_FALSE (oflags &
-					 VNET_BUFFER_OFFLOAD_F_UDP_CKSUM))
-			{
-			  udp0->checksum =
-			    ip4_tcp_udp_compute_checksum (vm, b0, ip0);
-			}
-		    }
-		}
-	      vlib_buffer_advance (b0, iph_offset);
+	      next[0] = is_ipv6 ? ort->ipsec6_output_next_index : ort->ipsec4_output_next_index;
+	      vnet_buffer (b[0])->ipsec.sad_index = p0->sa_index;
+	      ipsec_output_fix_offloads (vm, b, l3hdr, l4hdr, is_ipv6);
+	      vlib_buffer_advance (b[0], iph_offset);
 	    }
 	  else if (p0->policy == IPSEC_POLICY_ACTION_BYPASS)
 	    {
 	      nc_bypass++;
-	      next_node_index = get_next_output_feature_node_index (b0, node);
+	      vnet_feature_next_u16 (next, b[0]);
 	    }
 	  else
 	    {
 	      nc_discard++;
-	      next_node_index = im->error_drop_node_index;
+	      next[0] = IPSEC_OUTPUT_NEXT_DROP;
 	    }
-	  vlib_increment_combined_counter
-	    (&ipsec_spd_policy_counters, thread_index, pi0, 1, bytes0);
+	  vlib_increment_combined_counter (&ipsec_spd_policy_counters, thread_index, pi0, 1,
+					   bytes0);
 	}
       else
 	{
 	  pi0 = ~0;
 	  nc_nomatch++;
-	  next_node_index = im->error_drop_node_index;
+	  next[0] = IPSEC_OUTPUT_NEXT_DROP;
 	}
-
-      from += 1;
-      n_left_from -= 1;
-
-      if (PREDICT_FALSE ((last_next_node_index != next_node_index) || f == 0))
-	{
-	  /* if this is not 1st frame */
-	  if (f)
-	    vlib_put_frame_to_node (vm, last_next_node_index, f);
-
-	  last_next_node_index = next_node_index;
-
-	  f = vlib_get_frame_to_node (vm, next_node_index);
-
-	  /* frame->frame_flags, copy it from node */
-	  /* Copy trace flag from next_frame and from runtime. */
-	  f->frame_flags |= node->flags & VLIB_NODE_FLAG_TRACE;
-
-	  to_next = vlib_frame_vector_args (f);
-	}
-
-      to_next[0] = bi0;
-      to_next += 1;
-      f->n_vectors++;
 
       if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE) &&
-	  PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
+	  PREDICT_FALSE (b[0]->flags & VLIB_BUFFER_IS_TRACED))
 	{
-	  ipsec_output_trace_t *tr =
-	    vlib_add_trace (vm, node, b0, sizeof (*tr));
+	  ipsec_output_trace_t *tr = vlib_add_trace (vm, node, b[0], sizeof (*tr));
 	  if (spd0)
 	    tr->spd_id = spd0->id;
 	  tr->policy_id = pi0;
 	}
     }
 
-  vlib_put_frame_to_node (vm, next_node_index, f);
+  vlib_buffer_enqueue_to_next (vm, node, buffer_indices, nexts, from_frame->n_vectors);
   vlib_node_increment_counter (vm, node->node_index,
 			       IPSEC_OUTPUT_ERROR_POLICY_PROTECT, nc_protect);
   vlib_node_increment_counter (vm, node->node_index,

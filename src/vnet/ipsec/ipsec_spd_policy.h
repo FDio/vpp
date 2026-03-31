@@ -179,6 +179,80 @@ typedef union
 int ipsec_fp_add_del_policy (void *fp_spd, ipsec_policy_t *policy, int is_add,
 			     u32 *stat_index);
 
+static_always_inline u32
+ipsec_spd_ip4_range_match_slot (const ipsec_policy_ip4_match4_t *match, u32 la, u32 ra)
+{
+  u32 lah = clib_net_to_host_u32 (la);
+  u32 rah = clib_net_to_host_u32 (ra);
+  u32 rv;
+
+#if defined(CLIB_HAVE_VEC256)
+  {
+    ipsec_policy_ip4_addr_pair_t pair = {
+      .laddr = lah,
+      .raddr = rah,
+    };
+    u32x8 addr = (u32x8) u64x4_splat (pair.as_u64);
+    u32x8 cmp = (addr >= match->start.as_u32x8) & (addr <= match->stop.as_u32x8);
+    rv = u8x32_msb_mask ((u8x32) ((u64x4) cmp == u64x4_splat (~0)));
+    return rv ? count_trailing_zeros (rv) >> 3 : ~0;
+  }
+#elif defined(CLIB_HAVE_VEC128)
+  {
+    ipsec_policy_ip4_addr_pair_t pair = {
+      .laddr = lah,
+      .raddr = rah,
+    };
+    u32x4 addr = (u32x4) u64x2_splat (pair.as_u64);
+    u32x4 cmp = (addr >= match->start.as_u32x4[0]) & (addr <= match->stop.as_u32x4[0]);
+
+    rv = u8x16_msb_mask ((u8x16) ((u64x2) cmp == u64x2_splat (~0)));
+    if (rv)
+      return count_trailing_zeros (rv) >> 3;
+
+    cmp = (addr >= match->start.as_u32x4[1]) & (addr <= match->stop.as_u32x4[1]);
+    rv = u8x16_msb_mask ((u8x16) ((u64x2) cmp == u64x2_splat (~0)));
+    return rv ? 2 + (count_trailing_zeros (rv) >> 3) : ~0;
+  }
+#else
+  {
+    for (rv = 0; rv < ARRAY_LEN (match->start.pair); rv++)
+      {
+	if (lah < match->start.pair[rv].laddr)
+	  continue;
+	if (lah > match->stop.pair[rv].laddr)
+	  continue;
+	if (rah < match->start.pair[rv].raddr)
+	  continue;
+	if (rah > match->stop.pair[rv].raddr)
+	  continue;
+
+	return rv;
+      }
+
+    return ~0;
+  }
+#endif
+}
+
+static_always_inline u32
+ipsec_spd_ip4_find_range_match (const ipsec_spd_t *spd, ipsec_spd_policy_type_t type, u32 la,
+				u32 ra)
+{
+  u32 len = vec_len (spd->policies[type]);
+  typeof (spd->ip4_policies[type][0]) *p = spd->ip4_policies[type];
+
+  for (u32 i = 0; i < len; i += 4, p += 1)
+    {
+      u32 slot = ipsec_spd_ip4_range_match_slot (p, la, ra);
+
+      if (slot != ~0 && i + slot < len)
+	return i + slot;
+    }
+
+  return ~0;
+}
+
 static_always_inline int
 ipsec_policy_is_equal (ipsec_policy_t *p1, ipsec_policy_t *p2)
 {

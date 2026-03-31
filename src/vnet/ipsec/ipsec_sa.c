@@ -923,6 +923,10 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
 
   *ort = (ipsec_sa_outb_rt_t){
     .thread_index = thread_index,
+    .ipsec4_output_next_index =
+      proto == IPSEC_PROTOCOL_ESP ? im->esp4_encrypt_next_index : im->ah4_encrypt_next_index,
+    .ipsec6_output_next_index =
+      proto == IPSEC_PROTOCOL_ESP ? im->esp6_encrypt_next_index : im->ah6_encrypt_next_index,
   };
 
   clib_pcg64i_srandom_r (&ort->iv_prng, rand[0], rand[1]);

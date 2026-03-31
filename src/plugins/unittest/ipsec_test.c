@@ -217,13 +217,10 @@ test_ipsec_spd_outbound_perf_command_fn (vlib_main_t *vm,
       p0 = NULL;
       if (flow_cache_enabled)
 	{
-	  p0 = ipsec4_out_spd_find_flow_cache_entry (
-	    im, 0,
-	    clib_net_to_host_u32 (ip4_start +
-				  ((flows - 1) - rand_val[j]) * 32),
-	    clib_net_to_host_u32 (ip4_start +
-				  ((flows - 1) - rand_val[j]) * 32),
-	    clib_net_to_host_u16 (1), clib_net_to_host_u16 (1));
+	  p0 = ipsec4_out_spd_find_flow_cache_entry (im->ipsec4_out_spd_hash_tbl, im, 0,
+						     ip4_start + ((flows - 1) - rand_val[j]) * 32,
+						     ip4_start + ((flows - 1) - rand_val[j]) * 32,
+						     1, 1, im->ipsec4_out_spd_hash_num_buckets - 1);
 	  if (p0)
 	    count_cached++;
 	}

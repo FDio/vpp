@@ -831,7 +831,7 @@ vl_api_ipsec_spd_interface_dump_t_handler (vl_api_ipsec_spd_interface_dump_t *
 {
   ipsec_main_t *im = &ipsec_main;
   vl_api_registration_t *reg;
-  u32 k, v, spd_index;
+  u32 spd_index;
 
   reg = vl_api_client_index_to_registration (mp->client_index);
   if (!reg)
@@ -840,16 +840,21 @@ vl_api_ipsec_spd_interface_dump_t_handler (vl_api_ipsec_spd_interface_dump_t *
   if (mp->spd_index_valid)
     {
       spd_index = ntohl (mp->spd_index);
-      hash_foreach(k, v, im->spd_index_by_sw_if_index, ({
-        if (v == spd_index)
-          send_ipsec_spd_interface_details(reg, v, k, mp->context);
-      }));
+      for (u32 k = 0; k < vec_len (im->spd_index_by_sw_if_index); k++)
+	{
+	  if (im->spd_index_by_sw_if_index[k] == spd_index)
+	    send_ipsec_spd_interface_details (reg, spd_index, k, mp->context);
+	}
     }
   else
     {
-      hash_foreach(k, v, im->spd_index_by_sw_if_index, ({
-        send_ipsec_spd_interface_details(reg, v, k, mp->context);
-      }));
+      for (u32 k = 0; k < vec_len (im->spd_index_by_sw_if_index); k++)
+	{
+	  u32 v = im->spd_index_by_sw_if_index[k];
+
+	  if (v != INDEX_INVALID)
+	    send_ipsec_spd_interface_details (reg, v, k, mp->context);
+	}
     }
 }
 
