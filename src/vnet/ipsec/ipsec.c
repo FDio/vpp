@@ -201,7 +201,6 @@ ipsec_init (vlib_main_t * vm)
 
   im->spd_index_by_spd_id = hash_create (0, sizeof (uword));
   im->sa_index_by_sa_id = hash_create (0, sizeof (uword));
-  im->spd_index_by_sw_if_index = hash_create (0, sizeof (uword));
 
   vlib_node_t *node = vlib_get_node_by_name (vm, (u8 *) "error-drop");
   ASSERT (node);
@@ -243,15 +242,11 @@ ipsec_init (vlib_main_t * vm)
 
   im->ipsec4_out_spd_hash_tbl = NULL;
   im->output_flow_cache_flag = 0;
-  im->ipsec4_out_spd_flow_cache_entries = 0;
-  im->epoch_count = 0;
   im->ipsec4_out_spd_hash_num_buckets =
     IPSEC4_OUT_SPD_DEFAULT_HASH_NUM_BUCKETS;
 
   im->ipsec4_in_spd_hash_tbl = NULL;
   im->input_flow_cache_flag = 0;
-  im->ipsec4_in_spd_flow_cache_entries = 0;
-  im->input_epoch_count = 0;
   im->ipsec4_in_spd_hash_num_buckets = IPSEC4_SPD_DEFAULT_HASH_NUM_BUCKETS;
 
   vec_validate_init_empty_aligned (im->next_header_registrations, 255, ~0,

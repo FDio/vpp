@@ -492,17 +492,21 @@ ipsec_spd_show_all (vlib_main_t * vm, ipsec_main_t * im)
 static void
 ipsec_spd_bindings_show_all (vlib_main_t * vm, ipsec_main_t * im)
 {
-  u32 spd_id, sw_if_index;
+  u32 sw_if_index;
   ipsec_spd_t *spd;
 
   vlib_cli_output (vm, "SPD Bindings:");
 
-  hash_foreach(sw_if_index, spd_id, im->spd_index_by_sw_if_index, ({
-    spd = pool_elt_at_index (im->spds, spd_id);
-    vlib_cli_output (vm, "  %d -> %U", spd->id,
-                     format_vnet_sw_if_index_name, im->vnet_main,
-                     sw_if_index);
-  }));
+  vec_foreach_index (sw_if_index, im->spd_index_by_sw_if_index)
+    {
+      u32 spd_index = im->spd_index_by_sw_if_index[sw_if_index];
+
+      if (spd_index == INDEX_INVALID)
+	continue;
+      spd = pool_elt_at_index (im->spds, spd_index);
+      vlib_cli_output (vm, "  %d -> %U", spd->id, format_vnet_sw_if_index_name, im->vnet_main,
+		       sw_if_index);
+    }
 }
 
 static walk_rc_t
