@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "cb658bb6_7a3879ed",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 23
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-04-01T12:53:20Z",
+      "side": 1,
+      "message": "All concerns raised in previous patchsets have been addressed:\n\n- Timer interval is now configurable via sfdp { timer-interval \u003cseconds\u003e } instead of being hardcoded.\n- Kill immediacy on worker threads is fixed: sfdp_expire_session_now now routes the interrupt to the correct worker thread using vlib_get_main_by_index(thread_index).\n- Test coverage added in test_sfdp_multiworker.py for all kill scenarios including sessions past the first wheel revolution (rearmed timers).",
+      "revId": "87b9e7ce97c8db69602a3dd21f9fd7d40fa28480",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}

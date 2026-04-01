@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "befa4153_9a1644c7",
+        "filename": "src/vnet/sfdp/timer/timer.h",
+        "patchSetId": 18
+      },
+      "lineNbr": 128,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-04-01T12:53:20Z",
+      "side": 1,
+      "message": "Done. Restored the immediate interrupt when ticks \u003d\u003d 0, which was lost during the refactor.",
+      "parentUuid": "a21840eb_2595a0a7",
+      "revId": "85b200902b3fa4e4614496f96728ac1cd365d214",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "c5ac5f6f_1a6068c4",
@@ -48,6 +66,24 @@
       "writtenOn": "2026-03-26T09:12:02Z",
       "side": 1,
       "message": "it should be faster and more robust to use self.virtual_sleep() instead of wall clock time",
+      "revId": "85b200902b3fa4e4614496f96728ac1cd365d214",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "154f9514_0eca0a04",
+        "filename": "test/test_sfdp.py",
+        "patchSetId": 18
+      },
+      "lineNbr": 888,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-04-01T12:53:20Z",
+      "side": 1,
+      "message": "Done. Replaced time.sleep() / time.time() with virtual_sleep() in _wait_for_session_disappear. Also simplified _wait_for_session_appear: since pg_start() is synchronous the session is created immediately, no polling needed.",
+      "parentUuid": "c5ac5f6f_1a6068c4",
       "revId": "85b200902b3fa4e4614496f96728ac1cd365d214",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
