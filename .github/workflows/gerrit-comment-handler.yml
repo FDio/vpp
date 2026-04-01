@@ -53,6 +53,10 @@ on:
         required: true
         type: string
 
+concurrency:
+  group: ${{ inputs.GERRIT_PROJECT }}-${{ inputs.GERRIT_BRANCH }}-${{ inputs.GERRIT_CHANGE_NUMBER }}-${{ inputs.FDIO_NAMESPACE }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
@@ -141,7 +145,7 @@ jobs:
     steps:
       - name: Gerrit Checkout VPP
         # yamllint disable-line rule:line-length
-        uses: fdio/vpp/.github/actions/vpp-checkout-gerrit-change@77986ebaac9a194fead153d2c441eca547931528
+        uses: fdio/vpp/.github/actions/vpp-checkout-gerrit-change@27fc2aa27f57c8f7055e8f1b6e5a9f41b0315873
         with:
           WORKSPACE: ${{ env.WORKSPACE }}
           GERRIT_BRANCH: ${{ env.GERRIT_BRANCH }}
@@ -149,7 +153,7 @@ jobs:
           TUI_LINE: ${{ env.TUI_LINE }}
 
       - name: Git Checkout CSIT
-        uses: actions/checkout@v6
+        uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98  # v6.0.2
         with:
           path: ${{ env.WORKSPACE }}/csit
           ref: master
@@ -167,7 +171,7 @@ jobs:
       - name: AWS S3 Publish Logs
         if: ${{ !cancelled() && (success() || failure()) }}
         # yamllint disable-line rule:line-length
-        uses: fdio/.github/.github/actions/aws-s3-publish-logs@c2df5c7959a8415f7dd730315a40b058748b4c84
+        uses: fdio/.github/.github/actions/aws-s3-publish-logs@1b8eff3ffd9d355b28052be9ad22acc57b3430b5
         with:
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -184,9 +188,9 @@ jobs:
       - vpp-csit-verify-handler
     runs-on: ubuntu-latest
     steps:
-      - uses: technote-space/workflow-conclusion-action@v3
+      - uses: technote-space/workflow-conclusion-action@45ce8e0eb155657ab8ccf346ade734257fd196a5  # v3.0.3 archived Nov 16, 2023
       - name: Set vote
-        uses: lfit/gerrit-review-action@v0.9
+        uses: lfit/gerrit-review-action@3a1b27891502e0786a3e2e5a2d0cb0bff1f30c25  # v1.0.0
         with:
           host: ${{ vars.GERRIT_SERVER }}
           username: ${{ vars.GERRIT_SSH_REQUIRED_USER }}

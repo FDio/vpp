@@ -56,6 +56,10 @@ permissions:
   contents: read
   actions: read
 
+concurrency:
+  group: ${{ inputs.GERRIT_PROJECT }}-${{ inputs.GERRIT_BRANCH }}-${{ inputs.GERRIT_CHANGE_NUMBER }}-${{ inputs.FDIO_NAMESPACE }}
+  cancel-in-progress: true
+
 jobs:
   start-merge:
     name: Start Merge
@@ -92,7 +96,7 @@ jobs:
     name: Merge Maketest
     needs:
       - start-merge
-    uses: fdio/vpp/.github/workflows/vpp-merge-maketest.yml@1d3c4f761e2c0d2fa8b20d8653d4614a4fbaea49
+    uses: fdio/vpp/.github/workflows/vpp-merge-maketest.yml@0045160211efb3091ef754a2e3722ee80c9191ea
     with:
       FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
       GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
@@ -138,7 +142,7 @@ jobs:
         id: checkout-vpp
         continue-on-error: true
         # yamllint disable-line rule:line-length
-        uses: fdio/vpp/.github/actions/vpp-checkout-gerrit-change@77986ebaac9a194fead153d2c441eca547931528
+        uses: fdio/vpp/.github/actions/vpp-checkout-gerrit-change@0045160211efb3091ef754a2e3722ee80c9191ea
         with:
           WORKSPACE: ${{ env.WORKSPACE }}
           GERRIT_BRANCH: ${{ env.GERRIT_BRANCH }}
@@ -173,7 +177,7 @@ jobs:
       - start-merge
       - detect-docs-changes
     if: ${{ needs.detect-docs-changes.outputs.docs_changed == 'true' }}
-    uses: fdio/vpp/.github/workflows/vpp-merge-docs.yml@eb4497824eab8f892014948c7553a1b6777735f5
+    uses: fdio/vpp/.github/workflows/vpp-merge-docs.yml@0045160211efb3091ef754a2e3722ee80c9191ea
     with:
       FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
       GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
