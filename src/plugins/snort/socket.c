@@ -17,11 +17,13 @@ int
 snort_client_disconnect (vlib_main_t *vm, u32 client_index)
 {
   snort_main_t *sm = &snort_main;
-  snort_client_t *c = pool_elt_at_index (sm->clients, client_index);
+  snort_client_t *c = 0;
   snort_client_qpair_t *cqp;
 
   if (pool_is_free_index (sm->clients, client_index))
     return VNET_API_ERROR_NO_SUCH_ENTRY;
+
+  c = pool_elt_at_index (sm->clients, client_index);
 
   vec_foreach (cqp, c->qpairs)
     {

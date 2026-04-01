@@ -1,99 +1,284 @@
-option version = "1.0.0";
+option version = "1.1.0";
 
 import "vnet/interface_types.api";
 import "vnet/ip/ip_types.api";
 
-define snort_instance_create {
+/** \brief Traffic direction. */
+enum snort_direction : u8
+{
+  SNORT_API_DIRECTION_INPUT = 1,
+  SNORT_API_DIRECTION_OUTPUT,
+  SNORT_API_DIRECTION_INOUT,
+};
+
+/** \brief Packet's snort verdict. */
+enum snort_verdict : u8
+{
+  SNORT_API_VERDICT_PASS = 0,
+  SNORT_API_VERDICT_BLOCK,
+  SNORT_API_VERDICT_REPLACE,
+  SNORT_API_VERDICT_WHITELIST,
+  SNORT_API_VERDICT_BLACKLIST,
+  SNORT_API_VERDICT_IGNORE,
+  SNORT_API_MAX_DAQ_VERDICT,
+};
+
+define snort_instance_create_v2 {
+	u32 client_index;
+	u32 context;
+	u32 queue_size;
+	u32 qpairs_per_thread;
+	u8 drop_bitmap;
+	u8 drop_on_disconnect;
+	string name[];
+};
+
+define snort_instance_create_v2_reply {
+	u32 context;
+	i32 retval;
+	u32 instance_index;
+};
+
+autoreply define snort_instance_delete {
+	u32 client_index;
+	u32 context;
+	u32 instance_index;
+};
+
+/** \brief Set verdict bitmap to drop packets.
+    @param client_index - opaque cookie to identify the sender.
+    @param context - sender context, to match reply w/ request.
+    @param instance_index - snort instance.
+    @param drop_bitmap - set verdict bitmap (0 = pass, 1 = drop)
+*/
+autoreply define snort_set_drop_bitmap {
+	u32 client_index;
+	u32 context;
+	u32 instance_index;
+	u8 drop_bitmap;
+};
+
+autoreply define snort_client_disconnect {
         u32 client_index;
         u32 context;
+	u32 snort_client_index;
+};
+
+autoreply define snort_instance_disconnect {
+	u32 client_index;
+	u32 context;
+	u32 instance_index;
+};
+
+autoreply define snort_interface_attach {
+	u32 client_index;
+	u32 context;
+	u32 instance_index;
+	u32 sw_if_index;
+	u8 snort_dir;
+};
+
+/** \brief Detach interface from a given instance/direction.
+    @param client_index - opaque cookie to identify the sender.
+    @param context - sender context
+    @param instance_index - instance index.
+    @param sw_if_index - interface index.
+    @param snort_dir - traffic direction input|output|inout.
+*/
+autoreply define snort_interface_detach_v2 {
+	u32 client_index;
+	u32 context;
+	u32 instance_index;
+	u32 sw_if_index;
+	u8 snort_dir;
+};
+
+service {
+  rpc snort_instance_v2_get returns snort_instance_v2_get_reply
+    stream snort_instance_v2_details;
+};
+
+/** \brief Details of a snort instance.
+    @param context - sender context
+    @param instance - snort instance info.
+*/
+autoreply define snort_instance_v2_details {
+	u32 context;
+	u32 instance_index;
+	u32 shm_size;
+	u32 shm_fd;
+	u8 drop_on_disconnect;
+	u8 drop_bitmap;
+	u32 snort_client_index;
+	u32 qpairs_per_thread;
+	string name[];
+};
+
+/** \brief Get snort instance(s).
+    @param client_index - opaque cookie to identify the sender.
+    @param context - sender context
+    @param cursor - current iterator value (all requested).
+    @param instance_index - instance index (~0 for all).
+*/
+define snort_instance_v2_get
+{
+	u32 client_index;
+	u32 context;
+	u32 cursor;
+	u32 instance_index;
+};
+
+/** \brief Reply for snort instance(s).
+    @param context - sender context
+    @param retval - return code for the request.
+    @param cursor - iterator value to continue with (if there is more).
+*/
+define snort_instance_v2_get_reply
+{
+	u32 context;
+	i32 retval;
+	u32 cursor;
+};
+
+service {
+  rpc snort_interface_v2_get returns snort_interface_v2_get_reply
+    stream snort_interface_v2_details;
+};
+
+/** \brief Details of a snort interface.
+    @param context - sender context
+    @param sw_if_index - interface index
+    @param in_instance_index - snort instance for input traffic filtering.
+    @param out_instance_index - snort instance for output packets.
+*/
+define snort_interface_v2_details {
+	u32 context;
+	u32 sw_if_index;
+	u16 in_instance_index;
+	u16 out_instance_index;
+};
+
+/** \brief Get snort interface(s).
+    @param client_index - opaque cookie to identify the sender.
+    @param context - sender context
+    @param cursor - current iterator value (all requested).
+    @param sw_if_index - sw if index (~0 for all).
+*/
+define snort_interface_v2_get
+{
+	u32 client_index;
+	u32 context;
+	u32 cursor;
+	u32 sw_if_index;
+};
+
+/** \brief Reply for snort interface(s).
+    @param context - sender context
+    @param retval - return code for the request.
+    @param cursor - iterator value to continue with (if there is more).
+*/
+define snort_interface_v2_get_reply
+{
+	u32 context;
+	i32 retval;
+	u32 cursor;
+};
+
+service {
+  rpc snort_client_v2_get returns snort_client_v2_get_reply
+    stream snort_client_v2_details;
+};
+
+/** \brief Details of a snort client.
+    @param context - sender context
+    @param client index
+    @param snort_client_index - index of the client.
+    @param n_instances - number of DAQ threads launched
+    @param mode - mode of operation: passive, inline, read-file
+*/
+define snort_client_v2_details {
+	u32 context;
+	u32 client_index;
+	u32 snort_client_index;
+	u16 n_instances;
+	u8 mode;
+};
+
+/** \brief Get snort clients.
+    @param client_index - opaque cookie to identify the sender.
+    @param context - sender context
+    @param cursor - current iterator value (all requested).
+    @param client_index (~0 for all).
+*/
+define snort_client_v2_get
+{
+	u32 client_index;
+	u32 context;
+	u32 cursor;
+	u32 snort_client_index;
+};
+
+/** \brief Reply for snort clients.
+    @param context - sender context
+    @param retval - return code for the request.
+    @param cursor - iterator value to continue with (if there is more).
+*/
+define snort_client_v2_get_reply
+{
+	u32 context;
+	i32 retval;
+	u32 cursor;
+};
+
+/* Deprecated calls */
+
+define snort_instance_create {
+	option deprecated;
+	u32 client_index;
+	u32 context;
 	u32 queue_size;
 	u8 drop_on_disconnect;
 	string name[];
 };
 
 define snort_instance_create_reply {
+	option deprecated;
         u32 context;
         i32 retval;
 	u32 instance_index;
 };
 
-define snort_instance_delete {
-        u32 client_index;
-        u32 context;
-	u32 instance_index;
-};
-
-define snort_instance_delete_reply {
-        u32 context;
-	i32 retval;
-};
-
-define snort_client_disconnect {
-        u32 client_index;
-        u32 context;
-	u32 snort_client_index;
-};
-
-define snort_client_disconnect_reply {
-        u32 context;
-	i32 retval;
-};
-
-define snort_instance_disconnect {
-        u32 client_index;
-        u32 context;
-	u32 instance_index;
-};
-
-define snort_instance_disconnect_reply {
-        u32 context;
-	i32 retval;
-};
-
-define snort_interface_attach {
-        u32 client_index;
-        u32 context;
-	u32 instance_index;
-	u32 sw_if_index;
-	u8 snort_dir;
-};
-
-define snort_interface_attach_reply {
+autoreply define snort_interface_detach {
+	option deprecated;
+	u32 client_index;
 	u32 context;
-	i32 retval;
-};
-
-define snort_interface_detach {
-        u32 client_index;
-        u32 context;
 	u32 sw_if_index;
-};
-
-define snort_interface_detach_reply {
-	u32 context;
-	i32 retval;
 };
 
 define snort_input_mode_get {
-        u32 client_index;
-        u32 context;
+	option deprecated;
+	u32 client_index;
+	u32 context;
 };
 
 define snort_input_mode_get_reply {
-        u32 context;
-        i32 retval;
+	option deprecated;
+	u32 context;
+	i32 retval;
 	u32 snort_mode;
 };
 
 define snort_input_mode_set {
-        u32 client_index;
-        u32 context;
+	option deprecated;
+	u32 client_index;
+	u32 context;
 	u8 input_mode;
 };
 
 define snort_input_mode_set_reply {
-        u32 context;
-        i32 retval;
+	option deprecated;
+	u32 context;
+	i32 retval;
 };
 
 service {
@@ -109,6 +294,7 @@ service {
 */
 define snort_instance_get
 {
+	option deprecated;
 	u32 client_index;
 	u32 context;
 	u32 cursor;
@@ -122,6 +308,7 @@ define snort_instance_get
 */
 define snort_instance_get_reply
 {
+	option deprecated;
 	u32 context;
 	i32 retval;
 	u32 cursor;
@@ -132,6 +319,7 @@ define snort_instance_get_reply
     @param instance - snort instance info.
 */
 define snort_instance_details {
+	option deprecated;
 	u32 context;
 	u32 instance_index;
 	u32 shm_size;
@@ -154,6 +342,7 @@ service {
 */
 define snort_interface_get
 {
+	option deprecated;
 	u32 client_index;
 	u32 context;
 	u32 cursor;
@@ -167,6 +356,7 @@ define snort_interface_get
 */
 define snort_interface_get_reply
 {
+	option deprecated;
 	u32 context;
 	i32 retval;
 	u32 cursor;
@@ -178,6 +368,7 @@ define snort_interface_get_reply
     @param instance_index - snort instance the interface is attached to.
 */
 define snort_interface_details {
+	option deprecated;
 	u32 context;
 	u32 sw_if_index;
 	u32 instance_index;
@@ -196,6 +387,7 @@ service {
 */
 define snort_client_get
 {
+	option deprecated;
 	u32 client_index;
 	u32 context;
 	u32 cursor;
@@ -209,6 +401,7 @@ define snort_client_get
 */
 define snort_client_get_reply
 {
+	option deprecated;
 	u32 context;
 	i32 retval;
 	u32 cursor;
@@ -220,6 +413,7 @@ define snort_client_get_reply
     @param instance_index - snort instance of the client.
 */
 define snort_client_details {
+	option deprecated;
 	u32 context;
 	u32 client_index;
 	u32 instance_index;
