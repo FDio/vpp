@@ -55,6 +55,34 @@ snort_instance_get_index_by_name (vlib_main_t *vm, const char *name,
 }
 
 __clib_export int
+snort_instance_disconnect_all (vlib_main_t *vm, u32 instance_index)
+{
+  snort_main_t *sm = &snort_main;
+  snort_client_t *c = 0;
+  snort_client_qpair_t *qp;
+
+  if (instance_index == ~0)
+    {
+      return 0;
+    }
+
+  pool_foreach (c, sm->clients)
+    {
+      u32 client_index = c - sm->clients;
+      vec_foreach (qp, c->qpairs)
+	{
+	  if (qp->instance_index == instance_index)
+	    {
+	      snort_client_disconnect (vm, client_index);
+	      break;
+	    }
+	}
+    }
+
+  return 0;
+}
+
+__clib_export int
 snort_instance_create (vlib_main_t *vm, snort_instance_create_args_t *args,
 		       char *fmt, ...)
 
@@ -326,6 +354,20 @@ snort_instance_delete (vlib_main_t *vm, snort_instance_index_t instance_index)
   pool_put (sm->instances, si);
 
   return rv;
+}
+
+__clib_export int
+snort_set_drop_bitmap (vlib_main_t *vm, snort_instance_index_t instance_index, u8 drop_bitmap)
+{
+  snort_instance_t *si;
+
+  si = snort_get_instance_by_index (instance_index);
+  if (!si)
+    return VNET_API_ERROR_NO_SUCH_ENTRY;
+
+  si->drop_bitmap = drop_bitmap;
+
+  return 0;
 }
 
 static clib_error_t *

@@ -3,10 +3,24 @@ option version = "1.0.0";
 import "vnet/interface_types.api";
 import "vnet/ip/ip_types.api";
 
+/** \brief Packet's snort verdict. */
+enum snort_verdict : u8
+{
+  SNORT_API_VERDICT_PASS = 0,
+  SNORT_API_VERDICT_BLOCK,
+  SNORT_API_VERDICT_REPLACE,
+  SNORT_API_VERDICT_WHITELIST,
+  SNORT_API_VERDICT_BLACKLIST,
+  SNORT_API_VERDICT_IGNORE,
+  SNORT_API_MAX_DAQ_VERDICT,
+};
+
 define snort_instance_create {
-        u32 client_index;
-        u32 context;
+	u32 client_index;
+	u32 context;
 	u32 queue_size;
+	u32 qpairs_per_thread;
+	u8 drop_bitmap;
 	u8 drop_on_disconnect;
 	string name[];
 };
@@ -26,6 +40,19 @@ define snort_instance_delete {
 define snort_instance_delete_reply {
         u32 context;
 	i32 retval;
+};
+
+/** \brief Set verdict bitmap to drop packets.
+    @param client_index - opaque cookie to identify the sender.
+    @param context - sender context, to match reply w/ request.
+    @param instance_index - snort instance.
+    @param drop_bitmap - set verdict bitmap (0 = pass, 1 = drop)
+*/
+autoreply define snort_set_drop_bitmap {
+	u32 client_index;
+	u32 context;
+	u32 instance_index;
+	u8 drop_bitmap;
 };
 
 define snort_client_disconnect {
@@ -64,36 +91,16 @@ define snort_interface_attach_reply {
 };
 
 define snort_interface_detach {
-        u32 client_index;
-        u32 context;
+	u32 client_index;
+	u32 context;
+	u32 instance_index;
 	u32 sw_if_index;
+	u8 snort_dir;
 };
 
 define snort_interface_detach_reply {
 	u32 context;
 	i32 retval;
-};
-
-define snort_input_mode_get {
-        u32 client_index;
-        u32 context;
-};
-
-define snort_input_mode_get_reply {
-        u32 context;
-        i32 retval;
-	u32 snort_mode;
-};
-
-define snort_input_mode_set {
-        u32 client_index;
-        u32 context;
-	u8 input_mode;
-};
-
-define snort_input_mode_set_reply {
-        u32 context;
-        i32 retval;
 };
 
 service {
@@ -137,7 +144,9 @@ define snort_instance_details {
 	u32 shm_size;
 	u32 shm_fd;
 	u8 drop_on_disconnect;
+	u8 drop_bitmap;
 	u32 snort_client_index;
+	u32 qpairs_per_thread;
 	string name[];
 };
 
@@ -175,12 +184,14 @@ define snort_interface_get_reply
 /** \brief Details of a snort interface.
     @param context - sender context
     @param sw_if_index - interface index
-    @param instance_index - snort instance the interface is attached to.
+    @param in_instance_index - snort instance for input traffic filtering.
+    @param out_instance_index - snort instance for output packets.
 */
 define snort_interface_details {
 	u32 context;
 	u32 sw_if_index;
-	u32 instance_index;
+	u16 in_instance_index;
+	u16 out_instance_index;
 };
 
 service {
@@ -217,10 +228,14 @@ define snort_client_get_reply
 /** \brief Details of a snort client.
     @param context - sender context
     @param client index
-    @param instance_index - snort instance of the client.
+    @param snort_client_index - index of the client.
+    @param n_instances - number of DAQ threads launched
+    @param mode - mode of operation: passive, inline, read-file
 */
 define snort_client_details {
 	u32 context;
 	u32 client_index;
-	u32 instance_index;
+	u32 snort_client_index;
+	u16 n_instances;
+	u8 mode;
 };

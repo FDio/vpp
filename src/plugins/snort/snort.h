@@ -129,6 +129,9 @@ typedef enum
     [SNORT_ENQ_NEXT_DROP] = "error-drop",                                     \
   }
 
+u32 snort_client_get_instance (const snort_client_t *client);
+int snort_set_drop_bitmap (vlib_main_t *vm, snort_instance_index_t instance_index, u8 drop_bitmap);
+
 /* interface.c */
 int snort_interface_enable_disable (vlib_main_t *vm, char *instance_name,
 				    u32 sw_if_index, int is_enable, int in,
@@ -136,6 +139,7 @@ int snort_interface_enable_disable (vlib_main_t *vm, char *instance_name,
 int snort_interface_disable_all (vlib_main_t *vm, u32 sw_if_index);
 int snort_strip_instance_interfaces (vlib_main_t *vm,
 				     snort_instance_t *instance);
+int snort_instance_disconnect_all (vlib_main_t *vm, u32 instance_index);
 
 /* socket.c */
 int snort_client_disconnect (vlib_main_t *vm, u32 client_index);
