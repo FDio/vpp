@@ -242,8 +242,8 @@ ip6_address_compare (ip6_address_t *a1, ip6_address_t *a2)
 {
 #if defined(CLIB_HAVE_VEC128)
   {
-    u16x8 v1 = a1->as_u128;
-    u16x8 v2 = a2->as_u128;
+    u16x8 v1 = a1->as_u16x8;
+    u16x8 v2 = a2->as_u16x8;
     u32 mask, i;
 
     mask = u8x16_msb_mask ((u8x16) (v1 != v2));

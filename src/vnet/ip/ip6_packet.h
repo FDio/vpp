@@ -19,6 +19,8 @@ typedef union
   u32 as_u32[4];
   u64 as_u64[2];
   u64x2 as_u128;
+  u8x16 as_u8x16;
+  u16x8 as_u16x8;
   uword as_uword[16 / sizeof (uword)];
 }
 __clib_packed ip6_address_t;
