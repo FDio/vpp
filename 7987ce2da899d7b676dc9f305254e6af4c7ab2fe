@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d2a8b048_981acdf0",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 430,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-04-01T13:46:35Z",
+      "side": 1,
+      "message": "also ifname is never set - I think it should be set to ifr.ifr_name otherwise those won\u0027t work?",
+      "revId": "7987ce2da899d7b676dc9f305254e6af4c7ab2fe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
