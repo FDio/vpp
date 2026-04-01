@@ -669,23 +669,25 @@ class CMessage(Message):
     def get_op_func_def(self):
         param_check_lines = ["  if (!msg || !reply_callback) {"]
         store_request_lines = [
-            "    vapi_store_request(ctx, req_context, %s, %s, "
+            "    vapi_store_request(ctx, req_context, %s, %s,"
             % (
                 self.reply.get_msg_id_name(),
                 "VAPI_REQUEST_DUMP" if self.reply_is_stream else "VAPI_REQUEST_REG",
             ),
             "                       (vapi_cb_t)reply_callback, reply_callback_ctx);",
         ]
+        need_store_requests = 1
         if self.has_stream_msg:
             param_check_lines = [
                 "  if (!msg || !reply_callback || !details_callback) {"
             ]
             store_request_lines = [
-                f"    vapi_store_request(ctx, req_context, {self.stream_msg.get_msg_id_name()}, VAPI_REQUEST_STREAM, ",
+                f"    vapi_store_request(ctx, req_context, {self.stream_msg.get_msg_id_name()}, VAPI_REQUEST_STREAM,",
                 "                       (vapi_cb_t)details_callback, details_callback_ctx);",
-                f"    vapi_store_request(ctx, req_context, {self.reply.get_msg_id_name()}, VAPI_REQUEST_REG, ",
+                f"    vapi_store_request(ctx, req_context, {self.reply.get_msg_id_name()}, VAPI_REQUEST_REG,",
                 "                       (vapi_cb_t)reply_callback, reply_callback_ctx);",
             ]
+            need_store_requests = 2
 
         return "\n".join(
             [
@@ -696,7 +698,8 @@ class CMessage(Message):
             + [
                 "    return VAPI_EINVAL;",
                 "  }",
-                "  if (vapi_is_nonblocking(ctx) && vapi_requests_full(ctx)) {",
+                "  if (vapi_is_nonblocking(ctx) && vapi_get_request_count(ctx) + %s > vapi_get_max_request_count(ctx)) {"
+                % need_store_requests,
                 "    return VAPI_EAGAIN;",
                 "  }",
                 "  vapi_error_e rv;",
