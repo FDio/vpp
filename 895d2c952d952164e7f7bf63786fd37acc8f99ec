@@ -36,6 +36,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": true,
+      "key": {
+        "uuid": "c5bb7e92_5d3cc7f3",
+        "filename": "src/vnet/sfdp/timer/timer.h",
+        "patchSetId": 19
+      },
+      "lineNbr": 128,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-04-01T16:08:58Z",
+      "side": 1,
+      "message": "Just to add to this discussion - This behavior was taken from patch https://gerrit.fd.io/r/c/vpp/+/45167, after offline discussion with Jerome.\n\nIf the interrupt is set immediately in case of 0 timeout, that we would set the interrupt for the sfdp-expire node every time `sfdp_session_timer_update` is called with `timeout_seconds`/`ticks` \u003d\u003d 0.\n\nThis is fine for test scenarios, but IMO it can be problematic in scenarios where we force session expiry quite frequently (i.e. in SFDP tcp-check service, with l4-lifecycle enabled \u0026 when a TCP session completes). At worst case, that would mean we would set the interrupt / call sfdp-expire for every vector containing at least one packet triggering a session expiry.",
+      "parentUuid": "57e0c2fc_5dbafcb6",
+      "revId": "895d2c952d952164e7f7bf63786fd37acc8f99ec",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": false,
       "key": {
         "uuid": "13bc3047_55353230",

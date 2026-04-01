@@ -20,6 +20,23 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "b92075e9_9b117683",
+        "filename": "src/vnet/sfdp/sfdp.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 371,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-04-01T16:08:58Z",
+      "side": 1,
+      "message": "nit: do we really need to set an interrupt on the sfdp_expire node for every thread we expire sessions on ? This is fine for testing purposes, but we should also expect sfdp_expire to be called periodically (every 1s by default) in each worker and cleanup any sessions invalidated here.\n\nCan\u0027t we rely on existing behavior / calling virtual_sleep in tests to ensure sfdp-expire is called in all threads ?",
+      "revId": "87b9e7ce97c8db69602a3dd21f9fd7d40fa28480",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "cde65bc2_daa94bde",
         "filename": "src/vnet/sfdp/timer/timer.c",
         "patchSetId": 23
@@ -37,6 +54,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "8d8fb5bf_cdf6c7f9",
+        "filename": "src/vnet/sfdp/timer/timer.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 39,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-04-01T16:08:58Z",
+      "side": 1,
+      "message": "AFAIK `sfdp_main.timer_tick_interval_s` is only configurable in \u0027sfdp_config`, which is an early config function. It cannot be modified afterwards at runtime.",
+      "parentUuid": "cde65bc2_daa94bde",
+      "revId": "87b9e7ce97c8db69602a3dd21f9fd7d40fa28480",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "7916c4a1_e69b3ce6",
         "filename": "src/vnet/sfdp/timer/timer.h",
         "patchSetId": 23
@@ -48,6 +83,58 @@
       "writtenOn": "2026-04-01T13:23:38Z",
       "side": 1,
       "message": "this no longer calls sfdp_session_timer_update() is it on purpose? It means it will not move wheel slot immediately and will wait for a wheel slot expiry run to reschedule to the proper slot?",
+      "revId": "87b9e7ce97c8db69602a3dd21f9fd7d40fa28480",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d8665ad1_65192c14",
+        "filename": "src/vnet/sfdp/timer/timer.h",
+        "patchSetId": 23
+      },
+      "lineNbr": 152,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-04-01T16:08:58Z",
+      "side": 1,
+      "message": "I think this change was due to the refactor of `sfdp_session_timer_update()`, where we replaced it with the equivalent `timer-\u003enext_expiration \u003d now + SFDP_TICKS_TO_SECONDS (timeout_ticks);`.\n\nI do agree that it would be better to keep the function call here for consistency even after the change.",
+      "parentUuid": "7916c4a1_e69b3ce6",
+      "revId": "87b9e7ce97c8db69602a3dd21f9fd7d40fa28480",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "54c790d9_07f67aef",
+        "filename": "test/test_sfdp_multiworker.py",
+        "patchSetId": 23
+      },
+      "lineNbr": 20,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-04-01T16:08:58Z",
+      "side": 1,
+      "message": "I don\u0027t think this comment is true. For API calls that are not explicitly marked with `is_mp_safe`, we call `vl_msg_api_barrier_sync`, which takes a barrier on workers similarly to the CLI.",
+      "revId": "87b9e7ce97c8db69602a3dd21f9fd7d40fa28480",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "93365afd_9ec73cc1",
+        "filename": "test/test_sfdp_multiworker.py",
+        "patchSetId": 23
+      },
+      "lineNbr": 149,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-04-01T16:08:58Z",
+      "side": 1,
+      "message": "nit: I am not sure we need to test that killing sessions on a worker is indeed immediate. The \u0027sfdp_kill_session\u0027 API/CLI is uniquely used for testing today, and even though this patch updates it so that it now triggers a direct call to \u0027sfdp-expire\u0027 after invalidating a session, we do not expect this to occur in usual codepaths.",
       "revId": "87b9e7ce97c8db69602a3dd21f9fd7d40fa28480",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
