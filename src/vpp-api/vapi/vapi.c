@@ -1002,8 +1002,7 @@ vapi_connect_ex (vapi_ctx_t ctx, const char *name, const char *path,
 	  return VAPI_EMAP_FAIL;
 	}
       VAPI_DBG ("connect client `%s'", name);
-      if (vapi_shm_client_connect (ctx, (char *) name, 0, response_queue_size,
-				   true) < 0)
+      if (VAPI_OK != vapi_shm_client_connect (ctx, (char *) name, 0, response_queue_size, true))
 	{
 	  vl_client_api_unmap ();
 	  return VAPI_ECON_FAIL;
