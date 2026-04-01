@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ea5c488e_7f9b4006",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-04-01T14:26:37Z",
+      "side": 1,
+      "message": "Thanks, left a comment.",
+      "revId": "0b7ba7ad1068653225758cd5989c6d6bb9046726",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "83c7a709_99ecc1ba",
+        "filename": "src/vnet/sfdp/timer/timer.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 72,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-04-01T14:26:37Z",
+      "side": 1,
+      "message": "We do not check the case where the computed \u0027remaining_seconds\u0027 value (previously \u0027diff\u0027) can be negative.\n\nIf this value is negative, the computed `remaining_ticks` value can wrap-around. In the case of a wrap-around, the check `(remaining_ticks \u003e 1)` will evaluate to true and re-arm the timer even when we go beyond session timeout. The check `(diff \u003e (f64) 1.0)` would previously was catching that case AFAIK.\n\nI think this is also the cause behind the SFDP test failures, where the session TTL now seems to be invalid after we call the `sfdp_kill_sessions` API:\n```\n#vpp show sfdp session-table\n\n        id         tenant thread index type proto context     ingress         egress       state     TTL(s)  \n0x284b000000000000      1      0     0 ipv4   TCP       1 172.16.1.2:10000 172.16.2.2:80 embryonic 4294967290\n0x284b000000000002      1      0     1 ipv4   TCP       1 172.16.1.2:10001 172.16.2.2:80 embryonic 4294967290\n\n```",
+      "revId": "0b7ba7ad1068653225758cd5989c6d6bb9046726",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
