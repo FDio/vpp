@@ -9,7 +9,7 @@ unconfigure_set=0
 debug_set=0
 leak_check_set=0
 debug_build=
-ginkgo_args=
+ginkgo_args="--trace"
 tc_names=()
 skip_names=()
 dryrun=
@@ -204,7 +204,7 @@ if [ $leak_check_set -eq 1 ]; then
 fi
 
 if [ -n "${GITHUB_REPO_URL}" ]; then
-        ginkgo_args="$ginkgo_args --no-color"
+        ginkgo_args="$ginkgo_args --no-color --github-output"
 fi
 
 mkdir -p .go_cache
