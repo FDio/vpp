@@ -60,9 +60,6 @@ typedef struct
   int shm_fd;
   snort_qpair_t **qpairs;
   u8 *name;
-  vnet_hash_fn_t ip4_hash_fn;
-  u16 ip4_input_dequeue_node_next_index;
-  u16 ip4_output_dequeue_node_next_index;
   u16 qpairs_per_thread;
 } snort_instance_t;
 
@@ -112,6 +109,7 @@ typedef struct
   u16 *output_instance_by_interface;
   u8 **buffer_pool_base_addrs;
   u8 *socket_name;
+  vnet_hash_fn_t ip_hash_fn;
   /* API message ID base */
   u16 msg_id_base;
 } snort_main_t;
@@ -121,13 +119,23 @@ extern snort_main_t snort_main;
 typedef enum
 {
   SNORT_ENQ_NEXT_DROP,
+  SNORT_ENQ_NEXT_IP4_INPUT,
+  SNORT_ENQ_NEXT_IP6_INPUT,
+  SNORT_ENQ_NEXT_IP4_OUTPUT,
+  SNORT_ENQ_NEXT_IP6_OUTPUT,
   SNORT_ENQ_N_NEXT_NODES,
 } snort_enq_next_t;
 
-#define SNORT_ENQ_NEXT_NODES                                                  \
-  {                                                                           \
-    [SNORT_ENQ_NEXT_DROP] = "error-drop",                                     \
+/* clang-format off */
+#define SNORT_ENQ_NEXT_NODES                                                                       \
+  {                                                                                                \
+    [SNORT_ENQ_NEXT_DROP] = "error-drop",                                                          \
+    [SNORT_ENQ_NEXT_IP4_INPUT] = "snort-ip4-input-next",                                           \
+    [SNORT_ENQ_NEXT_IP6_INPUT] = "snort-ip6-input-next",                                           \
+    [SNORT_ENQ_NEXT_IP4_OUTPUT] = "snort-ip4-output-next",                                         \
+    [SNORT_ENQ_NEXT_IP6_OUTPUT] = "snort-ip6-output-next",                                         \
   }
+/* clang-format on */
 
 /* interface.c */
 int snort_interface_enable_disable (vlib_main_t *vm, char *instance_name,
