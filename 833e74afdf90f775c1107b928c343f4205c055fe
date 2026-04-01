@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "26c9e79d_793e47ad",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-04-01T12:25:37Z",
+      "side": 1,
+      "message": "I remember we used elog because it was used in the datapath / workers. Are all those occurrences in the control path / main thread ? Or are you proposing to use vlib_log in datapath too?",
+      "revId": "833e74afdf90f775c1107b928c343f4205c055fe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
