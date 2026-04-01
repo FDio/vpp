@@ -143,15 +143,14 @@ snort_disconnect_client_command_fn (vlib_main_t *vm, unformat_input_t *input,
 				    vlib_cli_command_t *cmd)
 {
   clib_error_t *err = 0;
-  u8 *name = 0;
   int rv = 0;
   u32 client_index = SNORT_INVALID_CLIENT_INDEX;
 
-  unformat (input, "%s", &name);
+  unformat (input, "%u", &client_index);
 
-  if (!name)
+  if (client_index == SNORT_INVALID_CLIENT_INDEX)
     {
-      err = clib_error_return (0, "please specify client name");
+      err = clib_error_return (0, "please specify client index");
       goto done;
     }
 
@@ -162,7 +161,7 @@ snort_disconnect_client_command_fn (vlib_main_t *vm, unformat_input_t *input,
     case 0:
       break;
     case VNET_API_ERROR_NO_SUCH_ENTRY:
-      err = clib_error_return (0, "unknown client '%s'", name);
+      err = clib_error_return (0, "unknown client '%u'", client_index);
       break;
     default:
       err = clib_error_return (0, "snort_client_disconnect returned %d", rv);
@@ -170,7 +169,6 @@ snort_disconnect_client_command_fn (vlib_main_t *vm, unformat_input_t *input,
     }
 
 done:
-  vec_free (name);
   return err;
 }
 
