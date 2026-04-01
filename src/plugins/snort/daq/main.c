@@ -800,7 +800,7 @@ daq_vpp_get_capabilities (void __unused *handle)
 static int
 daq_vpp_get_datalink_type (void __unused *handle)
 {
-  return DLT_IPV4;
+  return DLT_RAW;
 }
 
 static const char *

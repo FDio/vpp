@@ -322,6 +322,21 @@ VLIB_REGISTER_NODE (snort_ip4_input_next_node) = {
   .sibling_of = "snort-ip4-input",
 };
 
+VLIB_NODE_FN (snort_ip6_input_next_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  return snort_arc_next_node_inline (vm, node, frame);
+}
+
+VLIB_REGISTER_NODE (snort_ip6_input_next_node) = {
+  .name = "snort-ip6-input-next",
+  .vector_size = sizeof (u32),
+  .aux_size = sizeof (u16),
+  .format_trace = format_snort_arc_next_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .sibling_of = "snort-ip6-input",
+};
+
 VLIB_NODE_FN (snort_ip4_output_next_node)
 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
@@ -335,4 +350,19 @@ VLIB_REGISTER_NODE (snort_ip4_output_next_node) = {
   .format_trace = format_snort_arc_next_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
   .sibling_of = "snort-ip4-output",
+};
+
+VLIB_NODE_FN (snort_ip6_output_next_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  return snort_arc_next_node_inline (vm, node, frame);
+}
+
+VLIB_REGISTER_NODE (snort_ip6_output_next_node) = {
+  .name = "snort-ip6-output-next",
+  .vector_size = sizeof (u32),
+  .aux_size = sizeof (u16),
+  .format_trace = format_snort_arc_next_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .sibling_of = "snort-ip6-output",
 };

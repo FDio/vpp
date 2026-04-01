@@ -61,8 +61,7 @@ typedef struct
   snort_qpair_t **qpairs;
   u8 *name;
   vnet_hash_fn_t ip4_hash_fn;
-  u16 ip4_input_dequeue_node_next_index;
-  u16 ip4_output_dequeue_node_next_index;
+  vnet_hash_fn_t ip6_hash_fn;
   u16 qpairs_per_thread;
 } snort_instance_t;
 
@@ -118,16 +117,20 @@ typedef struct
 
 extern snort_main_t snort_main;
 
+#define foreach_snort_enq_next                                                                     \
+  _ (DROP, "error-drop")                                                                           \
+  _ (IP4_INPUT, "snort-ip4-input-next")                                                            \
+  _ (IP6_INPUT, "snort-ip6-input-next")                                                            \
+  _ (IP4_OUTPUT, "snort-ip4-output-next")                                                          \
+  _ (IP6_OUTPUT, "snort-ip6-output-next")
+
 typedef enum
 {
-  SNORT_ENQ_NEXT_DROP,
-  SNORT_ENQ_N_NEXT_NODES,
+#define _(sym, name) SNORT_ENQ_NEXT_##sym,
+  foreach_snort_enq_next
+#undef _
+    SNORT_ENQ_N_NEXT_NODES,
 } snort_enq_next_t;
-
-#define SNORT_ENQ_NEXT_NODES                                                  \
-  {                                                                           \
-    [SNORT_ENQ_NEXT_DROP] = "error-drop",                                     \
-  }
 
 u32 snort_client_get_instance (const snort_client_t *client);
 int snort_set_drop_bitmap (vlib_main_t *vm, snort_instance_index_t instance_index, u8 drop_bitmap);

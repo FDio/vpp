@@ -242,6 +242,13 @@ VLIB_NODE_FN (snort_enq_node)
   daq_vpp_desc_t descs[VLIB_FRAME_SIZE];
   void *ip_hdrs[VLIB_FRAME_SIZE];
   u32 hashes[VLIB_FRAME_SIZE];
+  const vnet_hash_fn_t next_node_to_hash[SNORT_ENQ_N_NEXT_NODES] = {
+    [SNORT_ENQ_NEXT_IP4_INPUT] = si->ip4_hash_fn,
+    [SNORT_ENQ_NEXT_IP6_INPUT] = si->ip6_hash_fn,
+    [SNORT_ENQ_NEXT_IP4_OUTPUT] = si->ip4_hash_fn,
+    [SNORT_ENQ_NEXT_IP6_OUTPUT] = si->ip6_hash_fn,
+  };
+  vnet_hash_fn_t ip_hash_fn = next_node_to_hash[next_index];
 
   uword rv = 0;
 
@@ -268,7 +275,7 @@ VLIB_NODE_FN (snort_enq_node)
       if (with_hash)
 	{
 	  /* calculate hash out of pointers to ip headers */
-	  si->ip4_hash_fn (ip_hdrs, hashes, n_from);
+	  ip_hash_fn (ip_hdrs, hashes, n_from);
 	}
       else
 	snort_enq_prepare_flow_ids (bufs, hashes, n_from);
@@ -314,14 +321,18 @@ VLIB_REGISTER_NODE (snort_enq_node) = {
   .format_trace = format_snort_enq_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
   .n_next_nodes = SNORT_ENQ_N_NEXT_NODES,
-  .next_nodes = SNORT_ENQ_NEXT_NODES,
+  .next_nodes = {
+#define _(index, name) [SNORT_ENQ_NEXT_##index] = name,
+    foreach_snort_enq_next
+#undef _
+  },
   .n_errors = ARRAY_LEN (snort_enq_error_strings),
   .error_strings = snort_enq_error_strings,
 };
 
 static_always_inline uword
-snort_arc_input (vlib_main_t *vm, vlib_node_runtime_t *node,
-		 vlib_frame_t *frame, int is_output)
+snort_arc_input (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame, u8 is_output,
+		 u16 node_next_index)
 {
   snort_main_t *sm = &snort_main;
   u16 *instance_by_interface = is_output ? sm->output_instance_by_interface :
@@ -389,7 +400,6 @@ snort_arc_input (vlib_main_t *vm, vlib_node_runtime_t *node,
       u32 *to_next, n_left_to_next, *not_now = buffer_indices;
       u16 next_index = 0; /* snort_enq */
       u16 instance_index = instance_indices[0];
-      snort_instance_t *si = pool_elt_at_index (sm->instances, instance_index);
       u16 n_enq;
 
       vlib_get_new_next_frame (vm, node, next_index, to_next, n_left_to_next);
@@ -411,8 +421,7 @@ snort_arc_input (vlib_main_t *vm, vlib_node_runtime_t *node,
       sa = vlib_frame_scalar_args (f);
       *sa = (snort_enq_scalar_args_t){
 	.instance_index = instance_index,
-	.dequeue_node_next_index = is_output ? si->ip4_output_dequeue_node_next_index :
-					       si->ip4_input_dequeue_node_next_index,
+	.dequeue_node_next_index = node_next_index,
 	.use_rewrite_length_offset = is_output ? 1 : 0,
 	.use_flow_id_hash = 0,
       };
@@ -427,7 +436,7 @@ snort_arc_input (vlib_main_t *vm, vlib_node_runtime_t *node,
 VLIB_NODE_FN (snort_ip4_input_node)
 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
-  return snort_arc_input (vm, node, frame, 0 /* is_output */);
+  return snort_arc_input (vm, node, frame, 0 /* is_output */, SNORT_ENQ_NEXT_IP4_INPUT);
 }
 
 VLIB_REGISTER_NODE (snort_ip4_input_node) = {
@@ -441,14 +450,48 @@ VLIB_REGISTER_NODE (snort_ip4_input_node) = {
   .n_next_nodes = 1,
 };
 
+VLIB_NODE_FN (snort_ip6_input_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  return snort_arc_input (vm, node, frame, 0 /* is_output */, SNORT_ENQ_NEXT_IP6_INPUT);
+}
+
+VLIB_REGISTER_NODE (snort_ip6_input_node) = {
+  .name = "snort-ip6-input",
+  .vector_size = sizeof (u32),
+  .format_trace = format_snort_arc_input_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .next_nodes = {
+      [0] = "snort-enq",
+  },
+  .n_next_nodes = 1,
+};
+
 VLIB_NODE_FN (snort_ip4_output_node)
 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
-  return snort_arc_input (vm, node, frame, 1 /* is_output */);
+  return snort_arc_input (vm, node, frame, 1 /* is_output */, SNORT_ENQ_NEXT_IP4_OUTPUT);
 }
 
 VLIB_REGISTER_NODE (snort_ip4_output_node) = {
   .name = "snort-ip4-output",
+  .vector_size = sizeof (u32),
+  .format_trace = format_snort_arc_input_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .next_nodes = {
+      [0] = "snort-enq",
+  },
+  .n_next_nodes = 1,
+};
+
+VLIB_NODE_FN (snort_ip6_output_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  return snort_arc_input (vm, node, frame, 1 /* is_output */, SNORT_ENQ_NEXT_IP6_OUTPUT);
+}
+
+VLIB_REGISTER_NODE (snort_ip6_output_node) = {
+  .name = "snort-ip6-output",
   .vector_size = sizeof (u32),
   .format_trace = format_snort_arc_input_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,

@@ -20,9 +20,21 @@ VNET_FEATURE_INIT (snort_ip4_input, static) = {
   .runs_before = VNET_FEATURES ("ip4-lookup"),
 };
 
+VNET_FEATURE_INIT (snort_ip6_input, static) = {
+  .arc_name = "ip6-unicast",
+  .node_name = "snort-ip6-input",
+  .runs_before = VNET_FEATURES ("ip6-lookup"),
+};
+
 VNET_FEATURE_INIT (snort_ip4_output, static) = {
   .arc_name = "ip4-output",
   .node_name = "snort-ip4-output",
+  .runs_before = VNET_FEATURES ("interface-output"),
+};
+
+VNET_FEATURE_INIT (snort_ip6_output, static) = {
+  .arc_name = "ip6-output",
+  .node_name = "snort-ip6-output",
   .runs_before = VNET_FEATURES ("interface-output"),
 };
 
@@ -31,10 +43,20 @@ snort_feature_enable_disable (u32 sw_if_index, int is_enable, int input,
 			      int output)
 {
   if (input)
-    vnet_feature_enable_disable ("ip4-unicast", "snort-ip4-input", sw_if_index, is_enable, NULL, 0);
+    {
+      vnet_feature_enable_disable ("ip4-unicast", "snort-ip4-input", sw_if_index, is_enable, NULL,
+				   0);
+      vnet_feature_enable_disable ("ip6-unicast", "snort-ip6-input", sw_if_index, is_enable, NULL,
+				   0);
+    }
 
   if (output)
-    vnet_feature_enable_disable ("ip4-output", "snort-ip4-output", sw_if_index, is_enable, NULL, 0);
+    {
+      vnet_feature_enable_disable ("ip4-output", "snort-ip4-output", sw_if_index, is_enable, NULL,
+				   0);
+      vnet_feature_enable_disable ("ip6-output", "snort-ip6-output", sw_if_index, is_enable, NULL,
+				   0);
+    }
 }
 
 int
