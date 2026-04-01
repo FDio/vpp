@@ -54,6 +54,23 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "dc30324b_e618b6d6",
+        "filename": "src/plugins/cnat/cnat_session.h",
+        "patchSetId": 22
+      },
+      "lineNbr": 131,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-04-01T08:11:38Z",
+      "side": 1,
+      "message": "shouldn\u0027t it check for CNAT_SCOPE_ID_NONE instead of 0?",
+      "revId": "20709a7fcc73352b5bd76aeb0b6184c2bb9e530c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "60a898ca_cbba9623",
         "filename": "src/plugins/cnat/cnat_types.h",
         "patchSetId": 22
@@ -83,6 +100,24 @@
       "side": 1,
       "message": "Used in the trace of the return session to show which scope_id the matching forward session belongs to. Without it, return session traces would only show scope:none, making it harder to identify the originating peer. If you feel it\u0027s unnecessary, I can remove it.",
       "parentUuid": "60a898ca_cbba9623",
+      "revId": "20709a7fcc73352b5bd76aeb0b6184c2bb9e530c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a96e0419_0950fbca",
+        "filename": "src/plugins/cnat/cnat_types.h",
+        "patchSetId": 22
+      },
+      "lineNbr": 231,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-04-01T08:11:38Z",
+      "side": 1,
+      "message": "ok but that grows the data structure a bit, would be good to quantified the impact and also update the comment to better described",
+      "parentUuid": "1846ac0c_7551db11",
       "revId": "20709a7fcc73352b5bd76aeb0b6184c2bb9e530c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
