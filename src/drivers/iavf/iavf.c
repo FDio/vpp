@@ -19,6 +19,20 @@ VLIB_REGISTER_LOG_CLASS (iavf_log, static) = {
 
 #define IAVF_MAX_QPAIRS 32
 
+static clib_arg_t iavf_dev_args[] = {
+  {
+    .name = "request_qpairs",
+    .desc = "Number of queue pairs to request from PF, or omit to use PF default",
+    .type = CLIB_ARG_TYPE_UINT32,
+    .default_val.uint32 = 0,
+    .min = 1,
+    .max = IAVF_MAX_QPAIRS,
+  },
+  {
+    .type = CLIB_ARG_END,
+  },
+};
+
 static const u32 driver_cap_flags =
   /**/ VIRTCHNL_VF_CAP_ADV_LINK_SPEED |
   /**/ VIRTCHNL_VF_LARGE_NUM_QPAIRS |
@@ -136,12 +150,91 @@ iavf_init (vlib_main_t *vm, vnet_dev_t *dev)
   if ((rv = iavf_vc_op_version (vm, dev, &driver_virtchnl_version, &ver)))
     return rv;
 
-  if (ver.major != driver_virtchnl_version.major ||
-      ver.minor != driver_virtchnl_version.minor)
+  if (ver.major != driver_virtchnl_version.major || ver.minor != driver_virtchnl_version.minor)
     return VNET_DEV_ERR_UNSUPPORTED_DEVICE_VER;
 
+  /* Get initial VF resources (VF becomes ACTIVE after this) */
   if ((rv = iavf_vc_op_get_vf_resources (vm, dev, &driver_cap_flags, &res)))
     return rv;
+
+  /* Request queues based on device args configuration:
+   *  request_qpairs=N : request N queue pairs from the PF
+   *  (omitted)        : use PF default allocation
+   *
+   * Note: REQUEST_QUEUES must be called AFTER GET_VF_RESOURCES because
+   * the i40e PF driver requires the VF to be in ACTIVE state.
+   */
+  u32 request_qpairs = clib_args_get_uint32_val_by_name (dev->args, "request_qpairs");
+
+  if (request_qpairs)
+    {
+      u16 requested_qp;
+
+      requested_qp = (u16) request_qpairs;
+      log_debug (dev, "requesting %u queue pairs", requested_qp);
+
+      virtchnl_vf_res_request_t qreq = { .num_queue_pairs = requested_qp };
+      virtchnl_vf_res_request_t qresp;
+
+      rv = iavf_vc_op_request_queues (vm, dev, &qreq, &qresp);
+
+      /* Detect VF reset by reading IAVF_ATQLEN: the hardware clears the
+       * enable bit (bit 31) when the VF is reset. Unlike VFGEN_RSTAT, this
+       * register stays cleared until iavf_aq_init() rewrites it, so there
+       * is no race window even if the reset completes before we check.
+       *
+       * On i40e, the PF typically resets the VF after REQUEST_QUEUES
+       * regardless of whether the request was granted. The virtchnl response
+       * may never arrive (stolen by aq_poll or lost during reset), so rv
+       * cannot be used to determine whether a reset occurred. */
+      if (!(iavf_reg_read (ad, IAVF_ATQLEN) & (1u << 31)))
+	{
+	  log_debug (dev, "VF reset detected after REQUEST_QUEUES "
+			  "(ATQLEN enable bit cleared), reinitializing");
+
+	  /* Wait for reset to complete */
+	  u32 n_tries = 50;
+	  do
+	    {
+	      if (n_tries-- == 0)
+		{
+		  log_err (dev, "timeout waiting for VF reset after "
+				"REQUEST_QUEUES");
+		  return VNET_DEV_ERR_TIMEOUT;
+		}
+	      vlib_process_suspend (vm, 0.02);
+	    }
+	  while ((iavf_reg_read (ad, IAVF_VFGEN_RSTAT) & 3) != 2);
+
+	  /* Re-initialize admin queue after reset */
+	  iavf_aq_poll_off (vm, dev);
+	  iavf_aq_init (vm, dev);
+	  iavf_aq_poll_on (vm, dev);
+
+	  /* Re-negotiate VF resources to get the actual queue allocation */
+	  if ((rv = iavf_vc_op_get_vf_resources (vm, dev, &driver_cap_flags, &res)))
+	    return rv;
+
+	  log_notice (dev, "requested %u queue pairs, PF granted %u", requested_qp,
+		      res.vsi_res[0].num_queue_pairs);
+	  if (res.vsi_res[0].num_queue_pairs < requested_qp)
+	    log_warn (dev,
+		      "PF granted only %u/%u queue pairs - "
+		      "performance may be limited",
+		      res.vsi_res[0].num_queue_pairs, requested_qp);
+	}
+      else if (rv != VNET_DEV_OK)
+	{
+	  /* PF rejected REQUEST_QUEUES without resetting the VF (ATQLEN
+	   * still enabled, AQ is valid) — continue with original res */
+	  log_warn (dev,
+		    "failed to request %u queue pairs (PF rejected without "
+		    "reset) - using PF default of %u queue pairs",
+		    requested_qp, res.vsi_res[0].num_queue_pairs);
+	}
+    }
+  else
+    log_debug (dev, "request_qpairs not set, using PF default queue allocation");
 
   if (res.num_vsis != 1 || res.vsi_res[0].vsi_type != VIRTCHNL_VSI_SRIOV)
     return VNET_DEV_ERR_UNSUPPORTED_DEVICE;
@@ -275,7 +368,6 @@ iavf_deinit (vlib_main_t *vm, vnet_dev_t *dev)
   log_debug (dev, "deinit");
   iavf_aq_poll_off (vm, dev);
   iavf_aq_deinit (vm, dev);
-  iavf_aq_free (vm, dev);
 }
 
 static void
@@ -292,6 +384,7 @@ VNET_DEV_REGISTER_DRIVER (avf) = {
   .runtime_temp_space_sz = sizeof (iavf_rt_data_t),
   .device = {
     .data_sz = sizeof (iavf_device_t),
+    .args = iavf_dev_args,
     .ops = {
       .alloc = iavf_alloc,
       .init = iavf_init,
