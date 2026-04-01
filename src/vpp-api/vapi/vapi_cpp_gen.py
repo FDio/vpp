@@ -7,6 +7,7 @@ import logging
 from vapi_c_gen import (
     CField,
     CEnum,
+    CUnion,
     CStruct,
     CSimpleType,
     CStructType,
@@ -26,6 +27,10 @@ class CppStruct(CStruct):
 
 
 class CppEnum(CEnum):
+    pass
+
+
+class CppUnion(CUnion):
     pass
 
 
@@ -304,6 +309,7 @@ if __name__ == "__main__":
         struct_type_class=CppStructType,
         field_class=CppField,
         enum_class=CppEnum,
+        union_class=CppUnion,
         message_class=CppMessage,
         alias_class=CppAlias,
     )
