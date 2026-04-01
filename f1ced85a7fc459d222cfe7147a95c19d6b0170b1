@@ -1,0 +1,378 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8aafbeb5_37a9703d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 31
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-01T12:46:23Z",
+      "side": 1,
+      "message": "Thanks for the edits, a few more comments !",
+      "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b31c5906_38e71e81",
+        "filename": "src/plugins/cnat/cnat.api",
+        "patchSetId": 31
+      },
+      "lineNbr": 152,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-01T12:46:23Z",
+      "side": 1,
+      "message": "I think we\u0027ll need to define a `cnat_set_snat_addresses_v2` \nto avoid breaking consumers.\nThe API is not yet marked \u0027stable\u0027 but I think it is still\nworth doing",
+      "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "50803d1d_49135825",
+        "filename": "src/plugins/cnat/cnat_api.c",
+        "patchSetId": 31
+      },
+      "lineNbr": 385,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-01T12:46:23Z",
+      "side": 1,
+      "message": "let\u0027s not have `CNAT_SNAT_POLICY_USE_AS_DEFAULT` always on",
+      "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e111854d_6bde1006",
+        "filename": "src/plugins/cnat/cnat_node.h",
+        "patchSetId": 31
+      },
+      "lineNbr": 842,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-01T12:46:23Z",
+      "side": 1,
+      "message": "Can\u0027t this be replaced by `cnat_5tuple_copy(dst, src, 1 /* swap */)` ?",
+      "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "dc86764a_ef72d0f6",
+        "filename": "src/plugins/cnat/cnat_node.h",
+        "patchSetId": 31
+      },
+      "lineNbr": 871,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-01T12:46:23Z",
+      "side": 1,
+      "message": "`index_t trk_index` no ?",
+      "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b550a8f6_e7e86654",
+        "filename": "src/plugins/cnat/cnat_node.h",
+        "patchSetId": 31
+      },
+      "lineNbr": 890,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-01T12:46:23Z",
+      "side": 1,
+      "message": "I think we should return `cnat_ep_trk_pool[trk_index]` \nas we always do this in callers.\nThe check `if (!trk)` is also imho clearer than comparing against ID_INVALID",
+      "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1c2ed655_95bdff7f",
+        "filename": "src/plugins/cnat/cnat_node_feature.c",
+        "patchSetId": 31
+      },
+      "lineNbr": 93,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-01T12:46:23Z",
+      "side": 1,
+      "message": "We should not use `pool_elt_at_index` in dataplane as this\nrisks breaking in debug mode multi-worker",
+      "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "99124ee7_45e8f9c3",
+        "filename": "src/plugins/cnat/cnat_node_feature.c",
+        "patchSetId": 31
+      },
+      "lineNbr": 381,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-01T12:46:23Z",
+      "side": 1,
+      "message": "Unfortunately, it\u0027s a bit more than just ICMP:\nthe check should be\n```\nif (iproto \u003d\u003d ICMP \u0026\u0026 icmp_type_is_echo(pkt) || \n(icmp_type_is_error_message(pkt) \u0026\u0026 icmp_type_is_echo(inner)))\n```\n\nMaybe we can do a helper function for that",
+      "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cab035b2_4ccb744c",
+        "filename": "src/plugins/cnat/cnat_node_lookup.c",
+        "patchSetId": 31
+      },
+      "lineNbr": 92,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-01T12:46:23Z",
+      "side": 1,
+      "message": "Can we make this be:\n```\nstatic_always_inline void\ncnat_get_rsession_from_ts (cnat_timestamp_t *ts, const cnat_timestamp_direction_t dir, cnat_session_t *session)\n```\nand use it both here and in `cnat_reverse_session_free()` ?",
+      "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b7ac4c52_b626d500",
+        "filename": "src/plugins/cnat/cnat_node_lookup.c",
+        "patchSetId": 31
+      },
+      "lineNbr": 137,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-01T12:46:23Z",
+      "side": 1,
+      "message": "And this could be just `cnat_get_rsession_from_ts(ts, CNAT_IS_FWD, \u0026session);`",
+      "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "18fc19e4_d8516e25",
+        "filename": "src/plugins/cnat/cnat_node_lookup.c",
+        "patchSetId": 31
+      },
+      "lineNbr": 142,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-01T12:46:23Z",
+      "side": 1,
+      "message": "We need to be careful with non NATed traffic here.\nIn the case where a packet comes in a VRF (session.fib_index) \nand exits in another (rsession.fib_index), we need the\ncode in `cnat_reverse_session_free` to compute the right\nreturn session key.\n\nWe can probably use a similar technique as with the caching of the 5tuple\nand store `fib_index` in the first rewrite",
+      "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "54cdeadb_e5a2f767",
+        "filename": "src/plugins/cnat/cnat_snat_policy.c",
+        "patchSetId": 31
+      },
+      "lineNbr": 547,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-01T12:46:23Z",
+      "side": 1,
+      "message": "I would try to have a single `flags` parameter and add the \ntr_flags we want to the snat_policy flags.\nIt would make it more self explanatory what is supported and what is not",
+      "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3923ee39_f1601bed",
+        "filename": "src/plugins/cnat/cnat_snat_policy.c",
+        "patchSetId": 31
+      },
+      "lineNbr": 594,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-01T12:46:23Z",
+      "side": 1,
+      "message": "instead of passing the flag, we could return `src_ports` and set `cspm-\u003edefault_src_ports` in this function",
+      "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e7fd6ac6_9c24494f",
+        "filename": "src/plugins/cnat/cnat_snat_policy.c",
+        "patchSetId": 31
+      },
+      "lineNbr": 663,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-01T12:46:23Z",
+      "side": 1,
+      "message": "iiuc, the point of passing `cnat_tr_flags` is to be able to set `CNAT_TR_FLAG_NO_CLIENT`\nIn that case why create the client (provided we do not keep the client index around) ?",
+      "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9e4b740c_414f5c4d",
+        "filename": "src/plugins/cnat/cnat_snat_policy.c",
+        "patchSetId": 31
+      },
+      "lineNbr": 667,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-01T12:46:23Z",
+      "side": 1,
+      "message": "Let\u0027s do this only at create time, as this is what we do for the port allocator",
+      "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "65d10825_26a5316b",
+        "filename": "src/plugins/cnat/cnat_snat_policy.c",
+        "patchSetId": 31
+      },
+      "lineNbr": 714,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-01T12:46:23Z",
+      "side": 1,
+      "message": "Let\u0027s add an option for flags in the CLI and support `default` for `CNAT_SNAT_POLICY_USE_AS_DEFAULT` and `noclient` for not creating a fib client",
+      "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "abd75104_70d076ce",
+        "filename": "src/plugins/cnat/cnat_snat_policy.h",
+        "patchSetId": 31
+      },
+      "lineNbr": 68,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-01T12:46:23Z",
+      "side": 1,
+      "message": "`CNAT_SNAT_POLICY_FLAG_USE_AS_DEFAULT` also, it would be good to add a snippet in a comment that describes what this does",
+      "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f3c9e948_037235e9",
+        "filename": "src/plugins/cnat/cnat_snat_policy.h",
+        "patchSetId": 31
+      },
+      "lineNbr": 70,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-01T12:46:23Z",
+      "side": 1,
+      "message": "Not sure why the assert was there in the first place,\nit might be worth checking (or removing it)",
+      "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "fb4cca52_a84d3841",
+        "filename": "src/plugins/cnat/cnat_src_policy.c",
+        "patchSetId": 31
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-01T12:46:23Z",
+      "side": 1,
+      "message": "We should handle the case where `src_ports \u003d\u003d NULL`\nwhich happens if we have vec_validated with zeroes\nbut not configured snat policies because we want to\nrely on the default",
+      "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0d751b66_17cc0386",
+        "filename": "src/plugins/cnat/cnat_src_policy.c",
+        "patchSetId": 31
+      },
+      "lineNbr": 106,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-01T12:46:23Z",
+      "side": 1,
+      "message": "We should `vec_validate_init_empty_aligned` to ensure we have zeroes where we do not have snat configs",
+      "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d3d3fded_c5831e84",
+        "filename": "src/plugins/cnat/cnat_translation.c",
+        "patchSetId": 31
+      },
+      "lineNbr": 346,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-01T12:46:23Z",
+      "side": 1,
+      "message": "We cannot do this early one as we want to preserve backend order\nin `ct-\u003ect_paths_indexes`. This is important for maglev for which\nbackend re-order will trigger re-shuffling of the assignments",
+      "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1478220b_5ad97c9d",
+        "filename": "src/plugins/cnat/cnat_types.c",
+        "patchSetId": 31
+      },
+      "lineNbr": 212,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-01T12:46:23Z",
+      "side": 1,
+      "message": "Can we maybe also do the init of `cspm-\u003esrc_ports` at this point ?",
+      "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
