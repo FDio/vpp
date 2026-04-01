@@ -141,7 +141,6 @@ snort_instance_create (vlib_main_t *vm, snort_instance_create_args_t *args,
   si->name = name;
   si->drop_on_disconnect = args->drop_on_disconnect;
   si->qpairs_per_thread = qpairs_per_thread;
-  si->ip4_hash_fn = vnet_hash_default_function (VNET_HASH_FN_TYPE_IP4);
 
   index = si - sm->instances;
   hash_set_mem (sm->instance_by_name, si->name, index);
@@ -192,12 +191,6 @@ snort_instance_create (vlib_main_t *vm, snort_instance_create_args_t *args,
       si->dequeue_node_index =
 	vlib_register_node (vm, &snort_deq_reg, "snort-deq-%s", si->name);
     }
-
-  si->ip4_input_dequeue_node_next_index = vlib_node_add_named_next (
-    vm, si->dequeue_node_index, "snort-ip4-input-next");
-  si->ip4_output_dequeue_node_next_index = vlib_node_add_named_next (
-    vm, si->dequeue_node_index, "snort-ip4-output-next");
-  vlib_worker_thread_node_runtime_update ();
 
   log_debug ("instnce '%s' created with fd %d at %p, len %u", name, fd, base,
 	     size);
@@ -344,6 +337,8 @@ snort_init (vlib_main_t *vm)
 
   sm->socket_name = format (0, "%s/%s%c", vlib_unix_get_runtime_dir (),
 			    DAQ_VPP_DEFAULT_SOCKET_FILE, 0);
+
+  sm->ip_hash_fn = vnet_hash_default_function (VNET_HASH_FN_TYPE_IP);
 
   return 0;
 }
