@@ -457,6 +457,78 @@ retry:
   return n_packets - n_drop;
 }
 
+static_always_inline u32
+vlib_buffer_enqueue_to_single_thread_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+					     vlib_frame_queue_main_t *fqm, u32 *buffer_indices,
+					     clib_thread_index_t thread_index, u32 n_packets,
+					     int with_aux, u32 *aux_data)
+{
+  vlib_frame_queue_t *fq;
+  vlib_frame_queue_elt_t *hf = 0;
+  u32 drop_list[VLIB_FRAME_SIZE], n_drop = 0;
+  u8 do_wakeup = 0;
+  u64 nelts, tail, new_tail, head;
+  u32 n_enq, n_left = n_packets;
+
+  fq = vec_elt (fqm->vlib_frame_queues, thread_index);
+  ASSERT (fq);
+  nelts = fq->nelts;
+
+  while (n_left)
+    {
+    retry:
+      tail = __atomic_load_n (&fq->tail, __ATOMIC_RELAXED);
+      new_tail = tail + 1;
+      head = __atomic_load_n (&fq->head, __ATOMIC_ACQUIRE);
+
+      if (new_tail >= head + nelts)
+	{
+	  hf = 0;
+	}
+      else if (!__atomic_compare_exchange_n (&fq->tail, &tail, new_tail, 0 /* weak */,
+					     __ATOMIC_RELAXED, __ATOMIC_RELAXED))
+	goto retry;
+      else
+	{
+	  do_wakeup = (tail == head);
+	  hf = fq->elts + (new_tail & (nelts - 1));
+	}
+
+      n_enq = clib_min (n_left, VLIB_FRAME_SIZE);
+      if (hf)
+	{
+	  vlib_buffer_copy_indices (hf->buffer_index, buffer_indices, n_enq);
+	  if (with_aux)
+	    vlib_buffer_copy_indices (hf->aux_data, aux_data, n_enq);
+
+	  if (node->flags & VLIB_NODE_FLAG_TRACE)
+	    hf->maybe_trace = 1;
+	  hf->n_vectors = n_enq;
+	  __atomic_store_n (&hf->valid, 1, __ATOMIC_RELEASE);
+	  __atomic_store_n (&vlib_get_main_by_index (thread_index)->check_frame_queues, 1,
+			    __ATOMIC_RELAXED);
+	  if (do_wakeup)
+	    vlib_thread_wakeup (thread_index);
+	}
+      else
+	{
+	  n_enq = clib_min (n_left, VLIB_FRAME_SIZE - n_drop);
+	  vlib_buffer_copy_indices (drop_list + n_drop, buffer_indices, n_enq);
+	  n_drop += n_enq;
+	}
+
+      n_left -= n_enq;
+      buffer_indices += n_enq;
+      if (with_aux)
+	aux_data += n_enq;
+    }
+
+  if (n_drop)
+    vlib_buffer_free (vm, drop_list, n_drop);
+
+  return n_packets - n_drop;
+}
+
 u32 __clib_section (".vlib_buffer_enqueue_to_thread_fn")
 CLIB_MULTIARCH_FN (vlib_buffer_enqueue_to_thread_fn)
 (vlib_main_t *vm, vlib_node_runtime_t *node, u32 frame_queue_index,
@@ -485,6 +557,34 @@ CLIB_MULTIARCH_FN (vlib_buffer_enqueue_to_thread_fn)
   n_enq += vlib_buffer_enqueue_to_thread_inline (
     vm, node, fqm, buffer_indices, thread_indices, n_packets,
     drop_on_congestion, 0 /* with_aux */, NULL);
+
+  return n_enq;
+}
+
+u32 __clib_section (".vlib_buffer_enqueue_to_single_thread_fn")
+CLIB_MULTIARCH_FN (vlib_buffer_enqueue_to_single_thread_fn)
+(vlib_main_t *vm, vlib_node_runtime_t *node, u32 frame_queue_index, u32 *buffer_indices,
+ clib_thread_index_t thread_index, u32 n_packets)
+{
+  vlib_thread_main_t *tm = vlib_get_thread_main ();
+  vlib_frame_queue_main_t *fqm;
+  u32 n_enq = 0;
+
+  fqm = vec_elt_at_index (tm->frame_queue_mains, frame_queue_index);
+
+  while (n_packets >= VLIB_FRAME_SIZE)
+    {
+      n_enq += vlib_buffer_enqueue_to_single_thread_inline (
+	vm, node, fqm, buffer_indices, thread_index, VLIB_FRAME_SIZE, 0 /* with_aux */, NULL);
+      buffer_indices += VLIB_FRAME_SIZE;
+      n_packets -= VLIB_FRAME_SIZE;
+    }
+
+  if (n_packets == 0)
+    return n_enq;
+
+  n_enq += vlib_buffer_enqueue_to_single_thread_inline (vm, node, fqm, buffer_indices, thread_index,
+							n_packets, 0 /* with_aux */, NULL);
 
   return n_enq;
 }
@@ -522,6 +622,7 @@ CLIB_MULTIARCH_FN (vlib_buffer_enqueue_to_thread_with_aux_fn)
 }
 
 CLIB_MARCH_FN_REGISTRATION (vlib_buffer_enqueue_to_thread_fn);
+CLIB_MARCH_FN_REGISTRATION (vlib_buffer_enqueue_to_single_thread_fn);
 CLIB_MARCH_FN_REGISTRATION (vlib_buffer_enqueue_to_thread_with_aux_fn);
 
 static_always_inline u32
@@ -695,6 +796,8 @@ vlib_buffer_funcs_init (vlib_main_t *vm)
     CLIB_MARCH_FN_POINTER (vlib_buffer_enqueue_to_single_next_with_aux64_and_scalar_fn);
   bfm->buffer_enqueue_to_thread_fn =
     CLIB_MARCH_FN_POINTER (vlib_buffer_enqueue_to_thread_fn);
+  bfm->buffer_enqueue_to_single_thread_fn =
+    CLIB_MARCH_FN_POINTER (vlib_buffer_enqueue_to_single_thread_fn);
   bfm->buffer_enqueue_to_thread_with_aux_fn =
     CLIB_MARCH_FN_POINTER (vlib_buffer_enqueue_to_thread_with_aux_fn);
   return 0;

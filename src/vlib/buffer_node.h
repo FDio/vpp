@@ -450,6 +450,16 @@ vlib_buffer_enqueue_to_thread (vlib_main_t *vm, vlib_node_runtime_t *node,
 }
 
 static_always_inline u32
+vlib_buffer_enqueue_to_single_thread (vlib_main_t *vm, vlib_node_runtime_t *node,
+				      u32 frame_queue_index, u32 *buffer_indices,
+				      clib_thread_index_t thread_index, u32 n_packets)
+{
+  vlib_buffer_enqueue_to_single_thread_fn_t *fn;
+  fn = vlib_buffer_func_main.buffer_enqueue_to_single_thread_fn;
+  return (fn) (vm, node, frame_queue_index, buffer_indices, thread_index, n_packets);
+}
+
+static_always_inline u32
 vlib_buffer_enqueue_to_thread_with_aux (vlib_main_t *vm,
 					vlib_node_runtime_t *node,
 					u32 frame_queue_index,
