@@ -16,6 +16,24 @@
       "message": "I remember we used elog because it was used in the datapath / workers. Are all those occurrences in the control path / main thread ? Or are you proposing to use vlib_log in datapath too?",
       "revId": "833e74afdf90f775c1107b928c343f4205c055fe",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e163e644_aebfb5bd",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-04-01T12:39:50Z",
+      "side": 1,
+      "message": "in the meantime vlib_log become thread safe so it can be used in datapath so it should be ok in cases where we don\u0027t do millions of packets per second. ikev2 seems to be such case.\nHaving 2 logging methods for feature like ikev2 just makes things less debuggable.",
+      "parentUuid": "26c9e79d_793e47ad",
+      "revId": "833e74afdf90f775c1107b928c343f4205c055fe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
