@@ -160,7 +160,7 @@ jobs:
 
       - name: Checkout VPP Gerrit Change
         # yamllint disable-line rule:line-length
-        uses: fdio/vpp/.github/actions/vpp-checkout-gerrit-change@27fc2aa27f57c8f7055e8f1b6e5a9f41b0315873
+        uses: fdio/vpp/.github/actions/vpp-checkout-gerrit-change@357504e210181360576779f9123c8590a7d1f8ed
         with:
           WORKSPACE: ${{ env.WORKSPACE }}
           GERRIT_BRANCH: ${{ env.GERRIT_BRANCH }}
@@ -175,7 +175,7 @@ jobs:
           TUI_LINE: ${{ env.TUI_LINE }}
 
       - name: Install VPP external dependencies
-        uses: fdio/vpp/.github/actions/vpp-install-ext-deps@d0577011fb512d79e6914b6f1f11e2be4c09bc1e
+        uses: fdio/vpp/.github/actions/vpp-install-ext-deps@44d03f63406081c872e802add51984ccde48ff02
         with:
           LOG_DIR: ${{ env.LOG_DIR }}
           WORKSPACE: ${{ env.WORKSPACE }}
