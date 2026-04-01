@@ -18,6 +18,23 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "9685e324_7b291e51",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 23
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-04-01T16:47:42Z",
+      "side": 1,
+      "message": "Adressed comments below.",
+      "revId": "87b9e7ce97c8db69602a3dd21f9fd7d40fa28480",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "b92075e9_9b117683",
@@ -31,6 +48,24 @@
       "writtenOn": "2026-04-01T16:08:58Z",
       "side": 1,
       "message": "nit: do we really need to set an interrupt on the sfdp_expire node for every thread we expire sessions on ? This is fine for testing purposes, but we should also expect sfdp_expire to be called periodically (every 1s by default) in each worker and cleanup any sessions invalidated here.\n\nCan\u0027t we rely on existing behavior / calling virtual_sleep in tests to ensure sfdp-expire is called in all threads ?",
+      "revId": "87b9e7ce97c8db69602a3dd21f9fd7d40fa28480",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4a8b682a_fecbc11a",
+        "filename": "src/vnet/sfdp/sfdp.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 371,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-04-01T16:47:42Z",
+      "side": 1,
+      "message": "The interrupt is necessary to target the correct timer wheel. Each worker runs its own sfdp-expire against its own per-thread wheel. Without the interrupt on the owning worker, the session would only be cleaned up at the next scheduled run (up to SFDP_TIMER_INTERVAL later). vlib_get_main_by_index(thread_index) ensures the correct worker is woken up immediately after the barrier is released.",
+      "parentUuid": "b92075e9_9b117683",
       "revId": "87b9e7ce97c8db69602a3dd21f9fd7d40fa28480",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -70,6 +105,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "778648ba_6fb75270",
+        "filename": "src/vnet/sfdp/timer/timer.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 39,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-04-01T16:47:42Z",
+      "side": 1,
+      "message": "Hadi is right — timer_tick_interval_s is only settable in sfdp_config, which is an early config function called before workers are initialized. The timer wheels are initialized once in timer_expiry_cb_enable() when the first tenant is added. Changing the interval afterwards is not supported. I\u0027ll add a comment in the code to make this lifecycle explicit",
+      "parentUuid": "8d8fb5bf_cdf6c7f9",
+      "revId": "87b9e7ce97c8db69602a3dd21f9fd7d40fa28480",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "7916c4a1_e69b3ce6",
@@ -105,6 +158,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "a8de1707_91800ca6",
+        "filename": "src/vnet/sfdp/timer/timer.h",
+        "patchSetId": 23
+      },
+      "lineNbr": 152,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-04-01T16:47:42Z",
+      "side": 1,
+      "message": "Not intentional — this was lost during the refactor. The last line is functionally equivalent to calling sfdp_session_timer_update() but inlines the assignment directly. To address both your concern and Hadi\u0027s suggestion, I\u0027ll restore the function call for consistency. Note that the wheel slot IS moved immediately when needed via the sfdp_timer_update_internal call above — the missing sfdp_session_timer_update only affects next_expiration, not the wheel.",
+      "parentUuid": "d8665ad1_65192c14",
+      "revId": "87b9e7ce97c8db69602a3dd21f9fd7d40fa28480",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "54c790d9_07f67aef",
@@ -122,6 +193,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "4455fffd_114c9d6b",
+        "filename": "test/test_sfdp_multiworker.py",
+        "patchSetId": 23
+      },
+      "lineNbr": 20,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-04-01T16:47:42Z",
+      "side": 1,
+      "message": "You\u0027re right, the comment is inaccurate. I\u0027ll remove it.",
+      "parentUuid": "54c790d9_07f67aef",
+      "revId": "87b9e7ce97c8db69602a3dd21f9fd7d40fa28480",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "93365afd_9ec73cc1",
@@ -135,6 +224,24 @@
       "writtenOn": "2026-04-01T16:08:58Z",
       "side": 1,
       "message": "nit: I am not sure we need to test that killing sessions on a worker is indeed immediate. The \u0027sfdp_kill_session\u0027 API/CLI is uniquely used for testing today, and even though this patch updates it so that it now triggers a direct call to \u0027sfdp-expire\u0027 after invalidating a session, we do not expect this to occur in usual codepaths.",
+      "revId": "87b9e7ce97c8db69602a3dd21f9fd7d40fa28480",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "16ae7c66_4727c524",
+        "filename": "test/test_sfdp_multiworker.py",
+        "patchSetId": 23
+      },
+      "lineNbr": 149,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-04-01T16:47:42Z",
+      "side": 1,
+      "message": "The immediacy check is the regression test for the bug this patch fixes. With the original vlib_get_main(), the kill appeared to work if given enough virtual_sleep ticks — the session would eventually expire via the worker\u0027s periodic scheduling. The one-tick assertion (virtual_sleep(0.02)) is precisely what distinguishes \"interrupt sent to the correct worker\" from \"session cleaned up coincidentally by the next periodic run\". Without it, a regression back to vlib_get_main() would go undetected.",
+      "parentUuid": "93365afd_9ec73cc1",
       "revId": "87b9e7ce97c8db69602a3dd21f9fd7d40fa28480",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }

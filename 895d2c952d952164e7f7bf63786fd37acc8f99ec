@@ -56,6 +56,24 @@
     {
       "unresolved": false,
       "key": {
+        "uuid": "25c73ea2_47c83458",
+        "filename": "src/vnet/sfdp/timer/timer.h",
+        "patchSetId": 19
+      },
+      "lineNbr": 128,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-04-01T16:47:42Z",
+      "side": 1,
+      "message": "Following Hadi\u0027s comment, this behavior was intentionally removed in PS23. Setting an interrupt on every ticks \u003d\u003d 0 in sfdp_session_timer_update would trigger one interrupt per session expiry in production (e.g. every TCP teardown with l4-lifecycle enabled), which is too expensive. The immediate interrupt is now only in sfdp_expire_session_now, where it is explicitly needed.",
+      "parentUuid": "c5bb7e92_5d3cc7f3",
+      "revId": "895d2c952d952164e7f7bf63786fd37acc8f99ec",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
         "uuid": "13bc3047_55353230",
         "filename": "test/test_sfdp.py",
         "patchSetId": 19
