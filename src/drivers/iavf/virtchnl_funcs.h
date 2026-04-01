@@ -96,6 +96,20 @@ iavf_vc_op_disable_queues (vlib_main_t *vm, vnet_dev_t *dev,
 }
 
 static_always_inline vnet_dev_rv_t
+iavf_vc_op_request_queues (vlib_main_t *vm, vnet_dev_t *dev, const virtchnl_vf_res_request_t *req,
+			   virtchnl_vf_res_request_t *resp)
+{
+  iavf_virtchnl_req_t vr = {
+    .op = VIRTCHNL_OP_REQUEST_QUEUES,
+    .req = req,
+    .req_sz = sizeof (*req),
+    .resp = resp,
+    .resp_sz = sizeof (*resp),
+  };
+  return iavf_virtchnl_req (vm, dev, &vr);
+}
+
+static_always_inline vnet_dev_rv_t
 iavf_vc_op_config_vsi_queues (vlib_main_t *vm, vnet_dev_t *dev,
 			      const virtchnl_vsi_queue_config_info_t *req)
 {
