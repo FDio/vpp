@@ -14,7 +14,7 @@ inputs:
     required: true
     type: string
   BUILD_TYPE:
-    description: "Type of build: debug (dbg) or release (rel)"
+    description: "Type of build: debug or release"
     required: true
     type: string
   HS_TEST_DIR:
@@ -90,7 +90,7 @@ runs:
             }
 
             check_for_core_files || true
-            if [ "${{ inputs.BUILD_TYPE }}" == "dbg" ] ; then
+            if [ "${{ inputs.BUILD_TYPE }}" == "debug" ] ; then
                 hst_debug_build_run || true
             else
                 hst_build_run || true
