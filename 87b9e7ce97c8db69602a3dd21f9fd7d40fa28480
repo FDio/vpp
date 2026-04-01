@@ -16,6 +16,40 @@
       "message": "All concerns raised in previous patchsets have been addressed:\n\n- Timer interval is now configurable via sfdp { timer-interval \u003cseconds\u003e } instead of being hardcoded.\n- Kill immediacy on worker threads is fixed: sfdp_expire_session_now now routes the interrupt to the correct worker thread using vlib_get_main_by_index(thread_index).\n- Test coverage added in test_sfdp_multiworker.py for all kill scenarios including sessions past the first wheel revolution (rearmed timers).",
       "revId": "87b9e7ce97c8db69602a3dd21f9fd7d40fa28480",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cde65bc2_daa94bde",
+        "filename": "src/vnet/sfdp/timer/timer.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 39,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-04-01T13:23:38Z",
+      "side": 1,
+      "message": "SFDP_TIMER_INTERVAL is now a call to sfdp_timer_tick_interval_sec(). What happens if sfdp_main.timer_tick_interval_s is changed after the 1st tenant is added?",
+      "revId": "87b9e7ce97c8db69602a3dd21f9fd7d40fa28480",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7916c4a1_e69b3ce6",
+        "filename": "src/vnet/sfdp/timer/timer.h",
+        "patchSetId": 23
+      },
+      "lineNbr": 152,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-04-01T13:23:38Z",
+      "side": 1,
+      "message": "this no longer calls sfdp_session_timer_update() is it on purpose? It means it will not move wheel slot immediately and will wait for a wheel slot expiry run to reschedule to the proper slot?",
+      "revId": "87b9e7ce97c8db69602a3dd21f9fd7d40fa28480",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
