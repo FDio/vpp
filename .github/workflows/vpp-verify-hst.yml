@@ -138,7 +138,7 @@ jobs:
 
     steps:
       - name: Actions Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98  # v6.0.2
 
       - name: Setup Environment
         # yamllint disable-line rule:line-length
@@ -164,7 +164,7 @@ jobs:
 
       - name: Checkout VPP Gerrit Change
         # yamllint disable-line rule:line-length
-        uses: fdio/vpp/.github/actions/vpp-checkout-gerrit-change@27fc2aa27f57c8f7055e8f1b6e5a9f41b0315873
+        uses: fdio/vpp/.github/actions/vpp-checkout-gerrit-change@77986ebaac9a194fead153d2c441eca547931528
         with:
           LOG_DIR: ${{ env.LOG_DIR }}
           WORKSPACE: ${{ env.WORKSPACE }}
@@ -174,7 +174,7 @@ jobs:
 
       - name: Install VPP dependencies
         # yamllint disable-line rule:line-length
-        uses: fdio/vpp/.github/actions/vpp-install-deps@777792ecef2d5c93ce15fa5b7fdca999f5412c9d
+        uses: fdio/vpp/.github/actions/vpp-install-deps@5a0fc5b4e502234fbd5a3f427268fa75590c0ea5
         with:
           LOG_DIR: ${{ env.LOG_DIR }}
           WORKSPACE: ${{ env.WORKSPACE }}
@@ -182,7 +182,7 @@ jobs:
 
       - name: Install VPP external dependencies
         # yamllint disable-line rule:line-length
-        uses: fdio/vpp/.github/actions/vpp-install-ext-deps@d0577011fb512d79e6914b6f1f11e2be4c09bc1e
+        uses: fdio/vpp/.github/actions/vpp-install-ext-deps@77986ebaac9a194fead153d2c441eca547931528
         with:
           LOG_DIR: ${{ env.LOG_DIR }}
           WORKSPACE: ${{ env.WORKSPACE }}
@@ -190,7 +190,7 @@ jobs:
 
       - name: HST VPP Build
         # yamllint disable-line rule:line-length
-        uses: fdio/vpp/.github/actions/vpp-build@43b0339292476442bd7e2429e2ae1075918d8f83
+        uses: fdio/vpp/.github/actions/vpp-build@77986ebaac9a194fead153d2c441eca547931528
         with:
           LOG_DIR: ${{ env.LOG_DIR }}
           WORKSPACE: ${{ env.WORKSPACE }}
@@ -200,14 +200,14 @@ jobs:
           TUI_LINE: ${{ env.TUI_LINE }}
 
       - name: Start Docker Daemon
-        uses: fdio/vpp/.github/actions/vpp-start-docker@f9e0f384d665800c8e580da853e26558dd6d2668
+        uses: fdio/vpp/.github/actions/vpp-start-docker@5a0fc5b4e502234fbd5a3f427268fa75590c0ea5
         with:
           START_DOCKER_SCRIPT: start-docker.sh
           TUI_LINE: ${{ env.TUI_LINE }}
 
       - name: HST Test VPP
         if: success()
-        uses: fdio/vpp/.github/actions/vpp-hst-test@aafbd5109fbd323b3ec3292ec3acad8f5eb48fe0
+        uses: fdio/vpp/.github/actions/vpp-hst-test@77986ebaac9a194fead153d2c441eca547931528
         timeout-minutes: 90
         with:
           LOG_DIR: ${{ env.LOG_DIR }}
@@ -220,7 +220,7 @@ jobs:
       - name: AWS S3 Publish Logs
         if: always()
         # yamllint disable-line rule:line-length
-        uses: fdio/.github/.github/actions/aws-s3-publish-logs@c2df5c7959a8415f7dd730315a40b058748b4c84
+        uses: fdio/.github/.github/actions/aws-s3-publish-logs@1b8eff3ffd9d355b28052be9ad22acc57b3430b5
         with:
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -244,7 +244,7 @@ jobs:
       - name: AWS S3 Publish Archives
         if: ${{ always() && steps.check-archives.outputs.has_archives == 'true' }}
         # yamllint disable-line rule:line-length
-        uses: fdio/.github/.github/actions/aws-s3-publish-logs@c2df5c7959a8415f7dd730315a40b058748b4c84
+        uses: fdio/.github/.github/actions/aws-s3-publish-logs@1b8eff3ffd9d355b28052be9ad22acc57b3430b5
         with:
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
