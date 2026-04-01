@@ -845,11 +845,15 @@ def emit_definition(parser, json_file, emitted, o):
             and o not in parser.aliases_by_json[json_file]
         ):
             return
-        guard = "defined_%s" % o.get_c_name()
-        print("#ifndef %s" % guard)
-        print("#define %s" % guard)
+        type_guard = "__vapi_def_defined_%s" % o.get_c_name()
+        print("#ifndef %s" % type_guard)
+        print("#define %s" % type_guard)
         print("%s" % o.get_c_def())
         print("")
+        print("#ifndef VAPI_EMIT_TYPES_ONLY")
+        code_guard = "__vapi_code_defined_%s" % o.get_c_name()
+        print("#ifndef %s" % code_guard)
+        print("#define %s" % code_guard)
         function_attrs = "static inline "
         if o.name in parser.messages_by_json[json_file]:
             if o.has_payload():
@@ -878,6 +882,8 @@ def emit_definition(parser, json_file, emitted, o):
             print("%s%s" % (function_attrs, o.get_swap_to_be_func_def()))
             print("")
             print("%s%s" % (function_attrs, o.get_swap_to_host_func_def()))
+        print("#endif") # code_guard
+        print("#endif") # VAPI_EMIT_TYPES_ONLY
         print("#endif")
         print("")
     emitted.append(o)
@@ -924,10 +930,12 @@ def gen_json_unified_header(parser, logger, j, io, name):
 
     if name == "memclnt.api.vapi.h":
         print("")
+        print("#ifndef VAPI_EMIT_TYPES_ONLY")
         print(
             "static inline vapi_error_e vapi_send_with_control_ping "
             "(vapi_ctx_t ctx, void * msg, u32 context);"
         )
+        print("#endif")
     elif name == "vlib.api.vapi.h":
         print("#include <vapi/memclnt.api.vapi.h>")
     else:
@@ -983,7 +991,9 @@ vapi_send_with_control_ping (vapi_ctx_t ctx, void *msg, u32 context)
   return vapi_send2 (ctx, msg, ping);
 }
 """
+        print("#ifndef VAPI_EMIT_TYPES_ONLY")
         print("%s" % vapi_send_with_control_ping_function)
+        print("#endif")
         print("")
 
     print("#ifdef __cplusplus")
