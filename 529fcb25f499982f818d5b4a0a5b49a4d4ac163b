@@ -36,6 +36,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "7da5d782_765947cf",
+        "filename": "src/plugins/af_xdp/af_xdp.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 138,
+      "author": {
+        "id": 3310
+      },
+      "writtenOn": "2026-04-01T13:00:29Z",
+      "side": 1,
+      "message": "You are right, will update. I\u0027ve added this patch after supporting looking at https://gerrit.fd.io/r/c/vpp/+/43606 for supporting SKB, so skipped the number 2.",
+      "parentUuid": "2862c6a4_02dc54c5",
+      "revId": "529fcb25f499982f818d5b4a0a5b49a4d4ac163b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "6dead2e6_40d0f483",
@@ -71,6 +89,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "e497a652_4762272f",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 429,
+      "author": {
+        "id": 3310
+      },
+      "writtenOn": "2026-04-01T13:00:29Z",
+      "side": 1,
+      "message": "Thanks it\u0027s reasonable and useful. Thanks.",
+      "parentUuid": "6dead2e6_40d0f483",
+      "revId": "529fcb25f499982f818d5b4a0a5b49a4d4ac163b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "3af3a738_531f409f",
@@ -101,6 +137,24 @@
       "writtenOn": "2026-03-31T16:08:10Z",
       "side": 1,
       "message": "Done",
+      "parentUuid": "3af3a738_531f409f",
+      "revId": "529fcb25f499982f818d5b4a0a5b49a4d4ac163b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5e66b79f_3ece47ed",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 741,
+      "author": {
+        "id": 3310
+      },
+      "writtenOn": "2026-04-01T13:00:29Z",
+      "side": 1,
+      "message": "I think that if mac-reuse is requested, seems it will be better to just return error in case of it failed, and user should decide what to do next. What do you think about add flag to skip returning error if getting mac address failed and generate MAC address?",
       "parentUuid": "3af3a738_531f409f",
       "revId": "529fcb25f499982f818d5b4a0a5b49a4d4ac163b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
