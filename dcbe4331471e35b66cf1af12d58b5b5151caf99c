@@ -16,6 +16,142 @@
       "message": "looks like we lost the call to sfdp_session_timer_update() similarly to sfdp_session_timer_update_unlikely_past() ?",
       "revId": "dcbe4331471e35b66cf1af12d58b5b5151caf99c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9adb6b97_e9499a91",
+        "filename": "test/test_sfdp.py",
+        "patchSetId": 25
+      },
+      "lineNbr": 917,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-04-02T16:50:00Z",
+      "side": 1,
+      "message": "nit: some of the tests feel like duplicates of tests in test_sfdp_workers.py, with the difference that those tests run on the main thread rather than worker threads.\n\nCould some of the tests be merged together (i.e. test both main thread and worker thread behavior in a single tests), and potentially have all tests under test_sfdp.py only ?",
+      "revId": "dcbe4331471e35b66cf1af12d58b5b5151caf99c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9b33596a_e95d405f",
+        "filename": "test/test_sfdp_multiworker.py",
+        "patchSetId": 25
+      },
+      "lineNbr": 13,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-04-02T16:50:00Z",
+      "side": 1,
+      "message": "The below comment is most probably incorrect: vlib_get_main() calls vlib_get_main_by_index(vlib_get_thread_index()), which returns the main of the appropriate worker thread, and not always thread 0.\n\nAlso, didn\u0027t we remove the interrupt in sfdp_session_timer_update in this patch ?",
+      "revId": "dcbe4331471e35b66cf1af12d58b5b5151caf99c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "da49cd9f_a01e3e0e",
+        "filename": "test/test_sfdp_multiworker.py",
+        "patchSetId": 25
+      },
+      "lineNbr": 70,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-04-02T16:50:00Z",
+      "side": 1,
+      "message": "We could directly use the sfdp_kill_session API - it also has a barrier sync and should be fine to use with active worker threads.",
+      "revId": "dcbe4331471e35b66cf1af12d58b5b5151caf99c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e13d5d76_3169c992",
+        "filename": "test/test_sfdp_multiworker.py",
+        "patchSetId": 25
+      },
+      "lineNbr": 96,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-04-02T16:50:00Z",
+      "side": 1,
+      "message": "Which interrupt is specified here ? And I think the comment on broken behavior is not accurate here i.e. vlib_get_main() gets the main of the current thread and not thread 0",
+      "revId": "dcbe4331471e35b66cf1af12d58b5b5151caf99c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b0b700d0_ceb78686",
+        "filename": "test/test_sfdp_multiworker.py",
+        "patchSetId": 25
+      },
+      "lineNbr": 120,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-04-02T16:50:00Z",
+      "side": 1,
+      "message": "Same comment as above on vlib_get_main() behavior. Please fix the comment.",
+      "revId": "dcbe4331471e35b66cf1af12d58b5b5151caf99c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9a0bbe26_03c62009",
+        "filename": "test/test_sfdp_multiworker.py",
+        "patchSetId": 25
+      },
+      "lineNbr": 130,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-04-02T16:50:00Z",
+      "side": 1,
+      "message": "Please replace with an API call",
+      "revId": "dcbe4331471e35b66cf1af12d58b5b5151caf99c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "da407bf2_c5ef3ff4",
+        "filename": "test/test_sfdp_multiworker.py",
+        "patchSetId": 25
+      },
+      "lineNbr": 169,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-04-02T16:50:00Z",
+      "side": 1,
+      "message": "Please use the API call for sfdp_kill_session here",
+      "revId": "dcbe4331471e35b66cf1af12d58b5b5151caf99c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c92b187f_d9ebbfd0",
+        "filename": "test/test_sfdp_multiworker.py",
+        "patchSetId": 25
+      },
+      "lineNbr": 201,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-04-02T16:50:00Z",
+      "side": 1,
+      "message": "Please use the API call for sfdp_kill_session here",
+      "revId": "dcbe4331471e35b66cf1af12d58b5b5151caf99c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
