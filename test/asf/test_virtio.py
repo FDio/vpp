@@ -91,47 +91,77 @@ class TestVirtioInterface(VppAsfTestCase):
             self.skipTest("No virtio interface with MAC filtering enabled")
 
         sw_if_index = virtio_if.sw_if_index
-        added_mac = None
+        added_macs = []
+
+        unicast_mac = None
         for salt in (0x11, 0x22):
-            filter_mac = self._filter_mac(sw_if_index, salt)
+            candidate = self._filter_mac(sw_if_index, salt)
             try:
                 self.vapi.cli(
                     f"set interface secondary-mac-address {interface_name} "
-                    f"{filter_mac} add"
+                    f"{candidate} add"
                 )
-                added_mac = filter_mac
+                unicast_mac = candidate
+                added_macs.append(candidate)
                 break
             except CliFailedCommandError:
                 continue
 
-        if not added_mac:
-            self.skipTest("Unable to add a test MAC filter on virtio interface")
+        if not unicast_mac:
+            self.skipTest("Unable to add a unicast test MAC filter on virtio interface")
+
+        multicast_mac = "01:00:5e:%02x:%02x:%02x" % (
+            (sw_if_index >> 16) & 0x7F,
+            (sw_if_index >> 8) & 0xFF,
+            sw_if_index & 0xFF,
+        )
+        try:
+            self.vapi.cli(
+                f"set interface secondary-mac-address {interface_name} "
+                f"{multicast_mac} add"
+            )
+            added_macs.append(multicast_mac)
+        except CliFailedCommandError:
+            self.skipTest(
+                "Unable to add a multicast test MAC filter on virtio interface"
+            )
 
         try:
             show = self.vapi.cli(f"show virtio pci {interface_name}")
             self.assertIn("MAC Filters:", show, "MAC filter section")
-            self.assertIn(added_mac, show, "added MAC in virtio dump")
+            self.assertIn(unicast_mac, show, "added unicast MAC in virtio dump")
+            self.assertIn(multicast_mac, show, "added multicast MAC in virtio dump")
 
             show = self.vapi.cli(
                 f"show interface secondary-mac-address {interface_name}"
             )
-            self.assertIn(added_mac, show, "added MAC in interface secondary list")
-
-            removed_mac = added_mac
-            self.vapi.cli(
-                f"set interface secondary-mac-address {interface_name} "
-                f"{added_mac} del"
+            self.assertIn(
+                unicast_mac, show, "added unicast MAC in interface secondary list"
             )
-            added_mac = None
+            self.assertIn(
+                multicast_mac, show, "added multicast MAC in interface secondary list"
+            )
+
+            for candidate in list(added_macs):
+                self.vapi.cli(
+                    f"set interface secondary-mac-address {interface_name} "
+                    f"{candidate} del"
+                )
+                added_macs.remove(candidate)
 
             show = self.vapi.cli(f"show virtio pci {interface_name}")
-            self.assertNotIn(removed_mac, show, "removed MAC absent in virtio dump")
+            self.assertNotIn(
+                unicast_mac, show, "removed unicast MAC absent in virtio dump"
+            )
+            self.assertNotIn(
+                multicast_mac, show, "removed multicast MAC absent in virtio dump"
+            )
         finally:
-            if added_mac:
+            for candidate in list(added_macs):
                 try:
                     self.vapi.cli(
                         f"set interface secondary-mac-address {interface_name} "
-                        f"{added_mac} del"
+                        f"{candidate} del"
                     )
                 except CliFailedCommandError:
                     pass

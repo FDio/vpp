@@ -611,13 +611,16 @@ clib_error_t *
 virtio_pci_add_mac_filter (vlib_main_t *vm, virtio_if_t *vif, const u8 *mac)
 {
   virtio_ctrl_msg_t msg;
-  virtio_net_ctrl_mac_t *mac_table = (virtio_net_ctrl_mac_t *) msg.data;
   clib_error_t *error;
   virtio_net_ctrl_ack_t status = VIRTIO_NET_ERR;
-  u32 i, len;
+  u32 i, len, total_entries, unicast_entries = 0, multicast_entries = 0;
+  u32 entries_le;
+  u8 *data;
 
   STATIC_ASSERT (sizeof (virtio_net_ctrl_mac_t) <= sizeof (msg.data),
 		 "virtio_net_ctrl_mac_t size too big");
+  STATIC_ASSERT ((sizeof (virtio_net_ctrl_mac_t) + sizeof (u32)) <= sizeof (msg.data),
+		 "virtio MAC table payload size too big");
 
   error = virtio_pci_check_mac_filter_features (vif);
   if (error)
@@ -632,23 +635,65 @@ virtio_pci_add_mac_filter (vlib_main_t *vm, virtio_if_t *vif, const u8 *mac)
     if (ethernet_mac_address_equal (vif->mac_filter[i], mac))
       return clib_error_return (0, "MAC address already in filter list");
 
-  /* Build new MAC table with existing entries + new entry */
-  clib_memset (&msg, 0, sizeof (msg));
-  mac_table->entries = vif->mac_table_entries + 1;
-
-  /* Copy existing MACs */
+  /* Count unicast and multicast entries for the wire format */
   for (i = 0; i < vif->mac_table_entries; i++)
-    clib_memcpy (mac_table->macs[i], vif->mac_filter[i], sizeof (mac_table->macs[i]));
+    if (ethernet_address_cast (vif->mac_filter[i]))
+      multicast_entries++;
+    else
+      unicast_entries++;
 
-  /* Add new MAC */
-  clib_memcpy (mac_table->macs[vif->mac_table_entries], mac, sizeof (mac_table->macs[0]));
+  if (ethernet_address_cast (mac))
+    multicast_entries++;
+  else
+    unicast_entries++;
+
+  total_entries = vif->mac_table_entries + 1;
+
+  /* Build payload as <u32 n_unicast><unicast><u32 n_multicast><multicast> */
+  clib_memset (&msg, 0, sizeof (msg));
+  data = msg.data;
+
+  entries_le = clib_host_to_little_u32 (unicast_entries);
+  clib_memcpy (data, &entries_le, sizeof (entries_le));
+  data += sizeof (entries_le);
+
+  for (i = 0; i < vif->mac_table_entries; i++)
+    if (!ethernet_address_cast (vif->mac_filter[i]))
+      {
+	clib_memcpy (data, vif->mac_filter[i], sizeof (vif->mac_filter[i]));
+	data += sizeof (vif->mac_filter[i]);
+      }
+
+  if (!ethernet_address_cast (mac))
+    {
+      clib_memcpy (data, mac, sizeof (vif->mac_filter[0]));
+      data += sizeof (vif->mac_filter[0]);
+    }
+
+  entries_le = clib_host_to_little_u32 (multicast_entries);
+  clib_memcpy (data, &entries_le, sizeof (entries_le));
+  data += sizeof (entries_le);
+
+  for (i = 0; i < vif->mac_table_entries; i++)
+    if (ethernet_address_cast (vif->mac_filter[i]))
+      {
+	clib_memcpy (data, vif->mac_filter[i], sizeof (vif->mac_filter[i]));
+	data += sizeof (vif->mac_filter[i]);
+      }
+
+  if (ethernet_address_cast (mac))
+    {
+      clib_memcpy (data, mac, sizeof (vif->mac_filter[0]));
+      data += sizeof (vif->mac_filter[0]);
+    }
+
+  len = data - msg.data;
+  ASSERT (len == (2 * sizeof (u32) + total_entries * sizeof (vif->mac_filter[0])));
 
   /* Send control message */
   msg.ctrl.class = VIRTIO_NET_CTRL_MAC;
   msg.ctrl.cmd = VIRTIO_NET_CTRL_MAC_TABLE_SET;
   msg.status = VIRTIO_NET_ERR;
-  len = sizeof (mac_table->entries) + mac_table->entries * sizeof (mac_table->macs[0]);
-  len += sizeof (u32); /* empty multicast table count */
   status = virtio_pci_send_ctrl_msg (vm, vif, &msg, len);
 
   if (status != VIRTIO_NET_OK)
@@ -656,7 +701,7 @@ virtio_pci_add_mac_filter (vlib_main_t *vm, virtio_if_t *vif, const u8 *mac)
 
   /* Update local filter list */
   clib_memcpy_fast (vif->mac_filter[vif->mac_table_entries], mac, sizeof (vif->mac_filter[0]));
-  vif->mac_table_entries = mac_table->entries;
+  vif->mac_table_entries = total_entries;
   return 0;
 }
 
@@ -664,13 +709,16 @@ clib_error_t *
 virtio_pci_remove_mac_filter (vlib_main_t *vm, virtio_if_t *vif, const u8 *mac)
 {
   virtio_ctrl_msg_t msg;
-  virtio_net_ctrl_mac_t *mac_table = (virtio_net_ctrl_mac_t *) msg.data;
   clib_error_t *error;
   virtio_net_ctrl_ack_t status = VIRTIO_NET_ERR;
-  u32 i, j, len, remove_index = ~0U;
+  u32 i, len, remove_index = ~0U, total_entries, unicast_entries = 0, multicast_entries = 0;
+  u32 entries_le;
+  u8 *data;
 
   STATIC_ASSERT (sizeof (virtio_net_ctrl_mac_t) <= sizeof (msg.data),
 		 "virtio_net_ctrl_mac_t size too big");
+  STATIC_ASSERT ((sizeof (virtio_net_ctrl_mac_t) + sizeof (u32)) <= sizeof (msg.data),
+		 "virtio MAC table payload size too big");
 
   error = virtio_pci_check_mac_filter_features (vif);
   if (error)
@@ -687,21 +735,52 @@ virtio_pci_remove_mac_filter (vlib_main_t *vm, virtio_if_t *vif, const u8 *mac)
   if (remove_index == ~0U)
     return clib_error_return (0, "MAC address not in filter list");
 
-  /* Build new MAC table without the removed entry */
-  clib_memset (&msg, 0, sizeof (msg));
-  mac_table->entries = vif->mac_table_entries - 1;
-  j = 0;
-  /* Copy existing MACs excluding the one to remove */
+  total_entries = vif->mac_table_entries - 1;
+
+  /* Count unicast and multicast entries after remove */
   for (i = 0; i < vif->mac_table_entries; i++)
-    if (i != remove_index)
-      clib_memcpy (mac_table->macs[j++], vif->mac_filter[i], sizeof (mac_table->macs[0]));
+    {
+      if (i == remove_index)
+	continue;
+      if (ethernet_address_cast (vif->mac_filter[i]))
+	multicast_entries++;
+      else
+	unicast_entries++;
+    }
+
+  /* Build payload as <u32 n_unicast><unicast><u32 n_multicast><multicast> */
+  clib_memset (&msg, 0, sizeof (msg));
+  data = msg.data;
+
+  entries_le = clib_host_to_little_u32 (unicast_entries);
+  clib_memcpy (data, &entries_le, sizeof (entries_le));
+  data += sizeof (entries_le);
+
+  for (i = 0; i < vif->mac_table_entries; i++)
+    if (i != remove_index && !ethernet_address_cast (vif->mac_filter[i]))
+      {
+	clib_memcpy (data, vif->mac_filter[i], sizeof (vif->mac_filter[i]));
+	data += sizeof (vif->mac_filter[i]);
+      }
+
+  entries_le = clib_host_to_little_u32 (multicast_entries);
+  clib_memcpy (data, &entries_le, sizeof (entries_le));
+  data += sizeof (entries_le);
+
+  for (i = 0; i < vif->mac_table_entries; i++)
+    if (i != remove_index && ethernet_address_cast (vif->mac_filter[i]))
+      {
+	clib_memcpy (data, vif->mac_filter[i], sizeof (vif->mac_filter[i]));
+	data += sizeof (vif->mac_filter[i]);
+      }
+
+  len = data - msg.data;
+  ASSERT (len == (2 * sizeof (u32) + total_entries * sizeof (vif->mac_filter[0])));
 
   /* Send control message */
   msg.ctrl.class = VIRTIO_NET_CTRL_MAC;
   msg.ctrl.cmd = VIRTIO_NET_CTRL_MAC_TABLE_SET;
   msg.status = VIRTIO_NET_ERR;
-  len = sizeof (mac_table->entries) + mac_table->entries * sizeof (mac_table->macs[0]);
-  len += sizeof (u32); /* empty multicast table count */
   status = virtio_pci_send_ctrl_msg (vm, vif, &msg, len);
 
   if (status != VIRTIO_NET_OK)
@@ -713,7 +792,7 @@ virtio_pci_remove_mac_filter (vlib_main_t *vm, virtio_if_t *vif, const u8 *mac)
 
   /* Clear the last entry after shifting */
   clib_memset (vif->mac_filter[vif->mac_table_entries - 1], 0, sizeof (vif->mac_filter[0]));
-  vif->mac_table_entries = mac_table->entries;
+  vif->mac_table_entries = total_entries;
   return 0;
 }
 
