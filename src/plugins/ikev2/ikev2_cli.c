@@ -225,7 +225,6 @@ show_ikev2_sa_command_fn (vlib_main_t * vm,
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   ikev2_main_t *km = &ikev2_main;
-  ikev2_main_per_thread_data_t *tkm;
   ikev2_sa_t *sa;
   u64 rspi;
   u8 *s = 0;
@@ -247,9 +246,8 @@ show_ikev2_sa_command_fn (vlib_main_t * vm,
       unformat_free (line_input);
     }
 
-  vec_foreach (tkm, km->per_thread_data)
-  {
-    pool_foreach (sa, tkm->sas)  {
+  pool_foreach (sa, km->sas)
+    {
       if (show_one)
         {
           if (sa->rspi == rspi)
@@ -261,7 +259,6 @@ show_ikev2_sa_command_fn (vlib_main_t * vm,
       else
         s = format (s, "%U\n", format_ikev2_sa, sa, details);
     }
-  }
 
   vlib_cli_output (vm, "%v", s);
   vec_free (s);

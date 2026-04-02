@@ -34,19 +34,6 @@ extern ikev2_main_t ikev2_main;
 
 #define IKEV2_MAX_DATA_LEN (1 << 10)
 
-static u32
-ikev2_encode_sa_index (u32 sai, u32 ti)
-{
-  return (ti << 16) | sai;
-}
-
-static void
-ikev2_decode_sa_index (u32 api_sai, u32 * sai, u32 * ti)
-{
-  *sai = api_sai & 0xffff;
-  *ti = api_sai >> 16;
-}
-
 static void
 cp_ike_transforms (vl_api_ikev2_ike_transforms_t * vl_api_ts,
 		   ikev2_transforms_set * ts)
@@ -289,18 +276,13 @@ static void
 vl_api_ikev2_sa_dump_t_handler (vl_api_ikev2_sa_dump_t * mp)
 {
   ikev2_main_t *km = &ikev2_main;
-  ikev2_main_per_thread_data_t *tkm;
   ikev2_sa_t *sa;
 
-  vec_foreach (tkm, km->per_thread_data)
-  {
-    pool_foreach (sa, tkm->sas)
-     {
-      u32 api_sa_index = ikev2_encode_sa_index (sa - tkm->sas,
-                                              tkm - km->per_thread_data);
+  pool_foreach (sa, km->sas)
+    {
+      u32 api_sa_index = sa - km->sas;
       send_sa (sa, mp, api_sa_index);
     }
-  }
 }
 
 static void
@@ -380,17 +362,12 @@ static void
 vl_api_ikev2_sa_v2_dump_t_handler (vl_api_ikev2_sa_v2_dump_t *mp)
 {
   ikev2_main_t *km = &ikev2_main;
-  ikev2_main_per_thread_data_t *tkm;
   ikev2_sa_t *sa;
 
-  vec_foreach (tkm, km->per_thread_data)
+  pool_foreach (sa, km->sas)
     {
-      pool_foreach (sa, tkm->sas)
-	{
-	  u32 api_sa_index =
-	    ikev2_encode_sa_index (sa - tkm->sas, tkm - km->per_thread_data);
-	  send_sa_v2 (sa, mp, api_sa_index);
-	}
+      u32 api_sa_index = sa - km->sas;
+      send_sa_v2 (sa, mp, api_sa_index);
     }
 }
 
@@ -474,17 +451,12 @@ static void
 vl_api_ikev2_sa_v3_dump_t_handler (vl_api_ikev2_sa_v3_dump_t *mp)
 {
   ikev2_main_t *km = &ikev2_main;
-  ikev2_main_per_thread_data_t *tkm;
   ikev2_sa_t *sa;
 
-  vec_foreach (tkm, km->per_thread_data)
+  pool_foreach (sa, km->sas)
     {
-      pool_foreach (sa, tkm->sas)
-	{
-	  u32 api_sa_index =
-	    ikev2_encode_sa_index (sa - tkm->sas, tkm - km->per_thread_data);
-	  send_sa_v3 (sa, mp, api_sa_index);
-	}
+      u32 api_sa_index = sa - km->sas;
+      send_sa_v3 (sa, mp, api_sa_index);
     }
 }
 
@@ -547,28 +519,19 @@ static void
 vl_api_ikev2_child_sa_dump_t_handler (vl_api_ikev2_child_sa_dump_t * mp)
 {
   ikev2_main_t *im = &ikev2_main;
-  ikev2_main_per_thread_data_t *tkm;
   ikev2_sa_t *sa;
   ikev2_child_sa_t *child;
-  u32 sai = ~0, ti = ~0;
+  u32 sai = clib_net_to_host_u32 (mp->sa_index);
 
-  ikev2_decode_sa_index (clib_net_to_host_u32 (mp->sa_index), &sai, &ti);
-
-  if (vec_len (im->per_thread_data) <= ti)
+  if (pool_len (im->sas) <= sai || pool_is_free_index (im->sas, sai))
     return;
 
-  tkm = vec_elt_at_index (im->per_thread_data, ti);
-
-  if (pool_len (tkm->sas) <= sai || pool_is_free_index (tkm->sas, sai))
-    return;
-
-  sa = pool_elt_at_index (tkm->sas, sai);
+  sa = pool_elt_at_index (im->sas, sai);
 
   vec_foreach (child, sa->childs)
   {
-    u32 child_sa_index = child - sa->childs;
-    sai = ikev2_encode_sa_index (sai, tkm - im->per_thread_data);
-    send_child_sa (child, mp, child_sa_index, sai);
+      u32 child_sa_index = child - sa->childs;
+      send_child_sa (child, mp, child_sa_index, sai);
   }
 }
 
@@ -627,22 +590,14 @@ static void
 vl_api_ikev2_child_sa_v2_dump_t_handler (vl_api_ikev2_child_sa_v2_dump_t *mp)
 {
   ikev2_main_t *im = &ikev2_main;
-  ikev2_main_per_thread_data_t *tkm;
   ikev2_sa_t *sa;
   ikev2_child_sa_t *child;
-  u32 sai = ~0, ti = ~0;
+  u32 sai = clib_net_to_host_u32 (mp->sa_index);
 
-  ikev2_decode_sa_index (clib_net_to_host_u32 (mp->sa_index), &sai, &ti);
+  if (pool_len (im->sas) <= sai || pool_is_free_index (im->sas, sai))
+  return;
 
-  if (vec_len (im->per_thread_data) <= ti)
-    return;
-
-  tkm = vec_elt_at_index (im->per_thread_data, ti);
-
-  if (pool_len (tkm->sas) <= sai || pool_is_free_index (tkm->sas, sai))
-    return;
-
-  sa = pool_elt_at_index (tkm->sas, sai);
+  sa = pool_elt_at_index (im->sas, sai);
 
   vec_foreach (child, sa->childs)
     {
@@ -656,25 +611,17 @@ static void
   (vl_api_ikev2_traffic_selector_dump_t * mp)
 {
   ikev2_main_t *im = &ikev2_main;
-  ikev2_main_per_thread_data_t *tkm;
   ikev2_sa_t *sa;
   ikev2_child_sa_t *child;
   ikev2_ts_t *ts;
-  u32 sai = ~0, ti = ~0;
-
   u32 api_sa_index = clib_net_to_host_u32 (mp->sa_index);
   u32 child_sa_index = clib_net_to_host_u32 (mp->child_sa_index);
-  ikev2_decode_sa_index (api_sa_index, &sai, &ti);
+  u32 sai = api_sa_index;
 
-  if (vec_len (im->per_thread_data) <= ti)
+  if (pool_len (im->sas) <= sai || pool_is_free_index (im->sas, sai))
     return;
 
-  tkm = vec_elt_at_index (im->per_thread_data, ti);
-
-  if (pool_len (tkm->sas) <= sai || pool_is_free_index (tkm->sas, sai))
-    return;
-
-  sa = pool_elt_at_index (tkm->sas, sai);
+  sa = pool_elt_at_index (im->sas, sai);
 
   if (vec_len (sa->childs) <= child_sa_index)
     return;
@@ -700,21 +647,13 @@ static void
 vl_api_ikev2_nonce_get_t_handler (vl_api_ikev2_nonce_get_t * mp)
 {
   ikev2_main_t *im = &ikev2_main;
-  ikev2_main_per_thread_data_t *tkm;
   ikev2_sa_t *sa;
-  u32 sai = ~0, ti = ~0;
+  u32 sai = clib_net_to_host_u32 (mp->sa_index);
 
-  ikev2_decode_sa_index (clib_net_to_host_u32 (mp->sa_index), &sai, &ti);
+  if (pool_len (im->sas) <= sai || pool_is_free_index (im->sas, sai))
+  return;
 
-  if (vec_len (im->per_thread_data) <= ti)
-    return;
-
-  tkm = vec_elt_at_index (im->per_thread_data, ti);
-
-  if (pool_len (tkm->sas) <= sai || pool_is_free_index (tkm->sas, sai))
-    return;
-
-  sa = pool_elt_at_index (tkm->sas, sai);
+  sa = pool_elt_at_index (im->sas, sai);
 
   u8 *nonce = mp->is_initiator ? sa->i_nonce : sa->r_nonce;
   vl_api_ikev2_nonce_get_reply_t *rmp = 0;

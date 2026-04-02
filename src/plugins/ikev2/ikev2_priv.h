@@ -346,25 +346,6 @@ typedef struct
   f64 auth_timestamp;
 } ikev2_sa_t;
 
-
-typedef struct
-{
-  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-
-  /* pool of IKEv2 Security Associations */
-  ikev2_sa_t *sas;
-
-  /* hash */
-  uword *sa_by_rspi;
-
-  EVP_CIPHER_CTX *evp_ctx;
-  HMAC_CTX *hmac_ctx;
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-  HMAC_CTX _hmac_ctx;
-  EVP_CIPHER_CTX _evp_ctx;
-#endif
-} ikev2_main_per_thread_data_t;
-
 typedef struct
 {
   /* pool of IKEv2 profiles */
@@ -379,16 +360,22 @@ typedef struct
   /* local private key */
   EVP_PKEY *pkey;
 
-  /* convenience */
-  vlib_main_t *vlib_main;
-  vnet_main_t *vnet_main;
-
   /* pool of IKEv2 Security Associations created in initiator mode */
   ikev2_sa_t *sais;
   /* hash */
   uword *sa_by_ispi;
 
-  ikev2_main_per_thread_data_t *per_thread_data;
+  /* pool of IKEv2 Security Associations */
+  ikev2_sa_t *sas;
+  /* hash */
+  uword *sa_by_rspi;
+
+  EVP_CIPHER_CTX *evp_ctx;
+  HMAC_CTX *hmac_ctx;
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+  HMAC_CTX _hmac_ctx;
+  EVP_CIPHER_CTX _evp_ctx;
+#endif
 
   /* interface indices managed by IKE */
   uword *sw_if_indices;
@@ -423,8 +410,6 @@ typedef struct
   /* punt handle for IPsec NATT IPSEC_PUNT_IP4_SPI_UDP_0 reason */
   vlib_punt_hdl_t punt_hdl;
 
-  /** Worker handoff */
-  u32 handoff_thread;
   u32 handoff_ip4_fq_index;
   u32 handoff_ip4_natt_fq_index;
   u32 handoff_ip6_fq_index;
@@ -443,19 +428,13 @@ u8 *ikev2_calc_prfplus (ikev2_sa_transform_t * tr, u8 * key, u8 * seed,
 			int len);
 v8 *ikev2_calc_integr (ikev2_sa_transform_t * tr, v8 * key, u8 * data,
 		       int len);
-int ikev2_decrypt_data (ikev2_main_per_thread_data_t * ptd, ikev2_sa_t * sa,
-			ikev2_sa_transform_t * tr_encr, u8 * data, int len,
-			u32 * out_len);
-int ikev2_encrypt_data (ikev2_main_per_thread_data_t * ptd, ikev2_sa_t * sa,
-			ikev2_sa_transform_t * tr_encr, v8 * src, u8 * dst);
-int ikev2_encrypt_aead_data (ikev2_main_per_thread_data_t * ptd,
-			     ikev2_sa_t * sa, ikev2_sa_transform_t * tr_encr,
-			     v8 * src, u8 * dst, u8 * aad,
-			     u32 aad_len, u8 * tag);
-int ikev2_decrypt_aead_data (ikev2_main_per_thread_data_t * ptd,
-			     ikev2_sa_t * sa, ikev2_sa_transform_t * tr_encr,
-			     u8 * data, int data_len, u8 * aad, u32 aad_len,
-			     u8 * tag, u32 * out_len);
+int ikev2_decrypt_data (ikev2_sa_t *sa, ikev2_sa_transform_t *tr_encr, u8 *data, int len,
+			u32 *out_len);
+int ikev2_encrypt_data (ikev2_sa_t *sa, ikev2_sa_transform_t *tr_encr, v8 *src, u8 *dst);
+int ikev2_encrypt_aead_data (ikev2_sa_t *sa, ikev2_sa_transform_t *tr_encr, v8 *src, u8 *dst,
+			     u8 *aad, u32 aad_len, u8 *tag);
+int ikev2_decrypt_aead_data (ikev2_sa_t *sa, ikev2_sa_transform_t *tr_encr, u8 *data, int data_len,
+			     u8 *aad, u32 aad_len, u8 *tag, u32 *out_len);
 void ikev2_generate_dh (ikev2_sa_t * sa, ikev2_sa_transform_t * t);
 void ikev2_complete_dh (ikev2_sa_t * sa, ikev2_sa_transform_t * t);
 int ikev2_verify_sign (EVP_PKEY * pkey, u8 * sigbuf, u8 * data);
@@ -505,10 +484,4 @@ u8 *ikev2_find_ike_notify_payload (ike_header_t * ike, u32 msg_type);
 void ikev2_disable_dpd (void);
 clib_error_t *ikev2_profile_natt_disable (u8 * name);
 
-static_always_inline ikev2_main_per_thread_data_t *
-ikev2_get_per_thread_data ()
-{
-  clib_thread_index_t thread_index = vlib_get_thread_index ();
-  return vec_elt_at_index (ikev2_main.per_thread_data, thread_index);
-}
 #endif /* __included_ikev2_priv_h__ */
