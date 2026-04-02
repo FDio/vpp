@@ -13,7 +13,7 @@ func init() {
 		EchoBuiltinPeriodicReportUDPTest, EchoBuiltinUdpTest, EchoBuiltinHttpTest, EchoBuiltinHttpsTest, EchoBuiltinHttp2Test,
 		EchoBuiltinHttp3Test, EchoBuiltinHttpTestBytesTest, EchoBuiltinHttp2ConnectTcpTest, EchoBuiltinHttp3ConnectTcpTest,
 		EchoBuiltinHttp2ConnectUdpTest, EchoBuiltinHttp3ConnectUdpTest)
-	RegisterEchoMWTests(TcpWithLossMWTest)
+	RegisterEchoMWTests(TcpWithLossMWTest, EchoBuiltinHttp1CpsMWTest, EchoBuiltinHttp2CpsMWTest, EchoBuiltinHttp3CpsMWTest)
 	RegisterSoloEcho6Tests(TcpWithLoss6Test)
 }
 
@@ -480,4 +480,60 @@ func EchoBuiltinHttp3ConnectUdpTest(s *EchoSuite) {
 	Log(o)
 	AssertNotContains(o, "failed:")
 	httpTunnelVerifyPeriodicStats(o)
+}
+
+func EchoBuiltinHttp1CpsMWTest(s *EchoSuite) {
+	var memoryConfig Stanza
+	memoryConfig.NewStanza("memory").Append("main-heap-size 2G").Close()
+	s.CpusPerVppContainer = 3
+	s.SetupTest(memoryConfig)
+	serverVpp := s.Containers.ServerVpp.VppInstance
+	clientVpp := s.Containers.ClientVpp.VppInstance
+
+	Log(serverVpp.Vppctl("test echo server " +
+		" uri https://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1))
+
+	o := clientVpp.Vppctl("test echo client nclients 4000 bytes 64 syn-timeout 40" +
+		" uri https://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1)
+	Log(o)
+	Log(serverVpp.Vppctl("show http stats"))
+	Log(clientVpp.Vppctl("show http stats"))
+}
+
+func EchoBuiltinHttp2CpsMWTest(s *EchoSuite) {
+	var memoryConfig Stanza
+	memoryConfig.NewStanza("memory").Append("main-heap-size 2G").Close()
+	s.CpusPerVppContainer = 3
+	s.SetupTest(memoryConfig)
+	serverVpp := s.Containers.ServerVpp.VppInstance
+	clientVpp := s.Containers.ClientVpp.VppInstance
+
+	Log(serverVpp.Vppctl("test echo server " +
+		" uri https://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1))
+
+	o := clientVpp.Vppctl("test echo client http2 nclients 4000 bytes 64 syn-timeout 40" +
+		" uri https://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1)
+	Log(o)
+	Log(serverVpp.Vppctl("show http stats"))
+	Log(clientVpp.Vppctl("show http stats"))
+}
+
+func EchoBuiltinHttp3CpsMWTest(s *EchoSuite) {
+	var quicConfig Stanza
+	quicConfig.NewStanza("quic").Append("conn-timeout 60000").Close()
+	var memoryConfig Stanza
+	memoryConfig.NewStanza("memory").Append("main-heap-size 2G").Close()
+	s.CpusPerVppContainer = 3
+	s.SetupTest(quicConfig, memoryConfig)
+	serverVpp := s.Containers.ServerVpp.VppInstance
+	clientVpp := s.Containers.ClientVpp.VppInstance
+
+	Log(serverVpp.Vppctl("test echo server " +
+		" uri https://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1))
+
+	o := clientVpp.Vppctl("test echo client http3 nclients 1000 bytes 64 syn-timeout 40" +
+		" uri https://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1)
+	Log(o)
+	Log(serverVpp.Vppctl("show http stats"))
+	Log(clientVpp.Vppctl("show http stats"))
 }

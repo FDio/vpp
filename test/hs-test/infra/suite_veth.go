@@ -148,8 +148,17 @@ func (s *VethsSuite) SetupSuite() {
 	s.Ports.Port2 = s.GeneratePort()
 }
 
-func (s *VethsSuite) SetupTest() {
+func (s *VethsSuite) SetupTest(startupConf ...Stanza) {
 	s.HstSuite.SetupTest()
+
+	var customStartupConf1 Stanza
+	var customStartupConf2 Stanza
+	if len(startupConf) > 0 {
+		customStartupConf1 = startupConf[0]
+		if len(startupConf) > 1 {
+			customStartupConf2 = startupConf[1]
+		}
+	}
 
 	// Setup test conditions
 	var sessionConfig Stanza
@@ -167,14 +176,14 @@ func (s *VethsSuite) SetupTest() {
 	}
 	// For http/2 continuation frame test between http tps and http client
 	var httpConfig Stanza
-	httpConfig.NewStanza("http").NewStanza("http2").Append("max-header-list-size 65536")
+	httpConfig.NewStanza("http").NewStanza("http2").Append("max-header-list-size 65536").Close().Close()
 
 	// ... For server
-	serverVpp, err := s.Containers.ServerVpp.newVppInstance(s.Containers.ServerVpp.AllocatedCpus, sessionConfig)
+	serverVpp, err := s.Containers.ServerVpp.newVppInstance(s.Containers.ServerVpp.AllocatedCpus, sessionConfig, customStartupConf1, customStartupConf2)
 	AssertNotNil(serverVpp, fmt.Sprint(err))
 
 	// ... For client
-	clientVpp, err := s.Containers.ClientVpp.newVppInstance(s.Containers.ClientVpp.AllocatedCpus, sessionConfig, httpConfig)
+	clientVpp, err := s.Containers.ClientVpp.newVppInstance(s.Containers.ClientVpp.AllocatedCpus, sessionConfig, httpConfig, customStartupConf1, customStartupConf2)
 	AssertNotNil(clientVpp, fmt.Sprint(err))
 
 	s.SetupServerVpp()
