@@ -18,6 +18,23 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "ed456030_16f74671",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 31
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-04-02T16:33:05Z",
+      "side": 1,
+      "message": "_",
+      "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "b31c5906_38e71e81",
@@ -84,6 +101,24 @@
       "side": 1,
       "message": "this already always uses CNAT_FIB_TABLE, doesn\u0027t it make more sense to have it as_default as well, or else let\u0027s have the fib table configurable ?",
       "parentUuid": "50803d1d_49135825",
+      "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e68fb99a_d2975993",
+        "filename": "src/plugins/cnat/cnat_api.c",
+        "patchSetId": 31
+      },
+      "lineNbr": 385,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-04-02T16:33:05Z",
+      "side": 1,
+      "message": "Let\u0027s add a v2 api with everything configurable.",
+      "parentUuid": "7aa6e53f_dd719c80",
       "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -193,6 +228,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "0ce643ae_8230f483",
+        "filename": "src/plugins/cnat/cnat_node.h",
+        "patchSetId": 31
+      },
+      "lineNbr": 890,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-04-02T16:33:05Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "f26e9cc1_20114d6f",
+      "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "1c2ed655_95bdff7f",
@@ -228,6 +281,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "64ebf2fa_e924a331",
+        "filename": "src/plugins/cnat/cnat_node_feature.c",
+        "patchSetId": 31
+      },
+      "lineNbr": 93,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-04-02T16:33:05Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "2892eca1_7c091b8e",
+      "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "99124ee7_45e8f9c3",
@@ -259,6 +330,24 @@
       "side": 1,
       "message": "But here the purpose is to use the rewrite 5tuple, or do you mean we get this information from the buffer ?",
       "parentUuid": "99124ee7_45e8f9c3",
+      "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e614f888_1c1fc567",
+        "filename": "src/plugins/cnat/cnat_node_feature.c",
+        "patchSetId": 31
+      },
+      "lineNbr": 381,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-04-02T16:33:05Z",
+      "side": 1,
+      "message": "We should be good as this is the forward path, but that\u0027s worth a comment.",
+      "parentUuid": "eb90a5b3_d376f277",
       "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -349,6 +438,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "726393ec_0393452c",
+        "filename": "src/plugins/cnat/cnat_snat_policy.c",
+        "patchSetId": 31
+      },
+      "lineNbr": 547,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-04-02T16:33:05Z",
+      "side": 1,
+      "message": "Actually we dont\u0027 need translation flags here, we can use the snat_policy_no_client flag",
+      "parentUuid": "04fb9042_e6a5c9b7",
+      "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "3923ee39_f1601bed",
@@ -415,6 +522,24 @@
       "side": 1,
       "message": "we don\u0027t need a client at all in that case ?",
       "parentUuid": "e7fd6ac6_9c24494f",
+      "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c423180b_911aa986",
+        "filename": "src/plugins/cnat/cnat_snat_policy.c",
+        "patchSetId": 31
+      },
+      "lineNbr": 663,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-04-02T16:33:05Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "603904b7_34536ad5",
       "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -559,6 +684,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "ee4bb5c1_a3951f2f",
+        "filename": "src/plugins/cnat/cnat_snat_policy.h",
+        "patchSetId": 31
+      },
+      "lineNbr": 70,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-04-02T16:33:05Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "cf3c72fe_35af03f2",
+      "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "fb4cca52_a84d3841",
@@ -594,6 +737,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "77c48bd7_17e3ca8c",
+        "filename": "src/plugins/cnat/cnat_src_policy.c",
+        "patchSetId": 31
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-04-02T16:33:05Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5e44455d_ccb34322",
+      "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "0d751b66_17cc0386",
@@ -607,6 +768,24 @@
       "writtenOn": "2026-04-01T12:46:23Z",
       "side": 1,
       "message": "We should `vec_validate_init_empty_aligned` to ensure we have zeroes where we do not have snat configs",
+      "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ea50ff1c_d7a2dedf",
+        "filename": "src/plugins/cnat/cnat_src_policy.c",
+        "patchSetId": 31
+      },
+      "lineNbr": 106,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-04-02T16:33:05Z",
+      "side": 1,
+      "message": "Looking at the code, I think vec_validate_aligned would zero the value per default.",
+      "parentUuid": "0d751b66_17cc0386",
       "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -659,6 +838,24 @@
       "writtenOn": "2026-04-01T12:46:23Z",
       "side": 1,
       "message": "Can we maybe also do the init of `cspm-\u003esrc_ports` at this point ?",
+      "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4bd1527a_600e6f97",
+        "filename": "src/plugins/cnat/cnat_types.c",
+        "patchSetId": 31
+      },
+      "lineNbr": 212,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-04-02T16:33:05Z",
+      "side": 1,
+      "message": "I think that we don\u0027t necessarily want to initialize an snat allocator for every fib at the fib creation, unlike sessions_per_vrf_ip4/6 which is needed as soon as cnat is init.",
+      "parentUuid": "1478220b_5ad97c9d",
       "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
