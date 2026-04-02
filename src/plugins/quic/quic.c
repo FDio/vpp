@@ -431,10 +431,7 @@ quic_udp_session_connected_callback (u32 quic_app_index, u32 ctx_index,
     {
       app_wrk = app_worker_get_if_valid (ctx->parent_app_wrk_id);
       if (app_wrk)
-	{
-	  u32 api_context = ctx->c_s_index;
-	  app_worker_connect_notify (app_wrk, 0, err, api_context);
-	}
+	app_worker_connect_notify (app_wrk, 0, err, ctx->client_opaque);
       return 0;
     }
 
