@@ -16,6 +16,24 @@
       "message": "I think the spec also requires VIRTIO_NET_F_CTRL_RX (see 5.1.6.5.2.2 Driver Requirements: Setting MAC Address Filtering)",
       "revId": "fda82e789e4a744f2f05f075d308005c3a243c33",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "fc484073_73785dad",
+        "filename": "src/vnet/devices/virtio/pci.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 604,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-04-02T18:22:33Z",
+      "side": 1,
+      "message": "Yes, thanks. Fixed in the latest commit.",
+      "parentUuid": "d83c95f6_203e7a58",
+      "revId": "fda82e789e4a744f2f05f075d308005c3a243c33",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
