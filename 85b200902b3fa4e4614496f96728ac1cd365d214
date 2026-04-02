@@ -71,6 +71,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "dc626362_3972bf91",
+        "filename": "src/vnet/sfdp/timer/timer.h",
+        "patchSetId": 18
+      },
+      "lineNbr": 128,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-04-02T21:43:04Z",
+      "side": 1,
+      "message": "The interrupt on ticks \u003d\u003d 0 was intentionally removed following Hadi\u0027s comment: setting an interrupt on every zero-timeout in sfdp_session_timer_update would fire on every TCP teardown with l4-lifecycle enabled, which is too expensive. The immediate interrupt now only lives in sfdp_expire_session_now. Also removed the unused tw parameter from sfdp_session_timer_update and updated all callers.",
+      "parentUuid": "1a138a30_1f3f936d",
+      "revId": "85b200902b3fa4e4614496f96728ac1cd365d214",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "c5ac5f6f_1a6068c4",

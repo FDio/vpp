@@ -1,6 +1,23 @@
 {
   "comments": [
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "cd399d78_b7d801d1",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 25
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-04-02T21:43:04Z",
+      "side": 1,
+      "message": "Comments addressed",
+      "revId": "dcbe4331471e35b66cf1af12d58b5b5151caf99c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "2e3f481c_3c0c8e7e",
@@ -14,6 +31,24 @@
       "writtenOn": "2026-04-02T08:48:10Z",
       "side": 1,
       "message": "looks like we lost the call to sfdp_session_timer_update() similarly to sfdp_session_timer_update_unlikely_past() ?",
+      "revId": "dcbe4331471e35b66cf1af12d58b5b5151caf99c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1f492732_81503a3c",
+        "filename": "src/vnet/sfdp/timer/timer.h",
+        "patchSetId": 25
+      },
+      "lineNbr": 140,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-04-02T21:43:04Z",
+      "side": 1,
+      "message": "You\u0027re right, same issue as _unlikely_past. Applied the same fix — restored the call to sfdp_session_timer_update() on the last line.",
+      "parentUuid": "2e3f481c_3c0c8e7e",
       "revId": "dcbe4331471e35b66cf1af12d58b5b5151caf99c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -35,6 +70,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "7688c425_03588bc0",
+        "filename": "test/test_sfdp.py",
+        "patchSetId": 25
+      },
+      "lineNbr": 917,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-04-02T21:43:04Z",
+      "side": 1,
+      "message": "Agreed there is some overlap. However merging the multi-worker tests into test_sfdp.py would require restructuring the test class hierarchy (vpp_worker_count, extra_vpp_config) and is non-trivial. I\u0027d prefer to keep it as a follow-up to avoid growing the scope of this patch further. Happy to create a separate Gerrit change for this if you\u0027d like.",
+      "parentUuid": "9adb6b97_e9499a91",
+      "revId": "dcbe4331471e35b66cf1af12d58b5b5151caf99c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "9b33596a_e95d405f",
@@ -48,6 +101,24 @@
       "writtenOn": "2026-04-02T16:50:00Z",
       "side": 1,
       "message": "The below comment is most probably incorrect: vlib_get_main() calls vlib_get_main_by_index(vlib_get_thread_index()), which returns the main of the appropriate worker thread, and not always thread 0.\n\nAlso, didn\u0027t we remove the interrupt in sfdp_session_timer_update in this patch ?",
+      "revId": "dcbe4331471e35b66cf1af12d58b5b5151caf99c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e2633e93_bf831d82",
+        "filename": "test/test_sfdp_multiworker.py",
+        "patchSetId": 25
+      },
+      "lineNbr": 13,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-04-02T21:43:04Z",
+      "side": 1,
+      "message": "You\u0027re right — the interrupt is in sfdp_expire_session_now, not in sfdp_session_timer_update. The file-level comment has been updated to reflect this accurately, and kill operations now use the API directly.",
+      "parentUuid": "9b33596a_e95d405f",
       "revId": "dcbe4331471e35b66cf1af12d58b5b5151caf99c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -69,6 +140,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "80d6101a_a12a2a35",
+        "filename": "test/test_sfdp_multiworker.py",
+        "patchSetId": 25
+      },
+      "lineNbr": 70,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-04-02T21:43:04Z",
+      "side": 1,
+      "message": "Done, switched to sfdp_kill_session API throughout.",
+      "parentUuid": "da49cd9f_a01e3e0e",
+      "revId": "dcbe4331471e35b66cf1af12d58b5b5151caf99c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "e13d5d76_3169c992",
@@ -82,6 +171,24 @@
       "writtenOn": "2026-04-02T16:50:00Z",
       "side": 1,
       "message": "Which interrupt is specified here ? And I think the comment on broken behavior is not accurate here i.e. vlib_get_main() gets the main of the current thread and not thread 0",
+      "revId": "dcbe4331471e35b66cf1af12d58b5b5151caf99c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a70866cc_f5c7fab6",
+        "filename": "test/test_sfdp_multiworker.py",
+        "patchSetId": 25
+      },
+      "lineNbr": 96,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-04-02T21:43:04Z",
+      "side": 1,
+      "message": "Fixed — the comments now correctly describe the bug: sfdp_expire_session_now is called from the API/CLI handler (main thread), so vlib_get_main() returns thread 0\u0027s vm, not the owning worker\u0027s vm.",
+      "parentUuid": "e13d5d76_3169c992",
       "revId": "dcbe4331471e35b66cf1af12d58b5b5151caf99c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -103,6 +210,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "a14625be_d8ccf5c4",
+        "filename": "test/test_sfdp_multiworker.py",
+        "patchSetId": 25
+      },
+      "lineNbr": 120,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-04-02T21:43:04Z",
+      "side": 1,
+      "message": "Fixed — the comments now correctly describe the bug: sfdp_expire_session_now is called from the API/CLI handler (main thread), so vlib_get_main() returns thread 0\u0027s vm, not the owning worker\u0027s vm.",
+      "parentUuid": "b0b700d0_ceb78686",
+      "revId": "dcbe4331471e35b66cf1af12d58b5b5151caf99c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "9a0bbe26_03c62009",
@@ -116,6 +241,24 @@
       "writtenOn": "2026-04-02T16:50:00Z",
       "side": 1,
       "message": "Please replace with an API call",
+      "revId": "dcbe4331471e35b66cf1af12d58b5b5151caf99c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "873f4a13_47c9ffbf",
+        "filename": "test/test_sfdp_multiworker.py",
+        "patchSetId": 25
+      },
+      "lineNbr": 130,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-04-02T21:43:04Z",
+      "side": 1,
+      "message": "Done, replaced with sfdp_kill_session API calls.",
+      "parentUuid": "9a0bbe26_03c62009",
       "revId": "dcbe4331471e35b66cf1af12d58b5b5151caf99c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -137,6 +280,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "bfc49cda_71a725cf",
+        "filename": "test/test_sfdp_multiworker.py",
+        "patchSetId": 25
+      },
+      "lineNbr": 169,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-04-02T21:43:04Z",
+      "side": 1,
+      "message": "Done, replaced with sfdp_kill_session API calls.",
+      "parentUuid": "da407bf2_c5ef3ff4",
+      "revId": "dcbe4331471e35b66cf1af12d58b5b5151caf99c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "c92b187f_d9ebbfd0",
@@ -150,6 +311,24 @@
       "writtenOn": "2026-04-02T16:50:00Z",
       "side": 1,
       "message": "Please use the API call for sfdp_kill_session here",
+      "revId": "dcbe4331471e35b66cf1af12d58b5b5151caf99c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "47cd903b_94b17cc2",
+        "filename": "test/test_sfdp_multiworker.py",
+        "patchSetId": 25
+      },
+      "lineNbr": 201,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-04-02T21:43:04Z",
+      "side": 1,
+      "message": "Done, replaced with sfdp_kill_session API calls.",
+      "parentUuid": "c92b187f_d9ebbfd0",
       "revId": "dcbe4331471e35b66cf1af12d58b5b5151caf99c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
