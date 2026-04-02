@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "68506380_e56dcc8d",
+        "filename": "src/plugins/cnat/cnat.api",
+        "patchSetId": 31
+      },
+      "lineNbr": 152,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-04-02T12:21:10Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "b31c5906_38e71e81",
+      "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "50803d1d_49135825",
@@ -48,6 +66,24 @@
       "writtenOn": "2026-04-01T12:46:23Z",
       "side": 1,
       "message": "let\u0027s not have `CNAT_SNAT_POLICY_USE_AS_DEFAULT` always on",
+      "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7aa6e53f_dd719c80",
+        "filename": "src/plugins/cnat/cnat_api.c",
+        "patchSetId": 31
+      },
+      "lineNbr": 385,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-04-02T12:21:10Z",
+      "side": 1,
+      "message": "this already always uses CNAT_FIB_TABLE, doesn\u0027t it make more sense to have it as_default as well, or else let\u0027s have the fib table configurable ?",
+      "parentUuid": "50803d1d_49135825",
       "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -69,6 +105,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "b8f75983_79e87cc5",
+        "filename": "src/plugins/cnat/cnat_node.h",
+        "patchSetId": 31
+      },
+      "lineNbr": 842,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-04-02T12:21:10Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "e111854d_6bde1006",
+      "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "dc86764a_ef72d0f6",
@@ -82,6 +136,24 @@
       "writtenOn": "2026-04-01T12:46:23Z",
       "side": 1,
       "message": "`index_t trk_index` no ?",
+      "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2d8ebaa3_bd67c89b",
+        "filename": "src/plugins/cnat/cnat_node.h",
+        "patchSetId": 31
+      },
+      "lineNbr": 871,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-04-02T12:21:10Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "dc86764a_ef72d0f6",
       "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -105,6 +177,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "f26e9cc1_20114d6f",
+        "filename": "src/plugins/cnat/cnat_node.h",
+        "patchSetId": 31
+      },
+      "lineNbr": 890,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-04-02T12:21:10Z",
+      "side": 1,
+      "message": "The index is necessary because cnat_timestamp_t stores ts_trk_index to identify which backend is handling a session. And I think indices are a correct abstraction, because they\u0027re stable across potential pool reallocations.",
+      "parentUuid": "b550a8f6_e7e86654",
+      "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "1c2ed655_95bdff7f",
         "filename": "src/plugins/cnat/cnat_node_feature.c",
         "patchSetId": 31
@@ -122,6 +212,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "2892eca1_7c091b8e",
+        "filename": "src/plugins/cnat/cnat_node_feature.c",
+        "patchSetId": 31
+      },
+      "lineNbr": 93,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-04-02T12:21:10Z",
+      "side": 1,
+      "message": "Thanks for catching",
+      "parentUuid": "1c2ed655_95bdff7f",
+      "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "99124ee7_45e8f9c3",
         "filename": "src/plugins/cnat/cnat_node_feature.c",
         "patchSetId": 31
@@ -133,6 +241,24 @@
       "writtenOn": "2026-04-01T12:46:23Z",
       "side": 1,
       "message": "Unfortunately, it\u0027s a bit more than just ICMP:\nthe check should be\n```\nif (iproto \u003d\u003d ICMP \u0026\u0026 icmp_type_is_echo(pkt) || \n(icmp_type_is_error_message(pkt) \u0026\u0026 icmp_type_is_echo(inner)))\n```\n\nMaybe we can do a helper function for that",
+      "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "eb90a5b3_d376f277",
+        "filename": "src/plugins/cnat/cnat_node_feature.c",
+        "patchSetId": 31
+      },
+      "lineNbr": 381,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-04-02T12:21:10Z",
+      "side": 1,
+      "message": "But here the purpose is to use the rewrite 5tuple, or do you mean we get this information from the buffer ?",
+      "parentUuid": "99124ee7_45e8f9c3",
       "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -205,6 +331,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "04fb9042_e6a5c9b7",
+        "filename": "src/plugins/cnat/cnat_snat_policy.c",
+        "patchSetId": 31
+      },
+      "lineNbr": 547,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-04-02T12:21:10Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "54cdeadb_e5a2f767",
+      "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "3923ee39_f1601bed",
@@ -218,6 +362,24 @@
       "writtenOn": "2026-04-01T12:46:23Z",
       "side": 1,
       "message": "instead of passing the flag, we could return `src_ports` and set `cspm-\u003edefault_src_ports` in this function",
+      "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "65b52911_9bbe6a7c",
+        "filename": "src/plugins/cnat/cnat_snat_policy.c",
+        "patchSetId": 31
+      },
+      "lineNbr": 594,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-04-02T12:21:10Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "3923ee39_f1601bed",
       "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -241,6 +403,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "603904b7_34536ad5",
+        "filename": "src/plugins/cnat/cnat_snat_policy.c",
+        "patchSetId": 31
+      },
+      "lineNbr": 663,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-04-02T12:21:10Z",
+      "side": 1,
+      "message": "we don\u0027t need a client at all in that case ?",
+      "parentUuid": "e7fd6ac6_9c24494f",
+      "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "9e4b740c_414f5c4d",
         "filename": "src/plugins/cnat/cnat_snat_policy.c",
         "patchSetId": 31
@@ -252,6 +432,24 @@
       "writtenOn": "2026-04-01T12:46:23Z",
       "side": 1,
       "message": "Let\u0027s do this only at create time, as this is what we do for the port allocator",
+      "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "983b0ca8_df80bb0a",
+        "filename": "src/plugins/cnat/cnat_snat_policy.c",
+        "patchSetId": 31
+      },
+      "lineNbr": 667,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-04-02T12:21:10Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "9e4b740c_414f5c4d",
       "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -273,6 +471,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "9f53df7c_56b51e7e",
+        "filename": "src/plugins/cnat/cnat_snat_policy.c",
+        "patchSetId": 31
+      },
+      "lineNbr": 714,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-04-02T12:21:10Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "65d10825_26a5316b",
+      "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "abd75104_70d076ce",
@@ -286,6 +502,24 @@
       "writtenOn": "2026-04-01T12:46:23Z",
       "side": 1,
       "message": "`CNAT_SNAT_POLICY_FLAG_USE_AS_DEFAULT` also, it would be good to add a snippet in a comment that describes what this does",
+      "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "77c78cee_5a95f5bc",
+        "filename": "src/plugins/cnat/cnat_snat_policy.h",
+        "patchSetId": 31
+      },
+      "lineNbr": 68,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-04-02T12:21:10Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "abd75104_70d076ce",
       "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -309,6 +543,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "cf3c72fe_35af03f2",
+        "filename": "src/plugins/cnat/cnat_snat_policy.h",
+        "patchSetId": 31
+      },
+      "lineNbr": 70,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-04-02T12:21:10Z",
+      "side": 1,
+      "message": "This seems like the kind of assert that we don\u0027t exceed a certain value if we want to add flags.\nthere is a similar one in\nSTATIC_ASSERT (CNAT_BUFFER_SESSION_FLAG_NO_RETURN \u003c (1 \u003c\u003c 4), \"Value too big\");",
+      "parentUuid": "f3c9e948_037235e9",
+      "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "fb4cca52_a84d3841",
         "filename": "src/plugins/cnat/cnat_src_policy.c",
         "patchSetId": 31
@@ -320,6 +572,24 @@
       "writtenOn": "2026-04-01T12:46:23Z",
       "side": 1,
       "message": "We should handle the case where `src_ports \u003d\u003d NULL`\nwhich happens if we have vec_validated with zeroes\nbut not configured snat policies because we want to\nrely on the default",
+      "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5e44455d_ccb34322",
+        "filename": "src/plugins/cnat/cnat_src_policy.c",
+        "patchSetId": 31
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-04-02T12:21:10Z",
+      "side": 1,
+      "message": "Not sure to get it, why would we vec validate with cnat_init_port_allocator for a fib (initialize a port allocator) if we don\u0027t want to use it ?",
+      "parentUuid": "fb4cca52_a84d3841",
       "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -354,6 +624,24 @@
       "writtenOn": "2026-04-01T12:46:23Z",
       "side": 1,
       "message": "We cannot do this early one as we want to preserve backend order\nin `ct-\u003ect_paths_indexes`. This is important for maglev for which\nbackend re-order will trigger re-shuffling of the assignments",
+      "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "fc100322_5fa8b58c",
+        "filename": "src/plugins/cnat/cnat_translation.c",
+        "patchSetId": 31
+      },
+      "lineNbr": 346,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-04-02T12:21:10Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "d3d3fded_c5831e84",
       "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
