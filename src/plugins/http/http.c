@@ -221,17 +221,7 @@ http_add_postponed_ho_cleanups (u32 ho_hc_index)
 http_ctx_t *
 http_ho_conn_get (u32 ho_hc_index)
 {
-  http_main_t *hm = &http_main;
-  return pool_elt_at_index (hm->ho_conn_pool, ho_hc_index);
-}
-
-static void
-http_ho_conn_free (http_ctx_t *ho_hc)
-{
-  http_main_t *hm = &http_main;
-  if (CLIB_DEBUG)
-    memset (ho_hc, 0xba, sizeof (*ho_hc));
-  pool_put (hm->ho_conn_pool, ho_hc);
+  return http_ctx_get_w_thread (ho_hc_index, transport_cl_thread ());
 }
 
 static void
@@ -249,7 +239,7 @@ http_ho_try_free (u32 ho_hc_index)
     }
   if (!(ho_hc->flags & HTTP_CONN_F_NO_APP_SESSION))
     session_half_open_delete_notify (&ho_hc->connection);
-  http_ho_conn_free (ho_hc);
+  http_ctx_free (ho_hc);
 }
 
 static void
@@ -272,20 +262,22 @@ static inline u32
 http_ho_conn_alloc (void)
 {
   http_main_t *hm = &http_main;
-  http_ctx_t *hc;
+  http_ctx_t *ho_hc;
+  u32 ho_hc_index;
 
   if (vec_len (hm->postponed_ho_free))
     http_flush_postponed_ho_cleanups ();
 
-  pool_get_aligned_safe (hm->ho_conn_pool, hc, CLIB_CACHE_LINE_BYTES);
-  clib_memset (hc, 0, sizeof (*hc));
-  hc->hc_hc_index = hc - hm->ho_conn_pool;
-  hc->c_thread_index = transport_cl_thread ();
-  hc->hc_pa_app_api_ctx = ENDPOINT_INVALID_INDEX;
-  hc->hc_tc_session_handle = SESSION_INVALID_HANDLE;
-  hc->hc_timeout = HTTP_CONN_TIMEOUT;
-  hc->version = HTTP_VERSION_NA;
-  return hc->hc_hc_index;
+  ASSERT (vlib_get_thread_index () == transport_cl_thread ());
+  ho_hc_index = http_ctx_alloc_w_thread (transport_cl_thread ());
+  ho_hc = http_ctx_get_w_thread (ho_hc_index, transport_cl_thread ());
+  ho_hc->hc_hc_index = ho_hc_index;
+  ho_hc->c_thread_index = transport_cl_thread ();
+  ho_hc->hc_pa_app_api_ctx = ENDPOINT_INVALID_INDEX;
+  ho_hc->hc_tc_session_handle = SESSION_INVALID_HANDLE;
+  ho_hc->hc_timeout = HTTP_CONN_TIMEOUT;
+  ho_hc->version = HTTP_VERSION_NA;
+  return ho_hc->hc_hc_index;
 }
 
 static u32
@@ -751,12 +743,10 @@ http_ts_connected_callback (u32 http_app_index, u32 ho_hc_index, session_t *ts,
   tls_alpn_proto_t alpn_proto;
   int rv;
 
-  ho_hc = http_ho_conn_get (ho_hc_index);
-  ASSERT (ho_hc->state == HTTP_CONN_STATE_CONNECTING);
-
   if (err)
     {
       HTTP_DBG (0, "half-open hc index %d, error: %U", ho_hc_index, format_session_error, err);
+      ho_hc = http_ho_conn_get (ho_hc_index);
       ho_hc->flags |= HTTP_CONN_F_HO_DONE;
       app_wrk = app_worker_get_if_valid (ho_hc->hc_pa_wrk_index);
       if (app_wrk)
@@ -766,6 +756,8 @@ http_ts_connected_callback (u32 http_app_index, u32 ho_hc_index, session_t *ts,
 
   new_hc_index = http_ctx_alloc_w_thread (ts->thread_index);
   hc = http_ctx_get_w_thread (new_hc_index, ts->thread_index);
+  ho_hc = http_ho_conn_get (ho_hc_index);
+  ASSERT (ho_hc->state == HTTP_CONN_STATE_CONNECTING);
 
   clib_memcpy_fast (hc, ho_hc, sizeof (*hc));
 
@@ -1759,7 +1751,7 @@ http_transport_cleanup_ho (u32 ho_hc_index)
       return;
     }
   session_cleanup_half_open (ho_hc->hc_tc_session_handle);
-  http_ho_conn_free (ho_hc);
+  http_ctx_free (ho_hc);
 }
 
 static int
