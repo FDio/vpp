@@ -469,7 +469,6 @@ func VppConnectUdpServerCloseTest(s *VppUdpProxySuite) {
 	proxyTargetConn := fmt.Sprintf("[U] %s:", s.Interfaces.Server.Ip4Address)
 	for range 10 {
 		o := vppProxy.Vppctl("show session verbose 2")
-		Log(o)
 		if !strings.Contains(o, proxyClientConn) {
 			break
 		}
