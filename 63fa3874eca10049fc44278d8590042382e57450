@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "46bb5fd0_0ae9b317",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-04-02T01:51:33Z",
+      "side": 1,
+      "message": "Added a new test case for this.",
+      "parentUuid": "44b6d4dd_98eb44a8",
+      "revId": "63fa3874eca10049fc44278d8590042382e57450",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "340fb481_b8c96ea6",
@@ -48,6 +66,24 @@
       "writtenOn": "2026-03-18T13:35:59Z",
       "side": 1,
       "message": "nit: VPP style uses C comments usually",
+      "revId": "63fa3874eca10049fc44278d8590042382e57450",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b2ad05cf_ee7d299f",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1106,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-04-02T01:51:33Z",
+      "side": 1,
+      "message": "Fixed.",
+      "parentUuid": "340fb481_b8c96ea6",
       "revId": "63fa3874eca10049fc44278d8590042382e57450",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -69,6 +105,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "26f7fcf6_66f00fce",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1115,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-04-02T01:51:33Z",
+      "side": 1,
+      "message": "Moved to the next patch.",
+      "parentUuid": "46ac3f13_86af12b4",
+      "revId": "63fa3874eca10049fc44278d8590042382e57450",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "9b44834f_148498fe",
@@ -82,6 +136,24 @@
       "writtenOn": "2026-03-18T13:35:59Z",
       "side": 1,
       "message": "nit: C comment, address instead of adddress",
+      "revId": "63fa3874eca10049fc44278d8590042382e57450",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "231367cb_39e3e4ee",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1118,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-04-02T01:51:33Z",
+      "side": 1,
+      "message": "Moved to the next patch.",
+      "parentUuid": "9b44834f_148498fe",
       "revId": "63fa3874eca10049fc44278d8590042382e57450",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -103,6 +175,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "7af6b637_6d3cb42c",
+        "filename": "src/vnet/devices/virtio/pci.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 600,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-04-02T01:51:33Z",
+      "side": 1,
+      "message": "Fixed.",
+      "parentUuid": "27083974_3f12e44f",
+      "revId": "63fa3874eca10049fc44278d8590042382e57450",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "670a808d_d336d0e9",
@@ -116,6 +206,24 @@
       "writtenOn": "2026-03-18T13:35:59Z",
       "side": 1,
       "message": "should we log a warning here?",
+      "revId": "63fa3874eca10049fc44278d8590042382e57450",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "26e9968c_2ec12297",
+        "filename": "src/vnet/devices/virtio/pci.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 647,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-04-02T01:51:33Z",
+      "side": 1,
+      "message": "Added a warning log.",
+      "parentUuid": "670a808d_d336d0e9",
       "revId": "63fa3874eca10049fc44278d8590042382e57450",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
