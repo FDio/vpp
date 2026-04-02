@@ -13,6 +13,7 @@ from cryptography.hazmat.primitives.ciphers import (
     algorithms,
     modes,
 )
+from cryptography.hazmat.primitives.ciphers.aead import ChaCha20Poly1305
 from ipaddress import IPv4Address, IPv6Address, ip_address
 import unittest
 from config import config
@@ -37,6 +38,7 @@ KEY_PAD = b"Key Pad for IKEv2"
 SALT_SIZE = 4
 GCM_ICV_SIZE = 16
 GCM_IV_SIZE = 8
+AEAD_CRYPTOS = {"AES-GCM-16ICV", "CHACHA20-POLY1305"}
 
 
 # defined in rfc3526
@@ -83,14 +85,18 @@ DH = {
 
 
 class CryptoAlgo(object):
-    def __init__(self, name, cipher, mode):
+    def __init__(self, name, cipher, mode, aead_cipher=None):
         self.name = name
         self.cipher = cipher
         self.mode = mode
-        if self.cipher is not None:
+        self.aead_cipher = aead_cipher
+        if self.aead_cipher is not None:
+            self.bs = 1
+            self.iv_len = GCM_IV_SIZE
+        elif self.cipher is not None:
             self.bs = self.cipher.block_size // 8
 
-            if self.name == "AES-GCM-16ICV":
+            if self.name in AEAD_CRYPTOS:
                 self.iv_len = GCM_IV_SIZE
             else:
                 self.iv_len = self.bs
@@ -105,12 +111,15 @@ class CryptoAlgo(object):
         else:
             salt = key[-SALT_SIZE:]
             nonce = salt + iv
-            encryptor = Cipher(
-                self.cipher(key[:-SALT_SIZE]), self.mode(nonce), default_backend()
-            ).encryptor()
-            encryptor.authenticate_additional_data(aad)
-            data = encryptor.update(data) + encryptor.finalize()
-            data += encryptor.tag[:GCM_ICV_SIZE]
+            if self.aead_cipher is not None:
+                data = self.aead_cipher(key[:-SALT_SIZE]).encrypt(nonce, data, aad)
+            else:
+                encryptor = Cipher(
+                    self.cipher(key[:-SALT_SIZE]), self.mode(nonce), default_backend()
+                ).encryptor()
+                encryptor.authenticate_additional_data(aad)
+                data = encryptor.update(data) + encryptor.finalize()
+                data += encryptor.tag[:GCM_ICV_SIZE]
             return iv + data
 
     def decrypt(self, data, key, aad=None, icv=None):
@@ -126,6 +135,8 @@ class CryptoAlgo(object):
             nonce = salt + data[:GCM_IV_SIZE]
             ct = data[GCM_IV_SIZE:]
             key = key[:-SALT_SIZE]
+            if self.aead_cipher is not None:
+                return self.aead_cipher(key).decrypt(nonce, ct + icv, aad)
             decryptor = Cipher(
                 algorithms.AES(key), self.mode(nonce, icv, len(icv)), default_backend()
             ).decryptor()
@@ -152,6 +163,12 @@ CRYPTO_ALGOS = {
     "AES-CBC": CryptoAlgo("AES-CBC", cipher=algorithms.AES, mode=modes.CBC),
     "AES-CTR": CryptoAlgo("AES-CTR", cipher=algorithms.AES, mode=modes.CTR),
     "AES-GCM-16ICV": CryptoAlgo("AES-GCM-16ICV", cipher=algorithms.AES, mode=modes.GCM),
+    "CHACHA20-POLY1305": CryptoAlgo(
+        "CHACHA20-POLY1305",
+        cipher=None,
+        mode=None,
+        aead_cipher=ChaCha20Poly1305,
+    ),
 }
 
 AUTH_ALGOS = {
@@ -183,6 +200,7 @@ CRYPTO_IDS = {
     12: "AES-CBC",
     13: "AES-CTR",
     20: "AES-GCM-16ICV",
+    28: "CHACHA20-POLY1305",
 }
 
 ENCR_TRANSFORM_IDS = {
@@ -190,6 +208,7 @@ ENCR_TRANSFORM_IDS = {
     "AES-CBC": 12,
     "AES-CTR": 13,
     "AES-GCM-16ICV": 20,
+    "CHACHA20-POLY1305": 28,
 }
 
 PRF_TRANSFORM_IDS = {
@@ -563,7 +582,7 @@ class IKEv2SA(object):
 
     def hmac_and_decrypt(self, ike):
         ep = ike[ikev2.IKEv2_payload_Encrypted]
-        if self.ike_crypto == "AES-GCM-16ICV":
+        if self.ike_crypto in AEAD_CRYPTOS:
             aad_len = len(ikev2.IKEv2_payload_Encrypted()) + len(ikev2.IKEv2())
             ct = ep.load[:-GCM_ICV_SIZE]
             tag = ep.load[-GCM_ICV_SIZE:]
@@ -636,7 +655,7 @@ class IKEv2SA(object):
         self.esp_integ_alg = AUTH_ALGOS[integ]
 
     def crypto_attr(self, crypto, key_len):
-        if crypto in ["AES-CBC", "AES-CTR", "AES-GCM-16ICV"]:
+        if crypto in ["AES-CBC", "AES-CTR", "AES-GCM-16ICV", "CHACHA20-POLY1305"]:
             return (0x800E << 16 | key_len << 3, 12)
         if crypto == "NULL":
             return None
@@ -857,7 +876,7 @@ class IkePeer(VppTestCase):
             return packet
 
     def encrypt_ike_msg(self, header, plain, first_payload):
-        if self.sa.ike_crypto == "AES-GCM-16ICV":
+        if self.sa.ike_crypto in AEAD_CRYPTOS:
             data = self.sa.ike_crypto_alg.pad(raw(plain))
             plen = (
                 len(data)
@@ -1782,6 +1801,7 @@ class Ikev2Params(object):
             "AES-GCM-16ICV-128": ec.IPSEC_API_CRYPTO_ALG_AES_GCM_128,
             "AES-GCM-16ICV-192": ec.IPSEC_API_CRYPTO_ALG_AES_GCM_192,
             "AES-GCM-16ICV-256": ec.IPSEC_API_CRYPTO_ALG_AES_GCM_256,
+            "CHACHA20-POLY1305-256": ec.IPSEC_API_CRYPTO_ALG_CHACHA20_POLY1305,
             "HMAC-SHA1-96": ei.IPSEC_API_INTEG_ALG_SHA1_96,
             "SHA2-256-128": ei.IPSEC_API_INTEG_ALG_SHA_256_128,
             "SHA2-384-192": ei.IPSEC_API_INTEG_ALG_SHA_384_192,
@@ -2651,6 +2671,32 @@ class TestAES_CBC_128_SHA256_128_MODP3072_ESP_AES_GCM_16(
         )
 
 
+class TestAES_CBC_128_SHA256_128_MODP3072_ESP_CHACHA20_POLY1305(
+    TemplateResponder, Ikev2Params
+):
+    """
+    IKE:AES_CBC_128_SHA256_128,DH=modp3072 ESP:CHACHA20_POLY1305
+    """
+
+    vpp_worker_count = 2
+
+    def config_tc(self):
+        self.config_params(
+            {
+                "ike-crypto": ("AES-CBC", 32),
+                "ike-integ": "SHA2-256-128",
+                "esp-crypto": ("CHACHA20-POLY1305", 32),
+                "esp-integ": "NULL",
+                "ike-dh": "3072MODPgr",
+                "esp_transforms": {
+                    "crypto_alg": VppEnum.vl_api_ipsec_crypto_alg_t.IPSEC_API_CRYPTO_ALG_CHACHA20_POLY1305,
+                    "crypto_key_size": 256,
+                    "integ_alg": 0,
+                },
+            }
+        )
+
+
 class Test_IKE_AES_GCM_16_256(TemplateResponder, Ikev2Params):
     """
     IKE:AES_GCM_16_256
@@ -2668,6 +2714,35 @@ class Test_IKE_AES_GCM_16_256(TemplateResponder, Ikev2Params):
                 "ike-crypto": ("AES-GCM-16ICV", 32),
                 "ike-integ": "NULL",
                 "ike-dh": "2048MODPgr",
+                "loc_ts": {"start_addr": "ab:cd::0", "end_addr": "ab:cd::10"},
+                "rem_ts": {"start_addr": "11::0", "end_addr": "11::100"},
+            }
+        )
+
+
+class Test_IKE_CHACHA20_POLY1305_256(TemplateResponder, Ikev2Params):
+    """
+    IKE:CHACHA20_POLY1305_256
+    """
+
+    IKE_NODE_SUFFIX = "ip6"
+    vpp_worker_count = 2
+
+    def config_tc(self):
+        self.config_params(
+            {
+                "del_sa_from_responder": True,
+                "ip6": True,
+                "natt": True,
+                "ike-crypto": ("CHACHA20-POLY1305", 32),
+                "ike-integ": "NULL",
+                "ike-dh": "2048MODPgr",
+                "ike_transforms": {
+                    "crypto_alg": 28,
+                    "crypto_key_size": 256,
+                    "integ_alg": 0,
+                    "dh_group": 14,
+                },
                 "loc_ts": {"start_addr": "ab:cd::0", "end_addr": "ab:cd::10"},
                 "rem_ts": {"start_addr": "11::0", "end_addr": "11::100"},
             }

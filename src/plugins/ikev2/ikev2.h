@@ -203,21 +203,21 @@ typedef enum
   IKEV2_TRANSFORM_NUM_TYPES
 } ikev2_transform_type_t;
 
-
-#define foreach_ikev2_transform_encr_type     \
-  _(1 , DES_IV64,  "des-iv64") \
-  _(2 , DES,       "des")      \
-  _(3 , 3DES,      "3des")     \
-  _(4 , RC5,       "rc5")      \
-  _(5 , IDEA,      "idea")     \
-  _(6 , CAST,      "cast")     \
-  _(7 , BLOWFISH,  "blowfish") \
-  _(8 , 3IDEA,     "3idea")    \
-  _(9 , DES_IV32,  "des-iv32") \
-  _(11, NULL,      "null")     \
-  _(12, AES_CBC,   "aes-cbc")  \
-  _(13, AES_CTR,   "aes-ctr")  \
-  _(20, AES_GCM_16, "aes-gcm-16")
+#define foreach_ikev2_transform_encr_type                                                          \
+  _ (1, DES_IV64, "des-iv64")                                                                      \
+  _ (2, DES, "des")                                                                                \
+  _ (3, 3DES, "3des")                                                                              \
+  _ (4, RC5, "rc5")                                                                                \
+  _ (5, IDEA, "idea")                                                                              \
+  _ (6, CAST, "cast")                                                                              \
+  _ (7, BLOWFISH, "blowfish")                                                                      \
+  _ (8, 3IDEA, "3idea")                                                                            \
+  _ (9, DES_IV32, "des-iv32")                                                                      \
+  _ (11, NULL, "null")                                                                             \
+  _ (12, AES_CBC, "aes-cbc")                                                                       \
+  _ (13, AES_CTR, "aes-ctr")                                                                       \
+  _ (20, AES_GCM_16, "aes-gcm-16")                                                                 \
+  _ (28, CHACHA20_POLY1305, "chacha20-poly1305")
 
 typedef enum
 {

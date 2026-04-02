@@ -8,7 +8,7 @@ maintainer:
 features:
   - RFC 7296 "Internet Key Exchange Protocol Version 2 (IKEv2)"
   - NAT-T, ESN, PSK and public key authentication
-  - AES-CBC-128/192/256 and AES-GCM-16-128/192/256 encryption
+  - AES-CBC-128/192/256, AES-GCM-16-128/192/256 and ChaCha20-Poly1305 encryption
   - HMAC-SHA2-256/384/512 and HMAC-SHA1 pseudo-random functions
   - HMAC-SHA2-256-128/384-192/512-256 integrity
   - MODP and ECP Diffie-Hellman

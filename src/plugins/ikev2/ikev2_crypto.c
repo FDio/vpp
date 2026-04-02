@@ -401,11 +401,11 @@ ikev2_decrypt_aead_data (ikev2_sa_t *sa, ikev2_sa_transform_t *tr_encr, u8 *data
   data_len -= IKEV2_GCM_IV_SIZE;
 
   EVP_DecryptInit_ex (ctx, tr_encr->cipher, 0, 0, 0);
-  EVP_CIPHER_CTX_ctrl (ctx, EVP_CTRL_GCM_SET_IVLEN, 12, 0);
+  EVP_CIPHER_CTX_ctrl (ctx, EVP_CTRL_AEAD_SET_IVLEN, 12, 0);
   EVP_DecryptInit_ex (ctx, 0, 0, key, nonce);
   EVP_DecryptUpdate (ctx, 0, &len, aad, aad_len);
   EVP_DecryptUpdate (ctx, data, &len, data, data_len);
-  EVP_CIPHER_CTX_ctrl (ctx, EVP_CTRL_GCM_SET_TAG, IKEV2_GCM_ICV_SIZE, tag);
+  EVP_CIPHER_CTX_ctrl (ctx, EVP_CTRL_AEAD_SET_TAG, IKEV2_GCM_ICV_SIZE, tag);
 
   if (EVP_DecryptFinal_ex (ctx, data + len, &len) > 0)
     {
@@ -467,12 +467,12 @@ ikev2_encrypt_aead_data (ikev2_sa_t *sa, ikev2_sa_transform_t *tr_encr, v8 *src,
   dst += IKEV2_GCM_IV_SIZE;
 
   EVP_EncryptInit_ex (ctx, tr_encr->cipher, 0, 0, 0);
-  EVP_CIPHER_CTX_ctrl (ctx, EVP_CTRL_GCM_SET_IVLEN, 12, NULL);
+  EVP_CIPHER_CTX_ctrl (ctx, EVP_CTRL_AEAD_SET_IVLEN, 12, NULL);
   EVP_EncryptInit_ex (ctx, 0, 0, key, nonce);
   EVP_EncryptUpdate (ctx, NULL, &out_len, aad, aad_len);
   EVP_EncryptUpdate (ctx, dst, &out_len, src, vec_len (src));
   EVP_EncryptFinal_ex (ctx, dst + out_len, &len);
-  EVP_CIPHER_CTX_ctrl (ctx, EVP_CTRL_GCM_GET_TAG, 16, tag);
+  EVP_CIPHER_CTX_ctrl (ctx, EVP_CTRL_AEAD_GET_TAG, 16, tag);
   out_len += len;
   ASSERT (vec_len (src) == out_len);
 
@@ -971,6 +971,13 @@ ikev2_crypto_init (ikev2_main_t * km)
   tr->key_len = 128 / 8;
   tr->block_size = 128 / 8;
   tr->cipher = EVP_aes_128_gcm ();
+
+  vec_add2 (km->supported_transforms, tr, 1);
+  tr->type = IKEV2_TRANSFORM_TYPE_ENCR;
+  tr->encr_type = IKEV2_TRANSFORM_ENCR_TYPE_CHACHA20_POLY1305;
+  tr->key_len = 256 / 8;
+  tr->block_size = 1;
+  tr->cipher = EVP_chacha20_poly1305 ();
 
   //PRF
   vec_add2 (km->supported_transforms, tr, 1);

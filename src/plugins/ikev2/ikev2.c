@@ -30,6 +30,7 @@ ikev2_main_t ikev2_main;
 static int ikev2_delete_tunnel_interface (vnet_main_t * vnm,
 					  ikev2_sa_t * sa,
 					  ikev2_child_sa_t * child);
+static_always_inline int ikev2_encr_is_aead (ikev2_transform_encr_type_t encr_type);
 
 typedef struct
 {
@@ -1119,7 +1120,7 @@ ikev2_decrypt_sk_payload (ikev2_sa_t * sa, ike_header_t * ike,
     ikev2_sa_get_td_for_type (sa->r_proposals, IKEV2_TRANSFORM_TYPE_INTEG);
   tr_encr =
     ikev2_sa_get_td_for_type (sa->r_proposals, IKEV2_TRANSFORM_TYPE_ENCR);
-  int is_aead = tr_encr->encr_type == IKEV2_TRANSFORM_ENCR_TYPE_AES_GCM_16;
+  int is_aead = ikev2_encr_is_aead (tr_encr->encr_type);
 
   if (((!sa->sk_ar || !sa->sk_ai) && !is_aead) || (!sa->sk_ei || !sa->sk_er))
     return 0;
@@ -2468,6 +2469,11 @@ ikev2_create_tunnel_interface (vlib_main_t *vm, ikev2_sa_t *sa,
 	    }
 	  is_aead = 1;
 	}
+      else if (tr->encr_type == IKEV2_TRANSFORM_ENCR_TYPE_CHACHA20_POLY1305 && tr->key_len == 32)
+	{
+	  encr_type = IPSEC_CRYPTO_ALG_CHACHA20_POLY1305;
+	  is_aead = 1;
+	}
       else
 	{
 	  sa->state = IKEV2_STATE_NO_PROPOSAL_CHOSEN;
@@ -3084,8 +3090,7 @@ ikev2_generate_message (vlib_main_t *vm, vlib_buffer_t *b, ikev2_sa_t *sa, ike_h
       ph = (ike_payload_header_t *) & ike->payload[0];
       ph->nextpayload = chain->first_payload_type;
       ph->flags = 0;
-      int is_aead =
-	tr_encr->encr_type == IKEV2_TRANSFORM_ENCR_TYPE_AES_GCM_16;
+      int is_aead = ikev2_encr_is_aead (tr_encr->encr_type);
       int iv_len = is_aead ? IKEV2_GCM_IV_SIZE : tr_encr->block_size;
       plen += vec_len (chain->data) + iv_len;
 
@@ -3375,6 +3380,13 @@ ikev2_update_stats (vlib_main_t *vm, u32 node_index, ikev2_stats_t *s)
 			       s->n_sa_init_req);
   vlib_node_increment_counter (vm, node_index, IKEV2_ERROR_IKE_AUTH_REQ,
 			       s->n_sa_auth_req);
+}
+
+static_always_inline int
+ikev2_encr_is_aead (ikev2_transform_encr_type_t encr_type)
+{
+  return encr_type == IKEV2_TRANSFORM_ENCR_TYPE_AES_GCM_16 ||
+	 encr_type == IKEV2_TRANSFORM_ENCR_TYPE_CHACHA20_POLY1305;
 }
 
 static uword
@@ -4689,9 +4701,7 @@ ikev2_set_profile_ike_transforms (vlib_main_t *vm, u8 *name, ikev2_transform_enc
   if (!p)
     return clib_error_return (0, "unknown profile %v", name);
 
-  if ((IKEV2_TRANSFORM_INTEG_TYPE_NONE != integ_alg) +
-	(IKEV2_TRANSFORM_ENCR_TYPE_AES_GCM_16 == crypto_alg) !=
-      1)
+  if ((IKEV2_TRANSFORM_INTEG_TYPE_NONE != integ_alg) + ikev2_encr_is_aead (crypto_alg) != 1)
     return clib_error_return (0, "invalid cipher + integrity algorithm");
 
   if (crypto_alg == IKEV2_TRANSFORM_ENCR_TYPE_AES_CTR)
