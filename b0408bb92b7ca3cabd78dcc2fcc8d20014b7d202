@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "e02d1296_6eee6675",
+        "filename": "src/vnet/devices/virtio/pci.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 614,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-04-02T18:26:16Z",
+      "side": 1,
+      "message": "Done.",
+      "parentUuid": "3c00acc7_9462fd61",
+      "revId": "b0408bb92b7ca3cabd78dcc2fcc8d20014b7d202",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "4394001b_a894d9fc",
@@ -35,6 +53,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "37cb2212_3be02679",
+        "filename": "src/vnet/devices/virtio/pci.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 647,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-04-02T18:26:16Z",
+      "side": 1,
+      "message": "Thanks. Fixed in latest commit.",
+      "parentUuid": "4394001b_a894d9fc",
+      "revId": "b0408bb92b7ca3cabd78dcc2fcc8d20014b7d202",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "92453d20_89f631d4",
@@ -48,6 +84,24 @@
       "writtenOn": "2026-04-02T10:15:24Z",
       "side": 1,
       "message": "why 64 and not VIRTIO_PCI_MAC_TABLE_MAX_ENTRIES?",
+      "revId": "b0408bb92b7ca3cabd78dcc2fcc8d20014b7d202",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a905b66a_e49c794c",
+        "filename": "src/vnet/devices/virtio/pci.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 211,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-04-02T18:26:16Z",
+      "side": 1,
+      "message": "Fixed.",
+      "parentUuid": "92453d20_89f631d4",
       "revId": "b0408bb92b7ca3cabd78dcc2fcc8d20014b7d202",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
