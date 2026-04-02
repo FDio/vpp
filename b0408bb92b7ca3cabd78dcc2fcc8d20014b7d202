@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3c00acc7_9462fd61",
+        "filename": "src/vnet/devices/virtio/pci.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 614,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-04-02T10:15:24Z",
+      "side": 1,
+      "message": "Similarly to the RSS code (see virtio_pci_enable_multiqueue_rss), add a static assert to catch if the MAC table ever exceeds the control message data buffer:\n\n    STATIC_ASSERT (sizeof (virtio_net_ctrl_mac_t) \u003c\u003d sizeof (msg.data), \"virtio_net_ctrl_mac_t size too big\");",
+      "revId": "b0408bb92b7ca3cabd78dcc2fcc8d20014b7d202",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4394001b_a894d9fc",
+        "filename": "src/vnet/devices/virtio/pci.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 647,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-04-02T10:15:24Z",
+      "side": 1,
+      "message": "The msg is fully zeroed so the multicast count bytes are already 0, but len doesn\u0027t cover them. Per the virtio spec §5.1.6.5.2.2 [1], the driver MUST send two tables, eg.\n\n    len \u003d sizeof (mac_table-\u003eentries) + mac_table-\u003eentries * sizeof (mac_table-\u003emacs[0]);                                                                                          \n    len +\u003d sizeof (u32); /* empty multicast table, already zeroed by memset */                                                                                                     \n\nSame issue in virtio_pci_remove_mac_filter.\n[1] https://docs.oasis-open.org/virtio/virtio/v1.2/virtio-v1.2.html#x1-2520002",
+      "revId": "b0408bb92b7ca3cabd78dcc2fcc8d20014b7d202",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "92453d20_89f631d4",
+        "filename": "src/vnet/devices/virtio/pci.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 211,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-04-02T10:15:24Z",
+      "side": 1,
+      "message": "why 64 and not VIRTIO_PCI_MAC_TABLE_MAX_ENTRIES?",
+      "revId": "b0408bb92b7ca3cabd78dcc2fcc8d20014b7d202",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
