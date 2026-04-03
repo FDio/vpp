@@ -371,6 +371,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "8d3e98a0_d802a9c5",
+        "filename": "src/plugins/cnat/cnat_node_lookup.c",
+        "patchSetId": 31
+      },
+      "lineNbr": 92,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-04-03T17:07:21Z",
+      "side": 1,
+      "message": "Actually just found that cnat_reverse_session_free is broken in two manners:\n- we don\u0027t follow the correct order for rewrites.\n- we look for wrong pairs of rewrites (should be \"INPUT \u0026 OUTPUT+RETURN\" instead of \"INPUT \u0026 INPUT+RETURN\")\nI need to refactor this bit",
+      "parentUuid": "cab035b2_4ccb744c",
+      "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "b7ac4c52_b626d500",
         "filename": "src/plugins/cnat/cnat_node_lookup.c",
         "patchSetId": 31
@@ -382,6 +400,24 @@
       "writtenOn": "2026-04-01T12:46:23Z",
       "side": 1,
       "message": "And this could be just `cnat_get_rsession_from_ts(ts, CNAT_IS_FWD, \u0026session);`",
+      "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c510ab47_3844c45f",
+        "filename": "src/plugins/cnat/cnat_node_lookup.c",
+        "patchSetId": 31
+      },
+      "lineNbr": 137,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-04-03T17:07:21Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "b7ac4c52_b626d500",
       "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -790,6 +826,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "87fe920a_895beccb",
+        "filename": "src/plugins/cnat/cnat_src_policy.c",
+        "patchSetId": 31
+      },
+      "lineNbr": 106,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-04-03T17:07:21Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "ea50ff1c_d7a2dedf",
+      "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "d3d3fded_c5831e84",
@@ -856,6 +910,24 @@
       "side": 1,
       "message": "I think that we don\u0027t necessarily want to initialize an snat allocator for every fib at the fib creation, unlike sessions_per_vrf_ip4/6 which is needed as soon as cnat is init.",
       "parentUuid": "1478220b_5ad97c9d",
+      "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5ef21a9b_8983ffc3",
+        "filename": "src/plugins/cnat/cnat_types.c",
+        "patchSetId": 31
+      },
+      "lineNbr": 212,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-04-03T17:07:21Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "4bd1527a_600e6f97",
       "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
