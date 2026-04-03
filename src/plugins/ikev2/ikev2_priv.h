@@ -64,6 +64,7 @@ typedef enum
 {
   IKEV2_DH_GROUP_MODP = 0,
   IKEV2_DH_GROUP_ECP = 1,
+  IKEV2_DH_GROUP_CURVE = 2,
 } ikev2_dh_group_t;
 
 typedef struct
