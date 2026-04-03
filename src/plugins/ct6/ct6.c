@@ -52,7 +52,7 @@ ct6_in2out_enable_disable (ct6_main_t * cmp, u32 sw_if_index,
 			  sw_if_index))
     return VNET_API_ERROR_INVALID_SW_IF_INDEX;
 
-  vnet_feature_enable_disable ("interface-output", "ct6-in2out",
+  vnet_feature_enable_disable ("ip6-unicast", "ct6-in2out",
 			       sw_if_index, enable_disable, 0, 0);
 
   return rv;
@@ -198,9 +198,9 @@ VNET_FEATURE_INIT (ct6out2in, static) =
 };
 
 VNET_FEATURE_INIT (ct6in2out, static) = {
-  .arc_name = "interface-output",
+  .arc_name = "ip6-unicast",
   .node_name = "ct6-in2out",
-  .runs_before = VNET_FEATURES ("interface-output-arc-end"),
+  .runs_before = VNET_FEATURES ("ct6-out2in"),
 };
 
 VLIB_PLUGIN_REGISTER () =
