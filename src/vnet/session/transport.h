@@ -243,7 +243,7 @@ void transport_register_protocol (transport_proto_t transport_proto,
 transport_proto_t
 transport_register_new_protocol (const transport_proto_vft_t * vft,
 				 fib_protocol_t fib_proto, u32 output_node);
-transport_proto_vft_t *transport_protocol_get_vft (transport_proto_t tp);
+const transport_proto_vft_t *transport_protocol_get_vft (transport_proto_t tp);
 void transport_update_time (clib_time_type_t time_now, u8 thread_index);
 
 int transport_alloc_local_port (u8 proto, ip46_address_t *ip,

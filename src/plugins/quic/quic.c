@@ -808,7 +808,7 @@ quic_enable (vlib_main_t *vm, u8 is_en)
   return 0;
 }
 
-static transport_proto_vft_t quic_proto = {
+static const transport_proto_vft_t quic_proto = {
   .enable = quic_enable,
   .connect = quic_connect_connection,
   .connect_stream = quic_connect_stream,

@@ -101,7 +101,7 @@ format_transport_connection (u8 * s, va_list * args)
   u32 conn_index = va_arg (*args, u32);
   clib_thread_index_t thread_index = va_arg (*args, u32);
   u32 verbose = va_arg (*args, u32);
-  transport_proto_vft_t *tp_vft;
+  const transport_proto_vft_t *tp_vft;
   transport_connection_t *tc;
   u32 indent;
 
@@ -128,7 +128,7 @@ u8 *
 format_transport_listen_connection (u8 * s, va_list * args)
 {
   u32 transport_proto = va_arg (*args, u32);
-  transport_proto_vft_t *tp_vft;
+  const transport_proto_vft_t *tp_vft;
 
   tp_vft = transport_protocol_get_vft (transport_proto);
   if (!tp_vft)
@@ -142,7 +142,7 @@ u8 *
 format_transport_half_open_connection (u8 * s, va_list * args)
 {
   u32 transport_proto = va_arg (*args, u32);
-  transport_proto_vft_t *tp_vft;
+  const transport_proto_vft_t *tp_vft;
 
   tp_vft = transport_protocol_get_vft (transport_proto);
   if (!tp_vft)
@@ -426,7 +426,7 @@ VLIB_REGISTER_NODE (transport_icmp_dest_unreachable_node) = {
  *
  * @param type - session type (not protocol type)
  */
-transport_proto_vft_t *
+const transport_proto_vft_t *
 transport_protocol_get_vft (transport_proto_t transport_proto)
 {
   if (transport_proto >= vec_len (tp_vfts))
