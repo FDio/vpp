@@ -91,6 +91,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "3ff1f822_47c0e8bd",
+        "filename": "src/vnet/sfdp/timer/timer.h",
+        "patchSetId": 18
+      },
+      "lineNbr": 128,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-04-03T11:04:28Z",
+      "side": 1,
+      "message": "But what if a dataplane service wants to effectively expire a session by setting its timeout to 0? Then it will not work?",
+      "parentUuid": "dc626362_3972bf91",
+      "revId": "85b200902b3fa4e4614496f96728ac1cd365d214",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "c5ac5f6f_1a6068c4",
         "filename": "test/test_sfdp.py",
         "patchSetId": 18
