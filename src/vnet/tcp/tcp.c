@@ -1338,7 +1338,7 @@ tcp_session_app_rx_evt (transport_connection_t *conn)
   return 0;
 }
 
-const static transport_proto_vft_t tcp_proto = {
+static const transport_proto_vft_t tcp_proto = {
   .enable = vnet_tcp_enable_disable,
   .start_listen = tcp_session_bind,
   .stop_listen = tcp_session_unbind,
