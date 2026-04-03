@@ -1,0 +1,157 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1815bcac_a9c2bf3f",
+        "filename": "src/plugins/tracepath/CMakeLists.txt",
+        "patchSetId": 16
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-04-03T09:06:33Z",
+      "side": 1,
+      "message": "2026",
+      "revId": "878cd355eb9ca5c34127004d7cf3bb44a08b0632",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8f25297c_06f120d8",
+        "filename": "src/plugins/tracepath/plugin.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 3,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-04-03T09:06:33Z",
+      "side": 1,
+      "message": "2026",
+      "revId": "878cd355eb9ca5c34127004d7cf3bb44a08b0632",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "296094b3_4dff42ad",
+        "filename": "src/plugins/tracepath/tracepath.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 3,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-04-03T09:06:33Z",
+      "side": 1,
+      "message": "2026",
+      "revId": "878cd355eb9ca5c34127004d7cf3bb44a08b0632",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "629f8d8e_b47f34a1",
+        "filename": "src/plugins/tracepath/tracepath.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 58,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-04-03T09:06:33Z",
+      "side": 1,
+      "message": "why not hash the full path + len with clib_xxhash()? It would have lower collisions",
+      "revId": "878cd355eb9ca5c34127004d7cf3bb44a08b0632",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e0bfc7bc_42af96e9",
+        "filename": "src/plugins/tracepath/tracepath.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 128,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-04-03T09:06:33Z",
+      "side": 1,
+      "message": "should be static",
+      "revId": "878cd355eb9ca5c34127004d7cf3bb44a08b0632",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "24fa37e9_d23a1801",
+        "filename": "src/plugins/tracepath/tracepath.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 143,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-04-03T09:06:33Z",
+      "side": 1,
+      "message": "this should be dynamic, 64 is too low, we already have servers with 200+ cores",
+      "revId": "878cd355eb9ca5c34127004d7cf3bb44a08b0632",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "764dfefc_ff822291",
+        "filename": "src/plugins/tracepath/tracepath.h",
+        "patchSetId": 16
+      },
+      "lineNbr": 3,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-04-03T09:06:33Z",
+      "side": 1,
+      "message": "2025",
+      "revId": "878cd355eb9ca5c34127004d7cf3bb44a08b0632",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "937b89cf_dafa96bf",
+        "filename": "src/plugins/tracepath/tracepath.h",
+        "patchSetId": 16
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-04-03T09:06:33Z",
+      "side": 1,
+      "message": "I don\u0027t think it is needed here",
+      "revId": "878cd355eb9ca5c34127004d7cf3bb44a08b0632",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1ac3c96c_f7f90eb8",
+        "filename": "src/plugins/tracepath/tracepath.h",
+        "patchSetId": 16
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-04-03T09:06:33Z",
+      "side": 1,
+      "message": "a vector would be better IMO - this is debug/control plane code, it would be better to not have limitations",
+      "revId": "878cd355eb9ca5c34127004d7cf3bb44a08b0632",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
