@@ -7,7 +7,16 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.cmac import CMAC
 from cryptography.hazmat.primitives import hashes, hmac
 from cryptography.hazmat.primitives.asymmetric import dh, ec, padding
+from cryptography.hazmat.primitives.asymmetric.x25519 import (
+    X25519PrivateKey,
+    X25519PublicKey,
+)
+from cryptography.hazmat.primitives.asymmetric.x448 import (
+    X448PrivateKey,
+    X448PublicKey,
+)
 from cryptography.hazmat.primitives.serialization import load_pem_private_key
+from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from cryptography.hazmat.primitives.ciphers import (
     Cipher,
     algorithms,
@@ -99,6 +108,18 @@ DH_GROUP_IDS = {
     19: "256randECPgr",
     20: "384randECPgr",
     21: "521randECPgr",
+    31: "CURVE25519gr",
+    32: "CURVE448gr",
+}
+
+DH_CURVES = {
+    "CURVE25519gr": (X25519PrivateKey, X25519PublicKey, 32),
+    "CURVE448gr": (X448PrivateKey, X448PublicKey, 56),
+}
+
+DH_TRANSFORM_IDS = {
+    "CURVE25519gr": 31,
+    "CURVE448gr": 32,
 }
 
 
@@ -371,6 +392,9 @@ class IKEv2SA(object):
             # RFC 5903 section 7: the shared secret is the x coordinate only
             return self.ecdh_private_key.exchange(ec.ECDH(), pub)
         priv = self.dh_private_key
+        if self.ike_dh in DH_CURVES:
+            _, pub_cls, _ = DH_CURVES[self.ike_dh]
+            return priv.exchange(pub_cls.from_public_bytes(peer))
         p, g, l = self.ike_group
         return pow(
             int.from_bytes(peer, "big"), int.from_bytes(priv, "big"), p
@@ -390,6 +414,18 @@ class IKEv2SA(object):
                 self.i_dh_data = data
             else:
                 self.r_dh_data = data
+            return
+
+        if self.ike_dh in DH_CURVES:
+            priv_cls, _, key_len = DH_CURVES[self.ike_dh]
+            priv = priv_cls.generate()
+            pub = priv.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw)
+            self.dh_private_key = priv
+            if self.is_initiator:
+                self.i_dh_data = pub
+            else:
+                self.r_dh_data = pub
+            self.ike_group = key_len
             return
 
         if self.ike_dh not in DH:
@@ -685,8 +721,11 @@ class IKEv2SA(object):
         self.ike_prf = prf
         self.ike_prf_alg = PRF_ALGOS[prf]
         self.ike_dh = dh
-        # MODP parameters; ECP groups are handled through ECP[dh]
-        self.ike_group = None if dh in ECP else DH[dh]
+        self.ike_dh_id = DH_TRANSFORM_IDS.get(dh, dh)
+        # MODP parameters; ECP and curve groups are handled separately
+        self.ike_group = DH.get(dh)
+        if dh not in DH and dh not in ECP and dh not in DH_CURVES:
+            raise TypeError("unsupported dh group %r" % dh)
 
     def set_esp_props(self, crypto, crypto_key_len, integ):
         self.esp_crypto_key_len = crypto_key_len
@@ -1395,7 +1434,7 @@ class TemplateInitiator(IkePeer):
             transform_id=PRF_TRANSFORM_IDS.get(self.sa.ike_prf, self.sa.ike_prf),
         )
         trans /= ikev2.IKEv2_payload_Transform(
-            transform_type="GroupDesc", transform_id=self.sa.ike_dh
+            transform_type="GroupDesc", transform_id=self.sa.ike_dh_id
         )
         props = ikev2.IKEv2_payload_Proposal(
             proposal=1, proto="IKEv2", trans_nb=trans_nb, trans=trans
@@ -1419,7 +1458,7 @@ class TemplateInitiator(IkePeer):
             / ikev2.IKEv2_payload_SA(next_payload="KE", prop=props)
             / ikev2.IKEv2_payload_KE(
                 next_payload="Nonce",
-                group=self.sa.ike_dh,
+                group=self.sa.ike_dh_id,
                 load=self.sa.my_dh_pub_key if dh_pub_key is None else dh_pub_key,
             )
             / ikev2.IKEv2_payload_Nonce(load=self.sa.r_nonce, next_payload="Notify")
@@ -1600,7 +1639,7 @@ class TemplateResponder(IkePeer):
             transform_id=PRF_TRANSFORM_IDS.get(self.sa.ike_prf, self.sa.ike_prf),
         )
         trans /= ikev2.IKEv2_payload_Transform(
-            transform_type="GroupDesc", transform_id=self.sa.ike_dh
+            transform_type="GroupDesc", transform_id=self.sa.ike_dh_id
         )
 
         if spi is None:
@@ -1619,7 +1658,7 @@ class TemplateResponder(IkePeer):
             ikev2.IKEv2_payload_SA(next_payload="KE", prop=props)
             / ikev2.IKEv2_payload_KE(
                 next_payload="Nonce",
-                group=self.sa.ike_dh,
+                group=self.sa.ike_dh_id,
                 load=self.sa.my_dh_pub_key if dh_pub_key is None else dh_pub_key,
             )
             / ikev2.IKEv2_payload_Nonce(
@@ -1689,7 +1728,7 @@ class TemplateResponder(IkePeer):
         if kex:
             trans_nb += 1
             trans /= ikev2.IKEv2_payload_Transform(
-                transform_type="GroupDesc", transform_id=self.sa.ike_dh
+                transform_type="GroupDesc", transform_id=self.sa.ike_dh_id
             )
 
         c = self.sa.child_sas[0]
@@ -1724,7 +1763,9 @@ class TemplateResponder(IkePeer):
                 head = ikev2.IKEv2_payload_Nonce(
                     load=self.sa.i_nonce, next_payload="KE"
                 ) / ikev2.IKEv2_payload_KE(
-                    group=self.sa.ike_dh, load=self.sa.my_dh_pub_key, next_payload="SA"
+                    group=self.sa.ike_dh_id,
+                    load=self.sa.my_dh_pub_key,
+                    next_payload="SA",
                 )
             else:
                 head = ikev2.IKEv2_payload_Nonce(
@@ -2980,6 +3021,64 @@ class Test_IKE_CHACHA20_POLY1305_256(TemplateResponder, Ikev2Params):
                     "crypto_key_size": 256,
                     "integ_alg": 0,
                     "dh_group": 14,
+                },
+                "loc_ts": {"start_addr": "ab:cd::0", "end_addr": "ab:cd::10"},
+                "rem_ts": {"start_addr": "11::0", "end_addr": "11::100"},
+            }
+        )
+
+
+class Test_IKE_AES_GCM_16_256_CURVE25519(TemplateResponder, Ikev2Params):
+    """
+    IKE:AES_GCM_16_256,DH=curve25519
+    """
+
+    IKE_NODE_SUFFIX = "ip6"
+    vpp_worker_count = 2
+
+    def config_tc(self):
+        self.config_params(
+            {
+                "del_sa_from_responder": True,
+                "ip6": True,
+                "natt": True,
+                "ike-crypto": ("AES-GCM-16ICV", 32),
+                "ike-integ": "NULL",
+                "ike-dh": "CURVE25519gr",
+                "ike_transforms": {
+                    "crypto_alg": 20,
+                    "crypto_key_size": 256,
+                    "integ_alg": 0,
+                    "dh_group": 31,
+                },
+                "loc_ts": {"start_addr": "ab:cd::0", "end_addr": "ab:cd::10"},
+                "rem_ts": {"start_addr": "11::0", "end_addr": "11::100"},
+            }
+        )
+
+
+class Test_IKE_AES_GCM_16_256_CURVE448(TemplateResponder, Ikev2Params):
+    """
+    IKE:AES_GCM_16_256,DH=curve448
+    """
+
+    IKE_NODE_SUFFIX = "ip6"
+    vpp_worker_count = 2
+
+    def config_tc(self):
+        self.config_params(
+            {
+                "del_sa_from_responder": True,
+                "ip6": True,
+                "natt": True,
+                "ike-crypto": ("AES-GCM-16ICV", 32),
+                "ike-integ": "NULL",
+                "ike-dh": "CURVE448gr",
+                "ike_transforms": {
+                    "crypto_alg": 20,
+                    "crypto_key_size": 256,
+                    "integ_alg": 0,
+                    "dh_group": 32,
                 },
                 "loc_ts": {"start_addr": "ab:cd::0", "end_addr": "ab:cd::10"},
                 "rem_ts": {"start_addr": "11::0", "end_addr": "11::100"},

@@ -687,6 +687,57 @@ ikev2_generate_dh (ikev2_sa_t *sa, ikev2_sa_transform_t *t)
       EC_POINT_free (shared_point);
       return rv;
     }
+  else if (t->dh_group == IKEV2_DH_GROUP_CURVE)
+    {
+      EVP_PKEY_CTX *pctx = EVP_PKEY_CTX_new_id (t->nid, NULL);
+      EVP_PKEY_CTX *dctx = NULL;
+      EVP_PKEY *pkey = NULL, *peer = NULL;
+      size_t key_len = t->key_len;
+      u8 **pub = sa->is_initiator ? &sa->i_dh_data : &sa->r_dh_data;
+      int rv = -1;
+
+      if (pctx == 0 || EVP_PKEY_keygen_init (pctx) <= 0 || EVP_PKEY_keygen (pctx, &pkey) <= 0)
+	goto curve_done;
+
+      *pub = vec_new (u8, t->key_len);
+      if (EVP_PKEY_get_raw_public_key (pkey, *pub, &key_len) <= 0 || key_len != t->key_len)
+	goto curve_done;
+
+      if (sa->is_initiator)
+	{
+	  sa->dh_private_key = vec_new (u8, t->key_len);
+	  key_len = t->key_len;
+	  if (EVP_PKEY_get_raw_private_key (pkey, sa->dh_private_key, &key_len) <= 0 ||
+	      key_len != t->key_len)
+	    goto curve_done;
+	}
+      else
+	{
+	  if (vec_len (sa->i_dh_data) != t->key_len)
+	    goto curve_done;
+
+	  peer = EVP_PKEY_new_raw_public_key (t->nid, NULL, sa->i_dh_data, t->key_len);
+	  dctx = peer ? EVP_PKEY_CTX_new (pkey, NULL) : 0;
+	  if (dctx == 0 || EVP_PKEY_derive_init (dctx) <= 0 ||
+	      EVP_PKEY_derive_set_peer (dctx, peer) <= 0)
+	    goto curve_done;
+
+	  sa->dh_shared_key = vec_new (u8, t->key_len);
+	  key_len = t->key_len;
+	  if (EVP_PKEY_derive (dctx, sa->dh_shared_key, &key_len) <= 0 || key_len != t->key_len)
+	    {
+	      vec_free (sa->dh_shared_key);
+	      goto curve_done;
+	    }
+	}
+      rv = 0;
+    curve_done:
+      EVP_PKEY_CTX_free (dctx);
+      EVP_PKEY_free (peer);
+      EVP_PKEY_free (pkey);
+      EVP_PKEY_CTX_free (pctx);
+      return rv;
+    }
   return 0;
 }
 
@@ -803,6 +854,36 @@ ikev2_complete_dh (ikev2_sa_t *sa, ikev2_sa_transform_t *t)
       BN_free (y);
       BN_free (prv);
       BN_CTX_free (bn_ctx);
+      return rv;
+    }
+  else if (t->dh_group == IKEV2_DH_GROUP_CURVE)
+    {
+      EVP_PKEY_CTX *pctx = NULL;
+      EVP_PKEY *pkey, *peer;
+      size_t key_len = t->key_len;
+      int rv = -1;
+
+      if (vec_len (sa->r_dh_data) != t->key_len)
+	return -1;
+
+      pkey = EVP_PKEY_new_raw_private_key (t->nid, NULL, sa->dh_private_key,
+					   vec_len (sa->dh_private_key));
+      peer = EVP_PKEY_new_raw_public_key (t->nid, NULL, sa->r_dh_data, t->key_len);
+      if (pkey && peer)
+	pctx = EVP_PKEY_CTX_new (pkey, NULL);
+
+      if (pctx && EVP_PKEY_derive_init (pctx) > 0 && EVP_PKEY_derive_set_peer (pctx, peer) > 0)
+	{
+	  sa->dh_shared_key = vec_new (u8, t->key_len);
+	  if (EVP_PKEY_derive (pctx, sa->dh_shared_key, &key_len) > 0 && key_len == t->key_len)
+	    rv = 0;
+	  else
+	    vec_free (sa->dh_shared_key);
+	}
+
+      EVP_PKEY_CTX_free (pctx);
+      EVP_PKEY_free (peer);
+      EVP_PKEY_free (pkey);
       return rv;
     }
   return 0;
@@ -1112,7 +1193,6 @@ ikev2_crypto_init (ikev2_main_t * km)
   tr->key_trunc = 128 / 8;
   tr->md = 0;
 
-#if defined(OPENSSL_NO_CISCO_FECDH)
   vec_add2 (km->supported_transforms, tr, 1);
   tr->type = IKEV2_TRANSFORM_TYPE_DH;
   tr->dh_type = IKEV2_TRANSFORM_DH_TYPE_BRAINPOOL_512;
@@ -1147,7 +1227,6 @@ ikev2_crypto_init (ikev2_main_t * km)
   tr->key_len = (224 * 2) / 8;
   tr->nid = NID_secp224r1;
   tr->dh_group = IKEV2_DH_GROUP_ECP;
-#endif
 
   vec_add2 (km->supported_transforms, tr, 1);
   tr->type = IKEV2_TRANSFORM_TYPE_DH;
@@ -1176,6 +1255,20 @@ ikev2_crypto_init (ikev2_main_t * km)
   tr->key_len = (192 * 2) / 8;
   tr->nid = NID_X9_62_prime192v1;
   tr->dh_group = IKEV2_DH_GROUP_ECP;
+
+  vec_add2 (km->supported_transforms, tr, 1);
+  tr->type = IKEV2_TRANSFORM_TYPE_DH;
+  tr->dh_type = IKEV2_TRANSFORM_DH_TYPE_CURVE448;
+  tr->key_len = 56;
+  tr->nid = EVP_PKEY_X448;
+  tr->dh_group = IKEV2_DH_GROUP_CURVE;
+
+  vec_add2 (km->supported_transforms, tr, 1);
+  tr->type = IKEV2_TRANSFORM_TYPE_DH;
+  tr->dh_type = IKEV2_TRANSFORM_DH_TYPE_CURVE25519;
+  tr->key_len = 32;
+  tr->nid = EVP_PKEY_X25519;
+  tr->dh_group = IKEV2_DH_GROUP_CURVE;
 
   vec_add2 (km->supported_transforms, tr, 1);
   tr->type = IKEV2_TRANSFORM_TYPE_DH;
