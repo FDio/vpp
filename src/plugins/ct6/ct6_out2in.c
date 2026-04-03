@@ -71,7 +71,6 @@ ct6_out2in_inline (vlib_main_t * vm,
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
   u16 nexts[VLIB_FRAME_SIZE], *next;
   ct6_main_t *cmp = &ct6_main;
-  u32 my_thread_index = vm->thread_index;
   f64 now = vlib_time_now (vm);
   u32 dropped = 0;
 
@@ -194,8 +193,10 @@ ct6_out2in_inline (vlib_main_t * vm,
 	}
       else
 	{
-	  s0 = pool_elt_at_index (cmp->sessions[my_thread_index], kvp0.value);
-	  session_index0 = kvp0.value;
+	  u32 sess_owner = ct6_session_get_thread (kvp0.value);
+	  u32 sess_pidx = ct6_session_get_index (kvp0.value);
+	  s0 = pool_elt_at_index (cmp->sessions[sess_owner], sess_pidx);
+	  session_index0 = sess_pidx;
 	  ct6_update_session_hit (cmp, s0, now);
 	}
 
