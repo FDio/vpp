@@ -207,8 +207,7 @@ ct6_in2out_inline (vlib_main_t * vm,
       ct6_session_key_t *key0;
       ct6_session_t *s0;
       u32 session_index0 = ~0;
-      u32 next0, delta0;
-      ethernet_header_t *e0;
+      u32 next0;
 
       ip6_header_t *ip0;
       udp_header_t *udp0;
@@ -223,33 +222,10 @@ ct6_in2out_inline (vlib_main_t * vm,
 	next[0] = CT6_IN2OUT_NEXT_DROP;
 
       /*
-       * This is an output feature which runs at the last possible
-       * moment. Assume an ethernet header. Make sure the packet is
-       * actually ipv6 before we do anything else.
-       *
-       * Unfortunately, we have to re-parse the L2 header.
+       * On the ip6-unicast feature arc, the buffer points directly
+       * at the IPv6 header (L2 has already been consumed).
        */
-
-      e0 = vlib_buffer_get_current (b[0]);
-      delta0 = sizeof (*e0);
-      delta0 += (e0->type == clib_net_to_host_u16 (ETHERNET_TYPE_VLAN))
-	? 4 : 0;
-      delta0 += (e0->type == clib_net_to_host_u16 (ETHERNET_TYPE_DOT1AD))
-	? 8 : 0;
-
-      if (PREDICT_TRUE (delta0 == sizeof (*e0)))
-	{
-	  if (e0->type != clib_host_to_net_u16 (ETHERNET_TYPE_IP6))
-	    goto trace0;
-	}
-      else
-	{
-	  u16 *tagged_etype_ptr = vlib_buffer_get_current (b[0]) + delta0 - 2;
-	  if (*tagged_etype_ptr != clib_host_to_net_u16 (ETHERNET_TYPE_IP6))
-	    goto trace0;
-	}
-
-      ip0 = (ip6_header_t *) (vlib_buffer_get_current (b[0]) + delta0);
+      ip0 = (ip6_header_t *) vlib_buffer_get_current (b[0]);
 
       /*
        * Pass non-global unicast traffic
