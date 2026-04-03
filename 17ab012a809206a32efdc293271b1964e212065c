@@ -1,0 +1,84 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "fc5eaa69_1402ef26",
+        "filename": "test/framework.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 583,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-04-03T17:52:29Z",
+      "side": 1,
+      "message": "Is 1 second a reasonable default if the test has many contexts?\n\nI don\u0027t see any tests in this patch which supply more than one context.\nThe CI has been prone to fragility and I\u0027d like to see some proof that this won\u0027t increase number of random non-change related failures.  Please add some tests with multiple contexts.",
+      "revId": "17ab012a809206a32efdc293271b1964e212065c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "378be68c_b485ac5b",
+        "filename": "test/framework.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 606,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-04-03T17:52:29Z",
+      "side": 1,
+      "message": "This timeout mechanism is fragile in the CI. Since all interfaces share a single timeout, there is no way to determine if the capture that timed out was the instigator in the overall timeout failure.",
+      "revId": "17ab012a809206a32efdc293271b1964e212065c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "79444a55_e77e61f4",
+        "filename": "test/framework.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 619,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-04-03T17:52:29Z",
+      "side": 1,
+      "message": "I\u0027m glad to see this pulled out of the multi-context test pattern here, but maybe it could have a parameter to opt-in to testing a list of pg interfaces for nothing captured.\n\nThe default timeout should not be hard-coded in multiple places. It would also be really nice to have a smaller default window.  Do you know how 1 sec was chosen?\n\nThe assert_nothing_captured() paradigm is a problematic IMHO as it by construction it must wait an arbitrarily long time to ensure that undesired packets don\u0027t arrive after the timeout.  In this implementation, it there is also the additional non-deterministic delay of the pcap file becoming visible in the file system.  I would think that using pg interface counters could be used to avoid the file system delay, but that relies on the correctness of the stats implementation so may not be a better choice -- \u003csigh\u003e.",
+      "range": {
+        "startLine": 613,
+        "startChar": 0,
+        "endLine": 619,
+        "endChar": 0
+      },
+      "revId": "17ab012a809206a32efdc293271b1964e212065c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "51c9683a_70ded3d6",
+        "filename": "test/vpp_pg_interface.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 303,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-04-03T17:52:29Z",
+      "side": 1,
+      "message": "Why is the default for timeout converted to a float?  \n\nget_capture could still be passed a timeout value that is an int and that argument will not be automatically coerced to a float during the call of the method.\n\ntimeout\u003d1 (or any int) should work since remaining_time will be coerced to a float on line 354.\n\nIf it does not work or if there is another reason for timeout to be a float, then line 316 should be\n  remaining_time \u003d float(timeout)",
+      "range": {
+        "startLine": 303,
+        "startChar": 48,
+        "endLine": 303,
+        "endChar": 59
+      },
+      "revId": "17ab012a809206a32efdc293271b1964e212065c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
