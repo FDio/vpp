@@ -267,48 +267,30 @@ typedef enum
 #undef _
 } ikev2_transform_integ_type_t;
 
-#if defined(OPENSSL_NO_CISCO_FECDH)
-#define foreach_ikev2_transform_dh_type \
-  _(0, NONE,           "none")          \
-  _(1, MODP_768,       "modp-768")      \
-  _(2, MODP_1024,      "modp-1024")     \
-  _(5, MODP_1536,      "modp-1536")     \
-  _(14, MODP_2048,     "modp-2048")     \
-  _(15, MODP_3072,     "modp-3072")     \
-  _(16, MODP_4096,     "modp-4096")     \
-  _(17, MODP_6144,     "modp-6144")     \
-  _(18, MODP_8192,     "modp-8192")     \
-  _(19, ECP_256,       "ecp-256")       \
-  _(20, ECP_384,       "ecp-384")       \
-  _(21, ECP_521,       "ecp-521")       \
-  _(22, MODP_1024_160, "modp-1024-160") \
-  _(23, MODP_2048_224, "modp-2048-224") \
-  _(24, MODP_2048_256, "modp-2048-256") \
-  _(25, ECP_192,       "ecp-192")       \
-  _(26, ECP_224,       "ecp-224")       \
-  _(27, BRAINPOOL_224, "brainpool-224") \
-  _(28, BRAINPOOL_256, "brainpool-256") \
-  _(29, BRAINPOOL_384, "brainpool-384") \
-  _(30, BRAINPOOL_512, "brainpool-512")
-#else
-#define foreach_ikev2_transform_dh_type \
-  _(0, NONE,           "none")          \
-  _(1, MODP_768,       "modp-768")      \
-  _(2, MODP_1024,      "modp-1024")     \
-  _(5, MODP_1536,      "modp-1536")     \
-  _(14, MODP_2048,     "modp-2048")     \
-  _(15, MODP_3072,     "modp-3072")     \
-  _(16, MODP_4096,     "modp-4096")     \
-  _(17, MODP_6144,     "modp-6144")     \
-  _(18, MODP_8192,     "modp-8192")     \
-  _(19, ECP_256,       "ecp-256")       \
-  _(20, ECP_384,       "ecp-384")       \
-  _(21, ECP_521,       "ecp-521")       \
-  _(22, MODP_1024_160, "modp-1024-160") \
-  _(23, MODP_2048_224, "modp-2048-224") \
-  _(24, MODP_2048_256, "modp-2048-256") \
-  _(25, ECP_192,       "ecp-192")
-#endif
+#define foreach_ikev2_transform_dh_type                                                            \
+  _ (0, NONE, "none")                                                                              \
+  _ (1, MODP_768, "modp-768")                                                                      \
+  _ (2, MODP_1024, "modp-1024")                                                                    \
+  _ (5, MODP_1536, "modp-1536")                                                                    \
+  _ (14, MODP_2048, "modp-2048")                                                                   \
+  _ (15, MODP_3072, "modp-3072")                                                                   \
+  _ (16, MODP_4096, "modp-4096")                                                                   \
+  _ (17, MODP_6144, "modp-6144")                                                                   \
+  _ (18, MODP_8192, "modp-8192")                                                                   \
+  _ (19, ECP_256, "ecp-256")                                                                       \
+  _ (20, ECP_384, "ecp-384")                                                                       \
+  _ (21, ECP_521, "ecp-521")                                                                       \
+  _ (22, MODP_1024_160, "modp-1024-160")                                                           \
+  _ (23, MODP_2048_224, "modp-2048-224")                                                           \
+  _ (24, MODP_2048_256, "modp-2048-256")                                                           \
+  _ (25, ECP_192, "ecp-192")                                                                       \
+  _ (26, ECP_224, "ecp-224")                                                                       \
+  _ (27, BRAINPOOL_224, "brainpool-224")                                                           \
+  _ (28, BRAINPOOL_256, "brainpool-256")                                                           \
+  _ (29, BRAINPOOL_384, "brainpool-384")                                                           \
+  _ (30, BRAINPOOL_512, "brainpool-512")                                                           \
+  _ (31, CURVE25519, "curve25519")                                                                 \
+  _ (32, CURVE448, "curve448")
 
 typedef enum
 {
