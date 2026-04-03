@@ -88,6 +88,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "ee56fd1e_c9316187",
+        "filename": "test/test_sfdp.py",
+        "patchSetId": 25
+      },
+      "lineNbr": 917,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-04-03T12:44:59Z",
+      "side": 1,
+      "message": "Ack, let\u0027s address it in a subsequent patch.",
+      "parentUuid": "7688c425_03588bc0",
+      "revId": "dcbe4331471e35b66cf1af12d58b5b5151caf99c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "9b33596a_e95d405f",

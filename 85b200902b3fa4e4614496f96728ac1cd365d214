@@ -109,6 +109,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "ea7ec755_032edd24",
+        "filename": "src/vnet/sfdp/timer/timer.h",
+        "patchSetId": 18
+      },
+      "lineNbr": 128,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-04-03T12:44:59Z",
+      "side": 1,
+      "message": "That will still work. If a dataplane service sets the timeout to 0, the session will now only be reaped/removed after the periodic call to \u0027sfdp-expire\u0027 (every 1s by default, configurable with SFDP_TIMER_INTERVAL).\n\nThe interrupt which was removed would invoke/schedule \u0027sfdp-expire\u0027 to run in the same main loop / worker loop iterations, which would quickly expire sessions. However, the downside was that \u0027sfdp-expire\u0027 could be scheduled at worst case for every frame/256 packets, if it least one packet was expired by a dataplane service, leading to a very high number of \u0027sfdp-expire\u0027 node calls.\n\nThe tradeoff by removing the interrupt here is that sessions expired by a dataplane service can take up-to \u0027SFDP_TIMER_INTERVAL\u0027 seconds longer to be removed/reaped.",
+      "parentUuid": "3ff1f822_47c0e8bd",
+      "revId": "85b200902b3fa4e4614496f96728ac1cd365d214",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "c5ac5f6f_1a6068c4",
         "filename": "test/test_sfdp.py",
         "patchSetId": 18
