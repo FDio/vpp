@@ -43,19 +43,13 @@ int
 ct6_in2out_enable_disable (ct6_main_t * cmp, u32 sw_if_index,
 			   int enable_disable)
 {
-  vnet_sw_interface_t *sw;
   int rv = 0;
 
   ct6_feature_init (cmp);
 
-  /* Utterly wrong? */
+  /* Validate sw_if_index */
   if (pool_is_free_index (cmp->vnet_main->interface_main.sw_interfaces,
 			  sw_if_index))
-    return VNET_API_ERROR_INVALID_SW_IF_INDEX;
-
-  /* Not a physical port? */
-  sw = vnet_get_sw_interface (cmp->vnet_main, sw_if_index);
-  if (sw->type != VNET_SW_INTERFACE_TYPE_HARDWARE)
     return VNET_API_ERROR_INVALID_SW_IF_INDEX;
 
   vnet_feature_enable_disable ("interface-output", "ct6-in2out",
@@ -68,19 +62,13 @@ int
 ct6_out2in_enable_disable (ct6_main_t * cmp, u32 sw_if_index,
 			   int enable_disable)
 {
-  vnet_sw_interface_t *sw;
   int rv = 0;
 
   ct6_feature_init (cmp);
 
-  /* Utterly wrong? */
+  /* Validate sw_if_index */
   if (pool_is_free_index (cmp->vnet_main->interface_main.sw_interfaces,
 			  sw_if_index))
-    return VNET_API_ERROR_INVALID_SW_IF_INDEX;
-
-  /* Not a physical port? */
-  sw = vnet_get_sw_interface (cmp->vnet_main, sw_if_index);
-  if (sw->type != VNET_SW_INTERFACE_TYPE_HARDWARE)
     return VNET_API_ERROR_INVALID_SW_IF_INDEX;
 
   vnet_feature_enable_disable ("ip6-unicast", "ct6-out2in",
@@ -132,8 +120,7 @@ set_ct6_enable_disable_command_fn (vlib_main_t * vm,
       break;
 
     case VNET_API_ERROR_INVALID_SW_IF_INDEX:
-      return clib_error_return
-	(0, "Invalid interface, only works on physical ports");
+      return clib_error_return (0, "Invalid interface");
       break;
 
     default:
@@ -253,7 +240,7 @@ format_ct6_session (u8 * s, va_list * args)
     }
   else
     {
-      if (kvp0.value == s0 - cmp->sessions[s0->thread_index])
+      if (kvp0.value == ct6_session_midx (s0->thread_index, s0 - cmp->sessions[s0->thread_index]))
 	{
 	  s = format (s, " OK");
 	  if (verbose > 1)
@@ -291,6 +278,8 @@ show_ct6_command_fn_command_fn (vlib_main_t * vm,
 
   for (i = 0; i < vec_len (cmp->sessions); i++)
     {
+      if (i > 0 && verbose)
+	s = format (s, "\n");
       s = format (s, "Thread %d: %d sessions\n", i,
 		  pool_elts (cmp->sessions[i]));
 

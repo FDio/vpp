@@ -117,7 +117,7 @@ ct6_create_or_recycle_session (ct6_main_t * cmp,
   clib_memcpy_fast (s0, kvpp, sizeof (ct6_session_key_t));
   s0->thread_index = my_thread_index;
   s0->expires = now + cmp->session_timeout_interval;
-  kvpp->value = s0 - cmp->sessions[my_thread_index];
+  kvpp->value = ct6_session_midx (my_thread_index, s0 - cmp->sessions[my_thread_index]);
   clib_bihash_add_del_48_8 (&cmp->session_hash, kvpp, 1 /* is_add */ );
   ct6_lru_add (cmp, s0, now);
   return s0;
@@ -290,8 +290,10 @@ ct6_in2out_inline (vlib_main_t * vm,
 	}
       else
 	{
-	  s0 = pool_elt_at_index (cmp->sessions[my_thread_index], kvp0.value);
-	  session_index0 = kvp0.value;
+	  u32 found_thread = ct6_session_get_thread (kvp0.value);
+	  u32 found_idx = ct6_session_get_index (kvp0.value);
+	  s0 = pool_elt_at_index (cmp->sessions[found_thread], found_idx);
+	  session_index0 = found_idx;
 	  ct6_update_session_hit (cmp, s0, now);
 	}
 
