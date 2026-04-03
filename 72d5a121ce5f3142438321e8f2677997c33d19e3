@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "e440ad56_47ecbf97",
+        "filename": "src/plugins/tracepath/tracepath.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 188,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-04-03T20:01:05Z",
+      "side": 1,
+      "message": "Good catch. It was indeed missing here, causing a memleak",
+      "parentUuid": "2ec5d4f1_6d9b0f04",
+      "revId": "72d5a121ce5f3142438321e8f2677997c33d19e3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "8acd6ad1_670aca9f",
@@ -31,6 +49,24 @@
       "writtenOn": "2026-04-03T14:43:51Z",
       "side": 1,
       "message": "instead of building the full output in 1 go it would be better to dump to output as we go to avoid overallocating memory",
+      "revId": "72d5a121ce5f3142438321e8f2677997c33d19e3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f11d43c4_e8a29be3",
+        "filename": "src/plugins/tracepath/tracepath.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 340,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-04-03T20:01:05Z",
+      "side": 1,
+      "message": "Sure, made the changes so that we output packet-per-packet trace.\n\nQ: I initially took this approach after looking at \"show trace\", which also builds the full output in one go AFAIK. Is there any particular reason why it is done this way for \"show trace\" today ?",
+      "parentUuid": "8acd6ad1_670aca9f",
       "revId": "72d5a121ce5f3142438321e8f2677997c33d19e3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }

@@ -332,6 +332,24 @@
       "parentUuid": "41448fb8_30f85de0",
       "revId": "878cd355eb9ca5c34127004d7cf3bb44a08b0632",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7b0964e2_426dae48",
+        "filename": "src/plugins/tracepath/tracepath.h",
+        "patchSetId": 16
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-04-03T20:01:05Z",
+      "side": 1,
+      "message": "I thought it would be better to be defensive here with an enforced max limit, but in hindsight it does not make much sense as we are already limited by the number of `vlib_trace_header_t` entries that can be set per trace_buffer_pool entry.",
+      "parentUuid": "2a0576e4_0feb4ff8",
+      "revId": "878cd355eb9ca5c34127004d7cf3bb44a08b0632",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
