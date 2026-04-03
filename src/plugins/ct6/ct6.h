@@ -69,6 +69,19 @@ typedef struct
   ethernet_main_t *ethernet_main;
 } ct6_main_t;
 
+/* Encode thread_index and session pool index into a single u64 hash value.
+ * This allows ct6-out2in to find sessions created by ct6-in2out on a
+ * different worker thread. Without this, out2in indexes into its own
+ * thread pool with an index from another thread pool. */
+static inline u64
+ct6_session_midx (u32 thread_index, u32 session_index)
+{
+  return ((u64) thread_index << 32) | (u64) session_index;
+}
+
+#define ct6_session_get_thread(v) ((u32) ((v) >> 32))
+#define ct6_session_get_index(v)  ((u32) ((v) & 0xFFFFFFFF))
+
 extern ct6_main_t ct6_main;
 
 extern vlib_node_registration_t ct6_out2in_node;
