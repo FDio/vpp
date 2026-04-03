@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2ec5d4f1_6d9b0f04",
+        "filename": "src/plugins/tracepath/tracepath.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 188,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-04-03T14:43:51Z",
+      "side": 1,
+      "message": "are we missing vec_free (path.path_indices)?",
+      "revId": "72d5a121ce5f3142438321e8f2677997c33d19e3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8acd6ad1_670aca9f",
+        "filename": "src/plugins/tracepath/tracepath.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 340,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-04-03T14:43:51Z",
+      "side": 1,
+      "message": "instead of building the full output in 1 go it would be better to dump to output as we go to avoid overallocating memory",
+      "revId": "72d5a121ce5f3142438321e8f2677997c33d19e3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
