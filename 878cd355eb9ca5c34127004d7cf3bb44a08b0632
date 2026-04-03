@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "8eb9a328_cacae6b9",
+        "filename": "src/plugins/tracepath/CMakeLists.txt",
+        "patchSetId": 16
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-04-03T14:00:29Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "1815bcac_a9c2bf3f",
+      "revId": "878cd355eb9ca5c34127004d7cf3bb44a08b0632",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "8f25297c_06f120d8",
@@ -31,6 +49,24 @@
       "writtenOn": "2026-04-03T09:06:33Z",
       "side": 1,
       "message": "2026",
+      "revId": "878cd355eb9ca5c34127004d7cf3bb44a08b0632",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1e60dfdf_c4f6a1f6",
+        "filename": "src/plugins/tracepath/plugin.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 3,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-04-03T14:00:29Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "8f25297c_06f120d8",
       "revId": "878cd355eb9ca5c34127004d7cf3bb44a08b0632",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -52,6 +88,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "26be56a8_d0dc5b86",
+        "filename": "src/plugins/tracepath/tracepath.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 3,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-04-03T14:00:29Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "296094b3_4dff42ad",
+      "revId": "878cd355eb9ca5c34127004d7cf3bb44a08b0632",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "629f8d8e_b47f34a1",
@@ -65,6 +119,24 @@
       "writtenOn": "2026-04-03T09:06:33Z",
       "side": 1,
       "message": "why not hash the full path + len with clib_xxhash()? It would have lower collisions",
+      "revId": "878cd355eb9ca5c34127004d7cf3bb44a08b0632",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4572de8b_f6220caa",
+        "filename": "src/plugins/tracepath/tracepath.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 58,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-04-03T14:00:29Z",
+      "side": 1,
+      "message": "Good point. I\u0027ve initially only used a u32 hash based on the crc32c of the full path + len, but then decided to extend to u64 with path_len to reduce collision risk further, which in hindsight is not ideal.\n\nI\u0027ve implemented your suggestion to use clib_xxhash() directly, which iteratively hashes over the \u0027path_len\u0027 and \u0027path_indices\u0027 attributes of a path.",
+      "parentUuid": "629f8d8e_b47f34a1",
       "revId": "878cd355eb9ca5c34127004d7cf3bb44a08b0632",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -86,6 +158,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "b2cf027e_0429a597",
+        "filename": "src/plugins/tracepath/tracepath.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 128,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-04-03T14:00:29Z",
+      "side": 1,
+      "message": "Good catch, fixed.",
+      "parentUuid": "e0bfc7bc_42af96e9",
+      "revId": "878cd355eb9ca5c34127004d7cf3bb44a08b0632",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "24fa37e9_d23a1801",
@@ -99,6 +189,24 @@
       "writtenOn": "2026-04-03T09:06:33Z",
       "side": 1,
       "message": "this should be dynamic, 64 is too low, we already have servers with 200+ cores",
+      "revId": "878cd355eb9ca5c34127004d7cf3bb44a08b0632",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f48c6139_7ce23143",
+        "filename": "src/plugins/tracepath/tracepath.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 143,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-04-03T14:00:29Z",
+      "side": 1,
+      "message": "Sure, I originally added this assert and related TODO\u0027s since the plugin was not supporting VPP running with 64+ cores yet.\n\nI went ahead and replaced the u64-based bitmap with a clib_bitmap_t that can grow dynamically depending on the thread indices value observed in the trace.",
+      "parentUuid": "24fa37e9_d23a1801",
       "revId": "878cd355eb9ca5c34127004d7cf3bb44a08b0632",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -120,6 +228,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "458081b2_11c39845",
+        "filename": "src/plugins/tracepath/tracepath.h",
+        "patchSetId": 16
+      },
+      "lineNbr": 3,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-04-03T14:00:29Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "764dfefc_ff822291",
+      "revId": "878cd355eb9ca5c34127004d7cf3bb44a08b0632",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "937b89cf_dafa96bf",
@@ -137,6 +263,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "70e328e5_be6b024b",
+        "filename": "src/plugins/tracepath/tracepath.h",
+        "patchSetId": 16
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-04-03T14:00:29Z",
+      "side": 1,
+      "message": "Good point, previously had code relying on vnet that is not present anymore.",
+      "parentUuid": "937b89cf_dafa96bf",
+      "revId": "878cd355eb9ca5c34127004d7cf3bb44a08b0632",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "1ac3c96c_f7f90eb8",
@@ -150,6 +294,24 @@
       "writtenOn": "2026-04-03T09:06:33Z",
       "side": 1,
       "message": "a vector would be better IMO - this is debug/control plane code, it would be better to not have limitations",
+      "revId": "878cd355eb9ca5c34127004d7cf3bb44a08b0632",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "41448fb8_30f85de0",
+        "filename": "src/plugins/tracepath/tracepath.h",
+        "patchSetId": 16
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-04-03T14:00:29Z",
+      "side": 1,
+      "message": "Sure. However, would it make sense to keep the max path len guard with vectors ? i.e. max path_len being set to 32",
+      "parentUuid": "1ac3c96c_f7f90eb8",
       "revId": "878cd355eb9ca5c34127004d7cf3bb44a08b0632",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
