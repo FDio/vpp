@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "94d44931_ac5d6afd",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-04-03T09:11:20Z",
+      "side": 1,
+      "message": "IIUC this patch fixes the previous patch? If so, can it be squashed?",
+      "revId": "c072e91c1ee365834be62ecc3e6abc08a2021d91",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
