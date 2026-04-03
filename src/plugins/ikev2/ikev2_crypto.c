@@ -668,6 +668,51 @@ ikev2_generate_dh (ikev2_sa_t * sa, ikev2_sa_transform_t * t)
       EC_POINT_free (i_point);
       EC_POINT_free (shared_point);
     }
+  else if (t->dh_group == IKEV2_DH_GROUP_CURVE)
+    {
+      EVP_PKEY_CTX *pctx = EVP_PKEY_CTX_new_id (t->nid, NULL);
+      EVP_PKEY *pkey = NULL;
+      EVP_PKEY *peer = NULL;
+      size_t key_len = t->key_len;
+
+      ASSERT (pctx);
+      ASSERT (EVP_PKEY_keygen_init (pctx) > 0);
+      ASSERT (EVP_PKEY_keygen (pctx, &pkey) > 0);
+
+      if (sa->is_initiator)
+	{
+	  sa->i_dh_data = vec_new (u8, t->key_len);
+	  sa->dh_private_key = vec_new (u8, t->key_len);
+	  ASSERT (EVP_PKEY_get_raw_public_key (pkey, sa->i_dh_data, &key_len) > 0);
+	  ASSERT (key_len == t->key_len);
+	  key_len = t->key_len;
+	  ASSERT (EVP_PKEY_get_raw_private_key (pkey, sa->dh_private_key, &key_len) > 0);
+	  ASSERT (key_len == t->key_len);
+	}
+      else
+	{
+	  EVP_PKEY_CTX *dctx;
+
+	  sa->r_dh_data = vec_new (u8, t->key_len);
+	  ASSERT (EVP_PKEY_get_raw_public_key (pkey, sa->r_dh_data, &key_len) > 0);
+	  ASSERT (key_len == t->key_len);
+	  peer = EVP_PKEY_new_raw_public_key (t->nid, NULL, sa->i_dh_data, vec_len (sa->i_dh_data));
+	  ASSERT (peer);
+	  dctx = EVP_PKEY_CTX_new (pkey, NULL);
+	  ASSERT (dctx);
+	  ASSERT (EVP_PKEY_derive_init (dctx) > 0);
+	  ASSERT (EVP_PKEY_derive_set_peer (dctx, peer) > 0);
+	  sa->dh_shared_key = vec_new (u8, t->key_len);
+	  key_len = t->key_len;
+	  ASSERT (EVP_PKEY_derive (dctx, sa->dh_shared_key, &key_len) > 0);
+	  ASSERT (key_len == t->key_len);
+	  EVP_PKEY_CTX_free (dctx);
+	}
+
+      EVP_PKEY_free (peer);
+      EVP_PKEY_free (pkey);
+      EVP_PKEY_CTX_free (pctx);
+    }
 }
 
 void
@@ -774,6 +819,29 @@ ikev2_complete_dh (ikev2_sa_t * sa, ikev2_sa_transform_t * t)
       EC_POINT_free (i_point);
       EC_POINT_free (r_point);
       EC_POINT_free (shared_point);
+    }
+  else if (t->dh_group == IKEV2_DH_GROUP_CURVE)
+    {
+      EVP_PKEY *pkey;
+      EVP_PKEY *peer;
+      EVP_PKEY_CTX *pctx;
+      size_t key_len = t->key_len;
+
+      pkey = EVP_PKEY_new_raw_private_key (t->nid, NULL, sa->dh_private_key,
+					   vec_len (sa->dh_private_key));
+      ASSERT (pkey);
+      peer = EVP_PKEY_new_raw_public_key (t->nid, NULL, sa->r_dh_data, vec_len (sa->r_dh_data));
+      ASSERT (peer);
+      pctx = EVP_PKEY_CTX_new (pkey, NULL);
+      ASSERT (pctx);
+      ASSERT (EVP_PKEY_derive_init (pctx) > 0);
+      ASSERT (EVP_PKEY_derive_set_peer (pctx, peer) > 0);
+      sa->dh_shared_key = vec_new (u8, t->key_len);
+      ASSERT (EVP_PKEY_derive (pctx, sa->dh_shared_key, &key_len) > 0);
+      ASSERT (key_len == t->key_len);
+      EVP_PKEY_CTX_free (pctx);
+      EVP_PKEY_free (peer);
+      EVP_PKEY_free (pkey);
     }
 }
 
@@ -1081,7 +1149,6 @@ ikev2_crypto_init (ikev2_main_t * km)
   tr->key_trunc = 128 / 8;
   tr->md = 0;
 
-#if defined(OPENSSL_NO_CISCO_FECDH)
   vec_add2 (km->supported_transforms, tr, 1);
   tr->type = IKEV2_TRANSFORM_TYPE_DH;
   tr->dh_type = IKEV2_TRANSFORM_DH_TYPE_BRAINPOOL_512;
@@ -1116,7 +1183,6 @@ ikev2_crypto_init (ikev2_main_t * km)
   tr->key_len = (224 * 2) / 8;
   tr->nid = NID_secp224r1;
   tr->dh_group = IKEV2_DH_GROUP_ECP;
-#endif
 
   vec_add2 (km->supported_transforms, tr, 1);
   tr->type = IKEV2_TRANSFORM_TYPE_DH;
@@ -1145,6 +1211,20 @@ ikev2_crypto_init (ikev2_main_t * km)
   tr->key_len = (192 * 2) / 8;
   tr->nid = NID_X9_62_prime192v1;
   tr->dh_group = IKEV2_DH_GROUP_ECP;
+
+  vec_add2 (km->supported_transforms, tr, 1);
+  tr->type = IKEV2_TRANSFORM_TYPE_DH;
+  tr->dh_type = IKEV2_TRANSFORM_DH_TYPE_CURVE448;
+  tr->key_len = 56;
+  tr->nid = EVP_PKEY_X448;
+  tr->dh_group = IKEV2_DH_GROUP_CURVE;
+
+  vec_add2 (km->supported_transforms, tr, 1);
+  tr->type = IKEV2_TRANSFORM_TYPE_DH;
+  tr->dh_type = IKEV2_TRANSFORM_DH_TYPE_CURVE25519;
+  tr->key_len = 32;
+  tr->nid = EVP_PKEY_X25519;
+  tr->dh_group = IKEV2_DH_GROUP_CURVE;
 
   vec_add2 (km->supported_transforms, tr, 1);
   tr->type = IKEV2_TRANSFORM_TYPE_DH;
