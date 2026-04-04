@@ -1,0 +1,22 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0b61dde0_e4e62a99",
+        "filename": "src/plugins/pppoeclient/pppoeclient.api",
+        "patchSetId": 74
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 3306
+      },
+      "writtenOn": "2026-04-04T11:00:55Z",
+      "side": 1,
+      "message": "Thanks for the review! service_name is already exposed via the API in this patchset — see line 29 of this file:\n\n  string service_name[64];\n\nin the pppoeclient_add_del message. The API handler in pppoeclient_api.c wires it through to the client struct (line 248), and it is also returned in pppoeclient_details (line 124).\n\nSo both CLI and API paths support configuring service_name. The CLI uses \"set pppoeclient options ... service-name \u003cname\u003e\", and the API sets it at creation time via pppoeclient_add_del.",
+      "parentUuid": "49a31c3b_0a3e627a",
+      "revId": "2a86453a3ddde75f87cda36736288268e819dbf9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
