@@ -20,6 +20,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "9a51b871_ad36d990",
+        "filename": "test/framework.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 583,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-04-04T08:46:21Z",
+      "side": 1,
+      "message": "Rummaging about git it looks like 1s comes from 9225dee9655ce607130f9bab5472441b72e25858. It\u0027s the \"if you are writing your first \u0027hello world\u0027 test then this will work reasonably well for you\" type of default. Unless a system is under load (or severely lacking in performance), I don\u0027t see VPP needing more than 1s to generate, traverse graph and capture a (bunch of) frame(s) of packets.\n\nIf you are writing a complicated test, then setting a correct timeout value is exposed, so that you can pass a correct parameter.\n\nThis method (send_and_expect_multi) has been in use since the original submission of this MR (in tests with the common case being \"send a bunch of packets\" on every worker) and it worked fine.\n\nI can\u0027t imagine how a proof that this change, which introduces a tool to be used by others will not break CI when used by others. How would writing an arbitrary test prove that?",
+      "parentUuid": "fc5eaa69_1402ef26",
+      "revId": "17ab012a809206a32efdc293271b1964e212065c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "378be68c_b485ac5b",
         "filename": "test/framework.py",
         "patchSetId": 7
@@ -31,6 +49,24 @@
       "writtenOn": "2026-04-03T17:52:29Z",
       "side": 1,
       "message": "This timeout mechanism is fragile in the CI. Since all interfaces share a single timeout, there is no way to determine if the capture that timed out was the instigator in the overall timeout failure.",
+      "revId": "17ab012a809206a32efdc293271b1964e212065c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "460edbc3_46e04443",
+        "filename": "test/framework.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 606,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-04-04T08:46:21Z",
+      "side": 1,
+      "message": "It\u0027s the same mechanism used by get_capture itself. What is your concern here?",
+      "parentUuid": "378be68c_b485ac5b",
       "revId": "17ab012a809206a32efdc293271b1964e212065c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -60,6 +96,30 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "761e0320_83e926c3",
+        "filename": "test/framework.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 619,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-04-04T08:46:21Z",
+      "side": 1,
+      "message": "OK, thanks for pointing this out. Having it in else branch is a mistake.\n\nI refactored it so that it works properly and also allows disabling the assertions here by passing a [] in.\n\nI was considering options to improve this behaviour, but a single change set comment thread is not the right space I think. Vpp-dev would be a more appropriate channel?",
+      "parentUuid": "79444a55_e77e61f4",
+      "range": {
+        "startLine": 613,
+        "startChar": 0,
+        "endLine": 619,
+        "endChar": 0
+      },
+      "revId": "17ab012a809206a32efdc293271b1964e212065c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "51c9683a_70ded3d6",
         "filename": "test/vpp_pg_interface.py",
         "patchSetId": 7
@@ -71,6 +131,30 @@
       "writtenOn": "2026-04-03T17:52:29Z",
       "side": 1,
       "message": "Why is the default for timeout converted to a float?  \n\nget_capture could still be passed a timeout value that is an int and that argument will not be automatically coerced to a float during the call of the method.\n\ntimeout\u003d1 (or any int) should work since remaining_time will be coerced to a float on line 354.\n\nIf it does not work or if there is another reason for timeout to be a float, then line 316 should be\n  remaining_time \u003d float(timeout)",
+      "range": {
+        "startLine": 303,
+        "startChar": 48,
+        "endLine": 303,
+        "endChar": 59
+      },
+      "revId": "17ab012a809206a32efdc293271b1964e212065c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7f5f0d3a_a8d82a17",
+        "filename": "test/vpp_pg_interface.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 303,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-04-04T08:46:21Z",
+      "side": 1,
+      "message": "This is to hint to pyright that it’s actually float. Otherwise it’ll keep bugging you anywhere you pass a float in. I don’t want to annotate just a single variable but also not the whole unit, so I opted for this low-hanging fruit instead.",
+      "parentUuid": "51c9683a_70ded3d6",
       "range": {
         "startLine": 303,
         "startChar": 48,
