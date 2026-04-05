@@ -222,7 +222,7 @@ class TestECMP(VppTestCase):
         # We expect packets on pg1, pg2 and pg3, but not on pg0
         rx_count = 0
         for pg_if in self.pg_interfaces[1:]:
-            capture = pg_if._get_capture(timeout=1)
+            capture = pg_if._get_capture()
             self.assertNotEqual(
                 len(capture), 0, msg="No packets captured on %s" % pg_if.name
             )
@@ -257,7 +257,7 @@ class TestECMP(VppTestCase):
         # We expect packets on pg1, pg2 and pg3, but not on pg0
         rx_count = 0
         for pg_if in self.pg_interfaces[1:]:
-            capture = pg_if._get_capture(timeout=1)
+            capture = pg_if._get_capture()
             self.assertNotEqual(
                 len(capture), 0, msg="No packets captured on %s" % pg_if.name
             )
