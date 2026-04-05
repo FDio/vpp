@@ -1181,7 +1181,8 @@ class TestIPv6(TestIPv6ND):
         subitf.admin_up()
         subitf.config_ip6()
 
-        rxs = self.pg1._get_capture(timeout=4, filter_out_fn=None)
+        self.virtual_sleep(4, remark="push vpp clock to nudge packet generation")
+        rxs = self.pg1._get_capture(filter_out_fn=None)
 
         #
         # hunt for the MLD on vlan 99
@@ -2541,7 +2542,7 @@ class TestIP6Punt(IP6PuntSetup, VppTestCase):
         # the number of packet received should be greater than 0,
         # but not equal to the number sent, since some were policed
         #
-        rx = self.pg1._get_capture(1)
+        rx = self.pg1._get_capture()
         stats = policer.get_stats()
 
         # Single rate policer - expect conform, violate but no exceed
@@ -4028,7 +4029,7 @@ class TestIPv6Punt(VppTestCase):
         # the number of packet received should be greater than 0,
         # but not equal to the number sent, since some were policed
         #
-        rx = self.pg1._get_capture(1)
+        rx = self.pg1._get_capture()
 
         stats = policer.get_stats()
 

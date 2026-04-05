@@ -123,7 +123,7 @@ class TestNsimCli(VppTestCase):
         self.vapi.cli("nsim output-feature enable-disable pg0")
 
         self.pg_start()
-        capture = self.pg1.get_capture()
+        capture = self.pg1.get_capture(timeout=1)
         self.pg0.assert_nothing_captured()
         reply = self.vapi.cli("show trace")
         verify_capture(self, self.pg0, self.pg1, capture, reply)
@@ -197,7 +197,7 @@ class TestNsimApi(VppTestCase):
         )
         self.vapi.nsim_output_feature_enable_disable(enable_disable=True, sw_if_index=1)
         self.pg_start()
-        capture = self.pg1.get_capture()
+        capture = self.pg1.get_capture(timeout=1)
         reply = self.vapi.cli("show trace")
         verify_capture(self, self.pg0, self.pg1, capture, reply)
         self.assertIn("nsim", reply)
