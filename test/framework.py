@@ -562,12 +562,15 @@ class VppTestCase(VppAsfTestCase):
 
         self.pg_send(intf, pkts)
 
+        if timeout is not None:
+            deadline = time.time() + timeout
+
         try:
-            if not timeout:
-                timeout = 1
             for i in self.pg_interfaces:
-                i.assert_nothing_captured(timeout=timeout, remark=remark)
-                timeout = 0.1
+                i.assert_nothing_captured(
+                    timeout=None if timeout is None else deadline - time.time(),
+                    remark=remark,
+                )
         finally:
             if trace:
                 if msg:
@@ -585,7 +588,7 @@ class VppTestCase(VppAsfTestCase):
         log_packets: bool = True,
         msg: str | None = None,
         stats_diff: StatsDiff | None = None,
-        timeout: float = 1.0,
+        timeout: float | None = None,
         assert_nothing_captured: list[VppPGInterface] | None = None,
     ) -> list[Capture]:
         if stats_diff:
@@ -601,7 +604,8 @@ class VppTestCase(VppAsfTestCase):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start(trace=trace)
 
-        deadline = time.time() + timeout
+        if timeout is not None:
+            deadline = time.time() + timeout
 
         if expect:
             capture = [
@@ -609,7 +613,7 @@ class VppTestCase(VppAsfTestCase):
                     interface=e.interface,
                     packets=e.interface.get_capture(
                         expected_count=e.expected_count,
-                        timeout=deadline - time.time(),
+                        timeout=None if timeout is None else deadline - time.time(),
                         filter_out_fn=e.filter_out_fn,
                     ),
                 )
@@ -623,7 +627,9 @@ class VppTestCase(VppAsfTestCase):
         expect_intfs = {e.interface for e in expect} if expect else set()
         for i in assert_nothing_captured:
             if i not in expect_intfs:
-                i.assert_nothing_captured(timeout=deadline - time.time())
+                i.assert_nothing_captured(
+                    timeout=None if timeout is None else deadline - time.time()
+                )
 
         if trace:
             if msg:
@@ -647,6 +653,7 @@ class VppTestCase(VppAsfTestCase):
         msg: str | None = None,
         stats_diff: StatsDiff | None = None,
         filter_out_fn=is_ipv6_misc,
+        assert_nothing_captured=[],
     ) -> PacketList | None:
         send = Send(interface=intf, packets=pkts, worker=worker)
         if n_rx is None:
@@ -665,6 +672,7 @@ class VppTestCase(VppAsfTestCase):
             log_packets=log_packets,
             msg=msg,
             stats_diff=stats_diff,
+            assert_nothing_captured=assert_nothing_captured,
         )
 
         if stats_diff:
@@ -679,7 +687,7 @@ class VppTestCase(VppAsfTestCase):
         self.pg_send(input, pkts, worker=worker, trace=trace)
         rxs = []
         for oo in outputs:
-            rx = oo._get_capture(1)
+            rx = oo._get_capture()
             self.assertNotEqual(0, len(rx), f"0 != len(rx) ({len(rx)})")
             rxs.append(rx)
         if trace:
@@ -688,7 +696,7 @@ class VppTestCase(VppAsfTestCase):
 
     def send_and_expect_some(self, intf, pkts, output, worker=None, trace=True):
         self.pg_send(intf, pkts, worker=worker, trace=trace)
-        rx = output._get_capture(1)
+        rx = output._get_capture()
         if trace:
             self.logger.debug(self.vapi.cli("show trace"))
         self.assertTrue(len(rx) > 0)
@@ -706,12 +714,15 @@ class VppTestCase(VppAsfTestCase):
         self.pg_send(intf, pkts, worker=worker)
         rx = output.get_capture(len(pkts))
         outputs = [output]
-        if not timeout:
-            timeout = 1
+
+        if timeout is not None:
+            deadline = time.time() + timeout
+
         for i in self.pg_interfaces:
             if i not in outputs:
-                i.assert_nothing_captured(timeout=timeout)
-                timeout = 0.1
+                i.assert_nothing_captured(
+                    timeout=None if timeout is None else deadline - time.time()
+                )
 
         if trace:
             self.logger.debug(self.vapi.cli("show trace"))
