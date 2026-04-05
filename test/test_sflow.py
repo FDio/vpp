@@ -206,7 +206,15 @@ class SFlowTestCase(VppTestCase):
         # assert nothing captured on pg0 (always do this last, so that
         # some time has already passed since pg_start())
         self.pg0.assert_nothing_captured()
+
+        self.logger.debug(self.vapi.cli("show trace"))
+
         # verify capture
         self.verify_capture(self.pg0, self.pg1, capture)
+
+        # nudge vpp clock to encourage flow sampling, otherwise "show errors"
+        # might be lacking sflow counters and verify_sflow() could fail
+        self.virtual_sleep(1, remark="encourage flow sampling")
+
         # verify sflow counters
         self.verify_sflow(count)

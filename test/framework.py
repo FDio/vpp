@@ -528,12 +528,15 @@ class VppTestCase(VppAsfTestCase):
 
         self.pg_send(intf, pkts)
 
+        if timeout is not None:
+            deadline = time.time() + timeout
+
         try:
-            if not timeout:
-                timeout = 1
             for i in self.pg_interfaces:
-                i.assert_nothing_captured(timeout=timeout, remark=remark)
-                timeout = 0.1
+                i.assert_nothing_captured(
+                    timeout=None if timeout is None else deadline - time.time(),
+                    remark=remark,
+                )
         finally:
             if trace:
                 if msg:
@@ -578,7 +581,7 @@ class VppTestCase(VppAsfTestCase):
         self.pg_send(input, pkts, worker=worker, trace=trace)
         rxs = []
         for oo in outputs:
-            rx = oo._get_capture(1)
+            rx = oo._get_capture()
             self.assertNotEqual(0, len(rx), f"0 != len(rx) ({len(rx)})")
             rxs.append(rx)
         if trace:
@@ -587,7 +590,7 @@ class VppTestCase(VppAsfTestCase):
 
     def send_and_expect_some(self, intf, pkts, output, worker=None, trace=True):
         self.pg_send(intf, pkts, worker=worker, trace=trace)
-        rx = output._get_capture(1)
+        rx = output._get_capture()
         if trace:
             self.logger.debug(self.vapi.cli("show trace"))
         self.assertTrue(len(rx) > 0)
@@ -603,12 +606,15 @@ class VppTestCase(VppAsfTestCase):
         self.pg_send(intf, pkts)
         rx = output.get_capture(len(pkts))
         outputs = [output]
-        if not timeout:
-            timeout = 1
+
+        if timeout is not None:
+            deadline = time.time() + timeout
+
         for i in self.pg_interfaces:
             if i not in outputs:
-                i.assert_nothing_captured(timeout=timeout)
-                timeout = 0.1
+                i.assert_nothing_captured(
+                    timeout=None if timeout is None else deadline - time.time()
+                )
 
         if stats_diff:
             self.compare_stats_with_snapshot(stats_diff, stats_snapshot)

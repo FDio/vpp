@@ -1502,7 +1502,7 @@ class TestIPv6Reassembly(VppTestCase):
             len(self.pkt_infos) - len(dropped_packet_indexes)
         )
         self.verify_capture(packets, dropped_packet_indexes)
-        pkts = self.src_if._get_capture(1)
+        pkts = self.src_if._get_capture()
         for icmp in pkts:
             self.assertIn(ICMPv6TimeExceeded, icmp)
             self.assertIn(IPv6ExtHdrFragment, icmp)
@@ -1556,7 +1556,7 @@ class TestIPv6Reassembly(VppTestCase):
             len(self.pkt_infos) - len(dropped_packet_indexes)
         )
         self.verify_capture(packets, dropped_packet_indexes)
-        pkts = self.src_if._get_capture(1)
+        pkts = self.src_if._get_capture()
         for icmp in pkts:
             self.assertIn(ICMPv6TimeExceeded, icmp)
             self.assertIn(IPv6ExtHdrFragment, icmp)
