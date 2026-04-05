@@ -2273,8 +2273,8 @@ class TestMPLSPIC(VppTestCase):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        rx0 = self.pg0._get_capture(NUM_PKTS)
-        rx1 = self.pg1._get_capture(NUM_PKTS)
+        rx0 = self.pg0._get_capture()
+        rx1 = self.pg1._get_capture()
 
         # not testing the LB hashing algorithm so we're not concerned
         # with the split ratio, just as long as neither is 0
@@ -2344,8 +2344,8 @@ class TestMPLSPIC(VppTestCase):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        rx0 = self.pg0._get_capture(NUM_PKTS)
-        rx1 = self.pg1._get_capture(NUM_PKTS)
+        rx0 = self.pg0._get_capture()
+        rx1 = self.pg1._get_capture()
         self.assertNotEqual(0, len(rx0))
         self.assertNotEqual(0, len(rx1))
         self.assertEqual(
@@ -2418,8 +2418,8 @@ class TestMPLSPIC(VppTestCase):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        rx0 = self.pg2._get_capture(NUM_PKTS)
-        rx1 = self.pg3._get_capture(NUM_PKTS)
+        rx0 = self.pg2._get_capture()
+        rx1 = self.pg3._get_capture()
 
         # not testing the LB hashing algorithm so we're not concerned
         # with the split ratio, just as long as neither is 0
@@ -2489,8 +2489,8 @@ class TestMPLSPIC(VppTestCase):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        rx0 = self.pg2._get_capture(NUM_PKTS)
-        rx1 = self.pg3._get_capture(NUM_PKTS)
+        rx0 = self.pg2._get_capture()
+        rx1 = self.pg3._get_capture()
         self.assertNotEqual(0, len(rx0))
         self.assertNotEqual(0, len(rx1))
         self.assertEqual(
@@ -2560,8 +2560,8 @@ class TestMPLSPIC(VppTestCase):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        rx0 = self.pg2._get_capture(NUM_PKTS)
-        rx1 = self.pg3._get_capture(NUM_PKTS)
+        rx0 = self.pg2._get_capture()
+        rx1 = self.pg3._get_capture()
         self.assertNotEqual(0, len(rx0))
         self.assertNotEqual(0, len(rx1))
         self.assertEqual(
@@ -2628,8 +2628,8 @@ class TestMPLSPIC(VppTestCase):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        rx0 = self.pg2._get_capture(NUM_PKTS)
-        rx1 = self.pg3._get_capture(NUM_PKTS)
+        rx0 = self.pg2._get_capture()
+        rx1 = self.pg3._get_capture()
         self.assertNotEqual(0, len(rx0))
         self.assertNotEqual(0, len(rx1))
         self.assertEqual(
