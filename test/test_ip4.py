@@ -1882,7 +1882,7 @@ class TestIPPunt(IPPuntSetup, VppTestCase):
         # the number of packet received should be greater than 0,
         # but not equal to the number sent, since some were policed
         #
-        rx = self.pg1._get_capture(1)
+        rx = self.pg1._get_capture()
 
         stats = policer.get_stats()
 

@@ -1938,7 +1938,7 @@ class ARPTestCase(VppTestCase):
         self.pg1.add_stream(p1 * 257)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        rx = self.pg0._get_capture(1)
+        rx = self.pg0._get_capture()
 
         #
         # how many we get is going to be dependent on the time for packet
@@ -1973,7 +1973,7 @@ class ARPTestCase(VppTestCase):
         self.pg1.add_stream(p1 * 257)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        rx = self.pg0._get_capture(1)
+        rx = self.pg0._get_capture()
 
         #
         # how many we get is going to be dependent on the time for packet
