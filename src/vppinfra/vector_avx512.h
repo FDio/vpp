@@ -181,6 +181,19 @@ u64x8_permute (u64x8 a, u64x8 b, u64x8 mask)
 					    (__m512i) b);
 }
 
+#define u64x8_shrdi(a, b, imm) (u64x8) _mm512_shrdi_epi64 ((__m512i) (a), (__m512i) (b), (imm))
+
+static_always_inline u64x8
+u64x8_madd52lo (u64x8 acc, u64x8 a, u64x8 b)
+{
+  return (u64x8) _mm512_madd52lo_epu64 ((__m512i) acc, (__m512i) a, (__m512i) b);
+}
+
+static_always_inline u64x8
+u64x8_madd52hi (u64x8 acc, u64x8 a, u64x8 b)
+{
+  return (u64x8) _mm512_madd52hi_epu64 ((__m512i) acc, (__m512i) a, (__m512i) b);
+}
 
 #define u32x16_ternary_logic(a, b, c, d) \
   (u32x16) _mm512_ternarylogic_epi32 ((__m512i) a, (__m512i) b, (__m512i) c, d)
@@ -190,6 +203,10 @@ u64x8_permute (u64x8 a, u64x8 b, u64x8 mask)
 
 #define u8x64_extract_u8x16(a, n) \
   (u8x16) _mm512_extracti64x2_epi64 ((__m512i) (a), n)
+
+#define u32x16_extract_u32x4(a, n) (u32x4) _mm512_extracti64x2_epi64 ((__m512i) (a), n)
+
+#define u32x16_bit_rotate_left(a, n) (u32x16) _mm512_rol_epi32 ((__m512i) (a), n)
 
 #define u8x64_extract_u8x32(a, n) (u8x32) _mm512_extracti64x4_epi64 ((__m512i) (a), n)
 

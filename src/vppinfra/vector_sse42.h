@@ -247,6 +247,12 @@ _(u64, 2, right, left);
 
 #undef _
 
+#if defined(__AVX512VL__)
+#define u32x4_bit_rotate_left(a, n) (u32x4) _mm_rol_epi32 ((__m128i) (a), (n))
+#else
+#define u32x4_bit_rotate_left(a, n) (((a) << (n)) | ((a) >> (32 - (n))))
+#endif
+
 always_inline u32
 u8x16_max_scalar (u8x16 x)
 {

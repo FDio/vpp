@@ -63,6 +63,12 @@ u32x8_permute (u32x8 v, u32x8 idx)
   return (u32x8) _mm256_permutevar8x32_epi32 ((__m256i) v, (__m256i) idx);
 }
 
+static_always_inline u64x4
+u64x4_mul_lo_u32 (u64x4 a, u64x4 b)
+{
+  return (u64x4) _mm256_mul_epi32 ((__m256i) a, (__m256i) b);
+}
+
 #define u64x4_permute(v, m0, m1, m2, m3)                                      \
   (u64x4) _mm256_permute4x64_epi64 (                                          \
     (__m256i) v, ((m0) | (m1) << 2 | (m2) << 4 | (m3) << 6))
@@ -156,6 +162,12 @@ u32x8_byte_swap (u32x8 v)
   };
   return (u32x8) _mm256_shuffle_epi8 ((__m256i) v, (__m256i) swap);
 }
+
+#if defined(__AVX512VL__)
+#define u32x8_bit_rotate_left(a, n) (u32x8) _mm256_rol_epi32 ((__m256i) (a), (n))
+#else
+#define u32x8_bit_rotate_left(a, n) (((a) << (n)) | ((a) >> (32 - (n))))
+#endif
 
 static_always_inline u16x16
 u16x16_byte_swap (u16x16 v)

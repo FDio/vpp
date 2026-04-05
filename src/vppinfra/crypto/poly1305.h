@@ -10,12 +10,35 @@
 #include <vppinfra/cache.h>
 #include <vppinfra/string.h>
 
+#define CLIB_POLY1305_BLOCK_SIZE 16
+
+#if defined(CLIB_HAVE_VEC512) || defined(CLIB_HAVE_VEC256)
+#define CLIB_POLY1305_M44	      0xFFFFFFFFFFFULL
+#define CLIB_POLY1305_M42	      0x3FFFFFFFFFFULL
+#define CLIB_POLY1305_HIBIT64	      (1ULL << 40)
+#define CLIB_POLY1305_VEC_STATE_WORDS 29
+#endif
+
 /* implementation of DJB's poly1305 using 64-bit arithmetrics */
 
 typedef struct
 {
-  const u64 r[3], s[2];
+  u64 r[3], s[2];
   u64 h[3];
+
+#if defined(CLIB_HAVE_VEC512) || defined(CLIB_HAVE_VEC256)
+  u64 r44[3];
+#endif
+
+#if defined(CLIB_HAVE_VEC256)
+  u64x4 r4[5];
+  u64x4 r4_5[4];
+#endif
+
+#if defined(CLIB_HAVE_VEC512)
+  u64x8 r8[3];
+  u64x8 s8[2];
+#endif
 
   /* partial data */
   union
@@ -27,13 +50,341 @@ typedef struct
   size_t n_partial_bytes;
 } clib_poly1305_ctx;
 
+#if defined(CLIB_HAVE_VEC512) || defined(CLIB_HAVE_VEC256)
+
+static_always_inline void
+_clib_poly1305_rh_to_44 (u64 out[3], const u64 h[3])
+{
+  out[0] = h[0] & CLIB_POLY1305_M44;
+  out[1] = ((h[0] >> 44) | (h[1] << 20)) & CLIB_POLY1305_M44;
+  out[2] = ((h[1] >> 24) | (h[2] << 40)) & CLIB_POLY1305_M42;
+}
+
+static_always_inline void
+_clib_poly1305_44_to_rh (u64 h[3], const u64 in[3])
+{
+  h[0] = in[0] | (in[1] << 44);
+  h[1] = (in[1] >> 20) | (in[2] << 24);
+  h[2] = in[2] >> 40;
+}
+
+static_always_inline void
+_clib_poly1305_mul_44 (u64 *h0, u64 *h1, u64 *h2, u64 a0, u64 a1, u64 a2, u64 b0, u64 b1, u64 b2)
+{
+  const u64 s1 = b1 * 20;
+  const u64 s2 = b2 * 20;
+  const u128 d0 = (u128) a0 * b0 + (u128) a1 * s2 + (u128) a2 * s1;
+  const u64 c0 = (u64) (d0 >> 44);
+  const u128 d1 = (u128) a0 * b1 + (u128) a1 * b0 + (u128) a2 * s2 + c0;
+  const u64 c1 = (u64) (d1 >> 44);
+  const u128 d2 = (u128) a0 * b2 + (u128) a1 * b1 + (u128) a2 * b0 + c1;
+  const u64 c2 = (u64) (d2 >> 42);
+
+  *h0 = (u64) d0 & CLIB_POLY1305_M44;
+  *h0 += c2 * 5;
+  *h1 = ((u64) d1 & CLIB_POLY1305_M44) + (*h0 >> 44);
+  *h0 &= CLIB_POLY1305_M44;
+  *h2 = (u64) d2 & CLIB_POLY1305_M42;
+}
+
+static_always_inline void
+_clib_poly1305_precompute_r44 (u64 state[29], const u64 r44[3])
+{
+  u64 r0 = r44[0];
+  u64 r1 = r44[1];
+  u64 r2 = r44[2];
+  int i;
+
+  state[2] = state[3] = state[4] = 0;
+  state[5] = r0;
+  state[6] = r1;
+  state[7] = r2;
+
+  for (i = 2; i <= 8; i++)
+    {
+      u32 o = 5 + (i - 1) * 3;
+      _clib_poly1305_mul_44 (&state[o], &state[o + 1], &state[o + 2], state[o - 3], state[o - 2],
+			     state[o - 1], r0, r1, r2);
+    }
+}
+
+#if defined(CLIB_HAVE_VEC256)
+typedef struct
+{
+  u32 v[5];
+} clib_poly1305_radix26_t;
+
+static_always_inline clib_poly1305_radix26_t
+_clib_poly1305_convert_44_to_26 (u64 r0, u64 r1, u64 r2)
+{
+  clib_poly1305_radix26_t out;
+
+  out.v[0] = (u32) r0 & 0x3FFFFFF;
+  out.v[1] = (u32) ((r0 >> 26) | (r1 << 18)) & 0x3FFFFFF;
+  out.v[2] = (u32) (r1 >> 8) & 0x3FFFFFF;
+  out.v[3] = (u32) ((r1 >> 34) | (r2 << 10)) & 0x3FFFFFF;
+  out.v[4] = (u32) (r2 >> 16) & 0x3FFFFFF;
+  return out;
+}
+
+static_always_inline void
+_clib_poly1305_convert_26_to_44 (u64 *r0, u64 *r1, u64 *r2, const clib_poly1305_radix26_t *in)
+{
+  *r0 = ((u64) in->v[0] | ((u64) in->v[1] << 26)) & CLIB_POLY1305_M44;
+  *r1 =
+    (((u64) in->v[1] >> 18) | ((u64) in->v[2] << 8) | ((u64) in->v[3] << 34)) & CLIB_POLY1305_M44;
+  *r2 = (((u64) in->v[3] >> 10) | ((u64) in->v[4] << 16)) & CLIB_POLY1305_M42;
+}
+
+static_always_inline void
+_clib_poly1305_load_4_blocks_26 (u64x4 *m0, u64x4 *m1, u64x4 *m2, u64x4 *m3, u64x4 *m4, const u8 *m,
+				 const clib_poly1305_radix26_t *h)
+{
+  const u64x4 d0 = u64x4_load_unaligned ((void *) m);
+  const u64x4 d1 = u64x4_load_unaligned ((void *) (m + 32));
+  const u64x4 t0_mixed = u64x4_interleave_lo (d0, d1);
+  const u64x4 t1_mixed = u64x4_interleave_hi (d0, d1);
+  const u64x4 t0 = u64x4_permute (t0_mixed, 3, 1, 2, 0);
+  const u64x4 t1 = u64x4_permute (t1_mixed, 3, 1, 2, 0);
+  const u64x4 mask26 = u64x4_splat (0x3FFFFFFU);
+  const u64x4 hibit = u64x4_splat (1ULL << 24);
+
+  *m0 = (t0 & mask26) + (u64x4){
+    0,
+    0,
+    0,
+    h->v[0],
+  };
+  *m1 = ((t0 >> 26) & mask26) + (u64x4){
+    0,
+    0,
+    0,
+    h->v[1],
+  };
+  *m2 = (((t0 >> 52) | (t1 << 12)) & mask26) + (u64x4){
+    0,
+    0,
+    0,
+    h->v[2],
+  };
+  *m3 = ((t1 >> 14) & mask26) + (u64x4){
+    0,
+    0,
+    0,
+    h->v[3],
+  };
+  *m4 = ((t1 >> 40) | hibit) + (u64x4){
+    0,
+    0,
+    0,
+    h->v[4],
+  };
+}
+
+static_always_inline size_t
+_clib_poly1305_avx2_blocks (u64 h44[3], const clib_poly1305_ctx *ctx, const u8 *m, size_t blocks)
+{
+  clib_poly1305_radix26_t h;
+  const size_t incoming_blocks = blocks;
+
+  if (blocks < 4)
+    return 0;
+
+  h = _clib_poly1305_convert_44_to_26 (h44[0], h44[1], h44[2]);
+
+  while (blocks >= 4)
+    {
+      u64x4 m0, m1, m2, m3, m4;
+      u64x4 d0v, d1v, d2v, d3v, d4v;
+      u64 h0_64, h1_64, h2_64, h3_64, h4_64, carry;
+
+      _clib_poly1305_load_4_blocks_26 (&m0, &m1, &m2, &m3, &m4, m, &h);
+
+      d0v = u64x4_mul_lo_u32 (m0, ctx->r4[0]) + u64x4_mul_lo_u32 (m1, ctx->r4_5[3]) +
+	    u64x4_mul_lo_u32 (m2, ctx->r4_5[2]) + u64x4_mul_lo_u32 (m3, ctx->r4_5[1]) +
+	    u64x4_mul_lo_u32 (m4, ctx->r4_5[0]);
+      d1v = u64x4_mul_lo_u32 (m0, ctx->r4[1]) + u64x4_mul_lo_u32 (m1, ctx->r4[0]) +
+	    u64x4_mul_lo_u32 (m2, ctx->r4_5[3]) + u64x4_mul_lo_u32 (m3, ctx->r4_5[2]) +
+	    u64x4_mul_lo_u32 (m4, ctx->r4_5[1]);
+      d2v = u64x4_mul_lo_u32 (m0, ctx->r4[2]) + u64x4_mul_lo_u32 (m1, ctx->r4[1]) +
+	    u64x4_mul_lo_u32 (m2, ctx->r4[0]) + u64x4_mul_lo_u32 (m3, ctx->r4_5[3]) +
+	    u64x4_mul_lo_u32 (m4, ctx->r4_5[2]);
+      d3v = u64x4_mul_lo_u32 (m0, ctx->r4[3]) + u64x4_mul_lo_u32 (m1, ctx->r4[2]) +
+	    u64x4_mul_lo_u32 (m2, ctx->r4[1]) + u64x4_mul_lo_u32 (m3, ctx->r4[0]) +
+	    u64x4_mul_lo_u32 (m4, ctx->r4_5[3]);
+      d4v = u64x4_mul_lo_u32 (m0, ctx->r4[4]) + u64x4_mul_lo_u32 (m1, ctx->r4[3]) +
+	    u64x4_mul_lo_u32 (m2, ctx->r4[2]) + u64x4_mul_lo_u32 (m3, ctx->r4[1]) +
+	    u64x4_mul_lo_u32 (m4, ctx->r4[0]);
+
+      h0_64 = d0v[0] + d0v[1] + d0v[2] + d0v[3];
+      h1_64 = d1v[0] + d1v[1] + d1v[2] + d1v[3];
+      h2_64 = d2v[0] + d2v[1] + d2v[2] + d2v[3];
+      h3_64 = d3v[0] + d3v[1] + d3v[2] + d3v[3];
+      h4_64 = d4v[0] + d4v[1] + d4v[2] + d4v[3];
+
+      h1_64 += h0_64 >> 26;
+      h.v[0] = (u32) h0_64 & 0x3FFFFFF;
+      h2_64 += h1_64 >> 26;
+      h.v[1] = (u32) h1_64 & 0x3FFFFFF;
+      h3_64 += h2_64 >> 26;
+      h.v[2] = (u32) h2_64 & 0x3FFFFFF;
+      h4_64 += h3_64 >> 26;
+      h.v[3] = (u32) h3_64 & 0x3FFFFFF;
+      h.v[4] = (u32) h4_64 & 0x3FFFFFF;
+
+      carry = (h4_64 >> 26) * 5;
+      carry += h.v[0];
+      h.v[0] = (u32) carry & 0x3FFFFFF;
+      carry >>= 26;
+      carry += h.v[1];
+      h.v[1] = (u32) carry & 0x3FFFFFF;
+      carry >>= 26;
+      carry += h.v[2];
+      h.v[2] = (u32) carry & 0x3FFFFFF;
+      carry >>= 26;
+      carry += h.v[3];
+      h.v[3] = (u32) carry & 0x3FFFFFF;
+      carry >>= 26;
+      h.v[4] += (u32) carry;
+
+      m += 64;
+      blocks -= 4;
+    }
+
+  _clib_poly1305_convert_26_to_44 (&h44[0], &h44[1], &h44[2], &h);
+  return incoming_blocks - blocks;
+}
+#endif
+
+#if defined(CLIB_HAVE_VEC512)
+static_always_inline void
+_clib_poly1305_interleave_3x8 (u64x8 *r0, u64x8 *r1, u64x8 *r2)
+{
+  const u64x8 t0 = u64x8_shuffle2 (*r1, *r0, 7, 4, 1, 14, 11, 8, 5, 2);
+  const u64x8 t1 = u64x8_shuffle2 (*r1, *r0, 5, 2, 15, 12, 9, 6, 3, 0);
+  const u64x8 t2 = u64x8_shuffle2 (*r1, *r0, 6, 3, 0, 13, 10, 7, 4, 1);
+
+  *r0 = u64x8_shuffle2 (*r2, t0, 5, 2, 8, 9, 10, 11, 12, 13);
+  *r1 = u64x8_shuffle2 (*r2, t1, 6, 3, 0, 8, 9, 10, 11, 12);
+  *r2 = u64x8_shuffle2 (*r2, t2, 7, 4, 1, 8, 9, 10, 11, 12);
+}
+
+static_always_inline size_t
+_clib_poly1305_avx512_blocks (u64 h44[3], const clib_poly1305_ctx *ctx, const u8 *m, size_t blocks)
+{
+  size_t original_blocks;
+  u64 h0, h1, h2;
+  const u64x8 idx_lo = (u64x8){
+    0, 2, 4, 6, 8, 10, 12, 14,
+  };
+  const u64x8 idx_hi = (u64x8){
+    1, 3, 5, 7, 9, 11, 13, 15,
+  };
+  const u64x8 mask44 = u64x8_splat (CLIB_POLY1305_M44);
+  const u64x8 mask42 = u64x8_splat (CLIB_POLY1305_M42);
+  const u64x8 hibit = u64x8_splat (CLIB_POLY1305_HIBIT64);
+
+  if (blocks < 8)
+    return 0;
+
+  original_blocks = blocks;
+  h0 = h44[0];
+  h1 = h44[1];
+  h2 = h44[2];
+
+  while (blocks >= 8)
+    {
+      const u64x8 data0 = *(u64x8u *) m;
+      const u64x8 data1 = *(u64x8u *) (m + 64);
+      const u64x8 t0 = u64x8_permute (data0, data1, idx_lo);
+      const u64x8 t1 = u64x8_permute (data0, data1, idx_hi);
+      u64x8 m0 = t0 & mask44;
+      u64x8 m1 = u64x8_shrdi (t0, t1, 44) & mask44;
+      u64x8 m2 = ((t1 >> 24) & mask42) | hibit;
+      u64x8 d0_lo = {};
+      u64x8 d0_hi = {};
+      u64x8 d1_lo = {};
+      u64x8 d1_hi = {};
+      u64x8 d2_lo = {};
+      u64x8 d2_hi = {};
+      u64 sum0_lo, sum0_hi, sum1_lo, sum1_hi, sum2_lo, sum2_hi, carry;
+
+      m0 = (u64x8) _mm512_mask_add_epi64 ((__m512i) m0, 0x01, (__m512i) m0,
+					  (__m512i) u64x8_splat (h0));
+      m1 = (u64x8) _mm512_mask_add_epi64 ((__m512i) m1, 0x01, (__m512i) m1,
+					  (__m512i) u64x8_splat (h1));
+      m2 = (u64x8) _mm512_mask_add_epi64 ((__m512i) m2, 0x01, (__m512i) m2,
+					  (__m512i) u64x8_splat (h2));
+
+      d0_lo = u64x8_madd52lo (d0_lo, m0, ctx->r8[0]);
+      d0_lo = u64x8_madd52lo (d0_lo, m1, ctx->s8[1]);
+      d0_lo = u64x8_madd52lo (d0_lo, m2, ctx->s8[0]);
+      d0_hi = u64x8_madd52hi (d0_hi, m0, ctx->r8[0]);
+      d0_hi = u64x8_madd52hi (d0_hi, m1, ctx->s8[1]);
+      d0_hi = u64x8_madd52hi (d0_hi, m2, ctx->s8[0]);
+
+      d1_lo = u64x8_madd52lo (d1_lo, m0, ctx->r8[1]);
+      d1_lo = u64x8_madd52lo (d1_lo, m1, ctx->r8[0]);
+      d1_lo = u64x8_madd52lo (d1_lo, m2, ctx->s8[1]);
+      d1_hi = u64x8_madd52hi (d1_hi, m0, ctx->r8[1]);
+      d1_hi = u64x8_madd52hi (d1_hi, m1, ctx->r8[0]);
+      d1_hi = u64x8_madd52hi (d1_hi, m2, ctx->s8[1]);
+
+      d2_lo = u64x8_madd52lo (d2_lo, m0, ctx->r8[2]);
+      d2_lo = u64x8_madd52lo (d2_lo, m1, ctx->r8[1]);
+      d2_lo = u64x8_madd52lo (d2_lo, m2, ctx->r8[0]);
+      d2_hi = u64x8_madd52hi (d2_hi, m0, ctx->r8[2]);
+      d2_hi = u64x8_madd52hi (d2_hi, m1, ctx->r8[1]);
+      d2_hi = u64x8_madd52hi (d2_hi, m2, ctx->r8[0]);
+
+      sum0_lo =
+	d0_lo[0] + d0_lo[1] + d0_lo[2] + d0_lo[3] + d0_lo[4] + d0_lo[5] + d0_lo[6] + d0_lo[7];
+      sum0_hi =
+	d0_hi[0] + d0_hi[1] + d0_hi[2] + d0_hi[3] + d0_hi[4] + d0_hi[5] + d0_hi[6] + d0_hi[7];
+      sum1_lo =
+	d1_lo[0] + d1_lo[1] + d1_lo[2] + d1_lo[3] + d1_lo[4] + d1_lo[5] + d1_lo[6] + d1_lo[7];
+      sum1_hi =
+	d1_hi[0] + d1_hi[1] + d1_hi[2] + d1_hi[3] + d1_hi[4] + d1_hi[5] + d1_hi[6] + d1_hi[7];
+      sum2_lo =
+	d2_lo[0] + d2_lo[1] + d2_lo[2] + d2_lo[3] + d2_lo[4] + d2_lo[5] + d2_lo[6] + d2_lo[7];
+      sum2_hi =
+	d2_hi[0] + d2_hi[1] + d2_hi[2] + d2_hi[3] + d2_hi[4] + d2_hi[5] + d2_hi[6] + d2_hi[7];
+
+      h0 = sum0_lo & CLIB_POLY1305_M44;
+      sum1_lo += (sum0_lo >> 44) + (sum0_hi << 8);
+      h1 = sum1_lo & CLIB_POLY1305_M44;
+      sum2_lo += (sum1_lo >> 44) + (sum1_hi << 8);
+      h2 = sum2_lo & CLIB_POLY1305_M42;
+
+      carry = ((sum2_lo >> 42) + (sum2_hi << 10)) * 5;
+      carry += h0;
+      h0 = carry & CLIB_POLY1305_M44;
+      carry >>= 44;
+      carry += h1;
+      h1 = carry & CLIB_POLY1305_M44;
+      carry >>= 44;
+      h2 += carry;
+
+      m += 8 * 16;
+      blocks -= 8;
+    }
+
+  h44[0] = h0;
+  h44[1] = h1;
+  h44[2] = h2;
+  return original_blocks - blocks;
+}
+#endif
+
+#endif
+
 static_always_inline void
 clib_poly1305_init (clib_poly1305_ctx *ctx, const u8 key[32])
 {
   u64u *k = (u64u *) key;
-  u64 *h = (u64 *) ctx->h;
-  u64 *r = (u64 *) ctx->r;
-  u64 *s = (u64 *) ctx->s;
+  u64 *h = ctx->h;
+  u64 *r = ctx->r;
+  u64 *s = ctx->s;
 
   /* initialize accumulator */
   h[0] = h[1] = h[2] = 0;
@@ -48,6 +399,72 @@ clib_poly1305_init (clib_poly1305_ctx *ctx, const u8 key[32])
   r[2] = r[1] + (r[1] >> 2);
 
   ctx->n_partial_bytes = 0;
+
+#if defined(CLIB_HAVE_VEC512) || defined(CLIB_HAVE_VEC256)
+  u64 state[29] = {};
+
+  ctx->r44[0] = k[0] & 0x0ffc0fffffff;
+  ctx->r44[1] = ((k[0] >> 44) | (k[1] << 20)) & 0x00fffffc0ffff;
+  ctx->r44[2] = (k[1] >> 24) & 0x000ffffffc0f;
+  _clib_poly1305_precompute_r44 (state, ctx->r44);
+#endif
+
+#if defined(CLIB_HAVE_VEC256)
+  {
+    const clib_poly1305_radix26_t t1 =
+      _clib_poly1305_convert_44_to_26 (state[5], state[6], state[7]);
+    const clib_poly1305_radix26_t t2 =
+      _clib_poly1305_convert_44_to_26 (state[8], state[9], state[10]);
+    const clib_poly1305_radix26_t t3 =
+      _clib_poly1305_convert_44_to_26 (state[11], state[12], state[13]);
+    const clib_poly1305_radix26_t t4 =
+      _clib_poly1305_convert_44_to_26 (state[14], state[15], state[16]);
+
+    ctx->r4[0] = u64x4_from_u32x4 ((u32x4){
+      t1.v[0],
+      t2.v[0],
+      t3.v[0],
+      t4.v[0],
+    });
+    ctx->r4[1] = u64x4_from_u32x4 ((u32x4){
+      t1.v[1],
+      t2.v[1],
+      t3.v[1],
+      t4.v[1],
+    });
+    ctx->r4[2] = u64x4_from_u32x4 ((u32x4){
+      t1.v[2],
+      t2.v[2],
+      t3.v[2],
+      t4.v[2],
+    });
+    ctx->r4[3] = u64x4_from_u32x4 ((u32x4){
+      t1.v[3],
+      t2.v[3],
+      t3.v[3],
+      t4.v[3],
+    });
+    ctx->r4[4] = u64x4_from_u32x4 ((u32x4){
+      t1.v[4],
+      t2.v[4],
+      t3.v[4],
+      t4.v[4],
+    });
+    ctx->r4_5[0] = (ctx->r4[1] << 2) + ctx->r4[1];
+    ctx->r4_5[1] = (ctx->r4[2] << 2) + ctx->r4[2];
+    ctx->r4_5[2] = (ctx->r4[3] << 2) + ctx->r4[3];
+    ctx->r4_5[3] = (ctx->r4[4] << 2) + ctx->r4[4];
+  }
+#endif
+
+#if defined(CLIB_HAVE_VEC512)
+  ctx->r8[0] = *(u64x8u *) (state + 5);
+  ctx->r8[1] = *(u64x8u *) (state + 13);
+  ctx->r8[2] = *(u64x8u *) (state + 21);
+  _clib_poly1305_interleave_3x8 (&ctx->r8[0], &ctx->r8[1], &ctx->r8[2]);
+  ctx->s8[0] = ctx->r8[1] * 20;
+  ctx->s8[1] = ctx->r8[2] * 20;
+#endif
 }
 
 static_always_inline void
@@ -177,12 +594,47 @@ clib_poly1305_update (clib_poly1305_ctx *ctx, const u8 *msg, uword len)
       msg += missing_bytes;
     }
 
-  n_left = _clib_poly1305_add_blocks (ctx, msg, n_left, 1);
+#if defined(CLIB_HAVE_VEC512) || defined(CLIB_HAVE_VEC256)
+  if (n_left >= 4 * CLIB_POLY1305_BLOCK_SIZE)
+    {
+      size_t blocks = n_left / CLIB_POLY1305_BLOCK_SIZE;
+      u64 h44[3];
+
+      _clib_poly1305_rh_to_44 (h44, ctx->h);
+
+#if defined(CLIB_HAVE_VEC512)
+      if (blocks >= 8)
+	{
+	  size_t consumed = _clib_poly1305_avx512_blocks (h44, ctx, msg, blocks);
+	  msg += consumed * CLIB_POLY1305_BLOCK_SIZE;
+	  n_left -= consumed * CLIB_POLY1305_BLOCK_SIZE;
+	  blocks -= consumed;
+	}
+#endif
+
+#if defined(CLIB_HAVE_VEC256)
+      if (blocks >= 4)
+	{
+	  size_t consumed = _clib_poly1305_avx2_blocks (h44, ctx, msg, blocks);
+	  msg += consumed * CLIB_POLY1305_BLOCK_SIZE;
+	  n_left -= consumed * CLIB_POLY1305_BLOCK_SIZE;
+	}
+#endif
+
+      _clib_poly1305_44_to_rh (ctx->h, h44);
+    }
+#endif
+
+  {
+    uword n_before = n_left;
+    n_left = _clib_poly1305_add_blocks (ctx, msg, n_left, 1);
+    msg += n_before - n_left;
+  }
 
   if (n_left)
     {
       ctx->partial.as_u64[0] = ctx->partial.as_u64[1] = 0;
-      clib_memcpy_fast (ctx->partial.as_u8, msg + len - n_left, n_left);
+      clib_memcpy_fast (ctx->partial.as_u8, msg, n_left);
       ctx->n_partial_bytes = n_left;
     }
 }
@@ -225,7 +677,7 @@ clib_poly1305_final (clib_poly1305_ctx *ctx, u8 *out)
 static_always_inline void
 clib_poly1305 (const u8 *key, const u8 *msg, uword len, u8 *out)
 {
-  clib_poly1305_ctx ctx;
+  clib_poly1305_ctx ctx = {};
   clib_poly1305_init (&ctx, key);
   clib_poly1305_update (&ctx, msg, len);
   clib_poly1305_final (&ctx, out);

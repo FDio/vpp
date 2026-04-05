@@ -161,6 +161,8 @@ set(VPPINFRA_HEADERS
   crypto/aes_cbc.h
   crypto/aes_ctr.h
   crypto/aes_gcm.h
+  crypto/chacha20.h
+  crypto/chacha20_poly1305.h
   crypto/poly1305.h
   devicetree.h
   dlist.h
@@ -325,6 +327,7 @@ set(test_files
   test/aes_cbc.c
   test/aes_ctr.c
   test/aes_gcm.c
+  test/chacha20_poly1305.c
   test/poly1305.c
   test/array_mask.c
   test/compress.c

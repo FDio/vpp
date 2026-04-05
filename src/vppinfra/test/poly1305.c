@@ -207,6 +207,111 @@ const static struct
   }
 };
 
+const static struct
+{
+  char *name;
+  char *key_hex;
+  char *msg_hex;
+  char *out_hex;
+} extra_test_cases[] = {
+  {
+    .name = "draft-agl-hello-world",
+    .key_hex = "746869732069732033322d62797465206b657920666f7220506f6c7931333035",
+    .msg_hex = "48656c6c6f20776f726c6421",
+    .out_hex = "A6F745008F81C916A20DCC74EEF2B2F0",
+  },
+  {
+    .name = "donna-selftest",
+    .key_hex = "DDDEDFE0E1E2E3E4E5E6E7E8E9EAEBECEDEEEFF0F1F2F3F4F5F6F7F8F9FAFBFC",
+    .msg_hex = "797A7B7C7D7E7F808182838485868788898A8B8C8D8E8F909192939495969798"
+	       "999A9B9C9D9E9FA0A1A2A3A4A5A6A7A8A9AAABACADAEAFB0B1B2B3B4B5B6B7B8"
+	       "B9BABBBCBDBEBFC0C1",
+    .out_hex = "DDB9DA7DDD5E52792730ED5CDA5F90A4",
+  },
+  {
+    .name = "libsodium-onetimeauth",
+    .key_hex = "EEA6A7251C1E72916D11C2CB214D3C252539121D8E234E652D651FA4C8CFF880",
+    .msg_hex = "8E993B9F48681273C29650BA32FC76CE48332EA7164D96A4476FB8C531A1186A"
+	       "C0DFC17C98DCE87B4DA7F011EC48C97271D2C20F9B928FE2270D6FB863D51738"
+	       "B48EEEE314A7CC8AB932164548E526AE90224368517ACFEABD6BB3732BC0E9DA"
+	       "99832B61CA01B6DE56244A9E88D5F9B37973F622A43D14A6599B1F654CB45A74"
+	       "E355A5",
+    .out_hex = "F3FFC7703F9400E52A7DFB4B3D3305D9",
+  },
+  {
+    .name = "libsodium-empty",
+    .key_hex = "9E9D85AAD102FDF3867984CAD7436C36D1A00481C8F19ECE2070271B5D998FD0",
+    .msg_hex = "",
+    .out_hex = "D1A00481C8F19ECE2070271B5D998FD0",
+  },
+  {
+    .name = "libsodium-1-byte",
+    .key_hex = "B1DF3FB9EA530109228401A375516AF7337AAA04EBD1F9BB79B0EE97AD6DD946",
+    .msg_hex = "E9",
+    .out_hex = "5BC3ACAF241883EFAA11D4554704EF70",
+  },
+  {
+    .name = "libsodium-8-byte",
+    .key_hex = "8CACA0437F997872FDA55C4E663733EBA37C7C7407D67A0C3DD65B211FDAF5CA",
+    .msg_hex = "A877A82AE521AA02",
+    .out_hex = "DC35AF493BAB087D16F0C68E027C73B5",
+  },
+  {
+    .name = "libsodium-16-byte",
+    .key_hex = "828C4B03687DE973E34AC6FA5CF01699EB658EC84F3DCE60BAB5A35AA7D2585E",
+    .msg_hex = "3EC00AAE4DFA8952BCBA685521D9872A",
+    .out_hex = "359138B3E5E097BF48694AF31DBD915F",
+  },
+  {
+    .name = "libsodium-17-byte",
+    .key_hex = "73DCAC8AFDE03315932C4B6F032ECB86901D1A401DB20E45334A52967FB6A5A1",
+    .msg_hex = "DA71371BDA6B96B51D361660F7E2221A0A",
+    .out_hex = "CAF6EF581BEBF03C00D33917EDED3E00",
+  },
+};
+
+static_always_inline u8
+hex_value (u8 c)
+{
+  if (c >= '0' && c <= '9')
+    return c - '0';
+  if (c >= 'a' && c <= 'f')
+    return c - 'a' + 10;
+  if (c >= 'A' && c <= 'F')
+    return c - 'A' + 10;
+  return 0xff;
+}
+
+static clib_error_t *
+hex_decode_dup (u8 **out, uword *len, const char *hex)
+{
+  uword hex_len = strlen (hex);
+  u8 *data;
+
+  if (hex_len & 1)
+    return clib_error_return (0, "odd-length hex string");
+
+  *len = hex_len / 2;
+  data = vec_new (u8, *len ? *len - 1 : 0);
+
+  for (uword i = 0; i < *len; i++)
+    {
+      u8 hi = hex_value (hex[2 * i]);
+      u8 lo = hex_value (hex[2 * i + 1]);
+
+      if (hi == 0xff || lo == 0xff)
+	{
+	  vec_free (data);
+	  return clib_error_return (0, "invalid hex string");
+	}
+
+      data[i] = (hi << 4) | lo;
+    }
+
+  *out = data;
+  return 0;
+}
+
 static clib_error_t *
 test_clib_poly1305 (clib_error_t *err)
 {
@@ -226,6 +331,46 @@ test_clib_poly1305 (clib_error_t *err)
 	  tc->name, format_hexdump, tc->key, 32, format_hexdump, tc->msg,
 	  tc->len, format_hexdump, tc->out, 16, format_hexdump, out, 16);
     }
+
+  FOREACH_ARRAY_ELT (tc, extra_test_cases)
+    {
+      u8 *key = 0, *msg = 0, *exp = 0;
+      uword key_len = 0, msg_len = 0, exp_len = 0;
+
+      if ((err = hex_decode_dup (&key, &key_len, tc->key_hex)))
+	goto done;
+      if ((err = hex_decode_dup (&msg, &msg_len, tc->msg_hex)))
+	goto done;
+      if ((err = hex_decode_dup (&exp, &exp_len, tc->out_hex)))
+	goto done;
+
+      if (key_len != 32 || exp_len != 16)
+	{
+	  err = clib_error_return (err, "%s invalid test vector length", tc->name);
+	  goto done;
+	}
+
+      clib_poly1305 (key, msg, msg_len, out);
+      if (memcmp (out, exp, 16) != 0)
+	{
+	  err = clib_error_return (err,
+				   "\ntest:     %s"
+				   "\nkey:      %U"
+				   "\ndata:     %U"
+				   "\nexp out:  %U"
+				   "\ncalc out: %U\n",
+				   tc->name, format_hexdump, key, key_len, format_hexdump, msg,
+				   msg_len, format_hexdump, exp, 16, format_hexdump, out, 16);
+	}
+
+    done:
+      vec_free (key);
+      vec_free (msg);
+      vec_free (exp);
+      if (err)
+	return err;
+    }
+
   return err;
 }
 
