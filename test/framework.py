@@ -146,7 +146,12 @@ class VppTestCase(VppAsfTestCase):
         # and wait a little till it's done.
         # Then clean it up  - and then be gone.
         deadline = time.time() + 300
-        while cls.vapi.cli("show packet-generator").find("Yes") != -1:
+        while True:
+            try:
+                if cls.vapi.cli("show packet-generator").find("Yes") == -1:
+                    break
+            except vpp_papi.VPPIOError:
+                cls.logger.debug("VPP API timeout during pg_start, retrying")
             cls.sleep(0.01)  # yield
             if time.time() > deadline:
                 cls.logger.error("Timeout waiting for pg to stop")
