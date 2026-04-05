@@ -207,14 +207,174 @@ const static struct
   }
 };
 
+const static struct
+{
+  char *name;
+  char *key_hex;
+  char *msg_hex;
+  char *out_hex;
+} extra_test_cases[] = {
+  {
+    .name = "draft-agl-hello-world",
+    .key_hex = "746869732069732033322d62797465206b657920666f7220506f6c7931333035",
+    .msg_hex = "48656c6c6f20776f726c6421",
+    .out_hex = "A6F745008F81C916A20DCC74EEF2B2F0",
+  },
+  {
+    .name = "donna-selftest",
+    .key_hex = "DDDEDFE0E1E2E3E4E5E6E7E8E9EAEBECEDEEEFF0F1F2F3F4F5F6F7F8F9FAFBFC",
+    .msg_hex = "797A7B7C7D7E7F808182838485868788898A8B8C8D8E8F909192939495969798"
+	       "999A9B9C9D9E9FA0A1A2A3A4A5A6A7A8A9AAABACADAEAFB0B1B2B3B4B5B6B7B8"
+	       "B9BABBBCBDBEBFC0C1",
+    .out_hex = "DDB9DA7DDD5E52792730ED5CDA5F90A4",
+  },
+  {
+    .name = "libsodium-onetimeauth",
+    .key_hex = "EEA6A7251C1E72916D11C2CB214D3C252539121D8E234E652D651FA4C8CFF880",
+    .msg_hex = "8E993B9F48681273C29650BA32FC76CE48332EA7164D96A4476FB8C531A1186A"
+	       "C0DFC17C98DCE87B4DA7F011EC48C97271D2C20F9B928FE2270D6FB863D51738"
+	       "B48EEEE314A7CC8AB932164548E526AE90224368517ACFEABD6BB3732BC0E9DA"
+	       "99832B61CA01B6DE56244A9E88D5F9B37973F622A43D14A6599B1F654CB45A74"
+	       "E355A5",
+    .out_hex = "F3FFC7703F9400E52A7DFB4B3D3305D9",
+  },
+  {
+    .name = "libsodium-empty",
+    .key_hex = "9E9D85AAD102FDF3867984CAD7436C36D1A00481C8F19ECE2070271B5D998FD0",
+    .msg_hex = "",
+    .out_hex = "D1A00481C8F19ECE2070271B5D998FD0",
+  },
+  {
+    .name = "libsodium-1-byte",
+    .key_hex = "B1DF3FB9EA530109228401A375516AF7337AAA04EBD1F9BB79B0EE97AD6DD946",
+    .msg_hex = "E9",
+    .out_hex = "5BC3ACAF241883EFAA11D4554704EF70",
+  },
+  {
+    .name = "libsodium-8-byte",
+    .key_hex = "8CACA0437F997872FDA55C4E663733EBA37C7C7407D67A0C3DD65B211FDAF5CA",
+    .msg_hex = "A877A82AE521AA02",
+    .out_hex = "DC35AF493BAB087D16F0C68E027C73B5",
+  },
+  {
+    .name = "libsodium-16-byte",
+    .key_hex = "828C4B03687DE973E34AC6FA5CF01699EB658EC84F3DCE60BAB5A35AA7D2585E",
+    .msg_hex = "3EC00AAE4DFA8952BCBA685521D9872A",
+    .out_hex = "359138B3E5E097BF48694AF31DBD915F",
+  },
+  {
+    .name = "libsodium-17-byte",
+    .key_hex = "73DCAC8AFDE03315932C4B6F032ECB86901D1A401DB20E45334A52967FB6A5A1",
+    .msg_hex = "DA71371BDA6B96B51D361660F7E2221A0A",
+    .out_hex = "CAF6EF581BEBF03C00D33917EDED3E00",
+  },
+};
+
+const static struct
+{
+  char *name;
+  u32 len;
+  u8 out[16];
+} incremental_test_cases[] = {
+  { .name = "inc-000", .len = 0, .out = { 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F, }, },
+  { .name = "inc-001", .len = 1, .out = { 0x1F, 0x11, 0x13, 0x15, 0x17, 0x19, 0x1B, 0x1D, 0x1F, 0x21, 0x23, 0x25, 0x27, 0x29, 0x2B, 0x2D, }, },
+  { .name = "inc-015", .len = 15, .out = { 0x53, 0x05, 0x23, 0x6C, 0xA0, 0x7F, 0xC9, 0x3D, 0x9C, 0xA4, 0x16, 0xB2, 0x36, 0x64, 0xFA, 0x50, }, },
+  { .name = "inc-016", .len = 16, .out = { 0xA2, 0x29, 0x1A, 0x36, 0x3D, 0xEF, 0x0B, 0x53, 0x84, 0x5F, 0xA4, 0x12, 0x6A, 0x6A, 0xD3, 0x64, }, },
+  { .name = "inc-017", .len = 17, .out = { 0xF7, 0x35, 0xC9, 0x7F, 0x73, 0x08, 0xFD, 0x79, 0x22, 0x24, 0x47, 0xFE, 0x76, 0xA9, 0x68, 0x72, }, },
+  { .name = "inc-063", .len = 63, .out = { 0x61, 0xAB, 0xE2, 0x75, 0xB6, 0xD2, 0xCC, 0xF0, 0x91, 0x1F, 0xE9, 0x32, 0x87, 0x7A, 0x66, 0x43, }, },
+  { .name = "inc-064", .len = 64, .out = { 0xEC, 0x47, 0x8E, 0x30, 0x80, 0xAB, 0xB4, 0xE7, 0x97, 0x34, 0x0D, 0x66, 0xC9, 0xCB, 0xC6, 0x5A, }, },
+  { .name = "inc-065", .len = 65, .out = { 0xDE, 0xD2, 0x64, 0xFE, 0x6B, 0xF0, 0x2B, 0x57, 0xDE, 0x5B, 0x3A, 0x7F, 0xC2, 0x3E, 0x07, 0x6A, }, },
+  { .name = "inc-127", .len = 127, .out = { 0x0E, 0x30, 0xF8, 0xC9, 0x1E, 0xC9, 0x83, 0xFA, 0x48, 0xF8, 0x89, 0x50, 0x24, 0x94, 0x13, 0x96, }, },
+  { .name = "inc-128", .len = 128, .out = { 0xEE, 0x6C, 0x94, 0xC5, 0x79, 0x83, 0x9D, 0x73, 0x21, 0x30, 0x21, 0x47, 0x7A, 0x49, 0x28, 0xB2, }, },
+  { .name = "inc-129", .len = 129, .out = { 0x74, 0x7F, 0x0F, 0x3C, 0xFC, 0x74, 0x1D, 0xFE, 0x06, 0x3C, 0xEA, 0xB3, 0x07, 0x28, 0x69, 0x36, }, },
+  { .name = "inc-191", .len = 191, .out = { 0xCF, 0xB0, 0x1C, 0x06, 0x0D, 0x4E, 0x00, 0xAD, 0x90, 0x97, 0xCD, 0x43, 0x83, 0x66, 0x1B, 0x53, }, },
+  { .name = "inc-192", .len = 192, .out = { 0xFF, 0x8D, 0xA9, 0x42, 0xF9, 0xE9, 0x4B, 0xA8, 0x3B, 0xF2, 0xD7, 0xFD, 0xEC, 0x7F, 0xE4, 0x73, }, },
+  { .name = "inc-193", .len = 193, .out = { 0xE1, 0xCC, 0xE8, 0x3C, 0x15, 0xFA, 0xD6, 0x42, 0x5B, 0xFB, 0x46, 0x01, 0xE8, 0xB3, 0x1F, 0x3A, }, },
+  { .name = "inc-255", .len = 255, .out = { 0x48, 0x16, 0xCA, 0x3A, 0x2F, 0x55, 0x6A, 0xFD, 0xF5, 0xD1, 0xA3, 0x95, 0x51, 0x8D, 0xA0, 0xFE, }, },
+  { .name = "inc-256", .len = 256, .out = { 0xC8, 0x93, 0x47, 0xB8, 0xAC, 0xD2, 0xE7, 0x7A, 0x73, 0x4F, 0x21, 0x13, 0xCF, 0x0A, 0x1E, 0x24, }, },
+  { .name = "inc-257", .len = 257, .out = { 0x8B, 0xE8, 0xFD, 0x0B, 0xEC, 0x82, 0x17, 0x4E, 0x54, 0xA8, 0xDD, 0x40, 0x4B, 0x52, 0xF1, 0xEA, }, },
+  { .name = "inc-319", .len = 319, .out = { 0x3C, 0xE0, 0x27, 0x92, 0x21, 0xF3, 0x8B, 0x56, 0x2D, 0x4F, 0x48, 0x93, 0xAE, 0xD1, 0xE5, 0x93, }, },
+  { .name = "inc-320", .len = 320, .out = { 0xCC, 0x7C, 0xD3, 0x4C, 0xEB, 0xCB, 0x73, 0x4D, 0x33, 0x64, 0x6C, 0xC6, 0xF0, 0x22, 0x46, 0xAB, }, },
+  { .name = "inc-321", .len = 321, .out = { 0x9E, 0xF5, 0x58, 0xE5, 0x55, 0x98, 0x63, 0xAA, 0x42, 0x56, 0x47, 0x6F, 0x31, 0xA7, 0x6F, 0x5B, }, },
+  { .name = "inc-383", .len = 383, .out = { 0xDA, 0xE0, 0x26, 0xAA, 0xD3, 0x5D, 0xC2, 0x6D, 0x5E, 0x66, 0x97, 0x7C, 0x24, 0x29, 0xBD, 0x71, }, },
+  { .name = "inc-384", .len = 384, .out = { 0xB5, 0x1D, 0xC3, 0xA5, 0x2E, 0x18, 0xDC, 0xE6, 0x36, 0x9E, 0x2E, 0x73, 0x7A, 0xDE, 0xD1, 0x8D, }, },
+  { .name = "inc-385", .len = 385, .out = { 0x80, 0xFF, 0x7D, 0xAF, 0x9E, 0x9C, 0xDF, 0x6D, 0x1B, 0x83, 0x95, 0x5B, 0x0E, 0xAD, 0x6B, 0xE2, }, },
+  { .name = "inc-511", .len = 511, .out = { 0x0C, 0xDA, 0x45, 0x6A, 0x8B, 0x0D, 0xA1, 0xFB, 0xFB, 0x52, 0xDC, 0x23, 0x54, 0xF8, 0xDC, 0xC9, }, },
+  { .name = "inc-512", .len = 512, .out = { 0x87, 0x57, 0xC3, 0xE7, 0x08, 0x8B, 0x1E, 0x79, 0x79, 0xD0, 0x59, 0xA1, 0xD1, 0x75, 0x5A, 0xEF, }, },
+  { .name = "inc-513", .len = 513, .out = { 0x39, 0xE7, 0xFB, 0x1F, 0x8C, 0x64, 0xAD, 0x74, 0xF0, 0xDB, 0x32, 0x77, 0xA8, 0xEC, 0x51, 0x1A, }, },
+  { .name = "inc-575", .len = 575, .out = { 0xF3, 0xF3, 0xB8, 0xE8, 0xB8, 0xE9, 0x86, 0x95, 0x94, 0x75, 0xF4, 0x07, 0xB9, 0xD5, 0x12, 0x0A, }, },
+  { .name = "inc-576", .len = 576, .out = { 0x83, 0x90, 0x64, 0xA3, 0x82, 0xC2, 0x6E, 0x8C, 0x9A, 0x8A, 0x18, 0x3B, 0xFB, 0x26, 0x73, 0x21, }, },
+  { .name = "inc-577", .len = 577, .out = { 0x1D, 0xD1, 0x7D, 0x41, 0x04, 0x82, 0x73, 0xD1, 0x8B, 0x38, 0x46, 0xB5, 0x6D, 0x57, 0x1F, 0xC8, }, },
+  { .name = "inc-639", .len = 639, .out = { 0x4D, 0x06, 0x4A, 0x98, 0x56, 0x8A, 0x53, 0x26, 0xD2, 0xB8, 0x18, 0x09, 0x6A, 0x38, 0x5B, 0xCF, }, },
+  { .name = "inc-640", .len = 640, .out = { 0x2D, 0x43, 0xE6, 0x93, 0xB1, 0x44, 0x6D, 0x9F, 0xAA, 0xF0, 0xAF, 0xFF, 0xBF, 0xED, 0x6F, 0xEB, }, },
+  { .name = "inc-641", .len = 641, .out = { 0xEC, 0x9B, 0xB1, 0x15, 0xDC, 0x50, 0xE2, 0x86, 0xBD, 0xAA, 0x44, 0x92, 0xF4, 0xAE, 0xDD, 0x65, }, },
+  { .name = "inc-1023", .len = 1023, .out = { 0xCE, 0xCD, 0x5A, 0xD9, 0x5B, 0xD7, 0x68, 0xEF, 0xCB, 0x0C, 0x62, 0x43, 0x61, 0xFE, 0x10, 0xE2, }, },
+  { .name = "inc-1024", .len = 1024, .out = { 0x4E, 0x4B, 0xD8, 0x56, 0xD9, 0x54, 0xE6, 0x6C, 0x49, 0x8A, 0xDF, 0xC0, 0xDE, 0x7B, 0x8E, 0x07, }, },
+  { .name = "inc-1025", .len = 1025, .out = { 0xF9, 0x0F, 0xBB, 0xA5, 0x21, 0x1A, 0xB9, 0x74, 0xB4, 0xAA, 0xAF, 0xBC, 0xDE, 0x1D, 0xE5, 0x2E, }, },
+  { .name = "inc-1500", .len = 1500, .out = { 0xCC, 0x08, 0xD7, 0x92, 0xF5, 0xE1, 0xB1, 0xF8, 0xDC, 0xB8, 0xD9, 0x94, 0xA5, 0xB1, 0x7E, 0x1D, }, },
+};
+
+static_always_inline u8
+hex_value (u8 c)
+{
+  if (c >= '0' && c <= '9')
+    return c - '0';
+  if (c >= 'a' && c <= 'f')
+    return c - 'a' + 10;
+  if (c >= 'A' && c <= 'F')
+    return c - 'A' + 10;
+  return 0xff;
+}
+
+static clib_error_t *
+hex_decode_dup (u8 **out, uword *len, const char *hex)
+{
+  uword hex_len = strlen (hex);
+  u8 *data;
+
+  if (hex_len & 1)
+    return clib_error_return (0, "odd-length hex string");
+
+  *len = hex_len / 2;
+  data = vec_new (u8, *len ? *len - 1 : 0);
+
+  for (uword i = 0; i < *len; i++)
+    {
+      u8 hi = hex_value (hex[2 * i]);
+      u8 lo = hex_value (hex[2 * i + 1]);
+
+      if (hi == 0xff || lo == 0xff)
+	{
+	  vec_free (data);
+	  return clib_error_return (0, "invalid hex string");
+	}
+
+      data[i] = (hi << 4) | lo;
+    }
+
+  *out = data;
+  return 0;
+}
+
+static void
+fill_incremental_bytes (u8 *buf, uword len)
+{
+  uword i;
+
+  for (i = 0; i < len; i++)
+    buf[i] = i;
+}
+
 static clib_error_t *
 test_clib_poly1305 (clib_error_t *err)
 {
+  clib_poly1305_init_data_t kd = {};
   u8 out[16] = {};
 
   FOREACH_ARRAY_ELT (tc, test_cases)
     {
-      clib_poly1305 (tc->key, tc->msg, tc->len, out);
+      clib_poly1305_precompute (&kd, tc->key);
+      clib_poly1305 (&kd, tc->msg, tc->len, out);
       if (memcmp (out, tc->out, 16) != 0)
 	err = clib_error_return (
 	  err,
@@ -226,6 +386,73 @@ test_clib_poly1305 (clib_error_t *err)
 	  tc->name, format_hexdump, tc->key, 32, format_hexdump, tc->msg,
 	  tc->len, format_hexdump, tc->out, 16, format_hexdump, out, 16);
     }
+
+  FOREACH_ARRAY_ELT (tc, extra_test_cases)
+    {
+      u8 *key = 0, *msg = 0, *exp = 0;
+      uword key_len = 0, msg_len = 0, exp_len = 0;
+
+      if ((err = hex_decode_dup (&key, &key_len, tc->key_hex)))
+	goto done;
+      if ((err = hex_decode_dup (&msg, &msg_len, tc->msg_hex)))
+	goto done;
+      if ((err = hex_decode_dup (&exp, &exp_len, tc->out_hex)))
+	goto done;
+
+      if (key_len != 32 || exp_len != 16)
+	{
+	  err = clib_error_return (err, "%s invalid test vector length", tc->name);
+	  goto done;
+	}
+
+      clib_poly1305_precompute (&kd, key);
+      clib_poly1305 (&kd, msg, msg_len, out);
+      if (memcmp (out, exp, 16) != 0)
+	{
+	  err = clib_error_return (err,
+				   "\ntest:     %s"
+				   "\nkey:      %U"
+				   "\ndata:     %U"
+				   "\nexp out:  %U"
+				   "\ncalc out: %U\n",
+				   tc->name, format_hexdump, key, key_len, format_hexdump, msg,
+				   msg_len, format_hexdump, exp, 16, format_hexdump, out, 16);
+	}
+
+    done:
+      vec_free (key);
+      vec_free (msg);
+      vec_free (exp);
+      if (err)
+	return err;
+    }
+
+  FOREACH_ARRAY_ELT (tc, incremental_test_cases)
+    {
+      u8 key[32];
+      u8 *msg;
+
+      fill_incremental_bytes (key, sizeof (key));
+      msg = vec_new (u8, tc->len ? tc->len - 1 : 0);
+      fill_incremental_bytes (msg, tc->len);
+
+      clib_poly1305_precompute (&kd, key);
+      clib_poly1305 (&kd, msg, tc->len, out);
+      if (memcmp (out, tc->out, 16) != 0)
+	err = clib_error_return (err,
+				 "\ntest:     %s"
+				 "\nkey:      %U"
+				 "\ndata:     %U"
+				 "\nexp out:  %U"
+				 "\ncalc out: %U\n",
+				 tc->name, format_hexdump, key, 32, format_hexdump, msg, tc->len,
+				 format_hexdump, tc->out, 16, format_hexdump, out, 16);
+
+      vec_free (msg);
+      if (err)
+	return err;
+    }
+
   return err;
 }
 
@@ -236,10 +463,30 @@ perftest_64byte (test_perf_t *tp)
   u8 *m = test_mem_alloc_and_fill_inc_u8 (n * 64, 0, 0);
   u8 *k = test_mem_alloc_and_fill_inc_u8 (n * 32, 0, 0);
   u8 *t = test_mem_alloc (n * 16);
+  clib_poly1305_init_data_t *kd = test_mem_alloc (n * sizeof (*kd));
 
+  for (int i = 0; i < n; i++)
+    clib_poly1305_precompute (kd + i, k + i * 32);
   test_perf_event_enable (tp);
-  for (int i = 0; i < n; i++, t += 16, k += 32, m += 64)
-    clib_poly1305 (k, m, 64, t);
+  for (int i = 0; i < n; i++, t += 16, m += 64)
+    clib_poly1305 (kd + i, m, 64, t);
+  test_perf_event_disable (tp);
+}
+
+void __test_perf_fn
+perftest_1500byte (test_perf_t *tp)
+{
+  u32 n = tp->n_ops;
+  u8 *m = test_mem_alloc_and_fill_inc_u8 (n * 1500, 0, 0);
+  u8 *k = test_mem_alloc_and_fill_inc_u8 (n * 32, 0, 0);
+  u8 *t = test_mem_alloc (n * 16);
+  clib_poly1305_init_data_t *kd = test_mem_alloc (n * sizeof (*kd));
+
+  for (int i = 0; i < n; i++)
+    clib_poly1305_precompute (kd + i, k + i * 32);
+  test_perf_event_enable (tp);
+  for (int i = 0; i < n; i++, t += 16, m += 1500)
+    clib_poly1305 (kd + i, m, 1500, t);
   test_perf_event_disable (tp);
 }
 
@@ -251,18 +498,19 @@ perftest_byte (test_perf_t *tp)
   u8 *m = test_mem_alloc_and_fill_inc_u8 (n, 0, 0);
   u8 *k = test_mem_alloc_and_fill_inc_u8 (32, 0, 0);
   u8 *t = test_mem_alloc (16);
+  clib_poly1305_init_data_t kd = {};
 
+  clib_poly1305_precompute (&kd, k);
   test_perf_event_enable (tp);
-  clib_poly1305 (k, m, n, t);
+  clib_poly1305 (&kd, m, n, t);
   test_perf_event_disable (tp);
 }
 
 REGISTER_TEST (clib_poly1305) = {
   .name = "clib_poly1305",
   .fn = test_clib_poly1305,
-  .perf_tests = PERF_TESTS (
-    { .name = "fixed size (64 bytes)", .n_ops = 1024, .fn = perftest_64byte },
-    { .name = "variable size (per byte)",
-      .n_ops = 16384,
-      .fn = perftest_byte }),
+  .perf_tests =
+    PERF_TESTS ({ .name = "fixed size (64 bytes)", .n_ops = 1024, .fn = perftest_64byte },
+		{ .name = "fixed size (1500 bytes)", .n_ops = 1024, .fn = perftest_1500byte },
+		{ .name = "variable size (per byte)", .n_ops = 16384, .fn = perftest_byte }),
 };
