@@ -1827,6 +1827,27 @@ openssl_reinit_ca_chain (void)
   return tls_init_ca_chain ();
 }
 
+static clib_error_t *
+openssl_unformat_cfg (unformat_input_t *input)
+{
+  char *provider_name = NULL;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+      if (unformat (input, "provider %s", &provider_name))
+	{
+	  if (openssl_provider_register (provider_name) < 0)
+	    return clib_error_return (0, "failed to load OpenSSL provider '%s'", provider_name);
+	  vec_free (provider_name);
+	}
+      else
+#endif
+	return clib_error_return (0, "unknown tls engine input `%U'", format_unformat_error, input);
+    }
+  return 0;
+}
+
 const static tls_engine_vft_t openssl_engine = {
   .ctx_alloc = openssl_ctx_alloc,
   .ctx_alloc_w_thread = openssl_ctx_alloc_w_thread,
@@ -1846,6 +1867,8 @@ const static tls_engine_vft_t openssl_engine = {
   .ctx_app_close = openssl_app_close,
   .ctx_attribute = openssl_tls_ctx_attribute,
   .ctx_reinit_cachain = openssl_reinit_ca_chain,
+  .unformat_cfg = openssl_unformat_cfg,
+  .name = "openssl",
 };
 
 int

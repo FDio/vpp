@@ -162,6 +162,8 @@ typedef struct tls_engine_vft_
   int (*ctx_attribute) (tls_ctx_t *ctx, u8 is_get,
 			transport_endpt_attr_t *attr);
   int (*ctx_reinit_cachain) (void);
+  clib_error_t *(*unformat_cfg) (unformat_input_t *input);
+  const char *name;
 } tls_engine_vft_t;
 
 extern tls_engine_vft_t *tls_vfts;
