@@ -16,6 +16,24 @@
       "message": "did this move under on purpose?",
       "revId": "9052931a1e2be78c5f50405d55b9af1272c5247b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c22c598f_08afaca9",
+        "filename": "src/plugins/http/http_buffer.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-04-06T00:35:31Z",
+      "side": 1,
+      "message": "Marking resolved for now to not hold the whole chain. Let\u0027s clarify next week.",
+      "parentUuid": "07eff5eb_a913774b",
+      "revId": "9052931a1e2be78c5f50405d55b9af1272c5247b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
