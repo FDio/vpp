@@ -318,6 +318,7 @@ svm_msg_q_t *application_rx_mq_get (application_t *app, u32 mq_index);
 u8 application_use_private_rx_mqs (void);
 fifo_segment_t *application_get_rx_mqs_segment (application_t *app);
 void application_enable_rx_mqs_nodes (u8 is_en);
+void application_force_detach (application_t *app);
 
 /*
  * App worker
@@ -383,17 +384,13 @@ void app_worker_del_all_events (app_worker_t *app_wrk);
 segment_manager_t *app_worker_get_listen_segment_manager (app_worker_t *,
 							  session_t *);
 segment_manager_t *app_worker_get_connect_segment_manager (app_worker_t *);
-int app_worker_add_segment_notify (app_worker_t * app_wrk,
-				   u64 segment_handle);
-int app_worker_del_segment_notify (app_worker_t * app_wrk,
-				   u64 segment_handle);
+void app_worker_add_segment_notify (app_worker_t *app_wrk, u64 segment_handle);
+void app_worker_del_segment_notify (app_worker_t *app_wrk, u64 segment_handle);
 u32 app_worker_n_listeners (app_worker_t * app);
 session_t *app_worker_first_listener (app_worker_t * app,
 				      u8 fib_proto, u8 transport_proto);
-void app_wrk_send_ctrl_evt_fd (app_worker_t *app_wrk, u8 evt_type, void *msg,
-			       u32 msg_len, int fd);
-void app_wrk_send_ctrl_evt (app_worker_t *app_wrk, u8 evt_type, void *msg,
-			    u32 msg_len);
+int app_wrk_send_ctrl_evt_fd (app_worker_t *app_wrk, u8 evt_type, void *msg, u32 msg_len, int fd);
+int app_wrk_send_ctrl_evt (app_worker_t *app_wrk, u8 evt_type, void *msg, u32 msg_len);
 u8 app_worker_mq_wrk_is_congested (app_worker_t *app_wrk,
 				   clib_thread_index_t thread_index);
 void app_worker_set_mq_wrk_congested (app_worker_t *app_wrk,

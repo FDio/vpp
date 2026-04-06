@@ -304,12 +304,21 @@ app_worker_flush_events_inline (app_worker_t *app_wrk,
 	  session_free (s);
 	  break;
 	case SESSION_CTRL_EVT_APP_ADD_SEGMENT:
-	  app->cb_fns.add_segment_callback (app_wrk->wrk_index,
-					    evt->as_u64[1]);
+	  rv = app->cb_fns.add_segment_callback (app_wrk->wrk_index, evt->as_u64[1]);
+	  /* Treat failed ctrl evt delivery as fatal, force detach, mq locked */
+	  if (PREDICT_FALSE (rv))
+	    {
+	      application_force_detach (app);
+	      return 0;
+	    }
 	  break;
 	case SESSION_CTRL_EVT_APP_DEL_SEGMENT:
-	  app->cb_fns.del_segment_callback (app_wrk->wrk_index,
-					    evt->as_u64[1]);
+	  rv = app->cb_fns.del_segment_callback (app_wrk->wrk_index, evt->as_u64[1]);
+	  if (PREDICT_FALSE (rv))
+	    {
+	      application_force_detach (app);
+	      return 0;
+	    }
 	  break;
 	case SESSION_CTRL_EVT_RPC:
 	  ((void (*) (session_t * s)) (evt->rpc_args.fp)) (evt->rpc_args.arg);
