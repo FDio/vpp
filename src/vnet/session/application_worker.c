@@ -747,29 +747,26 @@ app_worker_proxy_listener (app_worker_t * app_wrk, u8 fib_proto,
   return 0;
 }
 
-/**
- * Send an API message to the external app, to map new segment
+/*
+ * Queue the segment notification. Delivery happens later from session_input,
+ * where callback failures can be retried without dropping event ordering.
  */
-int
-app_worker_add_segment_notify (app_worker_t * app_wrk, u64 segment_handle)
+void
+app_worker_add_segment_notify (app_worker_t *app_wrk, u64 segment_handle)
 {
   session_event_t evt = { .event_type = SESSION_CTRL_EVT_APP_ADD_SEGMENT,
 			  .as_u64[1] = segment_handle };
 
   app_worker_add_event_custom (app_wrk, vlib_get_thread_index (), &evt);
-
-  return 0;
 }
 
-int
-app_worker_del_segment_notify (app_worker_t * app_wrk, u64 segment_handle)
+void
+app_worker_del_segment_notify (app_worker_t *app_wrk, u64 segment_handle)
 {
   session_event_t evt = { .event_type = SESSION_CTRL_EVT_APP_DEL_SEGMENT,
 			  .as_u64[1] = segment_handle };
 
   app_worker_add_event_custom (app_wrk, vlib_get_thread_index (), &evt);
-
-  return 0;
 }
 
 static int
@@ -863,13 +860,15 @@ app_worker_add_event_custom (app_worker_t *app_wrk,
     }
 }
 
-always_inline void
-app_wrk_send_ctrl_evt_inline (app_worker_t *app_wrk, u8 evt_type, void *msg,
-			      u32 msg_len, int fd)
+always_inline int
+app_wrk_send_ctrl_evt_inline (app_worker_t *app_wrk, u8 evt_type, void *msg, u32 msg_len, int fd)
 {
   svm_msg_q_msg_t _mq_msg, *mq_msg = &_mq_msg;
   svm_msg_q_t *mq = app_wrk->event_queue;
   session_event_t *evt;
+
+  if (fd != -1 && app_wrk_send_fd (app_wrk, fd))
+    return -1;
 
   ASSERT (!svm_msg_q_or_ring_is_full (mq, SESSION_MQ_CTRL_EVT_RING));
   *mq_msg = svm_msg_q_alloc_msg_w_ring (mq, SESSION_MQ_CTRL_EVT_RING);
@@ -879,24 +878,20 @@ app_wrk_send_ctrl_evt_inline (app_worker_t *app_wrk, u8 evt_type, void *msg,
   evt->event_type = evt_type;
   clib_memcpy_fast (evt->data, msg, msg_len);
 
-  if (fd != -1)
-    app_wrk_send_fd (app_wrk, fd);
-
   svm_msg_q_add_raw (mq, mq_msg);
+  return 0;
 }
 
-void
-app_wrk_send_ctrl_evt_fd (app_worker_t *app_wrk, u8 evt_type, void *msg,
-			  u32 msg_len, int fd)
+int
+app_wrk_send_ctrl_evt_fd (app_worker_t *app_wrk, u8 evt_type, void *msg, u32 msg_len, int fd)
 {
-  app_wrk_send_ctrl_evt_inline (app_wrk, evt_type, msg, msg_len, fd);
+  return app_wrk_send_ctrl_evt_inline (app_wrk, evt_type, msg, msg_len, fd);
 }
 
-void
-app_wrk_send_ctrl_evt (app_worker_t *app_wrk, u8 evt_type, void *msg,
-		       u32 msg_len)
+int
+app_wrk_send_ctrl_evt (app_worker_t *app_wrk, u8 evt_type, void *msg, u32 msg_len)
 {
-  app_wrk_send_ctrl_evt_inline (app_wrk, evt_type, msg, msg_len, -1);
+  return app_wrk_send_ctrl_evt_inline (app_wrk, evt_type, msg, msg_len, -1);
 }
 
 u8
