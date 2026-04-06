@@ -9,6 +9,9 @@
 #include <openssl/conf.h>
 #include <openssl/err.h>
 #include <openssl/engine.h>
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+#include <openssl/provider.h>
+#endif
 #include <vnet/plugin/plugin.h>
 #include <vpp/app/version.h>
 #include <vnet/tls/tls.h>
@@ -78,6 +81,9 @@ typedef struct openssl_main_
   u32 record_size;
   u32 record_split_size;
   u32 max_pipelines;
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+  OSSL_PROVIDER **providers;
+#endif
 } openssl_main_t;
 
 typedef int openssl_resume_handler (void *event, void *session);
@@ -95,6 +101,7 @@ int openssl_engine_register (char *engine, char *alg, int async);
 void openssl_async_node_enable_disable (u8 is_en);
 clib_error_t *tls_openssl_api_init (vlib_main_t * vm);
 int tls_openssl_set_ciphers (char *ciphers);
+int openssl_provider_register (char *name);
 int vpp_openssl_is_inflight (tls_ctx_t * ctx);
 int openssl_read_from_ssl_into_fifo (svm_fifo_t *f, tls_ctx_t *ctx,
 				     u32 max_len);

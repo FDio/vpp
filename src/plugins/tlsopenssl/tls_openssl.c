@@ -1864,6 +1864,35 @@ tls_openssl_set_ciphers (char *ciphers)
 
 }
 
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+int
+openssl_provider_register (char *name)
+{
+  openssl_main_t *om = &openssl_main;
+  OSSL_PROVIDER *prov;
+
+  prov = OSSL_PROVIDER_load (NULL, name);
+  if (!prov)
+    {
+      char buf[256];
+      ERR_error_string (ERR_get_error (), buf);
+      clib_warning ("Failed to load OpenSSL provider '%s': %s", name, buf);
+      return -1;
+    }
+
+  vec_add1 (om->providers, prov);
+  clib_warning ("Loaded OpenSSL provider '%s'", name);
+  return 0;
+}
+#else
+int
+openssl_provider_register (char *name)
+{
+  clib_warning ("OpenSSL providers require OpenSSL 3.0 or later");
+  return -1;
+}
+#endif
+
 static clib_error_t *
 tls_openssl_init (vlib_main_t * vm)
 {
@@ -2026,6 +2055,39 @@ VLIB_CLI_COMMAND (tls_openssl_set_tls, static) = {
 		"<size>] [max-pipelines <size>]",
   .function = tls_openssl_set_tls_fn,
 };
+
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+static clib_error_t *
+tls_openssl_load_provider_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
+{
+  char *provider_name = NULL;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "%s", &provider_name))
+	;
+      else
+	return clib_error_return (0, "failed: unknown input `%U'", format_unformat_error, input);
+    }
+
+  if (!provider_name)
+    return clib_error_return (0, "provider name required");
+
+  if (openssl_provider_register (provider_name) < 0)
+    return clib_error_return (0, "failed to load provider '%s'", provider_name);
+
+  vlib_cli_output (vm, "Loaded OpenSSL provider '%s'", provider_name);
+  vec_free (provider_name);
+  return 0;
+}
+
+VLIB_CLI_COMMAND (tls_openssl_load_provider, static) = {
+  .path = "tls openssl load-provider",
+  .short_help = "tls openssl load-provider <name>",
+  .function = tls_openssl_load_provider_fn,
+};
+
+#endif
 
 VLIB_PLUGIN_REGISTER () = {
   .version = VPP_BUILD_VER,
