@@ -33,6 +33,23 @@
       "message": "Same here.",
       "revId": "2d8e37ece499a152d0dc4c78b857a87bcfa57266",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4f5465c1_7510e74b",
+        "filename": "Makefile",
+        "patchSetId": 3
+      },
+      "lineNbr": 150,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-04-06T20:06:37Z",
+      "side": 1,
+      "message": "Since the checkstyle job runs clang-format-18, I\u0027m not sure we want to install clang-format-19 in debian-13 because then \u0027make fixstyle\u0027 on debian-13 may produce changes that fail in the checkstyle job.",
+      "revId": "2d8e37ece499a152d0dc4c78b857a87bcfa57266",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
