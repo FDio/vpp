@@ -34,13 +34,59 @@ def pr(packet):
     return packet.__repr__()
 
 
+class PacketInfo:
+    """Dual-mode packet formatter.
+
+    When converted to str (e.g. by logger.error(), raise, f-string, or print()),
+    produces the full hexdump + packet.show() output — identical to the old ppp().
+
+    The brief() method produces a compact summary with raw hex bytes that can be
+    expanded later by test/scripts/expand_ppp.py.
+
+    The VPP test logger patches logger.debug() to call brief() automatically,
+    so debug-level logging is ~9x faster while error-level logging retains full
+    detail with zero changes to any of the 401 call sites.
+    """
+
+    __slots__ = ("headline", "packet")
+
+    def __init__(self, headline, packet):
+        self.headline = headline
+        self.packet = packet
+
+    def __str__(self):
+        """Full output — used by logger.error(), raise, str(), f-string, etc."""
+        return "%s\n%s\n\n%s\n" % (
+            self.headline,
+            hexdump(self.packet, dump=True),
+            self.packet.show(dump=True),
+        )
+
+    def brief(self):
+        """Summary + raw hex — used by logger.debug() via patched logger.
+
+        Format: headline summary
+                  [packet hex: __class__.__name__=ClassName: deadbeef...]
+
+        The hex encoding is lossless — expand_ppp.py can reconstruct the full
+        hexdump + show() output from the class name and raw bytes.
+        """
+        return "%s %s\n  [packet hex: __class__.__name__=%s: %s]\n" % (
+            self.headline,
+            self.packet.summary(),
+            self.packet.__class__.__name__,
+            bytes(self.packet).hex(),
+        )
+
+
 def ppp(headline, packet):
-    """Return string containing headline and output of scapy packet.show()"""
-    return "%s\n%s\n\n%s\n" % (
-        headline,
-        hexdump(packet, dump=True),
-        packet.show(dump=True),
-    )
+    """Return a PacketInfo object for dual-mode packet formatting.
+
+    Callers do not need to change — PacketInfo.__str__() produces the same
+    full output as before.  When passed to logger.debug(), the test framework
+    automatically uses the fast brief() representation instead.
+    """
+    return PacketInfo(headline, packet)
 
 
 def ppc(headline, capture, limit=10):
@@ -59,7 +105,10 @@ def ppc(headline, capture, limit=10):
             len(capture),
         )
     body = "".join(
-        [ppp("Packet #%s:" % count, p) for count, p in zip(range(0, limit), capture)]
+        [
+            str(ppp("Packet #%s:" % count, p))
+            for count, p in zip(range(0, limit), capture)
+        ]
     )
     return "%s\n%s%s" % (headline, body, tail)
 

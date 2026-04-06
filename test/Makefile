@@ -291,7 +291,7 @@ RUN_TESTS_ARGS=--failed-dir=$(FAILED_DIR) --verbose=$(V) --jobs=$(TEST_JOBS) --f
 RUN_SCRIPT_ARGS=--python-opts=$(PYTHON_OPTS)
 
 define retest-func
-@scripts/run.sh $(RUN_SCRIPT_ARGS) $(RUN_TESTS_ARGS) || env FAILED_DIR=$(FAILED_DIR) COMPRESS_FAILED_TEST_LOGS=$(COMPRESS_FAILED_TEST_LOGS) scripts/compress_failed.sh
+@rc=0; scripts/run.sh $(RUN_SCRIPT_ARGS) $(RUN_TESTS_ARGS) || rc=$$?; $(VENV_PATH)/bin/python scripts/expand_ppp.py --quiet --discover --basedir=/tmp; if [ $$rc -ne 0 ]; then env FAILED_DIR=$(FAILED_DIR) COMPRESS_FAILED_TEST_LOGS=$(COMPRESS_FAILED_TEST_LOGS) scripts/compress_failed.sh; fi; exit $$rc
 endef
 
 sanity: test-dep

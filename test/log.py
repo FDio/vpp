@@ -49,9 +49,31 @@ scapy_logger = logging.getLogger("scapy.runtime")
 scapy_logger.setLevel(logging.ERROR)
 
 
+def _patch_debug_for_brief(logger):
+    """Patch logger.debug() to use PacketInfo.brief() for fast formatting.
+
+    When ppp() returns a PacketInfo object, logger.error/info/etc. call
+    __str__() producing full hexdump + show() output.  This patch makes
+    logger.debug() call brief() instead — a compact summary + raw hex
+    that is ~9x faster to format.  The raw hex can be expanded later by
+    test/scripts/expand_ppp.py.
+    """
+    from util import PacketInfo
+
+    orig_debug = logger.debug
+
+    def _debug_brief(msg, *args, **kwargs):
+        if isinstance(msg, PacketInfo):
+            return orig_debug(msg.brief(), *args, **kwargs)
+        return orig_debug(msg, *args, **kwargs)
+
+    logger.debug = _debug_brief
+
+
 def get_logger(name):
     logger = logging.getLogger(name)
     logger.setLevel(logging.DEBUG)
+    _patch_debug_for_brief(logger)
     return logger
 
 
@@ -63,6 +85,7 @@ def get_parallel_logger(stream):
     handler.setFormatter(color_formatter)
     handler.setLevel(log_level)
     logger.addHandler(handler)
+    _patch_debug_for_brief(logger)
     return logger
 
 
