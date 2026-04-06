@@ -888,7 +888,7 @@ class VppAsfTestCase(CPUInterface, unittest.TestCase):
                 self.logger.debug(self.vapi.cli("show trace max 100"))
                 self.logger.info(self.vapi.ppcli("show interface"))
                 self.logger.info(self.vapi.ppcli("show hardware"))
-                self.logger.info(self.statistics.set_errors_str())
+                self.logger.info(self.vapi.ppcli("show error"))
                 self.logger.info(self.vapi.ppcli("show run"))
                 self.logger.info(self.vapi.ppcli("show log"))
                 self.logger.info(self.vapi.ppcli("show bihash"))
