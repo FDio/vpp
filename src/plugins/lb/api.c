@@ -54,6 +54,22 @@ vl_api_lb_conf_t_handler
 }
 
 static void
+vl_api_lb_conf_get_t_handler (vl_api_lb_conf_get_t *mp)
+{
+ lb_main_t *lbm = &lb_main;
+ vl_api_lb_conf_get_reply_t *rmp;
+ int rv = 0;
+
+ REPLY_MACRO2 (
+   VL_API_LB_CONF_GET_REPLY, ({
+     clib_memcpy (rmp->ip4_src_address, &lbm->ip4_src_address, sizeof (rmp->ip4_src_address));
+     clib_memcpy (rmp->ip6_src_address, &lbm->ip6_src_address, sizeof (rmp->ip6_src_address));
+     rmp->sticky_buckets_per_core = htonl (lbm->per_cpu_sticky_buckets);
+     rmp->flow_timeout = htonl (lbm->flow_timeout);
+   }));
+}
+
+static void
 vl_api_lb_add_del_vip_t_handler
 (vl_api_lb_add_del_vip_t * mp)
 {
@@ -210,8 +226,9 @@ vl_api_lb_add_del_as_t_handler
   ip_address_decode (&mp->pfx.address, &vip_ip_prefix);
   ip_address_decode (&mp->as_address, &as_address);
 
-  if ((rv = lb_vip_find_index(&vip_ip_prefix, mp->pfx.len,
-                              mp->protocol, ntohs(mp->port), &vip_index)))
+  u8 plen = mp->pfx.len + (mp->pfx.address.af == ADDRESS_IP4 ? 96 : 0);
+
+  if ((rv = lb_vip_find_index (&vip_ip_prefix, plen, mp->protocol, ntohs (mp->port), &vip_index)))
     goto done;
 
   if (mp->is_del)
@@ -221,6 +238,48 @@ vl_api_lb_add_del_as_t_handler
 
 done:
  REPLY_MACRO (VL_API_LB_ADD_DEL_AS_REPLY);
+}
+
+static void
+vl_api_lb_add_del_as_v2_t_handler (vl_api_lb_add_del_as_v2_t *mp)
+{
+ lb_main_t *lbm = &lb_main;
+ vl_api_lb_add_del_as_v2_reply_t *rmp;
+ int rv = 0;
+ u32 vip_index;
+ ip46_address_t vip_ip_prefix;
+ ip46_address_t as_address;
+
+ /* if port == 0, it means all-port VIP */
+ if (mp->port == 0)
+    {
+      mp->protocol = ~0;
+    }
+ ip_address_decode (&mp->pfx.address, &vip_ip_prefix);
+ ip_address_decode (&mp->as_address, &as_address);
+
+ /* The CLI stores IPv4 prefix lengths as 96 + ip4_plen (ip46_address_t
+  * format); adjust to match when the client sends a raw IPv4 plen. */
+ u8 plen = mp->pfx.len + (mp->pfx.address.af == ADDRESS_IP4 ? 96 : 0);
+
+ if ((rv = lb_vip_find_index (&vip_ip_prefix, plen, mp->protocol, ntohs (mp->port), &vip_index)))
+    goto done;
+
+ if (mp->is_lame && (mp->is_del || mp->is_flush))
+    {
+      rv = VNET_API_ERROR_INVALID_VALUE;
+      goto done;
+    }
+
+ if (mp->is_lame)
+    rv = lb_vip_lame_ass (vip_index, &as_address, 1);
+ else if (mp->is_del)
+    rv = lb_vip_del_ass (vip_index, &as_address, 1, mp->is_flush);
+ else
+    rv = lb_vip_add_ass (vip_index, &as_address, 1);
+
+done:
+ REPLY_MACRO (VL_API_LB_ADD_DEL_AS_V2_REPLY);
 }
 
 static void
@@ -250,8 +309,9 @@ vl_api_lb_vip_dump_t_handler
         rmp->context = mp->context;
 
         ip_address_encode(&vip->prefix, IP46_TYPE_ANY, &rmp->vip.pfx.address);
-        rmp->vip.pfx.len = vip->plen;
-        rmp->vip.protocol = htonl (vip->protocol);
+	rmp->vip.pfx.len =
+	  ip46_prefix_is_ip4 (&vip->prefix, vip->plen) ? vip->plen - 96 : vip->plen;
+	rmp->vip.protocol = htonl (vip->protocol);
         rmp->vip.port = htons(vip->port);
         rmp->encap = htonl(vip->type);
         rmp->dscp = vip->encap_args.dscp;
@@ -288,8 +348,9 @@ static void send_lb_as_details
           htons (VL_API_LB_AS_DETAILS + lbm->msg_id_base);
         rmp->context = context;
         ip_address_encode(&vip->prefix, IP46_TYPE_ANY, (vl_api_address_t *)&rmp->vip.pfx.address);
-        rmp->vip.pfx.len = vip->plen;
-        rmp->vip.protocol = htonl (vip->protocol);
+	rmp->vip.pfx.len =
+	  ip46_prefix_is_ip4 (&vip->prefix, vip->plen) ? vip->plen - 96 : vip->plen;
+	rmp->vip.protocol = htonl (vip->protocol);
         rmp->vip.port = htons(vip->port);
         ip_address_encode(&as->address, IP46_TYPE_ANY, &rmp->app_srv);
         rmp->flags = as->flags;

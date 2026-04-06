@@ -1,4 +1,4 @@
-option version = "1.1.0";
+option version = "1.3.0";
 import "plugins/lb/lb_types.api";
 import "vnet/interface_types.api";
 
@@ -21,6 +21,36 @@ autoreply  define lb_conf
   u32 sticky_buckets_per_core [default=0xffffffff];
   u32 flow_timeout [default=0xffffffff];
   option vat_help = "[ip4-src-address <addr>] [ip6-src-address <addr>] [buckets <n>] [timeout <s>]";
+};
+
+/** \brief Get Load-Balancer global parameters
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define lb_conf_get
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Reply for lb_conf_get
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+    @param ip4_src_address - IPv4 source address used for encapsulated traffic.
+    @param ip6_src_address - IPv6 source address used for encapsulated traffic.
+    @param sticky_buckets_per_core - Number of buckets per worker thread in the
+           established session table.
+    @param flow_timeout - Time in seconds after which, if no packet is received
+           for a given session, the session is removed from the established session table.
+*/
+define lb_conf_get_reply
+{
+  u32 context;
+  i32 retval;
+  vl_api_ip4_address_t ip4_src_address;
+  vl_api_ip6_address_t ip6_src_address;
+  u32 sticky_buckets_per_core;
+  u32 flow_timeout;
 };
 
 /** \brief Add a virtual address (or prefix)
@@ -107,6 +137,33 @@ autoreply  define lb_add_del_as {
   bool is_del;
   bool is_flush;
   option vat_help = "<vip-prefix> [protocol (tcp|udp) port <n>] [<address>] [del] [flush]";
+};
+
+/** \brief Add, remove, or lameduck an application server for a given VIP.
+    is_lame and is_del are mutually exclusive.
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param pfx - ip prefix and length
+    @param protocol - tcp or udp.
+    @param port - destination port.
+    @param as_address - The application server address (IPv4 in lower order 32 bits).
+    @param is_del - The AS should be removed.
+    @param is_flush - The sessions related to this AS should be flushed (only valid with is_del, mutually exclusive with is_lame).
+    @param is_lame - The AS should enter lameduck mode: no new sessions are assigned,
+                     but existing sessions continue until they are closed or flushed.
+                     The AS can be restored with a plain add, or removed with is_del.
+*/
+autoreply define lb_add_del_as_v2 {
+  u32 client_index;
+  u32 context;
+  vl_api_address_with_prefix_t pfx;
+  u8 protocol [default=255];
+  u16 port;
+  vl_api_address_t as_address;
+  bool is_del;
+  bool is_flush;
+  bool is_lame;
+  option vat_help = "<vip-prefix> [protocol (tcp|udp) port <n>] [<address>] [del] [flush] [lame]";
 };
 
 /** \brief Flush a given vip
