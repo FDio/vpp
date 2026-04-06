@@ -563,10 +563,8 @@ mq_send_add_segment_cb (u32 app_wrk_index, u64 segment_handle)
   strncpy ((char *) m.segment_name, (char *) sp->name,
 	   sizeof (m.segment_name) - 1);
 
-  app_wrk_send_ctrl_evt_fd (app_wrk, SESSION_CTRL_EVT_APP_ADD_SEGMENT, &m,
-			    sizeof (m), sp->fd);
-
-  return 0;
+  return app_wrk_send_ctrl_evt_fd (app_wrk, SESSION_CTRL_EVT_APP_ADD_SEGMENT, &m, sizeof (m),
+				   sp->fd);
 }
 
 static int
@@ -586,10 +584,7 @@ mq_send_del_segment_cb (u32 app_wrk_index, u64 segment_handle)
 
   m.segment_handle = segment_handle;
 
-  app_wrk_send_ctrl_evt (app_wrk, SESSION_CTRL_EVT_APP_DEL_SEGMENT, &m,
-			 sizeof (m));
-
-  return 0;
+  return app_wrk_send_ctrl_evt (app_wrk, SESSION_CTRL_EVT_APP_DEL_SEGMENT, &m, sizeof (m));
 }
 
 static void
@@ -1853,10 +1848,8 @@ mq_send_add_segment_sapi_cb (u32 app_wrk_index, u64 segment_handle)
   strncpy ((char *) m.segment_name, (char *) sp->name,
 	   sizeof (m.segment_name) - 1);
 
-  app_wrk_send_ctrl_evt_fd (app_wrk, SESSION_CTRL_EVT_APP_ADD_SEGMENT, &m,
-			    sizeof (m), sp->fd);
-
-  return 0;
+  return app_wrk_send_ctrl_evt_fd (app_wrk, SESSION_CTRL_EVT_APP_ADD_SEGMENT, &m, sizeof (m),
+				   sp->fd);
 }
 
 static int
@@ -1869,10 +1862,7 @@ mq_send_del_segment_sapi_cb (u32 app_wrk_index, u64 segment_handle)
 
   m.segment_handle = segment_handle;
 
-  app_wrk_send_ctrl_evt (app_wrk, SESSION_CTRL_EVT_APP_DEL_SEGMENT, &m,
-			 sizeof (m));
-
-  return 0;
+  return app_wrk_send_ctrl_evt (app_wrk, SESSION_CTRL_EVT_APP_DEL_SEGMENT, &m, sizeof (m));
 }
 
 static session_cb_vft_t session_mq_sapi_cb_vft = {

@@ -227,16 +227,10 @@ segment_manager_add_segment_inline (segment_manager_t *sm, uword segment_size,
 
   if (notify_app)
     {
-      app_worker_t *app_wrk;
       u64 fs_handle;
+
       fs_handle = segment_manager_segment_handle (sm, fs);
-      app_wrk = app_worker_get (sm->app_wrk_index);
-      rv = app_worker_add_segment_notify (app_wrk, fs_handle);
-      if (rv)
-	{
-	  fs_index = rv;
-	  goto done;
-	}
+      app_worker_add_segment_notify (app_wrk, fs_handle);
     }
 done:
 
@@ -1533,27 +1527,16 @@ sm_custom_alloc_segment (app_worker_t *server_wrk, u64 table_handle,
 
   /* New segment, notify the server and client */
   seg_handle = segment_manager_make_segment_handle (sm_index, fs_index);
-  if (app_worker_add_segment_notify (server_wrk, seg_handle))
-    goto error;
+  app_worker_add_segment_notify (server_wrk, seg_handle);
 
   client_wrk = app_worker_get (client_wrk_index);
   /* Make sure client workers do not have overlapping segment handles.
    * Ideally, we should attach fs to client worker segment manager and
    * create a new handle but that's not currently possible. */
   client_seg_handle = ct_client_seg_handle (seg_handle, client_wrk_index);
-  if (app_worker_add_segment_notify (client_wrk, client_seg_handle))
-    {
-      app_worker_del_segment_notify (server_wrk, seg_handle);
-      goto error;
-    }
+  app_worker_add_segment_notify (client_wrk, client_seg_handle);
 
   return ct_seg;
-
-error:
-
-  segment_manager_lock_and_del_segment (sm, fs_index);
-  pool_put_index (seg_ctx->segments, ct_seg->seg_ctx_index);
-  return 0;
 }
 
 int

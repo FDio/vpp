@@ -971,6 +971,26 @@ application_detach_process (application_t * app, u32 api_client_index)
 }
 
 void
+application_force_detach (application_t *app)
+{
+  if (application_is_builtin (app))
+  {
+    clib_warning ("Cannot detach builtin app %v index %u", app->name, app->app_index);
+    return;
+  }
+  if (!vlib_thread_is_main_w_barrier ())
+  {
+    vnet_app_detach_args_t _args = { 0 }, *args = &_args;
+    args->app_index = app->app_index;
+    vlib_rpc_call_main_thread (vnet_application_detach, (u8 *) &args, sizeof (args));
+  }
+  else
+  {
+    application_detach_process (app, ~0);
+  }
+}
+
+void
 application_namespace_cleanup (app_namespace_t *app_ns)
 {
   u32 *app_indices = 0, *app_index;
