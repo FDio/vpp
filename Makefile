@@ -120,19 +120,15 @@ DEB_DEPENDS += nasm libnuma-dev # for make-ext-deps
 LIBFFI=libffi6 # works on all but 20.04 and debian-testing
 ifeq ($(OS_VERSION_ID),24.04)
 	DEB_DEPENDS += libssl-dev
-	DEB_DEPENDS += llvm clang clang-format-15
-	# overwrite clang-format version to run `make checkstyle` successfully
-	# TODO: remove once ubuntu 20.04 is deprecated and extras/scripts/checkstyle.sh is upgraded to 15
-	export CLANG_FORMAT_VER=15
+	DEB_DEPENDS += llvm clang clang-format-18
+	export CLANG_FORMAT_VER=18
 	LIBFFI=libffi8
 	DEB_DEPENDS += enchant-2  # for docs
 else ifeq ($(OS_VERSION_ID),22.04)
 	DEB_DEPENDS += python3-virtualenv
 	DEB_DEPENDS += libssl-dev
-	DEB_DEPENDS += clang clang-format-15
-	# overwrite clang-format version to run `make checkstyle` successfully
-	# TODO: remove once ubuntu 20.04 is deprecated and extras/scripts/checkstyle.sh is upgraded to 15
-	export CLANG_FORMAT_VER=15
+	DEB_DEPENDS += clang clang-format-18
+	export CLANG_FORMAT_VER=18
 	DEB_DEPENDS += enchant-2  # for docs
 else ifeq ($(OS_VERSION_ID),20.04)
 	DEB_DEPENDS += python3-virtualenv
@@ -146,16 +142,12 @@ else ifeq ($(OS_ID)-$(OS_VERSION_ID),debian-11)
 	DEB_DEPENDS += clang clang-format-11
 else ifeq ($(OS_ID)-$(OS_VERSION_ID),debian-12)
 	DEB_DEPENDS += virtualenv
-	DEB_DEPENDS += clang-14 clang-format-15
-	# for extras/scripts/checkstyle.sh
-	# TODO: remove once ubuntu 20.04 is deprecated and extras/scripts/checkstyle.sh is upgraded to -15
-	export CLANG_FORMAT_VER=15
+	DEB_DEPENDS += clang-14 clang-format-18
+	export CLANG_FORMAT_VER=18
 else ifeq ($(OS_ID)-$(OS_VERSION_ID),debian-13)
 	DEB_DEPENDS += virtualenv
 	DEB_DEPENDS += clang-19 clang-format-19
-	# for extras/scripts/checkstyle.sh
-	# TODO: remove once ubuntu 20.04 is deprecated and extras/scripts/checkstyle.sh is upgraded to -15
-	export CLANG_FORMAT_VER=15
+	export CLANG_FORMAT_VER=19
 else
 	DEB_DEPENDS += clang-11 clang-format-11
 	DEB_DEPENDS += enchant-2  # for docs
