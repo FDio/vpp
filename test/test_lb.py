@@ -226,6 +226,140 @@ class TestLB(VppTestCase):
                 )
                 raise Exception("Load Balancer algorithm is biased")
 
+    def test_lb_conf_get(self):
+        """Load Balancer conf get returns values set in setUpClass"""
+        reply = self.vapi.lb_conf_get()
+        self.assertEqual(str(reply.ip4_src_address), "39.40.41.42")
+        self.assertEqual(str(reply.ip6_src_address), "2004::1")
+        self.assertEqual(
+            reply.sticky_buckets_per_core, 1024
+        )  # LB_DEFAULT_PER_CPU_STICKY_BUCKETS
+        self.assertEqual(reply.flow_timeout, 40)  # LB_DEFAULT_FLOW_TIMEOUT
+
+    def test_lb_ip4_gre4_vip_api(self):
+        """Load Balancer IP4 GRE4: add/del VIP via lb_add_del_vip binary API"""
+        try:
+            self.vapi.lb_add_del_vip(pfx="90.0.0.0/8", encap=0)  # GRE4
+
+            vips = self.vapi.lb_vip_dump()
+            self.assertEqual(len(vips), 1)
+            self.assertEqual(str(vips[0].vip.pfx), "90.0.0.0/8")
+            self.assertEqual(vips[0].encap, 0)  # LB_API_ENCAP_TYPE_GRE4
+
+        finally:
+            self.vapi.lb_add_del_vip(pfx="90.0.0.0/8", encap=0, is_del=True)
+
+    def test_lb_ip4_gre4_lameduck(self):
+        """Load Balancer IP4 GRE4 lameduck AS case"""
+        try:
+            self.vapi.cli("lb vip 90.0.0.0/8 encap gre4")
+            for asid in self.ass:
+                self.vapi.cli("lb as 90.0.0.0/8 10.0.0.%u" % asid)
+
+            # Baseline: all ASs receive flows
+            self.pg0.add_stream(self.generatePackets(self.pg0, isv4=True))
+            self.pg_enable_capture(self.pg_interfaces)
+            self.pg_start()
+            self.checkCapture(encap="gre4", isv4=True)
+
+            # Lameduck AS 0 via the v2 binary API
+            self.vapi.lb_add_del_as_v2(
+                pfx="90.0.0.0/8",
+                as_address="10.0.0.0",
+                is_lame=True,
+            )
+
+            # Flush sticky table so all sessions are treated as new
+            self.vapi.cli("test lb flowtable flush")
+
+            # After flush, the lameduck AS must not receive any new flows
+            self.pg0.add_stream(self.generatePackets(self.pg0, isv4=True))
+            self.pg_enable_capture(self.pg_interfaces)
+            self.pg_start()
+
+            self.pg0.assert_nothing_captured()
+            out = self.pg1.get_capture(len(self.packets))
+            load = [0] * len(self.ass)
+            for p in out:
+                asid = int(p[IP].dst.split(".")[3])
+                load[asid] += 1
+            self.assertEqual(load[0], 0, "lameduck AS still received new flows")
+            for asid in range(1, len(self.ass)):
+                self.assertGreater(
+                    load[asid], 0, "active AS %d received no flows" % asid
+                )
+
+            # Restore AS 0 via add (clears lameduck) and verify it re-enters rotation
+            self.vapi.lb_add_del_as_v2(
+                pfx="90.0.0.0/8",
+                as_address="10.0.0.0",
+            )
+            self.vapi.cli("test lb flowtable flush")
+            self.pg0.add_stream(self.generatePackets(self.pg0, isv4=True))
+            self.pg_enable_capture(self.pg_interfaces)
+            self.pg_start()
+            self.checkCapture(encap="gre4", isv4=True)
+
+        finally:
+            for asid in self.ass:
+                self.vapi.cli("lb as 90.0.0.0/8 10.0.0.%u del" % asid)
+            self.vapi.cli("lb vip 90.0.0.0/8 encap gre4 del")
+            self.vapi.cli("test lb flowtable flush")
+
+    def test_lb_ip4_gre4_as_api(self):
+        """Load Balancer IP4 GRE4: AS via lb_add_del_as API"""
+        try:
+            self.vapi.cli("lb vip 90.0.0.0/8 encap gre4")
+            for i in range(1, 4):
+                self.vapi.lb_add_del_as(pfx="90.0.0.0/8", as_address="10.0.0.%u" % i)
+
+            # Delete+flush AS 10.0.0.1 via binary API
+            self.vapi.lb_add_del_as(
+                pfx="90.0.0.0/8",
+                as_address="10.0.0.1",
+                is_del=True,
+                is_flush=True,
+            )
+
+            # Dump all ASs and verify exactly 2 remain active
+            details = self.vapi.lb_as_dump()
+            active = [d for d in details if d.flags & 1]
+            self.assertEqual(len(active), 2)
+
+        finally:
+            # 10.0.0.1 already deleted; clean up the remaining two
+            for i in range(2, 4):
+                self.vapi.cli("lb as 90.0.0.0/8 10.0.0.%u del" % i)
+            self.vapi.cli("lb vip 90.0.0.0/8 encap gre4 del")
+            self.vapi.cli("test lb flowtable flush")
+
+    def test_lb_ip6_gre4_as_api(self):
+        """Load Balancer IP6 GRE4: AS via lb_add_del_as API"""
+        try:
+            self.vapi.cli("lb vip 2001::/16 encap gre4")
+            for i in range(1, 4):
+                self.vapi.lb_add_del_as(pfx="2001::/16", as_address="10.0.0.%u" % i)
+
+            # Delete+flush AS 10.0.0.1 via binary API
+            self.vapi.lb_add_del_as(
+                pfx="2001::/16",
+                as_address="10.0.0.1",
+                is_del=True,
+                is_flush=True,
+            )
+
+            # Dump all ASs and verify exactly 2 remain active
+            details = self.vapi.lb_as_dump()
+            active = [d for d in details if d.flags & 1]
+            self.assertEqual(len(active), 2)
+
+        finally:
+            # 10.0.0.1 already deleted; clean up the remaining two
+            for i in range(2, 4):
+                self.vapi.cli("lb as 2001::/16 10.0.0.%u del" % i)
+            self.vapi.cli("lb vip 2001::/16 encap gre4 del")
+            self.vapi.cli("test lb flowtable flush")
+
     def test_lb_ip4_gre4(self):
         """Load Balancer IP4 GRE4 on vip case"""
         try:
