@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f5941e35_1f5282e1",
+        "filename": "Makefile",
+        "patchSetId": 3
+      },
+      "lineNbr": 131,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-04-06T19:51:17Z",
+      "side": 1,
+      "message": "Per the deleted TODO comment, this is only required when overriding the default value of the env var CLANG_FORM_VER in extras/scripts/checkstyle.sh\n\nThus this should be removed.",
+      "revId": "2d8e37ece499a152d0dc4c78b857a87bcfa57266",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "91b69c0f_2b2a3d7f",
+        "filename": "Makefile",
+        "patchSetId": 3
+      },
+      "lineNbr": 146,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-04-06T19:51:17Z",
+      "side": 1,
+      "message": "Same here.",
+      "revId": "2d8e37ece499a152d0dc4c78b857a87bcfa57266",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
