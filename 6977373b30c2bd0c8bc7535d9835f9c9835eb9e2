@@ -16,6 +16,23 @@
       "message": "rebased on master branch, not tests passed.",
       "revId": "6977373b30c2bd0c8bc7535d9835f9c9835eb9e2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2506dc20_d7ac52a4",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3310
+      },
+      "writtenOn": "2026-04-06T14:30:17Z",
+      "side": 1,
+      "message": "branch was rebased on master to pass the CI tests.",
+      "revId": "6977373b30c2bd0c8bc7535d9835f9c9835eb9e2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
