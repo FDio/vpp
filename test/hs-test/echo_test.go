@@ -12,8 +12,9 @@ func init() {
 		EchoBuiltinTestbytesTest, EchoBuiltinPeriodicReportTest, EchoBuiltinPeriodicReportTotalTest, TlsSingleConnectionTest,
 		EchoBuiltinPeriodicReportUDPTest, EchoBuiltinUdpTest, EchoBuiltinHttpTest, EchoBuiltinHttpsTest, EchoBuiltinHttp2Test,
 		EchoBuiltinHttp3Test, EchoBuiltinHttpTestBytesTest, EchoBuiltinHttp2ConnectTcpTest, EchoBuiltinHttp3ConnectTcpTest,
-		EchoBuiltinHttp2ConnectUdpTest, EchoBuiltinHttp3ConnectUdpTest)
-	RegisterEchoMWTests(TcpWithLossMWTest, EchoBuiltinHttp1CpsMWTest, EchoBuiltinHttp2CpsMWTest, EchoBuiltinHttp3CpsMWTest)
+		EchoBuiltinHttp2ConnectUdpTest, EchoBuiltinHttp3ConnectUdpTest, EchoBuiltinHttp2ConnectUdpBackpressureTest)
+	RegisterEchoMWTests(TcpWithLossMWTest, EchoBuiltinHttp1CpsMWTest, EchoBuiltinHttp2CpsMWTest, EchoBuiltinHttp3CpsMWTest,
+		EchoBuiltinHttp2ConnectUdpBackpressureMWTest)
 	RegisterSoloEcho6Tests(TcpWithLoss6Test)
 }
 
@@ -424,6 +425,56 @@ func httpTunnelVerifyPeriodicStats(stats string) {
 	} else {
 		AssertEmpty("invalid echo test client output")
 	}
+}
+
+func httpTunnelVerifyActivePeriodicStats(stats string) {
+	regex := regexp.MustCompile(`(\d?\.\d)-(\d?.\d)\s+(\d+\.\d+)[KMG]\s+(\d+\.\d+)[KMG]\s+\d+\.\d+[KMG]b/s\s+(\d?\.\d+)ms`)
+	if regex.MatchString(stats) {
+		matches := regex.FindAllStringSubmatch(stats, -1)
+		AssertEqual(5, len(matches))
+		for _, match := range matches {
+			tx, _ := strconv.ParseFloat(match[3], 32)
+			rx, _ := strconv.ParseFloat(match[4], 32)
+			AssertGreaterThan(tx, 0.0)
+			AssertGreaterThan(rx, 0.0)
+		}
+	} else {
+		AssertEmpty("invalid echo test client output")
+	}
+}
+
+func echoBuiltinHttp2ConnectUdp(s *EchoSuite, clientExtraArgs, serverExtraArgs string) string {
+	serverVpp := s.Containers.ServerVpp.VppInstance
+	serverCmd := "test echo server connect-udp uri https://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1
+	if serverExtraArgs != "" {
+		serverCmd += " " + serverExtraArgs
+	}
+	serverVpp.Vppctl(serverCmd)
+
+	clientVpp := s.Containers.ClientVpp.VppInstance
+	clientCmd := "test echo client run-time 5 echo-bytes http2 connect-udp uri https://" +
+		s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1
+	if clientExtraArgs != "" {
+		clientCmd += " " + clientExtraArgs
+	}
+
+	o := clientVpp.Vppctl(clientCmd)
+	Log(o)
+	AssertNotContains(o, "failed:")
+	return o
+}
+
+func EchoBuiltinHttp2ConnectUdpBackpressureTest(s *EchoSuite) {
+	// Small fifos keep the tunnel close to backpressure and exercise the
+	// postponed RX/TX paths fixed for HTTP/2 CONNECT-UDP.
+	o := echoBuiltinHttp2ConnectUdp(s, "nclients 2 fifo-size 16k", "fifo-size 16k")
+	httpTunnelVerifyActivePeriodicStats(o)
+}
+
+func EchoBuiltinHttp2ConnectUdpBackpressureMWTest(s *EchoSuite) {
+	s.CpusPerVppContainer = 3
+	s.SetupTest()
+	EchoBuiltinHttp2ConnectUdpBackpressureTest(s)
 }
 
 func EchoBuiltinHttp2ConnectTcpTest(s *EchoSuite) {
