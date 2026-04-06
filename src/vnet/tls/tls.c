@@ -3,6 +3,7 @@
  * Copyright (c) 2018-2019 Cisco and/or its affiliates.
  */
 
+#include <vlib/vlib.h>
 #include <vnet/session/application_interface.h>
 #include <vppinfra/lock.h>
 #include <vnet/tls/tls.h>
@@ -1363,6 +1364,31 @@ tls_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (tls_init);
 
+static uword
+unformat_tls_engine_cfg (unformat_input_t *input, va_list *va)
+{
+    tls_engine_vft_t *vft;
+    unformat_input_t sub_input;
+    int found = 0;
+
+    vec_foreach (vft, tls_vfts)
+    {
+      if (!vft->name || !vft->unformat_cfg)
+	continue;
+      if (!unformat (input, vft->name))
+	continue;
+      if (unformat (input, "%U", unformat_vlib_cli_sub_input, &sub_input))
+	{
+	  clib_error_t *err = vft->unformat_cfg (&sub_input);
+	  unformat_free (&sub_input);
+	  if (err)
+	    clib_error_report (err);
+	  found = 1;
+	}
+    }
+    return found;
+}
+
 static clib_error_t *
 tls_config_fn (vlib_main_t * vm, unformat_input_t * input)
 {
@@ -1389,6 +1415,8 @@ tls_config_fn (vlib_main_t * vm, unformat_input_t * input)
 	    }
 	  tm->fifo_size = tmp;
 	}
+      else if (unformat (input, "%U", unformat_tls_engine_cfg))
+	;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
