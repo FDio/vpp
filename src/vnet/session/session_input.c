@@ -87,6 +87,7 @@ app_worker_flush_events_inline (app_worker_t *app_wrk,
   u8 ring_index, mq_is_cong;
   session_state_t old_state;
   session_event_t *evt;
+  u8 dequeue_evt;
   u32 n_evts = 128, i;
   session_t *s;
   int rv;
@@ -105,6 +106,7 @@ app_worker_flush_events_inline (app_worker_t *app_wrk,
 
   for (i = 0; i < n_evts; i++)
     {
+      dequeue_evt = 1;
       evt = clib_fifo_head (app_wrk->wrk_evts[thread_index]);
       if (!is_builtin)
 	{
@@ -304,12 +306,14 @@ app_worker_flush_events_inline (app_worker_t *app_wrk,
 	  session_free (s);
 	  break;
 	case SESSION_CTRL_EVT_APP_ADD_SEGMENT:
-	  app->cb_fns.add_segment_callback (app_wrk->wrk_index,
-					    evt->as_u64[1]);
+	  rv = app->cb_fns.add_segment_callback (app_wrk->wrk_index, evt->as_u64[1]);
+	  if (PREDICT_FALSE (rv))
+	    dequeue_evt = 0;
 	  break;
 	case SESSION_CTRL_EVT_APP_DEL_SEGMENT:
-	  app->cb_fns.del_segment_callback (app_wrk->wrk_index,
-					    evt->as_u64[1]);
+	  rv = app->cb_fns.del_segment_callback (app_wrk->wrk_index, evt->as_u64[1]);
+	  if (PREDICT_FALSE (rv))
+	    dequeue_evt = 0;
 	  break;
 	case SESSION_CTRL_EVT_RPC:
 	  ((void (*) (session_t * s)) (evt->rpc_args.fp)) (evt->rpc_args.arg);
@@ -319,6 +323,8 @@ app_worker_flush_events_inline (app_worker_t *app_wrk,
 	  ASSERT (0);
 	  break;
 	}
+      if (PREDICT_FALSE (!dequeue_evt))
+	break;
       clib_fifo_advance_head (app_wrk->wrk_evts[thread_index], 1);
     }
 
