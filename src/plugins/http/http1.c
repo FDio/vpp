@@ -1100,7 +1100,7 @@ static http_sm_result_t
 http1_req_state_udp_tunnel_rx (http_ctx_t *hc, http_ctx_t *req, transport_send_params_t *sp)
 {
   u32 to_deq, capsule_size, dgram_size, n_read, n_written = 0;
-  int rv;
+  http_capsule_error_t rv;
   u8 payload_offset = 0;
   u64 payload_len = 0;
   session_dgram_hdr_t hdr;
@@ -1114,18 +1114,19 @@ http1_req_state_udp_tunnel_rx (http_ctx_t *hc, http_ctx_t *req, transport_send_p
   while (to_deq > 0)
     {
       /* some bytes remaining to skip? */
-      if (PREDICT_FALSE (req->to_skip))
+      if (PREDICT_FALSE (req->capsule_ctx_rx.state == HTTP_CAPSULE_STATE_SKIP))
 	{
-	  if (req->to_skip >= to_deq)
+	  if (req->capsule_ctx_rx.len >= to_deq)
 	    {
 	      http_io_ts_drain (hc, to_deq);
-	      req->to_skip -= to_deq;
+	      req->capsule_ctx_rx.len -= to_deq;
 	      goto done;
 	    }
 	  else
 	    {
-	      http_io_ts_drain (hc, req->to_skip);
-	      req->to_skip = 0;
+	      http_io_ts_drain (hc, req->capsule_ctx_rx.len);
+	      req->capsule_ctx_rx.state = HTTP_CAPSULE_STATE_HEADER;
+	      req->capsule_ctx_rx.len = 0;
 	    }
 	}
       n_read = http_io_ts_read (hc, buf, HTTP_CAPSULE_HEADER_MAX_SIZE, 1);
@@ -1133,9 +1134,9 @@ http1_req_state_udp_tunnel_rx (http_ctx_t *hc, http_ctx_t *req, transport_send_p
 					    &payload_len);
       HTTP_DBG (1, "rv=%d, payload_offset=%u, payload_len=%llu", rv,
 		payload_offset, payload_len);
-      if (PREDICT_FALSE (rv != 0))
+      if (PREDICT_FALSE (rv != HTTP_CAPSULE_NO_ERROR))
 	{
-	  if (rv < 0)
+	  if (rv == HTTP_CAPSULE_INVALID)
 	    {
 	      /* capsule datagram is invalid (session need to be aborted) */
 	      http_io_ts_drain_all (hc);
@@ -1144,6 +1145,11 @@ http1_req_state_udp_tunnel_rx (http_ctx_t *hc, http_ctx_t *req, transport_send_p
 	      http_disconnect_transport (hc);
 	      http_stats_proto_errors_inc (hc->c_thread_index);
 	      return HTTP_SM_STOP;
+	    }
+	  else if (rv == HTTP_CAPSULE_INCOMPLETE)
+	    {
+	      HTTP_DBG (1, "capsule header not complete");
+	      goto done;
 	    }
 	  else
 	    {
@@ -1157,7 +1163,8 @@ http1_req_state_udp_tunnel_rx (http_ctx_t *hc, http_ctx_t *req, transport_send_p
 	      else
 		{
 		  http_io_ts_drain (hc, to_deq);
-		  req->to_skip = payload_len - to_deq;
+		  req->capsule_ctx_rx.state = HTTP_CAPSULE_STATE_SKIP;
+		  req->capsule_ctx_rx.len = payload_len - to_deq;
 		  goto done;
 		}
 	    }
@@ -1276,7 +1283,8 @@ http1_req_state_wait_app_reply (http_ctx_t *hc, http_ctx_t *req, transport_send_
       /* cleanup some stuff we don't need anymore in tunnel mode */
       vec_free (req->headers);
       http_buffer_free (&req->tx_buf);
-      req->to_skip = 0;
+      req->capsule_ctx_rx.state = HTTP_CAPSULE_STATE_HEADER;
+      req->capsule_ctx_rx.len = 0;
     }
   else
     response = format (response, content_len_template, msg.data.body_len);
