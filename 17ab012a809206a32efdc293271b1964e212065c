@@ -38,6 +38,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "7242a788_cbd5b828",
+        "filename": "test/framework.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 583,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-04-07T16:02:25Z",
+      "side": 1,
+      "message": "The problem is that there is no proof that this code works effectively in the very use case (multiple contexts) it purports to provide a solution for.  Imagination is not testing.\n\nPlease provide tests or usage of the api that validates that the code works as intended.\n\nAdding features that might be used by others in the future is simply adding a maintenance burden and potential foot-gun.  If there is not a current use case for it, then let\u0027s not add more code just for the sake of it.",
+      "parentUuid": "9a51b871_ad36d990",
+      "revId": "17ab012a809206a32efdc293271b1964e212065c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "378be68c_b485ac5b",
         "filename": "test/framework.py",
         "patchSetId": 7
@@ -67,6 +85,24 @@
       "side": 1,
       "message": "It\u0027s the same mechanism used by get_capture itself. What is your concern here?",
       "parentUuid": "378be68c_b485ac5b",
+      "revId": "17ab012a809206a32efdc293271b1964e212065c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a9837211_dbcc13b4",
+        "filename": "test/framework.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 606,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-04-07T16:02:25Z",
+      "side": 1,
+      "message": "How does one debug the failure and determine which context is the root cause?\nIt may not be the last one in which the timeout occurred.\n\nIt would be helpful if there were a means of seeing the amount of time spent in each context.  With the single case, this occurs naturally, but by grouping multiple contexts, the details of each is obscured making it harder to correlate system behavior with the failure.  Thus, in order to retain the granularity of timing visibility, more complexity must be added here.  Overall, I\u0027m not convinced that this is beneficial other than to make it easier to write the tests, which IMHO should not be the primary goal in the CI pipeline.",
+      "parentUuid": "460edbc3_46e04443",
       "revId": "17ab012a809206a32efdc293271b1964e212065c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -120,6 +156,30 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "07337aa0_6b755e53",
+        "filename": "test/framework.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 619,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-04-07T16:02:25Z",
+      "side": 1,
+      "message": "Sure, start a thread on vpp-dev to discuss the options.",
+      "parentUuid": "761e0320_83e926c3",
+      "range": {
+        "startLine": 613,
+        "startChar": 0,
+        "endLine": 619,
+        "endChar": 0
+      },
+      "revId": "17ab012a809206a32efdc293271b1964e212065c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "51c9683a_70ded3d6",
         "filename": "test/vpp_pg_interface.py",
         "patchSetId": 7
@@ -155,6 +215,30 @@
       "side": 1,
       "message": "This is to hint to pyright that it’s actually float. Otherwise it’ll keep bugging you anywhere you pass a float in. I don’t want to annotate just a single variable but also not the whole unit, so I opted for this low-hanging fruit instead.",
       "parentUuid": "51c9683a_70ded3d6",
+      "range": {
+        "startLine": 303,
+        "startChar": 48,
+        "endLine": 303,
+        "endChar": 59
+      },
+      "revId": "17ab012a809206a32efdc293271b1964e212065c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "65439d65_daaba04a",
+        "filename": "test/vpp_pg_interface.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 303,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-04-07T16:02:25Z",
+      "side": 1,
+      "message": "ok, cool.  I\u0027ve never used pyright, but doesn\u0027t it complain about all of the other \u003cint\u003e based timeout vars/signatures in the code base?  \n\nThere are currently no python static analysis tools run against the vpp python code. CSIT uses pylint, but it produces a boat load of warnings that have never been cleaned up and are simply noise.  What would be best in your experience for vpp python static analysis?\n\nI guess this is another open topic that should be discussed on vpp-dev...",
+      "parentUuid": "7f5f0d3a_a8d82a17",
       "range": {
         "startLine": 303,
         "startChar": 48,
