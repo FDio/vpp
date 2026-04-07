@@ -139,6 +139,35 @@ Examples:
    lb as 80.0.0.0/8 2001::2
    lb as 90.0.0.0/8 10.0.0.1
 
+Lameduck mode for ASs
+~~~~~~~~~~~~~~~~~~~~~
+
+An AS can be placed into *lameduck* mode as an intermediate step before
+removal::
+
+   lb as <vip-prefix> [protocol (tcp|udp) port <n>] <address> lame
+
+In lameduck mode the AS is removed from the new-connections table
+immediately, so no new sessions are assigned to it. Existing sessions
+that are already tracked in the per-thread established-connections tables
+continue to be forwarded to the AS until those sessions close naturally.
+
+Once existing sessions have drained, the AS can be removed::
+
+   lb as <vip-prefix> [protocol (tcp|udp) port <n>] <address> del
+
+If long-lived sessions (e.g. WebSockets) must be evicted immediately
+rather than waited out, add ``flush``::
+
+   lb as <vip-prefix> [protocol (tcp|udp) port <n>] <address> del flush
+
+An AS in lameduck mode can also be restored to full service by re-adding
+it without any flags::
+
+   lb as <vip-prefix> [protocol (tcp|udp) port <n>] <address>
+
+The ``lame`` flag is mutually exclusive with ``del`` and ``flush``.
+
 Configure SNAT
 ~~~~~~~~~~~~~~
 

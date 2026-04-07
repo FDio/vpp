@@ -197,6 +197,7 @@ lb_as_command_fn (vlib_main_t * vm,
   u8 protocol = 0;
   u8 del = 0;
   u8 flush = 0;
+  u8 lame = 0;
   int ret;
   clib_error_t *error = 0;
 
@@ -225,6 +226,10 @@ lb_as_command_fn (vlib_main_t * vm,
     else if (unformat(line_input, "flush"))
       {
         flush = 1;
+      }
+    else if (unformat (line_input, "lame"))
+      {
+	lame = 1;
       }
     else if (unformat(line_input, "protocol tcp"))
       {
@@ -259,8 +264,13 @@ lb_as_command_fn (vlib_main_t * vm,
     error = clib_error_return (0, "No AS address provided");
     goto done;
   }
-
   clib_warning("vip index is %d", vip_index);
+
+  if (lame && del)
+  {
+    error = clib_error_return (0, "lame and del are mutually exclusive");
+    goto done;
+  }
 
   if (del) {
     if ((ret = lb_vip_del_ass(vip_index, as_array, vec_len(as_array), flush)))
@@ -268,7 +278,17 @@ lb_as_command_fn (vlib_main_t * vm,
       error = clib_error_return (0, "lb_vip_del_ass error %d", ret);
       goto done;
     }
-  } else {
+  }
+  else if (lame)
+  {
+    if ((ret = lb_vip_lame_ass (vip_index, as_array, vec_len (as_array), flush)))
+    {
+      error = clib_error_return (0, "lb_vip_lame_ass error %d", ret);
+      goto done;
+    }
+  }
+  else
+  {
     if ((ret = lb_vip_add_ass(vip_index, as_array, vec_len(as_array))))
     {
       error = clib_error_return (0, "lb_vip_add_ass error %d", ret);
@@ -283,11 +303,10 @@ done:
   return error;
 }
 
-VLIB_CLI_COMMAND (lb_as_command, static) =
-{
+VLIB_CLI_COMMAND (lb_as_command, static) = {
   .path = "lb as",
   .short_help = "lb as <vip-prefix> [protocol (tcp|udp) port <n>]"
-      " [<address> [<address> [...]]] [del] [flush]",
+		" [<address> [<address> [...]]] [del] [flush] [lame]",
   .function = lb_as_command_fn,
 };
 

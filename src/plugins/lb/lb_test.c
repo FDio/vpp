@@ -394,6 +394,77 @@ static int api_lb_add_del_as (vat_main_t * vam)
   return ret;
 }
 
+static int
+api_lb_add_del_as_v2 (vat_main_t *vam)
+{
+  unformat_input_t *line_input = vam->input;
+  vl_api_lb_add_del_as_v2_t *mp;
+  int ret;
+  ip46_address_t vip_prefix, as_addr;
+  u8 vip_plen;
+  ip46_address_t *as_array = 0;
+  u32 port = 0;
+  u8 protocol = 0;
+  u8 is_del = 0;
+  u8 is_flush = 0;
+  u8 is_lame = 0;
+
+  if (!unformat (line_input, "%U", unformat_ip46_prefix, &vip_prefix, &vip_plen, IP46_TYPE_ANY))
+  {
+    errmsg ("lb_add_del_as_v2: invalid vip prefix\n");
+    return -99;
+  }
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+  {
+    if (unformat (line_input, "%U", unformat_ip46_address, &as_addr, IP46_TYPE_ANY))
+    vec_add1 (as_array, as_addr);
+    else if (unformat (line_input, "del"))
+    is_del = 1;
+    else if (unformat (line_input, "flush"))
+    is_flush = 1;
+    else if (unformat (line_input, "lame"))
+    is_lame = 1;
+    else if (unformat (line_input, "protocol tcp"))
+    protocol = IP_PROTOCOL_TCP;
+    else if (unformat (line_input, "protocol udp"))
+    protocol = IP_PROTOCOL_UDP;
+    else if (unformat (line_input, "port %d", &port))
+    ;
+    else
+    {
+	errmsg ("invalid arguments\n");
+	return -99;
+    }
+  }
+
+  if (!vec_len (as_array))
+  {
+    errmsg ("No AS address provided\n");
+    return -99;
+  }
+
+  if (is_lame && (is_del || is_flush))
+  {
+    errmsg ("lame is mutually exclusive with del and flush\n");
+    return -99;
+  }
+
+  M (LB_ADD_DEL_AS_V2, mp);
+  ip_address_encode (&vip_prefix, IP46_TYPE_ANY, &mp->pfx.address);
+  mp->pfx.len = vip_plen;
+  mp->protocol = (u8) protocol;
+  mp->port = htons ((u16) port);
+  ip_address_encode (&as_addr, IP46_TYPE_ANY, &mp->as_address);
+  mp->is_del = is_del;
+  mp->is_flush = is_flush;
+  mp->is_lame = is_lame;
+
+  S (mp);
+  W (ret);
+  return ret;
+}
+
 static int api_lb_flush_vip (vat_main_t * vam)
 {
 
