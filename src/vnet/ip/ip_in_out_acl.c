@@ -13,6 +13,9 @@ typedef struct
   u32 next_index;
   u32 table_index;
   u32 offset;
+  vnet_classify_action_t action;
+  u32 metadata;
+  u32 fib_index;
 }
 ip_in_out_acl_trace_t;
 
@@ -28,10 +31,23 @@ format_ip_in_out_acl_trace (u8 * s, u32 is_output, va_list * args)
   vnet_classify_table_t *table;
   vnet_classify_entry_t *e;
 
-  s =
-    format (s, "%s: sw_if_index %d, next_index %d, table_index %d, offset %d",
-	    is_output ? "OUTACL" : "INACL", t->sw_if_index, t->next_index,
-	    t->table_index, t->offset);
+  static const char *action_strings[] = {
+    [CLASSIFY_ACTION_NONE] = "none",
+    [CLASSIFY_ACTION_SET_IP4_FIB_INDEX] = "set-ip4-fib-index",
+    [CLASSIFY_ACTION_SET_IP6_FIB_INDEX] = "set-ip6-fib-index",
+    [CLASSIFY_ACTION_SET_METADATA] = "set-metadata",
+  };
+  s = format (s,
+	      "%s: sw_if_index %d, next_index %d, table_index %d, offset %d, "
+	      "action %s",
+	      is_output ? "OUTACL" : "INACL", t->sw_if_index, t->next_index, t->table_index,
+	      t->offset,
+	      t->action < ARRAY_LEN (action_strings) ? action_strings[t->action] : "unknown");
+
+  if (t->action != CLASSIFY_ACTION_NONE)
+    s = format (s, ", metadata %d", t->metadata);
+  if (t->action == CLASSIFY_ACTION_SET_METADATA)
+    s = format (s, ", fib_index %d", t->fib_index);
 
   if (pool_is_free_index (vcm->tables, t->table_index))
     return format (s, "\n%Uno table", format_white_space, indent + 4);
@@ -507,6 +523,9 @@ ip_in_out_acl_inline_trace (
 	  _t->table_index = table_index[0];
 	  _t->offset = (e[0]
 			&& t[0]) ? vnet_classify_get_offset (t[0], e[0]) : ~0;
+	  _t->action = e[0] ? e[0]->action : CLASSIFY_ACTION_NONE;
+	  _t->metadata = e[0] ? e[0]->metadata : 0;
+	  _t->fib_index = vnet_buffer (b[0])->ip.fib_index;
 	}
 
       if (do_trace && b[1]->flags & VLIB_BUFFER_IS_TRACED)
@@ -519,6 +538,9 @@ ip_in_out_acl_inline_trace (
 	  _t->table_index = table_index[1];
 	  _t->offset = (e[1]
 			&& t[1]) ? vnet_classify_get_offset (t[1], e[1]) : ~0;
+	  _t->action = e[1] ? e[1]->action : CLASSIFY_ACTION_NONE;
+	  _t->metadata = e[1] ? e[1]->metadata : 0;
+	  _t->fib_index = vnet_buffer (b[1])->ip.fib_index;
 	}
 
       if ((_next[0] == ACL_NEXT_INDEX_DENY) && is_output)
@@ -705,6 +727,9 @@ ip_in_out_acl_inline_trace (
 	  t->next_index = next0;
 	  t->table_index = table_index0;
 	  t->offset = (e0 && t0) ? vnet_classify_get_offset (t0, e0) : ~0;
+	  t->action = e0 ? e0->action : CLASSIFY_ACTION_NONE;
+	  t->metadata = e0 ? e0->metadata : 0;
+	  t->fib_index = vnet_buffer (b[0])->ip.fib_index;
 	}
 
       if ((next0 == ACL_NEXT_INDEX_DENY) && is_output)
@@ -863,11 +888,10 @@ VLIB_NODE_FN (ip6_inacl_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 VLIB_NODE_FN (ip6_punt_acl_node)
 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
-  return ip_in_out_acl_inline (
-    vm, node, frame, IN_OUT_ACL_TABLE_IP6_PUNT,
-    ip4_main.fib_index_by_sw_if_index, &ip6_input_node, IP6_ERROR_NONE,
-    IP6_ERROR_INACL_SESSION_DENY, IP6_ERROR_INACL_TABLE_MISS, ~0 /* way */,
-    0 /* is_output */);
+  return ip_in_out_acl_inline (vm, node, frame, IN_OUT_ACL_TABLE_IP6_PUNT,
+			       ip6_main.fib_index_by_sw_if_index, &ip6_input_node, IP6_ERROR_NONE,
+			       IP6_ERROR_INACL_SESSION_DENY, IP6_ERROR_INACL_TABLE_MISS,
+			       ~0 /* way */, 0 /* is_output */);
 }
 
 VLIB_NODE_FN (ip6_outacl_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
