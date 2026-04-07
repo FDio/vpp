@@ -59,6 +59,8 @@ typedef struct tls_listen_ctx_opensl_
   u32 openssl_lctx_index;
   SSL_CTX *ssl_ctx;
   SSL *ssl;
+  u32 app_index;      /**< app that owns this listener */
+  u32 ca_trust_index; /**< ca trust index, if any */
 } openssl_listen_ctx_t;
 
 typedef struct openssl_main_
