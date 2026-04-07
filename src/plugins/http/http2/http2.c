@@ -272,6 +272,7 @@ http2_req_schedule_data_tx (http_ctx_t *hc, http_ctx_t *req)
   http_worker_t *wrk = http_worker_get (hc->c_thread_index);
   http_ctx_t *he;
 
+  ASSERT (!clib_llist_elt_is_linked (req, stream_sched_list));
   he = clib_llist_elt (wrk->ctx_pool, hc->old_tx_streams);
   clib_llist_add_tail (wrk->ctx_pool, stream_sched_list, req, he);
 }
@@ -286,7 +287,7 @@ http2_req_update_peer_window (http_ctx_t *hc, http_ctx_t *req, i64 delta)
   if (new_value > HTTP2_WIN_SIZE_MAX)
     return -1;
   req->peer_stream_window = (i32) new_value;
-  HTTP_DBG (1, "new window size %d", req->peer_window);
+  HTTP_DBG (1, "new window size %ld", req->peer_stream_window);
   /* settings change can make stream window negative */
   if (req->peer_stream_window <= 0)
     {
@@ -705,8 +706,7 @@ http2_sched_dispatch_udp_tunnel (http_ctx_t *req, http_ctx_t *hc, u8 *n_emission
 
   if (req->peer_stream_window < (hdr.data_length + HTTP_UDP_PROXY_DATAGRAM_CAPSULE_OVERHEAD))
     {
-      HTTP_DBG (1, "not enough space in stream window (%lu) for capsule",
-		req->peer_window);
+      HTTP_DBG (1, "not enough space in stream window (%lu) for capsule", req->peer_stream_window);
       /* mark that we need window update on stream */
       req->req_flags |= HTTP_REQ_F_NEED_WINDOW_UPDATE;
       return;
@@ -734,7 +734,7 @@ http2_sched_dispatch_udp_tunnel (http_ctx_t *req, http_ctx_t *hc, u8 *n_emission
   http_io_as_peek (req, payload, hdr.data_length, sizeof (hdr));
   http_io_as_drain (req, dgram_size);
 
-  req->peer_stream_window -= capsule_size;
+  req->peer_stream_window -= (i32) capsule_size;
   hc->peer_window -= capsule_size;
 
   http2_frame_write_data_header (capsule_size, req->stream_id, 0, fh);
@@ -2120,7 +2120,7 @@ http2_handle_data_frame (http_ctx_t *hc, http2_frame_header_t *fh)
   req->our_stream_window -= fh->length;
   hc->our_window -= fh->length;
 
-  HTTP_DBG (1, "run state machine '%U' req_index %x", format_http_req_state, req->state,
+  HTTP_DBG (1, "run state machine '%U' req_index %x", format_http_req_state, req->req_state,
 	    ((http_req_handle_t) req->hr_req_handle).req_index);
   return http2_req_run_state_machine (hc, req, 0, 0);
 }
@@ -2237,24 +2237,6 @@ http2_handle_settings_frame (http_ctx_t *hc, http2_frame_header_t *fh)
       if (rv != HTTP2_ERROR_NO_ERROR)
 	return rv;
 
-      if (hc->flags & HTTP_CONN_F_EXPECT_SERVER_SETTINGS)
-	{
-	  hc->flags &= ~HTTP_CONN_F_EXPECT_SERVER_SETTINGS;
-	  HTTP_DBG (1, "client connection established");
-	  u32 hc_index = hc->hc_hc_index;
-	  clib_thread_index_t thread_index = hc->c_thread_index;
-	  req = http2_conn_alloc_req (hc_index, thread_index, 1);
-	  /* pool grow, regrab connection */
-	  hc = http_ctx_get_w_thread (hc_index, thread_index);
-	  hc->flags |= HTTP_CONN_F_HAS_REQUEST;
-	  hpack_dynamic_table_init (&hc->decoder_dynamic_table,
-				    http2_default_conn_settings.header_table_size);
-	  http_req_state_change (req, HTTP_REQ_STATE_WAIT_APP_METHOD);
-	  http_stats_connections_established_inc (hc->c_thread_index);
-	  if (http_conn_established (hc, req, hc->hc_pa_app_api_ctx))
-	    return HTTP2_ERROR_INTERNAL_ERROR;
-	}
-
       /* ACK peer settings */
       http2_frame_write_settings_ack (&resp);
       http_io_ts_write (hc, resp, vec_len (resp), 0);
@@ -2277,6 +2259,24 @@ http2_handle_settings_frame (http_ctx_t *hc, http2_frame_header_t *fh)
 			}));
 	}
       hc->peer_settings = new_settings;
+
+      if (hc->flags & HTTP_CONN_F_EXPECT_SERVER_SETTINGS)
+	{
+	  hc->flags &= ~HTTP_CONN_F_EXPECT_SERVER_SETTINGS;
+	  HTTP_DBG (1, "client connection established");
+	  u32 hc_index = hc->hc_hc_index;
+	  clib_thread_index_t thread_index = hc->c_thread_index;
+	  req = http2_conn_alloc_req (hc_index, thread_index, 1);
+	  /* pool grow, regrab connection */
+	  hc = http_ctx_get_w_thread (hc_index, thread_index);
+	  hc->flags |= HTTP_CONN_F_HAS_REQUEST;
+	  hpack_dynamic_table_init (&hc->decoder_dynamic_table,
+				    http2_default_conn_settings.header_table_size);
+	  http_req_state_change (req, HTTP_REQ_STATE_WAIT_APP_METHOD);
+	  http_stats_connections_established_inc (hc->c_thread_index);
+	  if (http_conn_established (hc, req, hc->hc_pa_app_api_ctx))
+	    return HTTP2_ERROR_INTERNAL_ERROR;
+	}
     }
 
   return HTTP2_ERROR_NO_ERROR;
