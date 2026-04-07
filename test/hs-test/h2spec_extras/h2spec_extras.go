@@ -682,6 +682,85 @@ func ConnectUdp() *spec.TestGroup {
 	})
 
 	tg.AddTestCase(&spec.TestCase{
+		Desc:        "UDP proxying capsule span multiple DATA frames",
+		Requirement: "Capsule Protocol is defined as a continuous \"data stream\" that follows the initial HTTP headers.",
+		Run: func(c *config.Config, conn *spec.Conn) error {
+			var streamID uint32 = 1
+
+			err := conn.Handshake()
+			if err != nil {
+				return err
+			}
+
+			headers := ConnectUdpHeaders(c)
+			hp := http2.HeadersFrameParam{
+				StreamID:      streamID,
+				EndStream:     false,
+				EndHeaders:    true,
+				BlockFragment: conn.EncodeHeaders(headers),
+			}
+			conn.WriteHeaders(hp)
+			err = spec.VerifyHeadersFrame(conn, streamID)
+			if err != nil {
+				return err
+			}
+
+			// send fragmented capsule
+			data := []byte("hello")
+			// first frame is capsule type
+			conn.WriteData(streamID, false, []byte("\x00"))
+			b := make([]byte, 0)
+			b = quicvarint.Append(b, uint64(len(data)+1))
+			// second frame is capsule length
+			conn.WriteData(streamID, false, b)
+			// third frame is context ID
+			conn.WriteData(streamID, false, []byte("\x00"))
+			// payload split into two frames
+			conn.WriteData(streamID, false, data[:2])
+			conn.WriteData(streamID, false, data[2:])
+
+			// verify echo response
+			resp, err := readCapsule(conn, streamID)
+			if err != nil {
+				return err
+			}
+			if !bytes.Equal(data, resp) {
+				return &spec.TestError{
+					Expected: []string{"capsule payload: " + string(data)},
+					Actual:   "capsule payload:" + string(resp),
+				}
+			}
+
+			// send unknown capsule type (8 byte long)
+			data2 := []byte("none shall pass")
+			conn.WriteData(streamID, false, []byte{0b11000010, 0x19, 0x7c, 0x5e, 0xff, 0x14, 0xe8, 0x8c})
+			b = make([]byte, 0)
+			b = quicvarint.Append(b, uint64(len(data2)))
+			conn.WriteData(streamID, false, b)
+			conn.WriteData(streamID, false, data2[:2])
+			conn.WriteData(streamID, false, data2[2:])
+
+			// send and receive data over tunnel to verify that paylaod of unknown capsule type is ignored
+			err = writeCapsule(conn, streamID, false, data)
+			if err != nil {
+				return err
+			}
+			resp, err = readCapsule(conn, streamID)
+			if err != nil {
+				return err
+			}
+			if !bytes.Equal(data, resp) {
+				return &spec.TestError{
+					Expected: []string{"capsule payload: " + string(data)},
+					Actual:   "capsule payload:" + string(resp),
+				}
+			}
+
+			return nil
+		},
+	})
+
+	tg.AddTestCase(&spec.TestCase{
 		Desc:        "Multiple tunnels",
 		Requirement: "In HTTP/2, the data stream of a given HTTP request consists of all bytes sent in DATA frames with the corresponding stream ID.",
 		Run: func(c *config.Config, conn *spec.Conn) error {
