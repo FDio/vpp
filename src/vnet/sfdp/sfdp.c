@@ -362,11 +362,25 @@ sfdp_expire_session_now (sfdp_session_t *session, f64 now)
   if (thread_index == SFDP_UNBOUND_THREAD_INDEX)
     thread_index = 0;
 
+  sfdp_main_t *sfdp = &sfdp_main;
+  u32 session_index = session - sfdp->sessions;
+
+  /* Get per-thread data and directly add session to expired list.
+   * This bypasses the timing wheel's nticks >= 1 constraint, ensuring
+   * the session is processed on the very next sfdp-expire node execution
+   * regardless of when sfdp-expire last ran. */
+  sfdp_per_thread_data_t *ptd =
+    vec_elt_at_index (sfdp->per_thread_data, thread_index);
+  vec_add1 (ptd->expired_sessions, session_index);
+
+  /* Stop the timer in the wheel to prevent it from firing later. */
   sfdp_timer_per_thread_data_t *tptd = sfdp_timer_get_per_thread_data (thread_index);
   sfdp_session_timer_t *timer = SFDP_SESSION_TIMER (session);
+  sfdp_session_timer_stop (&tptd->wheel, timer);
 
-  sfdp_session_timer_update_maybe_past (&tptd->wheel, timer, now, 0);
-  tptd->current_time = now;
+  /* Wake up sfdp-expire node on the owning worker thread.
+   * The session is already in expired_sessions, so it will be processed
+   * immediately when the node runs. */
   vlib_node_set_interrupt_pending (vlib_get_main_by_index (thread_index), sfdp_expire_node.index);
 }
 
