@@ -1100,7 +1100,7 @@ static http_sm_result_t
 http1_req_state_udp_tunnel_rx (http_ctx_t *hc, http_ctx_t *req, transport_send_params_t *sp)
 {
   u32 to_deq, capsule_size, dgram_size, n_read, n_written = 0;
-  int rv;
+  http_capsule_error_t rv;
   u8 payload_offset = 0;
   u64 payload_len = 0;
   session_dgram_hdr_t hdr;
@@ -1133,9 +1133,9 @@ http1_req_state_udp_tunnel_rx (http_ctx_t *hc, http_ctx_t *req, transport_send_p
 					    &payload_len);
       HTTP_DBG (1, "rv=%d, payload_offset=%u, payload_len=%llu", rv,
 		payload_offset, payload_len);
-      if (PREDICT_FALSE (rv != 0))
+      if (PREDICT_FALSE (rv != HTTP_CAPSULE_NO_ERROR))
 	{
-	  if (rv < 0)
+	  if (rv == HTTP_CAPSULE_INVALID)
 	    {
 	      /* capsule datagram is invalid (session need to be aborted) */
 	      http_io_ts_drain_all (hc);
@@ -1144,6 +1144,11 @@ http1_req_state_udp_tunnel_rx (http_ctx_t *hc, http_ctx_t *req, transport_send_p
 	      http_disconnect_transport (hc);
 	      http_stats_proto_errors_inc (hc->c_thread_index);
 	      return HTTP_SM_STOP;
+	    }
+	  else if (rv == HTTP_CAPSULE_INCOMPLETE)
+	    {
+	      HTTP_DBG (1, "capsule header not complete");
+	      goto done;
 	    }
 	  else
 	    {

@@ -272,6 +272,19 @@ typedef struct
   u8 enable_push;
 } http_conn_settings_t;
 
+typedef enum
+{
+  HTTP_CAPSULE_STATE_HEADER,
+  HTTP_CAPSULE_STATE_PAYLOAD,
+  HTTP_CAPSULE_STATE_SKIP
+} http_capsule_state_t;
+
+typedef struct
+{
+  u64 len : 62;
+  u64 state : 2;
+} http_capsule_ctx_t;
+
 typedef struct http_ctx_
 {
   union
@@ -351,6 +364,7 @@ typedef struct http_ctx_
       {
 	u64 to_recv; /* remaining bytes of body to receive from transport */
 	u64 to_skip; /* remaining bytes of capsule to skip */
+	http_capsule_ctx_t capsule_ctx_rx;
       };
       union
       {
@@ -364,11 +378,20 @@ typedef struct http_ctx_
       u32 target_query_offset;
       u16 target_path_len;
       u16 target_query_len;
-      u32 headers_offset;
-      u32 headers_len;
-      u64 body_len;
       u8 *target;
       http_field_line_t *headers;
+      union
+      {
+	struct
+	{
+	  u32 headers_offset;
+	  u32 headers_len;
+	  u64 body_len;
+	};
+	/* udp datagram capsule is max 8 bytes, unknown capsule are 2 variable-length integers (type
+	 * and length) */
+	u8 capsule_header_rx[HTTP_VARINT_MAX_LEN * 2];
+      };
       union
       {
 	struct
@@ -398,6 +421,8 @@ typedef struct http_ctx_
 	  void (*dispatch_headers_cb) (struct http_ctx_ *req, struct http_ctx_ *hc, u8 *n_emissions,
 				       clib_llist_index_t *next_ri);
 	  void (*dispatch_data_cb) (struct http_ctx_ *req, struct http_ctx_ *hc, u8 *n_emissions);
+	  u8 capsule_header_tx[HTTP_CAPSULE_HEADER_MAX_SIZE];
+	  http_capsule_ctx_t capsule_ctx_tx;
 	};
 	struct
 	{
