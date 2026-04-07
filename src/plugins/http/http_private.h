@@ -272,6 +272,19 @@ typedef struct
   u8 enable_push;
 } http_conn_settings_t;
 
+typedef enum
+{
+  HTTP_CAPSULE_STATE_HEADER,
+  HTTP_CAPSULE_STATE_PAYLOAD,
+  HTTP_CAPSULE_STATE_SKIP
+} http_capsule_state_t;
+
+typedef struct
+{
+  u64 len : 62;
+  u64 state : 2;
+} http_capsule_ctx_t;
+
 typedef struct http_ctx_
 {
   union
@@ -351,6 +364,7 @@ typedef struct http_ctx_
       {
 	u64 to_recv; /* remaining bytes of body to receive from transport */
 	u64 to_skip; /* remaining bytes of capsule to skip */
+	http_capsule_ctx_t capsule_ctx_rx;
       };
       union
       {
@@ -369,6 +383,7 @@ typedef struct http_ctx_
       u64 body_len;
       u8 *target;
       http_field_line_t *headers;
+      u8 capsule_header_rx[HTTP_CAPSULE_HEADER_MAX_SIZE];
       union
       {
 	struct
@@ -398,6 +413,8 @@ typedef struct http_ctx_
 	  void (*dispatch_headers_cb) (struct http_ctx_ *req, struct http_ctx_ *hc, u8 *n_emissions,
 				       clib_llist_index_t *next_ri);
 	  void (*dispatch_data_cb) (struct http_ctx_ *req, struct http_ctx_ *hc, u8 *n_emissions);
+	  u8 capsule_header_tx[HTTP_CAPSULE_HEADER_MAX_SIZE];
+	  http_capsule_ctx_t capsule_ctx_tx;
 	};
 	struct
 	{

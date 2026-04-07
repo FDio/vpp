@@ -332,7 +332,7 @@ http_test_udp_payload_datagram (vlib_main_t *vm)
   u8 valid_input[] = { 0x00, 0x7B, 0xBD, 0x00, 0x12, 0x34, 0x56 };
   rv = http_decap_udp_payload_datagram (valid_input, sizeof (valid_input),
 					&payload_offset, &payload_len);
-  HTTP_TEST ((rv == 0), "'%U' should be valid", format_hex_bytes, valid_input,
+  HTTP_TEST ((rv == HTTP_CAPSULE_NO_ERROR), "'%U' should be valid", format_hex_bytes, valid_input,
 	     sizeof (valid_input));
   HTTP_TEST ((payload_len == 15292), "payload_len=%llu should be 15292",
 	     payload_len);
@@ -343,21 +343,21 @@ http_test_udp_payload_datagram (vlib_main_t *vm)
   u8 invalid_input[] = { 0x00, 0x7B };
   rv = http_decap_udp_payload_datagram (invalid_input, sizeof (invalid_input),
 					&payload_offset, &payload_len);
-  HTTP_TEST ((rv == -1), "'%U' should be invalid (length incomplete)",
+  HTTP_TEST ((rv == HTTP_CAPSULE_INCOMPLETE), "'%U' should be invalid (length incomplete)",
 	     format_hex_bytes, invalid_input, sizeof (invalid_input));
 
   /* Type = 0x00, Len = missing */
   u8 invalid_input2[] = { 0x00 };
   rv = http_decap_udp_payload_datagram (
     invalid_input2, sizeof (invalid_input2), &payload_offset, &payload_len);
-  HTTP_TEST ((rv == -1), "'%U' should be invalid (length missing)",
+  HTTP_TEST ((rv == HTTP_CAPSULE_INCOMPLETE), "'%U' should be invalid (length missing)",
 	     format_hex_bytes, invalid_input2, sizeof (invalid_input2));
 
   /* Type = 0x00, Len = 15293,  Context ID = missing */
   u8 invalid_input3[] = { 0x00, 0x7B, 0xBD };
   rv = http_decap_udp_payload_datagram (
     invalid_input3, sizeof (invalid_input3), &payload_offset, &payload_len);
-  HTTP_TEST ((rv == -1), "'%U' should be invalid (context id missing)",
+  HTTP_TEST ((rv == HTTP_CAPSULE_INCOMPLETE), "'%U' should be invalid (context id missing)",
 	     format_hex_bytes, invalid_input3, sizeof (invalid_input3));
 
   /* Type = 0x00, Len = 494878333,  Context ID = 0x00 */
@@ -365,18 +365,17 @@ http_test_udp_payload_datagram (vlib_main_t *vm)
   rv = http_decap_udp_payload_datagram (long_payload_input,
 					sizeof (long_payload_input),
 					&payload_offset, &payload_len);
-  HTTP_TEST (
-    (rv == -1), "'%U' should be invalid (payload exceeded maximum value)",
-    format_hex_bytes, long_payload_input, sizeof (long_payload_input));
+  HTTP_TEST ((rv == HTTP_CAPSULE_INVALID),
+	     "'%U' should be invalid (payload exceeded maximum value)", format_hex_bytes,
+	     long_payload_input, sizeof (long_payload_input));
 
   /* Type = 0x01, Len = 37,  Context ID = 0x00 */
   u8 unknown_type_input[] = { 0x01, 0x25, 0x00, 0x12, 0x34, 0x56, 0x78 };
   rv = http_decap_udp_payload_datagram (unknown_type_input,
 					sizeof (unknown_type_input),
 					&payload_offset, &payload_len);
-  HTTP_TEST ((rv == 1), "'%U' should be skipped (unknown capsule type)",
-	     format_hex_bytes, unknown_type_input,
-	     sizeof (unknown_type_input));
+  HTTP_TEST ((rv == HTTP_CAPSULE_SKIP), "'%U' should be skipped (unknown capsule type)",
+	     format_hex_bytes, unknown_type_input, sizeof (unknown_type_input));
   HTTP_TEST ((payload_len == 39), "payload_len=%llu should be 39",
 	     payload_len);
 
@@ -385,9 +384,8 @@ http_test_udp_payload_datagram (vlib_main_t *vm)
   rv = http_decap_udp_payload_datagram (nonzero_context_id,
 					sizeof (nonzero_context_id),
 					&payload_offset, &payload_len);
-  HTTP_TEST ((rv == 1), "'%U' should be skipped (context id is not zero)",
-	     format_hex_bytes, nonzero_context_id,
-	     sizeof (nonzero_context_id));
+  HTTP_TEST ((rv == HTTP_CAPSULE_SKIP), "'%U' should be skipped (context id is not zero)",
+	     format_hex_bytes, nonzero_context_id, sizeof (nonzero_context_id));
   HTTP_TEST ((payload_len == 39), "payload_len=%llu should be 39",
 	     payload_len);
 

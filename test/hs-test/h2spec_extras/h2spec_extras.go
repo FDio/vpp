@@ -682,6 +682,55 @@ func ConnectUdp() *spec.TestGroup {
 	})
 
 	tg.AddTestCase(&spec.TestCase{
+		Desc:        "UDP proxying capsule span multiple DATA frames",
+		Requirement: "Capsule Protocol is defined as a continuous \"data stream\" that follows the initial HTTP headers.",
+		Run: func(c *config.Config, conn *spec.Conn) error {
+			var streamID uint32 = 1
+
+			err := conn.Handshake()
+			if err != nil {
+				return err
+			}
+
+			headers := ConnectUdpHeaders(c)
+			hp := http2.HeadersFrameParam{
+				StreamID:      streamID,
+				EndStream:     false,
+				EndHeaders:    true,
+				BlockFragment: conn.EncodeHeaders(headers),
+			}
+			conn.WriteHeaders(hp)
+			err = spec.VerifyHeadersFrame(conn, streamID)
+			if err != nil {
+				return err
+			}
+
+			// send and receive data over tunnel
+			data := []byte("hello")
+			conn.WriteData(streamID, false, []byte("\x00"))
+			b := make([]byte, 0)
+			b = quicvarint.Append(b, uint64(len(data)+1))
+			conn.WriteData(streamID, false, b)
+			conn.WriteData(streamID, false, []byte("\x00"))
+			conn.WriteData(streamID, false, data[:2])
+			conn.WriteData(streamID, false, data[2:])
+
+			resp, err := readCapsule(conn, streamID)
+			if err != nil {
+				return err
+			}
+			if !bytes.Equal(data, resp) {
+				return &spec.TestError{
+					Expected: []string{"capsule payload: " + string(data)},
+					Actual:   "capsule payload:" + string(resp),
+				}
+			}
+
+			return nil
+		},
+	})
+
+	tg.AddTestCase(&spec.TestCase{
 		Desc:        "Multiple tunnels",
 		Requirement: "In HTTP/2, the data stream of a given HTTP request consists of all bytes sent in DATA frames with the corresponding stream ID.",
 		Run: func(c *config.Config, conn *spec.Conn) error {
