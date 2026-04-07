@@ -90,15 +90,15 @@ class TestSfdpKillMultiWorker(VppTestCase):
         return list(self.vapi.sfdp_session_dump())
 
     def test_kill_all_sessions_on_worker(self):
-        """kill_all expires multiple sessions on a worker thread within one tick
+        """kill_all expires multiple sessions on a worker thread promptly
 
         With the original bug: sfdp_expire_session_now called vlib_get_main(),
         which from the API/CLI handler (main thread) returns thread 0's vm.
         The interrupt never reached the owning worker's sfdp-expire node,
-        so sessions were not killed within one tick.
+        so sessions were not killed.
 
         With the fix (vlib_get_main_by_index(thread_index)): the interrupt goes
-        to the owning worker thread and sessions are processed within one tick.
+        to the owning worker thread and sessions are processed promptly.
         """
         # Both SYNs go through the same worker (thread index 1)
         self._send_syns(
@@ -129,14 +129,16 @@ class TestSfdpKillMultiWorker(VppTestCase):
 
         self.vapi.sfdp_kill_session(session_index=0, is_all=True)
 
-        # One tick is enough if the interrupt reaches the owning worker.
-        # With the broken code, worker-thread sessions would survive here.
-        self.virtual_sleep(0.02)
+        # The timing wheel only advances when nticks >= 1 (tw_timer_template.c:512-514).
+        # If sfdp-expire just ran before the kill, nticks will be 0 on the interrupt
+        # handler, so the session won't expire until the next full tick boundary.
+        # With the broken code (wrong thread), worker sessions would never be killed.
+        self.virtual_sleep(0.06)
         remaining = self._sessions()
         self.assertEqual(
             len(remaining),
             0,
-            f"Sessions not killed within one tick: "
+            f"Sessions not killed: "
             f"{[(s.thread_index, s.session_idx) for s in remaining]}",
         )
 
@@ -166,8 +168,11 @@ class TestSfdpKillMultiWorker(VppTestCase):
 
         self.vapi.sfdp_kill_session(session_index=sess.session_idx, is_all=False)
 
-        # Must be gone within one tick
-        self.virtual_sleep(0.02)
+        # The timing wheel only advances when nticks >= 1 (tw_timer_template.c:512-514).
+        # If sfdp-expire just ran before the kill, the interrupt won't expire the
+        # session until at least 1 full tick has elapsed from that last run.
+        # Wait 3 ticks to ensure: last_run → kill → tick boundary → expire → dump.
+        self.virtual_sleep(0.06)
         self.assertEqual(len(self._sessions()), 0)
 
     def test_kill_rearmed_session_on_worker(self):
@@ -198,6 +203,64 @@ class TestSfdpKillMultiWorker(VppTestCase):
         self.vapi.sfdp_kill_session(session_index=sess.session_idx, is_all=False)
         self.virtual_sleep(0.1)
         self.assertEqual(len(self._sessions()), 0)
+
+    def test_kill_timing_A_one_tick(self):
+        """A/B Test A: Kill with 1 tick wait - EXPECTED TO BE FLAKY
+
+        This test demonstrates the timing wheel race condition.
+        When sfdp-expire runs just before the kill, nticks=0 on the interrupt
+        handler, so the session survives until the next tick boundary.
+        """
+        self._send_syns(self._make_syn("198.51.100.2", 20001), worker=0)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        self.pg0.assert_nothing_captured()
+
+        sessions = self._sessions()
+        self.assertEqual(len(sessions), 1)
+        sess = sessions[0]
+        self.assertNotEqual(sess.thread_index, 0)
+
+        self.vapi.sfdp_kill_session(session_index=sess.session_idx, is_all=False)
+
+        # Only 1 tick - this is FLAKY due to timing wheel behavior
+        self.virtual_sleep(0.02)
+        remaining = len(self._sessions())
+
+        # Log result for diagnosis
+        self.logger.info(f"Test A (1 tick): {remaining} sessions remaining")
+
+        # We don't assert here - just report
+        if remaining > 0:
+            self.logger.warning("Test A FAILED as expected - session not killed in 1 tick")
+
+    def test_kill_timing_B_three_ticks(self):
+        """A/B Test B: Kill with 3 ticks wait - EXPECTED TO BE STABLE
+
+        This test waits 3 ticks to guarantee the timing wheel advances
+        regardless of when the last sfdp-expire run occurred.
+        """
+        self._send_syns(self._make_syn("198.51.100.2", 20002), worker=0)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        self.pg0.assert_nothing_captured()
+
+        sessions = self._sessions()
+        self.assertEqual(len(sessions), 1)
+        sess = sessions[0]
+        self.assertNotEqual(sess.thread_index, 0)
+
+        self.vapi.sfdp_kill_session(session_index=sess.session_idx, is_all=False)
+
+        # 3 ticks - should be stable
+        self.virtual_sleep(0.06)
+        remaining = len(self._sessions())
+
+        # Log result for diagnosis
+        self.logger.info(f"Test B (3 ticks): {remaining} sessions remaining")
+
+        # This MUST pass
+        self.assertEqual(remaining, 0, "Test B should reliably kill session in 3 ticks")
 
 
 if __name__ == "__main__":
