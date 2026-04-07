@@ -746,6 +746,125 @@ done:
   return rv;
 }
 
+/* TODO - could we refactor dpdk_flow_update and dpdk_flow_add common sections */
+static int
+dpdk_flow_update (dpdk_device_t *xd, vnet_flow_t *f, dpdk_flow_entry_t *fe)
+{
+  struct rte_flow_action_mark mark = { 0 };
+  struct rte_flow_action_queue queue = { 0 };
+  struct rte_flow_action_rss rss = { 0 };
+  struct rte_flow_action_ethdev represented_port = { 0 };
+  struct rte_flow_action *action, *actions = 0;
+  bool fate = false;
+  int rv = 0;
+
+  if (f->actions & VNET_FLOW_ACTION_REDIRECT_TO_QUEUE)
+    {
+      vec_add2 (actions, action, 1);
+      queue.index = f->redirect_queue;
+      action->type = RTE_FLOW_ACTION_TYPE_QUEUE;
+      action->conf = &queue;
+      fate = true;
+    }
+
+  if (f->actions & VNET_FLOW_ACTION_DROP)
+    {
+      vec_add2 (actions, action, 1);
+      action->type = RTE_FLOW_ACTION_TYPE_DROP;
+      if (fate)
+	{
+	  rv = VNET_FLOW_ERROR_INTERNAL;
+	  goto done;
+	}
+      fate = true;
+    }
+
+  if (f->actions & VNET_FLOW_ACTION_REDIRECT_TO_REPRESENTED_PORT)
+    {
+      vec_add2 (actions, action, 1);
+      represented_port.port_id = f->redirect_port_id;
+      action->type = RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT;
+      action->conf = &represented_port;
+      if (fate)
+	{
+	  rv = VNET_FLOW_ERROR_INTERNAL;
+	  goto done;
+	}
+      fate = true;
+    }
+
+  if (f->actions & VNET_FLOW_ACTION_REDIRECT_TO_PORT_REPRESENTOR)
+    {
+      vec_add2 (actions, action, 1);
+      represented_port.port_id = f->redirect_port_id;
+      action->type = RTE_FLOW_ACTION_TYPE_PORT_REPRESENTOR;
+      action->conf = &represented_port;
+      if (fate)
+	{
+	  rv = VNET_FLOW_ERROR_INTERNAL;
+	  goto done;
+	}
+      fate = true;
+    }
+
+  if (f->actions & VNET_FLOW_ACTION_RSS)
+    {
+      u64 rss_type = 0;
+
+      vec_add2 (actions, action, 1);
+      action->type = RTE_FLOW_ACTION_TYPE_RSS;
+      action->conf = &rss;
+
+      dpdk_flow_convert_rss_types (f->rss_types, &rss_type);
+
+      if (f->queue_num)
+	dpdk_flow_convert_rss_queues (f->queue_index, f->queue_num, &rss);
+
+      rss.types = rss_type;
+      if ((rss.func = dpdk_flow_convert_rss_func (f->rss_fun)) ==
+	  RTE_ETH_HASH_FUNCTION_MAX)
+	{
+	  rv = VNET_FLOW_ERROR_NOT_SUPPORTED;
+	  goto done;
+	}
+
+      if (fate)
+	{
+	  rv = VNET_FLOW_ERROR_INTERNAL;
+	  goto done;
+	}
+      fate = true;
+    }
+
+  if (fate == false)
+    {
+      vec_add2 (actions, action, 1);
+      action->type = RTE_FLOW_ACTION_TYPE_PASSTHRU;
+    }
+
+  if (FLOW_NEEDS_MARK (f))
+    {
+      vec_add2 (actions, action, 1);
+      mark.id = fe->mark;
+      action->type = RTE_FLOW_ACTION_TYPE_MARK;
+      action->conf = &mark;
+    }
+
+  vec_add2 (actions, action, 1);
+  action->type = RTE_FLOW_ACTION_TYPE_END;
+
+  rv = rte_flow_actions_update (xd->port_id, fe->handle, actions,
+				&xd->last_flow_error);
+  if (rv)
+    rv = VNET_FLOW_ERROR_INTERNAL;
+
+done:
+  vec_free (actions);
+  if (rss.queue)
+    clib_mem_free ((void *) rss.queue);
+  return rv;
+}
+
 int
 dpdk_flow_ops_fn (vnet_main_t *vnm, vnet_flow_dev_op_t op, u32 dev_instance, u32 flow_index)
 {
@@ -791,6 +910,68 @@ dpdk_flow_ops_fn (vnet_main_t *vnm, vnet_flow_dev_op_t op, u32 dev_instance, u32
       flow->driver_data.opaque = ~0;
 
       goto disable_rx_offload;
+    }
+
+  if (op == VNET_FLOW_DEV_OP_UPDATE_FLOW)
+    {
+      fe = vec_elt_at_index (xd->flow_entries, flow->driver_data.opaque);
+
+      u8 old_needs_mark = (fe->mark != 0);
+      u8 new_needs_mark = FLOW_NEEDS_MARK (flow);
+
+      /* If adding mark where there was none, allocate lookup entry first */
+      if (!old_needs_mark && new_needs_mark)
+	{
+	  if (xd->flow_lookup_entries == 0)
+	    pool_get_aligned (xd->flow_lookup_entries, fle,
+			      CLIB_CACHE_LINE_BYTES);
+	  pool_get_aligned (xd->flow_lookup_entries, fle,
+			    CLIB_CACHE_LINE_BYTES);
+	  fe->mark = fle - xd->flow_lookup_entries;
+	  clib_memset (fle, -1, sizeof (*fle));
+	  if (flow->actions & VNET_FLOW_ACTION_MARK)
+	    fle->flow_id = flow->mark_flow_id;
+	  if (flow->actions & VNET_FLOW_ACTION_REDIRECT_TO_NODE)
+	    fle->next_index = flow->redirect_device_input_next_index;
+	  if (flow->actions & VNET_FLOW_ACTION_BUFFER_ADVANCE)
+	    fle->buffer_advance = flow->buffer_advance;
+	}
+      else if (old_needs_mark && new_needs_mark)
+	{
+	  /* Update existing lookup entry values */
+	  fle = pool_elt_at_index (xd->flow_lookup_entries, fe->mark);
+	  clib_memset (fle, -1, sizeof (*fle));
+	  if (flow->actions & VNET_FLOW_ACTION_MARK)
+	    fle->flow_id = flow->mark_flow_id;
+	  if (flow->actions & VNET_FLOW_ACTION_REDIRECT_TO_NODE)
+	    fle->next_index = flow->redirect_device_input_next_index;
+	  if (flow->actions & VNET_FLOW_ACTION_BUFFER_ADVANCE)
+	    fle->buffer_advance = flow->buffer_advance;
+	}
+
+      if ((rv = dpdk_flow_update (xd, flow, fe)))
+	{
+	  /* Rollback: if we just allocated a new lookup entry, free it */
+	  if (!old_needs_mark && new_needs_mark)
+	    {
+	      clib_memset (fle, -1, sizeof (*fle));
+	      pool_put (xd->flow_lookup_entries, fle);
+	      fe->mark = 0;
+	    }
+	  return rv;
+	}
+
+      /* After successful update, park old lookup entry if mark was removed */
+      if (old_needs_mark && !new_needs_mark)
+	{
+	  fle = pool_elt_at_index (xd->flow_lookup_entries, fe->mark);
+	  clib_memset (fle, -1, sizeof (*fle));
+	  vec_add1 (xd->parked_lookup_indexes, fe->mark);
+	  xd->parked_loop_count = vm->main_loop_count;
+	  fe->mark = 0;
+	}
+
+      return 0;
     }
 
   if (op != VNET_FLOW_DEV_OP_ADD_FLOW)
