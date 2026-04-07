@@ -218,7 +218,8 @@ et_client_stream_tx (echo_test_session_t *es, u32 max_send)
 
   to_send = clib_min (max_enq, max_send);
   svm_fifo_enqueue_nocopy (f, to_send);
-  session_program_tx_io_evt (es->vpp_session_handle, SESSION_IO_EVT_TX);
+  if (svm_fifo_set_event (es->tx_fifo))
+    session_program_tx_io_evt (es->vpp_session_handle, SESSION_IO_EVT_TX);
   es->bytes_sent += to_send;
   return to_send;
 }
@@ -514,7 +515,8 @@ et_client_dgram_tx (echo_test_session_t *es, u32 max_send)
       n_sent += hdr.data_length;
     }
 
-  session_program_tx_io_evt (es->tx_fifo->vpp_sh, SESSION_IO_EVT_TX);
+  if (svm_fifo_set_event (es->tx_fifo))
+    session_program_tx_io_evt (es->tx_fifo->vpp_sh, SESSION_IO_EVT_TX);
   es->bytes_sent += n_sent;
   return n_sent;
 }
