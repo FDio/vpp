@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e5bc31f8_a816a44e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 27
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-04-07T12:45:25Z",
+      "side": 1,
+      "message": "Actually I think we have an architecture issue: in the general case where nothing set the scope id, as vnet_buffer opaque2 is not reset when a buffer is recycled we could have garbage, esp. in the flags. So flags could indicate there is a scope id even though there is none.",
+      "revId": "9aa6110c96420ca4fc4fc3509a9b25a43c7a1c1c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
