@@ -368,14 +368,15 @@ int vnet_flow_add (vnet_main_t *vnm, vnet_flow_t *flow, u32 *flow_index);
 int vnet_flow_enable (vnet_main_t *vnm, u32 flow_index, u32 hw_if_index);
 int vnet_flow_disable (vnet_main_t *vnm, u32 flow_index);
 int vnet_flow_del (vnet_main_t *vnm, u32 flow_index);
-int vnet_flow_template_add (vnet_main_t *vnm, vnet_flow_t *flow, u32 *flow_template_index);
 int vnet_flow_template_del (vnet_main_t *vnm, u32 flow_template_index);
 int vnet_flow_template_enable (vnet_main_t *vnm, u32 flow_template_index, u32 hw_if_index,
-			       u32 n_flows);
+  u32 n_flows);
 int vnet_flow_template_disable (vnet_main_t *vnm, u32 flow_template_index);
 int vnet_flow_async_range_enable (vnet_main_t *vnm, u32 flow_template_index, u32 *flow_indices,
-				  u32 hw_if_index);
+  u32 hw_if_index);
 int vnet_flow_async_range_disable (vnet_main_t *vnm, u32 *flow_indices, u32 hw_if_index);
+int vnet_flow_async_range_update (vnet_main_t *vnm, u32 flow_template_index, u32 *flow_indices,
+          u32 hw_if_index);int vnet_flow_template_add (vnet_main_t *vnm, vnet_flow_t *flow, u32 *flow_template_index);
 
 typedef struct
 {
