@@ -49,6 +49,10 @@ add_vpp_plugin(sfdp_services
   snort/snort_input.c
   snort/snort_output.c
 
+  base/verdict-testbench/verdict_testbench.c
+  base/verdict-testbench/node.c
+  base/verdict-testbench/cli.c
+
   MULTIARCH_SOURCES
   base/tcp-check/node.c
   base/l4-lifecycle/node.c
@@ -61,6 +65,7 @@ add_vpp_plugin(sfdp_services
   snort/snort_input.c
   snort/snort_output.c
   #reass/full_reass_node.c
+  base/verdict-testbench/node.c
 
   API_FILES
   base/nat/nat.api
