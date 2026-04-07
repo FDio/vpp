@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import socket
+from socket import AF_INET6
 import unittest
 
 from asfframework import VppTestRunner
@@ -8,6 +9,7 @@ from scapy.packet import Raw
 
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP, TCP
+from scapy.layers.inet6 import IPv6
 from template_classifier import TestClassifier, VarMask, VarMatch
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_ip import INVALID_INDEX
@@ -994,6 +996,123 @@ class TestClassifierPunt(TestClassifier):
         # cleanup
         self.acl_active_table = ""
         self.vapi.punt_acl_add_del(ip4_table_index=table_index, is_add=0)
+
+        # test dump api: nothing set
+        r = self.vapi.punt_acl_get()
+        self.assertEqual(r.ip4_table_index, 0xFFFFFFFF)
+        self.assertEqual(r.ip6_table_index, 0xFFFFFFFF)
+
+
+class TestClassifierPuntIPv6(TestClassifier):
+    """Classifier IPv6 punt ACL Test Case
+
+    Regression test for the bug where ip6_punt_acl_node was passing
+    ip4_main.fib_index_by_sw_if_index instead of ip6_main.fib_index_by_sw_if_index
+    to ip_in_out_acl_inline, causing punt ACL lookups to use the wrong FIB table.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestClassifierPuntIPv6, cls).setUpClass()
+        cls.af = AF_INET6
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestClassifierPuntIPv6, cls).tearDownClass()
+
+    def tearDown(self):
+        # Punt ACL tests don't use input_acl_set_interface, so reset
+        # acl_active_table before calling the base tearDown to avoid
+        # spurious input_acl_set_interface cleanup calls.
+        self.acl_active_table = ""
+        super(TestClassifierPuntIPv6, self).tearDown()
+
+    def test_punt_udp_ip6(self):
+        """IPv6/UDP protocol punt ACL test
+
+        Test scenario for punt ACL with IPv6/UDP:
+            - Create IPv6 stream for pg0 -> pg1 interface.
+            - Create punt ACL with UDP next-header for IPv6.
+            - Send and verify received packets on pg1 interface.
+        """
+
+        sport = 6754
+        dport = 17923
+
+        key = "ip6_udp_punt"
+        self.create_classify_table(
+            key,
+            self.build_ip6_mask(
+                src_ip="ffffffffffffffffffffffffffffffff",
+                nh="ff",
+                src_port="ffff",
+            ),
+        )
+        table_index = self.acl_tbl_idx.get(key)
+        self.vapi.punt_acl_add_del(ip6_table_index=table_index)
+        self.acl_active_table = key
+
+        # punt IPv6/UDP packets to dport received on pg0 through pg1
+        self.vapi.set_punt(
+            is_add=1,
+            punt={
+                "type": VppEnum.vl_api_punt_type_t.PUNT_API_TYPE_L4,
+                "punt": {
+                    "l4": {
+                        "af": VppEnum.vl_api_address_family_t.ADDRESS_IP6,
+                        "protocol": VppEnum.vl_api_ip_proto_t.IP_API_PROTO_UDP,
+                        "port": dport,
+                    }
+                },
+            },
+        )
+        self.vapi.ip_punt_redirect(
+            punt={
+                "rx_sw_if_index": self.pg0.sw_if_index,
+                "tx_sw_if_index": self.pg1.sw_if_index,
+                "nh": self.pg1.remote_ip6,
+            }
+        )
+
+        pkts = [
+            (
+                Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+                / IPv6(src=self.pg0.remote_ip6, dst=self.pg0.local_ip6)
+                / UDP(sport=sport, dport=dport)
+                / Raw(b"\x17" * 100)
+            )
+        ] * 2
+
+        # allow a session not matching the stream: expect to drop
+        self.create_classify_session(
+            table_index,
+            self.build_ip6_match(
+                src_ip=self.pg0.remote_ip6,
+                nh=socket.IPPROTO_UDP,
+                src_port=sport + 10,
+            ),
+        )
+        self.send_and_assert_no_replies(self.pg0, pkts)
+
+        # allow a session matching the stream: expect to pass
+        self.create_classify_session(
+            table_index,
+            self.build_ip6_match(
+                src_ip=self.pg0.remote_ip6,
+                nh=socket.IPPROTO_UDP,
+                src_port=sport,
+            ),
+        )
+        self.send_and_expect_only(self.pg0, pkts, self.pg1)
+
+        # test dump api: ip6 is set, ip4 is not
+        r = self.vapi.punt_acl_get()
+        self.assertEqual(r.ip6_table_index, table_index)
+        self.assertEqual(r.ip4_table_index, 0xFFFFFFFF)
+
+        # cleanup
+        self.acl_active_table = ""
+        self.vapi.punt_acl_add_del(ip6_table_index=table_index, is_add=0)
 
         # test dump api: nothing set
         r = self.vapi.punt_acl_get()
