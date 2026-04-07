@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d34c2761_72ff76d9",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 25
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-04-07T08:48:14Z",
+      "side": 1,
+      "message": "scope_or_flow_id",
+      "revId": "8fc20b01c0af7f10d222f3b453e3b2ecd2270454",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "adce23c9_511ee77f",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 25
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-04-07T08:48:14Z",
+      "side": 1,
+      "message": "this should not be there, please keep a *concise* description of what is actually done, not what was done in previous iterations",
+      "revId": "8fc20b01c0af7f10d222f3b453e3b2ecd2270454",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "495bbba8_25f776f5",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 25
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-04-07T08:48:14Z",
+      "side": 1,
+      "message": "Almost there 😊, last few comments",
+      "revId": "8fc20b01c0af7f10d222f3b453e3b2ecd2270454",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "72f9a6de_bc58109c",
+        "filename": "src/plugins/cnat/cnat_session.c",
+        "patchSetId": 25
+      },
+      "lineNbr": 175,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-04-07T08:48:14Z",
+      "side": 1,
+      "message": "shouldn\u0027t it use CNAT_SCOPE_ID_NONE?",
+      "revId": "8fc20b01c0af7f10d222f3b453e3b2ecd2270454",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
