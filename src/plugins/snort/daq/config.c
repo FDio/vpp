@@ -5,6 +5,7 @@
 #define _GNU_SOURCE
 #include <stdbool.h>
 #include <assert.h>
+#include <string.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <sys/mman.h>

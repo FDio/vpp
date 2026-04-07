@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <string.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <sys/mman.h>
