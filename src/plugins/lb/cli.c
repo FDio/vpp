@@ -23,6 +23,7 @@ lb_vip_command_fn (vlib_main_t * vm,
 
   args.new_length = 1024;
   args.src_ip_sticky = 0;
+  args.punt = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -42,6 +43,8 @@ lb_vip_command_fn (vlib_main_t * vm,
       del = 1;
     else if (unformat (line_input, "src_ip_sticky"))
       args.src_ip_sticky = 1;
+    else if (unformat (line_input, "punt"))
+      args.punt = 1;
     else if (unformat(line_input, "protocol tcp"))
       {
         args.protocol = (u8)IP_PROTOCOL_TCP;
@@ -86,6 +89,13 @@ lb_vip_command_fn (vlib_main_t * vm,
   else
     {
       args.port = (u16)port;
+    }
+
+  if (args.punt && port == 0)
+    {
+      error = clib_error_return (0, "punt is only valid on per-port VIPs "
+				    "(protocol and port must be specified)");
+      goto done;
     }
 
   if ((encap != LB_ENCAP_TYPE_L3DSR) && (dscp != ~0))
@@ -179,7 +189,7 @@ VLIB_CLI_COMMAND (lb_vip_command, static) =
       "[encap (gre6|gre4|l3dsr|nat4|nat6)] "
       "[dscp <n>] "
       "[type (nodeport|clusterip) target_port <n>] "
-      "[new_len <n>] [src_ip_sticky] [del]",
+      "[new_len <n>] [src_ip_sticky] [punt] [del]",
   .function = lb_vip_command_fn,
 };
 /* clang-format on */

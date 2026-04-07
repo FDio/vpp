@@ -139,6 +139,39 @@ Examples:
    lb as 80.0.0.0/8 2001::2
    lb as 90.0.0.0/8 10.0.0.1
 
+Per-port VIP with punt
+~~~~~~~~~~~~~~~~~~~~~~
+
+A per-port VIP (one configured with ``protocol`` and ``port``) can be given
+the ``punt`` flag. When set, any traffic arriving at the VIP address that
+does not match any of the configured {protocol,port}-pairs, (for example,
+ICMP echo requests or TCP traffic on a different port) is redirected to
+the local IP stack (``ip4-local`` / ``ip6-local``) instead of being
+dropped.
+
+This is useful when the VIP address is also assigned to a loopback
+interface — for example to advertise it via a routing protocol — so that
+non-LB traffic (pings, SSH, routing protocol packets) are still processed
+locally.
+
+Note: ``punt`` is only valid on per-port VIPs (``protocol`` and ``port``
+must be specified).
+
+Example — load-balance TCP/80 on a loopback address, punt everything else
+to the local stack::
+
+   create loopback interface
+   set interface state loop0 up
+   set interface ip address loop0 192.0.2.255/32
+   lb vip 192.0.2.255/32 protocol tcp port 80 encap gre4 punt
+   lb as 192.0.2.255/32 protocol tcp port 80 10.0.0.1 10.0.0.2
+
+With this configuration:
+
+- TCP/80 flows to ``192.0.2.255`` are load-balanced across the AS pool.
+- All other traffic (ICMP, UDP, TCP on other ports) is handled by VPP's
+  local IP stack, just as if the loopback's receive adjacency were active.
+
 Configure SNAT
 ~~~~~~~~~~~~~~
 

@@ -334,6 +334,17 @@ lb_node_fn (vlib_main_t * vm,
 
           p0 = vlib_get_buffer (vm, pi0);
 
+          if (per_port_vip && PREDICT_FALSE (vip_index0 == 0))
+            {
+              u32 prefix_idx = vnet_buffer (p0)->ip.adj_index[VLIB_TX];
+              if (clib_bitmap_get (lbm->punt_prefix_indexes, prefix_idx))
+                {
+                  next0 = is_input_v4 ? LB_PORT_NEXT_IP4_LOCAL :
+                                        LB_PORT_NEXT_IP6_LOCAL;
+                  goto enqueue;
+                }
+            }
+
           vip0 = pool_elt_at_index(lbm->vips, vip_index0);
 
           if (is_input_v4)
@@ -560,6 +571,7 @@ lb_node_fn (vlib_main_t * vm,
           vnet_buffer (p0)->ip.adj_index[VLIB_TX] =
               lbm->ass[asindex0].dpo.dpoi_index;
 
+        enqueue:
           if (PREDICT_FALSE(p0->flags & VLIB_BUFFER_IS_TRACED))
             {
               lb_trace_t *tr = vlib_add_trace (vm, node, p0, sizeof(*tr));
@@ -1053,161 +1065,151 @@ lb_nat6_in2out_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   return lb_nat_in2out_node_fn (vm, node, frame, 0);
 }
 
-VLIB_REGISTER_NODE (lb6_gre6_node) =
-  {
-    .function = lb6_gre6_node_fn,
-    .name = "lb6-gre6",
-    .vector_size = sizeof(u32),
-    .format_trace = format_lb_trace,
-    .n_errors = LB_N_ERROR,
-    .error_strings = lb_error_strings,
-    .n_next_nodes = LB_N_NEXT,
-    .next_nodes =
-        { [LB_NEXT_DROP] = "error-drop" },
-  };
+VLIB_REGISTER_NODE (lb6_gre6_node) = {
+  .function = lb6_gre6_node_fn,
+  .name = "lb6-gre6",
+  .vector_size = sizeof (u32),
+  .format_trace = format_lb_trace,
+  .n_errors = LB_N_ERROR,
+  .error_strings = lb_error_strings,
+  .n_next_nodes = LB_N_NEXT,
+  .next_nodes = { [LB_NEXT_DROP] = "error-drop" },
+};
 
-VLIB_REGISTER_NODE (lb6_gre4_node) =
-  {
-    .function = lb6_gre4_node_fn,
-    .name = "lb6-gre4",
-    .vector_size = sizeof(u32),
-    .format_trace = format_lb_trace,
-    .n_errors = LB_N_ERROR,
-    .error_strings = lb_error_strings,
-    .n_next_nodes = LB_N_NEXT,
-    .next_nodes =
-        { [LB_NEXT_DROP] = "error-drop" },
-  };
+VLIB_REGISTER_NODE (lb6_gre4_node) = {
+  .function = lb6_gre4_node_fn,
+  .name = "lb6-gre4",
+  .vector_size = sizeof (u32),
+  .format_trace = format_lb_trace,
+  .n_errors = LB_N_ERROR,
+  .error_strings = lb_error_strings,
+  .n_next_nodes = LB_N_NEXT,
+  .next_nodes = { [LB_NEXT_DROP] = "error-drop" },
+};
 
-VLIB_REGISTER_NODE (lb4_gre6_node) =
-  {
-    .function = lb4_gre6_node_fn,
-    .name = "lb4-gre6",
-    .vector_size = sizeof(u32),
-    .format_trace = format_lb_trace,
-    .n_errors = LB_N_ERROR,
-    .error_strings = lb_error_strings,
-    .n_next_nodes = LB_N_NEXT,
-    .next_nodes =
-        { [LB_NEXT_DROP] = "error-drop" },
-  };
+VLIB_REGISTER_NODE (lb4_gre6_node) = {
+  .function = lb4_gre6_node_fn,
+  .name = "lb4-gre6",
+  .vector_size = sizeof (u32),
+  .format_trace = format_lb_trace,
+  .n_errors = LB_N_ERROR,
+  .error_strings = lb_error_strings,
+  .n_next_nodes = LB_N_NEXT,
+  .next_nodes = { [LB_NEXT_DROP] = "error-drop" },
+};
 
-VLIB_REGISTER_NODE (lb4_gre4_node) =
-  {
-    .function = lb4_gre4_node_fn,
-    .name = "lb4-gre4",
-    .vector_size = sizeof(u32),
-    .format_trace = format_lb_trace,
-    .n_errors = LB_N_ERROR,
-    .error_strings = lb_error_strings,
-    .n_next_nodes = LB_N_NEXT,
-    .next_nodes =
-        { [LB_NEXT_DROP] = "error-drop" },
-  };
+VLIB_REGISTER_NODE (lb4_gre4_node) = {
+  .function = lb4_gre4_node_fn,
+  .name = "lb4-gre4",
+  .vector_size = sizeof (u32),
+  .format_trace = format_lb_trace,
+  .n_errors = LB_N_ERROR,
+  .error_strings = lb_error_strings,
+  .n_next_nodes = LB_N_NEXT,
+  .next_nodes = { [LB_NEXT_DROP] = "error-drop" },
+};
 
-VLIB_REGISTER_NODE (lb6_gre6_port_node) =
-  {
-    .function = lb6_gre6_port_node_fn,
-    .name = "lb6-gre6-port",
-    .vector_size = sizeof(u32),
-    .format_trace = format_lb_trace,
-    .n_errors = LB_N_ERROR,
-    .error_strings = lb_error_strings,
-    .n_next_nodes = LB_N_NEXT,
-    .next_nodes =
-        { [LB_NEXT_DROP] = "error-drop" },
-  };
+VLIB_REGISTER_NODE (lb6_gre6_port_node) = {
+  .function = lb6_gre6_port_node_fn,
+  .name = "lb6-gre6-port",
+  .vector_size = sizeof (u32),
+  .format_trace = format_lb_trace,
+  .n_errors = LB_N_ERROR,
+  .error_strings = lb_error_strings,
+  .n_next_nodes = LB_PORT_N_NEXT,
+  .next_nodes = { [LB_PORT_NEXT_DROP] = "error-drop",
+		  [LB_PORT_NEXT_IP4_LOCAL] = "ip4-local",
+		  [LB_PORT_NEXT_IP6_LOCAL] = "ip6-local" },
+};
 
-VLIB_REGISTER_NODE (lb6_gre4_port_node) =
-  {
-    .function = lb6_gre4_port_node_fn,
-    .name = "lb6-gre4-port",
-    .vector_size = sizeof(u32),
-    .format_trace = format_lb_trace,
-    .n_errors = LB_N_ERROR,
-    .error_strings = lb_error_strings,
-    .n_next_nodes = LB_N_NEXT,
-    .next_nodes =
-        { [LB_NEXT_DROP] = "error-drop" },
-  };
+VLIB_REGISTER_NODE (lb6_gre4_port_node) = {
+  .function = lb6_gre4_port_node_fn,
+  .name = "lb6-gre4-port",
+  .vector_size = sizeof (u32),
+  .format_trace = format_lb_trace,
+  .n_errors = LB_N_ERROR,
+  .error_strings = lb_error_strings,
+  .n_next_nodes = LB_PORT_N_NEXT,
+  .next_nodes = { [LB_PORT_NEXT_DROP] = "error-drop",
+		  [LB_PORT_NEXT_IP4_LOCAL] = "ip4-local",
+		  [LB_PORT_NEXT_IP6_LOCAL] = "ip6-local" },
+};
 
-VLIB_REGISTER_NODE (lb4_gre6_port_node) =
-  {
-    .function = lb4_gre6_port_node_fn,
-    .name = "lb4-gre6-port",
-    .vector_size = sizeof(u32),
-    .format_trace = format_lb_trace,
-    .n_errors = LB_N_ERROR,
-    .error_strings = lb_error_strings,
-    .n_next_nodes = LB_N_NEXT,
-    .next_nodes =
-        { [LB_NEXT_DROP] = "error-drop" },
-  };
+VLIB_REGISTER_NODE (lb4_gre6_port_node) = {
+  .function = lb4_gre6_port_node_fn,
+  .name = "lb4-gre6-port",
+  .vector_size = sizeof (u32),
+  .format_trace = format_lb_trace,
+  .n_errors = LB_N_ERROR,
+  .error_strings = lb_error_strings,
+  .n_next_nodes = LB_PORT_N_NEXT,
+  .next_nodes = { [LB_PORT_NEXT_DROP] = "error-drop",
+		  [LB_PORT_NEXT_IP4_LOCAL] = "ip4-local",
+		  [LB_PORT_NEXT_IP6_LOCAL] = "ip6-local" },
+};
 
-VLIB_REGISTER_NODE (lb4_gre4_port_node) =
-  {
-    .function = lb4_gre4_port_node_fn,
-    .name = "lb4-gre4-port",
-    .vector_size = sizeof(u32),
-    .format_trace = format_lb_trace,
-    .n_errors = LB_N_ERROR,
-    .error_strings = lb_error_strings,
-    .n_next_nodes = LB_N_NEXT,
-    .next_nodes =
-        { [LB_NEXT_DROP] = "error-drop" },
-  };
+VLIB_REGISTER_NODE (lb4_gre4_port_node) = {
+  .function = lb4_gre4_port_node_fn,
+  .name = "lb4-gre4-port",
+  .vector_size = sizeof (u32),
+  .format_trace = format_lb_trace,
+  .n_errors = LB_N_ERROR,
+  .error_strings = lb_error_strings,
+  .n_next_nodes = LB_PORT_N_NEXT,
+  .next_nodes = { [LB_PORT_NEXT_DROP] = "error-drop",
+		  [LB_PORT_NEXT_IP4_LOCAL] = "ip4-local",
+		  [LB_PORT_NEXT_IP6_LOCAL] = "ip6-local" },
+};
 
-VLIB_REGISTER_NODE (lb4_l3dsr_port_node) =
-  {
-    .function = lb4_l3dsr_port_node_fn,
-    .name = "lb4-l3dsr-port",
-    .vector_size = sizeof(u32),
-    .format_trace = format_lb_trace,
-    .n_errors = LB_N_ERROR,
-    .error_strings = lb_error_strings,
-    .n_next_nodes = LB_N_NEXT,
-    .next_nodes =
-        { [LB_NEXT_DROP] = "error-drop" },
-  };
+VLIB_REGISTER_NODE (lb4_l3dsr_port_node) = {
+  .function = lb4_l3dsr_port_node_fn,
+  .name = "lb4-l3dsr-port",
+  .vector_size = sizeof (u32),
+  .format_trace = format_lb_trace,
+  .n_errors = LB_N_ERROR,
+  .error_strings = lb_error_strings,
+  .n_next_nodes = LB_PORT_N_NEXT,
+  .next_nodes = { [LB_PORT_NEXT_DROP] = "error-drop",
+		  [LB_PORT_NEXT_IP4_LOCAL] = "ip4-local",
+		  [LB_PORT_NEXT_IP6_LOCAL] = "ip6-local" },
+};
 
-VLIB_REGISTER_NODE (lb4_l3dsr_node) =
-  {
-    .function = lb4_l3dsr_node_fn,
-    .name = "lb4-l3dsr",
-    .vector_size = sizeof(u32),
-    .format_trace = format_lb_trace,
-    .n_errors = LB_N_ERROR,
-    .error_strings = lb_error_strings,
-    .n_next_nodes = LB_N_NEXT,
-    .next_nodes =
-        { [LB_NEXT_DROP] = "error-drop" },
-  };
+VLIB_REGISTER_NODE (lb4_l3dsr_node) = {
+  .function = lb4_l3dsr_node_fn,
+  .name = "lb4-l3dsr",
+  .vector_size = sizeof (u32),
+  .format_trace = format_lb_trace,
+  .n_errors = LB_N_ERROR,
+  .error_strings = lb_error_strings,
+  .n_next_nodes = LB_N_NEXT,
+  .next_nodes = { [LB_NEXT_DROP] = "error-drop" },
+};
 
-VLIB_REGISTER_NODE (lb6_nat6_port_node) =
-  {
-    .function = lb6_nat6_port_node_fn,
-    .name = "lb6-nat6-port",
-    .vector_size = sizeof(u32),
-    .format_trace = format_lb_trace,
-    .n_errors = LB_N_ERROR,
-    .error_strings = lb_error_strings,
-    .n_next_nodes = LB_N_NEXT,
-    .next_nodes =
-        { [LB_NEXT_DROP] = "error-drop" },
-  };
+VLIB_REGISTER_NODE (lb6_nat6_port_node) = {
+  .function = lb6_nat6_port_node_fn,
+  .name = "lb6-nat6-port",
+  .vector_size = sizeof (u32),
+  .format_trace = format_lb_trace,
+  .n_errors = LB_N_ERROR,
+  .error_strings = lb_error_strings,
+  .n_next_nodes = LB_PORT_N_NEXT,
+  .next_nodes = { [LB_PORT_NEXT_DROP] = "error-drop",
+		  [LB_PORT_NEXT_IP4_LOCAL] = "ip4-local",
+		  [LB_PORT_NEXT_IP6_LOCAL] = "ip6-local" },
+};
 
-VLIB_REGISTER_NODE (lb4_nat4_port_node) =
-  {
-    .function = lb4_nat4_port_node_fn,
-    .name = "lb4-nat4-port",
-    .vector_size = sizeof(u32),
-    .format_trace = format_lb_trace,
-    .n_errors = LB_N_ERROR,
-    .error_strings = lb_error_strings,
-    .n_next_nodes = LB_N_NEXT,
-    .next_nodes =
-        { [LB_NEXT_DROP] = "error-drop" },
-  };
+VLIB_REGISTER_NODE (lb4_nat4_port_node) = {
+  .function = lb4_nat4_port_node_fn,
+  .name = "lb4-nat4-port",
+  .vector_size = sizeof (u32),
+  .format_trace = format_lb_trace,
+  .n_errors = LB_N_ERROR,
+  .error_strings = lb_error_strings,
+  .n_next_nodes = LB_PORT_N_NEXT,
+  .next_nodes = { [LB_PORT_NEXT_DROP] = "error-drop",
+		  [LB_PORT_NEXT_IP4_LOCAL] = "ip4-local",
+		  [LB_PORT_NEXT_IP6_LOCAL] = "ip6-local" },
+};
 
 static uword
 lb4_nodeport_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,

@@ -16,8 +16,10 @@
 //After so many seconds. It is assumed that inter-core race condition will not occur.
 #define LB_CONCURRENCY_TIMEOUT 10
 
-// FIB source for adding routes
+// FIB source for routes of VIPs
 static fib_source_t lb_fib_src;
+// FIB source for routes of VIPs with the punt feature enabled
+static fib_source_t lb_punt_fib_src;
 
 lb_main_t lb_main;
 
@@ -944,11 +946,8 @@ static void lb_vip_add_adjacency(lb_main_t *lbm, lb_vip_t *vip,
     dpo_type = lbm->dpo_nat6_port_type;
 
   dpo_set(&dpo, dpo_type, proto, *vip_prefix_index);
-  fib_table_entry_special_dpo_add(0,
-                                  &pfx,
-                                  lb_fib_src,
-                                  FIB_ENTRY_FLAG_EXCLUSIVE,
-                                  &dpo);
+  fib_table_entry_special_dpo_add (0, &pfx, lb_vip_is_punt (vip) ? lb_punt_fib_src : lb_fib_src,
+				   FIB_ENTRY_FLAG_EXCLUSIVE, &dpo);
   dpo_reset(&dpo);
 }
 
@@ -1023,7 +1022,8 @@ static void lb_vip_del_adjacency(lb_main_t *lbm, lb_vip_t *vip)
 
       /* Return vip_prefix_index for per-port vip */
       lb_vip_prefix_index_free(lbm, vip->vip_prefix_index);
-
+      lbm->punt_prefix_indexes =
+	clib_bitmap_set (lbm->punt_prefix_indexes, vip->vip_prefix_index, 0);
     }
 
   if (lb_vip_is_ip4(vip->type)) {
@@ -1035,7 +1035,7 @@ static void lb_vip_del_adjacency(lb_main_t *lbm, lb_vip_t *vip)
       pfx.fp_len = vip->plen;
       pfx.fp_proto = FIB_PROTOCOL_IP6;
   }
-  fib_table_entry_special_remove(0, &pfx, lb_fib_src);
+  fib_table_entry_special_remove (0, &pfx, lb_vip_is_punt (vip) ? lb_punt_fib_src : lb_fib_src);
 }
 
 int lb_vip_add(lb_vip_add_args_t args, u32 *vip_index)
@@ -1141,9 +1141,9 @@ int lb_vip_add(lb_vip_add_args_t args, u32 *vip_index)
 
   vip->flags = LB_VIP_FLAGS_USED;
   if (args.src_ip_sticky)
-    {
-      vip->flags |= LB_VIP_FLAGS_SRC_IP_STICKY;
-    }
+    vip->flags |= LB_VIP_FLAGS_SRC_IP_STICKY;
+  if (args.punt && args.port != 0)
+    vip->flags |= LB_VIP_FLAGS_PUNT;
   vip->as_indexes = 0;
 
   //Validate counters
@@ -1162,6 +1162,9 @@ int lb_vip_add(lb_vip_add_args_t args, u32 *vip_index)
 
   //Create adjacency to direct traffic
   lb_vip_add_adjacency(lbm, vip, &vip_prefix_index);
+
+  if (lb_vip_is_punt (vip))
+  lbm->punt_prefix_indexes = clib_bitmap_set (lbm->punt_prefix_indexes, vip->vip_prefix_index, 1);
 
   if ( (lb_vip_is_nat4_port(vip) || lb_vip_is_nat6_port(vip))
       && (args.encap_args.srv_type == LB_SRV_TYPE_NODEPORT) )
@@ -1449,6 +1452,10 @@ lb_init (vlib_main_t * vm)
   lb_fib_src = fib_source_allocate("lb",
                                    FIB_SOURCE_PRIORITY_HI,
                                    FIB_SOURCE_BH_SIMPLE);
+  /* Priority 0x02 beats FIB_SOURCE_INTERFACE (0x03) so that punt VIPs
+   * on loopback addresses take effect even when the loopback has a
+   * connected receive adjacency installed. */
+  lb_punt_fib_src = fib_source_allocate ("lb-punt", 0x02, FIB_SOURCE_BH_SIMPLE);
 
   return NULL;
 }

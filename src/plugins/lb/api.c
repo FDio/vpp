@@ -235,6 +235,90 @@ vl_api_lb_add_del_vip_v2_t_handler (vl_api_lb_add_del_vip_v2_t *mp)
 }
 
 static void
+vl_api_lb_add_del_vip_v3_t_handler (vl_api_lb_add_del_vip_v3_t *mp)
+{
+  lb_main_t *lbm = &lb_main;
+  vl_api_lb_conf_reply_t *rmp;
+  int rv = 0;
+  lb_vip_add_args_t args = {};
+
+  /* if port == 0, it means all-port VIP */
+  if (mp->port == 0)
+    {
+      mp->protocol = ~0;
+    }
+
+  if (mp->is_punt && mp->port == 0)
+    {
+      rv = VNET_API_ERROR_INVALID_VALUE;
+      goto done;
+    }
+
+  ip_address_decode (&mp->pfx.address, &(args.prefix));
+  u8 plen = mp->pfx.len + (mp->pfx.address.af == ADDRESS_IP4 ? 96 : 0);
+
+  if (mp->is_del)
+    {
+      u32 vip_index;
+      if (!(rv =
+	      lb_vip_find_index (&(args.prefix), plen, mp->protocol, ntohs (mp->port), &vip_index)))
+	rv = lb_vip_del (vip_index);
+    }
+  else
+    {
+      u32 vip_index;
+      lb_vip_type_t type = 0;
+
+      if (ip46_prefix_is_ip4 (&(args.prefix), plen))
+	{
+	  if (mp->encap == LB_API_ENCAP_TYPE_GRE4)
+	    type = LB_VIP_TYPE_IP4_GRE4;
+	  else if (mp->encap == LB_API_ENCAP_TYPE_GRE6)
+	    type = LB_VIP_TYPE_IP4_GRE6;
+	  else if (mp->encap == LB_API_ENCAP_TYPE_L3DSR)
+	    type = LB_VIP_TYPE_IP4_L3DSR;
+	  else if (mp->encap == LB_API_ENCAP_TYPE_NAT4)
+	    type = LB_VIP_TYPE_IP4_NAT4;
+	}
+      else
+	{
+	  if (mp->encap == LB_API_ENCAP_TYPE_GRE4)
+	    type = LB_VIP_TYPE_IP6_GRE4;
+	  else if (mp->encap == LB_API_ENCAP_TYPE_GRE6)
+	    type = LB_VIP_TYPE_IP6_GRE6;
+	  else if (mp->encap == LB_API_ENCAP_TYPE_NAT6)
+	    type = LB_VIP_TYPE_IP6_NAT6;
+	}
+
+      args.plen = plen;
+      args.protocol = mp->protocol;
+      args.port = ntohs (mp->port);
+      args.type = type;
+      args.new_length = ntohl (mp->new_flows_table_length);
+
+      if (mp->src_ip_sticky)
+	args.src_ip_sticky = 1;
+
+      if (mp->is_punt)
+	args.punt = 1;
+
+      if (mp->encap == LB_API_ENCAP_TYPE_L3DSR)
+	{
+	  args.encap_args.dscp = (u8) (mp->dscp & 0x3F);
+	}
+      else if ((mp->encap == LB_API_ENCAP_TYPE_NAT4) || (mp->encap == LB_API_ENCAP_TYPE_NAT6))
+	{
+	  args.encap_args.srv_type = mp->type;
+	  args.encap_args.target_port = ntohs (mp->target_port);
+	}
+
+      rv = lb_vip_add (args, &vip_index);
+    }
+done:
+  REPLY_MACRO (VL_API_LB_ADD_DEL_VIP_V3_REPLY);
+}
+
+static void
 vl_api_lb_add_del_as_t_handler
 (vl_api_lb_add_del_as_t * mp)
 {
@@ -309,6 +393,46 @@ vl_api_lb_vip_dump_t_handler
   }
 
 
+}
+
+static void
+vl_api_lb_vip_v2_dump_t_handler (vl_api_lb_vip_v2_dump_t *mp)
+{
+  vl_api_registration_t *reg;
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+  return;
+
+  lb_main_t *lbm = &lb_main;
+  vl_api_lb_vip_v2_details_t *rmp;
+  int msg_size = 0;
+  lb_vip_t *vip = 0;
+
+  pool_foreach (vip, lbm->vips)
+  {
+      if (vip != lbm->vips && (vip->flags & LB_VIP_FLAGS_USED))
+	{
+	  msg_size = sizeof (*rmp);
+	  rmp = vl_msg_api_alloc (msg_size);
+	  memset (rmp, 0, msg_size);
+	  rmp->_vl_msg_id = htons (VL_API_LB_VIP_V2_DETAILS + lbm->msg_id_base);
+	  rmp->context = mp->context;
+
+	  ip_address_encode (&vip->prefix, IP46_TYPE_ANY, &rmp->vip.pfx.address);
+	  rmp->vip.pfx.len =
+	    ip46_prefix_is_ip4 (&vip->prefix, vip->plen) ? vip->plen - 96 : vip->plen;
+	  rmp->vip.protocol = vip->protocol;
+	  rmp->vip.port = htons (vip->port);
+	  rmp->encap = htonl (lb_vip_type_to_api_encap (vip->type));
+	  rmp->dscp = vip->encap_args.dscp;
+	  rmp->srv_type = vip->encap_args.srv_type;
+	  rmp->target_port = htons (vip->encap_args.target_port);
+	  rmp->flow_table_length = htons (vip->new_flow_table_mask + 1);
+	  rmp->is_punt = lb_vip_is_punt (vip) ? 1 : 0;
+
+	  vl_api_send_msg (reg, (u8 *) rmp);
+	}
+  }
 }
 
 static void send_lb_as_details
