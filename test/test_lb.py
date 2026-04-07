@@ -1,13 +1,13 @@
 import socket
 
 import scapy.compat
-from scapy.layers.inet import IP, UDP
-from scapy.layers.inet6 import IPv6
+from scapy.layers.inet import IP, UDP, ICMP
+from scapy.layers.inet6 import IPv6, ICMPv6EchoRequest, ICMPv6EchoReply
 from scapy.layers.l2 import Ether, GRE
 from scapy.packet import Raw
 from scapy.data import IP_PROTOS
 
-from framework import VppTestCase
+from framework import VppTestCase, VppLoInterface
 from util import ppp
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_ip import INVALID_INDEX
@@ -307,6 +307,84 @@ class TestLB(VppTestCase):
             for i in range(2, 4):
                 self.vapi.cli("lb as 2001::/16 10.0.0.%u del" % i)
             self.vapi.cli("lb vip 2001::/16 encap gre4 del")
+            self.vapi.cli("test lb flowtable flush")
+
+    def test_lb_ip4_punt(self):
+        """Load Balancer IP4 PUNT ICMP to per-port VIP to ip4-local"""
+        VIP4 = "192.0.2.1"
+        AS4 = "10.0.0.1"
+
+        try:
+            # Create a loopback with the VIP /32 address so ip4-local can reply
+            lo = VppLoInterface(self)
+            lo.admin_up()
+            self.vapi.sw_interface_add_del_address(
+                sw_if_index=lo.sw_if_index, prefix="%s/32" % VIP4
+            )
+
+            self.vapi.cli("lb vip %s/32 encap gre4 protocol tcp port 80 punt" % VIP4)
+            self.vapi.cli("lb as %s/32 %s protocol tcp port 80" % (VIP4, AS4))
+
+            pkt = (
+                Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+                / IP(dst=VIP4, src=self.pg0.remote_ip4)
+                / ICMP(type="echo-request", id=0xABCD, seq=1)
+            )
+            self.pg0.add_stream([pkt])
+            self.pg_enable_capture(self.pg_interfaces)
+            self.pg_start()
+
+            rxs = self.pg0.get_capture(1)
+            rx = rxs[0]
+            self.assertEqual(rx[IP].src, VIP4)
+            self.assertEqual(rx[IP].dst, self.pg0.remote_ip4)
+            self.assertEqual(rx[ICMP].type, 0)  # echo-reply
+            self.assertEqual(rx[ICMP].id, 0xABCD)
+            self.assertEqual(rx[ICMP].seq, 1)
+
+        finally:
+            self.vapi.cli("lb as %s/32 %s protocol tcp port 80 del" % (VIP4, AS4))
+            self.vapi.cli("lb vip %s/32 encap gre4 protocol tcp port 80 del" % VIP4)
+            lo.remove_vpp_config()
+            self.vapi.cli("test lb flowtable flush")
+
+    def test_lb_ip6_punt(self):
+        """Load Balancer IP6 PUNT ICMP to per-port VIP to ip6-local"""
+        VIP6 = "2001:db8::1"
+        AS6 = "2002::1"
+
+        try:
+            # Create a loopback with the VIP /128 address so ip6-local can reply
+            lo = VppLoInterface(self)
+            lo.admin_up()
+            self.vapi.sw_interface_add_del_address(
+                sw_if_index=lo.sw_if_index, prefix="%s/128" % VIP6
+            )
+
+            self.vapi.cli("lb vip %s/128 encap gre6 protocol tcp port 80 punt" % VIP6)
+            self.vapi.cli("lb as %s/128 %s protocol tcp port 80" % (VIP6, AS6))
+
+            pkt = (
+                Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+                / IPv6(dst=VIP6, src=self.pg0.remote_ip6)
+                / ICMPv6EchoRequest(id=0xABCD, seq=1)
+            )
+            self.pg0.add_stream([pkt])
+            self.pg_enable_capture(self.pg_interfaces)
+            self.pg_start()
+
+            rxs = self.pg0.get_capture(1)
+            rx = rxs[0]
+            self.assertEqual(rx[IPv6].src, VIP6)
+            self.assertEqual(rx[IPv6].dst, self.pg0.remote_ip6)
+            self.assertTrue(ICMPv6EchoReply in rx)
+            self.assertEqual(rx[ICMPv6EchoReply].id, 0xABCD)
+            self.assertEqual(rx[ICMPv6EchoReply].seq, 1)
+
+        finally:
+            self.vapi.cli("lb as %s/128 %s protocol tcp port 80 del" % (VIP6, AS6))
+            self.vapi.cli("lb vip %s/128 encap gre6 protocol tcp port 80 del" % VIP6)
+            lo.remove_vpp_config()
             self.vapi.cli("test lb flowtable flush")
 
     def test_lb_ip4_gre4(self):

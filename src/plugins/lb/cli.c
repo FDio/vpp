@@ -23,6 +23,7 @@ lb_vip_command_fn (vlib_main_t * vm,
 
   args.new_length = 1024;
   args.src_ip_sticky = 0;
+  args.punt = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -42,6 +43,8 @@ lb_vip_command_fn (vlib_main_t * vm,
       del = 1;
     else if (unformat (line_input, "src_ip_sticky"))
       args.src_ip_sticky = 1;
+    else if (unformat (line_input, "punt"))
+      args.punt = 1;
     else if (unformat(line_input, "protocol tcp"))
       {
         args.protocol = (u8)IP_PROTOCOL_TCP;

@@ -1023,7 +1023,8 @@ static void lb_vip_del_adjacency(lb_main_t *lbm, lb_vip_t *vip)
 
       /* Return vip_prefix_index for per-port vip */
       lb_vip_prefix_index_free(lbm, vip->vip_prefix_index);
-
+      lbm->punt_prefix_indexes =
+	clib_bitmap_set (lbm->punt_prefix_indexes, vip->vip_prefix_index, 0);
     }
 
   if (lb_vip_is_ip4(vip->type)) {
@@ -1141,9 +1142,9 @@ int lb_vip_add(lb_vip_add_args_t args, u32 *vip_index)
 
   vip->flags = LB_VIP_FLAGS_USED;
   if (args.src_ip_sticky)
-    {
-      vip->flags |= LB_VIP_FLAGS_SRC_IP_STICKY;
-    }
+    vip->flags |= LB_VIP_FLAGS_SRC_IP_STICKY;
+  if (args.punt && args.port != 0)
+    vip->flags |= LB_VIP_FLAGS_PUNT;
   vip->as_indexes = 0;
 
   //Validate counters
@@ -1162,6 +1163,9 @@ int lb_vip_add(lb_vip_add_args_t args, u32 *vip_index)
 
   //Create adjacency to direct traffic
   lb_vip_add_adjacency(lbm, vip, &vip_prefix_index);
+
+  if (lb_vip_is_punt (vip))
+  lbm->punt_prefix_indexes = clib_bitmap_set (lbm->punt_prefix_indexes, vip->vip_prefix_index, 1);
 
   if ( (lb_vip_is_nat4_port(vip) || lb_vip_is_nat6_port(vip))
       && (args.encap_args.srv_type == LB_SRV_TYPE_NODEPORT) )

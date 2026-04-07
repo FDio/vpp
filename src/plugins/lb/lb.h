@@ -46,6 +46,14 @@ typedef enum {
   LB_N_NEXT,
 } lb_next_t;
 
+typedef enum
+{
+  LB_PORT_NEXT_DROP,
+  LB_PORT_NEXT_IP4_LOCAL,
+  LB_PORT_NEXT_IP6_LOCAL,
+  LB_PORT_N_NEXT,
+} lb_port_next_t;
+
 typedef enum {
   LB_NAT4_IN2OUT_NEXT_DROP,
   LB_NAT4_IN2OUT_NEXT_LOOKUP,
@@ -315,6 +323,7 @@ typedef struct {
   u8 flags;
 #define LB_VIP_FLAGS_USED 0x1
 #define LB_VIP_FLAGS_SRC_IP_STICKY 0x2
+#define LB_VIP_FLAGS_PUNT	   0x4
 
   /**
    * Pool of AS indexes used for this VIP.
@@ -339,6 +348,8 @@ typedef struct {
 
 #define lb_vip_is_src_ip_sticky(vip)                                          \
   (((vip)->flags & LB_VIP_FLAGS_SRC_IP_STICKY) != 0)
+
+#define lb_vip_is_punt(vip) (((vip)->flags & LB_VIP_FLAGS_PUNT) != 0)
 
 /* clang-format off */
 #define lb_vip_is_gre4(vip) (((vip)->type == LB_VIP_TYPE_IP6_GRE4 \
@@ -474,6 +485,11 @@ typedef struct {
   uword *vip_prefix_indexes;
 
   /**
+   * bitmap of vip_prefix_indexes that have the punt flag set
+   */
+  uword *punt_prefix_indexes;
+
+  /**
    * Pool of ASs.
    * ASs are referenced by address and vip index.
    * The first element (index 0) is special and used only to fill
@@ -571,6 +587,7 @@ typedef struct {
   u8 protocol;
   u16 port;
   u8 src_ip_sticky;
+  u8 punt;
   lb_vip_type_t type;
   u32 new_length;
   lb_vip_encap_args_t encap_args;
