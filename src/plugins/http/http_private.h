@@ -369,6 +369,7 @@ typedef struct http_ctx_
       u64 body_len;
       u8 *target;
       http_field_line_t *headers;
+      u8 capsule_header[HTTP_CAPSULE_HEADER_MAX_SIZE];
       union
       {
 	struct
