@@ -542,7 +542,7 @@ http2_sched_dispatch_data (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissions)
   n_written -= HTTP2_FRAME_HEADER_SIZE;
   vec_free (segs);
   http_buffer_drain (hb, n_written);
-  req->peer_stream_window -= n_written;
+  req->peer_stream_window -= (i32) n_written;
   hc->peer_window -= n_written;
 
   if (finished)
@@ -630,7 +630,7 @@ http2_sched_dispatch_tunnel (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissions)
   ASSERT (n_written == (HTTP2_FRAME_HEADER_SIZE + n_read));
   n_written -= HTTP2_FRAME_HEADER_SIZE;
   http_io_as_drain (req, n_written);
-  req->peer_stream_window -= n_written;
+  req->peer_stream_window -= (i32) n_written;
   hc->peer_window -= n_written;
   HTTP_DBG (1, "written %lu", n_written);
 
@@ -669,85 +669,128 @@ http2_sched_dispatch_tunnel (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissions)
 static void
 http2_sched_dispatch_udp_tunnel (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissions)
 {
-  u32 max_write, max_read, dgram_size, capsule_size, n_written;
+  u32 dgram_size, max_write, max_read, n_written, n_read = 0, frame_size = 0, n_segs = 1,
+						  n_app_segs = 5, n_deq = 0;
   session_dgram_hdr_t hdr;
   u8 fh[HTTP2_FRAME_HEADER_SIZE];
-  u8 *buf, *payload;
+  u8 *capsule_hdr_end;
+  svm_fifo_seg_t segs[2 + n_app_segs];
 
   *n_emissions += HTTP2_SCHED_WEIGHT_DATA_INLINE;
+  max_write = http_io_ts_max_write (hc, 0);
+  /* we always keep free space in underlying transport fifo */
+  ASSERT (max_write > HTTP2_FRAME_HEADER_SIZE);
+  max_write -= HTTP2_FRAME_HEADER_SIZE;
+  /* DATA frame size is limited only by SETTINGS_MAX_FRAME_SIZE and connection window, stream level
+   * window check is done before we start sending capsule (this is not prohibited by RFC9113, we are
+   * able to select any algorithm that suits our needs) */
+  max_write = clib_min (max_write, hc->peer_window);
+  max_write = clib_min (max_write, hc->peer_settings.max_frame_size);
 
   max_read = http_io_as_max_read (req);
-  if (max_read < sizeof (hdr))
+
+  switch (req->capsule_ctx_tx.state)
     {
-      HTTP_DBG (2, "max_read == 0");
-      transport_connection_reschedule (&req->connection);
-      return;
+    case HTTP_CAPSULE_STATE_START:
+      /* read datagram header */
+      if (max_read < sizeof (hdr))
+	{
+	  HTTP_DBG (2, "max_read < session dgram hdr");
+	  transport_connection_reschedule (&req->connection);
+	  return;
+	}
+      http_io_as_peek (req, (u8 *) &hdr, sizeof (hdr), 0);
+      HTTP_DBG (1, "datagram len %lu", hdr.data_length);
+      ASSERT (hdr.data_length <= HTTP_UDP_PAYLOAD_MAX_LEN);
+      dgram_size = hdr.data_length + SESSION_CONN_HDR_LEN;
+      if (PREDICT_FALSE (max_read < dgram_size))
+	{
+	  HTTP_DBG (2, "datagram incomplete");
+	  transport_connection_reschedule (&req->connection);
+	  return;
+	}
+      /* check stream level window */
+      if (req->peer_stream_window < (hdr.data_length + HTTP_UDP_PROXY_DATAGRAM_CAPSULE_OVERHEAD))
+	{
+	  HTTP_DBG (1, "not enough space in stream window (%lu) for capsule",
+		    req->peer_stream_window);
+	  /* mark that we need window update on stream */
+	  req->req_flags |= HTTP_REQ_F_NEED_WINDOW_UPDATE;
+	  return;
+	}
+      http_io_as_drain (req, sizeof (hdr));
+      n_deq += sizeof (hdr);
+      max_read -= sizeof (hdr);
+      /* create capsule header */
+      capsule_hdr_end = http_encap_udp_payload_datagram (req->capsule_header_tx, hdr.data_length);
+      req->capsule_ctx_tx.hdr_left = capsule_hdr_end - req->capsule_header_tx;
+      req->capsule_ctx_tx.payload_left = hdr.data_length;
+      req->capsule_ctx_tx.state = HTTP_CAPSULE_STATE_HEADER;
+      /* now we can start building frame(s) */
+      __attribute__ ((fallthrough));
+    case HTTP_CAPSULE_STATE_HEADER:
+      ASSERT (max_write);
+      frame_size += clib_min (req->capsule_ctx_tx.hdr_left, max_write);
+      segs[n_segs].data = req->capsule_header_tx;
+      segs[n_segs].len = frame_size;
+      n_segs++;
+      /* can we send full capsule header? */
+      if (PREDICT_FALSE (frame_size < req->capsule_ctx_tx.hdr_left))
+	{
+	  req->capsule_ctx_tx.hdr_left -= frame_size;
+	  req->capsule_ctx_tx.hdr_offset += req->capsule_ctx_tx.hdr_left;
+	  break;
+	}
+      req->capsule_ctx_tx.hdr_left = 0;
+      req->capsule_ctx_tx.hdr_offset = 0;
+      req->capsule_ctx_tx.state = HTTP_CAPSULE_STATE_PAYLOAD;
+      max_write -= frame_size;
+      if (PREDICT_FALSE (max_write == 0))
+	break;
+      /* we have some space for payload */
+      __attribute__ ((fallthrough));
+    case HTTP_CAPSULE_STATE_PAYLOAD:
+      ASSERT (max_read);
+      ASSERT (req->capsule_ctx_tx.payload_left);
+      /* read app data */
+      n_read = http_io_as_read_segs (req, segs + n_segs, &n_app_segs,
+				     clib_min (req->capsule_ctx_tx.payload_left, max_write));
+      n_segs += n_app_segs;
+      frame_size += n_read;
+      n_deq += n_read;
+      max_read -= n_read;
+      if (PREDICT_FALSE (n_read < req->capsule_ctx_tx.payload_left))
+	{
+	  req->capsule_ctx_tx.payload_left -= n_read;
+	  break;
+	}
+      req->capsule_ctx_tx.payload_left = 0;
+      req->capsule_ctx_tx.state = HTTP_CAPSULE_STATE_START;
+#if CLIB_DEBUG > 0
+      break;
+    default:
+      clib_warning ("unknown state, bug");
+      ASSERT (0);
+      break;
+#endif
     }
-  /* read datagram header */
-  http_io_as_peek (req, (u8 *) &hdr, sizeof (hdr), 0);
-  HTTP_DBG (1, "datagram len %lu", hdr.data_length);
-  ASSERT (hdr.data_length <= HTTP_UDP_PAYLOAD_MAX_LEN);
-  dgram_size = hdr.data_length + SESSION_CONN_HDR_LEN;
-  if (PREDICT_FALSE (max_read < dgram_size))
-    {
-      HTTP_DBG (2, "datagram incomplete");
-      transport_connection_reschedule (&req->connection);
-      return;
-    }
 
-  if (PREDICT_FALSE ((hdr.data_length + HTTP_UDP_PROXY_DATAGRAM_CAPSULE_OVERHEAD) >
-		     hc->peer_settings.max_frame_size))
-    {
-      /* drop datagram if not fit into frame */
-      HTTP_DBG (1, "datagram larger than maximum frame size, dropped");
-      http_io_as_drain (req, dgram_size);
-      return;
-    }
+  /* create frame header */
+  http2_frame_write_data_header (frame_size, req->stream_id, 0, fh);
+  segs[0].len = HTTP2_FRAME_HEADER_SIZE;
+  segs[0].data = fh;
+  n_written = http_io_ts_write_segs (hc, segs, n_segs, 0);
+  ASSERT (n_written == (HTTP2_FRAME_HEADER_SIZE + frame_size));
 
-  if (req->peer_stream_window < (hdr.data_length + HTTP_UDP_PROXY_DATAGRAM_CAPSULE_OVERHEAD))
-    {
-      HTTP_DBG (1, "not enough space in stream window (%lu) for capsule", req->peer_stream_window);
-      /* mark that we need window update on stream */
-      req->req_flags |= HTTP_REQ_F_NEED_WINDOW_UPDATE;
-      return;
-    }
+  if (PREDICT_TRUE (n_read))
+    http_io_as_drain (req, n_read);
+  if (PREDICT_TRUE (n_deq))
+    http_io_as_dequeue_notify (req, n_deq);
 
-  max_write = http_io_ts_max_write (hc, 0);
-  max_write -= HTTP2_FRAME_HEADER_SIZE;
-  max_write -= HTTP_UDP_PROXY_DATAGRAM_CAPSULE_OVERHEAD;
-  max_write = clib_min (max_write, hc->peer_window);
-  if (PREDICT_FALSE (max_write < hdr.data_length))
-    {
-      /* we should have at least 16kB free space in underlying transport,
-       * maybe peer is doing small connection window updates */
-      /* TODO: split capsule */
-      HTTP_DBG (1, "datagram dropped");
-      http_io_as_drain (req, dgram_size);
-      transport_connection_reschedule (&req->connection);
-      return;
-    }
+  req->peer_stream_window -= (i32) frame_size;
+  hc->peer_window -= frame_size;
 
-  buf = http_get_tx_buf (hc);
-  /* create capsule header */
-  payload = http_encap_udp_payload_datagram (buf, hdr.data_length);
-  ASSERT ((payload - buf) <= HTTP_UDP_PROXY_DATAGRAM_CAPSULE_OVERHEAD);
-  capsule_size = (payload - buf) + hdr.data_length;
-  /* read payload */
-  http_io_as_peek (req, payload, hdr.data_length, sizeof (hdr));
-  http_io_as_drain (req, dgram_size);
-
-  req->peer_stream_window -= (i32) capsule_size;
-  hc->peer_window -= capsule_size;
-
-  http2_frame_write_data_header (capsule_size, req->stream_id, 0, fh);
-
-  svm_fifo_seg_t segs[2] = { { fh, HTTP2_FRAME_HEADER_SIZE },
-			     { buf, capsule_size } };
-  n_written = http_io_ts_write_segs (hc, segs, 2, 0);
-  ASSERT (n_written == (HTTP2_FRAME_HEADER_SIZE + capsule_size));
-  HTTP_DBG (1, "capsule payload len %lu", hdr.data_length);
-
-  if (max_read - dgram_size)
+  if (max_read)
     {
       /* schedule for next round if we have more data */
       HTTP_DBG (1, "adding to data queue req_index %x",
@@ -757,7 +800,6 @@ http2_sched_dispatch_udp_tunnel (http_ctx_t *req, http_ctx_t *hc, u8 *n_emission
   else
     transport_connection_reschedule (&req->connection);
 
-  http_io_as_dequeue_notify (req, dgram_size);
   http_io_ts_after_write (hc, 0);
 }
 
@@ -916,7 +958,15 @@ http2_sched_dispatch_resp_headers (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissi
 	{
 	  if (req->upgrade_proto == HTTP_UPGRADE_PROTO_CONNECT_UDP &&
 	      (hc->flags & HTTP_CONN_F_UDP_TUNNEL_DGRAM))
-	    req->dispatch_data_cb = http2_sched_dispatch_udp_tunnel;
+	    {
+	      req->dispatch_data_cb = http2_sched_dispatch_udp_tunnel;
+	      req->capsule_ctx_rx.state = HTTP_CAPSULE_STATE_HEADER;
+	      req->capsule_ctx_rx.len = 0;
+	      req->capsule_ctx_tx.state = HTTP_CAPSULE_STATE_START;
+	      req->capsule_ctx_tx.hdr_left = 0;
+	      req->capsule_ctx_tx.hdr_offset = 0;
+	      req->capsule_ctx_tx.payload_left = 0;
+	    }
 	  else
 	    req->dispatch_data_cb = http2_sched_dispatch_tunnel;
 	  transport_connection_reschedule (&req->connection);
@@ -987,7 +1037,15 @@ http2_sched_dispatch_req_headers (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissio
       if (msg.data.upgrade_proto != HTTP_UPGRADE_PROTO_NA)
 	{
 	  if (hc->flags & HTTP_CONN_F_UDP_TUNNEL_DGRAM)
-	    req->dispatch_data_cb = http2_sched_dispatch_udp_tunnel;
+	    {
+	      req->dispatch_data_cb = http2_sched_dispatch_udp_tunnel;
+	      req->capsule_ctx_rx.state = HTTP_CAPSULE_STATE_HEADER;
+	      req->capsule_ctx_rx.len = 0;
+	      req->capsule_ctx_tx.state = HTTP_CAPSULE_STATE_START;
+	      req->capsule_ctx_tx.hdr_left = 0;
+	      req->capsule_ctx_tx.hdr_offset = 0;
+	      req->capsule_ctx_tx.payload_left = 0;
+	    }
 	  control_data.authority = hc->host;
 	  control_data.authority_len = vec_len (hc->host);
 	  control_data.parsed_bitmap = HPACK_PSEUDO_HEADER_SCHEME_PARSED;
@@ -1600,58 +1658,131 @@ static http_sm_result_t
 http2_req_state_udp_tunnel_rx (http_ctx_t *hc, http_ctx_t *req, transport_send_params_t *sp,
 			       http2_error_t *error)
 {
-  int rv;
+  http_capsule_error_t rv;
   u8 payload_offset = 0;
   u64 payload_len = 0;
   session_dgram_hdr_t hdr;
+  svm_fifo_seg_t segs[2];
+  u8 n_segs = 0;
+  u32 frame_left = req->payload_len, payload_enq = 0;
 
   HTTP_DBG (1, "udp tunnel received data from peer");
 
-  rv = http_decap_udp_payload_datagram (req->payload, req->payload_len,
-					&payload_offset, &payload_len);
-  HTTP_DBG (1, "rv=%d, payload_offset=%u, payload_len=%llu", rv,
-	    payload_offset, payload_len);
-  ASSERT (payload_offset <= HTTP_UDP_PROXY_DATAGRAM_CAPSULE_OVERHEAD);
-  if (PREDICT_FALSE (rv != 0))
+  /* according to RFC9297 section 3.1. this is "data stream" which consists of all bytes sent in
+   * DATA frames, so capsule can span multiple DATA frames */
+start:
+  switch (req->capsule_ctx_rx.state)
     {
-      if (rv < 0)
+    case HTTP_CAPSULE_STATE_HEADER:
+      ASSERT (sizeof (req->capsule_header_rx) > req->capsule_ctx_rx.len);
+      /* store capsule header in request ctx to handle case when it spans multiple frames */
+      clib_memcpy_fast (
+	req->capsule_header_rx + req->capsule_ctx_rx.len, req->payload,
+	clib_min (sizeof (req->capsule_header_rx) - req->capsule_ctx_rx.len, req->payload_len));
+      rv = http_decap_udp_payload_datagram (req->capsule_header_rx,
+					    req->capsule_ctx_rx.len + frame_left, &payload_offset,
+					    &payload_len);
+      ASSERT (payload_offset <= HTTP_UDP_PROXY_DATAGRAM_CAPSULE_OVERHEAD);
+      switch (rv)
 	{
+	case HTTP_CAPSULE_NO_ERROR:
+	  HTTP_DBG (1, "payload_offset=%u, payload_len=%llu", payload_offset, payload_len);
+	  req->capsule_ctx_rx.state = HTTP_CAPSULE_STATE_PAYLOAD;
+	  break;
+	case HTTP_CAPSULE_INVALID:
 	  /* capsule datagram is invalid (stream need to be aborted) */
+	  HTTP_DBG (1, "invalid capsule");
 	  http2_stream_error (hc, req, HTTP2_ERROR_PROTOCOL_ERROR, sp);
 	  return HTTP_SM_STOP;
+	case HTTP_CAPSULE_INCOMPLETE:
+	  /* capsule header is incomplete we are done for now */
+	  HTTP_DBG (1, "capsule header not complete");
+	  req->capsule_ctx_rx.len += req->payload_len;
+	  goto check_fin;
+	case HTTP_CAPSULE_SKIP:
+	  /* unknow capsule type, just drop bytes */
+	  HTTP_DBG (1, "unknown capsule, byte to skip %llu", payload_len);
+	  req->capsule_ctx_rx.state = HTTP_CAPSULE_STATE_SKIP;
+	  req->capsule_ctx_rx.len = payload_len - req->capsule_ctx_rx.len;
+	  goto start;
+	}
+      ASSERT (payload_offset > req->capsule_ctx_rx.len);
+      payload_offset -= req->capsule_ctx_rx.len;
+      frame_left -= payload_offset;
+      req->capsule_ctx_rx.len = payload_len;
+      /* enqueue session dgram header */
+      hdr.data_length = payload_len;
+      hdr.data_offset = 0;
+      hdr.gso_size = 0;
+      segs[n_segs].data = (u8 *) &hdr;
+      segs[n_segs].len = sizeof (hdr);
+      n_segs++;
+      if (frame_left == 0)
+	break;
+      /* we have also some payload bytes, continue processiong */
+      __attribute__ ((fallthrough));
+    case HTTP_CAPSULE_STATE_PAYLOAD:
+      /* check if we have the full capsule */
+      if (frame_left >= req->capsule_ctx_rx.len)
+	{
+	  payload_enq = req->capsule_ctx_rx.len;
+	  frame_left -= payload_enq;
+	  /* restart state for the next capsule */
+	  req->capsule_ctx_rx.state = HTTP_CAPSULE_STATE_HEADER;
+	  req->capsule_ctx_rx.len = 0;
 	}
       else
 	{
-	  /* unknown capsule should be skipped */
-	  return HTTP_SM_STOP;
+	  /* enqueue what what we have now and wait for the next frame on our stream */
+	  HTTP_DBG (1, "capsule payload not complete");
+	  req->capsule_ctx_rx.len -= frame_left;
+	  payload_enq = frame_left;
+	  frame_left = 0;
 	}
-    }
-  /* check if we have the full capsule */
-  if (PREDICT_FALSE (req->payload_len != (payload_offset + payload_len)))
-    {
-      HTTP_DBG (1, "capsule not complete");
-      http2_stream_error (hc, req, HTTP2_ERROR_PROTOCOL_ERROR, sp);
+      ASSERT (payload_enq);
+      segs[n_segs].data = req->payload + payload_offset;
+      segs[n_segs].len = payload_enq;
+      n_segs++;
+      break;
+    case HTTP_CAPSULE_STATE_SKIP:
+      /* check if we have the full capsule */
+      if (frame_left >= req->capsule_ctx_rx.len)
+	{
+	  frame_left -= req->capsule_ctx_rx.len;
+	  /* restart state for the next capsule */
+	  req->capsule_ctx_rx.state = HTTP_CAPSULE_STATE_HEADER;
+	  req->capsule_ctx_rx.len = 0;
+	  if (frame_left)
+	    goto start;
+	}
+      else
+	{
+	  /* track remaining bytes */
+	  req->capsule_ctx_rx.len -= frame_left;
+	}
       return HTTP_SM_STOP;
+    default:
+      clib_warning ("unknown state, bug");
+      ASSERT (0);
+      break;
     }
-  if (http_io_as_max_write (req) < (sizeof (hdr) + payload_len))
+
+  if (http_io_as_max_write (req) < (sizeof (hdr) + payload_enq))
     {
       /* should only happen when we don't keep enough space for dgram hdr */
-      clib_warning ("not enough space in app fifo (%lu) for dgram (%lu)",
-		    http_io_as_max_write (req), sizeof (hdr) + payload_len);
+      HTTP_DBG (1, "not enough space in app fifo (%lu) for dgram (%lu)", http_io_as_max_write (req),
+		sizeof (hdr) + payload_len);
       http2_stream_error (hc, req, HTTP2_ERROR_INTERNAL_ERROR, sp);
       return HTTP_SM_STOP;
     }
 
-  hdr.data_length = payload_len;
-  hdr.data_offset = 0;
-  hdr.gso_size = 0;
-
-  /* send datagram header and payload */
-  svm_fifo_seg_t segs[2] = { { (u8 *) &hdr, sizeof (hdr) },
-			     { req->payload + payload_offset, payload_len } };
-  http_io_as_write_segs (req, segs, 2);
+  http_io_as_write_segs (req, segs, n_segs);
   http_app_worker_rx_notify (req);
 
+  if (frame_left)
+    goto start;
+
+check_fin:
   if (req->stream_state == HTTP2_STREAM_STATE_HALF_CLOSED)
     {
       HTTP_DBG (1, "peer want to close tunnel");
@@ -2062,13 +2193,15 @@ http2_handle_data_frame (http_ctx_t *hc, http2_frame_header_t *fh)
 
   if (fh->length > req->our_stream_window)
     {
-      HTTP_DBG (1, "error: peer violated stream flow control");
+      HTTP_DBG (1, "error: peer violated stream flow control, stream window %lu exceeded",
+		req->our_stream_window);
       http2_stream_error (hc, req, HTTP2_ERROR_FLOW_CONTROL_ERROR, 0);
       return HTTP2_ERROR_NO_ERROR;
     }
   if (fh->length > hc->our_window)
     {
-      HTTP_DBG (1, "error: peer violated connection flow control");
+      HTTP_DBG (1, "error: peer violated connection flow control, connection window %lu exceeded",
+		hc->our_window);
       return HTTP2_ERROR_FLOW_CONTROL_ERROR;
     }
 

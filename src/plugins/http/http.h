@@ -1727,9 +1727,16 @@ http_varint_len (u64 value)
   return 1;
 }
 
-always_inline int
-_http_parse_capsule (u8 *data, u64 len, u64 *type, u8 *value_offset,
-		     u64 *value_len)
+typedef enum
+{
+  HTTP_CAPSULE_NO_ERROR = 0,
+  HTTP_CAPSULE_SKIP = 1,
+  HTTP_CAPSULE_INVALID = -1,
+  HTTP_CAPSULE_INCOMPLETE = -2,
+} http_capsule_error_t;
+
+always_inline http_capsule_error_t
+_http_parse_capsule (u8 *data, u64 len, u64 *type, u8 *value_offset, u64 *value_len)
 {
   u64 capsule_type, capsule_value_len;
   u8 *p = data;
@@ -1738,27 +1745,27 @@ _http_parse_capsule (u8 *data, u64 len, u64 *type, u8 *value_offset,
   capsule_type = http_decode_varint (&p, end);
   if (capsule_type == HTTP_INVALID_VARINT)
     {
-      clib_warning ("failed to parse capsule type");
-      return -1;
+      HTTP_DBG (1, "failed to parse capsule type");
+      return HTTP_CAPSULE_INCOMPLETE;
     }
 
   if (p == end)
     {
-      clib_warning ("capsule length missing");
-      return -1;
+      HTTP_DBG (1, "capsule length missing");
+      return HTTP_CAPSULE_INCOMPLETE;
     }
 
   capsule_value_len = http_decode_varint (&p, end);
   if (capsule_value_len == HTTP_INVALID_VARINT)
     {
-      clib_warning ("failed to parse capsule length");
-      return -1;
+      HTTP_DBG (1, "failed to parse capsule length");
+      return HTTP_CAPSULE_INCOMPLETE;
     }
 
   *type = capsule_type;
   *value_offset = p - data;
   *value_len = capsule_value_len;
-  return 0;
+  return HTTP_CAPSULE_NO_ERROR;
 }
 
 /**
@@ -1771,13 +1778,13 @@ _http_parse_capsule (u8 *data, u64 len, u64 *type, u8 *value_offset,
  * @param payload_len    Length of the UDP proxying payload (or number of bytes
  *                       to skip).
  *
- * @return @c -1 if capsule datagram is invalid (session need to be aborted)
- * @return @c 0 if capsule contains UDP payload
- * @return @c 1 if capsule should be skipped
+ * @return @c HTTP_CAPSULE_NO_ERROR if capsule contains UDP payload
+ * @return @c HTTP_CAPSULE_SKIP if capsule should be skipped
+ * @return @c HTTP_CAPSULE_INVALID if capsule datagram is invalid (session need to be aborted)
+ * @return @c HTTP_CAPSULE_INCOMPLETE if capsule header is incomplete (some bytes are missing)
  */
-always_inline int
-http_decap_udp_payload_datagram (u8 *data, u64 len, u8 *payload_offset,
-				 u64 *payload_len)
+always_inline http_capsule_error_t
+http_decap_udp_payload_datagram (u8 *data, u64 len, u8 *payload_offset, u64 *payload_len)
 {
   int rv;
   u8 *p = data;
@@ -1786,21 +1793,21 @@ http_decap_udp_payload_datagram (u8 *data, u64 len, u8 *payload_offset,
   u8 value_offset;
 
   rv = _http_parse_capsule (p, len, &capsule_type, &value_offset, &value_len);
-  if (rv)
+  if (rv != HTTP_CAPSULE_NO_ERROR)
     return rv;
 
   /* skip unknown capsule type or empty capsule */
   if ((capsule_type != HTTP_CAPSULE_TYPE_DATAGRAM) || (value_len == 0))
     {
       *payload_len = value_len + value_offset;
-      return 1;
+      return HTTP_CAPSULE_SKIP;
     }
 
   p += value_offset;
   if (p == end)
     {
       clib_warning ("context ID missing");
-      return -1;
+      return HTTP_CAPSULE_INCOMPLETE;
     }
 
   /* context ID field should be zero (RFC9298 section 4) */
@@ -1808,7 +1815,7 @@ http_decap_udp_payload_datagram (u8 *data, u64 len, u8 *payload_offset,
   if (context_id != 0)
     {
       *payload_len = value_len + value_offset;
-      return 1;
+      return HTTP_CAPSULE_SKIP;
     }
 
   *payload_offset = p - data;
@@ -1818,10 +1825,10 @@ http_decap_udp_payload_datagram (u8 *data, u64 len, u8 *payload_offset,
   if (*payload_len > HTTP_UDP_PAYLOAD_MAX_LEN)
     {
       clib_warning ("UDP payload length too long");
-      return -1;
+      return HTTP_CAPSULE_INVALID;
     }
 
-  return 0;
+  return HTTP_CAPSULE_NO_ERROR;
 }
 
 /**
