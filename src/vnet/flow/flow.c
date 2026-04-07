@@ -300,3 +300,54 @@ vnet_flow_async_range_disable (vnet_main_t *vnm, u32 *flow_indices, u32 hw_if_in
 error:
   return rv;
 }
+
+int
+vnet_flow_async_range_update (vnet_main_t *vnm, u32 flow_template_index, u32 *flow_indices,
+			      u32 hw_if_index)
+{
+  vnet_flow_t *template = vnet_get_flow_template (flow_template_index);
+  vnet_hw_interface_t *hi;
+  vnet_device_class_t *dev_class;
+  vnet_flow_t *f;
+  u32 count = vec_len (flow_indices);
+  u32 *fi;
+  int rv = 0;
+
+  if (count == 0)
+    return VNET_FLOW_ERROR_NO_SUCH_ENTRY;
+
+  if (!template)
+    return VNET_FLOW_ERROR_NO_SUCH_ENTRY;
+
+  if (!vnet_hw_interface_is_valid (vnm, hw_if_index))
+    return VNET_FLOW_ERROR_NO_SUCH_INTERFACE;
+
+  hi = vnet_get_hw_interface (vnm, hw_if_index);
+  dev_class = vnet_get_device_class (vnm, hi->dev_class_index);
+
+  if (dev_class->flow_async_ops_function == 0)
+    return VNET_FLOW_ERROR_NOT_SUPPORTED;
+
+  /* Pre-validation: flows must be already enabled */
+  vec_foreach (fi, flow_indices)
+    {
+      f = vnet_get_flow (*fi);
+
+      if (!f)
+	{
+	  rv = VNET_FLOW_ERROR_NO_SUCH_ENTRY;
+	  goto error;
+	}
+
+      if (f->driver_data.hw_if_index == ~0)
+	{
+	  rv = VNET_FLOW_ERROR_NOT_SUPPORTED;
+	  goto error;
+	}
+    }
+
+  rv = dev_class->flow_async_ops_function (vnm, VNET_FLOW_DEV_OP_UPDATE_FLOW, hi->dev_instance,
+					   flow_indices, flow_template_index);
+error:
+  return rv;
+}
