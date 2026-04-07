@@ -863,11 +863,10 @@ VLIB_NODE_FN (ip6_inacl_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 VLIB_NODE_FN (ip6_punt_acl_node)
 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
-  return ip_in_out_acl_inline (
-    vm, node, frame, IN_OUT_ACL_TABLE_IP6_PUNT,
-    ip4_main.fib_index_by_sw_if_index, &ip6_input_node, IP6_ERROR_NONE,
-    IP6_ERROR_INACL_SESSION_DENY, IP6_ERROR_INACL_TABLE_MISS, ~0 /* way */,
-    0 /* is_output */);
+  return ip_in_out_acl_inline (vm, node, frame, IN_OUT_ACL_TABLE_IP6_PUNT,
+			       ip6_main.fib_index_by_sw_if_index, &ip6_input_node, IP6_ERROR_NONE,
+			       IP6_ERROR_INACL_SESSION_DENY, IP6_ERROR_INACL_TABLE_MISS,
+			       ~0 /* way */, 0 /* is_output */);
 }
 
 VLIB_NODE_FN (ip6_outacl_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
