@@ -260,7 +260,6 @@ lb_as_command_fn (vlib_main_t * vm,
     goto done;
   }
 
-  lb_garbage_collection();
   clib_warning("vip index is %d", vip_index);
 
   if (del) {
@@ -375,11 +374,12 @@ lb_show_vips_command_fn (vlib_main_t * vm,
   lb_vip_t *vip;
   u8 verbose = 0;
 
-  if (!unformat_user (input, unformat_line_input, &line_input))
-      return 0;
-
-  if (unformat(&line_input, "verbose"))
+  if (unformat_user (input, unformat_line_input, &line_input))
+  {
+    if (unformat (&line_input, "verbose"))
     verbose = 1;
+    unformat_free (&line_input);
+  }
 
   /* Hide placeholder VIP */
   pool_foreach (vip, lbm->vips) {
@@ -387,8 +387,6 @@ lb_show_vips_command_fn (vlib_main_t * vm,
       vlib_cli_output(vm, "%U\n", verbose?format_lb_vip_detailed:format_lb_vip, vip);
     }
   }
-
-  unformat_free (&line_input);
   return NULL;
 }
 

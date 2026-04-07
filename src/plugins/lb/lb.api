@@ -1,4 +1,4 @@
-option version = "1.1.0";
+option version = "1.2.0";
 import "plugins/lb/lb_types.api";
 import "vnet/interface_types.api";
 
@@ -21,6 +21,36 @@ autoreply  define lb_conf
   u32 sticky_buckets_per_core [default=0xffffffff];
   u32 flow_timeout [default=0xffffffff];
   option vat_help = "[ip4-src-address <addr>] [ip6-src-address <addr>] [buckets <n>] [timeout <s>]";
+};
+
+/** \brief Get Load-Balancer global parameters
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define lb_conf_get
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Reply for lb_conf_get
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+    @param ip4_src_address - IPv4 source address used for encapsulated traffic.
+    @param ip6_src_address - IPv6 source address used for encapsulated traffic.
+    @param sticky_buckets_per_core - Number of buckets per worker thread in the
+           established session table.
+    @param flow_timeout - Time in seconds after which, if no packet is received
+           for a given session, the session is removed from the established session table.
+*/
+define lb_conf_get_reply
+{
+  u32 context;
+  i32 retval;
+  vl_api_ip4_address_t ip4_src_address;
+  vl_api_ip6_address_t ip6_src_address;
+  u32 sticky_buckets_per_core;
+  u32 flow_timeout;
 };
 
 /** \brief Add a virtual address (or prefix)
