@@ -158,7 +158,9 @@
   _(3, REDIRECT_TO_NODE, "redirect-to-node") \
   _(4, REDIRECT_TO_QUEUE, "redirect-to-queue") \
   _(5, RSS, "rss") \
-  _(6, DROP, "drop")
+  _(6, DROP, "drop") \
+  _(7, REDIRECT_TO_REPRESENTED_PORT, "redirect-to-represented-port") \
+  _(8, REDIRECT_TO_PORT_REPRESENTOR, "redirect-to-port-representor")
 
 typedef enum
 {
@@ -331,6 +333,9 @@ typedef struct
 
   /* queue for VNET_FLOW_ACTION_REDIRECT_TO_QUEUE */
   u32 redirect_queue;
+
+  /* port ID for representor actions */
+  u16 redirect_port_id;
 
   /* buffer offset for VNET_FLOW_ACTION_BUFFER_ADVANCE */
   i32 buffer_advance;

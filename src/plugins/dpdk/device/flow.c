@@ -188,6 +188,7 @@ dpdk_flow_add (dpdk_device_t * xd, vnet_flow_t * f, dpdk_flow_entry_t * fe)
   struct rte_flow_action_mark mark = { 0 };
   struct rte_flow_action_queue queue = { 0 };
   struct rte_flow_action_rss rss = { 0 };
+  struct rte_flow_action_ethdev represented_port = { 0 };
   struct rte_flow_item *item, *items = 0;
   struct rte_flow_action *action, *actions = 0;
   bool fate = false;
@@ -632,6 +633,36 @@ pattern_end:
     {
       vec_add2 (actions, action, 1);
       action->type = RTE_FLOW_ACTION_TYPE_DROP;
+      if (fate == true)
+	{
+	  rv = VNET_FLOW_ERROR_INTERNAL;
+	  goto done;
+	}
+      else
+	fate = true;
+    }
+
+  if (f->actions & VNET_FLOW_ACTION_REDIRECT_TO_REPRESENTED_PORT)
+    {
+      vec_add2 (actions, action, 1);
+      represented_port.port_id = f->redirect_port_id;
+      action->type = RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT;
+      action->conf = &represented_port;
+      if (fate == true)
+	{
+	  rv = VNET_FLOW_ERROR_INTERNAL;
+	  goto done;
+	}
+      else
+	fate = true;
+    }
+
+  if (f->actions & VNET_FLOW_ACTION_REDIRECT_TO_PORT_REPRESENTOR)
+    {
+      vec_add2 (actions, action, 1);
+      represented_port.port_id = f->redirect_port_id;
+      action->type = RTE_FLOW_ACTION_TYPE_PORT_REPRESENTOR;
+      action->conf = &represented_port;
       if (fate == true)
 	{
 	  rv = VNET_FLOW_ERROR_INTERNAL;
