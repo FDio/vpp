@@ -31,6 +31,10 @@ typedef struct
   iavf_adminq_dma_mem_t *aq_mem;
   u16 atq_next_slot;
   u16 arq_next_slot;
+  u64 atq_dma;
+  u64 arq_dma;
+  u64 atq_bufs_dma[4];
+  u64 arq_bufs_dma[16];
   virtchnl_pf_event_t *events;
 } iavf_device_t;
 

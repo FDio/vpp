@@ -52,8 +52,7 @@ static const virtchnl_version_info_t driver_virtchnl_version = {
   .minor = VIRTCHNL_VERSION_MINOR,
 };
 
-#define _(f, n, s, d)                                                         \
-  { .name = #n, .desc = d, .severity = VL_COUNTER_SEVERITY_##s },
+#define _(f, n, s, d) { .name = #n, .desc = d, .severity = VL_COUNTER_SEVERITY_##s },
 
 vlib_error_desc_t iavf_rx_node_counters[] = { foreach_iavf_rx_node_counter };
 vlib_error_desc_t iavf_tx_node_counters[] = { foreach_iavf_tx_node_counter };
@@ -133,6 +132,10 @@ iavf_init (vlib_main_t *vm, vnet_dev_t *dev)
   virtchnl_version_info_t ver;
   virtchnl_vf_resource_t res;
   u32 n_threads = vlib_get_n_threads ();
+  /* With workers, exclude the main thread (index 0) from the RX vector
+   * count — workers occupy indices 1..n and are mapped to slots 0..n-1.
+   * With no workers the main thread handles RX and counts as one thread. */
+  u32 n_rx_threads = n_threads > 1 ? n_threads - 1 : n_threads;
   u16 max_frame_sz;
   vnet_dev_rv_t rv;
 
@@ -247,8 +250,7 @@ iavf_init (vlib_main_t *vm, vnet_dev_t *dev)
     }
   else
     /* reverse of PF driver MTU calculation */
-    max_frame_sz = res.max_mtu + 14 /* ethernet header */ + 4 /* FCS */ +
-		   2 * 4 /* two VLAN tags */;
+    max_frame_sz = res.max_mtu + 14 /* ethernet header */ + 4 /* FCS */ + 2 * 4 /* two VLAN tags */;
 
   iavf_port_t iavf_port = {
     .vf_cap_flags = res.vf_cap_flags,
@@ -323,24 +325,22 @@ iavf_init (vlib_main_t *vm, vnet_dev_t *dev)
     },
   };
 
-  vnet_dev_set_hw_addr_eth_mac (&port_add_args.port.attr.hw_addr,
-				res.vsi_res[0].default_mac_addr);
+  vnet_dev_set_hw_addr_eth_mac (&port_add_args.port.attr.hw_addr, res.vsi_res[0].default_mac_addr);
 
-  log_info (dev, "MAC address is %U", format_ethernet_address,
-	    res.vsi_res[0].default_mac_addr);
+  log_info (dev, "MAC address is %U", format_ethernet_address, res.vsi_res[0].default_mac_addr);
 
-  if (n_threads <= vnet_dev_get_pci_n_msix_interrupts (dev) - 1)
+  if (n_rx_threads <= vnet_dev_get_pci_n_msix_interrupts (dev) - 1)
     {
       port_add_args.port.attr.caps.interrupt_mode = 1;
-      iavf_port.n_rx_vectors = n_threads;
+      iavf_port.n_rx_vectors = n_rx_threads;
     }
   else
     {
-      log_notice (
-	dev,
-	"number of threads (%u) bigger than number of interrupt lines "
-	"(%u), interrupt mode disabled",
-	vlib_get_n_threads (), res.max_vectors);
+      port_add_args.port.attr.caps.interrupt_mode = 0;
+      log_notice (dev,
+		  "number of rx threads (%u) bigger than number of rx interrupt lines "
+		  "(%u), interrupt mode disabled",
+		  n_rx_threads, vnet_dev_get_pci_n_msix_interrupts (dev) - 1);
       iavf_port.n_rx_vectors = 1;
     }
 
@@ -348,8 +348,7 @@ iavf_init (vlib_main_t *vm, vnet_dev_t *dev)
     {
       if (res.rss_key_size < IAVF_MAX_RSS_KEY_SIZE)
 	{
-	  log_notice (
-	    dev, "unsupported RSS config provided by device, RSS disabled");
+	  log_notice (dev, "unsupported RSS config provided by device, RSS disabled");
 	}
       else
 	{

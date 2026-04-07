@@ -79,17 +79,17 @@ format_iavf_aq_desc_flags (u8 *s, va_list *args)
   iavf_aq_desc_flags_t f = va_arg (*args, iavf_aq_desc_flags_t);
   int i = 0;
 
-#define _(n, v)                                                               \
-  if (f.v)                                                                    \
-    {                                                                         \
-      char str[] = #v, *sp = str;                                             \
-      if (i++)                                                                \
-	{                                                                     \
-	  vec_add1 (s, ',');                                                  \
-	  vec_add1 (s, ' ');                                                  \
-	}                                                                     \
-      while (sp[0])                                                           \
-	vec_add1 (s, (u8) toupper (sp++[0]));                                 \
+#define _(n, v)                                                                                    \
+  if (f.v)                                                                                         \
+    {                                                                                              \
+      char str[] = #v, *sp = str;                                                                  \
+      if (i++)                                                                                     \
+	{                                                                                          \
+	  vec_add1 (s, ',');                                                                       \
+	  vec_add1 (s, ' ');                                                                       \
+	}                                                                                          \
+      while (sp[0])                                                                                \
+	vec_add1 (s, (u8) toupper (sp++[0]));                                                      \
     }
   foreach_iavf_aq_desc_flag
 #undef _
@@ -119,25 +119,21 @@ format_iavf_aq_desc (u8 *s, va_list *args)
   iavf_aq_desc_t *d = va_arg (*args, iavf_aq_desc_t *);
   u32 indent = format_get_indent (s);
 
-  s = format (s, "opcode 0x%04x datalen %u retval %U (%u) flags %U", d->opcode,
-	      d->datalen, format_iavf_aq_desc_retval, d->retval, d->retval,
-	      format_iavf_aq_desc_flags, d->flags);
+  s =
+    format (s, "opcode 0x%04x datalen %u retval %U (%u) flags %U", d->opcode, d->datalen,
+	    format_iavf_aq_desc_retval, d->retval, d->retval, format_iavf_aq_desc_flags, d->flags);
 
-  if (d->opcode == IIAVF_AQ_DESC_OP_SEND_TO_PF ||
-      d->opcode == IIAVF_AQ_DESC_OP_MESSAGE_FROM_PF)
+  if (d->opcode == IIAVF_AQ_DESC_OP_SEND_TO_PF || d->opcode == IIAVF_AQ_DESC_OP_MESSAGE_FROM_PF)
     {
-      s =
-	format (s, "\n%Uv_opcode %U (%u) v_retval %U (%d) buf_dma_addr 0x%lx",
-		format_white_space, indent, format_virtchnl_op_name,
-		d->v_opcode, d->v_opcode, format_virtchnl_status, d->v_retval,
-		d->v_retval, (uword) d->param2 << 32 | d->param3);
+      s = format (s, "\n%Uv_opcode %U (%u) v_retval %U (%d) buf_dma_addr 0x%lx", format_white_space,
+		  indent, format_virtchnl_op_name, d->v_opcode, d->v_opcode, format_virtchnl_status,
+		  d->v_retval, d->v_retval, (uword) d->param2 << 32 | d->param3);
     }
   else
     {
-      s = format (
-	s, "\n%Ucookie_hi 0x%x cookie_lo 0x%x params %08x %08x %08x %08x",
-	format_white_space, indent, d->cookie_hi, d->cookie_lo, d->param0,
-	d->param1, d->param2, d->param3);
+      s = format (s, "\n%Ucookie_hi 0x%x cookie_lo 0x%x params %08x %08x %08x %08x",
+		  format_white_space, indent, d->cookie_hi, d->cookie_lo, d->param0, d->param1,
+		  d->param2, d->param3);
     }
   return s;
 }
@@ -146,8 +142,22 @@ vnet_dev_rv_t
 iavf_aq_alloc (vlib_main_t *vm, vnet_dev_t *dev)
 {
   iavf_device_t *ad = vnet_dev_get_data (dev);
-  return vnet_dev_dma_mem_alloc (vm, dev, sizeof (iavf_adminq_dma_mem_t), 0,
-				 (void **) &ad->aq_mem);
+  vnet_dev_rv_t rv;
+
+  rv = vnet_dev_dma_mem_alloc (vm, dev, sizeof (iavf_adminq_dma_mem_t), 0, (void **) &ad->aq_mem);
+  if (rv != VNET_DEV_OK)
+    return rv;
+
+  ad->atq_dma = vnet_dev_get_dma_addr (vm, dev, &ad->aq_mem->atq);
+  ad->arq_dma = vnet_dev_get_dma_addr (vm, dev, ad->aq_mem->arq);
+
+  for (u16 i = 0; i < 4; i++)
+    ad->atq_bufs_dma[i] = vnet_dev_get_dma_addr (vm, dev, ad->aq_mem->atq_bufs + i);
+
+  for (u16 i = 0; i < 16; i++)
+    ad->arq_bufs_dma[i] = vnet_dev_get_dma_addr (vm, dev, ad->aq_mem->arq_bufs + i);
+
+  return VNET_DEV_OK;
 }
 
 void
@@ -162,7 +172,7 @@ static void
 iavf_aq_arq_slot_init (vlib_main_t *vm, vnet_dev_t *dev, u16 slot)
 {
   iavf_device_t *ad = vnet_dev_get_data (dev);
-  u64 pa = vnet_dev_get_dma_addr (vm, dev, ad->aq_mem->arq_bufs + slot);
+  u64 pa = ad->arq_bufs_dma[slot];
   ad->aq_mem->arq[slot] = (iavf_aq_desc_t){
     .flags.buf = 1,
     .flags.lb = IIAVF_AQ_BUF_SIZE > IIAVF_AQ_LARGE_BUF,
@@ -182,11 +192,9 @@ iavf_aq_poll (vlib_main_t *vm, vnet_dev_t *dev)
   while (iavf_aq_arq_next_acq (vm, dev, &d, &b, 0))
     {
 
-      log_debug (dev, "poll[%u] flags %x %U op %u v_op %u", ad->arq_next_slot,
-		 d->flags.as_u16, format_iavf_aq_desc_flags, d->flags,
-		 d->opcode, d->v_opcode);
-      if ((d->datalen != sizeof (virtchnl_pf_event_t)) ||
-	  ((d->flags.buf) == 0))
+      log_debug (dev, "poll[%u] flags %x %U op %u v_op %u", ad->arq_next_slot, d->flags.as_u16,
+		 format_iavf_aq_desc_flags, d->flags, d->opcode, d->v_opcode);
+      if ((d->datalen != sizeof (virtchnl_pf_event_t)) || ((d->flags.buf) == 0))
 	{
 	  log_err (dev, "event message error");
 	}
@@ -206,8 +214,8 @@ iavf_aq_poll (vlib_main_t *vm, vnet_dev_t *dev)
 
       vec_foreach (e, ad->events)
 	{
-	  log_debug (dev, "event %s (%u) sev %d",
-		     virtchnl_event_names[e->event], e->event, e->severity);
+	  log_debug (dev, "event %s (%u) sev %d", virtchnl_event_names[e->event], e->event,
+		     e->severity);
 
 	  if (e->event == VIRTCHNL_EVENT_LINK_CHANGE)
 	    {
@@ -227,14 +235,14 @@ iavf_aq_poll (vlib_main_t *vm, vnet_dev_t *dev)
 		    }
 		  else
 		    {
-		      const u32 speed_table[8] = { 100,	  1000,	 10000, 40000,
-						   20000, 25000, 2500,	5000 };
+		      const u32 speed_table[8] = {
+			100, 1000, 10000, 40000, 20000, 25000, 2500, 5000
+		      };
 
 		      link_up = e->event_data.link_event.link_status;
 		      speed = e->event_data.link_event.link_speed;
 
-		      if (count_set_bits (speed) == 1 && speed &&
-			  pow2_mask (8))
+		      if (count_set_bits (speed) == 1 && speed && pow2_mask (8))
 			speed = speed_table[get_lowest_set_bit_index (speed)];
 		      else
 			{
@@ -247,15 +255,13 @@ iavf_aq_poll (vlib_main_t *vm, vnet_dev_t *dev)
 			}
 		    }
 
-		  log_debug (dev, "LINK_CHANGE speed %u state %u", speed,
-			     link_up);
+		  log_debug (dev, "LINK_CHANGE speed %u state %u", speed, link_up);
 
 		  if (port->link_up != link_up)
 		    {
 		      changes.change.link_state = 1;
 		      changes.link_state = link_up;
-		      log_debug (dev, "link state changed to %s",
-				 link_up ? "up" : "down");
+		      log_debug (dev, "link state changed to %s", link_up ? "up" : "down");
 		    }
 
 		  if (port->speed != speed * 1000)
@@ -293,7 +299,6 @@ void
 iavf_aq_init (vlib_main_t *vm, vnet_dev_t *dev)
 {
   iavf_device_t *ad = vnet_dev_get_data (dev);
-  uword pa;
   u32 len;
 
   /* disable both tx and rx adminq queue */
@@ -301,20 +306,18 @@ iavf_aq_init (vlib_main_t *vm, vnet_dev_t *dev)
   iavf_reg_write (ad, IAVF_ARQLEN, 0);
 
   len = IIAVF_AQ_ATQ_LEN;
-  pa = vnet_dev_get_dma_addr (vm, dev, &ad->aq_mem->atq);
-  iavf_reg_write (ad, IAVF_ATQT, 0);			/* Tail */
-  iavf_reg_write (ad, IAVF_ATQH, 0);			/* Head */
-  iavf_reg_write (ad, IAVF_ATQBAL, (u32) pa);		/* Base Address Low */
-  iavf_reg_write (ad, IAVF_ATQBAH, (u32) (pa >> 32));	/* Base Address High */
-  iavf_reg_write (ad, IAVF_ATQLEN, len | (1ULL << 31)); /* len & ena */
+  iavf_reg_write (ad, IAVF_ATQT, 0);			       /* Tail */
+  iavf_reg_write (ad, IAVF_ATQH, 0);			       /* Head */
+  iavf_reg_write (ad, IAVF_ATQBAL, (u32) ad->atq_dma);	       /* Base Address Low */
+  iavf_reg_write (ad, IAVF_ATQBAH, (u32) (ad->atq_dma >> 32)); /* Base Address High */
+  iavf_reg_write (ad, IAVF_ATQLEN, len | (1ULL << 31));	       /* len & ena */
 
   len = IIAVF_AQ_ARQ_LEN;
-  pa = vnet_dev_get_dma_addr (vm, dev, ad->aq_mem->arq);
-  iavf_reg_write (ad, IAVF_ARQT, 0);			/* Tail */
-  iavf_reg_write (ad, IAVF_ARQH, 0);			/* Head */
-  iavf_reg_write (ad, IAVF_ARQBAL, (u32) pa);		/* Base Address Low */
-  iavf_reg_write (ad, IAVF_ARQBAH, (u32) (pa >> 32));	/* Base Address High */
-  iavf_reg_write (ad, IAVF_ARQLEN, len | (1ULL << 31)); /* len & ena */
+  iavf_reg_write (ad, IAVF_ARQT, 0);			       /* Tail */
+  iavf_reg_write (ad, IAVF_ARQH, 0);			       /* Head */
+  iavf_reg_write (ad, IAVF_ARQBAL, (u32) ad->arq_dma);	       /* Base Address Low */
+  iavf_reg_write (ad, IAVF_ARQBAH, (u32) (ad->arq_dma >> 32)); /* Base Address High */
+  iavf_reg_write (ad, IAVF_ARQLEN, len | (1ULL << 31));	       /* len & ena */
 
   for (int i = 0; i < len; i++)
     iavf_aq_arq_slot_init (vm, dev, i);
@@ -362,12 +365,13 @@ iavf_aq_poll_off (vlib_main_t *vm, vnet_dev_t *dev)
 }
 
 vnet_dev_rv_t
-iavf_aq_atq_enq (vlib_main_t *vm, vnet_dev_t *dev, iavf_aq_desc_t *desc,
-		 const u8 *data, u16 len, f64 timeout)
+iavf_aq_atq_enq (vlib_main_t *vm, vnet_dev_t *dev, iavf_aq_desc_t *desc, const u8 *data, u16 len,
+		 f64 timeout)
 {
   iavf_device_t *ad = vnet_dev_get_data (dev);
   iavf_aq_desc_t *d = ad->aq_mem->atq + ad->atq_next_slot;
   u8 *buf = ad->aq_mem->atq_bufs[ad->atq_next_slot].data;
+  u64 pa;
 
   ASSERT (len <= IIAVF_AQ_BUF_SIZE);
 
@@ -375,7 +379,7 @@ iavf_aq_atq_enq (vlib_main_t *vm, vnet_dev_t *dev, iavf_aq_desc_t *desc,
 
   if (len)
     {
-      u64 pa = vnet_dev_get_dma_addr (vm, dev, buf);
+      pa = ad->atq_bufs_dma[ad->atq_next_slot];
       d->datalen = len;
       d->addr_hi = (u32) (pa >> 32);
       d->addr_lo = (u32) pa;
@@ -403,8 +407,7 @@ iavf_aq_atq_enq (vlib_main_t *vm, vnet_dev_t *dev, iavf_aq_desc_t *desc,
 
 	  if (flags.err)
 	    {
-	      log_err (dev, "adminq enqueue error [opcode 0x%x, retval %d]",
-		       d->opcode, d->retval);
+	      log_err (dev, "adminq enqueue error [opcode 0x%x, retval %d]", d->opcode, d->retval);
 	      return VNET_DEV_ERR_BUG;
 	    }
 
@@ -443,8 +446,7 @@ iavf_aq_deinit (vlib_main_t *vm, vnet_dev_t *dev)
 }
 
 int
-iavf_aq_arq_next_acq (vlib_main_t *vm, vnet_dev_t *dev, iavf_aq_desc_t **dp,
-		      u8 **bp, f64 timeout)
+iavf_aq_arq_next_acq (vlib_main_t *vm, vnet_dev_t *dev, iavf_aq_desc_t **dp, u8 **bp, f64 timeout)
 {
   iavf_device_t *ad = vnet_dev_get_data (dev);
   iavf_aq_desc_t *d = ad->aq_mem->arq + ad->arq_next_slot;
@@ -467,8 +469,7 @@ iavf_aq_arq_next_acq (vlib_main_t *vm, vnet_dev_t *dev, iavf_aq_desc_t **dp,
   else if (!iavf_aq_desc_is_done (d))
     return 0;
 
-  log_debug (dev, "arq desc acquired in slot %u\n  %U", ad->arq_next_slot,
-	     format_iavf_aq_desc, d);
+  log_debug (dev, "arq desc acquired in slot %u\n  %U", ad->arq_next_slot, format_iavf_aq_desc, d);
   *dp = d;
   *bp = ad->aq_mem->arq_bufs[ad->arq_next_slot].data;
   return 1;
