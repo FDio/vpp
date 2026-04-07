@@ -767,10 +767,49 @@ openssl_set_ckpair (SSL *ssl, u32 ckpair_index,
   return 0;
 }
 
+static app_crypto_ca_trust_int_ctx_t *
+openssl_init_int_ca_trust_ctx (app_crypto_ca_trust_t *ca_trust, clib_thread_index_t thread_index);
+
 static void
-openssl_cleanup_ca_trust_int_ctx (app_crypto_ca_trust_int_ctx_t *cki)
+openssl_ca_trust_int_ctx_update (app_crypto_ca_trust_int_ctx_t *cti, app_crypto_ca_trust_t *ct,
+				 app_crypto_ca_trust_update_type_t type)
 {
-  X509_STORE_free (cki->ca_store);
+  openssl_main_t *om = &openssl_main;
+  openssl_listen_ctx_t *olc;
+
+  /* Always free the existing store */
+  X509_STORE_free (cti->ca_store);
+  cti->ca_store = 0;
+
+  if (type == APP_CA_TRUST_UPDATE_TYPE_DEL)
+    {
+      /* Fall back all matching listeners to the global default cert store */
+      pool_foreach (olc, om->lctx_pool)
+	{
+	  if (olc->app_index == ct->app_index && olc->ca_trust_index == ct->ca_trust_index)
+	    SSL_CTX_set1_cert_store (olc->ssl_ctx, om->cert_store);
+	}
+      return;
+    }
+
+  /* Only rebuild and push to listeners on the current thread; other threads
+   * will rebuild lazily on next use */
+  if (cti->thread_index != vlib_get_thread_index ())
+    return;
+
+  /* Rebuild the per-thread store with the new CRL */
+  if (!openssl_init_int_ca_trust_ctx (ct, cti->thread_index))
+    {
+      clib_warning ("failed to rebuild ca trust ctx after CRL update");
+      return;
+    }
+
+  /* Push the new store to all listeners that rely on this ca trust */
+  pool_foreach (olc, om->lctx_pool)
+    {
+      if (olc->app_index == ct->app_index && olc->ca_trust_index == ct->ca_trust_index)
+	SSL_CTX_set1_verify_cert_store (olc->ssl_ctx, cti->ca_store);
+    }
 }
 
 static app_crypto_ca_trust_int_ctx_t *
@@ -843,7 +882,7 @@ openssl_init_int_ca_trust_ctx (app_crypto_ca_trust_t *ca_trust,
     }
 
   cti->ca_store = store;
-  cti->cleanup_cb = openssl_cleanup_ca_trust_int_ctx;
+  cti->update_cb = openssl_ca_trust_int_ctx_update;
 
   return cti;
 }
@@ -1413,6 +1452,8 @@ openssl_start_listen (tls_ctx_t * lctx)
   olc_index = openssl_listen_ctx_alloc ();
   olc = openssl_lctx_get (olc_index);
   olc->ssl_ctx = ssl_ctx;
+  olc->app_index = app_worker_get (app_wrk_index)->app_index;
+  olc->ca_trust_index = lctx->ca_trust_index;
 
   /* store SSL_CTX into TLS level structure */
   lctx->tls_ssl_ctx = olc_index;
