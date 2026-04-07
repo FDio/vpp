@@ -139,10 +139,8 @@ iavf_port_init_vsi_queues (vlib_main_t *vm, vnet_dev_port_t *port)
   u16 vsi_id = ap->vsi_id;
   u16 data_size = vlib_buffer_get_default_data_size (vm);
   u16 max_frame_size = port->max_rx_frame_size;
-  u8 buffer[VIRTCHNL_MSG_SZ (virtchnl_vsi_queue_config_info_t, qpair,
-			     ap->num_qp)];
-  virtchnl_vsi_queue_config_info_t *ci =
-    (virtchnl_vsi_queue_config_info_t *) buffer;
+  u8 buffer[VIRTCHNL_MSG_SZ (virtchnl_vsi_queue_config_info_t, qpair, ap->num_qp)];
+  virtchnl_vsi_queue_config_info_t *ci = (virtchnl_vsi_queue_config_info_t *) buffer;
 
   *ci = (virtchnl_vsi_queue_config_info_t){
     .num_queue_pairs = ap->num_qp,
@@ -151,9 +149,7 @@ iavf_port_init_vsi_queues (vlib_main_t *vm, vnet_dev_port_t *port)
 
   for (u16 i = 0; i < ap->num_qp; i++)
     ci->qpair[i] = (virtchnl_queue_pair_info_t){
-      .rxq = { .vsi_id = vsi_id,
-	       .queue_id = i,
-	       .max_pkt_size = ETHERNET_MIN_PACKET_BYTES },
+      .rxq = { .vsi_id = vsi_id, .queue_id = i, .max_pkt_size = ETHERNET_MIN_PACKET_BYTES },
       .txq = { .vsi_id = vsi_id, .queue_id = i },
     };
 
@@ -191,8 +187,7 @@ iavf_port_rx_irq_config (vlib_main_t *vm, vnet_dev_port_t *port, int enable)
   virtchnl_irq_map_info_t *im = (virtchnl_irq_map_info_t *) buffer;
   vnet_dev_rv_t rv;
 
-  log_debug (dev, "intr mode per queue bitmap 0x%x",
-	     ap->intr_mode_per_rxq_bitmap);
+  log_debug (dev, "intr mode per queue bitmap 0x%x", ap->intr_mode_per_rxq_bitmap);
 
   for (u32 i = 0; i < n_rx_vectors; i++)
     n_intr_mode_queues_per_vector[i] = n_queues_per_vector[i] = 0;
@@ -212,7 +207,11 @@ iavf_port_rx_irq_config (vlib_main_t *vm, vnet_dev_port_t *port, int enable)
 	foreach_vnet_dev_port_rx_queue (rxq, port)
 	  if (rxq->enabled)
 	    {
-	      u32 i = rxq->rx_thread_index;
+	      /* rx_thread_index is a global VPP thread index (workers start at 1),
+	 while virtchnl vector maps are indexed from 0..n_rx_vectors-1. */
+	      u32 i = rxq->rx_thread_index - 1;
+	      ASSERT (rxq->rx_thread_index > 0);
+	      ASSERT (i < im->num_vectors);
 	      im->vecmap[i].rxq_map |= 1 << rxq->queue_id;
 	      n_queues_per_vector[i]++;
 	      n_intr_mode_queues_per_vector[i] +=
@@ -291,8 +290,7 @@ iavf_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
   if ((rv = iavf_port_init_rss (vm, port)))
     return rv;
 
-  vnet_dev_pci_msix_add_handler (vm, dev, &avf_msix_n_handler, 1,
-				 ap->n_rx_vectors);
+  vnet_dev_pci_msix_add_handler (vm, dev, &avf_msix_n_handler, 1, ap->n_rx_vectors);
   vnet_dev_pci_msix_enable (vm, dev, 1, ap->n_rx_vectors);
   for (u32 i = 1; i < ap->n_rx_vectors; i++)
     vnet_dev_pci_msix_set_polling_thread (vm, dev, i + 1, i);
@@ -321,7 +319,7 @@ iavf_enable_disable_queues (vlib_main_t *vm, vnet_dev_port_t *port, int enable)
       qs.tx_queues |= 1ULL << q->queue_id;
 
   return enable ? iavf_vc_op_enable_queues (vm, port->dev, &qs) :
-			iavf_vc_op_disable_queues (vm, port->dev, &qs);
+		  iavf_vc_op_disable_queues (vm, port->dev, &qs);
 }
 
 vnet_dev_rv_t
@@ -420,9 +418,8 @@ iavf_port_cfg_change_validate (vlib_main_t *vm, vnet_dev_port_t *port,
 }
 
 static vnet_dev_rv_t
-iavf_port_add_del_eth_addr (vlib_main_t *vm, vnet_dev_port_t *port,
-			    vnet_dev_hw_addr_t *addr, int is_add,
-			    int is_primary)
+iavf_port_add_del_eth_addr (vlib_main_t *vm, vnet_dev_port_t *port, vnet_dev_hw_addr_t *addr,
+			    int is_add, int is_primary)
 {
   iavf_port_t *ap = vnet_dev_get_port_data (port);
   u8 buffer[VIRTCHNL_MSG_SZ (virtchnl_ether_addr_list_t, list, 1)];
@@ -442,8 +439,8 @@ iavf_port_add_del_eth_addr (vlib_main_t *vm, vnet_dev_port_t *port,
 }
 
 static vnet_dev_rv_t
-iavf_port_cfg_rxq_int_mode_change (vlib_main_t *vm, vnet_dev_port_t *port,
-				   u16 qid, u8 state, u8 all)
+iavf_port_cfg_rxq_int_mode_change (vlib_main_t *vm, vnet_dev_port_t *port, u16 qid, u8 state,
+				   u8 all)
 {
   vnet_dev_rv_t rv = VNET_DEV_OK;
   iavf_port_t *ap = vnet_dev_get_port_data (port);
@@ -487,14 +484,12 @@ iavf_port_cfg_rxq_int_mode_change (vlib_main_t *vm, vnet_dev_port_t *port,
 	}
     }
 
-  log_debug (dev, "interrupt mode %sbled on %s, new bitmap is 0x%x", ed, qstr,
-	     new);
+  log_debug (dev, "interrupt mode %sbled on %s, new bitmap is 0x%x", ed, qstr, new);
   return rv;
 }
 
 vnet_dev_rv_t
-iavf_port_cfg_change (vlib_main_t *vm, vnet_dev_port_t *port,
-		      vnet_dev_port_cfg_change_req_t *req)
+iavf_port_cfg_change (vlib_main_t *vm, vnet_dev_port_t *port, vnet_dev_port_cfg_change_req_t *req)
 {
   vnet_dev_t *dev = port->dev;
   iavf_port_t *ap = vnet_dev_get_port_data (port);
@@ -540,13 +535,11 @@ iavf_port_cfg_change (vlib_main_t *vm, vnet_dev_port_t *port,
       break;
 
     case VNET_DEV_PORT_CFG_RXQ_INTR_MODE_ENABLE:
-      rv = iavf_port_cfg_rxq_int_mode_change (vm, port, req->queue_id, 1,
-					      req->all_queues);
+      rv = iavf_port_cfg_rxq_int_mode_change (vm, port, req->queue_id, 1, req->all_queues);
       break;
 
     case VNET_DEV_PORT_CFG_RXQ_INTR_MODE_DISABLE:
-      rv = iavf_port_cfg_rxq_int_mode_change (vm, port, req->queue_id, 0,
-					      req->all_queues);
+      rv = iavf_port_cfg_rxq_int_mode_change (vm, port, req->queue_id, 0, req->all_queues);
       break;
 
     default:
