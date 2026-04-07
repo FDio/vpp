@@ -299,10 +299,22 @@ quic_quicly_verify_cert_cb (ptls_verify_certificate_t *_self, ptls_t *tls, const
   return ret;
 }
 
+static app_crypto_ca_trust_int_ctx_t *
+quic_quicly_init_int_ca_trust_ctx (app_crypto_ca_trust_t *ca_trust,
+				   clib_thread_index_t thread_index);
+
 static void
-quic_quicly_cleanup_ca_trust_int_ctx (app_crypto_ca_trust_int_ctx_t *cti)
+quic_quicly_ca_trust_int_ctx_update (app_crypto_ca_trust_int_ctx_t *cti, app_crypto_ca_trust_t *ct,
+				     app_crypto_ca_trust_update_type_t type)
 {
   X509_STORE_free (cti->ca_store);
+  cti->ca_store = 0;
+
+  if (type == APP_CA_TRUST_UPDATE_TYPE_DEL)
+    return;
+
+  if (!quic_quicly_init_int_ca_trust_ctx (ct, cti->thread_index))
+    clib_warning ("failed to rebuild ca trust ctx after CRL update");
 }
 
 static app_crypto_ca_trust_int_ctx_t *
@@ -366,7 +378,7 @@ quic_quicly_init_int_ca_trust_ctx (app_crypto_ca_trust_t *ca_trust,
     }
 
   cti->ca_store = store;
-  cti->cleanup_cb = quic_quicly_cleanup_ca_trust_int_ctx;
+  cti->update_cb = quic_quicly_ca_trust_int_ctx_update;
   return cti;
 }
 

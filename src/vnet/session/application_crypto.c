@@ -77,6 +77,7 @@ app_crypto_add_ca_trust (u32 app_index, app_ca_trust_add_args_t *args)
   ca_trust = app_crypto_alloc_ca_trust (app);
   ca_trust->ca_chain = args->ca_chain;
   ca_trust->crl = args->crl;
+  ca_trust->app_index = app_index;
   args->index = ca_trust->ca_trust_index;
 
   return 0;
@@ -98,7 +99,10 @@ app_crypto_ca_trust_int_ctx_t *
 app_crypto_alloc_int_ca_trust (app_crypto_ca_trust_t *ct,
 			       clib_thread_index_t thread_index)
 {
-  return vec_elt_at_index (ct->cti, thread_index);
+  app_crypto_ca_trust_int_ctx_t *cti;
+  cti = vec_elt_at_index (ct->cti, thread_index);
+  cti->thread_index = thread_index;
+  return cti;
 }
 
 app_crypto_ca_trust_int_ctx_t *
@@ -108,6 +112,35 @@ app_crypto_get_int_ca_trust (app_crypto_ca_trust_t *ct,
   if (vec_len (ct->cti) <= thread_index)
     return 0;
   return vec_elt_at_index (ct->cti, thread_index);
+}
+
+int
+app_crypto_update_ca_trust_crl (u32 app_index, app_ca_trust_update_crl_args_t *args)
+{
+  app_crypto_ca_trust_int_ctx_t *cti;
+  app_crypto_ca_trust_t *ct;
+  application_t *app;
+
+  app = application_get_if_valid (app_index);
+  if (!app)
+    return SESSION_E_INVALID;
+
+  ct = app_get_crypto_ca_trust (app, args->ca_trust_index);
+  if (!ct)
+    return SESSION_E_INVALID;
+
+  vec_free (ct->crl);
+  ct->crl = args->crl;
+
+  /* Invalidate all per-thread internal contexts so they are rebuilt
+   * with the updated CRL on next use */
+  vec_foreach (cti, ct->cti)
+    {
+      if (cti->update_cb)
+	(cti->update_cb) (cti, ct, APP_CA_TRUST_UPDATE_TYPE_CRL);
+    }
+
+  return 0;
 }
 
 int
@@ -245,8 +278,8 @@ app_crypto_ca_stores_cleanup (app_crypto_ca_trust_t *ca_stores)
     {
       vec_foreach (cti, ct->cti)
 	{
-	  if (cti->cleanup_cb)
-	    (cti->cleanup_cb) (cti);
+	  if (cti->update_cb)
+	    (cti->update_cb) (cti, ct, APP_CA_TRUST_UPDATE_TYPE_DEL);
 	  cti->ca_store = 0;
 	}
       vec_free (ct->cti);

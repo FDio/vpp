@@ -31,14 +31,23 @@ typedef struct certificate_
 } app_cert_key_pair_t;
 
 struct app_crypto_ca_trust_int_ctx_;
+struct app_crypto_ca_trust_;
 
-typedef void (*app_crypto_ca_cleanup_it_ctx_fn) (
-  struct app_crypto_ca_trust_int_ctx_ *cti);
+typedef enum app_crypto_ca_trust_update_type_
+{
+  APP_CA_TRUST_UPDATE_TYPE_DEL, /**< context is being destroyed */
+  APP_CA_TRUST_UPDATE_TYPE_CRL, /**< CRL was updated */
+} app_crypto_ca_trust_update_type_t;
+
+typedef void (*app_crypto_ca_update_it_ctx_fn) (struct app_crypto_ca_trust_int_ctx_ *cti,
+						struct app_crypto_ca_trust_ *ct,
+						app_crypto_ca_trust_update_type_t type);
 
 typedef struct app_crypto_ca_trust_int_ctx_
 {
   void *ca_store; /**< trusted ca, possible format X509_STORE */
-  app_crypto_ca_cleanup_it_ctx_fn cleanup_cb; /**< cleanup callback */
+  app_crypto_ca_update_it_ctx_fn update_cb; /**< update/delete callback */
+  clib_thread_index_t thread_index;	    /**< owning thread */
 } app_crypto_ca_trust_int_ctx_t;
 
 typedef struct app_crypto_ca_trust_
@@ -46,6 +55,7 @@ typedef struct app_crypto_ca_trust_
   u8 *ca_chain;			      /**< PEM encoded CA chain */
   u8 *crl;			      /**< PEM encoded CRL */
   u32 ca_trust_index;		      /**< index in the CA trust pool */
+  u32 app_index;		      /**< owning application index */
   app_crypto_ca_trust_int_ctx_t *cti; /**< per-thread internal ca trust */
 } app_crypto_ca_trust_t;
 
@@ -103,6 +113,12 @@ typedef struct app_ca_trust_add_args_
   u8 *crl;
   u32 index;
 } app_ca_trust_add_args_t;
+
+typedef struct app_ca_trust_update_crl_args_
+{
+  u32 ca_trust_index; /**< index of the CA trust store to update */
+  u8 *crl;	      /**< new PEM encoded CRL (ownership transferred) */
+} app_ca_trust_update_crl_args_t;
 
 typedef union
 {
@@ -202,6 +218,7 @@ app_cert_key_pair_t *app_cert_key_pair_get_if_valid (u32 index);
 app_cert_key_pair_t *app_cert_key_pair_get_default ();
 
 int app_crypto_add_ca_trust (u32 app_index, app_ca_trust_add_args_t *args);
+int app_crypto_update_ca_trust_crl (u32 app_index, app_ca_trust_update_crl_args_t *args);
 app_crypto_ca_trust_t *app_crypto_get_wrk_ca_trust (u32 app_wrk_index,
 						    u32 ca_trust_index);
 app_crypto_ca_trust_int_ctx_t *
