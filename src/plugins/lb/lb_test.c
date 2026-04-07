@@ -105,6 +105,33 @@ static int api_lb_conf (vat_main_t * vam)
   return ret;
 }
 
+static void
+vl_api_lb_conf_get_reply_t_handler (vl_api_lb_conf_get_reply_t *mp)
+{
+  vat_main_t *vam = &vat_main;
+  i32 retval = ntohl (mp->retval);
+
+  if (retval == 0)
+  print (vam->ofp, "ip4-src-address %U ip6-src-address %U buckets %u timeout %u",
+	 format_ip4_address, mp->ip4_src_address, format_ip6_address, mp->ip6_src_address,
+	 ntohl (mp->sticky_buckets_per_core), ntohl (mp->flow_timeout));
+
+  vam->retval = retval;
+  vam->result_ready = 1;
+}
+
+static int
+api_lb_conf_get (vat_main_t *vam)
+{
+  vl_api_lb_conf_get_t *mp;
+  int ret;
+
+  M (LB_CONF_GET, mp);
+  S (mp);
+  W (ret);
+  return ret;
+}
+
 static int api_lb_add_del_vip (vat_main_t * vam)
 {
   unformat_input_t *line_input = vam->input;

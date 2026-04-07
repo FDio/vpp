@@ -226,6 +226,83 @@ class TestLB(VppTestCase):
                 )
                 raise Exception("Load Balancer algorithm is biased")
 
+    def test_lb_conf_get(self):
+        """Load Balancer conf get returns values set in setUpClass"""
+        reply = self.vapi.lb_conf_get()
+        self.assertEqual(str(reply.ip4_src_address), "39.40.41.42")
+        self.assertEqual(str(reply.ip6_src_address), "2004::1")
+        self.assertEqual(
+            reply.sticky_buckets_per_core, 1024
+        )  # LB_DEFAULT_PER_CPU_STICKY_BUCKETS
+        self.assertEqual(reply.flow_timeout, 40)  # LB_DEFAULT_FLOW_TIMEOUT
+
+    def test_lb_ip4_gre4_vip_api(self):
+        """Load Balancer IP4 GRE4: add/del VIP via lb_add_del_vip binary API"""
+        try:
+            self.vapi.lb_add_del_vip(pfx="90.0.0.0/8", encap=0)  # GRE4
+
+            vips = self.vapi.lb_vip_dump()
+            self.assertEqual(len(vips), 1)
+            self.assertEqual(str(vips[0].vip.pfx), "90.0.0.0/8")
+            self.assertEqual(vips[0].encap, 0)  # LB_API_ENCAP_TYPE_GRE4
+
+        finally:
+            self.vapi.lb_add_del_vip(pfx="90.0.0.0/8", encap=0, is_del=True)
+
+    def test_lb_ip4_gre4_as_api(self):
+        """Load Balancer IP4 GRE4: AS via lb_add_del_as binary API"""
+        try:
+            self.vapi.cli("lb vip 90.0.0.0/8 encap gre4")
+            for i in range(1, 4):
+                self.vapi.lb_add_del_as(pfx="90.0.0.0/8", as_address="10.0.0.%u" % i)
+
+            # Delete+flush AS 10.0.0.1 via binary API
+            self.vapi.lb_add_del_as(
+                pfx="90.0.0.0/8",
+                as_address="10.0.0.1",
+                is_del=True,
+                is_flush=True,
+            )
+
+            # Dump all ASs and verify exactly 2 remain active
+            details = self.vapi.lb_as_dump()
+            active = [d for d in details if d.flags & 1]
+            self.assertEqual(len(active), 2)
+
+        finally:
+            # 10.0.0.1 already deleted; clean up the remaining two
+            for i in range(2, 4):
+                self.vapi.cli("lb as 90.0.0.0/8 10.0.0.%u del" % i)
+            self.vapi.cli("lb vip 90.0.0.0/8 encap gre4 del")
+            self.vapi.cli("test lb flowtable flush")
+
+    def test_lb_ip6_gre4_as_api(self):
+        """Load Balancer IP6 GRE4: AS via lb_add_del_as binary API"""
+        try:
+            self.vapi.cli("lb vip 2001::/16 encap gre4")
+            for i in range(1, 4):
+                self.vapi.lb_add_del_as(pfx="2001::/16", as_address="10.0.0.%u" % i)
+
+            # Delete+flush AS 10.0.0.1 via binary API
+            self.vapi.lb_add_del_as(
+                pfx="2001::/16",
+                as_address="10.0.0.1",
+                is_del=True,
+                is_flush=True,
+            )
+
+            # Dump all ASs and verify exactly 2 remain active
+            details = self.vapi.lb_as_dump()
+            active = [d for d in details if d.flags & 1]
+            self.assertEqual(len(active), 2)
+
+        finally:
+            # 10.0.0.1 already deleted; clean up the remaining two
+            for i in range(2, 4):
+                self.vapi.cli("lb as 2001::/16 10.0.0.%u del" % i)
+            self.vapi.cli("lb vip 2001::/16 encap gre4 del")
+            self.vapi.cli("test lb flowtable flush")
+
     def test_lb_ip4_gre4(self):
         """Load Balancer IP4 GRE4 on vip case"""
         try:

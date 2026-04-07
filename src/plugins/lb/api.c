@@ -30,6 +30,28 @@
   vec_free (s);                                                               \
   return handle;
 
+static vl_api_lb_encap_type_t
+lb_vip_type_to_api_encap (lb_vip_type_t type)
+{
+  switch (type)
+    {
+    case LB_VIP_TYPE_IP4_GRE4:
+    case LB_VIP_TYPE_IP6_GRE4:
+      return LB_API_ENCAP_TYPE_GRE4;
+    case LB_VIP_TYPE_IP4_GRE6:
+    case LB_VIP_TYPE_IP6_GRE6:
+      return LB_API_ENCAP_TYPE_GRE6;
+    case LB_VIP_TYPE_IP4_L3DSR:
+      return LB_API_ENCAP_TYPE_L3DSR;
+    case LB_VIP_TYPE_IP4_NAT4:
+      return LB_API_ENCAP_TYPE_NAT4;
+    case LB_VIP_TYPE_IP6_NAT6:
+      return LB_API_ENCAP_TYPE_NAT6;
+    default:
+      return LB_API_ENCAP_TYPE_GRE4;
+    }
+}
+
 static void
 vl_api_lb_conf_t_handler
 (vl_api_lb_conf_t * mp)
@@ -54,6 +76,22 @@ vl_api_lb_conf_t_handler
 }
 
 static void
+vl_api_lb_conf_get_t_handler (vl_api_lb_conf_get_t *mp)
+{
+ lb_main_t *lbm = &lb_main;
+ vl_api_lb_conf_get_reply_t *rmp;
+ int rv = 0;
+
+ REPLY_MACRO2 (
+   VL_API_LB_CONF_GET_REPLY, ({
+     clib_memcpy (rmp->ip4_src_address, &lbm->ip4_src_address, sizeof (rmp->ip4_src_address));
+     clib_memcpy (rmp->ip6_src_address, &lbm->ip6_src_address, sizeof (rmp->ip6_src_address));
+     rmp->sticky_buckets_per_core = htonl (lbm->per_cpu_sticky_buckets);
+     rmp->flow_timeout = htonl (lbm->flow_timeout);
+   }));
+}
+
+static void
 vl_api_lb_add_del_vip_t_handler
 (vl_api_lb_add_del_vip_t * mp)
 {
@@ -69,18 +107,20 @@ vl_api_lb_add_del_vip_t_handler
     }
 
   ip_address_decode (&mp->pfx.address, &(args.prefix));
+  u8 plen = mp->pfx.len + (mp->pfx.address.af == ADDRESS_IP4 ? 96 : 0);
 
   if (mp->is_del) {
     u32 vip_index;
-    if (!(rv = lb_vip_find_index(&(args.prefix), mp->pfx.len,
-                                 mp->protocol, ntohs(mp->port), &vip_index)))
+    if (!(rv =
+	    lb_vip_find_index (&(args.prefix), plen, mp->protocol, ntohs (mp->port), &vip_index)))
       rv = lb_vip_del(vip_index);
   } else {
     u32 vip_index;
     lb_vip_type_t type = 0;
 
-    if (ip46_prefix_is_ip4(&(args.prefix), mp->pfx.len)) {
-        if (mp->encap == LB_API_ENCAP_TYPE_GRE4)
+    if (ip46_prefix_is_ip4 (&(args.prefix), plen))
+      {
+	if (mp->encap == LB_API_ENCAP_TYPE_GRE4)
             type = LB_VIP_TYPE_IP4_GRE4;
         else if (mp->encap == LB_API_ENCAP_TYPE_GRE6)
             type = LB_VIP_TYPE_IP4_GRE6;
@@ -88,16 +128,18 @@ vl_api_lb_add_del_vip_t_handler
             type = LB_VIP_TYPE_IP4_L3DSR;
         else if (mp->encap == LB_API_ENCAP_TYPE_NAT4)
             type = LB_VIP_TYPE_IP4_NAT4;
-    } else {
-        if (mp->encap == LB_API_ENCAP_TYPE_GRE4)
+      }
+    else
+      {
+	if (mp->encap == LB_API_ENCAP_TYPE_GRE4)
             type = LB_VIP_TYPE_IP6_GRE4;
         else if (mp->encap == LB_API_ENCAP_TYPE_GRE6)
             type = LB_VIP_TYPE_IP6_GRE6;
         else if (mp->encap == LB_API_ENCAP_TYPE_NAT6)
             type = LB_VIP_TYPE_IP6_NAT6;
-    }
+      }
 
-    args.plen = mp->pfx.len;
+    args.plen = plen;
     args.protocol = mp->protocol;
     args.port = ntohs(mp->port);
     args.type = type;
@@ -132,22 +174,23 @@ vl_api_lb_add_del_vip_v2_t_handler (vl_api_lb_add_del_vip_v2_t *mp)
     }
 
   ip_address_decode (&mp->pfx.address, &(args.prefix));
+  u8 plen = mp->pfx.len + (mp->pfx.address.af == ADDRESS_IP4 ? 96 : 0);
 
   if (mp->is_del)
     {
       u32 vip_index;
-      if (!(rv = lb_vip_find_index (&(args.prefix), mp->pfx.len, mp->protocol,
-				    ntohs (mp->port), &vip_index)))
-	rv = lb_vip_del (vip_index);
+      if (!(rv =
+	      lb_vip_find_index (&(args.prefix), plen, mp->protocol, ntohs (mp->port), &vip_index)))
+      rv = lb_vip_del (vip_index);
     }
   else
     {
       u32 vip_index;
       lb_vip_type_t type = 0;
 
-      if (ip46_prefix_is_ip4 (&(args.prefix), mp->pfx.len))
-	{
-	  if (mp->encap == LB_API_ENCAP_TYPE_GRE4)
+      if (ip46_prefix_is_ip4 (&(args.prefix), plen))
+      {
+	if (mp->encap == LB_API_ENCAP_TYPE_GRE4)
 	    type = LB_VIP_TYPE_IP4_GRE4;
 	  else if (mp->encap == LB_API_ENCAP_TYPE_GRE6)
 	    type = LB_VIP_TYPE_IP4_GRE6;
@@ -166,7 +209,7 @@ vl_api_lb_add_del_vip_v2_t_handler (vl_api_lb_add_del_vip_v2_t *mp)
 	    type = LB_VIP_TYPE_IP6_NAT6;
 	}
 
-      args.plen = mp->pfx.len;
+      args.plen = plen;
       args.protocol = mp->protocol;
       args.port = ntohs (mp->port);
       args.type = type;
@@ -210,8 +253,9 @@ vl_api_lb_add_del_as_t_handler
   ip_address_decode (&mp->pfx.address, &vip_ip_prefix);
   ip_address_decode (&mp->as_address, &as_address);
 
-  if ((rv = lb_vip_find_index(&vip_ip_prefix, mp->pfx.len,
-                              mp->protocol, ntohs(mp->port), &vip_index)))
+  u8 plen = mp->pfx.len + (mp->pfx.address.af == ADDRESS_IP4 ? 96 : 0);
+
+  if ((rv = lb_vip_find_index (&vip_ip_prefix, plen, mp->protocol, ntohs (mp->port), &vip_index)))
     goto done;
 
   if (mp->is_del)
@@ -240,27 +284,28 @@ vl_api_lb_vip_dump_t_handler
 
   /* construct vip list */
   pool_foreach (vip, lbm->vips) {
-      /* Hide placeholder VIP */
-      if (vip != lbm->vips) {
-        msg_size = sizeof (*rmp);
-        rmp = vl_msg_api_alloc (msg_size);
-        memset (rmp, 0, msg_size);
-        rmp->_vl_msg_id =
-        htons (VL_API_LB_VIP_DETAILS + lbm->msg_id_base);
-        rmp->context = mp->context;
+      /* Hide placeholder VIP and deleted VIPs */
+      if (vip != lbm->vips && (vip->flags & LB_VIP_FLAGS_USED))
+	{
+	  msg_size = sizeof (*rmp);
+	  rmp = vl_msg_api_alloc (msg_size);
+	  memset (rmp, 0, msg_size);
+	  rmp->_vl_msg_id = htons (VL_API_LB_VIP_DETAILS + lbm->msg_id_base);
+	  rmp->context = mp->context;
 
-        ip_address_encode(&vip->prefix, IP46_TYPE_ANY, &rmp->vip.pfx.address);
-        rmp->vip.pfx.len = vip->plen;
-        rmp->vip.protocol = htonl (vip->protocol);
-        rmp->vip.port = htons(vip->port);
-        rmp->encap = htonl(vip->type);
-        rmp->dscp = vip->encap_args.dscp;
-        rmp->srv_type = vip->encap_args.srv_type;
-        rmp->target_port = htons(vip->encap_args.target_port);
-        rmp->flow_table_length = htonl(vip->new_flow_table_mask + 1);
+	  ip_address_encode (&vip->prefix, IP46_TYPE_ANY, &rmp->vip.pfx.address);
+	  rmp->vip.pfx.len =
+	    ip46_prefix_is_ip4 (&vip->prefix, vip->plen) ? vip->plen - 96 : vip->plen;
+	  rmp->vip.protocol = htonl (vip->protocol);
+	  rmp->vip.port = htons (vip->port);
+	  rmp->encap = htonl (lb_vip_type_to_api_encap (vip->type));
+	  rmp->dscp = vip->encap_args.dscp;
+	  rmp->srv_type = vip->encap_args.srv_type;
+	  rmp->target_port = htons (vip->encap_args.target_port);
+	  rmp->flow_table_length = htonl (vip->new_flow_table_mask + 1);
 
-        vl_api_send_msg (reg, (u8 *) rmp);
-      }
+	  vl_api_send_msg (reg, (u8 *) rmp);
+	}
   }
 
 
@@ -288,8 +333,9 @@ static void send_lb_as_details
           htons (VL_API_LB_AS_DETAILS + lbm->msg_id_base);
         rmp->context = context;
         ip_address_encode(&vip->prefix, IP46_TYPE_ANY, (vl_api_address_t *)&rmp->vip.pfx.address);
-        rmp->vip.pfx.len = vip->plen;
-        rmp->vip.protocol = htonl (vip->protocol);
+	rmp->vip.pfx.len =
+	  ip46_prefix_is_ip4 (&vip->prefix, vip->plen) ? vip->plen - 96 : vip->plen;
+	rmp->vip.protocol = htonl (vip->protocol);
         rmp->vip.port = htons(vip->port);
         ip_address_encode(&as->address, IP46_TYPE_ANY, &rmp->app_srv);
         rmp->flags = as->flags;
@@ -340,7 +386,6 @@ vl_api_lb_flush_vip_t_handler
   lb_main_t *lbm = &lb_main;
   int rv = 0;
   ip46_address_t vip_prefix;
-  u8 vip_plen;
   u32 vip_index;
   vl_api_lb_flush_vip_reply_t * rmp;
 
@@ -349,12 +394,10 @@ vl_api_lb_flush_vip_t_handler
       mp->protocol = ~0;
     }
 
-  memcpy (&(vip_prefix.ip6), mp->pfx.address.un.ip6, sizeof(vip_prefix.ip6));
+  ip_address_decode (&mp->pfx.address, &vip_prefix);
+  u8 plen = mp->pfx.len + (mp->pfx.address.af == ADDRESS_IP4 ? 96 : 0);
 
-  vip_plen = mp->pfx.len;
-
-  rv = lb_vip_find_index(&vip_prefix, vip_plen, mp->protocol,
-                         ntohs(mp->port), &vip_index);
+  rv = lb_vip_find_index (&vip_prefix, plen, mp->protocol, ntohs (mp->port), &vip_index);
 
   rv = lb_flush_vip_as(vip_index, ~0);
 
