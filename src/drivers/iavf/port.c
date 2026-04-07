@@ -212,7 +212,8 @@ iavf_port_rx_irq_config (vlib_main_t *vm, vnet_dev_port_t *port, int enable)
 	foreach_vnet_dev_port_rx_queue (rxq, port)
 	  if (rxq->enabled)
 	    {
-	      u32 i = rxq->rx_thread_index;
+	      u32 i = rxq->rx_thread_index - 1;
+	      ASSERT (i < n_rx_vectors);
 	      im->vecmap[i].rxq_map |= 1 << rxq->queue_id;
 	      n_queues_per_vector[i]++;
 	      n_intr_mode_queues_per_vector[i] +=
