@@ -283,14 +283,18 @@ typedef union
     sfdp_session_ip4_key_t keys4[(n)];                                        \
     sfdp_session_ip6_key_t keys6[(n)];                                        \
   }
-
+/* FIXME - below changes are taken from patch to introduce
+sfdp lookup offload (https://gerrit.fd.io/r/c/vpp/+/44976) */
 #define SFDP_UNBOUND_THREAD_INDEX ((u16) ~0)
 typedef struct sfdp_session
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cache0);
   sfdp_bitmap_t bitmaps[SFDP_FLOW_F_B_N];
+  u64 lv;
   u64 session_id;
   u64 expiry_opaque[2];
+  u32 flow_index;
+  u32 rx_hw_if_index;
   session_version_t session_version;
   u8 state; /* see sfdp_session_state_t */
   u8 proto;
@@ -302,7 +306,7 @@ typedef struct sfdp_session
   u8 key_flags;
   u16 parser_index[SFDP_SESSION_N_KEY];
   u8 scope_index;
-  u8 unused1[55];
+  u8 unused1[39];
   CLIB_CACHE_LINE_ALIGN_MARK (cache1);
   union
   {
