@@ -1454,3 +1454,21 @@ lb_init (vlib_main_t * vm)
 }
 
 VLIB_INIT_FUNCTION (lb_init);
+
+static uword
+lb_gc_process (vlib_main_t *vm, vlib_node_runtime_t *rt, vlib_frame_t *f)
+{
+  while (1)
+    {
+      vlib_process_wait_for_event_or_clock (vm, (f64) LB_GARBAGE_RUN);
+      vlib_process_get_events (vm, NULL);
+      lb_garbage_collection ();
+    }
+  return 0;
+}
+
+VLIB_REGISTER_NODE (lb_gc_process_node) = {
+  .function = lb_gc_process,
+  .type = VLIB_NODE_TYPE_PROCESS,
+  .name = "lb-gc-process",
+};
