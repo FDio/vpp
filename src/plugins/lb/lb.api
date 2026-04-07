@@ -1,4 +1,4 @@
-option version = "1.2.0";
+option version = "1.3.0";
 import "plugins/lb/lb_types.api";
 import "vnet/interface_types.api";
 
@@ -137,6 +137,35 @@ autoreply  define lb_add_del_as {
   bool is_del;
   bool is_flush;
   option vat_help = "<vip-prefix> [protocol (tcp|udp) port <n>] [<address>] [del] [flush]";
+};
+
+/** \brief Add, remove, or lameduck an application server for a given VIP.
+    is_lame and is_del are mutually exclusive.
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param pfx - ip prefix and length
+    @param protocol - tcp or udp.
+    @param port - destination port.
+    @param as_address - The application server address (IPv4 in lower order 32 bits).
+    @param is_del - The AS should be removed.
+    @param is_flush - The sessions related to this AS should be flushed. Valid with
+                      both is_del and is_lame.
+    @param is_lame - The AS should enter lameduck mode: no new sessions are assigned,
+                     but existing sessions continue until they are closed or flushed.
+                     The AS can be restored with a plain add, or removed with is_del.
+                     is_lame and is_del are mutually exclusive.
+*/
+autoreply define lb_add_del_as_v2 {
+  u32 client_index;
+  u32 context;
+  vl_api_address_with_prefix_t pfx;
+  u8 protocol [default=255];
+  u16 port;
+  vl_api_address_t as_address;
+  bool is_del;
+  bool is_flush;
+  bool is_lame;
+  option vat_help = "<vip-prefix> [protocol (tcp|udp) port <n>] [<address>] [del] [flush] [lame]";
 };
 
 /** \brief Flush a given vip

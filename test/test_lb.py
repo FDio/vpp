@@ -255,6 +255,119 @@ class TestLB(VppTestCase):
                 pfx="90.0.0.0/8", encap=0, protocol=6, port=8298, is_del=True
             )
 
+    def test_lb_ip4_gre4_lameduck(self):
+        """Load Balancer IP4 GRE4 lameduck AS case"""
+        try:
+            self.vapi.cli("lb vip 90.0.0.0/8 encap gre4")
+            for asid in self.ass:
+                self.vapi.cli("lb as 90.0.0.0/8 10.0.0.%u" % asid)
+
+            # Baseline: all ASs receive flows
+            self.pg0.add_stream(self.generatePackets(self.pg0, isv4=True))
+            self.pg_enable_capture(self.pg_interfaces)
+            self.pg_start()
+            self.checkCapture(encap="gre4", isv4=True)
+
+            # Lameduck AS 0 via the v2 binary API
+            self.vapi.lb_add_del_as_v2(
+                pfx="90.0.0.0/8",
+                as_address="10.0.0.0",
+                is_lame=True,
+            )
+
+            # Flush sticky table so all sessions are treated as new
+            self.vapi.cli("test lb flowtable flush")
+
+            # After flush, the lameduck AS must not receive any new flows
+            self.pg0.add_stream(self.generatePackets(self.pg0, isv4=True))
+            self.pg_enable_capture(self.pg_interfaces)
+            self.pg_start()
+
+            self.pg0.assert_nothing_captured()
+            out = self.pg1.get_capture(len(self.packets))
+            load = [0] * len(self.ass)
+            for p in out:
+                asid = int(p[IP].dst.split(".")[3])
+                load[asid] += 1
+            self.assertEqual(load[0], 0, "lameduck AS still received new flows")
+            for asid in range(1, len(self.ass)):
+                self.assertGreater(
+                    load[asid], 0, "active AS %d received no flows" % asid
+                )
+
+            # Restore AS 0 via add (clears lameduck) and verify it re-enters rotation
+            self.vapi.lb_add_del_as_v2(
+                pfx="90.0.0.0/8",
+                as_address="10.0.0.0",
+            )
+            self.vapi.cli("test lb flowtable flush")
+            self.pg0.add_stream(self.generatePackets(self.pg0, isv4=True))
+            self.pg_enable_capture(self.pg_interfaces)
+            self.pg_start()
+            self.checkCapture(encap="gre4", isv4=True)
+
+        finally:
+            for asid in self.ass:
+                self.vapi.cli("lb as 90.0.0.0/8 10.0.0.%u del" % asid)
+            self.vapi.cli("lb vip 90.0.0.0/8 encap gre4 del")
+            self.vapi.cli("test lb flowtable flush")
+
+    def test_lb_ip4_gre4_lameduck_flush(self):
+        """Load Balancer IP4 GRE4 lameduck+flush AS case"""
+        try:
+            self.vapi.cli("lb vip 90.0.0.0/8 encap gre4")
+            for asid in self.ass:
+                self.vapi.cli("lb as 90.0.0.0/8 10.0.0.%u" % asid)
+
+            # Establish sessions to all ASes
+            self.pg0.add_stream(self.generatePackets(self.pg0, isv4=True))
+            self.pg_enable_capture(self.pg_interfaces)
+            self.pg_start()
+            self.checkCapture(encap="gre4", isv4=True)
+
+            # lame+flush AS 0: marks lameduck and flushes its sessions atomically
+            self.vapi.lb_add_del_as_v2(
+                pfx="90.0.0.0/8",
+                as_address="10.0.0.0",
+                is_lame=True,
+                is_flush=True,
+            )
+
+            # No global flow table flush — lame flush already cleared AS 0's sessions.
+            # Sources that were hashing to AS 0 must now redistribute to other ASes.
+            self.pg0.add_stream(self.generatePackets(self.pg0, isv4=True))
+            self.pg_enable_capture(self.pg_interfaces)
+            self.pg_start()
+
+            self.pg0.assert_nothing_captured()
+            out = self.pg1.get_capture(len(self.packets))
+            load = [0] * len(self.ass)
+            for p in out:
+                asid = int(p[IP].dst.split(".")[3])
+                load[asid] += 1
+            self.assertEqual(load[0], 0, "lameduck AS still received new flows")
+            for asid in range(1, len(self.ass)):
+                self.assertGreater(
+                    load[asid], 0, "active AS %d received no flows" % asid
+                )
+
+            # Restore AS 0 and verify it re-enters rotation (no manual flush needed)
+            self.vapi.lb_add_del_as_v2(
+                pfx="90.0.0.0/8",
+                as_address="10.0.0.0",
+            )
+            self.vapi.cli("test lb flowtable flush")
+            self.pg0.add_stream(self.generatePackets(self.pg0, isv4=True))
+            self.pg_enable_capture(self.pg_interfaces)
+            self.pg_start()
+            self.checkCapture(encap="gre4", isv4=True)
+
+        finally:
+            for asid in self.ass:
+                self.vapi.cli("lb as 90.0.0.0/8 10.0.0.%u del" % asid)
+            self.vapi.cli("lb vip 90.0.0.0/8 encap gre4 del")
+            self.vapi.cli("test lb flowtable flush")
+
     def test_lb_ip4_gre4_as_api(self):
         """Load Balancer IP4 GRE4 AS via lb_add_del_as binary API"""
         try:

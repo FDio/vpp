@@ -177,9 +177,10 @@ u8 *format_lb_vip (u8 * s, va_list * args)
 u8 *format_lb_as (u8 * s, va_list * args)
 {
   lb_as_t *as = va_arg (*args, lb_as_t *);
-  return format(s, "%U %s", format_ip46_address,
-                &as->address, IP46_TYPE_ANY,
-                (as->flags & LB_AS_FLAGS_USED)?"used":"removed");
+  const char *state = (as->flags & LB_AS_FLAGS_USED) ?
+			(as->flags & LB_AS_FLAGS_LAME) ? "lameduck" : "used" :
+			"removed";
+  return format (s, "%U %s", format_ip46_address, &as->address, IP46_TYPE_ANY, state);
 }
 
 u8 *format_lb_vip_detailed (u8 * s, va_list * args)
@@ -250,13 +251,12 @@ u8 *format_lb_vip_detailed (u8 * s, va_list * args)
   u32 *as_index;
   pool_foreach (as_index, vip->as_indexes) {
       as = &lbm->ass[*as_index];
-      s = format(s, "%U    %U %u buckets   %Lu flows  dpo:%u %s\n",
-                   format_white_space, indent,
-                   format_ip46_address, &as->address, IP46_TYPE_ANY,
-                   count[as - lbm->ass],
-                   vlib_refcount_get(&lbm->as_refcount, as - lbm->ass),
-                   as->dpo.dpoi_index,
-                   (as->flags & LB_AS_FLAGS_USED)?"used":" removed");
+      s = format (s, "%U    %U %u buckets   %Lu flows  dpo:%u %s\n", format_white_space, indent,
+		  format_ip46_address, &as->address, IP46_TYPE_ANY, count[as - lbm->ass],
+		  vlib_refcount_get (&lbm->as_refcount, as - lbm->ass), as->dpo.dpoi_index,
+		  (as->flags & LB_AS_FLAGS_USED) ?
+		    (as->flags & LB_AS_FLAGS_LAME) ? "lameduck" : "used" :
+		    "removed");
   }
 
   vec_free(count);
@@ -383,13 +383,14 @@ static void lb_vip_update_new_flow_table(lb_vip_t *vip)
 
   CLIB_SPINLOCK_ASSERT_LOCKED (&lbm->writer_lock); // We must have the lock
 
-  //Check if some AS is configured or not
+  // Check if some AS is configured and not lameduck
   i = 0;
   pool_foreach (as_index, vip->as_indexes) {
       as = &lbm->ass[*as_index];
-      if (as->flags & LB_AS_FLAGS_USED) { //Not used anymore
-        i = 1;
-        goto out; //Not sure 'break' works in this macro-loop
+      if ((as->flags & LB_AS_FLAGS_USED) && !(as->flags & LB_AS_FLAGS_LAME))
+      {
+	i = 1;
+	goto out; // Not sure 'break' works in this macro-loop
       }
   }
 
@@ -409,8 +410,8 @@ out:
   i = 0;
   pool_foreach (as_index, vip->as_indexes) {
       as = &lbm->ass[*as_index];
-      if (!(as->flags & LB_AS_FLAGS_USED)) //Not used anymore
-        continue;
+      if (!(as->flags & LB_AS_FLAGS_USED) || (as->flags & LB_AS_FLAGS_LAME))
+      continue;
 
       sort_arr[i].as_index = as - lbm->ass;
       i++;
@@ -596,14 +597,17 @@ int lb_vip_add_ass(u32 vip_index, ip46_address_t *addresses, u32 n)
   while (n--) {
 
     if (!lb_as_find_index_vip(vip, &addresses[n], &i)) {
-      if (lbm->ass[i].flags & LB_AS_FLAGS_USED) {
-        vec_free(to_be_added);
-        vec_free(to_be_updated);
-        lb_put_writer_lock();
-        return VNET_API_ERROR_VALUE_EXIST;
-      }
-      vec_add1(to_be_updated, i);
-      goto next;
+	if ((lbm->ass[i].flags & LB_AS_FLAGS_USED) && !(lbm->ass[i].flags & LB_AS_FLAGS_LAME))
+	    {
+	      /* Truly active, not just lameduck */
+	      vec_free (to_be_added);
+	      vec_free (to_be_updated);
+	      lb_put_writer_lock ();
+	      return VNET_API_ERROR_VALUE_EXIST;
+	    }
+	/* Deleted or lameduck: re-activate */
+	vec_add1 (to_be_updated, i);
+	goto next;
     }
 
     if (ip46_address_type(&addresses[n]) != type) {
@@ -627,9 +631,9 @@ next:
     continue;
   }
 
-  //Update reused ASs
+  // Update reused ASs (re-activate deleted or un-lame lameduck)
   vec_foreach(ip, to_be_updated) {
-    lbm->ass[*ip].flags = LB_AS_FLAGS_USED;
+    lbm->ass[*ip].flags = LB_AS_FLAGS_USED; /* clears LAME too */
   }
   vec_free(to_be_updated);
 
@@ -825,7 +829,7 @@ next:
 
   if (indexes != NULL) {
     vec_foreach(ip, indexes) {
-      lbm->ass[*ip].flags &= ~LB_AS_FLAGS_USED;
+      lbm->ass[*ip].flags &= ~(LB_AS_FLAGS_USED | LB_AS_FLAGS_LAME);
       lbm->ass[*ip].last_used = now;
 
       if(flush)
@@ -850,6 +854,74 @@ int lb_vip_del_ass(u32 vip_index, ip46_address_t *addresses, u32 n, u8 flush)
   lb_put_writer_lock();
 
   return ret;
+}
+
+int
+lb_vip_lame_ass (u32 vip_index, ip46_address_t *addresses, u32 n, u8 flush)
+{
+  lb_main_t *lbm = &lb_main;
+  lb_get_writer_lock ();
+  u32 as_index;
+  u32 *ip;
+  u32 *indexes = NULL;
+
+  lb_vip_t *vip;
+  if (!(vip = lb_vip_get_by_index (vip_index)))
+  {
+    lb_put_writer_lock ();
+    return VNET_API_ERROR_NO_SUCH_ENTRY;
+  }
+
+  while (n--)
+  {
+    if (lb_as_find_index_vip (vip, &addresses[n], &as_index))
+    {
+      vec_free (indexes);
+      lb_put_writer_lock ();
+      return VNET_API_ERROR_NO_SUCH_ENTRY;
+    }
+
+    if (!(lbm->ass[as_index].flags & LB_AS_FLAGS_USED))
+    {
+      /* Cannot lame a deleted AS */
+      vec_free (indexes);
+      lb_put_writer_lock ();
+      return VNET_API_ERROR_INVALID_VALUE;
+    }
+
+    if (lbm->ass[as_index].flags & LB_AS_FLAGS_LAME)
+    goto next; /* Already lameduck, idempotent */
+
+    if (n)
+    { // Check for duplicates
+      u32 n2 = n - 1;
+      while (n2--)
+	{
+	  if (addresses[n2].as_u64[0] == addresses[n].as_u64[0] &&
+	      addresses[n2].as_u64[1] == addresses[n].as_u64[1])
+	  goto next;
+	}
+    }
+
+    vec_add1 (indexes, as_index);
+  next:
+    continue;
+  }
+
+  if (indexes != NULL)
+  {
+    vec_foreach (ip, indexes)
+    {
+      lbm->ass[*ip].flags |= LB_AS_FLAGS_LAME;
+      if (flush)
+	lb_flush_vip_as (vip_index, *ip);
+    }
+    lb_vip_update_new_flow_table (vip);
+  }
+
+  vec_free (indexes);
+  lb_put_writer_lock ();
+  return 0;
 }
 
 static int
