@@ -56,6 +56,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "33423a9d_c0c1ad38",
+        "filename": "test/framework.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 583,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-04-07T21:07:37Z",
+      "side": 1,
+      "message": "I see only convoluted usages of multi-worker amongst the current test cases not viable for a direct replacement and my tests (which rely on send_and_expect_multi) are using a feature which is not present in upstream vpp and thus not upstreamable. This change is offered as something which is very suitable for writing a \"I want these packets on worker 1..N at the same time and expect this to come out of it\" kind of test. Would you rather prefer this code is not shared?",
+      "parentUuid": "7242a788_cbd5b828",
+      "revId": "17ab012a809206a32efdc293271b1964e212065c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "378be68c_b485ac5b",
         "filename": "test/framework.py",
         "patchSetId": 7
@@ -103,6 +121,24 @@
       "side": 1,
       "message": "How does one debug the failure and determine which context is the root cause?\nIt may not be the last one in which the timeout occurred.\n\nIt would be helpful if there were a means of seeing the amount of time spent in each context.  With the single case, this occurs naturally, but by grouping multiple contexts, the details of each is obscured making it harder to correlate system behavior with the failure.  Thus, in order to retain the granularity of timing visibility, more complexity must be added here.  Overall, I\u0027m not convinced that this is beneficial other than to make it easier to write the tests, which IMHO should not be the primary goal in the CI pipeline.",
       "parentUuid": "460edbc3_46e04443",
+      "revId": "17ab012a809206a32efdc293271b1964e212065c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cacbb9f7_04b4fd4e",
+        "filename": "test/framework.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 606,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-04-07T21:07:37Z",
+      "side": 1,
+      "message": "I pushed https://gerrit.fd.io/r/c/vpp/+/45454 which does away with busy-waiting for pcaps. With that change, timeouts in most functions become None, with the ability to override it with a number if there are downstream users which depend on such logic.\n\nTo answer your original question - the logging in \u003ctest_dir\u003e/log.txt is still quite verbose and the underlying get_capture and _get_capture functions tell exactly which capture was (not) there.",
+      "parentUuid": "a9837211_dbcc13b4",
       "revId": "17ab012a809206a32efdc293271b1964e212065c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
