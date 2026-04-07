@@ -847,6 +847,8 @@ typedef enum app_sapi_msg_type
   APP_SAPI_MSG_TYPE_SEND_FDS,
   APP_SAPI_MSG_TYPE_ADD_DEL_CERT_KEY,
   APP_SAPI_MSG_TYPE_ADD_DEL_CERT_KEY_REPLY,
+  APP_SAPI_MSG_TYPE_UPDATE_CA_TRUST_CRL,
+  APP_SAPI_MSG_TYPE_UPDATE_CA_TRUST_CRL_REPLY,
 } __clib_packed app_sapi_msg_type_e;
 
 typedef struct app_sapi_attach_msg_
@@ -907,6 +909,20 @@ typedef struct app_sapi_cert_key_add_del_reply_msg_
   u32 index;
 } __clib_packed app_sapi_cert_key_add_del_reply_msg_t;
 
+typedef struct app_sapi_update_ca_trust_crl_msg_
+{
+  u32 context;
+  u32 app_index;
+  u32 ca_trust_index;
+  u32 crl_len;
+} __clib_packed app_sapi_update_ca_trust_crl_msg_t;
+
+typedef struct app_sapi_update_ca_trust_crl_reply_msg_
+{
+  u32 context;
+  i32 retval;
+} __clib_packed app_sapi_update_ca_trust_crl_reply_msg_t;
+
 typedef struct app_sapi_msg_
 {
   app_sapi_msg_type_e type;
@@ -918,6 +934,8 @@ typedef struct app_sapi_msg_
     app_sapi_worker_add_del_reply_msg_t worker_add_del_reply;
     app_sapi_cert_key_add_del_msg_t cert_key_add_del;
     app_sapi_cert_key_add_del_reply_msg_t cert_key_add_del_reply;
+    app_sapi_update_ca_trust_crl_msg_t update_ca_trust_crl;
+    app_sapi_update_ca_trust_crl_reply_msg_t update_ca_trust_crl_reply;
   };
 } __clib_packed app_sapi_msg_t;
 
