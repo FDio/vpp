@@ -18,6 +18,9 @@
 #define IAVF_MAX_RSS_KEY_SIZE	  52
 #define IAVF_MAX_RSS_LUT_SIZE	  64
 #define IIAVF_AQ_POLL_INTERVAL	  0.2
+#define IIAVF_AQ_LARGE_BUF	  512
+#define IIAVF_AQ_ATQ_LEN	  4
+#define IIAVF_AQ_ARQ_LEN	  16
 #define IIAVF_AQ_BUF_SIZE	  4096
 
 typedef struct iavf_adminq_dma_mem iavf_adminq_dma_mem_t;
@@ -31,6 +34,10 @@ typedef struct
   iavf_adminq_dma_mem_t *aq_mem;
   u16 atq_next_slot;
   u16 arq_next_slot;
+  u64 atq_dma;
+  u64 arq_dma;
+  u64 atq_bufs_dma[IIAVF_AQ_ATQ_LEN];
+  u64 arq_bufs_dma[IIAVF_AQ_ARQ_LEN];
   virtchnl_pf_event_t *events;
 } iavf_device_t;
 
