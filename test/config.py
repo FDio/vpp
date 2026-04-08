@@ -148,7 +148,11 @@ examples:
    test_ip4.py and all test functions named 'test_icmp_error' in all files
 """
 parser.add_argument(
-    "--filter", action="store", metavar="FILTER_EXPRESSION", help=filter_help_string
+    "--filter",
+    action="store",
+    default="",
+    metavar="FILTER_EXPRESSION",
+    help=filter_help_string,
 )
 
 skip_filter_help_string = """\
@@ -162,6 +166,7 @@ except this one one has the effect to skip the tests that match it.
 parser.add_argument(
     "--skip-filter",
     action="store",
+    default="",
     metavar="SKIP_FILTER_EXPR",
     help=skip_filter_help_string,
 )
