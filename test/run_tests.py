@@ -866,6 +866,7 @@ class AllResults(dict):
             ]
         )
 
+        print_test_ids = []
         if self.all_failed > 0:
             print("FAILURES AND ERRORS IN TESTS:")
             for result in self.results_per_suite:
@@ -890,6 +891,11 @@ class AllResults(dict):
                         print(
                             f"    {headline}: {colorize(test_name, RED)} [{failed_test_id}]"
                         )
+                        print_test_ids.append(failed_test_id)
+
+        if print_test_ids:
+            with open(os.path.join(config.failed_dir, "failed_tests"), "w") as f:
+                print(",".join(print_test_ids), file=f)
 
         if self.testsuites_no_tests_run:
             print("TESTCASES WHERE NO TESTS WERE SUCCESSFULLY EXECUTED:")
