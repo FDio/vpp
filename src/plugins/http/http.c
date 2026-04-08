@@ -874,13 +874,14 @@ http_ts_rx_callback (session_t *ts)
   http_conn_handle_t hc_handle;
   u32 max_deq;
   u8 *rx_buf;
+  clib_thread_index_t thread_index = ts->thread_index;
 
   hc_handle.as_u32 = ts->opaque;
 
   HTTP_DBG (1, "hc [%u]%x", ts->thread_index, hc_handle.conn_index);
 
-  ASSERT (http_hc_is_valid (hc_handle.conn_index, ts->thread_index));
-  hc = http_ctx_get_w_thread (hc_handle.conn_index, ts->thread_index);
+  ASSERT (http_hc_is_valid (hc_handle.conn_index, thread_index));
+  hc = http_ctx_get_w_thread (hc_handle.conn_index, thread_index);
 
   if (hc->state == HTTP_CONN_STATE_CLOSED)
     {
@@ -919,7 +920,7 @@ http_ts_rx_callback (session_t *ts)
   http_vfts[hc_handle.version].transport_rx_callback (hc);
 
   /* pool might grow, regrab connection */
-  hc = http_ctx_get_w_thread (hc_handle.conn_index, ts->thread_index);
+  hc = http_ctx_get_w_thread (hc_handle.conn_index, thread_index);
   if (hc->state == HTTP_CONN_STATE_TRANSPORT_CLOSED)
     http_vfts[hc->version].transport_close_callback (hc);
   return 0;

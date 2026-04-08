@@ -720,8 +720,10 @@ http2_sched_dispatch_udp_tunnel (http_ctx_t *req, http_ctx_t *hc, u8 *n_emission
     {
       /* we should have at least 16kB free space in underlying transport,
        * maybe peer is doing small connection window updates */
+      /* TODO: split capsule */
       HTTP_DBG (1, "datagram dropped");
       http_io_as_drain (req, dgram_size);
+      transport_connection_reschedule (&req->connection);
       return;
     }
 
