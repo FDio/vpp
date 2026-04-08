@@ -171,7 +171,10 @@ ifneq ($(INSTALLED_RPM_VER),)
 endif
 endif
 
-ebuild-install:
+# ebuild-install must wait for ebuild-build to complete: both are invoked
+# as targets of a single parallel make by build-data/packages/external.mk.
+# Without this dependency they race on the same external package stamp files.
+ebuild-install: ebuild-build
 ifeq ($(INSTALLED_VER)$(INSTALLED_RPM_VER),)
 	$(MAKE) install
 endif
