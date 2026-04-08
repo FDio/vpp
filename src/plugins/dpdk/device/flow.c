@@ -17,6 +17,18 @@
 #include <dpdk/device/flow.h>
 #include <vppinfra/error.h>
 
+/* TODO - is there a more efficient approach than fetching the assoicated port_id
+   for every hw_if_index passed-on when steering traffic ? */
+static inline dpdk_portid_t
+dpdk_port_id_from_hw_if_index (u32 hw_if_index)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, hw_if_index);
+  dpdk_main_t *dm = &dpdk_main;
+  dpdk_device_t *xd = vec_elt_at_index (dm->devices, hi->dev_instance);
+  return xd->port_id;
+}
+
 #define FLOW_IS_ETHERNET_CLASS(f) \
   (f->type == VNET_FLOW_TYPE_ETHERNET)
 
@@ -199,6 +211,8 @@ dpdk_flow_action_conf_size (enum rte_flow_action_type type)
       return sizeof (struct rte_flow_action_queue);
     case RTE_FLOW_ACTION_TYPE_RSS:
       return sizeof (struct dpdk_action_rss_data);
+    case RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT:
+      return sizeof (struct rte_flow_action_ethdev);
     default:
       return 0;
     }
@@ -292,6 +306,16 @@ dpdk_flow_fill_items (dpdk_device_t *xd, vnet_flow_t *f, dpdk_flow_entry_t *fe,
 
   if (f->actions & (~xd->supported_flow_actions))
     return VNET_FLOW_ERROR_NOT_SUPPORTED;
+
+  if ((f->actions & VNET_FLOW_ACTION_STEER_TO_PORT) && f->steer_from_hw_if_index != ~0)
+    {
+      item = &args->items[n++];
+      args->represented_port[0].port_id = dpdk_port_id_from_hw_if_index (f->steer_from_hw_if_index);
+      args->represented_port[1].port_id = UINT16_MAX;
+      item->type = RTE_FLOW_ITEM_TYPE_REPRESENTED_PORT;
+      item->spec = &args->represented_port[0];
+      item->mask = &args->represented_port[1];
+    }
 
   /* Match items */
   /* Layer 2, Ethernet */
@@ -717,6 +741,18 @@ dpdk_flow_fill_actions (dpdk_device_t *xd, vnet_flow_t *f, dpdk_flow_entry_t *fe
       fate = true;
     }
 
+  if (f->actions & VNET_FLOW_ACTION_STEER_TO_PORT)
+    {
+      if (fate)
+	return VNET_FLOW_ERROR_INTERNAL;
+
+      action = &args->actions[n++];
+      args->represented_port.port_id = dpdk_port_id_from_hw_if_index (f->steer_to_hw_if_index);
+      action->type = RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT;
+      action->conf = &args->represented_port;
+      fate = true;
+    }
+
   if (!fate)
     {
       action = &args->actions[n++];
@@ -788,6 +824,15 @@ dpdk_flow_fill_actions_template (dpdk_device_t *xd, vnet_flow_t *t, dpdk_flow_te
 	return VNET_FLOW_ERROR_INTERNAL;
 
       add_action_type (RSS);
+      fate = true;
+    }
+
+  if (t->actions & VNET_FLOW_ACTION_STEER_TO_PORT)
+    {
+      if (fate)
+	return VNET_FLOW_ERROR_INTERNAL;
+
+      add_action_type (REPRESENTED_PORT);
       fate = true;
     }
 
@@ -1108,6 +1153,13 @@ dpdk_flow_update_slot_actions (struct rte_flow_action *actions, u8 n_actions, vn
 	  }
 	  break;
 
+	case RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT:
+	  {
+	    struct rte_flow_action_ethdev *conf = (struct rte_flow_action_ethdev *) actions[i].conf;
+	    conf->port_id = dpdk_port_id_from_hw_if_index (f->steer_to_hw_if_index);
+	  }
+	  break;
+
 	default:
 	  break;
 	}
@@ -1286,7 +1338,14 @@ dpdk_flow_add (dpdk_device_t *xd, vnet_flow_t *f, dpdk_flow_entry_t *fe)
 {
   dpdk_flow_items_args_t item_args = { 0 };
   dpdk_flow_actions_args_t action_args = { 0 };
+  const struct rte_flow_attr *attr;
+  struct rte_flow_attr transfer = { .transfer = 1 };
   int rv;
+
+  if (f->actions & VNET_FLOW_ACTION_STEER_TO_PORT)
+    attr = &transfer;
+  else
+    attr = dpdk_flow_attr (xd);
 
   if ((rv = dpdk_flow_fill_items (xd, f, fe, &item_args)) != 0)
     return rv;
@@ -1294,7 +1353,7 @@ dpdk_flow_add (dpdk_device_t *xd, vnet_flow_t *f, dpdk_flow_entry_t *fe)
   if ((rv = dpdk_flow_fill_actions (xd, f, fe, &action_args)) != 0)
     return rv;
 
-  rv = rte_flow_validate (xd->port_id, dpdk_flow_attr (xd), item_args.items, action_args.actions,
+  rv = rte_flow_validate (xd->port_id, attr, item_args.items, action_args.actions,
 			  &xd->last_flow_error);
 
   if (rv)
@@ -1311,8 +1370,8 @@ dpdk_flow_add (dpdk_device_t *xd, vnet_flow_t *f, dpdk_flow_entry_t *fe)
       return rv;
     }
 
-  fe->handle = rte_flow_create (xd->port_id, dpdk_flow_attr (xd), item_args.items,
-				action_args.actions, &xd->last_flow_error);
+  fe->handle =
+    rte_flow_create (xd->port_id, attr, item_args.items, action_args.actions, &xd->last_flow_error);
 
   if (!fe->handle)
     {
@@ -1417,7 +1476,10 @@ dpdk_flow_template_add (dpdk_device_t *xd, vnet_flow_t *t, dpdk_flow_template_en
   };
   int rv = 0;
 
-  clib_memcpy_fast (&template_attr.flow_attr, dpdk_flow_attr (xd), sizeof (struct rte_flow_attr));
+  if (t->actions & VNET_FLOW_ACTION_STEER_TO_PORT)
+    template_attr.flow_attr.transfer = 1;
+  else
+    clib_memcpy_fast (&template_attr.flow_attr, dpdk_flow_attr (xd), sizeof (struct rte_flow_attr));
 
   if ((rv = dpdk_flow_fill_items_template (xd, t, fte, &item_args)) != 0)
     return rv;
