@@ -246,7 +246,7 @@ void unformat_init_string (unformat_input_t *input, const char *string,
 			   int string_len);
 
 always_inline void
-unformat_init_cstring (unformat_input_t * input, char *string)
+unformat_init_cstring (unformat_input_t *input, const char *string)
 {
   unformat_init_string (input, string, strlen (string));
 }
