@@ -31,11 +31,7 @@ FORCE_FOREGROUND=1
 else ifeq ($(DEBUG),attach)
 FORCE_FOREGROUND=1
 FORCE_NO_WIPE=1
-else ifeq ($(STEP),yes)
-FORCE_FOREGROUND=1
-else ifeq ($(STEP),y)
-FORCE_FOREGROUND=1
-else ifeq ($(STEP),1)
+else ifneq ($(findstring $(STEP),1 y yes),)
 FORCE_FOREGROUND=1
 else
 FORCE_FOREGROUND=0
@@ -49,7 +45,7 @@ ifndef PROFILE_SORT_BY
 PROFILE_SORT_BY=cumtime
 endif
 
-ifeq ($(PROFILE),1)
+ifneq ($(findstring $(PROFILE),1 y yes),)
 PYTHON_OPTS="-m cProfile $(PROFILE_OUTPUT_OPTS) -s $(PROFILE_SORT_BY)"
 FORCE_FOREGROUND=1
 endif
@@ -57,7 +53,7 @@ endif
 VENV_BR_DIR=$(BR)/test
 VENV_PATH=$(VENV_BR_DIR)/venv
 
-ifeq ($(TEST_DEBUG),1)
+ifneq ($(findstring $(TEST_DEBUG),1 y yes),)
 VENV_RUN_DIR:=$(VENV_PATH)/run-debug
 else
 VENV_RUN_DIR:=$(VENV_PATH)/run
