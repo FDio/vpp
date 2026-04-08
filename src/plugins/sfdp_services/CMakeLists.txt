@@ -29,6 +29,10 @@ add_vpp_plugin(sfdp_services
   base/interface_input/api.c
   base/interface_input/node.c
 
+  base/verdict-testbench/node.c
+  base/verdict-testbench/verdict_testbench.c
+  base/verdict-testbench/cli.c
+
   acl/acl_sample.c
   acl/cli.c
   acl/node.c
@@ -53,6 +57,7 @@ add_vpp_plugin(sfdp_services
   base/tcp-check/node.c
   base/l4-lifecycle/node.c
   base/interface_input/node.c
+  base/verdict-testbench/node.c
   acl/node.c
   geneve/geneve_input/node.c
   geneve/geneve_output/node.c
