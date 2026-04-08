@@ -285,7 +285,7 @@ var _ = Describe("NoTopoMWSuite", Ordered, ContinueOnFailure, Serial, Label("Gen
 		s.SetupSuite()
 	})
 	BeforeEach(func() {
-		s.SkipIfNotEnoguhCpus = true
+		s.SkipIfNotEnoughCpus = true
 	})
 	AfterAll(func() {
 		s.TeardownSuite()

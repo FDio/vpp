@@ -316,7 +316,7 @@ var _ = Describe("VppProxyMWSuite", Ordered, ContinueOnFailure, Serial, Label("V
 		s.SetupSuite()
 	})
 	BeforeEach(func() {
-		s.SkipIfNotEnoguhCpus = true
+		s.SkipIfNotEnoughCpus = true
 	})
 	AfterAll(func() {
 		s.TeardownSuite()

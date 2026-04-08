@@ -93,7 +93,7 @@ var _ = Describe("TlsSuiteMW", Ordered, ContinueOnFailure, Serial, Label("Veth",
 		s.SetupSuite()
 	})
 	BeforeEach(func() {
-		s.SkipIfNotEnoguhCpus = true
+		s.SkipIfNotEnoughCpus = true
 	})
 	AfterAll(func() {
 		s.TeardownSuite()

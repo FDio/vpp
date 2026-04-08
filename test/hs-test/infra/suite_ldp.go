@@ -253,7 +253,7 @@ var _ = Describe("LdpMWSuite", Ordered, ContinueOnFailure, Serial, Label("LDP", 
 		s.SetupSuite()
 	})
 	BeforeEach(func() {
-		s.SkipIfNotEnoguhCpus = true
+		s.SkipIfNotEnoughCpus = true
 	})
 	AfterAll(func() {
 		s.TeardownSuite()

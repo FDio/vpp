@@ -73,7 +73,7 @@ type HstSuite struct {
 	Docker              *client.Client
 	CoverageRun         bool
 	numOfNewPorts       int
-	SkipIfNotEnoguhCpus bool
+	SkipIfNotEnoughCpus bool
 }
 
 type colors struct {
@@ -294,7 +294,7 @@ func (s *HstSuite) TeardownTest() {
 		s.Skip("Skipping test teardown")
 	}
 	Log("[* TEST TEARDOWN]")
-	s.SkipIfNotEnoguhCpus = false
+	s.SkipIfNotEnoughCpus = false
 	// reset to defaults
 	s.CpusPerContainer = *NConfiguredCpus
 	s.CpusPerVppContainer = *NConfiguredVppCpus
@@ -767,10 +767,10 @@ You can record multiple named measurements (float64 or duration) within passed-i
 runBenchmark then produces report to show statistical distribution of measurements.
 */
 func (s *HstSuite) RunBenchmark(name string, samplesNum, parallelNum int, callback func(e *gmeasure.Experiment, data any), data any) {
+	defer GinkgoRecover()
 	experiment := gmeasure.NewExperiment(name)
 
 	experiment.Sample(func(idx int) {
-		defer GinkgoRecover()
 		callback(experiment, data)
 	}, gmeasure.SamplingConfig{N: samplesNum, NumParallel: parallelNum})
 	AddReportEntry(experiment.Name, experiment)

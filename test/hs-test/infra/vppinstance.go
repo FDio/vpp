@@ -265,13 +265,6 @@ func (vpp *VppInstance) Stop() {
 
 func (vpp *VppInstance) Vppctl(command any, arguments ...any) string {
 	defer GinkgoRecover()
-	defer func() {
-		if r := recover(); r != nil {
-			Log("\n*******************************************************************************\n"+
-				"[%v]\nyou probably used Vppctl() without creating a vppinstance first or used Vppctl() on the wrong container\n"+
-				"*******************************************************************************\n", r)
-		}
-	}()
 
 	var vppCliCommand string
 	if len(arguments) > 0 {
@@ -291,18 +284,20 @@ func (vpp *VppInstance) Vppctl(command any, arguments ...any) string {
 	output, err := exechelper.CombinedOutput(containerExecCommand)
 
 	// If an error occurs, retrieve the caller function's name.
-	// If retrieving the caller name fails, perform a regular assert.
-	// If the caller is 'teardown', only log the error instead of asserting.
+	// If retrieving the caller name fails, fail without any extra steps.
+	// If the caller is 'teardown', only log the error instead of failing.
 	if err != nil {
 		pc, _, _, ok := runtime.Caller(1)
 		if !ok {
-			AssertNil(err)
+			// using Fail() should prevent container logs from printing multiple times
+			Fail(fmt.Sprint(err))
 		} else {
 			fn := runtime.FuncForPC(pc)
-			if fn != nil && strings.Contains(fn.Name(), "TeardownTest") {
-				Log("vppctl failed in test teardown (skipping assert): %v", err)
+			// check for TeardownTest and TeardownSuite because a test may contain the word 'Teardown'
+			if fn != nil && (strings.Contains(fn.Name(), "TeardownTest") || strings.Contains(fn.Name(), "TeardownSuite")) {
+				Log("* vppctl failed during teardown (ignoring errors): %v", err)
 			} else {
-				AssertNil(err)
+				Fail(fmt.Sprint(err))
 			}
 		}
 	}
@@ -407,7 +402,6 @@ func (vpp *VppInstance) createAfPacket(veth *NetInterface, IPv6 bool, opts ...Af
 	}
 	Log("create af-packet interface " + veth.Name())
 	if err := vpp.ApiStream.SendMsg(createReq); err != nil {
-		vpp.getSuite().HstFail()
 		return 0, err
 	}
 	replymsg, err := vpp.ApiStream.RecvMsg()

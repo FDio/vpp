@@ -202,7 +202,7 @@ var _ = Describe("Http2MWSuite", Ordered, ContinueOnFailure, Serial, Label("HTTP
 		s.SetupSuite()
 	})
 	BeforeEach(func() {
-		s.SkipIfNotEnoguhCpus = true
+		s.SkipIfNotEnoughCpus = true
 	})
 	AfterAll(func() {
 		s.TeardownSuite()

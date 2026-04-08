@@ -206,7 +206,7 @@ var _ = Describe("VppUdpProxyMWSuite", Ordered, ContinueOnFailure, Serial, Label
 		s.SetupSuite()
 	})
 	BeforeEach(func() {
-		s.SkipIfNotEnoguhCpus = true
+		s.SkipIfNotEnoughCpus = true
 	})
 	AfterAll(func() {
 		s.TeardownSuite()

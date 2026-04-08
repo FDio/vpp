@@ -200,7 +200,7 @@ var _ = Describe("HsiMWSuite", Ordered, ContinueOnFailure, Serial, Label("HSI", 
 		s.SetupSuite()
 	})
 	BeforeEach(func() {
-		s.SkipIfNotEnoguhCpus = true
+		s.SkipIfNotEnoughCpus = true
 	})
 	AfterAll(func() {
 		s.TeardownSuite()
