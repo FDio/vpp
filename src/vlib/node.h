@@ -205,24 +205,21 @@ static __clib_unused vlib_node_registration_t __clib_unused_##x
 #define CLIB_MARCH_VARIANT_STR _CLIB_MARCH_VARIANT_STR(CLIB_MARCH_VARIANT)
 #endif
 
-#define VLIB_NODE_FN(node)                                                    \
-  uword CLIB_MARCH_SFX (node##_fn) (vlib_main_t *, vlib_node_runtime_t *,     \
-				    vlib_frame_t *);                          \
-  static vlib_node_fn_registration_t CLIB_MARCH_SFX (                         \
-    node##_fn_registration) = {                                               \
-    .function = &CLIB_MARCH_SFX (node##_fn),                                  \
-  };                                                                          \
-                                                                              \
-  static void __clib_constructor CLIB_MARCH_SFX (node##_multiarch_register) ( \
-    void)                                                                     \
-  {                                                                           \
-    extern vlib_node_registration_t node;                                     \
-    vlib_node_fn_registration_t *r;                                           \
-    r = &CLIB_MARCH_SFX (node##_fn_registration);                             \
-    r->march_variant = CLIB_MARCH_SFX (CLIB_MARCH_VARIANT_TYPE);              \
-    r->next_registration = node.node_fn_registrations;                        \
-    node.node_fn_registrations = r;                                           \
-  }                                                                           \
+#define VLIB_NODE_FN(node)                                                                         \
+  vlib_node_function_t CLIB_MARCH_SFX (node##_fn);                                                 \
+  static vlib_node_fn_registration_t CLIB_MARCH_SFX (node##_fn_registration) = {                   \
+    .function = &CLIB_MARCH_SFX (node##_fn),                                                       \
+  };                                                                                               \
+                                                                                                   \
+  static void __clib_constructor CLIB_MARCH_SFX (node##_multiarch_register) (void)                 \
+  {                                                                                                \
+    extern vlib_node_registration_t node;                                                          \
+    vlib_node_fn_registration_t *r;                                                                \
+    r = &CLIB_MARCH_SFX (node##_fn_registration);                                                  \
+    r->march_variant = CLIB_MARCH_SFX (CLIB_MARCH_VARIANT_TYPE);                                   \
+    r->next_registration = node.node_fn_registrations;                                             \
+    node.node_fn_registrations = r;                                                                \
+  }                                                                                                \
   uword CLIB_MARCH_SFX (node##_fn)
 
 unformat_function_t unformat_vlib_node_variant;
