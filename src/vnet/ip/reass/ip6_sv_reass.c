@@ -144,11 +144,14 @@ typedef struct
   /** Worker handoff */
   u32 fq_index;
   u32 fq_feature_index;
+  u32 fq_multicast_feature_index;
   u32 fq_output_feature_index;
   u32 fq_custom_context_index;
 
   // reference count for enabling/disabling feature - per interface
   u32 *feature_use_refcount_per_intf;
+  // reference count for enabling/disabling multicast feature - per interface
+  u32 *multicast_feature_use_refcount_per_intf;
   // reference count for enabling/disabling output feature - per interface
   u32 *output_feature_use_refcount_per_intf;
 
@@ -946,11 +949,54 @@ VLIB_REGISTER_NODE (ip6_sv_reass_node_feature) = {
         },
 };
 
+VLIB_NODE_FN (ip6_sv_reass_mcast_node_feature)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  if (ip6_sv_reass_main.extended_refcount > 0)
+    return ip6_sv_reassembly_inline (vm, node, frame,
+				     (struct ip6_sv_reass_args){
+				       .is_feature = true,
+				       .is_output_feature = false,
+				       .custom_context = false,
+				       .custom_next = false,
+				       .extended = true,
+				     });
+  return ip6_sv_reassembly_inline (vm, node, frame,
+				   (struct ip6_sv_reass_args){
+				     .is_feature = true,
+				     .is_output_feature = false,
+				     .custom_context = false,
+				     .custom_next = false,
+				     .extended = false,
+				   });
+}
+
 VNET_FEATURE_INIT (ip6_sv_reassembly_feature) = {
   .arc_name = "ip6-unicast",
   .node_name = "ip6-sv-reassembly-feature",
   .runs_before = VNET_FEATURES ("ip6-lookup"),
   .runs_after = 0,
+};
+
+VLIB_REGISTER_NODE (ip6_sv_reass_mcast_node_feature) = {
+    .name = "ip6-sv-reassembly-mcast-feature",
+    .vector_size = sizeof (u32),
+    .format_trace = format_ip6_sv_reass_trace,
+    .n_errors = IP6_N_ERROR,
+    .error_counters = ip6_error_counters,
+    .n_next_nodes = IP6_SV_REASSEMBLY_N_NEXT,
+    .next_nodes =
+        {
+                [IP6_SV_REASSEMBLY_NEXT_INPUT] = "ip6-input",
+                [IP6_SV_REASSEMBLY_NEXT_DROP] = "ip6-drop",
+                [IP6_SV_REASSEMBLY_NEXT_ICMP_ERROR] = "ip6-icmp-error",
+                [IP6_SV_REASSEMBLY_NEXT_HANDOFF] = "ip6-sv-reass-mcast-feature-hoff",
+        },
+};
+
+VNET_FEATURE_INIT (ip6_sv_reassembly_mcast_feature) = {
+  .arc_name = "ip6-multicast",
+  .node_name = "ip6-sv-reassembly-mcast-feature",
 };
 
 VLIB_NODE_FN (ip6_sv_reass_node_output_feature)
@@ -1172,6 +1218,8 @@ ip6_sv_reass_init_function (vlib_main_t *vm)
   rm->fq_index = vlib_frame_queue_main_init (ip6_sv_reass_node.index, 0);
   rm->fq_feature_index =
     vlib_frame_queue_main_init (ip6_sv_reass_node_feature.index, 0);
+  rm->fq_multicast_feature_index =
+    vlib_frame_queue_main_init (ip6_sv_reass_mcast_node_feature.index, 0);
   rm->fq_output_feature_index =
     vlib_frame_queue_main_init (ip6_sv_reass_node_output_feature.index, 0);
   rm->fq_custom_context_index =
@@ -1368,6 +1416,12 @@ ip6_sv_reass_enable_disable (u32 sw_if_index, u8 enable_disable)
 {
   return ip6_sv_reass_enable_disable_with_refcnt (sw_if_index, enable_disable);
 }
+
+vnet_api_error_t
+ip6_sv_reass_multicast_enable_disable (u32 sw_if_index, u8 enable_disable)
+{
+  return ip6_sv_reass_multicast_enable_disable_with_refcnt (sw_if_index, enable_disable);
+}
 #endif /* CLIB_MARCH_VARIANT */
 
 #define foreach_ip6_sv_reassembly_handoff_error                               \
@@ -1410,6 +1464,7 @@ struct ip6_sv_reass_hoff_args
   bool is_feature;
   bool is_output_feature;
   bool custom_context;
+  bool is_multicast;
 };
 
 always_inline uword
@@ -1432,10 +1487,11 @@ ip6_sv_reassembly_handoff_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   b = bufs;
   ti = thread_indices;
 
-  const u32 fq_index = a.is_output_feature ? rm->fq_output_feature_index :
-		       a.is_feature	   ? rm->fq_feature_index :
-		       a.custom_context	   ? rm->fq_custom_context_index :
-					     rm->fq_index;
+  const u32 fq_index =
+    a.is_output_feature ? rm->fq_output_feature_index :
+    a.is_feature	? a.is_multicast ? rm->fq_multicast_feature_index : rm->fq_feature_index :
+    a.custom_context	? rm->fq_custom_context_index :
+			  rm->fq_index;
 
   while (n_left_from > 0)
     {
@@ -1503,6 +1559,32 @@ VLIB_NODE_FN (ip6_sv_reassembly_feature_handoff_node)
 
 VLIB_REGISTER_NODE (ip6_sv_reassembly_feature_handoff_node) = {
   .name = "ip6-sv-reass-feature-hoff",
+  .vector_size = sizeof (u32),
+  .n_errors = ARRAY_LEN(ip6_sv_reassembly_handoff_error_strings),
+  .error_strings = ip6_sv_reassembly_handoff_error_strings,
+  .format_trace = format_ip6_sv_reassembly_handoff_trace,
+
+  .n_next_nodes = 1,
+
+  .next_nodes = {
+    [0] = "error-drop",
+  },
+};
+
+VLIB_NODE_FN (ip6_sv_reassembly_feature_mcast_handoff_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  return ip6_sv_reassembly_handoff_inline (vm, node, frame,
+					   (struct ip6_sv_reass_hoff_args){
+					     .is_feature = true,
+					     .is_output_feature = false,
+					     .custom_context = false,
+					     .is_multicast = true,
+					   });
+}
+
+VLIB_REGISTER_NODE (ip6_sv_reassembly_feature_mcast_handoff_node) = {
+  .name = "ip6-sv-reass-mcast-feature-hoff",
   .vector_size = sizeof (u32),
   .n_errors = ARRAY_LEN(ip6_sv_reassembly_handoff_error_strings),
   .error_strings = ip6_sv_reassembly_handoff_error_strings,
@@ -1587,6 +1669,32 @@ ip6_sv_reass_enable_disable_with_refcnt (u32 sw_if_index, int is_enable)
       if (!rm->feature_use_refcount_per_intf[sw_if_index])
 	return vnet_feature_enable_disable (
 	  "ip6-unicast", "ip6-sv-reassembly-feature", sw_if_index, 0, 0, 0);
+    }
+  return 0;
+}
+
+int
+ip6_sv_reass_multicast_enable_disable_with_refcnt (u32 sw_if_index, int is_enable)
+{
+  ip6_sv_reass_main_t *rm = &ip6_sv_reass_main;
+  vec_validate (rm->multicast_feature_use_refcount_per_intf, sw_if_index);
+  if (is_enable)
+    {
+      if (!rm->multicast_feature_use_refcount_per_intf[sw_if_index])
+	{
+	  int rv = vnet_feature_enable_disable ("ip6-multicast", "ip6-sv-reassembly-mcast-feature",
+						sw_if_index, 1, 0, 0);
+	  if (0 != rv)
+	    return rv;
+	}
+      ++rm->multicast_feature_use_refcount_per_intf[sw_if_index];
+    }
+  else
+    {
+      --rm->multicast_feature_use_refcount_per_intf[sw_if_index];
+      if (!rm->multicast_feature_use_refcount_per_intf[sw_if_index])
+	return vnet_feature_enable_disable ("ip6-multicast", "ip6-sv-reassembly-mcast-feature",
+					    sw_if_index, 0, 0, 0);
     }
   return 0;
 }
