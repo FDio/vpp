@@ -60,6 +60,15 @@ class VppObjectRegistry:
         if not hasattr(self, "_object_dict"):
             self._object_dict = dict()
 
+    def register_exclusive(self, obj: VppObject, logger) -> None:
+        """Register an object in the registry. Raise exception if duplicate."""
+        if obj.object_id() not in self._object_dict:
+            self._object_registry.append(obj)
+            self._object_dict[obj.object_id()] = obj
+            logger.debug("REG: registering %s" % obj)
+        else:
+            raise Exception("REG: duplicate add: %s" % obj)
+
     def register(self, obj: VppObject, logger) -> None:
         """Register an object in the registry."""
         if obj.object_id() not in self._object_dict:
