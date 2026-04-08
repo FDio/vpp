@@ -229,14 +229,15 @@ class VppPapiProvider(object):
     @property hook: hook object providing before and after api/cli hooks
     """
 
-    _zero, _negative = range(2)
+    _negative = object()
+
     ansi_escape = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
 
     def __init__(self, name, test_class, read_timeout):
         self.hook = Hook(test_class)
         self.name = name
         self.test_class = test_class
-        self._expect_api_retval = self._zero
+        self._expect_api_retval = None
         self._expect_stack = []
 
         self.vpp = VPPApiClient(
@@ -263,6 +264,19 @@ class VppPapiProvider(object):
         self._expect_api_retval = self._negative
         return self
 
+    def assert_known_api_retval(self, retvals: list[int]):
+        """Expect API to have a certain return value used with with, e.g.::
+
+            with self.vapi.assert_known_api_retval(retvals=[0,-165]):
+                self.vapi.<api call expected to succeed>
+
+        :note: this is useful only inside another with block
+             as success is the default expected value
+        """
+        self._expect_stack.append(self._expect_api_retval)
+        self._expect_api_retval = retvals
+        return self
+
     def assert_zero_api_retval(self):
         """Expect API success - used with with, e.g.::
 
@@ -272,9 +286,7 @@ class VppPapiProvider(object):
         :note: this is useful only inside another with block
              as success is the default expected value
         """
-        self._expect_stack.append(self._expect_api_retval)
-        self._expect_api_retval = self._zero
-        return self
+        return self.assert_known_api_retval(retvals=[0])
 
     def __exit__(self, exc_type, exc_value, traceback):
         self._expect_api_retval = self._expect_stack.pop()
@@ -296,7 +308,6 @@ class VppPapiProvider(object):
                 result.append(e)
             except queue.Empty:
                 return result
-        return result
 
     def wait_for_event(self, timeout, name=None):
         """Wait for and return next event."""
@@ -371,34 +382,44 @@ class VppPapiProvider(object):
         """Disconnect the API from VPP"""
         self.vpp.disconnect()
 
-    def api(self, api_fn, api_args, expected_retval=0):
+    def api(self, api_fn, api_args, expected_retval: int | list[int] = 0):
         """Call API function and check it's return value.
         Call the appropriate hooks before and after the API call
 
         :param api_fn: API function to call
         :param api_args: tuple of API function arguments
-        :param expected_retval: Expected return value (Default value = 0)
+        :param expected_retval: Expected return value(s) (Default value = 0)
         :returns: reply from the API
 
         """
         self.hook.before_api(api_fn.__name__, api_args)
         reply = api_fn(**api_args)
-        if self._expect_api_retval == self._negative:
-            if hasattr(reply, "retval") and reply.retval >= 0:
+
+        retval = None
+        if hasattr(reply, "retval"):
+            retval = reply.retval
+        elif type(reply) is tuple and hasattr(reply[0], "retval"):
+            retval = reply[0].retval
+
+        if self._expect_api_retval is self._negative:
+            if retval is not None and retval >= 0:
                 msg = (
                     "%s(%s) passed unexpectedly: expected negative "
                     "return value instead of %d in %s"
                     % (
                         api_fn.__name__,
                         as_fn_signature(api_args),
-                        reply.retval,
+                        retval,
                         reprlib.repr(reply),
                     )
                 )
                 self.test_class.logger.info(msg)
-                raise UnexpectedApiReturnValueError(reply.retval, msg)
-        elif self._expect_api_retval == self._zero:
-            if hasattr(reply, "retval") and reply.retval != expected_retval:
+                raise UnexpectedApiReturnValueError(retval, msg, reply)
+        elif self._expect_api_retval is None:
+            if retval is not None and (
+                (isinstance(expected_retval, int) and retval != expected_retval)
+                or (isinstance(expected_retval, list) and retval not in expected_retval)
+            ):
                 msg = (
                     "%s(%s) failed, expected %d return value instead "
                     "of %d in %s"
@@ -406,12 +427,17 @@ class VppPapiProvider(object):
                         api_fn.__name__,
                         as_fn_signature(api_args),
                         expected_retval,
-                        reply.retval,
-                        repr(reply),
+                        retval,
+                        reprlib.repr(reply),
                     )
                 )
                 self.test_class.logger.info(msg)
-                raise UnexpectedApiReturnValueError(reply.retval, msg)
+                raise UnexpectedApiReturnValueError(retval, msg, reply)
+        elif isinstance(self._expect_api_retval, list):
+            if retval is not None and retval not in self._expect_api_retval:
+                msg = f"{api_fn.__name__}{as_fn_signature(api_args)} failed, expected return value in {expected_retval}, got {retval} in {reprlib.repr(reply)}"
+                self.test_class.logger.info(msg)
+                raise UnexpectedApiReturnValueError(retval, msg, reply)
         else:
             raise Exception(
                 "Internal error, unexpected value for "
