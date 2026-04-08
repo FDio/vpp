@@ -92,6 +92,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "cc4ae4ae_1bf6095c",
+        "filename": "test/framework.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 583,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-04-08T19:51:59Z",
+      "side": 1,
+      "message": "I believe it is and it is being used for multi-worker tests outside upstream VPP. While I\u0027d love to clear the existing tests, it\u0027s definitely beyond my resources. In my experience having full tests means approaching the tests themselves as a product, not only as a \"just get it done\" script.\n\nTo compare: if I execute \"make test\" on upstream VPP, I see that it\u0027s about to execute 2359 tests, if I do the same and filter by a single feature I work on, I get 2922 tests. There is of course not so many test functions, but parametrization pushes it to this number.",
+      "parentUuid": "2577a03e_5b11a66b",
+      "revId": "17ab012a809206a32efdc293271b1964e212065c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "378be68c_b485ac5b",
         "filename": "test/framework.py",
         "patchSetId": 7
@@ -175,6 +193,24 @@
       "side": 1,
       "message": "Thanks for pushing 45454, that should be a big help!\n\nNot to belabor the point, but it would be helpful to have a test that I could run to see what the log output looks like in the multi context scenario.\n\nThank you for your patience as I get my head back into the test code.",
       "parentUuid": "cacbb9f7_04b4fd4e",
+      "revId": "17ab012a809206a32efdc293271b1964e212065c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "978d286a_38240d5b",
+        "filename": "test/framework.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 606,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-04-08T19:51:59Z",
+      "side": 1,
+      "message": "So if you look at test_reassembly.py, it is converted to use send_and_expect_multi in multiple places. I would suggest picking such a test, running it with this patch and without and comparing the log.txt traces after removing timestamps. You might find that they are very similar, if not the same, as none of the send_and_expect* messages announce their names in the logs, while the underlying functions like get_capture do.\n\nBtw. on my box these 4 patches reduce total runtime to about 30% of what it was before and with 64 cores (32 with HT) I am passing every (upstream VPP) test like this:\n\n________________________________________________________\nExecuted in  598.86 secs    fish           external\n   usr time   38.77 mins    0.00 micros   38.77 mins\n   sys time   12.31 mins  913.00 micros   12.31 mins\n\n\nhttps://gerrit.fd.io/r/c/vpp/+/45454\nhttps://gerrit.fd.io/r/c/vpp/+/45420\nhttps://gerrit.fd.io/r/c/vpp/+/45455\nhttps://gerrit.fd.io/r/c/vpp/+/45414 (this one is crucial for high (auto) TEST_JOBS)",
+      "parentUuid": "67854ac4_ef1abe97",
       "revId": "17ab012a809206a32efdc293271b1964e212065c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
