@@ -33,6 +33,8 @@ vnet_flow_add_inline (vnet_main_t *vnm, vnet_flow_t *flow, u32 *flow_index, bool
   f->redirect_node_index = flow->redirect_node_index;
   f->redirect_device_input_next_index = flow->redirect_device_input_next_index;
   f->redirect_queue = flow->redirect_queue;
+  f->steer_to_hw_if_index = flow->steer_to_hw_if_index;
+  f->steer_from_hw_if_index = flow->steer_from_hw_if_index;
   f->buffer_advance = flow->buffer_advance;
   f->driver_data.opaque = ~0;
   f->driver_data.hw_if_index = ~0;
