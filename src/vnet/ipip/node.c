@@ -125,14 +125,19 @@ ipip_input (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  /*
 	   * Find tunnel. First a lookup for P2P tunnels, then a lookup
-	   * for multipoint tunnels
+	   * for multipoint tunnels: P2MP first, then 6RD
 	   */
 	  ipip_tunnel_t *t0 = ipip_tunnel_db_find (&key0);
 	  if (!t0)
 	    {
 	      ip46_address_reset (&key0.dst);
-	      key0.mode = IPIP_MODE_6RD;
+	      key0.mode = IPIP_MODE_P2MP;
 	      t0 = ipip_tunnel_db_find (&key0);
+	      if (!t0)
+		{
+		  key0.mode = IPIP_MODE_6RD;
+		  t0 = ipip_tunnel_db_find (&key0);
+		}
 	      if (!t0)
 		{
 		  next0 = IPIP_INPUT_NEXT_DROP;
