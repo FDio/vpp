@@ -71,6 +71,21 @@ timer_expiry_cb_expire_or_evict_sessions (u32 desired_expiries,
   sfdp_session_index_iterate_expired (ptd, session_index)
   {
     sfdp_session_t *session = sfdp_session_at_index (session_index);
+
+    /* don't expire sessions with valid verdict offload rules added for both directions */
+    /* & timer is re-arm automatically in that state */
+    /* */
+    if (session->state == SFDP_SESSION_STATE_VERDICT_OFFLOADED)
+      {
+	sfdp_session_timer_t *timer = SFDP_SESSION_TIMER (session);
+	sfdp_session_timer_start (&ptd->wheel, timer, session_index, ptd->current_time,
+				  sfdp_main.offload_keepalive_s);
+	continue;
+      }
+
+    /* if a flow is in state "VERDICT_OFFLOADED_PARTIAL", then it will expire here if its */
+    /* timer fires. This is to cleanup potential sessions existing with stale HW offload rules
+     * in one direction */
     sfdp_session_timer_t *timer = SFDP_SESSION_TIMER (session);
     f64 remaining_time = timer->next_expiration - (ptd->current_time + SFDP_TIMER_INTERVAL);
     if (remaining_time > SFDP_TIMER_INTERVAL)
@@ -83,6 +98,8 @@ timer_expiry_cb_expire_or_evict_sessions (u32 desired_expiries,
       }
     else
       {
+	/* invalidate timer handle if no re-arming occurred after expiry  */
+	timer->handle = ~0;
 	vec_add1 (expired_sessions_vec, session_index);
       }
   }
@@ -162,3 +179,32 @@ sfdp_timer_register_as_expiry_module ()
   };
   return sfdp_set_expiry_callbacks (&cbs);
 }
+
+/* for verdict offloaded sessions, removed any remaining timer before deleting the session entry */
+static u32
+timer_deleted_sessions_cb (const u32 *session_indices, u32 n_sessions)
+{
+  sfdp_timer_main_t *t = &sfdp_timer_main;
+  u32 tidx = vlib_get_thread_index ();
+  sfdp_timer_per_thread_data_t *ptd = vec_elt_at_index (t->per_thread_data, tidx);
+
+  for (u32 i = 0; i < n_sessions; i++)
+    {
+      sfdp_session_t *session = sfdp_session_at_index (session_indices[i]);
+
+      if (!sfdp_session_state_is_verdict_offloaded (session->state))
+	continue;
+      sfdp_session_timer_t *timer = SFDP_SESSION_TIMER (session);
+
+      if (timer->handle != ~0)
+	{
+	  sfdp_session_timer_stop (&ptd->wheel, timer);
+	  timer->handle = ~0;
+	}
+    }
+  return 0;
+}
+
+SFDP_REGISTER_DELETED_SESSIONS_CALLBACK (sfdp_timer) = {
+  .fun = timer_deleted_sessions_cb,
+};

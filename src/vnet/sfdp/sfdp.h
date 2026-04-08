@@ -66,11 +66,13 @@ typedef enum
   SFDP_SESSION_N_TYPES,
 } sfdp_session_type_t;
 
-#define foreach_sfdp_session_state                                            \
-  _ (FSOL, "embryonic")                                                       \
-  _ (ESTABLISHED, "established")                                              \
-  _ (TIME_WAIT, "time-wait")                                                  \
-  /* Free session does not belong to main pool anymore, but is unused */      \
+#define foreach_sfdp_session_state                                                                 \
+  _ (FSOL, "embryonic")                                                                            \
+  _ (ESTABLISHED, "established")                                                                   \
+  _ (TIME_WAIT, "time-wait")                                                                       \
+  _ (VERDICT_OFFLOADED, "verdict-offloaded")                                                       \
+  _ (VERDICT_OFFLOADED_PARTIAL, "verdict-offloaded-partial")                                       \
+  /* Free session does not belong to main pool anymore, but is unused */                           \
   _ (FREE, "free")
 
 typedef enum
@@ -80,6 +82,13 @@ typedef enum
 #undef _
     SFDP_SESSION_N_STATE
 } sfdp_session_state_t;
+
+static_always_inline bool
+sfdp_session_state_is_verdict_offloaded (u8 state)
+{
+  return state == SFDP_SESSION_STATE_VERDICT_OFFLOADED ||
+	 state == SFDP_SESSION_STATE_VERDICT_OFFLOADED_PARTIAL;
+}
 
 #define foreach_sfdp_flow_counter _ (LOOKUP, "lookup")
 
@@ -301,7 +310,10 @@ typedef struct sfdp_session
   u8 proto;
   u16 tenant_idx;
   u16 owning_thread_index;
-  u8 unused0[16];
+  u16 vt_pkt_count;
+  u16 _pad0;
+  u32 flow_index_verdict[SFDP_FLOW_F_B_N];
+  u8 unused0[4];
   u8 pseudo_dir[SFDP_SESSION_N_KEY];
   u8 type; /* see sfdp_session_type_t */
   u8 key_flags;
@@ -343,6 +355,13 @@ sfdp_get_session_expiry_opaque (sfdp_session_t *s)
 
 typedef struct
 {
+  u32 session_index;
+  u32 hw_if_index;
+  u8 dir;
+} sfdp_aged_flow_entry_t;
+
+typedef struct
+{
   u32 *expired_sessions; // per thread expired session vector
   u64 session_id_ctr;
   u64 session_id_template;
@@ -352,6 +371,16 @@ typedef struct
   u32 *flow_indices_tcp;
   u32 *flow_indices_udp;
   u32 *flow_indices_del;
+
+  /* Worker-side: aged flow entries handed off by main via CAS.
+   * Main publishes with clib_atomic_bool_cmp_and_swap (NULL -> staging).
+   * Worker drains with clib_atomic_swap_acq_n (-> NULL). */
+  sfdp_aged_flow_entry_t *aged_flows_pending;
+
+  /* Main-side: staging area accumulated across aging poll cycles until the
+   * worker has consumed aged_flows_pending (i.e. CAS finds it NULL).
+   * Exclusively owned by the main thread — no atomic access needed. */
+  sfdp_aged_flow_entry_t *aged_flows_main_staging;
 } sfdp_per_thread_data_t;
 
 // TODO: Find a way to abstract, or share, timeout definition.
@@ -370,6 +399,10 @@ STATIC_ASSERT_SIZEOF (sfdp_timeout_t[8], 16 * 8);
 /* Maximum number of tenant timers configurable */
 #define SFDP_MAX_TIMEOUTS 8
 #define SFDP_DEFAULT_TIMER_INTERVAL_S ((f64) 1.0)
+
+/* Default SW fallback window (seconds) used by the expiry module for sessions
+ * transiting the VERDICT_OFFLOADED -> VERDICT_OFFLOADED_PARTIAL path. */
+#define SFDP_DEFAULT_OFFLOAD_KEEPALIVE_S ((f64) 60.0)
 
 typedef struct
 {
@@ -438,6 +471,9 @@ typedef struct
   /* Interval between timer wheel ticks in seconds. */
   f64 timer_tick_interval_s;
 
+  /* SW fallback window (seconds) for the VERDICT_OFFLOADED → PARTIAL path. */
+  f64 offload_keepalive_s;
+
   /* If this is set, don't run polling nodes on main */
   int no_main;
 } sfdp_main_t;
@@ -457,6 +493,12 @@ typedef struct
 
 extern sfdp_main_t sfdp_main;
 extern vlib_node_registration_t sfdp_handoff_node;
+
+static_always_inline void
+sfdp_set_offload_keepalive (f64 seconds)
+{
+  sfdp_main.offload_keepalive_s = seconds;
+}
 extern vlib_node_registration_t sfdp_lookup_ip4_icmp_node;
 extern vlib_node_registration_t sfdp_lookup_ip6_icmp_node;
 extern vlib_node_registration_t sfdp_lookup_ip4_node;
@@ -834,6 +876,9 @@ sfdp_create_session_inline (sfdp_main_t *sfdp, sfdp_per_thread_data_t *ptd,
   session->state = SFDP_SESSION_STATE_FSOL;
   session->owning_thread_index = thread_index;
   session->scope_index = scope_index;
+  session->vt_pkt_count = 0;
+  session->flow_index_verdict[SFDP_FLOW_FORWARD] = ~0;
+  session->flow_index_verdict[SFDP_FLOW_REVERSE] = ~0;
   if (ptd)
     sfdp_session_generate_and_set_id (sfdp, ptd, session);
 
