@@ -66,11 +66,13 @@ typedef enum
   SFDP_SESSION_N_TYPES,
 } sfdp_session_type_t;
 
-#define foreach_sfdp_session_state                                            \
-  _ (FSOL, "embryonic")                                                       \
-  _ (ESTABLISHED, "established")                                              \
-  _ (TIME_WAIT, "time-wait")                                                  \
-  /* Free session does not belong to main pool anymore, but is unused */      \
+#define foreach_sfdp_session_state                                                                 \
+  _ (FSOL, "embryonic")                                                                            \
+  _ (ESTABLISHED, "established")                                                                   \
+  _ (TIME_WAIT, "time-wait")                                                                       \
+  _ (VERDICT_OFFLOADED, "verdict-offloaded")                                                       \
+  _ (VERDICT_OFFLOADED_PARTIAL, "verdict-offloaded-partial")                                       \
+  /* Free session does not belong to main pool anymore, but is unused */                           \
   _ (FREE, "free")
 
 typedef enum
@@ -80,6 +82,13 @@ typedef enum
 #undef _
     SFDP_SESSION_N_STATE
 } sfdp_session_state_t;
+
+static_always_inline bool
+sfdp_session_state_is_verdict_offloaded (u8 state)
+{
+  return state == SFDP_SESSION_STATE_VERDICT_OFFLOADED ||
+	 state == SFDP_SESSION_STATE_VERDICT_OFFLOADED_PARTIAL;
+}
 
 #define foreach_sfdp_flow_counter _ (LOOKUP, "lookup")
 
@@ -301,7 +310,8 @@ typedef struct sfdp_session
   u8 proto;
   u16 tenant_idx;
   u16 owning_thread_index;
-  u8 unused0[16];
+  u32 flow_index_verdict[SFDP_FLOW_F_B_N];
+  u8 unused0[6];
   u8 pseudo_dir[SFDP_SESSION_N_KEY];
   u8 type; /* see sfdp_session_type_t */
   u8 key_flags;
@@ -343,6 +353,23 @@ sfdp_get_session_expiry_opaque (sfdp_session_t *s)
 
 typedef struct
 {
+  u32 session_index;
+  u32 hw_if_index;
+  u32 vnet_flow_index;
+  session_version_t session_version;
+  u8 dir;
+} sfdp_aged_flow_entry_t;
+
+typedef struct
+{
+  u32 vnet_flow_index;
+  session_version_t session_version;
+  u16 thread_index;
+  u8 is_valid;
+} sfdp_flow_aging_context_t;
+
+typedef struct
+{
   u32 *expired_sessions; // per thread expired session vector
   u64 session_id_ctr;
   u64 session_id_template;
@@ -352,6 +379,13 @@ typedef struct
   u32 *flow_indices_tcp;
   u32 *flow_indices_udp;
   u32 *flow_indices_del;
+
+  /* Worker-side: aged flow entries handed off by main via CAS */
+  sfdp_aged_flow_entry_t *aged_flows_pending;
+
+  /* Main-side: staging area accumulated across aging poll cycles until the
+   * worker has consumed aged_flows_pending */
+  sfdp_aged_flow_entry_t *aged_flows_main_staging;
 } sfdp_per_thread_data_t;
 
 // TODO: Find a way to abstract, or share, timeout definition.
@@ -370,6 +404,10 @@ STATIC_ASSERT_SIZEOF (sfdp_timeout_t[8], 16 * 8);
 /* Maximum number of tenant timers configurable */
 #define SFDP_MAX_TIMEOUTS 8
 #define SFDP_DEFAULT_TIMER_INTERVAL_S ((f64) 1.0)
+
+/* Default SW fallback window (seconds) used by the expiry module for sessions
+ * transiting the VERDICT_OFFLOADED -> VERDICT_OFFLOADED_PARTIAL path. */
+#define SFDP_DEFAULT_OFFLOAD_KEEPALIVE_S ((f64) 60.0)
 
 typedef struct
 {
@@ -430,6 +468,9 @@ typedef struct
   /* flow related */
   u32 *flow_template_index_tcp_by_hw_if_index;
   u32 *flow_template_index_udp_by_hw_if_index;
+  /* Shared by SFDP aging services and indexed by SFDP flow index.
+   * Only one active aging owner is expected per SFDP flow direction. */
+  sfdp_flow_aging_context_t *flow_aging_contexts;
 
   /* Per-thread number of sessions margin before eviction.
    * See sfdp_set_eviction_sessions_margin function more information. */
@@ -437,6 +478,9 @@ typedef struct
 
   /* Interval between timer wheel ticks in seconds. */
   f64 timer_tick_interval_s;
+
+  /* SW fallback window (seconds) for the VERDICT_OFFLOADED → PARTIAL path. */
+  f64 offload_keepalive_s;
 
   /* If this is set, don't run polling nodes on main */
   int no_main;
@@ -457,6 +501,12 @@ typedef struct
 
 extern sfdp_main_t sfdp_main;
 extern vlib_node_registration_t sfdp_handoff_node;
+
+static_always_inline void
+sfdp_set_offload_keepalive (f64 seconds)
+{
+  sfdp_main.offload_keepalive_s = seconds;
+}
 extern vlib_node_registration_t sfdp_lookup_ip4_icmp_node;
 extern vlib_node_registration_t sfdp_lookup_ip6_icmp_node;
 extern vlib_node_registration_t sfdp_lookup_ip4_node;
@@ -667,6 +717,53 @@ sfdp_direction_from_flow_index (u32 flow_index)
   return (flow_index & 0x1);
 }
 
+static_always_inline u32
+sfdp_flow_aging_context_index (u32 session_index, u32 dir)
+{
+  return sfdp_mk_flow_index (session_index, dir);
+}
+
+static_always_inline int
+sfdp_flow_aging_context_is_active (sfdp_main_t *sfdp, u32 context_index)
+{
+  return (context_index < vec_len (sfdp->flow_aging_contexts) &&
+	  vec_elt_at_index (sfdp->flow_aging_contexts, context_index)->is_valid);
+}
+
+static_always_inline void
+sfdp_flow_aging_context_set (sfdp_main_t *sfdp, u32 context_index,
+			     session_version_t session_version, u16 thread_index,
+			     u32 vnet_flow_index)
+{
+  sfdp_flow_aging_context_t *ctx;
+
+  vec_validate (sfdp->flow_aging_contexts, context_index);
+  ctx = vec_elt_at_index (sfdp->flow_aging_contexts, context_index);
+  ctx->vnet_flow_index = vnet_flow_index;
+  ctx->session_version = session_version;
+  ctx->thread_index = thread_index;
+  ctx->is_valid = 1;
+}
+
+static_always_inline void
+sfdp_flow_aging_context_invalidate (sfdp_main_t *sfdp, u32 context_index)
+{
+  if (context_index < vec_len (sfdp->flow_aging_contexts))
+    vec_elt_at_index (sfdp->flow_aging_contexts, context_index)->is_valid = 0;
+}
+
+static_always_inline sfdp_flow_aging_context_t *
+sfdp_flow_aging_context_at_index_if_valid (sfdp_main_t *sfdp, u32 context_index)
+{
+  sfdp_flow_aging_context_t *ctx;
+
+  if (context_index >= vec_len (sfdp->flow_aging_contexts))
+    return 0;
+
+  ctx = vec_elt_at_index (sfdp->flow_aging_contexts, context_index);
+  return ctx->is_valid ? ctx : 0;
+}
+
 static_always_inline sfdp_tenant_t *
 sfdp_tenant_at_index (sfdp_main_t *sfdpm, u32 idx)
 {
@@ -834,6 +931,8 @@ sfdp_create_session_inline (sfdp_main_t *sfdp, sfdp_per_thread_data_t *ptd,
   session->state = SFDP_SESSION_STATE_FSOL;
   session->owning_thread_index = thread_index;
   session->scope_index = scope_index;
+  session->flow_index_verdict[SFDP_FLOW_FORWARD] = ~0;
+  session->flow_index_verdict[SFDP_FLOW_REVERSE] = ~0;
   if (ptd)
     sfdp_session_generate_and_set_id (sfdp, ptd, session);
 
@@ -905,6 +1004,7 @@ void
 sfdp_ip6_full_reass_custom_context_register_next_err_node (u16 node_index);
 int sfdp_flow_offload_configure (vnet_main_t *vnm, u32 hw_if_index, u32 n_flows);
 int sfdp_flow_offload_deconfigure (vnet_main_t *vnm, u32 hw_if_index);
+int sfdp_flow_aging_service_register (const char *name, u32 *service_index);
 
 #define SFDP_CORE_PLUGIN_BUILD_VER "1.0"
 

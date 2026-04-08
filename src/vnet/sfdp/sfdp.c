@@ -123,6 +123,8 @@ sfdp_init_main_if_needed (sfdp_main_t *sfdp)
       vec_validate (ptd->flow_indices_tcp, 2 * VLIB_FRAME_SIZE - 1);
       vec_validate (ptd->flow_indices_udp, 2 * VLIB_FRAME_SIZE - 1);
       vec_validate (ptd->flow_indices_del, 2 * sfdp_num_sessions () - 1);
+      ptd->aged_flows_pending = 0;
+      ptd->aged_flows_main_staging = 0;
     }
   if (vlib_num_workers ())
     clib_spinlock_init (&sfdp->session_lock);
@@ -155,6 +157,66 @@ sfdp_init_main_if_needed (sfdp_main_t *sfdp)
     }
 
   done = 1;
+}
+
+/* Main-thread callback invoked by vnet flow aging for a single hw_if_index.
+ * Decodes each SFDP service opaque and appends via CAS to each worker's vector.
+ * if the worker has not yet consumed the previous batch, then
+ * main keeps accumulating into its private vector copy until the next cycle.
+ *
+ * VNET passes service-owned aging context indices containing SFDP flow indices. */
+static void
+sfdp_aged_flow_cb (u64 *service_context_indices, u32 hw_if_index, u32 n)
+{
+  sfdp_main_t *sfdp = &sfdp_main;
+
+  for (u32 i = 0; i < n; i++)
+    {
+      u32 context_index = (u32) service_context_indices[i];
+      sfdp_flow_aging_context_t *ctx =
+	sfdp_flow_aging_context_at_index_if_valid (sfdp, context_index);
+
+      if (PREDICT_FALSE (ctx == 0 || ctx->thread_index >= vec_len (sfdp->per_thread_data)))
+	continue;
+
+      sfdp_per_thread_data_t *ptd = vec_elt_at_index (sfdp->per_thread_data, ctx->thread_index);
+      sfdp_aged_flow_entry_t e = {
+	.session_index = sfdp_session_from_flow_index (context_index),
+	.hw_if_index = hw_if_index,
+	.vnet_flow_index = ctx->vnet_flow_index,
+	.session_version = ctx->session_version,
+	.dir = (u8) sfdp_direction_from_flow_index (context_index),
+      };
+      vec_add1 (ptd->aged_flows_main_staging, e);
+    }
+
+  u32 n_threads = vec_len (sfdp->per_thread_data);
+  for (u32 t = 0; t < n_threads; t++)
+    {
+      sfdp_per_thread_data_t *ptd = vec_elt_at_index (sfdp->per_thread_data, t);
+
+      if (!vec_len (ptd->aged_flows_main_staging))
+	continue;
+
+      if (clib_atomic_bool_cmp_and_swap (&ptd->aged_flows_pending, NULL,
+					 ptd->aged_flows_main_staging))
+	ptd->aged_flows_main_staging = 0; /* worker now owns the vector */
+      /* else: worker has not consumed yet — keep accumulating for next cycle */
+    }
+}
+
+/* different sfdp services can register flow aging service */
+/* while using common sfdp infra flow aging mechanism */
+int
+sfdp_flow_aging_service_register (const char *name, u32 *service_index)
+{
+  if (service_index == 0)
+    return VNET_FLOW_ERROR_INVALID_VALUE;
+
+  if (*service_index != VNET_FLOW_AGING_SERVICE_INVALID)
+    return 0;
+
+  return vnet_flow_register_aging_service (name, sfdp_aged_flow_cb, service_index);
 }
 
 int
@@ -255,6 +317,9 @@ sfdp_flow_offload_deconfigure (vnet_main_t *vnm, u32 hw_if_index)
 
   *udp_index = ~0;
 
+  for (u32 t = 0; t < vec_len (sfdp->per_thread_data); t++)
+    vec_free (vec_elt_at_index (sfdp->per_thread_data, t)->aged_flows_main_staging);
+
   return 0;
 }
 
@@ -271,8 +336,10 @@ sfdp_init (vlib_main_t *vm)
      SFDP_DEFAULT_LOG2_SESSIONS - SFDP_DEFAULT_LOG2_SESSIONS_CACHE_RATIO)
   _ (log2_tenants, SFDP_DEFAULT_LOG2_TENANTS)
   _ (timer_tick_interval_s, SFDP_DEFAULT_TIMER_INTERVAL_S)
+  _ (offload_keepalive_s, SFDP_DEFAULT_OFFLOAD_KEEPALIVE_S)
 #undef _
   sfdp->no_main = sfdp->no_main && vlib_num_workers ();
+  vec_validate (sfdp->flow_aging_contexts, 2 * sfdp_num_sessions () - 1);
 
   /* sfdp->eviction_sessions_margin came from early_config */
   if ((err = sfdp_set_eviction_sessions_margin (
