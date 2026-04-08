@@ -28,7 +28,13 @@ u8 static expiry_is_enabled = 0;
   _ (FLOW_OFFLOAD_ASYNC_DISABLE_FAILED, "flow-offload-async-disable-failed", ERROR,                \
      "flow offload async disable failed")                                                          \
   _ (FLOW_OFFLOAD_DELETE_OK, "flow-offload-delete-ok", INFO, "flow offload delete ok")             \
-  _ (FLOW_OFFLOAD_DELETE_FAILED, "flow-offload-delete-failed", ERROR, "flow offload delete failed")
+  _ (FLOW_OFFLOAD_DELETE_FAILED, "flow-offload-delete-failed", ERROR,                              \
+     "flow offload delete failed")                                                                 \
+  _ (AGED_FLOW, "aged-flow", INFO, "hw-aged flow removed from session")                            \
+  _ (AGED_FLOW_WRONG_THREAD, "aged-flow-wrong-thread", ERROR,                                      \
+     "hw-aged session drained on a thread that does not own it")                                   \
+  _ (AGED_ALREADY_RETIRED, "aged-already-retired", INFO,                                           \
+     "hw-aged session drained after its verdict slots were already cleared")
 
 typedef enum
 {
@@ -128,6 +134,89 @@ VLIB_NODE_FN (sfdp_expire_node)
       (sfdp->eviction_sessions_margin - n_remaining_sessions) :
       0;
 
+  sfdp_aged_flow_entry_t *aged_drained = clib_atomic_swap_acq_n (&ptd->aged_flows_pending, NULL);
+
+  if (PREDICT_FALSE (vec_len (aged_drained) > 0))
+    {
+      u32 n_aged = vec_len (aged_drained);
+      u32 *aged_flow_indices = 0;
+      u32 aged_hw_if_index = aged_drained[0].hw_if_index;
+      bool aged_same_hw = true;
+      u32 n_wrong_thread = 0;
+      u32 n_already_retired = 0;
+
+      for (u32 i = 0; i < n_aged; i++)
+	{
+	  sfdp_aged_flow_entry_t *e = &aged_drained[i];
+	  sfdp_session_t *s = sfdp_session_at_index (e->session_index);
+
+	  if (PREDICT_FALSE (s->owning_thread_index != thread_index))
+	    n_wrong_thread++;
+
+	  /* check if the same hw_if_index is used by sessions
+	   * to assess if we can batch vnet disable call */
+	  if (PREDICT_FALSE (e->hw_if_index != aged_hw_if_index))
+	    aged_same_hw = false;
+
+	  /* ignore flows which have already been retired */
+	  if (PREDICT_FALSE (s->flow_index_verdict[e->dir] == ~0))
+	    {
+	      n_already_retired++;
+	      continue;
+	    }
+
+	  u32 flow_idx = s->flow_index_verdict[e->dir];
+	  s->flow_index_verdict[e->dir] = ~0;
+	  vec_add1 (aged_flow_indices, flow_idx);
+
+	  /* Teardown is done in two steps
+	   * (1) Upon seeing the first flow aging entry for a session
+	   * the session moves from state  VERDICT_OFFLOADED -> VERDICT_OFFLOADED_PARTIAL
+	   * The timer wheel entry is updated with the partial offload keepalive timeout,
+	   * and if it timeouts, we proceed to teardown the other direction HW flow verdict
+	   * if valid.
+	   *
+	   * (2) Upon seeing the second flow aging entry for a session
+	   * we know that both directions had their flow offload entries aged out
+	   * and we proceed to remove the session and its associated timer wheel entry */
+	  u8 other_dir = e->dir ^ 0x1;
+	  if (s->flow_index_verdict[other_dir] != ~0)
+	    {
+	      s->state = SFDP_SESSION_STATE_VERDICT_OFFLOADED_PARTIAL;
+	      sfdp_session_timer_update (SFDP_SESSION_TIMER (s), vlib_time_now (vm),
+					 sfdp->offload_keepalive_s);
+	    }
+	  else
+	    vec_add1 (ptd->expired_sessions, e->session_index);
+	}
+
+      u32 n_to_del = vec_len (aged_flow_indices);
+      if (n_to_del > 0)
+	{
+	  if (aged_same_hw)
+	    vnet_flow_async_range_disable (vnm, aged_flow_indices, aged_hw_if_index);
+	  else
+	    {
+	      for (u32 i = 0; i < n_to_del; i++)
+		vnet_flow_disable (vnm, aged_flow_indices[i]);
+	    }
+
+	  for (u32 i = 0; i < n_to_del; i++)
+	    vnet_flow_del (vnm, aged_flow_indices[i]);
+	}
+
+      vlib_node_increment_counter (vm, node->node_index, SFDP_EXPIRE_ERROR_AGED_FLOW, n_to_del);
+      if (PREDICT_FALSE (n_wrong_thread))
+	vlib_node_increment_counter (vm, node->node_index, SFDP_EXPIRE_ERROR_AGED_FLOW_WRONG_THREAD,
+				     n_wrong_thread);
+      if (PREDICT_FALSE (n_already_retired))
+	vlib_node_increment_counter (vm, node->node_index, SFDP_EXPIRE_ERROR_AGED_ALREADY_RETIRED,
+				     n_already_retired);
+
+      vec_free (aged_flow_indices);
+      vec_free (aged_drained);
+    }
+
   /* Calling callback for expiries or evictions */
   ptd->expired_sessions = sfdp->expiry_callbacks.expire_or_evict_sessions (
     desired_evictions, ptd->expired_sessions);
@@ -204,6 +293,21 @@ VLIB_NODE_FN (sfdp_expire_node)
 	  session->flow_index[SFDP_FLOW_REVERSE] = ~0;
 
 	  flow_delete += 2;
+	}
+
+      /* If a verdict-offloaded session is deleted manually in sfdp,
+       * we must manually remove the remaining HW offload entries to avoid leaks */
+      if (session->flow_index_verdict[SFDP_FLOW_FORWARD] != ~0)
+	{
+	  vnet_flow_disable (vnm, session->flow_index_verdict[SFDP_FLOW_FORWARD]);
+	  vnet_flow_del (vnm, session->flow_index_verdict[SFDP_FLOW_FORWARD]);
+	  session->flow_index_verdict[SFDP_FLOW_FORWARD] = ~0;
+	}
+      if (session->flow_index_verdict[SFDP_FLOW_REVERSE] != ~0)
+	{
+	  vnet_flow_disable (vnm, session->flow_index_verdict[SFDP_FLOW_REVERSE]);
+	  vnet_flow_del (vnm, session->flow_index_verdict[SFDP_FLOW_REVERSE]);
+	  session->flow_index_verdict[SFDP_FLOW_REVERSE] = ~0;
 	}
 
       sfdp_session_remove (sfdp, ptd, session, thread_index, *session_index);
