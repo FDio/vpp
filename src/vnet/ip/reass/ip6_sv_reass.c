@@ -652,6 +652,7 @@ ip6_sv_reassembly_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      if (a.extended)
 		ip6_sv_reass_reset_vnet_buffer2 (b0);
 	      vnet_buffer (b0)->ip.reass.l4_hdr_truncated = 0;
+	      vnet_buffer (b0)->ip.reass.is_fragment = 0;
 	      vnet_buffer (b0)->ip.reass.is_non_first_fragment = 0;
 	      next0 = a.custom_next ? vnet_buffer (b0)->ip.reass.next_index :
 				      IP6_SV_REASSEMBLY_NEXT_INPUT;
@@ -731,6 +732,7 @@ ip6_sv_reassembly_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  if (ip6_sv_reass_is_complete (reass, a.extended))
 	    {
 	      vnet_buffer (b0)->ip.reass.l4_hdr_truncated = 0;
+	      vnet_buffer (b0)->ip.reass.is_fragment = 1;
 	      vnet_buffer (b0)->ip.reass.is_non_first_fragment =
 		!!ip6_frag_hdr_offset (frag_hdr);
 	      vnet_buffer (b0)->ip.reass.ip_proto = reass->ip_proto;
@@ -808,6 +810,7 @@ ip6_sv_reassembly_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 		  frag_hdr = vlib_buffer_get_current (b0) +
 			     vnet_buffer (b0)->ip.reass.ip6_frag_hdr_offset;
 		  vnet_buffer (b0)->ip.reass.l4_hdr_truncated = 0;
+		  vnet_buffer (b0)->ip.reass.is_fragment = 1;
 		  vnet_buffer (b0)->ip.reass.is_non_first_fragment =
 		    !!ip6_frag_hdr_offset (frag_hdr);
 		  vnet_buffer (b0)->ip.reass.ip_proto = reass->ip_proto;
