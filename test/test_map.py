@@ -7,6 +7,7 @@ from framework import VppTestCase
 from asfframework import VppTestRunner
 from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath
+from vpp_papi_exceptions import UnexpectedApiReturnValueError
 from util import fragment_rfc791, fragment_rfc8200
 from config import config
 
@@ -133,20 +134,26 @@ class TestMAP(VppTestCase):
         cursor = 0
 
         # Invalid cursor
-        rv, details = self.vapi.map_domains_get(cursor=no_domains + 10)
+        with self.vapi.assert_negative_api_retval():
+            rv, _ = self.vapi.map_domains_get(cursor=no_domains + 10)
         self.assertEqual(rv.retval, -7)
 
         # Delete a domain in the middle of walk
-        rv, details = self.vapi.map_domains_get(cursor=0)
+        with self.vapi.assert_negative_api_retval():
+            rv, _ = self.vapi.map_domains_get(cursor=0)
         self.assertEqual(rv.retval, -165)
         self.vapi.map_del_domain(index=rv.cursor)
         domains.remove(rv.cursor)
 
         # Continue at point of deleted cursor
-        rv, details = self.vapi.map_domains_get(cursor=rv.cursor)
+        try:
+            rv, _ = self.vapi.map_domains_get(cursor=rv.cursor)
+        except UnexpectedApiReturnValueError as e:
+            rv, _ = e.reply
         self.assertIn(rv.retval, [0, -165])
 
-        d = list(self.vapi.vpp.details_iter(self.vapi.map_domains_get))
+        with self.vapi.assert_known_api_retval([0, -165]):
+            d = list(self.vapi.vpp.details_iter(self.vapi.map_domains_get))
         self.assertEqual(len(d), no_domains - 1)
 
         # Clean up

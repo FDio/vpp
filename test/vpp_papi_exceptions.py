@@ -9,7 +9,8 @@ class CliSyntaxError(Exception):
 class UnexpectedApiReturnValueError(Exception):
     """exception raised when the API return value is unexpected"""
 
-    def __init__(self, retval, message):
+    def __init__(self, retval, message, reply):
         self.retval = retval
         self.message = message
+        self.reply = reply
         super().__init__(message)
