@@ -41,7 +41,7 @@ func (s *CpuPinningSuite) SetupSuite() {
 func (s *CpuPinningSuite) SetupTest() {
 	// Skip if we cannot allocate 3 CPUs for test container
 	s.CpusPerVppContainer = 3
-	s.SkipIfNotEnoguhCpus = true
+	s.SkipIfNotEnoughCpus = true
 
 	s.HstSuite.SetupTest()
 	vpp, err := s.Containers.Vpp.newVppInstance(s.Containers.Vpp.AllocatedCpus)

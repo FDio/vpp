@@ -291,7 +291,7 @@ var _ = Describe("MasqueMWSuite", Ordered, ContinueOnFailure, Serial, Label("Mas
 		s.SetupSuite()
 	})
 	BeforeEach(func() {
-		s.SkipIfNotEnoguhCpus = true
+		s.SkipIfNotEnoughCpus = true
 	})
 	AfterAll(func() {
 		s.TeardownSuite()

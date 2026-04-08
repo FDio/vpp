@@ -47,7 +47,7 @@ func (c *CpuAllocatorT) Allocate(nCpus int, offset int) (*CpuContext, error) {
 	if len(c.cpus)-1 < maxCpu {
 		msg := fmt.Sprintf("could not allocate %d CPUs; available count: %d; attempted to allocate cores with index %d-%d; max index: %d;\n"+
 			"available cores: %v\ntry running hs-test with HT=true and/or CPU0=true", nCpus, len(c.cpus), minCpu, maxCpu, len(c.cpus)-1, c.cpus)
-		if c.suite.SkipIfNotEnoguhCpus {
+		if c.suite.SkipIfNotEnoughCpus {
 			c.suite.Skip("skipping: " + msg)
 		}
 		err := fmt.Errorf("%s", msg)

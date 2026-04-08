@@ -90,7 +90,7 @@ var _ = Describe("HttpStaticSrvMWSuite", Ordered, ContinueOnFailure, Serial, Lab
 		s.Http1Suite.SetupSuite()
 	})
 	BeforeEach(func() {
-		s.Http1Suite.SkipIfNotEnoguhCpus = true
+		s.Http1Suite.SkipIfNotEnoughCpus = true
 	})
 	AfterAll(func() {
 		s.Http1Suite.TeardownSuite()
