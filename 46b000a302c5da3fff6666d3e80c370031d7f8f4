@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d97aa3c6_23daac40",
+        "filename": "src/vnet/ip/ip_in_out_acl.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 34,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-04-08T08:58:29Z",
+      "side": 1,
+      "message": "this looks like a glorified switch case? Something like\n\n    s \u003d format(s,\n               \"%s: sw_if_index %d, next_index %d, table_index %d, offset %d, \"\n               \"action \",\n               is_output ? \"OUTACL\" : \"INACL\", t-\u003esw_if_index, t-\u003enext_index, t-\u003etable_index,\n               t-\u003eoffset);\n    switch (t-\u003eaction)\n      {\n        case CLASSIFY_ACTION_NONE:\n          s \u003d format(s, \"none, metadata %d\", t-\u003emetadata);\n          break;\n        case CLASSIFY_ACTION_SET_IP4_FIB_INDEX:\n          s \u003d format(s, \"set-ip4-fib-index\");\n          break;\n        case CLASSIFY_ACTION_SET_IP6_FIB_INDEX:\n          s \u003d format(s, \"set-ip6-fib-index\");\n          break;\n        case CLASSIFY_ACTION_SET_METADATA:\n          s \u003d format(s, \"set-metadata fib-index %d\", t-\u003efib_index);\n          break;\n        default:\n          s \u003d format(s, \"unknown\");\n      }\n\nwould be more readable and would avoid array + tests.",
+      "revId": "46b000a302c5da3fff6666d3e80c370031d7f8f4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
