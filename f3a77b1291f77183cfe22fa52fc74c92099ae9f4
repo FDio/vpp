@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2c5234a8_99ed99b5",
+        "filename": "test/test_linux_cp.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 977,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2026-04-08T19:51:49Z",
+      "side": 1,
+      "message": "Are the first two poll_for() calls needed? You\u0027re checking that the initial state matches what\u0027s expected. If the interfaces are supposed to be down already and you won\u0027t have to wait for them to enter that state, you could just assert that the return value of is_interface_up() is False and use poll_for() when you start changing things and waiting for the change to propagate.",
+      "revId": "f3a77b1291f77183cfe22fa52fc74c92099ae9f4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "354d7c7c_f78d0a47",
+        "filename": "test/test_linux_cp.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 1074,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2026-04-08T19:51:49Z",
+      "side": 1,
+      "message": "Can you use the API instead of the CLI here? e.g. -\n```\nself.vapi.sw_interface_add_del_address(\n    sw_if_index\u003dself.lo_interfaces[0].sw_if_index, \n    prefix\u003d\"10.10.1.2/24\"\n)\n```\nThere are also a bunch of other instances below where the CLI is used that could use the API directly.",
+      "revId": "f3a77b1291f77183cfe22fa52fc74c92099ae9f4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "de6831b8_87d73442",
+        "filename": "test/test_linux_cp.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 1084,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2026-04-08T19:51:49Z",
+      "side": 1,
+      "message": "The interface addresses/prefixes are hardcoded in various places. It might be good to put those in variables and reference the variable instead. If you ever wanted to change one of the addresses used, it would be a lot easier that way. It could also make the test code more meaningful to someone reading it if the prefix being added to `lo_interfaces[0]` is `loop0_prefix_v4` or `loop_prefixes_v4[0]` or something instead of `\"10.10.1.2/24\"`. It\u0027s easier to see that you added the prefix for loop0 to loop0 that way.",
+      "revId": "f3a77b1291f77183cfe22fa52fc74c92099ae9f4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
