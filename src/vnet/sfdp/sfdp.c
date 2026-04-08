@@ -123,6 +123,8 @@ sfdp_init_main_if_needed (sfdp_main_t *sfdp)
       vec_validate (ptd->flow_indices_tcp, 2 * VLIB_FRAME_SIZE - 1);
       vec_validate (ptd->flow_indices_udp, 2 * VLIB_FRAME_SIZE - 1);
       vec_validate (ptd->flow_indices_del, 2 * sfdp_num_sessions () - 1);
+      ptd->aged_flows_pending = 0;
+      clib_spinlock_init (&ptd->aged_sessions_lock);
     }
   if (vlib_num_workers ())
     clib_spinlock_init (&sfdp->session_lock);
@@ -155,6 +157,52 @@ sfdp_init_main_if_needed (sfdp_main_t *sfdp)
     }
 
   done = 1;
+}
+
+/* Main-thread callback invoked by the DPDK aging poll for a single hw_if_index.
+ * it splits the aged batch by owning worker and hand each worker a vector of
+ * (session_index, flow_index, dir, hw_if_index).
+ *
+ * age_opaque layout: [ thread_idx : 31 | dir : 1 | session_idx : 32 ] */
+static void
+sfdp_aged_flow_cb (u64 *age_opaques, u32 *flow_indices, u32 hw_if_index, u32 n)
+{
+  sfdp_main_t *sfdp = &sfdp_main;
+  u32 n_threads = vec_len (sfdp->per_thread_data);
+  sfdp_aged_flow_entry_t **pending_by_thread = 0;
+
+  vec_validate_init_empty (pending_by_thread, n_threads - 1, 0);
+
+  for (u32 i = 0; i < n; i++)
+    {
+      u32 session_idx = (u32) age_opaques[i];
+      u32 dir = (u32) ((age_opaques[i] >> 32) & 0x1);
+      u32 thread_idx = (u32) (age_opaques[i] >> 33);
+
+      sfdp_aged_flow_entry_t e = {
+	.session_index = session_idx,
+	.flow_index = flow_indices[i],
+	.hw_if_index = hw_if_index,
+	.dir = (u8) dir,
+      };
+      vec_add1 (pending_by_thread[thread_idx], e);
+    }
+
+  for (u32 t = 0; t < n_threads; t++)
+    {
+      if (vec_len (pending_by_thread[t]) == 0)
+	continue;
+
+      sfdp_per_thread_data_t *ptd = vec_elt_at_index (sfdp->per_thread_data, t);
+
+      clib_spinlock_lock (&ptd->aged_sessions_lock);
+      vec_append (ptd->aged_flows_pending, pending_by_thread[t]);
+      clib_spinlock_unlock (&ptd->aged_sessions_lock);
+
+      vec_free (pending_by_thread[t]);
+    }
+
+  vec_free (pending_by_thread);
 }
 
 int
@@ -214,6 +262,12 @@ sfdp_flow_offload_configure (vnet_main_t *vnm, u32 hw_if_index, u32 n_flows)
   if (rv)
     goto error_udp_enable;
 
+  /* register flow ageing callback */
+  /* TODO - if other services/plugins want to use this newly introduced callback
+   * could there be a conflict ? Should we check & fail early in case a callback is already
+   * registered ? */
+  flow_main.aged_flow_cb = sfdp_aged_flow_cb;
+
   return 0;
 
 error_udp_enable:
@@ -255,6 +309,9 @@ sfdp_flow_offload_deconfigure (vnet_main_t *vnm, u32 hw_if_index)
 
   *udp_index = ~0;
 
+  /* unregister flow ageing callback */
+  flow_main.aged_flow_cb = 0;
+
   return 0;
 }
 
@@ -271,6 +328,7 @@ sfdp_init (vlib_main_t *vm)
      SFDP_DEFAULT_LOG2_SESSIONS - SFDP_DEFAULT_LOG2_SESSIONS_CACHE_RATIO)
   _ (log2_tenants, SFDP_DEFAULT_LOG2_TENANTS)
   _ (timer_tick_interval_s, SFDP_DEFAULT_TIMER_INTERVAL_S)
+  _ (offload_keepalive_s, SFDP_DEFAULT_OFFLOAD_KEEPALIVE_S)
 #undef _
   sfdp->no_main = sfdp->no_main && vlib_num_workers ();
 
