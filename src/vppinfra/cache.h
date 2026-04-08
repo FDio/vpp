@@ -47,9 +47,9 @@
     __builtin_prefetch (_addr + (n) *CLIB_CACHE_PREFETCH_BYTES,               \
 			CLIB_PREFETCH_##type, CLIB_PREFETCH_TO_##loc);
 
-#define _CLIB_PREFETCH(n, size, type)                                         \
-  if ((size) > (n) *CLIB_CACHE_PREFETCH_BYTES)                                \
-    __builtin_prefetch (_addr + (n) *CLIB_CACHE_PREFETCH_BYTES,               \
+#define _CLIB_PREFETCH(n, size, type)                                                              \
+  if ((size) > (n) *CLIB_CACHE_PREFETCH_BYTES)                                                     \
+    __builtin_prefetch (_addr + ((ptrdiff_t) (n)) * CLIB_CACHE_PREFETCH_BYTES,                     \
 			CLIB_PREFETCH_##type, /* locality */ 3);
 
 #define CLIB_PREFETCH(addr, size, type)                                       \
