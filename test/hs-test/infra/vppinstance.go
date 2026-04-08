@@ -207,7 +207,7 @@ func (vpp *VppInstance) Start() error {
 		}()
 
 		vpp.Container.ExecServer(false, "su -c \"vpp -c "+startupFileName+" &> /proc/1/fd/1\"")
-		Log("run following command in different terminal:")
+		Log("\nRun following command in different terminal:")
 		Log("docker exec -it " + vpp.Container.Name + " gdb -ex \"attach $(docker exec " + vpp.Container.Name + " pidof vpp)\"")
 		Log("Afterwards press CTRL+\\ to continue")
 		<-cont

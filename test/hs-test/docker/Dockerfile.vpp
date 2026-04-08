@@ -34,6 +34,7 @@ COPY vpp-data/bin/vpp_echo /usr/bin/
 COPY vpp-data/bin/vcl_* /usr/bin/
 COPY vpp-data/bin/evt_collector_sink /usr/bin/
 COPY vpp-data/lib/*.so /usr/lib/
+COPY vpp-data/gdb/* /etc/gdb/
 
 # Group already created in base image
 

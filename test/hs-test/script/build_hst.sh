@@ -66,10 +66,12 @@ export PATH=${VPP_BUILD_ROOT}/bin:$PATH
 
 bin=vpp-data/bin
 lib=vpp-data/lib
+gdb=vpp-data/gdb
 
-mkdir -p ${bin} ${lib} || true
+mkdir -p ${bin} ${lib} ${gdb} || true
 rm -rf vpp-data/bin/* || true
 rm -rf vpp-data/lib/* || true
+rm -rf vpp-data/gdb/* || true
 
 declare -i res=0
 cp ${VPP_BUILD_ROOT}/bin/* ${bin}
@@ -80,6 +82,8 @@ if [ "$res" -ne 0 ]; then
 	echo "Failed to copy VPP files. Is VPP built? Try running 'make build' in VPP directory."
 	exit 1
 fi
+# not checking exit status because gdb files aren't needed for tests to run
+cp -r ${VPP_WS}/extras/gdb/* ${gdb}
 
 # Use the build-images.sh script to build all containers
 echo "=== Building all containers using build-images.sh ==="
