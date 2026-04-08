@@ -141,6 +141,7 @@ vnet_flow_add_inline (vnet_main_t *vnm, vnet_flow_t *flow, u32 *flow_index, bool
   f->redirect_node_index = flow->redirect_node_index;
   f->redirect_device_input_next_index = flow->redirect_device_input_next_index;
   f->redirect_queue = flow->redirect_queue;
+  f->steer_to_hw_if_index = flow->steer_to_hw_if_index;
   f->buffer_advance = flow->buffer_advance;
   f->driver_data.opaque = ~0;
   f->driver_data.hw_if_index = ~0;
@@ -173,6 +174,17 @@ int
 vnet_flow_add (vnet_main_t *vnm, vnet_flow_t *flow, u32 *flow_index)
 {
   return vnet_flow_add_inline (vnm, flow, flow_index, false);
+}
+
+static int
+vnet_flow_validate_steer_to_port (vnet_main_t *vnm, vnet_hw_interface_t *hi, vnet_flow_t *f)
+{
+  if (!vnet_hw_interface_is_valid (vnm, f->steer_to_hw_if_index))
+    return VNET_FLOW_ERROR_NO_SUCH_INTERFACE;
+  vnet_hw_interface_t *to_hi = vnet_get_hw_interface (vnm, f->steer_to_hw_if_index);
+  if (to_hi->dev_class_index != hi->dev_class_index)
+    return VNET_FLOW_ERROR_NOT_SUPPORTED;
+  return 0;
 }
 
 static_always_inline int
@@ -209,6 +221,13 @@ vnet_flow_enable_disable (vnet_main_t *vnm, u32 flow_index, u32 hw_if_index, uwo
 
   if (dev_ops_function == 0)
     return VNET_FLOW_ERROR_NOT_SUPPORTED;
+
+  if (enable && (f->actions & VNET_FLOW_ACTION_STEER_TO_PORT))
+    {
+      rv = vnet_flow_validate_steer_to_port (vnm, hi, f);
+      if (rv)
+	return rv;
+    }
 
   if (enable && (f->actions & VNET_FLOW_ACTION_REDIRECT_TO_NODE))
     {
@@ -376,6 +395,13 @@ vnet_flow_async_range_enable (vnet_main_t *vnm, u32 flow_template_index, u32 *fl
 	  vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
 	  f->redirect_device_input_next_index =
 	    vlib_node_add_next (vnm->vlib_main, hw->input_node_index, f->redirect_node_index);
+	}
+
+      if (f->actions & VNET_FLOW_ACTION_STEER_TO_PORT)
+	{
+	  rv = vnet_flow_validate_steer_to_port (vnm, hi, f);
+	  if (rv)
+	    goto error;
 	}
     }
 
