@@ -65,7 +65,10 @@ class TestGREInputNodes(VppTestCase):
 
         # create gre tunnel
         gre_if = VppGreInterface(self, self.pg0.local_ip4, "1.1.1.2")
+        self.assertFalse(gre_if.query_vpp_config())
+
         gre_if.add_vpp_config()
+        self.assertTrue(gre_if.query_vpp_config())
 
         self.pg0.add_stream(pkt)
         self.pg_start()
