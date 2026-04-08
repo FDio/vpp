@@ -151,14 +151,15 @@
 
 #define foreach_flow_entry_generic _fe (generic_pattern_t, pattern)
 
-#define foreach_flow_action \
-  _(0, COUNT, "count") \
-  _(1, MARK, "mark") \
-  _(2, BUFFER_ADVANCE, "buffer-advance") \
-  _(3, REDIRECT_TO_NODE, "redirect-to-node") \
-  _(4, REDIRECT_TO_QUEUE, "redirect-to-queue") \
-  _(5, RSS, "rss") \
-  _(6, DROP, "drop")
+#define foreach_flow_action                                                                        \
+  _ (0, COUNT, "count")                                                                            \
+  _ (1, MARK, "mark")                                                                              \
+  _ (2, BUFFER_ADVANCE, "buffer-advance")                                                          \
+  _ (3, REDIRECT_TO_NODE, "redirect-to-node")                                                      \
+  _ (4, REDIRECT_TO_QUEUE, "redirect-to-queue")                                                    \
+  _ (5, RSS, "rss")                                                                                \
+  _ (6, DROP, "drop")                                                                              \
+  _ (7, STEER_TO_PORT, "steer-to-port")
 
 typedef enum
 {
@@ -331,6 +332,12 @@ typedef struct
 
   /* queue for VNET_FLOW_ACTION_REDIRECT_TO_QUEUE */
   u32 redirect_queue;
+
+  /* VNET_FLOW_ACTION_STEER_TO_PORT: destination port hw_if_index (required) */
+  u32 steer_to_hw_if_index;
+
+  /* VNET_FLOW_ACTION_STEER_TO_PORT: source port hw_if_index (optional, ~0 = all) */
+  u32 steer_from_hw_if_index;
 
   /* buffer offset for VNET_FLOW_ACTION_BUFFER_ADVANCE */
   i32 buffer_advance;

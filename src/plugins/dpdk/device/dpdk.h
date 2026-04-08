@@ -42,8 +42,14 @@
 #include <vlib/vmbus/vmbus.h>
 #include <vnet/flow/flow.h>
 
+<<<<<<< PATCH SET (738834 flow: add action VNET_FLOW_ACTION_STEER_TO_PORT)
+#define DPDK_DEFAULT_ASYNC_FLOW_QUEUE_INDEX 0
+#define DPDK_DEFAULT_ASYNC_FLOW_N_QUEUES    1
+#define DPDK_DEFAULT_ASYNC_FLOW_QUEUE_SIZE  64
+=======
 #define DPDK_MAIN_ASYNC_FLOW_QUEUE_INDEX    0
 #define DPDK_DEFAULT_ASYNC_FLOW_QUEUE_SIZE 64
+>>>>>>> BASE      (b72e36 flow: squash vnet flow/dpdk/sfdp changes)
 #define DPDK_DEFAULT_ASYNC_FLOW_PUSH_BATCH  32
 #define DPDK_MAX_CORES			    FRAME_QUEUE_MAX_NELTS
 #define DPDK_MAX_FLOW_PULL_RETRIES	    (1 << 12)
