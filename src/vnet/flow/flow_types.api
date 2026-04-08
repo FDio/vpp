@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-option version = "0.0.4";
+option version = "0.0.5";
 import "vnet/ethernet/ethernet_types.api";
 import "vnet/ip/ip_types.api";
 
@@ -74,6 +74,7 @@ enum flow_action_v2
   FLOW_ACTION_REDIRECT_TO_QUEUE_V2 = 16,
   FLOW_ACTION_RSS_V2 = 32,
   FLOW_ACTION_DROP_V2 = 64,
+  FLOW_ACTION_STEER_TO_PORT_V2 = 128,
 };
 
 enum rss_function
@@ -343,6 +344,9 @@ typedef flow_rule_v2
 
   /* RSS functions, including IPv4/IPv6/TCP/UDP... */
   vl_api_rss_function_t rss_fun;
+
+  /* destination hw_if_index for FLOW_ACTION_STEER_TO_PORT */
+  u32 steer_to_hw_if_index;
 
   /* flow enum */
   vl_api_flow_v2_t flow;

@@ -297,6 +297,7 @@ flow_rule_v2_to_vnet_flow (vl_api_flow_rule_v2_t *f, vnet_flow_t *flow)
   flow->queue_num = ntohl (f->queue_num);
   flow->rss_types = clib_net_to_host_u64 (f->rss_types);
   flow->rss_fun = ntohl (f->rss_fun);
+  flow->steer_to_hw_if_index = ntohl (f->steer_to_hw_if_index);
 
   switch (flow->type)
     {
