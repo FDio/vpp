@@ -283,6 +283,30 @@
       },
       "revId": "17ab012a809206a32efdc293271b1964e212065c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3142309c_cf2da5ed",
+        "filename": "test/vpp_pg_interface.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 303,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-04-08T11:15:20Z",
+      "side": 1,
+      "message": "I use basedpyright as my LSP to spot the obvious issues without having to execute code to speedup my development process. That is inside my editor though. I don\u0027t have a recommendation for something automated/\"system-wide\".",
+      "parentUuid": "65439d65_daaba04a",
+      "range": {
+        "startLine": 303,
+        "startChar": 48,
+        "endLine": 303,
+        "endChar": 59
+      },
+      "revId": "17ab012a809206a32efdc293271b1964e212065c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
