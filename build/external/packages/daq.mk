@@ -21,6 +21,7 @@ daq_url                 := https://github.com/snort3/libdaq/archive/refs/tags/v$
 define  daq_config_cmds
        	@rm -f $(daq_config_log)
         @cd ${daq_src_dir} && ./bootstrap > $(daq_config_log) 2>&1
+	@cd ${daq_src_dir} && chmod +x install-sh
 	@cd ${daq_src_dir} && ./configure --prefix='$(daq_install_dir)' --enable-shared --enable-static \
                 --disable-bundled-modules \
 		CFLAGS='' \

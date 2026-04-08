@@ -60,6 +60,8 @@ endif(LDP_HAS_GNU_SOURCE)
 
 if("${CMAKE_SYSTEM_NAME}" STREQUAL "FreeBSD")
   message("WARNING: vcl_ldpreload isn't supported on FreeBSD - disabled")
+elseif(EXISTS "/lib/ld-musl-aarch64.so.1" OR EXISTS "/lib/ld-musl-x86_64.so.1" OR EXISTS "/lib/ld-musl-arm.so.1")
+  message("WARNING: vcl_ldpreload uses glibc-internal types (__SOCKADDR_ARG etc.) - disabled on musl/OpenWRT")
 else()
 add_vpp_library(vcl_ldpreload
   SOURCES

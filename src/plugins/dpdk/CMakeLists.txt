@@ -88,11 +88,17 @@ else()
     endif()
 
     ##############################################################################
-    # libnuma
+    # libnuma — optional on systems without NUMA (e.g. OpenWRT/musl)
     ##############################################################################
     if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
-      vpp_plugin_find_library(dpdk NUMA_LIB "numa")
-      list(APPEND DPDK_LINK_LIBRARIES ${NUMA_LIB})
+      find_library(NUMA_LIB NAMES numa)
+      mark_as_advanced(NUMA_LIB)
+      if(NUMA_LIB)
+        message(STATUS "dpdk plugin needs numa library - found at ${NUMA_LIB}")
+        list(APPEND DPDK_LINK_LIBRARIES ${NUMA_LIB})
+      else()
+        message(STATUS "dpdk plugin - libnuma not found, building without NUMA support")
+      endif()
     endif()
 
     ##############################################################################

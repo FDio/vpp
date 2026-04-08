@@ -87,6 +87,14 @@ else ifeq ($(filter rhel centos fedora opensuse-leap rocky almalinux anolis kyli
 PKG=rpm
 else ifeq ($(filter freebsd,$(OS_ID)),$(OS_ID))
 PKG=pkg
+else ifeq ($(filter openwrt,$(OS_ID)),$(OS_ID))
+PKG=apk
+endif
+
+# OpenWRT does not ship clang or sudo — override defaults set above
+ifeq ($(filter openwrt,$(OS_ID)),$(OS_ID))
+  CC=gcc
+  SUDO=
 endif
 
 ifeq ($(filter anolis,$(OS_ID)),$(OS_ID))
@@ -295,6 +303,17 @@ FBSD_BUILD_DEPS += git sudo autoconf automake curl gsed
 FBSD_BUILD_DEPS += pkgconf ninja cmake libepoll-shim jansson
 FBSD_DEPS = $(FBSD_BUILD_DEPS) $(FBSD_PYTHON_DEPS) $(FBSD_TEST_DEPS) $(FBSD_DEVEL_DEPS)
 
+# OpenWRT v25 (apk) — package names differ from Alpine Linux
+# gcc pulls in binutils, musl headers, linux headers, and libstdc++
+OWRT_DEPENDS  = bash gcc
+OWRT_DEPENDS += python3 python3-dev python3-pip python3-venv
+OWRT_DEPENDS += zlib-dev
+OWRT_DEPENDS += curl pkgconf patch diffutils openssl-util tar
+OWRT_DEPENDS += python3-ply python3-setuptools python3-pyelftools
+OWRT_DEPENDS += autoconf automake libtool-bin
+# cmake, ninja, and meson are not in OpenWRT feeds — installed via pip
+OWRT_PIP_DEPENDS = cmake ninja meson
+
 ifneq ($(wildcard $(STARTUP_DIR)/startup.conf),)
         STARTUP_CONF ?= $(STARTUP_DIR)/startup.conf
 endif
@@ -423,6 +442,24 @@ else ifneq ("$(wildcard /etc/redhat-release)","")
 	  exit 1 ; \
 	fi ; \
 	exit 0
+else ifeq ($(OS_ID), openwrt)
+	@MISSING="" ; \
+	for pkg in $(OWRT_DEPENDS) ; do \
+		if ! apk info -e $$pkg > /dev/null 2>&1 ; then \
+			MISSING="$$MISSING $$pkg" ; \
+		fi ; \
+	done ; \
+	for pkg in $(OWRT_PIP_DEPENDS) ; do \
+		if ! command -v $$pkg > /dev/null 2>&1 ; then \
+			MISSING="$$MISSING $$pkg(pip)" ; \
+		fi ; \
+	done ; \
+	if [ -n "$$MISSING" ] ; then \
+		echo "\nPlease install missing packages:$$MISSING\n" ; \
+		echo "by executing \"make install-dep\"\n" ; \
+		exit 1 ; \
+	fi ; \
+	exit 0
 endif
 	@touch $@
 
@@ -482,10 +519,44 @@ else ifeq ($(filter opensuse-leap-15.3 opensuse-leap-15.4 ,$(OS_ID)-$(OS_VERSION
 	@sudo -E zypper install  -y $(RPM_SUSE_DEPENDS)
 else ifeq ($(OS_ID), freebsd)
 	@sudo pkg install -y $(FBSD_DEPS)
+else ifeq ($(OS_ID), openwrt)
+	@apk add $(OWRT_DEPENDS)
+	@pip3 install --break-system-packages $(OWRT_PIP_DEPENDS)
+	@# musl libc integrates pthread/dl/rt/resolv into libc — create stubs so -lpthread etc. resolve
+	@# Note: linker scripts (GROUP) don't work because OpenWRT's /lib/libc.so has stripped section headers.
+	@# Empty shared objects work because pthread symbols resolve via implicit -lc (gcc-provided libc.so).
+	@for lib in pthread dl rt resolv; do \
+		[ -f /usr/lib/lib$${lib}.a ] || ar rcs /usr/lib/lib$${lib}.a ; \
+		[ -f /usr/lib/lib$${lib}.so ] || \
+			gcc -shared -xc /dev/null -o /usr/lib/lib$${lib}.so \
+				-Wl,-soname,lib$${lib}.so -nostdlib ; \
+	done
+	@# OpenWRT has no openssl-dev package and the system .so files have stripped
+	@# ELF section headers (ld cannot parse them). Build OpenSSL from source with
+	@# no-asm (OpenWRT's assembler rejects some .S files) to get both headers and
+	@# linkable shared libraries.
+	@if [ ! -f /usr/include/openssl/ssl.h ]; then \
+		OPENSSL_VER=$$(openssl version | awk '{print $$2}') ; \
+		echo "Installing OpenSSL $${OPENSSL_VER} headers + shared libs from source..." ; \
+		apk search perlbase 2>/dev/null | grep -v src | sed 's/-[0-9].*//' | sort -u | xargs apk add && \
+		cd /tmp && \
+		curl -sLO https://github.com/openssl/openssl/releases/download/openssl-$${OPENSSL_VER}/openssl-$${OPENSSL_VER}.tar.gz && \
+		tar xf openssl-$${OPENSSL_VER}.tar.gz && \
+		cd openssl-$${OPENSSL_VER} && \
+		./config --prefix=/usr --openssldir=/etc/ssl no-tests no-docs no-apps no-asm shared && \
+		make -j4 && \
+		cp -r include/openssl /usr/include/ && \
+		cp -f libssl.so.3 /usr/lib/libssl.so.3 && \
+		cp -f libcrypto.so.3 /usr/lib/libcrypto.so.3 && \
+		ln -sf libssl.so.3 /usr/lib/libssl.so && \
+		ln -sf libcrypto.so.3 /usr/lib/libcrypto.so && \
+		cd / && rm -rf /tmp/openssl-$${OPENSSL_VER}* ; \
+	fi
 else
-	$(error "This option currently works only on Ubuntu, Debian, RHEL, CentOS, Kylin, openSUSE-leap or FreeBSD systems")
+	$(error "This option currently works only on Ubuntu, Debian, RHEL, CentOS, Kylin, openSUSE-leap, FreeBSD or OpenWRT systems")
 endif
-	git config commit.template .git_commit_template.txt
+	@git rev-parse --git-dir > /dev/null 2>&1 && \
+		git config commit.template .git_commit_template.txt || true
 
 .PHONY: install-deps
 install-deps: install-dep

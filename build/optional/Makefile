@@ -168,3 +168,16 @@ ebuild-install:
 ifeq ($(INSTALLED_VER)$(INSTALLED_RPM_VER),)
 	$(MAKE) install
 endif
+
+##############################################################################
+# apk support (OpenWRT)
+##############################################################################
+
+.PHONY: install-apk
+
+install-apk:
+	@echo $(LINE)
+	@echo " Building vpp-opt-deps from source for OpenWRT (apk)"
+	@echo $(LINE)
+	$(MAKE) config
+	$(MAKE) install

@@ -99,7 +99,7 @@ geneve_input (vlib_main_t * vm,
 	  ip6_header_t *ip6_0, *ip6_1 = 0;
 	  geneve_header_t *geneve0, *geneve1;
 	  uword *p0, *p1;
-	  u32 tunnel_index0, tunnel_index1;
+	  u32 tunnel_index0 = ~0, tunnel_index1 = ~0;
 	  geneve_tunnel_t *t0, *t1, *mt0 = NULL, *mt1 = NULL;
 	  geneve4_tunnel_key_t key4_0, key4_1;
 	  geneve6_tunnel_key_t key6_0, key6_1;

@@ -22,7 +22,9 @@ include packages/quicly.mk
 include packages/libcbor.mk
 ifneq ($(shell uname), FreeBSD)
 include packages/rdma-core.mk
+ifeq ($(wildcard /etc/openwrt_release),)
 include packages/xdp-tools.mk
+endif	# ! OpenWRT (no libbpf/BPF support)
 include packages/octeon-roc.mk
 endif	# ! FreeBSD
 include packages/dpdk.mk
@@ -34,16 +36,20 @@ clean:
 .PHONY: install
 ifeq ($(shell uname), FreeBSD)
 install: $(if $(ARCH_X86_64), ipsec-mb-install) daq-install dpdk-install quicly-install libcbor-install
+else ifneq ($(wildcard /etc/openwrt_release),)
+install: daq-install dpdk-install rdma-core-install quicly-install libcbor-install
 else
 install: $(if $(ARCH_X86_64), ipsec-mb-install) daq-install dpdk-install rdma-core-install quicly-install xdp-tools-install libcbor-install $(if $(AARCH64), octeon-roc-install)
-endif	# FreeBSD
+endif	# FreeBSD / OpenWRT
 
 .PHONY: config
 ifeq ($(shell uname), FreeBSD)
 config: daq-config $(if $(ARCH_X86_64), ipsec-mb-config) dpdk-config quicly-build libcbor-build
+else ifneq ($(wildcard /etc/openwrt_release),)
+config: daq-config dpdk-config rdma-core-config quicly-build libcbor-build
 else
 config: daq-config $(if $(ARCH_X86_64), ipsec-mb-config) dpdk-config rdma-core-config quicly-build libcbor-build
-endif	# FreeBSD
+endif	# FreeBSD / OpenWRT
 
 ##############################################################################
 # .deb packaging
@@ -154,14 +160,22 @@ endif
 
 .PHONY: ebuild-build ebuild-install
 
+INSTALLED_APK=$(wildcard /opt/vpp/external/$(shell uname -m)/lib/libdpdk.a)
+
 ebuild-build:
 ifeq ($(INSTALLED_VER)$(INSTALLED_RPM_VER),)
+ifneq ($(INSTALLED_APK),)
+	@echo $(LINE)
+	@echo " Using pre-built vpp-ext-deps from /opt/vpp/external/$(shell uname -m)"
+	@echo $(LINE)
+else
 	@echo $(LINE)
 	@echo "Building vpp-ext-deps from source. Consider installing"
 	@echo "development package by invoking 'make install-ext-deps'"
 	@echo "from the top level directory"
 	@echo $(LINE)
 	$(MAKE) config
+endif
 else
 ifneq ($(INSTALLED_VER),)
 	$(MAKE) check-deb
@@ -173,5 +187,20 @@ endif
 
 ebuild-install:
 ifeq ($(INSTALLED_VER)$(INSTALLED_RPM_VER),)
+ifeq ($(INSTALLED_APK),)
 	$(MAKE) install
 endif
+endif
+
+##############################################################################
+# apk support (OpenWRT)
+##############################################################################
+
+.PHONY: install-apk
+
+install-apk:
+	@echo $(LINE)
+	@echo " Building vpp-ext-deps from source for OpenWRT (apk)"
+	@echo $(LINE)
+	$(MAKE) config
+	$(MAKE) install

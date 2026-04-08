@@ -16,7 +16,7 @@ bool f_summary = false;
 bool f_timestamp = false;
 bool f_no_zeros = false;
 f64 o_interval = 1;
-uint o_only_index = ~0;
+unsigned int o_only_index = ~0;
 
 static void
 dump_stats_result (stat_segment_data_t *res)

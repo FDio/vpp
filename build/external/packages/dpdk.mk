@@ -178,6 +178,13 @@ elif [[ "$(DPDK_$(1))" == "n" ]]; then \
 fi
 endef
 
+# On systems without libnuma (e.g. OpenWRT/musl, embedded), tell DPDK to build
+# without NUMA support rather than failing at configure time.
+DPDK_NUMA_FLAG :=
+ifeq ($(shell test -f /usr/include/numa.h || test -f /usr/include/numaif.h && echo yes),)
+DPDK_NUMA_FLAG := -Dmax_numa_nodes=1
+endif
+
 DPDK_MESON_ARGS = \
 	--default-library static \
 	--libdir lib \
@@ -190,7 +197,7 @@ DPDK_MESON_ARGS = \
 	-Dplatform=$(DPDK_MACHINE) \
 	$(DPDK_MAX_LCORES_FLAG) \
         --buildtype=$(DPDK_BUILD_TYPE) \
-	-Denable_kmods=false \
+	$(DPDK_NUMA_FLAG) \
 	${DPDK_MLX_CONFIG_FLAG}
 
 PIP_DOWNLOAD_DIR = $(CURDIR)/downloads/
@@ -198,17 +205,26 @@ PIP_DOWNLOAD_DIR = $(CURDIR)/downloads/
 define dpdk_config_cmds
 	cd $(dpdk_build_dir) && \
 	echo "DPDK_MLX_DEFAULT=$(DPDK_MLX_DEFAULT)" > ../../../dpdk_mlx_default.sh && \
-	rm -rf ../dpdk-meson-venv && \
-	mkdir -p ../dpdk-meson-venv && \
-	python3 -m venv ../dpdk-meson-venv && \
-	source ../dpdk-meson-venv/bin/activate && \
-	(if ! ls $(PIP_DOWNLOAD_DIR)meson* ; then pip3 download -d $(PIP_DOWNLOAD_DIR) -f $(DL_CACHE_DIR) meson==0.57.2 setuptools wheel pyelftools; fi) && \
-	pip3 install --no-index --find-links=$(PIP_DOWNLOAD_DIR) meson==0.57.2 pyelftools && \
-	PKG_CONFIG_PATH=$(dpdk_install_dir)/lib/pkgconfig meson setup $(dpdk_src_dir) \
-		$(dpdk_build_dir) \
-		$(DPDK_MESON_ARGS) \
-			| tee $(dpdk_config_log) && \
-	deactivate && \
+	if command -v meson > /dev/null 2>&1; then \
+		echo "Using system meson: $$(command -v meson)" && \
+		touch ../dpdk-use-system-meson && \
+		PKG_CONFIG_PATH=$(dpdk_install_dir)/lib/pkgconfig meson setup $(dpdk_src_dir) \
+			$(dpdk_build_dir) \
+			$(DPDK_MESON_ARGS) \
+				| tee $(dpdk_config_log) ; \
+	else \
+		rm -rf ../dpdk-meson-venv && \
+		mkdir -p ../dpdk-meson-venv && \
+		python3 -m venv ../dpdk-meson-venv && \
+		source ../dpdk-meson-venv/bin/activate && \
+		(if ! ls $(PIP_DOWNLOAD_DIR)meson* ; then pip3 download -d $(PIP_DOWNLOAD_DIR) -f $(DL_CACHE_DIR) meson==0.57.2 setuptools wheel pyelftools; fi) && \
+		pip3 install --no-index --find-links=$(PIP_DOWNLOAD_DIR) meson==0.57.2 pyelftools && \
+		PKG_CONFIG_PATH=$(dpdk_install_dir)/lib/pkgconfig meson setup $(dpdk_src_dir) \
+			$(dpdk_build_dir) \
+			$(DPDK_MESON_ARGS) \
+				| tee $(dpdk_config_log) && \
+		deactivate ; \
+	fi && \
 	echo "DPDK post meson configuration" && \
 	echo "Altering rte_build_config.h" && \
 	$(call dpdk_config,PKTMBUF_HEADROOM) && \
@@ -221,19 +237,30 @@ endif
 
 define dpdk_build_cmds
 	cd $(dpdk_build_dir) && \
-	source ../dpdk-meson-venv/bin/activate && \
-	meson compile $(DPDK_VERBOSE_BUILD) -C . | tee $(dpdk_build_log) && \
-	deactivate
+	if [ -f ../dpdk-use-system-meson ]; then \
+		meson compile $(DPDK_VERBOSE_BUILD) -C . | tee $(dpdk_build_log) ; \
+	else \
+		source ../dpdk-meson-venv/bin/activate && \
+		meson compile $(DPDK_VERBOSE_BUILD) -C . | tee $(dpdk_build_log) && \
+		deactivate ; \
+	fi
 endef
 
 define dpdk_install_cmds
 	cd $(dpdk_build_dir) && \
-	source ../dpdk-meson-venv/bin/activate && \
-	meson install && \
-	cd $(dpdk_install_dir)/lib && \
-	echo "GROUP ( $$(ls librte*.a ) )" > libdpdk.a && \
-	rm -rf librte*.so librte*.so.* dpdk/*/librte*.so dpdk/*/librte*.so.* && \
-	deactivate
+	if [ -f ../dpdk-use-system-meson ]; then \
+		meson install && \
+		cd $(dpdk_install_dir)/lib && \
+		echo "GROUP ( $$(ls librte*.a ) )" > libdpdk.a && \
+		rm -rf librte*.so librte*.so.* dpdk/*/librte*.so dpdk/*/librte*.so.* ; \
+	else \
+		source ../dpdk-meson-venv/bin/activate && \
+		meson install && \
+		cd $(dpdk_install_dir)/lib && \
+		echo "GROUP ( $$(ls librte*.a ) )" > libdpdk.a && \
+		rm -rf librte*.so librte*.so.* dpdk/*/librte*.so dpdk/*/librte*.so.* && \
+		deactivate ; \
+	fi
 endef
 
 $(eval $(call package,dpdk))

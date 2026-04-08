@@ -4,6 +4,7 @@
 
 #define _GNU_SOURCE
 #include <stdbool.h>
+#include <string.h>
 #include <assert.h>
 #include <sys/socket.h>
 #include <sys/un.h>
