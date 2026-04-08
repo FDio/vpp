@@ -12,6 +12,14 @@ except NameError:
     text_type = str
 
 
+def remote_host_ip4_172_16_generator(sw_if_index: int, host_index: int):
+    return "172.16.%u.%u" % (sw_if_index, host_index)
+
+
+def remote_host_ip6_fd01_generator(sw_if_index: int, host_index: int):
+    return "fd01:%x::%x" % (sw_if_index, host_index)
+
+
 class VppInterface(metaclass=abc.ABCMeta):
     """Generic VPP interface."""
 
@@ -166,7 +174,12 @@ class VppInterface(metaclass=abc.ABCMeta):
         """
         return self._hosts_by_ip6[ip]
 
-    def generate_remote_hosts(self, count=1):
+    def generate_remote_hosts(
+        self,
+        count=1,
+        remote_host_ip4_generator=remote_host_ip4_172_16_generator,
+        remote_host_ip6_generator=remote_host_ip6_fd01_generator,
+    ):
         """Generate and add remote hosts for the interface.
 
         :param int count: Number of generated remote hosts.
@@ -177,8 +190,8 @@ class VppInterface(metaclass=abc.ABCMeta):
         self._hosts_by_ip6 = {}
         for i in range(2, count + 2):  # 0: network address, 1: local vpp address
             mac = "02:%02x:00:00:ff:%02x" % (self.sw_if_index, i)
-            ip4 = "172.16.%u.%u" % (self.sw_if_index, i)
-            ip6 = "fd01:%x::%x" % (self.sw_if_index, i)
+            ip4 = remote_host_ip4_generator(self.sw_if_index, i)
+            ip6 = remote_host_ip6_generator(self.sw_if_index, i)
             ip6_ll = mk_ll_addr(mac)
             host = Host(mac, ip4, ip6, ip6_ll)
             self._remote_hosts.append(host)
