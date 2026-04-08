@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5a8a69f1_82315c0b",
+        "filename": "test/hs-test/infra/vppinstance.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 298,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-04-08T09:58:13Z",
+      "side": 1,
+      "message": "maybe delete this? or update text",
+      "range": {
+        "startLine": 298,
+        "startChar": 41,
+        "endLine": 298,
+        "endChar": 58
+      },
+      "revId": "cb67ca6ccd56be538b0aac5c5288c62034320568",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
