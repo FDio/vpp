@@ -383,22 +383,29 @@ class VppPapiProvider(object):
         """
         self.hook.before_api(api_fn.__name__, api_args)
         reply = api_fn(**api_args)
+
+        retval = None
+        if hasattr(reply, "retval"):
+            retval = reply.retval
+        elif type(reply) is tuple and hasattr(reply[0], "retval"):
+            retval = reply[0].retval
+
         if self._expect_api_retval == self._negative:
-            if hasattr(reply, "retval") and reply.retval >= 0:
+            if retval is not None and retval >= 0:
                 msg = (
                     "%s(%s) passed unexpectedly: expected negative "
                     "return value instead of %d in %s"
                     % (
                         api_fn.__name__,
                         as_fn_signature(api_args),
-                        reply.retval,
+                        retval,
                         reprlib.repr(reply),
                     )
                 )
                 self.test_class.logger.info(msg)
-                raise UnexpectedApiReturnValueError(reply.retval, msg)
+                raise UnexpectedApiReturnValueError(retval, msg, reply)
         elif self._expect_api_retval == self._zero:
-            if hasattr(reply, "retval") and reply.retval != expected_retval:
+            if retval is not None and retval != expected_retval:
                 msg = (
                     "%s(%s) failed, expected %d return value instead "
                     "of %d in %s"
@@ -406,12 +413,12 @@ class VppPapiProvider(object):
                         api_fn.__name__,
                         as_fn_signature(api_args),
                         expected_retval,
-                        reply.retval,
-                        repr(reply),
+                        retval,
+                        reprlib.repr(reply),
                     )
                 )
                 self.test_class.logger.info(msg)
-                raise UnexpectedApiReturnValueError(reply.retval, msg)
+                raise UnexpectedApiReturnValueError(retval, msg, reply)
         else:
             raise Exception(
                 "Internal error, unexpected value for "
