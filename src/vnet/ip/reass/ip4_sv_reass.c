@@ -660,6 +660,7 @@ ip4_sv_reass_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  next0 = a.is_custom ? vnet_buffer (b0)->ip.reass.next_index :
 				IP4_SV_REASSEMBLY_NEXT_INPUT;
 	}
+      vnet_buffer (b0)->ip.reass.is_fragment = 0;
       vnet_buffer (b0)->ip.reass.is_non_first_fragment = 0;
       vnet_buffer (b0)->ip.reass.ip_proto = ip0->protocol;
 
@@ -708,6 +709,7 @@ ip4_sv_reass_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  next1 = a.is_custom ? vnet_buffer (b1)->ip.reass.next_index :
 				IP4_SV_REASSEMBLY_NEXT_INPUT;
 	}
+      vnet_buffer (b1)->ip.reass.is_fragment = 0;
       vnet_buffer (b1)->ip.reass.is_non_first_fragment = 0;
       vnet_buffer (b1)->ip.reass.ip_proto = ip1->protocol;
 
@@ -788,6 +790,7 @@ ip4_sv_reass_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  next0 = a.is_custom ? vnet_buffer (b0)->ip.reass.next_index :
 				IP4_SV_REASSEMBLY_NEXT_INPUT;
 	}
+      vnet_buffer (b0)->ip.reass.is_fragment = 0;
       vnet_buffer (b0)->ip.reass.is_non_first_fragment = 0;
       vnet_buffer (b0)->ip.reass.ip_proto = ip0->protocol;
 
@@ -878,6 +881,7 @@ slow_path:
 		{
 		  next0 = IP4_SV_REASSEMBLY_NEXT_INPUT;
 		}
+	      vnet_buffer (b0)->ip.reass.is_fragment = 0;
 	      vnet_buffer (b0)->ip.reass.is_non_first_fragment = 0;
 	      vnet_buffer (b0)->ip.reass.ip_proto = ip0->protocol;
 	      if (l4_hdr_truncated (ip0))
@@ -994,6 +998,7 @@ slow_path:
 		{
 		  next0 = IP4_SV_REASSEMBLY_NEXT_INPUT;
 		}
+	      vnet_buffer (b0)->ip.reass.is_fragment = 1;
 	      vnet_buffer (b0)->ip.reass.is_non_first_fragment =
 		!!fragment_first;
 	      vnet_buffer (b0)->ip.reass.ip_proto = reass->ip_proto;
@@ -1069,6 +1074,7 @@ slow_path:
 		  to_next[0] = bi0;
 		  to_next += 1;
 		  n_left_to_next -= 1;
+		  vnet_buffer (b0)->ip.reass.is_fragment = 1;
 		  vnet_buffer (b0)->ip.reass.is_non_first_fragment =
 		    !!ip4_get_fragment_offset (ip0);
 		  vnet_buffer (b0)->ip.reass.ip_proto = reass->ip_proto;
