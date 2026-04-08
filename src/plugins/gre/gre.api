@@ -14,20 +14,17 @@
  * limitations under the License.
  */
 
-option version = "2.1.1";
+option version = "2.2.0";
 
 import "vnet/interface_types.api";
 import "vnet/tunnel/tunnel_types.api";
 import "vnet/ip/ip_types.api";
 
-/* Enable the in-progress messages */
-option status = "in_progress";
-
-/*
- * Define the service relationships
+/* gre_tunnel_dump_v2 is broken and that's why this service is needed.
+ * It is being deprecated.
+ * The service should be removed when gre_tunnel_dump_v2 is removed.
  */
 service {
-  rpc gre_tunnel_dump returns gre_tunnel_dump_reply events gre_tunnel_details;
   rpc gre_tunnel_dump_v2 returns gre_tunnel_dump_v2_reply events gre_tunnel_details_v2;
 };
 
@@ -151,6 +148,8 @@ define gre_tunnel_add_del_v2_reply
 */
 define gre_tunnel_dump
 {
+  option deprecated;
+
   u32 client_index;
   u32 context;
   vl_api_interface_index_t sw_if_index;
@@ -162,6 +161,8 @@ define gre_tunnel_dump
 */
 define gre_tunnel_dump_reply
 {
+  option deprecated;
+
   u32 context;
   i32 retval;
 };
@@ -173,6 +174,8 @@ define gre_tunnel_dump_reply
 */
 autoreply define gre_tunnel_dump_v2
 {
+  option deprecated;
+
   u32 client_index;
   u32 context;
   vl_api_interface_index_t sw_if_index;
@@ -185,6 +188,8 @@ autoreply define gre_tunnel_dump_v2
 */
 define gre_tunnel_details
 {
+  option deprecated;
+
   u32 context;
   vl_api_gre_tunnel_t tunnel;
 };
@@ -194,6 +199,30 @@ define gre_tunnel_details
     @param tunnel - definition of the dumped tunnel (with key field).
 */
 define gre_tunnel_details_v2
+{
+  option deprecated;
+
+  u32 context;
+  vl_api_gre_tunnel_v2_t tunnel;
+};
+
+/** \brief Dump details of all or just a single GRE tunnel with key support.
+    @param client_index - opaque cookie to identify the sender.
+    @param context - sender context, to match reply w/ request.
+    @param sw_if_index - filter for tunnel of this interface index, ~0 for all.
+*/
+autoreply define gre_tunnel_v2_dump
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+};
+
+/** \brief Details response for one of the requested GRE tunnels with key support.
+    @param context - sender context, to match reply w/ request.
+    @param tunnel - definition of the dumped tunnel (with key field).
+*/
+define gre_tunnel_v2_details
 {
   u32 context;
   vl_api_gre_tunnel_v2_t tunnel;
