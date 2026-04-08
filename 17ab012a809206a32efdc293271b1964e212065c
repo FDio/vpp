@@ -74,6 +74,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "2577a03e_5b11a66b",
+        "filename": "test/framework.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 583,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-04-08T14:39:29Z",
+      "side": 1,
+      "message": "There is a long standing level of technical debt in the current test cases, especially wrt. multi-worker tests. \n\nI\u0027m happy to accept this if it is a useful tool to help clean up the debt.  It would also be great if it\u0027s use were documented and/or announced on vpp-dev.",
+      "parentUuid": "33423a9d_c0c1ad38",
+      "revId": "17ab012a809206a32efdc293271b1964e212065c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "378be68c_b485ac5b",
         "filename": "test/framework.py",
         "patchSetId": 7
@@ -145,6 +163,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "67854ac4_ef1abe97",
+        "filename": "test/framework.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 606,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-04-08T14:39:29Z",
+      "side": 1,
+      "message": "Thanks for pushing 45454, that should be a big help!\n\nNot to belabor the point, but it would be helpful to have a test that I could run to see what the log output looks like in the multi context scenario.\n\nThank you for your patience as I get my head back into the test code.",
+      "parentUuid": "cacbb9f7_04b4fd4e",
+      "revId": "17ab012a809206a32efdc293271b1964e212065c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "79444a55_e77e61f4",
         "filename": "test/framework.py",
         "patchSetId": 7
@@ -204,6 +240,30 @@
       "side": 1,
       "message": "Sure, start a thread on vpp-dev to discuss the options.",
       "parentUuid": "761e0320_83e926c3",
+      "range": {
+        "startLine": 613,
+        "startChar": 0,
+        "endLine": 619,
+        "endChar": 0
+      },
+      "revId": "17ab012a809206a32efdc293271b1964e212065c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9b61b3aa_a5f53807",
+        "filename": "test/framework.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 619,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-04-08T14:39:29Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "07337aa0_6b755e53",
       "range": {
         "startLine": 613,
         "startChar": 0,
@@ -299,6 +359,30 @@
       "side": 1,
       "message": "I use basedpyright as my LSP to spot the obvious issues without having to execute code to speedup my development process. That is inside my editor though. I don\u0027t have a recommendation for something automated/\"system-wide\".",
       "parentUuid": "65439d65_daaba04a",
+      "range": {
+        "startLine": 303,
+        "startChar": 48,
+        "endLine": 303,
+        "endChar": 59
+      },
+      "revId": "17ab012a809206a32efdc293271b1964e212065c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "84893ff1_9e6ab4df",
+        "filename": "test/vpp_pg_interface.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 303,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-04-08T14:39:29Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "3142309c_cf2da5ed",
       "range": {
         "startLine": 303,
         "startChar": 48,
