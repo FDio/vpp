@@ -560,6 +560,9 @@ flow_cli (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd_arg)
 	flow.actions |= VNET_FLOW_ACTION_REDIRECT_TO_QUEUE;
       else if (unformat (line_input, "drop"))
 	flow.actions |= VNET_FLOW_ACTION_DROP;
+      else if (unformat (line_input, "steer-to-port %U", unformat_vnet_hw_interface, vnm,
+			 &flow.steer_to_hw_if_index))
+	flow.actions |= VNET_FLOW_ACTION_STEER_TO_PORT;
       else if (unformat (line_input, "rss function"))
 	{
 	  if (0)
@@ -973,6 +976,7 @@ VLIB_CLI_COMMAND (flow_command, static) = {
 		"[spec <spec string>] [mask <mask string>]"
 		"[next-node <node>] [mark <id>] [buffer-advance <len>] "
 		"[redirect-to-queue <queue>] [drop] "
+		"[steer-to-port <iface>] "
 		"[rss function <name>] [rss types <flow type>]"
 		"[rss queues <queue_start> to <queue_end>]",
   .function = flow_cli,
@@ -1087,6 +1091,10 @@ format_flow (u8 * s, va_list * args)
 
   if (f->actions & VNET_FLOW_ACTION_BUFFER_ADVANCE)
     t = format (t, "%sbuffer-advance %d", t ? ", " : "", f->buffer_advance);
+
+  if (f->actions & VNET_FLOW_ACTION_STEER_TO_PORT)
+    t = format (t, "%ssteer-to-port %U", t ? ", " : "", format_vnet_hw_if_index_name,
+		vnet_get_main (), f->steer_to_hw_if_index);
 
   if (f->actions & VNET_FLOW_ACTION_RSS)
     {
