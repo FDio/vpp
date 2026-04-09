@@ -355,6 +355,23 @@ sfdp_set_icmp_error_node (sfdp_main_t *sfdp, u32 tenant_id, u8 is_ip6,
   return 0;
 }
 
+/* Expire a session immediately, bypassing the timing wheel.
+ *
+ * INVARIANT: must be called with the worker barrier held (workers stopped).
+ * Both call sites guarantee this:
+ *   - CLI:  vlib/cli.c dispatches non-is_mp_safe commands under barrier_sync
+ *   - API:  vlibmemory/memory_api.c acquires vl_msg_api_barrier_sync() for
+ *           non-is_mp_safe messages, which includes sfdp_kill_session
+ *
+ * With workers stopped it is safe to:
+ *   - write directly into the worker-owned ptd->expired_sessions vector
+ *     without a lock (no concurrent reader/writer),
+ *   - call sfdp_session_timer_stop() on the worker-owned timer wheel
+ *     (the wheel cannot advance while the worker is paused, so the handle
+ *     is always valid: a session that had already naturally expired would
+ *     have been fully removed in the previous dispatch and would not reach
+ *     this function because sfdp_session_at_index_if_valid() returns NULL).
+ */
 static void
 sfdp_expire_session_now (sfdp_session_t *session, f64 now)
 {
@@ -362,11 +379,22 @@ sfdp_expire_session_now (sfdp_session_t *session, f64 now)
   if (thread_index == SFDP_UNBOUND_THREAD_INDEX)
     thread_index = 0;
 
+  sfdp_main_t *sfdp = &sfdp_main;
+  u32 session_index = session - sfdp->sessions;
   sfdp_timer_per_thread_data_t *tptd = sfdp_timer_get_per_thread_data (thread_index);
   sfdp_session_timer_t *timer = SFDP_SESSION_TIMER (session);
 
-  sfdp_session_timer_update_maybe_past (&tptd->wheel, timer, now, 0);
-  tptd->current_time = now;
+  /* Directly add session to the expired list, bypassing the timing wheel's
+   * nticks >= 1 constraint (tw_timer_template.c). The session is processed
+   * on the very next sfdp-expire node execution regardless of when
+   * sfdp-expire last ran. */
+  sfdp_per_thread_data_t *ptd = vec_elt_at_index (sfdp->per_thread_data, thread_index);
+  vec_add1 (ptd->expired_sessions, session_index);
+
+  /* Stop the timer to prevent it from firing again later. */
+  sfdp_session_timer_stop (&tptd->wheel, timer);
+
+  /* Wake up sfdp-expire on the owning worker. */
   vlib_node_set_interrupt_pending (vlib_get_main_by_index (thread_index), sfdp_expire_node.index);
 }
 
