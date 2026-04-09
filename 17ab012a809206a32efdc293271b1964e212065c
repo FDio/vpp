@@ -217,6 +217,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "87378b38_0f05d3a8",
+        "filename": "test/framework.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 606,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-04-09T06:33:05Z",
+      "side": 1,
+      "message": "Also, note that this change makes send_and_expect use send_and_expect_multi internally, so you can also observe it by running any test which uses the simpler send_and_expect.",
+      "parentUuid": "978d286a_38240d5b",
+      "revId": "17ab012a809206a32efdc293271b1964e212065c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "79444a55_e77e61f4",
         "filename": "test/framework.py",
         "patchSetId": 7
