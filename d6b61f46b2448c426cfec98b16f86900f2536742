@@ -16,6 +16,24 @@
       "message": "shouldn\u0027t it use rte_strerror(rv) as dpdk_device_error() instead? ret_errno might have been set by a previous call and could be misleading",
       "revId": "d6b61f46b2448c426cfec98b16f86900f2536742",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "984afd9b_85bea74a",
+        "filename": "src/plugins/dpdk/device/common.c",
+        "patchSetId": 29
+      },
+      "lineNbr": 51,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-04-09T14:52:33Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "29d9396f_dac69b04",
+      "revId": "d6b61f46b2448c426cfec98b16f86900f2536742",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
