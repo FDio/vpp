@@ -1430,6 +1430,7 @@ http_start_listen (u32 app_listener_index, transport_endpoint_cfg_t *tep)
 
   props = application_segment_manager_properties (app);
   lhc->hc_app_rx_fifo_size = props->rx_fifo_size;
+  lhc->hr_hc_index = lhc_index;
 
   if (vec_len (app->name))
     lhc->app_name = vec_dup (app->name);
@@ -1775,7 +1776,10 @@ http_session_attribute (u32 rh, clib_thread_index_t thread_index, u8 is_get,
 	return -1;
       break;
     case TRANSPORT_ENDPT_ATTR_NEXT_TRANSPORT:
-      attr->next_transport = hc->hc_tc_session_handle;
+      /* Assume that if tc session handle is not set, it's a quic session */
+      attr->next_transport = hc->hc_tc_session_handle != SESSION_INVALID_HANDLE ?
+			       hc->hc_tc_session_handle :
+			       hc->hc_tl_handle_quic;
       break;
     default:
       return -1;
