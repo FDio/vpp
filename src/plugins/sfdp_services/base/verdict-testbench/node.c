@@ -83,6 +83,8 @@ vt_add_flow_for_direction (vlib_main_t *vm, vlib_node_runtime_t *node, verdict_t
   flow.pattern.ip4_n_tuple.protocol.mask = 0xFF;
 
   flow.actions = VNET_FLOW_ACTION_STEER_TO_PORT;
+  if (vt->enable_counters)
+    flow.actions |= VNET_FLOW_ACTION_COUNT;
   flow.steer_to_hw_if_index = vt->tx_hw_if_index;
   flow.steer_from_hw_if_index = ~0; /* match all ingress ports */
 
@@ -101,11 +103,18 @@ vt_add_flow_for_direction (vlib_main_t *vm, vlib_node_runtime_t *node, verdict_t
 static_always_inline void
 vt_create_and_offload_flow (vlib_main_t *vm, vlib_node_runtime_t *node,
 			    verdict_testbench_main_t *vt, sfdp_session_t *session,
-			    u32 **flows_to_create)
+			    u32 **udp_flows_to_create, u32 **tcp_flows_to_create)
 {
+  u32 **flows_to_create;
+
   if (session->type != SFDP_SESSION_TYPE_IP4)
     return;
-  if (session->proto != IP_PROTOCOL_TCP && session->proto != IP_PROTOCOL_UDP)
+
+  if (session->proto == IP_PROTOCOL_UDP && (vt->enabled_protos & VT_PROTO_UDP))
+    flows_to_create = udp_flows_to_create;
+  else if (session->proto == IP_PROTOCOL_TCP && (vt->enabled_protos & VT_PROTO_TCP))
+    flows_to_create = tcp_flows_to_create;
+  else
     return;
 
   sfdp_session_ip4_key_t *key = &session->keys[SFDP_SESSION_KEY_PRIMARY].key4;
@@ -132,7 +141,8 @@ VLIB_NODE_FN (sfdp_verdict_testbench_node)
   u32 *from = vlib_frame_vector_args (frame);
   u32 n_left = frame->n_vectors;
   u32 n_offloaded = 0, n_kept = 0;
-  u32 *flows_to_create = 0;
+  u32 *udp_flows_to_create = 0;
+  u32 *tcp_flows_to_create = 0;
 
   vlib_get_buffers (vm, from, bufs, n_left);
 
@@ -144,7 +154,7 @@ VLIB_NODE_FN (sfdp_verdict_testbench_node)
       /* TODO: increment counter in unused0 */
       u16 pkt_count = ++VT_SESSION_PKT_COUNT (session);
 
-      if (pkt_count < VT_PKT_THRESHOLD)
+      if (pkt_count != VT_PKT_THRESHOLD)
 	goto next;
 
       /* Decision time: clear service from bitmap */
@@ -156,7 +166,8 @@ VLIB_NODE_FN (sfdp_verdict_testbench_node)
       if (bucket != 0 && vt->is_enabled)
 	{
 	  /* 90%: offload verdict to host */
-	  vt_create_and_offload_flow (vm, node, vt, session, &flows_to_create);
+	  vt_create_and_offload_flow (vm, node, vt, session, &udp_flows_to_create,
+				      &tcp_flows_to_create);
 	  n_offloaded++;
 	}
       else
@@ -171,15 +182,20 @@ VLIB_NODE_FN (sfdp_verdict_testbench_node)
       n_left--;
     }
 
-  /* End of frame: batch async enable */
-  if (vec_len (flows_to_create) > 0)
+  /* End of frame: batch async enable per protocol */
+  if (vec_len (udp_flows_to_create) > 0 || vec_len (tcp_flows_to_create) > 0)
     {
       vnet_main_t *vnm = vnet_get_main ();
-      vnet_flow_async_range_enable (vnm, vt->verdict_template_index, flows_to_create,
-				    vt->hw_if_index);
+      if (vec_len (udp_flows_to_create) > 0)
+	vnet_flow_async_range_enable (vnm, vt->udp_template_index, udp_flows_to_create,
+				      vt->hw_if_index);
+      if (vec_len (tcp_flows_to_create) > 0)
+	vnet_flow_async_range_enable (vnm, vt->tcp_template_index, tcp_flows_to_create,
+				      vt->hw_if_index);
     }
 
-  vec_free (flows_to_create);
+  vec_free (udp_flows_to_create);
+  vec_free (tcp_flows_to_create);
 
   if (n_offloaded)
     vlib_node_increment_counter (vm, node->node_index, VERDICT_TESTBENCH_ERROR_OFFLOADED,
