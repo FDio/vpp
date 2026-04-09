@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "ef67e8ba_48cfc45d",
+        "filename": "src/vnet/sfdp/expiry/expiry.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 111,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2026-04-09T10:26:23Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "a39c1f3e_8380f1b8",
+      "revId": "eff8bfacf4c79e5ee82edf00a0de69b56baf829d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "f08fc7b8_81ae0408",
@@ -31,6 +49,24 @@
       "writtenOn": "2026-04-09T09:41:53Z",
       "side": 1,
       "message": "the check is done twice: there and in the function",
+      "revId": "eff8bfacf4c79e5ee82edf00a0de69b56baf829d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4b2eeac5_55aa6b4f",
+        "filename": "src/vnet/sfdp/expiry/expiry.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 176,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2026-04-09T10:26:23Z",
+      "side": 1,
+      "message": "yes, but in case of the offload interface doesn\u0027t have offload support, we don\u0027t want to increase the counter vlib_node_increment_counter SFDP_EXPIRE_ERROR_FLOW_OFFLOAD_UNSET",
+      "parentUuid": "f08fc7b8_81ae0408",
       "revId": "eff8bfacf4c79e5ee82edf00a0de69b56baf829d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -52,6 +88,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "cde1f98e_0a3f09bf",
+        "filename": "src/vnet/sfdp/lookup/node.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 351,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2026-04-09T10:26:23Z",
+      "side": 1,
+      "message": "it would make debugging a bit confused, but the code will be more simple, I reverted last commit",
+      "parentUuid": "37fff5bb_0fd232d9",
+      "revId": "eff8bfacf4c79e5ee82edf00a0de69b56baf829d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "fa27497a_661c7fb5",
@@ -65,6 +119,24 @@
       "writtenOn": "2026-04-09T09:41:53Z",
       "side": 1,
       "message": "Those are already set, you just have to invert src\u003c-\u003edst there.",
+      "revId": "eff8bfacf4c79e5ee82edf00a0de69b56baf829d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1d57b49f_f6f28db7",
+        "filename": "src/vnet/sfdp/lookup/node.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 406,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2026-04-09T10:26:23Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "fa27497a_661c7fb5",
       "revId": "eff8bfacf4c79e5ee82edf00a0de69b56baf829d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -86,6 +158,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "64e20d6b_09edc86d",
+        "filename": "src/vnet/sfdp/lookup/node.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 415,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2026-04-09T10:26:23Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "0c0e2172_61e7d724",
+      "revId": "eff8bfacf4c79e5ee82edf00a0de69b56baf829d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "c4231b91_64e16ab4",
@@ -99,6 +189,24 @@
       "writtenOn": "2026-04-09T09:41:53Z",
       "side": 1,
       "message": "same thing",
+      "revId": "eff8bfacf4c79e5ee82edf00a0de69b56baf829d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2d9b2a0a_72939174",
+        "filename": "src/vnet/sfdp/lookup/node.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 418,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2026-04-09T10:26:23Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c4231b91_64e16ab4",
       "revId": "eff8bfacf4c79e5ee82edf00a0de69b56baf829d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -120,6 +228,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "aad927c9_0cdf28bd",
+        "filename": "src/vnet/sfdp/lookup/node.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 424,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2026-04-09T10:26:23Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "468e1c89_cf76cd55",
+      "revId": "eff8bfacf4c79e5ee82edf00a0de69b56baf829d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "213a4977_e29b7650",
@@ -133,6 +259,24 @@
       "writtenOn": "2026-04-09T09:41:53Z",
       "side": 1,
       "message": "Why iterating another time there when you could create the flow offload at line 663?",
+      "revId": "eff8bfacf4c79e5ee82edf00a0de69b56baf829d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "19def5a8_2547cd8d",
+        "filename": "src/vnet/sfdp/lookup/node.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 693,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2026-04-09T10:26:23Z",
+      "side": 1,
+      "message": "due to a bit of history of the patch and the constant propagation optimization, but as we are in the slow path on the 1st packet this will not change much",
+      "parentUuid": "213a4977_e29b7650",
       "revId": "eff8bfacf4c79e5ee82edf00a0de69b56baf829d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
