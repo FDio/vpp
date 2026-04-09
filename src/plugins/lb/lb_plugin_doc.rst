@@ -125,7 +125,7 @@ Configure the ASs (for each VIP)
 
 ::
 
-   lb as <vip-prefix> [<address> [<address> [...]]] [del]
+   lb as <vip-prefix> [<address> [<address> [...]]] [weight <0-100>] [del] [flush]
 
 You can add (or delete) as many ASs at a time (for a single VIP). Note
 that the AS address family must correspond to the VIP encap. IP family.
@@ -138,6 +138,44 @@ Examples:
    lb as 2003::/16 10.0.0.1 10.0.0.2
    lb as 80.0.0.0/8 2001::2
    lb as 90.0.0.0/8 10.0.0.1
+
+Weighted ASs
+~~~~~~~~~~~~
+
+Each AS has a weight in the range 0-100 (default 100) that controls its
+share of the Maglev new-flow table. Bucket allocation is proportional to
+an AS's weight relative to the sum of weights across all live ASs on the
+VIP. Setting ``weight`` on ``lb as`` either adds a new AS at that weight
+or updates an existing AS in place.
+
+Weight 0 means the AS receives no new flows. Existing flows continue to
+hit it via the per-thread established-connections-table (sticky hash),
+so weight 0 acts as a **graceful drain**.
+
+Appending ``flush`` to a weight update performs a **hard drain**: after
+rebuilding the new-flow table, sticky entries pointing at this AS are
+evicted, so existing flows are rehashed through the updated Maglev table
+onto a different AS. ``flush`` is also accepted with nonzero weight to
+force a rehash of surviving stickies after a rebalance.
+
+Examples:
+
+::
+
+   # Introduce a new AS slowly (1% → 5% → 20% → 100%)
+   lb as 90.0.0.0/8 10.0.0.5 weight 1
+   lb as 90.0.0.0/8 10.0.0.5 weight 5
+   lb as 90.0.0.0/8 10.0.0.5 weight 20
+   lb as 90.0.0.0/8 10.0.0.5 weight 100
+
+   # Graceful drain: stop new flows, keep existing sessions
+   lb as 90.0.0.0/8 10.0.0.1 weight 0
+
+   # Hard drain: stop new flows AND break existing sessions
+   lb as 90.0.0.0/8 10.0.0.1 weight 0 flush
+
+   # Fully remove, dropping any remaining sessions
+   lb as 90.0.0.0/8 10.0.0.1 del flush
 
 Configure SNAT
 ~~~~~~~~~~~~~~
