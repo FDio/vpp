@@ -375,11 +375,12 @@ lb_show_vips_command_fn (vlib_main_t * vm,
   lb_vip_t *vip;
   u8 verbose = 0;
 
-  if (!unformat_user (input, unformat_line_input, &line_input))
-      return 0;
-
-  if (unformat(&line_input, "verbose"))
-    verbose = 1;
+  if (unformat_user (input, unformat_line_input, &line_input))
+    {
+      if (unformat (&line_input, "verbose"))
+	verbose = 1;
+      unformat_free (&line_input);
+    }
 
   /* Hide placeholder VIP */
   pool_foreach (vip, lbm->vips) {
@@ -388,7 +389,6 @@ lb_show_vips_command_fn (vlib_main_t * vm,
     }
   }
 
-  unformat_free (&line_input);
   return NULL;
 }
 

@@ -65,6 +65,32 @@ typedef struct {
 
 lb_test_main_t lb_test_main;
 
+static void
+vl_api_lb_conf_get_reply_t_handler (vl_api_lb_conf_get_reply_t *mp)
+{
+  vat_main_t *vam = &vat_main;
+  if (mp->retval)
+    clib_warning ("lb_conf_get: %d", ntohl (mp->retval));
+  vam->result_ready = 1;
+  vam->retval = ntohl (mp->retval);
+  fformat (vam->ofp, "ip4-src-address: %U\n", format_ip4_address, &mp->ip4_src_address);
+  fformat (vam->ofp, "ip6-src-address: %U\n", format_ip6_address, &mp->ip6_src_address);
+  fformat (vam->ofp, "sticky_buckets_per_core: %u\n", ntohl (mp->sticky_buckets_per_core));
+  fformat (vam->ofp, "flow_timeout: %u\n", ntohl (mp->flow_timeout));
+}
+
+static int
+api_lb_conf_get (vat_main_t *vam)
+{
+  vl_api_lb_conf_get_t *mp;
+  int ret;
+
+  M (LB_CONF_GET, mp);
+  S (mp);
+  W (ret);
+  return ret;
+}
+
 static int api_lb_conf (vat_main_t * vam)
 {
   unformat_input_t *line_input = vam->input;
@@ -277,7 +303,7 @@ api_lb_add_del_vip_v2 (vat_main_t *vam)
       return -99;
     }
 
-  M (LB_ADD_DEL_VIP, mp);
+  M (LB_ADD_DEL_VIP_V2, mp);
   ip_address_encode (&ip_prefix, IP46_TYPE_ANY, &mp->pfx.address);
   mp->pfx.len = prefix_length;
   mp->protocol = (u8) protocol;

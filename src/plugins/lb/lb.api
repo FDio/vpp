@@ -1,6 +1,34 @@
-option version = "1.1.0";
+option version = "1.2.0";
 import "plugins/lb/lb_types.api";
 import "vnet/interface_types.api";
+
+/** \brief Get Load-Balancer global parameters
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define lb_conf_get
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Reply for lb_conf_get
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+    @param ip4_src_address - current IPv4 source address
+    @param ip6_src_address - current IPv6 source address
+    @param sticky_buckets_per_core - current buckets per core
+    @param flow_timeout - current flow timeout in seconds
+*/
+define lb_conf_get_reply
+{
+  u32 context;
+  i32 retval;
+  vl_api_ip4_address_t ip4_src_address;
+  vl_api_ip6_address_t ip6_src_address;
+  u32 sticky_buckets_per_core;
+  u32 flow_timeout;
+};
 
 /** \brief Configure Load-Balancer global parameters (unlike the CLI, both ip4_src_address and ip6_src_address need to be specified.
     @param client_index - opaque cookie to identify the sender
@@ -41,11 +69,11 @@ autoreply  define lb_conf
 autoreply  define lb_add_del_vip {
   u32 client_index;
   u32 context;
-  vl_api_address_with_prefix_t pfx;
-  u8 protocol [default=255];
+  vl_api_prefix_t pfx;
+  vl_api_ip_proto_t protocol [default=255];
   u16 port;
   vl_api_lb_encap_type_t encap;
-  u8 dscp;
+  vl_api_ip_dscp_t dscp;
   vl_api_lb_srv_type_t type ; /* LB_API_SRV_TYPE_CLUSTERIP */
   u16 target_port;
   u16 node_port;
@@ -73,11 +101,11 @@ autoreply  define lb_add_del_vip {
 autoreply  define lb_add_del_vip_v2 {
   u32 client_index;
   u32 context;
-  vl_api_address_with_prefix_t pfx;
-  u8 protocol [default=255];
+  vl_api_prefix_t pfx;
+  vl_api_ip_proto_t protocol [default=255];
   u16 port;
   vl_api_lb_encap_type_t encap;
-  u8 dscp;
+  vl_api_ip_dscp_t dscp;
   vl_api_lb_srv_type_t type ; /* LB_API_SRV_TYPE_CLUSTERIP */
   u16 target_port;
   u16 node_port;
@@ -100,8 +128,8 @@ autoreply  define lb_add_del_vip_v2 {
 autoreply  define lb_add_del_as {
   u32 client_index;
   u32 context;
-  vl_api_address_with_prefix_t pfx;
-  u8 protocol [default=255];
+  vl_api_prefix_t pfx;
+  vl_api_ip_proto_t protocol [default=255];
   u16 port;
   vl_api_address_t as_address;
   bool is_del;
@@ -119,8 +147,8 @@ autoreply  define lb_add_del_as {
 autoreply  define lb_flush_vip {
   u32 client_index;
   u32 context;
-  vl_api_address_with_prefix_t pfx;
-  u8 protocol;
+  vl_api_prefix_t pfx;
+  vl_api_ip_proto_t protocol;
   u16 port;
 };
 
@@ -131,9 +159,9 @@ autoreply  define lb_flush_vip {
 define lb_vip_dump{
   u32 client_index;
   u32 context;
-  vl_api_address_with_prefix_t pfx;
+  vl_api_prefix_t pfx;
   vl_api_prefix_matcher_t pfx_matcher;
-  u8 protocol [default=255];
+  vl_api_ip_proto_t protocol [default=255];
   u16 port;
 
 };
@@ -163,8 +191,8 @@ define lb_as_dump{
   u32 client_index;
   u32 context;
   /* vip */
-  vl_api_address_with_prefix_t pfx;
-  u8 protocol;
+  vl_api_prefix_t pfx;
+  vl_api_ip_proto_t protocol;
   u16 port;
   option vat_help = "<vip-prefix> [protocol (tcp|udp) port <n>]";
 };
