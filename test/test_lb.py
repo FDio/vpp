@@ -1,3 +1,4 @@
+import re
 import socket
 
 import scapy.compat
@@ -16,7 +17,7 @@ import unittest
 
 """ TestLB is a subclass of  VPPTestCase classes.
 
- TestLB class defines Load Balancer test cases for:
+ TestLB class defines Load Balancer test cass for:
   - IP4 to GRE4 encap on per-port vip case
   - IP4 to GRE6 encap on per-port vip case
   - IP6 to GRE4 encap on per-port vip case
@@ -28,7 +29,7 @@ import unittest
   - IP6 to NAT6 encap on per-port vip case
 
  As stated in comments below, GRE has issues with IPv6.
- All test cases involving IPv6 are executed, but
+ All test cass involving IPv6 are executed, but
  received packets are not parsed and checked.
 
 """
@@ -235,6 +236,41 @@ class TestLB(VppTestCase):
             reply.sticky_buckets_per_core, 1024
         )  # LB_DEFAULT_PER_CPU_STICKY_BUCKETS
         self.assertEqual(reply.flow_timeout, 40)  # LB_DEFAULT_FLOW_TIMEOUT
+
+    def test_lb_weights(self):
+        """Load Balancer per-AS weights"""
+        vip = "192.0.2.0/24"
+        ass = ["10.0.0.1", "10.0.0.2", "10.0.0.3", "10.0.0.4"]
+        try:
+            self.vapi.cli("lb vip %s encap gre4" % vip)
+            for a in ass:
+                self.vapi.cli("lb as %s %s" % (vip, a))
+
+            counts = self._get_as_bucket_counts()
+            self.assertEqual(counts["10.0.0.1"], 256, counts)
+            self.assertEqual(counts["10.0.0.2"], 256, counts)
+            self.assertEqual(counts["10.0.0.3"], 256, counts)
+            self.assertEqual(counts["10.0.0.4"], 256, counts)
+
+            self.vapi.cli("lb as %s 10.0.0.1 weight 50" % vip)
+            counts = self._get_as_bucket_counts()
+            self.assertEqual(counts["10.0.0.1"], 150, counts)
+            self.assertEqual(counts["10.0.0.2"], 292, counts)
+            self.assertEqual(counts["10.0.0.3"], 291, counts)
+            self.assertEqual(counts["10.0.0.4"], 291, counts)
+
+            self.vapi.cli("lb as %s 10.0.0.2 weight 0" % vip)
+            counts = self._get_as_bucket_counts()
+            self.assertEqual(counts["10.0.0.1"], 208, counts)
+            self.assertEqual(counts["10.0.0.2"], 0, counts)
+            self.assertEqual(counts["10.0.0.3"], 408, counts)
+            self.assertEqual(counts["10.0.0.4"], 408, counts)
+
+        finally:
+            for a in ass:
+                self.vapi.cli("lb as %s %s del flush" % (vip, a))
+            self.vapi.cli("lb vip %s encap gre4 del" % vip)
+            self.vapi.cli("test lb flowtable flush")
 
     def test_lb_ip4_gre4_vip_api(self):
         """Load Balancer IP4 GRE4 add/del VIP via lb_add_del_vip binary API"""
@@ -706,3 +742,17 @@ class TestLB(VppTestCase):
                 " type clusterip target_port 3307 del"
             )
             self.vapi.cli("test lb flowtable flush")
+
+    def _get_as_bucket_counts(self):
+        """Parse 'show lb vip verbose' and return {ip_str: bucket_count}.
+
+        Matches lines of the form produced by format_lb_vip_detailed:
+          <whitespace><ip> weight:<n> <count> buckets ...
+        """
+        output = self.vapi.cli("show lb vip verbose")
+        counts = {}
+        for line in output.splitlines():
+            m = re.match(r"\s+([\d.]+)\s+weight:\d+\s+(\d+)\s+buckets", line)
+            if m:
+                counts[m.group(1)] = int(m.group(2))
+        return counts
