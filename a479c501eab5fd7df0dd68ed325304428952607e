@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "366179c7_b6eb6a77",
+        "filename": "test/hs-test/echo_test.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 228,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-04-09T12:48:22Z",
+      "side": 1,
+      "message": "I think old name reflect that we are testing test-bytes option (with udp traffic), which has special handling",
+      "range": {
+        "startLine": 228,
+        "startChar": 5,
+        "endLine": 228,
+        "endChar": 29
+      },
+      "revId": "a479c501eab5fd7df0dd68ed325304428952607e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
