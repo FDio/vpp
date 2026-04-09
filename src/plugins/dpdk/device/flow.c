@@ -693,6 +693,14 @@ dpdk_flow_fill_actions (dpdk_device_t *xd, vnet_flow_t *f, dpdk_flow_entry_t *fe
       action->conf = &args->mark;
     }
 
+  if (f->actions & VNET_FLOW_ACTION_COUNT)
+    {
+      action = &args->actions[n++];
+      clib_memset (&args->count, 0, sizeof (args->count));
+      action->type = RTE_FLOW_ACTION_TYPE_COUNT;
+      action->conf = &args->count;
+    }
+
   /* Only one 'fate' can be assigned */
   if (f->actions & VNET_FLOW_ACTION_REDIRECT_TO_QUEUE)
     {
@@ -796,6 +804,9 @@ dpdk_flow_fill_actions_template (dpdk_device_t *xd, vnet_flow_t *t, dpdk_flow_te
     masks[n].conf = NULL;                                                                          \
     n++;                                                                                           \
   }
+
+  if (t->actions & VNET_FLOW_ACTION_COUNT)
+    add_action_type (COUNT);
 
   if (FLOW_NEEDS_MARK (t))
     add_action_type (MARK);
@@ -1552,6 +1563,18 @@ dpdk_flow_ops_fn (vnet_main_t *vnm, vnet_flow_dev_op_t op, u32 dev_instance, u32
       flow->driver_data.opaque = ~0;
 
       goto disable_rx_offload;
+    }
+
+  if (op == VNET_FLOW_DEV_OP_GET_COUNTER)
+    {
+      fe = vec_elt_at_index (xd->flow_entries, flow->driver_data.opaque);
+      struct rte_flow_action action = { .type = RTE_FLOW_ACTION_TYPE_COUNT };
+      struct rte_flow_query_count count = {};
+      if (rte_flow_query (xd->port_id, fe->handle, &action, &count, &xd->last_flow_error))
+	return VNET_FLOW_ERROR_INTERNAL;
+      flow->counter_hits = count.hits;
+      flow->counter_bytes = count.bytes;
+      return 0;
     }
 
   if (op != VNET_FLOW_DEV_OP_ADD_FLOW)
