@@ -177,9 +177,8 @@ u8 *format_lb_vip (u8 * s, va_list * args)
 u8 *format_lb_as (u8 * s, va_list * args)
 {
   lb_as_t *as = va_arg (*args, lb_as_t *);
-  return format(s, "%U %s", format_ip46_address,
-                &as->address, IP46_TYPE_ANY,
-                (as->flags & LB_AS_FLAGS_USED)?"used":"removed");
+  return format (s, "%U weight:%u %s", format_ip46_address, &as->address, IP46_TYPE_ANY, as->weight,
+		 (as->flags & LB_AS_FLAGS_USED) ? "used" : "removed");
 }
 
 u8 *format_lb_vip_detailed (u8 * s, va_list * args)
@@ -250,13 +249,10 @@ u8 *format_lb_vip_detailed (u8 * s, va_list * args)
   u32 *as_index;
   pool_foreach (as_index, vip->as_indexes) {
       as = &lbm->ass[*as_index];
-      s = format(s, "%U    %U %u buckets   %Lu flows  dpo:%u %s\n",
-                   format_white_space, indent,
-                   format_ip46_address, &as->address, IP46_TYPE_ANY,
-                   count[as - lbm->ass],
-                   vlib_refcount_get(&lbm->as_refcount, as - lbm->ass),
-                   as->dpo.dpoi_index,
-                   (as->flags & LB_AS_FLAGS_USED)?"used":" removed");
+      s = format (s, "%U    %U weight:%u %u buckets   %Lu flows  dpo:%u %s\n", format_white_space,
+		  indent, format_ip46_address, &as->address, IP46_TYPE_ANY, as->weight,
+		  count[as - lbm->ass], vlib_refcount_get (&lbm->as_refcount, as - lbm->ass),
+		  as->dpo.dpoi_index, (as->flags & LB_AS_FLAGS_USED) ? "used" : " removed");
   }
 
   vec_free(count);
@@ -265,16 +261,23 @@ u8 *format_lb_vip_detailed (u8 * s, va_list * args)
 
 typedef struct {
   u32 as_index;
+  u32 replica; /* 0..weight-1 — distinguishes copies of the same AS */
   u32 last;
   u32 skip;
 } lb_pseudorand_t;
 
 static int lb_pseudorand_compare(void *a, void *b)
 {
-  lb_as_t *asa, *asb;
+  lb_pseudorand_t *pra = (lb_pseudorand_t *) a;
+  lb_pseudorand_t *prb = (lb_pseudorand_t *) b;
   lb_main_t *lbm = &lb_main;
-  asa = &lbm->ass[((lb_pseudorand_t *)a)->as_index];
-  asb = &lbm->ass[((lb_pseudorand_t *)b)->as_index];
+  lb_as_t *asa = &lbm->ass[pra->as_index];
+  lb_as_t *asb = &lbm->ass[prb->as_index];
+  /* Sort by (replica, address): interleaves all ASes at the same replica
+   * index so that the remainder buckets (M mod total_weight) are spread
+   * evenly across ASes rather than biased toward the lowest-addressed AS. */
+  if (pra->replica != prb->replica)
+  return (int) pra->replica - (int) prb->replica;
   return memcmp(&asa->address, &asb->address, sizeof(asb->address));
 }
 
@@ -383,39 +386,39 @@ static void lb_vip_update_new_flow_table(lb_vip_t *vip)
 
   CLIB_SPINLOCK_ASSERT_LOCKED (&lbm->writer_lock); // We must have the lock
 
-  //Check if some AS is configured or not
+  // Check if some AS is configured with a non-zero weight
   i = 0;
   pool_foreach (as_index, vip->as_indexes) {
       as = &lbm->ass[*as_index];
-      if (as->flags & LB_AS_FLAGS_USED) { //Not used anymore
-        i = 1;
-        goto out; //Not sure 'break' works in this macro-loop
+      if ((as->flags & LB_AS_FLAGS_USED) && as->weight > 0)
+      {
+	i = 1;
+	goto out; // Not sure 'break' works in this macro-loop
       }
   }
 
 out:
   if (i == 0) {
-    //Only the default. i.e. no AS
-    vec_validate(new_flow_table, vip->new_flow_table_mask);
-    for (i=0; i<vec_len(new_flow_table); i++)
+      // Only the default. i.e. no AS (or all weights are 0)
+      vec_validate (new_flow_table, vip->new_flow_table_mask);
+      for (i = 0; i < vec_len (new_flow_table); i++)
       new_flow_table[i].as_index = 0;
 
     goto finished;
   }
 
-  //First, let's sort the ASs
-  vec_validate (sort_arr, pool_elts (vip->as_indexes) - 1);
-
-  i = 0;
+  /* Build sort_arr expanded by weight: each AS appears weight times,
+   * once per replica index. This gives proportional bucket allocation. */
   pool_foreach (as_index, vip->as_indexes) {
       as = &lbm->ass[*as_index];
-      if (!(as->flags & LB_AS_FLAGS_USED)) //Not used anymore
-        continue;
-
-      sort_arr[i].as_index = as - lbm->ass;
-      i++;
+      if (!(as->flags & LB_AS_FLAGS_USED) || as->weight == 0)
+      continue;
+      for (u32 r = 0; r < as->weight; r++)
+      {
+	lb_pseudorand_t e = { .as_index = as - lbm->ass, .replica = r };
+	vec_add1 (sort_arr, e);
+      }
   }
-  vec_set_len (sort_arr, i);
 
   vec_sort_with_function(sort_arr, lb_pseudorand_compare);
 
@@ -423,8 +426,9 @@ out:
   vec_foreach(pr, sort_arr) {
     lb_as_t *as = &lbm->ass[pr->as_index];
 
-    u64 seed = clib_xxhash(as->address.as_u64[0] ^
-                           as->address.as_u64[1]);
+    /* Mix replica into the seed so each copy of the same AS gets an
+     * independent permutation. skip must be odd (prime with 2^n). */
+    u64 seed = clib_xxhash (as->address.as_u64[0] ^ as->address.as_u64[1] ^ (u64) pr->replica);
     /* We have 2^n buckets.
      * skip must be prime with 2^n.
      * So skip must be odd.
@@ -630,6 +634,7 @@ next:
   //Update reused ASs
   vec_foreach(ip, to_be_updated) {
     lbm->ass[*ip].flags = LB_AS_FLAGS_USED;
+    lbm->ass[*ip].weight = 100;
   }
   vec_free(to_be_updated);
 
@@ -640,6 +645,7 @@ next:
     pool_get(lbm->ass, as);
     as->address = addresses[*ip];
     as->flags = LB_AS_FLAGS_USED;
+    as->weight = 100;
     as->vip_index = vip_index;
     pool_get(vip->as_indexes, as_index);
     *as_index = as - lbm->ass;
@@ -850,6 +856,32 @@ int lb_vip_del_ass(u32 vip_index, ip46_address_t *addresses, u32 n, u8 flush)
   lb_put_writer_lock();
 
   return ret;
+}
+
+int
+lb_vip_set_as_weight (u32 vip_index, ip46_address_t *addr, u8 weight)
+{
+  lb_main_t *lbm = &lb_main;
+  lb_vip_t *vip;
+  u32 as_index;
+
+  lb_get_writer_lock ();
+  if (!(vip = lb_vip_get_by_index (vip_index)))
+  {
+    lb_put_writer_lock ();
+    return VNET_API_ERROR_NO_SUCH_ENTRY;
+  }
+
+  if (lb_as_find_index_vip (vip, addr, &as_index) || !(lbm->ass[as_index].flags & LB_AS_FLAGS_USED))
+  {
+    lb_put_writer_lock ();
+    return VNET_API_ERROR_NO_SUCH_ENTRY;
+  }
+
+  lbm->ass[as_index].weight = weight;
+  lb_vip_update_new_flow_table (vip);
+  lb_put_writer_lock ();
+  return 0;
 }
 
 static int
