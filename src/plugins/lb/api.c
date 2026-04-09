@@ -263,10 +263,65 @@ vl_api_lb_add_del_as_t_handler
   if (mp->is_del)
     rv = lb_vip_del_ass(vip_index, &as_address, 1, mp->is_flush);
   else
-    rv = lb_vip_add_ass(vip_index, &as_address, 1);
+    rv = lb_vip_add_ass (vip_index, &as_address, 1, 100);
 
 done:
  REPLY_MACRO (VL_API_LB_ADD_DEL_AS_REPLY);
+}
+
+static void
+vl_api_lb_add_del_as_v2_t_handler (vl_api_lb_add_del_as_v2_t *mp)
+{
+ lb_main_t *lbm = &lb_main;
+ vl_api_lb_add_del_as_v2_reply_t *rmp;
+ int rv = 0;
+ u32 vip_index;
+ ip46_address_t vip_ip_prefix;
+ ip46_address_t as_address;
+
+ if (mp->port == 0)
+    mp->protocol = ~0;
+ ip_address_decode (&mp->pfx.address, &vip_ip_prefix);
+ ip_address_decode (&mp->as_address, &as_address);
+
+ u8 plen = mp->pfx.len + (mp->pfx.address.af == ADDRESS_IP4 ? 96 : 0);
+
+ if ((rv = lb_vip_find_index (&vip_ip_prefix, plen, mp->protocol, ntohs (mp->port), &vip_index)))
+    goto done;
+
+ if (mp->is_del)
+    rv = lb_vip_del_ass (vip_index, &as_address, 1, mp->is_flush);
+ else
+    rv = lb_vip_add_ass (vip_index, &as_address, 1, mp->weight);
+
+done:
+ REPLY_MACRO (VL_API_LB_ADD_DEL_AS_V2_REPLY);
+}
+
+static void
+vl_api_lb_as_set_weight_t_handler (vl_api_lb_as_set_weight_t *mp)
+{
+ lb_main_t *lbm = &lb_main;
+ vl_api_lb_as_set_weight_reply_t *rmp;
+ int rv = 0;
+ u32 vip_index;
+ ip46_address_t vip_ip_prefix;
+ ip46_address_t as_address;
+
+ if (mp->port == 0)
+    mp->protocol = ~0;
+ ip_address_decode (&mp->pfx.address, &vip_ip_prefix);
+ ip_address_decode (&mp->as_address, &as_address);
+
+ u8 plen = mp->pfx.len + (mp->pfx.address.af == ADDRESS_IP4 ? 96 : 0);
+
+ if ((rv = lb_vip_find_index (&vip_ip_prefix, plen, mp->protocol, ntohs (mp->port), &vip_index)))
+    goto done;
+
+ rv = lb_vip_set_as_weight (vip_index, &as_address, mp->weight);
+
+done:
+ REPLY_MACRO (VL_API_LB_AS_SET_WEIGHT_REPLY);
 }
 
 static void
@@ -348,6 +403,70 @@ static void send_lb_as_details
   }
 
 
+}
+
+static void
+send_lb_as_v2_details (vl_api_registration_t *reg, u32 context, lb_vip_t *vip)
+{
+  vl_api_lb_as_v2_details_t *rmp;
+  lb_main_t *lbm = &lb_main;
+  lb_as_t *as;
+  u32 *as_index;
+
+  /* Count flow-table buckets per AS pool slot */
+  u32 *count = 0;
+  vec_validate (count, pool_len (lbm->ass));
+  lb_new_flow_entry_t *nfe;
+  vec_foreach (nfe, vip->new_flow_table)
+  count[nfe->as_index]++;
+
+  pool_foreach (as_index, vip->as_indexes)
+  {
+      if (*as_index == 0)
+      continue;
+      as = &lbm->ass[*as_index];
+      rmp = vl_msg_api_alloc (sizeof (*rmp));
+      clib_memset (rmp, 0, sizeof (*rmp));
+      rmp->_vl_msg_id = htons (VL_API_LB_AS_V2_DETAILS + lbm->msg_id_base);
+      rmp->context = context;
+      ip_address_encode (&vip->prefix, IP46_TYPE_ANY, (vl_api_address_t *) &rmp->vip.pfx.address);
+      rmp->vip.pfx.len = ip46_prefix_is_ip4 (&vip->prefix, vip->plen) ? vip->plen - 96 : vip->plen;
+      rmp->vip.protocol = vip->protocol;
+      rmp->vip.port = htons (vip->port);
+      ip_address_encode (&as->address, IP46_TYPE_ANY, &rmp->app_srv);
+      rmp->flags = as->flags;
+      rmp->in_use_since = htonl (as->last_used);
+      rmp->weight = as->weight;
+      rmp->num_buckets = htonl (count[*as_index]);
+      vl_api_send_msg (reg, (u8 *) rmp);
+  }
+
+  vec_free (count);
+}
+
+static void
+vl_api_lb_as_v2_dump_t_handler (vl_api_lb_as_v2_dump_t *mp)
+{
+  lb_main_t *lbm = &lb_main;
+  lb_vip_t *vip = 0;
+  u8 dump_all = 0;
+  ip46_address_t prefix;
+
+  vl_api_registration_t *reg;
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+  return;
+
+  clib_memcpy (&prefix.ip6, mp->pfx.address.un.ip6, sizeof (mp->pfx.address.un.ip6));
+  dump_all = (prefix.ip6.as_u64[0] == 0) && (prefix.ip6.as_u64[1] == 0);
+
+  pool_foreach (vip, lbm->vips)
+  {
+      if (dump_all || ((prefix.as_u64[0] == vip->prefix.as_u64[0]) &&
+		       (prefix.as_u64[1] == vip->prefix.as_u64[1]) &&
+		       (mp->protocol == vip->protocol) && (ntohs (mp->port) == vip->port)))
+      send_lb_as_v2_details (reg, mp->context, vip);
+  }
 }
 
 static void

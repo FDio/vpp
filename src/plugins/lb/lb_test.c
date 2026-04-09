@@ -560,4 +560,198 @@ static int api_lb_as_dump (vat_main_t * vam)
   return ret;
 }
 
+static void
+vl_api_lb_as_v2_details_t_handler (vl_api_lb_as_v2_details_t *mp)
+{
+  vat_main_t *vam = &vat_main;
+
+  print (vam->ofp, "%24U%14d%14d%18d weight:%u num_buckets:%u flags:%d in_use_since:%d",
+	 format_ip46_address, &mp->vip.pfx.address, IP46_TYPE_ANY, mp->vip.pfx.len,
+	 mp->vip.protocol, ntohs (mp->vip.port), mp->weight, ntohl (mp->num_buckets), mp->flags,
+	 ntohl (mp->in_use_since));
+}
+
+static int
+api_lb_as_v2_dump (vat_main_t *vam)
+{
+  unformat_input_t *line_input = vam->input;
+  vl_api_lb_as_v2_dump_t *mp;
+  int ret;
+  ip46_address_t vip_prefix;
+  u8 vip_plen;
+  u32 port = 0;
+  u8 protocol = 0;
+
+  if (!unformat (line_input, "%U", unformat_ip46_prefix, &vip_prefix, &vip_plen, IP46_TYPE_ANY))
+  {
+    errmsg ("lb_as_v2_dump: invalid vip prefix\n");
+    return -99;
+  }
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+  {
+    if (unformat (line_input, "protocol tcp"))
+    protocol = IP_PROTOCOL_TCP;
+    else if (unformat (line_input, "protocol udp"))
+    protocol = IP_PROTOCOL_UDP;
+    else if (unformat (line_input, "port %d", &port))
+    ;
+    else
+    {
+	errmsg ("invalid arguments\n");
+	return -99;
+    }
+  }
+
+  M (LB_AS_V2_DUMP, mp);
+  clib_memcpy (mp->pfx.address.un.ip6, &vip_prefix.ip6, sizeof (vip_prefix.ip6));
+  mp->pfx.len = vip_plen;
+  mp->protocol = (u8) protocol;
+  mp->port = htons ((u16) port);
+
+  S (mp);
+  W (ret);
+  return ret;
+}
+
+static int
+api_lb_add_del_as_v2 (vat_main_t *vam)
+{
+  unformat_input_t *line_input = vam->input;
+  vl_api_lb_add_del_as_v2_t *mp;
+  int ret;
+  ip46_address_t vip_prefix, as_addr;
+  u8 vip_plen;
+  u32 port = 0;
+  u8 protocol = 0;
+  u8 is_del = 0;
+  u8 is_flush = 0;
+  u32 weight = 100;
+  u8 as_set = 0;
+
+  if (!unformat (line_input, "%U", unformat_ip46_prefix, &vip_prefix, &vip_plen, IP46_TYPE_ANY))
+  {
+    errmsg ("lb_add_del_as_v2: invalid vip prefix\n");
+    return -99;
+  }
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+  {
+    if (unformat (line_input, "%U", unformat_ip46_address, &as_addr, IP46_TYPE_ANY))
+    as_set = 1;
+    else if (unformat (line_input, "del"))
+    is_del = 1;
+    else if (unformat (line_input, "flush"))
+    is_flush = 1;
+    else if (unformat (line_input, "weight %u", &weight))
+    ;
+    else if (unformat (line_input, "protocol tcp"))
+    protocol = IP_PROTOCOL_TCP;
+    else if (unformat (line_input, "protocol udp"))
+    protocol = IP_PROTOCOL_UDP;
+    else if (unformat (line_input, "port %d", &port))
+    ;
+    else
+    {
+	errmsg ("invalid arguments\n");
+	return -99;
+    }
+  }
+
+  if (!as_set)
+  {
+    errmsg ("No AS address provided\n");
+    return -99;
+  }
+
+  if (weight > 100)
+  {
+    errmsg ("weight must be between 0 and 100\n");
+    return -99;
+  }
+
+  M (LB_ADD_DEL_AS_V2, mp);
+  ip_address_encode (&vip_prefix, IP46_TYPE_ANY, &mp->pfx.address);
+  mp->pfx.len = vip_plen;
+  mp->protocol = (u8) protocol;
+  mp->port = htons ((u16) port);
+  ip_address_encode (&as_addr, IP46_TYPE_ANY, &mp->as_address);
+  mp->weight = (u8) weight;
+  mp->is_del = is_del;
+  mp->is_flush = is_flush;
+
+  S (mp);
+  W (ret);
+  return ret;
+}
+
+static int
+api_lb_as_set_weight (vat_main_t *vam)
+{
+  unformat_input_t *line_input = vam->input;
+  vl_api_lb_as_set_weight_t *mp;
+  int ret;
+  ip46_address_t vip_prefix, as_addr;
+  u8 vip_plen;
+  u32 port = 0;
+  u8 protocol = 0;
+  u32 weight = ~0;
+  u8 as_set = 0;
+
+  if (!unformat (line_input, "%U", unformat_ip46_prefix, &vip_prefix, &vip_plen, IP46_TYPE_ANY))
+  {
+    errmsg ("lb_as_set_weight: invalid vip prefix\n");
+    return -99;
+  }
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+  {
+    if (unformat (line_input, "%U", unformat_ip46_address, &as_addr, IP46_TYPE_ANY))
+    as_set = 1;
+    else if (unformat (line_input, "weight %u", &weight))
+    ;
+    else if (unformat (line_input, "protocol tcp"))
+    protocol = IP_PROTOCOL_TCP;
+    else if (unformat (line_input, "protocol udp"))
+    protocol = IP_PROTOCOL_UDP;
+    else if (unformat (line_input, "port %d", &port))
+    ;
+    else
+    {
+	errmsg ("invalid arguments\n");
+	return -99;
+    }
+  }
+
+  if (!as_set)
+  {
+    errmsg ("No AS address provided\n");
+    return -99;
+  }
+
+  if (weight == ~0)
+  {
+    errmsg ("weight is required\n");
+    return -99;
+  }
+
+  if (weight > 100)
+  {
+    errmsg ("weight must be between 0 and 100\n");
+    return -99;
+  }
+
+  M (LB_AS_SET_WEIGHT, mp);
+  ip_address_encode (&vip_prefix, IP46_TYPE_ANY, &mp->pfx.address);
+  mp->pfx.len = vip_plen;
+  mp->protocol = (u8) protocol;
+  mp->port = htons ((u16) port);
+  ip_address_encode (&as_addr, IP46_TYPE_ANY, &mp->as_address);
+  mp->weight = (u8) weight;
+
+  S (mp);
+  W (ret);
+  return ret;
+}
+
 #include <lb/lb.api_test.c>
