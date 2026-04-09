@@ -441,8 +441,8 @@ func QuicTlsProfileNegotiatedParamsTest(s *QuicSuite) {
 	// picotls does not expose the negotiated signature algorithm, so the field
 	// may be absent — but if present it must not be empty
 	if strings.Contains(o, "Signature algorithm:") {
-		lines := strings.Split(o, "\n")
-		for _, l := range lines {
+		lines := strings.SplitSeq(o, "\n")
+		for l := range lines {
 			if strings.HasPrefix(strings.TrimSpace(l), "Signature algorithm:") {
 				parts := strings.SplitN(l, ":", 2)
 				if len(parts) == 2 && strings.TrimSpace(parts[1]) == "" {

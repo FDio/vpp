@@ -8,8 +8,8 @@ import (
 )
 
 func init() {
-	RegisterEchoTests(EchoBuiltinTest, EchoBuiltinBandwidthTest, EchoBuiltinEchobytesTest, EchoBuiltinRoundtripTest,
-		EchoBuiltinTestbytesTest, EchoBuiltinPeriodicReportTest, EchoBuiltinPeriodicReportTotalTest, TlsSingleConnectionTest,
+	RegisterEchoTests(EchoBuiltinTest, EchoBuiltinBandwidthTest, EchoBuiltinEchoBytesTest, EchoBuiltinRoundtripTest,
+		EchoBuiltinUdpLossTest, EchoBuiltinPeriodicReportTest, EchoBuiltinPeriodicReportTotalTest, TlsSingleConnectionTest,
 		EchoBuiltinPeriodicReportUDPTest, EchoBuiltinUdpTest, EchoBuiltinHttpTest, EchoBuiltinHttpsTest, EchoBuiltinHttp2Test,
 		EchoBuiltinHttp3Test, EchoBuiltinHttpTestBytesTest, EchoBuiltinHttp2ConnectTcpTest, EchoBuiltinHttp3ConnectTcpTest,
 		EchoBuiltinHttp2ConnectUdpTest, EchoBuiltinHttp3ConnectUdpTest)
@@ -210,7 +210,7 @@ func EchoBuiltinRoundtripTest(s *EchoSuite) {
 	}
 }
 
-func EchoBuiltinEchobytesTest(s *EchoSuite) {
+func EchoBuiltinEchoBytesTest(s *EchoSuite) {
 	serverVpp := s.Containers.ServerVpp.VppInstance
 
 	serverVpp.Vppctl("test echo server " +
@@ -225,7 +225,7 @@ func EchoBuiltinEchobytesTest(s *EchoSuite) {
 	AssertNotContains(o, "test echo clients: failed: timeout with 1 sessions")
 }
 
-func EchoBuiltinTestbytesTest(s *EchoSuite) {
+func EchoBuiltinUdpLossTest(s *EchoSuite) {
 	serverVpp := s.Containers.ServerVpp.VppInstance
 
 	serverVpp.Vppctl("test echo server " +
