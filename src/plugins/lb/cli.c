@@ -197,6 +197,7 @@ lb_as_command_fn (vlib_main_t * vm,
   u8 protocol = 0;
   u8 del = 0;
   u8 flush = 0;
+  u32 weight = ~0;
   int ret;
   clib_error_t *error = 0;
 
@@ -218,6 +219,8 @@ lb_as_command_fn (vlib_main_t * vm,
       {
         vec_add1(as_array, as_addr);
       }
+    else if (unformat (line_input, "weight %u", &weight))
+      ;
     else if (unformat(line_input, "del"))
       {
         del = 1;
@@ -249,6 +252,20 @@ lb_as_command_fn (vlib_main_t * vm,
       protocol = ~0;
     }
 
+  if (weight != ~0)
+    {
+      if (weight > 100)
+    {
+      error = clib_error_return (0, "weight must be between 0 and 100");
+      goto done;
+    }
+      if (del)
+    {
+      error = clib_error_return (0, "weight and del are mutually exclusive");
+      goto done;
+    }
+    }
+
   if ((ret = lb_vip_find_index(&vip_prefix, vip_plen, protocol,
                                (u16)port, &vip_index))){
     error = clib_error_return (0, "lb_vip_find_index error %d", ret);
@@ -262,14 +279,40 @@ lb_as_command_fn (vlib_main_t * vm,
 
   clib_warning("vip index is %d", vip_index);
 
-  if (del) {
-    if ((ret = lb_vip_del_ass(vip_index, as_array, vec_len(as_array), flush)))
+  if (del)
+  {
+    if ((ret = lb_vip_del_ass (vip_index, as_array, vec_len (as_array), flush)))
     {
       error = clib_error_return (0, "lb_vip_del_ass error %d", ret);
       goto done;
     }
-  } else {
-    if ((ret = lb_vip_add_ass(vip_index, as_array, vec_len(as_array))))
+  }
+  else if (weight != ~0)
+  {
+    u8 w = (u8) weight;
+    /* Try to add as a new AS; if it already exists, update its weight. */
+    ret = lb_vip_add_ass (vip_index, as_array, vec_len (as_array), w, flush);
+    if (ret == VNET_API_ERROR_VALUE_EXIST)
+    {
+      u32 i;
+      vec_foreach_index (i, as_array)
+	{
+	  if ((ret = lb_vip_set_as_weight (vip_index, &as_array[i], w, flush)))
+	    {
+	      error = clib_error_return (0, "lb_vip_set_as_weight error %d", ret);
+	      goto done;
+	    }
+	}
+    }
+    else if (ret)
+    {
+      error = clib_error_return (0, "lb_vip_add_ass error %d", ret);
+      goto done;
+    }
+  }
+  else
+  {
+    if ((ret = lb_vip_add_ass (vip_index, as_array, vec_len (as_array), 100, flush)))
     {
       error = clib_error_return (0, "lb_vip_add_ass error %d", ret);
       goto done;
@@ -283,11 +326,10 @@ done:
   return error;
 }
 
-VLIB_CLI_COMMAND (lb_as_command, static) =
-{
+VLIB_CLI_COMMAND (lb_as_command, static) = {
   .path = "lb as",
   .short_help = "lb as <vip-prefix> [protocol (tcp|udp) port <n>]"
-      " [<address> [<address> [...]]] [del] [flush]",
+		" [<address> [<address> [...]]] [weight <0-100>] [del] [flush]",
   .function = lb_as_command_fn,
 };
 

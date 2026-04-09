@@ -236,6 +236,115 @@ class TestLB(VppTestCase):
         )  # LB_DEFAULT_PER_CPU_STICKY_BUCKETS
         self.assertEqual(reply.flow_timeout, 40)  # LB_DEFAULT_FLOW_TIMEOUT
 
+    def test_lb_as_set_weight(self):
+        """Load Balancer lb_as_set_weight via binary API"""
+        vip = "192.0.2.0/24"
+        ass = ["10.0.0.1", "10.0.0.2", "10.0.0.3", "10.0.0.4"]
+        try:
+            self.vapi.cli("lb vip %s encap gre4" % vip)
+            for a in ass:
+                self.vapi.cli("lb as %s %s" % (vip, a))
+
+            v2 = {str(d.app_srv): d for d in self.vapi.lb_as_v2_dump()}
+            self.assertEqual(v2["10.0.0.1"].num_buckets, 256)
+            self.assertEqual(v2["10.0.0.2"].num_buckets, 256)
+            self.assertEqual(v2["10.0.0.3"].num_buckets, 256)
+            self.assertEqual(v2["10.0.0.4"].num_buckets, 256)
+
+            self.vapi.lb_as_set_weight(
+                pfx=vip, protocol=255, port=0, as_address="10.0.0.1", weight=50
+            )
+            v2 = {str(d.app_srv): d for d in self.vapi.lb_as_v2_dump()}
+            self.assertEqual(v2["10.0.0.1"].weight, 50)
+            self.assertEqual(v2["10.0.0.1"].num_buckets, 150)
+            self.assertEqual(v2["10.0.0.2"].weight, 100)
+            self.assertEqual(v2["10.0.0.2"].num_buckets, 292)
+            self.assertEqual(v2["10.0.0.3"].num_buckets, 291)
+            self.assertEqual(v2["10.0.0.4"].num_buckets, 291)
+
+            self.vapi.lb_as_set_weight(
+                pfx=vip, protocol=255, port=0, as_address="10.0.0.2", weight=0
+            )
+            v2 = {str(d.app_srv): d for d in self.vapi.lb_as_v2_dump()}
+            self.assertEqual(v2["10.0.0.1"].num_buckets, 208)
+            self.assertEqual(v2["10.0.0.2"].weight, 0)
+            self.assertEqual(v2["10.0.0.2"].num_buckets, 0)
+            self.assertEqual(v2["10.0.0.3"].num_buckets, 408)
+            self.assertEqual(v2["10.0.0.4"].num_buckets, 408)
+
+            # Add a new AS directly at weight 0 (no traffic until ramped up)
+            self.vapi.lb_add_del_as_v2(
+                pfx=vip, protocol=255, port=0, as_address="10.0.0.5", weight=0
+            )
+            v2 = {str(d.app_srv): d for d in self.vapi.lb_as_v2_dump()}
+            self.assertEqual(v2["10.0.0.5"].weight, 0)
+            self.assertEqual(v2["10.0.0.5"].num_buckets, 0)
+            self.assertEqual(v2["10.0.0.1"].num_buckets, 208)
+            self.assertEqual(v2["10.0.0.3"].num_buckets, 408)
+            self.assertEqual(v2["10.0.0.4"].num_buckets, 408)
+
+            # Ramp it up to 50 — it should now take a proportional share
+            self.vapi.lb_as_set_weight(
+                pfx=vip, protocol=255, port=0, as_address="10.0.0.5", weight=50
+            )
+            v2 = {str(d.app_srv): d for d in self.vapi.lb_as_v2_dump()}
+            self.assertEqual(v2["10.0.0.5"].weight, 50)
+            self.assertGreater(v2["10.0.0.5"].num_buckets, 0)
+            self.assertEqual(v2["10.0.0.2"].num_buckets, 0)
+
+            # Graceful drain: weight=0, is_flush=False. New flows stop,
+            # existing sticky entries are preserved.
+            self.vapi.lb_as_set_weight(
+                pfx=vip,
+                protocol=255,
+                port=0,
+                as_address="10.0.0.1",
+                weight=0,
+                is_flush=False,
+            )
+            v2 = {str(d.app_srv): d for d in self.vapi.lb_as_v2_dump()}
+            self.assertEqual(v2["10.0.0.1"].weight, 0)
+            self.assertEqual(v2["10.0.0.1"].num_buckets, 0)
+
+            # Hard drain: weight=0, is_flush=True. New flows stop AND
+            # existing sticky entries pointing at this AS are evicted.
+            self.vapi.lb_as_set_weight(
+                pfx=vip,
+                protocol=255,
+                port=0,
+                as_address="10.0.0.3",
+                weight=0,
+                is_flush=True,
+            )
+            v2 = {str(d.app_srv): d for d in self.vapi.lb_as_v2_dump()}
+            self.assertEqual(v2["10.0.0.3"].weight, 0)
+            self.assertEqual(v2["10.0.0.3"].num_buckets, 0)
+            # The remaining live ASes (10.0.0.4 weight=100, 10.0.0.5
+            # weight=50) must together own every bucket.
+            self.assertEqual(
+                v2["10.0.0.4"].num_buckets + v2["10.0.0.5"].num_buckets, 1024
+            )
+
+            # Hard drain is idempotent and also works at nonzero weight
+            # (rehash surviving stickies through the updated Maglev table).
+            self.vapi.lb_as_set_weight(
+                pfx=vip,
+                protocol=255,
+                port=0,
+                as_address="10.0.0.4",
+                weight=100,
+                is_flush=True,
+            )
+            v2 = {str(d.app_srv): d for d in self.vapi.lb_as_v2_dump()}
+            self.assertEqual(v2["10.0.0.4"].weight, 100)
+            self.assertGreater(v2["10.0.0.4"].num_buckets, 0)
+
+        finally:
+            for a in ass + ["10.0.0.5"]:
+                self.vapi.cli("lb as %s %s del flush" % (vip, a))
+            self.vapi.cli("lb vip %s encap gre4 del" % vip)
+            self.vapi.cli("test lb flowtable flush")
+
     def test_lb_ip4_gre4_vip_api(self):
         """Load Balancer IP4 GRE4 add/del VIP via lb_add_del_vip binary API"""
         try:

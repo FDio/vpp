@@ -139,6 +139,52 @@ autoreply  define lb_add_del_as {
   option vat_help = "<vip-prefix> [protocol (tcp|udp) port <n>] [<address>] [del] [flush]";
 };
 
+/** \brief Add/del an application server for a given VIP, with explicit weight
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param pfx - ip prefix and length
+    @param protocol - tcp or udp.
+    @param port - destination port.
+    @param as_address - The application server address.
+    @param weight - bucket weight 0-100 (default 100).
+    @param is_del - The AS should be removed.
+    @param is_flush - The sessions related to this AS should be flushed.
+*/
+autoreply define lb_add_del_as_v2 {
+  u32 client_index;
+  u32 context;
+  vl_api_address_with_prefix_t pfx;
+  u8 protocol [default=255];
+  u16 port;
+  vl_api_address_t as_address;
+  u8 weight [default=100];
+  bool is_del;
+  bool is_flush;
+  option vat_help = "<vip-prefix> [protocol (tcp|udp) port <n>] [<address>] [weight <0-100>] [del] [flush]";
+};
+
+/** \brief Set the weight of an existing application server
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param pfx - ip prefix and length
+    @param protocol - tcp or udp.
+    @param port - destination port.
+    @param as_address - The application server address.
+    @param weight - new bucket weight 0-100.
+    @param is_flush - The sessions related to this AS should be flushed.
+*/
+autoreply define lb_as_set_weight {
+  u32 client_index;
+  u32 context;
+  vl_api_address_with_prefix_t pfx;
+  u8 protocol [default=255];
+  u16 port;
+  vl_api_address_t as_address;
+  u8 weight;
+  bool is_flush;
+  option vat_help = "<vip-prefix> [protocol (tcp|udp) port <n>] <address> weight <0-100> [flush]";
+};
+
 /** \brief Flush a given vip
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -209,6 +255,41 @@ define lb_as_details {
   vl_api_address_t app_srv;
   u8 flags;
   u32 in_use_since;
+};
+
+/** \brief dump AS list per VIP or all ASs for all VIPs, with weights
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param pfx - ip prefix and length.
+    @param protocol - tcp or udp.
+    @param port - destination port.
+*/
+define lb_as_v2_dump {
+  u32 client_index;
+  u32 context;
+  /* vip */
+  vl_api_address_with_prefix_t pfx;
+  u8 protocol;
+  u16 port;
+  option vat_help = "<vip-prefix> [protocol (tcp|udp) port <n>]";
+};
+
+/** \brief lb_as_v2_details
+    @param context - sender context, to match reply w/ request
+    @param vip - the VIP this AS belongs to
+    @param app_srv - AS address
+    @param flags - AS flags
+    @param in_use_since - timestamp of last use
+    @param weight - bucket weight (0-100)
+*/
+define lb_as_v2_details {
+  u32 context;
+  vl_api_lb_vip_t vip;
+  vl_api_address_t app_srv;
+  u8 flags;
+  u32 in_use_since;
+  u8 weight;
+  u32 num_buckets;
 };
 
 /** \brief Enable/disable NAT4 feature on the interface
