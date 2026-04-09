@@ -359,6 +359,10 @@ typedef struct
   u32 queue_index;
   u32 queue_num;
 
+  /* populated by driver on VNET_FLOW_DEV_OP_GET_COUNTER */
+  u64 counter_hits;
+  u64 counter_bytes;
+
   /* generic flow pattern (heap-allocated) */
   generic_pattern_t *generic_pattern;
 } vnet_flow_t;
@@ -370,6 +374,7 @@ int vnet_flow_add (vnet_main_t *vnm, vnet_flow_t *flow, u32 *flow_index);
 int vnet_flow_enable (vnet_main_t *vnm, u32 flow_index, u32 hw_if_index);
 int vnet_flow_disable (vnet_main_t *vnm, u32 flow_index);
 int vnet_flow_del (vnet_main_t *vnm, u32 flow_index);
+int vnet_flow_get_counter (vnet_main_t *vnm, u32 flow_index);
 int vnet_flow_template_add (vnet_main_t *vnm, vnet_flow_t *flow, u32 *flow_template_index);
 int vnet_flow_template_del (vnet_main_t *vnm, u32 flow_template_index);
 int vnet_flow_template_enable (vnet_main_t *vnm, u32 flow_template_index, u32 hw_if_index,
