@@ -10,7 +10,8 @@
 verdict_testbench_main_t verdict_testbench_main;
 
 clib_error_t *
-verdict_testbench_enable (verdict_testbench_main_t *vt, u32 tx_sw_if_index, u32 rx_sw_if_index)
+verdict_testbench_enable (verdict_testbench_main_t *vt, u32 tx_sw_if_index, u32 rx_sw_if_index,
+			  u8 enable_counters)
 {
   vnet_main_t *vnm = vnet_get_main ();
   sfdp_main_t *sfdp = &sfdp_main;
@@ -31,6 +32,8 @@ verdict_testbench_enable (verdict_testbench_main_t *vt, u32 tx_sw_if_index, u32 
 
   flow_template.type = VNET_FLOW_TYPE_IP4_N_TUPLE;
   flow_template.actions = VNET_FLOW_ACTION_STEER_TO_PORT;
+  if (enable_counters)
+    flow_template.actions |= VNET_FLOW_ACTION_COUNT;
   flow_template.steer_to_hw_if_index = tx_hw_if_index;
   flow_template.steer_from_hw_if_index =
     rx_hw_if_index; /* If rx_hw_if_index is ~0 / invalid, then we will accept from all incoming
@@ -59,6 +62,7 @@ verdict_testbench_enable (verdict_testbench_main_t *vt, u32 tx_sw_if_index, u32 
   vt->tx_hw_if_index = tx_hw_if_index;
   vt->template_on_hw = 1;
   vt->is_enabled = 1;
+  vt->enable_counters = enable_counters;
 
   return 0;
 }

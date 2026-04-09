@@ -20,12 +20,13 @@ typedef struct
   u32 verdict_template_index;
   u8 is_enabled;
   u8 template_on_hw;
+  u8 enable_counters;
 } verdict_testbench_main_t;
 
 extern verdict_testbench_main_t verdict_testbench_main;
 
 clib_error_t *verdict_testbench_enable (verdict_testbench_main_t *vt, u32 tx_sw_if_index,
-					u32 rx_sw_if_index);
+					u32 rx_sw_if_index, u8 enable_counters);
 clib_error_t *verdict_testbench_disable (verdict_testbench_main_t *vt);
 
 #endif /* __VERDICT_TESTBENCH_H__ */

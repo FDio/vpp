@@ -83,6 +83,8 @@ vt_add_flow_for_direction (vlib_main_t *vm, vlib_node_runtime_t *node, verdict_t
   flow.pattern.ip4_n_tuple.protocol.mask = 0xFF;
 
   flow.actions = VNET_FLOW_ACTION_STEER_TO_PORT;
+  if (vt->enable_counters)
+    flow.actions |= VNET_FLOW_ACTION_COUNT;
   flow.steer_to_hw_if_index = vt->tx_hw_if_index;
   flow.steer_from_hw_if_index = ~0; /* match all ingress ports */
 
