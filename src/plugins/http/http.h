@@ -455,8 +455,9 @@ typedef union
 {
   struct
   {
-    u32 version : 3;
+    /* req first to also work for listeners and ho connections */
     u32 req_index : 29;
+    u32 version : 3;
   };
   u32 as_u32;
 } http_req_handle_t;
