@@ -70,6 +70,30 @@
       },
       "revId": "a479c501eab5fd7df0dd68ed325304428952607e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a2a06748_a28c259c",
+        "filename": "test/hs-test/echo_test.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 228,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2026-04-09T14:17:47Z",
+      "side": 1,
+      "message": "\u0027Test\u0027 must only be at the end of a test name -\u003e \u0027make test TEST\u003dEchoBuiltinTest\u0027 would start 2 tests (EchoBuiltinTest and EchoBuiltinTestBytesUdpTest)",
+      "parentUuid": "0029999d_23659720",
+      "range": {
+        "startLine": 228,
+        "startChar": 5,
+        "endLine": 228,
+        "endChar": 29
+      },
+      "revId": "a479c501eab5fd7df0dd68ed325304428952607e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
