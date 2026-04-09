@@ -1,0 +1,140 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a39c1f3e_8380f1b8",
+        "filename": "src/vnet/sfdp/expiry/expiry.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 111,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-04-09T09:41:53Z",
+      "side": 1,
+      "message": "you should reset the flow_index to ~0 to avoid having stale index",
+      "revId": "eff8bfacf4c79e5ee82edf00a0de69b56baf829d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f08fc7b8_81ae0408",
+        "filename": "src/vnet/sfdp/expiry/expiry.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 176,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-04-09T09:41:53Z",
+      "side": 1,
+      "message": "the check is done twice: there and in the function",
+      "revId": "eff8bfacf4c79e5ee82edf00a0de69b56baf829d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "37fff5bb_0fd232d9",
+        "filename": "src/vnet/sfdp/lookup/node.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 351,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-04-09T09:41:53Z",
+      "side": 1,
+      "message": "We dont\u0027 need it, both flows (forward and reverse) are always added. We actually don\u0027t care the one pointed by `SFDP_FLOW_FORWARD` really is the index of the forward flow",
+      "revId": "eff8bfacf4c79e5ee82edf00a0de69b56baf829d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "fa27497a_661c7fb5",
+        "filename": "src/vnet/sfdp/lookup/node.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 406,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-04-09T09:41:53Z",
+      "side": 1,
+      "message": "Those are already set, you just have to invert src\u003c-\u003edst there.",
+      "revId": "eff8bfacf4c79e5ee82edf00a0de69b56baf829d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0c0e2172_61e7d724",
+        "filename": "src/vnet/sfdp/lookup/node.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 415,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-04-09T09:41:53Z",
+      "side": 1,
+      "message": "same thing",
+      "revId": "eff8bfacf4c79e5ee82edf00a0de69b56baf829d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c4231b91_64e16ab4",
+        "filename": "src/vnet/sfdp/lookup/node.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 418,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-04-09T09:41:53Z",
+      "side": 1,
+      "message": "same thing",
+      "revId": "eff8bfacf4c79e5ee82edf00a0de69b56baf829d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "468e1c89_cf76cd55",
+        "filename": "src/vnet/sfdp/lookup/node.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 424,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-04-09T09:41:53Z",
+      "side": 1,
+      "message": "please add error management to the end of the function with goto-s",
+      "revId": "eff8bfacf4c79e5ee82edf00a0de69b56baf829d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "213a4977_e29b7650",
+        "filename": "src/vnet/sfdp/lookup/node.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 693,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-04-09T09:41:53Z",
+      "side": 1,
+      "message": "Why iterating another time there when you could create the flow offload at line 663?",
+      "revId": "eff8bfacf4c79e5ee82edf00a0de69b56baf829d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
