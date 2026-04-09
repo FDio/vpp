@@ -46,6 +46,30 @@
       },
       "revId": "a479c501eab5fd7df0dd68ed325304428952607e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0029999d_23659720",
+        "filename": "test/hs-test/echo_test.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 228,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-04-09T14:08:20Z",
+      "side": 1,
+      "message": "can it be EchoBuiltinTestBytesUdpTest? or is it problem to have Test in the middle of name?",
+      "parentUuid": "7cfa3e36_a83edf1b",
+      "range": {
+        "startLine": 228,
+        "startChar": 5,
+        "endLine": 228,
+        "endChar": 29
+      },
+      "revId": "a479c501eab5fd7df0dd68ed325304428952607e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
