@@ -368,14 +368,17 @@ et_udp_server_rx_no_echo (echo_test_session_t *es, session_t *s)
 {
   svm_fifo_t *rx_fifo = s->rx_fifo;
   session_dgram_pre_hdr_t ph;
-  u32 left_deq;
+  u32 left_deq, dgram_size;
   u64 bytes_received = 0;
 
   left_deq = svm_fifo_max_dequeue_cons (rx_fifo);
 
-  while (left_deq)
+  while (left_deq > sizeof (ph))
     {
       svm_fifo_peek (rx_fifo, 0, sizeof (ph), (u8 *) &ph);
+      dgram_size = sizeof (session_dgram_hdr_t) + ph.data_length;
+      if (left_deq < dgram_size)
+	break;
       es->dgrams_received++;
       bytes_received += ph.data_length;
       left_deq -= svm_fifo_dequeue_drop (rx_fifo, sizeof (session_dgram_hdr_t) + ph.data_length);
@@ -1417,6 +1420,8 @@ et_http_server_dgram_rx (echo_test_session_t *es, session_t *s, u8 *rx_buf, u8 t
       ASSERT (ph.data_length);
 
       dgram_size = sizeof (session_dgram_hdr_t) + ph.data_length;
+      if (max_dequeue < dgram_size)
+	break;
       /* No space in tx fifo */
       if (PREDICT_FALSE (max_enqueue < dgram_size))
 	{
@@ -1499,6 +1504,8 @@ et_http_client_dgram_rx_inline (echo_test_session_t *es, session_t *s, u8 *rx_bu
       svm_fifo_peek (rx_fifo, 0, sizeof (ph), (u8 *) &ph);
       ASSERT (ph.data_length);
       dgram_size = sizeof (session_dgram_hdr_t) + ph.data_length;
+      if (left_deq < dgram_size)
+	break;
       es->dgrams_received++;
       bytes_received += ph.data_length;
       rv = svm_fifo_dequeue (rx_fifo, dgram_size, rx_buf);
