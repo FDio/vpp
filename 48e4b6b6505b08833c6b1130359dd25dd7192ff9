@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4590658a_a3b44b32",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 8
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3310
+      },
+      "writtenOn": "2026-04-09T03:27:37Z",
+      "side": 1,
+      "message": "haven\u0027t noticed the namespaces, not get mac address is done within switching namespaces.",
+      "revId": "48e4b6b6505b08833c6b1130359dd25dd7192ff9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
