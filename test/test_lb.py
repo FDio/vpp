@@ -1,4 +1,5 @@
 import socket
+from ipaddress import ip_network
 
 import scapy.compat
 from scapy.layers.inet import IP, UDP
@@ -209,9 +210,19 @@ class TestLB(VppTestCase):
 
                 # In case of source ip sticky, check that packets with same
                 # src_ip are routed to same as.
-                if src_ip_sticky and sticky_as.get(ip.src, asid) != asid:
-                    raise Exception("Packets with same src_ip are routed to another as")
-                sticky_as[ip.src] = asid
+                if src_ip_sticky:
+                    # For GRE encap with IPv6 inner, stickiness is on the
+                    # inner IPv6 source (outer src is always the LB address).
+                    if gre is not None and not isv4:
+                        inner_pkt = IPv6(scapy.compat.raw(gre.payload))
+                        sticky_src = str(inner_pkt.src)
+                    else:
+                        sticky_src = ip.src
+                    if sticky_as.get(sticky_src, asid) != asid:
+                        raise Exception(
+                            "Packets with same src_ip are routed to another as"
+                        )
+                    sticky_as[sticky_src] = asid
 
             except:
                 self.logger.error(ppp("Unexpected or invalid packet:", p))
@@ -548,5 +559,221 @@ class TestLB(VppTestCase):
             self.vapi.cli(
                 "lb vip 2001::/16 protocol udp port 20000 encap nat6"
                 " type clusterip target_port 3307 del"
+            )
+            self.vapi.cli("test lb flowtable flush")
+
+    def test_lb_ip6_gre4_port_src_ip_sticky(self):
+        """Load Balancer IP6 GRE4 on per-port-vip with src_ip_sticky case"""
+        try:
+            self.vapi.cli(
+                "lb vip 2001::/16 protocol udp port 20000 encap gre4 src_ip_sticky"
+            )
+            for asid in self.ass:
+                self.vapi.cli(
+                    "lb as 2001::/16 protocol udp port 20000 10.0.0.%u" % asid
+                )
+
+            # Send each flow twice: stickiness requires same src → same AS
+            pkts = self.generatePackets(self.pg0, isv4=False)
+            pkts = pkts[: len(pkts) // 2]
+            pkts = pkts + pkts
+
+            self.pg0.add_stream(pkts)
+            self.pg_enable_capture(self.pg_interfaces)
+            self.pg_start()
+            self.checkCapture(encap="gre4", isv4=False, src_ip_sticky=True)
+
+        finally:
+            for asid in self.ass:
+                self.vapi.cli(
+                    "lb as 2001::/16 protocol udp port 20000 10.0.0.%u del" % asid
+                )
+            self.vapi.cli(
+                "lb vip 2001::/16 protocol udp port 20000 encap gre4 src_ip_sticky del"
+            )
+            self.vapi.cli("test lb flowtable flush")
+
+    def test_lb_conf_get(self):
+        """lb_conf_get binary API returns current global configuration"""
+        reply = self.vapi.lb_conf_get()
+        self.assertEqual(str(reply.ip4_src_address), "39.40.41.42")
+        self.assertEqual(str(reply.ip6_src_address), "2004::1")
+
+    def test_lb_show_vips(self):
+        """show lb vips (without verbose) must display VIP output"""
+        self.vapi.cli("lb vip 90.0.0.0/8 encap gre4")
+        try:
+            out = self.vapi.cli("show lb vips")
+            self.assertIn("90.0.0.0", out)
+        finally:
+            self.vapi.cli("lb vip 90.0.0.0/8 encap gre4 del")
+
+    def test_lb_vip_dump_api(self):
+        """lb_add_del_vip + lb_vip_dump: IPv4 prefix intact and encap type correct"""
+        # LB_API_ENCAP_TYPE_GRE4=0, GRE6=1, L3DSR=2
+        cases = [
+            ("90.0.0.0/8", 0),   # IPv4 VIP, GRE4 — regression for IPv4 prefix bug (#1)
+            ("91.0.0.0/8", 1),   # IPv4 VIP, GRE6 — byte order fix for encap enum (#2)
+            ("2001::/16",  0),   # IPv6 VIP, GRE4 — encap type 0 (#2)
+            ("2002::/16",  1),   # IPv6 VIP, GRE6 — encap type 1 (#2)
+        ]
+        try:
+            for pfx_str, encap in cases:
+                self.vapi.lb_add_del_vip(pfx=pfx_str, encap=encap)
+
+            vips = self.vapi.lb_vip_dump()
+            dumped = {str(v.vip.pfx): int(v.encap) for v in vips}
+
+            for pfx_str, expected_encap in cases:
+                net = str(ip_network(pfx_str))
+                self.assertIn(net, dumped, "VIP %s not found in dump" % pfx_str)
+                self.assertEqual(
+                    dumped[net],
+                    expected_encap,
+                    "VIP %s: expected encap %d, got %d" % (pfx_str, expected_encap, dumped[net]),
+                )
+        finally:
+            for pfx_str, encap in cases:
+                self.vapi.lb_add_del_vip(pfx=pfx_str, encap=encap, is_del=True)
+
+    def test_lb_as_dump_api(self):
+        """lb_add_del_as + lb_as_dump: AS list is correct via binary API"""
+        try:
+            self.vapi.lb_add_del_vip(pfx="90.0.0.0/8", encap=0)
+            for asid in self.ass:
+                self.vapi.lb_add_del_as(
+                    pfx="90.0.0.0/8", as_address="10.0.0.%u" % asid
+                )
+
+            # protocol=255 (~0) and port=0 match the all-port VIP
+            ass = self.vapi.lb_as_dump(pfx="90.0.0.0/8", protocol=255, port=0)
+            self.assertEqual(len(ass), len(self.ass))
+            as_addrs = {str(a.app_srv) for a in ass}
+            for asid in self.ass:
+                self.assertIn("10.0.0.%u" % asid, as_addrs)
+        finally:
+            for asid in self.ass:
+                self.vapi.lb_add_del_as(
+                    pfx="90.0.0.0/8",
+                    as_address="10.0.0.%u" % asid,
+                    is_del=True,
+                )
+            self.vapi.lb_add_del_vip(pfx="90.0.0.0/8", encap=0, is_del=True)
+            self.vapi.cli("test lb flowtable flush")
+
+    def test_lb_vip_dump_encap_types(self):
+        """lb_add_del_vip: L3DSR, NAT4, NAT6 encap types accepted via binary API"""
+        # LB_API_ENCAP_TYPE_L3DSR=2, NAT4=3, NAT6=4
+        cases = [
+            # (prefix, encap, extra kwargs)
+            ("90.0.0.0/8", 2, {"dscp": 7}),                          # IPv4 L3DSR
+            ("91.0.0.0/8", 3, {"type": 0, "target_port": 8080}),     # IPv4 NAT4
+            ("2001::/16",  4, {"type": 0, "target_port": 8080}),     # IPv6 NAT6
+        ]
+        try:
+            for pfx_str, encap, kwargs in cases:
+                self.vapi.lb_add_del_vip(pfx=pfx_str, encap=encap, **kwargs)
+
+            vips = self.vapi.lb_vip_dump()
+            dumped = {str(v.vip.pfx): int(v.encap) for v in vips}
+
+            for pfx_str, expected_encap, _ in cases:
+                net = str(ip_network(pfx_str))
+                self.assertIn(net, dumped, "VIP %s not found in dump" % pfx_str)
+                self.assertEqual(
+                    dumped[net],
+                    expected_encap,
+                    "VIP %s: expected encap %d, got %d"
+                    % (pfx_str, expected_encap, dumped[net]),
+                )
+        finally:
+            for pfx_str, encap, kwargs in cases:
+                self.vapi.lb_add_del_vip(pfx=pfx_str, encap=encap, is_del=True, **kwargs)
+            self.vapi.cli("test lb flowtable flush")
+
+    def test_lb_vip_dump_deleted_vip_hidden(self):
+        """lb_vip_dump: soft-deleted VIPs do not appear (LB_VIP_FLAGS_USED check)"""
+        self.vapi.lb_add_del_vip(pfx="90.0.0.0/8", encap=0)
+        self.vapi.lb_add_del_vip(pfx="91.0.0.0/8", encap=0)
+        try:
+            self.vapi.lb_add_del_vip(pfx="90.0.0.0/8", encap=0, is_del=True)
+            vips = self.vapi.lb_vip_dump()
+            dumped = {str(v.vip.pfx) for v in vips}
+            self.assertNotIn(
+                str(ip_network("90.0.0.0/8")),
+                dumped,
+                "deleted VIP 90.0.0.0/8 should not appear in dump",
+            )
+            self.assertIn(
+                str(ip_network("91.0.0.0/8")),
+                dumped,
+                "active VIP 91.0.0.0/8 should appear in dump",
+            )
+        finally:
+            self.vapi.lb_add_del_vip(pfx="91.0.0.0/8", encap=0, is_del=True)
+            self.vapi.cli("test lb flowtable flush")
+
+    def test_lb_vip_dump_flow_table_length(self):
+        """lb_vip_dump: flow_table_length is correctly byte-swapped (htons fix)"""
+        self.vapi.lb_add_del_vip(pfx="90.0.0.0/8", encap=0, new_flows_table_length=4096)
+        try:
+            vips = self.vapi.lb_vip_dump()
+            net = str(ip_network("90.0.0.0/8"))
+            match = [v for v in vips if str(v.vip.pfx) == net]
+            self.assertEqual(len(match), 1)
+            self.assertEqual(
+                match[0].flow_table_length,
+                4096,
+                "flow_table_length: expected 4096, got %d" % match[0].flow_table_length,
+            )
+        finally:
+            self.vapi.lb_add_del_vip(pfx="90.0.0.0/8", encap=0, is_del=True)
+            self.vapi.cli("test lb flowtable flush")
+
+    def test_lb_as_dump_all(self):
+        """lb_as_dump: dump_all (prefix len=0) returns AS from all VIPs"""
+        try:
+            self.vapi.lb_add_del_vip(pfx="92.0.0.0/8", encap=0)
+            self.vapi.lb_add_del_vip(pfx="93.0.0.0/8", encap=0)
+            self.vapi.lb_add_del_as(pfx="92.0.0.0/8", as_address="10.0.0.1")
+            self.vapi.lb_add_del_as(pfx="93.0.0.0/8", as_address="10.0.0.2")
+
+            # all-zeros /0 prefix means dump all
+            ass = self.vapi.lb_as_dump(pfx="0.0.0.0/0", protocol=0, port=0)
+            as_addrs = {str(a.app_srv) for a in ass}
+            self.assertIn("10.0.0.1", as_addrs)
+            self.assertIn("10.0.0.2", as_addrs)
+        finally:
+            self.vapi.lb_add_del_as(pfx="92.0.0.0/8", as_address="10.0.0.1", is_del=True)
+            self.vapi.lb_add_del_as(pfx="93.0.0.0/8", as_address="10.0.0.2", is_del=True)
+            self.vapi.lb_add_del_vip(pfx="92.0.0.0/8", encap=0, is_del=True)
+            self.vapi.lb_add_del_vip(pfx="93.0.0.0/8", encap=0, is_del=True)
+            self.vapi.cli("test lb flowtable flush")
+
+    def test_lb_flush_vip_api(self):
+        """lb_flush_vip: IPv4 prefix correctly decoded via binary API"""
+        self.vapi.lb_add_del_vip(pfx="90.0.0.0/8", encap=0)
+        self.vapi.lb_add_del_as(pfx="90.0.0.0/8", as_address="10.0.0.1")
+        try:
+            # flush_vip should find the VIP by IPv4 prefix and succeed
+            self.vapi.lb_flush_vip(pfx="90.0.0.0/8", protocol=255, port=0)
+        finally:
+            self.vapi.lb_add_del_as(
+                pfx="90.0.0.0/8", as_address="10.0.0.1", is_del=True
+            )
+            self.vapi.lb_add_del_vip(pfx="90.0.0.0/8", encap=0, is_del=True)
+            self.vapi.cli("test lb flowtable flush")
+
+    def test_lb_add_del_vip_v2_src_ip_sticky(self):
+        """lb_add_del_vip_v2: src_ip_sticky flag accepted via binary API"""
+        try:
+            self.vapi.lb_add_del_vip_v2(pfx="90.0.0.0/8", encap=0, src_ip_sticky=True)
+            vips = self.vapi.lb_vip_dump()
+            net = str(ip_network("90.0.0.0/8"))
+            match = [v for v in vips if str(v.vip.pfx) == net]
+            self.assertEqual(len(match), 1, "VIP 90.0.0.0/8 not found in dump")
+        finally:
+            self.vapi.lb_add_del_vip_v2(
+                pfx="90.0.0.0/8", encap=0, src_ip_sticky=True, is_del=True
             )
             self.vapi.cli("test lb flowtable flush")
