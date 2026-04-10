@@ -5,7 +5,6 @@ focused_test=0
 persist_set=0
 dryrun_set=0
 coverage_set=0
-unconfigure_set=0
 debug_set=0
 leak_check_set=0
 debug_build=
@@ -53,13 +52,6 @@ case "${i}" in
         ;;
     --verbose=*)
         verbose="${i#*=}"
-        ;;
-    --unconfigure=*)
-        unconfigure="${i#*=}"
-        if [ "$unconfigure" = "true" ]; then
-            args="$args -unconfigure"
-            unconfigure_set=1
-        fi
         ;;
     --cpus=*)
         args="$args -cpus ${i#*=}"
@@ -161,16 +153,6 @@ if [ $focused_test -eq 0 ] && { [ $persist_set -eq 1 ] || [ $dryrun_set -eq 1 ];
     exit 2
 fi
 
-if [ $unconfigure_set -eq 1 ] && [ $focused_test -eq 0 ]; then
-    echo -e "\e[1;31ma single test has to be specified when unconfigure is set\e[1;0m"
-    exit 2
-fi
-
-if [ $persist_set -eq 1 ] && [ $unconfigure_set -eq 1 ]; then
-    echo -e "\e[1;31msetting persist flag and unconfigure flag is not allowed\e[1;0m"
-    exit 2
-fi
-
 if [ $focused_test -eq 0 ] && [ $debug_set -eq 1 ]; then
     echo -e "\e[1;31mVPP debug flag is not supported while running all tests!\e[1;0m"
     exit 2
@@ -188,8 +170,6 @@ elif [ $verbose -eq 2 ]; then
     args="$args -verbose"
     ginkgo_args="$ginkgo_args -vv"
 fi
-
-args="$args -whoami $(whoami)"
 
 if [ $leak_check_set -eq 1 ]; then
   if [ $focused_test -eq 0 ]; then

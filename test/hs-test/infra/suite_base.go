@@ -27,7 +27,6 @@ const (
 	DEFAULT_NETWORK_NUM int = 1
 )
 
-var IsUnconfiguring = flag.Bool("unconfigure", false, "remove topology")
 var NConfiguredCpus = flag.Int("cpus", 1, "number of CPUs assigned to non-vpp containers")
 var NConfiguredVppCpus = flag.Int("vpp_cpus", 1, "number of CPUs assigned to vpp containers")
 var VppSourceFileDir = flag.String("vppsrc", "", "vpp source file directory")
@@ -37,12 +36,10 @@ var IsLeakCheck = flag.Bool("leak_check", false, "run leak-check tests")
 var IsCoverage = flag.Bool("coverage", false, "use coverage run config")
 var IsPersistent = flag.Bool("persist", false, "persists topology config")
 var IsVerbose = flag.Bool("verbose", false, "verbose test output")
-var WhoAmI = flag.String("whoami", "root", "what user ran hs-test")
 var ParallelTotal = flag.Lookup("ginkgo.parallel.total")
 var IsVppDebug = flag.Bool("debug", false, "attach gdb to vpp")
 var DryRun = flag.Bool("dryrun", false, "set up containers but don't run tests")
 var Timeout = flag.Int("timeout", 5, "test timeout override (in minutes)")
-var PerfTesting = flag.Bool("perf", false, "perf test flag")
 var HostPpid = flag.Int("host_ppid", os.Getppid(), "automatically set in Makefile")
 var CpuOffset = flag.Int("cpu_offset", 0, "initial CPU offset")
 var HyperThreading = flag.Bool("hyperthread", false, "whether to use hyperthreads in CPU allocation")
@@ -74,18 +71,6 @@ type HstSuite struct {
 	CoverageRun         bool
 	numOfNewPorts       int
 	SkipIfNotEnoughCpus bool
-}
-
-type colors struct {
-	grn string
-	pur string
-	rst string
-}
-
-var Colors = colors{
-	grn: "\033[32m",
-	pur: "\033[35m",
-	rst: "\033[0m",
 }
 
 // ../../src/vnet/udp/udp_local.h:foreach_udp4_dst_port
@@ -173,21 +158,6 @@ var reservedPorts = []string{
 	"30055",
 	"30056",
 	"30080",
-}
-
-// used for colorful ReportEntry
-type StringerStruct struct {
-	Label string
-}
-
-// ColorableString for ReportEntry to use
-func (s StringerStruct) ColorableString() string {
-	return fmt.Sprintf("{{red}}%s{{/}}", s.Label)
-}
-
-// non-colorable String() is used by go's string formatting support but ignored by ReportEntry
-func (s StringerStruct) String() string {
-	return s.Label
 }
 
 func (s *HstSuite) getLogDirPath() string {
@@ -285,7 +255,6 @@ func (s *HstSuite) SetupTest() {
 	// doesn't impact MW/solo tests
 	s.CpuAllocator.lastCpu = (GinkgoParallelProcess() - 1) * 4
 	s.StartedContainers = s.StartedContainers[:0]
-	s.SkipIfUnconfiguring()
 	s.SetupContainers()
 }
 
@@ -303,12 +272,6 @@ func (s *HstSuite) TeardownTest() {
 
 	if coreDump {
 		Fail("VPP crashed")
-	}
-}
-
-func (s *HstSuite) SkipIfUnconfiguring() {
-	if *IsUnconfiguring {
-		s.Skip("skipping to unconfigure")
 	}
 }
 
@@ -674,10 +637,6 @@ func (s *HstSuite) loadNetworkTopology(topologyName string) bool {
 func (s *HstSuite) ConfigureNetworkTopology(topologyName string) {
 	configuredByHost := s.loadNetworkTopology(topologyName)
 	if configuredByHost {
-		if *IsUnconfiguring {
-			return
-		}
-
 		for _, nc := range s.NetConfigs {
 			Log(nc.Name())
 			if err := nc.configure(); err != nil {

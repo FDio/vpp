@@ -57,6 +57,33 @@ type JsonResult struct {
 	StdOutput string
 }
 
+type colors struct {
+	grn string
+	pur string
+	rst string
+}
+
+var Colors = colors{
+	grn: "\033[32m",
+	pur: "\033[35m",
+	rst: "\033[0m",
+}
+
+// used for colorful ReportEntry
+type StringerStruct struct {
+	Label string
+}
+
+// ColorableString for ReportEntry to use
+func (s StringerStruct) ColorableString() string {
+	return fmt.Sprintf("{{red}}%s{{/}}", s.Label)
+}
+
+// non-colorable String() is used by go's string formatting support but ignored by ReportEntry
+func (s StringerStruct) String() string {
+	return s.Label
+}
+
 // initialize a default logger
 func init() {
 	CreateLogger()

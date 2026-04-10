@@ -59,9 +59,6 @@ fi
 
 echo "Taking build objects from ${VPP_BUILD_ROOT}"
 
-export HST_LDPRELOAD=${VPP_BUILD_ROOT}/lib/${OS_ARCH}-linux-gnu/libvcl_ldpreload.so
-echo "HST_LDPRELOAD is set to ${HST_LDPRELOAD}"
-
 export PATH=${VPP_BUILD_ROOT}/bin:$PATH
 
 bin=vpp-data/bin

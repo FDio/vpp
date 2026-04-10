@@ -35,7 +35,7 @@ func TestHst(t *testing.T) {
 	Log("* HyperThreading = %t\n* CPU0 = %t", *HyperThreading, *UseCpu0)
 	// if we're debugging/running a coverage build and timeout isn't overridden,
 	// set test timeout to 30 minutes. Also impacts AssertChannelClosed()
-	if (*IsVppDebug || *IsCoverage || *PerfTesting) && *Timeout == 5 {
+	if (*IsVppDebug || *IsCoverage) && *Timeout == 5 {
 		TestTimeout = time.Minute * 30
 		Log("[Debugging or coverage build, TestTimeout is set to %s]\n", TestTimeout.String())
 	} else {

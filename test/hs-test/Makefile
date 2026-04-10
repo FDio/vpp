@@ -17,10 +17,6 @@ ifeq ($(PERSIST),)
 PERSIST=false
 endif
 
-ifeq ($(UNCONFIGURE),)
-UNCONFIGURE=false
-endif
-
 ifeq ($(TEST),)
 TEST=all
 endif
@@ -106,55 +102,53 @@ DOCKER_VOLUMES:=-v $(WS_ROOT):$(WS_ROOT) -v /var/run/docker.sock:/var/run/docker
 	-v /etc/localtime:/etc/localtime:ro $(CORE_VOLUME) -v $(HS_ROOT)/.go_cache/mod:/root/go/pkg/mod \
 	-v $(HS_ROOT)/.go_cache/build:/root/.cache/go-build
 DOCKER_PROXY:=-e HTTP_PROXY=$(HTTP_PROXY) -e HTTPS_PROXY=$(HTTPS_PROXY) -e NO_PROXY=$(NO_PROXY)
-DOCKER_COMMON_ARGS:=$(DOCKER_TTY) --rm $(DOCKER_CAPABILITIES) $(DOCKER_DEVICES) $(DOCKER_PROXY)\
+DOCKER_COMMON_ARGS:=$(DOCKER_TTY) --rm $(DOCKER_CAPABILITIES) $(DOCKER_DEVICES) $(DOCKER_PROXY) \
 		-e GITHUB_REPO_URL=$(GITHUB_REPO_URL) $(DOCKER_VOLUMES) --name ginkgo hs-test/ginkgo \
 		.$(HS_ROOT)/hs_test.sh --persist=$(PERSIST) --verbose=$(VERBOSE) \
-		--unconfigure=$(UNCONFIGURE) --debug=$(DEBUG) --cpus=$(CPUS) \
-		--vppsrc=$(VPPSRC) --parallel=$(PARALLEL) --repeat=$(REPEAT) --cpu0=$(CPU0) \
-		--dryrun=$(DRYRUN) --skip=$(SKIP) --no_color=$(NO_COLOR) --timeout=$(TIMEOUT) \
-		--ginkgo_timeout=$(GINKGO_TIMEOUT) --vpp_cpus=$(VPP_CPUS) --hs_root=$(HS_ROOT) \
+		--debug=$(DEBUG) --cpus=$(CPUS) --vppsrc=$(VPPSRC) --parallel=$(PARALLEL) \
+		--repeat=$(REPEAT) --cpu0=$(CPU0) --dryrun=$(DRYRUN) --skip=$(SKIP) --no_color=$(NO_COLOR) \
+		--timeout=$(TIMEOUT) --ginkgo_timeout=$(GINKGO_TIMEOUT) --vpp_cpus=$(VPP_CPUS) --hs_root=$(HS_ROOT) \
 		$(LABEL_ARG) --host_ppid=$$PPID $(SEED_ARG) --hyperthread=$(HT)
 
 .PHONY: help
 help:
 	@echo "Make targets:"
-	@echo " test                     - run tests"
-	@echo " test-debug               - run tests (vpp debug image)"
-	@echo " test-leak                - run memory leak tests (vpp debug image)"
 	@echo " build                    - build test infra"
 	@echo " build-cov                - coverage build of VPP and Docker images"
 	@echo " build-debug              - build test infra (vpp debug image)"
 	@echo " checkstyle-go            - check style of .go source files"
-	@echo " fixstyle-go              - format .go source files"
-	@echo " cleanup-hst              - removes all docker containers and namespaces from last test run"
-	@echo " list-tests               - list all tests"
-	@echo " install-deps             - install software dependencies"
 	@echo " clean-hst-registry       - delete images and repositories from local registry"
+	@echo " cleanup-hst              - removes all docker containers and namespaces from last test run"
+	@echo " fixstyle-go              - format .go source files"
+	@echo " install-deps             - install software dependencies"
+	@echo " list-tests               - list all tests"
+	@echo " test                     - run tests"
+	@echo " test-debug               - run tests (vpp debug image)"
+	@echo " test-leak                - run memory leak tests (vpp debug image)"
 	@echo
 	@echo "'make build' and 'make test' arguments:"
 	@echo " UBUNTU_VERSION           - ubuntu version for docker image"
 	@echo " FORCE_BUILD=[true|false] - force docker image building"
 	@echo
 	@echo "'make test' specific arguments:"
-	@echo " PERSIST=[true|false]     - whether clean up topology and dockers after test"
-	@echo " V or VERBOSE=[0|1|2]     - verbose output"
-	@echo " UNCONFIGURE=[true|false] - unconfigure selected test"
-	@echo " DEBUG=[true|false]       - attach VPP to GDB"
-	@echo " TEST=[name1,name2...]    - specific test(s) to run"
-	@echo " LABEL=[suite labels]     - filter by suite labels, case insensitive (https://onsi.github.io/ginkgo/#spec-labels)"
-	@echo " SKIP=[name1,name2...]    - specific test(s) to skip"
-	@echo " HT=[true|false]          - enable or disable hyperthread allocation (false by default)"
+	@echo " CPU0=[true|false]        - use cpu0"
 	@echo " CPUS=[n]                 - number of cpus to allocate to each non-VPP container (default = 1)"
+	@echo " DEBUG=[true|false]       - attach VPP to GDB"
+	@echo " DRYRUN=[true|false]      - set up containers but don't run tests"
+	@echo " GINKGO_TIMEOUT=[Ns/m/h]  - Ginkgo timeout override (3h by default)"
+	@echo " HT=[true|false]          - enable or disable hyperthread allocation (false by default)"
+	@echo " LABEL=[suite labels]     - filter by suite labels, case insensitive (https://onsi.github.io/ginkgo/#spec-labels)"
+	@echo " NO_COLOR=[true|false]    - disables colorful Docker and Ginkgo output"
+	@echo " PARALLEL=[n]             - number of test processes to spawn to run in parallel"
+	@echo " PERSIST=[true|false]     - whether clean up topology and dockers after test"
+	@echo " REPEAT=[n]               - repeat tests up to N times or until a failure occurs"
+	@echo " SEED=[n]                 - set Ginkgo seed"
+	@echo " SKIP=[name1,name2...]    - specific test(s) to skip"
+	@echo " TEST=[name1,name2...]    - specific test(s) to run"
+	@echo " TIMEOUT=[minutes]        - test timeout override (5 minutes by default)"
+	@echo " V or VERBOSE=[0|1|2]     - verbose output"
 	@echo " VPP_CPUS=[n]             - number of cpus to allocate to each VPP container (default = 1)"
 	@echo " VPPSRC=[path-to-vpp-src] - path to vpp source files (for gdb)"
-	@echo " PARALLEL=[n]             - number of test processes to spawn to run in parallel"
-	@echo " REPEAT=[n]               - repeat tests up to N times or until a failure occurs"
-	@echo " CPU0=[true|false]        - use cpu0"
-	@echo " DRYRUN=[true|false]      - set up containers but don't run tests"
-	@echo " NO_COLOR=[true|false]    - disables colorful Docker and Ginkgo output"
-	@echo " TIMEOUT=[minutes]        - test timeout override (5 minutes by default)"
-	@echo " GINKGO_TIMEOUT=[Ns/m/h]  - Ginkgo timeout override (3h by default)"
-	@echo " SEED=[n]                 - set Ginkgo seed"
 
 .PHONY: list-tests
 list-tests:
