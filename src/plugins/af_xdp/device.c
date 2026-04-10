@@ -98,9 +98,15 @@ af_xdp_enter_netns (char *netns, int *fds)
     {
       *fds = clib_netns_open (NULL /* self */);
       if ((*(fds + 1) = clib_netns_open ((u8 *) netns)) == -1)
-	return VNET_API_ERROR_SYSCALL_ERROR_8;
+	{
+	  af_xdp_cleanup_netns (fds);
+	  return VNET_API_ERROR_SYSCALL_ERROR_8;
+	}
       if (clib_setns (*(fds + 1)) == -1)
-	return VNET_API_ERROR_SYSCALL_ERROR_9;
+	{
+	  af_xdp_cleanup_netns (fds);
+	  return VNET_API_ERROR_SYSCALL_ERROR_9;
+	}
     }
   return 0;
 }
@@ -632,7 +638,7 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
       args->error = clib_error_return_unix (0, "if_nametoindex(%s) failed",
 					    ad->linux_ifname);
       ad->linux_ifindex = ~0;
-      goto err1;
+      goto err2;
     }
 
   if (args->prog &&
@@ -750,7 +756,7 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
 err2:
   af_xdp_delete_if (vm, ad);
 err1:
-  af_xdp_cleanup_netns (ns_fds);
+  af_xdp_exit_netns (args->netns, ns_fds);
 err0:
   vlib_log_err (am->log_class, "%U", format_clib_error, args->error);
 }
