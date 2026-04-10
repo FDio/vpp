@@ -376,7 +376,10 @@ http3_req_state_wait_app_reply (http_ctx_t *stream, http_ctx_t *req, transport_s
 	  new_state = (req->upgrade_proto == HTTP_UPGRADE_PROTO_CONNECT_UDP &&
 		       (stream->flags & HTTP_CONN_F_UDP_TUNNEL_DGRAM)) ?
 			HTTP_REQ_STATE_UDP_TUNNEL :
-			HTTP_REQ_STATE_TUNNEL;
+			(((req->req_flags & HTTP_REQ_F_CONNECT_UDP_DRAFT03) &&
+			  (stream->flags & HTTP_CONN_F_UDP_TUNNEL_DGRAM)) ?
+			   HTTP_REQ_STATE_UDP_TUNNEL_DRAFT03 :
+			   HTTP_REQ_STATE_TUNNEL);
 	  http_req_state_change (req, new_state);
 	  req->app_closed_cb = http3_stream_app_close_tunnel;
 	  break;
@@ -464,7 +467,7 @@ http3_req_state_wait_app_method (http_ctx_t *hc, http_ctx_t *req, transport_send
 
   control_data.method = msg.method_type;
   control_data.parsed_bitmap = HPACK_PSEUDO_HEADER_AUTHORITY_PARSED;
-  if (msg.method_type == HTTP_REQ_CONNECT)
+  if (msg.method_type == HTTP_REQ_CONNECT || msg.method_type == HTTP_REQ_CONNECT_UDP)
     {
       req->req_flags |= HTTP_REQ_F_IS_TUNNEL;
       req->upgrade_proto = msg.data.upgrade_proto;
@@ -474,7 +477,7 @@ http3_req_state_wait_app_method (http_ctx_t *hc, http_ctx_t *req, transport_send
 	{
 	  control_data.authority = hc->host;
 	  control_data.authority_len = vec_len (hc->host);
-	  control_data.parsed_bitmap = HPACK_PSEUDO_HEADER_SCHEME_PARSED;
+	  control_data.parsed_bitmap |= HPACK_PSEUDO_HEADER_SCHEME_PARSED;
 	  control_data.scheme = HTTP_URL_SCHEME_HTTPS;
 	  control_data.parsed_bitmap |= HPACK_PSEUDO_HEADER_PATH_PARSED;
 	  control_data.path = http_get_app_target (req, &msg);
@@ -490,8 +493,20 @@ http3_req_state_wait_app_method (http_ctx_t *hc, http_ctx_t *req, transport_send
 	{
 	  control_data.authority = http_get_app_target (req, &msg);
 	  control_data.authority_len = msg.data.target_path_len;
-	  HTTP_DBG (1, "opening tunnel to %U", format_http_bytes, control_data.authority,
-		    control_data.authority_len);
+	  HTTP_DBG (1, "opening %s tunnel to %U",
+		    msg.method_type == HTTP_REQ_CONNECT_UDP ? "udp" : "tcp", format_http_bytes,
+		    control_data.authority, control_data.authority_len);
+	  if (msg.method_type == HTTP_REQ_CONNECT_UDP)
+	    {
+	      /* path is always "/", we set it here, app send us just authority part */
+	      control_data.path = (u8 *) http_masque_draft03_path.base;
+	      control_data.path_len = http_masque_draft03_path.len;
+	      control_data.parsed_bitmap |= HPACK_PSEUDO_HEADER_PATH_PARSED;
+	      /* scheme is always masque */
+	      control_data.scheme = HTTP_URL_SCHEME_MASQUE;
+	      control_data.parsed_bitmap |= HPACK_PSEUDO_HEADER_SCHEME_PARSED;
+	      req->req_flags |= HTTP_REQ_F_CONNECT_UDP_DRAFT03;
+	    }
 	}
     }
   else
@@ -648,9 +663,10 @@ http3_req_state_tunnel_tx (http_ctx_t *stream, http_ctx_t *req, transport_send_p
   return HTTP_SM_STOP;
 }
 
-static http_sm_result_t
-http3_req_state_udp_tunnel_tx (http_ctx_t *stream, http_ctx_t *req, transport_send_params_t *sp,
-			       http3_error_t *error, u32 *n_deq)
+static_always_inline http_sm_result_t
+http3_req_state_udp_tunnel_tx_inline (http_ctx_t *stream, http_ctx_t *req,
+				      transport_send_params_t *sp, http3_error_t *error, u32 *n_deq,
+				      u8 is_draft03)
 {
   u32 max_read, max_write, n_written, dgram_size, capsule_size, n_segs = 2;
   session_dgram_hdr_t hdr;
@@ -689,7 +705,7 @@ http3_req_state_udp_tunnel_tx (http_ctx_t *stream, http_ctx_t *req, transport_se
     }
   http_io_as_drain (req, sizeof (hdr));
   /* create capsule header */
-  payload = http_encap_udp_payload_datagram (capsule_header, hdr.data_length);
+  payload = http_encap_udp_payload_datagram (capsule_header, hdr.data_length, is_draft03);
   capsule_header_len = payload - capsule_header;
   ASSERT (capsule_header_len <= HTTP_UDP_PROXY_DATAGRAM_CAPSULE_OVERHEAD);
   capsule_size = capsule_header_len + hdr.data_length;
@@ -706,6 +722,21 @@ http3_req_state_udp_tunnel_tx (http_ctx_t *stream, http_ctx_t *req, transport_se
   http_io_ts_after_write (stream, 0);
   HTTP_DBG (1, "capsule payload len %lu", hdr.data_length);
   return (max_read - dgram_size) ? HTTP_SM_CONTINUE : HTTP_SM_STOP;
+}
+
+static http_sm_result_t
+http3_req_state_udp_tunnel_tx (http_ctx_t *stream, http_ctx_t *req, transport_send_params_t *sp,
+			       http3_error_t *error, u32 *n_deq)
+{
+  return http3_req_state_udp_tunnel_tx_inline (stream, req, sp, error, n_deq, 0);
+}
+
+static http_sm_result_t
+http3_req_state_udp_tunnel_draft03_tx (http_ctx_t *stream, http_ctx_t *req,
+				       transport_send_params_t *sp, http3_error_t *error,
+				       u32 *n_deq)
+{
+  return http3_req_state_udp_tunnel_tx_inline (stream, req, sp, error, n_deq, 1);
 }
 
 static_always_inline void
@@ -736,6 +767,32 @@ http3_stream_resp_not_implemented (http_ctx_t *stream, http_ctx_t *req)
   http_io_ts_after_write (stream, 0);
   http_stats_responses_sent_inc (stream->c_thread_index);
 }
+
+#define http3_verify_port_in_authority()                                                           \
+  do                                                                                               \
+    {                                                                                              \
+      p = control_data.authority + control_data.authority_len;                                     \
+      p--;                                                                                         \
+      if (!isdigit (*p))                                                                           \
+	{                                                                                          \
+	  HTTP_DBG (1, "port not present in authority");                                           \
+	  http3_stream_terminate (stream, req, HTTP3_ERROR_MESSAGE_ERROR);                         \
+	  return HTTP_SM_STOP;                                                                     \
+	}                                                                                          \
+      p--;                                                                                         \
+      for (; p > control_data.authority; p--)                                                      \
+	{                                                                                          \
+	  if (!isdigit (*p))                                                                       \
+	    break;                                                                                 \
+	}                                                                                          \
+      if (*p != ':')                                                                               \
+	{                                                                                          \
+	  HTTP_DBG (1, "port not present in authority");                                           \
+	  http3_stream_terminate (stream, req, HTTP3_ERROR_MESSAGE_ERROR);                         \
+	  return HTTP_SM_STOP;                                                                     \
+	}                                                                                          \
+    }                                                                                              \
+  while (0);
 
 static http_sm_result_t
 http3_req_state_wait_transport_method (http_ctx_t *stream, http_ctx_t *req,
@@ -865,30 +922,26 @@ http3_req_state_wait_transport_method (http_ctx_t *stream, http_ctx_t *req,
 	      return HTTP_SM_STOP;
 	    }
 	  /* quick check if port is present */
-	  p = control_data.authority + control_data.authority_len;
-	  p--;
-	  if (!isdigit (*p))
-	    {
-	      HTTP_DBG (1, "port not present in authority");
-	      http3_stream_terminate (stream, req, HTTP3_ERROR_MESSAGE_ERROR);
-	      return HTTP_SM_STOP;
-	    }
-	  p--;
-	  for (; p > control_data.authority; p--)
-	    {
-	      if (!isdigit (*p))
-		break;
-	    }
-	  if (*p != ':')
-	    {
-	      HTTP_DBG (1, "port not present in authority");
-	      http3_stream_terminate (stream, req, HTTP3_ERROR_MESSAGE_ERROR);
-	      return HTTP_SM_STOP;
-	    }
+	  http3_verify_port_in_authority ();
 	  req->upgrade_proto = HTTP_UPGRADE_PROTO_NA;
 	}
       req->req_flags |= HTTP_REQ_F_IS_TUNNEL;
     }
+  else if (control_data.method == HTTP_REQ_CONNECT_UDP)
+    {
+      if (!(hc->flags & HTTP_CONN_F_CONNECT_UDP_DRAFT03))
+	{
+	  HTTP_DBG (1, "CONNECT-UDP method but masque-connect-udp-draft-03 not enabled");
+	  http3_stream_terminate (stream, req, HTTP3_ERROR_GENERAL_PROTOCOL_ERROR);
+	  return HTTP_SM_STOP;
+	}
+      /* quick check if port is present */
+      http3_verify_port_in_authority ();
+      req->req_flags |= HTTP_REQ_F_IS_TUNNEL;
+      req->req_flags |= HTTP_REQ_F_CONNECT_UDP_DRAFT03;
+      req->upgrade_proto = HTTP_UPGRADE_PROTO_NA;
+    }
+
   if (control_data.content_len_header_index != ~0)
     {
       req->content_len_header_index = control_data.content_len_header_index;
@@ -1017,7 +1070,10 @@ http3_req_state_wait_transport_reply (http_ctx_t *stream, http_ctx_t *req,
       new_state = (req->upgrade_proto == HTTP_UPGRADE_PROTO_CONNECT_UDP &&
 		   (stream->flags & HTTP_CONN_F_UDP_TUNNEL_DGRAM)) ?
 		    HTTP_REQ_STATE_UDP_TUNNEL :
-		    HTTP_REQ_STATE_TUNNEL;
+		    (((req->req_flags & HTTP_REQ_F_CONNECT_UDP_DRAFT03) &&
+		      (stream->flags & HTTP_CONN_F_UDP_TUNNEL_DGRAM)) ?
+		       HTTP_REQ_STATE_UDP_TUNNEL_DRAFT03 :
+		       HTTP_REQ_STATE_TUNNEL);
       req->app_closed_cb = http3_stream_app_close_tunnel;
       /* reschedule, we can now transfer tunnel data */
       transport_connection_reschedule (&req->connection);
@@ -1186,8 +1242,9 @@ http3_req_state_tunnel_rx (http_ctx_t *stream, http_ctx_t *req, transport_send_p
 }
 
 static http_sm_result_t
-http3_req_state_udp_tunnel_rx (http_ctx_t *stream, http_ctx_t *req, transport_send_params_t *sp,
-			       http3_error_t *error, u32 *n_deq)
+http3_req_state_udp_tunnel_rx_inline (http_ctx_t *stream, http_ctx_t *req,
+				      transport_send_params_t *sp, http3_error_t *error, u32 *n_deq,
+				      u8 is_draft03)
 {
   u8 *rx_buf;
   int rv;
@@ -1207,7 +1264,8 @@ http3_req_state_udp_tunnel_rx (http_ctx_t *stream, http_ctx_t *req, transport_se
   rx_buf = http_get_rx_buf (stream);
   vec_validate (rx_buf, req->fh.length - 1);
   http_io_ts_read (stream, rx_buf, req->fh.length, 1);
-  rv = http_decap_udp_payload_datagram (rx_buf, req->fh.length, &payload_offset, &payload_len);
+  rv = http_decap_udp_payload_datagram (rx_buf, req->fh.length, &payload_offset, &payload_len,
+					is_draft03);
   HTTP_DBG (1, "rv=%d, payload_offset=%u, payload_len=%llu", rv, payload_offset, payload_len);
   if (PREDICT_FALSE (rv != 0))
     {
@@ -1263,6 +1321,21 @@ http3_req_state_udp_tunnel_rx (http_ctx_t *stream, http_ctx_t *req, transport_se
   return HTTP_SM_CONTINUE;
 }
 
+static http_sm_result_t
+http3_req_state_udp_tunnel_rx (http_ctx_t *stream, http_ctx_t *req, transport_send_params_t *sp,
+			       http3_error_t *error, u32 *n_deq)
+{
+  return http3_req_state_udp_tunnel_rx_inline (stream, req, sp, error, n_deq, 0);
+}
+
+static http_sm_result_t
+http3_req_state_udp_tunnel_draft03_rx (http_ctx_t *stream, http_ctx_t *req,
+				       transport_send_params_t *sp, http3_error_t *error,
+				       u32 *n_deq)
+{
+  return http3_req_state_udp_tunnel_rx_inline (stream, req, sp, error, n_deq, 1);
+}
+
 /*************************/
 /* request state machine */
 /*************************/
@@ -1281,6 +1354,8 @@ static http3_sm_handler tx_state_funcs[HTTP_REQ_N_STATES] = {
   http3_req_state_app_io_more_data,
   http3_req_state_tunnel_tx,
   http3_req_state_udp_tunnel_tx,
+  http3_req_state_udp_tunnel_draft03_tx,
+  0, /* app io more streaming data */
 };
 
 static http3_sm_handler rx_state_funcs[HTTP_REQ_N_STATES] = {
@@ -1293,6 +1368,8 @@ static http3_sm_handler rx_state_funcs[HTTP_REQ_N_STATES] = {
   0, /* app io more data */
   http3_req_state_tunnel_rx,
   http3_req_state_udp_tunnel_rx,
+  http3_req_state_udp_tunnel_draft03_rx,
+  0, /* app io more streaming data */
 };
 
 static_always_inline int
@@ -1614,7 +1691,8 @@ http3_stream_transport_rx_req (http_ctx_t *req, http_ctx_t *stream, http_req_sta
 	  HTTP_DBG (1, "data received");
 	  if (!(req->req_state == HTTP_REQ_STATE_TRANSPORT_IO_MORE_DATA ||
 		req->req_state == HTTP_REQ_STATE_TUNNEL ||
-		req->req_state == HTTP_REQ_STATE_UDP_TUNNEL))
+		req->req_state == HTTP_REQ_STATE_UDP_TUNNEL ||
+		req->req_state == HTTP_REQ_STATE_UDP_TUNNEL_DRAFT03))
 	    {
 	      HTTP_DBG (1, "unexpected frame, state: %U", format_http_req_state, req->req_state);
 	      err = HTTP3_ERROR_FRAME_UNEXPECTED;

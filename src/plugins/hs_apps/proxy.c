@@ -500,7 +500,7 @@ proxy_transport_needs_crypto (transport_proto_t proto)
   return proto == TRANSPORT_PROTO_TLS;
 }
 
-static void
+static int
 proxy_http_connect (session_t *s, vnet_connect_args_t *a)
 {
   proxy_main_t *pm = &proxy_main;
@@ -516,15 +516,16 @@ proxy_http_connect (session_t *s, vnet_connect_args_t *a)
 
   ASSERT (msg.type == HTTP_MSG_REQUEST);
 
-  if (PREDICT_FALSE (msg.method_type != HTTP_REQ_CONNECT))
+  if (PREDICT_FALSE (msg.method_type != HTTP_REQ_CONNECT &&
+		     msg.method_type != HTTP_REQ_CONNECT_UDP))
     {
       PROXY_DBG ("invalid method");
       goto bad_req;
     }
   if (msg.data.upgrade_proto == HTTP_UPGRADE_PROTO_NA)
     {
-      /* TCP tunnel (RFC9110 section 9.3.6) */
-      PROXY_DBG ("CONNECT");
+      /* TCP tunnel (RFC9110 section 9.3.6) or masque-connect-udp-draft-03 */
+      PROXY_DBG ("%s", msg.method_type == HTTP_REQ_CONNECT_UDP ? "CONNECT-UDP-DRAFT03" : "CONNECT");
       /* get tunnel target */
       if (!msg.data.target_authority_len)
 	{
@@ -548,7 +549,8 @@ proxy_http_connect (session_t *s, vnet_connect_args_t *a)
 	  PROXY_DBG ("reg-name resolution not supported");
 	  goto bad_req;
 	}
-      target_sep.transport_proto = TRANSPORT_PROTO_TCP;
+      target_sep.transport_proto =
+	msg.method_type == HTTP_REQ_CONNECT_UDP ? TRANSPORT_PROTO_UDP : TRANSPORT_PROTO_TCP;
     }
   else if (msg.data.upgrade_proto == HTTP_UPGRADE_PROTO_CONNECT_UDP)
     {
@@ -609,7 +611,7 @@ proxy_http_connect (session_t *s, vnet_connect_args_t *a)
     bad_req:
       proxy_send_http_resp (s, HTTP_STATUS_BAD_REQUEST, 0);
       svm_fifo_dequeue_drop_all (s->rx_fifo);
-      return;
+      return 1;
     }
   PROXY_DBG ("proxy target %U:%u", format_ip46_address, &target_uri.ip,
 	     target_uri.host_type == HTTP_URI_HOST_TYPE_IP4,
@@ -619,6 +621,7 @@ proxy_http_connect (session_t *s, vnet_connect_args_t *a)
   target_sep.ip = target_uri.ip;
   target_sep.port = target_uri.port;
   clib_memcpy (&a->sep_ext, &target_sep, sizeof (target_sep));
+  return 0;
 }
 
 static void
@@ -658,7 +661,11 @@ proxy_session_start_connect (proxy_session_side_ctx_t *sc, session_t *s)
   clib_spinlock_unlock_if_init (&pm->sessions_lock);
 
   if (tp == TRANSPORT_PROTO_HTTP)
-    proxy_http_connect (s, a);
+    {
+      /* stop if request is invalid */
+      if (proxy_http_connect (s, a))
+	return;
+    }
   else
     {
       max_dequeue = svm_fifo_max_dequeue_cons (s->rx_fifo);
@@ -1369,6 +1376,8 @@ proxy_server_listen ()
 	{
 	  /* set http timeout for connect-proxy */
 	  transport_endpt_cfg_http_t http_cfg = { pm->idle_timeout, HTTP_UDP_TUNNEL_DGRAM };
+	  if (cfg->masque_draft03_enabled)
+	    http_cfg.flags |= HTTP_ENDPT_CFG_F_ENABLE_CONNECT_UDP_DRAFT03;
 	  transport_endpt_ext_cfg_t *ext_cfg = session_endpoint_add_ext_cfg (
 	    &a->sep_ext, TRANSPORT_ENDPT_EXT_CFG_HTTP, sizeof (http_cfg));
 	  clib_memcpy (ext_cfg->data, &http_cfg, sizeof (http_cfg));
@@ -1525,6 +1534,8 @@ proxy_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	;
       else if (unformat (line_input, "http3"))
 	cfg->is_http3 = 1;
+      else if (unformat (line_input, "enable-masque-draft-03"))
+	cfg->masque_draft03_enabled = 1;
       else
 	{
 	  error = clib_error_return (0, "unknown input `%U'",
@@ -1579,7 +1590,7 @@ VLIB_CLI_COMMAND (proxy_create_command, static) = {
 		"[max-fifo-size <nn>[k|m]][high-watermark <nn>]"
 		"[low-watermark <nn>][rcv-buf-size <nn>][prealloc-fifos <nn>]"
 		"[private-segment-size <mem>][private-segment-count <nn>]"
-		"[idle-timeout <nn>] [http3]",
+		"[idle-timeout <nn>] [http3] [enable-masque-draft-03]",
   .function = proxy_server_create_command_fn,
 };
 
