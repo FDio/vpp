@@ -17,6 +17,8 @@
 static const http_token_t http2_conn_preface = { http_token_lit (
   "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n") };
 
+static const http_token_t http_masque_draft03_path = { http_token_lit ("/") };
+
 #define foreach_http_wrk_stat                                                 \
   _ (proto_errors, "connections protocol error")                              \
   _ (connections_timeout, "connections timeout")                              \
@@ -70,17 +72,18 @@ typedef enum http_conn_state_ : u8
 #undef _
 } http_conn_state_t;
 
-#define foreach_http_req_state                                                \
-  _ (0, IDLE, "idle")                                                         \
-  _ (1, WAIT_APP_METHOD, "wait app method")                                   \
-  _ (2, WAIT_TRANSPORT_REPLY, "wait transport reply")                         \
-  _ (3, TRANSPORT_IO_MORE_DATA, "transport io more data")                     \
-  _ (4, WAIT_TRANSPORT_METHOD, "wait transport method")                       \
-  _ (5, WAIT_APP_REPLY, "wait app reply")                                     \
-  _ (6, APP_IO_MORE_DATA, "app io more data")                                 \
-  _ (7, TUNNEL, "tunnel")                                                     \
-  _ (8, UDP_TUNNEL, "udp tunnel")                                             \
-  _ (9, APP_IO_MORE_STREAMING_DATA, "app io more streaming data")
+#define foreach_http_req_state                                                                     \
+  _ (0, IDLE, "idle")                                                                              \
+  _ (1, WAIT_APP_METHOD, "wait app method")                                                        \
+  _ (2, WAIT_TRANSPORT_REPLY, "wait transport reply")                                              \
+  _ (3, TRANSPORT_IO_MORE_DATA, "transport io more data")                                          \
+  _ (4, WAIT_TRANSPORT_METHOD, "wait transport method")                                            \
+  _ (5, WAIT_APP_REPLY, "wait app reply")                                                          \
+  _ (6, APP_IO_MORE_DATA, "app io more data")                                                      \
+  _ (7, TUNNEL, "tunnel")                                                                          \
+  _ (8, UDP_TUNNEL, "udp tunnel")                                                                  \
+  _ (9, UDP_TUNNEL_DRAFT03, "udp tunnel draft03")                                                  \
+  _ (10, APP_IO_MORE_STREAMING_DATA, "app io more streaming data")
 
 typedef enum http_req_state_ : u8
 {
@@ -104,7 +107,8 @@ typedef enum http_target_form_ : u8
   _ (NEED_WINDOW_UPDATE, "need-window-update")                                                     \
   _ (IS_PARENT, "is-parent")                                                                       \
   _ (PENDING_SND_WIN_UPDATE, "pending-snd-win-update")                                             \
-  _ (IS_TUNNEL, "is-tunnel")
+  _ (IS_TUNNEL, "is-tunnel")                                                                       \
+  _ (CONNECT_UDP_DRAFT03, "connect-udp-draft03")
 
 typedef enum http_req_flags_bit_
 {
@@ -158,7 +162,8 @@ typedef struct
   _ (PREFACE_VERIFIED, "preface-verified")                                                         \
   _ (TS_DESCHED, "ts-descheduled")                                                                 \
   _ (EXPECT_PEER_SETTINGS, "expect-peer-settings")                                                 \
-  _ (UDP_TUNNEL_DGRAM, "udp-tunnel-dgram")
+  _ (UDP_TUNNEL_DGRAM, "udp-tunnel-dgram")                                                         \
+  _ (CONNECT_UDP_DRAFT03, "connect-udp-draft03")
 
 typedef enum http_conn_flags_bit_
 {

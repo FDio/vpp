@@ -689,7 +689,7 @@ http3_req_state_udp_tunnel_tx (http_ctx_t *stream, http_ctx_t *req, transport_se
     }
   http_io_as_drain (req, sizeof (hdr));
   /* create capsule header */
-  payload = http_encap_udp_payload_datagram (capsule_header, hdr.data_length);
+  payload = http_encap_udp_payload_datagram (capsule_header, hdr.data_length, 0);
   capsule_header_len = payload - capsule_header;
   ASSERT (capsule_header_len <= HTTP_UDP_PROXY_DATAGRAM_CAPSULE_OVERHEAD);
   capsule_size = capsule_header_len + hdr.data_length;
@@ -1207,7 +1207,7 @@ http3_req_state_udp_tunnel_rx (http_ctx_t *stream, http_ctx_t *req, transport_se
   rx_buf = http_get_rx_buf (stream);
   vec_validate (rx_buf, req->fh.length - 1);
   http_io_ts_read (stream, rx_buf, req->fh.length, 1);
-  rv = http_decap_udp_payload_datagram (rx_buf, req->fh.length, &payload_offset, &payload_len);
+  rv = http_decap_udp_payload_datagram (rx_buf, req->fh.length, &payload_offset, &payload_len, 0);
   HTTP_DBG (1, "rv=%d, payload_offset=%u, payload_len=%llu", rv, payload_offset, payload_len);
   if (PREDICT_FALSE (rv != 0))
     {
