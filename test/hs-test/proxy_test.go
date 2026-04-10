@@ -35,7 +35,7 @@ func init() {
 	RegisterEnvoyProxyTests(EnvoyHttpGetTcpTest, EnvoyHttpPutTcpTest)
 	RegisterNginxProxyTests(NginxMirroringTest)
 	RegisterNginxProxySoloTests(MirrorMultiThreadTest)
-	RegisterMasqueTests(VppConnectProxyClientDownloadUdpTest,
+	RegisterMasqueTests(VppConnectProxyClientDownloadUdpTest, VppConnectProxyDraft03Test,
 		VppConnectProxyClientUploadUdpTest, VppConnectProxyMemLeakTest)
 	RegisterMasqueSoloTests(VppConnectProxyIperfTcpTest, VppConnectProxyIperfUdpTest)
 	RegisterMasqueMWTests(VppConnectProxyIperfTcpMWTest, VppConnectProxyIperfUdpMWTest, VppConnectProxyClientUploadTcpMWTest,
@@ -855,6 +855,23 @@ func VppConnectProxyClientUploadUdpTest(s *MasqueSuite) {
 		defer GinkgoRecover()
 		StartCurl(finished, uri, s.NetNamespaces.Client, "201", 30, []string{"--http3-only", "-T", fileName})
 	}()
+	AssertNil(<-finished)
+}
+
+func VppConnectProxyDraft03Test(s *MasqueSuite) {
+	s.StartNginxServer()
+	clientVpp := s.Containers.VppClient.VppInstance
+	s.ProxyClientConnect("udp", s.Ports.NginxSsl, "masque-draft-03")
+	Log(clientVpp.Vppctl("show http connect proxy client listeners"))
+
+	uri := fmt.Sprintf("https://%s:%s/httpTestFile", s.NginxAddr(), s.Ports.NginxSsl)
+	finished := make(chan error, 1)
+	go func() {
+		defer GinkgoRecover()
+		StartCurl(finished, uri, s.NetNamespaces.Client, "200", 30, []string{"--http3-only"})
+	}()
+	Log(clientVpp.Vppctl("show http connect proxy client sessions"))
+	Log(clientVpp.Vppctl("show session verbose 2"))
 	AssertNil(<-finished)
 }
 

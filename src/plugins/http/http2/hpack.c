@@ -591,7 +591,7 @@ hpack_encode_method (u8 *dst, http_req_method_t method)
       break;
     default:
       orig_len = vec_len (dst);
-      vec_add2 (dst, a, 9);
+      vec_add2 (dst, a, 13);
       b = a;
       /* Literal Header Field without Indexing — Indexed Name */
       *b++ = 2;
@@ -606,7 +606,8 @@ hpack_encode_method (u8 *dst, http_req_method_t method)
 static inline u8 *
 hpack_encode_scheme (u8 *dst, http_url_scheme_t scheme)
 {
-  u8 *a;
+  u32 orig_len, actual_size;
+  u8 *a, *b;
 
   switch (scheme)
     {
@@ -615,6 +616,16 @@ hpack_encode_scheme (u8 *dst, http_url_scheme_t scheme)
       break;
     case HTTP_URL_SCHEME_HTTPS:
       encode_indexed_static_entry (7);
+      break;
+    case HTTP_URL_SCHEME_MASQUE:
+      orig_len = vec_len (dst);
+      vec_add2 (dst, a, 8);
+      b = a;
+      /* Literal Header Field without Indexing — Indexed Name */
+      *b++ = 6;
+      b = hpack_encode_string (b, (const u8 *) http_token_lit ("masque"));
+      actual_size = b - a;
+      vec_set_len (dst, orig_len + actual_size);
       break;
     default:
       ASSERT (0);
