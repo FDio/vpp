@@ -975,8 +975,7 @@ ip4_full_reass_update (vlib_main_t *vm, vlib_node_runtime_t *node,
       return IP4_REASS_RC_OK;
     }
   reass->min_fragment_length =
-    clib_min (clib_net_to_host_u16 (fip->length),
-	      fvnb->ip.reass.estimated_mtu);
+    clib_min (clib_net_to_host_u16 (fip->length), reass->min_fragment_length);
   while (~0 != candidate_range_bi)
     {
       vlib_buffer_t *candidate_b = vlib_get_buffer (vm, candidate_range_bi);
@@ -1668,10 +1667,7 @@ ip4_full_reass_walk_expired (vlib_main_t *vm, vlib_node_runtime_t *node,
 
 	  u32 beg = rt->last_id;
 	  /* to ensure we walk at least once per sec per context */
-	  u32 end =
-	    beg + (IP4_REASS_MAX_REASSEMBLIES_DEFAULT *
-		     IP4_REASS_EXPIRE_WALK_INTERVAL_DEFAULT_MS / MSEC_PER_SEC +
-		   1);
+	  u32 end = beg + (rm->max_reass_n * rm->expire_walk_interval_ms / MSEC_PER_SEC + 1);
 	  if (end > vec_len (rt->pool))
 	    {
 	      end = vec_len (rt->pool);
