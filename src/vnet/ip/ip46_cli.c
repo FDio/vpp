@@ -8,6 +8,8 @@
 #include <vnet/ip/ip.h>
 #include <vnet/ip/reass/ip4_full_reass.h>
 #include <vnet/ip/reass/ip6_full_reass.h>
+#include <vnet/ip/reass/ip4_sv_reass.h>
+#include <vnet/ip/reass/ip6_sv_reass.h>
 
 /**
  * @file
@@ -235,6 +237,56 @@ VLIB_CLI_COMMAND (set_reassembly_command, static) = {
     .path = "set interface reassembly",
     .short_help = "set interface reassembly <interface-name> [on|off|ip4|ip6]",
     .function = set_reassembly_command_fn,
+};
+
+static clib_error_t *
+set_sv_reass_extended_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  u8 ip4_set = 0;
+  u8 ip6_set = 0;
+  u8 enable = 1;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return clib_error_return (0, "Missing parameters");
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "ip4"))
+	ip4_set = 1;
+      else if (unformat (line_input, "ip6"))
+	ip6_set = 1;
+      else if (unformat (line_input, "on"))
+	enable = 1;
+      else if (unformat (line_input, "off"))
+	enable = 0;
+      else
+	{
+	  unformat_free (line_input);
+	  return clib_error_return (0, "Unknown input `%U'", format_unformat_error, line_input);
+	}
+    }
+
+  unformat_free (line_input);
+
+  if (!ip4_set && !ip6_set)
+    {
+      ip4_set = 1;
+      ip6_set = 1;
+    }
+
+  if (ip4_set)
+    ip4_sv_reass_enable_disable_extended (enable);
+  if (ip6_set)
+    ip6_sv_reass_enable_disable_extended (enable);
+
+  return NULL;
+}
+
+VLIB_CLI_COMMAND (set_sv_reass_extended_command, static) = {
+  .path = "set ip reassembly extended",
+  .short_help = "set ip reassembly extended [ip4|ip6] [on|off]",
+  .function = set_sv_reass_extended_command_fn,
 };
 
 static clib_error_t *

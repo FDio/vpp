@@ -480,6 +480,8 @@ ip4_sv_reass_update (vlib_main_t *vm, vlib_node_runtime_t *node,
 	{
 	  reass->first_fragment_total_ip_header_length =
 	    ip4_header_bytes (ip0);
+	  if (~0 != reass->first_fragment_clone_bi)
+	    vlib_buffer_free_one (vm, reass->first_fragment_clone_bi);
 	  vlib_buffer_t *clone = vlib_buffer_copy_no_chain (
 	    vm, b0, &reass->first_fragment_clone_bi);
 	  if (!clone)

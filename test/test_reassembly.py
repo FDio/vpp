@@ -1002,6 +1002,68 @@ class TestIPv4SVReassembly(VppTestCase):
             ]
         )
 
+    def _get_buffers_used(self):
+        r = self.vapi.cli_return_response("show buffers")
+        self.assertTrue(r.retval == 0)
+        return int(r.reply.strip().split("\n")[-1].split()[-1])
+
+    def test_extended_clone_buffer_leak(self):
+        """extended SV reassembly: duplicate first fragment must not leak clone buffer"""
+
+        self.vapi.cli("set ip reassembly extended ip4 on")
+
+        self.vapi.ip_reassembly_set(
+            timeout_ms=100,
+            max_reassemblies=1000,
+            max_reassembly_length=1000,
+            type=VppEnum.vl_api_ip_reass_type_t.IP_REASS_TYPE_SHALLOW_VIRTUAL,
+            expire_walk_interval_ms=50,
+        )
+
+        bufs_before = self._get_buffers_used()
+
+        # send many reassemblies where the first fragment arrives twice,
+        # triggering a second clone - the old clone must be freed
+        num_flows = 50
+        fragments = []
+        for i in range(num_flows):
+            # first fragment (offset=0, MF=1) - triggers clone
+            frag1 = (
+                Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac)
+                / IP(
+                    id=5000 + i,
+                    flags="MF",
+                    frag=0,
+                    src=self.src_if.remote_ip4,
+                    dst=self.dst_if.remote_ip4,
+                )
+                / UDP(sport=1234, dport=5678)
+                / Raw(b"X" * 200)
+            )
+            # duplicate first fragment - should free old clone before new one
+            frag1_dup = frag1.copy()
+            fragments.extend([frag1, frag1_dup])
+
+        self.pg_enable_capture()
+        self.src_if.add_stream(fragments)
+        self.pg_start()
+        # in extended mode, need both first and last to forward, so these
+        # stay cached; don't expect captures
+        self.logger.debug(self.vapi.ppcli("show ip4-sv-reassembly details"))
+
+        # wait for timeout to expire all reassemblies (frees clone buffers)
+        self.virtual_sleep(0.25)
+
+        bufs_after = self._get_buffers_used()
+        self.assertGreaterEqual(
+            bufs_before,
+            bufs_after,
+            "Buffer leak detected: %d used before, %d after"
+            % (bufs_before, bufs_after),
+        )
+
+        self.vapi.cli("set ip reassembly extended ip4 off")
+
 
 class TestIPv4MWReassembly(VppTestCase):
     """IPv4 Reassembly (multiple workers)"""
@@ -2459,6 +2521,63 @@ class TestIPv6SVReassembly(VppTestCase):
         )
 
         self.send_and_assert_no_replies(self.pg0, [pkt], self.pg0)
+
+    def _get_buffers_used(self):
+        r = self.vapi.cli_return_response("show buffers")
+        self.assertTrue(r.retval == 0)
+        return int(r.reply.strip().split("\n")[-1].split()[-1])
+
+    def test_extended_clone_buffer_leak(self):
+        """extended SV reassembly: duplicate first fragment must not leak clone buffer"""
+
+        self.vapi.cli("set ip reassembly extended ip6 on")
+
+        self.vapi.ip_reassembly_set(
+            timeout_ms=100,
+            max_reassemblies=1000,
+            max_reassembly_length=1000,
+            type=VppEnum.vl_api_ip_reass_type_t.IP_REASS_TYPE_SHALLOW_VIRTUAL,
+            is_ip6=1,
+            expire_walk_interval_ms=50,
+        )
+
+        bufs_before = self._get_buffers_used()
+
+        # send many reassemblies where the first fragment arrives twice,
+        # triggering a second clone - the old clone must be freed
+        num_flows = 50
+        fragments = []
+        for i in range(num_flows):
+            # first fragment (offset=0, m=1) - triggers clone
+            frag1 = (
+                Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac)
+                / IPv6(src=self.src_if.remote_ip6, dst=self.dst_if.remote_ip6)
+                / IPv6ExtHdrFragment(id=5000 + i, nh=17, offset=0, m=1)
+                / Raw(b"\x04\xd2\x16\x2e\x00\xd0\x00\x00" + b"X" * 200)
+            )
+            # duplicate first fragment - should free old clone before new one
+            frag1_dup = frag1.copy()
+            fragments.extend([frag1, frag1_dup])
+
+        self.pg_enable_capture()
+        self.src_if.add_stream(fragments)
+        self.pg_start()
+        # in extended mode, need both first and last to forward, so these
+        # stay cached; don't expect captures
+        self.logger.debug(self.vapi.ppcli("show ip6-sv-reassembly details"))
+
+        # wait for timeout to expire all reassemblies (frees clone buffers)
+        self.virtual_sleep(0.25)
+
+        bufs_after = self._get_buffers_used()
+        self.assertGreaterEqual(
+            bufs_before,
+            bufs_after,
+            "Buffer leak detected: %d used before, %d after"
+            % (bufs_before, bufs_after),
+        )
+
+        self.vapi.cli("set ip reassembly extended ip6 off")
 
 
 class TestIPv4ReassemblyLocalNode(VppTestCase):
