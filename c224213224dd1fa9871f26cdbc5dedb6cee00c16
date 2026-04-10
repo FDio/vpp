@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9882245e_5396d38a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3310
+      },
+      "writtenOn": "2026-04-10T23:48:48Z",
+      "side": 1,
+      "message": "Hi, review this patch please.\n\naf_xdp_enter_netns doesn\u0027t closs file descriptors on error.\n\nerrors generated before exiting netns don\u0027t switch back netns.",
+      "revId": "c224213224dd1fa9871f26cdbc5dedb6cee00c16",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
