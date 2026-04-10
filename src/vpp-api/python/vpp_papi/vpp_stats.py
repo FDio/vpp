@@ -45,7 +45,7 @@ import os
 import socket
 import array
 import mmap
-from struct import Struct
+from struct import Struct, unpack_from
 import time
 import unittest
 import re
@@ -132,6 +132,9 @@ class VPPStats:
         self.size = 0
         self.last_epoch = 0
         self.statseg = 0
+        self._error_vec_layout = {}  # parent_path → [(offset, n_counters), ...]
+        self._error_symlinks = {}  # counter_name → (parent_path, col_idx)
+        self._err_groups = {}  # parent_path → ([names], [cols])
 
     def connect(self):
         """Connect to stats segment"""
@@ -212,6 +215,7 @@ class VPPStats:
                         directory_by_idx[i] = path
                     self.directory = directory
                     self.directory_by_idx = directory_by_idx
+                    self._build_error_index()
                     return
             except IOError:
                 if not blocking:
@@ -233,29 +237,117 @@ class VPPStats:
     def __iter__(self):
         return iter(self.directory.items())
 
-    def set_errors(self, blocking=True):
-        """Return dictionary of error counters > 0"""
-        if not self.connected:
-            self.connect()
-
-        errors = {k: v for k, v in self.directory.items() if k.startswith("/err/")}
-        result = {}
-        for k in errors:
-            try:
-                total = self[k].sum()
-                if total:
-                    result[k] = total
-            except KeyError:
-                pass
-        return result
-
     def set_errors_str(self, blocking=True):
         """Return all errors counters > 0 pretty printed"""
         error_string = ["ERRORS:"]
-        error_counters = self.set_errors(blocking)
+        error_counters = self.set_errors()
         for k in sorted(error_counters):
             error_string.append("{:<60}{:>10}".format(k, error_counters[k]))
         return "%s\n" % "\n".join(error_string)
+
+    def _build_error_index(self):
+        """Pre-compute error counter memory locations for numpy bulk reads.
+
+        All /err/<node>/<name> entries are symlinks into a single shared
+        counter vector (typically /node/errors).  This method records for
+        each symlink which parent vector and column it refers to, and for
+        each parent vector which (offset, n_counters) pair each thread owns.
+
+        Called automatically from refresh() whenever the epoch changes.
+        """
+        err_symlinks = {}
+        parent_paths = set()
+
+        for k, v in self.directory.items():
+            if k.startswith("/err/") and v.type == 6:
+                b = StatsEntry.SYMLINK_FMT2.pack(v.value)
+                idx1, idx2 = StatsEntry.SYMLINK_FMT1.unpack(b)
+                parent = self.directory_by_idx.get(idx1)
+                if parent is not None:
+                    err_symlinks[k] = (parent, idx2)
+                    parent_paths.add(parent)
+
+        vec_thread_layout = {}
+        for path in parent_paths:
+            entry = self.directory.get(path)
+            if entry is None or entry.type != 2:
+                continue
+            thread_info = []
+            for thread_ptr_tuple in StatsVector(self, entry.value, "P"):
+                ptr = thread_ptr_tuple[0]
+                if ptr:
+                    offset = ptr - self.base
+                    n = get_vec_len(self, offset)
+                    thread_info.append((offset, n))
+            vec_thread_layout[path] = thread_info
+
+        self._error_symlinks = err_symlinks
+        self._error_vec_layout = vec_thread_layout
+
+        # Pre-built per-parent groups so set_errors() can read all
+        # counters for a parent in one struct.unpack_from call and then
+        # iterate only the (name, col) pairs belonging to that parent.
+        # Avoids repeating the grouping work on every set_errors() call.
+        from collections import defaultdict
+
+        groups = defaultdict(lambda: ([], []))
+        for name, (parent, col) in err_symlinks.items():
+            groups[parent][0].append(name)
+            groups[parent][1].append(col)
+        self._err_groups = dict(groups)
+
+    def set_errors(self, previous=None):
+        """Return error counters that are non-zero, or changed since *previous*.
+
+        Faster than set_errors() at scale: a single lock window reads all
+        error data with one struct.unpack_from call per thread instead of a
+        separate lock acquisition and symlink resolution per counter.
+
+        Typical usage in a test::
+
+            baseline = stats.set_errors_fast()          # capture start state
+            # ... exercise the code under test ...
+            changed = stats.set_errors_fast(previous=baseline)  # only deltas
+
+        Args:
+            previous: dict returned by a prior call to set_errors_fast().
+                      When supplied, only counters whose value differs from
+                      the previous snapshot are returned (including counters
+                      that went from non-zero to zero).  When omitted (or
+                      None), only counters with a non-zero total are returned.
+
+        Returns:
+            dict of {counter_name: int}.
+        """
+        if not self.connected:
+            self.connect()
+        if self.last_epoch != self.epoch:
+            self.refresh()
+
+        result = {}
+        with self.lock:
+            for parent, (names, cols) in self._err_groups.items():
+                layout = self._error_vec_layout.get(parent)
+                if not layout:
+                    continue
+                n = min(t[1] for t in layout)
+                fmt = f"{n}Q"
+                # First thread seeds total; remaining threads accumulate.
+                total = list(unpack_from(fmt, self.statseg, layout[0][0]))
+                for offset, _ in layout[1:]:
+                    row = unpack_from(fmt, self.statseg, offset)
+                    total = [a + b for a, b in zip(total, row)]
+                for name, col in zip(names, cols):
+                    if col >= n:
+                        continue
+                    val = total[col]
+                    if previous is None:
+                        if val:
+                            result[name] = val
+                    else:
+                        if val != previous.get(name, 0):
+                            result[name] = val
+        return result
 
     def get_counter(self, name, blocking=True):
         """Alternative call to __getitem__"""
@@ -1000,6 +1092,232 @@ class StatsRingBuffer:
             f"StatsRingBuffer(entry_size={self.config['entry_size']}, "
             f"ring_size={self.config['ring_size']}, n_threads={self.config['n_threads']}{schema_info})"
         )
+
+
+class TestErrorsFast(unittest.TestCase):
+    """Unit tests for set_errors_fast().
+
+    Builds a synthetic in-memory statseg — no live VPP instance required.
+
+    Memory layout (base=0, so ptr == offset):
+
+        /node/errors  (type 2, simple counter)
+          thread_vec  →  [ptr_t0, ptr_t1]
+          ctr_t0      →  [100, 0, 50, 0, 75]   (5 error counters)
+          ctr_t1      →  [ 50, 0,  0, 0, 25]
+
+        /err/ethernet-input/no_error          → col 0  (sum 150)
+        /err/ethernet-input/bad_fcs           → col 1  (sum   0)
+        /err/ethernet-input/ip_checksum_error → col 2  (sum  50)
+        /err/ip4-input/unknown_protocol       → col 3  (sum   0)
+        /err/ip4-input/options                → col 4  (sum 100)
+    """
+
+    #: Name of the parent counter vector that VPP uses for all errors.
+    PARENT = "/node/errors"
+
+    #: Counter names and their column indices.
+    COUNTER_COLS = [
+        ("/err/ethernet-input/no_error", 0),
+        ("/err/ethernet-input/bad_fcs", 1),
+        ("/err/ethernet-input/ip_checksum_error", 2),
+        ("/err/ip4-input/unknown_protocol", 3),
+        ("/err/ip4-input/options", 4),
+    ]
+
+    def _alloc_vec(self, buf, pos, fmt, items):
+        """Write a VPP-style vector into *buf* at *pos*.
+
+        VPP vectors have an 8-byte header immediately before the data:
+          [pos+0..pos+3]  vec_len  (uint32)
+          [pos+4..pos+7]  pad      (uint32, zero)
+          [pos+8..]       data     (n * struct(fmt).size bytes)
+
+        Returns (next_free_pos, data_ptr) where data_ptr is the pointer
+        value that VPP would store (== offset when base==0).
+        """
+        s = Struct(fmt)
+        n = len(items)
+        Struct("I").pack_into(buf, pos, n)  # vec_len
+        data_pos = pos + 8
+        for i, item in enumerate(items):
+            if isinstance(item, (list, tuple)):
+                s.pack_into(buf, data_pos + i * s.size, *item)
+            else:
+                s.pack_into(buf, data_pos + i * s.size, item)
+        return data_pos + n * s.size, data_pos
+
+    def _make_symlink_entry(self, dir_idx, col):
+        """Return a StatsEntry(type=6) whose value encodes (dir_idx, col)."""
+        b = StatsEntry.SYMLINK_FMT1.pack(dir_idx, col)
+        return StatsEntry(6, StatsEntry.SYMLINK_FMT2.unpack(b)[0])
+
+    def setUp(self):
+        buf = bytearray(512)
+
+        # Write statseg header: version=2, base=0, epoch=1, in_progress=0
+        # shared_headerfmt = Struct("QPQQPP") → 48 bytes on 64-bit
+        VPPStats.shared_headerfmt.pack_into(buf, 0, 2, 0, 1, 0, 0, 0)
+
+        pos = 64  # first vector starts here (leaves room for vec headers)
+
+        # Thread 0 counter array: [100, 0, 50, 0, 75]
+        pos, self.ctr_t0 = self._alloc_vec(buf, pos, "Q", [100, 0, 50, 0, 75])
+        # Thread 1 counter array: [50, 0, 0, 0, 25]
+        pos, self.ctr_t1 = self._alloc_vec(buf, pos, "Q", [50, 0, 0, 0, 25])
+        # Thread pointer vector: [ptr_t0, ptr_t1]
+        pos, thread_vec = self._alloc_vec(buf, pos, "Q", [self.ctr_t0, self.ctr_t1])
+
+        self.buf = buf
+
+        # Build VPPStats without connecting to a real socket.
+        stat = VPPStats.__new__(VPPStats)
+        stat.socketname = ""
+        stat.connected = True
+        stat.statseg = buf
+        stat.size = len(buf)
+        stat.lock = StatsLock(stat)
+        stat.last_epoch = 1
+        stat._error_vec_layout = {}
+        stat._error_symlinks = {}
+        stat._err_groups = {}
+
+        # Directory: /node/errors at index 0, symlinks at indices 1-5.
+        entry_node_errors = StatsEntry(2, thread_vec)
+        directory = {self.PARENT: entry_node_errors}
+        for name, col in self.COUNTER_COLS:
+            # All symlinks point at directory index 0 (/node/errors)
+            directory[name] = self._make_symlink_entry(0, col)
+        directory_by_idx = {i: k for i, k in enumerate(directory.keys())}
+        stat.directory = directory
+        stat.directory_by_idx = directory_by_idx
+        stat._build_error_index()
+
+        self.stat = stat
+
+    # ------------------------------------------------------------------
+    # Index structure tests
+    # ------------------------------------------------------------------
+
+    def test_error_index_symlinks_populated(self):
+        """All /err/ symlinks appear in _error_symlinks."""
+        for name, _ in self.COUNTER_COLS:
+            self.assertIn(name, self.stat._error_symlinks)
+
+    def test_error_index_parent_excluded(self):
+        """/node/errors is NOT listed as a symlink."""
+        self.assertNotIn(self.PARENT, self.stat._error_symlinks)
+
+    def test_error_index_symlink_col_mapping(self):
+        """Each symlink maps to the correct (parent, col) pair."""
+        for name, expected_col in self.COUNTER_COLS:
+            parent, col = self.stat._error_symlinks[name]
+            self.assertEqual(parent, self.PARENT)
+            self.assertEqual(col, expected_col)
+
+    def test_error_index_thread_layout(self):
+        """Thread layout records correct (offset, n) for both threads."""
+        layout = self.stat._error_vec_layout[self.PARENT]
+        self.assertEqual(len(layout), 2)
+        for offset, n in layout:
+            self.assertEqual(n, 5)
+        offsets = [off for off, _ in layout]
+        self.assertIn(self.ctr_t0, offsets)
+        self.assertIn(self.ctr_t1, offsets)
+
+    # ------------------------------------------------------------------
+    # set_errors_fast — non-zero filter
+    # ------------------------------------------------------------------
+
+    def test_nonzero_counters_returned(self):
+        """set_errors_fast() returns all counters with sum > 0."""
+        result = self.stat.set_errors_fast()
+        self.assertIn("/err/ethernet-input/no_error", result)
+        self.assertIn("/err/ethernet-input/ip_checksum_error", result)
+        self.assertIn("/err/ip4-input/options", result)
+
+    def test_zero_counters_excluded(self):
+        """set_errors_fast() excludes counters whose sum is 0."""
+        result = self.stat.set_errors_fast()
+        self.assertNotIn("/err/ethernet-input/bad_fcs", result)
+        self.assertNotIn("/err/ip4-input/unknown_protocol", result)
+
+    def test_multithreaded_sum(self):
+        """Values are summed across all threads."""
+        result = self.stat.set_errors_fast()
+        # Thread 0: 100, Thread 1: 50  → 150
+        self.assertEqual(result["/err/ethernet-input/no_error"], 150)
+        # Thread 0: 50,  Thread 1: 0   → 50
+        self.assertEqual(result["/err/ethernet-input/ip_checksum_error"], 50)
+        # Thread 0: 75,  Thread 1: 25  → 100
+        self.assertEqual(result["/err/ip4-input/options"], 100)
+
+    def test_values_are_plain_ints(self):
+        """Returned values are plain Python ints, not numpy scalars."""
+        result = self.stat.set_errors_fast()
+        for v in result.values():
+            self.assertIsInstance(v, int)
+
+    # ------------------------------------------------------------------
+    # set_errors_fast — changed-since-previous filter
+    # ------------------------------------------------------------------
+
+    def test_no_change_returns_empty(self):
+        """When nothing changed, set_errors_fast(previous=…) returns {}."""
+        baseline = self.stat.set_errors_fast()
+        result = self.stat.set_errors_fast(previous=baseline)
+        self.assertEqual(result, {})
+
+    def test_detects_incremented_counter(self):
+        """A counter that grew since the baseline appears in the result."""
+        import struct
+
+        baseline = self.stat.set_errors_fast()
+        # Bump no_error on thread 0: 100 → 200
+        struct.pack_into("Q", self.buf, self.ctr_t0, 200)
+        result = self.stat.set_errors_fast(previous=baseline)
+        self.assertIn("/err/ethernet-input/no_error", result)
+        self.assertEqual(result["/err/ethernet-input/no_error"], 250)  # 200+50
+
+    def test_unchanged_counters_excluded_from_diff(self):
+        """Unchanged counters do not appear when a baseline is given."""
+        import struct
+
+        baseline = self.stat.set_errors_fast()
+        struct.pack_into("Q", self.buf, self.ctr_t0, 200)  # only change this
+        result = self.stat.set_errors_fast(previous=baseline)
+        self.assertNotIn("/err/ethernet-input/ip_checksum_error", result)
+        self.assertNotIn("/err/ip4-input/options", result)
+
+    def test_counter_drop_to_zero_detected(self):
+        """A counter that falls to zero since the baseline is detected."""
+        import struct
+
+        baseline = self.stat.set_errors_fast()
+        # Zero out no_error on both threads
+        struct.pack_into("Q", self.buf, self.ctr_t0, 0)
+        struct.pack_into("Q", self.buf, self.ctr_t1, 0)
+        result = self.stat.set_errors_fast(previous=baseline)
+        self.assertIn("/err/ethernet-input/no_error", result)
+        self.assertEqual(result["/err/ethernet-input/no_error"], 0)
+
+    def test_absent_key_in_previous_treated_as_zero(self):
+        """A counter missing from *previous* is treated as previously 0."""
+        # baseline omits /err/ip4-input/options (which is 100)
+        baseline = {"/err/ethernet-input/no_error": 150}
+        result = self.stat.set_errors_fast(previous=baseline)
+        # options was "0" in baseline, now 100 → changed
+        self.assertIn("/err/ip4-input/options", result)
+
+    # ------------------------------------------------------------------
+    # Consistency with set_errors()
+    # ------------------------------------------------------------------
+
+    def test_consistent_with_set_errors(self):
+        """set_errors_fast() and set_errors() return identical results."""
+        fast = self.stat.set_errors_fast()
+        slow = self.stat.set_errors()
+        self.assertEqual(fast, slow)
 
 
 class TestStats(unittest.TestCase):
