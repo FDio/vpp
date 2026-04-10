@@ -703,7 +703,7 @@ ip6_full_reass_finalize (vlib_main_t * vm, vlib_node_runtime_t * node,
       vlib_buffer_t *tmp = vlib_get_buffer (vm, tmp_bi);
       vnet_buffer_opaque_t *vnb = vnet_buffer (tmp);
       if (vnb->ip.reass.range_first < vnb->ip.reass.fragment_first ||
-	  vnb->ip.reass.range_last <= vnb->ip.reass.fragment_first)
+	  vnb->ip.reass.range_last < vnb->ip.reass.fragment_first)
 	{
 	  rv = IP6_FULL_REASS_RC_INTERNAL_ERROR;
 	  goto free_buffers_and_return;
@@ -1053,10 +1053,10 @@ ip6_full_reass_update (vlib_main_t *vm, vlib_node_runtime_t *node,
 	}
       break;
     }
-  ++reass->fragments_n;
 check_if_done_maybe:
   if (consumed)
     {
+      ++reass->fragments_n;
       if (PREDICT_FALSE (fb->flags & VLIB_BUFFER_IS_TRACED))
 	{
 	  ip6_full_reass_add_trace (vm, node, reass, *bi0, frag_hdr, RANGE_NEW,

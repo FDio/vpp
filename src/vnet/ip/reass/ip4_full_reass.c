@@ -627,7 +627,7 @@ ip4_full_reass_finalize (vlib_main_t * vm, vlib_node_runtime_t * node,
       ip4_header_t *ip = vlib_buffer_get_current (tmp);
       vnet_buffer_opaque_t *vnb = vnet_buffer (tmp);
       if (vnb->ip.reass.range_first < vnb->ip.reass.fragment_first ||
-	  vnb->ip.reass.range_last <= vnb->ip.reass.fragment_first)
+	  vnb->ip.reass.range_last < vnb->ip.reass.fragment_first)
 	{
 	  rv = IP4_REASS_RC_INTERNAL_ERROR;
 	  goto free_buffers_and_return;
@@ -858,7 +858,7 @@ ip4_full_reass_insert_range_in_chain (vlib_main_t * vm,
     }
   vnet_buffer_opaque_t *vnb = vnet_buffer (new_next_b);
   if (vnb->ip.reass.range_first < vnb->ip.reass.fragment_first ||
-      vnb->ip.reass.range_last <= vnb->ip.reass.fragment_first)
+      vnb->ip.reass.range_last < vnb->ip.reass.fragment_first)
     {
       return IP4_REASS_RC_INTERNAL_ERROR;
     }
@@ -890,7 +890,7 @@ ip4_full_reass_remove_range_from_chain (vlib_main_t * vm,
     }
   vnet_buffer_opaque_t *vnb = vnet_buffer (discard_b);
   if (vnb->ip.reass.range_first < vnb->ip.reass.fragment_first ||
-      vnb->ip.reass.range_last <= vnb->ip.reass.fragment_first)
+      vnb->ip.reass.range_last < vnb->ip.reass.fragment_first)
     {
       return IP4_REASS_RC_INTERNAL_ERROR;
     }
@@ -1122,9 +1122,9 @@ ip4_full_reass_update (vlib_main_t *vm, vlib_node_runtime_t *node,
 	}
       break;
     }
-  ++reass->fragments_n;
   if (consumed)
     {
+      ++reass->fragments_n;
       if (PREDICT_FALSE (fb->flags & VLIB_BUFFER_IS_TRACED))
 	{
 	  ip4_full_reass_add_trace (vm, node, reass, *bi0, RANGE_NEW, 0, ~0);
