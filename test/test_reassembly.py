@@ -589,6 +589,73 @@ Ethernet-Payload.IPv4-Packet.IPv4-Header.Fragment-Offset; Test-case: 5737"""
         self.verify_capture(packets, dropped_packet_indexes)
         self.src_if.assert_nothing_captured()
 
+    def test_duplicate_fragment_dos(self):
+        """duplicate fragments should not inflate fragment count"""
+
+        error_cnt_str = "/err/ip4-full-reassembly-feature/reass_fragment_chain_too_long"
+        error_cnt = self.statistics.get_err_counter(error_cnt_str)
+
+        self.vapi.ip_reassembly_set(
+            timeout_ms=1000000,
+            max_reassemblies=1000,
+            max_reassembly_length=3,
+            expire_walk_interval_ms=10000,
+        )
+
+        # create a packet that fragments into exactly 3 pieces
+        p = (
+            Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac)
+            / IP(id=2000, src=self.src_if.remote_ip4, dst=self.dst_if.remote_ip4)
+            / UDP(sport=1234, dport=5678)
+            / Raw(b"X" * 1000)
+        )
+        frags = fragment_rfc791(p, 400)
+        self.assertEqual(len(frags), 3)
+
+        # send first fragment, then 10 duplicates, then remaining fragments
+        # with correct behavior: duplicates don't inflate fragments_n,
+        # reassembly completes successfully
+        duplicates = frags[0:1] * 10
+        packets = [frags[0]] + duplicates + frags[1:]
+
+        self.pg_enable_capture()
+        self.src_if.add_stream(packets)
+        self.pg_start()
+
+        self.dst_if.get_capture(1)
+        self.assert_error_counter_equal(error_cnt_str, error_cnt)
+
+    def test_one_byte_last_fragment(self):
+        """reassembly with 1-byte last fragment"""
+
+        error_cnt_str = "/err/ip4-full-reassembly-feature/reass_internal_error"
+        error_cnt = self.statistics.get_err_counter(error_cnt_str)
+
+        # craft a packet whose last fragment has exactly 1 byte of data
+        # use 169 bytes of raw payload so fragment_rfc791 at fragsize=200
+        # produces: frag1=[0,175] (176 bytes), frag2=[176,176] (1 byte)
+        # frag2 offset = 176/8 = 22, avoiding ip4-input offset==1 check
+        p = (
+            Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac)
+            / IP(
+                id=3000,
+                src=self.src_if.remote_ip4,
+                dst=self.dst_if.remote_ip4,
+            )
+            / UDP(sport=1234, dport=5678)
+            / Raw(b"X" * 169)
+        )
+        frags = fragment_rfc791(p, 200)
+        # verify last fragment has 1 byte of data
+        self.assertEqual(len(frags), 2)
+
+        self.pg_enable_capture()
+        self.src_if.add_stream(frags)
+        self.pg_start()
+
+        self.dst_if.get_capture(1)
+        self.assert_error_counter_equal(error_cnt_str, error_cnt)
+
     @unittest.skipIf(
         "ping" in config.excluded_plugins, "Exclude tests requiring Ping plugin"
     )
@@ -1588,6 +1655,71 @@ class TestIPv6Reassembly(VppTestCase):
         self.verify_capture(packets, dropped_packet_indexes)
         self.src_if.assert_nothing_captured()
 
+    def test_duplicate_fragment_dos(self):
+        """duplicate fragments should not inflate fragment count"""
+
+        error_cnt_str = "/err/ip6-full-reassembly-feature/reass_fragment_chain_too_long"
+        error_cnt = self.statistics.get_err_counter(error_cnt_str)
+
+        self.vapi.ip_reassembly_set(
+            timeout_ms=1000000,
+            max_reassemblies=1000,
+            max_reassembly_length=3,
+            expire_walk_interval_ms=10000,
+            is_ip6=1,
+        )
+
+        # create a packet that fragments into exactly 3 pieces
+        p = (
+            Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac)
+            / IPv6(src=self.src_if.remote_ip6, dst=self.dst_if.remote_ip6)
+            / UDP(sport=1234, dport=5678)
+            / Raw(b"X" * 1000)
+        )
+        frags = fragment_rfc8200(p, 1, 400)
+        self.assertEqual(len(frags), 3)
+
+        # send first fragment, then 10 duplicates, then remaining fragments
+        # with correct behavior: duplicates don't inflate fragments_n,
+        # reassembly completes successfully
+        duplicates = frags[0:1] * 10
+        packets = [frags[0]] + duplicates + frags[1:]
+
+        self.pg_enable_capture()
+        self.src_if.add_stream(packets)
+        self.pg_start()
+
+        self.dst_if.get_capture(1)
+        self.assert_error_counter_equal(error_cnt_str, error_cnt)
+
+    def test_one_byte_last_fragment(self):
+        """reassembly with 1-byte last fragment"""
+
+        error_cnt_str = "/err/ip6-full-reassembly-feature/reass_internal_error"
+        error_cnt = self.statistics.get_err_counter(error_cnt_str)
+
+        # fragment 1: offset=0, m=1, 8 bytes of UDP data
+        # fragment 2: offset=1 (=8 bytes), m=0, 1 byte of data
+        frag1 = (
+            Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac)
+            / IPv6(src=self.src_if.remote_ip6, dst=self.dst_if.remote_ip6)
+            / IPv6ExtHdrFragment(id=3000, nh=17, offset=0, m=1)
+            / Raw(b"\x04\xd2\x16\x2e\x00\x09\x00\x00")
+        )
+        frag2 = (
+            Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac)
+            / IPv6(src=self.src_if.remote_ip6, dst=self.dst_if.remote_ip6)
+            / IPv6ExtHdrFragment(id=3000, nh=17, offset=1, m=0)
+            / Raw(b"X")
+        )
+
+        self.pg_enable_capture()
+        self.src_if.add_stream([frag1, frag2])
+        self.pg_start()
+
+        self.dst_if.get_capture(1)
+        self.assert_error_counter_equal(error_cnt_str, error_cnt)
+
     def test_missing_upper(self):
         """missing upper layer"""
         optdata = "\x00" * 100
@@ -2205,7 +2337,7 @@ class TestIPv6SVReassembly(VppTestCase):
         self.pg_enable_capture()
         self.src_if.add_stream(fragments[0:2])
         self.pg_start()
-        self.logger.debug(self.vapi.ppcli("show ip4-sv-reassembly details"))
+        self.logger.debug(self.vapi.ppcli("show ip6-sv-reassembly details"))
         self.logger.debug(self.vapi.ppcli("show buffers"))
         self.logger.debug(self.vapi.ppcli("show trace"))
         c = self.dst_if.get_capture(2)
