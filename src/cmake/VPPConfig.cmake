@@ -40,6 +40,8 @@ set(VPP_BINARY_DIR ${CMAKE_BINARY_DIR}/CMakeFiles)
 
 include(${CMAKE_CURRENT_LIST_DIR}/cpu.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/api.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/crypto_engines.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/drivers.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/library.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/plugin.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/pack.cmake)

@@ -15,6 +15,8 @@ install(
   FILES
   api.cmake
   cpu.cmake
+  crypto_engines.cmake
+  drivers.cmake
   library.cmake
   pack.cmake
   plugin.cmake
