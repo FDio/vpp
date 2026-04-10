@@ -343,6 +343,9 @@ dpdk_device_configure_async_flow_offload (dpdk_device_t *xd)
       xd->async_flow_offload_queue_size = min_pow2 (flow_queue_info.max_size);
     }
 
+  port_attr.nb_counters = flow_port_info.max_nb_counters;
+  port_attr.nb_aging_objects = flow_port_info.max_nb_aging_objects;
+
   queue_attr.size = xd->async_flow_offload_queue_size;
   queue_attr_list = clib_mem_alloc (sizeof (*queue_attr_list) * xd->async_flow_offload_n_queues);
   for (j = 0; j < xd->async_flow_offload_n_queues; j++)
