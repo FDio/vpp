@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "12144960_99b89ad0",
+        "filename": "test/test_sfdp_multiworker.py",
+        "patchSetId": 9
+      },
+      "lineNbr": 217,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-04-10T05:38:27Z",
+      "side": 1,
+      "message": "Please avoid using bare Exception here. The way it is written, if say there is a typo, it would fail and be declared victory, as the base Exception catches everything.\n\nIt\u0027s better to either catch a specific exception (like UnexpectedApiReturnValueError) or even better to use exception-free handling using:\n\n            with self.vapi.assert_negative_api_retval():\n                self.vapi.\u003capi call expected to fail\u003e\n\nconstruct.",
+      "revId": "6e28a7941a78682d982d5d33958b2ece268d5380",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a29147a7_0e011031",
+        "filename": "test/test_sfdp_multiworker.py",
+        "patchSetId": 9
+      },
+      "lineNbr": 326,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-04-10T05:38:27Z",
+      "side": 1,
+      "message": "In this case it\u0027s fine, since it\u0027s used for cleanup only and the pass/fail logic doesn\u0027t depend on it - and you don\u0027t swallow the exception, but raise it so that things like typos in names do show up.",
+      "revId": "6e28a7941a78682d982d5d33958b2ece268d5380",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
