@@ -497,8 +497,7 @@ session_tree_insert_session (session_tree_t *st, session_t *s)
   session_handle_t parent_sh = SESSION_INVALID_HANDLE;
   u32 parent_index;
 
-  if (s->session_state != SESSION_STATE_LISTENING &&
-      session_transport_attribute (s, 1 /* is_get */, &attr) == 0)
+  if (!session_transport_attribute (s, 1 /* is_get */, &attr))
     parent_sh = attr.next_transport;
 
   parent_index = session_index_from_handle (parent_sh);
@@ -542,7 +541,7 @@ session_cli_show_session_tree (vlib_main_t *vm, u8 force_print)
   u32 thread_index, *node_index;
   session_tree_t _st = {}, *st = &_st;
 
-  for (thread_index = 1; thread_index < vec_len (smm->wrk); thread_index++)
+  for (thread_index = 0; thread_index < vec_len (smm->wrk); thread_index++)
     {
       wrk = session_main_get_worker (thread_index);
 
@@ -562,7 +561,7 @@ session_cli_show_session_tree (vlib_main_t *vm, u8 force_print)
       pool_foreach (s, wrk->sessions)
 	{
 	  if (s->session_state >= SESSION_STATE_TRANSPORT_DELETED ||
-	      s->session_state < SESSION_STATE_ACCEPTING)
+	      s->session_state <= SESSION_STATE_CREATED)
 	    continue;
 	  session_tree_insert_session (st, s);
 	}
