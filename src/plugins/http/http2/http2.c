@@ -97,11 +97,10 @@ http2_conn_init (http_ctx_t *hc, u8 is_client)
   hc->old_tx_streams = (clib_llist_index_t) (old_head_index);
   hc->sched_list.next = CLIB_LLIST_INVALID_INDEX;
   hc->sched_list.prev = CLIB_LLIST_INVALID_INDEX;
-  cnt = clib_atomic_fetch_add_relax (&hm->n_sessions, 1);
+  cnt = wrk->h2_n_sessions++;
   /* (re)start stream tx scheduler if this is first connection */
-  /* TODO: update session infra to do this on per thread basis */
   if (cnt == 0)
-    session_register_update_time_fn (http2_update_time_callback, 1);
+    session_register_update_time_fn_w_thread (http2_update_time_callback, 1, thread_index);
   if (is_client)
     {
       http2_send_client_preface (hc);
@@ -117,7 +116,7 @@ http2_conn_init (http_ctx_t *hc, u8 is_client)
 static inline void
 http2_conn_destroy (http_ctx_t *hc)
 {
-  http_main_t *hm = &http_main;
+  http_worker_t *wrk = http_worker_get (hc->c_thread_index);
   u32 cnt;
 
   ASSERT (hc->hc_parent_req_index == SESSION_INVALID_INDEX);
@@ -130,12 +129,12 @@ http2_conn_destroy (http_ctx_t *hc)
   vec_free (hc->pending_rst_stream);
   if (hc->flags & HTTP_CONN_F_HAS_REQUEST)
     hpack_dynamic_table_free (&hc->decoder_dynamic_table);
-  cnt = clib_atomic_fetch_sub_relax (&hm->n_sessions, 1);
+  cnt = wrk->h2_n_sessions--;
   ASSERT (cnt > 0);
   /* stop stream tx scheduler if this was last active connection so we are not
    * running empty */
   if (cnt == 1)
-    session_register_update_time_fn (http2_update_time_callback, 0);
+    session_register_update_time_fn_w_thread (http2_update_time_callback, 0, hc->c_thread_index);
 }
 
 static inline http_ctx_t *

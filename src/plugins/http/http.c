@@ -1088,6 +1088,7 @@ http_transport_enable (vlib_main_t *vm, u8 is_en)
   vec_foreach (wrk, hm->wrk)
     {
       clib_memset (&wrk->stats, 0, sizeof (wrk->stats));
+      wrk->h2_n_sessions = 0;
       ti = wrk - hm->wrk;
       head_index = http_ctx_alloc_w_thread (ti);
       head = http_ctx_get_w_thread (head_index, ti);

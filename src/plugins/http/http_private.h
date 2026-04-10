@@ -426,6 +426,7 @@ typedef struct http_worker_
   http_ctx_t *ctx_pool;
   u8 *header_list; /* buffer for headers decompression */
   clib_llist_index_t sched_head;
+  u32 h2_n_sessions;
   http_wrk_stats_t stats;
 } http_worker_t;
 
@@ -457,7 +458,6 @@ typedef struct http_main_
 
   /* http/2 */
   http_conn_settings_t h2_settings;
-  u32 n_sessions;
   /* http/3 */
   http_conn_settings_t h3_settings;
 } http_main_t;
