@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "890298ab_8654f5de",
+        "filename": "test/test_sfdp_multiworker.py",
+        "patchSetId": 9
+      },
+      "lineNbr": 217,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-04-10T06:19:04Z",
+      "side": 1,
+      "message": "Replaced bare `except Exception:` with `assert_negative_api_retval()` as recommended.",
+      "parentUuid": "12144960_99b89ad0",
+      "revId": "6e28a7941a78682d982d5d33958b2ece268d5380",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "a29147a7_0e011031",
@@ -31,6 +49,24 @@
       "writtenOn": "2026-04-10T05:38:27Z",
       "side": 1,
       "message": "In this case it\u0027s fine, since it\u0027s used for cleanup only and the pass/fail logic doesn\u0027t depend on it - and you don\u0027t swallow the exception, but raise it so that things like typos in names do show up.",
+      "revId": "6e28a7941a78682d982d5d33958b2ece268d5380",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "939cab07_9e0ab7f8",
+        "filename": "test/test_sfdp_multiworker.py",
+        "patchSetId": 9
+      },
+      "lineNbr": 326,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-04-10T06:19:04Z",
+      "side": 1,
+      "message": "ack",
+      "parentUuid": "a29147a7_0e011031",
       "revId": "6e28a7941a78682d982d5d33958b2ece268d5380",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
