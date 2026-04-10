@@ -1200,7 +1200,8 @@ qpack_encode_content_len (u8 *dst, u64 content_len)
 static u8 *
 qpack_encode_method (u8 *dst, http_req_method_t method)
 {
-  u8 *a;
+  u8 *a, *b;
+  u32 orig_len, actual_size;
 
   switch (method)
     {
@@ -1216,6 +1217,16 @@ qpack_encode_method (u8 *dst, http_req_method_t method)
     case HTTP_REQ_PUT:
       encode_static_entry (21);
       break;
+    case HTTP_REQ_CONNECT_UDP:
+      orig_len = vec_len (dst);
+      vec_add2 (dst, a, 6 + 2 + HPACK_ENCODED_INT_MAX_LEN);
+      *a = 0x50;
+      b = hpack_encode_int (a, 15, 4);
+      b = qpack_encode_string (b, (const u8 *) http_token_lit ("CONNECT-UDP"), 8);
+      actual_size = b - a;
+      vec_set_len (dst, orig_len + actual_size);
+      break;
+      break;
     default:
       ASSERT (0);
       break;
@@ -1226,7 +1237,8 @@ qpack_encode_method (u8 *dst, http_req_method_t method)
 static u8 *
 qpack_encode_scheme (u8 *dst, http_url_scheme_t scheme)
 {
-  u8 *a;
+  u8 *a, *b;
+  u32 orig_len, actual_size;
 
   switch (scheme)
     {
@@ -1235,6 +1247,15 @@ qpack_encode_scheme (u8 *dst, http_url_scheme_t scheme)
       break;
     case HTTP_URL_SCHEME_HTTPS:
       encode_static_entry (23);
+      break;
+    case HTTP_URL_SCHEME_MASQUE:
+      orig_len = vec_len (dst);
+      vec_add2 (dst, a, 6 + 2 + HPACK_ENCODED_INT_MAX_LEN);
+      *a = 0x50;
+      b = hpack_encode_int (a, 22, 4);
+      b = qpack_encode_string (b, (const u8 *) http_token_lit ("masque"), 8);
+      actual_size = b - a;
+      vec_set_len (dst, orig_len + actual_size);
       break;
     default:
       ASSERT (0);

@@ -36,8 +36,9 @@ typedef enum http_udp_tunnel_mode_ : u8
   HTTP_UDP_TUNNEL_DGRAM,   /**< convert capsule to datagram (zc proxy) */
 } http_udp_tunnel_mode_t;
 
-#define foreach_http_endpt_cfg_flags                                          \
-  _ (HTTP2_PRIOR_KNOWLEDGE) /**< HTTP/2 connections over cleartext TCP */
+#define foreach_http_endpt_cfg_flags                                                               \
+  _ (HTTP2_PRIOR_KNOWLEDGE)	 /**< HTTP/2 connections over cleartext TCP */                     \
+  _ (ENABLE_CONNECT_UDP_DRAFT03) /**< enable masque-connect-udp-draft-03 */
 
 typedef enum http_endpt_cfg_flags_bit_
 {
@@ -46,18 +47,18 @@ typedef enum http_endpt_cfg_flags_bit_
 #undef _
 } http_endpt_cfg_flags_bit_t;
 
-typedef enum http_endpt_cfg_flags_
+typedef enum http_endpt_cfg_flags_ : u8
 {
 #define _(sym) HTTP_ENDPT_CFG_F_##sym = 1 << HTTP_ENDPT_CFG_F_BIT_##sym,
   foreach_http_endpt_cfg_flags
 #undef _
-} __clib_packed http_endpt_cfg_flags_t;
+} http_endpt_cfg_flags_t;
 
 typedef struct transport_endpt_cfg_http
 {
   u32 timeout; /**< HTTP session timeout in seconds */
   http_udp_tunnel_mode_t udp_tunnel_mode; /**< connect-udp mode */
-  u8 flags;
+  http_endpt_cfg_flags_t flags;
 } transport_endpt_cfg_http_t;
 
 typedef struct
@@ -68,11 +69,12 @@ typedef struct
 
 #define http_token_lit(s) (s), sizeof (s) - 1
 
-#define foreach_http_method                                                   \
-  _ (GET, "GET")                                                              \
-  _ (POST, "POST")                                                            \
-  _ (PUT, "PUT")                                                              \
-  _ (CONNECT, "CONNECT")                                                      \
+#define foreach_http_method                                                                        \
+  _ (GET, "GET")                                                                                   \
+  _ (POST, "POST")                                                                                 \
+  _ (PUT, "PUT")                                                                                   \
+  _ (CONNECT, "CONNECT")                                                                           \
+  _ (CONNECT_UDP, "CONNECT-UDP")                                                                   \
   _ (UNKNOWN, "UNKNOWN") /* for internal use */
 
 typedef enum http_req_method_ : u8
@@ -411,6 +413,7 @@ typedef enum http_url_scheme_ : u8
 {
   HTTP_URL_SCHEME_HTTP,
   HTTP_URL_SCHEME_HTTPS,
+  HTTP_URL_SCHEME_MASQUE,
   HTTP_URL_SCHEME_UNKNOWN, /* for internal use */
 } http_url_scheme_t;
 
@@ -1778,6 +1781,7 @@ _http_parse_capsule (u8 *data, u64 len, u64 *type, u8 *value_offset, u64 *value_
  *                       should be skipped).
  * @param payload_len    Length of the UDP proxying payload (or number of bytes
  *                       to skip).
+ * @param is_draft03     Flag for masque-draft03 support (no context ID).
  *
  * @return @c HTTP_CAPSULE_NO_ERROR if capsule contains UDP payload
  * @return @c HTTP_CAPSULE_SKIP if capsule should be skipped
@@ -1785,7 +1789,8 @@ _http_parse_capsule (u8 *data, u64 len, u64 *type, u8 *value_offset, u64 *value_
  * @return @c HTTP_CAPSULE_INCOMPLETE if capsule header is incomplete (some bytes are missing)
  */
 always_inline http_capsule_error_t
-http_decap_udp_payload_datagram (u8 *data, u64 len, u8 *payload_offset, u64 *payload_len)
+http_decap_udp_payload_datagram (u8 *data, u64 len, u8 *payload_offset, u64 *payload_len,
+				 u8 is_draft03)
 {
   int rv;
   u8 *p = data;
@@ -1805,27 +1810,32 @@ http_decap_udp_payload_datagram (u8 *data, u64 len, u8 *payload_offset, u64 *pay
     }
 
   p += value_offset;
-  if (p == end)
-    {
-      clib_warning ("context ID missing");
-      return HTTP_CAPSULE_INCOMPLETE;
-    }
 
-  /* context ID field should be zero (RFC9298 section 4) */
-  context_id = http_decode_varint (&p, end);
-  if (context_id != 0)
+  if (!is_draft03)
     {
-      *payload_len = value_len + value_offset;
-      return HTTP_CAPSULE_SKIP;
+      if (p == end)
+	{
+	  HTTP_DBG (1, "context ID missing");
+	  return HTTP_CAPSULE_INCOMPLETE;
+	}
+
+      /* context ID field should be zero (RFC9298 section 4) */
+      context_id = http_decode_varint (&p, end);
+      if (context_id != 0)
+	{
+	  *payload_len = value_len + value_offset;
+	  return HTTP_CAPSULE_SKIP;
+	}
+      value_len--;
     }
 
   *payload_offset = p - data;
-  *payload_len = value_len - 1;
+  *payload_len = value_len;
 
   /* payload longer than 65527 is considered as error (RFC9298 section 5) */
   if (*payload_len > HTTP_UDP_PAYLOAD_MAX_LEN)
     {
-      clib_warning ("UDP payload length too long");
+      HTTP_DBG (1, "UDP payload length too long");
       return HTTP_CAPSULE_INVALID;
     }
 
@@ -1837,6 +1847,7 @@ http_decap_udp_payload_datagram (u8 *data, u64 len, u8 *payload_offset, u64 *pay
  *
  * @param buf         Capsule buffer under construction.
  * @param payload_len Length of the UDP proxying payload.
+ * @param is_draft03  Flag for masque-draft03 support (no context ID).
  *
  * @return Pointer to the UDP payload in capsule buffer.
  *
@@ -1844,16 +1855,17 @@ http_decap_udp_payload_datagram (u8 *data, u64 len, u8 *payload_offset, u64 *pay
  * bytes to be allocated.
  */
 always_inline u8 *
-http_encap_udp_payload_datagram (u8 *buf, u64 payload_len)
+http_encap_udp_payload_datagram (u8 *buf, u64 payload_len, u8 is_draft03)
 {
   /* capsule type */
   *buf++ = HTTP_CAPSULE_TYPE_DATAGRAM;
 
   /* capsule length */
-  buf = http_encode_varint (buf, payload_len + 1);
+  buf = http_encode_varint (buf, is_draft03 ? payload_len : payload_len + 1);
 
   /* context ID */
-  *buf++ = 0;
+  if (!is_draft03)
+    *buf++ = 0;
 
   return buf;
 }
