@@ -72,6 +72,8 @@ typedef struct
   u16 *pending_tx_nexts;
 } session_dma_transfer;
 
+typedef void (*session_update_time_fn) (f64 time_now, u8 thread_index);
+
 typedef struct session_worker_
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
@@ -90,6 +92,9 @@ typedef struct session_worker_
 
   /** Convenience pointer to this worker's vlib_main */
   vlib_main_t *vm;
+
+  /** Per-worker vector of transport update time functions */
+  session_update_time_fn *update_time_fns;
 
   /** Per-proto vector of session handles to enqueue */
   session_handle_t **session_to_enqueue;
@@ -171,7 +176,6 @@ extern session_fifo_rx_fn session_tx_fifo_dequeue_internal;
 
 u8 session_node_lookup_fifo_event (svm_fifo_t * f, session_event_t * e);
 
-typedef void (*session_update_time_fn) (f64 time_now, u8 thread_index);
 typedef void (*nat44_original_dst_lookup_fn) (
   ip4_address_t *i2o_src, u16 i2o_src_port, ip4_address_t *i2o_dst,
   u16 i2o_dst_port, ip_protocol_t proto, u32 *original_dst,
@@ -199,9 +203,6 @@ typedef struct session_main_
 {
   /** Worker contexts */
   session_worker_t *wrk;
-
-  /** Vector of transport update time functions */
-  session_update_time_fn *update_time_fns;
 
   /** Event queues memfd segment */
   fifo_segment_t wrk_mqs_segment;
@@ -621,6 +622,8 @@ void session_register_transport (transport_proto_t transport_proto,
 				 u32 output_node);
 transport_proto_t session_add_transport_proto (void);
 void session_register_update_time_fn (session_update_time_fn fn, u8 is_add);
+void session_register_update_time_fn_w_thread (session_update_time_fn fn, u8 is_add,
+					       clib_thread_index_t thread_index);
 void session_main_flush_enqueue_events (transport_proto_t transport_proto,
 					clib_thread_index_t thread_index);
 void session_queue_run_on_main_thread (vlib_main_t *vm);

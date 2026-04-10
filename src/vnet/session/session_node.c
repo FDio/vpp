@@ -1924,12 +1924,12 @@ static const u32 session_evt_msg_sizes[] = {
 };
 
 always_inline void
-session_update_time_subscribers (session_main_t *smm, clib_time_type_t now,
+session_update_time_subscribers (session_worker_t *wrk, clib_time_type_t now,
 				 clib_thread_index_t thread_index)
 {
   session_update_time_fn *fn;
 
-  vec_foreach (fn, smm->update_time_fns)
+  vec_foreach (fn, wrk->update_time_fns)
     (*fn) (now, thread_index);
 }
 
@@ -2047,7 +2047,7 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   /*
    *  Update transport time
    */
-  session_update_time_subscribers (smm, wrk->last_vlib_time, thread_index);
+  session_update_time_subscribers (wrk, wrk->last_vlib_time, thread_index);
   n_tx_packets = vec_len (wrk->pending_tx_buffers);
   SESSION_EVT (SESSION_EVT_DSP_CNTRS, UPDATE_TIME, wrk);
 

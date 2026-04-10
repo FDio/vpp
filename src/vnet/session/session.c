@@ -1818,19 +1818,19 @@ session_register_transport (transport_proto_t transport_proto,
     session_tx_fns[vft->transport_options.tx_type];
 }
 
-void
-session_register_update_time_fn (session_update_time_fn fn, u8 is_add)
+static void
+session_update_time_fn_vec_update (session_update_time_fn **fns, session_update_time_fn fn,
+				   u8 is_add)
 {
-  session_main_t *smm = &session_main;
   session_update_time_fn *fi;
   u32 fi_pos = ~0;
   u8 found = 0;
 
-  vec_foreach (fi, smm->update_time_fns)
+  vec_foreach (fi, *fns)
     {
       if (*fi == fn)
 	{
-	  fi_pos = fi - smm->update_time_fns;
+	  fi_pos = fi - *fns;
 	  found = 1;
 	  break;
 	}
@@ -1843,13 +1843,35 @@ session_register_update_time_fn (session_update_time_fn fn, u8 is_add)
 	  clib_warning ("update time fn %p already registered", fn);
 	  return;
 	}
-      vec_add1 (smm->update_time_fns, fn);
+      vec_add1 (*fns, fn);
     }
   else
     {
       if (found)
-	vec_del1 (smm->update_time_fns, fi_pos);
+	vec_del1 (*fns, fi_pos);
     }
+}
+
+void
+session_register_update_time_fn_w_thread (session_update_time_fn fn, u8 is_add,
+					  clib_thread_index_t thread_index)
+{
+  session_worker_t *wrk;
+
+  ASSERT (thread_index < vec_len (session_main.wrk));
+
+  wrk = session_main_get_worker (thread_index);
+  session_update_time_fn_vec_update (&wrk->update_time_fns, fn, is_add);
+}
+
+void
+session_register_update_time_fn (session_update_time_fn fn, u8 is_add)
+{
+  session_main_t *smm = &session_main;
+  clib_thread_index_t thread_index;
+
+  for (thread_index = 0; thread_index < vec_len (smm->wrk); thread_index++)
+    session_register_update_time_fn_w_thread (fn, is_add, thread_index);
 }
 
 transport_proto_t
