@@ -307,7 +307,7 @@ dpdk_device_configure_async_flow_offload (dpdk_device_t *xd)
 {
   struct rte_flow_port_info flow_port_info = {};
   struct rte_flow_queue_info flow_queue_info = {};
-  struct rte_flow_port_attr port_attr = {};
+  struct rte_flow_port_attr port_attr;
   struct rte_flow_queue_attr queue_attr = {};
   const struct rte_flow_queue_attr **queue_attr_list;
   int rv;
@@ -342,6 +342,10 @@ dpdk_device_configure_async_flow_offload (dpdk_device_t *xd)
 		       flow_queue_info.max_size, xd->async_flow_offload_queue_size);
       xd->async_flow_offload_queue_size = min_pow2 (flow_queue_info.max_size);
     }
+
+  clib_memset (&port_attr, 0, sizeof (port_attr));
+  port_attr.nb_counters = flow_port_info.max_nb_counters;
+  port_attr.nb_aging_objects = flow_port_info.max_nb_aging_objects;
 
   queue_attr.size = xd->async_flow_offload_queue_size;
   queue_attr_list = clib_mem_alloc (sizeof (*queue_attr_list) * xd->async_flow_offload_n_queues);
