@@ -1418,6 +1418,11 @@ http_start_listen (u32 app_listener_index, transport_endpoint_cfg_t *tep)
       lhc->hc_timeout = http_cfg->timeout;
       lhc->flags |=
 	http_cfg->udp_tunnel_mode == HTTP_UDP_TUNNEL_DGRAM ? HTTP_CONN_F_UDP_TUNNEL_DGRAM : 0;
+      if (http_cfg->flags & HTTP_ENDPT_CFG_F_ENABLE_CONNECT_UDP_DRAFT03)
+	{
+	  HTTP_DBG (1, "app enabled masque-connect-udp-draft-03");
+	  lhc->flags |= HTTP_CONN_F_CONNECT_UDP_DRAFT03;
+	}
     }
 
   /* Grab application listener and link to http listener */

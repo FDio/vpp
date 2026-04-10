@@ -168,6 +168,7 @@ typedef struct
   u8 *cert_file;
   u8 *key_file;
   u8 is_http3;
+  u8 is_draft03;
 } hcpc_main_t;
 
 hcpc_main_t hcpc_main;
@@ -1084,6 +1085,46 @@ hcpc_write_http_connect_udp_req (svm_fifo_t *f, transport_connection_t *tc)
 }
 
 static int
+hcpc_write_http_connect_udp_draft03_req (svm_fifo_t *f, transport_connection_t *tc)
+{
+  u8 *target = 0;
+  http_msg_t msg;
+  int rv;
+
+  if (tc->is_ip4)
+    target =
+      format (0, "%U:%u", format_ip4_address, &tc->lcl_ip.ip4, clib_net_to_host_u16 (tc->lcl_port));
+  else
+    target = format (0, "[%U]:%u", format_ip6_address, &tc->lcl_ip.ip6,
+		     clib_net_to_host_u16 (tc->lcl_port));
+
+  HCPC_DBG ("opening draft-03 UDP tunnel %U:%u->%U:%u", format_ip46_address, &tc->rmt_ip,
+	    tc->is_ip4, clib_net_to_host_u16 (tc->rmt_port), format_ip46_address, &tc->lcl_ip,
+	    tc->is_ip4, clib_net_to_host_u16 (tc->lcl_port));
+
+  msg.type = HTTP_MSG_REQUEST;
+  msg.method_type = HTTP_REQ_CONNECT_UDP;
+  msg.data.upgrade_proto = HTTP_UPGRADE_PROTO_NA;
+  msg.data.target_path_offset = 0;
+  msg.data.target_path_len = vec_len (target);
+  msg.data.headers_len = 0;
+  msg.data.body_len = 0;
+  msg.data.type = HTTP_MSG_DATA_INLINE;
+  msg.data.len = msg.data.target_path_len;
+
+  svm_fifo_seg_t segs[2] = { { (u8 *) &msg, sizeof (msg) }, { target, msg.data.target_path_len } };
+  rv = svm_fifo_enqueue_segments (f, segs, 2, 0);
+  vec_free (target);
+  if (rv < (sizeof (msg) + msg.data.len))
+    {
+      clib_warning ("enqueue failed: %d", rv);
+      return -1;
+    }
+
+  return 0;
+}
+
+static int
 hcpc_write_http_connect_req (svm_fifo_t *f, transport_connection_t *tc)
 {
   u8 *target = 0;
@@ -1694,6 +1735,7 @@ hcpc_intercept_del_segment_callback (u32 client_index, u64 segment_handle)
 static int
 hcpc_intercept_write_early_data (session_t *s)
 {
+  hcpc_main_t *hcpcm = &hcpc_main;
   transport_proto_t tp;
   transport_connection_t *tc;
   int rv;
@@ -1708,7 +1750,10 @@ hcpc_intercept_write_early_data (session_t *s)
       rv = hcpc_write_http_connect_req (s->rx_fifo, tc);
       break;
     case TRANSPORT_PROTO_UDP:
-      rv = hcpc_write_http_connect_udp_req (s->rx_fifo, tc);
+      if (hcpcm->is_draft03)
+	rv = hcpc_write_http_connect_udp_draft03_req (s->rx_fifo, tc);
+      else
+	rv = hcpc_write_http_connect_udp_req (s->rx_fifo, tc);
       break;
     default:
       clib_warning ("unsupported protocol %U", format_transport_proto, tp);
@@ -2018,6 +2063,8 @@ hcpc_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	;
       else if (unformat (line_input, "http3"))
 	hcpcm->is_http3 = 1;
+      else if (unformat (line_input, "masque-draft-03"))
+	hcpcm->is_draft03 = 1;
       else
 	{
 	  err = clib_error_return (0, "unknown input `%U'",
@@ -2088,7 +2135,7 @@ VLIB_CLI_COMMAND (hcpc_create_command, static) = {
   .short_help = "http connect proxy client enable server-uri <http[s]://ip:port>\n"
 		"interface <intfc> listener <tcp|udp://ip:port> [udp-idle-timeout <n>]\n"
 		"[fifo-size <nM|G>] [private-segment-size <nM|G>] [prealloc-fifos <n>]\n"
-		"[cert <cert> key <key>] [http3]",
+		"[cert <cert> key <key>] [http3] [masque-draft-03]",
   .function = hcpc_create_command_fn,
 };
 
@@ -2210,6 +2257,9 @@ hcpc_show_command_fn (vlib_main_t *vm, unformat_input_t *input,
 		   &hcpcm->proxy_server_sep.ip, hcpcm->proxy_server_sep.is_ip4,
 		   clib_net_to_host_u16 (hcpcm->proxy_server_sep.port));
   vlib_cli_output (vm, "certkey index: %u", hcpcm->ckpair_index);
+
+  if (hcpcm->is_draft03)
+    vlib_cli_output (vm, "masque-draft-03 connect-udp mode");
 
   if (show_listeners)
     {

@@ -570,6 +570,52 @@ func readCapsule(conn *spec.Conn, streamID uint32) ([]byte, error) {
 	return b[1:n], nil
 }
 
+func writeCapsuleDraft03(conn *spec.Conn, streamID uint32, endStream bool, payload []byte) error {
+	b := make([]byte, 0)
+	// stream chunk type 0x00 UDP_PACKET
+	b = quicvarint.Append(b, 0)
+	// stream chunk length
+	b = quicvarint.Append(b, uint64(len(payload)))
+	// stream chunk value
+	b = append(b, payload...)
+
+	return conn.WriteData(streamID, endStream, b)
+}
+
+func readCapsuleDraft03(conn *spec.Conn, streamID uint32) ([]byte, error) {
+	actual, passed := conn.WaitEventByType(spec.EventDataFrame)
+	switch event := actual.(type) {
+	case spec.DataFrameEvent:
+		passed = event.Header().StreamID == streamID
+	default:
+		passed = false
+	}
+	if !passed {
+		return nil, &spec.TestError{
+			Expected: []string{spec.EventDataFrame.String()},
+			Actual:   actual.String(),
+		}
+	}
+	df, _ := actual.(spec.DataFrameEvent)
+	r := bytes.NewReader(df.Data())
+	streamChunkType, payloadReader, err := http3.ParseCapsule(r)
+	if err != nil {
+		return nil, err
+	}
+	if streamChunkType != 0 {
+		return nil, errors.New("stream chunk type should be 0")
+	}
+	b := make([]byte, 1024)
+	n, err := payloadReader.Read(b)
+	if err != nil {
+		return nil, err
+	}
+	if n < 1 {
+		return nil, errors.New("response payload too short")
+	}
+	return b[:n], nil
+}
+
 func ConnectUdp() *spec.TestGroup {
 	tg := NewTestGroup("3.1", "Proxying UDP in HTTP")
 
@@ -602,7 +648,7 @@ func ConnectUdp() *spec.TestGroup {
 			}
 			if !passed {
 				expected := []string{
-					fmt.Sprintf("DATA Frame (length:1, flags:0x00, stream_id:%d)", streamID),
+					fmt.Sprintf("HEADERS Frame (stream_id:%d)", streamID),
 				}
 
 				return &spec.TestError{
@@ -675,6 +721,111 @@ func ConnectUdp() *spec.TestGroup {
 				return &spec.TestError{
 					Expected: []string{"capsule payload: " + string(data)},
 					Actual:   "capsule payload:" + string(resp),
+				}
+			}
+			return nil
+		},
+	})
+
+	tg.AddTestCase(&spec.TestCase{
+		Desc:        "CONNECT-UDP HTTP Method",
+		Requirement: "draft-ietf-masque-connect-udp-03",
+		Run: func(c *config.Config, conn *spec.Conn) error {
+			var streamID uint32 = 1
+
+			err := conn.Handshake()
+			if err != nil {
+				return err
+			}
+
+			pathSplit := strings.Split(c.Path, "/")
+			authority := fmt.Sprintf("%s:%s", pathSplit[4], pathSplit[5])
+			headers := []hpack.HeaderField{
+				spec.HeaderField(":method", "CONNECT-UDP"),
+				spec.HeaderField(":scheme", "masque"),
+				spec.HeaderField(":path", "/"),
+				spec.HeaderField(":authority", authority),
+			}
+			hp := http2.HeadersFrameParam{
+				StreamID:      streamID,
+				EndStream:     false,
+				EndHeaders:    true,
+				BlockFragment: conn.EncodeHeaders(headers),
+			}
+			conn.WriteHeaders(hp)
+			// verify response headers
+			actual, passed := conn.WaitEventByType(spec.EventHeadersFrame)
+			switch event := actual.(type) {
+			case spec.HeadersFrameEvent:
+				passed = event.Header().StreamID == streamID
+			default:
+				passed = false
+			}
+			if !passed {
+				expected := []string{
+					fmt.Sprintf("HEADERS Frame (stream_id:%d)", streamID),
+				}
+
+				return &spec.TestError{
+					Expected: expected,
+					Actual:   actual.String(),
+				}
+			}
+			hf, _ := actual.(spec.HeadersFrameEvent)
+			respHeaders := make([]hpack.HeaderField, 0, 256)
+			decoder := hpack.NewDecoder(4096, func(f hpack.HeaderField) { respHeaders = append(respHeaders, f) })
+			_, err = decoder.Write(hf.HeaderBlockFragment())
+			if err != nil {
+				return err
+			}
+			if !slices.Contains(respHeaders, spec.HeaderField(":status", "200")) {
+				hs := ""
+				for _, h := range respHeaders {
+					hs += h.String() + "\n"
+				}
+				return &spec.TestError{
+					Expected: []string{"\":status: 200\" header received"},
+					Actual:   hs,
+				}
+			}
+			for _, h := range respHeaders {
+				if h.Name == "content-length" {
+					return &spec.TestError{
+						Expected: []string{"\"content-length\" header must not be used"},
+						Actual:   h.String(),
+					}
+				}
+			}
+
+			// send and receive data over tunnel
+			data := []byte("hello")
+			err = writeCapsuleDraft03(conn, streamID, false, data)
+			if err != nil {
+				return err
+			}
+			resp, err := readCapsuleDraft03(conn, streamID)
+			if err != nil {
+				return err
+			}
+			if !bytes.Equal(data, resp) {
+				return &spec.TestError{
+					Expected: []string{"capsule payload: " + string(data)},
+					Actual:   "capsule payload: " + string(resp),
+				}
+			}
+			// try again
+			err = writeCapsuleDraft03(conn, streamID, false, data)
+			if err != nil {
+				return err
+			}
+			resp, err = readCapsuleDraft03(conn, streamID)
+			if err != nil {
+				return err
+			}
+			if !bytes.Equal(data, resp) {
+				return &spec.TestError{
+					Expected: []string{"capsule payload: " + string(data)},
+					Actual:   "capsule payload: " + string(resp),
 				}
 			}
 			return nil

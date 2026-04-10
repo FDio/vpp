@@ -254,6 +254,8 @@ var _ = Describe("H2SpecUdpProxySuite", Ordered, ContinueOnFailure, Label("HTTP"
 		{desc: "extras/3.1/3"},
 		{desc: "extras/3.1/4"},
 		{desc: "extras/3.1/5"},
+		{desc: "extras/3.1/6"},
+		{desc: "extras/3.1/7"},
 	}
 
 	for _, test := range testCases {
@@ -265,11 +267,12 @@ var _ = Describe("H2SpecUdpProxySuite", Ordered, ContinueOnFailure, Label("HTTP"
 			remoteServerConn := StartUdpEchoServer(s.ServerAddr(), s.Ports.Server)
 			defer remoteServerConn.Close()
 			// this one will open TCP tunnel too
-			if strings.Contains(test.desc, "extras/3.1/5") {
+			if strings.Contains(test.desc, "extras/3.1/7") {
 				remoteTcpServerConn := StartTcpEchoServer(s.ServerAddr(), s.Ports.Server)
 				defer remoteTcpServerConn.Close()
 			}
-			cmd := fmt.Sprintf("test proxy server fifo-size 512k server-uri https://%s/%d", s.VppProxyAddr(), s.Ports.Proxy)
+			cmd := fmt.Sprintf("test proxy server enable-masque-draft-03 fifo-size 512k server-uri https://%s/%d",
+				s.VppProxyAddr(), s.Ports.Proxy)
 			Log(vppProxy.Vppctl(cmd))
 			path := fmt.Sprintf("/.well-known/masque/udp/%s/%d/", s.ServerAddr(), s.Ports.Server)
 			conf := &config.Config{

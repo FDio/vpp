@@ -386,6 +386,10 @@ hpack_parse_method (u8 *value, u32 value_len)
       if (!memcmp (value, "CONNECT", 7))
 	return HTTP_REQ_CONNECT;
       break;
+    case 11:
+      if (!memcmp (value, "CONNECT-UDP", 11))
+	return HTTP_REQ_CONNECT_UDP;
+      break;
     default:
       break;
     }
@@ -405,6 +409,10 @@ hpack_parse_scheme (u8 *value, u32 value_len)
     case 5:
       if (!memcmp (value, "https", 5))
 	return HTTP_URL_SCHEME_HTTPS;
+      break;
+    case 6:
+      if (!memcmp (value, "masque", 6))
+	return HTTP_URL_SCHEME_MASQUE;
       break;
     default:
       break;

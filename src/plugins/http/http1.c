@@ -212,6 +212,21 @@ http1_parse_target (http_ctx_t *req, u8 *rx_buf)
 	}
     }
 
+  /* masque-connect-udp-draft-03 masque://host:port/ */
+  if (req->target_path_len > 10 && !memcmp (rx_buf + req->target_path_offset, "masque://", 9))
+    {
+      p = rx_buf + req->target_path_offset + req->target_path_len - 1;
+      expect_char ('/');
+      req->scheme = HTTP_URL_SCHEME_MASQUE;
+      req->target_form = HTTP_TARGET_ABSOLUTE_FORM;
+      req->target_authority_offset = 9;
+      req->target_authority_len = req->target_path_len - 10;
+      req->target_path_len = 0;
+      req->target_path_offset = 0;
+      /* can be CONNECT-UDP method only */
+      return req->method == HTTP_REQ_CONNECT_UDP ? 0 : -1;
+    }
+
   /* authority-form = host ":" port */
   for (i = req->target_path_offset;
        i < (req->target_path_offset + req->target_path_len); i++)
@@ -232,7 +247,7 @@ http1_parse_target (http_ctx_t *req, u8 *rx_buf)
 }
 
 static int
-http1_parse_request_line (http_ctx_t *req, u8 *rx_buf, http_status_code_t *ec)
+http1_parse_request_line (http_ctx_t *hc, http_ctx_t *req, u8 *rx_buf, http_status_code_t *ec)
 {
   int i;
   u32 next_line_offset, method_offset, target_len;
@@ -290,6 +305,16 @@ http1_parse_request_line (http_ctx_t *req, u8 *rx_buf, http_status_code_t *ec)
       req->upgrade_proto = HTTP_UPGRADE_PROTO_NA;
       req->target_path_offset = method_offset + 8;
       req->req_flags |= HTTP_REQ_F_IS_TUNNEL;
+    }
+  else if (!memcmp (rx_buf + method_offset, "CONNECT-UDP ", 12) &&
+	   (hc->flags & HTTP_CONN_F_CONNECT_UDP_DRAFT03))
+    {
+      HTTP_DBG (0, "CONNECT-UDP method");
+      req->method = HTTP_REQ_CONNECT_UDP;
+      req->upgrade_proto = HTTP_UPGRADE_PROTO_NA;
+      req->target_path_offset = method_offset + 12;
+      req->req_flags |= HTTP_REQ_F_IS_TUNNEL;
+      req->req_flags |= HTTP_REQ_F_CONNECT_UDP_DRAFT03;
     }
   else
     {
@@ -926,7 +951,7 @@ http1_req_state_wait_transport_method (http_ctx_t *hc, http_ctx_t *req, transpor
       goto error;
     }
 
-  rv = http1_parse_request_line (req, rx_buf, &ec);
+  rv = http1_parse_request_line (hc, req, rx_buf, &ec);
   if (rv)
     goto error;
 
@@ -1096,8 +1121,9 @@ http1_req_state_tunnel_rx (http_ctx_t *hc, http_ctx_t *req, transport_send_param
   return HTTP_SM_STOP;
 }
 
-static http_sm_result_t
-http1_req_state_udp_tunnel_rx (http_ctx_t *hc, http_ctx_t *req, transport_send_params_t *sp)
+static_always_inline http_sm_result_t
+http1_req_state_udp_tunnel_rx_inline (http_ctx_t *hc, http_ctx_t *req, transport_send_params_t *sp,
+				      u8 is_draft03)
 {
   u32 to_deq, capsule_size, dgram_size, n_read, n_written = 0;
   http_capsule_error_t rv;
@@ -1130,8 +1156,7 @@ http1_req_state_udp_tunnel_rx (http_ctx_t *hc, http_ctx_t *req, transport_send_p
 	    }
 	}
       n_read = http_io_ts_read (hc, buf, HTTP_CAPSULE_HEADER_MAX_SIZE, 1);
-      rv = http_decap_udp_payload_datagram (buf, n_read, &payload_offset,
-					    &payload_len);
+      rv = http_decap_udp_payload_datagram (buf, n_read, &payload_offset, &payload_len, is_draft03);
       HTTP_DBG (1, "rv=%d, payload_offset=%u, payload_len=%llu", rv,
 		payload_offset, payload_len);
       if (PREDICT_FALSE (rv != HTTP_CAPSULE_NO_ERROR))
@@ -1214,6 +1239,18 @@ done:
   return HTTP_SM_STOP;
 }
 
+static http_sm_result_t
+http1_req_state_udp_tunnel_rx (http_ctx_t *hc, http_ctx_t *req, transport_send_params_t *sp)
+{
+  return http1_req_state_udp_tunnel_rx_inline (hc, req, sp, 0);
+}
+
+static http_sm_result_t
+http1_req_state_udp_tunnel_draft03_rx (http_ctx_t *hc, http_ctx_t *req, transport_send_params_t *sp)
+{
+  return http1_req_state_udp_tunnel_rx_inline (hc, req, sp, 1);
+}
+
 /*************************************/
 /* request state machine handlers TX */
 /*************************************/
@@ -1271,7 +1308,9 @@ http1_req_state_wait_app_reply (http_ctx_t *hc, http_ctx_t *req, transport_send_
       (http_status_code_str[msg.code][0] == '2' || msg.code == HTTP_STATUS_SWITCHING_PROTOCOLS))
     {
       ASSERT (msg.data.body_len == 0);
-      next_state = HTTP_REQ_STATE_TUNNEL;
+      next_state = (req->req_flags & HTTP_REQ_F_CONNECT_UDP_DRAFT03) ?
+		     HTTP_REQ_STATE_UDP_TUNNEL_DRAFT03 :
+		     HTTP_REQ_STATE_TUNNEL;
       if (req->upgrade_proto > HTTP_UPGRADE_PROTO_NA)
 	{
 	  response = format (response, connection_upgrade_template,
@@ -1649,8 +1688,9 @@ check_fifo:
   return HTTP_SM_STOP;
 }
 
-static http_sm_result_t
-http1_req_state_udp_tunnel_tx (http_ctx_t *hc, http_ctx_t *req, transport_send_params_t *sp)
+static_always_inline http_sm_result_t
+http1_req_state_udp_tunnel_tx_inline (http_ctx_t *hc, http_ctx_t *req, transport_send_params_t *sp,
+				      u8 is_draft03)
 {
   u32 to_deq, capsule_size, dgram_size;
   u8 written = 0;
@@ -1683,7 +1723,7 @@ http1_req_state_udp_tunnel_tx (http_ctx_t *hc, http_ctx_t *req, transport_send_p
 	}
 
       /* create capsule header */
-      payload = http_encap_udp_payload_datagram (buf, hdr.data_length);
+      payload = http_encap_udp_payload_datagram (buf, hdr.data_length, is_draft03);
       capsule_size = (payload - buf) + hdr.data_length;
       /* read payload */
       http_io_as_peek (req, payload, hdr.data_length, sizeof (hdr));
@@ -1702,6 +1742,18 @@ done:
   return HTTP_SM_STOP;
 }
 
+static http_sm_result_t
+http1_req_state_udp_tunnel_tx (http_ctx_t *hc, http_ctx_t *req, transport_send_params_t *sp)
+{
+  return http1_req_state_udp_tunnel_tx_inline (hc, req, sp, 0);
+}
+
+static http_sm_result_t
+http1_req_state_udp_tunnel_draft03_tx (http_ctx_t *hc, http_ctx_t *req, transport_send_params_t *sp)
+{
+  return http1_req_state_udp_tunnel_tx_inline (hc, req, sp, 1);
+}
+
 /*************************/
 /* request state machine */
 /*************************/
@@ -1716,6 +1768,7 @@ static http_sm_handler tx_state_funcs[HTTP_REQ_N_STATES] = {
   http1_req_state_app_io_more_data,
   http1_req_state_tunnel_tx,
   http1_req_state_udp_tunnel_tx,
+  http1_req_state_udp_tunnel_draft03_tx,
   http1_req_state_app_io_more_streaming_data,
 };
 
@@ -1729,6 +1782,7 @@ static http_sm_handler rx_state_funcs[HTTP_REQ_N_STATES] = {
   0, /* app io more data */
   http1_req_state_tunnel_rx,
   http1_req_state_udp_tunnel_rx,
+  http1_req_state_udp_tunnel_draft03_rx,
   0, /* app io more streaming data */
 };
 
