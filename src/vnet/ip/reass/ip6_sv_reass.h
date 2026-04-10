@@ -43,6 +43,9 @@ ip6_sv_reass_output_enable_disable_with_refcnt (u32 sw_if_index,
  * Extended reassembly means that fragments are cached until both first and
  * last fragments are seen. Furthermore, first fragment buffer will be cloned
  * and stored in reassembly context for later retrieval.
+ *
+ * Must be called before reassembly is enabled on any interface, not while
+ * reassembly is actively processing traffic.
  */
 void ip6_sv_reass_enable_disable_extended (bool is_enable);
 
