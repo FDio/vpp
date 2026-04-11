@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6197541b_7942dbb9",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3189
+      },
+      "writtenOn": "2026-04-11T11:57:47Z",
+      "side": 1,
+      "message": "can you review this\ni fixed build mlx5 pmd",
+      "revId": "6ff72527ab1ad76d2649402d69a2a787fa0fca57",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
