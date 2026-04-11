@@ -1084,7 +1084,7 @@ send_ip46_ping (vlib_main_t * vm,
     ERROR_OUT (SEND_PING_ALLOC_FAIL);
 
   b0 = vlib_get_buffer (vm, bi0);
-
+  b0->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
   /*
    * if the user did not provide a source interface,
    * perform a resolution and use an interface
