@@ -16,6 +16,24 @@
       "message": "This seems like it is guaranteed to seg fault. ad is still null at this point.",
       "revId": "c319334dd47121d6f4c34ae0f3a21e1cc9a5a599",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c9d3a6d6_852bece1",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 632,
+      "author": {
+        "id": 3310
+      },
+      "writtenOn": "2026-04-11T12:26:47Z",
+      "side": 1,
+      "message": "thank you, fixed",
+      "parentUuid": "f2e61003_9a11ae50",
+      "revId": "c319334dd47121d6f4c34ae0f3a21e1cc9a5a599",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
