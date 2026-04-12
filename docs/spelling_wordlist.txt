@@ -702,6 +702,8 @@ mispositions
 misprograms
 mk
 mldv
+mlx
+mlx5
 mmap
 modelled
 modernisation
@@ -1197,6 +1199,7 @@ tp
 tps
 tpv
 TPv
+TSO
 tracedump
 Tracedump
 tracenode
