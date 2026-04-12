@@ -12,13 +12,14 @@
 #include <vnet/ethernet/mac_address.h>
 #include <rdma/rdma_mlx5dv.h>
 
-#define foreach_rdma_device_flags \
-  _(0, ERROR, "error") \
-  _(1, ADMIN_UP, "admin-up") \
-  _(2, LINK_UP, "link-up") \
-  _(3, PROMISC, "promiscuous") \
-  _(4, MLX5DV, "mlx5dv") \
-  _(5, STRIDING_RQ, "striding-rq")
+#define foreach_rdma_device_flags                                                                  \
+  _ (0, ERROR, "error")                                                                            \
+  _ (1, ADMIN_UP, "admin-up")                                                                      \
+  _ (2, LINK_UP, "link-up")                                                                        \
+  _ (3, PROMISC, "promiscuous")                                                                    \
+  _ (4, MLX5DV, "mlx5dv")                                                                          \
+  _ (5, STRIDING_RQ, "striding-rq")                                                                \
+  _ (6, TSO, "tso")
 
 enum
 {
@@ -30,6 +31,16 @@ enum
 #ifndef MLX5_ETH_L2_INLINE_HEADER_SIZE
 #define MLX5_ETH_L2_INLINE_HEADER_SIZE  18
 #endif
+
+/*
+ * TSO headers are inlined as the mlx5 Ethernet inline header plus 16-byte
+ * continuation DS. The WQE occupies ceil(ctrl.ds / 4) WQEBBs; callers must
+ * not reserve a fixed WQEBB count.
+ *
+ * Keep the advertised header limit conservative. It covers common TCP options
+ * while avoiding a larger max_tso_header request during QP creation.
+ */
+#define RDMA_MLX5_TSO_HDR_MAX (MLX5_ETH_L2_INLINE_HEADER_SIZE + 8 * 16)
 
 typedef struct
 {
@@ -143,14 +154,14 @@ typedef struct
     STRUCT_MARK (cacheline2);
 
   /* fields below are not accessed in datapath */
-  struct ibv_cq *cq;
-  struct ibv_qp *qp;
+    struct ibv_cq *cq;
+    struct ibv_qp *qp;
 
 } rdma_txq_t;
 STATIC_ASSERT_OFFSET_OF (rdma_txq_t, cacheline1, 64);
 STATIC_ASSERT_OFFSET_OF (rdma_txq_t, cacheline2, 128);
 
-#define RDMA_TXQ_DV_INVALID_ID  0xffffffff
+#define RDMA_TXQ_DV_INVALID_ID 0xffffffff
 
 #define RDMA_TXQ_BUF_SZ(txq)    (1U << (txq)->bufs_log2sz)
 #define RDMA_TXQ_DV_SQ_SZ(txq)  (1U << (txq)->dv_sq_log2sz)
@@ -298,11 +309,12 @@ typedef struct
   u16 cqe_flags;
 } rdma_input_trace_t;
 
-#define foreach_rdma_tx_func_error \
-_(SEGMENT_SIZE_EXCEEDED, "segment size exceeded") \
-_(NO_FREE_SLOTS, "no free tx slots") \
-_(SUBMISSION, "tx submission errors") \
-_(COMPLETION, "tx completion errors")
+#define foreach_rdma_tx_func_error                                                                 \
+  _ (SEGMENT_SIZE_EXCEEDED, "segment size exceeded")                                               \
+  _ (NO_FREE_SLOTS, "no free tx slots")                                                            \
+  _ (SUBMISSION, "tx submission errors")                                                           \
+  _ (COMPLETION, "tx completion errors")                                                           \
+  _ (TSO_HDR_TOO_BIG, "tso header exceeds max inline size")
 
 typedef enum
 {
