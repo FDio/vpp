@@ -1292,6 +1292,11 @@ tcp_handle_cleanups (tcp_worker_ctx_t * wrk, clib_time_type_t now)
       tc = tcp_connection_get_if_valid (req->connection_index, thread_index);
       if (PREDICT_FALSE (!tc))
 	continue;
+      if (PREDICT_FALSE (tc->c_s_index == ~0))
+	{
+	  tcp_connection_cleanup (tc);
+	  continue;
+	}
       tcp_connection_cleanup_and_notify (tc);
     }
 }
