@@ -350,7 +350,11 @@ rdma_register_interface (vnet_main_t * vnm, rdma_device_t * rd)
   rd->hw_if_index = vnet_eth_register_interface (vnm, &eir);
   /* Indicate ability to support L3 DMAC filtering and
    * initialize interface to L3 non-promisc mode */
-  vnet_hw_if_set_caps (vnm, rd->hw_if_index, VNET_HW_IF_CAP_MAC_FILTER);
+  vnet_hw_if_caps_t caps = VNET_HW_IF_CAP_MAC_FILTER;
+  if (rd->flags & RDMA_DEVICE_F_TSO)
+    caps |= VNET_HW_IF_CAP_TCP_GSO | VNET_HW_IF_CAP_TX_TCP_CKSUM |
+	    VNET_HW_IF_CAP_TX_IP4_CKSUM;
+  vnet_hw_if_set_caps (vnm, rd->hw_if_index, caps);
   ethernet_set_flags (vnm, rd->hw_if_index,
 		      ETHERNET_INTERFACE_FLAG_DEFAULT_L3);
   return 0;
@@ -703,9 +707,11 @@ rdma_txq_init (vlib_main_t * vm, rdma_device_t * rd, u16 qid, u32 n_desc)
 {
   rdma_txq_t *txq;
   struct ibv_qp_init_attr qpia;
+  struct ibv_qp_init_attr_ex qpia_ex;
   struct ibv_qp_attr qpa;
   int qp_flags;
   int is_mlx5dv = !!(rd->flags & RDMA_DEVICE_F_MLX5DV);
+  int use_tso = !!(rd->flags & RDMA_DEVICE_F_TSO);
 
   vec_validate_aligned (rd->txqs, qid, CLIB_CACHE_LINE_BYTES);
   txq = vec_elt_at_index (rd->txqs, qid);
@@ -730,15 +736,34 @@ rdma_txq_init (vlib_main_t * vm, rdma_device_t * rd, u16 qid, u32 n_desc)
 	return clib_error_return_unix (0, "Create CQ Failed");
     }
 
-  memset (&qpia, 0, sizeof (qpia));
-  qpia.send_cq = txq->cq;
-  qpia.recv_cq = txq->cq;
-  qpia.cap.max_send_wr = n_desc;
-  qpia.cap.max_send_sge = 1;
-  qpia.qp_type = IBV_QPT_RAW_PACKET;
-
-  if ((txq->qp = ibv_create_qp (rd->pd, &qpia)) == 0)
-    return clib_error_return_unix (0, "Queue Pair create failed");
+  if (use_tso)
+    {
+      memset (&qpia_ex, 0, sizeof (qpia_ex));
+      qpia_ex.send_cq = txq->cq;
+      qpia_ex.recv_cq = txq->cq;
+      qpia_ex.cap.max_send_wr = n_desc;
+      qpia_ex.cap.max_send_sge = 1;
+      qpia_ex.qp_type = IBV_QPT_RAW_PACKET;
+      qpia_ex.comp_mask =
+	IBV_QP_INIT_ATTR_PD | IBV_QP_INIT_ATTR_MAX_TSO_HEADER |
+	IBV_QP_INIT_ATTR_SEND_OPS_FLAGS;
+      qpia_ex.pd = rd->pd;
+      qpia_ex.max_tso_header = RDMA_MLX5_TSO_HDR_MAX;
+      qpia_ex.send_ops_flags = IBV_QP_EX_WITH_TSO;
+      if ((txq->qp = ibv_create_qp_ex (rd->ctx, &qpia_ex)) == 0)
+	return clib_error_return_unix (0, "Queue Pair (TSO) create failed");
+    }
+  else
+    {
+      memset (&qpia, 0, sizeof (qpia));
+      qpia.send_cq = txq->cq;
+      qpia.recv_cq = txq->cq;
+      qpia.cap.max_send_wr = n_desc;
+      qpia.cap.max_send_sge = 1;
+      qpia.qp_type = IBV_QPT_RAW_PACKET;
+      if ((txq->qp = ibv_create_qp (rd->pd, &qpia)) == 0)
+	return clib_error_return_unix (0, "Queue Pair create failed");
+    }
 
   memset (&qpa, 0, sizeof (qpa));
   qp_flags = IBV_QP_STATE | IBV_QP_PORT;
@@ -1007,6 +1032,15 @@ are explicitly disabled, and if the interface supports it.*/
 	      goto err2;
 	    }
 	}
+    }
+
+  if (rd->flags & RDMA_DEVICE_F_MLX5DV)
+    {
+      struct ibv_device_attr_ex attr_ex = { };
+      if (ibv_query_device_ex (rd->ctx, NULL, &attr_ex) == 0
+	  && attr_ex.tso_caps.max_tso > 0
+	  && (attr_ex.tso_caps.supported_qpts & (1 << IBV_QPT_RAW_PACKET)))
+	rd->flags |= RDMA_DEVICE_F_TSO;
     }
 
   if ((args->error = rdma_dev_init (vm, rd, args)))

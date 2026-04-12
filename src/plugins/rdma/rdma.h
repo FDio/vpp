@@ -18,7 +18,8 @@
   _(2, LINK_UP, "link-up") \
   _(3, PROMISC, "promiscuous") \
   _(4, MLX5DV, "mlx5dv") \
-  _(5, STRIDING_RQ, "striding-rq")
+  _(5, STRIDING_RQ, "striding-rq") \
+  _(6, TSO, "tso")
 
 enum
 {
@@ -30,6 +31,15 @@ enum
 #ifndef MLX5_ETH_L2_INLINE_HEADER_SIZE
 #define MLX5_ETH_L2_INLINE_HEADER_SIZE  18
 #endif
+
+/*
+ * TSO: WQE spans exactly 2 WQEBBs (128 bytes).
+ * WQEBB0: ctrl(1 DS) + eseg(2 DS, 18B inline) + inline-cont-A(1 DS)
+ * WQEBB1: inline-cont-B,C,D (3 DS) + dseg (1 DS)
+ * Total: 8 DS, max inlined header = 18 + 4*16 = 82 bytes.
+ */
+#define RDMA_MLX5_TSO_HDR_MAX  (MLX5_ETH_L2_INLINE_HEADER_SIZE + 4 * 16)
+#define RDMA_MLX5_TSO_N_WQEBB  2
 
 typedef struct
 {
@@ -302,7 +312,8 @@ typedef struct
 _(SEGMENT_SIZE_EXCEEDED, "segment size exceeded") \
 _(NO_FREE_SLOTS, "no free tx slots") \
 _(SUBMISSION, "tx submission errors") \
-_(COMPLETION, "tx completion errors")
+_(COMPLETION, "tx completion errors") \
+_(TSO_HDR_TOO_BIG, "tso header exceeds max inline size")
 
 typedef enum
 {
