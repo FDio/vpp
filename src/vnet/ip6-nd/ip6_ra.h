@@ -57,6 +57,10 @@ typedef struct ip6_ra_t_
   /* mtu option */
   u32 adv_link_mtu;
 
+  /* rdnss option */
+  ip6_address_t *adv_dns_servers;
+  u32 adv_dns_server_lifetime;
+
   /* local information */
   u32 sw_if_index;
   int send_radv;  /* radv on/off on this interface -  set by config */
@@ -121,6 +125,9 @@ extern int ip6_ra_prefix (vlib_main_t * vm, u32 sw_if_index,
 			  u32 pref_lifetime, u8 no_advertise,
 			  u8 off_link, u8 no_autoconfig,
 			  u8 no_onlink, u8 is_no);
+
+extern int ip6_ra_dns_server (vlib_main_t *vm, u32 sw_if_index, ip6_address_t *dns_server_addr,
+			      u32 lifetime, u8 is_no);
 
 typedef walk_rc_t (*ip6_ra_itf_walk_fn_t) (u32 sw_if_index, void *ctx);
 
