@@ -52,6 +52,24 @@
       "parentUuid": "f2153470_6a2cf257",
       "revId": "89f206a589abe4b486026398fe3f085cd05679ba",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5be19e2d_14f745c5",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 8
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3200
+      },
+      "writtenOn": "2026-04-12T14:41:32Z",
+      "side": 1,
+      "message": "I asked our team about it: the DHCP notifications might be sufficient. They expect to revisit this area in a few months and will look to see if it\u0027s enough for strongswan, so I\u0027ll put this change on hold. Many thanks!",
+      "parentUuid": "eeffa892_24ada882",
+      "revId": "89f206a589abe4b486026398fe3f085cd05679ba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
