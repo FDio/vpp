@@ -16,6 +16,7 @@ from scapy.layers.inet6 import (
     ICMPv6NDOptMTU,
     ICMPv6NDOptSrcLLAddr,
     ICMPv6NDOptPrefixInfo,
+    ICMPv6NDOptRDNSS,
     ICMPv6ND_NA,
     ICMPv6NDOptDstLLAddr,
     ICMPv6DestUnreach,
@@ -701,7 +702,9 @@ class TestIPv6(TestIPv6ND):
             self.pg1.remote_hosts[1].ip6,
         )
 
-    def validate_ra(self, intf, rx, dst_ip=None, src_ip=None, mtu=9000, pi_opt=None):
+    def validate_ra(
+        self, intf, rx, dst_ip=None, src_ip=None, mtu=9000, pi_opt=None, dns_opt=None
+    ):
         if not dst_ip:
             dst_ip = intf.remote_ip6
         if not src_ip:
@@ -755,6 +758,15 @@ class TestIPv6(TestIPv6ND):
                     % (pi_opt.show(dump=True), raos.show(dump=True)),
                 )
 
+        if not dns_opt:
+            # the RA should not contain DNS server information
+            self.assertFalse(ra.haslayer(ICMPv6NDOptRDNSS))
+        else:
+            self.assertTrue(ra.haslayer(ICMPv6NDOptRDNSS))
+            rx_dns = rx.getlayer(ICMPv6NDOptRDNSS)
+            self.assertEqual(dns_opt.lifetime, rx_dns.lifetime)
+            self.assertEqual(dns_opt.dns, rx_dns.dns)
+
     def send_and_expect_ra(
         self,
         intf,
@@ -763,6 +775,7 @@ class TestIPv6(TestIPv6ND):
         dst_ip=None,
         filter_out_fn=is_ipv6_misc,
         opt=None,
+        dns_opt=None,
         src_ip=None,
     ):
         self.vapi.cli("clear trace")
@@ -773,7 +786,7 @@ class TestIPv6(TestIPv6ND):
 
         self.assertEqual(len(rx), 1)
         rx = rx[0]
-        self.validate_ra(intf, rx, dst_ip, src_ip=src_ip, pi_opt=opt)
+        self.validate_ra(intf, rx, dst_ip, src_ip=src_ip, pi_opt=opt, dns_opt=dns_opt)
 
     def test_ip6_ra_dump(self):
         """IPv6 RA dump"""
@@ -1142,6 +1155,76 @@ class TestIPv6(TestIPv6ND):
         #
         self.pg0.ip6_ra_prefix(
             "%s/%s" % (self.pg1.local_ip6, self.pg1.local_ip6_prefix_len), is_no=1
+        )
+
+        #
+        # Advertise a DNS server
+        #
+        self.pg0.ip6_ra_dns_server(server="2001:db8::1", lifetime=600)
+
+        # RAs should now contain the RDNSS option
+        dns_opt = ICMPv6NDOptRDNSS(lifetime=600, dns=["2001:db8::1"])
+
+        self.pg0.ip6_ra_config(send_unicast=1)
+        p = (
+            Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+            / IPv6(dst=self.pg0.local_ip6, src=ll)
+            / ICMPv6ND_RS()
+        )
+        self.send_and_expect_ra(
+            self.pg0, p, "RA with DNS server", dst_ip=ll, opt=opt, dns_opt=dns_opt
+        )
+
+        #
+        # Advertise another DNS server with an updated lifetime
+        # - expect both servers with the updated lifetime in the adverts
+        #
+        self.pg0.ip6_ra_dns_server(server="2001:db8::2", lifetime=900)
+
+        # RAs should now contain the RDNSS option with both servers, with updated lifetime
+        dns_opt = ICMPv6NDOptRDNSS(lifetime=900, dns=["2001:db8::1", "2001:db8::2"])
+
+        self.pg0.ip6_ra_config(send_unicast=1)
+        p = (
+            Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+            / IPv6(dst=self.pg0.local_ip6, src=ll)
+            / ICMPv6ND_RS()
+        )
+        self.send_and_expect_ra(
+            intf=self.pg0,
+            pkts=p,
+            remark="RA with multiple DNS servers",
+            dst_ip=ll,
+            opt=opt,
+            dns_opt=dns_opt,
+        )
+
+        #
+        # Remove the first DNS server - expect only the second in the adverts
+        #
+        self.pg0.ip6_ra_dns_server(server="2001:db8::1", lifetime=900, is_no=1)
+
+        # RAs should now contain the RDNSS option with the second server only
+        dns_opt = ICMPv6NDOptRDNSS(lifetime=900, dns=["2001:db8::2"])
+
+        self.pg0.ip6_ra_config(send_unicast=1)
+        self.send_and_expect_ra(
+            self.pg0,
+            p,
+            "RA with first DNS server removed",
+            dst_ip=ll,
+            opt=opt,
+            dns_opt=dns_opt,
+        )
+
+        #
+        # Remove the second DNS server - expect no RDNSS info in the adverts
+        #
+        self.pg0.ip6_ra_dns_server(server="2001:db8::2", lifetime=900, is_no=1)
+
+        self.pg0.ip6_ra_config(send_unicast=1)
+        self.send_and_expect_ra(
+            self.pg0, p, "RA with DNS server removed", dst_ip=ll, opt=opt
         )
 
         #
