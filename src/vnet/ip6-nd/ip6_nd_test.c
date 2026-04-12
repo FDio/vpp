@@ -308,6 +308,65 @@ api_sw_interface_ip6nd_ra_config (vat_main_t * vam)
   W (ret);
   return ret;
 }
+
+static int
+api_sw_interface_ip6nd_ra_dns_server (vat_main_t *vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_sw_interface_ip6nd_ra_dns_server_t *mp;
+  u32 sw_if_index = ~0;
+  u8 sw_if_index_set = 0;
+  u8 is_no = 0;
+  vl_api_ip6_address_t server_addr;
+  u32 lifetime = ~0;
+  u8 server_addr_set = 0;
+  int ret;
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "%U", unformat_sw_if_index, vam, &sw_if_index))
+	sw_if_index_set = 1;
+      else if (unformat (i, "sw_if_index %d", &sw_if_index))
+	sw_if_index_set = 1;
+      else if (unformat (i, "del") || unformat (i, "no"))
+	is_no = 1;
+      else if (unformat (i, "server %U", unformat_ip6_address, &server_addr))
+	server_addr_set = 1;
+      else if (unformat (i, "lifetime %d", &lifetime))
+	;
+      else
+	break;
+    }
+
+  if (sw_if_index_set == 0)
+    {
+      errmsg ("missing interface name or sw_if_index");
+      return -99;
+    }
+  if (server_addr_set == 0)
+    {
+      errmsg ("missing DNS server address");
+      return -99;
+    }
+
+  /* Construct the API message */
+  M (SW_INTERFACE_IP6ND_RA_DNS_SERVER, mp);
+
+  mp->sw_if_index = ntohl (sw_if_index);
+  mp->is_no = is_no;
+  mp->lifetime = ntohl (lifetime);
+
+  clib_memcpy (mp->server, server_addr, sizeof (server_addr));
+
+  /* send it... */
+  S (mp);
+
+  /* Wait for a reply... */
+  W (ret);
+  return ret;
+}
+
 static int
 api_ip6nd_proxy_enable_disable (vat_main_t *vam)
 {

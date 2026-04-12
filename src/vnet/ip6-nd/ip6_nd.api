@@ -20,7 +20,7 @@
     called through a shared memory interface.
 */
 
-option version = "1.1.0";
+option version = "1.2.0";
 
 import "vnet/ip/ip_types.api";
 import "vnet/interface_types.api";
@@ -104,6 +104,24 @@ autoreply define sw_interface_ip6nd_ra_prefix
   bool is_no;
   u32 val_lifetime;
   u32 pref_lifetime;
+};
+
+/** \brief IPv6 router advertisement RDNSS (DNS server) config request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - The interface the RA DNS server config applies to
+    @param is_no - 0 for add, 1 for remove
+    @param server - IPv6 address of the DNS server
+    @param lifetime - DNS server lifetime in seconds
+*/
+autoreply define sw_interface_ip6nd_ra_dns_server
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+  bool is_no;
+  vl_api_ip6_address_t server;
+  u32 lifetime;
 };
 
 /** \brief IPv6 Router Advertisements prefix entry
