@@ -52,6 +52,9 @@ typedef CLIB_PACKED (struct
 #define MAX_DELAY_BETWEEN_RAS                    1800	/* seconds */
 #define MAX_RA_DELAY_TIME                                          .5	/* seconds */
 
+/* use 3 * MaxRtrAdvInterval, as per recommendation in RFC8106 */
+#define DEF_RDNSS_LIFETIME 3 * DEF_MAX_RADV_INTERVAL
+
 static ip6_link_delegate_id_t ip6_ra_delegate_id;
 static ip6_ra_t *ip6_ra_pool;
 
@@ -511,6 +514,42 @@ icmp6_router_solicitation (vlib_main_t * vm,
 
                           }
                       }
+
+		      /* add RDNSS option */
+		      if (vec_len (radv_info->adv_dns_servers) > 0)
+		      {
+			icmp6_neighbor_discovery_recursive_dns_server_option_t h;
+
+			u32 n_servers = vec_len (radv_info->adv_dns_servers);
+
+			h.header.type = ICMP6_NEIGHBOR_DISCOVERY_OPTION_recursive_dns_server;
+			h.header.n_data_u64s = 1 + 2 * n_servers;
+			h.reserved = 0;
+			h.lifetime = clib_host_to_net_u32 (radv_info->adv_dns_server_lifetime);
+
+			/* fixed length */
+			if (vlib_buffer_add_data (vm, &bi0, (void *) &h, sizeof (h)))
+			  {
+			    error0 = ICMP6_ERROR_ALLOC_FAILURE;
+			    goto drop0;
+			  }
+
+			payload_length += sizeof (h);
+
+			/* dynamic length */
+			int i;
+			for (i = 0; i < n_servers; i++)
+			  {
+			    if (vlib_buffer_add_data (vm, &bi0,
+						      (void *) &radv_info->adv_dns_servers[i],
+						      sizeof (ip6_address_t)))
+			      {
+				error0 = ICMP6_ERROR_ALLOC_FAILURE;
+				goto drop0;
+			      }
+			    payload_length += sizeof (ip6_address_t);
+			  }
+		      }
 
 		      /* add additional options before here */
 
@@ -1302,6 +1341,9 @@ ip6_ra_link_enable (u32 sw_if_index)
   /* send ll address source address option */
   radv_info->adv_link_layer_address = 1;
 
+  /* default RDNSS lifetime */
+  radv_info->adv_dns_server_lifetime = DEF_RDNSS_LIFETIME;
+
   radv_info->min_delay_between_radv = MIN_DELAY_BETWEEN_RAS;
   radv_info->max_delay_between_radv = MAX_DELAY_BETWEEN_RAS;
   radv_info->max_rtr_default_lifetime = MAX_DEF_RTR_LIFETIME;
@@ -1338,6 +1380,8 @@ ip6_ra_delegate_disable (index_t rai)
   pool_free (radv_info->adv_prefixes_pool);
 
   mhash_free (&radv_info->address_to_prefix_index);
+
+  vec_free (radv_info->adv_dns_servers);
 
   pool_put (ip6_ra_pool, radv_info);
 }
@@ -1813,6 +1857,60 @@ restart:
   return (0);
 }
 
+int
+ip6_ra_dns_server (vlib_main_t *vm, u32 sw_if_index, ip6_address_t *dns_server_addr, u32 lifetime,
+		   u8 is_no)
+{
+  ip6_ra_t *radv_info;
+
+  radv_info = ip6_ra_get_itf (sw_if_index);
+
+  if (!radv_info)
+    return (VNET_API_ERROR_IP6_NOT_ENABLED);
+
+  if (is_no)
+    {
+      /* delete */
+      int i;
+      vec_foreach_index (i, radv_info->adv_dns_servers)
+	{
+	  if (ip6_address_is_equal (&radv_info->adv_dns_servers[i], dns_server_addr))
+	    {
+	      vec_del1 (radv_info->adv_dns_servers, i);
+	      break;
+	    }
+	}
+    }
+  else
+    {
+      /* add (check duplication) */
+      int i, found = 0;
+      vec_foreach_index (i, radv_info->adv_dns_servers)
+	{
+	  if (ip6_address_is_equal (&radv_info->adv_dns_servers[i], dns_server_addr))
+	    {
+	      found = 1;
+	      break;
+	    }
+	}
+
+      if (!found)
+	vec_add1 (radv_info->adv_dns_servers, *dns_server_addr);
+
+      /* set lifetime (if specified) */
+      if (lifetime != ~0)
+	radv_info->adv_dns_server_lifetime = lifetime;
+    }
+
+  /* restart */
+  radv_info->initial_adverts_sent = radv_info->initial_adverts_count - 1;
+  radv_info->next_multicast_time = vlib_time_now (vm);
+  radv_info->last_multicast_time = vlib_time_now (vm);
+  radv_info->last_radv_time = 0;
+
+  return (0);
+}
+
 clib_error_t *
 ip6_ra_cmd (vlib_main_t * vm,
 	    unformat_input_t * main_input, vlib_cli_command_t * cmd)
@@ -1832,7 +1930,8 @@ ip6_ra_cmd (vlib_main_t * vm,
   int add_radv_info = 1;
   ip6_address_t ip6_addr;
   u32 addr_len;
-
+  int add_dns_server = 0;
+  u32 dns_server_lifetime = ~0;
 
   /* Get a line of input. */
   if (!unformat_user (main_input, unformat_line_input, line_input))
@@ -1876,6 +1975,11 @@ ip6_ra_cmd (vlib_main_t * vm,
 			 unformat_ip6_address, &ip6_addr, &addr_len))
 	{
 	  add_radv_info = 0;
+	}
+      else if (unformat (line_input, "dns server %U", unformat_ip6_address, &ip6_addr))
+	{
+	  add_radv_info = 0;
+	  add_dns_server = 1;
 	}
       else if (unformat (line_input, "ra-managed-config-flag"))
 	{
@@ -1946,6 +2050,21 @@ ip6_ra_cmd (vlib_main_t * vm,
 		     use_lifetime, ra_lifetime,
 		     ra_initial_count, ra_initial_interval,
 		     ra_max_interval, ra_min_interval, is_no);
+    }
+  else if (add_dns_server)
+    {
+      /* get the rest of the command */
+      while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+	{
+	  if (unformat (line_input, "lifetime %d", &dns_server_lifetime))
+	    ;
+	  else
+	    {
+	      error = unformat_parse_error (line_input);
+	      goto done;
+	    }
+	}
+      ip6_ra_dns_server (vm, sw_if_index, &ip6_addr, dns_server_lifetime, is_no);
     }
   else
     {
@@ -2031,6 +2150,19 @@ format_ip6_ra (u8 * s, va_list * args)
     s = format (s, "%Uprefix %U, length %d\n",
                 format_white_space, indent+2,
                 format_ip6_address, &p->prefix, p->prefix_len);
+  }
+
+  if (vec_len (radv_info->adv_dns_servers) > 0)
+  {
+    s = format (s, "%UAdvertised DNS Servers:\n", format_white_space, indent);
+    int i;
+    vec_foreach_index (i, radv_info->adv_dns_servers)
+	{
+	  s = format (s, "%U%U\n", format_white_space, indent + 2, format_ip6_address,
+		      &radv_info->adv_dns_servers[i]);
+	}
+    s = format (s, "%UDNS Server Lifetime is %d\n", format_white_space, indent + 2,
+		radv_info->adv_dns_server_lifetime);
   }
 
   s = format (s, "%UMTU is %d\n",
@@ -2206,6 +2338,24 @@ format_ip6_ra (u8 * s, va_list * args)
  * infinite no-advertise}
  * Example of how to delete a prefix:
  * @cliexcmd{ip6 nd GigabitEthernet2/0/0 no prefix fe80::fe:28ff:fe9c:75b3/64}
+ *
+ *
+ * <b>Format 4 - DNS Server Option:</b>
+ *
+ * @clistart
+ * ip6 nd <interface> [no] dns server <ip6-address> [lifetime <seconds>]
+ * @cliend
+ *
+ * Where:
+ *
+ * <em>no</em> - Removes the specified DNS server address from the
+ * advertisement.
+ *
+ * <em>server <ip6-address></em> - The DNS server address to be added to the
+ * advertisement (or removed if the '<em>no</em>' option is used).
+ *
+ * <em>lifetime</em> - The maximum time in seconds that the DNS server address
+ * may be used. The default value is 600 seconds.
 ?*/
 VLIB_CLI_COMMAND (ip6_nd_command, static) =
 {

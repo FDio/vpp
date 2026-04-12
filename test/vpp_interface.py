@@ -359,6 +359,16 @@ class VppInterface(metaclass=abc.ABCMeta):
         )
         return self
 
+    def ip6_ra_dns_server(self, server, lifetime, is_no=0):
+        """Configure IPv6 RA RDNSS option on the VPP interface."""
+        self.test.vapi.sw_interface_ip6nd_ra_dns_server(
+            sw_if_index=self.sw_if_index,
+            is_no=is_no,
+            server=server,
+            lifetime=lifetime,
+        )
+        return self
+
     def admin_up(self):
         """Put interface ADMIN-UP."""
         self.test.vapi.sw_interface_set_flags(
