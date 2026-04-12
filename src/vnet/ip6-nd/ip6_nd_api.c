@@ -209,6 +209,25 @@ static void
 }
 
 static void
+vl_api_sw_interface_ip6nd_ra_dns_server_t_handler (vl_api_sw_interface_ip6nd_ra_dns_server_t *mp)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  vl_api_sw_interface_ip6nd_ra_dns_server_reply_t *rmp;
+  ip6_address_t server_addr;
+  int rv = 0;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  ip6_address_decode (mp->server, &server_addr);
+
+  rv =
+    ip6_ra_dns_server (vm, ntohl (mp->sw_if_index), &server_addr, ntohl (mp->lifetime), mp->is_no);
+
+  BAD_SW_IF_INDEX_LABEL;
+  REPLY_MACRO (VL_API_SW_INTERFACE_IP6ND_RA_DNS_SERVER_REPLY);
+}
+
+static void
 ip6_radv_prefix_encode (f64 now, const ip6_radv_prefix_t *in,
 			vl_api_ip6nd_ra_prefix_t *out)
 {

@@ -260,6 +260,13 @@ typedef CLIB_PACKED (struct
     u8 max_l2_address[6 + 8];
 }) icmp6_neighbor_discovery_max_link_layer_address_option_t;
 
+typedef CLIB_PACKED (struct {
+  icmp6_neighbor_discovery_option_header_t header;
+  u16 reserved;
+  u32 lifetime;
+  ip6_address_t dns_servers[0];
+}) icmp6_neighbor_discovery_recursive_dns_server_option_t;
+
 /* Generic neighbor discover header.  Used for router solicitations,
    etc. */
 typedef CLIB_PACKED (struct
