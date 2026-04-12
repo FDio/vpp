@@ -12,13 +12,14 @@
 #include <vnet/ethernet/mac_address.h>
 #include <rdma/rdma_mlx5dv.h>
 
-#define foreach_rdma_device_flags \
-  _(0, ERROR, "error") \
-  _(1, ADMIN_UP, "admin-up") \
-  _(2, LINK_UP, "link-up") \
-  _(3, PROMISC, "promiscuous") \
-  _(4, MLX5DV, "mlx5dv") \
-  _(5, STRIDING_RQ, "striding-rq")
+#define foreach_rdma_device_flags                                                                  \
+  _ (0, ERROR, "error")                                                                            \
+  _ (1, ADMIN_UP, "admin-up")                                                                      \
+  _ (2, LINK_UP, "link-up")                                                                        \
+  _ (3, PROMISC, "promiscuous")                                                                    \
+  _ (4, MLX5DV, "mlx5dv")                                                                          \
+  _ (5, STRIDING_RQ, "striding-rq")                                                                \
+  _ (6, TSO, "tso")
 
 enum
 {
@@ -30,6 +31,17 @@ enum
 #ifndef MLX5_ETH_L2_INLINE_HEADER_SIZE
 #define MLX5_ETH_L2_INLINE_HEADER_SIZE  18
 #endif
+
+/*
+ * TSO: WQE spans exactly 3 WQEBBs (192 bytes).
+ * WQEBB0: ctrl(1 DS) + eseg(2 DS, 18B inline) + inline-cont-A(1 DS)
+ * WQEBB1: inline-cont-B,C,D,E (4 DS)
+ * WQEBB2: inline-cont-F,G,H (3 DS) + dseg (1 DS)
+ * Total: 12 DS, max inlined header = 18 + 8*16 = 146 bytes.
+ * This covers TCP with 3 SACK blocks: Eth(14)+IP(20)+TCP(56) = 90 bytes.
+ */
+#define RDMA_MLX5_TSO_HDR_MAX (MLX5_ETH_L2_INLINE_HEADER_SIZE + 8 * 16)
+#define RDMA_MLX5_TSO_N_WQEBB 3
 
 typedef struct
 {
@@ -298,11 +310,12 @@ typedef struct
   u16 cqe_flags;
 } rdma_input_trace_t;
 
-#define foreach_rdma_tx_func_error \
-_(SEGMENT_SIZE_EXCEEDED, "segment size exceeded") \
-_(NO_FREE_SLOTS, "no free tx slots") \
-_(SUBMISSION, "tx submission errors") \
-_(COMPLETION, "tx completion errors")
+#define foreach_rdma_tx_func_error                                                                 \
+  _ (SEGMENT_SIZE_EXCEEDED, "segment size exceeded")                                               \
+  _ (NO_FREE_SLOTS, "no free tx slots")                                                            \
+  _ (SUBMISSION, "tx submission errors")                                                           \
+  _ (COMPLETION, "tx completion errors")                                                           \
+  _ (TSO_HDR_TOO_BIG, "tso header exceeds max inline size")
 
 typedef enum
 {
