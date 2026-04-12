@@ -34,6 +34,24 @@
       "parentUuid": "bfa95ad1_63a042b7",
       "revId": "553b7a1d32d0c58c53acad6b432925b613fa9674",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7f980bf0_518756e4",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2596
+      },
+      "writtenOn": "2026-04-12T22:46:15Z",
+      "side": 1,
+      "message": "Yes, el8 compilation completed successfully.",
+      "parentUuid": "d982d1ff_401df087",
+      "revId": "553b7a1d32d0c58c53acad6b432925b613fa9674",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
