@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "bfa95ad1_63a042b7",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2596
+      },
+      "writtenOn": "2026-04-12T16:24:27Z",
+      "side": 1,
+      "message": "Compilation error on el8 with openssl 1.1.1k\n\n/builddir/build/BUILD/vpp-26.06/src/plugins/tlsopenssl/tls_openssl.c:1874:9: error: unused variable \u0027provider_name\u0027 [-Werror,-Wunused-variable]\n 1874 |   char *provider_name \u003d NULL;\n      |         ^~~~~~~~~~~~~\n1 error generated.",
+      "revId": "553b7a1d32d0c58c53acad6b432925b613fa9674",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
