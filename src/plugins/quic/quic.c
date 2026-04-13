@@ -838,6 +838,12 @@ void
 quic_update_fifo_size ()
 {
   quic_main_t *qm = &quic_main;
+  if (qm->app_index == APP_INVALID_INDEX)
+    {
+      clib_warning ("quic app not attached");
+      return;
+    }
+
   segment_manager_props_t *seg_mgr_props =
     application_get_segment_manager_properties (qm->app_index);
 
