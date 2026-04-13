@@ -515,6 +515,8 @@ sfdp_show_sfdp_status_command_fn (vlib_main_t *vm, unformat_input_t *input,
   vlib_cli_output (vm, "  max sessions cache per thread: %lu\n",
 		   sfdp_num_sessions_cache_per_thread ());
   vlib_cli_output (vm, "  max tenants: %llu\n", 1ULL << sfdp->log2_tenants);
+  vlib_cli_output (vm, "  max sessions per tenant: %u%s\n", sfdp->max_sessions_per_tenant,
+		   sfdp->max_sessions_per_tenant ? "" : " (disabled)");
 
   // iterate over all threads
   sfdp_per_thread_data_t *ptd;

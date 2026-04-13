@@ -77,6 +77,7 @@ sfdp_session_remove (sfdp_main_t *sfdp, sfdp_per_thread_data_t *ptd,
   vlib_increment_simple_counter (
     &sfdp->tenant_session_ctr[SFDP_TENANT_SESSION_COUNTER_REMOVED],
     thread_index, session->tenant_idx, 1);
+  sfdp_tenant_release_session (sfdp, sfdp_tenant_at_index (sfdp, session->tenant_idx));
   session->state = SFDP_SESSION_STATE_FREE;
   session->owning_thread_index = SFDP_UNBOUND_THREAD_INDEX;
   sfdp_free_session (sfdp, ptd, session_index);

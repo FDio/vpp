@@ -168,6 +168,13 @@ sfdp_init (vlib_main_t *vm)
 #undef _
   sfdp->no_main = sfdp->no_main && vlib_num_workers ();
 
+  if (sfdp->max_sessions_per_tenant &&
+      sfdp->max_sessions_per_tenant >= (1ULL << sfdp->log2_sessions))
+    return clib_error_return (0,
+			      "max-sessions-per-tenant (%u) must be smaller than "
+			      "the global session limit (%llu)",
+			      sfdp->max_sessions_per_tenant, 1ULL << sfdp->log2_sessions);
+
   /* sfdp->eviction_sessions_margin came from early_config */
   if ((err = sfdp_set_eviction_sessions_margin (
 	 sfdp->eviction_sessions_margin)) != 0)
@@ -243,6 +250,7 @@ sfdp_tenant_add_del (sfdp_main_t *sfdp, u32 tenant_id, u32 context_id,
 	  tenant->bitmaps[SFDP_FLOW_REVERSE] = SFDP_DEFAULT_BITMAP;
 	  tenant->tenant_id = tenant_id;
 	  tenant->context_id = context_id;
+	  tenant->n_active_sessions = 0;
 	  sfdp_tenant_init_timeouts (tenant);
 	  sfdp_tenant_init_sp_nodes (tenant);
 	  kv.key = tenant_id;
@@ -576,6 +584,8 @@ sfdp_config (vlib_main_t *vm, unformat_input_t *input)
 	;
       else if (unformat (input, "timer-interval %f", &timer_tick_interval_s))
 	timer_interval_specified = 1;
+      else if (unformat (input, "max-sessions-per-tenant %u", &sfdp->max_sessions_per_tenant))
+	;
       else if (unformat (input, "no-main"))
 	{
 	  /* Disable only if there are workers */
@@ -619,7 +629,7 @@ sfdp_config (vlib_main_t *vm, unformat_input_t *input)
 }
 
 /* sfdp { [sessions-log2 <n>] [tenants-log2 <n>] [eviction-sessions-margin <n>]
- *        [timer-interval <seconds>]
+ *        [timer-interval <seconds>] [max-sessions-per-tenant <n>]
  * } config. */
 VLIB_EARLY_CONFIG_FUNCTION (sfdp_config, "sfdp");
 

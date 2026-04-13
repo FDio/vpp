@@ -974,5 +974,187 @@ class TestSfdpTimer(VppTestCase):
         self.assertNotIn(session_id, self._session_ids())
 
 
+@unittest.skipIf(
+    "sfdp_services" in config.excluded_plugins,
+    "SFDP_Services plugin is required to run SFDP tests",
+)
+class TestSfdpSessionLimits(VppTestCase):
+    """SFDP per-tenant session limit enforcement"""
+
+    extra_vpp_config = ["sfdp { sessions-log2 5 max-sessions-per-tenant 4 }"]
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestSfdpSessionLimits, cls).setUpClass()
+        try:
+            cls.create_pg_interfaces(range(2))
+            for i in cls.pg_interfaces:
+                i.config_ip4()
+                i.resolve_arp()
+                i.admin_up()
+        except Exception:
+            super(TestSfdpSessionLimits, cls).tearDownClass()
+            raise
+
+    @classmethod
+    def tearDownClass(cls):
+        for i in cls.pg_interfaces:
+            i.unconfig_ip4()
+            i.admin_down()
+        super(TestSfdpSessionLimits, cls).tearDownClass()
+
+    def _make_syn(self, intf, dst_ip, sport):
+        return (
+            Ether(dst=intf.local_mac, src=intf.remote_mac)
+            / IP(src=intf.remote_ip4, dst=dst_ip)
+            / TCP(sport=sport, dport=80, flags="S")
+        )
+
+    def _send_syns(self, intf, pkts):
+        if not isinstance(pkts, list):
+            pkts = [pkts]
+        intf.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+    def _session_count(self):
+        return len(list(self.vapi.sfdp_session_dump()))
+
+    def _configure_tenant(self, tenant_id, context_id, intf):
+        self.vapi.sfdp_tenant_add_del(
+            tenant_id=tenant_id, context_id=context_id, is_del=False
+        )
+        service_chain = [{"data": "sfdp-l4-lifecycle"}, {"data": "ip4-lookup"}]
+        for direction in [
+            VppEnum.vl_api_sfdp_session_direction_t.SFDP_API_FORWARD,
+            VppEnum.vl_api_sfdp_session_direction_t.SFDP_API_REVERSE,
+        ]:
+            self.vapi.sfdp_set_services(
+                tenant_id=tenant_id,
+                dir=direction,
+                n_services=len(service_chain),
+                services=service_chain,
+            )
+        self.vapi.sfdp_interface_input_set(
+            sw_if_index=intf.sw_if_index,
+            tenant_id=tenant_id,
+            is_disable=False,
+        )
+        self.vapi.cli(f"set sfdp timeout tenant {tenant_id} embryonic 3600")
+
+    def _cleanup_tenant(self, tenant_id, intf):
+        self.vapi.sfdp_kill_session(is_all=True)
+        self.virtual_sleep(1)
+        self.vapi.sfdp_interface_input_set(
+            sw_if_index=intf.sw_if_index,
+            tenant_id=tenant_id,
+            is_disable=True,
+        )
+        self.vapi.sfdp_tenant_add_del(tenant_id=tenant_id, is_del=True)
+
+    def test_per_tenant_session_limit(self):
+        """Per-tenant limit prevents session creation beyond the configured max"""
+        self._configure_tenant(1, 100, self.pg0)
+        self._configure_tenant(2, 200, self.pg1)
+
+        # Tenant 1: send 4 unique SYNs -> 4 sessions created (at limit)
+        pkts = [self._make_syn(self.pg0, "198.51.100.2", 10000 + i) for i in range(4)]
+        self._send_syns(self.pg0, pkts)
+        self.assertEqual(self._session_count(), 4)
+
+        # Tenant 1: send 4 more unique SYNs -> should all be rejected
+        overflow_pkts = [
+            self._make_syn(self.pg0, "198.51.100.2", 20000 + i) for i in range(4)
+        ]
+        self._send_syns(self.pg0, overflow_pkts)
+        self.assertEqual(self._session_count(), 4, "No new sessions should be created")
+        self.assert_error_counter_equal(
+            "/err/sfdp-lookup-ip4/per-tenant table overflow", 4
+        )
+
+        # Tenant 2: send 4 unique SYNs -> should succeed (different tenant)
+        pkts2 = [self._make_syn(self.pg1, "198.51.100.3", 10000 + i) for i in range(4)]
+        self._send_syns(self.pg1, pkts2)
+        self.assertEqual(
+            self._session_count(), 8, "Tenant 2 sessions should be created"
+        )
+
+        self._cleanup_tenant(1, self.pg0)
+        self._cleanup_tenant(2, self.pg1)
+
+
+@unittest.skipIf(
+    "sfdp_services" in config.excluded_plugins,
+    "SFDP_Services plugin is required to run SFDP tests",
+)
+class TestSfdpGlobalSessionLimit(VppTestCase):
+    """SFDP global session limit enforcement"""
+
+    # 2^3 = 8 sessions, no per-tenant limit
+    extra_vpp_config = ["sfdp { sessions-log2 3 }"]
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestSfdpGlobalSessionLimit, cls).setUpClass()
+        try:
+            cls.create_pg_interfaces(range(1))
+            cls.pg0.config_ip4()
+            cls.pg0.resolve_arp()
+            cls.pg0.admin_up()
+        except Exception:
+            super(TestSfdpGlobalSessionLimit, cls).tearDownClass()
+            raise
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.pg0.unconfig_ip4()
+        cls.pg0.admin_down()
+        super(TestSfdpGlobalSessionLimit, cls).tearDownClass()
+
+    def setUp(self):
+        super(TestSfdpGlobalSessionLimit, self).setUp()
+        self.vapi.cli("sfdp tenant add 1 context 100")
+        for d in ["forward", "reverse"]:
+            self.vapi.cli(
+                f"set sfdp services tenant 1 sfdp-l4-lifecycle ip4-lookup {d}"
+            )
+        self.vapi.cli("set sfdp interface-input pg0 tenant 1")
+        self.vapi.cli("set sfdp timeout tenant 1 embryonic 3600")
+
+    def tearDown(self):
+        self.vapi.sfdp_kill_session(is_all=True)
+        self.virtual_sleep(1)
+        self.vapi.cli("set sfdp interface-input pg0 tenant 1 disable")
+        self.vapi.cli("sfdp tenant del 1")
+        super(TestSfdpGlobalSessionLimit, self).tearDown()
+
+    def _make_syn(self, sport):
+        return (
+            Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+            / IP(src=self.pg0.remote_ip4, dst="198.51.100.2")
+            / TCP(sport=sport, dport=80, flags="S")
+        )
+
+    def _session_count(self):
+        return len(list(self.vapi.sfdp_session_dump()))
+
+    def test_global_session_limit(self):
+        """Global table overflow fires when the session pool is exhausted"""
+        # Fill the table: 8 sessions (sessions-log2 3)
+        pkts = [self._make_syn(10000 + i) for i in range(8)]
+        self.pg0.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        self.assertEqual(self._session_count(), 8)
+
+        # Send 4 more: should all overflow
+        overflow_pkts = [self._make_syn(20000 + i) for i in range(4)]
+        self.pg0.add_stream(overflow_pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        self.assertEqual(self._session_count(), 8, "No new sessions after overflow")
+        self.assert_error_counter_equal("/err/sfdp-lookup-ip4/table overflow", 4)
+
+
 if __name__ == "__main__":
     unittest.main(testRunner=VppTestRunner)

@@ -339,10 +339,11 @@ sfdp_parser_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	    thread_index, time_now, key, h, lv, scope_index, kv, key_size,
 	    table_bihash);
 
-	  if (PREDICT_FALSE (rv == 1))
+	  if (PREDICT_FALSE (rv == 1 || rv == 3))
 	    {
 	      vlib_node_increment_counter (
-		vm, node->node_index, SFDP_LOOKUP_ERROR_TABLE_OVERFLOW, 1);
+		vm, node->node_index,
+		rv == 3 ? SFDP_LOOKUP_ERROR_TENANT_OVERFLOW : SFDP_LOOKUP_ERROR_TABLE_OVERFLOW, 1);
 	      lv[0] =
 		(u64) SFDP_SP_NODE_IP6_TABLE_OVERFLOW << 32 | SFDP_LV_TO_SP;
 	      goto next_pkt;

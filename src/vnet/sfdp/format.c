@@ -352,8 +352,10 @@ format_sfdp_tenant_extra (u8 *s, va_list *args)
 	      indent + strlen (z) + 2, ctr2.bytes);
     foreach_sfdp_tenant_data_counter
 #undef _
-      s = format (s, "%U%s\n", format_white_space, indent,
-		  "Configured Timeout:");
+    if (sfdp->max_sessions_per_tenant) s =
+      format (s, "%Uactive sessions: %u / %u\n", format_white_space, indent + 2,
+	      tenant->n_active_sessions, sfdp->max_sessions_per_tenant);
+  s = format (s, "%U%s\n", format_white_space, indent, "Configured Timeout:");
 
   sfdp_foreach_timeout (sfdp, timeout)
   {

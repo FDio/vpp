@@ -6,13 +6,14 @@
 #define __included_lookup_h__
 
 #define SFDP_LV_TO_SP ((u64) 0x1 << 63)
-#define foreach_sfdp_lookup_error                                             \
-  _ (MISS, "flow miss")                                                       \
-  _ (LOCAL, "local flow")                                                     \
-  _ (REMOTE, "remote flow")                                                   \
-  _ (COLLISION, "hash add collision")                                         \
-  _ (CON_DROP, "handoff drop")                                                \
-  _ (TABLE_OVERFLOW, "table overflow")
+#define foreach_sfdp_lookup_error                                                                  \
+  _ (MISS, "flow miss")                                                                            \
+  _ (LOCAL, "local flow")                                                                          \
+  _ (REMOTE, "remote flow")                                                                        \
+  _ (COLLISION, "hash add collision")                                                              \
+  _ (CON_DROP, "handoff drop")                                                                     \
+  _ (TABLE_OVERFLOW, "table overflow")                                                             \
+  _ (TENANT_OVERFLOW, "per-tenant table overflow")
 
 typedef enum
 {
