@@ -129,9 +129,6 @@ typedef enum
     [SNORT_ENQ_NEXT_DROP] = "error-drop",                                     \
   }
 
-/* functions */
-snort_main_t *snort_get_main ();
-
 /* interface.c */
 int snort_interface_enable_disable (vlib_main_t *vm, char *instance_name,
 				    u32 sw_if_index, int is_enable, int in,

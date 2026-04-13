@@ -128,7 +128,7 @@ send_snort_instance_details (const snort_instance_t *instance,
 static void
 vl_api_snort_instance_get_t_handler (vl_api_snort_instance_get_t *mp)
 {
-  snort_main_t *sm = snort_get_main ();
+  snort_main_t *sm = &snort_main;
   snort_instance_t *instance = 0;
   vl_api_snort_instance_get_reply_t *rmp;
   u32 instance_index;
@@ -188,7 +188,7 @@ static void
 send_snort_client_details (const snort_client_t *client,
 			   vl_api_registration_t *rp, u32 context)
 {
-  snort_main_t *sm = snort_get_main ();
+  snort_main_t *sm = &snort_main;
   vl_api_snort_client_details_t *rmp;
 
   REPLY_MACRO_DETAILS4 (VL_API_SNORT_CLIENT_DETAILS, rp, context, ({
@@ -201,7 +201,7 @@ send_snort_client_details (const snort_client_t *client,
 static void
 vl_api_snort_client_get_t_handler (vl_api_snort_client_get_t *mp)
 {
-  snort_main_t *sm = snort_get_main ();
+  snort_main_t *sm = &snort_main;
   snort_client_t *client;
   vl_api_snort_client_get_reply_t *rmp;
   u32 client_index;
