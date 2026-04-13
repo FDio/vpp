@@ -172,10 +172,17 @@ vnet_dev_port_stop (vlib_main_t *vm, vnet_dev_port_t *port)
       vec_add1 (ops, op);
     }
 
+  /* hold the worker thread barrier across both the runtime update
+   * and the driver stop so that worker threads cannot run the TX node
+   * concurrently while the driver frees TX queue buffers (double-free).
+   * vnet_dev_rt_exec_ops() detects the held barrier and executes all ops
+   * locally on thread 0 instead of dispatching to remote threads. */
+  vlib_worker_thread_barrier_sync (vm);
   vnet_dev_rt_exec_ops (vm, dev, ops, vec_len (ops));
   vec_free (ops);
 
   port->port_ops.stop (vm, port);
+  vlib_worker_thread_barrier_release (vm);
 
   foreach_vnet_dev_port_rx_queue (q, port)
     {
