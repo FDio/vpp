@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e27eede7_ba349518",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 75
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3308
+      },
+      "writtenOn": "2026-04-13T13:27:56Z",
+      "side": 1,
+      "message": "This looks good to me, other than a tiny nit.",
+      "revId": "ee7686ae4b0dd0745e4490293dca6204e7bdd165",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bf790211_f909bcd5",
+        "filename": "src/plugins/pppoeclient/pppoeclient_api.c",
+        "patchSetId": 75
+      },
+      "lineNbr": 100,
+      "author": {
+        "id": 3308
+      },
+      "writtenOn": "2026-04-13T13:27:56Z",
+      "side": 1,
+      "message": "This implies that it\u0027s fine for unit to be NULL, but later on (e.g. line 109) we unconditionally assign to \\*unit.\nThis function is only called from send_pppoeclient_details() and always gets a valid unit pointer there, so I think the correct fix is to unconditionally do \\*unit \u003d ~0;.",
+      "revId": "ee7686ae4b0dd0745e4490293dca6204e7bdd165",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "efc626cc_c1ab4beb",
+        "filename": "src/plugins/pppoeclient/pppoeclient_api.c",
+        "patchSetId": 75
+      },
+      "lineNbr": 102,
+      "author": {
+        "id": 3308
+      },
+      "writtenOn": "2026-04-13T13:27:56Z",
+      "side": 1,
+      "message": "Similar here, this pointer is always passed non-NULL.",
+      "revId": "ee7686ae4b0dd0745e4490293dca6204e7bdd165",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
