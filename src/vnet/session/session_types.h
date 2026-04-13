@@ -10,10 +10,12 @@
 #include <svm/svm_fifo.h>
 #include <vnet/session/transport_types.h>
 
-#define SESSION_CLI_ID_WIDTH	60
-#define SESSION_CLI_ID_LEN	CLIB_STRING_MACRO (SESSION_CLI_ID_WIDTH)
-#define SESSION_CLI_STATE_WIDTH 15
-#define SESSION_CLI_STATE_LEN	CLIB_STRING_MACRO (SESSION_CLI_STATE_WIDTH)
+#define SESSION_CLI_ID_WIDTH		    60
+#define SESSION_CLI_ID_LEN		    CLIB_STRING_MACRO (SESSION_CLI_ID_WIDTH)
+#define SESSION_CLI_STATE_WIDTH		    15
+#define SESSION_CLI_STATE_LEN		    CLIB_STRING_MACRO (SESSION_CLI_STATE_WIDTH)
+#define SESSION_FMT_REQ_CONN_ID_INDENT_BITS 3
+#define SESSION_FMT_REQ_CONN_ID_INDENT_MAX  ((1 << SESSION_FMT_REQ_CONN_ID_INDENT_BITS) - 1)
 
 typedef enum session_fmt_req_flag_
 {
@@ -23,6 +25,9 @@ typedef enum session_fmt_req_flag_
   SESSION_FMT_REQ_F_TRANSPORT_DETAIL = 1 << 10,
   SESSION_FMT_REQ_F_RX_TX = 1 << 11,
   SESSION_FMT_REQ_F_SESSION_DETAIL = 1 << 12,
+  SESSION_FMT_REQ_F_MASK = SESSION_FMT_REQ_F_CONN_ID | SESSION_FMT_REQ_F_TRANSPORT_STATE |
+			   SESSION_FMT_REQ_F_TRANSPORT_DETAIL | SESSION_FMT_REQ_F_RX_TX |
+			   SESSION_FMT_REQ_F_SESSION_DETAIL,
 } session_fmt_req_flag_t;
 
 /*
@@ -41,7 +46,8 @@ typedef union session_fmt_req_
     u32 transport_detail : 1;
     u32 rx_tx : 1;
     u32 session_detail : 1;
-    u32 : 19;
+    u32 conn_id_indent : SESSION_FMT_REQ_CONN_ID_INDENT_BITS;
+    u32 : 16;
   };
 } session_fmt_req_t;
 
@@ -56,7 +62,7 @@ session_fmt_req_decode (u32 fmt)
 static_always_inline session_fmt_req_t
 session_fmt_req_normalize (session_fmt_req_t fmt)
 {
-  if (!(fmt.as_u32 & ~SESSION_FMT_REQ_LEVEL_MASK))
+  if (!(fmt.as_u32 & SESSION_FMT_REQ_F_MASK))
     {
       fmt.conn_id = 1;
       if (fmt.level >= 1)

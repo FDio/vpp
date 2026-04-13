@@ -103,17 +103,24 @@ session_fmt_req_transport (session_fmt_req_t fmt, transport_fmt_req_flag_t flag)
 static u8 *
 format_session_transport_brief (u8 *s, session_t *ss, u32 tp, session_fmt_req_t fmt)
 {
+  u32 conn_id_indent = fmt.conn_id_indent;
+  u32 conn_id_width;
   uword wants_state, wants_io, use_cols;
 
   wants_state = fmt.transport_state;
   wants_io = fmt.rx_tx;
   use_cols = wants_state || wants_io;
+  conn_id_width =
+    (conn_id_indent < SESSION_CLI_ID_WIDTH) ? SESSION_CLI_ID_WIDTH - conn_id_indent : 0;
 
   if (fmt.conn_id)
     {
+      if (conn_id_indent)
+	s = format (s, "%U", format_white_space, conn_id_indent);
+
       if (use_cols)
 	s = format (
-	  s, "%-" SESSION_CLI_ID_LEN "U", format_transport_connection, tp, ss->connection_index,
+	  s, "%-*U", (int) conn_id_width, format_transport_connection, tp, ss->connection_index,
 	  ss->thread_index,
 	  transport_fmt_req_raw (session_fmt_req_transport (fmt, TRANSPORT_FMT_REQ_F_CONN_ID)));
       else
@@ -186,6 +193,8 @@ format_session (u8 *s, va_list *args)
     }
   else if (ss->session_state == SESSION_STATE_LISTENING)
     {
+      if (fmt.conn_id_indent)
+	s = format (s, "%U", format_white_space, fmt.conn_id_indent);
       s = format (s, "%U%v", format_transport_listen_connection, tp, ss->connection_index,
 		  ss->thread_index, fmt.level, str);
       if (fmt.level > 1)
@@ -195,6 +204,8 @@ format_session (u8 *s, va_list *args)
     {
       if (ss->flags & SESSION_F_HALF_OPEN)
 	{
+	  if (fmt.conn_id_indent)
+	    s = format (s, "%U", format_white_space, fmt.conn_id_indent);
 	  s = format (s, "%U", format_transport_half_open_connection, tp, ss->connection_index,
 		      ss->thread_index, fmt.level);
 	  s = format (s, "%v", str);
@@ -641,9 +652,10 @@ session_cli_show_session_tree (vlib_main_t *vm, u8 force_print)
 		pool_elt_at_index (st->nodes, vec_pop (node_stack));
 	      session_t *s = session_get (node->session_index, thread_index);
 	      u32 *child_index;
+	      session_fmt_req_t fmt = session_fmt_req_decode (1);
 
-	      vlib_cli_output (vm, "%*s%U", node->depth * 2, "",
-			       format_session, s, 1);
+	      fmt.conn_id_indent = clib_min (node->depth * 2, SESSION_FMT_REQ_CONN_ID_INDENT_MAX);
+	      vlib_cli_output (vm, "%U", format_session, s, fmt.as_u32);
 
 	      vec_foreach (child_index, node->children)
 		vec_add1 (node_stack, *child_index);
