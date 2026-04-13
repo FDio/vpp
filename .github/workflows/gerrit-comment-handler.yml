@@ -127,7 +127,7 @@ jobs:
       # yamllint disable-line rule:line-length
       JOB_NAME: vpp-csit-verify-perf-${{ github.event.inputs.GERRIT_BRANCH }}-${{ matrix.os }}-${{ matrix.executor_arch }}-${{ matrix.node }}
       WORKSPACE: /scratch/docker-build/vpp
-      CSIT_DIR: /scratch/docker-build/csit
+      CSIT_WORKSPACE: /scratch/docker-build/csit
       GERRIT_BRANCH: ${{ github.event.inputs.GERRIT_BRANCH }}
       GERRIT_CHANGE_URL: ${{ github.event.inputs.GERRIT_CHANGE_URL }}
       GERRIT_PROJECT: ${{ github.event.inputs.GERRIT_PROJECT }}
@@ -152,14 +152,19 @@ jobs:
           GERRIT_REFSPEC: ${{ env.GERRIT_REFSPEC }}
           TUI_LINE: ${{ env.TUI_LINE }}
 
+<<<<<<< PATCH SET (9acdb3 gha: csit-comment-added)
+      - name: Gerrit Checkout VPP
+        # yamllint disable-line rule:line-length
+        uses: fdio/vpp/.github/actions/vpp-checkout-gerrit-change@27fc2aa27f57c8f7055e8f1b6e5a9f41b0315873
+=======
       - name: Git Checkout CSIT
         uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98  # v6.0.2
+>>>>>>> BASE      (de8c4c tls: fix openssl provider with ossl 1.1.1)
         with:
-          path: ${{ env.WORKSPACE }}/csit
-          ref: master
-          repository: FDio/csit
-          fetch-depth: 0
-          fetch-tags: 'true'
+          WORKSPACE: ${{ env.CSIT_WORKSPACE }}
+          GERRIT_BRANCH: master
+          GERRIT_REFSPEC: ""
+          TUI_LINE: ${{ env.TUI_LINE }}
 
       - name: Run CSIT Bootstrap
         uses: fdio/csit/.github/actions/csit-bootstrap@6e2e8dd6eae1a9297bfcc3a1630be181191a0553
@@ -179,7 +184,7 @@ jobs:
           s3_bucket: ${{ vars.S3_BUCKET }}
           # yamllint disable-line rule:line-length
           s3_path: vpp-csit-verify-perf-${{ matrix.node }}/${{ github.run_id }}
-          archives_path: ${{ env.CSIT_DIR }}/archives
+          archives_path: ${{ env.CSIT_WORKSPACE }}/archives
 
   vote:
     if: ${{ always() }}
