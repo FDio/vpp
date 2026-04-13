@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "45bc30ca_77ca6fb5",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3317
+      },
+      "writtenOn": "2026-04-13T12:24:51Z",
+      "side": 1,
+      "message": "Hi, This is my first contribution to the VPP project. I have followed the contribution guidelines in docs and added you as a reviewer.\n\nThis small patch fixes an issue where subnets (e.g. `/64`) derived from a prefix (e.g. `/56`) expires prematurely, even after the parent prefix has been updated or renewed.\n\nCould you please take a look at it when you have a moment? Please let me know if I need to make any adjustments to align with the project standards.",
+      "revId": "1623c41a9e9e11ec53ad5cc398ac84ceab1b5751",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
