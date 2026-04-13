@@ -342,7 +342,8 @@ typedef struct
   u64 session_id_ctr;
   u64 session_id_template;
   u32 *session_freelist;
-  u32 n_sessions; /* Number of sessions belonging to this thread */
+  u32 n_sessions;	  /* Number of sessions belonging to this thread */
+  u32 *n_tenant_sessions; /* Per-tenant session count for this thread, indexed by tenant_idx */
 } sfdp_per_thread_data_t;
 
 // TODO: Find a way to abstract, or share, timeout definition.
@@ -424,6 +425,11 @@ typedef struct
 
   /* Interval between timer wheel ticks in seconds. */
   f64 timer_tick_interval_s;
+
+  /* Per-tenant per-thread session limit. 0 = disabled. */
+  u32 tenant_sessions_per_thread;
+  /* Set once at init when tenant_sessions_per_thread > 0. */
+  u8 tenant_session_limit_enabled;
 
   /* If this is set, don't run polling nodes on main */
   int no_main;
@@ -733,6 +739,31 @@ sfdp_free_session (sfdp_main_t *sfdp, sfdp_per_thread_data_t *ptd,
     ptd->n_sessions -= 1;
 }
 
+/**
+ * Attempt to reserve a session slot for a tenant on the current thread.
+ * Returns 0 on success, 1 if the per-tenant per-thread session limit is reached.
+ * Must be called before sfdp_alloc_session.
+ * On failure paths after a successful reserve, call sfdp_tenant_release_session.
+ */
+static_always_inline int
+sfdp_tenant_try_reserve_session (sfdp_main_t *sfdp, sfdp_per_thread_data_t *ptd, u16 tenant_idx)
+{
+  if (PREDICT_FALSE (sfdp->tenant_session_limit_enabled))
+    {
+      if (PREDICT_FALSE (ptd->n_tenant_sessions[tenant_idx] >= sfdp->tenant_sessions_per_thread))
+	return 1;
+      ptd->n_tenant_sessions[tenant_idx] += 1;
+    }
+  return 0;
+}
+
+static_always_inline void
+sfdp_tenant_release_session (sfdp_main_t *sfdp, sfdp_per_thread_data_t *ptd, u16 tenant_idx)
+{
+  if (PREDICT_FALSE (sfdp->tenant_session_limit_enabled))
+    ptd->n_tenant_sessions[tenant_idx] -= 1;
+}
+
 static_always_inline void
 sfdp_session_generate_and_set_id (sfdp_main_t *sfdp,
 				  sfdp_per_thread_data_t *ptd,
@@ -760,7 +791,8 @@ sfdp_session_generate_and_set_id (sfdp_main_t *sfdp,
  * the session is created with no assigned thread
  * Return value: 0 --> SUCCESS
 		 1 --> Unable to allocate session
-		 2 --> Collision */
+		 2 --> Collision
+		 3 --> Per-tenant session limit reached */
 static_always_inline int
 sfdp_create_session_inline (sfdp_main_t *sfdp, sfdp_per_thread_data_t *ptd,
 			    sfdp_tenant_t *tenant, u16 tenant_idx,
@@ -774,11 +806,18 @@ sfdp_create_session_inline (sfdp_main_t *sfdp, sfdp_per_thread_data_t *ptd,
   u32 session_idx;
   u32 pseudo_flow_idx;
 
+  /* Check per-tenant per-thread session limit before allocating from global pool */
+  if (PREDICT_FALSE (sfdp_tenant_try_reserve_session (sfdp, ptd, tenant_idx)))
+    return 3;
+
   session_idx =
     sfdp_alloc_session (sfdp, ptd, thread_index != SFDP_UNBOUND_THREAD_INDEX);
 
   if (session_idx == ~0)
-    return 1;
+    {
+      sfdp_tenant_release_session (sfdp, ptd, tenant_idx);
+      return 1;
+    }
 
   session = pool_elt_at_index (sfdp->sessions, session_idx);
 
@@ -794,6 +833,7 @@ sfdp_create_session_inline (sfdp_main_t *sfdp, sfdp_per_thread_data_t *ptd,
 	{
 	  /* colision - remote thread created same entry */
 	  sfdp_free_session (sfdp, ptd, session_idx);
+	  sfdp_tenant_release_session (sfdp, ptd, tenant_idx);
 	  return 2;
 	}
       session->type = SFDP_SESSION_TYPE_IP6;
@@ -808,6 +848,7 @@ sfdp_create_session_inline (sfdp_main_t *sfdp, sfdp_per_thread_data_t *ptd,
 	{
 	  /* colision - remote thread created same entry */
 	  sfdp_free_session (sfdp, ptd, session_idx);
+	  sfdp_tenant_release_session (sfdp, ptd, tenant_idx);
 	  return 2;
 	}
       session->type = SFDP_SESSION_TYPE_IP4;

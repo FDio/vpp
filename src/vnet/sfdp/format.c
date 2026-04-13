@@ -352,8 +352,19 @@ format_sfdp_tenant_extra (u8 *s, va_list *args)
 	      indent + strlen (z) + 2, ctr2.bytes);
     foreach_sfdp_tenant_data_counter
 #undef _
-      s = format (s, "%U%s\n", format_white_space, indent,
-		  "Configured Timeout:");
+  {
+    u32 total = 0;
+    sfdp_per_thread_data_t *ptd;
+    vec_foreach (ptd, sfdp->per_thread_data)
+      if (tenant_idx < vec_len (ptd->n_tenant_sessions))
+	total += ptd->n_tenant_sessions[tenant_idx];
+    if (sfdp->tenant_session_limit_enabled)
+      s = format (s, "%Uactive sessions: %u (limit: %u/thread)\n", format_white_space, indent + 2,
+		  total, sfdp->tenant_sessions_per_thread);
+    else
+      s = format (s, "%Uactive sessions: %u\n", format_white_space, indent + 2, total);
+  }
+  s = format (s, "%U%s\n", format_white_space, indent, "Configured Timeout:");
 
   sfdp_foreach_timeout (sfdp, timeout)
   {

@@ -185,11 +185,18 @@ sfdp_parser_create_session_inline (const sfdp_parser_registration_t *reg,
   u32 session_idx;
   u32 pseudo_flow_idx;
 
+  /* verify if tenant session limits have been reached */
+  if (PREDICT_FALSE (sfdp_tenant_try_reserve_session (sfdp, ptd, tenant_idx)))
+    return 3;
+
   session_idx =
     sfdp_alloc_session (sfdp, ptd, thread_index != SFDP_UNBOUND_THREAD_INDEX);
 
   if (session_idx == ~0)
-    return 1;
+    {
+      sfdp_tenant_release_session (sfdp, ptd, tenant_idx);
+      return 1;
+    }
 
   session = pool_elt_at_index (sfdp->sessions, session_idx);
 
@@ -205,6 +212,7 @@ sfdp_parser_create_session_inline (const sfdp_parser_registration_t *reg,
     {
       /* colision - remote thread created same entry */
       sfdp_free_session (sfdp, ptd, session_idx);
+      sfdp_tenant_release_session (sfdp, ptd, tenant_idx);
       return 2;
     }
   session->type = reg->type;
@@ -339,10 +347,11 @@ sfdp_parser_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	    thread_index, time_now, key, h, lv, scope_index, kv, key_size,
 	    table_bihash);
 
-	  if (PREDICT_FALSE (rv == 1))
+	  if (PREDICT_FALSE (rv == 1 || rv == 3))
 	    {
 	      vlib_node_increment_counter (
-		vm, node->node_index, SFDP_LOOKUP_ERROR_TABLE_OVERFLOW, 1);
+		vm, node->node_index,
+		rv == 3 ? SFDP_LOOKUP_ERROR_TENANT_OVERFLOW : SFDP_LOOKUP_ERROR_TABLE_OVERFLOW, 1);
 	      lv[0] =
 		(u64) SFDP_SP_NODE_IP6_TABLE_OVERFLOW << 32 | SFDP_LV_TO_SP;
 	      goto next_pkt;

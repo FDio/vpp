@@ -119,6 +119,7 @@ sfdp_init_main_if_needed (sfdp_main_t *sfdp)
 				 << (template_shift + log_n_thread);
       ptd->session_id_template |= (u64) i << template_shift;
       ptd->session_freelist = 0;
+      ptd->n_tenant_sessions = 0;
     }
   if (vlib_num_workers ())
     clib_spinlock_init (&sfdp->session_lock);
@@ -167,6 +168,16 @@ sfdp_init (vlib_main_t *vm)
   _ (timer_tick_interval_s, SFDP_DEFAULT_TIMER_INTERVAL_S)
 #undef _
   sfdp->no_main = sfdp->no_main && vlib_num_workers ();
+
+  if (sfdp->tenant_sessions_per_thread)
+    {
+      if (sfdp->tenant_sessions_per_thread >= (1ULL << sfdp->log2_sessions))
+	return clib_error_return (0,
+				  "tenant-sessions-per-thread (%u) must be smaller than "
+				  "the global session limit (%llu)",
+				  sfdp->tenant_sessions_per_thread, 1ULL << sfdp->log2_sessions);
+      sfdp->tenant_session_limit_enabled = 1;
+    }
 
   /* sfdp->eviction_sessions_margin came from early_config */
   if ((err = sfdp_set_eviction_sessions_margin (
@@ -245,6 +256,13 @@ sfdp_tenant_add_del (sfdp_main_t *sfdp, u32 tenant_id, u32 context_id,
 	  tenant->context_id = context_id;
 	  sfdp_tenant_init_timeouts (tenant);
 	  sfdp_tenant_init_sp_nodes (tenant);
+	  /* Ensure every thread's per-tenant counter vector covers this index. */
+	  sfdp_per_thread_data_t *ptd;
+	  vec_foreach (ptd, sfdp->per_thread_data)
+	    {
+	      vec_validate (ptd->n_tenant_sessions, tenant_idx);
+	      ptd->n_tenant_sessions[tenant_idx] = 0;
+	    }
 	  kv.key = tenant_id;
 	  kv.value = tenant_idx;
 	  clib_bihash_add_del_8_8 (&sfdp->tenant_idx_by_id, &kv, 1);
@@ -576,6 +594,8 @@ sfdp_config (vlib_main_t *vm, unformat_input_t *input)
 	;
       else if (unformat (input, "timer-interval %f", &timer_tick_interval_s))
 	timer_interval_specified = 1;
+      else if (unformat (input, "tenant-sessions-per-thread %u", &sfdp->tenant_sessions_per_thread))
+	;
       else if (unformat (input, "no-main"))
 	{
 	  /* Disable only if there are workers */
@@ -619,7 +639,7 @@ sfdp_config (vlib_main_t *vm, unformat_input_t *input)
 }
 
 /* sfdp { [sessions-log2 <n>] [tenants-log2 <n>] [eviction-sessions-margin <n>]
- *        [timer-interval <seconds>]
+ *        [timer-interval <seconds>] [tenant-sessions-per-thread <n>]
  * } config. */
 VLIB_EARLY_CONFIG_FUNCTION (sfdp_config, "sfdp");
 

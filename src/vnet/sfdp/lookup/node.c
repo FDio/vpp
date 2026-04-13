@@ -432,10 +432,12 @@ sfdp_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	    rv = sfdp_create_session_v6 (sfdp, ptd, tenant, tenant_idx,
 					 thread_index, time_now, k6, h, lv,
 					 scope_index);
-	    if (PREDICT_FALSE (rv == 1))
+	    if (PREDICT_FALSE (rv == 1 || rv == 3))
 	      {
-		vlib_node_increment_counter (
-		  vm, node->node_index, SFDP_LOOKUP_ERROR_TABLE_OVERFLOW, 1);
+		vlib_node_increment_counter (vm, node->node_index,
+					     rv == 3 ? SFDP_LOOKUP_ERROR_TENANT_OVERFLOW :
+						       SFDP_LOOKUP_ERROR_TABLE_OVERFLOW,
+					     1);
 		lv[0] =
 		  (u64) SFDP_SP_NODE_IP6_TABLE_OVERFLOW << 32 | SFDP_LV_TO_SP;
 		goto next_pkt6;
@@ -492,10 +494,12 @@ sfdp_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	    rv = sfdp_create_session_v4 (sfdp, ptd, tenant, tenant_idx,
 					 thread_index, time_now, k4, h, lv,
 					 scope_index);
-	    if (PREDICT_FALSE (rv == 1))
+	    if (PREDICT_FALSE (rv == 1 || rv == 3))
 	      {
-		vlib_node_increment_counter (
-		  vm, node->node_index, SFDP_LOOKUP_ERROR_TABLE_OVERFLOW, 1);
+		vlib_node_increment_counter (vm, node->node_index,
+					     rv == 3 ? SFDP_LOOKUP_ERROR_TENANT_OVERFLOW :
+						       SFDP_LOOKUP_ERROR_TABLE_OVERFLOW,
+					     1);
 		lv[0] =
 		  (u64) SFDP_SP_NODE_IP4_TABLE_OVERFLOW << 32 | SFDP_LV_TO_SP;
 		goto next_pkt4;
