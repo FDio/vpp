@@ -81,21 +81,99 @@ format_session_flags (u8 *s, va_list *args)
   return s;
 }
 
-/**
- * Format stream session as per the following format
- *
- * verbose:
- *   "Connection", "Rx fifo", "Tx fifo", "Session Index"
- * non-verbose:
- *   "Connection"
+static session_fmt_req_t
+session_fmt_req_normalize (session_fmt_req_t fmt)
+{
+  if (!(fmt.as_u32 & ~SESSION_FMT_REQ_LEVEL_MASK))
+    {
+      fmt.conn_id = 1;
+      if (fmt.level >= 1)
+	fmt.transport_state = 1;
+      if (fmt.level == 1)
+	fmt.rx_tx = 1;
+      if (fmt.level >= 2)
+	{
+	  fmt.transport_detail = 1;
+	  fmt.session_detail = 1;
+	}
+    }
+
+  if (fmt.transport_detail)
+    {
+      fmt.conn_id = 1;
+      fmt.transport_state = 1;
+    }
+
+  return fmt;
+}
+
+static u8 *
+format_session_io (u8 *s, session_t *ss)
+{
+  u32 rxf, txf;
+
+  rxf = ss->rx_fifo ? svm_fifo_max_dequeue (ss->rx_fifo) : 0;
+  txf = ss->tx_fifo ? svm_fifo_max_dequeue (ss->tx_fifo) : 0;
+
+  return format (s, "%-10u%-10u", rxf, txf);
+}
+
+static u8 *
+format_session_transport (u8 *s, session_t *ss, u32 tp, session_fmt_req_t fmt)
+{
+  uword wants_state, wants_io, use_cols;
+
+  if (fmt.transport_detail && !fmt.rx_tx)
+    return format (s, "%U", format_transport_connection, tp, ss->connection_index, ss->thread_index,
+		   TRANSPORT_FMT_REQ_F_CONN_ID | TRANSPORT_FMT_REQ_F_STATE |
+		     TRANSPORT_FMT_REQ_F_DETAIL);
+
+  wants_state = fmt.transport_state;
+  wants_io = fmt.rx_tx;
+  use_cols = wants_state || wants_io;
+
+  if (fmt.conn_id)
+    {
+      if (use_cols)
+	s = format (s, "%-" SESSION_CLI_ID_LEN "U", format_transport_connection, tp,
+		    ss->connection_index, ss->thread_index, TRANSPORT_FMT_REQ_F_CONN_ID);
+      else
+	s = format (s, "%U", format_transport_connection, tp, ss->connection_index,
+		    ss->thread_index, TRANSPORT_FMT_REQ_F_CONN_ID);
+    }
+
+  if (wants_state)
+    {
+      if (use_cols)
+	s = format (s, "%-" SESSION_CLI_STATE_LEN "U", format_transport_connection, tp,
+		    ss->connection_index, ss->thread_index, TRANSPORT_FMT_REQ_F_STATE);
+      else
+	s = format (s, "%U", format_transport_connection, tp, ss->connection_index,
+		    ss->thread_index, TRANSPORT_FMT_REQ_F_STATE);
+    }
+
+  if (wants_io)
+    s = format_session_io (s, ss);
+
+  if (fmt.transport_detail)
+    s = format (s, "%U", format_transport_connection, tp, ss->connection_index, ss->thread_index,
+		TRANSPORT_FMT_REQ_F_DETAIL);
+
+  return s;
+}
+
+/*
+ * Format a session according to the session format request.
  */
 u8 *
 format_session (u8 *s, va_list *args)
 {
   session_t *ss = va_arg (*args, session_t *);
-  int verbose = va_arg (*args, int);
+  session_fmt_req_t fmt = { .as_u32 = va_arg (*args, int) };
   u32 tp = session_get_transport_proto (ss);
   u8 *str = 0;
+
+  fmt = session_fmt_req_normalize (fmt);
 
   if (ss->session_state >= SESSION_STATE_TRANSPORT_DELETED)
     {
@@ -103,25 +181,13 @@ format_session (u8 *s, va_list *args)
       return s;
     }
 
-  if (verbose == 1)
-    {
-      u32 rxf, txf;
-
-      rxf = ss->rx_fifo ? svm_fifo_max_dequeue (ss->rx_fifo) : 0;
-      txf = ss->tx_fifo ? svm_fifo_max_dequeue (ss->tx_fifo) : 0;
-      str = format (0, "%-10u%-10u", rxf, txf);
-    }
-
   if (ss->session_state >= SESSION_STATE_ACCEPTING ||
       ss->session_state == SESSION_STATE_CREATED)
     {
-      s = format (s, "%U", format_transport_connection, tp,
-		  ss->connection_index, ss->thread_index, verbose);
-      if (verbose == 1)
-	s = format (s, "%v", str);
-      if (verbose > 1)
+      s = format_session_transport (s, ss, tp, fmt);
+      if (fmt.session_detail)
 	{
-	  s = format (s, "%U", format_session_fifos, ss, verbose);
+	  s = format (s, "%U", format_session_fifos, ss, fmt.level);
 	  s = format (s, " session: state: %U opaque: 0x%x flags: %U\n",
 		      format_session_state, ss, ss->opaque,
 		      format_session_flags, ss);
@@ -129,22 +195,27 @@ format_session (u8 *s, va_list *args)
     }
   else if (ss->session_state == SESSION_STATE_LISTENING)
     {
-      s = format (s, "%U%v", format_transport_listen_connection, tp,
-		  ss->connection_index, ss->thread_index, verbose, str);
-      if (verbose > 1)
-	s = format (s, "\n%U", format_session_fifos, ss, verbose);
+      if (fmt.rx_tx)
+	str = format_session_io (0, ss);
+      s = format (s, "%U%v", format_transport_listen_connection, tp, ss->connection_index,
+		  ss->thread_index, fmt.level, str);
+      if (fmt.level > 1)
+	s = format (s, "\n%U", format_session_fifos, ss, fmt.level);
     }
   else if (ss->session_state == SESSION_STATE_CONNECTING)
     {
       if (ss->flags & SESSION_F_HALF_OPEN)
 	{
-	  s = format (s, "%U", format_transport_half_open_connection, tp,
-		      ss->connection_index, ss->thread_index, verbose);
+	  if (fmt.rx_tx)
+	    str = format_session_io (0, ss);
+	  s = format (s, "%U", format_transport_half_open_connection, tp, ss->connection_index,
+		      ss->thread_index, fmt.level);
 	  s = format (s, "%v", str);
 	}
       else
-	s = format (s, "%U", format_transport_connection, tp,
-		    ss->connection_index, ss->thread_index, verbose);
+	{
+	  s = format_session_transport (s, ss, tp, fmt);
+	}
     }
   else
     {

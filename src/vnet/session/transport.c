@@ -100,7 +100,7 @@ format_transport_connection (u8 * s, va_list * args)
   u32 transport_proto = va_arg (*args, u32);
   u32 conn_index = va_arg (*args, u32);
   clib_thread_index_t thread_index = va_arg (*args, u32);
-  u32 verbose = va_arg (*args, u32);
+  transport_fmt_req_t fmt = { .as_u32 = va_arg (*args, u32) };
   const transport_proto_vft_t *tp_vft;
   transport_connection_t *tc;
   u32 indent;
@@ -109,10 +109,9 @@ format_transport_connection (u8 * s, va_list * args)
   if (!tp_vft)
     return s;
 
-  s = format (s, "%U", tp_vft->format_connection, conn_index, thread_index,
-	      verbose);
+  s = format (s, "%U", tp_vft->format_connection, conn_index, thread_index, fmt.as_u32);
   tc = tp_vft->get_connection (conn_index, thread_index);
-  if (tc && verbose > 1)
+  if (tc && fmt.transport_detail)
     {
       indent = format_get_indent (s) + 1;
       if (transport_connection_is_tx_paced (tc))

@@ -1800,19 +1800,33 @@ http1_format_req (u8 *s, va_list *args)
   u32 req_index = va_arg (*args, u32);
   clib_thread_index_t thread_index = va_arg (*args, u32);
   http_ctx_t *hc = va_arg (*args, http_ctx_t *);
-  u32 verbose = va_arg (*args, u32);
+  transport_fmt_req_t fmt = { .as_u32 = va_arg (*args, u32) };
   http_ctx_t *req;
 
   req = http_ctx_get_w_thread (req_index, thread_index);
 
-  s = format (s, "%-" SESSION_CLI_ID_LEN "U", format_http1_req, req, hc);
-  if (verbose)
+  if (!transport_fmt_req_is_explicit (fmt))
     {
-      s =
-	format (s, "%-" SESSION_CLI_STATE_LEN "U", format_http_conn_state, hc);
-      if (verbose > 1)
-	s = format (s, " \nconn_flags: %U\n", format_http_conn_flags, hc);
+      s = format (s, "%-" SESSION_CLI_ID_LEN "U", format_http1_req, req, hc);
+      if (fmt.level)
+	{
+	  s = format (s, "%-" SESSION_CLI_STATE_LEN "U", format_http_conn_state, hc);
+	  if (fmt.level > 1)
+	    s = format (s, " \nconn_flags: %U\n", format_http_conn_flags, hc);
+	}
+      return s;
     }
+
+  if (fmt.conn_id)
+    s = format (s, "%U", format_http1_req, req, hc);
+  if (fmt.transport_state)
+    {
+      if (fmt.conn_id)
+	s = format (s, "\t");
+      s = format (s, "%U", format_http_conn_state, hc);
+    }
+  if (fmt.transport_detail)
+    s = format (s, " \nconn_flags: %U\n", format_http_conn_flags, hc);
 
   return s;
 }
