@@ -6,8 +6,41 @@
 #ifndef SRC_VNET_SESSION_SESSION_TYPES_H_
 #define SRC_VNET_SESSION_SESSION_TYPES_H_
 
+#include <vppinfra/clib.h>
 #include <svm/svm_fifo.h>
 #include <vnet/session/transport_types.h>
+
+#define SESSION_CLI_STR_HELPER(_x) CLIB_STRING_MACRO (_x)
+#define SESSION_CLI_ID_WIDTH	   60
+#define SESSION_CLI_ID_LEN	   SESSION_CLI_STR_HELPER (SESSION_CLI_ID_WIDTH)
+#define SESSION_CLI_STATE_WIDTH	   15
+#define SESSION_CLI_STATE_LEN	   SESSION_CLI_STR_HELPER (SESSION_CLI_STATE_WIDTH)
+
+typedef enum session_fmt_req_flag_
+{
+  SESSION_FMT_REQ_LEVEL_MASK = (1 << 2) - 1,
+  SESSION_FMT_REQ_F_CONN_ID = 1 << 8,
+  SESSION_FMT_REQ_F_TRANSPORT_STATE = 1 << 9,
+  SESSION_FMT_REQ_F_TRANSPORT_DETAIL = 1 << 10,
+  SESSION_FMT_REQ_F_RX_TX = 1 << 11,
+  SESSION_FMT_REQ_F_SESSION_DETAIL = 1 << 12,
+} session_fmt_req_flag_t;
+
+typedef union session_fmt_req_
+{
+  u32 as_u32;
+  struct
+  {
+    u32 level : 2;
+    u32 : 6;
+    u32 conn_id : 1;
+    u32 transport_state : 1;
+    u32 transport_detail : 1;
+    u32 rx_tx : 1;
+    u32 session_detail : 1;
+    u32 : 19;
+  };
+} session_fmt_req_t;
 
 #define SESSION_INVALID_INDEX ((u32)~0)
 #define SESSION_INVALID_HANDLE ((u64)~0)
@@ -535,9 +568,6 @@ typedef enum session_error_
   foreach_session_error
 #undef _
 } session_error_t;
-
-#define SESSION_CLI_ID_LEN "60"
-#define SESSION_CLI_STATE_LEN "15"
 
 /* Maintained for compatibility. Will be deprecated */
 #define SESSION_ERROR_SEG_CREATE SESSION_E_SEG_CREATE

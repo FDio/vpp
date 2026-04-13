@@ -881,21 +881,36 @@ format_srtp_connection (u8 *s, va_list *args)
 {
   u32 ctx_index = va_arg (*args, u32);
   clib_thread_index_t thread_index = va_arg (*args, u32);
-  u32 verbose = va_arg (*args, u32);
+  transport_fmt_req_t fmt = { .as_u32 = va_arg (*args, u32) };
   srtp_tc_t *ctx;
 
   ctx = srtp_ctx_get_w_thread (ctx_index, thread_index);
   if (!ctx)
     return s;
 
-  s = format (s, "%-" SESSION_CLI_ID_LEN "U", format_srtp_ctx, ctx);
-  if (verbose)
+  if (!transport_fmt_req_is_explicit (fmt))
     {
-      s =
-	format (s, "%-" SESSION_CLI_STATE_LEN "U", format_srtp_ctx_state, ctx);
-      if (verbose > 1)
-	s = format (s, "\n");
+      s = format (s, "%-" SESSION_CLI_ID_LEN "U", format_srtp_ctx, ctx);
+      if (fmt.level)
+	{
+	  s = format (s, "%-" SESSION_CLI_STATE_LEN "U", format_srtp_ctx_state, ctx);
+	  if (fmt.level > 1)
+	    s = format (s, "\n");
+	}
+      return s;
     }
+
+  if (fmt.conn_id)
+    s = format (s, "%U", format_srtp_ctx, ctx);
+  if (fmt.transport_state)
+    {
+      if (fmt.conn_id)
+	s = format (s, "\t");
+      s = format (s, "%U", format_srtp_ctx_state, ctx);
+    }
+  if (fmt.transport_detail)
+    s = format (s, "\n");
+
   return s;
 }
 
