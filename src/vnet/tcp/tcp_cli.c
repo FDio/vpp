@@ -258,18 +258,34 @@ u8 *
 format_tcp_connection (u8 * s, va_list * args)
 {
   tcp_connection_t *tc = va_arg (*args, tcp_connection_t *);
-  u32 verbose = va_arg (*args, u32);
+  transport_fmt_req_t fmt = { .as_u32 = va_arg (*args, u32) };
+  uword explicit = transport_fmt_req_is_explicit (fmt);
 
   if (!tc)
     return s;
-  s = format (s, "%-" SESSION_CLI_ID_LEN "U", format_tcp_connection_id, tc);
-  if (verbose)
+
+  if (!explicit)
     {
-      s = format (s, "%-" SESSION_CLI_STATE_LEN "U", format_tcp_state,
-		  tc->state);
-      if (verbose > 1)
-	s = format (s, "\n%U", format_tcp_vars, tc);
+      s = format (s, "%-" SESSION_CLI_ID_LEN "U", format_tcp_connection_id, tc);
+      if (fmt.level)
+	{
+	  s = format (s, "%-" SESSION_CLI_STATE_LEN "U", format_tcp_state, tc->state);
+	  if (fmt.level > 1)
+	    s = format (s, "\n%U", format_tcp_vars, tc);
+	}
+      return s;
     }
+
+  if (fmt.conn_id)
+    s = format (s, "%U", format_tcp_connection_id, tc);
+  if (fmt.transport_state)
+    {
+      if (fmt.conn_id)
+	s = format (s, "\t");
+      s = format (s, "%U", format_tcp_state, tc->state);
+    }
+  if (fmt.transport_detail)
+    s = format (s, "\n%U", format_tcp_vars, tc);
 
   return s;
 }

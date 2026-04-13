@@ -181,6 +181,34 @@ typedef enum _transport_proto
 
 #define TRANSPORT_PROTO_NONE TRANSPORT_PROTO_CT
 
+typedef enum transport_fmt_req_flag_
+{
+  TRANSPORT_FMT_REQ_LEVEL_MASK = (1 << 2) - 1,
+  TRANSPORT_FMT_REQ_F_CONN_ID = 1 << 8,
+  TRANSPORT_FMT_REQ_F_STATE = 1 << 9,
+  TRANSPORT_FMT_REQ_F_DETAIL = 1 << 10,
+} transport_fmt_req_flag_t;
+
+typedef union transport_fmt_req_
+{
+    u32 as_u32;
+    struct
+    {
+    u32 level : 2;
+    u32 : 6;
+    u32 conn_id : 1;
+    u32 transport_state : 1;
+    u32 transport_detail : 1;
+    u32 : 21;
+    };
+} transport_fmt_req_t;
+
+static_always_inline uword
+transport_fmt_req_is_explicit (transport_fmt_req_t fmt)
+{
+    return !!(fmt.as_u32 & ~TRANSPORT_FMT_REQ_LEVEL_MASK);
+}
+
 u8 *format_transport_proto (u8 * s, va_list * args);
 u8 *format_transport_proto_short (u8 * s, va_list * args);
 u8 *format_transport_flags (u8 *s, va_list *args);
