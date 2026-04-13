@@ -26,6 +26,30 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "69ecb196_70431a9f",
+        "filename": "src/plugins/http/http1.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1827,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-04-13T15:57:04Z",
+      "side": 1,
+      "message": "we can print conn_id + detail in one go, not state and detail",
+      "parentUuid": "568709d1_92fa5df5",
+      "range": {
+        "startLine": 1821,
+        "startChar": 0,
+        "endLine": 1827,
+        "endChar": 0
+      },
+      "revId": "1b1d1218ea7d829d65647c67f41a0c8a13c11e54",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "923a8848_7c9338c8",
         "filename": "src/plugins/http/http2/http2.c",
         "patchSetId": 2
@@ -37,6 +61,30 @@
       "writtenOn": "2026-04-13T10:00:15Z",
       "side": 1,
       "message": "new line maybe done in caller?",
+      "range": {
+        "startLine": 2693,
+        "startChar": 20,
+        "endLine": 2693,
+        "endChar": 22
+      },
+      "revId": "1b1d1218ea7d829d65647c67f41a0c8a13c11e54",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3634b05f_80dd41a3",
+        "filename": "src/plugins/http/http2/http2.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 2693,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-04-13T15:57:04Z",
+      "side": 1,
+      "message": "not if we print the two together. The other option would be to force alignment from caller",
+      "parentUuid": "923a8848_7c9338c8",
       "range": {
         "startLine": 2693,
         "startChar": 20,
