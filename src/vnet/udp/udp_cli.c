@@ -120,17 +120,31 @@ u8 *
 format_udp_connection (u8 * s, va_list * args)
 {
   udp_connection_t *uc = va_arg (*args, udp_connection_t *);
-  u32 verbose = va_arg (*args, u32);
+  transport_fmt_req_t fmt = transport_fmt_req_decode (va_arg (*args, u32));
+  uword explicit = transport_fmt_req_is_explicit (fmt);
   if (!uc)
     return s;
-  s = format (s, "%-" SESSION_CLI_ID_LEN "U", format_udp_connection_id, uc);
-  if (verbose)
+
+  if (!explicit)
     {
-      s = format (s, "%-" SESSION_CLI_STATE_LEN "s",
-		  (uc->flags & UDP_CONN_F_LISTEN) ? "LISTEN" : "OPENED", uc);
-      if (verbose > 1)
-	s = format (s, "\n%U", format_udp_vars, uc);
+      s = format (s, "%-" SESSION_CLI_ID_LEN "U", format_udp_connection_id, uc);
+      if (fmt.level)
+	{
+	  s = format (s, "%-" SESSION_CLI_STATE_LEN "s",
+		      (uc->flags & UDP_CONN_F_LISTEN) ? "LISTEN" : "OPENED");
+	  if (fmt.level > 1)
+	    s = format (s, "\n%U", format_udp_vars, uc);
+	}
+      return s;
     }
+
+  if (fmt.conn_id)
+    s = format (s, "%U", format_udp_connection_id, uc);
+  else if (fmt.transport_state)
+    s = format (s, "%s", (uc->flags & UDP_CONN_F_LISTEN) ? "LISTEN" : "OPENED");
+  else if (fmt.transport_detail)
+    s = format (s, "\n%U", format_udp_vars, uc);
+
   return s;
 }
 
