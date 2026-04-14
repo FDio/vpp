@@ -929,13 +929,11 @@ Host stack test framework
 I:	hs-test
 M:	Florin Coras <fcoras@cisco.com>
 M:	Matus Fabian <matfabia@cisco.com>
-M:	Adrian Villin <avillin@cisco.com>
 F:	test/hs-test
 
 Kube test framework
 I:	kube-test
 M:	Florin Coras <fcoras@cisco.com>
-M:	Adrian Villin <avillin@cisco.com>
 F:	extras/kube-test
 
 Netmap
