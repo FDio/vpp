@@ -42,8 +42,6 @@
 #include <vlib/vmbus/vmbus.h>
 #include <vnet/flow/flow.h>
 
-#define DPDK_DEFAULT_ASYNC_FLOW_QUEUE_INDEX 0
-#define DPDK_DEFAULT_ASYNC_FLOW_N_QUEUES   1
 #define DPDK_DEFAULT_ASYNC_FLOW_QUEUE_SIZE 64
 #define DPDK_DEFAULT_ASYNC_FLOW_PUSH_BATCH  32
 #define DPDK_MAX_CORES			    FRAME_QUEUE_MAX_NELTS
@@ -129,6 +127,15 @@ typedef struct
   struct rte_flow_pattern_template *pattern_handle;
   struct rte_flow_template_table *table_handle;
 } dpdk_flow_template_table_t;
+
+/* Per-worker cached pool indices for lock-free async flow operations */
+typedef struct
+{
+  u32 *fe_cache;	    /* cached flow_entries pool indices */
+  u32 *fle_cache;	    /* cached flow_lookup_entries pool indices */
+  u32 *parked_fle_indices;  /* fle pool indices pending deferred recycle */
+  u32 parked_loop_count;    /* main_loop_count when last parked */
+} dpdk_flow_per_thread_t;
 
 typedef struct
 {
@@ -232,14 +239,19 @@ typedef struct
 
   /* flow related */
   u32 supported_flow_actions;
-  dpdk_flow_entry_t *flow_entries;	/* pool */
-  dpdk_flow_template_entry_t *flow_template_entries;	/* pool */
-  dpdk_flow_lookup_entry_t *flow_lookup_entries;	/* pool */
-  u32 *parked_lookup_indexes;	/* vector */
+  dpdk_flow_entry_t *flow_entries;		  /* pool */
+  dpdk_flow_template_entry_t *flow_template_entries; /* pool */
+  dpdk_flow_lookup_entry_t *flow_lookup_entries;     /* pool */
+  u32 *parked_lookup_indexes;			  /* vector (sync path only) */
   u32 parked_loop_count;
+  clib_spinlock_t flow_lock; /* protects pool_get/pool_put on flow_entries,
+				flow_lookup_entries and sync-path parked state */
+  clib_spinlock_t *flow_queue_locks;	      /* vec[n_queues], per-queue lock for shared queues */
+  dpdk_flow_per_thread_t *flow_per_thread;    /* vec[n_vlib_mains], per-worker caches */
+  u16 flow_cache_size;			      /* 2 × async_flow_offload_queue_size */
   u16 async_flow_offload_queue_size;
   u16 async_flow_offload_queue_batch;
-  u8 async_flow_offload_n_queues;
+  u16 async_flow_offload_n_queues;
   struct rte_flow_error last_flow_error;
 
   struct rte_eth_link link;
