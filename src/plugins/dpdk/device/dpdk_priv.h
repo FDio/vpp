@@ -3,6 +3,7 @@
  * Copyright (c) 2015 Cisco and/or its affiliates.
  */
 
+#define DPDK_DEFAULT_FLOW_CACHE_SIZE 256
 #define DPDK_NB_RX_DESC_DEFAULT   1024
 #define DPDK_NB_TX_DESC_DEFAULT   1024
 #define DPDK_MAX_LRO_SIZE_DEFAULT 65536
