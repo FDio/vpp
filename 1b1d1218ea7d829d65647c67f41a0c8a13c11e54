@@ -48,6 +48,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "dcc8e589_0fc2d394",
+        "filename": "src/plugins/http/http1.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1827,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-04-14T05:41:22Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "69ecb196_70431a9f",
+      "range": {
+        "startLine": 1821,
+        "startChar": 0,
+        "endLine": 1827,
+        "endChar": 0
+      },
+      "revId": "1b1d1218ea7d829d65647c67f41a0c8a13c11e54",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "923a8848_7c9338c8",
@@ -85,6 +109,30 @@
       "side": 1,
       "message": "not if we print the two together. The other option would be to force alignment from caller",
       "parentUuid": "923a8848_7c9338c8",
+      "range": {
+        "startLine": 2693,
+        "startChar": 20,
+        "endLine": 2693,
+        "endChar": 22
+      },
+      "revId": "1b1d1218ea7d829d65647c67f41a0c8a13c11e54",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d551f34f_eae257a8",
+        "filename": "src/plugins/http/http2/http2.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 2693,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-04-14T05:41:22Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3634b05f_80dd41a3",
       "range": {
         "startLine": 2693,
         "startChar": 20,
