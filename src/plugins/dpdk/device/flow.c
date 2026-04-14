@@ -1098,6 +1098,77 @@ dpdk_flow_update_slot_actions (struct rte_flow_action *actions, u8 n_actions, vn
 }
 
 static_always_inline void
+dpdk_flow_fe_cache_refill (dpdk_device_t *xd, dpdk_flow_per_thread_t *ptd, u32 n)
+{
+  dpdk_flow_entry_t *fe;
+  clib_spinlock_lock (&xd->flow_lock);
+  for (u32 i = 0; i < n; i++)
+    {
+      pool_get (xd->flow_entries, fe);
+      clib_memset (fe, 0, sizeof (*fe));
+      vec_add1 (ptd->fe_cache, fe - xd->flow_entries);
+    }
+  clib_spinlock_unlock (&xd->flow_lock);
+}
+
+static_always_inline void
+dpdk_flow_fe_cache_drain (dpdk_device_t *xd, dpdk_flow_per_thread_t *ptd, u32 n)
+{
+  clib_spinlock_lock (&xd->flow_lock);
+  for (u32 i = 0; i < n; i++)
+    {
+      u32 idx = vec_pop (ptd->fe_cache);
+      dpdk_flow_entry_t *fe = pool_elt_at_index (xd->flow_entries, idx);
+      clib_memset (fe, 0, sizeof (*fe));
+      pool_put (xd->flow_entries, fe);
+    }
+  clib_spinlock_unlock (&xd->flow_lock);
+}
+
+static_always_inline void
+dpdk_flow_fle_cache_refill (dpdk_device_t *xd, dpdk_flow_per_thread_t *ptd, u32 n)
+{
+  dpdk_flow_lookup_entry_t *fle;
+  clib_spinlock_lock (&xd->flow_lock);
+  /* reserve slot 0 — fe->mark == 0 means "no mark" sentinel */
+  if (xd->flow_lookup_entries == 0)
+    {
+      pool_get_aligned (xd->flow_lookup_entries, fle, CLIB_CACHE_LINE_BYTES);
+      clib_memset (fle, -1, sizeof (*fle));
+      /* index 0 is never cached — stays allocated forever */
+    }
+  for (u32 i = 0; i < n; i++)
+    {
+      pool_get_aligned (xd->flow_lookup_entries, fle, CLIB_CACHE_LINE_BYTES);
+      clib_memset (fle, -1, sizeof (*fle));
+      vec_add1 (ptd->fle_cache, fle - xd->flow_lookup_entries);
+    }
+  clib_spinlock_unlock (&xd->flow_lock);
+}
+
+static_always_inline void
+dpdk_flow_fle_cache_drain (dpdk_device_t *xd, dpdk_flow_per_thread_t *ptd, u32 n)
+{
+  clib_spinlock_lock (&xd->flow_lock);
+  for (u32 i = 0; i < n; i++)
+    {
+      u32 idx = vec_pop (ptd->fle_cache);
+      pool_put_index (xd->flow_lookup_entries, idx);
+    }
+  clib_spinlock_unlock (&xd->flow_lock);
+}
+
+static_always_inline void
+dpdk_flow_recycle_parked (vlib_main_t *vm, dpdk_flow_per_thread_t *ptd)
+{
+  if (vec_len (ptd->parked_fle_indices) > 0 && ptd->parked_loop_count != vm->main_loop_count)
+    {
+      vec_append (ptd->fle_cache, ptd->parked_fle_indices);
+      vec_reset_length (ptd->parked_fle_indices);
+    }
+}
+
+static_always_inline void
 dpdk_flow_init_queue (dpdk_device_t *xd, dpdk_flow_template_entry_t *fte,
 		      dpdk_flow_async_queue_t *q, u32 id)
 {
@@ -1420,7 +1491,10 @@ dpdk_flow_template_add (dpdk_device_t *xd, vnet_flow_t *t, dpdk_flow_template_en
   if ((rv = dpdk_flow_init_slot_pool (xd, fte, item_args.items, actions)) != 0)
     goto done_table_handle;
 
+  clib_spinlock_lock (&xd->flow_lock);
+  pool_alloc (xd->flow_entries, t->n_flows);
   pool_alloc_aligned (xd->flow_lookup_entries, t->n_flows, CLIB_CACHE_LINE_BYTES);
+  clib_spinlock_unlock (&xd->flow_lock);
 
   return 0;
 
@@ -1438,25 +1512,23 @@ dpdk_flow_ops_fn (vnet_main_t *vnm, vnet_flow_dev_op_t op, u32 dev_instance, u32
   dpdk_main_t *dm = &dpdk_main;
   vnet_flow_t *flow = vnet_get_flow (flow_index);
   dpdk_device_t *xd = vec_elt_at_index (dm->devices, dev_instance);
+  u32 thread_index = vlib_get_thread_index ();
+  dpdk_flow_per_thread_t *ptd = vec_elt_at_index (xd->flow_per_thread, thread_index);
   dpdk_flow_entry_t *fe;
   dpdk_flow_lookup_entry_t *fle = 0;
+  u32 fe_idx = ~0, fle_idx = ~0;
   int rv;
 
-  /* recycle old flow lookup entries only after the main loop counter
-     increases - i.e. previously DMA'ed packets were handled */
-  if (vec_len (xd->parked_lookup_indexes) > 0 &&
-      xd->parked_loop_count != vm->main_loop_count)
-    {
-      u32 *fl_index;
-
-      vec_foreach (fl_index, xd->parked_lookup_indexes)
-	pool_put_index (xd->flow_lookup_entries, *fl_index);
-      vec_reset_length (xd->parked_lookup_indexes);
-    }
+  /* recycle parked fle entries if this thread's main loop has advanced —
+     "previously DMA'ed packets were handled" guarantee, same as the async
+     path (see dpdk_flow_async_op_add/del). Per-thread because each worker's
+     vlib_main_t advances main_loop_count independently. */
+  dpdk_flow_recycle_parked (vm, ptd);
 
   if (op == VNET_FLOW_DEV_OP_DEL_FLOW)
     {
-      fe = vec_elt_at_index (xd->flow_entries, flow->driver_data.opaque);
+      fe_idx = flow->driver_data.opaque;
+      fe = vec_elt_at_index (xd->flow_entries, fe_idx);
 
       if ((rv = rte_flow_destroy (xd->port_id, fe->handle, &xd->last_flow_error)))
 	{
@@ -1464,17 +1536,23 @@ dpdk_flow_ops_fn (vnet_main_t *vnm, vnet_flow_dev_op_t op, u32 dev_instance, u32
 	  return VNET_FLOW_ERROR_INTERNAL;
 	}
 
+      /* Park the fle for deferred recycle (RX may still reference mark),
+	 return fe slot to the ptd cache. Lock-free on the hot path. */
       if (fe->mark)
 	{
-	  /* make sure no action is taken for in-flight (marked) packets */
 	  fle = pool_elt_at_index (xd->flow_lookup_entries, fe->mark);
 	  clib_memset (fle, -1, sizeof (*fle));
-	  vec_add1 (xd->parked_lookup_indexes, fe->mark);
-	  xd->parked_loop_count = vm->main_loop_count;
+	  vec_add1 (ptd->parked_fle_indices, fe->mark);
+	  ptd->parked_loop_count = vm->main_loop_count;
 	}
 
       clib_memset (fe, 0, sizeof (*fe));
-      pool_put (xd->flow_entries, fe);
+      vec_add1 (ptd->fe_cache, fe_idx);
+
+      /* drain down to flow_cache_size if the cache grew past the threshold */
+      if (vec_len (ptd->fe_cache) > 2 * xd->flow_cache_size)
+	dpdk_flow_fe_cache_drain (xd, ptd, vec_len (ptd->fe_cache) - xd->flow_cache_size);
+
       flow->driver_data.hw_if_index = ~0;
       flow->driver_data.opaque = ~0;
 
@@ -1484,7 +1562,13 @@ dpdk_flow_ops_fn (vnet_main_t *vnm, vnet_flow_dev_op_t op, u32 dev_instance, u32
   if (op != VNET_FLOW_DEV_OP_ADD_FLOW)
     return VNET_FLOW_ERROR_NOT_SUPPORTED;
 
-  pool_get (xd->flow_entries, fe);
+  /* allocate fe from ptd cache (lock-free fast path; refill takes flow_lock
+     only in batch) */
+  if (PREDICT_FALSE (vec_len (ptd->fe_cache) == 0))
+    dpdk_flow_fe_cache_refill (xd, ptd, xd->flow_cache_size);
+
+  fe_idx = vec_pop (ptd->fe_cache);
+  fe = pool_elt_at_index (xd->flow_entries, fe_idx);
   fe->flow_index = flow->index;
 
   if (flow->actions == 0)
@@ -1493,15 +1577,18 @@ dpdk_flow_ops_fn (vnet_main_t *vnm, vnet_flow_dev_op_t op, u32 dev_instance, u32
       goto done;
     }
 
-  /* if we need to mark packets, assign one mark */
+  /* if we need to mark packets, assign one mark from the ptd fle cache.
+     dpdk_flow_fle_cache_refill reserves slot 0 on first call so the
+     "mark == 0 means no mark" sentinel invariant is preserved regardless
+     of which path (sync or async) warms the cache first. */
   if (FLOW_NEEDS_MARK (flow))
     {
-      /* reserve slot 0 */
-      if (xd->flow_lookup_entries == 0)
-	pool_get_aligned (xd->flow_lookup_entries, fle,
-			  CLIB_CACHE_LINE_BYTES);
-      pool_get_aligned (xd->flow_lookup_entries, fle, CLIB_CACHE_LINE_BYTES);
-      fe->mark = fle - xd->flow_lookup_entries;
+      if (PREDICT_FALSE (vec_len (ptd->fle_cache) == 0))
+	dpdk_flow_fle_cache_refill (xd, ptd, xd->flow_cache_size);
+
+      fle_idx = vec_pop (ptd->fle_cache);
+      fle = pool_elt_at_index (xd->flow_lookup_entries, fle_idx);
+      fe->mark = fle_idx;
 
       /* install entry in the lookup table */
       clib_memset (fle, -1, sizeof (*fle));
@@ -1547,23 +1634,30 @@ dpdk_flow_ops_fn (vnet_main_t *vnm, vnet_flow_dev_op_t op, u32 dev_instance, u32
       goto done;
     }
 
-  flow->driver_data.opaque = fe - xd->flow_entries;
+  flow->driver_data.opaque = fe_idx;
   flow->driver_data.hw_if_index = xd->hw_if_index;
 
 done:
   if (rv)
     {
-      clib_memset (fe, 0, sizeof (*fe));
-      pool_put (xd->flow_entries, fe);
+      /* roll back ptd cache allocations — no lock needed */
       if (fle)
 	{
 	  clib_memset (fle, -1, sizeof (*fle));
-	  pool_put (xd->flow_lookup_entries, fle);
+	  vec_add1 (ptd->fle_cache, fle_idx);
 	}
+      clib_memset (fe, 0, sizeof (*fe));
+      vec_add1 (ptd->fe_cache, fe_idx);
     }
+
+  /* drain down to flow_cache_size if caches grew past threshold */
+  if (vec_len (ptd->fe_cache) > 2 * xd->flow_cache_size)
+    dpdk_flow_fe_cache_drain (xd, ptd, vec_len (ptd->fe_cache) - xd->flow_cache_size);
+  if (vec_len (ptd->fle_cache) > 2 * xd->flow_cache_size)
+    dpdk_flow_fle_cache_drain (xd, ptd, vec_len (ptd->fle_cache) - xd->flow_cache_size);
+
 disable_rx_offload:
-  if ((xd->flags & DPDK_DEVICE_FLAG_RX_FLOW_OFFLOAD) != 0
-      && pool_elts (xd->flow_entries) == 0)
+  if ((xd->flags & DPDK_DEVICE_FLAG_RX_FLOW_OFFLOAD) != 0 && pool_elts (xd->flow_entries) == 0)
     xd->flags &= ~DPDK_DEVICE_FLAG_RX_FLOW_OFFLOAD;
 
   return rv;
@@ -1572,15 +1666,19 @@ disable_rx_offload:
 static_always_inline int
 dpdk_flow_async_push_pull (dpdk_device_t *xd, dpdk_flow_async_queue_t *q, int *err, bool empty)
 {
+  struct rte_flow_error flow_error = {};
   uint32_t to_pull = (empty || q->batch_size > q->enqueued) ? q->enqueued : q->batch_size;
   uint32_t retries = 0;
   int pulled, success = 0;
   *err = 0;
 
   /* Push periodically to give HW work to do */
-  *err = rte_flow_push (xd->port_id, q->id, &xd->last_flow_error);
+  *err = rte_flow_push (xd->port_id, q->id, &flow_error);
   if (*err)
-    return 0;
+    {
+      xd->last_flow_error = flow_error;
+      return 0;
+    }
   q->push_counter++;
 
   /* Check if queue is getting full, if so push and drain completions */
@@ -1589,9 +1687,10 @@ dpdk_flow_async_push_pull (dpdk_device_t *xd, dpdk_flow_async_queue_t *q, int *e
 
   while (to_pull > 0)
     {
-      pulled = rte_flow_pull (xd->port_id, q->id, q->results, to_pull, &xd->last_flow_error);
+      pulled = rte_flow_pull (xd->port_id, q->id, q->results, to_pull, &flow_error);
       if (pulled < 0)
 	{
+	  xd->last_flow_error = flow_error;
 	  *err = -1;
 	  return success;
 	}
@@ -1623,17 +1722,22 @@ dpdk_flow_async_push_pull (dpdk_device_t *xd, dpdk_flow_async_queue_t *q, int *e
 }
 
 static_always_inline int
-dpdk_flow_async_op_add (dpdk_device_t *xd, dpdk_flow_template_entry_t *fte, u32 queue_id,
-			u32 *flow_indices)
+dpdk_flow_async_op_add (dpdk_device_t *xd, dpdk_flow_template_entry_t *fte, u32 *flow_indices)
 {
+  u32 thread_index = vlib_get_thread_index ();
+  u32 queue_id = thread_index % xd->async_flow_offload_n_queues;
+  u8 is_shared = PREDICT_FALSE (xd->async_flow_offload_n_queues < vlib_thread_main.n_vlib_mains);
+  vlib_main_t *vm = vlib_get_main ();
+  dpdk_flow_per_thread_t *ptd = &xd->flow_per_thread[thread_index];
   dpdk_flow_async_queue_t q;
   dpdk_flow_entry_t *fe;
   dpdk_flow_lookup_entry_t *fle;
   struct rte_flow_item *items;
   struct rte_flow_action *actions;
+  struct rte_flow_error flow_error = {};
   vnet_flow_t *flow;
   u32 count = vec_len (flow_indices);
-  u32 idx, fi, bi, flow_index;
+  u32 idx, fi, bi, flow_index, fe_idx, fle_idx;
   int success = 0, rv = 0, err;
   u8 *slot;
 
@@ -1642,29 +1746,43 @@ dpdk_flow_async_op_add (dpdk_device_t *xd, dpdk_flow_template_entry_t *fte, u32 
 
   dpdk_flow_init_queue (xd, fte, &q, queue_id);
 
-  pool_alloc (xd->flow_entries, count);
+  /* recycle parked fle entries if main loop has advanced */
+  dpdk_flow_recycle_parked (vm, ptd);
+
+  /* ensure per-worker caches hold everything we need up front — one lock
+     acquisition instead of one refill per flow_cache_size batch during the
+     loop. The in-loop refill guards below are defensive safety nets. */
+  if (vec_len (ptd->fe_cache) < count)
+    dpdk_flow_fe_cache_refill (xd, ptd, count - vec_len (ptd->fe_cache));
+  if (vec_len (ptd->fle_cache) < count)
+    dpdk_flow_fle_cache_refill (xd, ptd, count - vec_len (ptd->fle_cache));
 
   for (fi = 0; fi < count;)
     {
+      if (is_shared)
+	clib_spinlock_lock (&xd->flow_queue_locks[queue_id]);
+
       for (bi = 0; bi < q.batch_size && fi < count; bi++, fi++)
 	{
 	  flow_index = vec_elt (flow_indices, fi);
 	  flow = vnet_get_flow (flow_index);
 
 	  if (!flow)
-	    goto error;
+	    {
+	      if (is_shared)
+		clib_spinlock_unlock (&xd->flow_queue_locks[queue_id]);
+	      goto error;
+	    }
 
-	  /* allocate new flow entry */
-	  fle = 0;
-	  pool_get (xd->flow_entries, fe);
+	  fe_idx = vec_pop (ptd->fe_cache);
+	  fe = pool_elt_at_index (xd->flow_entries, fe_idx);
 	  fe->flow_index = flow->index;
 
 	  if (FLOW_NEEDS_MARK (flow))
 	    {
-	      if (xd->flow_lookup_entries == 0)
-		pool_get_aligned (xd->flow_lookup_entries, fle, CLIB_CACHE_LINE_BYTES);
-	      pool_get_aligned (xd->flow_lookup_entries, fle, CLIB_CACHE_LINE_BYTES);
-	      fe->mark = fle - xd->flow_lookup_entries;
+	      fle_idx = vec_pop (ptd->fle_cache);
+	      fle = pool_elt_at_index (xd->flow_lookup_entries, fle_idx);
+	      fe->mark = fle_idx;
 
 	      clib_memset (fle, -1, sizeof (*fle));
 	      if (flow->actions & VNET_FLOW_ACTION_MARK)
@@ -1691,27 +1809,30 @@ dpdk_flow_async_op_add (dpdk_device_t *xd, dpdk_flow_template_entry_t *fte, u32 
 	  dpdk_flow_update_slot_actions (actions, fte->n_actions, flow, fe);
 
 	  fe->handle = rte_flow_async_create (xd->port_id, q.id, &async_op, fte->table.table_handle,
-					      items, 0, actions, 0, NULL, &xd->last_flow_error);
+					      items, 0, actions, 0, NULL, &flow_error);
 	  if (PREDICT_FALSE (!fe->handle))
 	    {
+	      xd->last_flow_error = flow_error;
 	      dpdk_device_flow_warning (xd, "rte_flow_async_create", rte_errno);
-	      if (fle)
-		{
-		  clib_memset (fle, -1, sizeof (*fle));
-		  pool_put (xd->flow_lookup_entries, fle);
-		}
+	      if (fe->mark)
+		vec_add1 (ptd->fle_cache, fe->mark);
 	      clib_memset (fe, 0, sizeof (*fe));
-	      pool_put (xd->flow_entries, fe);
+	      vec_add1 (ptd->fe_cache, fe_idx);
+	      if (is_shared)
+		clib_spinlock_unlock (&xd->flow_queue_locks[queue_id]);
 	      goto error;
 	    }
 
-	  flow->driver_data.opaque = fe - xd->flow_entries;
+	  flow->driver_data.opaque = fe_idx;
 	  flow->driver_data.hw_if_index = xd->hw_if_index;
 	  q.enqueued++;
 	}
 
-      /* we count the number of success */
       rv = dpdk_flow_async_push_pull (xd, &q, &err, false);
+
+      if (is_shared)
+	clib_spinlock_unlock (&xd->flow_queue_locks[queue_id]);
+
       success += rv;
       if (err)
 	{
@@ -1721,24 +1842,42 @@ dpdk_flow_async_op_add (dpdk_device_t *xd, dpdk_flow_template_entry_t *fte, u32 
     }
 
 error:
+  if (is_shared)
+    clib_spinlock_lock (&xd->flow_queue_locks[queue_id]);
   rv = dpdk_flow_async_push_pull (xd, &q, &err, true);
+  if (is_shared)
+    clib_spinlock_unlock (&xd->flow_queue_locks[queue_id]);
+
   success += rv;
   if (err)
     dpdk_device_flow_warning (xd, "rte_flow_push/pull", rte_errno);
+
+  /* drain down to flow_cache_size — not by flow_cache_size, which would
+     leave the cache fat after bursts */
+  if (vec_len (ptd->fe_cache) > 2 * xd->flow_cache_size)
+    dpdk_flow_fe_cache_drain (xd, ptd, vec_len (ptd->fe_cache) - xd->flow_cache_size);
+  if (vec_len (ptd->fle_cache) > 2 * xd->flow_cache_size)
+    dpdk_flow_fle_cache_drain (xd, ptd, vec_len (ptd->fle_cache) - xd->flow_cache_size);
+
   return success;
 }
 
 static_always_inline int
-dpdk_flow_async_op_del (dpdk_device_t *xd, u32 queue_id, u32 *flow_indices)
+dpdk_flow_async_op_del (dpdk_device_t *xd, u32 *flow_indices)
 {
+  u32 thread_index = vlib_get_thread_index ();
+  u32 queue_id = thread_index % xd->async_flow_offload_n_queues;
+  u8 is_shared = xd->async_flow_offload_n_queues < vlib_thread_main.n_vlib_mains;
   vlib_main_t *vm = vlib_get_main ();
+  dpdk_flow_per_thread_t *ptd = &xd->flow_per_thread[thread_index];
   struct rte_flow_op_result results[DPDK_MAX_FLOW_QUEUE_SIZE];
+  struct rte_flow_error flow_error = {};
   dpdk_flow_async_queue_t shadow_q;
   dpdk_flow_lookup_entry_t *fle;
   dpdk_flow_entry_t *fe;
   vnet_flow_t *flow;
   u32 count = vec_len (flow_indices);
-  u32 fi, bi, flow_index;
+  u32 fi, bi, flow_index, fe_idx;
   int success = 0, rv = 0, err;
 
   if (count == 0)
@@ -1747,44 +1886,61 @@ dpdk_flow_async_op_del (dpdk_device_t *xd, u32 queue_id, u32 *flow_indices)
   dpdk_flow_init_queue (xd, NULL, &shadow_q, queue_id);
   shadow_q.results = results;
 
+  /* recycle parked fle entries if main loop has advanced */
+  dpdk_flow_recycle_parked (vm, ptd);
+
   for (fi = 0; fi < count;)
     {
+      if (is_shared)
+	clib_spinlock_lock (&xd->flow_queue_locks[queue_id]);
+
       for (bi = 0; bi < shadow_q.batch_size && fi < count; bi++, fi++)
 	{
 	  flow_index = vec_elt (flow_indices, fi);
 	  flow = vnet_get_flow (flow_index);
 
 	  if (!flow || pool_is_free_index (xd->flow_entries, flow->driver_data.opaque))
-	    goto error;
+	    {
+	      if (is_shared)
+		clib_spinlock_unlock (&xd->flow_queue_locks[queue_id]);
+	      goto error;
+	    }
 
-	  fe = pool_elt_at_index (xd->flow_entries, flow->driver_data.opaque);
+	  fe_idx = flow->driver_data.opaque;
+	  fe = pool_elt_at_index (xd->flow_entries, fe_idx);
 
 	  if ((rv = rte_flow_async_destroy (xd->port_id, shadow_q.id, &async_op, fe->handle, NULL,
-					    &xd->last_flow_error)))
+					    &flow_error)))
 	    {
+	      xd->last_flow_error = flow_error;
 	      dpdk_device_flow_warning (xd, "rte_flow_async_destroy", rv);
+	      if (is_shared)
+		clib_spinlock_unlock (&xd->flow_queue_locks[queue_id]);
 	      goto error;
 	    }
 
 	  if (fe->mark)
 	    {
-	      /* make sure no action is taken for in-flight (marked) packets */
+	      /* invalidate for RX safety, then park for deferred recycle */
 	      fle = pool_elt_at_index (xd->flow_lookup_entries, fe->mark);
 	      clib_memset (fle, -1, sizeof (*fle));
-	      vec_add1 (xd->parked_lookup_indexes, fe->mark);
-	      xd->parked_loop_count = vm->main_loop_count;
+	      vec_add1 (ptd->parked_fle_indices, fe->mark);
+	      ptd->parked_loop_count = vm->main_loop_count;
 	    }
 
 	  clib_memset (fe, 0, sizeof (*fe));
-	  pool_put (xd->flow_entries, fe);
+	  vec_add1 (ptd->fe_cache, fe_idx);
 
 	  flow->driver_data.opaque = ~0;
 	  flow->driver_data.hw_if_index = ~0;
 	  shadow_q.enqueued++;
 	}
 
-      /* we count the number of success */
       rv = dpdk_flow_async_push_pull (xd, &shadow_q, &err, false);
+
+      if (is_shared)
+	clib_spinlock_unlock (&xd->flow_queue_locks[queue_id]);
+
       success += rv;
       if (err)
 	{
@@ -1794,10 +1950,23 @@ dpdk_flow_async_op_del (dpdk_device_t *xd, u32 queue_id, u32 *flow_indices)
     }
 
 error:
+  if (is_shared)
+    clib_spinlock_lock (&xd->flow_queue_locks[queue_id]);
   rv = dpdk_flow_async_push_pull (xd, &shadow_q, &err, true);
+  if (is_shared)
+    clib_spinlock_unlock (&xd->flow_queue_locks[queue_id]);
+
   success += rv;
   if (err)
     dpdk_device_flow_warning (xd, "rte_flow_push/pull", rte_errno);
+
+  /* drain down to flow_cache_size — not by flow_cache_size, which would
+     leave the cache fat after bursts */
+  if (vec_len (ptd->fe_cache) > 2 * xd->flow_cache_size)
+    dpdk_flow_fe_cache_drain (xd, ptd, vec_len (ptd->fe_cache) - xd->flow_cache_size);
+  if (vec_len (ptd->fle_cache) > 2 * xd->flow_cache_size)
+    dpdk_flow_fle_cache_drain (xd, ptd, vec_len (ptd->fle_cache) - xd->flow_cache_size);
+
   return success;
 }
 
@@ -1806,22 +1975,10 @@ dpdk_flow_async_ops_fn (vnet_main_t *vnm, vnet_flow_dev_op_t op, u32 dev_instanc
 			u32 *flow_indices, u32 template_index)
 {
   vnet_flow_t *template = vnet_get_flow_template (template_index);
-  vlib_main_t *vm = vlib_get_main ();
   dpdk_main_t *dm = &dpdk_main;
   dpdk_device_t *xd = vec_elt_at_index (dm->devices, dev_instance);
   dpdk_flow_template_entry_t *fte;
   int success = 0;
-
-  /* recycle old flow lookup entries only after the main loop counter
-     increases - i.e. previously DMA'ed packets were handled */
-  if (vec_len (xd->parked_lookup_indexes) > 0 && xd->parked_loop_count != vm->main_loop_count)
-    {
-      u32 *fl_index;
-
-      vec_foreach (fl_index, xd->parked_lookup_indexes)
-	pool_put_index (xd->flow_lookup_entries, *fl_index);
-      vec_reset_length (xd->parked_lookup_indexes);
-    }
 
   if (op == VNET_FLOW_DEV_OP_ADD_FLOW)
     {
@@ -1831,11 +1988,11 @@ dpdk_flow_async_ops_fn (vnet_main_t *vnm, vnet_flow_dev_op_t op, u32 dev_instanc
 	  return VNET_FLOW_ERROR_NOT_SUPPORTED;
 	}
       fte = pool_elt_at_index (xd->flow_template_entries, template->driver_data.opaque);
-      success = dpdk_flow_async_op_add (xd, fte, DPDK_DEFAULT_ASYNC_FLOW_QUEUE_INDEX, flow_indices);
+      success = dpdk_flow_async_op_add (xd, fte, flow_indices);
     }
   else if (op == VNET_FLOW_DEV_OP_DEL_FLOW)
     {
-      success = dpdk_flow_async_op_del (xd, DPDK_DEFAULT_ASYNC_FLOW_QUEUE_INDEX, flow_indices);
+      success = dpdk_flow_async_op_del (xd, flow_indices);
     }
   else
     {
