@@ -281,7 +281,7 @@ F:	src/vnet/gso/
 Plugin - MAP
 I:	map
 Y:	src/plugins/map/FEATURE.yaml
-M:	Ole Troan <ot@cisco.com>
+M:	Ole Troan <otroan@employees.org>
 M:	Jon Loeliger <jdl@netgate.com>
 F:	src/plugins/map
 
@@ -417,14 +417,14 @@ F:	src/plugins/acl/
 
 Plugin - NAT
 I:	nat
-M:	Ole Troan <ot@cisco.com>
+M:	Ole Troan <otroan@employees.org>
 M:	Filip Varga <fivarga@cisco.com>
 M:	Klement Sekera <klement.sekera@gmail.com>
 F:	src/plugins/nat/
 
 Plugin - PNAT Static match and rewrite engine
 I:	pnat
-M:	Ole Troan <ot@cisco.com>
+M:	Ole Troan <otroan@employees.org>
 F:	src/plugins/nat/pnat/
 
 Device drivers (new infra)
@@ -683,7 +683,7 @@ F:	src/tools/vppapitrace/
 
 Binary API Compiler for C and C++
 I:	vapi
-M:	Ole Troan <ot@cisco.com>
+M:	Ole Troan <otroan@employees.org>
 F:	src/vpp-api/vapi
 
 Plugin - RDMA (ibverb) driver
@@ -725,7 +725,7 @@ F:	src/vcl
 
 Statistics Segment
 I:	stats
-M:	Ole Troan <ot@cisco.com>
+M:	Ole Troan <otroan@employees.org>
 F:	src/vpp/stats/
 F:	src/vpp-api/client/stat_client.[ch]
 
@@ -739,7 +739,7 @@ F:	src/plugins/hs_apps/
 
 Python binding for the VPP API
 I:	papi
-M:	Ole Troan <ot@cisco.com>
+M:	Ole Troan <otroan@employees.org>
 M:	Paul Vinciguerra <pvinci@vinciconsulting.com>
 F:	src/vpp-api/python
 
@@ -894,7 +894,7 @@ F:	src/plugins/pvti
 
 cJSON
 I:	cjson
-M:	Ole Troan <ot@cisco.com>
+M:	Ole Troan <otroan@employees.org>
 F:	src/vppinfra/cJSON.[ch]
 
 Auto SDL
@@ -905,12 +905,12 @@ F:	src/plugins/auto_sdl
 
 VAT2
 I:	vat2
-M:	Ole Troan <ot@cisco.com>
+M:	Ole Troan <otroan@employees.org>
 F:	src/vat2/
 
 VNET Ipfix Export
 I:	ipfix-export
-M:	Ole Troan <ot@cisco.com>
+M:	Ole Troan <otroan@employees.org>
 M:	Paul Atkins <patkins@graphiant.com>
 F:	src/vnet/ipfix-export/
 
