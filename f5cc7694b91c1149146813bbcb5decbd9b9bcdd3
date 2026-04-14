@@ -33,6 +33,23 @@
       "message": "perftest-2n-icx mrrANDnic_*AND1cANDethip?-ip?base",
       "revId": "f5cc7694b91c1149146813bbcb5decbd9b9bcdd3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "33538f99_ebe8af3c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-04-14T14:59:06Z",
+      "side": 1,
+      "message": "Please update build/external/mlx_rdma_dpdk_matrix.txt to include the updated versions.",
+      "revId": "f5cc7694b91c1149146813bbcb5decbd9b9bcdd3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
