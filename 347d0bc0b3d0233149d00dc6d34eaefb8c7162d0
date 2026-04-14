@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7cf6114b_011d9618",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2026-04-14T12:43:37Z",
+      "side": 1,
+      "message": "I can confirm this fixes the symptom of csit-4140.",
+      "revId": "347d0bc0b3d0233149d00dc6d34eaefb8c7162d0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
