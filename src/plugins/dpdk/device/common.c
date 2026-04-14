@@ -86,11 +86,19 @@ dpdk_device_configure_async_flow_offload (dpdk_device_t *xd)
       return;
     }
 
+  /* 0 = auto: one async flow queue per VPP thread (main + workers) */
+  if (xd->async_flow_offload_n_queues == 0)
+    xd->async_flow_offload_n_queues = vlib_thread_main.n_vlib_mains;
+
+  /* more queues than threads is wasteful — clamp */
+  xd->async_flow_offload_n_queues =
+    clib_min (xd->async_flow_offload_n_queues, vlib_thread_main.n_vlib_mains);
+
   if (flow_port_info.max_nb_queues < xd->async_flow_offload_n_queues)
     {
-      dpdk_log_warn ("[%u] async flow offload supported with max %u queues of size %u", xd->port_id,
-		     flow_port_info.max_nb_queues, flow_queue_info.max_size);
-      return;
+      dpdk_log_warn ("[%u] NIC supports max %u async flow queues, clamping from %u", xd->port_id,
+		     flow_port_info.max_nb_queues, xd->async_flow_offload_n_queues);
+      xd->async_flow_offload_n_queues = flow_port_info.max_nb_queues;
     }
 
   if (flow_queue_info.max_size < xd->async_flow_offload_queue_size)
@@ -123,11 +131,20 @@ dpdk_device_configure_async_flow_offload (dpdk_device_t *xd)
     }
 
   dpdk_device_flag_set (xd, DPDK_DEVICE_FLAG_ASYNC_FLOW_OFFLOAD, 1);
+  clib_spinlock_init (&xd->flow_lock);
+  vec_validate (xd->flow_per_thread, vlib_thread_main.n_vlib_mains - 1);
+  vec_validate (xd->flow_queue_locks, xd->async_flow_offload_n_queues - 1);
+  for (j = 0; j < xd->async_flow_offload_n_queues; j++)
+    clib_spinlock_init (&xd->flow_queue_locks[j]);
+  xd->flow_cache_size = 2 * xd->async_flow_offload_queue_size;
 
   dpdk_log_debug ("[%u] Async flow port info: %U", xd->port_id, format_dpdk_flow_port_info,
 		  &flow_port_info);
   dpdk_log_debug ("[%u] Async flow queue info: %U", xd->port_id, format_dpdk_flow_queue_info,
 		  &flow_queue_info);
+  dpdk_log_debug ("[%u] Async flow: %u queues of size %u (batch %u, cache %u)", xd->port_id,
+		  xd->async_flow_offload_n_queues, xd->async_flow_offload_queue_size,
+		  xd->async_flow_offload_queue_batch, xd->flow_cache_size);
 }
 
 void
