@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5e7f1d18_90edfe90",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-04-14T09:44:53Z",
+      "side": 1,
+      "message": "Overall I am not sure this the correct approach: I think that we should ensure vnet_hw_if_set_rx_queue_mode() is called whenever the default mode is not polling, because most drivers expects to start as polling.\nAlso what happens if interrupt is set but the driver does not support it?",
+      "revId": "2656c60213b67af475551759e031b32d2c854e1a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "694f06ed_be9f3569",
+        "filename": "src/vnet/devices/virtio/virtio.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 184,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-04-14T09:44:53Z",
+      "side": 1,
+      "message": "Will this work? Eg in case of interrupt we must call virtio_set_rx_interrupt() etc?",
+      "revId": "2656c60213b67af475551759e031b32d2c854e1a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
