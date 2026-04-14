@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e97aa232_21573406",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2832
+      },
+      "writtenOn": "2026-04-14T12:35:41Z",
+      "side": 1,
+      "message": "csit-2n-icx-perftest mrrANDnic_*AND1cANDethip?-ip?base",
+      "revId": "f5cc7694b91c1149146813bbcb5decbd9b9bcdd3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
