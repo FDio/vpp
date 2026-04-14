@@ -87,6 +87,7 @@ func (s *Http1Suite) TeardownTest() {
 		Log(vpp.Vppctl("show session verbose 2"))
 		Log(vpp.Vppctl("show error"))
 		Log(vpp.Vppctl("show http stats"))
+		Log(vpp.Vppctl("show http"))
 	}
 }
 

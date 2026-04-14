@@ -159,7 +159,7 @@ typedef struct
   _ (EXPECT_PREFACE, "expect-preface")                                                             \
   _ (EXPECT_CONTINUATION, "expect-continuation")                                                   \
   _ (EXPECT_SERVER_SETTINGS, "expect-server-settings")                                             \
-  _ (PREFACE_VERIFIED, "preface-verified")                                                         \
+  _ (NEED_REINIT, "need-reinit")                                                                   \
   _ (TS_DESCHED, "ts-descheduled")                                                                 \
   _ (EXPECT_PEER_SETTINGS, "expect-peer-settings")                                                 \
   _ (UDP_TUNNEL_DGRAM, "udp-tunnel-dgram")                                                         \
@@ -1126,6 +1126,18 @@ http_io_ts_after_write (http_ctx_t *hc, u8 flush)
       if (svm_fifo_set_event (ts->tx_fifo))
 	session_program_tx_io_evt (ts->handle, SESSION_IO_EVT_TX_FLUSH);
     }
+}
+
+always_inline void
+http_conn_upgrade_version (http_ctx_t *hc, http_version_t new_version)
+{
+  session_t *ts = session_get_from_handle (hc->hc_tc_session_handle);
+  http_conn_handle_t hc_handle = { .as_u32 = ts->opaque };
+  hc_handle.version = hc->version = new_version;
+  ts->opaque = hc_handle.as_u32;
+  hc->flags |= HTTP_CONN_F_NEED_REINIT;
+  if (session_program_transport_io_evt (ts->handle, SESSION_IO_EVT_BUILTIN_RX))
+    clib_warning ("failed to enqueue self-tap");
 }
 
 always_inline int

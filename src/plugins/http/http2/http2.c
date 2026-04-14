@@ -102,15 +102,7 @@ http2_conn_init (http_ctx_t *hc, u8 is_client)
   if (cnt == 0)
     session_register_update_time_fn_w_thread (http2_update_time_callback, 1, thread_index);
   if (is_client)
-    {
-      http2_send_client_preface (hc);
-    }
-  else
-    {
-      /* already done in http core */
-      if (http_get_transport_proto (hc) == TRANSPORT_PROTO_TCP)
-	hc->flags |= HTTP_CONN_F_PREFACE_VERIFIED;
-    }
+    http2_send_client_preface (hc);
 }
 
 static inline void
@@ -2663,10 +2655,6 @@ http2_expect_preface (http_ctx_t *hc)
   ASSERT (hc->flags & HTTP_CONN_F_IS_SERVER);
   hc->flags &= ~HTTP_CONN_F_EXPECT_PREFACE;
 
-  /* already done in http core */
-  if (hc->flags & HTTP_CONN_F_PREFACE_VERIFIED)
-    return 0;
-
   rx_buf = http_get_rx_buf (hc);
   http_io_ts_read (hc, rx_buf, http2_conn_preface.len, 1);
   return memcmp (rx_buf, http2_conn_preface.base, http2_conn_preface.len);
@@ -3007,6 +2995,13 @@ http2_transport_rx_callback (http_ctx_t *hc)
 	  http_stats_proto_errors_inc (hc->c_thread_index);
 	  return;
 	}
+      if (hc->flags & HTTP_CONN_F_NEED_REINIT)
+	{
+	  hc->flags &= ~HTTP_CONN_F_NEED_REINIT;
+	  http2_conn_init (hc, 0);
+	  /* pool grow, regrab connection */
+	  hc = http_ctx_get_w_thread (hc_index, thread_index);
+	}
       http2_send_server_preface (hc);
       http_io_ts_drain (hc, http2_conn_preface.len);
       to_deq -= http2_conn_preface.len;
@@ -3336,6 +3331,10 @@ http2_conn_cleanup_callback (http_ctx_t *hc)
   http_ctx_t *req;
 
   HTTP_DBG (1, "hc [%u]%x", hc->c_thread_index, hc->hc_hc_index);
+
+  if (hc->flags & HTTP_CONN_F_NEED_REINIT)
+    return;
+
   hash_foreach (stream_id, req_index, hc->req_by_stream_id,
 		({ vec_add1 (req_indices, req_index); }));
 

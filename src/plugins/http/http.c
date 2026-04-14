@@ -626,6 +626,7 @@ http_ts_accept_connection (session_t *ts)
 	      break;
 	    }
 	  /* TLS: fallback to http/1.1 */
+	  __attribute__ ((fallthrough));
 	case TLS_ALPN_PROTO_HTTP_1_1:
 	  hc->version = HTTP_VERSION_1;
 	  break;
@@ -636,8 +637,8 @@ http_ts_accept_connection (session_t *ts)
     }
   else
     {
-      /* going to decide in http_ts_rx_callback */
-      hc->version = HTTP_VERSION_NA;
+      /* start parsing as http/1.1, if method is PRI we switch to http/2 */
+      hc->version = HTTP_VERSION_1;
     }
   ts->session_state = SESSION_STATE_READY;
 
@@ -658,8 +659,8 @@ http_ts_accept_connection (session_t *ts)
 
   http_conn_timer_start (hc);
 
-  if (hc->version != HTTP_VERSION_NA)
-    http_vfts[hc->version].conn_accept_callback (hc);
+  ASSERT (hc->version != HTTP_VERSION_NA);
+  http_vfts[hc->version].conn_accept_callback (hc);
 
   return 0;
 }
@@ -872,8 +873,6 @@ http_ts_rx_callback (session_t *ts)
 {
   http_ctx_t *hc;
   http_conn_handle_t hc_handle;
-  u32 max_deq;
-  u8 *rx_buf;
   clib_thread_index_t thread_index = ts->thread_index;
 
   hc_handle.as_u32 = ts->opaque;
@@ -890,33 +889,7 @@ http_ts_rx_callback (session_t *ts)
       return 0;
     }
 
-  if (hc_handle.version == HTTP_VERSION_NA)
-    {
-      ASSERT (!(ts->flags & SESSION_F_STREAM));
-      HTTP_DBG (1, "unknown http version");
-      max_deq = svm_fifo_max_dequeue_cons (ts->rx_fifo);
-      if (max_deq >= http2_conn_preface.len)
-	{
-	  rx_buf = http_get_rx_buf (hc);
-	  ASSERT (vec_max_len (rx_buf) >= http2_conn_preface.len);
-	  clib_mem_unpoison (rx_buf, http2_conn_preface.len);
-	  svm_fifo_peek (ts->rx_fifo, 0, http2_conn_preface.len, rx_buf);
-	  if (memcmp (rx_buf, http2_conn_preface.base,
-		      http2_conn_preface.len) == 0)
-	    {
-	      /* store version in handle, pool might grow in accept cb */
-	      hc_handle.version = hc->version = HTTP_VERSION_2;
-	      http_vfts[hc->version].conn_accept_callback (hc);
-	    }
-	  else
-	    hc_handle.version = hc->version = HTTP_VERSION_1;
-	}
-      else
-	hc_handle.version = hc->version = HTTP_VERSION_1;
-
-      HTTP_DBG (1, "identified HTTP/%u", hc_handle.version == HTTP_VERSION_1 ? 1 : 2);
-      ts->opaque = hc_handle.as_u32;
-    }
+  ASSERT (hc_handle.version != HTTP_VERSION_NA);
   http_vfts[hc_handle.version].transport_rx_callback (hc);
 
   /* pool might grow, regrab connection */
@@ -1860,6 +1833,38 @@ http_transport_init (vlib_main_t *vm)
 }
 
 VLIB_INIT_FUNCTION (http_transport_init);
+
+static clib_error_t *
+show_http_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
+{
+  vlib_thread_main_t *vtm = vlib_get_thread_main ();
+  http_main_t *hm = &http_main;
+  http_worker_t *wrk;
+  u32 num_threads, i;
+
+  if (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    return clib_error_return (0, "unknown input `%U'", format_unformat_error, input);
+
+  if (!hm->is_init)
+    return clib_error_return (0, "http transport disabled");
+
+  num_threads = 1 /* main thread */ + vtm->n_threads;
+
+  for (i = 0; i < num_threads; i++)
+    {
+      wrk = http_worker_get (i);
+      vlib_cli_output (vm, "Thread %u: ctx pool %lu/%lu", i, pool_elts (wrk->ctx_pool),
+		       pool_len (wrk->ctx_pool));
+    }
+
+  return 0;
+}
+
+VLIB_CLI_COMMAND (show_http_command, static) = {
+  .path = "show http",
+  .short_help = "show http",
+  .function = show_http_fn,
+};
 
 static clib_error_t *
 show_http_stats_fn (vlib_main_t *vm, unformat_input_t *input,

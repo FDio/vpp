@@ -1,20 +1,24 @@
 package main
 
 import (
+	"crypto/tls"
 	"fmt"
+	"net"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/edwarnicke/exechelper"
+	"golang.org/x/net/http2"
 
 	. "fd.io/hs-test/infra"
 )
 
 func init() {
-	RegisterH2Tests(Http2TcpGetTest, Http2TcpPostTest, Http2MultiplexingTest, Http2TlsTest, Http2ContinuationTxTest, Http2ServerMemLeakTest,
-		Http2ClientGetTest, Http2ClientPostTest, Http2ClientPostPtrTest, Http2ClientGetRepeatTest, Http2ClientMultiplexingTest,
-		Http2ClientH2cTest, Http2ClientMemLeakTest)
+	RegisterH2Tests(Http2TcpGetTest, Http2TcpPostTest, Http2MultiplexingTest, Http2TlsTest, Http2ContinuationTxTest,
+		Http2ServerMemLeakTest, Http2ClientGetTest, Http2ClientPostTest, Http2ClientPostPtrTest, Http2ClientGetRepeatTest,
+		Http2ClientMultiplexingTest, Http2ClientH2cTest, Http2ClientMemLeakTest, Htttp2TlsNoAlpnTest)
 	RegisterH2MWTests(Http2MultiplexingMWTest, Http2ClientMultiplexingMWTest)
 	RegisterVethTests(Http2CliTlsTest, Http2ClientContinuationTest, Http2ClientPostFormTest, Http2ClientPostFormPtrTest)
 }
@@ -54,6 +58,10 @@ func Http2TcpGetTest(s *Http2Suite) {
 	vpp.Vppctl("http cli server listener del uri http://" + serverAddress)
 	o := vpp.Vppctl("show session verbose proto http")
 	AssertNotContains(o, "LISTEN")
+
+	/* test number of active elements in http ctx pool, there should be only 1 (h2 conn scheduler head) */
+	o = vpp.Vppctl("show http")
+	AssertContains(o, "Thread 0: ctx pool 1/", "not all http ctx pool elemets were released")
 }
 
 func Http2TcpPostTest(s *Http2Suite) {
@@ -113,6 +121,27 @@ func Http2TlsTest(s *Http2Suite) {
 	AssertContains(log, "HTTP/2 200")
 	AssertContains(log, "ALPN: server accepted h2")
 	AssertContains(writeOut, "version")
+}
+
+func Htttp2TlsNoAlpnTest(s *Http2Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	serverAddress := s.VppAddr() + ":" + s.Ports.Port1
+	Log(vpp.Vppctl("http static server uri tls://" + serverAddress + " url-handlers debug"))
+
+	// some magic to do http/2 over TLS without alpn
+	tlsConfig := &tls.Config{InsecureSkipVerify: true}
+	dialer := &net.Dialer{Timeout: time.Second * 30, DualStack: false}
+	conn, err := tls.DialWithDialer(dialer, "tcp", serverAddress, tlsConfig)
+	AssertNil(err, fmt.Sprint(err))
+	h2Transport := &http2.Transport{DialTLS: func(network, addr string, cfg *tls.Config) (net.Conn, error) { return conn, nil }}
+	client := &http.Client{Transport: h2Transport}
+	req, err := http.NewRequest("GET", "https://"+serverAddress+"/version.json", nil)
+	AssertNil(err, fmt.Sprint(err))
+	resp, err := client.Do(req)
+	AssertNil(err, fmt.Sprint(err))
+	defer resp.Body.Close()
+	Log(DumpHttpResp(resp, true))
+	AssertHttpStatus(resp, 200)
 }
 
 func Http2ContinuationTxTest(s *Http2Suite) {

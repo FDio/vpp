@@ -282,25 +282,25 @@ http1_parse_request_line (http_ctx_t *hc, http_ctx_t *req, u8 *rx_buf, http_stat
   /* parse method */
   if (!memcmp (rx_buf + method_offset, "GET ", 4))
     {
-      HTTP_DBG (0, "GET method");
+      HTTP_DBG (1, "GET method");
       req->method = HTTP_REQ_GET;
       req->target_path_offset = method_offset + 4;
     }
   else if (!memcmp (rx_buf + method_offset, "POST ", 5))
     {
-      HTTP_DBG (0, "POST method");
+      HTTP_DBG (1, "POST method");
       req->method = HTTP_REQ_POST;
       req->target_path_offset = method_offset + 5;
     }
   else if (!memcmp (rx_buf + method_offset, "PUT ", 4))
     {
-      HTTP_DBG (0, "PUT method");
+      HTTP_DBG (1, "PUT method");
       req->method = HTTP_REQ_PUT;
       req->target_path_offset = method_offset + 4;
     }
   else if (!memcmp (rx_buf + method_offset, "CONNECT ", 8))
     {
-      HTTP_DBG (0, "CONNECT method");
+      HTTP_DBG (1, "CONNECT method");
       req->method = HTTP_REQ_CONNECT;
       req->upgrade_proto = HTTP_UPGRADE_PROTO_NA;
       req->target_path_offset = method_offset + 8;
@@ -309,12 +309,17 @@ http1_parse_request_line (http_ctx_t *hc, http_ctx_t *req, u8 *rx_buf, http_stat
   else if (!memcmp (rx_buf + method_offset, "CONNECT-UDP ", 12) &&
 	   (hc->flags & HTTP_CONN_F_CONNECT_UDP_DRAFT03))
     {
-      HTTP_DBG (0, "CONNECT-UDP method");
+      HTTP_DBG (1, "CONNECT-UDP method");
       req->method = HTTP_REQ_CONNECT_UDP;
       req->upgrade_proto = HTTP_UPGRADE_PROTO_NA;
       req->target_path_offset = method_offset + 12;
       req->req_flags |= HTTP_REQ_F_IS_TUNNEL;
       req->req_flags |= HTTP_REQ_F_CONNECT_UDP_DRAFT03;
+    }
+  else if (!memcmp (rx_buf + method_offset, "PRI ", 4))
+    {
+      HTTP_DBG (1, "request start with PRI, upgrading to http/2");
+      return 2;
     }
   else
     {
@@ -942,9 +947,6 @@ http1_req_state_wait_transport_method (http_ctx_t *hc, http_ctx_t *req, transpor
   if (rv)
     return HTTP_SM_STOP;
 
-  HTTP_DBG (3, "%v", rx_buf);
-  http_stats_requests_received_inc (hc->c_thread_index);
-
   if (vec_len (rx_buf) < 8)
     {
       ec = HTTP_STATUS_BAD_REQUEST;
@@ -953,7 +955,19 @@ http1_req_state_wait_transport_method (http_ctx_t *hc, http_ctx_t *req, transpor
 
   rv = http1_parse_request_line (hc, req, rx_buf, &ec);
   if (rv)
-    goto error;
+    {
+      if (rv == 2)
+	{
+	  http_conn_upgrade_version (hc, HTTP_VERSION_2);
+	  hc->flags |= HTTP_CONN_F_EXPECT_PREFACE;
+	  http1_conn_free_req (hc);
+	  return HTTP_SM_STOP;
+	}
+      goto error;
+    }
+
+  HTTP_DBG (3, "%v", rx_buf);
+  http_stats_requests_received_inc (hc->c_thread_index);
 
   rv = http1_identify_headers (req, rx_buf, &ec);
   if (rv)
@@ -966,6 +980,14 @@ http1_req_state_wait_transport_method (http_ctx_t *hc, http_ctx_t *req, transpor
   if (rv)
     goto error;
 
+  if (hc->flags & HTTP_CONN_F_NO_APP_SESSION)
+    {
+      /* notify app about new conn */
+      if (http_conn_accept_request (hc, req, 0))
+	goto error;
+      http_stats_connections_accepted_inc (hc->c_thread_index);
+      hc->flags &= ~HTTP_CONN_F_NO_APP_SESSION;
+    }
   /* send at least "control data" which is necessary minimum,
    * if there is some space send also portion of body */
   max_enq = http_io_as_max_write (req);
@@ -1027,7 +1049,8 @@ error:
   http_io_ts_drain_all (hc);
   http_io_ts_after_read (hc, 1);
   http1_send_error (hc, ec, 0);
-  session_transport_closing_notify (&req->connection);
+  if (!(hc->flags & HTTP_CONN_F_NO_APP_SESSION))
+    session_transport_closing_notify (&req->connection);
   http_stats_proto_errors_inc (hc->c_thread_index);
   http_disconnect_transport (hc);
 
@@ -1977,18 +2000,11 @@ http1_transport_rx_callback (http_ctx_t *hc)
       u32 hc_index = hc->hc_hc_index;
       clib_thread_index_t thread_index = hc->c_thread_index;
       ASSERT (hc->flags & HTTP_CONN_F_IS_SERVER);
-      /* first request - create request ctx and notify app about new conn */
+      /* first request - create request ctx */
       req = http1_conn_alloc_req (hc_index, thread_index);
       /* pool grow, regrab connection */
       hc = http_ctx_get_w_thread (hc_index, thread_index);
-      if (http_conn_accept_request (hc, req, 0))
-	{
-	  http_disconnect_transport (hc);
-	  return;
-	}
-      http_stats_connections_accepted_inc (hc->c_thread_index);
       http_req_state_change (req, HTTP_REQ_STATE_WAIT_TRANSPORT_METHOD);
-      hc->flags &= ~HTTP_CONN_F_NO_APP_SESSION;
     }
   else
     req = http1_conn_get_req (hc);
