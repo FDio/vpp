@@ -625,7 +625,9 @@ dpdk_lib_init (dpdk_main_t * dm)
       if (devconf->disable_rxq_int)
 	xd->conf.enable_rxq_int = 0;
 
-      xd->async_flow_offload_n_queues = min_pow2 (devconf->async_flow_offload_n_queues);
+      /* 0 = auto (resolved in dpdk_device_configure_async_flow_offload) */
+      xd->async_flow_offload_n_queues =
+	devconf->async_flow_offload_n_queues ? devconf->async_flow_offload_n_queues : 0;
       xd->async_flow_offload_queue_size =
 	clib_min (DPDK_MAX_FLOW_QUEUE_SIZE, min_pow2 (devconf->async_flow_offload_queue_size));
       if (devconf->async_flow_offload_queue_batch)
@@ -1023,7 +1025,7 @@ dpdk_device_config (dpdk_config_main_t *conf, void *addr,
       devconf->dev_addr_type = VNET_DEV_ADDR_VMBUS;
     }
 
-  devconf->async_flow_offload_n_queues = DPDK_DEFAULT_ASYNC_FLOW_N_QUEUES;
+  devconf->async_flow_offload_n_queues = 0; /* 0 = auto: one queue per VPP thread */
   devconf->async_flow_offload_queue_size = DPDK_DEFAULT_ASYNC_FLOW_QUEUE_SIZE;
 
   if (!input)
