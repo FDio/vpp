@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a0bc243c_49d8ddd6",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2026-04-14T13:36:27Z",
+      "side": 1,
+      "message": "Old [0] commit is currently checked out, even though the oper branch [1] has been updated before that run.\n\n[0] https://github.com/FDio/vpp/actions/runs/24401146370/job/71271815289#step:4:418\n[1] https://github.com/FDio/csit/commits/oper-260309/",
+      "revId": "c7fe56a759efa5ef571795fc7abda9e1a7ebb374",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
