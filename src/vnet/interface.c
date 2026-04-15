@@ -1573,13 +1573,9 @@ vnet_hw_interface_add_del_mac_address (vnet_main_t * vnm,
     vnet_get_device_class (vnm, hi->dev_class_index);
 
   if (!hi->hw_address)
-    {
-      error =
-	clib_error_return
-	(0, "Secondary MAC Addresses not supported for interface index %u",
-	 hw_if_index);
-      goto done;
-    }
+    return clib_error_return_code (0, VNET_API_ERROR_NON_ETHERNET, 0,
+				   "Secondary MAC Addresses not supported for interface index %u",
+				   hw_if_index);
 
   if (dev_class->mac_addr_add_del_function)
     error = dev_class->mac_addr_add_del_function (hi, mac_address, is_add);
@@ -1599,7 +1595,6 @@ vnet_hw_interface_add_del_mac_address (vnet_main_t * vnm,
     ethernet_interface_add_del_address (&ethernet_main, hw_if_index,
 					mac_address, is_add);
 
-done:
   if (error)
     log_err ("hw_add_del_mac_address: %U", format_clib_error, error);
   return error;

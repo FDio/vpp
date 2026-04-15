@@ -205,7 +205,9 @@ ip6_mld_add_del_group_mac (u32 sw_if_index, const ip6_address_t *addr, int is_ad
 
   group_id = clib_net_to_host_u32 (addr->as_u32[3]);
   ip6_multicast_ethernet_address (mac, group_id);
-  vnet_hw_interface_add_del_mac_address (vnm, hi->hw_if_index, mac, is_add);
+  clib_error_t *error = vnet_hw_interface_add_del_mac_address (vnm, hi->hw_if_index, mac, is_add);
+  if (error)
+    clib_error_free (error);
 }
 
 /**

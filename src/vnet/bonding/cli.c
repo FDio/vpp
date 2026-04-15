@@ -361,8 +361,12 @@ bond_member_add_del_mac_addrs (bond_if_t * bif, u32 mif_sw_if_index,
   s_hwif = vnet_get_sup_hw_interface (vnm, mif_sw_if_index);
 
   vec_foreach (sec_mac, b_ei->secondary_addrs)
-    vnet_hw_interface_add_del_mac_address (vnm, s_hwif->hw_if_index,
-					   sec_mac->mac.bytes, is_add);
+    {
+      clib_error_t *error = vnet_hw_interface_add_del_mac_address (vnm, s_hwif->hw_if_index,
+								   sec_mac->mac.bytes, is_add);
+      if (error)
+	clib_error_free (error);
+    }
 }
 
 static void
