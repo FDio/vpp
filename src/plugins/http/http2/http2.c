@@ -1455,7 +1455,7 @@ http2_req_state_wait_transport_method (http_ctx_t *hc, http_ctx_t *req, transpor
       http2_stream_error (hc, req, HTTP2_ERROR_PROTOCOL_ERROR, sp);
       return HTTP_SM_STOP;
     }
-  if (control_data.scheme == HTTP_URL_SCHEME_UNKNOWN)
+  if (control_data.scheme == HTTP_URL_SCHEME_UNKNOWN && control_data.method != HTTP_REQ_CONNECT)
     {
       HTTP_DBG (1, "unsupported scheme");
       http2_stream_error (hc, req, HTTP2_ERROR_INTERNAL_ERROR, sp);

@@ -166,11 +166,13 @@ func (s *MasqueSuite) TeardownTest() {
 		Log(clientVpp.Vppctl("show error"))
 		Log(clientVpp.Vppctl("show http connect proxy client listeners sessions stats"))
 		Log(clientVpp.Vppctl("show http stats"))
+		Log(clientVpp.Vppctl("show http"))
 		Log(clientVpp.Vppctl("show tcp stats"))
 		Log(clientVpp.Vppctl("show quic"))
 		Log(serverVpp.Vppctl("show session verbose 2"))
 		Log(serverVpp.Vppctl("show error"))
 		Log(serverVpp.Vppctl("show http stats"))
+		Log(serverVpp.Vppctl("show http"))
 		Log(serverVpp.Vppctl("show tcp stats"))
 		Log(serverVpp.Vppctl("show quic"))
 	}
