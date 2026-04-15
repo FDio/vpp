@@ -2146,7 +2146,8 @@ tcp_check_if_gso (tcp_connection_t * tc, vlib_buffer_t * b)
   if (PREDICT_TRUE (!(tc->cfg_flags & TCP_CFG_F_TSO)))
     return;
 
-  u16 data_len = b->current_length - sizeof (tcp_header_t) - tc->snd_opts_len;
+  u16 l4_off = vnet_buffer (b)->l4_hdr_offset - b->current_data;
+  u16 data_len = b->current_length - l4_off - sizeof (tcp_header_t) - tc->snd_opts_len;
 
   if (PREDICT_FALSE (b->flags & VLIB_BUFFER_TOTAL_LENGTH_VALID))
     data_len += b->total_length_not_including_first_buffer;
