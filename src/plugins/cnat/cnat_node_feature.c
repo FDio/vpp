@@ -9,18 +9,13 @@
 #include <cnat/cnat_inline.h>
 #include <cnat/cnat_src_policy.h>
 #include <cnat/cnat_snat_policy.h>
+#include <cnat/cnat_feature_hook.h>
 
 #include <vnet/dpo/load_balance.h>
 #include <vnet/dpo/load_balance_map.h>
 
 #include <vnet/ip/ip4_inlines.h>
 #include <vnet/ip/ip6_inlines.h>
-
-typedef enum cnat_feature_next_
-{
-  CNAT_FEATURE_NEXT_DROP,
-  CNAT_FEATURE_N_NEXT,
-} cnat_feature_next_t;
 
 vlib_node_registration_t cnat_input_feature_ip4_node;
 vlib_node_registration_t cnat_input_feature_ip6_node;
@@ -77,7 +72,7 @@ cnat_input_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_addres
   ts->ts_rw_bm |= 1 << CNAT_LOCATION_INPUT;
 
   rw->cts_lbi = (u32) ~0;
-  rw->cts_dpoi_next_node = (u16) ~0;
+  rw->cts_dpoi_next_node = CTS_DPOI_NEXT_UNSET;
   /* record the forward-direction fib_index in the canonical FIB slot */
   ts->cts_rewrites[CNAT_LOCATION_FIB].rw_fib_index = vnet_buffer (b)->ip.fib_index;
 
@@ -128,7 +123,7 @@ cnat_input_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_addres
       ts->ts_rw_bm |= 1 << (CNAT_IS_RETURN + CNAT_LOCATION_OUTPUT);
 
       rrw->cts_lbi = (u32) ~0;
-      rrw->cts_dpoi_next_node = (u16) ~0;
+      rrw->cts_dpoi_next_node = CTS_DPOI_NEXT_UNSET;
 
       cnat_make_buffer_5tuple (b, af, &rrw->tuple, 0 /* iph_offset */, 1 /* swap */);
     }
@@ -136,21 +131,55 @@ cnat_input_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_addres
   return rw;
 }
 
-always_inline cnat_timestamp_rewrite_t *
-cnat_input_feature_get_rw (vlib_main_t *vm, vlib_buffer_t *b, ip_address_family_t af,
+void
+cnat_dnat_input_slow_path (vlib_main_t *vm, vlib_buffer_t *b, ip_address_family_t af,
 			   cnat_timestamp_t *ts)
 {
+  cnat_main_t *cm = &cnat_main;
+  cnat_input_feature_new_flow_inline (vm, b, af, ts);
+  if (ts->ts_rw_bm & (1 << CNAT_LOCATION_INPUT))
+    cnat_translation (b, af, &ts->cts_rewrites[CNAT_LOCATION_INPUT], &ts->lifetime, cm->tcp_max_age,
+		      0);
+}
+
+always_inline cnat_timestamp_rewrite_t *
+cnat_input_feature_svc_chain (vlib_main_t *vm, cnat_main_t *cm, vlib_buffer_t *b,
+			      ip_address_family_t af, cnat_timestamp_t *ts)
+{
+  cnat_timestamp_rewrite_t *rw;
+
   if (vnet_buffer2 (b)->session.state == CNAT_LOOKUP_IS_OK)
-    return (ts->ts_rw_bm & (1 << CNAT_LOCATION_INPUT)) ? &ts->cts_rewrites[CNAT_LOCATION_INPUT] :
-							 NULL;
+    {
+      rw = &ts->cts_rewrites[CNAT_LOCATION_INPUT];
+      if (ts->ts_rw_bm & (1 << CNAT_LOCATION_INPUT))
+	cnat_translation (b, af, rw, &ts->lifetime, cm->tcp_max_age, 0);
+      return rw;
+    }
   if (vnet_buffer2 (b)->session.state == CNAT_LOOKUP_IS_RETURN)
-    return (ts->ts_rw_bm & (1 << (CNAT_IS_RETURN + CNAT_LOCATION_INPUT))) ?
-	     &ts->cts_rewrites[CNAT_IS_RETURN + CNAT_LOCATION_INPUT] :
-	     NULL;
-  else if (vnet_buffer2 (b)->session.state == CNAT_LOOKUP_IS_NEW)
-    return cnat_input_feature_new_flow_inline (vm, b, af, ts);
-  else
-    return NULL;
+    {
+      rw = &ts->cts_rewrites[CNAT_IS_RETURN + CNAT_LOCATION_INPUT];
+      if (ts->ts_rw_bm & (1 << (CNAT_IS_RETURN + CNAT_LOCATION_INPUT)))
+	cnat_translation (b, af, rw, &ts->lifetime, cm->tcp_max_age, 0);
+      return rw;
+    }
+  if (vnet_buffer2 (b)->session.state == CNAT_LOOKUP_IS_NEW)
+    {
+      rw = &ts->cts_rewrites[CNAT_LOCATION_INPUT];
+      cnat_slow_path_fn_t *f;
+      vec_foreach (f, cm->slow_path_input_func)
+	{
+	  (*f) (vm, b, af, ts);
+	  /* Short-circuit — do not run further hooks. */
+	  if (rw->cts_dpoi_next_node == CTS_DPOI_NEXT_DROP)
+	    return rw;
+	}
+      return rw;
+    }
+
+  /* IS_ERR / IS_DONE: return the slot initialised to sentinel values
+   * (cts_dpoi_next_node == ~0, cts_lbi == ~0) so cnat_set_rw_next_node
+   * leaves next unchanged. */
+  return &ts->cts_rewrites[CNAT_LOCATION_INPUT];
 }
 
 always_inline uword
@@ -188,15 +217,10 @@ cnat_input_feature_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t 
   while (n_left >= 4)
     {
 
-      rw[0] = cnat_input_feature_get_rw (vm, b[0], af, ts[0]);
-      rw[1] = cnat_input_feature_get_rw (vm, b[1], af, ts[1]);
-      rw[2] = cnat_input_feature_get_rw (vm, b[2], af, ts[2]);
-      rw[3] = cnat_input_feature_get_rw (vm, b[3], af, ts[3]);
-
-      cnat_translation (b[0], af, rw[0], &ts[0]->lifetime, cm->tcp_max_age, 0 /* iph_offset */);
-      cnat_translation (b[1], af, rw[1], &ts[1]->lifetime, cm->tcp_max_age, 0 /* iph_offset */);
-      cnat_translation (b[2], af, rw[2], &ts[2]->lifetime, cm->tcp_max_age, 0 /* iph_offset */);
-      cnat_translation (b[3], af, rw[3], &ts[3]->lifetime, cm->tcp_max_age, 0 /* iph_offset */);
+      rw[0] = cnat_input_feature_svc_chain (vm, cm, b[0], af, ts[0]);
+      rw[1] = cnat_input_feature_svc_chain (vm, cm, b[1], af, ts[1]);
+      rw[2] = cnat_input_feature_svc_chain (vm, cm, b[2], af, ts[2]);
+      rw[3] = cnat_input_feature_svc_chain (vm, cm, b[3], af, ts[3]);
 
       cnat_set_rw_next_node (b[0], rw[0], &next[0]);
       cnat_set_rw_next_node (b[1], rw[1], &next[1]);
@@ -248,8 +272,7 @@ cnat_input_feature_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t 
       vnet_feature_next_u16 (&next[0], b[0]);
       ts[0] = cnat_timestamp_get (b[0]->flow_id);
 
-      rw[0] = cnat_input_feature_get_rw (vm, b[0], af, ts[0]);
-      cnat_translation (b[0], af, rw[0], &ts[0]->lifetime, cm->tcp_max_age, 0 /* iph_offset */);
+      rw[0] = cnat_input_feature_svc_chain (vm, cm, b[0], af, ts[0]);
       cnat_set_rw_next_node (b[0], rw[0], &next[0]);
 
       if (PREDICT_FALSE (do_trace))
@@ -341,7 +364,7 @@ cnat_output_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_addre
   ts->ts_rw_bm |= 1 << (CNAT_LOCATION_OUTPUT);
 
   rw->cts_lbi = (u32) ~0;
-  rw->cts_dpoi_next_node = (u16) ~0;
+  rw->cts_dpoi_next_node = CTS_DPOI_NEXT_UNSET;
   rw->rw_fib_index = ~0;
 
   if (AF_IP4 == af)
@@ -400,7 +423,7 @@ cnat_output_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_addre
   ts->ts_rw_bm |= 1 << (CNAT_IS_RETURN + CNAT_LOCATION_INPUT);
 
   rrw->cts_lbi = (u32) ~0;
-  rrw->cts_dpoi_next_node = (u16) ~0;
+  rrw->cts_dpoi_next_node = CTS_DPOI_NEXT_UNSET;
   /* record the return-direction fib_index in the canonical FIB slot */
   ts->cts_rewrites[CNAT_IS_RETURN + CNAT_LOCATION_FIB].rw_fib_index =
     AF_IP4 == af ? cpe->ret_fib_index4 : cpe->ret_fib_index6;
@@ -410,21 +433,57 @@ cnat_output_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_addre
   return rw;
 }
 
-always_inline cnat_timestamp_rewrite_t *
-cnat_output_feature_get_rw (vlib_main_t *vm, vlib_buffer_t *b, ip_address_family_t af,
+void
+cnat_snat_output_slow_path (vlib_main_t *vm, vlib_buffer_t *b, ip_address_family_t af,
 			    cnat_timestamp_t *ts)
 {
+  cnat_main_t *cm = &cnat_main;
+  u32 iph_offset = vnet_buffer (b)->ip.save_rewrite_length;
+  cnat_output_feature_new_flow_inline (vm, b, af, ts);
+  if (ts->ts_rw_bm & (1 << CNAT_LOCATION_OUTPUT))
+    cnat_translation (b, af, &ts->cts_rewrites[CNAT_LOCATION_OUTPUT], &ts->lifetime,
+		      cm->tcp_max_age, iph_offset);
+}
+
+always_inline cnat_timestamp_rewrite_t *
+cnat_output_feature_svc_chain (vlib_main_t *vm, cnat_main_t *cm, vlib_buffer_t *b,
+			       ip_address_family_t af, cnat_timestamp_t *ts)
+{
+  cnat_timestamp_rewrite_t *rw;
+  u32 iph_offset = vnet_buffer (b)->ip.save_rewrite_length;
+
   if (vnet_buffer2 (b)->session.state == CNAT_LOOKUP_IS_OK)
-    return (ts->ts_rw_bm & (1 << CNAT_LOCATION_OUTPUT)) ? &ts->cts_rewrites[CNAT_LOCATION_OUTPUT] :
-							  NULL;
+    {
+      rw = &ts->cts_rewrites[CNAT_LOCATION_OUTPUT];
+      if (ts->ts_rw_bm & (1 << CNAT_LOCATION_OUTPUT))
+	cnat_translation (b, af, rw, &ts->lifetime, cm->tcp_max_age, iph_offset);
+      return rw;
+    }
   if (vnet_buffer2 (b)->session.state == CNAT_LOOKUP_IS_RETURN)
-    return (ts->ts_rw_bm & (1 << (CNAT_IS_RETURN + CNAT_LOCATION_OUTPUT))) ?
-	     &ts->cts_rewrites[CNAT_IS_RETURN + CNAT_LOCATION_OUTPUT] :
-	     NULL;
-  else if (vnet_buffer2 (b)->session.state == CNAT_LOOKUP_IS_NEW)
-    return cnat_output_feature_new_flow_inline (vm, b, af, ts);
-  else
-    return NULL;
+    {
+      rw = &ts->cts_rewrites[CNAT_IS_RETURN + CNAT_LOCATION_OUTPUT];
+      if (ts->ts_rw_bm & (1 << (CNAT_IS_RETURN + CNAT_LOCATION_OUTPUT)))
+	cnat_translation (b, af, rw, &ts->lifetime, cm->tcp_max_age, iph_offset);
+      return rw;
+    }
+  if (vnet_buffer2 (b)->session.state == CNAT_LOOKUP_IS_NEW)
+    {
+      rw = &ts->cts_rewrites[CNAT_LOCATION_OUTPUT];
+      cnat_slow_path_fn_t *f;
+      vec_foreach (f, cm->slow_path_output_func)
+	{
+	  (*f) (vm, b, af, ts);
+	  /* Short-circuit — do not run further hooks. */
+	  if (rw->cts_dpoi_next_node == CTS_DPOI_NEXT_DROP)
+	    return rw;
+	}
+      return rw;
+    }
+
+  /* IS_ERR / IS_DONE: return the slot initialised to sentinel values
+   * (cts_dpoi_next_node == ~0, cts_lbi == ~0) so cnat_set_rw_next_node
+   * leaves next unchanged. */
+  return &ts->cts_rewrites[CNAT_LOCATION_OUTPUT];
 }
 
 /* output feature node, creates snat sessions when required and
@@ -462,19 +521,16 @@ cnat_output_feature_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t
 
   while (n_left >= 4)
     {
-      rw[0] = cnat_output_feature_get_rw (vm, b[0], af, ts[0]);
-      rw[1] = cnat_output_feature_get_rw (vm, b[1], af, ts[1]);
-      rw[2] = cnat_output_feature_get_rw (vm, b[2], af, ts[2]);
-      rw[3] = cnat_output_feature_get_rw (vm, b[3], af, ts[3]);
 
-      cnat_translation (b[0], af, rw[0], &ts[0]->lifetime, cm->tcp_max_age,
-			vnet_buffer (b[0])->ip.save_rewrite_length);
-      cnat_translation (b[1], af, rw[1], &ts[1]->lifetime, cm->tcp_max_age,
-			vnet_buffer (b[1])->ip.save_rewrite_length);
-      cnat_translation (b[2], af, rw[2], &ts[2]->lifetime, cm->tcp_max_age,
-			vnet_buffer (b[2])->ip.save_rewrite_length);
-      cnat_translation (b[3], af, rw[3], &ts[3]->lifetime, cm->tcp_max_age,
-			vnet_buffer (b[3])->ip.save_rewrite_length);
+      rw[0] = cnat_output_feature_svc_chain (vm, cm, b[0], af, ts[0]);
+      rw[1] = cnat_output_feature_svc_chain (vm, cm, b[1], af, ts[1]);
+      rw[2] = cnat_output_feature_svc_chain (vm, cm, b[2], af, ts[2]);
+      rw[3] = cnat_output_feature_svc_chain (vm, cm, b[3], af, ts[3]);
+
+      cnat_set_rw_next_node (b[0], rw[0], &next[0]);
+      cnat_set_rw_next_node (b[1], rw[1], &next[1]);
+      cnat_set_rw_next_node (b[2], rw[2], &next[2]);
+      cnat_set_rw_next_node (b[3], rw[3], &next[3]);
 
       /* Prefetch next iteration. */
 
@@ -523,9 +579,8 @@ cnat_output_feature_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t
       vnet_feature_next_u16 (&next[0], b[0]);
 
       ts[0] = cnat_timestamp_get (b[0]->flow_id);
-      rw[0] = cnat_output_feature_get_rw (vm, b[0], af, ts[0]);
-      cnat_translation (b[0], af, rw[0], &ts[0]->lifetime, cm->tcp_max_age,
-			vnet_buffer (b[0])->ip.save_rewrite_length);
+      rw[0] = cnat_output_feature_svc_chain (vm, cm, b[0], af, ts[0]);
+      cnat_set_rw_next_node (b[0], rw[0], &next[0]);
 
       if (PREDICT_FALSE (do_trace))
 	cnat_add_trace (vm, node, b[0], ts[0], rw[0]);
