@@ -20,6 +20,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "c1eab7d5_6c875bc9",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3124
+      },
+      "writtenOn": "2026-04-15T19:22:48Z",
+      "side": 1,
+      "message": "Agreed. I reverted rx_queue registration to always start as POLLING. Drivers that want the global default now pass VNET_HW_IF_RX_MODE_DEFAULT to vnet_hw_if_set_rx_queue_mode(), which resolves to hi-\u003edefault_rx_mode. Since initial mode is always POLLING, the rx_mode_change_function callback is always invoked when the default differs, so the driver can set up interrupt handling or reject unsupported modes. Drivers that don\u0027t call set_rx_queue_mode (dpdk, vmxnet3, af_xdp) are unaffected, they keep POLLING from registration.",
+      "parentUuid": "5e7f1d18_90edfe90",
+      "revId": "2656c60213b67af475551759e031b32d2c854e1a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "694f06ed_be9f3569",
         "filename": "src/vnet/devices/virtio/virtio.c",
         "patchSetId": 3
@@ -31,6 +49,24 @@
       "writtenOn": "2026-04-14T09:44:53Z",
       "side": 1,
       "message": "Will this work? Eg in case of interrupt we must call virtio_set_rx_interrupt() etc?",
+      "revId": "2656c60213b67af475551759e031b32d2c854e1a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "14b9f4fb_b91d80fb",
+        "filename": "src/vnet/devices/virtio/virtio.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 184,
+      "author": {
+        "id": 3124
+      },
+      "writtenOn": "2026-04-15T19:22:48Z",
+      "side": 1,
+      "message": "I removed the direct assignment — now vnet_hw_if_set_rx_queue_mode() handles the mode change (triggering the driver callback), then vring-\u003emode is set via vnet_hw_if_get_rx_queue_mode() to reflect the actual result.",
+      "parentUuid": "694f06ed_be9f3569",
       "revId": "2656c60213b67af475551759e031b32d2c854e1a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
