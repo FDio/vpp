@@ -48,7 +48,7 @@ cnat_snat_feature_new_flow_inline (vlib_main_t *vm, vlib_node_runtime_t *node, v
   ts->ts_rw_bm |= 1 << CNAT_LOCATION_FIB;
 
   rw->cts_lbi = (u32) ~0;
-  rw->cts_dpoi_next_node = (u16) ~0;
+  rw->cts_dpoi_next_node = CTS_DPOI_NEXT_UNSET;
 
   if (CNAT_SNAT_POLICY_ACTION_SNAT_ALLOC == action)
     {

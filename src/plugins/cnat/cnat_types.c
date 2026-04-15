@@ -5,6 +5,7 @@
 
 #include <cnat/cnat_types.h>
 #include <cnat/cnat_inline.h>
+#include <cnat/cnat_feature_hook.h>
 
 cnat_main_t cnat_main;
 cnat_timestamp_mpool_t cnat_timestamps;
@@ -347,6 +348,10 @@ int
 cnat_sw_interface_enable_disable (u32 sw_if_index, u8 enable)
 {
   cnat_lazy_init ();
+  /* Register the default DNAT/SNAT hooks the first time an interface is
+   * enabled on the input/output feature arcs. */
+  if (enable)
+    cnat_feature_hooks_ensure_init ();
   vnet_feature_enable_disable ("ip4-unicast", "cnat-input-ip4", sw_if_index, enable, 0, 0);
   vnet_feature_enable_disable ("ip4-unicast", "cnat-lookup-ip4", sw_if_index, enable, 0, 0);
   vnet_feature_enable_disable ("ip6-unicast", "cnat-input-ip6", sw_if_index, enable, 0, 0);

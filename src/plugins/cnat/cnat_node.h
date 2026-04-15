@@ -1004,7 +1004,7 @@ cnat_set_rw_next_node (vlib_buffer_t *b, const cnat_timestamp_rewrite_t *rw, u16
 {
   if (rw)
     {
-      *next0 = rw->cts_dpoi_next_node == (u16) ~0 ? *next0 : rw->cts_dpoi_next_node;
+      *next0 = rw->cts_dpoi_next_node == CTS_DPOI_NEXT_UNSET ? *next0 : rw->cts_dpoi_next_node;
       vnet_buffer (b)->ip.adj_index[VLIB_TX] =
 	rw->cts_lbi == (u32) ~0 ? vnet_buffer (b)->ip.adj_index[VLIB_TX] : rw->cts_lbi;
     }
@@ -1122,8 +1122,7 @@ cnat_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *fr
       rv[0] = cnat_bihash_search_i2_hash (&cnat_session_db, hash[0], &bkey[0], &bvalue[0]);
       cnat_lookup_create_or_return (b[0], rv[0], &bkey[0], &bvalue[0], now, hash[0], is_v6,
 				    alloc_if_not_found);
-      rv[1] = cnat_bihash_search_i2_hash (&cnat_session_db, hash[1], &bkey[1],
-					  &bvalue[1]);
+      rv[1] = cnat_bihash_search_i2_hash (&cnat_session_db, hash[1], &bkey[1], &bvalue[1]);
       cnat_lookup_create_or_return (b[1], rv[1], &bkey[1], &bvalue[1], now, hash[1], is_v6,
 				    alloc_if_not_found);
       rv[2] = cnat_bihash_search_i2_hash (&cnat_session_db, hash[2], &bkey[2], &bvalue[2]);
