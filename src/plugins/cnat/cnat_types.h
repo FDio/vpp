@@ -133,64 +133,6 @@ typedef struct
   u16 sequence;
 } cnat_echo_header_t;
 
-typedef struct cnat_main_
-{
-  /* Memory size of the session bihash */
-  uword session_hash_memory;
-
-  /* Number of buckets of the  session bihash */
-  u32 session_hash_buckets;
-
-  /* Memory size of the translation bihash */
-  uword translation_hash_memory;
-
-  /* Number of buckets of the  translation bihash */
-  u32 translation_hash_buckets;
-
-  /* Memory size of the client bihash */
-  uword client_hash_memory;
-
-  /* Number of buckets of the  client bihash */
-  u32 client_hash_buckets;
-
-  /* Memory size of the source NAT prefix bihash */
-  uword snat_hash_memory;
-
-  /* Number of buckets of the  source NAT prefix bihash */
-  u32 snat_hash_buckets;
-
-  /* Bit map for include / exclude sw_if_index
-   * so max number of expected interfaces */
-  u32 snat_if_map_length;
-
-  /* Timeout after which to clear sessions (in seconds) */
-  u32 session_max_age;
-
-  /* Timeout after which to clear an established TCP
-   * session (in seconds) */
-  u32 tcp_max_age;
-
-  /* Maximum number of retries when port is in use
-   * during reverse session creation */
-  u32 session_max_port_retries;
-
-  /* delay in seconds between two scans of session/clients tables */
-  f64 scanner_timeout;
-
-  /* Index of the scanner process node */
-  uword scanner_node_index;
-
-  /* Did we do lazy init ? */
-  u8 lazy_init_done;
-
-  /* Enable or Disable the scanner on startup */
-  u8 default_scanner_state;
-
-  /* Number of buckets for maglev, should be a
-   * prime >= 100 * max num bakends */
-  u32 maglev_len;
-} cnat_main_t;
-
 typedef struct __attribute__ ((__packed__)) cnat_5tuple_t_
 {
   ip46_address_t ip[VLIB_N_DIR];
@@ -288,6 +230,16 @@ typedef struct cnat_timestamp_t_
 } cnat_timestamp_t;
 STATIC_ASSERT (VLIB_N_DIR *CNAT_N_LOCATIONS <= 8, "Too many locations");
 
+/* slow-path hook function type — called once per new flow, registered via
+ * cnat_feature_hook_input/output_add_del.
+ *
+ * Contract: the hook communicates its result by writing directly into
+ * ts->cts_rewrites[] and setting ts->ts_rw_bm.  To deny the flow it must
+ * additionally set rw->cts_dpoi_next_node = CNAT_FEATURE_NEXT_DROP (== 0).
+ */
+typedef void (*cnat_slow_path_fn_t) (vlib_main_t *vm, vlib_buffer_t *b, ip_address_family_t af,
+				     cnat_timestamp_t *ts);
+
 /* Create the first pool with 1 << CNAT_TS_BASE_SIZE elts */
 #define CNAT_TS_BASE_SIZE (8)
 /* reserve the top CNAT_TS_MPOOL_BITS bits for finding the pool */
@@ -311,6 +263,73 @@ typedef struct cnat_timestamp_mpool_t_
   /* fixed pool size */
   u8 log2_pool_sz;
 } cnat_timestamp_mpool_t;
+
+typedef struct cnat_main_
+{
+  /* Memory size of the session bihash */
+  uword session_hash_memory;
+
+  /* Number of buckets of the  session bihash */
+  u32 session_hash_buckets;
+
+  /* Memory size of the translation bihash */
+  uword translation_hash_memory;
+
+  /* Number of buckets of the  translation bihash */
+  u32 translation_hash_buckets;
+
+  /* Memory size of the client bihash */
+  uword client_hash_memory;
+
+  /* Number of buckets of the  client bihash */
+  u32 client_hash_buckets;
+
+  /* Memory size of the source NAT prefix bihash */
+  uword snat_hash_memory;
+
+  /* Number of buckets of the  source NAT prefix bihash */
+  u32 snat_hash_buckets;
+
+  /* Bit map for include / exclude sw_if_index
+   * so max number of expected interfaces */
+  u32 snat_if_map_length;
+
+  /* Timeout after which to clear sessions (in seconds) */
+  u32 session_max_age;
+
+  /* Timeout after which to clear an established TCP
+   * session (in seconds) */
+  u32 tcp_max_age;
+
+  /* Maximum number of retries when port is in use
+   * during reverse session creation */
+  u32 session_max_port_retries;
+
+  /* delay in seconds between two scans of session/clients tables */
+  f64 scanner_timeout;
+
+  /* Index of the scanner process node */
+  uword scanner_node_index;
+
+  /* Did we do lazy init ? */
+  u8 lazy_init_done;
+
+  /* Enable or Disable the scanner on startup */
+  u8 default_scanner_state;
+
+  /* Number of buckets for maglev, should be a
+   * prime >= 100 * max num bakends */
+  u32 maglev_len;
+
+  /* slow path input/output hooks, called once per new flow only.
+   * empty by default — zero overhead when nothing is loaded. */
+  cnat_slow_path_fn_t *slow_path_input_func;
+  cnat_slow_path_fn_t *slow_path_output_func;
+
+  /* This tells whether the default DNAT/SNAT hooks have been registered.
+   * Set on first cnat_sw_interface_enable_disable.*/
+  u8 feature_hook_init_done;
+} cnat_main_t;
 
 cnat_main_t *cnat_get_main ();
 extern u8 *format_cnat_endpoint (u8 * s, va_list * args);
