@@ -1,5 +1,23 @@
 {
-  "comments": [],
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "76d5cd79_3465dcff",
+        "filename": "src/vnet/tcp/tcp_output.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 2154,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-04-15T19:04:26Z",
+      "side": 1,
+      "message": "Buffers allocated by session node have b-\u003eflags initialized, so flag should not be cleared here.",
+      "revId": "17c44ccf6b83e678563c5b4ca0de4ea88b958f4c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ],
   "submitRequirementResults": [
     {
       "submitRequirement": {
