@@ -16,12 +16,6 @@
 #include <vnet/ip/ip4_inlines.h>
 #include <vnet/ip/ip6_inlines.h>
 
-typedef enum cnat_feature_next_
-{
-  CNAT_FEATURE_NEXT_DROP,
-  CNAT_FEATURE_N_NEXT,
-} cnat_feature_next_t;
-
 vlib_node_registration_t cnat_lookup_feature_ip4_node;
 vlib_node_registration_t cnat_lookup_feature_ip6_node;
 vlib_node_registration_t cnat_writeback_feature_ip4_node;
