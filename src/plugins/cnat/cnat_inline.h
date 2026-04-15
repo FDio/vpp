@@ -89,6 +89,14 @@ cnat_timestamp_alloc (u32 fib_index, bool is_v6)
   clib_rwlock_writer_unlock (&ctm->ts_lock);
 
   clib_memset_u8 (ts, 0, sizeof (*ts));
+  /* (u16)~0 means "do not override next node"; 0 means drop
+   * (CNAT_FEATURE_NEXT_DROP == IP_LOOKUP_NEXT_DROP == 0).
+   * cnat_set_rw_next_node relies on this. */
+  for (int i = 0; i < VLIB_N_DIR * CNAT_N_LOCATIONS; i++)
+    {
+      ts->cts_rewrites[i].cts_dpoi_next_node = (u16) ~0;
+      ts->cts_rewrites[i].cts_lbi = (u32) ~0;
+    }
 
   ASSERT ((u64) index + (pidx << log2_pool_sz) <= CLIB_U32_MAX);
   return index + (pidx << log2_pool_sz);

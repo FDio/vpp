@@ -439,25 +439,10 @@ class TestCNatTranslation(CnatCommonTestCase):
                 ctx._test.assertEqual(dport1, dport2)
 
     def cnat_enable_features(self, enable=1):
-        for idx, feat in product(
-            [self.pg0.sw_if_index, self.pg1.sw_if_index, self.pg2.sw_if_index],
-            ["cnat-input-ip4", "cnat-lookup-ip4"],
-        ):
-            self.vapi.feature_enable_disable(
-                enable=enable,
-                arc_name="ip4-unicast",
-                feature_name=feat,
-                sw_if_index=idx,
-            )
-        for idx, feat in product(
-            [self.pg0.sw_if_index, self.pg1.sw_if_index, self.pg2.sw_if_index],
-            ["cnat-output-ip4", "cnat-writeback-ip4"],
-        ):
-            self.vapi.feature_enable_disable(
-                enable=enable,
-                arc_name="ip4-output",
-                feature_name=feat,
-                sw_if_index=idx,
+        for idx in [self.pg0.sw_if_index, self.pg1.sw_if_index, self.pg2.sw_if_index]:
+            self.vapi.feature_cnat_enable_disable(
+            sw_if_index=idx,
+            enable_disable=enable,
             )
 
     def get_ip46(self, obj):
