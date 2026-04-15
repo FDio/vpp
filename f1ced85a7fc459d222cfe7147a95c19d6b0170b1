@@ -457,6 +457,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "b412a994_cc8c276a",
+        "filename": "src/plugins/cnat/cnat_node_lookup.c",
+        "patchSetId": 31
+      },
+      "lineNbr": 142,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-15T14:07:00Z",
+      "side": 1,
+      "message": "This should be resolved by for now using only the FIB_XXX rewrite for storing fib_indexes. In subsequent patches, let\u0027s move this into the timestamp struct",
+      "parentUuid": "18fc19e4_d8516e25",
+      "revId": "f1ced85a7fc459d222cfe7147a95c19d6b0170b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "54cdeadb_e5a2f767",

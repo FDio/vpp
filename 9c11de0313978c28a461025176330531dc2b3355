@@ -1,0 +1,361 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "05b717a4_414f5051",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 34
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-15T14:07:00Z",
+      "side": 1,
+      "message": "Thanks for the updates ! Still a few comments, mostly nitpicks",
+      "revId": "9c11de0313978c28a461025176330531dc2b3355",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "764e71a9_877abda2",
+        "filename": "src/plugins/cnat/cnat.api",
+        "patchSetId": 34
+      },
+      "lineNbr": 145,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-15T14:07:00Z",
+      "side": 1,
+      "message": "can we make `cnat_set_snat_addresses_v2` ? Just for backward compatibility ?\nAnd while we are at it, let\u0027s throw in `fwd_fib_index` and `ret_fib_index`",
+      "revId": "9c11de0313978c28a461025176330531dc2b3355",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f4251082_d63dbc12",
+        "filename": "src/plugins/cnat/cnat.api",
+        "patchSetId": 34
+      },
+      "lineNbr": 152,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-15T14:07:00Z",
+      "side": 1,
+      "message": "Can we make this a dedicated type for snat flags ? e.g. `vl_api_cnat_snat_flags_t flags;`",
+      "revId": "9c11de0313978c28a461025176330531dc2b3355",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2cdcb0c4_5797d511",
+        "filename": "src/plugins/cnat/cnat_api.c",
+        "patchSetId": 34
+      },
+      "lineNbr": 385,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-15T14:07:00Z",
+      "side": 1,
+      "message": "This would then be for the v2 handler\n`rv \u003d cnat_set_snat (mp-\u003efwd_fib_index, mp-\u003eret_fib_index \u0026ip4, 32, \u0026ip6, 128, sw_if_index, mp-\u003eflags);`",
+      "revId": "9c11de0313978c28a461025176330531dc2b3355",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7482e7f5_0f0c9f20",
+        "filename": "src/plugins/cnat/cnat_inline.h",
+        "patchSetId": 34
+      },
+      "lineNbr": 242,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-15T14:07:00Z",
+      "side": 1,
+      "message": "Can we return an error when there is no rewrite, so that we can\nwrite `if !(cnat_get_rsession_from_ts(...) { cnat_copy (...) }`\ninstead of copying first and then walking the rewrites",
+      "revId": "9c11de0313978c28a461025176330531dc2b3355",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f2a69c54_d05202cb",
+        "filename": "src/plugins/cnat/cnat_node.h",
+        "patchSetId": 34
+      },
+      "lineNbr": 837,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-15T14:07:00Z",
+      "side": 1,
+      "message": "imho I think we should still return the `cnat_ep_trk_t *` rather than the index, as this makes the consumer code simpler.\nThis replaces `trk_i \u003d cnat_load_balance() ; if (trk_i !\u003d INVALID) goto err ; trk \u003d trks[trk_i] ; index \u003d trk_i` \n\nby\n\n`trk \u003d cnat_load_balance() ; if (!trk) goto err ; index \u003d trks - trk;`",
+      "revId": "9c11de0313978c28a461025176330531dc2b3355",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "db3a9d96_149e4db5",
+        "filename": "src/plugins/cnat/cnat_session.c",
+        "patchSetId": 34
+      },
+      "lineNbr": 128,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-15T14:07:00Z",
+      "side": 1,
+      "message": "And here you add `int verbose \u003d va_arg (*args, int);`",
+      "revId": "9c11de0313978c28a461025176330531dc2b3355",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6295bb59_77f5edc9",
+        "filename": "src/plugins/cnat/cnat_session.c",
+        "patchSetId": 34
+      },
+      "lineNbr": 151,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-15T14:07:00Z",
+      "side": 1,
+      "message": "Instead of this, you can just pass `versbose` to `format_cnat_timestamp` by doing\n`s \u003d format (s, \"...\", ... , format_cnat_timestamp, ts, indent + 2, verbose`)",
+      "revId": "9c11de0313978c28a461025176330531dc2b3355",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "85cac8dd_1421221a",
+        "filename": "src/plugins/cnat/cnat_session.c",
+        "patchSetId": 34
+      },
+      "lineNbr": 255,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-15T14:07:00Z",
+      "side": 1,
+      "message": "maybe `verbose %d` ?",
+      "revId": "9c11de0313978c28a461025176330531dc2b3355",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f7f19cac_8ff3c799",
+        "filename": "src/plugins/cnat/cnat_session.c",
+        "patchSetId": 34
+      },
+      "lineNbr": 330,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-15T14:07:00Z",
+      "side": 1,
+      "message": "It should be the forward session as we do not have the guarantee to have a return session",
+      "revId": "9c11de0313978c28a461025176330531dc2b3355",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1d0a00d7_d96cbb72",
+        "filename": "src/plugins/cnat/cnat_session.c",
+        "patchSetId": 34
+      },
+      "lineNbr": 587,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-15T14:07:00Z",
+      "side": 1,
+      "message": "Same this, `verbose %d` ?",
+      "revId": "9c11de0313978c28a461025176330531dc2b3355",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "01f1d75e_9368286e",
+        "filename": "src/plugins/cnat/cnat_session.c",
+        "patchSetId": 34
+      },
+      "lineNbr": 594,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-15T14:07:00Z",
+      "side": 1,
+      "message": "idem, we can pass verbose to `format_cnat_timestamp`",
+      "revId": "9c11de0313978c28a461025176330531dc2b3355",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "584ae167_d5c84566",
+        "filename": "src/plugins/cnat/cnat_snat_policy.c",
+        "patchSetId": 34
+      },
+      "lineNbr": 594,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-15T14:07:00Z",
+      "side": 1,
+      "message": "Let\u0027s pass the `flags` altogether and do the `if flags \u0026 CNAT_SNAT_POLICY_USE_AS_DEFAULT` inside",
+      "revId": "9c11de0313978c28a461025176330531dc2b3355",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9b433e09_4dcdb7eb",
+        "filename": "src/plugins/cnat/cnat_snat_policy.c",
+        "patchSetId": 34
+      },
+      "lineNbr": 629,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-15T14:07:00Z",
+      "side": 1,
+      "message": "As here I don\u0027t think we need `cnat_tr_flags`",
+      "revId": "9c11de0313978c28a461025176330531dc2b3355",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8f9c34f2_d01b7c5a",
+        "filename": "src/plugins/cnat/cnat_snat_policy.c",
+        "patchSetId": 34
+      },
+      "lineNbr": 663,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-15T14:07:00Z",
+      "side": 1,
+      "message": "Same thing here we can remove `cnat_tr_flags`",
+      "revId": "9c11de0313978c28a461025176330531dc2b3355",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "309277b6_cb969ea6",
+        "filename": "src/plugins/cnat/cnat_snat_policy.c",
+        "patchSetId": 34
+      },
+      "lineNbr": 668,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-15T14:07:00Z",
+      "side": 1,
+      "message": "Let\u0027s move this above at the place where we call `cnat_init_port_allocator()`\notherwise we will end up de-coupling default policy and default allocator if we call this function twice",
+      "revId": "9c11de0313978c28a461025176330531dc2b3355",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9bd86372_fea1e002",
+        "filename": "src/plugins/cnat/cnat_snat_policy.c",
+        "patchSetId": 34
+      },
+      "lineNbr": 714,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-15T14:07:00Z",
+      "side": 1,
+      "message": "it can be just `CNAT_SNAT_POLICY_USE_AS_DEFAULT` no ?",
+      "revId": "9c11de0313978c28a461025176330531dc2b3355",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2602c441_4a3a51ce",
+        "filename": "src/plugins/cnat/cnat_snat_policy.h",
+        "patchSetId": 34
+      },
+      "lineNbr": 116,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-15T14:07:00Z",
+      "side": 1,
+      "message": "I think we can remove the `cnat_tr_flags`",
+      "revId": "9c11de0313978c28a461025176330531dc2b3355",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8a37f57b_aaf75941",
+        "filename": "src/plugins/cnat/cnat_translation.c",
+        "patchSetId": 34
+      },
+      "lineNbr": 346,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-15T14:07:00Z",
+      "side": 1,
+      "message": "We need to preserve the order for `paths` in `ct-\u003ect_paths_indexes`, this can be done by pre-allocating `new_paths_indexes` to the length of `paths` and instead of issuing a `vec_add1` here we would have `new_paths_indexes[idx_found_in_paths] \u003d *trk_index`\n\nIn the next loop, we would do the same for the new ones",
+      "revId": "9c11de0313978c28a461025176330531dc2b3355",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c0513fc3_fd6c53dc",
+        "filename": "src/plugins/cnat/cnat_translation.c",
+        "patchSetId": 34
+      },
+      "lineNbr": 371,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-15T14:07:00Z",
+      "side": 1,
+      "message": "This way we do not have to do the comparison again here and can only rely on `new_paths_indexes[idx_found_in_paths] \u003d\u003d INVALID`",
+      "revId": "9c11de0313978c28a461025176330531dc2b3355",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4a713ee1_19734e19",
+        "filename": "src/plugins/cnat/cnat_types.h",
+        "patchSetId": 34
+      },
+      "lineNbr": 51,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-15T14:07:00Z",
+      "side": 1,
+      "message": "This can be removed",
+      "revId": "9c11de0313978c28a461025176330531dc2b3355",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
