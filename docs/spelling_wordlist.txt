@@ -73,6 +73,7 @@ awk
 ba
 backend
 backends
+backport
 backpressure
 backtrace
 Backtrace
@@ -329,6 +330,7 @@ encap
 encap
 encaps
 Encaps
+endeavour
 endian
 enic
 enp
@@ -448,6 +450,7 @@ headend
 Headend
 heapsize
 Heapsize
+Heric
 hostname
 hostnames
 hostNetwork
@@ -549,6 +552,7 @@ iPv
 IPv
 IPv4
 ipX
+irc
 isc
 isn
 isra
@@ -562,6 +566,7 @@ ixge
 javascript
 Jira
 jitter
+Jorm
 jsmith
 jsmithuser
 json
@@ -603,6 +608,7 @@ LDFLAGS
 ldp
 ldpreload
 learnt
+Lemay
 len
 libbpf
 libc
@@ -668,6 +674,7 @@ Mapp
 marvell
 Maryam
 masse
+Mathieu
 maximise
 mb
 mbedtls
@@ -813,6 +820,7 @@ ofr
 oldfile
 online
 onlink
+onwards
 ooo
 openbsd
 openbsd
@@ -1039,6 +1047,7 @@ sealert
 seatbelt
 seg
 segfault
+Seifried
 selinux
 selog
 semodule
