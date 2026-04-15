@@ -47,7 +47,17 @@ runs:
           echo "$TUI_LINE"
           cd "$WORKSPACE"
           git checkout "$GERRIT_BRANCH" || echo "WARNING: Could not checkout $GERRIT_BRANCH!"
-          git fetch --all origin "$GERRIT_REFSPEC"
+          # Tags are needed for "git describe" based VPP versioning.
+          # For the same reason, depth cannot be limited here.
+          git fetch --tags origin "$GERRIT_REFSPEC"
           git checkout FETCH_HEAD
+          if [ -z "$GERRIT_REFSPEC" ]; then
+            # CSIT checkout without refspec override.
+            # Oper branch detection needs to see all new commits and branches,
+            # but --all does not work with respec so we could not apply it in the previous fetch.
+            git fetch --all origin
+            # TODO: Depth can perhaps be limited here,
+            # when we make sure this is never visited in VPP merge workflow.
+          fi
           git show --stat
         } | tee "$LOG_DIR/checkout.log"
