@@ -28,6 +28,7 @@ add_vpp_plugin(cnat
   cnat_src_policy.c
   cnat_maglev.c
   cnat_log.c
+  cnat_feature_hook.c
 
   INSTALL_HEADERS
   cnat_bihash.h
@@ -40,6 +41,7 @@ add_vpp_plugin(cnat
   cnat_translation.h
   cnat_types.h
   cnat_log.h
+  cnat_feature_hook.h
 
   API_FILES
   cnat.api
