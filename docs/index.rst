@@ -43,6 +43,7 @@ For more details click on the links below or press next.
    aboutvpp/performance
    aboutvpp/releasenotes/index
    aboutvpp/featurelist
+   aboutvpp/security/index
 
 .. toctree::
    :caption: Use Cases
