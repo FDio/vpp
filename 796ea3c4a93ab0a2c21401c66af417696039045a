@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2d59f97a_9721d703",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_stats.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 262,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-04-15T15:25:32Z",
+      "side": 1,
+      "message": "6?! why not 7?! or even better - a nice named constant (possibly with a docstring)?",
+      "revId": "796ea3c4a93ab0a2c21401c66af417696039045a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "fb88cad4_dfb96dca",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_stats.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 273,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-04-15T15:25:32Z",
+      "side": 1,
+      "message": "same here",
+      "revId": "796ea3c4a93ab0a2c21401c66af417696039045a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a2c41e04_3037f40d",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_stats.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 313,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-04-15T15:25:32Z",
+      "side": 1,
+      "message": "I\u0027m thinking about how this would be used.\nI imagine that some tests might be wanting to test one specific aspect of a feature, like for example whether reassembled packets pass through NAT correctly. So this test tests NAT, but not reassembly, so it\u0027s interested into NAT-counter changes, but not reassembly ones. But the behavior described here would force that test author to filter out the reassembly noise manually.\nMaybe having something like StatsDiff from test/util.py as a filter saying \"I\u0027m only interested in this subset of counters\" might be useful? What do you think?",
+      "revId": "796ea3c4a93ab0a2c21401c66af417696039045a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
