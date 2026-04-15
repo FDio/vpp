@@ -51,6 +51,24 @@
       "parentUuid": "1dfc66df_d0a72b42",
       "revId": "045610fa93bd8329320decee780109faa7cba5c5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2f7772bc_40292977",
+        "filename": "src/vppinfra/std-formats.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 395,
+      "author": {
+        "id": 3200
+      },
+      "writtenOn": "2026-04-15T22:14:16Z",
+      "side": 1,
+      "message": "Ha! I began work on this patch before unformat_base10() was merged and I did not notice it.\n\nOn a more serious note: 1) unformat_base10() parses a signed value (despite its return type), and when we parse bitrates, we want an unsigned value. Maybe we should have signed and unsigned versions of unformat_base10?\n\n2) Currently both unformat_base10 and the proposed unformat_bitrate return uword, which, on a 32-bit cpu, is too small for \u0027tera\u0027 and practically too small for \u0027giga\u0027. I propose that unformat_base10 should return type \u0027i64\u0027 and whatever unsigned version should return \u0027u64\u0027 since that reflects the demands of the parsed values. Do you agree?",
+      "parentUuid": "1dfc66df_d0a72b42",
+      "revId": "045610fa93bd8329320decee780109faa7cba5c5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
