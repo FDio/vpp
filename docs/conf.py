@@ -21,7 +21,7 @@ import subprocess
 # -- Project information -----------------------------------------------------
 
 project = "The Vector Packet Processor"
-copyright = "2018-2022, Linux Foundation"
+copyright = "2018-2026, Linux Foundation"
 author = "FD.io VPP Community"
 
 # The short X.Y version
