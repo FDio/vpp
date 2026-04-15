@@ -145,7 +145,7 @@ jobs:
     steps:
       - name: Gerrit Checkout VPP
         # yamllint disable-line rule:line-length
-        uses: fdio/vpp/.github/actions/vpp-checkout-gerrit-change@c7fe56a759efa5ef571795fc7abda9e1a7ebb374
+        uses: fdio/vpp/.github/actions/vpp-checkout-gerrit-change@27fc2aa27f57c8f7055e8f1b6e5a9f41b0315873
         with:
           WORKSPACE: ${{ env.WORKSPACE }}
           GERRIT_BRANCH: ${{ env.GERRIT_BRANCH }}
@@ -154,7 +154,7 @@ jobs:
 
       - name: Gerrit Checkout CSIT
         # yamllint disable-line rule:line-length
-        uses: fdio/vpp/.github/actions/vpp-checkout-gerrit-change@c7fe56a759efa5ef571795fc7abda9e1a7ebb374
+        uses: fdio/vpp/.github/actions/vpp-checkout-gerrit-change@27fc2aa27f57c8f7055e8f1b6e5a9f41b0315873
         with:
           WORKSPACE: ${{ env.CSIT_WORKSPACE }}
           GERRIT_BRANCH: master
