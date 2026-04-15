@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "12cc1057_04cf2c1b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-04-15T09:11:15Z",
+      "side": 1,
+      "message": "Regarding format_hexdump_trunc and format_backtrace, do you have examples of use?",
+      "revId": "045610fa93bd8329320decee780109faa7cba5c5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1dfc66df_d0a72b42",
+        "filename": "src/vppinfra/std-formats.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 395,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-04-15T09:11:15Z",
+      "side": 1,
+      "message": "Could you update unformat_base10() for Tera and use that instead?",
+      "revId": "045610fa93bd8329320decee780109faa7cba5c5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
