@@ -20,6 +20,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "98a2da0b_31866517",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3200
+      },
+      "writtenOn": "2026-04-15T22:51:45Z",
+      "side": 1,
+      "message": "Here\u0027s my proposed comment to add to std-formats.c above format_hexdump_trunc(): what do you think? I should also update the variables names in the code to match.\n\n\n    format_hexdump_trunc()\n \n    Parameters:\n        u8* buffer_start\n        int head_display_length\n        int total_packet_length\n        int tail_display_length\n\n    Example:\n       u8* packet \u003d some_buffer;\n       uint packet_len \u003d 1538;\n\n       s \u003d format(s, \"%U\", format_hexdump_trunc, packet, 64, packet_len, 32);\n\n     Packet Dump (truncated) (start addr computed 0x103b400438)\n      00000: 02 42 0d 0c 0c 0c 02 41 0b 0c 0c 0c 88 e5 4c 00 [.B.....A......L.]\n      00010: 00 00 00 01 68 85 c3 ae cf e6 51 24 16 4b e4 e5 [....h.....Q$.K..]\n      00020: 0f 76 83 fc f3 b3 59 e8 4d 8c f8 57 66 55 57 5b [.v....Y.M..WfUW[]\n      00030: 76 d1 c9 9d 03 a4 81 7d 2a df 65 cb da 78 80 81 [v......}*.e..x..]\n       ...\n      005e0:       c6 93 54 76 2c c6 59 97 00 0f e1 a5 e7 93 [  ..Tv,.Y.......]\n      005f0: fe 8a f5 b7 59 44 38 e3 f4 e2 17 77 b5 be 72 32 [....YD8....w..r2]\n      00600: 5a a6                                           [Z.]",
+      "parentUuid": "12cc1057_04cf2c1b",
+      "revId": "045610fa93bd8329320decee780109faa7cba5c5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "1dfc66df_d0a72b42",
         "filename": "src/vppinfra/std-formats.c",
         "patchSetId": 5
