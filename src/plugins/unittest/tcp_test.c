@@ -1536,6 +1536,109 @@ tcp_test_bt (vlib_main_t * vm, unformat_input_t * input)
   return 0;
 }
 
+static int
+tcp_test_gso (vlib_main_t *vm, unformat_input_t *input)
+{
+  tcp_connection_t _tc, *tc = &_tc;
+  vlib_buffer_t _b, *b = &_b;
+  u32 buffer_data_size = 2048;
+  u8 *buffer_data;
+
+  clib_memset (tc, 0, sizeof (*tc));
+  clib_memset (b, 0, sizeof (*b));
+
+  /* Allocate buffer data */
+  buffer_data = clib_mem_alloc (buffer_data_size);
+  clib_memset (buffer_data, 0, buffer_data_size);
+  b->data = buffer_data;
+
+  /* Configure connection for TSO */
+  tc->cfg_flags |= TCP_CFG_F_TSO;
+  tc->snd_mss = 1460;	 /* Standard MSS */
+  tc->snd_opts_len = 12; /* 12 bytes of TCP options (timestamps) */
+
+  /*
+   * Test case 1: Segment with exactly MSS payload (1460 bytes)
+   * This should NOT be marked as GSO
+   */
+
+  /* Setup buffer as if after push_ip:
+   * b->current_data points to IP header
+   * b->current_length = IP(20) + TCP(20) + opts(12) + payload(1460) = 1512
+   */
+  b->current_data = 0;
+  b->current_length = 20 + 20 + 12 + 1460; /* IP + TCP + opts + payload = 1512 */
+  b->flags = 0;
+
+  /* Set l4_hdr_offset to point to TCP header (after IP) */
+  vnet_buffer (b)->l4_hdr_offset = 20;
+  b->flags |= VNET_BUFFER_F_L3_HDR_OFFSET_VALID | VNET_BUFFER_F_L4_HDR_OFFSET_VALID;
+
+  /* Call the function under test */
+  tcp_check_if_gso (tc, b);
+
+  /* Verify that GSO flag is NOT set for exactly MSS sized segment */
+  TCP_TEST (!(b->flags & VNET_BUFFER_F_GSO),
+	    "segment with exactly MSS payload should NOT have GSO flag");
+
+  /*
+   * Test case 2: Segment with payload > MSS (1480 bytes)
+   * This SHOULD be marked as GSO
+   */
+
+  b->current_data = 0;
+  b->current_length = 20 + 20 + 12 + 1480; /* IP + TCP + opts + payload = 1532 */
+  b->flags = VNET_BUFFER_F_L3_HDR_OFFSET_VALID | VNET_BUFFER_F_L4_HDR_OFFSET_VALID;
+  vnet_buffer (b)->l4_hdr_offset = 20;
+
+  tcp_check_if_gso (tc, b);
+
+  /* Verify that GSO flag IS set for segment larger than MSS */
+  TCP_TEST ((b->flags & VNET_BUFFER_F_GSO), "segment with payload > MSS should have GSO flag");
+  TCP_TEST ((vnet_buffer2 (b)->gso_size == tc->snd_mss), "gso_size should be %u, got %u",
+	    tc->snd_mss, vnet_buffer2 (b)->gso_size);
+  TCP_TEST ((vnet_buffer2 (b)->gso_l4_hdr_sz == sizeof (tcp_header_t) + tc->snd_opts_len),
+	    "gso_l4_hdr_sz should be %u, got %u", sizeof (tcp_header_t) + tc->snd_opts_len,
+	    vnet_buffer2 (b)->gso_l4_hdr_sz);
+
+  /*
+   * Test case 3: Segment with payload < MSS (1400 bytes)
+   * This should NOT be marked as GSO
+   */
+
+  b->current_data = 0;
+  b->current_length = 20 + 20 + 12 + 1400; /* IP + TCP + opts + payload = 1452 */
+  b->flags = VNET_BUFFER_F_L3_HDR_OFFSET_VALID | VNET_BUFFER_F_L4_HDR_OFFSET_VALID;
+  vnet_buffer (b)->l4_hdr_offset = 20;
+
+  tcp_check_if_gso (tc, b);
+
+  /* Verify that GSO flag is NOT set for segment smaller than MSS */
+  TCP_TEST (!(b->flags & VNET_BUFFER_F_GSO), "segment with payload < MSS should NOT have GSO flag");
+
+  /*
+   * Test case 4: Multi-buffer segment (chained buffers)
+   * Total payload > MSS, should be marked as GSO
+   */
+
+  b->current_data = 0;
+  b->current_length = 20 + 20 + 12 + 800; /* First buffer: IP + TCP + opts + 800 bytes payload */
+  b->flags = VNET_BUFFER_F_L3_HDR_OFFSET_VALID | VNET_BUFFER_F_L4_HDR_OFFSET_VALID |
+	     VLIB_BUFFER_TOTAL_LENGTH_VALID;
+  b->total_length_not_including_first_buffer = 700; /* Additional 700 bytes in next buffer */
+  vnet_buffer (b)->l4_hdr_offset = 20;
+
+  tcp_check_if_gso (tc, b);
+
+  /* Total payload = 800 + 700 = 1500 bytes > MSS (1460), should have GSO */
+  TCP_TEST ((b->flags & VNET_BUFFER_F_GSO),
+	    "multi-buffer segment with total payload > MSS should have GSO flag");
+
+  clib_mem_free (buffer_data);
+
+  return 0;
+}
+
 static clib_error_t *
 tcp_test (vlib_main_t * vm,
 	  unformat_input_t * input, vlib_cli_command_t * cmd_arg)
@@ -1569,6 +1672,10 @@ tcp_test (vlib_main_t * vm,
 	{
 	  res = tcp_test_bt (vm, input);
 	}
+      else if (unformat (input, "gso"))
+	{
+	  res = tcp_test_gso (vm, input);
+	}
       else if (unformat (input, "all"))
 	{
 	  if ((res = tcp_test_sack (vm, input)))
@@ -1576,6 +1683,8 @@ tcp_test (vlib_main_t * vm,
 	  if ((res = tcp_test_lookup (vm, input)))
 	    goto done;
 	  if ((res = tcp_test_delivery (vm, input)))
+	    goto done;
+	  if ((res = tcp_test_gso (vm, input)))
 	    goto done;
 	}
       else
