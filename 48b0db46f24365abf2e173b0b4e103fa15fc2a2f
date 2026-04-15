@@ -67,6 +67,23 @@
       "message": "gha-run csit-vpp-2n-emr perftest mrrANDnic_intel-e810cqANDdrv_avfAND1cAND64bANDeth-l2patch",
       "revId": "48b0db46f24365abf2e173b0b4e103fa15fc2a2f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "16ce442a_d8bf12d5",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2026-04-15T08:30:16Z",
+      "side": 1,
+      "message": "gha-run csit-vpp-2n-emr perftest mrrANDnic_intel-e810cqANDdrv_avfAND1cAND64bANDeth-l2patch",
+      "revId": "48b0db46f24365abf2e173b0b4e103fa15fc2a2f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
