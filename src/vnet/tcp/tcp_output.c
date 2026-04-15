@@ -2152,7 +2152,10 @@ tcp_check_if_gso (tcp_connection_t * tc, vlib_buffer_t * b)
     data_len += b->total_length_not_including_first_buffer;
 
   if (PREDICT_TRUE (data_len <= tc->snd_mss))
-    return;
+    {
+      b->flags &= ~VNET_BUFFER_F_GSO;
+      return;
+    }
   else
     {
       ASSERT ((b->flags & VNET_BUFFER_F_L3_HDR_OFFSET_VALID) != 0);
