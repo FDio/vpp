@@ -96,6 +96,7 @@ quic_connect_connection (transport_endpoint_cfg_t *tep)
   ctx->c_proto = TRANSPORT_PROTO_QUIC;
   ctx->c_flags |= TRANSPORT_CONNECTION_F_NO_LOOKUP;
   ctx->udp_is_ip4 = sep->is_ip4;
+  ctx->udp_session_handle = SESSION_INVALID_HANDLE;
   ctx->timer_handle = QUIC_TIMER_HANDLE_INVALID;
   ctx->conn_state = QUIC_CONN_STATE_HANDSHAKE;
   ctx->listener_ctx_id = QUIC_CTX_INVALID_INDEX;
@@ -805,6 +806,23 @@ quic_enable (vlib_main_t *vm, u8 is_en)
   return 0;
 }
 
+static void
+quic_cleanup_ho (u32 ctx_index)
+{
+  quic_ctx_t *ctx;
+  clib_thread_index_t thread_index = transport_cl_thread ();
+
+  ctx = quic_ctx_get (ctx_index, thread_index);
+  /* we need to close quic connection if client detach before handshake is completed, migrated
+   * connection is no longer half-open, otherwise we hit timeout when app session is gone */
+  if (ctx->conn_state <= QUIC_CONN_STATE_HANDSHAKE)
+    {
+      QUIC_DBG (2, "app detach before handshake completed, ctx_index %u", ctx_index);
+      ctx->flags |= QUIC_F_NO_APP_SESSION;
+      quic_eng_proto_on_close (ctx_index, thread_index);
+    }
+}
+
 static const transport_proto_vft_t quic_proto = {
   .enable = quic_enable,
   .connect = quic_connect_connection,
@@ -817,6 +835,7 @@ static const transport_proto_vft_t quic_proto = {
   .get_connection = quic_connection_get,
   .get_listener = quic_listener_get,
   .get_half_open = quic_half_open_get,
+  .cleanup_ho = quic_cleanup_ho,
   .update_time = quic_update_time,
   .app_rx_evt = quic_custom_app_rx_callback,
   .custom_tx = quic_custom_tx_callback,

@@ -50,7 +50,7 @@ func (s *Http3Suite) SetupSuite() {
 	s.Ports.Port2 = s.GeneratePort()
 }
 
-func (s *Http3Suite) SetupTest() {
+func (s *Http3Suite) SetupTest(quicConfig ...Stanza) {
 	s.HstSuite.SetupTest()
 
 	// Setup test conditions
@@ -59,7 +59,12 @@ func (s *Http3Suite) SetupTest() {
 	var memoryConfig Stanza
 	memoryConfig.NewStanza("memory").Append("main-heap-size 2G").Close()
 
-	vpp, _ := s.Containers.Vpp.newVppInstance(s.Containers.Vpp.AllocatedCpus, memoryConfig, sessionConfig)
+	var customQuicConfig Stanza
+	if len(quicConfig) > 0 {
+		customQuicConfig = quicConfig[0]
+	}
+
+	vpp, _ := s.Containers.Vpp.newVppInstance(s.Containers.Vpp.AllocatedCpus, memoryConfig, sessionConfig, customQuicConfig)
 
 	AssertNil(vpp.Start())
 	AssertNil(vpp.CreateTap(s.Interfaces.Tap, false, 1), "failed to create tap interface")
