@@ -140,8 +140,6 @@ http3_stream_close (http_ctx_t *stream, http_ctx_t *req)
 static_always_inline void
 http3_stream_terminate (http_ctx_t *stream, http_ctx_t *req, http3_error_t err)
 {
-  /* for client we open quic stream when we get request */
-  ASSERT (req->req_state != HTTP_REQ_STATE_WAIT_APP_METHOD);
   /* this should not happen since we don't support server push */
   ASSERT (stream->flags & HTTP_CONN_F_BIDIRECTIONAL_STREAM);
 
@@ -179,6 +177,12 @@ http3_stream_error_terminate_conn (http_ctx_t *stream, http_ctx_t *req, http3_er
 static_always_inline void
 http3_stream_ctx_reset (http_ctx_t *old_stream, http_ctx_t *req)
 {
+  http_ctx_t *new_stream, *hc;
+  u32 hc_index = old_stream->hc_http_conn_index;
+  u32 req_index = ((http_req_handle_t) req->hr_req_handle).req_index;
+  clib_thread_index_t thread_index = old_stream->c_thread_index;
+  int rv;
+
   ASSERT (old_stream->flags & HTTP_CONN_F_BIDIRECTIONAL_STREAM);
   ASSERT (!(old_stream->flags & HTTP_CONN_F_IS_SERVER));
 
@@ -186,8 +190,27 @@ http3_stream_ctx_reset (http_ctx_t *old_stream, http_ctx_t *req)
   if (old_stream->state == HTTP_CONN_STATE_TRANSPORT_CLOSED)
     http_close_transport_stream (old_stream);
 
+  hc = http_ctx_get_w_thread (hc_index, thread_index);
+  /* we don't need to open new quic stream if connection is closing */
+  if (hc->state > HTTP_CONN_STATE_ESTABLISHED)
+    return;
+
   old_stream->http_req_index = SESSION_INVALID_INDEX;
-  req->hr_hc_index = old_stream->hc_http_conn_index;
+  /* open new quic stream */
+  rv = http_connect_transport_stream (hc_index, thread_index, 0, &new_stream);
+  /* pool grow, regrab connection and request */
+  hc = http_ctx_get_w_thread (hc_index, thread_index);
+  req = http_ctx_get_w_thread (req_index, thread_index);
+  if (rv)
+    {
+      HTTP_DBG (1, "failed to open request stream");
+      /* not much to do here, just notify app */
+      if (!(req->req_flags & HTTP_REQ_F_APP_CLOSED))
+	session_transport_reset_notify (&req->connection);
+      return;
+    }
+  new_stream->http_req_index = req_index;
+  req->hr_hc_index = new_stream->hc_hc_index;
 }
 
 static_always_inline int
@@ -427,7 +450,7 @@ http3_req_state_wait_app_reply (http_ctx_t *stream, http_ctx_t *req, transport_s
 }
 
 static http_sm_result_t
-http3_req_state_wait_app_method (http_ctx_t *hc, http_ctx_t *req, transport_send_params_t *sp,
+http3_req_state_wait_app_method (http_ctx_t *stream, http_ctx_t *req, transport_send_params_t *sp,
 				 http3_error_t *error, u32 *n_deq)
 {
   http_msg_t msg;
@@ -437,28 +460,6 @@ http3_req_state_wait_app_method (http_ctx_t *hc, http_ctx_t *req, transport_send
   u8 fh_buf[HTTP3_FRAME_HEADER_MAX_LEN];
   u8 fh_len;
   http_req_state_t new_state = HTTP_REQ_STATE_WAIT_TRANSPORT_REPLY;
-  http_ctx_t *stream;
-  clib_thread_index_t thread_index = hc->c_thread_index;
-  u32 hc_index = hc->hc_hc_index;
-  u32 req_index = ((http_req_handle_t) req->hr_req_handle).req_index;
-  int rv;
-
-  /* open quic stream */
-  rv = http_connect_transport_stream (hc_index, thread_index, 0, &stream);
-  /* pool grow, regrab connection and request */
-  hc = http_ctx_get_w_thread (hc_index, thread_index);
-  req = http_ctx_get_w_thread (req_index, thread_index);
-  if (rv)
-    {
-      HTTP_DBG (1, "failed to open request stream");
-      /* not much to do here, just notify app */
-      if (!(req->req_flags & HTTP_REQ_F_APP_CLOSED) ||
-	  !(stream->flags & HTTP_CONN_F_NO_APP_SESSION))
-	session_transport_reset_notify (&req->connection);
-      return HTTP_SM_STOP;
-    }
-  stream->http_req_index = req_index;
-  req->hr_hc_index = stream->hc_hc_index;
 
   http_get_app_msg (req, &msg);
   ASSERT (msg.type == HTTP_MSG_REQUEST);
@@ -475,8 +476,8 @@ http3_req_state_wait_app_method (http_ctx_t *hc, http_ctx_t *req, transport_send
       http_req_deschedule (req, sp);
       if (msg.data.upgrade_proto != HTTP_UPGRADE_PROTO_NA)
 	{
-	  control_data.authority = hc->host;
-	  control_data.authority_len = vec_len (hc->host);
+	  control_data.authority = stream->host;
+	  control_data.authority_len = vec_len (stream->host);
 	  control_data.parsed_bitmap |= HPACK_PSEUDO_HEADER_SCHEME_PARSED;
 	  control_data.scheme = HTTP_URL_SCHEME_HTTPS;
 	  control_data.parsed_bitmap |= HPACK_PSEUDO_HEADER_PATH_PARSED;
@@ -1094,7 +1095,10 @@ http3_req_state_wait_transport_reply (http_ctx_t *stream, http_ctx_t *req,
   else
     {
       /* we are done wait for the next app request */
+      clib_thread_index_t thread_index = stream->c_thread_index;
+      u32 req_index = ((http_req_handle_t) req->hr_req_handle).req_index;
       http3_stream_ctx_reset (stream, req);
+      req = http_ctx_get_w_thread (req_index, thread_index);
     }
   req->to_recv = req->body_len;
 
@@ -1171,7 +1175,10 @@ http3_req_state_transport_io_more_data (http_ctx_t *stream, http_ctx_t *req,
 	{
 	  /* we are done wait for the next app request */
 	  http_req_state_change (req, HTTP_REQ_STATE_WAIT_APP_METHOD);
+	  clib_thread_index_t thread_index = stream->c_thread_index;
+	  u32 req_index = ((http_req_handle_t) req->hr_req_handle).req_index;
 	  http3_stream_ctx_reset (stream, req);
+	  req = http_ctx_get_w_thread (req_index, thread_index);
 	}
       res = HTTP_SM_STOP;
     }
@@ -1934,8 +1941,6 @@ http3_app_tx_callback (http_ctx_t *stream, u32 req_index, transport_send_params_
 	}
     }
   err = http3_req_run_tx_state_machine (stream, req, sp);
-  /* pool might grow, regrab stream */
-  stream = http_ctx_get_w_thread (stream_index, thread_index);
   if (err != HTTP3_ERROR_NO_ERROR)
     {
       ASSERT (err != HTTP3_ERROR_INCOMPLETE);
@@ -1977,14 +1982,6 @@ http3_app_close_callback (http_ctx_t *stream, u32 req_index, clib_thread_index_t
   req = http_ctx_get_w_thread (req_index, thread_index);
   req->req_flags |= HTTP_REQ_F_APP_CLOSED;
   req->app_closed_cb (req, stream, is_shutdown);
-
-  if (req->req_state == HTTP_REQ_STATE_WAIT_APP_METHOD)
-    {
-      /* client session without request - no quic stream, delete it
-       * now */
-      session_transport_delete_notify (&req->connection);
-      http3_stream_free_req_w_index (req_index, thread_index, stream);
-    }
 }
 
 static void
@@ -1996,21 +1993,10 @@ http3_app_reset_callback (http_ctx_t *stream, u32 req_index, clib_thread_index_t
   HTTP_DBG (1, "stream [%u]%x req %x", stream->c_thread_index, stream->hc_hc_index, req_index);
   http_stats_stream_reset_by_app_inc (thread_index);
   req = http_ctx_get_w_thread (req_index, thread_index);
-  if (req->req_state == HTTP_REQ_STATE_WAIT_APP_METHOD)
-    {
-      /* client session without request - no quic stream, delete it
-       * now */
-      session_transport_delete_notify (&req->connection);
-      http3_stream_free_req_w_index (req_index, thread_index, stream);
-    }
-  else
-    {
-      req->req_flags |= HTTP_REQ_F_APP_CLOSED;
-      http3_stream_terminate (stream, req,
-			      (req->req_flags & HTTP_REQ_F_IS_TUNNEL) ?
-				HTTP3_ERROR_CONNECT_ERROR :
-				HTTP3_ERROR_REQUEST_CANCELLED);
-    }
+  req->req_flags |= HTTP_REQ_F_APP_CLOSED;
+  http3_stream_terminate (stream, req,
+			  (req->req_flags & HTTP_REQ_F_IS_TUNNEL) ? HTTP3_ERROR_CONNECT_ERROR :
+								    HTTP3_ERROR_REQUEST_CANCELLED);
   if (req->req_flags & HTTP_REQ_F_IS_PARENT)
     {
       HTTP_DBG (1, "app closed parent, closing connection");
@@ -2025,8 +2011,10 @@ static int
 http3_transport_connected_callback (http_ctx_t *hc)
 {
   http_ctx_t *req;
-  u32 hc_index = hc->hc_hc_index;
+  u32 stream_index, hc_index = hc->hc_hc_index;
   clib_thread_index_t thread_index = hc->c_thread_index;
+  http_ctx_t *stream;
+  int rv;
 
   HTTP_DBG (1, "hc [%u]%x", hc->c_thread_index, hc->hc_hc_index);
   hc->hc_http_conn_index = hc->hc_hc_index;
@@ -2038,17 +2026,50 @@ http3_transport_connected_callback (http_ctx_t *hc)
   hc->peer_settings = http3_default_conn_settings;
   hc->flags |= HTTP_CONN_F_EXPECT_PEER_SETTINGS;
   if (PREDICT_FALSE (http3_conn_init (hc_index, thread_index, hc)))
-    return -1;
+    {
+      HTTP_DBG (1, "failed to initialize connection");
+      hc = http_ctx_get_w_thread (hc_index, thread_index);
+      /* not much to do here, just notify app */
+      app_worker_t *app_wrk = app_worker_get_if_valid (hc->hc_pa_wrk_index);
+      if (!app_wrk)
+	{
+	  HTTP_DBG (1, "no app worker");
+	  return -1;
+	}
+      app_worker_connect_notify (app_wrk, 0, SESSION_E_UNKNOWN, hc->hc_pa_app_api_ctx);
+      return -1;
+    }
 
-  req = http3_stream_alloc_req (hc_index, thread_index, 1);
+  /* open quic stream */
+  rv = http_connect_transport_stream (hc_index, thread_index, 0, &stream);
+  if (rv)
+    {
+      HTTP_DBG (1, "failed to open request stream");
+      hc = http_ctx_get_w_thread (hc_index, thread_index);
+      /* not much to do here, just notify app */
+      app_worker_t *app_wrk = app_worker_get_if_valid (hc->hc_pa_wrk_index);
+      if (!app_wrk)
+	{
+	  HTTP_DBG (1, "no app worker");
+	  return -1;
+	}
+      app_worker_connect_notify (app_wrk, 0, SESSION_E_UNKNOWN, hc->hc_pa_app_api_ctx);
+      return -1;
+    }
+  stream_index = stream->hc_hc_index;
+
+  req = http3_stream_alloc_req (stream_index, thread_index, 1);
+  /* pool grow, regrab connection and stream */
   hc = http_ctx_get_w_thread (hc_index, thread_index);
+  stream = http_ctx_get_w_thread (stream_index, thread_index);
+  stream->http_req_index = ((http_req_handle_t) req->hr_req_handle).req_index;
+  req->hr_hc_index = stream_index;
   req->stream_type = HTTP3_STREAM_TYPE_REQUEST;
   req->transport_rx_cb = http3_stream_transport_rx_req_client;
   req->app_closed_cb = http3_stream_app_close_parent;
   http_req_state_change (req, HTTP_REQ_STATE_WAIT_APP_METHOD);
   http_stats_connections_established_inc (thread_index);
   http_stats_app_streams_opened_inc (thread_index);
-
   return http_conn_established (hc, req, hc->hc_pa_app_api_ctx);
 }
 
@@ -2057,6 +2078,8 @@ http3_transport_rx_callback (http_ctx_t *stream)
 {
   http_ctx_t *req;
   u32 n_deq;
+  u32 stream_index = stream->hc_hc_index;
+  clib_thread_index_t thread_index = stream->c_thread_index;
 
   ASSERT (http_ctx_is_stream (stream));
 
@@ -2064,6 +2087,8 @@ http3_transport_rx_callback (http_ctx_t *stream)
 	    stream->http_req_index);
   req = http_ctx_get_w_thread (stream->http_req_index, stream->c_thread_index);
   n_deq = req->transport_rx_cb (req, stream);
+  /* pool might grow, regrab stream */
+  stream = http_ctx_get_w_thread (stream_index, thread_index);
   http_io_ts_program_rx_evt (stream, n_deq);
 
   /* reset http connection expiration timer */
@@ -2186,20 +2211,21 @@ http3_transport_stream_close_callback (http_ctx_t *stream)
 	      http_stats_ctrl_streams_closed_inc (stream->c_thread_index);
 	      return;
 	    }
+	  HTTP_DBG (1, "peer control stream closed");
 	  req = http_ctx_get_w_thread (stream->http_req_index, stream->c_thread_index);
 	  http3_stream_close (stream, req);
 	}
       else
 	{
-	  /* for tunnel peer can initiate or confirm tunnel close
-	   * for server stream is closed for receiving
-	   * for client we can confirm close if we already read all data */
+	  /* client old stream, already doing request on new */
 	  if (stream->http_req_index == SESSION_INVALID_INDEX)
 	    {
+	      HTTP_DBG (1, "no request closing");
 	      http_close_transport_stream (stream);
 	      return;
 	    }
 	  req = http_ctx_get_w_thread (stream->http_req_index, stream->c_thread_index);
+	  /* for tunnel peer can initiate or confirm tunnel close */
 	  if (req->req_flags & HTTP_REQ_F_IS_TUNNEL)
 	    {
 	      if (req->req_flags & HTTP_REQ_F_APP_CLOSED)
@@ -2216,6 +2242,7 @@ http3_transport_stream_close_callback (http_ctx_t *stream)
 		}
 	      return;
 	    }
+	  /* for server stream is closed for receiving */
 	  if (stream->flags & HTTP_CONN_F_IS_SERVER)
 	    {
 	      if (req->req_state < HTTP_REQ_STATE_WAIT_APP_REPLY && !http_io_ts_max_read (stream))
@@ -2224,7 +2251,15 @@ http3_transport_stream_close_callback (http_ctx_t *stream)
 		  http3_stream_terminate (stream, req, HTTP3_ERROR_REQUEST_INCOMPLETE);
 		  return;
 		}
+	      HTTP_DBG (1, "server stream half-closed");
 	      stream->state = HTTP_CONN_STATE_HALF_CLOSED;
+	      return;
+	    }
+	  /* for client we can confirm close if app already close (read all data) */
+	  if (req->req_flags & HTTP_REQ_F_APP_CLOSED)
+	    {
+	      HTTP_DBG (1, "app already closed confirm");
+	      http_close_transport_stream (stream);
 	    }
 	}
     }
@@ -2284,22 +2319,38 @@ http3_conn_accept_callback (http_ctx_t *hc)
 }
 
 static int
-http3_conn_connect_stream_callback (http_ctx_t *hc, u32 *req_index)
+http3_conn_connect_stream_callback (http_ctx_t *parent_stream, u32 *req_handle)
 {
   http_ctx_t *req;
-  u32 pa_wrk_index = hc->hc_pa_wrk_index;
-  clib_thread_index_t thread_index = hc->c_thread_index;
+  u32 pa_wrk_index = parent_stream->hc_pa_wrk_index;
+  u32 hc_index = parent_stream->hc_http_conn_index;
+  u32 stream_index;
+  clib_thread_index_t thread_index = parent_stream->c_thread_index;
+  http_ctx_t *stream;
+  int rv;
 
-  HTTP_DBG (1, "hc [%u]%x", hc->c_thread_index, hc->hc_hc_index);
+  HTTP_DBG (1, "hc [%u]%x", thread_index, hc_index);
 
-  req = http3_stream_alloc_req (hc->hc_hc_index, thread_index, 0);
+  /* open quic stream */
+  rv = http_connect_transport_stream (hc_index, thread_index, 0, &stream);
+  if (rv)
+    {
+      HTTP_DBG (1, "failed to open request stream");
+      return SESSION_E_UNKNOWN;
+    }
+  stream_index = stream->hc_hc_index;
+  req = http3_stream_alloc_req (stream_index, thread_index, 0);
+  /* pool grow, regrab stream */
+  stream = http_ctx_get_w_thread (stream_index, thread_index);
+  stream->http_req_index = ((http_req_handle_t) req->hr_req_handle).req_index;
+  req->hr_hc_index = stream_index;
   req->stream_type = HTTP3_STREAM_TYPE_REQUEST;
   req->transport_rx_cb = http3_stream_transport_rx_req_client;
   req->app_closed_cb = http3_stream_app_close;
   req->hr_pa_wrk_index = pa_wrk_index;
   http_req_state_change (req, HTTP_REQ_STATE_WAIT_APP_METHOD);
   http_stats_app_streams_opened_inc (thread_index);
-  *req_index = req->hr_req_handle;
+  *req_handle = req->hr_req_handle;
   return SESSION_E_NONE;
 }
 
@@ -2332,6 +2383,12 @@ http3_stream_cleanup_callback (http_ctx_t *stream)
   if (stream->flags & HTTP_CONN_F_BIDIRECTIONAL_STREAM)
     {
       req = http_ctx_get_w_thread (stream->http_req_index, stream->c_thread_index);
+      /* parent request will be deleted with connection */
+      if (req->req_flags & HTTP_REQ_F_IS_PARENT)
+	{
+	  req->hr_hc_index = stream->hc_http_conn_index;
+	  return;
+	}
       if (!(stream->flags & HTTP_CONN_F_NO_APP_SESSION))
 	session_transport_delete_notify (&req->connection);
     }
