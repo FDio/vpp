@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6ecc479f_793f676e",
+        "filename": "src/vnet/interface_cli.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1597,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2026-04-16T13:21:21Z",
+      "side": 1,
+      "message": "Can you add APIs to set and retrieve the default rx mode? If it can be changed or viewed via CLI at runtime, those operations should be available via API also.",
+      "revId": "3a7a254c94afd08df75577e75bd4ce584b3ed99e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
