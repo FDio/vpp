@@ -18,6 +18,7 @@
 #include <vnet/interface/tx_queue_funcs.h>
 #include <dpdk/buffer.h>
 #include <dpdk/device/dpdk.h>
+#include <dpdk/device/flow.h>
 #include <dpdk/cryptodev/cryptodev.h>
 #include <vlib/pci/pci.h>
 #include <vlib/vmbus/vmbus.h>
@@ -1712,7 +1713,9 @@ dpdk_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	  dpdk_update_counters (xd, now);
 	if ((now - xd->time_last_link_update) >= dm->link_state_poll_interval)
 	  dpdk_update_link_state (xd, now);
-
+	if (dm->aging_poll_interval > 0 &&
+	    (now - xd->time_last_aging_poll) >= dm->aging_poll_interval)
+	  dpdk_poll_aged_flows (xd, now);
       }
 
       now = vlib_time_now (vm);
@@ -1722,6 +1725,8 @@ dpdk_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 					 dm->stat_poll_interval - now);
 	  timeout = clib_min (timeout, xd->time_last_link_update +
 					 dm->link_state_poll_interval - now);
+	  if (dm->aging_poll_interval > 0)
+	  timeout = clib_min (timeout, xd->time_last_aging_poll + dm->aging_poll_interval - now);
 	}
     }
   return 0;
@@ -1757,6 +1762,7 @@ dpdk_init (vlib_main_t * vm)
 
   dm->stat_poll_interval = DPDK_STATS_POLL_INTERVAL;
   dm->link_state_poll_interval = DPDK_LINK_POLL_INTERVAL;
+  dm->aging_poll_interval = DPDK_AGING_POLL_INTERVAL;
 
   dm->log_default = vlib_log_register_class ("dpdk", 0);
 
