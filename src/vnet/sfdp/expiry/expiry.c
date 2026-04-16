@@ -121,6 +121,15 @@ VLIB_NODE_FN (sfdp_expire_node)
       (sfdp->eviction_sessions_margin - n_remaining_sessions) :
       0;
 
+  /* investigate aged-out sessions */
+  if (PREDICT_FALSE (vec_len (ptd->aged_sessions_pending) > 0))
+    {
+      clib_spinlock_lock (&ptd->aged_sessions_lock);
+      vec_append (ptd->expired_sessions, ptd->aged_sessions_pending);
+      vec_reset_length (ptd->aged_sessions_pending);
+      clib_spinlock_unlock (&ptd->aged_sessions_lock);
+    }
+
   /* Calling callback for expiries or evictions */
   ptd->expired_sessions = sfdp->expiry_callbacks.expire_or_evict_sessions (
     desired_evictions, ptd->expired_sessions);
@@ -166,6 +175,19 @@ VLIB_NODE_FN (sfdp_expire_node)
 
 	  session->flow_index[SFDP_FLOW_FORWARD] = ~0;
 	  session->flow_index[SFDP_FLOW_REVERSE] = ~0;
+	}
+
+      if (session->flow_index_verdict[SFDP_FLOW_FORWARD] != ~0)
+	{
+	  vnet_flow_disable (vnm, session->flow_index_verdict[SFDP_FLOW_FORWARD]);
+	  vnet_flow_del (vnm, session->flow_index_verdict[SFDP_FLOW_FORWARD]);
+	  session->flow_index_verdict[SFDP_FLOW_FORWARD] = ~0;
+	}
+      if (session->flow_index_verdict[SFDP_FLOW_REVERSE] != ~0)
+	{
+	  vnet_flow_disable (vnm, session->flow_index_verdict[SFDP_FLOW_REVERSE]);
+	  vnet_flow_del (vnm, session->flow_index_verdict[SFDP_FLOW_REVERSE]);
+	  session->flow_index_verdict[SFDP_FLOW_REVERSE] = ~0;
 	}
 
       sfdp_session_remove (sfdp, ptd, session, thread_index, *session_index);

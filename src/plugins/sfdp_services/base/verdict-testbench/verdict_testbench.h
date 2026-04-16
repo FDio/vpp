@@ -25,13 +25,15 @@ typedef struct
   u8 is_enabled;
   u8 templates_on_hw;
   u8 enable_counters;
+  u8 enable_aging;
   u8 enabled_protos; /* bitmask of VT_PROTO_UDP | VT_PROTO_TCP */
 } verdict_testbench_main_t;
 
 extern verdict_testbench_main_t verdict_testbench_main;
 
 clib_error_t *verdict_testbench_enable (verdict_testbench_main_t *vt, u32 tx_sw_if_index,
-					u32 rx_sw_if_index, u8 enable_counters, u8 protos);
+					u32 rx_sw_if_index, u8 enable_counters, u8 enable_aging,
+					u8 protos);
 clib_error_t *verdict_testbench_disable (verdict_testbench_main_t *vt);
 
 #endif /* __VERDICT_TESTBENCH_H__ */

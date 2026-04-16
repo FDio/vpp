@@ -71,6 +71,11 @@ timer_expiry_cb_expire_or_evict_sessions (u32 desired_expiries,
   sfdp_session_index_iterate_expired (ptd, session_index)
   {
     sfdp_session_t *session = sfdp_session_at_index (session_index);
+
+    /* HW aging owns this session's lifecycle; let it fall out of the wheel */
+    if (session->state == SFDP_SESSION_STATE_VERDICT_OFFLOADED)
+      continue;
+
     sfdp_session_timer_t *timer = SFDP_SESSION_TIMER (session);
     f64 remaining_time = timer->next_expiration - (ptd->current_time + SFDP_TIMER_INTERVAL);
     if (remaining_time > SFDP_TIMER_INTERVAL)
