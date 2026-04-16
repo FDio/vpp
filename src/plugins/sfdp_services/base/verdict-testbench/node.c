@@ -5,22 +5,21 @@
 #include <vlib/vlib.h>
 #include <vnet/sfdp/sfdp.h>
 #include <vnet/sfdp/service.h>
+#include <vnet/sfdp/timer/timer.h>
+#include <vnet/sfdp/expiry/expiry.h>
 #include <vnet/flow/flow.h>
 #include <sfdp_services/base/verdict-testbench/verdict_testbench.h>
 
 SFDP_SERVICE_DECLARE (verdict_testbench)
 
-/*
- * TODO - Use session->unused0[0..1] as a u16 packet counter for forward/reverse traffic .
- * This should not conflict with other patches modfiying sfdp_session_t (i.e. patch adding sfdp
- * lookup offload) which adds new fields before unused0 */
-#define VT_SESSION_PKT_COUNT(s) (*(u16 *) &(s)->unused0[0])
+#define VT_SESSION_PKT_COUNT(s) ((s)->vt_pkt_count)
 
 #define foreach_verdict_testbench_error                                                            \
   _ (PASS, "pass-through")                                                                         \
   _ (OFFLOADED, "verdict offloaded")                                                               \
   _ (KEPT, "kept in VPP")                                                                          \
-  _ (OFFLOAD_FAILED, "offload failed")
+  _ (OFFLOAD_FAILED, "offload failed")                                                             \
+  _ (SESSION_FREE_SEEN, "seen free sessions")
 
 typedef enum
 {
@@ -61,14 +60,14 @@ format_verdict_testbench_trace (u8 *s, va_list *args)
 /* TODO - the assumption is that both forward and reverse traffic are steered towards the
  * same port - this is fine only within the context of this testbench which should be executed
  * on a test setup with 1-port VPP dut only */
-static_always_inline void
+static_always_inline u32
 vt_add_flow_for_direction (vlib_main_t *vm, vlib_node_runtime_t *node, verdict_testbench_main_t *vt,
-			   sfdp_session_t *session, u32 src_addr, u32 dst_addr, u16 src_port,
-			   u16 dst_port, u32 **flows_to_create)
+			   sfdp_session_t *session, u32 session_idx, u32 dir, u32 src_addr,
+			   u32 dst_addr, u16 src_port, u16 dst_port, u32 **flows_to_create)
 {
   vnet_main_t *vnm = vnet_get_main ();
   vnet_flow_t flow = {};
-  u32 flow_index;
+  u32 flow_index = ~0;
 
   flow.type = VNET_FLOW_TYPE_IP4_N_TUPLE;
   flow.pattern.ip4_n_tuple.src_addr.addr.data_u32 = src_addr;
@@ -83,10 +82,27 @@ vt_add_flow_for_direction (vlib_main_t *vm, vlib_node_runtime_t *node, verdict_t
   flow.pattern.ip4_n_tuple.protocol.mask = 0xFF;
 
   flow.actions = VNET_FLOW_ACTION_STEER_TO_PORT;
+  if (vt->enable_aging)
+    {
+      /* sfdp-specific age_opaque layout: [ thread_idx : 31 | dir : 1 | session_idx : 32 ].
+       * Packing the thread_idx here lets sfdp_aged_flow_cb (main) route each
+       * aged entry to its owning worker without dereferencing the session and
+       * main must never touch worker session. dir tells the worker
+       * drain which flow_index_verdict[] slot to clear. */
+      flow.actions |= VNET_FLOW_ACTION_AGE;
+      flow.age_timeout = vt->age_timeout;
+      flow.age_opaque =
+	(u64) session_idx | ((u64) (dir & 0x1) << 32) | ((u64) session->owning_thread_index << 33);
+    }
   if (vt->enable_counters)
     flow.actions |= VNET_FLOW_ACTION_COUNT;
   flow.steer_to_hw_if_index = vt->tx_hw_if_index;
-  flow.steer_from_hw_if_index = ~0; /* match all ingress ports */
+  /* Must match the template's steer_from_hw_if_index: DPDK builds the pattern
+   * template with REPRESENTED_PORT present iff the template's value != ~0;
+   * if the per-flow instance's shape diverges, rte_flow_async_create fails
+   * and the rule is silently not installed in HW. ~0 (no rx-interface) is
+   * the "match any ingress port" case. */
+  flow.steer_from_hw_if_index = vt->rx_hw_if_index;
 
   if (vnet_flow_add (vnm, &flow, &flow_index) == 0)
     {
@@ -95,17 +111,29 @@ vt_add_flow_for_direction (vlib_main_t *vm, vlib_node_runtime_t *node, verdict_t
   else
     {
       vlib_node_increment_counter (vm, node->node_index, VERDICT_TESTBENCH_ERROR_OFFLOAD_FAILED, 1);
+      flow_index = ~0;
     }
+  return flow_index;
 }
 
 /* Install steering rules for both forward and reverse directions of the
  * session so that traffic in either direction gets offloaded to the host. */
 static_always_inline void
 vt_create_and_offload_flow (vlib_main_t *vm, vlib_node_runtime_t *node,
-			    verdict_testbench_main_t *vt, sfdp_session_t *session,
+			    verdict_testbench_main_t *vt, sfdp_session_t *session, u32 session_idx,
 			    u32 **udp_flows_to_create, u32 **tcp_flows_to_create)
 {
   u32 **flows_to_create;
+
+  /* TODO - catch if session for packet is already torn down */
+  // /* Is this expected to occur in sfdp services or a bug ?  */
+  if (PREDICT_FALSE (session->state == SFDP_SESSION_STATE_FREE ||
+		     session->owning_thread_index != vm->thread_index))
+    {
+      vlib_node_increment_counter (vm, node->node_index, VERDICT_TESTBENCH_ERROR_SESSION_FREE_SEEN,
+				   1);
+      return;
+    }
 
   if (session->type != SFDP_SESSION_TYPE_IP4)
     return;
@@ -124,12 +152,25 @@ vt_create_and_offload_flow (vlib_main_t *vm, vlib_node_runtime_t *node,
   u16 port_hi = clib_net_to_host_u16 (key->ip4_key.port_hi);
 
   /* forward: lo -> hi */
-  vt_add_flow_for_direction (vm, node, vt, session, addr_lo, addr_hi, port_lo, port_hi,
-			     flows_to_create);
+  session->flow_index_verdict[SFDP_FLOW_FORWARD] =
+    vt_add_flow_for_direction (vm, node, vt, session, session_idx, SFDP_FLOW_FORWARD, addr_lo,
+			       addr_hi, port_lo, port_hi, flows_to_create);
 
   /* reverse: hi -> lo */
-  vt_add_flow_for_direction (vm, node, vt, session, addr_hi, addr_lo, port_hi, port_lo,
-			     flows_to_create);
+  session->flow_index_verdict[SFDP_FLOW_REVERSE] =
+    vt_add_flow_for_direction (vm, node, vt, session, session_idx, SFDP_FLOW_REVERSE, addr_hi,
+			       addr_lo, port_hi, port_lo, flows_to_create);
+
+  if (session->flow_index_verdict[SFDP_FLOW_FORWARD] != ~0 &&
+      session->flow_index_verdict[SFDP_FLOW_REVERSE] != ~0)
+    {
+      /* on successful verdict offload install, update the session timer to offload_keepalive_s */
+      /* which should continuously re-arm unless we are in partial verdict offload state */
+      ASSERT (session->owning_thread_index == vm->thread_index);
+      sfdp_session_timer_update (SFDP_SESSION_TIMER (session), vlib_time_now (vm),
+				 sfdp_main.offload_keepalive_s);
+      session->state = SFDP_SESSION_STATE_VERDICT_OFFLOADED;
+    }
 }
 
 VLIB_NODE_FN (sfdp_verdict_testbench_node)
@@ -166,7 +207,7 @@ VLIB_NODE_FN (sfdp_verdict_testbench_node)
       if (bucket != 0 && vt->is_enabled)
 	{
 	  /* 90%: offload verdict to host */
-	  vt_create_and_offload_flow (vm, node, vt, session, &udp_flows_to_create,
+	  vt_create_and_offload_flow (vm, node, vt, session, session_idx, &udp_flows_to_create,
 				      &tcp_flows_to_create);
 	  n_offloaded++;
 	}

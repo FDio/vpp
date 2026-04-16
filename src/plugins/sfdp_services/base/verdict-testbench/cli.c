@@ -15,7 +15,9 @@ set_verdict_testbench_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib
   vnet_main_t *vnm = vnet_get_main ();
   u32 tx_sw_if_index = ~0;
   u32 rx_sw_if_index = ~0;
+  u32 age_timeout = VT_DEFAULT_AGE_TIMEOUT;
   u8 enable_counters = 0;
+  u8 enable_aging = 0;
   u8 is_disable = 0;
   u8 protos = 0;
 
@@ -28,6 +30,10 @@ set_verdict_testbench_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib
 	;
       else if (unformat (input, "enable-counters"))
 	enable_counters = 1;
+      else if (unformat (input, "enable-aging"))
+	enable_aging = 1;
+      else if (unformat (input, "age-timeout %u", &age_timeout))
+	;
       else if (unformat (input, "udp"))
 	protos |= VT_PROTO_UDP;
       else if (unformat (input, "tcp"))
@@ -47,13 +53,15 @@ set_verdict_testbench_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib
   if (!protos)
     return clib_error_return (0, "at least one protocol (udp/tcp) must be specified");
 
-  return verdict_testbench_enable (vt, tx_sw_if_index, rx_sw_if_index, enable_counters, protos);
+  return verdict_testbench_enable (vt, tx_sw_if_index, rx_sw_if_index, enable_counters,
+				   enable_aging, age_timeout, protos);
 }
 
 VLIB_CLI_COMMAND (set_verdict_testbench_command, static) = {
   .path = "set sfdp verdict-testbench",
   .short_help = "set sfdp verdict-testbench tx-interface <if> "
-		"[rx-interface <if>] [enable-counters] [udp] [tcp] [disable]",
+		"[rx-interface <if>] [enable-counters] [enable-aging] [age-timeout <seconds>] "
+		"[udp] [tcp] [disable]",
   .function = set_verdict_testbench_command_fn,
 };
 
@@ -75,6 +83,9 @@ show_verdict_testbench_command_fn (vlib_main_t *vm, unformat_input_t *input,
       else
 	vlib_cli_output (vm, "  rx-interface: all");
       vlib_cli_output (vm, "  counters: %s", vt->enable_counters ? "enabled" : "disabled");
+      vlib_cli_output (vm, "  aging: %s", vt->enable_aging ? "enabled" : "disabled");
+      if (vt->enable_aging)
+	vlib_cli_output (vm, "  age-timeout: %u seconds", vt->age_timeout);
       vlib_cli_output (vm, "  protocols: %s%s", (vt->enabled_protos & VT_PROTO_UDP) ? "udp " : "",
 		       (vt->enabled_protos & VT_PROTO_TCP) ? "tcp" : "");
       if (vt->enabled_protos & VT_PROTO_UDP)

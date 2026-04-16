@@ -9,6 +9,47 @@
 
 verdict_testbench_main_t verdict_testbench_main;
 
+static u32
+vt_deleted_sessions_cb (const u32 *session_indices, u32 n_sessions)
+{
+  verdict_testbench_main_t *vt = &verdict_testbench_main;
+  vnet_main_t *vnm = vnet_get_main ();
+  u32 *flow_indices = 0;
+
+  /* Iterate over deleted sessions, and check flow_index_verdict to verify if HW flow
+     offload entry must be removed */
+  for (u32 i = 0; i < n_sessions; i++)
+    {
+      sfdp_session_t *s = sfdp_session_at_index (session_indices[i]);
+      for (int d = 0; d < SFDP_FLOW_F_B_N; d++)
+	{
+	  if (s->flow_index_verdict[d] != ~0)
+	    {
+	      vec_add1 (flow_indices, s->flow_index_verdict[d]);
+	      s->flow_index_verdict[d] = ~0;
+	    }
+	}
+    }
+
+  if (vec_len (flow_indices) > 0)
+    {
+      /* TODO - this is done based on the hw_if_index configured with the verdict testbench */
+      /* there could be potentially be different hw_if_index to take into consideration for each
+	flow similarly to flow lookup offload */
+      vnet_flow_async_range_disable (vnm, flow_indices, vt->hw_if_index);
+      u32 *fi;
+      vec_foreach (fi, flow_indices)
+	vnet_flow_del (vnm, *fi);
+    }
+
+  vec_free (flow_indices);
+  return 0;
+}
+
+SFDP_REGISTER_DELETED_SESSIONS_CALLBACK (verdict_testbench) = {
+  .fun = vt_deleted_sessions_cb,
+};
+
 static clib_error_t *
 vt_create_template (vnet_main_t *vnm, vnet_flow_t *flow_template, ip_protocol_t proto,
 		    u32 tx_hw_if_index, u32 max_flows, u32 *template_index)
@@ -35,7 +76,7 @@ vt_create_template (vnet_main_t *vnm, vnet_flow_t *flow_template, ip_protocol_t 
 
 clib_error_t *
 verdict_testbench_enable (verdict_testbench_main_t *vt, u32 tx_sw_if_index, u32 rx_sw_if_index,
-			  u8 enable_counters, u8 protos)
+			  u8 enable_counters, u8 enable_aging, u32 age_timeout, u8 protos)
 {
   vnet_main_t *vnm = vnet_get_main ();
   sfdp_main_t *sfdp = &sfdp_main;
@@ -59,6 +100,8 @@ verdict_testbench_enable (verdict_testbench_main_t *vt, u32 tx_sw_if_index, u32 
 
   flow_template.type = VNET_FLOW_TYPE_IP4_N_TUPLE;
   flow_template.actions = VNET_FLOW_ACTION_STEER_TO_PORT;
+  if (enable_aging)
+    flow_template.actions |= VNET_FLOW_ACTION_AGE;
   if (enable_counters)
     flow_template.actions |= VNET_FLOW_ACTION_COUNT;
   flow_template.steer_to_hw_if_index = tx_hw_if_index;
@@ -98,11 +141,19 @@ verdict_testbench_enable (verdict_testbench_main_t *vt, u32 tx_sw_if_index, u32 
   vt->enabled_protos = protos;
   vt->tx_sw_if_index = tx_sw_if_index;
   vt->rx_sw_if_index = rx_sw_if_index;
+  vt->rx_hw_if_index = rx_hw_if_index;
   vt->hw_if_index = tx_hw_if_index;
   vt->tx_hw_if_index = tx_hw_if_index;
   vt->templates_on_hw = 1;
   vt->is_enabled = 1;
   vt->enable_counters = enable_counters;
+  vt->enable_aging = enable_aging;
+  vt->age_timeout = age_timeout;
+
+  /* partial verdict-offload timeout is twice the configured aging timeout
+   * configured with the verdict testbench */
+  if (enable_aging)
+    sfdp_set_offload_keepalive (2.0 * (f64) age_timeout);
 
   return 0;
 }
@@ -130,8 +181,10 @@ verdict_testbench_disable (verdict_testbench_main_t *vt)
     vnet_flow_template_del (vnm, vt->tcp_template_index);
 
   vt->is_enabled = 0;
+  vt->enable_aging = 0;
   vt->enabled_protos = 0;
   vt->rx_sw_if_index = ~0;
+  vt->rx_hw_if_index = ~0;
   vt->tx_sw_if_index = ~0;
   vt->hw_if_index = ~0;
   vt->tx_hw_if_index = ~0;
@@ -147,6 +200,7 @@ verdict_testbench_init (vlib_main_t *vm)
   verdict_testbench_main_t *vt = &verdict_testbench_main;
 
   vt->rx_sw_if_index = ~0;
+  vt->rx_hw_if_index = ~0;
   vt->tx_sw_if_index = ~0;
   vt->hw_if_index = ~0;
   vt->tx_hw_if_index = ~0;
