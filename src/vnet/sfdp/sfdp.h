@@ -301,7 +301,10 @@ typedef struct sfdp_session
   u8 proto;
   u16 tenant_idx;
   u16 owning_thread_index;
-  u8 unused0[16];
+  u16 vt_pkt_count;
+  u16 _pad0;
+  u32 flow_index_verdict[SFDP_FLOW_F_B_N];
+  u8 unused0[4];
   u8 pseudo_dir[SFDP_SESSION_N_KEY];
   u8 type; /* see sfdp_session_type_t */
   u8 key_flags;
@@ -352,6 +355,10 @@ typedef struct
   u32 *flow_indices_tcp;
   u32 *flow_indices_udp;
   u32 *flow_indices_del;
+
+  /* session indices pending expiry after flow aging */
+  u32 *aged_sessions_pending;
+  clib_spinlock_t aged_sessions_lock;
 } sfdp_per_thread_data_t;
 
 // TODO: Find a way to abstract, or share, timeout definition.
@@ -834,6 +841,9 @@ sfdp_create_session_inline (sfdp_main_t *sfdp, sfdp_per_thread_data_t *ptd,
   session->state = SFDP_SESSION_STATE_FSOL;
   session->owning_thread_index = thread_index;
   session->scope_index = scope_index;
+  session->vt_pkt_count = 0;
+  session->flow_index_verdict[SFDP_FLOW_FORWARD] = ~0;
+  session->flow_index_verdict[SFDP_FLOW_REVERSE] = ~0;
   if (ptd)
     sfdp_session_generate_and_set_id (sfdp, ptd, session);
 
