@@ -2160,7 +2160,7 @@ tcp_check_if_gso (tcp_connection_t * tc, vlib_buffer_t * b)
       ASSERT ((b->flags & VNET_BUFFER_F_L4_HDR_OFFSET_VALID) != 0);
       b->flags |= VNET_BUFFER_F_GSO;
       vnet_buffer2 (b)->gso_l4_hdr_sz =
-	sizeof (tcp_header_t) + tc->snd_opts_len;
+	tcp_header_bytes ((tcp_header_t *) (b->data + vnet_buffer (b)->l4_hdr_offset));
       vnet_buffer2 (b)->gso_size = tc->snd_mss;
     }
 }
