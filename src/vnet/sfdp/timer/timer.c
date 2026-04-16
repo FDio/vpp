@@ -71,6 +71,17 @@ timer_expiry_cb_expire_or_evict_sessions (u32 desired_expiries,
   sfdp_session_index_iterate_expired (ptd, session_index)
   {
     sfdp_session_t *session = sfdp_session_at_index (session_index);
+
+    /* If a session is HW-offloaded and its timer wheel entry expires
+     * before the flow is aged-out, we should mark the timer handle as invalid
+     * and not re-arm the timer. Having a timer handle set to invalid avoids double-freeing
+     * the timer in certain scenarios */
+    if (session->state == SFDP_SESSION_STATE_VERDICT_OFFLOADED)
+      {
+	SFDP_SESSION_TIMER (session)->handle = ~0;
+	continue;
+      }
+
     sfdp_session_timer_t *timer = SFDP_SESSION_TIMER (session);
     f64 remaining_time = timer->next_expiration - (ptd->current_time + SFDP_TIMER_INTERVAL);
     if (remaining_time > SFDP_TIMER_INTERVAL)
@@ -162,3 +173,36 @@ sfdp_timer_register_as_expiry_module ()
   };
   return sfdp_set_expiry_callbacks (&cbs);
 }
+
+/* Check if HW-offloaded sessions have an active timer wheel entry
+ * if that's the case, delete the timer wheel entry */
+static u32
+timer_deleted_sessions_cb (const u32 *session_indices, u32 n_sessions)
+{
+  sfdp_timer_main_t *t = &sfdp_timer_main;
+  u32 tidx = vlib_get_thread_index ();
+  sfdp_timer_per_thread_data_t *ptd = vec_elt_at_index (t->per_thread_data, tidx);
+
+  for (u32 i = 0; i < n_sessions; i++)
+    {
+      sfdp_session_t *session = sfdp_session_at_index (session_indices[i]);
+    
+      /* ignore sessions not offloaded in HW */
+      if (session->state != SFDP_SESSION_STATE_VERDICT_OFFLOADED)
+	continue;
+      sfdp_session_timer_t *timer = SFDP_SESSION_TIMER (session);
+      
+      /* check if timer handle is valid / a timer wheel entry must be 
+       * cleaned up for this sessions */
+      if (timer->handle != ~0)
+	{
+	  sfdp_session_timer_stop (&ptd->wheel, timer);
+	  timer->handle = ~0;
+	}
+    }
+  return 0;
+}
+
+SFDP_REGISTER_DELETED_SESSIONS_CALLBACK (sfdp_timer) = {
+  .fun = timer_deleted_sessions_cb,
+};

@@ -219,6 +219,9 @@ sfdp_parser_create_session_inline (const sfdp_parser_registration_t *reg,
   session->state = SFDP_SESSION_STATE_FSOL;
   session->owning_thread_index = thread_index;
   session->scope_index = scope_index;
+  session->vt_pkt_count = 0;
+  session->flow_index_verdict[SFDP_FLOW_FORWARD] = ~0;
+  session->flow_index_verdict[SFDP_FLOW_REVERSE] = ~0;
   if (ptd)
     sfdp_session_generate_and_set_id (sfdp, ptd, session);
 

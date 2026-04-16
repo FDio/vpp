@@ -10,11 +10,7 @@
 
 SFDP_SERVICE_DECLARE (verdict_testbench)
 
-/*
- * TODO - Use session->unused0[0..1] as a u16 packet counter for forward/reverse traffic .
- * This should not conflict with other patches modfiying sfdp_session_t (i.e. patch adding sfdp
- * lookup offload) which adds new fields before unused0 */
-#define VT_SESSION_PKT_COUNT(s) (*(u16 *) &(s)->unused0[0])
+#define VT_SESSION_PKT_COUNT(s) ((s)->vt_pkt_count)
 
 #define foreach_verdict_testbench_error                                                            \
   _ (PASS, "pass-through")                                                                         \
@@ -61,14 +57,14 @@ format_verdict_testbench_trace (u8 *s, va_list *args)
 /* TODO - the assumption is that both forward and reverse traffic are steered towards the
  * same port - this is fine only within the context of this testbench which should be executed
  * on a test setup with 1-port VPP dut only */
-static_always_inline void
+static_always_inline u32
 vt_add_flow_for_direction (vlib_main_t *vm, vlib_node_runtime_t *node, verdict_testbench_main_t *vt,
-			   sfdp_session_t *session, u32 src_addr, u32 dst_addr, u16 src_port,
-			   u16 dst_port, u32 **flows_to_create)
+			   sfdp_session_t *session, u32 session_idx, u32 dir, u32 src_addr,
+			   u32 dst_addr, u16 src_port, u16 dst_port, u32 **flows_to_create)
 {
   vnet_main_t *vnm = vnet_get_main ();
   vnet_flow_t flow = {};
-  u32 flow_index;
+  u32 flow_index = ~0;
 
   flow.type = VNET_FLOW_TYPE_IP4_N_TUPLE;
   flow.pattern.ip4_n_tuple.src_addr.addr.data_u32 = src_addr;
@@ -83,6 +79,17 @@ vt_add_flow_for_direction (vlib_main_t *vm, vlib_node_runtime_t *node, verdict_t
   flow.pattern.ip4_n_tuple.protocol.mask = 0xFF;
 
   flow.actions = VNET_FLOW_ACTION_STEER_TO_PORT;
+  if (vt->enable_aging)
+    {
+      /* age_opaque layout: [ thread_idx : 31 | dir : 1 | session_idx : 32 ]
+       * direction is needed so sfdp_aged_flow_cb can clear the right
+       * s->flow_index_verdict[] slot before the session-deletion path
+       * re-reads (and would otherwise double-delete) a stale flow index. */
+      flow.actions |= VNET_FLOW_ACTION_AGE;
+      flow.age_timeout = vt->age_timeout;
+      flow.age_opaque =
+	(u64) session_idx | ((u64) (dir & 0x1) << 32) | ((u64) session->owning_thread_index << 33);
+    }
   if (vt->enable_counters)
     flow.actions |= VNET_FLOW_ACTION_COUNT;
   flow.steer_to_hw_if_index = vt->tx_hw_if_index;
@@ -95,14 +102,16 @@ vt_add_flow_for_direction (vlib_main_t *vm, vlib_node_runtime_t *node, verdict_t
   else
     {
       vlib_node_increment_counter (vm, node->node_index, VERDICT_TESTBENCH_ERROR_OFFLOAD_FAILED, 1);
+      flow_index = ~0;
     }
+  return flow_index;
 }
 
 /* Install steering rules for both forward and reverse directions of the
  * session so that traffic in either direction gets offloaded to the host. */
 static_always_inline void
 vt_create_and_offload_flow (vlib_main_t *vm, vlib_node_runtime_t *node,
-			    verdict_testbench_main_t *vt, sfdp_session_t *session,
+			    verdict_testbench_main_t *vt, sfdp_session_t *session, u32 session_idx,
 			    u32 **udp_flows_to_create, u32 **tcp_flows_to_create)
 {
   u32 **flows_to_create;
@@ -124,12 +133,19 @@ vt_create_and_offload_flow (vlib_main_t *vm, vlib_node_runtime_t *node,
   u16 port_hi = clib_net_to_host_u16 (key->ip4_key.port_hi);
 
   /* forward: lo -> hi */
-  vt_add_flow_for_direction (vm, node, vt, session, addr_lo, addr_hi, port_lo, port_hi,
-			     flows_to_create);
+  session->flow_index_verdict[SFDP_FLOW_FORWARD] =
+    vt_add_flow_for_direction (vm, node, vt, session, session_idx, SFDP_FLOW_FORWARD, addr_lo,
+			       addr_hi, port_lo, port_hi, flows_to_create);
 
   /* reverse: hi -> lo */
-  vt_add_flow_for_direction (vm, node, vt, session, addr_hi, addr_lo, port_hi, port_lo,
-			     flows_to_create);
+  session->flow_index_verdict[SFDP_FLOW_REVERSE] =
+    vt_add_flow_for_direction (vm, node, vt, session, session_idx, SFDP_FLOW_REVERSE, addr_hi,
+			       addr_lo, port_hi, port_lo, flows_to_create);
+
+  /* upon offloading flow verdict, remove session timer */
+  if (session->flow_index_verdict[SFDP_FLOW_FORWARD] != ~0 &&
+      session->flow_index_verdict[SFDP_FLOW_REVERSE] != ~0)
+    session->state = SFDP_SESSION_STATE_VERDICT_OFFLOADED;
 }
 
 VLIB_NODE_FN (sfdp_verdict_testbench_node)
@@ -166,7 +182,7 @@ VLIB_NODE_FN (sfdp_verdict_testbench_node)
       if (bucket != 0 && vt->is_enabled)
 	{
 	  /* 90%: offload verdict to host */
-	  vt_create_and_offload_flow (vm, node, vt, session, &udp_flows_to_create,
+	  vt_create_and_offload_flow (vm, node, vt, session, session_idx, &udp_flows_to_create,
 				      &tcp_flows_to_create);
 	  n_offloaded++;
 	}

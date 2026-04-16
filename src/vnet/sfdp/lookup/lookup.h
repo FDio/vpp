@@ -16,7 +16,8 @@
   _ (FLOW_OFFLOAD_ADD_FAILED, "flow offload add failed")                                           \
   _ (FLOW_OFFLOAD_ENABLE_FAILED, "flow offload enable failed")                                     \
   _ (FLOW_OFFLOAD_DELETE_FAILED, "flow offload delete failed")                                     \
-  _ (FLOW_OFFLOAD_DISABLE_FAILED, "flow offload disable failed")
+  _ (FLOW_OFFLOAD_DISABLE_FAILED, "flow offload disable failed")                                   \
+  _ (VERDICT_OFFLOADED_TRAFFIC, "traffic on verdict-offloaded session")
 
 typedef enum
 {
