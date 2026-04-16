@@ -260,6 +260,9 @@ typedef struct
   struct rte_flow *default_miss_flow;
   struct rte_flow_error last_flow_error;
 
+  /* flow aging poll time*/
+  f64 time_last_aging_poll;
+
   struct rte_eth_link link;
   f64 time_last_link_update;
 
@@ -292,6 +295,9 @@ typedef struct
 
 #define DPDK_LINK_POLL_INTERVAL       (3.0)
 #define DPDK_MIN_LINK_POLL_INTERVAL   DPDK_MIN_POLL_INTERVAL
+
+#define DPDK_AGING_POLL_INTERVAL     (1.0)
+#define DPDK_MIN_AGING_POLL_INTERVAL DPDK_MIN_POLL_INTERVAL
 
 #define foreach_dpdk_device_config_item                                                            \
   _ (num_rx_queues)                                                                                \
@@ -401,6 +407,11 @@ typedef struct
   /* control interval of dpdk link state and stat polling */
   f64 link_state_poll_interval;
   f64 stat_poll_interval;
+  /* flow aging poll interval */
+  f64 aging_poll_interval;
+
+  /* buffer for polled aged flows opaque data */
+  void **aged_flow_opaque;
 
   dpdk_config_main_t *conf;
   dpdk_port_conf_t default_port_conf;
