@@ -2146,7 +2146,9 @@ tcp_check_if_gso (tcp_connection_t * tc, vlib_buffer_t * b)
   if (PREDICT_TRUE (!(tc->cfg_flags & TCP_CFG_F_TSO)))
     return;
 
-  u16 data_len = b->current_length - sizeof (tcp_header_t) - tc->snd_opts_len;
+  tcp_header_t *th = vlib_buffer_get_current (b);
+  u16 tcp_hdr_len = tcp_header_bytes (th);
+  u16 data_len = b->current_length - tcp_hdr_len;
 
   if (PREDICT_FALSE (b->flags & VLIB_BUFFER_TOTAL_LENGTH_VALID))
     data_len += b->total_length_not_including_first_buffer;
@@ -2158,11 +2160,19 @@ tcp_check_if_gso (tcp_connection_t * tc, vlib_buffer_t * b)
       ASSERT ((b->flags & VNET_BUFFER_F_L3_HDR_OFFSET_VALID) != 0);
       ASSERT ((b->flags & VNET_BUFFER_F_L4_HDR_OFFSET_VALID) != 0);
       b->flags |= VNET_BUFFER_F_GSO;
-      vnet_buffer2 (b)->gso_l4_hdr_sz =
-	sizeof (tcp_header_t) + tc->snd_opts_len;
+      vnet_buffer2 (b)->gso_l4_hdr_sz = tcp_hdr_len;
       vnet_buffer2 (b)->gso_size = tc->snd_mss;
     }
 }
+
+#ifndef CLIB_MARCH_VARIANT
+/* Wrapper for unit tests - tcp_check_if_gso is always_inline so not callable */
+void
+tcp_check_if_gso_test_helper (tcp_connection_t *tc, vlib_buffer_t *b)
+{
+  tcp_check_if_gso (tc, b);
+}
+#endif
 
 always_inline void
 tcp_output_handle_packet (tcp_connection_t * tc0, vlib_buffer_t * b0,

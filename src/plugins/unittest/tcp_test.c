@@ -1536,6 +1536,79 @@ tcp_test_bt (vlib_main_t * vm, unformat_input_t * input)
   return 0;
 }
 
+static int
+tcp_test_gso_stale_opts (vlib_main_t *vm, unformat_input_t *input)
+{
+  /*
+   * Test for stale tc->snd_opts_len bug in tcp_check_if_gso()
+   *
+   * Scenario:
+   * 1. Segment A is prepared with 12 bytes of TCP options (timestamp only)
+   * 2. Segment A is enqueued to output
+   * 3. Before A reaches tcp_check_if_gso(), segment B is prepared
+   * 4. Segment B has 24 bytes of options (timestamp + SACK), updating tc->snd_opts_len
+   * 5. When A is processed by tcp_check_if_gso(), it should use A's actual
+   *    12 bytes header, not the stale tc->snd_opts_len = 24
+   */
+  vlib_buffer_t b_store, *b = &b_store;
+  tcp_connection_t tc_store, *tc = &tc_store;
+  tcp_header_t tcp_hdr;
+  u32 tcp_hdr_len_small = 32; /* 20 bytes base + 12 bytes options */
+  u32 tcp_hdr_len_large = 44; /* 20 bytes base + 24 bytes options */
+  u32 payload_size = 2000;    /* > MSS to trigger GSO marking */
+
+  clib_memset (tc, 0, sizeof (*tc));
+  clib_memset (b, 0, sizeof (*b));
+  clib_memset (&tcp_hdr, 0, sizeof (tcp_hdr));
+
+  /* Setup connection with TSO enabled */
+  tc->cfg_flags = TCP_CFG_F_TSO;
+  tc->snd_mss = 1460;
+
+  /* Simulate segment A: 2000 bytes data + 32 bytes TCP header (12 bytes options) */
+  b->current_length = payload_size + tcp_hdr_len_small;
+  b->current_data = 0;
+  b->flags = VNET_BUFFER_F_L3_HDR_OFFSET_VALID | VNET_BUFFER_F_L4_HDR_OFFSET_VALID;
+  vnet_buffer (b)->l4_hdr_offset = 0; /* TCP header at start of buffer */
+
+  /* Set TCP header data offset to reflect 32 bytes total header */
+  tcp_hdr.data_offset_and_reserved = (tcp_hdr_len_small / 4) << 4;
+
+  /* Place TCP header at current position */
+  clib_memcpy (vlib_buffer_get_current (b), &tcp_hdr, sizeof (tcp_hdr));
+
+  /* Simulate race: tc->snd_opts_len was updated by segment B (24 bytes options) */
+  tc->snd_opts_len = tcp_hdr_len_large - sizeof (tcp_header_t); /* 24 bytes */
+
+  /*
+   * Call tcp_check_if_gso() - it should mark buffer for GSO since payload > MSS
+   * and set gso_l4_hdr_sz to the ACTUAL header size (32), not stale value (44)
+   */
+  tcp_check_if_gso_test_helper (tc, b);
+
+  /* Verify GSO was marked (payload > MSS) */
+  TCP_TEST ((b->flags & VNET_BUFFER_F_GSO) != 0,
+	    "Buffer should be marked for GSO (payload %u > MSS %u)", payload_size, tc->snd_mss);
+
+  /* Verify gso_size is set correctly */
+  TCP_TEST (vnet_buffer2 (b)->gso_size == tc->snd_mss, "gso_size should be %u (got %u)",
+	    tc->snd_mss, vnet_buffer2 (b)->gso_size);
+
+  /*
+   * CRITICAL TEST: Verify gso_l4_hdr_sz is ACTUAL header size from packet,
+   * not the stale tc->snd_opts_len
+   *
+   * Expected: 32 bytes (actual header in buffer)
+   * Wrong (old code): 44 bytes (stale tc->snd_opts_len from segment B)
+   */
+  TCP_TEST (vnet_buffer2 (b)->gso_l4_hdr_sz == tcp_hdr_len_small,
+	    "gso_l4_hdr_sz should be %u (actual header size in packet), got %u. "
+	    "If this is %u, the code is using stale tc->snd_opts_len",
+	    tcp_hdr_len_small, vnet_buffer2 (b)->gso_l4_hdr_sz, tcp_hdr_len_large);
+
+  return 0;
+}
+
 static clib_error_t *
 tcp_test (vlib_main_t * vm,
 	  unformat_input_t * input, vlib_cli_command_t * cmd_arg)
@@ -1569,6 +1642,10 @@ tcp_test (vlib_main_t * vm,
 	{
 	  res = tcp_test_bt (vm, input);
 	}
+      else if (unformat (input, "gso"))
+	{
+	  res = tcp_test_gso_stale_opts (vm, input);
+	}
       else if (unformat (input, "all"))
 	{
 	  if ((res = tcp_test_sack (vm, input)))
@@ -1576,6 +1653,8 @@ tcp_test (vlib_main_t * vm,
 	  if ((res = tcp_test_lookup (vm, input)))
 	    goto done;
 	  if ((res = tcp_test_delivery (vm, input)))
+	    goto done;
+	  if ((res = tcp_test_gso_stale_opts (vm, input)))
 	    goto done;
 	}
       else
