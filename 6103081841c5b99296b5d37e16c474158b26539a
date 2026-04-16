@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e0a2d371_0a15de1c",
+        "filename": "src/vnet/tcp/tcp_output.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 2149,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-04-16T16:21:12Z",
+      "side": 1,
+      "message": "If tcp bursts in session-node for a given session, the same vlib dispatch loop tcp_check_if_gso is called, so snds_opts_len should be valid. Is the patch speculative or did you hit an actual path where that assumption is invalidated?\n\nEven if we hit this issue, I\u0027d like to avoid re-parsing headers for each packet. What is the actual perf impact/issue?",
+      "revId": "6103081841c5b99296b5d37e16c474158b26539a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
