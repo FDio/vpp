@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "b9c4f04b_58dbc879",
+        "filename": "src/plugins/pppoeclient/pppoeclient_api.c",
+        "patchSetId": 75
+      },
+      "lineNbr": 100,
+      "author": {
+        "id": 3306
+      },
+      "writtenOn": "2026-04-16T06:38:36Z",
+      "side": 1,
+      "message": "Updated in the latest patch set. `unit` is always passed non-NULL from `send_pppoeclient_details()`, so the helper now initializes `*unit \u003d ~0` unconditionally.",
+      "parentUuid": "bf790211_f909bcd5",
+      "revId": "ee7686ae4b0dd0745e4490293dca6204e7bdd165",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "efc626cc_c1ab4beb",
@@ -48,6 +66,24 @@
       "writtenOn": "2026-04-13T13:27:56Z",
       "side": 1,
       "message": "Similar here, this pointer is always passed non-NULL.",
+      "revId": "ee7686ae4b0dd0745e4490293dca6204e7bdd165",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "90b97fb4_7be3b0d1",
+        "filename": "src/plugins/pppoeclient/pppoeclient_api.c",
+        "patchSetId": 75
+      },
+      "lineNbr": 102,
+      "author": {
+        "id": 3306
+      },
+      "writtenOn": "2026-04-16T06:38:36Z",
+      "side": 1,
+      "message": "Updated in the latest patch set. `unit_from_hw` is also always passed non-NULL here, so it is now initialized unconditionally as well.",
+      "parentUuid": "efc626cc_c1ab4beb",
       "revId": "ee7686ae4b0dd0745e4490293dca6204e7bdd165",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
