@@ -105,6 +105,24 @@
       "parentUuid": "1dfc66df_d0a72b42",
       "revId": "045610fa93bd8329320decee780109faa7cba5c5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6d956d8e_511e4d65",
+        "filename": "src/vppinfra/std-formats.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 395,
+      "author": {
+        "id": 3200
+      },
+      "writtenOn": "2026-04-16T18:23:09Z",
+      "side": 1,
+      "message": "s/2) Currently both unformat_base10 and the proposed unformat_bitrate/2) Currently unformat_base10/",
+      "parentUuid": "2f7772bc_40292977",
+      "revId": "045610fa93bd8329320decee780109faa7cba5c5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
