@@ -805,6 +805,13 @@ quic_enable (vlib_main_t *vm, u8 is_en)
   return 0;
 }
 
+static void
+quic_cleanup_ho (u32 ho_hc_index)
+{
+  ASSERT (0);
+  // FIXME:
+}
+
 static const transport_proto_vft_t quic_proto = {
   .enable = quic_enable,
   .connect = quic_connect_connection,
@@ -817,6 +824,7 @@ static const transport_proto_vft_t quic_proto = {
   .get_connection = quic_connection_get,
   .get_listener = quic_listener_get,
   .get_half_open = quic_half_open_get,
+  .cleanup_ho = quic_cleanup_ho,
   .update_time = quic_update_time,
   .app_rx_evt = quic_custom_app_rx_callback,
   .custom_tx = quic_custom_tx_callback,
