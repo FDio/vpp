@@ -188,52 +188,50 @@ func Http3ClientGetMultiplexingTest(s *Http3Suite) {
 
 	s.StartNginx()
 
-	uri := "https://" + serverAddress + "/httpTestFile"
-	cmd := fmt.Sprintf("http client http3 streams %d repeat %d uri %s", 10, 20, uri)
-	o := vpp.Vppctl(cmd)
+	uri := "https://" + serverAddress + "/64B"
+	cmd := fmt.Sprintf("http client http3 streams %d repeat %d uri %s", 10, 1000, uri)
+
+	var lastOutput string
+	done := make(chan string, 1)
+	go func() {
+		done <- vpp.Vppctl(cmd)
+	}()
+
+	/* test session sanity and cleanup */
+	deadline := time.Now().Add(time.Duration(10) * time.Second)
+	for time.Now().Before(deadline) {
+		output := vpp.Vppctl("show session verbose 2")
+		if output != "" {
+			lastOutput = output
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	o := <-done
+
 	Log(o)
-	AssertContains(o, "20 request(s)")
+	AssertContains(o, "1000 request(s)")
 	AssertNotContains(o, "error")
 	o = vpp.Vppctl("show http stats")
 	Log(o)
 	AssertContains(o, "1 connections established")
 	AssertContains(o, "10 application streams opened")
 	AssertContains(o, "10 application streams closed")
-	AssertContains(o, "20 requests sent")
-	AssertContains(o, "20 responses received")
+	AssertContains(o, "1000 requests sent")
+	AssertContains(o, "1000 responses received")
 
 	logPath := s.Containers.Nginx.GetHostWorkDir() + "/" + s.Containers.Nginx.Name
 	logContents, err := exechelper.Output("cat " + logPath + "-access.log")
 	AssertNil(err)
-	AssertContains(string(logContents), "conn_reqs=20")
+	AssertContains(string(logContents), "conn_reqs=1000")
 	logContents, err = exechelper.Output("cat " + logPath + "-error.log")
 	AssertNil(err)
 	AssertNotContains(string(logContents), "client closed connection while waiting for request")
 
-	/* test session cleanup */
-	udpCleanupDone := false
-	quicCleanupDone := false
-	httpCleanupDone := false
-	for range 5 {
-		o := vpp.Vppctl("show session verbose 2")
-		if !strings.Contains(o, "[U]") {
-			udpCleanupDone = true
-		}
-		if !strings.Contains(o, "[Q]") {
-			quicCleanupDone = true
-		}
-		if !strings.Contains(o, "[H3]") {
-			httpCleanupDone = true
-		}
-		if httpCleanupDone && udpCleanupDone && quicCleanupDone {
-			break
-		}
-		time.Sleep(1 * time.Second)
-	}
-	Log(vpp.Vppctl("show session verbose 2"))
-	AssertEqual(true, udpCleanupDone, "UDP session not cleaned up")
-	AssertEqual(true, quicCleanupDone, "QUIC not cleaned up")
-	AssertEqual(true, httpCleanupDone, "HTTP/3 not cleaned up")
+	Log(lastOutput)
+	AssertNotContains(lastOutput, "[U]", "UDP session not cleaned up")
+	AssertNotContains(lastOutput, "[Q]", "QUIC not cleaned up")
+	AssertNotContains(lastOutput, "[H3]", "HTTP/3 not cleaned up")
 }
 
 func http3ClientPostFile(s *VethsSuite, usePtr bool) {

@@ -756,7 +756,7 @@ func vppConnectProxyClientCheckCleanup(s *MasqueSuite) {
 func vppConnectProxyServerCheckCleanup(s *MasqueSuite, IsHttp3 bool) {
 	o := s.Containers.VppServer.VppInstance.Vppctl("show session verbose")
 	if IsHttp3 {
-		AssertEqual(1, strings.Count(o, "[H3]"), "there should be http/3 connection session")
+		AssertEqual(2, strings.Count(o, "[H3]"), "there should be http/3 connection session and parent stream")
 	} else {
 		AssertEqual(1, strings.Count(o, "[H2]"), "there should be http/2 connection session")
 	}
@@ -774,7 +774,11 @@ func vppConnectProxyServerCheckCleanup(s *MasqueSuite, IsHttp3 bool) {
 			streamsClosed, _ = strconv.Atoi(tmp[1])
 		}
 	}
-	AssertEqual(streamsOpened-streamsClosed, 0, "all streams should be closed")
+	if IsHttp3 {
+		AssertEqual(streamsOpened-streamsClosed, 1, "all tunnel streams should be closed")
+	} else {
+		AssertEqual(streamsOpened-streamsClosed, 0, "all tunnel streams should be closed")
+	}
 }
 
 func VppConnectProxyClientDownloadTcpMWTest(s *MasqueSuite) {
