@@ -845,6 +845,7 @@ offloaded_lookup:
       n_left = n_local;
 
       /* TODO: prefetch session and buffer + 4 loop */
+      u32 n_verdict_offloaded = 0;
       while (n_left)
 	{
 	  session_index = local_flow_index[0] >> 1;
@@ -852,6 +853,10 @@ offloaded_lookup:
 	  session_scope_index = session->scope_index;
 	  if (PREDICT_TRUE (session_scope_index == scope_index))
 	    {
+	      /* traffic from verdict-offloaded session is not expected */
+	      if (PREDICT_FALSE (session->state == SFDP_SESSION_STATE_VERDICT_OFFLOADED))
+		n_verdict_offloaded++;
+
 	      sfdp_bitmap_t pbmp =
 		session->bitmaps[sfdp_direction_from_flow_index (
 		  local_flow_index[0])];
@@ -875,6 +880,9 @@ offloaded_lookup:
 				   n_local);
       vlib_node_increment_counter (vm, node->node_index,
 				   SFDP_LOOKUP_ERROR_LOCAL, n_local);
+      if (PREDICT_FALSE (n_verdict_offloaded))
+	vlib_node_increment_counter (
+	  vm, node->node_index, SFDP_LOOKUP_ERROR_VERDICT_OFFLOADED_TRAFFIC, n_verdict_offloaded);
     }
 
   if (is_offloaded < SFDP_LOOKUP_OFFLOAD_FAST && n_to_sp)

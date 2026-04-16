@@ -123,6 +123,8 @@ sfdp_init_main_if_needed (sfdp_main_t *sfdp)
       vec_validate (ptd->flow_indices_tcp, 2 * VLIB_FRAME_SIZE - 1);
       vec_validate (ptd->flow_indices_udp, 2 * VLIB_FRAME_SIZE - 1);
       vec_validate (ptd->flow_indices_del, 2 * sfdp_num_sessions () - 1);
+      ptd->aged_sessions_pending = 0;
+      clib_spinlock_init (&ptd->aged_sessions_lock);
     }
   if (vlib_num_workers ())
     clib_spinlock_init (&sfdp->session_lock);
@@ -155,6 +157,59 @@ sfdp_init_main_if_needed (sfdp_main_t *sfdp)
     }
 
   done = 1;
+}
+
+/*
+ * * Flow opaque data: low 32 bits = session_index, high 32 bits = owning_thread_index.
+ * TODO: it might be better to use session_id, as session_idx might point to a new
+ * unrelated session in case recycling occurs */
+static void
+sfdp_aged_flow_cb (u64 *age_opaques, u32 *flow_indices, u32 hw_if_index, u32 n)
+{
+  sfdp_main_t *sfdp = &sfdp_main;
+  vnet_main_t *vnm = vnet_get_main ();
+  u32 n_threads = vec_len (sfdp->per_thread_data);
+  u32 **aged_sessions_by_thread = 0;
+
+  vec_validate_init_empty (aged_sessions_by_thread, n_threads - 1, 0);
+
+  for (u32 i = 0; i < n; i++)
+    {
+      u32 session_idx = (u32) age_opaques[i];
+      u32 dir = (u32) ((age_opaques[i] >> 32) & 0x1);
+      u32 thread_idx = (u32) (age_opaques[i] >> 33);
+
+      sfdp_session_t *s = sfdp_session_at_index (session_idx);
+      s->flow_index_verdict[dir] = ~0;
+
+      if (s->flow_index_verdict[SFDP_FLOW_FORWARD] == ~0 &&
+	  s->flow_index_verdict[SFDP_FLOW_REVERSE] == ~0)
+	vec_add1 (aged_sessions_by_thread[thread_idx], session_idx);
+    }
+
+  /* Batched async HW destroy, then free the vpp flow_t slots. */
+  /* TODO - this assumes we are using a single port only when deleting flows */
+  /* taking the same approach as in lookup offload and verifying that all packets */
+  /* belong to the same hw_if_index before batching would be preferable */
+  vnet_flow_async_range_disable (vnm, flow_indices, hw_if_index);
+  for (u32 i = 0; i < n; i++)
+    vnet_flow_del (vnm, flow_indices[i]);
+
+  for (u32 t = 0; t < n_threads; t++)
+    {
+      if (vec_len (aged_sessions_by_thread[t]) == 0)
+	continue;
+
+      sfdp_per_thread_data_t *ptd = vec_elt_at_index (sfdp->per_thread_data, t);
+
+      clib_spinlock_lock (&ptd->aged_sessions_lock);
+      vec_append (ptd->aged_sessions_pending, aged_sessions_by_thread[t]);
+      clib_spinlock_unlock (&ptd->aged_sessions_lock);
+
+      vec_free (aged_sessions_by_thread[t]);
+    }
+
+  vec_free (aged_sessions_by_thread);
 }
 
 int
@@ -214,6 +269,9 @@ sfdp_flow_offload_configure (vnet_main_t *vnm, u32 hw_if_index, u32 n_flows)
   if (rv)
     goto error_udp_enable;
 
+  /* register flow ageing callback */
+  flow_main.aged_flow_cb = sfdp_aged_flow_cb;
+
   return 0;
 
 error_udp_enable:
@@ -254,6 +312,9 @@ sfdp_flow_offload_deconfigure (vnet_main_t *vnm, u32 hw_if_index)
     return rv;
 
   *udp_index = ~0;
+
+  /* unregister flow ageing callback */
+  flow_main.aged_flow_cb = 0;
 
   return 0;
 }
