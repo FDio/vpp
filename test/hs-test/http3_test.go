@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"net"
 	"strconv"
 	"strings"
 	"time"
@@ -22,6 +23,7 @@ func init() {
 		Http3ReservedSettingsTest, Http3MissingSettingsTest, Http3SecondCtrlStreamTest, Http3CtrlStreamClosedTest,
 		Http3QpackDecompressionFailedTest, Http3ClientOpenPushStreamTest, Http3DataBeforeHeadersTest,
 		Http3StaticGetTest)
+	RegisterH3MWTests(Http3ClientFailedConnectMWTest)
 	RegisterVethTests(Http3CliTest, Http3ClientPostTest, Http3ClientPostPtrTest)
 }
 
@@ -153,6 +155,36 @@ func Http3CliTest(s *VethsSuite) {
 	Log(o)
 	AssertContains(o, "<html>", "<html> not found in the result!")
 	AssertContains(o, "</html>", "</html> not found in the result!")
+}
+
+func Http3ClientFailedConnectMWTest(s *Http3Suite) {
+	var quicConfig Stanza
+	quicConfig.NewStanza("quic").Append("conn-timeout 8000").Close()
+	s.CpusPerVppContainer = 3
+	s.SetupTest()
+	vpp := s.Containers.Vpp.VppInstance
+	invalidAddress := net.ParseIP(s.VppAddr())
+	invalidAddress = invalidAddress.To4()
+	invalidAddress[3] += 5
+	serverAddress := invalidAddress.String() + ":" + s.Ports.Port1
+
+	s.StartNginx()
+
+	uri := "https://" + serverAddress
+	cmd := fmt.Sprintf("http client http3 timeout 5 uri %s", uri)
+	o := vpp.Vppctl(cmd)
+	Log(o)
+	AssertContains(o, "timeout")
+	// short wait for cleanup
+	time.Sleep(1 * time.Second)
+	o = vpp.Vppctl("show session verbose 2")
+	Log(o)
+	AssertNotContains(o, "[U]", "UDP session not cleaned up")
+	AssertNotContains(o, "[Q]", "QUIC not cleaned up")
+	AssertNotContains(o, "[H", "HTTP not cleaned up")
+	// wait to be sure http or quic connection timers are not running
+	time.Sleep(10 * time.Second)
+	Log(vpp.Vppctl("show session verbose 2"))
 }
 
 func Http3ClientGetRepeatTest(s *Http3Suite) {
