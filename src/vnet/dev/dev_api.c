@@ -49,7 +49,7 @@ vl_api_dev_attach_t_handler (vl_api_dev_attach_t *mp)
   a.flags.n = mp->flags;
   snprintf (a.device_id, sizeof (a.device_id), "%s", (char *) mp->device_id);
   snprintf (a.driver_name, sizeof (a.driver_name), "%s", (char *) mp->driver_name);
-  vec_add (a.args, mp->args.buf, mp->args.length);
+  a.args = vl_api_from_api_to_new_vec (mp, &mp->args);
 
   rv = vnet_dev_api_attach (vm, &a);
 
@@ -123,7 +123,7 @@ vl_api_dev_create_port_if_t_handler (vl_api_dev_create_port_if_t *mp)
 #undef _
 
   snprintf (a.intf_name, sizeof (a.intf_name), "%s", (char *) mp->intf_name);
-  vec_add (a.args, mp->args.buf, mp->args.length);
+  a.args = vl_api_from_api_to_new_vec (mp, &mp->args);
 
   rv = vnet_dev_api_create_port_if (vm, &a);
 
