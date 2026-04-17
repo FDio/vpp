@@ -211,6 +211,8 @@ format_tcp_vars (u8 * s, va_list * args)
     }
   if (vec_len (tc->snd_sacks))
     s = format (s, " sacks tx: %U\n", format_tcp_sacks, tc);
+  else if (tc->state < TCP_STATE_ESTABLISHED)
+    s = format (s, "\n");
 
   return s;
 }
@@ -247,9 +249,8 @@ format_tcp_listener_connection (u8 *s, va_list *args)
   s = format (s, " index: %u cfg_flags: %U cong_algo: %s snd_mss: %u\n",
 	      tc->c_c_index, format_tcp_cfg_flags, tc, tc->cc_algo->name,
 	      tc->snd_mss);
-  s = format (s, " next_node %u opaque 0x%x fib_index %u sw_if_index %d",
-	      tc->next_node_index, tc->next_node_opaque, tc->c_fib_index,
-	      tc->sw_if_index);
+  s = format (s, " next_node %u opaque 0x%x fib_index %u sw_if_index %d\n", tc->next_node_index,
+	      tc->next_node_opaque, tc->c_fib_index, tc->sw_if_index);
 
   return s;
 }

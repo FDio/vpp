@@ -873,13 +873,28 @@ format_tcp_listener_session (u8 * s, va_list * args)
 {
   u32 tci = va_arg (*args, u32);
   u32 __clib_unused thread_index = va_arg (*args, u32);
-  u32 verbose = va_arg (*args, u32);
+  transport_fmt_req_t fmt = { .as_u32 = va_arg (*args, u32) };
   tcp_connection_t *tc = tcp_listener_get (tci);
-  s = format (s, "%-" SESSION_CLI_ID_LEN "U", format_tcp_connection_id, tc);
-  if (verbose)
-    s = format (s, "%-" SESSION_CLI_STATE_LEN "U", format_tcp_state,
-		tc->state);
-  if (verbose == 2)
+
+  if (!transport_fmt_req_is_explicit (fmt))
+    {
+      s = format (s, "%-" SESSION_CLI_ID_LEN "U", format_tcp_connection_id, tc);
+      if (fmt.level)
+	s = format (s, "%-" SESSION_CLI_STATE_LEN "U", format_tcp_state, tc->state);
+      if (fmt.level > 1)
+	s = format (s, "\n%U", format_tcp_listener_connection, tc);
+      return s;
+    }
+
+  if (fmt.conn_id)
+    s = format (s, "%U", format_tcp_connection_id, tc);
+  if (fmt.transport_state)
+    {
+      if (fmt.conn_id)
+	s = format (s, "\t");
+      s = format (s, "%U", format_tcp_state, tc->state);
+    }
+  if (fmt.transport_detail)
     s = format (s, "\n%U", format_tcp_listener_connection, tc);
   return s;
 }
@@ -889,7 +904,7 @@ format_tcp_half_open_session (u8 * s, va_list * args)
 {
   u32 tci = va_arg (*args, u32);
   u32 __clib_unused thread_index = va_arg (*args, u32);
-  u32 verbose = va_arg (*args, u32);
+  transport_fmt_req_t fmt = { .as_u32 = va_arg (*args, u32) };
   tcp_connection_t *tc;
   u8 *state = 0;
 
@@ -898,9 +913,26 @@ format_tcp_half_open_session (u8 * s, va_list * args)
     state = format (state, "%s", "CLOSED");
   else
     state = format (state, "%U", format_tcp_state, tc->state);
-  s = format (s, "%-" SESSION_CLI_ID_LEN "U", format_tcp_connection_id, tc);
-  if (verbose)
-    s = format (s, "%-" SESSION_CLI_STATE_LEN "v", state);
+
+  if (!transport_fmt_req_is_explicit (fmt))
+    {
+      s = format (s, "%-" SESSION_CLI_ID_LEN "U", format_tcp_connection_id, tc);
+      if (fmt.level)
+	s = format (s, "%-" SESSION_CLI_STATE_LEN "v", state);
+      vec_free (state);
+      return s;
+    }
+
+  if (fmt.conn_id)
+    s = format (s, "%U", format_tcp_connection_id, tc);
+  if (fmt.transport_state)
+    {
+      if (fmt.conn_id)
+	s = format (s, "\t");
+      s = format (s, "%v", state);
+    }
+  if (fmt.transport_detail)
+    s = format (s, "\n");
   vec_free (state);
   return s;
 }

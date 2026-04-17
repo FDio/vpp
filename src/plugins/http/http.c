@@ -1646,15 +1646,15 @@ format_http_transport_connection (u8 *s, va_list *args)
 {
   http_req_handle_t rh = va_arg (*args, http_req_handle_t);
   clib_thread_index_t thread_index = va_arg (*args, u32);
-  u32 verbose = va_arg (*args, u32);
+  transport_fmt_req_t fmt = { .as_u32 = va_arg (*args, u32) };
   u32 hc_index;
   http_ctx_t *hc;
 
   hc_index = http_hc_index_get_by_req_index (rh.req_index, thread_index);
   hc = http_ctx_get_w_thread (hc_index, thread_index);
 
-  s = format (s, "%U", http_vfts[rh.version].format_req, rh.req_index,
-	      thread_index, hc, verbose);
+  s =
+    format (s, "%U", http_vfts[rh.version].format_req, rh.req_index, thread_index, hc, fmt.as_u32);
   return s;
 }
 
@@ -1663,13 +1663,27 @@ format_http_transport_listener (u8 *s, va_list *args)
 {
   u32 tc_index = va_arg (*args, u32);
   u32 __clib_unused thread_index = va_arg (*args, u32);
-  u32 __clib_unused verbose = va_arg (*args, u32);
+  transport_fmt_req_t fmt = { .as_u32 = va_arg (*args, u32) };
   http_ctx_t *lhc = http_listener_get (tc_index);
 
-  s = format (s, "%-" SESSION_CLI_ID_LEN "U", format_http_listener, lhc);
-  if (verbose)
-    s =
-      format (s, "%-" SESSION_CLI_STATE_LEN "U", format_http_conn_state, lhc);
+  if (!transport_fmt_req_is_explicit (fmt))
+    {
+      s = format (s, "%-" SESSION_CLI_ID_LEN "U", format_http_listener, lhc);
+      if (fmt.level)
+	s = format (s, "%-" SESSION_CLI_STATE_LEN "U", format_http_conn_state, lhc);
+      return s;
+    }
+
+  if (fmt.conn_id)
+    s = format (s, "%U", format_http_listener, lhc);
+  if (fmt.transport_state)
+    {
+      if (fmt.conn_id)
+	s = format (s, "\t");
+      s = format (s, "%U", format_http_conn_state, lhc);
+    }
+  if (fmt.transport_detail)
+    s = format (s, "\n");
   return s;
 }
 
@@ -1686,24 +1700,42 @@ format_http_ho_conn_id (u8 *s, va_list *args)
   return s;
 }
 
+static const char *
+http_half_open_state_str (http_ctx_t *ho_hc)
+{
+  return ((ho_hc->hc_tc_session_handle == SESSION_INVALID_HANDLE) ?
+	    ((ho_hc->flags & HTTP_CONN_F_HO_DONE) ? "CLOSED" : "CLOSED-PNDG") :
+	    "CONNECTING");
+}
+
 static u8 *
 format_http_transport_half_open (u8 *s, va_list *args)
 {
   u32 ho_index = va_arg (*args, u32);
   u32 __clib_unused thread_index = va_arg (*args, u32);
-  u32 __clib_unused verbose = va_arg (*args, u32);
+  transport_fmt_req_t fmt = { .as_u32 = va_arg (*args, u32) };
   http_ctx_t *ho_hc;
 
   ho_hc = http_ho_conn_get (ho_index);
 
-  s = format (s, "%-" SESSION_CLI_ID_LEN "U", format_http_ho_conn_id, ho_hc);
+  if (!transport_fmt_req_is_explicit (fmt))
+    {
+      s = format (s, "%-" SESSION_CLI_ID_LEN "U", format_http_ho_conn_id, ho_hc);
+      if (fmt.level)
+	s = format (s, "%-" SESSION_CLI_STATE_LEN "s", http_half_open_state_str (ho_hc));
+      return s;
+    }
 
-  if (verbose)
-    s = format (s, "%-" SESSION_CLI_STATE_LEN "s",
-		(ho_hc->hc_tc_session_handle == SESSION_INVALID_HANDLE) ?
-		  (ho_hc->flags & HTTP_CONN_F_HO_DONE) ? "CLOSED" :
-							 "CLOSED-PNDG" :
-		  "CONNECTING");
+  if (fmt.conn_id)
+    s = format (s, "%U", format_http_ho_conn_id, ho_hc);
+  if (fmt.transport_state)
+    {
+      if (fmt.conn_id)
+	s = format (s, "\t");
+      s = format (s, "%s", http_half_open_state_str (ho_hc));
+    }
+  if (fmt.transport_detail)
+    s = format (s, "\n");
 
   return s;
 }

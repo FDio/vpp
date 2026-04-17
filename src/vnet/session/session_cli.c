@@ -119,14 +119,15 @@ format_session_io (u8 *s, session_t *ss)
 }
 
 static u8 *
-format_session_transport (u8 *s, session_t *ss, u32 tp, session_fmt_req_t fmt)
+format_session_transport (u8 *s, session_t *ss, u32 tp, session_fmt_req_t fmt,
+			  format_function_t *transport_formatter)
 {
   u32 conn_id_indent = fmt.conn_id_indent * 2;
   u32 conn_id_width;
   uword wants_state, wants_io, use_cols;
 
   if (fmt.transport_detail && !fmt.rx_tx)
-    return format (s, "%U", format_transport_connection, tp, ss->connection_index, ss->thread_index,
+    return format (s, "%U", transport_formatter, tp, ss->connection_index, ss->thread_index,
 		   TRANSPORT_FMT_REQ_F_CONN_ID | TRANSPORT_FMT_REQ_F_STATE |
 		     TRANSPORT_FMT_REQ_F_DETAIL);
 
@@ -142,28 +143,28 @@ format_session_transport (u8 *s, session_t *ss, u32 tp, session_fmt_req_t fmt)
 	s = format (s, "%U", format_white_space, conn_id_indent);
 
       if (use_cols)
-	s = format (s, "%-*U", (int) conn_id_width, format_transport_connection, tp,
-		    ss->connection_index, ss->thread_index, TRANSPORT_FMT_REQ_F_CONN_ID);
-      else
-	s = format (s, "%U", format_transport_connection, tp, ss->connection_index,
+	s = format (s, "%-*U", (int) conn_id_width, transport_formatter, tp, ss->connection_index,
 		    ss->thread_index, TRANSPORT_FMT_REQ_F_CONN_ID);
+      else
+	s = format (s, "%U", transport_formatter, tp, ss->connection_index, ss->thread_index,
+		    TRANSPORT_FMT_REQ_F_CONN_ID);
     }
 
   if (wants_state)
     {
       if (use_cols)
-	s = format (s, "%-" SESSION_CLI_STATE_LEN "U", format_transport_connection, tp,
+	s = format (s, "%-" SESSION_CLI_STATE_LEN "U", transport_formatter, tp,
 		    ss->connection_index, ss->thread_index, TRANSPORT_FMT_REQ_F_STATE);
       else
-	s = format (s, "%U", format_transport_connection, tp, ss->connection_index,
-		    ss->thread_index, TRANSPORT_FMT_REQ_F_STATE);
+	s = format (s, "%U", transport_formatter, tp, ss->connection_index, ss->thread_index,
+		    TRANSPORT_FMT_REQ_F_STATE);
     }
 
   if (wants_io)
     s = format_session_io (s, ss);
 
   if (fmt.transport_detail)
-    s = format (s, "%U", format_transport_connection, tp, ss->connection_index, ss->thread_index,
+    s = format (s, "%U", transport_formatter, tp, ss->connection_index, ss->thread_index,
 		TRANSPORT_FMT_REQ_F_DETAIL);
 
   return s;
@@ -178,11 +179,8 @@ format_session (u8 *s, va_list *args)
   session_t *ss = va_arg (*args, session_t *);
   session_fmt_req_t fmt = { .as_u32 = va_arg (*args, int) };
   u32 tp = session_get_transport_proto (ss);
-  u32 conn_id_indent;
-  u8 *str = 0;
-
-  fmt = session_fmt_req_normalize (fmt);
-  conn_id_indent = fmt.conn_id_indent * 2;
+  format_function_t *transport_formatter = 0;
+  u8 print_fifos = 0, print_session_meta = 0;
 
   if (ss->session_state >= SESSION_STATE_TRANSPORT_DELETED)
     {
@@ -190,51 +188,41 @@ format_session (u8 *s, va_list *args)
       return s;
     }
 
-  if (ss->session_state >= SESSION_STATE_ACCEPTING ||
-      ss->session_state == SESSION_STATE_CREATED)
+  fmt = session_fmt_req_normalize (fmt);
+
+  if (PREDICT_TRUE (ss->session_state >= SESSION_STATE_ACCEPTING ||
+		    ss->session_state == SESSION_STATE_CREATED))
     {
-      s = format_session_transport (s, ss, tp, fmt);
-      if (fmt.session_detail)
-	{
-	  s = format (s, "%U", format_session_fifos, ss, fmt.level);
-	  s = format (s, " session: state: %U opaque: 0x%x flags: %U\n",
-		      format_session_state, ss, ss->opaque,
-		      format_session_flags, ss);
-	}
+      transport_formatter = format_transport_connection;
+      print_fifos = fmt.session_detail && ss->rx_fifo && ss->tx_fifo;
+      print_session_meta = fmt.session_detail;
     }
   else if (ss->session_state == SESSION_STATE_LISTENING)
     {
-      if (fmt.rx_tx)
-	str = format_session_io (0, ss);
-      if (conn_id_indent)
-	s = format (s, "%U", format_white_space, conn_id_indent);
-      s = format (s, "%U%v", format_transport_listen_connection, tp, ss->connection_index,
-		  ss->thread_index, fmt.level, str);
-      if (fmt.level > 1)
-	s = format (s, "\n%U", format_session_fifos, ss, fmt.level);
+      transport_formatter = format_transport_listen_connection;
+      print_fifos = fmt.session_detail && ss->rx_fifo && ss->tx_fifo;
     }
   else if (ss->session_state == SESSION_STATE_CONNECTING)
     {
-      if (ss->flags & SESSION_F_HALF_OPEN)
-	{
-	  if (fmt.rx_tx)
-	    str = format_session_io (0, ss);
-	  if (conn_id_indent)
-	    s = format (s, "%U", format_white_space, conn_id_indent);
-	  s = format (s, "%U", format_transport_half_open_connection, tp, ss->connection_index,
-		      ss->thread_index, fmt.level);
-	  s = format (s, "%v", str);
-	}
-      else
-	{
-	  s = format_session_transport (s, ss, tp, fmt);
-	}
+      transport_formatter =
+	((ss->flags & SESSION_F_HALF_OPEN) ? format_transport_half_open_connection :
+					     format_transport_connection);
+      print_fifos = fmt.session_detail && ss->rx_fifo && ss->tx_fifo;
+      print_session_meta = fmt.session_detail;
     }
   else
-    {
-      clib_warning ("Session in state: %d!", ss->session_state);
-    }
-  vec_free (str);
+    clib_warning ("Session in state: %d!", ss->session_state);
+
+  if (!transport_formatter)
+    return s;
+
+  s = format_session_transport (s, ss, tp, fmt, transport_formatter);
+
+  if (print_fifos)
+    s = format (s, fmt.transport_detail ? "%U" : "\n%U", format_session_fifos, ss, fmt.level);
+  if (print_session_meta)
+    s = format (s, " session: state: %U opaque: 0x%x flags: %U\n", format_session_state, ss,
+		ss->opaque, format_session_flags, ss);
 
   return s;
 }

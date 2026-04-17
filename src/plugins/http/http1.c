@@ -1889,7 +1889,7 @@ http1_format_req (u8 *s, va_list *args)
 	{
 	  s = format (s, "%-" SESSION_CLI_STATE_LEN "U", format_http_conn_state, hc);
 	  if (fmt.level > 1)
-	    s = format (s, " \nconn_flags: %U\n", format_http_conn_flags, hc);
+	    s = format (s, "\n conn_flags: %U\n", format_http_conn_flags, hc);
 	}
       return s;
     }
@@ -1903,7 +1903,7 @@ http1_format_req (u8 *s, va_list *args)
       s = format (s, "%U", format_http_conn_state, hc);
     }
   if (fmt.transport_detail)
-    s = format (s, " \nconn_flags: %U\n", format_http_conn_flags, hc);
+    s = format (s, "\n conn_flags: %U\n", format_http_conn_flags, hc);
 
   return s;
 }
