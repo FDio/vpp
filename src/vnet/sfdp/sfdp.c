@@ -304,6 +304,9 @@ sfdp_set_timeout (sfdp_main_t *sfdp, u32 tenant_id, u32 timeout_idx,
   sfdp_init_main_if_needed (sfdp);
   clib_bihash_kv_8_8_t kv = { .key = tenant_id, .value = 0 };
   sfdp_tenant_t *tenant;
+  if (timeout_idx >= SFDP_N_TIMEOUT)
+    return clib_error_return (0, "Can't configure timeout: timeout index %d outside valid range",
+			      timeout_idx);
   if (clib_bihash_search_inline_8_8 (&sfdp->tenant_idx_by_id, &kv))
     return clib_error_return (
       0, "Can't configure timeout: tenant id %d not found", tenant_id);
