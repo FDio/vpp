@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "a1a01cd4_a0d702f5",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 37
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-04-17T17:42:10Z",
+      "side": 1,
+      "message": "Thanks for catching. VPP was trying to ARP on L3 vxlan interface, had to add an explicit nexthop and static neighbor entries.",
+      "parentUuid": "bf9d782c_ccf2f312",
+      "revId": "41db4369971e2278661b07e2f3ce0d3eb7dcd362",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "7ed684a5_23763060",
