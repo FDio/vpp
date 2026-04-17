@@ -89,8 +89,9 @@ VLIB_NODE_FN (sfdp_l4_lifecycle_node)
 	  if (session->state == SFDP_SESSION_STATE_ESTABLISHED)
 	    {
 	      /* TODO: must be configurable per tenant */
-	      sfdp_session_timer_update (SFDP_SESSION_TIMER (session), tptd->current_time,
-					 tenant->timeouts[SFDP_TIMEOUT_ESTABLISHED]);
+	      sfdp_session_timer_update_maybe_past (&tptd->wheel, SFDP_SESSION_TIMER (session),
+						    tptd->current_time,
+						    tenant->timeouts[SFDP_TIMEOUT_ESTABLISHED]);
 	    }
 	}
       sfdp_next (b[0], to_next);

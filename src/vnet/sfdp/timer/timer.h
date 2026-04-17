@@ -122,6 +122,7 @@ sfdp_session_timer_stop (sfdp_tw_t *tw, sfdp_session_timer_t *timer)
   sfdp_timer_stop_internal (tw, timer->handle);
 }
 
+/* Update next_expiration value only */
 static_always_inline void
 sfdp_session_timer_update (sfdp_session_timer_t *timer, f64 now, f64 timeout_seconds)
 {
@@ -129,6 +130,9 @@ sfdp_session_timer_update (sfdp_session_timer_t *timer, f64 now, f64 timeout_sec
   timer->next_expiration = now + SFDP_TICKS_TO_SECONDS (ticks);
 }
 
+/* Update next_expiration AND move the timer wheel slot,
+ * which accounts for scenarios where updated timeout can
+ * be shorter than previous timeout */
 static_always_inline void
 sfdp_session_timer_update_maybe_past (sfdp_tw_t *tw, sfdp_session_timer_t *timer, f64 now,
 				      f64 timeout_seconds)
