@@ -20,6 +20,8 @@
 #include <vnet/mpls/packet.h>
 
 #include <dpdk/device/dpdk_priv.h>
+#include <rte_trace.h>
+#include <rte_malloc.h>
 
 /**
  * @file
@@ -368,6 +370,27 @@ VLIB_CLI_COMMAND (show_vpe_version_command, static) = {
   .path = "show dpdk version",
   .short_help = "show dpdk version",
   .function = show_dpdk_version_command_fn,
+};
+
+static clib_error_t *
+dpdk_trace_save_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
+{
+#ifdef RTE_ENABLE_TRACE_FP
+  int rv = rte_trace_save ();
+  if (rv)
+    return clib_error_return (0, "rte_trace_save failed: %d", rv);
+  vlib_cli_output (vm, "DPDK trace saved.");
+#else
+  vlib_cli_output (vm, "DPDK trace support not compiled in "
+		       "(rebuild with DPDK_ENABLE_TRACE_FP=y).");
+#endif
+  return 0;
+}
+
+VLIB_CLI_COMMAND (dpdk_trace_save_command, static) = {
+  .path = "dpdk trace save",
+  .short_help = "dpdk trace save",
+  .function = dpdk_trace_save_command_fn,
 };
 
 /* Dummy function to get us linked in. */
