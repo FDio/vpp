@@ -5,6 +5,8 @@
 #include <vlib/vlib.h>
 #include <vnet/sfdp/sfdp.h>
 #include <vnet/sfdp/service.h>
+#include <vnet/sfdp/timer/timer.h>
+
 #define foreach_sample_terminal_error _ (DROP, "drop")
 
 typedef enum
@@ -125,8 +127,8 @@ VLIB_NODE_FN (sample_non_terminal_node)
   sfdp_main_t *sfdp = &sfdp_main;
 
   u32 thread_index = vm->thread_index;
-  sfdp_per_thread_data_t *ptd =
-    vec_elt_at_index (sfdp->per_thread_data, thread_index);
+  sfdp_timer_per_thread_data_t *tptd =
+    vec_elt_at_index (sfdp_timer_main.per_thread_data, thread_index);
 
   u16 next_indices[VLIB_FRAME_SIZE], *to_next = next_indices;
   u32 *from = vlib_frame_vector_args (frame);
@@ -146,8 +148,9 @@ VLIB_NODE_FN (sample_non_terminal_node)
       session->state = SFDP_SESSION_STATE_ESTABLISHED;
       /* Rearm the session timeout to
        * tenant->timeouts[SFDP_TIMEOUT_ESTABLISHED] from now */
-      sfdp_session_timer_update (&session->timer, ptd->current_time,
-				 tenant->timeouts[SFDP_TIMEOUT_ESTABLISHED]);
+      sfdp_session_timer_update_maybe_past (&tptd->wheel, SFDP_SESSION_TIMER (session),
+					    tptd->current_time,
+					    tenant->timeouts[SFDP_TIMEOUT_ESTABLISHED]);
       /* Next service in chain for this packet */
       sfdp_next (b[0], to_next);
 
@@ -167,8 +170,7 @@ VLIB_NODE_FN (sample_non_terminal_node)
 	      sample_non_terminal_trace_t *t =
 		vlib_add_trace (vm, node, b[0], sizeof (*t));
 	      u32 session_idx = sfdp_session_from_flow_index (b[0]->flow_id);
-	      sfdp_session_t *session =
-		sfdp_session_at_index (ptd, session_idx);
+	      sfdp_session_t *session = sfdp_session_at_index (session_idx);
 	      u16 state = session->state;
 	      t->flow_id = b[0]->flow_id;
 	      t->new_state = state;
