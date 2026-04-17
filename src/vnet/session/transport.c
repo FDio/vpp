@@ -127,13 +127,28 @@ u8 *
 format_transport_listen_connection (u8 * s, va_list * args)
 {
   u32 transport_proto = va_arg (*args, u32);
+  u32 conn_index = va_arg (*args, u32);
+  clib_thread_index_t thread_index = va_arg (*args, u32);
+  transport_fmt_req_t fmt = { .as_u32 = va_arg (*args, u32) };
   const transport_proto_vft_t *tp_vft;
+  transport_connection_t *tc;
+  u32 indent;
 
   tp_vft = transport_protocol_get_vft (transport_proto);
   if (!tp_vft)
     return s;
 
-  s = (tp_vft->format_listener) (s, args);
+  s = format (s, "%U", tp_vft->format_listener, conn_index, thread_index, fmt.as_u32);
+  tc = tp_vft->get_listener ? tp_vft->get_listener (conn_index) : 0;
+  if (tc && fmt.transport_detail)
+    {
+      indent = format_get_indent (s) + 1;
+      if (transport_connection_is_tx_paced (tc))
+	s = format (s, "%Upacer: %U\n", format_white_space, indent, format_transport_pacer,
+		    &tc->pacer, tc->thread_index);
+      s = format (s, "%Utransport: flags: %U\n", format_white_space, indent, format_transport_flags,
+		  (u32) tc->flags);
+    }
   return s;
 }
 
@@ -141,13 +156,28 @@ u8 *
 format_transport_half_open_connection (u8 * s, va_list * args)
 {
   u32 transport_proto = va_arg (*args, u32);
+  u32 conn_index = va_arg (*args, u32);
+  clib_thread_index_t thread_index = va_arg (*args, u32);
+  transport_fmt_req_t fmt = { .as_u32 = va_arg (*args, u32) };
   const transport_proto_vft_t *tp_vft;
+  transport_connection_t *tc;
+  u32 indent;
 
   tp_vft = transport_protocol_get_vft (transport_proto);
   if (!tp_vft)
     return s;
 
-  s = (tp_vft->format_half_open) (s, args);
+  s = format (s, "%U", tp_vft->format_half_open, conn_index, thread_index, fmt.as_u32);
+  tc = tp_vft->get_half_open ? tp_vft->get_half_open (conn_index) : 0;
+  if (tc && fmt.transport_detail)
+    {
+      indent = format_get_indent (s) + 1;
+      if (transport_connection_is_tx_paced (tc))
+	s = format (s, "%Upacer: %U\n", format_white_space, indent, format_transport_pacer,
+		    &tc->pacer, tc->thread_index);
+      s = format (s, "%Utransport: flags: %U\n", format_white_space, indent, format_transport_flags,
+		  (u32) tc->flags);
+    }
   return s;
 }
 

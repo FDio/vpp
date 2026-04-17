@@ -1029,12 +1029,27 @@ format_tls_listener (u8 * s, va_list * args)
 {
   u32 tc_index = va_arg (*args, u32);
   u32 __clib_unused thread_index = va_arg (*args, u32);
-  u32 verbose = va_arg (*args, u32);
+  transport_fmt_req_t fmt = { .as_u32 = va_arg (*args, u32) };
   tls_ctx_t *ctx = tls_listener_ctx_get (tc_index);
 
-  s = format (s, "%-" SESSION_CLI_ID_LEN "U", format_tls_listener_ctx, ctx);
-  if (verbose)
-    s = format (s, "%-" SESSION_CLI_STATE_LEN "U", format_tls_ctx_state, ctx);
+  if (!transport_fmt_req_is_explicit (fmt))
+    {
+      s = format (s, "%-" SESSION_CLI_ID_LEN "U", format_tls_listener_ctx, ctx);
+      if (fmt.level)
+	s = format (s, "%-" SESSION_CLI_STATE_LEN "U", format_tls_ctx_state, ctx);
+      return s;
+    }
+
+  if (fmt.conn_id)
+    s = format (s, "%U", format_tls_listener_ctx, ctx);
+  if (fmt.transport_state)
+    {
+      if (fmt.conn_id)
+	s = format (s, "\t");
+      s = format (s, "%U", format_tls_ctx_state, ctx);
+    }
+  if (fmt.transport_detail)
+    s = format (s, "\n");
   return s;
 }
 
@@ -1051,23 +1066,55 @@ format_tls_ho_conn_id (u8 *s, va_list *args)
   return s;
 }
 
+static const char *
+tls_half_open_state_str (tls_ctx_t *ho_ctx)
+{
+  return ((ho_ctx->tls_session_handle == SESSION_INVALID_HANDLE) ?
+	    ((ho_ctx->flags & TLS_CONN_F_HO_DONE) ? "CLOSED" : "CLOSED-PNDG") :
+	    "CONNECTING");
+}
+
 u8 *
 format_tls_half_open (u8 *s, va_list *args)
 {
   u32 ho_index = va_arg (*args, u32);
   u32 __clib_unused thread_index = va_arg (*args, u32);
-  u32 verbose = va_arg (*args, u32);
+  transport_fmt_req_t fmt = { .as_u32 = va_arg (*args, u32) };
   tls_ctx_t *ho_ctx;
 
   ho_ctx = tls_ctx_half_open_get (ho_index);
 
-  s = format (s, "%-" SESSION_CLI_ID_LEN "U", format_tls_ho_conn_id, ho_ctx);
-  if (verbose)
-    s = format (s, "%-" SESSION_CLI_STATE_LEN "s",
-		(ho_ctx->tls_session_handle == SESSION_INVALID_HANDLE) ?
-		  (ho_ctx->flags & TLS_CONN_F_HO_DONE) ? "CLOSED" :
-							 "CLOSED-PNDG" :
-		  "CONNECTING");
+  if (!transport_fmt_req_is_explicit (fmt))
+    {
+      s = format (s, "%-" SESSION_CLI_ID_LEN "U", format_tls_ho_conn_id, ho_ctx);
+      if (fmt.level)
+	s = format (s, "%-" SESSION_CLI_STATE_LEN "s", tls_half_open_state_str (ho_ctx));
+      return s;
+    }
+
+  if (fmt.conn_id)
+    s = format (s, "%U", format_tls_ho_conn_id, ho_ctx);
+  if (fmt.transport_state)
+    {
+      if (fmt.conn_id)
+	s = format (s, "\t");
+      s = format (s, "%s", tls_half_open_state_str (ho_ctx));
+    }
+  if (fmt.transport_detail)
+    s = format (s, "\n");
+
+  return s;
+}
+
+static u8 *
+format_dtls_ho_conn_id (u8 *s, va_list *args)
+{
+  tls_ctx_t *ho_ctx = va_arg (*args, tls_ctx_t *);
+  session_t *us = session_get_from_handle (ho_ctx->tls_session_handle);
+
+  s = format (s, "[%d:%d][%s] half-open app_wrk %u engine %u us %d:%d", ho_ctx->c_thread_index,
+	      ho_ctx->c_s_index, "DTLS", ho_ctx->parent_app_wrk_index, ho_ctx->tls_ctx_engine,
+	      us->thread_index, us->session_index);
 
   return s;
 }
@@ -1296,16 +1343,24 @@ format_dtls_half_open (u8 *s, va_list *args)
 {
   u32 ho_index = va_arg (*args, u32);
   u32 __clib_unused thread_index = va_arg (*args, u32);
+  transport_fmt_req_t fmt = { .as_u32 = va_arg (*args, u32) };
   tls_ctx_t *ho_ctx;
-  session_t *us;
 
   ho_ctx = tls_ctx_get_w_thread (ho_index, transport_cl_thread ());
 
-  us = session_get_from_handle (ho_ctx->tls_session_handle);
-  s = format (s, "[%d:%d][%s] half-open app_wrk %u engine %u us %d:%d",
-	      ho_ctx->c_thread_index, ho_ctx->c_s_index, "DTLS",
-	      ho_ctx->parent_app_wrk_index, ho_ctx->tls_ctx_engine,
-	      us->thread_index, us->session_index);
+  if (!transport_fmt_req_is_explicit (fmt))
+    return format (s, "%U", format_dtls_ho_conn_id, ho_ctx);
+
+  if (fmt.conn_id)
+    s = format (s, "%U", format_dtls_ho_conn_id, ho_ctx);
+  if (fmt.transport_state)
+    {
+      if (fmt.conn_id)
+	s = format (s, "\t");
+      s = format (s, "%s", tls_half_open_state_str (ho_ctx));
+    }
+  if (fmt.transport_detail)
+    s = format (s, "\n");
 
   return s;
 }

@@ -171,12 +171,27 @@ format_quic_half_open (u8 *s, va_list *args)
 {
   u32 qc_index = va_arg (*args, u32);
   clib_thread_index_t thread_index = va_arg (*args, u32);
-  u32 verbose = va_arg (*args, u32);
+  transport_fmt_req_t fmt = { .as_u32 = va_arg (*args, u32) };
   quic_ctx_t *ctx = quic_ctx_get (qc_index, thread_index);
 
-  s = format (s, "%-" SESSION_CLI_ID_LEN "U", format_quic_ho_conn_id, ctx);
-  if (verbose)
-    s = format (s, "%-" SESSION_CLI_STATE_LEN "U", format_quic_ctx_state, ctx);
+  if (!transport_fmt_req_is_explicit (fmt))
+    {
+      s = format (s, "%-" SESSION_CLI_ID_LEN "U", format_quic_ho_conn_id, ctx);
+      if (fmt.level)
+	s = format (s, "%-" SESSION_CLI_STATE_LEN "U", format_quic_ctx_state, ctx);
+      return s;
+    }
+
+  if (fmt.conn_id)
+    s = format (s, "%U", format_quic_ho_conn_id, ctx);
+  if (fmt.transport_state)
+    {
+      if (fmt.conn_id)
+	s = format (s, "\t");
+      s = format (s, "%U", format_quic_ctx_state, ctx);
+    }
+  if (fmt.transport_detail)
+    s = format (s, "\n");
   return s;
 }
 
@@ -185,12 +200,27 @@ format_quic_listener (u8 *s, va_list *args)
 {
   u32 tci = va_arg (*args, u32);
   clib_thread_index_t thread_index = va_arg (*args, u32);
-  u32 verbose = va_arg (*args, u32);
+  transport_fmt_req_t fmt = { .as_u32 = va_arg (*args, u32) };
   quic_ctx_t *ctx = quic_ctx_get (tci, thread_index);
 
-  s = format (s, "%-" SESSION_CLI_ID_LEN "U", format_quic_ctx_listener, ctx);
-  if (verbose)
-    s = format (s, "%-" SESSION_CLI_STATE_LEN "U", format_quic_ctx_state, ctx);
+  if (!transport_fmt_req_is_explicit (fmt))
+    {
+      s = format (s, "%-" SESSION_CLI_ID_LEN "U", format_quic_ctx_listener, ctx);
+      if (fmt.level)
+	s = format (s, "%-" SESSION_CLI_STATE_LEN "U", format_quic_ctx_state, ctx);
+      return s;
+    }
+
+  if (fmt.conn_id)
+    s = format (s, "%U", format_quic_ctx_listener, ctx);
+  if (fmt.transport_state)
+    {
+      if (fmt.conn_id)
+	s = format (s, "\t");
+      s = format (s, "%U", format_quic_ctx_state, ctx);
+    }
+  if (fmt.transport_detail)
+    s = format (s, "\n");
   return s;
 }
 
