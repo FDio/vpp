@@ -25,10 +25,7 @@ quic_quicly_register_cipher_suite (crypto_engine_type_t type, ptls_cipher_suite_
   quic_quicly_crypto_main_t *qqcm = &quic_quicly_crypto_main;
   u8 rv = 1;
 
-  if (!qqcm->quic_ciphers)
-    {
-      vec_validate (qqcm->quic_ciphers, type);
-    }
+  vec_validate (qqcm->quic_ciphers, type);
   if (!qqcm->quic_ciphers[type])
     {
       QUIC_DBG (3, "Register cipher suite: engine_type %U (%u), cipher_suites %p",
