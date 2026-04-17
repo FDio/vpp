@@ -346,14 +346,14 @@ class TestSfdp(VppTestCase):
         # Test timeout configuration
         reply = self.vapi.sfdp_set_timeout(
             tenant_id=100,
-            timeout_id=0,  # Timeout ID 0 / embryonic
+            timeout_type=VppEnum.vl_api_sfdp_timeout_type_t.SFDP_API_TIMEOUT_EMBRYONIC,
             timeout_value=31,
         )
         self.assertEqual(reply.retval, 0)
 
         reply = self.vapi.sfdp_set_timeout(
             tenant_id=100,
-            timeout_id=1,  # Timeout ID 1 / established
+            timeout_type=VppEnum.vl_api_sfdp_timeout_type_t.SFDP_API_TIMEOUT_ESTABLISHED,
             timeout_value=3601,
         )
         self.assertEqual(reply.retval, 0)
@@ -361,8 +361,29 @@ class TestSfdp(VppTestCase):
         # Verify timeouts are set correctly via tenant dump
         tenants = self.vapi.sfdp_tenant_dump()
         tenant = tenants[0]
-        self.assertEqual(tenant.timeout[0], 31, "Timeout ID 0 should be 31 seconds")
-        self.assertEqual(tenant.timeout[1], 3601, "Timeout ID 1 should be 3601 seconds")
+        self.assertEqual(
+            tenant.timeout[
+                VppEnum.vl_api_sfdp_timeout_type_t.SFDP_API_TIMEOUT_EMBRYONIC
+            ],
+            31,
+            "embryonic timeout should be 31 seconds",
+        )
+        self.assertEqual(
+            tenant.timeout[
+                VppEnum.vl_api_sfdp_timeout_type_t.SFDP_API_TIMEOUT_ESTABLISHED
+            ],
+            3601,
+            "established timeout should be 3601 seconds",
+        )
+
+        # Negative test - invalid timeout ID should return an API error
+        with self.vapi.assert_negative_api_retval():
+            rv = self.vapi.sfdp_set_timeout(
+                tenant_id=100,
+                timeout_type=0xFF,
+                timeout_value=30,
+            )
+        self.assertEqual(rv.retval, -1)
 
         # Test tenant delete
         reply = self.vapi.sfdp_tenant_add_del(
@@ -431,9 +452,12 @@ class TestSfdp(VppTestCase):
         # Verify timeouts are set correctly via tenant dump
         tenants = self.vapi.sfdp_tenant_dump()
         tenant = tenants[0]
-
         self.assertEqual(
-            tenant.timeout[0], 35, "Timeout ID 0 (embryonic) should be 35 seconds"
+            tenant.timeout[
+                VppEnum.vl_api_sfdp_timeout_type_t.SFDP_API_TIMEOUT_EMBRYONIC
+            ],
+            35,
+            "embryonic timeout should be 35 seconds",
         )
 
         # Test tenant delete via CLI
@@ -916,7 +940,11 @@ class TestSfdpTimer(VppTestCase):
 
     def test_sfdp_timer_interval_rearm_after_wheel_turn(self):
         """Session still expires after a rearm beyond one wheel turn"""
-        self.vapi.cli("set sfdp timeout tenant 1 embryonic 50")
+        self.vapi.sfdp_set_timeout(
+            tenant_id=1,
+            timeout_type=VppEnum.vl_api_sfdp_timeout_type_t.SFDP_API_TIMEOUT_EMBRYONIC,
+            timeout_value=50,
+        )
 
         self._send_embryonic_tcp_syn("198.51.100.2", 12346)
         session_id = self._wait_for_session_appear()
@@ -925,7 +953,11 @@ class TestSfdpTimer(VppTestCase):
     def test_sfdp_kill_is_faster_than_timeout(self):
         """Killing a session expires it within one tick, not after its timeout"""
         # Very long timeout so natural expiry won't interfere
-        self.vapi.cli("set sfdp timeout tenant 1 embryonic 3600")
+        self.vapi.sfdp_set_timeout(
+            tenant_id=1,
+            timeout_type=VppEnum.vl_api_sfdp_timeout_type_t.SFDP_API_TIMEOUT_EMBRYONIC,
+            timeout_value=3600,
+        )
 
         self._send_embryonic_tcp_syn("198.51.100.2", 12346)
         session_id = self._wait_for_session_appear()
@@ -941,7 +973,11 @@ class TestSfdpTimer(VppTestCase):
 
     def test_sfdp_kill_all_is_faster_than_timeout(self):
         """kill_all expires all sessions within one tick"""
-        self.vapi.cli("set sfdp timeout tenant 1 embryonic 3600")
+        self.vapi.sfdp_set_timeout(
+            tenant_id=1,
+            timeout_type=VppEnum.vl_api_sfdp_timeout_type_t.SFDP_API_TIMEOUT_EMBRYONIC,
+            timeout_value=3600,
+        )
 
         for sport in [12346, 12347, 12348]:
             self._send_embryonic_tcp_syn("198.51.100.2", sport)
@@ -957,7 +993,11 @@ class TestSfdpTimer(VppTestCase):
     def test_sfdp_kill_rearmed_session(self):
         """Killing a rearmed session (past first wheel revolution) works within one tick"""
         # Timeout > one wheel turn (2048 * 0.02 = 40.96s) to force a rearm
-        self.vapi.cli("set sfdp timeout tenant 1 embryonic 50")
+        self.vapi.sfdp_set_timeout(
+            tenant_id=1,
+            timeout_type=VppEnum.vl_api_sfdp_timeout_type_t.SFDP_API_TIMEOUT_EMBRYONIC,
+            timeout_value=50,
+        )
 
         self._send_embryonic_tcp_syn("198.51.100.2", 12346)
         session_id = self._wait_for_session_appear()
