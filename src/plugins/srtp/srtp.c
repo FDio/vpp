@@ -919,18 +919,36 @@ format_srtp_listener (u8 *s, va_list *args)
 {
   u32 tc_index = va_arg (*args, u32);
   u32 __clib_unused thread_index = va_arg (*args, u32);
-  u32 verbose = va_arg (*args, u32);
+  transport_fmt_req_t fmt = { .as_u32 = va_arg (*args, u32) };
   srtp_tc_t *ctx = srtp_listener_ctx_get (tc_index);
 
-  s = format (s, "%-" SESSION_CLI_ID_LEN "U", format_srtp_listener_ctx, ctx);
-  if (verbose)
-    s = format (s, "%-" SESSION_CLI_STATE_LEN "U", format_srtp_ctx_state, ctx);
+  if (!transport_fmt_req_is_explicit (fmt))
+    {
+      s = format (s, "%-" SESSION_CLI_ID_LEN "U", format_srtp_listener_ctx, ctx);
+      if (fmt.level)
+	s = format (s, "%-" SESSION_CLI_STATE_LEN "U", format_srtp_ctx_state, ctx);
+      return s;
+    }
+
+  if (fmt.conn_id)
+    s = format (s, "%U", format_srtp_listener_ctx, ctx);
+  if (fmt.transport_state)
+    {
+      if (fmt.conn_id)
+	s = format (s, "\t");
+      s = format (s, "%U", format_srtp_ctx_state, ctx);
+    }
+  if (fmt.transport_detail)
+    s = format (s, "\n");
   return s;
 }
 
 u8 *
 format_srtp_half_open (u8 *s, va_list *args)
 {
+  u32 __clib_unused ho_index = va_arg (*args, u32);
+  u32 __clib_unused thread_index = va_arg (*args, u32);
+  transport_fmt_req_t __clib_unused fmt = { .as_u32 = va_arg (*args, u32) };
   return 0;
 }
 
