@@ -308,6 +308,9 @@ sfdp_set_timeout (sfdp_main_t *sfdp, u32 tenant_id, u32 timeout_idx,
     return clib_error_return (
       0, "Can't configure timeout: tenant id %d not found", tenant_id);
   tenant = sfdp_tenant_at_index (sfdp, kv.value);
+  if (timeout_idx >= SFDP_N_TIMEOUT)
+    return clib_error_return (0, "Can't configure timeout: timeout index %d outside valid range",
+			      timeout_idx);
   tenant->timeouts[timeout_idx] = timeout_val;
   return 0;
 }

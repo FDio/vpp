@@ -67,7 +67,7 @@ vl_api_sfdp_set_timeout_t_handler (vl_api_sfdp_set_timeout_t *mp)
 {
   sfdp_main_t *sfdp = &sfdp_main;
   u32 tenant_id = clib_net_to_host_u32 (mp->tenant_id);
-  u32 timeout_id = clib_net_to_host_u32 (mp->timeout_id);
+  sfdp_timeout_type_t timeout_id = sfdp_timeout_decode (mp->timeout_id);
   u32 timeout_value = clib_net_to_host_u32 (mp->timeout_value);
   clib_error_t *err =
     sfdp_set_timeout (sfdp, tenant_id, timeout_id, timeout_value);

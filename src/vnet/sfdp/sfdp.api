@@ -93,8 +93,8 @@ autoreply define sfdp_set_timeout
   u32 context;
 
   u32 tenant_id;
-  u32 timeout_id;
   u32 timeout_value;
+  vl_api_sfdp_timeout_t timeout_id;
 };
 
 autoreply define sfdp_set_sp_node
