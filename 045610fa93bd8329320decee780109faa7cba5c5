@@ -123,6 +123,24 @@
       "parentUuid": "2f7772bc_40292977",
       "revId": "045610fa93bd8329320decee780109faa7cba5c5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a3e145e2_0e1de3cd",
+        "filename": "src/vppinfra/std-formats.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 395,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-04-17T14:38:23Z",
+      "side": 1,
+      "message": "We do not support 32-bits systems anymore so using u64 instead of uword should be a noop but more clear so sounds good to me",
+      "parentUuid": "6d956d8e_511e4d65",
+      "revId": "045610fa93bd8329320decee780109faa7cba5c5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }

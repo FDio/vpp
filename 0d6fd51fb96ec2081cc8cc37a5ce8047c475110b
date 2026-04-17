@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "327ed562_c9d4bf55",
+        "filename": "src/vppinfra/unix-formats.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 490,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-04-17T14:38:23Z",
+      "side": 1,
+      "message": "Ok, it is not really format, this is really a dump backtrace function.\nMy recommendation would be to actually make it a format function by passing an array of frames, something like this:\n\n    void *frames[10];\n    clib_stack_frame_get_raw (frames, ARRAY_LEN (frames), 2);\n    format(s, \"%U\", format_stack, frames, ARRAY_LEN (frames));\n\nWith that it is truly a reusable format functions and bonus points if you use it in format_clib_mem_trace() 😊",
+      "revId": "0d6fd51fb96ec2081cc8cc37a5ce8047c475110b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
