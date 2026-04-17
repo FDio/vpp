@@ -33,6 +33,23 @@
       "message": "Tests crash in debug mode:\n\n    make test-debug TEST\u003dtest_cnat.TestCNatTranslation.test_cnat_with_encap_vxlan\n\nThe issue is an empty rewrite:\n\n    #16 0x00007752bef0a657 in clib_memcpy_fast (dst\u003d0x77527e3d79cc, src\u003d0x0, n\u003d0) at /home/bganne/src/vpp/src/vppinfra/string.h:45\n    #17 0x00007752bef098b1 in vnet_rewrite_set_data_internal (rw\u003d0x77527e3d79c0, max_size\u003d116, data\u003d0x0, data_bytes\u003d0) at /home/bganne/src/vpp/src/vnet/adj/rewrite.h:123\n    #18 0x00007752bef096c9 in vnet_rewrite_for_sw_interface (vnm\u003d0x7752bf662738 \u003cvnet_main\u003e, link_type\u003dVNET_LINK_ARP, sw_if_index\u003d4, node_index\u003d633, dst_address\u003d0x0, rw\u003d0x77527e3d79c0, max_rewrite_bytes\u003d116) at /home/bganne/src/vpp/src/vnet/adj/rewrite.c:107\n\nDoing memcpy(..., ..., 0) is UB and can cause issue on other platforms (eg. ARM).",
       "revId": "41db4369971e2278661b07e2f3ce0d3eb7dcd362",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7ed684a5_23763060",
+        "filename": "src/plugins/cnat/cnat_scanner.c",
+        "patchSetId": 37
+      },
+      "lineNbr": 105,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-04-17T17:03:36Z",
+      "side": 1,
+      "message": "I think we might need to evolve vlib_buffer_set_alloc_free_callback() or find another way because right now we can only register one cbak.",
+      "revId": "41db4369971e2278661b07e2f3ce0d3eb7dcd362",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
