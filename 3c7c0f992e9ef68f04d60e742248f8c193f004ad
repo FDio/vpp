@@ -16,6 +16,24 @@
       "message": "Do not merge until community reviews have been addressed.",
       "revId": "3c7c0f992e9ef68f04d60e742248f8c193f004ad",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "78f84dbc_c34bb94b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-04-17T14:13:48Z",
+      "side": 1,
+      "message": "Could we merge it as-is instead (just move the current process from the wiki to docs), and then open a new change to add more clarity? I can draft one if needs be.",
+      "parentUuid": "b49accd4_deb3e925",
+      "revId": "3c7c0f992e9ef68f04d60e742248f8c193f004ad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
