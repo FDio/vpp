@@ -52,6 +52,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "4b17d767_0e947600",
+        "filename": "src/plugins/cnat/cnat_api.c",
+        "patchSetId": 36
+      },
+      "lineNbr": 412,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-04-17T10:14:46Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "10e4beaa_c8b59f65",
+      "revId": "393fc860f180f6f38b7b691595b04d3f4967e757",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "056d0ad4_ec351b57",
@@ -65,6 +83,24 @@
       "writtenOn": "2026-04-17T10:06:32Z",
       "side": 1,
       "message": "I think we should keep the `PREDICT_FALSE` as in the fib, we most likely have a backend in the translation",
+      "revId": "393fc860f180f6f38b7b691595b04d3f4967e757",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "218a8865_4a55a0c2",
+        "filename": "src/plugins/cnat/cnat_node_vip.c",
+        "patchSetId": 36
+      },
+      "lineNbr": 59,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-04-17T10:14:46Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "056d0ad4_ec351b57",
       "revId": "393fc860f180f6f38b7b691595b04d3f4967e757",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
