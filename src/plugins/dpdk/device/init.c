@@ -1334,6 +1334,14 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 	  vec_add1 (conf->eal_init_args, tmp);
 	}
 
+      else if (unformat (input, "trace-bufsz %s", &tmp))
+	{
+	  u8 *bufsz_arg = format (0, "--trace-bufsz=%s%c", (char *) tmp, 0);
+	  vec_free (tmp);
+	  tmp = bufsz_arg;
+	  vec_add1 (conf->eal_init_args, tmp);
+	}
+
       else if (unformat (input, "trace %s", &tracepat))
 	{
 	  tmp = format (0, "--trace=%s%c", (char *) tracepat, 0);
