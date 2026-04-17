@@ -6,6 +6,7 @@
 #define __included_sfdp_types_funcs_h__
 
 #include <vnet/sfdp/sfdp.h>
+#include <vnet/sfdp/timer/timer.h>
 #include <vnet/sfdp/sfdp_types.api_types.h>
 #include <vnet/sfdp/sfdp_types.api_enum.h>
 #include <vnet/ip/ip_types_api.h>
@@ -37,6 +38,24 @@ sfdp_session_type_encode (sfdp_session_type_t x)
       return -1;
     }
 };
+
+static_always_inline sfdp_timeout_type_t
+sfdp_timeout_decode (vl_api_sfdp_timeout_t t)
+{
+  switch (t)
+    {
+    case SFDP_API_TIMEOUT_EMBRYONIC:
+      return SFDP_TIMEOUT_EMBRYONIC;
+    case SFDP_API_TIMEOUT_ESTABLISHED:
+      return SFDP_TIMEOUT_ESTABLISHED;
+    case SFDP_API_TIMEOUT_TCP_ESTABLISHED:
+      return SFDP_TIMEOUT_TCP_ESTABLISHED;
+    case SFDP_API_TIMEOUT_SECURITY:
+      return SFDP_TIMEOUT_SECURITY;
+    default:
+      return SFDP_TIMEOUT_EMBRYONIC;
+    }
+}
 
 static_always_inline u8
 sfdp_api_sp_node (vl_api_sfdp_sp_node_t sp_node)

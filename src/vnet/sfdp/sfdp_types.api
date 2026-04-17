@@ -35,6 +35,14 @@ enum sfdp_session_type : u8
   SFDP_API_SESSION_TYPE_USER = 2,
 };
 
+enum sfdp_timeout : u8
+{
+  SFDP_API_TIMEOUT_EMBRYONIC = 0,
+  SFDP_API_TIMEOUT_ESTABLISHED = 1,
+  SFDP_API_TIMEOUT_TCP_ESTABLISHED = 2,
+  SFDP_API_TIMEOUT_SECURITY = 3,
+};
+
 typedef sfdp_service_name
 {
   string data[32];
