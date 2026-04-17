@@ -16,6 +16,57 @@
       "message": "recheck",
       "revId": "393fc860f180f6f38b7b691595b04d3f4967e757",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6031a85f_b264be18",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 36
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-17T10:06:32Z",
+      "side": 1,
+      "message": "Just two nitpicks, overwise, lgtm !",
+      "revId": "393fc860f180f6f38b7b691595b04d3f4967e757",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "10e4beaa_c8b59f65",
+        "filename": "src/plugins/cnat/cnat_api.c",
+        "patchSetId": 36
+      },
+      "lineNbr": 412,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-17T10:06:32Z",
+      "side": 1,
+      "message": "I think we\u0027re missing a `clib_net_to_host_u32()` for the fib_indexes",
+      "revId": "393fc860f180f6f38b7b691595b04d3f4967e757",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "056d0ad4_ec351b57",
+        "filename": "src/plugins/cnat/cnat_node_vip.c",
+        "patchSetId": 36
+      },
+      "lineNbr": 59,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-17T10:06:32Z",
+      "side": 1,
+      "message": "I think we should keep the `PREDICT_FALSE` as in the fib, we most likely have a backend in the translation",
+      "revId": "393fc860f180f6f38b7b691595b04d3f4967e757",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
