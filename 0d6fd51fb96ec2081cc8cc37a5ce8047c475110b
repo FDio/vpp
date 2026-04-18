@@ -16,6 +16,24 @@
       "message": "Ok, it is not really format, this is really a dump backtrace function.\nMy recommendation would be to actually make it a format function by passing an array of frames, something like this:\n\n    void *frames[10];\n    clib_stack_frame_get_raw (frames, ARRAY_LEN (frames), 2);\n    format(s, \"%U\", format_stack, frames, ARRAY_LEN (frames));\n\nWith that it is truly a reusable format functions and bonus points if you use it in format_clib_mem_trace() 😊",
       "revId": "0d6fd51fb96ec2081cc8cc37a5ce8047c475110b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "62808589_186186cb",
+        "filename": "src/vppinfra/unix-formats.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 490,
+      "author": {
+        "id": 3200
+      },
+      "writtenOn": "2026-04-18T15:47:06Z",
+      "side": 1,
+      "message": "format_backtrace() now takes array of addresses and count; format_backtrace_here() needs no parameters (this one is handy for quick debugging).\n\nI also updated format_clib_mem_trace() but I don\u0027t know how to test it. Is there a brief set of CLI commands to exercise it?",
+      "parentUuid": "327ed562_c9d4bf55",
+      "revId": "0d6fd51fb96ec2081cc8cc37a5ce8047c475110b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
