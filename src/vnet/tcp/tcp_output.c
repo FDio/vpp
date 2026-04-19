@@ -459,6 +459,27 @@ tcp_make_fin (tcp_connection_t * tc, vlib_buffer_t * b)
   tcp_make_ack_i (tc, b, TCP_STATE_ESTABLISHED, TCP_FLAG_FIN | TCP_FLAG_ACK);
 }
 
+static void
+tcp_make_wnd_probe (tcp_connection_t *tc, vlib_buffer_t *b)
+{
+  tcp_options_t _snd_opts = {}, *snd_opts = &_snd_opts;
+  u8 tcp_opts_len, tcp_hdr_opts_len;
+  tcp_header_t *th;
+  u16 wnd;
+
+  wnd = tcp_window_to_advertise (tc, TCP_STATE_ESTABLISHED);
+
+  tcp_opts_len = tcp_make_established_options (tc, snd_opts);
+  tcp_hdr_opts_len = tcp_opts_len + sizeof (tcp_header_t);
+
+  th = vlib_buffer_push_tcp (b, tc->c_lcl_port, tc->c_rmt_port, tc->snd_una - 1, tc->rcv_nxt,
+			     tcp_hdr_opts_len, TCP_FLAG_ACK, wnd);
+
+  tcp_options_write ((u8 *) (th + 1), snd_opts);
+  th->checksum = tcp_compute_checksum (tc, b);
+  vnet_buffer (b)->tcp.connection_index = tc->c_c_index;
+}
+
 /**
  * Convert buffer to SYN
  */
@@ -1518,12 +1539,9 @@ void
 tcp_timer_persist_handler (tcp_connection_t * tc)
 {
   tcp_worker_ctx_t *wrk = tcp_get_worker (tc->c_thread_index);
-  u32 bi, max_snd_bytes, available_bytes, offset;
-  tcp_main_t *tm = vnet_get_tcp_main ();
+  u32 bi, available_bytes, offset;
   vlib_main_t *vm = wrk->vm;
   vlib_buffer_t *b;
-  int n_bytes = 0;
-  u8 *data;
 
   tcp_worker_stats_inc (wrk, to_persist, 1);
 
@@ -1553,7 +1571,7 @@ tcp_timer_persist_handler (tcp_connection_t * tc)
   tc->rto = clib_min (tc->rto << 1, TCP_RTO_MAX);
 
   /*
-   * Try to force the first unsent segment (or buffer)
+   * Send a synthetic zero-length probe with an old sequence number.
    */
   if (PREDICT_FALSE (!vlib_buffer_alloc (vm, &bi, 1)))
     {
@@ -1563,34 +1581,11 @@ tcp_timer_persist_handler (tcp_connection_t * tc)
     }
 
   b = vlib_get_buffer (vm, bi);
-  data = tcp_init_buffer (vm, b);
-
-  tcp_validate_txf_size (tc, offset);
-  tc->snd_opts_len = tcp_make_options (tc, &tc->snd_opts, tc->state);
-  max_snd_bytes = clib_min (clib_min (tc->snd_mss, available_bytes),
-			    tm->bytes_per_buffer - TRANSPORT_MAX_HDRS_LEN);
-  if (tc->snd_wnd > 0)
-    max_snd_bytes = clib_min (tc->snd_wnd, max_snd_bytes);
-  n_bytes = session_tx_fifo_peek_bytes (&tc->connection, data, offset,
-					max_snd_bytes);
-  b->current_length = n_bytes;
-  ASSERT (n_bytes != 0 && (tcp_timer_is_active (tc, TCP_TIMER_RETRANSMIT)
-			   || tc->snd_una == tc->snd_nxt
-			   || tc->rto_boff > 1));
-
-  if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
-    {
-      tcp_bt_check_app_limited (tc);
-      tcp_bt_track_tx (tc, n_bytes);
-    }
-
-  tcp_push_hdr_i (tc, b, tc->snd_nxt, /* compute opts */ 0,
-		  /* burst */ 0, /* update_snd_nxt */ 1);
-  tcp_validate_txf_size (tc, tc->snd_nxt - tc->snd_una);
+  tcp_init_buffer (vm, b);
+  tcp_make_wnd_probe (tc, b);
   tcp_enqueue_to_output (wrk, b, bi, tc->c_is_ip4);
 
-  /* Just sent new data, enable retransmit */
-  tcp_retransmit_timer_update (&wrk->timer_wheel, tc);
+  tcp_persist_timer_set (&wrk->timer_wheel, tc);
 
   return;
 
