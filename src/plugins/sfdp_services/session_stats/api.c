@@ -171,10 +171,15 @@ sfdp_session_stats_send_details (vl_api_registration_t *rp, u32 context, sfdp_se
   mp->rtt_stddev_rev = sfdp_session_stats_compute_stddev (stats->rtt[SFDP_FLOW_REVERSE].m2,
 							  stats->rtt[SFDP_FLOW_REVERSE].count);
 
+  /* SYN handshake RTT */
+  mp->syn_rtt = stats->syn_rtt;
+
   /* TCP-specific statistics */
   mp->tcp_mss = clib_host_to_net_u16 (stats->tcp.mss);
   mp->tcp_handshake_complete = stats->tcp.handshake_complete;
   mp->tcp_syn_packets = clib_host_to_net_u32 (stats->tcp.syn_packets);
+  mp->tcp_data_packets_fwd = clib_host_to_net_u64 (stats->tcp.data_packets[SFDP_FLOW_FORWARD]);
+  mp->tcp_data_packets_rev = clib_host_to_net_u64 (stats->tcp.data_packets[SFDP_FLOW_REVERSE]);
   mp->tcp_fin_packets = clib_host_to_net_u32 (stats->tcp.fin_packets);
   mp->tcp_rst_packets = clib_host_to_net_u32 (stats->tcp.rst_packets);
   /* ECN/CWR metrics */
@@ -302,7 +307,8 @@ vl_api_sfdp_session_stats_set_tenant_custom_data_t_handler (
 
   u32 tenant_id = clib_net_to_host_u32 (mp->tenant_id);
   u64 data = clib_net_to_host_u64 (mp->value);
-  rv = sfdp_session_stats_set_tenant_custom_data (tenant_id, data);
+  u64 data2 = clib_net_to_host_u64 (mp->value2);
+  rv = sfdp_session_stats_set_tenant_custom_data (tenant_id, data, data2);
 
   REPLY_MACRO (VL_API_SFDP_SESSION_STATS_SET_TENANT_CUSTOM_DATA_REPLY);
 }
@@ -330,13 +336,14 @@ vl_api_sfdp_session_stats_get_tenant_custom_data_t_handler (
   int rv = 0;
 
   u32 tenant_id = clib_net_to_host_u32 (mp->tenant_id);
-  u8 has_api_data = 0;
-  u64 api_data_value = sfdp_session_stats_get_tenant_custom_data (tenant_id, &has_api_data);
+  sfdp_session_stats_custom_data_entry_t api_data =
+    sfdp_session_stats_get_tenant_custom_data (tenant_id);
 
   REPLY_MACRO2 (VL_API_SFDP_SESSION_STATS_GET_TENANT_CUSTOM_DATA_REPLY, ({
 		  rmp->tenant_id = clib_host_to_net_u32 (tenant_id);
-		  rmp->has_api_data = has_api_data;
-		  rmp->api_data_value = clib_host_to_net_u64 (api_data_value);
+		  rmp->has_api_data = api_data.has_value;
+		  rmp->api_data_value = clib_host_to_net_u64 (api_data.value);
+		  rmp->api_data_value2 = clib_host_to_net_u64 (api_data.value2);
 		}));
 }
 
