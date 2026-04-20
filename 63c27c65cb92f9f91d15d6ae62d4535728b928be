@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bde713c0_9d37c337",
+        "filename": "src/vppinfra/std-formats.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 615,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-04-20T09:04:15Z",
+      "side": 1,
+      "message": "uint is not a typical VPP type, this should probably be u32 or unsigned int",
+      "revId": "63c27c65cb92f9f91d15d6ae62d4535728b928be",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e1bb57c8_1e6005f7",
+        "filename": "src/vppinfra/unix-formats.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 497,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-04-20T09:04:15Z",
+      "side": 1,
+      "message": "we should also probably stop at the 1st NULL frame. For example for memory traces, the array is fixed size but not all frames will necessarily be used.",
+      "revId": "63c27c65cb92f9f91d15d6ae62d4535728b928be",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0638c424_430ad057",
+        "filename": "src/vppinfra/unix-formats.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 516,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-04-20T09:04:15Z",
+      "side": 1,
+      "message": "I am not sold about its usability - what does it really brings vs directly\n\n    void *pc[15];\n    count \u003d clib_stack_frame_get_raw (pc, ARRAY_LEN (pc), 2);\n    s \u003d format (s, \"%U\", format_backtrace, pc, count);\n\nIf it is really used in 10 different places then maybe it is worth it but then it is not really format and maybe more a clib_stack_dump() or similar?",
+      "revId": "63c27c65cb92f9f91d15d6ae62d4535728b928be",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}

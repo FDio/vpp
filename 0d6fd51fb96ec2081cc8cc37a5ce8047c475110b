@@ -34,6 +34,24 @@
       "parentUuid": "327ed562_c9d4bf55",
       "revId": "0d6fd51fb96ec2081cc8cc37a5ce8047c475110b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f01d8243_8811bfa2",
+        "filename": "src/vppinfra/unix-formats.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 490,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-04-20T09:04:15Z",
+      "side": 1,
+      "message": "I think we already have unit tests for memory traces in test/asf/test_vppinfra.py and test/test_vlib.py",
+      "parentUuid": "62808589_186186cb",
+      "revId": "0d6fd51fb96ec2081cc8cc37a5ce8047c475110b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
