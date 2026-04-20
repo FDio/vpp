@@ -76,10 +76,62 @@ sfdp_session_stats_show_command_fn (vlib_main_t *vm, unformat_input_t *input,
 		     stats->packets[SFDP_FLOW_FORWARD], stats->packets[SFDP_FLOW_REVERSE],
 		     stats->bytes[SFDP_FLOW_FORWARD], stats->bytes[SFDP_FLOW_REVERSE]);
 
-    if (verbose && (stats->first_seen > 0 || stats->last_seen > 0))
+    if (verbose)
       {
+	f64 duration =
+	  (stats->last_seen > stats->first_seen) ? (stats->last_seen - stats->first_seen) : 0.0;
+	f64 ttl_stddev_fwd = sfdp_session_stats_compute_stddev (
+	  stats->ttl[SFDP_FLOW_FORWARD].m2, stats->ttl[SFDP_FLOW_FORWARD].count);
+	f64 ttl_stddev_rev = sfdp_session_stats_compute_stddev (
+	  stats->ttl[SFDP_FLOW_REVERSE].m2, stats->ttl[SFDP_FLOW_REVERSE].count);
+	f64 rtt_stddev_fwd = sfdp_session_stats_compute_stddev (
+	  stats->rtt[SFDP_FLOW_FORWARD].m2, stats->rtt[SFDP_FLOW_FORWARD].count);
+	f64 rtt_stddev_rev = sfdp_session_stats_compute_stddev (
+	  stats->rtt[SFDP_FLOW_REVERSE].m2, stats->rtt[SFDP_FLOW_REVERSE].count);
+
 	vlib_cli_output (vm, "           First seen: %.6f, Last seen: %.6f", stats->first_seen,
 			 stats->last_seen);
+	vlib_cli_output (vm, "           Duration: %.6f", duration);
+	vlib_cli_output (vm,
+			 "           TTL fwd(min/max/mean/stddev)=%u/%u/%.3f/%.3f "
+			 "rev(min/max/mean/stddev)=%u/%u/%.3f/%.3f",
+			 stats->ttl[SFDP_FLOW_FORWARD].min_ttl,
+			 stats->ttl[SFDP_FLOW_FORWARD].max_ttl, stats->ttl[SFDP_FLOW_FORWARD].mean,
+			 ttl_stddev_fwd, stats->ttl[SFDP_FLOW_REVERSE].min_ttl,
+			 stats->ttl[SFDP_FLOW_REVERSE].max_ttl, stats->ttl[SFDP_FLOW_REVERSE].mean,
+			 ttl_stddev_rev);
+	vlib_cli_output (vm, "           RTT fwd(mean/stddev)=%.6f/%.6f rev(mean/stddev)=%.6f/%.6f",
+			 stats->rtt[SFDP_FLOW_FORWARD].mean, rtt_stddev_fwd,
+			 stats->rtt[SFDP_FLOW_REVERSE].mean, rtt_stddev_rev);
+
+	if (session->proto == IP_PROTOCOL_TCP)
+	  {
+	    vlib_cli_output (vm, "           TCP: syn=%u fin=%u rst=%u hs=%u mss=%u",
+			     stats->tcp.syn_packets, stats->tcp.fin_packets, stats->tcp.rst_packets,
+			     stats->tcp.handshake_complete, stats->tcp.mss);
+	    vlib_cli_output (vm,
+			     "           TCP ev: retr(fwd/rev)=%u/%u zero-win(fwd/rev)=%u/%u "
+			     "dupack(fwd/rev)=%u/%u",
+			     stats->tcp.retransmissions[SFDP_FLOW_FORWARD],
+			     stats->tcp.retransmissions[SFDP_FLOW_REVERSE],
+			     stats->tcp.zero_window_events[SFDP_FLOW_FORWARD],
+			     stats->tcp.zero_window_events[SFDP_FLOW_REVERSE],
+			     stats->tcp.dupack_like[SFDP_FLOW_FORWARD],
+			     stats->tcp.dupack_like[SFDP_FLOW_REVERSE]);
+	    vlib_cli_output (
+	      vm,
+	      "           TCP seq: last-seq(fwd/rev)=%u/%u last-ack(fwd/rev)=%u/%u "
+	      "ooo(fwd/rev)=%u/%u overlap(fwd/rev)=%u/%u",
+	      stats->tcp.last_seq[SFDP_FLOW_FORWARD], stats->tcp.last_seq[SFDP_FLOW_REVERSE],
+	      stats->tcp.last_ack[SFDP_FLOW_FORWARD], stats->tcp.last_ack[SFDP_FLOW_REVERSE],
+	      stats->tcp.out_of_order[SFDP_FLOW_FORWARD],
+	      stats->tcp.out_of_order[SFDP_FLOW_REVERSE],
+	      stats->tcp.partial_overlaps[SFDP_FLOW_FORWARD],
+	      stats->tcp.partial_overlaps[SFDP_FLOW_REVERSE]);
+	    vlib_cli_output (vm, "           TCP ecn: ect=%u ce=%u ece=%u cwr=%u",
+			     stats->tcp.ecn_ect_packets, stats->tcp.ecn_ce_packets,
+			     stats->tcp.ece_packets, stats->tcp.cwr_packets);
+	  }
       }
 
     count++;
@@ -260,6 +312,7 @@ sfdp_session_stats_custom_data_command_fn (vlib_main_t *vm, unformat_input_t *in
 {
   u32 tenant_id = ~0;
   u64 value = 0;
+  u64 value2 = 0;
   u8 is_clear = 0;
   u8 has_value = 0;
 
@@ -269,6 +322,8 @@ sfdp_session_stats_custom_data_command_fn (vlib_main_t *vm, unformat_input_t *in
 	;
       else if (unformat (input, "value %llu", &value))
 	has_value = 1;
+      else if (unformat (input, "value2 %llu", &value2))
+	;
       else if (unformat (input, "clear"))
 	is_clear = 1;
       else
@@ -292,16 +347,17 @@ sfdp_session_stats_custom_data_command_fn (vlib_main_t *vm, unformat_input_t *in
   if (!has_value)
     return clib_error_return (0, "please specify value <n> or clear");
 
-  int rv = sfdp_session_stats_set_tenant_custom_data (tenant_id, value);
+  int rv = sfdp_session_stats_set_tenant_custom_data (tenant_id, value, value2);
   if (rv < 0)
     return clib_error_return (0, "failed to set custom data");
 
-  vlib_cli_output (vm, "Set custom data for tenant %u to %llu", tenant_id, value);
+  vlib_cli_output (vm, "Set custom data for tenant %u to value %llu, value2 %llu", tenant_id, value,
+		   value2);
   return 0;
 }
 
 VLIB_CLI_COMMAND (sfdp_session_stats_custom_data_command, static) = {
   .path = "sfdp session stats custom-data",
-  .short_help = "sfdp session stats custom-data [tenant <id>] [value <n>] [clear]",
+  .short_help = "sfdp session stats custom-data [tenant <id>] [value <n>] [value2 <n>] [clear]",
   .function = sfdp_session_stats_custom_data_command_fn,
 };
