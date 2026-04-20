@@ -28,6 +28,9 @@
 /* Default Prometheus label name for opaque ring field */
 #define OPAQUE_LABEL_DEFAULT_NAME "opaque"
 
+/* Default Prometheus label name for opaque2 ring field */
+#define OPAQUE2_LABEL_DEFAULT_NAME "opaque2"
+
 typedef struct
 {
   u32 entry_size;
@@ -58,6 +61,7 @@ typedef struct
   thread_consumer_state_t *thread_states;
   u8 *instance;
   u8 *opaque_label;
+  u8 *opaque2_label;
   ring_schema_t schema;
   f64 session_silence_timeout;
   u64 missed_entries_total;
