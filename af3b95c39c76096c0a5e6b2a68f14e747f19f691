@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "da0850e6_856b9645",
+        "filename": "src/vnet/sfdp/sfdp_types_funcs.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-04-20T13:47:54Z",
+      "side": 1,
+      "message": "Good catch, done.",
+      "parentUuid": "af000271_9a84ffcc",
+      "revId": "af3b95c39c76096c0a5e6b2a68f14e747f19f691",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "217ea8d0_a14cfbf2",
@@ -31,6 +49,24 @@
       "writtenOn": "2026-04-20T09:53:03Z",
       "side": 1,
       "message": "maybe add an assert, and should we return eg. ~0 so caller can check for non-sensical timeout?",
+      "revId": "af3b95c39c76096c0a5e6b2a68f14e747f19f691",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "66e4edff_a5ed65b6",
+        "filename": "src/vnet/sfdp/sfdp_types_funcs.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 56,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-04-20T13:47:54Z",
+      "side": 1,
+      "message": "Sure, an unknown timer value now decodes to ~0.\n\nRather than add an assert, I\u0027ve added a check in sfdp_set_timeout to verify that the timer ID is within the valid range \u0026 it returns an error otherwise.\n\nI also added a negative api check in the python tests, where we verify that providing an invalid timer index when configuring timers will return an error.",
+      "parentUuid": "217ea8d0_a14cfbf2",
       "revId": "af3b95c39c76096c0a5e6b2a68f14e747f19f691",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
