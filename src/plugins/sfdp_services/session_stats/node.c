@@ -91,8 +91,9 @@ sfdp_session_stats_process_tcp (vlib_main_t *vm, vlib_buffer_t *b,
     {
       stats->tcp.syn_packets++;
 
-      /* Parse MSS from SYN options if not already set */
-      if (stats->tcp.mss == 0)
+      /* Parse MSS from SYN options for this direction */
+      /* This is only recorded for the first SYN packet in each direction */
+      if (stats->tcp.mss[direction] == 0)
 	{
 	  const u8 *opt = (const u8 *) tcph + sizeof (tcp_header_t);
 	  const u8 *end = (const u8 *) tcph + tcp_hlen;
@@ -113,18 +114,19 @@ sfdp_session_stats_process_tcp (vlib_main_t *vm, vlib_buffer_t *b,
 		break;
 	      if (kind == 2 && len == 4) /* MSS option */
 		{
-		  stats->tcp.mss = (opt[2] << 8) | opt[3];
+		  stats->tcp.mss[direction] = (opt[2] << 8) | opt[3];
 		  break;
 		}
 	      opt += len;
 	    }
 	}
 
-      /* Track SYN-ACK for handshake completion */
-      if ((flags & TCP_FLAG_ACK) && !stats->tcp.handshake_complete)
-	{
-	  /* SYN-ACK seen, waiting for final ACK */
-	}
+      /* Stamp initiator SYN (or retransmitted SYN) for handshake-RTT sampling.
+       * The sample is taken later on the initiator's handshake-completing ACK
+       * so the measurement spans the full initiator->responder->initiator
+       * round trip in both uni-dir and bi-dir captures. */
+      if (!stats->tcp.handshake_complete && !(flags & TCP_FLAG_ACK))
+	stats->syn_timestamp_us[direction] = sfdp_session_stats_now_ticks_us (vm);
     }
 
   if (flags & TCP_FLAG_FIN)
@@ -143,8 +145,22 @@ sfdp_session_stats_process_tcp (vlib_main_t *vm, vlib_buffer_t *b,
   /* Track ACK for handshake completion and RTT */
   if ((flags & TCP_FLAG_ACK) && !(flags & TCP_FLAG_SYN) && !stats->tcp.handshake_complete)
     {
-      /* First pure ACK after a SYN-ACK means handshake is complete */
+      /* Treat the first non-SYN ACK as handshake completion */
       stats->tcp.handshake_complete = 1;
+
+      /* Sample handshake RTT as the interval between the initiator's SYN
+       * and its handshake-completing ACK. Both legs of the responder round
+       * trip are observed past SFDP, so this approximates the true
+       * initiator<->responder RTT (plus endpoint stack latency) in both
+       * uni-dir and bi-dir captures. */
+      if (stats->syn_rtt == 0.0 && stats->syn_timestamp_us[direction] != 0)
+	{
+	  u32 now_us = sfdp_session_stats_now_ticks_us (vm);
+	  f64 sample =
+	    sfdp_session_stats_delta_s_from_ticks (now_us, stats->syn_timestamp_us[direction]);
+	  if (sample > 0.0 && sample < 60.0)
+	    stats->syn_rtt = sample;
+	}
     }
 
   /* RTT measurement: when we get an ACK, check if it acknowledges data
@@ -177,6 +193,8 @@ sfdp_session_stats_process_tcp (vlib_main_t *vm, vlib_buffer_t *b,
     {
       u32 end_seq = seq + payload_len;
 
+      stats->tcp.data_packets[direction]++;
+
       if (stats->last_seq_valid[direction])
 	{
 	  /* segment has range [seq, end_seq (seq + payload_len)] below the max expected end_seq
@@ -193,6 +211,9 @@ sfdp_session_stats_process_tcp (vlib_main_t *vm, vlib_buffer_t *b,
 		   * receiver has NOT sent dupacks since,
 		   * and the receiver hasn't ACK'd this data yet.  */
 		  stats->tcp.out_of_order[direction]++;
+		  /* reset RTT probe after detection of out-of-order packet
+		   * since it would now also measure reassembly delay */
+		  stats->rtt_probe_tick_us[direction] = 0;
 		}
 	      else
 		{
@@ -200,6 +221,9 @@ sfdp_session_stats_process_tcp (vlib_main_t *vm, vlib_buffer_t *b,
 		   * confirm the receiver also saw the gap (loss, not reorder),
 		   * or the receiver already ACK'd past this data. */
 		  stats->tcp.retransmissions[direction]++;
+		  /* reset RTT probe after detection of retransmission */
+		  /* since we might wrongfully compute RTT based on original ack */
+		  stats->rtt_probe_tick_us[direction] = 0;
 		}
 	      stats->has_pending_gap[direction] = 0;
 	    }
@@ -210,6 +234,8 @@ sfdp_session_stats_process_tcp (vlib_main_t *vm, vlib_buffer_t *b,
 	    {
 	      /* Partial overlap detected */
 	      stats->tcp.partial_overlaps[direction]++;
+	      /* reset RTT probe after detection of partial overlap */
+	      stats->rtt_probe_tick_us[direction] = 0;
 	      stats->has_pending_gap[direction] = 0;
 	    }
 	  /* segment has range [seq, end_seq (seq + payload_len)] above the max expected end_seq
