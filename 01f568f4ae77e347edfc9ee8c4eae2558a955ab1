@@ -33,6 +33,24 @@
       "message": "this should be implemented similar to other tests",
       "revId": "01f568f4ae77e347edfc9ee8c4eae2558a955ab1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "73157807_be83294e",
+        "filename": "src/vnet/interface_test.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 441,
+      "author": {
+        "id": 3124
+      },
+      "writtenOn": "2026-04-20T15:05:39Z",
+      "side": 1,
+      "message": "I initially just created stubs when I saw other tests had them too. Now implemented with args parsing and reply handling, following the existing patterns.\nVerified end-to-end via local Python VAPI (set → get → CLI consistency all pass). \n\nWhen invoked directly from VAT CLI, sw_interface_get_default_rx_mode returns the mode correctly (1 for polling), but sw_interface_set_default_rx_mode \u003cmode\u003e returns Invalid value. The handler mirrors the existing sw_interface_set_rx_mode pattern, so it may be a broader issue, not sure.",
+      "parentUuid": "4c5412d6_8b03254c",
+      "revId": "01f568f4ae77e347edfc9ee8c4eae2558a955ab1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
