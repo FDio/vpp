@@ -91,8 +91,8 @@ sfdp_session_stats_process_tcp (vlib_main_t *vm, vlib_buffer_t *b,
     {
       stats->tcp.syn_packets++;
 
-      /* Parse MSS from SYN options if not already set */
-      if (stats->tcp.mss == 0)
+      /* Parse SYN options once per direction (MSS + Timestamps negotiation) */
+      if (stats->tcp.mss[direction] == 0 && !stats->tcp.handshake_complete)
 	{
 	  const u8 *opt = (const u8 *) tcph + sizeof (tcp_header_t);
 	  const u8 *end = (const u8 *) tcph + tcp_hlen;
@@ -111,20 +111,20 @@ sfdp_session_stats_process_tcp (vlib_main_t *vm, vlib_buffer_t *b,
 	      u8 len = opt[1];
 	      if (len < 2 || opt + len > end)
 		break;
-	      if (kind == 2 && len == 4) /* MSS option */
-		{
-		  stats->tcp.mss = (opt[2] << 8) | opt[3];
-		  break;
-		}
+	      if (kind == 2 && len == 4) /* MSS */
+		stats->tcp.mss[direction] = (opt[2] << 8) | opt[3];
+	      else if (kind == 8 && len == 10) /* Timestamps */
+		stats->tcp.timestamp_option_negotiated[direction] = 1;
 	      opt += len;
 	    }
 	}
 
-      /* Track SYN-ACK for handshake completion */
-      if ((flags & TCP_FLAG_ACK) && !stats->tcp.handshake_complete)
-	{
-	  /* SYN-ACK seen, waiting for final ACK */
-	}
+      /* Stamp initiator SYN (or retransmitted SYN) for handshake-RTT sampling.
+       * The sample is taken later on the initiator's handshake-completing ACK
+       * so the measurement spans the full initiator->responder->initiator
+       * round trip in both uni-dir and bi-dir captures. */
+      if (!stats->tcp.handshake_complete && !(flags & TCP_FLAG_ACK))
+	stats->syn_timestamp_us[direction] = sfdp_session_stats_now_ticks_us (vm);
     }
 
   if (flags & TCP_FLAG_FIN)
@@ -143,13 +143,78 @@ sfdp_session_stats_process_tcp (vlib_main_t *vm, vlib_buffer_t *b,
   /* Track ACK for handshake completion and RTT */
   if ((flags & TCP_FLAG_ACK) && !(flags & TCP_FLAG_SYN) && !stats->tcp.handshake_complete)
     {
-      /* First pure ACK after a SYN-ACK means handshake is complete */
+      /* Treat the first non-SYN ACK as handshake completion */
       stats->tcp.handshake_complete = 1;
+
+      /* Sample handshake RTT as the interval between the initiator's SYN
+       * and its handshake-completing ACK. Both legs of the responder round
+       * trip are observed past SFDP, so this approximates the true
+       * initiator<->responder RTT (plus endpoint stack latency) in both
+       * uni-dir and bi-dir captures. */
+      if (stats->syn_rtt == 0.0 && stats->syn_timestamp_us[direction] != 0)
+	{
+	  u32 now_us = sfdp_session_stats_now_ticks_us (vm);
+	  f64 sample =
+	    sfdp_session_stats_delta_s_from_ticks (now_us, stats->syn_timestamp_us[direction]);
+	  if (sample > 0.0 && sample < 60.0)
+	    stats->syn_rtt = sample;
+	}
     }
 
-  /* RTT measurement: when we get an ACK, check if it acknowledges data
-   * we sent and use the time delta for RTT */
-  if ((flags & TCP_FLAG_ACK) && stats->rtt_probe_tick_us[ack_dir] != 0)
+  /* Extract TCP Timestamps option from this packet if both directions
+   * negotiated the option during the handshake. This is used to improve
+   * accuracy of RTT computation */
+  u32 pkt_tsval = 0, pkt_tsecr = 0;
+  u8 has_ts_opt = 0;
+
+  if (stats->tcp.timestamp_option_negotiated[SFDP_FLOW_FORWARD] &&
+      stats->tcp.timestamp_option_negotiated[SFDP_FLOW_REVERSE])
+    {
+      const u8 *opt = (const u8 *) tcph + sizeof (tcp_header_t);
+      const u8 *end = (const u8 *) tcph + tcp_hlen;
+      while (opt + 1 < end)
+	{
+	  u8 kind = opt[0];
+	  if (kind == 0)
+	    break;
+	  if (kind == 1)
+	    {
+	      opt += 1;
+	      continue;
+	    }
+	  if (opt + 2 > end)
+	    break;
+	  u8 len = opt[1];
+	  if (len < 2 || opt + len > end)
+	    break;
+	  if (kind == 8 && len == 10)
+	    {
+	      pkt_tsval = clib_net_to_host_u32 (*(u32 *) (opt + 2));
+	      pkt_tsecr = clib_net_to_host_u32 (*(u32 *) (opt + 6));
+	      has_ts_opt = 1;
+	      break;
+	    }
+	  opt += len;
+	}
+    }
+
+  /* RTT measurement
+   * By default, use probe-based RTT computation
+   * If TCP Timestamp option has been negotiated, use timestamps to identify
+   * corresponding ACKs for packets and avoid RTT inaccuracies when there is
+   * retransmission ambiguity */
+  if ((flags & TCP_FLAG_ACK) && has_ts_opt && pkt_tsecr != 0 && stats->last_tsval[ack_dir] != 0 &&
+      pkt_tsecr == stats->last_tsval[ack_dir])
+    {
+      u32 now_us = sfdp_session_stats_now_ticks_us (vm);
+      f64 sample =
+	sfdp_session_stats_delta_s_from_ticks (now_us, stats->last_tsval_tick_us[ack_dir]);
+      sfdp_session_stats_update_rtt (&stats->rtt[ack_dir], sample);
+      stats->last_tsval[ack_dir] = 0;
+      /* Clear probe so it does not fire a second sample for the same ACK. */
+      stats->rtt_probe_tick_us[ack_dir] = 0;
+    }
+  else if ((flags & TCP_FLAG_ACK) && stats->rtt_probe_tick_us[ack_dir] != 0)
     {
       if (seq_geq (ack, stats->last_data_seq[ack_dir]))
 	{
@@ -176,6 +241,9 @@ sfdp_session_stats_process_tcp (vlib_main_t *vm, vlib_buffer_t *b,
   if (payload_len > 0)
     {
       u32 end_seq = seq + payload_len;
+
+      /* Count TCP packets with payload in both directions*/
+      stats->tcp.data_packets[direction]++;
 
       if (stats->last_seq_valid[direction])
 	{
@@ -208,8 +276,6 @@ sfdp_session_stats_process_tcp (vlib_main_t *vm, vlib_buffer_t *b,
 	  else if (seq_lt (seq, stats->end_seq_max[direction]) &&
 		   seq_gt (end_seq, stats->end_seq_max[direction]))
 	    {
-	      /* Partial overlap detected */
-	      stats->tcp.partial_overlaps[direction]++;
 	      stats->has_pending_gap[direction] = 0;
 	    }
 	  /* segment has range [seq, end_seq (seq + payload_len)] above the max expected end_seq
@@ -235,18 +301,23 @@ sfdp_session_stats_process_tcp (vlib_main_t *vm, vlib_buffer_t *b,
       stats->last_seq_valid[direction] = 1;
 
       /* Setup RTT probe for this data */
+      u32 now_data_us = sfdp_session_stats_now_ticks_us (vm);
       stats->last_data_seq[direction] = end_seq;
-      stats->rtt_probe_tick_us[direction] = sfdp_session_stats_now_ticks_us (vm);
+      stats->rtt_probe_tick_us[direction] = now_data_us;
+
+      /* Record TSval for TS-based RTT sampling */
+      if (has_ts_opt)
+	{
+	  stats->last_tsval[direction] = pkt_tsval;
+	  stats->last_tsval_tick_us[direction] = now_data_us;
+	}
     }
 
-  /* Track last ACK for dupack detection per direction */
+  /* Track last ACK per direction; count duplicate ACKs for OOO discriminator */
   if (flags & TCP_FLAG_ACK)
     {
-      if (stats->tcp.last_ack[ack_dir] == ack && stats->end_seq_max[ack_dir] > ack)
-	{
-	  /* Duplicate ACK detected - count in the direction being ACKed */
-	  stats->tcp.dupack_like[ack_dir]++;
-	}
+      if (stats->tcp.last_ack[ack_dir] == ack && seq_gt (stats->end_seq_max[ack_dir], ack))
+	stats->tcp.dupack_like[ack_dir]++;
       stats->tcp.last_ack[ack_dir] = ack;
     }
 }

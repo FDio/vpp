@@ -28,11 +28,14 @@ class BaseSfdpTest(VppTestCase):
         seq=0,
         ack=0,
         payload=b"\xa5" * 100,
+        options=[],
     ):
         return (
             Ether(src=src_mac, dst=dst_mac)
             / IP(src=src_ip, dst=dst_ip, ttl=ttl)
-            / TCP(sport=sport, dport=dport, flags=flags, seq=seq, ack=ack)
+            / TCP(
+                sport=sport, dport=dport, flags=flags, seq=seq, ack=ack, options=options
+            )
             / Raw(payload)
         )
 
