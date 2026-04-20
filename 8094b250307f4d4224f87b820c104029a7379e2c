@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d94080a7_7f44adec",
+        "filename": "src/plugins/quic_quicly/quic_quicly.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1050,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-04-20T15:15:54Z",
+      "side": 1,
+      "message": "Can we reschedule cross threads?",
+      "revId": "8094b250307f4d4224f87b820c104029a7379e2c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
