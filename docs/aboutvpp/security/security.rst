@@ -34,3 +34,18 @@ and initial membership:
 
 The team can be reached at the above private security
 mailing list.
+
+Security Scope
+==============
+
+Not all bugs qualify as security vulnerabilities. Bugs exploitable through the
+VPP **dataplane** (e.g. a crafted packet causing a crash or remote code
+execution) are security vulnerabilities and must be reported privately.
+Bugs reachable only through the VPP binary API or debug CLI are handled through
+the normal bug tracker, because the API caller is considered a trusted operator.
+
+For the full scope definition, see the `Security Scope section`_ of the
+vulnerability management policy.
+
+.. _Security Scope section:
+   tsc_vulnerability_management_v2.html#security-scope
