@@ -10,8 +10,25 @@
 
 vnet_flow_main_t flow_main;
 
+static clib_error_t *
+vnet_flow_init (vlib_main_t *vm)
+{
+  vnet_flow_main_t *fm = &flow_main;
+
+  /* Multi-worker, cache-line aligned. */
+  pool_cache_init (&fm->flows, "flows", format_flow, 0, CLIB_CACHE_LINE_BYTES, vnet_flow_t);
+  /* Templates are admin-rare; size 0 means "use default" but per_thread
+   * is still allocated only if there are workers. Cache-line aligned. */
+  pool_cache_init (&fm->flow_templates, "flow-templates", format_flow, 0, CLIB_CACHE_LINE_BYTES,
+		   vnet_flow_t);
+
+  return 0;
+}
+
+VLIB_INIT_FUNCTION (vnet_flow_init);
+
 int
-vnet_flow_get_range (vnet_main_t * vnm, char *owner, u32 count, u32 * start)
+vnet_flow_get_range (vnet_main_t *vnm, char *owner, u32 count, u32 *start)
 {
   vnet_flow_main_t *fm = &flow_main;
   vnet_flow_range_t *r;
@@ -33,16 +50,15 @@ static_always_inline int
 vnet_flow_add_inline (vnet_main_t *vnm, vnet_flow_t *flow, u32 *flow_index, bool template)
 {
   vnet_flow_main_t *fm = &flow_main;
-  vnet_flow_t **ppool = template ? &fm->global_flow_template_pool : &fm->global_flow_pool;
-  vnet_flow_t *pool = *ppool;
   vnet_flow_t *f;
 
   if (!template && (flow->actions & VNET_FLOW_ACTION_MARK) &&
       flow->mark_flow_id == VNET_FLOW_MARK_INVALID)
     return VNET_FLOW_ERROR_INVALID_VALUE;
 
-  pool_get_aligned (pool, f, CLIB_CACHE_LINE_BYTES);
-  *flow_index = f - pool;
+  vlib_pool_cache_t *fpc = template ? &fm->flow_templates : &fm->flows;
+
+  *flow_index = pool_cache_get (fpc, f);
 
   /* copy CL0 hot fields */
   f->type = flow->type;
@@ -56,6 +72,7 @@ vnet_flow_add_inline (vnet_main_t *vnm, vnet_flow_t *flow, u32 *flow_index, bool
   f->driver_data.opaque = ~0;
   f->driver_data.hw_if_index = ~0;
   f->n_flows = 0;
+  f->first_time_enabled = 1;
 
   /* copy pattern */
   if (flow->type == VNET_FLOW_TYPE_GENERIC)
@@ -77,7 +94,6 @@ vnet_flow_add_inline (vnet_main_t *vnm, vnet_flow_t *flow, u32 *flow_index, bool
   f->queue_index = flow->queue_index;
   f->queue_num = flow->queue_num;
 
-  *ppool = pool;
   return 0;
 }
 
@@ -88,9 +104,10 @@ vnet_flow_add (vnet_main_t *vnm, vnet_flow_t *flow, u32 *flow_index)
 }
 
 static_always_inline int
-vnet_flow_enable_disable (vnet_main_t *vnm, u32 flow_index, u32 hw_if_index, uword n_flows,
+vnet_flow_enable_disable (vnet_main_t *vnm, u32 flow_index, u32 hw_if_index, u32 n_flows,
 			  bool template, bool enable)
 {
+  vnet_flow_main_t *fm = &flow_main;
   vnet_flow_t *f = template ? vnet_get_flow_template (flow_index) : vnet_get_flow (flow_index);
   vnet_flow_dev_op_t op = enable ? VNET_FLOW_DEV_OP_ADD_FLOW : VNET_FLOW_DEV_OP_DEL_FLOW;
   vnet_flow_dev_ops_function_t *dev_ops_function;
@@ -145,6 +162,16 @@ vnet_flow_enable_disable (vnet_main_t *vnm, u32 flow_index, u32 hw_if_index, uwo
   if ((enable && !IS_FLOW_ENABLED (f)) || (!enable && IS_FLOW_ENABLED (f)))
     return VNET_FLOW_ERROR_INTERNAL;
 
+  /* allocate pool cache entries only if everything is successful */
+  if (enable && template && f->first_time_enabled)
+    {
+      /* Pre-allocate the flow pool so workers never trigger a realloc
+       * while iterating in the data path. */
+      if (pool_cache_prefill (&fm->flows, n_flows) < 0)
+	return VNET_FLOW_ERROR_INVALID_VALUE;
+    }
+
+  f->first_time_enabled = 0;
   return 0;
 }
 
@@ -152,8 +179,6 @@ static_always_inline int
 vnet_flow_del_inline (vnet_main_t *vnm, u32 flow_index, bool template)
 {
   vnet_flow_main_t *fm = &flow_main;
-  vnet_flow_t **ppool = template ? &fm->global_flow_template_pool : &fm->global_flow_pool;
-  vnet_flow_t *pool = *ppool;
   vnet_flow_t *f = template ? vnet_get_flow_template (flow_index) : vnet_get_flow (flow_index);
   int rv;
 
@@ -168,8 +193,12 @@ vnet_flow_del_inline (vnet_main_t *vnm, u32 flow_index, bool template)
     clib_mem_free (f->generic_pattern);
 
   clib_memset (f, 0, sizeof (*f));
-  pool_put (pool, f);
-  *ppool = pool;
+  f->driver_data.opaque = ~0;
+  f->driver_data.hw_if_index = ~0;
+
+  vlib_pool_cache_t *fpc = template ? &fm->flow_templates : &fm->flows;
+  pool_cache_put_index (fpc, flow_index);
+
   return 0;
 }
 

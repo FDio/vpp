@@ -8,6 +8,8 @@
 
 #include <vppinfra/clib.h>
 #include <vppinfra/pcap.h>
+#include <vppinfra/lock.h>
+#include <vlib/pool_cache.h>
 #include <vnet/vnet.h>
 #include <vnet/l3_types.h>
 #include <vnet/ip/ip4_packet.h>
@@ -359,6 +361,8 @@ typedef struct
 
   /* generic flow pattern (heap-allocated) */
   generic_pattern_t *generic_pattern;
+
+  u8 first_time_enabled;
 } vnet_flow_t;
 
 STATIC_ASSERT (sizeof (vnet_flow_t) <= 4 * CLIB_CACHE_LINE_BYTES,
@@ -378,6 +382,8 @@ int vnet_flow_async_range_enable (vnet_main_t *vnm, u32 flow_template_index, u32
 				  u32 hw_if_index);
 int vnet_flow_async_range_disable (vnet_main_t *vnm, u32 *flow_indices, u32 hw_if_index);
 
+u8 *format_flow (u8 *s, va_list *args);
+
 typedef struct
 {
   u32 start;
@@ -387,9 +393,11 @@ typedef struct
 
 typedef struct
 {
-  /* pool of device flow entries */
-  vnet_flow_t *global_flow_pool;
-  vnet_flow_t *global_flow_template_pool;
+  /* Active flow entries. Workers alloc/free against this concurrently. */
+  vlib_pool_cache_t flows;
+
+  /* Flow templates. Admin-rare; not multi-worker, no caching needed. */
+  vlib_pool_cache_t flow_templates;
 
   /* flow ids allocated */
   u32 flows_used;
@@ -409,20 +417,20 @@ always_inline vnet_flow_t *
 vnet_get_flow (u32 flow_index)
 {
   vnet_flow_main_t *fm = &flow_main;
-  if (pool_is_free_index (fm->global_flow_pool, flow_index))
+  if (pool_cache_is_free_index (&fm->flows, flow_index))
     return 0;
 
-  return pool_elt_at_index (fm->global_flow_pool, flow_index);
+  return pool_cache_elt_at_index (&fm->flows, flow_index);
 }
 
 always_inline vnet_flow_t *
 vnet_get_flow_template (u32 flow_template_index)
 {
   vnet_flow_main_t *fm = &flow_main;
-  if (pool_is_free_index (fm->global_flow_template_pool, flow_template_index))
+  if (pool_cache_is_free_index (&fm->flow_templates, flow_template_index))
     return 0;
 
-  return pool_elt_at_index (fm->global_flow_template_pool, flow_template_index);
+  return pool_cache_elt_at_index (&fm->flow_templates, flow_template_index);
 }
 
 #endif /* included_vnet_flow_flow_h */
