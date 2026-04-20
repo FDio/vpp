@@ -12,8 +12,6 @@
 #include <vnet/ethernet/packet.h>
 #include <vnet/flow/flow.h>
 
-static format_function_t format_flow;
-
 uword
 unformat_ip_port_and_mask (unformat_input_t * input, va_list * args)
 {
@@ -169,6 +167,22 @@ static const char *flow_type_strings[] = { 0,
 #undef _
 };
 
+static int
+flow_iter_yield (vlib_main_t *vm, f64 *start)
+{
+  /* yields for 2 clock ticks every 1 tick to avoid blocking the main thread
+   * when dumping huge data structures */
+  f64 now = vlib_time_now (vm);
+  if (now - *start > 11e-6)
+    {
+      vlib_process_suspend (vm, 21e-6);
+      *start = vlib_time_now (vm);
+      return 1;
+    }
+
+  return 0;
+}
+
 static clib_error_t *
 show_flow_entry (vlib_main_t * vm, unformat_input_t * input,
 		 vlib_cli_command_t * cmd_arg)
@@ -179,8 +193,13 @@ show_flow_entry (vlib_main_t * vm, unformat_input_t * input,
   vnet_hw_interface_t *hi;
   vnet_device_class_t *dev_class;
   vnet_flow_t *f;
+  f64 start;
   u32 index = ~0;
-  u32 total = pool_elts (fm->global_flow_pool);
+  u32 pool_index;
+  u32 total_allocated = pool_cache_count_total_allocated (&fm->flows);
+  u32 total_free =
+    pool_cache_count_global_free (&fm->flows) + pool_cache_count_total_cached (&fm->flows);
+  u32 total = total_allocated > total_free ? total_allocated - total_free : 0;
   u32 max = 20;
   u32 n_shown = 0;
   clib_error_t *error;
@@ -231,18 +250,30 @@ show_flow_entry (vlib_main_t * vm, unformat_input_t * input,
     }
 
 no_args:
-  pool_foreach (f, fm->global_flow_pool)
-    {
-      if (n_shown >= max)
-	break;
-      vlib_cli_output (vm, "%U\n", format_flow, f);
-      if (f->type == VNET_FLOW_TYPE_GENERIC)
-	{
-	  vlib_cli_output (vm, "%s: %s", "spec", f->generic_pattern->spec);
-	  vlib_cli_output (vm, "%s: %s", "mask", f->generic_pattern->mask);
-	}
-      n_shown++;
-    }
+  start = vlib_time_now (vm);
+  vlib_foreach_pool_cache (f, pool_index, &fm->flows, {
+    if (n_shown >= max)
+      break;
+
+    /* check if the flow has been freed during yield */
+    if (flow_iter_yield (vm, &start))
+      {
+	if (pool_cache_is_free_index (&fm->flows, pool_index))
+	  continue;
+      }
+
+    /* skip pre-allocated/cached entries not yet assigned to a flow */
+    if (f->type == VNET_FLOW_TYPE_UNKNOWN)
+      continue;
+
+    vlib_cli_output (vm, "%U\n", format_flow, f);
+    if (f->type == VNET_FLOW_TYPE_GENERIC)
+      {
+	vlib_cli_output (vm, "%s: %s", "spec", f->generic_pattern->spec);
+	vlib_cli_output (vm, "%s: %s", "mask", f->generic_pattern->mask);
+      }
+    n_shown++;
+  });
 
   vlib_cli_output (vm, "Displayed %u flows (%u total flows)", n_shown, total);
   if (total > max)
@@ -287,7 +318,9 @@ show_flow_template (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t
   vnet_hw_interface_t *hi;
   vnet_device_class_t *dev_class;
   vnet_flow_t *f;
+  f64 start;
   u32 index = ~0;
+  u32 pool_index;
   clib_error_t *error = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -329,10 +362,16 @@ show_flow_template (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t
     }
 
 no_args:
-  pool_foreach (f, fm->global_flow_template_pool)
-    {
-      vlib_cli_output (vm, "%U\n", format_flow, f);
-    }
+  start = vlib_time_now (vm);
+  vlib_foreach_pool_cache (f, pool_index, &fm->flow_templates, {
+    /* check if the flow has been freed during yield */
+    if (flow_iter_yield (vm, &start))
+      {
+	if (pool_cache_is_free_index (&fm->flows, pool_index))
+	  continue;
+      }
+    vlib_cli_output (vm, "%U\n", format_flow, f);
+  });
 
   return 0;
 }
@@ -1095,8 +1134,8 @@ format_flow_match (u8 * s, va_list * args)
   return s;
 }
 
-static u8 *
-format_flow (u8 * s, va_list * args)
+u8 *
+format_flow (u8 *s, va_list *args)
 {
   vlib_main_t *vm = vlib_get_main ();
   vnet_flow_t *f = va_arg (*args, vnet_flow_t *);
