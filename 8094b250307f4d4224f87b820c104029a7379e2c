@@ -16,6 +16,24 @@
       "message": "Can we reschedule cross threads?",
       "revId": "8094b250307f4d4224f87b820c104029a7379e2c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "82372e35_db119704",
+        "filename": "src/plugins/quic_quicly/quic_quicly.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1050,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-04-20T15:19:40Z",
+      "side": 1,
+      "message": "we are already migrated and on new thread",
+      "parentUuid": "d94080a7_7f44adec",
+      "revId": "8094b250307f4d4224f87b820c104029a7379e2c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
