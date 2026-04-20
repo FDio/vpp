@@ -60,7 +60,7 @@ trace add pg-input 100
 sfdp session stats ring enable
 
 # Set custom data value for tenant 1
-sfdp session stats custom-data tenant 1 value 42
+sfdp session stats custom-data tenant 1 value 42 second-value 64
 
 # Configure periodic session statistics export (every 5 seconds, batch every 0.5 seconds)
 sfdp session stats periodic interval 5 batch-interval 0.5
