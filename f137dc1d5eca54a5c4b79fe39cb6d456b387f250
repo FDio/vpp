@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8a358ec2_fc3ba6b2",
+        "filename": "docs/aboutvpp/security/tsc_vulnerability_management_v2.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 92,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-04-20T14:26:31Z",
+      "side": 1,
+      "message": "I would recommend that this section be moved to security.rst because this document is intended to be generic process for all FD.io projects and requires TSC approval for changes.",
+      "range": {
+        "startLine": 53,
+        "startChar": 0,
+        "endLine": 92,
+        "endChar": 0
+      },
+      "revId": "f137dc1d5eca54a5c4b79fe39cb6d456b387f250",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
