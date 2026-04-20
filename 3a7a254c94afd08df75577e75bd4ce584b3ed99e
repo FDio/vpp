@@ -33,6 +33,24 @@
       "message": "Can you add APIs to set and retrieve the default rx mode? If it can be changed or viewed via CLI at runtime, those operations should be available via API also.",
       "revId": "3a7a254c94afd08df75577e75bd4ce584b3ed99e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7c03db95_1ab6b1c8",
+        "filename": "src/vnet/interface_cli.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1597,
+      "author": {
+        "id": 3124
+      },
+      "writtenOn": "2026-04-20T09:30:37Z",
+      "side": 1,
+      "message": "Added API messages sw_interface_set_default_rx_mode and sw_interface_get_default_rx_mode with corresponding handlers in interface_api.c.",
+      "parentUuid": "6ecc479f_793f676e",
+      "revId": "3a7a254c94afd08df75577e75bd4ce584b3ed99e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
