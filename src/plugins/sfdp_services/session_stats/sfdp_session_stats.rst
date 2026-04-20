@@ -19,11 +19,20 @@ Key Features
 
 - Per-session packet and byte counters (bidirectional)
 - TTL statistics with min/max/mean/stddev per direction
-- RTT estimation with mean/stddev per direction
-- TCP-specific metrics: SYN/FIN/RST counters, retransmissions, zero-window events, partial overlaps, etc.
+- RTT estimation with mean/stddev per direction, honouring Karn's algorithm
+  under retransmission/overlap
+- One-shot TCP handshake RTT (``syn_rtt``), with a one-way fallback that works
+  when only the initiator direction is visible
+- TCP-specific metrics: SYN/FIN/RST counters, data-vs-control packet split,
+  retransmissions, zero-window events, partial overlaps, duplicate ACKs,
+  out-of-order classification
 - ECN/CWR congestion notification tracking
-- Setting custom u64 value per-tenant through API, which can be used to introduce external labels and/or for data correlation
+- Setting custom u64 value per-tenant through API, which can be used to
+  introduce external labels and/or for data correlation
 - Ring buffer export to VPP stats segment for external consumption
+- Window-scoped Welford statistics (TTL / RTT reset on each successful
+  ring export) so exported values reflect the current interval rather than the
+  whole session lifetime
 - IPv4 and IPv6 traffic support
 
 
@@ -44,11 +53,11 @@ and per-packet processing logic is in
    ======================================= ==========================================================
    Statistic                               Description
    ======================================= ==========================================================
-   Packet count (per direction)            Total packets seen in forward and reverse directions
-   Byte count (per direction)              Total bytes at IP level, including headers
+   Packet count (per direction)            Total packets seen in forward and reverse directions (lifetime)
+   Byte count (per direction)              Total bytes at IP level, including headers (lifetime)
    First/last seen timestamps              Timestamps of the first and last packet of the session
    Session duration                        Time elapsed between first and last packet
-   TTL / hop-limit (per direction)         Min, max, mean, and standard deviation (Welford's algorithm)
+   TTL / hop-limit (per direction)         Min, max, mean, and standard deviation (Welford); window-scoped
    ======================================= ==========================================================
 
 **TCP-Specific**
@@ -59,19 +68,77 @@ and per-packet processing logic is in
    ============================================ ==========================================================
    Statistic                                    Description
    ============================================ ==========================================================
-   SYN / FIN / RST counts                       Number of each control packet type
-   Handshake completion                          Whether the 3-way handshake completed
+   SYN / FIN / RST counts                       Number of each control packet type (lifetime)
+   Handshake completion                         Whether the 3-way handshake completed
+   Handshake RTT (``syn_rtt``)                  One-shot seconds between the initiator's SYN and either
+                                                the responder's SYN-ACK (bidirectional, preferred) or the
+                                                initiator's handshake-completing ACK (one-way fallback).
+                                                Lifetime scalar; latched once, not reset on export.
    MSS                                          Maximum Segment Size extracted from SYN options
-   Sequence / ACK tracking (per direction)       Last sequence and acknowledgment numbers seen
-   Retransmissions (per direction)               Segments within seen sequence space, confirmed as loss by duplicate ACKs or prior ACK
-   Partial overlaps (per direction)              Segments that partially overlap previously seen data
-   Duplicate ACKs (per direction)                Repeated ACKs with outstanding unacknowledged data
-   Zero-window events (per direction)            Edge-triggered transitions to receiver window of zero
-   Out-of-order segments (per direction)         Segments filling a gap without preceding duplicate ACKs
-   RTT estimate (per direction)                  Mean and standard deviation via probe-and-match (Welford's)
-   ECN ECT / CE packets                          Packets with ECT(0)/ECT(1) or Congestion Experienced in IP header
-   ECE / CWR packets                             TCP ECE and CWR flag counts
+   Data packets (per direction)                 Packets carrying non-empty TCP payload; denominator for
+                                                loss rate and mean segment size (lifetime)
+   Sequence / ACK tracking (per direction)      Last sequence and acknowledgment numbers seen
+   Retransmissions (per direction)              Segments within seen sequence space, confirmed as loss by
+                                                duplicate ACKs or prior ACK (lifetime)
+   Partial overlaps (per direction)             Segments that partially overlap previously seen data
+                                                (lifetime)
+   Duplicate ACKs (per direction)               Repeated ACKs with outstanding unacknowledged data
+                                                (lifetime)
+   Zero-window events (per direction)           Edge-triggered transitions to receiver window of zero
+                                                (lifetime)
+   Out-of-order segments (per direction)        Segments filling a gap without preceding duplicate ACKs
+                                                (lifetime)
+   RTT estimate (per direction)                 Mean and standard deviation via probe-and-match (Welford);
+                                                window-scoped. Probes armed by retransmits or partial
+                                                overlaps are discarded as ambiguous.
+   ECN ECT / CE packets                         Packets with ECT(0)/ECT(1) or Congestion Experienced in
+                                                IP header (lifetime)
+   ECE / CWR packets                            TCP ECE and CWR flag counts (lifetime)
    ============================================ ==========================================================
+
+Window-Scoped vs Lifetime Statistics
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Two categories of statistic are emitted:
+
+- **Lifetime** (cumulative since session start): packet/byte counts, TCP
+  event counters (SYN/FIN/RST, ECE/CWR, ECN ECT/CE, retransmissions, partial
+  overlaps, duplicate ACKs, out-of-order, zero-window events), data-packet
+  counters, last seq/ack, MSS, handshake completion, and ``syn_rtt``.
+- **Window-scoped** (reset at each successful ring-buffer export): TTL
+  min/max/mean/stddev and RTT mean/stddev.
+
+With steady-cadence periodic exports (default 30s), consumers see a time
+series where each window-scoped value describes activity within that
+interval. This keeps statistics responsive to recent changes instead of
+being smoothed by a long session history. A window value of 0 combined
+with ``rtt_count`` unchanged means "no sample in this interval", not
+"measured 0".
+
+**Timing caveat:** reset happens on successful ring commit, not on a
+wall-clock boundary. If the ring is full and reservation fails, the
+export bails out before the reset block, so the accumulators continue
+growing until the next successful commit (which then covers both
+intervals).
+
+Handshake-RTT measurement
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Two code paths can latch ``syn_rtt``, in preference order:
+
+1. **Bidirectional (preferred)** — stamp origination on the initiator's
+   pure SYN; compute ``now - syn_timestamp[ack_dir]`` when the responder's
+   SYN-ACK arrives. Measures the pure SYN→SYN-ACK network RTT.
+2. **One-way fallback** — if the SYN-ACK was not observed at this vantage
+   point, the same timestamp is differenced against the initiator's
+   handshake-completing ACK. This measures the full 3WHS wall-time from
+   the initiator's perspective (SYN + network RTT + initiator's stack
+   delay to emit the ACK, usually sub-ms for kernel TCP).
+
+The sampler only runs while ``tcp.handshake_complete == 0`` so mid-session
+SYNs (half-open probes, scanners) cannot overwrite the measurement. The
+``syn_rtt == 0.0`` guard ensures the bidirectional value wins the race
+whenever both paths are available.
 
 Exposing Session Statistics
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~

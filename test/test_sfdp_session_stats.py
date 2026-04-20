@@ -883,6 +883,90 @@ class TestSfdpSessionStats(VppTestCase):
 
         self._cleanup_sfdp_session_stats(config)
 
+    def test_session_stats_tcp_data_packets(self):
+        """Test that TCP data packet counter is incremented correctly"""
+        config = self._configure_sfdp_session_stats(
+            enable_bidirectional=True,
+        )
+
+        sport = 15000
+        dport = 16000
+
+        def fwd(flags, seq, ack, payload=b""):
+            return (
+                Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+                / IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4, ttl=64)
+                / TCP(sport=sport, dport=dport, flags=flags, seq=seq, ack=ack)
+                / Raw(payload)
+            )
+
+        def rev(flags, seq, ack, payload=b""):
+            return (
+                Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac)
+                / IP(src=self.pg1.remote_ip4, dst=self.pg0.remote_ip4, ttl=64)
+                / TCP(sport=dport, dport=sport, flags=flags, seq=seq, ack=ack)
+                / Raw(payload)
+            )
+
+        def get_session_stats():
+            stats = self.vapi.sfdp_session_stats_dump()
+            self.assertEqual(len(stats), 1, "Should have exactly one session")
+            return stats[0]
+
+        # TCP Hanshake traffic, tcp data packets counter is not expected to be incremented
+        self.pg_send(self.pg0, fwd(flags="S", seq=1000, ack=0))
+        self.pg_send(self.pg1, rev(flags="SA", seq=2000, ack=1001))
+        self.pg_send(self.pg0, fwd(flags="A", seq=1001, ack=2001))
+
+        s = get_session_stats()
+        self.assertEqual(
+            s.tcp_data_packets_fwd,
+            0,
+            "No payload sent yet — fwd data counter must be 0",
+        )
+        self.assertEqual(
+            s.tcp_data_packets_rev,
+            0,
+            "No payload sent yet — rev data counter must be 0",
+        )
+
+        # Three forward payload-carrying segments.
+        seq_fwd = 1001
+        for i in range(3):
+            self.pg_send(
+                self.pg0, fwd(flags="PA", seq=seq_fwd, ack=2001, payload=b"\xaa" * 100)
+            )
+            seq_fwd += 100
+
+        # pure-ACK reverse packet
+        self.pg_send(self.pg1, rev(flags="A", seq=2001, ack=seq_fwd))
+
+        # Two reverse payload-carrying segments.
+        seq_rev = 2001
+        for i in range(2):
+            self.pg_send(
+                self.pg1,
+                rev(flags="PA", seq=seq_rev, ack=seq_fwd, payload=b"\xbb" * 50),
+            )
+            seq_rev += 50
+
+        # pure-ACK forward packet
+        self.pg_send(self.pg0, fwd(flags="A", seq=seq_fwd, ack=seq_rev))
+
+        s = get_session_stats()
+        self.assertEqual(
+            s.tcp_data_packets_fwd,
+            3,
+            "Three forward payload-carrying segments should increment fwd counter",
+        )
+        self.assertEqual(
+            s.tcp_data_packets_rev,
+            2,
+            "Two reverse payload-carrying segments should increment rev counter",
+        )
+
+        self._cleanup_sfdp_session_stats(config)
+
     def test_session_stats_multiple_sessions(self):
         """Test stats tracking across multiple sessions"""
         self._configure_sfdp_session_stats()

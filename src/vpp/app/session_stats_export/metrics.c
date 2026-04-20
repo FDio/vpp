@@ -149,10 +149,16 @@ dump_session_metrics (FILE *stream, stat_client_main_t *shm)
 		  "gauge");
   emit_help_type (stream, "sfdp_session_rtt_stddev_reverse_seconds", "RTT stddev reverse direction",
 		  "gauge");
+  emit_help_type (stream, "sfdp_session_syn_rtt_seconds",
+		  "SYN->SYN-ACK handshake RTT (0 if not observed)", "gauge");
 
   emit_help_type (stream, "sfdp_session_tcp_mss", "TCP Maximum Segment Size", "gauge");
   emit_help_type (stream, "sfdp_session_tcp_handshake_complete", "TCP handshake completed (0 or 1)",
 		  "gauge");
+  emit_help_type (stream, "sfdp_session_tcp_data_packets_forward",
+		  "TCP packets carrying non-empty payload forward", "counter");
+  emit_help_type (stream, "sfdp_session_tcp_data_packets_reverse",
+		  "TCP packets carrying non-empty payload reverse", "counter");
   emit_help_type (stream, "sfdp_session_tcp_syn_packets", "TCP SYN packets counter", "counter");
   emit_help_type (stream, "sfdp_session_tcp_fin_packets", "TCP FIN packets counter", "counter");
   emit_help_type (stream, "sfdp_session_tcp_rst_packets", "TCP RST packets counter", "counter");
@@ -252,6 +258,8 @@ dump_session_metrics (FILE *stream, stat_client_main_t *shm)
 		   "%.6f", s->rtt_stddev_forward);
       emit_metric (stream, em, "sfdp_session_rtt_stddev_reverse_seconds", base_labels, timestamp_ms,
 		   "%.6f", s->rtt_stddev_reverse);
+      emit_metric (stream, em, "sfdp_session_syn_rtt_seconds", base_labels, timestamp_ms, "%.6f",
+		   s->syn_rtt);
 
       if (s->proto == 6)
 	{
@@ -259,6 +267,10 @@ dump_session_metrics (FILE *stream, stat_client_main_t *shm)
 		       s->tcp_mss);
 	  emit_metric (stream, em, "sfdp_session_tcp_handshake_complete", base_labels, timestamp_ms,
 		       "%u", s->tcp_handshake_complete);
+	  emit_metric (stream, em, "sfdp_session_tcp_data_packets_forward", base_labels,
+		       timestamp_ms, "%lu", s->tcp_data_packets_forward);
+	  emit_metric (stream, em, "sfdp_session_tcp_data_packets_reverse", base_labels,
+		       timestamp_ms, "%lu", s->tcp_data_packets_reverse);
 	  emit_metric (stream, em, "sfdp_session_tcp_syn_packets", base_labels, timestamp_ms, "%u",
 		       s->tcp_syn_packets);
 	  emit_metric (stream, em, "sfdp_session_tcp_fin_packets", base_labels, timestamp_ms, "%u",
