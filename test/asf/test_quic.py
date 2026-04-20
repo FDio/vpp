@@ -117,7 +117,7 @@ class QUICTestCase(VppAsfTestCase):
         self.ip_t10.add_vpp_config()
         self.logger.debug(self.vapi.cli("show ip fib"))
         # TODO: refactor test suites to use all crypto cipher suites
-        # self.vapi.cli("quic set crypto api vpp")
+        self.vapi.cli("quic set crypto api vpp")
         # self.vapi.cli("quic set crypto api engine-lib")
         self.logger.debug(self.vapi.cli("show quic"))
 
