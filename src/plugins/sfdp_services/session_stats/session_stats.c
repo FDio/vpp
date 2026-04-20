@@ -11,7 +11,7 @@
 #include <sfdp_services/session_stats/session_stats.api.h>
 #undef vl_endianfun
 
-STATIC_ASSERT (sizeof (vl_api_sfdp_session_stats_ring_entry_t) == 258,
+STATIC_ASSERT (sizeof (vl_api_sfdp_session_stats_ring_entry_t) == 309,
 	       "sfdp_session_stats_ring_entry_t size changed, "
 	       "update consumers and bump API version");
 
@@ -160,15 +160,27 @@ sfdp_session_stats_export_session (vlib_main_t *vm, u32 session_index,
     stats->rtt[SFDP_FLOW_FORWARD].m2, stats->rtt[SFDP_FLOW_FORWARD].count);
   entry->rtt_stddev_reverse = sfdp_session_stats_compute_stddev (
     stats->rtt[SFDP_FLOW_REVERSE].m2, stats->rtt[SFDP_FLOW_REVERSE].count);
+  entry->rtt_min_forward = stats->rtt[SFDP_FLOW_FORWARD].min;
+  entry->rtt_min_reverse = stats->rtt[SFDP_FLOW_REVERSE].min;
+  entry->rtt_max_forward = stats->rtt[SFDP_FLOW_FORWARD].max;
+  entry->rtt_max_reverse = stats->rtt[SFDP_FLOW_REVERSE].max;
+
+  /* SYN handshake RTT */
+  entry->syn_rtt = stats->syn_rtt;
 
   /* TCP-specific statistics (only valid for TCP sessions) */
   if (session->proto == IP_PROTOCOL_TCP)
     {
-      entry->tcp_mss = stats->tcp.mss;
+      entry->tcp_mss_fwd = stats->tcp.mss[SFDP_FLOW_FORWARD];
+      entry->tcp_mss_rev = stats->tcp.mss[SFDP_FLOW_REVERSE];
       entry->tcp_handshake_complete = stats->tcp.handshake_complete;
+      entry->tcp_ts_negotiated = stats->tcp.timestamp_option_negotiated[SFDP_FLOW_FORWARD] &&
+				 stats->tcp.timestamp_option_negotiated[SFDP_FLOW_REVERSE];
       entry->tcp_syn_packets = stats->tcp.syn_packets;
       entry->tcp_fin_packets = stats->tcp.fin_packets;
       entry->tcp_rst_packets = stats->tcp.rst_packets;
+      entry->tcp_data_packets_forward = stats->tcp.data_packets[SFDP_FLOW_FORWARD];
+      entry->tcp_data_packets_reverse = stats->tcp.data_packets[SFDP_FLOW_REVERSE];
       /* ECN/CWR metrics */
       entry->tcp_ecn_ect_packets = stats->tcp.ecn_ect_packets;
       entry->tcp_ecn_ce_packets = stats->tcp.ecn_ce_packets;
@@ -178,10 +190,6 @@ sfdp_session_stats_export_session (vlib_main_t *vm, u32 session_index,
       entry->tcp_retransmissions_rev = stats->tcp.retransmissions[SFDP_FLOW_REVERSE];
       entry->tcp_zero_window_events_fwd = stats->tcp.zero_window_events[SFDP_FLOW_FORWARD];
       entry->tcp_zero_window_events_rev = stats->tcp.zero_window_events[SFDP_FLOW_REVERSE];
-      entry->tcp_dupack_events_fwd = stats->tcp.dupack_like[SFDP_FLOW_FORWARD];
-      entry->tcp_dupack_events_rev = stats->tcp.dupack_like[SFDP_FLOW_REVERSE];
-      entry->tcp_partial_overlap_events_fwd = stats->tcp.partial_overlaps[SFDP_FLOW_FORWARD];
-      entry->tcp_partial_overlap_events_rev = stats->tcp.partial_overlaps[SFDP_FLOW_REVERSE];
       entry->tcp_out_of_order_events_fwd = stats->tcp.out_of_order[SFDP_FLOW_FORWARD];
       entry->tcp_out_of_order_events_rev = stats->tcp.out_of_order[SFDP_FLOW_REVERSE];
       entry->tcp_last_seq_forward = stats->tcp.last_seq[SFDP_FLOW_FORWARD];
@@ -192,16 +200,16 @@ sfdp_session_stats_export_session (vlib_main_t *vm, u32 session_index,
 
   /* Populate opaque data - always present in exported entries. */
   entry->opaque = SFDP_SESSION_STATS_OPAQUE_DATA_DEFAULT;
+  entry->opaque2 = SFDP_SESSION_STATS_OPAQUE_DATA_DEFAULT;
 
   if (vec_len (ssm->custom_data_entries) > 0 && tenant)
     {
-      /* Set per-tenant API custom data */
-      u8 has_tenant_data = 0;
-      u64 tenant_api_data =
-	sfdp_session_stats_get_tenant_custom_data (tenant->tenant_id, &has_tenant_data);
-      if (has_tenant_data)
+      sfdp_session_stats_custom_data_entry_t tenant_api_data =
+	sfdp_session_stats_get_tenant_custom_data (tenant->tenant_id);
+      if (tenant_api_data.has_value)
 	{
-	  entry->opaque = tenant_api_data;
+	  entry->opaque = tenant_api_data.value;
+	  entry->opaque2 = tenant_api_data.value2;
 	}
     }
 
@@ -212,6 +220,23 @@ sfdp_session_stats_export_session (vlib_main_t *vm, u32 session_index,
 
   /* Commit the slot */
   vlib_stats_ring_commit_slot (ssm->ring_buffer_index, thread_index);
+
+  /* TTL / RTT Welford state are window-scoped and
+   * reset after a successful export so the next snapshot captures only
+   * activity that occurred between this export window and the next */
+  for (u32 d = 0; d < SFDP_FLOW_F_B_N; d++)
+    {
+      stats->ttl[d].mean = 0.0;
+      stats->ttl[d].m2 = 0.0;
+      stats->ttl[d].count = 0;
+      stats->ttl[d].min_ttl = 0;
+      stats->ttl[d].max_ttl = 0;
+      stats->rtt[d].mean = 0.0;
+      stats->rtt[d].m2 = 0.0;
+      stats->rtt[d].min = 0.0;
+      stats->rtt[d].max = 0.0;
+      stats->rtt[d].count = 0;
+    }
 
   /* Update per-thread export counter */
   ssm->per_thread[thread_index].total_exports++;
@@ -410,7 +435,7 @@ sfdp_session_stats_init (vlib_main_t *vm)
  * Set tenant custom data value for a tenant.
  */
 int
-sfdp_session_stats_set_tenant_custom_data (u32 tenant_id, u64 value)
+sfdp_session_stats_set_tenant_custom_data (u32 tenant_id, u64 value, u64 value2)
 {
   sfdp_session_stats_main_t *ssm = &sfdp_session_stats_main;
 
@@ -421,6 +446,7 @@ sfdp_session_stats_set_tenant_custom_data (u32 tenant_id, u64 value)
   sfdp_session_stats_custom_data_entry_t entry_init = { 0 };
   vec_validate_init_empty (ssm->custom_data_entries, tenant_id, entry_init);
   ssm->custom_data_entries[tenant_id].value = value;
+  ssm->custom_data_entries[tenant_id].value2 = value2;
   ssm->custom_data_entries[tenant_id].has_value = 1;
 
   return 0;
@@ -445,6 +471,7 @@ sfdp_session_stats_clear_tenant_custom_data (u32 tenant_id)
       if (tenant_id < vec_len (ssm->custom_data_entries))
 	{
 	  ssm->custom_data_entries[tenant_id].value = 0;
+	  ssm->custom_data_entries[tenant_id].value2 = 0;
 	  ssm->custom_data_entries[tenant_id].has_value = 0;
 	}
     }
@@ -452,23 +479,21 @@ sfdp_session_stats_clear_tenant_custom_data (u32 tenant_id)
   return 0;
 }
 
-u64
-sfdp_session_stats_get_tenant_custom_data (u32 tenant_id, u8 *has_value)
+sfdp_session_stats_custom_data_entry_t
+sfdp_session_stats_get_tenant_custom_data (u32 tenant_id)
 {
   sfdp_session_stats_main_t *ssm = &sfdp_session_stats_main;
 
   if (tenant_id < vec_len (ssm->custom_data_entries) &&
       ssm->custom_data_entries[tenant_id].has_value)
-    {
-      if (has_value)
-	*has_value = 1;
-      return ssm->custom_data_entries[tenant_id].value;
-    }
+    return ssm->custom_data_entries[tenant_id];
 
-  /* No value set for this tenant - return default opaque value */
-  if (has_value)
-    *has_value = 0;
-  return SFDP_SESSION_STATS_OPAQUE_DATA_DEFAULT;
+  /* No value set for this tenant - return default opaque values */
+  return (sfdp_session_stats_custom_data_entry_t){
+    .value = SFDP_SESSION_STATS_OPAQUE_DATA_DEFAULT,
+    .value2 = SFDP_SESSION_STATS_OPAQUE_DATA_DEFAULT,
+    .has_value = 0,
+  };
 }
 
 VLIB_INIT_FUNCTION (sfdp_session_stats_init);

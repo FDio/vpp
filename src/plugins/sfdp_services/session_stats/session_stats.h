@@ -14,6 +14,9 @@
  */
 typedef struct
 {
+  /* TCP Data Packets (non-zero payload) counter */
+  u64 data_packets[SFDP_FLOW_F_B_N];
+
   /* Basic TCP counters */
   u32 syn_packets; /**< SYN packets seen */
   u32 fin_packets; /**< FIN packets seen */
@@ -28,24 +31,27 @@ typedef struct
   /* TCP events per direction */
   u32 retransmissions[SFDP_FLOW_F_B_N];	   /**< Detected data retransmits */
   u32 zero_window_events[SFDP_FLOW_F_B_N]; /**< Receiver window = 0 transitions */
-  u32 dupack_like[SFDP_FLOW_F_B_N];	   /**< Duplicate ACK patterns */
-  u32 partial_overlaps[SFDP_FLOW_F_B_N];   /**< Partially overlapping segments */
   u32 out_of_order[SFDP_FLOW_F_B_N];	   /**< Out-of-order segments detected */
 
   /* TCP sequence window tracking */
   u32 last_seq[SFDP_FLOW_F_B_N]; /**< Last sequence number seen */
   u32 last_ack[SFDP_FLOW_F_B_N]; /**< Last ACK number seen */
 
-  /* MSS from SYN options */
-  u16 mss;		 /**< MSS from SYN options if available */
-  u8 handshake_complete; /**< 3-way handshake completed flag */
-  u8 reserved_tcp;
+  u32 dupack_like[SFDP_FLOW_F_B_N];
+
+  /* MSS from SYN options per-direction*/
+  u16 mss[SFDP_FLOW_F_B_N]; /**< MSS value advertised by each endpoint in its SYN */
+  u8 handshake_complete;    /**< 3-way handshake completed flag */
+  u8 timestamp_option_negotiated[SFDP_FLOW_F_B_N]; /**< 1 if Timestamps option seen in this
+						      direction's SYN */
 } sfdp_session_stats_tcp_t;
 
 typedef struct
 {
   f64 mean;  /**< Running mean */
   f64 m2;    /**< Variance accumulator */
+  f64 min;   /**< Minimum sample (0.0 = no sample yet) */
+  f64 max;   /**< Maximum sample */
   u32 count; /**< Sample count */
   u32 reserved;
 } sfdp_session_stats_rtt_t;
@@ -72,6 +78,7 @@ typedef struct
   session_version_t version;	/**< Session version for validation */
   f64 first_seen;		/**< Timestamp of first packet */
   f64 last_seen;		/**< Timestamp of last packet */
+  f64 syn_rtt;			/**< SYN->SYN-ACK RTT in seconds (0 if not measured) */
 
   /* Extended statistics - TTL per direction */
   sfdp_session_stats_ttl_t ttl[SFDP_FLOW_F_B_N];
@@ -83,14 +90,24 @@ typedef struct
   sfdp_session_stats_tcp_t tcp;
 
   /* RTT measurement helpers */
-  u32 rtt_probe_tick_us[SFDP_FLOW_F_B_N];   /**< When data was sent for RTT measurement */
-  u32 last_data_seq[SFDP_FLOW_F_B_N];	    /**< Last data sequence for RTT */
+  u32
+    rtt_probe_tick_us[SFDP_FLOW_F_B_N]; /**< When data was sent for RTT measurement (probe-based) */
+  u32 last_data_seq[SFDP_FLOW_F_B_N];	/**< Last data sequence for RTT */
+
+  /* TS-based RTT: TSval of last data segment + wall-clock at that moment.
+   * When the peer echoes it back in TSecr we get a Karn-safe sample. */
+  u32 last_tsval[SFDP_FLOW_F_B_N];	    /**< TSval of last data packet per direction */
+  u32 last_tsval_tick_us[SFDP_FLOW_F_B_N];  /**< Wall-clock us when last_tsval was recorded */
   u32 end_seq_max[SFDP_FLOW_F_B_N];	    /**< Highest seq+len for overlap detection */
+  u32 gap_start_seq[SFDP_FLOW_F_B_N];	    /**< Seq where the gap begins (old end_seq_max) */
+  u32 gap_dupack_snapshot[SFDP_FLOW_F_B_N]; /**< Snapshot of dupack_like when gap was detected */
+
+  /* SYN-RTT measurement (one-shot handshake sample, per-direction origination) */
+  u32 syn_timestamp_us[SFDP_FLOW_F_B_N]; /**< Tick when a SYN was seen per-direction */
+
   u8 last_seq_valid[SFDP_FLOW_F_B_N];	    /**< Sequence tracking valid flag */
   u8 in_zero_window[SFDP_FLOW_F_B_N];	    /**< Currently in zero window state */
   u8 has_pending_gap[SFDP_FLOW_F_B_N];	    /**< Forward gap detected, awaiting fill */
-  u32 gap_start_seq[SFDP_FLOW_F_B_N];	    /**< Seq where the gap begins (old end_seq_max) */
-  u32 gap_dupack_snapshot[SFDP_FLOW_F_B_N]; /**< dupack_like[ack_dir] at gap detection */
 } sfdp_session_stats_entry_t;
 
 /* Default value for opaque data when no tenant-specific value is set */
@@ -123,8 +140,9 @@ typedef struct
  */
 typedef struct
 {
-  u64 value;	/**< Custom data value */
-  u8 has_value; /**< Whether value has been explicitly set */
+  u64 value;	/**< Custom data value (mapped to opaque) */
+  u64 value2;	/**< Custom data second value (mapped to opaque2) */
+  u8 has_value; /**< Whether values have been explicitly set */
   u8 reserved[7];
 } sfdp_session_stats_custom_data_entry_t;
 
@@ -186,9 +204,9 @@ u32 sfdp_session_stats_export_batch (vlib_main_t *vm, sfdp_session_stats_export_
 int sfdp_session_stats_clear_sessions (u64 session_id);
 
 /* Custom data configuration functions */
-int sfdp_session_stats_set_tenant_custom_data (u32 tenant_id, u64 value);
+int sfdp_session_stats_set_tenant_custom_data (u32 tenant_id, u64 value, u64 value2);
 int sfdp_session_stats_clear_tenant_custom_data (u32 tenant_id);
-u64 sfdp_session_stats_get_tenant_custom_data (u32 tenant_id, u8 *has_value);
+sfdp_session_stats_custom_data_entry_t sfdp_session_stats_get_tenant_custom_data (u32 tenant_id);
 
 /* Export and periodic node control functions */
 int sfdp_session_stats_periodic_export_enable (vlib_main_t *vm, f64 interval, f64 batch_interval);
@@ -251,6 +269,10 @@ sfdp_session_stats_update_rtt (sfdp_session_stats_rtt_t *rtt, f64 rtt_sample)
   /* Only accept reasonable RTT samples (0-60 seconds) */
   if (rtt_sample >= 0 && rtt_sample < 60.0)
     {
+      if (rtt->count == 0 || rtt_sample < rtt->min)
+	rtt->min = rtt_sample;
+      if (rtt_sample > rtt->max)
+	rtt->max = rtt_sample;
       sfdp_session_stats_welford_update (&rtt->mean, &rtt->m2, &rtt->count, rtt_sample);
     }
 }

@@ -172,6 +172,7 @@ main (int argc, char **argv)
 		"[max-tracked-sessions <n>] "
 		"[instance <name>] "
 		"[opaque-label <name>] "
+		"[opaque2-label <name>] "
 		"[debug]\n";
 
   clib_mem_init (0, 256 << 20);
@@ -185,6 +186,7 @@ main (int argc, char **argv)
   em->thread_states = 0;
   em->instance = 0;
   em->opaque_label = 0;
+  em->opaque2_label = 0;
   em->session_silence_timeout = session_timeout;
   em->max_tracked_sessions = max_tracked_sessions;
   em->missed_entries_total = 0;
@@ -205,6 +207,8 @@ main (int argc, char **argv)
       else if (unformat (a, "instance %s", &em->instance))
 	;
       else if (unformat (a, "opaque-label %s", &em->opaque_label))
+	;
+      else if (unformat (a, "opaque2-label %s", &em->opaque2_label))
 	;
       else if (unformat (a, "debug"))
 	em->debug = 1;
@@ -232,6 +236,10 @@ main (int argc, char **argv)
 		   "  opaque-label <name>  Label name for opaque session field "
 		   "(default: %s)\n",
 		   OPAQUE_LABEL_DEFAULT_NAME);
+	  fformat (stderr,
+		   "  opaque2-label <name> Label name for opaque2 session field "
+		   "(default: %s)\n",
+		   OPAQUE2_LABEL_DEFAULT_NAME);
 	  fformat (stderr, "  debug                Enable ring buffer debug logging\n");
 	  exit (0);
 	}
@@ -269,6 +277,10 @@ main (int argc, char **argv)
     fprintf (stderr, "  Opaque label: %s\n", em->opaque_label);
   else
     fprintf (stderr, "  Opaque label: %s\n", OPAQUE_LABEL_DEFAULT_NAME);
+  if (em->opaque2_label)
+    fprintf (stderr, "  Opaque2 label: %s\n", em->opaque2_label);
+  else
+    fprintf (stderr, "  Opaque2 label: %s\n", OPAQUE2_LABEL_DEFAULT_NAME);
   fprintf (stderr, "  Metrics URL: http://localhost:%d/metrics\n", port);
 
   int fd = start_listen (port);
@@ -315,6 +327,7 @@ main (int argc, char **argv)
   vec_free (em->thread_states);
   vec_free (em->instance);
   vec_free (em->opaque_label);
+  vec_free (em->opaque2_label);
   close (fd);
 
   exit (0);

@@ -8,6 +8,7 @@ from asfframework import VppTestRunner
 from framework import VppTestCase
 from config import config
 from vpp_papi import VppEnum
+from test_sfdp import BaseSfdpTest
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
@@ -18,7 +19,7 @@ from scapy.layers.inet import IP, UDP, TCP
     "sfdp_services" in config.excluded_plugins,
     "SFDP_Services plugin is required to run SFDP Session Stats tests",
 )
-class TestSfdpSessionStats(VppTestCase):
+class TestSfdpSessionStats(BaseSfdpTest):
     """SFDP Session Stats Service tests"""
 
     @classmethod
@@ -41,24 +42,39 @@ class TestSfdpSessionStats(VppTestCase):
             i.admin_down()
         super(TestSfdpSessionStats, cls).tearDownClass()
 
-    def create_tcp_packet(
-        self, src_mac, dst_mac, src_ip, dst_ip, sport, dport, flags="S", ttl=64
-    ):
-        return (
-            Ether(src=src_mac, dst=dst_mac)
-            / IP(src=src_ip, dst=dst_ip, ttl=ttl)
-            / TCP(sport=sport, dport=dport, flags=flags)
-            / Raw(b"\xa5" * 100)
+    def _get_single_session_stats(self):
+        stats = self.vapi.sfdp_session_stats_dump()
+        self.assertEqual(len(stats), 1, "Should have exactly one session")
+        return stats[0]
+
+    def _make_fwd_pkt(self, sport, dport, flags, seq, ack, payload=b"", options=[]):
+        return self.create_tcp_packet(
+            self.pg0.remote_mac,
+            self.pg0.local_mac,
+            self.pg0.remote_ip4,
+            self.pg1.remote_ip4,
+            sport,
+            dport,
+            flags=flags,
+            seq=seq,
+            ack=ack,
+            payload=payload,
+            options=options,
         )
 
-    def create_udp_packet(
-        self, src_mac, dst_mac, src_ip, dst_ip, sport, dport, ttl=64, payload_size=100
-    ):
-        return (
-            Ether(src=src_mac, dst=dst_mac)
-            / IP(src=src_ip, dst=dst_ip, ttl=ttl)
-            / UDP(sport=sport, dport=dport)
-            / Raw(b"\xa5" * payload_size)
+    def _make_rev_pkt(self, sport, dport, flags, seq, ack, payload=b"", options=[]):
+        return self.create_tcp_packet(
+            self.pg1.remote_mac,
+            self.pg1.local_mac,
+            self.pg1.remote_ip4,
+            self.pg0.remote_ip4,
+            dport,
+            sport,
+            flags=flags,
+            seq=seq,
+            ack=ack,
+            payload=payload,
+            options=options,
         )
 
     def create_ring_buffer_decoder(self, schema_data, ring_entry_size):
@@ -158,6 +174,7 @@ class TestSfdpSessionStats(VppTestCase):
         export_interval=60.0,
         batch_interval=1.0,
         tenant_custom_data=0,
+        tenant_custom_data2=0,
     ):
         self.tenant_id = tenant_id
         config = {
@@ -210,9 +227,11 @@ class TestSfdpSessionStats(VppTestCase):
             self.assertEqual(reply.retval, 0)
 
         # Set tenant custom data for tenant if requested
-        if tenant_custom_data:
+        if tenant_custom_data or tenant_custom_data2:
             reply = self.vapi.sfdp_session_stats_set_tenant_custom_data(
-                tenant_id=tenant_id, value=tenant_custom_data
+                tenant_id=tenant_id,
+                value=tenant_custom_data,
+                value2=tenant_custom_data2,
             )
 
             self.assertEqual(reply.retval, 0)
@@ -250,19 +269,7 @@ class TestSfdpSessionStats(VppTestCase):
 
         # Expire active sessions
         self.vapi.sfdp_kill_session(is_all=True)
-
-        # Poll until sessions are gone or timeout.
-        elapsed = 0
-        while elapsed < 5:
-            sessions = self.vapi.sfdp_session_dump()
-            if len(sessions) == 0:
-                break
-            self.virtual_sleep(1)
-            elapsed += 1
-
-        self.assertEqual(
-            len(sessions), 0, "SFDP sessions are still present after cleanup"
-        )
+        self.wait_no_sessions()
 
         # Disable SFDP on interfaces
         self.vapi.sfdp_interface_input_set(
@@ -437,12 +444,6 @@ class TestSfdpSessionStats(VppTestCase):
         ip_header_size = 20
         tcp_header_size = 20
 
-        def get_session_stats():
-            """Helper to get the single session's stats"""
-            stats = self.vapi.sfdp_session_stats_dump()
-            self.assertEqual(len(stats), 1, "Should have exactly one session")
-            return stats[0]
-
         # === Forward SYN (seq=1000, ttl=60) ===
         pkt_syn = (
             Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
@@ -452,7 +453,7 @@ class TestSfdpSessionStats(VppTestCase):
         )
         self.pg_send(self.pg0, pkt_syn)
 
-        s = get_session_stats()
+        s = self._get_single_session_stats()
         self.assertEqual(s.packets_fwd, 1)
         self.assertEqual(s.packets_rev, 0)
         self.assertEqual(s.bytes_fwd, ip_header_size + tcp_header_size)
@@ -470,7 +471,7 @@ class TestSfdpSessionStats(VppTestCase):
         )
         self.pg_send(self.pg1, pkt_synack)
 
-        s = get_session_stats()
+        s = self._get_single_session_stats()
         self.assertEqual(s.packets_fwd, 1)
         self.assertEqual(s.packets_rev, 1)
         self.assertEqual(s.bytes_rev, ip_header_size + tcp_header_size)
@@ -488,7 +489,7 @@ class TestSfdpSessionStats(VppTestCase):
         )
         self.pg_send(self.pg0, pkt_ack)
 
-        s = get_session_stats()
+        s = self._get_single_session_stats()
         self.assertEqual(s.packets_fwd, 2)
         self.assertEqual(s.tcp_handshake_complete, True)  # Handshake now complete
         self.assertEqual(s.ttl_max_fwd, 64)  # Updated from 60 to 64
@@ -503,7 +504,7 @@ class TestSfdpSessionStats(VppTestCase):
         )
         self.pg_send(self.pg0, pkt_data)
 
-        s = get_session_stats()
+        s = self._get_single_session_stats()
         self.assertEqual(s.packets_fwd, 3)
         self.assertEqual(
             s.bytes_fwd, 3 * (ip_header_size + tcp_header_size) + payload_size
@@ -520,7 +521,7 @@ class TestSfdpSessionStats(VppTestCase):
         )
         self.pg_send(self.pg1, pkt_rev_ack)
 
-        s = get_session_stats()
+        s = self._get_single_session_stats()
         self.assertEqual(s.packets_rev, 2)
         self.assertEqual(s.ttl_min_rev, 125)  # Dropped from 128 to 125
 
@@ -534,7 +535,7 @@ class TestSfdpSessionStats(VppTestCase):
         )
         self.pg_send(self.pg1, pkt_rev_data)
 
-        s = get_session_stats()
+        s = self._get_single_session_stats()
         self.assertEqual(s.packets_rev, 3)
         self.assertEqual(
             s.bytes_rev, 3 * (ip_header_size + tcp_header_size) + rev_payload_size
@@ -552,7 +553,7 @@ class TestSfdpSessionStats(VppTestCase):
         )
         self.pg_send(self.pg0, pkt_fin)
 
-        s = get_session_stats()
+        s = self._get_single_session_stats()
         self.assertEqual(s.packets_fwd, 4)
         self.assertEqual(s.tcp_fin_packets, 1)
 
@@ -565,7 +566,7 @@ class TestSfdpSessionStats(VppTestCase):
         )
         self.pg_send(self.pg1, pkt_rst)
 
-        s = get_session_stats()
+        s = self._get_single_session_stats()
         self.assertEqual(s.packets_rev, 4)
         self.assertEqual(s.tcp_rst_packets, 1)
 
@@ -578,7 +579,7 @@ class TestSfdpSessionStats(VppTestCase):
         )
         self.pg_send(self.pg0, pkt_extra)
 
-        s = get_session_stats()
+        s = self._get_single_session_stats()
         self.assertEqual(s.packets_fwd, 5)
         self.assertEqual(s.ttl_min_fwd, 58)  # Now the minimum
         self.assertEqual(s.ttl_max_fwd, 64)
@@ -613,7 +614,7 @@ class TestSfdpSessionStats(VppTestCase):
         dport = 14000
 
         def make_initiator_tcp(
-            flags, seq, ack, payload=b"", ttl=64, tos=0, window=65535
+            flags, seq, ack, payload=b"", ttl=64, tos=0, window=65535, options=[]
         ):
             return (
                 Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
@@ -625,12 +626,13 @@ class TestSfdpSessionStats(VppTestCase):
                     seq=seq,
                     ack=ack,
                     window=window,
+                    options=options,
                 )
                 / Raw(payload)
             )
 
         def make_responder_tcp(
-            flags, seq, ack, payload=b"", ttl=128, tos=0, window=65535
+            flags, seq, ack, payload=b"", ttl=128, tos=0, window=65535, options=[]
         ):
             return (
                 Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac)
@@ -642,6 +644,7 @@ class TestSfdpSessionStats(VppTestCase):
                     seq=seq,
                     ack=ack,
                     window=window,
+                    options=options,
                 )
                 / Raw(payload)
             )
@@ -650,20 +653,35 @@ class TestSfdpSessionStats(VppTestCase):
             enable_bidirectional=True,
         )
 
-        def get_session_stats():
-            """Helper to get the single session's stats"""
-            stats = self.vapi.sfdp_session_stats_dump()
-            self.assertEqual(len(stats), 1, "Should have exactly one session")
-            return stats[0]
-
         # === TCP 3-Way Handshake ===
-        self.pg_send(self.pg0, make_initiator_tcp(flags="S", seq=1000, ack=0))
-        self.pg_send(self.pg1, make_responder_tcp(flags="SA", seq=2000, ack=1001))
+        # Use deliberately different MSS values per direction to verify bidirectional tracking
+        MSS_FWD = 1400
+        MSS_REV = 1460
+        self.pg_send(
+            self.pg0,
+            make_initiator_tcp(flags="S", seq=1000, ack=0, options=[("MSS", MSS_FWD)]),
+        )
+        self.pg_send(
+            self.pg1,
+            make_responder_tcp(
+                flags="SA", seq=2000, ack=1001, options=[("MSS", MSS_REV)]
+            ),
+        )
+        self.virtual_sleep(0.5)  # Add delay so that handshake rtt is non-zero
         self.pg_send(self.pg0, make_initiator_tcp(flags="A", seq=1001, ack=2001))
 
-        s = get_session_stats()
+        s = self._get_single_session_stats()
         self.assertEqual(s.tcp_handshake_complete, True)
         self.assertEqual(s.tcp_syn_packets, 2)
+        self.assertGreaterEqual(
+            s.syn_rtt, 0.5
+        )  # handshake rtt must be at least the sleep duration
+        self.assertEqual(
+            s.tcp_mss_fwd, MSS_FWD, "Forward MSS should be set from initiator SYN"
+        )
+        self.assertEqual(
+            s.tcp_mss_rev, MSS_REV, "Reverse MSS should be set from responder SYN-ACK"
+        )
 
         # === Forward DATA #1: seq=1001, len=100 ===
         self.pg_send(
@@ -677,24 +695,9 @@ class TestSfdpSessionStats(VppTestCase):
             make_initiator_tcp(flags="PA", seq=1101, ack=2001, payload=b"\xbb" * 100),
         )
 
-        s = get_session_stats()
+        s = self._get_single_session_stats()
         self.assertEqual(s.packets_fwd, 4)  # SYN + ACK + DATA1 + DATA2
         self.assertEqual(s.tcp_retransmissions_fwd, 0)
-        self.assertEqual(s.tcp_partial_overlap_events_fwd, 0)
-
-        # === Trigger Partial Overlap (forward) ===
-        # seq=1150 overlaps with 1101-1200, but extends to 1250
-        self.pg_send(
-            self.pg0,
-            make_initiator_tcp(flags="PA", seq=1150, ack=2001, payload=b"\xcc" * 100),
-        )
-
-        s = get_session_stats()
-        self.assertGreaterEqual(
-            s.tcp_partial_overlap_events_fwd,
-            1,
-            "Should have at least 1 partial overlap after overlapping packet",
-        )
 
         # === Trigger Retransmission (forward) ===
         # Resend DATA #1 (complete retransmission, seq=1001, entirely within received)
@@ -703,7 +706,7 @@ class TestSfdpSessionStats(VppTestCase):
             make_initiator_tcp(flags="PA", seq=1001, ack=2001, payload=b"\xaa" * 100),
         )
 
-        s = get_session_stats()
+        s = self._get_single_session_stats()
         self.assertGreaterEqual(
             s.tcp_retransmissions_fwd,
             1,
@@ -713,27 +716,13 @@ class TestSfdpSessionStats(VppTestCase):
         # ACK forward data
         self.pg_send(self.pg1, make_responder_tcp(flags="A", seq=2001, ack=1201))
 
-        s = get_session_stats()
-        self.assertEqual(s.tcp_dupack_events_fwd, 0)  # First ACK, not a duplicate
-
-        # === Trigger Duplicate ACK (for forward data) ===
-        # Send same ACK again with outstanding data beyond it
-        self.pg_send(self.pg1, make_responder_tcp(flags="A", seq=2001, ack=1201))
-
-        s = get_session_stats()
-        self.assertGreaterEqual(
-            s.tcp_dupack_events_fwd,
-            1,
-            "Should have at least 1 dupack event after duplicate ACK",
-        )
-
         # === Trigger Zero Window (reverse) ===
         prev_zero_window = s.tcp_zero_window_events_rev
         self.pg_send(
             self.pg1, make_responder_tcp(flags="A", seq=2001, ack=1250, window=0)
         )
 
-        s = get_session_stats()
+        s = self._get_single_session_stats()
         self.assertGreaterEqual(
             s.tcp_zero_window_events_rev,
             prev_zero_window + 1,
@@ -752,7 +741,7 @@ class TestSfdpSessionStats(VppTestCase):
             ),
         )
 
-        s = get_session_stats()
+        s = self._get_single_session_stats()
         self.assertGreater(
             s.tcp_ecn_ect_packets,
             prev_ecn_ect,
@@ -768,7 +757,7 @@ class TestSfdpSessionStats(VppTestCase):
             ),
         )
 
-        s = get_session_stats()
+        s = self._get_single_session_stats()
         self.assertGreater(
             s.tcp_ecn_ce_packets,
             prev_ecn_ce,
@@ -782,7 +771,7 @@ class TestSfdpSessionStats(VppTestCase):
             make_responder_tcp(flags="AE", seq=2001, ack=1350, payload=b"\x11" * 50),
         )
 
-        s = get_session_stats()
+        s = self._get_single_session_stats()
         self.assertGreater(
             s.tcp_ece_packets,
             prev_ece,
@@ -796,7 +785,7 @@ class TestSfdpSessionStats(VppTestCase):
             make_initiator_tcp(flags="AC", seq=1350, ack=2001, payload=b"\xff" * 50),
         )
 
-        s = get_session_stats()
+        s = self._get_single_session_stats()
         self.assertGreater(
             s.tcp_cwr_packets,
             prev_cwr,
@@ -814,65 +803,71 @@ class TestSfdpSessionStats(VppTestCase):
         self.pg_send(
             self.pg0, make_initiator_tcp(flags="PA", seq=1400, ack=2001, payload=DATA)
         )
-        self.pg_send(
-            self.pg0, make_initiator_tcp(flags="PA", seq=1600, ack=2001, payload=DATA)
-        )  # gap
-        self.pg_send(
-            self.pg0, make_initiator_tcp(flags="PA", seq=1500, ack=2001, payload=DATA)
-        )  # fills gap
+        self.pg_send(self.pg1, make_responder_tcp(flags="A", seq=2001, ack=1500))
 
-        s = get_session_stats()
-        self.assertGreaterEqual(
-            s.tcp_out_of_order_events_fwd,
-            1,
-            "Late segment filling a gap without dupacks should be OOO",
-        )
+        s = self._get_single_session_stats()
         prev_ooo = s.tcp_out_of_order_events_fwd
         prev_retrans = s.tcp_retransmissions_fwd
 
-        # ACK everything so far
-        self.pg_send(self.pg1, make_responder_tcp(flags="A", seq=2001, ack=1700))
-
-        # Retransmission event, due to loss with dupacks (not OOO) ===
-        # Send seq=1700 (normal), skip seq=1800, send seq=1900 (gap),
-        # receiver sends dupacks for 1800, then fill with seq=1800
+        # Open a gap: seq=1600 skipped, seq=1700 arrives first
         self.pg_send(
             self.pg0, make_initiator_tcp(flags="PA", seq=1700, ack=2001, payload=DATA)
+        )  # gap: end_seq_max advances to 1800, gap_start_seq=1500, snapshot dupack_like
+        # Fill the gap immediately (no dupacks sent - dupack_like unchanged -> OOO)
+        self.pg_send(
+            self.pg0, make_initiator_tcp(flags="PA", seq=1600, ack=2001, payload=DATA)
         )
+
+        s = self._get_single_session_stats()
+        self.assertEqual(
+            s.tcp_out_of_order_events_fwd,
+            prev_ooo + 1,
+            "Gap fill with no intervening dupacks should be classified as OOO",
+        )
+        self.assertEqual(
+            s.tcp_retransmissions_fwd,
+            prev_retrans,
+            "Retransmission counter should not change for OOO fill",
+        )
+
+        # ACK everything so far
         self.pg_send(self.pg1, make_responder_tcp(flags="A", seq=2001, ack=1800))
+
+        # Retransmission detection: gap + dupacks -> fill is classified retransmission
+        s = self._get_single_session_stats()
+        prev_ooo = s.tcp_out_of_order_events_fwd
+        prev_retrans = s.tcp_retransmissions_fwd
+
+        # Open a gap: seq=1900 skipped, seq=2000 arrives first
+        self.pg_send(
+            self.pg0, make_initiator_tcp(flags="PA", seq=2000, ack=2001, payload=DATA)
+        )  # gap: gap_start_seq=1800, snapshot dupack_like
+        # Send 3 reverse pure-ACKs at the same ack value to bump dupack_like on the fwd direction
+        for _ in range(3):
+            self.pg_send(self.pg1, make_responder_tcp(flags="A", seq=2001, ack=1800))
+        # Fill the gap (dupack_like has advanced past snapshot → retransmission)
         self.pg_send(
             self.pg0, make_initiator_tcp(flags="PA", seq=1900, ack=2001, payload=DATA)
-        )  # gap
-        self.pg_send(
-            self.pg1, make_responder_tcp(flags="A", seq=2001, ack=1800)
-        )  # dupack
-        self.pg_send(
-            self.pg1, make_responder_tcp(flags="A", seq=2001, ack=1800)
-        )  # dupack
-        self.pg_send(
-            self.pg0, make_initiator_tcp(flags="PA", seq=1800, ack=2001, payload=DATA)
-        )  # fills gap
+        )
 
-        s = get_session_stats()
+        s = self._get_single_session_stats()
         self.assertEqual(
             s.tcp_retransmissions_fwd,
             prev_retrans + 1,
-            "Filling a gap after dupacks should be retransmission, not OOO",
+            "Gap fill after dupacks should be classified as retransmission",
         )
         self.assertEqual(
             s.tcp_out_of_order_events_fwd,
             prev_ooo,
-            "OOO counter should not increase when dupacks confirm loss",
+            "OOO counter should not change for dupack-driven retransmission fill",
         )
 
         # ACK everything
-        self.pg_send(self.pg1, make_responder_tcp(flags="A", seq=2001, ack=2000))
+        self.pg_send(self.pg1, make_responder_tcp(flags="A", seq=2001, ack=2100))
 
         # === Final verification of all TCP event counters ===
-        s = get_session_stats()
-        self.assertGreaterEqual(s.tcp_partial_overlap_events_fwd, 1)
+        s = self._get_single_session_stats()
         self.assertGreaterEqual(s.tcp_retransmissions_fwd, 2)
-        self.assertGreaterEqual(s.tcp_dupack_events_fwd, 1)
         self.assertGreaterEqual(s.tcp_zero_window_events_rev, 1)
         self.assertGreaterEqual(s.tcp_ecn_ect_packets, 1)
         self.assertGreaterEqual(s.tcp_ecn_ce_packets, 1)
@@ -880,6 +875,95 @@ class TestSfdpSessionStats(VppTestCase):
         self.assertGreaterEqual(s.tcp_cwr_packets, 1)
         self.assertGreaterEqual(s.tcp_out_of_order_events_fwd, 1)
         self.assertEqual(s.tcp_out_of_order_events_rev, 0)
+
+        self._cleanup_sfdp_session_stats(config)
+
+    def test_session_stats_tcp_data_packets(self):
+        """Test that TCP data packet counter is incremented correctly"""
+        config = self._configure_sfdp_session_stats(
+            enable_bidirectional=True,
+        )
+
+        sport = 15000
+        dport = 16000
+
+        # TCP Hanshake traffic, tcp data packets counter is not expected to be incremented
+        self.pg_send(
+            self.pg0, self._make_fwd_pkt(sport, dport, flags="S", seq=1000, ack=0)
+        )
+        self.pg_send(
+            self.pg1, self._make_rev_pkt(sport, dport, flags="SA", seq=2000, ack=1001)
+        )
+        self.pg_send(
+            self.pg0, self._make_fwd_pkt(sport, dport, flags="A", seq=1001, ack=2001)
+        )
+
+        s = self._get_single_session_stats()
+        self.assertEqual(
+            s.tcp_data_packets_fwd,
+            0,
+            "No payload sent yet - fwd data counter must be 0",
+        )
+        self.assertEqual(
+            s.tcp_data_packets_rev,
+            0,
+            "No payload sent yet - rev data counter must be 0",
+        )
+
+        # Three forward payload-carrying segments.
+        seq_fwd = 1001
+        for i in range(3):
+            self.pg_send(
+                self.pg0,
+                self._make_fwd_pkt(
+                    sport,
+                    dport,
+                    flags="PA",
+                    seq=seq_fwd,
+                    ack=2001,
+                    payload=b"\xaa" * 100,
+                ),
+            )
+            seq_fwd += 100
+
+        # pure-ACK reverse packet
+        self.pg_send(
+            self.pg1, self._make_rev_pkt(sport, dport, flags="A", seq=2001, ack=seq_fwd)
+        )
+
+        # Two reverse payload-carrying segments.
+        seq_rev = 2001
+        for i in range(2):
+            self.pg_send(
+                self.pg1,
+                self._make_rev_pkt(
+                    sport,
+                    dport,
+                    flags="PA",
+                    seq=seq_rev,
+                    ack=seq_fwd,
+                    payload=b"\xbb" * 50,
+                ),
+            )
+            seq_rev += 50
+
+        # pure-ACK forward packet
+        self.pg_send(
+            self.pg0,
+            self._make_fwd_pkt(sport, dport, flags="A", seq=seq_fwd, ack=seq_rev),
+        )
+
+        s = self._get_single_session_stats()
+        self.assertEqual(
+            s.tcp_data_packets_fwd,
+            3,
+            "Three forward payload-carrying segments should increment fwd counter",
+        )
+        self.assertEqual(
+            s.tcp_data_packets_rev,
+            2,
+            "Two reverse payload-carrying segments should increment rev counter",
+        )
 
         self._cleanup_sfdp_session_stats(config)
 
@@ -1087,9 +1171,10 @@ class TestSfdpSessionStats(VppTestCase):
 
         # Set tenant custom data for tenant_id 1
         test_data = 0x123456789ABCDEF0
+        test_data2 = 0x0FEDCBA987654321
         tenant_id = 1
         reply = self.vapi.sfdp_session_stats_set_tenant_custom_data(
-            tenant_id=tenant_id, value=test_data
+            tenant_id=tenant_id, value=test_data, value2=test_data2
         )
         self.assertEqual(reply.retval, 0)
 
@@ -1098,6 +1183,11 @@ class TestSfdpSessionStats(VppTestCase):
         self.assertTrue(reply.has_api_data, "API data should be set for tenant 1")
         self.assertEqual(
             reply.api_data_value, test_data, "API data should match for tenant 1"
+        )
+        self.assertEqual(
+            reply.api_data_value2,
+            test_data2,
+            "API data value2 should match for tenant 1",
         )
         self.assertEqual(reply.tenant_id, tenant_id, "Tenant ID should match")
 
@@ -1109,6 +1199,11 @@ class TestSfdpSessionStats(VppTestCase):
 
         reply = self.vapi.sfdp_session_stats_get_tenant_custom_data(tenant_id=tenant_id)
         self.assertFalse(reply.has_api_data, "API data should be cleared for tenant 1")
+        self.assertEqual(
+            reply.api_data_value2,
+            0,
+            "API data value2 should default to 0 once cleared",
+        )
 
     def test_session_stats_ring_buffer_multiple_sessions(self):
         """Test that multiple sessions are correctly exported to ring buffer"""
@@ -1188,12 +1283,14 @@ class TestSfdpSessionStats(VppTestCase):
             enable_ring_buffer=True,
             ring_size=256,
             tenant_custom_data=0xDEADBEEFCAFEBABE,
+            tenant_custom_data2=0x0011223344556677,
         )
 
         # Verify custom data is set for tenant_id 1
         tenant_data = self.vapi.sfdp_session_stats_get_tenant_custom_data(tenant_id=1)
         self.assertTrue(tenant_data.has_api_data)
         self.assertEqual(tenant_data.api_data_value, 0xDEADBEEFCAFEBABE)
+        self.assertEqual(tenant_data.api_data_value2, 0x0011223344556677)
 
         # Send some TCP packets to create a session
         num_packets = 2
@@ -1237,14 +1334,22 @@ class TestSfdpSessionStats(VppTestCase):
 
         # Extract opaque data.
         tenant_custom_data = decoded["opaque"]
+        tenant_custom_data2 = decoded["opaque2"]
 
         self.assertEqual(
             tenant_custom_data, 0xDEADBEEFCAFEBABE, "Tenant custom data should match"
         )
+        self.assertEqual(
+            tenant_custom_data2,
+            0x0011223344556677,
+            "Tenant custom data (opaque2) should match",
+        )
 
         # Update tenant custom data for tenant_id 1
         reply = self.vapi.sfdp_session_stats_set_tenant_custom_data(
-            tenant_id=1, value=0x1234567890ABCDEF
+            tenant_id=1,
+            value=0x1234567890ABCDEF,
+            value2=0x7EDCBA9876543210,
         )
         self.assertEqual(reply.retval, 0)
 
@@ -1273,10 +1378,16 @@ class TestSfdpSessionStats(VppTestCase):
         entry_bytes = data[0]
         decoded = decode_entry(entry_bytes)
         tenant_custom_data = decoded["opaque"]
+        tenant_custom_data2 = decoded["opaque2"]
         self.assertEqual(
             tenant_custom_data,
             0x1234567890ABCDEF,
             "Tenant custom data should be updated",
+        )
+        self.assertEqual(
+            tenant_custom_data2,
+            0x7EDCBA9876543210,
+            "Tenant custom data (opaque2) should be updated",
         )
 
         # Clear tenant custom data for tenant_id 1 and verify it's reflected
@@ -1293,8 +1404,12 @@ class TestSfdpSessionStats(VppTestCase):
             entry_bytes = data[0]
             decoded = decode_entry(entry_bytes)
             tenant_custom_data = decoded["opaque"]
+            tenant_custom_data2 = decoded["opaque2"]
             self.assertEqual(
                 tenant_custom_data, 0, "Opaque data should default to zero"
+            )
+            self.assertEqual(
+                tenant_custom_data2, 0, "Opaque2 data should default to zero"
             )
 
         # Cleanup
@@ -1438,6 +1553,213 @@ class TestSfdpSessionStats(VppTestCase):
                 all_exported_dports,
                 f"Session with dport {sess['dport']} should have been exported",
             )
+
+        self._cleanup_sfdp_session_stats(config)
+
+    def test_session_stats_rtt_timestamps(self):
+        """RTT measured with timestamps options when available"""
+
+        sport = 17000
+        dport = 18000
+
+        config = self._configure_sfdp_session_stats(enable_bidirectional=True)
+
+        ts_fwd = 1000
+        ts_rev = 5000
+        self.pg_send(
+            self.pg0,
+            self._make_fwd_pkt(
+                sport,
+                dport,
+                "S",
+                seq=1000,
+                ack=0,
+                options=[("Timestamp", (ts_fwd, 0)), ("MSS", 1460)],
+            ),
+        )
+        self.pg_send(
+            self.pg1,
+            self._make_rev_pkt(
+                sport,
+                dport,
+                "SA",
+                seq=2000,
+                ack=1001,
+                options=[("Timestamp", (ts_rev, ts_fwd)), ("MSS", 1460)],
+            ),
+        )
+        ts_fwd += 1
+        ts_rev += 1
+        self.virtual_sleep(0.5)
+        self.pg_send(
+            self.pg0,
+            self._make_fwd_pkt(
+                sport,
+                dport,
+                "A",
+                seq=1001,
+                ack=2001,
+                options=[("Timestamp", (ts_fwd, ts_rev))],
+            ),
+        )
+        s = self._get_single_session_stats()
+        self.assertTrue(s.tcp_handshake_complete)
+        self.assertGreater(s.syn_rtt, 0.0, "syn_rtt should be set after handshake")
+        self.assertEqual(
+            s.rtt_mean_fwd, 0.0, "data RTT should not be set before any data exchange"
+        )
+        self.assertTrue(
+            s.tcp_ts_negotiated, "Timestamps should be negotiated in both directions"
+        )
+
+        # First data exchange - TS echo triggers RTT sample
+        ts_fwd += 1
+        self.virtual_sleep(0.01)
+        self.pg_send(
+            self.pg0,
+            self._make_fwd_pkt(
+                sport,
+                dport,
+                "PA",
+                seq=1001,
+                ack=2001,
+                payload=b"\xaa" * 100,
+                options=[("Timestamp", (ts_fwd, ts_rev))],
+            ),
+        )
+        ts_rev += 1
+        self.virtual_sleep(0.01)
+        self.pg_send(
+            self.pg1,
+            self._make_rev_pkt(
+                sport,
+                dport,
+                "A",
+                seq=2001,
+                ack=1101,
+                options=[("Timestamp", (ts_rev, ts_fwd))],
+            ),
+        )
+
+        s = self._get_single_session_stats()
+        self.assertGreater(
+            s.rtt_mean_fwd, 0.0, "TS-based RTT sample should have been taken"
+        )
+        self.assertGreater(s.rtt_min_fwd, 0.0)
+        self.assertLessEqual(s.rtt_min_fwd, s.rtt_mean_fwd)
+        self.assertGreaterEqual(s.rtt_max_fwd, s.rtt_mean_fwd)
+        rtt_max_after_first = s.rtt_max_fwd
+
+        # Second exchange with longer delay - max should update
+        ts_fwd += 1
+        self.virtual_sleep(0.05)
+        self.pg_send(
+            self.pg0,
+            self._make_fwd_pkt(
+                sport,
+                dport,
+                "PA",
+                seq=1101,
+                ack=2001,
+                payload=b"\xbb" * 100,
+                options=[("Timestamp", (ts_fwd, ts_rev))],
+            ),
+        )
+        ts_rev += 1
+        self.virtual_sleep(0.05)
+        self.pg_send(
+            self.pg1,
+            self._make_rev_pkt(
+                sport,
+                dport,
+                "A",
+                seq=2001,
+                ack=1201,
+                options=[("Timestamp", (ts_rev, ts_fwd))],
+            ),
+        )
+
+        s = self._get_single_session_stats()
+        self.assertGreater(
+            s.rtt_max_fwd,
+            rtt_max_after_first,
+            "RTT max should increase after slower exchange",
+        )
+        self.assertGreaterEqual(s.rtt_max_fwd, s.rtt_mean_fwd)
+        self.assertLessEqual(s.rtt_min_fwd, s.rtt_mean_fwd)
+
+        self._cleanup_sfdp_session_stats(config)
+
+    def test_session_stats_rtt_probe_fallback(self):
+        """RTT measured with default probe-based approach"""
+
+        sport = 19000
+        dport = 20000
+
+        config = self._configure_sfdp_session_stats(enable_bidirectional=True)
+
+        self.pg_send(self.pg0, self._make_fwd_pkt(sport, dport, "S", seq=1000, ack=0))
+        self.pg_send(
+            self.pg1, self._make_rev_pkt(sport, dport, "SA", seq=2000, ack=1001)
+        )
+        self.virtual_sleep(0.1)
+        self.pg_send(
+            self.pg0, self._make_fwd_pkt(sport, dport, "A", seq=1001, ack=2001)
+        )
+        s = self._get_single_session_stats()
+        self.assertTrue(s.tcp_handshake_complete)
+        self.assertGreater(s.syn_rtt, 0.0, "syn_rtt should be set after handshake")
+        self.assertEqual(
+            s.rtt_mean_fwd, 0.0, "data RTT should not be set before any data exchange"
+        )
+        self.assertFalse(
+            s.tcp_ts_negotiated, "Timestamps should not be negotiated without options"
+        )
+
+        self.virtual_sleep(0.01)
+        self.pg_send(
+            self.pg0,
+            self._make_fwd_pkt(
+                sport, dport, "PA", seq=1001, ack=2001, payload=b"\xaa" * 100
+            ),
+        )
+        self.virtual_sleep(0.02)
+        self.pg_send(
+            self.pg1, self._make_rev_pkt(sport, dport, "A", seq=2001, ack=1101)
+        )
+
+        s = self._get_single_session_stats()
+        self.assertGreater(
+            s.rtt_mean_fwd, 0.0, "Probe-based RTT should fire without Timestamps"
+        )
+        self.assertGreater(s.rtt_min_fwd, 0.0)
+        self.assertGreaterEqual(s.rtt_max_fwd, s.rtt_min_fwd)
+
+        # Retransmit - probe must NOT be zeroed, so the subsequent ACK still takes a sample
+        self.pg_send(
+            self.pg0,
+            self._make_fwd_pkt(
+                sport, dport, "PA", seq=1101, ack=2001, payload=b"\xbb" * 100
+            ),
+        )
+        self.pg_send(
+            self.pg0,
+            self._make_fwd_pkt(
+                sport, dport, "PA", seq=1001, ack=2001, payload=b"\xaa" * 100
+            ),
+        )
+        self.virtual_sleep(0.02)
+        self.pg_send(
+            self.pg1, self._make_rev_pkt(sport, dport, "A", seq=2001, ack=1201)
+        )
+
+        s = self._get_single_session_stats()
+        self.assertGreaterEqual(
+            s.tcp_retransmissions_fwd, 1, "Retransmission counter should increment"
+        )
+        self.assertGreater(
+            s.rtt_mean_fwd, 0.0, "RTT mean must remain valid after a retransmit"
+        )
 
         self._cleanup_sfdp_session_stats(config)
 

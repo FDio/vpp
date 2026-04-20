@@ -2,7 +2,7 @@
  * Copyright (c) 2025 Cisco Systems, Inc.
  */
 
-option version = "1.1.0";
+option version = "0.0.1";
 import "vnet/interface_types.api";
 import "vnet/ip/ip_types.api";
 
@@ -21,12 +21,20 @@ typedef sfdp_session_stats_ring_entry
   f64 rtt_mean_reverse;
   f64 rtt_stddev_forward;
   f64 rtt_stddev_reverse;
+  f64 rtt_min_forward;
+  f64 rtt_min_reverse;
+  f64 rtt_max_forward;
+  f64 rtt_max_reverse;
+  f64 syn_rtt;
   u64 session_id;
   u64 packets_forward;
   u64 packets_reverse;
   u64 bytes_forward;
   u64 bytes_reverse;
+  u64 tcp_data_packets_forward;
+  u64 tcp_data_packets_reverse;
   u64 opaque;
+  u64 opaque2;
   u32 session_index;
   u32 tenant_id;
   u32 tcp_syn_packets;
@@ -40,10 +48,6 @@ typedef sfdp_session_stats_ring_entry
   u32 tcp_retransmissions_rev;
   u32 tcp_zero_window_events_fwd;
   u32 tcp_zero_window_events_rev;
-  u32 tcp_dupack_events_fwd;
-  u32 tcp_dupack_events_rev;
-  u32 tcp_partial_overlap_events_fwd;
-  u32 tcp_partial_overlap_events_rev;
   u32 tcp_out_of_order_events_fwd;
   u32 tcp_out_of_order_events_rev;
   u32 tcp_last_seq_forward;
@@ -52,7 +56,8 @@ typedef sfdp_session_stats_ring_entry
   u32 tcp_last_ack_reverse;
   u16 src_port;
   u16 dst_port;
-  u16 tcp_mss;
+  u16 tcp_mss_fwd;
+  u16 tcp_mss_rev;
   u8 proto;
   u8 session_type;
   u8 is_ip4;
@@ -63,6 +68,7 @@ typedef sfdp_session_stats_ring_entry
   u8 src_ip[16];
   u8 dst_ip[16];
   u8 tcp_handshake_complete;
+  u8 tcp_ts_negotiated;
 };
 
 /*
@@ -163,8 +169,13 @@ define sfdp_session_stats_dump
  * @param rtt_stddev_fwd - RTT standard deviation forward direction
  * @param rtt_mean_rev - RTT mean reverse direction
  * @param rtt_stddev_rev - RTT standard deviation reverse direction
- * @param tcp_mss - TCP MSS from SYN options (TCP only)
+ * @param syn_rtt - SYN->SYN-ACK handshake RTT
+ * @param tcp_data_packets_fwd - Packets carrying non-empty TCP payload forward
+ * @param tcp_data_packets_rev - Packets carrying non-empty TCP payload reverse
+ * @param tcp_mss_fwd - MSS advertised by the forward (initiator) endpoint in its SYN (TCP only)
+ * @param tcp_mss_rev - MSS advertised by the reverse (responder) endpoint in its SYN-ACK (TCP only)
  * @param tcp_handshake_complete - TCP 3-way handshake completed (TCP only)
+ * @param tcp_ts_negotiated - TCP Timestamps option negotiated in both directions (TCP only)
  * @param tcp_syn_packets - TCP SYN packets counter (TCP only)
  * @param tcp_fin_packets - TCP FIN packets counter (TCP only)
  * @param tcp_rst_packets - TCP RST packets counter (TCP only)
@@ -176,10 +187,6 @@ define sfdp_session_stats_dump
  * @param tcp_retransmissions_rev - TCP retransmission events reverse (TCP only)
  * @param tcp_zero_window_events_fwd - TCP zero window events forward (TCP only)
  * @param tcp_zero_window_events_rev - TCP zero window events reverse (TCP only)
- * @param tcp_dupack_events_fwd - TCP duplicate ACK events forward (TCP only)
- * @param tcp_dupack_events_rev - TCP duplicate ACK events reverse (TCP only)
- * @param tcp_partial_overlap_events_fwd - TCP partial overlap events forward (TCP only)
- * @param tcp_partial_overlap_events_rev - TCP partial overlap events reverse (TCP only)
  * @param tcp_out_of_order_events_fwd - TCP out-of-order events forward (TCP only)
  * @param tcp_out_of_order_events_rev - TCP out-of-order events reverse (TCP only)
  * @param tcp_last_seq_fwd - TCP last sequence number forward (TCP only)
@@ -203,11 +210,18 @@ define sfdp_session_stats_details
   f64 rtt_mean_rev;
   f64 rtt_stddev_fwd;
   f64 rtt_stddev_rev;
+  f64 rtt_min_fwd;
+  f64 rtt_min_rev;
+  f64 rtt_max_fwd;
+  f64 rtt_max_rev;
+  f64 syn_rtt;
   u64 packets_fwd;
   u64 packets_rev;
   u64 bytes_fwd;
   u64 bytes_rev;
   u64 session_id;
+  u64 tcp_data_packets_fwd;
+  u64 tcp_data_packets_rev;
   u32 tcp_syn_packets;
   u32 tcp_fin_packets;
   u32 tcp_rst_packets;
@@ -219,10 +233,6 @@ define sfdp_session_stats_details
   u32 tcp_retransmissions_rev;
   u32 tcp_zero_window_events_fwd;
   u32 tcp_zero_window_events_rev;
-  u32 tcp_dupack_events_fwd;
-  u32 tcp_dupack_events_rev;
-  u32 tcp_partial_overlap_events_fwd;
-  u32 tcp_partial_overlap_events_rev;
   u32 tcp_out_of_order_events_fwd;
   u32 tcp_out_of_order_events_rev;
   u32 tcp_last_seq_fwd;
@@ -233,7 +243,8 @@ define sfdp_session_stats_details
   u32 tenant_idx;
   u16 src_port;
   u16 dst_port;
-  u16 tcp_mss;
+  u16 tcp_mss_fwd;
+  u16 tcp_mss_rev;
   u8 proto;
   u8 ttl_min_fwd;
   u8 ttl_max_fwd;
@@ -241,6 +252,7 @@ define sfdp_session_stats_details
   u8 ttl_max_rev;
   bool is_ip6;
   bool tcp_handshake_complete;
+  bool tcp_ts_negotiated;
 };
 
 /**
@@ -288,12 +300,14 @@ autoreply define sfdp_session_stats_clear
 
 /**
  * @brief Set tenant custom data value for a tenant
- * This value will be included in the opaque field of each exported
- * session entry for the specified tenant.
- * If no custom data is set for a tenant, the exported opaque value is 0.
+ * These values will be included in the opaque and opaque2 fields of each
+ * exported session entry for the specified tenant.
+ * If no custom data is set for a tenant, the exported opaque / opaque2
+ * values are 0.
  *
  * @param tenant_id - tenant ID (customer-specified value) to set custom data for
- * @param value - the u64 value to set
+ * @param value - the u64 value to set (mapped to opaque)
+ * @param value2 - the second u64 value to set (mapped to opaque2)
  */
 autoreply define sfdp_session_stats_set_tenant_custom_data
 {
@@ -301,6 +315,7 @@ autoreply define sfdp_session_stats_set_tenant_custom_data
   u32 context;
   u32 tenant_id;
   u64 value;
+  u64 value2 [default=0];
 };
 
 /**
@@ -330,6 +345,7 @@ define sfdp_session_stats_get_tenant_custom_data
  * @param tenant_id - tenant ID queried
  * @param has_api_data - whether API custom data is set for this tenant
  * @param api_data_value - current API custom data value (0 if not set)
+ * @param api_data_value2 - current API custom data second value (0 if not set)
  */
 define sfdp_session_stats_get_tenant_custom_data_reply
 {
@@ -338,4 +354,5 @@ define sfdp_session_stats_get_tenant_custom_data_reply
   u32 tenant_id;
   bool has_api_data;
   u64 api_data_value;
+  u64 api_data_value2;
 };
