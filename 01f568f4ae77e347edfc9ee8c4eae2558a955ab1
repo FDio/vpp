@@ -16,6 +16,23 @@
       "message": "Added API messages sw_interface_set_default_rx_mode and sw_interface_get_default_rx_mode with corresponding handlers in interface_api.c.\n\nNote: the foreach_vpe_api_msg macro block reformatting in interface_api.c is driven by clang-format, not a manual restructure.",
       "revId": "01f568f4ae77e347edfc9ee8c4eae2558a955ab1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4c5412d6_8b03254c",
+        "filename": "src/vnet/interface_test.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 441,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-04-20T11:41:58Z",
+      "side": 1,
+      "message": "this should be implemented similar to other tests",
+      "revId": "01f568f4ae77e347edfc9ee8c4eae2558a955ab1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
