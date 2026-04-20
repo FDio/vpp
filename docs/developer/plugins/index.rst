@@ -45,4 +45,4 @@ For more on plugins please refer to :ref:`add_plugin`.
     bpf_trace_filter
     http
     policer
-    sfdp_services
+    sfdp_session_stats
