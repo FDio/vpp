@@ -12,8 +12,6 @@
 #include <vnet/ethernet/packet.h>
 #include <vnet/flow/flow.h>
 
-static format_function_t format_flow;
-
 uword
 unformat_ip_port_and_mask (unformat_input_t * input, va_list * args)
 {
@@ -169,18 +167,38 @@ static const char *flow_type_strings[] = { 0,
 #undef _
 };
 
+static int
+flow_iter_yield (vlib_main_t *vm, f64 *start)
+{
+  /* yields for 2 clock ticks every 1 tick to avoid blocking the main thread
+   * when dumping huge data structures */
+  f64 now = vlib_time_now (vm);
+  if (now - *start > 11e-6)
+    {
+      vlib_process_suspend (vm, 21e-6);
+      *start = vlib_time_now (vm);
+      return 1;
+    }
+
+  return 0;
+}
+
 static clib_error_t *
-show_flow_entry (vlib_main_t * vm, unformat_input_t * input,
-		 vlib_cli_command_t * cmd_arg)
+show_flow_pool (vlib_main_t *vm, unformat_input_t *input, vlib_pool_cache_t *flow_pool)
 {
   vnet_main_t *vnm = vnet_get_main ();
-  vnet_flow_main_t *fm = &flow_main;
   unformat_input_t _line_input, *line_input = &_line_input;
   vnet_hw_interface_t *hi;
   vnet_device_class_t *dev_class;
   vnet_flow_t *f;
+  u32 *snapshot;
+  f64 start;
   u32 index = ~0;
-  u32 total = pool_elts (fm->global_flow_pool);
+  u32 pool_index;
+  u32 pool_cap = pool_cache_count_capacity (flow_pool);
+  u32 total_free =
+    pool_cache_count_global_free (flow_pool) + pool_cache_count_cached_free (flow_pool);
+  u32 total = pool_cap > total_free ? pool_cap - total_free : 0;
   u32 max = 20;
   u32 n_shown = 0;
   clib_error_t *error;
@@ -212,11 +230,7 @@ show_flow_entry (vlib_main_t * vm, unformat_input_t * input,
       vlib_cli_output (vm, "%-10s: %u", "index", f->index);
       vlib_cli_output (vm, "%-10s: %s", "type", flow_type_strings[f->type]);
       vlib_cli_output (vm, "%-10s: %U", "match", format_flow, f);
-      if (f->type == VNET_FLOW_TYPE_GENERIC)
-	{
-	  vlib_cli_output (vm, "%s: %s", "spec", f->generic_pattern->spec);
-	  vlib_cli_output (vm, "%s: %s", "mask", f->generic_pattern->mask);
-	}
+
       if (IS_FLOW_ENABLED (f))
 	{
 	  hi = vnet_get_hw_interface (vnm, f->driver_data.hw_if_index);
@@ -231,18 +245,38 @@ show_flow_entry (vlib_main_t * vm, unformat_input_t * input,
     }
 
 no_args:
-  pool_foreach (f, fm->global_flow_pool)
+  max = clib_min (max, total);
+  snapshot = (u32 *) malloc (sizeof (*snapshot) * max);
+
+  vlib_worker_thread_barrier_sync (vm);
+  vlib_foreach_pool_cache (f, pool_index, flow_pool, {
+    if (n_shown >= max)
+      break;
+
+    /* skip pre-allocated/cached entries not yet assigned to a flow */
+    if (f->type == VNET_FLOW_TYPE_UNKNOWN)
+      continue;
+
+    snapshot[n_shown++] = pool_index;
+  });
+  vlib_worker_thread_barrier_release (vm);
+
+  start = vlib_time_now (vm);
+  for (int i = 0; i < n_shown; i++)
     {
-      if (n_shown >= max)
-	break;
+      pool_index = snapshot[i];
+      f = pool_cache_elt_at_index (flow_pool, pool_index);
+
+      flow_iter_yield (vm, &start);
+
+      /* check if the flow has been freed since snapshot */
+      if (pool_cache_is_free_index (flow_pool, pool_index))
+	continue;
+
       vlib_cli_output (vm, "%U\n", format_flow, f);
-      if (f->type == VNET_FLOW_TYPE_GENERIC)
-	{
-	  vlib_cli_output (vm, "%s: %s", "spec", f->generic_pattern->spec);
-	  vlib_cli_output (vm, "%s: %s", "mask", f->generic_pattern->mask);
-	}
-      n_shown++;
     }
+
+  free (snapshot);
 
   vlib_cli_output (vm, "Displayed %u flows (%u total flows)", n_shown, total);
   if (total > max)
@@ -250,10 +284,18 @@ no_args:
   return 0;
 }
 
+static clib_error_t *
+show_flow_entry (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd_arg)
+{
+  vnet_flow_main_t *fm = &flow_main;
+  return show_flow_pool (vm, input, &fm->flows);
+}
+
 VLIB_CLI_COMMAND (show_flow_entry_command, static) = {
   .path = "show flow entry",
   .short_help = "show flow entry [index <index>] [max <count>]",
   .function = show_flow_entry,
+  .is_mp_safe = 1,
 };
 
 static clib_error_t *
@@ -273,74 +315,23 @@ show_flow_ranges (vlib_main_t * vm, unformat_input_t * input,
 }
 
 VLIB_CLI_COMMAND (show_flow_ranges_command, static) = {
-    .path = "show flow ranges",
-    .short_help = "show flow ranges",
-    .function = show_flow_ranges,
+  .path = "show flow ranges",
+  .short_help = "show flow ranges",
+  .function = show_flow_ranges,
 };
 
 static clib_error_t *
 show_flow_template (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd_arg)
 {
-  vnet_main_t *vnm = vnet_get_main ();
   vnet_flow_main_t *fm = &flow_main;
-  unformat_input_t _line_input, *line_input = &_line_input;
-  vnet_hw_interface_t *hi;
-  vnet_device_class_t *dev_class;
-  vnet_flow_t *f;
-  u32 index = ~0;
-  clib_error_t *error = 0;
-
-  if (!unformat_user (input, unformat_line_input, line_input))
-    goto no_args;
-
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (line_input, "index %u", &index))
-	;
-      else
-	{
-	  error = clib_error_return (0, "parse error: '%U'", format_unformat_error, line_input);
-	  unformat_free (line_input);
-	  return error;
-	}
-    }
-
-  unformat_free (line_input);
-
-  if (index != ~0)
-    {
-      if ((f = vnet_get_flow_template (index)) == 0)
-	return clib_error_return (0, "no such flow template");
-
-      vlib_cli_output (vm, "%-10s: %u", "index", f->index);
-      vlib_cli_output (vm, "%-10s: %s", "type", flow_type_strings[f->type]);
-      vlib_cli_output (vm, "%-10s: %U", "match", format_flow, f);
-      if (f->driver_data.hw_if_index != ~0)
-	{
-	  hi = vnet_get_hw_interface (vnm, f->driver_data.hw_if_index);
-	  dev_class = vnet_get_device_class (vnm, hi->dev_class_index);
-	  vlib_cli_output (vm, "interface %U\n", format_vnet_hw_if_index_name, vnm,
-			   f->driver_data.hw_if_index);
-	  if (dev_class->format_flow)
-	    vlib_cli_output (vm, "  %U\n", dev_class->format_flow, hi->dev_instance, f->index,
-			     f->driver_data.opaque);
-	}
-      return 0;
-    }
-
-no_args:
-  pool_foreach (f, fm->global_flow_template_pool)
-    {
-      vlib_cli_output (vm, "%U\n", format_flow, f);
-    }
-
-  return 0;
+  return show_flow_pool (vm, input, &fm->flow_templates);
 }
 
 VLIB_CLI_COMMAND (show_flow_template_command, static) = {
   .path = "show flow template",
   .short_help = "show flow template [index <index>]",
   .function = show_flow_template,
+  .is_mp_safe = 1,
 };
 
 static clib_error_t *
@@ -1095,8 +1086,8 @@ format_flow_match (u8 * s, va_list * args)
   return s;
 }
 
-static u8 *
-format_flow (u8 * s, va_list * args)
+u8 *
+format_flow (u8 *s, va_list *args)
 {
   vlib_main_t *vm = vlib_get_main ();
   vnet_flow_t *f = va_arg (*args, vnet_flow_t *);
