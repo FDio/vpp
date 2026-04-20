@@ -10,8 +10,53 @@
 
 vnet_flow_main_t flow_main;
 
+#define FLOW_CACHE_DEFAULT_SIZE 256
+#define FLOW_CACHE_MAX_SIZE	(1 << 16)
+
+static clib_error_t *
+vnet_flow_config (vlib_main_t *vm, unformat_input_t *input)
+{
+  vnet_flow_main_t *fm = &flow_main;
+  fm->flow_cache_size = FLOW_CACHE_DEFAULT_SIZE;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "per-thread-cache-size %u", &fm->flow_cache_size))
+	;
+      else
+	return clib_error_return (0, "unknown flow config: `%U`", format_unformat_error, input);
+    }
+
+  fm->flow_cache_size = clib_min (fm->flow_cache_size, FLOW_CACHE_MAX_SIZE);
+  return 0;
+}
+
+/* flow { [per-thread-cache-size <n>] } */
+VLIB_EARLY_CONFIG_FUNCTION (vnet_flow_config, "flow");
+
+static clib_error_t *
+vnet_flow_init (vlib_main_t *vm)
+{
+  vnet_flow_main_t *fm = &flow_main;
+
+  /* default if no flow{} stanza in startup.conf */
+  if (fm->flow_cache_size == 0)
+    fm->flow_cache_size = FLOW_CACHE_DEFAULT_SIZE;
+
+  /* Multi-worker, cache-line aligned. */
+  pool_cache_init (&fm->flows, "flows", format_flow, 0, CLIB_CACHE_LINE_BYTES, vnet_flow_t);
+  /* Templates are admin-rare; size 0 means "use default" but per_thread
+   * is still allocated only if there are workers. Cache-line aligned. */
+  pool_cache_init (&fm->flows, "flow-templates", format_flow, 0, CLIB_CACHE_LINE_BYTES,
+		   vnet_flow_t);
+
+  return 0;
+}
+
+VLIB_INIT_FUNCTION (vnet_flow_init);
+
 int
-vnet_flow_get_range (vnet_main_t * vnm, char *owner, u32 count, u32 * start)
+vnet_flow_get_range (vnet_main_t *vnm, char *owner, u32 count, u32 *start)
 {
   vnet_flow_main_t *fm = &flow_main;
   vnet_flow_range_t *r;
@@ -33,16 +78,15 @@ static_always_inline int
 vnet_flow_add_inline (vnet_main_t *vnm, vnet_flow_t *flow, u32 *flow_index, bool template)
 {
   vnet_flow_main_t *fm = &flow_main;
-  vnet_flow_t **ppool = template ? &fm->global_flow_template_pool : &fm->global_flow_pool;
-  vnet_flow_t *pool = *ppool;
   vnet_flow_t *f;
 
   if (!template && (flow->actions & VNET_FLOW_ACTION_MARK) &&
       flow->mark_flow_id == VNET_FLOW_MARK_INVALID)
     return VNET_FLOW_ERROR_INVALID_VALUE;
 
-  pool_get_aligned (pool, f, CLIB_CACHE_LINE_BYTES);
-  *flow_index = f - pool;
+  vlib_pool_cache_t *fpc = template ? &fm->flow_templates : &fm->flows;
+
+  *flow_index = pool_cache_get (fpc, f);
 
   /* copy CL0 hot fields */
   f->type = flow->type;
@@ -77,7 +121,6 @@ vnet_flow_add_inline (vnet_main_t *vnm, vnet_flow_t *flow, u32 *flow_index, bool
   f->queue_index = flow->queue_index;
   f->queue_num = flow->queue_num;
 
-  *ppool = pool;
   return 0;
 }
 
@@ -134,7 +177,13 @@ vnet_flow_enable_disable (vnet_main_t *vnm, u32 flow_index, u32 hw_if_index, uwo
     }
 
   if (enable && template)
-    f->n_flows = n_flows;
+    {
+      __clib_unused vnet_flow_main_t *fm = &flow_main;
+      f->n_flows = n_flows;
+      /* Pre-allocate the flow pool so workers never trigger a realloc
+       * while iterating in the data path. */
+      pool_cache_prefill (&fm->flows, n_flows);
+    }
 
   rv = dev_ops_function (vnm, op, hi->dev_instance, flow_index);
   if (rv)
@@ -152,8 +201,6 @@ static_always_inline int
 vnet_flow_del_inline (vnet_main_t *vnm, u32 flow_index, bool template)
 {
   vnet_flow_main_t *fm = &flow_main;
-  vnet_flow_t **ppool = template ? &fm->global_flow_template_pool : &fm->global_flow_pool;
-  vnet_flow_t *pool = *ppool;
   vnet_flow_t *f = template ? vnet_get_flow_template (flow_index) : vnet_get_flow (flow_index);
   int rv;
 
@@ -168,8 +215,12 @@ vnet_flow_del_inline (vnet_main_t *vnm, u32 flow_index, bool template)
     clib_mem_free (f->generic_pattern);
 
   clib_memset (f, 0, sizeof (*f));
-  pool_put (pool, f);
-  *ppool = pool;
+  f->driver_data.opaque = ~0;
+  f->driver_data.hw_if_index = ~0;
+
+  vlib_pool_cache_t *fpc = template ? &fm->flow_templates : &fm->flows;
+  pool_cache_put_index (fpc, flow_index);
+
   return 0;
 }
 

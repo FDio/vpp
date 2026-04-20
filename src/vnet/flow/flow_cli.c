@@ -12,10 +12,8 @@
 #include <vnet/ethernet/packet.h>
 #include <vnet/flow/flow.h>
 
-static format_function_t format_flow;
-
 uword
-unformat_ip_port_and_mask (unformat_input_t * input, va_list * args)
+unformat_ip_port_and_mask (unformat_input_t *input, va_list *args)
 {
   ip_port_and_mask_t *pm = va_arg (*args, ip_port_and_mask_t *);
   u32 port = 0, mask = 0;
@@ -40,7 +38,7 @@ unformat_ip_port_and_mask (unformat_input_t * input, va_list * args)
 }
 
 u8 *
-format_ip_port_and_mask (u8 * s, va_list * args)
+format_ip_port_and_mask (u8 *s, va_list *args)
 {
   ip_port_and_mask_t *pm = va_arg (*args, ip_port_and_mask_t *);
 
@@ -54,7 +52,7 @@ format_ip_port_and_mask (u8 * s, va_list * args)
 }
 
 uword
-unformat_ip_protocol_and_mask (unformat_input_t * input, va_list * args)
+unformat_ip_protocol_and_mask (unformat_input_t *input, va_list *args)
 {
   ip_prot_and_mask_t *pm = va_arg (*args, ip_prot_and_mask_t *);
   u32 prot = 0, mask = 0;
@@ -77,7 +75,7 @@ unformat_ip_protocol_and_mask (unformat_input_t * input, va_list * args)
 }
 
 u8 *
-format_ip_protocol_and_mask (u8 * s, va_list * args)
+format_ip_protocol_and_mask (u8 *s, va_list *args)
 {
   ip_prot_and_mask_t *pm = va_arg (*args, ip_prot_and_mask_t *);
 
@@ -88,14 +86,16 @@ format_ip_protocol_and_mask (u8 * s, va_list * args)
 }
 
 u8 *
-format_flow_error (u8 * s, va_list * args)
+format_flow_error (u8 *s, va_list *args)
 {
   int error = va_arg (*args, int);
 
   if (error == 0)
     return format (s, "no error");
 
-#define _(v,n,str) if (error == v) return format (s, #str);
+#define _(v, n, str)                                                                               \
+  if (error == v)                                                                                  \
+    return format (s, #str);
   foreach_flow_error;
 #undef _
 
@@ -103,13 +103,14 @@ format_flow_error (u8 * s, va_list * args)
 }
 
 u8 *
-format_flow_actions (u8 * s, va_list * args)
+format_flow_actions (u8 *s, va_list *args)
 {
   u32 actions = va_arg (*args, u32);
   u8 *t = 0;
 
-#define _(a, b, c) if (actions & (1 << a)) \
-  t = format (t, "%s%s", t ? " ":"", c);
+#define _(a, b, c)                                                                                 \
+  if (actions & (1 << a))                                                                          \
+    t = format (t, "%s%s", t ? " " : "", c);
   foreach_flow_action
 #undef _
     s = format (s, "%v", t);
@@ -118,7 +119,7 @@ format_flow_actions (u8 * s, va_list * args)
 }
 
 u8 *
-format_flow_enabled_hw (u8 * s, va_list * args)
+format_flow_enabled_hw (u8 *s, va_list *args)
 {
   u32 flow_index = va_arg (*args, u32);
   vnet_flow_t *f = vnet_get_flow (flow_index);
@@ -132,16 +133,14 @@ format_flow_enabled_hw (u8 * s, va_list * args)
 }
 
 u8 *
-format_rss_function (u8 * s, va_list * args)
+format_rss_function (u8 *s, va_list *args)
 {
   vnet_rss_function_t func = va_arg (*args, vnet_rss_function_t);
 
   if (0)
     ;
 #undef _
-#define _(f, n) \
-      else if (func == VNET_RSS_FUNC_##f) \
-        return format (s, n);
+#define _(f, n) else if (func == VNET_RSS_FUNC_##f) return format (s, n);
 
   foreach_rss_function
 #undef _
@@ -149,13 +148,13 @@ format_rss_function (u8 * s, va_list * args)
 }
 
 u8 *
-format_rss_types (u8 * s, va_list * args)
+format_rss_types (u8 *s, va_list *args)
 {
   u64 type = va_arg (*args, u64);
 
 #undef _
-#define _(a,b,c)     \
-  if (type & (1UL<<a)) \
+#define _(a, b, c)                                                                                 \
+  if (type & (1UL << a))                                                                           \
     s = format (s, "%s ", c);
 
   foreach_flow_rss_types
@@ -164,14 +163,13 @@ format_rss_types (u8 * s, va_list * args)
 }
 
 static const char *flow_type_strings[] = { 0,
-#define _(a,b,c) c,
-  foreach_flow_type
+#define _(a, b, c) c,
+					   foreach_flow_type
 #undef _
 };
 
 static clib_error_t *
-show_flow_entry (vlib_main_t * vm, unformat_input_t * input,
-		 vlib_cli_command_t * cmd_arg)
+show_flow_entry (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd_arg)
 {
   vnet_main_t *vnm = vnet_get_main ();
   vnet_flow_main_t *fm = &flow_main;
@@ -180,7 +178,10 @@ show_flow_entry (vlib_main_t * vm, unformat_input_t * input,
   vnet_device_class_t *dev_class;
   vnet_flow_t *f;
   u32 index = ~0;
-  u32 total = pool_elts (fm->global_flow_pool);
+  u32 total_allocated = pool_cache_count_total_allocated (&fm->flows);
+  u32 total_free =
+    pool_cache_count_global_free (&fm->flows) + pool_cache_count_total_cached (&fm->flows);
+  u32 total = total_allocated > total_free ? total_allocated - total_free : 0;
   u32 max = 20;
   u32 n_shown = 0;
   clib_error_t *error;
@@ -231,18 +232,22 @@ show_flow_entry (vlib_main_t * vm, unformat_input_t * input,
     }
 
 no_args:
-  pool_foreach (f, fm->global_flow_pool)
-    {
-      if (n_shown >= max)
-	break;
-      vlib_cli_output (vm, "%U\n", format_flow, f);
-      if (f->type == VNET_FLOW_TYPE_GENERIC)
-	{
-	  vlib_cli_output (vm, "%s: %s", "spec", f->generic_pattern->spec);
-	  vlib_cli_output (vm, "%s: %s", "mask", f->generic_pattern->mask);
-	}
-      n_shown++;
-    }
+  vlib_foreach_pool_cache (f, &fm->flows, {
+    if (n_shown >= max)
+      break;
+
+    /* skip pre-allocated/cached entries not yet assigned to a flow */
+    if (f->type == VNET_FLOW_TYPE_UNKNOWN)
+      continue;
+
+    vlib_cli_output (vm, "%U\n", format_flow, f);
+    if (f->type == VNET_FLOW_TYPE_GENERIC)
+      {
+	vlib_cli_output (vm, "%s: %s", "spec", f->generic_pattern->spec);
+	vlib_cli_output (vm, "%s: %s", "mask", f->generic_pattern->mask);
+      }
+    n_shown++;
+  });
 
   vlib_cli_output (vm, "Displayed %u flows (%u total flows)", n_shown, total);
   if (total > max)
@@ -257,8 +262,7 @@ VLIB_CLI_COMMAND (show_flow_entry_command, static) = {
 };
 
 static clib_error_t *
-show_flow_ranges (vlib_main_t * vm, unformat_input_t * input,
-		  vlib_cli_command_t * cmd_arg)
+show_flow_ranges (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd_arg)
 {
   vnet_flow_main_t *fm = &flow_main;
   vnet_flow_range_t *r = 0;
@@ -273,9 +277,9 @@ show_flow_ranges (vlib_main_t * vm, unformat_input_t * input,
 }
 
 VLIB_CLI_COMMAND (show_flow_ranges_command, static) = {
-    .path = "show flow ranges",
-    .short_help = "show flow ranges",
-    .function = show_flow_ranges,
+  .path = "show flow ranges",
+  .short_help = "show flow ranges",
+  .function = show_flow_ranges,
 };
 
 static clib_error_t *
@@ -329,10 +333,8 @@ show_flow_template (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t
     }
 
 no_args:
-  pool_foreach (f, fm->global_flow_template_pool)
-    {
-      vlib_cli_output (vm, "%U\n", format_flow, f);
-    }
+  vlib_foreach_pool_cache (f, &fm->flow_templates,
+			   { vlib_cli_output (vm, "%U\n", format_flow, f); });
 
   return 0;
 }
@@ -344,8 +346,7 @@ VLIB_CLI_COMMAND (show_flow_template_command, static) = {
 };
 
 static clib_error_t *
-show_flow_interface (vlib_main_t * vm, unformat_input_t * input,
-		     vlib_cli_command_t * cmd_arg)
+show_flow_interface (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd_arg)
 {
   vnet_main_t *vnm = vnet_get_main ();
   vnet_hw_interface_t *hi;
@@ -358,8 +359,7 @@ show_flow_interface (vlib_main_t * vm, unformat_input_t * input,
     {
       while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
 	{
-	  if (unformat (line_input, "%U",
-			unformat_vnet_hw_interface, vnm, &hw_if_index))
+	  if (unformat (line_input, "%U", unformat_vnet_hw_interface, vnm, &hw_if_index))
 	    ;
 	  else
 	    {
@@ -384,9 +384,9 @@ show_flow_interface (vlib_main_t * vm, unformat_input_t * input,
 }
 
 VLIB_CLI_COMMAND (show_flow_interface_command, static) = {
-    .path = "show flow interface",
-    .short_help = "show flow interface <interface name>",
-    .function = show_flow_interface,
+  .path = "show flow interface",
+  .short_help = "show flow interface <interface name>",
+  .function = show_flow_interface,
 };
 
 static clib_error_t *
@@ -443,7 +443,7 @@ flow_cli (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd_arg)
   bool l2tpv3oip_set = false;
   bool ipsec_esp_set = false, ipsec_ah_set = false;
   bool generic_spec_set = false, generic_mask_set = false;
-  u8 *rss_type[3] = { };
+  u8 *rss_type[3] = {};
   u8 *type_str = NULL;
   u8 *generic_spec = NULL, *generic_mask = NULL;
 
@@ -500,52 +500,36 @@ flow_cli (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd_arg)
 	  vec_free (generic_mask);
 	  generic_mask_set = true;
 	}
-      else if (unformat (line_input, "eth-type %U",
-			 unformat_ethernet_type_host_byte_order, &eth_type))
+      else if (unformat (line_input, "eth-type %U", unformat_ethernet_type_host_byte_order,
+			 &eth_type))
 	flow_class = FLOW_ETHERNET_CLASS;
-      else if (unformat (line_input, "src-ip %U",
-			 unformat_ip4_address_and_mask, &ip4s))
+      else if (unformat (line_input, "src-ip %U", unformat_ip4_address_and_mask, &ip4s))
 	flow_class = FLOW_IPV4_CLASS;
-      else if (unformat (line_input, "dst-ip %U",
-			 unformat_ip4_address_and_mask, &ip4d))
+      else if (unformat (line_input, "dst-ip %U", unformat_ip4_address_and_mask, &ip4d))
 	flow_class = FLOW_IPV4_CLASS;
-      else if (unformat (line_input, "in-src-ip %U",
-			 unformat_ip4_address_and_mask, &in_ip4s))
+      else if (unformat (line_input, "in-src-ip %U", unformat_ip4_address_and_mask, &in_ip4s))
 	inner_ip4_set = true;
-      else if (unformat (line_input, "in-dst-ip %U",
-			 unformat_ip4_address_and_mask, &in_ip4d))
+      else if (unformat (line_input, "in-dst-ip %U", unformat_ip4_address_and_mask, &in_ip4d))
 	inner_ip4_set = true;
-      else if (unformat (line_input, "ip6-src-ip %U",
-			 unformat_ip6_address_and_mask, &ip6s))
+      else if (unformat (line_input, "ip6-src-ip %U", unformat_ip6_address_and_mask, &ip6s))
 	flow_class = FLOW_IPV6_CLASS;
-      else if (unformat (line_input, "ip6-dst-ip %U",
-			 unformat_ip6_address_and_mask, &ip6d))
+      else if (unformat (line_input, "ip6-dst-ip %U", unformat_ip6_address_and_mask, &ip6d))
 	flow_class = FLOW_IPV6_CLASS;
-      else if (unformat (line_input, "in-ip6-src-ip %U",
-			 unformat_ip6_address_and_mask, &in_ip6s))
+      else if (unformat (line_input, "in-ip6-src-ip %U", unformat_ip6_address_and_mask, &in_ip6s))
 	inner_ip6_set = true;
-      else if (unformat (line_input, "in-ip6-dst-ip %U",
-			 unformat_ip6_address_and_mask, &in_ip6d))
+      else if (unformat (line_input, "in-ip6-dst-ip %U", unformat_ip6_address_and_mask, &in_ip6d))
 	inner_ip6_set = true;
-      else if (unformat (line_input, "src-port %U", unformat_ip_port_and_mask,
-			 &sport))
+      else if (unformat (line_input, "src-port %U", unformat_ip_port_and_mask, &sport))
 	tcp_udp_port_set = true;
-      else if (unformat (line_input, "dst-port %U", unformat_ip_port_and_mask,
-			 &dport))
+      else if (unformat (line_input, "dst-port %U", unformat_ip_port_and_mask, &dport))
 	tcp_udp_port_set = true;
-      else
-	if (unformat
-	    (line_input, "proto %U", unformat_ip_protocol_and_mask,
-	     &protocol))
+      else if (unformat (line_input, "proto %U", unformat_ip_protocol_and_mask, &protocol))
 	;
-      else if (unformat (line_input, "in-src-port %U",
-			 unformat_ip_port_and_mask, &in_sport))
+      else if (unformat (line_input, "in-src-port %U", unformat_ip_port_and_mask, &in_sport))
 	inner_port_set = true;
-      else if (unformat (line_input, "in-dst-port %U",
-			 unformat_ip_port_and_mask, &in_dport))
+      else if (unformat (line_input, "in-dst-port %U", unformat_ip_port_and_mask, &in_dport))
 	inner_port_set = true;
-      else if (unformat (line_input, "in-proto %U",
-			 unformat_ip_protocol_and_mask, &in_proto))
+      else if (unformat (line_input, "in-proto %U", unformat_ip_protocol_and_mask, &in_proto))
 	;
       else if (unformat (line_input, "gtpc teid %u", &teid))
 	gtpc_set = true;
@@ -582,11 +566,9 @@ flow_cli (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd_arg)
 	flow.actions |= VNET_FLOW_ACTION_REDIRECT_TO_NODE;
       else if (unformat (line_input, "mark %d", &flow.mark_flow_id))
 	flow.actions |= VNET_FLOW_ACTION_MARK;
-      else if (unformat (line_input, "buffer-advance %d",
-			 &flow.buffer_advance))
+      else if (unformat (line_input, "buffer-advance %d", &flow.buffer_advance))
 	flow.actions |= VNET_FLOW_ACTION_BUFFER_ADVANCE;
-      else if (unformat (line_input, "redirect-to-queue %d",
-			 &flow.redirect_queue))
+      else if (unformat (line_input, "redirect-to-queue %d", &flow.redirect_queue))
 	flow.actions |= VNET_FLOW_ACTION_REDIRECT_TO_QUEUE;
       else if (unformat (line_input, "drop"))
 	flow.actions |= VNET_FLOW_ACTION_DROP;
@@ -595,19 +577,16 @@ flow_cli (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd_arg)
 	  if (0)
 	    ;
 #undef _
-#define _(f, s) \
-      else if (unformat (line_input, s)) \
-      flow.rss_fun = VNET_RSS_FUNC_##f;
+#define _(f, s) else if (unformat (line_input, s)) flow.rss_fun = VNET_RSS_FUNC_##f;
 
 	  foreach_rss_function
 #undef _
 	    else
-	    {
+	  {
 
-	      error =
-		clib_error_return (0, "unknown input `%U'", format_unformat_error, line_input);
-	      goto done;
-	    }
+	    error = clib_error_return (0, "unknown input `%U'", format_unformat_error, line_input);
+	    goto done;
+	  }
 
 	  flow.actions |= VNET_FLOW_ACTION_RSS;
 	}
@@ -618,19 +597,16 @@ flow_cli (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd_arg)
 	  rss_type[2] = NULL;
 	  type_str = NULL;
 
-	  if (unformat (line_input, "%s use %s and %s",
-			&rss_type[0], &rss_type[1], &rss_type[2]))
+	  if (unformat (line_input, "%s use %s and %s", &rss_type[0], &rss_type[1], &rss_type[2]))
 	    ;
-	  else if (unformat
-		   (line_input, "%s use %s", &rss_type[0], &rss_type[1]))
+	  else if (unformat (line_input, "%s use %s", &rss_type[0], &rss_type[1]))
 	    ;
 	  else if (unformat (line_input, "%s", &rss_type[0]))
 	    ;
 
 #undef _
-#define _(a,b,c)     \
-      else if (!clib_strcmp(c, (const char *)type_str)) \
-        flow.rss_types |= (1ULL<<a);
+#define _(a, b, c)                                                                                 \
+  else if (!clib_strcmp (c, (const char *) type_str)) flow.rss_types |= (1ULL << a);
 
 #define check_rss_types(_str)                                                                      \
   if (_str != NULL)                                                                                \
@@ -645,8 +621,7 @@ flow_cli (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd_arg)
       }                                                                                            \
     }
 
-	  check_rss_types (rss_type[0])
-	    check_rss_types (rss_type[1]) check_rss_types (rss_type[2])
+	  check_rss_types (rss_type[0]) check_rss_types (rss_type[1]) check_rss_types (rss_type[2])
 #undef _
 	    flow.actions |= VNET_FLOW_ACTION_RSS;
 	}
@@ -666,8 +641,7 @@ flow_cli (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd_arg)
 
 	  flow.actions |= VNET_FLOW_ACTION_RSS;
 	}
-      else if (unformat (line_input, "%U", unformat_vnet_hw_interface, vnm,
-			 &hw_if_index))
+      else if (unformat (line_input, "%U", unformat_vnet_hw_interface, vnm, &hw_if_index))
 	;
       else
 	{
@@ -684,8 +658,7 @@ flow_cli (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd_arg)
       goto done;
     }
 
-  if (flow_index == ~0 && (action == FLOW_ENABLE || action == FLOW_DISABLE ||
-			   action == FLOW_DEL))
+  if (flow_index == ~0 && (action == FLOW_ENABLE || action == FLOW_DISABLE || action == FLOW_DEL))
     {
       error = clib_error_return (0, "Please specify flow index");
       goto done;
@@ -804,10 +777,8 @@ flow_cli (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd_arg)
 	{
 	  vnet_flow_ip4_t *ip4_ptr = &flow.pattern.ip4;
 
-	  clib_memcpy (&ip4_ptr->src_addr, &ip4s,
-		       sizeof (ip4_address_and_mask_t));
-	  clib_memcpy (&ip4_ptr->dst_addr, &ip4d,
-		       sizeof (ip4_address_and_mask_t));
+	  clib_memcpy (&ip4_ptr->src_addr, &ip4s, sizeof (ip4_address_and_mask_t));
+	  clib_memcpy (&ip4_ptr->dst_addr, &ip4d, sizeof (ip4_address_and_mask_t));
 	  ip4_ptr->protocol.prot = protocol.prot;
 
 	  /* In this cli, we use the protocol.mask only when the flow type is
@@ -1017,7 +988,7 @@ VLIB_CLI_COMMAND (flow_command, static) = {
 };
 
 static u8 *
-format_flow_match_element (u8 * s, va_list * args)
+format_flow_match_element (u8 *s, va_list *args)
 {
   char *type = va_arg (*args, char *);
   void *ptr = va_arg (*args, void *);
@@ -1063,23 +1034,23 @@ format_flow_match_element (u8 * s, va_list * args)
   return s;
 }
 
-#define _fe(a,b) s2 = format (s2, "%s%s %U", s2 ? ", ":"", #b, \
-			      format_flow_match_element, #a, &f->b);
-#define _(a,b,c) \
-u8 * format_flow_match_##b (u8 * s, va_list * args)			\
-{									\
-  vnet_flow_##b##_t *f = __builtin_va_arg (*args, vnet_flow_##b##_t *); \
-  u8 *s2 = 0; \
-foreach_flow_entry_##b \
-  s = format (s, "%v", s2);; \
-  vec_free (s2); \
-return s; \
-}
+#define _fe(a, b)                                                                                  \
+  s2 = format (s2, "%s%s %U", s2 ? ", " : "", #b, format_flow_match_element, #a, &f->b);
+#define _(a, b, c)                                                                                 \
+  u8 *format_flow_match_##b (u8 *s, va_list *args)                                                 \
+  {                                                                                                \
+    vnet_flow_##b##_t *f = __builtin_va_arg (*args, vnet_flow_##b##_t *);                          \
+    u8 *s2 = 0;                                                                                    \
+    foreach_flow_entry_##b s = format (s, "%v", s2);                                               \
+    ;                                                                                              \
+    vec_free (s2);                                                                                 \
+    return s;                                                                                      \
+  }
 foreach_flow_type
 #undef _
 #undef _fe
-static u8 *
-format_flow_match (u8 * s, va_list * args)
+  static u8 *
+  format_flow_match (u8 *s, va_list *args)
 {
   vnet_flow_t *f = va_arg (*args, vnet_flow_t *);
 
@@ -1095,8 +1066,8 @@ format_flow_match (u8 * s, va_list * args)
   return s;
 }
 
-static u8 *
-format_flow (u8 * s, va_list * args)
+u8 *
+format_flow (u8 *s, va_list *args)
 {
   vlib_main_t *vm = vlib_get_main ();
   vnet_flow_t *f = va_arg (*args, vnet_flow_t *);
@@ -1106,8 +1077,7 @@ format_flow (u8 * s, va_list * args)
   s = format (s, "flow-index %u type %s %s", f->index, flow_type_strings[f->type],
 	      IS_FLOW_ENABLED (f) ? "active" : "inactive"),
   s = format (s, "\n%Umatch: %U", format_white_space, indent + 2, format_flow_match, f);
-  s = format (s, "\n%Uaction: %U", format_white_space, indent + 2,
-	      format_flow_actions, f->actions);
+  s = format (s, "\n%Uaction: %U", format_white_space, indent + 2, format_flow_actions, f->actions);
 
   if (f->actions & VNET_FLOW_ACTION_DROP)
     t = format (t, "%sdrop", t ? ", " : "");
@@ -1116,22 +1086,19 @@ format_flow (u8 * s, va_list * args)
     t = format (t, "%smark %u", t ? ", " : "", f->mark_flow_id);
 
   if (f->actions & VNET_FLOW_ACTION_REDIRECT_TO_QUEUE)
-    t =
-      format (t, "%sredirect-to-queue %u", t ? ", " : "", f->redirect_queue);
+    t = format (t, "%sredirect-to-queue %u", t ? ", " : "", f->redirect_queue);
 
   if (f->actions & VNET_FLOW_ACTION_REDIRECT_TO_NODE)
-    t = format (t, "%snext-node %U", t ? ", " : "",
-		format_vlib_node_name, vm, f->redirect_node_index);
+    t = format (t, "%snext-node %U", t ? ", " : "", format_vlib_node_name, vm,
+		f->redirect_node_index);
 
   if (f->actions & VNET_FLOW_ACTION_BUFFER_ADVANCE)
     t = format (t, "%sbuffer-advance %d", t ? ", " : "", f->buffer_advance);
 
   if (f->actions & VNET_FLOW_ACTION_RSS)
     {
-      t = format (t, "%srss function %U", t ? ", " : "",
-		  format_rss_function, f->rss_fun);
-      t = format (t, "%srss types %U", t ? ", " : "",
-		  format_rss_types, f->rss_types);
+      t = format (t, "%srss function %U", t ? ", " : "", format_rss_function, f->rss_fun);
+      t = format (t, "%srss types %U", t ? ", " : "", format_rss_types, f->rss_types);
     }
 
   if (t)
