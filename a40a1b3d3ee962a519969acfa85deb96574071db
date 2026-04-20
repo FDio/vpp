@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "feeb6f34_e2f607ba",
+        "filename": "src/plugins/sfdp_services/base/sample/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 149,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-04-20T10:26:37Z",
+      "side": 1,
+      "message": "there is no timer field in sfdp_session_t and from what I can see this sample node is not compiled so we cannot catch this.\nWe should fix it and add it, or delete it (a broken example is a bad example)",
+      "revId": "a40a1b3d3ee962a519969acfa85deb96574071db",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
