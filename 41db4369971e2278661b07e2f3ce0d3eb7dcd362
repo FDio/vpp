@@ -68,6 +68,24 @@
       "message": "I think we might need to evolve vlib_buffer_set_alloc_free_callback() or find another way because right now we can only register one cbak.",
       "revId": "41db4369971e2278661b07e2f3ce0d3eb7dcd362",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "703c3d5e_203881cc",
+        "filename": "src/plugins/cnat/cnat_scanner.c",
+        "patchSetId": 37
+      },
+      "lineNbr": 105,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-04-20T09:29:49Z",
+      "side": 1,
+      "message": "Right, maybe that can be the subject of another patch ?",
+      "parentUuid": "7ed684a5_23763060",
+      "revId": "41db4369971e2278661b07e2f3ce0d3eb7dcd362",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
