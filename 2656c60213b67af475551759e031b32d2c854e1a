@@ -36,6 +36,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "68712982_e907281d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-04-20T08:18:18Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "c1eab7d5_6c875bc9",
+      "revId": "2656c60213b67af475551759e031b32d2c854e1a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "694f06ed_be9f3569",
@@ -67,6 +85,24 @@
       "side": 1,
       "message": "I removed the direct assignment — now vnet_hw_if_set_rx_queue_mode() handles the mode change (triggering the driver callback), then vring-\u003emode is set via vnet_hw_if_get_rx_queue_mode() to reflect the actual result.",
       "parentUuid": "694f06ed_be9f3569",
+      "revId": "2656c60213b67af475551759e031b32d2c854e1a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "43d4c07c_35d80469",
+        "filename": "src/vnet/devices/virtio/virtio.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 184,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-04-20T08:18:18Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "14b9f4fb_b91d80fb",
       "revId": "2656c60213b67af475551759e031b32d2c854e1a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
