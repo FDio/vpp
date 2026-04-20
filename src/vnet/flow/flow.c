@@ -10,6 +10,77 @@
 
 vnet_flow_main_t flow_main;
 
+#define FLOW_CACHE_DEFAULT_SIZE 256
+#define FLOW_CACHE_MAX_SIZE	(1 << 16)
+
+static clib_error_t *
+vnet_flow_config (vlib_main_t *vm, unformat_input_t *input)
+{
+  vnet_flow_main_t *fm = &flow_main;
+  fm->flow_cache_size = FLOW_CACHE_DEFAULT_SIZE;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "per-thread-cache-size %u", &fm->flow_cache_size))
+	;
+      else
+	return clib_error_return (0, "unknown flow config: `%U`", format_unformat_error, input);
+    }
+
+  fm->flow_cache_size = clib_min (fm->flow_cache_size, FLOW_CACHE_MAX_SIZE);
+  return 0;
+}
+
+/* flow { [per-thread-cache-size <n>] } */
+VLIB_EARLY_CONFIG_FUNCTION (vnet_flow_config, "flow");
+
+static clib_error_t *
+vnet_flow_init (vlib_main_t *vm)
+{
+  vnet_flow_main_t *fm = &flow_main;
+
+  /* default if no flow{} stanza in startup.conf */
+  if (fm->flow_cache_size == 0)
+    fm->flow_cache_size = FLOW_CACHE_DEFAULT_SIZE;
+
+  if (vlib_num_workers ())
+    {
+      clib_spinlock_init (&fm->flow_pool_lock);
+      vec_validate (fm->per_thread_data, vlib_thread_main.n_vlib_mains - 1);
+    }
+  return 0;
+}
+
+VLIB_INIT_FUNCTION (vnet_flow_init);
+
+static_always_inline void
+vnet_flow_cache_refill (vnet_flow_main_t *fm, vnet_flow_per_thread_data_t *ptd, u32 n)
+{
+  vnet_flow_t *f;
+  clib_spinlock_lock (&fm->flow_pool_lock);
+  for (u32 i = 0; i < n; i++)
+    {
+      pool_get_aligned (fm->global_flow_pool, f, CLIB_CACHE_LINE_BYTES);
+      clib_memset (f, 0, sizeof (*f));
+      f->driver_data.opaque = ~0;
+      f->driver_data.hw_if_index = ~0;
+      vec_add1 (ptd->flow_cache, f - fm->global_flow_pool);
+    }
+  clib_spinlock_unlock (&fm->flow_pool_lock);
+}
+
+static_always_inline void
+vnet_flow_cache_drain (vnet_flow_main_t *fm, vnet_flow_per_thread_data_t *ptd, u32 n)
+{
+  clib_spinlock_lock (&fm->flow_pool_lock);
+  for (u32 i = 0; i < n; i++)
+    {
+      u32 idx = vec_pop (ptd->flow_cache);
+      pool_put_index (fm->global_flow_pool, idx);
+    }
+  clib_spinlock_unlock (&fm->flow_pool_lock);
+}
+
 int
 vnet_flow_get_range (vnet_main_t * vnm, char *owner, u32 count, u32 * start)
 {
@@ -33,16 +104,34 @@ static_always_inline int
 vnet_flow_add_inline (vnet_main_t *vnm, vnet_flow_t *flow, u32 *flow_index, bool template)
 {
   vnet_flow_main_t *fm = &flow_main;
-  vnet_flow_t **ppool = template ? &fm->global_flow_template_pool : &fm->global_flow_pool;
-  vnet_flow_t *pool = *ppool;
   vnet_flow_t *f;
 
   if (!template && (flow->actions & VNET_FLOW_ACTION_MARK) &&
       flow->mark_flow_id == VNET_FLOW_MARK_INVALID)
     return VNET_FLOW_ERROR_INVALID_VALUE;
 
-  pool_get_aligned (pool, f, CLIB_CACHE_LINE_BYTES);
-  *flow_index = f - pool;
+  if (!template && fm->per_thread_data)
+    {
+      /* per-thread cached fast path (multi-worker) */
+      vnet_flow_per_thread_data_t *ptd =
+	vec_elt_at_index (fm->per_thread_data, vlib_get_thread_index ());
+
+      if (PREDICT_FALSE (vec_len (ptd->flow_cache) == 0))
+	vnet_flow_cache_refill (fm, ptd, fm->flow_cache_size);
+
+      u32 fi = vec_pop (ptd->flow_cache);
+      f = pool_elt_at_index (fm->global_flow_pool, fi);
+      *flow_index = fi;
+    }
+  else
+    {
+      /* single-threaded or template path */
+      vnet_flow_t **ppool = template ? &fm->global_flow_template_pool : &fm->global_flow_pool;
+      vnet_flow_t *pool = *ppool;
+      pool_get_aligned (pool, f, CLIB_CACHE_LINE_BYTES);
+      *flow_index = f - pool;
+      *ppool = pool;
+    }
 
   /* copy CL0 hot fields */
   f->type = flow->type;
@@ -77,7 +166,6 @@ vnet_flow_add_inline (vnet_main_t *vnm, vnet_flow_t *flow, u32 *flow_index, bool
   f->queue_index = flow->queue_index;
   f->queue_num = flow->queue_num;
 
-  *ppool = pool;
   return 0;
 }
 
@@ -130,7 +218,14 @@ vnet_flow_enable_disable (vnet_main_t *vnm, u32 flow_index, u32 hw_if_index, uwo
     }
 
   if (enable && template)
-    f->n_flows = n_flows;
+    {
+      vnet_flow_main_t *fm = &flow_main;
+      f->n_flows = n_flows;
+      /* pre-allocate flow pool so workers never trigger realloc */
+      clib_spinlock_lock_if_init (&fm->flow_pool_lock);
+      pool_alloc_aligned (fm->global_flow_pool, n_flows, CLIB_CACHE_LINE_BYTES);
+      clib_spinlock_unlock_if_init (&fm->flow_pool_lock);
+    }
 
   rv = dev_ops_function (vnm, op, hi->dev_instance, flow_index);
   if (rv)
@@ -146,8 +241,6 @@ static_always_inline int
 vnet_flow_del_inline (vnet_main_t *vnm, u32 flow_index, bool template)
 {
   vnet_flow_main_t *fm = &flow_main;
-  vnet_flow_t **ppool = template ? &fm->global_flow_template_pool : &fm->global_flow_pool;
-  vnet_flow_t *pool = *ppool;
   vnet_flow_t *f = template ? vnet_get_flow_template (flow_index) : vnet_get_flow (flow_index);
   int rv;
 
@@ -162,8 +255,29 @@ vnet_flow_del_inline (vnet_main_t *vnm, u32 flow_index, bool template)
     clib_mem_free (f->generic_pattern);
 
   clib_memset (f, 0, sizeof (*f));
-  pool_put (pool, f);
-  *ppool = pool;
+  f->driver_data.opaque = ~0;
+  f->driver_data.hw_if_index = ~0;
+
+  if (!template && fm->per_thread_data)
+    {
+      /* return to per-thread cache */
+      vnet_flow_per_thread_data_t *ptd =
+	vec_elt_at_index (fm->per_thread_data, vlib_get_thread_index ());
+      vec_add1 (ptd->flow_cache, flow_index);
+
+      /* drain excess back to global pool */
+      if (PREDICT_FALSE (vec_len (ptd->flow_cache) > 2 * fm->flow_cache_size))
+	vnet_flow_cache_drain (fm, ptd, fm->flow_cache_size);
+    }
+  else
+    {
+      /* single-threaded or template path */
+      vnet_flow_t **ppool = template ? &fm->global_flow_template_pool : &fm->global_flow_pool;
+      vnet_flow_t *pool = *ppool;
+      pool_put (pool, f);
+      *ppool = pool;
+    }
+
   return 0;
 }
 
