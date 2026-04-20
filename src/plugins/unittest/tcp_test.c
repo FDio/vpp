@@ -5,6 +5,8 @@
 
 #include <vnet/tcp/tcp.h>
 #include <vnet/tcp/tcp_inlines.h>
+#include <vnet/tcp/tcp_timer.h>
+#include <unittest/session/test_session_helpers.h>
 
 #define TCP_TEST_I(_cond, _comment, _args...)			\
 ({								\
@@ -1051,6 +1053,446 @@ tcp_test_set_time (clib_thread_index_t thread_index, u32 val)
 }
 
 static int
+tcp_test_persist_e2e (vlib_main_t *vm, unformat_input_t *input)
+{
+  session_endpoint_cfg_t client_sep = SESSION_ENDPOINT_CFG_NULL;
+  session_endpoint_cfg_t server_sep = SESSION_ENDPOINT_CFG_NULL;
+  session_handle_t listen_handle = SESSION_INVALID_HANDLE;
+  u64 options[APP_OPTIONS_N_OPTIONS], placeholder_secret = 2234;
+  u32 client_index = ~0, server_index = ~0, sw_if_index[2] = { ~0, ~0 };
+  u32 client_vrf = 0, server_vrf = 2, server_bytes_drained = 0, tries = 0;
+  u32 total_bytes = 16 << 10, server_fifo_size = 4 << 10;
+  u32 client_fifo_size = 32 << 10, i;
+  u16 placeholder_server_port = 2235, placeholder_client_port = 6679;
+  ip4_address_t intf_addr[2];
+  session_t *client_s = 0, *server_s = 0;
+  session_worker_t *swrk;
+  tcp_connection_t *client_tc = 0;
+  tcp_worker_ctx_t *client_wrk;
+  tcp_header_t *th;
+  transport_connection_t *tc;
+  vlib_buffer_t *b;
+  u8 *appns_id = 0, *data = 0;
+  u32 bi = ~0, old_rto, old_snd_nxt;
+  u32 pending_bufs_len, pending_nexts_len;
+  int error, rv = 0, routes_added = 0, ns_added = 0;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      vlib_cli_output (vm, "parse error: '%U'", format_unformat_error, input);
+      return -1;
+    }
+
+  session_test_reset_placeholder_state ();
+
+  intf_addr[0].as_u32 = clib_host_to_net_u32 (0x03030301);
+  if (session_create_lookpback (client_vrf, &sw_if_index[0], &intf_addr[0]))
+    return 1;
+
+  intf_addr[1].as_u32 = clib_host_to_net_u32 (0x04040401);
+  if (session_create_lookpback (server_vrf, &sw_if_index[1], &intf_addr[1]))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  session_add_del_route_via_lookup_in_table (client_vrf, server_vrf, &intf_addr[1], 32,
+					     1 /* is_add */);
+  session_add_del_route_via_lookup_in_table (server_vrf, client_vrf, &intf_addr[0], 32,
+					     1 /* is_add */);
+  routes_added = 1;
+
+  appns_id = format (0, "appns_persist_server");
+  vnet_app_namespace_add_del_args_t ns_args = {
+    .ns_id = appns_id,
+    .secret = placeholder_secret,
+    .sw_if_index = sw_if_index[1],
+    .is_add = 1,
+  };
+  error = vnet_app_namespace_add_del (&ns_args);
+  if (!TCP_TEST_I ((error == 0), "app ns insertion should succeed: %d", error))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  ns_added = 1;
+
+  clib_memset (options, 0, sizeof (options));
+  options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
+  options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE;
+  options[APP_OPTIONS_RX_FIFO_SIZE] = 4 << 10;
+  options[APP_OPTIONS_TX_FIFO_SIZE] = client_fifo_size;
+
+  vnet_app_attach_args_t attach_args = {
+    .api_client_index = ~0,
+    .options = options,
+    .namespace_id = 0,
+    .session_cb_vft = &placeholder_session_cbs,
+    .name = format (0, "tcp_test_persist_client"),
+  };
+
+  error = vnet_application_attach (&attach_args);
+  if (!TCP_TEST_I ((error == 0), "client app attached"))
+    {
+      vec_free (attach_args.name);
+      rv = 1;
+      goto cleanup;
+    }
+  client_index = attach_args.app_index;
+  vec_free (attach_args.name);
+
+  options[APP_OPTIONS_RX_FIFO_SIZE] = server_fifo_size;
+  options[APP_OPTIONS_TX_FIFO_SIZE] = 4 << 10;
+  options[APP_OPTIONS_ADD_SEGMENT_SIZE] = 32 << 20;
+
+  attach_args.name = format (0, "tcp_test_persist_server");
+  attach_args.namespace_id = appns_id;
+  attach_args.options[APP_OPTIONS_NAMESPACE_SECRET] = placeholder_secret;
+  error = vnet_application_attach (&attach_args);
+  if (!TCP_TEST_I ((error == 0), "server app attached"))
+    {
+      vec_free (attach_args.name);
+      rv = 1;
+      goto cleanup;
+    }
+  server_index = attach_args.app_index;
+  vec_free (attach_args.name);
+
+  server_sep.is_ip4 = 1;
+  server_sep.port = placeholder_server_port;
+  vnet_listen_args_t bind_args = {
+    .sep_ext = server_sep,
+    .app_index = server_index,
+  };
+  error = vnet_listen (&bind_args);
+  if (!TCP_TEST_I ((error == 0), "server bind should work"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  listen_handle = bind_args.handle;
+
+  client_sep.is_ip4 = 1;
+  client_sep.ip.ip4.as_u32 = intf_addr[1].as_u32;
+  client_sep.port = placeholder_server_port;
+  client_sep.peer.is_ip4 = 1;
+  client_sep.peer.ip.ip4.as_u32 = intf_addr[0].as_u32;
+  client_sep.peer.port = placeholder_client_port;
+  client_sep.transport_proto = TRANSPORT_PROTO_TCP;
+
+  vnet_connect_args_t connect_args = {
+    .sep_ext = client_sep,
+    .app_index = client_index,
+  };
+  error = vnet_connect (&connect_args);
+  if (!TCP_TEST_I ((error == 0), "connect should work"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  tries = 0;
+  while (connected_session_index == ~0 && ++tries < 100)
+    {
+      vlib_worker_thread_barrier_release (vm);
+      vlib_process_suspend (vm, 10e-3);
+      vlib_worker_thread_barrier_sync (vm);
+    }
+  while (accepted_session_index == ~0 && ++tries < 100)
+    {
+      vlib_worker_thread_barrier_release (vm);
+      vlib_process_suspend (vm, 10e-3);
+      vlib_worker_thread_barrier_sync (vm);
+    }
+
+  if (!TCP_TEST_I ((connected_session_index != ~0), "client session should exist"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((accepted_session_index != ~0), "server session should exist"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  client_s = session_get (connected_session_index, connected_session_thread);
+  server_s = session_get (accepted_session_index, accepted_session_thread);
+  tc = session_get_transport (client_s);
+  if (!TCP_TEST_I ((tc != 0), "client transport should exist"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  client_tc = (tcp_connection_t *) tc;
+  swrk = session_main_get_worker (client_tc->c_thread_index);
+  client_wrk = tcp_get_worker (client_tc->c_thread_index);
+
+  vec_validate (data, total_bytes - 1);
+  for (i = 0; i < total_bytes; i++)
+    data[i] = i & 0xff;
+
+  error = svm_fifo_enqueue (client_s->tx_fifo, total_bytes, data);
+  if (!TCP_TEST_I ((error == (int) total_bytes), "client queued %u bytes", total_bytes))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  error = session_program_tx_io_evt (client_s->handle, SESSION_IO_EVT_TX);
+  if (!TCP_TEST_I ((error == 0), "client tx event programmed"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  tries = 0;
+  while ((!tcp_timer_is_active (client_tc, TCP_TIMER_PERSIST) ||
+	  svm_fifo_max_dequeue_cons (server_s->rx_fifo) == 0) &&
+	 ++tries < 200)
+    {
+      vlib_worker_thread_barrier_release (vm);
+      vlib_process_suspend (vm, 10e-3);
+      vlib_worker_thread_barrier_sync (vm);
+    }
+
+  if (!TCP_TEST_I (tcp_timer_is_active (client_tc, TCP_TIMER_PERSIST), "client entered persist"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((client_tc->snd_wnd < client_tc->snd_mss),
+		   "client send window is effectively zero"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((svm_fifo_max_dequeue_cons (server_s->rx_fifo) > 0),
+		   "server rx fifo has unread data"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  for (i = 0; i < 2; i++)
+    {
+      pending_bufs_len = vec_len (swrk->pending_tx_buffers);
+      pending_nexts_len = vec_len (swrk->pending_tx_nexts);
+      old_snd_nxt = client_tc->snd_nxt;
+      old_rto = client_tc->rto;
+
+      tcp_timer_reset (&client_wrk->timer_wheel, client_tc, TCP_TIMER_PERSIST);
+      tcp_timer_persist_handler (client_tc);
+
+      if (!TCP_TEST_I ((vec_len (swrk->pending_tx_buffers) == pending_bufs_len + 1),
+		       "persist pop %u queues one probe", i + 1))
+	{
+	  rv = 1;
+	  goto cleanup;
+	}
+      if (!TCP_TEST_I ((vec_len (swrk->pending_tx_nexts) == pending_nexts_len + 1),
+		       "persist pop %u queues one next index", i + 1))
+	{
+	  rv = 1;
+	  goto cleanup;
+	}
+      if (!TCP_TEST_I ((client_tc->snd_nxt == old_snd_nxt),
+		       "persist pop %u does not advance snd_nxt", i + 1))
+	{
+	  rv = 1;
+	  goto cleanup;
+	}
+      if (!TCP_TEST_I ((client_tc->rto_boff == i + 1), "persist pop %u backs off rto", i + 1))
+	{
+	  rv = 1;
+	  goto cleanup;
+	}
+      if (!TCP_TEST_I ((client_tc->rto == clib_min (old_rto << 1, TCP_RTO_MAX)),
+		       "persist pop %u doubles rto", i + 1))
+	{
+	  rv = 1;
+	  goto cleanup;
+	}
+      if (!TCP_TEST_I (tcp_timer_is_active (client_tc, TCP_TIMER_PERSIST),
+		       "persist rearmed after pop %u", i + 1))
+	{
+	  rv = 1;
+	  goto cleanup;
+	}
+      if (!TCP_TEST_I (!tcp_timer_is_active (client_tc, TCP_TIMER_RETRANSMIT),
+		       "persist pop %u does not arm retransmit", i + 1))
+	{
+	  rv = 1;
+	  goto cleanup;
+	}
+
+      if (i != 0)
+	continue;
+
+      bi = swrk->pending_tx_buffers[pending_bufs_len];
+      b = vlib_get_buffer (vm, bi);
+      th = vlib_buffer_get_current (b);
+
+      if (!TCP_TEST_I ((b->current_length == (tcp_doff (th) << 2)),
+		       "first persist probe carries no payload"))
+	{
+	  rv = 1;
+	  goto cleanup;
+	}
+      if (!TCP_TEST_I ((th->flags == TCP_FLAG_ACK), "first persist probe is an ack"))
+	{
+	  rv = 1;
+	  goto cleanup;
+	}
+      if (!TCP_TEST_I ((clib_net_to_host_u32 (th->seq_number) == client_tc->snd_una - 1),
+		       "first persist probe seq is snd_una - 1"))
+	{
+	  rv = 1;
+	  goto cleanup;
+	}
+      if (!TCP_TEST_I ((clib_net_to_host_u32 (th->ack_number) == client_tc->rcv_nxt),
+		       "first persist probe ack is rcv_nxt"))
+	{
+	  rv = 1;
+	  goto cleanup;
+	}
+      if (!TCP_TEST_I (
+	    (clib_net_to_host_u16 (th->window) == (client_tc->rcv_wnd >> client_tc->rcv_wscale)),
+	    "first persist probe advertises current receive window"))
+	{
+	  rv = 1;
+	  goto cleanup;
+	}
+      if (!TCP_TEST_I ((vnet_buffer (b)->tcp.connection_index == client_tc->c_c_index),
+		       "first persist probe carries connection index"))
+	{
+	  rv = 1;
+	  goto cleanup;
+	}
+    }
+
+  server_bytes_drained += session_test_drain_rx_fifo (server_s);
+
+  tries = 0;
+  while (++tries < 200)
+    {
+      server_bytes_drained += session_test_drain_rx_fifo (server_s);
+
+      if (!tcp_timer_is_active (client_tc, TCP_TIMER_PERSIST) &&
+	  client_tc->snd_una == client_tc->snd_nxt && server_bytes_drained == total_bytes)
+	break;
+
+      vlib_worker_thread_barrier_release (vm);
+      vlib_process_suspend (vm, 10e-3);
+      vlib_worker_thread_barrier_sync (vm);
+    }
+
+  if (!TCP_TEST_I (!tcp_timer_is_active (client_tc, TCP_TIMER_PERSIST),
+		   "window open turns off persist"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((client_tc->rto_boff == 0), "window open clears persist backoff"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((client_tc->snd_una == client_tc->snd_nxt),
+		   "client drained all outstanding data"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((server_bytes_drained == total_bytes), "server received all queued bytes"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((app_session_error == 0), "no app session errors"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+cleanup:
+  if (accepted_session_index != ~0)
+    {
+      vnet_disconnect_args_t disconnect_args = {
+	.handle = session_make_handle (accepted_session_index, accepted_session_thread),
+	.app_index = server_index,
+      };
+      (void) vnet_disconnect_session (&disconnect_args);
+    }
+  else if (connected_session_index != ~0)
+    {
+      vnet_disconnect_args_t disconnect_args = {
+	.handle = session_make_handle (connected_session_index, connected_session_thread),
+	.app_index = client_index,
+      };
+      (void) vnet_disconnect_session (&disconnect_args);
+    }
+
+  if (listen_handle != SESSION_INVALID_HANDLE)
+    {
+      vnet_unlisten_args_t unbind_args = {
+	.handle = listen_handle,
+	.app_index = server_index,
+      };
+      (void) vnet_unlisten (&unbind_args);
+    }
+
+  if (server_index != ~0)
+    {
+      vnet_app_detach_args_t detach_args = {
+	.app_index = server_index,
+	.api_client_index = ~0,
+      };
+      vnet_application_detach (&detach_args);
+    }
+  if (client_index != ~0)
+    {
+      vnet_app_detach_args_t detach_args = {
+	.app_index = client_index,
+	.api_client_index = ~0,
+      };
+      vnet_application_detach (&detach_args);
+    }
+
+  if (ns_added)
+    {
+      ns_args.is_add = 0;
+      (void) vnet_app_namespace_add_del (&ns_args);
+    }
+
+  vlib_process_suspend (vm, 10e-3);
+
+  if (routes_added)
+    {
+      session_add_del_route_via_lookup_in_table (client_vrf, server_vrf, &intf_addr[1], 32,
+						 0 /* is_add */);
+      session_add_del_route_via_lookup_in_table (server_vrf, client_vrf, &intf_addr[0], 32,
+						 0 /* is_add */);
+    }
+
+  if (sw_if_index[0] != ~0)
+    session_delete_loopback (sw_if_index[0]);
+  if (sw_if_index[1] != ~0)
+    session_delete_loopback (sw_if_index[1]);
+
+  vec_free (data);
+  vec_free (appns_id);
+
+  return rv;
+}
+
+static int
+tcp_test_persist (vlib_main_t *vm, unformat_input_t *input)
+{
+  return tcp_test_persist_e2e (vm, input);
+}
+
+static int
 tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
 {
   clib_thread_index_t thread_index = 0, snd_una, *min_seqs = 0;
@@ -1616,6 +2058,10 @@ tcp_test (vlib_main_t * vm,
 	{
 	  res = tcp_test_delivery (vm, input);
 	}
+      else if (unformat (input, "persist"))
+	{
+	  res = tcp_test_persist (vm, input);
+	}
       else if (unformat (input, "bt"))
 	{
 	  res = tcp_test_bt (vm, input);
@@ -1627,6 +2073,8 @@ tcp_test (vlib_main_t * vm,
 	  if ((res = tcp_test_lookup (vm, input)))
 	    goto done;
 	  if ((res = tcp_test_delivery (vm, input)))
+	    goto done;
+	  if ((res = tcp_test_persist (vm, input)))
 	    goto done;
 	}
       else
