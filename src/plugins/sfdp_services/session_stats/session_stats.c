@@ -11,7 +11,7 @@
 #include <sfdp_services/session_stats/session_stats.api.h>
 #undef vl_endianfun
 
-STATIC_ASSERT (sizeof (vl_api_sfdp_session_stats_ring_entry_t) == 258,
+STATIC_ASSERT (sizeof (vl_api_sfdp_session_stats_ring_entry_t) == 290,
 	       "sfdp_session_stats_ring_entry_t size changed, "
 	       "update consumers and bump API version");
 
@@ -161,6 +161,9 @@ sfdp_session_stats_export_session (vlib_main_t *vm, u32 session_index,
   entry->rtt_stddev_reverse = sfdp_session_stats_compute_stddev (
     stats->rtt[SFDP_FLOW_REVERSE].m2, stats->rtt[SFDP_FLOW_REVERSE].count);
 
+  /* SYN handshake RTT */
+  entry->syn_rtt = stats->syn_rtt;
+
   /* TCP-specific statistics (only valid for TCP sessions) */
   if (session->proto == IP_PROTOCOL_TCP)
     {
@@ -169,6 +172,8 @@ sfdp_session_stats_export_session (vlib_main_t *vm, u32 session_index,
       entry->tcp_syn_packets = stats->tcp.syn_packets;
       entry->tcp_fin_packets = stats->tcp.fin_packets;
       entry->tcp_rst_packets = stats->tcp.rst_packets;
+      entry->tcp_data_packets_forward = stats->tcp.data_packets[SFDP_FLOW_FORWARD];
+      entry->tcp_data_packets_reverse = stats->tcp.data_packets[SFDP_FLOW_REVERSE];
       /* ECN/CWR metrics */
       entry->tcp_ecn_ect_packets = stats->tcp.ecn_ect_packets;
       entry->tcp_ecn_ce_packets = stats->tcp.ecn_ce_packets;
@@ -192,16 +197,16 @@ sfdp_session_stats_export_session (vlib_main_t *vm, u32 session_index,
 
   /* Populate opaque data - always present in exported entries. */
   entry->opaque = SFDP_SESSION_STATS_OPAQUE_DATA_DEFAULT;
+  entry->opaque2 = SFDP_SESSION_STATS_OPAQUE_DATA_DEFAULT;
 
   if (vec_len (ssm->custom_data_entries) > 0 && tenant)
     {
-      /* Set per-tenant API custom data */
-      u8 has_tenant_data = 0;
-      u64 tenant_api_data =
-	sfdp_session_stats_get_tenant_custom_data (tenant->tenant_id, &has_tenant_data);
-      if (has_tenant_data)
+      sfdp_session_stats_custom_data_entry_t tenant_api_data =
+	sfdp_session_stats_get_tenant_custom_data (tenant->tenant_id);
+      if (tenant_api_data.has_value)
 	{
-	  entry->opaque = tenant_api_data;
+	  entry->opaque = tenant_api_data.value;
+	  entry->opaque2 = tenant_api_data.value2;
 	}
     }
 
@@ -212,6 +217,21 @@ sfdp_session_stats_export_session (vlib_main_t *vm, u32 session_index,
 
   /* Commit the slot */
   vlib_stats_ring_commit_slot (ssm->ring_buffer_index, thread_index);
+
+  /* TTL / RTT Welford state are window-scoped and
+   * reset after a successful export so the next snapshot captures only
+   * activity that occurred between this export window and the next */
+  for (u32 d = 0; d < SFDP_FLOW_F_B_N; d++)
+    {
+      stats->ttl[d].mean = 0.0;
+      stats->ttl[d].m2 = 0.0;
+      stats->ttl[d].count = 0;
+      stats->ttl[d].min_ttl = 0;
+      stats->ttl[d].max_ttl = 0;
+      stats->rtt[d].mean = 0.0;
+      stats->rtt[d].m2 = 0.0;
+      stats->rtt[d].count = 0;
+    }
 
   /* Update per-thread export counter */
   ssm->per_thread[thread_index].total_exports++;
@@ -410,7 +430,7 @@ sfdp_session_stats_init (vlib_main_t *vm)
  * Set tenant custom data value for a tenant.
  */
 int
-sfdp_session_stats_set_tenant_custom_data (u32 tenant_id, u64 value)
+sfdp_session_stats_set_tenant_custom_data (u32 tenant_id, u64 value, u64 value2)
 {
   sfdp_session_stats_main_t *ssm = &sfdp_session_stats_main;
 
@@ -421,6 +441,7 @@ sfdp_session_stats_set_tenant_custom_data (u32 tenant_id, u64 value)
   sfdp_session_stats_custom_data_entry_t entry_init = { 0 };
   vec_validate_init_empty (ssm->custom_data_entries, tenant_id, entry_init);
   ssm->custom_data_entries[tenant_id].value = value;
+  ssm->custom_data_entries[tenant_id].value2 = value2;
   ssm->custom_data_entries[tenant_id].has_value = 1;
 
   return 0;
@@ -445,6 +466,7 @@ sfdp_session_stats_clear_tenant_custom_data (u32 tenant_id)
       if (tenant_id < vec_len (ssm->custom_data_entries))
 	{
 	  ssm->custom_data_entries[tenant_id].value = 0;
+	  ssm->custom_data_entries[tenant_id].value2 = 0;
 	  ssm->custom_data_entries[tenant_id].has_value = 0;
 	}
     }
@@ -452,23 +474,21 @@ sfdp_session_stats_clear_tenant_custom_data (u32 tenant_id)
   return 0;
 }
 
-u64
-sfdp_session_stats_get_tenant_custom_data (u32 tenant_id, u8 *has_value)
+sfdp_session_stats_custom_data_entry_t
+sfdp_session_stats_get_tenant_custom_data (u32 tenant_id)
 {
   sfdp_session_stats_main_t *ssm = &sfdp_session_stats_main;
 
   if (tenant_id < vec_len (ssm->custom_data_entries) &&
       ssm->custom_data_entries[tenant_id].has_value)
-    {
-      if (has_value)
-	*has_value = 1;
-      return ssm->custom_data_entries[tenant_id].value;
-    }
+    return ssm->custom_data_entries[tenant_id];
 
-  /* No value set for this tenant - return default opaque value */
-  if (has_value)
-    *has_value = 0;
-  return SFDP_SESSION_STATS_OPAQUE_DATA_DEFAULT;
+  /* No value set for this tenant - return default opaque values */
+  return (sfdp_session_stats_custom_data_entry_t){
+    .value = SFDP_SESSION_STATS_OPAQUE_DATA_DEFAULT,
+    .value2 = SFDP_SESSION_STATS_OPAQUE_DATA_DEFAULT,
+    .has_value = 0,
+  };
 }
 
 VLIB_INIT_FUNCTION (sfdp_session_stats_init);

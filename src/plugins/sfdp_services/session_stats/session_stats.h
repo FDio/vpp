@@ -14,6 +14,9 @@
  */
 typedef struct
 {
+  /* TCP Data Packets (non-zero payload) counter */
+  u64 data_packets[SFDP_FLOW_F_B_N];
+
   /* Basic TCP counters */
   u32 syn_packets; /**< SYN packets seen */
   u32 fin_packets; /**< FIN packets seen */
@@ -72,6 +75,7 @@ typedef struct
   session_version_t version;	/**< Session version for validation */
   f64 first_seen;		/**< Timestamp of first packet */
   f64 last_seen;		/**< Timestamp of last packet */
+  f64 syn_rtt;			/**< SYN->SYN-ACK RTT in seconds (0 if not measured) */
 
   /* Extended statistics - TTL per direction */
   sfdp_session_stats_ttl_t ttl[SFDP_FLOW_F_B_N];
@@ -86,11 +90,16 @@ typedef struct
   u32 rtt_probe_tick_us[SFDP_FLOW_F_B_N];   /**< When data was sent for RTT measurement */
   u32 last_data_seq[SFDP_FLOW_F_B_N];	    /**< Last data sequence for RTT */
   u32 end_seq_max[SFDP_FLOW_F_B_N];	    /**< Highest seq+len for overlap detection */
+  u32 gap_start_seq[SFDP_FLOW_F_B_N];	    /**< Seq where the gap begins (old end_seq_max) */
+  u32 gap_dupack_snapshot[SFDP_FLOW_F_B_N]; /**< dupack_like[ack_dir] at gap detection */
+
+  /* SYN-RTT measurement (one-shot handshake sample, per-direction origination) */
+  u32 syn_timestamp_us[SFDP_FLOW_F_B_N]; /**< Tick when a SYN was seen per-direction */
+
   u8 last_seq_valid[SFDP_FLOW_F_B_N];	    /**< Sequence tracking valid flag */
   u8 in_zero_window[SFDP_FLOW_F_B_N];	    /**< Currently in zero window state */
   u8 has_pending_gap[SFDP_FLOW_F_B_N];	    /**< Forward gap detected, awaiting fill */
-  u32 gap_start_seq[SFDP_FLOW_F_B_N];	    /**< Seq where the gap begins (old end_seq_max) */
-  u32 gap_dupack_snapshot[SFDP_FLOW_F_B_N]; /**< dupack_like[ack_dir] at gap detection */
+
 } sfdp_session_stats_entry_t;
 
 /* Default value for opaque data when no tenant-specific value is set */
@@ -123,8 +132,9 @@ typedef struct
  */
 typedef struct
 {
-  u64 value;	/**< Custom data value */
-  u8 has_value; /**< Whether value has been explicitly set */
+  u64 value;	/**< Custom data value (mapped to opaque) */
+  u64 value2;	/**< Custom data second value (mapped to opaque2) */
+  u8 has_value; /**< Whether values have been explicitly set */
   u8 reserved[7];
 } sfdp_session_stats_custom_data_entry_t;
 
@@ -186,9 +196,9 @@ u32 sfdp_session_stats_export_batch (vlib_main_t *vm, sfdp_session_stats_export_
 int sfdp_session_stats_clear_sessions (u64 session_id);
 
 /* Custom data configuration functions */
-int sfdp_session_stats_set_tenant_custom_data (u32 tenant_id, u64 value);
+int sfdp_session_stats_set_tenant_custom_data (u32 tenant_id, u64 value, u64 value2);
 int sfdp_session_stats_clear_tenant_custom_data (u32 tenant_id);
-u64 sfdp_session_stats_get_tenant_custom_data (u32 tenant_id, u8 *has_value);
+sfdp_session_stats_custom_data_entry_t sfdp_session_stats_get_tenant_custom_data (u32 tenant_id);
 
 /* Export and periodic node control functions */
 int sfdp_session_stats_periodic_export_enable (vlib_main_t *vm, f64 interval, f64 batch_interval);
