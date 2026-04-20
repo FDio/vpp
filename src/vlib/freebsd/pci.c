@@ -231,6 +231,12 @@ vlib_pci_map_region_fixed (vlib_main_t *vm, vlib_pci_dev_handle_t h,
 }
 
 clib_error_t *
+vlib_pci_get_region_size (vlib_main_t *vm, vlib_pci_dev_handle_t h, u32 bar, u64 *size)
+{
+  return NULL;
+}
+
+clib_error_t *
 vlib_pci_io_region (vlib_main_t *vm, vlib_pci_dev_handle_t h, u32 resource)
 {
   return NULL;

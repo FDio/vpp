@@ -1391,6 +1391,20 @@ vlib_pci_map_region_fixed (vlib_main_t * vm, vlib_pci_dev_handle_t h,
 }
 
 clib_error_t *
+vlib_pci_get_region_size (vlib_main_t *vm, vlib_pci_dev_handle_t h, u32 bar, u64 *size)
+{
+  linux_pci_device_t *p = linux_pci_get_device (h);
+  int fd = -1;
+  u64 offset = 0;
+  clib_error_t *err;
+
+  err = vlib_pci_region (vm, h, bar, &fd, size, &offset);
+  if (p->type == LINUX_PCI_DEVICE_TYPE_UIO && fd >= 0)
+    close (fd);
+  return err;
+}
+
+clib_error_t *
 vlib_pci_io_region (vlib_main_t * vm, vlib_pci_dev_handle_t h, u32 resource)
 {
   linux_pci_device_t *p = linux_pci_get_device (h);
