@@ -120,10 +120,25 @@ sfdp_session_stats_process_tcp (vlib_main_t *vm, vlib_buffer_t *b,
 	    }
 	}
 
-      /* Track SYN-ACK for handshake completion */
-      if ((flags & TCP_FLAG_ACK) && !stats->tcp.handshake_complete)
+      /* SYN RTT sampling, based on 3-way handshake traffic */
+      if (!stats->tcp.handshake_complete)
 	{
-	  /* SYN-ACK seen, waiting for final ACK */
+	  if (!(flags & TCP_FLAG_ACK))
+	    {
+	      /* Upon receiving initial SYN packet */
+	      stats->syn_timestamp_us[direction] = sfdp_session_stats_now_ticks_us (vm);
+	    }
+	  else if (stats->syn_rtt == 0.0 && stats->syn_timestamp_us[ack_dir] != 0)
+	    {
+	      /* Upon receiving responder SYN-ACK packet */
+	      u32 now_us = sfdp_session_stats_now_ticks_us (vm);
+	      f64 sample =
+		sfdp_session_stats_delta_s_from_ticks (now_us, stats->syn_timestamp_us[ack_dir]);
+
+	      /* Ensure computed SYN RTT sample is within valid time-range */
+	      if (sample > 0.0 && sample < 60.0)
+		stats->syn_rtt = sample;
+	    }
 	}
     }
 
@@ -143,8 +158,21 @@ sfdp_session_stats_process_tcp (vlib_main_t *vm, vlib_buffer_t *b,
   /* Track ACK for handshake completion and RTT */
   if ((flags & TCP_FLAG_ACK) && !(flags & TCP_FLAG_SYN) && !stats->tcp.handshake_complete)
     {
-      /* First pure ACK after a SYN-ACK means handshake is complete */
+      /* Treat the first non-SYN ACK as handshake completion */
       stats->tcp.handshake_complete = 1;
+
+      /* One-way handshake-RTT fallback: if the bidirectional SYN-ACK path
+       * never updated SYN RTT (e.g. only session direction is observed in VPP)
+       * then approximate the handshake RTT as the interval between the
+       * initiator's SYN and its handshake-completing ACK . */
+      if (stats->syn_rtt == 0.0 && stats->syn_timestamp_us[direction] != 0)
+	{
+	  u32 now_us = sfdp_session_stats_now_ticks_us (vm);
+	  f64 sample =
+	    sfdp_session_stats_delta_s_from_ticks (now_us, stats->syn_timestamp_us[direction]);
+	  if (sample > 0.0 && sample < 60.0)
+	    stats->syn_rtt = sample;
+	}
     }
 
   /* RTT measurement: when we get an ACK, check if it acknowledges data
@@ -177,6 +205,8 @@ sfdp_session_stats_process_tcp (vlib_main_t *vm, vlib_buffer_t *b,
     {
       u32 end_seq = seq + payload_len;
 
+      stats->tcp.data_packets[direction]++;
+
       if (stats->last_seq_valid[direction])
 	{
 	  /* segment has range [seq, end_seq (seq + payload_len)] below the max expected end_seq
@@ -200,6 +230,10 @@ sfdp_session_stats_process_tcp (vlib_main_t *vm, vlib_buffer_t *b,
 		   * confirm the receiver also saw the gap (loss, not reorder),
 		   * or the receiver already ACK'd past this data. */
 		  stats->tcp.retransmissions[direction]++;
+		  /* Karn's algorithm for RTT -
+		   * Outstanding RTT probe is ambiguous (a later ACK may refer
+		   * to either the original send or the retransmit) */
+		  stats->rtt_probe_tick_us[direction] = 0;
 		}
 	      stats->has_pending_gap[direction] = 0;
 	    }
@@ -210,6 +244,10 @@ sfdp_session_stats_process_tcp (vlib_main_t *vm, vlib_buffer_t *b,
 	    {
 	      /* Partial overlap detected */
 	      stats->tcp.partial_overlaps[direction]++;
+	      /* Karn's algorithm for RTT -
+	       * Segment replays data we already probed on; the outstanding
+	       * RTT probe is ambiguous. */
+	      stats->rtt_probe_tick_us[direction] = 0;
 	      stats->has_pending_gap[direction] = 0;
 	    }
 	  /* segment has range [seq, end_seq (seq + payload_len)] above the max expected end_seq

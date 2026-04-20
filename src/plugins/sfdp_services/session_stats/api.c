@@ -171,10 +171,15 @@ sfdp_session_stats_send_details (vl_api_registration_t *rp, u32 context, sfdp_se
   mp->rtt_stddev_rev = sfdp_session_stats_compute_stddev (stats->rtt[SFDP_FLOW_REVERSE].m2,
 							  stats->rtt[SFDP_FLOW_REVERSE].count);
 
+  /* SYN handshake RTT */
+  mp->syn_rtt = stats->syn_rtt;
+
   /* TCP-specific statistics */
   mp->tcp_mss = clib_host_to_net_u16 (stats->tcp.mss);
   mp->tcp_handshake_complete = stats->tcp.handshake_complete;
   mp->tcp_syn_packets = clib_host_to_net_u32 (stats->tcp.syn_packets);
+  mp->tcp_data_packets_fwd = clib_host_to_net_u64 (stats->tcp.data_packets[SFDP_FLOW_FORWARD]);
+  mp->tcp_data_packets_rev = clib_host_to_net_u64 (stats->tcp.data_packets[SFDP_FLOW_REVERSE]);
   mp->tcp_fin_packets = clib_host_to_net_u32 (stats->tcp.fin_packets);
   mp->tcp_rst_packets = clib_host_to_net_u32 (stats->tcp.rst_packets);
   /* ECN/CWR metrics */
