@@ -224,6 +224,9 @@ show_flow_entry (vlib_main_t * vm, unformat_input_t * input,
 no_args:
   pool_foreach (f, fm->global_flow_pool)
     {
+      /* skip pre-allocated/cached entries not yet assigned to a flow */
+      if (f->type == VNET_FLOW_TYPE_UNKNOWN)
+	continue;
       vlib_cli_output (vm, "%U\n", format_flow, f);
       if (f->type == VNET_FLOW_TYPE_GENERIC)
 	{
