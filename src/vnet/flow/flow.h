@@ -8,6 +8,7 @@
 
 #include <vppinfra/clib.h>
 #include <vppinfra/pcap.h>
+#include <vppinfra/lock.h>
 #include <vnet/vnet.h>
 #include <vnet/l3_types.h>
 #include <vnet/ip/ip4_packet.h>
@@ -382,9 +383,21 @@ typedef struct
 
 typedef struct
 {
+  u32 *flow_cache; /* per-thread cache of pre-allocated flow pool indices */
+} vnet_flow_per_thread_data_t;
+
+typedef struct
+{
   /* pool of device flow entries */
   vnet_flow_t *global_flow_pool;
   vnet_flow_t *global_flow_template_pool;
+
+  /* lock for concurrent pool access from worker threads */
+  clib_spinlock_t flow_pool_lock;
+
+  /* per-thread caches for lock-free fast-path flow alloc/free */
+  vnet_flow_per_thread_data_t *per_thread_data; /* vec[n_vlib_mains] */
+  u32 flow_cache_size; /* batch refill/drain size (configurable) */
 
   /* flow ids allocated */
   u32 flows_used;
