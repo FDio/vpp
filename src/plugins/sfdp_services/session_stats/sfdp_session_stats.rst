@@ -20,10 +20,17 @@ Key Features
 - Per-session packet and byte counters (bidirectional)
 - TTL statistics with min/max/mean/stddev per direction
 - RTT estimation with mean/stddev per direction
-- TCP-specific metrics: SYN/FIN/RST counters, retransmissions, zero-window events, partial overlaps, etc.
+- TCP handshake RTT, based on SYN traffic
+- TCP-specific metrics: SYN/FIN/RST counters, data-vs-control packet split,
+  retransmissions, zero-window events, partial overlaps, duplicate ACKs,
+  out-of-order classification
 - ECN/CWR congestion notification tracking
-- Setting custom u64 value per-tenant through API, which can be used to introduce external labels and/or for data correlation
+- Setting custom u64 value per-tenant through API, which can be used to
+  introduce external labels and/or for data correlation
 - Ring buffer export to VPP stats segment for external consumption
+- Window-scoped Welford statistics (TTL / RTT reset on each successful
+  ring export) so exported values reflect the current interval rather than the
+  whole session lifetime
 - IPv4 and IPv6 traffic support
 
 
@@ -48,7 +55,7 @@ and per-packet processing logic is in
    Byte count (per direction)              Total bytes at IP level, including headers
    First/last seen timestamps              Timestamps of the first and last packet of the session
    Session duration                        Time elapsed between first and last packet
-   TTL / hop-limit (per direction)         Min, max, mean, and standard deviation (Welford's algorithm)
+   TTL / hop-limit (per direction)         Min, max, mean, and standard deviation
    ======================================= ==========================================================
 
 **TCP-Specific**
@@ -60,18 +67,44 @@ and per-packet processing logic is in
    Statistic                                    Description
    ============================================ ==========================================================
    SYN / FIN / RST counts                       Number of each control packet type
-   Handshake completion                          Whether the 3-way handshake completed
+   Handshake completion                         Whether the 3-way handshake completed
+   Handshake RTT                                Time in seconds between the initiator's SYN and its
+                                                handshake-completing ACK. Both legs of the responder
+                                                round trip cross past SFDP, so the sample approximates
+                                                the end-to-end initiator<->responder RTT (plus endpoint
+                                                stack latency) in both uni-dir and bi-dir captures.
    MSS                                          Maximum Segment Size extracted from SYN options
-   Sequence / ACK tracking (per direction)       Last sequence and acknowledgment numbers seen
-   Retransmissions (per direction)               Segments within seen sequence space, confirmed as loss by duplicate ACKs or prior ACK
-   Partial overlaps (per direction)              Segments that partially overlap previously seen data
-   Duplicate ACKs (per direction)                Repeated ACKs with outstanding unacknowledged data
-   Zero-window events (per direction)            Edge-triggered transitions to receiver window of zero
-   Out-of-order segments (per direction)         Segments filling a gap without preceding duplicate ACKs
-   RTT estimate (per direction)                  Mean and standard deviation via probe-and-match (Welford's)
-   ECN ECT / CE packets                          Packets with ECT(0)/ECT(1) or Congestion Experienced in IP header
-   ECE / CWR packets                             TCP ECE and CWR flag counts
+   Data packets (per direction)                 Packets carrying non-empty TCP payload; denominator for
+                                                loss rate and mean segment size
+   Sequence / ACK tracking (per direction)      Last sequence and acknowledgment numbers seen
+   Retransmissions (per direction)              Segments within seen sequence space, confirmed as loss by
+                                                duplicate ACKs or prior ACK
+   Partial overlaps (per direction)             Segments that partially overlap previously seen data.
+   Duplicate ACKs (per direction)               Repeated ACKs with outstanding unacknowledged data.
+   Zero-window events (per direction)           Edge-triggered transitions to receiver window of zero.
+   Out-of-order segments (per direction)        Segments filling a gap without preceding duplicate ACKs.
+   RTT estimate (per direction)                 Mean and standard deviation via probe-and-match. Probes
+                                                are discarded if we detect potential retransmits or partial
+                                                overlaps that would not represent actual RTT values.
+   ECN ECT / CE packets                         Packets with ECT(0)/ECT(1) or Congestion Experienced in
+                                                IP header
+   ECE / CWR packets                            TCP ECE and CWR flag counts
    ============================================ ==========================================================
+
+Window-Scoped vs Lifetime Statistics
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Two categories of statistic are emitted:
+
+- **Lifetime** (cumulative since session start): packet/byte counts, TCP
+  event counters (SYN/FIN/RST, ECE/CWR, ECN ECT/CE, retransmissions, partial
+  overlaps, duplicate ACKs, out-of-order, zero-window events), data-packet
+  counters, MSS, handshake completion, and ``syn_rtt``.
+- **Window-scoped** (reset at each successful ring-buffer export): TTL
+  min/max/mean/stddev and RTT mean/stddev.
+
+Window-scoped statistics are reset at each ring-buffer export interval (default 30s),
+which allows us to detect any transient anomalies in a session's lifetime.
 
 Exposing Session Statistics
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -112,12 +145,15 @@ Ring buffer exports can be triggered by:
 Custom Data
 ~~~~~~~~~~~
 
-A 64-bit user-defined value can be attached **per-tenant** and is included
-in every exported ring buffer entry for sessions belonging to that tenant.
+Two 64-bit user-defined values can be attached **per-tenant** and are
+included in every exported ring buffer entry for sessions belonging to
+that tenant.
 
-- Set via ``sfdp_session_stats_set_tenant_custom_data`` API (tenant_id + u64 value)
-- On export: the value is always written to the ring field ``opaque``.
-  If a tenant has no configured value, ``opaque`` is exported as ``0``.
+- Set via ``sfdp_session_stats_set_tenant_custom_data`` API
+  (tenant_id + u64 ``value`` + u64 ``value2``)
+- On export: the values are always written to the ring fields
+  ``opaque`` and ``opaque2``. If a tenant has no configured value,
+  both fields are exported as ``0``.
 - Bulk clear: use tenant_id ``0xFFFFFFFF`` to clear all tenants at once.
 
 Session Exporter Program
@@ -159,6 +195,7 @@ Exporter flow summary:
      [max-tracked-sessions <n>] \
      [instance <name>] \
      [opaque-label <name>] \
+     [opaque2-label <name>] \
      [debug]
 
    # Verifying statistics exposed by program
@@ -188,7 +225,7 @@ CLI Reference
    sfdp session stats export
 
    # Set custom data value for a tenant
-   sfdp session stats custom-data tenant <id> value <n>
+   sfdp session stats custom-data tenant <id> value <n> value2 <n>
 
    # Clear custom data for a tenant (or all tenants)
    sfdp session stats custom-data [tenant <id>] clear
@@ -206,4 +243,4 @@ Known Limitations
 - **Ring buffer overflow**: API-triggered exports (``export-now``) dump all
   sessions in a single unbatched call. If the number of active sessions
   exceeds the ring buffer size, older entries will be overwritten.
-- **Testing**: No IPv6-specific tests are currently present.
+- **IPv6 Testing**: No IPv6-specific tests are currently present.
