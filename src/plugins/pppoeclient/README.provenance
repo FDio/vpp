@@ -1,0 +1,34 @@
+SPDX-FileCopyrightText: Copyright (c) 2026 Hi-Jiajun.
+SPDX-License-Identifier: Apache-2.0
+
+This directory contains the PPPoE client data-plane and control-plane glue
+used by the current PPPoE client / PPPoX feature work.
+
+Provenance summary
+- Parts of the original PPPoE client / PPPoX plugin layout were initially
+  derived from the Apache-2.0-licensed RaydoNetworks implementation:
+  https://github.com/raydonetworks/vpp-pppoeclient
+- Where code lineage remains direct, the original RaydoNetworks copyright
+  notices are preserved in the affected source headers.
+- The imported PPP control-plane sources used by PPPoX are documented
+  separately in ../pppox/pppd/README.import.
+
+Current repository scope
+- pppoeclient.c / node.c implement the PPPoE client discovery/session path
+  used in this tree.
+- pppox.c / node.c host the PPP control plane and bridge it to the imported
+  pppd state machines.
+- The current code has been substantially adapted for the modern VPP tree,
+  including:
+  - PPPoX virtual interface integration
+  - current binary API / CLI / debug output paths
+  - real-line interoperability fixes for duplicate discovery packets,
+    reconnect timing, and control-plane state synchronization
+  - DHCPv6 runtime observability / dependency split used by the Gerrit stack
+
+Review expectations
+- Treat the PPPoE client / PPPoX code as an evolved implementation with
+  preserved open-source lineage, not as a verbatim drop of the original
+  Raydo tree.
+- When modifying the code, keep provenance and license headers intact and
+  prefer small, well-explained changes over large structural rewrites.
