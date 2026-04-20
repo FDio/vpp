@@ -260,6 +260,7 @@ sfdp_session_stats_custom_data_command_fn (vlib_main_t *vm, unformat_input_t *in
 {
   u32 tenant_id = ~0;
   u64 value = 0;
+  u64 value2 = 0;
   u8 is_clear = 0;
   u8 has_value = 0;
 
@@ -269,6 +270,8 @@ sfdp_session_stats_custom_data_command_fn (vlib_main_t *vm, unformat_input_t *in
 	;
       else if (unformat (input, "value %llu", &value))
 	has_value = 1;
+      else if (unformat (input, "value2 %llu", &value2))
+	;
       else if (unformat (input, "clear"))
 	is_clear = 1;
       else
@@ -292,16 +295,17 @@ sfdp_session_stats_custom_data_command_fn (vlib_main_t *vm, unformat_input_t *in
   if (!has_value)
     return clib_error_return (0, "please specify value <n> or clear");
 
-  int rv = sfdp_session_stats_set_tenant_custom_data (tenant_id, value);
+  int rv = sfdp_session_stats_set_tenant_custom_data (tenant_id, value, value2);
   if (rv < 0)
     return clib_error_return (0, "failed to set custom data");
 
-  vlib_cli_output (vm, "Set custom data for tenant %u to %llu", tenant_id, value);
+  vlib_cli_output (vm, "Set custom data for tenant %u to value %llu, value2 %llu", tenant_id, value,
+		   value2);
   return 0;
 }
 
 VLIB_CLI_COMMAND (sfdp_session_stats_custom_data_command, static) = {
   .path = "sfdp session stats custom-data",
-  .short_help = "sfdp session stats custom-data [tenant <id>] [value <n>] [clear]",
+  .short_help = "sfdp session stats custom-data [tenant <id>] [value <n>] [value2 <n>] [clear]",
   .function = sfdp_session_stats_custom_data_command_fn,
 };

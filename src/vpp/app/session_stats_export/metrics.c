@@ -82,15 +82,16 @@ session_is_silent (const session_exporter_main_t *em, const tracked_session_t *t
 static void
 build_base_labels (char *buf, size_t buflen, const vl_api_sfdp_session_stats_ring_entry_t *s,
 		   const char *proto, const char *src_ip, const char *dst_ip,
-		   const char *ip_version, const char *opaque_label, const char *opaque_value)
+		   const char *ip_version, const char *opaque_label, const char *opaque_value,
+		   const char *opaque2_label, const char *opaque2_value)
 {
   /* base labels are apprended to each counter/gauge */
   snprintf (buf, buflen,
 	    "session_id=\"%lu\",tenant_id=\"%u\",proto=\"%s\","
 	    "src_ip=\"%s\",dst_ip=\"%s\",src_port=\"%u\",dst_port=\"%u\","
-	    "ip_version=\"%s\",%s=\"%s\"",
+	    "ip_version=\"%s\",%s=\"%s\",%s=\"%s\"",
 	    s->session_id, s->tenant_id, proto, src_ip, dst_ip, s->src_port, s->dst_port,
-	    ip_version, opaque_label, opaque_value);
+	    ip_version, opaque_label, opaque_value, opaque2_label, opaque2_value);
 }
 
 void
@@ -149,10 +150,16 @@ dump_session_metrics (FILE *stream, stat_client_main_t *shm)
 		  "gauge");
   emit_help_type (stream, "sfdp_session_rtt_stddev_reverse_seconds", "RTT stddev reverse direction",
 		  "gauge");
+  emit_help_type (stream, "sfdp_session_syn_rtt_seconds",
+		  "SYN->SYN-ACK handshake RTT (0 if not observed)", "gauge");
 
   emit_help_type (stream, "sfdp_session_tcp_mss", "TCP Maximum Segment Size", "gauge");
   emit_help_type (stream, "sfdp_session_tcp_handshake_complete", "TCP handshake completed (0 or 1)",
 		  "gauge");
+  emit_help_type (stream, "sfdp_session_tcp_data_packets_forward",
+		  "TCP packets carrying non-empty payload forward", "counter");
+  emit_help_type (stream, "sfdp_session_tcp_data_packets_reverse",
+		  "TCP packets carrying non-empty payload reverse", "counter");
   emit_help_type (stream, "sfdp_session_tcp_syn_packets", "TCP SYN packets counter", "counter");
   emit_help_type (stream, "sfdp_session_tcp_fin_packets", "TCP FIN packets counter", "counter");
   emit_help_type (stream, "sfdp_session_tcp_rst_packets", "TCP RST packets counter", "counter");
@@ -213,8 +220,13 @@ dump_session_metrics (FILE *stream, stat_client_main_t *shm)
       char opaque_value_str[32] = { 0 };
       snprintf (opaque_value_str, sizeof (opaque_value_str), "%" PRIu64, s->opaque);
 
+      const char *opaque2_label =
+	em->opaque2_label ? (const char *) em->opaque2_label : OPAQUE2_LABEL_DEFAULT_NAME;
+      char opaque2_value_str[32] = { 0 };
+      snprintf (opaque2_value_str, sizeof (opaque2_value_str), "%" PRIu64, s->opaque2);
+
       build_base_labels (base_labels, sizeof (base_labels), s, proto, src_ip, dst_ip, ip_version,
-			 opaque_label, opaque_value_str);
+			 opaque_label, opaque_value_str, opaque2_label, opaque2_value_str);
 
       emit_metric (stream, em, "sfdp_session_packets_forward", base_labels, timestamp_ms, "%lu",
 		   s->packets_forward);
@@ -252,6 +264,8 @@ dump_session_metrics (FILE *stream, stat_client_main_t *shm)
 		   "%.6f", s->rtt_stddev_forward);
       emit_metric (stream, em, "sfdp_session_rtt_stddev_reverse_seconds", base_labels, timestamp_ms,
 		   "%.6f", s->rtt_stddev_reverse);
+      emit_metric (stream, em, "sfdp_session_syn_rtt_seconds", base_labels, timestamp_ms, "%.6f",
+		   s->syn_rtt);
 
       if (s->proto == 6)
 	{
@@ -259,6 +273,10 @@ dump_session_metrics (FILE *stream, stat_client_main_t *shm)
 		       s->tcp_mss);
 	  emit_metric (stream, em, "sfdp_session_tcp_handshake_complete", base_labels, timestamp_ms,
 		       "%u", s->tcp_handshake_complete);
+	  emit_metric (stream, em, "sfdp_session_tcp_data_packets_forward", base_labels,
+		       timestamp_ms, "%lu", s->tcp_data_packets_forward);
+	  emit_metric (stream, em, "sfdp_session_tcp_data_packets_reverse", base_labels,
+		       timestamp_ms, "%lu", s->tcp_data_packets_reverse);
 	  emit_metric (stream, em, "sfdp_session_tcp_syn_packets", base_labels, timestamp_ms, "%u",
 		       s->tcp_syn_packets);
 	  emit_metric (stream, em, "sfdp_session_tcp_fin_packets", base_labels, timestamp_ms, "%u",
