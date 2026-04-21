@@ -103,6 +103,23 @@
       "parentUuid": "3cde4023_7655b0aa",
       "revId": "066f11c7b9df28bedbc3083aeb34d0e2d49f127d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2f11d17e_4b56fbb2",
+        "filename": "src/vnet/sfdp/lookup/lookup_ip4.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 140,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-04-21T12:47:26Z",
+      "side": 1,
+      "message": "Looks like it can be simplified further. tcp_or_udp is already computed earlier in both the ip4 and ip6 paths, so couldn\u0027t this just be:\n\n    norm \u0026\u003d i64x2_splat (tcp_or_udp) !\u003d zero;",
+      "revId": "066f11c7b9df28bedbc3083aeb34d0e2d49f127d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
