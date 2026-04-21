@@ -18,7 +18,8 @@
   _(2, LINK_UP, "link-up") \
   _(3, PROMISC, "promiscuous") \
   _(4, MLX5DV, "mlx5dv") \
-  _(5, STRIDING_RQ, "striding-rq")
+  _(5, STRIDING_RQ, "striding-rq") \
+  _(6, RX_L4_CKSUM, "rx-l4-cksum")
 
 enum
 {
@@ -269,6 +270,7 @@ typedef struct
   rdma_mode_t mode;
   u8 no_multi_seg;
   u8 disable_striding_rq;
+  u8 no_rx_cksum;
   u16 max_pktlen;
   rdma_rss4_t rss4;
   rdma_rss6_t rss6;
