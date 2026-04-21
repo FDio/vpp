@@ -450,9 +450,12 @@ vlib_put_next_frame (vlib_main_t * vm,
 	}
 
       /* Copy trace flag from next_frame and from runtime. */
-      nf->flags |=
-	(nf->flags & VLIB_NODE_FLAG_TRACE) | (r->
-					      flags & VLIB_NODE_FLAG_TRACE);
+      nf->flags |= (nf->flags & VLIB_NODE_FLAG_TRACE) | (r->flags & VLIB_NODE_FLAG_TRACE);
+
+      /* Also store trace flag per-frame so it survives when multiple
+       * pending frames share the same next frame. */
+      if (nf->flags & VLIB_FRAME_TRACE)
+	f->frame_flags |= VLIB_FRAME_TRACE;
 
       v0 = nf->vectors_since_last_overflow;
       v1 = v0 + n_vectors_in_frame;
@@ -1048,11 +1051,11 @@ dispatch_pending_node (vlib_main_t * vm, uword pending_frame_index,
   ASSERT (f->frame_flags & VLIB_FRAME_PENDING);
   ASSERT (f->n_vectors > 0);
 
-  /* Copy trace flag from next frame to node.
-     Trace flag indicates that at least one vector in the dispatched
-     frame is traced. */
+  /* Copy trace flag to node. Read from frame_flags which is per-frame,
+   * rather than from nf->flags which is shared across pending frames
+     targeting the same next frame. */
   n->flags &= ~VLIB_NODE_FLAG_TRACE;
-  n->flags |= (nf->flags & VLIB_FRAME_TRACE) ? VLIB_NODE_FLAG_TRACE : 0;
+  n->flags |= (f->frame_flags & VLIB_FRAME_TRACE) ? VLIB_NODE_FLAG_TRACE : 0;
   nf->flags &= ~VLIB_FRAME_TRACE;
 
   last_time_stamp =
@@ -1065,7 +1068,7 @@ dispatch_pending_node (vlib_main_t * vm, uword pending_frame_index,
     (f->n_vectors > vm->internal_node_last_vectors_per_main_loop) ?
     f->n_vectors : vm->internal_node_last_vectors_per_main_loop;
 
-  f->frame_flags &= ~(VLIB_FRAME_PENDING | VLIB_FRAME_NO_APPEND);
+  f->frame_flags &= ~(VLIB_FRAME_PENDING | VLIB_FRAME_NO_APPEND | VLIB_FRAME_TRACE);
 
   /* Frame is ready to be used again, so restore it. */
   if (restore_frame != NULL)
