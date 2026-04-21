@@ -652,33 +652,54 @@ rdma_device_mlx5dv_legacy_rq_slow_path_needed (u32 buf_sz, int n_rx_packets,
 }
 
 static_always_inline int
-rdma_device_mlx5dv_l3_validate_and_swap_bc (rdma_per_thread_data_t
-					    * ptd, int n_rx_packets, u32 * bc)
+rdma_device_mlx5dv_l3_validate_and_swap_bc (rdma_per_thread_data_t *ptd, int n_rx_packets, u32 *bc,
+					    const int check_l4, int *l4_ok_all)
 {
   u16 mask = CQE_FLAG_L3_HDR_TYPE_MASK | CQE_FLAG_L3_OK;
   u16 match =
     CQE_FLAG_L3_HDR_TYPE_IP4 << CQE_FLAG_L3_HDR_TYPE_SHIFT | CQE_FLAG_L3_OK;
+  u16 l4_ok = CQE_FLAG_L4_OK;
+  u16 l4_hdr_type_mask = CQE_FLAG_L4_HDR_TYPE_MASK;
+  u16 l4_hdr_type_max = CQE_FLAG_L4_HDR_TYPE_TCP_WITH_ACL << CQE_FLAG_L4_HDR_TYPE_SHIFT;
 
   /* convert mask/match to big endian for subsequant comparison */
   mask = clib_host_to_net_u16 (mask);
   match = clib_host_to_net_u16 (match);
+  l4_ok = clib_host_to_net_u16 (l4_ok);
+  l4_hdr_type_mask = clib_host_to_net_u16 (l4_hdr_type_mask);
+  l4_hdr_type_max = clib_host_to_net_u16 (l4_hdr_type_max);
 
-  /* verify that all ip4 packets have l3_ok flag set and convert packet
-     length from network to host byte order */
+  /* Verify that all ip4 packets have l3_ok flag set and convert packet
+     length from network to host byte order. When requested, also validate
+     that all CQEs have L4_OK set for a supported TCP/UDP L4 type. */
   int skip_ip4_cksum = 1;
   int n_left = n_rx_packets;
   u16 *cqe_flags = ptd->cqe_flags;
+  int l4_ok_all_local = 1;
 
 #if defined CLIB_HAVE_VEC256
   if (n_left >= 16)
     {
       u16x16 mask16 = u16x16_splat (mask);
       u16x16 match16 = u16x16_splat (match);
-      u16x16 r16 = {};
+      u16x16 l4_ok16 = u16x16_splat (l4_ok);
+      u16x16 l4_type_mask16 = u16x16_splat (l4_hdr_type_mask);
+      u16x16 l4_type_max16 = u16x16_splat (l4_hdr_type_max);
+      u16x16 l3_bad16 = {};
+      u16x16 l4_bad16 = {};
+      u16x16 zero16 = {};
 
       while (n_left >= 16)
 	{
-	  r16 |= (*(u16x16 *) cqe_flags & mask16) != match16;
+	  u16x16 f16 = *(u16x16 *) cqe_flags;
+	  l3_bad16 |= (f16 & mask16) != match16;
+	  if (check_l4)
+	    {
+	      u16x16 l4_type16 = f16 & l4_type_mask16;
+	      l4_bad16 |= (f16 & l4_ok16) != l4_ok16;
+	      l4_bad16 |= l4_type16 == zero16;
+	      l4_bad16 |= l4_type16 > l4_type_max16;
+	    }
 
 	  *(u32x8 *) bc = u32x8_byte_swap (*(u32x8 *) bc);
 	  *(u32x8 *) (bc + 8) = u32x8_byte_swap (*(u32x8 *) (bc + 8));
@@ -688,19 +709,34 @@ rdma_device_mlx5dv_l3_validate_and_swap_bc (rdma_per_thread_data_t
 	  n_left -= 16;
 	}
 
-      if (!u16x16_is_all_zero (r16))
+      if (!u16x16_is_all_zero (l3_bad16))
 	skip_ip4_cksum = 0;
+      if (check_l4 && !u16x16_is_all_zero (l4_bad16))
+	l4_ok_all_local = 0;
     }
 #elif defined CLIB_HAVE_VEC128
   if (n_left >= 8)
     {
       u16x8 mask8 = u16x8_splat (mask);
       u16x8 match8 = u16x8_splat (match);
-      u16x8 r8 = {};
+      u16x8 l4_ok8 = u16x8_splat (l4_ok);
+      u16x8 l4_type_mask8 = u16x8_splat (l4_hdr_type_mask);
+      u16x8 l4_type_max8 = u16x8_splat (l4_hdr_type_max);
+      u16x8 l3_bad8 = {};
+      u16x8 l4_bad8 = {};
+      u16x8 zero8 = {};
 
       while (n_left >= 8)
 	{
-	  r8 |= (*(u16x8 *) cqe_flags & mask8) != match8;
+	  u16x8 f8 = *(u16x8 *) cqe_flags;
+	  l3_bad8 |= (f8 & mask8) != match8;
+	  if (check_l4)
+	    {
+	      u16x8 l4_type8 = f8 & l4_type_mask8;
+	      l4_bad8 |= (f8 & l4_ok8) != l4_ok8;
+	      l4_bad8 |= l4_type8 == zero8;
+	      l4_bad8 |= l4_type8 > l4_type_max8;
+	    }
 
 	  *(u32x4 *) bc = u32x4_byte_swap (*(u32x4 *) bc);
 	  *(u32x4 *) (bc + 4) = u32x4_byte_swap (*(u32x4 *) (bc + 4));
@@ -710,8 +746,10 @@ rdma_device_mlx5dv_l3_validate_and_swap_bc (rdma_per_thread_data_t
 	  n_left -= 8;
 	}
 
-      if (!u16x8_is_all_zero (r8))
+      if (!u16x8_is_all_zero (l3_bad8))
 	skip_ip4_cksum = 0;
+      if (check_l4 && !u16x8_is_all_zero (l4_bad8))
+	l4_ok_all_local = 0;
     }
 #endif
 
@@ -720,6 +758,13 @@ rdma_device_mlx5dv_l3_validate_and_swap_bc (rdma_per_thread_data_t
       if ((cqe_flags[0] & mask) != match)
 	skip_ip4_cksum = 0;
 
+      if (check_l4)
+	{
+	  u16 l4_hdr_type = cqe_flags[0] & l4_hdr_type_mask;
+	  if ((cqe_flags[0] & l4_ok) != l4_ok || l4_hdr_type == 0 || l4_hdr_type > l4_hdr_type_max)
+	    l4_ok_all_local = 0;
+	}
+
       bc[0] = clib_net_to_host_u32 (bc[0]);
 
       cqe_flags += 1;
@@ -727,6 +772,8 @@ rdma_device_mlx5dv_l3_validate_and_swap_bc (rdma_per_thread_data_t
       n_left -= 1;
     }
 
+  if (check_l4)
+    *l4_ok_all = l4_ok_all_local;
   return skip_ip4_cksum;
 }
 
@@ -941,7 +988,7 @@ rdma_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   u32 __clib_aligned (32) byte_cnts[VLIB_FRAME_SIZE];
   vlib_buffer_t bt;
   u32 next_index, *to_next, n_left_to_next, n_rx_bytes = 0;
-  int n_rx_packets, skip_ip4_cksum = 0;
+  int n_rx_packets, skip_ip4_cksum = 0, l4_ok_all = 0;
   u32 mask = rxq->size - 1;
   const int is_striding = ! !(rd->flags & RDMA_DEVICE_F_STRIDING_RQ);
 
@@ -970,8 +1017,21 @@ rdma_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
     {
       u32 *bc = byte_cnts;
       int slow_path_needed;
-      skip_ip4_cksum =
-	rdma_device_mlx5dv_l3_validate_and_swap_bc (ptd, n_rx_packets, bc);
+      const int rx_l4_cksum = !!(rd->flags & RDMA_DEVICE_F_RX_L4_CKSUM);
+
+      if (rx_l4_cksum)
+	skip_ip4_cksum =
+	  rdma_device_mlx5dv_l3_validate_and_swap_bc (ptd, n_rx_packets, bc, 1, &l4_ok_all);
+      else
+	skip_ip4_cksum = rdma_device_mlx5dv_l3_validate_and_swap_bc (ptd, n_rx_packets, bc, 0, 0);
+
+      /* RX L4 checksum offload: only take the fast path when the whole
+       * batch has L4_OK set for a supported L4 type in the CQEs. Mixed
+       * batches fall back to the normal software validation path by leaving
+       * the checksum flags unset on the buffer template. */
+      if (rx_l4_cksum && PREDICT_TRUE (l4_ok_all))
+	bt.flags |= (VNET_BUFFER_F_L4_CHECKSUM_COMPUTED | VNET_BUFFER_F_L4_CHECKSUM_CORRECT);
+
       if (is_striding)
 	{
 	  int n_rx_segs = 0;
@@ -999,6 +1059,9 @@ rdma_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    rdma_device_mlx5dv_legacy_rq_fix_chains (vm, rxq, bufs, mask,
 						     n_rx_packets);
 	}
+
+      /* Reset L4 checksum flags on bt to avoid leaking into next poll. */
+      bt.flags &= ~(VNET_BUFFER_F_L4_CHECKSUM_COMPUTED | VNET_BUFFER_F_L4_CHECKSUM_CORRECT);
     }
   else
     {
