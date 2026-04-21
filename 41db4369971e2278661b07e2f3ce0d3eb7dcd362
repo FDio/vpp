@@ -86,6 +86,24 @@
       "parentUuid": "7ed684a5_23763060",
       "revId": "41db4369971e2278661b07e2f3ce0d3eb7dcd362",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3958c48c_ae1385f4",
+        "filename": "src/plugins/cnat/cnat_scanner.c",
+        "patchSetId": 37
+      },
+      "lineNbr": 105,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-04-21T13:42:20Z",
+      "side": 1,
+      "message": "Let\u0027s use opaque flow_id instead of opaque2 generic_flow_id as discussed",
+      "parentUuid": "703c3d5e_203881cc",
+      "revId": "41db4369971e2278661b07e2f3ce0d3eb7dcd362",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
