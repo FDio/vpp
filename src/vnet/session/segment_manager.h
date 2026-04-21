@@ -143,9 +143,8 @@ int segment_manager_alloc_session_fifos_ct (session_t *s,
 					    svm_fifo_t **rx_fifo,
 					    svm_fifo_t **tx_fifo);
 void segment_manager_dealloc_fifos (svm_fifo_t *rx_fifo, svm_fifo_t *tx_fifo);
-void segment_manager_detach_fifo (segment_manager_t *sm, svm_fifo_t **f);
-void segment_manager_attach_fifo (segment_manager_t *sm, svm_fifo_t **f,
-				  session_t *s);
+void segment_manager_detach_fifo (svm_fifo_t **f);
+void segment_manager_attach_fifo (svm_fifo_t **f, session_t *s);
 
 void segment_manager_set_watermarks (segment_manager_t * sm,
 				     u8 high_watermark, u8 low_watermark);

@@ -825,31 +825,23 @@ session_switch_pool_closed_rpc (void *arg)
 static void
 session_switch_pool (session_switch_pool_args_t *args)
 {
-  segment_manager_t *sm;
-  app_worker_t *app_wrk;
-  session_t *s;
-
-  s = session_get_from_handle (args->old_sh);
+  session_t *s = session_get_from_handle (args->old_sh);
   ASSERT (s->thread_index == vlib_get_thread_index ());
-
-  app_wrk = app_worker_get_if_valid (s->app_wrk_index);
-  if (!app_wrk)
-    goto app_closed;
 
   if (!(s->flags & SESSION_F_PROXY))
     {
       if (svm_fifo_max_dequeue (s->tx_fifo))
 	session_program_tx_io_evt (args->new_sh, SESSION_IO_EVT_TX);
       /* Cleanup fifo segment slice state for fifos */
-      sm = app_worker_get_connect_segment_manager (app_wrk);
-      segment_manager_detach_fifo (sm, &s->rx_fifo);
-      segment_manager_detach_fifo (sm, &s->tx_fifo);
+      segment_manager_detach_fifo (&s->rx_fifo);
+      segment_manager_detach_fifo (&s->tx_fifo);
     }
 
   /* Check if session closed during migration */
   if (s->session_state >= SESSION_STATE_TRANSPORT_CLOSING)
     goto app_closed;
 
+  app_worker_t *app_wrk = app_worker_get (s->app_wrk_index);
   app_worker_migrate_notify (app_wrk, s, args->new_sh);
 
   return;
@@ -914,8 +906,6 @@ session_dgram_connect_notify (transport_connection_t *tc,
 			      session_handle_tu_t osh, session_t **new_session)
 {
   session_t *new_s;
-  segment_manager_t *sm;
-  app_worker_t *app_wrk;
 
   /*
    * Clone half-open session to the right thread.
@@ -929,13 +919,11 @@ session_dgram_connect_notify (transport_connection_t *tc,
   if (!(tc->flags & TRANSPORT_CONNECTION_F_NO_LOOKUP))
     session_lookup_add_connection (tc, session_handle (new_s));
 
-  app_wrk = app_worker_get_if_valid (new_s->app_wrk_index);
-  if (app_wrk && !(new_s->flags & SESSION_F_PROXY))
+  if (!(new_s->flags & SESSION_F_PROXY))
     {
       /* New set of fifos attached to the same shared memory */
-      sm = app_worker_get_connect_segment_manager (app_wrk);
-      segment_manager_attach_fifo (sm, &new_s->rx_fifo, new_s);
-      segment_manager_attach_fifo (sm, &new_s->tx_fifo, new_s);
+      segment_manager_attach_fifo (&new_s->rx_fifo, new_s);
+      segment_manager_attach_fifo (&new_s->tx_fifo, new_s);
     }
 
   /*
