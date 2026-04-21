@@ -983,7 +983,13 @@ rdma_create_if (vlib_main_t * vm, rdma_create_if_args_t * args)
 	    min_log2 (vlib_buffer_get_default_data_size (vm));
 
 	  if ((mlx5dv_attrs.flags & MLX5DV_CONTEXT_FLAGS_CQE_V1))
-	    rd->flags |= RDMA_DEVICE_F_MLX5DV;
+	    {
+	      rd->flags |= RDMA_DEVICE_F_MLX5DV;
+	      /* CQE v1 provides per-packet L3/L4 ok bits validated by the NIC.
+	       * Enable RX L4 checksum offload unless disabled by the user. */
+	      if (!args->no_rx_cksum)
+		rd->flags |= RDMA_DEVICE_F_RX_L4_CKSUM;
+	    }
 
 /* Enable striding RQ if neither multiseg nor striding rq
 are explicitly disabled, and if the interface supports it.*/
