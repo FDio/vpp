@@ -522,6 +522,10 @@ func CreateLogger() {
 		suiteName = CurrentSpecReport().ContainerHierarchyTexts[0]
 	}
 
+	if err = os.MkdirAll("summary", 0777); err != nil {
+		Fail("Unable to create summary directory.")
+	}
+
 	LogFile, err = os.Create("summary/" + suiteName + ".log")
 	if err != nil {
 		Fail("Unable to create log file.")
