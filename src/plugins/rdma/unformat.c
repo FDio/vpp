@@ -39,6 +39,8 @@ unformat_rdma_create_if_args (unformat_input_t * input, va_list * vargs)
 	args->disable_striding_rq = 1;
       else if (unformat (line_input, "no-multi-seg"))
 	args->no_multi_seg = 1;
+      else if (unformat (line_input, "no-rx-cksum"))
+	args->no_rx_cksum = 1;
       else if (unformat (line_input, "max-pktlen %u", &tmp))
 	args->max_pktlen = tmp;
       else if (unformat (line_input, "rss ipv4-udp"))
