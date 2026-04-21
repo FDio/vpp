@@ -72,6 +72,12 @@ if(VPP_BUILD_VCL_TESTS)
     )
   endforeach()
 
+  add_vpp_test(tcp_test_peer
+    SOURCES vcl/tcp_test_peer.c
+    LINK_LIBRARIES pthread
+    NO_INSTALL
+  )
+
   foreach(test
     vcl_test_server
     vcl_test_client
