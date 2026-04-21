@@ -22,6 +22,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     iputils-ping \
     less \
     lsb-release \
+    nftables \
     ubuntu-keyring \
     vim \
     # Development & debugging

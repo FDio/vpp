@@ -42,6 +42,13 @@ func AssertNotEmpty(object any, msgAndArgs ...any) {
 	ExpectWithOffset(2, object).ToNot(BeEmpty(), msgAndArgs...)
 }
 
+func AssertFail(format string, args ...any) {
+	if len(args) > 0 {
+		format = fmt.Sprintf(format, args...)
+	}
+	ExpectWithOffset(2, format).To(BeEmpty())
+}
+
 func AssertMatchError(actual, expected error, msgAndArgs ...any) {
 	ExpectWithOffset(2, actual).To(MatchError(expected), msgAndArgs...)
 }
