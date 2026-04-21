@@ -20,8 +20,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     iproute2 \
     iputils-ping \
+    kmod \
     less \
     lsb-release \
+    nftables \
     ubuntu-keyring \
     vim \
     # Development & debugging
