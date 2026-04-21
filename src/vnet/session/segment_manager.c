@@ -955,9 +955,14 @@ segment_manager_dealloc_fifos (svm_fifo_t *rx_fifo, svm_fifo_t *tx_fifo)
 }
 
 void
-segment_manager_detach_fifo (segment_manager_t *sm, svm_fifo_t **f)
+segment_manager_detach_fifo (svm_fifo_t **f)
 {
+  segment_manager_t *sm;
   fifo_segment_t *fs;
+
+  sm = segment_manager_get_if_valid ((*f)->segment_manager);
+  if (PREDICT_FALSE (!sm))
+    return;
 
   fs = segment_manager_get_segment_w_lock (sm, (*f)->segment_index);
   fifo_segment_detach_fifo (fs, f);
@@ -965,10 +970,14 @@ segment_manager_detach_fifo (segment_manager_t *sm, svm_fifo_t **f)
 }
 
 void
-segment_manager_attach_fifo (segment_manager_t *sm, svm_fifo_t **f,
-			     session_t *s)
+segment_manager_attach_fifo (svm_fifo_t **f, session_t *s)
 {
+  segment_manager_t *sm;
   fifo_segment_t *fs;
+
+  sm = segment_manager_get_if_valid ((*f)->segment_manager);
+  if (PREDICT_FALSE (!sm))
+    return;
 
   fs = segment_manager_get_segment_w_lock (sm, (*f)->segment_index);
   fifo_segment_attach_fifo (fs, f, s->thread_index);
