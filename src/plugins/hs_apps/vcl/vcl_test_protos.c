@@ -857,7 +857,9 @@ vt_quic_connect (vcl_test_session_t *ts, vppcom_endpt_t *endpt)
   wrk = &vt->wrk[wrk_index];
 
   /* Make sure qsessions are initialized */
-  vt_quic_maybe_init_wrk (vt, wrk, endpt);
+  rv = vt_quic_maybe_init_wrk (vt, wrk, endpt);
+  if (rv)
+    return rv;
 
   ts->fd = vppcom_session_create (VPPCOM_PROTO_QUIC, ts->noblk_connect);
   if (ts->fd < 0)
