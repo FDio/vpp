@@ -18,6 +18,7 @@ import (
 	"time"
 
 	. "fd.io/hs-test/infra"
+	"github.com/edwarnicke/exechelper"
 	. "github.com/onsi/ginkgo/v2"
 )
 
@@ -45,6 +46,7 @@ func init() {
 		VppConnectProxyHttp3IperfTcpMWTest, VppConnectProxyHttp3TargetUnreachableMWTest, VppConnectProxyDraft03MWTest,
 		VppConnectProxyHttp3ServerClosedTcpMWTest, VppConnectProxyHttp3StressMWTest, VppConnectProxyHttp3DownloadUdpMWTest,
 		VppConnectProxyHttp3UploadUdpMWTest, VppConnectProxyHttp3IperfUdpMWTest)
+	RegisterMasqueTapTests(VppConnectProxyTapTest)
 }
 
 func VppProxyHttpGetTcpMWTest(s *VppProxySuite) {
@@ -805,6 +807,38 @@ func VppConnectProxyClientDownloadTcpMWTest(s *MasqueSuite) {
 	// test client initiated stream close
 	vppConnectProxyClientCheckCleanup(s)
 	vppConnectProxyServerCheckCleanup(s, false)
+}
+
+func VppConnectProxyTapTest(s *MasqueTapSuite) {
+	s.StartNginxServer()
+	clientVpp := s.Containers.VppClient.VppInstance
+	s.ProxyClientConnect("tcp", s.Ports.NginxSsl)
+	Log(clientVpp.Vppctl("show http connect proxy client listeners"))
+	cmd := fmt.Sprintf("http connect proxy client listener add listener tcp://0.0.0.0:%s", s.Ports.Nginx)
+	Log(clientVpp.Vppctl(cmd))
+	o := clientVpp.Vppctl("show http connect proxy client listeners")
+	Log(o)
+	AssertContains(o, "tcp://0.0.0.0:"+s.Ports.Nginx)
+	AssertContains(o, "tcp://0.0.0.0:"+s.Ports.NginxSsl)
+
+	uri := fmt.Sprintf("https://%s:%s/httpTestFile", s.NginxAddr(), s.Ports.NginxSsl)
+	finished := make(chan error, 1)
+	go func() {
+		defer GinkgoRecover()
+		StartCurl(finished, uri, s.NetNamespaces.Client, "200", 30, []string{"--http1.1"})
+	}()
+	Log(clientVpp.Vppctl("show http connect proxy client sessions"))
+	Log(clientVpp.Vppctl("show session verbose 2"))
+	AssertNil(<-finished)
+	Log(clientVpp.Vppctl("show session verbose 2"))
+	Log(clientVpp.Vppctl("show http connect proxy client sessions"))
+	Log(clientVpp.Vppctl("show http"))
+	Log(clientVpp.Vppctl("show http stats"))
+	logPath := s.Containers.NginxServer.GetHostWorkDir() + "/" + s.Containers.NginxServer.Name + "-access.log"
+	logContents, err := exechelper.Output("cat " + logPath)
+	AssertNil(err)
+	Log(string(logContents))
+	AssertContains(string(logContents), s.Interfaces.Server.Ip4AddressString())
 }
 
 func VppConnectProxyClientDownloadUdpTest(s *MasqueSuite) {
