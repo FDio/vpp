@@ -14,6 +14,11 @@ static const iavf_rx_desc_qw1_t mask_flm = { .flm = 1 };
 static const iavf_rx_desc_qw1_t mask_dd = { .dd = 1 };
 static const iavf_rx_desc_qw1_t mask_ipe = { .ipe = 1 };
 static const iavf_rx_desc_qw1_t mask_dd_eop = { .dd = 1, .eop = 1 };
+static const iavf_rx_desc_qw1_t mask_l3l4p = { .l3l4p = 1 };
+static const iavf_rx_desc_qw1_t mask_l4e = { .l4e = 1 };
+
+#define IAVF_RX_L4_CKSUM_FLAGS                                                                     \
+  (VNET_BUFFER_F_L4_CHECKSUM_COMPUTED | VNET_BUFFER_F_L4_CHECKSUM_CORRECT)
 
 static_always_inline int
 iavf_rxd_is_not_eop (iavf_rx_desc_t *d)
@@ -136,6 +141,7 @@ iavf_rx_attach_tail (vlib_main_t *vm, vlib_buffer_template_t *bt,
       b->flags |= VLIB_BUFFER_NEXT_PRESENT;
       b = vlib_get_buffer (vm, b->next_buffer);
       b->template = *bt;
+      b->flags &= ~IAVF_RX_L4_CKSUM_FLAGS;
       tlnifb += b->current_length = ((iavf_rx_desc_qw1_t) qw1).length;
       i++;
     }
@@ -171,11 +177,26 @@ iavf_process_flow_offload (vnet_dev_port_t *port, iavf_rt_data_t *rtd,
     }
 }
 
+static_always_inline void
+iavf_fixup_l4_cksum_offload (vlib_buffer_t *b, u64 qw1)
+{
+  if ((qw1 & mask_l3l4p.as_u64) == 0)
+    b->flags &= ~IAVF_RX_L4_CKSUM_FLAGS;
+  else if (qw1 & mask_l4e.as_u64)
+    b->flags &= ~VNET_BUFFER_F_L4_CHECKSUM_CORRECT;
+}
+
+static_always_inline int
+iavf_rxd_l4_cksum_needs_fixup (u64 qw1)
+{
+  return (qw1 & (mask_l3l4p.as_u64 | mask_l4e.as_u64)) != mask_l3l4p.as_u64;
+}
+
 static_always_inline uword
 iavf_process_rx_burst (vlib_main_t *vm, vlib_node_runtime_t *node,
 		       vnet_dev_rx_queue_t *rxq, iavf_rt_data_t *rtd,
 		       vlib_buffer_template_t *bt, u32 n_left,
-		       int maybe_multiseg)
+		       int maybe_multiseg, u32 l4_cksum_flags)
 {
   vlib_buffer_t **b = rtd->bufs;
   u64 *qw1 = rtd->qw1s;
@@ -214,6 +235,18 @@ iavf_process_rx_burst (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  n_rx_bytes += iavf_rx_attach_tail (vm, bt, b[3], qw1[3], tail + 3);
 	}
 
+      if (l4_cksum_flags)
+	{
+	  if (PREDICT_FALSE (iavf_rxd_l4_cksum_needs_fixup (qw1[0])))
+	    iavf_fixup_l4_cksum_offload (b[0], qw1[0]);
+	  if (PREDICT_FALSE (iavf_rxd_l4_cksum_needs_fixup (qw1[1])))
+	    iavf_fixup_l4_cksum_offload (b[1], qw1[1]);
+	  if (PREDICT_FALSE (iavf_rxd_l4_cksum_needs_fixup (qw1[2])))
+	    iavf_fixup_l4_cksum_offload (b[2], qw1[2]);
+	  if (PREDICT_FALSE (iavf_rxd_l4_cksum_needs_fixup (qw1[3])))
+	    iavf_fixup_l4_cksum_offload (b[3], qw1[3]);
+	}
+
       /* next */
       qw1 += 4;
       tail += 4;
@@ -231,6 +264,10 @@ iavf_process_rx_burst (vlib_main_t *vm, vlib_node_runtime_t *node,
       if (maybe_multiseg)
 	n_rx_bytes += iavf_rx_attach_tail (vm, bt, b[0], qw1[0], tail + 0);
 
+      if (l4_cksum_flags &&
+	  PREDICT_FALSE (iavf_rxd_l4_cksum_needs_fixup (qw1[0])))
+	iavf_fixup_l4_cksum_offload (b[0], qw1[0]);
+
       /* next */
       qw1 += 1;
       tail += 1;
@@ -241,15 +278,16 @@ iavf_process_rx_burst (vlib_main_t *vm, vlib_node_runtime_t *node,
 }
 
 static_always_inline uword
-iavf_device_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
-			  vlib_frame_t *frame, vnet_dev_port_t *port,
-			  vnet_dev_rx_queue_t *rxq, int with_flows)
+iavf_device_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame,
+			  vnet_dev_port_t *port, vnet_dev_rx_queue_t *rxq,
+			  int with_flows)
 {
   vnet_main_t *vnm = vnet_get_main ();
   u32 thr_idx = vlib_get_thread_index ();
   iavf_rt_data_t *rtd = vnet_dev_get_rt_temp_space (vm);
   iavf_rxq_t *arq = vnet_dev_get_rx_queue_data (rxq);
   vlib_buffer_template_t bt = vnet_dev_get_rx_queue_if_buffer_template (rxq);
+  u32 l4_cksum_flags = 0;
   u32 n_trace, n_rx_packets = 0, n_rx_bytes = 0;
   u16 n_tail_desc = 0;
   u64 or_qw1 = 0;
@@ -271,6 +309,9 @@ iavf_device_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   u32x4 dd_eop_mask4 = u32x4_splat (mask_dd_eop.as_u64);
 #endif
   int single_next = 1;
+
+  if (port->attr.rx_offloads.l4_cksum)
+    bt.flags |= l4_cksum_flags = IAVF_RX_L4_CKSUM_FLAGS;
 
   /* is there anything on the ring */
   d = descs + next;
@@ -410,8 +451,10 @@ no_more_desc:
 
   n_rx_bytes =
     n_tail_desc ?
-	    iavf_process_rx_burst (vm, node, rxq, rtd, &bt, n_rx_packets, 1) :
-	    iavf_process_rx_burst (vm, node, rxq, rtd, &bt, n_rx_packets, 0);
+      iavf_process_rx_burst (vm, node, rxq, rtd, &bt, n_rx_packets, 1,
+			      l4_cksum_flags) :
+      iavf_process_rx_burst (vm, node, rxq, rtd, &bt, n_rx_packets, 0,
+			      l4_cksum_flags);
 
   /* the MARKed packets may have different next nodes */
   if (PREDICT_FALSE (with_flows && (or_qw1 & mask_flm.as_u64)))

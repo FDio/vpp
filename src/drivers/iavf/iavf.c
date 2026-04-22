@@ -274,6 +274,7 @@ iavf_init (vlib_main_t *vm, vnet_dev_t *dev)
         },
         .rx_offloads = {
           .ip4_cksum = 1,
+          .l4_cksum = 1,
         },
         .tx_offloads = {
           .ip4_cksum = 1,
