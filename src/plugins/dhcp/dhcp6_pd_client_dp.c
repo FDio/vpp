@@ -18,6 +18,8 @@
 dhcp6_pd_client_main_t dhcp6_pd_client_main;
 dhcp6_pd_client_public_main_t dhcp6_pd_client_public_main;
 
+#define DHCP6_PD_INITIAL_BUFFER_RETRY_DELAY 1.0
+
 static void
 signal_report (prefix_report_t * r)
 {
@@ -56,6 +58,7 @@ stop_sending_client_message (vlib_main_t * vm,
   u32 bi0;
 
   client_state->keep_sending_client_message = 0;
+  client_state->missing_lladdr_warned = 0;
   vec_free (client_state->params.prefixes);
   if (client_state->buffer)
     {
@@ -95,9 +98,15 @@ create_buffer_for_client_message (vlib_main_t * vm,
 
   if (src_addr->as_u8[0] != 0xfe)
     {
-      clib_warning ("Could not find source address to send DHCPv6 packet");
+      if (!client_state->missing_lladdr_warned)
+	{
+	  clib_warning ("Could not find source address to send DHCPv6 packet");
+	  client_state->missing_lladdr_warned = 1;
+	}
       return NULL;
     }
+
+  client_state->missing_lladdr_warned = 0;
 
   if (vlib_buffer_alloc (vm, &bi, 1) != 1)
     {
@@ -248,6 +257,18 @@ check_pd_send_client_message (vlib_main_t * vm,
       return true;
     }
 
+  if (client_state->buffer == NULL)
+    {
+      client_state->buffer =
+	create_buffer_for_client_message (vm, params->sw_if_index, client_state, params->msg_type);
+      if (client_state->buffer == NULL)
+	{
+	  client_state->due_time = current_time + DHCP6_PD_INITIAL_BUFFER_RETRY_DELAY;
+	  *due_time = client_state->due_time;
+	  return true;
+	}
+    }
+
   p0 = client_state->buffer;
 
   next_index = ip6_rewrite_mcast_node.index;
@@ -385,9 +406,9 @@ dhcp6_pd_send_client_message (vlib_main_t * vm, u32 sw_if_index, u8 stop,
       client_state->buffer =
 	create_buffer_for_client_message (vm, sw_if_index, client_state,
 					  params->msg_type);
-      if (client_state->buffer)
-	vlib_process_signal_event
-	  (vm, send_dhcp6_pd_client_message_process_node.index, 1, 0);
+      if (!client_state->buffer)
+	client_state->due_time = vlib_time_now (vm) + DHCP6_PD_INITIAL_BUFFER_RETRY_DELAY;
+      vlib_process_signal_event (vm, send_dhcp6_pd_client_message_process_node.index, 1, 0);
     }
 }
 
