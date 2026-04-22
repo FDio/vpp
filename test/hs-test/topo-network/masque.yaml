@@ -1,44 +1,43 @@
 ---
 extra-config:
-  - configured-by-host: true
+  - configured-by-host: false
 devices:
   - name: "client-ns"
     type: "netns"
 
   - name: "cln-src"
-    type: "veth"
-    preset-hw-address: "00:00:5e:00:53:03"
+    type: "tap"
+    ip4:
+      network: 1
     host:
-      name: "mcln"
+      name: "cln-src"
       netns: "client-ns"
       ip4:
         network: 1
 
   - name: "cln-tun"
-    type: "veth"
-    preset-hw-address: "00:00:5e:00:54:03"
+    type: "tap"
+    ip4:
+      network: 2
     host:
-      name: "mtuncln"
+      name: "cln-tun"
       ip4:
         network: 2
 
   - name: "srv-tun"
-    type: "veth"
-    preset-hw-address: "00:00:5e:00:55:03"
+    type: "tap"
+    ip4:
+      network: 3
     host:
-      name: "mtunsrv"
-      ip4:
-        network: 2
-
-  - name: "srv-dst"
-    type: "veth"
-    host:
-      name: "msrv"
+      name: "srv-tun"
       ip4:
         network: 3
 
-  - name: "br"
-    type: "bridge"
-    interfaces:
-      - mtuncln
-      - mtunsrv
+  - name: "srv-dst"
+    type: "tap"
+    ip4:
+      network: 4
+    host:
+      name: "srv-dst"
+      ip4:
+        network: 4
