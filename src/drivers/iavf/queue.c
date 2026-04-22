@@ -82,6 +82,27 @@ iavf_tx_queue_alloc (vlib_main_t *vm, vnet_dev_tx_queue_t *txq)
 }
 
 void
+iavf_tx_queue_release_descs (vlib_main_t *vm, vnet_dev_tx_queue_t *txq, u16 first, u16 n_descs)
+{
+  iavf_txq_t *atq = vnet_dev_get_tx_queue_data (txq);
+  u16 mask = txq->size - 1;
+  u32 *free_bufs = atq->tmp_bufs;
+  u16 n_free = 0;
+
+  while (n_descs--)
+    {
+      u16 slot = first++ & mask;
+      u32 bi = atq->buffer_indices[slot];
+
+      if (bi != VLIB_BUFFER_INVALID_INDEX)
+	free_bufs[n_free++] = bi;
+    }
+
+  if (n_free)
+    vlib_buffer_free_no_next (vm, free_bufs, n_free);
+}
+
+void
 iavf_tx_queue_free (vlib_main_t *vm, vnet_dev_tx_queue_t *txq)
 {
   vnet_dev_t *dev = txq->port->dev;
@@ -165,9 +186,8 @@ iavf_tx_queue_stop (vlib_main_t *vm, vnet_dev_tx_queue_t *txq)
   __atomic_store_n (atq->qtx_tail, 0, __ATOMIC_RELAXED);
   if (atq->n_enqueued)
     {
-      vlib_buffer_free_from_ring_no_next (vm, atq->buffer_indices,
-					  atq->next - atq->n_enqueued,
-					  txq->size, atq->n_enqueued);
+      iavf_tx_queue_release_descs (vm, txq, (atq->next - atq->n_enqueued) & (txq->size - 1),
+				   atq->n_enqueued);
       log_debug (txq->port->dev, "%u buffers freed from tx queue %u",
 		 atq->n_enqueued, txq->queue_id);
     }
