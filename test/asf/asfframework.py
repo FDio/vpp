@@ -164,6 +164,32 @@ def _is_platform_aarch64():
 is_platform_aarch64 = _is_platform_aarch64()
 
 
+def _is_distro_debian12():
+    try:
+        with open("/etc/os-release") as f:
+            for line in f.readlines():
+                if "bookworm" in line:
+                    return True
+    except (FileNotFoundError, PermissionError):
+        pass
+    return False
+
+
+is_distro_debian12 = _is_distro_debian12()
+
+
+def _has_kernel_xdp_multi_buffer():
+    """Check kernel >= 5.18 which introduced XDP multi-buffer (XDP_USE_SG)."""
+    try:
+        major, minor = (int(x) for x in platform.release().split("-")[0].split(".")[:2])
+        return major > 5 or (major == 5 and minor >= 18)
+    except (ValueError, IndexError):
+        return False
+
+
+has_kernel_xdp_multi_buffer = _has_kernel_xdp_multi_buffer()
+
+
 class KeepAliveReporter(object):
     """
     Singleton object which reports test start to parent process
