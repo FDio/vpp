@@ -12,10 +12,10 @@
 # limitations under the License.
 
 ipsec-mb_version             := 2.0
-ipsec-mb_patch_version       := 0
+ipsec-mb_patch_version       := 2
 ipsec-mb_version_str         := $(ipsec-mb_version).$(ipsec-mb_patch_version)
-ipsec-mb_tarball             := v$(ipsec-mb_version).tar.gz
-ipsec-mb_tarball_sha256sum_2.0  := 0c60e56f63b14212c7b388668acc219cbc6b79e5e79732aff7542fefbb498413
+ipsec-mb_tarball             := v$(ipsec-mb_version_str).tar.gz
+ipsec-mb_tarball_sha256sum_2.0  := b0e22e113ebbaa4aa8fd2332897540bff87bfabf397daeb05301b603947dda83
 
 ipsec-mb_tarball_sha256sum   := $(ipsec-mb_tarball_sha256sum_$(ipsec-mb_version))
 ipsec-mb_tarball_strip_dirs  := 1
