@@ -115,32 +115,52 @@ iavf_tx_prepare_cksum (vlib_buffer_t *b, u8 is_tso)
 }
 
 static_always_inline u32
-iavf_tx_fill_ctx_desc (vlib_main_t *vm, vnet_dev_tx_queue_t *txq,
-		       iavf_tx_desc_t *d, vlib_buffer_t *b)
+iavf_tx_acquire_ctx_desc_buffer (vlib_main_t *vm, vnet_dev_tx_queue_t *txq, u32 *bi)
 {
   iavf_txq_t *atq = vnet_dev_get_tx_queue_data (txq);
+  vnet_dev_t *dev = txq->port->dev;
   vlib_buffer_t *ctx_ph;
-  u32 *bi = atq->ph_bufs;
+  u32 *ph_bi;
+  u8 bpi = vlib_buffer_pool_get_default_for_numa (vm, dev->numa_node);
 
-next:
-  ctx_ph = vlib_get_buffer (vm, bi[0]);
-  if (PREDICT_FALSE (ctx_ph->ref_count == 255))
+  vec_foreach (ph_bi, atq->ph_bufs)
     {
-      bi++;
-      goto next;
+      ctx_ph = vlib_get_buffer (vm, ph_bi[0]);
+      if (PREDICT_TRUE (ctx_ph->ref_count < 255))
+	{
+	  ctx_ph->ref_count++;
+	  bi[0] = ph_bi[0];
+	  return 1;
+	}
     }
 
-  /* Acquire a reference on the placeholder buffer */
-  ctx_ph->ref_count++;
+  if (PREDICT_FALSE (vlib_buffer_alloc_from_pool (vm, bi, 1, bpi) != 1))
+    return 0;
 
+  ctx_ph = vlib_get_buffer (vm, bi[0]);
+  ctx_ph->ref_count++;
+  vec_add1_aligned (atq->ph_bufs, bi[0], CLIB_CACHE_LINE_BYTES);
+  return 1;
+}
+
+static_always_inline void
+iavf_tx_fill_ctx_desc (vlib_main_t *vm, iavf_tx_desc_t *d, vlib_buffer_t *b)
+{
+  ASSERT ((b->flags & VNET_BUFFER_F_L4_HDR_OFFSET_VALID) != 0);
+
+  /* Calculate header size from current_data (which should point to L2 header)
+   * to end of L4 header. vlib_buffer_length_in_chain() also uses current_data
+   * as reference, so both calculations are consistent. */
   u16 l234hdr_sz = vnet_buffer (b)->l4_hdr_offset - b->current_data +
 		   vnet_buffer2 (b)->gso_l4_hdr_sz;
   u16 tlen = vlib_buffer_length_in_chain (vm, b) - l234hdr_sz;
+
+  /* Sanity check: all headers must fit in first buffer for TSO */
+  ASSERT (l234hdr_sz <= b->current_length);
+
   d[0].qword[0] = 0;
   d[0].qword[1] = IAVF_TXD_DTYP_CTX | IAVF_TXD_CTX_CMD_TSO |
-		  IAVF_TXD_CTX_SEG_MSS (vnet_buffer2 (b)->gso_size) |
-		  IAVF_TXD_CTX_SEG_TLEN (tlen);
-  return bi[0];
+		  IAVF_TXD_CTX_SEG_MSS (vnet_buffer2 (b)->gso_size) | IAVF_TXD_CTX_SEG_TLEN (tlen);
 }
 
 static_always_inline void
@@ -365,9 +385,23 @@ iavf_tx_prepare (vlib_main_t *vm, vlib_node_runtime_t *node,
 
 	  if (flags & VNET_BUFFER_F_GSO)
 	    {
+	      u32 ctx_bi;
+
+	      /* Context descriptors need a buffer index for TX completion.
+	       * Acquire that placeholder only when a TSO descriptor is used. */
+	      if (PREDICT_FALSE (iavf_tx_acquire_ctx_desc_buffer (vm, txq, &ctx_bi) != 1))
+		{
+		  vlib_buffer_free_one (vm, buffers[0]);
+		  vlib_error_count (vm, node->node_index, IAVF_TX_NODE_CTR_BUFFER_ALLOC, 1);
+		  n_packets_left -= 1;
+		  buffers += 1;
+		  continue;
+		}
+
 	      /* Enqueue a context descriptor */
 	      tb[1] = tb[0];
-	      tb[0] = iavf_tx_fill_ctx_desc (vm, txq, d, b[0]);
+	      tb[0] = ctx_bi;
+	      iavf_tx_fill_ctx_desc (vm, d, b[0]);
 	      n_desc_left -= 1;
 	      d += 1;
 	      tb += 1;

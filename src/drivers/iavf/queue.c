@@ -92,6 +92,10 @@ iavf_tx_queue_free (vlib_main_t *vm, vnet_dev_tx_queue_t *txq)
   vnet_dev_dma_mem_free (vm, dev, aq->descs);
   clib_ring_free (atq->rs_slots);
 
+  if (vec_len (aq->ph_bufs))
+    vlib_buffer_free_no_next (vm, aq->ph_bufs, vec_len (aq->ph_bufs));
+  vec_free (aq->ph_bufs);
+
   foreach_pointer (p, aq->tmp_descs, aq->tmp_bufs, aq->buffer_indices)
     if (p)
       clib_mem_free (p);
