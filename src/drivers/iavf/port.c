@@ -332,9 +332,15 @@ iavf_port_start (vlib_main_t *vm, vnet_dev_port_t *port)
   log_debug (port->dev, "port %u", port->port_id);
 
   foreach_vnet_dev_port_rx_queue (q, port)
-    if (q->enabled)
-      if ((rv = iavf_rx_queue_start (vm, q)))
-	goto done;
+    {
+      q->if_rt_data.buffer_template.flags |= IAVF_RX_L4_CKSUM_FLAGS;
+      vec_foreach_pointer (rtd, q->sec_if_rt_data)
+	rtd->buffer_template.flags |= IAVF_RX_L4_CKSUM_FLAGS;
+
+      if (q->enabled)
+	if ((rv = iavf_rx_queue_start (vm, q)))
+	  goto done;
+    }
 
   foreach_vnet_dev_port_tx_queue (q, port)
     if ((rv = iavf_tx_queue_start (vm, q)))
