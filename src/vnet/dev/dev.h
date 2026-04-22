@@ -32,7 +32,7 @@ typedef enum
   _ (mac_filter)                                                              \
   _ (secondary_interfaces)
 
-#define foreach_vnet_dev_port_rx_offloads _ (ip4_cksum)
+#define foreach_vnet_dev_port_rx_offloads _ (ip4_cksum) _ (l4_cksum)
 
 #define foreach_vnet_dev_port_tx_offloads                                     \
   _ (ip4_cksum)                                                               \

@@ -270,6 +270,12 @@ vnet_dev_get_rx_queue_if_buffer_template (vnet_dev_rx_queue_t *rxq)
   return rxq->if_rt_data.buffer_template;
 }
 
+static_always_inline vlib_buffer_template_t *
+vnet_dev_get_rx_queue_if_buffer_template_ptr (vnet_dev_rx_queue_t *rxq)
+{
+  return &rxq->if_rt_data.buffer_template;
+}
+
 static_always_inline vlib_buffer_template_t
 vnet_dev_get_rx_queue_sec_if_buffer_template (vnet_dev_rx_queue_t *rxq,
 					      u32 sec_if_index)

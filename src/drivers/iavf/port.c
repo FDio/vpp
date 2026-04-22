@@ -362,9 +362,14 @@ iavf_port_start (vlib_main_t *vm, vnet_dev_port_t *port)
   log_debug (port->dev, "port %u", port->port_id);
 
   foreach_vnet_dev_port_rx_queue (q, port)
-    if (q->enabled)
-      if ((rv = iavf_rx_queue_start (vm, q)))
-	goto done;
+    {
+      vnet_dev_get_rx_queue_if_buffer_template_ptr (q)->flags |=
+	VNET_BUFFER_F_L4_CHECKSUM_COMPUTED | VNET_BUFFER_F_L4_CHECKSUM_CORRECT;
+
+      if (q->enabled)
+	if ((rv = iavf_rx_queue_start (vm, q)))
+	  goto done;
+    }
 
   foreach_vnet_dev_port_tx_queue (q, port)
     if ((rv = iavf_tx_queue_start (vm, q)))
