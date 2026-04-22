@@ -35,6 +35,7 @@ typedef struct
 {
   u8 entry_valid;
   u8 keep_sending_client_message;	/* when true then next fields are valid */
+  u8 missing_lladdr_warned;
   dhcp6_send_client_message_params_t params;
   f64 transaction_start;
   f64 sleep_interval;
@@ -45,6 +46,8 @@ typedef struct
   vlib_buffer_t *buffer;
   u32 elapsed_pos;
   u32 adj_index;
+  u8 dns_server_count;
+  ip6_address_t dns_servers[2];
 } dhcp6_ia_na_client_state_t;
 
 typedef struct
@@ -78,11 +81,34 @@ typedef struct
   dhcp6_address_info_t *addresses;
 } address_report_t;
 
+typedef struct
+{
+  u8 enabled;
+  u8 rebinding;
+  u32 server_index;
+  u32 T1;
+  u32 T2;
+  u32 address_count;
+  u32 t1_remaining;
+  u32 t2_remaining;
+  u8 first_address_present;
+  ip6_address_t first_address;
+  u32 first_address_preferred_lt;
+  u32 first_address_valid_lt;
+  u8 dns_server_count;
+  ip6_address_t dns_servers[2];
+} dhcp6_ia_na_client_runtime_t;
+
 void dhcp6_send_client_message (vlib_main_t * vm, u32 sw_if_index, u8 stop,
 				dhcp6_send_client_message_params_t * params);
 void dhcp6_set_publisher_node (uword node_index, uword event_type);
 int dhcp6_publish_report (address_report_t * r);
 int dhcp6_client_enable_disable (u32 sw_if_index, u8 enable);
+
+/* Snapshot the DHCPv6 IA_NA client state.  Must be called from the main
+ * thread: this reads pool state that the DHCPv6 client process node mutates
+ * on main thread without locking. */
+u8 dhcp6_ia_na_client_get_runtime (u32 sw_if_index, dhcp6_ia_na_client_runtime_t *rt);
 
 extern vlib_node_registration_t dhcp6_reply_process_node;
 
