@@ -71,6 +71,10 @@ api_af_xdp_create_v3 (vat_main_t *vam)
   mp->mode = api_af_xdp_mode (args.mode);
   if (args.flags & AF_XDP_CREATE_FLAGS_NO_SYSCALL_LOCK)
     mp->flags |= AF_XDP_API_FLAGS_NO_SYSCALL_LOCK;
+  if (args.flags & AF_XDP_CREATE_FLAGS_MAC_REUSE)
+    mp->flags |= AF_XDP_API_FLAGS_MAC_REUSE;
+  if (args.flags & AF_XDP_CREATE_FLAGS_MULTI_BUFFER)
+    mp->flags |= AF_XDP_API_FLAGS_MULTI_BUFFER;
   snprintf ((char *) mp->prog, sizeof (mp->prog), "%s", args.prog ?: "");
 
   S (mp);
