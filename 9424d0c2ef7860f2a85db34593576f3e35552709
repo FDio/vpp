@@ -33,6 +33,40 @@
       "message": "Did you mean to use segment_manager_get_if_valid? Otherwise, the check below seems useless.",
       "revId": "9424d0c2ef7860f2a85db34593576f3e35552709",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "19cf49e1_fc072cd3",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 834,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2026-04-22T15:24:49Z",
+      "side": 1,
+      "message": "Can we move app_wprker_get_if_valid until we actually need it, line 851, app_worker_migrate_notify?",
+      "revId": "9424d0c2ef7860f2a85db34593576f3e35552709",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0c531eeb_7b986042",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 915,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2026-04-22T15:24:49Z",
+      "side": 1,
+      "message": "Can we remove app_wrk? We need it for calling app_worker_get_connect_segment_manager. Now that we deleted that line, it seems like we can clean up and remove all references of app_wrk in this function",
+      "revId": "9424d0c2ef7860f2a85db34593576f3e35552709",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
