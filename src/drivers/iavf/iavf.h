@@ -66,7 +66,8 @@ typedef struct
   u16 *rs_slots;
   iavf_tx_desc_t *tmp_descs;
   u32 *tmp_bufs;
-  u32 *ph_bufs;
+  u8 *tmp_buf_free_flags;
+  u8 *buf_free_flags;
 } iavf_txq_t;
 
 typedef struct
@@ -125,6 +126,8 @@ void iavf_rx_queue_stop (vlib_main_t *, vnet_dev_rx_queue_t *);
 void iavf_tx_queue_stop (vlib_main_t *, vnet_dev_tx_queue_t *);
 void iavf_rx_queue_free (vlib_main_t *, vnet_dev_rx_queue_t *);
 void iavf_tx_queue_free (vlib_main_t *, vnet_dev_tx_queue_t *);
+void iavf_tx_queue_release_descs (vlib_main_t *, vnet_dev_tx_queue_t *, u16,
+				  u16);
 
 /* counter.c */
 void iavf_port_poll_stats (vlib_main_t *, vnet_dev_port_t *);
@@ -196,6 +199,19 @@ typedef struct
 
 #define foreach_iavf_tx_node_counter                                          \
   _ (SEG_SZ_EXCEEDED, seg_sz_exceeded, ERROR, "segment size exceeded")        \
+  _ (GSO_HDR_LINEARIZED, gso_hdr_linearized, INFO, "gso headers linearized") \
+  _ (GSO_NOT_NEEDED, gso_not_needed, INFO, "gso not needed")                 \
+  _ (GSO_NO_L4_HDR, gso_no_l4_hdr, ERROR, "gso without l4 header offset")    \
+  _ (GSO_BAD_HDR, gso_bad_hdr, ERROR, "gso bad header length")               \
+  _ (GSO_BAD_HDR_OFFSET, gso_bad_hdr_offset, ERROR,                          \
+     "gso bad l4 header offset")                                             \
+  _ (GSO_BAD_L4_HDR_SZ, gso_bad_l4_hdr_sz, ERROR, "gso bad l4 header size")  \
+  _ (GSO_HDR_LINEARIZE_FAIL, gso_hdr_linearize_fail, ERROR,                  \
+     "gso header linearize failed")                                          \
+  _ (GSO_BAD_PAYLOAD, gso_bad_payload, ERROR, "gso bad payload length")      \
+  _ (GSO_BAD_MSS, gso_bad_mss, ERROR, "gso mss out of range")                \
+  _ (GSO_BAD_TLEN, gso_bad_tlen, ERROR, "gso tso length out of range")       \
+  _ (CHAIN_TOO_LONG, chain_too_long, ERROR, "tx chain too long")             \
   _ (NO_FREE_SLOTS, no_free_slots, ERROR, "no free tx slots")
 
 typedef enum

@@ -74,11 +74,37 @@ iavf_tx_queue_alloc (vlib_main_t *vm, vnet_dev_tx_queue_t *txq)
     sizeof (atq->tmp_descs[0]) * txq->size, CLIB_CACHE_LINE_BYTES);
   atq->tmp_bufs = clib_mem_alloc_aligned (
     sizeof (atq->tmp_bufs[0]) * txq->size, CLIB_CACHE_LINE_BYTES);
+  atq->buf_free_flags = clib_mem_alloc_aligned (
+    sizeof (atq->buf_free_flags[0]) * txq->size, CLIB_CACHE_LINE_BYTES);
+  atq->tmp_buf_free_flags = clib_mem_alloc_aligned (
+    sizeof (atq->tmp_buf_free_flags[0]) * txq->size, CLIB_CACHE_LINE_BYTES);
+  clib_memset_u8 (atq->buf_free_flags, 0, txq->size);
 
   atq->qtx_tail = ad->bar0 + IAVF_QTX_TAIL (txq->queue_id);
 
   log_debug (dev, "queue %u alocated", txq->queue_id);
   return VNET_DEV_OK;
+}
+
+void
+iavf_tx_queue_release_descs (vlib_main_t *vm, vnet_dev_tx_queue_t *txq,
+			     u16 first, u16 n_descs)
+{
+  iavf_txq_t *atq = vnet_dev_get_tx_queue_data (txq);
+  u16 mask = txq->size - 1;
+  u32 *free_bufs = atq->tmp_bufs;
+  u16 n_free = 0;
+
+  while (n_descs--)
+    {
+      u16 slot = first++ & mask;
+      if (atq->buf_free_flags[slot])
+	free_bufs[n_free++] = atq->buffer_indices[slot];
+      atq->buf_free_flags[slot] = 0;
+    }
+
+  if (n_free)
+    vlib_buffer_free_no_next (vm, free_bufs, n_free);
 }
 
 void
@@ -92,7 +118,8 @@ iavf_tx_queue_free (vlib_main_t *vm, vnet_dev_tx_queue_t *txq)
   vnet_dev_dma_mem_free (vm, dev, aq->descs);
   clib_ring_free (atq->rs_slots);
 
-  foreach_pointer (p, aq->tmp_descs, aq->tmp_bufs, aq->buffer_indices)
+  foreach_pointer (p, aq->tmp_descs, aq->tmp_bufs, aq->buffer_indices,
+		   aq->buf_free_flags, aq->tmp_buf_free_flags)
     if (p)
       clib_mem_free (p);
 }
@@ -165,9 +192,9 @@ iavf_tx_queue_stop (vlib_main_t *vm, vnet_dev_tx_queue_t *txq)
   __atomic_store_n (atq->qtx_tail, 0, __ATOMIC_RELAXED);
   if (atq->n_enqueued)
     {
-      vlib_buffer_free_from_ring_no_next (vm, atq->buffer_indices,
-					  atq->next - atq->n_enqueued,
-					  txq->size, atq->n_enqueued);
+      iavf_tx_queue_release_descs (
+	vm, txq, (atq->next - atq->n_enqueued) & (txq->size - 1),
+	atq->n_enqueued);
       log_debug (txq->port->dev, "%u buffers freed from tx queue %u",
 		 atq->n_enqueued, txq->queue_id);
     }
