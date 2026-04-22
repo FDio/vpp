@@ -66,7 +66,6 @@ typedef struct
   u16 *rs_slots;
   iavf_tx_desc_t *tmp_descs;
   u32 *tmp_bufs;
-  u32 *ph_bufs;
 } iavf_txq_t;
 
 typedef struct
@@ -196,6 +195,7 @@ typedef struct
 
 #define foreach_iavf_tx_node_counter                                          \
   _ (SEG_SZ_EXCEEDED, seg_sz_exceeded, ERROR, "segment size exceeded")        \
+  _ (BUFFER_ALLOC, buffer_alloc, ERROR, "buffer alloc error")                 \
   _ (NO_FREE_SLOTS, no_free_slots, ERROR, "no free tx slots")
 
 typedef enum
