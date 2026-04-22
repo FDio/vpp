@@ -88,6 +88,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "09a8ce6d_c589cf22",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 834,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-04-22T17:53:34Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c8b13cbd_a2ef8f82",
+      "revId": "9424d0c2ef7860f2a85db34593576f3e35552709",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "0c531eeb_7b986042",
@@ -119,6 +137,24 @@
       "side": 1,
       "message": "Almost did it before pushing patch but this completely avoids touching the fifo if there\u0027s no app_wrk. It\u0027s also paired with above comment to make sure we don\u0027t do anything beyond closing. \nIn theory it should be safe to attach/detach the fifo, unless we have some corner case that cleans up segment manager prematurely. Maybe we should try it ..",
       "parentUuid": "0c531eeb_7b986042",
+      "revId": "9424d0c2ef7860f2a85db34593576f3e35552709",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6932dd29_7d83cdc7",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 915,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-04-22T17:53:34Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "669bbff3_3f4b2de3",
       "revId": "9424d0c2ef7860f2a85db34593576f3e35552709",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
