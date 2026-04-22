@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "2e271abb_d56c358e",
+        "filename": "test/test_linux_cp.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 977,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2026-04-22T19:20:50Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "2c5234a8_99ed99b5",
+      "revId": "f3a77b1291f77183cfe22fa52fc74c92099ae9f4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "354d7c7c_f78d0a47",
@@ -35,6 +53,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "b634a928_d65398f7",
+        "filename": "test/test_linux_cp.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 1074,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2026-04-22T19:20:50Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "354d7c7c_f78d0a47",
+      "revId": "f3a77b1291f77183cfe22fa52fc74c92099ae9f4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "de6831b8_87d73442",
@@ -48,6 +84,24 @@
       "writtenOn": "2026-04-08T19:51:49Z",
       "side": 1,
       "message": "The interface addresses/prefixes are hardcoded in various places. It might be good to put those in variables and reference the variable instead. If you ever wanted to change one of the addresses used, it would be a lot easier that way. It could also make the test code more meaningful to someone reading it if the prefix being added to `lo_interfaces[0]` is `loop0_prefix_v4` or `loop_prefixes_v4[0]` or something instead of `\"10.10.1.2/24\"`. It\u0027s easier to see that you added the prefix for loop0 to loop0 that way.",
+      "revId": "f3a77b1291f77183cfe22fa52fc74c92099ae9f4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "59b565e7_81942dde",
+        "filename": "test/test_linux_cp.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 1084,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2026-04-22T19:20:50Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "de6831b8_87d73442",
       "revId": "f3a77b1291f77183cfe22fa52fc74c92099ae9f4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
