@@ -14,6 +14,7 @@ static const iavf_rx_desc_qw1_t mask_flm = { .flm = 1 };
 static const iavf_rx_desc_qw1_t mask_dd = { .dd = 1 };
 static const iavf_rx_desc_qw1_t mask_ipe = { .ipe = 1 };
 static const iavf_rx_desc_qw1_t mask_dd_eop = { .dd = 1, .eop = 1 };
+static const iavf_rx_desc_qw1_t mask_l3l4p = { .l3l4p = 1 };
 
 static_always_inline int
 iavf_rxd_is_not_eop (iavf_rx_desc_t *d)
@@ -171,11 +172,22 @@ iavf_process_flow_offload (vnet_dev_port_t *port, iavf_rt_data_t *rtd,
     }
 }
 
+static_always_inline void
+iavf_set_l4_cksum_offload (vlib_buffer_t *b, u64 qw1)
+{
+  iavf_rx_desc_qw1_t q1 = (iavf_rx_desc_qw1_t) qw1;
+  if (q1.l3l4p)
+    {
+      b->flags |= VNET_BUFFER_F_L4_CHECKSUM_COMPUTED | VNET_BUFFER_F_L4_CHECKSUM_CORRECT;
+      if (PREDICT_FALSE (q1.l4e))
+	b->flags &= ~VNET_BUFFER_F_L4_CHECKSUM_CORRECT;
+    }
+}
+
 static_always_inline uword
-iavf_process_rx_burst (vlib_main_t *vm, vlib_node_runtime_t *node,
-		       vnet_dev_rx_queue_t *rxq, iavf_rt_data_t *rtd,
-		       vlib_buffer_template_t *bt, u32 n_left,
-		       int maybe_multiseg)
+iavf_process_rx_burst (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_dev_rx_queue_t *rxq,
+		       iavf_rt_data_t *rtd, vlib_buffer_template_t *bt, u32 n_left,
+		       int maybe_multiseg, int with_l4_cksum, u64 or_qw1)
 {
   vlib_buffer_t **b = rtd->bufs;
   u64 *qw1 = rtd->qw1s;
@@ -214,6 +226,14 @@ iavf_process_rx_burst (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  n_rx_bytes += iavf_rx_attach_tail (vm, bt, b[3], qw1[3], tail + 3);
 	}
 
+      if (with_l4_cksum && (or_qw1 & mask_l3l4p.as_u64))
+	{
+	  iavf_set_l4_cksum_offload (b[0], qw1[0]);
+	  iavf_set_l4_cksum_offload (b[1], qw1[1]);
+	  iavf_set_l4_cksum_offload (b[2], qw1[2]);
+	  iavf_set_l4_cksum_offload (b[3], qw1[3]);
+	}
+
       /* next */
       qw1 += 4;
       tail += 4;
@@ -231,6 +251,9 @@ iavf_process_rx_burst (vlib_main_t *vm, vlib_node_runtime_t *node,
       if (maybe_multiseg)
 	n_rx_bytes += iavf_rx_attach_tail (vm, bt, b[0], qw1[0], tail + 0);
 
+      if (with_l4_cksum && (or_qw1 & mask_l3l4p.as_u64))
+	iavf_set_l4_cksum_offload (b[0], qw1[0]);
+
       /* next */
       qw1 += 1;
       tail += 1;
@@ -241,9 +264,9 @@ iavf_process_rx_burst (vlib_main_t *vm, vlib_node_runtime_t *node,
 }
 
 static_always_inline uword
-iavf_device_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
-			  vlib_frame_t *frame, vnet_dev_port_t *port,
-			  vnet_dev_rx_queue_t *rxq, int with_flows)
+iavf_device_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame,
+			  vnet_dev_port_t *port, vnet_dev_rx_queue_t *rxq, int with_flows,
+			  int with_l4_cksum)
 {
   vnet_main_t *vnm = vnet_get_main ();
   u32 thr_idx = vlib_get_thread_index ();
@@ -410,8 +433,8 @@ no_more_desc:
 
   n_rx_bytes =
     n_tail_desc ?
-	    iavf_process_rx_burst (vm, node, rxq, rtd, &bt, n_rx_packets, 1) :
-	    iavf_process_rx_burst (vm, node, rxq, rtd, &bt, n_rx_packets, 0);
+      iavf_process_rx_burst (vm, node, rxq, rtd, &bt, n_rx_packets, 1, with_l4_cksum, or_qw1) :
+      iavf_process_rx_burst (vm, node, rxq, rtd, &bt, n_rx_packets, 0, with_l4_cksum, or_qw1);
 
   /* the MARKed packets may have different next nodes */
   if (PREDICT_FALSE (with_flows && (or_qw1 & mask_flm.as_u64)))
@@ -514,9 +537,19 @@ VNET_DEV_NODE_FN (iavf_rx_node)
       vnet_dev_port_t *port = rxq->port;
       iavf_port_t *ap = vnet_dev_get_port_data (port);
       if (PREDICT_FALSE (ap->flow_offload))
-	n_rx += iavf_device_input_inline (vm, node, frame, port, rxq, 1);
+	{
+	  if (port->attr.rx_offloads.l4_cksum)
+	    n_rx += iavf_device_input_inline (vm, node, frame, port, rxq, 1, 1);
+	  else
+	    n_rx += iavf_device_input_inline (vm, node, frame, port, rxq, 1, 0);
+	}
       else
-	n_rx += iavf_device_input_inline (vm, node, frame, port, rxq, 0);
+	{
+	  if (port->attr.rx_offloads.l4_cksum)
+	    n_rx += iavf_device_input_inline (vm, node, frame, port, rxq, 0, 1);
+	  else
+	    n_rx += iavf_device_input_inline (vm, node, frame, port, rxq, 0, 0);
+	}
 
       /* refill rx ring */
       if (rxq->port->dev->va_dma)
