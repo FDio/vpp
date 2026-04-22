@@ -99,7 +99,7 @@ atl_rx_one_queue (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_dev_rx_queue_
 {
   vnet_main_t *vnm = vnet_get_main ();
   atl_rxq_t *aq = vnet_dev_get_rx_queue_data (rxq);
-  vlib_buffer_template_t bt = vnet_dev_get_rx_queue_if_buffer_template (rxq);
+  vlib_buffer_template_t bt = *vnet_dev_get_rx_queue_if_buffer_template (rxq);
   u32 buffer_indices[VLIB_FRAME_SIZE];
   u32 drop_indices[VLIB_FRAME_SIZE];
   u16 desc_ring_indices[VLIB_FRAME_SIZE];

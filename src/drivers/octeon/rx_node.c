@@ -103,7 +103,7 @@ oct_rx_batch (vlib_main_t *vm, oct_rx_node_ctx_t *ctx,
 	      vnet_dev_rx_queue_t *rxq, u32 n)
 {
   oct_rxq_t *crq = vnet_dev_get_rx_queue_data (rxq);
-  vlib_buffer_template_t bt = vnet_dev_get_rx_queue_if_buffer_template (rxq);
+  vlib_buffer_template_t bt = *vnet_dev_get_rx_queue_if_buffer_template (rxq);
   u32 b0_err_flags = 0, b1_err_flags = 0;
   u32 b2_err_flags = 0, b3_err_flags = 0;
   u32 n_left, err_flags = 0;
