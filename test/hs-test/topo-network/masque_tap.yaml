@@ -1,0 +1,43 @@
+---
+extra-config:
+  - configured-by-host: false
+devices:
+  - name: "client-ns"
+    type: "netns"
+
+  - name: "cln-src"
+    type: "tap"
+    ip4:
+      network: 1
+    host:
+      name: "cln-src"
+      netns: "client-ns"
+      ip4:
+        network: 1
+
+  - name: "cln-tun"
+    type: "tap"
+    ip4:
+      network: 2
+    host:
+      name: "cln-tun"
+      ip4:
+        network: 2
+
+  - name: "srv-tun"
+    type: "tap"
+    ip4:
+      network: 3
+    host:
+      name: "srv-tun"
+      ip4:
+        network: 3
+
+  - name: "srv-dst"
+    type: "tap"
+    ip4:
+      network: 4
+    host:
+      name: "srv-dst"
+      ip4:
+        network: 4

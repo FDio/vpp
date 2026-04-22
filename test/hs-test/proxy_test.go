@@ -18,6 +18,7 @@ import (
 	"time"
 
 	. "fd.io/hs-test/infra"
+	"github.com/edwarnicke/exechelper"
 	. "github.com/onsi/ginkgo/v2"
 )
 
@@ -35,9 +36,9 @@ func init() {
 	RegisterEnvoyProxyTests(EnvoyHttpGetTcpTest, EnvoyHttpPutTcpTest)
 	RegisterNginxProxyTests(NginxMirroringTest)
 	RegisterNginxProxySoloTests(MirrorMultiThreadTest)
-	RegisterMasqueTests(VppConnectProxyClientDownloadUdpTest,
-		VppConnectProxyClientUploadUdpTest, VppConnectProxyMemLeakTest)
-	RegisterMasqueSoloTests(VppConnectProxyIperfTcpTest, VppConnectProxyIperfUdpTest)
+	RegisterMasqueTapTests(VppConnectProxyClientDownloadUdpTest, VppConnectProxyClientUploadUdpTest, VppConnectProxyMemLeakTest,
+		VppConnectProxyIperfTcpTest, VppConnectProxyIperfUdpTest)
+	// TODO: move to tap once cleanup issue is fixed
 	RegisterMasqueMWTests(VppConnectProxyIperfTcpMWTest, VppConnectProxyIperfUdpMWTest, VppConnectProxyClientUploadTcpMWTest,
 		VppConnectProxyClientTargetUnreachableMWTest, VppConnectProxyClientDownloadTcpMWTest,
 		VppConnectProxyClientStressMWTest, VppConnectProxyClientUdpIdleMWTest, VppConnectProxyClientServerClosedTcpMWTest,
@@ -781,6 +782,64 @@ func vppConnectProxyServerCheckCleanup(s *MasqueSuite, IsHttp3 bool) {
 	}
 }
 
+func vppConnectProxyTapClientCheckCleanup(s *MasqueTapSuite) {
+	clientVpp := s.Containers.VppClient.VppInstance
+	closed := false
+	for range 35 {
+		o := clientVpp.Vppctl("show http connect proxy client sessions")
+		if !strings.Contains(o, "session [") {
+			closed = true
+			break
+		}
+		time.Sleep(1 * time.Second)
+	}
+	AssertEqual(closed, true, "connect proxy session not closed")
+	h2Stats := clientVpp.Vppctl("show http stats")
+	streamsOpened := 0
+	streamsClosed := 0
+	lines := strings.SplitSeq(h2Stats, "\n")
+	for line := range lines {
+		if strings.Contains(line, "application streams opened") {
+			tmp := strings.Split(line, " ")
+			streamsOpened, _ = strconv.Atoi(tmp[1])
+		}
+		if strings.Contains(line, "application streams closed") {
+			tmp := strings.Split(line, " ")
+			streamsClosed, _ = strconv.Atoi(tmp[1])
+		}
+	}
+	// one stream for http/2 connection (parent stays open)
+	AssertEqual(streamsOpened-streamsClosed, 1, "only parent stream should stays open")
+}
+
+func vppConnectProxyTapServerCheckCleanup(s *MasqueTapSuite, IsHttp3 bool) {
+	o := s.Containers.VppServer.VppInstance.Vppctl("show session verbose")
+	if IsHttp3 {
+		AssertEqual(2, strings.Count(o, "[H3]"), "there should be http/3 connection session and parent stream")
+	} else {
+		AssertEqual(1, strings.Count(o, "[H2]"), "there should be http/2 connection session")
+	}
+	h2Stats := s.Containers.VppServer.VppInstance.Vppctl("show http stats")
+	streamsOpened := 0
+	streamsClosed := 0
+	lines := strings.SplitSeq(h2Stats, "\n")
+	for line := range lines {
+		if strings.Contains(line, "application streams opened") {
+			tmp := strings.Split(line, " ")
+			streamsOpened, _ = strconv.Atoi(tmp[1])
+		}
+		if strings.Contains(line, "application streams closed") {
+			tmp := strings.Split(line, " ")
+			streamsClosed, _ = strconv.Atoi(tmp[1])
+		}
+	}
+	if IsHttp3 {
+		AssertEqual(streamsOpened-streamsClosed, 1, "all tunnel streams should be closed")
+	} else {
+		AssertEqual(streamsOpened-streamsClosed, 0, "all tunnel streams should be closed")
+	}
+}
+
 func VppConnectProxyClientDownloadTcpMWTest(s *MasqueSuite) {
 	s.CpusPerVppContainer = 3
 	s.SetupTest()
@@ -805,9 +864,15 @@ func VppConnectProxyClientDownloadTcpMWTest(s *MasqueSuite) {
 	// test client initiated stream close
 	vppConnectProxyClientCheckCleanup(s)
 	vppConnectProxyServerCheckCleanup(s, false)
+	// verify that masque proxy server was talking to nginx
+	logPath := s.Containers.NginxServer.GetHostWorkDir() + "/" + s.Containers.NginxServer.Name + "-access.log"
+	logContents, err := exechelper.Output("cat " + logPath)
+	AssertNil(err)
+	Log(string(logContents))
+	AssertContains(string(logContents), s.Interfaces.Server.Ip4AddressString())
 }
 
-func VppConnectProxyClientDownloadUdpTest(s *MasqueSuite) {
+func VppConnectProxyClientDownloadUdpTest(s *MasqueTapSuite) {
 	s.StartNginxServer()
 	clientVpp := s.Containers.VppClient.VppInstance
 	s.ProxyClientConnect("udp", s.Ports.NginxSsl)
@@ -820,6 +885,12 @@ func VppConnectProxyClientDownloadUdpTest(s *MasqueSuite) {
 		StartCurl(finished, uri, s.NetNamespaces.Client, "200", 30, []string{"--http3-only"})
 	}()
 	AssertNil(<-finished)
+	// verify that masque proxy server was talking to nginx
+	logPath := s.Containers.NginxServer.GetHostWorkDir() + "/" + s.Containers.NginxServer.Name + "-access.log"
+	logContents, err := exechelper.Output("cat " + logPath)
+	AssertNil(err)
+	Log(string(logContents))
+	AssertContains(string(logContents), s.Interfaces.Server.Ip4AddressString())
 }
 
 func VppConnectProxyClientUploadTcpMWTest(s *MasqueSuite) {
@@ -843,7 +914,7 @@ func VppConnectProxyClientUploadTcpMWTest(s *MasqueSuite) {
 	AssertNil(<-finished)
 }
 
-func VppConnectProxyClientUploadUdpTest(s *MasqueSuite) {
+func VppConnectProxyClientUploadUdpTest(s *MasqueTapSuite) {
 	s.StartNginxServer()
 	s.ProxyClientConnect("udp", s.Ports.NginxSsl)
 
@@ -905,8 +976,28 @@ func vppConnectProxyIperfTcp(s *MasqueSuite, extraArgs ...string) {
 	AssertNil(err)
 }
 
-func VppConnectProxyIperfTcpTest(s *MasqueSuite) {
-	vppConnectProxyIperfTcp(s)
+func VppConnectProxyIperfTcpTest(s *MasqueTapSuite) {
+	s.Containers.IperfServer.Run()
+	s.ProxyClientConnect("tcp", s.Ports.Nginx)
+	clientVpp := s.Containers.VppClient.VppInstance
+
+	cmd := fmt.Sprintf("iperf3 -s --one-off -D -B %s -p %s --logfile %s", s.NginxAddr(), s.Ports.Nginx, IperfLogFileName(s.Containers.IperfServer))
+	o, err := s.Containers.IperfServer.Exec(true, cmd)
+
+	AssertNil(err, o)
+	Log("server running")
+
+	finished := make(chan error, 1)
+	go func() {
+		defer GinkgoRecover()
+		StartIperfClient(finished, s.Interfaces.Client.Host.Ip4AddressString(), s.NginxAddr(), s.Ports.Nginx,
+			s.NetNamespaces.Client, []string{"-P", "4"})
+	}()
+	Log(clientVpp.Vppctl("show http connect proxy client sessions"))
+	err = <-finished
+	fileLog, _ := s.Containers.IperfServer.Exec(false, "cat "+IperfLogFileName(s.Containers.IperfServer))
+	Log("*** Server logs: \n%s\n***", fileLog)
+	AssertNil(err)
 }
 
 func vppConnectProxyIperfUdp(s *MasqueSuite, extraArgs ...string) {
@@ -937,8 +1028,32 @@ func vppConnectProxyIperfUdp(s *MasqueSuite, extraArgs ...string) {
 	AssertNotContains(fileLog, "0.00 Bytes  0.00 bits/sec")
 }
 
-func VppConnectProxyIperfUdpTest(s *MasqueSuite) {
-	vppConnectProxyIperfUdp(s)
+func VppConnectProxyIperfUdpTest(s *MasqueTapSuite) {
+	s.Containers.IperfServer.Run()
+	// test listen all, we are running solo anyway
+	s.ProxyClientConnect("udp", "0")
+	clientVpp := s.Containers.VppClient.VppInstance
+	cmd := "http connect proxy client listener add listener tcp://0.0.0.0:0"
+	Log(clientVpp.Vppctl(cmd))
+
+	cmd = fmt.Sprintf("iperf3 -s --one-off -D -B %s -p %s --logfile %s", s.NginxAddr(), s.Ports.Nginx, IperfLogFileName(s.Containers.IperfServer))
+	o, err := s.Containers.IperfServer.Exec(true, cmd)
+
+	AssertNil(err, o)
+	Log("server running")
+
+	finished := make(chan error, 1)
+	go func() {
+		defer GinkgoRecover()
+		StartIperfClient(finished, s.Interfaces.Client.Host.Ip4AddressString(), s.NginxAddr(), s.Ports.Nginx,
+			s.NetNamespaces.Client, []string{"-u", "-P", "4"})
+	}()
+	Log(clientVpp.Vppctl("show http connect proxy client sessions"))
+	err = <-finished
+	fileLog, _ := s.Containers.IperfServer.Exec(false, "cat "+IperfLogFileName(s.Containers.IperfServer))
+	Log("*** Server logs: \n%s\n***", fileLog)
+	AssertNil(err)
+	AssertNotContains(fileLog, "0.00 Bytes  0.00 bits/sec")
 }
 
 func VppConnectProxyIperfTcpMWTest(s *MasqueSuite) {
@@ -953,7 +1068,7 @@ func VppConnectProxyIperfTcpMWTest(s *MasqueSuite) {
 func VppConnectProxyIperfUdpMWTest(s *MasqueSuite) {
 	s.CpusPerVppContainer = 3
 	s.SetupTest()
-	VppConnectProxyIperfUdpTest(s)
+	vppConnectProxyIperfUdp(s)
 	clientVpp := s.Containers.VppClient.VppInstance
 	closed := false
 	for range 60 {
@@ -1023,7 +1138,7 @@ func VppConnectProxyClientUdpIdleMWTest(s *MasqueSuite) {
 	vppConnectProxyServerCheckCleanup(s, false)
 }
 
-func VppConnectProxyMemLeakTest(s *MasqueSuite) {
+func VppConnectProxyMemLeakTest(s *MasqueTapSuite) {
 	s.SkipUnlessLeakCheck()
 
 	s.StartNginxServer()
@@ -1047,8 +1162,8 @@ func VppConnectProxyMemLeakTest(s *MasqueSuite) {
 	AssertNil(<-finished)
 
 	/* let's give it some time to clean up sessions, so pool elements can be reused and we have less noise */
-	vppConnectProxyClientCheckCleanup(s)
-	vppConnectProxyServerCheckCleanup(s, false)
+	vppConnectProxyTapClientCheckCleanup(s)
+	vppConnectProxyTapServerCheckCleanup(s, false)
 
 	clientVpp.EnableMemoryTrace()
 	clientTraces1, err := clientVpp.GetMemoryTrace()
@@ -1063,8 +1178,8 @@ func VppConnectProxyMemLeakTest(s *MasqueSuite) {
 	AssertNil(<-finished)
 
 	/* let's give it some time to clean up sessions */
-	vppConnectProxyClientCheckCleanup(s)
-	vppConnectProxyServerCheckCleanup(s, false)
+	vppConnectProxyTapClientCheckCleanup(s)
+	vppConnectProxyTapServerCheckCleanup(s, false)
 
 	clientTraces2, err := clientVpp.GetMemoryTrace()
 	AssertNil(err, fmt.Sprint(err))
