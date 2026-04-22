@@ -38,8 +38,11 @@ VLIB_CLI_COMMAND (af_xdp_create_command, static) = {
   .path = "create interface af_xdp",
   .short_help = "create interface af_xdp <host-if linux-ifname> [name ifname] "
 		"[rx-queue-size size] [tx-queue-size size] [num-rx-queues <num|all>] "
-		"[prog pathname] [netns ns] [zero-copy|no-zero-copy] [no-syscall-lock] "
-		"[mac-reuse] ",
+		"[prog <filename|pathname>] [netns ns] [zero-copy|no-zero-copy] "
+		"[no-syscall-lock] [mac-reuse] [multi-buffer|no-multi-buffer]\n"
+		"  prog: bare filename (e.g. xsk_def_xdp_prog.o) is searched in "
+		"LIBXDP_OBJECT_PATH (/usr/lib/bpf); a path containing '/' "
+		"(e.g. /path/to/prog.o) is opened directly from the filesystem",
   .function = af_xdp_create_command_fn,
 };
 
