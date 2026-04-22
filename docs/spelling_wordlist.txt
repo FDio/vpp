@@ -453,6 +453,7 @@ Heapsize
 Heric
 hostname
 hostnames
+host-uniq
 hostNetwork
 hoststack
 hotkey
@@ -534,6 +535,7 @@ iOAM
 iommu
 ip
 IP
+IPCP
 ipaddress
 iperf
 iPerf
@@ -835,6 +837,8 @@ osi
 outacl
 packagecloud
 papi
+pap
+PAP
 parallelize
 parallelizes
 param
@@ -898,6 +902,10 @@ poweroff
 ppc
 ppp
 pppoe
+pppoeclient
+PPPoEClient
+pppox
+PPPoX
 pps
 pre
 Preallocate
@@ -1146,6 +1154,7 @@ svm
 svs
 sw
 Sw
+sw-if-index
 symlink
 syntaxes
 sys
