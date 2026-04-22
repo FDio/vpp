@@ -14,6 +14,8 @@ static const iavf_rx_desc_qw1_t mask_flm = { .flm = 1 };
 static const iavf_rx_desc_qw1_t mask_dd = { .dd = 1 };
 static const iavf_rx_desc_qw1_t mask_ipe = { .ipe = 1 };
 static const iavf_rx_desc_qw1_t mask_dd_eop = { .dd = 1, .eop = 1 };
+static const iavf_rx_desc_qw1_t mask_l3l4p = { .l3l4p = 1 };
+static const iavf_rx_desc_qw1_t mask_l4e = { .l4e = 1 };
 
 static_always_inline int
 iavf_rxd_is_not_eop (iavf_rx_desc_t *d)
@@ -117,15 +119,36 @@ iavf_rxq_refill (vlib_main_t *vm, vlib_node_runtime_t *node,
   __atomic_store_n (arq->qrx_tail, slot, __ATOMIC_RELEASE);
 }
 
+static_always_inline u32
+iavf_rx_validate_l4_cksum (u64 qw1, u32 flags)
+{
+  u64 mask = mask_l3l4p.as_u64 | mask_l4e.as_u64;
+
+  if (PREDICT_FALSE ((qw1 & mask) != mask_l3l4p.as_u64))
+    {
+      if ((qw1 & mask_l3l4p.as_u64) == 0)
+	flags &= ~(VNET_BUFFER_F_L4_CHECKSUM_COMPUTED | VNET_BUFFER_F_L4_CHECKSUM_CORRECT);
+      else
+	flags &= ~VNET_BUFFER_F_L4_CHECKSUM_CORRECT;
+    }
+
+  return flags;
+}
+
 static_always_inline uword
-iavf_rx_attach_tail (vlib_main_t *vm, vlib_buffer_template_t *bt,
-		     vlib_buffer_t *b, u64 qw1, iavf_rx_tail_t *t)
+iavf_rx_attach_tail (vlib_main_t *vm, vlib_buffer_template_t *bt, vlib_buffer_t *b, u64 qw1,
+		     iavf_rx_tail_t *t, u32 flags)
 {
   vlib_buffer_t *hb = b;
   u32 tlnifb = 0, i = 0;
+  u32 tail_flags =
+    flags & ~(VNET_BUFFER_F_L4_CHECKSUM_COMPUTED | VNET_BUFFER_F_L4_CHECKSUM_CORRECT);
 
   if (qw1 & mask_eop.as_u64)
-    return 0;
+    {
+      b->flags = iavf_rx_validate_l4_cksum (qw1, flags);
+      return 0;
+    }
 
   while ((qw1 & mask_eop.as_u64) == 0)
     {
@@ -133,15 +156,21 @@ iavf_rx_attach_tail (vlib_main_t *vm, vlib_buffer_template_t *bt,
       ASSERT (qw1 & mask_dd.as_u64);
       qw1 = t->qw1s[i];
       b->next_buffer = t->buffers[i];
-      b->flags |= VLIB_BUFFER_NEXT_PRESENT;
+      if (i == 0)
+	flags |= VLIB_BUFFER_NEXT_PRESENT;
+      else
+	b->flags = tail_flags | VLIB_BUFFER_NEXT_PRESENT;
       b = vlib_get_buffer (vm, b->next_buffer);
       b->template = *bt;
+      b->flags = tail_flags;
       tlnifb += b->current_length = ((iavf_rx_desc_qw1_t) qw1).length;
       i++;
     }
 
+  flags = iavf_rx_validate_l4_cksum (qw1, flags);
   hb->total_length_not_including_first_buffer = tlnifb;
-  hb->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
+  flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
+  hb->flags = flags;
   return tlnifb;
 }
 
@@ -181,6 +210,7 @@ iavf_process_rx_burst (vlib_main_t *vm, vlib_node_runtime_t *node,
   u64 *qw1 = rtd->qw1s;
   iavf_rx_tail_t *tail = rtd->tails;
   uword n_rx_bytes = 0;
+  u32 flags = bt->flags;
 
   while (n_left >= 4)
     {
@@ -208,10 +238,17 @@ iavf_process_rx_burst (vlib_main_t *vm, vlib_node_runtime_t *node,
 
       if (maybe_multiseg)
 	{
-	  n_rx_bytes += iavf_rx_attach_tail (vm, bt, b[0], qw1[0], tail + 0);
-	  n_rx_bytes += iavf_rx_attach_tail (vm, bt, b[1], qw1[1], tail + 1);
-	  n_rx_bytes += iavf_rx_attach_tail (vm, bt, b[2], qw1[2], tail + 2);
-	  n_rx_bytes += iavf_rx_attach_tail (vm, bt, b[3], qw1[3], tail + 3);
+	  n_rx_bytes += iavf_rx_attach_tail (vm, bt, b[0], qw1[0], tail + 0, flags);
+	  n_rx_bytes += iavf_rx_attach_tail (vm, bt, b[1], qw1[1], tail + 1, flags);
+	  n_rx_bytes += iavf_rx_attach_tail (vm, bt, b[2], qw1[2], tail + 2, flags);
+	  n_rx_bytes += iavf_rx_attach_tail (vm, bt, b[3], qw1[3], tail + 3, flags);
+	}
+      else
+	{
+	  b[0]->flags = iavf_rx_validate_l4_cksum (qw1[0], flags);
+	  b[1]->flags = iavf_rx_validate_l4_cksum (qw1[1], flags);
+	  b[2]->flags = iavf_rx_validate_l4_cksum (qw1[2], flags);
+	  b[3]->flags = iavf_rx_validate_l4_cksum (qw1[3], flags);
 	}
 
       /* next */
@@ -229,7 +266,9 @@ iavf_process_rx_burst (vlib_main_t *vm, vlib_node_runtime_t *node,
 	((iavf_rx_desc_qw1_t) qw1[0]).length;
 
       if (maybe_multiseg)
-	n_rx_bytes += iavf_rx_attach_tail (vm, bt, b[0], qw1[0], tail + 0);
+	n_rx_bytes += iavf_rx_attach_tail (vm, bt, b[0], qw1[0], tail + 0, flags);
+      else
+	b[0]->flags = iavf_rx_validate_l4_cksum (qw1[0], flags);
 
       /* next */
       qw1 += 1;
