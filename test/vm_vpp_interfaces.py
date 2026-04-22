@@ -158,8 +158,15 @@ def generate_vpp_interface_tests(tests, test_class):
             if_type == "af_xdp" for if_type in client_if_types + server_if_types
         )
 
-        # MTU <= 2048 Bytes for af_xdp interfaces
-        if contains_af_xdp:
+        contains_af_xdp_mb = any(
+            test.get("client_if_multi_buffer", 0) or test.get("server_if_multi_buffer", 0)
+            for if_type in client_if_types + server_if_types
+            if if_type == "af_xdp"
+        )
+
+        # af_xdp single-buffer is limited to one XDP buffer (<=2048 bytes).
+        # af_xdp multi-buffer chains multiple XDP buffers so larger MTUs are valid.
+        if contains_af_xdp and not contains_af_xdp_mb:
             return [mtu for mtu in test_config["mtus"] if mtu <= 2048]
         else:
             return test_config["mtus"]
@@ -174,11 +181,13 @@ def generate_vpp_interface_tests(tests, test_class):
                     + f"gso_{test.get('client_if_gso', 0)}_"
                     + f"gro_{test.get('client_if_gro', 0)}_"
                     + f"checksum_{test.get('client_if_checksum_offload', 0)}_"
+                    + f"mb_{test.get('client_if_multi_buffer', 0)}_"
                     + f"to_server_{test['server_if_type']}"
                     + f"_v{test['server_if_version']}_"
                     + f"gso_{test.get('server_if_gso', 0)}_"
                     + f"gro_{test.get('server_if_gro', 0)}_"
                     + f"checksum_{test.get('server_if_checksum_offload', 0)}_"
+                    + f"mb_{test.get('server_if_multi_buffer', 0)}_"
                     + f"mtu_{mtu}_mode_{test['x_connect_mode']}_"
                     + f"tcp_ipv{ip_version}"
                 )
@@ -269,6 +278,8 @@ class TestVPPInterfacesQemu:
         enable_server_if_gro = test.get("server_if_gro", 0)
         enable_client_if_checksum_offload = test.get("client_if_checksum_offload", 0)
         enable_server_if_checksum_offload = test.get("server_if_checksum_offload", 0)
+        enable_client_if_multi_buffer = test.get("client_if_multi_buffer", 0)
+        enable_server_if_multi_buffer = test.get("server_if_multi_buffer", 0)
 
         # Create unique host interfaces in Linux and VPP for connecting to iperf
         # client & iperf server to prevent conflicts when TEST_JOBS > 1
@@ -388,6 +399,7 @@ class TestVPPInterfacesQemu:
                         else layer3["client_ip6_prefix"]
                     ),
                     version=client_if_version,
+                    multi_buffer=enable_client_if_multi_buffer,
                 )
             else:
                 print(
@@ -471,6 +483,7 @@ class TestVPPInterfacesQemu:
                     ip4_prefix=server_ip4_prefix,
                     ip6_prefix=server_ip6_prefix,
                     version=server_if_version,
+                    multi_buffer=enable_server_if_multi_buffer,
                 )
             else:
                 print(
@@ -575,13 +588,13 @@ class TestVPPInterfacesQemu:
         # Delete VRF tables
         try:
             self.vapi.ip_table_add_del_v2(
-                is_add=0, table={"table_id": layer3["ip4_vrf"]}
+                is_add=0, table={"table_id": layer3["ip4_vrf"], "is_ip6": 0}
             )
         except Exception:
             pass
         try:
             self.vapi.ip_table_add_del_v2(
-                is_add=0, table={"table_id": layer3["ip6_vrf"]}
+                is_add=0, table={"table_id": layer3["ip6_vrf"], "is_ip6": 1}
             )
         except Exception:
             pass
@@ -828,7 +841,14 @@ class TestVPPInterfacesQemu:
             return False
 
     def create_af_xdp(
-        self, namespace, host_side_name, vpp_side_name, ip4_prefix, ip6_prefix, version
+        self,
+        namespace,
+        host_side_name,
+        vpp_side_name,
+        ip4_prefix,
+        ip6_prefix,
+        version,
+        multi_buffer=0,
     ):
         """Create an AF_XDP interface and configure it in VPP and Linux."""
         try:
@@ -918,9 +938,14 @@ class TestVPPInterfacesQemu:
             # Add delay to ensure host interface is fully initialized
             time.sleep(1)
 
+            af_xdp_flags = VppEnum.vl_api_af_xdp_flag_t
+            flags = 0
+            if multi_buffer:
+                flags |= af_xdp_flags.AF_XDP_API_FLAGS_MULTI_BUFFER
             api_args = {
                 "host_if": unique_vpp_side_name,
                 "rxq_num": 1,
+                "flags": flags,
             }
 
             # Clean any stale XDP sockets
