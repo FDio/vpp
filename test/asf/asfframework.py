@@ -686,6 +686,8 @@ class VppAsfTestCase(CPUInterface, unittest.TestCase):
             cls.vapi = VppPapiProvider(cls.__name__, cls, cls.vapi_response_timeout)
             if cls.step:
                 hook = hookmodule.StepHook(cls)
+            elif config.vpp_tag == "vpp_debug":
+                hook = hookmodule.TraceHook(cls)
             else:
                 hook = hookmodule.PollHook(cls)
             cls.vapi.register_hook(hook)

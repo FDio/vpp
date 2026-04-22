@@ -1,5 +1,9 @@
+import ast
+import functools
+import inspect
 import os
 import sys
+import textwrap
 import traceback
 import ipaddress
 from subprocess import check_output, CalledProcessError
@@ -9,6 +13,74 @@ import asfframework
 from config import config
 from log import RED, single_line_delim, double_line_delim
 from util import check_core_path, get_core_path
+
+_TRACE_COMPOUND = (
+    ast.For,
+    ast.AsyncFor,
+    ast.While,
+    ast.If,
+    ast.With,
+    ast.AsyncWith,
+    ast.Try,
+    ast.FunctionDef,
+    ast.AsyncFunctionDef,
+    ast.ClassDef,
+)
+try:
+    _TRACE_COMPOUND = _TRACE_COMPOUND + (ast.Match,)
+except AttributeError:
+    pass
+
+
+@functools.lru_cache(maxsize=None)
+def _line_map_for_code(code):
+    """Return {abs_lineno: (abs_stmt_start, source)} restricted to `code`'s
+    own source range. Parses only the test method, not the entire test file."""
+    try:
+        src_lines, base = inspect.getsourcelines(code)
+    except (OSError, TypeError):
+        return {}
+    src = textwrap.dedent("".join(src_lines))
+    if not src:
+        return {}
+    try:
+        tree = ast.parse(src)
+    except SyntaxError:
+        return {}
+    rel_lines = src.splitlines()
+    offset = base - 1
+
+    spans = []
+    sources = {}
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.stmt):
+            continue
+        rel_start = node.lineno
+        if isinstance(node, _TRACE_COMPOUND):
+            body_start = None
+            for child in ast.iter_child_nodes(node):
+                if isinstance(child, ast.stmt):
+                    body_start = child.lineno
+                    break
+            rel_end = (body_start - 1) if body_start else rel_start
+        else:
+            rel_end = getattr(node, "end_lineno", rel_start)
+        chunk = rel_lines[rel_start - 1 : rel_end]
+        if not chunk:
+            continue
+        abs_start = rel_start + offset
+        abs_end = rel_end + offset
+        sources[abs_start] = "\n".join(chunk)
+        spans.append((abs_start, abs_end))
+
+    best = {}
+    for s, e in spans:
+        size = e - s
+        for ln in range(s, e + 1):
+            cur = best.get(ln)
+            if cur is None or size < cur[0]:
+                best[ln] = (size, s)
+    return {ln: (s, sources[s]) for ln, (_, s) in best.items()}
 
 
 class Hook:
@@ -259,3 +331,109 @@ class StepHook(PollHook):
             print(single_line_delim)
             self.user_input()
         super(StepHook, self).before_api(api_name, api_args)
+
+
+class TraceHook(PollHook):
+    """PollHook variant that interleaves the executed test source into the
+    VPP std(out|err) deques
+    """
+
+    def __init__(self, test):
+        super().__init__(test)
+        self._test_codes = self._collect_test_codes(test)
+        self._target_code = None
+        self._line_map = {}
+        self._last_line = 0
+        self._last_stmt = -1
+        self._stdout_deque = getattr(test, "vpp_stdout_deque", None)
+        self._stderr_deque = getattr(test, "vpp_stderr_deque", None)
+
+    @staticmethod
+    def _collect_test_codes(test_class):
+        codes = set()
+        for name in dir(test_class):
+            if not name.startswith("test"):
+                continue
+            m = getattr(test_class, name, None)
+            if m is None:
+                continue
+            fn = getattr(m, "__func__", m)
+            while hasattr(fn, "__wrapped__"):
+                fn = fn.__wrapped__
+            co = getattr(fn, "__code__", None)
+            if co is not None:
+                codes.add(co)
+        return codes
+
+    def _find_test_frame(self):
+        # Walk to the outermost matching frame so test_* helpers called
+        # from a real test method don't shadow the test method itself.
+        f = sys._getframe(1)
+        codes = self._test_codes
+        found = None
+        while f is not None:
+            if f.f_code in codes:
+                found = f
+            f = f.f_back
+        return found
+
+    def _trace_pre(self):
+        f = self._find_test_frame()
+        if f is None:
+            return
+        code = f.f_code
+        if code is not self._target_code:
+            self._target_code = code
+            self._line_map = _line_map_for_code(code)
+            self._last_line = code.co_firstlineno
+            self._last_stmt = -1
+        cur_line = f.f_lineno
+        last_line = self._last_line
+        last_stmt = self._last_stmt
+        line_map = self._line_map
+
+        emitted = []
+        if cur_line > last_line:
+            seen = set()
+            for ln in range(last_line + 1, cur_line + 1):
+                hit = line_map.get(ln)
+                if hit is None:
+                    continue
+                stmt_start, source = hit
+                if stmt_start == last_stmt or stmt_start in seen:
+                    continue
+                seen.add(stmt_start)
+                emitted.append((stmt_start, source))
+        else:
+            # Same line or backward jump (loop revisit). Emit current stmt
+            # only if it differs from the last one we emitted; otherwise the
+            # caller is a helper making repeat API calls while the test
+            # frame is parked on one source line.
+            hit = line_map.get(cur_line)
+            if hit is not None:
+                stmt_start, _ = hit
+                if stmt_start != last_stmt:
+                    emitted.append(hit)
+        self._last_line = cur_line
+        if not emitted:
+            return
+        self._last_stmt = emitted[-1][0]
+
+        co_name = code.co_name
+        for stmt_start, source in emitted:
+            prefix = f"--- {co_name}@L{stmt_start:>05}: "
+            cont = " " * len(prefix)
+            formatted = source.replace("\n", "\n" + cont)
+            msg = f"{prefix}{formatted}\n"
+            if self._stdout_deque is not None:
+                self._stdout_deque.append(msg)
+            if self._stderr_deque is not None:
+                self._stderr_deque.append(msg)
+
+    def before_api(self, api_name, api_args):
+        self._trace_pre()
+        super().before_api(api_name, api_args)
+
+    def before_cli(self, cli):
+        self._trace_pre()
+        super().before_cli(cli)
