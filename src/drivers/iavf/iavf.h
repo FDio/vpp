@@ -21,6 +21,7 @@
 #define IAVF_RX_DATA_BUF_ALIGN	  128
 #define IAVF_RX_MIN_DATA_BUF_SIZE 1024
 #define IAVF_RX_MAX_DATA_BUF_SIZE (16 * 1024 - IAVF_RX_DATA_BUF_ALIGN)
+#define IAVF_TX_RS_SLOT_RING_SIZE 32
 #define IIAVF_AQ_POLL_INTERVAL	  0.2
 #define IIAVF_AQ_BUF_SIZE	  4096
 
@@ -73,7 +74,6 @@ typedef struct
   u16 *rs_slots;
   iavf_tx_desc_t *tmp_descs;
   u32 *tmp_bufs;
-  u32 *ph_bufs;
 } iavf_txq_t;
 
 typedef struct
@@ -203,9 +203,19 @@ typedef struct
 
 #define foreach_iavf_tx_node_counter                                                               \
   _ (SEG_SZ_EXCEEDED, seg_sz_exceeded, ERROR, "segment size exceeded")                             \
-  _ (NO_FREE_SLOTS, no_free_slots, ERROR, "no free tx slots")                                      \
-  _ (PH_BUF_ALLOC, ph_buf_alloc, ERROR, "ph buf alloc")                                            \
-  _ (GSO_PACKET_DROP, gso_packet_drop, ERROR, "gso packet drop")
+  _ (GSO_PACKET_DROP, gso_packet_drop, ERROR, "gso packet drop")                                   \
+  _ (GSO_HDR_LINEARIZED, gso_hdr_linearized, INFO, "gso headers linearized")                       \
+  _ (GSO_NOT_NEEDED, gso_not_needed, INFO, "gso not needed")                                       \
+  _ (GSO_NO_L4_HDR, gso_no_l4_hdr, ERROR, "gso without l4 header offset")                          \
+  _ (GSO_BAD_HDR, gso_bad_hdr, ERROR, "gso bad header length")                                     \
+  _ (GSO_BAD_HDR_OFFSET, gso_bad_hdr_offset, ERROR, "gso bad l4 header offset")                    \
+  _ (GSO_BAD_L4_HDR_SZ, gso_bad_l4_hdr_sz, ERROR, "gso bad l4 header size")                        \
+  _ (GSO_HDR_LINEARIZE_FAIL, gso_hdr_linearize_fail, ERROR, "gso header linearize failed")         \
+  _ (GSO_BAD_PAYLOAD, gso_bad_payload, ERROR, "gso bad payload length")                            \
+  _ (GSO_BAD_MSS, gso_bad_mss, ERROR, "gso mss out of range")                                      \
+  _ (GSO_BAD_TLEN, gso_bad_tlen, ERROR, "gso tso length out of range")                             \
+  _ (CHAIN_TOO_LONG, chain_too_long, ERROR, "tx chain too long")                                   \
+  _ (NO_FREE_SLOTS, no_free_slots, ERROR, "no free tx slots")
 
 typedef enum
 {
