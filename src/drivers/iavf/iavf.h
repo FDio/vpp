@@ -19,6 +19,8 @@
 #define IAVF_MAX_RSS_LUT_SIZE	  64
 #define IIAVF_AQ_POLL_INTERVAL	  0.2
 #define IIAVF_AQ_BUF_SIZE	  4096
+#define IAVF_RX_L4_CKSUM_FLAGS                                                                     \
+  (VNET_BUFFER_F_L4_CHECKSUM_COMPUTED | VNET_BUFFER_F_L4_CHECKSUM_CORRECT)
 
 typedef struct iavf_adminq_dma_mem iavf_adminq_dma_mem_t;
 
