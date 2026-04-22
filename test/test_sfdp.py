@@ -11,7 +11,7 @@ from vpp_papi import VppEnum
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP, TCP, ICMP
-from scapy.layers.inet6 import IPv6
+from scapy.layers.inet6 import IPv6, ICMPv6EchoRequest
 
 
 @unittest.skipIf(
@@ -838,6 +838,120 @@ class TestSfdp(VppTestCase):
         # Delete tenants
         self.vapi.sfdp_tenant_add_del(tenant_id=1, is_del=True)
         self.vapi.sfdp_tenant_add_del(tenant_id=2, is_del=True)
+
+    def test_sfdp_norm_tcp_udp_no_session_for_out_of_range_icmpv6(self):
+        """Normalization: TCP/UDP create sessions; ICMPv6 type>=192 does not
+
+        Covers three fixes in lookup_ip4.h and lookup_ip6.h:
+
+        1. lookup_ip4.h / lookup_ip6.h else-branch: norm is masked with
+           tcp_or_udp (a plain boolean) instead of (1ULL<<pr)&tcp_udp_bitmask.
+           TCP (pr=6) and UDP (pr=17) are both < 64 so the old expression was
+           correct, but the new form is simpler and matches the reviewer's
+           request.  Verified by confirming that TCP and UDP packets each
+           produce exactly one session.
+
+        2. lookup_ip6.h t128 simplification: the old code computed
+               t128 = 1ULL << ((u8)(type - 128))
+           which is undefined behaviour when type-128 >= 64 (i.e. type >= 192).
+           The new code guards with (type >= 128 && type < 192).
+           An ICMPv6 type=200 packet (200-128=72, out of range) therefore
+           yields t128=0, x=0, and the packet is sent to UNKNOWN_PROTO
+           slowpath instead of creating a session.
+        """
+        self._configure_sfdp(enable_ip4=True, enable_ip6=True)
+
+        # --- IPv4 TCP: session must be created (norm masked with tcp_or_udp) ---
+        pkt_tcp4 = self.create_tcp_packet(
+            src_mac=self.pg0.remote_mac,
+            dst_mac=self.pg0.local_mac,
+            src_ip=self.pg0.remote_ip4,
+            dst_ip=self.pg1.remote_ip4,
+            sport=10001,
+            dport=80,
+            flags="S",
+        )
+        self.send_and_expect(self.pg0, pkt_tcp4, self.pg1)
+
+        sessions = self.vapi.sfdp_session_dump()
+        tcp4_sessions = [s for s in sessions if s.protocol == 6]
+        self.assertEqual(len(tcp4_sessions), 1, "TCP IPv4 session should be created")
+        self._verify_basic_session_state(
+            tcp4_sessions[0],
+            6,
+            VppEnum.vl_api_sfdp_session_state_t.SFDP_API_SESSION_STATE_FSOL,
+            VppEnum.vl_api_sfdp_session_type_t.SFDP_API_SESSION_TYPE_IP4,
+        )
+
+        # --- IPv4 UDP: session must be created ---
+        pkt_udp4 = self.create_udp_packet(
+            src_mac=self.pg0.remote_mac,
+            dst_mac=self.pg0.local_mac,
+            src_ip=self.pg0.remote_ip4,
+            dst_ip=self.pg1.remote_ip4,
+            sport=10002,
+            dport=53,
+        )
+        self.send_and_expect(self.pg0, pkt_udp4, self.pg1)
+
+        sessions = self.vapi.sfdp_session_dump()
+        udp4_sessions = [s for s in sessions if s.protocol == 17]
+        self.assertEqual(len(udp4_sessions), 1, "UDP IPv4 session should be created")
+        self._verify_basic_session_state(
+            udp4_sessions[0],
+            17,
+            VppEnum.vl_api_sfdp_session_state_t.SFDP_API_SESSION_STATE_FSOL,
+            VppEnum.vl_api_sfdp_session_type_t.SFDP_API_SESSION_TYPE_IP4,
+        )
+
+        # --- IPv6 UDP: session must be created (norm masked with tcp_or_udp) ---
+        pkt_udp6 = self.create_udp6_packet(
+            src_mac=self.pg0.remote_mac,
+            dst_mac=self.pg0.local_mac,
+            src_ip=self.pg0.remote_ip6,
+            dst_ip=self.pg1.remote_ip6,
+            sport=10003,
+            dport=53,
+        )
+        self.send_and_expect(self.pg0, pkt_udp6, self.pg1)
+
+        sessions = self.vapi.sfdp_session_dump()
+        udp6_sessions = [
+            s
+            for s in sessions
+            if s.protocol == 17
+            and s.session_type
+            == VppEnum.vl_api_sfdp_session_type_t.SFDP_API_SESSION_TYPE_IP6
+        ]
+        self.assertEqual(len(udp6_sessions), 1, "UDP IPv6 session should be created")
+        self._verify_basic_session_state(
+            udp6_sessions[0],
+            17,
+            VppEnum.vl_api_sfdp_session_state_t.SFDP_API_SESSION_STATE_FSOL,
+            VppEnum.vl_api_sfdp_session_type_t.SFDP_API_SESSION_TYPE_IP6,
+        )
+
+        # --- ICMPv6 type=200 (type-128=72, out of [0,63]): no session ---
+        # Old code: 1ULL << 72 is undefined behaviour, could match ping bitmask.
+        # New code: t128=0 -> x=0 -> UNKNOWN_PROTO slowpath, packet dropped,
+        # no session created.
+        pkt_icmp6_oor = (
+            Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+            / IPv6(src=self.pg0.remote_ip6, dst=self.pg1.remote_ip6)
+            / ICMPv6EchoRequest(type=200)
+        )
+        self.send_and_assert_no_replies(self.pg0, pkt_icmp6_oor)
+
+        sessions_after = self.vapi.sfdp_session_dump()
+        # The two TCP/UDP IPv4 and one UDP IPv6 sessions from above must still
+        # be there; no new session must have appeared for the ICMPv6 packet.
+        self.assertEqual(
+            len(sessions_after),
+            3,
+            "ICMPv6 type=200 (out-of-range t128) must not create a session",
+        )
+
+        self._cleanup_sfdp(disable_ip4=True, disable_ip6=True)
 
 
 @unittest.skipIf(
