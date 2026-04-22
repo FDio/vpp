@@ -16,6 +16,24 @@
       "message": "what warning?",
       "revId": "351497194147d4e9856f322f0b9042b0773438ff",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3a252752_277314b6",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-04-22T19:24:10Z",
+      "side": 1,
+      "message": "src/vnet/tcp/tcp_output.c|2230 col 2-15 warning| Result of multiplication in type \u0027int\u0027 is used as a pointer offset after an implicit widening conversion to type \u0027ptrdiff_t\u0027",
+      "parentUuid": "77b525db_9cac38a7",
+      "revId": "351497194147d4e9856f322f0b9042b0773438ff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
