@@ -39,6 +39,8 @@ af_xdp_api_flags (vl_api_af_xdp_flag_t flags)
 
   if (flags & AF_XDP_API_FLAGS_NO_SYSCALL_LOCK)
     cflags |= AF_XDP_CREATE_FLAGS_NO_SYSCALL_LOCK;
+  if (flags & AF_XDP_API_FLAGS_MULTI_BUFFER)
+    cflags |= AF_XDP_CREATE_FLAGS_MULTI_BUFFER;
 
   if (flags & AF_XDP_API_FLAGS_MAC_REUSE)
     cflags |= AF_XDP_CREATE_FLAGS_MAC_REUSE;
@@ -79,7 +81,7 @@ vl_api_af_xdp_create_v3_t_handler (vl_api_af_xdp_create_v3_t *mp)
 }
 
 static void
-vl_api_af_xdp_delete_t_handler (vl_api_af_xdp_delete_t * mp)
+vl_api_af_xdp_delete_t_handler (vl_api_af_xdp_delete_t *mp)
 {
   vlib_main_t *vm = vlib_get_main ();
   vnet_main_t *vnm = vnet_get_main ();
@@ -89,9 +91,7 @@ vl_api_af_xdp_delete_t_handler (vl_api_af_xdp_delete_t * mp)
   vnet_hw_interface_t *hw;
   int rv = 0;
 
-  hw =
-    vnet_get_sup_hw_interface_api_visible_or_null (vnm,
-						   htonl (mp->sw_if_index));
+  hw = vnet_get_sup_hw_interface_api_visible_or_null (vnm, htonl (mp->sw_if_index));
   if (hw == NULL || af_xdp_device_class.index != hw->dev_class_index)
     {
       rv = VNET_API_ERROR_INVALID_INTERFACE;
@@ -109,7 +109,7 @@ reply:
 /* set tup the API message handling tables */
 #include <af_xdp/af_xdp.api.c>
 static clib_error_t *
-af_xdp_plugin_api_hookup (vlib_main_t * vm)
+af_xdp_plugin_api_hookup (vlib_main_t *vm)
 {
   af_xdp_main_t *rm = &af_xdp_main;
 
