@@ -67,7 +67,7 @@ iavf_tx_queue_alloc (vlib_main_t *vm, vnet_dev_tx_queue_t *txq)
 				 (void **) &atq->descs, "TX queue %u descriptors", txq->queue_id)))
     return rv;
 
-  clib_ring_new_aligned (atq->rs_slots, 32, CLIB_CACHE_LINE_BYTES);
+  clib_ring_new_aligned (atq->rs_slots, IAVF_TX_RS_SLOT_RING_SIZE, CLIB_CACHE_LINE_BYTES);
   atq->buffer_indices = clib_mem_alloc_aligned (
     txq->size * sizeof (atq->buffer_indices[0]), CLIB_CACHE_LINE_BYTES);
   atq->tmp_descs = clib_mem_alloc_aligned (
@@ -166,10 +166,10 @@ iavf_tx_queue_stop (vlib_main_t *vm, vnet_dev_tx_queue_t *txq)
   if (atq->n_enqueued)
     {
       vlib_buffer_free_from_ring_no_next (vm, atq->buffer_indices,
-					  atq->next - atq->n_enqueued,
+					  (atq->next - atq->n_enqueued) & (txq->size - 1),
 					  txq->size, atq->n_enqueued);
-      log_debug (txq->port->dev, "%u buffers freed from tx queue %u",
-		 atq->n_enqueued, txq->queue_id);
+      log_debug (txq->port->dev, "%u descriptors freed from tx queue %u", atq->n_enqueued,
+		 txq->queue_id);
     }
   atq->n_enqueued = atq->next = 0;
 }
