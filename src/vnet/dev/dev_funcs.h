@@ -277,6 +277,19 @@ vnet_dev_get_rx_queue_sec_if_buffer_template (vnet_dev_rx_queue_t *rxq,
   return rxq->sec_if_rt_data[sec_if_index]->buffer_template;
 }
 
+static_always_inline void
+vnet_dev_set_rx_queue_if_buffer_template (vnet_dev_rx_queue_t *rxq, vlib_buffer_template_t bt)
+{
+  rxq->if_rt_data.buffer_template = bt;
+}
+
+static_always_inline void
+vnet_dev_set_rx_queue_sec_if_buffer_template (vnet_dev_rx_queue_t *rxq, u32 sec_if_index,
+					      vlib_buffer_template_t bt)
+{
+  rxq->sec_if_rt_data[sec_if_index]->buffer_template = bt;
+}
+
 static_always_inline u16
 vnet_dev_get_rx_queue_if_next_index (vnet_dev_rx_queue_t *rxq)
 {
