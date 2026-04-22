@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "e0084852_8e53ac80",
+        "filename": "src/vnet/session/segment_manager.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 963,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-04-22T16:42:13Z",
+      "side": 1,
+      "message": "Thanks, yes, like lower.",
+      "parentUuid": "f12dd5ed_e268570d",
+      "revId": "9424d0c2ef7860f2a85db34593576f3e35552709",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "19cf49e1_fc072cd3",
@@ -54,6 +72,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "c8b13cbd_a2ef8f82",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 834,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-04-22T16:42:13Z",
+      "side": 1,
+      "message": "See lower",
+      "parentUuid": "19cf49e1_fc072cd3",
+      "revId": "9424d0c2ef7860f2a85db34593576f3e35552709",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "0c531eeb_7b986042",
         "filename": "src/vnet/session/session.c",
         "patchSetId": 1
@@ -65,6 +101,24 @@
       "writtenOn": "2026-04-22T15:24:49Z",
       "side": 1,
       "message": "Can we remove app_wrk? We need it for calling app_worker_get_connect_segment_manager. Now that we deleted that line, it seems like we can clean up and remove all references of app_wrk in this function",
+      "revId": "9424d0c2ef7860f2a85db34593576f3e35552709",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "669bbff3_3f4b2de3",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 915,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-04-22T16:42:13Z",
+      "side": 1,
+      "message": "Almost did it before pushing patch but this completely avoids touching the fifo if there\u0027s no app_wrk. It\u0027s also paired with above comment to make sure we don\u0027t do anything beyond closing. \nIn theory it should be safe to attach/detach the fifo, unless we have some corner case that cleans up segment manager prematurely. Maybe we should try it ..",
+      "parentUuid": "0c531eeb_7b986042",
       "revId": "9424d0c2ef7860f2a85db34593576f3e35552709",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
