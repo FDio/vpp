@@ -204,6 +204,9 @@ format_session (u8 *s, va_list *args)
     }
   else if (ss->session_state == SESSION_STATE_CONNECTING)
     {
+      /* Transports for migrating ho sessions might've been cleaned up already */
+      if ((ss->flags & SESSION_F_IS_MIGRATING) && (ss->flags & SESSION_F_HALF_OPEN))
+	return s;
       transport_formatter =
 	((ss->flags & SESSION_F_HALF_OPEN) ? format_transport_half_open_connection :
 					     format_transport_connection);
