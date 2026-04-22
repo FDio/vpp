@@ -107,6 +107,23 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "f1772111_06010ffa",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-04-22T07:53:25Z",
+      "side": 1,
+      "message": "Can you add a test?",
+      "revId": "066f11c7b9df28bedbc3083aeb34d0e2d49f127d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "2f11d17e_4b56fbb2",
         "filename": "src/vnet/sfdp/lookup/lookup_ip4.h",
         "patchSetId": 5
@@ -136,6 +153,58 @@
       "side": 1,
       "message": "Done.",
       "parentUuid": "2f11d17e_4b56fbb2",
+      "revId": "066f11c7b9df28bedbc3083aeb34d0e2d49f127d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c0132c74_26f63987",
+        "filename": "src/vnet/sfdp/lookup/lookup_ip4.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 140,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-04-22T07:53:25Z",
+      "side": 1,
+      "message": "is it though?",
+      "parentUuid": "08f37b27_ed994cd8",
+      "revId": "066f11c7b9df28bedbc3083aeb34d0e2d49f127d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "efc5ad0b_cd334018",
+        "filename": "src/vnet/sfdp/lookup/lookup_ip6.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 174,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-04-22T07:53:25Z",
+      "side": 1,
+      "message": "I think it could just be simplified to\n\n    t128 \u003d (type \u003e\u003d 128 \u0026\u0026 type \u003c 192) ? (1ULL \u003c\u003c (type - 128)) : 0;\n\nThis is clearer and we do not need an additional helper",
+      "revId": "066f11c7b9df28bedbc3083aeb34d0e2d49f127d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2c4b39fb_41f50ecb",
+        "filename": "src/vnet/sfdp/lookup/lookup_ip6.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 198,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-04-22T07:53:25Z",
+      "side": 1,
+      "message": "norm \u0026\u003d i64x2_splat (tcp_or_udp) !\u003d zero",
       "revId": "066f11c7b9df28bedbc3083aeb34d0e2d49f127d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
