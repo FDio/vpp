@@ -114,33 +114,56 @@ iavf_tx_prepare_cksum (vlib_buffer_t *b, u8 is_tso)
   return flags;
 }
 
-static_always_inline u32
-iavf_tx_fill_ctx_desc (vlib_main_t *vm, vnet_dev_tx_queue_t *txq,
-		       iavf_tx_desc_t *d, vlib_buffer_t *b)
+static_always_inline void
+iavf_tx_fill_ctx_desc (iavf_tx_desc_t *d, vlib_buffer_t *b, u32 tlen)
 {
-  iavf_txq_t *atq = vnet_dev_get_tx_queue_data (txq);
-  vlib_buffer_t *ctx_ph;
-  u32 *bi = atq->ph_bufs;
+  ASSERT ((b->flags & VNET_BUFFER_F_L4_HDR_OFFSET_VALID) != 0);
 
-next:
-  ctx_ph = vlib_get_buffer (vm, bi[0]);
-  if (PREDICT_FALSE (ctx_ph->ref_count == 255))
-    {
-      bi++;
-      goto next;
-    }
-
-  /* Acquire a reference on the placeholder buffer */
-  ctx_ph->ref_count++;
-
-  u16 l234hdr_sz = vnet_buffer (b)->l4_hdr_offset - b->current_data +
-		   vnet_buffer2 (b)->gso_l4_hdr_sz;
-  u16 tlen = vlib_buffer_length_in_chain (vm, b) - l234hdr_sz;
   d[0].qword[0] = 0;
   d[0].qword[1] = IAVF_TXD_DTYP_CTX | IAVF_TXD_CTX_CMD_TSO |
 		  IAVF_TXD_CTX_SEG_MSS (vnet_buffer2 (b)->gso_size) |
 		  IAVF_TXD_CTX_SEG_TLEN (tlen);
-  return bi[0];
+}
+
+static_always_inline int
+iavf_tx_get_gso_hdr_sz (vlib_buffer_t *b, u32 *l234hdr_sz)
+{
+  i32 l4_offset = (i32) vnet_buffer (b)->l4_hdr_offset - b->current_data;
+  u16 l4_hdr_sz = vnet_buffer2 (b)->gso_l4_hdr_sz;
+  i32 hdr_sz = l4_offset + l4_hdr_sz;
+
+  if (l4_offset <= 0)
+    return IAVF_TX_NODE_CTR_GSO_BAD_HDR_OFFSET;
+
+  if (l4_hdr_sz == 0)
+    return IAVF_TX_NODE_CTR_GSO_BAD_L4_HDR_SZ;
+
+  if (hdr_sz <= 0)
+    return IAVF_TX_NODE_CTR_GSO_BAD_HDR;
+
+  l234hdr_sz[0] = hdr_sz;
+  return 0;
+}
+
+static_always_inline int
+iavf_tx_fix_gso_l4_hdr_sz (vlib_buffer_t *b, u32 *l234hdr_sz)
+{
+  i32 l4_offset = (i32) vnet_buffer (b)->l4_hdr_offset - b->current_data;
+  tcp_header_t *tcp;
+  u16 l4_hdr_sz;
+
+  if (l4_offset <= 0 || l4_offset + sizeof (tcp_header_t) > b->current_length)
+    return 0;
+
+  tcp = (tcp_header_t *) (vlib_buffer_get_current (b) + l4_offset);
+  l4_hdr_sz = tcp_header_bytes (tcp);
+
+  if (l4_hdr_sz < sizeof (tcp_header_t) || l4_offset + l4_hdr_sz > b->current_length)
+    return 0;
+
+  vnet_buffer2 (b)->gso_l4_hdr_sz = l4_hdr_sz;
+  l234hdr_sz[0] = l4_offset + l4_hdr_sz;
+  return 1;
 }
 
 static_always_inline void
@@ -200,15 +223,85 @@ iavf_tx_copy_desc (iavf_tx_desc_t *d, iavf_tx_desc_t *s, u32 n_descs)
 }
 
 static_always_inline void
-iavf_tx_fill_data_desc (vlib_main_t *vm, iavf_tx_desc_t *d, vlib_buffer_t *b,
-			u64 cmd, int use_va_dma)
+iavf_tx_fill_data_desc_addr (iavf_tx_desc_t *d, u64 addr, u16 len, u64 cmd)
+{
+  d->qword[0] = addr;
+  d->qword[1] = IAVF_TXD_DATA_SZ (len) | cmd | IAVF_TXD_CMD_RSV;
+}
+
+static_always_inline u64
+iavf_tx_buffer_dma_addr (vlib_main_t *vm, vlib_buffer_t *b, int use_va_dma)
 {
   if (use_va_dma)
-    d->qword[0] = vlib_buffer_get_current_va (b);
+    return vlib_buffer_get_current_va (b);
   else
-    d->qword[0] = vlib_buffer_get_current_pa (vm, b);
-  d->qword[1] = (((u64) b->current_length) << 34 | cmd | IAVF_TXD_CMD_RSV);
+    return vlib_buffer_get_current_pa (vm, b);
 }
+
+static_always_inline void
+iavf_tx_fill_data_desc (vlib_main_t *vm, iavf_tx_desc_t *d, vlib_buffer_t *b, u64 cmd,
+			int use_va_dma)
+{
+  iavf_tx_fill_data_desc_addr (d, iavf_tx_buffer_dma_addr (vm, b, use_va_dma), b->current_length,
+			       cmd);
+}
+
+static_always_inline u16
+iavf_tx_buffer_desc_count (vlib_buffer_t *b, u8 tso)
+{
+  if (tso)
+    return (b->current_length + IAVF_MAX_DATA_PER_TXD - 1) / IAVF_MAX_DATA_PER_TXD;
+  return 1;
+}
+
+static_always_inline u32
+iavf_tx_tso_chain_len_and_descs (vlib_main_t *vm, vlib_buffer_t *b, u16 *n_descs)
+{
+  u32 pkt_len = 0;
+  u16 n = 0;
+
+  while (1)
+    {
+      pkt_len += b->current_length;
+      n += iavf_tx_buffer_desc_count (b, 1 /* tso */);
+
+      if ((b->flags & VLIB_BUFFER_NEXT_PRESENT) == 0)
+	break;
+
+      b = vlib_get_buffer (vm, b->next_buffer);
+    }
+
+  n_descs[0] = n;
+  return pkt_len;
+}
+
+static_always_inline u16
+iavf_tx_fill_buffer_descs (vlib_main_t *vm, iavf_tx_desc_t *d, u32 *tb, u8 *tf, vlib_buffer_t *b,
+			   u32 bi, u64 cmd, int use_va_dma, u8 tso)
+{
+  u64 addr = iavf_tx_buffer_dma_addr (vm, b, use_va_dma);
+  u32 len = b->current_length;
+  u16 n_descs = 0;
+
+  while (tso && len > IAVF_MAX_DATA_PER_TXD)
+    {
+      iavf_tx_fill_data_desc_addr (d, addr, IAVF_MAX_DATA_PER_TXD, cmd & ~IAVF_TXD_CMD_EOP);
+      tb[0] = bi;
+      tf[0] = n_descs == 0;
+      d++;
+      tb++;
+      tf++;
+      n_descs++;
+      addr += IAVF_MAX_DATA_PER_TXD;
+      len -= IAVF_MAX_DATA_PER_TXD;
+    }
+
+  iavf_tx_fill_data_desc_addr (d, addr, len, cmd);
+  tb[0] = bi;
+  tf[0] = n_descs == 0;
+  return n_descs + 1;
+}
+
 static_always_inline u16
 iavf_tx_prepare (vlib_main_t *vm, vlib_node_runtime_t *node,
 		 vnet_dev_tx_queue_t *txq, u32 *buffers, u32 n_packets,
@@ -224,6 +317,8 @@ iavf_tx_prepare (vlib_main_t *vm, vlib_node_runtime_t *node,
 #endif
   iavf_tx_desc_t *d = atq->tmp_descs;
   u32 *tb = atq->tmp_bufs;
+  u8 *tf = atq->tmp_buf_free_flags;
+  u32 drop_counter;
 
   n_free_desc = n_desc_left = txq->size - atq->n_enqueued - 8;
 
@@ -283,6 +378,7 @@ iavf_tx_prepare (vlib_main_t *vm, vlib_node_runtime_t *node,
 
 #if defined CLIB_HAVE_VEC512
       vlib_buffer_copy_indices (tb, buffers, 8);
+      clib_memset_u8 (tf, 1, 8);
       iavf_tx_fill_data_desc (vm, d + 0, b[0], cmd_eop, use_va_dma);
       iavf_tx_fill_data_desc (vm, d + 1, b[1], cmd_eop, use_va_dma);
       iavf_tx_fill_data_desc (vm, d + 2, b[2], cmd_eop, use_va_dma);
@@ -297,8 +393,10 @@ iavf_tx_prepare (vlib_main_t *vm, vlib_node_runtime_t *node,
       n_desc_left -= 8;
       d += 8;
       tb += 8;
+      tf += 8;
 #else
       vlib_buffer_copy_indices (tb, buffers, 4);
+      clib_memset_u8 (tf, 1, 4);
 
       iavf_tx_fill_data_desc (vm, d + 0, b[0], cmd_eop, use_va_dma);
       iavf_tx_fill_data_desc (vm, d + 1, b[1], cmd_eop, use_va_dma);
@@ -310,12 +408,14 @@ iavf_tx_prepare (vlib_main_t *vm, vlib_node_runtime_t *node,
       n_desc_left -= 4;
       d += 4;
       tb += 4;
+      tf += 4;
 #endif
 
       continue;
 
     one_by_one:
       tb[0] = buffers[0];
+      tf[0] = 1;
       b[0] = vlib_get_buffer (vm, buffers[0]);
       flags = b[0]->flags;
 
@@ -332,45 +432,129 @@ iavf_tx_prepare (vlib_main_t *vm, vlib_node_runtime_t *node,
 	}
       else
 	{
-	  u16 n_desc_needed = 1;
+	  u16 n_desc_needed;
 	  u64 cmd = 0;
-
-	  if (flags & VLIB_BUFFER_NEXT_PRESENT)
-	    {
-	      vlib_buffer_t *next = vlib_get_buffer (vm, b[0]->next_buffer);
-	      n_desc_needed = 2;
-	      while (next->flags & VLIB_BUFFER_NEXT_PRESENT)
-		{
-		  next = vlib_get_buffer (vm, next->next_buffer);
-		  n_desc_needed++;
-		}
-	    }
+	  u32 tso_tlen = 0;
+	  u16 tso_n_descs = 0;
+	  u8 is_tso = 0;
 
 	  if (flags & VNET_BUFFER_F_GSO)
 	    {
-	      n_desc_needed++;
+	      u32 l234hdr_sz, gso_size;
+	      u32 pkt_len, payload_len;
+	      int gso_error;
+
+	      if (PREDICT_FALSE ((flags & VNET_BUFFER_F_L4_HDR_OFFSET_VALID) == 0))
+		{
+		  drop_counter = IAVF_TX_NODE_CTR_GSO_NO_L4_HDR;
+		  goto drop_one;
+		}
+
+	      gso_error = iavf_tx_get_gso_hdr_sz (b[0], &l234hdr_sz);
+	      if (PREDICT_FALSE (gso_error))
+		{
+		  drop_counter = gso_error;
+		  goto drop_one;
+		}
+
+	      gso_size = vnet_buffer2 (b[0])->gso_size;
+	      pkt_len = iavf_tx_tso_chain_len_and_descs (vm, b[0], &tso_n_descs);
+
+	      if (PREDICT_FALSE (pkt_len <= l234hdr_sz))
+		{
+		  if (!iavf_tx_fix_gso_l4_hdr_sz (b[0], &l234hdr_sz) || pkt_len <= l234hdr_sz)
+		    {
+		      flags &= ~VNET_BUFFER_F_GSO;
+		      vlib_error_count (vm, node->node_index, IAVF_TX_NODE_CTR_GSO_NOT_NEEDED, 1);
+		      goto gso_done;
+		    }
+		}
+
+	      if (PREDICT_FALSE (l234hdr_sz > b[0]->current_length))
+		{
+		  u32 n_lin = vlib_buffer_chain_linearize (vm, b[0]);
+		  if (PREDICT_FALSE (n_lin == 0 || l234hdr_sz > b[0]->current_length))
+		    {
+		      drop_counter = IAVF_TX_NODE_CTR_GSO_HDR_LINEARIZE_FAIL;
+		      goto drop_one;
+		    }
+
+		  flags = b[0]->flags;
+		  pkt_len = iavf_tx_tso_chain_len_and_descs (vm, b[0], &tso_n_descs);
+		  vlib_error_count (vm, node->node_index, IAVF_TX_NODE_CTR_GSO_HDR_LINEARIZED, 1);
+		}
+
+	      if (PREDICT_FALSE (pkt_len <= l234hdr_sz))
+		{
+		  drop_counter = IAVF_TX_NODE_CTR_GSO_BAD_PAYLOAD;
+		  goto drop_one;
+		}
+
+	      if (PREDICT_FALSE (gso_size < IAVF_MIN_TSO_MSS || gso_size > IAVF_MAX_TSO_MSS))
+		{
+		  drop_counter = IAVF_TX_NODE_CTR_GSO_BAD_MSS;
+		  goto drop_one;
+		}
+
+	      payload_len = pkt_len - l234hdr_sz;
+	      is_tso = payload_len > gso_size;
+	      if (!is_tso)
+		{
+		  flags &= ~VNET_BUFFER_F_GSO;
+		  vlib_error_count (vm, node->node_index, IAVF_TX_NODE_CTR_GSO_NOT_NEEDED, 1);
+		  goto gso_done;
+		}
+
+	      if (PREDICT_FALSE (is_tso && payload_len > IAVF_MAX_TSO_LEN))
+		{
+		  drop_counter = IAVF_TX_NODE_CTR_GSO_BAD_TLEN;
+		  goto drop_one;
+		}
+
+	      tso_tlen = payload_len;
+
+	    gso_done:;
 	    }
-	  else if (PREDICT_FALSE (n_desc_needed > 8))
+
+	  if (is_tso)
+	    n_desc_needed = tso_n_descs + 1;
+	  else
 	    {
-	      vlib_buffer_free_one (vm, buffers[0]);
-	      vlib_error_count (vm, node->node_index,
-				IAVF_TX_NODE_CTR_SEG_SZ_EXCEEDED, 1);
-	      n_packets_left -= 1;
-	      buffers += 1;
-	      continue;
+	      n_desc_needed = 1;
+
+	      if (flags & VLIB_BUFFER_NEXT_PRESENT)
+		{
+		  vlib_buffer_t *next = vlib_get_buffer (vm, b[0]->next_buffer);
+		  n_desc_needed++;
+		  while (next->flags & VLIB_BUFFER_NEXT_PRESENT)
+		    {
+		      next = vlib_get_buffer (vm, next->next_buffer);
+		      n_desc_needed++;
+		    }
+		}
+
+	      if (PREDICT_FALSE (n_desc_needed > 8))
+		{
+		  drop_counter = IAVF_TX_NODE_CTR_CHAIN_TOO_LONG;
+		  goto drop_one;
+		}
 	    }
 
 	  if (PREDICT_FALSE (n_desc_left < n_desc_needed))
 	    break;
 
-	  if (flags & VNET_BUFFER_F_GSO)
+	  if (is_tso)
 	    {
 	      /* Enqueue a context descriptor */
 	      tb[1] = tb[0];
-	      tb[0] = iavf_tx_fill_ctx_desc (vm, txq, d, b[0]);
+	      tf[1] = tf[0];
+	      tb[0] = ~0;
+	      tf[0] = 0;
+	      iavf_tx_fill_ctx_desc (d, b[0], tso_tlen);
 	      n_desc_left -= 1;
 	      d += 1;
 	      tb += 1;
+	      tf += 1;
 	      cmd = iavf_tx_prepare_cksum (b[0], 1 /* is_tso */);
 	    }
 	  else if (flags & VNET_BUFFER_F_OFFLOAD)
@@ -381,17 +565,38 @@ iavf_tx_prepare (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  /* Deal with chain buffer if present */
 	  while (b[0]->flags & VLIB_BUFFER_NEXT_PRESENT)
 	    {
-	      iavf_tx_fill_data_desc (vm, d, b[0], cmd, use_va_dma);
+	      u16 n =
+		iavf_tx_fill_buffer_descs (vm, d, tb, tf, b[0], tb[0], cmd, use_va_dma, is_tso);
 
-	      n_desc_left -= 1;
-	      d += 1;
-	      tb += 1;
+	      n_desc_left -= n;
+	      d += n;
+	      tb += n;
+	      tf += n;
 
 	      tb[0] = b[0]->next_buffer;
+	      tf[0] = 1;
 	      b[0] = vlib_get_buffer (vm, b[0]->next_buffer);
 	    }
 
-	  iavf_tx_fill_data_desc (vm, d, b[0], cmd_eop | cmd, use_va_dma);
+	  {
+	    u16 n = iavf_tx_fill_buffer_descs (vm, d, tb, tf, b[0], tb[0], cmd_eop | cmd,
+					       use_va_dma, is_tso);
+	    n_desc_left -= n;
+	    d += n;
+	    tb += n;
+	    tf += n;
+	  }
+
+	  buffers += 1;
+	  n_packets_left -= 1;
+	  continue;
+
+	drop_one:
+	  vlib_buffer_free_one (vm, buffers[0]);
+	  vlib_error_count (vm, node->node_index, drop_counter, 1);
+	  n_packets_left -= 1;
+	  buffers += 1;
+	  continue;
 	}
 
       buffers += 1;
@@ -399,6 +604,7 @@ iavf_tx_prepare (vlib_main_t *vm, vlib_node_runtime_t *node,
       n_desc_left -= 1;
       d += 1;
       tb += 1;
+      tf += 1;
     }
 
   *n_enq_descs = n_free_desc - n_desc_left;
@@ -452,8 +658,7 @@ retry:
 	  n_free = (complete_slot + 1 - first) & mask;
 
 	  atq->n_enqueued -= n_free;
-	  vlib_buffer_free_from_ring_no_next (vm, atq->buffer_indices, first,
-					      txq->size, n_free);
+	  iavf_tx_queue_release_descs (vm, txq, first, n_free);
 	}
     }
 
@@ -471,6 +676,7 @@ retry:
 	  iavf_tx_copy_desc (atq->descs + next, atq->tmp_descs, n_desc);
 	  vlib_buffer_copy_indices (atq->buffer_indices + next, atq->tmp_bufs,
 				    n_desc);
+	  clib_memcpy_fast (atq->buf_free_flags + next, atq->tmp_buf_free_flags, n_desc);
 	}
       else
 	{
@@ -484,6 +690,9 @@ retry:
 	  vlib_buffer_copy_indices (atq->buffer_indices,
 				    atq->tmp_bufs + n_not_wrap,
 				    n_desc - n_not_wrap);
+	  clib_memcpy_fast (atq->buf_free_flags + next, atq->tmp_buf_free_flags, n_not_wrap);
+	  clib_memcpy_fast (atq->buf_free_flags, atq->tmp_buf_free_flags + n_not_wrap,
+			    n_desc - n_not_wrap);
 	}
 
       next += n_desc;
