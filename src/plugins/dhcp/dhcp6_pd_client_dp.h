@@ -34,7 +34,8 @@ typedef struct
 typedef struct
 {
   u8 entry_valid;
-  u8 keep_sending_client_message;	/* when true then next fields are valid */
+  u8 keep_sending_client_message; /* when true then next fields are valid */
+  u8 missing_lladdr_warned;
   dhcp6_pd_send_client_message_params_t params;
   f64 transaction_start;
   f64 sleep_interval;
@@ -79,29 +80,69 @@ typedef struct
   dhcp6_prefix_info_t *prefixes;
 } prefix_report_t;
 
-void dhcp6_pd_send_client_message (vlib_main_t * vm, u32 sw_if_index, u8 stop,
-				   dhcp6_pd_send_client_message_params_t *
-				   params);
+typedef struct
+{
+  u8 enabled;
+  u8 rebinding;
+  u32 server_index;
+  u32 T1;
+  u32 T2;
+  u32 prefix_count;
+  u32 t1_remaining;
+  u32 t2_remaining;
+  char prefix_group[65];
+} dhcp6_pd_client_runtime_t;
+
+typedef struct
+{
+  u8 present;
+  ip6_address_t prefix;
+  u8 prefix_length;
+  u32 preferred_lt;
+  u32 valid_lt;
+  u32 valid_remaining;
+} dhcp6_pd_active_prefix_runtime_t;
+
+typedef struct
+{
+  u8 present;
+  u32 consumer_count;
+  u32 sw_if_index;
+  ip6_address_t address;
+  u8 prefix_length;
+} dhcp6_pd_consumer_runtime_t;
+
+void dhcp6_pd_send_client_message (vlib_main_t *vm, u32 sw_if_index, u8 stop,
+				   dhcp6_pd_send_client_message_params_t *params);
 void dhcp6_pd_set_publisher_node (uword node_index, uword event_type);
-int dhcp6_pd_publish_report (prefix_report_t * r);
-int dhcp6_pd_client_enable_disable (u32 sw_if_index,
-				    const u8 * prefix_group, u8 enable);
-int dhcp6_cp_ip6_address_add_del (u32 sw_if_index, const u8 * prefix_group,
-				  ip6_address_t address, u8 prefix_length,
-				  u8 is_add);
+int dhcp6_pd_publish_report (prefix_report_t *r);
+int dhcp6_pd_client_enable_disable (u32 sw_if_index, const u8 *prefix_group, u8 enable);
+int dhcp6_cp_ip6_address_add_del (u32 sw_if_index, const u8 *prefix_group, ip6_address_t address,
+				  u8 prefix_length, u8 is_add);
+
+/* Snapshot the DHCPv6 PD client state.  All three _get_runtime helpers must
+ * be called from the main thread: the pools and per-sw_if_index state are
+ * mutated by the DHCPv6 PD client process node on main thread without
+ * locking. */
+u8 dhcp6_pd_client_get_runtime (u32 sw_if_index, dhcp6_pd_client_runtime_t *rt);
+u8 dhcp6_pd_client_get_active_prefix_runtime (u32 sw_if_index,
+					      dhcp6_pd_active_prefix_runtime_t *rt);
+u8 dhcp6_pd_client_get_consumer_runtime (u32 sw_if_index, dhcp6_pd_consumer_runtime_t *rt);
 
 extern vlib_node_registration_t dhcp6_pd_reply_process_node;
 
 enum
-{ DHCP6_PD_DP_REPLY_REPORT, DHCP6_PD_DP_REPORT_MAX };
+{
+  DHCP6_PD_DP_REPLY_REPORT,
+  DHCP6_PD_DP_REPORT_MAX
+};
 
 #include <dhcp/dhcp.api_types.h>
 
 typedef struct _vnet_dhcp6_pd_reply_function_list_elt
 {
-  struct _vnet_dhcp6_pd_reply_function_list_elt
-    *next_dhcp6_pd_reply_event_function;
-  clib_error_t *(*fp) (vl_api_dhcp6_pd_reply_event_t * mp);
+  struct _vnet_dhcp6_pd_reply_function_list_elt *next_dhcp6_pd_reply_event_function;
+  clib_error_t *(*fp) (vl_api_dhcp6_pd_reply_event_t *mp);
 } _vnet_dhcp6_pd_reply_event_function_list_elt_t;
 
 typedef struct
@@ -111,44 +152,43 @@ typedef struct
 
 extern dhcp6_pd_client_public_main_t dhcp6_pd_client_public_main;
 
-#define VNET_DHCP6_PD_REPLY_EVENT_FUNCTION(f)                             \
-                                                                          \
-static void __vnet_dhcp6_pd_reply_event_function_init_##f (void)          \
-    __attribute__((__constructor__)) ;                                    \
-                                                                          \
-static void __vnet_dhcp6_pd_reply_event_function_init_##f (void)          \
-{                                                                         \
- dhcp6_pd_client_public_main_t * nm = &dhcp6_pd_client_public_main;       \
- static _vnet_dhcp6_pd_reply_event_function_list_elt_t init_function;     \
- init_function.next_dhcp6_pd_reply_event_function = nm->functions;        \
- nm->functions = &init_function;                                          \
- init_function.fp = (void *) &f;                                          \
-}                                                                         \
-                                                                          \
-static void __vnet_dhcp6_pd_reply_event_function_deinit_##f (void)        \
-    __attribute__((__destructor__)) ;                                     \
-                                                                          \
-static void __vnet_dhcp6_pd_reply_event_function_deinit_##f (void)        \
-{                                                                         \
- dhcp6_pd_client_public_main_t * nm = &dhcp6_pd_client_public_main;       \
- _vnet_dhcp6_pd_reply_event_function_list_elt_t *next;                    \
- if (nm->functions->fp == (void *) &f)                                    \
-    {                                                                     \
-      nm->functions =                                                     \
-        nm->functions->next_dhcp6_pd_reply_event_function;                \
-      return;                                                             \
-    }                                                                     \
-  next = nm->functions;                                                   \
-  while (next->next_dhcp6_pd_reply_event_function)                        \
-    {                                                                     \
-      if (next->next_dhcp6_pd_reply_event_function->fp == (void *) &f)    \
-        {                                                                 \
-          next->next_dhcp6_pd_reply_event_function =                      \
-            next->next_dhcp6_pd_reply_event_function->next_dhcp6_pd_reply_event_function; \
-          return;                                                         \
-        }                                                                 \
-      next = next->next_dhcp6_pd_reply_event_function;                    \
-    }                                                                     \
-}
+#define VNET_DHCP6_PD_REPLY_EVENT_FUNCTION(f)                                                      \
+                                                                                                   \
+  static void __vnet_dhcp6_pd_reply_event_function_init_##f (void)                                 \
+    __attribute__ ((__constructor__));                                                             \
+                                                                                                   \
+  static void __vnet_dhcp6_pd_reply_event_function_init_##f (void)                                 \
+  {                                                                                                \
+    dhcp6_pd_client_public_main_t *nm = &dhcp6_pd_client_public_main;                              \
+    static _vnet_dhcp6_pd_reply_event_function_list_elt_t init_function;                           \
+    init_function.next_dhcp6_pd_reply_event_function = nm->functions;                              \
+    nm->functions = &init_function;                                                                \
+    init_function.fp = (void *) &f;                                                                \
+  }                                                                                                \
+                                                                                                   \
+  static void __vnet_dhcp6_pd_reply_event_function_deinit_##f (void)                               \
+    __attribute__ ((__destructor__));                                                              \
+                                                                                                   \
+  static void __vnet_dhcp6_pd_reply_event_function_deinit_##f (void)                               \
+  {                                                                                                \
+    dhcp6_pd_client_public_main_t *nm = &dhcp6_pd_client_public_main;                              \
+    _vnet_dhcp6_pd_reply_event_function_list_elt_t *next;                                          \
+    if (nm->functions->fp == (void *) &f)                                                          \
+      {                                                                                            \
+	nm->functions = nm->functions->next_dhcp6_pd_reply_event_function;                         \
+	return;                                                                                    \
+      }                                                                                            \
+    next = nm->functions;                                                                          \
+    while (next->next_dhcp6_pd_reply_event_function)                                               \
+      {                                                                                            \
+	if (next->next_dhcp6_pd_reply_event_function->fp == (void *) &f)                           \
+	  {                                                                                        \
+	    next->next_dhcp6_pd_reply_event_function =                                             \
+	      next->next_dhcp6_pd_reply_event_function->next_dhcp6_pd_reply_event_function;        \
+	    return;                                                                                \
+	  }                                                                                        \
+	next = next->next_dhcp6_pd_reply_event_function;                                           \
+      }                                                                                            \
+  }
 
 #endif /* included_vnet_dhcp6_pd_client_dp_h */
