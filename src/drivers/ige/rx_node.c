@@ -172,7 +172,7 @@ ige_rx_one_queue (vlib_main_t *vm, vlib_node_runtime_t *node,
 	return 0;
     }
 
-  bt = vnet_dev_get_rx_queue_if_buffer_template (rxq);
+  bt = *vnet_dev_get_rx_queue_if_buffer_template (rxq);
 
   vlib_get_new_next_frame (vm, node, next_index, to_next, n_left_to_next);
   n_trace = vlib_get_trace_count (vm, node);
