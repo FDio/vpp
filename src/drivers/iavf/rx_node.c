@@ -14,6 +14,8 @@ static const iavf_rx_desc_qw1_t mask_flm = { .flm = 1 };
 static const iavf_rx_desc_qw1_t mask_dd = { .dd = 1 };
 static const iavf_rx_desc_qw1_t mask_ipe = { .ipe = 1 };
 static const iavf_rx_desc_qw1_t mask_dd_eop = { .dd = 1, .eop = 1 };
+static const iavf_rx_desc_qw1_t mask_l3l4p = { .l3l4p = 1 };
+static const iavf_rx_desc_qw1_t mask_l4e = { .l4e = 1 };
 
 static_always_inline int
 iavf_rxd_is_not_eop (iavf_rx_desc_t *d)
@@ -136,6 +138,7 @@ iavf_rx_attach_tail (vlib_main_t *vm, vlib_buffer_template_t *bt,
       b->flags |= VLIB_BUFFER_NEXT_PRESENT;
       b = vlib_get_buffer (vm, b->next_buffer);
       b->template = *bt;
+      b->flags &= ~IAVF_RX_L4_CKSUM_FLAGS;
       tlnifb += b->current_length = ((iavf_rx_desc_qw1_t) qw1).length;
       i++;
     }
@@ -171,16 +174,32 @@ iavf_process_flow_offload (vnet_dev_port_t *port, iavf_rt_data_t *rtd,
     }
 }
 
+static_always_inline void
+iavf_rx_validate_l4_cksum (vlib_buffer_t *b, u64 qw1, u32 flags)
+{
+  u64 mask = mask_l3l4p.as_u64 | mask_l4e.as_u64;
+
+  if (PREDICT_TRUE ((qw1 & mask) == mask_l3l4p.as_u64))
+    return;
+
+  if ((qw1 & mask_l3l4p.as_u64) == 0)
+    flags &= ~IAVF_RX_L4_CKSUM_FLAGS;
+  else
+    flags &= ~VNET_BUFFER_F_L4_CHECKSUM_CORRECT;
+
+  b->flags = flags;
+}
+
 static_always_inline uword
-iavf_process_rx_burst (vlib_main_t *vm, vlib_node_runtime_t *node,
-		       vnet_dev_rx_queue_t *rxq, iavf_rt_data_t *rtd,
-		       vlib_buffer_template_t *bt, u32 n_left,
+iavf_process_rx_burst (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_dev_rx_queue_t *rxq,
+		       iavf_rt_data_t *rtd, vlib_buffer_template_t *bt, u32 n_left,
 		       int maybe_multiseg)
 {
   vlib_buffer_t **b = rtd->bufs;
   u64 *qw1 = rtd->qw1s;
   iavf_rx_tail_t *tail = rtd->tails;
   uword n_rx_bytes = 0;
+  u32 flags = bt->flags;
 
   while (n_left >= 4)
     {
@@ -208,6 +227,53 @@ iavf_process_rx_burst (vlib_main_t *vm, vlib_node_runtime_t *node,
 
       if (maybe_multiseg)
 	{
+	  u32 i = 0;
+	  u64 l4_qw1 = qw1[0];
+
+	  while ((l4_qw1 & mask_eop.as_u64) == 0)
+	    {
+	      ASSERT (i < IAVF_RX_MAX_DESC_IN_CHAIN - 1);
+	      l4_qw1 = tail[0].qw1s[i++];
+	    }
+	  iavf_rx_validate_l4_cksum (b[0], l4_qw1, flags);
+
+	  i = 0;
+	  l4_qw1 = qw1[1];
+	  while ((l4_qw1 & mask_eop.as_u64) == 0)
+	    {
+	      ASSERT (i < IAVF_RX_MAX_DESC_IN_CHAIN - 1);
+	      l4_qw1 = tail[1].qw1s[i++];
+	    }
+	  iavf_rx_validate_l4_cksum (b[1], l4_qw1, flags);
+
+	  i = 0;
+	  l4_qw1 = qw1[2];
+	  while ((l4_qw1 & mask_eop.as_u64) == 0)
+	    {
+	      ASSERT (i < IAVF_RX_MAX_DESC_IN_CHAIN - 1);
+	      l4_qw1 = tail[2].qw1s[i++];
+	    }
+	  iavf_rx_validate_l4_cksum (b[2], l4_qw1, flags);
+
+	  i = 0;
+	  l4_qw1 = qw1[3];
+	  while ((l4_qw1 & mask_eop.as_u64) == 0)
+	    {
+	      ASSERT (i < IAVF_RX_MAX_DESC_IN_CHAIN - 1);
+	      l4_qw1 = tail[3].qw1s[i++];
+	    }
+	  iavf_rx_validate_l4_cksum (b[3], l4_qw1, flags);
+	}
+      else
+	{
+	  iavf_rx_validate_l4_cksum (b[0], qw1[0], flags);
+	  iavf_rx_validate_l4_cksum (b[1], qw1[1], flags);
+	  iavf_rx_validate_l4_cksum (b[2], qw1[2], flags);
+	  iavf_rx_validate_l4_cksum (b[3], qw1[3], flags);
+	}
+
+      if (maybe_multiseg)
+	{
 	  n_rx_bytes += iavf_rx_attach_tail (vm, bt, b[0], qw1[0], tail + 0);
 	  n_rx_bytes += iavf_rx_attach_tail (vm, bt, b[1], qw1[1], tail + 1);
 	  n_rx_bytes += iavf_rx_attach_tail (vm, bt, b[2], qw1[2], tail + 2);
@@ -229,6 +295,21 @@ iavf_process_rx_burst (vlib_main_t *vm, vlib_node_runtime_t *node,
 	((iavf_rx_desc_qw1_t) qw1[0]).length;
 
       if (maybe_multiseg)
+	{
+	  u32 i = 0;
+	  u64 l4_qw1 = qw1[0];
+
+	  while ((l4_qw1 & mask_eop.as_u64) == 0)
+	    {
+	      ASSERT (i < IAVF_RX_MAX_DESC_IN_CHAIN - 1);
+	      l4_qw1 = tail[0].qw1s[i++];
+	    }
+	  iavf_rx_validate_l4_cksum (b[0], l4_qw1, flags);
+	}
+      else
+	iavf_rx_validate_l4_cksum (b[0], qw1[0], flags);
+
+      if (maybe_multiseg)
 	n_rx_bytes += iavf_rx_attach_tail (vm, bt, b[0], qw1[0], tail + 0);
 
       /* next */
@@ -241,9 +322,8 @@ iavf_process_rx_burst (vlib_main_t *vm, vlib_node_runtime_t *node,
 }
 
 static_always_inline uword
-iavf_device_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
-			  vlib_frame_t *frame, vnet_dev_port_t *port,
-			  vnet_dev_rx_queue_t *rxq, int with_flows)
+iavf_device_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame,
+			  vnet_dev_port_t *port, vnet_dev_rx_queue_t *rxq, int with_flows)
 {
   vnet_main_t *vnm = vnet_get_main ();
   u32 thr_idx = vlib_get_thread_index ();
@@ -408,10 +488,8 @@ no_more_desc:
 
   vlib_get_buffers (vm, to_next, rtd->bufs, n_rx_packets);
 
-  n_rx_bytes =
-    n_tail_desc ?
-	    iavf_process_rx_burst (vm, node, rxq, rtd, &bt, n_rx_packets, 1) :
-	    iavf_process_rx_burst (vm, node, rxq, rtd, &bt, n_rx_packets, 0);
+  n_rx_bytes = n_tail_desc ? iavf_process_rx_burst (vm, node, rxq, rtd, &bt, n_rx_packets, 1) :
+			     iavf_process_rx_burst (vm, node, rxq, rtd, &bt, n_rx_packets, 0);
 
   /* the MARKed packets may have different next nodes */
   if (PREDICT_FALSE (with_flows && (or_qw1 & mask_flm.as_u64)))
