@@ -109,6 +109,7 @@ update_state_one_pkt (sfdp_tw_t *tw, sfdp_tenant_t *tenant,
 	  session->bitmaps[SFDP_FLOW_REVERSE] = SFDP_SERVICE_MASK (drop);
 	  sfdp_buffer (b[0])->service_bitmap = SFDP_SERVICE_MASK (drop);
 	  tcp_session->flags = SFDP_TCP_CHECK_SESSION_FLAG_BLOCKED;
+	  session->expiry_reason = SFDP_SESSION_EXPIRY_REASON_TIMEOUT_BLOCKED;
 	}
     }
   nsf[0] = (sf[0] = tcp_session->flags);
@@ -147,6 +148,7 @@ update_state_one_pkt (sfdp_tw_t *tw, sfdp_tenant_t *tenant,
       if (flags & SFDP_TCP_CHECK_TCP_FLAGS_RST)
 	{
 	  /* Reason to kill the connection */
+	  session->expiry_reason = SFDP_SESSION_EXPIRY_REASON_EVENT_TCP_RST;
 	  remove_session = 1;
 	  goto out;
 	}
@@ -186,6 +188,7 @@ update_state_one_pkt (sfdp_tw_t *tw, sfdp_tenant_t *tenant,
       if (flags & SFDP_TCP_CHECK_TCP_FLAGS_RST)
 	{
 	  /* Reason to kill the connection */
+	  session->expiry_reason = SFDP_SESSION_EXPIRY_REASON_EVENT_TCP_RST;
 	  nsf[0] = SFDP_TCP_CHECK_SESSION_FLAG_REMOVING;
 	  remove_session = 1;
 	  goto out;
@@ -216,13 +219,25 @@ out:
       next_timeout = 0;
     }
   else if (time_wait)
-    next_timeout = tenant->timeouts[SFDP_TIMEOUT_TIME_WAIT];
+    {
+      session->expiry_reason = SFDP_SESSION_EXPIRY_REASON_TIMEOUT_TIMEWAIT;
+      next_timeout = tenant->timeouts[SFDP_TIMEOUT_TIME_WAIT];
+    }
   else if (nsf[0] & SFDP_TCP_CHECK_SESSION_FLAG_ESTABLISHED)
-    next_timeout = tenant->timeouts[SFDP_TIMEOUT_TCP_ESTABLISHED];
+    {
+      session->expiry_reason = SFDP_SESSION_EXPIRY_REASON_TIMEOUT_TCP_ESTABLISHED;
+      next_timeout = tenant->timeouts[SFDP_TIMEOUT_TCP_ESTABLISHED];
+    }
   else if (nsf[0] & SFDP_TCP_CHECK_SESSION_FLAG_BLOCKED)
-    next_timeout = tenant->timeouts[SFDP_TIMEOUT_SECURITY];
+    {
+      session->expiry_reason = SFDP_SESSION_EXPIRY_REASON_TIMEOUT_BLOCKED;
+      next_timeout = tenant->timeouts[SFDP_TIMEOUT_SECURITY];
+    }
   else
-    next_timeout = tenant->timeouts[SFDP_TIMEOUT_EMBRYONIC];
+    {
+      session->expiry_reason = SFDP_SESSION_EXPIRY_REASON_TIMEOUT_EMBRYONIC;
+      next_timeout = tenant->timeouts[SFDP_TIMEOUT_EMBRYONIC];
+    }
   /* TODO: Distinguish FIN-WAIT states in the last branch. */
 
   sfdp_session_timer_update_maybe_past (tw, SFDP_SESSION_TIMER (session),
