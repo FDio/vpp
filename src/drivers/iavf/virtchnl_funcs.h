@@ -96,15 +96,17 @@ iavf_vc_op_disable_queues (vlib_main_t *vm, vnet_dev_t *dev,
 }
 
 static_always_inline vnet_dev_rv_t
-iavf_vc_op_request_queues (vlib_main_t *vm, vnet_dev_t *dev, const virtchnl_vf_res_request_t *req,
-			   virtchnl_vf_res_request_t *resp)
+iavf_vc_op_request_queues (vlib_main_t *vm, vnet_dev_t *dev, const virtchnl_vf_res_request_t *req)
 {
   iavf_virtchnl_req_t vr = {
     .op = VIRTCHNL_OP_REQUEST_QUEUES,
     .req = req,
     .req_sz = sizeof (*req),
-    .resp = resp,
-    .resp_sz = sizeof (*resp),
+    /* On i40e the PF resets the VF after REQUEST_QUEUES before sending
+     * any virtchnl reply, so do not wait for one here.  The caller
+     * detects the reset via IAVF_ATQLEN and drains any stale ARQ entry
+     * when no reset occurred. */
+    .no_reply = 1,
   };
   return iavf_virtchnl_req (vm, dev, &vr);
 }
