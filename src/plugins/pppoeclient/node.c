@@ -793,7 +793,7 @@ pppoeclient_session_output_one (vlib_main_t *vm, pppoeclient_main_t *pem, vlib_b
   pppoe->session_id = clib_host_to_net_u16 (c->session_id);
   pppoe->length = clib_host_to_net_u16 (b->current_length - sizeof (pppoe_header_t));
 
-  pppoeclient_get_source_mac_for_tx (vnm, c, src_mac, 0);
+  clib_memcpy (src_mac, hw->hw_address, 6);
   pppoeclient_push_l2_header (vnm, c->sw_if_index, b, ETHERNET_TYPE_PPPOE_SESSION, src_mac,
 			      c->ac_mac_address);
 

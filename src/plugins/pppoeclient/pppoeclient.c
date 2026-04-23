@@ -57,127 +57,17 @@ static int send_pppoe_pkt (pppoeclient_main_t *pem, pppoe_client_t *c, u8 packet
 			   u16 session_id, int is_broadcast);
 static int pppoeclient_get_linux_ifname (vnet_main_t *vnm, u32 sw_if_index, char *buf,
 					 size_t buf_len, u8 noisy);
-static int pppoeclient_get_linux_hwaddr (const char *linux_ifname, u8 *mac);
 static void pppoeclient_send_padt_raw (const char *linux_ifname, const u8 *src_mac,
 				       const u8 *dst_mac, u16 session_id);
 static void pppoeclient_control_event_capture_raw_tags (pppoeclient_control_event_t *event,
 							pppoe_header_t *pppoe,
 							uword available_payload_len);
-void pppoeclient_get_source_mac_for_tx (vnet_main_t *vnm, pppoe_client_t *c, u8 *mac, u8 noisy);
-
 static void
 pppoeclient_dispatch_ref (pppoeclient_main_t *pem, u32 sw_if_index)
 {
   vec_validate_init_empty (pem->dispatch_refcount_by_sw_if_index, sw_if_index, 0);
   if (pem->dispatch_refcount_by_sw_if_index[sw_if_index]++ == 0)
     vnet_feature_enable_disable ("device-input", "pppoeclient-dispatch", sw_if_index, 1, 0, 0);
-}
-
-void
-pppoeclient_get_source_mac (vnet_main_t *vnm, pppoe_client_t *c, u8 *mac, u8 noisy)
-{
-  (void) pppoeclient_get_source_mac_status (vnm, c, mac, noisy, 0);
-}
-
-pppoeclient_source_mac_mode_t
-pppoeclient_get_source_mac_status (vnet_main_t *vnm, pppoe_client_t *c, u8 *mac, u8 noisy,
-				   pppoeclient_source_mac_fallback_reason_t *fallback_reason)
-{
-  vnet_hw_interface_t *hw;
-  char linux_ifname[IFNAMSIZ];
-
-  if (fallback_reason)
-    *fallback_reason = PPPOECLIENT_SRC_MAC_FALLBACK_NONE;
-
-  clib_memset (mac, 0, 6);
-  hw = vnet_get_sup_hw_interface (vnm, c->sw_if_index);
-  if (!hw)
-    {
-      if (fallback_reason)
-	*fallback_reason = PPPOECLIENT_SRC_MAC_FALLBACK_NO_HW;
-      return PPPOECLIENT_SRC_MAC_MODE_INTERFACE;
-    }
-
-  switch (c->source_mac_mode)
-    {
-    case PPPOECLIENT_SRC_MAC_MODE_STATIC:
-      clib_memcpy (mac, c->source_mac, 6);
-      return PPPOECLIENT_SRC_MAC_MODE_STATIC;
-    case PPPOECLIENT_SRC_MAC_MODE_LINUX:
-      clib_memset (linux_ifname, 0, sizeof (linux_ifname));
-      if (pppoeclient_get_linux_ifname (vnm, c->sw_if_index, linux_ifname, sizeof (linux_ifname),
-					noisy) == 0)
-	{
-	  if (pppoeclient_get_linux_hwaddr (linux_ifname, mac) == 0)
-	    return PPPOECLIENT_SRC_MAC_MODE_LINUX;
-	  if (fallback_reason)
-	    *fallback_reason = PPPOECLIENT_SRC_MAC_FALLBACK_LINUX_HWADDR;
-	}
-      else if (fallback_reason)
-	{
-	  *fallback_reason = PPPOECLIENT_SRC_MAC_FALLBACK_LINUX_IFNAME;
-	}
-      break;
-    case PPPOECLIENT_SRC_MAC_MODE_INTERFACE:
-    default:
-      break;
-    }
-
-  clib_memcpy (mac, hw->hw_address, 6);
-  return PPPOECLIENT_SRC_MAC_MODE_INTERFACE;
-}
-
-void
-pppoeclient_get_source_mac_for_tx (vnet_main_t *vnm, pppoe_client_t *c, u8 *mac, u8 noisy)
-{
-  pppoeclient_source_mac_fallback_reason_t fallback_reason = PPPOECLIENT_SRC_MAC_FALLBACK_NONE;
-
-  (void) pppoeclient_get_source_mac_status (vnm, c, mac, noisy, &fallback_reason);
-
-  if (c->source_mac_mode == PPPOECLIENT_SRC_MAC_MODE_LINUX &&
-      fallback_reason != PPPOECLIENT_SRC_MAC_FALLBACK_NONE)
-    {
-      c->last_source_mac_fallback_reason = fallback_reason;
-      c->source_mac_fallbacks++;
-    }
-}
-
-static u8 *
-format_pppoeclient_source_mac_mode (u8 *s, va_list *args)
-{
-  pppoeclient_source_mac_mode_t mode = va_arg (*args, int);
-
-  switch (mode)
-    {
-    case PPPOECLIENT_SRC_MAC_MODE_INTERFACE:
-      return format (s, "interface");
-    case PPPOECLIENT_SRC_MAC_MODE_LINUX:
-      return format (s, "linux");
-    case PPPOECLIENT_SRC_MAC_MODE_STATIC:
-      return format (s, "static");
-    default:
-      return format (s, "%u", mode);
-    }
-}
-
-static u8 *
-format_pppoeclient_source_mac_fallback_reason (u8 *s, va_list *args)
-{
-  pppoeclient_source_mac_fallback_reason_t reason = va_arg (*args, int);
-
-  switch (reason)
-    {
-    case PPPOECLIENT_SRC_MAC_FALLBACK_NONE:
-      return format (s, "none");
-    case PPPOECLIENT_SRC_MAC_FALLBACK_NO_HW:
-      return format (s, "no-hw");
-    case PPPOECLIENT_SRC_MAC_FALLBACK_LINUX_IFNAME:
-      return format (s, "linux-ifname");
-    case PPPOECLIENT_SRC_MAC_FALLBACK_LINUX_HWADDR:
-      return format (s, "linux-hwaddr");
-    default:
-      return format (s, "%u", reason);
-    }
 }
 
 static u8 *
@@ -625,7 +515,7 @@ pppoeclient_save_session_to_file (pppoe_client_t *c)
   vnet_hw_interface_t *hw = vnet_get_sup_hw_interface (vnm, c->sw_if_index);
   if (hw)
     {
-      pppoeclient_get_source_mac_for_tx (vnm, c, src_mac, 1);
+      clib_memcpy (src_mac, hw->hw_address, 6);
       if (pppoeclient_get_linux_ifname (vnm, c->sw_if_index, linux_ifname, sizeof (linux_ifname),
 					1) < 0)
 	clib_warning ("pppoeclient: save_session: get_linux_ifname FAILED for sw_if_index %u",
@@ -941,7 +831,7 @@ send_pppoe_pkt (pppoeclient_main_t *pem, pppoe_client_t *c, u8 packet_code, u16 
   {
     static const u8 broadcast_mac[6] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
     const u8 *dst_address = is_broadcast ? broadcast_mac : c->ac_mac_address;
-    pppoeclient_get_source_mac_for_tx (vnm, c, src_mac, 0);
+    clib_memcpy (src_mac, hw->hw_address, 6);
 
     pppoe = pppoeclient_push_l2_header (vnm, c->sw_if_index, b, ETHERNET_TYPE_PPPOE_DISCOVERY,
 					src_mac, dst_address);
@@ -1084,7 +974,7 @@ pppoeclient_output_ctrl_pkt (u32 pppox_sw_if_index, u8 *ppp_data, int ppp_len)
       return;
     }
 
-  pppoeclient_get_source_mac_for_tx (vnm, c, src_mac, 0);
+  clib_memcpy (src_mac, hw->hw_address, 6);
   pppoe = pppoeclient_push_l2_header (vnm, c->sw_if_index, b, ETHERNET_TYPE_PPPOE_SESSION, src_mac,
 				      c->ac_mac_address);
   pppoe->ver_type = PPPOE_VER_TYPE;
@@ -3223,10 +3113,6 @@ show_pppoeclient_debug_one (vlib_main_t *vm, pppoe_client_t *c,
   u8 *configured_auth_user = 0;
   u8 *next_discovery = 0;
   char linux_ifname[IFNAMSIZ];
-  u8 linux_mac[6];
-  u8 effective_source_mac[6];
-  pppoeclient_source_mac_mode_t effective_source_mac_mode;
-  u8 linux_mac_present = 0;
   pppox_ppp_debug_runtime_t ppp_debug_rt;
   static u8 (*pppox_get_ppp_debug_runtime_func) (u32, pppox_ppp_debug_runtime_t *) = 0;
   static u8 attempted = 0;
@@ -3266,8 +3152,6 @@ show_pppoeclient_debug_one (vlib_main_t *vm, pppoe_client_t *c,
     }
   if (pppox_get_ppp_debug_runtime_func)
     (void) (*pppox_get_ppp_debug_runtime_func) (c->pppox_sw_if_index, &ppp_debug_rt);
-  effective_source_mac_mode =
-    pppoeclient_get_source_mac_status (pem->vnet_main, c, effective_source_mac, 0, 0);
 
   vlib_cli_output (vm, "[%u] access-interface %U host-uniq %u", client_index,
 		   format_vnet_sw_if_index_name, pem->vnet_main, c->sw_if_index, c->host_uniq);
@@ -3277,31 +3161,19 @@ show_pppoeclient_debug_one (vlib_main_t *vm, pppoe_client_t *c,
 		   c->total_reconnects, format_pppoe_disconnect_reason_name,
 		   c->last_disconnect_reason, next_discovery);
   vlib_cli_output (vm, "    auth-failures %u", c->consecutive_auth_failures);
-  vlib_cli_output (vm, "    source-mac policy %U effective %U via %U",
-		   format_pppoeclient_source_mac_mode, c->source_mac_mode, format_ethernet_address,
-		   effective_source_mac, format_pppoeclient_source_mac_mode,
-		   effective_source_mac_mode);
-  vlib_cli_output (vm, "    source-mac fallbacks %u last-reason %U", c->source_mac_fallbacks,
-		   format_pppoeclient_source_mac_fallback_reason,
-		   c->last_source_mac_fallback_reason);
 
   vnet_hw_interface_t *hw = vnet_get_sup_hw_interface (pem->vnet_main, c->sw_if_index);
 
   clib_memset (linux_ifname, 0, sizeof (linux_ifname));
-  if (pppoeclient_get_linux_ifname (pem->vnet_main, c->sw_if_index, linux_ifname,
-				    sizeof (linux_ifname), 0) == 0)
-    linux_mac_present = (pppoeclient_get_linux_hwaddr (linux_ifname, linux_mac) == 0);
+  pppoeclient_get_linux_ifname (pem->vnet_main, c->sw_if_index, linux_ifname, sizeof (linux_ifname),
+				0);
 
   if (hw == 0)
     vlib_cli_output (vm, "    access-link linux-ifname %s vpp-mac <unavailable>",
 		     linux_ifname[0] != '\0' ? linux_ifname : "<unresolved>");
-  else if (linux_ifname[0] != '\0' && linux_mac_present)
-    vlib_cli_output (vm, "    access-link linux-ifname %s vpp-mac %U linux-mac %U mac-match %u",
-		     linux_ifname, format_ethernet_address, hw->hw_address, format_ethernet_address,
-		     linux_mac, clib_memcmp (linux_mac, hw->hw_address, 6) == 0);
   else if (linux_ifname[0] != '\0')
-    vlib_cli_output (vm, "    access-link linux-ifname %s vpp-mac %U linux-mac <unavailable>",
-		     linux_ifname, format_ethernet_address, hw->hw_address);
+    vlib_cli_output (vm, "    access-link linux-ifname %s vpp-mac %U", linux_ifname,
+		     format_ethernet_address, hw->hw_address);
   else
     vlib_cli_output (vm, "    access-link linux-ifname <unresolved> vpp-mac %U",
 		     format_ethernet_address, hw->hw_address);
@@ -3677,20 +3549,6 @@ vnet_pppoeclient_add_del (vnet_pppoeclient_add_del_args_t *a, u32 *pppox_sw_if_i
 #define _(x) c->x = a->x;
       foreach_copy_field;
 #undef _
-      if (a->set_source_mac)
-	{
-	  if (a->source_mac_mode > PPPOECLIENT_SRC_MAC_MODE_STATIC)
-	    {
-	      pppoeclient_client_free_resources (c);
-	      pool_put (pem->clients, c);
-	      return VNET_API_ERROR_INVALID_VALUE;
-	    }
-	  c->source_mac_mode = a->source_mac_mode;
-	  if (c->source_mac_mode == PPPOECLIENT_SRC_MAC_MODE_STATIC)
-	    clib_memcpy (c->source_mac, a->source_mac, sizeof (c->source_mac));
-	  else
-	    clib_memset (c->source_mac, 0, sizeof (c->source_mac));
-	}
       c->ac_name_filter = vec_dup (a->ac_name_filter);
       c->service_name = vec_dup (a->service_name);
 
@@ -3816,9 +3674,6 @@ pppoeclient_add_del_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_c
   u32 host_uniq = 0;
   u8 host_uniq_set = 0;
   u8 sw_if_index_set = 0;
-  pppoeclient_source_mac_mode_t source_mac_mode = PPPOECLIENT_SRC_MAC_MODE_INTERFACE;
-  u8 source_mac[6] = { 0 };
-  u8 source_mac_set = 0;
   u8 *custom_ifname = 0;
   int rv;
   pppoeclient_main_t *pem = &pppoeclient_main;
@@ -3849,21 +3704,6 @@ pppoeclient_add_del_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_c
 	{
 	  sw_if_index_set = 1;
 	}
-      else if (unformat (line_input, "source-mac interface"))
-	{
-	  source_mac_mode = PPPOECLIENT_SRC_MAC_MODE_INTERFACE;
-	  source_mac_set = 1;
-	}
-      else if (unformat (line_input, "source-mac linux"))
-	{
-	  source_mac_mode = PPPOECLIENT_SRC_MAC_MODE_LINUX;
-	  source_mac_set = 1;
-	}
-      else if (unformat (line_input, "source-mac %U", unformat_ethernet_address, source_mac))
-	{
-	  source_mac_mode = PPPOECLIENT_SRC_MAC_MODE_STATIC;
-	  source_mac_set = 1;
-	}
       else if (unformat (line_input, "name %s", &custom_ifname))
 	;
       else
@@ -3892,10 +3732,6 @@ pppoeclient_add_del_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_c
 #define _(x) a->x = x;
   foreach_copy_field;
 #undef _
-  a->set_source_mac = source_mac_set;
-  a->source_mac_mode = source_mac_mode;
-  if (source_mac_set && source_mac_mode == PPPOECLIENT_SRC_MAC_MODE_STATIC)
-    clib_memcpy (a->source_mac, source_mac, sizeof (a->source_mac));
   a->custom_ifname = custom_ifname;
 
   rv = vnet_pppoeclient_add_del (a, &pppox_sw_if_index);
@@ -3937,7 +3773,6 @@ done:
 VLIB_CLI_COMMAND (create_pppoeclient_command, static) = {
   .path = "create pppoe client",
   .short_help = "create pppoe client <interface>|sw-if-index <nn> host-uniq <nn> "
-		"[source-mac interface|source-mac linux|source-mac <mac>] "
 		"[name <ifname>] [del]",
   .function = pppoeclient_add_del_command_fn,
 };
@@ -4817,9 +4652,6 @@ set_pppoeclient_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_c
   u8 use_peer_dns = 0;
   u8 add_default_route4 = 0;
   u8 add_default_route6 = 0;
-  pppoeclient_source_mac_mode_t source_mac_mode = PPPOECLIENT_SRC_MAC_MODE_INTERFACE;
-  u8 source_mac[6] = { 0 };
-  u8 source_mac_set = 0;
   u8 clear_ac_name = 0;
   u8 clear_service_name = 0;
   u8 sync_live_auth = 0;
@@ -4858,21 +4690,6 @@ set_pppoeclient_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_c
 	add_default_route4 = add_default_route6 = 1;
       else if (unformat (input, "use-peer-route"))
 	add_default_route4 = add_default_route6 = 1;
-      else if (unformat (input, "source-mac interface"))
-	{
-	  source_mac_mode = PPPOECLIENT_SRC_MAC_MODE_INTERFACE;
-	  source_mac_set = 1;
-	}
-      else if (unformat (input, "source-mac linux"))
-	{
-	  source_mac_mode = PPPOECLIENT_SRC_MAC_MODE_LINUX;
-	  source_mac_set = 1;
-	}
-      else if (unformat (input, "source-mac %U", unformat_ethernet_address, source_mac))
-	{
-	  source_mac_mode = PPPOECLIENT_SRC_MAC_MODE_STATIC;
-	  source_mac_set = 1;
-	}
       else
 	break;
     }
@@ -4964,19 +4781,6 @@ set_pppoeclient_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_c
       c->use_peer_route6 = 1;
       route_or_dns_changed = 1;
     }
-  if (source_mac_set)
-    {
-      c->source_mac_mode = source_mac_mode;
-      if (source_mac_mode == PPPOECLIENT_SRC_MAC_MODE_STATIC)
-	clib_memcpy (c->source_mac, source_mac, sizeof (c->source_mac));
-      else
-	clib_memset (c->source_mac, 0, sizeof (c->source_mac));
-
-      c->source_mac_fallbacks = 0;
-      c->last_source_mac_fallback_reason = PPPOECLIENT_SRC_MAC_FALLBACK_NONE;
-      if (c->session_id)
-	pppoeclient_save_session_to_file (c);
-    }
 
   rv = sync_pppoe_client_live_default_route4 (c);
   if (rv)
@@ -5017,8 +4821,7 @@ VLIB_CLI_COMMAND (set_pppoeclient_command, static) = {
   .short_help = "set pppoe client <client-index>|<interface> "
 		"[ac-name <name>|ac-name any] [service-name <name>|service-name any] "
 		"[username <user>] [password <pass>] [mtu <n>] [mru <n>] [timeout <n>] "
-		"[use-peer-dns] [add-default-route | add-default-route4 | add-default-route6] "
-		"[source-mac interface|source-mac linux|source-mac <mac>]",
+		"[use-peer-dns] [add-default-route | add-default-route4 | add-default-route6]",
   .function = set_pppoeclient_command_fn,
 };
 clib_error_t *
@@ -5297,32 +5100,6 @@ pppoeclient_get_linux_ifname (vnet_main_t *vnm, u32 sw_if_index, char *buf, size
   return -1;
 }
 
-static int
-pppoeclient_get_linux_hwaddr (const char *linux_ifname, u8 *mac)
-{
-  struct ifreq ifr;
-  int sfd;
-
-  if (!linux_ifname || !mac)
-    return -1;
-
-  sfd = socket (AF_INET, SOCK_DGRAM, 0);
-  if (sfd < 0)
-    return -1;
-
-  clib_memset (&ifr, 0, sizeof (ifr));
-  snprintf (ifr.ifr_name, sizeof (ifr.ifr_name), "%s", linux_ifname);
-  if (ioctl (sfd, SIOCGIFHWADDR, &ifr) < 0)
-    {
-      close (sfd);
-      return -1;
-    }
-
-  clib_memcpy (mac, ifr.ifr_hwaddr.sa_data, 6);
-  close (sfd);
-  return 0;
-}
-
 static clib_error_t *
 pppoeclient_exit (vlib_main_t *vm)
 {
@@ -5425,7 +5202,11 @@ pppoeclient_exit (vlib_main_t *vm)
 						sizeof (linux_ifname), 1) == 0)
 		{
 		  clib_warning ("pppoeclient_exit: last-resort resolved ifname='%s'", linux_ifname);
-		  pppoeclient_get_source_mac_for_tx (vnm, c, src_mac, 1);
+		  vnet_hw_interface_t *hw = vnet_get_sup_hw_interface (vnm, c->sw_if_index);
+		  if (hw)
+		    clib_memcpy (src_mac, hw->hw_address, 6);
+		  else
+		    clib_memset (src_mac, 0, 6);
 		  pppoeclient_send_padt_raw (linux_ifname, src_mac, c->ac_mac_address, sid);
 		}
 	      else
