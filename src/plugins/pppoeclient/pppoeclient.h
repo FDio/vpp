@@ -143,21 +143,6 @@ typedef enum
 
 typedef enum
 {
-  PPPOECLIENT_SRC_MAC_MODE_INTERFACE = 0,
-  PPPOECLIENT_SRC_MAC_MODE_LINUX = 1,
-  PPPOECLIENT_SRC_MAC_MODE_STATIC = 2,
-} pppoeclient_source_mac_mode_t;
-
-typedef enum
-{
-  PPPOECLIENT_SRC_MAC_FALLBACK_NONE = 0,
-  PPPOECLIENT_SRC_MAC_FALLBACK_NO_HW = 1,
-  PPPOECLIENT_SRC_MAC_FALLBACK_LINUX_IFNAME = 2,
-  PPPOECLIENT_SRC_MAC_FALLBACK_LINUX_HWADDR = 3,
-} pppoeclient_source_mac_fallback_reason_t;
-
-typedef enum
-{
   PPPOECLIENT_CONTROL_MATCH_NONE = 0,
   PPPOECLIENT_CONTROL_MATCH_HOST_UNIQ = 1,
   PPPOECLIENT_CONTROL_MATCH_AC_NAME = 2,
@@ -324,7 +309,6 @@ typedef struct
 
   u16 session_id;
   u8 ac_mac_address[6];
-  u8 source_mac[6];
 
   /* Pointers (8-byte aligned on 64-bit) grouped together */
   u8 *ac_name;	      /* AC-Name from PADO */
@@ -350,7 +334,6 @@ typedef struct
   u8 use_peer_route4; /* add-default-route4: add IPv4 default route */
   u8 use_peer_route6; /* add-default-route6: add IPv6 default route */
   u8 use_peer_ipv6;
-  u8 last_source_mac_fallback_reason;
   u8 lcp_state;
   u8 lcp_id;
   u8 lcp_nak;
@@ -358,11 +341,9 @@ typedef struct
   u8 ipcp_id;
   u8 ipv6cp_state;
   u8 ipv6cp_id;
-  u8 source_mac_mode;
 
   /* Last discovery error tag seen (0 = none) */
   u32 discovery_error;
-  u32 source_mac_fallbacks;
 
   /* Session statistics */
   u32 total_reconnects;		 /* lifetime reconnect count */
@@ -564,9 +545,6 @@ typedef struct
   u8 is_add;
   u32 sw_if_index;
   u32 host_uniq;
-  u8 set_source_mac;
-  u8 source_mac_mode;
-  u8 source_mac[6];
   /* Vector fields below are caller-owned: vnet_pppoeclient_add_del never
    * steals or frees them.  The callee vec_dup's whatever it needs to keep. */
   u8 *ac_name_filter;
@@ -579,11 +557,6 @@ typedef struct
 int vnet_pppoeclient_add_del (vnet_pppoeclient_add_del_args_t *, u32 *);
 
 int consume_pppoe_discovery_pkt (u32, vlib_buffer_t *, pppoe_header_t *);
-void pppoeclient_get_source_mac (vnet_main_t *vnm, pppoe_client_t *c, u8 *mac, u8 noisy);
-void pppoeclient_get_source_mac_for_tx (vnet_main_t *vnm, pppoe_client_t *c, u8 *mac, u8 noisy);
-pppoeclient_source_mac_mode_t
-pppoeclient_get_source_mac_status (vnet_main_t *vnm, pppoe_client_t *c, u8 *mac, u8 noisy,
-				   pppoeclient_source_mac_fallback_reason_t *fallback_reason);
 void pppoeclient_save_session_to_file (pppoe_client_t *c);
 
 void pppoe_client_open_session (u32 client_index);

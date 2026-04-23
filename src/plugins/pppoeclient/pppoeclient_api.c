@@ -447,15 +447,12 @@ vl_api_pppoeclient_add_del_t_handler (vl_api_pppoeclient_add_del_t *mp)
     .is_add = mp->is_add,
     .sw_if_index = ntohl (mp->sw_if_index),
     .host_uniq = ntohl (mp->host_uniq),
-    .set_source_mac = mp->set_source_mac,
-    .source_mac_mode = mp->source_mac_mode,
     .ac_name_filter =
       pppoeclient_api_dup_fixed_string (mp->configured_ac_name, sizeof (mp->configured_ac_name)),
     .service_name = pppoeclient_api_dup_fixed_string (mp->service_name, sizeof (mp->service_name)),
     .custom_ifname =
       pppoeclient_api_dup_fixed_string (mp->custom_ifname, sizeof (mp->custom_ifname)),
   };
-  mac_address_decode (mp->source_mac, (mac_address_t *) a.source_mac);
 
   u32 pppox_sw_if_index = ~0;
   rv = vnet_pppoeclient_add_del (&a, &pppox_sw_if_index);
@@ -493,10 +490,6 @@ send_pppoeclient_details (pppoe_client_t *t, vl_api_registration_t *reg, u32 con
   dhcp6_pd_active_prefix_runtime_t dhcp6_pd_prefix_rt = { 0 };
   dhcp6_pd_consumer_runtime_t dhcp6_pd_consumer_rt = { 0 };
   mac_address_t ac_mac = { 0 };
-  mac_address_t configured_source_mac = { 0 };
-  mac_address_t effective_source_mac = { 0 };
-  u8 effective_source_mac_bytes[6] = { 0 };
-  pppoeclient_source_mac_mode_t effective_source_mac_mode;
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   clib_memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id = htons (VL_API_PPPOECLIENT_DETAILS + pem->msg_id_base);
@@ -510,9 +503,6 @@ send_pppoeclient_details (pppoe_client_t *t, vl_api_registration_t *reg, u32 con
   rmp->use_peer_dns = t->use_peer_dns;
   rmp->add_default_route4 = t->use_peer_route4;
   rmp->add_default_route6 = t->use_peer_route6;
-  rmp->source_mac_mode = t->source_mac_mode;
-  rmp->source_mac_fallbacks = htonl (t->source_mac_fallbacks);
-  rmp->last_source_mac_fallback_reason = t->last_source_mac_fallback_reason;
   rmp->mtu = htonl (t->mtu);
   rmp->mru = htonl (t->mru);
   rmp->timeout = htonl (t->timeout);
@@ -529,13 +519,6 @@ send_pppoeclient_details (pppoe_client_t *t, vl_api_registration_t *reg, u32 con
 
   clib_memcpy (&ac_mac, t->ac_mac_address, sizeof (ac_mac));
   mac_address_encode (&ac_mac, rmp->ac_mac_address);
-  clib_memcpy (&configured_source_mac, t->source_mac, sizeof (configured_source_mac));
-  mac_address_encode (&configured_source_mac, rmp->configured_source_mac);
-  effective_source_mac_mode =
-    pppoeclient_get_source_mac_status (pem->vnet_main, t, effective_source_mac_bytes, 0, 0);
-  clib_memcpy (&effective_source_mac, effective_source_mac_bytes, sizeof (effective_source_mac));
-  mac_address_encode (&effective_source_mac, rmp->effective_source_mac);
-  rmp->effective_source_mac_mode = effective_source_mac_mode;
   pppoeclient_copy_api_vec_string (rmp->ac_name, sizeof (rmp->ac_name), t->ac_name);
   pppoeclient_copy_api_vec_string (rmp->configured_ac_name, sizeof (rmp->configured_ac_name),
 				   t->ac_name_filter);
@@ -1124,7 +1107,6 @@ vl_api_pppoeclient_set_options_t_handler (vl_api_pppoeclient_set_options_t *mp)
   u8 *username = 0, *password = 0;
   u8 sync_live_auth = 0;
   uword n;
-  u8 source_mac_bytes[6] = { 0 };
 
   vl_api_registration_t *reg;
   reg = vl_api_client_index_to_registration (mp->client_index);
@@ -1217,25 +1199,6 @@ vl_api_pppoeclient_set_options_t_handler (vl_api_pppoeclient_set_options_t *mp)
 	}
     }
 
-  if (mp->set_source_mac)
-    {
-      if ((pppoeclient_source_mac_mode_t) mp->source_mac_mode > PPPOECLIENT_SRC_MAC_MODE_STATIC)
-	{
-	  rv = VNET_API_ERROR_INVALID_VALUE;
-	  goto reply;
-	}
-
-      c->source_mac_mode = mp->source_mac_mode;
-      mac_address_decode (mp->source_mac, (mac_address_t *) source_mac_bytes);
-      if (c->source_mac_mode == PPPOECLIENT_SRC_MAC_MODE_STATIC)
-	clib_memcpy (c->source_mac, source_mac_bytes, sizeof (c->source_mac));
-      else
-	clib_memset (c->source_mac, 0, sizeof (c->source_mac));
-
-      c->source_mac_fallbacks = 0;
-      c->last_source_mac_fallback_reason = PPPOECLIENT_SRC_MAC_FALLBACK_NONE;
-    }
-
   /* Sync live state */
   rv = sync_pppoe_client_live_default_route4 (c);
   if (rv == 0)
@@ -1244,8 +1207,6 @@ vl_api_pppoeclient_set_options_t_handler (vl_api_pppoeclient_set_options_t *mp)
     rv = sync_pppoe_client_live_use_peer_dns (c);
   if (rv == 0 && sync_live_auth)
     rv = sync_pppoe_client_live_auth (c);
-  if (rv == 0 && mp->set_source_mac && c->session_id)
-    pppoeclient_save_session_to_file (c);
 
 reply:
   rmp = vl_msg_api_alloc (sizeof (*rmp));
