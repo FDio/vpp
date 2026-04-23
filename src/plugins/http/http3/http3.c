@@ -863,7 +863,7 @@ http3_req_state_wait_transport_method (http_ctx_t *stream, http_ctx_t *req,
       http3_stream_terminate (stream, req, HTTP3_ERROR_MESSAGE_ERROR);
       return HTTP_SM_STOP;
     }
-  if (control_data.scheme == HTTP_URL_SCHEME_UNKNOWN)
+  if (control_data.scheme == HTTP_URL_SCHEME_UNKNOWN && control_data.method != HTTP_REQ_CONNECT)
     {
       HTTP_DBG (1, "unsupported scheme");
       http3_stream_terminate (stream, req, HTTP3_ERROR_INTERNAL_ERROR);
