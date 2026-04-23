@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8768f987_cce5365e",
+        "filename": "src/plugins/http/http3/http3.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 149,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-04-23T18:44:53Z",
+      "side": 1,
+      "message": "remove :-)",
+      "revId": "2631ce023ffd89107b489af0daa798e45998df0f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
