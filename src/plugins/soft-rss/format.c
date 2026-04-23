@@ -85,7 +85,7 @@ format_soft_rss_if (u8 *s, va_list *args)
   s = format_newline (s, indent + 2);
   s = format (s, "ipv6-type: %U", format_soft_rss_type, rt->ipv6_type);
   s = format_newline (s, indent + 2);
-  s = format (s, "match-offset: %u", rt->match_offset);
+  s = format (s, "offset: %u (%s)", rt->match_offset, rt->l3_offset ? "L3/IP" : "L2/EtherType");
   s = format_newline (s, indent + 2);
   s = format (s, "reta size: %u", rt->reta_mask + 1);
   s = format_newline (s, indent + 2);

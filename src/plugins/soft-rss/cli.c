@@ -34,8 +34,10 @@ soft_rss_config_command_fn (vlib_main_t *vm, unformat_input_t *input,
       else if (unformat (input, "ipv6-type %U", unformat_soft_rss_type,
 			 &cfg.ipv6_type))
 	;
-      else if (unformat (input, "l2-offset %u", &cfg.l2_hdr_offset))
-	;
+      else if (unformat (input, "l2-offset %u", &cfg.offset))
+	cfg.offset += 12;
+      else if (unformat (input, "ip-offset %u", &cfg.offset))
+	cfg.l3_offset = 1;
       else if (unformat (input, "with-main-thread"))
 	cfg.with_main_thread = 1;
       else if (unformat (input, "threads %U", unformat_bitmap_list,
@@ -209,9 +211,9 @@ soft_rss_show_command_fn (vlib_main_t *vm, unformat_input_t *input,
 VLIB_CLI_COMMAND (soft_rss_config_command, static) = {
   .path = "soft-rss config",
   .short_help = "soft-rss config <hw-interface> [type <type>] "
-		"[l2-offset <bytes>] [threads <bitmap-list>] "
-		"[rss-key <hex-string>] [ipv4-type <type>] [ipv6-type <type>] "
-		"[with-main-thread]",
+		"[l2-offset <bytes>] [ip-offset <bytes>] "
+		"[threads <bitmap-list>] [rss-key <hex-string>] "
+		"[ipv4-type <type>] [ipv6-type <type>] [with-main-thread]",
   .function = soft_rss_config_command_fn,
 };
 

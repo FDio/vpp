@@ -30,9 +30,11 @@ typedef struct
   soft_rss_type_t ipv4_type;
   soft_rss_type_t ipv6_type;
   u8 with_main_thread : 1;
-  u16 l2_hdr_offset; /* typically 0, used if another header exists (e.g. DSA */
-  clib_bitmap_t *threads; /* bitmap of RSS threads, NULL means all */
-  u8 *key;		  /* vector, NULL means default */
+  u8 l3_offset : 1;	  /* 0: offset is EtherType position, 1: IP header */
+  u16 offset;		  /* byte offset from frame start; 0 in L2 mode means
+			     default 12 (standard Ethernet) */
+  clib_bitmap_t *threads; /* NULL means all workers */
+  u8 *key;		  /* NULL means default Toeplitz key */
 } soft_rss_config_t;
 
 typedef clib_error_t *(soft_rss_config_fn_t) (vlib_main_t *vm,
