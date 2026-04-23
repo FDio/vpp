@@ -381,16 +381,22 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 
   tcp_scoreboard_trace_add (tc, ack);
 
+  high_sacked = (sb->sacked_bytes || sb->is_reneging) ? sb->high_sacked : tc->snd_una;
+
   /* Make sure blocks are ordered */
   rcv_sacks = tc->rcv_opts.sacks;
   for (i = 0; i < vec_len (rcv_sacks); i++)
-    for (j = i + 1; j < vec_len (rcv_sacks); j++)
-      if (seq_lt (rcv_sacks[j].start, rcv_sacks[i].start))
-	{
-	  sack_block_t tmp = rcv_sacks[i];
-	  rcv_sacks[i] = rcv_sacks[j];
-	  rcv_sacks[j] = tmp;
-	}
+    {
+      for (j = i + 1; j < vec_len (rcv_sacks); j++)
+	if (seq_lt (rcv_sacks[j].start, rcv_sacks[i].start))
+	  {
+	    sack_block_t tmp = rcv_sacks[i];
+	    rcv_sacks[i] = rcv_sacks[j];
+	    rcv_sacks[j] = tmp;
+	  }
+      /* Last block's end is not guaranteed to be highest */
+      high_sacked = seq_max (high_sacked, rcv_sacks[i].end);
+    }
 
   if (sb->head == TCP_INVALID_SACK_HOLE_INDEX)
     {
@@ -425,7 +431,6 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 	  sb->tail = scoreboard_hole_index (sb, hole);
 	  sb->high_sacked = tc->snd_una;
 	}
-      high_sacked = rcv_sacks[vec_len (rcv_sacks) - 1].end;
     }
   else
     {
@@ -445,10 +450,6 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 				      tc->snd_nxt);
 	    }
 	}
-      /* Keep track of max byte sacked for when the last hole
-       * is acked */
-      high_sacked = seq_max (rcv_sacks[vec_len (rcv_sacks) - 1].end,
-			     sb->high_sacked);
     }
 
   /* Walk the holes with the SACK blocks */
