@@ -8,17 +8,18 @@
 #include <vlib/vlib.h>
 #include <vnet/sfdp/sfdp.h>
 /* Convention: uppercase relates to responder lowercase to initiator */
-#define foreach_sfdp_tcp_check_session_flag                                   \
-  _ (WAIT_FOR_RESP_SYN, 0, "S")                                               \
-  _ (WAIT_FOR_INIT_ACK_TO_SYN, 1, "a")                                        \
-  _ (WAIT_FOR_RESP_ACK_TO_SYN, 2, "A")                                        \
-  _ (SEEN_FIN_INIT, 3, "f")                                                   \
-  _ (SEEN_FIN_RESP, 4, "F")                                                   \
-  _ (SEEN_ACK_TO_FIN_INIT, 5, "r")                                            \
-  _ (SEEN_ACK_TO_FIN_RESP, 6, "R")                                            \
-  _ (ESTABLISHED, 7, "U")                                                     \
-  _ (REMOVING, 8, "D")                                                        \
-  _ (BLOCKED, 9, "X")
+#define foreach_sfdp_tcp_check_session_flag                                                        \
+  _ (WAIT_FOR_RESP_SYN, 0, "S")                                                                    \
+  _ (WAIT_FOR_INIT_ACK_TO_SYN, 1, "a")                                                             \
+  _ (WAIT_FOR_RESP_ACK_TO_SYN, 2, "A")                                                             \
+  _ (SEEN_FIN_INIT, 3, "f")                                                                        \
+  _ (SEEN_FIN_RESP, 4, "F")                                                                        \
+  _ (SEEN_ACK_TO_FIN_INIT, 5, "r")                                                                 \
+  _ (SEEN_ACK_TO_FIN_RESP, 6, "R")                                                                 \
+  _ (ESTABLISHED, 7, "U")                                                                          \
+  _ (REMOVING, 8, "D")                                                                             \
+  _ (BLOCKED, 9, "X")                                                                              \
+  _ (TIME_WAIT, 10, "T")
 
 typedef enum
 {
