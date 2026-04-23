@@ -20,11 +20,14 @@ typedef struct
 typedef struct
 {
   u8 enabled : 1;
+  u8 l3_offset : 1;
+  u8 with_main_thread : 1;
   soft_rss_type_t ipv4_type;
   soft_rss_type_t ipv6_type;
   clib_toeplitz_hash_key_t *key;
   u8 n_match4;
   u8 n_match6;
+  u8 n_threads;
   u16 match_offset;
   u8 reta_mask;
   union
@@ -55,6 +58,7 @@ typedef struct
 {
   soft_rss_rt_data_t **rt_by_sw_if_index;
   u32 frame_queue_index;
+  u16 msg_id_base;
 } soft_rss_main_t;
 
 extern soft_rss_main_t soft_rss_main;

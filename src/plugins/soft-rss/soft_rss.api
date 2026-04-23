@@ -1,0 +1,101 @@
+/* Hey Emacs use -*- mode: C -*- */
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2026 Cisco and/or its affiliates.
+ */
+
+option version = "1.0.0";
+import "vnet/interface_types.api";
+
+/** \brief Must match enum soft_rss_type_t in export.h */
+enum soft_rss_type : u8 {
+  SOFT_RSS_TYPE_API_NOT_SET = 0,
+  SOFT_RSS_TYPE_API_DISABLED = 1,
+  SOFT_RSS_TYPE_API_4_TUPLE = 2,
+  SOFT_RSS_TYPE_API_2_TUPLE = 3,
+  SOFT_RSS_TYPE_API_SRC_IP = 4,
+  SOFT_RSS_TYPE_API_DST_IP = 5,
+};
+
+enumflag soft_rss_config_flags : u8 {
+  SOFT_RSS_CFG_F_NONE = 0x0,
+  SOFT_RSS_CFG_F_WITH_MAIN_THREAD = 0x1,
+  /** offset is L3/IP header position, not L2/EtherType */
+  SOFT_RSS_CFG_F_L3_OFFSET = 0x2,
+};
+
+/** \brief Configure soft-rss on an interface
+    @param sw_if_index - main HW interface
+    @param default_type - hash type used when ipv4/ipv6 are NOT_SET
+    @param offset - EtherType position (L2) or IP header position (L3);
+                    see SOFT_RSS_CFG_F_L3_OFFSET
+    @param key_len - Toeplitz key length; 0 for default, otherwise >= 8
+    @param n_threads - 0 means all workers
+*/
+autoreply define soft_rss_config_set {
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+  vl_api_soft_rss_type_t default_type;
+  vl_api_soft_rss_type_t ipv4_type;
+  vl_api_soft_rss_type_t ipv6_type;
+  vl_api_soft_rss_config_flags_t flags;
+  u16 offset;
+  u8 key_len;
+  u8 key[64];
+  u8 n_threads;
+  u8 threads[n_threads];
+};
+
+autoreply define soft_rss_config_clear {
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+};
+
+autoreply define soft_rss_enable_disable {
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+  bool enable;
+};
+
+define soft_rss_config_get {
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+};
+
+define soft_rss_config_get_reply {
+  u32 context;
+  i32 retval;
+  vl_api_interface_index_t sw_if_index;
+  bool enabled;
+  vl_api_soft_rss_type_t ipv4_type;
+  vl_api_soft_rss_type_t ipv6_type;
+  vl_api_soft_rss_config_flags_t flags;
+  u16 match_offset;
+  u8 n_threads;
+  u8 threads[n_threads];
+};
+
+define soft_rss_interface_dump {
+  u32 client_index;
+  u32 context;
+};
+
+define soft_rss_interface_details {
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+  bool enabled;
+  vl_api_soft_rss_type_t ipv4_type;
+  vl_api_soft_rss_type_t ipv6_type;
+  vl_api_soft_rss_config_flags_t flags;
+  u16 match_offset;
+  u8 n_threads;
+  u8 threads[n_threads];
+};
+
+service {
+  rpc soft_rss_interface_dump returns stream soft_rss_interface_details;
+};

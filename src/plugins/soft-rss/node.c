@@ -46,10 +46,24 @@ vlan_advance (u8 **data)
 
 static_always_inline u16
 match_and_hash (soft_rss_rt_match_t *match4, u32 n_match4, soft_rss_rt_match_t *match6,
-		u32 n_match6, clib_toeplitz_hash_key_t *k, u8 *d)
+		u32 n_match6, clib_toeplitz_hash_key_t *k, u8 *d, u8 l3_offset)
 {
-  u16 ethertype = *(u16u *) d;
-  if (PREDICT_TRUE (ethertype == clib_host_to_net_u16 (ETHERNET_TYPE_IP4)))
+  u8 is_ip4, is_ip6;
+
+  if (l3_offset)
+    {
+      u8 version = d[0] >> 4;
+      is_ip4 = (version == 4);
+      is_ip6 = (version == 6);
+    }
+  else
+    {
+      u16 ethertype = *(u16u *) d;
+      is_ip4 = (ethertype == clib_host_to_net_u16 (ETHERNET_TYPE_IP4));
+      is_ip6 = (ethertype == clib_host_to_net_u16 (ETHERNET_TYPE_IP6));
+    }
+
+  if (PREDICT_TRUE (is_ip4))
     {
       for (soft_rss_rt_match_t *m = match4; m < match4 + n_match4; m++)
 	if (u8x16_is_equal (*(u8x16u *) d & m->mask, m->match))
@@ -69,7 +83,7 @@ match_and_hash (soft_rss_rt_match_t *match4, u32 n_match4, soft_rss_rt_match_t *
 	      }
 	  }
     }
-  else if (PREDICT_TRUE (ethertype == clib_host_to_net_u16 (ETHERNET_TYPE_IP6)))
+  else if (PREDICT_TRUE (is_ip6))
     {
       for (soft_rss_rt_match_t *m = match6; m < match6 + n_match6; m++)
 	if (u8x16_is_equal (*(u8x16u *) d & m->mask, m->match))
@@ -106,6 +120,7 @@ soft_rss_one_interface (vlib_main_t *vm, vlib_node_runtime_t *node,
   const u16 reta_mask = rt->reta_mask;
   const u32 n_match4 = rt->n_match4;
   const u32 n_match6 = rt->n_match6;
+  const u8 l3_offset = rt->l3_offset;
   soft_rss_rt_match_t *match4 = rt->match4;
   soft_rss_rt_match_t *match6 = rt->match6;
   clib_toeplitz_hash_key_t *k = rt->key;
@@ -129,31 +144,36 @@ soft_rss_one_interface (vlib_main_t *vm, vlib_node_runtime_t *node,
       clib_prefetch_load (d[4]);
       clib_prefetch_load (d[5]);
 
-      vlan_advance (d + 0);
-      h[0] = match_and_hash (match4, n_match4, match6, n_match6, k, d[0]);
+      if (!l3_offset)
+	vlan_advance (d + 0);
+      h[0] = match_and_hash (match4, n_match4, match6, n_match6, k, d[0], l3_offset);
       clib_cl_demote (d[0]);
 
       clib_prefetch_load (d[6]);
 
-      vlan_advance (d + 1);
-      h[1] = match_and_hash (match4, n_match4, match6, n_match6, k, d[1]);
+      if (!l3_offset)
+	vlan_advance (d + 1);
+      h[1] = match_and_hash (match4, n_match4, match6, n_match6, k, d[1], l3_offset);
       clib_cl_demote (d[1]);
 
       clib_prefetch_load (d[7]);
 
-      vlan_advance (d + 2);
-      h[2] = match_and_hash (match4, n_match4, match6, n_match6, k, d[2]);
+      if (!l3_offset)
+	vlan_advance (d + 2);
+      h[2] = match_and_hash (match4, n_match4, match6, n_match6, k, d[2], l3_offset);
       clib_cl_demote (d[2]);
 
-      vlan_advance (d + 3);
-      h[3] = match_and_hash (match4, n_match4, match6, n_match6, k, d[3]);
+      if (!l3_offset)
+	vlan_advance (d + 3);
+      h[3] = match_and_hash (match4, n_match4, match6, n_match6, k, d[3], l3_offset);
       clib_cl_demote (d[3]);
     }
 
   for (; n_left > 0; n_left--, d++, h++)
     {
-      vlan_advance (d);
-      h[0] = match_and_hash (match4, n_match4, match6, n_match6, k, d[0]);
+      if (!l3_offset)
+	vlan_advance (d);
+      h[0] = match_and_hash (match4, n_match4, match6, n_match6, k, d[0], l3_offset);
       clib_cl_demote (d[0]);
     }
 

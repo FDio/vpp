@@ -32,6 +32,16 @@ typedef union
   u8x16 as_u8x16;
 } __clib_packed soft_rss_match_template_t;
 
+typedef union
+{
+  union
+  {
+    ip4_header_t ip4;
+    ip6_header_t ip6;
+  } __clib_packed;
+  u8x16 as_u8x16;
+} __clib_packed soft_rss_ip_template_t;
+
 static void
 soft_rss_add_ip4_match (soft_rss_rt_data_t *rt, int protocol, u8 key_start,
 			u8 key_len)
@@ -80,6 +90,61 @@ soft_rss_add_ip6_match (soft_rss_rt_data_t *rt, int protocol, u8 key_start,
 
   soft_rss_match_template_t mask = {
     .ethertype = 0xffff,
+    .ip6 = {
+      .ip_version_traffic_class_and_flow_label =
+        clib_host_to_net_u32(0xF0000000),
+      .protocol = protocol >= 0 ? 0xff : 0,
+    },
+  };
+
+  m->match = match.as_u8x16;
+  m->mask = mask.as_u8x16;
+  m->key_start = key_start;
+  m->key_len = key_len;
+}
+
+static void
+soft_rss_add_ip4_match_noeth (soft_rss_rt_data_t *rt, int protocol, u8 key_start, u8 key_len)
+{
+  soft_rss_rt_match_t *m = rt->match4 + rt->n_match4++;
+  ASSERT (rt->n_match4 <= ARRAY_LEN (rt->match4));
+
+  soft_rss_ip_template_t match = {
+    .ip4 = {
+      .ip_version_and_header_length = 0x45,
+      .protocol = protocol >= 0 ? protocol : 0,
+    },
+  };
+
+  soft_rss_ip_template_t mask = {
+    .ip4 = {
+      .ip_version_and_header_length = 0xff,
+      .protocol = protocol >= 0 ? 0xff : 0,
+      .flags_and_fragment_offset = clib_host_to_net_u16(0x3fff),
+    },
+  };
+
+  m->match = match.as_u8x16;
+  m->mask = mask.as_u8x16;
+  m->key_start = key_start;
+  m->key_len = key_len;
+}
+
+static void
+soft_rss_add_ip6_match_noeth (soft_rss_rt_data_t *rt, int protocol, u8 key_start, u8 key_len)
+{
+  soft_rss_rt_match_t *m = rt->match6 + rt->n_match6++;
+  ASSERT (rt->n_match6 <= ARRAY_LEN (rt->match6));
+
+  soft_rss_ip_template_t match = {
+    .ip6 = {
+      .ip_version_traffic_class_and_flow_label =
+        clib_host_to_net_u32(0x60000000),
+      .protocol = protocol >= 0 ? protocol : 0,
+    },
+  };
+
+  soft_rss_ip_template_t mask = {
     .ip6 = {
       .ip_version_traffic_class_and_flow_label =
         clib_host_to_net_u32(0xF0000000),
@@ -151,7 +216,9 @@ soft_rss_config (vlib_main_t __clib_unused *vm,
   *rt = (soft_rss_rt_data_t){
     .ipv4_type = type4,
     .ipv6_type = type6,
-    .match_offset = 12 + config->l2_hdr_offset,
+    .l3_offset = config->l3_offset ? 1 : 0,
+    .with_main_thread = config->with_main_thread ? 1 : 0,
+    .match_offset = (config->offset || config->l3_offset) ? config->offset : 12,
   };
 
   if (config->threads)
@@ -184,6 +251,7 @@ soft_rss_config (vlib_main_t __clib_unused *vm,
 	}
     }
 
+  rt->n_threads = n_threads;
   if (count_set_bits (n_threads) != 1)
     {
       /* n_threads is not power-of-2 */
@@ -194,34 +262,66 @@ soft_rss_config (vlib_main_t __clib_unused *vm,
   else
     rt->reta_mask = n_threads - 1;
 
-  ip4_src_off = STRUCT_OFFSET_OF (soft_rss_match_template_t, ip4.src_address);
-  ip4_dst_off = STRUCT_OFFSET_OF (soft_rss_match_template_t, ip4.dst_address);
-  ip6_src_off = STRUCT_OFFSET_OF (soft_rss_match_template_t, ip6.src_address);
-  ip6_dst_off = STRUCT_OFFSET_OF (soft_rss_match_template_t, ip6.dst_address);
+  if (config->l3_offset)
+    {
+      ip4_src_off = STRUCT_OFFSET_OF (soft_rss_ip_template_t, ip4.src_address);
+      ip4_dst_off = STRUCT_OFFSET_OF (soft_rss_ip_template_t, ip4.dst_address);
+      ip6_src_off = STRUCT_OFFSET_OF (soft_rss_ip_template_t, ip6.src_address);
+      ip6_dst_off = STRUCT_OFFSET_OF (soft_rss_ip_template_t, ip6.dst_address);
+    }
+  else
+    {
+      ip4_src_off = STRUCT_OFFSET_OF (soft_rss_match_template_t, ip4.src_address);
+      ip4_dst_off = STRUCT_OFFSET_OF (soft_rss_match_template_t, ip4.dst_address);
+      ip6_src_off = STRUCT_OFFSET_OF (soft_rss_match_template_t, ip6.src_address);
+      ip6_dst_off = STRUCT_OFFSET_OF (soft_rss_match_template_t, ip6.dst_address);
+    }
+
+#define _add4(proto, off, len)                                                                     \
+  do                                                                                               \
+    {                                                                                              \
+      if (config->l3_offset)                                                                       \
+	soft_rss_add_ip4_match_noeth (rt, proto, off, len);                                        \
+      else                                                                                         \
+	soft_rss_add_ip4_match (rt, proto, off, len);                                              \
+    }                                                                                              \
+  while (0)
+#define _add6(proto, off, len)                                                                     \
+  do                                                                                               \
+    {                                                                                              \
+      if (config->l3_offset)                                                                       \
+	soft_rss_add_ip6_match_noeth (rt, proto, off, len);                                        \
+      else                                                                                         \
+	soft_rss_add_ip6_match (rt, proto, off, len);                                              \
+    }                                                                                              \
+  while (0)
 
   if (type4 == SOFT_RSS_TYPE_SRC_IP)
-    soft_rss_add_ip4_match (rt, -1, ip4_src_off, 4);
+    _add4 (-1, ip4_src_off, 4);
   if (type6 == SOFT_RSS_TYPE_SRC_IP)
-    soft_rss_add_ip6_match (rt, -1, ip6_src_off, 16);
+    _add6 (-1, ip6_src_off, 16);
 
   if (type4 == SOFT_RSS_TYPE_DST_IP)
-    soft_rss_add_ip4_match (rt, -1, ip4_dst_off, 4);
+    _add4 (-1, ip4_dst_off, 4);
   if (type6 == SOFT_RSS_TYPE_DST_IP)
-    soft_rss_add_ip6_match (rt, -1, ip6_dst_off, 16);
+    _add6 (-1, ip6_dst_off, 16);
 
   if (type4 == SOFT_RSS_TYPE_4_TUPLE)
-    soft_rss_add_ip4_match (rt, IP_PROTOCOL_TCP, ip4_src_off, 12);
+    _add4 (IP_PROTOCOL_TCP, ip4_src_off, 12);
   if (type6 == SOFT_RSS_TYPE_4_TUPLE)
-    soft_rss_add_ip6_match (rt, IP_PROTOCOL_TCP, ip6_src_off, 36);
+    _add6 (IP_PROTOCOL_TCP, ip6_src_off, 36);
   if (type4 == SOFT_RSS_TYPE_4_TUPLE)
-    soft_rss_add_ip4_match (rt, IP_PROTOCOL_UDP, ip4_src_off, 12);
+    _add4 (IP_PROTOCOL_UDP, ip4_src_off, 12);
   if (type6 == SOFT_RSS_TYPE_4_TUPLE)
-    soft_rss_add_ip6_match (rt, IP_PROTOCOL_UDP, ip6_src_off, 36);
+    _add6 (IP_PROTOCOL_UDP, ip6_src_off, 36);
 
   if (type4 == SOFT_RSS_TYPE_4_TUPLE || type4 == SOFT_RSS_TYPE_2_TUPLE)
-    soft_rss_add_ip4_match (rt, -1, ip4_src_off, 8);
+    _add4 (-1, ip4_src_off, 8);
   if (type6 == SOFT_RSS_TYPE_4_TUPLE || type6 == SOFT_RSS_TYPE_2_TUPLE)
-    soft_rss_add_ip6_match (rt, -1, ip6_src_off, 32);
+    _add6 (-1, ip6_src_off, 32);
+
+#undef _add4
+#undef _add6
 
   rt->key = clib_toeplitz_hash_key_init (config->key, vec_len (config->key));
 
