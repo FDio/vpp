@@ -24,6 +24,14 @@ class TestCrypto(VppAsfTestCase):
             self.logger.critical(error)
         self.assertEqual("OK", error.strip())
 
+    def test_crypto_leak(self):
+        """Crypto ctx key_data ADD/REMOVE accounting regression"""
+        output = self.vapi.cli("test crypto leak")
+        if output:
+            self.logger.info(output)
+        self.assertNotIn("FAIL", output)
+        self.assertIn("OK", output)
+
     def test_crypto_perf(self):
         """Crypto+HMAC Performance Tests"""
 
@@ -40,6 +48,21 @@ class TestCrypto(VppAsfTestCase):
                 if error:
                     self.logger.critical(error)
                 self.assertNotIn("FAIL", error)
+
+
+class TestCryptoWorker(TestCrypto):
+    """Crypto Test Case (worker thread)"""
+    vpp_worker_count = 1
+
+    # Opt-in allowlist: only tests named here run under the worker variant.
+    # New tests added to TestCrypto are skipped here by default; add them
+    # explicitly if they should also run with workers.
+    worker_tests = {"test_crypto_leak"}
+
+    def setUp(self):
+        if self._testMethodName not in self.worker_tests:
+            self.skipTest("not in worker_tests allowlist")
+        super().setUp()
 
 
 if __name__ == "__main__":
