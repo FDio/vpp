@@ -24,6 +24,14 @@ class TestCrypto(VppAsfTestCase):
             self.logger.critical(error)
         self.assertEqual("OK", error.strip())
 
+    def test_crypto_leak(self):
+        """Crypto ctx key_data ADD/REMOVE accounting regression"""
+        output = self.vapi.cli("test crypto leak")
+        if output:
+            self.logger.info(output)
+        self.assertNotIn("FAIL", output)
+        self.assertIn("OK", output)
+
     def test_crypto_perf(self):
         """Crypto+HMAC Performance Tests"""
 
