@@ -146,6 +146,7 @@ http3_stream_terminate (http_ctx_t *stream, http_ctx_t *req, http3_error_t err)
   http3_set_application_error_code (stream, err);
   if (!(req->req_flags & HTTP_REQ_F_APP_CLOSED) || !(stream->flags & HTTP_CONN_F_NO_APP_SESSION))
     session_transport_reset_notify (&req->connection);
+  clib_warning ("%U", format_http3_error, err);
   http_reset_transport_stream (stream);
 }
 
@@ -324,7 +325,7 @@ http3_stream_app_close_tunnel (http_ctx_t *req, http_ctx_t *stream, u8 is_shutdo
 	{
 	  if (req->req_flags & HTTP_REQ_F_IS_PARENT)
 	    {
-	      HTTP_DBG (1, "app closed parent, going to reset connection");
+	      clib_warning ("app closed parent, going to reset connection");
 	      hc = http_ctx_get_w_thread (stream->hc_http_conn_index, stream->c_thread_index);
 	      session_reset (session_get_from_handle (hc->hc_tc_session_handle));
 	      return;
@@ -863,7 +864,7 @@ http3_req_state_wait_transport_method (http_ctx_t *stream, http_ctx_t *req,
       http3_stream_terminate (stream, req, HTTP3_ERROR_MESSAGE_ERROR);
       return HTTP_SM_STOP;
     }
-  if (control_data.scheme == HTTP_URL_SCHEME_UNKNOWN)
+  if (control_data.scheme == HTTP_URL_SCHEME_UNKNOWN && control_data.method != HTTP_REQ_CONNECT)
     {
       HTTP_DBG (1, "unsupported scheme");
       http3_stream_terminate (stream, req, HTTP3_ERROR_INTERNAL_ERROR);
