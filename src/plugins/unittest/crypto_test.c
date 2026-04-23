@@ -2801,12 +2801,16 @@ done:
 }
 
 static clib_error_t *
+test_crypto_leak_fn (vlib_main_t *vm);
+
+static clib_error_t *
 test_crypto_command_dispatch (vlib_main_t *vm, unformat_input_t *input, u8 force_async)
 {
   crypto_test_main_t *tm = &crypto_test_main;
   unittest_crypto_test_registration_t *tr;
   vnet_crypto_engine_id_t engine;
   int is_perf = 0;
+  int is_leak = 0;
 
   tr = tm->test_registrations;
   vec_free (tm->engine);
@@ -2823,6 +2827,8 @@ test_crypto_command_dispatch (vlib_main_t *vm, unformat_input_t *input, u8 force
 	tm->quiet = 1;
       else if (unformat (input, "async"))
 	tm->async = 1;
+      else if (unformat (input, "leak"))
+	is_leak = 1;
       else if (unformat (input, "engine %U", unformat_vnet_crypto_engine, &engine))
 	tm->engine = format (0, "%U%c", format_vnet_crypto_engine, engine, 0);
       else if (unformat (input, "algo %U", unformat_vnet_crypto_alg, &tm->alg))
@@ -2844,6 +2850,9 @@ test_crypto_command_dispatch (vlib_main_t *vm, unformat_input_t *input, u8 force
 	return clib_error_return (0, "unknown input '%U'",
 				  format_unformat_error, input);
     }
+
+  if (is_leak)
+    return test_crypto_leak_fn (vm);
 
   if (is_perf)
     {
@@ -2869,6 +2878,259 @@ VLIB_CLI_COMMAND (test_crypto_command, static) = {
   .short_help = "test crypto [quiet|verbose] [async [engine <name>]] [perf <alg>]",
   .function = test_crypto_command_fn,
 };
+
+/*
+ * Regression test for the crypto ctx key_data ADD/REMOVE invariant:
+ * every VNET_CRYPTO_KEY_DATA_ADD dispatched by the crypto core must be
+ * matched by exactly one VNET_CRYPTO_KEY_DATA_REMOVE over a ctx's
+ * lifecycle (create, rekey, destroy). A violation is a leak of
+ * engine-owned key_data resources (e.g. OpenSSL EVP/HMAC ctxs).
+ *
+ * The test wraps the real engine's key_change_fn for a few
+ * representative algs with a counting shim that delegates to the
+ * original. It then drives a create / rekey loop / destroy sequence
+ * through the normal crypto core code path and asserts the
+ * ADD==REMOVE balance. Any path that zeroes key_data without routing
+ * REMOVE (the bug fixed here) or emits a duplicate ADD shows up as a
+ * counter mismatch.
+ */
+
+#define LEAK_TEST_ITERATIONS 32
+#define LEAK_TEST_N_ALGS     4
+
+typedef struct
+{
+  i64 add;
+  i64 remove;
+  i64 thread_add;
+  i64 thread_remove;
+} leak_test_counters_t;
+
+typedef struct
+{
+  vnet_crypto_engine_id_t engine;
+  vnet_crypto_alg_t alg;
+  vnet_crypto_handler_type_t t;
+  vnet_crypto_key_change_fn_t *saved_fn;
+} leak_test_saved_t;
+
+static struct
+{
+  leak_test_counters_t counters[VNET_CRYPTO_HANDLER_N_TYPES];
+  leak_test_saved_t *saved; /* vec */
+} leak_test_main;
+
+static void
+leak_test_count (vnet_crypto_key_change_args_t *args)
+{
+  leak_test_counters_t *c = &leak_test_main.counters[args->handler_type];
+
+  switch (args->action)
+    {
+    case VNET_CRYPTO_KEY_DATA_ADD:
+      c->add++;
+      break;
+    case VNET_CRYPTO_KEY_DATA_REMOVE:
+      c->remove++;
+      break;
+    case VNET_CRYPTO_THREAD_KEY_DATA_ADD:
+      c->thread_add++;
+      break;
+    case VNET_CRYPTO_THREAD_KEY_DATA_REMOVE:
+      c->thread_remove++;
+      break;
+    default:
+      break;
+    }
+}
+
+static void
+leak_test_wrapper (vnet_crypto_ctx_t *ctx, vnet_crypto_key_change_args_t *args)
+{
+  vnet_crypto_key_change_fn_t *orig = 0;
+  leak_test_saved_t *s;
+
+  vec_foreach (s, leak_test_main.saved)
+    if (s->engine == ctx->engine_index[args->handler_type] && s->alg == ctx->alg &&
+	s->t == args->handler_type)
+      {
+	orig = s->saved_fn;
+	break;
+      }
+
+  leak_test_count (args);
+
+  if (orig)
+    orig (ctx, args);
+}
+
+static void
+leak_test_install_wrappers (vnet_crypto_alg_t alg)
+{
+  vnet_crypto_main_t *cm = &crypto_main;
+  vnet_crypto_engine_id_t e_id;
+  vnet_crypto_handler_type_t t;
+
+  for (e_id = 0; e_id < vec_len (cm->engines); e_id++)
+    {
+      vnet_crypto_engine_t *e = vec_elt_at_index (cm->engines, e_id);
+      for (t = 0; t < VNET_CRYPTO_HANDLER_N_TYPES; t++)
+	{
+	  vnet_crypto_key_change_fn_t *fn = e->key_change_fn[t][alg];
+	  leak_test_saved_t s;
+
+	  if (fn == 0 || fn == leak_test_wrapper)
+	    continue;
+	  s.engine = e_id;
+	  s.alg = alg;
+	  s.t = t;
+	  s.saved_fn = fn;
+	  vec_add1 (leak_test_main.saved, s);
+	  e->key_change_fn[t][alg] = leak_test_wrapper;
+	}
+    }
+}
+
+static void
+leak_test_restore_wrappers (void)
+{
+  vnet_crypto_main_t *cm = &crypto_main;
+  leak_test_saved_t *s;
+
+  vec_foreach (s, leak_test_main.saved)
+    {
+      vnet_crypto_engine_t *e = vec_elt_at_index (cm->engines, s->engine);
+      e->key_change_fn[s->t][s->alg] = s->saved_fn;
+    }
+  vec_free (leak_test_main.saved);
+}
+
+static void
+leak_test_set_keys (vnet_crypto_ctx_t *ctx, vnet_crypto_alg_data_t *ad, const u8 *key)
+{
+  if (ad->alg_type == VNET_CRYPTO_ALG_T_COMBINED)
+    {
+      vnet_crypto_ctx_set_cipher_key (ctx, key, ad->cipher_key_len);
+      vnet_crypto_ctx_set_auth_key (ctx, key + ad->cipher_key_len, ad->auth_key_len);
+    }
+  else if (ad->alg_type == VNET_CRYPTO_ALG_T_AUTH)
+    vnet_crypto_ctx_set_auth_key (ctx, key, ad->auth_key_len);
+  else
+    vnet_crypto_ctx_set_cipher_key (ctx, key, ad->cipher_key_len);
+}
+
+static clib_error_t *
+leak_test_run_alg (vlib_main_t *vm, vnet_crypto_alg_t alg)
+{
+  vnet_crypto_alg_data_t *ad = crypto_main.algs + alg;
+  vnet_crypto_ctx_t *ctx;
+  clib_error_t *err = 0;
+  u8 *key;
+  u16 total_key_len;
+  u32 i, j;
+  vnet_crypto_handler_type_t t;
+
+  total_key_len = ad->cipher_key_len + ad->auth_key_len;
+  if (total_key_len == 0)
+    return 0;
+  key = clib_mem_alloc (total_key_len);
+
+  clib_memset (leak_test_main.counters, 0, sizeof (leak_test_main.counters));
+  leak_test_install_wrappers (alg);
+
+  ctx = vnet_crypto_ctx_create (alg);
+
+  for (i = 0; i < total_key_len; i++)
+    key[i] = (u8) i;
+  leak_test_set_keys (ctx, ad, key);
+
+  for (i = 0; i < LEAK_TEST_ITERATIONS; i++)
+    {
+      for (j = 0; j < total_key_len; j++)
+	key[j] = (u8) (j ^ (i + 1));
+      leak_test_set_keys (ctx, ad, key);
+    }
+
+  /* Mid-lifecycle sanity: every unmatched ADD means a leaked key_data.
+     The buggy path grows (add - remove) linearly across rekeys; the
+     fixed path keeps it bounded by the number of live ctx slots
+     (1 here) per handler type. */
+  for (t = 0; t < VNET_CRYPTO_HANDLER_N_TYPES; t++)
+    {
+      leak_test_counters_t *c = &leak_test_main.counters[t];
+      if (t == VNET_CRYPTO_HANDLER_TYPE_ASYNC)
+	continue;
+      if (c->add - c->remove > 2)
+	{
+	  err = clib_error_return (
+	    0, "FAIL %s rekey (t=%u): add=%lld remove=%lld diff=%lld (leak)", ad->name, (u32) t,
+	    (long long) c->add, (long long) c->remove, (long long) (c->add - c->remove));
+	  goto destroy;
+	}
+    }
+
+destroy:
+  /* Drive the REMOVEs synchronously: ctx_destroy defers its cleanup
+     to a barrier-release callback which doesn't run in the single-
+     threaded unit-test context. Detaching each engine explicitly
+     emits the REMOVE via the same dispatch path as destroy_cb. */
+  for (t = 0; t < VNET_CRYPTO_HANDLER_N_TYPES; t++)
+    vnet_crypto_ctx_set_engine (ctx, t, VNET_CRYPTO_ENGINE_ID_NONE);
+  vnet_crypto_ctx_destroy (vm, ctx);
+
+  if (err == 0)
+    {
+      for (t = 0; t < VNET_CRYPTO_HANDLER_N_TYPES; t++)
+	{
+	  leak_test_counters_t *c = &leak_test_main.counters[t];
+	  if (t == VNET_CRYPTO_HANDLER_TYPE_ASYNC)
+	    continue;
+	  if (c->add != c->remove)
+	    {
+	      err = clib_error_return (
+		0, "FAIL %s destroy (t=%u): add=%lld remove=%lld", ad->name, (u32) t,
+		(long long) c->add, (long long) c->remove);
+	      break;
+	    }
+	  if (c->thread_add != c->thread_remove)
+	    {
+	      err = clib_error_return (
+		0, "FAIL %s destroy (t=%u): thread_add=%lld thread_remove=%lld", ad->name, (u32) t,
+		(long long) c->thread_add, (long long) c->thread_remove);
+	      break;
+	    }
+	}
+    }
+
+  leak_test_restore_wrappers ();
+  clib_mem_free (key);
+  return err;
+}
+
+static clib_error_t *
+test_crypto_leak_fn (vlib_main_t *vm)
+{
+  static const vnet_crypto_alg_t algs[LEAK_TEST_N_ALGS] = {
+    VNET_CRYPTO_ALG_AES_128_CBC,	  /* cipher   */
+    VNET_CRYPTO_ALG_AES_128_GCM,	  /* aead     */
+    VNET_CRYPTO_ALG_AES_128_CBC_SHA1_160, /* combined */
+    VNET_CRYPTO_ALG_SHA1_160,		  /* auth     */
+  };
+  clib_error_t *err;
+  u32 i;
+
+  for (i = 0; i < LEAK_TEST_N_ALGS; i++)
+    {
+      err = leak_test_run_alg (vm, algs[i]);
+      if (err)
+	return err;
+      vlib_cli_output (vm, "alg %s: OK", crypto_main.algs[algs[i]].name);
+    }
+
+  vlib_cli_output (vm, "OK");
+  return 0;
+}
+
 
 static clib_error_t *
 crypto_test_init (vlib_main_t * vm)
