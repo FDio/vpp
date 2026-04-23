@@ -174,19 +174,22 @@ iavf_init (vlib_main_t *vm, vnet_dev_t *dev)
       log_debug (dev, "requesting %u queue pairs", requested_qp);
 
       virtchnl_vf_res_request_t qreq = { .num_queue_pairs = requested_qp };
-      virtchnl_vf_res_request_t qresp;
 
-      rv = iavf_vc_op_request_queues (vm, dev, &qreq, &qresp);
+      /* REQUEST_QUEUES is sent with no_reply=1 because on i40e the PF
+       * resets the VF before sending any virtchnl reply, so the response
+       * would never arrive and waiting for it causes a timeout.
+       * Reset detection is done via IAVF_ATQLEN below instead.
+       * We still check rv to catch admin-queue enqueue failures. */
+      if ((rv = iavf_vc_op_request_queues (vm, dev, &qreq)))
+	{
+	  log_err (dev, "failed to enqueue REQUEST_QUEUES");
+	  return rv;
+	}
 
       /* Detect VF reset by reading IAVF_ATQLEN: the hardware clears the
        * enable bit (bit 31) when the VF is reset. Unlike VFGEN_RSTAT, this
        * register stays cleared until iavf_aq_init() rewrites it, so there
-       * is no race window even if the reset completes before we check.
-       *
-       * On i40e, the PF typically resets the VF after REQUEST_QUEUES
-       * regardless of whether the request was granted. The virtchnl response
-       * may never arrive (stolen by aq_poll or lost during reset), so rv
-       * cannot be used to determine whether a reset occurred. */
+       * is no race window even if the reset completes before we check. */
       if (!(iavf_reg_read (ad, IAVF_ATQLEN) & (1u << 31)))
 	{
 	  log_debug (dev, "VF reset detected after REQUEST_QUEUES "
@@ -223,14 +226,75 @@ iavf_init (vlib_main_t *vm, vnet_dev_t *dev)
 		      "performance may be limited",
 		      res.vsi_res[0].num_queue_pairs, requested_qp);
 	}
-      else if (rv != VNET_DEV_OK)
+      else
 	{
-	  /* PF rejected REQUEST_QUEUES without resetting the VF (ATQLEN
-	   * still enabled, AQ is valid) — continue with original res */
-	  log_warn (dev,
-		    "failed to request %u queue pairs (PF rejected without "
-		    "reset) - using PF default of %u queue pairs",
-		    requested_qp, res.vsi_res[0].num_queue_pairs);
+	  /* No immediate VF reset: PF sent a virtchnl reply.  Drain the ARQ
+	   * to avoid desynchronising the next virtchnl exchange.  Skip any
+	   * preceding event messages, just as iavf_virtchnl_req() does.
+	   * Note: on i40e the PF may still reset the VF shortly after sending
+	   * the reply (signalled by a RESET_IMPENDING event), so we re-check
+	   * ATQLEN after the drain and fall through to the reset-recovery path
+	   * if needed. */
+	  iavf_aq_desc_t *d;
+	  u8 *b;
+	  int reset_impending = 0;
+	drain:
+	  if (iavf_aq_arq_next_acq (vm, dev, &d, &b, 1.0))
+	    {
+	      if (d->v_opcode == VIRTCHNL_OP_EVENT)
+		{
+		  virtchnl_pf_event_t *e = (virtchnl_pf_event_t *) b;
+		  if (e->event == VIRTCHNL_EVENT_RESET_IMPENDING)
+		    reset_impending = 1;
+		  vec_add1 (ad->events, *e);
+		  iavf_aq_arq_next_rel (vm, dev);
+		  goto drain;
+		}
+	      if (d->v_opcode == VIRTCHNL_OP_REQUEST_QUEUES && d->v_retval != 0)
+		log_warn (dev,
+			  "PF rejected REQUEST_QUEUES (v_retval %d) - "
+			  "using PF default of %u queue pairs",
+			  d->v_retval, res.vsi_res[0].num_queue_pairs);
+	      iavf_aq_arq_next_rel (vm, dev);
+	    }
+
+	  /* If RESET_IMPENDING was received, or ATQLEN enable bit was cleared
+	   * during the drain, treat this as a delayed VF reset and recover. */
+	  if (reset_impending || !(iavf_reg_read (ad, IAVF_ATQLEN) & (1u << 31)))
+	    {
+	      log_debug (dev,
+			 "VF reset detected after REQUEST_QUEUES drain "
+			 "(RESET_IMPENDING=%d), reinitializing",
+			 reset_impending);
+
+	      u32 n_tries = 50;
+	      do
+		{
+		  if (n_tries-- == 0)
+		    {
+		      log_err (dev, "timeout waiting for VF reset after "
+				    "REQUEST_QUEUES");
+		      return VNET_DEV_ERR_TIMEOUT;
+		    }
+		  vlib_process_suspend (vm, 0.02);
+		}
+	      while ((iavf_reg_read (ad, IAVF_VFGEN_RSTAT) & 3) != 2);
+
+	      iavf_aq_poll_off (vm, dev);
+	      iavf_aq_init (vm, dev);
+	      iavf_aq_poll_on (vm, dev);
+
+	      if ((rv = iavf_vc_op_get_vf_resources (vm, dev, &driver_cap_flags, &res)))
+		return rv;
+
+	      log_notice (dev, "requested %u queue pairs, PF granted %u", requested_qp,
+			  res.vsi_res[0].num_queue_pairs);
+	      if (res.vsi_res[0].num_queue_pairs < requested_qp)
+		log_warn (dev,
+			  "PF granted only %u/%u queue pairs - "
+			  "performance may be limited",
+			  res.vsi_res[0].num_queue_pairs, requested_qp);
+	    }
 	}
     }
   else
@@ -268,7 +332,6 @@ iavf_init (vlib_main_t *vm, vnet_dev_t *dev)
         .max_supported_rx_frame_size = max_frame_sz,
         .caps = {
           .change_max_rx_frame_size = 1,
-          .interrupt_mode = 1,
           .rss = 1,
           .mac_filter = 1,
         },
@@ -339,8 +402,9 @@ iavf_init (vlib_main_t *vm, vnet_dev_t *dev)
       log_notice (
 	dev,
 	"number of threads (%u) bigger than number of interrupt lines "
-	"(%u), interrupt mode disabled",
+	"(%u), RX interrupt-mode capability disabled",
 	vlib_get_n_threads (), res.max_vectors);
+      port_add_args.port.attr.caps.interrupt_mode = 0;
       iavf_port.n_rx_vectors = 1;
     }
 

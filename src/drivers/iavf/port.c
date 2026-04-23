@@ -189,6 +189,7 @@ iavf_port_rx_irq_config (vlib_main_t *vm, vnet_dev_port_t *port, int enable)
   u8 n_intr_mode_queues_per_vector[n_rx_vectors];
   u8 n_queues_per_vector[n_rx_vectors];
   virtchnl_irq_map_info_t *im = (virtchnl_irq_map_info_t *) buffer;
+  const u32 rxq_map_bits = BITS (im->vecmap[0].rxq_map);
   vnet_dev_rv_t rv;
 
   log_debug (dev, "intr mode per queue bitmap 0x%x",
@@ -213,6 +214,25 @@ iavf_port_rx_irq_config (vlib_main_t *vm, vnet_dev_port_t *port, int enable)
 	  if (rxq->enabled)
 	    {
 	      u32 i = rxq->rx_thread_index;
+
+	      if (rxq->queue_id >= rxq_map_bits)
+		{
+		  log_err (dev,
+			   "rx queue id %u exceeds virtchnl irq map limit "
+			   "(%u)",
+			   rxq->queue_id, rxq_map_bits);
+		  return VNET_DEV_ERR_NOT_SUPPORTED;
+		}
+
+	      if (i >= n_rx_vectors)
+		{
+		  log_err (dev,
+			   "rx queue %u thread index %u out of range "
+			   "(%u vectors)",
+			   rxq->queue_id, i, n_rx_vectors);
+		  return VNET_DEV_ERR_BUG;
+		}
+
 	      im->vecmap[i].rxq_map |= 1 << rxq->queue_id;
 	      n_queues_per_vector[i]++;
 	      n_intr_mode_queues_per_vector[i] +=
@@ -228,7 +248,17 @@ iavf_port_rx_irq_config (vlib_main_t *vm, vnet_dev_port_t *port, int enable)
       if (enable)
 	foreach_vnet_dev_port_rx_queue (rxq, port)
 	  if (rxq->enabled)
-	    im->vecmap[0].rxq_map |= 1 << rxq->queue_id;
+	    {
+	      if (rxq->queue_id >= rxq_map_bits)
+		{
+		  log_err (dev,
+			   "rx queue id %u exceeds virtchnl irq map limit "
+			   "(%u)",
+			   rxq->queue_id, rxq_map_bits);
+		  return VNET_DEV_ERR_NOT_SUPPORTED;
+		}
+	      im->vecmap[0].rxq_map |= 1 << rxq->queue_id;
+	    }
     }
 
   if ((rv = iavf_vc_op_config_irq_map (vm, dev, im)))
@@ -294,7 +324,7 @@ iavf_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
   vnet_dev_pci_msix_add_handler (vm, dev, &avf_msix_n_handler, 1,
 				 ap->n_rx_vectors);
   vnet_dev_pci_msix_enable (vm, dev, 1, ap->n_rx_vectors);
-  for (u32 i = 1; i < ap->n_rx_vectors; i++)
+  for (u32 i = 0; i < ap->n_rx_vectors; i++)
     vnet_dev_pci_msix_set_polling_thread (vm, dev, i + 1, i);
 
   if (port->dev->poll_stats)
@@ -410,6 +440,8 @@ iavf_port_cfg_change_validate (vlib_main_t *vm, vnet_dev_port_t *port,
     case VNET_DEV_PORT_CFG_CHANGE_PRIMARY_HW_ADDR:
     case VNET_DEV_PORT_CFG_ADD_SECONDARY_HW_ADDR:
     case VNET_DEV_PORT_CFG_REMOVE_SECONDARY_HW_ADDR:
+    case VNET_DEV_PORT_CFG_RXQ_INTR_MODE_ENABLE:
+    case VNET_DEV_PORT_CFG_RXQ_INTR_MODE_DISABLE:
       break;
 
     default:
