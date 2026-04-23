@@ -645,6 +645,59 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   tcp_rcv_sacks (tc, tc->snd_una);
 
   /*
+   * Exercise nested received SACK blocks:
+   * snd_una=100
+   *   |----- lost hole -----|
+   *                         35312                 102696
+   *                         |<------ outer sack ------>|
+   *                           35668            36680
+   *                           |---- inner sack ----|
+   *
+   * The scoreboard starts with:
+   * - one lost hole [100, 35312]
+   * - stale high_sacked = 36680
+   * - pre-existing sacked_bytes = 67032
+   */
+  {
+    scoreboard_clear (sb);
+    vec_reset_length (tc->rcv_opts.sacks);
+
+    tc->flags = TCP_CONN_FAST_RECOVERY | TCP_CONN_FINPNDG;
+    tc->snd_una = 100;
+    tc->snd_nxt = 102696;
+    sb->reorder = 3;
+    sb->high_sacked = 36680;
+    block.start = 35312;
+    block.end = 102696;
+    vec_add1 (tc->rcv_opts.sacks, block);
+    block.start = 35668;
+    block.end = 36680;
+    vec_add1 (tc->rcv_opts.sacks, block);
+    tc->rcv_opts.n_sack_blocks = vec_len (tc->rcv_opts.sacks);
+    pool_get (sb->holes, hole);
+    clib_memset (hole, 0, sizeof (*hole));
+    hole->start = tc->snd_una;
+    hole->end = 35312;
+    hole->next = TCP_INVALID_SACK_HOLE_INDEX;
+    hole->prev = TCP_INVALID_SACK_HOLE_INDEX;
+    hole->is_lost = 1;
+    sb->head = sb->tail = scoreboard_hole_index (sb, hole);
+    sb->lost_bytes = scoreboard_hole_bytes (hole);
+    sb->cur_rxt_hole = sb->head;
+    sb->high_rxt = 35312;
+    sb->rescue_rxt = tc->snd_nxt;
+    sb->sacked_bytes = 67032;
+
+    tcp_rcv_sacks (tc, tc->snd_una);
+
+    TCP_TEST ((sb->high_sacked == 102696), "high sacked %u", sb->high_sacked);
+    TCP_TEST ((sb->sacked_bytes == 67384), "sacked bytes %u", sb->sacked_bytes);
+    TCP_TEST ((sb->last_sacked_bytes == 352), "last sacked bytes %u", sb->last_sacked_bytes);
+    TCP_TEST ((sb->lost_bytes == 35212), "lost bytes %u", sb->lost_bytes);
+    TCP_TEST ((!sb->is_reneging), "is not reneging");
+  }
+
+  /*
    * Clear
    */
   scoreboard_clear (sb);
