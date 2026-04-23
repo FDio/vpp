@@ -174,19 +174,22 @@ iavf_init (vlib_main_t *vm, vnet_dev_t *dev)
       log_debug (dev, "requesting %u queue pairs", requested_qp);
 
       virtchnl_vf_res_request_t qreq = { .num_queue_pairs = requested_qp };
-      virtchnl_vf_res_request_t qresp;
 
-      rv = iavf_vc_op_request_queues (vm, dev, &qreq, &qresp);
+      /* REQUEST_QUEUES is sent with no_reply=1 because on i40e the PF
+       * resets the VF before sending any virtchnl reply, so the response
+       * would never arrive and waiting for it causes a timeout.
+       * Reset detection is done via IAVF_ATQLEN below instead.
+       * We still check rv to catch admin-queue enqueue failures. */
+      if ((rv = iavf_vc_op_request_queues (vm, dev, &qreq)))
+	{
+	  log_err (dev, "failed to enqueue REQUEST_QUEUES");
+	  return rv;
+	}
 
       /* Detect VF reset by reading IAVF_ATQLEN: the hardware clears the
        * enable bit (bit 31) when the VF is reset. Unlike VFGEN_RSTAT, this
        * register stays cleared until iavf_aq_init() rewrites it, so there
-       * is no race window even if the reset completes before we check.
-       *
-       * On i40e, the PF typically resets the VF after REQUEST_QUEUES
-       * regardless of whether the request was granted. The virtchnl response
-       * may never arrive (stolen by aq_poll or lost during reset), so rv
-       * cannot be used to determine whether a reset occurred. */
+       * is no race window even if the reset completes before we check. */
       if (!(iavf_reg_read (ad, IAVF_ATQLEN) & (1u << 31)))
 	{
 	  log_debug (dev, "VF reset detected after REQUEST_QUEUES "
@@ -223,14 +226,29 @@ iavf_init (vlib_main_t *vm, vnet_dev_t *dev)
 		      "performance may be limited",
 		      res.vsi_res[0].num_queue_pairs, requested_qp);
 	}
-      else if (rv != VNET_DEV_OK)
+      else
 	{
-	  /* PF rejected REQUEST_QUEUES without resetting the VF (ATQLEN
-	   * still enabled, AQ is valid) — continue with original res */
-	  log_warn (dev,
-		    "failed to request %u queue pairs (PF rejected without "
-		    "reset) - using PF default of %u queue pairs",
-		    requested_qp, res.vsi_res[0].num_queue_pairs);
+	  /* No VF reset: PF sent a virtchnl reply.  Drain the ARQ to avoid
+	   * desynchronising the next virtchnl exchange.  Skip any preceding
+	   * event messages, just as iavf_virtchnl_req() does. */
+	  iavf_aq_desc_t *d;
+	  u8 *b;
+	drain:
+	  if (iavf_aq_arq_next_acq (vm, dev, &d, &b, 0.1))
+	    {
+	      if (d->v_opcode == VIRTCHNL_OP_EVENT)
+		{
+		  vec_add1 (ad->events, *(virtchnl_pf_event_t *) b);
+		  iavf_aq_arq_next_rel (vm, dev);
+		  goto drain;
+		}
+	      if (d->v_opcode == VIRTCHNL_OP_REQUEST_QUEUES && d->v_retval != 0)
+		log_warn (dev,
+			  "PF rejected REQUEST_QUEUES (v_retval %d) - "
+			  "using PF default of %u queue pairs",
+			  d->v_retval, res.vsi_res[0].num_queue_pairs);
+	      iavf_aq_arq_next_rel (vm, dev);
+	    }
 	}
     }
   else
