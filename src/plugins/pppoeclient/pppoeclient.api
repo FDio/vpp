@@ -9,21 +9,6 @@ import "vnet/interface_types.api";
 import "vnet/ethernet/ethernet_types.api";
 import "vnet/ip/ip_types.api";
 
-enum pppoeclient_source_mac_mode : u8
-{
-  PPPOECLIENT_SOURCE_MAC_INTERFACE = 0,
-  PPPOECLIENT_SOURCE_MAC_LINUX = 1,
-  PPPOECLIENT_SOURCE_MAC_STATIC = 2,
-};
-
-enum pppoeclient_source_mac_fallback_reason : u8
-{
-  PPPOECLIENT_API_SOURCE_MAC_FALLBACK_NONE = 0,
-  PPPOECLIENT_API_SOURCE_MAC_FALLBACK_NO_HW = 1,
-  PPPOECLIENT_API_SOURCE_MAC_FALLBACK_LINUX_IFNAME = 2,
-  PPPOECLIENT_API_SOURCE_MAC_FALLBACK_LINUX_HWADDR = 3,
-};
-
 enum pppoeclient_control_match_reason : u8
 {
   PPPOECLIENT_API_CONTROL_MATCH_NONE = 0,
@@ -76,9 +61,6 @@ define pppoeclient_add_del
   bool is_add;
   vl_api_interface_index_t sw_if_index;
   u32 host_uniq;
-  bool set_source_mac;
-  vl_api_pppoeclient_source_mac_mode_t source_mac_mode;
-  vl_api_mac_address_t source_mac;
   string configured_ac_name[64];
   string service_name[64];
   string custom_ifname[64];
@@ -111,9 +93,6 @@ define pppoeclient_add_del_reply
     @param set_add_default_route6 - same contract for add_default_route6
     @param mtu - PPPoE MTU override; 0 means no change
     @param mru - PPP MRU override; 0 means no change
-    @param set_source_mac - when set, apply source_mac_mode/source_mac
-    @param source_mac_mode - interface/linux/static source MAC policy
-    @param source_mac - static source MAC when source_mac_mode = STATIC
     @param configured_ac_name - AC-Name filter; empty means no change
     @param service_name - requested Service-Name; empty means no change
     @param clear_ac_name - when set, clear any configured AC-Name filter
@@ -131,9 +110,6 @@ autoreply define pppoeclient_set_options
   bool use_peer_dns;
   bool add_default_route4;
   bool add_default_route6;
-  bool set_source_mac;
-  vl_api_pppoeclient_source_mac_mode_t source_mac_mode;
-  vl_api_mac_address_t source_mac;
   u32 mtu;
   u32 mru;
   u32 timeout;
@@ -222,12 +198,6 @@ define pppoeclient_details
   bool use_peer_dns;
   bool add_default_route4;
   bool add_default_route6;
-  vl_api_pppoeclient_source_mac_mode_t source_mac_mode;
-  vl_api_mac_address_t configured_source_mac;
-  vl_api_mac_address_t effective_source_mac;
-  vl_api_pppoeclient_source_mac_mode_t effective_source_mac_mode;
-  u32 source_mac_fallbacks;
-  vl_api_pppoeclient_source_mac_fallback_reason_t last_source_mac_fallback_reason;
   string auth_user[64];
   u32 mtu;
   u32 mru;
