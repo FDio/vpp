@@ -690,6 +690,15 @@ func (vpp *VppInstance) CreateTap(tap *NetInterface, IPv6 bool, tapId uint32) er
 		}
 	}
 
+	// we can configure netns via vpp api but in that case namespace must be visible in vpp container too,
+	// which is problematic to achieve
+	if tap.Host.NetworkNamespace != "" {
+		err = linkSetNetns(tap.Host.name, tap.Host.NetworkNamespace)
+		AssertNil(err, fmt.Sprint(err))
+		err = addAddress(tap.Host.name, tap.Host.Ip4Address, tap.Host.NetworkNamespace)
+		AssertNil(err, fmt.Sprint(err))
+	}
+
 	return nil
 }
 

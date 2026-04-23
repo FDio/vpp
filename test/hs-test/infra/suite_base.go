@@ -636,12 +636,17 @@ func (s *HstSuite) loadNetworkTopology(topologyName string) bool {
 // or veth interfaces
 func (s *HstSuite) ConfigureNetworkTopology(topologyName string) {
 	configuredByHost := s.loadNetworkTopology(topologyName)
-	if configuredByHost {
-		for _, nc := range s.NetConfigs {
-			Log(nc.Name())
-			if err := nc.configure(); err != nil {
-				Fail("Network config error: " + fmt.Sprint(err))
+	for _, nc := range s.NetConfigs {
+		// we want netns or bridge to be configured always
+		switch nc.(type) {
+		case *NetInterface:
+			if !configuredByHost {
+				continue
 			}
+		}
+		Log(nc.Name())
+		if err := nc.configure(); err != nil {
+			Fail("Network config error: " + fmt.Sprint(err))
 		}
 	}
 }
