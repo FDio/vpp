@@ -352,8 +352,16 @@ format_sfdp_tenant_extra (u8 *s, va_list *args)
 	      indent + strlen (z) + 2, ctr2.bytes);
     foreach_sfdp_tenant_data_counter
 #undef _
-      s = format (s, "%U%s\n", format_white_space, indent,
-		  "Configured Timeout:");
+
+      s = format (s, "%U%s\n", format_white_space, indent, "Expiry Reason Counters:");
+#define _(x, y)                                                                                    \
+  ctr = vlib_get_simple_counter (&sfdp->tenant_expiry_reason_ctr[SFDP_SESSION_EXPIRY_REASON_##x],  \
+				 tenant_idx);                                                      \
+  s = format (s, "%U%s: %llu\n", format_white_space, indent + 2, y, ctr);
+  foreach_sfdp_session_expiry_reason
+#undef _
+
+    s = format (s, "%U%s\n", format_white_space, indent, "Configured Timeout:");
 
   sfdp_foreach_timeout (sfdp, timeout)
   {
