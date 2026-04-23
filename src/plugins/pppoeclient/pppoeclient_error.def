@@ -1,0 +1,24 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * Copyright (c) 2017 RaydoNetworks.
+ */
+pppoeclient_error (DISCOVERY_PKT_RCVED, "pkts received in pppoe discovery stage")
+pppoeclient_error (NO_SUCH_CLIENT, "no such client")
+pppoeclient_error (BAD_CODE_IN_DISCOVERY, "invalid pppoe code for discovery stage")
+pppoeclient_error (BAD_VER_TYPE, "bad version and type in pppoe header")
+pppoeclient_error (SESSION_PKT_RCVED, "pkts received in pppoe session stage")
+pppoeclient_error (BAD_CODE_IN_SESSION, "invalid pppoe code for session stage")
+pppoeclient_error (NO_SUCH_SESSION, "no such session")
+pppoeclient_error (UNSUPPORTED_PPP_PROTOCOL, "unsupported ppp protocol")
+pppoeclient_error (LINK_DOWN, "link down when transmitting pkt")
+pppoeclient_error (SESSION_OUTPUT_PKTS, "pkts output in pppoe session stage")
+pppoeclient_error (CLIENT_DELETED, "client deleted when output pppoe pkt")
+pppoeclient_error (PADT_RECEIVED, "PADT received from access concentrator")
+pppoeclient_error (SERVICE_NAME_ERROR, "service-name-error tag in PADO/PADS")
+pppoeclient_error (AC_SYSTEM_ERROR, "AC-System-Error tag in PADO/PADS")
+pppoeclient_error (GENERIC_ERROR, "Generic-Error tag in PADO/PADS")
+pppoeclient_error (MALFORMED_TAGS, "malformed PPPoE discovery tags")
+pppoeclient_error (INVALID_SESSION_ID, "PADS session-id is zero or reserved 0xffff")
+pppoeclient_error (SESSION_ID_COLLISION, "PADS session-id already bound to another client")
+pppoeclient_error (PPPOX_PLUGIN_MISSING, "pppox plugin symbol not available to lift session")
+pppoeclient_error (REQUEST_UNSELECTED_AC_PADO, "PADO in REQUEST from an AC that was not selected")
