@@ -213,6 +213,35 @@ iavf_port_rx_irq_config (vlib_main_t *vm, vnet_dev_port_t *port, int enable)
 	  if (rxq->enabled)
 	    {
 	      u32 i = rxq->rx_thread_index;
+
+	      /* RX queue on main thread is not valid in interrupt mode when
+	       * worker threads are present */
+	      if (i == 0 && n_rx_vectors > 1)
+		{
+		  log_warn (dev,
+			    "rx queue %u on main thread skipped in irq config "
+			    "(workers present)",
+			    rxq->queue_id);
+		  continue;
+		}
+
+	      /* vecmap[] is indexed by rx_thread_index; must be in range */
+	      if (i >= n_rx_vectors)
+		{
+		  log_err (dev, "rx queue %u thread index %u out of range (%u vectors)",
+			   rxq->queue_id, i, n_rx_vectors);
+		  return VNET_DEV_ERR_BUG;
+		}
+
+	      /* rxq_map is u16: the virtchnl protocol cannot encode queue
+	       * ids above 15 per vector */
+	      if (rxq->queue_id >= BITS (im->vecmap[0].rxq_map))
+		{
+		  log_err (dev, "rx queue id %u exceeds virtchnl irq map limit (%u)", rxq->queue_id,
+			   (u32) BITS (im->vecmap[0].rxq_map));
+		  return VNET_DEV_ERR_NOT_SUPPORTED;
+		}
+
 	      im->vecmap[i].rxq_map |= 1 << rxq->queue_id;
 	      n_queues_per_vector[i]++;
 	      n_intr_mode_queues_per_vector[i] +=
@@ -228,7 +257,15 @@ iavf_port_rx_irq_config (vlib_main_t *vm, vnet_dev_port_t *port, int enable)
       if (enable)
 	foreach_vnet_dev_port_rx_queue (rxq, port)
 	  if (rxq->enabled)
-	    im->vecmap[0].rxq_map |= 1 << rxq->queue_id;
+	    {
+	      if (rxq->queue_id >= BITS (im->vecmap[0].rxq_map))
+		{
+		  log_err (dev, "rx queue id %u exceeds virtchnl irq map limit (%u)", rxq->queue_id,
+			   (u32) BITS (im->vecmap[0].rxq_map));
+		  return VNET_DEV_ERR_NOT_SUPPORTED;
+		}
+	      im->vecmap[0].rxq_map |= 1 << rxq->queue_id;
+	    }
     }
 
   if ((rv = iavf_vc_op_config_irq_map (vm, dev, im)))
