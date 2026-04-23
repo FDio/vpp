@@ -1361,8 +1361,8 @@ parse_pppoe_packet (pppoe_header_t *pppoe, parse_func *func, void *extra)
   cur_tag = payload = (unsigned char *) (pppoe + 1);
   while (cur_tag - payload + sizeof (pppoe_tag_header_t) <= len)
     {
-      tag_type = clib_net_to_host_u16 (*(u16 *) cur_tag);
-      tag_len = clib_net_to_host_u16 (*(u16 *) (cur_tag + 2));
+      tag_type = clib_net_to_host_u16 (clib_mem_unaligned (cur_tag, u16));
+      tag_len = clib_net_to_host_u16 (clib_mem_unaligned (cur_tag + 2, u16));
       if (tag_type == PPPOE_TAG_END_OF_LIST)
 	{
 	  return 0;
