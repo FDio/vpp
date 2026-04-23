@@ -1,0 +1,690 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * Copyright (c) 2017 RaydoNetworks.
+ * Copyright (c) 2026 Hi-Jiajun.
+ */
+
+option version = "1.44.0";
+import "vnet/interface_types.api";
+import "vnet/ethernet/ethernet_types.api";
+import "vnet/ip/ip_types.api";
+
+enum pppoeclient_source_mac_mode : u8
+{
+  PPPOECLIENT_SOURCE_MAC_INTERFACE = 0,
+  PPPOECLIENT_SOURCE_MAC_LINUX = 1,
+  PPPOECLIENT_SOURCE_MAC_STATIC = 2,
+};
+
+enum pppoeclient_source_mac_fallback_reason : u8
+{
+  PPPOECLIENT_API_SOURCE_MAC_FALLBACK_NONE = 0,
+  PPPOECLIENT_API_SOURCE_MAC_FALLBACK_NO_HW = 1,
+  PPPOECLIENT_API_SOURCE_MAC_FALLBACK_LINUX_IFNAME = 2,
+  PPPOECLIENT_API_SOURCE_MAC_FALLBACK_LINUX_HWADDR = 3,
+};
+
+enum pppoeclient_control_match_reason : u8
+{
+  PPPOECLIENT_API_CONTROL_MATCH_NONE = 0,
+  PPPOECLIENT_API_CONTROL_MATCH_HOST_UNIQ = 1,
+  PPPOECLIENT_API_CONTROL_MATCH_AC_NAME = 2,
+  PPPOECLIENT_API_CONTROL_MATCH_SERVICE_NAME = 3,
+  PPPOECLIENT_API_CONTROL_MATCH_ANY = 4,
+  PPPOECLIENT_API_CONTROL_MATCH_COOKIE = 5,
+  PPPOECLIENT_API_CONTROL_MATCH_UNIQUE = 6,
+  PPPOECLIENT_API_CONTROL_MATCH_SESSION = 7,
+  PPPOECLIENT_API_CONTROL_MATCH_AC_AND_SERVICE = 8,
+  PPPOECLIENT_API_CONTROL_MATCH_AC_MAC = 9,
+  PPPOECLIENT_API_CONTROL_MATCH_AC_MAC_AND_SERVICE = 10,
+  PPPOECLIENT_API_CONTROL_MATCH_COOKIE_AND_SERVICE = 11,
+};
+
+enum pppoeclient_control_disposition : u8
+{
+  PPPOECLIENT_API_CONTROL_DISPOSITION_NONE = 0,
+  PPPOECLIENT_API_CONTROL_DISPOSITION_ACCEPTED = 1,
+  PPPOECLIENT_API_CONTROL_DISPOSITION_IGNORED = 2,
+  PPPOECLIENT_API_CONTROL_DISPOSITION_ERROR = 3,
+  PPPOECLIENT_API_CONTROL_DISPOSITION_ORPHAN = 4,
+};
+
+enum pppoeclient_control_client_state : u8
+{
+  PPPOECLIENT_API_CONTROL_CLIENT_STATE_UNKNOWN = 0,
+  PPPOECLIENT_API_CONTROL_CLIENT_STATE_DISCOVERY = 1,
+  PPPOECLIENT_API_CONTROL_CLIENT_STATE_REQUEST = 2,
+  PPPOECLIENT_API_CONTROL_CLIENT_STATE_SESSION = 3,
+};
+
+/** \brief Set or delete an PPPOE client
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - add address if non-zero, else delete
+    @param sw_if_index - client bound ethernet if index
+    @param host_uniq - tag identifying a PPPOE client on the the sw_if_index
+    @param configured_ac_name - required AC-Name; empty means accept any AC
+    @param service_name - requested Service-Name; empty means "any"
+    @param custom_ifname - optional operator-supplied name for the PPPoX
+           virtual interface (e.g. "wan0", "ppp0"). Empty string keeps the
+           default "pppoxN" formatting.
+*/
+define pppoeclient_add_del
+{
+  u32 client_index;
+  u32 context;
+  bool is_add;
+  vl_api_interface_index_t sw_if_index;
+  u32 host_uniq;
+  bool set_source_mac;
+  vl_api_pppoeclient_source_mac_mode_t source_mac_mode;
+  vl_api_mac_address_t source_mac;
+  string configured_ac_name[64];
+  string service_name[64];
+  string custom_ifname[64];
+};
+
+/** \brief reply for set or delete an PPPOE client
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+    @param pppox_sw_if_index - software index of the pppox interface
+*/
+define pppoeclient_add_del_reply
+{
+  u32 context;
+  i32 retval;
+  vl_api_interface_index_t pppox_sw_if_index;
+};
+
+/** \brief Set PPPoE client options after creation
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param pppoeclient_index - client pool index (from pppoeclient_details)
+    @param username - PPP authentication username; empty means no change
+    @param password - PPP authentication password; empty means no change
+    @param use_peer_dns - new value when set_use_peer_dns is true
+    @param add_default_route4 - new value when set_add_default_route4 is true
+    @param add_default_route6 - new value when set_add_default_route6 is true
+    @param set_use_peer_dns - when set, overwrite use_peer_dns; otherwise leave
+           the field untouched
+    @param set_add_default_route4 - same contract for add_default_route4
+    @param set_add_default_route6 - same contract for add_default_route6
+    @param mtu - PPPoE MTU override; 0 means no change
+    @param mru - PPP MRU override; 0 means no change
+    @param set_source_mac - when set, apply source_mac_mode/source_mac
+    @param source_mac_mode - interface/linux/static source MAC policy
+    @param source_mac - static source MAC when source_mac_mode = STATIC
+    @param configured_ac_name - AC-Name filter; empty means no change
+    @param service_name - requested Service-Name; empty means no change
+    @param clear_ac_name - when set, clear any configured AC-Name filter
+                           (overrides configured_ac_name if also provided)
+    @param clear_service_name - when set, clear any configured Service-Name
+                                (overrides service_name if also provided)
+*/
+autoreply define pppoeclient_set_options
+{
+  u32 client_index;
+  u32 context;
+  u32 pppoeclient_index;
+  string username[64];
+  string password[64];
+  bool use_peer_dns;
+  bool add_default_route4;
+  bool add_default_route6;
+  bool set_source_mac;
+  vl_api_pppoeclient_source_mac_mode_t source_mac_mode;
+  vl_api_mac_address_t source_mac;
+  u32 mtu;
+  u32 mru;
+  u32 timeout;
+  bool set_use_peer_dns;
+  bool set_add_default_route4;
+  bool set_add_default_route6;
+  string configured_ac_name[64];
+  string service_name[64];
+  bool clear_ac_name;
+  bool clear_service_name;
+};
+
+enum pppoeclient_session_action_type : u8
+{
+  PPPOECLIENT_SESSION_ACTION_RESTART = 1,
+  PPPOECLIENT_SESSION_ACTION_STOP = 2,
+  PPPOECLIENT_SESSION_ACTION_OPEN = 3,
+};
+
+/** \brief Perform an action on a PPPoE client session
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param pppoeclient_index - client pool index
+    @param action - restart (PADT + re-discover), stop (PADT + idle),
+                    or open (wake a previously stopped client)
+*/
+autoreply define pppoeclient_session_action
+{
+  u32 client_index;
+  u32 context;
+  u32 pppoeclient_index;
+  vl_api_pppoeclient_session_action_type_t action;
+};
+
+/** \brief Dump PPPOE session
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - software index of the interface
+*/
+define pppoeclient_dump
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+};
+
+/** \brief dump details of an PPPOE client
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - software index of the interface
+    @param host_uniq - tag identifying a PPPOE client on the the sw_if_index
+    @param pppox_sw_if_index - software index of the corresponding pppox interface
+    @param session_id - current PPPoE session ID, if present
+    @param client_state - current PPPoE client state
+*/
+define pppoeclient_details
+{
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+  u32 host_uniq;
+  vl_api_interface_index_t pppox_sw_if_index;
+  u32 pppox_unit;
+  bool pppox_session_allocated;
+  u16 session_id;
+  u8 client_state;
+  vl_api_mac_address_t ac_mac_address;
+  string ac_name[64];
+  string configured_ac_name[64];
+  string service_name[64];
+
+  vl_api_ip4_address_t ipv4_local;
+  vl_api_ip4_address_t ipv4_peer;
+  vl_api_ip4_address_t peer_dns4_primary;
+  vl_api_ip4_address_t peer_dns4_secondary;
+  vl_api_ip6_address_t peer_dns6_primary;
+  vl_api_ip6_address_t peer_dns6_secondary;
+  u8 peer_dns6_count;
+
+  vl_api_ip6_address_t ipv6cp_local;
+  vl_api_ip6_address_t ipv6cp_peer;
+  vl_api_ip6_address_t wan_ipv6;
+  u8 wan_ipv6_prefix_len;
+  bool wan_ipv6_observed;
+  bool peer_host_route6;
+  bool use_peer_ipv6;
+
+  bool use_peer_dns;
+  bool add_default_route4;
+  bool add_default_route6;
+  vl_api_pppoeclient_source_mac_mode_t source_mac_mode;
+  vl_api_mac_address_t configured_source_mac;
+  vl_api_mac_address_t effective_source_mac;
+  vl_api_pppoeclient_source_mac_mode_t effective_source_mac_mode;
+  u32 source_mac_fallbacks;
+  vl_api_pppoeclient_source_mac_fallback_reason_t last_source_mac_fallback_reason;
+  string auth_user[64];
+  u32 mtu;
+  u32 mru;
+  u32 timeout;
+
+  /* Session statistics */
+  u32 total_reconnects;
+  u8 last_disconnect_reason;
+  u32 session_uptime_seconds;
+  u32 consecutive_auth_failures;
+
+  bool dhcp6_ia_na_enabled;
+  bool dhcp6_ia_na_rebinding;
+  u32 dhcp6_ia_na_server_index;
+  u32 dhcp6_ia_na_address_count;
+  u32 dhcp6_ia_na_t1;
+  u32 dhcp6_ia_na_t2;
+  u32 dhcp6_ia_na_t1_remaining;
+  u32 dhcp6_ia_na_t2_remaining;
+  vl_api_ip6_address_t dhcp6_ia_na_first_address;
+  bool dhcp6_ia_na_first_address_present;
+  u32 dhcp6_ia_na_first_address_preferred_lt;
+  u32 dhcp6_ia_na_first_address_valid_lt;
+
+  bool dhcp6_pd_enabled;
+  bool dhcp6_pd_rebinding;
+  string dhcp6_pd_prefix_group[64];
+  u32 dhcp6_pd_server_index;
+  u32 dhcp6_pd_prefix_count;
+  u32 dhcp6_pd_t1;
+  u32 dhcp6_pd_t2;
+  u32 dhcp6_pd_t1_remaining;
+  u32 dhcp6_pd_t2_remaining;
+  vl_api_ip6_prefix_t dhcp6_delegated_prefix;
+  bool dhcp6_delegated_prefix_present;
+  u32 dhcp6_delegated_prefix_preferred_lt;
+  u32 dhcp6_delegated_prefix_valid_lt;
+  u32 dhcp6_delegated_prefix_valid_remaining;
+  vl_api_interface_index_t dhcp6_pd_consumer_sw_if_index;
+  vl_api_ip6_address_t dhcp6_pd_consumer_address;
+  u8 dhcp6_pd_consumer_prefix_len;
+  u32 dhcp6_pd_consumer_count;
+  bool dhcp6_pd_consumer_present;
+};
+
+/** \brief Dump recent PPPoE control/discovery history
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param pppoeclient_index - client pool index when orphan=false
+    @param orphan - dump orphan/unmatched control history instead of a specific client
+    @param max_events - limit results to the newest N events; 0 means all available
+    @param filter_min_age_msec - when set, only include entries older than or equal to min_age_msec
+    @param min_age_msec - minimum event age in milliseconds
+    @param filter_max_age_msec - when set, only include entries newer than max_age_msec
+    @param max_age_msec - maximum event age in milliseconds
+    @param filter_code - when set, only include entries with the given PPPoE code
+    @param code - PPPoE code filter (PADO/PADS/PADT)
+    @param filter_peer_mac - when set, only include entries whose peer MAC matches
+    @param peer_mac - peer MAC filter
+    @param filter_sw_if_index - when set, only include entries whose ingress sw_if_index matches
+    @param sw_if_index - ingress software interface filter
+    @param filter_session_id - when set, only include entries with the given PPPoE session-id
+    @param session_id - PPPoE session-id filter
+    @param filter_client_state - when set, only include entries with the given client-side PPPoE state
+    @param client_state - client-side PPPoE state filter
+    @param filter_disposition - when set, only include entries with the given processing disposition
+    @param disposition - control-history processing disposition filter
+    @param filter_host_uniq_present - when set, only include entries whose host_uniq_present matches
+    @param host_uniq_present - host-uniq presence filter
+    @param filter_host_uniq - when set, only include entries whose host-uniq exactly matches
+    @param host_uniq - exact host-uniq filter
+    @param filter_has_cookie - when set, only include entries whose cookie presence matches
+    @param has_cookie - cookie presence filter
+    @param filter_cookie_len - when set, only include entries whose cookie length exactly matches
+    @param cookie_len - exact cookie-length filter
+    @param filter_cookie_value - when set, only include entries whose cookie value exactly matches
+    @param cookie_value_len - exact cookie-value length filter
+    @param cookie_value - exact cookie-value bytes filter
+    @param filter_has_service_name - when set, only include entries whose service-name presence matches
+    @param has_service_name - service-name presence filter
+    @param filter_service_name_truncated - when set, only include entries whose service-name truncation matches
+    @param service_name_truncated - service-name truncation filter
+    @param filter_service_name - when set, only include entries whose service-name exactly matches
+    @param service_name - exact service-name filter
+    @param filter_has_ac_name - when set, only include entries whose AC-Name presence matches
+    @param has_ac_name - AC-Name presence filter
+    @param filter_ac_name_truncated - when set, only include entries whose AC-Name truncation matches
+    @param ac_name_truncated - AC-Name truncation filter
+    @param filter_ac_name - when set, only include entries whose AC-Name exactly matches
+    @param ac_name - exact AC-Name filter
+    @param filter_has_raw_tags - when set, only include entries whose raw-tag presence matches
+    @param has_raw_tags - raw-tag presence filter
+    @param filter_raw_tags_len - when set, only include entries whose raw-tags length exactly matches
+    @param raw_tags_len - exact raw-tags length filter
+    @param filter_raw_tags_truncated - when set, only include entries whose raw-tag truncation matches
+    @param raw_tags_truncated - raw-tag truncation filter
+    @param filter_has_error_tag - when set, only include entries whose error-tag presence matches
+    @param has_error_tag - error-tag presence filter
+    @param filter_cookie_value_truncated - when set, only include entries whose cookie-value truncation matches
+    @param cookie_value_truncated - cookie-value truncation filter
+    @param filter_error_tag_type - when set, only include entries with the given error-tag type
+    @param error_tag_type - error-tag type filter
+    @param filter_parse_error - when set, only include entries whose parse_error matches
+    @param parse_error - parse-error filter
+    @param parse_errors_only - only include entries with parse_error=1
+    @param filter_match_reason - when set, only include entries with the given match_reason
+    @param match_reason - control-history match reason filter
+    @param filter_min_match_score - when set, only include entries with match_score >= min_match_score
+    @param min_match_score - minimum fallback match score to include
+    @param filter_min_candidate_count - when set, only include entries with candidate_count >= min_candidate_count
+    @param min_candidate_count - minimum candidate_count to include
+    @param filter_top_match_reason - when set, only include entries with the given top_match_reason
+    @param top_match_reason - top candidate match reason filter
+    @param filter_min_top_match_score - when set, only include entries with top_match_score >= min_top_match_score
+    @param min_top_match_score - minimum top_match_score to include
+    @param filter_min_top_match_count - when set, only include entries with top_match_count >= min_top_match_count
+    @param min_top_match_count - minimum top_match_count to include
+*/
+define pppoeclient_control_history_dump
+{
+  u32 client_index;
+  u32 context;
+  u32 pppoeclient_index;
+  bool orphan;
+  u32 max_events;
+  bool filter_min_age_msec;
+  u32 min_age_msec;
+  bool filter_max_age_msec;
+  u32 max_age_msec;
+  bool filter_code;
+  u8 code;
+  bool filter_peer_mac;
+  vl_api_mac_address_t peer_mac;
+  bool filter_sw_if_index;
+  vl_api_interface_index_t sw_if_index;
+  bool filter_session_id;
+  u16 session_id;
+  bool filter_client_state;
+  vl_api_pppoeclient_control_client_state_t client_state;
+  bool filter_disposition;
+  vl_api_pppoeclient_control_disposition_t disposition;
+  bool filter_host_uniq_present;
+  bool host_uniq_present;
+  bool filter_host_uniq;
+  u32 host_uniq;
+  bool filter_has_cookie;
+  bool has_cookie;
+  bool filter_cookie_len;
+  u16 cookie_len;
+  bool filter_cookie_value;
+  u32 cookie_value_len;
+  u8 cookie_value[64];
+  bool filter_has_service_name;
+  bool has_service_name;
+  bool filter_service_name_truncated;
+  bool service_name_truncated;
+  bool filter_service_name;
+  string service_name[64];
+  bool filter_has_ac_name;
+  bool has_ac_name;
+  bool filter_ac_name_truncated;
+  bool ac_name_truncated;
+  bool filter_ac_name;
+  string ac_name[64];
+  bool filter_has_raw_tags;
+  bool has_raw_tags;
+  bool filter_raw_tags_len;
+  u32 raw_tags_len;
+  bool filter_raw_tags_truncated;
+  bool raw_tags_truncated;
+  bool filter_has_error_tag;
+  bool has_error_tag;
+  bool filter_cookie_value_truncated;
+  bool cookie_value_truncated;
+  bool filter_error_tag_type;
+  u16 error_tag_type;
+  bool filter_parse_error;
+  bool parse_error;
+  bool parse_errors_only;
+  bool filter_match_reason;
+  vl_api_pppoeclient_control_match_reason_t match_reason;
+  bool filter_min_match_score;
+  u8 min_match_score;
+  bool filter_min_candidate_count;
+  u8 min_candidate_count;
+  bool filter_top_match_reason;
+  vl_api_pppoeclient_control_match_reason_t top_match_reason;
+  bool filter_min_top_match_score;
+  u8 min_top_match_score;
+  bool filter_min_top_match_count;
+  u8 min_top_match_count;
+};
+
+/** \brief Clear recent PPPoE control/discovery history
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param pppoeclient_index - client pool index when orphan=false
+    @param orphan - clear orphan/unmatched control history instead of a specific client
+*/
+autoreply define pppoeclient_control_history_clear
+{
+  u32 client_index;
+  u32 context;
+  u32 pppoeclient_index;
+  bool orphan;
+};
+
+/** \brief Summarize recent PPPoE control/discovery history under the given filters
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param pppoeclient_index - client pool index when orphan=false
+    @param orphan - summarize orphan/unmatched control history instead of a specific client
+    @param max_events - limit summary to the newest N matching events; 0 means all available
+    @param filter_min_age_msec - when set, only include entries older than or equal to min_age_msec
+    @param min_age_msec - minimum event age in milliseconds
+    @param filter_max_age_msec - when set, only include entries newer than max_age_msec
+    @param max_age_msec - maximum event age in milliseconds
+    @param filter_code - when set, only include entries with the given PPPoE code
+    @param code - PPPoE code filter (PADO/PADS/PADT)
+    @param filter_peer_mac - when set, only include entries whose peer MAC matches
+    @param peer_mac - peer MAC filter
+    @param filter_sw_if_index - when set, only include entries whose ingress sw_if_index matches
+    @param sw_if_index - ingress software interface filter
+    @param filter_session_id - when set, only include entries with the given PPPoE session-id
+    @param session_id - PPPoE session-id filter
+    @param filter_client_state - when set, only include entries with the given client-side PPPoE state
+    @param client_state - client-side PPPoE state filter
+    @param filter_disposition - when set, only include entries with the given processing disposition
+    @param disposition - control-history processing disposition filter
+    @param filter_host_uniq_present - when set, only include entries whose host_uniq_present matches
+    @param host_uniq_present - host-uniq presence filter
+    @param filter_host_uniq - when set, only include entries whose host-uniq exactly matches
+    @param host_uniq - exact host-uniq filter
+    @param filter_has_cookie - when set, only include entries whose cookie presence matches
+    @param has_cookie - cookie presence filter
+    @param filter_cookie_len - when set, only include entries whose cookie length exactly matches
+    @param cookie_len - exact cookie-length filter
+    @param filter_cookie_value - when set, only include entries whose cookie value exactly matches
+    @param cookie_value_len - exact cookie-value length filter
+    @param cookie_value - exact cookie-value bytes filter
+    @param filter_has_service_name - when set, only include entries whose service-name presence matches
+    @param has_service_name - service-name presence filter
+    @param filter_service_name_truncated - when set, only include entries whose service-name truncation matches
+    @param service_name_truncated - service-name truncation filter
+    @param filter_service_name - when set, only include entries whose service-name exactly matches
+    @param service_name - exact service-name filter
+    @param filter_has_ac_name - when set, only include entries whose AC-Name presence matches
+    @param has_ac_name - AC-Name presence filter
+    @param filter_ac_name_truncated - when set, only include entries whose AC-Name truncation matches
+    @param ac_name_truncated - AC-Name truncation filter
+    @param filter_ac_name - when set, only include entries whose AC-Name exactly matches
+    @param ac_name - exact AC-Name filter
+    @param filter_has_raw_tags - when set, only include entries whose raw-tag presence matches
+    @param has_raw_tags - raw-tag presence filter
+    @param filter_raw_tags_len - when set, only include entries whose raw-tags length exactly matches
+    @param raw_tags_len - exact raw-tags length filter
+    @param filter_raw_tags_truncated - when set, only include entries whose raw-tag truncation matches
+    @param raw_tags_truncated - raw-tag truncation filter
+    @param filter_has_error_tag - when set, only include entries whose error-tag presence matches
+    @param has_error_tag - error-tag presence filter
+    @param filter_cookie_value_truncated - when set, only include entries whose cookie-value truncation matches
+    @param cookie_value_truncated - cookie-value truncation filter
+    @param filter_error_tag_type - when set, only include entries with the given error-tag type
+    @param error_tag_type - error-tag type filter
+    @param filter_parse_error - when set, only include entries whose parse_error matches
+    @param parse_error - parse-error filter
+    @param parse_errors_only - only include entries with parse_error=1
+    @param filter_match_reason - when set, only include entries with the given match_reason
+    @param match_reason - control-history match reason filter
+    @param filter_min_match_score - when set, only include entries with match_score >= min_match_score
+    @param min_match_score - minimum fallback match score to include
+    @param filter_min_candidate_count - when set, only include entries with candidate_count >= min_candidate_count
+    @param min_candidate_count - minimum candidate_count to include
+    @param filter_top_match_reason - when set, only include entries with the given top_match_reason
+    @param top_match_reason - top candidate match reason filter
+    @param filter_min_top_match_score - when set, only include entries with top_match_score >= min_top_match_score
+    @param min_top_match_score - minimum top_match_score to include
+    @param filter_min_top_match_count - when set, only include entries with top_match_count >= min_top_match_count
+    @param min_top_match_count - minimum top_match_count to include
+*/
+define pppoeclient_control_history_summary
+{
+  u32 client_index;
+  u32 context;
+  u32 pppoeclient_index;
+  bool orphan;
+  u32 max_events;
+  bool filter_min_age_msec;
+  u32 min_age_msec;
+  bool filter_max_age_msec;
+  u32 max_age_msec;
+  bool filter_code;
+  u8 code;
+  bool filter_peer_mac;
+  vl_api_mac_address_t peer_mac;
+  bool filter_sw_if_index;
+  vl_api_interface_index_t sw_if_index;
+  bool filter_session_id;
+  u16 session_id;
+  bool filter_client_state;
+  vl_api_pppoeclient_control_client_state_t client_state;
+  bool filter_disposition;
+  vl_api_pppoeclient_control_disposition_t disposition;
+  bool filter_host_uniq_present;
+  bool host_uniq_present;
+  bool filter_host_uniq;
+  u32 host_uniq;
+  bool filter_has_cookie;
+  bool has_cookie;
+  bool filter_cookie_len;
+  u16 cookie_len;
+  bool filter_cookie_value;
+  u32 cookie_value_len;
+  u8 cookie_value[64];
+  bool filter_has_service_name;
+  bool has_service_name;
+  bool filter_service_name_truncated;
+  bool service_name_truncated;
+  bool filter_service_name;
+  string service_name[64];
+  bool filter_has_ac_name;
+  bool has_ac_name;
+  bool filter_ac_name_truncated;
+  bool ac_name_truncated;
+  bool filter_ac_name;
+  string ac_name[64];
+  bool filter_has_raw_tags;
+  bool has_raw_tags;
+  bool filter_raw_tags_len;
+  u32 raw_tags_len;
+  bool filter_raw_tags_truncated;
+  bool raw_tags_truncated;
+  bool filter_has_error_tag;
+  bool has_error_tag;
+  bool filter_cookie_value_truncated;
+  bool cookie_value_truncated;
+  bool filter_error_tag_type;
+  u16 error_tag_type;
+  bool filter_parse_error;
+  bool parse_error;
+  bool parse_errors_only;
+  bool filter_match_reason;
+  vl_api_pppoeclient_control_match_reason_t match_reason;
+  bool filter_min_match_score;
+  u8 min_match_score;
+  bool filter_min_candidate_count;
+  u8 min_candidate_count;
+  bool filter_top_match_reason;
+  vl_api_pppoeclient_control_match_reason_t top_match_reason;
+  bool filter_min_top_match_score;
+  u8 min_top_match_score;
+  bool filter_min_top_match_count;
+  u8 min_top_match_count;
+};
+
+define pppoeclient_control_history_summary_reply
+{
+  u32 context;
+  i32 retval;
+  u32 matched_events;
+  u32 min_age_msec;
+  u32 max_age_msec;
+  u32 pado_count;
+  u32 pads_count;
+  u32 padt_count;
+  u32 accepted_count;
+  u32 ignored_count;
+  u32 error_count;
+  u32 orphan_count;
+  u32 discovery_state_count;
+  u32 request_state_count;
+  u32 session_state_count;
+  u32 unknown_state_count;
+  u32 parse_error_count;
+  u32 host_uniq_present_count;
+  u32 cookie_present_count;
+  u32 service_name_count;
+  u32 ac_name_count;
+  u32 raw_tags_count;
+  u32 error_tag_count;
+  u32 service_name_truncated_count;
+  u32 ac_name_truncated_count;
+  u32 cookie_value_truncated_count;
+  u32 raw_tags_truncated_count;
+  u32 match_none_count;
+  u32 match_host_uniq_count;
+  u32 match_ac_name_count;
+  u32 match_service_name_count;
+  u32 match_any_count;
+  u32 match_cookie_count;
+  u32 match_unique_count;
+  u32 match_session_count;
+  u32 match_ac_and_service_count;
+  u32 match_ac_mac_count;
+  u32 match_ac_mac_and_service_count;
+  u32 match_cookie_and_service_count;
+  u32 top_match_none_count;
+  u32 top_match_host_uniq_count;
+  u32 top_match_ac_name_count;
+  u32 top_match_service_name_count;
+  u32 top_match_any_count;
+  u32 top_match_cookie_count;
+  u32 top_match_unique_count;
+  u32 top_match_session_count;
+  u32 top_match_ac_and_service_count;
+  u32 top_match_ac_mac_count;
+  u32 top_match_ac_mac_and_service_count;
+  u32 top_match_cookie_and_service_count;
+  u32 ambiguous_events_count;
+  u32 max_match_score;
+  u32 max_candidate_count;
+  u32 max_top_match_score;
+  u32 max_top_match_count;
+};
+
+/** \brief PPPoE control/discovery history entry
+    @param context - sender context, to match reply w/ request
+    @param pppoeclient_index - client pool index, or ~0 for orphan events
+    @param orphan - event originated from orphan/unmatched history
+*/
+define pppoeclient_control_history_details
+{
+  u32 context;
+  u32 pppoeclient_index;
+  bool orphan;
+  u32 age_msec;
+  vl_api_interface_index_t sw_if_index;
+  vl_api_mac_address_t peer_mac;
+  u16 session_id;
+  u8 code;
+  vl_api_pppoeclient_control_client_state_t client_state;
+  vl_api_pppoeclient_control_disposition_t disposition;
+  vl_api_pppoeclient_control_match_reason_t match_reason;
+  u8 match_score;
+  u8 candidate_count;
+  u8 top_match_count;
+  vl_api_pppoeclient_control_match_reason_t top_match_reason;
+  u8 top_match_score;
+  bool host_uniq_present;
+  u32 host_uniq;
+  string service_name[64];
+  bool service_name_truncated;
+  string ac_name[64];
+  bool ac_name_truncated;
+  u16 cookie_len;
+  u32 cookie_value_len;
+  bool cookie_value_truncated;
+  u8 cookie_value[64];
+  u16 error_tag_type;
+  bool parse_error;
+  u32 raw_tags_len;
+  bool raw_tags_truncated;
+  u8 raw_tags[128];
+};
+
+/*
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
