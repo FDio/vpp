@@ -171,6 +171,7 @@ vnet_crypto_ctx_set_default_engine (vnet_crypto_ctx_t *ctx, vnet_crypto_handler_
   if (engine == VNET_CRYPTO_ENGINE_ID_NONE)
     return;
 
+  ctx->engine_index[t] = engine;
   e = vec_elt_at_index (cm->engines, engine);
   if (e->key_data_per_thread[t][ctx->alg])
     ctx->key_data_stride[t] = e->key_data_sz[t][ctx->alg];
