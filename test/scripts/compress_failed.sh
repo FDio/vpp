@@ -1,25 +1,35 @@
 #!/usr/bin/env bash
 
-if [ "$(ls -A ${FAILED_DIR})" ]
-then
+if [ ! -d "${FAILED_DIR}" ]; then
+    echo "FAILED_DIR (${FAILED_DIR}) is not a directory."
+elif [ -z "$(ls -A "${FAILED_DIR}")" ]; then
+    echo "No failed test artifacts found in ${FAILED_DIR}."
+else
     if [ "${COMPRESS_FAILED_TEST_LOGS}" == "yes" ]
     then
 	echo -n "Compressing files in temporary directories from failed test runs... "
-	cd ${FAILED_DIR}
+	cd "${FAILED_DIR}"
 	for d in *
 	do
-	    cd ${d}
-	    find . ! -path . -print0 | xargs -0 -n1 gzip
-	    cd ${FAILED_DIR}
+	    if [ -d "${d}" ]; then
+	        cd "${d}"
+	        find . ! -path . -print0 | xargs -0 -n1 gzip
+	        cd "${FAILED_DIR}"
+	    fi
 	done
 	echo "done."
-        if [ -n "$WORKSPACE" ]
+        if [ -n "${WORKSPACE}" ]
         then
-            echo "Copying failed test logs into build log archive directory ($WORKSPACE/archives)... "
-            for failed_test in $(ls $FAILED_DIR)
+            echo "Copying failed test logs into build log archive directory (${WORKSPACE}/archives)... "
+            for failed_test in $(ls "${FAILED_DIR}")
             do
-                mkdir -p $WORKSPACE/archives/$failed_test
-                cp -a $FAILED_DIR/$failed_test/* $WORKSPACE/archives/$failed_test
+                if [ -d "${FAILED_DIR}/${failed_test}" ]; then
+                    mkdir -p "${WORKSPACE}/archives/${failed_test}"
+                    cp -a "${FAILED_DIR}/${failed_test}"/* "${WORKSPACE}/archives/${failed_test}"
+                elif [ -f "${FAILED_DIR}/${failed_test}" ]; then
+                    mkdir -p "${WORKSPACE}/archives"
+                    cp -a "${FAILED_DIR}/${failed_test}" "${WORKSPACE}/archives/"
+                fi
             done
 	    echo "done."
         fi
@@ -27,8 +37,6 @@ then
     else
 	echo "Not compressing files in temporary directories from failed test runs."
     fi
-else
-    echo "No symlinks to failed tests' temporary directories found in ${FAILED_DIR}."
 fi
 
 # This script gets run only if there was a 'make test' failure,
