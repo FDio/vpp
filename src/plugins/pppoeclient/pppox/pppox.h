@@ -87,7 +87,7 @@ typedef struct
   u32 hw_if_index;
 
   /* Back-pointer to the owning PPPoE client for the current PPPoX session. */
-  u32 pppoe_client_index;
+  u32 pppoeclient_index;
   /* record pppoe session status */
   u8 pppoe_session_allocated;
   /* explicit delete in progress: do teardown without reconnect */

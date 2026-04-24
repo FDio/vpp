@@ -42,7 +42,12 @@ typedef struct
   u8 value[0];
 } pppoe_tag_header_t;
 
+/* Max PPPoE payload: 1500 (standard MTU) + 8 (PPPoE header) = 1508 */
 #define ETH_JUMBO_LEN 1508
+/* Default PPPoE session MTU for standard Ethernet: 1500 - 8 (PPPoE overhead) = 1492.
+ * Ref: RFC 2516 section 7.  The actual interface MTU is set by pppd during LCP
+ * negotiation and may differ for jumbo frames or ISP-specific configurations. */
+#define PPPOECLIENT_MTU_DEFAULT 1492
 
 /* PPP Protocol Numbers */
 #ifndef PPP_LCP
@@ -139,7 +144,7 @@ typedef enum
 #define _(a) a,
   foreach_pppoe_client_state
 #undef _
-} pppoe_client_state_t;
+} pppoeclient_state_t;
 
 typedef enum
 {
@@ -280,11 +285,14 @@ typedef struct
 {
   /* pppoe client is bounded to an ethernet interface, use it and the following tag as hash key */
   u32 sw_if_index;
+  u32 pppox_sw_if_index;
   u32 hw_if_index;
   u32 hw_output_next_index;
   /* we may support multiple pppoe session using 1 ethernet interface, the use pppoe rfc host-uniq
      tag to mix key */
   u32 host_uniq;
+  u16 session_id;
+  u8 ac_mac_address[6];
 
   /* AC-Cookie octets echoed back verbatim in PADR/PADS, allocated lazily from
    * the PADO parser.  Holds only the tag value (no TLV header); the emit path
@@ -293,22 +301,15 @@ typedef struct
    * struct burned ~1.5 KB per client even for typical <64-byte cookies. */
   u8 *cookie_value;
 
-  pppoe_client_state_t state;
-  /* State machine retry counter */
+  pppoeclient_state_t state;
   u32 retry_count;
-  /* Send next pkt at this time */
   f64 next_transmit;
 
-  /* pppox intf index */
-  u32 pppox_sw_if_index;
   u32 pppox_hw_if_index;
 
   u32 mtu;
   u32 mru;
   u32 timeout;
-
-  u16 session_id;
-  u8 ac_mac_address[6];
 
   /* Pointers (8-byte aligned on 64-bit) grouped together */
   u8 *ac_name;	      /* AC-Name from PADO */
@@ -357,19 +358,19 @@ typedef struct
   /* Session-duration accounting.  last_session_duration_seconds is the length
    * of the most recent SESSION lifetime (0 if we've never been in SESSION);
    * total_session_seconds is the cumulative sum across every SESSION this
-   * client has held since it was added.  Updated in pppoe_client_teardown_session. */
+   * client has held since it was added.  Updated in pppoeclient_teardown_session. */
   u32 last_session_duration_seconds;
   u64 total_session_seconds;
 
   /* Per-client circular buffer of the last PPPOECLIENT_CONTROL_HISTORY_LEN
    * PADO/PADS/PADT events.  Lazily allocated on the first recorded event so
-   * provisioned-but-inactive clients do not burn ~3 KB of unused slots.  The
-   * array form below would otherwise inflate every pppoe_client_t past 4 KB
+   * provisioned-but-inactive clients do not burn ~3 KB of unused slots.  An
+   * embedded fixed-size array would inflate every pppoeclient_t past 4 KB
    * just to hold slots that may never see a packet.  All readers are
    * guarded by control_history_count > 0, which in turn implies the vec has
    * been allocated. */
   pppoeclient_control_event_t *control_history;
-} pppoe_client_t;
+} pppoeclient_t;
 
 typedef enum
 {
@@ -413,10 +414,6 @@ typedef enum
     PPPOECLIENT_SESSION_OUTPUT_N_NEXT,
 } pppoeclient_session_output_next_t;
 
-#define MTU		     1500
-#define MTU_BUFFERS	     1
-#define NUM_BUFFERS_TO_ALLOC 32
-
 /*
  * The size of pppoe client table
  */
@@ -441,7 +438,7 @@ typedef struct
     } words;
     u64 raw;
   };
-} pppoe_client_key_t;
+} pppoeclient_key_t;
 /*
  * The PPPoE client results
  */
@@ -456,7 +453,7 @@ typedef struct
     } fields;
     u64 raw;
   };
-} pppoe_client_result_t;
+} pppoeclient_result_t;
 /*
  * The PPPoE client session key tracks ingress interface + peer AC MAC
  * + PPPoE session id so multiple sessions do not alias each other.
@@ -475,12 +472,12 @@ typedef struct
     } fields;
     u64 raw[2];
   };
-} pppoe_client_session_key_t;
+} pppoeclient_session_key_t;
 
 typedef struct
 {
   /* For DP: vector of clients, */
-  pppoe_client_t *clients;
+  pppoeclient_t *clients;
 
   /* For CP:  vector of CP path */
   clib_bihash_8_8_t client_table;
@@ -557,16 +554,16 @@ typedef struct
 int vnet_pppoeclient_add_del (vnet_pppoeclient_add_del_args_t *, u32 *);
 
 int consume_pppoe_discovery_pkt (u32, vlib_buffer_t *, pppoe_header_t *);
-void pppoeclient_save_session_to_file (pppoe_client_t *c);
+void pppoeclient_save_session_to_file (pppoeclient_t *c);
 
-void pppoe_client_open_session (u32 client_index);
-void pppoe_client_restart_session (u32 client_index);
-void pppoe_client_restart_session_with_reason (u32 client_index, u8 disconnect_reason);
-void pppoe_client_stop_session (u32 client_index);
-int sync_pppoe_client_live_auth (pppoe_client_t *c);
-int sync_pppoe_client_live_default_route4 (pppoe_client_t *c);
-int sync_pppoe_client_live_default_route6 (pppoe_client_t *c);
-int sync_pppoe_client_live_use_peer_dns (pppoe_client_t *c);
+void pppoeclient_open_session (u32 client_index);
+void pppoeclient_restart_session (u32 client_index);
+void pppoeclient_restart_session_with_reason (u32 client_index, u8 disconnect_reason);
+void pppoeclient_stop_session (u32 client_index);
+int sync_pppoe_client_live_auth (pppoeclient_t *c);
+int sync_pppoe_client_live_default_route4 (pppoeclient_t *c);
+int sync_pppoe_client_live_default_route6 (pppoeclient_t *c);
+int sync_pppoe_client_live_use_peer_dns (pppoeclient_t *c);
 
 always_inline u64
 pppoeclient_make_key (u32 sw_if_index, u32 host_uniq)
@@ -580,9 +577,9 @@ pppoeclient_make_key (u32 sw_if_index, u32 host_uniq)
 
 static_always_inline void
 pppoeclient_lookup_1 (clib_bihash_8_8_t *client_table, u32 sw_if_index, u32 host_uniq,
-		      pppoe_client_result_t *result0)
+		      pppoeclient_result_t *result0)
 {
-  pppoe_client_key_t key0;
+  pppoeclient_key_t key0;
   /* set up key */
   key0.raw = pppoeclient_make_key (sw_if_index, host_uniq);
 
@@ -597,9 +594,9 @@ pppoeclient_lookup_1 (clib_bihash_8_8_t *client_table, u32 sw_if_index, u32 host
 
 static_always_inline void
 pppoeclient_update_1 (clib_bihash_8_8_t *client_table, u32 sw_if_index, u32 host_uniq,
-		      pppoe_client_result_t *result0)
+		      pppoeclient_result_t *result0)
 {
-  pppoe_client_key_t key0;
+  pppoeclient_key_t key0;
   /* set up key */
   key0.raw = pppoeclient_make_key (sw_if_index, host_uniq);
 
@@ -614,7 +611,7 @@ pppoeclient_update_1 (clib_bihash_8_8_t *client_table, u32 sw_if_index, u32 host
 static_always_inline void
 pppoeclient_delete_1 (clib_bihash_8_8_t *client_table, u32 sw_if_index, u32 host_uniq)
 {
-  pppoe_client_key_t key0;
+  pppoeclient_key_t key0;
   /* set up key */
   key0.raw = pppoeclient_make_key (sw_if_index, host_uniq);
 
@@ -626,7 +623,7 @@ pppoeclient_delete_1 (clib_bihash_8_8_t *client_table, u32 sw_if_index, u32 host
 }
 
 static_always_inline void
-pppoeclient_make_session_key (pppoe_client_session_key_t *key0, u32 sw_if_index, const u8 *ac_mac,
+pppoeclient_make_session_key (pppoeclient_session_key_t *key0, u32 sw_if_index, const u8 *ac_mac,
 			      u16 session_id)
 {
   clib_memset (key0, 0, sizeof (*key0));
@@ -637,9 +634,9 @@ pppoeclient_make_session_key (pppoe_client_session_key_t *key0, u32 sw_if_index,
 
 static_always_inline void
 pppoeclient_lookup_session_1 (clib_bihash_16_8_t *session_table, u32 sw_if_index, const u8 *ac_mac,
-			      u16 session_id, pppoe_client_result_t *result0)
+			      u16 session_id, pppoeclient_result_t *result0)
 {
-  pppoe_client_session_key_t key0;
+  pppoeclient_session_key_t key0;
   /* set up key */
   pppoeclient_make_session_key (&key0, sw_if_index, ac_mac, session_id);
 
@@ -655,9 +652,9 @@ pppoeclient_lookup_session_1 (clib_bihash_16_8_t *session_table, u32 sw_if_index
 
 static_always_inline void
 pppoeclient_update_session_1 (clib_bihash_16_8_t *session_table, u32 sw_if_index, const u8 *ac_mac,
-			      u16 session_id, pppoe_client_result_t *result0)
+			      u16 session_id, pppoeclient_result_t *result0)
 {
-  pppoe_client_session_key_t key0;
+  pppoeclient_session_key_t key0;
   /* set up key */
   pppoeclient_make_session_key (&key0, sw_if_index, ac_mac, session_id);
 
@@ -674,7 +671,7 @@ static_always_inline void
 pppoeclient_delete_session_1 (clib_bihash_16_8_t *session_table, u32 sw_if_index, const u8 *ac_mac,
 			      u16 session_id)
 {
-  pppoe_client_session_key_t key0;
+  pppoeclient_session_key_t key0;
   /* set up key */
   pppoeclient_make_session_key (&key0, sw_if_index, ac_mac, session_id);
 
@@ -686,7 +683,7 @@ pppoeclient_delete_session_1 (clib_bihash_16_8_t *session_table, u32 sw_if_index
   clib_bihash_add_del_16_8 (session_table, &kv, 0 /* is_add */);
 }
 
-static_always_inline pppoe_client_t *
+static_always_inline pppoeclient_t *
 pppoeclient_get_client_by_pppox_sw_if_index (pppoeclient_main_t *pem, u32 pppox_sw_if_index,
 					     u32 *client_index)
 {
@@ -778,7 +775,7 @@ pppoeclient_get_l2_info (vlib_buffer_t *b, ethernet_header_t **eth_hdr, pppoe_he
   type = clib_net_to_host_u16 (eth->type);
   hdr_len = sizeof (*eth);
 
-  if (type == ETHERNET_TYPE_VLAN)
+  if (ethernet_frame_is_tagged (type))
     {
       if (b->current_length < hdr_len + sizeof (ethernet_vlan_header_t))
 	return 0;
@@ -786,7 +783,7 @@ pppoeclient_get_l2_info (vlib_buffer_t *b, ethernet_header_t **eth_hdr, pppoe_he
       type = clib_net_to_host_u16 (vlan->type);
       hdr_len += sizeof (*vlan);
       /* QinQ: second VLAN tag */
-      if (type == ETHERNET_TYPE_VLAN)
+      if (ethernet_frame_is_tagged (type))
 	{
 	  if (b->current_length < hdr_len + sizeof (ethernet_vlan_header_t))
 	    return 0;

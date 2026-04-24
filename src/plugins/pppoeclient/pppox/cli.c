@@ -73,6 +73,8 @@ pppox_set_auth_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_co
 done:
   unformat_free (line_input);
   vec_free (username);
+  if (password)
+    clib_memset (password, 0, vec_len (password));
   vec_free (password);
 
   return error;
