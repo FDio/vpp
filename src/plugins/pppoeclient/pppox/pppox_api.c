@@ -29,9 +29,14 @@ pppox_api_string_field_to_vec (u8 **dst, const u8 *src, size_t src_size)
 {
   size_t len = strnlen ((const char *) src, src_size);
 
-  vec_validate (*dst, len);
+  if (len == 0)
+    {
+      *dst = NULL;
+      return 0;
+    }
+
+  vec_validate (*dst, len - 1);
   clib_memcpy (*dst, src, len);
-  (*dst)[len] = 0;
 
   return 0;
 }
@@ -56,6 +61,8 @@ vl_api_pppox_set_auth_t_handler (vl_api_pppox_set_auth_t *mp)
 
 out:
   vec_free (username);
+  if (password)
+    clib_memset (password, 0, vec_len (password));
   vec_free (password);
 
   REPLY_MACRO (VL_API_PPPOX_SET_AUTH_REPLY);

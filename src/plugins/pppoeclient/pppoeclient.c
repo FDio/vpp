@@ -17,6 +17,7 @@
 #include <linux/if_ether.h>
 
 #include <vlib/vlib.h>
+#include <vlib/log.h>
 #include <vlib/unix/unix.h>
 #include <vlib/unix/plugin.h>
 #include <vnet/ethernet/ethernet.h>
@@ -36,12 +37,19 @@
 
 pppoeclient_main_t pppoeclient_main;
 
+static vlib_log_class_t pppoeclient_log_class;
+
 /* BAS/RADIUS typically needs 10–30 seconds to fully clear a PPPoE session
  * after PADT.  If we retry too quickly, RADIUS still sees the old session
  * and rejects CHAP with "TOO MANY CONNECTIONS".  30s is conservative but
  * reliable for China Telecom / China Mobile BAS equipment. */
-#define PPPOECLIENT_REDISCOVERY_COOLDOWN 30.0
-static vlib_node_registration_t pppoe_client_process_node;
+#define PPPOECLIENT_REDISCOVERY_COOLDOWN       30.0
+#define PPPOECLIENT_NEXT_TRANSMIT_PARKED       1e18
+#define PPPOECLIENT_NEXT_TRANSMIT_IS_PARKED(t) ((t) >= 1e17)
+#define PPPOECLIENT_RAW_PADT_LINK_UP_WAIT_US   200000
+#define PPPOECLIENT_UNEXPECTED_PKT_COOLDOWN    5.0
+#define PPPOECLIENT_PROCESS_IDLE_TIMEOUT       100.0
+static vlib_node_registration_t pppoeclient_process_node;
 static pppox_main_t *pppox_main_p = 0;
 
 static pppox_main_t *
@@ -53,7 +61,7 @@ get_pppox_main (void)
   return pppox_main_p;
 }
 
-static int send_pppoe_pkt (pppoeclient_main_t *pem, pppoe_client_t *c, u8 packet_code,
+static int send_pppoe_pkt (pppoeclient_main_t *pem, pppoeclient_t *c, u8 packet_code,
 			   u16 session_id, int is_broadcast);
 static int pppoeclient_get_linux_ifname (vnet_main_t *vnm, u32 sw_if_index, char *buf,
 					 size_t buf_len, u8 noisy);
@@ -143,7 +151,7 @@ format_pppoeclient_control_host_uniq (u8 *s, va_list *args)
 }
 
 static pppoeclient_control_client_state_t
-pppoeclient_control_client_state_from_client_state (pppoe_client_state_t state)
+pppoeclient_control_client_state_from_client_state (pppoeclient_state_t state)
 {
   switch (state)
     {
@@ -197,10 +205,10 @@ pppoeclient_history_cli_filter_active (pppoeclient_history_cli_filter_t *filter)
 	 filter->filter_match_reason;
 }
 
-static u8 pppoeclient_score_pado_candidate (pppoe_client_t *c,
+static u8 pppoeclient_score_pado_candidate (pppoeclient_t *c,
 					    pppoeclient_control_match_reason_t *reason);
 
-static u8 pppoeclient_score_pads_candidate (pppoe_client_t *c, pppoeclient_control_event_t *summary,
+static u8 pppoeclient_score_pads_candidate (pppoeclient_t *c, pppoeclient_control_event_t *summary,
 					    pppoeclient_control_match_reason_t *reason);
 
 typedef enum
@@ -213,8 +221,8 @@ typedef enum
 
 typedef struct
 {
-  pppoe_client_t *selected_candidate;
-  pppoe_client_t *unique_candidate;
+  pppoeclient_t *selected_candidate;
+  pppoeclient_t *unique_candidate;
   pppoeclient_control_match_reason_t selected_reason;
   pppoeclient_control_match_reason_t top_match_reason;
   u8 selected_score;
@@ -230,7 +238,7 @@ pppoeclient_fallback_selection_init (pppoeclient_fallback_selection_t *selection
 }
 
 static_always_inline u8
-pppoeclient_ac_name_compatible (pppoe_client_t *c, pppoeclient_control_event_t *summary)
+pppoeclient_ac_name_compatible (pppoeclient_t *c, pppoeclient_control_event_t *summary)
 {
   return (c->ac_name_filter == 0 || vec_len (c->ac_name_filter) == 0 ||
 	  (summary->ac_name_len && vec_len (c->ac_name_filter) == summary->ac_name_len &&
@@ -238,7 +246,7 @@ pppoeclient_ac_name_compatible (pppoe_client_t *c, pppoeclient_control_event_t *
 }
 
 static_always_inline u8
-pppoeclient_service_name_compatible (pppoe_client_t *c, pppoeclient_control_event_t *summary)
+pppoeclient_service_name_compatible (pppoeclient_t *c, pppoeclient_control_event_t *summary)
 {
   return (c->service_name == 0 || vec_len (c->service_name) == 0 ||
 	  (summary->service_name_len && vec_len (c->service_name) == summary->service_name_len &&
@@ -247,7 +255,7 @@ pppoeclient_service_name_compatible (pppoe_client_t *c, pppoeclient_control_even
 
 static_always_inline void
 pppoeclient_fallback_selection_consider (pppoeclient_fallback_selection_t *selection,
-					 pppoe_client_t *candidate,
+					 pppoeclient_t *candidate,
 					 pppoeclient_control_match_reason_t reason, u8 score)
 {
   selection->candidate_count++;
@@ -294,7 +302,7 @@ pppoeclient_fill_fallback_selection_summary (pppoeclient_control_event_t *summar
 }
 
 static_always_inline int
-pppoeclient_evaluate_hostuniqless_candidate (pppoe_client_t *candidate, u8 packet_code,
+pppoeclient_evaluate_hostuniqless_candidate (pppoeclient_t *candidate, u8 packet_code,
 					     const u8 *peer_mac,
 					     pppoeclient_control_event_t *summary,
 					     pppoeclient_control_match_reason_t *reason, u8 *score)
@@ -319,13 +327,13 @@ pppoeclient_evaluate_hostuniqless_candidate (pppoe_client_t *candidate, u8 packe
   return 1;
 }
 
-static pppoe_client_t *
+static pppoeclient_t *
 pppoeclient_select_hostuniqless_candidate (pppoeclient_main_t *pem, u8 packet_code, u32 sw_if_index,
 					   const u8 *peer_mac, pppoeclient_control_event_t *summary,
 					   pppoeclient_fallback_selection_t *selection)
 {
-  pppoe_client_t *it;
-  pppoe_client_state_t expected_state =
+  pppoeclient_t *it;
+  pppoeclient_state_t expected_state =
     (packet_code == PPPOE_PADO) ? PPPOE_CLIENT_DISCOVERY : PPPOE_CLIENT_REQUEST;
 
   pppoeclient_fallback_selection_init (selection);
@@ -410,7 +418,7 @@ pppoeclient_score_match_flags (u8 flags, u8 packet_code, pppoeclient_control_mat
 }
 
 static u8
-pppoeclient_score_pado_candidate (pppoe_client_t *c, pppoeclient_control_match_reason_t *reason)
+pppoeclient_score_pado_candidate (pppoeclient_t *c, pppoeclient_control_match_reason_t *reason)
 {
   u8 flags = 0;
 
@@ -423,7 +431,7 @@ pppoeclient_score_pado_candidate (pppoe_client_t *c, pppoeclient_control_match_r
 }
 
 static u8
-pppoeclient_score_pads_candidate (pppoe_client_t *c, pppoeclient_control_event_t *summary,
+pppoeclient_score_pads_candidate (pppoeclient_t *c, pppoeclient_control_event_t *summary,
 				  pppoeclient_control_match_reason_t *reason)
 {
   u8 flags = PPPOECLIENT_MATCH_FLAG_AC_MAC;
@@ -454,7 +462,7 @@ pppoeclient_dispatch_unref (pppoeclient_main_t *pem, u32 sw_if_index)
 }
 
 static void
-pppoe_client_clear_runtime_state (pppoe_client_t *c)
+pppoeclient_clear_runtime_state (pppoeclient_t *c)
 {
   c->ip4_addr = 0;
   c->ip4_netmask = 0;
@@ -474,6 +482,9 @@ pppoe_client_clear_runtime_state (pppoe_client_t *c)
   c->ipcp_id = 0;
   c->ipv6cp_state = 0;
   c->ipv6cp_id = 0;
+
+  /* Clear cached data-plane fields so stale values are never visible
+   * if the client is reused after teardown. */
   c->discovery_error = 0;
 }
 
@@ -493,7 +504,7 @@ pppoeclient_session_file_path (u32 sw_if_index, char *buf, size_t buf_len)
 }
 
 void
-pppoeclient_save_session_to_file (pppoe_client_t *c)
+pppoeclient_save_session_to_file (pppoeclient_t *c)
 {
   pppoeclient_main_t *pem = &pppoeclient_main;
   vnet_main_t *vnm = pem->vnet_main;
@@ -518,14 +529,16 @@ pppoeclient_save_session_to_file (pppoe_client_t *c)
       clib_memcpy (src_mac, hw->hw_address, 6);
       if (pppoeclient_get_linux_ifname (vnm, c->sw_if_index, linux_ifname, sizeof (linux_ifname),
 					1) < 0)
-	clib_warning ("pppoeclient: save_session: get_linux_ifname FAILED for sw_if_index %u",
-		      c->sw_if_index);
+	vlib_log (VLIB_LOG_LEVEL_ERR, pppoeclient_log_class,
+		  "save_session: get_linux_ifname FAILED for sw_if_index %u", c->sw_if_index);
       else
-	clib_warning ("pppoeclient: save_session: resolved linux ifname='%s' for sw_if_index %u",
-		      linux_ifname, c->sw_if_index);
+	vlib_log (VLIB_LOG_LEVEL_INFO, pppoeclient_log_class,
+		  "save_session: resolved linux ifname='%s' for sw_if_index %u", linux_ifname,
+		  c->sw_if_index);
     }
   else
-    clib_warning ("pppoeclient: save_session: no hw interface for sw_if_index %u", c->sw_if_index);
+    vlib_log (VLIB_LOG_LEVEL_ERR, pppoeclient_log_class,
+	      "save_session: no hw interface for sw_if_index %u", c->sw_if_index);
 
   u16 sid = clib_host_to_net_u16 (c->session_id);
   off = 0;
@@ -547,7 +560,8 @@ pppoeclient_save_session_to_file (pppoe_client_t *c)
   fd = open (tmp_path, O_WRONLY | O_CREAT | O_TRUNC, 0600);
   if (fd < 0)
     {
-      clib_warning ("pppoeclient: save_session: cannot create %s: %s", tmp_path, strerror (errno));
+      vlib_log (VLIB_LOG_LEVEL_ERR, pppoeclient_log_class, "save_session: cannot create %s: %s",
+		tmp_path, strerror (errno));
       return;
     }
 
@@ -559,8 +573,8 @@ pppoeclient_save_session_to_file (pppoe_client_t *c)
 	{
 	  if (errno == EINTR)
 	    continue;
-	  clib_warning ("pppoeclient: save_session: write %s failed: %s", tmp_path,
-			strerror (errno));
+	  vlib_log (VLIB_LOG_LEVEL_ERR, pppoeclient_log_class, "save_session: write %s failed: %s",
+		    tmp_path, strerror (errno));
 	  close (fd);
 	  unlink (tmp_path);
 	  return;
@@ -573,17 +587,18 @@ pppoeclient_save_session_to_file (pppoe_client_t *c)
 
   if (remaining != 0 || rename (tmp_path, path) < 0)
     {
-      clib_warning ("pppoeclient: save_session: finalize %s failed: %s", path,
-		    remaining ? "short write" : strerror (errno));
+      vlib_log (VLIB_LOG_LEVEL_ERR, pppoeclient_log_class, "save_session: finalize %s failed: %s",
+		path, remaining ? "short write" : strerror (errno));
       unlink (tmp_path);
       return;
     }
 
-  clib_warning ("pppoeclient: saved session file %s: session_id=%u linux_ifname='%s' "
-		"src_mac=%02x:%02x:%02x:%02x:%02x:%02x ac_mac=%02x:%02x:%02x:%02x:%02x:%02x",
-		path, sid, linux_ifname, src_mac[0], src_mac[1], src_mac[2], src_mac[3], src_mac[4],
-		src_mac[5], c->ac_mac_address[0], c->ac_mac_address[1], c->ac_mac_address[2],
-		c->ac_mac_address[3], c->ac_mac_address[4], c->ac_mac_address[5]);
+  vlib_log (VLIB_LOG_LEVEL_INFO, pppoeclient_log_class,
+	    "saved session file %s: session_id=%u linux_ifname='%s' "
+	    "src_mac=%02x:%02x:%02x:%02x:%02x:%02x ac_mac=%02x:%02x:%02x:%02x:%02x:%02x",
+	    path, sid, linux_ifname, src_mac[0], src_mac[1], src_mac[2], src_mac[3], src_mac[4],
+	    src_mac[5], c->ac_mac_address[0], c->ac_mac_address[1], c->ac_mac_address[2],
+	    c->ac_mac_address[3], c->ac_mac_address[4], c->ac_mac_address[5]);
 }
 
 static void
@@ -595,7 +610,7 @@ pppoeclient_delete_session_file (u32 sw_if_index)
 }
 
 static void
-pppoe_client_mark_session_down (pppoe_client_t *c)
+pppoeclient_mark_session_down (pppoeclient_t *c)
 {
   pppox_main_t *pom = get_pppox_main ();
   u32 unit = ~0;
@@ -613,7 +628,7 @@ pppoe_client_mark_session_down (pppoe_client_t *c)
 }
 
 static void
-pppoe_client_teardown_session (pppoe_client_t *c, u8 send_padt)
+pppoeclient_teardown_session (pppoeclient_t *c, u8 send_padt)
 {
   pppoeclient_main_t *pem = &pppoeclient_main;
 
@@ -636,7 +651,14 @@ pppoe_client_teardown_session (pppoe_client_t *c, u8 send_padt)
   if (c->session_id)
     {
       if (send_padt)
-	send_pppoe_pkt (pem, c, PPPOE_PADT, c->session_id, 0 /* is_broadcast */);
+	{
+	  if (send_pppoe_pkt (pem, c, PPPOE_PADT, c->session_id, 0 /* is_broadcast */) != 0)
+	    vlib_log (VLIB_LOG_LEVEL_WARNING, pppoeclient_log_class,
+		      "failed to send PADT for session %u on %U, "
+		      "BAS will hold stale session until its own timeout",
+		      c->session_id, format_vnet_sw_if_index_name, vnet_get_main (),
+		      c->sw_if_index);
+	}
       /* Do NOT use raw socket here — bringing the Linux interface UP during
        * normal VPP operation destroys the RDMA ibverbs receive path.
        * VPP frame dispatch works fine while the main loop is running.
@@ -651,12 +673,12 @@ pppoe_client_teardown_session (pppoe_client_t *c, u8 send_padt)
       c->session_id = 0;
     }
 
-  pppoe_client_mark_session_down (c);
-  pppoe_client_clear_runtime_state (c);
+  pppoeclient_mark_session_down (c);
+  pppoeclient_clear_runtime_state (c);
 }
 
 static void
-pppoe_client_schedule_discovery (pppoe_client_t *c, f64 next_transmit)
+pppoeclient_schedule_discovery (pppoeclient_t *c, f64 next_transmit)
 {
   pppoeclient_main_t *pem = &pppoeclient_main;
   u32 client_id = c - pem->clients;
@@ -664,12 +686,12 @@ pppoe_client_schedule_discovery (pppoe_client_t *c, f64 next_transmit)
   c->state = PPPOE_CLIENT_DISCOVERY;
   c->next_transmit = next_transmit;
   c->retry_count = 0;
-  vlib_process_signal_event (pem->vlib_main, pppoe_client_process_node.index,
+  vlib_process_signal_event (pem->vlib_main, pppoeclient_process_node.index,
 			     EVENT_PPPOE_CLIENT_WAKEUP, client_id);
 }
 
 int
-sync_pppoe_client_live_auth (pppoe_client_t *c)
+sync_pppoe_client_live_auth (pppoeclient_t *c)
 {
   static int (*pppox_set_auth_func) (u32, u8 *, u8 *) = 0;
 
@@ -685,7 +707,7 @@ sync_pppoe_client_live_auth (pppoe_client_t *c)
 }
 
 int
-sync_pppoe_client_live_default_route4 (pppoe_client_t *c)
+sync_pppoe_client_live_default_route4 (pppoeclient_t *c)
 {
   static int (*pppox_set_add_default_route4_func) (u32, u8) = 0;
 
@@ -702,7 +724,7 @@ sync_pppoe_client_live_default_route4 (pppoe_client_t *c)
 }
 
 int
-sync_pppoe_client_live_default_route6 (pppoe_client_t *c)
+sync_pppoe_client_live_default_route6 (pppoeclient_t *c)
 {
   static int (*pppox_set_add_default_route6_func) (u32, u8) = 0;
 
@@ -719,7 +741,7 @@ sync_pppoe_client_live_default_route6 (pppoe_client_t *c)
 }
 
 int
-sync_pppoe_client_live_use_peer_dns (pppoe_client_t *c)
+sync_pppoe_client_live_use_peer_dns (pppoeclient_t *c)
 {
   static int (*pppox_set_use_peer_dns_func) (u32, u8) = 0;
 
@@ -736,10 +758,10 @@ sync_pppoe_client_live_use_peer_dns (pppoe_client_t *c)
 }
 
 __clib_export void
-pppoe_client_set_peer_dns (u32 pppox_sw_if_index, u32 dns1, u32 dns2)
+pppoeclient_set_peer_dns (u32 pppox_sw_if_index, u32 dns1, u32 dns2)
 {
   pppoeclient_main_t *pem = &pppoeclient_main;
-  pppoe_client_t *c;
+  pppoeclient_t *c;
   u32 client_index;
 
   if (pppox_sw_if_index == ~0 ||
@@ -756,11 +778,11 @@ pppoe_client_set_peer_dns (u32 pppox_sw_if_index, u32 dns1, u32 dns2)
 }
 
 __clib_export void
-pppoe_client_set_ipv6_state (u32 pppox_sw_if_index, const ip6_address_t *ip6_addr,
-			     const ip6_address_t *ip6_peer_addr, u8 prefix_len)
+pppoeclient_set_ipv6_state (u32 pppox_sw_if_index, const ip6_address_t *ip6_addr,
+			    const ip6_address_t *ip6_peer_addr, u8 prefix_len)
 {
   pppoeclient_main_t *pem = &pppoeclient_main;
-  pppoe_client_t *c;
+  pppoeclient_t *c;
   u32 client_index;
 
   if (pppox_sw_if_index == ~0 ||
@@ -788,7 +810,7 @@ pppoe_client_set_ipv6_state (u32 pppox_sw_if_index, const ip6_address_t *ip6_add
 }
 
 static int
-send_pppoe_pkt (pppoeclient_main_t *pem, pppoe_client_t *c, u8 packet_code, u16 session_id,
+send_pppoe_pkt (pppoeclient_main_t *pem, pppoeclient_t *c, u8 packet_code, u16 session_id,
 		int is_broadcast)
 {
   vlib_main_t *vm = pem->vlib_main;
@@ -818,7 +840,7 @@ send_pppoe_pkt (pppoeclient_main_t *pem, pppoe_client_t *c, u8 packet_code, u16 
   void *pkt = vlib_packet_template_get_packet (vm, &pem->packet_template, &bi);
   if (pkt == 0)
     {
-      clib_warning ("buffer allocation failure");
+      vlib_log (VLIB_LOG_LEVEL_ERR, pppoeclient_log_class, "buffer allocation failure");
       return -1;
     }
 
@@ -861,8 +883,9 @@ send_pppoe_pkt (pppoeclient_main_t *pem, pppoe_client_t *c, u8 packet_code, u16 
 
     if (PREDICT_FALSE (total_len > vlib_buffer_get_default_data_size (vm)))
       {
-	clib_warning ("PPPoE discovery pkt too large (%u > %u), dropping", total_len,
-		      vlib_buffer_get_default_data_size (vm));
+	vlib_log (VLIB_LOG_LEVEL_WARNING, pppoeclient_log_class,
+		  "discovery pkt too large (%u > %u), dropping", total_len,
+		  vlib_buffer_get_default_data_size (vm));
 	vlib_buffer_free (vm, &bi, 1);
 	vlib_frame_free (vm, f);
 	return -1;
@@ -935,7 +958,7 @@ pppoeclient_output_ctrl_pkt (u32 pppox_sw_if_index, u8 *ppp_data, int ppp_len)
   pppoeclient_main_t *pem = &pppoeclient_main;
   vlib_main_t *vm = vlib_get_main ();
   vnet_main_t *vnm = pem->vnet_main;
-  pppoe_client_t *c;
+  pppoeclient_t *c;
   vlib_buffer_t *b;
   u32 bi;
   pppoe_header_t *pppoe;
@@ -967,8 +990,9 @@ pppoeclient_output_ctrl_pkt (u32 pppox_sw_if_index, u8 *ppp_data, int ppp_len)
 
   if (PREDICT_FALSE (total_len > vlib_buffer_get_default_data_size (vm)))
     {
-      clib_warning ("PPPoE ctrl pkt too large (%u > %u), dropping", total_len,
-		    vlib_buffer_get_default_data_size (vm));
+      vlib_log (VLIB_LOG_LEVEL_WARNING, pppoeclient_log_class,
+		"ctrl pkt too large (%u > %u), dropping", total_len,
+		vlib_buffer_get_default_data_size (vm));
       vlib_buffer_free (vm, &bi, 1);
       vlib_frame_free (vm, f);
       return;
@@ -1007,7 +1031,7 @@ pppoeclient_output_ctrl_pkt (u32 pppox_sw_if_index, u8 *ppp_data, int ppp_len)
  */
 
 static int
-pppoeclient_discovery_state (pppoeclient_main_t *pem, pppoe_client_t *c, f64 now)
+pppoeclient_discovery_state (pppoeclient_main_t *pem, pppoeclient_t *c, f64 now)
 {
   /*
    * State machine "DISCOVERY" state. Send a PADI packet
@@ -1034,7 +1058,7 @@ pppoeclient_discovery_state (pppoeclient_main_t *pem, pppoe_client_t *c, f64 now
 }
 
 static int
-pppoeclient_request_state (pppoeclient_main_t *pem, pppoe_client_t *c, f64 now)
+pppoeclient_request_state (pppoeclient_main_t *pem, pppoeclient_t *c, f64 now)
 {
   /*
    * State machine "REQUEST" state. Send a PADR packet
@@ -1067,12 +1091,12 @@ pppoeclient_request_state (pppoeclient_main_t *pem, pppoe_client_t *c, f64 now)
 }
 
 static f64
-pppoe_client_sm (f64 now, f64 timeout, uword pool_index)
+pppoeclient_sm (f64 now, f64 timeout, uword pool_index)
 {
   pppoeclient_main_t *pem = &pppoeclient_main;
-  pppoe_client_t *c;
+  pppoeclient_t *c;
 
-  /* deleted, pooched, yadda yadda yadda */
+  /* Skip clients that have been freed from the pool. */
   if (pool_is_free_index (pem->clients, pool_index))
     return timeout;
 
@@ -1104,7 +1128,8 @@ again:
       break;
 
     default:
-      clib_warning ("pppoe client %d bogus state %d", c - pem->clients, c->state);
+      vlib_log (VLIB_LOG_LEVEL_WARNING, pppoeclient_log_class, "client %d bogus state %d",
+		c - pem->clients, c->state);
       break;
     }
 
@@ -1115,26 +1140,28 @@ again:
 }
 
 static_always_inline void
-pppoeclient_client_free_resources (pppoe_client_t *c)
+pppoeclient_client_free_resources (pppoeclient_t *c)
 {
   vec_free (c->ac_name);
   vec_free (c->ac_name_filter);
   vec_free (c->service_name);
   vec_free (c->username);
+  if (c->password)
+    clib_memset (c->password, 0, vec_len (c->password));
   vec_free (c->password);
   vec_free (c->cookie_value);
   vec_free (c->control_history);
 }
 
 static uword
-pppoe_client_process (vlib_main_t *vm, vlib_node_runtime_t *rt, vlib_frame_t *f)
+pppoeclient_process (vlib_main_t *vm, vlib_node_runtime_t *rt, vlib_frame_t *f)
 {
-  f64 timeout = 100.0;
+  f64 timeout = PPPOECLIENT_PROCESS_IDLE_TIMEOUT;
   f64 now;
   uword event_type;
   uword *event_data = 0;
   pppoeclient_main_t *pem = &pppoeclient_main;
-  pppoe_client_t *c;
+  pppoeclient_t *c;
   int i;
 
   while (1)
@@ -1144,22 +1171,22 @@ pppoe_client_process (vlib_main_t *vm, vlib_node_runtime_t *rt, vlib_frame_t *f)
       event_type = vlib_process_get_events (vm, &event_data);
 
       now = vlib_time_now (vm);
-      timeout = 100.0;
+      timeout = PPPOECLIENT_PROCESS_IDLE_TIMEOUT;
 
       switch (event_type)
 	{
 	case EVENT_PPPOE_CLIENT_WAKEUP:
 	  for (i = 0; i < vec_len (event_data); i++)
-	    timeout = pppoe_client_sm (now, timeout, event_data[i]);
+	    timeout = pppoeclient_sm (now, timeout, event_data[i]);
 	  break;
 
 	case ~0:
 	  pool_foreach (c, pem->clients)
 	    {
-	      timeout = pppoe_client_sm (now, timeout, (uword) (c - pem->clients));
+	      timeout = pppoeclient_sm (now, timeout, (uword) (c - pem->clients));
 	    };
 	  if (pool_elts (pem->clients) == 0)
-	    timeout = 100.0;
+	    timeout = PPPOECLIENT_PROCESS_IDLE_TIMEOUT;
 	  break;
 	}
 
@@ -1171,24 +1198,24 @@ pppoe_client_process (vlib_main_t *vm, vlib_node_runtime_t *rt, vlib_frame_t *f)
 }
 
 static_always_inline void
-pppoe_client_wakeup (uword client_index)
+pppoeclient_wakeup (uword client_index)
 {
-  vlib_process_signal_event_mt (vlib_get_main (), pppoe_client_process_node.index,
+  vlib_process_signal_event_mt (vlib_get_main (), pppoeclient_process_node.index,
 				EVENT_PPPOE_CLIENT_WAKEUP, client_index);
 }
 
 static_always_inline void pppoeclient_cli_trim_c_string (u8 **s);
-static void pppoe_client_record_control_event (pppoe_client_t *c, u8 code, u16 session_id,
-					       const u8 *peer_mac,
-					       pppoeclient_control_event_t *summary);
+static void pppoeclient_record_control_event (pppoeclient_t *c, u8 code, u16 session_id,
+					      const u8 *peer_mac,
+					      pppoeclient_control_event_t *summary);
 static void pppoeclient_record_orphan_control_event (pppoeclient_main_t *pem, u32 sw_if_index,
 						     u8 code, u16 session_id, const u8 *peer_mac,
 						     pppoeclient_control_event_t *summary);
 __clib_export void
-pppoe_client_set_auth (u32 client_index, u8 *username, u8 *password)
+pppoeclient_set_auth (u32 client_index, u8 *username, u8 *password)
 {
   pppoeclient_main_t *pem = &pppoeclient_main;
-  pppoe_client_t *c;
+  pppoeclient_t *c;
   u8 *new_username = 0;
   u8 *new_password = 0;
 
@@ -1209,6 +1236,8 @@ pppoe_client_set_auth (u32 client_index, u8 *username, u8 *password)
     }
 
   vec_free (c->username);
+  if (c->password)
+    clib_memset (c->password, 0, vec_len (c->password));
   vec_free (c->password);
   c->username = new_username;
   c->password = new_password;
@@ -1224,11 +1253,11 @@ pppoeclient_cli_trim_c_string (u8 **s)
     vec_set_len (*s, vec_len (*s) - 1);
 }
 
-VLIB_REGISTER_NODE (pppoe_client_process_node, static) = {
-  .function = pppoe_client_process,
+VLIB_REGISTER_NODE (pppoeclient_process_node, static) = {
+  .function = pppoeclient_process,
   .type = VLIB_NODE_TYPE_PROCESS,
   .name = "pppoe-client-process",
-  .process_log2_n_stack_bytes = 16,
+  .process_log2_n_stack_bytes = 18,
 };
 
 int
@@ -1285,7 +1314,7 @@ parse_for_host_uniq (u16 type, u16 len, unsigned char *data, void *extra)
 void
 parse_pado_tags (u16 type, u16 len, unsigned char *data, void *extra)
 {
-  pppoe_client_t *c = (pppoe_client_t *) extra;
+  pppoeclient_t *c = (pppoeclient_t *) extra;
 
   switch (type)
     {
@@ -1295,17 +1324,20 @@ parse_pado_tags (u16 type, u16 len, unsigned char *data, void *extra)
       break;
     case PPPOE_TAG_SERVICE_NAME_ERROR:
       if (len > 0)
-	clib_warning ("PPPoE Service-Name-Error: %.*s", (int) len, data);
+	vlib_log (VLIB_LOG_LEVEL_WARNING, pppoeclient_log_class, "Service-Name-Error: %.*s",
+		  (int) len, data);
       c->discovery_error = PPPOECLIENT_ERROR_SERVICE_NAME_ERROR;
       break;
     case PPPOE_TAG_AC_SYSTEM_ERROR:
       if (len > 0)
-	clib_warning ("PPPoE AC-System-Error: %.*s", (int) len, data);
+	vlib_log (VLIB_LOG_LEVEL_WARNING, pppoeclient_log_class, "AC-System-Error: %.*s", (int) len,
+		  data);
       c->discovery_error = PPPOECLIENT_ERROR_AC_SYSTEM_ERROR;
       break;
     case PPPOE_TAG_GENERIC_ERROR:
       if (len > 0)
-	clib_warning ("PPPoE Generic-Error: %.*s", (int) len, data);
+	vlib_log (VLIB_LOG_LEVEL_WARNING, pppoeclient_log_class, "Generic-Error: %.*s", (int) len,
+		  data);
       c->discovery_error = PPPOECLIENT_ERROR_GENERIC_ERROR;
       break;
     case PPPOE_TAG_AC_NAME:
@@ -1928,8 +1960,8 @@ pppoeclient_show_filtered_control_history_entries (vlib_main_t *vm, const char *
 }
 
 static void
-pppoe_client_record_control_event (pppoe_client_t *c, u8 code, u16 session_id, const u8 *peer_mac,
-				   pppoeclient_control_event_t *summary)
+pppoeclient_record_control_event (pppoeclient_t *c, u8 code, u16 session_id, const u8 *peer_mac,
+				  pppoeclient_control_event_t *summary)
 {
   pppoeclient_main_t *pem = &pppoeclient_main;
   pppoeclient_control_event_t *event;
@@ -2001,7 +2033,7 @@ pppoeclient_record_orphan_control_event (pppoeclient_main_t *pem, u32 sw_if_inde
 }
 
 static void
-pppoeclient_update_latest_control_disposition (pppoe_client_t *c,
+pppoeclient_update_latest_control_disposition (pppoeclient_t *c,
 					       pppoeclient_control_disposition_t disposition)
 {
   pppoeclient_control_event_t *event;
@@ -2016,12 +2048,12 @@ pppoeclient_update_latest_control_disposition (pppoe_client_t *c,
   event->disposition = disposition;
 }
 
-static pppoe_client_t *
-pppoe_client_find_unique_candidate (pppoeclient_main_t *pem, u32 sw_if_index,
-				    pppoe_client_state_t expected_state, const u8 *peer_mac)
+static pppoeclient_t *
+pppoeclient_find_unique_candidate (pppoeclient_main_t *pem, u32 sw_if_index,
+				   pppoeclient_state_t expected_state, const u8 *peer_mac)
 {
-  pppoe_client_t *candidate = 0;
-  pppoe_client_t *it;
+  pppoeclient_t *candidate = 0;
+  pppoeclient_t *it;
 
   pool_foreach (it, pem->clients)
     {
@@ -2045,9 +2077,9 @@ pppoeclient_record_malformed_discovery_event (pppoeclient_main_t *pem, u8 packet
 					      vlib_buffer_t *b)
 {
   pppoeclient_control_event_t event_summary;
-  pppoe_client_t *malformed_client = 0;
+  pppoeclient_t *malformed_client = 0;
   ethernet_header_t *eth_hdr;
-  pppoe_client_state_t expected_state =
+  pppoeclient_state_t expected_state =
     (packet_code == PPPOE_PADO) ? PPPOE_CLIENT_DISCOVERY : PPPOE_CLIENT_REQUEST;
 
   clib_memset (&event_summary, 0, sizeof (event_summary));
@@ -2061,16 +2093,16 @@ pppoeclient_record_malformed_discovery_event (pppoeclient_main_t *pem, u8 packet
 
   if (packet_code == PPPOE_PADS)
     malformed_client =
-      pppoe_client_find_unique_candidate (pem, sw_if_index, expected_state, eth_hdr->src_address);
+      pppoeclient_find_unique_candidate (pem, sw_if_index, expected_state, eth_hdr->src_address);
 
   if (malformed_client == 0)
-    malformed_client = pppoe_client_find_unique_candidate (pem, sw_if_index, expected_state, 0);
+    malformed_client = pppoeclient_find_unique_candidate (pem, sw_if_index, expected_state, 0);
 
   if (malformed_client)
     {
-      pppoe_client_record_control_event (malformed_client, packet_code,
-					 clib_net_to_host_u16 (pppoe->session_id),
-					 eth_hdr->src_address, &event_summary);
+      pppoeclient_record_control_event (malformed_client, packet_code,
+					clib_net_to_host_u16 (pppoe->session_id),
+					eth_hdr->src_address, &event_summary);
       return;
     }
 
@@ -2080,7 +2112,7 @@ pppoeclient_record_malformed_discovery_event (pppoeclient_main_t *pem, u8 packet
 }
 
 static int
-pppoeclient_parse_and_record_client_control_event (pppoe_client_t *c, u8 packet_code,
+pppoeclient_parse_and_record_client_control_event (pppoeclient_t *c, u8 packet_code,
 						   pppoe_header_t *pppoe, vlib_buffer_t *b,
 						   pppoeclient_control_event_t *event_summary,
 						   ethernet_header_t **eth_hdr)
@@ -2117,13 +2149,13 @@ pppoeclient_parse_and_record_client_control_event (pppoe_client_t *c, u8 packet_
   if (parse_result < 0)
     {
       event_summary->parse_error = 1;
-      pppoe_client_record_control_event (c, packet_code, session_id, (*eth_hdr)->src_address,
-					 event_summary);
+      pppoeclient_record_control_event (c, packet_code, session_id, (*eth_hdr)->src_address,
+					event_summary);
       return parse_result;
     }
 
-  pppoe_client_record_control_event (c, packet_code, session_id, (*eth_hdr)->src_address,
-				     event_summary);
+  pppoeclient_record_control_event (c, packet_code, session_id, (*eth_hdr)->src_address,
+				    event_summary);
   return 0;
 }
 
@@ -2131,11 +2163,11 @@ int
 consume_pppoe_discovery_pkt (u32 bi, vlib_buffer_t *b, pppoe_header_t *pppoe)
 {
   pppoeclient_main_t *pem = &pppoeclient_main;
-  pppoe_client_t *c;
+  pppoeclient_t *c;
   f64 now = vlib_time_now (pem->vlib_main);
   u32 sw_if_index = ~0;
   u32 host_uniq = 0;
-  pppoe_client_result_t result;
+  pppoeclient_result_t result;
   u8 packet_code;
   ethernet_header_t *eth_hdr = 0;
   uword client_id = ~0;
@@ -2258,10 +2290,11 @@ consume_pppoe_discovery_pkt (u32 bi, vlib_buffer_t *b, pppoe_header_t *pppoe)
     case PPPOE_CLIENT_DISCOVERY:
       if (packet_code != PPPOE_PADO)
 	{
-	  c->next_transmit = now + 5.0;
+	  c->next_transmit = now + PPPOECLIENT_UNEXPECTED_PKT_COOLDOWN;
 	  break;
 	}
 
+      /* Zero old cookie before reuse to avoid leaking stale bytes. */
       clib_memset (c->cookie_value, 0, vec_len (c->cookie_value));
       vec_reset_length (c->cookie_value);
       vec_free (c->ac_name);
@@ -2310,7 +2343,7 @@ consume_pppoe_discovery_pkt (u32 bi, vlib_buffer_t *b, pppoe_header_t *pppoe)
       c->next_transmit = 0; /* send immediately. */
       /* Poke the client process, which will send the request */
       client_id = c - pem->clients;
-      pppoe_client_wakeup (client_id);
+      pppoeclient_wakeup (client_id);
       pppoeclient_update_latest_control_disposition (c, PPPOECLIENT_CONTROL_DISPOSITION_ACCEPTED);
       break;
     case PPPOE_CLIENT_REQUEST:
@@ -2356,7 +2389,7 @@ consume_pppoe_discovery_pkt (u32 bi, vlib_buffer_t *b, pppoe_header_t *pppoe)
 	   * REQUEST + PADT is therefore unreachable today; we fall through
 	   * to a short cool-down so any future caller that invents a new
 	   * control code does not hot-spin the state machine. */
-	  c->next_transmit = now + 5.0;
+	  c->next_transmit = now + PPPOECLIENT_UNEXPECTED_PKT_COOLDOWN;
 	  break;
 	}
 
@@ -2398,7 +2431,7 @@ consume_pppoe_discovery_pkt (u32 bi, vlib_buffer_t *b, pppoe_header_t *pppoe)
 	  pppoeclient_update_latest_control_disposition (c, PPPOECLIENT_CONTROL_DISPOSITION_ERROR);
 	  c->state = PPPOE_CLIENT_DISCOVERY;
 	  c->retry_count = 0;
-	  c->next_transmit = now + 5.0;
+	  c->next_transmit = now + PPPOECLIENT_UNEXPECTED_PKT_COOLDOWN;
 	  return c->discovery_error;
 	}
 
@@ -2410,7 +2443,7 @@ consume_pppoe_discovery_pkt (u32 bi, vlib_buffer_t *b, pppoe_header_t *pppoe)
 	   * turn to retransmit hoping the AC will accept us. */
 	  pppoeclient_update_latest_control_disposition (c, PPPOECLIENT_CONTROL_DISPOSITION_ERROR);
 	  c->session_id = 0;
-	  c->next_transmit = now + 5.0;
+	  c->next_transmit = now + PPPOECLIENT_UNEXPECTED_PKT_COOLDOWN;
 	  return PPPOECLIENT_ERROR_INVALID_SESSION_ID;
 	}
 
@@ -2431,15 +2464,13 @@ consume_pppoe_discovery_pkt (u32 bi, vlib_buffer_t *b, pppoe_header_t *pppoe)
       pppoeclient_update_session_1 (&pem->session_table, c->sw_if_index, c->ac_mac_address,
 				    c->session_id, &result);
       c->state = PPPOE_CLIENT_SESSION;
-      c->retry_count = 0;
-      c->session_start_time = now;
       /* A fresh PPPoE session means the BAS has (again) admitted us, so the
        * previous auth-failure streak no longer reflects current reality. */
       c->consecutive_auth_failures = 0;
       pppoeclient_save_session_to_file (c);
       /* when shift to session stage, just give control to user
        * and ppp control plane. */
-      c->next_transmit = 1e18;
+      c->next_transmit = PPPOECLIENT_NEXT_TRANSMIT_PARKED;
       pppoeclient_update_latest_control_disposition (c, PPPOECLIENT_CONTROL_DISPOSITION_ACCEPTED);
       /* notify pppoe session up. */
       PPPOECLIENT_LAZY_PLUGIN_SYMBOL (pppox_lower_up_func, "pppoeclient_plugin.so",
@@ -2453,15 +2484,15 @@ consume_pppoe_discovery_pkt (u32 bi, vlib_buffer_t *b, pppoe_header_t *pppoe)
 	  pppoeclient_delete_session_1 (&pem->session_table, c->sw_if_index, c->ac_mac_address,
 					c->session_id);
 	  c->session_id = 0;
-	  pppoe_client_clear_runtime_state (c);
-	  /* Roll back the SESSION-entry timestamp so pppoe_client_teardown_session
+	  pppoeclient_clear_runtime_state (c);
+	  /* Roll back the SESSION-entry timestamp so pppoeclient_teardown_session
 	   * doesn't later treat this aborted attempt as a real SESSION lifetime. */
 	  c->session_start_time = 0;
 	  c->state = PPPOE_CLIENT_DISCOVERY;
 	  c->retry_count = 0;
 	  c->next_transmit = now;
 	  client_id = c - pem->clients;
-	  pppoe_client_wakeup (client_id);
+	  pppoeclient_wakeup (client_id);
 	  return PPPOECLIENT_ERROR_PPPOX_PLUGIN_MISSING;
 	}
       (*pppox_lower_up_func) (c->pppox_sw_if_index);
@@ -2474,8 +2505,8 @@ consume_pppoe_discovery_pkt (u32 bi, vlib_buffer_t *b, pppoe_header_t *pppoe)
 	}
       vlib_buffer_reset (b);
       eth_hdr = vlib_buffer_get_current (b);
-      pppoe_client_record_control_event (c, packet_code, clib_net_to_host_u16 (pppoe->session_id),
-					 eth_hdr->src_address, &event_summary);
+      pppoeclient_record_control_event (c, packet_code, clib_net_to_host_u16 (pppoe->session_id),
+					eth_hdr->src_address, &event_summary);
       pppoeclient_update_latest_control_disposition (c, PPPOECLIENT_CONTROL_DISPOSITION_ACCEPTED);
       c->last_disconnect_reason = PPPOECLIENT_DISCONNECT_PADT;
       c->total_reconnects++;
@@ -2487,17 +2518,17 @@ consume_pppoe_discovery_pkt (u32 bi, vlib_buffer_t *b, pppoe_header_t *pppoe)
       /* delete from session table and clear session_id.
        * NOTE: do NOT delete session file here — pppoeclient_exit() needs it
        * to send raw PADT on shutdown.  File is overwritten on each new PADS
-       * and cleaned up by pppoeclient_exit() or pppoeclient_send_stale_padt(). */
+       * and cleaned up by pppoeclient_exit(). */
       pppoeclient_delete_session_1 (&pem->session_table, c->sw_if_index, c->ac_mac_address,
 				    c->session_id);
       c->session_id = 0;
-      pppoe_client_clear_runtime_state (c);
+      pppoeclient_clear_runtime_state (c);
       /*
        * BAS implementations often rate-limit redial immediately after sending
        * PADT or rejecting authentication. Cool down before re-entering
        * discovery to avoid reconnect storms.
        */
-      pppoe_client_schedule_discovery (c, now + PPPOECLIENT_REDISCOVERY_COOLDOWN);
+      pppoeclient_schedule_discovery (c, now + PPPOECLIENT_REDISCOVERY_COOLDOWN);
       return PPPOECLIENT_ERROR_PADT_RECEIVED;
     default:
       break;
@@ -2509,7 +2540,7 @@ consume_pppoe_discovery_pkt (u32 bi, vlib_buffer_t *b, pppoe_header_t *pppoe)
 static u8 *
 format_pppoe_client_state (u8 *s, va_list *va)
 {
-  pppoe_client_state_t state = va_arg (*va, pppoe_client_state_t);
+  pppoeclient_state_t state = va_arg (*va, pppoeclient_state_t);
   char *str = "BOGUS!";
 
   switch (state)
@@ -2529,8 +2560,8 @@ format_pppoe_client_state (u8 *s, va_list *va)
 }
 
 static pppox_virtual_interface_t *
-pppoe_client_get_detail_virtual_interface (pppoeclient_main_t *pem, pppoe_client_t *c,
-					   u32 client_index, u32 *unit, u8 *unit_from_hw)
+pppoeclient_get_detail_virtual_interface (pppoeclient_main_t *pem, pppoeclient_t *c,
+					  u32 client_index, u32 *unit, u8 *unit_from_hw)
 {
   pppox_main_t *pom = get_pppox_main ();
   pppox_virtual_interface_t *t = 0;
@@ -2563,7 +2594,7 @@ pppoe_client_get_detail_virtual_interface (pppoeclient_main_t *pem, pppoe_client
       pppox_virtual_interface_t *candidate = pool_elt_at_index (pom->virtual_interfaces, *unit);
 
       if (candidate->sw_if_index == c->pppox_sw_if_index &&
-	  candidate->pppoe_client_index == client_index)
+	  candidate->pppoeclient_index == client_index)
 	t = candidate;
     }
 
@@ -2571,7 +2602,7 @@ pppoe_client_get_detail_virtual_interface (pppoeclient_main_t *pem, pppoe_client
 }
 
 static u8
-pppoe_client_get_detail_global_ipv6 (u32 sw_if_index, ip6_address_t *addr, u8 *prefix_len)
+pppoeclient_get_detail_global_ipv6 (u32 sw_if_index, ip6_address_t *addr, u8 *prefix_len)
 {
   ip_lookup_main_t *lm = &ip6_main.lookup_main;
   ip_interface_address_t *ia = 0;
@@ -2602,7 +2633,7 @@ pppoe_client_get_detail_global_ipv6 (u32 sw_if_index, ip6_address_t *addr, u8 *p
 }
 
 static u8
-pppoe_client_get_detail_dhcp6_ia_na (u32 sw_if_index, dhcp6_ia_na_client_runtime_t *rt)
+pppoeclient_get_detail_dhcp6_ia_na (u32 sw_if_index, dhcp6_ia_na_client_runtime_t *rt)
 {
   static u8 (*dhcp6_ia_na_client_get_runtime_func) (u32, dhcp6_ia_na_client_runtime_t *) = 0;
   static u8 attempted = 0;
@@ -2626,8 +2657,8 @@ pppoe_client_get_detail_dhcp6_ia_na (u32 sw_if_index, dhcp6_ia_na_client_runtime
 }
 
 static u8
-pppoe_client_get_detail_dhcp6_pd (u32 sw_if_index, dhcp6_pd_client_runtime_t *rt,
-				  dhcp6_pd_active_prefix_runtime_t *prefix_rt)
+pppoeclient_get_detail_dhcp6_pd (u32 sw_if_index, dhcp6_pd_client_runtime_t *rt,
+				 dhcp6_pd_active_prefix_runtime_t *prefix_rt)
 {
   static u8 (*dhcp6_pd_client_get_runtime_func) (u32, dhcp6_pd_client_runtime_t *) = 0;
   static u8 (*dhcp6_pd_client_get_active_prefix_runtime_func) (
@@ -2659,7 +2690,7 @@ pppoe_client_get_detail_dhcp6_pd (u32 sw_if_index, dhcp6_pd_client_runtime_t *rt
 }
 
 static u8
-pppoe_client_get_detail_dhcp6_pd_consumer (u32 sw_if_index, dhcp6_pd_consumer_runtime_t *rt)
+pppoeclient_get_detail_dhcp6_pd_consumer (u32 sw_if_index, dhcp6_pd_consumer_runtime_t *rt)
 {
   static u8 (*dhcp6_pd_client_get_consumer_runtime_func) (u32, dhcp6_pd_consumer_runtime_t *) = 0;
   static u8 attempted = 0;
@@ -2883,7 +2914,7 @@ unformat_pppoeclient_control_match_reason_name (unformat_input_t *input, va_list
 }
 
 static void
-show_pppoeclient_detail_one (vlib_main_t *vm, pppoe_client_t *c)
+show_pppoeclient_detail_one (vlib_main_t *vm, pppoeclient_t *c)
 {
   pppoeclient_main_t *pem = &pppoeclient_main;
   u32 client_index = c - pem->clients;
@@ -2902,7 +2933,7 @@ show_pppoeclient_detail_one (vlib_main_t *vm, pppoe_client_t *c)
   u8 dhcp6_pd_available = 0;
   u8 dhcp6_pd_consumer_available = 0;
 
-  t = pppoe_client_get_detail_virtual_interface (pem, c, client_index, &unit, &unit_from_hw);
+  t = pppoeclient_get_detail_virtual_interface (pem, c, client_index, &unit, &unit_from_hw);
 
   if (c->ac_name)
     session_ac_name = format (0, "%v", c->ac_name);
@@ -2925,11 +2956,11 @@ show_pppoeclient_detail_one (vlib_main_t *vm, pppoe_client_t *c)
     configured_auth_user = format (0, "<unset>");
 
   dhcp6_ia_na_available =
-    pppoe_client_get_detail_dhcp6_ia_na (c->pppox_sw_if_index, &dhcp6_ia_na_rt);
+    pppoeclient_get_detail_dhcp6_ia_na (c->pppox_sw_if_index, &dhcp6_ia_na_rt);
   dhcp6_pd_available =
-    pppoe_client_get_detail_dhcp6_pd (c->pppox_sw_if_index, &dhcp6_pd_rt, &dhcp6_pd_prefix_rt);
+    pppoeclient_get_detail_dhcp6_pd (c->pppox_sw_if_index, &dhcp6_pd_rt, &dhcp6_pd_prefix_rt);
   dhcp6_pd_consumer_available =
-    pppoe_client_get_detail_dhcp6_pd_consumer (c->pppox_sw_if_index, &dhcp6_pd_consumer_rt);
+    pppoeclient_get_detail_dhcp6_pd_consumer (c->pppox_sw_if_index, &dhcp6_pd_consumer_rt);
 
   vlib_cli_output (vm, "[%u] access-interface %U host-uniq %u", client_index,
 		   format_vnet_sw_if_index_name, pem->vnet_main, c->sw_if_index, c->host_uniq);
@@ -2948,7 +2979,7 @@ show_pppoeclient_detail_one (vlib_main_t *vm, pppoe_client_t *c)
 	ip6_address_is_zero (&c->ip6_peer_addr) ? &t->his_ipv6 : &c->ip6_peer_addr;
       const char *wan_ipv6_mode = "unset";
 
-      observed_local_present = pppoe_client_get_detail_global_ipv6 (
+      observed_local_present = pppoeclient_get_detail_global_ipv6 (
 	c->pppox_sw_if_index, &observed_local_ip6, &observed_prefix_len);
 
       if (observed_local_present)
@@ -3099,7 +3130,7 @@ show_pppoeclient_detail_one (vlib_main_t *vm, pppoe_client_t *c)
 }
 
 static void
-show_pppoeclient_debug_one (vlib_main_t *vm, pppoe_client_t *c,
+show_pppoeclient_debug_one (vlib_main_t *vm, pppoeclient_t *c,
 			    pppoeclient_history_cli_filter_t *filter)
 {
   pppoeclient_main_t *pem = &pppoeclient_main;
@@ -3117,7 +3148,7 @@ show_pppoeclient_debug_one (vlib_main_t *vm, pppoe_client_t *c,
   static u8 (*pppox_get_ppp_debug_runtime_func) (u32, pppox_ppp_debug_runtime_t *) = 0;
   static u8 attempted = 0;
 
-  t = pppoe_client_get_detail_virtual_interface (pem, c, client_index, &unit, &unit_from_hw);
+  t = pppoeclient_get_detail_virtual_interface (pem, c, client_index, &unit, &unit_from_hw);
 
   if (c->ac_name_filter && vec_len (c->ac_name_filter) > 0)
     configured_ac_name = format (0, "%v", c->ac_name_filter);
@@ -3136,7 +3167,7 @@ show_pppoeclient_debug_one (vlib_main_t *vm, pppoe_client_t *c,
 
   if (c->state != PPPOE_CLIENT_DISCOVERY)
     next_discovery = format (0, "n/a");
-  else if (c->next_transmit >= 1e17)
+  else if (PPPOECLIENT_NEXT_TRANSMIT_IS_PARKED (c->next_transmit))
     next_discovery = format (0, "parked");
   else if (c->next_transmit <= now)
     next_discovery = format (0, "due");
@@ -3262,7 +3293,7 @@ show_pppoeclient_orphan_control_history (vlib_main_t *vm)
 }
 
 static void
-show_pppoeclient_summary_filtered_one (vlib_main_t *vm, pppoe_client_t *c,
+show_pppoeclient_summary_filtered_one (vlib_main_t *vm, pppoeclient_t *c,
 				       pppoeclient_history_cli_filter_t *filter)
 {
   pppoeclient_main_t *pem = &pppoeclient_main;
@@ -3311,7 +3342,7 @@ show_pppoeclient_orphan_control_summary_filtered (vlib_main_t *vm,
 }
 
 static void
-show_pppoeclient_history_filtered_one (vlib_main_t *vm, pppoe_client_t *c,
+show_pppoeclient_history_filtered_one (vlib_main_t *vm, pppoeclient_t *c,
 				       pppoeclient_history_cli_filter_t *filter)
 {
   pppoeclient_main_t *pem = &pppoeclient_main;
@@ -3395,7 +3426,7 @@ show_pppoeclient_orphan_control_history_filtered (vlib_main_t *vm,
 u8 *
 format_pppoe_client (u8 *s, va_list *args)
 {
-  pppoe_client_t *c = va_arg (*args, pppoe_client_t *);
+  pppoeclient_t *c = va_arg (*args, pppoeclient_t *);
   pppoeclient_main_t *pem = &pppoeclient_main;
 
   s = format (s,
@@ -3408,21 +3439,26 @@ format_pppoe_client (u8 *s, va_list *args)
 }
 
 __clib_export void
-pppoe_client_open_session (u32 client_index)
+pppoeclient_open_session (u32 client_index)
 {
   pppoeclient_main_t *pem = &pppoeclient_main;
   vlib_main_t *vm = pem->vlib_main;
-  pppoe_client_t *c;
+  pppoeclient_t *c;
 
   if (pool_is_free_index (pem->clients, client_index))
     return;
 
   c = pool_elt_at_index (pem->clients, client_index);
 
+  /* If already in SESSION or REQUEST, tear down the existing state first
+   * so we don't leak the BAS session or leave stale bihash entries. */
+  if (c->state == PPPOE_CLIENT_SESSION || c->state == PPPOE_CLIENT_REQUEST)
+    pppoeclient_teardown_session (c, 1 /* send_padt */);
+
   c->state = PPPOE_CLIENT_DISCOVERY;
   c->next_transmit = 0;
   c->retry_count = 0;
-  vlib_process_signal_event (vm, pppoe_client_process_node.index, EVENT_PPPOE_CLIENT_WAKEUP,
+  vlib_process_signal_event (vm, pppoeclient_process_node.index, EVENT_PPPOE_CLIENT_WAKEUP,
 			     c - pem->clients);
 }
 
@@ -3463,11 +3499,11 @@ pppoeclient_backoff_jitter_factor (f64 fraction, u32 *seed)
 }
 
 __clib_export void
-pppoe_client_restart_session_with_reason (u32 client_index, u8 disconnect_reason)
+pppoeclient_restart_session_with_reason (u32 client_index, u8 disconnect_reason)
 {
   pppoeclient_main_t *pem = &pppoeclient_main;
   vlib_main_t *vm = pem->vlib_main;
-  pppoe_client_t *c;
+  pppoeclient_t *c;
   f64 now = vlib_time_now (vm);
   f64 cooldown;
 
@@ -3475,7 +3511,8 @@ pppoe_client_restart_session_with_reason (u32 client_index, u8 disconnect_reason
     return;
 
   c = pool_elt_at_index (pem->clients, client_index);
-  if (c->state == PPPOE_CLIENT_DISCOVERY && c->next_transmit > now && c->next_transmit < 1e17)
+  if (c->state == PPPOE_CLIENT_DISCOVERY && c->next_transmit > now &&
+      !PPPOECLIENT_NEXT_TRANSMIT_IS_PARKED (c->next_transmit))
     return;
   c->last_disconnect_reason = disconnect_reason;
   c->total_reconnects++;
@@ -3492,32 +3529,32 @@ pppoe_client_restart_session_with_reason (u32 client_index, u8 disconnect_reason
 
   cooldown *= pppoeclient_backoff_jitter_factor (pem->auth_backoff_jitter_fraction, &pem->rng_seed);
 
-  pppoe_client_teardown_session (c, 1 /* send_padt */);
-  pppoe_client_schedule_discovery (c, now + cooldown);
+  pppoeclient_teardown_session (c, 1 /* send_padt */);
+  pppoeclient_schedule_discovery (c, now + cooldown);
 }
 
 __clib_export void
-pppoe_client_restart_session (u32 client_index)
+pppoeclient_restart_session (u32 client_index)
 {
-  pppoe_client_restart_session_with_reason (client_index, PPPOECLIENT_DISCONNECT_ADMIN);
+  pppoeclient_restart_session_with_reason (client_index, PPPOECLIENT_DISCONNECT_ADMIN);
 }
 
 __clib_export void
-pppoe_client_stop_session (u32 client_index)
+pppoeclient_stop_session (u32 client_index)
 {
   pppoeclient_main_t *pem = &pppoeclient_main;
-  pppoe_client_t *c;
+  pppoeclient_t *c;
 
   if (pool_is_free_index (pem->clients, client_index))
     return;
 
   c = pool_elt_at_index (pem->clients, client_index);
   c->last_disconnect_reason = PPPOECLIENT_DISCONNECT_ADMIN;
-  pppoe_client_teardown_session (c, 1 /* send_padt */);
+  pppoeclient_teardown_session (c, 1 /* send_padt */);
   c->state = PPPOE_CLIENT_DISCOVERY;
   /* Park the client so the process node does not retransmit PADI.
    * open_session or restart_session will reset next_transmit to 0. */
-  c->next_transmit = 1e18;
+  c->next_transmit = PPPOECLIENT_NEXT_TRANSMIT_PARKED;
 }
 
 #define foreach_copy_field                                                                         \
@@ -3528,10 +3565,10 @@ int
 vnet_pppoeclient_add_del (vnet_pppoeclient_add_del_args_t *a, u32 *pppox_sw_if_index)
 {
   pppoeclient_main_t *pem = &pppoeclient_main;
-  pppoe_client_t *c = 0;
+  pppoeclient_t *c = 0;
   vlib_main_t *vm = pem->vlib_main;
   vnet_main_t *vnm = pem->vnet_main;
-  pppoe_client_result_t result;
+  pppoeclient_result_t result;
   u32 pppox_hw_if_index = ~0;
   vnet_sw_interface_t *sw;
 
@@ -3553,7 +3590,7 @@ vnet_pppoeclient_add_del (vnet_pppoeclient_add_del_args_t *a, u32 *pppox_sw_if_i
       c->service_name = vec_dup (a->service_name);
 
       sw = vnet_get_sw_interface_or_null (vnm, a->sw_if_index);
-      if (sw == NULL)
+      if (sw == 0)
 	{
 	  pppoeclient_client_free_resources (c);
 	  pool_put (pem->clients, c);
@@ -3611,9 +3648,8 @@ vnet_pppoeclient_add_del (vnet_pppoeclient_add_del_args_t *a, u32 *pppox_sw_if_i
       pem->client_index_by_pppox_sw_if_index[*pppox_sw_if_index] = result.fields.client_index;
       pppoeclient_dispatch_ref (pem, a->sw_if_index);
 
-      /* Add the interface output node to pppoeclient_session_output_node if not.
-       * And since there will not much physical interface, once added, it will not
-       * be removed. */
+      /* Add the interface output node to pppoeclient_session_output_node if not already
+       * present.  Physical interfaces are few, so once added the entry is never removed. */
       {
 	vnet_hw_interface_t *phy_hi = vnet_get_hw_interface (vnm, c->hw_if_index);
 	u32 edge =
@@ -3649,7 +3685,8 @@ vnet_pppoeclient_add_del (vnet_pppoeclient_add_del_args_t *a, u32 *pppox_sw_if_i
 	return VNET_API_ERROR_UNSUPPORTED;
 
       pppoeclient_dispatch_unref (pem, a->sw_if_index);
-      pppoe_client_stop_session (result.fields.client_index);
+      pppoeclient_stop_session (result.fields.client_index);
+      pppoeclient_delete_session_file (c->sw_if_index);
 
       /* dispatch is refcounted per access interface. */
 
@@ -3678,7 +3715,7 @@ pppoeclient_add_del_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_c
   int rv;
   pppoeclient_main_t *pem = &pppoeclient_main;
   vnet_pppoeclient_add_del_args_t _a, *a = &_a;
-  clib_error_t *error = NULL;
+  clib_error_t *error = 0;
   u32 pppox_sw_if_index = ~0;
 
   /* Get a line of input. */
@@ -3790,7 +3827,7 @@ unformat_pppoeclient_index_or_intf (unformat_input_t *input, va_list *args)
   u32 *out = va_arg (*args, u32 *);
   pppoeclient_main_t *pem = &pppoeclient_main;
   vnet_main_t *vnm = pem->vnet_main;
-  pppoe_client_t *c;
+  pppoeclient_t *c;
   u32 sw_if_index;
   u32 pool_index;
 
@@ -3834,7 +3871,7 @@ pppoeclient_restart_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_c
   if (pool_is_free_index (pem->clients, client_index))
     return clib_error_return (0, "invalid client index %u", client_index);
 
-  pppoe_client_restart_session (client_index);
+  pppoeclient_restart_session (client_index);
   vlib_cli_output (vm, "PPPoE client %u restarted", client_index);
   return 0;
 }
@@ -3871,7 +3908,7 @@ pppoeclient_stop_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_
   if (pool_is_free_index (pem->clients, client_index))
     return clib_error_return (0, "invalid client index %u", client_index);
 
-  pppoe_client_stop_session (client_index);
+  pppoeclient_stop_session (client_index);
   vlib_cli_output (vm, "PPPoE client %u stopped", client_index);
   return 0;
 }
@@ -3893,7 +3930,7 @@ pppoeclient_inject_auth_fail_command_fn (vlib_main_t *vm, unformat_input_t *inpu
 					 vlib_cli_command_t *cmd)
 {
   pppoeclient_main_t *pem = &pppoeclient_main;
-  pppoe_client_t *c;
+  pppoeclient_t *c;
   u32 client_index = ~0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -3914,7 +3951,7 @@ pppoeclient_inject_auth_fail_command_fn (vlib_main_t *vm, unformat_input_t *inpu
    * each injection. This is not the real path a BAS-driven auth failure takes. */
   c = pool_elt_at_index (pem->clients, client_index);
   c->next_transmit = 0;
-  pppoe_client_restart_session_with_reason (client_index, PPPOECLIENT_DISCONNECT_AUTH_FAIL);
+  pppoeclient_restart_session_with_reason (client_index, PPPOECLIENT_DISCONNECT_AUTH_FAIL);
   vlib_cli_output (vm, "PPPoE client %u restarted as auth-fail", client_index);
   return 0;
 }
@@ -3937,7 +3974,7 @@ pppoeclient_show_backoff_command_fn (vlib_main_t *vm, unformat_input_t *input,
 				     vlib_cli_command_t *cmd)
 {
   pppoeclient_main_t *pem = &pppoeclient_main;
-  pppoe_client_t *c;
+  pppoeclient_t *c;
   f64 now = vlib_time_now (vm);
   u32 jitter_permille = (u32) (pem->auth_backoff_jitter_fraction * 1000.0 + 0.5);
 
@@ -3954,8 +3991,8 @@ pppoeclient_show_backoff_command_fn (vlib_main_t *vm, unformat_input_t *input,
   pool_foreach (c, pem->clients)
     {
       f64 scheduled = c->next_transmit;
-      /* next_transmit == 1e18 is the "park in SESSION" sentinel. */
-      if (scheduled >= 1e17)
+      /* PPPOECLIENT_NEXT_TRANSMIT_PARKED is the "park in SESSION" sentinel. */
+      if (PPPOECLIENT_NEXT_TRANSMIT_IS_PARKED (scheduled))
 	vlib_cli_output (vm,
 			 "  client %u state %U auth-failures %u reconnects %u "
 			 "last-reason %u next-retry parked",
@@ -3992,7 +4029,7 @@ VLIB_CLI_COMMAND (show_pppoeclient_backoff_command, static) = {
  * pppox plugin symbol resolved and the client's LCP runtime could be read
  * into *rt; 0 means the caller should skip this client. */
 static u8
-pppoeclient_cli_get_ppp_runtime (pppoe_client_t *c, pppox_ppp_debug_runtime_t *rt)
+pppoeclient_cli_get_ppp_runtime (pppoeclient_t *c, pppox_ppp_debug_runtime_t *rt)
 {
   static u8 (*func) (u32, pppox_ppp_debug_runtime_t *) = 0;
   PPPOECLIENT_LAZY_PLUGIN_SYMBOL (func, "pppoeclient_plugin.so", "pppox_get_ppp_debug_runtime");
@@ -4006,7 +4043,7 @@ static clib_error_t *
 pppoeclient_show_mtu_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 {
   pppoeclient_main_t *pem = &pppoeclient_main;
-  pppoe_client_t *c;
+  pppoeclient_t *c;
 
   if (pool_elts (pem->clients) == 0)
     {
@@ -4048,7 +4085,7 @@ static clib_error_t *
 pppoeclient_show_dns_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 {
   pppoeclient_main_t *pem = &pppoeclient_main;
-  pppoe_client_t *c;
+  pppoeclient_t *c;
 
   if (pool_elts (pem->clients) == 0)
     {
@@ -4089,7 +4126,7 @@ pppoeclient_show_session_time_command_fn (vlib_main_t *vm, unformat_input_t *inp
 					  vlib_cli_command_t *cmd)
 {
   pppoeclient_main_t *pem = &pppoeclient_main;
-  pppoe_client_t *c;
+  pppoeclient_t *c;
   f64 now = vlib_time_now (vm);
 
   if (pool_elts (pem->clients) == 0)
@@ -4137,7 +4174,7 @@ pppoeclient_clear_backoff_command_fn (vlib_main_t *vm, unformat_input_t *input,
 				      vlib_cli_command_t *cmd)
 {
   pppoeclient_main_t *pem = &pppoeclient_main;
-  pppoe_client_t *c;
+  pppoeclient_t *c;
   u32 client_index = ~0;
   u8 all = 0;
   u8 immediate = 0;
@@ -4171,9 +4208,9 @@ pppoeclient_clear_backoff_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	      cleared++;
 	    }
 	  if (immediate && c->state == PPPOE_CLIENT_DISCOVERY && c->next_transmit > now &&
-	      c->next_transmit < 1e17)
+	      !PPPOECLIENT_NEXT_TRANSMIT_IS_PARKED (c->next_transmit))
 	    {
-	      pppoe_client_schedule_discovery (c, now);
+	      pppoeclient_schedule_discovery (c, now);
 	      rescheduled++;
 	    }
 	}
@@ -4192,9 +4229,9 @@ pppoeclient_clear_backoff_command_fn (vlib_main_t *vm, unformat_input_t *input,
   c->consecutive_auth_failures = 0;
 
   if (immediate && c->state == PPPOE_CLIENT_DISCOVERY && c->next_transmit > now &&
-      c->next_transmit < 1e17)
+      !PPPOECLIENT_NEXT_TRANSMIT_IS_PARKED (c->next_transmit))
     {
-      pppoe_client_schedule_discovery (c, now);
+      pppoeclient_schedule_discovery (c, now);
       vlib_cli_output (vm, "client %u backoff cleared and discovery rescheduled", client_index);
     }
   else
@@ -4267,7 +4304,7 @@ static clib_error_t *
 show_pppoeclient_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 {
   pppoeclient_main_t *pem = &pppoeclient_main;
-  pppoe_client_t *t;
+  pppoeclient_t *t;
 
   if (pool_elts (pem->clients) == 0)
     vlib_cli_output (vm, "No pppoe clients configured...");
@@ -4298,7 +4335,7 @@ show_pppoeclient_detail_command_fn (vlib_main_t *vm, unformat_input_t *input,
 				    vlib_cli_command_t *cmd)
 {
   pppoeclient_main_t *pem = &pppoeclient_main;
-  pppoe_client_t *t;
+  pppoeclient_t *t;
 
   if (pool_elts (pem->clients) == 0)
     {
@@ -4335,7 +4372,7 @@ show_pppoeclient_debug_command_fn (vlib_main_t *vm, unformat_input_t *input,
 				   vlib_cli_command_t *cmd)
 {
   pppoeclient_main_t *pem = &pppoeclient_main;
-  pppoe_client_t *t;
+  pppoeclient_t *t;
   pppoeclient_history_cli_filter_t filter = { 0 };
   u32 client_index = ~0;
   u8 show_orphan_only = 0;
@@ -4424,7 +4461,7 @@ show_pppoeclient_summary_command_fn (vlib_main_t *vm, unformat_input_t *input,
 				     vlib_cli_command_t *cmd)
 {
   pppoeclient_main_t *pem = &pppoeclient_main;
-  pppoe_client_t *t;
+  pppoeclient_t *t;
   pppoeclient_history_cli_filter_t filter = { 0 };
   u32 client_index = ~0;
   u8 show_orphan_only = 0;
@@ -4499,7 +4536,7 @@ show_pppoeclient_history_command_fn (vlib_main_t *vm, unformat_input_t *input,
 				     vlib_cli_command_t *cmd)
 {
   pppoeclient_main_t *pem = &pppoeclient_main;
-  pppoe_client_t *t;
+  pppoeclient_t *t;
   pppoeclient_history_cli_filter_t filter = { 0 };
   u32 client_index = ~0;
   u8 show_orphan_only = 0;
@@ -4578,7 +4615,7 @@ clear_pppoeclient_history_command_fn (vlib_main_t *vm, unformat_input_t *input,
   u8 clear_orphan = 0;
   u8 clear_all = 0;
   u32 cleared_clients = 0;
-  pppoe_client_t *c;
+  pppoeclient_t *c;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -4640,12 +4677,12 @@ static clib_error_t *
 set_pppoeclient_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 {
   pppoeclient_main_t *pem = &pppoeclient_main;
-  pppoe_client_t *c = NULL;
+  pppoeclient_t *c = 0;
   u32 client_index = ~0;
-  u8 *ac_name = NULL;
-  u8 *service_name = NULL;
-  u8 *username = NULL;
-  u8 *password = NULL;
+  u8 *ac_name = 0;
+  u8 *service_name = 0;
+  u8 *username = 0;
+  u8 *password = 0;
   u32 mtu = 0;
   u32 mru = 0;
   u32 timeout = 0;
@@ -4708,6 +4745,15 @@ set_pppoeclient_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_c
   pppoeclient_cli_trim_c_string (&username);
   pppoeclient_cli_trim_c_string (&password);
 
+  if (vec_len (username) > 64 || vec_len (password) > 64)
+    {
+      vec_free (service_name);
+      vec_free (ac_name);
+      vec_free (username);
+      vec_free (password);
+      return clib_error_return (0, "username and password must be <= 64 bytes");
+    }
+
   if (client_index == ~0)
     {
       vec_free (service_name);
@@ -4736,6 +4782,8 @@ set_pppoeclient_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_c
     }
   if (password)
     {
+      if (c->password)
+	clib_memset (c->password, 0, vec_len (c->password));
       vec_free (c->password);
       c->password = password;
       sync_live_auth = 1;
@@ -4835,6 +4883,8 @@ pppoeclient_init (vlib_main_t *vm)
   pem->vnet_main = vnet_get_main ();
   pem->vlib_main = vm;
 
+  pppoeclient_log_class = vlib_log_register_class ("pppoeclient", "main");
+
   /* Create the hash table  */
   clib_bihash_init_8_8 (&pem->client_table, "pppoe client table", PPPOE_CLIENT_NUM_BUCKETS,
 			PPPOE_CLIENT_MEMORY_SIZE);
@@ -4897,7 +4947,8 @@ pppoeclient_send_padt_raw (const char *linux_ifname, const u8 *src_mac, const u8
   fd = socket (AF_PACKET, SOCK_RAW, htons (ETH_P_ALL));
   if (fd < 0)
     {
-      clib_warning ("pppoeclient: raw socket failed: %s", strerror (errno));
+      vlib_log (VLIB_LOG_LEVEL_ERR, pppoeclient_log_class, "raw socket failed: %s",
+		strerror (errno));
       return;
     }
 
@@ -4905,7 +4956,8 @@ pppoeclient_send_padt_raw (const char *linux_ifname, const u8 *src_mac, const u8
   snprintf (ifr.ifr_name, sizeof (ifr.ifr_name), "%s", linux_ifname);
   if (ioctl (fd, SIOCGIFINDEX, &ifr) < 0)
     {
-      clib_warning ("pppoeclient: SIOCGIFINDEX(%s) failed: %s", linux_ifname, strerror (errno));
+      vlib_log (VLIB_LOG_LEVEL_ERR, pppoeclient_log_class, "SIOCGIFINDEX(%s) failed: %s",
+		linux_ifname, strerror (errno));
       close (fd);
       return;
     }
@@ -4931,15 +4983,16 @@ pppoeclient_send_padt_raw (const char *linux_ifname, const u8 *src_mac, const u8
 	    if (!(up_ifr.ifr_flags & IFF_UP))
 	      {
 		was_down = 1;
-		clib_warning ("pppoeclient: %s is DOWN, bringing UP for PADT", linux_ifname);
+		vlib_log (VLIB_LOG_LEVEL_DEBUG, pppoeclient_log_class,
+			  "%s is DOWN, bringing UP for PADT", linux_ifname);
 		up_ifr.ifr_flags |= IFF_UP;
 		if (ioctl (ctl_fd, SIOCSIFFLAGS, &up_ifr) < 0)
-		  clib_warning ("pppoeclient: failed to bring %s UP: %s", linux_ifname,
-				strerror (errno));
+		  vlib_log (VLIB_LOG_LEVEL_ERR, pppoeclient_log_class, "failed to bring %s UP: %s",
+			    linux_ifname, strerror (errno));
 		else
 		  {
 		    /* Give the NIC a moment to initialize link */
-		    usleep (200000); /* 200ms */
+		    usleep (PPPOECLIENT_RAW_PADT_LINK_UP_WAIT_US);
 		  }
 	      }
 	  }
@@ -4966,10 +5019,11 @@ pppoeclient_send_padt_raw (const char *linux_ifname, const u8 *src_mac, const u8
   clib_memcpy (addr.sll_addr, dst_mac, 6);
 
   if (sendto (fd, frame, 20, 0, (struct sockaddr *) &addr, sizeof (addr)) < 0)
-    clib_warning ("pppoeclient: raw PADT sendto failed: %s", strerror (errno));
+    vlib_log (VLIB_LOG_LEVEL_ERR, pppoeclient_log_class, "raw PADT sendto failed: %s",
+	      strerror (errno));
   else
-    clib_warning ("pppoeclient: sent PADT via raw socket on %s session %u", linux_ifname,
-		  session_id);
+    vlib_log (VLIB_LOG_LEVEL_INFO, pppoeclient_log_class,
+	      "sent PADT via raw socket on %s session %u", linux_ifname, session_id);
 
   close (fd);
 
@@ -4987,10 +5041,11 @@ pppoeclient_send_padt_raw (const char *linux_ifname, const u8 *src_mac, const u8
 	    {
 	      down_ifr.ifr_flags &= ~IFF_UP;
 	      if (ioctl (ctl_fd, SIOCSIFFLAGS, &down_ifr) == 0)
-		clib_warning ("pppoeclient: restored %s to DOWN", linux_ifname);
+		vlib_log (VLIB_LOG_LEVEL_INFO, pppoeclient_log_class, "restored %s to DOWN",
+			  linux_ifname);
 	      else
-		clib_warning ("pppoeclient: failed to restore %s DOWN: %s", linux_ifname,
-			      strerror (errno));
+		vlib_log (VLIB_LOG_LEVEL_ERR, pppoeclient_log_class,
+			  "failed to restore %s DOWN: %s", linux_ifname, strerror (errno));
 	    }
 	  close (ctl_fd);
 	}
@@ -5020,10 +5075,11 @@ pppoeclient_get_linux_ifname (vnet_main_t *vnm, u32 sw_if_index, char *buf, size
    * MAC) and avoids depending on RDMA internal struct layout. */
   vnet_device_class_t *dc = vnet_get_device_class (vnm, hw->dev_class_index);
   if (noisy)
-    clib_warning ("pppoeclient: get_linux_ifname: sw_if_index=%u dev_class='%s' "
-		  "format_device=%p dev_instance=%u",
-		  sw_if_index, dc ? dc->name : "NULL", dc ? (void *) dc->format_device : 0,
-		  hw->dev_instance);
+    vlib_log (VLIB_LOG_LEVEL_DEBUG, pppoeclient_log_class,
+	      "get_linux_ifname: sw_if_index=%u dev_class='%s' "
+	      "format_device=%p dev_instance=%u",
+	      sw_if_index, dc ? dc->name : "NULL", dc ? (void *) dc->format_device : 0,
+	      hw->dev_instance);
   if (dc && dc->format_device)
     {
       u8 *s = 0;
@@ -5033,7 +5089,8 @@ pppoeclient_get_linux_ifname (vnet_main_t *vnm, u32 sw_if_index, char *buf, size
 	  /* Null-terminate the vec for strstr */
 	  vec_add1 (s, 0);
 	  if (noisy)
-	    clib_warning ("pppoeclient: get_linux_ifname: format_device output='%s'", (char *) s);
+	    vlib_log (VLIB_LOG_LEVEL_DEBUG, pppoeclient_log_class,
+		      "get_linux_ifname: format_device output='%s'", (char *) s);
 	  /* Output looks like: "netdev enp6s0f1 pci-addr 0000:06:00.1\n..."
 	   * Parse out the interface name after "netdev " */
 	  char *p = strstr ((char *) s, "netdev ");
@@ -5049,16 +5106,19 @@ pppoeclient_get_linux_ifname (vnet_main_t *vnm, u32 sw_if_index, char *buf, size
 		  clib_memcpy (buf, p, len);
 		  buf[len] = '\0';
 		  if (noisy)
-		    clib_warning ("pppoeclient: get_linux_ifname: resolved '%s'", buf);
+		    vlib_log (VLIB_LOG_LEVEL_DEBUG, pppoeclient_log_class,
+			      "get_linux_ifname: resolved '%s'", buf);
 		  vec_free (s);
 		  return 0;
 		}
 	    }
 	  else if (noisy)
-	    clib_warning ("pppoeclient: get_linux_ifname: 'netdev ' not found in output");
+	    vlib_log (VLIB_LOG_LEVEL_DEBUG, pppoeclient_log_class,
+		      "get_linux_ifname: 'netdev ' not found in output");
 	}
       else if (noisy)
-	clib_warning ("pppoeclient: get_linux_ifname: format_device returned empty");
+	vlib_log (VLIB_LOG_LEVEL_DEBUG, pppoeclient_log_class,
+		  "get_linux_ifname: format_device returned empty");
       vec_free (s);
     }
 
@@ -5104,7 +5164,7 @@ static clib_error_t *
 pppoeclient_exit (vlib_main_t *vm)
 {
   pppoeclient_main_t *pem = &pppoeclient_main;
-  pppoe_client_t *c;
+  pppoeclient_t *c;
   pppox_main_t *pom = get_pppox_main ();
 
   if (pom)
@@ -5127,8 +5187,9 @@ pppoeclient_exit (vlib_main_t *vm)
       u16 file_sid = 0;
       int fd, ok = 0;
 
-      clib_warning ("pppoeclient_exit: client %u session_id=%u state=%u sw_if_index=%u",
-		    (u32) (c - pem->clients), c->session_id, c->state, c->sw_if_index);
+      vlib_log (VLIB_LOG_LEVEL_INFO, pppoeclient_log_class,
+		"exit: client %u session_id=%u state=%u sw_if_index=%u", (u32) (c - pem->clients),
+		c->session_id, c->state, c->sw_if_index);
 
       /* Always try to read the session file, regardless of c->session_id.
        * During normal operation CHAP failure triggers teardown which clears
@@ -5174,13 +5235,17 @@ pppoeclient_exit (vlib_main_t *vm)
 	      clib_memcpy (linux_ifname, buf + off, IFNAMSIZ);
 	      ok = (linux_ifname[0] != '\0');
 	    }
-	  clib_warning ("pppoeclient_exit: session file read ok=%d got=%zu ifname='%s' "
-			"file_sid=%u",
-			ok, got, ok ? linux_ifname : "(empty)", file_sid);
+	  vlib_log (VLIB_LOG_LEVEL_DEBUG, pppoeclient_log_class,
+		    "exit: session file read ok=%d got=%zu ifname='%s' "
+		    "file_sid=%u",
+		    ok, got, ok ? linux_ifname : "(empty)", file_sid);
 	}
       else
 	{
-	  clib_warning ("pppoeclient_exit: no session file at %s — nothing to clean up", path);
+	  if (c->session_id)
+	    vlib_log (VLIB_LOG_LEVEL_WARNING, pppoeclient_log_class,
+		      "exit: no session file at %s for client with session_id=%u", path,
+		      c->session_id);
 	  continue;
 	}
 
@@ -5201,7 +5266,8 @@ pppoeclient_exit (vlib_main_t *vm)
 	      if (pppoeclient_get_linux_ifname (vnm, c->sw_if_index, linux_ifname,
 						sizeof (linux_ifname), 1) == 0)
 		{
-		  clib_warning ("pppoeclient_exit: last-resort resolved ifname='%s'", linux_ifname);
+		  vlib_log (VLIB_LOG_LEVEL_INFO, pppoeclient_log_class,
+			    "exit: last-resort resolved ifname='%s'", linux_ifname);
 		  vnet_hw_interface_t *hw = vnet_get_sup_hw_interface (vnm, c->sw_if_index);
 		  if (hw)
 		    clib_memcpy (src_mac, hw->hw_address, 6);
@@ -5210,22 +5276,36 @@ pppoeclient_exit (vlib_main_t *vm)
 		  pppoeclient_send_padt_raw (linux_ifname, src_mac, c->ac_mac_address, sid);
 		}
 	      else
-		clib_warning ("pppoeclient_exit: FAILED to resolve linux ifname, "
-			      "PADT not sent — BAS session will linger");
+		vlib_log (VLIB_LOG_LEVEL_ERR, pppoeclient_log_class,
+			  "exit: FAILED to resolve linux ifname, "
+			  "PADT not sent — BAS session will linger");
 	    }
 	}
       /* Delete session file after sending raw PADT */
       pppoeclient_delete_session_file (c->sw_if_index);
     }
 
-  /* Also do the normal VPP-level cleanup (session table, pppox state) */
+  /* Also do the normal VPP-level cleanup (session table, pppox state).
+   * Loop 1 already sent raw PADTs, so pass send_padt=0 — the main loop
+   * has exited and frame-based PADT send would just produce spurious
+   * "failed to send PADT" warnings. */
   vlib_worker_thread_barrier_sync (vlib_get_main ());
   pool_foreach (c, pem->clients)
     {
       if (c->session_id)
-	pppoe_client_stop_session (c - pem->clients);
+	{
+	  pppoeclient_teardown_session (c, 0 /* send_padt */);
+	  pppoeclient_mark_session_down (c);
+	}
     }
   vlib_worker_thread_barrier_release (vlib_get_main ());
+
+  /* Release per-client vec allocations before freeing the pool */
+  {
+    pppoeclient_t *_c;
+    pool_foreach (_c, pem->clients)
+      pppoeclient_client_free_resources (_c);
+  }
 
   /* Release global resources */
   clib_bihash_free_8_8 (&pem->client_table);

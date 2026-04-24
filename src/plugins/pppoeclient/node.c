@@ -13,35 +13,15 @@
 #include <pppoeclient/pppox/pppox.h>
 #include <pppoeclient/pppoeclient.h>
 
-/* PPP protocols not defined in newer VPP */
-
-#ifndef PPP_PROTOCOL_ipcp
-#define PPP_PROTOCOL_ipcp 0x8021
-#endif
-
-#ifndef PPP_PROTOCOL_ipv6cp
-#define PPP_PROTOCOL_ipv6cp 0x8057
-#endif
-
-#ifndef PPP_PROTOCOL_lcp
-#define PPP_PROTOCOL_lcp 0xc021
-#endif
-
-#ifndef PPP_PROTOCOL_pap
-#define PPP_PROTOCOL_pap 0xc023
-#endif
-
-#ifndef PPP_PROTOCOL_chap
-#define PPP_PROTOCOL_chap 0xc223
-#endif
-
-#ifndef PPP_PROTOCOL_ip4
-#define PPP_PROTOCOL_ip4 0x0021
-#endif
-
-#ifndef PPP_PROTOCOL_ip6
-#define PPP_PROTOCOL_ip6 0x0057
-#endif
+/* PPP protocol numbers — canonical values in pppoeclient.h;
+ * map the PPP_PROTOCOL_* names used by the session-input/output nodes. */
+#define PPP_PROTOCOL_ipcp   PPP_IPCP
+#define PPP_PROTOCOL_ipv6cp PPP_IPV6CP
+#define PPP_PROTOCOL_lcp    PPP_LCP
+#define PPP_PROTOCOL_pap    PPP_PAP
+#define PPP_PROTOCOL_chap   PPP_CHAP
+#define PPP_PROTOCOL_ip4    PPP_IP
+#define PPP_PROTOCOL_ip6    PPP_IPV6
 
 static char *pppoeclient_error_strings[] = {
 
@@ -55,19 +35,12 @@ static char *pppoeclient_error_strings[] = {
 
 typedef struct
 {
-
   u32 sw_if_index;
-
   u32 host_uniq;
-
   u16 session_id;
-
   u8 packet_code;
-
   u8 rsv;
-
   u32 error;
-
 } pppoeclient_discovery_rx_trace_t;
 
 static u8 *
@@ -243,13 +216,9 @@ VLIB_REGISTER_NODE (pppoeclient_discovery_input_node) = {
 
   .vector_size = sizeof (u32),
 
-
-
   .n_errors = PPPOECLIENT_N_ERROR,
 
   .error_strings = pppoeclient_error_strings,
-
-
 
   .n_next_nodes = PPPOECLIENT_DISCOVERY_INPUT_N_NEXT,
 
@@ -262,9 +231,6 @@ VLIB_REGISTER_NODE (pppoeclient_discovery_input_node) = {
 #undef _
 
   },
-
-
-
   .format_trace = format_pppoeclient_discovery_rx_trace,
 
 };
@@ -275,7 +241,7 @@ static_always_inline u16
 pppoeclient_get_tcp_mss_limit (vnet_main_t *vnm, u32 sw_if_index, u8 is_ip6)
 {
   vnet_sw_interface_t *sw;
-  u32 mtu = 1492;
+  u32 mtu = PPPOECLIENT_MTU_DEFAULT;
   u32 headers = sizeof (tcp_header_t) + (is_ip6 ? sizeof (ip6_header_t) : sizeof (ip4_header_t));
 
   if (sw_if_index != ~0)
@@ -292,7 +258,7 @@ pppoeclient_get_tcp_mss_limit (vnet_main_t *vnm, u32 sw_if_index, u8 is_ip6)
 }
 
 static_always_inline u32
-pppoeclient_tcp_mss_fixup (tcp_header_t *tcp, u16 max_mss)
+pppoeclient_tcp_mss_fixup (tcp_header_t *tcp, u16 max_mss, u32 tcp_avail)
 {
   ip_csum_t sum;
 
@@ -306,7 +272,11 @@ pppoeclient_tcp_mss_fixup (tcp_header_t *tcp, u16 max_mss)
   if (PREDICT_FALSE (tcp_doff (tcp) < 5))
     return 0;
 
-  u8 opts_len = (tcp_doff (tcp) << 2) - sizeof (tcp_header_t);
+  u32 tcp_hdr_len = (u32) (tcp_doff (tcp) << 2);
+  if (PREDICT_FALSE (tcp_avail < tcp_hdr_len))
+    return 0;
+
+  u8 opts_len = tcp_hdr_len - sizeof (tcp_header_t);
   const u8 *data = (const u8 *) (tcp + 1);
 
   for (; opts_len > 0;)
@@ -383,8 +353,9 @@ pppoeclient_try_update_tcp_mss (vlib_main_t *vm, vnet_main_t *vnm, vlib_buffer_t
 			     2 + ip4_header_bytes (ip4) + sizeof (tcp_header_t)))
 	    return;
 	  tcp_header_t *tcp = ip4_next_header (ip4);
+	  u32 tcp_avail = b->current_length - 2 - ip4_header_bytes (ip4);
 	  u16 max_mss = pppoeclient_get_tcp_mss_limit (vnm, sw_if_index, 0);
-	  (void) pppoeclient_tcp_mss_fixup (tcp, max_mss);
+	  (void) pppoeclient_tcp_mss_fixup (tcp, max_mss, tcp_avail);
 	}
     }
   else if (ppp_protocol == PPP_PROTOCOL_ip6)
@@ -396,8 +367,10 @@ pppoeclient_try_update_tcp_mss (vlib_main_t *vm, vnet_main_t *vnm, vlib_buffer_t
       tcp_header_t *tcp = ip6_ext_header_find (vm, b, ip6, IP_PROTOCOL_TCP, NULL);
       if (tcp)
 	{
+	  u32 tcp_offset = (u8 *) tcp - (u8 *) vlib_buffer_get_current (b);
+	  u32 tcp_avail = b->current_length > tcp_offset ? b->current_length - tcp_offset : 0;
 	  u16 max_mss = pppoeclient_get_tcp_mss_limit (vnm, sw_if_index, 1);
-	  (void) pppoeclient_tcp_mss_fixup (tcp, max_mss);
+	  (void) pppoeclient_tcp_mss_fixup (tcp, max_mss, tcp_avail);
 	}
     }
 }
@@ -447,7 +420,7 @@ typedef struct
 {
   u32 next;
   u32 error;
-  pppoe_client_t *c;
+  pppoeclient_t *c;
   pppoe_header_t *pppoe;
   u32 rx_sw_if_index;
 } pppoeclient_session_input_result_t;
@@ -456,6 +429,7 @@ static_always_inline void
 pppoeclient_session_input_one (vlib_main_t *vm, pppoeclient_main_t *pem, vlib_buffer_t *b,
 			       pppoeclient_session_input_result_t *r)
 {
+  vnet_main_t *vnm = pem->vnet_main;
   ethernet_header_t *h;
   pppoe_header_t *pppoe = 0;
   u16 l2_hdr_len = sizeof (ethernet_header_t);
@@ -463,8 +437,8 @@ pppoeclient_session_input_one (vlib_main_t *vm, pppoeclient_main_t *pem, vlib_bu
   u32 error = 0;
   u32 next = PPPOECLIENT_SESSION_INPUT_NEXT_DROP;
   u16 ppp_proto;
-  pppoe_client_result_t lookup;
-  pppoe_client_t *c = 0;
+  pppoeclient_result_t lookup;
+  pppoeclient_t *c = 0;
 
   rx_sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_RX];
   vlib_buffer_reset (b);
@@ -511,18 +485,21 @@ pppoeclient_session_input_one (vlib_main_t *vm, pppoeclient_main_t *pem, vlib_bu
 
   c = pool_elt_at_index (pem->clients, lookup.fields.client_index);
   vlib_buffer_advance (b, l2_hdr_len + sizeof (*pppoe));
+  /* Clamp current_length to the PPPoE declared payload.  Received Ethernet
+   * frames are single-buffer (MTU 1500 << VPP buffer size), so overwriting
+   * current_length is safe; total_length_not_including_first_buffer stays 0. */
   b->current_length = clib_net_to_host_u16 (pppoe->length);
   vnet_buffer (b)->sw_if_index[VLIB_RX] = c->pppox_sw_if_index;
 
   if (ppp_proto == PPP_PROTOCOL_ip4)
     {
-      pppoeclient_try_update_tcp_mss (vm, pem->vnet_main, b, c->pppox_sw_if_index);
+      pppoeclient_try_update_tcp_mss (vm, vnm, b, c->pppox_sw_if_index);
       vlib_buffer_advance (b, sizeof (u16));
       next = PPPOECLIENT_SESSION_INPUT_NEXT_IP4_INPUT;
     }
   else if (ppp_proto == PPP_PROTOCOL_ip6)
     {
-      pppoeclient_try_update_tcp_mss (vm, pem->vnet_main, b, c->pppox_sw_if_index);
+      pppoeclient_try_update_tcp_mss (vm, vnm, b, c->pppox_sw_if_index);
       vlib_buffer_advance (b, sizeof (u16));
       next = PPPOECLIENT_SESSION_INPUT_NEXT_IP6_INPUT;
     }
@@ -677,13 +654,9 @@ VLIB_REGISTER_NODE (pppoeclient_session_input_node) = {
 
   .vector_size = sizeof (u32),
 
-
-
   .n_errors = PPPOECLIENT_N_ERROR,
 
   .error_strings = pppoeclient_error_strings,
-
-
 
   .n_next_nodes = PPPOECLIENT_SESSION_INPUT_N_NEXT,
 
@@ -696,8 +669,6 @@ VLIB_REGISTER_NODE (pppoeclient_session_input_node) = {
 #undef _
 
   },
-
-
 
   .format_trace = format_pppoeclient_session_rx_trace,
 
@@ -744,7 +715,7 @@ typedef struct
 {
   u32 next;
   u32 error;
-  pppoe_client_t *c;
+  pppoeclient_t *c;
   u32 pppox_sw_if_index;
   u8 forwarded;
 } pppoeclient_session_output_result_t;
@@ -761,7 +732,7 @@ pppoeclient_session_output_one (vlib_main_t *vm, pppoeclient_main_t *pem, vlib_b
   u32 error = 0;
   u32 next = PPPOECLIENT_SESSION_OUTPUT_NEXT_DROP;
   u32 pppox_sw_if_index;
-  pppoe_client_t *c;
+  pppoeclient_t *c;
   u8 forwarded = 0;
 
   pppox_sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_TX];
@@ -784,7 +755,7 @@ pppoeclient_session_output_one (vlib_main_t *vm, pppoeclient_main_t *pem, vlib_b
       goto out;
     }
 
-  pppoeclient_try_update_tcp_mss (vm, vnm, b, pppox_sw_if_index);
+  pppoeclient_try_update_tcp_mss (vm, vnm, b, c->pppox_sw_if_index);
   vlib_buffer_advance (b, -sizeof (pppoe_header_t));
 
   pppoe = vlib_buffer_get_current (b);
@@ -941,13 +912,9 @@ VLIB_REGISTER_NODE (pppoeclient_session_output_node) = {
 
   .vector_size = sizeof (u32),
 
-
-
   .n_errors = PPPOECLIENT_N_ERROR,
 
   .error_strings = pppoeclient_error_strings,
-
-
 
   .n_next_nodes = PPPOECLIENT_SESSION_OUTPUT_N_NEXT,
 
@@ -960,8 +927,6 @@ VLIB_REGISTER_NODE (pppoeclient_session_output_node) = {
 #undef _
 
   },
-
-
 
   .format_trace = format_pppoeclient_session_tx_trace,
 
@@ -1038,8 +1003,8 @@ pppoeclient_dispatch (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *
 	    p3 = vlib_get_buffer (vm, from[3]);
 	    vlib_prefetch_buffer_header (p2, LOAD);
 	    vlib_prefetch_buffer_header (p3, LOAD);
-	    CLIB_PREFETCH (p2->data, CLIB_CACHE_LINE_BYTES, LOAD);
-	    CLIB_PREFETCH (p3->data, CLIB_CACHE_LINE_BYTES, LOAD);
+	    CLIB_PREFETCH (p2->data, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
+	    CLIB_PREFETCH (p3->data, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
 	  }
 
 	  bi0 = from[0];

@@ -202,19 +202,19 @@ pppox_restart_dead_client (void)
 {
   pppox_main_t *pom = &pppox_main;
   pppox_virtual_interface_t *vif;
-  static void (*pppoe_client_restart_session_with_reason_func) (u32 client_index,
-								u8 disconnect_reason) = 0;
-  static void (*pppoe_client_restart_session_func) (u32 client_index) = 0;
+  static void (*pppoeclient_restart_session_with_reason_func) (u32 client_index,
+							       u8 disconnect_reason) = 0;
+  static void (*pppoeclient_restart_session_func) (u32 client_index) = 0;
 
-  if (pppoe_client_restart_session_with_reason_func == 0 && pppoe_client_restart_session_func == 0)
+  if (pppoeclient_restart_session_with_reason_func == 0 && pppoeclient_restart_session_func == 0)
     {
-      pppoe_client_restart_session_with_reason_func = vlib_get_plugin_symbol (
-	"pppoeclient_plugin.so", "pppoe_client_restart_session_with_reason");
-      if (pppoe_client_restart_session_with_reason_func == 0)
-	pppoe_client_restart_session_func =
-	  vlib_get_plugin_symbol ("pppoeclient_plugin.so", "pppoe_client_restart_session");
+      pppoeclient_restart_session_with_reason_func =
+	vlib_get_plugin_symbol ("pppoeclient_plugin.so", "pppoeclient_restart_session_with_reason");
+      if (pppoeclient_restart_session_with_reason_func == 0)
+	pppoeclient_restart_session_func =
+	  vlib_get_plugin_symbol ("pppoeclient_plugin.so", "pppoeclient_restart_session");
     }
-  if (pppoe_client_restart_session_with_reason_func == 0 && pppoe_client_restart_session_func == 0)
+  if (pppoeclient_restart_session_with_reason_func == 0 && pppoeclient_restart_session_func == 0)
     return;
   if (pom->is_shutting_down)
     return;
@@ -231,10 +231,10 @@ pppox_restart_dead_client (void)
 	  u8 reason = pppox_consume_auth_failed_flag ((int) unit) ?
 			PPPOX_PPPOECLIENT_DISCONNECT_AUTH_FAIL :
 			PPPOX_PPPOECLIENT_DISCONNECT_PPP_DEAD;
-	  if (pppoe_client_restart_session_with_reason_func)
-	    (*pppoe_client_restart_session_with_reason_func) (vif->pppoe_client_index, reason);
+	  if (pppoeclient_restart_session_with_reason_func)
+	    (*pppoeclient_restart_session_with_reason_func) (vif->pppoeclient_index, reason);
 	  else
-	    (*pppoe_client_restart_session_func) (vif->pppoe_client_index);
+	    (*pppoeclient_restart_session_func) (vif->pppoeclient_index);
 	}
     }
 }
@@ -254,6 +254,7 @@ pppox_cleanup_virtual_interface (u32 unit)
     }
   if (upap[unit].us_passwd)
     {
+      clib_memset (upap[unit].us_passwd, 0, vec_len (upap[unit].us_passwd));
       vec_free (upap[unit].us_passwd);
       upap[unit].us_passwd = NULL;
       upap[unit].us_passwdlen = 0;
@@ -268,6 +269,7 @@ pppox_cleanup_virtual_interface (u32 unit)
     }
   if (chap_client[unit].us_passwd)
     {
+      clib_memset (chap_client[unit].us_passwd, 0, vec_len (chap_client[unit].us_passwd));
       vec_free (chap_client[unit].us_passwd);
       chap_client[unit].us_passwd = NULL;
       chap_client[unit].us_passwdlen = 0;
@@ -410,7 +412,7 @@ VNET_HW_INTERFACE_CLASS (pppox_hw_class, static) = {
 };
 
 u32 __clib_export
-pppox_allocate_interface (u32 pppoe_client_index)
+pppox_allocate_interface (u32 pppoeclient_index)
 {
   pppox_main_t *pom = &pppox_main;
   u32 hw_if_index = ~0;
@@ -432,7 +434,7 @@ pppox_allocate_interface (u32 pppoe_client_index)
       return ~0;
     }
 
-  t->pppoe_client_index = pppoe_client_index;
+  t->pppoeclient_index = pppoeclient_index;
 
   if (vec_len (pom->free_pppox_hw_if_indices) > 0)
     {
@@ -734,19 +736,23 @@ pppox_set_auth (u32 sw_if_index, u8 *username, u8 *password)
 
   clib_spinlock_lock_if_init (&pom->ctrl_lock);
 
-  /* PAP client credentials */
+  /* PAP client credentials -- zero old password before freeing */
   vec_free (upap[unit].us_user);
   upap[unit].us_user = pppox_dup_c_string_vec (username);
   upap[unit].us_userlen = upap[unit].us_user ? vec_len (upap[unit].us_user) - 1 : 0;
+  if (upap[unit].us_passwd)
+    clib_memset (upap[unit].us_passwd, 0, vec_len (upap[unit].us_passwd));
   vec_free (upap[unit].us_passwd);
   upap[unit].us_passwd = pppox_dup_c_string_vec (password);
   upap[unit].us_passwdlen = upap[unit].us_passwd ? vec_len (upap[unit].us_passwd) - 1 : 0;
 
-  /* CHAP client credentials */
+  /* CHAP client credentials -- zero old password before freeing */
   vec_free (chap_client[unit].us_user);
   chap_client[unit].us_user = pppox_dup_c_string_vec (username);
   chap_client[unit].us_userlen =
     chap_client[unit].us_user ? vec_len (chap_client[unit].us_user) - 1 : 0;
+  if (chap_client[unit].us_passwd)
+    clib_memset (chap_client[unit].us_passwd, 0, vec_len (chap_client[unit].us_passwd));
   vec_free (chap_client[unit].us_passwd);
   chap_client[unit].us_passwd = pppox_dup_c_string_vec (password);
   chap_client[unit].us_passwdlen =
@@ -758,22 +764,22 @@ pppox_set_auth (u32 sw_if_index, u8 *username, u8 *password)
    * configured on the pppoeclient side BEFORE calling pppox set auth.
    * The pppoeclient_set_options API or `set pppoe client` CLI can be
    * used to pre-configure these options. */
-  static void (*pppoe_client_set_auth_func) (u32 client_index, u8 * username, u8 * password) = 0;
-  static void (*pppoe_client_open_session_func) (u32 client_index) = 0;
-  if (pppoe_client_set_auth_func == 0)
+  static void (*pppoeclient_set_auth_func) (u32 client_index, u8 * username, u8 * password) = 0;
+  static void (*pppoeclient_open_session_func) (u32 client_index) = 0;
+  if (pppoeclient_set_auth_func == 0)
     {
-      pppoe_client_set_auth_func =
-	vlib_get_plugin_symbol ("pppoeclient_plugin.so", "pppoe_client_set_auth");
+      pppoeclient_set_auth_func =
+	vlib_get_plugin_symbol ("pppoeclient_plugin.so", "pppoeclient_set_auth");
     }
-  if (pppoe_client_open_session_func == 0)
+  if (pppoeclient_open_session_func == 0)
     {
-      pppoe_client_open_session_func =
-	vlib_get_plugin_symbol ("pppoeclient_plugin.so", "pppoe_client_open_session");
+      pppoeclient_open_session_func =
+	vlib_get_plugin_symbol ("pppoeclient_plugin.so", "pppoeclient_open_session");
     }
-  if (pppoe_client_set_auth_func)
-    (*pppoe_client_set_auth_func) (t->pppoe_client_index, username, password);
-  if (pppoe_client_open_session_func)
-    (*pppoe_client_open_session_func) (t->pppoe_client_index);
+  if (pppoeclient_set_auth_func)
+    (*pppoeclient_set_auth_func) (t->pppoeclient_index, username, password);
+  if (pppoeclient_open_session_func)
+    (*pppoeclient_open_session_func) (t->pppoeclient_index);
 
   clib_spinlock_unlock_if_init (&pom->ctrl_lock);
   return 0;
@@ -1007,8 +1013,8 @@ if6addr_callback (void *arg)
   pppox_main_t *pom = &pppox_main;
   pppox_virtual_interface_t *t;
   if6addr_arg_t *a = arg;
-  static void (*pppoe_client_set_ipv6_state_func) (u32, const ip6_address_t *,
-						   const ip6_address_t *, u8) = 0;
+  static void (*pppoeclient_set_ipv6_state_func) (u32, const ip6_address_t *, const ip6_address_t *,
+						  u8) = 0;
   ip6_address_t zero_addr = { 0 };
 
   if (a->unit < 0)
@@ -1031,16 +1037,16 @@ if6addr_callback (void *arg)
       ip6_address_set_zero (&t->his_ipv6);
     }
 
-  PPPOECLIENT_LAZY_PLUGIN_SYMBOL (pppoe_client_set_ipv6_state_func, "pppoeclient_plugin.so",
-				  "pppoe_client_set_ipv6_state");
+  PPPOECLIENT_LAZY_PLUGIN_SYMBOL (pppoeclient_set_ipv6_state_func, "pppoeclient_plugin.so",
+				  "pppoeclient_set_ipv6_state");
 
-  if (pppoe_client_set_ipv6_state_func)
+  if (pppoeclient_set_ipv6_state_func)
     {
       if (a->is_add)
-	(*pppoe_client_set_ipv6_state_func) (t->sw_if_index, &a->our_ipv6, &a->his_ipv6,
-					     PPPOX_IPV6CP_PREFIX_LEN);
+	(*pppoeclient_set_ipv6_state_func) (t->sw_if_index, &a->our_ipv6, &a->his_ipv6,
+					    PPPOX_IPV6CP_PREFIX_LEN);
       else
-	(*pppoe_client_set_ipv6_state_func) (t->sw_if_index, &zero_addr, &zero_addr, 0);
+	(*pppoeclient_set_ipv6_state_func) (t->sw_if_index, &zero_addr, &zero_addr, 0);
     }
 
   return 0;
@@ -1059,7 +1065,7 @@ dns_callback (void *arg)
   pppox_main_t *pom = &pppox_main;
   pppox_virtual_interface_t *t;
   dns_arg_t *a = arg;
-  static void (*pppoe_client_set_peer_dns_func) (u32, u32, u32) = 0;
+  static void (*pppoeclient_set_peer_dns_func) (u32, u32, u32) = 0;
 
   if (a->unit < 0)
     return 0;
@@ -1068,11 +1074,11 @@ dns_callback (void *arg)
   if (t == 0)
     return 0;
 
-  PPPOECLIENT_LAZY_PLUGIN_SYMBOL (pppoe_client_set_peer_dns_func, "pppoeclient_plugin.so",
-				  "pppoe_client_set_peer_dns");
+  PPPOECLIENT_LAZY_PLUGIN_SYMBOL (pppoeclient_set_peer_dns_func, "pppoeclient_plugin.so",
+				  "pppoeclient_set_peer_dns");
 
-  if (pppoe_client_set_peer_dns_func)
-    (*pppoe_client_set_peer_dns_func) (t->sw_if_index, a->dns1, a->dns2);
+  if (pppoeclient_set_peer_dns_func)
+    (*pppoeclient_set_peer_dns_func) (t->sw_if_index, a->dns1, a->dns2);
 
   return 0;
 }
@@ -1339,9 +1345,9 @@ cleanup_callback (void *arg)
 {
   pppox_main_t *pom = &pppox_main;
   cleanup_arg_t *a = arg;
-  static void (*pppoe_client_restart_session_with_reason_func) (u32 client_index,
-								u8 disconnect_reason) = 0;
-  static void (*pppoe_client_restart_session_func) (u32 client_index) = 0;
+  static void (*pppoeclient_restart_session_with_reason_func) (u32 client_index,
+							       u8 disconnect_reason) = 0;
+  static void (*pppoeclient_restart_session_func) (u32 client_index) = 0;
   u32 client_index = ~0;
   u8 delete_pending = 0;
 
@@ -1352,7 +1358,7 @@ cleanup_callback (void *arg)
       !pool_is_free_index (pom->virtual_interfaces, a->unit))
     {
       pppox_virtual_interface_t *t = pool_elt_at_index (pom->virtual_interfaces, a->unit);
-      client_index = t->pppoe_client_index;
+      client_index = t->pppoeclient_index;
       delete_pending = t->delete_pending;
       t->pppoe_session_allocated = 0;
     }
@@ -1368,24 +1374,24 @@ cleanup_callback (void *arg)
    * death, and must stay quiet while an explicit delete is in progress. */
   if (!delete_pending)
     {
-      if (pppoe_client_restart_session_with_reason_func == 0 &&
-	  pppoe_client_restart_session_func == 0)
+      if (pppoeclient_restart_session_with_reason_func == 0 &&
+	  pppoeclient_restart_session_func == 0)
 	{
-	  pppoe_client_restart_session_with_reason_func = vlib_get_plugin_symbol (
-	    "pppoeclient_plugin.so", "pppoe_client_restart_session_with_reason");
-	  if (pppoe_client_restart_session_with_reason_func == 0)
-	    pppoe_client_restart_session_func =
-	      vlib_get_plugin_symbol ("pppoeclient_plugin.so", "pppoe_client_restart_session");
+	  pppoeclient_restart_session_with_reason_func = vlib_get_plugin_symbol (
+	    "pppoeclient_plugin.so", "pppoeclient_restart_session_with_reason");
+	  if (pppoeclient_restart_session_with_reason_func == 0)
+	    pppoeclient_restart_session_func =
+	      vlib_get_plugin_symbol ("pppoeclient_plugin.so", "pppoeclient_restart_session");
 	}
-      if (pppoe_client_restart_session_with_reason_func)
+      if (pppoeclient_restart_session_with_reason_func)
 	{
 	  u8 reason = pppox_consume_auth_failed_flag (a->unit) ?
 			PPPOX_PPPOECLIENT_DISCONNECT_AUTH_FAIL :
 			PPPOX_PPPOECLIENT_DISCONNECT_PPP_DEAD;
-	  (*pppoe_client_restart_session_with_reason_func) (client_index, reason);
+	  (*pppoeclient_restart_session_with_reason_func) (client_index, reason);
 	}
-      else if (pppoe_client_restart_session_func)
-	(*pppoe_client_restart_session_func) (client_index);
+      else if (pppoeclient_restart_session_func)
+	(*pppoeclient_restart_session_func) (client_index);
     }
 
   return 0;

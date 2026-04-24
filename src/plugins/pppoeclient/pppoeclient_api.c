@@ -5,7 +5,6 @@
  *
  * Copyright (c) 2017 RaydoNetworks.
  * Copyright (c) 2026 Hi-Jiajun.
- * Copyright (c) 2026 Adapted for latest VPP
  *------------------------------------------------------------------
  */
 
@@ -298,7 +297,7 @@ pppoeclient_control_history_filter_from_summary (pppoeclient_control_history_fil
 }
 
 static pppox_virtual_interface_t *
-pppoeclient_api_get_detail_virtual_interface (pppoeclient_main_t *pem, pppoe_client_t *c,
+pppoeclient_api_get_detail_virtual_interface (pppoeclient_main_t *pem, pppoeclient_t *c,
 					      u32 client_index, u32 *unit, u8 *unit_from_hw)
 {
   pppox_main_t *pom = pppoeclient_api_get_pppox_main ();
@@ -332,7 +331,7 @@ pppoeclient_api_get_detail_virtual_interface (pppoeclient_main_t *pem, pppoe_cli
       pppox_virtual_interface_t *candidate = pool_elt_at_index (pom->virtual_interfaces, *unit);
 
       if (candidate->sw_if_index == c->pppox_sw_if_index &&
-	  candidate->pppoe_client_index == client_index)
+	  candidate->pppoeclient_index == client_index)
 	t = candidate;
     }
 
@@ -473,7 +472,7 @@ vl_api_pppoeclient_add_del_t_handler (vl_api_pppoeclient_add_del_t *mp)
 
 /* Send client details */
 static void
-send_pppoeclient_details (pppoe_client_t *t, vl_api_registration_t *reg, u32 context)
+send_pppoeclient_details (pppoeclient_t *t, vl_api_registration_t *reg, u32 context)
 {
   pppoeclient_main_t *pem = &pppoeclient_main;
   vl_api_pppoeclient_details_t *rmp;
@@ -933,7 +932,7 @@ vl_api_pppoeclient_dump_t_handler (vl_api_pppoeclient_dump_t *mp)
 {
   vl_api_registration_t *reg;
   pppoeclient_main_t *pem = &pppoeclient_main;
-  pppoe_client_t *t;
+  pppoeclient_t *t;
   u32 sw_if_index = ntohl (mp->sw_if_index);
 
   reg = vl_api_client_index_to_registration (mp->client_index);
@@ -986,9 +985,14 @@ vl_api_pppoeclient_control_history_dump_t_handler (vl_api_pppoeclient_control_hi
     }
 
   if (pool_is_free_index (pem->clients, client_index))
-    return;
+    {
+      /* Send an empty reply so the API client does not hang. */
+      pppoeclient_control_event_t empty = { 0 };
+      send_pppoeclient_control_history_details (&empty, reg, mp->context, client_index, 0);
+      return;
+    }
 
-  pppoe_client_t *c = pool_elt_at_index (pem->clients, client_index);
+  pppoeclient_t *c = pool_elt_at_index (pem->clients, client_index);
   dump_ctx.pppoeclient_index = client_index;
   count = c->control_history_count;
   if (count > 0)
@@ -1041,7 +1045,7 @@ vl_api_pppoeclient_control_history_summary_t_handler (
       return;
     }
 
-  pppoe_client_t *c = pool_elt_at_index (pem->clients, client_index);
+  pppoeclient_t *c = pool_elt_at_index (pem->clients, client_index);
   count = c->control_history_count;
   if (count > 0)
     {
@@ -1082,7 +1086,7 @@ vl_api_pppoeclient_control_history_clear_t_handler (vl_api_pppoeclient_control_h
       goto reply;
     }
 
-  pppoe_client_t *c = pool_elt_at_index (pem->clients, client_index);
+  pppoeclient_t *c = pool_elt_at_index (pem->clients, client_index);
   pppoeclient_clear_control_history (c->control_history, &c->control_history_count,
 				     &c->control_history_next);
 
@@ -1103,7 +1107,7 @@ vl_api_pppoeclient_set_options_t_handler (vl_api_pppoeclient_set_options_t *mp)
   int rv = 0;
   pppoeclient_main_t *pem = &pppoeclient_main;
   u32 client_index = ntohl (mp->pppoeclient_index);
-  pppoe_client_t *c;
+  pppoeclient_t *c;
   u8 *username = 0, *password = 0;
   u8 sync_live_auth = 0;
   uword n;
@@ -1138,20 +1142,23 @@ vl_api_pppoeclient_set_options_t_handler (vl_api_pppoeclient_set_options_t *mp)
     {
       vec_validate (password, n - 1);
       clib_memcpy (password, mp->password, n);
+      if (c->password)
+	clib_memset (c->password, 0, vec_len (c->password));
       vec_free (c->password);
       c->password = password;
       sync_live_auth = 1;
     }
 
-  /* MTU / MRU — clamp to PPPoE maximum (1492) */
+  /* MTU / MRU — operator-configured values; actual interface MTU is set by pppd
+   * during LCP negotiation (RFC 2516 default is 1492 for standard Ethernet). */
   {
     u32 mtu = ntohl (mp->mtu);
     u32 mru = ntohl (mp->mru);
     u32 timeout = ntohl (mp->timeout);
     if (mtu > 0)
-      c->mtu = clib_min (mtu, 1492);
+      c->mtu = mtu;
     if (mru > 0)
-      c->mru = clib_min (mru, 1492);
+      c->mru = mru;
     if (timeout > 0)
       c->timeout = timeout;
   }
@@ -1240,13 +1247,13 @@ vl_api_pppoeclient_session_action_t_handler (vl_api_pppoeclient_session_action_t
   switch (mp->action)
     {
     case PPPOECLIENT_SESSION_ACTION_RESTART:
-      pppoe_client_restart_session (client_index);
+      pppoeclient_restart_session (client_index);
       break;
     case PPPOECLIENT_SESSION_ACTION_STOP:
-      pppoe_client_stop_session (client_index);
+      pppoeclient_stop_session (client_index);
       break;
     case PPPOECLIENT_SESSION_ACTION_OPEN:
-      pppoe_client_open_session (client_index);
+      pppoeclient_open_session (client_index);
       break;
     default:
       rv = VNET_API_ERROR_INVALID_VALUE;
