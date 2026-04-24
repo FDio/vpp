@@ -105,7 +105,6 @@ srtp_listener_ctx_alloc (void)
 void
 srtp_listener_ctx_free (srtp_tc_t *ctx)
 {
-  srtp_ctx_free_policy (ctx);
   srtp_ctx_free (ctx);
 }
 
@@ -125,8 +124,6 @@ static int
 srtp_ctx_init_client (srtp_tc_t *ctx)
 {
   session_t *app_session;
-  app_worker_t *app_wrk;
-  session_error_t err;
 
   if (srtp_create (&ctx->srtp_ctx, &ctx->srtp_policy[0]) != srtp_err_status_ok)
     {
@@ -134,38 +131,11 @@ srtp_ctx_init_client (srtp_tc_t *ctx)
       return -1;
     }
 
-  app_wrk = app_worker_get (ctx->parent_app_wrk_index);
+  /* session_open_cl() already allocated and initialized the app session */
   app_session = session_get (ctx->c_s_index, ctx->c_thread_index);
-  app_session->app_wrk_index = ctx->parent_app_wrk_index;
   app_session->connection_index = ctx->srtp_ctx_handle;
-  app_session->opaque = ctx->parent_app_api_context;
-  app_session->session_type =
-    session_type_from_proto_and_ip (TRANSPORT_PROTO_SRTP, ctx->udp_is_ip4);
-
-  if ((err = app_worker_init_connected (app_wrk, app_session)))
-    goto failed;
-
-  app_session->session_state = SESSION_STATE_READY;
-  if (app_worker_connect_notify (app_wrk, app_session, SESSION_E_NONE,
-				 ctx->parent_app_api_context))
-    {
-      SRTP_DBG (0, "failed to notify app");
-      app_session->session_state = SESSION_STATE_CONNECTING;
-      srtp_disconnect (ctx->srtp_ctx_handle, vlib_get_thread_index ());
-      return -1;
-    }
-
   ctx->app_session_handle = session_handle (app_session);
-
   return 0;
-
-failed:
-  /* Free app session pre-allocated when transport was established */
-  session_free (session_get (ctx->c_s_index, ctx->c_thread_index));
-  ctx->no_app_session = 1;
-  srtp_disconnect (ctx->srtp_ctx_handle, vlib_get_thread_index ());
-  return app_worker_connect_notify (app_wrk, 0, err,
-				    ctx->parent_app_api_context);
 }
 
 static int
@@ -389,25 +359,13 @@ static int
 srtp_session_connected_callback (u32 srtp_app_index, u32 ctx_handle,
 				 session_t *us, session_error_t err)
 {
-  session_t *app_session;
-  session_type_t st;
   srtp_tc_t *ctx;
 
-  ctx = srtp_ctx_get_w_thread (ctx_handle, 1 /* udp allocs on thread 1 */);
+  ctx = srtp_ctx_get_w_thread (ctx_handle, transport_cl_thread ());
 
   ctx->srtp_session_handle = session_handle (us);
   ctx->c_flags |= TRANSPORT_CONNECTION_F_NO_LOOKUP;
   us->opaque = ctx_handle;
-
-  /* Preallocate app session. Avoids allocating a session on srtp_session rx
-   * and potentially invalidating the session pool */
-  app_session = session_alloc (ctx->c_thread_index);
-  app_session->session_state = SESSION_STATE_CREATED;
-  ctx->c_s_index = app_session->session_index;
-
-  st = session_type_from_proto_and_ip (TRANSPORT_PROTO_SRTP, ctx->udp_is_ip4);
-  app_session->session_type = st;
-  app_session->connection_index = ctx->srtp_ctx_handle;
 
   return srtp_ctx_init_client (ctx);
 }
@@ -620,6 +578,7 @@ int
 srtp_connect (transport_endpoint_cfg_t *tep)
 {
   vnet_connect_args_t _cargs = { {}, }, *cargs = &_cargs;
+  u32 thread_index = transport_cl_thread ();
   session_endpoint_cfg_t *sep;
   srtp_main_t *sm = &srtp_main;
   app_worker_t *app_wrk;
@@ -637,13 +596,14 @@ srtp_connect (transport_endpoint_cfg_t *tep)
   app_wrk = app_worker_get (sep->app_wrk_index);
   app = application_get (app_wrk->app_index);
 
-  ctx_index = srtp_ctx_alloc_w_thread (1 /* because of udp */);
-  ctx = srtp_ctx_get_w_thread (ctx_index, 1);
+  ctx_index = srtp_ctx_alloc_w_thread (thread_index);
+  ctx = srtp_ctx_get_w_thread (ctx_index, thread_index);
   ctx->parent_app_wrk_index = sep->app_wrk_index;
   ctx->parent_app_api_context = sep->opaque;
   ctx->udp_is_ip4 = sep->is_ip4;
   ctx->srtp_ctx_handle = ctx_index;
   ctx->c_flags |= TRANSPORT_CONNECTION_F_NO_LOOKUP;
+  ctx->c_proto = TRANSPORT_PROTO_SRTP;
 
   srtp_init_policy (ctx, (transport_endpt_cfg_srtp_t *) ext_cfg->data);
 
@@ -790,6 +750,14 @@ srtp_connection_get (u32 ctx_index, clib_thread_index_t thread_index)
 {
   srtp_tc_t *ctx;
   ctx = srtp_ctx_get_w_thread (ctx_index, thread_index);
+  return &ctx->connection;
+}
+
+transport_connection_t *
+srtp_ho_connection_get (u32 ctx_index)
+{
+  srtp_tc_t *ctx;
+  ctx = srtp_ctx_get_w_thread (ctx_index, transport_cl_thread ());
   return &ctx->connection;
 }
 
@@ -986,6 +954,7 @@ static const transport_proto_vft_t srtp_proto = {
   .stop_listen = srtp_stop_listen,
   .get_connection = srtp_connection_get,
   .get_listener = srtp_listener_get,
+  .get_half_open = srtp_ho_connection_get,
   .custom_tx = srtp_custom_tx_callback,
   .format_connection = format_srtp_connection,
   .format_half_open = format_srtp_half_open,
