@@ -1,0 +1,115 @@
+/*
+ * Copyright (c) 2025 Marvell.
+ * SPDX-License-Identifier: Apache-2.0
+ * https://spdx.org/licenses/Apache-2.0.html
+ */
+
+option version = "0.1.0";
+
+/**
+ * @brief Reply for configuring PFC.
+ *
+ * This structure specifies the parameters returned in response for configuring the PFC.
+ *
+ * @param context - Sender context, to match reply with request.
+ * @param retval - Return value indicating success or failure of the operation.
+ */
+define pfc_sys_configure_reply
+{
+  u32 context;
+  i32 retval;
+};
+
+/**
+ * @brief Configure PFC on given Rx/Tx queues with given TC and time quanta.
+ *
+ * This structure outlines the necessary parameters to configure PFC for given TC and time quanta.
+ *
+ * @param client_index - Opaque cookie to identify the sender.
+ * @param context - Sender context, to match reply with request.
+ * @param sw_if_idx - Software interface index.
+ * @param mode - PFC mode to be configured.
+ * @param txq - Tx queue to be paused for given TC.
+ * @param tx_tc - Traffic class to be applied PFC frame processing.
+ * @param pause_time - Pause time to filled in PFC frames.
+ * @param rxq - Rx queue which will trigger PFC frames with given TC and pause time if congested.
+ * @param rx_tc - Traffic class to filled in PFC frames.
+ */
+define pfc_sys_configure
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_idx;
+  u32 mode;
+  u32 txq;
+  u32 tx_tc;
+  u32 pause_time;
+  u32 rxq;
+  u32 rx_tc;
+};
+
+/**
+ * @brief Reply for getting the capabilities of a PFC system.
+ *
+ * This structure specifies the parameters returned in response for getting the capabilities of a PFC system.
+ *
+ * @param context - Sender context, to match reply with request.
+ * @param retval - Return value indicating success or failure of the operation.
+ * @param tc_max - Represents maximum number of traffic classes supported by H/W.
+ * @param mode - Represents supported mode of operation i.e. RX_PAUSE, TX_PAUSE or FULL.
+ */
+define pfc_sys_get_capabilities_reply
+{
+  u32 context;
+  i32 retval;
+  u32 tc_max;
+  u32 mode;
+};
+
+/**
+ * @brief Get the capabilities of a PFC system.
+ *
+ * This structure outlines the necessary parameters to get the capabilities of a PFC system.
+ *
+ * @param client_index - Opaque cookie to identify the sender.
+ * @param context - Sender context, to match reply with request.
+ * @param sw_if_idx - Software interface index.
+ */
+define pfc_sys_get_capabilities
+ {
+   u32 client_index;
+   u32 context;
+   u32 sw_if_idx;
+ };
+
+/**
+ * @brief Reply for disabling priority flow control.
+ *
+ * This structure specifies the parameters returned in response to disable PFC.
+ *
+ * @param context - Sender context, to match reply with request.
+ * @param retval - Return value indicating success or failure of the operation.
+ */
+define pfc_sys_disable_pause_frame_flow_ctrl_reply
+{
+  u32 context;
+  i32 retval;
+};
+
+/**
+ * @brief Disable priority flow control.
+ *
+ * This structure outlines the necessary parameters to disable applied flow control mechanism.
+ *
+ * @param client_index - Opaque cookie to identify the sender.
+ * @param context - Sender context, to match reply with request.
+ * @param sw_if_idx - Software interface index.
+ * @param disable - Disables priority flow control.
+ */
+define pfc_sys_disable_pause_frame_flow_ctrl
+ {
+   u32 client_index;
+   u32 context;
+   u32 sw_if_idx;
+   u32 disable;
+ };

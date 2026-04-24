@@ -304,6 +304,7 @@ typedef struct vnet_dev_rx_queue
   u8 enabled : 1;
   u8 started : 1;
   u8 suspended : 1;
+  u8 tc : 4;
   vnet_dev_rx_queue_rt_req_t runtime_request;
   vnet_dev_counter_main_t *counter_main;
   vnet_dev_rx_queue_t *next_on_thread;

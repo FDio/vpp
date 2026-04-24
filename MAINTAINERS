@@ -98,6 +98,10 @@ I:	classify
 M:	Dave Barach <vpp@barachs.net>
 F:	src/vnet/classify
 
+VNET Priority Flow Control
+I:	pfc
+F:	src/vnet/pfc/
+
 VNET New Device Drivers Infra
 I:	dev
 M:	Damjan Marion <damarion@cisco.com>

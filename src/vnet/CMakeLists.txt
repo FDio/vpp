@@ -1419,6 +1419,23 @@ list (APPEND VNET_MULTIARCH_SOURCES
 )
 
 ##############################################################################
+# PFC
+##############################################################################
+
+list (APPEND VNET_SOURCES
+  pfc/pfc.c
+  pfc/pfc_api.c
+)
+
+list (APPEND VNET_HEADERS
+  pfc/pfc.h
+)
+
+list (APPEND VNET_API_FILES
+  pfc/pfc.api
+)
+
+##############################################################################
 # VNET Library
 ##############################################################################
 
@@ -1448,6 +1465,7 @@ add_vat_test_library(vnet
   session/session_test.c
   l2/l2_test.c
   ipsec/ipsec_test.c
+  pfc/pfc_test.c
 )
 
 ##############################################################################
