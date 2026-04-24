@@ -2,10 +2,12 @@ package hst
 
 import (
 	"fmt"
+	"net"
 	"os/exec"
 	"reflect"
 	"runtime"
 	"strings"
+
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -81,63 +83,75 @@ func (s *MasqueSuite) SetupTest(serverExtraArgs ...string) {
 	clientVpp, err := s.Containers.VppClient.newVppInstance(s.Containers.VppClient.AllocatedCpus, memoryConfig)
 	AssertNotNil(clientVpp, fmt.Sprint(err))
 	AssertNil(clientVpp.Start())
-	// numCpus := uint16(len(s.Containers.VppClient.AllocatedCpus))
-	// numWorkers := uint16(max(numCpus-1, 1))
-	// idx, err := clientVpp.createAfPacket(s.Interfaces.Client, false, WithNumRxQueues(numWorkers), WithNumTxQueues(numCpus))
-	idx, err := clientVpp.createAfPacket(s.Interfaces.Client, false)
+	err = clientVpp.CreateTap(s.Interfaces.Client, false, 1)
 	AssertNil(err, fmt.Sprint(err))
-	AssertNotEqual(0, idx)
-	// idx, err = clientVpp.createAfPacket(s.Interfaces.TunnelClient, false, WithNumRxQueues(numWorkers), WithNumTxQueues(numCpus))
-	idx, err = clientVpp.createAfPacket(s.Interfaces.TunnelClient, false)
+	err = clientVpp.CreateTap(s.Interfaces.TunnelClient, false, 2)
 	AssertNil(err, fmt.Sprint(err))
-	AssertNotEqual(0, idx)
 
 	// vpp masque proxy server
 	serverVpp, err := s.Containers.VppServer.newVppInstance(s.Containers.VppServer.AllocatedCpus, memoryConfig)
 	AssertNotNil(serverVpp, fmt.Sprint(err))
 	AssertNil(serverVpp.Start())
-	// numCpus = uint16(len(s.Containers.VppServer.AllocatedCpus))
-	// numWorkers = uint16(max(numCpus-1, 1))
-	// 	idx, err = serverVpp.createAfPacket(s.Interfaces.TunnelServer, false, WithNumRxQueues(numWorkers), WithNumTxQueues(numCpus))
-	idx, err = serverVpp.createAfPacket(s.Interfaces.TunnelServer, false)
+	err = serverVpp.CreateTap(s.Interfaces.TunnelServer, false, 3)
 	AssertNil(err, fmt.Sprint(err))
-	AssertNotEqual(0, idx)
-	// idx, err = serverVpp.createAfPacket(s.Interfaces.Server, false, WithNumRxQueues(numWorkers), WithNumTxQueues(numCpus))
-	idx, err = serverVpp.createAfPacket(s.Interfaces.Server, false)
+	err = serverVpp.CreateTap(s.Interfaces.Server, false, 4)
 	AssertNil(err, fmt.Sprint(err))
-	AssertNotEqual(0, idx)
+
 	extras := ""
 	if len(serverExtraArgs) > 0 {
 		extras = strings.Join(serverExtraArgs, " ")
 	}
 	proxyCmd := fmt.Sprintf("test proxy server fifo-size 512k server-uri https://%s:%s %s", s.ProxyAddr(), s.Ports.Proxy, extras)
-	Log(serverVpp.Vppctl(proxyCmd))
+	o := serverVpp.Vppctl(proxyCmd)
+	Log(o)
+	AssertNotContains(o, "failed")
 
 	// let the client know howto get to the server (must be created here after vpp interface)
+	_, ipNet, err := net.ParseCIDR(s.Interfaces.Server.Host.Ip4Address)
+	AssertNil(err)
 	cmd := exec.Command("ip", "netns", "exec", s.NetNamespaces.Client, "ip", "route", "add",
-		s.NginxAddr(), "via", s.Interfaces.Client.Ip4AddressString())
+		ipNet.String(), "via", s.Interfaces.Client.Ip4AddressString())
 	Log(cmd.String())
-	o, err := cmd.CombinedOutput()
-	Log(string(o))
+	co, err := cmd.CombinedOutput()
+	Log(string(co))
 	AssertNil(err, fmt.Sprint(err))
 
 	arp := fmt.Sprintf("set ip neighbor %s %s %s",
-		s.Interfaces.TunnelClient.VppName(),
-		s.ProxyAddr(),
-		s.Interfaces.TunnelServer.HwAddress)
-	Log(clientVpp.Vppctl(arp))
-	arp = fmt.Sprintf("set ip neighbor %s %s %s",
-		s.Interfaces.Client.VppName(),
+		s.Interfaces.Client.Name(),
 		s.Interfaces.Client.Host.Ip4AddressString(),
 		s.Interfaces.Client.Host.HwAddress)
 	Log(clientVpp.Vppctl(arp))
+
 	arp = fmt.Sprintf("set ip neighbor %s %s %s",
-		s.Interfaces.TunnelServer.VppName(),
+		s.Interfaces.TunnelClient.Name(),
+		s.ProxyAddr(),
+		s.Interfaces.TunnelServer.HwAddress)
+	Log(clientVpp.Vppctl(arp))
+
+	_, ipNet, err = net.ParseCIDR(s.Interfaces.TunnelServer.Ip4Address)
+	AssertNil(err)
+	route := fmt.Sprintf("ip route add %s via %s %s",
+		ipNet.String(),
+		s.Interfaces.TunnelClient.Host.Ip4AddressString(),
+		s.Interfaces.TunnelClient.name)
+	Log(clientVpp.Vppctl(route))
+
+	arp = fmt.Sprintf("set ip neighbor %s %s %s",
+		s.Interfaces.TunnelServer.Name(),
 		s.Interfaces.TunnelClient.Ip4AddressString(),
 		s.Interfaces.TunnelClient.HwAddress)
 	Log(serverVpp.Vppctl(arp))
+
+	_, ipNet, err = net.ParseCIDR(s.Interfaces.TunnelClient.Ip4Address)
+	AssertNil(err)
+	route = fmt.Sprintf("ip route add %s via %s %s",
+		ipNet.String(),
+		s.Interfaces.TunnelServer.Host.Ip4AddressString(),
+		s.Interfaces.TunnelServer.name)
+	Log(serverVpp.Vppctl(route))
+
 	arp = fmt.Sprintf("set ip neighbor %s %s %s",
-		s.Interfaces.Server.VppName(),
+		s.Interfaces.Server.Name(),
 		s.NginxAddr(),
 		s.Interfaces.Server.Host.HwAddress)
 	Log(serverVpp.Vppctl(arp))
@@ -151,12 +165,15 @@ func (s *MasqueSuite) SetupTest(serverExtraArgs ...string) {
 func (s *MasqueSuite) TeardownTest() {
 	defer s.HstSuite.TeardownTest()
 	// delete route
+	_, ipNet, err := net.ParseCIDR(s.Interfaces.Server.Host.Ip4Address)
+	AssertNil(err)
 	cmd := exec.Command("ip", "netns", "exec", s.NetNamespaces.Client, "ip", "route", "del",
-		s.NginxAddr(), "via", s.Interfaces.Client.Ip4AddressString())
+		ipNet.String(), "via", s.Interfaces.Client.Ip4AddressString())
 	Log(cmd.String())
 	o, err := cmd.CombinedOutput()
 	Log(string(o))
 	AssertNil(err, fmt.Sprint(err))
+
 	clientVpp := s.Containers.VppClient.VppInstance
 	serverVpp := s.Containers.VppServer.VppInstance
 	if CurrentSpecReport().Failed() {
@@ -185,7 +202,7 @@ func (s *MasqueSuite) ProxyClientConnect(proto, port string, extraArgs ...string
 	}
 	vpp := s.Containers.VppClient.VppInstance
 	cmd := fmt.Sprintf("http connect proxy client enable server-uri https://%s:%s listener %s://0.0.0.0:%s interface %s %s",
-		s.ProxyAddr(), s.Ports.Proxy, proto, port, s.Interfaces.Client.VppName(), extras)
+		s.ProxyAddr(), s.Ports.Proxy, proto, port, s.Interfaces.Client.Name(), extras)
 	Log(vpp.Vppctl(cmd))
 
 	connected := false
@@ -287,7 +304,7 @@ var _ = Describe("MasqueSoloSuite", Ordered, ContinueOnFailure, Serial, Label("M
 	}
 })
 
-var _ = Describe("MasqueMWSuite", Ordered, ContinueOnFailure, Serial, Label("Masque", "Proxy", "ConnectProxy", "MW"), func() {
+var _ = Describe("MasqueSuite", Ordered, ContinueOnFailure, Serial, Label("Masque", "Proxy", "ConnectProxy", "MW"), func() {
 	var s MasqueSuite
 	BeforeAll(func() {
 		s.SetupSuite()

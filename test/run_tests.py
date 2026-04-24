@@ -809,7 +809,7 @@ class AllResults(dict):
 
         return retval
 
-    def print_results(self):
+    def print_results(self, write_failed_file=True):
         print("")
         print(double_line_delim)
         print("TEST RESULTS:")
@@ -893,7 +893,7 @@ class AllResults(dict):
                         )
                         print_test_ids.append(failed_test_id)
 
-        if print_test_ids:
+        if print_test_ids and write_failed_file:
             with open(os.path.join(config.failed_dir, "failed_tests"), "w") as f:
                 print(",".join(print_test_ids), file=f)
 
@@ -931,7 +931,7 @@ class AllResults(dict):
         )
 
 
-def parse_results(results):
+def parse_results(results, write_failed_file=True):
     """
     Prints the number of scheduled, executed, not executed, passed, failed,
     errored and skipped tests and details about failed and errored tests.
@@ -939,6 +939,7 @@ def parse_results(results):
     Also returns all suites where any test failed.
 
     :param results:
+    :param write_failed_file: Whether to write the failed_tests file
     :return:
     """
 
@@ -952,7 +953,7 @@ def parse_results(results):
         elif result_code == -1:
             crashed = True
 
-    results_per_suite.print_results()
+    results_per_suite.print_results(write_failed_file=write_failed_file)
 
     if crashed:
         return_code = -1
@@ -1142,7 +1143,11 @@ if __name__ == "__main__":
                 if os.path.islink(failed_link):
                     os.unlink(failed_link)
             results = run_forked(suites)
-            exit_code, suites = parse_results(results)
+            # Don't write failed_tests file if there are more attempts remaining
+            write_failed_file = attempts == 1
+            exit_code, suites = parse_results(
+                results, write_failed_file=write_failed_file
+            )
             attempts -= 1
             if exit_code == 0:
                 print("Test run was successful")

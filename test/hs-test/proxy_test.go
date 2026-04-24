@@ -18,6 +18,7 @@ import (
 	"time"
 
 	. "fd.io/hs-test/infra"
+	"github.com/edwarnicke/exechelper"
 	. "github.com/onsi/ginkgo/v2"
 )
 
@@ -35,14 +36,13 @@ func init() {
 	RegisterEnvoyProxyTests(EnvoyHttpGetTcpTest, EnvoyHttpPutTcpTest)
 	RegisterNginxProxyTests(NginxMirroringTest)
 	RegisterNginxProxySoloTests(MirrorMultiThreadTest)
-	RegisterMasqueTests(VppConnectProxyClientDownloadUdpTest,
-		VppConnectProxyClientUploadUdpTest, VppConnectProxyMemLeakTest)
-	RegisterMasqueSoloTests(VppConnectProxyIperfTcpTest, VppConnectProxyIperfUdpTest)
+	RegisterMasqueTests(VppConnectProxyClientDownloadUdpTest, VppConnectProxyClientUploadUdpTest, VppConnectProxyMemLeakTest,
+		VppConnectProxyIperfTcpTest, VppConnectProxyIperfUdpTest)
 	RegisterMasqueMWTests(VppConnectProxyIperfTcpMWTest, VppConnectProxyIperfUdpMWTest, VppConnectProxyClientUploadTcpMWTest,
-		VppConnectProxyClientTargetUnreachableMWTest, VppConnectProxyClientDownloadTcpMWTest,
+		VppConnectProxyClientTargetUnreachableMWTest, VppConnectProxyClientDownloadTcpMWTest, VppConnectProxyDraft03MWTest,
 		VppConnectProxyClientStressMWTest, VppConnectProxyClientUdpIdleMWTest, VppConnectProxyClientServerClosedTcpMWTest,
-		VppConnectProxyHttp3DownloadTcpMWTest, VppConnectProxyHttp3UploadTcpMWTest, VppConnectProxyHttp3Draft03MWTest,
-		VppConnectProxyHttp3IperfTcpMWTest, VppConnectProxyHttp3TargetUnreachableMWTest, VppConnectProxyDraft03MWTest,
+		VppConnectProxyHttp3DownloadTcpMWTest, VppConnectProxyHttp3UploadTcpMWTest,
+		VppConnectProxyHttp3Draft03MWTest, VppConnectProxyHttp3IperfTcpMWTest, VppConnectProxyHttp3TargetUnreachableMWTest,
 		VppConnectProxyHttp3ServerClosedTcpMWTest, VppConnectProxyHttp3StressMWTest, VppConnectProxyHttp3DownloadUdpMWTest,
 		VppConnectProxyHttp3UploadUdpMWTest, VppConnectProxyHttp3IperfUdpMWTest)
 }
@@ -805,6 +805,12 @@ func VppConnectProxyClientDownloadTcpMWTest(s *MasqueSuite) {
 	// test client initiated stream close
 	vppConnectProxyClientCheckCleanup(s)
 	vppConnectProxyServerCheckCleanup(s, false)
+	// verify that masque proxy server was talking to nginx
+	logPath := s.Containers.NginxServer.GetHostWorkDir() + "/" + s.Containers.NginxServer.Name + "-access.log"
+	logContents, err := exechelper.Output("cat " + logPath)
+	AssertNil(err)
+	Log(string(logContents))
+	AssertContains(string(logContents), s.Interfaces.Server.Ip4AddressString())
 }
 
 func VppConnectProxyClientDownloadUdpTest(s *MasqueSuite) {
@@ -820,6 +826,12 @@ func VppConnectProxyClientDownloadUdpTest(s *MasqueSuite) {
 		StartCurl(finished, uri, s.NetNamespaces.Client, "200", 30, []string{"--http3-only"})
 	}()
 	AssertNil(<-finished)
+	// verify that masque proxy server was talking to nginx
+	logPath := s.Containers.NginxServer.GetHostWorkDir() + "/" + s.Containers.NginxServer.Name + "-access.log"
+	logContents, err := exechelper.Output("cat " + logPath)
+	AssertNil(err)
+	Log(string(logContents))
+	AssertContains(string(logContents), s.Interfaces.Server.Ip4AddressString())
 }
 
 func VppConnectProxyClientUploadTcpMWTest(s *MasqueSuite) {
@@ -934,7 +946,10 @@ func vppConnectProxyIperfUdp(s *MasqueSuite, extraArgs ...string) {
 	fileLog, _ := s.Containers.IperfServer.Exec(false, "cat "+IperfLogFileName(s.Containers.IperfServer))
 	Log("*** Server logs: \n%s\n***", fileLog)
 	AssertNil(err)
-	AssertNotContains(fileLog, "0.00 Bytes  0.00 bits/sec")
+	// server report tiny interval >10sec, sometimes one of connections might not be able to rx any data,
+	// so do check only for first 68 lines
+	lines := strings.Split(fileLog, "\n")
+	AssertNotContains(lines[:68], "0.00 Bytes  0.00 bits/sec")
 }
 
 func VppConnectProxyIperfUdpTest(s *MasqueSuite) {
@@ -953,7 +968,7 @@ func VppConnectProxyIperfTcpMWTest(s *MasqueSuite) {
 func VppConnectProxyIperfUdpMWTest(s *MasqueSuite) {
 	s.CpusPerVppContainer = 3
 	s.SetupTest()
-	VppConnectProxyIperfUdpTest(s)
+	vppConnectProxyIperfUdp(s)
 	clientVpp := s.Containers.VppClient.VppInstance
 	closed := false
 	for range 60 {

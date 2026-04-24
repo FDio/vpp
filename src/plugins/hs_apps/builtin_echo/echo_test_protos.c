@@ -859,10 +859,12 @@ et_http_listen (vnet_listen_args_t *args, echo_test_cfg_t *cfg)
 static int
 et_http_connect (vnet_connect_args_t *args, echo_test_cfg_t *cfg)
 {
+  transport_endpt_ext_cfg_t *ext_cfg;
+
   if (echo_test_transport_needs_crypto (&args->sep_ext))
     {
-      transport_endpt_ext_cfg_t *ext_cfg = session_endpoint_add_ext_cfg (
-	&args->sep_ext, TRANSPORT_ENDPT_EXT_CFG_CRYPTO, sizeof (transport_endpt_crypto_cfg_t));
+      ext_cfg = session_endpoint_add_ext_cfg (&args->sep_ext, TRANSPORT_ENDPT_EXT_CFG_CRYPTO,
+					      sizeof (transport_endpt_crypto_cfg_t));
       ext_cfg->crypto.ckpair_index = cfg->ckpair_index;
       switch (cfg->http_version)
 	{
@@ -878,6 +880,18 @@ et_http_connect (vnet_connect_args_t *args, echo_test_cfg_t *cfg)
 	  break;
 	}
     }
+  else
+    {
+      if (cfg->http_version == HTTP_VERSION_2)
+	{
+	  transport_endpt_cfg_http_t http_cfg = { .timeout = 60,
+						  .flags = HTTP_ENDPT_CFG_F_HTTP2_PRIOR_KNOWLEDGE };
+	  ext_cfg = session_endpoint_add_ext_cfg (&args->sep_ext, TRANSPORT_ENDPT_EXT_CFG_HTTP,
+						  sizeof (http_cfg));
+	  clib_memcpy (ext_cfg->data, &http_cfg, sizeof (http_cfg));
+	}
+    }
+
   int rv = vnet_connect (args);
   if (echo_test_transport_needs_crypto (&args->sep_ext))
     session_endpoint_free_ext_cfgs (&args->sep_ext);
@@ -1113,17 +1127,21 @@ static int
 et_http_masque_listen (vnet_listen_args_t *args, echo_test_cfg_t *cfg)
 {
   int rv;
+  transport_endpt_ext_cfg_t *ext_cfg;
 
-  transport_endpt_ext_cfg_t *ext_cfg = session_endpoint_add_ext_cfg (
-    &args->sep_ext, TRANSPORT_ENDPT_EXT_CFG_CRYPTO, sizeof (transport_endpt_crypto_cfg_t));
-  ext_cfg->crypto.ckpair_index = cfg->ckpair_index;
-  ext_cfg->crypto.alpn_protos[0] = TLS_ALPN_PROTO_HTTP_3;
-  ext_cfg->crypto.alpn_protos[1] = TLS_ALPN_PROTO_HTTP_2;
-  ext_cfg->crypto.alpn_protos[2] = TLS_ALPN_PROTO_HTTP_1_1;
+  if (echo_test_transport_needs_crypto (&args->sep_ext))
+    {
+      ext_cfg = session_endpoint_add_ext_cfg (&args->sep_ext, TRANSPORT_ENDPT_EXT_CFG_CRYPTO,
+					      sizeof (transport_endpt_crypto_cfg_t));
+      ext_cfg->crypto.ckpair_index = cfg->ckpair_index;
+      ext_cfg->crypto.alpn_protos[0] = TLS_ALPN_PROTO_HTTP_3;
+      ext_cfg->crypto.alpn_protos[1] = TLS_ALPN_PROTO_HTTP_2;
+    }
   transport_endpt_cfg_http_t http_cfg = { 120, HTTP_UDP_TUNNEL_DGRAM, 0 };
   ext_cfg =
     session_endpoint_add_ext_cfg (&args->sep_ext, TRANSPORT_ENDPT_EXT_CFG_HTTP, sizeof (http_cfg));
   clib_memcpy (ext_cfg->data, &http_cfg, sizeof (http_cfg));
+
   rv = vnet_listen (args);
   session_endpoint_free_ext_cfgs (&args->sep_ext);
   return rv;
@@ -1132,26 +1150,42 @@ et_http_masque_listen (vnet_listen_args_t *args, echo_test_cfg_t *cfg)
 static int
 et_http_masque_connect (vnet_connect_args_t *args, echo_test_cfg_t *cfg)
 {
-  transport_endpt_ext_cfg_t *ext_cfg = session_endpoint_add_ext_cfg (
-    &args->sep_ext, TRANSPORT_ENDPT_EXT_CFG_CRYPTO, sizeof (transport_endpt_crypto_cfg_t));
-  ext_cfg->crypto.ckpair_index = cfg->ckpair_index;
-  switch (cfg->http_version)
-    {
-    case HTTP_VERSION_NA:
-    case HTTP_VERSION_1:
-      et_err ("http masque: only h2 and h3 supported");
-      return -1;
-    case HTTP_VERSION_2:
-      ext_cfg->crypto.alpn_protos[0] = TLS_ALPN_PROTO_HTTP_2;
-      break;
-    case HTTP_VERSION_3:
-      ext_cfg->crypto.alpn_protos[0] = TLS_ALPN_PROTO_HTTP_3;
-      break;
-    }
+  transport_endpt_ext_cfg_t *ext_cfg;
   transport_endpt_cfg_http_t http_cfg = { 120, HTTP_UDP_TUNNEL_DGRAM, 0 };
+
+  if (echo_test_transport_needs_crypto (&args->sep_ext))
+    {
+      ext_cfg = session_endpoint_add_ext_cfg (&args->sep_ext, TRANSPORT_ENDPT_EXT_CFG_CRYPTO,
+					      sizeof (transport_endpt_crypto_cfg_t));
+      ext_cfg->crypto.ckpair_index = cfg->ckpair_index;
+      switch (cfg->http_version)
+	{
+	case HTTP_VERSION_NA:
+	case HTTP_VERSION_1:
+	  et_err ("http masque: only h2 and h3 supported");
+	  return -1;
+	case HTTP_VERSION_2:
+	  ext_cfg->crypto.alpn_protos[0] = TLS_ALPN_PROTO_HTTP_2;
+	  break;
+	case HTTP_VERSION_3:
+	  ext_cfg->crypto.alpn_protos[0] = TLS_ALPN_PROTO_HTTP_3;
+	  break;
+	}
+    }
+  else
+    {
+      if (cfg->http_version == HTTP_VERSION_2)
+	http_cfg.flags |= HTTP_ENDPT_CFG_F_HTTP2_PRIOR_KNOWLEDGE;
+      else
+	{
+	  et_err ("http masque: only h2 support clear text connection");
+	  return -1;
+	}
+    }
   ext_cfg =
     session_endpoint_add_ext_cfg (&args->sep_ext, TRANSPORT_ENDPT_EXT_CFG_HTTP, sizeof (http_cfg));
   clib_memcpy (ext_cfg->data, &http_cfg, sizeof (http_cfg));
+
   int rv = vnet_connect (args);
   session_endpoint_free_ext_cfgs (&args->sep_ext);
   return rv;
