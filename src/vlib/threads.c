@@ -39,6 +39,13 @@ vlib_worker_thread_register_one_time_release_fn (vlib_worker_thread_one_time_rel
 
   ASSERT (fn);
 
+  if (vlib_get_n_threads () < 2)
+    {
+      /* No worker threads, call the function directly */
+      fn (vgm->vlib_mains[0], arg);
+      return;
+    }
+
   elt = clib_mem_alloc_no_fail (sizeof (*elt));
   elt[0] = (vlib_worker_thread_one_time_release_fn_elt_t){
     .fn = fn,
