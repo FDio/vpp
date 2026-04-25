@@ -590,13 +590,13 @@ dhcp6_ia_na_client_get_runtime (u32 sw_if_index, dhcp6_ia_na_client_runtime_t *r
   clib_memset (rt, 0, sizeof (*rt));
 
   if (sw_if_index >= vec_len (rm->client_state_by_sw_if_index))
-    return 1;
+    return 0;
 
   cs = &rm->client_state_by_sw_if_index[sw_if_index];
-  rt->enabled = cs->enabled;
   if (!cs->enabled || rm->vlib_main == 0)
-    return 1;
+    return 0;
 
+  rt->enabled = 1;
   rt->rebinding = cs->rebinding;
   rt->server_index = cs->server_index;
   rt->T1 = cs->T1;

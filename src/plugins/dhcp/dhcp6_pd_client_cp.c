@@ -1137,10 +1137,13 @@ dhcp6_pd_client_get_runtime (u32 sw_if_index, dhcp6_pd_client_runtime_t *rt)
   clib_memset (rt, 0, sizeof (*rt));
 
   if (sw_if_index >= vec_len (rm->client_state_by_sw_if_index))
-    return 1;
+    return 0;
 
   cs = &rm->client_state_by_sw_if_index[sw_if_index];
-  rt->enabled = cs->enabled;
+  if (!cs->enabled || rm->vlib_main == 0)
+    return 0;
+
+  rt->enabled = 1;
   rt->rebinding = cs->rebinding;
   rt->server_index = cs->server_index;
   rt->T1 = cs->T1;
@@ -1155,9 +1158,6 @@ dhcp6_pd_client_get_runtime (u32 sw_if_index, dhcp6_pd_client_runtime_t *rt)
       clib_strncpy ((char *) rt->prefix_group, (const char *) prefix_group,
 		    sizeof (rt->prefix_group) - 1);
     }
-
-  if (!cs->enabled || rm->vlib_main == 0)
-    return 1;
 
   current_time = vlib_time_now (rm->vlib_main);
   if (cs->T1_due_time != DBL_MAX && cs->T1_due_time > current_time)
@@ -1184,15 +1184,15 @@ dhcp6_pd_client_get_active_prefix_runtime (u32 sw_if_index, dhcp6_pd_active_pref
   clib_memset (rt, 0, sizeof (*rt));
 
   if (sw_if_index >= vec_len (rm->client_state_by_sw_if_index))
-    return 1;
+    return 0;
 
   cs = &rm->client_state_by_sw_if_index[sw_if_index];
   if (!cs->enabled || cs->prefix_group_index == ~0)
-    return 1;
+    return 0;
 
   prefix_index = active_prefix_index_by_prefix_group_index_get (cs->prefix_group_index);
   if (prefix_index == ~0 || pool_is_free_index (pm->prefix_pool, prefix_index))
-    return 1;
+    return 0;
 
   prefix_info = pool_elt_at_index (pm->prefix_pool, prefix_index);
   rt->present = 1;
@@ -1227,11 +1227,11 @@ dhcp6_pd_client_get_consumer_runtime (u32 sw_if_index, dhcp6_pd_consumer_runtime
   clib_memset (rt, 0, sizeof (*rt));
 
   if (sw_if_index >= vec_len (rm->client_state_by_sw_if_index))
-    return 1;
+    return 0;
 
   cs = &rm->client_state_by_sw_if_index[sw_if_index];
   if (!cs->enabled || cs->prefix_group_index == ~0)
-    return 1;
+    return 0;
 
   prefix_index = active_prefix_index_by_prefix_group_index_get (cs->prefix_group_index);
 

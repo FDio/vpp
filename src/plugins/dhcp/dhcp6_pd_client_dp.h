@@ -123,7 +123,14 @@ int dhcp6_cp_ip6_address_add_del (u32 sw_if_index, const u8 *prefix_group, ip6_a
 /* Snapshot the DHCPv6 PD client state.  All three _get_runtime helpers must
  * be called from the main thread: the pools and per-sw_if_index state are
  * mutated by the DHCPv6 PD client process node on main thread without
- * locking. */
+ * locking.
+ *
+ * Each helper returns 1 only when the runtime is fully populated and
+ * usable: dhcp6_pd_client_get_runtime additionally guarantees rt->enabled
+ * == 1, _get_active_prefix_runtime guarantees rt->present == 1, and
+ * _get_consumer_runtime guarantees the prefix_group is bound to an enabled
+ * client.  All helpers return 0 when their precondition is not met or rt
+ * is NULL; in that case *rt has been zeroed when non-NULL. */
 u8 dhcp6_pd_client_get_runtime (u32 sw_if_index, dhcp6_pd_client_runtime_t *rt);
 u8 dhcp6_pd_client_get_active_prefix_runtime (u32 sw_if_index,
 					      dhcp6_pd_active_prefix_runtime_t *rt);

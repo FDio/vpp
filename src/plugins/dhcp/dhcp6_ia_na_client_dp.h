@@ -107,7 +107,13 @@ int dhcp6_client_enable_disable (u32 sw_if_index, u8 enable);
 
 /* Snapshot the DHCPv6 IA_NA client state.  Must be called from the main
  * thread: this reads pool state that the DHCPv6 client process node mutates
- * on main thread without locking. */
+ * on main thread without locking.
+ *
+ * Returns 1 when the runtime is fully populated and rt->enabled == 1; the
+ * caller may rely on every other field of *rt in that case.  Returns 0
+ * when the client is disabled, sw_if_index is unknown, or rt is NULL.
+ * On 0, *rt is zeroed when non-NULL and no field other than rt->enabled
+ * (== 0) is meaningful. */
 u8 dhcp6_ia_na_client_get_runtime (u32 sw_if_index, dhcp6_ia_na_client_runtime_t *rt);
 
 extern vlib_node_registration_t dhcp6_reply_process_node;
