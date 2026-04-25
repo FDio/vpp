@@ -161,10 +161,10 @@ cnat_snat_policy_add_del_if (u32 sw_if_index, u8 is_add,
   if (!cpe)
     return VNET_API_ERROR_FEATURE_DISABLED;
 
-  if (!is_add && !cnat_snat_policy_entry_is_init (cpe))
-    return VNET_API_ERROR_NO_SUCH_ENTRY;
-
-  cnat_snat_policy_entry_init (cpe);
+  /* The entry is always initialized at pool_get_zero time
+     (see cnat_set_snat), so the interface map is guaranteed to exist
+     here. A del on an interface that was never added becomes a safe
+     no-op via clib_bitmap_set (..., 0). */
 
   clib_bitmap_t **map = &cpe->interface_maps[table];
 
@@ -433,7 +433,8 @@ cnat_snat_policy_add_pfx (cnat_snat_policy_entry_t *cpe, ip_prefix_t *pfx, const
   /* All packets destined to this prefix won't be source-NAT-ed */
   ASSERT (cpe);
 
-  cnat_snat_policy_entry_init (cpe);
+  /* No need to lazy-init: cnat_set_snat already initialized the entry
+     at pool_get_zero time. */
 
   cnat_snat_exclude_pfx_table_t *table = &cpe->excluded_pfx;
   ip_address_family_t af = ip_prefix_version (pfx);
@@ -458,8 +459,9 @@ cnat_snat_policy_del_pfx (cnat_snat_policy_entry_t *cpe, ip_prefix_t *pfx, u8 is
 {
   ASSERT (cpe);
 
-  if (!cnat_snat_policy_entry_is_init (cpe))
-    return VNET_API_ERROR_NO_SUCH_ENTRY;
+  /* The entry is always initialized at pool_get_zero time
+     (see cnat_set_snat). Removing an unknown prefix becomes a no-op
+     via the bihash del below. */
 
   cnat_snat_exclude_pfx_table_t *table = &cpe->excluded_pfx;
   ip_address_family_t af = ip_prefix_version (pfx);
@@ -589,6 +591,11 @@ cnat_set_snat (u32 fwd_fib_index, u32 ret_fib_index, const ip4_address_t *ip4, u
       if (is_delete)
 	return VNET_API_ERROR_FEATURE_DISABLED;
       pool_get_zero (cpm->snat_policies_pool, cpe);
+      /* Initialize the entry up-front so that the interface and prefix
+         maps are always usable. Otherwise a del-only sequence (e.g. a
+         reconcile loop that issues a disable before any add) would hit
+         is_init() == false and incorrectly return ENOENT. */
+      cnat_snat_policy_entry_init (cpe);
       cnat_translation_register_addr_add_cb (CNAT_RESOLV_ADDR_SNAT, cnat_if_addr_add_del_snat_cb);
       cpe->snat_policy = cnat_snat_policy_none;
       cnat_init_port_allocator (fwd_fib_index);
