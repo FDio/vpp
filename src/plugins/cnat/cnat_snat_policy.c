@@ -161,9 +161,15 @@ cnat_snat_policy_add_del_if (u32 sw_if_index, u8 is_add,
   if (!cpe)
     return VNET_API_ERROR_FEATURE_DISABLED;
 
+  /*
+   * Make the del path re-entrant: if the entry has never been
+   * initialized (no add ever happened on this family), a disable
+   * becomes a no-op rather than an error. The add path is already
+   * idempotent via the lazy-init guard inside
+   * cnat_snat_policy_entry_init().
+   */
   if (!is_add && !cnat_snat_policy_entry_is_init (cpe))
-    return VNET_API_ERROR_NO_SUCH_ENTRY;
-
+    return 0;
   cnat_snat_policy_entry_init (cpe);
 
   clib_bitmap_t **map = &cpe->interface_maps[table];
@@ -458,8 +464,14 @@ cnat_snat_policy_del_pfx (cnat_snat_policy_entry_t *cpe, ip_prefix_t *pfx, u8 is
 {
   ASSERT (cpe);
 
+  /*
+   * Make the del path re-entrant: if the entry has never been
+   * initialized, removing a prefix is a no-op (there is nothing to
+   * remove). Likewise, a missing bihash entry is treated as a no-op
+   * rather than an error so callers can safely retry deletes.
+   */
   if (!cnat_snat_policy_entry_is_init (cpe))
-    return VNET_API_ERROR_NO_SUCH_ENTRY;
+    return 0;
 
   cnat_snat_exclude_pfx_table_t *table = &cpe->excluded_pfx;
   ip_address_family_t af = ip_prefix_version (pfx);
@@ -468,7 +480,7 @@ cnat_snat_policy_del_pfx (cnat_snat_policy_entry_t *cpe, ip_prefix_t *pfx, u8 is
   ip_prefix_normalize (pfx);
   cnat_search_snat_prefix_mkkey (&kv, pfx, is_src);
   if (clib_bihash_add_del_24_8 (&table->ip_hash, &kv, 0 /* is_add */))
-    return 1;
+    return 0;
 
   /* refcount accounting */
   ASSERT (table->meta[af].dst_address_length_refcounts[pfx->len] > 0);
