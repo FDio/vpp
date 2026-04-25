@@ -40,17 +40,14 @@ Local adaptations (non-exhaustive)
   and PPP control-plane state are coordinated with the imported pppd
   sources (see src/plugins/pppoeclient/pppox/pppd/README.import).
 
-Related license files in this repository
-- LICENSES/Apache-2.0.txt
-- LICENSES/BSD-4.3TAHOE.txt
-- LICENSES/BSD-Attribution-HPND-disclaimer.txt
-- LICENSES/Mackerras-3-Clause-acknowledgment.txt
-- LICENSES/Mackerras-3-Clause.txt
-- LICENSES/RSA-MD.txt
-- LICENSES/Sun-PPP.txt
-The pppoeclient plugin itself is covered by Apache-2.0; the additional
-licenses cover the imported pppd sources under
-src/plugins/pppoeclient/pppox/pppd.
+Licensing
+The pppoeclient plugin itself is covered by Apache-2.0. Per-file
+licensing for the imported pppd sources under
+src/plugins/pppoeclient/pppox/pppd is declared in each source file via
+SPDX-License-Identifier headers (Apache-2.0, BSD-4.3TAHOE,
+BSD-Attribution-HPND-disclaimer, Mackerras-3-Clause,
+Mackerras-3-Clause-acknowledgment, RSA-MD, Sun-PPP). Full license texts
+for these SPDX identifiers are available at https://spdx.org/licenses/.
 
 Review expectations
 - When changing files carrying the RaydoNetworks copyright line, keep
