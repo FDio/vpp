@@ -54,7 +54,11 @@ dpdk_add_del_mac_address (vnet_hw_interface_t * hi,
    * programming, and some PMDs report that with standard errno values.
    */
   if ((is_add && (error == -EADDRINUSE || error == -EEXIST)) || (!is_add && error == -ENOENT))
-    return NULL;
+    {
+      dpdk_log_debug ("[%u] tolerating mac %s replay (errno %d)", xd->port_id,
+		      is_add ? "add" : "del", error);
+      return NULL;
+    }
 
   if (error)
     {
