@@ -105,6 +105,10 @@ typedef struct
   u8 add_default_route6; /* add IPv6 default route via peer */
   u8 use_peer_dns;
 
+  /* LCP MRU derived from the PPPoE client CLI.
+   * 0 means use pppd default (DEFMRU = 1500). */
+  u16 configured_mru;
+
   /* Optional operator-supplied interface name (e.g. "wan0", "ppp0").
    * format_pppox_name prefers this over the generic "pppoxN" pattern.
    * Owned by the vector; released on interface free. */
@@ -181,6 +185,7 @@ int pppox_set_add_default_route6 (u32, u8); /* IPv6 only */
 int pppox_set_use_peer_dns (u32, u8);
 u8 pppox_get_ppp_debug_runtime (u32, pppox_ppp_debug_runtime_t *);
 void pppox_set_interface_mtu (int, int);
+int pppox_set_configured_mru (u32 sw_if_index, u16 mru);
 
 /* Mark the current unit as having failed PPP authentication (CHAP / PAP);
  * the flag is consumed by the pppoeclient restart path to switch to a

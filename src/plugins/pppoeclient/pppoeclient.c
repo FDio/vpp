@@ -2464,6 +2464,7 @@ consume_pppoe_discovery_pkt (u32 bi, vlib_buffer_t *b, pppoe_header_t *pppoe)
       pppoeclient_update_session_1 (&pem->session_table, c->sw_if_index, c->ac_mac_address,
 				    c->session_id, &result);
       c->state = PPPOE_CLIENT_SESSION;
+      c->session_start_time = now;
       /* A fresh PPPoE session means the BAS has (again) admitted us, so the
        * previous auth-failure streak no longer reflects current reality. */
       c->consecutive_auth_failures = 0;
@@ -4811,7 +4812,12 @@ set_pppoeclient_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_c
   if (mtu > 0)
     c->mtu = mtu;
   if (mru > 0)
-    c->mru = mru;
+    {
+      c->mru = mru;
+      /* Propagate to pppox so LCP negotiation requests this MRU. */
+      if (c->pppox_sw_if_index != ~0)
+	pppox_set_configured_mru (c->pppox_sw_if_index, (u16) mru);
+    }
   if (timeout > 0)
     c->timeout = timeout;
   if (use_peer_dns)
