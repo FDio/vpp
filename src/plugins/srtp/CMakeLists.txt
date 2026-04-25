@@ -11,8 +11,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-vpp_plugin_find_library(srtp SRTP_LIB libsrtp2.a)
-vpp_find_path(SRTP_INCLUDE_DIR NAMES srtp2/srtp.h)
+
+find_package(PkgConfig QUIET)
+if (NOT PKG_CONFIG_FOUND)
+  message(WARNING "srtp plugin - pkg-config not found - plugin disabled")
+  return()
+endif()
+
+pkg_check_modules(SRTP QUIET libsrtp2)
+if (NOT SRTP_FOUND)
+  message(WARNING "srtp plugin - libsrtp2 not found - plugin disabled")
+  return()
+endif()
+
+set(SRTP_PLUGIN_LINK_LIBRARIES ${SRTP_STATIC_LINK_LIBRARIES})
+if (NOT SRTP_PLUGIN_LINK_LIBRARIES)
+  set(SRTP_PLUGIN_LINK_LIBRARIES ${SRTP_LINK_LIBRARIES})
+endif()
+
+vpp_find_path(SRTP_INCLUDE_DIR NAMES srtp2/srtp.h HINTS ${SRTP_INCLUDE_DIRS})
 
 if (NOT SRTP_INCLUDE_DIR)
   message(WARNING "srtp plugin - srtp.h not found - plugin disabled")
@@ -26,5 +43,5 @@ add_vpp_plugin(srtp
   srtp.c
 
   LINK_LIBRARIES
-  ${SRTP_LIB}
+  ${SRTP_PLUGIN_LINK_LIBRARIES}
 )
