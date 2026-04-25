@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <time.h>
+#include <vppinfra/mem.h>
 #include "pppd.h"
 #include "fsm.h"
 #include "ipcp.h"
@@ -172,7 +173,7 @@ timeout (void (*func) __P ((void *) ), void *arg, int secs, int usecs)
   /*
    * Allocate timeout.
    */
-  if ((newp = (struct callout *) malloc (sizeof (struct callout))) == NULL)
+  if ((newp = (struct callout *) clib_mem_alloc (sizeof (struct callout))) == NULL)
     {
       fatal ("Out of memory in timeout()!");
       return;
@@ -214,7 +215,7 @@ untimeout (void (*func) __P ((void *) ), void *arg)
     if (freep->c_func == func && freep->c_arg == arg)
       {
 	*copp = freep->c_next;
-	free ((char *) freep);
+	clib_mem_free ((char *) freep);
 	break;
       }
 }
@@ -240,7 +241,7 @@ pppd_calltimeout (void)
       callout = p->c_next;
       (*p->c_func) (p->c_arg);
 
-      free ((char *) p);
+      clib_mem_free ((char *) p);
     }
 }
 
