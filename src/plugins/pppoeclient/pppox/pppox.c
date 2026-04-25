@@ -695,6 +695,15 @@ pppox_lower_up (u32 sw_if_index)
       ipcp_wantoptions[unit].default_route = t->add_default_route4;
       ipcp_set_use_peer_dns (unit, t->use_peer_dns);
 
+      /* Apply operator-configured MRU to LCP wantoptions.
+       * lcp_init() sets wo->mru = DEFMRU (1500); override here if the
+       * operator specified a smaller value via `set pppoe client … mru`. */
+      if (t->configured_mru > 0)
+	{
+	  lcp_wantoptions[unit].mru = t->configured_mru;
+	  lcp_wantoptions[unit].neg_mru = 1;
+	}
+
       lcp_open (unit);
       start_link (unit);
       clib_spinlock_unlock_if_init (&pom->ctrl_lock);
@@ -847,6 +856,24 @@ pppox_set_use_peer_dns (u32 sw_if_index, u8 enabled)
   clib_spinlock_lock_if_init (&pom->ctrl_lock);
   t->use_peer_dns = !!enabled;
   ipcp_set_use_peer_dns (unit, t->use_peer_dns);
+  clib_spinlock_unlock_if_init (&pom->ctrl_lock);
+
+  return 0;
+}
+
+__clib_export int
+pppox_set_configured_mru (u32 sw_if_index, u16 mru)
+{
+  pppox_main_t *pom = &pppox_main;
+  pppox_virtual_interface_t *t;
+  u32 unit;
+
+  t = pppox_get_virtual_interface_by_sw_if_index (pom, sw_if_index, &unit);
+  if (t == 0)
+    return VNET_API_ERROR_INVALID_INTERFACE;
+
+  clib_spinlock_lock_if_init (&pom->ctrl_lock);
+  t->configured_mru = mru;
   clib_spinlock_unlock_if_init (&pom->ctrl_lock);
 
   return 0;
