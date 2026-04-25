@@ -22,6 +22,7 @@ static clib_error_t *
 pppox_set_auth_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
+  vnet_main_t *vnm = vnet_get_main ();
   clib_error_t *error = 0;
   int r;
   u32 sw_if_index = ~0;
@@ -34,7 +35,9 @@ pppox_set_auth_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_co
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "sw-if-index %d", &sw_if_index))
+      if (unformat (line_input, "%U", unformat_vnet_sw_interface, vnm, &sw_if_index))
+	;
+      else if (unformat (line_input, "sw-if-index %d", &sw_if_index))
 	;
       else if (unformat (line_input, "username %s", &username))
 	;
@@ -49,7 +52,7 @@ pppox_set_auth_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_co
 
   if (sw_if_index == ~0)
     {
-      error = clib_error_return (0, "missing required argument 'sw-if-index'");
+      error = clib_error_return (0, "missing required argument: <interface>|sw-if-index <nn>");
       goto done;
     }
 
@@ -89,6 +92,6 @@ done:
  ?*/
 VLIB_CLI_COMMAND (pppox_set_auth_command, static) = {
   .path = "pppox set auth",
-  .short_help = "pppox set auth sw-if-index <nn> username <string> password <string>",
+  .short_help = "pppox set auth <interface>|sw-if-index <nn> username <string> password <string>",
   .function = pppox_set_auth_command_fn,
 };

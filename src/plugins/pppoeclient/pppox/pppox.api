@@ -33,4 +33,4 @@ define pppox_set_auth_reply
   option in_progress;
   u32 context;
   i32 retval;
-  };
+};
