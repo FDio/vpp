@@ -18,7 +18,7 @@ Per-file copyright headers
 - Files authored entirely in this branch carry only the Hi-Jiajun
   copyright line, still under Apache-2.0.
 
-Similarity snapshot (2026-04-16, coarse text-diff)
+Similarity snapshot (2026-04-25, coarse text-diff)
 - pppoeclient.h : ~0.535 overlap with upstream
 - pppoeclient.c : ~0.195
 - node.c        : ~0.220
@@ -36,8 +36,6 @@ Local adaptations (non-exhaustive)
   CLI (show pppoe client summary / history / debug), and orphan-history
   bookkeeping for unmatched discovery packets.
 - Cool-down and exponential backoff for auth-failure-driven restarts.
-- Static / LINUX-derived source-MAC policies for discovery frames, with
-  fallback accounting.
 - pppox integration so discovery handoff, CHAP/PAP failure propagation,
   and PPP control-plane state are coordinated with the imported pppd
   sources (see src/plugins/pppoeclient/pppox/pppd/README.import).

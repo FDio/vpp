@@ -41,6 +41,8 @@ vl_api_pppox_set_auth_t_handler (vl_api_pppox_set_auth_t *mp)
   rv = pppox_set_auth (ntohl (mp->sw_if_index), username, password);
 
   vec_free (username);
+  if (password)
+    clib_memset (password, 0, vec_len (password));
   vec_free (password);
 
   REPLY_MACRO (VL_API_PPPOX_SET_AUTH_REPLY);
