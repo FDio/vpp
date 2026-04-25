@@ -19,7 +19,8 @@
   _ (3, PROMISC, "promiscuous")                                                                    \
   _ (4, MLX5DV, "mlx5dv")                                                                          \
   _ (5, STRIDING_RQ, "striding-rq")                                                                \
-  _ (6, TSO, "tso")
+  _ (6, TSO, "tso")                                                                                \
+  _ (7, RX_L4_CKSUM, "rx-l4-cksum")
 
 enum
 {
@@ -155,14 +156,16 @@ typedef struct
     STRUCT_MARK (cacheline2);
 
   /* fields below are not accessed in datapath */
-  struct ibv_cq *cq;
-  struct ibv_qp *qp;
+    u16 *comp_tail; /* completion target per SQ WQEBB */
+    struct ibv_cq *cq;
+    struct ibv_qp *qp;
 
 } rdma_txq_t;
 STATIC_ASSERT_OFFSET_OF (rdma_txq_t, cacheline1, 64);
 STATIC_ASSERT_OFFSET_OF (rdma_txq_t, cacheline2, 128);
 
-#define RDMA_TXQ_DV_INVALID_ID  0xffffffff
+#define RDMA_TXQ_DV_INVALID_ID	 0xffffffff
+#define RDMA_TXQ_DV_INVALID_COMP 0xffff
 
 #define RDMA_TXQ_BUF_SZ(txq)    (1U << (txq)->bufs_log2sz)
 #define RDMA_TXQ_DV_SQ_SZ(txq)  (1U << (txq)->dv_sq_log2sz)
@@ -281,6 +284,7 @@ typedef struct
   rdma_mode_t mode;
   u8 no_multi_seg;
   u8 disable_striding_rq;
+  u8 no_rx_cksum;
   u16 max_pktlen;
   rdma_rss4_t rss4;
   rdma_rss6_t rss6;

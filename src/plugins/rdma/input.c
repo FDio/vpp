@@ -420,8 +420,6 @@ process_mini_cqes (rdma_rxq_t * rxq, u32 skip, u32 n_left, u32 cq_ci,
   u32 mcqe_array_index = (cq_ci + 1) & mask;
   mcqe = (mlx5dv_mini_cqe_t *) (rxq->cqes + mcqe_array_index);
 
-  mcqe_array_index = cq_ci;
-
   if (skip)
     {
       u32 n = skip & ~7;
@@ -652,8 +650,8 @@ rdma_device_mlx5dv_legacy_rq_slow_path_needed (u32 buf_sz, int n_rx_packets,
 }
 
 static_always_inline int
-rdma_device_mlx5dv_l3_validate_and_swap_bc (rdma_per_thread_data_t
-					    * ptd, int n_rx_packets, u32 * bc)
+rdma_device_mlx5dv_l3_validate_and_swap_bc (rdma_per_thread_data_t *ptd, int n_rx_packets, u32 *bc,
+					    int *l4_ok_all, const int with_rx_l4_cksum)
 {
   u16 mask = CQE_FLAG_L3_HDR_TYPE_MASK | CQE_FLAG_L3_OK;
   u16 match =
@@ -664,10 +662,15 @@ rdma_device_mlx5dv_l3_validate_and_swap_bc (rdma_per_thread_data_t
   match = clib_host_to_net_u16 (match);
 
   /* verify that all ip4 packets have l3_ok flag set and convert packet
-     length from network to host byte order */
+     length from network to host byte order. */
   int skip_ip4_cksum = 1;
   int n_left = n_rx_packets;
   u16 *cqe_flags = ptd->cqe_flags;
+
+  /* l4_ok/l4_ok_acc: only used when with_rx_l4_cksum; compiler eliminates
+     all related code (AND-reduction, vector accumulators) when it is 0. */
+  u16 l4_ok = with_rx_l4_cksum ? clib_host_to_net_u16 (CQE_FLAG_L4_OK) : 0;
+  u16 l4_ok_acc = l4_ok;
 
 #if defined CLIB_HAVE_VEC256
   if (n_left >= 16)
@@ -675,10 +678,14 @@ rdma_device_mlx5dv_l3_validate_and_swap_bc (rdma_per_thread_data_t
       u16x16 mask16 = u16x16_splat (mask);
       u16x16 match16 = u16x16_splat (match);
       u16x16 r16 = {};
+      u16x16 l4_r16 = u16x16_splat (l4_ok);
 
       while (n_left >= 16)
 	{
-	  r16 |= (*(u16x16 *) cqe_flags & mask16) != match16;
+	  u16x16 f16 = *(u16x16 *) cqe_flags;
+	  r16 |= (f16 & mask16) != match16;
+	  if (with_rx_l4_cksum)
+	    l4_r16 &= f16;
 
 	  *(u32x8 *) bc = u32x8_byte_swap (*(u32x8 *) bc);
 	  *(u32x8 *) (bc + 8) = u32x8_byte_swap (*(u32x8 *) (bc + 8));
@@ -690,6 +697,10 @@ rdma_device_mlx5dv_l3_validate_and_swap_bc (rdma_per_thread_data_t
 
       if (!u16x16_is_all_zero (r16))
 	skip_ip4_cksum = 0;
+
+      if (with_rx_l4_cksum)
+	for (int i = 0; i < 16; i++)
+	  l4_ok_acc &= l4_r16[i];
     }
 #elif defined CLIB_HAVE_VEC128
   if (n_left >= 8)
@@ -697,10 +708,14 @@ rdma_device_mlx5dv_l3_validate_and_swap_bc (rdma_per_thread_data_t
       u16x8 mask8 = u16x8_splat (mask);
       u16x8 match8 = u16x8_splat (match);
       u16x8 r8 = {};
+      u16x8 l4_r8 = u16x8_splat (l4_ok);
 
       while (n_left >= 8)
 	{
-	  r8 |= (*(u16x8 *) cqe_flags & mask8) != match8;
+	  u16x8 f8 = *(u16x8 *) cqe_flags;
+	  r8 |= (f8 & mask8) != match8;
+	  if (with_rx_l4_cksum)
+	    l4_r8 &= f8;
 
 	  *(u32x4 *) bc = u32x4_byte_swap (*(u32x4 *) bc);
 	  *(u32x4 *) (bc + 4) = u32x4_byte_swap (*(u32x4 *) (bc + 4));
@@ -712,6 +727,10 @@ rdma_device_mlx5dv_l3_validate_and_swap_bc (rdma_per_thread_data_t
 
       if (!u16x8_is_all_zero (r8))
 	skip_ip4_cksum = 0;
+
+      if (with_rx_l4_cksum)
+	for (int i = 0; i < 8; i++)
+	  l4_ok_acc &= l4_r8[i];
     }
 #endif
 
@@ -720,6 +739,9 @@ rdma_device_mlx5dv_l3_validate_and_swap_bc (rdma_per_thread_data_t
       if ((cqe_flags[0] & mask) != match)
 	skip_ip4_cksum = 0;
 
+      if (with_rx_l4_cksum)
+	l4_ok_acc &= cqe_flags[0];
+
       bc[0] = clib_net_to_host_u32 (bc[0]);
 
       cqe_flags += 1;
@@ -727,6 +749,8 @@ rdma_device_mlx5dv_l3_validate_and_swap_bc (rdma_per_thread_data_t
       n_left -= 1;
     }
 
+  if (with_rx_l4_cksum)
+    *l4_ok_all = (l4_ok_acc & l4_ok) == l4_ok;
   return skip_ip4_cksum;
 }
 
@@ -928,9 +952,9 @@ rdma_device_mlx5dv_striding_rq_input (vlib_main_t * vm,
 }
 
 static_always_inline uword
-rdma_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
-			  vlib_frame_t * frame, rdma_device_t * rd,
-			  u16 qid, const int use_mlx5dv)
+rdma_device_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame,
+			  rdma_device_t *rd, u16 qid, const int use_mlx5dv,
+			  const int with_rx_l4_cksum)
 {
   rdma_main_t *rm = &rdma_main;
   vnet_main_t *vnm = vnet_get_main ();
@@ -941,7 +965,7 @@ rdma_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   u32 __clib_aligned (32) byte_cnts[VLIB_FRAME_SIZE];
   vlib_buffer_t bt;
   u32 next_index, *to_next, n_left_to_next, n_rx_bytes = 0;
-  int n_rx_packets, skip_ip4_cksum = 0;
+  int n_rx_packets, skip_ip4_cksum = 0, l4_ok_all = 0;
   u32 mask = rxq->size - 1;
   const int is_striding = ! !(rd->flags & RDMA_DEVICE_F_STRIDING_RQ);
 
@@ -970,8 +994,18 @@ rdma_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
     {
       u32 *bc = byte_cnts;
       int slow_path_needed;
-      skip_ip4_cksum =
-	rdma_device_mlx5dv_l3_validate_and_swap_bc (ptd, n_rx_packets, bc);
+      skip_ip4_cksum = rdma_device_mlx5dv_l3_validate_and_swap_bc (ptd, n_rx_packets, bc,
+								   &l4_ok_all, with_rx_l4_cksum);
+
+      /* RX L4 checksum offload: compile-time specialised (with_rx_l4_cksum).
+       * If all packets in the batch have L4_OK set, propagate COMPUTED|CORRECT
+       * to the buffer template so ip4-local skips the software checksum.
+       * In the mixed case (some packets lack L4_OK), fall back to per-buffer
+       * opt-out: CORRECT is cleared on the individual bad buffers after the
+       * fast-input loop (opt-out model, same as the DPDK driver). */
+      if (with_rx_l4_cksum && PREDICT_TRUE (l4_ok_all))
+	bt.flags |= (VNET_BUFFER_F_L4_CHECKSUM_COMPUTED | VNET_BUFFER_F_L4_CHECKSUM_CORRECT);
+
       if (is_striding)
 	{
 	  int n_rx_segs = 0;
@@ -998,7 +1032,30 @@ rdma_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  if (PREDICT_FALSE (slow_path_needed))
 	    rdma_device_mlx5dv_legacy_rq_fix_chains (vm, rxq, bufs, mask,
 						     n_rx_packets);
+
+	  /* Opt-out: if any packet in the batch has L4_OK=0 in its CQE, clear
+	   * both COMPUTED and CORRECT on that head buffer so ip4-local runs a
+	   * full SW checksum.  The CQE covers the entire WQE (all SGEs), so
+	   * L4_OK reflects the whole packet regardless of chaining.
+	   * Clearing only CORRECT would make ip4-local drop immediately without
+	   * re-validating. */
+	  if (with_rx_l4_cksum && PREDICT_FALSE (!l4_ok_all))
+	    {
+	      u16 l4_ok = clib_host_to_net_u16 (CQE_FLAG_L4_OK);
+	      u32 cksum_flags =
+		VNET_BUFFER_F_L4_CHECKSUM_COMPUTED | VNET_BUFFER_F_L4_CHECKSUM_CORRECT;
+	      for (int i = 0; i < n_rx_packets; i++)
+		{
+		  if (!(ptd->cqe_flags[i] & l4_ok))
+		    vlib_get_buffer (vm, to_next[i])->flags &= ~cksum_flags;
+		}
+	    }
 	}
+
+      /* Reset L4 checksum flags on bt so they don't leak into the next
+       * poll iteration. */
+      if (with_rx_l4_cksum)
+	bt.flags &= ~(VNET_BUFFER_F_L4_CHECKSUM_COMPUTED | VNET_BUFFER_F_L4_CHECKSUM_CORRECT);
     }
   else
     {
@@ -1048,12 +1105,18 @@ VLIB_NODE_FN (rdma_input_node) (vlib_main_t * vm,
       if (PREDICT_FALSE (rd->flags & RDMA_DEVICE_F_ERROR))
 	continue;
 
-      if (PREDICT_TRUE (rd->flags & RDMA_DEVICE_F_MLX5DV))
-	n_rx +=
-	  rdma_device_input_inline (vm, node, frame, rd, pv[i].queue_id, 1);
+      if (rd->flags & RDMA_DEVICE_F_MLX5DV)
+	{
+	  if (rd->flags & RDMA_DEVICE_F_RX_L4_CKSUM)
+	    n_rx += rdma_device_input_inline (vm, node, frame, rd, pv[i].queue_id, /*mlx5dv*/ 1,
+					      /*rx_l4_cksum*/ 1);
+	  else
+	    n_rx += rdma_device_input_inline (vm, node, frame, rd, pv[i].queue_id, /*mlx5dv*/ 1,
+					      /*rx_l4_cksum*/ 0);
+	}
       else
-	n_rx +=
-	  rdma_device_input_inline (vm, node, frame, rd, pv[i].queue_id, 0);
+	n_rx += rdma_device_input_inline (vm, node, frame, rd, pv[i].queue_id, /*mlx5dv*/ 0,
+					  /*rx_l4_cksum*/ 0);
     }
   return n_rx;
 }

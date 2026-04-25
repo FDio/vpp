@@ -714,6 +714,8 @@ rdma_txq_init (vlib_main_t * vm, rdma_device_t * rd, u16 qid, u32 n_desc)
   ASSERT (is_pow2 (n_desc));
   txq->bufs_log2sz = min_log2 (n_desc);
   vec_validate_aligned (txq->bufs, n_desc - 1, CLIB_CACHE_LINE_BYTES);
+  vec_validate_aligned (txq->comp_tail, n_desc - 1, CLIB_CACHE_LINE_BYTES);
+  clib_memset (txq->comp_tail, 0xff, n_desc * sizeof (*txq->comp_tail));
   if (is_mlx5dv)
     {
       struct ibv_cq_init_attr_ex cqa = {};
@@ -741,7 +743,7 @@ rdma_txq_init (vlib_main_t * vm, rdma_device_t * rd, u16 qid, u32 n_desc)
       qpia_ex.send_cq = txq->cq;
       qpia_ex.recv_cq = txq->cq;
       qpia_ex.cap.max_send_wr = n_desc;
-      qpia_ex.cap.max_send_sge = 1;
+      qpia_ex.cap.max_send_sge = 32;
       qpia_ex.qp_type = IBV_QPT_RAW_PACKET;
       qpia_ex.comp_mask = IBV_QP_INIT_ATTR_PD | IBV_QP_INIT_ATTR_MAX_TSO_HEADER;
       qpia_ex.pd = rd->pd;
@@ -755,7 +757,7 @@ rdma_txq_init (vlib_main_t * vm, rdma_device_t * rd, u16 qid, u32 n_desc)
       qpia.send_cq = txq->cq;
       qpia.recv_cq = txq->cq;
       qpia.cap.max_send_wr = n_desc;
-      qpia.cap.max_send_sge = 1;
+      qpia.cap.max_send_sge = 32;
       qpia.qp_type = IBV_QPT_RAW_PACKET;
       if ((txq->qp = ibv_create_qp (rd->pd, &qpia)) == 0)
 	return clib_error_return_unix (0, "Queue Pair create failed");
@@ -815,6 +817,11 @@ rdma_txq_init (vlib_main_t * vm, rdma_device_t * rd, u16 qid, u32 n_desc)
       txq->dv_sq_dbrec = dv_qp.dbrec;
       txq->dv_sq_db = dv_qp.bf.reg;
       txq->dv_sq_log2sz = min_log2 (dv_qp.sq.wqe_cnt);
+      if (dv_qp.sq.wqe_cnt > n_desc)
+	{
+	  vec_validate_aligned (txq->comp_tail, dv_qp.sq.wqe_cnt - 1, CLIB_CACHE_LINE_BYTES);
+	}
+      clib_memset (txq->comp_tail, 0xff, dv_qp.sq.wqe_cnt * sizeof (*txq->comp_tail));
 
       /* get CQ and doorbell addresses */
       txq->dv_cq_cqes = dv_cq.buf;
@@ -1041,6 +1048,9 @@ are explicitly disabled, and if the interface supports it.*/
 
   if (rd->flags & RDMA_DEVICE_F_MLX5DV)
     {
+      if (!args->no_rx_cksum)
+	rd->flags |= RDMA_DEVICE_F_RX_L4_CKSUM;
+
       struct ibv_device_attr_ex attr_ex = {};
       if (ibv_query_device_ex (rd->ctx, NULL, &attr_ex) == 0 && attr_ex.tso_caps.max_tso > 0 &&
 	  (attr_ex.tso_caps.supported_qpts & (1 << IBV_QPT_RAW_PACKET)))
