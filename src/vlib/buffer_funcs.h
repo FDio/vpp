@@ -353,8 +353,8 @@ vlib_get_next_buffer (vlib_main_t * vm, vlib_buffer_t * b)
 	  ? vlib_get_buffer (vm, b->next_buffer) : 0);
 }
 
-uword vlib_buffer_length_in_chain_slow_path (vlib_main_t * vm,
-					     vlib_buffer_t * b_first);
+uword vlib_buffer_length_in_chain_slow_path (vlib_main_t *vm, vlib_buffer_t *b_first,
+					     vlib_buffer_t **b_last, u16 *count);
 
 /** \brief Get length in bytes of the buffer chain
 
@@ -373,7 +373,34 @@ vlib_buffer_length_in_chain (vlib_main_t * vm, vlib_buffer_t * b)
   if (PREDICT_TRUE (b->flags & VLIB_BUFFER_TOTAL_LENGTH_VALID))
     return len + b->total_length_not_including_first_buffer;
 
-  return vlib_buffer_length_in_chain_slow_path (vm, b);
+  return vlib_buffer_length_in_chain_slow_path (vm, b, NULL, NULL);
+}
+
+/** \brief Get length in bytes of the buffer chain return last
+
+    @param vm - (vlib_main_t *) vlib main data structure pointer
+    @param b - (void *) buffer pointer
+    @return - (uword) length of buffer chain, and a pointer to the
+	      last buffer in the chain
+*/
+always_inline uword
+vlib_buffer_length_in_chain_lb (vlib_main_t *vm, vlib_buffer_t *b, vlib_buffer_t **lb, u16 *count)
+{
+  uword len = b->current_length;
+
+  if (PREDICT_TRUE ((b->flags & VLIB_BUFFER_NEXT_PRESENT) == 0))
+    {
+      if (lb)
+	*lb = b;
+      if (count)
+	*count = 1;
+      return len;
+    }
+
+  if (!lb && !count && PREDICT_TRUE (b->flags & VLIB_BUFFER_TOTAL_LENGTH_VALID))
+    return len + b->total_length_not_including_first_buffer;
+
+  return vlib_buffer_length_in_chain_slow_path (vm, b, lb, count);
 }
 
 /** \brief Get length in bytes of the buffer index buffer chain
