@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b15be25b_522f501a",
+        "filename": "src/plugins/af_xdp/af_xdp.h",
+        "patchSetId": 35
+      },
+      "lineNbr": 69,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-04-27T17:35:23Z",
+      "side": 1,
+      "message": "I do not think those fields get drained/reset on admin down/up. Could that be an issue?",
+      "revId": "272ac619cff3eefe10edb7a06051b6b7d1ffb90c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "13892c60_b79d74af",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 35
+      },
+      "lineNbr": 303,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-04-27T17:35:23Z",
+      "side": 1,
+      "message": "I am not sure all those logs belong to INFO, I think they should be DEBUG",
+      "revId": "272ac619cff3eefe10edb7a06051b6b7d1ffb90c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0f9509a2_6c0a4bb2",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 35
+      },
+      "lineNbr": 734,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-04-27T17:35:23Z",
+      "side": 1,
+      "message": "those should be DEBUG too",
+      "revId": "272ac619cff3eefe10edb7a06051b6b7d1ffb90c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a2b1b8f4_c828ed8b",
+        "filename": "src/plugins/af_xdp/input.c",
+        "patchSetId": 35
+      },
+      "lineNbr": 209,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-04-27T17:35:23Z",
+      "side": 1,
+      "message": "what is the point of having a common function if it is just a giant if (is_mb) {} else {} ?\nIf the 2 codepath share nothing, it would be better to keep 2 separate functions.",
+      "revId": "272ac619cff3eefe10edb7a06051b6b7d1ffb90c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e4ae2bee_95c05b94",
+        "filename": "src/plugins/af_xdp/output.c",
+        "patchSetId": 35
+      },
+      "lineNbr": 184,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-04-27T17:35:23Z",
+      "side": 1,
+      "message": "same here, do the 2 codepath share anything?",
+      "revId": "272ac619cff3eefe10edb7a06051b6b7d1ffb90c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
