@@ -16,6 +16,24 @@
       "message": "Why pre-allocating placeholder buffers? Just allocate them when needed...",
       "revId": "ca43fbdf4e6d3aaadac25f6b06ac383abf59a792",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "049d1010_2f4c50b2",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 16
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-04-27T15:11:30Z",
+      "side": 1,
+      "message": "Placeholder buffers are no longer pre-allocated when the TX queue is created. They are now allocated lazily when the TSO path first needs a context descriptor buffer, kept for reuse, and released from the TX queue cleanup path.",
+      "parentUuid": "91bfff85_25702aa6",
+      "revId": "ca43fbdf4e6d3aaadac25f6b06ac383abf59a792",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
