@@ -11,6 +11,9 @@
    VNET_FLOW_ACTION_REDIRECT_TO_QUEUE | VNET_FLOW_ACTION_BUFFER_ADVANCE | VNET_FLOW_ACTION_COUNT | \
    VNET_FLOW_ACTION_DROP | VNET_FLOW_ACTION_RSS)
 
+#define DPDK_MLX5_FLOW_SUPPORTED_ACTIONS                                                           \
+  (DPDK_VNET_FLOW_SUPPORTED_ACTIONS | VNET_FLOW_ACTION_STEER_TO_PORT)
+
 #define DPDK_DRIVERS(...)                                                                          \
   (dpdk_driver_name_t[])                                                                           \
   {                                                                                                \
@@ -93,7 +96,7 @@ static dpdk_driver_t dpdk_drivers[] = {
   },
   {
     .drivers = DPDK_DRIVERS ({ "mlx5_pci", "Mellanox ConnectX-4/5/6 Family" }),
-    .supported_flow_actions = DPDK_VNET_FLOW_SUPPORTED_ACTIONS,
+    .supported_flow_actions = DPDK_MLX5_FLOW_SUPPORTED_ACTIONS,
     .install_default_jump = 1,
   },
   {
