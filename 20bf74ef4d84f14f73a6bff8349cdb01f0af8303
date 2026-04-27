@@ -16,6 +16,24 @@
       "message": "instead of exploding constant propagation just update template to show likely case and update if found opposite....",
       "revId": "20bf74ef4d84f14f73a6bff8349cdb01f0af8303",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "30092fc4_5ae4a0fc",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-04-27T15:11:56Z",
+      "side": 1,
+      "message": "Done in PS5. RX L4 checksum flags are now set in the buffer template for the likely case, with per-buffer fixup only when l3l4p is missing or l4e is set. Tail buffers also avoid inheriting those packet-level flags.",
+      "parentUuid": "cb019ea6_36b8d299",
+      "revId": "20bf74ef4d84f14f73a6bff8349cdb01f0af8303",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
