@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5a28ad85_b5178bd3",
+        "filename": "test/hs-test/infra/suite_tcp_harness.go",
+        "patchSetId": 19
+      },
+      "lineNbr": 685,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-04-27T09:37:02Z",
+      "side": 1,
+      "message": "maybe print stats too",
+      "revId": "f5d77b7d0e33e689ceabcc26c160d3b920ff8c98",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2050db36_bbba3456",
+        "filename": "test/hs-test/infra/suite_tcp_harness.go",
+        "patchSetId": 19
+      },
+      "lineNbr": 858,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-04-27T09:37:02Z",
+      "side": 1,
+      "message": "maybe \"show tcp stats\" and \"show session verbose 2\" too?",
+      "revId": "f5d77b7d0e33e689ceabcc26c160d3b920ff8c98",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
