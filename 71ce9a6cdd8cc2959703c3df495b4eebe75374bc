@@ -16,6 +16,24 @@
       "message": "i think it would be better than this is handled as part of early exit code in vlib_worker_thread_barrier_release()",
       "revId": "71ce9a6cdd8cc2959703c3df495b4eebe75374bc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c4a7b0b2_35a9c540",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-04-27T17:05:02Z",
+      "side": 1,
+      "message": "I can certainly do that. I was thinking about vlib_rpc_call_main_thread() which bypass the rpc handler when called from the main thread [1]. What do you prefer?\n[1] https://git.fd.io/vpp/tree/src/vlib/threads.c#n1742",
+      "parentUuid": "343c8abc_8f0d4eef",
+      "revId": "71ce9a6cdd8cc2959703c3df495b4eebe75374bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
