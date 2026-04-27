@@ -211,6 +211,8 @@ dpdk_flow_action_conf_size (enum rte_flow_action_type type)
       return sizeof (struct dpdk_action_rss_data);
     case RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT:
       return sizeof (struct rte_flow_action_ethdev);
+    case RTE_FLOW_ACTION_TYPE_AGE:
+      return sizeof (struct rte_flow_action_age);
     default:
       return 0;
     }
@@ -701,6 +703,18 @@ dpdk_flow_fill_actions (dpdk_device_t *xd, vnet_flow_t *f, dpdk_flow_entry_t *fe
       action->conf = &args->count;
     }
 
+  if (f->actions & VNET_FLOW_ACTION_AGE)
+    {
+      action = &args->actions[n++];
+      clib_memset (&args->age, 0, sizeof (args->age));
+      args->age.timeout = f->age_timeout;
+      /* Rather than pass a pointer in dpdk's xd->flow_entries pool
+       * we pass a pool index in the context pointer value */
+      args->age.context = (void *) (uword) (fe - xd->flow_entries);
+      action->type = RTE_FLOW_ACTION_TYPE_AGE;
+      action->conf = &args->age;
+    }
+
   /* Only one 'fate' can be assigned */
   if (f->actions & VNET_FLOW_ACTION_REDIRECT_TO_QUEUE)
     {
@@ -807,6 +821,9 @@ dpdk_flow_fill_actions_template (dpdk_device_t *xd, vnet_flow_t *t, dpdk_flow_te
 
   if (t->actions & VNET_FLOW_ACTION_COUNT)
     add_action_type (COUNT);
+
+  if (t->actions & VNET_FLOW_ACTION_AGE)
+    add_action_type (AGE);
 
   if (FLOW_NEEDS_MARK (t))
     add_action_type (MARK);
@@ -1119,7 +1136,7 @@ dpdk_flow_update_slot_items (struct rte_flow_item *items, u8 n_items, vnet_flow_
 
 static_always_inline void
 dpdk_flow_update_slot_actions (struct rte_flow_action *actions, u8 n_actions, vnet_flow_t *f,
-			       dpdk_flow_entry_t *fe)
+			       dpdk_flow_entry_t *fe, dpdk_device_t *xd)
 {
   for (u32 i = 0; i < n_actions; i++)
     {
@@ -1166,6 +1183,14 @@ dpdk_flow_update_slot_actions (struct rte_flow_action *actions, u8 n_actions, vn
 	  {
 	    struct rte_flow_action_ethdev *conf = (struct rte_flow_action_ethdev *) actions[i].conf;
 	    conf->port_id = dpdk_port_id_from_hw_if_index (f->steer_to_hw_if_index);
+	  }
+	  break;
+
+	case RTE_FLOW_ACTION_TYPE_AGE:
+	  {
+	    struct rte_flow_action_age *conf = (struct rte_flow_action_age *) actions[i].conf;
+	    conf->timeout = f->age_timeout;
+	    conf->context = (void *) (uword) (fe - xd->flow_entries);
 	  }
 	  break;
 
@@ -1906,7 +1931,7 @@ dpdk_flow_async_op_add (dpdk_device_t *xd, dpdk_flow_template_entry_t *fte, u32 
 	  actions = (struct rte_flow_action *) (slot + q.in_slot_actions_offset);
 
 	  dpdk_flow_update_slot_items (items, fte->n_items, flow, fte->template_type);
-	  dpdk_flow_update_slot_actions (actions, fte->n_actions, flow, fe);
+	  dpdk_flow_update_slot_actions (actions, fte->n_actions, flow, fe, xd);
 
 	  fe->handle = rte_flow_async_create (xd->port_id, q.id, &async_op, fte->table.table_handle,
 					      items, 0, actions, 0, NULL, &flow_error);
@@ -2182,6 +2207,95 @@ done:
       dpdk_device_flow_warning (xd, "dpdk_flow_async_op_add", rv);
     }
   return rv;
+}
+
+void
+dpdk_poll_aged_flows (dpdk_device_t *xd, f64 now)
+{
+  dpdk_main_t *dm = &dpdk_main;
+  vnet_flow_main_t *fm = &flow_main;
+  int n_aged;
+
+  xd->time_last_aging_poll = now;
+
+  /* Only poll flows for device supporting flow aging actions */
+  if (!(xd->supported_flow_actions & VNET_FLOW_ACTION_AGE))
+    return;
+
+  if (pool_elts (xd->flow_entries) == 0)
+    return;
+
+  /* TODO: if xd->flow_entries contains a large number of entries at runtime
+   * there is a potential for a large churn when allocating/freeing dm->aged_flow_opaque
+   * every iteration */
+  u32 max_contexts = pool_elts (xd->flow_entries);
+  vec_validate (dm->aged_flow_opaque, max_contexts - 1);
+
+  /* Request aged flows for specific port_id */
+  n_aged =
+    rte_flow_get_aged_flows (xd->port_id, dm->aged_flow_opaque, max_contexts, &xd->last_flow_error);
+
+  if (n_aged < 0)
+    {
+      dpdk_device_flow_warning (xd, "rte_flow_get_aged_flows", n_aged);
+      vec_free (dm->aged_flow_opaque);
+      return;
+    }
+
+  if (n_aged == 0)
+    {
+      vec_free (dm->aged_flow_opaque);
+      return;
+    }
+
+  /* Resolve each DPDK age context (fe pool index) to its vnet_flow_t and
+   * batch entries for the aged-flow callback */
+  u32 n_valid = 0;
+  u32 n_unknown = 0;
+  u32 *aged_flow_indices = 0;
+  u64 *age_opaques = 0;
+  vec_alloc (aged_flow_indices, n_aged);
+  vec_alloc (age_opaques, n_aged);
+
+  for (int i = 0; i < n_aged; i++)
+    {
+      u32 fe_index = (u32) (uword) dm->aged_flow_opaque[i];
+      dpdk_flow_entry_t *fe;
+      vnet_flow_t *f;
+
+      if (pool_is_free_index (xd->flow_entries, fe_index))
+	{
+	  n_unknown++;
+	  continue;
+	}
+
+      fe = pool_elt_at_index (xd->flow_entries, fe_index);
+      f = vnet_get_flow (fe->flow_index);
+      if (!f)
+	{
+	  n_unknown++;
+	  continue;
+	}
+
+      vec_add1 (age_opaques, f->age_opaque);
+      vec_add1 (aged_flow_indices, fe->flow_index);
+      n_valid++;
+    }
+
+  if (PREDICT_FALSE (n_unknown))
+    dpdk_log_debug ("[%u] %u aged flow contexts did not match a live flow entry", xd->port_id,
+		    n_unknown);
+
+  /* Hand off the batch to the consumer, which is responsible for
+   * vnet_flow_async_range_disable + vnet_flow_del. */
+  if (n_valid > 0 && fm->aged_flow_cb)
+    fm->aged_flow_cb (age_opaques, aged_flow_indices, xd->hw_if_index, n_valid);
+
+  vec_free (age_opaques);
+  vec_free (aged_flow_indices);
+  vec_free (dm->aged_flow_opaque);
+
+  dpdk_log_debug ("[%u] %d aged flows reaped", xd->port_id, n_valid);
 }
 
 u8 *
