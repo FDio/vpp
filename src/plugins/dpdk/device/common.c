@@ -198,6 +198,9 @@ dpdk_device_setup (dpdk_device_t *xd)
   dpdk_log_debug ("[%u] Configured TX offloads: %U", xd->port_id,
 		  format_dpdk_tx_offload_caps, txo);
 
+  if (xd->conf.disable_multi_seg)
+    txo |= RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE;
+
   /* finalize configuration */
   conf.rxmode.offloads = rxo;
   conf.txmode.offloads = txo;
