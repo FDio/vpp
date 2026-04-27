@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "f249db3a_53cab797",
+        "filename": "test/hs-test/infra/suite_tcp_harness.go",
+        "patchSetId": 19
+      },
+      "lineNbr": 685,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-04-27T17:35:53Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5a28ad85_b5178bd3",
+      "revId": "f5d77b7d0e33e689ceabcc26c160d3b920ff8c98",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "2050db36_bbba3456",
@@ -31,6 +49,24 @@
       "writtenOn": "2026-04-27T09:37:02Z",
       "side": 1,
       "message": "maybe \"show tcp stats\" and \"show session verbose 2\" too?",
+      "revId": "f5d77b7d0e33e689ceabcc26c160d3b920ff8c98",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "493fd516_a561bbde",
+        "filename": "test/hs-test/infra/suite_tcp_harness.go",
+        "patchSetId": 19
+      },
+      "lineNbr": 858,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-04-27T17:35:53Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "2050db36_bbba3456",
       "revId": "f5d77b7d0e33e689ceabcc26c160d3b920ff8c98",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
