@@ -58,6 +58,7 @@ typedef struct
   struct rte_flow_action_queue queue;
   struct rte_flow_action_rss rss;
   struct rte_flow_action_ethdev represented_port;
+  struct rte_flow_action_count count;
 } dpdk_flow_actions_args_t;
 
 int dpdk_flow_async_template_table_create (dpdk_device_t *xd,
