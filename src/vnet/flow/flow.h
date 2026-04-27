@@ -160,7 +160,8 @@
   _ (4, REDIRECT_TO_QUEUE, "redirect-to-queue")                                                    \
   _ (5, RSS, "rss")                                                                                \
   _ (6, DROP, "drop")                                                                              \
-  _ (7, STEER_TO_PORT, "steer-to-port")
+  _ (7, STEER_TO_PORT, "steer-to-port")                                                            \
+  _ (8, AGE, "age")
 
 typedef enum
 {
@@ -352,6 +353,12 @@ typedef struct
   /* template only */
   u32 n_flows;
 
+  /* defines idle timeout if flow ageing is enabled */
+  u32 age_timeout;
+
+  /* defines opaque context, used if flow ages out */
+  u64 age_opaque;
+
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
 
   /* flow match pattern (inline types) */
@@ -385,6 +392,10 @@ int vnet_flow_async_range_enable (vnet_main_t *vnm, u32 flow_template_index, u32
 				  u32 hw_if_index);
 int vnet_flow_async_range_disable (vnet_main_t *vnm, u32 *flow_indices, u32 hw_if_index);
 
+/* Callback invoked with a batch of aged flows.
+ * The callback is responsible for flow teardown. */
+typedef void (*vnet_flow_aged_cb_t) (u64 *age_opaques, u32 hw_if_index, u32 n);
+
 typedef struct
 {
   u32 start;
@@ -415,6 +426,9 @@ typedef struct
 
   /* vector of flow ranges */
   vnet_flow_range_t *ranges;
+
+  /* callback for aged flow notifications */
+  vnet_flow_aged_cb_t aged_flow_cb;
 
   u16 msg_id_base;
 } vnet_flow_main_t;
