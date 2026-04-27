@@ -16,6 +16,23 @@
       "message": "Looks good to me - it is probably worth it to add a test for the sample service but in a later patch. Otherwise we should remove it.",
       "revId": "50f8e4f3069bdca8ce0634884a18d274350f4c3c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f3fa5826_2736e47e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-04-27T15:10:11Z",
+      "side": 1,
+      "message": "recheck",
+      "revId": "50f8e4f3069bdca8ce0634884a18d274350f4c3c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
