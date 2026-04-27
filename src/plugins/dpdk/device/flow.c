@@ -17,6 +17,17 @@
 #include <dpdk/device/flow.h>
 #include <vppinfra/error.h>
 
+/* Get DPDK port ID associated with requested hw_if_index */
+static inline dpdk_portid_t
+dpdk_port_id_from_hw_if_index (u32 hw_if_index)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, hw_if_index);
+  dpdk_main_t *dm = &dpdk_main;
+  dpdk_device_t *xd = vec_elt_at_index (dm->devices, hi->dev_instance);
+  return xd->port_id;
+}
+
 #define FLOW_IS_ETHERNET_CLASS(f) \
   (f->type == VNET_FLOW_TYPE_ETHERNET)
 
@@ -106,12 +117,20 @@
  * per-port isolated HW tables), but would be a problem if sync rules were
  * installed at group 0 — which is why the default jump rules use the async
  * template API (see common.c).
+ *
+ * STEER_TO_PORT flows use the transfer domain instead: they route traffic
+ * across the eswitch from one representor to another, which is orthogonal
+ * to the ingress group hierarchy above.
  */
-#define dpdk_flow_attr(_xd) ((_xd)->default_jump_flow ? &ingress_group_1 : &ingress)
+#define dpdk_flow_attr(_xd, _f)                                                                    \
+  ((_f)->actions & VNET_FLOW_ACTION_STEER_TO_PORT ? &transfer :                                    \
+   (_xd)->default_jump_flow			  ? &ingress_group_1 :                             \
+						    &ingress)
 
 /* constant structs */
-static const struct rte_flow_attr ingress = {.ingress = 1 };
+static const struct rte_flow_attr ingress = { .ingress = 1 };
 static const struct rte_flow_attr ingress_group_1 = { .ingress = 1, .group = 1 };
+static const struct rte_flow_attr transfer = { .transfer = 1 };
 static const struct rte_flow_op_attr async_op = { .postpone = 1 };
 
 static inline bool
@@ -181,6 +200,8 @@ dpdk_flow_item_spec_size (enum rte_flow_item_type type)
       return sizeof (struct rte_flow_item_ah);
     case RTE_FLOW_ITEM_TYPE_RAW:
       return sizeof (struct rte_flow_item_raw) + sizeof (vxlan_header_t);
+    case RTE_FLOW_ITEM_TYPE_REPRESENTED_PORT:
+      return sizeof (struct rte_flow_item_ethdev);
     default:
       return 0;
     }
@@ -197,6 +218,8 @@ dpdk_flow_action_conf_size (enum rte_flow_action_type type)
       return sizeof (struct rte_flow_action_queue);
     case RTE_FLOW_ACTION_TYPE_RSS:
       return sizeof (struct dpdk_action_rss_data);
+    case RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT:
+      return sizeof (struct rte_flow_action_ethdev);
     default:
       return 0;
     }
@@ -290,6 +313,18 @@ dpdk_flow_fill_items (dpdk_device_t *xd, vnet_flow_t *f, dpdk_flow_entry_t *fe,
 
   if (f->actions & (~xd->supported_flow_actions))
     return VNET_FLOW_ERROR_NOT_SUPPORTED;
+
+  /* as flow entries are always associated with a single rx interface,
+     set represented_port to match it */
+  if (f->actions & VNET_FLOW_ACTION_STEER_TO_PORT)
+    {
+      item = &args->items[n++];
+      args->represented_port[0].port_id = xd->port_id;
+      args->represented_port[1].port_id = UINT16_MAX;
+      item->type = RTE_FLOW_ITEM_TYPE_REPRESENTED_PORT;
+      item->spec = &args->represented_port[0];
+      item->mask = &args->represented_port[1];
+    }
 
   /* Match items */
   /* Layer 2, Ethernet */
@@ -716,6 +751,18 @@ dpdk_flow_fill_actions (dpdk_device_t *xd, vnet_flow_t *f, dpdk_flow_entry_t *fe
       fate = true;
     }
 
+  if (f->actions & VNET_FLOW_ACTION_STEER_TO_PORT)
+    {
+      if (fate)
+	return VNET_FLOW_ERROR_INTERNAL;
+
+      action = &args->actions[n++];
+      args->represented_port.port_id = dpdk_port_id_from_hw_if_index (f->steer_to_hw_if_index);
+      action->type = RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT;
+      action->conf = &args->represented_port;
+      fate = true;
+    }
+
   if (!fate)
     {
       action = &args->actions[n++];
@@ -787,6 +834,15 @@ dpdk_flow_fill_actions_template (dpdk_device_t *xd, vnet_flow_t *t, dpdk_flow_te
 	return VNET_FLOW_ERROR_INTERNAL;
 
       add_action_type (RSS);
+      fate = true;
+    }
+
+  if (t->actions & VNET_FLOW_ACTION_STEER_TO_PORT)
+    {
+      if (fate)
+	return VNET_FLOW_ERROR_INTERNAL;
+
+      add_action_type (REPRESENTED_PORT);
       fate = true;
     }
 
@@ -1107,6 +1163,13 @@ dpdk_flow_update_slot_actions (struct rte_flow_action *actions, u8 n_actions, vn
 	  }
 	  break;
 
+	case RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT:
+	  {
+	    struct rte_flow_action_ethdev *conf = (struct rte_flow_action_ethdev *) actions[i].conf;
+	    conf->port_id = dpdk_port_id_from_hw_if_index (f->steer_to_hw_if_index);
+	  }
+	  break;
+
 	default:
 	  break;
 	}
@@ -1295,6 +1358,10 @@ dpdk_flow_init_slot_pool (dpdk_device_t *xd, dpdk_flow_template_entry_t *fte,
 	  slot_items[i].mask = mptr;
 	  spec_data += item_spec_sizes[i];
 	  mptr += item_spec_sizes[i];
+
+	  /* REPRESENTED_PORT spec carries a constant per-device port_id */
+	  if (slot_items[i].type == RTE_FLOW_ITEM_TYPE_REPRESENTED_PORT)
+	    ((struct rte_flow_item_ethdev *) slot_items[i].spec)->port_id = xd->port_id;
 	}
 
       /* Wire actions */
@@ -1356,7 +1423,8 @@ dpdk_flow_add (dpdk_device_t *xd, vnet_flow_t *f, dpdk_flow_entry_t *fe)
 {
   dpdk_flow_items_args_t item_args = { 0 };
   dpdk_flow_actions_args_t action_args = { 0 };
-  int rv = 0;
+  const struct rte_flow_attr *attr = dpdk_flow_attr (xd, f);
+  int rv;
 
   if ((rv = dpdk_flow_fill_items (xd, f, fe, &item_args)) != 0)
     return rv;
@@ -1364,7 +1432,7 @@ dpdk_flow_add (dpdk_device_t *xd, vnet_flow_t *f, dpdk_flow_entry_t *fe)
   if ((rv = dpdk_flow_fill_actions (xd, f, fe, &action_args)) != 0)
     return rv;
 
-  rv = rte_flow_validate (xd->port_id, dpdk_flow_attr (xd), item_args.items, action_args.actions,
+  rv = rte_flow_validate (xd->port_id, attr, item_args.items, action_args.actions,
 			  &xd->last_flow_error);
 
   if (rv)
@@ -1381,8 +1449,8 @@ dpdk_flow_add (dpdk_device_t *xd, vnet_flow_t *f, dpdk_flow_entry_t *fe)
       goto done;
     }
 
-  fe->handle = rte_flow_create (xd->port_id, dpdk_flow_attr (xd), item_args.items,
-				action_args.actions, &xd->last_flow_error);
+  fe->handle =
+    rte_flow_create (xd->port_id, attr, item_args.items, action_args.actions, &xd->last_flow_error);
 
   if (!fe->handle)
     {
@@ -1491,7 +1559,8 @@ dpdk_flow_template_add (dpdk_device_t *xd, vnet_flow_t *t, dpdk_flow_template_en
   };
   int rv = 0;
 
-  clib_memcpy_fast (&template_attr.flow_attr, dpdk_flow_attr (xd), sizeof (struct rte_flow_attr));
+  clib_memcpy_fast (&template_attr.flow_attr, dpdk_flow_attr (xd, t),
+		    sizeof (struct rte_flow_attr));
 
   if ((rv = dpdk_flow_fill_items_template (xd, t, fte, &item_args)) != 0)
     return rv;
@@ -1894,6 +1963,7 @@ dpdk_flow_async_op_del (dpdk_device_t *xd, u32 *flow_indices)
   vnet_flow_t *flow;
   u32 count = vec_len (flow_indices);
   u32 fi, bi, flow_index, fe_idx;
+  u32 *parked_fes = 0, *fep;
   int success = 0, rv = 0, err;
 
   if (count == 0)
@@ -1944,8 +2014,9 @@ dpdk_flow_async_op_del (dpdk_device_t *xd, u32 *flow_indices)
 	      ptd->parked_loop_count = vm->main_loop_count;
 	    }
 
-	  clib_memset (fe, 0, sizeof (*fe));
-	  vec_add1 (ptd->fe_cache, fe_idx);
+	  /* fe->handle must stay valid until the PMD returns the destroy completion;
+	     defer zero + recycle until after push/pull drains all enqueued ops */
+	  vec_add1 (parked_fes, fe_idx);
 
 	  flow->driver_data.opaque = ~0;
 	  flow->driver_data.hw_if_index = ~0;
@@ -1961,7 +2032,7 @@ dpdk_flow_async_op_del (dpdk_device_t *xd, u32 *flow_indices)
       if (err)
 	{
 	  dpdk_device_flow_warning (xd, "rte_flow_push/pull", rte_errno);
-	  return success;
+	  goto error;
 	}
     }
 
@@ -1975,6 +2046,15 @@ error:
   success += rv;
   if (err)
     dpdk_device_flow_warning (xd, "rte_flow_push/pull", rte_errno);
+
+  /* PMD has returned all completions — safe to zero and recycle fe entries */
+  vec_foreach (fep, parked_fes)
+    {
+      fe = pool_elt_at_index (xd->flow_entries, *fep);
+      clib_memset (fe, 0, sizeof (*fe));
+      vec_add1 (ptd->fe_cache, *fep);
+    }
+  vec_free (parked_fes);
 
   /* drain down to flow_cache_size — not by flow_cache_size, which would
      leave the cache fat after bursts */
