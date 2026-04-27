@@ -12,7 +12,7 @@
    VNET_FLOW_ACTION_DROP | VNET_FLOW_ACTION_RSS)
 
 #define DPDK_MLX5_FLOW_SUPPORTED_ACTIONS                                                           \
-  (DPDK_VNET_FLOW_SUPPORTED_ACTIONS | VNET_FLOW_ACTION_STEER_TO_PORT)
+  (DPDK_VNET_FLOW_SUPPORTED_ACTIONS | VNET_FLOW_ACTION_STEER_TO_PORT | VNET_FLOW_ACTION_AGE)
 
 #define DPDK_DRIVERS(...)                                                                          \
   (dpdk_driver_name_t[])                                                                           \
