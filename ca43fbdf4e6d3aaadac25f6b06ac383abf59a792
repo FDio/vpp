@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "91bfff85_25702aa6",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 16
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-04-27T09:44:31Z",
+      "side": 1,
+      "message": "Why pre-allocating placeholder buffers? Just allocate them when needed...",
+      "revId": "ca43fbdf4e6d3aaadac25f6b06ac383abf59a792",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
