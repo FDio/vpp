@@ -1209,6 +1209,8 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 
       else if (unformat (input, "no-multi-seg"))
 	dm->default_port_conf.disable_multi_seg = 1;
+      else if (unformat (input, "enable-mbuf-fast-free"))
+	dm->default_port_conf.enable_mbuf_fast_free = 1;
       else if (unformat (input, "enable-lro"))
 	dm->default_port_conf.enable_lro = 1;
       else if (unformat (input, "max-simd-bitwidth %U",
