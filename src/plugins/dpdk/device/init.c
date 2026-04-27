@@ -18,6 +18,7 @@
 #include <vnet/interface/tx_queue_funcs.h>
 #include <dpdk/buffer.h>
 #include <dpdk/device/dpdk.h>
+#include <dpdk/device/flow.h>
 #include <dpdk/cryptodev/cryptodev.h>
 #include <vlib/pci/pci.h>
 #include <vlib/vmbus/vmbus.h>
@@ -1693,6 +1694,7 @@ dpdk_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 
   f64 timeout =
     clib_min (dm->link_state_poll_interval, dm->stat_poll_interval);
+  timeout = clib_min (timeout, dm->aging_poll_interval);
 
   while (1)
     {
@@ -1701,6 +1703,7 @@ dpdk_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 
       timeout =
 	clib_min (dm->link_state_poll_interval, dm->stat_poll_interval);
+      timeout = clib_min (timeout, dm->aging_poll_interval);
 
       if (dm->admin_up_down_in_progress)
 	/* skip the poll if an admin up down is in progress (on any interface) */
@@ -1713,7 +1716,8 @@ dpdk_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	  dpdk_update_counters (xd, now);
 	if ((now - xd->time_last_link_update) >= dm->link_state_poll_interval)
 	  dpdk_update_link_state (xd, now);
-
+	if ((now - xd->time_last_aging_poll) >= dm->aging_poll_interval)
+	  dpdk_poll_aged_flows (xd, now);
       }
 
       now = vlib_time_now (vm);
@@ -1721,8 +1725,9 @@ dpdk_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	{
 	  timeout = clib_min (timeout, xd->time_last_stats_update +
 					 dm->stat_poll_interval - now);
-	  timeout = clib_min (timeout, xd->time_last_link_update +
-					 dm->link_state_poll_interval - now);
+	  timeout =
+	    clib_min (timeout, xd->time_last_link_update + dm->link_state_poll_interval - now);
+	  timeout = clib_min (timeout, xd->time_last_aging_poll + dm->aging_poll_interval - now);
 	}
     }
   return 0;
@@ -1758,6 +1763,7 @@ dpdk_init (vlib_main_t * vm)
 
   dm->stat_poll_interval = DPDK_STATS_POLL_INTERVAL;
   dm->link_state_poll_interval = DPDK_LINK_POLL_INTERVAL;
+  dm->aging_poll_interval = DPDK_AGING_POLL_INTERVAL;
 
   dm->log_default = vlib_log_register_class ("dpdk", 0);
 
