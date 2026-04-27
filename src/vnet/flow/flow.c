@@ -147,6 +147,8 @@ vnet_flow_add_inline (vnet_main_t *vnm, vnet_flow_t *flow, u32 *flow_index, bool
   f->driver_data.opaque = ~0;
   f->driver_data.hw_if_index = ~0;
   f->n_flows = 0;
+  f->age_timeout = flow->age_timeout;
+  f->age_opaque = flow->age_opaque;
 
   /* copy pattern */
   if (flow->type == VNET_FLOW_TYPE_GENERIC)
