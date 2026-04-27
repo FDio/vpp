@@ -47,6 +47,7 @@ typedef struct
   struct rte_flow_item_ah ah[2];
   struct rte_flow_item_raw generic[2];
   vxlan_item_t vxlan[2];
+  struct rte_flow_item_ethdev represented_port[2];
 } dpdk_flow_items_args_t;
 
 typedef struct
@@ -56,6 +57,7 @@ typedef struct
   struct rte_flow_action_mark mark;
   struct rte_flow_action_queue queue;
   struct rte_flow_action_rss rss;
+  struct rte_flow_action_ethdev represented_port;
 } dpdk_flow_actions_args_t;
 
 int dpdk_flow_async_template_table_create (dpdk_device_t *xd,
