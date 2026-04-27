@@ -795,36 +795,43 @@ static int
 f_try_chunk_alloc (svm_fifo_t * f, u32 head, u32 tail, u32 len)
 {
   svm_fifo_chunk_t *c, *cur, *prev;
-  u32 alloc_size, free_alloced;
+  u32 alloc_size, free_alloced, old_free_alloced;
 
   prev = f_end_cptr (f);
   free_alloced = f_chunk_end (prev) - tail;
 
-  alloc_size = clib_min (f->shr->min_alloc, f->shr->size - (tail - head));
-  alloc_size = clib_max (alloc_size, len - free_alloced);
-
-  c = fsh_alloc_chunk (f->fs_hdr, f->shr->slice_index, alloc_size);
-  if (PREDICT_FALSE (!c))
-    return -1;
-
-  cur = c;
-
-  while (cur)
+  while (free_alloced < len)
     {
-      cur->start_byte = prev->start_byte + prev->length;
-      cur->enq_rb_index = RBTREE_TNIL_INDEX;
-      cur->deq_rb_index = RBTREE_TNIL_INDEX;
+      old_free_alloced = free_alloced;
+      alloc_size = clib_min (f->shr->min_alloc, f->shr->size - (tail - head));
+      alloc_size = clib_max (alloc_size, len - free_alloced);
 
-      prev = cur;
-      cur = f_cptr (f, cur->next);
+      c = fsh_alloc_chunk (f->fs_hdr, f->shr->slice_index, alloc_size);
+      if (PREDICT_FALSE (!c))
+	return -1;
+
+      cur = c;
+      while (cur)
+	{
+	  cur->start_byte = prev->start_byte + prev->length;
+	  cur->enq_rb_index = RBTREE_TNIL_INDEX;
+	  cur->deq_rb_index = RBTREE_TNIL_INDEX;
+
+	  prev = cur;
+	  cur = f_cptr (f, cur->next);
+	}
+
+      f_csptr_link (f, f->shr->end_chunk, c);
+      prev->next = 0;
+      f->shr->end_chunk = f_csptr (f, prev);
+
+      if (!f->shr->tail_chunk)
+	f->shr->tail_chunk = f_csptr (f, c);
+
+      free_alloced = f_chunk_end (prev) - tail;
+      if (PREDICT_FALSE (free_alloced <= old_free_alloced))
+	return -1;
     }
-
-  f_csptr_link (f, f->shr->end_chunk, c);
-  prev->next = 0;
-  f->shr->end_chunk = f_csptr (f, prev);
-
-  if (!f->shr->tail_chunk)
-    f->shr->tail_chunk = f_csptr (f, c);
 
   return 0;
 }
@@ -891,10 +898,14 @@ svm_fifo_enqueue (svm_fifo_t * f, u32 len, const u8 * src)
 int
 svm_fifo_enqueue_with_offset (svm_fifo_t * f, u32 offset, u32 len, u8 * src)
 {
-  u32 tail, head, free_count, enq_pos;
+  u32 tail, head, free_count, enq_pos, end_pos;
   fs_sptr_t last = F_INVALID_CPTR;
+  svm_fifo_chunk_t *end_chunk;
 
   f_load_head_tail_prod (f, &head, &tail);
+
+  if (PREDICT_FALSE (len == 0))
+    return 0;
 
   /* free space in fifo can only increase during enqueue: SPSC */
   free_count = f_free_count (f, head, tail);
@@ -912,11 +923,19 @@ svm_fifo_enqueue_with_offset (svm_fifo_t * f, u32 offset, u32 len, u8 * src)
 	return SVM_FIFO_EGROW;
     }
 
-  svm_fifo_trace_add (f, offset, len, 1);
-  ooo_segment_add (f, offset, head, tail, len);
-
   if (!f->ooo_enq || !f_chunk_includes_pos (f->ooo_enq, enq_pos))
     f_update_ooo_enq (f, enq_pos, enq_pos + len);
+
+  if (PREDICT_FALSE (!f->ooo_enq || !f_chunk_includes_pos (f->ooo_enq, enq_pos)))
+    return SVM_FIFO_EGROW;
+
+  end_pos = enq_pos + len - 1;
+  end_chunk = svm_fifo_find_next_chunk (f, f->ooo_enq, end_pos);
+  if (PREDICT_FALSE (!end_chunk))
+    return SVM_FIFO_EGROW;
+
+  svm_fifo_trace_add (f, offset, len, 1);
+  ooo_segment_add (f, offset, head, tail, len);
 
   svm_fifo_copy_to_chunk (f, f->ooo_enq, enq_pos, src, len, &last);
   if (last != F_INVALID_CPTR)
