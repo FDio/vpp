@@ -141,10 +141,14 @@ vnet_flow_add_inline (vnet_main_t *vnm, vnet_flow_t *flow, u32 *flow_index, bool
   f->redirect_node_index = flow->redirect_node_index;
   f->redirect_device_input_next_index = flow->redirect_device_input_next_index;
   f->redirect_queue = flow->redirect_queue;
+  f->steer_to_hw_if_index = flow->steer_to_hw_if_index;
+  f->steer_from_hw_if_index = flow->steer_from_hw_if_index;
   f->buffer_advance = flow->buffer_advance;
   f->driver_data.opaque = ~0;
   f->driver_data.hw_if_index = ~0;
   f->n_flows = 0;
+  f->age_timeout = flow->age_timeout;
+  f->age_opaque = flow->age_opaque;
 
   /* copy pattern */
   if (flow->type == VNET_FLOW_TYPE_GENERIC)
@@ -297,6 +301,29 @@ int
 vnet_flow_disable (vnet_main_t *vnm, u32 flow_index)
 {
   return vnet_flow_enable_disable (vnm, flow_index, ~0, 0, false, false);
+}
+
+int
+vnet_flow_get_counter (vnet_main_t *vnm, u32 flow_index)
+{
+  vnet_flow_t *f = vnet_get_flow (flow_index);
+  vnet_hw_interface_t *hi;
+  vnet_device_class_t *dev_class;
+
+  if (f == 0)
+    return VNET_FLOW_ERROR_NO_SUCH_ENTRY;
+
+  if (f->driver_data.hw_if_index == ~0)
+    return VNET_FLOW_ERROR_NOT_SUPPORTED;
+
+  hi = vnet_get_hw_interface (vnm, f->driver_data.hw_if_index);
+  dev_class = vnet_get_device_class (vnm, hi->dev_class_index);
+
+  if (dev_class->flow_ops_function == 0)
+    return VNET_FLOW_ERROR_NOT_SUPPORTED;
+
+  return dev_class->flow_ops_function (vnm, VNET_FLOW_DEV_OP_GET_COUNTER, hi->dev_instance,
+				       flow_index);
 }
 
 int

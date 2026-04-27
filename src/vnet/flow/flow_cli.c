@@ -217,6 +217,18 @@ show_flow_entry (vlib_main_t * vm, unformat_input_t * input,
 	  if (dev_class->format_flow)
 	    vlib_cli_output (vm, "  %U\n", dev_class->format_flow, hi->dev_instance, f->index,
 			     f->driver_data.opaque);
+
+	  if (f->actions & VNET_FLOW_ACTION_COUNT)
+	    {
+	      int rv = vnet_flow_get_counter (vnm, f->index);
+	      if (rv == 0)
+		{
+		  vlib_cli_output (vm, "%-10s: %llu", "hits", f->counter_hits);
+		  vlib_cli_output (vm, "%-10s: %llu", "bytes", f->counter_bytes);
+		}
+	      else
+		vlib_cli_output (vm, "counter error: %U", format_flow_error, rv);
+	    }
 	}
       return 0;
     }
@@ -232,6 +244,14 @@ no_args:
 	{
 	  vlib_cli_output (vm, "%s: %s", "spec", f->generic_pattern->spec);
 	  vlib_cli_output (vm, "%s: %s", "mask", f->generic_pattern->mask);
+	}
+      if ((f->actions & VNET_FLOW_ACTION_COUNT) && f->driver_data.hw_if_index != ~0)
+	{
+	  int rv = vnet_flow_get_counter (vnm, f->index);
+	  if (rv == 0)
+	    vlib_cli_output (vm, "  hits %llu bytes %llu", f->counter_hits, f->counter_bytes);
+	  else
+	    vlib_cli_output (vm, "  counter error: %U", format_flow_error, rv);
 	}
     }
 
@@ -560,6 +580,10 @@ flow_cli (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd_arg)
 	flow.actions |= VNET_FLOW_ACTION_REDIRECT_TO_QUEUE;
       else if (unformat (line_input, "drop"))
 	flow.actions |= VNET_FLOW_ACTION_DROP;
+      else if (unformat (line_input, "counter"))
+	flow.actions |= VNET_FLOW_ACTION_COUNT;
+      else if (unformat (line_input, "age %u", &flow.age_timeout))
+	flow.actions |= VNET_FLOW_ACTION_AGE;
       else if (unformat (line_input, "rss function"))
 	{
 	  if (0)
@@ -972,7 +996,7 @@ VLIB_CLI_COMMAND (flow_command, static) = {
 		"[session id <session>] [spi <spi>]"
 		"[spec <spec string>] [mask <mask string>]"
 		"[next-node <node>] [mark <id>] [buffer-advance <len>] "
-		"[redirect-to-queue <queue>] [drop] "
+		"[redirect-to-queue <queue>] [drop] [counter] "
 		"[rss function <name>] [rss types <flow type>]"
 		"[rss queues <queue_start> to <queue_end>]",
   .function = flow_cli,
@@ -1095,6 +1119,9 @@ format_flow (u8 * s, va_list * args)
       t = format (t, "%srss types %U", t ? ", " : "",
 		  format_rss_types, f->rss_types);
     }
+
+  if (f->actions & VNET_FLOW_ACTION_AGE)
+    t = format (t, "%sage %u", t ? ", " : "", f->age_timeout);
 
   if (t)
     {

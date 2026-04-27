@@ -152,14 +152,16 @@
 
 #define foreach_flow_entry_generic _fe (generic_pattern_t, pattern)
 
-#define foreach_flow_action \
-  _(0, COUNT, "count") \
-  _(1, MARK, "mark") \
-  _(2, BUFFER_ADVANCE, "buffer-advance") \
-  _(3, REDIRECT_TO_NODE, "redirect-to-node") \
-  _(4, REDIRECT_TO_QUEUE, "redirect-to-queue") \
-  _(5, RSS, "rss") \
-  _(6, DROP, "drop")
+#define foreach_flow_action                                                                        \
+  _ (0, COUNT, "count")                                                                            \
+  _ (1, MARK, "mark")                                                                              \
+  _ (2, BUFFER_ADVANCE, "buffer-advance")                                                          \
+  _ (3, REDIRECT_TO_NODE, "redirect-to-node")                                                      \
+  _ (4, REDIRECT_TO_QUEUE, "redirect-to-queue")                                                    \
+  _ (5, RSS, "rss")                                                                                \
+  _ (6, DROP, "drop")                                                                              \
+  _ (7, STEER_TO_PORT, "steer-to-port")                                                            \
+  _ (8, AGE, "age")
 
 typedef enum
 {
@@ -333,6 +335,12 @@ typedef struct
   /* queue for VNET_FLOW_ACTION_REDIRECT_TO_QUEUE */
   u32 redirect_queue;
 
+  /* VNET_FLOW_ACTION_STEER_TO_PORT: destination port hw_if_index (required) */
+  u32 steer_to_hw_if_index;
+
+  /* VNET_FLOW_ACTION_STEER_TO_PORT: source port hw_if_index (optional, ~0 = all) */
+  u32 steer_from_hw_if_index;
+
   /* buffer offset for VNET_FLOW_ACTION_BUFFER_ADVANCE */
   i32 buffer_advance;
 
@@ -341,6 +349,12 @@ typedef struct
 
   /* template only */
   u32 n_flows;
+
+  /* defines idle timeout if flow ageing is enabled */
+  u32 age_timeout;
+
+  /* defines opaque context, used if flow ages out */
+  u64 age_opaque;
 
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
 
@@ -352,6 +366,10 @@ typedef struct
   vnet_rss_function_t rss_fun;
   u32 queue_index;
   u32 queue_num;
+
+  /* populated by driver on VNET_FLOW_DEV_OP_GET_COUNTER */
+  u64 counter_hits;
+  u64 counter_bytes;
 
   /* generic flow pattern (heap-allocated) */
   generic_pattern_t *generic_pattern;
@@ -365,6 +383,7 @@ int vnet_flow_add (vnet_main_t *vnm, vnet_flow_t *flow, u32 *flow_index);
 int vnet_flow_enable (vnet_main_t *vnm, u32 flow_index, u32 hw_if_index);
 int vnet_flow_disable (vnet_main_t *vnm, u32 flow_index);
 int vnet_flow_del (vnet_main_t *vnm, u32 flow_index);
+int vnet_flow_get_counter (vnet_main_t *vnm, u32 flow_index);
 int vnet_flow_template_add (vnet_main_t *vnm, vnet_flow_t *flow, u32 *flow_template_index);
 int vnet_flow_template_del (vnet_main_t *vnm, u32 flow_template_index);
 int vnet_flow_template_enable (vnet_main_t *vnm, u32 flow_template_index, u32 hw_if_index,
@@ -373,6 +392,10 @@ int vnet_flow_template_disable (vnet_main_t *vnm, u32 flow_template_index);
 int vnet_flow_async_range_enable (vnet_main_t *vnm, u32 flow_template_index, u32 *flow_indices,
 				  u32 hw_if_index);
 int vnet_flow_async_range_disable (vnet_main_t *vnm, u32 *flow_indices, u32 hw_if_index);
+
+/* Callback invoked with a batch of aged flows.
+ * The callback is responsible for flow teardown. */
+typedef void (*vnet_flow_aged_cb_t) (u64 *age_opaques, u32 hw_if_index, u32 n);
 
 typedef struct
 {
@@ -404,6 +427,9 @@ typedef struct
 
   /* vector of flow ranges */
   vnet_flow_range_t *ranges;
+
+  /* callback for aged flow notifications */
+  vnet_flow_aged_cb_t aged_flow_cb;
 
   u16 msg_id_base;
 } vnet_flow_main_t;
