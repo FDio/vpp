@@ -291,6 +291,12 @@ typedef struct
   u32 opaque;
 } vnet_flow_driver_data_t;
 
+typedef struct
+{
+  u64 hits;
+  u64 bytes;
+} vnet_flow_counter_t;
+
 /* named pattern union for inline flow types (excludes generic) */
 typedef union
 {
@@ -369,6 +375,7 @@ int vnet_flow_add (vnet_main_t *vnm, vnet_flow_t *flow, u32 *flow_index);
 int vnet_flow_enable (vnet_main_t *vnm, u32 flow_index, u32 hw_if_index);
 int vnet_flow_disable (vnet_main_t *vnm, u32 flow_index);
 int vnet_flow_del (vnet_main_t *vnm, u32 flow_index);
+int vnet_flow_get_counter (vnet_main_t *vnm, u32 flow_index, vnet_flow_counter_t *counter);
 int vnet_flow_template_add (vnet_main_t *vnm, vnet_flow_t *flow, u32 *flow_template_index);
 int vnet_flow_template_del (vnet_main_t *vnm, u32 flow_template_index);
 int vnet_flow_template_enable (vnet_main_t *vnm, u32 flow_template_index, u32 hw_if_index,

@@ -246,7 +246,7 @@ vnet_flow_enable_disable (vnet_main_t *vnm, u32 flow_index, u32 hw_if_index, uwo
       clib_spinlock_unlock_if_init (&fm->flow_pool_lock);
     }
 
-  rv = dev_ops_function (vnm, op, hi->dev_instance, flow_index);
+  rv = dev_ops_function (vnm, op, hi->dev_instance, flow_index, NULL);
   if (rv)
     return rv;
 
@@ -316,6 +316,29 @@ int
 vnet_flow_disable (vnet_main_t *vnm, u32 flow_index)
 {
   return vnet_flow_enable_disable (vnm, flow_index, ~0, 0, false, false);
+}
+
+int
+vnet_flow_get_counter (vnet_main_t *vnm, u32 flow_index, vnet_flow_counter_t *counter)
+{
+  vnet_flow_t *f = vnet_get_flow (flow_index);
+  vnet_hw_interface_t *hi;
+  vnet_device_class_t *dev_class;
+
+  if (f == 0)
+    return VNET_FLOW_ERROR_NO_SUCH_ENTRY;
+
+  if (f->driver_data.hw_if_index == ~0)
+    return VNET_FLOW_ERROR_NOT_SUPPORTED;
+
+  hi = vnet_get_hw_interface (vnm, f->driver_data.hw_if_index);
+  dev_class = vnet_get_device_class (vnm, hi->dev_class_index);
+
+  if (dev_class->flow_ops_function == 0)
+    return VNET_FLOW_ERROR_NOT_SUPPORTED;
+
+  return dev_class->flow_ops_function (vnm, VNET_FLOW_DEV_OP_GET_COUNTER, hi->dev_instance,
+				       flow_index, counter /* opaque */);
 }
 
 int
