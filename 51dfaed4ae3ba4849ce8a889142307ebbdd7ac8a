@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7f038b51_c35bd7eb",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-27T14:36:37Z",
+      "side": 1,
+      "message": "There is probably a case to be made to migrate this snippet to https://github.com/FDio/govpp/tree/master/examples what do you think ?",
+      "revId": "51dfaed4ae3ba4849ce8a889142307ebbdd7ac8a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
