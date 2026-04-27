@@ -217,6 +217,18 @@ show_flow_entry (vlib_main_t * vm, unformat_input_t * input,
 	  if (dev_class->format_flow)
 	    vlib_cli_output (vm, "  %U\n", dev_class->format_flow, hi->dev_instance, f->index,
 			     f->driver_data.opaque);
+
+	  if (f->actions & VNET_FLOW_ACTION_COUNT)
+	    {
+	      int rv = vnet_flow_get_counter (vnm, f->index);
+	      if (rv == 0)
+		{
+		  vlib_cli_output (vm, "%-10s: %llu", "hits", f->counter_hits);
+		  vlib_cli_output (vm, "%-10s: %llu", "bytes", f->counter_bytes);
+		}
+	      else
+		vlib_cli_output (vm, "counter error: %U", format_flow_error, rv);
+	    }
 	}
       return 0;
     }
@@ -232,6 +244,14 @@ no_args:
 	{
 	  vlib_cli_output (vm, "%s: %s", "spec", f->generic_pattern->spec);
 	  vlib_cli_output (vm, "%s: %s", "mask", f->generic_pattern->mask);
+	}
+      if ((f->actions & VNET_FLOW_ACTION_COUNT) && f->driver_data.hw_if_index != ~0)
+	{
+	  int rv = vnet_flow_get_counter (vnm, f->index);
+	  if (rv == 0)
+	    vlib_cli_output (vm, "  hits %llu bytes %llu", f->counter_hits, f->counter_bytes);
+	  else
+	    vlib_cli_output (vm, "  counter error: %U", format_flow_error, rv);
 	}
     }
 
@@ -563,6 +583,8 @@ flow_cli (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd_arg)
       else if (unformat (line_input, "steer-to-port %U", unformat_vnet_hw_interface, vnm,
 			 &flow.steer_to_hw_if_index))
 	flow.actions |= VNET_FLOW_ACTION_STEER_TO_PORT;
+      else if (unformat (line_input, "counter"))
+	flow.actions |= VNET_FLOW_ACTION_COUNT;
       else if (unformat (line_input, "rss function"))
 	{
 	  if (0)
@@ -975,7 +997,7 @@ VLIB_CLI_COMMAND (flow_command, static) = {
 		"[session id <session>] [spi <spi>]"
 		"[spec <spec string>] [mask <mask string>]"
 		"[next-node <node>] [mark <id>] [buffer-advance <len>] "
-		"[redirect-to-queue <queue>] [drop] "
+		"[redirect-to-queue <queue>] [drop] [counter] "
 		"[steer-to-port <iface>] "
 		"[rss function <name>] [rss types <flow type>]"
 		"[rss queues <queue_start> to <queue_end>]",
