@@ -36,6 +36,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "1a23217c_ba29178e",
+        "filename": "src/plugins/af_xdp/af_xdp.h",
+        "patchSetId": 35
+      },
+      "lineNbr": 69,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-04-27T21:02:56Z",
+      "side": 1,
+      "message": "Markdown correction for the previous reply:\n\nGood point. Fixed in PS36.\n\nThe RX queue multi-buffer state is now initialized when queues are created, and reset/drained on admin state transitions via `af_xdp_device_input_reset()`. This frees any partial multi-buffer chain, drains pending RX descriptors, and clears `mb_head_bi`, `mb_tail_bi`, and `mb_total_len` before the interface is brought back up/refilled.",
+      "parentUuid": "aba88069_37176b7b",
+      "revId": "272ac619cff3eefe10edb7a06051b6b7d1ffb90c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "13892c60_b79d74af",
@@ -141,6 +159,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "08905341_e96db6bf",
+        "filename": "src/plugins/af_xdp/input.c",
+        "patchSetId": 35
+      },
+      "lineNbr": 209,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-04-27T21:02:56Z",
+      "side": 1,
+      "message": "Markdown correction for the previous reply:\n\nDone in PS36. I split the RX helper back into separate single-buffer and multi-buffer functions: `af_xdp_device_input_bufs()` and `af_xdp_device_input_bufs_mb()`.\n\nThe top-level inline path still dispatches using the compile-time `with_multi_buffer` constant, but the two datapaths are no longer hidden inside a giant `if (is_mb)` block.",
+      "parentUuid": "ea1908a0_f26aff10",
+      "revId": "272ac619cff3eefe10edb7a06051b6b7d1ffb90c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "e4ae2bee_95c05b94",
@@ -172,6 +208,24 @@
       "side": 1,
       "message": "Done in PS36. I split the TX/free helpers into separate single-buffer and multi-buffer variants: ``af_xdp_device_output_free()`, ``af_xdp_device_output_free_mb()`, ``af_xdp_device_output_tx_try()`, and ``af_xdp_device_output_tx_try_mb()`.\n\nAs for RX, the top-level inline path keeps the compile-time dispatch, while the actual code paths are separate.",
       "parentUuid": "e4ae2bee_95c05b94",
+      "revId": "272ac619cff3eefe10edb7a06051b6b7d1ffb90c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "df78e3ca_381613af",
+        "filename": "src/plugins/af_xdp/output.c",
+        "patchSetId": 35
+      },
+      "lineNbr": 184,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-04-27T21:02:56Z",
+      "side": 1,
+      "message": "Markdown correction for the previous reply:\n\nDone in PS36. I split the TX/free helpers into separate single-buffer and multi-buffer variants: `af_xdp_device_output_free()`, `af_xdp_device_output_free_mb()`, `af_xdp_device_output_tx_try()`, and `af_xdp_device_output_tx_try_mb()`.\n\nAs for RX, the top-level inline path keeps the compile-time dispatch, while the actual code paths are separate.",
+      "parentUuid": "ffad482f_a42d634c",
       "revId": "272ac619cff3eefe10edb7a06051b6b7d1ffb90c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
