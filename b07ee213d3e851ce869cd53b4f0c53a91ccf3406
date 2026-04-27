@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "e8602f86_85dedb9a",
+        "filename": "src/plugins/rdma/input.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 740,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-04-27T19:11:42Z",
+      "side": 1,
+      "message": "Addressed in PS12. We no longer rely on L4_OK alone: the fast path now requires L4_OK and a supported mlx5 L4 header type (TCP/UDP variants). Non TCP/UDP frames therefore keep the buffer checksum flags unset and fall back to the regular software path.",
+      "parentUuid": "0ea8d3d0_5c6c2dbd",
+      "revId": "b07ee213d3e851ce869cd53b4f0c53a91ccf3406",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "9d96f7e3_653b3830",
@@ -31,6 +49,24 @@
       "writtenOn": "2026-04-27T17:43:37Z",
       "side": 1,
       "message": "we could use the same test to call rdma_device_mlx5dv_l3_validate_and_swap_bc() with a constant to avoid doing any l4 processing if disabled",
+      "revId": "b07ee213d3e851ce869cd53b4f0c53a91ccf3406",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2fb774ad_fc4d1edd",
+        "filename": "src/plugins/rdma/input.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 1002,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-04-27T19:11:42Z",
+      "side": 1,
+      "message": "Addressed in PS12. rdma_device_mlx5dv_l3_validate_and_swap_bc() now takes a compile-time constant check_l4 argument. The caller passes literal 1 or 0 depending on rx-l4-cksum, so static_always_inline lets clang generate specialized enabled/disabled paths and remove L4 processing when disabled.",
+      "parentUuid": "9d96f7e3_653b3830",
       "revId": "b07ee213d3e851ce869cd53b4f0c53a91ccf3406",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
