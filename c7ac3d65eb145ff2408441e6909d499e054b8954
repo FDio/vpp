@@ -1,0 +1,22 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "203a43c8_88a74b1a",
+        "filename": "src/drivers/iavf/port.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 217,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-04-27T20:34:00Z",
+      "side": 1,
+      "message": "Agreed. Patch set 12 removes the main-thread special case. rx_thread_index is now treated as the VPP thread index for all threads, including thread 0. The IRQ/vector mapping is uniform, with vector i+1 mapped to VPP thread i, and interrupt-mode capability is only advertised when enough RX MSI-X vectors are available.\n\nI also validated this with E810 in both configurations: main-thread-only and 1 worker, in polling and interrupt mode; all four TSO-off cases passed.",
+      "parentUuid": "ef06d072_b70f66e0",
+      "revId": "c7ac3d65eb145ff2408441e6909d499e054b8954",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
