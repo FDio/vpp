@@ -1,0 +1,22 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1dfff6f3_9136c7db",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-04-27T21:24:13Z",
+      "side": 1,
+      "message": "Done in PS3. I removed the explicit NUL terminators from both ad-\u003ename and ad-\u003elinux_ifname.\n\nad-\u003ename remains a VPP vector for %v formatting. For ad-\u003elinux_ifname, PS3 keeps the existing vec_validate(..., IFNAMSIZ - 1) padding for shorter names and adds an early bounded check with clib_strnlen(args-\u003elinux_ifname, IFNAMSIZ) \u003d\u003d IFNAMSIZ so API buffers are not scanned past the interface-name limit.\n\nI also rebased the change on current master.",
+      "parentUuid": "c215db02_3ae1525f",
+      "revId": "1bec092fefeeb8dbca56e36be6468cd7989beb1f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
