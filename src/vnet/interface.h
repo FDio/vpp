@@ -103,9 +103,13 @@ typedef enum
   VNET_FLOW_DEV_OP_RESET_COUNTER,
 } vnet_flow_dev_op_t;
 
-/* Interface flow operations callback. */
+/* Interface flow operations callback.
+ * 'opaque' parameter carries op-specific data:
+ *  For VNET_FLOW_DEV_OP_GET_COUNTER: vnet_flow_counter_t * (filled by driver)
+ *  For all other ops: NULL
+ */
 typedef int (vnet_flow_dev_ops_function_t) (struct vnet_main_t *vnm, vnet_flow_dev_op_t op,
-					    u32 dev_instance, u32 index);
+					    u32 dev_instance, u32 index, void *opaque);
 
 typedef int (vnet_flow_async_dev_ops_function_t) (struct vnet_main_t *vnm, vnet_flow_dev_op_t op,
 						  u32 hw_if_index, u32 *flow_indices,

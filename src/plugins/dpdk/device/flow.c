@@ -1591,7 +1591,8 @@ done:
 }
 
 int
-dpdk_flow_ops_fn (vnet_main_t *vnm, vnet_flow_dev_op_t op, u32 dev_instance, u32 flow_index)
+dpdk_flow_ops_fn (vnet_main_t *vnm, vnet_flow_dev_op_t op, u32 dev_instance, u32 flow_index,
+		  void *opaque)
 {
   vlib_main_t *vm = vlib_get_main ();
   dpdk_main_t *dm = &dpdk_main;
@@ -2105,7 +2106,7 @@ dpdk_flow_async_ops_fn (vnet_main_t *vnm, vnet_flow_dev_op_t op, u32 dev_instanc
 
 int
 dpdk_flow_template_ops_fn (vnet_main_t *vnm, vnet_flow_dev_op_t op, u32 dev_instance,
-			   u32 flow_template_index)
+			   u32 flow_template_index, void *opaque)
 {
   dpdk_main_t *dm = &dpdk_main;
   dpdk_device_t *xd = vec_elt_at_index (dm->devices, dev_instance);

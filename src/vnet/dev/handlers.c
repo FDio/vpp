@@ -161,7 +161,8 @@ vnet_dev_add_del_mac_address (vnet_hw_interface_t *hi, const u8 *address,
 }
 
 int
-vnet_dev_flow_ops_fn (vnet_main_t *vnm, vnet_flow_dev_op_t op, u32 dev_instance, u32 flow_index)
+vnet_dev_flow_ops_fn (vnet_main_t *vnm, vnet_flow_dev_op_t op, u32 dev_instance, u32 flow_index,
+		      void *opaque)
 {
   vlib_main_t *vm = vlib_get_main ();
   vnet_dev_instance_t *di = vnet_dev_get_dev_instance (dev_instance);

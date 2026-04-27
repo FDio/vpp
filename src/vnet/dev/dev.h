@@ -625,7 +625,7 @@ clib_error_t *vnet_dev_port_mac_change (vnet_hw_interface_t *, const u8 *,
 					const u8 *);
 clib_error_t *vnet_dev_add_del_mac_address (vnet_hw_interface_t *, const u8 *,
 					    u8);
-int vnet_dev_flow_ops_fn (vnet_main_t *, vnet_flow_dev_op_t, u32, u32);
+int vnet_dev_flow_ops_fn (vnet_main_t *, vnet_flow_dev_op_t, u32, u32, void *opaque);
 clib_error_t *vnet_dev_interface_set_rss_queues (vnet_main_t *,
 						 vnet_hw_interface_t *,
 						 clib_bitmap_t *);
