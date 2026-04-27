@@ -240,7 +240,7 @@ format_vnet_sw_interface_name (u8 * s, va_list * args)
   s = format (s, "%v", hi_sup->name);
 
   if (si->type != VNET_SW_INTERFACE_TYPE_HARDWARE)
-    s = format (s, ".%d", si->sub.id);
+    s = format (s, ".%u", si->sub.id);
 
   return s;
 }
