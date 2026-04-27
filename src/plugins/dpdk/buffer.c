@@ -102,6 +102,11 @@ dpdk_buffer_pool_init (vlib_main_t * vm, vlib_buffer_pool_t * bp)
       hdr->iova = (iova_mode == RTE_IOVA_VA) ?
 	pointer_to_uword (mb) : vlib_physmem_get_pa (vm, mb);
       STAILQ_INSERT_TAIL (&mp->elt_list, hdr, next);
+      /*
+       * XXX: This bit is surprising. It works even though it is using
+       * the same next field because the values assigned are the same
+       * and the code never manipulates the list after initialization.
+       */
       STAILQ_INSERT_TAIL (&nmp->elt_list, hdr, next);
       mp->populated_size++;
       nmp->populated_size++;
@@ -124,6 +129,9 @@ dpdk_buffer_pool_init (vlib_main_t * vm, vlib_buffer_pool_t * bp)
       vlib_buffer_t *b;
       b = vlib_buffer_ptr_from_index (buffer_mem_start, bp->buffers[i], 0);
       b->template = bp->buffer_template;
+
+      rte_pktmbuf_reset (rte_mbuf_from_vlib_buffer (b));
+      b->flags |= VLIB_BUFFER_EXT_HDR_VALID;
     }
 
   /* map DMA pages if at least one physical device exists */

@@ -111,30 +111,56 @@ dpdk_validate_rte_mbuf (vlib_main_t * vm, vlib_buffer_t * b,
   /* buffer is coming from non-dpdk source so we need to init
      rte_mbuf header */
   if (PREDICT_FALSE ((b->flags & VLIB_BUFFER_EXT_HDR_VALID) == 0))
-    rte_pktmbuf_reset (mb);
+    {
+#if 0
+      /* XXX Since we don't set the valid flag this gets called multiple times */
+      clib_warning
+	("%s: buffer ext header not valid for buffer 0x%x reseting",
+	 __FUNCTION__, vlib_get_buffer_index (vm, b));
+#endif
+      ASSERT (!RTE_MBUF_CLONED (mb));
+      rte_pktmbuf_reset (mb);
+      b->flags |= VLIB_BUFFER_EXT_HDR_VALID;
+    }
 
   first_mb->nb_segs = 1;
   mb->data_len = b->current_length;
+  /* XXX chopps: why would we use the function here and not calculate ourselves */
   mb->pkt_len = maybe_multiseg ? vlib_buffer_length_in_chain (vm, b) :
     b->current_length;
   mb->data_off = VLIB_BUFFER_PRE_DATA_SIZE + b->current_data;
+  u16 pktlen = b->current_length;
 
   while (maybe_multiseg && (b->flags & VLIB_BUFFER_NEXT_PRESENT))
     {
       b = vlib_get_buffer (vm, b->next_buffer);
       mb = rte_mbuf_from_vlib_buffer (b);
       if (PREDICT_FALSE ((b->flags & VLIB_BUFFER_EXT_HDR_VALID) == 0))
-	rte_pktmbuf_reset (mb);
+	{
+#if 0
+	  /* XXX Since we don't set the valid flag this gets called multiple times
+	   */
+	  clib_warning
+	    ("%s: buffer ext header not valid for buffer in chain 0x%x reseting",
+	     __FUNCTION__, vlib_get_buffer_index (vm, b));
+#endif
+	  ASSERT (!RTE_MBUF_CLONED (mb));
+	  rte_pktmbuf_reset (mb);
+	  b->flags |= VLIB_BUFFER_EXT_HDR_VALID;
+	}
       last_mb->next = mb;
       last_mb = mb;
       mb->data_len = b->current_length;
       mb->pkt_len = b->current_length;
+      pktlen += b->current_length;
       mb->data_off = VLIB_BUFFER_PRE_DATA_SIZE + b->current_data;
       first_mb->nb_segs++;
       if (PREDICT_FALSE (b->ref_count > 1))
 	mb->pool =
 	  dpdk_no_cache_mempool_by_buffer_pool_index[b->buffer_pool_index];
     }
+  last_mb->next = NULL;
+  ASSERT (first_mb->pkt_len == pktlen);
 }
 
 /*
