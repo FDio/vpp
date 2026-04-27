@@ -3,6 +3,23 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "fa964095_794669bb",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-04-27T13:58:27Z",
+      "side": 1,
+      "message": "also it might be better to enable it with a flag (eg. enable-fast-free) as opt-in as there might be other constraints (eg. all mbuf must be in the same pool)",
+      "revId": "2cf6e523687fd260fb3948757e311e09f8a3351b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "6665c511_5fa81e8a",
         "filename": "src/plugins/dpdk/device/common.c",
         "patchSetId": 1
