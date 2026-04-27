@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "cb019ea6_36b8d299",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-04-27T09:58:15Z",
+      "side": 1,
+      "message": "instead of exploding constant propagation just update template to show likely case and update if found opposite....",
+      "revId": "20bf74ef4d84f14f73a6bff8349cdb01f0af8303",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
