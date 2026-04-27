@@ -141,6 +141,7 @@ typedef union
     u16 enable_outer_checksum_offload : 1;
     u16 enable_lsc_int : 1;
     u16 enable_rxq_int : 1;
+    u16 enable_mbuf_fast_free : 1;
     u16 disable_tx_checksum_offload : 1;
     u16 disable_rss : 1;
     u16 disable_rx_scatter : 1;

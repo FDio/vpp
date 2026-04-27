@@ -185,6 +185,9 @@ dpdk_device_setup (dpdk_device_t *xd)
   if (xd->conf.disable_rx_scatter)
     rxo &= ~RTE_ETH_RX_OFFLOAD_SCATTER;
 
+  if (xd->conf.disable_multi_seg && xd->conf.enable_mbuf_fast_free)
+    txo |= RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE;
+
   /* mask unsupported offloads */
   rxo &= dev_info.rx_offload_capa;
   txo &= dev_info.tx_offload_capa;
