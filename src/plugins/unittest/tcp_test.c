@@ -1409,6 +1409,21 @@ tcp_test_persist_e2e (vlib_main_t *vm, unformat_input_t *input)
       rv = 1;
       goto cleanup;
     }
+  client_tc->snd_wnd = client_tc->snd_mss - 1;
+  tcp_retransmit_timer_update (&client_wrk->timer_wheel, client_tc);
+  if (!TCP_TEST_I (!tcp_timer_is_active (client_tc, TCP_TIMER_PERSIST),
+		   "sub-mss window does not arm persist"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  tcp_timer_persist_handler (client_tc);
+  if (!TCP_TEST_I (!tcp_timer_is_active (client_tc, TCP_TIMER_PERSIST),
+		   "sub-mss window keeps persist off"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
   if (!TCP_TEST_I ((app_session_error == 0), "no app session errors"))
     {
       rv = 1;
