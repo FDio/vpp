@@ -19,7 +19,7 @@
   _ (3, PROMISC, "promiscuous")                                                                    \
   _ (4, MLX5DV, "mlx5dv")                                                                          \
   _ (5, STRIDING_RQ, "striding-rq")                                                                \
-  _ (6, RX_L4_CKSUM, "rx-l4-cksum")
+  _ (6, RX_L4_CKSUM, "rx-l4-cksum") \
   _ (7, TSO, "tso")
 
 enum
