@@ -160,7 +160,8 @@
   _ (4, REDIRECT_TO_QUEUE, "redirect-to-queue")                                                    \
   _ (5, RSS, "rss")                                                                                \
   _ (6, DROP, "drop")                                                                              \
-  _ (7, STEER_TO_PORT, "steer-to-port")
+  _ (7, STEER_TO_PORT, "steer-to-port")                                                            \
+  _ (8, AGE, "age")
 
 typedef enum
 {
@@ -352,6 +353,12 @@ typedef struct
   /* template only */
   u32 n_flows;
 
+  /* idle timeout in seconds for VNET_FLOW_ACTION_AGE */
+  u32 age_timeout;
+
+  /* Encoded hardware aging context, see vnet_flow_age_context_mk(). */
+  u64 age_context;
+
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
 
   /* flow match pattern (inline types) */
@@ -385,6 +392,43 @@ int vnet_flow_async_range_enable (vnet_main_t *vnm, u32 flow_template_index, u32
 				  u32 hw_if_index);
 int vnet_flow_async_range_disable (vnet_main_t *vnm, u32 *flow_indices, u32 hw_if_index);
 
+#define VNET_FLOW_AGING_SERVICE_INVALID ((u32) ~0)
+#define VNET_FLOW_AGE_CONTEXT_INVALID	0
+
+/* Hardware aging context layout: [ service_index + 1 : 32 | service_context_index : 32 ].
+ * The +1 keeps zero reserved as the invalid hardware context. */
+static_always_inline u64
+vnet_flow_age_context_mk (u32 service_index, u32 service_context_index)
+{
+  return ((u64) (service_index + 1) << 32) | service_context_index;
+}
+
+static_always_inline u32
+vnet_flow_age_context_service_index (u64 age_context)
+{
+  return (u32) (age_context >> 32) - 1;
+}
+
+static_always_inline u32
+vnet_flow_age_context_service_context_index (u64 age_context)
+{
+  return (u32) age_context;
+}
+
+/* Callback invoked with a batch of service-owned context indices.
+ * The callback is responsible for stale validation and flow teardown. */
+typedef void (*vnet_flow_aged_cb_t) (u64 *service_context_indices, u32 hw_if_index, u32 n);
+
+typedef struct
+{
+  u8 *name;
+  vnet_flow_aged_cb_t cb;
+} vnet_flow_aging_service_t;
+
+int vnet_flow_register_aging_service (const char *name, vnet_flow_aged_cb_t cb, u32 *service_index);
+int vnet_flow_age_dispatch (u64 *age_contexts, u32 hw_if_index, u32 n);
+bool vnet_flow_age_has_services (void);
+
 typedef struct
 {
   u32 start;
@@ -415,6 +459,10 @@ typedef struct
 
   /* vector of flow ranges */
   vnet_flow_range_t *ranges;
+
+  /* services that consume hardware flow age notifications */
+  vnet_flow_aging_service_t *aging_services;
+  u8 has_aging_services;
 
   u16 msg_id_base;
 } vnet_flow_main_t;

@@ -288,6 +288,38 @@ VLIB_CLI_COMMAND (show_flow_ranges_command, static) = {
 };
 
 static clib_error_t *
+show_flow_aging_services (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd_arg)
+{
+  vnet_flow_main_t *fm = &flow_main;
+  vnet_flow_aging_service_t *service;
+
+  if (pool_elts (fm->aging_services) == 0)
+    {
+      vlib_cli_output (vm, "No flow aging services registered");
+      return 0;
+    }
+
+  vlib_cli_output (vm, "%-8s %s", "Index", "Name");
+
+  pool_foreach (service, fm->aging_services)
+    {
+      u32 service_index;
+
+      service_index = service - fm->aging_services;
+      vlib_cli_output (vm, "%-8u %s", service_index,
+		       service->name ? (char *) service->name : "unknown");
+    }
+
+  return 0;
+}
+
+VLIB_CLI_COMMAND (show_flow_aging_services_command, static) = {
+  .path = "show flow aging services",
+  .short_help = "show flow aging services",
+  .function = show_flow_aging_services,
+};
+
+static clib_error_t *
 show_flow_template (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd_arg)
 {
   vnet_main_t *vnm = vnet_get_main ();
@@ -427,6 +459,7 @@ flow_cli (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd_arg)
   int rv;
   u32 teid = 0, session_id = 0, spi = 0;
   u32 vni = 0;
+  u64 age_context = VNET_FLOW_AGE_CONTEXT_INVALID;
   u32 queue_start = 0, queue_end = 0;
   vnet_flow_type_t type = VNET_FLOW_TYPE_UNKNOWN;
   ip4_address_and_mask_t ip4s = {}, in_ip4s = {};
@@ -586,6 +619,14 @@ flow_cli (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd_arg)
 	flow.actions |= VNET_FLOW_ACTION_STEER_TO_PORT;
       else if (unformat (line_input, "counter"))
 	flow.actions |= VNET_FLOW_ACTION_COUNT;
+      else if (unformat (line_input, "age %u context 0x%Lx", &flow.age_timeout, &age_context) ||
+	       unformat (line_input, "age %u context %Lu", &flow.age_timeout, &age_context))
+	{
+	  flow.age_context = age_context;
+	  flow.actions |= VNET_FLOW_ACTION_AGE;
+	}
+      else if (unformat (line_input, "age %u", &flow.age_timeout))
+	flow.actions |= VNET_FLOW_ACTION_AGE;
       else if (unformat (line_input, "rss function"))
 	{
 	  if (0)
@@ -999,6 +1040,7 @@ VLIB_CLI_COMMAND (flow_command, static) = {
 		"[spec <spec string>] [mask <mask string>]"
 		"[next-node <node>] [mark <id>] [buffer-advance <len>] "
 		"[redirect-to-queue <queue>] [drop] [counter] "
+		"[age <seconds> context <age-context>] "
 		"[steer-to-port <iface>] "
 		"[rss function <name>] [rss types <flow type>]"
 		"[rss queues <queue_start> to <queue_end>]",
@@ -1085,6 +1127,30 @@ format_flow_match (u8 * s, va_list * args)
 }
 
 static u8 *
+format_flow_age_context (u8 *s, va_list *args)
+{
+  u64 age_context = va_arg (*args, u64);
+  vnet_flow_main_t *fm = &flow_main;
+  vnet_flow_aging_service_t *service;
+  u32 service_index, service_context_index;
+
+  service_context_index = vnet_flow_age_context_service_context_index (age_context);
+  if (age_context == VNET_FLOW_AGE_CONTEXT_INVALID || (age_context >> 32) == 0)
+    return format (s, "service unknown context %u", service_context_index);
+
+  service_index = vnet_flow_age_context_service_index (age_context);
+
+  if (fm->aging_services != 0 && !pool_is_free_index (fm->aging_services, service_index))
+    {
+      service = pool_elt_at_index (fm->aging_services, service_index);
+      return format (s, "service %s context %u", service->name ? (char *) service->name : "unknown",
+		     service_context_index);
+    }
+
+  return format (s, "service unknown context %u", service_context_index);
+}
+
+static u8 *
 format_flow (u8 * s, va_list * args)
 {
   vlib_main_t *vm = vlib_get_main ();
@@ -1126,6 +1192,10 @@ format_flow (u8 * s, va_list * args)
       t = format (t, "%srss types %U", t ? ", " : "",
 		  format_rss_types, f->rss_types);
     }
+
+  if (f->actions & VNET_FLOW_ACTION_AGE)
+    t = format (t, "%sage %u %U", t ? ", " : "", f->age_timeout, format_flow_age_context,
+		f->age_context);
 
   if (t)
     {

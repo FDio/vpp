@@ -110,6 +110,11 @@ vnet_flow_add_inline (vnet_main_t *vnm, vnet_flow_t *flow, u32 *flow_index, bool
       flow->mark_flow_id == VNET_FLOW_MARK_INVALID)
     return VNET_FLOW_ERROR_INVALID_VALUE;
 
+  /* flow aging action requires per-flow context */
+  if (!template && (flow->actions & VNET_FLOW_ACTION_AGE) &&
+      (flow->age_timeout == 0 || flow->age_context == VNET_FLOW_AGE_CONTEXT_INVALID))
+    return VNET_FLOW_ERROR_INVALID_VALUE;
+
   if (!template && fm->per_thread_data)
     {
       /* per-thread cached fast path (multi-worker) */
@@ -146,6 +151,8 @@ vnet_flow_add_inline (vnet_main_t *vnm, vnet_flow_t *flow, u32 *flow_index, bool
   f->driver_data.opaque = ~0;
   f->driver_data.hw_if_index = ~0;
   f->n_flows = 0;
+  f->age_timeout = flow->age_timeout;
+  f->age_context = flow->age_context;
 
   /* copy pattern */
   if (flow->type == VNET_FLOW_TYPE_GENERIC)
@@ -339,6 +346,94 @@ vnet_flow_get_counter (vnet_main_t *vnm, u32 flow_index, vnet_flow_counter_t *co
 
   return dev_class->flow_ops_function (vnm, VNET_FLOW_DEV_OP_GET_COUNTER, hi->dev_instance,
 				       flow_index, counter /* opaque */);
+}
+
+int
+vnet_flow_register_aging_service (const char *name, vnet_flow_aged_cb_t cb, u32 *service_index)
+{
+  vnet_flow_main_t *fm = &flow_main;
+  vnet_flow_aging_service_t *service;
+
+  if (cb == 0 || service_index == 0)
+    return VNET_FLOW_ERROR_INVALID_VALUE;
+
+  /* register flow aging service with specific callback */
+  /* and return flow aging service index */
+  pool_get (fm->aging_services, service);
+  *service_index = service - fm->aging_services;
+  service->name = format (0, "%s%c", name ? name : "unknown", 0);
+  service->cb = cb;
+  fm->has_aging_services = 1;
+
+  return 0;
+}
+
+int
+vnet_flow_age_dispatch (u64 *age_contexts, u32 hw_if_index, u32 n)
+{
+  vnet_flow_main_t *fm = &flow_main;
+  vnet_flow_aged_cb_t *service_cbs = 0;
+  u64 **service_context_indices = 0;
+  int rv = 0;
+
+  if (age_contexts == 0 || n == 0)
+    return VNET_FLOW_ERROR_INVALID_VALUE;
+
+  /* Best-effort dispatch: skip invalid contexts, keep processing valid ones,
+   * and return non-zero if any entry in the batch was skipped. */
+  for (u32 i = 0; i < n; i++)
+    {
+      u64 age_context = age_contexts[i];
+      u32 service_index;
+      vnet_flow_aging_service_t *service;
+
+      if (age_context == VNET_FLOW_AGE_CONTEXT_INVALID || (age_context >> 32) == 0)
+	{
+	  rv = VNET_FLOW_ERROR_NO_SUCH_ENTRY;
+	  continue;
+	}
+      /* verify that flow service index and service callback exit */
+      service_index = vnet_flow_age_context_service_index (age_context);
+      if (fm->aging_services == 0 || pool_is_free_index (fm->aging_services, service_index))
+	{
+	  rv = VNET_FLOW_ERROR_NO_SUCH_ENTRY;
+	  continue;
+	}
+
+      service = pool_elt_at_index (fm->aging_services, service_index);
+      if (service->cb == 0)
+	{
+	  rv = VNET_FLOW_ERROR_NO_SUCH_ENTRY;
+	  continue;
+	}
+
+      vec_validate (service_cbs, service_index);
+      vec_validate (service_context_indices, service_index);
+      service_cbs[service_index] = service->cb;
+      vec_add1 (service_context_indices[service_index],
+		vnet_flow_age_context_service_context_index (age_context));
+    }
+
+  for (uword i = 0; i < vec_len (service_context_indices); i++)
+    {
+      if (vec_len (service_context_indices[i]) && service_cbs[i])
+	service_cbs[i](service_context_indices[i], hw_if_index,
+		       vec_len (service_context_indices[i]));
+      vec_free (service_context_indices[i]);
+    }
+
+  vec_free (service_context_indices);
+  vec_free (service_cbs);
+
+  return rv;
+}
+
+bool
+vnet_flow_age_has_services (void)
+{
+  vnet_flow_main_t *fm = &flow_main;
+
+  return fm->has_aging_services;
 }
 
 int
