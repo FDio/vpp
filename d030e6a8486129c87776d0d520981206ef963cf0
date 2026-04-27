@@ -16,6 +16,23 @@
       "message": "Looking at test results [0], I can confirm this fixes the issue [1] of VPP crashing in 2n-zn2 4-core (8-worker) tests.\nThat test is still likely to fail, but that is due to an older issue [2] related to delayed packets (which could be a CSIT issue with TRex calibration).\n\n[0] https://logs.fd.io/vex-yul-rot-jenkins-1/csit-vpp-bisect-2n-zn2/24889859501/csit_latest/log.html.gz#s1-s1-s1-s1-s1\n[1] https://github.com/FDio/vpp/issues/3597\n[2] https://github.com/FDio/csit/issues/4089",
       "revId": "d030e6a8486129c87776d0d520981206ef963cf0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ef06d072_b70f66e0",
+        "filename": "src/drivers/iavf/port.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 217,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-04-27T10:02:43Z",
+      "side": 1,
+      "message": "this sounds very wrong, main thread is just thread and it should not be different than others...",
+      "revId": "d030e6a8486129c87776d0d520981206ef963cf0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
