@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"log"
 
-	"git.fd.io/govpp.git"
-	"git.fd.io/govpp.git/adapter"
-	"git.fd.io/govpp.git/adapter/vppapiclient"
-	"git.fd.io/govpp.git/api"
-	"git.fd.io/govpp.git/core"
-	"git.fd.io/govpp.git/examples/bin_api/interfaces"
-	"git.fd.io/govpp.git/examples/bin_api/vpe"
+	"go.fd.io/govpp"
+	"go.fd.io/govpp/adapter"
+	"go.fd.io/govpp/adapter/statsclient"
+	"go.fd.io/govpp/api"
+	interfaces "go.fd.io/govpp/binapi/interface"
+	"go.fd.io/govpp/binapi/vpe"
+	"go.fd.io/govpp/core"
 )
 
 //////////////////////////////////////
@@ -20,17 +20,6 @@ import (
 
 const defaultStatsSocketPath = "/run/vpp/stats.sock"
 const defaultShmPrefix = ""
-
-func parseMacAddress(l2Address []byte, l2AddressLength uint32) string {
-	var mac string
-	for i := uint32(0); i < l2AddressLength; i++ {
-		mac += fmt.Sprintf("%02x", l2Address[i])
-		if i < l2AddressLength-1 {
-			mac += ":"
-		}
-	}
-	return mac
-}
 
 type interfaceStats struct {
 	TxBytes   uint64
@@ -97,7 +86,7 @@ func (v *vppConnector) connect() (err error) {
 		return fmt.Errorf("failed to create api channel: %v", err)
 	}
 
-	v.stats = vppapiclient.NewStatClient(v.statsSocketPath)
+	v.stats = statsclient.NewStatsClient(v.statsSocketPath)
 	if err = v.stats.Connect(); err != nil {
 		return fmt.Errorf("failed to connect to Stats adapter: %v", err)
 	}
@@ -107,7 +96,10 @@ func (v *vppConnector) connect() (err error) {
 
 func (v *vppConnector) disconnect() {
 	if v.stats != nil {
-		v.stats.Disconnect()
+		err := v.stats.Disconnect()
+		if err != nil {
+			panic(err)
+		}
 	}
 	if v.conn != nil {
 		v.conn.Disconnect()
@@ -119,8 +111,8 @@ func (v *vppConnector) reduceCombinedCounters(stat *adapter.StatEntry) *[]adapte
 	stats := make([]adapter.CombinedCounter, len(v.Interfaces))
 	for _, workerStats := range counters {
 		for i := 0; i < len(v.Interfaces); i++ {
-			stats[i].Bytes += workerStats[i].Bytes
-			stats[i].Packets += workerStats[i].Packets
+			stats[i][0] += workerStats[i][0] // Packets
+			stats[i][1] += workerStats[i][1] // Bytes
 		}
 	}
 	return &stats
@@ -143,47 +135,37 @@ func (v *vppConnector) getStatsForAllInterfaces() error {
 		return fmt.Errorf("failed to dump vpp Stats: %v", err)
 	}
 
-	stats := func(i int) *interfaceStats { return &v.Interfaces[uint32(i)].Stats }
+	stats := func(i int) *interfaceStats {
+		return &v.Interfaces[uint32(i)].Stats
+	}
 
 	for _, stat := range statsDump {
-		switch stat.Name {
+		switch string(stat.Name) {
 		case "/if/tx":
-			{
-				for i, counter := range *v.reduceCombinedCounters(stat) {
-					stats(i).TxBytes = uint64(counter.Bytes)
-					stats(i).TxPackets = uint64(counter.Packets)
-				}
+			for i, counter := range *v.reduceCombinedCounters(&stat) {
+				stats(i).TxBytes = counter.Bytes()
+				stats(i).TxPackets = counter.Packets()
 			}
 		case "/if/rx":
-			{
-				for i, counter := range *v.reduceCombinedCounters(stat) {
-					stats(i).RxBytes = uint64(counter.Bytes)
-					stats(i).RxPackets = uint64(counter.Packets)
-				}
+			for i, counter := range *v.reduceCombinedCounters(&stat) {
+				stats(i).RxBytes = counter.Bytes()
+				stats(i).RxPackets = counter.Packets()
 			}
 		case "/if/tx-error":
-			{
-				for i, counter := range *v.reduceSimpleCounters(stat) {
-					stats(i).TxErrors = uint64(counter)
-				}
+			for i, counter := range *v.reduceSimpleCounters(&stat) {
+				stats(i).TxErrors = uint64(counter)
 			}
 		case "/if/rx-error":
-			{
-				for i, counter := range *v.reduceSimpleCounters(stat) {
-					stats(i).RxErrors = uint64(counter)
-				}
+			for i, counter := range *v.reduceSimpleCounters(&stat) {
+				stats(i).RxErrors = uint64(counter)
 			}
 		case "/if/drops":
-			{
-				for i, counter := range *v.reduceSimpleCounters(stat) {
-					stats(i).Drops = uint64(counter)
-				}
+			for i, counter := range *v.reduceSimpleCounters(&stat) {
+				stats(i).Drops = uint64(counter)
 			}
 		case "/if/punt":
-			{
-				for i, counter := range *v.reduceSimpleCounters(stat) {
-					stats(i).Punts = uint64(counter)
-				}
+			for i, counter := range *v.reduceSimpleCounters(&stat) {
+				stats(i).Punts = uint64(counter)
 			}
 		}
 	}
@@ -197,7 +179,10 @@ func main() {
 	shmPrefixPtr := flag.String("shm_prefix", defaultShmPrefix, "Shared memory prefix (advanced)")
 	flag.Parse()
 
-	vppConn := &vppConnector{statsSocketPath: *statsSocketPathPtr, shmPrefix: *shmPrefixPtr}
+	vppConn := &vppConnector{
+		statsSocketPath: *statsSocketPathPtr,
+		shmPrefix:       *shmPrefixPtr,
+	}
 	defer vppConn.disconnect()
 
 	if err := vppConn.connect(); err != nil {

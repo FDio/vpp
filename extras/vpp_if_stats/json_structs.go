@@ -1,11 +1,12 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
+	"net"
 
-	"git.fd.io/govpp.git/examples/bin_api/vpe"
+	"go.fd.io/govpp/binapi/interface_types"
+	"go.fd.io/govpp/binapi/vpe"
 )
 
 type jsonVppDetails struct {
@@ -20,10 +21,9 @@ type jsonVppInterface struct {
 	Name       string `json:"if_name"`
 	Tag        string `json:"if_tag"`
 	MacAddress string `json:"if_mac"`
-	AdminState uint8  `json:"if_admin_state"`
-	LinkState  uint8  `json:"if_link_state"`
+	AdminState bool   `json:"if_admin_state"`
+	LinkState  bool   `json:"if_link_state"`
 	LinkMTU    uint16 `json:"if_link_mtu"`
-	SubDot1ad  uint8  `json:"if_sub_dot1ad"`
 	SubID      uint32 `json:"if_sub_id"`
 
 	TxBytes   uint64 `json:"if_tx_bytes"`
@@ -41,29 +41,24 @@ type jsonVppPayload struct {
 	Interfaces      []*jsonVppInterface `json:"interfaces"`
 }
 
-func bytesToString(b []byte) string {
-	return string(bytes.Split(b, []byte{0})[0])
-}
-
-func toJSONVppDetails(svReply *vpe.ShowVersionReply) *jsonVppDetails {
+	func toJSONVppDetails(svReply *vpe.ShowVersionReply) *jsonVppDetails {
 	return &jsonVppDetails{
-		Program:        bytesToString(svReply.Program),
-		Version:        bytesToString(svReply.Version),
-		BuildDate:      bytesToString(svReply.BuildDate),
-		BuildDirectory: bytesToString(svReply.BuildDirectory),
+		Program:        svReply.Program,
+		Version:        svReply.Version,
+		BuildDate:      svReply.BuildDate,
+		BuildDirectory: svReply.BuildDirectory,
 	}
 }
 
 func toJSONVppInterface(vppIf *vppInterface) *jsonVppInterface {
 	return &jsonVppInterface{
-		Index:      vppIf.SwIfIndex,
-		Name:       bytesToString(vppIf.InterfaceName),
-		Tag:        bytesToString(vppIf.Tag),
-		MacAddress: parseMacAddress(vppIf.L2Address, vppIf.L2AddressLength),
-		AdminState: vppIf.AdminUpDown,
-		LinkState:  vppIf.LinkUpDown,
+		Index:      uint32(vppIf.SwIfIndex),
+		Name:       vppIf.InterfaceName,
+		Tag:        vppIf.Tag,
+		MacAddress: net.HardwareAddr(vppIf.L2Address[:]).String(),
+		AdminState: vppIf.Flags&interface_types.IF_STATUS_API_FLAG_ADMIN_UP != 0,
+		LinkState:  vppIf.Flags&interface_types.IF_STATUS_API_FLAG_LINK_UP != 0,
 		LinkMTU:    vppIf.LinkMtu,
-		SubDot1ad:  vppIf.SubDot1ad,
 		SubID:      vppIf.SubID,
 		TxBytes:    vppIf.Stats.TxBytes,
 		TxPackets:  vppIf.Stats.TxPackets,
@@ -77,7 +72,10 @@ func toJSONVppInterface(vppIf *vppInterface) *jsonVppInterface {
 }
 
 func toJSONVppPayload(svReply *vpe.ShowVersionReply, vppIfs []*vppInterface) *jsonVppPayload {
-	p := &jsonVppPayload{jsonVppDetails: toJSONVppDetails(svReply), Interfaces: make([]*jsonVppInterface, len(vppIfs))}
+	p := &jsonVppPayload{
+		jsonVppDetails: toJSONVppDetails(svReply),
+		Interfaces:     make([]*jsonVppInterface, len(vppIfs)),
+	}
 	for index, vppIf := range vppIfs {
 		p.Interfaces[index] = toJSONVppInterface(vppIf)
 	}

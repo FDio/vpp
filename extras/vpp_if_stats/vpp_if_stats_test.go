@@ -5,25 +5,28 @@ import (
 	"testing"
 	"time"
 
-	"git.fd.io/govpp.git/adapter"
-	"git.fd.io/govpp.git/api"
-	"git.fd.io/govpp.git/examples/bin_api/interfaces"
-	"git.fd.io/govpp.git/examples/bin_api/vpe"
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
+	"go.fd.io/govpp/adapter"
+	"go.fd.io/govpp/api"
+	interfaces "go.fd.io/govpp/binapi/interface"
+	"go.fd.io/govpp/binapi/interface_types"
+	"go.fd.io/govpp/binapi/vpe"
+	"go.uber.org/mock/gomock"
 )
 
 var (
 	vppDetails = vpe.ShowVersionReply{
-		Program: []byte("vpe"),
-		Version: []byte("18.10"),
+		Program: "vpe",
+		Version: "18.10",
 	}
 
 	testSwIfIndex = uint32(0)
 	testInterface = func() *vppInterface {
 		return &vppInterface{
-			SwInterfaceDetails: interfaces.SwInterfaceDetails{SwIfIndex: testSwIfIndex}, // TODO
-			Stats:              interfaceStats{},                                        // TODO
+			SwInterfaceDetails: interfaces.SwInterfaceDetails{
+				SwIfIndex: interface_types.InterfaceIndex(testSwIfIndex),
+			}, // TODO
+			Stats: interfaceStats{}, // TODO
 		}
 	}
 	testInterfaces = func() []*vppInterface {
@@ -39,29 +42,29 @@ var (
 		RxBytes:   r.Uint64(),
 		RxPackets: r.Uint64(),
 	}
-	testCombinedStatsDump = []*adapter.StatEntry{
+	testCombinedStatsDump = []adapter.StatEntry{
 		{
-			Name: "/if/tx",
+			StatIdentifier: adapter.StatIdentifier{
+				Name: []byte("/if/tx"),
+			},
 			Type: adapter.CombinedCounterVector,
 			Data: adapter.CombinedCounterStat{
-				[]adapter.CombinedCounter{
-					{
-						Bytes:   adapter.Counter(testCombinedStats.TxBytes),
-						Packets: adapter.Counter(testCombinedStats.TxPackets),
-					},
-				},
+				[]adapter.CombinedCounter{{
+					testCombinedStats.TxPackets,
+					testCombinedStats.TxBytes,
+				}},
 			},
 		},
 		{
-			Name: "/if/rx",
+			StatIdentifier: adapter.StatIdentifier{
+				Name: []byte("/if/rx"),
+			},
 			Type: adapter.CombinedCounterVector,
 			Data: adapter.CombinedCounterStat{
-				[]adapter.CombinedCounter{
-					{
-						Bytes:   adapter.Counter(testCombinedStats.RxBytes),
-						Packets: adapter.Counter(testCombinedStats.RxPackets),
-					},
-				},
+				[]adapter.CombinedCounter{{
+					testCombinedStats.RxPackets,
+					testCombinedStats.RxBytes,
+				}},
 			},
 		},
 	}
@@ -72,30 +75,38 @@ var (
 		Drops:    r.Uint64(),
 		Punts:    r.Uint64(),
 	}
-	testSimpleStatsDump = []*adapter.StatEntry{
+	testSimpleStatsDump = []adapter.StatEntry{
 		{
-			Name: "/if/tx-error",
+			StatIdentifier: adapter.StatIdentifier{
+				Name: []byte("/if/tx-error"),
+			},
 			Type: adapter.SimpleCounterVector,
 			Data: adapter.SimpleCounterStat{
 				[]adapter.Counter{adapter.Counter(testSimpleStats.TxErrors)},
 			},
 		},
 		{
-			Name: "/if/rx-error",
+			StatIdentifier: adapter.StatIdentifier{
+				Name: []byte("/if/rx-error"),
+			},
 			Type: adapter.SimpleCounterVector,
 			Data: adapter.SimpleCounterStat{
 				[]adapter.Counter{adapter.Counter(testSimpleStats.RxErrors)},
 			},
 		},
 		{
-			Name: "/if/drops",
+			StatIdentifier: adapter.StatIdentifier{
+				Name: []byte("/if/drops"),
+			},
 			Type: adapter.SimpleCounterVector,
 			Data: adapter.SimpleCounterStat{
 				[]adapter.Counter{adapter.Counter(testSimpleStats.Drops)},
 			},
 		},
 		{
-			Name: "/if/punt",
+			StatIdentifier: adapter.StatIdentifier{
+				Name: []byte("/if/punt"),
+			},
 			Type: adapter.SimpleCounterVector,
 			Data: adapter.SimpleCounterStat{
 				[]adapter.Counter{adapter.Counter(testSimpleStats.Punts)},
@@ -163,7 +174,7 @@ func TestVppIfStats_GetStatsForAllInterfacesNoStats(t *testing.T) {
 	defer mockCtrl.Finish()
 
 	mockStatsAPI := NewMockStatsAPI(mockCtrl)
-	mockStatsAPI.EXPECT().DumpStats("/if").Return([]*adapter.StatEntry{}, nil)
+	mockStatsAPI.EXPECT().DumpStats("/if").Return([]adapter.StatEntry{}, nil)
 
 	v := vppConnector{stats: mockStatsAPI, Interfaces: testInterfaces()}
 	err := v.getStatsForAllInterfaces()
@@ -171,7 +182,7 @@ func TestVppIfStats_GetStatsForAllInterfacesNoStats(t *testing.T) {
 	assert.Equal(t, interfaceStats{}, v.Interfaces[testSwIfIndex].Stats, "Stats should be empty")
 }
 
-func testStats(t *testing.T, statsDump *[]*adapter.StatEntry, expectedStats *interfaceStats) {
+func testStats(t *testing.T, statsDump *[]adapter.StatEntry, expectedStats *interfaceStats) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 

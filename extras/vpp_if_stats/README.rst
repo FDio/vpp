@@ -23,8 +23,7 @@ Building
 
 .. code:: bash
 
-   go get git.fd.io/govpp.git
-   go build
+   make build
 
 Using (post-build for example on linux 64bit)
 ---------------------------------------------
@@ -38,3 +37,18 @@ Output examples
 
 `JSON schema <./response_schema.json>`__
 `Example <./response_example.json>`__
+
+Testing
+-------
+
+.. code:: bash
+
+   # Start VPP
+   docker run -v /run/vpp:/run/vpp --privileged -it \
+     ligato/vpp-base:25.02 vpp \
+       'unix { interactive }
+       dpdk { no-pci }
+       statseg { socket-name /run/vpp/stats.sock }'
+
+   # Run the stats client
+   sudo ./vpp_if_stats | jq .
