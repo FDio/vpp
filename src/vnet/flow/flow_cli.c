@@ -569,6 +569,8 @@ flow_cli (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd_arg)
 	flow.actions |= VNET_FLOW_ACTION_DROP;
       else if (unformat (line_input, "counter"))
 	flow.actions |= VNET_FLOW_ACTION_COUNT;
+      else if (unformat (line_input, "age %u", &flow.age_timeout))
+	flow.actions |= VNET_FLOW_ACTION_AGE;
       else if (unformat (line_input, "rss function"))
 	{
 	  if (0)
@@ -1088,6 +1090,9 @@ format_flow (u8 * s, va_list * args)
       t = format (t, "%srss types %U", t ? ", " : "",
 		  format_rss_types, f->rss_types);
     }
+
+  if (f->actions & VNET_FLOW_ACTION_AGE)
+    t = format (t, "%sage %u", t ? ", " : "", f->age_timeout);
 
   if (t)
     {
