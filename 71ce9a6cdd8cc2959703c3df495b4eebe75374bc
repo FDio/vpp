@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "343c8abc_8f0d4eef",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-04-27T09:40:12Z",
+      "side": 1,
+      "message": "i think it would be better than this is handled as part of early exit code in vlib_worker_thread_barrier_release()",
+      "revId": "71ce9a6cdd8cc2959703c3df495b4eebe75374bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
