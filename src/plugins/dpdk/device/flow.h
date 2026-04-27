@@ -59,6 +59,7 @@ typedef struct
   struct rte_flow_action_rss rss;
   struct rte_flow_action_ethdev represented_port;
   struct rte_flow_action_count count;
+  struct rte_flow_action_age age;
 } dpdk_flow_actions_args_t;
 
 int dpdk_flow_async_template_table_create (dpdk_device_t *xd,
@@ -68,5 +69,6 @@ int dpdk_flow_async_template_table_create (dpdk_device_t *xd,
 					   struct rte_flow_action *actions_mask,
 					   dpdk_flow_template_table_t *table);
 int dpdk_flow_async_template_table_destroy (dpdk_device_t *xd, dpdk_flow_template_table_t *table);
+void dpdk_poll_aged_flows (dpdk_device_t *xd, f64 now);
 
 #endif /* __DPDK_FLOW_H__ */
