@@ -90,8 +90,7 @@ tcp_retransmit_timer_update (tcp_timer_wheel_t * tw, tcp_connection_t * tc)
   if (tc->snd_una == tc->snd_nxt)
     {
       tcp_retransmit_timer_reset (tw, tc);
-      if (tc->snd_wnd < tc->snd_mss &&
-	  !tcp_timer_is_active (tc, TCP_TIMER_PERSIST))
+      if (!tc->snd_wnd && !tcp_timer_is_active (tc, TCP_TIMER_PERSIST))
 	tcp_persist_timer_set (tw, tc);
     }
   else
