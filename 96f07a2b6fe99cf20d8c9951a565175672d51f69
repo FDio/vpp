@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "63c060a9_2693bbf1",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-04-28T13:07:37Z",
+      "side": 1,
+      "message": "In hindsight, I decided to modify the api enum from `sfdp_timeout` to `sfdp_timeout_type`, which makes more sense within this context.",
+      "revId": "96f07a2b6fe99cf20d8c9951a565175672d51f69",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}

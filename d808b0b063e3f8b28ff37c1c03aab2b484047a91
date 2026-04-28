@@ -33,6 +33,24 @@
       "message": "shouldn´t this also take sfdp_timeout_t?",
       "revId": "d808b0b063e3f8b28ff37c1c03aab2b484047a91",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "008ad682_d67a3a01",
+        "filename": "src/vnet/sfdp/sfdp.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 301,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-04-28T13:07:37Z",
+      "side": 1,
+      "message": "I don\u0027t think so here.\n\nWe need parameter `timeout_idx` when using `sfdp_set_timeout()` to fetch a tenant-specific timer entry which is a u32.\n\nThe `sfdp_timeout_t` struct is used to hold the default timeout values and names, and stored in sfdp main without being modified anywhere. e.g. it is used to initialize default timers for new tenants `tenant-\u003etimeouts[idx] \u003d sfdp_main.timeouts[idx].val;`",
+      "parentUuid": "e43372bb_9c84352d",
+      "revId": "d808b0b063e3f8b28ff37c1c03aab2b484047a91",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
