@@ -1,0 +1,208 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5575a710_2a22366c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 31
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-28T15:24:36Z",
+      "side": 1,
+      "message": "Thanks a lot, a few comments inline, tell me if something is unclear",
+      "revId": "f7611867a1d1c84df237cef507464394a9ab56c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bf6aceca_6b686e69",
+        "filename": "src/plugins/cnat/cnat_node.c",
+        "patchSetId": 31
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-28T15:24:36Z",
+      "side": 1,
+      "message": "Let\u0027s always display `scope ids` in the trace",
+      "revId": "f7611867a1d1c84df237cef507464394a9ab56c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7490ec2c_322c9f45",
+        "filename": "src/plugins/cnat/cnat_node.h",
+        "patchSetId": 31
+      },
+      "lineNbr": 1223,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-28T15:24:36Z",
+      "side": 1,
+      "message": "Can we do something like \n````\nsession[0]-\u003ekey.cs_scope_id \u003d b[0]-\u003eflow_id ? b[0]-\u003eflow_id : vnet_buffer(b[0])-\u003eip.fib_index; \n````\ninstead ?\n\nThat way we get both worlds in the same codepath, \n- either someone sets flow_id before us, and we use it as flow_id\n- or we do not, get zero and use the fib_index\n\nThere is a case to be made for non-fib-scoped cnat but this is probably for another discussion",
+      "revId": "f7611867a1d1c84df237cef507464394a9ab56c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5b93cdc9_5a9f2d0f",
+        "filename": "src/plugins/cnat/cnat_node_lookup.c",
+        "patchSetId": 31
+      },
+      "lineNbr": 121,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-28T15:24:36Z",
+      "side": 1,
+      "message": "Here I would do\n````\nsession-\u003ekey.cs_scope_id \u003d ts-\u003ets_scope_id[VLIB_RX]\n````\nno ?",
+      "revId": "f7611867a1d1c84df237cef507464394a9ab56c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9e7cb3f4_01a6684d",
+        "filename": "src/plugins/cnat/cnat_session.c",
+        "patchSetId": 31
+      },
+      "lineNbr": 188,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-28T15:24:36Z",
+      "side": 1,
+      "message": "Same thing we can replace `fib_index` with `scope_index`",
+      "revId": "f7611867a1d1c84df237cef507464394a9ab56c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7dcc1bcf_c3803bdd",
+        "filename": "src/plugins/cnat/cnat_session.c",
+        "patchSetId": 31
+      },
+      "lineNbr": 264,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-28T15:24:36Z",
+      "side": 1,
+      "message": "Same thing here, this should probably just replace `fib`",
+      "revId": "f7611867a1d1c84df237cef507464394a9ab56c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4b5e0615_41a96cba",
+        "filename": "src/plugins/cnat/cnat_session.c",
+        "patchSetId": 31
+      },
+      "lineNbr": 372,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-28T15:24:36Z",
+      "side": 1,
+      "message": "In my mind we would have\n````\nrsession-\u003ekey.cs_scope_id \u003d session-\u003ekey.cs_scope_id;\n````\nand remove the `fib_index` from the session lookup",
+      "revId": "f7611867a1d1c84df237cef507464394a9ab56c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "135d1e7e_5da4ab82",
+        "filename": "src/plugins/cnat/cnat_session.h",
+        "patchSetId": 31
+      },
+      "lineNbr": 52,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-28T15:24:36Z",
+      "side": 1,
+      "message": "I think we should remove `cs_fib_index` altogether and replace it with `cs_scope_id`",
+      "revId": "f7611867a1d1c84df237cef507464394a9ab56c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "644232ab_8857a130",
+        "filename": "src/plugins/cnat/cnat_session.h",
+        "patchSetId": 31
+      },
+      "lineNbr": 127,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-28T15:24:36Z",
+      "side": 1,
+      "message": "I would be explicit about using `b-\u003eflow_id` in the code",
+      "revId": "f7611867a1d1c84df237cef507464394a9ab56c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8c66fe89_b21fec16",
+        "filename": "src/plugins/cnat/cnat_session.h",
+        "patchSetId": 31
+      },
+      "lineNbr": 130,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-28T15:24:36Z",
+      "side": 1,
+      "message": "I think this is not used anymore",
+      "revId": "f7611867a1d1c84df237cef507464394a9ab56c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "89d537b2_d4548685",
+        "filename": "src/plugins/cnat/cnat_types.h",
+        "patchSetId": 31
+      },
+      "lineNbr": 242,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-28T15:24:36Z",
+      "side": 1,
+      "message": "I think we should also remove the `rw_fib_index` from here and use `cs_scope_id` to key the ports we allocate",
+      "revId": "f7611867a1d1c84df237cef507464394a9ab56c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d92466b6_dbe98335",
+        "filename": "src/plugins/cnat/cnat_types.h",
+        "patchSetId": 31
+      },
+      "lineNbr": 283,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-28T15:24:36Z",
+      "side": 1,
+      "message": "I think we should make this `u32 scope_id[2];` and index it with `VLIB_RX` for the scope ID used in the lookup for the forward flow, and `VLIB_TX` for the scope ID used in the lookup of the return flow\n\nAlso probably worth naming it `cs_scope_id` instead",
+      "revId": "f7611867a1d1c84df237cef507464394a9ab56c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
