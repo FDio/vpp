@@ -682,6 +682,7 @@ typedef struct
 int vnet_crypto_set_handlers (vnet_crypto_set_handlers_args_t *);
 
 vnet_crypto_ctx_t *vnet_crypto_ctx_create (vnet_crypto_alg_t alg);
+vnet_crypto_ctx_t *vnet_crypto_ctx_create_max (vnet_crypto_alg_t initial_alg);
 int vnet_crypto_ctx_set_cipher_key (vnet_crypto_ctx_t *ctx, const u8 *cipher_key,
 				    u16 cipher_key_len);
 int vnet_crypto_ctx_set_auth_key (vnet_crypto_ctx_t *ctx, const u8 *auth_key, u16 auth_key_len);

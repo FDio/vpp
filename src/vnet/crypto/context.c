@@ -409,6 +409,32 @@ vnet_crypto_ctx_create (vnet_crypto_alg_t alg)
   return ctx;
 }
 
+vnet_crypto_ctx_t *
+vnet_crypto_ctx_create_max (vnet_crypto_alg_t initial_alg)
+{
+  vnet_crypto_main_t *cm = &crypto_main;
+  vnet_crypto_ctx_t *ctx;
+  vnet_crypto_handler_type_t t;
+  vnet_crypto_alg_t alg, max_alg = 1;
+
+  ASSERT (initial_alg != 0);
+  ASSERT (cm->layout_initialized);
+
+  for (alg = 1; alg < VNET_CRYPTO_N_ALGS; alg++)
+    {
+      if (cm->ctx_layout[alg].total_key_data_size > cm->ctx_layout[max_alg].total_key_data_size)
+	max_alg = alg;
+    }
+
+  ctx = vnet_crypto_ctx_alloc (cm->ctx_layout + max_alg);
+  ctx->alg = initial_alg;
+
+  for (t = 0; t < VNET_CRYPTO_HANDLER_N_TYPES; t++)
+    vnet_crypto_ctx_set_default_engine (ctx, t);
+
+  return ctx;
+}
+
 int
 vnet_crypto_ctx_set_cipher_key (vnet_crypto_ctx_t *ctx, const u8 *cipher_key, u16 cipher_key_len)
 {
