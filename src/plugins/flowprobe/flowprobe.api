@@ -83,12 +83,50 @@ autoreply define flowprobe_interface_add_del
   option vat_help = "(<intfc> | sw_if_index <if-idx>) [(ip4|ip6|l2)] [(rx|tx|both)] [disable]";
 };
 
+/** \brief Enable or disable IPFIX flow record generation on an interface (v2)
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - add interface if non-zero, else delete
+    @param which - datapath on which to record flows
+    @param direction - direction of recorded flows
+    @param sw_if_index - index of the interface
+    @param interval_spacing - number of packets to skip between sampling intervals
+    @param interval_length - number of packets to report on in each interval
+*/
+autoreply define flowprobe_interface_add_del_v2
+{
+  option in_progress;
+  u32 client_index;
+  u32 context;
+  bool is_add;
+  vl_api_flowprobe_which_t which;
+  vl_api_flowprobe_direction_t direction;
+  vl_api_interface_index_t sw_if_index;
+  u32 interval_spacing [default=0];
+  u32 interval_length [default=1];
+  option vat_help = "(<intfc> | sw_if_index <if-idx>) [(ip4|ip6|l2)] [(rx|tx|both)] [disable] [spacing <N>] [length <M>]";
+};
+
 /** \brief Dump interfaces for which IPFIX flow record generation is enabled
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param sw_if_index - interface index to use as filter (0xffffffff is "all")
 */
 define flowprobe_interface_dump
+{
+  option in_progress;
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index [default=0xffffffff];
+  option vat_help = "[<if-idx>]";
+};
+
+/** \brief Dump interfaces for which IPFIX flow record generation is enabled (v2)
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - interface index to use as filter (0xffffffff is "all")
+*/
+define flowprobe_interface_v2_dump
 {
   option in_progress;
   u32 client_index;
@@ -110,6 +148,25 @@ define flowprobe_interface_details
   vl_api_flowprobe_which_t which;
   vl_api_flowprobe_direction_t direction;
   vl_api_interface_index_t sw_if_index;
+};
+
+/** \brief Details about IPFIX flow record generation enabled on interface (v2)
+    @param context - sender context which was passed in the request
+    @param which - datapath on which to record flows
+    @param direction - direction of recorded flows
+    @param sw_if_index - index of the interface
+    @param interval_spacing - number of packets to skip between sampling intervals
+    @param interval_length - number of packets to report on in each interval
+*/
+define flowprobe_interface_v2_details
+{
+  option in_progress;
+  u32 context;
+  vl_api_flowprobe_which_t which;
+  vl_api_flowprobe_direction_t direction;
+  vl_api_interface_index_t sw_if_index;
+  u32 interval_spacing;
+  u32 interval_length;
 };
 
 autoreply define flowprobe_params

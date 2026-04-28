@@ -140,6 +140,71 @@ api_flowprobe_interface_add_del (vat_main_t *vam)
 }
 
 static int
+api_flowprobe_interface_add_del_v2 (vat_main_t *vam)
+{
+  unformat_input_t *i = vam->input;
+  int enable_disable = 1;
+  u8 which = FLOWPROBE_WHICH_IP4;
+  u8 direction = FLOWPROBE_DIRECTION_TX;
+  u32 sw_if_index = ~0;
+  u32 interval_spacing = 0;
+  u32 interval_length = 1;
+  vl_api_flowprobe_interface_add_del_v2_t *mp;
+  int ret;
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "%U", unformat_sw_if_index, vam, &sw_if_index))
+	;
+      else if (unformat (i, "sw_if_index %d", &sw_if_index))
+	;
+      else if (unformat (i, "disable"))
+	enable_disable = 0;
+      else if (unformat (i, "ip4"))
+	which = FLOWPROBE_WHICH_IP4;
+      else if (unformat (i, "ip6"))
+	which = FLOWPROBE_WHICH_IP6;
+      else if (unformat (i, "l2"))
+	which = FLOWPROBE_WHICH_L2;
+      else if (unformat (i, "rx"))
+	direction = FLOWPROBE_DIRECTION_RX;
+      else if (unformat (i, "tx"))
+	direction = FLOWPROBE_DIRECTION_TX;
+      else if (unformat (i, "both"))
+	direction = FLOWPROBE_DIRECTION_BOTH;
+      else if (unformat (i, "spacing %d", &interval_spacing))
+	;
+      else if (unformat (i, "length %d", &interval_length))
+	;
+      else
+	break;
+    }
+
+  if (sw_if_index == ~0)
+    {
+      errmsg ("Missing interface name / explicit sw_if_index number\n");
+      return -99;
+    }
+
+  /* Construct the API message */
+  M (FLOWPROBE_INTERFACE_ADD_DEL_V2, mp);
+  mp->sw_if_index = ntohl (sw_if_index);
+  mp->is_add = enable_disable;
+  mp->which = which;
+  mp->direction = direction;
+  mp->interval_spacing = ntohl (interval_spacing);
+  mp->interval_length = ntohl (interval_length);
+
+  /* Send it... */
+  S (mp);
+
+  /* Wait for a reply... */
+  W (ret);
+  return ret;
+}
+
+static int
 api_flowprobe_interface_dump (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
@@ -159,6 +224,40 @@ api_flowprobe_interface_dump (vat_main_t *vam)
 
   /* Construct the API message */
   M (FLOWPROBE_INTERFACE_DUMP, mp);
+  mp->sw_if_index = htonl (sw_if_index);
+
+  /* Send it... */
+  S (mp);
+
+  /* Use control ping for synchronization */
+  PING (&flowprobe_test_main, mp_ping);
+  S (mp_ping);
+
+  /* Wait for a reply... */
+  W (ret);
+  return ret;
+}
+
+static int
+api_flowprobe_interface_v2_dump (vat_main_t *vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_flowprobe_interface_v2_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
+  u32 sw_if_index = ~0;
+  int ret;
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "%d", &sw_if_index))
+	;
+      else
+	break;
+    }
+
+  /* Construct the API message */
+  M (FLOWPROBE_INTERFACE_V2_DUMP, mp);
   mp->sw_if_index = htonl (sw_if_index);
 
   /* Send it... */
@@ -207,6 +306,49 @@ vl_api_flowprobe_interface_details_t_handler (
 
   out = format (0, "sw_if_index: %u, variant: %s, direction: %s\n%c",
 		sw_if_index, variants[which], directions[direction], 0);
+
+  fformat (vam->ofp, (char *) out);
+  vec_free (out);
+}
+
+static void
+vl_api_flowprobe_interface_v2_details_t_handler (vl_api_flowprobe_interface_v2_details_t *mp)
+{
+  vat_main_t *vam = flowprobe_test_main.vat_main;
+  u32 sw_if_index;
+  u8 which;
+  u8 direction;
+  u32 interval_spacing;
+  u32 interval_length;
+  u8 *out = 0;
+  const char *variants[] = {
+    [FLOWPROBE_WHICH_IP4] = "ip4",
+    [FLOWPROBE_WHICH_IP6] = "ip6",
+    [FLOWPROBE_WHICH_L2] = "l2",
+    "Erroneous variant",
+  };
+  const char *directions[] = {
+    [FLOWPROBE_DIRECTION_RX] = "rx",
+    [FLOWPROBE_DIRECTION_TX] = "tx",
+    [FLOWPROBE_DIRECTION_BOTH] = "rx tx",
+    "Erroneous direction",
+  };
+
+  sw_if_index = ntohl (mp->sw_if_index);
+  which = mp->which;
+  if (which > ARRAY_LEN (variants) - 2)
+    which = ARRAY_LEN (variants) - 1;
+
+  direction = mp->direction;
+  if (direction > ARRAY_LEN (directions) - 2)
+    direction = ARRAY_LEN (directions) - 1;
+
+  interval_spacing = ntohl (mp->interval_spacing);
+  interval_length = ntohl (mp->interval_length);
+
+  out = format (0, "sw_if_index: %u, variant: %s, direction: %s, spacing: %u, length: %u\n%c",
+		sw_if_index, variants[which], directions[direction], interval_spacing,
+		interval_length, 0);
 
   fformat (vam->ofp, (char *) out);
   vec_free (out);
