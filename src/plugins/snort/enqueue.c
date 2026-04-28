@@ -330,6 +330,7 @@ snort_arc_input (vlib_main_t *vm, vlib_node_runtime_t *node,
   daq_vpp_pkt_metadata_t metadata = {
     .flags = is_output ? 0 : DAQ_VPP_PKT_FLAG_PRE_ROUTING,
   };
+  u8 dir = is_output ? VLIB_TX : VLIB_RX;
 
   for (; n_left >= 8; n_left -= 4, bi += 4, ii += 4)
     {
@@ -344,13 +345,13 @@ snort_arc_input (vlib_main_t *vm, vlib_node_runtime_t *node,
       clib_prefetch_load (vlib_get_buffer (vm, bi[7]));
       b3 = vlib_get_buffer (vm, bi[3]);
 
-      ii[0] = instance_by_interface[vnet_buffer (b0)->sw_if_index[VLIB_RX]];
+      ii[0] = instance_by_interface[vnet_buffer (b0)->sw_if_index[dir]];
       *snort_get_buffer_metadata (b0) = metadata;
-      ii[1] = instance_by_interface[vnet_buffer (b1)->sw_if_index[VLIB_RX]];
+      ii[1] = instance_by_interface[vnet_buffer (b1)->sw_if_index[dir]];
       *snort_get_buffer_metadata (b1) = metadata;
-      ii[2] = instance_by_interface[vnet_buffer (b2)->sw_if_index[VLIB_RX]];
+      ii[2] = instance_by_interface[vnet_buffer (b2)->sw_if_index[dir]];
       *snort_get_buffer_metadata (b2) = metadata;
-      ii[3] = instance_by_interface[vnet_buffer (b3)->sw_if_index[VLIB_RX]];
+      ii[3] = instance_by_interface[vnet_buffer (b3)->sw_if_index[dir]];
       *snort_get_buffer_metadata (b3) = metadata;
     }
 
@@ -359,7 +360,7 @@ snort_arc_input (vlib_main_t *vm, vlib_node_runtime_t *node,
       vlib_buffer_t *b0;
 
       b0 = vlib_get_buffer (vm, bi[0]);
-      ii[0] = instance_by_interface[vnet_buffer (b0)->sw_if_index[VLIB_RX]];
+      ii[0] = instance_by_interface[vnet_buffer (b0)->sw_if_index[dir]];
       *snort_get_buffer_metadata (b0) = metadata;
     }
 
