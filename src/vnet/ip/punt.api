@@ -62,9 +62,9 @@ typedef punt_exception
 */
 union punt_union
 {
-    vl_api_punt_exception_t exception;
-    vl_api_punt_l4_t l4;
-    vl_api_punt_ip_proto_t ip_proto;
+    vl_api_punt_exception_t exception[case=PUNT_API_TYPE_EXCEPTION];
+    vl_api_punt_l4_t l4[case=PUNT_API_TYPE_L4];
+    vl_api_punt_ip_proto_t ip_proto[case=PUNT_API_TYPE_IP_PROTO];
 };
 
 /** \brief Full description of which packets are requested to be punted
@@ -74,7 +74,7 @@ union punt_union
 typedef punt
 {
     vl_api_punt_type_t type;
-    vl_api_punt_union_t punt;
+    vl_api_punt_union_t punt[discriminator=type];
 };
 
 /** \brief Punt traffic to the host

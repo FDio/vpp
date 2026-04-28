@@ -393,6 +393,7 @@ vl_api_npol_configure_policies_t_handler (vl_api_npol_configure_policies_t *mp)
 #include <acl/acl.api.h>
 #undef vl_endianfun
 
+
 static clib_error_t *
 calpol_init (vlib_main_t *vm)
 {
