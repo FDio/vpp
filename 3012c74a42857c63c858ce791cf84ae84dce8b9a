@@ -1,0 +1,106 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d47bfda2_2f0fc8db",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-28T09:33:52Z",
+      "side": 1,
+      "message": "Thanks a lot for your patch,\nI think there is a way to address this while keeping the lazy init of CPE\u0027s",
+      "revId": "3012c74a42857c63c858ce791cf84ae84dce8b9a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6201018b_c4c32540",
+        "filename": "src/plugins/cnat/cnat_snat_policy.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 164,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-28T09:33:52Z",
+      "side": 1,
+      "message": "And here we can keep calling `cnat_snat_policy_entry_init (cpe);`\nbut allow deletes to be re-entrant i.e.\n\n````\nif (!is_add \u0026\u0026 !cnat_snat_policy_entry_is_init (cpe))\n   return 0\n````\n\nI would argue this is a legit behavioral change as ADDs are already re-entrant",
+      "revId": "3012c74a42857c63c858ce791cf84ae84dce8b9a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "50f11af1_7fe0256e",
+        "filename": "src/plugins/cnat/cnat_snat_policy.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 438,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-28T09:33:52Z",
+      "side": 1,
+      "message": "Same thing here, we could keep the `init()` function",
+      "revId": "3012c74a42857c63c858ce791cf84ae84dce8b9a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b21f5d7a_58524ac1",
+        "filename": "src/plugins/cnat/cnat_snat_policy.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 467,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-28T09:33:52Z",
+      "side": 1,
+      "message": "And likewise we would `return 0` is the `cpe` is not initialized yet",
+      "revId": "3012c74a42857c63c858ce791cf84ae84dce8b9a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "39f115df_f77cbd02",
+        "filename": "src/plugins/cnat/cnat_snat_policy.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 479,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-28T09:33:52Z",
+      "side": 1,
+      "message": "And here we would return `0` as well so that the `delete` call is also re-entrant",
+      "revId": "3012c74a42857c63c858ce791cf84ae84dce8b9a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "893fad0b_514df5ba",
+        "filename": "src/plugins/cnat/cnat_snat_policy.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 606,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-28T09:33:52Z",
+      "side": 1,
+      "message": "I think we should keep the property that `cpe` is lazily initialized, \nas this is useful to save memory without bothering the controlplane\nwith reference tracking",
+      "revId": "3012c74a42857c63c858ce791cf84ae84dce8b9a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
