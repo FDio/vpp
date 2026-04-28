@@ -104,6 +104,24 @@
       "parentUuid": "0638c424_430ad057",
       "revId": "63c27c65cb92f9f91d15d6ae62d4535728b928be",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d4f94937_3e41a8d9",
+        "filename": "src/vppinfra/unix-formats.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 516,
+      "author": {
+        "id": 3200
+      },
+      "writtenOn": "2026-04-28T18:00:56Z",
+      "side": 1,
+      "message": "Per our conversation this morning, I removed format_backtrace_here()",
+      "parentUuid": "36779bcd_bb669633",
+      "revId": "63c27c65cb92f9f91d15d6ae62d4535728b928be",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
