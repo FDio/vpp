@@ -177,6 +177,12 @@ ipfix_id_count (u16 id, u16 count)
   return clib_host_to_net_u32 ((id << 16) | count);
 }
 
+typedef struct __attribute__ ((packed))
+{
+  u32 id_count;
+  u16 scope_field_count;
+} ipfix_options_template_header_t;
+
 /* Template packet */
 typedef struct
 {

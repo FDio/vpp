@@ -372,14 +372,32 @@ add_to_flow_record_state (vlib_main_t *vm, vlib_node_runtime_t *node,
   ASSERT (direction == FLOW_DIRECTION_RX || direction == FLOW_DIRECTION_TX);
 
   u32 my_cpu_number = vm->thread_index;
+  vlib_rx_or_tx_t rx_tx = (direction == FLOW_DIRECTION_RX) ? VLIB_RX : VLIB_TX;
+  u32 sw_if_index = vnet_buffer (b)->sw_if_index[rx_tx];
+
+  ASSERT (sw_if_index < vec_len (fm->sampling_per_interface));
+  flowprobe_sampling_params_t *params = &fm->sampling_per_interface[sw_if_index];
+
+  /* Count-based sampling: skip interval_spacing packets, then report
+   * interval_length packets. */
+  if (params->interval_spacing > 0)
+    {
+      ASSERT (sw_if_index < vec_len (fm->sample_state_per_interface));
+      flowprobe_sampling_state_t *state = &fm->sample_state_per_interface[sw_if_index];
+      u64 cycle = (u64) params->interval_spacing + params->interval_length;
+      u64 seen = clib_atomic_fetch_add_relax (&state->packets_seen, 1);
+
+      if (seen % cycle < params->interval_spacing)
+	return;
+    }
+
   u16 octets = 0;
 
   flowprobe_record_t flags = fm->context[which].flags;
   bool collect_ip4 = false, collect_ip6 = false;
   ASSERT (b);
-  ethernet_header_t *eth = (direction == FLOW_DIRECTION_TX) ?
-				   vlib_buffer_get_current (b) :
-				   ethernet_buffer_get_header (b);
+  ethernet_header_t *eth =
+    (direction == FLOW_DIRECTION_TX) ? vlib_buffer_get_current (b) : ethernet_buffer_get_header (b);
   u16 ethertype = clib_net_to_host_u16 (eth->type);
   i16 l3_hdr_offset = (u8 *) eth - b->data + sizeof (ethernet_header_t);
   flowprobe_key_t k = {};
@@ -595,16 +613,14 @@ flowprobe_export_send (vlib_main_t * vm, vlib_buffer_t * b0,
   h->export_time = clib_host_to_net_u32 (h->export_time);
   h->domain_id = clib_host_to_net_u32 (stream->domain_id);
 
-  /* FIXUP: message header sequence_number */
-  h->sequence_number = stream->sequence_number++;
+  /* RFC 7011 3.1: count of Data Records sent before this message */
+  h->sequence_number = clib_atomic_fetch_add (
+    &stream->sequence_number, fm->context[which].n_records_per_worker[my_cpu_number]);
   h->sequence_number = clib_host_to_net_u32 (h->sequence_number);
 
-  s->set_id_length = ipfix_set_id_length (fm->template_reports[flags],
-					  b0->current_length -
-					  (sizeof (*ip) + sizeof (*udp) +
-					   sizeof (*h)));
-  h->version_length = version_length (b0->current_length -
-				      (sizeof (*ip) + sizeof (*udp)));
+  s->set_id_length = ipfix_set_id_length (
+    fm->template_reports[flags], b0->current_length - (sizeof (*ip) + sizeof (*udp) + sizeof (*h)));
+  h->version_length = version_length (b0->current_length - (sizeof (*ip) + sizeof (*udp)));
 
   ip->length = clib_host_to_net_u16 (b0->current_length);
 
@@ -644,6 +660,7 @@ flowprobe_export_send (vlib_main_t * vm, vlib_buffer_t * b0,
   fm->context[which].buffers_per_worker[my_cpu_number] = 0;
   fm->context[which].next_record_offset_per_worker[my_cpu_number] =
     flowprobe_get_headersize ();
+  fm->context[which].n_records_per_worker[my_cpu_number] = 0;
 }
 
 static vlib_buffer_t *
@@ -680,13 +697,14 @@ flowprobe_get_buffer (vlib_main_t * vm, flowprobe_variant_t which)
       vnet_buffer (b0)->sw_if_index[VLIB_TX] = exp->fib_index;
       fm->context[which].next_record_offset_per_worker[my_cpu_number] =
 	b0->current_length;
+      fm->context[which].n_records_per_worker[my_cpu_number] = 0;
     }
 
   return b0;
 }
 
 static void
-flowprobe_export_entry (vlib_main_t * vm, flowprobe_entry_t * e)
+flowprobe_export_entry (vlib_main_t *vm, flowprobe_entry_t *e)
 {
   u32 my_cpu_number = vm->thread_index;
   flowprobe_main_t *fm = &flowprobe_main;
@@ -737,15 +755,15 @@ flowprobe_export_entry (vlib_main_t * vm, flowprobe_entry_t * e)
   b0->current_length = offset;
 
   fm->context[which].next_record_offset_per_worker[my_cpu_number] = offset;
+  fm->context[which].n_records_per_worker[my_cpu_number]++;
   /* Time to flush the buffer? */
   if (offset + fm->template_size[flags] > exp->path_mtu)
     flowprobe_export_send (vm, b0, which);
 }
 
-uword
-flowprobe_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
-		   vlib_frame_t *frame, flowprobe_variant_t which,
-		   flowprobe_direction_t direction)
+static inline uword
+flowprobe_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame,
+		   flowprobe_variant_t which, flowprobe_direction_t direction)
 {
   u32 n_left_from, *from, *to_next;
   flowprobe_next_t next_index;
