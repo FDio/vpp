@@ -22,6 +22,30 @@
       },
       "revId": "f137dc1d5eca54a5c4b79fe39cb6d456b387f250",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f9666d99_f15dc9f8",
+        "filename": "docs/aboutvpp/security/tsc_vulnerability_management_v2.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 92,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-04-28T15:23:31Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "8a358ec2_fc3ba6b2",
+      "range": {
+        "startLine": 53,
+        "startChar": 0,
+        "endLine": 92,
+        "endChar": 0
+      },
+      "revId": "f137dc1d5eca54a5c4b79fe39cb6d456b387f250",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
