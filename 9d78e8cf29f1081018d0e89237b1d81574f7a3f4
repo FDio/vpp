@@ -16,6 +16,24 @@
       "message": "I think we can drop this one?",
       "revId": "9d78e8cf29f1081018d0e89237b1d81574f7a3f4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9a0dd4e4_d44f41a7",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 11
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-04-28T16:26:10Z",
+      "side": 1,
+      "message": "We can but anyone trying to register callbacks with `vlib_buffer_set_alloc_free_callback` will break the bufmon tests, so I thought it\u0027s useful.",
+      "parentUuid": "d4466c5c_41af6976",
+      "revId": "9d78e8cf29f1081018d0e89237b1d81574f7a3f4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
