@@ -28,10 +28,7 @@ quic_quicly_register_cipher_suite (crypto_engine_type_t type, ptls_cipher_suite_
   quic_quicly_crypto_main_t *qqcm = &quic_quicly_crypto_main;
   u8 rv = 1;
 
-  if (!qqcm->quic_ciphers)
-    {
-      vec_validate (qqcm->quic_ciphers, type);
-    }
+  vec_validate (qqcm->quic_ciphers, type);
   if (!qqcm->quic_ciphers[type])
     {
       QUIC_DBG (3, "Register cipher suite: engine_type %U (%u), cipher_suites %p",
@@ -82,8 +79,13 @@ quic_quicly_crypto_init (quic_quicly_main_t *qqm)
 	  vec_validate (qqcm->per_thread_crypto_ctxs, qm->num_threads);
 	  for (i = 0; i < qm->num_threads; i++)
 	    {
+	      /* Use max-size allocation so that the context can be reused for
+	       * any algorithm (CTR or GCM) without reallocation.  GCM key data
+	       * (aes_gcm_key_data_t with Hi[36] GHASH tables) is significantly
+	       * larger than CTR key data; reusing a CTR-sized buffer for GCM
+	       * expansion causes a heap overflow and eventual SIGABRT. */
 	      qqcm->per_thread_crypto_ctxs[i] =
-		vnet_crypto_ctx_create (VNET_CRYPTO_ALG_AES_256_CTR);
+		vnet_crypto_ctx_create_max (VNET_CRYPTO_ALG_AES_256_CTR);
 	      if (qqcm->per_thread_crypto_ctxs[i])
 		vnet_crypto_ctx_set_cipher_key (qqcm->per_thread_crypto_ctxs[i], empty_key, 32);
 	    }
@@ -827,6 +829,8 @@ quic_quicly_crypto_set_key (crypto_key_t *key)
 
   ASSERT (key->algo);
   ASSERT (key->key_len);
+  /* The context was allocated with vnet_crypto_ctx_create_max so its key_data
+   * buffer is large enough for any algorithm.  Switching alg here is safe. */
   ctx->alg = key->algo;
   vnet_crypto_ctx_set_cipher_key (ctx, key->key, key->key_len);
 
