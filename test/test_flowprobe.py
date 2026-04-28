@@ -20,8 +20,20 @@ from asfframework import (
     VppTestRunner,
 )
 from vpp_object import VppObject
+from vpp_pg_interface import CaptureTimeoutError
 from util import ppp
-from ipfix import IPFIX, Set, Template, Data, IPFIXDecoder
+from ipfix import (
+    IPFIX,
+    Set,
+    Template,
+    OptionsTemplate,
+    Data,
+    IPFIXDecoder,
+    ingressInterface,
+    selectorAlgorithm,
+    samplingPacketInterval,
+    samplingPacketSpace,
+)
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_papi.macaddress import mac_ntop
 from socket import inet_ntop
@@ -33,6 +45,9 @@ TMPL_COMMON_FIELD_COUNT = 6
 TMPL_L2_FIELD_COUNT = 3
 TMPL_L3_FIELD_COUNT = 4
 TMPL_L4_FIELD_COUNT = 3
+# Sampling Options Template: 1 scope field (ingressInterface) + 3 non-scope
+# fields (selectorAlgorithm, samplingPacketInterval, samplingPacketSpace)
+TMPL_SAMPLING_FIELD_COUNT = 4
 
 IPFIX_TCP_FLAGS_ID = 6
 IPFIX_SRC_TRANS_PORT_ID = 7
@@ -148,19 +163,108 @@ class VppCFLOW(VppObject):
     def query_vpp_config(self):
         return self._configured
 
-    def verify_templates(self, decoder=None, timeout=1, count=3, field_count_in=None):
+    def verify_templates(
+        self,
+        decoder=None,
+        timeout=1,
+        count=3,
+        field_count_in=None,
+        options_count=0,
+    ):
+        """Wait for and decode template packets.
+
+        :param count: number of regular Templates (set_id=2) expected
+        :param options_count: number of Options Templates (set_id=3) expected
+        :returns: list of regular template IDs followed by options template IDs
+        """
         templates = []
+        options_templates = []
         self._test.assertIn(count, (1, 2, 3))
-        for _ in range(count):
-            p = self._test.wait_for_cflow_packet(self._test.collector, 2, timeout)
+        self._test.assertIn(options_count, (0, 1))
+        accepted = (2, 3) if options_count else (2,)
+        total = count + options_count
+        for _ in range(total):
+            p = self._test.wait_for_cflow_packet(
+                self._test.collector, accepted, timeout
+            )
             self._test.assertTrue(p.haslayer(IPFIX))
-            self._test.assertTrue(p.haslayer(Template))
-            if decoder is not None:
-                templates.append(p[Template].templateID)
-                decoder.add_template(p.getlayer(Template))
-            if field_count_in is not None:
-                self._test.assertIn(p[Template].fieldCount, field_count_in)
-        return templates
+            if p[Set].setID == 3:
+                self._test.assertTrue(p.haslayer(OptionsTemplate))
+                opt = p.getlayer(OptionsTemplate)
+                if decoder is not None:
+                    decoder.add_template(opt)
+                options_templates.append(opt.templateID)
+            else:
+                self._test.assertTrue(p.haslayer(Template))
+                if decoder is not None:
+                    templates.append(p[Template].templateID)
+                    decoder.add_template(p.getlayer(Template))
+                if field_count_in is not None:
+                    self._test.assertIn(p[Template].fieldCount, field_count_in)
+        return templates + options_templates
+
+
+class VppCFLOWv2(VppCFLOW):
+    """CFLOW v2 object with count-based sampling support"""
+
+    def __init__(
+        self,
+        test,
+        intf="pg2",
+        active=0,
+        passive=0,
+        timeout=100,
+        mtu=1024,
+        datapath="l2",
+        layer="l2 l3 l4",
+        direction="tx",
+        interval_spacing=0,
+        interval_length=1,
+    ):
+        super().__init__(
+            test=test,
+            intf=intf,
+            active=active,
+            passive=passive,
+            timeout=timeout,
+            mtu=mtu,
+            datapath=datapath,
+            layer=layer,
+            direction=direction,
+        )
+        self._interval_spacing = interval_spacing
+        self._interval_length = interval_length
+
+    def _enable_disable_flowprobe_feature(self, is_add):
+        which_map = {
+            "l2": VppEnum.vl_api_flowprobe_which_t.FLOWPROBE_WHICH_L2,
+            "ip4": VppEnum.vl_api_flowprobe_which_t.FLOWPROBE_WHICH_IP4,
+            "ip6": VppEnum.vl_api_flowprobe_which_t.FLOWPROBE_WHICH_IP6,
+        }
+        direction_map = {
+            "rx": VppEnum.vl_api_flowprobe_direction_t.FLOWPROBE_DIRECTION_RX,
+            "tx": VppEnum.vl_api_flowprobe_direction_t.FLOWPROBE_DIRECTION_TX,
+            "both": VppEnum.vl_api_flowprobe_direction_t.FLOWPROBE_DIRECTION_BOTH,
+        }
+        self._test.vapi.flowprobe_interface_add_del_v2(
+            is_add=is_add,
+            which=which_map[self._datapath],
+            direction=direction_map[self._direction],
+            sw_if_index=self._intf_obj.sw_if_index,
+            interval_spacing=self._interval_spacing,
+            interval_length=self._interval_length,
+        )
+
+    def verify_templates(self, decoder=None, timeout=1, count=3, field_count_in=None):
+        """Wait for templates; expect an Options Template too when sampling."""
+        options_count = 1 if self._interval_spacing > 0 else 0
+        return super().verify_templates(
+            decoder=decoder,
+            timeout=timeout,
+            count=count,
+            field_count_in=field_count_in,
+            options_count=options_count,
+        )
 
 
 class MethodHolder(VppTestCase):
@@ -362,16 +466,75 @@ class MethodHolder(VppTestCase):
     def wait_for_cflow_packet(self, collector_intf, set_id=2, timeout=1):
         """wait for CFLOW packet and verify its correctness
 
+        :param collector_intf: collector interface to receive packets on
+        :param set_id: expected IPFIX Set ID, or an iterable of accepted set IDs.
+            Packets with non-matching set IDs are buffered on the test instance
+            and returned to subsequent calls (this lets a single test consume
+            both regular flow data records and the sampling Options Data
+            records that arrive after an ipfix-flush when count-based sampling
+            is enabled).
         :param timeout: how long to wait
 
         """
+        if isinstance(set_id, (list, tuple, set)):
+            accepted = set(set_id)
+        else:
+            accepted = {set_id}
+
+        if not hasattr(self, "_cflow_buffer"):
+            self._cflow_buffer = []
+
+        # Serve a previously buffered packet if it matches.
+        for i, p in enumerate(self._cflow_buffer):
+            if p[Set].setID in accepted:
+                del self._cflow_buffer[i]
+                self.logger.debug(ppp("IPFIX: Got buffered packet:", p))
+                return p
+
         self.logger.info("IPFIX: Waiting for CFLOW packet")
-        # self.logger.debug(self.vapi.ppcli("show flow table"))
-        p = collector_intf.wait_for_packet(timeout=timeout)
-        self.assertEqual(p[Set].setID, set_id)
-        # self.logger.debug(self.vapi.ppcli("show flow table"))
-        self.logger.debug(ppp("IPFIX: Got packet:", p))
-        return p
+        deadline = time.time() + timeout
+        while True:
+            remaining = deadline - time.time()
+            if remaining <= 0:
+                remaining = 0.001
+            p = collector_intf.wait_for_packet(timeout=remaining)
+            if p[Set].setID in accepted:
+                self.logger.debug(ppp("IPFIX: Got packet:", p))
+                return p
+            self.logger.debug(
+                "IPFIX: Buffering packet with set_id=%d (waiting for %s)"
+                % (p[Set].setID, accepted)
+            )
+            self._cflow_buffer.append(p)
+
+    def collect_cflow_packets(self, timeout=2):
+        """Return buffered IPFIX packets plus those captured until timeout."""
+        pkts = getattr(self, "_cflow_buffer", [])
+        self._cflow_buffer = []
+        while True:
+            try:
+                p = self.collector.wait_for_packet(timeout=timeout)
+            except CaptureTimeoutError:
+                break
+            if p.haslayer(IPFIX):
+                pkts.append(p)
+        return pkts
+
+    def verify_sequence_numbers(self, pkts, decoder):
+        """RFC 7011 3.1: the sequence number of each message is the one of
+        the previous message plus the Data Records it carried, Options Data
+        Records included. Template Sets do not count."""
+        msgs = []
+        for p in pkts:
+            if p[Set].setID < 256:
+                continue
+            n_records = len(decoder.decode_data_set(p.getlayer(Set)))
+            self.assertGreater(n_records, 0, "unknown set id %d" % p[Set].setID)
+            msgs.append((p[IPFIX].sequenceNumber, n_records))
+        msgs.sort()
+        for (seq, n_records), (next_seq, _) in zip(msgs, msgs[1:]):
+            self.assertEqual(next_seq, seq + n_records)
+        return msgs
 
 
 @tag_run_solo
@@ -677,6 +840,525 @@ class Flowprobe(MethodHolder):
 
         ipfix.remove_vpp_config()
         self.logger.info("FFP_TEST_FINISH_0004")
+
+    def test_interface_dump_v2(self):
+        """Dump interfaces with IPFIX flow record generation enabled (v2 API)"""
+        self.logger.info("FFP_TEST_START_v2_dump")
+        self.pg_enable_capture(self.pg_interfaces)
+
+        # Enable feature using v2 API with sampling params
+        ipfix1 = VppCFLOWv2(
+            test=self,
+            intf="pg1",
+            datapath="l2",
+            direction="rx",
+            interval_spacing=0,
+            interval_length=1,
+        )
+        ipfix1.add_vpp_config()
+
+        ipfix2 = VppCFLOWv2(
+            test=self,
+            intf="pg2",
+            datapath="ip4",
+            direction="tx",
+            interval_spacing=5,
+            interval_length=2,
+        )
+        ipfix2.enable_flowprobe_feature()
+
+        ipfix3 = VppCFLOWv2(
+            test=self,
+            intf="pg3",
+            datapath="ip6",
+            direction="both",
+            interval_spacing=10,
+            interval_length=3,
+        )
+        ipfix3.enable_flowprobe_feature()
+
+        # Dump all interfaces using v2 dump; should contain all 3
+        dump = self.vapi.flowprobe_interface_v2_dump()
+        self.assertEqual(len(dump), 3)
+
+        # 1st interface
+        self.assertEqual(dump[0].sw_if_index, self.pg1.sw_if_index)
+        self.assertEqual(
+            dump[0].which, VppEnum.vl_api_flowprobe_which_t.FLOWPROBE_WHICH_L2
+        )
+        self.assertEqual(
+            dump[0].direction,
+            VppEnum.vl_api_flowprobe_direction_t.FLOWPROBE_DIRECTION_RX,
+        )
+        self.assertEqual(dump[0].interval_spacing, 0)
+        self.assertEqual(dump[0].interval_length, 1)
+
+        # 2nd interface
+        self.assertEqual(dump[1].sw_if_index, self.pg2.sw_if_index)
+        self.assertEqual(
+            dump[1].which, VppEnum.vl_api_flowprobe_which_t.FLOWPROBE_WHICH_IP4
+        )
+        self.assertEqual(
+            dump[1].direction,
+            VppEnum.vl_api_flowprobe_direction_t.FLOWPROBE_DIRECTION_TX,
+        )
+        self.assertEqual(dump[1].interval_spacing, 5)
+        self.assertEqual(dump[1].interval_length, 2)
+
+        # 3rd interface
+        self.assertEqual(dump[2].sw_if_index, self.pg3.sw_if_index)
+        self.assertEqual(
+            dump[2].which, VppEnum.vl_api_flowprobe_which_t.FLOWPROBE_WHICH_IP6
+        )
+        self.assertEqual(
+            dump[2].direction,
+            VppEnum.vl_api_flowprobe_direction_t.FLOWPROBE_DIRECTION_BOTH,
+        )
+        self.assertEqual(dump[2].interval_spacing, 10)
+        self.assertEqual(dump[2].interval_length, 3)
+
+        # Check if returned interface params match configuration
+        dump = self.vapi.flowprobe_interface_v2_dump(sw_if_index=self.pg2.sw_if_index)
+        self.assertEqual(len(dump), 1)
+        self.assertEqual(dump[0].sw_if_index, self.pg2.sw_if_index)
+        self.assertEqual(dump[0].interval_spacing, 5)
+        self.assertEqual(dump[0].interval_length, 2)
+
+        ipfix1.remove_vpp_config()
+        ipfix2.remove_vpp_config()
+        ipfix3.remove_vpp_config()
+        self.logger.info("FFP_TEST_FINISH_v2_dump")
+
+    def _verify_sampling_options(
+        self,
+        ipfix,
+        ipfix_decoder,
+        options_template_id,
+        expected_spacing,
+        expected_length,
+        timeout=5,
+    ):
+        """Wait for an Options Data record and verify sampling parameters."""
+        cflow = self.wait_for_cflow_packet(
+            self.collector, options_template_id, timeout=timeout
+        )
+        self.assertTrue(cflow.haslayer(Data))
+        records = ipfix_decoder.decode_data_set(cflow.getlayer(Set))
+        self.assertGreaterEqual(len(records), 1)
+        # Find the record for our interface
+        match = None
+        for rec in records:
+            ifindex = int.from_bytes(rec[ingressInterface], "big")
+            if ifindex == ipfix._intf_obj.sw_if_index:
+                match = rec
+                break
+        self.assertIsNotNone(
+            match,
+            "Options Data record for sw_if_index=%d not found"
+            % ipfix._intf_obj.sw_if_index,
+        )
+        # selectorAlgorithm = 1 (systematic count-based sampling, RFC 5476)
+        self.assertEqual(int.from_bytes(match[selectorAlgorithm], "big"), 1)
+        self.assertEqual(
+            int.from_bytes(match[samplingPacketInterval], "big"), expected_length
+        )
+        self.assertEqual(
+            int.from_bytes(match[samplingPacketSpace], "big"), expected_spacing
+        )
+        return cflow
+
+    def test_count_based_sampling(self):
+        """Count-based sampling: spacing=4 length=1 (every 5th packet reported)"""
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pkts = []
+
+        # 4:1,  packets 5 and 10 are sampled(10 pkts will be generated in total)
+        ipfix = VppCFLOWv2(
+            test=self,
+            intf="pg2",
+            datapath="l2",
+            layer="l2 l3 l4",
+            direction="tx",
+            interval_spacing=4,
+            interval_length=1,
+        )
+        ipfix.add_vpp_config()
+
+        ipfix_decoder = IPFIXDecoder()
+
+        # 3 regular templates + 1 Options Template (sampling)
+        templates = ipfix.verify_templates(ipfix_decoder, count=3)
+        self.assertEqual(len(templates), 4)
+        options_template_id = templates[-1]
+
+        self.create_stream(packets=10)
+        self.send_packets()
+
+        self.vapi.ipfix_flush()
+        cflow = self.wait_for_cflow_packet(self.collector, templates[1], timeout=5)
+
+        if cflow.haslayer(Data):
+            data = ipfix_decoder.decode_data_set(cflow.getlayer(Set))
+            # should be 2 packets(5th and 10th)
+            self.assertEqual(len(data), 2)
+            for record in data:
+                self.assertEqual(int(binascii.hexlify(record[2]), 16), 1)
+
+        # Verify the Options Data record carrying sampling parameters
+        self._verify_sampling_options(
+            ipfix,
+            ipfix_decoder,
+            options_template_id,
+            expected_spacing=4,
+            expected_length=1,
+        )
+
+        ipfix.remove_vpp_config()
+
+    def test_count_based_sampling_length(self):
+        """Count-based sampling: spacing=2 length=2 (2 sampled per 4 packets)"""
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pkts = []
+
+        # 2:2, should be 4 samples per 8 sent packets
+        ipfix = VppCFLOWv2(
+            test=self,
+            intf="pg2",
+            datapath="l2",
+            layer="l2 l3 l4",
+            direction="tx",
+            interval_spacing=2,
+            interval_length=2,
+        )
+        ipfix.add_vpp_config()
+
+        ipfix_decoder = IPFIXDecoder()
+        # 3 regular templates + 1 Options Template (sampling)
+        templates = ipfix.verify_templates(ipfix_decoder, count=3)
+        self.assertEqual(len(templates), 4)
+        options_template_id = templates[-1]
+
+        self.create_stream(packets=8)
+        self.send_packets()
+
+        self.vapi.ipfix_flush()
+        cflow = self.wait_for_cflow_packet(self.collector, templates[1], timeout=5)
+
+        if cflow.haslayer(Data):
+            data = ipfix_decoder.decode_data_set(cflow.getlayer(Set))
+            # 4 samples
+            self.assertEqual(len(data), 4)
+            for record in data:
+                self.assertEqual(int(binascii.hexlify(record[2]), 16), 1)
+
+        # Verify the Options Data record carrying sampling parameters
+        self._verify_sampling_options(
+            ipfix,
+            ipfix_decoder,
+            options_template_id,
+            expected_spacing=2,
+            expected_length=2,
+        )
+
+        ipfix.remove_vpp_config()
+
+    def test_count_based_sampling_no_sampling(self):
+        """Count-based sampling disabled (spacing=0): all packets reported"""
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pkts = []
+
+        # sampling is disabled. So it should work as v1 api, all packets reported
+        ipfix = VppCFLOWv2(
+            test=self,
+            intf="pg2",
+            datapath="l2",
+            layer="l2 l3 l4",
+            direction="tx",
+            interval_spacing=0,
+            interval_length=1,
+        )
+        ipfix.add_vpp_config()
+
+        ipfix_decoder = IPFIXDecoder()
+        # No Options Template should be sent when sampling is disabled
+        templates = ipfix.verify_templates(ipfix_decoder, count=3)
+        self.assertEqual(len(templates), 3)
+
+        # send 9 packets, expect 9
+        self.create_stream(packets=9)
+        capture = self.send_packets()
+
+        self.vapi.ipfix_flush()
+        cflow = self.wait_for_cflow_packet(self.collector, templates[1])
+
+        self.verify_cflow_data_notimer(ipfix_decoder, capture, [cflow])
+
+        self.collector.get_capture(4)
+
+        ipfix.remove_vpp_config()
+
+    def test_count_based_sampling_options_template(self):
+        """Sampling Options Template: format and Options Data record content"""
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pkts = []
+
+        spacing = 7
+        length = 3
+        ipfix = VppCFLOWv2(
+            test=self,
+            intf="pg2",
+            datapath="l2",
+            layer="l2 l3 l4",
+            direction="tx",
+            interval_spacing=spacing,
+            interval_length=length,
+        )
+        ipfix.add_vpp_config()
+
+        ipfix_decoder = IPFIXDecoder()
+
+        # Capture both regular templates and the Options Template
+        templates = []
+        options_templates_pkts = []
+        for _ in range(4):
+            p = self.wait_for_cflow_packet(self.collector, (2, 3), timeout=5)
+            self.assertTrue(p.haslayer(IPFIX))
+            if p[Set].setID == 3:
+                self.assertTrue(p.haslayer(OptionsTemplate))
+                options_templates_pkts.append(p.getlayer(OptionsTemplate))
+                ipfix_decoder.add_template(p.getlayer(OptionsTemplate))
+            else:
+                self.assertTrue(p.haslayer(Template))
+                templates.append(p[Template].templateID)
+                ipfix_decoder.add_template(p.getlayer(Template))
+
+        # Exactly one Options Template (sampling) is expected
+        self.assertEqual(len(options_templates_pkts), 1)
+        opt = options_templates_pkts[0]
+
+        # 1 scope field + 3 non-scope fields = 4 total
+        self.assertEqual(opt.fieldCount, TMPL_SAMPLING_FIELD_COUNT)
+        self.assertEqual(opt.scopeFieldCount, 1)
+        ies = [f.informationElement for f in opt.templateFields]
+        self.assertEqual(
+            ies,
+            [
+                ingressInterface,
+                selectorAlgorithm,
+                samplingPacketInterval,
+                samplingPacketSpace,
+            ],
+        )
+
+        # Send some packets, then verify the Options Data record content
+        self.create_stream(packets=5)
+        self.send_packets()
+        self.vapi.ipfix_flush()
+        self._verify_sampling_options(
+            ipfix,
+            ipfix_decoder,
+            opt.templateID,
+            expected_spacing=spacing,
+            expected_length=length,
+        )
+
+        ipfix.remove_vpp_config()
+
+    def _options_data_interfaces(self, pkts, decoder, options_template_id):
+        from ipfix import ingressInterface
+
+        ifaces = []
+        for p in pkts:
+            if p[Set].setID != options_template_id:
+                continue
+            for rec in decoder.decode_data_set(p.getlayer(Set)):
+                ifaces.append(int.from_bytes(rec[ingressInterface], "big"))
+        return ifaces
+
+    def test_count_based_sampling_options_template_removed(self):
+        """Sampling Options Template is removed with the last sampling iface"""
+        self.pg_enable_capture(self.pg_interfaces)
+
+        ipfix1 = VppCFLOWv2(
+            test=self,
+            intf="pg1",
+            datapath="l2",
+            direction="rx",
+            interval_spacing=3,
+            interval_length=1,
+        )
+        ipfix1.add_vpp_config()
+        ipfix2 = VppCFLOWv2(
+            test=self,
+            intf="pg2",
+            datapath="l2",
+            direction="tx",
+            interval_spacing=4,
+            interval_length=1,
+        )
+        ipfix2.enable_flowprobe_feature()
+
+        ipfix_decoder = IPFIXDecoder()
+        templates = ipfix1.verify_templates(ipfix_decoder, count=3)
+        self.assertEqual(len(templates), 4)
+        options_template_id = templates[-1]
+
+        # One sampling interface left: Options Data covers pg2 only
+        ipfix1.disable_flowprobe_feature()
+        self.pg_enable_capture(self.pg_interfaces)
+        self._cflow_buffer = []
+        self.vapi.ipfix_flush()
+        ifaces = self._options_data_interfaces(
+            self.collect_cflow_packets(), ipfix_decoder, options_template_id
+        )
+        self.assertTrue(ifaces)
+        self.assertEqual(set(ifaces), {self.pg2.sw_if_index})
+
+        # No sampling interface left: re-enabling without sampling must
+        # bring back the regular templates only
+        ipfix2.disable_flowprobe_feature()
+        self.pg_enable_capture(self.pg_interfaces)
+        self._cflow_buffer = []
+        ipfix_v1 = VppCFLOW(test=self, intf="pg2", datapath="l2", direction="tx")
+        ipfix_v1.enable_flowprobe_feature()
+        self.vapi.ipfix_flush()
+        set_ids = [p[Set].setID for p in self.collect_cflow_packets()]
+        self.assertEqual(set_ids, [2, 2, 2])
+
+        ipfix_v1.remove_vpp_config()
+
+    def test_count_based_sampling_options_path_mtu(self):
+        """Sampling Options Data is split to fit the path MTU"""
+        self.pg_enable_capture(self.pg_interfaces)
+
+        # IP(20) + UDP(8) + IPFIX(16) + Set(4) + one 14 byte record = 62,
+        # a second record would not fit
+        mtu = 70
+        ipfix1 = VppCFLOWv2(
+            test=self,
+            intf="pg1",
+            datapath="l2",
+            direction="rx",
+            mtu=mtu,
+            interval_spacing=3,
+            interval_length=1,
+        )
+        ipfix1.add_vpp_config()
+        ipfix2 = VppCFLOWv2(
+            test=self,
+            intf="pg2",
+            datapath="l2",
+            direction="tx",
+            mtu=mtu,
+            interval_spacing=4,
+            interval_length=1,
+        )
+        ipfix2.enable_flowprobe_feature()
+
+        ipfix_decoder = IPFIXDecoder()
+        templates = ipfix1.verify_templates(ipfix_decoder, count=3)
+        options_template_id = templates[-1]
+
+        self.vapi.ipfix_flush()
+        pkts = self.collect_cflow_packets()
+        opts = [p for p in pkts if p[Set].setID == options_template_id]
+        self.assertTrue(opts)
+        for p in opts:
+            self.assertLessEqual(p[IP].len, mtu)
+            self.assertEqual(len(ipfix_decoder.decode_data_set(p.getlayer(Set))), 1)
+        ifaces = self._options_data_interfaces(opts, ipfix_decoder, options_template_id)
+        self.assertEqual(set(ifaces), {self.pg1.sw_if_index, self.pg2.sw_if_index})
+        self.verify_sequence_numbers(pkts, ipfix_decoder)
+
+        ipfix2.disable_flowprobe_feature()
+        ipfix1.remove_vpp_config()
+
+    def test_count_based_sampling_sequence_number(self):
+        """Sequence numbers count flow and Options Data Records"""
+        self.pg_enable_capture(self.pg_interfaces)
+
+        ipfix = VppCFLOWv2(
+            test=self,
+            intf="pg2",
+            datapath="l2",
+            direction="tx",
+            interval_spacing=1,
+            interval_length=1,
+        )
+        ipfix.add_vpp_config()
+
+        ipfix_decoder = IPFIXDecoder()
+        templates = ipfix.verify_templates(ipfix_decoder, count=3)
+        options_template_id = templates[-1]
+
+        # 3 sampled flow records per round
+        for _ in range(3):
+            self.create_stream(packets=6)
+            self.send_packets()
+            self.vapi.ipfix_flush()
+            time.sleep(0.5)
+
+        pkts = self.collect_cflow_packets()
+        set_ids = {p[Set].setID for p in pkts}
+        self.assertIn(options_template_id, set_ids)
+        flow_records = sum(
+            len(ipfix_decoder.decode_data_set(p.getlayer(Set)))
+            for p in pkts
+            if p[Set].setID in templates[:-1]
+        )
+        self.assertEqual(flow_records, 9)
+        self.verify_sequence_numbers(pkts, ipfix_decoder)
+
+        ipfix.remove_vpp_config()
+
+
+@tag_run_solo
+@unittest.skipIf(
+    "flowprobe" in config.excluded_plugins, "Exclude Flowprobe plugin tests"
+)
+class FlowprobeSamplingWorkers(MethodHolder):
+    """Count-based sampling with multiple workers"""
+
+    vpp_worker_count = 2
+
+    def test_sampling_across_workers(self) -> None:
+        """Sampling pattern and sequence numbers hold across workers"""
+        self.pg_enable_capture(self.pg_interfaces)
+
+        ipfix = VppCFLOWv2(
+            test=self,
+            intf="pg2",
+            datapath="l2",
+            direction="tx",
+            interval_spacing=4,
+            interval_length=1,
+        )
+        ipfix.add_vpp_config()
+
+        ipfix_decoder = IPFIXDecoder()
+        templates = ipfix.verify_templates(ipfix_decoder, count=3)
+        options_template_id = templates[-1]
+
+        # Every 5th packet is sampled on each worker: 2 records per worker
+        for worker in range(self.vpp_worker_count):
+            self.create_stream(packets=10)
+            self.pg_enable_capture([self.pg2])
+            self.pg1.add_stream(self.pkts, worker=worker)
+            self.pg_start()
+            self.pg2.get_capture(len(self.pkts))
+
+        self.vapi.ipfix_flush()
+        pkts = self.collect_cflow_packets()
+        flow_records = sum(
+            len(ipfix_decoder.decode_data_set(p.getlayer(Set)))
+            for p in pkts
+            if p[Set].setID in templates[:-1]
+        )
+        self.assertEqual(flow_records, 4)
+        self.assertIn(options_template_id, {p[Set].setID for p in pkts})
+        self.verify_sequence_numbers(pkts, ipfix_decoder)
+
+        ipfix.remove_vpp_config()
 
 
 class DatapathTestsHolder(object):
