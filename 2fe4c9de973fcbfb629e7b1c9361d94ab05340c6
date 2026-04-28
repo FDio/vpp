@@ -1,0 +1,129 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d00d4aed_667f46c7",
+        "filename": "test/hs-test/docker/Dockerfile.base",
+        "patchSetId": 21
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-04-28T08:33:39Z",
+      "side": 1,
+      "message": "I don\u0027t see it called directly, is this needed for nfqueue or something else?",
+      "revId": "2fe4c9de973fcbfb629e7b1c9361d94ab05340c6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0b330ae0_e22c5939",
+        "filename": "test/hs-test/infra/suite_tcp_harness.go",
+        "patchSetId": 21
+      },
+      "lineNbr": 701,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-04-28T08:33:39Z",
+      "side": 1,
+      "message": "can we have some function in infra/asserts.go which fail test and print message instead of using AssertEqual(true, false) and AssertEmpty(\"error message\")",
+      "range": {
+        "startLine": 701,
+        "startChar": 1,
+        "endLine": 701,
+        "endChar": 25
+      },
+      "revId": "2fe4c9de973fcbfb629e7b1c9361d94ab05340c6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "33811ed5_27f19c37",
+        "filename": "test/hs-test/infra/suite_tcp_harness.go",
+        "patchSetId": 21
+      },
+      "lineNbr": 819,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-04-28T08:33:39Z",
+      "side": 1,
+      "message": "do you plan to have interrupt mode tests?",
+      "revId": "2fe4c9de973fcbfb629e7b1c9361d94ab05340c6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ad66c3ae_7e9abd17",
+        "filename": "test/hs-test/infra/tcpharness/nfqueue.go",
+        "patchSetId": 21
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-04-28T08:33:39Z",
+      "side": 1,
+      "message": "can we use this to build packet?\nhttps://pkg.go.dev/gvisor.dev/gvisor@v0.0.0-20260427222906-00af7dba072a/pkg/tcpip/header",
+      "revId": "2fe4c9de973fcbfb629e7b1c9361d94ab05340c6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "77dc5c2c_7d7642d1",
+        "filename": "test/hs-test/infra/tcpharness/packet.go",
+        "patchSetId": 21
+      },
+      "lineNbr": 14,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-04-28T08:33:39Z",
+      "side": 1,
+      "message": "you can parse pcap with gopacket lib, it has pcap package\nhttps://pkg.go.dev/github.com/google/gopacket/pcap",
+      "revId": "2fe4c9de973fcbfb629e7b1c9361d94ab05340c6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c2382763_a5d2be2e",
+        "filename": "test/hs-test/tcp_harness_test.go",
+        "patchSetId": 21
+      },
+      "lineNbr": 38,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-04-28T08:33:39Z",
+      "side": 1,
+      "message": "AssertContains",
+      "revId": "2fe4c9de973fcbfb629e7b1c9361d94ab05340c6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7bdb8595_d5be5bcb",
+        "filename": "test/hs-test/tcp_harness_test.go",
+        "patchSetId": 21
+      },
+      "lineNbr": 369,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-04-28T08:33:39Z",
+      "side": 1,
+      "message": "AssertEmpty",
+      "revId": "2fe4c9de973fcbfb629e7b1c9361d94ab05340c6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
