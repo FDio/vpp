@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "26fc9215_588261c3",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 25
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 3301
+      },
+      "writtenOn": "2026-04-28T13:13:09Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d34c2761_72ff76d9",
+      "revId": "8fc20b01c0af7f10d222f3b453e3b2ecd2270454",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "adce23c9_511ee77f",
@@ -31,6 +49,24 @@
       "writtenOn": "2026-04-07T08:48:14Z",
       "side": 1,
       "message": "this should not be there, please keep a *concise* description of what is actually done, not what was done in previous iterations",
+      "revId": "8fc20b01c0af7f10d222f3b453e3b2ecd2270454",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7fd2e01d_c3e8cb00",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 25
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 3301
+      },
+      "writtenOn": "2026-04-28T13:13:09Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "adce23c9_511ee77f",
       "revId": "8fc20b01c0af7f10d222f3b453e3b2ecd2270454",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -52,6 +88,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "7454a0ad_aa2565bd",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 25
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3301
+      },
+      "writtenOn": "2026-04-28T13:13:09Z",
+      "side": 1,
+      "message": "Yeah,no worries😅.",
+      "parentUuid": "495bbba8_25f776f5",
+      "revId": "8fc20b01c0af7f10d222f3b453e3b2ecd2270454",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "72f9a6de_bc58109c",
@@ -65,6 +119,24 @@
       "writtenOn": "2026-04-07T08:48:14Z",
       "side": 1,
       "message": "shouldn\u0027t it use CNAT_SCOPE_ID_NONE?",
+      "revId": "8fc20b01c0af7f10d222f3b453e3b2ecd2270454",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b03df779_f598c366",
+        "filename": "src/plugins/cnat/cnat_session.c",
+        "patchSetId": 25
+      },
+      "lineNbr": 175,
+      "author": {
+        "id": 3301
+      },
+      "writtenOn": "2026-04-28T13:13:09Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "72f9a6de_bc58109c",
       "revId": "8fc20b01c0af7f10d222f3b453e3b2ecd2270454",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
