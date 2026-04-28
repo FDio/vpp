@@ -453,7 +453,10 @@ class VPPUnionType(Packer):
                 if "crc" in f:
                     self.crc = f["crc"]
                 continue
-            f_type, f_name = f
+            # Tolerate per-arm options like {"case": "<enum_value>"} emitted
+            # for discriminated unions; they're metadata, not part of the
+            # wire layout.
+            f_type, f_name = f[:2]
             if f_type not in types:
                 logger.debug("Unknown union type {}".format(f_type))
                 raise VPPSerializerValueError("Unknown message type {}".format(f_type))

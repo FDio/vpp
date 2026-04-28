@@ -19,6 +19,7 @@
 */
 
 option version = "0.1.0";
+option manual_endian_include = "npol/npol_manual_endian.h";
 import "vnet/ip/ip_types.api";
 import "vnet/fib/fib_types.api";
 
@@ -59,9 +60,9 @@ typedef npol_three_tuple {
 };
 
 union npol_ipset_member_val {
-  vl_api_address_t address;
-  vl_api_prefix_t prefix;
-  vl_api_npol_three_tuple_t tuple;
+  vl_api_address_t address[case=NPOL_IP];
+  vl_api_prefix_t prefix[case=NPOL_NET];
+  vl_api_npol_three_tuple_t tuple[case=NPOL_IP_AND_PORT];
 };
 
 typedef npol_ipset_member {
@@ -131,9 +132,9 @@ typedef npol_entry_set_id {
 };
 
 union npol_entry_data {
-  vl_api_prefix_t cidr;
-  vl_api_npol_port_range_t port_range;
-  vl_api_npol_entry_set_id_t set_id;
+  vl_api_prefix_t cidr[case=NPOL_CIDR];
+  vl_api_npol_port_range_t port_range[case=NPOL_PORT_RANGE];
+  vl_api_npol_entry_set_id_t set_id[case=NPOL_PORT_IP_SET];
 };
 
 // A rule contains several such entries, each belong to a category
@@ -149,7 +150,7 @@ typedef npol_rule_entry {
   bool is_src;
   bool is_not;
   vl_api_npol_entry_type_t type;
-  vl_api_npol_entry_data_t data;
+  vl_api_npol_entry_data_t data[discriminator=type];
 };
 
 enum npol_rule_filter_type : u8 {

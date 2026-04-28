@@ -49,16 +49,16 @@ typedef nsh
 
 union eid_address
 {
-	vl_api_prefix_t prefix;
-	vl_api_mac_address_t mac;
-	vl_api_nsh_t nsh;
+	vl_api_prefix_t prefix[case=EID_TYPE_API_PREFIX];
+	vl_api_mac_address_t mac[case=EID_TYPE_API_MAC];
+	vl_api_nsh_t nsh[case=EID_TYPE_API_NSH];
 };
 
 /* endpoint identifier */
 typedef eid
 {
 	vl_api_eid_type_t type;
-	vl_api_eid_address_t address;
+	vl_api_eid_address_t address[discriminator=type];
 };
 
 enum hmac_key_id : u8

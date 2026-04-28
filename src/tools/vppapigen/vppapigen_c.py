@@ -31,6 +31,44 @@ import sys
 from io import StringIO
 import shutil
 
+
+def _global_types():
+    """Resolve the global type table at call time.
+
+    vppapigen.py runs as __main__ when invoked as a script, so a plain
+    `from vppapigen import global_types` at module load time either fails
+    (vppapigen not on sys.path under that name) or imports a fresh, empty
+    copy. Look it up lazily from __main__ first, falling back to an
+    explicit import for the case where vppapigen is imported as a library.
+    """
+    import sys
+
+    main = sys.modules.get("__main__")
+    if main is not None and hasattr(main, "global_types"):
+        return main.global_types
+    try:
+        import vppapigen  # noqa: WPS433
+
+        return vppapigen.global_types
+    except ImportError:
+        return {}
+
+
+class _GlobalTypesProxy:
+    """Dict-like view that always reflects the live global type table."""
+
+    def __getitem__(self, key):
+        return _global_types()[key]
+
+    def get(self, key, default=None):
+        return _global_types().get(key, default)
+
+    def __contains__(self, key):
+        return key in _global_types()
+
+
+global_types = _GlobalTypesProxy()
+
 process_imports = False
 
 
@@ -1203,6 +1241,39 @@ def endianfun_array(o, block):
 NO_ENDIAN_CONVERSION = {"client_index": None}
 
 
+def endianfun_tagged_union(o):
+    """Emit a switch dispatching union arm endian conversion based on a
+    sibling discriminator field. Relies on the parent function body having
+    already declared a host-order snapshot named _disc_<discriminator>.
+
+    Assumes the surrounding endian helper takes a `bool to_net` parameter
+    (autoendian-with-direction); the parameter is propagated to nested arm
+    helpers and used for scalar arms.
+    """
+    union = global_types[o.fieldtype]
+    disc_name = o.limit["discriminator"]
+    output = "    switch (_disc_{}) {{\n".format(disc_name)
+    for arm in union.block:
+        case_val = arm.limit["case"]
+        output += "    case {}:\n".format(case_val)
+        if arm.fieldtype in ENDIAN_STRINGS:
+            net_to_host = ENDIAN_STRINGS[arm.fieldtype]
+            host_to_net = net_to_host.replace("net_to_host", "host_to_net")
+            output += (
+                "        a->{f}.{a} = to_net ? {h2n}(a->{f}.{a}) "
+                ": {n2h}(a->{f}.{a});\n"
+            ).format(f=o.fieldname, a=arm.fieldname, h2n=host_to_net, n2h=net_to_host)
+        elif arm.fieldtype.startswith("vl_api_"):
+            output += "        {t}_endian(&a->{f}.{a}, to_net);\n".format(
+                t=arm.fieldtype, f=o.fieldname, a=arm.fieldname
+            )
+        # else: byte-oriented arm, nothing to swap.
+        output += "        break;\n"
+    output += "    default: break;\n"
+    output += "    }\n"
+    return output
+
+
 def endianfun_obj(o, block):
     """Generate endian conversion function for type"""
     output = ""
@@ -1216,6 +1287,9 @@ def endianfun_obj(o, block):
     if o.fieldname in NO_ENDIAN_CONVERSION:
         output += "    /* a->{n} = a->{n} (no-op) */\n".format(n=o.fieldname)
         return output
+    # Discriminated union: dispatch to the active arm using the snapshot.
+    if getattr(o, "limit", None) and "discriminator" in o.limit:
+        return endianfun_tagged_union(o)
     if o.fieldtype in ENDIAN_STRINGS:
         output += "    a->{name} = {format}(a->{name});\n".format(
             name=o.fieldname, format=get_endian_string(o.fieldtype)
@@ -1230,7 +1304,7 @@ def endianfun_obj(o, block):
     return output
 
 
-def endianfun(objs, modulename):
+def endianfun(objs, modulename, options=None):
     """Main entry point for endian function generation"""
     output = """\
 
@@ -1251,6 +1325,15 @@ def endianfun(objs, modulename):
 
 """
     output = output.format(module=modulename)
+
+    # Pull in user-supplied manual endian helpers (e.g. for old-style unions
+    # whose endian function we refuse to autogenerate). Must come before any
+    # static inline helper that calls them, so place it right after the
+    # uword macros and before per-type emission.
+    if options and "manual_endian_include" in options:
+        header = options["manual_endian_include"]
+        if header is not None:
+            output += '#include "{}"\n\n'.format(header)
 
     signature = """\
 static inline void vl_api_{name}_t_endian (vl_api_{name}_t *a, bool to_net)
@@ -1289,8 +1372,88 @@ static inline void vl_api_{name}_t_endian (vl_api_{name}_t *a, bool to_net)
                 output += "    /* Not Implemented yet {} */".format(t.name)
             output += "}\n\n"
             continue
+        if t.__class__.__name__ == "Union":
+
+            def _type_is_endian_free(tname, _seen=None):
+                # Resolve a type name (possibly vl_api_*) to whether walking
+                # its layout would require any byte swap. Recurses through
+                # Using aliases and simple Typedefs; conservative on Enum
+                # (always treated as needing a swap).
+                if _seen is None:
+                    _seen = set()
+                if tname in _seen:
+                    return False
+                _seen.add(tname)
+                if tname in ("u8", "bool", "string"):
+                    return True
+                if tname in ENDIAN_STRINGS:
+                    return False
+                if not tname.startswith("vl_api_"):
+                    return False
+                resolved = global_types.get(tname)
+                if resolved is None:
+                    return False
+                cls = resolved.__class__.__name__
+                if cls == "Using":
+                    return _type_is_endian_free(resolved.alias["type"], _seen)
+                if cls == "Typedef":
+                    return all(_field_is_endian_free(b, _seen) for b in resolved.block)
+                # Enum/EnumFlag/Union: needs a swap (or in the union case,
+                # we don't recurse — its endian helper is the thing we're
+                # deciding whether to emit).
+                return False
+
+            def _field_is_endian_free(f, _seen=None):
+                if f.type == "Array":
+                    return _type_is_endian_free(f.fieldtype, _seen)
+                if f.type != "Field":
+                    return False
+                return _type_is_endian_free(f.fieldtype, _seen)
+
+            if all(_field_is_endian_free(f) for f in t.block):
+                # All arms are byte-oriented; a no-op endian helper is correct.
+                output += signature.format(name=t.name)
+                output += "    /* union %s: all arms are endian-free */\n" % t.name
+                output += "}\n\n"
+            # else: emit nothing — caller must use manual_endian.
+            continue
 
         output += signature.format(name=t.name)
+
+        # Snapshot discriminators for any tagged-union fields. The switch
+        # over the snapshot must see a host-order value regardless of swap
+        # direction. With autoendian-with-direction, the parent helper takes
+        # `bool to_net`: when to_net is true the field is already host order
+        # at entry; when false it is net order and we convert at runtime.
+        disc_snapshots = []
+        for f in t.block:
+            limit = getattr(f, "limit", None)
+            if not limit or "discriminator" not in limit:
+                continue
+            disc_name = limit["discriminator"]
+            disc_field = next(
+                (x for x in t.block if getattr(x, "fieldname", None) == disc_name),
+                None,
+            )
+            if disc_field is None or disc_name in disc_snapshots:
+                continue
+            disc_snapshots.append(disc_name)
+            disc_enum = global_types.get(disc_field.fieldtype)
+            snap_ty = disc_field.fieldtype
+            output += "    {ty} _disc_{n} = a->{n};\n".format(ty=snap_ty, n=disc_name)
+            if disc_enum is not None and disc_enum.__class__.__name__ in (
+                "Enum",
+                "EnumFlag",
+            ):
+                if disc_enum.enumtype in ENDIAN_STRINGS:
+                    output += (
+                        "    if (!to_net) {ty}_endian(&_disc_{n}, false);\n"
+                    ).format(ty=snap_ty, n=disc_name)
+            elif disc_field.fieldtype in ENDIAN_STRINGS:
+                n2h = ENDIAN_STRINGS[disc_field.fieldtype]
+                output += ("    if (!to_net) _disc_{n} = {fn}(_disc_{n});\n").format(
+                    n=disc_name, fn=n2h
+                )
 
         for o in t.block:
             output += endianfun_obj(o, t.block)
@@ -2154,7 +2317,7 @@ def run(output_dir, apifilename, s):
     printfun(s["Define"], stream, modulename)
     output += stream.getvalue()
     stream.close()
-    output += endianfun(s["types"] + s["Define"], modulename)
+    output += endianfun(s["types"] + s["Define"], modulename, s["Option"])
     output += calc_size_fun(s["types"] + s["Define"], modulename)
     output += version_tuple(s, basename)
     output += BOTTOM_BOILERPLATE.format(input_filename=basename, file_crc=s["file_crc"])

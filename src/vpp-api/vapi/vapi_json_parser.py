@@ -281,7 +281,12 @@ class StructType(Type, Struct):
                     # what does it mean to set the defaults for instance of here_we_go?
                     #
                     # because of that, we parse it here, but don't do anything about it...
-                    if len(field[2]) != 1 or "default" not in field[2]:
+                    #
+                    # `discriminator` (on a typedef field referencing a union)
+                    # and `case` (on union arms) are layout-neutral metadata
+                    # introduced for tagged unions; ignore them here too.
+                    known = {"default", "discriminator", "case"}
+                    if len(field[2]) != 1 or not (set(field[2]) & known):
                         raise ParseError(
                             f"Don't know how to parse field `{field}' of type definition for type `{t}'"
                         )
@@ -448,8 +453,11 @@ class JsonParser(object):
                         progress = progress + 1
                         continue
                     try:
+                        # Each arm is [type, name] or [type, name, {options}]
+                        # when annotations like [case=...] are present.
+                        # Ignore the trailing options dict.
                         type_pairs = [
-                            [self.lookup_type_like_id(t), n] for t, n in u[1:]
+                            [self.lookup_type_like_id(arm[0]), arm[1]] for arm in u[1:]
                         ]
                         union = self.union_class(name, type_pairs, 0)
                         progress = progress + 1
