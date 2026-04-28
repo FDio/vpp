@@ -672,6 +672,9 @@ http2_sched_dispatch_udp_tunnel_inline (http_ctx_t *req, http_ctx_t *hc, u8 *n_e
   u8 *capsule_hdr_end;
   svm_fifo_seg_t segs[2 + n_app_segs];
 
+  if (req->req_flags & HTTP_REQ_F_NEED_WINDOW_UPDATE)
+    return;
+
   *n_emissions += HTTP2_SCHED_WEIGHT_DATA_INLINE;
   max_write = http_io_ts_max_write (hc, 0);
   /* we always keep free space in underlying transport fifo */
@@ -728,7 +731,7 @@ http2_sched_dispatch_udp_tunnel_inline (http_ctx_t *req, http_ctx_t *hc, u8 *n_e
     case HTTP_CAPSULE_STATE_HEADER:
       ASSERT (max_write);
       frame_size += clib_min (req->capsule_ctx_tx.hdr_left, max_write);
-      segs[n_segs].data = req->capsule_header_tx;
+      segs[n_segs].data = req->capsule_header_tx + req->capsule_ctx_tx.hdr_offset;
       segs[n_segs].len = frame_size;
       n_segs++;
       /* can we send full capsule header? */
