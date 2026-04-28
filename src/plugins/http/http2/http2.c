@@ -1240,7 +1240,7 @@ http2_update_time_callback (f64 now, u8 thread_index)
   http_worker_t *wrk = http_worker_get (thread_index);
   http_ctx_t *hc;
   http_ctx_t *req, *new_he, *old_he;
-  clib_llist_index_t ri, old_ti, next_ri, ci;
+  clib_llist_index_t ri, ci;
   u8 n_emissions = 0;
 
   /*
@@ -1262,10 +1262,6 @@ http2_update_time_callback (f64 now, u8 thread_index)
       /* first handle new responses (headers frame) */
       new_he = clib_llist_elt (wrk->ctx_pool, hc->new_tx_streams);
       ri = clib_llist_next_index (new_he, stream_sched_list);
-      /* save tail of old list so we will do only one round of already queued
-       * streams */
-      old_ti = clib_llist_prev_index (clib_llist_elt (wrk->ctx_pool, hc->old_tx_streams),
-				      stream_sched_list);
       while (ri != hc->new_tx_streams && !http_io_ts_check_write_thresh (hc) &&
 	     n_emissions < HTTP2_SCHED_MAX_EMISSIONS)
 	{
@@ -1279,23 +1275,16 @@ http2_update_time_callback (f64 now, u8 thread_index)
        * new ones, each stream tx one frame for now */
       /* TODO RFC9218 Prioritization (urgency will be weight) */
       old_he = clib_llist_elt (wrk->ctx_pool, hc->old_tx_streams);
-      if (old_ti != hc->old_tx_streams)
+      ri = clib_llist_next_index (old_he, stream_sched_list);
+      while (ri != hc->old_tx_streams && !http_io_ts_check_write_thresh (hc) &&
+	     hc->peer_window > 0 && n_emissions < HTTP2_SCHED_MAX_EMISSIONS)
 	{
+	  req = clib_llist_elt (wrk->ctx_pool, ri);
+	  HTTP_DBG (1, "sending data req_index %x",
+		    ((http_req_handle_t) req->hr_req_handle).req_index);
+	  clib_llist_remove (wrk->ctx_pool, stream_sched_list, req);
+	  req->dispatch_data_cb (req, hc, &n_emissions);
 	  ri = clib_llist_next_index (old_he, stream_sched_list);
-	  while (!http_io_ts_check_write_thresh (hc) && hc->peer_window > 0 &&
-		 n_emissions < HTTP2_SCHED_MAX_EMISSIONS)
-	    {
-	      req = clib_llist_elt (wrk->ctx_pool, ri);
-	      next_ri = clib_llist_next_index (req, stream_sched_list);
-	      HTTP_DBG (1, "sending data req_index %x",
-			((http_req_handle_t) req->hr_req_handle).req_index);
-	      clib_llist_remove (wrk->ctx_pool, stream_sched_list, req);
-	      req->dispatch_data_cb (req, hc, &n_emissions);
-	      if (ri == old_ti)
-		break;
-
-	      ri = next_ri;
-	    }
 	}
       /* deschedule http connection and wait for deq notification if underlying
        * transport session tx fifo is almost full */
