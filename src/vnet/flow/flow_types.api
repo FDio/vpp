@@ -245,39 +245,39 @@ typedef flow_generic
 
 union flow
 {
-  vl_api_flow_ethernet_t ethernet;
-  vl_api_flow_ip4_t ip4;
-  vl_api_flow_ip6_t ip6;
-  vl_api_flow_ip4_l2tpv3oip_t ip4_l2tpv3oip;
-  vl_api_flow_ip4_ipsec_esp_t ip4_ipsec_esp;
-  vl_api_flow_ip4_ipsec_ah_t ip4_ipsec_ah;
-  vl_api_flow_ip4_n_tuple_t ip4_n_tuple;
-  vl_api_flow_ip6_n_tuple_t ip6_n_tuple;
-  vl_api_flow_ip4_n_tuple_tagged_t ip4_n_tuple_tagged;
-  vl_api_flow_ip6_n_tuple_tagged_t ip6_n_tuple_tagged;
-  vl_api_flow_ip4_vxlan_t ip4_vxlan;
-  vl_api_flow_ip6_vxlan_t ip6_vxlan;
-  vl_api_flow_ip4_gtpc_t ip4_gtpc;
-  vl_api_flow_ip4_gtpu_t ip4_gtpu;
+  vl_api_flow_ethernet_t ethernet[case=FLOW_TYPE_ETHERNET];
+  vl_api_flow_ip4_t ip4[case=FLOW_TYPE_IP4];
+  vl_api_flow_ip6_t ip6[case=FLOW_TYPE_IP6];
+  vl_api_flow_ip4_l2tpv3oip_t ip4_l2tpv3oip[case=FLOW_TYPE_IP4_L2TPV3OIP];
+  vl_api_flow_ip4_ipsec_esp_t ip4_ipsec_esp[case=FLOW_TYPE_IP4_IPSEC_ESP];
+  vl_api_flow_ip4_ipsec_ah_t ip4_ipsec_ah[case=FLOW_TYPE_IP4_IPSEC_AH];
+  vl_api_flow_ip4_n_tuple_t ip4_n_tuple[case=FLOW_TYPE_IP4_N_TUPLE];
+  vl_api_flow_ip6_n_tuple_t ip6_n_tuple[case=FLOW_TYPE_IP6_N_TUPLE];
+  vl_api_flow_ip4_n_tuple_tagged_t ip4_n_tuple_tagged[case=FLOW_TYPE_IP4_N_TUPLE_TAGGED];
+  vl_api_flow_ip6_n_tuple_tagged_t ip6_n_tuple_tagged[case=FLOW_TYPE_IP6_N_TUPLE_TAGGED];
+  vl_api_flow_ip4_vxlan_t ip4_vxlan[case=FLOW_TYPE_IP4_VXLAN];
+  vl_api_flow_ip6_vxlan_t ip6_vxlan[case=FLOW_TYPE_IP6_VXLAN];
+  vl_api_flow_ip4_gtpc_t ip4_gtpc[case=FLOW_TYPE_IP4_GTPC];
+  vl_api_flow_ip4_gtpu_t ip4_gtpu[case=FLOW_TYPE_IP4_GTPU];
 };
 
 union flow_v2
 {
-  vl_api_flow_ethernet_t ethernet;
-  vl_api_flow_ip4_t ip4;
-  vl_api_flow_ip6_t ip6;
-  vl_api_flow_ip4_l2tpv3oip_t ip4_l2tpv3oip;
-  vl_api_flow_ip4_ipsec_esp_t ip4_ipsec_esp;
-  vl_api_flow_ip4_ipsec_ah_t ip4_ipsec_ah;
-  vl_api_flow_ip4_n_tuple_t ip4_n_tuple;
-  vl_api_flow_ip6_n_tuple_t ip6_n_tuple;
-  vl_api_flow_ip4_n_tuple_tagged_t ip4_n_tuple_tagged;
-  vl_api_flow_ip6_n_tuple_tagged_t ip6_n_tuple_tagged;
-  vl_api_flow_ip4_vxlan_t ip4_vxlan;
-  vl_api_flow_ip6_vxlan_t ip6_vxlan;
-  vl_api_flow_ip4_gtpc_t ip4_gtpc;
-  vl_api_flow_ip4_gtpu_t ip4_gtpu;
-  vl_api_flow_generic_t generic;
+  vl_api_flow_ethernet_t ethernet[case=FLOW_TYPE_ETHERNET_V2];
+  vl_api_flow_ip4_t ip4[case=FLOW_TYPE_IP4_V2];
+  vl_api_flow_ip6_t ip6[case=FLOW_TYPE_IP6_V2];
+  vl_api_flow_ip4_l2tpv3oip_t ip4_l2tpv3oip[case=FLOW_TYPE_IP4_L2TPV3OIP_V2];
+  vl_api_flow_ip4_ipsec_esp_t ip4_ipsec_esp[case=FLOW_TYPE_IP4_IPSEC_ESP_V2];
+  vl_api_flow_ip4_ipsec_ah_t ip4_ipsec_ah[case=FLOW_TYPE_IP4_IPSEC_AH_V2];
+  vl_api_flow_ip4_n_tuple_t ip4_n_tuple[case=FLOW_TYPE_IP4_N_TUPLE_V2];
+  vl_api_flow_ip6_n_tuple_t ip6_n_tuple[case=FLOW_TYPE_IP6_N_TUPLE_V2];
+  vl_api_flow_ip4_n_tuple_tagged_t ip4_n_tuple_tagged[case=FLOW_TYPE_IP4_N_TUPLE_TAGGED_V2];
+  vl_api_flow_ip6_n_tuple_tagged_t ip6_n_tuple_tagged[case=FLOW_TYPE_IP6_N_TUPLE_TAGGED_V2];
+  vl_api_flow_ip4_vxlan_t ip4_vxlan[case=FLOW_TYPE_IP4_VXLAN_V2];
+  vl_api_flow_ip6_vxlan_t ip6_vxlan[case=FLOW_TYPE_IP6_VXLAN_V2];
+  vl_api_flow_ip4_gtpc_t ip4_gtpc[case=FLOW_TYPE_IP4_GTPC_V2];
+  vl_api_flow_ip4_gtpu_t ip4_gtpu[case=FLOW_TYPE_IP4_GTPU_V2];
+  vl_api_flow_generic_t generic[case=FLOW_TYPE_GENERIC_V2];
 };
 
 /* main flow struct */
@@ -306,7 +306,7 @@ typedef flow_rule
   i32 buffer_advance;
   
   /* flow enum */
-  vl_api_flow_t flow;
+  vl_api_flow_t flow[discriminator=type];
 };
 
 /* main flow struct */
@@ -345,5 +345,5 @@ typedef flow_rule_v2
   vl_api_rss_function_t rss_fun;
 
   /* flow enum */
-  vl_api_flow_v2_t flow;
+  vl_api_flow_v2_t flow[discriminator=type];
 };

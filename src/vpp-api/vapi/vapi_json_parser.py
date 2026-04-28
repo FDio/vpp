@@ -448,8 +448,11 @@ class JsonParser(object):
                         progress = progress + 1
                         continue
                     try:
+                        # Each arm is [type, name] or [type, name, {options}]
+                        # when annotations like [case=...] are present.
+                        # Ignore the trailing options dict.
                         type_pairs = [
-                            [self.lookup_type_like_id(t), n] for t, n in u[1:]
+                            [self.lookup_type_like_id(arm[0]), arm[1]] for arm in u[1:]
                         ]
                         union = self.union_class(name, type_pairs, 0)
                         progress = progress + 1

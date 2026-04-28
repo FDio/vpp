@@ -955,7 +955,9 @@ class VPPAPIParser:
         """assignee : NUM
         | TRUE
         | FALSE
-        | STRING_LITERAL"""
+        | STRING_LITERAL
+        | ID
+        | TYPE"""
         p[0] = p[1]
 
     def p_type_specifier(self, p):
@@ -1042,6 +1044,75 @@ class VPPAPI:
             except FileNotFoundError:
                 print("File not found: {}".format(filename), file=sys.stderr)
                 sys.exit(2)
+
+    def _validate_tagged_unions(self, container):
+        """Validate fields that opt into discriminated-union dispatch via
+        [discriminator=<sibling>] / [case=<enum_value>] options.
+
+        For each field with a 'discriminator' option:
+          - The named sibling must precede the field and be enum-typed.
+          - The field's type must be a Union.
+          - Every arm of that union must carry [case=<enum_value>].
+          - Each case value must belong to the discriminator's enum.
+          - Cases must be unique within the union.
+        """
+        block = getattr(container, "block", None)
+        if not block:
+            return
+        seen = {}
+        for f in block:
+            if getattr(f, "type", None) == "Field":
+                seen[f.fieldname] = f
+            limit = getattr(f, "limit", None)
+            if not limit or "discriminator" not in limit:
+                continue
+            disc_name = limit["discriminator"]
+            if disc_name not in seen:
+                raise ValueError(
+                    "{}.{}: discriminator '{}' must be a preceding "
+                    "sibling field".format(container.name, f.fieldname, disc_name)
+                )
+            disc_field = seen[disc_name]
+            disc_enum = global_types.get(disc_field.fieldtype)
+            if disc_enum is None or disc_enum.__class__.__name__ not in (
+                "Enum",
+                "EnumFlag",
+            ):
+                raise ValueError(
+                    "{}.{}: discriminator '{}' must be of enum type "
+                    "(got {})".format(
+                        container.name, f.fieldname, disc_name, disc_field.fieldtype
+                    )
+                )
+            union = global_types.get(f.fieldtype)
+            if union is None or union.__class__.__name__ != "Union":
+                raise ValueError(
+                    "{}.{}: [discriminator=...] only valid on union-typed "
+                    "fields (got {})".format(container.name, f.fieldname, f.fieldtype)
+                )
+            enum_values = {entry[0] for entry in disc_enum.block}
+            seen_cases = set()
+            for arm in union.block:
+                arm_limit = getattr(arm, "limit", None) or {}
+                case = arm_limit.get("case")
+                if case is None:
+                    raise ValueError(
+                        "union {} arm '{}' missing [case=<enum_value>]".format(
+                            union.name, arm.fieldname
+                        )
+                    )
+                if case not in enum_values:
+                    raise ValueError(
+                        "union {} arm '{}': case '{}' not a member of "
+                        "enum {}".format(
+                            union.name, arm.fieldname, case, disc_field.fieldtype
+                        )
+                    )
+                if case in seen_cases:
+                    raise ValueError(
+                        "union {}: duplicate case '{}'".format(union.name, case)
+                    )
+                seen_cases.add(case)
 
     def process(self, objs):
         s = {}
@@ -1137,6 +1208,13 @@ class VPPAPI:
                         d, d + "_reply"
                     )
                 )
+
+        # Validate discriminated-union annotations on every typedef and message.
+        for t in s["types"]:
+            if t.__class__.__name__ in ("Typedef", "Union"):
+                self._validate_tagged_unions(t)
+        for d in s["Define"]:
+            self._validate_tagged_unions(d)
 
         return s
 

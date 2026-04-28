@@ -89,13 +89,13 @@ enum ip_proto : u8 {
 };
 
 union address_union {
-  vl_api_ip4_address_t ip4;
-  vl_api_ip6_address_t ip6;
+  vl_api_ip4_address_t ip4[case=ADDRESS_IP4];
+  vl_api_ip6_address_t ip6[case=ADDRESS_IP6];
 };
 
 manual_print typedef address {
   vl_api_address_family_t af;
-  vl_api_address_union_t un;
+  vl_api_address_union_t un[discriminator=af];
 };
 
 manual_print typedef prefix {
