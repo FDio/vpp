@@ -14,36 +14,7 @@ from scapy.layers.inet import IP, UDP, TCP, ICMP
 from scapy.layers.inet6 import IPv6
 
 
-@unittest.skipIf(
-    "sfdp_services" in config.excluded_plugins,
-    "SFDP_Services plugin is required to run SFDP tests",
-)
-class TestSfdp(VppTestCase):
-    """SFDP Infrastructure tests"""
-
-    @classmethod
-    def setUpClass(cls):
-        super(TestSfdp, cls).setUpClass()
-        try:
-            cls.create_pg_interfaces(range(4))
-            for i in cls.pg_interfaces:
-                i.config_ip4()
-                i.config_ip6()
-                i.resolve_arp()
-                i.resolve_ndp()
-                i.admin_up()
-        except Exception:
-            super(TestSfdp, cls).tearDownClass()
-            raise
-
-    @classmethod
-    def tearDownClass(cls):
-        for i in cls.pg_interfaces:
-            i.unconfig_ip4()
-            i.unconfig_ip6()
-            i.admin_down()
-        super(TestSfdp, cls).tearDownClass()
-
+class BaseSfdpTest(VppTestCase):
     def create_tcp_packet(
         self, src_mac, dst_mac, src_ip, dst_ip, sport, dport, flags="S", ttl=64
     ):
@@ -82,7 +53,69 @@ class TestSfdp(VppTestCase):
             / Raw(b"\xa5" * 100)
         )
 
-    # SFDP is configured on IPv4 feat-arc by default
+    def verify_basic_session_state(
+        self,
+        sess,
+        expected_protocol,
+        expected_state,
+        expected_session_type,
+        expected_src_ip=None,
+        expected_dst_ip=None,
+    ):
+        self.assertEqual(
+            sess.protocol, expected_protocol, f"Protocol should be {expected_protocol}"
+        )
+        self.assertEqual(sess.state, expected_state, "Unexpected session state")
+        self.assertEqual(
+            sess.session_type, expected_session_type, "Unexpected session type"
+        )
+
+        if expected_src_ip and expected_dst_ip:
+            detail_output = self.vapi.cli(
+                f"show sfdp session-detail {hex(sess.session_id)}"
+            )
+            self.assertIn(
+                expected_src_ip,
+                detail_output,
+                "cli output does not show expected source IP",
+            )
+            self.assertIn(
+                expected_dst_ip,
+                detail_output,
+                "cli output does not show expected destination IP",
+            )
+
+
+@unittest.skipIf(
+    "sfdp_services" in config.excluded_plugins,
+    "SFDP_Services plugin is required to run SFDP tests",
+)
+class TestSfdp(BaseSfdpTest):
+    """SFDP Infrastructure tests"""
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestSfdp, cls).setUpClass()
+        try:
+            cls.create_pg_interfaces(range(4))
+            for i in cls.pg_interfaces:
+                i.config_ip4()
+                i.config_ip6()
+                i.resolve_arp()
+                i.resolve_ndp()
+                i.admin_up()
+        except Exception:
+            super(TestSfdp, cls).tearDownClass()
+            raise
+
+    @classmethod
+    def tearDownClass(cls):
+        for i in cls.pg_interfaces:
+            i.unconfig_ip4()
+            i.unconfig_ip6()
+            i.admin_down()
+        super(TestSfdp, cls).tearDownClass()
+
     def _configure_sfdp(self, enable_ip4=True, enable_ip6=False):
         """Base SFDP Configuration"""
         self.assertTrue(
@@ -237,40 +270,6 @@ class TestSfdp(VppTestCase):
             tenant_id=self.tenant_id_ip6,
             is_del=True,
         )
-
-    def _verify_basic_session_state(
-        self,
-        sess,
-        expected_protocol,
-        expected_state,
-        expected_session_type,
-        expected_src_ip=None,
-        expected_dst_ip=None,
-    ):
-        """Verify basic session state"""
-        self.assertEqual(
-            sess.protocol, expected_protocol, f"Protocol should be {expected_protocol}"
-        )
-        self.assertEqual(sess.state, expected_state, "Unexpected session state")
-        self.assertEqual(
-            sess.session_type, expected_session_type, "Unexpected session type"
-        )
-
-        # Verify session detail via CLI if IPs are provided
-        if expected_src_ip and expected_dst_ip:
-            detail_output = self.vapi.cli(
-                f"show sfdp session-detail {hex(sess.session_id)}"
-            )
-            self.assertIn(
-                expected_src_ip,
-                detail_output,
-                "cli output does not show expected source IP",
-            )
-            self.assertIn(
-                expected_dst_ip,
-                detail_output,
-                "cli output does not show expected destination IP",
-            )
 
     def test_sfdp_api_configuration(self):
         """Test SFDP configuration"""
@@ -467,7 +466,7 @@ class TestSfdp(VppTestCase):
         for sess in sessions:
             if sess.protocol == 6:  # TCP
                 found = True
-                self._verify_basic_session_state(
+                self.verify_basic_session_state(
                     sess,
                     6,
                     VppEnum.vl_api_sfdp_session_state_t.SFDP_API_SESSION_STATE_FSOL,
@@ -507,7 +506,7 @@ class TestSfdp(VppTestCase):
         for sess in sessions:
             if sess.protocol == 17:  # UDP
                 found = True
-                self._verify_basic_session_state(
+                self.verify_basic_session_state(
                     sess,
                     17,
                     VppEnum.vl_api_sfdp_session_state_t.SFDP_API_SESSION_STATE_FSOL,
@@ -546,7 +545,7 @@ class TestSfdp(VppTestCase):
         for sess in sessions:
             if sess.protocol == 6:  # TCP
                 found = True
-                self._verify_basic_session_state(
+                self.verify_basic_session_state(
                     sess,
                     6,
                     VppEnum.vl_api_sfdp_session_state_t.SFDP_API_SESSION_STATE_FSOL,
@@ -582,7 +581,7 @@ class TestSfdp(VppTestCase):
         for sess in sessions:
             if sess.protocol == 17:  # UDP
                 found = True
-                self._verify_basic_session_state(
+                self.verify_basic_session_state(
                     sess,
                     17,
                     VppEnum.vl_api_sfdp_session_state_t.SFDP_API_SESSION_STATE_FSOL,
@@ -637,7 +636,7 @@ class TestSfdp(VppTestCase):
             ):  # TCP V4
                 found_v4 = True
                 self.assertEqual(sess.tenant_id, self.tenant_id_ip4)
-                self._verify_basic_session_state(
+                self.verify_basic_session_state(
                     sess,
                     6,
                     VppEnum.vl_api_sfdp_session_state_t.SFDP_API_SESSION_STATE_FSOL,
@@ -652,7 +651,7 @@ class TestSfdp(VppTestCase):
             ):  # TCP V6
                 found_v6 = True
                 self.assertEqual(sess.tenant_id, self.tenant_id_ip6)
-                self._verify_basic_session_state(
+                self.verify_basic_session_state(
                     sess,
                     6,
                     VppEnum.vl_api_sfdp_session_state_t.SFDP_API_SESSION_STATE_FSOL,
@@ -696,7 +695,7 @@ class TestSfdp(VppTestCase):
         # Verify all sessions are in FSOL state and belong to tenant 1
         for sess in sessions:
             self.assertEqual(sess.tenant_id, 1, "Session should belong to tenant 1")
-            self._verify_basic_session_state(
+            self.verify_basic_session_state(
                 sess,
                 6,
                 VppEnum.vl_api_sfdp_session_state_t.SFDP_API_SESSION_STATE_FSOL,
@@ -811,7 +810,7 @@ class TestSfdp(VppTestCase):
 
         # Verify both sessions are in FSOL state
         for sess in sessions:
-            self._verify_basic_session_state(
+            self.verify_basic_session_state(
                 sess,
                 6,
                 VppEnum.vl_api_sfdp_session_state_t.SFDP_API_SESSION_STATE_FSOL,
@@ -844,7 +843,7 @@ class TestSfdp(VppTestCase):
     "sfdp_services" in config.excluded_plugins,
     "SFDP_Services plugin is required to run SFDP tests",
 )
-class TestSfdpTimer(VppTestCase):
+class TestSfdpTimer(BaseSfdpTest):
     """SFDP timer wheel behavior"""
 
     # 20ms makes one wheel turn (2048 slots) in 40.96s.
@@ -897,12 +896,15 @@ class TestSfdpTimer(VppTestCase):
         self.assertNotIn(session_id, self._session_ids())
 
     def _send_embryonic_tcp_syn(self, dst_ip, sport):
-        pkt = (
-            Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
-            / IP(src=self.pg0.remote_ip4, dst=dst_ip)
-            / TCP(sport=sport, dport=80, flags="S")
+        pkt = self.create_tcp_packet(
+            src_mac=self.pg0.remote_mac,
+            dst_mac=self.pg0.local_mac,
+            src_ip=self.pg0.remote_ip4,
+            dst_ip=dst_ip,
+            sport=sport,
+            dport=80,
+            flags="S",
         )
-
         self.pg0.add_stream(pkt)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
