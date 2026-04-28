@@ -16,6 +16,24 @@
       "message": "I don\u0027t see this macro referenced anywhere. Either it\u0027s not needed, or something somewhere should use it.\n\nThe other flowprobe_template_*_field_count() macros are used to build a total field count.  Maybe in flowprobe_sampling_options_template_rewrite(), total_field_count should be set as `flowprobe_template_sampling_fields() + 1`?",
       "revId": "20a63a556a5d2204ce3cb80fd23ed3e8c6cd58e2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "80b45998_77dfc997",
+        "filename": "src/plugins/flowprobe/flowprobe.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 190,
+      "author": {
+        "id": 1761
+      },
+      "writtenOn": "2026-04-28T21:26:56Z",
+      "side": 1,
+      "message": "yep, good point. Just a remains of manual rebase. Will fix.",
+      "parentUuid": "44e8ef4f_7533fafd",
+      "revId": "20a63a556a5d2204ce3cb80fd23ed3e8c6cd58e2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
