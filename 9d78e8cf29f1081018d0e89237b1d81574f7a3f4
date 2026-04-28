@@ -34,6 +34,24 @@
       "parentUuid": "d4466c5c_41af6976",
       "revId": "9d78e8cf29f1081018d0e89237b1d81574f7a3f4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "81614924_76464ae1",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 11
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-04-28T16:38:05Z",
+      "side": 1,
+      "message": "well I don\u0027t know because here as soon as you enable bufmon you are going to silently break whatever was relying on the cbak. So I prefer to it to fail with an error.\nAlternatively we could add a \u0027force\u0027 cli option to do that, and we can use it in the test...",
+      "parentUuid": "9a0dd4e4_d44f41a7",
+      "revId": "9d78e8cf29f1081018d0e89237b1d81574f7a3f4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
