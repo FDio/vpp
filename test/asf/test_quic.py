@@ -66,6 +66,12 @@ class QUICTestCase(VppAsfTestCase):
     def setUpClass(cls):
         cls.extra_vpp_plugin_config.append("plugin quic_plugin.so { enable }")
         cls.extra_vpp_plugin_config.append("plugin quic_quicly_plugin.so { enable }")
+        cls.extra_vpp_config = list(cls.extra_vpp_config) + [
+            "quic",
+            "{",
+            "enable-vnet-crypto",
+            "}",
+        ]
         super(QUICTestCase, cls).setUpClass()
 
     def setUp(self):
@@ -117,7 +123,7 @@ class QUICTestCase(VppAsfTestCase):
         self.ip_t10.add_vpp_config()
         self.logger.debug(self.vapi.cli("show ip fib"))
         # TODO: refactor test suites to use all crypto cipher suites
-        # self.vapi.cli("quic set crypto api vpp")
+        self.vapi.cli("quic set crypto api vpp")
         # self.vapi.cli("quic set crypto api engine-lib")
         self.logger.debug(self.vapi.cli("show quic"))
 
