@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "40bd7633_c1d7cc89",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 60
+      },
+      "lineNbr": 1379,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-04-28T00:38:19Z",
+      "side": 1,
+      "message": "We need better names for these. Wonder if we should be moving it to app_worker. And then it becomes `app_wrk_get_connect_index (session_t *s)`\n\nProbably similar comments for some of the functions lower, but let\u0027s talk about it live.",
+      "revId": "c151eab9ef5a756b043a78468ae4004bb4bace24",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
