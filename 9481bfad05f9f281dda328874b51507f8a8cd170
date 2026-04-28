@@ -16,6 +16,24 @@
       "message": "Should this use `dir` instead of hardcoded `VLIB_RX`?",
       "revId": "9481bfad05f9f281dda328874b51507f8a8cd170",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "fc3f5032_54e3df9b",
+        "filename": "src/plugins/snort/enqueue.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 376,
+      "author": {
+        "id": 2512
+      },
+      "writtenOn": "2026-04-28T18:18:08Z",
+      "side": 1,
+      "message": "Fixed here and for the other trace",
+      "parentUuid": "93a5d1ff_407dd21c",
+      "revId": "9481bfad05f9f281dda328874b51507f8a8cd170",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
