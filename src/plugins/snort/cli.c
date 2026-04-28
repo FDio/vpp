@@ -272,8 +272,8 @@ snort_attach_command_fn (vlib_main_t *vm, unformat_input_t *input,
       goto done;
     }
 
-  snort_attach_detach_instance (vm, vnm, (char *) name, sw_if_index,
-				1 /* is_enable */, in, out);
+  err =
+    snort_attach_detach_instance (vm, vnm, (char *) name, sw_if_index, 1 /* is_enable */, in, out);
 
 done:
   vec_free (name);
@@ -282,7 +282,7 @@ done:
 
 VLIB_CLI_COMMAND (snort_attach_command, static) = {
   .path = "snort attach",
-  .short_help = "snort attach instance <name> [instance <name> [...]] "
+  .short_help = "snort attach instance <name> "
 		"interface <if-name> "
 		"[input|output|inout]",
   .function = snort_attach_command_fn,
@@ -296,6 +296,7 @@ snort_detach_command_fn (vlib_main_t *vm, unformat_input_t *input,
   clib_error_t *err = NULL;
   u8 *name = NULL;
   u32 sw_if_index = ~0;
+  int in = 0, out = 0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -304,6 +305,12 @@ snort_detach_command_fn (vlib_main_t *vm, unformat_input_t *input,
       else if (unformat (input, "interface %U", unformat_vnet_sw_interface,
 			 vnm, &sw_if_index))
 	;
+      else if (unformat (input, "input"))
+	in = 1;
+      else if (unformat (input, "output"))
+	out = 1;
+      else if (unformat (input, "inout"))
+	in = out = 1;
       else
 	{
 	  err = clib_error_return (0, "unknown input `%U'",
@@ -312,14 +319,20 @@ snort_detach_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	}
     }
 
+  if (!in && !out)
+    {
+      err = clib_error_return (0, "please specify traffic direction");
+      goto done;
+    }
+
   if (sw_if_index == ~0)
     {
       err = clib_error_return (0, "please specify interface");
       goto done;
     }
 
-  snort_attach_detach_instance (vm, vnm, (char *) name, sw_if_index,
-				0 /* is_enable */, 1, 1);
+  err =
+    snort_attach_detach_instance (vm, vnm, (char *) name, sw_if_index, 0 /* is_enable */, in, out);
 
 done:
   vec_free (name);
@@ -328,8 +341,9 @@ done:
 
 VLIB_CLI_COMMAND (snort_detach_command, static) = {
   .path = "snort detach",
-  .short_help = "snort detach instance <name> [instance <name> [...]] "
-		"interface <if-name> ",
+  .short_help = "snort detach instance <name> "
+		"interface <if-name> "
+		"[input|output|inout]",
   .function = snort_detach_command_fn,
 };
 
