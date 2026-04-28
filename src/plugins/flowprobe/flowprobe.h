@@ -29,7 +29,8 @@ typedef enum
   FLOW_RECORD_L4 = 1 << 2,
   FLOW_RECORD_L2_IP4 = 1 << 3,
   FLOW_RECORD_L2_IP6 = 1 << 4,
-  FLOW_N_RECORDS = 1 << 5,
+  FLOW_RECORD_SAMPLING = 1 << 5,
+  FLOW_N_RECORDS = 1 << 6,
 } flowprobe_record_t;
 
 typedef enum __attribute__ ((__packed__))
@@ -107,10 +108,19 @@ typedef struct
   } prot;
 } flowprobe_entry_t;
 
-/**
- * @file
- * @brief flow-per-packet plugin header file
- */
+/* Count-based sampling */
+typedef struct
+{
+  u32 interval_spacing;
+  u32 interval_length;
+} flowprobe_sampling_params_t;
+
+typedef struct
+{
+  u32 next_interval_counter;
+  u32 packets_passed;
+} flowprobe_sampling_state_t;
+
 typedef struct
 {
   /** API message ID base */
@@ -142,6 +152,16 @@ typedef struct
   u16 template_per_flow[FLOW_N_VARIANTS];
   u8 *flow_per_interface;
   u8 *direction_per_interface;
+
+  /** Count based sampling params (per interface) */
+  flowprobe_sampling_params_t *sampling_per_interface;
+
+  /** Count based sampling state (per thread per interface) */
+  flowprobe_sampling_state_t **sample_state_per_worker;
+
+  /** Sampling options template (RFC 7011 Options Template Set, set_id=3) */
+  u16 sampling_options_template_id;
+  u32 n_sampling_interfaces;
 
   /** convenience vlib_main_t pointer */
   vlib_main_t *vlib_main;

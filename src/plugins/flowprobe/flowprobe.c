@@ -185,6 +185,26 @@ flowprobe_template_common_fields (ipfix_field_specifier_t * f)
 }
 
 static inline ipfix_field_specifier_t *
+flowprobe_template_sampling_fields (ipfix_field_specifier_t *f)
+{
+#define flowprobe_template_sampling_field_count() 3
+
+  /* selectorAlgorithm, TLV type 304, u16 */
+  f->e_id_length = ipfix_e_id_length (0 /* enterprise */, selectorAlgorithm, 2);
+  f++;
+
+  /* samplingPacketInterval, TLV type 305, u32 */
+  f->e_id_length = ipfix_e_id_length (0 /* enterprise */, samplingPacketInterval, 4);
+  f++;
+
+  /* samplingPacketSpace, TLV type 306, u32 */
+  f->e_id_length = ipfix_e_id_length (0 /* enterprise */, samplingPacketSpace, 4);
+  f++;
+
+  return f;
+}
+
+static inline ipfix_field_specifier_t *
 flowprobe_template_l4_fields (ipfix_field_specifier_t * f)
 {
 #define flowprobe_template_l4_field_count() 3
@@ -409,6 +429,215 @@ flowprobe_data_callback_l2 (flow_report_main_t *frm, ipfix_exporter_t *exp,
   return f;
 }
 
+/**
+ * @brief Create an IPFIX Options Template (set_id=3) for sampling parameters
+ *
+ * Per RFC 7011, sampling parameters belong in an Options Template Set,
+ * not in the regular Data Template.  The scope field is ingressInterface
+ * and the non-scope fields are selectorAlgorithm, samplingPacketInterval,
+ * and samplingPacketSpace.
+ */
+static u8 *
+flowprobe_sampling_options_template_rewrite (ipfix_exporter_t *exp, flow_report_t *fr,
+					     u16 collector_port, ipfix_report_element_t *elts,
+					     u32 n_elts, u32 *stream_index)
+{
+  ip4_header_t *ip;
+  udp_header_t *udp;
+  ipfix_message_header_t *h;
+  ipfix_set_header_t *s;
+  ipfix_options_template_header_t *t;
+  ipfix_field_specifier_t *f;
+  ipfix_field_specifier_t *first_field;
+  u8 *rewrite = 0;
+  ip4_ipfix_template_packet_t *tp;
+  flow_report_stream_t *stream;
+
+  stream = &exp->streams[fr->stream_index];
+
+  /* 1 scope field + 3 non-scope fields = 4 total */
+  u32 total_field_count = 4;
+
+  /*
+   * ip4_ipfix_template_packet_t contains an ipfix_template_header_t (4 bytes).
+   * We need ipfix_options_template_header_t (6 bytes) instead, so add 2.
+   */
+  u32 rewrite_size =
+    sizeof (ip4_ipfix_template_packet_t) + 2 + total_field_count * sizeof (ipfix_field_specifier_t);
+
+  vec_validate_aligned (rewrite, rewrite_size - 1, CLIB_CACHE_LINE_BYTES);
+
+  tp = (ip4_ipfix_template_packet_t *) rewrite;
+  ip = (ip4_header_t *) &tp->ip4;
+  udp = (udp_header_t *) (ip + 1);
+  h = (ipfix_message_header_t *) (udp + 1);
+  s = (ipfix_set_header_t *) (h + 1);
+  t = (ipfix_options_template_header_t *) (s + 1);
+  first_field = f = (ipfix_field_specifier_t *) (t + 1);
+
+  ip->ip_version_and_header_length = 0x45;
+  ip->ttl = 254;
+  ip->protocol = IP_PROTOCOL_UDP;
+  ip->src_address.as_u32 = exp->src_address.ip.ip4.as_u32;
+  ip->dst_address.as_u32 = exp->ipfix_collector.ip.ip4.as_u32;
+  udp->src_port = clib_host_to_net_u16 (stream->src_port);
+  udp->dst_port = clib_host_to_net_u16 (collector_port);
+  udp->length = clib_host_to_net_u16 (vec_len (rewrite) - sizeof (*ip));
+
+  /* FIXUP: message header export_time */
+  /* FIXUP: message header sequence_number */
+  h->domain_id = clib_host_to_net_u32 (stream->domain_id);
+
+  /* Scope field: ingressInterface (IE 10, u32) */
+  f->e_id_length = ipfix_e_id_length (0, ingressInterface, 4);
+  f++;
+
+  /* Non-scope fields */
+  f = flowprobe_template_sampling_fields (f);
+
+  ASSERT (f - first_field == total_field_count);
+
+  /* Options Template Record header */
+  t->id_count = ipfix_id_count (fr->template_id, total_field_count);
+  t->scope_field_count = clib_host_to_net_u16 (1);
+
+  /* Set header: set_id = 3 for Options Template Sets */
+  s->set_id_length = ipfix_set_id_length (3, (u8 *) f - (u8 *) s);
+
+  /* Message header */
+  h->version_length = version_length ((u8 *) f - (u8 *) h);
+
+  ip->length = clib_host_to_net_u16 ((u8 *) f - (u8 *) ip);
+  ip->checksum = ip4_header_checksum (ip);
+
+  return rewrite;
+}
+
+/**
+ * @brief Data callback for sampling options: sends one Options Data Record
+ * per interface that has sampling enabled.
+ */
+static vlib_frame_t *
+flowprobe_sampling_data_callback (flow_report_main_t *frm, ipfix_exporter_t *exp, flow_report_t *fr,
+				  vlib_frame_t *f, u32 *to_next, u32 node_index)
+{
+  flowprobe_main_t *fm = &flowprobe_main;
+  vlib_main_t *vm = frm->vlib_main;
+  vlib_buffer_t *b0;
+  u32 bi0;
+  ip4_ipfix_template_packet_t *tp;
+  ip4_header_t *ip;
+  udp_header_t *udp;
+  ipfix_message_header_t *h;
+  ipfix_set_header_t *s;
+  flow_report_stream_t *stream;
+
+  /* Count interfaces with sampling */
+  u32 n_sampling = 0;
+  for (u32 i = 0; i < vec_len (fm->flow_per_interface); i++)
+    {
+      if (fm->flow_per_interface[i] == (u8) ~0)
+	continue;
+      if (i < vec_len (fm->sampling_per_interface) &&
+	  fm->sampling_per_interface[i].interval_spacing > 0)
+	n_sampling++;
+    }
+
+  if (n_sampling == 0)
+    return f;
+
+  if (vlib_buffer_alloc (vm, &bi0, 1) != 1)
+    return f;
+
+  b0 = vlib_get_buffer (vm, bi0);
+  b0->current_data = 0;
+  b0->flags |= (VLIB_BUFFER_TOTAL_LENGTH_VALID | VNET_BUFFER_F_FLOW_REPORT);
+  vnet_buffer (b0)->sw_if_index[VLIB_RX] = 0;
+  vnet_buffer (b0)->sw_if_index[VLIB_TX] = exp->fib_index;
+
+  tp = vlib_buffer_get_current (b0);
+  ip = (ip4_header_t *) &tp->ip4;
+  udp = (udp_header_t *) (ip + 1);
+  h = (ipfix_message_header_t *) (udp + 1);
+  s = (ipfix_set_header_t *) (h + 1);
+  u8 *data = (u8 *) (s + 1);
+
+  /* Each record: ingressInterface(4) + selectorAlgorithm(2)
+   * + samplingPacketInterval(4) + samplingPacketSpace(4) = 14 bytes */
+  for (u32 i = 0; i < vec_len (fm->flow_per_interface); i++)
+    {
+      if (fm->flow_per_interface[i] == (u8) ~0)
+	continue;
+      if (i >= vec_len (fm->sampling_per_interface))
+	continue;
+      flowprobe_sampling_params_t *sp = &fm->sampling_per_interface[i];
+      if (sp->interval_spacing == 0)
+	continue;
+
+      /* Scope: ingressInterface */
+      u32 iface = clib_host_to_net_u32 (i);
+      clib_memcpy_fast (data, &iface, 4);
+      data += 4;
+
+      /* selectorAlgorithm: 1 = systematic count-based sampling */
+      u16 algo = clib_host_to_net_u16 (1);
+      clib_memcpy_fast (data, &algo, 2);
+      data += 2;
+
+      /* samplingPacketInterval */
+      u32 interval = clib_host_to_net_u32 (sp->interval_length);
+      clib_memcpy_fast (data, &interval, 4);
+      data += 4;
+
+      /* samplingPacketSpace */
+      u32 spacing = clib_host_to_net_u32 (sp->interval_spacing);
+      clib_memcpy_fast (data, &spacing, 4);
+      data += 4;
+    }
+
+  b0->current_length = data - (u8 *) ip;
+
+  /* Fill in headers */
+  stream = &exp->streams[fr->stream_index];
+
+  ip->ip_version_and_header_length = 0x45;
+  ip->ttl = 254;
+  ip->protocol = IP_PROTOCOL_UDP;
+  ip->flags_and_fragment_offset = 0;
+  ip->src_address.as_u32 = exp->src_address.ip.ip4.as_u32;
+  ip->dst_address.as_u32 = exp->ipfix_collector.ip.ip4.as_u32;
+  udp->src_port = clib_host_to_net_u16 (stream->src_port);
+  udp->dst_port = clib_host_to_net_u16 (exp->collector_port);
+  udp->checksum = 0;
+
+  h->export_time = (u32) (((f64) frm->unix_time_0) + (vlib_time_now (vm) - frm->vlib_time_0));
+  h->export_time = clib_host_to_net_u32 (h->export_time);
+  h->domain_id = clib_host_to_net_u32 (stream->domain_id);
+
+  /* Templates do not increment the sequence number */
+  h->sequence_number = clib_host_to_net_u32 (stream->sequence_number);
+
+  /* Data Set header: set_id = template_id */
+  s->set_id_length = ipfix_set_id_length (fr->template_id, data - (u8 *) s);
+  h->version_length = version_length (data - (u8 *) h);
+
+  ip->length = clib_host_to_net_u16 (data - (u8 *) ip);
+  ip->checksum = ip4_header_checksum (ip);
+  udp->length = clib_host_to_net_u16 (data - (u8 *) ip - sizeof (*ip));
+
+  if (exp->udp_checksum)
+    {
+      udp->checksum = ip4_tcp_udp_compute_checksum (vm, b0, ip);
+      if (udp->checksum == 0)
+	udp->checksum = 0xffff;
+    }
+
+  to_next[0] = bi0;
+  f->n_vectors++;
+
+  return f;
+}
+
 static int
 flowprobe_template_add_del (u32 domain_id, u16 src_port,
 			    flowprobe_record_t flags,
@@ -455,10 +684,17 @@ flowprobe_create_state_tables (u32 active_timer)
   int i;
 
   /* Decide how many worker threads we have */
-  num_threads = 1 /* main thread */  + tm->n_threads;
+  num_threads = 1 /* main thread */ + tm->n_threads;
 
   /* Hash table per worker */
   fm->ht_log2len = FLOWPROBE_LOG2_HASHSIZE;
+
+  /* Initialize sampling state per worker */
+  vec_validate (fm->sample_state_per_worker, num_threads - 1);
+  for (i = 0; i < num_threads; i++)
+    {
+      fm->sample_state_per_worker[i] = 0;
+    }
 
   /* Init per worker flow state and timer wheels */
   if (active_timer)
@@ -484,13 +720,16 @@ flowprobe_create_state_tables (u32 active_timer)
       fm->disabled = true;
     }
   else
-    {
-      f64 now = vlib_time_now (vm);
-      vec_validate (fm->stateless_entry, num_threads - 1);
-      for (i = 0; i < num_threads; i++)
-	fm->stateless_entry[i].last_exported = now;
-      fm->disabled = false;
-    }
+    fm->disabled = false;
+
+  /* Always allocate stateless entries; they are used when active_timer == 0
+   * but must exist even if this table was first created with active_timer > 0
+   * so that a later switch to stateless mode does not dereference NULL. */
+  f64 now = vlib_time_now (vm);
+  vec_validate (fm->stateless_entry, num_threads - 1);
+  for (i = 0; i < num_threads; i++)
+    fm->stateless_entry[i].last_exported = now;
+
   fm->initialized = true;
   return error;
 }
@@ -532,6 +771,45 @@ flowprobe_clear_state_if_index (u32 sw_if_index)
   return error;
 }
 
+static void
+flowprobe_init_sampling_state_for_interface (u32 sw_if_index, u32 interval_spacing)
+{
+  flowprobe_main_t *fm = &flowprobe_main;
+  vlib_thread_main_t *tm = &vlib_thread_main;
+  u32 num_threads = 1 + tm->n_threads;
+  int i;
+
+  /* Initialize sampling state for this interface on all worker threads */
+  for (i = 0; i < num_threads; i++)
+    {
+      vec_validate_init_empty (fm->sample_state_per_worker[i], sw_if_index,
+			       (flowprobe_sampling_state_t){ 0 });
+
+      flowprobe_sampling_state_t *state = &fm->sample_state_per_worker[i][sw_if_index];
+      state->next_interval_counter = interval_spacing;
+      state->packets_passed = 0;
+    }
+}
+
+static void
+flowprobe_clear_sampling_state_for_interface (u32 sw_if_index)
+{
+  flowprobe_main_t *fm = &flowprobe_main;
+  vlib_thread_main_t *tm = &vlib_thread_main;
+  u32 num_threads = 1 + tm->n_threads;
+  int i;
+
+  /* Clear sampling state for this interface on all worker threads */
+  for (i = 0; i < num_threads; i++)
+    {
+      if (sw_if_index < vec_len (fm->sample_state_per_worker[i]))
+	{
+	  clib_memset (&fm->sample_state_per_worker[i][sw_if_index], 0,
+		       sizeof (flowprobe_sampling_state_t));
+	}
+    }
+}
+
 static int
 validate_feature_on_interface (flowprobe_main_t * fm, u32 sw_if_index,
 			       u8 which)
@@ -558,13 +836,24 @@ validate_feature_on_interface (flowprobe_main_t * fm, u32 sw_if_index,
  */
 
 static int
-flowprobe_interface_add_del_feature (flowprobe_main_t *fm, u32 sw_if_index,
-				     u8 which, u8 direction, int is_add)
+flowprobe_interface_add_del_feature (flowprobe_main_t *fm, u32 sw_if_index, u8 which, u8 direction,
+				     u32 sampling_spacing, u32 sampling_length, int is_add)
 {
   vlib_main_t *vm = vlib_get_main ();
   int rv = 0;
   u16 template_id = 0;
-  flowprobe_record_t flags = fm->record;
+  flowprobe_record_t flags;
+
+  if (is_add)
+    {
+      flags = fm->record;
+    }
+  else
+    {
+      /* Use the flags stored when the feature was enabled so that template
+	 removal matches the registered template. */
+      flags = fm->context[which].flags;
+    }
 
   fm->flow_per_interface[sw_if_index] = (is_add) ? which : (u8) ~ 0;
   fm->direction_per_interface[sw_if_index] = (is_add) ? direction : (u8) ~0;
@@ -581,7 +870,7 @@ flowprobe_interface_add_del_feature (flowprobe_main_t *fm, u32 sw_if_index,
 	    {
 	      flowprobe_flush_callback_l2 ();
 	    }
-	  if (fm->record & FLOW_RECORD_L2)
+	  if (flags & FLOW_RECORD_L2)
 	    {
 	      rv = flowprobe_template_add_del (1, UDP_DST_PORT_ipfix, flags,
 					       flowprobe_data_callback_l2,
@@ -589,7 +878,7 @@ flowprobe_interface_add_del_feature (flowprobe_main_t *fm, u32 sw_if_index,
 					       is_add, &template_id);
 	      fm->template_reports[flags] = (is_add) ? template_id : 0;
 	    }
-	  if (fm->record & FLOW_RECORD_L3 || fm->record & FLOW_RECORD_L4)
+	  if (flags & FLOW_RECORD_L3 || flags & FLOW_RECORD_L4)
 	    {
 	      rv = flowprobe_template_add_del (1, UDP_DST_PORT_ipfix, flags,
 					       flowprobe_data_callback_l2,
@@ -643,7 +932,7 @@ flowprobe_interface_add_del_feature (flowprobe_main_t *fm, u32 sw_if_index,
 
   if (which != (u8) ~ 0)
     {
-      fm->context[which].flags = fm->record;
+      fm->context[which].flags = flags;
     }
 
   if (direction == FLOW_DIRECTION_RX || direction == FLOW_DIRECTION_BOTH)
@@ -693,6 +982,66 @@ flowprobe_interface_add_del_feature (flowprobe_main_t *fm, u32 sw_if_index,
       flowprobe_clear_state_if_index (sw_if_index);
     }
 
+  if (is_add)
+    {
+      if (sampling_spacing && (sampling_length < 1))
+	sampling_length = 1;
+
+      /* Initialize configuration parameters */
+      vec_validate_init_empty (fm->sampling_per_interface, sw_if_index,
+			       (flowprobe_sampling_params_t){ 0 });
+      flowprobe_sampling_params_t *params = &fm->sampling_per_interface[sw_if_index];
+      params->interval_spacing = sampling_spacing;
+      params->interval_length = sampling_length;
+
+      /* Initialize per-thread sampling state */
+      flowprobe_init_sampling_state_for_interface (sw_if_index, sampling_spacing);
+
+      /* Register the sampling Options Template on the first sampling iface */
+      if (sampling_spacing > 0)
+	{
+	  fm->n_sampling_interfaces++;
+	  if (fm->n_sampling_interfaces == 1)
+	    {
+	      u16 opt_template_id = 0;
+	      rv = flowprobe_template_add_del (
+		1, UDP_DST_PORT_ipfix, FLOW_RECORD_SAMPLING, flowprobe_sampling_data_callback,
+		flowprobe_sampling_options_template_rewrite, 1, &opt_template_id);
+	      if (rv && rv != VNET_API_ERROR_VALUE_EXIST)
+		clib_warning ("Failed to register sampling options template: %d", rv);
+	      else
+		fm->sampling_options_template_id = opt_template_id;
+	    }
+	}
+    }
+  else
+    {
+      /* Unregister sampling Options Template if this was a sampling iface */
+      if (sw_if_index < vec_len (fm->sampling_per_interface) &&
+	  fm->sampling_per_interface[sw_if_index].interval_spacing > 0)
+	{
+	  fm->n_sampling_interfaces--;
+	  if (fm->n_sampling_interfaces == 0 && fm->sampling_options_template_id)
+	    {
+	      u16 opt_template_id = fm->sampling_options_template_id;
+	      flowprobe_template_add_del (
+		1, UDP_DST_PORT_ipfix, FLOW_RECORD_SAMPLING, flowprobe_sampling_data_callback,
+		flowprobe_sampling_options_template_rewrite, 0, &opt_template_id);
+	      fm->sampling_options_template_id = 0;
+	    }
+	}
+
+      /* Clear configuration parameters */
+      if (sw_if_index < vec_len (fm->sampling_per_interface))
+	{
+	  clib_memset (&fm->sampling_per_interface[sw_if_index], 0,
+		       sizeof (flowprobe_sampling_params_t));
+	}
+
+      /* Clear per-thread sampling state */
+      flowprobe_clear_sampling_state_for_interface (sw_if_index);
+    }
+
   return 0;
 }
 
@@ -724,8 +1073,8 @@ void vl_api_flowprobe_tx_interface_add_del_t_handler
       goto out;
     }
 
-  rv = flowprobe_interface_add_del_feature (fm, sw_if_index, mp->which,
-					    FLOW_DIRECTION_TX, mp->is_add);
+  rv = flowprobe_interface_add_del_feature (fm, sw_if_index, mp->which, FLOW_DIRECTION_TX, 0, 0,
+					    mp->is_add);
 
 out:
   BAD_SW_IF_INDEX_LABEL;
@@ -809,13 +1158,159 @@ vl_api_flowprobe_interface_add_del_t_handler (
 	}
     }
 
-  rv = flowprobe_interface_add_del_feature (fm, sw_if_index, which, direction,
-					    is_add);
+  rv = flowprobe_interface_add_del_feature (fm, sw_if_index, which, direction, 0, 0, is_add);
 
 out:
   BAD_SW_IF_INDEX_LABEL;
 
   REPLY_MACRO (VL_API_FLOWPROBE_INTERFACE_ADD_DEL_REPLY);
+}
+
+void
+vl_api_flowprobe_interface_add_del_v2_t_handler (vl_api_flowprobe_interface_add_del_v2_t *mp)
+{
+  flowprobe_main_t *fm = &flowprobe_main;
+  vl_api_flowprobe_interface_add_del_v2_reply_t *rmp;
+  u32 sw_if_index;
+  u8 which;
+  u8 direction;
+  u32 sampling_spacing;
+  u32 sampling_length;
+  bool is_add;
+  int rv = 0;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  sw_if_index = ntohl (mp->sw_if_index);
+  is_add = mp->is_add;
+
+  if (mp->which == FLOWPROBE_WHICH_IP4)
+    which = FLOW_VARIANT_IP4;
+  else if (mp->which == FLOWPROBE_WHICH_IP6)
+    which = FLOW_VARIANT_IP6;
+  else if (mp->which == FLOWPROBE_WHICH_L2)
+    which = FLOW_VARIANT_L2;
+  else
+    {
+      clib_warning ("Invalid value of which");
+      rv = VNET_API_ERROR_INVALID_VALUE;
+      goto out_2;
+    }
+
+  if (mp->direction == FLOWPROBE_DIRECTION_RX)
+    direction = FLOW_DIRECTION_RX;
+  else if (mp->direction == FLOWPROBE_DIRECTION_TX)
+    direction = FLOW_DIRECTION_TX;
+  else if (mp->direction == FLOWPROBE_DIRECTION_BOTH)
+    direction = FLOW_DIRECTION_BOTH;
+  else
+    {
+      clib_warning ("Invalid value of direction");
+      rv = VNET_API_ERROR_INVALID_VALUE;
+      goto out_2;
+    }
+
+  if (fm->record == 0)
+    {
+      clib_warning ("Please specify flowprobe params record first");
+      rv = VNET_API_ERROR_CANNOT_ENABLE_DISABLE_FEATURE;
+      goto out_2;
+    }
+
+  rv = validate_feature_on_interface (fm, sw_if_index, which);
+  if (rv == 1)
+    {
+      if (is_add)
+	{
+	  clib_warning ("Variant is already enabled for given interface");
+	  rv = VNET_API_ERROR_ENTRY_ALREADY_EXISTS;
+	  goto out_2;
+	}
+    }
+  else if (rv == 0)
+    {
+      clib_warning ("Interface has different variant enabled");
+      rv = VNET_API_ERROR_ENTRY_ALREADY_EXISTS;
+      goto out_2;
+    }
+  else if (rv == -1)
+    {
+      if (!is_add)
+	{
+	  clib_warning ("Interface has no variant enabled");
+	  rv = VNET_API_ERROR_NO_SUCH_ENTRY;
+	  goto out_2;
+	}
+    }
+
+  sampling_spacing = ntohl (mp->interval_spacing);
+  sampling_length = ntohl (mp->interval_length);
+
+  rv = flowprobe_interface_add_del_feature (fm, sw_if_index, which, direction, sampling_spacing,
+					    sampling_length, is_add);
+
+out_2:
+  BAD_SW_IF_INDEX_LABEL;
+  REPLY_MACRO (VL_API_FLOWPROBE_INTERFACE_ADD_DEL_V2_REPLY);
+}
+
+static void
+send_flowprobe_interface_v2_details (u32 sw_if_index, u8 which, u8 direction,
+				     vl_api_registration_t *reg, u32 context)
+{
+  flowprobe_main_t *fm = &flowprobe_main;
+  vl_api_flowprobe_interface_v2_details_t *rmp = vl_msg_api_alloc (sizeof (*rmp));
+  if (!rmp)
+    return;
+
+  clib_memset (rmp, 0, sizeof (*rmp));
+  rmp->_vl_msg_id = ntohs (VL_API_FLOWPROBE_INTERFACE_V2_DETAILS + REPLY_MSG_ID_BASE);
+  rmp->context = context;
+  rmp->sw_if_index = htonl (sw_if_index);
+  rmp->which = which;
+  rmp->direction = direction;
+
+  flowprobe_sampling_params_t *params = &fm->sampling_per_interface[sw_if_index];
+  rmp->interval_spacing = htonl (params->interval_spacing);
+  rmp->interval_length = htonl (params->interval_length);
+
+  vl_api_send_msg (reg, (u8 *) rmp);
+}
+
+void
+vl_api_flowprobe_interface_v2_dump_t_handler (vl_api_flowprobe_interface_dump_t *mp)
+{
+  flowprobe_main_t *fm = &flowprobe_main;
+  vl_api_registration_t *reg;
+  u32 sw_if_index;
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  sw_if_index = ntohl (mp->sw_if_index);
+
+  if (sw_if_index == ~0)
+    {
+      u8 *which;
+
+      vec_foreach (which, fm->flow_per_interface)
+	{
+	  if (*which == (u8) ~0)
+	    continue;
+
+	  sw_if_index = which - fm->flow_per_interface;
+	  send_flowprobe_interface_v2_details (
+	    sw_if_index, *which, fm->direction_per_interface[sw_if_index], reg, mp->context);
+	}
+    }
+  else if (vec_len (fm->flow_per_interface) > sw_if_index &&
+	   fm->flow_per_interface[sw_if_index] != (u8) ~0)
+    {
+      send_flowprobe_interface_v2_details (sw_if_index, fm->flow_per_interface[sw_if_index],
+					   fm->direction_per_interface[sw_if_index], reg,
+					   mp->context);
+    }
 }
 
 static void
@@ -1140,6 +1635,8 @@ flowprobe_interface_add_del_feature_command_fn (vlib_main_t *vm,
   int is_add = 1;
   u8 which = FLOW_VARIANT_IP4;
   flowprobe_direction_t direction = FLOW_DIRECTION_TX;
+  u32 sampling_spacing = 0;
+  u32 sampling_length = 1;
   int rv;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -1160,9 +1657,16 @@ flowprobe_interface_add_del_feature_command_fn (vlib_main_t *vm,
 	direction = FLOW_DIRECTION_TX;
       else if (unformat (input, "both"))
 	direction = FLOW_DIRECTION_BOTH;
+      else if (unformat (input, "spacing %d", &sampling_spacing))
+	;
+      else if (unformat (input, "length %d", &sampling_length))
+	;
       else
 	break;
     }
+
+  if (is_add && sampling_spacing > 0 && sampling_length < 1)
+    sampling_length = 1;
 
   if (fm->record == 0)
     return clib_error_return (0,
@@ -1189,8 +1693,8 @@ flowprobe_interface_add_del_feature_command_fn (vlib_main_t *vm,
 	}
     }
 
-  rv = flowprobe_interface_add_del_feature (fm, sw_if_index, which, direction,
-					    is_add);
+  rv = flowprobe_interface_add_del_feature (fm, sw_if_index, which, direction, sampling_spacing,
+					    sampling_length, is_add);
   switch (rv)
     {
     case 0:
@@ -1310,7 +1814,8 @@ flowprobe_show_params_command_fn (vlib_main_t * vm,
 VLIB_CLI_COMMAND (flowprobe_enable_disable_command, static) = {
   .path = "flowprobe feature add-del",
   .short_help = "flowprobe feature add-del <interface-name> [(l2|ip4|ip6)] "
-		"[(rx|tx|both)] [disable]",
+		"[(rx|tx|both)] [spacing <spacing_value>] [length "
+		"<length_value>] [disable]",
   .function = flowprobe_interface_add_del_feature_command_fn,
 };
 VLIB_CLI_COMMAND (flowprobe_params_command, static) = {

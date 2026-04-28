@@ -453,6 +453,11 @@ information_elements = {
     475: "maxFragmentsPendingReassembly",
 }
 
+# Expose each IPFIX Information Element name as a module-level constant equal
+# to its numeric ID, so tests can do e.g. `from ipfix import ingressInterface`
+# and use the value as a record key (record[ingressInterface]).
+globals().update({name: _id for _id, name in information_elements.items()})
+
 
 class IPFIX(Packet):
     name = "IPFIX"
@@ -487,6 +492,23 @@ class Template(Packet):
     ]
 
 
+class OptionsTemplate(Packet):
+    """RFC 7011 Options Template Record (carried in Set with setID=3)"""
+
+    name = "OptionsTemplate"
+    fields_desc = [
+        ShortField("templateID", 256),
+        FieldLenField("fieldCount", None, count_of="templateFields"),
+        ShortField("scopeFieldCount", 1),
+        PacketListField(
+            "templateFields",
+            [],
+            FieldSpecifier,
+            count_from=lambda p: p.fieldCount,
+        ),
+    ]
+
+
 class Data(Packet):
     name = "Data"
     fields_desc = [
@@ -504,6 +526,8 @@ class Set(Packet):
     def guess_payload_class(self, payload):
         if self.setID == 2:
             return Template
+        elif self.setID == 3:
+            return OptionsTemplate
         elif self.setID > 255:
             return Data
         else:
