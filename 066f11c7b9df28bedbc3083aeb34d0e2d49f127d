@@ -175,6 +175,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "b48147c3_1a3cf179",
+        "filename": "src/vnet/sfdp/lookup/lookup_ip4.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 140,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-04-28T04:41:05Z",
+      "side": 1,
+      "message": "Right - removed the else entirely in PS7, it was redundant",
+      "parentUuid": "c0132c74_26f63987",
+      "revId": "066f11c7b9df28bedbc3083aeb34d0e2d49f127d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "efc5ad0b_cd334018",
@@ -188,6 +206,24 @@
       "writtenOn": "2026-04-22T07:53:25Z",
       "side": 1,
       "message": "I think it could just be simplified to\n\n    t128 \u003d (type \u003e\u003d 128 \u0026\u0026 type \u003c 192) ? (1ULL \u003c\u003c (type - 128)) : 0;\n\nThis is clearer and we do not need an additional helper",
+      "revId": "066f11c7b9df28bedbc3083aeb34d0e2d49f127d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4f0018d2_1ebecd9a",
+        "filename": "src/vnet/sfdp/lookup/lookup_ip6.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 174,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-04-28T04:41:05Z",
+      "side": 1,
+      "message": "done",
+      "parentUuid": "efc5ad0b_cd334018",
       "revId": "066f11c7b9df28bedbc3083aeb34d0e2d49f127d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -223,6 +259,24 @@
       "side": 1,
       "message": "Added a testcase",
       "parentUuid": "2c4b39fb_41f50ecb",
+      "revId": "066f11c7b9df28bedbc3083aeb34d0e2d49f127d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f1db00ed_f8659006",
+        "filename": "src/vnet/sfdp/lookup/lookup_ip6.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 198,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-04-28T04:41:05Z",
+      "side": 1,
+      "message": "Removed the \"else\" entirely in PS7",
+      "parentUuid": "3094e11b_605909fa",
       "revId": "066f11c7b9df28bedbc3083aeb34d0e2d49f127d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
