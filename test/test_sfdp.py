@@ -16,13 +16,24 @@ from scapy.layers.inet6 import IPv6
 
 class BaseSfdpTest(VppTestCase):
     def create_tcp_packet(
-        self, src_mac, dst_mac, src_ip, dst_ip, sport, dport, flags="S", ttl=64
+        self,
+        src_mac,
+        dst_mac,
+        src_ip,
+        dst_ip,
+        sport,
+        dport,
+        flags="S",
+        ttl=64,
+        seq=0,
+        ack=0,
+        payload=b"\xa5" * 100,
     ):
         return (
             Ether(src=src_mac, dst=dst_mac)
             / IP(src=src_ip, dst=dst_ip, ttl=ttl)
-            / TCP(sport=sport, dport=dport, flags=flags)
-            / Raw(b"\xa5" * 100)
+            / TCP(sport=sport, dport=dport, flags=flags, seq=seq, ack=ack)
+            / Raw(payload)
         )
 
     def create_udp_packet(self, src_mac, dst_mac, src_ip, dst_ip, sport, dport, ttl=64):
@@ -34,13 +45,24 @@ class BaseSfdpTest(VppTestCase):
         )
 
     def create_tcp6_packet(
-        self, src_mac, dst_mac, src_ip, dst_ip, sport, dport, flags="S", hlim=64
+        self,
+        src_mac,
+        dst_mac,
+        src_ip,
+        dst_ip,
+        sport,
+        dport,
+        flags="S",
+        hlim=64,
+        seq=0,
+        ack=0,
+        payload=b"\xa5" * 100,
     ):
         return (
             Ether(src=src_mac, dst=dst_mac)
             / IPv6(src=src_ip, dst=dst_ip, hlim=hlim)
-            / TCP(sport=sport, dport=dport, flags=flags)
-            / Raw(b"\xa5" * 100)
+            / TCP(sport=sport, dport=dport, flags=flags, seq=seq, ack=ack)
+            / Raw(payload)
         )
 
     def create_udp6_packet(
@@ -51,6 +73,28 @@ class BaseSfdpTest(VppTestCase):
             / IPv6(src=src_ip, dst=dst_ip, hlim=hlim)
             / UDP(sport=sport, dport=dport)
             / Raw(b"\xa5" * 100)
+        )
+
+    def set_timeout(self, timeout_id, value):
+        self.vapi.sfdp_set_timeout(
+            tenant_id=1, timeout_id=timeout_id, timeout_value=value
+        )
+
+    def sessions(self):
+        return list(self.vapi.sfdp_session_dump())
+
+    def wait_no_sessions(self, timeout=5.0, tick=0.02):
+        steps = int(timeout / tick) + 1
+        for _ in range(steps):
+            if len(self.sessions()) == 0:
+                return
+            self.virtual_sleep(tick)
+        remaining = self.sessions()
+        self.assertEqual(
+            len(remaining),
+            0,
+            f"Sessions still present after {timeout}s: "
+            f"{[(s.session_idx, s.state) for s in remaining]}",
         )
 
     def verify_basic_session_state(
