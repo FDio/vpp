@@ -7,8 +7,6 @@
 
 #include <vnet/ip/ip.h>
 #include <vnet/ip/ip_types_api.h>
-#include <acl/public_inlines.h>
-
 #include <npol/npol.api_enum.h>
 #include <npol/npol.api_types.h>
 #include <npol/npol_interface.h>
@@ -30,8 +28,6 @@ typedef struct
 
 typedef struct
 {
-  u32 calico_acl_user_id;
-
   /* API message ID base */
   u16 msg_id_base;
 
