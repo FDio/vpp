@@ -163,6 +163,13 @@ ip4_map_t_icmp (vlib_main_t * vm,
 	      goto err0;
 	    }
 
+	  /* Per-VRF FIB override. Must be set regardless of which branch
+	   * we take below: the ip_frag path eventually enqueues to
+	   * ip6-lookup too, and needs the same tenant FIB selection as
+	   * the fast-path rewrite branch. */
+	  if (d0->ip6_fib_index != 0)
+	    vnet_buffer (p0)->sw_if_index[VLIB_TX] = d0->ip6_fib_index;
+
 	  if (vnet_buffer (p0)->map_t.mtu < p0->current_length)
 	    {
 	      vnet_buffer (p0)->ip_frag.mtu = vnet_buffer (p0)->map_t.mtu;
@@ -171,8 +178,8 @@ ip4_map_t_icmp (vlib_main_t * vm,
 	    }
 	  else
 	    {
-	      next0 = ip4_map_ip6_lookup_bypass (p0, NULL) ?
-		IP4_MAPT_ICMP_NEXT_IP6_REWRITE : next0;
+	      next0 =
+		ip4_map_ip6_lookup_bypass (p0, NULL, d0) ? IP4_MAPT_ICMP_NEXT_IP6_REWRITE : next0;
 	    }
 	err0:
 	  if (PREDICT_TRUE (error0 == MAP_ERROR_NONE))
@@ -265,6 +272,7 @@ ip4_map_t_fragmented (vlib_main_t * vm,
 	  vlib_buffer_t *p0;
 	  ip4_mapt_pseudo_header_t *pheader0;
 	  ip4_mapt_fragmented_next_t next0;
+	  map_domain_t *d0;
 
 	  next0 = IP4_MAPT_FRAGMENTED_NEXT_IP6_LOOKUP;
 	  pi0 = to_next[0] = from[0];
@@ -274,6 +282,7 @@ ip4_map_t_fragmented (vlib_main_t * vm,
 	  n_left_to_next -= 1;
 
 	  p0 = vlib_get_buffer (vm, pi0);
+	  d0 = pool_elt_at_index (map_main.domains, vnet_buffer (p0)->map_t.map_domain_index);
 
 	  //Accessing pseudo header
 	  pheader0 = vlib_buffer_get_current (p0);
@@ -295,9 +304,12 @@ ip4_map_t_fragmented (vlib_main_t * vm,
 		}
 	      else
 		{
-		  next0 = ip4_map_ip6_lookup_bypass (p0, NULL) ?
-		    IP4_MAPT_FRAGMENTED_NEXT_IP6_REWRITE : next0;
+		  next0 = ip4_map_ip6_lookup_bypass (p0, NULL, d0) ?
+			    IP4_MAPT_FRAGMENTED_NEXT_IP6_REWRITE :
+			    next0;
 		}
+	      if (d0->ip6_fib_index != 0)
+		vnet_buffer (p0)->sw_if_index[VLIB_TX] = d0->ip6_fib_index;
 	    }
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
@@ -435,6 +447,7 @@ ip4_map_t_tcp_udp (vlib_main_t * vm,
 	  vlib_buffer_t *p0;
 	  ip4_mapt_pseudo_header_t *pheader0;
 	  ip4_mapt_tcp_udp_next_t next0;
+	  map_domain_t *d0;
 
 	  pi0 = to_next[0] = from[0];
 	  from += 1;
@@ -444,6 +457,7 @@ ip4_map_t_tcp_udp (vlib_main_t * vm,
 
 	  next0 = IP4_MAPT_TCP_UDP_NEXT_IP6_LOOKUP;
 	  p0 = vlib_get_buffer (vm, pi0);
+	  d0 = pool_elt_at_index (map_main.domains, vnet_buffer (p0)->map_t.map_domain_index);
 
 	  //Accessing pseudo header
 	  pheader0 = vlib_buffer_get_current (p0);
@@ -466,9 +480,12 @@ ip4_map_t_tcp_udp (vlib_main_t * vm,
 		}
 	      else
 		{
-		  next0 = ip4_map_ip6_lookup_bypass (p0, NULL) ?
-		    IP4_MAPT_TCP_UDP_NEXT_IP6_REWRITE : next0;
+		  next0 = ip4_map_ip6_lookup_bypass (p0, NULL, d0) ?
+			    IP4_MAPT_TCP_UDP_NEXT_IP6_REWRITE :
+			    next0;
 		}
+	      if (d0->ip6_fib_index != 0)
+		vnet_buffer (p0)->sw_if_index[VLIB_TX] = d0->ip6_fib_index;
 	    }
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
 					   to_next, n_left_to_next, pi0,
@@ -577,9 +594,17 @@ ip4_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	      error0 = MAP_ERROR_UNKNOWN;
 	    }
 
-	  d0 = ip4_map_get_domain (&ip40->dst_address,
-				   &vnet_buffer (p0)->map_t.map_domain_index,
-				   &error0);
+	  /* Resolve the domain in the tenant FIB the packet arrived on,
+	   * so overlapping IPv4 prefixes in different VRFs reach the
+	   * right MAP-T domain. sw_if_index[VLIB_RX] is the
+	   * customer-facing interface; ip4_main.fib_index_by_sw_if_index
+	   * maps that to the IPv4 FIB the interface is bound to. For
+	   * single-tenant deployments this is fib_index 0 and the lookup
+	   * degenerates to the default-FIB keyed LPM. */
+	  u32 ip4_fib_index0 =
+	    vec_elt (ip4_main.fib_index_by_sw_if_index, vnet_buffer (p0)->sw_if_index[VLIB_RX]);
+	  d0 = ip4_map_get_domain (ip4_fib_index0, &ip40->dst_address,
+				   &vnet_buffer (p0)->map_t.map_domain_index, &error0);
 
 	  if (!d0)
 	    {			/* Guess it wasn't for us */

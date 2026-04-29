@@ -172,9 +172,10 @@ ip4_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  p0 = vlib_get_buffer (vm, pi0);
 	  ip40 = vlib_buffer_get_current (p0);
 
+	  /* MAP-E path — single-tenant (default FIB). Per-VRF match is
+	   * MAP-T-specific; see ip4_map_t.c. */
 	  d0 =
-	    ip4_map_get_domain (&ip40->dst_address, &map_domain_index0,
-				&error0);
+	    ip4_map_get_domain (0 /* fib_index */, &ip40->dst_address, &map_domain_index0, &error0);
 	  if (!d0)
 	    {			/* Guess it wasn't for us */
 	      vnet_feature_next (&next0, p0);
@@ -251,9 +252,7 @@ ip4_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	      else
 		{
 		  next0 =
-		    ip4_map_ip6_lookup_bypass (p0,
-					       ip40) ?
-		    IP4_MAP_NEXT_IP6_REWRITE : next0;
+		    ip4_map_ip6_lookup_bypass (p0, ip40, d0) ? IP4_MAP_NEXT_IP6_REWRITE : next0;
 		  vlib_increment_combined_counter (cm + MAP_DOMAIN_COUNTER_TX,
 						   thread_index,
 						   map_domain_index0, 1,
