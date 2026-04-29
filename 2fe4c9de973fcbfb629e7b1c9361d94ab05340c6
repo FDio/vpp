@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "2fa2ffc8_995e4be2",
+        "filename": "test/hs-test/docker/Dockerfile.base",
+        "patchSetId": 21
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-04-29T02:52:26Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d00d4aed_667f46c7",
+      "revId": "2fe4c9de973fcbfb629e7b1c9361d94ab05340c6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "0b330ae0_e22c5939",
@@ -31,6 +49,30 @@
       "writtenOn": "2026-04-28T08:33:39Z",
       "side": 1,
       "message": "can we have some function in infra/asserts.go which fail test and print message instead of using AssertEqual(true, false) and AssertEmpty(\"error message\")",
+      "range": {
+        "startLine": 701,
+        "startChar": 1,
+        "endLine": 701,
+        "endChar": 25
+      },
+      "revId": "2fe4c9de973fcbfb629e7b1c9361d94ab05340c6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d2dc02a1_9bfa6133",
+        "filename": "test/hs-test/infra/suite_tcp_harness.go",
+        "patchSetId": 21
+      },
+      "lineNbr": 701,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-04-29T02:52:26Z",
+      "side": 1,
+      "message": "done",
+      "parentUuid": "0b330ae0_e22c5939",
       "range": {
         "startLine": 701,
         "startChar": 1,
@@ -58,6 +100,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "0af12c85_841c9d37",
+        "filename": "test/hs-test/infra/suite_tcp_harness.go",
+        "patchSetId": 21
+      },
+      "lineNbr": 819,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-04-29T02:52:26Z",
+      "side": 1,
+      "message": "Not now but we could in the future. We should probably consider adding a suite/infra level switch to enable it for all tests ..",
+      "parentUuid": "33811ed5_27f19c37",
+      "revId": "2fe4c9de973fcbfb629e7b1c9361d94ab05340c6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "ad66c3ae_7e9abd17",
@@ -71,6 +131,24 @@
       "writtenOn": "2026-04-28T08:33:39Z",
       "side": 1,
       "message": "can we use this to build packet?\nhttps://pkg.go.dev/gvisor.dev/gvisor@v0.0.0-20260427222906-00af7dba072a/pkg/tcpip/header",
+      "revId": "2fe4c9de973fcbfb629e7b1c9361d94ab05340c6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7ff17278_204e3d6b",
+        "filename": "test/hs-test/infra/tcpharness/nfqueue.go",
+        "patchSetId": 21
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-04-29T02:52:26Z",
+      "side": 1,
+      "message": "Used `gopacket/layers` instead as it\u0027s lighter weight.",
+      "parentUuid": "ad66c3ae_7e9abd17",
       "revId": "2fe4c9de973fcbfb629e7b1c9361d94ab05340c6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -92,6 +170,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "d8265a11_e1ae441f",
+        "filename": "test/hs-test/infra/tcpharness/packet.go",
+        "patchSetId": 21
+      },
+      "lineNbr": 14,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-04-29T02:52:26Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "77dc5c2c_7d7642d1",
+      "revId": "2fe4c9de973fcbfb629e7b1c9361d94ab05340c6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "c2382763_a5d2be2e",
@@ -109,6 +205,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "97fade15_5fd785b8",
+        "filename": "test/hs-test/tcp_harness_test.go",
+        "patchSetId": 21
+      },
+      "lineNbr": 38,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-04-29T02:52:26Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c2382763_a5d2be2e",
+      "revId": "2fe4c9de973fcbfb629e7b1c9361d94ab05340c6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "7bdb8595_d5be5bcb",
@@ -122,6 +236,24 @@
       "writtenOn": "2026-04-28T08:33:39Z",
       "side": 1,
       "message": "AssertEmpty",
+      "revId": "2fe4c9de973fcbfb629e7b1c9361d94ab05340c6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9a62f653_d969fd83",
+        "filename": "test/hs-test/tcp_harness_test.go",
+        "patchSetId": 21
+      },
+      "lineNbr": 369,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-04-29T02:52:26Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "7bdb8595_d5be5bcb",
       "revId": "2fe4c9de973fcbfb629e7b1c9361d94ab05340c6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
