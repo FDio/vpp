@@ -68,6 +68,7 @@ plugins {
   plugin http_static_plugin.so { enable }
   plugin prom_plugin.so { enable }
   plugin tlsopenssl_plugin.so { enable }
+  plugin tlspicotls_plugin.so { enable }
   plugin ping_plugin.so { enable }
   plugin nsim_plugin.so { enable }
   plugin mactime_plugin.so { enable }
