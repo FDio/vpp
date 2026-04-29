@@ -76,8 +76,9 @@ static clib_arg_t oct_drv_args[] = {
 
 static clib_arg_t oct_port_args[] = {
   {
-    .name = "eth_pause_frame",
-    .desc = "Enable ethernet pause frame support",
+    .name = "eth_flow_ctrl",
+    .desc = "Enable Ethernet flow control support, "
+	    "applicable to network devices only",
     .type = CLIB_ARG_TYPE_BOOL,
     .default_val.boolean = false,
   },
@@ -110,8 +111,9 @@ static clib_arg_t oct_port_args[] = {
 
 static clib_arg_t oct_port_args_rvu_vf[] = {
   {
-    .name = "eth_pause_frame",
-    .desc = "Enable ethernet pause frame support",
+    .name = "eth_flow_ctrl",
+    .desc = "Enable Ethernet flow control support, "
+	    "applicable to network devices only",
     .type = CLIB_ARG_TYPE_BOOL,
     .default_val.boolean = false,
   },

@@ -8,10 +8,13 @@
 #include <octeon.h>
 #include "common.h"
 #include <vnet/ethernet/ethernet.h>
+#include <vnet/pfc/pfc.h>
 
 #define OCT_FLOW_PREALLOC_SIZE	1
 #define OCT_FLOW_MAX_PRIORITY	7
 #define OCT_ETH_LINK_SPEED_100G 100000 /**< 100 Gbps */
+
+pfc_system_t pfc_system_ops;
 
 VLIB_REGISTER_LOG_CLASS (oct_log, static) = {
   .class_name = "octeon",
@@ -42,7 +45,7 @@ oct_roc_err (vnet_dev_t *dev, int rv, char *fmt, ...)
 }
 
 vnet_dev_rv_t
-oct_port_pause_flow_control_init (vlib_main_t *vm, vnet_dev_port_t *port)
+oct_port_flow_control_init (vlib_main_t *vm, vnet_dev_port_t *port)
 {
   vnet_dev_t *dev = port->dev;
   oct_device_t *cd = vnet_dev_get_data (dev);
@@ -53,7 +56,7 @@ oct_port_pause_flow_control_init (vlib_main_t *vm, vnet_dev_port_t *port)
   struct roc_nix_rq *rq;
   int rrv;
 
-  /* pause flow control is not supported on SDP/LBK devices */
+  /* Flow control is not supported on SDP/LBK devices */
   if (roc_nix_is_sdp (nix) || roc_nix_is_lbk (nix))
     {
       log_notice (dev,
@@ -109,6 +112,7 @@ oct_port_pause_flow_control_init (vlib_main_t *vm, vnet_dev_port_t *port)
   if (rrv)
     return oct_roc_err (dev, rrv, "roc_nix_fc_mode_set failed");
 
+  cd->mode = PFC_ETH_FC_FULL;
   return VNET_DEV_OK;
 }
 
@@ -137,7 +141,7 @@ oct_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
   vnet_dev_port_interfaces_t *ifs = port->interfaces;
   u8 mac_addr[PLT_ETHER_ADDR_LEN];
   struct roc_nix *nix = cd->nix;
-  bool is_pause_frame_enable = false;
+  bool eth_flow_ctrl_enable = false;
   vnet_dev_rv_t rv;
   int rrv;
 
@@ -145,9 +149,9 @@ oct_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
 
   if (port->args)
     {
-      if (oct_port_is_arg_valid (port->args, "eth_pause_frame") &&
-	  clib_args_get_bool_val_by_name (port->args, "eth_pause_frame"))
-	is_pause_frame_enable = true;
+      if (oct_port_is_arg_valid (port->args, "eth_flow_ctrl") &&
+	  clib_args_get_bool_val_by_name (port->args, "eth_flow_ctrl"))
+	eth_flow_ctrl_enable = true;
       if (oct_port_is_arg_valid (port->args, "rss_flow_key"))
 	cp->rss_flowkey = clib_args_get_uint32_val_by_name (port->args, "rss_flow_key");
       if (oct_port_is_arg_valid (port->args, "switch_header_type"))
@@ -243,10 +247,10 @@ oct_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
       return rv;
     }
 
-  /* Configure pause frame flow control*/
+  /* Configure Ethernet flow control */
 
-  if (is_pause_frame_enable &&
-      (rv = oct_port_pause_flow_control_init (vm, port)))
+  if (eth_flow_ctrl_enable &&
+      (rv = oct_port_flow_control_init (vm, port)))
     {
       oct_port_deinit (vm, port);
       return rv;
@@ -260,6 +264,10 @@ oct_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
     }
   cp->q_intr_enabled = 1;
   oct_port_add_counters (vm, port);
+
+  oct_pfc_sys_init_args (&pfc_system_ops);
+  pfc_system_register (&pfc_system_ops,
+		       ifs->primary_interface.hw_if_index);
 
   return VNET_DEV_OK;
 }
