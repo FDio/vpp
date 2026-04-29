@@ -16,6 +16,24 @@
       "message": "Isn\u0027t this just problem how we use vnet_crypto in quic_quicly? We are calling quic_quicly_crypto_set_key (twice) for each packet encryption. Each quic connection has it\u0027s own keys, one for header and second for packet. Same header protection key is used for the duration of the connection, only packet protection keys can change after key update. Algorithm stays same once agreed during handshake.",
       "revId": "b767227791f5c9ded809436d314b8c22a10e0bb4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2eefb53a_cb10c273",
+        "filename": "src/plugins/quic_quicly/quic_quicly_crypto.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 82,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-04-29T12:49:42Z",
+      "side": 1,
+      "message": "this might be also key to poor performance compare to picotls, vpp crypto engine is more than 2Gbs slower",
+      "parentUuid": "51e6563e_90bcf81b",
+      "revId": "b767227791f5c9ded809436d314b8c22a10e0bb4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
