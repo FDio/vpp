@@ -911,6 +911,57 @@ class TestIPv4SVReassembly(VppTestCase):
             ]
         )
 
+    def test_unsupp_ip_proto(self):
+        """unsupported IP proto handling"""
+
+        # build some IGP packets, split into fragments, send the fragments
+        num_packets = 10
+        payload_size = 2000
+        fragment_size = 1000
+        packets = []
+        for i in range(num_packets):
+            p = (
+                Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac)
+                / IP(
+                    src=self.src_if.remote_ip4, dst=self.dst_if.remote_ip4, proto="igp"
+                )
+                / Raw(chr(ord("a") + i) * payload_size)
+            )
+            frags = fragment_rfc791(p, fragment_size)
+            packets.append(frags)
+
+        self.pg_enable_capture()
+        self.src_if.add_stream(packets)
+        self.pg_start()
+
+        # First fragment should be dropped, others held until expiry
+        self.dst_if.assert_nothing_captured()
+
+        # Force the non-first fragments to be expired
+        self.vapi.ip_reassembly_set(
+            timeout_ms=0,
+            max_reassemblies=1000,
+            max_reassembly_length=1000,
+            type=VppEnum.vl_api_ip_reass_type_t.IP_REASS_TYPE_SHALLOW_VIRTUAL,
+            expire_walk_interval_ms=10,
+        )
+
+        # unsupp_ip_prot counter should be set to num_packets
+        unsupp_ctr = "/err/ip4-sv-reassembly-feature/reass_unsupp_ip_prot"
+        err_stats = self.statistics.get_counter(unsupp_ctr)
+        self.assertEqual(sum(err_stats), num_packets)
+
+        # All fragment buffers should have been freed.
+        # Check 'show buffers' output to see that no buffers are used.
+        # There was formerly a buffer leak when processing the first fragment
+        # of an IP protocol other than TCP, UDP, or ICMP. This validates that
+        # the leak has not reoccurred.
+        r = self.vapi.cli_return_response("show buffers")
+        self.assertTrue(r.retval == 0)
+        self.assertTrue(hasattr(r, "reply"))
+        used = int(r.reply.strip().split("\n")[-1].split()[-1])
+        self.assertEqual(used, 0)
+
 
 class TestIPv4MWReassembly(VppTestCase):
     """IPv4 Reassembly (multiple workers)"""

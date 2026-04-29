@@ -410,6 +410,9 @@ ip6_sv_reass_update (vlib_main_t *vm, vlib_node_runtime_t *node,
   fvnb->ip.reass.ip6_frag_hdr_offset =
     (u8 *) frag_hdr - (u8 *) vlib_buffer_get_current (fb);
   ip6_header_t *fip = vlib_buffer_get_current (fb);
+
+  vec_add1 (reass->cached_buffers, bi0);
+
   if (fb->current_length < sizeof (*fip) ||
       fvnb->ip.reass.ip6_frag_hdr_offset == 0 ||
       fvnb->ip.reass.ip6_frag_hdr_offset >= fb->current_length)
@@ -472,8 +475,6 @@ ip6_sv_reass_update (vlib_main_t *vm, vlib_node_runtime_t *node,
 				  ~0, ~0);
 	}
     }
-
-  vec_add1 (reass->cached_buffers, bi0);
 
   if (!ip6_sv_reass_is_complete (reass, extended))
     {

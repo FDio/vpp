@@ -460,6 +460,9 @@ ip4_sv_reass_update (vlib_main_t *vm, vlib_node_runtime_t *node,
   vlib_buffer_t *b0 = vlib_get_buffer (vm, bi0);
   ip4_sv_reass_rc_t rc = IP4_SV_REASS_RC_OK;
   const u32 fragment_first = ip4_get_fragment_offset_bytes (ip0);
+
+  vec_add1 (reass->cached_buffers, bi0);
+
   if (0 == fragment_first)
     {
       reass->ip_proto = ip0->protocol;
@@ -512,8 +515,6 @@ ip4_sv_reass_update (vlib_main_t *vm, vlib_node_runtime_t *node,
 	    vnet_buffer (b0)->ip.reass.l4_hdr_truncated, ~0);
 	}
     }
-
-  vec_add1 (reass->cached_buffers, bi0);
 
   if (!ip4_sv_reass_is_complete (reass, extended))
     {
