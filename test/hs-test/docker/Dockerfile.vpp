@@ -23,10 +23,14 @@ COPY \
    $DIR/nsim_plugin.so \
    $DIR/prom_plugin.so \
    $DIR/tlsopenssl_plugin.so \
+   $DIR/tlspicotls_plugin.so \
    $DIR/mactime_plugin.so \
    $DIR/arping_plugin.so \
    $DIR/tap_plugin.so \
    /usr/lib/$OS_ARCH-linux-gnu/vpp_plugins/
+
+ENV CRYPTO_DIR=vpp-data/lib/vpp_crypto_engines
+COPY $CRYPTO_DIR/*.so /usr/lib/$OS_ARCH-linux-gnu/vpp_crypto_engines/
 
 COPY vpp-data/bin/vpp /usr/bin/
 COPY vpp-data/bin/vppctl /usr/bin/

@@ -25,9 +25,8 @@ static ptls_key_exchange_algorithm_t *default_key_exchange[] = {
 };
 
 static u32
-picotls_ctx_alloc (void)
+picotls_ctx_alloc_w_thread (clib_thread_index_t thread_id)
 {
-  u32 thread_id = vlib_get_thread_index ();
   picotls_main_t *pm = &picotls_main;
   picotls_ctx_t **ctx;
 
@@ -43,12 +42,26 @@ picotls_ctx_alloc (void)
   return (*ctx)->ptls_ctx_idx;
 }
 
+static u32
+picotls_ctx_alloc (void)
+{
+  return picotls_ctx_alloc_w_thread (vlib_get_thread_index ());
+}
+
 static void
 picotls_ctx_free (tls_ctx_t * ctx)
 {
   picotls_ctx_t *ptls_ctx = (picotls_ctx_t *) ctx;
-  vec_free (ptls_ctx->rx_content);
-  ptls_free (ptls_ctx->tls);
+
+  if (!(ctx->flags & TLS_CONN_F_MIGRATED))
+    {
+      vec_free (ptls_ctx->rx_content);
+      if (ptls_ctx->tls)
+	ptls_free (ptls_ctx->tls);
+      vec_free (ctx->srv_hostname);
+      vec_free (ctx->alpn_list);
+    }
+
   pool_put_index (picotls_main.ctx_pool[ctx->c_thread_index],
 		  ptls_ctx->ptls_ctx_idx);
 }
@@ -252,7 +265,8 @@ picotls_do_handshake (picotls_ctx_t *ptls_ctx, session_t *tcp_session)
 
       if (!(rv == 0 || rv == PTLS_ERROR_IN_PROGRESS))
 	{
-	  clib_error ("unexpected error %u", rv);
+	  TLS_DBG (1, "unexpected handshake error %u", rv);
+	  rv = -1;
 	  break;
 	}
 
@@ -273,7 +287,7 @@ picotls_do_handshake (picotls_ctx_t *ptls_ctx, session_t *tcp_session)
 
   ptls_buffer_dispose (buf);
 
-  return write;
+  return rv < 0 ? -1 : write;
 }
 
 static inline int
@@ -427,8 +441,22 @@ picotls_ctx_read (tls_ctx_t *ctx, session_t *tcp_session)
 
   if (PREDICT_FALSE (!ptls_handshake_is_complete (ptls_ctx->tls)))
     {
-      picotls_do_handshake (ptls_ctx, tcp_session);
-      if (ctx->flags & TLS_CONN_F_HS_DONE)
+      if (picotls_do_handshake (ptls_ctx, tcp_session) < 0)
+	{
+	  if (ptls_is_server (ptls_ctx->tls))
+	    picotls_handle_handshake_failure (ctx);
+	  else
+	    {
+	      tls_notify_app_connected (ctx, SESSION_E_TLS_HANDSHAKE);
+	      tls_disconnect_transport (ctx);
+	    }
+	  return -1;
+	}
+
+      if (!ptls_handshake_is_complete (ptls_ctx->tls))
+	return 0;
+
+      if (!(ctx->flags & TLS_CONN_F_HS_DONE))
 	{
 	  if (ptls_is_server (ptls_ctx->tls))
 	    {
@@ -443,9 +471,10 @@ picotls_ctx_read (tls_ctx_t *ctx, session_t *tcp_session)
 	    {
 	      tls_notify_app_connected (ctx, SESSION_E_NONE);
 	    }
+
+	  ctx->flags |= TLS_CONN_F_HS_DONE;
 	}
 
-      ctx->flags |= TLS_CONN_F_HS_DONE;
       if (!svm_fifo_max_dequeue (tcp_session->rx_fifo))
 	return 0;
     }
@@ -740,6 +769,7 @@ picotls_reinit_ca_chain (void)
 
 const static tls_engine_vft_t picotls_engine = {
   .ctx_alloc = picotls_ctx_alloc,
+  .ctx_alloc_w_thread = picotls_ctx_alloc_w_thread,
   .ctx_free = picotls_ctx_free,
   .ctx_get = picotls_ctx_get,
   .ctx_get_w_thread = picotls_ctx_get_w_thread,

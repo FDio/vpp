@@ -4,9 +4,25 @@ import (
 	. "fd.io/hs-test/infra"
 )
 
+type tlsTestEngine struct {
+	cliArg string
+}
+
+var (
+	tlsEnginePicotls = tlsTestEngine{cliArg: "tls-engine 2"}
+)
+
 func init() {
 	RegisterTlsTests(TlsAlpMatchTest, TlsAlpnOverlapMatchTest, TlsAlpnServerPriorityMatchTest, TlsAlpnMismatchTest,
-		TlsAlpnEmptyServerListTest, TlsAlpnEmptyClientListTest, TlsCrlRejectThenAllowTest)
+		TlsAlpnEmptyServerListTest, TlsAlpnEmptyClientListTest, TlsCrlRejectThenAllowTest,
+		TlsPicotlsAlpnEmptyServerListTest, TlsPicotlsAlpnEmptyClientListTest)
+}
+
+func tlsCmd(cmd string, engine tlsTestEngine) string {
+	if engine.cliArg == "" {
+		return cmd
+	}
+	return cmd + " " + engine.cliArg
 }
 
 func TlsCrlRejectThenAllowTest(s *TlsSuite) {
@@ -90,11 +106,19 @@ func TlsAlpnMismatchTest(s *TlsSuite) {
 }
 
 func TlsAlpnEmptyServerListTest(s *TlsSuite) {
+	tlsAlpnEmptyServerListTest(s, tlsTestEngine{})
+}
+
+func TlsPicotlsAlpnEmptyServerListTest(s *TlsSuite) {
+	tlsAlpnEmptyServerListTest(s, tlsEnginePicotls)
+}
+
+func tlsAlpnEmptyServerListTest(s *TlsSuite, engine tlsTestEngine) {
 	serverAddress := s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1
-	Log(s.Containers.ServerVpp.VppInstance.Vppctl("test tls server uri tls://" + serverAddress))
+	Log(s.Containers.ServerVpp.VppInstance.Vppctl(tlsCmd("test tls server uri tls://"+serverAddress, engine)))
 
 	uri := "tls://" + serverAddress
-	o := s.Containers.ClientVpp.VppInstance.Vppctl("test tls client alpn-proto1 1 alpn-proto2 2 uri " + uri)
+	o := s.Containers.ClientVpp.VppInstance.Vppctl(tlsCmd("test tls client alpn-proto1 1 alpn-proto2 2 uri "+uri, engine))
 	Log(o)
 	AssertNotContains(o, "connect failed")
 	AssertNotContains(o, "timeout")
@@ -103,11 +127,19 @@ func TlsAlpnEmptyServerListTest(s *TlsSuite) {
 }
 
 func TlsAlpnEmptyClientListTest(s *TlsSuite) {
+	tlsAlpnEmptyClientListTest(s, tlsTestEngine{})
+}
+
+func TlsPicotlsAlpnEmptyClientListTest(s *TlsSuite) {
+	tlsAlpnEmptyClientListTest(s, tlsEnginePicotls)
+}
+
+func tlsAlpnEmptyClientListTest(s *TlsSuite, engine tlsTestEngine) {
 	serverAddress := s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1
-	Log(s.Containers.ServerVpp.VppInstance.Vppctl("test tls server alpn-proto1 2 alpn-proto2 1 uri tls://" + serverAddress))
+	Log(s.Containers.ServerVpp.VppInstance.Vppctl(tlsCmd("test tls server alpn-proto1 2 alpn-proto2 1 uri tls://"+serverAddress, engine)))
 
 	uri := "tls://" + serverAddress
-	o := s.Containers.ClientVpp.VppInstance.Vppctl("test tls client uri " + uri)
+	o := s.Containers.ClientVpp.VppInstance.Vppctl(tlsCmd("test tls client uri "+uri, engine))
 	Log(o)
 	AssertNotContains(o, "connect failed")
 	AssertNotContains(o, "timeout")
