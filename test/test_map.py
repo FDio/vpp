@@ -6,7 +6,7 @@ import unittest
 from framework import VppTestCase
 from asfframework import VppTestRunner
 from vpp_ip import DpoProto
-from vpp_ip_route import VppIpRoute, VppRoutePath
+from vpp_ip_route import VppIpRoute, VppIpTable, VppRoutePath
 from vpp_papi_exceptions import UnexpectedApiReturnValueError
 from util import fragment_rfc791, fragment_rfc8200
 from config import config
@@ -1054,6 +1054,502 @@ class TestMAP(VppTestCase):
         self.vapi.map_param_add_del_pre_resolve(
             ip4_nh_address="10.1.2.3", ip6_nh_address="4001::1", is_add=0
         )
+
+
+@unittest.skipIf("map" in config.excluded_plugins, "Exclude MAP plugin tests")
+class TestMAPTMultiTenant(VppTestCase):
+    """MAP-T Per-VRF / Multi-Tenant Test Case
+
+    Two tenants share a fixed /128 IPv6 destination (DMR) that the
+    headend listens on, but identify themselves via distinct /64 MAP
+    source prefixes (BMRs) carrying a per-tenant VNI. Configuration
+    matches RFC 7597 §5.1 1:1 translation mode with v6_lookup_side=DST.
+
+    Exercises:
+      * overlapping-v4 LPM match keyed on the interface's ingress
+        IPv4 FIB — both tenants use 192.0.2.1 as the inside headend
+        address;
+      * forward-path VRF injection via the per-domain v6 loopback —
+        the translated v6 packet egresses in the tenant's underlay
+        VRF with the shared DMR as destination and the tenant BMR as
+        source;
+      * reverse-path domain lookup keyed on v6 destination against
+        ip6_src_prefix_tbl — the headend's reply v6 source is the
+        shared DMR (same for every tenant), so identification MUST
+        come from the v6 dst. ip6_prefix_tbl is deliberately NOT
+        populated for dst-keyed domains to avoid the DMR collision
+        across tenants;
+      * 1:1 v4-source recovery — for /128 DMR + ea_bits_len=0, the
+        v6 source of the return packet is opaque (no embedded v4);
+        the translator uses d->ip4_prefix for v4 src.
+    """
+
+    # Tenant / underlay table ids for the two tenants.
+    TENANT_A_IP4_VRF = 101
+    TENANT_A_IP6_VRF = 201
+    TENANT_B_IP4_VRF = 102
+    TENANT_B_IP6_VRF = 202
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestMAPTMultiTenant, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestMAPTMultiTenant, cls).tearDownClass()
+
+    def setUp(self):
+        super(TestMAPTMultiTenant, self).setUp()
+
+        # Four interfaces: two tenant-facing (pg0/pg2) and two
+        # underlay-facing (pg1/pg3), mirrored per tenant.
+        self.create_pg_interfaces(range(4))
+
+        # Create the per-tenant IPv4 and IPv6 tables.
+        self._tables = []
+        for table_id, is_ip6 in (
+            (self.TENANT_A_IP4_VRF, 0),
+            (self.TENANT_A_IP6_VRF, 1),
+            (self.TENANT_B_IP4_VRF, 0),
+            (self.TENANT_B_IP6_VRF, 1),
+        ):
+            t = VppIpTable(self, table_id=table_id, is_ip6=is_ip6)
+            t.add_vpp_config()
+            self._tables.append(t)
+
+        # Tenant A: pg0 is inside v4 (tenant-A v4 VRF), pg1 is outside
+        # v6 (tenant-A v6 VRF).
+        self.pg0.set_table_ip4(self.TENANT_A_IP4_VRF)
+        self.pg0.set_table_ip6(self.TENANT_A_IP6_VRF)  # harmless for v4-only
+        self.pg1.set_table_ip4(self.TENANT_A_IP4_VRF)
+        self.pg1.set_table_ip6(self.TENANT_A_IP6_VRF)
+        self.pg0.admin_up()
+        self.pg0.config_ip4()
+        self.pg0.resolve_arp()
+        self.pg1.admin_up()
+        self.pg1.config_ip6()
+        self.pg1.generate_remote_hosts(2)
+        self.pg1.configure_ipv6_neighbors()
+
+        # Tenant B: pg2 inside v4 (tenant-B v4 VRF), pg3 outside v6
+        # (tenant-B v6 VRF). Note the reused v4 prefix — the whole
+        # point of the test.
+        self.pg2.set_table_ip4(self.TENANT_B_IP4_VRF)
+        self.pg2.set_table_ip6(self.TENANT_B_IP6_VRF)
+        self.pg3.set_table_ip4(self.TENANT_B_IP4_VRF)
+        self.pg3.set_table_ip6(self.TENANT_B_IP6_VRF)
+        self.pg2.admin_up()
+        self.pg2.config_ip4()
+        self.pg2.resolve_arp()
+        self.pg3.admin_up()
+        self.pg3.config_ip6()
+        self.pg3.generate_remote_hosts(2)
+        self.pg3.configure_ipv6_neighbors()
+
+    def tearDown(self):
+        try:
+            for i in self.pg_interfaces:
+                for t in (0, 1):
+                    self.vapi.map_if_enable_disable(
+                        is_enable=0, sw_if_index=i.sw_if_index, is_translation=t
+                    )
+            # Delete any domains we created — map_create_domain holds
+            # FIB locks so the per-tenant IPv4/IPv6 tables refuse to go
+            # away until every domain referencing them is torn down. Do
+            # NOT swallow exceptions here: if a delete fails, later
+            # tests inherit a poisoned FIB/LPM state and diagnosing the
+            # real cause becomes much harder. Let the exception
+            # propagate so the failure is obvious.
+            for d in self.vapi.map_domain_v2_dump():
+                self.vapi.map_del_domain(index=d.domain_index)
+            for i in self.pg_interfaces:
+                i.unconfig_ip4()
+                i.unconfig_ip6()
+                i.set_table_ip4(0)
+                i.set_table_ip6(0)
+                i.admin_down()
+        finally:
+            super(TestMAPTMultiTenant, self).tearDown()
+
+    def _add_domain_via_cli(
+        self,
+        ip4_pfx,
+        ip6_pfx,
+        ip6_src,
+        ip4_table_id,
+        ip6_table_id,
+        tag,
+    ):
+        """Drive the extended CLI so both the parser changes and the
+        plumbing through map_create_domain() are exercised. 1:1 mode
+        per RFC 7597 §5.1: ea_bits_len=0, no PSID, /128 DMR."""
+        cmd = (
+            "map add domain ip4-pfx %s ip6-pfx %s ip6-src %s "
+            "ea-bits-len 0 psid-offset 0 psid-len 0 mtu 1500 "
+            "ip4-table-id %d ip6-table-id %d v6-lookup-side dst tag %s"
+            % (ip4_pfx, ip6_pfx, ip6_src, ip4_table_id, ip6_table_id, tag)
+        )
+        self.vapi.cli(cmd)
+
+    def test_map_t_multitenant_shared_dmr(self):
+        """MAP-T: shared /128 DMR across tenants, VNI in per-tenant BMR."""
+
+        # Headend v4 is the same for both tenants — the customers in
+        # both MSP orgs dial the same RAVPN headend address on the
+        # inside.
+        headend_v4 = "192.0.2.1/32"
+
+        # Shared /128 DMR — this is the v6 address the headend listens
+        # on. Every tenant's forward traffic lands here; the reverse
+        # reply originates here. Identical across all tenants.
+        shared_dmr = "2001:db8::cafe/128"
+
+        # Per-tenant /64 source prefix (BMR). The VNI is packed into
+        # the 24 bits past the base prefix (bytes 6-8 of the /64), so
+        # tenant-A and tenant-B get distinct prefixes derivable from
+        # their VNI. Format: <base:48>::<vni:24><pad:8>::/64 with
+        # the customer v4 written at RFC-6052 offset 9.
+        tenant_a_bmr = "2001:db8:a::/64"  # VNI 0xa00000
+        tenant_b_bmr = "2001:db8:b::/64"  # VNI 0xb00000
+
+        # Add both domains.
+        self._add_domain_via_cli(
+            ip4_pfx=headend_v4,
+            ip6_pfx=shared_dmr,
+            ip6_src=tenant_a_bmr,
+            ip4_table_id=self.TENANT_A_IP4_VRF,
+            ip6_table_id=self.TENANT_A_IP6_VRF,
+            tag="TenantA",
+        )
+        self._add_domain_via_cli(
+            ip4_pfx=headend_v4,
+            ip6_pfx=shared_dmr,
+            ip6_src=tenant_b_bmr,
+            ip4_table_id=self.TENANT_B_IP4_VRF,
+            ip6_table_id=self.TENANT_B_IP6_VRF,
+            tag="TenantB",
+        )
+
+        # v2 dump — both tenants present, table ids and v6_lookup_side
+        # round-trip. Check every field relevant to per-VRF MAP-T so
+        # this test catches any dump-serialisation regression.
+        dump = self.vapi.map_domain_v2_dump()
+        self.assertEqual(len(dump), 2)
+        by_tag = {d.tag.rstrip("\x00"): d for d in dump}
+        for tag, expected_v4, expected_v6 in (
+            ("TenantA", self.TENANT_A_IP4_VRF, self.TENANT_A_IP6_VRF),
+            ("TenantB", self.TENANT_B_IP4_VRF, self.TENANT_B_IP6_VRF),
+        ):
+            d = by_tag[tag]
+            self.assertEqual(d.ip4_table_id, expected_v4)
+            self.assertEqual(d.ip6_table_id, expected_v6)
+            # v6_lookup_side = 1 (MAP_V6_LOOKUP_SIDE_API_DST). If this
+            # comes back as SRC (0) then the CLI parser or the wire
+            # enum has drifted, and the fast-path reverse lookup is
+            # using the wrong table for this domain.
+            self.assertEqual(
+                d.v6_lookup_side,
+                1,
+                "%s: v6_lookup_side must round-trip as DST" % tag,
+            )
+
+        # Enable MAP-T translation on each tenant's interface pair.
+        for sw_if_index in (
+            self.pg0.sw_if_index,
+            self.pg1.sw_if_index,
+            self.pg2.sw_if_index,
+            self.pg3.sw_if_index,
+        ):
+            self.vapi.map_if_enable_disable(
+                is_enable=1, sw_if_index=sw_if_index, is_translation=1
+            )
+
+        # Underlay route for the shared DMR, installed in each tenant's
+        # underlay VRF so the translated v6 packet can egress from the
+        # correct tenant-underlay interface.
+        VppIpRoute(
+            self,
+            "2001:db8::cafe",
+            128,
+            [
+                VppRoutePath(
+                    self.pg1.remote_ip6,
+                    self.pg1.sw_if_index,
+                    proto=DpoProto.DPO_PROTO_IP6,
+                )
+            ],
+            table_id=self.TENANT_A_IP6_VRF,
+        ).add_vpp_config()
+        VppIpRoute(
+            self,
+            "2001:db8::cafe",
+            128,
+            [
+                VppRoutePath(
+                    self.pg3.remote_ip6,
+                    self.pg3.sw_if_index,
+                    proto=DpoProto.DPO_PROTO_IP6,
+                )
+            ],
+            table_id=self.TENANT_B_IP6_VRF,
+        ).add_vpp_config()
+
+        payload = TCP(sport=0xABCD, dport=0xABCD)
+
+        # Forward path tenant A: client on pg0 (tenant-A v4 VRF) sends
+        # to headend v4 192.0.2.1. Translated v6 egresses on pg1 with
+        # the shared DMR as dst and tenant-A BMR + client v4 as src.
+        p4_a = (
+            Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+            / IP(src=self.pg0.remote_ip4, dst="192.0.2.1")
+            / payload
+        )
+        rx = self.send_and_expect(self.pg0, p4_a * 1, self.pg1)
+        for p in rx:
+            # v6 dst is the shared DMR — same for every tenant.
+            self.assertEqual(
+                ipaddress.IPv6Address(p[IPv6].dst),
+                ipaddress.IPv6Address("2001:db8::cafe"),
+            )
+            # v6 src = BMR base + customer v4 at RFC 6052 offset 9.
+            # pg0.remote_ip4 = 172.16.1.2 → bytes ac:10:01:02.
+            # Exact-match (via ipaddress canonicalization) rather than
+            # startswith so a bad embedded-v4 offset or clobbered
+            # bytes can't slip past.
+            self.assertEqual(
+                ipaddress.IPv6Address(p[IPv6].src),
+                ipaddress.IPv6Address("2001:db8:a::ac:1001:200:0"),
+            )
+
+        # Forward path tenant B: same headend dst, same DMR stamped on
+        # v6 dst, but the v6 src must carry tenant-B's BMR because the
+        # packet arrived in the tenant-B v4 VRF (pg2).
+        p4_b = (
+            Ether(dst=self.pg2.local_mac, src=self.pg2.remote_mac)
+            / IP(src=self.pg2.remote_ip4, dst="192.0.2.1")
+            / payload
+        )
+        rx = self.send_and_expect(self.pg2, p4_b * 1, self.pg3)
+        for p in rx:
+            self.assertEqual(
+                ipaddress.IPv6Address(p[IPv6].dst),
+                ipaddress.IPv6Address("2001:db8::cafe"),
+            )
+            # pg2.remote_ip4 = 172.16.3.2 → bytes ac:10:03:02.
+            self.assertEqual(
+                ipaddress.IPv6Address(p[IPv6].src),
+                ipaddress.IPv6Address("2001:db8:b::ac:1003:200:0"),
+            )
+
+        # Reverse path tenant A: headend replies. v6 src is the fixed
+        # DMR (identical to what tenant B would see — that's the point),
+        # v6 dst is the tenant-A BMR with the customer v4 written at
+        # RFC-6052 offset 9 (bytes 9-12 = pg0.remote_ip4 = 172.16.1.2).
+        # Dst-keyed LPM hits ip6_src_prefix_tbl on tenant-A's BMR; v4
+        # src comes from d->ip4_prefix = 192.0.2.1; v4 dst is extracted
+        # from offset 9 of v6 dst. Resulting v4 packet lands on pg0.
+        p6_a = (
+            Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac)
+            / IPv6(
+                src="2001:db8::cafe",
+                dst="2001:db8:a::ac:1001:200:0",
+            )
+            / payload
+        )
+        rx = self.send_and_expect(self.pg1, p6_a * 1, self.pg0)
+        for p in rx:
+            self.assertEqual(p[IP].src, "192.0.2.1")
+            self.assertEqual(p[IP].dst, self.pg0.remote_ip4)
+
+        # Reverse path tenant B: same shared DMR as v6 src, tenant-B
+        # BMR as v6 dst with pg2.remote_ip4 (172.16.3.2) embedded.
+        p6_b = (
+            Ether(dst=self.pg3.local_mac, src=self.pg3.remote_mac)
+            / IPv6(
+                src="2001:db8::cafe",
+                dst="2001:db8:b::ac:1003:200:0",
+            )
+            / payload
+        )
+        rx = self.send_and_expect(self.pg3, p6_b * 1, self.pg2)
+        for p in rx:
+            self.assertEqual(p[IP].src, "192.0.2.1")
+            self.assertEqual(p[IP].dst, self.pg2.remote_ip4)
+
+    def test_map_t_multitenant_icmp_echo_reply(self):
+        """MAP-T 1:1: RAVPN ICMP echo-reply reaches the customer.
+
+        Reproduces the P2 regression in ip6_to_ip4_set_icmp_cb /
+        ip6_to_ip4_set_inner_icmp_cb: those callbacks still read
+        map_get_ip4(v6_src, ip6_src_len) + DMR-encoded security check,
+        but for fixed-/128 DMR + ea_bits_len=0 domains the v6 source
+        is an opaque /128 with no embedded v4 and the DMR-encoded
+        security assertion is inverted. Echo replies drop with
+        MAP_ERROR_ICMP until the 1:1 short-circuit is extended to
+        these callbacks.
+        """
+        # Same domain config as test_map_t_multitenant_shared_dmr:
+        # shared /128 DMR + per-tenant /64 BMR with v6_lookup_side=dst.
+        headend_v4 = "192.0.2.1/32"
+        shared_dmr = "2001:db8::cafe/128"
+        tenant_a_bmr = "2001:db8:a::/64"
+
+        self._add_domain_via_cli(
+            ip4_pfx=headend_v4,
+            ip6_pfx=shared_dmr,
+            ip6_src=tenant_a_bmr,
+            ip4_table_id=self.TENANT_A_IP4_VRF,
+            ip6_table_id=self.TENANT_A_IP6_VRF,
+            tag="TenantA",
+        )
+
+        for sw_if_index in (self.pg0.sw_if_index, self.pg1.sw_if_index):
+            self.vapi.map_if_enable_disable(
+                is_enable=1, sw_if_index=sw_if_index, is_translation=1
+            )
+
+        VppIpRoute(
+            self,
+            "2001:db8::cafe",
+            128,
+            [
+                VppRoutePath(
+                    self.pg1.remote_ip6,
+                    self.pg1.sw_if_index,
+                    proto=DpoProto.DPO_PROTO_IP6,
+                )
+            ],
+            table_id=self.TENANT_A_IP6_VRF,
+        ).add_vpp_config()
+
+        # ICMP echo-reply from headend → translated to v4 echo-reply.
+        p6 = (
+            Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac)
+            / IPv6(
+                src="2001:db8::cafe",
+                dst="2001:db8:a::ac:1001:200:0",
+            )
+            / ICMPv6EchoRequest(id=0x1234, seq=1)
+        )
+        # v6 ICMP echo-request translates to v4 ICMP echo-request
+        # (RFC 7915). What the customer sees on pg0:
+        rx = self.send_and_expect(self.pg1, p6 * 1, self.pg0)
+        for p in rx:
+            self.assertEqual(p[IP].src, "192.0.2.1")
+            self.assertEqual(p[IP].dst, self.pg0.remote_ip4)
+
+    def test_map_t_multitenant_v2_api(self):
+        """MAP-T: exercise the map_add_domain_v2 binary API directly.
+
+        The multi-tenant test above drives domain creation through the
+        CLI. This test covers the same behaviour via the v2 binary
+        API so the v1→v2 handler, the v6_lookup_side wire-enum
+        mapping, and the v2 dump path are exercised end-to-end. The
+        CLI parser's codepath and the binary handler's codepath
+        regress independently, so both deserve direct coverage.
+        """
+        rv = self.vapi.map_add_domain_v2(
+            ip4_prefix="192.0.2.1/32",
+            ip6_prefix="2001:db8::cafe/128",
+            ip6_src="1234:5678:a000:cdef::/64",
+            ea_bits_len=0,
+            psid_offset=0,
+            psid_length=0,
+            mtu=1500,
+            ip4_table_id=self.TENANT_A_IP4_VRF,
+            ip6_table_id=self.TENANT_A_IP6_VRF,
+            v6_lookup_side=1,  # MAP_V6_LOOKUP_SIDE_API_DST
+            tag="V2ApiTenantA",
+        )
+        self.assertEqual(rv.retval, 0)
+        self.assertNotEqual(rv.index, 0xFFFFFFFF)
+
+        # Dump should round-trip every field we set.
+        dump = self.vapi.map_domain_v2_dump()
+        self.assertEqual(len(dump), 1)
+        d = dump[0]
+        self.assertEqual(d.tag.rstrip("\x00"), "V2ApiTenantA")
+        self.assertEqual(d.ip4_table_id, self.TENANT_A_IP4_VRF)
+        self.assertEqual(d.ip6_table_id, self.TENANT_A_IP6_VRF)
+        self.assertEqual(d.v6_lookup_side, 1)
+        self.assertEqual(str(d.ip4_prefix), "192.0.2.1/32")
+        self.assertEqual(str(d.ip6_prefix), "2001:db8::cafe/128")
+
+    def test_map_t_multitenant_icmp_fragmented(self):
+        """MAP-T: oversized ICMP echo-reply via ip4-frag still honours
+        the per-VRF FIB override.
+
+        Regression test for the codex P2 finding that
+        sw_if_index[VLIB_TX] = d->ip4_fib_index was not set on the
+        fragmentation branch of ip6_map_t_icmp. A reverse-path ICMP
+        packet larger than MTU would translate correctly but be
+        fragmented in the default FIB, missing the tenant VRF.
+
+        We can't observe the fragmentation routing directly from pg;
+        we assert the test setup reaches the customer pg interface at
+        all for an oversized echo-request, which requires the frag
+        path's lookup to happen in the tenant FIB where the customer
+        route exists.
+        """
+        # Same BMR as test_map_t_multitenant_shared_dmr so we can reuse
+        # the "2001:db8:a::ac:1001:200:0" v6-dst encoding that maps to
+        # pg0.remote_ip4 at RFC 6052 offset 9.
+        self._add_domain_via_cli(
+            ip4_pfx="192.0.2.1/32",
+            ip6_pfx="2001:db8::cafe/128",
+            ip6_src="2001:db8:a::/64",
+            ip4_table_id=self.TENANT_A_IP4_VRF,
+            ip6_table_id=self.TENANT_A_IP6_VRF,
+            tag="TenantAFrag",
+        )
+
+        for sw_if_index in (self.pg0.sw_if_index, self.pg1.sw_if_index):
+            self.vapi.map_if_enable_disable(
+                is_enable=1, sw_if_index=sw_if_index, is_translation=1
+            )
+
+        VppIpRoute(
+            self,
+            "2001:db8::cafe",
+            128,
+            [
+                VppRoutePath(
+                    self.pg1.remote_ip6,
+                    self.pg1.sw_if_index,
+                    proto=DpoProto.DPO_PROTO_IP6,
+                )
+            ],
+            table_id=self.TENANT_A_IP6_VRF,
+        ).add_vpp_config()
+
+        # Large enough to force fragmentation: the domain's MTU is
+        # 1500, so an ICMP echo-request with a payload that pushes the
+        # translated v4 packet over 1500 must take the ip4-frag branch.
+        large_payload = b"\xa5" * 2000
+        p6 = (
+            Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac)
+            / IPv6(
+                src="2001:db8::cafe",
+                dst="2001:db8:a::ac:1001:200:0",
+            )
+            / ICMPv6EchoRequest(id=0x1234, seq=1)
+            / Raw(large_payload)
+        )
+
+        self.pg1.add_stream(p6)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        # Fragmentation produces multiple v4 packets; each must land
+        # on pg0 in the tenant-A v4 VRF. If the VLIB_TX override was
+        # missed on the frag branch, ip4-lookup would run in FIB 0
+        # which has no route to pg0.remote_ip4, and the frags would
+        # drop. 2000-byte payload at MTU 1500 yields 2 fragments.
+        rx = self.pg0.get_capture(expected_count=2, timeout=2)
+        self.assertEqual(len(rx), 2)
+        for p in rx:
+            self.assertEqual(p[IP].src, "192.0.2.1")
+            self.assertEqual(p[IP].dst, self.pg0.remote_ip4)
 
 
 if __name__ == "__main__":
