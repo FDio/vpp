@@ -6,6 +6,8 @@
 
 #include <npol/npol.h>
 #include <npol/npol_match.h>
+#include <npol/npol_interface.h>
+#include <cnat/cnat_node.h>
 
 always_inline u8
 ip_ipset_contains_ip4 (npol_ipset_t *ipset, ip4_address_t *addr)
@@ -144,17 +146,17 @@ ipport_ipset_contains_ip6 (npol_ipset_t *ipset, ip6_address_t *addr,
 }
 
 always_inline int
-npol_match_rule (npol_rule_t *rule, u32 is_ip6, fa_5tuple_t *pkt_5tuple)
+npol_match_rule (npol_rule_t *rule, u32 is_ip6, cnat_5tuple_t *pkt_5tuple)
 {
-  ip4_address_t *src_ip4 = &pkt_5tuple->ip4_addr[SRC];
-  ip4_address_t *dst_ip4 = &pkt_5tuple->ip4_addr[DST];
-  ip6_address_t *src_ip6 = &pkt_5tuple->ip6_addr[SRC];
-  ip6_address_t *dst_ip6 = &pkt_5tuple->ip6_addr[DST];
-  u8 l4proto = pkt_5tuple->l4.proto;
-  u16 src_port = pkt_5tuple->l4.port[SRC];
-  u16 dst_port = pkt_5tuple->l4.port[DST];
-  u16 type = pkt_5tuple->l4.port[0];
-  u16 code = pkt_5tuple->l4.port[1];
+  ip4_address_t *src_ip4 = &pkt_5tuple->ip[SRC].ip4;
+  ip4_address_t *dst_ip4 = &pkt_5tuple->ip[DST].ip4;
+  ip6_address_t *src_ip6 = src_ip6 = &pkt_5tuple->ip[SRC].ip6;
+  ip6_address_t *dst_ip6 = &pkt_5tuple->ip[DST].ip6;
+  u8 l4proto = pkt_5tuple->iproto;
+  u16 src_port = clib_net_to_host_u16 (pkt_5tuple->port[SRC]);
+  u16 dst_port = clib_net_to_host_u16 (pkt_5tuple->port[DST]);
+  u16 type = clib_net_to_host_u16 (pkt_5tuple->port[0]);
+  u16 code = clib_net_to_host_u16 (pkt_5tuple->port[1]);
 
   npol_rule_filter_t *filter;
   vec_foreach (filter, rule->filters)
@@ -600,8 +602,7 @@ npol_match_rule (npol_rule_t *rule, u32 is_ip6, fa_5tuple_t *pkt_5tuple)
 }
 
 always_inline int
-npol_match_policy (npol_policy_t *policy, u32 is_inbound, u32 is_ip6,
-		   fa_5tuple_t *pkt_5tuple)
+npol_match_policy (npol_policy_t *policy, u32 is_inbound, u32 is_ip6, cnat_5tuple_t *pkt_5tuple)
 {
   /* packets RX/TX from VPP perspective */
   u32 *rules =
@@ -630,8 +631,8 @@ npol_match_policy (npol_policy_t *policy, u32 is_inbound, u32 is_ip6,
  * The function sets r_action to NPOL_ACTION_ALLOW or NPOL_ACTION_DENY
  * It returns 1 if a rule was matched, 0 otherwise
  */
-CLIB_MARCH_FN (npol_match, int, u32 sw_if_index, u32 is_inbound,
-	       fa_5tuple_t *pkt_5tuple, int is_ip6, u8 *r_action)
+CLIB_MARCH_FN (npol_match, int, u32 sw_if_index, u32 is_inbound, cnat_5tuple_t *pkt_5tuple,
+	       int is_ip6, u8 *r_action)
 {
   npol_interface_config_t *if_config;
   npol_policy_t *policy;
@@ -739,11 +740,41 @@ profiles:
 
 #ifndef CLIB_MARCH_VARIANT
 int
-npol_match_func (u32 sw_if_index, u32 is_inbound, fa_5tuple_t *pkt_5tuple,
-		 int is_ip6, u8 *r_action)
+npol_match_func (u32 sw_if_index, u32 is_inbound, cnat_5tuple_t *pkt_5tuple, int is_ip6,
+		 u8 *r_action)
 {
-  return CLIB_MARCH_FN_SELECT (npol_match) (sw_if_index, is_inbound,
-					    pkt_5tuple, is_ip6, r_action);
+  return CLIB_MARCH_FN_SELECT (npol_match) (sw_if_index, is_inbound, pkt_5tuple, is_ip6, r_action);
 }
 
+void
+npol_cnat_slow_path_input (vlib_main_t *vm, vlib_buffer_t *b, ip_address_family_t af,
+			   cnat_timestamp_t *ts)
+{
+  u32 in_if = vnet_buffer (b)->sw_if_index[VLIB_RX];
+  if (in_if >= vec_len (npol_interface_configs) || !npol_interface_configs[in_if].enabled)
+    return;
+  cnat_5tuple_t tup = { 0 };
+  cnat_make_buffer_5tuple (b, af, &tup, 0, 0);
+  u8 action = 0;
+  CLIB_MARCH_FN_SELECT (npol_match)
+  (in_if, 1 /* is_inbound */, &tup, !(AF_IP4 == af), &action);
+  if (action == NPOL_ACTION_DENY)
+    cnat_hook_deny (ts, CNAT_LOCATION_INPUT);
+}
+
+void
+npol_cnat_slow_path_output (vlib_main_t *vm, vlib_buffer_t *b, ip_address_family_t af,
+			    cnat_timestamp_t *ts)
+{
+  u32 out_if = vnet_buffer (b)->sw_if_index[VLIB_TX];
+  if (out_if >= vec_len (npol_interface_configs) || !npol_interface_configs[out_if].enabled)
+    return;
+  cnat_5tuple_t tup = { 0 };
+  cnat_make_buffer_5tuple (b, af, &tup, vnet_buffer (b)->ip.save_rewrite_length, 0);
+  u8 action = 0;
+  CLIB_MARCH_FN_SELECT (npol_match)
+  (out_if, 0 /* is_inbound */, &tup, !(AF_IP4 == af), &action);
+  if (action == NPOL_ACTION_DENY)
+    cnat_hook_deny (ts, CNAT_LOCATION_OUTPUT);
+}
 #endif /* CLIB_MARCH_VARIANT */

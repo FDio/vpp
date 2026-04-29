@@ -18,8 +18,8 @@
 #define REPLY_MSG_ID_BASE cpm->msg_id_base
 #include <vlibapi/api_helper_macros.h>
 
-#define CALICO_POLICY_VERSION_MAJOR 0
-#define CALICO_POLICY_VERSION_MINOR 0
+#define NPOL_VERSION_MAJOR 0
+#define NPOL_VERSION_MINOR 0
 
 npol_main_t npol_main = { 0 };
 
@@ -111,8 +111,8 @@ vl_api_npol_get_version_t_handler (vl_api_npol_get_version_t *mp)
   clib_memset (rmp, 0, msg_size);
   rmp->_vl_msg_id = ntohs (VL_API_NPOL_GET_VERSION_REPLY + cpm->msg_id_base);
   rmp->context = mp->context;
-  rmp->major = htonl (CALICO_POLICY_VERSION_MAJOR);
-  rmp->minor = htonl (CALICO_POLICY_VERSION_MINOR);
+  rmp->major = htonl (NPOL_VERSION_MAJOR);
+  rmp->minor = htonl (NPOL_VERSION_MINOR);
 
   vl_api_send_msg (reg, (u8 *) rmp);
 }
@@ -383,18 +383,8 @@ vl_api_npol_configure_policies_t_handler (vl_api_npol_configure_policies_t *mp)
 #include <vat/vat.h>
 #include <vlibapi/vat_helper_macros.h>
 
-/* Declare message IDs */
-#include <acl/acl.api_enum.h>
-#include <acl/acl.api_types.h>
-#undef vl_print
-#define vl_print(handle, ...)
-#undef vl_print
-#define vl_endianfun /* define message structures */
-#include <acl/acl.api.h>
-#undef vl_endianfun
-
 static clib_error_t *
-calpol_init (vlib_main_t *vm)
+npol_init (vlib_main_t *vm)
 {
   npol_main_t *cpm = &npol_main;
 
@@ -404,7 +394,7 @@ calpol_init (vlib_main_t *vm)
 }
 
 static clib_error_t *
-calpol_plugin_config (vlib_main_t *vm, unformat_input_t *input)
+npol_plugin_config (vlib_main_t *vm, unformat_input_t *input)
 {
   return NULL;
 }
@@ -414,8 +404,8 @@ VLIB_PLUGIN_REGISTER () = {
   .description = "Network Policy",
 };
 
-VLIB_CONFIG_FUNCTION (calpol_plugin_config, "calico-policy-plugin");
+VLIB_CONFIG_FUNCTION (npol_plugin_config, "npol-plugin");
 
-VLIB_INIT_FUNCTION (calpol_init) = {
-  .runs_after = VLIB_INITS ("acl_init"),
+VLIB_INIT_FUNCTION (npol_init) = {
+  .runs_after = VLIB_INITS ("cnat_translation_init"),
 };
