@@ -227,9 +227,8 @@ ip6_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	       && clib_net_to_host_u16 (ip60->payload_length) > 20))
 	    {
 	      d0 =
-		ip4_map_get_domain ((ip4_address_t *) & ip40->
-				    src_address.as_u32, &map_domain_index0,
-				    &error0);
+		ip4_map_get_domain (0 /* fib_index */, (ip4_address_t *) &ip40->src_address.as_u32,
+				    &map_domain_index0, &error0);
 	    }
 	  else if (ip60->protocol == IP_PROTOCOL_ICMP6 &&
 		   clib_net_to_host_u16 (ip60->payload_length) >
@@ -254,9 +253,8 @@ ip6_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	       && clib_net_to_host_u16 (ip61->payload_length) > 20))
 	    {
 	      d1 =
-		ip4_map_get_domain ((ip4_address_t *) & ip41->
-				    src_address.as_u32, &map_domain_index1,
-				    &error1);
+		ip4_map_get_domain (0 /* fib_index */, (ip4_address_t *) &ip41->src_address.as_u32,
+				    &map_domain_index1, &error1);
 	    }
 	  else if (ip61->protocol == IP_PROTOCOL_ICMP6 &&
 		   clib_net_to_host_u16 (ip61->payload_length) >
@@ -298,9 +296,7 @@ ip6_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 		  else
 		    {
 		      next0 =
-			ip6_map_ip4_lookup_bypass (p0,
-						   ip40) ?
-			IP6_MAP_NEXT_IP4_REWRITE : next0;
+			ip6_map_ip4_lookup_bypass (p0, ip40, d0) ? IP6_MAP_NEXT_IP4_REWRITE : next0;
 		    }
 		  vlib_increment_combined_counter (cm + MAP_DOMAIN_COUNTER_RX,
 						   thread_index,
@@ -330,9 +326,7 @@ ip6_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 		  else
 		    {
 		      next1 =
-			ip6_map_ip4_lookup_bypass (p1,
-						   ip41) ?
-			IP6_MAP_NEXT_IP4_REWRITE : next1;
+			ip6_map_ip4_lookup_bypass (p1, ip41, d1) ? IP6_MAP_NEXT_IP4_REWRITE : next1;
 		    }
 		  vlib_increment_combined_counter (cm + MAP_DOMAIN_COUNTER_RX,
 						   thread_index,
@@ -432,9 +426,8 @@ ip6_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	       && clib_net_to_host_u16 (ip60->payload_length) > 20))
 	    {
 	      d0 =
-		ip4_map_get_domain ((ip4_address_t *) & ip40->
-				    src_address.as_u32, &map_domain_index0,
-				    &error0);
+		ip4_map_get_domain (0 /* fib_index */, (ip4_address_t *) &ip40->src_address.as_u32,
+				    &map_domain_index0, &error0);
 	    }
 	  else if (ip60->protocol == IP_PROTOCOL_ICMP6 &&
 		   clib_net_to_host_u16 (ip60->payload_length) >
@@ -481,9 +474,7 @@ ip6_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 		  else
 		    {
 		      next0 =
-			ip6_map_ip4_lookup_bypass (p0,
-						   ip40) ?
-			IP6_MAP_NEXT_IP4_REWRITE : next0;
+			ip6_map_ip4_lookup_bypass (p0, ip40, d0) ? IP6_MAP_NEXT_IP4_REWRITE : next0;
 		    }
 		  vlib_increment_combined_counter (cm + MAP_DOMAIN_COUNTER_RX,
 						   thread_index,
@@ -582,9 +573,8 @@ ip6_map_post_ip4_reass (vlib_main_t * vm,
 	  ip40 = vlib_buffer_get_current (p0);
 	  ip60 = ((ip6_header_t *) ip40) - 1;
 
-	  d0 =
-	    ip4_map_get_domain ((ip4_address_t *) & ip40->src_address.as_u32,
-				&map_domain_index0, &error0);
+	  d0 = ip4_map_get_domain (0 /* fib_index */, (ip4_address_t *) &ip40->src_address.as_u32,
+				   &map_domain_index0, &error0);
 
 	  port0 = vnet_buffer (p0)->ip.reass.l4_src_port;
 

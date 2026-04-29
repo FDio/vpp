@@ -58,15 +58,30 @@ ip6_to_ip4_set_icmp_cb (ip6_header_t * ip6, ip4_header_t * ip4, void *arg)
   icmp6_to_icmp_ctx_t *ctx = arg;
   u32 ip4_sadr;
 
-  // Security check
-  // Note that this prevents an intermediate IPv6 router from answering
-  // the request.
-  ip4_sadr = map_get_ip4 (&ip6->src_address, ctx->d->ip6_src_len);
-  if (ip6->src_address.as_u64[0] !=
-      map_get_pfx_net (ctx->d, ip4_sadr, ctx->sender_port)
-      || ip6->src_address.as_u64[1] != map_get_sfx_net (ctx->d, ip4_sadr,
-							ctx->sender_port))
-    return -1;
+  /*
+   * For 1:1 mode (ip6_prefix_len == 128 && ea_bits_len == 0), the
+   * reverse packet's v6 source is the opaque /128 DMR that the headend
+   * listens on — it carries no embedded v4. Use d->ip4_prefix as the
+   * v4 source and skip the DMR-encoded check: the dst-keyed domain
+   * resolution in the ip6_map_t entry node has already matched this
+   * packet against the domain's per-tenant ip6_src prefix (see the
+   * matching short-circuit in ip6_map_t / map_ip6_to_ip4_tcp_udp).
+   *
+   * For RFC 7597 encodings (DMR < /128 or ea_bits_len > 0), recover v4
+   * src from v6 src via RFC 6052 offset, then verify v6 src matches
+   * the domain's DMR-encoded (v4 + port) form.
+   */
+  if (ctx->d->ip6_prefix_len == 128 && ctx->d->ea_bits_len == 0)
+    {
+      ip4_sadr = ctx->d->ip4_prefix.as_u32;
+    }
+  else
+    {
+      ip4_sadr = map_get_ip4 (&ip6->src_address, ctx->d->ip6_src_len);
+      if (ip6->src_address.as_u64[0] != map_get_pfx_net (ctx->d, ip4_sadr, ctx->sender_port) ||
+	  ip6->src_address.as_u64[1] != map_get_sfx_net (ctx->d, ip4_sadr, ctx->sender_port))
+	return -1;
+    }
 
   ip4->dst_address.as_u32 =
     ip6_map_t_embedded_address (ctx->d, &ip6->dst_address);
@@ -82,14 +97,26 @@ ip6_to_ip4_set_inner_icmp_cb (ip6_header_t * ip6, ip4_header_t * ip4,
   icmp6_to_icmp_ctx_t *ctx = arg;
   u32 inner_ip4_dadr;
 
-  //Security check of inner packet
-  inner_ip4_dadr = map_get_ip4 (&ip6->dst_address, ctx->d->ip6_src_len);
-  if (ip6->dst_address.as_u64[0] !=
-      map_get_pfx_net (ctx->d, inner_ip4_dadr, ctx->sender_port)
-      || ip6->dst_address.as_u64[1] != map_get_sfx_net (ctx->d,
-							inner_ip4_dadr,
-							ctx->sender_port))
-    return -1;
+  /*
+   * Inner-header ICMP translation. The inner v6 header's direction is
+   * flipped relative to the outer, so for 1:1 mode the inner v6 dst
+   * is the opaque /128 DMR (the thing the original v4 flow was
+   * destined to). Use d->ip4_prefix directly; no DMR-encoded security
+   * check to invert here either — the outer header's authenticity has
+   * already been established by ip6_map_t's entry node.
+   */
+  if (ctx->d->ip6_prefix_len == 128 && ctx->d->ea_bits_len == 0)
+    {
+      inner_ip4_dadr = ctx->d->ip4_prefix.as_u32;
+    }
+  else
+    {
+      inner_ip4_dadr = map_get_ip4 (&ip6->dst_address, ctx->d->ip6_src_len);
+      if (ip6->dst_address.as_u64[0] !=
+	    map_get_pfx_net (ctx->d, inner_ip4_dadr, ctx->sender_port) ||
+	  ip6->dst_address.as_u64[1] != map_get_sfx_net (ctx->d, inner_ip4_dadr, ctx->sender_port))
+	return -1;
+    }
 
   ip4->dst_address.as_u32 = inner_ip4_dadr;
   ip4->src_address.as_u32 =
@@ -160,6 +187,13 @@ ip6_map_t_icmp (vlib_main_t * vm,
 	      goto err0;
 	    }
 
+	  /* Per-VRF FIB override. Must be set regardless of which branch
+	   * we take below: the ip_frag path eventually enqueues to
+	   * ip4-lookup too, and needs the same tenant FIB selection as
+	   * the fast-path rewrite branch. */
+	  if (d0->ip4_fib_index != 0)
+	    vnet_buffer (p0)->sw_if_index[VLIB_TX] = d0->ip4_fib_index;
+
 	  if (vnet_buffer (p0)->map_t.mtu < p0->current_length)
 	    {
 	      // Send to fragmentation node if necessary
@@ -169,8 +203,8 @@ ip6_map_t_icmp (vlib_main_t * vm,
 	    }
 	  else
 	    {
-	      next0 = ip6_map_ip4_lookup_bypass (p0, NULL) ?
-		IP6_MAPT_ICMP_NEXT_IP4_REWRITE : next0;
+	      next0 =
+		ip6_map_ip4_lookup_bypass (p0, NULL, d0) ? IP6_MAPT_ICMP_NEXT_IP4_REWRITE : next0;
 	    }
 	err0:
 	  if (PREDICT_TRUE (error0 == MAP_ERROR_NONE))
@@ -266,6 +300,7 @@ ip6_map_t_fragmented (vlib_main_t * vm,
 	  u32 pi0;
 	  vlib_buffer_t *p0;
 	  u32 next0;
+	  map_domain_t *d0;
 
 	  pi0 = to_next[0] = from[0];
 	  from += 1;
@@ -274,6 +309,7 @@ ip6_map_t_fragmented (vlib_main_t * vm,
 	  n_left_to_next -= 1;
 	  next0 = IP6_MAPT_FRAGMENTED_NEXT_IP4_LOOKUP;
 	  p0 = vlib_get_buffer (vm, pi0);
+	  d0 = pool_elt_at_index (map_main.domains, vnet_buffer (p0)->map_t.map_domain_index);
 
 	  if (map_ip6_to_ip4_fragmented (vm, p0))
 	    {
@@ -292,9 +328,12 @@ ip6_map_t_fragmented (vlib_main_t * vm,
 		}
 	      else
 		{
-		  next0 = ip6_map_ip4_lookup_bypass (p0, NULL) ?
-		    IP6_MAPT_FRAGMENTED_NEXT_IP4_REWRITE : next0;
+		  next0 = ip6_map_ip4_lookup_bypass (p0, NULL, d0) ?
+			    IP6_MAPT_FRAGMENTED_NEXT_IP4_REWRITE :
+			    next0;
 		}
+	      if (d0->ip4_fib_index != 0)
+		vnet_buffer (p0)->sw_if_index[VLIB_TX] = d0->ip4_fib_index;
 	    }
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
@@ -381,7 +420,19 @@ map_ip6_to_ip4_tcp_udp (vlib_main_t * vm, vlib_buffer_t * p,
   u32 map_domain_index = -1;
   u8 error = 0;
 
-  ip4_map_get_domain (&ip4->src_address, &map_domain_index, &error);
+  /* Anti-spoof callback runs on the reverse path; drive the LPM
+   * lookup in the tenant IPv4 FIB that the resolved MAP domain
+   * belongs to so overlapping v4 prefixes in different VRFs don't
+   * alias one another. Single-tenant/default-FIB domains resolve to
+   * fib_index 0 and keep the existing behaviour. */
+  u32 anti_spoof_fib_index = 0;
+  if (vnet_buffer (p)->map_t.map_domain_index != ~0)
+    {
+      map_domain_t *sd = pool_elt_at_index (mm->domains, vnet_buffer (p)->map_t.map_domain_index);
+      anti_spoof_fib_index = sd->ip4_fib_index;
+    }
+
+  ip4_map_get_domain (anti_spoof_fib_index, &ip4->src_address, &map_domain_index, &error);
   if (error)
     return error;
 
@@ -436,6 +487,7 @@ ip6_map_t_tcp_udp (vlib_main_t * vm,
 	  u32 pi0;
 	  vlib_buffer_t *p0;
 	  ip6_mapt_tcp_udp_next_t next0;
+	  map_domain_t *d0;
 
 	  pi0 = to_next[0] = from[0];
 	  from += 1;
@@ -445,6 +497,7 @@ ip6_map_t_tcp_udp (vlib_main_t * vm,
 	  next0 = IP6_MAPT_TCP_UDP_NEXT_IP4_LOOKUP;
 
 	  p0 = vlib_get_buffer (vm, pi0);
+	  d0 = pool_elt_at_index (map_main.domains, vnet_buffer (p0)->map_t.map_domain_index);
 
 	  if (map_ip6_to_ip4_tcp_udp (vm, p0, true))
 	    {
@@ -463,9 +516,12 @@ ip6_map_t_tcp_udp (vlib_main_t * vm,
 		}
 	      else
 		{
-		  next0 = ip6_map_ip4_lookup_bypass (p0, NULL) ?
-		    IP6_MAPT_TCP_UDP_NEXT_IP4_REWRITE : next0;
+		  next0 = ip6_map_ip4_lookup_bypass (p0, NULL, d0) ?
+			    IP6_MAPT_TCP_UDP_NEXT_IP4_REWRITE :
+			    next0;
 		}
+	      if (d0->ip4_fib_index != 0)
+		vnet_buffer (p0)->sw_if_index[VLIB_TX] = d0->ip4_fib_index;
 	    }
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
@@ -518,20 +574,69 @@ ip6_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 
 	  ip60 = vlib_buffer_get_current (p0);
 
-	  d0 =
-	    /* Originally using the IPv6 dest for rule lookup, now source
-	     * [dgeist] ip6_map_get_domain (&ip60->dst_address,
-	     */
-	    ip6_map_get_domain (&ip60->src_address,
-				&vnet_buffer (p0)->map_t.map_domain_index,
-				&error0);
+	  /*
+	   * Resolve the MAP domain. Single-tenant domains key on the v6
+	   * source against ip6_prefix_tbl (which holds DMR prefixes);
+	   * per-VRF domains key on the v6 destination against
+	   * ip6_src_prefix_tbl (which holds each domain's per-tenant
+	   * ip6_src prefix). We don't know which kind of domain the
+	   * packet belongs to yet, so try the single-tenant (src-in-DMR)
+	   * lookup first and fall back to the per-VRF (dst-in-ip6_src)
+	   * table if it misses.
+	   *
+	   * Each hit is filtered by d->v6_lookup_side so a mixed-mode
+	   * deployment — single-tenant SRC-keyed domain and per-VRF
+	   * DST-keyed domain both installing entries that collide on the
+	   * same v6 address — cannot misroute return traffic. A DST-keyed
+	   * domain's ip6_src prefix inserted into ip6_src_prefix_tbl
+	   * must never be resolved via the SRC-keyed path, and vice
+	   * versa. If the filter rejects the hit we re-run the lookup
+	   * on the other side.
+	   */
+	  d0 = ip6_map_get_domain (&ip60->src_address, &vnet_buffer (p0)->map_t.map_domain_index,
+				   &error0);
+	  if (d0 && d0->v6_lookup_side != MAP_V6_LOOKUP_SRC)
+	    {
+	      /* SRC-keyed hit returned a domain that is not actually
+	       * SRC-keyed (shared DMR with a DST-keyed domain). Discard
+	       * and try the DST-keyed path. */
+	      d0 = 0;
+	      error0 = MAP_ERROR_NONE;
+	    }
+	  if (!d0)
+	    {
+	      error0 = MAP_ERROR_NONE;
+	      d0 = ip6_map_get_domain_dst (&ip60->dst_address,
+					   &vnet_buffer (p0)->map_t.map_domain_index, &error0);
+	      if (d0 && d0->v6_lookup_side != MAP_V6_LOOKUP_DST)
+		{
+		  /* DST-keyed hit on a domain that is SRC-keyed — this
+		   * would silently promote a single-tenant domain into
+		   * MAP-T processing for the wrong packet. Reject. */
+		  d0 = 0;
+		  error0 = MAP_ERROR_NO_DOMAIN;
+		}
+	    }
 	  if (!d0)
 	    {			/* Guess it wasn't for us */
 	      vnet_feature_next (&next0, p0);
 	      goto exit;
 	    }
 
-	  saddr = map_get_ip4 (&ip60->src_address, d0->ip6_src_len);
+	  /*
+	   * Recover the original IPv4 source. RFC 7597 domains extract it
+	   * from the v6 source using RFC 6052 offset-based encoding
+	   * (ip6_src_len of 64 or 96). Per-VRF MAP-T domains commonly run
+	   * in 1:1 mode (RFC 7597 §5.1) with a fixed /128 DMR — the v6
+	   * source of the return packet is the headend's listen address
+	   * and carries no encoded v4. For those domains the v4 source is
+	   * fixed at domain-create time in d->ip4_prefix and must be used
+	   * as-is.
+	   */
+	  if (d0->ip6_prefix_len == 128 && d0->ea_bits_len == 0)
+	    saddr = d0->ip4_prefix.as_u32;
+	  else
+	    saddr = map_get_ip4 (&ip60->src_address, d0->ip6_src_len);
 	  vnet_buffer (p0)->map_t.v6.saddr = saddr;
 	  vnet_buffer (p0)->map_t.v6.daddr =
 	    ip6_map_t_embedded_address (d0, &ip60->dst_address);
