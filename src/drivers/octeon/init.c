@@ -10,6 +10,8 @@
 #include <octeon.h>
 #include <crypto.h>
 
+#include <sys/mman.h>
+
 #include <base/roc_api.h>
 #include "common.h"
 
@@ -511,10 +513,51 @@ oct_init (vlib_main_t *vm, vnet_dev_t *dev)
   };
   cd->msix_handler = NULL;
 
+  uword sys_page_sz = clib_mem_get_page_size ();
+  vlib_pci_dev_handle_t h = vnet_dev_get_pci_handle (dev);
+
   foreach_int (i, 2, 4)
     {
       if (oct_is_nix_bar_mappable (dev, i))
 	{
+	  /* Ensure 64KB-aligned BAR mapping on sub-64KB page size kernels */
+	  if (sys_page_sz < OCT_BAR_ALIGN)
+	    {
+	      u64 bar_size = 0;
+	      clib_error_t *size_err;
+	      uword probe_sz;
+	      void *probe;
+
+	      size_err = vlib_pci_get_region_size (vm, h, i, &bar_size);
+	      if (size_err)
+		{
+		  clib_error_free (size_err);
+		  bar_size = OCT_BAR_DEFAULT_SIZE;
+		}
+
+	      /* Probe for free VA space to fit BAR + alignment + guard page */
+	      probe_sz = bar_size + OCT_BAR_ALIGN + sys_page_sz;
+	      probe_sz = round_pow2 (probe_sz, 1ULL << 20);
+	      probe = mmap (0, probe_sz, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+	      if (probe != MAP_FAILED)
+		{
+		  u8 *hint;
+		  clib_error_t *err;
+
+		  /* Round up past guard page to 64KB-aligned address */
+		  hint = (u8 *) round_pow2 ((uintptr_t) probe + sys_page_sz, OCT_BAR_ALIGN);
+		  munmap (probe, probe_sz);
+		  err = vlib_pci_map_region_fixed (vm, h, i, hint,
+						   &cd->plt_pci_dev.mem_resource[i].addr);
+		  if (err)
+		    {
+		      clib_error_free (err);
+		      return VNET_DEV_ERR_BUS;
+		    }
+		  continue;
+		}
+	    }
+
 	  rv = vnet_dev_pci_map_region (vm, dev, i, &cd->plt_pci_dev.mem_resource[i].addr);
 	  if (rv != VNET_DEV_OK)
 	    return rv;
