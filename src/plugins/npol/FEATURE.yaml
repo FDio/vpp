@@ -10,7 +10,7 @@ description: "This plugin provides a programmable network policy engine in VPP.
               which can be applied to interfaces for controlling packet forwarding,
               filtering by IP addresses, ports, and protocols. It supports both
               inbound and outbound traffic with default behaviors and can integrate
-              into VPP's packet processing using ACL..."
+              into VPP's packet processing using CNAT"
 
 state: development
 properties: [CLI, API]

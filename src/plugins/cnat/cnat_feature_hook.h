@@ -4,7 +4,7 @@
 #ifndef __CNAT_FEATURE_HOOK_H__
 #define __CNAT_FEATURE_HOOK_H__
 
-#include <plugins/cnat/cnat_types.h>
+#include <cnat/cnat_types.h>
 
 typedef enum cnat_hook_order_
 {
@@ -34,5 +34,13 @@ void cnat_feature_hooks_ensure_init (void);
 int cnat_feature_hook_input_add_del (int is_add, cnat_slow_path_fn_t func, cnat_hook_order_t order);
 int cnat_feature_hook_output_add_del (int is_add, cnat_slow_path_fn_t func,
 				      cnat_hook_order_t order);
+
+/* Signal a deny verdict for the given location, hooks can call this. */
+static_always_inline void
+cnat_hook_deny (cnat_timestamp_t *ts, cnat_session_location_t loc)
+{
+  ts->cts_rewrites[loc].cts_dpoi_next_node = CNAT_FEATURE_NEXT_DROP;
+  ts->ts_rw_bm &= ~(1 << loc);
+}
 
 #endif

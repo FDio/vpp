@@ -383,16 +383,6 @@ vl_api_npol_configure_policies_t_handler (vl_api_npol_configure_policies_t *mp)
 #include <vat/vat.h>
 #include <vlibapi/vat_helper_macros.h>
 
-/* Declare message IDs */
-#include <acl/acl.api_enum.h>
-#include <acl/acl.api_types.h>
-#undef vl_print
-#define vl_print(handle, ...)
-#undef vl_print
-#define vl_endianfun /* define message structures */
-#include <acl/acl.api.h>
-#undef vl_endianfun
-
 static clib_error_t *
 calpol_init (vlib_main_t *vm)
 {
@@ -417,5 +407,5 @@ VLIB_PLUGIN_REGISTER () = {
 VLIB_CONFIG_FUNCTION (calpol_plugin_config, "calico-policy-plugin");
 
 VLIB_INIT_FUNCTION (calpol_init) = {
-  .runs_after = VLIB_INITS ("acl_init"),
+  .runs_after = VLIB_INITS ("cnat_translation_init"),
 };

@@ -199,6 +199,12 @@ typedef enum cnat_timestamp_direction_t_
   CNAT_IS_RETURN = CNAT_N_LOCATIONS,
 } cnat_timestamp_direction_t;
 
+typedef enum cnat_feature_next_
+{
+  CNAT_FEATURE_NEXT_DROP,
+  CNAT_FEATURE_N_NEXT,
+} cnat_feature_next_t;
+
 typedef enum cnat_lookup_state_t_
 {
   CNAT_LOOKUP_IS_OK = 0,

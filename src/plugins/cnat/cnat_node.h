@@ -28,12 +28,6 @@
  * overwriting an existing session, breaking it) */
 #define CNAT_PORT_MAX_RETRIES 8
 
-typedef enum cnat_feature_next_
-{
-  CNAT_FEATURE_NEXT_DROP,
-  CNAT_FEATURE_N_NEXT,
-} cnat_feature_next_t;
-
 extern u8 *format_cnat_trace (u8 *s, va_list *args);
 
 typedef void (*cnat_node_sub_t) (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *b,
