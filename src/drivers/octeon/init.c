@@ -76,8 +76,9 @@ static clib_arg_t oct_drv_args[] = {
 
 static clib_arg_t oct_port_args[] = {
   {
-    .name = "eth_pause_frame",
-    .desc = "Enable ethernet pause frame support",
+    .name = "eth_flow_ctrl",
+    .desc = "Enable Ethernet flow control support, "
+	    "applicable to network devices only",
     .type = CLIB_ARG_TYPE_BOOL,
     .default_val.boolean = false,
   },
@@ -85,22 +86,20 @@ static clib_arg_t oct_port_args[] = {
     .name = "rss_flow_key",
     .desc = "RSS Flow Key Bitmap",
     .type = CLIB_ARG_TYPE_HEX32,
-    .default_val.uint32 = FLOW_KEY_TYPE_IPV4 | FLOW_KEY_TYPE_IPV6 |
-			  FLOW_KEY_TYPE_TCP | FLOW_KEY_TYPE_UDP |
-			  FLOW_KEY_TYPE_SCTP,
+    .default_val.uint32 = FLOW_KEY_TYPE_IPV4 | FLOW_KEY_TYPE_IPV6 | FLOW_KEY_TYPE_TCP |
+			  FLOW_KEY_TYPE_UDP | FLOW_KEY_TYPE_SCTP,
   },
   {
     .name = "switch_header_type",
     .desc = "Type of header used by underlying switch (none, edsa, higig, "
 	    "len_90b, exdsa, vlan_exdsa)",
     .type = CLIB_ARG_TYPE_ENUM,
-    .enum_vals = CLIB_ARG_ENUM_VALS (
-      { .val = ROC_PRIV_FLAGS_DEFAULT, .name = "none" },
-      { .val = ROC_PRIV_FLAGS_EDSA, .name = "edsa" },
-      { .val = ROC_PRIV_FLAGS_HIGIG, .name = "higig" },
-      { .val = ROC_PRIV_FLAGS_LEN_90B, .name = "len_90b" },
-      { .val = ROC_PRIV_FLAGS_EXDSA, .name = "exdsa" },
-      { .val = ROC_PRIV_FLAGS_VLAN_EXDSA, .name = "vlan_exdsa" }, ),
+    .enum_vals = CLIB_ARG_ENUM_VALS ({ .val = ROC_PRIV_FLAGS_DEFAULT, .name = "none" },
+				     { .val = ROC_PRIV_FLAGS_EDSA, .name = "edsa" },
+				     { .val = ROC_PRIV_FLAGS_HIGIG, .name = "higig" },
+				     { .val = ROC_PRIV_FLAGS_LEN_90B, .name = "len_90b" },
+				     { .val = ROC_PRIV_FLAGS_EXDSA, .name = "exdsa" },
+				     { .val = ROC_PRIV_FLAGS_VLAN_EXDSA, .name = "vlan_exdsa" }, ),
     .default_val.enum_val = ROC_PRIV_FLAGS_DEFAULT,
   },
   {
@@ -110,8 +109,9 @@ static clib_arg_t oct_port_args[] = {
 
 static clib_arg_t oct_port_args_rvu_vf[] = {
   {
-    .name = "eth_pause_frame",
-    .desc = "Enable ethernet pause frame support",
+    .name = "eth_flow_ctrl",
+    .desc = "Enable Ethernet flow control support, "
+	    "applicable to network devices only",
     .type = CLIB_ARG_TYPE_BOOL,
     .default_val.boolean = false,
   },
