@@ -86,6 +86,87 @@ lpm_32_lookup (lpm_t *lpm, void *addr_v, u8 pfxlen)
   return (~0);
 }
 
+/*
+ * Per-VRF IPv4 LPM keyed on (fib_index, addr).
+ *
+ * The upper 32 bits of the uword hash key hold fib_index; the lower 32
+ * bits hold the length-masked IPv4 address (network byte order, same as
+ * lpm_32_*). This keeps the per-length hash layout unchanged so lookups
+ * remain O(1) per prefix length; per-VRF isolation comes for free from
+ * the wider key.
+ *
+ * `uword` is 64 bits on all VPP-supported platforms (vppinfra assumes a
+ * 64-bit host), so the full 32 bits of fib_index fit without
+ * truncation — FIBs 65536+ remain distinguishable from lower-indexed
+ * ones.
+ */
+static_always_inline uword
+lpm_vrf_key (u32 fib_index, u32 masked_addr)
+{
+  /* fib_index in the upper 32 bits; masked address in the lower 32 bits. */
+  return (((uword) fib_index) << 32) | (uword) masked_addr;
+}
+
+static void
+lpm_vrf_v4_add (lpm_t *lpm, u32 fib_index, void *addr_v, u8 pfxlen, u32 value)
+{
+  uword *hash, *result;
+  uword key;
+  ip4_address_t *addr = addr_v;
+  u32 masked = masked_address32 (addr->data_u32, pfxlen);
+  key = lpm_vrf_key (fib_index, masked);
+  hash = lpm->hash[pfxlen];
+  result = hash_get (hash, key);
+  if (result)
+  clib_warning ("fib %u %U/%d already exists in table for domain %d", fib_index, format_ip4_address,
+		addr, pfxlen, result[0]);
+
+  if (hash == NULL)
+  {
+    hash = hash_create (32 /* elts */, sizeof (uword));
+    hash_set_flags (hash, HASH_FLAG_NO_AUTO_SHRINK);
+  }
+  hash = hash_set (hash, key, value);
+  lpm->hash[pfxlen] = hash;
+}
+
+static void
+lpm_vrf_v4_delete (lpm_t *lpm, u32 fib_index, void *addr_v, u8 pfxlen)
+{
+  uword *hash, *result;
+  uword key;
+  ip4_address_t *addr = addr_v;
+  u32 masked = masked_address32 (addr->data_u32, pfxlen);
+  key = lpm_vrf_key (fib_index, masked);
+  hash = lpm->hash[pfxlen];
+  result = hash_get (hash, key);
+  if (result)
+  hash_unset (hash, key);
+  lpm->hash[pfxlen] = hash;
+}
+
+static u32
+lpm_vrf_v4_lookup (lpm_t *lpm, u32 fib_index, void *addr_v, u8 pfxlen)
+{
+  uword *hash, *result;
+  i32 mask_len;
+  uword key;
+  ip4_address_t *addr = addr_v;
+  for (mask_len = pfxlen; mask_len >= 0; mask_len--)
+  {
+    hash = lpm->hash[mask_len];
+    if (hash)
+    {
+      u32 masked = masked_address32 (addr->data_u32, mask_len);
+      key = lpm_vrf_key (fib_index, masked);
+      result = hash_get (hash, key);
+      if (result != NULL)
+      return (result[0]);
+    }
+  }
+  return (~0);
+}
+
 static int
 lpm_128_lookup_core (lpm_t *lpm, ip6_address_t *addr, u8 pfxlen, u32 *value)
 {
@@ -181,6 +262,11 @@ lpm_table_init (enum lpm_type_e lpm_type)
     BV (clib_bihash_init) (&(lpm->bihash),
 			   "LPM 128", 64*1024, 32<<20);
 
+    break;
+  case LPM_TYPE_KEY_VRF_V4:
+    lpm->add_vrf = lpm_vrf_v4_add;
+    lpm->delete_vrf = lpm_vrf_v4_delete;
+    lpm->lookup_vrf = lpm_vrf_v4_lookup;
     break;
   default:
     ASSERT(0);

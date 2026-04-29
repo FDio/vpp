@@ -13,10 +13,24 @@
  * limitations under the License.
  */
 
-option version = "4.2.1";
+option version = "4.3.0";
 
 import "vnet/ip/ip_types.api";
 import "vnet/interface_types.api";
+
+/*
+ * Per-domain IPv6 reverse-path lookup side.
+ *
+ * Upstream historically keyed the reverse (v6->v4) domain lookup on the
+ * IPv6 source address. Per-VRF MAP-T needs it keyed on the destination
+ * because the per-tenant v6 prefix we stamp into the forward-path source
+ * lands in the return packet's destination.
+ */
+enum map_v6_lookup_side : u8
+{
+  MAP_V6_LOOKUP_SIDE_API_SRC = 0,
+  MAP_V6_LOOKUP_SIDE_API_DST = 1,
+};
 
 /** \brief Add MAP domains
     @param client_index - opaque cookie to identify the sender
@@ -29,9 +43,16 @@ import "vnet/interface_types.api";
     @param psid_length - PSID length
     @param mtu - MTU. default 1280
     @param tag - A user field stored with the MAP
+
+    Deprecated: callers should use map_add_domain_v2 which allows
+    per-VRF (tenant / underlay) FIB table ids and a reverse-path
+    lookup-side selector. v1 is retained so existing clients continue to
+    work; it is equivalent to v2 with ip4_table_id=0, ip6_table_id=0 and
+    v6_lookup_side=MAP_V6_LOOKUP_SIDE_API_SRC.
 */
 autoendian define map_add_domain
 {
+  option deprecated;
   u32 client_index;
   u32 context;
   vl_api_ip6_prefix_t ip6_prefix;
@@ -50,6 +71,60 @@ autoendian define map_add_domain
     @param retval - return code
 */
 define map_add_domain_reply
+{
+  u32 context;
+  u32 index;
+  i32 retval;
+};
+
+/** \brief Add MAP domain (per-VRF aware)
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param ip6_prefix - Rule IPv6 prefix (DMR)
+    @param ip4_prefix - Rule IPv4 prefix
+    @param ip6_src - MAP domain IPv6 BR address / Tunnel source (BMR)
+    @param ea_bits_len - Embedded Address bits length
+    @param psid_offset - Port Set Identifier (PSID) offset
+    @param psid_length - PSID length
+    @param mtu - MTU. default 1280
+    @param ip4_table_id - Tenant VRF. Forward path (v4->v6) matches this
+           domain only if the packet arrived in this VRF. Reverse path
+           (v6->v4) injects the translated packet into this VRF via a
+           per-domain loopback. 0 preserves upstream/single-tenant
+           behaviour (default FIB).
+    @param ip6_table_id - Underlay / WAN VRF. Forward path injects the
+           translated v6 packet into this VRF via a per-domain loopback.
+           0 preserves upstream/single-tenant behaviour.
+    @param v6_lookup_side - Which side of the v6 header is used to match
+           the domain on the reverse path. SRC keeps the legacy
+           single-tenant behaviour; DST is required by per-VRF MAP-T
+           because the per-tenant prefix we stamped into the forward
+           source address arrives in the reverse destination.
+    @param tag - A user field stored with the MAP
+*/
+autoendian define map_add_domain_v2
+{
+  u32 client_index;
+  u32 context;
+  vl_api_ip6_prefix_t ip6_prefix;
+  vl_api_ip4_prefix_t ip4_prefix;
+  vl_api_ip6_prefix_t ip6_src;
+  u8 ea_bits_len;
+  u8 psid_offset;
+  u8 psid_length;
+  u16 mtu [default=1280];
+  u32 ip4_table_id;
+  u32 ip6_table_id;
+  vl_api_map_v6_lookup_side_t v6_lookup_side;
+  string tag[64];
+};
+
+/** \brief Reply for MAP domain v2 add
+    @param context - returned sender context, to match reply w/ request
+    @param index - MAP domain index
+    @param retval - return code
+*/
+define map_add_domain_v2_reply
 {
   u32 context;
   u32 index;
@@ -117,6 +192,16 @@ define map_domain_dump
   u32 context;
 };
 
+/** \brief Dump all MAP domains, returning v2 details
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define map_domain_v2_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
 /** \brief Details about a single MAP domain
     @param context - returned sender context, to match reply w/ request
     @param domain_index - MAP domain index
@@ -142,6 +227,40 @@ define map_domain_details
   u8 psid_length;
   u8 flags;
   u16 mtu;
+  string tag[64];
+};
+
+/** \brief Details about a single MAP domain (per-VRF aware)
+    @param context - returned sender context, to match reply w/ request
+    @param domain_index - MAP domain index
+    @param ip6_prefix - Rule IPv6 prefix
+    @param ip4_prefix - Rule IPv4 prefix
+    @param ip6_src - MAP domain IPv6 BR address / Tunnel source
+    @param ea_bits_len - Embedded Address bits length
+    @param psid_offset - Port Set Identifier (PSID) offset
+    @param psid_length - PSID length
+    @param flags - domain flags
+    @param mtu - MTU
+    @param ip4_table_id - Tenant VRF id
+    @param ip6_table_id - Underlay/WAN VRF id
+    @param v6_lookup_side - Reverse-path domain lookup side
+    @param tag - The user field stored with the MAP at creation time
+*/
+define map_domain_v2_details
+{
+  u32 context;
+  u32 domain_index;
+  vl_api_ip6_prefix_t ip6_prefix;
+  vl_api_ip4_prefix_t ip4_prefix;
+  vl_api_ip6_prefix_t ip6_src;
+  u8 ea_bits_len;
+  u8 psid_offset;
+  u8 psid_length;
+  u8 flags;
+  u16 mtu;
+  u32 ip4_table_id;
+  u32 ip6_table_id;
+  vl_api_map_v6_lookup_side_t v6_lookup_side;
   string tag[64];
 };
 

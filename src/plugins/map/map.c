@@ -8,6 +8,8 @@
 #include <vnet/fib/fib_entry_track.h>
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/adj/adj.h>
+#include <vnet/ethernet/ethernet.h>
+#include <vnet/ip/ip.h>
 #include <vppinfra/crc32.h>
 #include <vnet/plugin/plugin.h>
 #include <vpp/app/version.h>
@@ -48,13 +50,12 @@ map_main_t map_main;
  *
  */
 
-
 /*
- * Save user-assigned MAP domain names ("tags") in a vector of
- * extra domain information.
+ * Initialise the extra (non-time-critical) per-domain data vector slot
+ * for this domain and populate its fields.
  */
 static void
-map_save_extras (u32 map_domain_index, u8 * tag)
+map_init_extras (u32 map_domain_index, u8 ip4_prefix_len, u8 *tag)
 {
   map_main_t *mm = &map_main;
   map_domain_extra_t *de;
@@ -65,6 +66,8 @@ map_save_extras (u32 map_domain_index, u8 * tag)
   vec_validate (mm->domain_extras, map_domain_index);
   de = vec_elt_at_index (mm->domain_extras, map_domain_index);
   clib_memset (de, 0, sizeof (*de));
+
+  de->ip4_prefix_len = ip4_prefix_len;
 
   if (!tag)
     return;
@@ -89,22 +92,16 @@ map_free_extras (u32 map_domain_index)
   vec_free (de->tag);
 }
 
-
 int
-map_create_domain (ip4_address_t * ip4_prefix,
-		   u8 ip4_prefix_len,
-		   ip6_address_t * ip6_prefix,
-		   u8 ip6_prefix_len,
-		   ip6_address_t * ip6_src,
-		   u8 ip6_src_len,
-		   u8 ea_bits_len,
-		   u8 psid_offset,
-		   u8 psid_length,
-		   u32 * map_domain_index, u16 mtu, u8 flags, u8 * tag)
+map_create_domain (ip4_address_t *ip4_prefix, u8 ip4_prefix_len, ip6_address_t *ip6_prefix,
+		   u8 ip6_prefix_len, ip6_address_t *ip6_src, u8 ip6_src_len, u8 ea_bits_len,
+		   u8 psid_offset, u8 psid_length, u32 ip4_table_id, u32 ip6_table_id,
+		   u8 v6_lookup_side, u32 *map_domain_index, u16 mtu, u8 flags, u8 *tag)
 {
   u8 suffix_len, suffix_shift;
   map_main_t *mm = &map_main;
   map_domain_t *d;
+  u32 ip4_fib_index, ip6_fib_index;
 
   /* How many, and which bits to grab from the IPv4 DA */
   if (ip4_prefix_len + ea_bits_len < 32)
@@ -129,6 +126,14 @@ map_create_domain (ip4_address_t * ip4_prefix,
       return -1;
     }
 
+  /* Resolve / create tenant + underlay FIBs on demand. When the caller
+   * did not supply per-VRF ids, both values default to 0 which resolves
+   * to the default FIB and keeps upstream / single-tenant semantics. */
+  ip4_fib_index =
+    fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4, ip4_table_id, FIB_SOURCE_MAP);
+  ip6_fib_index =
+    fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP6, ip6_table_id, FIB_SOURCE_MAP);
+
   /* Get domain index */
   pool_get_aligned (mm->domains, d, CLIB_CACHE_LINE_BYTES);
   clib_memset (d, 0, sizeof (*d));
@@ -136,7 +141,6 @@ map_create_domain (ip4_address_t * ip4_prefix,
 
   /* Init domain struct */
   d->ip4_prefix.as_u32 = ip4_prefix->as_u32;
-  d->ip4_prefix_len = ip4_prefix_len;
   d->ip6_prefix = *ip6_prefix;
   d->ip6_prefix_len = ip6_prefix_len;
   d->ip6_src = *ip6_src;
@@ -153,21 +157,54 @@ map_create_domain (ip4_address_t * ip4_prefix,
   d->psid_mask = (1 << d->psid_length) - 1;
   d->ea_shift = 64 - ip6_prefix_len - suffix_len - d->psid_length;
 
-  /* Save a user-assigned MAP domain name if provided. */
-  if (tag)
-    map_save_extras (*map_domain_index, tag);
+  /* Per-VRF fields. When the caller did not request a non-default
+   * VRF we still populate these; fib_index 0 is the default FIB and
+   * the data path's per-VRF branches (see map.h comments) no-op for
+   * the default-FIB case. */
+  d->ip4_fib_index = ip4_fib_index;
+  d->ip6_fib_index = ip6_fib_index;
+  /* Reverse-path lookup side. The caller decides; MAP_V6_LOOKUP_SIDE_DEFAULT
+   * asks us to derive a sensible default from ip4_table_id (non-zero →
+   * DST, zero → SRC). The chosen value must land in d->v6_lookup_side
+   * before the LPM-insert decision below — mutating d->v6_lookup_side
+   * post-create leaves ip6_prefix_tbl / ip6_src_prefix_tbl out of sync
+   * with the flag. */
+  if (v6_lookup_side == MAP_V6_LOOKUP_SIDE_DEFAULT)
+    d->v6_lookup_side = (ip4_table_id != 0) ? MAP_V6_LOOKUP_DST : MAP_V6_LOOKUP_SRC;
+  else
+    d->v6_lookup_side = v6_lookup_side;
 
-  /* MAP longest match lookup table (input feature / FIB) */
-  mm->ip4_prefix_tbl->add (mm->ip4_prefix_tbl, &d->ip4_prefix,
-			   d->ip4_prefix_len, *map_domain_index);
+  /* Populate the extras (cold) vector slot. Always done, so the
+   * ip4_prefix_len and any user-assigned tag are preserved. */
+  map_init_extras (*map_domain_index, ip4_prefix_len, tag);
 
-  /* Really needed? Or always use FIB? */
+  /* MAP longest match lookup table (input feature / FIB).
+   * Keyed on (fib_index, ip4_prefix) — two tenants may share the same
+   * ip4_prefix in different VRFs. */
+  mm->ip4_prefix_tbl->add_vrf (mm->ip4_prefix_tbl, d->ip4_fib_index, &d->ip4_prefix, ip4_prefix_len,
+			       *map_domain_index);
+
+  /* ip6_src_prefix_tbl holds each domain's per-tenant source prefix.
+   * For per-VRF MAP-T domains the reverse-path fast path matches v6
+   * destination against this table to demultiplex tenants. */
   mm->ip6_src_prefix_tbl->add (mm->ip6_src_prefix_tbl, &d->ip6_src,
 			       d->ip6_src_len, *map_domain_index);
 
-  /* Let's build a table with the MAP rule ip6 prefixes as well [dgeist] */
-  mm->ip6_prefix_tbl->add (mm->ip6_prefix_tbl, &d->ip6_prefix,
-			   d->ip6_prefix_len, *map_domain_index);
+  /* ip6_prefix_tbl holds each domain's DMR. Legacy single-tenant MAP-T
+   * matches against this table on the reverse path's v6 source.
+   *
+   * Per-VRF MAP-T (v6_lookup_side=DST) deliberately shares a single DMR
+   * across multiple tenants — e.g. all customers pointing at the same
+   * RAVPN headend get the same /128 ip6_prefix, with tenant identity
+   * encoded in ip6_src. If we inserted their DMR here the second tenant
+   * would overwrite the first in the global LPM; identification must
+   * flow through ip6_src_prefix_tbl instead. Skip the insert for those
+   * domains; map_delete_domain mirrors the skip. */
+  if (d->v6_lookup_side != MAP_V6_LOOKUP_DST)
+    {
+      mm->ip6_prefix_tbl->add (mm->ip6_prefix_tbl, &d->ip6_prefix, d->ip6_prefix_len,
+			       *map_domain_index);
+    }
 
   /* Validate packet/byte counters */
   map_domain_counter_lock (mm);
@@ -207,16 +244,30 @@ map_delete_domain (u32 map_domain_index)
     }
 
   d = pool_elt_at_index (mm->domains, map_domain_index);
-  mm->ip4_prefix_tbl->delete (mm->ip4_prefix_tbl, &d->ip4_prefix,
-			      d->ip4_prefix_len);
+
+  /* Recover ip4_prefix_len from the extras vector (cold field). */
+  u8 ip4_prefix_len = 0;
+  if (map_domain_index < vec_len (mm->domain_extras))
+    ip4_prefix_len = vec_elt_at_index (mm->domain_extras, map_domain_index)->ip4_prefix_len;
+
+  mm->ip4_prefix_tbl->delete_vrf (mm->ip4_prefix_tbl, d->ip4_fib_index, &d->ip4_prefix,
+				  ip4_prefix_len);
   mm->ip6_src_prefix_tbl->delete (mm->ip6_src_prefix_tbl, &d->ip6_src,
 				  d->ip6_src_len);
-  /* Addition to remove the new table [dgeist] */
-  mm->ip6_prefix_tbl->delete (mm->ip6_prefix_tbl, &d->ip6_prefix,
-			      d->ip6_prefix_len);
+  /* Mirror the create-time guard: DST-keyed domains never inserted
+   * their DMR into ip6_prefix_tbl (shared DMR would have caused
+   * collisions with other tenants). */
+  if (d->v6_lookup_side != MAP_V6_LOOKUP_DST)
+    {
+      mm->ip6_prefix_tbl->delete (mm->ip6_prefix_tbl, &d->ip6_prefix, d->ip6_prefix_len);
+    }
 
   /* Release user-assigned MAP domain name. */
   map_free_extras (map_domain_index);
+
+  /* Drop the FIB locks we took in map_create_domain(). */
+  fib_table_unlock (d->ip4_fib_index, FIB_PROTOCOL_IP4, FIB_SOURCE_MAP);
+  fib_table_unlock (d->ip6_fib_index, FIB_PROTOCOL_IP6, FIB_SOURCE_MAP);
 
   /* Deleting rules */
   if (d->rules)
@@ -505,13 +556,20 @@ map_add_domain_command_fn (vlib_main_t * vm,
   ip4_address_t ip4_prefix;
   ip6_address_t ip6_prefix;
   ip6_address_t ip6_src;
-  u32 ip6_prefix_len = 0, ip4_prefix_len = 0, map_domain_index, ip6_src_len;
+  u32 ip6_prefix_len = 0, ip4_prefix_len = 0, ip6_src_len;
+  u32 map_domain_index = ~0;
   u32 num_m_args = 0;
   /* Optional arguments */
   u32 ea_bits_len = 0, psid_offset = 0, psid_length = 0;
   u32 mtu = 0;
   u8 flags = 0;
   u8 *tag = 0;
+  u32 ip4_table_id = 0, ip6_table_id = 0;
+  /* MAP_V6_LOOKUP_SIDE_DEFAULT asks map_create_domain() to derive a
+   * side from ip4_table_id; any other value is an explicit user
+   * override. Must be passed into map_create_domain, not mutated
+   * post-create — see P1 note in map.h. */
+  u8 v6_lookup_side = MAP_V6_LOOKUP_SIDE_DEFAULT;
   ip6_src_len = 128;
   clib_error_t *error = NULL;
 
@@ -547,6 +605,14 @@ map_add_domain_command_fn (vlib_main_t * vm,
 	num_m_args++;
       else if (unformat (line_input, "mtu %d", &mtu))
 	num_m_args++;
+      else if (unformat (line_input, "ip4-table-id %d", &ip4_table_id))
+	;
+      else if (unformat (line_input, "ip6-table-id %d", &ip6_table_id))
+	;
+      else if (unformat (line_input, "v6-lookup-side src"))
+	v6_lookup_side = MAP_V6_LOOKUP_SRC;
+      else if (unformat (line_input, "v6-lookup-side dst"))
+	v6_lookup_side = MAP_V6_LOOKUP_DST;
       else if (unformat (line_input, "tag %s", &tag))
 	;
       else
@@ -563,10 +629,9 @@ map_add_domain_command_fn (vlib_main_t * vm,
       goto done;
     }
 
-  map_create_domain (&ip4_prefix, ip4_prefix_len,
-		     &ip6_prefix, ip6_prefix_len, &ip6_src, ip6_src_len,
-		     ea_bits_len, psid_offset, psid_length, &map_domain_index,
-		     mtu, flags, tag);
+  map_create_domain (&ip4_prefix, ip4_prefix_len, &ip6_prefix, ip6_prefix_len, &ip6_src,
+		     ip6_src_len, ea_bits_len, psid_offset, psid_length, ip4_table_id, ip6_table_id,
+		     v6_lookup_side, &map_domain_index, mtu, flags, tag);
 
 done:
   vec_free (tag);
@@ -923,12 +988,10 @@ format_map_domain (u8 * s, va_list * args)
   s = format (s,
 	      "[%d] tag {%s} ip4-pfx %U/%d ip6-pfx %U/%d ip6-src %U/%d "
 	      "ea-bits-len %d psid-offset %d psid-len %d mtu %d %s",
-	      map_domain_index, (de && de->tag) ? de->tag : (u8 *) "[no-tag]",
-	      format_ip4_address, &d->ip4_prefix, d->ip4_prefix_len,
-	      format_ip6_address, &ip6_prefix, d->ip6_prefix_len,
-	      format_ip6_address, &d->ip6_src, d->ip6_src_len,
-	      d->ea_bits_len, d->psid_offset, d->psid_length, d->mtu,
-	      map_flags_to_string (d->flags));
+	      map_domain_index, (de && de->tag) ? de->tag : (u8 *) "[no-tag]", format_ip4_address,
+	      &d->ip4_prefix, de ? de->ip4_prefix_len : 0, format_ip6_address, &ip6_prefix,
+	      d->ip6_prefix_len, format_ip6_address, &d->ip6_src, d->ip6_src_len, d->ea_bits_len,
+	      d->psid_offset, d->psid_length, d->mtu, map_flags_to_string (d->flags));
 
   if (counters)
     {
@@ -1382,12 +1445,13 @@ VLIB_CLI_COMMAND(map_fragment_command, static) = {
  * @cliexstart{map add domain}
  * @cliexend
  ?*/
-VLIB_CLI_COMMAND(map_add_domain_command, static) = {
+VLIB_CLI_COMMAND (map_add_domain_command, static) = {
   .path = "map add domain",
   .short_help = "map add domain [tag <tag>] ip4-pfx <ip4-pfx> "
-      "ip6-pfx <ip6-pfx> "
-      "ip6-src <ip6-pfx> ea-bits-len <n> psid-offset <n> psid-len <n> "
-      "[map-t] [mtu <mtu>]",
+		"ip6-pfx <ip6-pfx> "
+		"ip6-src <ip6-pfx> ea-bits-len <n> psid-offset <n> psid-len <n> "
+		"[map-t] [mtu <mtu>] [ip4-table-id <id>] [ip6-table-id <id>] "
+		"[v6-lookup-side src|dst]",
   .function = map_add_domain_command_fn,
 };
 
@@ -1511,8 +1575,9 @@ map_init (vlib_main_t * vm)
   fib_node_register_type (FIB_NODE_TYPE_MAP_E, &map_vft);
 #endif
 
-  /* LPM lookup tables */
-  mm->ip4_prefix_tbl = lpm_table_init (LPM_TYPE_KEY32);
+  /* LPM lookup tables. The IPv4 table is keyed on (fib_index, addr) so
+   * overlapping customer prefixes in different tenant VRFs can coexist. */
+  mm->ip4_prefix_tbl = lpm_table_init (LPM_TYPE_KEY_VRF_V4);
   mm->ip6_prefix_tbl = lpm_table_init (LPM_TYPE_KEY128);
   mm->ip6_src_prefix_tbl = lpm_table_init (LPM_TYPE_KEY128);
 

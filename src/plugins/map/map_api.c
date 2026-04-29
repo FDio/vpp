@@ -30,20 +30,64 @@ vl_api_map_add_domain_t_handler (vl_api_map_add_domain_t * mp)
   u8 flags = 0;
 
   mp->tag[ARRAY_LEN (mp->tag) - 1] = '\0';
-  rv =
-    map_create_domain ((ip4_address_t *) & mp->ip4_prefix.address,
-		       mp->ip4_prefix.len,
-		       (ip6_address_t *) & mp->ip6_prefix.address,
-		       mp->ip6_prefix.len,
-		       (ip6_address_t *) & mp->ip6_src.address,
-		       mp->ip6_src.len, mp->ea_bits_len, mp->psid_offset,
-		       mp->psid_length, &index, mp->mtu, flags, mp->tag);
+  /* v1 is default-FIB and SRC-keyed by construction. */
+  rv = map_create_domain ((ip4_address_t *) &mp->ip4_prefix.address, mp->ip4_prefix.len,
+			  (ip6_address_t *) &mp->ip6_prefix.address, mp->ip6_prefix.len,
+			  (ip6_address_t *) &mp->ip6_src.address, mp->ip6_src.len, mp->ea_bits_len,
+			  mp->psid_offset, mp->psid_length, 0 /* ip4_table_id */,
+			  0 /* ip6_table_id */, MAP_V6_LOOKUP_SRC, &index, mp->mtu, flags, mp->tag);
 
   REPLY_MACRO2_END(VL_API_MAP_ADD_DOMAIN_REPLY,
   ({
     rmp->index = index;
   }));
 
+}
+
+/*
+ * map_add_domain_v2: per-VRF aware add-domain handler.
+ *
+ * Passes ip4_table_id / ip6_table_id through to map_create_domain(),
+ * which resolves/creates the tenant and underlay FIBs. The caller's
+ * v6_lookup_side is threaded into map_create_domain so the LPM-insert
+ * decision sees the final value — mutating d->v6_lookup_side
+ * post-create would leave the tables and flag out of sync.
+ */
+static void
+vl_api_map_add_domain_v2_t_handler (vl_api_map_add_domain_v2_t *mp)
+{
+  map_main_t *mm = &map_main;
+  vl_api_map_add_domain_v2_reply_t *rmp;
+  int rv = 0;
+  u32 index = ~0;
+  u8 flags = 0;
+  /* map_add_domain_v2 is declared autoendian in map.api, so VPP has
+   * already byte-swapped every fixed-width field for us by the time
+   * we get here. Do NOT ntohl() again or the values come back
+   * byte-swapped (0x65 → 0x65000000). */
+  u32 ip4_table_id = mp->ip4_table_id;
+  u32 ip6_table_id = mp->ip6_table_id;
+  u8 v6_lookup_side;
+
+  switch (mp->v6_lookup_side)
+    {
+    case MAP_V6_LOOKUP_SIDE_API_DST:
+      v6_lookup_side = MAP_V6_LOOKUP_DST;
+      break;
+    case MAP_V6_LOOKUP_SIDE_API_SRC:
+    default:
+      v6_lookup_side = MAP_V6_LOOKUP_SRC;
+      break;
+    }
+
+  mp->tag[ARRAY_LEN (mp->tag) - 1] = '\0';
+  rv = map_create_domain ((ip4_address_t *) &mp->ip4_prefix.address, mp->ip4_prefix.len,
+			  (ip6_address_t *) &mp->ip6_prefix.address, mp->ip6_prefix.len,
+			  (ip6_address_t *) &mp->ip6_src.address, mp->ip6_src.len, mp->ea_bits_len,
+			  mp->psid_offset, mp->psid_length, ip4_table_id, ip6_table_id,
+			  v6_lookup_side, &index, mp->mtu, flags, mp->tag);
+
+  REPLY_MACRO2_END (VL_API_MAP_ADD_DOMAIN_V2_REPLY, ({ rmp->index = index; }));
 }
 
 static void
@@ -94,7 +138,7 @@ send_domain_details (u32 map_domain_index, vl_api_registration_t * rp,
     clib_memcpy (&rmp->ip6_src.address, &d->ip6_src,
 		 sizeof (rmp->ip6_src.address));
     rmp->ip6_prefix.len = d->ip6_prefix_len;
-    rmp->ip4_prefix.len = d->ip4_prefix_len;
+    rmp->ip4_prefix.len = de ? de->ip4_prefix_len : 0;
     rmp->ip6_src.len = d->ip6_src_len;
     rmp->ea_bits_len = d->ea_bits_len;
     rmp->psid_offset = d->psid_offset;
@@ -131,6 +175,66 @@ vl_api_map_domain_dump_t_handler (vl_api_map_domain_dump_t * mp)
   pool_foreach_index (i, mm->domains)
    {
     send_domain_details(i, reg, mp->context);
+  }
+}
+
+static void
+send_domain_v2_details (u32 map_domain_index, vl_api_registration_t *rp, u32 context)
+{
+  map_main_t *mm = &map_main;
+  vl_api_map_domain_v2_details_t *rmp;
+  map_domain_t *d = pool_elt_at_index (mm->domains, map_domain_index);
+
+  map_domain_extra_t *de = 0;
+  if (mm->domain_extras)
+  de = vec_elt_at_index (mm->domain_extras, map_domain_index);
+  REPLY_MACRO_DETAILS4 (
+    VL_API_MAP_DOMAIN_V2_DETAILS, rp, context, ({
+      rmp->domain_index = htonl (map_domain_index);
+      clib_memcpy (&rmp->ip6_prefix.address, &d->ip6_prefix, sizeof (rmp->ip6_prefix.address));
+      clib_memcpy (&rmp->ip4_prefix.address, &d->ip4_prefix, sizeof (rmp->ip4_prefix.address));
+      clib_memcpy (&rmp->ip6_src.address, &d->ip6_src, sizeof (rmp->ip6_src.address));
+      rmp->ip6_prefix.len = d->ip6_prefix_len;
+      rmp->ip4_prefix.len = de ? de->ip4_prefix_len : 0;
+      rmp->ip6_src.len = d->ip6_src_len;
+      rmp->ea_bits_len = d->ea_bits_len;
+      rmp->psid_offset = d->psid_offset;
+      rmp->psid_length = d->psid_length;
+      rmp->flags = d->flags;
+      rmp->mtu = htons (d->mtu);
+      rmp->ip4_table_id = htonl (fib_table_get_table_id (d->ip4_fib_index, FIB_PROTOCOL_IP4));
+      rmp->ip6_table_id = htonl (fib_table_get_table_id (d->ip6_fib_index, FIB_PROTOCOL_IP6));
+      rmp->v6_lookup_side = (vl_api_map_v6_lookup_side_t) d->v6_lookup_side;
+      if (de)
+	{
+	  int tag_len = clib_min (ARRAY_LEN (rmp->tag), vec_len (de->tag) + 1);
+	  clib_memcpy (rmp->tag, de->tag, tag_len - 1);
+	  rmp->tag[tag_len - 1] = '\0';
+	}
+      else
+	{
+	  clib_memset (rmp->tag, 0, sizeof (rmp->tag));
+	}
+    }));
+}
+
+static void
+vl_api_map_domain_v2_dump_t_handler (vl_api_map_domain_v2_dump_t *mp)
+{
+  map_main_t *mm = &map_main;
+  int i;
+  vl_api_registration_t *reg;
+
+  if (pool_elts (mm->domains) == 0)
+  return;
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+  return;
+
+  pool_foreach_index (i, mm->domains)
+  {
+    send_domain_v2_details (i, reg, mp->context);
   }
 }
 
