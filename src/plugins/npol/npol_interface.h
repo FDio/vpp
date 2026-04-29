@@ -10,6 +10,10 @@
 typedef struct
 {
   /*
+   * vec of policies indexes to apply on rx before DNAT
+   */
+  u32 *prednat_policies;
+  /*
    * vec of policies indexes to apply on rx
    */
   u32 *rx_policies;

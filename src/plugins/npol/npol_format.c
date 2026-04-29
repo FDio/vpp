@@ -386,6 +386,7 @@ format_npol_interface (u8 *s, va_list *args)
   vnet_main_t *vnm = vnet_get_main ();
   npol_policy_t *policy = NULL;
   u32 *rx_policies = conf->rx_policies;
+  u32 *prednat_policies = conf->prednat_policies;
   u32 *tx_policies = conf->tx_policies;
   u32 i;
 
@@ -417,6 +418,16 @@ format_npol_interface (u8 *s, va_list *args)
       policy = npol_policy_get_if_exists (rx_policies[i]);
       s = format (s, "    %U", format_npol_policy, policy, 4 /* indent */,
 		  NPOL_POLICY_ONLY_RX, conf->invert_rx_tx);
+    }
+  if (vec_len (prednat_policies))
+    {
+      s = format (s, "  prednat:\n");
+    }
+  vec_foreach_index (i, prednat_policies)
+    {
+      policy = npol_policy_get_if_exists (prednat_policies[i]);
+      s = format (s, "    %U", format_npol_policy, policy, 4 /* indent */, NPOL_POLICY_ONLY_RX,
+		  conf->invert_rx_tx);
     }
   if (vec_len (tx_policies))
     {

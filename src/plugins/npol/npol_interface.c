@@ -50,11 +50,14 @@ npol_ensure_hooks_registered ()
     }
   /* Ensure main DNAT and SNAT functionalities are registered
    * so the final order is deterministic.
-   * Input: [cnat_dnat_input_slow_path, npol_cnat_slow_path_input]
-   * — DNAT translates first, npol enforces post-DNAT policy (APPEND).
+   * Input: [npol_cnat_slow_path_prednat_input, cnat_dnat_input_slow_path,
+   *         npol_cnat_slow_path_input]
+   * — npol enforces pre-DNAT policy first, then DNAT translates, then npol
+   *   enforces post-DNAT policy (APPEND).
    * Output: [npol_cnat_slow_path_output, cnat_snat_output_slow_path]
    * — npol runs pre-SNAT so it sees the original source address (PREPEND). */
   cnat_hooks_ensure_init ();
+  cnat_hook_input_add_del (1, npol_cnat_slow_path_prednat_input, CNAT_HOOK_PREPEND);
   cnat_hook_input_add_del (1, npol_cnat_slow_path_input, CNAT_HOOK_APPEND);
   cnat_hook_output_add_del (1, npol_cnat_slow_path_output, CNAT_HOOK_PREPEND);
   npol_hooks_registered = 1;
@@ -70,6 +73,7 @@ npol_unconfigure_policies (u32 sw_if_index)
   if (!conf->enabled)
     return 0;
 
+  vec_free (conf->prednat_policies);
   vec_free (conf->rx_policies);
   vec_free (conf->tx_policies);
   vec_free (conf->profiles);
@@ -91,6 +95,9 @@ npol_configure_policies (u32 sw_if_index, npol_interface_config_t *new_conf)
 			   (npol_interface_config_t){ 0 });
   conf = vec_elt_at_index (npol_interface_configs, sw_if_index);
 
+  vec_foreach (idx, new_conf->prednat_policies)
+    if (pool_is_free_index (npol_policies, *idx))
+      goto error;
   vec_foreach (idx, new_conf->rx_policies)
     if (pool_is_free_index (npol_policies, *idx))
       goto error;
@@ -103,6 +110,7 @@ npol_configure_policies (u32 sw_if_index, npol_interface_config_t *new_conf)
 
   if (conf->enabled)
     {
+      vec_free (conf->prednat_policies);
       vec_free (conf->rx_policies);
       vec_free (conf->tx_policies);
       vec_free (conf->profiles);
@@ -118,6 +126,7 @@ npol_configure_policies (u32 sw_if_index, npol_interface_config_t *new_conf)
   return 0;
 
 error:
+  vec_free (new_conf->prednat_policies);
   vec_free (new_conf->rx_policies);
   vec_free (new_conf->tx_policies);
   vec_free (new_conf->profiles);
@@ -228,6 +237,8 @@ npol_interface_configure_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
 	;
       else if (unformat (input, "sw_if_index %d", &sw_if_index))
 	;
+      else if (unformat (input, "prednat %d", &tmp))
+	vec_add1 (conf->prednat_policies, tmp);
       else if (unformat (input, "rx %d", &tmp))
 	vec_add1 (conf->rx_policies, tmp);
       else if (unformat (input, "tx %d", &tmp))

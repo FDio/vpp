@@ -624,12 +624,56 @@ npol_match_policy (npol_policy_t *policy, u32 is_inbound, u32 is_ip6, cnat_5tupl
 }
 
 /*
- * npol_match_func evalutes policies on the packet for which the 5tuple is
- * passed This packet can be :
+ * Evaluates pre-DNAT policies on an inbound packet for interface sw_if_index.
+ * Pre-DNAT policies are RX-only and have no profiles.
+ * Sets r_action to NPOL_ACTION_ALLOW or NPOL_ACTION_DENY.
+ * Returns 1 if a rule matched, 0 if no match.
+ */
+CLIB_MARCH_FN (npol_match_prednat, int, u32 sw_if_index, cnat_5tuple_t *pkt_5tuple, int is_ip6,
+	       u8 *r_action)
+{
+  npol_interface_config_t *if_config;
+  npol_policy_t *policy;
+  int r;
+  u32 i;
+
+  if_config = vec_elt_at_index (npol_interface_configs, sw_if_index);
+  if (!if_config->enabled)
+    {
+      *r_action = NPOL_ACTION_ALLOW;
+      return 0;
+    }
+
+  vec_foreach_index (i, if_config->prednat_policies)
+    {
+      policy = &npol_policies[if_config->prednat_policies[i]];
+      r = npol_match_policy (policy, 1 ^ if_config->invert_rx_tx, is_ip6, pkt_5tuple);
+      switch (r)
+	{
+	case NPOL_ALLOW:
+	  *r_action = NPOL_ACTION_ALLOW;
+	  return 1;
+	case NPOL_DENY:
+	  *r_action = NPOL_ACTION_DENY;
+	  return 1;
+	case NPOL_LOG:
+	  /* TODO: support LOG action */
+	  break;
+	default:
+	  break;
+	}
+    };
+
+  /* No rule matched — prednat default is always Pass. */
+  return 0;
+}
+
+/*
+ * Evaluates policies on a packet for interface sw_if_index.
  * - is_inbound = 1 : received on interface sw_if_index
  * - is_inbound = 0 : to be txed on interface sw_if_index
- * The function sets r_action to NPOL_ACTION_ALLOW or NPOL_ACTION_DENY
- * It returns 1 if a rule was matched, 0 otherwise
+ * Sets r_action to NPOL_ACTION_ALLOW or NPOL_ACTION_DENY.
+ * Returns 1 if a rule matched, 0 otherwise.
  */
 CLIB_MARCH_FN (npol_match, int, u32 sw_if_index, u32 is_inbound, cnat_5tuple_t *pkt_5tuple,
 	       int is_ip6, u8 *r_action)
@@ -649,8 +693,8 @@ CLIB_MARCH_FN (npol_match, int, u32 sw_if_index, u32 is_inbound, cnat_5tuple_t *
       *r_action = NPOL_ACTION_ALLOW;
       return 0;
     }
-  policies = is_inbound ^ if_config->invert_rx_tx ? if_config->rx_policies :
-						    if_config->tx_policies;
+
+  policies = is_inbound ^ if_config->invert_rx_tx ? if_config->rx_policies : if_config->tx_policies;
   policy_default = is_inbound ^ if_config->invert_rx_tx ? if_config->policy_default_rx :
 							  if_config->policy_default_tx;
   profile_default = is_inbound ^ if_config->invert_rx_tx ? if_config->profile_default_rx :
@@ -664,7 +708,7 @@ CLIB_MARCH_FN (npol_match, int, u32 sw_if_index, u32 is_inbound, cnat_5tuple_t *
       switch (r)
 	{
 	case NPOL_ALLOW:
-	  *r_action = NPOL_ACTION_ALLOW; /* allow */
+	  *r_action = NPOL_ACTION_ALLOW;
 	  return 1;
 	case NPOL_DENY:
 	  *r_action = NPOL_ACTION_DENY;
@@ -694,7 +738,6 @@ CLIB_MARCH_FN (npol_match, int, u32 sw_if_index, u32 is_inbound, cnat_5tuple_t *
     }
 
 profiles:
-
   vec_foreach_index (i, if_config->profiles)
     {
       policy = &npol_policies[if_config->profiles[i]];
@@ -743,21 +786,60 @@ int
 npol_match_func (u32 sw_if_index, u32 is_inbound, cnat_5tuple_t *pkt_5tuple, int is_ip6,
 		 u8 *r_action)
 {
+  /* TODO: fix return value semantics — 0/1 has no meaning for callers today
+   * since post-DNAT is the last hook and callers only act on r_action. */
   return CLIB_MARCH_FN_SELECT (npol_match) (sw_if_index, is_inbound, pkt_5tuple, is_ip6, r_action);
+}
+
+int
+npol_match_prednat_func (u32 sw_if_index, cnat_5tuple_t *pkt_5tuple, int is_ip6, u8 *r_action)
+{
+  return CLIB_MARCH_FN_SELECT (npol_match_prednat) (sw_if_index, pkt_5tuple, is_ip6, r_action);
+}
+
+/* npol-private signal stored in the CNAT_LOCATION_FIB (FWD) rewrite slot's
+ * cts_dpoi_next_node field. This value is invisible to cnat. */
+#define NPOL_PREDNAT_ALLOW_SIGNAL ((u16) 0xFFFE)
+
+void
+npol_cnat_slow_path_prednat_input (vlib_main_t *vm, vlib_buffer_t *b, ip_address_family_t af,
+				   cnat_timestamp_t *ts)
+{
+  /* Always clear first — guarantees npol_cnat_slow_path_input sees a clean
+   * state regardless of what a previous flow left in this slot. */
+  ts->cts_rewrites[CNAT_LOCATION_FIB].cts_dpoi_next_node = (u16) ~0;
+
+  u32 in_if = vnet_buffer (b)->sw_if_index[VLIB_RX];
+  if (in_if >= vec_len (npol_interface_configs) || !npol_interface_configs[in_if].enabled ||
+      !vec_len (npol_interface_configs[in_if].prednat_policies))
+    return;
+  cnat_5tuple_t tup = { 0 };
+  cnat_make_buffer_5tuple (b, af, &tup, 0, 0);
+  u8 action = 0;
+  int matched = CLIB_MARCH_FN_SELECT (npol_match_prednat) (in_if, &tup, !(AF_IP4 == af), &action);
+  if (!matched)
+    return;
+  if (action == NPOL_ACTION_DENY)
+    cnat_hook_deny (ts, CNAT_LOCATION_INPUT);
+  else if (action == NPOL_ACTION_ALLOW)
+    ts->cts_rewrites[CNAT_LOCATION_FIB].cts_dpoi_next_node = NPOL_PREDNAT_ALLOW_SIGNAL;
 }
 
 void
 npol_cnat_slow_path_input (vlib_main_t *vm, vlib_buffer_t *b, ip_address_family_t af,
 			   cnat_timestamp_t *ts)
 {
+  /* An explicit prednat allow exempts the flow from post-DNAT workload policy.
+   * The signal is written once by prednat on the slow path */
+  if (ts->cts_rewrites[CNAT_LOCATION_FIB].cts_dpoi_next_node == NPOL_PREDNAT_ALLOW_SIGNAL)
+    return;
   u32 in_if = vnet_buffer (b)->sw_if_index[VLIB_RX];
   if (in_if >= vec_len (npol_interface_configs) || !npol_interface_configs[in_if].enabled)
     return;
   cnat_5tuple_t tup = { 0 };
   cnat_make_buffer_5tuple (b, af, &tup, 0, 0);
   u8 action = 0;
-  CLIB_MARCH_FN_SELECT (npol_match)
-  (in_if, 1 /* is_inbound */, &tup, !(AF_IP4 == af), &action);
+  CLIB_MARCH_FN_SELECT (npol_match) (in_if, 1 /* is_inbound */, &tup, !(AF_IP4 == af), &action);
   if (action == NPOL_ACTION_DENY)
     cnat_hook_deny (ts, CNAT_LOCATION_INPUT);
 }
@@ -772,8 +854,7 @@ npol_cnat_slow_path_output (vlib_main_t *vm, vlib_buffer_t *b, ip_address_family
   cnat_5tuple_t tup = { 0 };
   cnat_make_buffer_5tuple (b, af, &tup, vnet_buffer (b)->ip.save_rewrite_length, 0);
   u8 action = 0;
-  CLIB_MARCH_FN_SELECT (npol_match)
-  (out_if, 0 /* is_inbound */, &tup, !(AF_IP4 == af), &action);
+  CLIB_MARCH_FN_SELECT (npol_match) (out_if, 0 /* is_inbound */, &tup, !(AF_IP4 == af), &action);
   if (action == NPOL_ACTION_DENY)
     cnat_hook_deny (ts, CNAT_LOCATION_OUTPUT);
 }

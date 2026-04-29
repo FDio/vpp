@@ -16,6 +16,7 @@ npol_match_fn (vlib_main_t *vm, unformat_input_t *input,
   cnat_5tuple_t _pkt_5tuple = { 0 }, *pkt_5tuple = &_pkt_5tuple;
   clib_error_t *error = 0;
   u32 is_inbound = 0;
+  u32 is_prednat = 0;
   int is_ip6 = 0;
   u32 sport = 0, dport = 0, proto = 0;
   int rv;
@@ -31,6 +32,8 @@ npol_match_fn (vlib_main_t *vm, unformat_input_t *input,
 	is_inbound = 1;
       else if (unformat (input, "outbound"))
 	is_inbound = 0;
+      else if (unformat (input, "prednat"))
+	is_prednat = 1;
       else if (unformat (input, "ip6"))
 	is_ip6 = 1;
       else if (unformat (input, "ip4"))
@@ -63,7 +66,10 @@ npol_match_fn (vlib_main_t *vm, unformat_input_t *input,
       goto done;
     }
 
-  rv = npol_match_func (sw_if_index, is_inbound, pkt_5tuple, is_ip6, r_action);
+  if (is_prednat)
+    rv = npol_match_prednat_func (sw_if_index, pkt_5tuple, is_ip6, r_action);
+  else
+    rv = npol_match_func (sw_if_index, is_inbound, pkt_5tuple, is_ip6, r_action);
 
   vlib_cli_output (vm, "matched:%d action:%U", rv, format_npol_action,
 		   *r_action);
@@ -76,5 +82,6 @@ VLIB_CLI_COMMAND (npol_match, static) = {
   .path = "npol match",
   .function = npol_match_fn,
   .short_help = "npol match [<interface>|sw_if_index <idx>] [ip4|ip6] "
-		"[inbound|outbound] 1.1.1.1;65000->3.3.3.3;8080 tcp",
+		"[inbound|outbound|prednat] "
+		"1.1.1.1;65000->3.3.3.3;8080 tcp",
 };

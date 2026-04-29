@@ -332,30 +332,34 @@ static void
 npol_interface_config_decode (const vl_api_npol_configure_policies_t *in,
 			      npol_interface_config_t *out)
 {
-  u32 num_rx_policies, num_tx_policies, total_ids, num_profiles;
+  u32 num_rx_policies, num_prednat_policies, num_tx_policies, total_ids, num_profiles;
   int i = 0;
 
   num_rx_policies = clib_net_to_host_u32 (in->num_rx_policies);
   num_tx_policies = clib_net_to_host_u32 (in->num_tx_policies);
+  num_prednat_policies = clib_net_to_host_u32 (in->num_prednat_policies);
   total_ids = clib_net_to_host_u32 (in->total_ids);
-  num_profiles = total_ids - num_rx_policies - num_tx_policies;
+  num_profiles = total_ids - num_rx_policies - num_tx_policies - num_prednat_policies;
 
   out->invert_rx_tx = in->invert_rx_tx;
   out->policy_default_rx = in->policy_default_rx;
   out->policy_default_tx = in->policy_default_tx;
   out->profile_default_rx = in->profile_default_rx;
   out->profile_default_tx = in->profile_default_tx;
+  vec_resize (out->prednat_policies, num_prednat_policies);
+  for (i = 0; i < num_prednat_policies; i++)
+    out->prednat_policies[i] = clib_net_to_host_u32 (in->policy_ids[i]);
   vec_resize (out->rx_policies, num_rx_policies);
   for (i = 0; i < num_rx_policies; i++)
-    out->rx_policies[i] = clib_net_to_host_u32 (in->policy_ids[i]);
+    out->rx_policies[i] = clib_net_to_host_u32 (in->policy_ids[num_prednat_policies + i]);
   vec_resize (out->tx_policies, num_tx_policies);
   for (i = 0; i < num_tx_policies; i++)
     out->tx_policies[i] =
-      clib_net_to_host_u32 (in->policy_ids[num_rx_policies + i]);
+      clib_net_to_host_u32 (in->policy_ids[num_prednat_policies + num_rx_policies + i]);
   vec_resize (out->profiles, num_profiles);
   for (i = 0; i < num_profiles; i++)
     out->profiles[i] = clib_net_to_host_u32 (
-      in->policy_ids[num_rx_policies + num_tx_policies + i]);
+      in->policy_ids[num_prednat_policies + num_rx_policies + num_tx_policies + i]);
 }
 
 /* NAME: configure_policies */

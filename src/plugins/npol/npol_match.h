@@ -12,7 +12,10 @@
 
 int npol_match_func (u32 sw_if_index, u32 is_inbound, cnat_5tuple_t *pkt_5tuple, int is_ip6,
 		     u8 *r_action);
+int npol_match_prednat_func (u32 sw_if_index, cnat_5tuple_t *pkt_5tuple, int is_ip6, u8 *r_action);
 
+void npol_cnat_slow_path_prednat_input (vlib_main_t *vm, vlib_buffer_t *b, ip_address_family_t af,
+					cnat_timestamp_t *ts);
 void npol_cnat_slow_path_input (vlib_main_t *vm, vlib_buffer_t *b, ip_address_family_t af,
 				cnat_timestamp_t *ts);
 void npol_cnat_slow_path_output (vlib_main_t *vm, vlib_buffer_t *b, ip_address_family_t af,

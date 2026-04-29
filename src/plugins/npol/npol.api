@@ -236,11 +236,12 @@ autoreply define npol_configure_policies {
   u32 sw_if_index;
   u32 num_rx_policies;
   u32 num_tx_policies;
+  u32 num_prednat_policies;
   u32 total_ids;
   u8 invert_rx_tx;
   vl_api_npol_policy_default_t policy_default_rx;
   vl_api_npol_policy_default_t policy_default_tx;
   vl_api_npol_policy_default_t profile_default_rx;
   vl_api_npol_policy_default_t profile_default_tx;
-  u32 policy_ids[total_ids]; // rx_policies, then tx_policies, then profiles
+  u32 policy_ids[total_ids]; // prednat_policies, then rx_policies, then tx_policies, then profiles
 };

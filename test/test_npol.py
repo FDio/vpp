@@ -266,15 +266,18 @@ class BaseNpolTest(VppTestCase):
         deftxpolicy=1,
         defrxprofile=1,
         deftxprofile=1,
+        prednat=None,
     ):
+        prednat = prednat or []
         id_list = []
-        for policy in ingress + egress + profiles:
+        for policy in prednat + ingress + egress + profiles:
             id_list.append(policy._policy_id)
         r = self.vapi.npol_configure_policies(
             interface.sw_if_index,
             len(ingress),
             len(egress),
-            len(ingress) + len(egress) + len(profiles),
+            len(prednat),
+            len(prednat) + len(ingress) + len(egress) + len(profiles),
             1,
             defrxpolicy,
             deftxpolicy,
@@ -1227,3 +1230,104 @@ class TestNpolPolicies(BaseNpolTest):
         rule1.remove_vpp_config()
         rule2.remove_vpp_config()
         src_ipset.remove_vpp_config()
+
+
+class TestNpolPrednatMatches(BaseNpolTest):
+    """Network Policies pre-DNAT matcher tests"""
+
+    def setUp(self):
+        super(TestNpolPrednatMatches, self).setUp()
+        self.rules = []
+        self.policies = []
+
+    def tearDown(self):
+        self.configure_policies(self.pg0, [], [], [], 0, 0, prednat=[])
+        for policy in self.policies:
+            policy.remove_vpp_config()
+        for rule in self.rules:
+            rule.remove_vpp_config()
+        super(TestNpolPrednatMatches, self).tearDown()
+
+    def tcp_dport_policy(self, port, action, is_inbound=0):
+        rule = VppNpolRule(
+            self,
+            is_v6=False,
+            action=action,
+            filters=[
+                VppNpolFilter(
+                    VppEnum.vl_api_npol_rule_filter_type_t.NPOL_RULE_FILTER_L4_PROTO,
+                    tcp_protocol,
+                    True,
+                )
+            ],
+            matches=[
+                {
+                    "is_src": False,
+                    "is_not": False,
+                    "type": VppEnum.vl_api_npol_entry_type_t.NPOL_PORT_RANGE,
+                    "data": {"port_range": {"start": port, "end": port}},
+                }
+            ],
+        )
+        rule.add_vpp_config()
+        policy = VppNpolPolicy(
+            self, [VppNpolPolicyItem(is_inbound=is_inbound, rule_id=rule.vpp_id())]
+        )
+        policy.add_vpp_config()
+        self.rules.append(rule)
+        self.policies.append(policy)
+        return policy
+
+    def tcp_packet(self, dport):
+        return self.base_ip_packet() / TCP(sport=1, dport=dport) / random_payload()
+
+    def assert_prednat_match(self, pkt, expected):
+        output = self.vapi_npol_match(self.pg0, pkt, "prednat")
+        self.assertTrue(output.strip().endswith(expected), output)
+
+    def test_prednat_allow_and_deny(self):
+        allow_policy = self.tcp_dport_policy(
+            1000, VppEnum.vl_api_npol_rule_action_t.NPOL_ALLOW
+        )
+        deny_policy = self.tcp_dport_policy(
+            2000, VppEnum.vl_api_npol_rule_action_t.NPOL_DENY
+        )
+        self.configure_policies(
+            self.pg0,
+            [],
+            [],
+            [],
+            prednat=[allow_policy, deny_policy],
+        )
+
+        self.assert_prednat_match(self.tcp_packet(1000), "matched:1 action:ALLOW")
+        self.assert_prednat_match(self.tcp_packet(2000), "matched:1 action:DENY")
+        self.assert_prednat_match(
+            self.tcp_packet(3000), "matched:0 action:unknown type 1"
+        )
+
+    def test_prednat_ignores_regular_policies_profiles_and_defaults(self):
+        prednat_policy = self.tcp_dport_policy(
+            1000, VppEnum.vl_api_npol_rule_action_t.NPOL_ALLOW
+        )
+        regular_policy = self.tcp_dport_policy(
+            2000, VppEnum.vl_api_npol_rule_action_t.NPOL_DENY
+        )
+        profile_policy = self.tcp_dport_policy(
+            3000, VppEnum.vl_api_npol_rule_action_t.NPOL_DENY
+        )
+        self.configure_policies(
+            self.pg0,
+            [regular_policy],
+            [regular_policy],
+            [profile_policy],
+            prednat=[prednat_policy],
+        )
+
+        self.assert_prednat_match(self.tcp_packet(1000), "matched:1 action:ALLOW")
+        self.assert_prednat_match(
+            self.tcp_packet(2000), "matched:0 action:unknown type 1"
+        )
+        self.assert_prednat_match(
+            self.tcp_packet(3000), "matched:0 action:unknown type 1"
+        )
