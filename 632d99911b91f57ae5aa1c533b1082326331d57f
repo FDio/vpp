@@ -16,6 +16,23 @@
       "message": "This seems like a reasonable clarification.",
       "revId": "632d99911b91f57ae5aa1c533b1082326331d57f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f4f8c069_59bc638d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-04-29T16:38:05Z",
+      "side": 1,
+      "message": "LGTM",
+      "revId": "632d99911b91f57ae5aa1c533b1082326331d57f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
