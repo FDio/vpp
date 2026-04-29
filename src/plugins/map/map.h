@@ -29,10 +29,24 @@
 #define MAP_ERR_BAD_BUFFERS_TOO_LARGE	-5
 #define MAP_ERR_UNSUPPORTED             -6
 
+/*
+ * v6_lookup_side: pass MAP_V6_LOOKUP_SRC for upstream / single-tenant
+ * semantics, MAP_V6_LOOKUP_DST for per-VRF MAP-T. The create-time LPM
+ * insert decision (ip6_prefix_tbl) depends on this value — do not mutate
+ * d->v6_lookup_side after map_create_domain returns or the LPM tables
+ * and the flag will be out of sync (stale-entry / use-after-free hazard
+ * on subsequent delete/recreate cycles). Pass
+ * MAP_V6_LOOKUP_SIDE_DEFAULT to let map_create_domain derive a side
+ * from ip4_table_id (non-zero → DST, zero → SRC) for API clients that
+ * don't want to plumb the argument.
+ */
+#define MAP_V6_LOOKUP_SIDE_DEFAULT ((u8) 0xff)
 int map_create_domain (ip4_address_t * ip4_prefix, u8 ip4_prefix_len,
 		       ip6_address_t * ip6_prefix, u8 ip6_prefix_len,
 		       ip6_address_t * ip6_src, u8 ip6_src_len,
 		       u8 ea_bits_len, u8 psid_offset, u8 psid_length,
+		       u32 ip4_table_id, u32 ip6_table_id,
+		       u8 v6_lookup_side,
 		       u32 * map_domain_index, u16 mtu, u8 flags, u8 * tag);
 int map_delete_domain (u32 map_domain_index);
 int map_add_del_psid (u32 map_domain_index, u16 psid, ip6_address_t * tep,
@@ -57,12 +71,30 @@ typedef enum
   MAP_DOMAIN_RFC6052 = 1 << 2,
 } __attribute__ ((__packed__)) map_domain_flags_e;
 
+/*
+ * Per-domain IPv6 reverse-path lookup side.
+ *
+ * Upstream behaviour historically keyed the IPv6 (reverse, decap) lookup on
+ * the IPv6 source address. Per-VRF MAP-T needs the reverse-path domain
+ * lookup keyed on the IPv6 destination, because the per-tenant v6 prefix we
+ * stamp into the forward-path v6 source lands in the return packet's v6
+ * destination. Keep both modes selectable per domain so the plugin remains
+ * compatible with existing single-tenant callers.
+ */
+typedef enum
+{
+  MAP_V6_LOOKUP_SRC = 0,	/* upstream / single-tenant default */
+  MAP_V6_LOOKUP_DST = 1,	/* per-VRF MAP-T default (dst-keyed) */
+} map_v6_lookup_side_t;
+
 //#define IP6_MAP_T_OVERRIDE_TOS 0
 
 /*
- * This structure _MUST_ be no larger than a single cache line (64 bytes).
- * If more space is needed make a union of ip6_prefix and *rules, as
- * those are mutually exclusive.
+ * This structure historically fit within a single 64-byte cache line.
+ * Per-VRF MAP-T adds two FIB indices plus a lookup-side u8, which pushes
+ * it onto a second cache line. The hot-path fields still live at the
+ * head of the struct so the first access is a single cache line fetch;
+ * the per-VRF fields only matter once we know the domain matched.
  */
 typedef struct
 {
@@ -87,12 +119,28 @@ typedef struct
   u8 suffix_shift;
   u8 ea_shift;
 
-  /* not used by forwarding */
-  u8 ip4_prefix_len;
+  /* --- per-VRF MAP-T (second cache line) --- */
+
+  /* Tenant VRF. The forward path (v4->v6) matches this domain only if
+   * the incoming packet's ip4 fib_index equals this value. The reverse
+   * path (v6->v4) steers the translated v4 packet into this VRF by
+   * setting vnet_buffer(b)->sw_if_index[VLIB_TX] = ip4_fib_index before
+   * enqueuing to ip4-lookup (the lookup node treats a non-~0 TX value
+   * as a fib_index override — see ip_lookup_set_buffer_fib_index). */
+  u32 ip4_fib_index;
+
+  /* Underlay VRF. Forward path uses the same VLIB_TX idiom with this
+   * value before enqueuing to ip6-lookup, so the translated v6 packet
+   * is resolved in the underlay/WAN FIB rather than the customer VRF
+   * it arrived in. */
+  u32 ip6_fib_index;
+
+  /* Per-domain reverse-path lookup side; see map_v6_lookup_side_t. */
+  u8 v6_lookup_side;
 } map_domain_t;
 
-STATIC_ASSERT ((sizeof (map_domain_t) <= CLIB_CACHE_LINE_BYTES),
-	       "MAP domain fits in one cacheline");
+STATIC_ASSERT ((sizeof (map_domain_t) <= 2 * CLIB_CACHE_LINE_BYTES),
+	       "MAP domain fits in two cachelines");
 
 /*
  * Extra data about a domain that doesn't need to be time/space critical.
@@ -102,6 +150,7 @@ STATIC_ASSERT ((sizeof (map_domain_t) <= CLIB_CACHE_LINE_BYTES),
 typedef struct
 {
   u8 *tag;			/* Probably a user-assigned domain name. */
+  u8 ip4_prefix_len;		/* Not used by forwarding. */
 } map_domain_extra_t;
 
 #define MAP_REASS_INDEX_NONE ((u16)0xffff)
@@ -302,11 +351,13 @@ map_get_ip4 (ip6_address_t * addr, u16 prefix_len)
 }
 
 static_always_inline map_domain_t *
-ip4_map_get_domain (ip4_address_t * addr, u32 * map_domain_index, u8 * error)
+ip4_map_get_domain (u32 fib_index, ip4_address_t * addr,
+		    u32 * map_domain_index, u8 * error)
 {
   map_main_t *mm = &map_main;
 
-  u32 mdi = mm->ip4_prefix_tbl->lookup (mm->ip4_prefix_tbl, addr, 32);
+  u32 mdi =
+    mm->ip4_prefix_tbl->lookup_vrf (mm->ip4_prefix_tbl, fib_index, addr, 32);
   if (mdi == ~0)
     {
       *error = MAP_ERROR_NO_DOMAIN;
@@ -318,19 +369,48 @@ ip4_map_get_domain (ip4_address_t * addr, u32 * map_domain_index, u8 * error)
 
 /*
  * Get the MAP domain from an IPv6 address.
- * If the IPv6 address or
- * prefix is shared the IPv4 address must be used.
+ *
+ * Two flavours corresponding to map_domain_t::v6_lookup_side:
+ *
+ *   ip6_map_get_domain       - SRC-keyed: matches against ip6_prefix_tbl,
+ *                              which holds each domain's DMR (ip6_prefix).
+ *                              Used by upstream MAP-T and cndp-vpp, where
+ *                              the return packet's v6 source carries the
+ *                              DMR-encoded v4 destination.
+ *
+ *   ip6_map_get_domain_dst   - DST-keyed: matches against
+ *                              ip6_src_prefix_tbl, which holds each
+ *                              domain's per-tenant ip6_src prefix. Used
+ *                              by per-VRF MAP-T, where the return
+ *                              packet's v6 destination carries the
+ *                              per-org-prefix + embedded v4 source.
+ *
+ * Callers decide which to use based on d->v6_lookup_side of a domain
+ * they have in hand, or try both sides to resolve an unknown packet.
  */
 static_always_inline map_domain_t *
 ip6_map_get_domain (ip6_address_t * addr, u32 * map_domain_index, u8 * error)
 {
   map_main_t *mm = &map_main;
   u32 mdi =
-    /* This is the old src (ip6 destination) hash lookup [dgeist]
-     *
-     * mm->ip6_src_prefix_tbl->lookup (mm->ip6_src_prefix_tbl, addr, 128);
-     */
     mm->ip6_prefix_tbl->lookup (mm->ip6_prefix_tbl, addr, 128);
+  if (mdi == ~0)
+    {
+      *error = MAP_ERROR_NO_DOMAIN;
+      return 0;
+    }
+
+  *map_domain_index = mdi;
+  return pool_elt_at_index (mm->domains, mdi);
+}
+
+static_always_inline map_domain_t *
+ip6_map_get_domain_dst (ip6_address_t * addr, u32 * map_domain_index,
+			u8 * error)
+{
+  map_main_t *mm = &map_main;
+  u32 mdi =
+    mm->ip6_src_prefix_tbl->lookup (mm->ip6_src_prefix_tbl, addr, 128);
   if (mdi == ~0)
     {
       *error = MAP_ERROR_NO_DOMAIN;
@@ -463,10 +543,22 @@ map_mss_clamping (tcp_header_t * tcp, ip_csum_t * sum, u16 mss_clamping)
     }
 }
 
+/*
+ * Pre-resolved adjacency bypass. Upstream MAP-T stuffs the globally
+ * pre-resolved next-hop into adj_index[VLIB_TX] to skip the ip6-lookup
+ * node on the forward path. That bypass is keyed on the default FIB,
+ * so it is only safe when the caller-supplied domain rides the default
+ * underlay VRF. Per-VRF domains must fall through to ip6-lookup in
+ * their own ip6_fib_index (the per-domain loopback is used to steer
+ * the packet into that FIB before ip6-lookup runs).
+ */
 static_always_inline bool
-ip4_map_ip6_lookup_bypass (vlib_buffer_t * p0, ip4_header_t * ip)
+ip4_map_ip6_lookup_bypass (vlib_buffer_t * p0, ip4_header_t * ip,
+			   map_domain_t * d)
 {
 #ifdef MAP_SKIP_IP6_LOOKUP
+  if (d && d->ip6_fib_index != 0)
+    return (false);
   if (FIB_NODE_INDEX_INVALID != pre_resolved[FIB_PROTOCOL_IP6].fei)
     {
       vnet_buffer (p0)->ip.adj_index[VLIB_TX] =
@@ -478,9 +570,12 @@ ip4_map_ip6_lookup_bypass (vlib_buffer_t * p0, ip4_header_t * ip)
 }
 
 static_always_inline bool
-ip6_map_ip4_lookup_bypass (vlib_buffer_t * p0, ip4_header_t * ip)
+ip6_map_ip4_lookup_bypass (vlib_buffer_t * p0, ip4_header_t * ip,
+			   map_domain_t * d)
 {
 #ifdef MAP_SKIP_IP6_LOOKUP
+  if (d && d->ip4_fib_index != 0)
+    return (false);
   if (FIB_NODE_INDEX_INVALID != pre_resolved[FIB_PROTOCOL_IP4].fei)
     {
       vnet_buffer (p0)->ip.adj_index[VLIB_TX] =
