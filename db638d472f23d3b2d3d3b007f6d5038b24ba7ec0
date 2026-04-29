@@ -3,6 +3,23 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "97ba0656_583ef89a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-04-29T09:27:55Z",
+      "side": 1,
+      "message": "can we have test where we do key update for vpp crypto? you need to use \"set quic max_packets_per_key\" cli because default value is big. also consider using nsim to introduce packet loss and reordering",
+      "revId": "db638d472f23d3b2d3d3b007f6d5038b24ba7ec0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "7ed95f32_dd623427",
         "filename": "test/asf/test_quic.py",
         "patchSetId": 2
