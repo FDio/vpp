@@ -94,8 +94,17 @@ update_state_one_pkt (sfdp_tw_t *tw, sfdp_tenant_t *tenant,
   u8 flags = tcph->flags & SFDP_TCP_CHECK_TCP_FLAGS_MASK;
   u32 acknum = clib_net_to_host_u32 (tcph->ack_number);
   u32 seqnum = clib_net_to_host_u32 (tcph->seq_number);
+  u16 tcp_payload_len;
   u32 next_timeout = 0;
   u8 remove_session = 0;
+
+  if (session->type == SFDP_SESSION_TYPE_IP4)
+    tcp_payload_len =
+      clib_net_to_host_u16 (ip4->length) - ip4_header_bytes (ip4) - tcp_header_bytes (tcph);
+  else
+    tcp_payload_len = clib_net_to_host_u16 (ip6->payload_length) -
+		      ((u8 *) tcph - (u8 *) (ip6 + 1)) - tcp_header_bytes (tcph);
+
   if (PREDICT_FALSE (tcp_session->version != session->session_version))
     {
       tcp_session->version = session->session_version;
@@ -143,7 +152,8 @@ update_state_one_pkt (sfdp_tw_t *tw, sfdp_tenant_t *tenant,
 	  /*If we were up, we are not anymore */
 	  nsf[0] &= ~SFDP_TCP_CHECK_SESSION_FLAG_ESTABLISHED;
 	  /*Seen our FIN, wait for the other FIN and for an ACK*/
-	  tcp_session->fin_num[SFDP_FLOW_FORWARD] = seqnum + 1;
+	  /*Account for tcp_payload_len, in case our FIN packets contain data payload*/
+	  tcp_session->fin_num[SFDP_FLOW_FORWARD] = seqnum + tcp_payload_len + 1;
 	  nsf[0] |= SFDP_TCP_CHECK_SESSION_FLAG_SEEN_FIN_INIT;
 	}
       if (flags & SFDP_TCP_CHECK_TCP_FLAGS_RST)
@@ -179,7 +189,8 @@ update_state_one_pkt (sfdp_tw_t *tw, sfdp_tenant_t *tenant,
 	  /*If we were up, we are not anymore */
 	  nsf[0] &= ~SFDP_TCP_CHECK_SESSION_FLAG_ESTABLISHED;
 	  /* Seen our FIN, wait for the other FIN and for an ACK */
-	  tcp_session->fin_num[SFDP_FLOW_REVERSE] = seqnum + 1;
+	  /*Account for tcp_payload_len, in case our FIN packets contain data payload*/
+	  tcp_session->fin_num[SFDP_FLOW_REVERSE] = seqnum + tcp_payload_len + 1;
 	  nsf[0] |= SFDP_TCP_CHECK_SESSION_FLAG_SEEN_FIN_RESP;
 	}
       if (flags & SFDP_TCP_CHECK_TCP_FLAGS_RST)
