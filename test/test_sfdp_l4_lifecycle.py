@@ -496,6 +496,76 @@ class TestSfdpL4LifecycleIp4(TestSfdpL4LifecycleBase):
         # Session should be expired during next execution of sfdp-expire
         self.wait_no_sessions()
 
+    def test_tcp_fin_with_payload_initiator_closes(self):
+        """TCP - initiator FIN/ACK with payload"""
+
+        # Check that we support use-cases where TCP FIN packet contains data payload
+        # TCP Session established with 3-way handshake
+        self._tcp_establish(sport=20009)
+
+        # (1) Send initiator FIN+ACK
+        # TCP state machine should have flag SEEN_FIN_INIT set
+        # FIN carries 50 bytes of payload; the ACK must cover seq + 50 + 1
+        fin_payload = b"\xab" * 50
+        self.send_and_expect(
+            self.pg0,
+            self.create_tcp_packet(
+                self.pg0.remote_mac,
+                self.pg0.local_mac,
+                self.pg0.remote_ip4,
+                self.pg1.remote_ip4,
+                sport=20009,
+                dport=80,
+                flags="FA",
+                seq=1001,
+                ack=2001,
+                payload=fin_payload,
+            ),
+            self.pg1,
+        )
+
+        # (2) Send responder FIN+ACK
+        # TCP state machine should have SEEN_FIN_RESP flag set
+        self.send_and_expect(
+            self.pg1,
+            self.create_tcp_packet(
+                self.pg1.remote_mac,
+                self.pg1.local_mac,
+                self.pg1.remote_ip4,
+                self.pg0.remote_ip4,
+                sport=80,
+                dport=20009,
+                flags="FA",
+                seq=2001,
+                ack=1052,
+                payload=b"",
+            ),
+            self.pg0,
+        )
+
+        # (3) Send responder ACK
+        # TCP state machine should have SEEN_ACK_TO_FIN_INIT flag set
+        # Since all FIN flags have been set, session is tagged for removal
+        self.send_and_expect(
+            self.pg0,
+            self.create_tcp_packet(
+                self.pg0.remote_mac,
+                self.pg0.local_mac,
+                self.pg0.remote_ip4,
+                self.pg1.remote_ip4,
+                sport=20009,
+                dport=80,
+                flags="A",
+                seq=1052,
+                ack=2002,
+                payload=b"",
+            ),
+            self.pg1,
+        )
+
+        # Session should be expired during next execution of sfdp-expire
+        self.wait_no_sessions()
+
 
 @unittest.skipIf(
     "sfdp_services" in config.excluded_plugins,
