@@ -2,24 +2,74 @@
  * Copyright(c) 2025 Cisco Systems, Inc.
  */
 
+#include <vlib/unix/plugin.h>
 #include <npol/npol.h>
 #include <npol/npol_match.h>
 #include <npol/npol_policy.h>
 #include <npol/npol_format.h>
+#include <cnat/cnat_feature_hook.h>
 
 uword unformat_sw_if_index (unformat_input_t *input, va_list *args);
 
 npol_interface_config_t *npol_interface_configs;
 
+/* resolved once on first use */
+static void (*cnat_hooks_ensure_init) (void) = NULL;
+static int (*cnat_hook_input_add_del) (int is_add, cnat_slow_path_fn_t func,
+				       cnat_hook_order_t order) = NULL;
+static int (*cnat_hook_output_add_del) (int is_add, cnat_slow_path_fn_t func,
+					cnat_hook_order_t order) = NULL;
+/* set after the hooks have been added to the cnat slow-path vecs */
+static u8 npol_hooks_registered = 0;
+
+static int
+npol_ensure_hooks_registered ()
+{
+  if (npol_hooks_registered)
+    return 0;
+  if (!cnat_hook_input_add_del)
+    {
+      cnat_hook_input_add_del =
+	vlib_get_plugin_symbol ("cnat_plugin.so", "cnat_feature_hook_input_add_del");
+      if (!cnat_hook_input_add_del)
+	return 1;
+    }
+  if (!cnat_hook_output_add_del)
+    {
+      cnat_hook_output_add_del =
+	vlib_get_plugin_symbol ("cnat_plugin.so", "cnat_feature_hook_output_add_del");
+      if (!cnat_hook_output_add_del)
+	return 1;
+    }
+  if (!cnat_hooks_ensure_init)
+    {
+      cnat_hooks_ensure_init =
+	vlib_get_plugin_symbol ("cnat_plugin.so", "cnat_feature_hooks_ensure_init");
+      if (!cnat_hooks_ensure_init)
+	return 1;
+    }
+  /* Ensure main DNAT and SNAT functionalities are registered
+   * so the final order is deterministic.
+   * Input: [cnat_dnat_input_slow_path, npol_cnat_slow_path_input]
+   * — DNAT translates first, npol enforces post-DNAT policy (APPEND).
+   * Output: [npol_cnat_slow_path_output, cnat_snat_output_slow_path]
+   * — npol runs pre-SNAT so it sees the original source address (PREPEND). */
+  cnat_hooks_ensure_init ();
+  cnat_hook_input_add_del (1, npol_cnat_slow_path_input, CNAT_HOOK_APPEND);
+  cnat_hook_output_add_del (1, npol_cnat_slow_path_output, CNAT_HOOK_PREPEND);
+  npol_hooks_registered = 1;
+  return 0;
+}
+
 int
 npol_unconfigure_policies (u32 sw_if_index)
 {
   npol_interface_config_t *conf;
+
   conf = vec_elt_at_index (npol_interface_configs, sw_if_index);
   if (!conf->enabled)
     return 0;
 
-  conf = vec_elt_at_index (npol_interface_configs, sw_if_index);
   vec_free (conf->rx_policies);
   vec_free (conf->tx_policies);
   vec_free (conf->profiles);
@@ -57,6 +107,12 @@ npol_configure_policies (u32 sw_if_index, npol_interface_config_t *new_conf)
       vec_free (conf->tx_policies);
       vec_free (conf->profiles);
     }
+  else
+    {
+      if (npol_ensure_hooks_registered ())
+	goto error;
+    }
+
   *conf = *new_conf;
   conf->enabled = 1;
   return 0;

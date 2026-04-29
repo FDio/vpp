@@ -13,7 +13,7 @@ npol_match_fn (vlib_main_t *vm, unformat_input_t *input,
   vnet_main_t *vnm = vnet_get_main ();
   u32 sw_if_index = NPOL_INVALID_INDEX;
   u8 _r_action = NPOL_ACTION_UNKNOWN, *r_action = &_r_action;
-  fa_5tuple_t _pkt_5tuple = { 0 }, *pkt_5tuple = &_pkt_5tuple;
+  cnat_5tuple_t _pkt_5tuple = { 0 }, *pkt_5tuple = &_pkt_5tuple;
   clib_error_t *error = 0;
   u32 is_inbound = 0;
   int is_ip6 = 0;
@@ -35,24 +35,20 @@ npol_match_fn (vlib_main_t *vm, unformat_input_t *input,
 	is_ip6 = 1;
       else if (unformat (input, "ip4"))
 	is_ip6 = 0;
-      else if (unformat (input, "%U;%u->%U;%u", unformat_ip4_address,
-			 &pkt_5tuple->ip4_addr[SRC], &sport,
-			 unformat_ip4_address, &pkt_5tuple->ip4_addr[DST],
-			 &dport))
+      else if (unformat (input, "%U;%u->%U;%u", unformat_ip4_address, &pkt_5tuple->ip[SRC].ip4,
+			 &sport, unformat_ip4_address, &pkt_5tuple->ip[DST].ip4, &dport))
 	{
-	  pkt_5tuple->l4.port[SRC] = sport;
-	  pkt_5tuple->l4.port[DST] = dport;
+	  pkt_5tuple->port[SRC] = clib_host_to_net_u16 (sport);
+	  pkt_5tuple->port[DST] = clib_host_to_net_u16 (dport);
 	}
-      else if (unformat (input, "%U;%u->%U;%u", unformat_ip6_address,
-			 &pkt_5tuple->ip6_addr[SRC], &sport,
-			 unformat_ip6_address, &pkt_5tuple->ip6_addr[DST],
-			 &dport))
+      else if (unformat (input, "%U;%u->%U;%u", unformat_ip6_address, &pkt_5tuple->ip[SRC].ip6,
+			 &sport, unformat_ip6_address, &pkt_5tuple->ip[DST].ip6, &dport))
 	{
-	  pkt_5tuple->l4.port[SRC] = sport;
-	  pkt_5tuple->l4.port[DST] = dport;
+	  pkt_5tuple->port[SRC] = clib_host_to_net_u16 (sport);
+	  pkt_5tuple->port[DST] = clib_host_to_net_u16 (dport);
 	}
       else if (unformat (input, "%U", unformat_ip_protocol, &proto))
-	pkt_5tuple->l4.proto = proto;
+	pkt_5tuple->iproto = proto;
       else
 	{
 	  error = clib_error_return (0, "unknown input '%U'",
