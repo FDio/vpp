@@ -256,6 +256,24 @@
       "parentUuid": "7bdb8595_d5be5bcb",
       "revId": "2fe4c9de973fcbfb629e7b1c9361d94ab05340c6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "51b56e6b_7cad625f",
+        "filename": "test/hs-test/tcp_harness_test.go",
+        "patchSetId": 21
+      },
+      "lineNbr": 369,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-04-29T08:41:52Z",
+      "side": 1,
+      "message": "you didn\u0027t change this",
+      "parentUuid": "9a62f653_d969fd83",
+      "revId": "2fe4c9de973fcbfb629e7b1c9361d94ab05340c6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
