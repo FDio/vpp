@@ -35,6 +35,7 @@ add_vpp_driver(octeon
   rx_node.c
   tx_node.c
   flow.c
+  pfc.c
   counter.c
   crypto.c
 
