@@ -52,6 +52,24 @@
       "parentUuid": "2eefb53a_cb10c273",
       "revId": "b767227791f5c9ded809436d314b8c22a10e0bb4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ba14e319_30196815",
+        "filename": "src/plugins/quic_quicly/quic_quicly_crypto.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 82,
+      "author": {
+        "id": 3139
+      },
+      "writtenOn": "2026-04-29T17:03:35Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d14acc0a_6f9d2103",
+      "revId": "b767227791f5c9ded809436d314b8c22a10e0bb4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
