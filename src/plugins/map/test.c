@@ -24,7 +24,6 @@ get_domain(ip4_address_t * ip4_prefix, u8 ip4_prefix_len,
 
   /* Init domain struct */
   d->ip4_prefix.as_u32 = ip4_prefix->as_u32;
-  d->ip4_prefix_len = ip4_prefix_len;
   d->ip6_prefix = *ip6_prefix;
   d->ip6_prefix_len = ip6_prefix_len;
   d->ip6_src = *ip6_src;
