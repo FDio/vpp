@@ -34,6 +34,24 @@
       "parentUuid": "51e6563e_90bcf81b",
       "revId": "b767227791f5c9ded809436d314b8c22a10e0bb4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d14acc0a_6f9d2103",
+        "filename": "src/plugins/quic_quicly/quic_quicly_crypto.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 82,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-04-29T15:18:27Z",
+      "side": 1,
+      "message": "Exactly, remove this https://gerrit.fd.io/r/c/vpp/+/33322/2/src/plugins/quic/quic.c#2570 and let\u0027s go back to this https://gerrit.fd.io/r/c/vpp/+/33322/2/src/plugins/quic/quic_crypto.c#b329",
+      "parentUuid": "2eefb53a_cb10c273",
+      "revId": "b767227791f5c9ded809436d314b8c22a10e0bb4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
