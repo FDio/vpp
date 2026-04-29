@@ -13,11 +13,12 @@
 #include <vppinfra/hash.h>
 
 int
-elog_merge_main (unformat_input_t * input)
+elog_dump_main (unformat_input_t *input)
 {
   clib_error_t *error = 0;
   elog_main_t _em, *em = &_em;
   u32 verbose;
+  u32 print;
   char *dump_file, *merge_file, **merge_files;
   u8 *tag, **tags;
   f64 align_tweak;
@@ -26,6 +27,7 @@ elog_merge_main (unformat_input_t * input)
   elog_main_t *ems;
 
   verbose = 0;
+  print = 0;
   dump_file = 0;
   merge_files = 0;
   tags = 0;
@@ -39,11 +41,15 @@ elog_merge_main (unformat_input_t * input)
 	vec_add1 (tags, tag);
       else if (unformat (input, "merge %s", &merge_file))
 	vec_add1 (merge_files, merge_file);
-
       else if (unformat (input, "verbose %=", &verbose, 1))
+	;
+      else if (unformat (input, "print %=", &print, 1))
 	;
       else if (unformat (input, "align-tweak %f", &align_tweak))
 	vec_add1 (align_tweaks, align_tweak);
+      /* bare filename: treat as implicit merge */
+      else if (unformat (input, "%s", &merge_file))
+	vec_add1 (merge_files, merge_file);
       else
 	{
 	  error = clib_error_create ("unknown input `%U'\n",
@@ -51,6 +57,18 @@ elog_merge_main (unformat_input_t * input)
 	  goto done;
 	}
     }
+
+  if (vec_len (merge_files) == 0)
+    {
+      fformat (stderr, "usage: elog_dump [merge <file>]... [tag <tag>]... "
+		       "[dump <out-file>] [print] [verbose] [align-tweak <f>]\n"
+		       "       elog_dump <file>   (bare filename: dump to stdout)\n");
+      return 1;
+    }
+
+  /* if no explicit output requested, default to print */
+  if (!dump_file && !verbose)
+    print = 1;
 
   vec_clone (ems, merge_files);
 
@@ -82,16 +100,22 @@ elog_merge_main (unformat_input_t * input)
 	goto done;
     }
 
+  /* After unserialize, events are in em->events (not the ring). */
+  if (print)
+    {
+      elog_event_t *e;
+      fformat (stdout, "%u events\n", vec_len (em->events));
+      vec_foreach (e, em->events)
+	fformat (stdout, "%18.9f %-24U %U\n", e->time, format_elog_track_name, em, e,
+		 format_elog_event, em, e);
+    }
+
   if (verbose)
     {
-      elog_event_t *e, *es;
-      es = elog_get_events (em);
-      vec_foreach (e, es)
-      {
-	clib_warning ("%18.9f: %12U %U\n", e->time,
-		      format_elog_track_name, em, e, format_elog_event, em,
-		      e);
-      }
+      elog_event_t *e;
+      vec_foreach (e, em->events)
+	clib_warning ("%18.9f: %12U %U\n", e->time, format_elog_track_name, em, e,
+		      format_elog_event, em, e);
     }
 
 done:
@@ -109,7 +133,7 @@ main (int argc, char *argv[])
   clib_mem_init (0, 3ULL << 30);
 
   unformat_init_command_line (&i, argv);
-  r = elog_merge_main (&i);
+  r = elog_dump_main (&i);
   unformat_free (&i);
   return r;
 }

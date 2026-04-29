@@ -11,6 +11,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+add_vpp_executable(elog_dump SOURCES elog_dump.c
+  LINK_LIBRARIES vppinfra m)
+
 option(VPP_BUILD_PERFTOOL "Build Perf tool" OFF)
 if (VPP_BUILD_PERFTOOL)
   add_vpp_library(cperf
@@ -27,7 +30,6 @@ if (VPP_BUILD_PERFTOOL)
     cpeldump
     cpelinreg
     cpelstate
-    elog_merge
   )
     add_vpp_executable(${name} SOURCES ${name}.c
       LINK_LIBRARIES cperf vppinfra m)
