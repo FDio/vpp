@@ -349,15 +349,41 @@ typedef struct
 
 extern dpdk_main_t dpdk_main;
 
+/*
+ * We have to go through some gymnastics because vlib_buffer_t is
+ * now "variably-sized."
+ *
+ * _DPDK_VLIB_BUFFER_SIZE is the size of vlib_buffer_t except
+ * for the variable-sized data area.
+ */
+#define _DPDK_VLIB_BUFFER_SIZE (offsetof (vlib_buffer_t, data))
+typedef struct
+{
+  u32 buffer_index;
+  struct rte_mbuf mb;
+  /*
+   * The following alignment to 64 should allow us to cast the buffer
+   * address to a vlib_buffer_t safely
+   */
+  CLIB_ALIGN_MARK (vb, 64);
+  u8 vlib_buffer[_DPDK_VLIB_BUFFER_SIZE];
+} dpdk_tx_trace_chain_t;
+
 typedef struct
 {
   u32 buffer_index;
   u16 device_index;
   u8 queue_index;
+  u8 tail_length;
   struct rte_mbuf mb;
-  u8 data[256];			/* First 256 data bytes, used for hexdump */
+  /*
+   * The following alignment to 64 should allow us to cast the following
+   * buffer address to a vlib_buffer_t safely
+   */
+  CLIB_ALIGN_MARK (vb, 64);
   /* Copy of VLIB buffer; packet data stored in pre_data. */
-  vlib_buffer_t buffer;
+  u8 vlib_buffer[_DPDK_VLIB_BUFFER_SIZE];
+  dpdk_tx_trace_chain_t chains[0];
 } dpdk_tx_trace_t;
 
 typedef struct

@@ -599,20 +599,67 @@ format_dpdk_tx_trace (u8 * s, va_list * va)
   dpdk_main_t *dm = &dpdk_main;
   dpdk_device_t *xd = vec_elt_at_index (dm->devices, t->device_index);
   u32 indent = format_get_indent (s);
+  vlib_buffer_t *b = (vlib_buffer_t *) (&t->vlib_buffer);
+  u8 next_present = (b->flags & VLIB_BUFFER_NEXT_PRESENT) != 0;
 
   s = format (s, "%U tx queue %d", format_vnet_sw_if_index_name, vnm,
 	      xd->sw_if_index, t->queue_index);
 
-  s = format (s, "\n%Ubuffer 0x%x: %U", format_white_space, indent,
-	      t->buffer_index, format_vnet_buffer_no_chain, &t->buffer);
+  /* buffer pre_data has been used to store the initial packet content */
+  s = format (s, "\n%U ETHER: %U", format_white_space, indent, format_ethernet_header_with_length,
+	      b->pre_data, sizeof (b->pre_data));
 
-  s = format (s, "\n%U%U",
-	      format_white_space, indent,
-	      format_dpdk_rte_mbuf, &t->mb, &t->data);
+  s = format (s, "\n%Ubuffer 0x%x: %U", format_white_space, indent, t->buffer_index,
+	      format_vnet_buffer_no_chain, b);
 
-  s = format (s, "\n%U%U", format_white_space, indent,
-	      format_ethernet_header_with_length, t->buffer.pre_data,
-	      sizeof (t->buffer.pre_data));
+  s = format (s, "\n%U%U", format_white_space, indent, format_dpdk_rte_mbuf, &t->mb, b->pre_data);
+
+  struct rte_mbuf *mb = &t->mb;
+  s = format (s, "\n%Umo' MBUF: buf_addr %p, data_off-%u %d", format_white_space, indent,
+	      mb->buf_addr, VLIB_BUFFER_PRE_DATA_SIZE, mb->data_off - VLIB_BUFFER_PRE_DATA_SIZE);
+
+  s = format (s, "\n%UPacket Dump%s (start addr computed %p)", format_white_space, indent,
+	      b->current_length > sizeof (b->pre_data) ? " (truncated)" : "",
+	      ((u8 *) mb->buf_addr + mb->data_off));
+
+  if (b->current_length > sizeof (b->pre_data))
+    s = format (s, "\n%U%U", format_white_space, indent + 1, format_hexdump_trunc, b->pre_data,
+		(uint) sizeof (b->pre_data), (uint) b->current_length, (uint) t->tail_length);
+  else
+    s = format (s, "\n%U%U", format_white_space, indent + 1, format_hexdump, b->pre_data,
+		b->current_length);
+
+  for (u32 i = 0; next_present; i++)
+    {
+      b = (vlib_buffer_t *) &t->chains[i].vlib_buffer;
+      next_present = (b->flags & VLIB_BUFFER_NEXT_PRESENT) != 0;
+
+      /* Cannot walk the buffer chain on this copy */
+      b->flags &= ~VLIB_BUFFER_NEXT_PRESENT;
+
+      s = format (s, "\n%UCHAIN %u: buffer 0x%x: %U", format_white_space, indent, i + 1,
+		  t->chains[i].buffer_index, format_vnet_buffer, b);
+
+      if (next_present)
+	b->flags |= VLIB_BUFFER_NEXT_PRESENT;
+
+      mb = &t->chains[i].mb;
+      s = format (s,
+		  "\n%UCHAIN %u: MBUF buf_addr %p, nb_segs %d, pkt_len %d"
+		  "\n%Ubuf_len %d, data_len %d, ol_flags 0x%x, data_off-128 %d, buf_iova %p",
+		  format_white_space, indent, i + 1, mb->buf_addr, mb->nb_segs, mb->pkt_len,
+		  format_white_space, indent + 1, mb->buf_len, mb->data_len, mb->ol_flags,
+		  mb->data_off - VLIB_BUFFER_PRE_DATA_SIZE, rte_mbuf_iova_get (mb));
+
+      s = format (s, "\n%UBuffer Dump%s", format_white_space, indent,
+		  b->current_length > sizeof (b->pre_data) ? " (truncated)" : "");
+      if (b->current_length > sizeof (b->pre_data))
+	s = format (s, "\n%U%U", format_white_space, indent + 1, format_hexdump_trunc, b->pre_data,
+		    (uint) sizeof (b->pre_data), (uint) b->current_length, 0);
+      else
+	s = format (s, "\n%U%U", format_white_space, indent + 1, format_hexdump, b->pre_data,
+		    b->current_length);
+    }
 
   return s;
 }

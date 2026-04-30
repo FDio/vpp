@@ -85,20 +85,64 @@ dpdk_tx_trace_buffer (dpdk_main_t * dm, vlib_node_runtime_t * node,
   vlib_main_t *vm = vlib_get_main ();
   dpdk_tx_trace_t *t0;
   struct rte_mbuf *mb;
+  vlib_buffer_t *cb;
+  vlib_buffer_t *vb;
+  u32 i, extra = 0;
+
+  for (cb = buffer; (cb->flags & VLIB_BUFFER_NEXT_PRESENT);
+       cb = vlib_get_buffer (vm, cb->next_buffer))
+    extra++;
 
   mb = rte_mbuf_from_vlib_buffer (buffer);
 
-  t0 = vlib_add_trace (vm, node, buffer, sizeof (t0[0]));
+  t0 = vlib_add_trace (vm, node, buffer, sizeof (t0[0]) + sizeof (t0->chains[0]) * extra);
   t0->queue_index = queue_id;
   t0->device_index = xd->device_index;
   t0->buffer_index = vlib_get_buffer_index (vm, buffer);
+  t0->tail_length = 0;
+
+  /* Copy original mbuf structure */
   clib_memcpy_fast (&t0->mb, mb, sizeof (t0->mb));
-  clib_memcpy_fast (&t0->buffer, buffer,
-		    sizeof (buffer[0]) - sizeof (buffer->pre_data));
-  clib_memcpy_fast (t0->buffer.pre_data, buffer->data + buffer->current_data,
-		    sizeof (t0->buffer.pre_data));
-  clib_memcpy_fast (&t0->data, mb->buf_addr + mb->data_off,
-		    sizeof (t0->data));
+
+  vb = (vlib_buffer_t *) &t0->vlib_buffer;
+
+  /* Copy original vlib buffer structure except for pre_data area tail */
+  clib_memcpy_fast (vb, buffer, offsetof (vlib_buffer_t, pre_data));
+
+  /* Copy 1st part of vib buffer's notion of packet to copy's pre_data area */
+  clib_memcpy_fast (vb->pre_data, vlib_buffer_get_current (buffer),
+		    clib_min (sizeof (vb->pre_data), vb->current_length));
+
+  /*
+   * If packet is bigger than pre_data[], copy tail of packet to
+   * tail of pre_data[]
+   */
+
+  /* Copy the last N bytes. */
+  if (vb->current_length > sizeof (vb->pre_data))
+    {
+      u8 tlen = 32; /* arbitrary amount of pre_data */
+
+      ASSERT (tlen <= sizeof (vb->pre_data));
+      t0->tail_length = tlen;
+      clib_memcpy_fast (vb->pre_data + sizeof (vb->pre_data) - tlen,
+			vlib_buffer_get_current (buffer) + buffer->current_length - tlen, tlen);
+    }
+
+  /* now copy the chained buffers and data */
+  for (i = 0; i < extra; i++)
+    {
+      t0->chains[i].buffer_index = buffer->next_buffer;
+      buffer = vlib_get_buffer (vm, buffer->next_buffer);
+      mb = rte_mbuf_from_vlib_buffer (buffer);
+      clib_memcpy_fast (&t0->chains[i].mb, mb, sizeof (t0->mb));
+
+      vb = (vlib_buffer_t *) &t0->chains[i].vlib_buffer;
+
+      clib_memcpy_fast (vb, buffer, sizeof (buffer[0]) - sizeof (buffer->pre_data));
+      clib_memcpy_fast (vb->pre_data, mb->buf_addr + mb->data_off,
+			clib_min (sizeof (vb->pre_data), mb->data_len));
+    }
 }
 
 static_always_inline void
