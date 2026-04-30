@@ -213,6 +213,8 @@ typedef struct
   struct ibv_flow *flow_mcast4;
   struct ibv_flow *flow_ucast6;
   struct ibv_flow *flow_mcast6;
+  struct ibv_flow *flow_pppoe_disc;
+  struct ibv_flow *flow_pppoe_ses;
 
   clib_error_t *error;
 } rdma_device_t;
