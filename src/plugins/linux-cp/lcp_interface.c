@@ -18,6 +18,7 @@
 
 #include <vppinfra/linux/netns.h>
 
+#include <vnet/devices/devices.h>
 #include <vnet/ip/ip_punt_drop.h>
 #include <vnet/fib/fib_table.h>
 #include <vnet/adj/adj_mcast.h>
@@ -844,6 +845,18 @@ lcp_itf_pair_create (u32 phy_sw_if_index, u8 *host_if_name,
       LCP_ITF_PAIR_ERR ("pair_create: invalid interface");
       return VNET_API_ERROR_INVALID_SW_IF_INDEX;
     }
+
+  {
+    vnet_device_class_t *dev_class = vnet_get_device_class (vnm, hw->dev_class_index);
+    if (dev_class && dev_class->name && !clib_strcmp (dev_class->name, "PPPOX"))
+      {
+	if (host_if_type != LCP_ITF_HOST_TUN)
+	  {
+	    LCP_ITF_PAIR_ERR ("pair_create: PPPOX interfaces support only TUN host pairs");
+	    return VNET_API_ERROR_INVALID_ARGUMENT;
+	  }
+      }
+  }
 
   if (hw->hw_class_index != ethernet_hw_interface_class.index &&
       host_if_type == LCP_ITF_HOST_TAP)
