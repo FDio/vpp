@@ -10,7 +10,6 @@ VPP extra tools
     snap
     strongswan
     vpp_config
-    vpp_if_stats
     vpptop
     vcl_ldpreload
     hs-test
