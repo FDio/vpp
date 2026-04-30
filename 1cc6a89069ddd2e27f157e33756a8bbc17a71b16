@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7cbb6283_d5a6fdf1",
+        "filename": "src/vnet/session/application.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1552,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2026-04-30T15:15:11Z",
+      "side": 1,
+      "message": "Not related to your patch. But it looks like there is an old bug that we never hit before. We did the clean up, deallocate fifos first. If we hit an early return before installing a new app_listener-\u003eworkers. We may have a problem with accept using the old app_listener-\u003eworkers. Should we postpone the clean up after we change the app_listener-\u003eworkers?",
+      "revId": "1cc6a89069ddd2e27f157e33756a8bbc17a71b16",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
