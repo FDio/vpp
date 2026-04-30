@@ -39,32 +39,33 @@ typedef enum dhcpv6_msg_type_
 } dhcpv6_msg_type_t;
 
 /* Name, code, min payload length */
-#define dhcpv6_foreach_option \
-  _(CLIENTID         , 1  , 4 ) \
-  _(SERVERID         , 2  , 4 ) \
-  _(IA_NA            , 3  , 12) \
-  _(IA_TA            , 4  , 4 ) \
-  _(IAADDR           , 5  , 24) \
-  _(ORO              , 6  , 0 ) \
-  _(PREFERENCE       , 7  , 1 ) \
-  _(ELAPSED_TIME     , 8  , 2 ) \
-  _(RELAY_MSG        , 9  , 0 ) \
-  _(AUTH             , 11 , 11) \
-  _(UNICAST          , 12 , 16) \
-  _(STATUS_CODE      , 13 , 2 ) \
-  _(RAPID_COMMIT     , 14 , 0 ) \
-  _(USER_CLASS       , 15 , 0 ) \
-  _(VENDOR_CLASS     , 16 , 4 ) \
-  _(VENDOR_OPTS      , 17 , 4 ) \
-  _(INTERFACE_ID     , 18 , 0 ) \
-  _(RECONF_MSG       , 19 , 1 ) \
-  _(RECONF_ACCEPT    , 20 , 0 ) \
-  _(DNS_SEARCH       , 24 , 0 ) \
-  _(IA_PD            , 25 , 12) \
-  _(IAPREFIX         , 26 , 25) \
-  _(REMOTEID         , 37 , 4 ) \
-  _(VSS              , 68 , 1 ) \
-  _(CLIENT_LINK_LAYER_ADDRESS, 79 , 2 )
+#define dhcpv6_foreach_option                                                                      \
+  _ (CLIENTID, 1, 4)                                                                               \
+  _ (SERVERID, 2, 4)                                                                               \
+  _ (IA_NA, 3, 12)                                                                                 \
+  _ (IA_TA, 4, 4)                                                                                  \
+  _ (IAADDR, 5, 24)                                                                                \
+  _ (ORO, 6, 0)                                                                                    \
+  _ (PREFERENCE, 7, 1)                                                                             \
+  _ (ELAPSED_TIME, 8, 2)                                                                           \
+  _ (RELAY_MSG, 9, 0)                                                                              \
+  _ (AUTH, 11, 11)                                                                                 \
+  _ (UNICAST, 12, 16)                                                                              \
+  _ (STATUS_CODE, 13, 2)                                                                           \
+  _ (RAPID_COMMIT, 14, 0)                                                                          \
+  _ (USER_CLASS, 15, 0)                                                                            \
+  _ (VENDOR_CLASS, 16, 4)                                                                          \
+  _ (VENDOR_OPTS, 17, 4)                                                                           \
+  _ (INTERFACE_ID, 18, 0)                                                                          \
+  _ (RECONF_MSG, 19, 1)                                                                            \
+  _ (RECONF_ACCEPT, 20, 0)                                                                         \
+  _ (DNS_SERVERS, 23, 16)                                                                          \
+  _ (DNS_SEARCH, 24, 0)                                                                            \
+  _ (IA_PD, 25, 12)                                                                                \
+  _ (IAPREFIX, 26, 25)                                                                             \
+  _ (REMOTEID, 37, 4)                                                                              \
+  _ (VSS, 68, 1)                                                                                   \
+  _ (CLIENT_LINK_LAYER_ADDRESS, 79, 2)
 
 /*
  * DHCPv6 options types
