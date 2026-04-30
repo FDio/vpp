@@ -61,11 +61,23 @@ class QUICTestCase(VppAsfTestCase):
     server_appns_secret = None
     client_appns = "client"
     client_appns_secret = None
+    # Crypto engine: "vpp" (vnet_crypto) or "engine-lib" (picotls)
+    crypto_engine = "vpp"
+    # vnet_crypto handler (only used when crypto_engine == "vpp"):
+    # None  -> leave the current handler unchanged
+    # "native", "ipsecmb", "openssl" -> set via "set crypto handler all <handler>"
+    crypto_handler = None
 
     @classmethod
     def setUpClass(cls):
         cls.extra_vpp_plugin_config.append("plugin quic_plugin.so { enable }")
         cls.extra_vpp_plugin_config.append("plugin quic_quicly_plugin.so { enable }")
+        cls.extra_vpp_config = list(cls.extra_vpp_config) + [
+            "quic",
+            "{",
+            "enable-vnet-crypto",
+            "}",
+        ]
         super(QUICTestCase, cls).setUpClass()
 
     def setUp(self):
@@ -116,9 +128,10 @@ class QUICTestCase(VppAsfTestCase):
         self.ip_t01.add_vpp_config()
         self.ip_t10.add_vpp_config()
         self.logger.debug(self.vapi.cli("show ip fib"))
-        # TODO: refactor test suites to use all crypto cipher suites
-        # self.vapi.cli("quic set crypto api vpp")
+        self.vapi.cli(f"quic set crypto api {self.crypto_engine}")
         # self.vapi.cli("quic set crypto api engine-lib")
+        if self.crypto_handler is not None:
+            self.vapi.cli(f"set crypto handler all {self.crypto_handler}")
         self.logger.debug(self.vapi.cli("show quic"))
 
     def tearDown(self):
@@ -611,6 +624,442 @@ class QUICEchoExtServerStreamWorkersTestCase(QUICEchoExtTestCase):
         self.server("nclients", "4", "quic-streams", "4", "TX=10M", "RX=0")
         self.client("nclients", "4", "quic-streams", "4", "TX=0", "RX=10M")
         self.validate_ext_test_results()
+
+
+# ---------------------------------------------------------------------------
+# Picotls (engine-lib) variants of the actively-run test cases
+# ---------------------------------------------------------------------------
+
+
+class QUICEchoIntTransferPicotlsTestCase(QUICEchoIntTransferTestCase):
+    """QUIC Echo Internal Transfer Test Case (picotls/engine-lib)"""
+
+    crypto_engine = "engine-lib"
+
+
+class QUICEchoIntSerialPicotlsTestCase(QUICEchoIntSerialTestCase):
+    """QUIC Echo Internal Serial Transfer Test Case (picotls/engine-lib)"""
+
+    crypto_engine = "engine-lib"
+
+
+class QUICEchoIntMStreamPicotlsTestCase(QUICEchoIntMStreamTestCase):
+    """QUIC Echo Internal MultiStream Test Case (picotls/engine-lib)"""
+
+    crypto_engine = "engine-lib"
+
+
+class QUICEchoExtTransferPicotlsTestCase(QUICEchoExtTransferTestCase):
+    """QUIC Echo External Transfer Test Case (picotls/engine-lib)"""
+
+    crypto_engine = "engine-lib"
+
+
+class QUICEchoExtServerStreamPicotlsTestCase(QUICEchoExtServerStreamTestCase):
+    """QUIC Echo External Transfer Server Stream Test Case (picotls/engine-lib)"""
+
+    crypto_engine = "engine-lib"
+
+
+# ---------------------------------------------------------------------------
+# Key-update tests: max_packets_per_key is set small so that multiple key
+# updates are triggered during a normal 2 MB transfer.  Tested with both
+# the vnet_crypto (vpp) and picotls (engine-lib) backends.
+# ---------------------------------------------------------------------------
+
+
+class QUICKeyUpdateVppTestCase(QUICEchoIntTestCase):
+    """QUIC Key Update Test Case (vpp/vnet_crypto)"""
+
+    # Force a key update every 16 packets (default is 16 777 216)
+    max_packets_per_key = 16
+
+    def setUp(self):
+        super().setUp()
+        self.vapi.cli(f"set quic max_packets_per_key {self.max_packets_per_key}")
+
+    def test_quic_key_update(self):
+        """QUIC internal transfer with frequent key updates (vpp crypto)"""
+        self.server()
+        self.client("bytes", "2m")
+
+
+class QUICKeyUpdatePicotlsTestCase(QUICEchoIntTestCase):
+    """QUIC Key Update Test Case (picotls/engine-lib)"""
+
+    crypto_engine = "engine-lib"
+    max_packets_per_key = 16
+
+    def setUp(self):
+        super().setUp()
+        self.vapi.cli(f"set quic max_packets_per_key {self.max_packets_per_key}")
+
+    def test_quic_key_update_picotls(self):
+        """QUIC internal transfer with frequent key updates (picotls)"""
+        self.server()
+        self.client("bytes", "2m")
+
+
+# ---------------------------------------------------------------------------
+# Nsim tests: packet loss and reordering applied to both loopback interfaces
+# so that QUIC exercises its loss-recovery and reorder-handling paths.
+# ---------------------------------------------------------------------------
+
+
+@unittest.skipIf("nsim" in config.excluded_plugins, "Exclude NSIM plugin tests")
+class QUICNsimTestCase(QUICEchoIntTestCase):
+    """QUIC Echo Internal Transfer with Loss and Reordering (nsim)"""
+
+    # Increase timeout to accommodate extra latency / retransmissions
+    timeout = 60
+
+    def _nsim_enable(self):
+        # 0.1 ms delay, 10 Gbps bandwidth, 1460-byte packets,
+        # 1-in-100 drop rate, 1-in-5 reorder rate; poll-main-thread is
+        # required for loopback interfaces that run on the main thread.
+        self.vapi.cli(
+            "set nsim poll-main-thread delay 0.1 ms bandwidth 10 gbit "
+            "packet-size 1460 packets-per-drop 100 packets-per-reorder 5"
+        )
+        self.vapi.cli(f"nsim output-feature enable-disable {self.loop0.name}")
+        self.vapi.cli(f"nsim output-feature enable-disable {self.loop1.name}")
+        self.logger.debug(self.vapi.cli("show nsim"))
+
+    def _nsim_disable(self):
+        self.vapi.cli(f"nsim output-feature enable-disable {self.loop0.name} disable")
+        self.vapi.cli(f"nsim output-feature enable-disable {self.loop1.name} disable")
+
+    def test_quic_int_transfer_nsim(self):
+        """QUIC internal transfer under packet loss and reordering"""
+        self._nsim_enable()
+        try:
+            self.server()
+            self.client("bytes", "2m")
+        finally:
+            self._nsim_disable()
+
+
+class _QUICNsimMixin:
+    """Mixin providing nsim enable/disable helpers without contributing tests."""
+
+    timeout = 60
+
+    def _nsim_enable(self):
+        self.vapi.cli(
+            "set nsim poll-main-thread delay 0.1 ms bandwidth 10 gbit "
+            "packet-size 1460 packets-per-drop 100 packets-per-reorder 5"
+        )
+        self.vapi.cli(f"nsim output-feature enable-disable {self.loop0.name}")
+        self.vapi.cli(f"nsim output-feature enable-disable {self.loop1.name}")
+        self.logger.debug(self.vapi.cli("show nsim"))
+
+    def _nsim_disable(self):
+        self.vapi.cli(f"nsim output-feature enable-disable {self.loop0.name} disable")
+        self.vapi.cli(f"nsim output-feature enable-disable {self.loop1.name} disable")
+
+
+@unittest.skipIf("nsim" in config.excluded_plugins, "Exclude NSIM plugin tests")
+class QUICNsimKeyUpdateTestCase(_QUICNsimMixin, QUICEchoIntTestCase):
+    """QUIC Key Update under Loss and Reordering (vpp crypto, nsim)"""
+
+    max_packets_per_key = 16
+
+    def setUp(self):
+        super().setUp()
+        self.vapi.cli(f"set quic max_packets_per_key {self.max_packets_per_key}")
+
+    def test_quic_key_update_nsim(self):
+        """QUIC internal transfer with key updates under loss and reordering"""
+        self._nsim_enable()
+        try:
+            self.server()
+            self.client("bytes", "2m")
+        finally:
+            self._nsim_disable()
+
+
+# ---------------------------------------------------------------------------
+# Runtime crypto handler switch tests
+# Verify that QUIC connections keep working when the vnet_crypto handler is
+# changed at runtime via "set crypto handler all <engine>".
+# ---------------------------------------------------------------------------
+
+
+class QUICCryptoHandlerSwitchTestCase(QUICEchoIntTestCase):
+    """QUIC Crypto Handler Runtime Switch Between Connections"""
+
+    # Handlers to cycle through; the test switches to each one in sequence
+    # between consecutive QUIC connections to the same server.
+    _switch_handlers = ("native", "ipsecmb", "openssl")
+
+    def test_quic_handler_switch_between_connections(self):
+        """QUIC: switch vnet_crypto handler between consecutive connections"""
+        self.server()
+        for handler in self._switch_handlers:
+            self.vapi.cli(f"set crypto handler all {handler}")
+            self.logger.debug(self.vapi.cli("show crypto handlers"))
+            self.client("bytes", "2m")
+
+
+class QUICCryptoHandlerMidTransferSwitchTestCase(QUICEchoExtTestCase):
+    """QUIC Crypto Handler Runtime Switch During Active Transfer"""
+
+    # Disable byte-assertion so TX=200M / RX=0 args are accepted cleanly
+    test_bytes = ""
+    timeout = 60
+
+    def test_quic_handler_switch_mid_transfer(self):
+        """QUIC: cycle vnet_crypto handler while a large transfer is in flight"""
+        # 200 MB gives enough wall time to cycle through all three handlers
+        # before the transfer completes.
+        self.server("TX=0", "RX=200M")
+        _args = self.client_echo_test_args + ["TX=200M", "RX=0"]
+        self.worker_client = QUICAppWorker(
+            self.app, _args, self.logger, self.client_appns, self
+        )
+        self.worker_client.start()
+        # Let the connection establish and data start flowing
+        self.sleep(1)
+        # Cycle through handlers while the transfer is active
+        for handler in ("native", "ipsecmb", "openssl"):
+            self.vapi.cli(f"set crypto handler all {handler}")
+            self.logger.debug(self.vapi.cli("show crypto handlers"))
+            self.sleep(0.5)
+        # Collect results
+        timeout = None if self.debug_all else self.timeout
+        self.worker_client.join(timeout)
+        if self.worker_client.is_alive():
+            self.logger.critical(f"Client failed to complete in {timeout} seconds!")
+        self.worker_server.join(timeout)
+        if self.worker_server.is_alive():
+            self.logger.critical(f"Server failed to complete in {timeout} seconds!")
+        self.sleep(self.post_test_sleep)
+        self.validate_ext_test_results()
+
+
+class QUICCryptoHandlerMidTransferWithKeyUpdateTestCase(QUICEchoExtTestCase):
+    """QUIC Crypto Handler Switch Mid-Transfer with Frequent Key Updates
+
+    Forces a key update every 16 packets so that both the data-path and
+    key-update crypto operations are processed by each handler during the
+    handler rotation.  This guarantees that each handler is exercised
+    within the same QUIC connection.
+    """
+
+    test_bytes = ""
+    timeout = 60
+    # Small value ensures many key updates occur during the transfer
+    max_packets_per_key = 16
+
+    def setUp(self):
+        super().setUp()
+        self.vapi.cli(f"set quic max_packets_per_key {self.max_packets_per_key}")
+
+    def test_quic_handler_switch_mid_transfer_with_key_update(self):
+        """QUIC: switch handler mid-connection combined with frequent key updates"""
+        self.server("TX=0", "RX=200M")
+        _args = self.client_echo_test_args + ["TX=200M", "RX=0"]
+        self.worker_client = QUICAppWorker(
+            self.app, _args, self.logger, self.client_appns, self
+        )
+        self.worker_client.start()
+        # Wait for connection establishment
+        self.sleep(1)
+        # Switch handler every 0.5 s; with max_packets_per_key=16 many key
+        # updates will be issued within each handler's active window.
+        for handler in ("native", "ipsecmb", "openssl", "native"):
+            self.vapi.cli(f"set crypto handler all {handler}")
+            self.logger.debug(self.vapi.cli("show crypto handlers"))
+            self.sleep(0.5)
+        timeout = None if self.debug_all else self.timeout
+        self.worker_client.join(timeout)
+        if self.worker_client.is_alive():
+            self.logger.critical(f"Client failed to complete in {timeout} seconds!")
+        self.worker_server.join(timeout)
+        if self.worker_server.is_alive():
+            self.logger.critical(f"Server failed to complete in {timeout} seconds!")
+        self.sleep(self.post_test_sleep)
+        self.validate_ext_test_results()
+
+
+# ---------------------------------------------------------------------------
+# vnet_crypto handler variants: native, ipsecmb, openssl
+# Each group sets crypto_handler so QUICTestCase.setUp issues
+# "set crypto handler all <handler>" before running the test.
+# ---------------------------------------------------------------------------
+
+
+# -- native -----------------------------------------------------------------
+
+
+class QUICEchoIntTransferNativeTestCase(QUICEchoIntTransferTestCase):
+    """QUIC Echo Internal Transfer Test Case (vpp/native)"""
+
+    crypto_handler = "native"
+
+
+class QUICEchoIntSerialNativeTestCase(QUICEchoIntSerialTestCase):
+    """QUIC Echo Internal Serial Transfer Test Case (vpp/native)"""
+
+    crypto_handler = "native"
+
+
+class QUICEchoIntMStreamNativeTestCase(QUICEchoIntMStreamTestCase):
+    """QUIC Echo Internal MultiStream Test Case (vpp/native)"""
+
+    crypto_handler = "native"
+
+
+class QUICEchoExtTransferNativeTestCase(QUICEchoExtTransferTestCase):
+    """QUIC Echo External Transfer Test Case (vpp/native)"""
+
+    crypto_handler = "native"
+
+
+class QUICEchoExtServerStreamNativeTestCase(QUICEchoExtServerStreamTestCase):
+    """QUIC Echo External Transfer Server Stream Test Case (vpp/native)"""
+
+    crypto_handler = "native"
+
+
+class QUICKeyUpdateNativeTestCase(QUICKeyUpdateVppTestCase):
+    """QUIC Key Update Test Case (vpp/native)"""
+
+    crypto_handler = "native"
+
+
+@unittest.skipIf("nsim" in config.excluded_plugins, "Exclude NSIM plugin tests")
+class QUICNsimTransferNativeTestCase(QUICNsimTestCase):
+    """QUIC Nsim Transfer Test Case (vpp/native)"""
+
+    crypto_handler = "native"
+
+
+@unittest.skipIf("nsim" in config.excluded_plugins, "Exclude NSIM plugin tests")
+class QUICNsimKeyUpdateNativeTestCase(QUICNsimKeyUpdateTestCase):
+    """QUIC Nsim Key Update Test Case (vpp/native)"""
+
+    crypto_handler = "native"
+
+
+# -- ipsecmb ----------------------------------------------------------------
+
+
+class QUICEchoIntTransferIpsecmbTestCase(QUICEchoIntTransferTestCase):
+    """QUIC Echo Internal Transfer Test Case (vpp/ipsecmb)"""
+
+    crypto_handler = "ipsecmb"
+
+
+@unittest.skipUnless(config.extended, "part of extended tests")
+class QUICEchoIntSerialIpsecmbTestCase(QUICEchoIntSerialTestCase):
+    """QUIC Echo Internal Serial Transfer Test Case (vpp/ipsecmb)"""
+
+    crypto_handler = "ipsecmb"
+
+
+@unittest.skipUnless(config.extended, "part of extended tests")
+class QUICEchoIntMStreamIpsecmbTestCase(QUICEchoIntMStreamTestCase):
+    """QUIC Echo Internal MultiStream Test Case (vpp/ipsecmb)"""
+
+    crypto_handler = "ipsecmb"
+
+
+@unittest.skipUnless(config.extended, "part of extended tests")
+class QUICEchoExtTransferIpsecmbTestCase(QUICEchoExtTransferTestCase):
+    """QUIC Echo External Transfer Test Case (vpp/ipsecmb)"""
+
+    crypto_handler = "ipsecmb"
+
+
+@unittest.skipUnless(config.extended, "part of extended tests")
+class QUICEchoExtServerStreamIpsecmbTestCase(QUICEchoExtServerStreamTestCase):
+    """QUIC Echo External Transfer Server Stream Test Case (vpp/ipsecmb)"""
+
+    crypto_handler = "ipsecmb"
+
+
+@unittest.skipUnless(config.extended, "part of extended tests")
+class QUICKeyUpdateIpsecmbTestCase(QUICKeyUpdateVppTestCase):
+    """QUIC Key Update Test Case (vpp/ipsecmb)"""
+
+    crypto_handler = "ipsecmb"
+
+
+@unittest.skipUnless(config.extended, "part of extended tests")
+@unittest.skipIf("nsim" in config.excluded_plugins, "Exclude NSIM plugin tests")
+class QUICNsimTransferIpsecmbTestCase(QUICNsimTestCase):
+    """QUIC Nsim Transfer Test Case (vpp/ipsecmb)"""
+
+    crypto_handler = "ipsecmb"
+
+
+@unittest.skipUnless(config.extended, "part of extended tests")
+@unittest.skipIf("nsim" in config.excluded_plugins, "Exclude NSIM plugin tests")
+class QUICNsimKeyUpdateIpsecmbTestCase(QUICNsimKeyUpdateTestCase):
+    """QUIC Nsim Key Update Test Case (vpp/ipsecmb)"""
+
+    crypto_handler = "ipsecmb"
+
+
+# -- openssl ----------------------------------------------------------------
+
+
+class QUICEchoIntTransferOpensslTestCase(QUICEchoIntTransferTestCase):
+    """QUIC Echo Internal Transfer Test Case (vpp/openssl)"""
+
+    crypto_handler = "openssl"
+
+
+@unittest.skipUnless(config.extended, "part of extended tests")
+class QUICEchoIntSerialOpensslTestCase(QUICEchoIntSerialTestCase):
+    """QUIC Echo Internal Serial Transfer Test Case (vpp/openssl)"""
+
+    crypto_handler = "openssl"
+
+
+@unittest.skipUnless(config.extended, "part of extended tests")
+class QUICEchoIntMStreamOpensslTestCase(QUICEchoIntMStreamTestCase):
+    """QUIC Echo Internal MultiStream Test Case (vpp/openssl)"""
+
+    crypto_handler = "openssl"
+
+
+@unittest.skipUnless(config.extended, "part of extended tests")
+class QUICEchoExtTransferOpensslTestCase(QUICEchoExtTransferTestCase):
+    """QUIC Echo External Transfer Test Case (vpp/openssl)"""
+
+    crypto_handler = "openssl"
+
+
+@unittest.skipUnless(config.extended, "part of extended tests")
+class QUICEchoExtServerStreamOpensslTestCase(QUICEchoExtServerStreamTestCase):
+    """QUIC Echo External Transfer Server Stream Test Case (vpp/openssl)"""
+
+    crypto_handler = "openssl"
+
+
+@unittest.skipUnless(config.extended, "part of extended tests")
+class QUICKeyUpdateOpensslTestCase(QUICKeyUpdateVppTestCase):
+    """QUIC Key Update Test Case (vpp/openssl)"""
+
+    crypto_handler = "openssl"
+
+
+@unittest.skipUnless(config.extended, "part of extended tests")
+@unittest.skipIf("nsim" in config.excluded_plugins, "Exclude NSIM plugin tests")
+class QUICNsimTransferOpensslTestCase(QUICNsimTestCase):
+    """QUIC Nsim Transfer Test Case (vpp/openssl)"""
+
+    crypto_handler = "openssl"
+
+
+@unittest.skipUnless(config.extended, "part of extended tests")
+@unittest.skipIf("nsim" in config.excluded_plugins, "Exclude NSIM plugin tests")
+class QUICNsimKeyUpdateOpensslTestCase(QUICNsimKeyUpdateTestCase):
+    """QUIC Nsim Key Update Test Case (vpp/openssl)"""
+
+    crypto_handler = "openssl"
 
 
 if __name__ == "__main__":
