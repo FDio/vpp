@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "19494ebd_44648c29",
+        "filename": "src/plugins/cnat/cnat_snat_policy.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 164,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-30T10:09:40Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "6201018b_c4c32540",
+      "revId": "3012c74a42857c63c858ce791cf84ae84dce8b9a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "50f11af1_7fe0256e",
@@ -48,6 +66,24 @@
       "writtenOn": "2026-04-28T09:33:52Z",
       "side": 1,
       "message": "Same thing here, we could keep the `init()` function",
+      "revId": "3012c74a42857c63c858ce791cf84ae84dce8b9a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "fcc748c1_a0953ea2",
+        "filename": "src/plugins/cnat/cnat_snat_policy.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 438,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-30T10:09:40Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "50f11af1_7fe0256e",
       "revId": "3012c74a42857c63c858ce791cf84ae84dce8b9a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -69,6 +105,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "9770b3dd_bc4d2db0",
+        "filename": "src/plugins/cnat/cnat_snat_policy.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 467,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-30T10:09:40Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b21f5d7a_58524ac1",
+      "revId": "3012c74a42857c63c858ce791cf84ae84dce8b9a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "39f115df_f77cbd02",
@@ -86,6 +140,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "0de38f97_c207ce27",
+        "filename": "src/plugins/cnat/cnat_snat_policy.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 479,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-30T10:09:40Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "39f115df_f77cbd02",
+      "revId": "3012c74a42857c63c858ce791cf84ae84dce8b9a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "893fad0b_514df5ba",
@@ -99,6 +171,24 @@
       "writtenOn": "2026-04-28T09:33:52Z",
       "side": 1,
       "message": "I think we should keep the property that `cpe` is lazily initialized, \nas this is useful to save memory without bothering the controlplane\nwith reference tracking",
+      "revId": "3012c74a42857c63c858ce791cf84ae84dce8b9a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "cf1f9586_af55b878",
+        "filename": "src/plugins/cnat/cnat_snat_policy.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 606,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-30T10:09:40Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "893fad0b_514df5ba",
       "revId": "3012c74a42857c63c858ce791cf84ae84dce8b9a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
