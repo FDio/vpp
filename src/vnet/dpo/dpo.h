@@ -6,10 +6,10 @@
 /**
  * @brief
  * A Data-Path Object is an object that represents actions that are
- * applied to packets are they are switched through VPP's data-path.
+ * applied to packets as they are switched through VPP's data-path.
  *
- * The DPO can be considered to be like is a base class that is specialised
- * by other objects to provide concreate actions
+ * The DPO can be considered as a base class that is specialised
+ * by other objects to provide concrete actions.
  *
  * The VLIB graph nodes are graph of DPO types, the DPO graph is a graph of
  * instances.
