@@ -18,6 +18,8 @@
 dhcp6_ia_na_client_main_t dhcp6_ia_na_client_main;
 dhcp6_ia_na_client_public_main_t dhcp6_ia_na_client_public_main;
 
+#define DHCP6_INITIAL_BUFFER_RETRY_DELAY 1.0
+
 static void
 signal_report (address_report_t * r)
 {
@@ -56,6 +58,7 @@ stop_sending_client_message (vlib_main_t * vm,
   u32 bi0;
 
   client_state->keep_sending_client_message = 0;
+  client_state->missing_lladdr_warned = 0;
   vec_free (client_state->params.addresses);
   if (client_state->buffer)
     {
@@ -89,9 +92,15 @@ create_buffer_for_client_message (vlib_main_t * vm, u32 sw_if_index,
 
   if (src_addr->as_u8[0] != 0xfe)
     {
-      clib_warning ("Could not find source address to send DHCPv6 packet");
+      if (!client_state->missing_lladdr_warned)
+	{
+	  clib_warning ("Could not find source address to send DHCPv6 packet");
+	  client_state->missing_lladdr_warned = 1;
+	}
       return NULL;
     }
+
+  client_state->missing_lladdr_warned = 0;
 
   if (vlib_buffer_alloc (vm, &bi, 1) != 1)
     {
@@ -165,6 +174,16 @@ create_buffer_for_client_message (vlib_main_t * vm, u32 sw_if_index,
 	(char *) &elapsed->elapsed_10ms -
 	(char *) vlib_buffer_get_current (b);
       d += sizeof (*elapsed);
+
+      if (type == DHCPV6_MSG_SOLICIT || type == DHCPV6_MSG_REQUEST ||
+	  type == DHCPV6_MSG_RENEW || type == DHCPV6_MSG_REBIND)
+	{
+	  dhcpv6_oro_t *oro = (dhcpv6_oro_t *) d;
+	  oro->opt.option = clib_host_to_net_u16 (DHCPV6_OPTION_ORO);
+	  oro->opt.length = clib_host_to_net_u16 (sizeof (u16));
+	  oro->options[0] = clib_host_to_net_u16 (DHCPV6_OPTION_DNS_SERVERS);
+	  d += sizeof (*oro) + sizeof (u16);
+	}
 
       ia_hdr = (dhcpv6_ia_header_t *) d;
       ia_hdr->opt.option = clib_host_to_net_u16 (DHCPV6_OPTION_IA_NA);
@@ -240,6 +259,27 @@ check_send_client_message (vlib_main_t * vm,
     {
       *due_time = client_state->due_time;
       return true;
+    }
+
+  if (client_state->buffer == NULL)
+    {
+      client_state->buffer =
+	create_buffer_for_client_message (vm, params->sw_if_index, client_state, params->msg_type);
+      if (client_state->buffer == NULL)
+	{
+	  /* Buffer creation typically fails while the IPv6 link-local on the
+	   * underlying interface has not yet been assigned.  Honour mrd so
+	   * the process does not spin forever if the interface never comes
+	   * up; mrd == 0 keeps the historical "wait forever" behaviour. */
+	  if (params->mrd != 0 && current_time > client_state->start_time + params->mrd)
+	    {
+	      stop_sending_client_message (vm, client_state);
+	      return client_state->keep_sending_client_message;
+	    }
+	  client_state->due_time = current_time + DHCP6_INITIAL_BUFFER_RETRY_DELAY;
+	  *due_time = client_state->due_time;
+	  return true;
+	}
     }
 
   p0 = client_state->buffer;
@@ -378,11 +418,10 @@ dhcp6_send_client_message (vlib_main_t * vm, u32 sw_if_index, u8 stop,
 	create_buffer_for_client_message (vm, sw_if_index, client_state,
 					  params->msg_type);
       if (!client_state->buffer)
-	client_state->keep_sending_client_message = 0;
-      else
-	vlib_process_signal_event (vm,
-				   send_dhcp6_client_message_process_node.index,
-				   1, 0);
+	client_state->due_time = vlib_time_now (vm) + DHCP6_INITIAL_BUFFER_RETRY_DELAY;
+      vlib_process_signal_event (vm,
+				 send_dhcp6_client_message_process_node.index,
+				 1, 0);
     }
 }
 
