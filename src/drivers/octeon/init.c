@@ -10,6 +10,8 @@
 #include <octeon.h>
 #include <crypto.h>
 
+#include <sys/mman.h>
+
 #include <base/roc_api.h>
 #include "common.h"
 
@@ -443,6 +445,49 @@ oct_init_cpt (vlib_main_t *vm, vnet_dev_t *dev)
 }
 
 static vnet_dev_rv_t
+oct_dev_pci_map_region (vlib_main_t *vm, vnet_dev_t *dev, u32 bar, void **addr)
+{
+  uword sys_page_sz = clib_mem_get_page_size ();
+  vlib_pci_dev_handle_t h = vnet_dev_get_pci_handle (dev);
+
+  if (sys_page_sz < OCT_BAR_ALIGN)
+    {
+      u64 bar_size = 0;
+      clib_error_t *size_err;
+      uword probe_sz;
+      void *probe;
+
+      size_err = vlib_pci_get_region_size (vm, h, bar, &bar_size);
+      if (size_err)
+	{
+	  clib_error_free (size_err);
+	  bar_size = OCT_BAR_DEFAULT_SIZE;
+	}
+
+      probe_sz = bar_size + OCT_BAR_ALIGN + sys_page_sz;
+      probe_sz = round_pow2 (probe_sz, 1ULL << 20);
+      probe = mmap (0, probe_sz, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+      if (probe != MAP_FAILED)
+	{
+	  u8 *hint;
+	  clib_error_t *err;
+
+	  hint = (u8 *) round_pow2 ((uintptr_t) probe + sys_page_sz, OCT_BAR_ALIGN);
+	  munmap (probe, probe_sz);
+	  err = vlib_pci_map_region_fixed (vm, h, bar, hint, addr);
+	  if (err)
+	    {
+	      clib_error_free (err);
+	      return VNET_DEV_ERR_BUS;
+	    }
+	  return VNET_DEV_OK;
+	}
+    }
+
+  return vnet_dev_pci_map_region (vm, dev, bar, addr);
+}
+
+static vnet_dev_rv_t
 oct_init (vlib_main_t *vm, vnet_dev_t *dev)
 {
   oct_device_t *cd = vnet_dev_get_data (dev);
@@ -482,13 +527,13 @@ oct_init (vlib_main_t *vm, vnet_dev_t *dev)
   };
   cd->msix_handler = NULL;
 
-  rv = vnet_dev_pci_map_region (vm, dev, 2, &cd->plt_pci_dev.mem_resource[2].addr);
+  rv = oct_dev_pci_map_region (vm, dev, 2, &cd->plt_pci_dev.mem_resource[2].addr);
   if (rv != VNET_DEV_OK)
     return rv;
 
   if (!(roc_model_is_cn10k () && OCT_DEVTYPE_IS_VF (cd->type)))
     {
-      rv = vnet_dev_pci_map_region (vm, dev, 4, &cd->plt_pci_dev.mem_resource[4].addr);
+      rv = oct_dev_pci_map_region (vm, dev, 4, &cd->plt_pci_dev.mem_resource[4].addr);
       if (rv != VNET_DEV_OK)
 	return rv;
     }
