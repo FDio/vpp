@@ -32,6 +32,8 @@ typedef struct
 
 #define OCT_NPA_MAX_POOLS	   128
 #define OCT_BATCH_ALLOC_IOVA0_MASK 0xFFFFFFFFFFFFFF80
+#define OCT_BAR_ALIGN		   (ROC_AURA_ID_MASK + 1)
+#define OCT_BAR_DEFAULT_SIZE	   (32ULL << 20)
 
 typedef enum
 {
