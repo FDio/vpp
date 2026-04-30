@@ -18,24 +18,25 @@
 dhcp6_ia_na_client_main_t dhcp6_ia_na_client_main;
 dhcp6_ia_na_client_public_main_t dhcp6_ia_na_client_public_main;
 
+#define DHCP6_INITIAL_BUFFER_RETRY_DELAY 1.0
+
 static void
-signal_report (address_report_t * r)
+signal_report (address_report_t *r)
 {
   vlib_main_t *vm = vlib_get_main ();
   dhcp6_ia_na_client_main_t *cm = &dhcp6_ia_na_client_main;
   uword ni = cm->publisher_node;
   uword et = cm->publisher_et;
 
-  if (ni == (uword) ~ 0)
+  if (ni == (uword) ~0)
     return;
-  address_report_t *q =
-    vlib_process_signal_event_data (vm, ni, et, 1, sizeof *q);
+  address_report_t *q = vlib_process_signal_event_data (vm, ni, et, 1, sizeof *q);
 
   *q = *r;
 }
 
 int
-dhcp6_publish_report (address_report_t * r)
+dhcp6_publish_report (address_report_t *r)
 {
   vlib_rpc_call_main_thread (signal_report, (u8 *) r, sizeof *r);
   return 0;
@@ -50,12 +51,12 @@ dhcp6_set_publisher_node (uword node_index, uword event_type)
 }
 
 static void
-stop_sending_client_message (vlib_main_t * vm,
-			     dhcp6_ia_na_client_state_t * client_state)
+stop_sending_client_message (vlib_main_t *vm, dhcp6_ia_na_client_state_t *client_state)
 {
   u32 bi0;
 
   client_state->keep_sending_client_message = 0;
+  client_state->missing_lladdr_warned = 0;
   vec_free (client_state->params.addresses);
   if (client_state->buffer)
     {
@@ -68,9 +69,8 @@ stop_sending_client_message (vlib_main_t * vm,
 }
 
 static vlib_buffer_t *
-create_buffer_for_client_message (vlib_main_t * vm, u32 sw_if_index,
-				  dhcp6_ia_na_client_state_t * client_state,
-				  u32 type)
+create_buffer_for_client_message (vlib_main_t *vm, u32 sw_if_index,
+				  dhcp6_ia_na_client_state_t *client_state, u32 type)
 {
   dhcp6_client_common_main_t *ccm = &dhcp6_client_common_main;
   vlib_buffer_t *b;
@@ -89,9 +89,15 @@ create_buffer_for_client_message (vlib_main_t * vm, u32 sw_if_index,
 
   if (src_addr->as_u8[0] != 0xfe)
     {
-      clib_warning ("Could not find source address to send DHCPv6 packet");
+      if (!client_state->missing_lladdr_warned)
+	{
+	  clib_warning ("Could not find source address to send DHCPv6 packet");
+	  client_state->missing_lladdr_warned = 1;
+	}
       return NULL;
     }
+
+  client_state->missing_lladdr_warned = 0;
 
   if (vlib_buffer_alloc (vm, &bi, 1) != 1)
     {
@@ -102,9 +108,7 @@ create_buffer_for_client_message (vlib_main_t * vm, u32 sw_if_index,
   b = vlib_get_buffer (vm, bi);
   vnet_buffer (b)->sw_if_index[VLIB_RX] = sw_if_index;
   vnet_buffer (b)->sw_if_index[VLIB_TX] = sw_if_index;
-  client_state->adj_index = adj_mcast_add_or_lock (FIB_PROTOCOL_IP6,
-						   VNET_LINK_IP6,
-						   sw_if_index);
+  client_state->adj_index = adj_mcast_add_or_lock (FIB_PROTOCOL_IP6, VNET_LINK_IP6, sw_if_index);
   vnet_buffer (b)->ip.adj_index[VLIB_TX] = client_state->adj_index;
   b->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
 
@@ -114,8 +118,7 @@ create_buffer_for_client_message (vlib_main_t * vm, u32 sw_if_index,
 
   ip->src_address = *src_addr;
   ip->hop_limit = 255;
-  ip->ip_version_traffic_class_and_flow_label =
-    clib_host_to_net_u32 (0x6 << 28);
+  ip->ip_version_traffic_class_and_flow_label = clib_host_to_net_u32 (0x6 << 28);
   ip->payload_length = 0;
   ip->protocol = IP_PROTOCOL_UDP;
 
@@ -134,9 +137,8 @@ create_buffer_for_client_message (vlib_main_t * vm, u32 sw_if_index,
   dhcpv6_elapsed_t *elapsed;
   dhcpv6_ia_header_t *ia_hdr;
   dhcpv6_ia_opt_addr_t *opt_addr;
-  if (type == DHCPV6_MSG_SOLICIT || type == DHCPV6_MSG_REQUEST ||
-      type == DHCPV6_MSG_RENEW || type == DHCPV6_MSG_REBIND ||
-      type == DHCPV6_MSG_RELEASE)
+  if (type == DHCPV6_MSG_SOLICIT || type == DHCPV6_MSG_REQUEST || type == DHCPV6_MSG_RENEW ||
+      type == DHCPV6_MSG_REBIND || type == DHCPV6_MSG_RELEASE)
     {
       duid = (dhcpv6_option_t *) d;
       duid->option = clib_host_to_net_u16 (DHCPV6_OPTION_CLIENTID);
@@ -146,8 +148,7 @@ create_buffer_for_client_message (vlib_main_t * vm, u32 sw_if_index,
 
       if (client_state->params.server_index != ~0)
 	{
-	  server_id_t *se =
-	    &ccm->server_ids[client_state->params.server_index];
+	  server_id_t *se = &ccm->server_ids[client_state->params.server_index];
 
 	  duid = (dhcpv6_option_t *) d;
 	  duid->option = clib_host_to_net_u16 (DHCPV6_OPTION_SERVERID);
@@ -158,13 +159,21 @@ create_buffer_for_client_message (vlib_main_t * vm, u32 sw_if_index,
 
       elapsed = (dhcpv6_elapsed_t *) d;
       elapsed->opt.option = clib_host_to_net_u16 (DHCPV6_OPTION_ELAPSED_TIME);
-      elapsed->opt.length =
-	clib_host_to_net_u16 (sizeof (*elapsed) - sizeof (elapsed->opt));
+      elapsed->opt.length = clib_host_to_net_u16 (sizeof (*elapsed) - sizeof (elapsed->opt));
       elapsed->elapsed_10ms = 0;
       client_state->elapsed_pos =
-	(char *) &elapsed->elapsed_10ms -
-	(char *) vlib_buffer_get_current (b);
+	(char *) &elapsed->elapsed_10ms - (char *) vlib_buffer_get_current (b);
       d += sizeof (*elapsed);
+
+      if (type == DHCPV6_MSG_SOLICIT || type == DHCPV6_MSG_REQUEST || type == DHCPV6_MSG_RENEW ||
+	  type == DHCPV6_MSG_REBIND)
+	{
+	  dhcpv6_oro_t *oro = (dhcpv6_oro_t *) d;
+	  oro->opt.option = clib_host_to_net_u16 (DHCPV6_OPTION_ORO);
+	  oro->opt.length = clib_host_to_net_u16 (sizeof (u16));
+	  oro->options[0] = clib_host_to_net_u16 (DHCPV6_OPTION_DNS_SERVERS);
+	  d += sizeof (*oro) + sizeof (u16);
+	}
 
       ia_hdr = (dhcpv6_ia_header_t *) d;
       ia_hdr->opt.option = clib_host_to_net_u16 (DHCPV6_OPTION_IA_NA);
@@ -175,20 +184,15 @@ create_buffer_for_client_message (vlib_main_t * vm, u32 sw_if_index,
 
       n_addresses = vec_len (client_state->params.addresses);
 
-      ia_hdr->opt.length =
-	clib_host_to_net_u16 (sizeof (*ia_hdr) +
-			      n_addresses * sizeof (*opt_addr) -
-			      sizeof (ia_hdr->opt));
+      ia_hdr->opt.length = clib_host_to_net_u16 (
+	sizeof (*ia_hdr) + n_addresses * sizeof (*opt_addr) - sizeof (ia_hdr->opt));
 
       for (i = 0; i < n_addresses; i++)
 	{
-	  dhcp6_send_client_message_params_address_t *addr =
-	    &client_state->params.addresses[i];
+	  dhcp6_send_client_message_params_address_t *addr = &client_state->params.addresses[i];
 	  opt_addr = (dhcpv6_ia_opt_addr_t *) d;
 	  opt_addr->opt.option = clib_host_to_net_u16 (DHCPV6_OPTION_IAADDR);
-	  opt_addr->opt.length =
-	    clib_host_to_net_u16 (sizeof (*opt_addr) -
-				  sizeof (opt_addr->opt));
+	  opt_addr->opt.length = clib_host_to_net_u16 (sizeof (*opt_addr) - sizeof (opt_addr->opt));
 	  opt_addr->addr = addr->address;
 	  opt_addr->valid = clib_host_to_net_u32 (addr->valid_lt);
 	  opt_addr->preferred = clib_host_to_net_u32 (addr->preferred_lt);
@@ -201,11 +205,9 @@ create_buffer_for_client_message (vlib_main_t * vm, u32 sw_if_index,
     }
 
   dhcp_opt_len = ((u8 *) d) - dhcp->data;
-  udp->length =
-    clib_host_to_net_u16 (sizeof (*udp) + sizeof (*dhcp) + dhcp_opt_len);
+  udp->length = clib_host_to_net_u16 (sizeof (*udp) + sizeof (*dhcp) + dhcp_opt_len);
   ip->payload_length = udp->length;
-  b->current_length =
-    sizeof (*ip) + sizeof (*udp) + sizeof (*dhcp) + dhcp_opt_len;
+  b->current_length = sizeof (*ip) + sizeof (*udp) + sizeof (*dhcp) + dhcp_opt_len;
 
   ip->dst_address = all_dhcp6_relay_agents_and_servers;
 
@@ -213,9 +215,8 @@ create_buffer_for_client_message (vlib_main_t * vm, u32 sw_if_index,
 }
 
 static inline u8
-check_send_client_message (vlib_main_t * vm,
-			   dhcp6_ia_na_client_state_t * client_state,
-			   f64 current_time, f64 * due_time)
+check_send_client_message (vlib_main_t *vm, dhcp6_ia_na_client_state_t *client_state,
+			   f64 current_time, f64 *due_time)
 {
   vlib_buffer_t *p0;
   vlib_frame_t *f;
@@ -242,6 +243,27 @@ check_send_client_message (vlib_main_t * vm,
       return true;
     }
 
+  if (client_state->buffer == NULL)
+    {
+      client_state->buffer =
+	create_buffer_for_client_message (vm, params->sw_if_index, client_state, params->msg_type);
+      if (client_state->buffer == NULL)
+	{
+	  /* Buffer creation typically fails while the IPv6 link-local on the
+	   * underlying interface has not yet been assigned.  Honour mrd so
+	   * the process does not spin forever if the interface never comes
+	   * up; mrd == 0 keeps the historical "wait forever" behaviour. */
+	  if (params->mrd != 0 && current_time > client_state->start_time + params->mrd)
+	    {
+	      stop_sending_client_message (vm, client_state);
+	      return client_state->keep_sending_client_message;
+	    }
+	  client_state->due_time = current_time + DHCP6_INITIAL_BUFFER_RETRY_DELAY;
+	  *due_time = client_state->due_time;
+	  return true;
+	}
+    }
+
   p0 = client_state->buffer;
 
   next_index = ip6_rewrite_mcast_node.index;
@@ -256,13 +278,10 @@ check_send_client_message (vlib_main_t * vm,
   udp = (udp_header_t *) (ip + 1);
 
   u16 *elapsed_field = (u16 *) ((void *) ip + client_state->elapsed_pos);
-  *elapsed_field =
-    clib_host_to_net_u16 ((u16)
-			  ((now - client_state->transaction_start) * 100));
+  *elapsed_field = clib_host_to_net_u16 ((u16) ((now - client_state->transaction_start) * 100));
 
   udp->checksum = 0;
-  udp->checksum =
-    ip6_tcp_udp_icmp_compute_checksum (vm, 0, ip, &bogus_length);
+  udp->checksum = ip6_tcp_udp_icmp_compute_checksum (vm, 0, ip, &bogus_length);
 
   f = vlib_get_frame_to_node (vm, next_index);
   to_next = vlib_frame_vector_args (f);
@@ -277,13 +296,11 @@ check_send_client_message (vlib_main_t * vm,
       client_state->sleep_interval =
 	(2 + random_f64_from_to (-0.1, 0.1)) * client_state->sleep_interval;
       if (client_state->sleep_interval > params->mrt)
-	client_state->sleep_interval =
-	  (1 + random_f64_from_to (-0.1, 0.1)) * params->mrt;
+	client_state->sleep_interval = (1 + random_f64_from_to (-0.1, 0.1)) * params->mrt;
 
       client_state->due_time = current_time + client_state->sleep_interval;
 
-      if (params->mrd != 0
-	  && current_time > client_state->start_time + params->mrd)
+      if (params->mrd != 0 && current_time > client_state->start_time + params->mrd)
 	stop_sending_client_message (vm, client_state);
       else
 	*due_time = client_state->due_time;
@@ -293,9 +310,7 @@ check_send_client_message (vlib_main_t * vm,
 }
 
 static uword
-send_dhcp6_client_message_process (vlib_main_t * vm,
-				   vlib_node_runtime_t * rt,
-				   vlib_frame_t * f0)
+send_dhcp6_client_message_process (vlib_main_t *vm, vlib_node_runtime_t *rt, vlib_frame_t *f0)
 {
   dhcp6_ia_na_client_main_t *cm = &dhcp6_ia_na_client_main;
   dhcp6_ia_na_client_state_t *client_state;
@@ -321,8 +336,8 @@ send_dhcp6_client_message_process (vlib_main_t * vm,
 	      client_state = &cm->client_state_by_sw_if_index[i];
 	      if (!client_state->entry_valid)
 		continue;
-	      if (check_send_client_message
-		  (vm, client_state, current_time, &dt) && (dt < due_time))
+	      if (check_send_client_message (vm, client_state, current_time, &dt) &&
+		  (dt < due_time))
 		due_time = dt;
 	    }
 	  current_time = vlib_time_now (vm);
@@ -336,23 +351,24 @@ send_dhcp6_client_message_process (vlib_main_t * vm,
 }
 
 VLIB_REGISTER_NODE (send_dhcp6_client_message_process_node, static) = {
-    .function = send_dhcp6_client_message_process,
-    .type = VLIB_NODE_TYPE_PROCESS,
-    .name = "send-dhcp6-client-message-process",
+  .function = send_dhcp6_client_message_process,
+  .type = VLIB_NODE_TYPE_PROCESS,
+  .name = "send-dhcp6-client-message-process",
 };
 
 void
-dhcp6_send_client_message (vlib_main_t * vm, u32 sw_if_index, u8 stop,
-			   dhcp6_send_client_message_params_t * params)
+dhcp6_send_client_message (vlib_main_t *vm, u32 sw_if_index, u8 stop,
+			   dhcp6_send_client_message_params_t *params)
 {
   dhcp6_ia_na_client_main_t *cm = &dhcp6_ia_na_client_main;
   dhcp6_ia_na_client_state_t *client_state = 0;
-  dhcp6_ia_na_client_state_t empty_state = { 0, };
+  dhcp6_ia_na_client_state_t empty_state = {
+    0,
+  };
 
   ASSERT (~0 != sw_if_index);
 
-  vec_validate_init_empty (cm->client_state_by_sw_if_index, sw_if_index,
-			   empty_state);
+  vec_validate_init_empty (cm->client_state_by_sw_if_index, sw_if_index, empty_state);
   client_state = &cm->client_state_by_sw_if_index[sw_if_index];
   if (!client_state->entry_valid)
     {
@@ -370,24 +386,19 @@ dhcp6_send_client_message (vlib_main_t * vm, u32 sw_if_index, u8 stop,
       client_state->params.addresses = vec_dup (params->addresses);
       client_state->n_left = params->mrc;
       client_state->start_time = vlib_time_now (vm);
-      client_state->sleep_interval =
-	(1 + random_f64_from_to (-0.1, 0.1)) * params->irt;
-      client_state->due_time = 0;	/* send first packet ASAP */
+      client_state->sleep_interval = (1 + random_f64_from_to (-0.1, 0.1)) * params->irt;
+      client_state->due_time = 0; /* send first packet ASAP */
       client_state->transaction_id = random_u32 (&cm->seed) & 0x00ffffff;
       client_state->buffer =
-	create_buffer_for_client_message (vm, sw_if_index, client_state,
-					  params->msg_type);
+	create_buffer_for_client_message (vm, sw_if_index, client_state, params->msg_type);
       if (!client_state->buffer)
-	client_state->keep_sending_client_message = 0;
-      else
-	vlib_process_signal_event (vm,
-				   send_dhcp6_client_message_process_node.index,
-				   1, 0);
+	client_state->due_time = vlib_time_now (vm) + DHCP6_INITIAL_BUFFER_RETRY_DELAY;
+      vlib_process_signal_event (vm, send_dhcp6_client_message_process_node.index, 1, 0);
     }
 }
 
 static clib_error_t *
-dhcp6_client_init (vlib_main_t * vm)
+dhcp6_client_init (vlib_main_t *vm)
 {
   dhcp6_ia_na_client_main_t *cm = &dhcp6_ia_na_client_main;
 
