@@ -14,9 +14,19 @@
 
 dhcp6_client_common_main_t dhcp6_client_common_main;
 dhcpv6_duid_ll_string_t client_duid;
+static vlib_log_class_t dhcp6_client_logger;
+
+static clib_error_t *
+dhcp6_client_logger_init (vlib_main_t *vm)
+{
+  dhcp6_client_logger = vlib_log_register_class ("dhcp6", "client");
+  return 0;
+}
+
+VLIB_INIT_FUNCTION (dhcp6_client_logger_init);
 
 u32
-server_index_get_or_create (u8 * data, u16 len)
+server_index_get_or_create (u8 *data, u16 len)
 {
   dhcp6_client_common_main_t *ccm = &dhcp6_client_common_main;
   u32 i;
@@ -135,6 +145,8 @@ dhcpv6_client_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  dhcp6_report_common_t report;
 	  dhcp6_address_info_t *addresses = 0;
 	  dhcp6_prefix_info_t *prefixes = 0;
+	  ip6_address_t dns_servers[DHCP6_MAX_LEARNED_DNS_SERVERS] = { 0 };
+	  u32 n_dns_servers = 0;
 	  u32 next0 = DHCPV6_CLIENT_NEXT_DROP;
 	  u32 bi0;
 	  u32 xid;
@@ -341,14 +353,32 @@ dhcpv6_client_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  else if (oo == DHCPV6_OPTION_STATUS_CODE)
 		    {
 		      dhcpv6_status_code_t *sc = (void *) option;
-		      report.status_code =
-			clib_net_to_host_u16 (sc->status_code);
+		      report.status_code = clib_net_to_host_u16 (sc->status_code);
 		    }
-		  options_length -=
-		    sizeof (*option) + clib_net_to_host_u16 (option->length);
-		  option =
-		    (void *) ((u8 *) option + sizeof (*option) +
-			      clib_net_to_host_u16 (option->length));
+		  else if (oo == DHCPV6_OPTION_DNS_SERVERS && !is_pd_packet)
+		    {
+		      /* RFC 3646 allows DNS_SERVERS in either IA_NA or PD replies.
+		       * We honour it only on the IA_NA path so a subsequent PD
+		       * Reply does not clobber the DNS list learned via IA_NA. */
+		      u16 ol = clib_net_to_host_u16 (option->length);
+		      u16 consumed = 0;
+
+		      while (consumed + sizeof (ip6_address_t) <= ol &&
+			     n_dns_servers < ARRAY_LEN (dns_servers))
+			{
+			  clib_memcpy (&dns_servers[n_dns_servers], option->data + consumed,
+				       sizeof (ip6_address_t));
+			  n_dns_servers++;
+			  consumed += sizeof (ip6_address_t);
+			}
+		      if (consumed + sizeof (ip6_address_t) <= ol)
+			vlib_log_debug (dhcp6_client_logger,
+					"dropping extra DHCPv6 DNS servers beyond %u",
+					(u32) ARRAY_LEN (dns_servers));
+		    }
+		  options_length -= sizeof (*option) + clib_net_to_host_u16 (option->length);
+		  option = (void *) ((u8 *) option + sizeof (*option) +
+				     clib_net_to_host_u16 (option->length));
 		}
 
 	      if (!client_id_present)
@@ -366,6 +396,15 @@ dhcpv6_client_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	      if (!discard)
 		{
+		  if (!is_pd_packet && ia_na_client_state)
+		    {
+		      clib_memset (ia_na_client_state->dns_servers, 0,
+				   sizeof (ia_na_client_state->dns_servers));
+		      if (n_dns_servers)
+			clib_memcpy (ia_na_client_state->dns_servers, dns_servers,
+				     n_dns_servers * sizeof (ip6_address_t));
+		      ia_na_client_state->dns_server_count = n_dns_servers;
+		    }
 		  if (!is_pd_packet)
 		    {
 		      address_report_t r;
