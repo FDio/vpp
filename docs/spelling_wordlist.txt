@@ -73,6 +73,7 @@ awk
 ba
 backend
 backends
+backoff
 backport
 backpressure
 backtrace
@@ -83,6 +84,7 @@ balancer
 balancers
 Barach
 baseva
+BAS
 bb
 bc
 bd
@@ -144,6 +146,7 @@ centric
 cfd
 cfssl
 chachapoly
+CHAP
 cheng
 cisco
 Cisco
@@ -173,6 +176,7 @@ configs
 congruential
 conn
 connectable
+cooldown
 ConnectX
 consumability
 contiv
@@ -264,6 +268,7 @@ dhcp
 dhcpd
 dhcpserver
 dhcpv
+dialer
 Diffie
 Diffs
 dir
@@ -537,6 +542,7 @@ iommu
 ip
 IP
 ipaddress
+IPCP
 iperf
 iPerf
 Iperf
@@ -553,6 +559,7 @@ ipv
 iPv
 IPv
 IPv4
+IPv6CP
 ipX
 irc
 isc
@@ -567,6 +574,7 @@ ixgbe
 ixge
 javascript
 Jira
+Jiajun
 jitter
 Jorm
 jsmith
@@ -604,6 +612,7 @@ lan
 LB
 lc
 lcov
+LCP
 lcp
 ld
 LDFLAGS
@@ -841,6 +850,7 @@ parallelize
 parallelizes
 param
 params
+PAP
 parsable
 parser
 parsers
@@ -899,7 +909,12 @@ portranges
 poweroff
 ppc
 ppp
+pppd
 pppoe
+Pppoeclient
+pppoeclient
+Pppox
+pppox
 pps
 pre
 Preallocate
@@ -943,6 +958,7 @@ pwait
 py
 pypi
 qemu
+QinQ
 Qemu
 qdisc
 qos
@@ -1249,6 +1265,8 @@ Uninstall
 uninstalled
 Uninstalling
 unittest
+Uniq
+uniq
 Unittest
 unix
 unmanaged
@@ -1264,6 +1282,7 @@ unserialize
 unserializing
 untagged
 untaint
+uptime
 unthrottle
 UNUP
 unwires
