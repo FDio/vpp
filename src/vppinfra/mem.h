@@ -19,7 +19,7 @@
 #include <sanitizer/asan_interface.h>
 #endif
 
-#define CLIB_MAX_NUMAS 16
+#define CLIB_MAX_NUMAS  64
 #define CLIB_MEM_VM_MAP_FAILED ((void *) ~0)
 #define CLIB_MEM_ERROR (-1)
 #define CLIB_MEM_LOG2_MIN_ALIGN (3)
@@ -106,7 +106,7 @@ typedef struct
   u8 alloc_free_intercept : 1;
 
   /* bitmap of available numa nodes */
-  u32 numa_node_bitmap;
+  u64 numa_node_bitmap;
 
   /* memory maps */
   clib_mem_vm_map_hdr_t *first_map, *last_map;
@@ -390,7 +390,7 @@ static_always_inline int
 vlib_mem_get_next_numa_node (int numa)
 {
   clib_mem_main_t *mm = &clib_mem_main;
-  u32 bitmap = mm->numa_node_bitmap;
+  u64 bitmap = mm->numa_node_bitmap;
 
   if (numa >= 0)
     bitmap &= ~pow2_mask (numa + 1);
