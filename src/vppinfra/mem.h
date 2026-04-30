@@ -19,7 +19,7 @@
 #include <sanitizer/asan_interface.h>
 #endif
 
-#define CLIB_MAX_NUMAS 16
+#define CLIB_MAX_NUMAS 32
 #define CLIB_MEM_VM_MAP_FAILED ((void *) ~0)
 #define CLIB_MEM_ERROR (-1)
 #define CLIB_MEM_LOG2_MIN_ALIGN (3)

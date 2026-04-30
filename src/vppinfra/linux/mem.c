@@ -91,7 +91,8 @@ legacy_get_log2_default_hugepage_size (void)
 void
 clib_mem_main_init (void)
 {
-  unsigned long nodemask = 0, maxnode = CLIB_MAX_NUMAS;
+  unsigned long nodemask[1024 / (sizeof (unsigned long) * 8)] = { };
+  unsigned long maxnode = sizeof (nodemask) * 8;
   unsigned long flags = MPOL_F_MEMS_ALLOWED;
   clib_mem_main_t *mm = &clib_mem_main;
   long sysconf_page_size;
@@ -123,8 +124,8 @@ clib_mem_main_init (void)
   mm->log2_sys_default_hugepage_sz = mm->log2_default_hugepage_sz;
 
   /* numa nodes */
-  if (syscall (__NR_get_mempolicy, &mode, &nodemask, maxnode, va, flags) == 0)
-    mm->numa_node_bitmap = nodemask;
+  if (syscall (__NR_get_mempolicy, &mode, nodemask, maxnode, va, flags) == 0)
+    mm->numa_node_bitmap = (u32) nodemask[0];
 }
 
 __clib_export u64
