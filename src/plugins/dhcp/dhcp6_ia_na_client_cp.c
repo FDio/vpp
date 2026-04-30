@@ -585,6 +585,65 @@ VLIB_CLI_COMMAND (dhcp6_clients_show_command, static) = {
   .function = dhcp6_clients_show_command_function,
 };
 
+u8
+dhcp6_ia_na_client_get_runtime (u32 sw_if_index, dhcp6_ia_na_client_runtime_t *rt)
+{
+  dhcp6_client_cp_main_t *rm = &dhcp6_client_cp_main;
+  client_state_t *cs;
+  address_info_t *address_info;
+  f64 current_time;
+
+  if (rt == 0)
+    return 1;
+
+  if (sw_if_index >= vec_len (rm->client_state_by_sw_if_index))
+    return 1;
+
+  cs = &rm->client_state_by_sw_if_index[sw_if_index];
+  if (!cs->enabled)
+    return 1;
+
+  clib_memset (rt, 0, sizeof (*rt));
+
+  rt->enabled = 1;
+  rt->rebinding = cs->rebinding;
+  rt->server_index = cs->server_index;
+  rt->T1 = cs->T1;
+  rt->T2 = cs->T2;
+  rt->address_count = cs->address_count;
+  rt->dns_server_count = 0;
+
+  pool_foreach (address_info, rm->address_pool)
+    {
+      if (address_info->sw_if_index != sw_if_index)
+	continue;
+
+      rt->first_address_present = 1;
+      rt->first_address = address_info->address;
+      rt->first_address_preferred_lt = address_info->preferred_lt;
+      rt->first_address_valid_lt = address_info->valid_lt;
+      break;
+    }
+
+  if (sw_if_index < vec_len (dhcp6_ia_na_client_main.client_state_by_sw_if_index))
+    {
+      dhcp6_ia_na_client_state_t *dp_cs =
+	&dhcp6_ia_na_client_main.client_state_by_sw_if_index[sw_if_index];
+      rt->dns_server_count = clib_min (dp_cs->dns_server_count, ARRAY_LEN (rt->dns_servers));
+      if (rt->dns_server_count > 0)
+	clib_memcpy (rt->dns_servers, dp_cs->dns_servers,
+		     rt->dns_server_count * sizeof (ip6_address_t));
+    }
+
+  current_time = vlib_time_now (rm->vlib_main);
+  if (cs->T1_due_time != DBL_MAX && cs->T1_due_time > current_time)
+    rt->t1_remaining = (u32) round (cs->T1_due_time - current_time);
+  if (cs->T2_due_time != DBL_MAX && cs->T2_due_time > current_time)
+    rt->t2_remaining = (u32) round (cs->T2_due_time - current_time);
+
+  return 0;
+}
+
 int
 dhcp6_client_enable_disable (u32 sw_if_index, u8 enable)
 {
@@ -621,12 +680,25 @@ dhcp6_client_enable_disable (u32 sw_if_index, u8 enable)
 	}
 
       ip6_link_enable (sw_if_index, NULL);
-      send_client_message_start_stop (sw_if_index, ~0, DHCPV6_MSG_SOLICIT,
-				      0, 1);
+      if (sw_if_index < vec_len (dhcp6_ia_na_client_main.client_state_by_sw_if_index))
+	{
+	  dhcp6_ia_na_client_state_t *dp_cs =
+	    &dhcp6_ia_na_client_main.client_state_by_sw_if_index[sw_if_index];
+	  dp_cs->dns_server_count = 0;
+	  clib_memset (dp_cs->dns_servers, 0, sizeof (dp_cs->dns_servers));
+	}
+      send_client_message_start_stop (sw_if_index, ~0, DHCPV6_MSG_SOLICIT, 0, 1);
     }
   else if (old_enabled && !enable)
     {
       send_client_message_start_stop (sw_if_index, ~0, ~0, 0, 0);
+      if (sw_if_index < vec_len (dhcp6_ia_na_client_main.client_state_by_sw_if_index))
+	{
+	  dhcp6_ia_na_client_state_t *dp_cs =
+	    &dhcp6_ia_na_client_main.client_state_by_sw_if_index[sw_if_index];
+	  dp_cs->dns_server_count = 0;
+	  clib_memset (dp_cs->dns_servers, 0, sizeof (dp_cs->dns_servers));
+	}
 
       rm->n_clients--;
       if (rm->n_clients == 0)
