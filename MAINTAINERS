@@ -543,6 +543,11 @@ I:	pppoe
 M:	Hongjun Ni <hongjun.ni@intel.com>
 F:	src/plugins/pppoe/
 
+Plugin - PPPoE Client
+I:	pppoeclient
+M:	Hi-Jiajun <3138947285@qq.com>
+F:	src/plugins/pppoeclient/
+
 Plugin - Ping
 I:	ping
 M:	Andrew Yourtchenko <ayourtch@gmail.com>
