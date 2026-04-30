@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "681e5a20_26ba8d55",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-04-30T13:52:21Z",
+      "side": 1,
+      "message": "See https://github.com/FDio/govpp/pull/361",
+      "revId": "fe52ac5cf03fcfd50c444ca6ef35f4f212a7683c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
