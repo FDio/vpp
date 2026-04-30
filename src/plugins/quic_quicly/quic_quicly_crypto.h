@@ -15,20 +15,14 @@
 
 #define QUIC_IV_LEN 17
 
-typedef struct crypto_key_
-{
-  vnet_crypto_alg_t algo;
-  u8 key[32];
-  u16 key_len;
-} crypto_key_t;
-
 struct aead_crypto_context_t
 {
   ptls_aead_context_t super;
   EVP_CIPHER_CTX *evp_ctx;
   uint8_t static_iv[PTLS_MAX_IV_SIZE];
   vnet_crypto_op_t op;
-  crypto_key_t key;
+  vnet_crypto_ctx_t *vnet_ctx;
+  void (*orig_dispose_crypto) (struct st_ptls_aead_context_t *ctx);
 
   vnet_crypto_op_type_t type;
   uint8_t iv[PTLS_MAX_IV_SIZE];
@@ -39,7 +33,8 @@ struct cipher_context_t
   ptls_cipher_context_t super;
   vnet_crypto_op_t op;
   vnet_crypto_op_type_t type;
-  crypto_key_t key;
+  vnet_crypto_ctx_t *vnet_ctx;
+  void (*orig_do_dispose) (struct st_ptls_cipher_context_t *ctx);
 };
 
 typedef struct quic_quicly_on_client_hello_
@@ -78,7 +73,6 @@ typedef struct quic_quicly_crypto_main_
 {
   quic_quicly_main_t *qqm;
   ptls_cipher_suite_t ***quic_ciphers;
-  vnet_crypto_ctx_t **per_thread_crypto_ctxs;
   quic_quicly_crypto_ctx_t **crypto_ctx_pool;
   clib_bihash_24_8_t crypto_ctx_hash;
   uword *available_crypto_engines; /**< Bitmap for registered engines */

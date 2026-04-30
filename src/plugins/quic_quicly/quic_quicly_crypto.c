@@ -28,10 +28,7 @@ quic_quicly_register_cipher_suite (crypto_engine_type_t type, ptls_cipher_suite_
   quic_quicly_crypto_main_t *qqcm = &quic_quicly_crypto_main;
   u8 rv = 1;
 
-  if (!qqcm->quic_ciphers)
-    {
-      vec_validate (qqcm->quic_ciphers, type);
-    }
+  vec_validate (qqcm->quic_ciphers, type);
   if (!qqcm->quic_ciphers[type])
     {
       QUIC_DBG (3, "Register cipher suite: engine_type %U (%u), cipher_suites %p",
@@ -77,17 +74,6 @@ quic_quicly_crypto_init (quic_quicly_main_t *qqm)
 	}
       if (quic_quicly_register_cipher_suite (CRYPTO_ENGINE_VPP, quic_quicly_crypto_cipher_suites))
 	{
-	  u8 empty_key[32] = {};
-	  u32 i;
-	  vec_validate (qqcm->per_thread_crypto_ctxs, qm->num_threads);
-	  for (i = 0; i < qm->num_threads; i++)
-	    {
-	      qqcm->per_thread_crypto_ctxs[i] =
-		vnet_crypto_ctx_create (VNET_CRYPTO_ALG_AES_256_CTR);
-	      if (qqcm->per_thread_crypto_ctxs[i])
-		vnet_crypto_ctx_set_cipher_key (qqcm->per_thread_crypto_ctxs[i], empty_key, 32);
-	    }
-
 	  qqcm->vnet_crypto_enabled = 1;
 	}
     }
@@ -818,21 +804,6 @@ Exit:
   return ret;
 }
 
-static vnet_crypto_ctx_t *
-quic_quicly_crypto_set_key (crypto_key_t *key)
-{
-  u8 thread_index = vlib_get_thread_index ();
-  quic_quicly_crypto_main_t *qqcm = &quic_quicly_crypto_main;
-  vnet_crypto_ctx_t *ctx = qqcm->per_thread_crypto_ctxs[thread_index];
-
-  ASSERT (key->algo);
-  ASSERT (key->key_len);
-  ctx->alg = key->algo;
-  vnet_crypto_ctx_set_cipher_key (ctx, key->key, key->key_len);
-
-  return ctx;
-}
-
 static void
 quic_quicly_crypto_encrypt_packet (struct st_quicly_crypto_engine_t *engine,
 				   quicly_conn_t *conn,
@@ -864,11 +835,8 @@ quic_quicly_crypto_encrypt_packet (struct st_quicly_crypto_engine_t *engine,
   aead_crctx->op.iv = aead_crctx->iv;
   ptls_aead__build_iv (aead_crctx->super.algo, aead_crctx->op.iv,
 		       aead_crctx->static_iv, packet_number);
-  QUIC_DBG (3, "type %u, key %p, algo %u, key_len %u, key 0x%llx 0x%llx 0x%llx 0x%llx ",
-	    aead_crctx->type, &aead_crctx->key, aead_crctx->key.algo, aead_crctx->key.key_len,
-	    *(u64 *) &aead_crctx->key.key[0], *(u64 *) &aead_crctx->key.key[8],
-	    *(u64 *) &aead_crctx->key.key[16], *(u64 *) &aead_crctx->key.key[24]);
-  aead_crctx->op.ctx = quic_quicly_crypto_set_key (&aead_crctx->key);
+  QUIC_DBG (3, "type %u, vnet_ctx %p", aead_crctx->type, aead_crctx->vnet_ctx);
+  aead_crctx->op.ctx = aead_crctx->vnet_ctx;
   aead_crctx->op.src = (u8 *) input;
   aead_crctx->op.dst = output;
   aead_crctx->op.len = inlen;
@@ -889,8 +857,7 @@ quic_quicly_crypto_encrypt_packet (struct st_quicly_crypto_engine_t *engine,
   hp_ctx->op.type = hp_ctx->type;
   memset (supp.output, 0, sizeof (supp.output));
   hp_ctx->op.iv = (u8 *) supp.input;
-  hp_ctx->op.ctx = quic_quicly_crypto_set_key (&hp_ctx->key);
-  ;
+  hp_ctx->op.ctx = hp_ctx->vnet_ctx;
   hp_ctx->op.src = (u8 *) supp.output;
   hp_ctx->op.dst = (u8 *) supp.output;
   hp_ctx->op.len = sizeof (supp.output);
@@ -925,11 +892,8 @@ quic_quicly_crypto_aead_decrypt (quic_ctx_t *qctx, ptls_aead_context_t *_ctx,
 		       aead_crctx->static_iv, decrypted_pn);
   aead_crctx->op.src = (u8 *) input;
   aead_crctx->op.dst = _output;
-  QUIC_DBG (3, "type %u, key %p, algo %u, key_len %u, key 0x%llx 0x%llx 0x%llx 0x%llx ",
-	    aead_crctx->type, &aead_crctx->key, aead_crctx->key.algo, aead_crctx->key.key_len,
-	    *(u64 *) &aead_crctx->key.key[0], *(u64 *) &aead_crctx->key.key[8],
-	    *(u64 *) &aead_crctx->key.key[16], *(u64 *) &aead_crctx->key.key[24]);
-  aead_crctx->op.ctx = quic_quicly_crypto_set_key (&aead_crctx->key);
+  QUIC_DBG (3, "type %u, vnet_ctx %p", aead_crctx->type, aead_crctx->vnet_ctx);
+  aead_crctx->op.ctx = aead_crctx->vnet_ctx;
   aead_crctx->op.len = inlen - aead_crctx->super.algo->tag_size;
   aead_crctx->op.auth_len = aead_crctx->super.algo->tag_size;
   aead_crctx->op.auth = aead_crctx->op.src + aead_crctx->op.len;
@@ -1026,6 +990,32 @@ quic_quicly_crypto_decrypt_packet (quic_ctx_t *qctx,
   pctx->packet.decrypted.key_phase = qctx->key_phase_ingress;
 }
 
+static void
+quic_quicly_cipher_do_dispose (ptls_cipher_context_t *_ctx)
+{
+  struct cipher_context_t *ctx = (struct cipher_context_t *) _ctx;
+  if (ctx->vnet_ctx)
+    {
+      vnet_crypto_ctx_destroy (vlib_get_main (), ctx->vnet_ctx);
+      ctx->vnet_ctx = NULL;
+    }
+  if (ctx->orig_do_dispose)
+    ctx->orig_do_dispose (_ctx);
+}
+
+static void
+quic_quicly_aead_dispose_crypto (ptls_aead_context_t *_ctx)
+{
+  struct aead_crypto_context_t *ctx = (struct aead_crypto_context_t *) _ctx;
+  if (ctx->vnet_ctx)
+    {
+      vnet_crypto_ctx_destroy (vlib_get_main (), ctx->vnet_ctx);
+      ctx->vnet_ctx = NULL;
+    }
+  if (ctx->orig_dispose_crypto)
+    ctx->orig_dispose_crypto (_ctx);
+}
+
 static int
 quic_quicly_crypto_cipher_setup_crypto (ptls_cipher_context_t *_ctx,
 					int is_enc, const void *key,
@@ -1055,15 +1045,13 @@ quic_quicly_crypto_cipher_setup_crypto (ptls_cipher_context_t *_ctx,
 
   if (qqcm->vnet_crypto_enabled)
     {
-      ctx->key.algo = algo;
-      ctx->key.key_len = _ctx->algo->key_size;
-      assert (ctx->key.key_len <= 32);
-      clib_memcpy (&ctx->key.key, key, ctx->key.key_len);
+      ctx->vnet_ctx = vnet_crypto_ctx_create (algo);
+      vnet_crypto_ctx_set_cipher_key (ctx->vnet_ctx, key, _ctx->algo->key_size);
+      ctx->orig_do_dispose = ctx->super.do_dispose;
+      ctx->super.do_dispose = quic_quicly_cipher_do_dispose;
     }
 
-  QUIC_DBG (2, "type %u, key %p, algo %u, key_len %u, key 0x%llx 0x%llx 0x%llx 0x%llx ", ctx->type,
-	    &ctx->key, ctx->key.algo, ctx->key.key_len, *(u64 *) &ctx->key.key[0],
-	    *(u64 *) &ctx->key.key[8], *(u64 *) &ctx->key.key[16], *(u64 *) &ctx->key.key[24]);
+  QUIC_DBG (2, "type %u, vnet_ctx %p", ctx->type, ctx->vnet_ctx);
   return 0;
 }
 
@@ -1113,15 +1101,13 @@ quic_quicly_crypto_aead_setup_crypto (ptls_aead_context_t *_ctx, int is_enc,
   if (qqcm->vnet_crypto_enabled)
     {
       clib_memcpy (ctx->static_iv, iv, ctx->super.algo->iv_size);
-      ctx->key.algo = algo;
-      ctx->key.key_len = _ctx->algo->key_size;
-      assert (ctx->key.key_len <= 32);
-      clib_memcpy (&ctx->key.key, key, ctx->key.key_len);
+      ctx->vnet_ctx = vnet_crypto_ctx_create (algo);
+      vnet_crypto_ctx_set_cipher_key (ctx->vnet_ctx, key, _ctx->algo->key_size);
+      ctx->orig_dispose_crypto = ctx->super.dispose_crypto;
+      ctx->super.dispose_crypto = quic_quicly_aead_dispose_crypto;
     }
 
-  QUIC_DBG (3, "type %u, key %p, algo %u, key_len %u, key 0x%llx 0x%llx 0x%llx 0x%llx ", ctx->type,
-	    &ctx->key, ctx->key.algo, ctx->key.key_len, *(u64 *) &ctx->key.key[0],
-	    *(u64 *) &ctx->key.key[8], *(u64 *) &ctx->key.key[16], *(u64 *) &ctx->key.key[24]);
+  QUIC_DBG (3, "type %u, vnet_ctx %p", ctx->type, ctx->vnet_ctx);
   return 0;
 }
 
