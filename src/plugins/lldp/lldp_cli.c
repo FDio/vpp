@@ -576,57 +576,60 @@ format_lldp_intfs_detail (u8 * s, vlib_main_t * vm, const lldp_main_t * lm)
         s = format(s, "\nLocal Interface name: %v\n"
                       "Local Port Description: %s\n",
                        hw->name, n->port_desc);
-        if (n->mgmt_ip4)
-          {
-            s = format (s, "Local Management address: %U\n",
-      	                format_ip4_address, n->mgmt_ip4, vec_len (n->mgmt_ip4));
-          }
+	if ((n->mgmt_ip4 == 0) && (n->mgmt_ip6 == 0))
+	{
+	  s = format (s, "Local Management MAC address: %U\n", format_mac_address, hw->hw_address);
+	}
+	if (n->mgmt_ip4)
+	{
+	  s = format (s, "Local Management address: %U\n", format_ip4_address, n->mgmt_ip4,
+		      vec_len (n->mgmt_ip4));
+	}
 
-        if (n->mgmt_ip6)
-          {
-            s = format (s, "Local Management address IPV6: %U\n",
-                        format_ip6_address, n->mgmt_ip6, vec_len (n->mgmt_ip6));
-          }
+	if (n->mgmt_ip6)
+	{
+	  s = format (s, "Local Management address IPV6: %U\n", format_ip6_address, n->mgmt_ip6,
+		      vec_len (n->mgmt_ip6));
+	}
 
-        if (n->mgmt_oid)
-          {
-            s = format (s, "Local Management address OID: %U\n",
-                        format_ascii_bytes, n->mgmt_oid, vec_len (n->mgmt_oid));
-          }
+	if (n->mgmt_oid)
+	{
+	  s = format (s, "Local Management address OID: %U\n", format_ascii_bytes, n->mgmt_oid,
+		      vec_len (n->mgmt_oid));
+	}
 
-        /* Interface shutdown */
-        if (!(sw->flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP))
-          {
-            s = format(s, "Interface/peer state: interface down\n"
-                       "Last packet sent: %U\n",
-                       format_time_ago, n->last_sent, now);
-          }
-        else if (now < n->last_heard + n->ttl)
-          {
-            s = format(s,
-                       "Interface/peer state: active\n"
-                       "Peer chassis ID: %U\nRemote port ID: %U\n"
-                       "Last packet sent: %U\nLast packet received: %U\n",
-                       format_lldp_chassis_id, n->chassis_id_subtype,
-                       n->chassis_id, vec_len(n->chassis_id), 1,
-                       format_lldp_port_id, n->port_id_subtype, n->port_id,
-                       vec_len(n->port_id), 1, format_time_ago, n->last_sent,
-                       now, format_time_ago, n->last_heard, now);
-          }
-        else
-          {
-            s = format(s,
-                       "Interface/peer state: inactive(timeout)\n"
-                       "Last known peer chassis ID: %U\n"
-                       "Last known peer port ID: %U\nLast packet sent: %U\n"
-                       "Last packet received: %U\n",
-                       format_lldp_chassis_id, n->chassis_id_subtype,
-                       n->chassis_id, vec_len(n->chassis_id), 1,
-                       format_lldp_port_id, n->port_id_subtype, n->port_id,
-                       vec_len(n->port_id), 1, format_time_ago, n->last_sent,
-                       now, format_time_ago, n->last_heard, now);
-          }
-      }
+	/* Interface shutdown */
+	if (!(sw->flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP))
+	{
+	  s = format (s,
+		      "Interface/peer state: interface down\n"
+		      "Last packet sent: %U\n",
+		      format_time_ago, n->last_sent, now);
+	}
+	else if (now < n->last_heard + n->ttl)
+	{
+	  s = format (s,
+		      "Interface/peer state: active\n"
+		      "Peer chassis ID: %U\nRemote port ID: %U\n"
+		      "Last packet sent: %U\nLast packet received: %U\n",
+		      format_lldp_chassis_id, n->chassis_id_subtype, n->chassis_id,
+		      vec_len (n->chassis_id), 1, format_lldp_port_id, n->port_id_subtype,
+		      n->port_id, vec_len (n->port_id), 1, format_time_ago, n->last_sent, now,
+		      format_time_ago, n->last_heard, now);
+	}
+	else
+	{
+	  s = format (s,
+		      "Interface/peer state: inactive(timeout)\n"
+		      "Last known peer chassis ID: %U\n"
+		      "Last known peer port ID: %U\nLast packet sent: %U\n"
+		      "Last packet received: %U\n",
+		      format_lldp_chassis_id, n->chassis_id_subtype, n->chassis_id,
+		      vec_len (n->chassis_id), 1, format_lldp_port_id, n->port_id_subtype,
+		      n->port_id, vec_len (n->port_id), 1, format_time_ago, n->last_sent, now,
+		      format_time_ago, n->last_heard, now);
+	}
+    }
   return s;
 }
 
