@@ -57,19 +57,19 @@ enum
 };
 
 static void
-send_client_message_start_stop (u32 sw_if_index, u32 server_index,
-				u8 msg_type, address_info_t * address_list,
-				u8 start)
+send_client_message_start_stop (u32 sw_if_index, u32 server_index, u8 msg_type,
+				address_info_t *address_list, u8 start)
 {
   dhcp6_client_cp_main_t *rm = &dhcp6_client_cp_main;
-  dhcp6_send_client_message_params_t params = { 0, };
+  dhcp6_send_client_message_params_t params = {
+    0,
+  };
   dhcp6_send_client_message_params_address_t *addresses = 0, *addr;
   u32 i;
 
   ASSERT (sw_if_index < vec_len (rm->client_state_by_sw_if_index) &&
 	  rm->client_state_by_sw_if_index[sw_if_index].enabled);
-  client_state_t *client_state =
-    &rm->client_state_by_sw_if_index[sw_if_index];
+  client_state_t *client_state = &rm->client_state_by_sw_if_index[sw_if_index];
 
   params.sw_if_index = sw_if_index;
   params.server_index = server_index;
@@ -135,7 +135,7 @@ send_client_message_start_stop (u32 sw_if_index, u32 server_index,
 static void interrupt_process (void);
 
 static u8
-ip6_addresses_equal (ip6_address_t * address1, ip6_address_t * address2)
+ip6_addresses_equal (ip6_address_t *address1, ip6_address_t *address2)
 {
   if (address1->as_u64[0] != address2->as_u64[0])
     return 0;
@@ -143,7 +143,7 @@ ip6_addresses_equal (ip6_address_t * address1, ip6_address_t * address2)
 }
 
 static clib_error_t *
-dhcp6_reply_event_handler (vl_api_dhcp6_reply_event_t * mp)
+dhcp6_reply_event_handler (vl_api_dhcp6_reply_event_t *mp)
 {
   dhcp6_client_cp_main_t *rm = &dhcp6_client_cp_main;
   vlib_main_t *vm = rm->vlib_main;
@@ -178,15 +178,13 @@ dhcp6_reply_event_handler (vl_api_dhcp6_reply_event_t * mp)
   inner_status_code = ntohs (mp->inner_status_code);
   status_code = ntohs (mp->status_code);
 
-  if (mp->msg_type == DHCPV6_MSG_API_ADVERTISE
-      && client_state->server_index == ~0)
+  if (mp->msg_type == DHCPV6_MSG_API_ADVERTISE && client_state->server_index == ~0)
     {
       address_info_t *address_list = 0, *address_info;
 
       if (inner_status_code == DHCPV6_STATUS_NOADDRS_AVAIL)
 	{
-	  clib_warning
-	    ("Advertise message arrived with NoAddrsAvail status code");
+	  clib_warning ("Advertise message arrived with NoAddrsAvail status code");
 	  return 0;
 	}
 
@@ -205,8 +203,8 @@ dhcp6_reply_event_handler (vl_api_dhcp6_reply_event_t * mp)
 
       client_state->server_index = server_index;
 
-      send_client_message_start_stop (sw_if_index, server_index,
-				      DHCPV6_MSG_REQUEST, address_list, 1);
+      send_client_message_start_stop (sw_if_index, server_index, DHCPV6_MSG_REQUEST, address_list,
+				      1);
       vec_free (address_list);
     }
 
@@ -225,9 +223,8 @@ dhcp6_reply_event_handler (vl_api_dhcp6_reply_event_t * mp)
       clib_warning ("Reply message arrived with NoAddrsAvail status code");
       if (n_addresses > 0)
 	{
-	  clib_warning
-	    ("Invalid Reply message arrived: It contains NoAddrsAvail "
-	     "status code but also contains addresses");
+	  clib_warning ("Invalid Reply message arrived: It contains NoAddrsAvail "
+			"status code but also contains addresses");
 	  return 0;
 	}
     }
@@ -238,8 +235,7 @@ dhcp6_reply_event_handler (vl_api_dhcp6_reply_event_t * mp)
       return 0;
     }
 
-  send_client_message_start_stop (sw_if_index, server_index,
-				  mp->msg_type, 0, 0);
+  send_client_message_start_stop (sw_if_index, server_index, mp->msg_type, 0, 0);
 
   for (i = 0; i < n_addresses; i++)
     {
@@ -262,17 +258,17 @@ dhcp6_reply_event_handler (vl_api_dhcp6_reply_event_t * mp)
 
       u8 address_already_present = 0;
       pool_foreach (address_info, rm->address_pool)
-       {
-        if (address_info->sw_if_index != sw_if_index)
-          ;
-        else if (!ip6_addresses_equal (&address_info->address, address))
-          ;
-        else
-          {
-            address_already_present = 1;
-            goto address_pool_foreach_out;
-          }
-      }
+	{
+	  if (address_info->sw_if_index != sw_if_index)
+	    ;
+	  else if (!ip6_addresses_equal (&address_info->address, address))
+	    ;
+	  else
+	    {
+	      address_already_present = 1;
+	      goto address_pool_foreach_out;
+	    }
+	}
     address_pool_foreach_out:
 
       if (address_already_present)
@@ -281,8 +277,7 @@ dhcp6_reply_event_handler (vl_api_dhcp6_reply_event_t * mp)
 	  address_info->valid_lt = valid_time;
 	  address_info->due_time = current_time;
 	  /* Renew the lease at the preferred time, if non-zero */
-	  address_info->due_time += (preferred_time > 0) ?
-	    preferred_time : valid_time;
+	  address_info->due_time += (preferred_time > 0) ? preferred_time : valid_time;
 
 	  if (address_info->due_time > rm->max_valid_due_time)
 	    rm->max_valid_due_time = address_info->due_time;
@@ -299,15 +294,13 @@ dhcp6_reply_event_handler (vl_api_dhcp6_reply_event_t * mp)
       address_info->valid_lt = valid_time;
       address_info->due_time = current_time;
       /* Renew the lease at the preferred time, if non-zero */
-      address_info->due_time += (preferred_time > 0) ?
-	preferred_time : valid_time;
+      address_info->due_time += (preferred_time > 0) ? preferred_time : valid_time;
 
       if (address_info->due_time > rm->max_valid_due_time)
 	rm->max_valid_due_time = address_info->due_time;
       rm->client_state_by_sw_if_index[sw_if_index].address_count++;
 
-      error = ip6_add_del_interface_address (vm, sw_if_index,
-					     &address_info->address, 64, 0);
+      error = ip6_add_del_interface_address (vm, sw_if_index, &address_info->address, 64, 0);
       if (error)
 	clib_warning ("Failed to add interface address");
     }
@@ -330,17 +323,17 @@ static address_info_t *
 create_address_list (u32 sw_if_index)
 {
   dhcp6_client_cp_main_t *rm = &dhcp6_client_cp_main;
-  address_info_t *address_info, *address_list = 0;;
+  address_info_t *address_info, *address_list = 0;
 
   pool_foreach (address_info, rm->address_pool)
-   {
-    if (address_info->sw_if_index == sw_if_index)
-      {
-        u32 pos = vec_len (address_list);
-        vec_validate (address_list, pos);
-        clib_memcpy (&address_list[pos], address_info, sizeof (*address_info));
-      }
-  }
+    {
+      if (address_info->sw_if_index == sw_if_index)
+	{
+	  u32 pos = vec_len (address_list);
+	  vec_validate (address_list, pos);
+	  clib_memcpy (&address_list[pos], address_info, sizeof (*address_info));
+	}
+    }
 
   return address_list;
 }
@@ -348,8 +341,7 @@ create_address_list (u32 sw_if_index)
 VNET_DHCP6_REPLY_EVENT_FUNCTION (dhcp6_reply_event_handler);
 
 static uword
-dhcp6_client_cp_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
-			 vlib_frame_t * f)
+dhcp6_client_cp_process (vlib_main_t *vm, vlib_node_runtime_t *rt, vlib_frame_t *f)
 {
   dhcp6_client_cp_main_t *rm = &dhcp6_client_cp_main;
   address_info_t *address_info;
@@ -379,35 +371,44 @@ dhcp6_client_cp_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
       do
 	{
 	  due_time = current_time + 1e9;
-          pool_foreach (address_info, rm->address_pool)
-           {
-            if (address_info->due_time > current_time)
-              {
-                if (address_info->due_time < due_time)
-                  due_time = address_info->due_time;
-              }
-            else
-              {
-                u32 sw_if_index = address_info->sw_if_index;
-                error = ip6_add_del_interface_address (vm, sw_if_index,
-                                                       &address_info->address,
-                                                       64, 1);
-                if (error)
-                    clib_warning ("Failed to delete interface address");
-                pool_put (rm->address_pool, address_info);
-                /* make sure ip6 stays enabled */
-                ip6_link_enable (sw_if_index, NULL);
-                client_state = &rm->client_state_by_sw_if_index[sw_if_index];
-                if (--client_state->address_count == 0)
-                  {
-                    client_state->rebinding = 0;
-                    client_state->server_index = ~0;
-                    send_client_message_start_stop (sw_if_index, ~0,
-                                                    DHCPV6_MSG_SOLICIT,
-                                                    0, 1);
-                  }
-              }
-          }
+	  pool_foreach (address_info, rm->address_pool)
+	    {
+	      if (address_info->due_time > current_time)
+		{
+		  if (address_info->due_time < due_time)
+		    due_time = address_info->due_time;
+		}
+	      else
+		{
+		  u32 sw_if_index = address_info->sw_if_index;
+		  error =
+		    ip6_add_del_interface_address (vm, sw_if_index, &address_info->address, 64, 1);
+		  if (error)
+		    clib_warning ("Failed to delete interface address");
+		  pool_put (rm->address_pool, address_info);
+		  /* make sure ip6 stays enabled */
+		  ip6_link_enable (sw_if_index, NULL);
+		  client_state = &rm->client_state_by_sw_if_index[sw_if_index];
+		  if (--client_state->address_count == 0)
+		    {
+		      client_state->rebinding = 0;
+		      client_state->server_index = ~0;
+		      client_state->T1 = 0;
+		      client_state->T2 = 0;
+		      client_state->T1_due_time = DBL_MAX;
+		      client_state->T2_due_time = DBL_MAX;
+		      if (sw_if_index <
+			  vec_len (dhcp6_ia_na_client_main.client_state_by_sw_if_index))
+			{
+			  dhcp6_ia_na_client_state_t *dp_cs =
+			    &dhcp6_ia_na_client_main.client_state_by_sw_if_index[sw_if_index];
+			  dp_cs->dns_server_count = 0;
+			  clib_memset (dp_cs->dns_servers, 0, sizeof (dp_cs->dns_servers));
+			}
+		      send_client_message_start_stop (sw_if_index, ~0, DHCPV6_MSG_SOLICIT, 0, 1);
+		    }
+		}
+	    }
 	  for (i = 0; i < vec_len (rm->client_state_by_sw_if_index); i++)
 	    {
 	      client_state_t *cs = &rm->client_state_by_sw_if_index[i];
@@ -428,8 +429,7 @@ dhcp6_client_cp_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 			  address_info_t *address_list;
 			  address_list = create_address_list (i);
 			  cs->rebinding = 1;
-			  send_client_message_start_stop (i, cs->server_index,
-							  DHCPV6_MSG_RENEW,
+			  send_client_message_start_stop (i, cs->server_index, DHCPV6_MSG_RENEW,
 							  address_list, 1);
 			  vec_free (address_list);
 			}
@@ -440,9 +440,7 @@ dhcp6_client_cp_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 		      address_info_t *address_list;
 		      address_list = create_address_list (i);
 		      cs->rebinding = 1;
-		      send_client_message_start_stop (i, ~0,
-						      DHCPV6_MSG_REBIND,
-						      address_list, 1);
+		      send_client_message_start_stop (i, ~0, DHCPV6_MSG_REBIND, address_list, 1);
 		      vec_free (address_list);
 		    }
 		}
@@ -458,9 +456,9 @@ dhcp6_client_cp_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 }
 
 VLIB_REGISTER_NODE (dhcp6_client_cp_process_node) = {
-    .function = dhcp6_client_cp_process,
-    .type = VLIB_NODE_TYPE_PROCESS,
-    .name = "dhcp6-client-cp-process",
+  .function = dhcp6_client_cp_process,
+  .type = VLIB_NODE_TYPE_PROCESS,
+  .name = "dhcp6-client-cp-process",
 };
 
 static void
@@ -469,8 +467,7 @@ interrupt_process (void)
   dhcp6_client_cp_main_t *rm = &dhcp6_client_cp_main;
   vlib_main_t *vm = rm->vlib_main;
 
-  vlib_process_signal_event (vm, dhcp6_client_cp_process_node.index,
-			     RD_CP_EVENT_INTERRUPT, 0);
+  vlib_process_signal_event (vm, dhcp6_client_cp_process_node.index, RD_CP_EVENT_INTERRUPT, 0);
 }
 
 static void
@@ -479,8 +476,7 @@ disable_process (void)
   dhcp6_client_cp_main_t *rm = &dhcp6_client_cp_main;
   vlib_main_t *vm = rm->vlib_main;
 
-  vlib_process_signal_event (vm, dhcp6_client_cp_process_node.index,
-			     RD_CP_EVENT_DISABLE, 0);
+  vlib_process_signal_event (vm, dhcp6_client_cp_process_node.index, RD_CP_EVENT_DISABLE, 0);
 }
 
 static void
@@ -497,9 +493,8 @@ enable_process (void)
 }
 
 static clib_error_t *
-dhcp6_addresses_show_command_function (vlib_main_t * vm,
-				       unformat_input_t * input,
-				       vlib_cli_command_t * cmd)
+dhcp6_addresses_show_command_function (vlib_main_t *vm, unformat_input_t *input,
+				       vlib_cli_command_t *cmd)
 {
   dhcp6_client_cp_main_t *dm = &dhcp6_client_cp_main;
   clib_error_t *error = 0;
@@ -507,14 +502,14 @@ dhcp6_addresses_show_command_function (vlib_main_t * vm,
   f64 current_time = vlib_time_now (vm);
 
   pool_foreach (address_info, dm->address_pool)
-   {
-    vlib_cli_output (vm, "address: %U, "
-                     "preferred lifetime: %u, valid lifetime: %u "
-                     "(%f remaining)",
-                     format_ip6_address, &address_info->address,
-                     address_info->preferred_lt, address_info->valid_lt,
-                     address_info->due_time - current_time);
-  }
+    {
+      vlib_cli_output (vm,
+		       "address: %U, "
+		       "preferred lifetime: %u, valid lifetime: %u "
+		       "(%f remaining)",
+		       format_ip6_address, &address_info->address, address_info->preferred_lt,
+		       address_info->valid_lt, address_info->due_time - current_time);
+    }
 
   return error;
 }
@@ -526,9 +521,8 @@ VLIB_CLI_COMMAND (dhcp6_addresses_show_command, static) = {
 };
 
 static clib_error_t *
-dhcp6_clients_show_command_function (vlib_main_t * vm,
-				     unformat_input_t * input,
-				     vlib_cli_command_t * cmd)
+dhcp6_clients_show_command_function (vlib_main_t *vm, unformat_input_t *input,
+				     vlib_cli_command_t *cmd)
 {
   dhcp6_client_cp_main_t *rm = &dhcp6_client_cp_main;
   clib_error_t *error = 0;
@@ -548,14 +542,12 @@ dhcp6_clients_show_command_function (vlib_main_t * vm,
 	  vec_reset_length (buf2);
 	  if (cs->T1_due_time != DBL_MAX && cs->T1_due_time > current_time)
 	    {
-	      buf1 = format (buf1, "%u remaining",
-			     (u32) round (cs->T1_due_time - current_time));
+	      buf1 = format (buf1, "%u remaining", (u32) round (cs->T1_due_time - current_time));
 	    }
 	  else
 	    buf1 = format (buf1, "timeout");
 	  if (cs->T2_due_time != DBL_MAX && cs->T2_due_time > current_time)
-	    buf2 = format (buf2, "%u remaining",
-			   (u32) round (cs->T2_due_time - current_time));
+	    buf2 = format (buf2, "%u remaining", (u32) round (cs->T2_due_time - current_time));
 	  else
 	    buf2 = format (buf2, "timeout");
 	  if (cs->rebinding)
@@ -565,9 +557,8 @@ dhcp6_clients_show_command_function (vlib_main_t * vm,
 	  if (cs->T1)
 	    vlib_cli_output (vm,
 			     "sw_if_index: %u, T1: %u (%v), "
-			     "T2: %u (%v), server index: %d%s", i,
-			     cs->T1, buf1, cs->T2, buf2,
-			     cs->server_index, rebinding);
+			     "T2: %u (%v), server index: %d%s",
+			     i, cs->T1, buf1, cs->T2, buf2, cs->server_index, rebinding);
 	  else
 	    vlib_cli_output (vm, "sw_if_index: %u%s", i, rebinding);
 	}
@@ -584,6 +575,65 @@ VLIB_CLI_COMMAND (dhcp6_clients_show_command, static) = {
   .short_help = "show dhcp6 clients",
   .function = dhcp6_clients_show_command_function,
 };
+
+u8 __clib_export
+dhcp6_ia_na_client_get_runtime (u32 sw_if_index, dhcp6_ia_na_client_runtime_t *rt)
+{
+  dhcp6_client_cp_main_t *rm = &dhcp6_client_cp_main;
+  client_state_t *cs;
+  address_info_t *address_info;
+  f64 current_time;
+
+  if (rt == 0)
+    return 0;
+
+  clib_memset (rt, 0, sizeof (*rt));
+
+  if (sw_if_index >= vec_len (rm->client_state_by_sw_if_index))
+    return 0;
+
+  cs = &rm->client_state_by_sw_if_index[sw_if_index];
+  if (!cs->enabled || rm->vlib_main == 0)
+    return 0;
+
+  rt->enabled = 1;
+  rt->rebinding = cs->rebinding;
+  rt->server_index = cs->server_index;
+  rt->T1 = cs->T1;
+  rt->T2 = cs->T2;
+  rt->address_count = cs->address_count;
+  rt->dns_server_count = 0;
+
+  pool_foreach (address_info, rm->address_pool)
+    {
+      if (address_info->sw_if_index != sw_if_index)
+	continue;
+
+      rt->first_address_present = 1;
+      rt->first_address = address_info->address;
+      rt->first_address_preferred_lt = address_info->preferred_lt;
+      rt->first_address_valid_lt = address_info->valid_lt;
+      break;
+    }
+
+  if (sw_if_index < vec_len (dhcp6_ia_na_client_main.client_state_by_sw_if_index))
+    {
+      dhcp6_ia_na_client_state_t *dp_cs =
+	&dhcp6_ia_na_client_main.client_state_by_sw_if_index[sw_if_index];
+      rt->dns_server_count = clib_min (dp_cs->dns_server_count, ARRAY_LEN (rt->dns_servers));
+      if (rt->dns_server_count > 0)
+	clib_memcpy (rt->dns_servers, dp_cs->dns_servers,
+		     rt->dns_server_count * sizeof (ip6_address_t));
+    }
+
+  current_time = vlib_time_now (rm->vlib_main);
+  if (cs->T1_due_time != DBL_MAX && cs->T1_due_time > current_time)
+    rt->t1_remaining = (u32) round (cs->T1_due_time - current_time);
+  if (cs->T2_due_time != DBL_MAX && cs->T2_due_time > current_time)
+    rt->t2_remaining = (u32) round (cs->T2_due_time - current_time);
+
+  return 1;
+}
 
 int
 dhcp6_client_enable_disable (u32 sw_if_index, u8 enable)
@@ -602,8 +652,7 @@ dhcp6_client_enable_disable (u32 sw_if_index, u8 enable)
       return 1;
     }
 
-  vec_validate_init_empty (rm->client_state_by_sw_if_index, sw_if_index,
-			   empty_config);
+  vec_validate_init_empty (rm->client_state_by_sw_if_index, sw_if_index, empty_config);
   client_state = &rm->client_state_by_sw_if_index[sw_if_index];
 
   u8 old_enabled = client_state->enabled;
@@ -621,8 +670,7 @@ dhcp6_client_enable_disable (u32 sw_if_index, u8 enable)
 	}
 
       ip6_link_enable (sw_if_index, NULL);
-      send_client_message_start_stop (sw_if_index, ~0, DHCPV6_MSG_SOLICIT,
-				      0, 1);
+      send_client_message_start_stop (sw_if_index, ~0, DHCPV6_MSG_SOLICIT, 0, 1);
     }
   else if (old_enabled && !enable)
     {
@@ -636,25 +684,35 @@ dhcp6_client_enable_disable (u32 sw_if_index, u8 enable)
 	}
 
       pool_foreach (address_info, rm->address_pool)
-       {
-        if (address_info->sw_if_index == sw_if_index)
-          {
-            ASSERT (sw_if_index < vec_len (rm->client_state_by_sw_if_index) &&
-                    rm->client_state_by_sw_if_index[sw_if_index].enabled);
-            client_state_t *client_state =
-              &rm->client_state_by_sw_if_index[sw_if_index];
-            send_client_message_start_stop (sw_if_index,
-                                            client_state->server_index,
-                                            DHCPV6_MSG_RELEASE, address_info,
-                                            1);
-            error = ip6_add_del_interface_address (vm, sw_if_index,
-                                                   &address_info->address,
-                                                   64, 1);
-            if (error)
-                clib_warning ("Failed to delete interface address");
-            pool_put (rm->address_pool, address_info);
-          }
-      }
+	{
+	  if (address_info->sw_if_index == sw_if_index)
+	    {
+	      ASSERT (sw_if_index < vec_len (rm->client_state_by_sw_if_index) &&
+		      rm->client_state_by_sw_if_index[sw_if_index].enabled);
+	      client_state_t *client_state = &rm->client_state_by_sw_if_index[sw_if_index];
+	      send_client_message_start_stop (sw_if_index, client_state->server_index,
+					      DHCPV6_MSG_RELEASE, address_info, 1);
+	      error =
+		ip6_add_del_interface_address (vm, sw_if_index, &address_info->address, 64, 1);
+	      if (error)
+		clib_warning ("Failed to delete interface address");
+	      pool_put (rm->address_pool, address_info);
+	    }
+	}
+      if (sw_if_index < vec_len (dhcp6_ia_na_client_main.client_state_by_sw_if_index))
+	{
+	  dhcp6_ia_na_client_state_t *dp_cs =
+	    &dhcp6_ia_na_client_main.client_state_by_sw_if_index[sw_if_index];
+	  dp_cs->dns_server_count = 0;
+	  clib_memset (dp_cs->dns_servers, 0, sizeof (dp_cs->dns_servers));
+	}
+      client_state->server_index = ~0;
+      client_state->T1 = 0;
+      client_state->T2 = 0;
+      client_state->T1_due_time = DBL_MAX;
+      client_state->T2_due_time = DBL_MAX;
+      client_state->address_count = 0;
+      client_state->rebinding = 0;
     }
 
   if (!enable)
@@ -664,9 +722,8 @@ dhcp6_client_enable_disable (u32 sw_if_index, u8 enable)
 }
 
 static clib_error_t *
-dhcp6_client_enable_disable_command_fn (vlib_main_t * vm,
-					unformat_input_t * input,
-					vlib_cli_command_t * cmd)
+dhcp6_client_enable_disable_command_fn (vlib_main_t *vm, unformat_input_t *input,
+					vlib_cli_command_t *cmd)
 {
   dhcp6_client_cp_main_t *rm = &dhcp6_client_cp_main;
   vnet_main_t *vnm = rm->vnet_main;
@@ -680,15 +737,13 @@ dhcp6_client_enable_disable_command_fn (vlib_main_t * vm,
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat
-	  (line_input, "%U", unformat_vnet_sw_interface, vnm, &sw_if_index))
+      if (unformat (line_input, "%U", unformat_vnet_sw_interface, vnm, &sw_if_index))
 	;
       else if (unformat (line_input, "disable"))
 	enable = 0;
       else
 	{
-	  error = clib_error_return (0, "unexpected input `%U'",
-				     format_unformat_error, line_input);
+	  error = clib_error_return (0, "unexpected input `%U'", format_unformat_error, line_input);
 	  goto done;
 	}
     }
@@ -726,7 +781,7 @@ VLIB_CLI_COMMAND (dhcp6_client_enable_disable_command, static) = {
 };
 
 static clib_error_t *
-dhcp_ia_na_client_cp_init (vlib_main_t * vm)
+dhcp_ia_na_client_cp_init (vlib_main_t *vm)
 {
   dhcp6_client_cp_main_t *rm = &dhcp6_client_cp_main;
 
