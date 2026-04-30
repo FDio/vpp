@@ -164,7 +164,7 @@ static_always_inline void
 clib_aes128_ctr (const aes_ctr_key_data_t *kd, const u8 *src, u32 n_bytes,
 		 const u8 *iv, u8 *dst)
 {
-  aes_ctr_ctx_t ctx;
+  aes_ctr_ctx_t ctx = {0};
   clib_aes_ctr_init (&ctx, kd, iv, AES_KEY_128);
   clib_aes_ctr_transform (&ctx, src, dst, n_bytes, AES_KEY_128);
 }
@@ -173,7 +173,7 @@ static_always_inline void
 clib_aes192_ctr (const aes_ctr_key_data_t *kd, const u8 *src, u32 n_bytes,
 		 const u8 *iv, u8 *dst)
 {
-  aes_ctr_ctx_t ctx;
+  aes_ctr_ctx_t ctx = {0};
   clib_aes_ctr_init (&ctx, kd, iv, AES_KEY_192);
   clib_aes_ctr_transform (&ctx, src, dst, n_bytes, AES_KEY_192);
 }
@@ -182,7 +182,7 @@ static_always_inline void
 clib_aes256_ctr (const aes_ctr_key_data_t *kd, const u8 *src, u32 n_bytes,
 		 const u8 *iv, u8 *dst)
 {
-  aes_ctr_ctx_t ctx;
+  aes_ctr_ctx_t ctx = {0};
   clib_aes_ctr_init (&ctx, kd, iv, AES_KEY_256);
   clib_aes_ctr_transform (&ctx, src, dst, n_bytes, AES_KEY_256);
 }

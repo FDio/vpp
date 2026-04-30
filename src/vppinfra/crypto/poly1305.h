@@ -225,7 +225,7 @@ clib_poly1305_final (clib_poly1305_ctx *ctx, u8 *out)
 static_always_inline void
 clib_poly1305 (const u8 *key, const u8 *msg, uword len, u8 *out)
 {
-  clib_poly1305_ctx ctx;
+  clib_poly1305_ctx ctx = {0};
   clib_poly1305_init (&ctx, key);
   clib_poly1305_update (&ctx, msg, len);
   clib_poly1305_final (&ctx, out);
