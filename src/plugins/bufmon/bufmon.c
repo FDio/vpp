@@ -8,6 +8,7 @@ typedef struct
   u64 out;
   u64 alloc;
   u64 free;
+  u16 *snap;
 } bufmon_per_node_data_t;
 
 typedef struct
@@ -74,15 +75,15 @@ bufmon_free_callback (vlib_main_t *vm, u8 buffer_pool_index, u32 *buffers,
 }
 
 static u32
-bufmon_count_buffers (vlib_main_t *vm, vlib_frame_t *frame)
+bufmon_count_buffers_from (vlib_main_t *vm, vlib_frame_t *frame, u32 start)
 {
   vlib_buffer_t *b[VLIB_FRAME_SIZE];
   u32 *from = vlib_frame_vector_args (frame);
-  const u32 n = frame->n_vectors;
+  const u32 n = frame->n_vectors - start;
   u32 nc = 0;
   u32 i;
 
-  vlib_get_buffers (vm, from, b, n);
+  vlib_get_buffers (vm, from + start, b, n);
 
   for (i = 0; i < n; i++)
     {
@@ -97,15 +98,20 @@ bufmon_count_buffers (vlib_main_t *vm, vlib_frame_t *frame)
   return n + nc;
 }
 
+static u32
+bufmon_count_buffers (vlib_main_t *vm, vlib_frame_t *frame)
+{
+  return bufmon_count_buffers_from (vm, frame, 0);
+}
+
 static uword
 bufmon_dispatch_wrapper (vlib_main_t *vm, vlib_node_runtime_t *node,
 			 vlib_frame_t *frame)
 {
   vlib_node_main_t *nm = &vm->node_main;
-  bufmon_main_t *bm = &bufmon_main;
+  const bufmon_main_t *bm = &bufmon_main;
   bufmon_per_thread_data_t *ptd;
   bufmon_per_node_data_t *pnd;
-  int pending_frames;
   uword rv;
 
   ptd = vec_elt_at_index (bm->ptd, vm->thread_index);
@@ -115,18 +121,32 @@ bufmon_dispatch_wrapper (vlib_main_t *vm, vlib_node_runtime_t *node,
   if (frame)
     pnd->in += bufmon_count_buffers (vm, frame);
 
-  pending_frames = vec_len (nm->pending_frames);
+  /* Snapshot n_vectors for every entry currently in nm->pending_frames,
+     indexed by position. After dispatch, pre-existing entries [0..pre_len-1]
+     are credited with the n_vectors delta; new entries [pre_len..new_len-1]
+     are counted in full. Going position-based avoids an O(n) inner search:
+     pending_frames entries are only added, never reordered, and
+     vlib_next_frame_change_ownership leaves pending_frames entries' frame
+     pointers (and positions) unchanged. */
+  const u32 pre_len = vec_len (nm->pending_frames);
+  uword i;
+  if (pre_len)
+    vec_validate (pnd->snap, pre_len - 1);
+  vec_foreach_index (i, pnd->snap)
+    pnd->snap[i] = vlib_get_frame (vm, nm->pending_frames[i].frame)->n_vectors;
+
   ptd->cur_node = node->node_index;
-
   rv = node->function (vm, node, frame);
-
   ptd->cur_node = ~0;
-  for (; pending_frames < vec_len (nm->pending_frames); pending_frames++)
+
+  vec_foreach_index (i, pnd->snap)
     {
-      vlib_pending_frame_t *p =
-	vec_elt_at_index (nm->pending_frames, pending_frames);
-      pnd->out += bufmon_count_buffers (vm, vlib_get_frame (vm, p->frame));
+      vlib_frame_t *f = vlib_get_frame (vm, nm->pending_frames[i].frame);
+      if (f->n_vectors > pnd->snap[i])
+	pnd->out += bufmon_count_buffers_from (vm, f, pnd->snap[i]);
     }
+  for (u32 i = pre_len; i < vec_len (nm->pending_frames); i++)
+    pnd->out += bufmon_count_buffers (vm, vlib_get_frame (vm, nm->pending_frames[i].frame));
 
   return rv;
 }
@@ -151,8 +171,9 @@ bufmon_register_callbacks (vlib_main_t *vm)
 					bufmon_dispatch_wrapper))
       goto err1;
 
-  vec_validate_aligned (bufmon_main.ptd, vlib_thread_main.n_vlib_mains - 1,
-			CLIB_CACHE_LINE_BYTES);
+  vec_validate_init_empty_aligned (bufmon_main.ptd, vlib_thread_main.n_vlib_mains - 1,
+				   ((bufmon_per_thread_data_t){ .cur_node = ~0 }),
+				   CLIB_CACHE_LINE_BYTES);
   return 0;
 
 err1:
@@ -293,11 +314,14 @@ clear_buffer_traces (vlib_main_t *vm, unformat_input_t *input,
 {
   const bufmon_main_t *bm = &bufmon_main;
   const bufmon_per_thread_data_t *ptd;
-  const bufmon_per_node_data_t *pnd;
+  bufmon_per_node_data_t *pnd;
 
   vec_foreach (ptd, bm->ptd)
-    vec_foreach (pnd, ptd->pnd)
-      vec_reset_length (pnd);
+    {
+      vec_foreach (pnd, ptd->pnd)
+	vec_free (pnd->snap);
+      vec_reset_length (ptd->pnd);
+    }
 
   return 0;
 }
