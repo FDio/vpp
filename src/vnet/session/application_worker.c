@@ -227,6 +227,101 @@ app_worker_free_wrk_cl_session (app_worker_t *app_wrk, session_t *ls)
   al->cl_listeners[app_wrk->wrk_map_index] = SESSION_INVALID_INDEX;
 }
 
+static session_error_t
+app_worker_listen_sep (app_listener_t **app_listener, session_endpoint_cfg_t *sep)
+{
+  app_listener_t *al = *app_listener;
+  application_t *app = application_get (al->app_index);
+  transport_connection_t *tc;
+  u32 al_index, table_index;
+  session_handle_t lh;
+  session_type_t st;
+  session_t *ls = 0;
+  int rv;
+
+  al_index = al->al_index;
+  st = session_type_from_proto_and_ip (sep->transport_proto, sep->is_ip4);
+
+  /*
+   * Add session endpoint to local session table. Only binds to "inaddr_any"
+   * (i.e., zero address) are added to local scope table.
+   */
+  if (application_has_local_scope (app) && session_endpoint_is_local ((session_endpoint_t *) sep))
+    {
+      session_type_t local_st;
+
+      local_st = session_type_from_proto_and_ip (TRANSPORT_PROTO_CT, sep->is_ip4);
+      ls = listen_session_alloc (0, local_st);
+      ls->app_wrk_index = sep->app_wrk_index;
+      lh = session_handle (ls);
+
+      if ((rv = session_listen (ls, sep)))
+	{
+	  ls = session_get_from_handle (lh);
+	  session_free (ls);
+	  return rv;
+	}
+
+      ls = session_get_from_handle (lh);
+      *app_listener = al = app_listener_get (al_index);
+      al->local_index = ls->session_index;
+      al->ls_handle = lh;
+      ls->al_index = al_index;
+
+      table_index = application_local_session_table (app);
+      session_lookup_add_session_endpoint (table_index, (session_endpoint_t *) sep, lh);
+    }
+
+  if (application_has_global_scope (app))
+    {
+      /*
+       * Start listening on local endpoint for requested transport and scope.
+       * Creates a stream session with state LISTENING to be used in session
+       * lookups, prior to establishing connection. Requests transport to
+       * build it's own specific listening connection.
+       */
+      ls = listen_session_alloc (0, st);
+      ls->app_wrk_index = sep->app_wrk_index;
+
+      /* Listen pool can be reallocated if the transport is
+       * recursive (tls) */
+      lh = listen_session_get_handle (ls);
+
+      if ((rv = session_listen (ls, sep)))
+	{
+	  ls = listen_session_get_from_handle (lh);
+	  *app_listener = app_listener_get (al_index);
+	  session_free (ls);
+	  return rv;
+	}
+      ls = listen_session_get_from_handle (lh);
+      *app_listener = al = app_listener_get (al_index);
+      al->session_index = ls->session_index;
+      al->ls_handle = lh;
+      ls->al_index = al_index;
+
+      /* Add to the global lookup table after transport was initialized.
+       * Lookup table needs to be populated only now because sessions
+       * with cut-through transport are are added to app local tables that
+       * are not related to network fibs, i.e., cannot be added as
+       * connections */
+      tc = session_get_transport (ls);
+      if (!(tc->flags & TRANSPORT_CONNECTION_F_NO_LOOKUP))
+	{
+	  fib_protocol_t fib_proto;
+	  fib_proto = session_endpoint_fib_proto ((session_endpoint_t *) sep);
+	  /* Assume namespace vetted previously so make sure table exists */
+	  table_index = session_lookup_get_or_alloc_index_for_fib (fib_proto, sep->fib_index);
+	  session_lookup_add_session_endpoint (table_index, (session_endpoint_t *) sep, lh);
+	}
+    }
+
+  if (!ls)
+    return SESSION_E_ALLOC;
+
+  return 0;
+}
+
 int
 app_worker_init_listener (app_worker_t *app_wrk, session_t *ls, segment_manager_t *sm)
 {
@@ -241,17 +336,26 @@ app_worker_init_listener (app_worker_t *app_wrk, session_t *ls, segment_manager_
 }
 
 session_error_t
-app_worker_start_listen (app_worker_t *app_wrk, app_listener_t *app_listener)
+app_worker_start_listen (app_worker_t *app_wrk, app_listener_t **app_listener,
+			 session_endpoint_cfg_t *sep_ext)
 {
+  app_listener_t *al = *app_listener;
   session_t *ls;
   int rv;
   segment_manager_t *sm;
 
-  if (clib_bitmap_get (app_listener->workers, app_wrk->wrk_map_index))
+  if (clib_bitmap_get (al->workers, app_wrk->wrk_map_index))
     return SESSION_E_ALREADY_LISTENING;
 
-  app_listener->workers = clib_bitmap_set (app_listener->workers,
-					   app_wrk->wrk_map_index, 1);
+  /* First app worker to use app listener, initialize sessions */
+  if (clib_bitmap_is_zero (al->workers))
+    {
+      if (!sep_ext)
+	return SESSION_E_INVALID;
+      if ((rv = app_worker_listen_sep (app_listener, sep_ext)))
+	return rv;
+      al = *app_listener;
+    }
 
   /* Allocate segment manager. All sessions derived out of a listen session,
    * local and global scopes, have fifos allocated by the same segment manager.
@@ -260,19 +364,21 @@ app_worker_start_listen (app_worker_t *app_wrk, app_listener_t *app_listener)
   if (sm == 0)
     return SESSION_E_SEG_CREATE;
 
-  if (app_listener->session_index != SESSION_INVALID_INDEX)
+  if (al->session_index != SESSION_INVALID_INDEX)
     {
-      ls = session_get (app_listener->session_index, 0);
+      ls = session_get (al->session_index, 0);
       if ((rv = app_worker_init_listener (app_wrk, ls, sm)))
 	return rv;
     }
 
-  if (app_listener->local_index != SESSION_INVALID_INDEX)
+  if (al->local_index != SESSION_INVALID_INDEX)
     {
-      ls = session_get (app_listener->local_index, 0);
+      ls = session_get (al->local_index, 0);
       if ((rv = app_worker_init_listener (app_wrk, ls, sm)))
 	return rv;
     }
+
+  al->workers = clib_bitmap_set (al->workers, app_wrk->wrk_map_index, 1);
 
   return 0;
 }
