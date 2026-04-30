@@ -260,9 +260,6 @@ typedef struct _vnet_app_worker_add_del_args
 #define APP_INVALID_SEGMENT_MANAGER_INDEX ((u32) ~0)
 
 app_listener_t *app_listener_get (u32 al_index);
-int app_listener_alloc_and_init (application_t * app,
-				 session_endpoint_cfg_t * sep,
-				 app_listener_t ** listener);
 void app_listener_cleanup (app_listener_t * app_listener);
 session_handle_t app_listener_handle (app_listener_t * app_listener);
 app_listener_t *app_listener_lookup (application_t * app,
@@ -351,8 +348,8 @@ int app_worker_connect_session (app_worker_t *app, session_endpoint_cfg_t *sep,
 				session_handle_t *rsh);
 int app_worker_connect_stream (app_worker_t *app, session_endpoint_cfg_t *sep,
 			       session_handle_t *rsh);
-session_error_t app_worker_start_listen (app_worker_t *app_wrk,
-					 app_listener_t *lstnr);
+session_error_t app_worker_start_listen (app_worker_t *app_wrk, app_listener_t **app_listener,
+					 session_endpoint_cfg_t *sep_ext);
 int app_worker_stop_listen (app_worker_t * app_wrk, app_listener_t * al);
 int app_worker_init_accepted (session_t * s);
 int app_worker_init_accepted_ct (session_t *s);
