@@ -105,13 +105,23 @@ rdma_dev_set_promisc (rdma_device_t * rd)
   err |= rdma_rxq_destroy_flow (rd, &rd->flow_ucast6);
   err |= rdma_rxq_destroy_flow (rd, &rd->flow_mcast4);
   err |= rdma_rxq_destroy_flow (rd, &rd->flow_ucast4);
+  err |= rdma_rxq_destroy_flow (rd, &rd->flow_pppoe_disc);
+  err |= rdma_rxq_destroy_flow (rd, &rd->flow_pppoe_ses);
   if (err)
     return ~0;
 
+  /*
+   * Explicitly steer PPPoE discovery/session frames as L2 traffic. Some
+   * providers rely on non-IP Ethernet frames throughout discovery and early
+   * session bring-up, so do not leave them solely to the generic catch-all
+   * flow.
+   */
+  rd->flow_pppoe_disc = rdma_rxq_init_flow (rd, rd->rx_qp4, &all, &all, ntohs (ETH_P_PPP_DISC), 0);
+  rd->flow_pppoe_ses = rdma_rxq_init_flow (rd, rd->rx_qp4, &all, &all, ntohs (ETH_P_PPP_SES), 0);
   rd->flow_ucast6 =
     rdma_rxq_init_flow (rd, rd->rx_qp6, &all, &all, ntohs (ETH_P_IPV6), 0);
   rd->flow_ucast4 = rdma_rxq_init_flow (rd, rd->rx_qp4, &all, &all, 0, 0);
-  if (!rd->flow_ucast6 || !rd->flow_ucast4)
+  if (!rd->flow_pppoe_disc || !rd->flow_pppoe_ses || !rd->flow_ucast6 || !rd->flow_ucast4)
     return ~0;
 
   rd->flags |= RDMA_DEVICE_F_PROMISC;
@@ -130,9 +140,15 @@ rdma_dev_set_ucast (rdma_device_t * rd)
   err |= rdma_rxq_destroy_flow (rd, &rd->flow_ucast6);
   err |= rdma_rxq_destroy_flow (rd, &rd->flow_mcast4);
   err |= rdma_rxq_destroy_flow (rd, &rd->flow_ucast4);
+  err |= rdma_rxq_destroy_flow (rd, &rd->flow_pppoe_disc);
+  err |= rdma_rxq_destroy_flow (rd, &rd->flow_pppoe_ses);
   if (err)
     return ~0;
 
+  rd->flow_pppoe_disc =
+    rdma_rxq_init_flow (rd, rd->rx_qp4, &rd->hwaddr, &ucast, ntohs (ETH_P_PPP_DISC), 0);
+  rd->flow_pppoe_ses =
+    rdma_rxq_init_flow (rd, rd->rx_qp4, &rd->hwaddr, &ucast, ntohs (ETH_P_PPP_SES), 0);
   rd->flow_ucast6 =
     rdma_rxq_init_flow (rd, rd->rx_qp6, &rd->hwaddr, &ucast,
 			ntohs (ETH_P_IPV6), 0);
@@ -148,8 +164,8 @@ rdma_dev_set_ucast (rdma_device_t * rd)
 			IBV_FLOW_ATTR_FLAGS_DONT_TRAP
 			/* let others receive mcast packet too (eg. Linux) */
     );
-  if (!rd->flow_ucast6 || !rd->flow_mcast6 || !rd->flow_ucast4
-      || !rd->flow_mcast4)
+  if (!rd->flow_pppoe_disc || !rd->flow_pppoe_ses || !rd->flow_ucast6 || !rd->flow_mcast6 ||
+      !rd->flow_ucast4 || !rd->flow_mcast4)
     return ~0;
 
   rd->flags &= ~RDMA_DEVICE_F_PROMISC;
@@ -381,6 +397,8 @@ rdma_dev_cleanup (rdma_device_t * rd)
   _(ibv_destroy_flow, rd->flow_ucast6);
   _(ibv_destroy_flow, rd->flow_mcast4);
   _(ibv_destroy_flow, rd->flow_ucast4);
+  _ (ibv_destroy_flow, rd->flow_pppoe_disc);
+  _ (ibv_destroy_flow, rd->flow_pppoe_ses);
   _(ibv_dereg_mr, rd->mr);
   vec_foreach (txq, rd->txqs)
   {
