@@ -131,7 +131,7 @@ lldp_add_mgmt_addr (const lldp_intf_t * n, const vnet_hw_interface_t * hw,
          address is sent in one TLV.
        */
 
-      lldp_build_mgmt_addr_tlv (t0p, 1,	/* address subtype: Ipv4 */
+      lldp_build_mgmt_addr_tlv (t0p, 6,	/* address subtype: 802 */
 				6,	/* address string length */
 				hw->hw_address,	/* address */
 				hw->hw_if_index,	/* if index */
