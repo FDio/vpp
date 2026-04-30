@@ -576,6 +576,11 @@ format_lldp_intfs_detail (u8 * s, vlib_main_t * vm, const lldp_main_t * lm)
         s = format(s, "\nLocal Interface name: %v\n"
                       "Local Port Description: %s\n",
                        hw->name, n->port_desc);
+        if ((n->mgmt_ip4 == 0) && (n->mgmt_ip6 == 0))
+          {
+            s = format (s, "Local Management MAC address: %U\n",
+                        format_mac_address, hw->hw_address);
+          }
         if (n->mgmt_ip4)
           {
             s = format (s, "Local Management address: %U\n",
