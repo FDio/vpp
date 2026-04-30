@@ -34,7 +34,8 @@ typedef struct
 typedef struct
 {
   u8 entry_valid;
-  u8 keep_sending_client_message;	/* when true then next fields are valid */
+  u8 keep_sending_client_message; /* when true then next fields are valid */
+  u8 missing_lladdr_warned;
   dhcp6_pd_send_client_message_params_t params;
   f64 transaction_start;
   f64 sleep_interval;
@@ -79,21 +80,69 @@ typedef struct
   dhcp6_prefix_info_t *prefixes;
 } prefix_report_t;
 
-void dhcp6_pd_send_client_message (vlib_main_t * vm, u32 sw_if_index, u8 stop,
-				   dhcp6_pd_send_client_message_params_t *
-				   params);
+typedef struct
+{
+  u8 enabled;
+  u8 rebinding;
+  u32 server_index;
+  u32 T1;
+  u32 T2;
+  u32 prefix_count;
+  u32 t1_remaining;
+  u32 t2_remaining;
+  char prefix_group[65];
+} dhcp6_pd_client_runtime_t;
+
+typedef struct
+{
+  u8 present;
+  ip6_address_t prefix;
+  u8 prefix_length;
+  u32 preferred_lt;
+  u32 valid_lt;
+  u32 valid_remaining;
+} dhcp6_pd_active_prefix_runtime_t;
+
+typedef struct
+{
+  u8 present;
+  u32 consumer_count;
+  u32 sw_if_index;
+  ip6_address_t address;
+  u8 prefix_length;
+} dhcp6_pd_consumer_runtime_t;
+
+void dhcp6_pd_send_client_message (vlib_main_t *vm, u32 sw_if_index, u8 stop,
+				   dhcp6_pd_send_client_message_params_t *params);
 void dhcp6_pd_set_publisher_node (uword node_index, uword event_type);
-int dhcp6_pd_publish_report (prefix_report_t * r);
-int dhcp6_pd_client_enable_disable (u32 sw_if_index,
-				    const u8 * prefix_group, u8 enable);
-int dhcp6_cp_ip6_address_add_del (u32 sw_if_index, const u8 * prefix_group,
-				  ip6_address_t address, u8 prefix_length,
-				  u8 is_add);
+int dhcp6_pd_publish_report (prefix_report_t *r);
+int dhcp6_pd_client_enable_disable (u32 sw_if_index, const u8 *prefix_group, u8 enable);
+int dhcp6_cp_ip6_address_add_del (u32 sw_if_index, const u8 *prefix_group, ip6_address_t address,
+				  u8 prefix_length, u8 is_add);
+
+/* Snapshot the DHCPv6 PD client state.  All three _get_runtime helpers must
+ * be called from the main thread: the pools and per-sw_if_index state are
+ * mutated by the DHCPv6 PD client process node on main thread without
+ * locking.
+ *
+ * Each helper returns 0 only when the runtime is fully populated and
+ * usable: dhcp6_pd_client_get_runtime additionally guarantees rt->enabled
+ * == 1, _get_active_prefix_runtime guarantees rt->present == 1, and
+ * _get_consumer_runtime guarantees the prefix_group is bound to an enabled
+ * client.  All helpers return non-zero when their precondition is not met
+ * or rt is NULL; in that case *rt has been zeroed when non-NULL. */
+u8 dhcp6_pd_client_get_runtime (u32 sw_if_index, dhcp6_pd_client_runtime_t *rt);
+u8 dhcp6_pd_client_get_active_prefix_runtime (u32 sw_if_index,
+					      dhcp6_pd_active_prefix_runtime_t *rt);
+u8 dhcp6_pd_client_get_consumer_runtime (u32 sw_if_index, dhcp6_pd_consumer_runtime_t *rt);
 
 extern vlib_node_registration_t dhcp6_pd_reply_process_node;
 
 enum
-{ DHCP6_PD_DP_REPLY_REPORT, DHCP6_PD_DP_REPORT_MAX };
+{
+  DHCP6_PD_DP_REPLY_REPORT,
+  DHCP6_PD_DP_REPORT_MAX
+};
 
 #include <dhcp/dhcp.api_types.h>
 
