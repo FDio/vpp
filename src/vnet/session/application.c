@@ -142,115 +142,6 @@ app_listener_lookup (application_t * app, session_endpoint_cfg_t * sep_ext)
   return 0;
 }
 
-int
-app_listener_alloc_and_init (application_t * app,
-			     session_endpoint_cfg_t * sep,
-			     app_listener_t ** listener)
-{
-  app_listener_t *app_listener;
-  transport_connection_t *tc;
-  u32 al_index, table_index;
-  session_handle_t lh;
-  session_type_t st;
-  session_t *ls = 0;
-  int rv;
-
-  app_listener = app_listener_alloc (app);
-  al_index = app_listener->al_index;
-  st = session_type_from_proto_and_ip (sep->transport_proto, sep->is_ip4);
-
-  /*
-   * Add session endpoint to local session table. Only binds to "inaddr_any"
-   * (i.e., zero address) are added to local scope table.
-   */
-  if (application_has_local_scope (app)
-      && session_endpoint_is_local ((session_endpoint_t *) sep))
-    {
-      session_type_t local_st;
-
-      local_st =
-	session_type_from_proto_and_ip (TRANSPORT_PROTO_CT, sep->is_ip4);
-      ls = listen_session_alloc (0, local_st);
-      ls->app_wrk_index = sep->app_wrk_index;
-      lh = session_handle (ls);
-
-      if ((rv = session_listen (ls, sep)))
-	{
-	  ls = session_get_from_handle (lh);
-	  session_free (ls);
-	  app_listener_free (app, app_listener);
-	  return rv;
-	}
-
-      ls = session_get_from_handle (lh);
-      app_listener = app_listener_get (al_index);
-      app_listener->local_index = ls->session_index;
-      app_listener->ls_handle = lh;
-      ls->al_index = al_index;
-
-      table_index = application_local_session_table (app);
-      session_lookup_add_session_endpoint (table_index,
-					   (session_endpoint_t *) sep, lh);
-    }
-
-  if (application_has_global_scope (app))
-    {
-      /*
-       * Start listening on local endpoint for requested transport and scope.
-       * Creates a stream session with state LISTENING to be used in session
-       * lookups, prior to establishing connection. Requests transport to
-       * build it's own specific listening connection.
-       */
-      ls = listen_session_alloc (0, st);
-      ls->app_wrk_index = sep->app_wrk_index;
-
-      /* Listen pool can be reallocated if the transport is
-       * recursive (tls) */
-      lh = listen_session_get_handle (ls);
-
-      if ((rv = session_listen (ls, sep)))
-	{
-	  ls = listen_session_get_from_handle (lh);
-	  app_listener = app_listener_get (al_index);
-	  session_free (ls);
-	  app_listener_cleanup (app_listener);
-	  return rv;
-	}
-      ls = listen_session_get_from_handle (lh);
-      app_listener = app_listener_get (al_index);
-      app_listener->session_index = ls->session_index;
-      app_listener->ls_handle = lh;
-      ls->al_index = al_index;
-
-      /* Add to the global lookup table after transport was initialized.
-       * Lookup table needs to be populated only now because sessions
-       * with cut-through transport are are added to app local tables that
-       * are not related to network fibs, i.e., cannot be added as
-       * connections */
-      tc = session_get_transport (ls);
-      if (!(tc->flags & TRANSPORT_CONNECTION_F_NO_LOOKUP))
-	{
-	  fib_protocol_t fib_proto;
-	  fib_proto = session_endpoint_fib_proto ((session_endpoint_t *) sep);
-	  /* Assume namespace vetted previously so make sure table exists */
-	  table_index = session_lookup_get_or_alloc_index_for_fib (
-	    fib_proto, sep->fib_index);
-	  session_lookup_add_session_endpoint (table_index,
-					       (session_endpoint_t *) sep,
-					       lh);
-	}
-    }
-
-  if (!ls)
-    {
-      app_listener_free (app, app_listener);
-      return -1;
-    }
-
-  *listener = app_listener;
-  return 0;
-}
-
 void
 app_listener_cleanup (app_listener_t * al)
 {
@@ -1406,29 +1297,22 @@ vnet_listen (vnet_listen_args_t *a)
   if (!session_endpoint_in_ns (&a->sep_ext))
     return SESSION_E_INVALID_NS;
 
-  /*
-   * Check if we already have an app listener
-   */
   app_listener = app_listener_lookup (app, &a->sep_ext);
   if (app_listener)
     {
       if (app_listener->app_index != app->app_index)
 	return SESSION_E_ALREADY_LISTENING;
-      if ((rv = app_worker_start_listen (app_wrk, app_listener)))
-	return rv;
-      a->handle = app_listener_handle (app_listener);
-      return 0;
+    }
+  else
+    {
+      app_listener = app_listener_alloc (app);
     }
 
-  /*
-   * Create new app listener
-   */
-  if ((rv = app_listener_alloc_and_init (app, &a->sep_ext, &app_listener)))
-    return rv;
-
-  if ((rv = app_worker_start_listen (app_wrk, app_listener)))
+  if ((rv = app_worker_start_listen (app_wrk, app_listener, &a->sep_ext)))
     {
-      app_listener_cleanup (app_listener);
+      /* No app workers mapped to listener, clean up */
+      if (clib_bitmap_is_zero (app_listener->workers))
+	app_listener_cleanup (app_listener);
       return rv;
     }
 
@@ -1677,7 +1561,7 @@ application_change_listener_owner (session_t * s, app_worker_t * app_wrk)
   app_listener->workers = clib_bitmap_set (app_listener->workers,
 					   old_wrk->wrk_map_index, 0);
 
-  if ((rv = app_worker_start_listen (app_wrk, app_listener)))
+  if ((rv = app_worker_start_listen (app_wrk, app_listener, 0 /* sep listened on already */)))
     return rv;
 
   s->app_wrk_index = app_wrk->wrk_index;
@@ -1750,10 +1634,10 @@ application_start_stop_proxy_fib_proto (application_t * app, u8 fib_proto,
 	  /* force global scope listener */
 	  flags = app->flags;
 	  app->flags &= ~APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE;
-	  app_listener_alloc_and_init (app, &sep, &al);
+	  al = app_listener_alloc (app);
 	  app->flags = flags;
 
-	  app_worker_start_listen (app_wrk, al);
+	  app_worker_start_listen (app_wrk, al, &sep);
 	  s = listen_session_get (al->session_index);
 	  s->flags |= SESSION_F_PROXY;
 	}
