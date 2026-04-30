@@ -1,0 +1,18 @@
+---
+name: PPPoE Client
+maintainer: Hi-Jiajun <3138947285@qq.com>
+features:
+  - PPPoE Discovery (PADI/PADO/PADR/PADS/PADT)
+  - PPPoE Session data plane (encap/decap)
+  - PPPoX virtual interface shim
+  - LCP/IPCP/IPv6CP/CHAP/PAP via embedded pppd
+  - Host-Uniq-less fallback matching
+  - QinQ (802.1ad) VLAN support
+  - TCP MSS clamping
+  - Session persistence and raw PADT on shutdown
+  - Exponential backoff with configurable jitter
+  - Per-client control history with rich filtering
+
+description: "PPPoE client dialer for BRAS/BAS (e.g. Huawei ME60)"
+state: development
+properties: [API, CLI]
