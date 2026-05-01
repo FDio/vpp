@@ -367,6 +367,16 @@ ipip_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
   if (!t)
     return;
 
+  /* P2AP tunnels are decap-only. They share the P2P HW class but have
+   * a wildcard tunnel_dst (0.0.0.0 / ::), so building an encap rewrite
+   * would emit packets with an invalid outer destination. Leave the
+   * adjacency incomplete so any forwarding via the tunnel is dropped. */
+  if (t->mode == IPIP_MODE_P2AP)
+    {
+      adj_nbr_midchain_update_rewrite (ai, NULL, NULL, ADJ_FLAG_NONE, NULL);
+      return;
+    }
+
   /*
    * the user has not requested that the load-balancing be based on
    * a flow hash of the inner packet. so use the stacking to choose
@@ -754,10 +764,15 @@ ipip_add_tunnel (ipip_transport_t transport,
   ipip_tunnel_key_t key;
   ipip_mode_t mode;
 
-  if (tmode == TUNNEL_MODE_MP && !ip46_address_is_zero (dst))
+  if ((tmode == TUNNEL_MODE_MP || tmode == TUNNEL_MODE_P2AP) && !ip46_address_is_zero (dst))
     return (VNET_API_ERROR_INVALID_DST_ADDRESS);
 
-  mode = (tmode == TUNNEL_MODE_P2P ? IPIP_MODE_P2P : IPIP_MODE_P2MP);
+  if (tmode == TUNNEL_MODE_P2P)
+    mode = IPIP_MODE_P2P;
+  else if (tmode == TUNNEL_MODE_P2AP)
+    mode = IPIP_MODE_P2AP;
+  else
+    mode = IPIP_MODE_P2MP;
   ipip_mk_key_i (transport, mode, src, dst, fib_index, &key);
 
   t = ipip_tunnel_db_find (&key);
@@ -786,11 +801,14 @@ ipip_add_tunnel (ipip_transport_t transport,
   t->dev_instance = t_idx;	/* actual */
   t->user_instance = u_idx;	/* name */
 
-  hw_if_index = vnet_register_interface (vnm, ipip_device_class.index, t_idx,
-					 (mode == IPIP_MODE_P2P ?
-					  ipip_hw_interface_class.index :
-					  mipip_hw_interface_class.index),
-					 t_idx);
+  /* P2MP tunnels use the multipoint (NBMA) HW class which resolves
+   * per-peer next-hops via the TEIB. P2P and P2AP share the simple
+   * P2P HW class: P2P has a fixed peer, and P2AP is decap-only so
+   * its encap-side rewrite is unused. */
+  hw_if_index = vnet_register_interface (
+    vnm, ipip_device_class.index, t_idx,
+    (mode == IPIP_MODE_P2MP ? mipip_hw_interface_class.index : ipip_hw_interface_class.index),
+    t_idx);
 
   hi = vnet_get_hw_interface (vnm, hw_if_index);
   sw_if_index = hi->sw_if_index;

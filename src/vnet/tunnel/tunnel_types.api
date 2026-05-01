@@ -51,6 +51,8 @@ enum tunnel_mode : u8
   TUNNEL_API_MODE_P2P = 0,
   /** multi-point */
   TUNNEL_API_MODE_MP,
+  /** multi-point to point */
+  TUNNEL_API_MODE_P2AP [backwards_compatible],
 };
 
 /**

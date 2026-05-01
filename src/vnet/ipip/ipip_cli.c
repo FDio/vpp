@@ -187,11 +187,11 @@ done:
   return error;
 }
 
-VLIB_CLI_COMMAND(create_ipip_tunnel_command, static) = {
-    .path = "create ipip tunnel",
-    .short_help = "create ipip tunnel src <addr> dst <addr> [instance <n>] "
-                  "[outer-table-id <ID>] [p2mp]",
-    .function = create_ipip_tunnel_command_fn,
+VLIB_CLI_COMMAND (create_ipip_tunnel_command, static) = {
+  .path = "create ipip tunnel",
+  .short_help = "create ipip tunnel src <addr> dst <addr> [instance <n>] "
+		"[outer-table-id <ID>] [p2mp] [p2ap]",
+  .function = create_ipip_tunnel_command_fn,
 };
 VLIB_CLI_COMMAND(delete_ipip_tunnel_command, static) = {
     .path = "delete ipip tunnel",
@@ -228,6 +228,10 @@ format_ipip_tunnel (u8 * s, va_list * args)
     case IPIP_MODE_P2MP:
       s = format (s, "[%d] instance %d p2mp src %U ",
 		  t->dev_instance, t->user_instance,
+		  format_ip46_address, &t->tunnel_src, type);
+      break;
+    case IPIP_MODE_P2AP:
+      s = format (s, "[%d] instance %d p2ap src %U ", t->dev_instance, t->user_instance,
 		  format_ip46_address, &t->tunnel_src, type);
       break;
     }
