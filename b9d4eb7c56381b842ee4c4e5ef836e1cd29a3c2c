@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4ab8e5b2_d9b49060",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3324
+      },
+      "writtenOn": "2026-05-01T11:02:45Z",
+      "side": 1,
+      "message": "Hi Damjan\nPlease take a look at this PR that makes spelling and grammar corrections in DPO comments.",
+      "revId": "b9d4eb7c56381b842ee4c4e5ef836e1cd29a3c2c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
