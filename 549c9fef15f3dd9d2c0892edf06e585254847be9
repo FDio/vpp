@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "646d0bdf_cd6b7196",
+        "filename": "src/plugins/snort/snort_api.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 375,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2026-05-01T21:10:02Z",
+      "side": 1,
+      "message": "Can you create an API enum for the direction instead of using hardcoded numeric values? I see that existing code uses the numeric values also, but it would be nice to make it easier to read in newly added code.",
+      "revId": "549c9fef15f3dd9d2c0892edf06e585254847be9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f98b6f13_c23ca478",
+        "filename": "src/plugins/snort/snort_api.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 393,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2026-05-01T21:10:02Z",
+      "side": 1,
+      "message": "Either rv should be initialized to some error value or there should be an `else rv \u003d some_error_code;` here.\n\nrv is declared uninitialized and is only set if a bad value is passed in for sw_if_index or snort_dir or a valid instance_index is passed in. If an invalid instance index is passed in, rv will contain garbage.",
+      "revId": "549c9fef15f3dd9d2c0892edf06e585254847be9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
