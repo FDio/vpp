@@ -14,7 +14,7 @@
 #include <virtchnl.h>
 
 #define IAVF_ITR_INT		  250
-#define IAVF_RX_MAX_DESC_IN_CHAIN 5
+#define IAVF_RX_MAX_DESC_IN_CHAIN 8
 #define IAVF_MAX_RSS_KEY_SIZE	  52
 #define IAVF_MAX_RSS_LUT_SIZE	  64
 #define IIAVF_AQ_POLL_INTERVAL	  0.2
@@ -219,7 +219,8 @@ typedef enum
 } iavf_tx_node_counter_t;
 
 #define foreach_iavf_rx_node_counter                                          \
-  _ (BUFFER_ALLOC, buffer_alloc, ERROR, "buffer alloc error")
+  _ (BUFFER_ALLOC, buffer_alloc, ERROR, "buffer alloc error")                 \
+  _ (CHAIN_TOO_LONG, chain_too_long, ERROR, "rx chain too long")
 
 typedef enum
 {
