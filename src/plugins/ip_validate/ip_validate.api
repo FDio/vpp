@@ -1,0 +1,26 @@
+/* SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2026 Cisco and/or its affiliates.
+ */
+
+option version = "1.0.0";
+import "vnet/interface_types.api";
+
+/** \brief Enable/disable IP validation on an interface
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - the interface on which to enable/disable
+    @param is_enable - 1 to enable, 0 to disable
+
+    Note: In production the plugin auto-enables validation on every
+    interface via the VNET_SW_INTERFACE_ADD_DEL_FUNCTION callback, so
+    callers do not need to invoke this API.  It is provided for testing
+    and as a hook for any future per-interface control if needed.
+*/
+
+autoreply define ip_validate_enable_disable
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+  bool is_enable;
+};
