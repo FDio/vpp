@@ -44,6 +44,7 @@ typedef enum
   IPIP_MODE_P2P = 0,
   IPIP_MODE_P2MP,
   IPIP_MODE_6RD,
+  IPIP_MODE_MP2P,
 } __clib_packed ipip_mode_t;
 
 typedef struct

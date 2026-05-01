@@ -45,6 +45,8 @@ unformat_tunnel_mode (unformat_input_t * input, va_list * args)
 
   if (unformat (input, "p2p"))
     *m = TUNNEL_MODE_P2P;
+  else if (unformat (input, "mp2p"))
+    *m = TUNNEL_MODE_MP2P;
   else if (unformat (input, "p2mp") || unformat (input, "mp"))
     *m = TUNNEL_MODE_MP;
   else

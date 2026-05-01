@@ -237,6 +237,9 @@ gre_tunnel_restack (gre_tunnel_t *gt)
       case TUNNEL_MODE_MP:
 	adj_nbr_walk (gt->sw_if_index, proto, mgre_adj_walk_cb, NULL);
 	break;
+      case TUNNEL_MODE_MP2P:
+	/* not supported for GRE */
+	break;
       }
   }
 }
