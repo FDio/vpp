@@ -230,6 +230,10 @@ format_ipip_tunnel (u8 * s, va_list * args)
 		  t->dev_instance, t->user_instance,
 		  format_ip46_address, &t->tunnel_src, type);
       break;
+    case IPIP_MODE_MP2P:
+      s = format (s, "[%d] instance %d mp2p src %U ", t->dev_instance, t->user_instance,
+		  format_ip46_address, &t->tunnel_src, type);
+      break;
     }
 
   s = format (s, "table-ID %d sw-if-idx %d flags [%U] dscp %U",

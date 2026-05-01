@@ -101,6 +101,8 @@ ipip_tunnel_mode_encode (ipip_mode_t mode)
       return TUNNEL_API_MODE_P2P;
     case IPIP_MODE_P2MP:
       return TUNNEL_API_MODE_MP;
+    case IPIP_MODE_MP2P:
+      return TUNNEL_API_MODE_MP2P;
     case IPIP_MODE_6RD:
       return TUNNEL_API_MODE_P2P;
     default:
