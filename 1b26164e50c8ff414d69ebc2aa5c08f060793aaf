@@ -16,6 +16,24 @@
       "message": "No need to bring this back",
       "revId": "1b26164e50c8ff414d69ebc2aa5c08f060793aaf",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c296be41_0e2dbe8e",
+        "filename": "src/vnet/session/application.c",
+        "patchSetId": 63
+      },
+      "lineNbr": 1344,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2026-05-01T22:29:10Z",
+      "side": 1,
+      "message": "Done. Rebase did something weird to bring it back.",
+      "parentUuid": "6c8da1ea_4ece35df",
+      "revId": "1b26164e50c8ff414d69ebc2aa5c08f060793aaf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
