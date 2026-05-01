@@ -12,7 +12,7 @@
 #include <vnet/dev/dev.h>
 #include <virtchnl.h>
 
-#define IAVF_RX_MAX_DESC_IN_CHAIN 5
+#define IAVF_RX_MAX_DESC_IN_CHAIN 8
 
 #define IAVF_TXD_CMD(x)		       (1 << (x + 4))
 #define IAVF_TXD_CMD_EXT(x, val)       ((u64) val << (x + 4))
