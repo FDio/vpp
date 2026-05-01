@@ -521,6 +521,65 @@ class TestIPIP(VppTestCase):
     def payload(self, len):
         return "x" * len
 
+    def test_ipip4_mp2p(self):
+        """ip{v4,v6} over ip4 MP2P tunnel (decap any source)"""
+
+        self.pg1.generate_remote_hosts(4)
+        self.pg1.configure_ipv4_neighbors()
+
+        # Create an MP2P IPIP tunnel - decaps from any source without TEIB
+        tun = VppIpIpTunInterface(
+            self,
+            self.pg0,
+            self.pg0.local_ip4,
+            "0.0.0.0",
+            mode=(VppEnum.vl_api_tunnel_mode_t.TUNNEL_API_MODE_MP2P),
+        )
+        tun.add_vpp_config()
+
+        self.vapi.sw_interface_set_flags(tun.sw_if_index, 1)
+        self.vapi.sw_interface_set_unnumbered(
+            sw_if_index=self.pg0.sw_if_index,
+            unnumbered_sw_if_index=tun.sw_if_index,
+        )
+
+        p_ether = Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac)
+        p_payload = UDP(sport=1234, dport=1234) / Raw(b"X" * 100)
+
+        # Various source IPs - all in pg1's subnet so they pass src-RPF.
+        # No TEIB entries are required for MP2P decap.
+        src_ips = [h.ip4 for h in self.pg1.remote_hosts[:4]]
+
+        # IPv4 inner
+        for src_ip in src_ips:
+            p_ip4_encap = IP(src=src_ip, dst=self.pg0.local_ip4)
+            p_ip4_inner = IP(src="1.2.3.4", dst=self.pg0.remote_ip4)
+            p4 = p_ether / p_ip4_encap / p_ip4_inner / p_payload
+
+            p4_reply = p_ip4_inner / p_payload
+            p4_reply.ttl -= 1
+
+            rx = self.send_and_expect(self.pg1, p4 * N_PACKETS, self.pg0)
+            for p in rx:
+                self.validate(p[1], p4_reply)
+                self.assert_packet_checksums_valid(p)
+
+        # IPv6 inner
+        for src_ip in src_ips:
+            p_ip4_encap = IP(src=src_ip, dst=self.pg0.local_ip4)
+            p_ip6_inner = IPv6(src="1:2:3::4", dst=self.pg0.remote_ip6)
+            p6 = p_ether / p_ip4_encap / p_ip6_inner / p_payload
+
+            p6_reply = p_ip6_inner / p_payload
+            p6_reply.hlim = 63
+
+            rx = self.send_and_expect(self.pg1, p6 * N_PACKETS, self.pg0)
+            for p in rx:
+                self.validate(p[1], p6_reply)
+                self.assert_packet_checksums_valid(p)
+
+        tun.admin_down()
+
     def test_mipip4(self):
         """p2mp IPv4 tunnel Tests"""
 
@@ -1327,6 +1386,69 @@ class TestIPIP6(VppTestCase):
         rv = ipip_add_tunnel(self, "1.2.3.4", "2.3.4.5", table_id=20)
         sw_if_index = rv.sw_if_index
         self.vapi.ipip_del_tunnel(sw_if_index)
+
+    def test_ipip6_mp2p(self):
+        """ip{v4,v6} over ip6 MP2P tunnel (decap any source)"""
+
+        # destroy the default tunnel created in setUp
+        self.destroy_tunnel()
+
+        # Generate routable remote hosts on pg1 so their source IPs pass
+        # ip6-local source RPF.
+        self.pg1.generate_remote_hosts(4)
+        self.pg1.configure_ipv6_neighbors()
+
+        tun = VppIpIpTunInterface(
+            self,
+            self.pg0,
+            self.pg0.local_ip6,
+            "::",
+            mode=(VppEnum.vl_api_tunnel_mode_t.TUNNEL_API_MODE_MP2P),
+        )
+        tun.add_vpp_config()
+
+        self.vapi.sw_interface_set_flags(tun.sw_if_index, 1)
+        self.vapi.sw_interface_set_unnumbered(
+            sw_if_index=self.pg0.sw_if_index,
+            unnumbered_sw_if_index=tun.sw_if_index,
+        )
+
+        p_ether = Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac)
+        p_payload = UDP(sport=1234, dport=1234) / Raw(b"X" * 100)
+
+        src_ip6s = [h.ip6 for h in self.pg1.remote_hosts[:4]]
+
+        # IPv4 inner from various v6 sources
+        for src_ip6 in src_ip6s:
+            p_ip6_encap = IPv6(src=src_ip6, dst=self.pg0.local_ip6)
+            p_ip4_inner = IP(src="1.2.3.4", dst=self.pg0.remote_ip4)
+            p4 = p_ether / p_ip6_encap / p_ip4_inner / p_payload
+
+            p4_reply = p_ip4_inner / p_payload
+            p4_reply.ttl -= 1
+
+            rx = self.send_and_expect(self.pg1, p4 * N_PACKETS, self.pg0)
+            for p in rx:
+                self.validate(p[1], p4_reply)
+                self.assert_packet_checksums_valid(p)
+
+        # IPv6 inner
+        for src_ip6 in src_ip6s:
+            p_ip6_encap = IPv6(src=src_ip6, dst=self.pg0.local_ip6)
+            p_ip6_inner = IPv6(src="1:2:3::4", dst=self.pg0.remote_ip6)
+            p6 = p_ether / p_ip6_encap / p_ip6_inner / p_payload
+
+            p6_reply = p_ip6_inner / p_payload
+            p6_reply.hlim = 63
+
+            rx = self.send_and_expect(self.pg1, p6 * N_PACKETS, self.pg0)
+            for p in rx:
+                self.validate(p[1], p6_reply)
+                self.assert_packet_checksums_valid(p)
+
+        tun.admin_down()
+        # Re-create default tunnel for tearDown
+        self.setup_tunnel()
 
     def payload(self, len):
         return "x" * len
