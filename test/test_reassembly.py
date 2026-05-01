@@ -22,6 +22,7 @@ from scapy.layers.inet6 import (
     ICMPv6EchoRequest,
     ICMPv6EchoReply,
 )
+from scapy.layers.sctp import SCTP
 from util import ppp, fragment_rfc791, fragment_rfc8200
 from vpp_gre_interface import VppGreInterface
 from vpp_ip_route import VppIpRoute, VppRoutePath
@@ -1092,6 +1093,127 @@ class TestIPv4SVReassembly(VppTestCase):
 
         self.vapi.cli("set ip reassembly extended ip4 off")
 
+
+    def _get_buffer_count(self):
+        """Get the number of allocated buffers from 'show buffers'"""
+        output = self.vapi.ppcli("show buffers")
+        # Parse the total buffer count from output like "Total buffers: 1234"
+        for line in output.split("\n"):
+            if "Total buffers:" in line:
+                return int(line.split(":")[1].strip())
+        return 0
+
+    def test_l4_protocol_sctp(self):
+        """SCTP packets pass through SVR"""
+        payload = "x " * 500
+
+        p = (
+            Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac)
+            / IP(
+                id=100,
+                src=self.src_if.remote_ip4,
+                dst=self.dst_if.remote_ip4,
+            )
+            / SCTP(sport=21, dport=22)
+            / Raw(payload.encode())
+        )
+        fragments = fragment_rfc791(p, 300)
+
+        buffers_before = self._get_buffer_count()
+        self.pg_enable_capture()
+        self.src_if.add_stream(fragments)
+        self.pg_start()
+        c = self.dst_if.get_capture(len(fragments))
+        self.assertEqual(len(c), len(fragments))
+        for sent, recvd in zip(fragments, c):
+            self.assertEqual(sent[IP].src, recvd[IP].src)
+            self.assertEqual(sent[IP].dst, recvd[IP].dst)
+            self.assertEqual(sent[IP].proto, recvd[IP].proto)
+        buffers_after = self._get_buffer_count()
+        self.assertLessEqual(
+            buffers_after,
+            buffers_before + len(fragments),
+            "Buffer leak detected: before=%d, after=%d"
+            % (buffers_before, buffers_after),
+        )
+
+    def test_l4_protocol_dccp(self):
+        """DCCP packets pass through SVR"""
+        # DCCP protocol number is 33
+        # DCCP header: src_port(2), dst_port(2), seq(4), ...
+        dccp_header = b"\x04\xd2\x12\x34" + b"\x00" * 4 + b"\x00" * 100
+        payload = "y " * 500
+
+        p = (
+            Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac)
+            / IP(
+                id=200,
+                proto=33,  # DCCP
+                src=self.src_if.remote_ip4,
+                dst=self.dst_if.remote_ip4,
+            )
+            / Raw(dccp_header + payload.encode())
+        )
+        fragments = fragment_rfc791(p, 300)
+        self.assertGreater(len(fragments), 1, "Expected fragments, got single packet")
+
+        buffers_before = self._get_buffer_count()
+        self.pg_enable_capture()
+        self.src_if.add_stream(fragments)
+        self.pg_start()
+        c = self.dst_if.get_capture(len(fragments))
+        self.assertEqual(len(c), len(fragments))
+        for sent, recvd in zip(fragments, c):
+            self.assertEqual(sent[IP].src, recvd[IP].src)
+            self.assertEqual(sent[IP].dst, recvd[IP].dst)
+            self.assertEqual(sent[IP].proto, recvd[IP].proto)
+            self.assertEqual(bytes(sent[Raw].load), bytes(recvd[Raw].load))
+        buffers_after = self._get_buffer_count()
+        self.assertLessEqual(
+            buffers_after,
+            buffers_before + len(fragments),
+            "Buffer leak detected: before=%d, after=%d"
+            % (buffers_before, buffers_after),
+        )
+
+    def test_l4_protocol_udplite(self):
+        """UDP-Lite packets pass through SVR"""
+        # UDP-Lite protocol number is 136
+        # UDP-Lite header: src_port(2), dst_port(2), length(2), cksum_len(2)
+        udplite_header = b"\x05\xdd\x06\xde" + b"\x00\x80" + b"\x00\x08"
+        payload = "z " * 500
+
+        p = (
+            Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac)
+            / IP(
+                id=300,
+                proto=136,  # UDP-Lite
+                src=self.src_if.remote_ip4,
+                dst=self.dst_if.remote_ip4,
+            )
+            / Raw(udplite_header + payload.encode())
+        )
+        fragments = fragment_rfc791(p, 300)
+        self.assertGreater(len(fragments), 1, "Expected fragments, got single packet")
+
+        buffers_before = self._get_buffer_count()
+        self.pg_enable_capture()
+        self.src_if.add_stream(fragments)
+        self.pg_start()
+        c = self.dst_if.get_capture(len(fragments))
+        self.assertEqual(len(c), len(fragments))
+        for sent, recvd in zip(fragments, c):
+            self.assertEqual(sent[IP].src, recvd[IP].src)
+            self.assertEqual(sent[IP].dst, recvd[IP].dst)
+            self.assertEqual(sent[IP].proto, recvd[IP].proto)
+            self.assertEqual(bytes(sent[Raw].load), bytes(recvd[Raw].load))
+        buffers_after = self._get_buffer_count()
+        self.assertLessEqual(
+            buffers_after,
+            buffers_before + len(fragments),
+            "Buffer leak detected: before=%d, after=%d"
+            % (buffers_before, buffers_after),
+        )
 
 class TestIPv4MWReassembly(VppTestCase):
     """IPv4 Reassembly (multiple workers)"""
@@ -2616,6 +2738,117 @@ class TestIPv6SVReassembly(VppTestCase):
         self.assertIn(ICMPv6ParamProblem, rx[0])
         self.assertEqual(rx[0][ICMPv6ParamProblem].code, 0)
 
+
+    def _get_buffer_count(self):
+        """Get the number of allocated buffers from 'show buffers'"""
+        output = self.vapi.ppcli("show buffers")
+        # Parse the total buffer count from output like "Total buffers: 1234"
+        for line in output.split("\n"):
+            if "Total buffers:" in line:
+                return int(line.split(":")[1].strip())
+        return 0
+
+    def test_l4_protocol_sctp(self):
+        """SCTP packets pass through IPv6 SVR"""
+        payload = "a " * 800
+
+        p = (
+            Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac)
+            / IPv6(src=self.src_if.remote_ip6, dst=self.dst_if.remote_ip6)
+            / SCTP(sport=21, dport=22)
+            / Raw(payload.encode())
+        )
+        fragments = fragment_rfc8200(p, 100, 1400)
+        self.assertGreater(len(fragments), 1, "Expected fragments, got single packet")
+
+        buffers_before = self._get_buffer_count()
+        self.pg_enable_capture()
+        self.src_if.add_stream(fragments)
+        self.pg_start()
+        c = self.dst_if.get_capture(len(fragments))
+        self.assertEqual(len(c), len(fragments))
+        for sent, recvd in zip(fragments, c):
+            self.assertEqual(sent[IPv6].src, recvd[IPv6].src)
+            self.assertEqual(sent[IPv6].dst, recvd[IPv6].dst)
+        buffers_after = self._get_buffer_count()
+        self.assertLessEqual(
+            buffers_after,
+            buffers_before + len(fragments),
+            "Buffer leak detected: before=%d, after=%d"
+            % (buffers_before, buffers_after),
+        )
+
+    def test_l4_protocol_dccp(self):
+        """DCCP packets pass through IPv6 SVR"""
+        # DCCP protocol number is 33
+        # Scapy has no DCCP layer, so we use Raw.
+        dccp_header = b"\x04\xd2\x12\x34" + b"\x00" * 4
+        payload = "b " * 800
+
+        p = (
+            Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac)
+            / IPv6(
+                src=self.src_if.remote_ip6,
+                dst=self.dst_if.remote_ip6,
+                nh=33,  # DCCP
+            )
+            / Raw(dccp_header + payload.encode())
+        )
+        fragments = fragment_rfc8200(p, identification=200, fragsize=1400)
+        self.assertGreater(len(fragments), 1, "Expected fragments, got single packet")
+
+        buffers_before = self._get_buffer_count()
+        self.pg_enable_capture()
+        self.src_if.add_stream(fragments)
+        self.pg_start()
+        c = self.dst_if.get_capture(len(fragments))
+        self.assertEqual(len(c), len(fragments))
+        for sent, recvd in zip(fragments, c):
+            self.assertEqual(sent[IPv6].src, recvd[IPv6].src)
+            self.assertEqual(sent[IPv6].dst, recvd[IPv6].dst)
+        buffers_after = self._get_buffer_count()
+        self.assertLessEqual(
+            buffers_after,
+            buffers_before + len(fragments),
+            "Buffer leak detected: before=%d, after=%d"
+            % (buffers_before, buffers_after),
+        )
+
+    def test_l4_protocol_udplite(self):
+        """UDP-Lite packets pass through IPv6 SVR"""
+        # UDP-Lite protocol number is 136
+        # Scapy has no UDPLite layer, so we use Raw.
+        udplite_header = b"\x05\xdd\x06\xde" + b"\x00\x80" + b"\x00\x08"
+        payload = "c " * 800
+
+        p = (
+            Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac)
+            / IPv6(
+                src=self.src_if.remote_ip6,
+                dst=self.dst_if.remote_ip6,
+                nh=136,  # UDP-Lite
+            )
+            / Raw(udplite_header + payload.encode())
+        )
+        fragments = fragment_rfc8200(p, identification=300, fragsize=1400)
+        self.assertGreater(len(fragments), 1, "Expected fragments, got single packet")
+
+        buffers_before = self._get_buffer_count()
+        self.pg_enable_capture()
+        self.src_if.add_stream(fragments)
+        self.pg_start()
+        c = self.dst_if.get_capture(len(fragments))
+        self.assertEqual(len(c), len(fragments))
+        for sent, recvd in zip(fragments, c):
+            self.assertEqual(sent[IPv6].src, recvd[IPv6].src)
+            self.assertEqual(sent[IPv6].dst, recvd[IPv6].dst)
+        buffers_after = self._get_buffer_count()
+        self.assertLessEqual(
+            buffers_after,
+            buffers_before + len(fragments),
+            "Buffer leak detected: before=%d, after=%d"
+            % (buffers_before, buffers_after),
+        )
 
 class TestIPv4ReassemblyLocalNode(VppTestCase):
     """IPv4 Reassembly for packets coming to ip4-local node"""
