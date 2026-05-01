@@ -3,6 +3,23 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "8973db7c_4094eafe",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 2
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2026-05-01T22:07:20Z",
+      "side": 1,
+      "message": "I don\u0027t think the category should be \"api\", it should be \"snort\". I think if you were changing something related to the general API libraries you would use api. Since you\u0027re just updating snort\u0027s APIs to match changes that someone made to the CLI, this is a snort patch.",
+      "revId": "549c9fef15f3dd9d2c0892edf06e585254847be9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "646d0bdf_cd6b7196",
         "filename": "src/plugins/snort/snort_api.c",
         "patchSetId": 2
