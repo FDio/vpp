@@ -1,0 +1,31 @@
+---
+name: IP Packet Validation
+maintainer: Akeel Ali <akeali@cisco.com>
+features:
+  - Validates incoming IP packets and drops those with invalid
+    source/destination addresses. Runs on the ip4-unicast and
+    ip6-unicast feature arcs.
+  - When the plugin is enabled, filtering is automatically
+    applied to every interface.
+  - IPv4 source filtering:
+    - Drops packets with source in 127.0.0.0/8 (loopback)
+    - Drops packets with source in 224.0.0.0/4 (multicast)
+    - Drops packets with source in 240.0.0.0/4 (class E reserved)
+    - Drops packets with source 0.0.0.0 (unspecified)
+    - Drops packets with source in 169.254.0.0/16 (link-local)
+  - IPv4 destination filtering:
+    - Drops packets with destination in 127.0.0.0/8 (loopback)
+    - Drops packets with destination in 169.254.0.0/16 (link-local)
+  - IPv4 L2 filtering:
+    - Drops unicast IP packets with multicast/broadcast Ethernet destination
+  - IPv6 source filtering:
+    - Drops packets with source in ff00::/8 (multicast)
+    - Drops packets with source "::" (unspecified)
+    - Drops packets with source "::1" (loopback)
+  - IPv6 destination filtering:
+    - Drops packets with destination "::" (unspecified)
+    - Drops packets with destination "::1" (loopback)
+  - IPv6 L2 filtering:
+    - Drops unicast IP packets with multicast/broadcast Ethernet destination
+description: "IP packet validation plugin"
+state: experimental

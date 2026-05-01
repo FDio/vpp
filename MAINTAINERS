@@ -836,6 +836,11 @@ I:	ip_session_redirect
 M:	Benoît Ganne <bganne@cisco.com>
 F:	src/plugins/ip_session_redirect/
 
+Plugin - IP Validate
+I:	ip_validate
+M:	Akeel Ali <akeali@cisco.com>
+F:	src/plugins/ip_validate/
+
 Plugin - linux-cp
 I:	linux-cp
 M:	Neale Ranns <neale@graphiant.com>
