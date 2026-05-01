@@ -13,6 +13,7 @@
 #define foreach_tunnel_mode     \
   _(P2P, "point-to-point")      \
   _(MP, "multi-point")          \
+  _(MP2P, "multi-point-to-point")  \
 
 typedef enum tunnel_mode_t_
 {
