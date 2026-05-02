@@ -157,8 +157,6 @@ typedef struct
   _ (HAS_REQUEST, "has-request")                                                                   \
   _ (UNIDIRECTIONAL_STREAM, "unidirectional-stream")                                               \
   _ (BIDIRECTIONAL_STREAM, "bidirectional-stream")                                                 \
-  _ (EXPECT_PREFACE, "expect-preface")                                                             \
-  _ (EXPECT_CONTINUATION, "expect-continuation")                                                   \
   _ (EXPECT_SERVER_SETTINGS, "expect-server-settings")                                             \
   _ (NEED_REINIT, "need-reinit")                                                                   \
   _ (TS_DESCHED, "ts-descheduled")                                                                 \
@@ -301,6 +299,17 @@ typedef struct
   u32 state : 2;
 } http_capsule_tx_ctx_t;
 
+typedef enum
+{
+  HTTP2_RX_EXPECT_CLIENT_PREFACE,
+  HTTP2_RX_EXPECT_SERVER_PREFACE,
+  HTTP2_RX_EXPECT_CONTINUATION,
+  HTTP2_RX_EXPECT_DEFAULT,
+  HTTP2_RX_EXPECT_STATE_NUM,
+} http2_rx_expect_t;
+
+STATIC_ASSERT (HTTP2_RX_EXPECT_STATE_NUM <= 4, "no more than 4 http2 rx expect states allowed");
+
 typedef struct http_ctx_
 {
   union
@@ -347,7 +356,8 @@ typedef struct http_ctx_
 	  u32 peer_window;
 	  u32 our_window;
 	  u32 unsent_headers_offset;
-	  u32 req_num;
+	  u32 req_num : 30;
+	  u32 rx_expect : 2;
 	  clib_llist_index_t new_tx_streams; /* headers */
 	  clib_llist_index_t old_tx_streams; /* data */
 	  clib_llist_anchor_t sched_list;
