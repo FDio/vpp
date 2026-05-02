@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "cb7e42f7_70e74919",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-05-02T21:11:53Z",
+      "side": 1,
+      "message": "Why did we abandon the old patch?",
+      "revId": "683a72453993eb161ee043f276ca2b3c4485ae4f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e20a0de8_099bf26a",
+        "filename": "test/asf/test_quic.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 886,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-05-02T21:11:53Z",
+      "side": 1,
+      "message": "we don\u0027t want to extensively test all crypto engines, at least for now. Let\u0027s keep native and maybe one for ipsecmb and one for openssl, to convince ourselves they work. Unless 1) these tests don\u0027t consume that much time (how much is it actually?) 2) there are some features that we want to explicitly test and native does not support them, e.g., some cipher suites.",
+      "revId": "683a72453993eb161ee043f276ca2b3c4485ae4f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
