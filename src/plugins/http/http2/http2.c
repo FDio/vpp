@@ -32,6 +32,8 @@ static http_token_t http2_ext_connect_proto[] = { { http_token_lit ("bug") },
 #undef _
 };
 
+typedef void (*http2_rx_expect_cb) (http_ctx_t *hc);
+
 static void http2_update_time_callback (f64 now, u8 thread_index);
 
 always_inline void
@@ -102,7 +104,12 @@ http2_conn_init (http_ctx_t *hc, u8 is_client)
   if (cnt == 0)
     session_register_update_time_fn_w_thread (http2_update_time_callback, 1, thread_index);
   if (is_client)
-    http2_send_client_preface (hc);
+    {
+      http2_send_client_preface (hc);
+      hc->rx_expect = HTTP2_RX_EXPECT_SERVER_PREFACE;
+    }
+  else
+    hc->rx_expect = HTTP2_RX_EXPECT_CLIENT_PREFACE;
 }
 
 static inline void
@@ -299,7 +306,7 @@ http2_req_update_peer_window (http_ctx_t *hc, http_ctx_t *req, i64 delta)
 }
 
 /* send GOAWAY frame and close TCP connection */
-always_inline void
+static void
 http2_connection_error (http_ctx_t *hc, http2_error_t error, transport_send_params_t *sp)
 {
   http_worker_t *wrk = http_worker_get (hc->c_thread_index);
@@ -359,7 +366,7 @@ http2_connection_error (http_ctx_t *hc, http2_error_t error, transport_send_para
   http_stats_proto_errors_inc (hc->c_thread_index);
 }
 
-always_inline void
+static void
 http2_send_stream_error (http_ctx_t *hc, u32 stream_id, http2_error_t error,
 			 transport_send_params_t *sp)
 {
@@ -398,7 +405,7 @@ http2_tunnel_send_close (http_ctx_t *hc, http_ctx_t *req)
 }
 
 /* send RST_STREAM frame and notify app */
-always_inline void
+static void
 http2_stream_error (http_ctx_t *hc, http_ctx_t *req, http2_error_t error,
 		    transport_send_params_t *sp)
 {
@@ -2152,7 +2159,7 @@ http2_handle_headers_frame (http_ctx_t *hc, http2_frame_header_t *fh)
       if (!(fh->flags & HTTP2_FRAME_FLAG_END_HEADERS))
 	{
 	  HTTP_DBG (1, "fragmented headers stream id %u", fh->stream_id);
-	  hc->flags |= HTTP_CONN_F_EXPECT_CONTINUATION;
+	  hc->rx_expect = HTTP2_RX_EXPECT_CONTINUATION;
 	  vec_validate (hc->unparsed_headers, fh->length - 1);
 	  http_io_ts_read (hc, hc->unparsed_headers, fh->length, 0);
 	  rv = http2_frame_read_headers (&headers_start, &headers_len, hc->unparsed_headers,
@@ -2170,7 +2177,7 @@ http2_handle_headers_frame (http_ctx_t *hc, http2_frame_header_t *fh)
 	      vec_dec_len (hc->unparsed_headers, n_dec);
 	    }
 
-	  return HTTP2_ERROR_NO_ERROR;
+	  return HTTP2_ERROR_EXPECT_CONTINUATION;
 	}
     }
   else
@@ -2201,7 +2208,7 @@ http2_handle_headers_frame (http_ctx_t *hc, http2_frame_header_t *fh)
       if (!(fh->flags & HTTP2_FRAME_FLAG_END_HEADERS))
 	{
 	  HTTP_DBG (1, "fragmented headers stream id %u", fh->stream_id);
-	  hc->flags |= HTTP_CONN_F_EXPECT_CONTINUATION;
+	  hc->rx_expect = HTTP2_RX_EXPECT_CONTINUATION;
 	  vec_validate (hc->unparsed_headers, fh->length - 1);
 	  http_io_ts_read (hc, hc->unparsed_headers, fh->length, 0);
 	  rv = http2_frame_read_headers (&headers_start, &headers_len, hc->unparsed_headers,
@@ -2219,7 +2226,7 @@ http2_handle_headers_frame (http_ctx_t *hc, http2_frame_header_t *fh)
 	      vec_dec_len (hc->unparsed_headers, n_dec);
 	    }
 
-	  return HTTP2_ERROR_NO_ERROR;
+	  return HTTP2_ERROR_EXPECT_CONTINUATION;
 	}
     }
 
@@ -2249,12 +2256,6 @@ http2_handle_continuation_frame (http_ctx_t *hc, http2_frame_header_t *fh)
       return HTTP2_ERROR_FRAME_SIZE_ERROR;
     }
 
-  if (!(hc->flags & HTTP_CONN_F_EXPECT_CONTINUATION))
-    {
-      HTTP_DBG (1, "unexpected CONTINUATION frame");
-      return HTTP2_ERROR_PROTOCOL_ERROR;
-    }
-
   if (fh->stream_id != hc->last_opened_stream_id)
     {
       HTTP_DBG (1, "invalid stream id %u", fh->stream_id);
@@ -2269,7 +2270,7 @@ http2_handle_continuation_frame (http_ctx_t *hc, http2_frame_header_t *fh)
       req = http2_conn_get_req (hc, fh->stream_id);
       if (!req)
 	return HTTP2_ERROR_PROTOCOL_ERROR;
-      hc->flags &= ~HTTP_CONN_F_EXPECT_CONTINUATION;
+      hc->rx_expect = HTTP2_RX_EXPECT_DEFAULT;
       req->payload = hc->unparsed_headers;
       req->payload_len = vec_len (hc->unparsed_headers);
       HTTP_DBG (1, "run state machine");
@@ -2707,7 +2708,6 @@ http2_expect_preface (http_ctx_t *hc)
   u8 *rx_buf;
 
   ASSERT (hc->flags & HTTP_CONN_F_IS_SERVER);
-  hc->flags &= ~HTTP_CONN_F_EXPECT_PREFACE;
 
   rx_buf = http_get_rx_buf (hc);
   http_io_ts_read (hc, rx_buf, http2_conn_preface.len, 1);
@@ -3026,83 +3026,217 @@ http2_transport_connected_callback (http_ctx_t *hc)
   return 0;
 }
 
-static void
-http2_transport_rx_callback (http_ctx_t *hc)
+void http2_rx_expect_client_preface (http_ctx_t *hc);
+void http2_rx_expect_server_preface (http_ctx_t *hc);
+void http2_rx_expect_default (http_ctx_t *hc);
+void http2_rx_expect_continuation (http_ctx_t *hc);
+
+static http2_rx_expect_cb http2_rx_expect_funcs[HTTP2_RX_EXPECT_STATE_NUM] = {
+  http2_rx_expect_client_preface,
+  http2_rx_expect_server_preface,
+  http2_rx_expect_continuation,
+  http2_rx_expect_default,
+};
+
+void
+http2_rx_expect_client_preface (http_ctx_t *hc)
 {
-  http2_frame_header_t fh;
   u32 to_deq;
-  u8 *rx_buf;
-  http2_error_t rv;
   http_ctx_t *req;
   u32 hc_index = hc->hc_hc_index;
   clib_thread_index_t thread_index = hc->c_thread_index;
 
   HTTP_DBG (1, "hc [%u]%x", hc->c_thread_index, hc->hc_hc_index);
 
-  to_deq = http_io_ts_max_read (hc);
-
-  if (PREDICT_FALSE (to_deq == 0))
+  if (hc->flags & HTTP_CONN_F_NEED_REINIT)
     {
-      HTTP_DBG (1, "no data to deq");
+      hc->flags &= ~HTTP_CONN_F_NEED_REINIT;
+      http2_conn_init (hc, 0);
+      /* pool grow, regrab connection */
+      hc = http_ctx_get_w_thread (hc_index, thread_index);
+    }
+
+  to_deq = http_io_ts_max_read (hc);
+  if (PREDICT_FALSE (to_deq < http2_conn_preface.len))
+    {
+      HTTP_DBG (1, "to_deq %u is less than conn preface size", to_deq);
+      http_disconnect_transport (hc);
+      http_stats_proto_errors_inc (hc->c_thread_index);
       return;
     }
 
-  if (hc->flags & HTTP_CONN_F_EXPECT_PREFACE)
+  if (http2_expect_preface (hc))
     {
-      if (hc->flags & HTTP_CONN_F_NEED_REINIT)
-	{
-	  hc->flags &= ~HTTP_CONN_F_NEED_REINIT;
-	  http2_conn_init (hc, 0);
-	  /* pool grow, regrab connection */
-	  hc = http_ctx_get_w_thread (hc_index, thread_index);
-	}
-      if (to_deq < http2_conn_preface.len)
-	{
-	  HTTP_DBG (1, "to_deq %u is less than conn preface size", to_deq);
-	  http_disconnect_transport (hc);
-	  http_stats_proto_errors_inc (hc->c_thread_index);
-	  return;
-	}
-      http_stats_connections_accepted_inc (hc->c_thread_index);
-      if (http2_expect_preface (hc))
-	{
-	  HTTP_DBG (1, "conn preface verification failed");
-	  http_disconnect_transport (hc);
-	  http_stats_proto_errors_inc (hc->c_thread_index);
-	  return;
-	}
-      http2_send_server_preface (hc);
-      http_io_ts_drain (hc, http2_conn_preface.len);
-      to_deq -= http2_conn_preface.len;
-      req = http2_conn_alloc_req (hc_index, thread_index, 1);
-      /* pool grow, regrab connection */
-      hc = http_ctx_get_w_thread (hc_index, thread_index);
-      if (http_conn_accept_request (hc, req, 0))
-	{
-	  http2_conn_free_req (hc, req, hc->c_thread_index);
-	  hc->hc_parent_req_index = SESSION_INVALID_INDEX;
-	  http_disconnect_transport (hc);
-	  return;
-	}
-      http_req_state_change (req, HTTP_REQ_STATE_WAIT_TRANSPORT_METHOD);
-      hc->flags &= ~HTTP_CONN_F_NO_APP_SESSION;
-      if (to_deq == 0)
-	return;
+      HTTP_DBG (1, "conn preface verification failed");
+      http_disconnect_transport (hc);
+      http_stats_proto_errors_inc (hc->c_thread_index);
+      return;
     }
+  http2_send_server_preface (hc);
+  http_io_ts_drain (hc, http2_conn_preface.len);
+  to_deq -= http2_conn_preface.len;
 
+  /* alloc parent session */
+  req = http2_conn_alloc_req (hc_index, thread_index, 1);
+  /* pool grow, regrab connection */
+  hc = http_ctx_get_w_thread (hc_index, thread_index);
+  if (http_conn_accept_request (hc, req, 0))
+    {
+      http2_conn_free_req (hc, req, hc->c_thread_index);
+      hc->hc_parent_req_index = SESSION_INVALID_INDEX;
+      http_disconnect_transport (hc);
+      return;
+    }
+  http_req_state_change (req, HTTP_REQ_STATE_WAIT_TRANSPORT_METHOD);
+
+  http_stats_connections_accepted_inc (hc->c_thread_index);
+  hc->flags &= ~HTTP_CONN_F_NO_APP_SESSION;
+  hc->rx_expect = HTTP2_RX_EXPECT_DEFAULT;
+
+  if (to_deq != 0)
+    http2_rx_expect_funcs[hc->rx_expect](hc);
+}
+
+void
+http2_rx_expect_server_preface (http_ctx_t *hc)
+{
+  http2_error_t rv;
+  u32 to_deq;
+  u8 *rx_buf;
+  http2_frame_header_t fh;
+
+  HTTP_DBG (1, "hc [%u]%x", hc->c_thread_index, hc->hc_hc_index);
+
+  to_deq = http_io_ts_max_read (hc);
   if (PREDICT_FALSE (to_deq < HTTP2_FRAME_HEADER_SIZE))
     {
       HTTP_DBG (1, "to_deq %u is less than frame header size", to_deq);
       return;
     }
 
+  rx_buf = http_get_rx_buf (hc);
+  http_io_ts_read (hc, rx_buf, HTTP2_FRAME_HEADER_SIZE, 1);
+  to_deq -= HTTP2_FRAME_HEADER_SIZE;
+  http2_frame_header_read (rx_buf, &fh);
+  if (PREDICT_FALSE (fh.type != HTTP2_FRAME_TYPE_SETTINGS))
+    {
+      HTTP_DBG (1, "expected SETTINGS frame (server preface)");
+      http2_connection_error (hc, HTTP2_ERROR_PROTOCOL_ERROR, 0);
+      return;
+    }
+  if (PREDICT_FALSE (fh.length > hc->settings.max_frame_size))
+    {
+      HTTP_DBG (1, "frame length %lu exceeded SETTINGS_MAX_FRAME_SIZE %lu", fh.length,
+		hc->settings.max_frame_size);
+      http2_connection_error (hc, HTTP2_ERROR_FRAME_SIZE_ERROR, 0);
+      return;
+    }
+  if (PREDICT_FALSE (fh.length > to_deq))
+    {
+      HTTP_DBG (1, "frame payload not yet received, to deq %lu, frame length %lu", to_deq,
+		fh.length);
+      if (http_io_ts_fifo_size (hc, 1) < (fh.length + HTTP2_FRAME_HEADER_SIZE))
+	{
+	  clib_warning ("ts rx fifo too small to hold frame (%u)",
+			fh.length + HTTP2_FRAME_HEADER_SIZE);
+	  http2_connection_error (hc, HTTP2_ERROR_PROTOCOL_ERROR, 0);
+	}
+      return;
+    }
+  http_io_ts_drain (hc, HTTP2_FRAME_HEADER_SIZE);
+  to_deq -= fh.length;
+  rv = http2_handle_settings_frame (hc, &fh);
+  if (PREDICT_FALSE (rv != HTTP2_ERROR_NO_ERROR))
+    {
+      http2_connection_error (hc, rv, 0);
+      return;
+    }
+  hc->rx_expect = HTTP2_RX_EXPECT_DEFAULT;
+
+  if (to_deq != 0)
+    http2_rx_expect_funcs[hc->rx_expect](hc);
+}
+
+void
+http2_rx_expect_continuation (http_ctx_t *hc)
+{
+  http2_error_t rv;
+  u32 to_deq;
+  u8 *rx_buf;
+  http2_frame_header_t fh;
+
+  HTTP_DBG (1, "hc [%u]%x", hc->c_thread_index, hc->hc_hc_index);
+
+  to_deq = http_io_ts_max_read (hc);
+  if (PREDICT_FALSE (to_deq < HTTP2_FRAME_HEADER_SIZE))
+    {
+      HTTP_DBG (1, "to_deq %u is less than frame header size", to_deq);
+      return;
+    }
+
+  rx_buf = http_get_rx_buf (hc);
+  http_io_ts_read (hc, rx_buf, HTTP2_FRAME_HEADER_SIZE, 1);
+  to_deq -= HTTP2_FRAME_HEADER_SIZE;
+  http2_frame_header_read (rx_buf, &fh);
+  if (PREDICT_FALSE (fh.type != HTTP2_FRAME_TYPE_CONTINUATION))
+    {
+      HTTP_DBG (1, "expected CONTINUATION frame");
+      http2_connection_error (hc, HTTP2_ERROR_PROTOCOL_ERROR, 0);
+      return;
+    }
+  if (PREDICT_FALSE (fh.length > hc->settings.max_frame_size))
+    {
+      HTTP_DBG (1, "frame length %lu exceeded SETTINGS_MAX_FRAME_SIZE %lu", fh.length,
+		hc->settings.max_frame_size);
+      http2_connection_error (hc, HTTP2_ERROR_FRAME_SIZE_ERROR, 0);
+      return;
+    }
+  if (fh.length > to_deq)
+    {
+      HTTP_DBG (1, "frame payload not yet received, to deq %lu, frame length %lu", to_deq,
+		fh.length);
+      if (PREDICT_FALSE (http_io_ts_fifo_size (hc, 1) < (fh.length + HTTP2_FRAME_HEADER_SIZE)))
+	{
+	  clib_warning ("ts rx fifo too small to hold frame (%u)",
+			fh.length + HTTP2_FRAME_HEADER_SIZE);
+	  http2_connection_error (hc, HTTP2_ERROR_PROTOCOL_ERROR, 0);
+	}
+      return;
+    }
+  http_io_ts_drain (hc, HTTP2_FRAME_HEADER_SIZE);
+  to_deq -= fh.length;
+  rv = http2_handle_continuation_frame (hc, &fh);
+  if (PREDICT_FALSE (rv != HTTP2_ERROR_NO_ERROR))
+    {
+      http2_connection_error (hc, rv, 0);
+      return;
+    }
+
+  if (to_deq == 0)
+    return;
+
+  http2_rx_expect_funcs[hc->rx_expect](hc);
+}
+
+void
+http2_rx_expect_default (http_ctx_t *hc)
+{
+  http2_frame_header_t fh;
+  u32 to_deq;
+  u8 *rx_buf;
+  http2_error_t rv;
+  u32 hc_index = hc->hc_hc_index;
+  clib_thread_index_t thread_index = hc->c_thread_index;
+
+  to_deq = http_io_ts_max_read (hc);
+  rx_buf = http_get_rx_buf (hc);
+
   while (to_deq >= HTTP2_FRAME_HEADER_SIZE)
     {
-      rx_buf = http_get_rx_buf (hc);
       http_io_ts_read (hc, rx_buf, HTTP2_FRAME_HEADER_SIZE, 1);
       to_deq -= HTTP2_FRAME_HEADER_SIZE;
       http2_frame_header_read (rx_buf, &fh);
-      if (fh.length > hc->settings.max_frame_size)
+      if (PREDICT_FALSE (fh.length > hc->settings.max_frame_size))
 	{
 	  HTTP_DBG (1, "frame length %lu exceeded SETTINGS_MAX_FRAME_SIZE %lu", fh.length,
 		    hc->settings.max_frame_size);
@@ -3111,11 +3245,9 @@ http2_transport_rx_callback (http_ctx_t *hc)
 	}
       if (fh.length > to_deq)
 	{
-	  HTTP_DBG (
-	    1, "frame payload not yet received, to deq %lu, frame length %lu",
-	    to_deq, fh.length);
-	  if (http_io_ts_fifo_size (hc, 1) <
-	      (fh.length + HTTP2_FRAME_HEADER_SIZE))
+	  HTTP_DBG (1, "frame payload not yet received, to deq %lu, frame length %lu", to_deq,
+		    fh.length);
+	  if (PREDICT_FALSE (http_io_ts_fifo_size (hc, 1) < (fh.length + HTTP2_FRAME_HEADER_SIZE)))
 	    {
 	      clib_warning ("ts rx fifo too small to hold frame (%u)",
 			    fh.length + HTTP2_FRAME_HEADER_SIZE);
@@ -3126,22 +3258,8 @@ http2_transport_rx_callback (http_ctx_t *hc)
       http_io_ts_drain (hc, HTTP2_FRAME_HEADER_SIZE);
       to_deq -= fh.length;
 
-      HTTP_DBG (1, "frame type 0x%02x len %u stream-id %u flags 0x%01x",
-		fh.type, fh.length, fh.stream_id, fh.flags);
-
-      if ((hc->flags & HTTP_CONN_F_EXPECT_CONTINUATION) && fh.type != HTTP2_FRAME_TYPE_CONTINUATION)
-	{
-	  HTTP_DBG (1, "expected CONTINUATION frame");
-	  http2_connection_error (hc, HTTP2_ERROR_PROTOCOL_ERROR, 0);
-	  return;
-	}
-
-      if ((hc->flags & HTTP_CONN_F_EXPECT_SERVER_SETTINGS) && fh.type != HTTP2_FRAME_TYPE_SETTINGS)
-	{
-	  HTTP_DBG (1, "expected SETTINGS frame (server preface)");
-	  http2_connection_error (hc, HTTP2_ERROR_PROTOCOL_ERROR, 0);
-	  return;
-	}
+      HTTP_DBG (1, "frame type 0x%02x len %u stream-id %u flags 0x%01x", fh.type, fh.length,
+		fh.stream_id, fh.flags);
 
       switch (fh.type)
 	{
@@ -3175,7 +3293,8 @@ http2_transport_rx_callback (http_ctx_t *hc)
 	  rv = http2_handle_ping_frame (hc, &fh);
 	  break;
 	case HTTP2_FRAME_TYPE_CONTINUATION:
-	  rv = http2_handle_continuation_frame (hc, &fh);
+	  HTTP_DBG (1, "unexpected CONTINUATION frame");
+	  rv = HTTP2_ERROR_PROTOCOL_ERROR;
 	  break;
 	case HTTP2_FRAME_TYPE_PUSH_PROMISE:
 	  rv = http2_handle_push_promise (hc, &fh);
@@ -3192,12 +3311,27 @@ http2_transport_rx_callback (http_ctx_t *hc)
       /* pool might grow, regrab connection */
       hc = http_ctx_get_w_thread (hc_index, thread_index);
 
-      if (rv != HTTP2_ERROR_NO_ERROR)
+      if (PREDICT_FALSE (rv != HTTP2_ERROR_NO_ERROR))
 	{
+	  if (rv == HTTP2_ERROR_EXPECT_CONTINUATION)
+	    return;
 	  http2_connection_error (hc, rv, 0);
 	  return;
 	}
     }
+}
+
+static void
+http2_transport_rx_callback (http_ctx_t *hc)
+{
+  u32 hc_index = hc->hc_hc_index;
+  clib_thread_index_t thread_index = hc->c_thread_index;
+
+  HTTP_DBG (1, "hc [%u]%x", hc->c_thread_index, hc->hc_hc_index);
+  http2_rx_expect_funcs[hc->rx_expect](hc);
+
+  /* pool might grow, regrab connection */
+  hc = http_ctx_get_w_thread (hc_index, thread_index);
 
   /* send connection window update if more than half consumed */
   if (hc->our_window < HTTP2_CONNECTION_WINDOW_SIZE / 2)
@@ -3371,7 +3505,6 @@ static void
 http2_conn_accept_callback (http_ctx_t *hc)
 {
   HTTP_DBG (1, "hc [%u]%x", hc->c_thread_index, hc->hc_hc_index);
-  hc->flags |= HTTP_CONN_F_EXPECT_PREFACE;
   http2_conn_init (hc, 0);
 }
 

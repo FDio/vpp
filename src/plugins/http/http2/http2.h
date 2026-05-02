@@ -10,25 +10,26 @@
 #include <http/http_private.h>
 
 /* RFC9113 section 7 */
-#define foreach_http2_error                                                   \
-  _ (NO_ERROR, "NO_ERROR")                                                    \
-  _ (PROTOCOL_ERROR, "PROTOCOL_ERROR")                                        \
-  _ (INTERNAL_ERROR, "INTERNAL_ERROR")                                        \
-  _ (FLOW_CONTROL_ERROR, "FLOW_CONTROL_ERROR")                                \
-  _ (SETTINGS_TIMEOUT, "SETTINGS_TIMEOUT")                                    \
-  _ (STREAM_CLOSED, "STREAM_CLOSED")                                          \
-  _ (FRAME_SIZE_ERROR, "FRAME_SIZE_ERROR")                                    \
-  _ (REFUSED_STREAM, "REFUSED_STREAM")                                        \
-  _ (CANCEL, "CANCEL")                                                        \
-  _ (COMPRESSION_ERROR, "COMPRESSION_ERROR")                                  \
-  _ (CONNECT_ERROR, "CONNECT_ERROR")                                          \
-  _ (ENHANCE_YOUR_CALM, "ENHANCE_YOUR_CALM")                                  \
-  _ (INADEQUATE_SECURITY, "INADEQUATE_SECURITY")                              \
-  _ (HTTP_1_1_REQUIRED, "HTTP_1_1_REQUIRED")
+#define foreach_http2_error                                                                        \
+  _ (NO_ERROR, "NO_ERROR", 0x00)                                                                   \
+  _ (PROTOCOL_ERROR, "PROTOCOL_ERROR", 0x01)                                                       \
+  _ (INTERNAL_ERROR, "INTERNAL_ERROR", 0x02)                                                       \
+  _ (FLOW_CONTROL_ERROR, "FLOW_CONTROL_ERROR", 0x03)                                               \
+  _ (SETTINGS_TIMEOUT, "SETTINGS_TIMEOUT", 0x04)                                                   \
+  _ (STREAM_CLOSED, "STREAM_CLOSED", 0x05)                                                         \
+  _ (FRAME_SIZE_ERROR, "FRAME_SIZE_ERROR", 0x06)                                                   \
+  _ (REFUSED_STREAM, "REFUSED_STREAM", 0x07)                                                       \
+  _ (CANCEL, "CANCEL", 0x08)                                                                       \
+  _ (COMPRESSION_ERROR, "COMPRESSION_ERROR", 0x09)                                                 \
+  _ (CONNECT_ERROR, "CONNECT_ERROR", 0x0A)                                                         \
+  _ (ENHANCE_YOUR_CALM, "ENHANCE_YOUR_CALM", 0x0B)                                                 \
+  _ (INADEQUATE_SECURITY, "INADEQUATE_SECURITY", 0x0C)                                             \
+  _ (HTTP_1_1_REQUIRED, "HTTP_1_1_REQUIRED", 0x0D)                                                 \
+  _ (EXPECT_CONTINUATION, "EXPECT_CONTINUATION", 0xFFFFFFFF) /* internal use only */
 
 typedef enum http2_error_ : u32
 {
-#define _(s, str) HTTP2_ERROR_##s,
+#define _(s, str, val) HTTP2_ERROR_##s = (val),
   foreach_http2_error
 #undef _
 } http2_error_t;
@@ -41,7 +42,7 @@ format_http2_error (u8 *s, va_list *va)
 
   switch (e)
     {
-#define _(s, str)                                                                                  \
+#define _(s, str, val)                                                                             \
   case HTTP2_ERROR_##s:                                                                            \
     t = (u8 *) (str);                                                                              \
     break;
