@@ -15,16 +15,10 @@ static const iavf_rx_desc_qw1_t mask_dd = { .dd = 1 };
 static const iavf_rx_desc_qw1_t mask_ipe = { .ipe = 1 };
 static const iavf_rx_desc_qw1_t mask_dd_eop = { .dd = 1, .eop = 1 };
 
-static_always_inline int
-iavf_rxd_is_not_eop (iavf_rx_desc_t *d)
+static_always_inline u64
+iavf_rx_desc_qw1_load (iavf_rx_desc_t *d)
 {
-  return (d->qw1.as_u64 & mask_eop.as_u64) == 0;
-}
-
-static_always_inline int
-iavf_rxd_is_not_dd (iavf_rx_desc_t *d)
-{
-  return (d->qw1.as_u64 & mask_dd.as_u64) == 0;
+  return __atomic_load_n (d->qword + 1, __ATOMIC_ACQUIRE);
 }
 
 static_always_inline void
@@ -274,7 +268,7 @@ iavf_device_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
   /* is there anything on the ring */
   d = descs + next;
-  if ((d->qword[1] & mask_dd.as_u64) == 0)
+  if ((iavf_rx_desc_qw1_load (d) & mask_dd.as_u64) == 0)
     goto done;
 
   vlib_get_new_next_frame (vm, node, next_index, to_next, n_left_to_next);
@@ -352,37 +346,47 @@ iavf_device_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 #endif
       clib_prefetch_load ((void *) (descs + ((next + 8) & mask)));
 
-      if (iavf_rxd_is_not_dd (d))
+      u64 first_qw1 = iavf_rx_desc_qw1_load (d);
+
+      if ((first_qw1 & mask_dd.as_u64) == 0)
 	break;
 
       bi[0] = arq->buffer_indices[next];
 
       /* deal with chained buffers */
-      if (PREDICT_FALSE (iavf_rxd_is_not_eop (d)))
+      if (PREDICT_FALSE ((first_qw1 & mask_eop.as_u64) == 0))
 	{
 	  u16 tail_desc = 0;
 	  u16 tail_next = next;
 	  iavf_rx_tail_t *tail = rtd->tails + n_rx_packets;
 	  iavf_rx_desc_t *td;
+	  u64 tail_qw1;
 	  do
 	    {
 	      tail_next = (tail_next + 1) & mask;
 	      td = descs + tail_next;
+	      tail_qw1 = iavf_rx_desc_qw1_load (td);
 
 	      /* bail out in case of incomplete transaction */
-	      if (iavf_rxd_is_not_dd (td))
+	      if ((tail_qw1 & mask_dd.as_u64) == 0)
 		goto no_more_desc;
 
-	      or_qw1 |= tail->qw1s[tail_desc] = td[0].qword[1];
+	      if (PREDICT_FALSE (tail_desc >= IAVF_RX_MAX_DESC_IN_CHAIN - 1))
+		{
+		  vlib_error_count (vm, node->node_index, IAVF_RX_NODE_CTR_CHAIN_TOO_LONG, 1);
+		  goto no_more_desc;
+		}
+
+	      or_qw1 |= tail->qw1s[tail_desc] = tail_qw1;
 	      tail->buffers[tail_desc] = arq->buffer_indices[tail_next];
 	      tail_desc++;
 	    }
-	  while (iavf_rxd_is_not_eop (td));
+	  while ((tail_qw1 & mask_eop.as_u64) == 0);
 	  next = tail_next;
 	  n_tail_desc += tail_desc;
 	}
 
-      or_qw1 |= rtd->qw1s[n_rx_packets] = d[0].qword[1];
+      or_qw1 |= rtd->qw1s[n_rx_packets] = first_qw1;
       if (PREDICT_FALSE (with_flows))
 	{
 	  rtd->flow_ids[n_rx_packets] = d[0].fdid_flex_hi;
