@@ -285,12 +285,13 @@ typedef enum transport_endpt_ext_cfg_type_
   TRANSPORT_ENDPT_EXT_CFG_HTTP,
 } transport_endpt_ext_cfg_type_t;
 
-#define foreach_tls_verify_cfg                                                \
-  _ (NONE, "none")                                                            \
-  _ (PEER, "peer")                                                            \
-  _ (PEER_CERT, "peer-cert")                                                  \
-  _ (HOSTNAME, "hostname")                                                    \
-  _ (HOSTNAME_STRICT, "hostname-strict")
+#define foreach_tls_verify_cfg                                                                     \
+  _ (NONE, "none")                                                                                 \
+  _ (PEER, "peer")                                                                                 \
+  _ (PEER_CERT, "peer-cert")                                                                       \
+  _ (HOSTNAME, "hostname")                                                                         \
+  _ (HOSTNAME_STRICT, "hostname-strict")                                                           \
+  _ (PEER_CERT_APP_VERIFY, "peer-cert-app-verify")
 
 enum tls_verify_cfg_bit_
 {
