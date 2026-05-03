@@ -61,7 +61,7 @@ typedef struct
   u32 length;
   http2_frame_type_t type;
   u8 flags;
-  u32 stream_id;
+  u32 stream_id; /* network order */
 } http2_frame_header_t;
 
 typedef struct
@@ -137,7 +137,7 @@ http2_error_t http2_frame_read_window_update (u32 *increment, u8 *payload,
  * Write WINDOW_UPDATE frame to the end of given vector
  *
  * @param increment Window increment value
- * @param stream_id Stream ID
+ * @param stream_id Stream ID in network byte order
  * @param dst       Vector where WINDOW_UPDATE frame will be written
  */
 void http2_frame_write_window_update (u32 increment, u32 stream_id, u8 **dst);
@@ -158,7 +158,7 @@ http2_error_t http2_frame_read_rst_stream (u32 *error_code, u8 *payload,
  * Write RST_STREAM frame to the end of given vector
  *
  * @param error_code Error code
- * @param stream_id  Stream ID, except 0
+ * @param stream_id  Stream ID in network byte order, except 0
  * @param dst        Vector where RST_STREAM frame will be written
  */
 void http2_frame_write_rst_stream (http2_error_t error_code, u32 stream_id,
@@ -181,7 +181,7 @@ http2_error_t http2_frame_read_goaway (u32 *error_code, u32 *last_stream_id,
  * Write GOAWAY frame to the end of given vector
  *
  * @param error_code     Error code
- * @param last_stream_id Last stream ID
+ * @param last_stream_id Last stream ID in network byte order
  * @param dst            Vector where GOAWAY frame will be written
  */
 void http2_frame_write_goaway (http2_error_t error_code, u32 last_stream_id,
@@ -215,7 +215,7 @@ http2_error_t http2_frame_read_headers (u8 **headers, u32 *headers_len,
  * Write HEADERS frame header
  *
  * @param headers_len Header block fragment length
- * @param stream_id   Stream ID, except 0
+ * @param stream_id   Stream ID in network byte order, except 0
  * @param flags       Frame header flags
  * @param dst         Pointer where frame header will be written
  *
@@ -228,7 +228,7 @@ void http2_frame_write_headers_header (u32 headers_len, u32 stream_id,
  * Write CONTINUATION frame header
  *
  * @param headers_len Header block fragment length
- * @param stream_id   Stream ID, except 0
+ * @param stream_id   Stream ID in network byte order, except 0
  * @param flags       Frame header flags
  * @param dst         Pointer where frame header will be written
  *
@@ -255,7 +255,7 @@ http2_error_t http2_frame_read_data (u8 **data, u32 *data_len, u8 *payload,
  * Write DATA frame header
  *
  * @param data_len  Data length
- * @param stream_id Stream ID, except 0
+ * @param stream_id Stream ID in network byte order, except 0
  * @param flags     Frame header flags
  * @param dst       Pointer where frame header will be written
  */

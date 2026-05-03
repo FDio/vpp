@@ -235,7 +235,7 @@ typedef struct
 
 typedef struct
 {
-  u32 stream_id;
+  u32 stream_id; /* network order */
   u32 error;
 } http2_rst_stream_t;
 
@@ -351,8 +351,8 @@ typedef struct http_ctx_
 	struct
 	{
 	  /* http2 */
-	  u32 last_opened_stream_id;
-	  u32 last_processed_stream_id;
+	  u32 last_opened_stream_id;	/* host order */
+	  u32 last_processed_stream_id; /* network order */
 	  u32 peer_window;
 	  u32 our_window;
 	  u32 unsent_headers_offset;
@@ -437,7 +437,7 @@ typedef struct http_ctx_
 	  /* http2 */
 	  http2_stream_state_t stream_state;
 	  http_req_state_t app_reply_next_state;
-	  u32 stream_id;
+	  u32 stream_id;	  /* network order */
 	  i32 peer_stream_window; /* can become negative after settings change */
 	  u32 our_stream_window;
 	  u32 payload_len;

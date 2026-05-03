@@ -1476,7 +1476,7 @@ http_test_h2_frame (vlib_main_t *vm)
 		      0x0, 0x5, 0x0, 0x0, 0x0, 0x01 };
   _http2_frame_header_read (rst_stream, &fh);
   HTTP_TEST ((fh.flags == 0 && fh.type == HTTP2_FRAME_TYPE_RST_STREAM &&
-	      fh.stream_id == 5 && fh.length == 4),
+	      clib_net_to_host_u32 (fh.stream_id) == 5 && fh.length == 4),
 	     "frame identified as RST_STREAM");
 
   rv = _http2_frame_read_rst_stream (
@@ -1493,7 +1493,7 @@ http_test_h2_frame (vlib_main_t *vm)
   _http2_frame_write_rst_stream =
     vlib_get_plugin_symbol ("http_plugin.so", "http2_frame_write_rst_stream");
 
-  _http2_frame_write_rst_stream (HTTP2_ERROR_PROTOCOL_ERROR, 5, &buf);
+  _http2_frame_write_rst_stream (HTTP2_ERROR_PROTOCOL_ERROR, clib_host_to_net_u32 (5), &buf);
   HTTP_TEST ((vec_len (buf) == sizeof (rst_stream) &&
 	      !memcmp (buf, rst_stream, sizeof (rst_stream))),
 	     "RST_STREAM frame written");
@@ -1530,7 +1530,7 @@ http_test_h2_frame (vlib_main_t *vm)
   _http2_frame_write_goaway =
     vlib_get_plugin_symbol ("http_plugin.so", "http2_frame_write_goaway");
 
-  _http2_frame_write_goaway (HTTP2_ERROR_INTERNAL_ERROR, 5, &buf);
+  _http2_frame_write_goaway (HTTP2_ERROR_INTERNAL_ERROR, clib_host_to_net_u32 (5), &buf);
   HTTP_TEST ((vec_len (buf) == sizeof (goaway) &&
 	      !memcmp (buf, goaway, sizeof (goaway))),
 	     "GOAWAY frame written");
@@ -1553,9 +1553,8 @@ http_test_h2_frame (vlib_main_t *vm)
 		   0xab, 0xb8, 0x15, 0xc1, 0x53, 0x3,  0x2a, 0x2f, 0x2a };
 
   _http2_frame_header_read (headers, &fh);
-  HTTP_TEST ((fh.flags ==
-		(HTTP2_FRAME_FLAG_END_HEADERS | HTTP2_FRAME_FLAG_END_STREAM) &&
-	      fh.type == HTTP2_FRAME_TYPE_HEADERS && fh.stream_id == 3 &&
+  HTTP_TEST ((fh.flags == (HTTP2_FRAME_FLAG_END_HEADERS | HTTP2_FRAME_FLAG_END_STREAM) &&
+	      fh.type == HTTP2_FRAME_TYPE_HEADERS && clib_net_to_host_u32 (fh.stream_id) == 3 &&
 	      fh.length == 40),
 	     "frame identified as HEADERS");
 
@@ -1574,8 +1573,8 @@ http_test_h2_frame (vlib_main_t *vm)
     "http_plugin.so", "http2_frame_write_headers_header");
 
   u8 *p = http2_frame_header_alloc (&buf);
-  _http2_frame_write_headers_header (
-    40, 3, HTTP2_FRAME_FLAG_END_HEADERS | HTTP2_FRAME_FLAG_END_STREAM, p);
+  _http2_frame_write_headers_header (40, clib_host_to_net_u32 (3),
+				     HTTP2_FRAME_FLAG_END_HEADERS | HTTP2_FRAME_FLAG_END_STREAM, p);
   HTTP_TEST ((vec_len (buf) == HTTP2_FRAME_HEADER_SIZE &&
 	      !memcmp (buf, headers, HTTP2_FRAME_HEADER_SIZE)),
 	     "HEADERS frame header written");
@@ -1595,9 +1594,8 @@ http_test_h2_frame (vlib_main_t *vm)
 		0x6e, 0x6f, 0x74, 0x20, 0x66, 0x6f, 0x75, 0x6e, 0x64 };
 
   _http2_frame_header_read (data, &fh);
-  HTTP_TEST ((fh.flags == HTTP2_FRAME_FLAG_END_STREAM &&
-	      fh.type == HTTP2_FRAME_TYPE_DATA && fh.stream_id == 3 &&
-	      fh.length == 9),
+  HTTP_TEST ((fh.flags == HTTP2_FRAME_FLAG_END_STREAM && fh.type == HTTP2_FRAME_TYPE_DATA &&
+	      clib_net_to_host_u32 (fh.stream_id) == 3 && fh.length == 9),
 	     "frame identified as DATA");
 
   rv = _http2_frame_read_data (&d, &d_len, data + HTTP2_FRAME_HEADER_SIZE,
@@ -1615,7 +1613,7 @@ http_test_h2_frame (vlib_main_t *vm)
     vlib_get_plugin_symbol ("http_plugin.so", "http2_frame_write_data_header");
 
   p = http2_frame_header_alloc (&buf);
-  _http2_frame_write_data_header (9, 3, HTTP2_FRAME_FLAG_END_STREAM, p);
+  _http2_frame_write_data_header (9, clib_host_to_net_u32 (3), HTTP2_FRAME_FLAG_END_STREAM, p);
   HTTP_TEST ((vec_len (buf) == HTTP2_FRAME_HEADER_SIZE &&
 	      !memcmp (buf, data, HTTP2_FRAME_HEADER_SIZE)),
 	     "DATA frame header written");
