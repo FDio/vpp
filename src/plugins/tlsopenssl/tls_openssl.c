@@ -1117,9 +1117,16 @@ openssl_make_verify_flags (tls_verify_cfg_t verify_cfg)
 }
 
 static int
+openssl_app_verify_cb (int preverify_ok __clib_unused, X509_STORE_CTX *x509_ctx __clib_unused)
+{
+  return 1;
+}
+
+static int
 openssl_client_set_verify (tls_ctx_t *ctx)
 {
   openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
+  int (*verify_cb) (int, X509_STORE_CTX *) = 0;
 
   if (ctx->verify_cfg & (TLS_VERIFY_F_HOSTNAME | TLS_VERIFY_F_HOSTNAME_STRICT))
     {
@@ -1144,7 +1151,10 @@ openssl_client_set_verify (tls_ctx_t *ctx)
 	    }
 	}
     }
-  SSL_set_verify (oc->ssl, openssl_make_verify_flags (ctx->verify_cfg), 0);
+  if (ctx->verify_cfg & TLS_VERIFY_F_PEER_CERT_APP_VERIFY)
+    verify_cb = openssl_app_verify_cb;
+
+  SSL_set_verify (oc->ssl, openssl_make_verify_flags (ctx->verify_cfg), verify_cb);
 
   return 0;
 }
@@ -1370,8 +1380,12 @@ openssl_start_listen (tls_ctx_t * lctx)
 
   if (lctx->verify_cfg)
     {
-      SSL_CTX_set_verify (ssl_ctx,
-			  openssl_make_verify_flags (lctx->verify_cfg), 0);
+      int (*verify_cb) (int, X509_STORE_CTX *) = 0;
+
+      if (lctx->verify_cfg & TLS_VERIFY_F_PEER_CERT_APP_VERIFY)
+	verify_cb = openssl_app_verify_cb;
+
+      SSL_CTX_set_verify (ssl_ctx, openssl_make_verify_flags (lctx->verify_cfg), verify_cb);
       /* Set the cert store for client verification */
       if (lctx->ca_trust_index)
 	{
