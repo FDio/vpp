@@ -248,7 +248,7 @@ http2_conn_get_next_stream_id (http_ctx_t *hc)
     hc->last_opened_stream_id += 2;
   else
     hc->last_opened_stream_id = 1;
-  return hc->last_opened_stream_id;
+  return clib_host_to_net_u32 (hc->last_opened_stream_id);
 }
 
 always_inline void
@@ -2100,7 +2100,7 @@ http2_handle_headers_frame (http_ctx_t *hc, http2_frame_header_t *fh)
 {
   http_ctx_t *req;
   u8 *rx_buf, *headers_start;
-  u32 headers_len;
+  u32 headers_len, stream_id_ho;
   uword n_del, n_dec;
   http2_error_t rv;
 
@@ -2112,19 +2112,20 @@ http2_handle_headers_frame (http_ctx_t *hc, http2_frame_header_t *fh)
 
   if (hc->flags & HTTP_CONN_F_IS_SERVER)
     {
+      stream_id_ho = clib_net_to_host_u32 (fh->stream_id);
       /* streams initiated by client must use odd-numbered stream id */
-      if ((fh->stream_id & 1) == 0)
+      if ((stream_id_ho & 1) == 0)
 	{
-	  HTTP_DBG (1, "invalid stream id %u", fh->stream_id);
+	  HTTP_DBG (1, "invalid stream id %u", stream_id_ho);
 	  return HTTP2_ERROR_PROTOCOL_ERROR;
 	}
       /* stream id must be greater than all streams that client has opened */
-      if (fh->stream_id <= hc->last_opened_stream_id)
+      if (stream_id_ho <= hc->last_opened_stream_id)
 	{
-	  HTTP_DBG (1, "closed stream id %u", fh->stream_id);
+	  HTTP_DBG (1, "closed stream id %u", stream_id_ho);
 	  return HTTP2_ERROR_STREAM_CLOSED;
 	}
-      hc->last_opened_stream_id = fh->stream_id;
+      hc->last_opened_stream_id = stream_id_ho;
       if (hc->req_num == hc->settings.max_concurrent_streams)
 	{
 	  HTTP_DBG (1, "SETTINGS_MAX_CONCURRENT_STREAMS exceeded");
@@ -2158,7 +2159,7 @@ http2_handle_headers_frame (http_ctx_t *hc, http2_frame_header_t *fh)
 
       if (!(fh->flags & HTTP2_FRAME_FLAG_END_HEADERS))
 	{
-	  HTTP_DBG (1, "fragmented headers stream id %u", fh->stream_id);
+	  HTTP_DBG (1, "fragmented headers stream id %u", stream_id_ho);
 	  hc->rx_expect = HTTP2_RX_EXPECT_CONTINUATION;
 	  vec_validate (hc->unparsed_headers, fh->length - 1);
 	  http_io_ts_read (hc, hc->unparsed_headers, fh->length, 0);
@@ -2207,7 +2208,7 @@ http2_handle_headers_frame (http_ctx_t *hc, http2_frame_header_t *fh)
 
       if (!(fh->flags & HTTP2_FRAME_FLAG_END_HEADERS))
 	{
-	  HTTP_DBG (1, "fragmented headers stream id %u", fh->stream_id);
+	  HTTP_DBG (1, "fragmented headers stream id %u", clib_net_to_host_u32 (fh->stream_id));
 	  hc->rx_expect = HTTP2_RX_EXPECT_CONTINUATION;
 	  vec_validate (hc->unparsed_headers, fh->length - 1);
 	  http_io_ts_read (hc, hc->unparsed_headers, fh->length, 0);
@@ -2256,9 +2257,9 @@ http2_handle_continuation_frame (http_ctx_t *hc, http2_frame_header_t *fh)
       return HTTP2_ERROR_FRAME_SIZE_ERROR;
     }
 
-  if (fh->stream_id != hc->last_opened_stream_id)
+  if (clib_net_to_host_u32 (fh->stream_id) != hc->last_opened_stream_id)
     {
-      HTTP_DBG (1, "invalid stream id %u", fh->stream_id);
+      HTTP_DBG (1, "invalid stream id %u", clib_net_to_host_u32 (fh->stream_id));
       return HTTP2_ERROR_PROTOCOL_ERROR;
     }
 
@@ -2298,7 +2299,7 @@ http2_handle_data_frame (http_ctx_t *hc, http2_frame_header_t *fh)
 
   if (!req)
     {
-      if (fh->stream_id <= hc->last_opened_stream_id)
+      if (clib_net_to_host_u32 (fh->stream_id) <= hc->last_opened_stream_id)
 	{
 	  HTTP_DBG (1, "stream closed, ignoring frame");
 	  http_io_ts_drain (hc, fh->length);
@@ -2411,7 +2412,7 @@ http2_handle_window_update_frame (http_ctx_t *hc, http2_frame_header_t *fh)
   if (rv != HTTP2_ERROR_NO_ERROR)
     {
       HTTP_DBG (1, "invalid WINDOW_UPDATE frame (stream id %u)",
-		fh->stream_id);
+		clib_net_to_host_u32 (fh->stream_id));
       /* error on the connection flow-control window is connection error */
       if (fh->stream_id == 0)
 	return rv;
@@ -2425,7 +2426,7 @@ http2_handle_window_update_frame (http_ctx_t *hc, http2_frame_header_t *fh)
     }
 
   HTTP_DBG (1, "WINDOW_UPDATE %u (stream id %u)", win_increment,
-	    fh->stream_id);
+	    clib_net_to_host_u32 (fh->stream_id));
   if (fh->stream_id == 0)
     {
       if (win_increment > (HTTP2_WIN_SIZE_MAX - hc->peer_window))
@@ -2441,12 +2442,10 @@ http2_handle_window_update_frame (http_ctx_t *hc, http2_frame_header_t *fh)
       req = http2_conn_get_req (hc, fh->stream_id);
       if (!req)
 	{
-	  if (fh->stream_id > hc->last_opened_stream_id)
+	  if (clib_net_to_host_u32 (fh->stream_id) > hc->last_opened_stream_id)
 	    {
-	      HTTP_DBG (
-		1,
-		"received WINDOW_UPDATE frame on idle stream (stream id %u)",
-		fh->stream_id);
+	      HTTP_DBG (1, "received WINDOW_UPDATE frame on idle stream (stream id %u)",
+			clib_net_to_host_u32 (fh->stream_id));
 	      return HTTP2_ERROR_PROTOCOL_ERROR;
 	    }
 	  /* ignore window update on closed stream */
@@ -2573,7 +2572,7 @@ http2_handle_rst_stream_frame (http_ctx_t *hc, http2_frame_header_t *fh)
   req = http2_conn_get_req (hc, fh->stream_id);
   if (!req)
     {
-      if (fh->stream_id <= hc->last_opened_stream_id)
+      if (clib_net_to_host_u32 (fh->stream_id) <= hc->last_opened_stream_id)
 	{
 	  /* we reset stream, but peer might send something meanwhile */
 	  HTTP_DBG (1, "stream closed, ignoring frame");
