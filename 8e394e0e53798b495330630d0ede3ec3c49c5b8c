@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "51c8fc15_843ccd10",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 8
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-05-04T11:46:23Z",
+      "side": 1,
+      "message": "if a route is configured to forward traffic via an MP2P tunnel interface (which is possible since it uses the P2P HW class), the encap would proceed with a 0.0.0.0 dst address. It would be better to actually forbid it.",
+      "revId": "8e394e0e53798b495330630d0ede3ec3c49c5b8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a598d93f_074b0bd5",
+        "filename": "test/test_ipip.py",
+        "patchSetId": 8
+      },
+      "lineNbr": 1394,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-05-04T11:46:23Z",
+      "side": 1,
+      "message": "why is it needed here but not for ip4 above?",
+      "revId": "8e394e0e53798b495330630d0ede3ec3c49c5b8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
