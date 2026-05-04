@@ -384,9 +384,17 @@ typedef struct transport_endpt_crypto_cfg_
   u8 hostname[256];	       /**< full domain len is 255 as per rfc 3986 */
 } transport_endpt_crypto_cfg_t;
 
+typedef enum tls_cert_flags_
+{
+  TLS_CERT_F_LEAF = 1 << 0,
+  TLS_CERT_F_CHAIN = 1 << 1,
+} tls_cert_flags_t;
+
 typedef struct tls_cert_
 {
-  void *cert;
+  void *cert;  /**< leaf cert, engine native; OpenSSL: caller-owned X509* */
+  void *chain; /**< cert chain, engine native; OpenSSL: borrowed STACK_OF(X509)* */
+  u32 flags;   /**< requested on input and valid TLS_CERT_F_* values on output */
 } tls_cert_t;
 
 typedef struct tls_profile_info_
