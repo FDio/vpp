@@ -650,10 +650,10 @@ CLIB_MARCH_FN (npol_match, int, u32 sw_if_index, u32 is_inbound,
     }
   policies = is_inbound ^ if_config->invert_rx_tx ? if_config->rx_policies :
 						    if_config->tx_policies;
-  policy_default =
-    is_inbound ? if_config->policy_default_rx : if_config->policy_default_tx;
-  profile_default =
-    is_inbound ? if_config->profile_default_rx : if_config->profile_default_tx;
+  policy_default = is_inbound ^ if_config->invert_rx_tx ? if_config->policy_default_rx :
+							  if_config->policy_default_tx;
+  profile_default = is_inbound ^ if_config->invert_rx_tx ? if_config->profile_default_rx :
+							   if_config->profile_default_tx;
 
   vec_foreach_index (i, policies)
     {
