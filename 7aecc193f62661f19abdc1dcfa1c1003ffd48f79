@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5d3f3c60_e60e5f7b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-05-04T22:13:41Z",
+      "side": 1,
+      "message": "instead of wasting cycles on damage control, you can just tell card what is max rx frame size and that will enforce max chain length",
+      "revId": "7aecc193f62661f19abdc1dcfa1c1003ffd48f79",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
