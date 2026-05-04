@@ -33,6 +33,24 @@
       "message": "This looks good but is there a way to test it?",
       "revId": "64ad0c913b3e2f7adc61999373db925b751e53dc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a191d1d1_fb8e1224",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2026-05-04T23:14:29Z",
+      "side": 1,
+      "message": "I added a unit test for IPv4 to the second patchset.\n\nThe problem is easy to reproduce for IPv4, but I did not find a way to cause one of the errors to occur with IPv6. The IPv6 code is structured the same as the IPv4 code and it is clear that buffers will leak if you hit one of those errors, but I don\u0027t know how to contsruct a packet that would cause the issue on IPv6.",
+      "parentUuid": "3f19b7e5_332786ee",
+      "revId": "64ad0c913b3e2f7adc61999373db925b751e53dc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
