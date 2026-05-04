@@ -183,7 +183,7 @@ echo_client_rx_test_bytes (session_t *s)
 static uword
 ec_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
-  u32 *conn_indices, *conns_this_batch, nconns_this_batch;
+  u32 *conn_indices, *conns_this_batch, nconns_this_batch, n_active_conn;
   int thread_index = vm->thread_index, i, delete_session;
   ec_main_t *ecm = &ec_main;
   echo_test_worker_t *wrk;
@@ -271,18 +271,17 @@ ec_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 
 	      vec_delete (conns_this_batch, 1, i);
 	      i--;
-	      clib_atomic_fetch_add (&ecm->ready_connections, -1);
+	      n_active_conn = clib_atomic_sub_fetch (&ecm->ready_connections, 1);
+	      /* Kick the debug CLI process */
+	      if (n_active_conn == 0)
+		{
+		  signal_evt_to_cli (EC_CLI_TEST_DONE);
+		}
 	    }
 	  else
 	    {
 	      ec_err ("session AWOL?");
 	      vec_delete (conns_this_batch, 1, i);
-	    }
-
-	  /* Kick the debug CLI process */
-	  if (ecm->ready_connections == 0)
-	    {
-	      signal_evt_to_cli (EC_CLI_TEST_DONE);
 	    }
 	}
     }
@@ -548,7 +547,7 @@ ec_session_connected_callback (u32 app_index, u32 api_context, session_t *s, ses
   clib_thread_index_t thread_index;
   echo_test_worker_t *wrk;
   const echo_test_proto_vft_t *tp;
-  u32 n_connected;
+  u32 n_connected, n_ready;
 
   if (PREDICT_FALSE (ecm->run_test != EC_STARTING))
     return -1;
@@ -572,8 +571,8 @@ ec_session_connected_callback (u32 app_index, u32 api_context, session_t *s, ses
   tp = &echo_test_main.protos[ecm->cfg.proto];
   n_connected = tp->connected (s, &ecm->cfg, wrk, ecm->app_index);
 
-  clib_atomic_fetch_add (&ecm->ready_connections, n_connected);
-  if (ecm->ready_connections == ecm->expected_connections)
+  n_ready = clib_atomic_add_fetch (&ecm->ready_connections, n_connected);
+  if (n_ready == ecm->expected_connections)
     {
       /* Signal the CLI process that the action is starting... */
       signal_evt_to_cli (EC_CLI_CONNECTS_DONE);
@@ -837,7 +836,7 @@ ec_connect_rpc (void *args)
   while (ci < n_clients)
     {
       /* Crude pacing for call setups  */
-      if (ci - ecm->ready_connections > 128)
+      if (ci - clib_atomic_load_relax_n (&ecm->ready_connections) > 128)
 	{
 	  ecm->connect_conn_index = ci;
 	  break;
