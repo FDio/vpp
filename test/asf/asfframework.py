@@ -390,6 +390,7 @@ class VppAsfTestCase(CPUInterface, unittest.TestCase):
             "unix",
             "{",
             "nodaemon",
+            "nosyslog",
             debug_cli,
             "full-coredump",
             coredump_size,
