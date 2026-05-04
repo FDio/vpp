@@ -2095,12 +2095,24 @@ quic_quicly_ctx_attribute (quic_ctx_t *ctx, u8 is_get, transport_endpt_attr_t *a
     {
     case TRANSPORT_ENDPT_ATTR_TLS_PEER_CERT:
       {
+	u32 requested = attr->tls_peer_cert.flags;
+
+	attr->tls_peer_cert.cert = 0;
+	attr->tls_peer_cert.chain = 0;
+	attr->tls_peer_cert.flags = 0;
+
+	if (!requested)
+	  requested = TLS_CERT_F_LEAF;
+	if (!(requested & TLS_CERT_F_LEAF))
+	  return -1;
+
 	if (quic_ctx_is_stream (ctx))
 	  ctx = quic_quicly_get_quic_ctx (ctx->quic_connection_ctx_id, ctx->c_thread_index);
 	X509 *peer_cert = quic_quicly_crypto_get_peer_cert (ctx);
 	if (peer_cert)
 	  {
 	    attr->tls_peer_cert.cert = peer_cert;
+	    attr->tls_peer_cert.flags = TLS_CERT_F_LEAF;
 	    return 0;
 	  }
 	return -1;

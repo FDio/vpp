@@ -1797,13 +1797,47 @@ openssl_tls_ctx_attribute (tls_ctx_t *ctx, u8 is_get,
     {
     case TRANSPORT_ENDPT_ATTR_TLS_PEER_CERT:
       {
-	X509 *peer_cert = SSL_get_peer_certificate (oc->ssl);
-	if (!peer_cert)
+	u32 requested = attr->tls_peer_cert.flags;
+
+	attr->tls_peer_cert.cert = 0;
+	attr->tls_peer_cert.chain = 0;
+	attr->tls_peer_cert.flags = 0;
+
+	if (!oc->ssl)
 	  {
 	    rv = -1;
 	    break;
 	  }
-	attr->tls_peer_cert.cert = peer_cert;
+
+	if (!requested)
+	  requested = TLS_CERT_F_LEAF;
+
+	if (requested & TLS_CERT_F_LEAF)
+	  {
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	    X509 *peer_cert = SSL_get1_peer_certificate (oc->ssl);
+#else
+	    X509 *peer_cert = SSL_get_peer_certificate (oc->ssl);
+#endif
+	    if (peer_cert)
+	      {
+		attr->tls_peer_cert.cert = peer_cert;
+		attr->tls_peer_cert.flags |= TLS_CERT_F_LEAF;
+	      }
+	  }
+
+	if (requested & TLS_CERT_F_CHAIN)
+	  {
+	    STACK_OF (X509) *chain = SSL_get_peer_cert_chain (oc->ssl);
+	    if (chain && sk_X509_num (chain) > 0)
+	      {
+		attr->tls_peer_cert.chain = chain;
+		attr->tls_peer_cert.flags |= TLS_CERT_F_CHAIN;
+	      }
+	  }
+
+	if (!attr->tls_peer_cert.flags)
+	  rv = -1;
       }
       break;
     case TRANSPORT_ENDPT_ATTR_TLS_PROFILE_INFO:
