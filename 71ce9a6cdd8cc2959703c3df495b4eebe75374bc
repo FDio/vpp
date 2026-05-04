@@ -34,6 +34,24 @@
       "parentUuid": "343c8abc_8f0d4eef",
       "revId": "71ce9a6cdd8cc2959703c3df495b4eebe75374bc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "047649fd_21e5a197",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-05-04T15:13:17Z",
+      "side": 1,
+      "message": "too heavy, does barrier when multicore\nlet\u0027s do it as part of early exit...",
+      "parentUuid": "c4a7b0b2_35a9c540",
+      "revId": "71ce9a6cdd8cc2959703c3df495b4eebe75374bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
