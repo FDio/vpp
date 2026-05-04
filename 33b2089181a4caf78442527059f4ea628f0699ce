@@ -16,6 +16,24 @@
       "message": "I initially was confused and thought that there might be an \"off by one\" type error here because I thought that `u32 start` is the index of the first buffer to examine and `u32 end` is the index of the last buffer to examine. After looking closer, I don\u0027t think there is any error. It looks like the math is right and this will work correctly but the meaning of `u32 end` is not what I expected. It seems like end is actually either \"the index of the last buffer to examine + 1\" or \"the total number of vectors currently in the frame\".\n\nSince I got confused, it might be worthwhile to add a comment explaining it.\n\nOr maybe just eliminate `u32 end`. The only invocations of the function use:\n* start \u003d 0, end \u003d frame-\u003en_vectors in bufmon_count_buffers()\n* start \u003d pnd-\u003esnap[i], end \u003d f-\u003en_vectors in bufmon_dispatch_wrapper()\n\nSo it\u0027s always counting from some point in vector of packets to the end of vector. You could just pass in start and use n_vectors from the frame.\n\nThis is not critical, the code does look like it will work correctly. I just thought the meaning of end is slightly ambiguous.",
       "revId": "33b2089181a4caf78442527059f4ea628f0699ce",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3411ac37_338d9443",
+        "filename": "src/plugins/bufmon/bufmon.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 78,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-05-04T08:27:36Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "1a089da8_3d6be0e8",
+      "revId": "33b2089181a4caf78442527059f4ea628f0699ce",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
