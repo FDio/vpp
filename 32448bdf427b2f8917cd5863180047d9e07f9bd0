@@ -16,6 +16,24 @@
       "message": "Should flow offload configure occur only when `is_lookup_offload` is set to true ?\n\nThe SFDP tests seems to be failing since we attempt to always configure flow offload (even when `is_lookup_offload` is not set), and this should only work if a NIC with flow offload is present \u0026 this causes tests in test_sfdp.py to fail by default.",
       "revId": "32448bdf427b2f8917cd5863180047d9e07f9bd0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "383c2f23_b34cabb8",
+        "filename": "src/plugins/sfdp_services/base/interface_input/interface_input.c",
+        "patchSetId": 30
+      },
+      "lineNbr": 52,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-05-04T08:24:40Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "d8bc93a2_2a541ea8",
+      "revId": "32448bdf427b2f8917cd5863180047d9e07f9bd0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
