@@ -219,8 +219,9 @@ http3_conn_init (u32 parent_index, clib_thread_index_t thread_index, http_ctx_t 
   http_main_t *hm = &http_main;
   http_ctx_t *ctrl_stream;
   u8 *buf, *p;
+  u32 hc_index = hc->hc_hc_index;
 
-  /*open control stream */
+  /* open control stream */
   if (http_connect_transport_stream (parent_index, thread_index, 1,
 				     &ctrl_stream))
     {
@@ -229,6 +230,8 @@ http3_conn_init (u32 parent_index, clib_thread_index_t thread_index, http_ctx_t 
       return -1;
     }
   ctrl_stream->http_req_index = SESSION_INVALID_INDEX;
+  /* pool grow, regrab connection */
+  hc = http_ctx_get_w_thread (hc_index, thread_index);
   hc->our_ctrl_stream_index = ctrl_stream->hc_hc_index;
   hc->settings = hm->h3_settings;
   /* adjust settings according to app rx_fifo size */

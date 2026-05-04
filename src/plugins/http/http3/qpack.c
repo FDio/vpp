@@ -1335,6 +1335,8 @@ qpack_parse_request (u8 *src, u32 src_len, u8 *dst, u32 dst_len,
   hpack_error_t rv;
   u8 *p, *end;
 
+  ASSERT (dst_len);
+
   if (src_len < 3)
     return HTTP3_ERROR_QPACK_DECOMPRESSION_FAILED;
 
@@ -1359,6 +1361,8 @@ qpack_parse_response (u8 *src, u32 src_len, u8 *dst, u32 dst_len,
 {
   hpack_error_t rv;
   u8 *p, *end;
+
+  ASSERT (dst_len);
 
   if (src_len < 3)
     return HTTP3_ERROR_QPACK_DECOMPRESSION_FAILED;
