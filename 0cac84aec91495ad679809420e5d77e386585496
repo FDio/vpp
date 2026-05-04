@@ -1,0 +1,174 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bc6524a8_a5131c04",
+        "filename": "src/plugins/cnat/cnat_inline.h",
+        "patchSetId": 33
+      },
+      "lineNbr": 53,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-05-04T14:47:47Z",
+      "side": 1,
+      "message": "Let\u0027s make this a `scope_id` instead of a `fib_index`",
+      "revId": "0cac84aec91495ad679809420e5d77e386585496",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "302a03a1_fbacf6e3",
+        "filename": "src/plugins/cnat/cnat_inline.h",
+        "patchSetId": 33
+      },
+      "lineNbr": 129,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-05-04T14:47:47Z",
+      "side": 1,
+      "message": "And here it would be\n`ts-\u003ets_scope_id \u003d scope_id`",
+      "revId": "0cac84aec91495ad679809420e5d77e386585496",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cd7643db_55f38876",
+        "filename": "src/plugins/cnat/cnat_inline.h",
+        "patchSetId": 33
+      },
+      "lineNbr": 195,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-05-04T14:47:47Z",
+      "side": 1,
+      "message": "Shouldn\u0027t we keep `ksession-\u003ekey.scope_id` here ?",
+      "revId": "0cac84aec91495ad679809420e5d77e386585496",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f7b723df_e003ddeb",
+        "filename": "src/plugins/cnat/cnat_node.h",
+        "patchSetId": 33
+      },
+      "lineNbr": 84,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-05-04T14:47:47Z",
+      "side": 1,
+      "message": "I think here we should use \n````\nt-\u003ect_scope_id[VLIB_RX] \u003d ts-\u003ets_scope_id[VLIB_RX]\nt-\u003ect_scope_id[VLIB_TX] \u003d ts-\u003ets_scope_id[VLIB_TX]\n````\nAnd display both in the trace output, as this can be called pre and post routing",
+      "revId": "0cac84aec91495ad679809420e5d77e386585496",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1dc2721e_1fa0de4a",
+        "filename": "src/plugins/cnat/cnat_node.h",
+        "patchSetId": 33
+      },
+      "lineNbr": 929,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-05-04T14:47:47Z",
+      "side": 1,
+      "message": "Can we rename `ret_fib_index` to `ret_scope_id` ?",
+      "revId": "0cac84aec91495ad679809420e5d77e386585496",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1c1fbb05_c39870ef",
+        "filename": "src/plugins/cnat/cnat_node_lookup.c",
+        "patchSetId": 33
+      },
+      "lineNbr": 126,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-05-04T14:47:47Z",
+      "side": 1,
+      "message": "I think here by default we should use \n````\nts-\u003ecs_scope_id[TX] \u003d ts-\u003ecs_scope_id[RX] \n````",
+      "revId": "0cac84aec91495ad679809420e5d77e386585496",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1b1f2970_e902dd25",
+        "filename": "src/plugins/cnat/cnat_session.c",
+        "patchSetId": 33
+      },
+      "lineNbr": 285,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-05-04T14:47:47Z",
+      "side": 1,
+      "message": "Let\u0027s try to not grab the timestamp here, and just rely on the session\u0027s",
+      "revId": "0cac84aec91495ad679809420e5d77e386585496",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3c63cbe9_2c8003ac",
+        "filename": "src/plugins/cnat/cnat_session.h",
+        "patchSetId": 33
+      },
+      "lineNbr": 115,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-05-04T14:47:47Z",
+      "side": 1,
+      "message": "This is probably best placed in the cnat doc rather than as a standalone comment",
+      "revId": "0cac84aec91495ad679809420e5d77e386585496",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "63c15a72_32d2351d",
+        "filename": "src/plugins/cnat/cnat_types.h",
+        "patchSetId": 33
+      },
+      "lineNbr": 281,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-05-04T14:47:47Z",
+      "side": 1,
+      "message": "Can we rename it `ts_scope_id` ?\nas `ts_` stands for `timestamp` and `cs_` for `cnat session`\nThe point of these prefixes being to be able to easily grep for unique\nnames without needing any fancy code tracking techiques",
+      "revId": "0cac84aec91495ad679809420e5d77e386585496",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4390fea9_8a96f384",
+        "filename": "src/plugins/cnat/cnat_types.h",
+        "patchSetId": 33
+      },
+      "lineNbr": 287,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-05-04T14:47:47Z",
+      "side": 1,
+      "message": "Let\u0027s remove `fib_index` entirely from the timestamp and use `cs_scope_id[VLIB_RX]` for the per-scope session budget",
+      "revId": "0cac84aec91495ad679809420e5d77e386585496",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}

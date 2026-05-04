@@ -37,6 +37,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "5ecba454_4786d7c8",
+        "filename": "src/plugins/cnat/cnat_node.c",
+        "patchSetId": 31
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-05-04T14:47:47Z",
+      "side": 1,
+      "message": "I mean we should remove the need for `CNAT_TRACE_LOOKUP_KEY`\nand show both RX and TX scopeID as well, per comment above",
+      "parentUuid": "bf6aceca_6b686e69",
+      "revId": "f7611867a1d1c84df237cef507464394a9ab56c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "7490ec2c_322c9f45",
         "filename": "src/plugins/cnat/cnat_node.h",
         "patchSetId": 31
@@ -48,6 +66,24 @@
       "writtenOn": "2026-04-28T15:24:36Z",
       "side": 1,
       "message": "Can we do something like \n````\nsession[0]-\u003ekey.cs_scope_id \u003d b[0]-\u003eflow_id ? b[0]-\u003eflow_id : vnet_buffer(b[0])-\u003eip.fib_index; \n````\ninstead ?\n\nThat way we get both worlds in the same codepath, \n- either someone sets flow_id before us, and we use it as flow_id\n- or we do not, get zero and use the fib_index\n\nThere is a case to be made for non-fib-scoped cnat but this is probably for another discussion",
+      "revId": "f7611867a1d1c84df237cef507464394a9ab56c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "770e633a_f08f0bab",
+        "filename": "src/plugins/cnat/cnat_node.h",
+        "patchSetId": 31
+      },
+      "lineNbr": 1223,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-05-04T14:47:47Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "7490ec2c_322c9f45",
       "revId": "f7611867a1d1c84df237cef507464394a9ab56c3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -86,6 +122,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "e8cf3545_3a48749c",
+        "filename": "src/plugins/cnat/cnat_session.c",
+        "patchSetId": 31
+      },
+      "lineNbr": 188,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-05-04T14:47:47Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9e7cb3f4_01a6684d",
+      "revId": "f7611867a1d1c84df237cef507464394a9ab56c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "7dcc1bcf_c3803bdd",
@@ -99,6 +153,24 @@
       "writtenOn": "2026-04-28T15:24:36Z",
       "side": 1,
       "message": "Same thing here, this should probably just replace `fib`",
+      "revId": "f7611867a1d1c84df237cef507464394a9ab56c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8c941f37_b7393511",
+        "filename": "src/plugins/cnat/cnat_session.c",
+        "patchSetId": 31
+      },
+      "lineNbr": 264,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-05-04T14:47:47Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "7dcc1bcf_c3803bdd",
       "revId": "f7611867a1d1c84df237cef507464394a9ab56c3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -120,6 +192,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "86b570bf_53557427",
+        "filename": "src/plugins/cnat/cnat_session.c",
+        "patchSetId": 31
+      },
+      "lineNbr": 372,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-05-04T14:47:47Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "4b5e0615_41a96cba",
+      "revId": "f7611867a1d1c84df237cef507464394a9ab56c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "135d1e7e_5da4ab82",
@@ -133,6 +223,24 @@
       "writtenOn": "2026-04-28T15:24:36Z",
       "side": 1,
       "message": "I think we should remove `cs_fib_index` altogether and replace it with `cs_scope_id`",
+      "revId": "f7611867a1d1c84df237cef507464394a9ab56c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "46ef1632_30da4775",
+        "filename": "src/plugins/cnat/cnat_session.h",
+        "patchSetId": 31
+      },
+      "lineNbr": 52,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-05-04T14:47:47Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "135d1e7e_5da4ab82",
       "revId": "f7611867a1d1c84df237cef507464394a9ab56c3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -154,6 +262,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "d6d37647_cb24c0a0",
+        "filename": "src/plugins/cnat/cnat_session.h",
+        "patchSetId": 31
+      },
+      "lineNbr": 127,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-05-04T14:47:47Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "644232ab_8857a130",
+      "revId": "f7611867a1d1c84df237cef507464394a9ab56c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "8c66fe89_b21fec16",
@@ -167,6 +293,24 @@
       "writtenOn": "2026-04-28T15:24:36Z",
       "side": 1,
       "message": "I think this is not used anymore",
+      "revId": "f7611867a1d1c84df237cef507464394a9ab56c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "97f0b0c9_79b80bfd",
+        "filename": "src/plugins/cnat/cnat_session.h",
+        "patchSetId": 31
+      },
+      "lineNbr": 130,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-05-04T14:47:47Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "8c66fe89_b21fec16",
       "revId": "f7611867a1d1c84df237cef507464394a9ab56c3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -188,6 +332,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "6c9cfe62_5056981c",
+        "filename": "src/plugins/cnat/cnat_types.h",
+        "patchSetId": 31
+      },
+      "lineNbr": 242,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-05-04T14:47:47Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "89d537b2_d4548685",
+      "revId": "f7611867a1d1c84df237cef507464394a9ab56c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "d92466b6_dbe98335",
@@ -201,6 +363,24 @@
       "writtenOn": "2026-04-28T15:24:36Z",
       "side": 1,
       "message": "I think we should make this `u32 scope_id[2];` and index it with `VLIB_RX` for the scope ID used in the lookup for the forward flow, and `VLIB_TX` for the scope ID used in the lookup of the return flow\n\nAlso probably worth naming it `cs_scope_id` instead",
+      "revId": "f7611867a1d1c84df237cef507464394a9ab56c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "665375c3_dd4f231d",
+        "filename": "src/plugins/cnat/cnat_types.h",
+        "patchSetId": 31
+      },
+      "lineNbr": 283,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-05-04T14:47:47Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d92466b6_dbe98335",
       "revId": "f7611867a1d1c84df237cef507464394a9ab56c3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
