@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "afaefd65_db69493c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-05-04T15:01:52Z",
+      "side": 1,
+      "message": "looks good to me, can you make that small update and submit it for review?",
+      "revId": "3bd0c25597b54dbaf881ff795af6d45c59814f07",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4bfc24be_d9926c28",
+        "filename": "src/vppinfra/linux/mem.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 128,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-05-04T15:01:52Z",
+      "side": 1,
+      "message": "can you just make numa_node_bitmap u64",
+      "revId": "3bd0c25597b54dbaf881ff795af6d45c59814f07",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
