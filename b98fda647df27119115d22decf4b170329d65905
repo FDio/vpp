@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "419cb08d_9d3c2314",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 436,
+      "author": {
+        "id": 3310
+      },
+      "writtenOn": "2026-05-04T12:26:27Z",
+      "side": 1,
+      "message": "I thought about returning more specific value to be able to debug easily, but met that all possible syscall error constants (*_SYSCALL_ERROR_*) are already used. And seems it is a local error value, so it can be used here to return specific error.  So it is possible to use it here.",
+      "parentUuid": "f9abd192_aa1ed423",
+      "revId": "b98fda647df27119115d22decf4b170329d65905",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "a4717cb7_f4c1ddfa",
@@ -48,6 +66,24 @@
       "writtenOn": "2026-04-29T22:09:11Z",
       "side": 1,
       "message": "Can you return SYSCALL_ERROR_2 here?",
+      "revId": "b98fda647df27119115d22decf4b170329d65905",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0bdc19fe_2dcba096",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 441,
+      "author": {
+        "id": 3310
+      },
+      "writtenOn": "2026-05-04T12:26:27Z",
+      "side": 1,
+      "message": "Sure, thank you",
+      "parentUuid": "a4717cb7_f4c1ddfa",
       "revId": "b98fda647df27119115d22decf4b170329d65905",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -69,6 +105,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "0f3b0a05_8076a0fc",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 454,
+      "author": {
+        "id": 3310
+      },
+      "writtenOn": "2026-05-04T12:26:27Z",
+      "side": 1,
+      "message": "Sure, thank you",
+      "parentUuid": "6986b710_2ea3f670",
+      "revId": "b98fda647df27119115d22decf4b170329d65905",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "6839ccfa_5fc1d9bf",
@@ -82,6 +136,24 @@
       "writtenOn": "2026-04-29T22:09:11Z",
       "side": 1,
       "message": "can you store the return value of af_xdp_get_mac_address() in ret and set `args-\u003erv \u003d ret;` instead of using INVALID_VALUE here?",
+      "revId": "b98fda647df27119115d22decf4b170329d65905",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ad3fe571_36143942",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 635,
+      "author": {
+        "id": 3310
+      },
+      "writtenOn": "2026-05-04T12:26:27Z",
+      "side": 1,
+      "message": "Done, thank you",
+      "parentUuid": "6839ccfa_5fc1d9bf",
       "revId": "b98fda647df27119115d22decf4b170329d65905",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
