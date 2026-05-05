@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5f0940c9_9e3d4db2",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-05-05T10:42:07Z",
+      "side": 1,
+      "message": "have you considered changing:\n\nvnet_flow_t *global_flow_pool;\n\nto\n\nvnet_flow_t **global_flow_pool;",
+      "revId": "82824a857106be33a3d3024ef274b8997df4f6a4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
