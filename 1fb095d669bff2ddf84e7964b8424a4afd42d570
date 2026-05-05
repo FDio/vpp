@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "009201bc_6ae9ba51",
+        "filename": "src/plugins/soft-rss/export.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-05-05T09:20:21Z",
+      "side": 1,
+      "message": "what about:\n\nu16 l2_hdr_offset; /* typically 0, used if another header exists (e.g. DSA */\nu16 l3_hdr_offset; /* typically 0, relative to end of l2_hdr, used if another header exists between l2 and l3 headers(e.g. PPPoE */",
+      "revId": "1fb095d669bff2ddf84e7964b8424a4afd42d570",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
