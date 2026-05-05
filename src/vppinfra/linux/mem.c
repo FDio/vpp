@@ -380,6 +380,16 @@ clib_mem_vm_map_internal (void *base, clib_mem_page_sz_t log2_page_sz,
 
   map_lock ();
 
+  clib_mem_unpoison (hdr, sys_page_sz);
+  hdr->next = 0;
+  hdr->prev = mm->last_map;
+  snprintf (hdr->name, CLIB_VM_MAP_HDR_NAME_MAX_LEN - 1, "%s", (char *) name);
+  hdr->base_addr = (uword) base;
+  hdr->log2_page_sz = log2_page_sz;
+  hdr->num_pages = size >> log2_page_sz;
+  hdr->fd = fd;
+  hdr->name[CLIB_VM_MAP_HDR_NAME_MAX_LEN - 1] = 0;
+
   if (mm->last_map)
     {
       mprotect (mm->last_map, sys_page_sz, PROT_READ | PROT_WRITE);
@@ -389,17 +399,8 @@ clib_mem_vm_map_internal (void *base, clib_mem_page_sz_t log2_page_sz,
   else
     mm->first_map = hdr;
 
-  clib_mem_unpoison (hdr, sys_page_sz);
-  hdr->next = 0;
-  hdr->prev = mm->last_map;
-  snprintf (hdr->name, CLIB_VM_MAP_HDR_NAME_MAX_LEN - 1, "%s", (char *) name);
   mm->last_map = hdr;
 
-  hdr->base_addr = (uword) base;
-  hdr->log2_page_sz = log2_page_sz;
-  hdr->num_pages = size >> log2_page_sz;
-  hdr->fd = fd;
-  hdr->name[CLIB_VM_MAP_HDR_NAME_MAX_LEN - 1] = 0;
   mprotect (hdr, sys_page_sz, PROT_NONE);
 
   map_unlock ();
