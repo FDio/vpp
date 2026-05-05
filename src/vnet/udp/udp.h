@@ -48,7 +48,9 @@ typedef enum udp_conn_flags_
 #undef _
 } udp_conn_flags_t;
 
-#define foreach_udp_cfg_flag _ (NO_CSUM_OFFLOAD, "no-csum-offload")
+#define foreach_udp_cfg_flag                                                                       \
+  _ (NO_CSUM_OFFLOAD, "no-csum-offload")                                                           \
+  _ (TRACKED, "tracked")
 
 typedef enum udp_cfg_flag_bits_
 {

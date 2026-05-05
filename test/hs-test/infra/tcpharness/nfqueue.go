@@ -25,22 +25,33 @@ const nfQueueAckQueueCapacity = 128
 
 type Logf func(log any, args ...any)
 
-func buildIPv4AckPacket(srcIP, dstIP net.IP, srcPort, dstPort uint16,
-	seq, ack uint32, window uint16,
-	sackBlocks []TcpTestEndpointSackBlock) ([]byte, error) {
-	src := srcIP.To4()
-	dst := dstIP.To4()
+type TCPPacketConfig struct {
+	SrcIP      net.IP
+	DstIP      net.IP
+	SrcPort    uint16
+	DstPort    uint16
+	Seq        uint32
+	Ack        uint32
+	Window     uint16
+	Flags      uint8
+	Payload    []byte
+	SackBlocks []TcpTestEndpointSackBlock
+}
+
+func BuildIPv4TCPPacket(cfg TCPPacketConfig) ([]byte, error) {
+	src := cfg.SrcIP.To4()
+	dst := cfg.DstIP.To4()
 	if src == nil || dst == nil {
 		return nil, fmt.Errorf("expected IPv4 addresses")
 	}
-	if len(sackBlocks) > tcpMaxSackBlocks {
-		return nil, fmt.Errorf("too many SACK blocks: %d", len(sackBlocks))
+	if len(cfg.SackBlocks) > tcpMaxSackBlocks {
+		return nil, fmt.Errorf("too many SACK blocks: %d", len(cfg.SackBlocks))
 	}
 
 	options := make([]layers.TCPOption, 0, 2)
-	if len(sackBlocks) > 0 {
-		sackData := make([]byte, len(sackBlocks)*tcpOptionSackBlockLen)
-		for i, sack := range sackBlocks {
+	if len(cfg.SackBlocks) > 0 {
+		sackData := make([]byte, len(cfg.SackBlocks)*tcpOptionSackBlockLen)
+		for i, sack := range cfg.SackBlocks {
 			offset := i * tcpOptionSackBlockLen
 			binary.BigEndian.PutUint32(sackData[offset:offset+4], sack.Left)
 			binary.BigEndian.PutUint32(sackData[offset+4:offset+8], sack.Right)
@@ -59,12 +70,19 @@ func buildIPv4AckPacket(srcIP, dstIP net.IP, srcPort, dstPort uint16,
 		DstIP:    append(net.IP(nil), dst...),
 	}
 	tcp := &layers.TCP{
-		SrcPort: layers.TCPPort(srcPort),
-		DstPort: layers.TCPPort(dstPort),
-		Seq:     seq,
-		Ack:     ack,
-		ACK:     true,
-		Window:  window,
+		SrcPort: layers.TCPPort(cfg.SrcPort),
+		DstPort: layers.TCPPort(cfg.DstPort),
+		Seq:     cfg.Seq,
+		Ack:     cfg.Ack,
+		FIN:     cfg.Flags&tcpFlagFin != 0,
+		SYN:     cfg.Flags&tcpFlagSyn != 0,
+		RST:     cfg.Flags&tcpFlagRst != 0,
+		PSH:     cfg.Flags&tcpFlagPsh != 0,
+		ACK:     cfg.Flags&tcpFlagAck != 0,
+		URG:     cfg.Flags&tcpFlagUrg != 0,
+		ECE:     cfg.Flags&tcpFlagEce != 0,
+		CWR:     cfg.Flags&tcpFlagCwr != 0,
+		Window:  cfg.Window,
 		Options: options,
 	}
 	if err := tcp.SetNetworkLayerForChecksum(ipv4); err != nil {
@@ -75,14 +93,30 @@ func buildIPv4AckPacket(srcIP, dstIP net.IP, srcPort, dstPort uint16,
 	if err := gopacket.SerializeLayers(buffer, gopacket.SerializeOptions{
 		FixLengths:       true,
 		ComputeChecksums: true,
-	}, ipv4, tcp); err != nil {
+	}, ipv4, tcp, gopacket.Payload(cfg.Payload)); err != nil {
 		return nil, err
 	}
 
 	return buffer.Bytes(), nil
 }
 
-func sendIPv4RawPacket(packet []byte, dstIP net.IP) error {
+func buildIPv4AckPacket(srcIP, dstIP net.IP, srcPort, dstPort uint16,
+	seq, ack uint32, window uint16,
+	sackBlocks []TcpTestEndpointSackBlock) ([]byte, error) {
+	return BuildIPv4TCPPacket(TCPPacketConfig{
+		SrcIP:      srcIP,
+		DstIP:      dstIP,
+		SrcPort:    srcPort,
+		DstPort:    dstPort,
+		Seq:        seq,
+		Ack:        ack,
+		Window:     window,
+		Flags:      tcpFlagAck,
+		SackBlocks: sackBlocks,
+	})
+}
+
+func SendIPv4RawPacket(packet []byte, dstIP net.IP) error {
 	dst := dstIP.To4()
 	if dst == nil {
 		return fmt.Errorf("expected IPv4 destination")
@@ -101,6 +135,10 @@ func sendIPv4RawPacket(packet []byte, dstIP net.IP) error {
 	var sockaddr unix.SockaddrInet4
 	copy(sockaddr.Addr[:], dst)
 	return unix.Sendto(fd, packet, 0, &sockaddr)
+}
+
+func sendIPv4RawPacket(packet []byte, dstIP net.IP) error {
+	return SendIPv4RawPacket(packet, dstIP)
 }
 
 type NFQueueConfig struct {
