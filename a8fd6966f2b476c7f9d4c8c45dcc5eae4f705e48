@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "10ba8067_e010e121",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-05-05T09:08:48Z",
+      "side": 1,
+      "message": "no need for wasting cycles on guards, number of descriptors can be controlled by rx frame size",
+      "revId": "a8fd6966f2b476c7f9d4c8c45dcc5eae4f705e48",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
