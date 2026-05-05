@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3bf7822b_be7ab156",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-05-05T05:22:22Z",
+      "side": 1,
+      "message": "Do NOT merge until https://github.com/projectcalico/vpp-dataplane/pull/994 is merged in CalicoVPP.",
+      "revId": "d7b239e537c4e7fb3f2b04389b87b0bebc36ac4d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
