@@ -103,60 +103,42 @@ endfunction()
 ##############################################################################
 # VPP-API
 ##############################################################################
-function(vpp_generate_vapi_c_header f)
-  get_filename_component(output ${f}.vapi.h NAME)
-  set (output_name ${VPP_BINARY_DIR}/vpp-api/vapi/${output})
-  if(NOT VPP_VAPI_C_GEN)
-    set(VPP_VAPI_C_GEN ${CMAKE_SOURCE_DIR}/vpp-api/vapi/vapi_c_gen.py)
-    set(VPP_VAPI_C_GEN_DEPENDS
-        ${CMAKE_SOURCE_DIR}/vpp-api/vapi/vapi_c_gen.py
-        ${CMAKE_SOURCE_DIR}/vpp-api/vapi/vapi_json_parser.py
+function(vpp_generate_vapi f)
+  # Single invocation of vppapigen with the `vapi` plugin produces both
+  # .vapi.h and .vapi.hpp. Replaces the old per-format scripts under
+  # src/vpp-api/vapi/ that consumed .api.json — we now consume the AST.
+  get_filename_component(output_h_name ${f}.vapi.h NAME)
+  get_filename_component(output_hpp_name ${f}.vapi.hpp NAME)
+  set(output_h ${VPP_BINARY_DIR}/vpp-api/vapi/${output_h_name})
+  set(output_hpp ${VPP_BINARY_DIR}/vpp-api/vapi/${output_hpp_name})
+  if(NOT VPP_APIGEN)
+    set(VPP_APIGEN ${CMAKE_SOURCE_DIR}/tools/vppapigen/vppapigen)
+  endif()
+  if(NOT VPP_VAPI_GEN_DEPENDS)
+    set(VPP_VAPI_GEN_DEPENDS
+        ${CMAKE_SOURCE_DIR}/tools/vppapigen/vppapigen_vapi.py
+        ${CMAKE_SOURCE_DIR}/tools/vppapigen/vppapigen_vapi_c.py
+        ${CMAKE_SOURCE_DIR}/tools/vppapigen/vppapigen_vapi_cpp.py
     )
   endif()
+  if(VPP_INCLUDE_DIR)
+    set(includedir "--includedir" ${VPP_INCLUDE_DIR})
+  endif()
 
-  # C VAPI Headers
-  set(input ${CMAKE_CURRENT_BINARY_DIR}/${f}.json)
   add_custom_command(
-    OUTPUT ${output_name}
-    WORKING_DIRECTORY ${VPP_BINARY_DIR}/vpp-api/vapi
-    COMMAND ${PYENV} ${VPP_VAPI_C_GEN}
-    ARGS --remove-path ${input}
-    DEPENDS ${input} ${VPP_VAPI_C_GEN_DEPENDS}
-    COMMENT "Generating VAPI C header ${output_name}"
+    OUTPUT ${output_h} ${output_hpp}
+    COMMAND mkdir -p ${VPP_BINARY_DIR}/vpp-api/vapi
+    COMMAND ${PYENV} ${VPP_APIGEN}
+    ARGS ${includedir} --includedir ${CMAKE_SOURCE_DIR} --input ${CMAKE_CURRENT_SOURCE_DIR}/${f} vapi --outputdir ${VPP_BINARY_DIR}/vpp-api/vapi
+    DEPENDS ${VPP_APIGEN} ${CMAKE_CURRENT_SOURCE_DIR}/${f} ${VPP_VAPI_GEN_DEPENDS}
+    COMMENT "Generating VAPI headers ${output_h} ${output_hpp}"
   )
   install(
-    FILES ${output_name}
+    FILES ${output_h} ${output_hpp}
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/vapi
     COMPONENT vpp-dev
   )
-endfunction ()
-
-function (vpp_generate_vapi_cpp_header f)
-  get_filename_component(output ${f}.vapi.hpp NAME)
-  set (output_name ${VPP_BINARY_DIR}/vpp-api/vapi/${output})
-  if(NOT VPP_VAPI_CPP_GEN)
-    set(VPP_VAPI_CPP_GEN ${CMAKE_SOURCE_DIR}/vpp-api/vapi/vapi_cpp_gen.py)
-    set(VPP_VAPI_CPP_GEN_DEPENDS
-        ${CMAKE_SOURCE_DIR}/vpp-api/vapi/vapi_cpp_gen.py
-        ${CMAKE_SOURCE_DIR}/vpp-api/vapi/vapi_json_parser.py
-    )
-  endif()
-  # C++ VAPI Headers
-  set(input ${CMAKE_CURRENT_BINARY_DIR}/${f}.json)
-  add_custom_command(
-    OUTPUT ${output_name}
-    WORKING_DIRECTORY ${VPP_BINARY_DIR}/vpp-api/vapi
-    COMMAND ${PYENV} ${VPP_VAPI_CPP_GEN}
-    ARGS --gen-h-prefix=vapi --remove-path ${input}
-    DEPENDS ${input} ${VPP_VAPI_CPP_GEN_DEPENDS}
-    COMMENT "Generating VAPI C++ header ${output_name}"
-  )
-  install(
-    FILES ${output_name}
-    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/vapi
-    COMPONENT vpp-dev
-  )
-endfunction ()
+endfunction()
 
 
 ##############################################################################
@@ -168,8 +150,7 @@ endfunction ()
 function(vpp_generate_api_header file dir component)
   vpp_generate_api_c_header (${file})
   vpp_generate_api_json_header (${file} ${dir} ${component})
-  vpp_generate_vapi_c_header (${file})
-  vpp_generate_vapi_cpp_header (${file})
+  vpp_generate_vapi (${file})
 endfunction()
 
 function(vpp_add_api_files name dir component)
