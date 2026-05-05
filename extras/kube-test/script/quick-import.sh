@@ -8,14 +8,15 @@ VPP_DIR=${VPP_DIR%extras*}
 COMMIT_HASH=$(git rev-parse HEAD)
 STASH_SAVED=0
 
-# Tag of built CalicoVPP images.
-# CALICOVPP_VERSION must be the same as TAG when running kube-test
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+. "$SCRIPT_DIR/calicovpp-layout.sh"
+
 TAG=${TAG:-"kt-master"}
 VPP_BASE=${VPP_BASE:-"$COMMIT_HASH"}
 [ "$VPP_BASE" = "default" ] && VPP_BASE=""
-VPP_BUILD_DIR=${VPP_BUILD_DIR:-"$CALICOVPP_DIR/vpp-manager/vpp_build"}
-# branch name or commit hash
 CALICOVPP_BASE=${CALICOVPP_BASE:-"origin/master"}
+
+VPP_BUILD_DIR=${VPP_BUILD_DIR:-"$(calicovpp_default_vpp_build_dir)"}
 
 if [ "$1" = "" ]; then
     echo "This script will build, save and import images to both nodes.
@@ -28,7 +29,7 @@ Only run this script on the master node.
     Env vars:
     TAG - CalicoVPP image tag (default: kt-master)
     VPP_BASE - commit or branch to build VPP from (default: current commit)
-    VPP_BUILD_DIR - path to where VPP will be built (default: \$CALICOVPP_DIR/vpp-manager/vpp_build)"
+    VPP_BUILD_DIR - path to where VPP will be built (default: auto-detected from \$CALICOVPP_DIR)"
     exit 1
 fi
 
@@ -66,7 +67,12 @@ build_calicovpp() {
   git reset --hard $CALICOVPP_BASE
   cd $VPP_DIR/extras/kube-test
 
-  make -C $CALICOVPP_DIR/vpp-manager vpp VPP_DIR=$VPP_BUILD_DIR BASE=$VPP_BASE && \
+  if ! detect_calicovpp_layout; then
+    echo "Unable to detect CalicoVPP layout in $CALICOVPP_DIR" >&2
+    return 1
+  fi
+
+  make -C "$CALICOVPP_MAKE_DIR" vpp VPP_DIR=$VPP_BUILD_DIR BASE=$VPP_BASE && \
   make -C $CALICOVPP_DIR dev TAG=$TAG && \
   make -C $CALICOVPP_DIR image TAG=$TAG BASE=$VPP_BASE
 }
@@ -96,7 +102,14 @@ if [ "$2" = "cv" ] || [ "$2" = "" ]; then
     fi
 
     restore_repo
-    docker save -o calicovpp-images.tar docker.io/calicovpp/vpp:$TAG docker.io/calicovpp/agent:$TAG docker.io/calicovpp/multinet-monitor:$TAG
+    # Save all available calicovpp images (unified or separate)
+    calicovpp_images="docker.io/calicovpp/vpp:$TAG"
+    for component in agent multinet-monitor; do
+      if docker image inspect docker.io/calicovpp/$component:$TAG >/dev/null 2>&1; then
+        calicovpp_images="$calicovpp_images docker.io/calicovpp/$component:$TAG"
+      fi
+    done
+    docker save -o calicovpp-images.tar $calicovpp_images
     sudo ctr -n k8s.io images import calicovpp-images.tar
     scp calicovpp-images.tar $1
     ssh $remote_user "sudo ctr -n k8s.io images import \"$remote_path\""/calicovpp-images.tar
