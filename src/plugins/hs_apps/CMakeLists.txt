@@ -33,6 +33,7 @@ add_vpp_plugin(hs_apps
   http_client.c
   http_tps.c
   proxy.c
+  proxy_lite.c
   http_connect_proxy_client.c
   test_builtins.c
 )
