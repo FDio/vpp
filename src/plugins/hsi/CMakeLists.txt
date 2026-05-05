@@ -14,4 +14,7 @@
 add_vpp_plugin(hsi
   SOURCES
   hsi.c
+  hsi_tracker.c
+  hsi_tracker_tcp.c
+  hsi_tracker_udp.c
 )
