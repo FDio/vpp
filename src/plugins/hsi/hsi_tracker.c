@@ -1,0 +1,3843 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2026 Cisco and/or its affiliates.
+ */
+
+#include <hsi/hsi_tracker.h>
+#include <vnet/ip/ip4.h>
+#include <vnet/ip/ip6.h>
+#include <vnet/session/application.h>
+#include <vnet/session/segment_manager.h>
+#include <vnet/session/session_lookup.h>
+#include <vnet/session/transport.h>
+#include <vnet/tcp/tcp.h>
+#include <vnet/tcp/tcp_inlines.h>
+#include <vppinfra/atomics.h>
+#include <vppinfra/pool.h>
+
+#define HSI_TCP_TRACKER_MAGIC	      0x48534954
+#define HSI_TCP_DRAIN_INDEX_INVALID   ((u32) ~0)
+#define HSI_TCP_DRAIN_CACHE_MAX_BYTES (2 << 20)
+#define HSI_UDP_DRAIN_INDEX_INVALID   ((u32) ~0)
+#define HSI_UDP_DRAIN_CACHE_MAX_BYTES (2 << 20)
+
+STATIC_ASSERT (sizeof (uword) >= sizeof (u64), "hsi drain lookup requires 64-bit keys");
+
+typedef enum hsi_tracker_flags_
+{
+  HSI_TRACKER_F_CLEANUP_PENDING = 1 << 0,
+  HSI_TRACKER_F_FIN_RCVD = 1 << 1,
+  HSI_TRACKER_F_FIN_ACKED = 1 << 2,
+  HSI_TRACKER_F_PEER_FIN_PENDING = 1 << 3,
+  HSI_TRACKER_F_FIN_WAIT = 1 << 4,
+} hsi_tracker_flags_t;
+
+#define HSI_TRACKER_F_FIN_DONE (HSI_TRACKER_F_FIN_RCVD | HSI_TRACKER_F_FIN_ACKED)
+#define HSI_TRACKER_F_FIN_MASK                                                                     \
+  (HSI_TRACKER_F_FIN_RCVD | HSI_TRACKER_F_FIN_ACKED | HSI_TRACKER_F_PEER_FIN_PENDING |             \
+   HSI_TRACKER_F_FIN_WAIT)
+
+typedef struct hsi_tcp_tracker_
+{
+  u32 magic;
+  u32 flags;
+  u32 peer_fin_ack;
+  f64 fin_wait_start;
+  session_handle_t peer_session_handle;
+  u32 peer_conn_index;
+  u32 tx_fib_index;
+  ip46_address_t tx_lcl_ip;
+  ip46_address_t tx_rmt_ip;
+  u16 tx_lcl_port;
+  u16 tx_rmt_port;
+  clib_thread_index_t peer_thread_index;
+  i32 seq_delta;
+  i32 ack_delta;
+  i32 tsval_delta;
+  i32 tsecr_delta;
+  i8 wnd_delta;
+  u64 packets;
+  u64 bytes;
+} hsi_tcp_tracker_t;
+
+STATIC_ASSERT (sizeof (hsi_tcp_tracker_t) <= (STRUCT_OFFSET_OF (tcp_connection_t, bt) -
+					      STRUCT_OFFSET_OF (tcp_connection_t, fr_occurences)),
+	       "hsi tcp tracker must fit in unused tracked tcp fields");
+STATIC_ASSERT ((STRUCT_OFFSET_OF (tcp_connection_t, fr_occurences) %
+		__alignof__ (hsi_tcp_tracker_t)) == 0,
+	       "hsi tcp tracker overlay must be aligned");
+
+typedef struct hsi_udp_tracker_
+{
+  u32 tx_fib_index;
+  ip46_address_t tx_lcl_ip;
+  ip46_address_t tx_rmt_ip;
+  u16 tx_lcl_port;
+  u16 tx_rmt_port;
+} hsi_udp_tracker_t;
+
+STATIC_ASSERT (sizeof (hsi_udp_tracker_t) <= (STRUCT_OFFSET_OF (udp_connection_t, start_ts) -
+					      STRUCT_OFFSET_OF (udp_connection_t, bytes_in)),
+	       "hsi udp tracker must fit in unused tracked udp fields");
+STATIC_ASSERT ((STRUCT_OFFSET_OF (udp_connection_t, bytes_in) % __alignof__ (hsi_udp_tracker_t)) ==
+		 0,
+	       "hsi udp tracker overlay must be aligned");
+
+typedef struct hsi_udp_track_snapshot_
+{
+  session_handle_t session_handle;
+  u32 conn_index;
+  u32 fib_index;
+  ip46_address_t lcl_ip;
+  ip46_address_t rmt_ip;
+  u16 lcl_port;
+  u16 rmt_port;
+  clib_thread_index_t thread_index;
+  u8 is_ip4;
+} hsi_udp_track_snapshot_t;
+
+struct hsi_udp_track_commit_req_
+{
+  clib_thread_index_t owner_thread;
+  session_handle_t session_handle;
+  hsi_udp_track_snapshot_t peer;
+};
+
+struct hsi_udp_peer_update_req_
+{
+  clib_thread_index_t owner_thread;
+  session_handle_t session_handle;
+  session_handle_t peer_session_handle;
+};
+
+typedef struct hsi_tcp_fin_ack_req_
+{
+  clib_thread_index_t owner_thread;
+  session_handle_t session_handle;
+  u32 ack;
+} hsi_tcp_fin_ack_req_t;
+
+typedef struct hsi_tcp_peer_fin_req_
+{
+  clib_thread_index_t owner_thread;
+  session_handle_t session_handle;
+  u32 ack;
+} hsi_tcp_peer_fin_req_t;
+
+struct hsi_session_fifos_cleanup_req_
+{
+  clib_thread_index_t owner_thread;
+  svm_fifo_t *rx_fifo;
+  svm_fifo_t *tx_fifo;
+};
+
+typedef enum hsi_tcp_drain_state_
+{
+  HSI_TCP_DRAIN_STATE_DRAINING,
+  HSI_TCP_DRAIN_STATE_READY,
+  HSI_TCP_DRAIN_STATE_FAILED,
+} hsi_tcp_drain_state_t;
+
+typedef enum hsi_udp_drain_state_
+{
+  HSI_UDP_DRAIN_STATE_DRAINING,
+  HSI_UDP_DRAIN_STATE_READY,
+  HSI_UDP_DRAIN_STATE_FAILED,
+} hsi_udp_drain_state_t;
+
+typedef enum hsi_udp_idle_state_
+{
+  HSI_UDP_IDLE_STATE_ACTIVE = 1,
+  HSI_UDP_IDLE_STATE_CLEANUP_PENDING,
+} hsi_udp_idle_state_t;
+
+typedef enum hsi_tcp_cleanup_reason_
+{
+  HSI_TCP_CLEANUP_REASON_FIN,
+  HSI_TCP_CLEANUP_REASON_RST,
+} hsi_tcp_cleanup_reason_t;
+
+struct hsi_tcp_drain_
+{
+  session_handle_t session_handle;
+  session_handle_t peer_session_handle;
+  u32 conn_index;
+  u32 peer_conn_index;
+  hsi_tcp_track_snapshot_t snapshot;
+  clib_thread_index_t thread_index;
+  clib_thread_index_t peer_thread_index;
+  f64 start_time;
+  f64 last_progress_time;
+  u32 rx_deq;
+  u32 tx_deq;
+  u32 snd_una;
+  u32 snd_nxt;
+  u32 cached_bytes;
+  u32 *cached_buffers;
+  u8 rx_ooo;
+  u8 stalled;
+  u8 wnd_clamped;
+  u8 abort_sent;
+  hsi_tcp_drain_state_t state;
+};
+
+struct hsi_tcp_drain_start_req_
+{
+  clib_thread_index_t owner_thread;
+  session_handle_t session_handle;
+  session_handle_t peer_session_handle;
+};
+
+struct hsi_udp_drain_
+{
+  session_handle_t session_handle;
+  session_handle_t peer_session_handle;
+  u32 conn_index;
+  u32 peer_conn_index;
+  clib_thread_index_t thread_index;
+  clib_thread_index_t peer_thread_index;
+  f64 start_time;
+  f64 last_progress_time;
+  u32 rx_deq;
+  u32 tx_deq;
+  u32 cached_bytes;
+  u32 *cached_buffers;
+  u8 stalled;
+  u8 cleanup_pending;
+  hsi_udp_drain_state_t state;
+};
+
+struct hsi_udp_drain_start_req_
+{
+  clib_thread_index_t owner_thread;
+  session_handle_t session_handle;
+  session_handle_t peer_session_handle;
+};
+
+struct hsi_udp_drain_cache_req_
+{
+  clib_thread_index_t owner_thread;
+  session_handle_t session_handle;
+  u32 buffer_index;
+  u32 len;
+};
+
+static_always_inline hsi_worker_t *
+hsi_worker_get (clib_thread_index_t thread_index)
+{
+  return vec_elt_at_index (hsi_main.wrk, thread_index);
+}
+
+static_always_inline uword
+hsi_session_conn_key (u32 session_index, u32 conn_index)
+{
+  return ((uword) session_index << 32) | conn_index;
+}
+
+static_always_inline u32
+hsi_session_conn_key_session_index (uword key)
+{
+  return key >> 32;
+}
+
+static_always_inline u32
+hsi_session_conn_key_conn_index (uword key)
+{
+  return key & 0xffffffff;
+}
+
+static_always_inline void
+hsi_session_take_ownership (session_t *s)
+{
+  s->app_wrk_index = APP_INVALID_INDEX;
+}
+
+static_always_inline hsi_tcp_tracker_t *
+hsi_tcp_tracker_from_connection (tcp_connection_t *tc)
+{
+  return (hsi_tcp_tracker_t *) &tc->fr_occurences;
+}
+
+static inline hsi_tcp_tracker_t *
+hsi_tcp_tracker_get (tcp_connection_t *tc)
+{
+  ASSERT (tc->cfg_flags & TCP_CFG_F_TRACKED);
+  ASSERT (tc->state == TCP_STATE_CLOSED);
+  return hsi_tcp_tracker_from_connection (tc);
+}
+
+static_always_inline hsi_udp_tracker_t *
+hsi_udp_tracker_from_connection (udp_connection_t *uc)
+{
+  return (hsi_udp_tracker_t *) &uc->bytes_in;
+}
+
+static inline hsi_udp_tracker_t *
+hsi_udp_tracker_get (udp_connection_t *uc)
+{
+  ASSERT (uc->cfg_flags & UDP_CFG_F_TRACKED);
+  return hsi_udp_tracker_from_connection (uc);
+}
+
+static_always_inline session_handle_t
+hsi_udp_connection_peer_handle (udp_connection_t *uc)
+{
+  return ((u64) uc->next_node_opaque << 32) | uc->next_node_index;
+}
+
+static_always_inline void
+hsi_udp_connection_peer_handle_set (udp_connection_t *uc, session_handle_t peer_handle)
+{
+  uc->next_node_index = (u32) peer_handle;
+  uc->next_node_opaque = peer_handle >> 32;
+}
+
+static_always_inline tcp_connection_t *
+hsi_tcp_connection_at_index (clib_thread_index_t thread_index, u32 conn_index)
+{
+  return tcp_main.wrk[thread_index].connections + conn_index;
+}
+
+static_always_inline tcp_connection_t *
+hsi_tcp_connection_at_session (session_t *s)
+{
+  return hsi_tcp_connection_at_index (s->thread_index, s->connection_index);
+}
+
+static_always_inline udp_connection_t *
+hsi_udp_connection_at_index (clib_thread_index_t thread_index, u32 conn_index)
+{
+  return udp_main.wrk[thread_index].connections + conn_index;
+}
+
+static_always_inline udp_connection_t *
+hsi_udp_connection_at_session (session_t *s)
+{
+  return hsi_udp_connection_at_index (s->thread_index, s->connection_index);
+}
+
+static_always_inline uword
+hsi_session_conn_key_from_session (session_t *s)
+{
+  return hsi_session_conn_key (s->session_index, s->connection_index);
+}
+
+static_always_inline uword
+hsi_tcp_session_conn_key_from_connection (tcp_connection_t *tc)
+{
+  return hsi_session_conn_key (tc->c_s_index, tc->c_c_index);
+}
+
+static_always_inline uword
+hsi_udp_session_conn_key_from_connection (udp_connection_t *uc)
+{
+  return hsi_session_conn_key (uc->c_s_index, uc->c_c_index);
+}
+
+static_always_inline void
+hsi_session_free (session_t *s)
+{
+  transport_proto_t proto = session_get_transport_proto (s);
+  clib_thread_index_t thread_index = s->thread_index;
+
+  s->rx_fifo = 0;
+  s->tx_fifo = 0;
+  session_free (s);
+  hsi_worker_proto_counter_inc (hsi_worker_get (thread_index), proto, cleanup_completed);
+}
+
+static void
+hsi_session_transport_cleanup (session_t *s)
+{
+  ASSERT (s->thread_index == vlib_get_thread_index ());
+  ASSERT (!s->rx_fifo && !s->tx_fifo);
+
+  session_lookup_del_session (s);
+  if (s->session_state != SESSION_STATE_TRANSPORT_DELETED)
+    transport_cleanup (session_get_transport_proto (s), s->connection_index, s->thread_index);
+
+  hsi_session_free (s);
+}
+
+static_always_inline int
+hsi_tcp_session_is_cleanup_ready (session_t *s)
+{
+  tcp_connection_t *tc = hsi_tcp_connection_at_session (s);
+
+  return (tc->cfg_flags & TCP_CFG_F_TRACKED) && tc->state == TCP_STATE_CLOSED;
+}
+
+static_always_inline int
+hsi_udp_session_is_cleanup_ready (session_t *s)
+{
+  udp_connection_t *uc = hsi_udp_connection_at_session (s);
+
+  return uc->cfg_flags & UDP_CFG_F_TRACKED;
+}
+
+static void
+hsi_tcp_fin_wait_unregister_time_update_rpc (void *arg)
+{
+  clib_thread_index_t thread_index = vlib_get_thread_index ();
+  hsi_worker_t *wrk = hsi_worker_get (thread_index);
+
+  wrk->tcp_fin_wait_time_unregister_pending = 0;
+  if (!wrk->tcp_fin_wait_time_registered || hash_elts (wrk->tcp_fin_wait_by_session_conn))
+    return;
+
+  session_register_update_time_fn_w_thread (hsi_tcp_fin_wait_update_time, 0, thread_index);
+  wrk->tcp_fin_wait_time_registered = 0;
+  vec_reset_length (wrk->tcp_fin_wait_update_keys);
+}
+
+static_always_inline void
+hsi_tcp_fin_wait_maybe_unregister_time_update (clib_thread_index_t thread_index)
+{
+  hsi_worker_t *wrk = hsi_worker_get (thread_index);
+
+  if (!wrk->tcp_fin_wait_time_registered || wrk->tcp_fin_wait_time_unregister_pending ||
+      hash_elts (wrk->tcp_fin_wait_by_session_conn))
+    return;
+
+  /* Defer unregister so the session update-time vector is not mutated while
+   * session code is iterating it. */
+  wrk->tcp_fin_wait_time_unregister_pending = 1;
+  session_send_rpc_evt_to_thread_force (thread_index, hsi_tcp_fin_wait_unregister_time_update_rpc,
+					0);
+}
+
+static_always_inline void
+hsi_tcp_fin_wait_del_key (clib_thread_index_t thread_index, uword key)
+{
+  hsi_worker_t *wrk = hsi_worker_get (thread_index);
+
+  if (!hash_get (wrk->tcp_fin_wait_by_session_conn, key))
+    return;
+
+  hash_unset (wrk->tcp_fin_wait_by_session_conn, key);
+  hsi_tcp_fin_wait_maybe_unregister_time_update (thread_index);
+}
+
+static_always_inline void
+hsi_tcp_fin_wait_del (tcp_connection_t *tc)
+{
+  hsi_tcp_fin_wait_del_key (tc->c_thread_index, hsi_tcp_session_conn_key_from_connection (tc));
+}
+
+static_always_inline u8
+hsi_session_uses_shared_fifos (session_t *s)
+{
+  return (s->rx_fifo && s->rx_fifo->master_thread_index != s->thread_index) ||
+	 (s->tx_fifo && s->tx_fifo->master_thread_index != s->thread_index);
+}
+
+static_always_inline void
+hsi_drain_sample_fifos (session_t *s, u32 *rx_deq, u32 *tx_deq)
+{
+  *rx_deq = svm_fifo_max_dequeue (s->rx_fifo);
+  *tx_deq = svm_fifo_max_dequeue_cons (s->tx_fifo);
+}
+
+static_always_inline u8
+hsi_drain_cache_has_room (u32 *cached_buffers, u32 cached_bytes, u32 len, u32 max_packets,
+			  u32 max_bytes)
+{
+  if (vec_len (cached_buffers) >= max_packets)
+    return 0;
+  if (cached_bytes > max_bytes)
+    return 0;
+
+  return len <= max_bytes - cached_bytes;
+}
+
+static_always_inline void
+hsi_drain_cache_buffer (u32 **cached_buffers, u32 *cached_bytes, u32 buffer_index, u32 len)
+{
+  vec_add1 (*cached_buffers, buffer_index);
+  *cached_bytes += len;
+}
+
+static_always_inline u32
+hsi_drain_drop_cached_buffers (vlib_main_t *vm, u32 **cached_buffers, u32 *cached_bytes)
+{
+  u32 n_buffers = vec_len (*cached_buffers);
+
+  if (!n_buffers)
+    return 0;
+
+  vlib_buffer_free (vm, *cached_buffers, n_buffers);
+  vec_free (*cached_buffers);
+  *cached_buffers = 0;
+  *cached_bytes = 0;
+
+  return n_buffers;
+}
+
+static_always_inline int
+hsi_session_is_cleanup_ready (session_t *s)
+{
+  switch (session_get_transport_proto (s))
+    {
+    case TRANSPORT_PROTO_TCP:
+      return hsi_tcp_session_is_cleanup_ready (s);
+    case TRANSPORT_PROTO_UDP:
+      return hsi_udp_session_is_cleanup_ready (s);
+    default:
+      return 0;
+    }
+}
+
+static_always_inline u32
+hsi_tcp_drain_index_get (clib_thread_index_t thread_index, uword key)
+{
+  hsi_worker_t *wrk = hsi_worker_get (thread_index);
+  uword *p;
+
+  p = hash_get (wrk->tcp_drain_by_session_conn, key);
+  if (!p)
+    return HSI_TCP_DRAIN_INDEX_INVALID;
+
+  return p[0];
+}
+
+static_always_inline hsi_tcp_drain_t *
+hsi_tcp_drain_get (clib_thread_index_t thread_index, uword key)
+{
+  hsi_worker_t *wrk;
+  u32 drain_index;
+
+  drain_index = hsi_tcp_drain_index_get (thread_index, key);
+  if (drain_index == HSI_TCP_DRAIN_INDEX_INVALID)
+    return 0;
+
+  wrk = hsi_worker_get (thread_index);
+  return pool_elt_at_index (wrk->tcp_drains, drain_index);
+}
+
+static_always_inline u32
+hsi_udp_drain_index_get (clib_thread_index_t thread_index, uword key)
+{
+  hsi_worker_t *wrk = hsi_worker_get (thread_index);
+  uword *p;
+
+  p = hash_get (wrk->udp_drain_by_session_conn, key);
+  if (!p)
+    return HSI_UDP_DRAIN_INDEX_INVALID;
+
+  return p[0];
+}
+
+static_always_inline hsi_udp_drain_t *
+hsi_udp_drain_get (clib_thread_index_t thread_index, uword key)
+{
+  hsi_worker_t *wrk;
+  u32 drain_index;
+
+  drain_index = hsi_udp_drain_index_get (thread_index, key);
+  if (drain_index == HSI_UDP_DRAIN_INDEX_INVALID)
+    return 0;
+
+  wrk = hsi_worker_get (thread_index);
+  return pool_elt_at_index (wrk->udp_drains, drain_index);
+}
+
+static session_handle_t
+hsi_session_cleanup_peer_handle (session_t *s)
+{
+  transport_proto_t proto = session_get_transport_proto (s);
+
+  switch (proto)
+    {
+    case TRANSPORT_PROTO_TCP:
+      {
+	tcp_connection_t *tc = hsi_tcp_connection_at_session (s);
+	hsi_tcp_drain_t *drain;
+
+	ASSERT (tc->cfg_flags & TCP_CFG_F_TRACKED);
+	drain = hsi_tcp_drain_get (s->thread_index, hsi_session_conn_key_from_session (s));
+	if (drain)
+	  return drain->peer_session_handle;
+
+	if (tc->state == TCP_STATE_CLOSED)
+	  return hsi_tcp_tracker_from_connection (tc)->peer_session_handle;
+
+	return SESSION_INVALID_HANDLE;
+      }
+    case TRANSPORT_PROTO_UDP:
+      {
+	hsi_worker_t *wrk = hsi_worker_get (s->thread_index);
+	hsi_udp_drain_t *drain;
+	uword *p;
+
+	drain = hsi_udp_drain_get (s->thread_index, hsi_session_conn_key_from_session (s));
+	if (drain)
+	  return drain->peer_session_handle;
+
+	p = hash_get (wrk->udp_track_peer_by_session_conn, hsi_session_conn_key_from_session (s));
+	if (p)
+	  return p[0];
+
+	return hsi_udp_connection_peer_handle (hsi_udp_connection_at_session (s));
+      }
+    default:
+      return SESSION_INVALID_HANDLE;
+    }
+}
+
+static_always_inline session_t *
+hsi_session_peer_get_if_valid (session_handle_tu_t sh)
+{
+  if (sh.thread_index == vlib_get_thread_index ())
+    return session_get_from_handle_if_valid (sh);
+
+  return session_get_from_handle_safe (sh);
+}
+
+static void
+hsi_session_fifos_cleanup_req_free_rpc (void *arg)
+{
+  hsi_session_fifos_cleanup_req_t *a = arg;
+  hsi_worker_t *wrk;
+
+  wrk = hsi_worker_get (vlib_get_thread_index ());
+  pool_put (wrk->session_fifos_cleanup_reqs, a);
+}
+
+static void
+hsi_session_fifos_cleanup_on_thread_rpc (void *arg)
+{
+  hsi_session_fifos_cleanup_req_t *a = arg;
+
+  segment_manager_dealloc_fifos (a->rx_fifo, a->tx_fifo);
+  session_send_rpc_evt_to_thread (a->owner_thread, hsi_session_fifos_cleanup_req_free_rpc, a);
+}
+
+static void
+hsi_session_send_fifos_cleanup_on_thread (clib_thread_index_t thread_index, svm_fifo_t *rx_fifo,
+					  svm_fifo_t *tx_fifo)
+{
+  hsi_session_fifos_cleanup_req_t *a;
+  hsi_worker_t *wrk;
+  clib_thread_index_t owner_thread;
+
+  owner_thread = vlib_get_thread_index ();
+  wrk = hsi_worker_get (owner_thread);
+  pool_get_zero (wrk->session_fifos_cleanup_reqs, a);
+
+  a->owner_thread = owner_thread;
+  a->rx_fifo = rx_fifo;
+  a->tx_fifo = tx_fifo;
+  session_send_rpc_evt_to_thread_force (thread_index, hsi_session_fifos_cleanup_on_thread_rpc, a);
+}
+
+static_always_inline void
+hsi_session_clear_fifos (session_t *s)
+{
+  s->session_state = SESSION_STATE_TRANSPORT_CLOSED;
+  s->rx_fifo = 0;
+  s->tx_fifo = 0;
+}
+
+static_always_inline u8
+hsi_sessions_share_fifo_pair (session_t *s, session_t *peer_s, svm_fifo_t *rx_fifo,
+			      svm_fifo_t *tx_fifo)
+{
+  if (!peer_s || peer_s == s || peer_s->thread_index != vlib_get_thread_index () ||
+      !peer_s->rx_fifo || !peer_s->tx_fifo)
+    return 0;
+
+  return peer_s->rx_fifo == rx_fifo || peer_s->rx_fifo == tx_fifo || peer_s->tx_fifo == rx_fifo ||
+	 peer_s->tx_fifo == tx_fifo;
+}
+
+static u8 hsi_session_cleanup_fifos (session_t *s);
+
+static void
+hsi_session_fifos_cleanup_rpc (void *arg)
+{
+  session_handle_tu_t sh = { .handle = pointer_to_uword (arg) };
+  session_t *s;
+
+  s = session_get_from_handle_if_valid (sh);
+  if (s)
+    hsi_session_cleanup_fifos (s);
+}
+
+static void
+hsi_session_send_fifos_cleanup (session_handle_t session_handle)
+{
+  session_handle_tu_t sh = { .handle = session_handle };
+
+  session_send_rpc_evt_to_thread_force (sh.thread_index, hsi_session_fifos_cleanup_rpc,
+					uword_to_pointer (session_handle, void *));
+}
+
+static u8
+hsi_session_cleanup_fifos (session_t *s)
+{
+  session_handle_t peer_handle;
+  session_handle_tu_t peer_sh;
+  svm_fifo_t *rx_fifo, *tx_fifo;
+  session_t *peer_s = 0;
+  u8 local_shared, peer_shared = 0;
+
+  ASSERT (s->thread_index == vlib_get_thread_index ());
+
+  if (!s->rx_fifo && !s->tx_fifo)
+    return 1;
+
+  ASSERT (s->rx_fifo && s->tx_fifo);
+
+  rx_fifo = s->rx_fifo;
+  tx_fifo = s->tx_fifo;
+  peer_handle = hsi_session_cleanup_peer_handle (s);
+  if (peer_handle != SESSION_INVALID_HANDLE)
+    {
+      peer_sh.handle = peer_handle;
+      peer_s = hsi_session_peer_get_if_valid (peer_sh);
+      peer_shared = peer_s && hsi_session_uses_shared_fifos (peer_s);
+    }
+
+  local_shared = hsi_session_uses_shared_fifos (s);
+
+  if (!local_shared && peer_shared)
+    {
+      hsi_session_send_fifos_cleanup (peer_handle);
+      return 0;
+    }
+
+  if (local_shared && rx_fifo->refcnt <= 1 && !vlib_thread_is_main_w_barrier ())
+    {
+      if (hsi_sessions_share_fifo_pair (s, peer_s, rx_fifo, tx_fifo))
+	hsi_session_clear_fifos (peer_s);
+      hsi_session_clear_fifos (s);
+      if (peer_s && peer_s->rx_fifo && peer_s->tx_fifo && !peer_shared)
+	hsi_session_send_fifos_cleanup (peer_handle);
+      else
+	hsi_session_send_fifos_cleanup_on_thread (rx_fifo->master_thread_index, rx_fifo, tx_fifo);
+      return 1;
+    }
+
+  if (hsi_sessions_share_fifo_pair (s, peer_s, rx_fifo, tx_fifo))
+    hsi_session_clear_fifos (peer_s);
+
+  segment_manager_dealloc_fifos (rx_fifo, tx_fifo);
+  hsi_session_clear_fifos (s);
+
+  if (local_shared && peer_handle != SESSION_INVALID_HANDLE)
+    hsi_session_send_fifos_cleanup (peer_handle);
+
+  return 1;
+}
+
+static void
+hsi_tcp_drain_unregister_time_update_rpc (void *arg)
+{
+  clib_thread_index_t thread_index = vlib_get_thread_index ();
+  hsi_worker_t *wrk = hsi_worker_get (thread_index);
+
+  wrk->tcp_drain_time_unregister_pending = 0;
+  if (!wrk->tcp_drain_time_registered || pool_elts (wrk->tcp_drains))
+    return;
+
+  session_register_update_time_fn_w_thread (hsi_tcp_drain_update_time, 0, thread_index);
+  wrk->tcp_drain_time_registered = 0;
+  vec_reset_length (wrk->tcp_drain_update_handles);
+}
+
+static void
+hsi_udp_drain_unregister_time_update_rpc (void *arg)
+{
+  clib_thread_index_t thread_index = vlib_get_thread_index ();
+  hsi_worker_t *wrk = hsi_worker_get (thread_index);
+
+  wrk->udp_drain_time_unregister_pending = 0;
+  if (!wrk->udp_drain_time_registered || pool_elts (wrk->udp_drains))
+    return;
+
+  session_register_update_time_fn_w_thread (hsi_udp_drain_update_time, 0, thread_index);
+  wrk->udp_drain_time_registered = 0;
+  vec_reset_length (wrk->udp_drain_update_handles);
+}
+
+static void
+hsi_udp_drain_register_time_update_rpc (void *arg)
+{
+  clib_thread_index_t thread_index = vlib_get_thread_index ();
+  hsi_worker_t *wrk = hsi_worker_get (thread_index);
+
+  if (wrk->udp_drain_time_registered || !pool_elts (wrk->udp_drains))
+    return;
+
+  session_register_update_time_fn_w_thread (hsi_udp_drain_update_time, 1, thread_index);
+  wrk->udp_drain_time_registered = 1;
+}
+
+static void
+hsi_udp_idle_unregister_time_update_rpc (void *arg)
+{
+  clib_thread_index_t thread_index = vlib_get_thread_index ();
+  hsi_worker_t *wrk = hsi_worker_get (thread_index);
+
+  wrk->udp_idle_time_unregister_pending = 0;
+  if (!wrk->udp_idle_time_registered || hsi_main.udp_idle_timeout > 0 ||
+      hash_elts (wrk->udp_idle_by_session_conn))
+    return;
+
+  session_register_update_time_fn_w_thread (hsi_udp_idle_update_time, 0, thread_index);
+  wrk->udp_idle_time_registered = 0;
+  vec_reset_length (wrk->udp_idle_update_keys);
+}
+
+static void
+hsi_udp_idle_register_time_update_rpc (void *arg)
+{
+  clib_thread_index_t thread_index = vlib_get_thread_index ();
+  hsi_worker_t *wrk = hsi_worker_get (thread_index);
+
+  if (wrk->udp_idle_time_registered || hsi_main.udp_idle_timeout <= 0 ||
+      !hash_elts (wrk->udp_idle_by_session_conn))
+    return;
+
+  session_register_update_time_fn_w_thread (hsi_udp_idle_update_time, 1, thread_index);
+  wrk->udp_idle_time_registered = 1;
+}
+
+static_always_inline void
+hsi_tcp_drain_maybe_register_time_update (clib_thread_index_t thread_index)
+{
+  hsi_worker_t *wrk = hsi_worker_get (thread_index);
+
+  wrk->tcp_drain_time_unregister_pending = 0;
+  if (wrk->tcp_drain_time_registered)
+    return;
+
+  session_register_update_time_fn_w_thread (hsi_tcp_drain_update_time, 1, thread_index);
+  wrk->tcp_drain_time_registered = 1;
+}
+
+static_always_inline void
+hsi_tcp_drain_maybe_unregister_time_update (clib_thread_index_t thread_index)
+{
+  hsi_worker_t *wrk = hsi_worker_get (thread_index);
+
+  if (!wrk->tcp_drain_time_registered || wrk->tcp_drain_time_unregister_pending ||
+      pool_elts (wrk->tcp_drains))
+    return;
+
+  /* Defer unregister so the session update-time vector is not mutated while
+   * session code is iterating it. */
+  wrk->tcp_drain_time_unregister_pending = 1;
+  session_send_rpc_evt_to_thread_force (thread_index, hsi_tcp_drain_unregister_time_update_rpc, 0);
+}
+
+static_always_inline void
+hsi_udp_drain_maybe_register_time_update (clib_thread_index_t thread_index)
+{
+  hsi_worker_t *wrk = hsi_worker_get (thread_index);
+
+  wrk->udp_drain_time_unregister_pending = 0;
+  if (wrk->udp_drain_time_registered)
+    return;
+
+  session_send_rpc_evt_to_thread_force (thread_index, hsi_udp_drain_register_time_update_rpc, 0);
+}
+
+static_always_inline void
+hsi_udp_drain_maybe_unregister_time_update (clib_thread_index_t thread_index)
+{
+  hsi_worker_t *wrk = hsi_worker_get (thread_index);
+
+  if (!wrk->udp_drain_time_registered || wrk->udp_drain_time_unregister_pending ||
+      pool_elts (wrk->udp_drains))
+    return;
+
+  /* Defer unregister so the session update-time vector is not mutated while
+   * session code is iterating it. */
+  wrk->udp_drain_time_unregister_pending = 1;
+  session_send_rpc_evt_to_thread_force (thread_index, hsi_udp_drain_unregister_time_update_rpc, 0);
+}
+
+static_always_inline void
+hsi_udp_idle_maybe_register_time_update (clib_thread_index_t thread_index)
+{
+  hsi_worker_t *wrk = hsi_worker_get (thread_index);
+
+  if (hsi_main.udp_idle_timeout <= 0)
+    return;
+
+  wrk->udp_idle_time_unregister_pending = 0;
+  if (wrk->udp_idle_time_registered)
+    return;
+
+  session_send_rpc_evt_to_thread_force (thread_index, hsi_udp_idle_register_time_update_rpc, 0);
+}
+
+static_always_inline void
+hsi_udp_idle_maybe_unregister_time_update (clib_thread_index_t thread_index)
+{
+  hsi_worker_t *wrk = hsi_worker_get (thread_index);
+
+  if (!wrk->udp_idle_time_registered || wrk->udp_idle_time_unregister_pending ||
+      hsi_main.udp_idle_timeout > 0 || hash_elts (wrk->udp_idle_by_session_conn))
+    return;
+
+  wrk->udp_idle_time_unregister_pending = 1;
+  session_send_rpc_evt_to_thread_force (thread_index, hsi_udp_idle_unregister_time_update_rpc, 0);
+}
+
+static void
+hsi_udp_idle_timeout_update_rpc (void *arg)
+{
+  hsi_worker_t *wrk;
+  clib_thread_index_t thread_index = vlib_get_thread_index ();
+
+  wrk = hsi_worker_get (thread_index);
+  if (hsi_main.udp_idle_timeout > 0 && hash_elts (wrk->udp_idle_by_session_conn))
+    hsi_udp_idle_maybe_register_time_update (thread_index);
+  else
+    hsi_udp_idle_maybe_unregister_time_update (thread_index);
+}
+
+void
+hsi_udp_idle_timeout_update (void)
+{
+  hsi_worker_t *wrk;
+  u32 i;
+
+  vec_foreach_index (i, hsi_main.wrk)
+    {
+      wrk = vec_elt_at_index (hsi_main.wrk, i);
+      if (hash_elts (wrk->udp_idle_by_session_conn) || wrk->udp_idle_time_registered)
+	session_send_rpc_evt_to_thread_force (i, hsi_udp_idle_timeout_update_rpc, 0);
+    }
+}
+
+static_always_inline void
+hsi_tcp_fin_wait_maybe_register_time_update (clib_thread_index_t thread_index)
+{
+  hsi_worker_t *wrk = hsi_worker_get (thread_index);
+
+  wrk->tcp_fin_wait_time_unregister_pending = 0;
+  if (wrk->tcp_fin_wait_time_registered)
+    return;
+
+  session_register_update_time_fn_w_thread (hsi_tcp_fin_wait_update_time, 1, thread_index);
+  wrk->tcp_fin_wait_time_registered = 1;
+}
+
+static void
+hsi_tcp_drain_stop (tcp_connection_t *tc)
+{
+  hsi_tcp_drain_t *drain;
+  hsi_worker_t *wrk;
+  u32 n_dropped;
+  u32 drain_index;
+  uword key;
+
+  key = hsi_tcp_session_conn_key_from_connection (tc);
+  drain_index = hsi_tcp_drain_index_get (tc->c_thread_index, key);
+  if (drain_index == HSI_TCP_DRAIN_INDEX_INVALID)
+    return;
+
+  wrk = hsi_worker_get (tc->c_thread_index);
+  drain = pool_elt_at_index (wrk->tcp_drains, drain_index);
+  n_dropped = hsi_drain_drop_cached_buffers (vlib_get_main_by_index (tc->c_thread_index),
+					     &drain->cached_buffers, &drain->cached_bytes);
+  hsi_worker_counter_add (wrk, tcp_drain_cache_dropped, n_dropped);
+
+  hash_unset (wrk->tcp_drain_by_session_conn, key);
+  pool_put_index (wrk->tcp_drains, drain_index);
+  hsi_tcp_drain_maybe_unregister_time_update (tc->c_thread_index);
+}
+
+static void
+hsi_udp_drain_stop (udp_connection_t *uc)
+{
+  hsi_udp_drain_t *drain;
+  hsi_worker_t *wrk;
+  u32 n_dropped;
+  u32 drain_index;
+  uword key;
+
+  key = hsi_udp_session_conn_key_from_connection (uc);
+  drain_index = hsi_udp_drain_index_get (uc->c_thread_index, key);
+  if (drain_index == HSI_UDP_DRAIN_INDEX_INVALID)
+    return;
+
+  wrk = hsi_worker_get (uc->c_thread_index);
+  drain = pool_elt_at_index (wrk->udp_drains, drain_index);
+  n_dropped = hsi_drain_drop_cached_buffers (vlib_get_main_by_index (uc->c_thread_index),
+					     &drain->cached_buffers, &drain->cached_bytes);
+  hsi_worker_counter_add (wrk, udp_drain_cache_dropped, n_dropped);
+
+  hash_unset (wrk->udp_drain_by_session_conn, key);
+  pool_put_index (wrk->udp_drains, drain_index);
+  hsi_udp_drain_maybe_unregister_time_update (uc->c_thread_index);
+}
+
+static_always_inline void
+hsi_udp_idle_touch (udp_connection_t *uc, f64 time_now)
+{
+  ASSERT (uc->cfg_flags & UDP_CFG_F_TRACKED);
+  uc->start_ts = time_now;
+}
+
+static_always_inline void
+hsi_udp_idle_add (udp_connection_t *uc, f64 time_now)
+{
+  hsi_worker_t *wrk = hsi_worker_get (uc->c_thread_index);
+
+  ASSERT (uc->cfg_flags & UDP_CFG_F_TRACKED);
+  hsi_udp_idle_touch (uc, time_now);
+  hash_set (wrk->udp_idle_by_session_conn, hsi_udp_session_conn_key_from_connection (uc),
+	    HSI_UDP_IDLE_STATE_ACTIVE);
+  hsi_udp_idle_maybe_register_time_update (uc->c_thread_index);
+}
+
+static_always_inline void
+hsi_udp_idle_del (udp_connection_t *uc)
+{
+  hsi_worker_t *wrk = hsi_worker_get (uc->c_thread_index);
+
+  hash_unset (wrk->udp_idle_by_session_conn, hsi_udp_session_conn_key_from_connection (uc));
+  hsi_udp_idle_maybe_unregister_time_update (uc->c_thread_index);
+}
+
+static_always_inline void
+hsi_udp_track_peer_set (session_t *s, session_handle_t peer_handle)
+{
+  hsi_worker_t *wrk = hsi_worker_get (s->thread_index);
+
+  hash_set (wrk->udp_track_peer_by_session_conn, hsi_session_conn_key_from_session (s),
+	    peer_handle);
+}
+
+static void
+hsi_udp_track_peer_update (session_handle_t session_handle, session_handle_t peer_handle)
+{
+  session_handle_tu_t sh = { .handle = session_handle };
+  session_t *s;
+  udp_connection_t *uc;
+
+  s = session_get_from_handle_if_valid (sh);
+  if (!s)
+    return;
+
+  if (session_get_transport_proto (s) != TRANSPORT_PROTO_UDP)
+    return;
+
+  uc = hsi_udp_connection_at_session (s);
+  if (!(uc->cfg_flags & UDP_CFG_F_TRACKED))
+    return;
+
+  hsi_udp_track_peer_set (s, peer_handle);
+  if (!hsi_udp_drain_get (s->thread_index, hsi_session_conn_key_from_session (s)))
+    hsi_udp_connection_peer_handle_set (uc, peer_handle);
+}
+
+static void
+hsi_udp_peer_update_req_free_rpc (void *arg)
+{
+  hsi_udp_peer_update_req_t *a = arg;
+  hsi_worker_t *wrk;
+
+  wrk = hsi_worker_get (vlib_get_thread_index ());
+  pool_put (wrk->udp_peer_update_reqs, a);
+}
+
+static void
+hsi_udp_peer_update_rpc (void *arg)
+{
+  hsi_udp_peer_update_req_t *a = arg;
+
+  hsi_udp_track_peer_update (a->session_handle, a->peer_session_handle);
+  session_send_rpc_evt_to_thread (a->owner_thread, hsi_udp_peer_update_req_free_rpc, a);
+}
+
+static void
+hsi_udp_track_peer_update_on_thread (session_handle_t session_handle,
+				     session_handle_t peer_session_handle)
+{
+  session_handle_tu_t sh = { .handle = session_handle };
+  clib_thread_index_t thread_index = vlib_get_thread_index ();
+  hsi_udp_peer_update_req_t *a;
+  hsi_worker_t *wrk;
+
+  if (sh.thread_index == thread_index)
+    {
+      hsi_udp_track_peer_update (session_handle, peer_session_handle);
+      return;
+    }
+
+  wrk = hsi_worker_get (thread_index);
+  pool_get_zero (wrk->udp_peer_update_reqs, a);
+  a->owner_thread = thread_index;
+  a->session_handle = session_handle;
+  a->peer_session_handle = peer_session_handle;
+  session_send_rpc_evt_to_thread (sh.thread_index, hsi_udp_peer_update_rpc, a);
+}
+
+static_always_inline void
+hsi_udp_track_peer_unset (session_t *s)
+{
+  hsi_worker_t *wrk = hsi_worker_get (s->thread_index);
+
+  hash_unset (wrk->udp_track_peer_by_session_conn, hsi_session_conn_key_from_session (s));
+}
+
+static void
+hsi_udp_migrated_session_cleanup_rpc (void *arg)
+{
+  session_handle_tu_t sh = { .handle = pointer_to_uword (arg) };
+  udp_connection_t *uc;
+  session_t *s;
+
+  s = session_get_from_handle_if_valid (sh);
+  if (!s)
+    return;
+
+  ASSERT (s->thread_index == vlib_get_thread_index ());
+  ASSERT (session_get_transport_proto (s) == TRANSPORT_PROTO_UDP);
+  ASSERT (!s->rx_fifo && !s->tx_fifo);
+
+  uc = hsi_udp_connection_at_session (s);
+  ASSERT (uc->flags & UDP_CONN_F_MIGRATED);
+  hsi_udp_idle_del (uc);
+  hsi_udp_track_peer_unset (s);
+  transport_cleanup (TRANSPORT_PROTO_UDP, s->connection_index, s->thread_index);
+  session_free (s);
+}
+
+udp_connection_t *
+hsi_udp_migrate_tracked_connection (session_t **ps, udp_connection_t *uc)
+{
+  clib_thread_index_t old_thread, thread_index;
+  session_handle_t old_handle, peer_handle, new_handle;
+  udp_connection_t *new_uc;
+  session_t *s, *new_s;
+
+  ASSERT (uc->cfg_flags & UDP_CFG_F_TRACKED);
+
+  thread_index = vlib_get_thread_index ();
+  old_thread = uc->c_thread_index;
+  if (old_thread == thread_index)
+    return uc;
+
+  if (hsi_udp_drain_get (old_thread, hsi_udp_session_conn_key_from_connection (uc)))
+    {
+      hsi_worker_counter_inc (hsi_worker_get (thread_index), udp_track_migration_failed);
+      return 0;
+    }
+
+  s = *ps;
+  old_handle = session_handle (s);
+  peer_handle = hsi_udp_connection_peer_handle (uc);
+  if (peer_handle == SESSION_INVALID_HANDLE)
+    {
+      hsi_worker_counter_inc (hsi_worker_get (thread_index), udp_track_migration_failed);
+      return 0;
+    }
+
+  new_uc = udp_connection_clone_safe (s->connection_index, old_thread);
+  new_s = session_clone_safe (s->session_index, old_thread);
+
+  new_s->connection_index = new_uc->c_c_index;
+  new_s->session_state = SESSION_STATE_TRANSPORT_CLOSED;
+  new_s->app_wrk_index = APP_INVALID_INDEX;
+  new_s->rx_fifo = 0;
+  new_s->tx_fifo = 0;
+  new_s->flags &= ~SESSION_F_IS_MIGRATING;
+
+  new_uc->c_s_index = new_s->session_index;
+  new_handle = session_handle (new_s);
+  hsi_udp_track_peer_set (new_s, peer_handle);
+  hsi_udp_connection_peer_handle_set (new_uc, peer_handle);
+  hsi_udp_idle_add (new_uc, vlib_time_now (vlib_get_main ()));
+
+  if (session_lookup_add_connection (&new_uc->connection, new_handle))
+    {
+      uc->flags &= ~UDP_CONN_F_MIGRATED;
+      hsi_udp_idle_del (new_uc);
+      hsi_udp_track_peer_unset (new_s);
+      udp_connection_free (new_uc);
+      session_free (new_s);
+      hsi_worker_counter_inc (hsi_worker_get (thread_index), udp_track_migration_failed);
+      return 0;
+    }
+
+  hsi_udp_track_peer_update_on_thread (peer_handle, new_handle);
+  session_send_rpc_evt_to_thread_force (old_thread, hsi_udp_migrated_session_cleanup_rpc,
+					uword_to_pointer (old_handle, void *));
+  hsi_worker_counter_inc (hsi_worker_get (thread_index), udp_track_migrated);
+
+  *ps = new_s;
+  return new_uc;
+}
+
+static void
+hsi_session_cleanup (session_t *s)
+{
+  transport_proto_t proto;
+
+  ASSERT (s->thread_index == vlib_get_thread_index ());
+
+  if (!hsi_session_is_cleanup_ready (s))
+    return;
+
+  if (!hsi_session_cleanup_fifos (s))
+    return;
+
+  proto = session_get_transport_proto (s);
+  if (proto == TRANSPORT_PROTO_TCP)
+    {
+      tcp_connection_t *tc = hsi_tcp_connection_at_session (s);
+
+      hsi_tcp_fin_wait_del (tc);
+      hsi_tcp_drain_stop (tc);
+    }
+  else
+    {
+      udp_connection_t *uc = hsi_udp_connection_at_session (s);
+
+      hsi_udp_drain_stop (uc);
+      hsi_udp_idle_del (uc);
+      hsi_udp_track_peer_unset (s);
+    }
+
+  hsi_session_transport_cleanup (s);
+}
+
+static void
+hsi_session_cleanup_rpc (void *arg)
+{
+  session_handle_tu_t sh = { .handle = pointer_to_uword (arg) };
+  session_t *s;
+
+  s = session_get_from_handle_if_valid (sh);
+  if (s)
+    hsi_session_cleanup (s);
+}
+
+static void
+hsi_session_send_cleanup (session_handle_t session_handle)
+{
+  session_handle_tu_t sh = { .handle = session_handle };
+
+  session_send_rpc_evt_to_thread_force (sh.thread_index, hsi_session_cleanup_rpc,
+					uword_to_pointer (session_handle, void *));
+}
+
+static void
+hsi_session_cleanup_pair_rpc (void *arg)
+{
+  session_handle_tu_t sh = { .handle = pointer_to_uword (arg) };
+  session_handle_t peer_handle = SESSION_INVALID_HANDLE;
+  session_t *s;
+
+  s = session_get_from_handle_if_valid (sh);
+  if (!s)
+    return;
+
+  peer_handle = hsi_session_cleanup_peer_handle (s);
+  hsi_session_cleanup (s);
+  if (peer_handle != SESSION_INVALID_HANDLE)
+    hsi_session_send_cleanup (peer_handle);
+}
+
+static void
+hsi_session_send_cleanup_pair (session_handle_t first)
+{
+  session_handle_tu_t sh = { .handle = first };
+
+  session_send_rpc_evt_to_thread_force (sh.thread_index, hsi_session_cleanup_pair_rpc,
+					uword_to_pointer (first, void *));
+}
+
+static_always_inline u8
+hsi_udp_idle_cleanup_try_lock (session_t *s)
+{
+  hsi_worker_t *wrk = hsi_worker_get (s->thread_index);
+  uword key, *p;
+
+  key = hsi_session_conn_key_from_session (s);
+  p = hash_get (wrk->udp_idle_by_session_conn, key);
+  if (!p || p[0] == HSI_UDP_IDLE_STATE_CLEANUP_PENDING)
+    return 0;
+
+  hash_set (wrk->udp_idle_by_session_conn, key, HSI_UDP_IDLE_STATE_CLEANUP_PENDING);
+  return 1;
+}
+
+static_always_inline void
+hsi_udp_idle_cleanup_mark_pending (session_t *s)
+{
+  hsi_worker_t *wrk = hsi_worker_get (s->thread_index);
+  uword key;
+
+  key = hsi_session_conn_key_from_session (s);
+  if (hash_get (wrk->udp_idle_by_session_conn, key))
+    hash_set (wrk->udp_idle_by_session_conn, key, HSI_UDP_IDLE_STATE_CLEANUP_PENDING);
+}
+
+static_always_inline void
+hsi_udp_idle_schedule_cleanup_pair (session_t *s, session_t *peer_s)
+{
+  hsi_worker_t *wrk;
+
+  if (!hsi_udp_idle_cleanup_try_lock (s))
+    return;
+
+  if (peer_s && peer_s->thread_index == s->thread_index)
+    hsi_udp_idle_cleanup_mark_pending (peer_s);
+
+  wrk = hsi_worker_get (s->thread_index);
+  hsi_worker_counter_inc (wrk, udp_idle_timeout);
+  hsi_worker_counter_inc (wrk, udp_idle_cleanup_scheduled);
+  hsi_session_send_cleanup_pair (session_handle (s));
+}
+
+void
+hsi_udp_idle_update_time (f64 time_now, u8 thread_index)
+{
+  hsi_worker_t *wrk = hsi_worker_get (thread_index);
+  hash_pair_t *hp;
+  uword *keyp, *keys;
+
+  if (hsi_main.udp_idle_timeout <= 0 || !hash_elts (wrk->udp_idle_by_session_conn))
+    {
+      hsi_udp_idle_maybe_unregister_time_update (thread_index);
+      return;
+    }
+
+  keys = wrk->udp_idle_update_keys;
+  vec_reset_length (keys);
+  hash_foreach_pair (hp, wrk->udp_idle_by_session_conn, ({ vec_add1 (keys, hp->key); }));
+  wrk->udp_idle_update_keys = keys;
+
+  vec_foreach (keyp, keys)
+    {
+      session_handle_tu_t sh = {
+	.handle = session_make_handle (hsi_session_conn_key_session_index (*keyp), thread_index),
+      };
+      session_handle_t local_handle, peer_handle;
+      udp_connection_t *uc, *peer_uc = 0;
+      session_t *s, *peer_s = 0;
+      f64 last_activity;
+      uword *state;
+
+      state = hash_get (wrk->udp_idle_by_session_conn, *keyp);
+      if (!state || state[0] == HSI_UDP_IDLE_STATE_CLEANUP_PENDING)
+	continue;
+
+      s = session_get_from_handle_if_valid (sh);
+      if (!s || s->connection_index != hsi_session_conn_key_conn_index (*keyp))
+	{
+	  hash_unset (wrk->udp_idle_by_session_conn, *keyp);
+	  continue;
+	}
+
+      uc = hsi_udp_connection_at_session (s);
+      if (!(uc->cfg_flags & UDP_CFG_F_TRACKED))
+	{
+	  hash_unset (wrk->udp_idle_by_session_conn, *keyp);
+	  continue;
+	}
+      if (uc->flags & UDP_CONN_F_MIGRATED)
+	{
+	  hash_unset (wrk->udp_idle_by_session_conn, *keyp);
+	  continue;
+	}
+
+      peer_handle = hsi_udp_connection_peer_handle (uc);
+      local_handle = session_handle (s);
+      if (peer_handle != SESSION_INVALID_HANDLE)
+	{
+	  session_handle_tu_t peer_sh = { .handle = peer_handle };
+
+	  if (peer_handle < local_handle)
+	    continue;
+
+	  peer_s = hsi_session_peer_get_if_valid (peer_sh);
+	  if (peer_s && session_get_transport_proto (peer_s) == TRANSPORT_PROTO_UDP)
+	    {
+	      peer_uc = hsi_udp_connection_at_session (peer_s);
+	      if (!(peer_uc->cfg_flags & UDP_CFG_F_TRACKED))
+		{
+		  peer_s = 0;
+		  peer_uc = 0;
+		}
+	    }
+	}
+
+      last_activity = uc->start_ts;
+      if (peer_uc)
+	last_activity = clib_max (last_activity, peer_uc->start_ts);
+
+      if (time_now - last_activity < hsi_main.udp_idle_timeout)
+	continue;
+
+      hsi_udp_idle_schedule_cleanup_pair (s, peer_s);
+    }
+
+  hsi_udp_idle_maybe_unregister_time_update (thread_index);
+}
+
+static void
+hsi_tcp_track_abort_session (session_t *s)
+{
+  tcp_connection_t *tc;
+
+  ASSERT (s->thread_index == vlib_get_thread_index ());
+
+  tc = hsi_tcp_connection_at_session (s);
+  if (!(tc->cfg_flags & TCP_CFG_F_TRACKED))
+    return;
+
+  if (tc->state != TCP_STATE_CLOSED)
+    {
+      tcp_send_reset (tc);
+      tcp_connection_timers_reset (tc);
+      tcp_cong_recovery_off (tc);
+      tcp_connection_set_state (tc, TCP_STATE_CLOSED);
+    }
+
+  hsi_session_cleanup (s);
+}
+
+static void
+hsi_tcp_track_abort_rpc (void *arg)
+{
+  session_handle_tu_t sh = { .handle = pointer_to_uword (arg) };
+  session_t *s;
+
+  s = session_get_from_handle_if_valid (sh);
+  if (s)
+    hsi_tcp_track_abort_session (s);
+}
+
+static void
+hsi_tcp_track_send_abort (session_handle_t session_handle)
+{
+  session_handle_tu_t sh = { .handle = session_handle };
+
+  if (session_handle == SESSION_INVALID_HANDLE)
+    return;
+
+  session_send_rpc_evt_to_thread_force (sh.thread_index, hsi_tcp_track_abort_rpc,
+					uword_to_pointer (session_handle, void *));
+}
+
+static_always_inline void
+hsi_tcp_send_zero_wnd_ack (tcp_connection_t *tc)
+{
+  u32 rcv_wnd = tc->rcv_wnd;
+
+  tc->rcv_wnd = 0;
+  tcp_send_ack (tc);
+  tc->rcv_wnd = rcv_wnd;
+}
+
+static_always_inline u8
+hsi_tcp_segment_data_len (void *ip_hdr, tcp_header_t *tcp_hdr, u8 is_ip4, u32 *data_len)
+{
+  u32 tcp_hdr_len = tcp_header_bytes (tcp_hdr);
+
+  if (PREDICT_FALSE (tcp_hdr_len < sizeof (*tcp_hdr)))
+    return 0;
+
+  if (is_ip4)
+    {
+      ip4_header_t *ip4 = (ip4_header_t *) ip_hdr;
+      u32 ip_hdr_len = ip4_header_bytes (ip4);
+      u32 ip_len = clib_net_to_host_u16 (ip4->length);
+
+      if (PREDICT_FALSE (ip_len < ip_hdr_len + tcp_hdr_len))
+	return 0;
+
+      *data_len = ip_len - ip_hdr_len - tcp_hdr_len;
+    }
+  else
+    {
+      ip6_header_t *ip6 = (ip6_header_t *) ip_hdr;
+      u32 payload_len = clib_net_to_host_u16 (ip6->payload_length);
+
+      if (PREDICT_FALSE (payload_len < tcp_hdr_len))
+	return 0;
+
+      *data_len = payload_len - tcp_hdr_len;
+    }
+
+  return 1;
+}
+
+static_always_inline u8
+hsi_tcp_segment_in_rcv_wnd (tcp_connection_t *tc, u32 seq, u32 seq_end)
+{
+  return seq_geq (seq_end, tc->rcv_las) && seq_leq (seq, tc->rcv_nxt + tc->rcv_wnd);
+}
+
+static_always_inline void
+hsi_tcp_update_snd_wnd (tcp_connection_t *tc, u32 seq, u32 ack, tcp_header_t *tcp_hdr)
+{
+  u32 snd_wnd;
+
+  if (seq_lt (tc->snd_wl1, seq) || (tc->snd_wl1 == seq && seq_leq (tc->snd_wl2, ack)))
+    {
+      snd_wnd = clib_net_to_host_u16 (tcp_hdr->window) << tc->snd_wscale;
+      tc->snd_wnd = snd_wnd;
+      tc->snd_wl1 = seq;
+      tc->snd_wl2 = ack;
+    }
+}
+
+static_always_inline int
+hsi_track_sessions_compatible (session_t *s, session_t *peer_s)
+{
+  if (!peer_s || s == peer_s)
+    return 0;
+  if (s->session_type != peer_s->session_type)
+    return 0;
+  if (s->session_state >= SESSION_STATE_TRANSPORT_CLOSING ||
+      peer_s->session_state >= SESSION_STATE_TRANSPORT_CLOSING)
+    return 0;
+
+  return 1;
+}
+
+static void
+hsi_tcp_track_snapshot (session_t *s, tcp_connection_t *tc, hsi_tcp_track_snapshot_t *snap)
+{
+  snap->session_handle = session_handle (s);
+  snap->conn_index = tc->c_c_index;
+  snap->thread_index = tc->c_thread_index;
+  snap->fib_index = tc->c_fib_index;
+  snap->lcl_ip = tc->c_lcl_ip;
+  snap->rmt_ip = tc->c_rmt_ip;
+  snap->lcl_port = tc->c_lcl_port;
+  snap->rmt_port = tc->c_rmt_port;
+  snap->snd_nxt = tc->snd_nxt;
+  snap->rcv_nxt = tc->rcv_nxt;
+  snap->ts_now = tcp_tstamp (tc);
+  snap->tsval_recent = tc->tsval_recent;
+  snap->rcv_wscale = tc->rcv_wscale;
+  snap->snd_wscale = tc->snd_wscale;
+}
+
+static_always_inline void
+hsi_tcp_drain_sample (session_t *s, tcp_connection_t *tc, hsi_tcp_drain_t *drain)
+{
+  hsi_drain_sample_fifos (s, &drain->rx_deq, &drain->tx_deq);
+  drain->rx_ooo = svm_fifo_has_ooo_data (s->rx_fifo);
+  drain->snd_una = tc->snd_una;
+  drain->snd_nxt = tc->snd_nxt;
+}
+
+static_always_inline int
+hsi_tcp_drain_sample_needs_drain (hsi_tcp_drain_t *drain)
+{
+  if (drain->rx_deq || drain->tx_deq || drain->rx_ooo)
+    return 1;
+
+  return drain->snd_una != drain->snd_nxt;
+}
+
+static_always_inline u8
+hsi_tcp_drain_sample_changed (hsi_tcp_drain_t *drain, hsi_tcp_drain_t *sample)
+{
+  return drain->rx_deq != sample->rx_deq || drain->tx_deq != sample->tx_deq ||
+	 drain->rx_ooo != sample->rx_ooo || drain->snd_una != sample->snd_una ||
+	 drain->snd_nxt != sample->snd_nxt;
+}
+
+static int
+hsi_tcp_drain_update_and_needs_drain (session_t *s, tcp_connection_t *tc, hsi_tcp_drain_t *drain,
+				      f64 now)
+{
+  hsi_tcp_drain_t sample = {};
+  int needs_drain;
+
+  hsi_tcp_drain_sample (s, tc, &sample);
+
+  if (hsi_tcp_drain_sample_changed (drain, &sample))
+    {
+      drain->rx_deq = sample.rx_deq;
+      drain->tx_deq = sample.tx_deq;
+      drain->rx_ooo = sample.rx_ooo;
+      drain->snd_una = sample.snd_una;
+      drain->snd_nxt = sample.snd_nxt;
+      drain->last_progress_time = now;
+      drain->stalled = 0;
+    }
+
+  needs_drain = hsi_tcp_drain_sample_needs_drain (&sample);
+  if (needs_drain && !drain->stalled &&
+      now - drain->last_progress_time > hsi_main.tcp_drain_no_progress_timeout)
+    {
+      hsi_worker_counter_inc (hsi_worker_get (vlib_get_thread_index ()), tcp_drain_stalled);
+      drain->stalled = 1;
+      drain->state = HSI_TCP_DRAIN_STATE_FAILED;
+      return -1;
+    }
+
+  return needs_drain;
+}
+
+static_always_inline int
+hsi_tcp_track_needs_drain (session_t *s, tcp_connection_t *tc)
+{
+  hsi_tcp_drain_t sample = {};
+
+  hsi_tcp_drain_sample (s, tc, &sample);
+  return hsi_tcp_drain_sample_needs_drain (&sample);
+}
+
+static void
+hsi_tcp_drain_fail_pair (hsi_tcp_drain_t *drain)
+{
+  if (drain->abort_sent)
+    return;
+
+  drain->state = HSI_TCP_DRAIN_STATE_FAILED;
+  drain->abort_sent = 1;
+  hsi_tcp_track_send_abort (drain->peer_session_handle);
+  hsi_tcp_track_send_abort (drain->session_handle);
+}
+
+static hsi_tcp_drain_t *
+hsi_tcp_drain_start (session_t *s, session_t *peer_s, tcp_connection_t *tc,
+		     tcp_connection_t *peer_tc)
+{
+  clib_thread_index_t thread_index = vlib_get_thread_index ();
+  hsi_tcp_drain_t *drain;
+  hsi_worker_t *wrk;
+  u32 drain_index;
+  uword key;
+  f64 now;
+
+  ASSERT (s->thread_index == thread_index);
+
+  key = hsi_session_conn_key_from_session (s);
+  drain = hsi_tcp_drain_get (thread_index, key);
+  if (drain)
+    return drain;
+
+  wrk = hsi_worker_get (thread_index);
+  pool_get_zero (wrk->tcp_drains, drain);
+  drain_index = drain - wrk->tcp_drains;
+  hash_set (wrk->tcp_drain_by_session_conn, key, drain_index);
+
+  hsi_session_take_ownership (s);
+  hsi_tcp_track_snapshot (s, tc, &drain->snapshot);
+  now = vlib_time_now (vlib_get_main ());
+
+  drain->session_handle = session_handle (s);
+  drain->peer_session_handle = session_handle (peer_s);
+  drain->conn_index = tc->c_c_index;
+  drain->peer_conn_index = peer_tc->c_c_index;
+  drain->thread_index = thread_index;
+  drain->peer_thread_index = peer_s->thread_index;
+  drain->start_time = now;
+  drain->last_progress_time = now;
+  hsi_tcp_drain_sample (s, tc, drain);
+  drain->state = HSI_TCP_DRAIN_STATE_DRAINING;
+  tc->cfg_flags |= TCP_CFG_F_TRACKED;
+  hsi_tcp_send_zero_wnd_ack (tc);
+  drain->wnd_clamped = 1;
+  hsi_worker_counter_inc (wrk, tcp_drain_started);
+  hsi_tcp_drain_maybe_register_time_update (thread_index);
+
+  return drain;
+}
+
+static_always_inline void
+hsi_tcp_fin_wait_add (tcp_connection_t *tc)
+{
+  hsi_worker_t *wrk = hsi_worker_get (tc->c_thread_index);
+  uword key = hsi_tcp_session_conn_key_from_connection (tc);
+
+  if (!hash_get (wrk->tcp_fin_wait_by_session_conn, key))
+    hash_set (wrk->tcp_fin_wait_by_session_conn, key, 1);
+
+  hsi_tcp_fin_wait_maybe_register_time_update (tc->c_thread_index);
+}
+
+static_always_inline int
+hsi_tcp_track_connections_compatible (tcp_connection_t *tc0, tcp_connection_t *tc1)
+{
+  if (tc0->c_is_ip4 != tc1->c_is_ip4)
+    return 0;
+  if (!!tcp_opts_tstamp (&tc0->rcv_opts) != !!tcp_opts_tstamp (&tc1->rcv_opts))
+    return 0;
+  if (!!tcp_opts_sack_permitted (&tc0->rcv_opts) != !!tcp_opts_sack_permitted (&tc1->rcv_opts))
+    return 0;
+
+  return 1;
+}
+
+static_always_inline int
+hsi_tcp_track_is_possible (tcp_connection_t *tc0, tcp_connection_t *tc1)
+{
+  if (tc0->cfg_flags & TCP_CFG_F_TRACKED)
+    return 0;
+  if (tc1->cfg_flags & TCP_CFG_F_TRACKED)
+    return 0;
+
+  return hsi_tcp_track_connections_compatible (tc0, tc1);
+}
+
+static void
+hsi_tcp_drain_start_req_free_rpc (void *arg)
+{
+  hsi_tcp_drain_start_req_t *a = arg;
+  hsi_worker_t *wrk;
+
+  wrk = hsi_worker_get (vlib_get_thread_index ());
+  pool_put (wrk->tcp_drain_start_reqs, a);
+}
+
+static void
+hsi_tcp_drain_start_rpc (void *arg)
+{
+  hsi_tcp_drain_start_req_t *a = arg;
+  session_handle_tu_t sh = { .handle = a->session_handle };
+  session_handle_tu_t peer_sh = { .handle = a->peer_session_handle };
+  session_t *s, *peer_s;
+  tcp_connection_t *tc, *peer_tc;
+
+  s = session_get_from_handle_if_valid (sh);
+  peer_s = session_get_from_handle_safe (peer_sh);
+  if (!s || !peer_s)
+    {
+      hsi_worker_counter_inc (hsi_worker_get (vlib_get_thread_index ()), tcp_track_peer_rpc_failed);
+      hsi_tcp_track_send_abort (a->peer_session_handle);
+      goto done;
+    }
+
+  ASSERT (hsi_track_sessions_compatible (s, peer_s));
+
+  tc = hsi_tcp_connection_at_session (s);
+  peer_tc = hsi_tcp_connection_at_session (peer_s);
+  ASSERT (!(tc->cfg_flags & TCP_CFG_F_TRACKED));
+  ASSERT (peer_tc->cfg_flags & TCP_CFG_F_TRACKED);
+  ASSERT (hsi_tcp_track_connections_compatible (tc, peer_tc));
+  hsi_tcp_drain_start (s, peer_s, tc, peer_tc);
+
+done:
+  session_send_rpc_evt_to_thread (a->owner_thread, hsi_tcp_drain_start_req_free_rpc, a);
+}
+
+static int
+hsi_tcp_track_send_drain_start (session_t *s, session_t *peer_s)
+{
+  hsi_tcp_drain_start_req_t *a;
+  hsi_worker_t *wrk;
+  clib_thread_index_t thread_index;
+
+  thread_index = s->thread_index;
+  ASSERT (thread_index == vlib_get_thread_index ());
+  wrk = hsi_worker_get (thread_index);
+  pool_get_zero (wrk->tcp_drain_start_reqs, a);
+
+  a->owner_thread = thread_index;
+  a->session_handle = session_handle (peer_s);
+  a->peer_session_handle = session_handle (s);
+  session_send_rpc_evt_to_thread (peer_s->thread_index, hsi_tcp_drain_start_rpc, a);
+
+  return 0;
+}
+
+static void
+hsi_tcp_tracker_init (hsi_tcp_tracker_t *trk, tcp_connection_t *tc, hsi_tcp_track_snapshot_t *peer)
+{
+  clib_memset (trk, 0, sizeof (*trk));
+
+  trk->magic = HSI_TCP_TRACKER_MAGIC;
+  trk->peer_session_handle = peer->session_handle;
+  trk->peer_conn_index = peer->conn_index;
+  trk->peer_thread_index = peer->thread_index;
+  trk->tx_fib_index = peer->fib_index;
+  trk->tx_lcl_ip = peer->lcl_ip;
+  trk->tx_rmt_ip = peer->rmt_ip;
+  trk->tx_lcl_port = peer->lcl_port;
+  trk->tx_rmt_port = peer->rmt_port;
+
+  /*
+   * At commit, tc->rcv_nxt maps to peer->snd_nxt and tc->snd_nxt maps to
+   * peer->rcv_nxt. The peer tuple is kept as the transmit rewrite tuple.
+   */
+  trk->seq_delta = (i32) (peer->snd_nxt - tc->rcv_nxt);
+  trk->ack_delta = (i32) (peer->rcv_nxt - tc->snd_nxt);
+  trk->tsval_delta = (i32) (peer->ts_now - tc->tsval_recent);
+  trk->tsecr_delta = (i32) (peer->tsval_recent - tcp_tstamp (tc));
+  trk->wnd_delta = (i8) tc->snd_wscale - (i8) peer->rcv_wscale;
+}
+
+static void
+hsi_tcp_track_cleanup_tcp_state (tcp_connection_t *tc)
+{
+  vec_free (tc->snd_sacks);
+  vec_free (tc->snd_sacks_fl);
+  vec_free (tc->rcv_opts.sacks);
+  pool_free (tc->sack_sb.holes);
+  clib_memset (&tc->sack_sb, 0, sizeof (tc->sack_sb));
+  scoreboard_init (&tc->sack_sb);
+
+  if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
+    {
+      tcp_bt_cleanup (tc);
+      tc->cfg_flags &= ~TCP_CFG_F_RATE_SAMPLE;
+    }
+}
+
+static void
+hsi_tcp_drain_enqueue_cached_buffers (vlib_main_t *vm, u32 node_index, u32 *buffers)
+{
+  u32 n_left, n_sent = 0;
+
+  n_left = vec_len (buffers);
+  while (n_left)
+    {
+      vlib_frame_t *f;
+      u32 *to_next;
+      u32 n_frame;
+
+      n_frame = clib_min (n_left, VLIB_FRAME_SIZE);
+      f = vlib_get_frame_to_node (vm, node_index);
+      to_next = vlib_frame_vector_args (f);
+      clib_memcpy_fast (to_next, buffers + n_sent, n_frame * sizeof (*buffers));
+      f->n_vectors = n_frame;
+      vlib_put_frame_to_node (vm, node_index, f);
+
+      n_sent += n_frame;
+      n_left -= n_frame;
+    }
+}
+
+static void
+hsi_tcp_drain_flush_cached_buffers (tcp_connection_t *tc)
+{
+  hsi_tcp_drain_t *drain;
+  hsi_worker_t *wrk;
+  vlib_main_t *vm;
+  u32 *cached, *forward = 0, *drops = 0;
+  uword key;
+  u32 i;
+
+  key = hsi_tcp_session_conn_key_from_connection (tc);
+  drain = hsi_tcp_drain_get (tc->c_thread_index, key);
+  if (!drain || !vec_len (drain->cached_buffers))
+    return;
+
+  vm = vlib_get_main_by_index (tc->c_thread_index);
+  wrk = hsi_worker_get (tc->c_thread_index);
+  cached = drain->cached_buffers;
+  drain->cached_buffers = 0;
+  drain->cached_bytes = 0;
+
+  for (i = 0; i < vec_len (cached); i++)
+    {
+      hsi_tcp_tracked_action_t action;
+      tcp_header_t *tcp_hdr;
+      vlib_buffer_t *b;
+      void *ip_hdr;
+
+      b = vlib_get_buffer (vm, cached[i]);
+      ip_hdr = vlib_buffer_get_current (b);
+      tcp_hdr = tc->c_is_ip4 ? ip4_next_header ((ip4_header_t *) ip_hdr) :
+			       ip6_next_header ((ip6_header_t *) ip_hdr);
+
+      action = hsi_tcp_handle_tracked_connection (vm, b, tc, ip_hdr, tcp_hdr, tc->c_is_ip4);
+      if (action == HSI_TCP_TRACKED_ACTION_FORWARD)
+	{
+	  vec_add1 (forward, cached[i]);
+	  if (PREDICT_FALSE (tcp_rst (tcp_hdr)))
+	    {
+	      i++;
+	      break;
+	    }
+	}
+      else
+	vec_add1 (drops, cached[i]);
+    }
+
+  for (; i < vec_len (cached); i++)
+    vec_add1 (drops, cached[i]);
+
+  if (vec_len (forward))
+    {
+      hsi_tcp_drain_enqueue_cached_buffers (
+	vm, tc->c_is_ip4 ? ip4_lookup_node.index : ip6_lookup_node.index, forward);
+      hsi_worker_counter_add (wrk, tcp_drain_cache_flushed, vec_len (forward));
+    }
+
+  if (vec_len (drops))
+    {
+      vlib_buffer_free (vm, drops, vec_len (drops));
+      hsi_worker_counter_add (wrk, tcp_drain_cache_dropped, vec_len (drops));
+    }
+
+  vec_free (forward);
+  vec_free (drops);
+  vec_free (cached);
+}
+
+static void
+hsi_tcp_track_commit_connection (tcp_connection_t *tc, hsi_tcp_track_snapshot_t *peer)
+{
+  hsi_worker_t *wrk = hsi_worker_get (tc->c_thread_index);
+
+  hsi_tcp_track_cleanup_tcp_state (tc);
+  hsi_tcp_tracker_init (hsi_tcp_tracker_from_connection (tc), tc, peer);
+
+  tc->cfg_flags |= TCP_CFG_F_TRACKED;
+  tcp_connection_set_state (tc, TCP_STATE_CLOSED);
+  hsi_tcp_drain_flush_cached_buffers (tc);
+  if (hsi_tcp_drain_get (tc->c_thread_index, hsi_tcp_session_conn_key_from_connection (tc)))
+    hsi_worker_counter_inc (wrk, tcp_drain_completed);
+  hsi_tcp_drain_stop (tc);
+}
+
+static void
+hsi_tcp_track_commit (session_t *s, hsi_tcp_track_snapshot_t *peer)
+{
+  tcp_connection_t *tc;
+
+  ASSERT (s->thread_index == vlib_get_thread_index ());
+
+  tc = hsi_tcp_connection_at_session (s);
+  if (tc->state == TCP_STATE_CLOSED)
+    {
+      ASSERT (tc->cfg_flags & TCP_CFG_F_TRACKED);
+      return;
+    }
+
+  hsi_session_take_ownership (s);
+  tcp_connection_timers_reset (tc);
+  tcp_cong_recovery_off (tc);
+  hsi_tcp_track_commit_connection (tc, peer);
+  s->session_state = SESSION_STATE_TRANSPORT_CLOSED;
+  hsi_session_cleanup_fifos (s);
+}
+
+static void
+hsi_tcp_track_commit_req_free_rpc (void *arg)
+{
+  hsi_tcp_track_commit_req_t *a = arg;
+  hsi_worker_t *wrk;
+
+  wrk = hsi_worker_get (vlib_get_thread_index ());
+  pool_put (wrk->tcp_track_commit_reqs, a);
+}
+
+static void
+hsi_tcp_track_commit_rpc (void *arg)
+{
+  hsi_tcp_track_commit_req_t *a = arg;
+  session_handle_tu_t sh = { .handle = a->session_handle };
+  session_t *s;
+
+  s = session_get_from_handle_if_valid (sh);
+  if (s)
+    hsi_tcp_track_commit (s, &a->peer);
+  else
+    {
+      hsi_worker_counter_inc (hsi_worker_get (vlib_get_thread_index ()), tcp_track_peer_rpc_failed);
+      hsi_tcp_track_send_abort (a->peer.session_handle);
+    }
+
+  session_send_rpc_evt_to_thread (a->owner_thread, hsi_tcp_track_commit_req_free_rpc, a);
+}
+
+static int
+hsi_tcp_track_send_commit (session_t *peer_s, hsi_tcp_track_snapshot_t *peer)
+{
+  hsi_tcp_track_commit_req_t *a;
+  hsi_worker_t *wrk;
+  clib_thread_index_t thread_index;
+
+  thread_index = peer->thread_index;
+  ASSERT (thread_index == vlib_get_thread_index ());
+  wrk = hsi_worker_get (thread_index);
+  pool_get_zero (wrk->tcp_track_commit_reqs, a);
+
+  a->owner_thread = thread_index;
+  a->session_handle = session_handle (peer_s);
+  a->peer = *peer;
+  session_send_rpc_evt_to_thread (peer_s->thread_index, hsi_tcp_track_commit_rpc, a);
+
+  return 0;
+}
+
+static int
+hsi_tcp_drain_try_complete (session_t *s, tcp_connection_t *tc, hsi_tcp_drain_t *drain, f64 now)
+{
+  session_handle_tu_t peer_sh;
+  hsi_tcp_track_snapshot_t snap, peer_snap;
+  tcp_connection_t *peer_tc;
+  hsi_tcp_drain_t *peer_drain = 0;
+  session_t *peer_s;
+  int rv;
+
+  ASSERT (tc->cfg_flags & TCP_CFG_F_TRACKED);
+  ASSERT (s->thread_index == vlib_get_thread_index ());
+  ASSERT (tc->c_thread_index == vlib_get_thread_index ());
+
+  if (tc->state == TCP_STATE_CLOSED)
+    return 1;
+
+  if (!drain)
+    return -1;
+  if (drain->state == HSI_TCP_DRAIN_STATE_FAILED)
+    return -1;
+
+  peer_sh.handle = drain->peer_session_handle;
+  peer_s = session_get_from_handle_safe (peer_sh);
+  if (!peer_s)
+    {
+      hsi_worker_counter_inc (hsi_worker_get (s->thread_index), tcp_track_peer_rpc_failed);
+      hsi_tcp_drain_fail_pair (drain);
+      return -1;
+    }
+
+  peer_tc = hsi_tcp_connection_at_session (peer_s);
+  if (!(peer_tc->cfg_flags & TCP_CFG_F_TRACKED))
+    return 0;
+
+  rv = hsi_tcp_drain_update_and_needs_drain (s, tc, drain, now);
+  if (rv < 0)
+    {
+      hsi_tcp_drain_fail_pair (drain);
+      return -1;
+    }
+  if (rv)
+    return 0;
+
+  if (s->thread_index == peer_s->thread_index)
+    {
+      peer_drain = hsi_tcp_drain_get (peer_tc->c_thread_index,
+				      hsi_tcp_session_conn_key_from_connection (peer_tc));
+      if (peer_drain)
+	{
+	  if (peer_drain->state == HSI_TCP_DRAIN_STATE_FAILED)
+	    return -1;
+	  rv = hsi_tcp_drain_update_and_needs_drain (peer_s, peer_tc, peer_drain, now);
+	  if (rv < 0)
+	    {
+	      hsi_tcp_drain_fail_pair (peer_drain);
+	      return -1;
+	    }
+	  if (rv)
+	    return 0;
+	}
+    }
+  else if (hsi_tcp_track_needs_drain (peer_s, peer_tc))
+    return 0;
+
+  hsi_tcp_track_snapshot (s, tc, &snap);
+  hsi_tcp_track_snapshot (peer_s, peer_tc, &peer_snap);
+
+  if (s->thread_index == peer_s->thread_index)
+    {
+      hsi_tcp_track_commit (s, &peer_snap);
+      hsi_tcp_track_commit (peer_s, &snap);
+      return 1;
+    }
+
+  if (hsi_tcp_track_send_commit (peer_s, &snap))
+    return 0;
+
+  hsi_tcp_track_commit (s, &peer_snap);
+  return 1;
+}
+
+hsi_tcp_tracked_action_t
+hsi_tcp_drain_cache_buffer (vlib_main_t *vm, vlib_buffer_t *b, tcp_connection_t *tc, void *ip_hdr,
+			    tcp_header_t *tcp_hdr, u8 is_ip4)
+{
+  session_handle_tu_t sh;
+  hsi_tcp_drain_t *drain;
+  hsi_worker_t *wrk;
+  session_t *s;
+  u32 data_len, seq, seq_end, ack, len;
+  u32 bytes_acked = 0;
+  uword key;
+  u8 rst;
+
+  ASSERT (tc->cfg_flags & TCP_CFG_F_TRACKED);
+  ASSERT (tc->state != TCP_STATE_CLOSED);
+  ASSERT (tc->c_thread_index == vlib_get_thread_index ());
+
+  key = hsi_tcp_session_conn_key_from_connection (tc);
+  drain = hsi_tcp_drain_get (tc->c_thread_index, key);
+  if (!drain)
+    return HSI_TCP_TRACKED_ACTION_DROP;
+  if (PREDICT_FALSE (drain->state == HSI_TCP_DRAIN_STATE_FAILED))
+    return HSI_TCP_TRACKED_ACTION_DROP;
+
+  if (PREDICT_FALSE (!hsi_tcp_segment_data_len (ip_hdr, tcp_hdr, is_ip4, &data_len)))
+    goto drop;
+
+  seq = clib_net_to_host_u32 (tcp_hdr->seq_number);
+  ack = clib_net_to_host_u32 (tcp_hdr->ack_number);
+  rst = tcp_rst (tcp_hdr);
+  seq_end = seq + data_len + (rst ? 0 : tcp_fin (tcp_hdr));
+
+  if (PREDICT_FALSE (tcp_syn (tcp_hdr)))
+    goto drop;
+
+  if (PREDICT_FALSE (!hsi_tcp_segment_in_rcv_wnd (tc, seq, seq_end)))
+    goto drop;
+
+  if (tcp_ack (tcp_hdr))
+    {
+      if (PREDICT_FALSE (seq_gt (ack, tc->snd_nxt)))
+	goto drop;
+      if (seq_gt (ack, tc->snd_una))
+	{
+	  bytes_acked = ack - tc->snd_una;
+	  tc->snd_una = ack;
+	  session_tx_fifo_dequeue_drop (&tc->connection, bytes_acked);
+	  tcp_validate_txf_size (tc, tc->snd_nxt - tc->snd_una);
+	}
+      hsi_tcp_update_snd_wnd (tc, seq, ack, tcp_hdr);
+    }
+  else if (!rst)
+    goto drop;
+
+  len = vlib_buffer_length_in_chain (vm, b);
+  if (PREDICT_FALSE (!hsi_drain_cache_has_room (drain->cached_buffers, drain->cached_bytes, len,
+						hsi_main.tcp_drain_cache_max_packets,
+						HSI_TCP_DRAIN_CACHE_MAX_BYTES)))
+    {
+      wrk = hsi_worker_get (tc->c_thread_index);
+      hsi_worker_counter_inc (wrk, tcp_drain_cache_overflow);
+      hsi_tcp_drain_fail_pair (drain);
+      goto drop;
+    }
+
+  hsi_drain_cache_buffer (&drain->cached_buffers, &drain->cached_bytes,
+			  vlib_get_buffer_index (vm, b), len);
+
+  if (!drain->wnd_clamped)
+    {
+      hsi_tcp_send_zero_wnd_ack (tc);
+      drain->wnd_clamped = 1;
+    }
+
+  wrk = hsi_worker_get (tc->c_thread_index);
+  hsi_worker_counter_inc (wrk, tcp_drain_cached);
+
+  sh.handle = drain->session_handle;
+  s = session_get_from_handle_safe (sh);
+  if (s)
+    {
+      if (bytes_acked && svm_fifo_max_dequeue_cons (s->tx_fifo))
+	session_program_tx_io_evt (session_handle (s), SESSION_IO_EVT_TX);
+      hsi_tcp_drain_try_complete (s, tc, drain, vlib_time_now (vm));
+    }
+
+  return HSI_TCP_TRACKED_ACTION_CONSUME;
+
+drop:
+  hsi_worker_counter_inc (hsi_worker_get (tc->c_thread_index), tcp_drain_cache_dropped);
+  return HSI_TCP_TRACKED_ACTION_DROP;
+}
+
+int
+hsi_tcp_try_complete_drain (tcp_connection_t *tc)
+{
+  session_handle_tu_t sh;
+  hsi_tcp_drain_t *drain;
+  session_t *s;
+
+  ASSERT (tc->cfg_flags & TCP_CFG_F_TRACKED);
+  ASSERT (tc->state != TCP_STATE_CLOSED);
+  ASSERT (tc->c_thread_index == vlib_get_thread_index ());
+
+  drain = hsi_tcp_drain_get (tc->c_thread_index, hsi_tcp_session_conn_key_from_connection (tc));
+  if (!drain)
+    return 0;
+
+  sh.handle = drain->session_handle;
+  s = session_get_from_handle_safe (sh);
+  if (!s)
+    return 0;
+
+  return hsi_tcp_drain_try_complete (s, tc, drain, vlib_time_now (vlib_get_main ())) == 1;
+}
+
+void
+hsi_tcp_drain_update_time (f64 time_now, u8 thread_index)
+{
+  hsi_tcp_drain_t *drain;
+  session_handle_t *handles, *handle;
+  hsi_worker_t *wrk;
+
+  wrk = hsi_worker_get (thread_index);
+  if (!pool_elts (wrk->tcp_drains))
+    {
+      hsi_tcp_drain_maybe_unregister_time_update (thread_index);
+      return;
+    }
+
+  handles = wrk->tcp_drain_update_handles;
+  vec_reset_length (handles);
+  pool_foreach (drain, wrk->tcp_drains)
+    {
+      vec_add1 (handles, drain->session_handle);
+    }
+  wrk->tcp_drain_update_handles = handles;
+
+  vec_foreach (handle, handles)
+    {
+      session_handle_tu_t sh = { .handle = *handle };
+      tcp_connection_t *tc;
+      session_t *s;
+
+      s = session_get_from_handle_safe (sh);
+      if (!s || s->thread_index != thread_index)
+	continue;
+
+      tc = hsi_tcp_connection_at_session (s);
+      if (!(tc->cfg_flags & TCP_CFG_F_TRACKED) || tc->state == TCP_STATE_CLOSED)
+	continue;
+
+      drain = hsi_tcp_drain_get (thread_index, hsi_session_conn_key_from_session (s));
+      if (drain)
+	hsi_tcp_drain_try_complete (s, tc, drain, time_now);
+    }
+
+  hsi_tcp_drain_maybe_unregister_time_update (thread_index);
+}
+
+static int
+hsi_tcp_track_session_pair (session_t *s, session_t *peer_s)
+{
+  tcp_connection_t *tc0, *tc1;
+  hsi_tcp_track_snapshot_t snap0, snap1;
+  u8 is_same_thread;
+
+  tc0 = hsi_tcp_connection_at_session (s);
+  tc1 = hsi_tcp_connection_at_session (peer_s);
+  is_same_thread = s->thread_index == peer_s->thread_index;
+
+  if (!hsi_tcp_track_is_possible (tc0, tc1))
+    return -1;
+
+  if (hsi_tcp_track_needs_drain (s, tc0) || hsi_tcp_track_needs_drain (peer_s, tc1))
+    {
+      hsi_tcp_drain_start (s, peer_s, tc0, tc1);
+      if (is_same_thread)
+	hsi_tcp_drain_start (peer_s, s, tc1, tc0);
+      else if (hsi_tcp_track_send_drain_start (s, peer_s))
+	return -1;
+      return 0;
+    }
+
+  if (is_same_thread)
+    {
+      hsi_tcp_track_snapshot (s, tc0, &snap0);
+      hsi_tcp_track_snapshot (peer_s, tc1, &snap1);
+
+      hsi_tcp_track_commit (s, &snap1);
+      hsi_tcp_track_commit (peer_s, &snap0);
+
+      return 0;
+    }
+
+  hsi_tcp_track_snapshot (s, tc0, &snap0);
+  hsi_tcp_track_snapshot (peer_s, tc1, &snap1);
+
+  if (hsi_tcp_track_send_commit (peer_s, &snap0))
+    return -1;
+
+  hsi_tcp_track_commit (s, &snap1);
+
+  return 0;
+}
+
+static void
+hsi_udp_track_snapshot (session_t *s, udp_connection_t *uc, hsi_udp_track_snapshot_t *snap)
+{
+  snap->session_handle = session_handle (s);
+  snap->conn_index = uc->c_c_index;
+  snap->thread_index = uc->c_thread_index;
+  snap->fib_index = uc->c_fib_index;
+  snap->lcl_ip = uc->c_lcl_ip;
+  snap->rmt_ip = uc->c_rmt_ip;
+  snap->lcl_port = uc->c_lcl_port;
+  snap->rmt_port = uc->c_rmt_port;
+  snap->is_ip4 = uc->c_is_ip4;
+}
+
+static_always_inline int
+hsi_udp_track_connections_compatible (udp_connection_t *uc0, udp_connection_t *uc1)
+{
+  if (uc0->c_is_ip4 != uc1->c_is_ip4)
+    return 0;
+
+  return 1;
+}
+
+static_always_inline int
+hsi_udp_track_is_possible (udp_connection_t *uc0, udp_connection_t *uc1)
+{
+  if (!(uc0->flags & UDP_CONN_F_CONNECTED) || !(uc1->flags & UDP_CONN_F_CONNECTED))
+    return 0;
+  if (uc0->cfg_flags & UDP_CFG_F_TRACKED)
+    return 0;
+  if (uc1->cfg_flags & UDP_CFG_F_TRACKED)
+    return 0;
+
+  return hsi_udp_track_connections_compatible (uc0, uc1);
+}
+
+static_always_inline int
+hsi_udp_track_needs_drain (session_t *s)
+{
+  u32 rx_deq, tx_deq;
+
+  hsi_drain_sample_fifos (s, &rx_deq, &tx_deq);
+  return rx_deq || tx_deq;
+}
+
+static_always_inline int
+hsi_udp_peer_needs_drain_safe (session_t *s)
+{
+  if (!s->rx_fifo && !s->tx_fifo)
+    return 0;
+  if (!s->rx_fifo || !s->tx_fifo)
+    return -1;
+
+  return hsi_udp_track_needs_drain (s);
+}
+
+static_always_inline void
+hsi_udp_drain_sample (session_t *s, hsi_udp_drain_t *drain)
+{
+  hsi_drain_sample_fifos (s, &drain->rx_deq, &drain->tx_deq);
+}
+
+static_always_inline int
+hsi_udp_drain_sample_needs_drain (hsi_udp_drain_t *drain)
+{
+  return drain->rx_deq || drain->tx_deq;
+}
+
+static_always_inline u8
+hsi_udp_drain_sample_changed (hsi_udp_drain_t *drain, hsi_udp_drain_t *sample)
+{
+  return drain->rx_deq != sample->rx_deq || drain->tx_deq != sample->tx_deq;
+}
+
+static int
+hsi_udp_drain_update_and_needs_drain (session_t *s, hsi_udp_drain_t *drain, f64 now)
+{
+  hsi_udp_drain_t sample = {};
+  int needs_drain;
+
+  hsi_udp_drain_sample (s, &sample);
+
+  if (hsi_udp_drain_sample_changed (drain, &sample))
+    {
+      drain->rx_deq = sample.rx_deq;
+      drain->tx_deq = sample.tx_deq;
+      drain->last_progress_time = now;
+      drain->stalled = 0;
+    }
+
+  needs_drain = hsi_udp_drain_sample_needs_drain (&sample);
+  if (needs_drain && !drain->stalled &&
+      now - drain->last_progress_time > hsi_main.udp_drain_no_progress_timeout)
+    {
+      hsi_worker_counter_inc (hsi_worker_get (vlib_get_thread_index ()), udp_drain_stalled);
+      drain->stalled = 1;
+      drain->state = HSI_UDP_DRAIN_STATE_FAILED;
+      return -1;
+    }
+
+  return needs_drain;
+}
+
+static void
+hsi_udp_drain_fail_pair (hsi_udp_drain_t *drain)
+{
+  if (drain->cleanup_pending)
+    return;
+
+  drain->state = HSI_UDP_DRAIN_STATE_FAILED;
+  drain->cleanup_pending = 1;
+  hsi_session_send_cleanup_pair (clib_min (drain->session_handle, drain->peer_session_handle));
+}
+
+static void
+hsi_udp_enqueue_tracked_buffer (vlib_main_t *vm, vlib_buffer_t *b, udp_connection_t *uc)
+{
+  u32 node_index, *to_next;
+  vlib_frame_t *f;
+
+  node_index = uc->c_is_ip4 ? ip4_lookup_node.index : ip6_lookup_node.index;
+  f = vlib_get_frame_to_node (vm, node_index);
+  to_next = vlib_frame_vector_args (f);
+  to_next[0] = vlib_get_buffer_index (vm, b);
+  f->n_vectors = 1;
+  vlib_put_frame_to_node (vm, node_index, f);
+}
+
+static void
+hsi_udp_drain_cache_req_free_rpc (void *arg)
+{
+  hsi_udp_drain_cache_req_t *a = arg;
+  hsi_worker_t *wrk;
+
+  wrk = hsi_worker_get (vlib_get_thread_index ());
+  pool_put (wrk->udp_drain_cache_reqs, a);
+}
+
+static void
+hsi_udp_drain_cache_rpc (void *arg)
+{
+  hsi_udp_drain_cache_req_t *a = arg;
+  session_handle_tu_t sh = { .handle = a->session_handle };
+  vlib_main_t *vm = vlib_get_main ();
+  hsi_udp_drain_t *drain;
+  udp_connection_t *uc;
+  hsi_worker_t *wrk;
+  udp_header_t *udp_hdr;
+  session_t *s;
+  void *ip_hdr;
+
+  wrk = hsi_worker_get (vlib_get_thread_index ());
+  s = session_get_from_handle_if_valid (sh);
+  if (!s || session_get_transport_proto (s) != TRANSPORT_PROTO_UDP)
+    goto drop;
+
+  uc = hsi_udp_connection_at_session (s);
+  if (!(uc->cfg_flags & UDP_CFG_F_TRACKED))
+    goto drop;
+
+  drain = hsi_udp_drain_get (uc->c_thread_index, hsi_udp_session_conn_key_from_connection (uc));
+  if (!drain)
+    {
+      vlib_buffer_t *b = vlib_get_buffer (vm, a->buffer_index);
+
+      ip_hdr = vlib_buffer_get_current (b);
+      udp_hdr = uc->c_is_ip4 ? ip4_next_header ((ip4_header_t *) ip_hdr) :
+			       ip6_next_header ((ip6_header_t *) ip_hdr);
+      hsi_udp_handle_tracked_connection (vm, b, uc, ip_hdr, udp_hdr, uc->c_is_ip4);
+      hsi_udp_enqueue_tracked_buffer (vm, b, uc);
+      goto done;
+    }
+
+  if (PREDICT_FALSE (drain->state == HSI_UDP_DRAIN_STATE_FAILED))
+    goto drop;
+
+  if (PREDICT_FALSE (!hsi_drain_cache_has_room (drain->cached_buffers, drain->cached_bytes, a->len,
+						hsi_main.udp_drain_cache_max_packets,
+						HSI_UDP_DRAIN_CACHE_MAX_BYTES)))
+    {
+      hsi_worker_counter_inc (wrk, udp_drain_cache_overflow);
+      hsi_udp_drain_fail_pair (drain);
+      goto drop;
+    }
+
+  hsi_drain_cache_buffer (&drain->cached_buffers, &drain->cached_bytes, a->buffer_index, a->len);
+  hsi_worker_counter_inc (wrk, udp_drain_cached);
+  goto done;
+
+drop:
+  vlib_buffer_free_one (vm, a->buffer_index);
+  hsi_worker_counter_inc (wrk, udp_drain_cache_dropped);
+
+done:
+  session_send_rpc_evt_to_thread (a->owner_thread, hsi_udp_drain_cache_req_free_rpc, a);
+}
+
+hsi_udp_tracked_action_t
+hsi_udp_drain_cache_buffer_remote (vlib_main_t *vm, vlib_buffer_t *b, session_t *s,
+				   udp_connection_t *uc, void *ip_hdr, udp_header_t *udp_hdr,
+				   u8 is_ip4)
+{
+  hsi_udp_drain_cache_req_t *a;
+  hsi_worker_t *wrk;
+  u32 udp_len, len;
+
+  ASSERT (uc->cfg_flags & UDP_CFG_F_TRACKED);
+  ASSERT (uc->c_thread_index != vlib_get_thread_index ());
+
+  udp_len = clib_net_to_host_u16 (udp_hdr->length);
+  len = vlib_buffer_length_in_chain (vm, b);
+  if (PREDICT_FALSE (udp_len < sizeof (udp_header_t) ||
+		     (u32) ((u8 *) udp_hdr - (u8 *) ip_hdr) + udp_len > len))
+    return HSI_UDP_TRACKED_ACTION_DROP;
+
+  wrk = hsi_worker_get (vlib_get_thread_index ());
+  pool_get_zero (wrk->udp_drain_cache_reqs, a);
+  a->owner_thread = vlib_get_thread_index ();
+  a->session_handle = session_handle (s);
+  a->buffer_index = vlib_get_buffer_index (vm, b);
+  a->len = len;
+
+  session_send_rpc_evt_to_thread (uc->c_thread_index, hsi_udp_drain_cache_rpc, a);
+
+  return HSI_UDP_TRACKED_ACTION_CONSUME;
+}
+
+hsi_udp_tracked_action_t
+hsi_udp_drain_cache_buffer (vlib_main_t *vm, vlib_buffer_t *b, udp_connection_t *uc, void *ip_hdr,
+			    udp_header_t *udp_hdr, u8 is_ip4)
+{
+  hsi_udp_drain_t *drain;
+  hsi_worker_t *wrk;
+  u32 udp_len, len;
+  uword key;
+
+  ASSERT (uc->cfg_flags & UDP_CFG_F_TRACKED);
+  ASSERT (uc->c_thread_index == vlib_get_thread_index ());
+
+  key = hsi_udp_session_conn_key_from_connection (uc);
+  drain = hsi_udp_drain_get (uc->c_thread_index, key);
+  if (!drain)
+    return HSI_UDP_TRACKED_ACTION_FORWARD;
+  if (PREDICT_FALSE (drain->state == HSI_UDP_DRAIN_STATE_FAILED))
+    return HSI_UDP_TRACKED_ACTION_DROP;
+
+  udp_len = clib_net_to_host_u16 (udp_hdr->length);
+  len = vlib_buffer_length_in_chain (vm, b);
+  if (PREDICT_FALSE (udp_len < sizeof (udp_header_t) ||
+		     (u32) ((u8 *) udp_hdr - (u8 *) ip_hdr) + udp_len > len))
+    goto drop;
+
+  if (PREDICT_FALSE (!hsi_drain_cache_has_room (drain->cached_buffers, drain->cached_bytes, len,
+						hsi_main.udp_drain_cache_max_packets,
+						HSI_UDP_DRAIN_CACHE_MAX_BYTES)))
+    {
+      wrk = hsi_worker_get (uc->c_thread_index);
+      hsi_worker_counter_inc (wrk, udp_drain_cache_overflow);
+      hsi_udp_drain_fail_pair (drain);
+      goto drop;
+    }
+
+  hsi_drain_cache_buffer (&drain->cached_buffers, &drain->cached_bytes,
+			  vlib_get_buffer_index (vm, b), len);
+
+  wrk = hsi_worker_get (uc->c_thread_index);
+  hsi_worker_counter_inc (wrk, udp_drain_cached);
+
+  return HSI_UDP_TRACKED_ACTION_CONSUME;
+
+drop:
+  hsi_worker_counter_inc (hsi_worker_get (uc->c_thread_index), udp_drain_cache_dropped);
+  return HSI_UDP_TRACKED_ACTION_DROP;
+}
+
+static hsi_udp_drain_t *
+hsi_udp_drain_start (session_t *s, session_t *peer_s, udp_connection_t *uc,
+		     udp_connection_t *peer_uc)
+{
+  clib_thread_index_t thread_index = vlib_get_thread_index ();
+  hsi_udp_drain_t *drain;
+  hsi_worker_t *wrk;
+  u32 drain_index;
+  uword key;
+  f64 now;
+
+  ASSERT (s->thread_index == thread_index);
+
+  key = hsi_session_conn_key_from_session (s);
+  drain = hsi_udp_drain_get (thread_index, key);
+  if (drain)
+    return drain;
+
+  wrk = hsi_worker_get (thread_index);
+  pool_get_zero (wrk->udp_drains, drain);
+  drain_index = drain - wrk->udp_drains;
+  hash_set (wrk->udp_drain_by_session_conn, key, drain_index);
+
+  hsi_session_take_ownership (s);
+  hsi_udp_track_peer_set (s, session_handle (peer_s));
+  now = vlib_time_now (vlib_get_main ());
+
+  drain->session_handle = session_handle (s);
+  drain->peer_session_handle = session_handle (peer_s);
+  drain->conn_index = uc->c_c_index;
+  drain->peer_conn_index = peer_uc->c_c_index;
+  drain->thread_index = thread_index;
+  drain->peer_thread_index = peer_s->thread_index;
+  drain->start_time = now;
+  drain->last_progress_time = now;
+  hsi_udp_drain_sample (s, drain);
+  drain->state = HSI_UDP_DRAIN_STATE_DRAINING;
+  uc->cfg_flags |= UDP_CFG_F_TRACKED;
+  hsi_worker_counter_inc (wrk, udp_drain_started);
+  hsi_udp_drain_maybe_register_time_update (thread_index);
+
+  return drain;
+}
+
+static void
+hsi_udp_drain_start_req_free_rpc (void *arg)
+{
+  hsi_udp_drain_start_req_t *a = arg;
+  hsi_worker_t *wrk;
+
+  wrk = hsi_worker_get (vlib_get_thread_index ());
+  pool_put (wrk->udp_drain_start_reqs, a);
+}
+
+static void
+hsi_udp_drain_start_rpc (void *arg)
+{
+  hsi_udp_drain_start_req_t *a = arg;
+  session_handle_tu_t sh = { .handle = a->session_handle };
+  session_handle_tu_t peer_sh = { .handle = a->peer_session_handle };
+  session_t *s, *peer_s;
+  udp_connection_t *uc, *peer_uc;
+
+  s = session_get_from_handle_if_valid (sh);
+  peer_s = session_get_from_handle_safe (peer_sh);
+  if (!s || !peer_s)
+    {
+      hsi_worker_counter_inc (hsi_worker_get (vlib_get_thread_index ()), udp_track_peer_rpc_failed);
+      hsi_session_send_cleanup_pair (a->peer_session_handle);
+      goto done;
+    }
+
+  ASSERT (hsi_track_sessions_compatible (s, peer_s));
+
+  uc = hsi_udp_connection_at_session (s);
+  peer_uc = hsi_udp_connection_at_session (peer_s);
+  ASSERT (!(uc->cfg_flags & UDP_CFG_F_TRACKED));
+  ASSERT (peer_uc->cfg_flags & UDP_CFG_F_TRACKED);
+  ASSERT (hsi_udp_track_connections_compatible (uc, peer_uc));
+  hsi_udp_drain_start (s, peer_s, uc, peer_uc);
+
+done:
+  session_send_rpc_evt_to_thread (a->owner_thread, hsi_udp_drain_start_req_free_rpc, a);
+}
+
+static int
+hsi_udp_track_send_drain_start (session_t *s, session_t *peer_s)
+{
+  hsi_udp_drain_start_req_t *a;
+  hsi_worker_t *wrk;
+  clib_thread_index_t thread_index;
+
+  thread_index = s->thread_index;
+  ASSERT (thread_index == vlib_get_thread_index ());
+  wrk = hsi_worker_get (thread_index);
+  pool_get_zero (wrk->udp_drain_start_reqs, a);
+
+  a->owner_thread = thread_index;
+  a->session_handle = session_handle (peer_s);
+  a->peer_session_handle = session_handle (s);
+  session_send_rpc_evt_to_thread (peer_s->thread_index, hsi_udp_drain_start_rpc, a);
+
+  return 0;
+}
+
+static void
+hsi_udp_tracker_init (hsi_udp_tracker_t *trk, hsi_udp_track_snapshot_t *peer)
+{
+  clib_memset (trk, 0, sizeof (*trk));
+
+  trk->tx_fib_index = peer->fib_index;
+  trk->tx_lcl_ip = peer->lcl_ip;
+  trk->tx_rmt_ip = peer->rmt_ip;
+  trk->tx_lcl_port = peer->lcl_port;
+  trk->tx_rmt_port = peer->rmt_port;
+}
+
+static void
+hsi_udp_drain_flush_cached_buffers (udp_connection_t *uc)
+{
+  hsi_udp_drain_t *drain;
+  hsi_worker_t *wrk;
+  vlib_main_t *vm;
+  u32 *cached;
+  uword key;
+  u32 i;
+
+  key = hsi_udp_session_conn_key_from_connection (uc);
+  drain = hsi_udp_drain_get (uc->c_thread_index, key);
+  if (!drain || !vec_len (drain->cached_buffers))
+    return;
+
+  vm = vlib_get_main_by_index (uc->c_thread_index);
+  wrk = hsi_worker_get (uc->c_thread_index);
+  cached = drain->cached_buffers;
+  drain->cached_buffers = 0;
+  drain->cached_bytes = 0;
+
+  for (i = 0; i < vec_len (cached); i++)
+    {
+      udp_header_t *udp_hdr;
+      vlib_buffer_t *b;
+      void *ip_hdr;
+
+      b = vlib_get_buffer (vm, cached[i]);
+      ip_hdr = vlib_buffer_get_current (b);
+      udp_hdr = uc->c_is_ip4 ? ip4_next_header ((ip4_header_t *) ip_hdr) :
+			       ip6_next_header ((ip6_header_t *) ip_hdr);
+
+      hsi_udp_handle_tracked_connection (vm, b, uc, ip_hdr, udp_hdr, uc->c_is_ip4);
+    }
+
+  hsi_tcp_drain_enqueue_cached_buffers (
+    vm, uc->c_is_ip4 ? ip4_lookup_node.index : ip6_lookup_node.index, cached);
+  hsi_worker_counter_add (wrk, udp_drain_cache_flushed, vec_len (cached));
+  vec_free (cached);
+}
+
+static void
+hsi_udp_track_commit_connection (udp_connection_t *uc, hsi_udp_track_snapshot_t *peer)
+{
+  hsi_worker_t *wrk = hsi_worker_get (uc->c_thread_index);
+
+  hsi_udp_tracker_init (hsi_udp_tracker_from_connection (uc), peer);
+  hsi_udp_connection_peer_handle_set (uc, peer->session_handle);
+
+  uc->cfg_flags |= UDP_CFG_F_TRACKED;
+  hsi_udp_idle_add (uc, vlib_time_now (vlib_get_main_by_index (uc->c_thread_index)));
+  hsi_udp_drain_flush_cached_buffers (uc);
+  if (hsi_udp_drain_get (uc->c_thread_index, hsi_udp_session_conn_key_from_connection (uc)))
+    hsi_worker_counter_inc (wrk, udp_drain_completed);
+  hsi_udp_drain_stop (uc);
+}
+
+static void
+hsi_udp_track_commit (session_t *s, hsi_udp_track_snapshot_t *peer)
+{
+  udp_connection_t *uc;
+  hsi_udp_drain_t *drain;
+
+  ASSERT (s->thread_index == vlib_get_thread_index ());
+
+  uc = hsi_udp_connection_at_session (s);
+  drain = hsi_udp_drain_get (uc->c_thread_index, hsi_udp_session_conn_key_from_connection (uc));
+  if (!drain && s->session_state == SESSION_STATE_TRANSPORT_CLOSED)
+    {
+      ASSERT (uc->cfg_flags & UDP_CFG_F_TRACKED);
+      return;
+    }
+
+  hsi_session_take_ownership (s);
+  hsi_udp_track_peer_set (s, peer->session_handle);
+  hsi_udp_track_commit_connection (uc, peer);
+  s->session_state = SESSION_STATE_TRANSPORT_CLOSED;
+  if (s->rx_fifo || s->tx_fifo)
+    hsi_session_cleanup_fifos (s);
+}
+
+static void
+hsi_udp_track_commit_req_free_rpc (void *arg)
+{
+  hsi_udp_track_commit_req_t *a = arg;
+  hsi_worker_t *wrk;
+
+  wrk = hsi_worker_get (vlib_get_thread_index ());
+  pool_put (wrk->udp_track_commit_reqs, a);
+}
+
+static void
+hsi_udp_track_commit_rpc (void *arg)
+{
+  hsi_udp_track_commit_req_t *a = arg;
+  session_handle_tu_t sh = { .handle = a->session_handle };
+  session_t *s;
+
+  s = session_get_from_handle_if_valid (sh);
+  if (s)
+    hsi_udp_track_commit (s, &a->peer);
+  else
+    hsi_worker_counter_inc (hsi_worker_get (vlib_get_thread_index ()), udp_track_peer_rpc_failed);
+  session_send_rpc_evt_to_thread (a->owner_thread, hsi_udp_track_commit_req_free_rpc, a);
+}
+
+static int
+hsi_udp_track_send_commit (session_t *peer_s, hsi_udp_track_snapshot_t *peer)
+{
+  hsi_udp_track_commit_req_t *a;
+  hsi_worker_t *wrk;
+  clib_thread_index_t thread_index;
+
+  thread_index = peer->thread_index;
+  ASSERT (thread_index == vlib_get_thread_index ());
+  wrk = hsi_worker_get (thread_index);
+  pool_get_zero (wrk->udp_track_commit_reqs, a);
+
+  a->owner_thread = thread_index;
+  a->session_handle = session_handle (peer_s);
+  a->peer = *peer;
+  session_send_rpc_evt_to_thread (peer_s->thread_index, hsi_udp_track_commit_rpc, a);
+
+  return 0;
+}
+
+static int
+hsi_udp_drain_try_complete (session_t *s, udp_connection_t *uc, hsi_udp_drain_t *drain, f64 now)
+{
+  session_handle_tu_t peer_sh;
+  hsi_udp_track_snapshot_t snap, peer_snap;
+  udp_connection_t *peer_uc;
+  hsi_udp_drain_t *peer_drain = 0;
+  session_t *peer_s;
+  int rv;
+
+  ASSERT (uc->cfg_flags & UDP_CFG_F_TRACKED);
+  ASSERT (s->thread_index == vlib_get_thread_index ());
+  ASSERT (uc->c_thread_index == vlib_get_thread_index ());
+
+  if (!drain)
+    return 1;
+  if (drain->state == HSI_UDP_DRAIN_STATE_FAILED)
+    {
+      hsi_udp_drain_fail_pair (drain);
+      return -1;
+    }
+
+  peer_sh.handle = drain->peer_session_handle;
+  peer_s = session_get_from_handle_safe (peer_sh);
+  if (!peer_s)
+    {
+      hsi_worker_counter_inc (hsi_worker_get (s->thread_index), udp_track_peer_rpc_failed);
+      hsi_udp_drain_fail_pair (drain);
+      return -1;
+    }
+
+  peer_uc = hsi_udp_connection_at_session (peer_s);
+  if (!(peer_uc->cfg_flags & UDP_CFG_F_TRACKED))
+    return 0;
+
+  rv = hsi_udp_drain_update_and_needs_drain (s, drain, now);
+  if (rv < 0)
+    {
+      hsi_udp_drain_fail_pair (drain);
+      return -1;
+    }
+  if (rv)
+    return 0;
+
+  if (s->thread_index == peer_s->thread_index)
+    {
+      peer_drain = hsi_udp_drain_get (peer_uc->c_thread_index,
+				      hsi_udp_session_conn_key_from_connection (peer_uc));
+      if (peer_drain)
+	{
+	  if (peer_drain->state == HSI_UDP_DRAIN_STATE_FAILED)
+	    return -1;
+	  rv = hsi_udp_drain_update_and_needs_drain (peer_s, peer_drain, now);
+	  if (rv < 0)
+	    {
+	      hsi_udp_drain_fail_pair (peer_drain);
+	      return -1;
+	    }
+	  if (rv)
+	    return 0;
+	}
+    }
+  else
+    {
+      rv = hsi_udp_peer_needs_drain_safe (peer_s);
+      if (rv < 0)
+	{
+	  hsi_udp_drain_fail_pair (drain);
+	  return -1;
+	}
+      if (rv)
+	return 0;
+    }
+
+  hsi_udp_track_snapshot (s, uc, &snap);
+  hsi_udp_track_snapshot (peer_s, peer_uc, &peer_snap);
+
+  if (s->thread_index == peer_s->thread_index)
+    {
+      hsi_udp_track_commit (s, &peer_snap);
+      hsi_udp_track_commit (peer_s, &snap);
+      return 1;
+    }
+
+  if (hsi_udp_track_send_commit (peer_s, &snap))
+    return 0;
+
+  hsi_udp_track_commit (s, &peer_snap);
+  return 1;
+}
+
+int
+hsi_udp_connection_is_draining (udp_connection_t *uc)
+{
+  return hsi_udp_drain_get (uc->c_thread_index, hsi_udp_session_conn_key_from_connection (uc)) != 0;
+}
+
+int
+hsi_udp_try_complete_drain (udp_connection_t *uc)
+{
+  session_handle_tu_t sh;
+  hsi_udp_drain_t *drain;
+  session_t *s;
+
+  ASSERT (uc->cfg_flags & UDP_CFG_F_TRACKED);
+  ASSERT (uc->c_thread_index == vlib_get_thread_index ());
+
+  drain = hsi_udp_drain_get (uc->c_thread_index, hsi_udp_session_conn_key_from_connection (uc));
+  if (!drain)
+    return 1;
+
+  sh.handle = drain->session_handle;
+  s = session_get_from_handle_safe (sh);
+  if (!s)
+    {
+      hsi_udp_drain_fail_pair (drain);
+      return 0;
+    }
+
+  return hsi_udp_drain_try_complete (s, uc, drain, vlib_time_now (vlib_get_main ())) == 1;
+}
+
+void
+hsi_udp_drain_update_time (f64 time_now, u8 thread_index)
+{
+  hsi_udp_drain_t *drain;
+  session_handle_t *handles, *handle;
+  hsi_worker_t *wrk;
+
+  wrk = hsi_worker_get (thread_index);
+  if (!pool_elts (wrk->udp_drains))
+    {
+      hsi_udp_drain_maybe_unregister_time_update (thread_index);
+      return;
+    }
+
+  handles = wrk->udp_drain_update_handles;
+  vec_reset_length (handles);
+  pool_foreach (drain, wrk->udp_drains)
+    {
+      vec_add1 (handles, drain->session_handle);
+    }
+  wrk->udp_drain_update_handles = handles;
+
+  vec_foreach (handle, handles)
+    {
+      session_handle_tu_t sh = { .handle = *handle };
+      udp_connection_t *uc;
+      session_t *s;
+
+      s = session_get_from_handle_safe (sh);
+      if (!s || s->thread_index != thread_index)
+	continue;
+
+      uc = hsi_udp_connection_at_session (s);
+      if (!(uc->cfg_flags & UDP_CFG_F_TRACKED))
+	continue;
+
+      drain = hsi_udp_drain_get (thread_index, hsi_session_conn_key_from_session (s));
+      if (drain)
+	hsi_udp_drain_try_complete (s, uc, drain, time_now);
+    }
+
+  hsi_udp_drain_maybe_unregister_time_update (thread_index);
+}
+
+static int
+hsi_udp_track_session_pair (session_t *s, session_t *peer_s)
+{
+  hsi_udp_track_snapshot_t snap0, snap1;
+  udp_connection_t *uc0, *uc1;
+  u8 is_same_thread;
+
+  uc0 = hsi_udp_connection_at_session (s);
+  uc1 = hsi_udp_connection_at_session (peer_s);
+  is_same_thread = s->thread_index == peer_s->thread_index;
+
+  if (!hsi_udp_track_is_possible (uc0, uc1))
+    return -1;
+
+  if (hsi_udp_track_needs_drain (s) || hsi_udp_track_needs_drain (peer_s))
+    {
+      hsi_udp_drain_start (s, peer_s, uc0, uc1);
+      if (is_same_thread)
+	hsi_udp_drain_start (peer_s, s, uc1, uc0);
+      else if (hsi_udp_track_send_drain_start (s, peer_s))
+	return -1;
+      return 0;
+    }
+
+  if (is_same_thread)
+    {
+      hsi_udp_track_snapshot (s, uc0, &snap0);
+      hsi_udp_track_snapshot (peer_s, uc1, &snap1);
+
+      hsi_udp_track_commit (s, &snap1);
+      hsi_udp_track_commit (peer_s, &snap0);
+
+      return 0;
+    }
+
+  hsi_udp_track_snapshot (s, uc0, &snap0);
+  hsi_udp_track_snapshot (peer_s, uc1, &snap1);
+
+  if (hsi_udp_track_send_commit (peer_s, &snap0))
+    return -1;
+
+  hsi_udp_track_commit (s, &snap1);
+
+  return 0;
+}
+
+__clib_export int
+hsi_track_session_pair (session_t *s, session_handle_t peer_session_handle)
+{
+  session_handle_tu_t peer_handle = { .handle = peer_session_handle };
+  clib_thread_index_t thread_index = vlib_get_thread_index ();
+  hsi_worker_t *wrk;
+  session_t *peer_s;
+  transport_proto_t proto;
+  int rv;
+
+  if (!s || peer_session_handle == SESSION_INVALID_HANDLE)
+    return -1;
+
+  if (thread_index != s->thread_index)
+    return -1;
+
+  wrk = hsi_worker_get (thread_index);
+  proto = session_get_transport_proto (s);
+  peer_s = session_get_from_handle_safe (peer_handle);
+  if (!hsi_track_sessions_compatible (s, peer_s))
+    {
+      hsi_worker_proto_counter_inc (wrk, proto, track_failed);
+      return -1;
+    }
+
+  switch (proto)
+    {
+    case TRANSPORT_PROTO_TCP:
+      rv = hsi_tcp_track_session_pair (s, peer_s);
+      break;
+    case TRANSPORT_PROTO_UDP:
+      rv = hsi_udp_track_session_pair (s, peer_s);
+      break;
+    default:
+      rv = -1;
+      break;
+    }
+
+  if (rv)
+    {
+      hsi_worker_proto_counter_inc (wrk, proto, track_failed);
+      return rv;
+    }
+
+  hsi_worker_proto_counter_inc (wrk, proto, track_accepted);
+
+  return 0;
+}
+
+static_always_inline u8
+hsi_tcp_tracker_cleanup_try_lock (hsi_tcp_tracker_t *trk)
+{
+  u32 old_flags;
+
+  old_flags = clib_atomic_fetch_or (&trk->flags, HSI_TRACKER_F_CLEANUP_PENDING);
+  return !(old_flags & HSI_TRACKER_F_CLEANUP_PENDING);
+}
+
+static_always_inline void
+hsi_tcp_tracker_cleanup_mark_pending (hsi_tcp_tracker_t *trk)
+{
+  clib_atomic_fetch_or (&trk->flags, HSI_TRACKER_F_CLEANUP_PENDING);
+}
+
+static_always_inline void
+hsi_tcp_track_schedule_cleanup_pair (tcp_connection_t *tc, hsi_tcp_tracker_t *trk,
+				     hsi_tcp_cleanup_reason_t reason)
+{
+  session_handle_tu_t peer_sh = { .handle = trk->peer_session_handle };
+  hsi_tcp_tracker_t *cleanup_trk, *peer_trk = 0;
+  tcp_connection_t *peer_tc;
+  session_t *peer_s;
+  session_t *local_s;
+  hsi_worker_t *wrk;
+  session_handle_t local_handle, first;
+  u8 local_shared, peer_shared;
+
+  ASSERT (tc->cfg_flags & TCP_CFG_F_TRACKED);
+  ASSERT (tc->state == TCP_STATE_CLOSED);
+  ASSERT (trk->peer_session_handle != SESSION_INVALID_HANDLE);
+
+  local_handle = session_make_handle (tc->c_s_index, tc->c_thread_index);
+
+  peer_s = session_get_from_handle_safe (peer_sh);
+  if (peer_s)
+    {
+      peer_tc = hsi_tcp_connection_at_session (peer_s);
+      ASSERT (peer_tc->cfg_flags & TCP_CFG_F_TRACKED);
+      if (peer_tc->state == TCP_STATE_CLOSED)
+	peer_trk = hsi_tcp_tracker_from_connection (peer_tc);
+    }
+
+  cleanup_trk = trk;
+  if (peer_trk && trk->peer_session_handle < local_handle)
+    cleanup_trk = peer_trk;
+
+  if (!hsi_tcp_tracker_cleanup_try_lock (cleanup_trk))
+    {
+      hsi_tcp_tracker_cleanup_mark_pending (trk);
+      return;
+    }
+
+  hsi_tcp_tracker_cleanup_mark_pending (trk);
+  if (peer_trk)
+    hsi_tcp_tracker_cleanup_mark_pending (peer_trk);
+
+  wrk = hsi_worker_get (vlib_get_thread_index ());
+  hsi_worker_counter_inc (wrk, tcp_cleanup_scheduled);
+  if (reason == HSI_TCP_CLEANUP_REASON_RST)
+    hsi_worker_counter_inc (wrk, tcp_rst_cleanup);
+  else
+    hsi_worker_counter_inc (wrk, tcp_fin_cleanup);
+
+  hsi_tcp_fin_wait_del (tc);
+  if (peer_trk)
+    hsi_tcp_fin_wait_del (peer_tc);
+
+  local_s = session_get_from_handle_safe ((session_handle_tu_t){ .handle = local_handle });
+  ASSERT (local_s);
+  local_shared = hsi_session_uses_shared_fifos (local_s);
+  peer_shared = peer_s && hsi_session_uses_shared_fifos (peer_s);
+
+  if (local_shared && !peer_shared)
+    first = local_handle;
+  else
+    first = trk->peer_session_handle;
+  hsi_session_send_cleanup_pair (first);
+}
+
+static_always_inline u8
+hsi_tcp_tracker_fin_done (hsi_tcp_tracker_t *trk)
+{
+  return (trk->flags & HSI_TRACKER_F_FIN_DONE) == HSI_TRACKER_F_FIN_DONE;
+}
+
+static_always_inline u8
+hsi_tcp_tracker_fin_received (hsi_tcp_tracker_t *trk)
+{
+  return trk->flags & HSI_TRACKER_F_FIN_RCVD;
+}
+
+static void
+hsi_tcp_track_arm_fin_wait (tcp_connection_t *tc, hsi_tcp_tracker_t *trk)
+{
+  if (trk->flags & (HSI_TRACKER_F_FIN_WAIT | HSI_TRACKER_F_CLEANUP_PENDING))
+    return;
+
+  trk->flags |= HSI_TRACKER_F_FIN_WAIT;
+  trk->fin_wait_start = vlib_time_now (vlib_get_main ());
+  hsi_worker_counter_inc (hsi_worker_get (tc->c_thread_index), tcp_fin_wait_started);
+  hsi_tcp_fin_wait_add (tc);
+}
+
+static void
+hsi_tcp_track_maybe_cleanup_pair (tcp_connection_t *tc, hsi_tcp_tracker_t *trk)
+{
+  session_handle_tu_t peer_sh = { .handle = trk->peer_session_handle };
+  tcp_connection_t *peer_tc;
+  hsi_tcp_tracker_t *peer_trk;
+  session_t *peer_s;
+
+  if (!hsi_tcp_tracker_fin_done (trk))
+    return;
+
+  peer_s = session_get_from_handle_safe (peer_sh);
+  if (!peer_s)
+    return;
+
+  peer_tc = hsi_tcp_connection_at_session (peer_s);
+  ASSERT (peer_tc->cfg_flags & TCP_CFG_F_TRACKED);
+  if (peer_tc->state != TCP_STATE_CLOSED)
+    return;
+
+  peer_trk = hsi_tcp_tracker_from_connection (peer_tc);
+  if (hsi_tcp_tracker_fin_done (peer_trk))
+    {
+      hsi_tcp_track_schedule_cleanup_pair (tc, trk, HSI_TCP_CLEANUP_REASON_FIN);
+      return;
+    }
+
+  if (hsi_tcp_tracker_fin_received (peer_trk))
+    hsi_tcp_track_arm_fin_wait (tc, trk);
+}
+
+void
+hsi_tcp_fin_wait_update_time (f64 time_now, u8 thread_index)
+{
+  hsi_tcp_tracker_t *trk, *peer_trk;
+  session_handle_tu_t peer_sh;
+  tcp_connection_t *tc, *peer_tc;
+  session_t *peer_s;
+  hsi_worker_t *wrk;
+  hash_pair_t *hp;
+  uword *keyp, *keys;
+  session_t *s;
+
+  wrk = hsi_worker_get (thread_index);
+  if (!hash_elts (wrk->tcp_fin_wait_by_session_conn))
+    {
+      hsi_tcp_fin_wait_maybe_unregister_time_update (thread_index);
+      return;
+    }
+
+  keys = wrk->tcp_fin_wait_update_keys;
+  vec_reset_length (keys);
+  hash_foreach_pair (hp, wrk->tcp_fin_wait_by_session_conn, ({ vec_add1 (keys, hp->key); }));
+  wrk->tcp_fin_wait_update_keys = keys;
+
+  vec_foreach (keyp, keys)
+    {
+      session_handle_tu_t sh = {
+	.handle = session_make_handle (hsi_session_conn_key_session_index (*keyp), thread_index),
+      };
+
+      s = session_get_from_handle_if_valid (sh);
+      if (!s || s->connection_index != hsi_session_conn_key_conn_index (*keyp))
+	{
+	  hsi_tcp_fin_wait_del_key (thread_index, *keyp);
+	  continue;
+	}
+
+      tc = hsi_tcp_connection_at_session (s);
+      if (!(tc->cfg_flags & TCP_CFG_F_TRACKED) || tc->state != TCP_STATE_CLOSED)
+	{
+	  hsi_tcp_fin_wait_del_key (thread_index, *keyp);
+	  continue;
+	}
+
+      trk = hsi_tcp_tracker_from_connection (tc);
+      if (trk->magic != HSI_TCP_TRACKER_MAGIC || !(trk->flags & HSI_TRACKER_F_FIN_WAIT) ||
+	  (trk->flags & HSI_TRACKER_F_CLEANUP_PENDING))
+	{
+	  hsi_tcp_fin_wait_del_key (thread_index, *keyp);
+	  continue;
+	}
+
+      if (time_now - trk->fin_wait_start < hsi_main.tcp_fin_wait_timeout)
+	continue;
+
+      peer_sh.handle = trk->peer_session_handle;
+      peer_s = session_get_from_handle_safe (peer_sh);
+      if (!peer_s)
+	{
+	  hsi_tcp_fin_wait_del_key (thread_index, *keyp);
+	  hsi_tcp_tracker_cleanup_mark_pending (trk);
+	  hsi_session_cleanup (s);
+	  continue;
+	}
+
+      peer_tc = hsi_tcp_connection_at_session (peer_s);
+      if (!(peer_tc->cfg_flags & TCP_CFG_F_TRACKED) || peer_tc->state != TCP_STATE_CLOSED)
+	continue;
+
+      peer_trk = hsi_tcp_tracker_from_connection (peer_tc);
+      if (!hsi_tcp_tracker_fin_received (trk) || !hsi_tcp_tracker_fin_received (peer_trk))
+	continue;
+
+      hsi_worker_counter_inc (hsi_worker_get (thread_index), tcp_fin_wait_cleanup);
+      hsi_tcp_track_schedule_cleanup_pair (tc, trk, HSI_TCP_CLEANUP_REASON_FIN);
+    }
+
+  hsi_tcp_fin_wait_maybe_unregister_time_update (thread_index);
+}
+
+static void
+hsi_tcp_mark_fin_acked (tcp_connection_t *tc, u32 ack)
+{
+  hsi_tcp_tracker_t *trk;
+
+  ASSERT (tc->cfg_flags & TCP_CFG_F_TRACKED);
+  ASSERT (tc->state == TCP_STATE_CLOSED);
+
+  trk = hsi_tcp_tracker_get (tc);
+  if ((trk->flags & HSI_TRACKER_F_FIN_RCVD) && seq_geq (ack, tc->rcv_nxt))
+    trk->flags |= HSI_TRACKER_F_FIN_ACKED;
+
+  hsi_tcp_track_maybe_cleanup_pair (tc, trk);
+}
+
+static void
+hsi_tcp_fin_ack_req_free_rpc (void *arg)
+{
+  hsi_tcp_fin_ack_req_t *a = arg;
+  hsi_worker_t *wrk;
+
+  wrk = hsi_worker_get (vlib_get_thread_index ());
+  pool_put (wrk->tcp_fin_ack_reqs, a);
+}
+
+static void
+hsi_tcp_mark_fin_acked_rpc (void *arg)
+{
+  hsi_tcp_fin_ack_req_t *a = arg;
+  session_handle_tu_t sh = { .handle = a->session_handle };
+  session_t *s;
+
+  s = session_get_from_handle_if_valid (sh);
+  if (s)
+    hsi_tcp_mark_fin_acked (hsi_tcp_connection_at_session (s), a->ack);
+
+  session_send_rpc_evt_to_thread (a->owner_thread, hsi_tcp_fin_ack_req_free_rpc, a);
+}
+
+static void
+hsi_tcp_send_fin_acked (session_t *s, u32 ack)
+{
+  hsi_tcp_fin_ack_req_t *a;
+  hsi_worker_t *wrk;
+  clib_thread_index_t thread_index = vlib_get_thread_index ();
+
+  wrk = hsi_worker_get (thread_index);
+  pool_get_zero (wrk->tcp_fin_ack_reqs, a);
+
+  a->owner_thread = thread_index;
+  a->session_handle = session_handle (s);
+  a->ack = ack;
+  session_send_rpc_evt_to_thread_force (s->thread_index, hsi_tcp_mark_fin_acked_rpc, a);
+}
+
+static void
+hsi_tcp_track_peer_fin_acked (hsi_tcp_tracker_t *trk, u32 ack)
+{
+  session_handle_tu_t peer_sh = { .handle = trk->peer_session_handle };
+  session_t *peer_s;
+  u32 peer_ack;
+
+  peer_s = session_get_from_handle_safe (peer_sh);
+  if (!peer_s)
+    return;
+
+  peer_ack = ack + trk->ack_delta;
+  if (peer_s->thread_index == vlib_get_thread_index ())
+    hsi_tcp_mark_fin_acked (hsi_tcp_connection_at_session (peer_s), peer_ack);
+  else
+    hsi_tcp_send_fin_acked (peer_s, peer_ack);
+}
+
+static void
+hsi_tcp_track_pending_peer_fin_ack_update (hsi_tcp_tracker_t *trk, u32 ack)
+{
+  ASSERT (trk->flags & HSI_TRACKER_F_PEER_FIN_PENDING);
+
+  if (seq_lt (ack, trk->peer_fin_ack))
+    return;
+
+  trk->flags &= ~HSI_TRACKER_F_PEER_FIN_PENDING;
+  hsi_tcp_track_peer_fin_acked (trk, ack);
+}
+
+static void
+hsi_tcp_track_pending_peer_fin_ack (hsi_tcp_tracker_t *trk, tcp_header_t *tcp_hdr, u32 ack, u8 rst)
+{
+  ASSERT (trk->flags & HSI_TRACKER_F_PEER_FIN_PENDING);
+
+  if (!tcp_ack (tcp_hdr) || rst)
+    return;
+
+  hsi_tcp_track_pending_peer_fin_ack_update (trk, ack);
+}
+
+static void
+hsi_tcp_mark_peer_fin_pending (tcp_connection_t *tc, u32 ack)
+{
+  hsi_tcp_tracker_t *trk;
+
+  ASSERT (tc->cfg_flags & TCP_CFG_F_TRACKED);
+  ASSERT (tc->state == TCP_STATE_CLOSED);
+
+  trk = hsi_tcp_tracker_get (tc);
+  trk->peer_fin_ack = ack - trk->ack_delta;
+  trk->flags |= HSI_TRACKER_F_PEER_FIN_PENDING;
+
+  hsi_tcp_track_pending_peer_fin_ack_update (trk, tc->snd_una);
+}
+
+static void
+hsi_tcp_peer_fin_req_free_rpc (void *arg)
+{
+  hsi_tcp_peer_fin_req_t *a = arg;
+  hsi_worker_t *wrk;
+
+  wrk = hsi_worker_get (vlib_get_thread_index ());
+  pool_put (wrk->tcp_peer_fin_reqs, a);
+}
+
+static void
+hsi_tcp_mark_peer_fin_pending_rpc (void *arg)
+{
+  hsi_tcp_peer_fin_req_t *a = arg;
+  session_handle_tu_t sh = { .handle = a->session_handle };
+  session_t *s;
+
+  s = session_get_from_handle_if_valid (sh);
+  if (s)
+    hsi_tcp_mark_peer_fin_pending (hsi_tcp_connection_at_session (s), a->ack);
+
+  session_send_rpc_evt_to_thread (a->owner_thread, hsi_tcp_peer_fin_req_free_rpc, a);
+}
+
+static void
+hsi_tcp_send_peer_fin_pending (session_t *s, u32 ack)
+{
+  hsi_tcp_peer_fin_req_t *a;
+  hsi_worker_t *wrk;
+  clib_thread_index_t thread_index = vlib_get_thread_index ();
+
+  wrk = hsi_worker_get (thread_index);
+  pool_get_zero (wrk->tcp_peer_fin_reqs, a);
+
+  a->owner_thread = thread_index;
+  a->session_handle = session_handle (s);
+  a->ack = ack;
+  session_send_rpc_evt_to_thread_force (s->thread_index, hsi_tcp_mark_peer_fin_pending_rpc, a);
+}
+
+static void
+hsi_tcp_arm_peer_fin_pending (hsi_tcp_tracker_t *trk, u32 ack)
+{
+  session_handle_tu_t peer_sh = { .handle = trk->peer_session_handle };
+  session_t *peer_s;
+
+  peer_s = session_get_from_handle_safe (peer_sh);
+  if (!peer_s)
+    return;
+
+  if (peer_s->thread_index == vlib_get_thread_index ())
+    hsi_tcp_mark_peer_fin_pending (hsi_tcp_connection_at_session (peer_s), ack);
+  else
+    hsi_tcp_send_peer_fin_pending (peer_s, ack);
+}
+
+static_always_inline u8
+hsi_tcp_validate_and_update_state (tcp_connection_t *tc, hsi_tcp_tracker_t *trk,
+				   tcp_header_t *tcp_hdr, u32 data_len, u32 *seq, u32 *ack)
+{
+  u32 seq_end;
+  u8 rst;
+
+  *seq = clib_net_to_host_u32 (tcp_hdr->seq_number);
+  *ack = clib_net_to_host_u32 (tcp_hdr->ack_number);
+  rst = tcp_rst (tcp_hdr);
+  seq_end = *seq + data_len + (rst ? 0 : tcp_fin (tcp_hdr));
+
+  if (PREDICT_FALSE (tcp_syn (tcp_hdr)))
+    return 0;
+
+  if (PREDICT_FALSE (!hsi_tcp_segment_in_rcv_wnd (tc, *seq, seq_end)))
+    return 0;
+
+  if (PREDICT_FALSE (rst))
+    {
+      if (tcp_ack (tcp_hdr) && seq_gt (*ack, tc->snd_nxt))
+	return 0;
+      return 1;
+    }
+
+  if (tcp_ack (tcp_hdr))
+    {
+      if (seq_gt (*ack, tc->snd_nxt))
+	tc->snd_nxt = *ack;
+      if (seq_gt (*ack, tc->snd_una))
+	tc->snd_una = *ack;
+      hsi_tcp_update_snd_wnd (tc, *seq, *ack, tcp_hdr);
+    }
+  else
+    return 0;
+
+  if (seq_leq (*seq, tc->rcv_nxt) && seq_gt (seq_end, tc->rcv_nxt))
+    {
+      tc->rcv_nxt = seq_end;
+      tc->rcv_las = tc->rcv_nxt;
+    }
+
+  if (PREDICT_FALSE (tcp_fin (tcp_hdr)))
+    trk->flags |= HSI_TRACKER_F_FIN_RCVD;
+
+  return 1;
+}
+
+static_always_inline u16
+hsi_tcp_translate_window (u16 window, hsi_tcp_tracker_t *trk)
+{
+  u32 wnd = clib_net_to_host_u16 (window);
+
+  if (trk->wnd_delta > 0)
+    wnd = clib_min (wnd << trk->wnd_delta, 0xffff);
+  else if (trk->wnd_delta < 0)
+    wnd >>= -trk->wnd_delta;
+
+  return clib_host_to_net_u16 ((u16) wnd);
+}
+
+static_always_inline void
+hsi_tcp_rewrite_options (tcp_header_t *tcp_hdr, hsi_tcp_tracker_t *trk)
+{
+  u8 *data = (u8 *) (tcp_hdr + 1);
+  u8 *end = (u8 *) tcp_hdr + tcp_header_bytes (tcp_hdr);
+  u8 kind, opt_len;
+  u32 v;
+
+  while (data < end)
+    {
+      kind = data[0];
+      if (kind == TCP_OPTION_EOL)
+	break;
+      if (kind == TCP_OPTION_NOOP)
+	{
+	  data += 1;
+	  continue;
+	}
+
+      if (data + 1 >= end)
+	break;
+
+      opt_len = data[1];
+      if (opt_len < 2 || data + opt_len > end)
+	break;
+
+      if (kind == TCP_OPTION_TIMESTAMP && opt_len == TCP_OPTION_LEN_TIMESTAMP)
+	{
+	  v = clib_mem_unaligned (data + 2, u32);
+	  v = clib_host_to_net_u32 (clib_net_to_host_u32 (v) + trk->tsval_delta);
+	  clib_mem_unaligned (data + 2, u32) = v;
+
+	  v = clib_mem_unaligned (data + 6, u32);
+	  if (v)
+	    v = clib_host_to_net_u32 (clib_net_to_host_u32 (v) + trk->tsecr_delta);
+	  clib_mem_unaligned (data + 6, u32) = v;
+	}
+      else if (kind == TCP_OPTION_SACK_BLOCK && opt_len >= 10 &&
+	       !((opt_len - 2) % TCP_OPTION_LEN_SACK_BLOCK))
+	{
+	  u8 *sack = data + 2;
+
+	  while (sack + TCP_OPTION_LEN_SACK_BLOCK <= data + opt_len)
+	    {
+	      v = clib_mem_unaligned (sack, u32);
+	      v = clib_host_to_net_u32 (clib_net_to_host_u32 (v) + trk->ack_delta);
+	      clib_mem_unaligned (sack, u32) = v;
+
+	      v = clib_mem_unaligned (sack + 4, u32);
+	      v = clib_host_to_net_u32 (clib_net_to_host_u32 (v) + trk->ack_delta);
+	      clib_mem_unaligned (sack + 4, u32) = v;
+
+	      sack += TCP_OPTION_LEN_SACK_BLOCK;
+	    }
+	}
+
+      data += opt_len;
+    }
+}
+
+hsi_tcp_tracked_action_t
+hsi_tcp_handle_tracked_connection (vlib_main_t *vm, vlib_buffer_t *b, tcp_connection_t *tc,
+				   void *ip_hdr, tcp_header_t *tcp_hdr, u8 is_ip4)
+{
+  hsi_tcp_tracker_t *trk;
+  u32 data_len, seq, ack;
+  u8 fin, fin_seen, rst;
+
+  ASSERT (tc->cfg_flags & TCP_CFG_F_TRACKED);
+  trk = hsi_tcp_tracker_get (tc);
+  fin = tcp_fin (tcp_hdr);
+  fin_seen = trk->flags & HSI_TRACKER_F_FIN_RCVD;
+  rst = tcp_rst (tcp_hdr);
+
+  if (PREDICT_FALSE (!hsi_tcp_segment_data_len (ip_hdr, tcp_hdr, is_ip4, &data_len)))
+    return HSI_TCP_TRACKED_ACTION_DROP;
+
+  if (PREDICT_FALSE (!hsi_tcp_validate_and_update_state (tc, trk, tcp_hdr, data_len, &seq, &ack)))
+    return HSI_TCP_TRACKED_ACTION_DROP;
+
+  if (PREDICT_FALSE (trk->flags & HSI_TRACKER_F_PEER_FIN_PENDING))
+    hsi_tcp_track_pending_peer_fin_ack (trk, tcp_hdr, ack, rst);
+
+  if (PREDICT_FALSE (fin && !rst && !fin_seen))
+    hsi_tcp_arm_peer_fin_pending (trk, tc->rcv_nxt);
+
+  tcp_hdr->seq_number = clib_host_to_net_u32 (seq + trk->seq_delta);
+
+  if (tcp_ack (tcp_hdr))
+    tcp_hdr->ack_number = clib_host_to_net_u32 (ack + trk->ack_delta);
+
+  tcp_hdr->window = hsi_tcp_translate_window (tcp_hdr->window, trk);
+  if (tcp_header_bytes (tcp_hdr) > sizeof (*tcp_hdr))
+    hsi_tcp_rewrite_options (tcp_hdr, trk);
+
+  tcp_hdr->src_port = trk->tx_lcl_port;
+  tcp_hdr->dst_port = trk->tx_rmt_port;
+  vnet_buffer (b)->ip.fib_index = trk->tx_fib_index;
+  vnet_buffer (b)->l3_hdr_offset = b->current_data;
+  vnet_buffer (b)->l4_hdr_offset = (u8 *) tcp_hdr - b->data;
+
+  if (is_ip4)
+    {
+      ip4_header_t *ip4 = (ip4_header_t *) ip_hdr;
+
+      ip4->src_address = trk->tx_lcl_ip.ip4;
+      ip4->dst_address = trk->tx_rmt_ip.ip4;
+      ip4->checksum = ip4_header_checksum (ip4);
+      tcp_hdr->checksum = 0;
+      tcp_hdr->checksum = ip4_tcp_udp_compute_checksum (vm, b, ip4);
+      b->flags |= VNET_BUFFER_F_IS_IP4 | VNET_BUFFER_F_L3_HDR_OFFSET_VALID |
+		  VNET_BUFFER_F_L4_HDR_OFFSET_VALID;
+      b->flags &= ~VNET_BUFFER_F_IS_IP6;
+      vnet_buffer_offload_flags_clear (b, VNET_BUFFER_OFFLOAD_F_IP_CKSUM |
+					    VNET_BUFFER_OFFLOAD_F_TCP_CKSUM);
+    }
+  else
+    {
+      ip6_header_t *ip6 = (ip6_header_t *) ip_hdr;
+      int bogus = 0;
+
+      ip6->src_address = trk->tx_lcl_ip.ip6;
+      ip6->dst_address = trk->tx_rmt_ip.ip6;
+      tcp_hdr->checksum = 0;
+      tcp_hdr->checksum = ip6_tcp_udp_icmp_compute_checksum (vm, b, ip6, &bogus);
+      b->flags |= VNET_BUFFER_F_IS_IP6 | VNET_BUFFER_F_L3_HDR_OFFSET_VALID |
+		  VNET_BUFFER_F_L4_HDR_OFFSET_VALID;
+      b->flags &= ~VNET_BUFFER_F_IS_IP4;
+      vnet_buffer_offload_flags_clear (b, VNET_BUFFER_OFFLOAD_F_TCP_CKSUM);
+    }
+
+  trk->packets += 1;
+  trk->bytes += vlib_buffer_length_in_chain (vm, b);
+
+  if (PREDICT_FALSE (rst))
+    hsi_tcp_track_schedule_cleanup_pair (tc, trk, HSI_TCP_CLEANUP_REASON_RST);
+  else if (PREDICT_FALSE (trk->flags & HSI_TRACKER_F_FIN_MASK))
+    hsi_tcp_track_maybe_cleanup_pair (tc, trk);
+
+  return HSI_TCP_TRACKED_ACTION_FORWARD;
+}
+
+static const char *
+hsi_tcp_drain_state_name (hsi_tcp_drain_state_t state)
+{
+  switch (state)
+    {
+    case HSI_TCP_DRAIN_STATE_DRAINING:
+      return "draining";
+    case HSI_TCP_DRAIN_STATE_READY:
+      return "ready";
+    case HSI_TCP_DRAIN_STATE_FAILED:
+      return "failed";
+    default:
+      return "unknown";
+    }
+}
+
+static const char *
+hsi_udp_drain_state_name (hsi_udp_drain_state_t state)
+{
+  switch (state)
+    {
+    case HSI_UDP_DRAIN_STATE_DRAINING:
+      return "draining";
+    case HSI_UDP_DRAIN_STATE_READY:
+      return "ready";
+    case HSI_UDP_DRAIN_STATE_FAILED:
+      return "failed";
+    default:
+      return "unknown";
+    }
+}
+
+static const char *
+hsi_udp_idle_state_name (hsi_udp_idle_state_t state)
+{
+  switch (state)
+    {
+    case HSI_UDP_IDLE_STATE_ACTIVE:
+      return "active";
+    case HSI_UDP_IDLE_STATE_CLEANUP_PENDING:
+      return "cleanup-pending";
+    default:
+      return "unknown";
+    }
+}
+
+static u8 *
+format_hsi_tcp_tracker_flags (u8 *s, va_list *args)
+{
+  u32 flags = va_arg (*args, u32);
+  char *sep = "";
+
+  if (!flags)
+    return format (s, "none");
+
+#define _(flag, str)                                                                               \
+  if (flags & (flag))                                                                              \
+    {                                                                                              \
+      s = format (s, "%s%s", sep, (str));                                                          \
+      sep = ",";                                                                                   \
+      flags &= ~(flag);                                                                            \
+    }
+  _ (HSI_TRACKER_F_CLEANUP_PENDING, "cleanup-pending");
+  _ (HSI_TRACKER_F_FIN_RCVD, "fin-rx");
+  _ (HSI_TRACKER_F_FIN_ACKED, "fin-acked");
+  _ (HSI_TRACKER_F_PEER_FIN_PENDING, "peer-fin-pending");
+  _ (HSI_TRACKER_F_FIN_WAIT, "fin-wait");
+#undef _
+
+  if (flags)
+    s = format (s, "%sunknown:0x%x", sep, flags);
+
+  return s;
+}
+
+void
+hsi_tracker_show (vlib_main_t *vm)
+{
+  hsi_main_t *hm = &hsi_main;
+  hsi_tcp_drain_t *drain;
+  hsi_udp_drain_t *udp_drain;
+  tcp_connection_t *tc;
+  hsi_tcp_tracker_t *trk;
+  f64 now = vlib_time_now (vm);
+  hash_pair_t *hp;
+  u32 i;
+
+  vec_foreach_index (i, hm->wrk)
+    {
+      hsi_worker_t *wrk = vec_elt_at_index (hm->wrk, i);
+
+      if (pool_elts (wrk->tcp_drains) || hash_elts (wrk->tcp_fin_wait_by_session_conn))
+	vlib_cli_output (vm, "thread %u tcp-drain-active %u tcp-fin-wait-active %u", i,
+			 (u32) pool_elts (wrk->tcp_drains),
+			 (u32) hash_elts (wrk->tcp_fin_wait_by_session_conn));
+
+      if (pool_elts (wrk->udp_drains) || hash_elts (wrk->udp_idle_by_session_conn))
+	vlib_cli_output (vm, "thread %u udp-drain-active %u udp-idle-active %u", i,
+			 (u32) pool_elts (wrk->udp_drains),
+			 (u32) hash_elts (wrk->udp_idle_by_session_conn));
+
+      pool_foreach (drain, wrk->tcp_drains)
+	{
+	  vlib_cli_output (vm,
+			   "thread %u tcp-drain session 0x%lx peer 0x%lx peer-thread %u "
+			   "state %s cache %u/%u bytes %u age %.3f idle %.3f",
+			   i, drain->session_handle, drain->peer_session_handle,
+			   drain->peer_thread_index, hsi_tcp_drain_state_name (drain->state),
+			   vec_len (drain->cached_buffers), hsi_main.tcp_drain_cache_max_packets,
+			   drain->cached_bytes, now - drain->start_time,
+			   now - drain->last_progress_time);
+	}
+
+      pool_foreach (udp_drain, wrk->udp_drains)
+	{
+	  vlib_cli_output (vm,
+			   "thread %u udp-drain session 0x%lx peer 0x%lx peer-thread %u "
+			   "state %s cache %u/%u bytes %u age %.3f idle %.3f",
+			   i, udp_drain->session_handle, udp_drain->peer_session_handle,
+			   udp_drain->peer_thread_index,
+			   hsi_udp_drain_state_name (udp_drain->state),
+			   vec_len (udp_drain->cached_buffers),
+			   hsi_main.udp_drain_cache_max_packets, udp_drain->cached_bytes,
+			   now - udp_drain->start_time, now - udp_drain->last_progress_time);
+	}
+
+      pool_foreach (tc, tcp_main.wrk[i].connections)
+	{
+	  if (!(tc->cfg_flags & TCP_CFG_F_TRACKED) || tc->state != TCP_STATE_CLOSED)
+	    continue;
+
+	  trk = hsi_tcp_tracker_from_connection (tc);
+	  if (trk->magic != HSI_TCP_TRACKER_MAGIC)
+	    continue;
+
+	  vlib_cli_output (vm,
+			   "thread %u tcp-tracked session 0x%lx peer 0x%lx peer-thread %u "
+			   "flags %U peer-fin-ack %u seq-delta %d ack-delta %d "
+			   "packets %lu bytes %lu",
+			   i, session_make_handle (tc->c_s_index, tc->c_thread_index),
+			   trk->peer_session_handle, trk->peer_thread_index,
+			   format_hsi_tcp_tracker_flags, trk->flags, trk->peer_fin_ack,
+			   trk->seq_delta, trk->ack_delta, trk->packets, trk->bytes);
+	}
+
+      hash_foreach_pair (
+	hp, wrk->udp_idle_by_session_conn, ({
+	  session_handle_tu_t sh = {
+	    .handle = session_make_handle (hsi_session_conn_key_session_index (hp->key), i),
+	  };
+	  udp_connection_t *uc;
+	  session_t *s;
+
+	  s = session_get_from_handle_if_valid (sh);
+	  if (s && s->connection_index == hsi_session_conn_key_conn_index (hp->key) &&
+	      session_get_transport_proto (s) == TRANSPORT_PROTO_UDP)
+	    {
+	      uc = hsi_udp_connection_at_session (s);
+	      if (uc->cfg_flags & UDP_CFG_F_TRACKED)
+		vlib_cli_output (vm,
+				 "thread %u udp-tracked session 0x%lx peer 0x%lx state %s "
+				 "idle %.3f",
+				 i, session_handle (s), hsi_udp_connection_peer_handle (uc),
+				 hsi_udp_idle_state_name ((hsi_udp_idle_state_t) hp->value[0]),
+				 now - uc->start_ts);
+	    }
+	}));
+    }
+}
+
+void
+hsi_udp_handle_tracked_connection (vlib_main_t *vm, vlib_buffer_t *b, udp_connection_t *uc,
+				   void *ip_hdr, udp_header_t *udp_hdr, u8 is_ip4)
+{
+  hsi_udp_tracker_t *trk;
+
+  ASSERT (uc->cfg_flags & UDP_CFG_F_TRACKED);
+  trk = hsi_udp_tracker_get (uc);
+  hsi_udp_idle_touch (uc, vlib_time_now (vm));
+
+  udp_hdr->src_port = trk->tx_lcl_port;
+  udp_hdr->dst_port = trk->tx_rmt_port;
+  vnet_buffer (b)->ip.fib_index = trk->tx_fib_index;
+  vnet_buffer (b)->l3_hdr_offset = b->current_data;
+  vnet_buffer (b)->l4_hdr_offset = (u8 *) udp_hdr - b->data;
+
+  if (is_ip4)
+    {
+      ip4_header_t *ip4 = (ip4_header_t *) ip_hdr;
+
+      ip4->src_address = trk->tx_lcl_ip.ip4;
+      ip4->dst_address = trk->tx_rmt_ip.ip4;
+      ip4->checksum = ip4_header_checksum (ip4);
+      udp_hdr->checksum = 0;
+      udp_hdr->checksum = ip4_tcp_udp_compute_checksum (vm, b, ip4);
+      if (udp_hdr->checksum == 0)
+	udp_hdr->checksum = 0xffff;
+      b->flags |= VNET_BUFFER_F_IS_IP4 | VNET_BUFFER_F_L3_HDR_OFFSET_VALID |
+		  VNET_BUFFER_F_L4_HDR_OFFSET_VALID;
+      b->flags &= ~VNET_BUFFER_F_IS_IP6;
+      vnet_buffer_offload_flags_clear (b, VNET_BUFFER_OFFLOAD_F_IP_CKSUM |
+					    VNET_BUFFER_OFFLOAD_F_UDP_CKSUM);
+    }
+  else
+    {
+      ip6_header_t *ip6 = (ip6_header_t *) ip_hdr;
+      int bogus = 0;
+
+      ip6->src_address = trk->tx_lcl_ip.ip6;
+      ip6->dst_address = trk->tx_rmt_ip.ip6;
+      udp_hdr->checksum = 0;
+      udp_hdr->checksum = ip6_tcp_udp_icmp_compute_checksum (vm, b, ip6, &bogus);
+      if (udp_hdr->checksum == 0)
+	udp_hdr->checksum = 0xffff;
+      b->flags |= VNET_BUFFER_F_IS_IP6 | VNET_BUFFER_F_L3_HDR_OFFSET_VALID |
+		  VNET_BUFFER_F_L4_HDR_OFFSET_VALID;
+      b->flags &= ~VNET_BUFFER_F_IS_IP4;
+      vnet_buffer_offload_flags_clear (b, VNET_BUFFER_OFFLOAD_F_UDP_CKSUM);
+    }
+}
