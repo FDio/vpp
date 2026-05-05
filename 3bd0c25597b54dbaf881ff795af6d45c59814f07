@@ -33,6 +33,24 @@
       "message": "can you just make numa_node_bitmap u64",
       "revId": "3bd0c25597b54dbaf881ff795af6d45c59814f07",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9a4be839_da6414e7",
+        "filename": "src/vppinfra/linux/mem.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 128,
+      "author": {
+        "id": 76
+      },
+      "writtenOn": "2026-05-05T06:54:02Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "4bfc24be_d9926c28",
+      "revId": "3bd0c25597b54dbaf881ff795af6d45c59814f07",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
