@@ -1,0 +1,106 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f8a393a3_e220d23d",
+        "filename": "src/drivers/iavf/rx_node.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 184,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-05-05T22:52:27Z",
+      "side": 1,
+      "message": "if possible avoid load + store here by keeping local copy of flags",
+      "revId": "49682cdbbb92af9efdd7844836c6d6c34bdadcd8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3f96ef77_d07e8073",
+        "filename": "src/drivers/iavf/rx_node.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 186,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-05-05T22:52:27Z",
+      "side": 1,
+      "message": "if possible avoid load + store here by keeping local copy of flags",
+      "revId": "49682cdbbb92af9efdd7844836c6d6c34bdadcd8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e16fb081_6fd12a4b",
+        "filename": "src/drivers/iavf/rx_node.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 189,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-05-05T22:52:27Z",
+      "side": 1,
+      "message": "this function and one above can be combined to single one",
+      "revId": "49682cdbbb92af9efdd7844836c6d6c34bdadcd8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0418fd6d_d7f9430d",
+        "filename": "src/drivers/iavf/rx_node.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 237,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-05-05T22:52:27Z",
+      "side": 1,
+      "message": "this if statement is not needed as l4_cksum_flags  is always true",
+      "revId": "49682cdbbb92af9efdd7844836c6d6c34bdadcd8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "73c47766_6d0de4ac",
+        "filename": "src/drivers/iavf/rx_node.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 310,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-05-05T22:52:27Z",
+      "side": 1,
+      "message": "this is always true so no need to pass it as variable to functions...",
+      "revId": "49682cdbbb92af9efdd7844836c6d6c34bdadcd8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b55e1814_243816fd",
+        "filename": "src/drivers/iavf/rx_node.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 311,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-05-05T22:52:27Z",
+      "side": 1,
+      "message": "it will make sense to set this flag once in port_start instead of setting it repeatedly",
+      "revId": "49682cdbbb92af9efdd7844836c6d6c34bdadcd8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
