@@ -2,6 +2,7 @@ import unittest
 
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, ICMP
+from scapy.packet import Raw
 
 from framework import VppTestCase
 from asfframework import (
@@ -13,6 +14,7 @@ from asfframework import (
 from remote_test import RemoteClass, RemoteVppTestCase
 from vpp_memif import remove_all_memif_vpp_config, VppSocketFilename, VppMemif
 from vpp_ip_route import VppIpRoute, VppRoutePath
+from vpp_neighbor import VppNeighbor
 from vpp_papi import VppEnum
 from config import config
 
@@ -230,34 +232,42 @@ class TestMemif(VppTestCase):
 
         self._connect_test_interface_pair(memif, remote_memif)
 
-    def _create_icmp(self, pg, memif, num):
+    def _create_icmp(self, pg, memif, num, payload_size=0):
         pkts = []
         for i in range(num):
             pkt = (
                 Ether(dst=pg.local_mac, src=pg.remote_mac)
-                / IP(src=pg.remote_ip4, dst=str(memif.ip_prefix.network_address))
+                / IP(src=pg.remote_ip4, dst=memif.ip4_addr)
                 / ICMP(id=memif.if_id, type="echo-request", seq=i)
             )
+            if payload_size:
+                pkt /= Raw(b"\xa5" * payload_size)
             pkts.append(pkt)
         return pkts
 
-    def _verify_icmp(self, pg, memif, rx, seq):
+    def _verify_icmp(self, pg, memif, rx, seq, payload_size=0):
         ip = rx[IP]
-        self.assertEqual(ip.src, str(memif.ip_prefix.network_address))
+        self.assertEqual(ip.src, memif.ip4_addr)
         self.assertEqual(ip.dst, pg.remote_ip4)
         self.assertEqual(ip.proto, 1)
         icmp = rx[ICMP]
         self.assertEqual(icmp.type, 0)  # echo-reply
         self.assertEqual(icmp.id, memif.if_id)
         self.assertEqual(icmp.seq, seq)
+        if payload_size:
+            self.assertEqual(len(rx[Raw]), payload_size)
 
     def test_memif_ping(self):
         """Memif ping"""
+
+        local_memif_mac = "02:11:00:00:00:01"
+        remote_memif_mac = "02:11:00:00:00:02"
 
         memif = VppMemif(
             self,
             VppEnum.vl_api_memif_role_t.MEMIF_ROLE_API_SLAVE,
             VppEnum.vl_api_memif_mode_t.MEMIF_MODE_API_ETHERNET,
+            hw_addr=local_memif_mac,
         )
 
         remote_socket = VppSocketFilename(
@@ -270,14 +280,32 @@ class TestMemif(VppTestCase):
             VppEnum.vl_api_memif_role_t.MEMIF_ROLE_API_MASTER,
             VppEnum.vl_api_memif_mode_t.MEMIF_MODE_API_ETHERNET,
             socket_id=1,
+            hw_addr=remote_memif_mac,
         )
 
         memif.add_vpp_config()
         memif.config_ip4()
-        memif.admin_up()
 
         remote_memif.add_vpp_config()
         remote_memif.config_ip4()
+
+        # add static ARP entries before link comes up so adjacencies are ready
+        VppNeighbor(
+            self,
+            memif.sw_if_index,
+            remote_memif_mac,
+            remote_memif.ip4_addr,
+            is_static=True,
+        ).add_vpp_config()
+        VppNeighbor(
+            self.remote_test,
+            remote_memif.sw_if_index,
+            local_memif_mac,
+            memif.ip4_addr,
+            is_static=True,
+        ).add_vpp_config()
+
+        memif.admin_up()
         remote_memif.admin_up()
 
         self.assertTrue(memif.wait_for_link_up(5))
@@ -288,7 +316,7 @@ class TestMemif(VppTestCase):
             self.remote_test,
             self.pg0._local_ip4_subnet,
             24,
-            [VppRoutePath(memif.ip_prefix.network_address, 0xFFFFFFFF)],
+            [VppRoutePath(memif.ip4_addr, 0xFFFFFFFF)],
             register=False,
         )
 
@@ -306,6 +334,20 @@ class TestMemif(VppTestCase):
         for c in capture:
             self._verify_icmp(self.pg0, remote_memif, c, seq)
             seq += 1
+
+        # jumbo frames: raise MTU and test multi-descriptor chaining
+        # 3000, 6000, 8960 bytes span 2, 3, and 5 memif descriptors (buffer_size=2048)
+        self.vapi.sw_interface_set_mtu(memif.sw_if_index, [9000, 0, 0, 0])
+        self.remote_test.vapi.sw_interface_set_mtu(
+            remote_memif.sw_if_index, [9000, 0, 0, 0]
+        )
+        for payload_size in [3000, 6000, 8960]:
+            pkts = self._create_icmp(self.pg0, remote_memif, 1, payload_size)
+            self.pg0.add_stream(pkts)
+            self.pg_enable_capture(self.pg_interfaces)
+            self.pg_start()
+            capture = self.pg0.get_capture(1, timeout=2)
+            self._verify_icmp(self.pg0, remote_memif, capture[0], 0, payload_size)
 
         route.remove_vpp_config()
 

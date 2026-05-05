@@ -1,5 +1,4 @@
 import socket
-from ipaddress import IPv4Network
 
 from vpp_object import VppObject
 from vpp_papi import VppEnum
@@ -82,9 +81,8 @@ class VppMemif(VppObject):
         self.buffer_size = buffer_size
         self.hw_addr = hw_addr
         self.sw_if_index = None
-        self.ip_prefix = IPv4Network(
-            "192.168.%d.%d/24" % (self.if_id + 1, self.role + 1), strict=False
-        )
+        self.ip4_addr = "192.168.%d.%d" % (self.if_id + 1, self.role + 1)
+        self.ip_prefix = "%s/30" % self.ip4_addr
 
     def add_vpp_config(self):
         rv = self._test.vapi.memif_create(
