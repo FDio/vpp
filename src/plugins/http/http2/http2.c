@@ -513,9 +513,6 @@ http2_sched_dispatch_data (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissions)
 
   ASSERT (http_buffer_bytes_left (hb) > 0);
 
-  *n_emissions += hb->type == HTTP_BUFFER_PTR ? HTTP2_SCHED_WEIGHT_DATA_PTR :
-						HTTP2_SCHED_WEIGHT_DATA_INLINE;
-
   max_write = http_io_ts_max_write (hc, 0);
   max_write -= HTTP2_FRAME_HEADER_SIZE;
   max_write = clib_min (max_write, (u32) req->peer_stream_window);
@@ -531,6 +528,9 @@ http2_sched_dispatch_data (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissions)
       transport_connection_reschedule (&req->connection);
       return;
     }
+
+  *n_emissions +=
+    hb->type == HTTP_BUFFER_PTR ? HTTP2_SCHED_WEIGHT_DATA_PTR : HTTP2_SCHED_WEIGHT_DATA_INLINE;
 
   finished = (max_read - n_read) == 0;
   flags = finished ? HTTP2_FRAME_FLAG_END_STREAM : 0;
@@ -576,8 +576,6 @@ http2_sched_dispatch_data (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissions)
 	  http2_req_schedule_data_tx (hc, req);
 	}
     }
-
-  http_io_ts_after_write (hc, finished);
 }
 
 static void
@@ -587,8 +585,6 @@ http2_sched_dispatch_tunnel (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissions)
   svm_fifo_seg_t segs[n_segs + 1];
   u8 fh[HTTP2_FRAME_HEADER_SIZE];
   u8 flags = 0;
-
-  *n_emissions += HTTP2_SCHED_WEIGHT_DATA_INLINE;
 
   max_read = http_io_as_max_read (req);
   if (max_read == 0)
@@ -612,6 +608,9 @@ http2_sched_dispatch_tunnel (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissions)
       req->req_flags |= HTTP_REQ_F_NEED_WINDOW_UPDATE;
       return;
     }
+
+  *n_emissions += HTTP2_SCHED_WEIGHT_DATA_INLINE;
+
   max_write = http_io_ts_max_write (hc, 0);
   max_write -= HTTP2_FRAME_HEADER_SIZE;
   max_write = clib_min (max_write, (u32) req->peer_stream_window);
@@ -647,7 +646,6 @@ http2_sched_dispatch_tunnel (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissions)
     transport_connection_reschedule (&req->connection);
 
   http_io_as_dequeue_notify (req, n_written);
-  http_io_ts_after_write (hc, 0);
 
   if (flags & HTTP2_FRAME_FLAG_END_STREAM)
     {
@@ -682,7 +680,6 @@ http2_sched_dispatch_udp_tunnel_inline (http_ctx_t *req, http_ctx_t *hc, u8 *n_e
   if (req->req_flags & HTTP_REQ_F_NEED_WINDOW_UPDATE)
     return;
 
-  *n_emissions += HTTP2_SCHED_WEIGHT_DATA_INLINE;
   max_write = http_io_ts_max_write (hc, 0);
   /* we always keep free space in underlying transport fifo */
   ASSERT (max_write > HTTP2_FRAME_HEADER_SIZE);
@@ -782,6 +779,8 @@ http2_sched_dispatch_udp_tunnel_inline (http_ctx_t *req, http_ctx_t *hc, u8 *n_e
 #endif
     }
 
+  *n_emissions += HTTP2_SCHED_WEIGHT_DATA_INLINE;
+
   /* create frame header */
   http2_frame_write_data_header (frame_size, req->stream_id, 0, fh);
   segs[0].len = HTTP2_FRAME_HEADER_SIZE;
@@ -806,8 +805,6 @@ http2_sched_dispatch_udp_tunnel_inline (http_ctx_t *req, http_ctx_t *hc, u8 *n_e
     }
   else
     transport_connection_reschedule (&req->connection);
-
-  http_io_ts_after_write (hc, 0);
 }
 
 static void
@@ -848,7 +845,6 @@ http2_sched_dispatch_continuation (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissi
 			     { hc->unsent_headers + hc->unsent_headers_offset, headers_len } };
   n_written = http_io_ts_write_segs (hc, segs, 2, 0);
   ASSERT (n_written == (HTTP2_FRAME_HEADER_SIZE + headers_len));
-  http_io_ts_after_write (hc, 0);
 
   if (headers_len == headers_left)
     {
@@ -909,7 +905,6 @@ http_sched_dispatch_431 (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissions,
 				    HTTP2_FRAME_FLAG_END_HEADERS | HTTP2_FRAME_FLAG_END_STREAM, fh);
   svm_fifo_seg_t segs[2] = { { fh, HTTP2_FRAME_HEADER_SIZE }, { response, headers_len } };
   http_io_ts_write_segs (hc, segs, 2, 0);
-  http_io_ts_after_write (hc, 0);
   http_stats_responses_sent_inc (hc->c_thread_index);
   /* notify app that nothing will happen and free request */
   if (!(req->req_flags & HTTP_REQ_F_APP_CLOSED))
@@ -1057,7 +1052,6 @@ http2_sched_dispatch_resp_headers (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissi
 			     { response, headers_len } };
   n_written = http_io_ts_write_segs (hc, segs, 2, 0);
   ASSERT (n_written == (HTTP2_FRAME_HEADER_SIZE + headers_len));
-  http_io_ts_after_write (hc, 0);
   http_stats_responses_sent_inc (hc->c_thread_index);
 }
 
@@ -1237,7 +1231,6 @@ http2_sched_dispatch_req_headers (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissio
 			     { request, headers_len } };
   n_written = http_io_ts_write_segs (hc, segs, 2, 0);
   ASSERT (n_written == (HTTP2_FRAME_HEADER_SIZE + headers_len));
-  http_io_ts_after_write (hc, 0);
   http_stats_requests_sent_inc (hc->c_thread_index);
 }
 
@@ -1293,6 +1286,10 @@ http2_update_time_callback (f64 now, u8 thread_index)
 	  req->dispatch_data_cb (req, hc, &n_emissions);
 	  ri = clib_llist_next_index (old_he, stream_sched_list);
 	}
+
+      if (PREDICT_TRUE (n_emissions))
+	http_io_ts_after_write (hc, 0);
+
       /* deschedule http connection and wait for deq notification if underlying
        * transport session tx fifo is almost full */
       if (http_io_ts_check_write_thresh (hc))
