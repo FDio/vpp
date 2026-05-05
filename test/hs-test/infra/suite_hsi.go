@@ -85,7 +85,7 @@ func (s *HsiSuite) SetupTest() {
 	Log(vpp.Vppctl("set interface feature " + s.Interfaces.Server.VppName() + " hsi4-in arc ip4-unicast"))
 
 	// let the host know howto get to the server
-	cmd := exec.Command("ip", "netns", "exec", s.NetNamespaces.Client, "ip", "route", "add",
+	cmd := exec.Command("ip", "netns", "exec", s.NetNamespaces.Client, "ip", "route", "replace",
 		s.ServerAddr(), "via", s.Interfaces.Client.Ip4AddressString())
 	Log(cmd.String())
 	_, err = cmd.CombinedOutput()
