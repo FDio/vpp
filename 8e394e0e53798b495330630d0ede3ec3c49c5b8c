@@ -18,6 +18,23 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "3d16eb32_6fa875f7",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 8
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2026-05-05T07:27:08Z",
+      "side": 1,
+      "message": "\u003e it is effectively a decap-only sibling of the existing P2MP mode\n\nas decap-only interface, does it need to be used together with a P2MP interface in order to support bi-directional traffic?",
+      "revId": "8e394e0e53798b495330630d0ede3ec3c49c5b8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "a598d93f_074b0bd5",
