@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b5f39ee0_980a40c1",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-05-05T13:53:51Z",
+      "side": 1,
+      "message": "looks good, just minor comments",
+      "revId": "b0ab4cdfbf2f3cf2f10fe12490e1544392b6fb5e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d7feb075_ebd3026f",
+        "filename": "src/plugins/cnat/cnat_feature_hook.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 40,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-05-05T13:53:51Z",
+      "side": 1,
+      "message": "Can we make this part of the previous patch in the stack ? Just as to keep the patches simpler",
+      "revId": "b0ab4cdfbf2f3cf2f10fe12490e1544392b6fb5e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4c66e582_8132a001",
+        "filename": "src/plugins/npol/npol_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 407,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-05-05T13:53:51Z",
+      "side": 1,
+      "message": "We should probably rename `calpol` and `calico` to `npol`",
+      "revId": "b0ab4cdfbf2f3cf2f10fe12490e1544392b6fb5e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "03dcb05f_188d8c1e",
+        "filename": "src/plugins/npol/npol_match.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 151,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-05-05T13:53:51Z",
+      "side": 1,
+      "message": "We could keep initializing every entry here",
+      "revId": "b0ab4cdfbf2f3cf2f10fe12490e1544392b6fb5e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "164d9c2d_4c967c2a",
+        "filename": "src/plugins/npol/npol_match.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 787,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-05-05T13:53:51Z",
+      "side": 1,
+      "message": "maybe `if (action \u003d\u003d NPOL_ACTION_DENY)`",
+      "revId": "b0ab4cdfbf2f3cf2f10fe12490e1544392b6fb5e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
