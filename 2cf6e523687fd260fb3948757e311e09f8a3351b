@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "fdc9acf6_63cc078d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2026-05-05T09:45:55Z",
+      "side": 1,
+      "message": "added \"enable-mbuf-fast-free\" option",
+      "parentUuid": "fa964095_794669bb",
+      "revId": "2cf6e523687fd260fb3948757e311e09f8a3351b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "6665c511_5fa81e8a",
@@ -31,6 +49,24 @@
       "writtenOn": "2026-04-27T13:56:39Z",
       "side": 1,
       "message": "this should probably go before txo \u0026\u003d dev_info.tx_offload_capa so that if it is not supported it will be filtered out - otherwise we may try to force it even if unsupported?",
+      "revId": "2cf6e523687fd260fb3948757e311e09f8a3351b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e4570c8b_d1e25ed4",
+        "filename": "src/plugins/dpdk/device/common.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 202,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2026-05-05T09:45:55Z",
+      "side": 1,
+      "message": "yes I seen my mistake afterwards",
+      "parentUuid": "6665c511_5fa81e8a",
       "revId": "2cf6e523687fd260fb3948757e311e09f8a3351b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
