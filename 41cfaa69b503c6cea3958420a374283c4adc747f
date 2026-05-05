@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c5d58959_169118d1",
+        "filename": "src/plugins/snort/snort.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 112,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-05-05T09:04:24Z",
+      "side": 1,
+      "message": "we should keep hash_function per instance and we need to allow people to say ip4-only per-instance which will utilize faster ip4-only hash",
+      "revId": "41cfaa69b503c6cea3958420a374283c4adc747f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6cf82074_513c77d6",
+        "filename": "src/plugins/snort/snort.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 129,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-05-05T09:04:24Z",
+      "side": 1,
+      "message": "can you use:\n\n#define foreach_snort_enq_next_nodes \\\n  _(IP4_INPUT, \"snort-ip4-input-next\") \\\n   ...",
+      "revId": "41cfaa69b503c6cea3958420a374283c4adc747f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
