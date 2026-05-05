@@ -101,12 +101,12 @@ vcl_api_send_attach (clib_socket_t * cs)
 {
   app_sapi_msg_t msg = { 0 };
   app_sapi_attach_msg_t *mp = &msg.attach;
-  u8 app_is_proxy, tls_engine;
+  u8 app_is_proxy, tls_engine = CRYPTO_ENGINE_OPENSSL;
   clib_error_t *err;
 
   app_is_proxy = (vcm->cfg.app_proxy_transport_tcp ||
 		  vcm->cfg.app_proxy_transport_udp);
-  tls_engine = CRYPTO_ENGINE_OPENSSL;
+  tls_engine = vcm->cfg.tls_engine ? vcm->cfg.tls_engine : tls_engine;
 
   clib_memcpy (&mp->name, vcm->app_name, vec_len (vcm->app_name));
   mp->options[APP_OPTIONS_FLAGS] =
