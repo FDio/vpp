@@ -7,18 +7,12 @@
 #include <vpp/app/version.h>
 
 #include <hsi/hsi.h>
+#include <hsi/hsi_tracker.h>
 #include <vnet/tcp/tcp_types.h>
 #include <vnet/tcp/tcp_inlines.h>
+#include <vnet/udp/udp.h>
 
-typedef struct hsi_main_
-{
-  u8 intercept_type;
-
-  /* ipv4 and ipv6 for tcp and udp */
-  session_handle_t intercept_listeners[2][2];
-} hsi_main_t;
-
-static hsi_main_t hsi_main;
+hsi_main_t hsi_main;
 
 static inline u8
 hsi_intercept_proto_flag (transport_proto_t proto, u8 is_ip4)
@@ -46,6 +40,7 @@ typedef enum hsi_input_next_
   HSI_INPUT_NEXT_TCP_INPUT,
   HSI_INPUT_NEXT_TCP_INPUT_NOLOOKUP,
   HSI_INPUT_NEXT_TCP_LISTEN,
+  HSI_INPUT_NEXT_IP_LOOKUP,
   HSI_INPUT_N_NEXT
 } hsi_input_next_t;
 
@@ -53,21 +48,24 @@ typedef enum hsi_lookup_result_
 {
   HSI_LOOKUP_RESULT_PASS,
   HSI_LOOKUP_RESULT_INTERCEPT,
+  HSI_LOOKUP_RESULT_TRACK,
 } hsi_lookup_result_t;
 
-#define foreach_hsi4_input_next                                               \
-  _ (UDP_INPUT, "udp4-input")                                                 \
-  _ (UDP_INPUT_NOLOOKUP, "udp4-input-nolookup")                               \
-  _ (TCP_INPUT, "tcp4-input")                                                 \
-  _ (TCP_INPUT_NOLOOKUP, "tcp4-input-nolookup")                               \
-  _ (TCP_LISTEN, "tcp4-listen")
+#define foreach_hsi4_input_next                                                                    \
+  _ (UDP_INPUT, "udp4-input")                                                                      \
+  _ (UDP_INPUT_NOLOOKUP, "udp4-input-nolookup")                                                    \
+  _ (TCP_INPUT, "tcp4-input")                                                                      \
+  _ (TCP_INPUT_NOLOOKUP, "tcp4-input-nolookup")                                                    \
+  _ (TCP_LISTEN, "tcp4-listen")                                                                    \
+  _ (IP_LOOKUP, "ip4-lookup")
 
-#define foreach_hsi6_input_next                                               \
-  _ (UDP_INPUT, "udp6-input")                                                 \
-  _ (UDP_INPUT_NOLOOKUP, "udp6-input-nolookup")                               \
-  _ (TCP_INPUT, "tcp6-input")                                                 \
-  _ (TCP_INPUT_NOLOOKUP, "tcp6-input-nolookup")                               \
-  _ (TCP_LISTEN, "tcp6-listen")
+#define foreach_hsi6_input_next                                                                    \
+  _ (UDP_INPUT, "udp6-input")                                                                      \
+  _ (UDP_INPUT_NOLOOKUP, "udp6-input-nolookup")                                                    \
+  _ (TCP_INPUT, "tcp6-input")                                                                      \
+  _ (TCP_INPUT_NOLOOKUP, "tcp6-input-nolookup")                                                    \
+  _ (TCP_LISTEN, "tcp6-listen")                                                                    \
+  _ (IP_LOOKUP, "ip6-lookup")
 
 typedef struct
 {
@@ -89,7 +87,7 @@ format_hsi_trace (u8 *s, va_list *args)
 }
 
 always_inline session_t *
-hsi_udp_lookup (vlib_buffer_t *b, void *ip_hdr, u8 is_ip4)
+hsi_udp_lookup (vlib_buffer_t *b, void *ip_hdr, udp_header_t **rhdr, u8 is_ip4)
 {
   udp_header_t *hdr;
   session_t *s;
@@ -97,7 +95,7 @@ hsi_udp_lookup (vlib_buffer_t *b, void *ip_hdr, u8 is_ip4)
   if (is_ip4)
     {
       ip4_header_t *ip4 = (ip4_header_t *) ip_hdr;
-      hdr = ip4_next_header (ip4);
+      *rhdr = hdr = ip4_next_header (ip4);
       s = session_lookup_safe4 (
 	vnet_buffer (b)->ip.fib_index, &ip4->dst_address, &ip4->src_address,
 	hdr->dst_port, hdr->src_port, TRANSPORT_PROTO_UDP);
@@ -105,7 +103,7 @@ hsi_udp_lookup (vlib_buffer_t *b, void *ip_hdr, u8 is_ip4)
   else
     {
       ip6_header_t *ip6 = (ip6_header_t *) ip_hdr;
-      hdr = ip6_next_header (ip6);
+      *rhdr = hdr = ip6_next_header (ip6);
       s = session_lookup_safe6 (
 	vnet_buffer (b)->ip.fib_index, &ip6->dst_address, &ip6->src_address,
 	hdr->dst_port, hdr->src_port, TRANSPORT_PROTO_UDP);
@@ -144,7 +142,7 @@ hsi_tcp_lookup (vlib_buffer_t *b, void *ip_hdr, tcp_header_t **rhdr, u8 is_ip4)
 }
 
 always_inline hsi_lookup_result_t
-hsi_tcp_lookup_handler (vlib_buffer_t *b, void *ip_hdr, u32 *next, u8 is_ip4)
+hsi_tcp_lookup_handler (vlib_main_t *vm, vlib_buffer_t *b, void *ip_hdr, u32 *next, u8 is_ip4)
 {
   tcp_header_t *tcp_hdr = 0;
   tcp_connection_t *tc;
@@ -194,6 +192,13 @@ hsi_tcp_lookup_handler (vlib_buffer_t *b, void *ip_hdr, u32 *next, u8 is_ip4)
     }
   else
     {
+      if (PREDICT_FALSE (tc->cfg_flags & TCP_CFG_F_TRACKED))
+	{
+	  hsi_tcp_handle_tracked_connection (vm, b, tc, ip_hdr, tcp_hdr, is_ip4);
+	  *next = HSI_INPUT_NEXT_IP_LOOKUP;
+	  return HSI_LOOKUP_RESULT_TRACK;
+	}
+      /* Track-pending connections still belong to tcp-input. */
       /* Lookup already done, use result */
       *next = HSI_INPUT_NEXT_TCP_INPUT_NOLOOKUP;
       vnet_buffer (b)->tcp.connection_index = tc->c_c_index;
@@ -203,12 +208,25 @@ hsi_tcp_lookup_handler (vlib_buffer_t *b, void *ip_hdr, u32 *next, u8 is_ip4)
 }
 
 always_inline hsi_lookup_result_t
-hsi_udp_lookup_handler (vlib_buffer_t *b, void *ip_hdr, u32 *next, u8 is_ip4)
+hsi_udp_lookup_handler (vlib_main_t *vm, vlib_buffer_t *b, void *ip_hdr, u32 *next, u8 is_ip4)
 {
+  udp_header_t *udp_hdr = 0;
+  udp_connection_t *uc;
   u32 advance;
   session_t *s;
 
-  s = hsi_udp_lookup (b, ip_hdr, is_ip4);
+  s = hsi_udp_lookup (b, ip_hdr, &udp_hdr, is_ip4);
+  if (s)
+    {
+      uc = udp_connection_get (s->connection_index, s->thread_index);
+      if (uc && (uc->cfg_flags & UDP_CFG_F_TRACKED))
+	{
+	  hsi_udp_handle_tracked_connection (vm, b, uc, ip_hdr, udp_hdr, is_ip4);
+	  *next = HSI_INPUT_NEXT_IP_LOOKUP;
+	  return HSI_LOOKUP_RESULT_TRACK;
+	}
+    }
+
   if (!s)
     {
       if (!hsi_have_intercept_proto (TRANSPORT_PROTO_UDP, is_ip4))
@@ -229,7 +247,7 @@ hsi_udp_lookup_handler (vlib_buffer_t *b, void *ip_hdr, u32 *next, u8 is_ip4)
 }
 
 always_inline void
-hsi_lookup_and_update (vlib_buffer_t *b, u32 *next, u8 is_ip4, u8 is_input)
+hsi_lookup_and_update (vlib_main_t *vm, vlib_buffer_t *b, u32 *next, u8 is_ip4, u8 is_input)
 {
   u32 l3_offset = 0;
   hsi_lookup_result_t result;
@@ -268,9 +286,9 @@ hsi_lookup_and_update (vlib_buffer_t *b, u32 *next, u8 is_ip4, u8 is_input)
     }
 
   if (proto == IP_PROTOCOL_TCP)
-    result = hsi_tcp_lookup_handler (b, ip_hdr, next, is_ip4);
+    result = hsi_tcp_lookup_handler (vm, b, ip_hdr, next, is_ip4);
   else
-    result = hsi_udp_lookup_handler (b, ip_hdr, next, is_ip4);
+    result = hsi_udp_lookup_handler (vm, b, ip_hdr, next, is_ip4);
 
   if (!is_input)
     {
@@ -322,8 +340,8 @@ hsi46_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       vlib_prefetch_buffer_header (b[3], LOAD);
       CLIB_PREFETCH (b[3]->data, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
 
-      hsi_lookup_and_update (b[0], &next0, is_ip4, is_input);
-      hsi_lookup_and_update (b[1], &next1, is_ip4, is_input);
+      hsi_lookup_and_update (vm, b[0], &next0, is_ip4, is_input);
+      hsi_lookup_and_update (vm, b[1], &next1, is_ip4, is_input);
 
       next[0] = next0;
       next[1] = next1;
@@ -337,7 +355,7 @@ hsi46_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
     {
       u32 next0;
 
-      hsi_lookup_and_update (b[0], &next0, is_ip4, is_input);
+      hsi_lookup_and_update (vm, b[0], &next0, is_ip4, is_input);
 
       next[0] = next0;
 
@@ -552,3 +570,24 @@ VLIB_PLUGIN_REGISTER () = {
   .description = "Host Stack Intercept (HSI)",
   .default_disabled = 0,
 };
+
+static void
+hsi_workers_init (void)
+{
+  hsi_main_t *hm = &hsi_main;
+
+  vec_validate (hm->wrk, vlib_get_n_threads () - 1);
+}
+
+clib_error_t *
+hsi_init (vlib_main_t *vm)
+{
+  hsi_main_t *hm = &hsi_main;
+
+  hm->intercept_type = 0;
+  hsi_workers_init ();
+
+  return 0;
+}
+
+VLIB_INIT_FUNCTION (hsi_init);
