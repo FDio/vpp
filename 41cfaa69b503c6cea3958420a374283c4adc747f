@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "ed54fdf9_e8b80b1a",
+        "filename": "src/plugins/snort/snort.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 112,
+      "author": {
+        "id": 2512
+      },
+      "writtenOn": "2026-05-05T17:04:18Z",
+      "side": 1,
+      "message": "The pointers to protocol-specific hash functions ip4_hash_fn, ip6_hash_fn were put into the instance structure",
+      "parentUuid": "c5d58959_169118d1",
+      "revId": "41cfaa69b503c6cea3958420a374283c4adc747f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "6cf82074_513c77d6",
@@ -31,6 +49,24 @@
       "writtenOn": "2026-05-05T09:04:24Z",
       "side": 1,
       "message": "can you use:\n\n#define foreach_snort_enq_next_nodes \\\n  _(IP4_INPUT, \"snort-ip4-input-next\") \\\n   ...",
+      "revId": "41cfaa69b503c6cea3958420a374283c4adc747f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ec6cb500_52ed9b0a",
+        "filename": "src/plugins/snort/snort.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 129,
+      "author": {
+        "id": 2512
+      },
+      "writtenOn": "2026-05-05T17:04:18Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "6cf82074_513c77d6",
       "revId": "41cfaa69b503c6cea3958420a374283c4adc747f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
