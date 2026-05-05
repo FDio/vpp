@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "fa111d57_74631827",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-05-05T15:06:08Z",
+      "side": 1,
+      "message": "Thanks, overall lgtm",
+      "revId": "e17d212927299dc23047e7a57308c9d1bea676b6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "33181b3f_af2517e7",
+        "filename": "src/plugins/npol/npol_manual_endian.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 17,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-05-05T15:06:08Z",
+      "side": 1,
+      "message": "Ack, agreed thanks for taking care of it",
+      "revId": "e17d212927299dc23047e7a57308c9d1bea676b6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
