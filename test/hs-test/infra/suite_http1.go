@@ -101,6 +101,7 @@ func (s *Http1Suite) CreateNginxServer() {
 		PortSsl   string
 		Http2     string
 		Timeout   int
+		ListenIp6 bool
 	}{
 		LogPrefix: s.Containers.NginxServer.Name,
 		Address:   s.Interfaces.Tap.Host.Ip4AddressString(),
@@ -108,6 +109,7 @@ func (s *Http1Suite) CreateNginxServer() {
 		PortSsl:   s.Ports.NginxServerSsl,
 		Http2:     "off",
 		Timeout:   600,
+		ListenIp6: false,
 	}
 	s.Containers.NginxServer.CreateConfigFromTemplate(
 		"/nginx.conf",
