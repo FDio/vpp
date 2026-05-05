@@ -18,6 +18,23 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": true,
+      "key": {
+        "uuid": "ec77f0e4_e8f6bdc6",
+        "filename": "src/plugins/npol/npol_manual_endian.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 13,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-05-05T15:29:35Z",
+      "side": 1,
+      "message": "I think the comment is not entirely true, as iiuc in npol\n1) we currently do not rely on the autoendian infra yet\n2) the ipset_member_val\u0027s type is resolved using the type carried by the ipset previously created, i.e. even if it is really not ideal, we have way to get endianess right",
+      "revId": "e17d212927299dc23047e7a57308c9d1bea676b6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": false,
       "key": {
         "uuid": "33181b3f_af2517e7",
