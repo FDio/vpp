@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "94ff5794_676cc494",
+        "filename": "src/plugins/cnat/cnat_feature_hook.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 40,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-05-05T14:33:14Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d7feb075_ebd3026f",
+      "revId": "b0ab4cdfbf2f3cf2f10fe12490e1544392b6fb5e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "4c66e582_8132a001",
@@ -48,6 +66,24 @@
       "writtenOn": "2026-05-05T13:53:51Z",
       "side": 1,
       "message": "We should probably rename `calpol` and `calico` to `npol`",
+      "revId": "b0ab4cdfbf2f3cf2f10fe12490e1544392b6fb5e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7b061fc3_84364442",
+        "filename": "src/plugins/npol/npol_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 407,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-05-05T14:33:14Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "4c66e582_8132a001",
       "revId": "b0ab4cdfbf2f3cf2f10fe12490e1544392b6fb5e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -69,6 +105,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "48c580eb_4f2cbcdb",
+        "filename": "src/plugins/npol/npol_match.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 151,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-05-05T14:33:14Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "03dcb05f_188d8c1e",
+      "revId": "b0ab4cdfbf2f3cf2f10fe12490e1544392b6fb5e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "164d9c2d_4c967c2a",
@@ -82,6 +136,24 @@
       "writtenOn": "2026-05-05T13:53:51Z",
       "side": 1,
       "message": "maybe `if (action \u003d\u003d NPOL_ACTION_DENY)`",
+      "revId": "b0ab4cdfbf2f3cf2f10fe12490e1544392b6fb5e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "df0fdcf8_b6cac453",
+        "filename": "src/plugins/npol/npol_match.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 787,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-05-05T14:33:14Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "164d9c2d_4c967c2a",
       "revId": "b0ab4cdfbf2f3cf2f10fe12490e1544392b6fb5e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
