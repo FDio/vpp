@@ -16,6 +16,24 @@
       "message": "can you elaborate a bit what problem this patch is solving?",
       "revId": "89084a7b2ff48b3a865030f8983215d93d0a63cf",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c5c90b19_c4d75928",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3200
+      },
+      "writtenOn": "2026-05-05T15:45:54Z",
+      "side": 1,
+      "message": "I needed this tracing while I was debugging MACSEC (future gerrit change) so I could verify/fix the various offsets with/without SCI and with sync/async scenarios. It ought to be useful for developing any new crypto client code.\n\nThe ipsec changes in this patch are just to provide examples before I get the MACSEC code submitted.",
+      "parentUuid": "1e68509e_397db738",
+      "revId": "89084a7b2ff48b3a865030f8983215d93d0a63cf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
