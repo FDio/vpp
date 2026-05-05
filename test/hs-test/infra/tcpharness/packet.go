@@ -5,7 +5,9 @@
 package tcpharness
 
 import (
+	"encoding/binary"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"os"
@@ -14,6 +16,7 @@ import (
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcapgo"
+	"golang.org/x/sys/unix"
 )
 
 const (
@@ -54,6 +57,20 @@ type PcapIPv4TCPPacket struct {
 	SackBlocks int
 	HasTSOpt   bool
 	PayloadLen int
+}
+
+func BuildIPv4TCPControl(src, dst net.IP, sport, dport uint16, seq, ack uint32,
+	flags uint8) ([]byte, error) {
+	return BuildIPv4TCPPacket(TCPPacketConfig{
+		SrcIP:   src,
+		DstIP:   dst,
+		SrcPort: sport,
+		DstPort: dport,
+		Seq:     seq,
+		Ack:     ack,
+		Window:  65535,
+		Flags:   flags,
+	})
 }
 
 func (p PcapIPv4TCPPacket) IsAckOnly() bool {
@@ -245,6 +262,112 @@ func ReadPcapIPv4TCPPackets(path string) ([]PcapIPv4TCPPacket, error) {
 	return packets, nil
 }
 
+func OpenIPv4PacketSocket(ifName string) (int, error) {
+	iface, err := net.InterfaceByName(ifName)
+	if err != nil {
+		return -1, err
+	}
+	fd, err := unix.Socket(unix.AF_PACKET, unix.SOCK_RAW, int(htons(unix.ETH_P_ALL)))
+	if err != nil {
+		return -1, err
+	}
+	if err := unix.Bind(fd, &unix.SockaddrLinklayer{
+		Protocol: htons(unix.ETH_P_ALL),
+		Ifindex:  iface.Index,
+	}); err != nil {
+		unix.Close(fd)
+		return -1, err
+	}
+	return fd, nil
+}
+
+func IPv4AddrOnInterface(ifName string) (net.IP, error) {
+	iface, err := net.InterfaceByName(ifName)
+	if err != nil {
+		return nil, err
+	}
+	addrs, err := iface.Addrs()
+	if err != nil {
+		return nil, err
+	}
+	for _, addr := range addrs {
+		var ip net.IP
+		switch a := addr.(type) {
+		case *net.IPNet:
+			ip = a.IP
+		case *net.IPAddr:
+			ip = a.IP
+		}
+		if ip4 := ip.To4(); ip4 != nil {
+			return ip4, nil
+		}
+	}
+	return nil, fmt.Errorf("interface %s has no IPv4 address", ifName)
+}
+
+func CapturedIPv4TCPFin(frame []byte, src, dst net.IP, sport, dport uint16) ([]byte, bool) {
+	packet, ok := parseLinkIPv4TCPPacket(layers.LinkTypeRaw, frame)
+	if !ok {
+		packet, ok = parseLinkIPv4TCPPacket(layers.LinkTypeEthernet, frame)
+	}
+	if !ok || packet.Flags&tcpFlagFin == 0 ||
+		packet.SrcPort != sport || packet.DstPort != dport ||
+		!packet.SrcIP.Equal(src.To4()) || !packet.DstIP.Equal(dst.To4()) {
+		return nil, false
+	}
+
+	if packet.PayloadLen != 0 {
+		return nil, false
+	}
+
+	if frame[0]>>4 == 4 {
+		totalLen := int(frame[2])<<8 | int(frame[3])
+		if len(frame) < totalLen {
+			return nil, false
+		}
+		return append([]byte(nil), frame[:totalLen]...), true
+	}
+
+	ipLayer := gopacket.NewPacket(frame, layers.LinkTypeEthernet, gopacket.NoCopy).Layer(layers.LayerTypeIPv4)
+	if ipLayer == nil {
+		return nil, false
+	}
+	contents := ipLayer.LayerContents()
+	payload := ipLayer.LayerPayload()
+	ip := make([]byte, 0, len(contents)+len(payload))
+	ip = append(ip, contents...)
+	ip = append(ip, payload...)
+	return ip, true
+}
+
+func CaptureIPv4TCPFin(fd int, src, dst net.IP, sport, dport uint16,
+	done <-chan struct{}, finCh chan<- []byte) {
+	buf := make([]byte, 4096)
+	for {
+		select {
+		case <-done:
+			return
+		default:
+		}
+		_ = unix.SetNonblock(fd, true)
+		n, _, err := unix.Recvfrom(fd, buf, 0)
+		if err != nil {
+			if err == unix.EAGAIN || err == unix.EWOULDBLOCK {
+				time.Sleep(10 * time.Millisecond)
+				continue
+			}
+			return
+		}
+		if fin, ok := CapturedIPv4TCPFin(buf[:n], src, dst, sport, dport); ok {
+			select {
+			case finCh <- fin:
+			default:
+			}
+			return
+		}
+	}
+}
+
 func parseRawIPv4TCPPacket(data []byte) (PcapIPv4TCPPacket, bool) {
 	return parseLinkIPv4TCPPacket(layers.LinkTypeRaw, data)
 }
@@ -329,4 +452,10 @@ func tcpFlags(tcp *layers.TCP) uint8 {
 		flags |= tcpFlagCwr
 	}
 	return flags
+}
+
+func htons(v uint16) uint16 {
+	var b [2]byte
+	binary.BigEndian.PutUint16(b[:], v)
+	return binary.NativeEndian.Uint16(b[:])
 }
