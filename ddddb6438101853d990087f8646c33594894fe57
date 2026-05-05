@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "ddddb6438101853d990087f8646c33594894fe57",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d3f2d5b2_a508a837",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-05-05T10:31:51Z",
+      "side": 1,
+      "message": "Can you just use clib_mem_vm_reserve and then map fixed ?",
+      "revId": "ddddb6438101853d990087f8646c33594894fe57",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
