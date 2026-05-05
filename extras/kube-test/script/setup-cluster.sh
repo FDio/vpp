@@ -3,7 +3,16 @@ set -e
 
 COMMAND=$1
 CALICOVPP_DIR=${CALICOVPP_DIR:-"$HOME/vpp-dataplane"}
-VPP_DIR=${VPP_DIR:-"$CALICOVPP_DIR/vpp-manager/vpp_build"}
+# Auto-detect VPP build dir location based on CalicoVPP directory layout
+# which changed from vpp-manager to pkg/vpp-manager in release/v3.33.0
+if [ -d "$CALICOVPP_DIR/pkg/vpp-manager" ]; then
+  _VPP_BUILD_REL="vpp_build"
+elif [ -d "$CALICOVPP_DIR/vpp-manager/vpp_build" ]; then
+  _VPP_BUILD_REL="vpp-manager/vpp_build"
+else
+  _VPP_BUILD_REL="vpp_build"
+fi
+VPP_DIR=${VPP_DIR:-"$CALICOVPP_DIR/$_VPP_BUILD_REL"}
 BASE=${BASE:-"$COMMIT_HASH"}
 # set to false to skip resetting vpp-dataplane directory, useful for testing changes
 RESTORE_CV=${RESTORE_CV:-"true"}
@@ -22,7 +31,7 @@ STASH_SAVED=0
 # [KinD only] sets VPP's mtu. Only works if kind network is configured to use MTU=9000
 export CALICO_NETWORK_CONFIG=${CALICO_NETWORK_CONFIG:-"mtu: 9000"}
 # used for Calico images
-export TIGERA_VERSION="${TIGERA_VERSION:-"v3.31.0"}"
+export TIGERA_VERSION="${TIGERA_VERSION:-"v3.32.0"}"
 export KIND_CALICO_VERSION=$TIGERA_VERSION
 export TIGERA_OPERATOR_VERSION=$KIND_CALICO_VERSION
 export DOCKER_BUILD_PROXY=$HTTP_PROXY
@@ -68,6 +77,30 @@ connect_registry() {
   fi
 }
 
+# Detect CalicoVPP directory layout (changed in release/v3.33.0)
+# Must be called after $CALICOVPP_DIR has been cloned
+# Sets CALICOVPP_MAKE_DIR, VPP_BUILD_REL_PATH, and CALICOVPP_AGENT_IMAGE
+detect_layout_from_repo() {
+  if [ -f "$CALICOVPP_DIR/pkg/vpp-manager/Makefile" ]; then
+    CALICOVPP_MAKE_DIR="$CALICOVPP_DIR/pkg/vpp-manager"
+    export VPP_BUILD_REL_PATH="vpp_build"
+    export CALICOVPP_AGENT_IMAGE="calicovpp/vpp"
+  else
+    CALICOVPP_MAKE_DIR="$CALICOVPP_DIR/vpp-manager"
+    export VPP_BUILD_REL_PATH="vpp-manager/vpp_build"
+    export CALICOVPP_AGENT_IMAGE="calicovpp/agent"
+  fi
+  echo "Detected CalicoVPP layout: AGENT_IMAGE=$CALICOVPP_AGENT_IMAGE, VPP_BUILD=$VPP_BUILD_REL_PATH"
+}
+
+write_kube_vars_file() {
+  cat > kubernetes/.vars <<EOF
+CALICOVPP_VERSION=$CALICOVPP_VERSION
+CALICOVPP_AGENT_IMAGE=$CALICOVPP_AGENT_IMAGE
+VPP_BUILD_REL_PATH=$VPP_BUILD_REL_PATH
+EOF
+}
+
 help() {
   echo "Usage:"
   echo -e "  make master-cluster | rebuild-master-cluster | release-cluster\n"
@@ -76,10 +109,10 @@ help() {
     override the version with: BASE=[(remote or local branch) | (commit hash)], e.g. BASE=origin/master.
     To test changes made in the vpp-dataplane repo, use RESTORE_CV=false"
   echo "'rebuild-master-cluster' stops CalicoVPP pods, rebuilds VPP and restarts CalicoVPP pods. Cluster keeps running."
-  echo "'release-cluster' starts up a KinD cluster and uses latest CalicoVPP release (e.g. v3.29),
+  echo "'release-cluster' starts up a KinD cluster and uses latest CalicoVPP release (e.g. v3.32),
     or you can override versions by using env variables 'CALICOVPP_VERSION' and 'TIGERA_VERSION':
     CALICOVPP_VERSION: latest | v[x].[y].[z] (default=latest)
-    TIGERA_VERSION:    master | v[x].[y].[z] (default="release-v3.31")"
+    TIGERA_VERSION:    master | v[x].[y].[z] (default="release-v3.32")"
 
   echo -e "\nTo shut down the cluster, use 'kind delete cluster'"
 }
@@ -99,17 +132,29 @@ push_calico_to_registry() {
 }
 
 push_release_to_registry() {
+  # Push all available calicovpp images - (1) unified vpp images OR (2) separate
+  # agent, vpp, and multinet-monitor images. This changed in release/v3.33.0.
+  export CALICOVPP_AGENT_IMAGE="calicovpp/vpp"
   for component in vpp agent multinet-monitor; do
-    docker pull docker.io/calicovpp/$component:$CALICOVPP_VERSION
-    docker image tag docker.io/calicovpp/$component:$CALICOVPP_VERSION localhost:5000/calicovpp/$component:$CALICOVPP_VERSION
-	  docker push localhost:5000/calicovpp/$component:$CALICOVPP_VERSION
+    if docker pull docker.io/calicovpp/$component:$CALICOVPP_VERSION 2>/dev/null; then
+      docker image tag docker.io/calicovpp/$component:$CALICOVPP_VERSION localhost:5000/calicovpp/$component:$CALICOVPP_VERSION
+      docker push localhost:5000/calicovpp/$component:$CALICOVPP_VERSION
+      if [ "$component" = "agent" ]; then
+        export CALICOVPP_AGENT_IMAGE="calicovpp/agent"
+      fi
+    fi
   done
+  echo "Detected release layout: AGENT_IMAGE=$CALICOVPP_AGENT_IMAGE"
 }
 
 push_tag_to_registry() {
+  # Tag all available calicovpp images - (1) unified vpp images OR (2) separate
+  # agent, vpp, and multinet-monitor images. This changed in release/v3.33.0.
   for component in vpp agent multinet-monitor; do
-    docker image tag docker.io/calicovpp/$component:$TAG localhost:5000/calicovpp/$component:$TAG
-	  docker push localhost:5000/calicovpp/$component:$TAG
+    if docker image inspect docker.io/calicovpp/$component:$TAG >/dev/null 2>&1; then
+      docker image tag docker.io/calicovpp/$component:$TAG localhost:5000/calicovpp/$component:$TAG
+      docker push localhost:5000/calicovpp/$component:$TAG
+    fi
   done
 }
 
@@ -127,7 +172,9 @@ build_calicovpp() {
         fi
   fi
 
-  make -C $CALICOVPP_DIR/vpp-manager vpp BASE=$BASE && \
+  detect_layout_from_repo
+
+  make -C $CALICOVPP_MAKE_DIR vpp BASE=$BASE && \
   make -C $CALICOVPP_DIR dev TAG=$TAG && \
   make -C $CALICOVPP_DIR image-kind TAG=$TAG
 }
@@ -162,8 +209,6 @@ setup_master() {
   # delete CMakeCache so compiler is re-detected (should avoid compilation errors)
   rm $VPP_DIR/build-root/build-vpp*/vpp/CMakeCache.txt || true
   export CALICOVPP_VERSION=${CALICOVPP_VERSION:-"kt-master"}
-  echo "CALICOVPP_VERSION=$CALICOVPP_VERSION" > kubernetes/.vars
-  envsubst < kubernetes/kind-calicovpp-config-template.yaml > kubernetes/kind-calicovpp-config.yaml
 
   echo -e "$kind_config" | kind create cluster --config=-
   kubectl apply -f kubernetes/registry.yaml
@@ -178,6 +223,10 @@ setup_master() {
     exit 1
   fi
 
+  # Generate YAML after build (detect_layout_from_repo sets CALICOVPP_AGENT_IMAGE, VPP_BUILD_REL_PATH)
+  write_kube_vars_file
+  envsubst < kubernetes/kind-calicovpp-config-template.yaml > kubernetes/kind-calicovpp-config.yaml
+
   push_tag_to_registry
   start_cni
   restore_repo
@@ -188,13 +237,17 @@ rebuild_master() {
   save_stash
   rm $VPP_DIR/build-root/build-vpp*/vpp/CMakeCache.txt || true
   export CALICOVPP_VERSION=${CALICOVPP_VERSION:-"kt-master"}
-  echo "CALICOVPP_VERSION=$CALICOVPP_VERSION" > kubernetes/.vars
-  envsubst < kubernetes/kind-calicovpp-config-template.yaml > kubernetes/kind-calicovpp-config.yaml
+
   if ! build_calicovpp; then
     red "*** Build failed. Restoring repo. Try running 'make -C ../.. wipe' and 'make -C ../.. wipe-release' ***"
     restore_repo
     exit 1
   fi
+
+  # Generate YAML after build (detect_layout_from_repo sets CALICOVPP_AGENT_IMAGE, VPP_BUILD_REL_PATH)
+  write_kube_vars_file
+  envsubst < kubernetes/kind-calicovpp-config-template.yaml > kubernetes/kind-calicovpp-config.yaml
+
   push_tag_to_registry
   start_cni || true
   restore_repo
@@ -204,15 +257,23 @@ rebuild_master() {
 
 setup_release() {
   export CALICOVPP_VERSION="${CALICOVPP_VERSION:-"latest"}"
-  echo "CALICOVPP_VERSION=$CALICOVPP_VERSION" > kubernetes/.vars
-  envsubst < kubernetes/kind-calicovpp-config-template.yaml > kubernetes/kind-calicovpp-config.yaml
   echo "CALICOVPP_VERSION=$CALICOVPP_VERSION"
   echo "TIGERA_VERSION=$TIGERA_VERSION"
   echo -e "$kind_config" | kind create cluster --config=-
   kubectl apply -f kubernetes/registry.yaml
   connect_registry
-  push_release_to_registry
+  push_release_to_registry  # detects layout, sets CALICOVPP_AGENT_IMAGE
   push_calico_to_registry
+
+  # Generate YAML after push (push_release_to_registry sets CALICOVPP_AGENT_IMAGE)
+  if [ "$CALICOVPP_AGENT_IMAGE" = "calicovpp/agent" ]; then
+    export VPP_BUILD_REL_PATH="vpp-manager/vpp_build"
+  else
+    export VPP_BUILD_REL_PATH="vpp_build"
+  fi
+  write_kube_vars_file
+  envsubst < kubernetes/kind-calicovpp-config-template.yaml > kubernetes/kind-calicovpp-config.yaml
+
   kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/$TIGERA_VERSION/manifests/tigera-operator.yaml
 
   while [[ "$(kubectl api-resources --api-group=operator.tigera.io | grep Installation)" == "" ]]; do echo "waiting for Installation kubectl resource"; sleep 2; done

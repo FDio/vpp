@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -169,8 +170,27 @@ func LogJsonIperfOutput(result IPerfResult) {
 	Log("*******************************************\n")
 }
 
+func calicoVPPAgentImage(version string) string {
+	normalizedVersion := strings.TrimPrefix(strings.TrimPrefix(version, "release/"), "v")
+	if normalizedVersion == "" || normalizedVersion == "master" {
+		return "calicovpp/vpp"
+	}
+
+	versionParts := strings.Split(normalizedVersion, ".")
+	major, errMajor := strconv.Atoi(versionParts[0])
+	minor, errMinor := strconv.Atoi(versionParts[1])
+	if errMajor != nil || errMinor != nil {
+		return "calicovpp/vpp"
+	}
+
+	if major > 3 || (major == 3 && minor >= 33) {
+		return "calicovpp/vpp"
+	}
+	return "calicovpp/agent"
+}
+
 func handleExistingVarsFile(fileValues map[string]string) error {
-	varsToWatch := []string{"CALICOVPP_VERSION", "CALICOVPP_INTERFACE"}
+	varsToWatch := []string{"CALICOVPP_VERSION", "CALICOVPP_INTERFACE", "CALICOVPP_AGENT_IMAGE"}
 	needsWrite := false
 
 	for _, key := range varsToWatch {
@@ -182,6 +202,20 @@ func handleExistingVarsFile(fileValues map[string]string) error {
 				needsWrite = true
 			}
 		}
+	}
+
+	if _, ok := fileValues["CALICOVPP_AGENT_IMAGE"]; !ok || fileValues["CALICOVPP_AGENT_IMAGE"] == "" {
+		agentImage := os.Getenv("CALICOVPP_AGENT_IMAGE")
+		if agentImage == "" {
+			version := fileValues["CALICOVPP_VERSION"]
+			if version == "" {
+				version = os.Getenv("CALICOVPP_VERSION")
+			}
+			agentImage = calicoVPPAgentImage(version)
+		}
+		fileValues["CALICOVPP_AGENT_IMAGE"] = agentImage
+		needsWrite = true
+		Log("Setting missing 'CALICOVPP_AGENT_IMAGE' to '%s'", agentImage)
 	}
 
 	if needsWrite {
@@ -198,11 +232,16 @@ func handleExistingVarsFile(fileValues map[string]string) error {
 func handleNewVarsFile() error {
 	iface := os.Getenv("CALICOVPP_INTERFACE")
 	version := os.Getenv("CALICOVPP_VERSION")
+	agentImage := os.Getenv("CALICOVPP_AGENT_IMAGE")
+	if agentImage == "" {
+		agentImage = calicoVPPAgentImage(version)
+	}
 
 	if iface != "" && version != "" {
 		newFileValues := map[string]string{
-			"CALICOVPP_INTERFACE": iface,
-			"CALICOVPP_VERSION":   version,
+			"CALICOVPP_INTERFACE":   iface,
+			"CALICOVPP_VERSION":     version,
+			"CALICOVPP_AGENT_IMAGE": agentImage,
 		}
 
 		Log("\nCreating '%s' from environment variables\n", EnvVarsFile)
