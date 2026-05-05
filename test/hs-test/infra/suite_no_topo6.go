@@ -123,6 +123,7 @@ func (s *NoTopo6Suite) CreateNginxServer() {
 		PortSsl   string
 		Http2     string
 		Timeout   int
+		ListenIp6 bool
 	}{
 		LogPrefix: s.Containers.NginxServer.Name,
 		Address:   "[" + s.Interfaces.Tap.Host.Ip6AddressString() + "]",
@@ -130,6 +131,7 @@ func (s *NoTopo6Suite) CreateNginxServer() {
 		PortSsl:   s.Ports.NginxServerSsl,
 		Http2:     "off",
 		Timeout:   600,
+		ListenIp6: true,
 	}
 	s.Containers.NginxServer.CreateConfigFromTemplate(
 		"/nginx.conf",

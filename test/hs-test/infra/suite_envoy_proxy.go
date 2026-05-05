@@ -93,6 +93,7 @@ func (s *EnvoyProxySuite) SetupTest() {
 		PortSsl   uint16
 		Http2     string
 		Timeout   int
+		ListenIp6 bool
 	}{
 		LogPrefix: s.Containers.NginxServerTransient.Name,
 		Address:   s.Interfaces.Server.Host.Ip4AddressString(),
@@ -100,6 +101,7 @@ func (s *EnvoyProxySuite) SetupTest() {
 		PortSsl:   s.Ports.NginxSsl,
 		Http2:     "off",
 		Timeout:   s.maxTimeout,
+		ListenIp6: false,
 	}
 	s.Containers.NginxServerTransient.CreateConfigFromTemplate(
 		"/nginx.conf",
