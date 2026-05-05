@@ -1405,15 +1405,17 @@ def run_vppapigen(
             pp.pprint([t.name, t.block])
 
     result = plugin.run(outputdir, filename, s)
+    if result is None:
+        log.exception("Running plugin failed: %s %s", filename, result)
+        return 1
     if result:
+        # Plugin returned content destined for --output (or stdout).
+        # An empty string is a valid "I wrote my files myself" signal.
         if isinstance(output, str):
             with open(output, "w", encoding="UTF-8") as f:
                 print(result, file=f)
         else:
             print(result, file=output)
-    else:
-        log.exception("Running plugin failed: %s %s", filename, result)
-        return 1
     return 0
 
 

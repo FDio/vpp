@@ -1,0 +1,37 @@
+/* SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2026 Meter, Inc.
+ *
+ * Test-only fake API used by vapi_c_test / vapi_cpp_test to exercise
+ * generated header compilation without depending on real VPP messages.
+ * Replaces the hand-written fake.api.json the old vapi generators consumed.
+ */
+
+option version = "0.0.1";
+
+define test_fake_msg {
+  u32 client_index;
+  u32 context;
+  u8 dummy[256];
+};
+
+define test_fake_msg_reply {
+  u32 context;
+  i32 retval;
+};
+
+define test_fake_dump {
+  u32 client_index;
+  u32 context;
+  u32 dummy;
+};
+
+define test_fake_details {
+  u32 client_index;
+  u32 context;
+  u32 dummy;
+};
+
+service {
+  rpc test_fake_msg returns test_fake_msg_reply;
+  rpc test_fake_dump returns stream test_fake_details;
+};
