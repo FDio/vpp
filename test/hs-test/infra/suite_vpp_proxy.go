@@ -127,6 +127,7 @@ func (s *VppProxySuite) SetupNginxServer() {
 		PortSsl   uint16
 		Http2     string
 		Timeout   int
+		ListenIp6 bool
 	}{
 		LogPrefix: s.Containers.NginxServerTransient.Name,
 		Address:   s.Interfaces.Server.Host.Ip4AddressString(),
@@ -134,6 +135,7 @@ func (s *VppProxySuite) SetupNginxServer() {
 		PortSsl:   s.Ports.ServerSsl,
 		Http2:     "off",
 		Timeout:   s.maxTimeout,
+		ListenIp6: false,
 	}
 	s.Containers.NginxServerTransient.CreateConfigFromTemplate(
 		"/nginx.conf",

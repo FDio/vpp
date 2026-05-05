@@ -81,12 +81,13 @@ typedef enum _tcp_timers
 #define TCP_ESTABLISH_TIME (60 * THZ)	/* Connection establish timeout */
 
 /** Connection configuration flags */
-#define foreach_tcp_cfg_flag 			\
-  _(RATE_SAMPLE, "Rate sampling")		\
-  _(NO_CSUM_OFFLOAD, "No csum offload")    	\
-  _(NO_TSO, "TSO off")				\
-  _(TSO, "TSO")					\
-  _(NO_ENDPOINT,"No endpoint")			\
+#define foreach_tcp_cfg_flag                                                                       \
+  _ (RATE_SAMPLE, "Rate sampling")                                                                 \
+  _ (NO_CSUM_OFFLOAD, "No csum offload")                                                           \
+  _ (NO_TSO, "TSO off")                                                                            \
+  _ (TSO, "TSO")                                                                                   \
+  _ (NO_ENDPOINT, "No endpoint")                                                                   \
+  _ (TRACKED, "Tracked connection")
 
 typedef enum tcp_cfg_flag_bits_
 {
