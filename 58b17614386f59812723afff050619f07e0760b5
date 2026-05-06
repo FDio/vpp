@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6a96d4a9_87a8b1f1",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-05-06T13:23:49Z",
+      "side": 1,
+      "message": "Looks good, but can you\n - add an ASSERT in esp_remove_tail to catch any further issue\n - update the GRE path to use esp_remove_tail instead of manually substracted tail so it is protected too",
+      "revId": "58b17614386f59812723afff050619f07e0760b5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
