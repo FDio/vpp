@@ -5,7 +5,7 @@ import re
 import os
 
 from scapy.layers.inet import IP, ICMP, TCP, UDP
-from scapy.layers.ipsec import SecurityAssociation, ESP
+from scapy.layers.ipsec import SecurityAssociation, ESP, _ESPPlain
 from scapy.layers.l2 import Ether
 from scapy.packet import raw, Raw, Padding
 from scapy.layers.inet6 import (
@@ -1831,6 +1831,50 @@ class IpsecTra4(object):
         else:
             self._verify_tra_anti_replay_algorithm_no_esn()
 
+    def verify_tra_corrupted_esp_footer(self):
+        """
+        Verify that an ESP packet whose decrypted pad_length exceeds the buffer
+        is dropped with ESP_DECRYPT_ERROR_NO_TAIL_SPACE.
+
+        The packet is built by invoking the Scapy crypto/auth primitives
+        directly so that pad_length=0xFF is encrypted and MACed with the real
+        SA keys.  VPP therefore passes both the integrity check and decryption,
+        and only fails at the post-crypto footer bound check.
+        """
+        if self.encryption_type != ESP:
+            self.skipTest("test requires ESP")
+
+        p = self.params[socket.AF_INET]
+
+        corrupted_node_name = "/err/%s/no_tail_space" % self.tra4_decrypt_node_name[0]
+        corrupted_count = self.statistics.get_err_counter(corrupted_node_name)
+
+        # Build an ESP packet whose plaintext footer has pad_length=0xFF.
+        # Use the real SA keys so auth and decryption pass; only the post-crypto
+        # bound check (pad_length + tail_base > buffer_length) will fire.
+        sa = p.scapy_tra_sa
+        crypt_key = mk_scapy_crypt_key(p)
+        inner = IP(src=self.tra_if.remote_ip4, dst=self.tra_if.local_ip4) / ICMP()
+        # Build _ESPPlain with a deliberately oversized padlen, bypassing
+        # sa.crypt_algo.pad() which would set the correct value.
+        esp = _ESPPlain(spi=p.scapy_tra_spi, seq=1, iv=sa.crypt_algo.generate_iv())
+        esp.data = raw(inner)
+        esp.nh = socket.IPPROTO_IP
+        esp.padlen = 0xFF
+        esp.padding = b""
+        esp = sa.crypt_algo.encrypt(sa, esp, crypt_key)
+        sa.auth_algo.sign(esp, p.auth_key)
+        pkt = (
+            Ether(src=self.tra_if.remote_mac, dst=self.tra_if.local_mac)
+            / IP(src=self.tra_if.remote_ip4, dst=self.tra_if.local_ip4)
+            / esp
+        )
+
+        self.send_and_assert_no_replies(self.tra_if, pkt * 5, timeout=0.2)
+
+        corrupted_count += 5
+        self.assert_error_counter_equal(corrupted_node_name, corrupted_count)
+
 
 @unittest.skipIf(
     "ping" in config.excluded_plugins, "Exclude tests requiring Ping plugin"
@@ -1853,6 +1897,10 @@ class IpsecTra4Tests(IpsecTra4):
     def test_tra_basic(self, count=1):
         """ipsec v4 transport basic test"""
         self.verify_tra_basic4(count=1)
+
+    def test_tra_corrupted_esp_footer(self):
+        """ipsec v4 transport corrupted ESP footer pad length test"""
+        self.verify_tra_corrupted_esp_footer()
 
     def test_tra_burst(self):
         """ipsec v4 transport burst test"""
