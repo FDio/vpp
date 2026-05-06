@@ -7,6 +7,7 @@
 #include <vnet/session/application_interface.h>
 #include <vnet/session/application.h>
 
+#include <quic/quic.h>
 #include <http/http.h>
 #include <http/http_private.h>
 #include <http/http_timer.h>
@@ -20,6 +21,9 @@ const http_buffer_type_t msg_to_buf_type[] = {
   [HTTP_MSG_DATA_PTR] = HTTP_BUFFER_PTR,
   [HTTP_MSG_DATA_STREAMING] = HTTP_BUFFER_STREAMING,
 };
+
+#define HTTP_MAX_STREAMS_UNI  3 /* control + QPACK encoder and decoder */
+#define HTTP_MAX_STREAMS_BIDI 100
 
 void
 http_register_engine (const http_engine_vft_t *vft, http_version_t version)
@@ -657,9 +661,11 @@ http_ts_accept_connection (session_t *ts)
   thresh = clib_min (svm_fifo_size (ts->tx_fifo), HTTP_FIFO_THRESH);
   svm_fifo_set_deq_thresh (ts->tx_fifo, thresh);
 
-  http_conn_timer_start (hc);
-
   ASSERT (hc->version != HTTP_VERSION_NA);
+
+  if (hc->version != HTTP_VERSION_3)
+    http_conn_timer_start (hc);
+
   http_vfts[hc->version].conn_accept_callback (hc);
 
   return 0;
@@ -802,7 +808,8 @@ http_ts_connected_callback (u32 http_app_index, u32 ho_hc_index, session_t *ts,
   HTTP_DBG (1, "half-open hc index %x, hc [%u]%x", ts->thread_index,
 	    ho_hc_index, new_hc_index);
 
-  http_conn_timer_start (hc);
+  if (hc->version != HTTP_VERSION_3)
+    http_conn_timer_start (hc);
 
   if ((rv = http_vfts[hc->version].transport_connected_callback (hc)))
     {
@@ -1153,6 +1160,13 @@ http_connect_connection (session_endpoint_cfg_t *sep)
 	case TLS_ALPN_PROTO_HTTP_3:
 	  HTTP_DBG (1, "app want to use http/3");
 	  cargs->sep.transport_proto = TRANSPORT_PROTO_QUIC;
+	  transport_endpt_cfg_quic_t quic_cfg = { .connection_timeout = ho_hc->hc_timeout * 1000,
+						  .max_streams_uni = HTTP_MAX_STREAMS_UNI,
+						  /* server should not open bidirectional stream */
+						  .max_streams_bidi = 0 };
+	  ext_cfg = session_endpoint_add_ext_cfg (&cargs->sep_ext, TRANSPORT_ENDPT_EXT_CFG_QUIC,
+						  sizeof (quic_cfg));
+	  clib_memcpy (ext_cfg->data, &quic_cfg, sizeof (quic_cfg));
 	  ho_hc->version = HTTP_VERSION_3;
 	  break;
 	case TLS_ALPN_PROTO_NONE:
@@ -1291,6 +1305,21 @@ http_start_listen (u32 app_listener_index, transport_endpoint_cfg_t *tep)
   HTTP_DBG (1, "app_listener_index %u http_listener_index %u",
 	    app_listener_index, lhc_index);
 
+  ext_cfg = session_endpoint_get_ext_cfg (sep, TRANSPORT_ENDPT_EXT_CFG_HTTP);
+  if (ext_cfg && ext_cfg->opaque)
+    {
+      transport_endpt_cfg_http_t *http_cfg = (transport_endpt_cfg_http_t *) ext_cfg->data;
+      HTTP_DBG (1, "app set timeout %u", http_cfg->timeout);
+      lhc->hc_timeout = http_cfg->timeout;
+      lhc->flags |=
+	http_cfg->udp_tunnel_mode == HTTP_UDP_TUNNEL_DGRAM ? HTTP_CONN_F_UDP_TUNNEL_DGRAM : 0;
+      if (http_cfg->flags & HTTP_ENDPT_CFG_F_ENABLE_CONNECT_UDP_DRAFT03)
+	{
+	  HTTP_DBG (1, "app enabled masque-connect-udp-draft-03");
+	  lhc->flags |= HTTP_CONN_F_CONNECT_UDP_DRAFT03;
+	}
+    }
+
   ext_cfg = session_endpoint_get_ext_cfg (sep, TRANSPORT_ENDPT_EXT_CFG_CRYPTO);
   if (ext_cfg)
     {
@@ -1332,6 +1361,13 @@ http_start_listen (u32 app_listener_index, transport_endpoint_cfg_t *tep)
 	{
 	  HTTP_DBG (1, "app want listen quic");
 	  args->sep_ext.transport_proto = TRANSPORT_PROTO_QUIC;
+	  args->sep.transport_proto = TRANSPORT_PROTO_QUIC;
+	  transport_endpt_cfg_quic_t quic_cfg = { .connection_timeout = lhc->hc_timeout * 1000,
+						  .max_streams_uni = HTTP_MAX_STREAMS_UNI,
+						  .max_streams_bidi = HTTP_MAX_STREAMS_BIDI };
+	  ext_cfg = session_endpoint_add_ext_cfg (&args->sep_ext, TRANSPORT_ENDPT_EXT_CFG_QUIC,
+						  sizeof (quic_cfg));
+	  clib_memcpy (ext_cfg->data, &quic_cfg, sizeof (quic_cfg));
 	  cc->alpn_protos[0] = TLS_ALPN_PROTO_HTTP_3;
 
 	  if (vnet_listen (args))
@@ -1380,22 +1416,6 @@ http_start_listen (u32 app_listener_index, transport_endpoint_cfg_t *tep)
 	}
       lhc->hc_tl_handle_tcp = args->handle;
       http_listener_link_with_tl (args->handle, lhc_index);
-    }
-
-  ext_cfg = session_endpoint_get_ext_cfg (sep, TRANSPORT_ENDPT_EXT_CFG_HTTP);
-  if (ext_cfg && ext_cfg->opaque)
-    {
-      transport_endpt_cfg_http_t *http_cfg =
-	(transport_endpt_cfg_http_t *) ext_cfg->data;
-      HTTP_DBG (1, "app set timeout %u", http_cfg->timeout);
-      lhc->hc_timeout = http_cfg->timeout;
-      lhc->flags |=
-	http_cfg->udp_tunnel_mode == HTTP_UDP_TUNNEL_DGRAM ? HTTP_CONN_F_UDP_TUNNEL_DGRAM : 0;
-      if (http_cfg->flags & HTTP_ENDPT_CFG_F_ENABLE_CONNECT_UDP_DRAFT03)
-	{
-	  HTTP_DBG (1, "app enabled masque-connect-udp-draft-03");
-	  lhc->flags |= HTTP_CONN_F_CONNECT_UDP_DRAFT03;
-	}
     }
 
   /* Grab application listener and link to http listener */

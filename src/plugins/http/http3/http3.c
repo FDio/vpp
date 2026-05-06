@@ -5,7 +5,6 @@
 #include <http/http3/http3.h>
 #include <http/http3/frame.h>
 #include <http/http3/qpack.h>
-#include <http/http_timer.h>
 #include <http/http_status_codes.h>
 
 #define HTTP3_SERVER_MAX_STREAM_ID (HTTP_VARINT_MAX - 3)
@@ -352,14 +351,6 @@ http3_stream_app_close_tunnel (http_ctx_t *req, http_ctx_t *stream, u8 is_shutdo
       ASSERT (0);
       break;
     }
-}
-
-static_always_inline void
-http3_stream_update_conn_timer (http_ctx_t *stream)
-{
-  ASSERT (http_hc_is_valid (stream->hc_http_conn_index, stream->c_thread_index));
-  http_ctx_t *hc = http_ctx_get_w_thread (stream->hc_http_conn_index, stream->c_thread_index);
-  http_conn_timer_update (hc);
 }
 
 /*************************************/
@@ -2002,9 +1993,6 @@ http3_app_tx_callback (http_ctx_t *stream, u32 req_index, transport_send_params_
       http3_stream_error_terminate_conn (stream, req, err);
       return;
     }
-
-  /* reset http connection expiration timer */
-  http3_stream_update_conn_timer (stream);
 }
 
 static void
@@ -2020,9 +2008,6 @@ http3_app_rx_evt_callback (http_ctx_t *stream, u32 req_index, clib_thread_index_
   req = http_ctx_get_w_thread (req_index, thread_index);
   n_deq = req->transport_rx_cb (req, stream);
   http_io_ts_program_rx_evt (stream, n_deq);
-
-  /* reset http connection expiration timer */
-  http3_stream_update_conn_timer (stream);
 }
 
 static void
@@ -2144,9 +2129,6 @@ http3_transport_rx_callback (http_ctx_t *stream)
   /* pool might grow, regrab stream */
   stream = http_ctx_get_w_thread (stream_index, thread_index);
   http_io_ts_program_rx_evt (stream, n_deq);
-
-  /* reset http connection expiration timer */
-  http3_stream_update_conn_timer (stream);
 }
 
 static void
