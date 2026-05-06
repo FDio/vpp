@@ -1,6 +1,23 @@
 {
   "comments": [
     {
+      "unresolved": true,
+      "key": {
+        "uuid": "35a70dff_0af8ed2d",
+        "filename": "src/drivers/iavf/port.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 336,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-05-06T09:44:29Z",
+      "side": 1,
+      "message": "use vnet_dev_get_rx_queue_if_buffer_template() as storage may change in the future\nsame with vnet_dev_get_rx_queue_sec_if_buffer_template",
+      "revId": "4e2a7feaccea6ebbf5c583c4be5c5466e4f29739",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": false,
       "key": {
         "uuid": "f5299d25_e241a790",
