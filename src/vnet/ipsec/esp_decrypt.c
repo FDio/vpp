@@ -647,6 +647,13 @@ esp_decrypt_post_crypto (vlib_main_t *vm, vlib_node_runtime_t *node, const u16 *
   u16 adv = irt->esp_advance;
   u16 tail = pad_length + tail_base - tail_adjust;
   u16 tail_orig = pad_length + tail_base;
+  if (PREDICT_FALSE (tail_orig > vlib_buffer_length_in_chain (vm, b)))
+    {
+      /* tail is larger than the buffer length, this is a corrupted packet */
+      esp_decrypt_set_next_index (b, node, vm->thread_index, ESP_DECRYPT_ERROR_NO_TAIL_SPACE, 0,
+				  next, ESP_DECRYPT_NEXT_DROP, pd->sa_index);
+      return;
+    }
   b->flags &=
     ~(VNET_BUFFER_F_L4_CHECKSUM_COMPUTED | VNET_BUFFER_F_L4_CHECKSUM_CORRECT);
 
