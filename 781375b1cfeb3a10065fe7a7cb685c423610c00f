@@ -16,6 +16,24 @@
       "message": "this looks to me like abuse of tracing infra, we have pcap capture for this kind of troubleshooting",
       "revId": "781375b1cfeb3a10065fe7a7cb685c423610c00f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "70ff87bd_f22ac92a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3200
+      },
+      "writtenOn": "2026-05-06T18:25:40Z",
+      "side": 1,
+      "message": "The TFS protocols involve fragmentation, aggregation, and reassembly for every tunneled packet, so we did a lot of buffer chain debugging, which pcap would not address. Although omitting this tracing obviously won\u0027t break the implementation, we think this tracing would be generally useful in vpp.\n\nHowever, I will be doing some performance experiments with various approaches to collating the packets (e.g., copying vs. chaining) so I am happy to defer consideration of this change until afterward.\n\nDo you have any opinions in light of the above? Thanks",
+      "parentUuid": "0634711f_398effa3",
+      "revId": "781375b1cfeb3a10065fe7a7cb685c423610c00f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
