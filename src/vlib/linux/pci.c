@@ -1101,7 +1101,7 @@ vlib_pci_disable_msix_irq (vlib_main_t * vm, vlib_pci_dev_handle_t h,
     return clib_error_return (0, "vfio driver is needed for MSI-X interrupt "
 			      "support");
 
-  for (i = start; i < start + count; i++)
+  for (i = 0; i < count; i++)
     fds[i] = -1;
 
   return vfio_set_irqs (vm, p, VFIO_PCI_MSIX_IRQ_INDEX, start, count,
@@ -1141,7 +1141,7 @@ vlib_pci_disable_msi_irq (vlib_main_t *vm, vlib_pci_dev_handle_t h, u16 start,
     return clib_error_return (0, "vfio driver is needed for MSI interrupt "
 				 "support");
 
-  for (i = start; i < start + count; i++)
+  for (i = 0; i < count; i++)
     fds[i] = -1;
 
   return vfio_set_irqs (vm, p, VFIO_PCI_MSI_IRQ_INDEX, start, count,
