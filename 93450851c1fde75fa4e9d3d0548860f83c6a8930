@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "02c72f72_de5a9bce",
+        "filename": "src/drivers/octeon/init.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 473,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-05-06T16:20:48Z",
+      "side": 1,
+      "message": "Do you really need to release it? Usually mapping can be overwritten.\n\nIn this form there is potential race, as kernel may decide to give this block to another thread.",
+      "revId": "93450851c1fde75fa4e9d3d0548860f83c6a8930",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
