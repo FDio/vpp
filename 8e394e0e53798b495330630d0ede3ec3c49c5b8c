@@ -37,6 +37,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "0d7047de_5b1a13ed",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 8
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3312
+      },
+      "writtenOn": "2026-05-06T07:49:56Z",
+      "side": 1,
+      "message": "How about passively dropping packets on this datapath?",
+      "parentUuid": "51c8fc15_843ccd10",
+      "revId": "8e394e0e53798b495330630d0ede3ec3c49c5b8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "a598d93f_074b0bd5",
         "filename": "test/test_ipip.py",
         "patchSetId": 8
@@ -48,6 +66,24 @@
       "writtenOn": "2026-05-04T11:46:23Z",
       "side": 1,
       "message": "why is it needed here but not for ip4 above?",
+      "revId": "8e394e0e53798b495330630d0ede3ec3c49c5b8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d71a8aed_47060b52",
+        "filename": "test/test_ipip.py",
+        "patchSetId": 8
+      },
+      "lineNbr": 1394,
+      "author": {
+        "id": 3312
+      },
+      "writtenOn": "2026-05-06T07:49:56Z",
+      "side": 1,
+      "message": "TestIPIP.setUp() does not call setup_tunnel() — it only configures interfaces and a VPP table. No default tunnel exists, so there is nothing to destroy in test_ipip4_mp2p.\n\nTestIPIP6.setUp does call self.setup_tunnel(), which creates a default IPIP tunnel plus IPv4/IPv6 routes via it. So test_ipip6_mp2p must call self.destroy_tunnel() first (to free pg0\u0027s local_ip6 so the new MP2P tunnel can use it as src), and then re-creates it via self.setup_tunnel() at the end so tearDown (which calls destroy_tunnel) doesn\u0027t fail.",
+      "parentUuid": "a598d93f_074b0bd5",
       "revId": "8e394e0e53798b495330630d0ede3ec3c49c5b8c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
