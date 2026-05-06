@@ -260,6 +260,7 @@ quic_start_listen (u32 quic_listen_session_index,
   u32 lctx_index;
   app_listener_t *app_listener;
   transport_endpt_ext_cfg_t *ext_cfg;
+  transport_endpt_cfg_quic_t *qcfg;
   int rv;
 
   sep = (session_endpoint_cfg_t *) tep;
@@ -311,6 +312,17 @@ quic_start_listen (u32 quic_listen_session_index,
   lctx->ca_trust_index = ccfg->ca_trust_index;
   lctx->ckpair_index = ccfg->ckpair_index;
   lctx->tls_profile_index = ccfg->tls_profile_index;
+  lctx->connection_timeout = qm->connection_timeout;
+  lctx->max_streams_uni = (u32) 1 << 30;
+  lctx->max_streams_bidi = (u32) 1 << 30;
+  ext_cfg = session_endpoint_get_ext_cfg (sep, TRANSPORT_ENDPT_EXT_CFG_HTTP);
+  if (ext_cfg)
+    {
+      qcfg = (transport_endpt_cfg_quic_t *) ext_cfg->data;
+      lctx->connection_timeout = qcfg->connection_timeout;
+      lctx->max_streams_uni = qcfg->max_streams_uni;
+      lctx->max_streams_bidi = qcfg->max_streams_bidi;
+    }
   if ((rv = quic_eng_crypto_context_acquire_listen (lctx)))
     {
       vnet_unlisten_args_t a = {
