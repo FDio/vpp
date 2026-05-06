@@ -1,0 +1,112 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f5299d25_e241a790",
+        "filename": "src/drivers/iavf/rx_node.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 184,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-05-06T09:05:23Z",
+      "side": 1,
+      "message": "Done in PS13. The RX checksum validation now uses the local buffer-template flags value and only writes b-\u003eflags on the non-fast path.",
+      "parentUuid": "f8a393a3_e220d23d",
+      "revId": "4e2a7feaccea6ebbf5c583c4be5c5466e4f29739",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e41322bc_56fff569",
+        "filename": "src/drivers/iavf/rx_node.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 186,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-05-06T09:05:23Z",
+      "side": 1,
+      "message": "Done in PS13. Same change here: the fast path keeps flags local and avoids the load/store on b-\u003eflags.",
+      "parentUuid": "3f96ef77_d07e8073",
+      "revId": "4e2a7feaccea6ebbf5c583c4be5c5466e4f29739",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c60f7fc0_02114984",
+        "filename": "src/drivers/iavf/rx_node.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 189,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-05-06T09:05:23Z",
+      "side": 1,
+      "message": "Done in PS13. The predicate and fixup helpers are now combined into iavf_rx_validate_l4_cksum().",
+      "parentUuid": "e16fb081_6fd12a4b",
+      "revId": "4e2a7feaccea6ebbf5c583c4be5c5466e4f29739",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5a1127e0_af8e3191",
+        "filename": "src/drivers/iavf/rx_node.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 237,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-05-06T09:05:23Z",
+      "side": 1,
+      "message": "Done in PS13. l4_cksum_flags was removed from the RX burst path; checksum validation is always called and clears the template flags when the descriptor says checksum is not valid/applicable.",
+      "parentUuid": "0418fd6d_d7f9430d",
+      "revId": "4e2a7feaccea6ebbf5c583c4be5c5466e4f29739",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3f93bbc4_c49d2268",
+        "filename": "src/drivers/iavf/rx_node.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 310,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-05-06T09:05:23Z",
+      "side": 1,
+      "message": "Done in PS13. l4_cksum_flags is no longer passed through the RX functions.",
+      "parentUuid": "73c47766_6d0de4ac",
+      "revId": "4e2a7feaccea6ebbf5c583c4be5c5466e4f29739",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "39d57f7e_b8353d96",
+        "filename": "src/drivers/iavf/rx_node.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 311,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-05-06T09:05:23Z",
+      "side": 1,
+      "message": "Done in PS13. IAVF_RX_L4_CKSUM_FLAGS is now applied once to the RX queue buffer templates from iavf_port_start().",
+      "parentUuid": "b55e1814_243816fd",
+      "revId": "4e2a7feaccea6ebbf5c583c4be5c5466e4f29739",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
