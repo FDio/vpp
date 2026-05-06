@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "193366a1_400d18fa",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2026-05-06T11:51:52Z",
+      "side": 1,
+      "message": "This run https://github.com/FDio/csit/actions/runs/25431428555/job/74598427184\nshows memif+jumbo works with this (but not without this), both for plugins/dpdk and for drivers/iavf.",
+      "revId": "fe5cae62dc6fd9bf5cc9832f4e261827a57108e7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
