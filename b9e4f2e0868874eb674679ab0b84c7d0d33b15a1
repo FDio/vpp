@@ -16,6 +16,24 @@
       "message": "we cannot merge \"#if 0\"",
       "revId": "b9e4f2e0868874eb674679ab0b84c7d0d33b15a1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "543b1576_4c97a6cd",
+        "filename": "src/vlib/buffer.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 266,
+      "author": {
+        "id": 3200
+      },
+      "writtenOn": "2026-05-06T17:48:39Z",
+      "side": 1,
+      "message": "I took this bit out to revisit later. Do you have an opinion on whether there is any ongoing need to observe VLIB_BUFFER_MIN_CHAIN_SEG_SIZE ? Thanks!",
+      "parentUuid": "62a5eb03_25a29e25",
+      "revId": "b9e4f2e0868874eb674679ab0b84c7d0d33b15a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
