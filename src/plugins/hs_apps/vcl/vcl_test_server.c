@@ -856,7 +856,11 @@ fail:
 done:
   vppcom_session_close (wrk->listener.fd);
   if (wrk->conn_pool)
-    free (wrk->conn_pool);
+    {
+      if (!wrk->wrk_index)
+	vsm->ctrl = 0;
+      free (wrk->conn_pool);
+    }
   vsm->active_workers -= 1;
   return 0;
 }
