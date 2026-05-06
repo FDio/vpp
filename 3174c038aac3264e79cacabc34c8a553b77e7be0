@@ -1,0 +1,22 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e0b1e101_abf9e8bd",
+        "filename": "src/drivers/iavf/port.c",
+        "patchSetId": 15
+      },
+      "lineNbr": 336,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-05-06T14:38:24Z",
+      "side": 1,
+      "message": "Done in PS15. I kept the existing buffer-template getters as read-only helpers and added matching setters. iavf now reads the template through vnet_dev_get_rx_queue_if_buffer_template() / vnet_dev_get_rx_queue_sec_if_buffer_template(), updates the flags locally, and writes it back through the new setters, so it no longer depends on the queue storage layout.",
+      "parentUuid": "35a70dff_0af8ed2d",
+      "revId": "3174c038aac3264e79cacabc34c8a553b77e7be0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
