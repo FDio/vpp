@@ -1,0 +1,22 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "bb934964_4d0a8a3c",
+        "filename": "src/drivers/iavf/port.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 338,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-05-06T15:40:26Z",
+      "side": 1,
+      "message": "Done in PS16. I removed the setter functions and kept the helper as a pointer-returning storage accessor. iavf now updates the queue template through the helper pointer; existing in-tree callers explicitly dereference it when they need a local copy.",
+      "parentUuid": "35a70dff_0af8ed2d",
+      "revId": "a326f45fabfba17566d23f86e9c97deb5df0703c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
