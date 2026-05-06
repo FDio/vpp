@@ -526,6 +526,13 @@ memif_device_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       goto refill;
     }
 
+  /* Defend against a misbehaving peer advertising more produced
+     descriptors than the ring can hold. Without this clamp, parse_desc
+     would index past the ptd->desc_{data,len,status} scratch vectors
+     (which are sized to ring_size) and corrupt heap memory. */
+  if (PREDICT_FALSE (n_slots > ring_size))
+    n_slots = ring_size;
+
   n_desc = memif_parse_desc (ptd, mif, mq, cur_slot, n_slots);
 
   if (n_desc != ptd->n_packets)
@@ -1183,6 +1190,7 @@ memif_device_input_inline_dma (vlib_main_t *vm, vlib_node_runtime_t *node,
   u16 n_buffers, n_alloc, n_desc;
   memif_copy_op_t *co;
   memif_dma_info_t *dma_info;
+  u16 ring_size;
 
   u16 mif_id = mif - mm->interfaces;
   u32 i;
@@ -1205,6 +1213,11 @@ memif_device_input_inline_dma (vlib_main_t *vm, vlib_node_runtime_t *node,
   db = vlib_dma_batch_new (vm, mif->dma_input_config);
   if (!db)
     return 0;
+
+  /* clamp to ring_size: see memif_device_input_inline */
+  ring_size = 1 << mq->log2_ring_size;
+  if (PREDICT_FALSE (n_slots > ring_size))
+    n_slots = ring_size;
 
   dma_info = mq->dma_info + mq->dma_info_tail;
   dma_info->node = node;
