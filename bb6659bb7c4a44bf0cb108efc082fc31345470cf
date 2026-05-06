@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "fcb376ee_4c6dc22f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2026-05-06T11:09:54Z",
+      "side": 1,
+      "message": "It works: https://github.com/FDio/csit/actions/runs/25430115455/job/74593867894\nI just need to conform to commit message style.",
+      "revId": "bb6659bb7c4a44bf0cb108efc082fc31345470cf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
