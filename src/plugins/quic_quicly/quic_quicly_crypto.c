@@ -62,7 +62,7 @@ quic_quicly_crypto_init (quic_quicly_main_t *qqm)
     clib_warning ("getrandom() failed");
   RAND_seed (seed, sizeof (seed));
 
-  clib_bihash_init_24_8 (&qqcm->crypto_ctx_hash, "quic (quicly engine) crypto ctx", 64, 128 << 10);
+  clib_bihash_init_40_8 (&qqcm->crypto_ctx_hash, "quic (quicly engine) crypto ctx", 64, 128 << 10);
   quic_quicly_register_cipher_suite (CRYPTO_ENGINE_PICOTLS, ptls_openssl_cipher_suites);
 
   if (qm->enable_vnet_crypto)
@@ -92,8 +92,7 @@ quic_quicly_crypto_context_list (vlib_main_t *vm)
 }
 
 static_always_inline void
-quic_quicly_crypto_context_make_key_from_ctx (clib_bihash_kv_24_8_t *kv,
-					      quic_ctx_t *ctx)
+quic_quicly_crypto_context_make_key_from_ctx (clib_bihash_kv_40_8_t *kv, quic_ctx_t *ctx)
 {
   application_t *app = application_get (ctx->parent_app_id);
   ASSERT (ctx->crypto_owner_app_wrk_id != SESSION_INVALID_INDEX);
@@ -102,10 +101,12 @@ quic_quicly_crypto_context_make_key_from_ctx (clib_bihash_kv_24_8_t *kv,
 	       ((u64) (ctx->tls_profile_index & 0xFFFF)) << 8 | (u64) ctx->crypto_engine;
   kv->key[1] = ((u64) app->sm_properties.tx_fifo_size << 32) | app->sm_properties.rx_fifo_size;
   kv->key[2] = ((u64) ctx->crypto_owner_app_wrk_id << 32) | ctx->ca_trust_index;
+  kv->key[3] = ((u64) ctx->max_streams_bidi << 32) | ctx->max_streams_uni;
+  kv->key[4] = ctx->connection_timeout;
 }
 
 static_always_inline void
-quic_quicly_crypto_context_make_key_from_crctx (clib_bihash_kv_24_8_t *kv,
+quic_quicly_crypto_context_make_key_from_crctx (clib_bihash_kv_40_8_t *kv,
 						quic_quicly_crypto_ctx_t *crctx)
 {
   kv->key[0] = ((u64) crctx->ctx.ckpair_index) << 32 | (u64) (crctx->verify_cfg << 24) |
@@ -113,6 +114,9 @@ quic_quicly_crypto_context_make_key_from_crctx (clib_bihash_kv_24_8_t *kv,
   kv->key[1] = ((u64) crctx->quicly_ctx.transport_params.max_stream_data.bidi_remote << 32) |
 	       crctx->quicly_ctx.transport_params.max_stream_data.bidi_local;
   kv->key[2] = ((u64) crctx->crypto_owner_app_wrk_id << 32) | crctx->ca_trust_index;
+  kv->key[3] = ((u64) crctx->quicly_ctx.transport_params.max_streams_bidi << 32) |
+	       crctx->quicly_ctx.transport_params.max_streams_uni;
+  kv->key[4] = crctx->quicly_ctx.transport_params.max_idle_timeout;
 }
 
 static quic_quicly_crypto_ctx_t *
@@ -139,7 +143,7 @@ static void
 quic_quicly_crypto_context_free_if_needed (quic_quicly_crypto_ctx_t *crctx)
 {
   quic_quicly_crypto_main_t *qqcm = &quic_quicly_crypto_main;
-  clib_bihash_kv_24_8_t kv;
+  clib_bihash_kv_40_8_t kv;
   u32 idx;
 
   /* crypto context is shared between threads */
@@ -150,7 +154,7 @@ quic_quicly_crypto_context_free_if_needed (quic_quicly_crypto_ctx_t *crctx)
   idx = QUIC_CRCTX_CTX_INDEX_DECODE_INDEX (crctx->ctx.ctx_index);
   QUIC_DBG (2, "Free crctx: crctx_ndx 0x%08lx, index %u", crctx->ctx.ctx_index, idx);
   quic_quicly_crypto_context_make_key_from_crctx (&kv, crctx);
-  clib_bihash_add_del_24_8 (&qqcm->crypto_ctx_hash, &kv, 0 /* is_add */);
+  clib_bihash_add_del_40_8 (&qqcm->crypto_ctx_hash, &kv, 0 /* is_add */);
   if (crctx->filtered_cipher_suites)
     {
       clib_mem_free (crctx->filtered_cipher_suites);
@@ -237,14 +241,14 @@ quic_quicly_cleanup_certkey_int_ctx (app_certkey_int_ctx_t *cki)
 {
   quic_quicly_crypto_main_t *qqcm = &quic_quicly_crypto_main;
   quic_quicly_crypto_ctx_t **crctx;
-  clib_bihash_kv_24_8_t kv;
+  clib_bihash_kv_40_8_t kv;
 
   pool_foreach (crctx, qqcm->crypto_ctx_pool)
     {
       if ((*crctx)->ctx.ckpair_index == cki->ckpair_index)
 	{
 	  quic_quicly_crypto_context_make_key_from_crctx (&kv, *crctx);
-	  clib_bihash_add_del_24_8 (&qqcm->crypto_ctx_hash, &kv, 0 /* is_add */);
+	  clib_bihash_add_del_40_8 (&qqcm->crypto_ctx_hash, &kv, 0 /* is_add */);
 	}
     }
   EVP_PKEY_free (cki->key);
@@ -632,9 +636,9 @@ quic_quicly_crypto_context_init_data (quic_quicly_crypto_ctx_t *crctx, quic_ctx_
     }
 
   quicly_ctx->transport_params.max_data = QUIC_INT_MAX;
-  quicly_ctx->transport_params.max_streams_uni = (uint64_t) 1 << 60;
-  quicly_ctx->transport_params.max_streams_bidi = (uint64_t) 1 << 60;
-  quicly_ctx->transport_params.max_idle_timeout = qm->connection_timeout;
+  quicly_ctx->transport_params.max_streams_uni = ctx->max_streams_uni;
+  quicly_ctx->transport_params.max_streams_bidi = ctx->max_streams_bidi;
+  quicly_ctx->transport_params.max_idle_timeout = ctx->connection_timeout;
 
   quicly_ctx->init_cc = (qm->default_quic_cc == QUIC_CC_CUBIC) ?
 			  &quicly_cc_cubic_init :
@@ -699,14 +703,14 @@ quic_quicly_crypto_context_get_or_alloc (quic_ctx_t *ctx)
   quic_quicly_crypto_main_t *qqcm = &quic_quicly_crypto_main;
   quic_main_t *qm = qqcm->qqm->qm;
   quic_quicly_crypto_ctx_t *crctx;
-  clib_bihash_kv_24_8_t kv;
+  clib_bihash_kv_40_8_t kv;
 
   ctx->crypto_engine =
     (ctx->crypto_engine == CRYPTO_ENGINE_NONE) ? qm->default_crypto_engine : ctx->crypto_engine;
 
   /* Check for exisiting crypto ctx */
   quic_quicly_crypto_context_make_key_from_ctx (&kv, ctx);
-  if (clib_bihash_search_24_8 (&qqcm->crypto_ctx_hash, &kv, &kv) == 0)
+  if (clib_bihash_search_40_8 (&qqcm->crypto_ctx_hash, &kv, &kv) == 0)
     {
       crctx = quic_quicly_crypto_context_get (kv.value);
       QUIC_DBG (2, "Found existing crypto context: crctx_ndx 0x%lx (%d), thread %u", kv.value,
@@ -725,7 +729,7 @@ quic_quicly_crypto_context_get_or_alloc (quic_ctx_t *ctx)
   crctx->ca_trust_index = ctx->ca_trust_index;
   crctx->crypto_owner_app_wrk_id = ctx->crypto_owner_app_wrk_id;
   crctx->tls_profile_index = ctx->tls_profile_index;
-  clib_bihash_add_del_24_8 (&qqcm->crypto_ctx_hash, &kv, 1 /* is_add */);
+  clib_bihash_add_del_40_8 (&qqcm->crypto_ctx_hash, &kv, 1 /* is_add */);
   quic_quicly_crypto_context_init_data (crctx, ctx);
   clib_atomic_add_fetch (&crctx->ctx.n_subscribers, 1);
   return crctx;
