@@ -95,6 +95,7 @@ esp_remove_tail (vlib_main_t * vm, vlib_buffer_t * b, vlib_buffer_t * last,
 {
   vlib_buffer_t *before_last = b;
 
+  ASSERT (tail <= vlib_buffer_length_in_chain (vm, b));
   if (b != last)
     b->total_length_not_including_first_buffer -= tail;
 
@@ -647,6 +648,13 @@ esp_decrypt_post_crypto (vlib_main_t *vm, vlib_node_runtime_t *node, const u16 *
   u16 adv = irt->esp_advance;
   u16 tail = pad_length + tail_base - tail_adjust;
   u16 tail_orig = pad_length + tail_base;
+  if (PREDICT_FALSE (tail_orig > vlib_buffer_length_in_chain (vm, b)))
+    {
+      /* tail is larger than the buffer length, this is a corrupted packet */
+      esp_decrypt_set_next_index (b, node, vm->thread_index, ESP_DECRYPT_ERROR_NO_TAIL_SPACE, 0,
+				  next, ESP_DECRYPT_NEXT_DROP, pd->sa_index);
+      return;
+    }
   b->flags &=
     ~(VNET_BUFFER_F_L4_CHECKSUM_COMPUTED | VNET_BUFFER_F_L4_CHECKSUM_CORRECT);
 
@@ -722,7 +730,7 @@ esp_decrypt_post_crypto (vlib_main_t *vm, vlib_node_runtime_t *node, const u16 *
 	  gre_header_t *gre;
 
 	  b->current_data = current_data + adv;
-	  b->current_length = current_length - adv - tail;
+	  b->current_length = current_length - adv;
 
 	  gre = vlib_buffer_get_current (b);
 
@@ -746,6 +754,7 @@ esp_decrypt_post_crypto (vlib_main_t *vm, vlib_node_runtime_t *node, const u16 *
 		next, ESP_DECRYPT_NEXT_DROP, pd->sa_index);
 	      break;
 	    }
+	  esp_remove_tail (vm, b, lb, tail);
 	}
       else if ((next[0] = vec_elt (next_by_next_header, next_header)) !=
 	       (u16) ~0)
