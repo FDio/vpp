@@ -520,6 +520,13 @@ memif_device_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       n_slots = __atomic_load_n (&ring->head, __ATOMIC_ACQUIRE) - cur_slot;
     }
 
+  /* Defend against a misbehaving peer advertising more produced
+     descriptors than the ring can hold. Without this clamp, parse_desc
+     would index past the ptd->desc_{data,len,status} scratch vectors
+     (which are sized to ring_size) and corrupt heap memory. */
+  if (PREDICT_FALSE (n_slots > ring_size))
+    n_slots = ring_size;
+
   if (n_slots == 0)
     {
       ptd->n_packets = 0;
@@ -1192,6 +1199,13 @@ memif_device_input_inline_dma (vlib_main_t *vm, vlib_node_runtime_t *node,
 
   cur_slot = mq->last_head;
   n_slots = __atomic_load_n (&ring->head, __ATOMIC_ACQUIRE) - cur_slot;
+
+  /* clamp to ring_size: see explanation in memif_device_input_inline */
+  {
+    u16 ring_size = 1 << mq->log2_ring_size;
+    if (PREDICT_FALSE (n_slots > ring_size))
+      n_slots = ring_size;
+  }
 
   if (n_slots == 0)
     return 0;
