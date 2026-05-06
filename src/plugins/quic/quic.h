@@ -98,6 +98,13 @@ typedef i64 quic_stream_id_t;
 
 typedef i64 quic_app_err_code_t;
 
+typedef struct transport_endpt_cfg_quic_
+{
+  u32 connection_timeout;
+  u32 max_streams_bidi;
+  u32 max_streams_uni;
+} transport_endpt_cfg_quic_t;
+
 typedef enum
 {
 #define quic_error(f, n, s, d) QUIC_ERROR_##f,
@@ -184,6 +191,9 @@ typedef struct quic_ctx_
   u32 ca_trust_index;
   u32 crypto_context_index;
   u8 alpn_protos[4];
+  u32 connection_timeout;
+  u32 max_streams_bidi;
+  u32 max_streams_uni;
   tls_alpn_proto_t alpn_selected;
   quic_ctx_flags_t flags;
 

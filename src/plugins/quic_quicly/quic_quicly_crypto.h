@@ -9,7 +9,7 @@
 #include <quicly.h>
 #include <vnet/crypto/crypto.h>
 #include <picotls/openssl.h>
-#include <vppinfra/bihash_24_8.h>
+#include <vppinfra/bihash_40_8.h>
 #include <quic_quicly/quic_quicly.h>
 #include <vnet/session/session.h>
 
@@ -74,7 +74,7 @@ typedef struct quic_quicly_crypto_main_
   quic_quicly_main_t *qqm;
   ptls_cipher_suite_t ***quic_ciphers;
   quic_quicly_crypto_ctx_t **crypto_ctx_pool;
-  clib_bihash_24_8_t crypto_ctx_hash;
+  clib_bihash_40_8_t crypto_ctx_hash;
   uword *available_crypto_engines; /**< Bitmap for registered engines */
   u8 vnet_crypto_enabled;
 } quic_quicly_crypto_main_t;
