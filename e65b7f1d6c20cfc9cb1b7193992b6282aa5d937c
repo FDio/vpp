@@ -16,6 +16,24 @@
       "message": "why this?",
       "revId": "e65b7f1d6c20cfc9cb1b7193992b6282aa5d937c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "57989ff0_bd40dbd2",
+        "filename": "src/drivers/iavf/iavf.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 271,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-05-06T07:12:15Z",
+      "side": 0,
+      "message": "Done in PS16. I kept interrupt_mode advertised by default in the caps initializer and now only clear it in the insufficient-MSI-X case. That makes the intent explicit: the driver supports RX interrupt mode when there are enough vectors; otherwise it does not advertise the capability and falls back to the polling IRQ map.",
+      "parentUuid": "9a29922c_6e48465d",
+      "revId": "e65b7f1d6c20cfc9cb1b7193992b6282aa5d937c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
