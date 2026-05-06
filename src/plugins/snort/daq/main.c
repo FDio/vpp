@@ -220,6 +220,15 @@ daq_vpp_instantiate (DAQ_ModuleConfig_h modcfg, DAQ_ModuleInstance_h modinst,
   instance_id = vdm->daq_base_api.config_get_instance_id (modcfg);
   input_name = vdm->daq_base_api.config_get_input (modcfg);
 
+  /*
+   * Single-threaded snort sends 0's for n_instances and instance_id
+   * Set them to 1's to match the multi-instance enumeration pattern
+   */
+  if (!n_instances)
+    {
+      n_instances = 1;
+      instance_id = 1;
+    }
   vdm->n_instances++;
 
   end_of_name = strchrnul (input_name, ':');
