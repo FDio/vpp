@@ -156,10 +156,19 @@ retry:
       u32 saved_ptd_copy_ops_len = _vec_len (ptd->copy_ops);
       u32 saved_ptd_buffers_len = _vec_len (ptd->buffers);
       u16 saved_slot = slot;
+      u16 saved_free_slots = free_slots;
 
       clib_prefetch_load (&ring->desc[(slot + 8) & mask]);
 
       d0 = &ring->desc[slot & mask];
+      /* Reserve the initial descriptor up front so that free_slots
+	 accurately reflects the number of slots still available for any
+	 further chain transitions. Without this, a chain that exactly
+	 consumes the remaining free_slots would underflow the counter in
+	 the post-packet decrement below, causing the producer to keep
+	 writing past the ring and corrupt peer-owned descriptors. */
+      slot++;
+      free_slots--;
       if (PREDICT_FALSE (last_region != d0->region))
 	{
 	  last_region_shm = mif->regions[d0->region].shm;
@@ -188,11 +197,11 @@ retry:
 	    {
 	      if (free_slots)
 		{
-		  slot++;
-		  free_slots--;
 		  d0->length = dst_off;
 		  d0->flags = MEMIF_DESC_FLAG_NEXT;
 		  d0 = &ring->desc[slot & mask];
+		  slot++;
+		  free_slots--;
 		  dst_off = 0;
 		  dst_left =
 		    (type ==
@@ -213,6 +222,8 @@ retry:
 		  vlib_error_count (vm, node->node_index,
 				    MEMIF_TX_ERROR_ROLLBACK, 1);
 		  slot = saved_slot;
+		  /* restore free_slots to the start-of-packet value */
+		  free_slots = saved_free_slots;
 		  goto no_free_slots;
 		}
 	    }
@@ -234,9 +245,6 @@ retry:
 
       d0->length = dst_off;
       d0->flags = 0;
-
-      free_slots -= 1;
-      slot += 1;
 
       buffers++;
       n_left--;
@@ -283,7 +291,6 @@ no_free_slots:
 
   vec_reset_length (ptd->copy_ops);
   vec_reset_length (ptd->buffers);
-
   if (type == MEMIF_RING_S2M)
     __atomic_store_n (&ring->head, slot, __ATOMIC_RELEASE);
   else
@@ -482,10 +489,17 @@ retry:
       u32 saved_ptd_copy_ops_len = _vec_len (ptd->copy_ops);
       u32 saved_ptd_buffers_len = _vec_len (ptd->buffers);
       u16 saved_slot = slot;
+      u16 saved_free_slots = free_slots;
 
       clib_prefetch_load (&ring->desc[(slot + 8) & mask]);
 
       d0 = &ring->desc[slot & mask];
+      /* Reserve the initial descriptor so free_slots tracks only the
+	 remaining budget for further chain transitions. Without this a
+	 chain that exactly consumes the remaining free_slots would
+	 underflow the counter and corrupt peer-owned descriptors. */
+      slot++;
+      free_slots--;
       if (PREDICT_FALSE (last_region != d0->region))
 	{
 	  last_region_shm = mif->regions[d0->region].shm;
@@ -517,6 +531,8 @@ retry:
 		  d0->length = dst_off;
 		  d0->flags = MEMIF_DESC_FLAG_NEXT;
 		  d0 = &ring->desc[slot & mask];
+		  slot++;
+		  free_slots--;
 		  dst_off = 0;
 		  dst_left = (type == MEMIF_RING_S2M) ? mif->run.buffer_size :
 							      d0->length;
@@ -536,6 +552,7 @@ retry:
 		  vlib_error_count (vm, node->node_index,
 				    MEMIF_TX_ERROR_ROLLBACK, 1);
 		  slot = saved_slot;
+		  free_slots = saved_free_slots;
 		  goto no_free_slots;
 		}
 	    }
@@ -550,8 +567,6 @@ retry:
 
       if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_NEXT_PRESENT))
 	{
-	  slot++;
-	  free_slots--;
 	  bi0 = b0->next_buffer;
 	  goto next_in_chain;
 	}
@@ -559,9 +574,6 @@ retry:
       vec_add1_aligned (ptd->buffers, buffers[0], CLIB_CACHE_LINE_BYTES);
       d0->length = dst_off;
       d0->flags = 0;
-
-      free_slots -= 1;
-      slot += 1;
 
       buffers++;
       n_left--;
