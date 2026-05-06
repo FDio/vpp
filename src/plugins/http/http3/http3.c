@@ -368,7 +368,7 @@ http3_stream_update_conn_timer (http_ctx_t *stream)
 
 static http_sm_result_t
 http3_req_state_wait_app_reply (http_ctx_t *stream, http_ctx_t *req, transport_send_params_t *sp,
-				http3_error_t *error, u32 *n_deq)
+				http3_error_t *error, u32 *n_sent)
 {
   http_msg_t msg;
   hpack_response_control_data_t control_data;
@@ -434,6 +434,7 @@ http3_req_state_wait_app_reply (http_ctx_t *stream, http_ctx_t *req, transport_s
 
   svm_fifo_seg_t segs[2] = { { fh_buf, fh_len }, { response, headers_len } };
   n_written = http_io_ts_write_segs (stream, segs, 2, 0);
+  *n_sent += n_written;
   ASSERT (n_written == (fh_len + headers_len));
 
   if (msg.data.body_len)
@@ -450,7 +451,6 @@ http3_req_state_wait_app_reply (http_ctx_t *stream, http_ctx_t *req, transport_s
 	http3_stream_close (stream, req);
     }
 
-  http_io_ts_after_write (stream, 0);
   http_stats_responses_sent_inc (stream->c_thread_index);
 
   return rv;
@@ -458,7 +458,7 @@ http3_req_state_wait_app_reply (http_ctx_t *stream, http_ctx_t *req, transport_s
 
 static http_sm_result_t
 http3_req_state_wait_app_method (http_ctx_t *stream, http_ctx_t *req, transport_send_params_t *sp,
-				 http3_error_t *error, u32 *n_deq)
+				 http3_error_t *error, u32 *n_sent)
 {
   http_msg_t msg;
   hpack_request_control_data_t control_data;
@@ -561,16 +561,16 @@ http3_req_state_wait_app_method (http_ctx_t *stream, http_ctx_t *req, transport_
       http_half_close_transport_stream (stream);
     }
 
-  http_io_ts_after_write (stream, 0);
+  *n_sent += n_written;
   http_req_state_change (req, new_state);
   http_stats_requests_sent_inc (stream->c_thread_index);
 
-  return HTTP_SM_STOP;
+  return new_state == HTTP_REQ_STATE_APP_IO_MORE_DATA ? HTTP_SM_CONTINUE : HTTP_SM_STOP;
 }
 
 static http_sm_result_t
 http3_req_state_app_io_more_data (http_ctx_t *stream, http_ctx_t *req, transport_send_params_t *sp,
-				  http3_error_t *error, u32 *n_deq)
+				  http3_error_t *error, u32 *n_sent)
 {
   http_buffer_t *hb = &req->tx_buf;
   u32 max_write, n_read, n_segs, n_written;
@@ -605,6 +605,7 @@ http3_req_state_app_io_more_data (http_ctx_t *stream, http_ctx_t *req, transport
   segs[0].data = fh_buf;
   vec_append (segs, app_segs);
   n_written = http_io_ts_write_segs (stream, segs, n_segs + 1, sp);
+  *n_sent += n_written;
   n_written -= fh_len;
   ASSERT (n_written == n_read);
   vec_free (segs);
@@ -625,14 +626,13 @@ http3_req_state_app_io_more_data (http_ctx_t *stream, http_ctx_t *req, transport
 	  http_req_state_change (req, HTTP_REQ_STATE_WAIT_TRANSPORT_REPLY);
 	}
     }
-  http_io_ts_after_write (stream, finished);
 
   return HTTP_SM_STOP;
 }
 
 static http_sm_result_t
 http3_req_state_tunnel_tx (http_ctx_t *stream, http_ctx_t *req, transport_send_params_t *sp,
-			   http3_error_t *error, u32 *n_deq)
+			   http3_error_t *error, u32 *n_sent)
 {
   u32 max_write, max_read, n_read, n_segs = 2, n_written;
   svm_fifo_seg_t segs[n_segs + 1];
@@ -662,19 +662,19 @@ http3_req_state_tunnel_tx (http_ctx_t *stream, http_ctx_t *req, transport_send_p
   segs[0].len = fh_len;
   segs[0].data = fh_buf;
   n_written = http_io_ts_write_segs (stream, segs, n_segs + 1, sp);
+  *n_sent += n_written;
   n_written -= fh_len;
   HTTP_DBG (1, "written %lu", n_written);
   ASSERT (n_written == n_read);
   http_io_as_drain (req, n_written);
-  http_io_ts_after_write (stream, 0);
 
   return HTTP_SM_STOP;
 }
 
 static_always_inline http_sm_result_t
 http3_req_state_udp_tunnel_tx_inline (http_ctx_t *stream, http_ctx_t *req,
-				      transport_send_params_t *sp, http3_error_t *error, u32 *n_deq,
-				      u8 is_draft03)
+				      transport_send_params_t *sp, http3_error_t *error,
+				      u32 *n_sent, u8 is_draft03)
 {
   u32 max_read, max_write, n_written, dgram_size, capsule_size, n_segs = 2;
   session_dgram_hdr_t hdr;
@@ -725,26 +725,26 @@ http3_req_state_udp_tunnel_tx_inline (http_ctx_t *stream, http_ctx_t *req,
   segs[1].len = capsule_header_len;
   segs[1].data = capsule_header;
   n_written = http_io_ts_write_segs (stream, segs, n_segs + 2, 0);
+  *n_sent += n_written;
   ASSERT (n_written == (fh_len + capsule_size));
   http_io_as_drain (req, hdr.data_length);
-  http_io_ts_after_write (stream, 0);
   HTTP_DBG (1, "capsule payload len %lu", hdr.data_length);
   return (max_read - dgram_size) ? HTTP_SM_CONTINUE : HTTP_SM_STOP;
 }
 
 static http_sm_result_t
 http3_req_state_udp_tunnel_tx (http_ctx_t *stream, http_ctx_t *req, transport_send_params_t *sp,
-			       http3_error_t *error, u32 *n_deq)
+			       http3_error_t *error, u32 *n_sent)
 {
-  return http3_req_state_udp_tunnel_tx_inline (stream, req, sp, error, n_deq, 0);
+  return http3_req_state_udp_tunnel_tx_inline (stream, req, sp, error, n_sent, 0);
 }
 
 static http_sm_result_t
 http3_req_state_udp_tunnel_draft03_tx (http_ctx_t *stream, http_ctx_t *req,
 				       transport_send_params_t *sp, http3_error_t *error,
-				       u32 *n_deq)
+				       u32 *n_sent)
 {
-  return http3_req_state_udp_tunnel_tx_inline (stream, req, sp, error, n_deq, 1);
+  return http3_req_state_udp_tunnel_tx_inline (stream, req, sp, error, n_sent, 1);
 }
 
 static_always_inline void
@@ -1440,10 +1440,11 @@ http3_req_run_tx_state_machine (http_ctx_t *stream, http_ctx_t *req, transport_s
 {
   http_sm_result_t res;
   http3_error_t error;
+  u32 n_sent = 0;
 
   do
     {
-      res = tx_state_funcs[req->req_state](stream, req, sp, &error, 0);
+      res = tx_state_funcs[req->req_state](stream, req, sp, &error, &n_sent);
       if (res == HTTP_SM_ERROR)
 	{
 	  HTTP_DBG (1, "protocol error %U", format_http3_error, error);
@@ -1451,6 +1452,9 @@ http3_req_run_tx_state_machine (http_ctx_t *stream, http_ctx_t *req, transport_s
 	}
     }
   while (res == HTTP_SM_CONTINUE);
+
+  if (n_sent)
+    http_io_ts_after_write (stream, 0);
 
   return HTTP3_ERROR_NO_ERROR;
 }
