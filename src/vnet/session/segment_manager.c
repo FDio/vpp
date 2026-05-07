@@ -1306,6 +1306,21 @@ ct_client_seg_handle (u64 server_sh, u32 client_wrk_index)
   return (((u64) client_wrk_index << 56) | server_sh);
 }
 
+static int
+ct_segment_n_sessions_dec (u32 *n_sessions)
+{
+  u32 old = __atomic_load_n (n_sessions, __ATOMIC_RELAXED);
+
+  while (old)
+    {
+      if (__atomic_compare_exchange_n (n_sessions, &old, old - 1, 0, __ATOMIC_RELAXED,
+				       __ATOMIC_RELAXED))
+	return old - 1;
+    }
+
+  return -1;
+}
+
 static void
 segment_manager_dealloc_fifos_ct (svm_fifo_t *rx_fifo, svm_fifo_t *tx_fifo,
 				  u32 is_client)
@@ -1346,22 +1361,18 @@ segment_manager_dealloc_fifos_ct (svm_fifo_t *rx_fifo, svm_fifo_t *tx_fifo,
 
   if (is_client)
     {
-      cnt =
-	__atomic_sub_fetch (&ct_seg->client_n_sessions, 1, __ATOMIC_RELAXED);
+      cnt = ct_segment_n_sessions_dec (&ct_seg->client_n_sessions);
+      ASSERT (cnt >= 0);
     }
   else
-    {
-      cnt =
-	__atomic_sub_fetch (&ct_seg->server_n_sessions, 1, __ATOMIC_RELAXED);
-    }
+    cnt = ct_segment_n_sessions_dec (&ct_seg->server_n_sessions);
 
   clib_rwlock_reader_unlock (&smm->custom_segs_lock);
 
   /*
    * No need to do any app updates, return
    */
-  ASSERT (cnt >= 0);
-  if (cnt)
+  if (cnt != 0)
     return;
 
   /*
