@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "44d49e03_f46f3eb9",
+        "filename": "src/plugins/sfdp_services/base/tcp-check/node.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 120,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2026-05-07T10:30:58Z",
+      "side": 1,
+      "message": "After squashing in 45150, this should be now fixed by the \"always allow session reuse on forward SYN\" principle.",
+      "parentUuid": "249e1da1_a4038a52",
+      "revId": "0a261d269a6cebad0f0a9825a00974716bc11843",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "53ce938d_63ada9fc",
@@ -48,6 +66,24 @@
       "writtenOn": "2026-03-06T21:25:08Z",
       "side": 1,
       "message": "If a connection is left in TIME_WAIT state in SFDP, and we subsequently receive an attempt to establish a connection on the same 5-tuple with a SYN in the forward direction - then we will trigger an error state in the state machine which will remove the session from SFDP and ignore the first SYN sent by the new connection. i.e.\n\n```\n      if (flags \u0026 SFDP_TCP_CHECK_TCP_FLAGS_SYN)\n\t{\n\t  /* New session, must be a SYN otherwise bad */\n\t  if (sf[0] \u003d\u003d 0)\n\t    nsf[0] \u003d SFDP_TCP_CHECK_SESSION_FLAG_WAIT_FOR_RESP_SYN |\n\t\t     SFDP_TCP_CHECK_SESSION_FLAG_WAIT_FOR_RESP_ACK_TO_SYN;\n\t  else\n\t    {\n\t      remove_session \u003d 1;\n\t      goto out;\n\t    }\n\t}\n```\n\nI think we should check whether we are in TIME_WAIT state when handling SYN packets in forward flow packets to properly handle this \u0026 reset session state.",
+      "revId": "0a261d269a6cebad0f0a9825a00974716bc11843",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7a0bffbf_748e755f",
+        "filename": "src/plugins/sfdp_services/base/tcp-check/node.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 205,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2026-05-07T10:30:58Z",
+      "side": 1,
+      "message": "Version/counter updates are now in TODOs.\nIf a sfdp session is present in the table (in whatever state), I think SYN in forward direction should be allowed as a form of reuse, regardless of previous states. CSIT tests are not sensitive to that, only to sessions being removed from the table too early (as that allows creation of a new session in the opposite direction which is bad).",
+      "parentUuid": "53ce938d_63ada9fc",
       "revId": "0a261d269a6cebad0f0a9825a00974716bc11843",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }

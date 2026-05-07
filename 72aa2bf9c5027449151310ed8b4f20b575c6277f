@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "26080cad_6ba2123c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 12
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2026-05-07T10:30:58Z",
+      "side": 1,
+      "message": "With 45150 squashed in, this fixes frequent failures in CSIT tests. Some other corner cases might still need fixing (RST RX-dropped on responder is the only one probably seen in CSIT results), but I prefer partial fix in this release cycle and less critical fixes later (when make test has better coverage of different situations).",
+      "revId": "72aa2bf9c5027449151310ed8b4f20b575c6277f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
