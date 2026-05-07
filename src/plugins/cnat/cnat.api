@@ -19,7 +19,7 @@
     used to control the ABF plugin
 */
 
-option version = "0.3.0";
+option version = "1.0.0";
 import "vnet/ip/ip_types.api";
 import "vnet/fib/fib_types.api";
 import "vnet/interface_types.api";
