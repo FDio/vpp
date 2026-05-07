@@ -2209,6 +2209,57 @@ http_test_parse_content_length (vlib_main_t *vm)
   return 0;
 }
 
+static int
+http_test_decode_varint (vlib_main_t *vm)
+{
+  u8 *p, *end;
+  u64 res;
+
+  u8 input1[] = { 0x00, 0xFF };
+  p = input1;
+  end = p + 1;
+  res = http_decode_varint (&p, end);
+  HTTP_TEST ((res == 0 && *p == *end), "varint decoded as %lu, expected 0", res);
+
+  u8 input2[] = { 0x25, 0xFF };
+  p = input2;
+  end = p + 1;
+  res = http_decode_varint (&p, end);
+  HTTP_TEST ((res == 0x25 && *p == *end), "varint decoded as %lu", res);
+
+  u8 input3[] = { 0x46, 0x65, 0xFF };
+  p = input3;
+  end = p + 2;
+  res = http_decode_varint (&p, end);
+  HTTP_TEST ((res == 0x665 && *p == *end), "varint decoded as %lu", res);
+
+  end = p;
+  res = http_decode_varint (&p, end);
+  HTTP_TEST ((res == HTTP_INVALID_VARINT), "varint decoded is invalid");
+
+  u8 input4[] = { 0x86, 0xAB, 0x65, 0xAD, 0xFF };
+  p = input4;
+  end = p + 4;
+  res = http_decode_varint (&p, end);
+  HTTP_TEST ((res == 0x6AB65AD && *p == *end), "varint decoded as %lu", res);
+
+  end = p + 2;
+  res = http_decode_varint (&p, end);
+  HTTP_TEST ((res == HTTP_INVALID_VARINT), "varint decoded is invalid");
+
+  u8 input5[] = { 0xC0, 0x12, 0x34, 0x56, 0x78, 0x90, 0xAB, 0xCD, 0xFF };
+  p = input5;
+  end = p + 8;
+  res = http_decode_varint (&p, end);
+  HTTP_TEST ((res == 0x1234567890ABCD && *p == *end), "varint decoded as %lu", res);
+
+  end = p + 3;
+  res = http_decode_varint (&p, end);
+  HTTP_TEST ((res == HTTP_INVALID_VARINT), "varint decoded is invalid");
+
+  return 0;
+}
+
 static clib_error_t *
 test_http_command_fn (vlib_main_t *vm, unformat_input_t *input,
 		      vlib_cli_command_t *cmd)
@@ -2240,8 +2291,12 @@ test_http_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	res = http_test_http_headers_rx_to_tx (vm);
       else if (unformat (input, "parse-content-length"))
 	res = http_test_parse_content_length (vm);
+      else if (unformat (input, "decode-varint"))
+	res = http_test_decode_varint (vm);
       else if (unformat (input, "all"))
 	{
+	  if ((res = http_test_decode_varint (vm)))
+	    goto done;
 	  if ((res = http_test_parse_authority (vm)))
 	    goto done;
 	  if ((res = http_test_parse_masque_host_port (vm)))

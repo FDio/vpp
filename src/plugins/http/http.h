@@ -1630,6 +1630,7 @@ http_parse_masque_host_port (u8 *path, u32 path_len,
 #define HTTP_CAPSULE_HEADER_MAX_SIZE		 8
 #define HTTP_UDP_PROXY_DATAGRAM_CAPSULE_OVERHEAD 5
 #define HTTP_UDP_PAYLOAD_MAX_LEN		 65527
+#define HTTP_VARINT_MASK			 0x3F
 
 #define foreach_http_capsule_type _ (0, DATAGRAM)
 
@@ -1644,38 +1645,34 @@ typedef enum http_capsule_type_
 always_inline u64
 http_decode_varint (u8 **pos, u8 *end)
 {
-  u8 first_byte, bytes_left, *p;
+  u8 *p;
   u64 value;
 
   p = *pos;
 
-  ASSERT (p < end);
-
-  first_byte = *p;
-  p++;
-
-  if (first_byte <= 0x3F)
+  ASSERT (p <= end);
+  switch (*p >> 6)
     {
-      *pos = p;
-      return first_byte;
+    case 0:
+      (*pos)++;
+      return *p;
+    case 1:
+      if ((end - p) < 2)
+	return HTTP_INVALID_VARINT;
+      (*pos) += 2;
+      return (u64) (p[0] & HTTP_VARINT_MASK) << 8 | p[1];
+    case 2:
+      if ((end - p) < 4)
+	return HTTP_INVALID_VARINT;
+      (*pos) += 4;
+      return (u64) (p[0] & HTTP_VARINT_MASK) << 24 | (u64) p[1] << 16 | (u64) p[2] << 8 | p[3];
+    default:
+      if ((end - p) < 8)
+	return HTTP_INVALID_VARINT;
+      (*pos) += 8;
+      clib_memcpy_fast (&value, p, sizeof (u64));
+      return clib_net_to_host_u64 (value) & HTTP_VARINT_MAX;
     }
-
-  /* remove length bits, encoded in the first two bits of the first byte */
-  value = first_byte & 0x3F;
-  bytes_left = (1 << (first_byte >> 6)) - 1;
-
-  if (PREDICT_FALSE ((end - p) < bytes_left))
-    return HTTP_INVALID_VARINT;
-
-  do
-    {
-      value = (value << 8) | *p;
-      p++;
-    }
-  while (--bytes_left);
-
-  *pos = p;
-  return value;
 }
 
 always_inline u8 *
