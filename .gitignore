@@ -186,3 +186,7 @@ calicovppversion
 
 # log file archives
 /archives
+
+# Build-generated python type stubs
+/src/vpp-api/python/vpp_papi/vapi_types.pyi
+/test/vpp_papi_provider.pyi

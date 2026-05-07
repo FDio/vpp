@@ -47,3 +47,16 @@ install(
   COMPONENT
     vpp-dev
 )
+
+# Installed executable so out-of-tree plugin builds can invoke it directly (via
+# its shebang) to regenerate combined Python stubs. It needs a VPP source
+# checkout to parse (--vpp-root, passed by api.cmake); where the install prefix
+# itself sits does not matter.
+install(
+  FILES generate_python_stubs.py
+  DESTINATION ${CMAKE_INSTALL_DATADIR}/vpp
+  PERMISSIONS
+    OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE
+    WORLD_READ WORLD_EXECUTE
+  COMPONENT vpp-dev
+)
