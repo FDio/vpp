@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f4a70620_efadd4a8",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2512
+      },
+      "writtenOn": "2026-05-07T22:09:16Z",
+      "side": 1,
+      "message": "The change corrects daq_vpp parameters obtained from a snort client when launched with a single thread:\n```\n  snort --max-packet-threads 1 -i INSTANCE:0.0,1.0\n```\n\nBefore the change logging was\n```\n  daq_vpp: daq_vpp_instantiate: creating instance 0 out of 0 with input INSTANCE\n  daq_vpp: daq_vpp_add_qpair_to_instance: qpair 0.0 added to instance 0\n  daq_vpp: daq_vpp_add_qpair_to_instance: qpair 1.0 added to instance 0\n  WARNING: input INSTANCE:0.0 is not assigned to any instance\n  WARNING: input INSTANCE:1.0 is not assigned to any instance\n  ++ [0] INSTANCE:0.0,1.0\n  ...\n```\nAfter\n```\n  daq_vpp: daq_vpp_instantiate: creating instance 1 out of 1 with input INSTANCE\n  daq_vpp: daq_vpp_add_qpair_to_instance: qpair 0.0 added to instance 1\n  daq_vpp: daq_vpp_add_qpair_to_instance: qpair 1.0 added to instance 1\n  (NO WARNING on queues 0.0,1.0)\n  ++ [0] INSTANCE:0.0,1.0\n```\nPositive instance_id fixes the CLI\n```\n  vppctl snort disconnect client \u003cclient_id\u003e\n```\nRunning the command now properly kills the snort process (in view of line 315 in daq/main.c)\n\nPlease review",
+      "revId": "e418a0468723eb0ce963a2f3ccf12c74951e5cfc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
