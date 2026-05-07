@@ -196,6 +196,17 @@ function(vpp_add_api_files name dir component)
   endforeach()
   add_custom_target(${target} DEPENDS ${header_files})
   add_dependencies(api_headers ${target})
+
+  # Out-of-tree plugin build: record this plugin's .api files so the combined
+  # Python stubs (in-tree scan + these files) can be regenerated once the whole
+  # project has been configured. See the external branch below.
+  if(VPP_EXTERNAL_PROJECT)
+    foreach(file ${ARGN})
+      set_property(GLOBAL APPEND PROPERTY VPP_EXTERN_API_FILES
+        ${CMAKE_CURRENT_SOURCE_DIR}/${file}
+      )
+    endforeach()
+  endif()
 endfunction()
 
 add_custom_target(api_headers
@@ -203,3 +214,91 @@ add_custom_target(api_headers
 )
 add_custom_target(vapi_headers
 )
+
+##############################################################################
+# Python type stubs (vapi_types.pyi, vpp_papi_provider.pyi)
+#
+# Regenerated automatically when any .api file or the generator scripts
+# change. The script writes into the source tree, with a stamp file in the
+# build tree used for incremental tracking.
+#
+# For out-of-tree plugin builds (VPP_EXTERNAL_PROJECT) the same generator is
+# run, but it folds the plugin's own .api files on top of the in-tree scan and
+# writes the combined stubs into the plugin build tree (see the external branch
+# below).
+##############################################################################
+
+# Deferred to the end of project configuration so every plugin has registered
+# its .api files (into VPP_EXTERN_API_FILES) before we build the stub target.
+# A single regeneration that sees the full in-tree + plugin .api set avoids any
+# cross-build merge of separately produced stubs.
+#
+# Scope: the generated stub covers the in-tree API plus every plugin built in
+# *this* external project. Plugins built in separate external projects are not
+# folded in (there is no shared registry of independently-built plugins); each
+# such build produces its own stub of in-tree + its own plugins.
+function(_vpp_generate_external_python_stubs)
+  get_property(api_files GLOBAL PROPERTY VPP_EXTERN_API_FILES)
+  if(NOT api_files)
+    return()
+  endif()
+
+  # The generator is installed alongside the VPP tools; it derives the VPP
+  # source checkout from its own (in-checkout) install path.
+  find_file(VPP_GENERATE_PYTHON_STUBS
+    NAMES generate_python_stubs.py
+    PATH_SUFFIXES share/vpp
+  )
+  if(NOT VPP_GENERATE_PYTHON_STUBS)
+    message(STATUS
+      "generate_python_stubs.py not found; skipping plugin Python stubs")
+    return()
+  endif()
+
+  set(stubs_out ${CMAKE_BINARY_DIR}/python-stubs)
+  set(stamp ${CMAKE_BINARY_DIR}/python-api-stubs.stamp)
+  set(extra_args "")
+  foreach(f ${api_files})
+    list(APPEND extra_args --extra-api-file ${f})
+  endforeach()
+
+  add_custom_command(
+    OUTPUT ${stamp}
+    COMMAND ${PYENV} ${VPP_GENERATE_PYTHON_STUBS} --quiet
+      --stubs-output ${stubs_out} ${extra_args}
+    COMMAND ${CMAKE_COMMAND} -E touch ${stamp}
+    DEPENDS ${api_files} ${VPP_GENERATE_PYTHON_STUBS}
+    COMMENT "Generating Python type stubs for out-of-tree plugins"
+    VERBATIM
+  )
+  add_custom_target(python_api_stubs ALL DEPENDS ${stamp})
+endfunction()
+
+if(NOT VPP_EXTERNAL_PROJECT)
+  set(GENERATE_PYTHON_STUBS
+    ${CMAKE_SOURCE_DIR}/tools/vppapigen/generate_python_stubs.py
+  )
+  set(PYTHON_STUBS_STAMP ${CMAKE_BINARY_DIR}/python-api-stubs.stamp)
+  # Glob without CONFIGURE_DEPENDS: with it, ninja prints
+  # "Re-checking globbed directories..." on every build/install. Newly-added
+  # .api files are picked up on reconfigure or via `make python-api-stubs`.
+  file(GLOB_RECURSE PYTHON_STUBS_API_FILES
+    ${CMAKE_SOURCE_DIR}/*.api
+  )
+
+  add_custom_command(
+    OUTPUT ${PYTHON_STUBS_STAMP}
+    COMMAND ${PYENV} ${GENERATE_PYTHON_STUBS} --quiet
+    COMMAND ${CMAKE_COMMAND} -E touch ${PYTHON_STUBS_STAMP}
+    DEPENDS
+      ${PYTHON_STUBS_API_FILES}
+      ${GENERATE_PYTHON_STUBS}
+      ${CMAKE_SOURCE_DIR}/../test/vpp_papi_provider.py
+    COMMENT "Generating Python type stubs (vapi_types.pyi, vpp_papi_provider.pyi)"
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    VERBATIM
+  )
+  add_custom_target(python_api_stubs ALL DEPENDS ${PYTHON_STUBS_STAMP})
+else()
+  cmake_language(DEFER CALL _vpp_generate_external_python_stubs)
+endif()
