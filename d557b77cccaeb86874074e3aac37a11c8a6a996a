@@ -35,6 +35,42 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "54dd9045_222b6d6a",
+        "filename": "src/plugins/sfdp_services/base/tcp-check/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 122,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2026-05-07T10:19:11Z",
+      "side": 1,
+      "message": "Left as a TODO to fix later, as currently it is not clear if we shuld also bumpt the session version.",
+      "parentUuid": "7b55fdc2_878b7d66",
+      "revId": "d557b77cccaeb86874074e3aac37a11c8a6a996a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "660d902e_9339c26a",
+        "filename": "src/plugins/sfdp_services/base/tcp-check/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 122,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2026-05-07T10:19:11Z",
+      "side": 1,
+      "message": "Left as a TODO to fix in future.",
+      "parentUuid": "1be96083_ee6f657e",
+      "revId": "d557b77cccaeb86874074e3aac37a11c8a6a996a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "d425d910_28f54c6f",
@@ -48,6 +84,24 @@
       "writtenOn": "2026-03-12T10:23:59Z",
       "side": 1,
       "message": "If tracking FIN-WAIT states, we will need to account that either initiator or responder could start the connection tear-down (i.e. we cannot assume that initiator will start connection tear-down) and track states on either side accordingly.\n\nAlso, there is still a possibility that simultaneous close scenario will occur (i.e initiator and responder both send a FIN a the same time).",
+      "revId": "d557b77cccaeb86874074e3aac37a11c8a6a996a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "05a6dc5b_93b63ffd",
+        "filename": "src/plugins/sfdp_services/base/tcp-check/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 225,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2026-05-07T10:19:11Z",
+      "side": 1,
+      "message": "The first paragraph: Yes, that is what I meant.\nThe second paragraph: Added a TODO line for that.",
+      "parentUuid": "d425d910_28f54c6f",
       "revId": "d557b77cccaeb86874074e3aac37a11c8a6a996a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
