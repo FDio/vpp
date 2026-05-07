@@ -16,6 +16,23 @@
       "message": "After going through the first two files, it is apparent that the vast majority of the patch is just re-formatting of existing code. This makes it very difficult to identify the actual changes in functionality. Can you eliminate the unnecessary whitespace changes so its easier to review?",
       "revId": "09366303013bc4b9996fc335c6116f1ab0bd939d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a260d0f9_9ca9c898",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2026-05-07T14:33:12Z",
+      "side": 1,
+      "message": "I don\u0027t think the formatting changes need to be split into a separate commit, I think most of them are not needed at all.\n\n\u0027make checkstyle\u0027 does not run clang-format against the entire file, it uses clang-format-diff to make sure the pieces of code that are being changed are formatted correctly. The rest of the file can be left alone so that \u0027git blame\u0027 will attribute various lines of source code to their actual author/commit rather than attributing them to a commit which just did reformatting.",
+      "revId": "09366303013bc4b9996fc335c6116f1ab0bd939d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
