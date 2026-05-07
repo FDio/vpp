@@ -203,3 +203,36 @@ add_custom_target(api_headers
 )
 add_custom_target(vapi_headers
 )
+
+##############################################################################
+# Python type stubs (vapi_types.pyi, vpp_papi_provider.pyi)
+#
+# Regenerated automatically when any .api file or the generator scripts
+# change. The script writes into the source tree, with a stamp file in the
+# build tree used for incremental tracking.
+##############################################################################
+set(GENERATE_PYTHON_STUBS
+  ${CMAKE_SOURCE_DIR}/tools/vppapigen/generate_python_stubs.py
+)
+set(VPPAPIGEN_PYTHON_PLUGIN
+  ${CMAKE_SOURCE_DIR}/tools/vppapigen/vppapigen_python.py
+)
+set(PYTHON_STUBS_STAMP ${CMAKE_BINARY_DIR}/python-api-stubs.stamp)
+file(GLOB_RECURSE PYTHON_STUBS_API_FILES CONFIGURE_DEPENDS
+  ${CMAKE_SOURCE_DIR}/*.api
+)
+
+add_custom_command(
+  OUTPUT ${PYTHON_STUBS_STAMP}
+  COMMAND ${PYENV} ${GENERATE_PYTHON_STUBS}
+  COMMAND ${CMAKE_COMMAND} -E touch ${PYTHON_STUBS_STAMP}
+  DEPENDS
+    ${PYTHON_STUBS_API_FILES}
+    ${GENERATE_PYTHON_STUBS}
+    ${VPPAPIGEN_PYTHON_PLUGIN}
+    ${CMAKE_SOURCE_DIR}/../test/vpp_papi_provider.py
+  COMMENT "Generating Python type stubs (vapi_types.pyi, vpp_papi_provider.pyi)"
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+  VERBATIM
+)
+add_custom_target(python_api_stubs ALL DEPENDS ${PYTHON_STUBS_STAMP})

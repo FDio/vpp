@@ -41,7 +41,9 @@ install(
   FILES
     vppapigen_c.py
     vppapigen_json.py
+    vppapigen_python.py
     generate_json.py
+    generate_python_stubs.py
   DESTINATION
     ${CMAKE_INSTALL_DATADIR}/vpp
   COMPONENT
