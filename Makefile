@@ -373,6 +373,7 @@ help:
 	@echo " featurelist          - dump feature list in markdown"
 	@echo " json-api-files       - (re)-generate json api files"
 	@echo " json-api-files-debug - (re)-generate json api files for debug target"
+	@echo " python-api-stubs     - (re)-generate python type stubs for vpp_papi"
 	@echo " go-api-files         - (re)-generate golang api files"
 	@echo " cleanup-hst          - stops and removes all docker contaiers and namespaces"
 	@echo " docs                 - Build the Sphinx documentation"
@@ -853,6 +854,10 @@ json-api-files:
 .PHONY: json-api-files-debug
 json-api-files-debug:
 	$(WS_ROOT)/src/tools/vppapigen/generate_json.py --debug-target
+
+.PHONY: python-api-stubs
+python-api-stubs:
+	$(WS_ROOT)/src/tools/vppapigen/generate_python_stubs.py
 
 .PHONY: go-api-files
 go-api-files: json-api-files
