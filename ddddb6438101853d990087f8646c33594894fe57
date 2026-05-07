@@ -33,6 +33,24 @@
       "message": "Can you just use clib_mem_vm_reserve and then map fixed ?",
       "revId": "ddddb6438101853d990087f8646c33594894fe57",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6afdc514_1cfa1b3e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3322
+      },
+      "writtenOn": "2026-05-07T11:16:02Z",
+      "side": 1,
+      "message": "Done. Patchset 3 uses clib_mem_vm_reserve(0, bar_size, 16) to find a 64KB-aligned VA, then releases the reservation with munmap (the guard page + rounded size) and calls vlib_pci_map_region_fixed at that address. The munmap is needed because vlib_pci_map_region_fixed internally does its own clib_mem_vm_reserve with MAP_FIXED_NOREPLACE which would fail on the existing PROT_NONE mapping.",
+      "parentUuid": "d3f2d5b2_a508a837",
+      "revId": "ddddb6438101853d990087f8646c33594894fe57",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }

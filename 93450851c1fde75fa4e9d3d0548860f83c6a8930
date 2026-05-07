@@ -16,6 +16,24 @@
       "message": "Do you really need to release it? Usually mapping can be overwritten.\n\nIn this form there is potential race, as kernel may decide to give this block to another thread.",
       "revId": "93450851c1fde75fa4e9d3d0548860f83c6a8930",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "eddb8c5b_61950274",
+        "filename": "src/drivers/octeon/init.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 473,
+      "author": {
+        "id": 3322
+      },
+      "writtenOn": "2026-05-07T11:16:02Z",
+      "side": 1,
+      "message": "After clib_mem_vm_reserve() when it returns an aligned address va, the region [va - page_sz, va + size) is still mapped as PROT_NONE in the process address space.\nthen we pass this va to vlib_pci_map_region_fixed(), which internally calls clib_mem_vm_reserve() again with a non-zero start address. The non-zero path adds MAP_FIXED_NOREPLACE to the mmap flags, which tells the kernel \"map at exactly this address, but fail if anything is already there.\" Since our first reservation left PROT_NONE at that address, the kernel returns MAP_FAILED with errno\u003dEEXIST and device initialization failed. It gives below error-\n\nvpp# dev [error ]: 0002:02:00.1: device init failed [rv -5]\ndev/config [error ]: : vnet_dev_config_one_device: error: bus error for device \u0027pci/0002:02:00.1\u0027\n\nI agree that there\u0027s potential race condition with munmap() but removing it leads to error state as well.\nplease suggest if there\u0027s any other way about it.",
+      "parentUuid": "02c72f72_de5a9bce",
+      "revId": "93450851c1fde75fa4e9d3d0548860f83c6a8930",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
