@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "951b9ef7_c951549c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 10
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2026-05-08T23:43:37Z",
+      "side": 1,
+      "message": "It looks good to me with the updates.\n\nDave Barach and Neale Ranns are listed in MAINTAINERS as owners of the dhcp plugin, adding them as reviewers.",
+      "revId": "034b72b6fcc76a9b954a36893fb2e8f64c339411",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
