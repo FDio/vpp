@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "01e8cb32_bb557c5c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 8
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3306
+      },
+      "writtenOn": "2026-05-08T22:12:54Z",
+      "side": 1,
+      "message": "Done, applied the same memset-after-checks pattern to all 4 getter functions (ia_na, pd, active_prefix, consumer).",
+      "revId": "e9741287d34fa445e2b912e8d5049eeec56f89a8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a2ad1f9f_f21e28c8",
+        "filename": "src/plugins/dhcp/dhcp6_ia_na_client_cp.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 605,
+      "author": {
+        "id": 3306
+      },
+      "writtenOn": "2026-05-08T22:12:54Z",
+      "side": 1,
+      "message": "You are right — rm-\u003evlib_main is set once in dhcp6_client_init() and never changes, so it cannot be null when cs-\u003eenabled is true. I kept the check as a defensive guard since it costs nothing, but agree it is technically redundant.",
+      "revId": "e9741287d34fa445e2b912e8d5049eeec56f89a8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "62069e98_a6b07ddd",
+        "filename": "src/plugins/dhcp/dhcp6_ia_na_client_dp.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 176,
+      "author": {
+        "id": 3306
+      },
+      "writtenOn": "2026-05-08T22:12:54Z",
+      "side": 1,
+      "message": "Done, simplified to `if (type !\u003d DHCPV6_MSG_RELEASE)`.",
+      "revId": "e9741287d34fa445e2b912e8d5049eeec56f89a8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b957775b_f95e1fa6",
+        "filename": "src/plugins/dhcp/dhcp6_pd_client_cp.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 1307,
+      "author": {
+        "id": 3306
+      },
+      "writtenOn": "2026-05-08T22:12:54Z",
+      "side": 1,
+      "message": "Done — moved clib_memset() after all validity checks in all 4 getter functions so the memset is skipped when runtime data cannot be generated.",
+      "revId": "e9741287d34fa445e2b912e8d5049eeec56f89a8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "af2815fa_6582711c",
+        "filename": "src/plugins/dhcp/dhcp6_pd_client_cp.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 1339,
+      "author": {
+        "id": 3306
+      },
+      "writtenOn": "2026-05-08T22:12:54Z",
+      "side": 1,
+      "message": "Noted, thanks for the pointer. I\u0027ll keep the current 1\u003dsuccess convention since it\u0027s documented in the header and the callers already use it as a boolean. Will switch to 0\u003dsuccess if there\u0027s a follow-up that touches these functions again.",
+      "revId": "e9741287d34fa445e2b912e8d5049eeec56f89a8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
