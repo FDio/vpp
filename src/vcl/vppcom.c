@@ -233,7 +233,7 @@ vcl_send_session_accepted_reply (svm_msg_q_t *mq, session_accepted_msg_t *mp,
   rmp = (session_accepted_reply_msg_t *) app_evt->evt->data;
   rmp->handle = mp->handle;
   rmp->context = mp->context;
-  rmp->app_session_index = s->session_index;
+  rmp->app_session_index = s ? s->session_index : VCL_INVALID_SESSION_INDEX;
   rmp->retval = retval;
   app_send_ctrl_evt_to_vpp (mq, app_evt);
 }
@@ -1392,6 +1392,7 @@ vppcom_session_unbind (u32 session_handle)
   session_accepted_msg_t *accepted_msg;
   vcl_session_t *session = 0;
   vcl_session_msg_t *evt;
+  svm_msg_q_t *evt_q;
 
   session = vcl_session_get_w_handle (wrk, session_handle);
   if (!session)
@@ -1403,8 +1404,15 @@ vppcom_session_unbind (u32 session_handle)
       clib_fifo_sub2 (session->accept_evts_fifo, evt);
       accepted_msg = &evt->accepted_msg;
       vcl_session_table_del_vpp_handle (wrk, accepted_msg->handle);
-      vcl_send_session_accepted_reply (session->vpp_evt_q, accepted_msg, 0,
-				       SESSION_E_REFUSED);
+      evt_q = session->vpp_evt_q;
+      if (!evt_q && vcl_segment_attach_mq (vcl_vpp_worker_segment_handle (0),
+					   accepted_msg->vpp_event_queue_address,
+					   accepted_msg->mq_index, &evt_q))
+	{
+	  VDBG (0, "failed to attach vpp event queue for accepted reply");
+	  continue;
+	}
+      vcl_send_session_accepted_reply (evt_q, accepted_msg, 0, SESSION_E_REFUSED);
     }
   clib_fifo_free (session->accept_evts_fifo);
 
