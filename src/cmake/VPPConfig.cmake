@@ -13,6 +13,8 @@
 
 get_filename_component(CMAKE_CURRENT_LIST_DIR ${CMAKE_CURRENT_LIST_FILE} PATH)
 
+include(GNUInstallDirs)
+
 find_path(VPP_INCLUDE_DIR PATH_SUFFIXES NAMES vppinfra/clib.h)
 find_program(VPP_APIGEN vppapigen)
 find_program(VPP_VAPI_C_GEN vapi_c_gen.py)
