@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "aea24e3c_e1fb8312",
+        "filename": "src/plugins/dhcp/dhcp6_pd_client_cp.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 1339,
+      "author": {
+        "id": 3306
+      },
+      "writtenOn": "2026-05-08T22:20:13Z",
+      "side": 1,
+      "message": "Done — changed all 4 getter functions to return 0 on success, non-zero on failure, consistent with VPP convention. Updated the pppoeclient wrappers to invert the return value so existing `if (available)` semantics are preserved.",
+      "revId": "9f24590a87046a47c39845fc7162200d4c00dcba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
