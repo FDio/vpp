@@ -281,6 +281,7 @@ typedef struct quic_main_
   u64 max_packets_per_key;  /**< number of packets that can be sent without a key update */
   u8 default_quic_cc;
   u8 enable_tx_pacing; /**< enable tx pacing for connections */
+  u8 respect_app_limited; /**< if CC should take app-limited into consideration */
 
   u64 first_seg_size;
   u64 add_seg_size;

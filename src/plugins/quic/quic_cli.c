@@ -567,6 +567,7 @@ quic_config_fn (vlib_main_t *vm, unformat_input_t *input)
   qm->udp_fifo_prealloc = 0;
   qm->connection_timeout = QUIC_DEFAULT_CONN_TIMEOUT;
   qm->enable_tx_pacing = 1;
+  qm->respect_app_limited = 0;
   qm->first_seg_size = 32 << 20;
   qm->add_seg_size = 256 << 20;
 
@@ -597,6 +598,8 @@ quic_config_fn (vlib_main_t *vm, unformat_input_t *input)
 	qm->udp_fifo_prealloc = i;
       else if (unformat (line_input, "no-tx-pacing"))
 	qm->enable_tx_pacing = 0;
+      else if (unformat (line_input, "respect-app-limited"))
+	qm->respect_app_limited = 1;
       else if (unformat (line_input, "enable-vnet-crypto"))
 	qm->enable_vnet_crypto = 1;
       /* TODO: add cli selection of quic_eng_<types> */
