@@ -143,6 +143,7 @@ int segment_manager_alloc_session_fifos_ct (session_t *s,
 					    svm_fifo_t **rx_fifo,
 					    svm_fifo_t **tx_fifo);
 void segment_manager_dealloc_fifos (svm_fifo_t *rx_fifo, svm_fifo_t *tx_fifo);
+void segment_manager_dealloc_fifos_ct (svm_fifo_t *rx_fifo, svm_fifo_t *tx_fifo, u32 is_client);
 void segment_manager_detach_fifo (svm_fifo_t **f);
 void segment_manager_attach_fifo (svm_fifo_t **f, session_t *s);
 
