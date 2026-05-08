@@ -226,10 +226,13 @@ connect_error:
 
   app_worker_connect_notify (client_wrk, 0, err, cct->client_opaque);
 
-cleanup_client:
-
+  /* The server CT fifos are not yet attached to a client session, so cct still owns the client-side
+   * reference. Drop client-side CT accounting explicitly; generic fifo cleanup would account these
+   * server-flagged fifos as server side cleanup. */
   if (cct->client_rx_fifo)
-    segment_manager_dealloc_fifos (cct->client_rx_fifo, cct->client_tx_fifo);
+    segment_manager_dealloc_fifos_ct (cct->client_rx_fifo, cct->client_tx_fifo, 1 /* is_client */);
+
+cleanup_client:
   ct_connection_free (cct);
 
   return -1;

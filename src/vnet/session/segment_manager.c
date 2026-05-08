@@ -77,10 +77,6 @@ do {									\
     clib_rwlock_reader_unlock (&(SM)->segments_rwlock);			\
 } while (0)
 
-static void segment_manager_dealloc_fifos_ct (svm_fifo_t *rx_fifo,
-					      svm_fifo_t *tx_fifo,
-					      u32 is_client);
-
 static segment_manager_props_t *
 segment_manager_properties_get (segment_manager_t * sm)
 {
@@ -1306,9 +1302,8 @@ ct_client_seg_handle (u64 server_sh, u32 client_wrk_index)
   return (((u64) client_wrk_index << 56) | server_sh);
 }
 
-static void
-segment_manager_dealloc_fifos_ct (svm_fifo_t *rx_fifo, svm_fifo_t *tx_fifo,
-				  u32 is_client)
+void
+segment_manager_dealloc_fifos_ct (svm_fifo_t *rx_fifo, svm_fifo_t *tx_fifo, u32 is_client)
 {
   custom_segments_ctx_t *seg_ctx;
   segment_manager_t *sm;
