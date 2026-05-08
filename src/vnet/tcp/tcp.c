@@ -1067,7 +1067,7 @@ tcp_session_cal_goal_size (tcp_connection_t * tc)
 {
   u16 goal_size = tc->snd_mss;
 
-  goal_size = tcp_cfg.max_gso_size - tc->snd_mss % tcp_cfg.max_gso_size;
+  goal_size = tcp_cfg.max_gso_size - tcp_cfg.max_gso_size % tc->snd_mss;
   goal_size = clib_min (goal_size, tc->snd_wnd / 2);
 
   return goal_size > tc->snd_mss ? goal_size : tc->snd_mss;
