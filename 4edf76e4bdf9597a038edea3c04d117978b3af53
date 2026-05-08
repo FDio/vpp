@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6cbb6e1c_c820c7bb",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2026-05-08T21:24:31Z",
+      "side": 1,
+      "message": "Thanks for updating the patch, it was much easier to parse without the formatting changes included.\n\nI made 2 comments on dhcp6_pd_client_get_consumer_runtime() that also apply to the other functions to retrieve runtime data.",
+      "revId": "4edf76e4bdf9597a038edea3c04d117978b3af53",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ab5eb2aa_34309acb",
+        "filename": "src/plugins/dhcp/dhcp6_ia_na_client_cp.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 605,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2026-05-08T21:24:31Z",
+      "side": 1,
+      "message": "Do you need to check whether rm-\u003evlib_main is 0? Is it possible that cs-\u003eenabled will evaluate true and rm-\u003evlib_main will be null? It looks like rm-\u003evlib_main is set in an init function and then never touched again.",
+      "revId": "4edf76e4bdf9597a038edea3c04d117978b3af53",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d40e99de_b6deaddf",
+        "filename": "src/plugins/dhcp/dhcp6_ia_na_client_dp.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 176,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2026-05-08T21:24:31Z",
+      "side": 1,
+      "message": "The list of types here is all of the ones matched by the outer `if` condition, less DHCPV6_MSG_RELEASE. It would be more efficient to use `if (type !\u003d DHCPV6_MSG_RELEASE)`.",
+      "revId": "4edf76e4bdf9597a038edea3c04d117978b3af53",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0a3ef2c1_dcd3f78a",
+        "filename": "src/plugins/dhcp/dhcp6_pd_client_cp.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 1307,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2026-05-08T21:24:31Z",
+      "side": 1,
+      "message": "Why not wait to do the clib_memset() until after all checks have passed? You could avoid the memset operation when runtime data cannot be generated for any reason. Presumably a caller can pay attention to the return code and assume that the memory it passed in to hold the runtime data has undefined contents if an error was returned.",
+      "revId": "4edf76e4bdf9597a038edea3c04d117978b3af53",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9a7aef4e_abafb7fb",
+        "filename": "src/plugins/dhcp/dhcp6_pd_client_cp.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 1339,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2026-05-08T21:24:31Z",
+      "side": 1,
+      "message": "Most functions that return a numeric value as an indication of success or failure use 0 for success and nonzero for failure. I\u0027m not aware of it being a requirement and there are exceptions to that convention (notably, boolean-style functions like is_pow2(), probably other exceptions also). You have the return behavior for all of the functions which retrieve runtime state documented in the header files, so if you want to keep it this way its ok. I\u0027m just pointing out that it would be more consistent with other existing code (e.g. the function right below this one - dhcp6_pd_client_enable_disable()) to return 0 on success.",
+      "revId": "4edf76e4bdf9597a038edea3c04d117978b3af53",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
