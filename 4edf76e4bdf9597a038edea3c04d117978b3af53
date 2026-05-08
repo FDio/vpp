@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "a3307c56_7f214617",
+        "filename": "src/plugins/dhcp/dhcp6_ia_na_client_cp.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 605,
+      "author": {
+        "id": 3306
+      },
+      "writtenOn": "2026-05-08T22:29:42Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "ab5eb2aa_34309acb",
+      "revId": "4edf76e4bdf9597a038edea3c04d117978b3af53",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "d40e99de_b6deaddf",
@@ -48,6 +66,24 @@
       "writtenOn": "2026-05-08T21:24:31Z",
       "side": 1,
       "message": "The list of types here is all of the ones matched by the outer `if` condition, less DHCPV6_MSG_RELEASE. It would be more efficient to use `if (type !\u003d DHCPV6_MSG_RELEASE)`.",
+      "revId": "4edf76e4bdf9597a038edea3c04d117978b3af53",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "45369ccb_3d9e8033",
+        "filename": "src/plugins/dhcp/dhcp6_ia_na_client_dp.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 176,
+      "author": {
+        "id": 3306
+      },
+      "writtenOn": "2026-05-08T22:29:42Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d40e99de_b6deaddf",
       "revId": "4edf76e4bdf9597a038edea3c04d117978b3af53",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -69,6 +105,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "fd2c9e8b_3664cdb1",
+        "filename": "src/plugins/dhcp/dhcp6_pd_client_cp.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 1307,
+      "author": {
+        "id": 3306
+      },
+      "writtenOn": "2026-05-08T22:29:42Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "0a3ef2c1_dcd3f78a",
+      "revId": "4edf76e4bdf9597a038edea3c04d117978b3af53",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "9a7aef4e_abafb7fb",
@@ -82,6 +136,24 @@
       "writtenOn": "2026-05-08T21:24:31Z",
       "side": 1,
       "message": "Most functions that return a numeric value as an indication of success or failure use 0 for success and nonzero for failure. I\u0027m not aware of it being a requirement and there are exceptions to that convention (notably, boolean-style functions like is_pow2(), probably other exceptions also). You have the return behavior for all of the functions which retrieve runtime state documented in the header files, so if you want to keep it this way its ok. I\u0027m just pointing out that it would be more consistent with other existing code (e.g. the function right below this one - dhcp6_pd_client_enable_disable()) to return 0 on success.",
+      "revId": "4edf76e4bdf9597a038edea3c04d117978b3af53",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0c16b367_49b0c912",
+        "filename": "src/plugins/dhcp/dhcp6_pd_client_cp.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 1339,
+      "author": {
+        "id": 3306
+      },
+      "writtenOn": "2026-05-08T22:29:42Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9a7aef4e_abafb7fb",
       "revId": "4edf76e4bdf9597a038edea3c04d117978b3af53",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
