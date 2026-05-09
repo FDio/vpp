@@ -1483,6 +1483,8 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
   vlib_buffer_t *pb;
   u16 n_bufs, rv;
 
+tx_more:
+
   if (PREDICT_FALSE ((rv = session_tx_not_ready (ctx->s, peek_data))))
     {
       if (rv < 2)
@@ -1661,7 +1663,11 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
   /* If we couldn't dequeue all bytes reschedule as old flow. Otherwise,
    * check if application enqueued more data and reschedule accordingly */
   if (ctx->max_len_to_snd < ctx->max_dequeue)
-    session_evt_add_old (wrk, elt);
+    {
+      if (*n_tx_packets < SESSION_NODE_FRAME_SIZE)
+	goto tx_more;
+      session_evt_add_old (wrk, elt);
+    }
   else
     session_tx_maybe_reschedule (wrk, ctx, elt);
 
