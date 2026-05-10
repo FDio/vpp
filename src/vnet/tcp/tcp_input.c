@@ -2825,12 +2825,62 @@ tcp_input_set_error_next (tcp_main_t * tm, u16 * next, u32 * error, u8 is_ip4)
     }
 }
 
+static_always_inline vlib_buffer_t *
+tcp_gro_last_buffer (vlib_main_t *vm, vlib_buffer_t *b)
+{
+  while (b->flags & VLIB_BUFFER_NEXT_PRESENT)
+    b = vlib_get_buffer (vm, b->next_buffer);
+
+  return b;
+}
+
+static_always_inline void
+tcp_gro_reset_candidate (tcp_connection_t *tc)
+{
+  tc->gro_b = 0;
+  tc->last_gro_b = 0;
+}
+
+static_always_inline void
+tcp_gro_set_candidate (vlib_main_t *vm, tcp_connection_t *tc, vlib_buffer_t *b)
+{
+  if (vnet_buffer (b)->tcp.data_len >= tc->snd_mss)
+    {
+      tc->gro_b = b;
+      tc->last_gro_b = tcp_gro_last_buffer (vm, b);
+    }
+  else
+    tcp_gro_reset_candidate (tc);
+}
+
+static_always_inline void
+tcp_gro_prepare_buffer_chain (vlib_buffer_t *b)
+{
+  u16 data_len = vnet_buffer (b)->tcp.data_len;
+
+  vlib_buffer_advance (b, vnet_buffer (b)->tcp.data_offset);
+
+  if (b->flags & VLIB_BUFFER_NEXT_PRESENT)
+    {
+      if (PREDICT_FALSE (b->current_length > data_len))
+	b->current_length = data_len;
+      b->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
+      b->total_length_not_including_first_buffer = data_len - b->current_length;
+    }
+  else
+    {
+      b->current_length = data_len;
+      b->total_length_not_including_first_buffer = 0;
+    }
+}
+
 static inline void
-tcp_input_dispatch_buffer (tcp_main_t *tm, tcp_connection_t *tc, vlib_buffer_t *b, u32 bi,
-			   u16 *next, tcp_error_counters_t *err_counters)
+tcp_input_dispatch_buffer (vlib_main_t *vm, tcp_main_t *tm, tcp_connection_t *tc, vlib_buffer_t *b,
+			   u32 bi, u16 *next, tcp_error_counters_t *err_counters)
 {
   tcp_header_t *tcp;
-  u32 error;
+  u32 error, opts_len, popts_len;
+  u16 data_len;
   u8 flags;
 
   tcp = tcp_buffer_hdr (b);
@@ -2857,31 +2907,32 @@ tcp_input_dispatch_buffer (tcp_main_t *tm, tcp_connection_t *tc, vlib_buffer_t *
       return;
     }
 
-  u32 opts_len = (tcp_doff (tcp) << 2) - sizeof (tcp_header_t);
+  opts_len = (tcp_doff (tcp) << 2) - sizeof (tcp_header_t);
   if (tc->state != TCP_STATE_ESTABLISHED || tcp->flags != TCP_FLAG_ACK ||
       opts_len > TCP_OPTION_LEN_TIMESTAMP + 2)
     {
-      tc->gro_b = 0;
+      tcp_gro_reset_candidate (tc);
       return;
     }
 
   if (!tc->gro_b)
     {
-      tc->gro_b = vnet_buffer (b)->tcp.data_len >= tc->snd_mss ? b : 0;
+      tcp_gro_set_candidate (vm, tc, b);
       return;
     }
 
   vlib_buffer_t *pb = tc->gro_b;
   tcp_header_t *pth = tcp_buffer_hdr (pb);
-  u32 popts_len = (tcp_doff (pth) << 2) - sizeof (tcp_header_t);
+  popts_len = (tcp_doff (pth) << 2) - sizeof (tcp_header_t);
+  data_len = vnet_buffer (b)->tcp.data_len;
 
   if (vnet_buffer (pb)->tcp.seq_end != vnet_buffer (b)->tcp.seq_number ||
       vnet_buffer (pb)->tcp.ack_number != vnet_buffer (b)->tcp.ack_number ||
       (opts_len != popts_len ||
        clib_memcmp ((const u8 *) (tcp + 1), (const u8 *) (pth + 1), opts_len)) ||
-      ((u16) ~0) - vnet_buffer (pb)->tcp.data_len < tc->snd_mss)
+      ((u16) ~0) - vnet_buffer (pb)->tcp.data_len < data_len)
     {
-      tc->gro_b = vnet_buffer (b)->tcp.data_len >= tc->snd_mss ? b : 0;
+      tcp_gro_set_candidate (vm, tc, b);
       return;
     }
 
@@ -2890,36 +2941,23 @@ tcp_input_dispatch_buffer (tcp_main_t *tm, tcp_connection_t *tc, vlib_buffer_t *
     pb->total_length_not_including_first_buffer = 0;
 
   pb->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
-  pb->total_length_not_including_first_buffer += vnet_buffer (b)->tcp.data_len;
-  vnet_buffer (pb)->tcp.seq_end += vnet_buffer (b)->tcp.data_len;
-  vnet_buffer (pb)->tcp.data_len += vnet_buffer (b)->tcp.data_len;
+  pb->total_length_not_including_first_buffer += data_len;
+  vnet_buffer (pb)->tcp.seq_end += data_len;
+  vnet_buffer (pb)->tcp.data_len += data_len;
 
   ASSERT (pb->total_length_not_including_first_buffer + pb->current_length <=
 	  vnet_buffer (pb)->tcp.data_len + 200);
 
-  if (pb->flags & VLIB_BUFFER_NEXT_PRESENT)
-    {
-      pb = tc->last_gro_b;
-      /* If last happend to be chained buffer, walk to last in chain */
-      while (pb->flags & VLIB_BUFFER_NEXT_PRESENT)
-	pb = vlib_get_buffer (vlib_get_main (), pb->next_buffer);
-    }
-
-  tc->last_gro_b = b;
-  //     pb = vlib_buffer_gro (pb)->last_b;
+  pb = tc->last_gro_b ? tc->last_gro_b : tcp_gro_last_buffer (vm, pb);
+  tcp_gro_prepare_buffer_chain (b);
 
   pb->next_buffer = bi;
   pb->flags |= VLIB_BUFFER_NEXT_PRESENT;
-  //   vlib_buffer_gro (pb)->last_b = b;
-
-  ASSERT (!(b->flags & VLIB_BUFFER_NEXT_PRESENT));
-
-  vlib_buffer_advance (b, vnet_buffer (b)->tcp.data_offset);
-  /* XXX make sure length is okay */
-  b->current_length = vnet_buffer (b)->tcp.data_len;
+  tc->last_gro_b = tcp_gro_last_buffer (vm, b);
 
   /* Not full mss, stop coalescing */
-  tc->gro_b = vnet_buffer (b)->tcp.data_len >= tc->snd_mss ? tc->gro_b : 0;
+  if (data_len < tc->snd_mss)
+    tcp_gro_reset_candidate (tc);
   *next = TCP_INPUT_NEXT_COALESCE;
 }
 
@@ -2930,8 +2968,10 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   u32 n_left_from, *from, thread_index = vm->thread_index, *bi;
   tcp_main_t *tm = vnet_get_tcp_main ();
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
+  tcp_connection_t *gro_tcs[VLIB_FRAME_SIZE];
   u16 nexts[VLIB_FRAME_SIZE], *next;
   tcp_error_counters_t err_counters = { 0 };
+  u32 n_gro_tcs = 0;
 
   tcp_update_time_now (tcp_get_worker (thread_index));
 
@@ -2969,8 +3009,12 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  vnet_buffer (b[0])->tcp.connection_index = tc0->c_c_index;
 	  vnet_buffer (b[1])->tcp.connection_index = tc1->c_c_index;
 
-	  tcp_input_dispatch_buffer (tm, tc0, b[0], bi[0], &next[0], &err_counters);
-	  tcp_input_dispatch_buffer (tm, tc1, b[1], bi[1], &next[1], &err_counters);
+	  tcp_input_dispatch_buffer (vm, tm, tc0, b[0], bi[0], &next[0], &err_counters);
+	  tcp_input_dispatch_buffer (vm, tm, tc1, b[1], bi[1], &next[1], &err_counters);
+	  if (PREDICT_FALSE (tc0->gro_b != 0))
+	    gro_tcs[n_gro_tcs++] = tc0;
+	  if (PREDICT_FALSE (tc1->gro_b != 0))
+	    gro_tcs[n_gro_tcs++] = tc1;
 	}
       else
 	{
@@ -2978,7 +3022,9 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    {
 	      ASSERT (tcp_lookup_is_valid (tc0, b[0], tcp_buffer_hdr (b[0])));
 	      vnet_buffer (b[0])->tcp.connection_index = tc0->c_c_index;
-	      tcp_input_dispatch_buffer (tm, tc0, b[0], bi[0], &next[0], &err_counters);
+	      tcp_input_dispatch_buffer (vm, tm, tc0, b[0], bi[0], &next[0], &err_counters);
+	      if (PREDICT_FALSE (tc0->gro_b != 0))
+		gro_tcs[n_gro_tcs++] = tc0;
 	    }
 	  else
 	    {
@@ -2990,7 +3036,9 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    {
 	      ASSERT (tcp_lookup_is_valid (tc1, b[1], tcp_buffer_hdr (b[1])));
 	      vnet_buffer (b[1])->tcp.connection_index = tc1->c_c_index;
-	      tcp_input_dispatch_buffer (tm, tc1, b[1], bi[1], &next[1], &err_counters);
+	      tcp_input_dispatch_buffer (vm, tm, tc1, b[1], bi[1], &next[1], &err_counters);
+	      if (PREDICT_FALSE (tc1->gro_b != 0))
+		gro_tcs[n_gro_tcs++] = tc1;
 	    }
 	  else
 	    {
@@ -3021,7 +3069,9 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	{
 	  ASSERT (tcp_lookup_is_valid (tc0, b[0], tcp_buffer_hdr (b[0])));
 	  vnet_buffer (b[0])->tcp.connection_index = tc0->c_c_index;
-	  tcp_input_dispatch_buffer (tm, tc0, b[0], bi[0], &next[0], &err_counters);
+	  tcp_input_dispatch_buffer (vm, tm, tc0, b[0], bi[0], &next[0], &err_counters);
+	  if (PREDICT_FALSE (tc0->gro_b != 0))
+	    gro_tcs[n_gro_tcs++] = tc0;
 	}
       else
 	{
@@ -3037,6 +3087,9 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
     tcp_input_trace_frame (vm, node, bufs, nexts, frame->n_vectors, is_ip4);
+
+  for (u32 i = 0; i < n_gro_tcs; i++)
+    tcp_gro_reset_candidate (gro_tcs[i]);
 
   tcp_store_err_counters (vm, &err_counters, node->node_index);
   vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
