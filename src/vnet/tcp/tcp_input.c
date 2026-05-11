@@ -2908,8 +2908,8 @@ tcp_input_dispatch_buffer (vlib_main_t *vm, tcp_main_t *tm, tcp_connection_t *tc
     }
 
   opts_len = (tcp_doff (tcp) << 2) - sizeof (tcp_header_t);
-  if (tc->state != TCP_STATE_ESTABLISHED || tcp->flags != TCP_FLAG_ACK ||
-      opts_len > TCP_OPTION_LEN_TIMESTAMP + 2)
+  if (PREDICT_FALSE (!tm->cfg.enable_gro) || tc->state != TCP_STATE_ESTABLISHED ||
+      tcp->flags != TCP_FLAG_ACK || opts_len > TCP_OPTION_LEN_TIMESTAMP + 2)
     {
       tcp_gro_reset_candidate (tc);
       return;

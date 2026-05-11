@@ -156,6 +156,9 @@ typedef struct tcp_configuration_
   /** Allow use of TSO whenever available */
   u8 allow_tso;
 
+  /** Enable TCP receive coalescing */
+  u8 enable_gro;
+
   /** Set if csum offloading is enabled */
   u8 csum_offload;
 
