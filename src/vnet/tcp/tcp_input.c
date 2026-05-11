@@ -2858,8 +2858,8 @@ tcp_input_dispatch_buffer (tcp_main_t *tm, tcp_connection_t *tc, vlib_buffer_t *
     }
 
   u32 opts_len = (tcp_doff (tcp) << 2) - sizeof (tcp_header_t);
-  if (tc->state != TCP_STATE_ESTABLISHED || tcp->flags != TCP_FLAG_ACK ||
-      opts_len > TCP_OPTION_LEN_TIMESTAMP + 2)
+  if (PREDICT_FALSE (!tm->cfg.enable_gro) || tc->state != TCP_STATE_ESTABLISHED ||
+      tcp->flags != TCP_FLAG_ACK || opts_len > TCP_OPTION_LEN_TIMESTAMP + 2)
     {
       tc->gro_b = 0;
       return;
