@@ -861,6 +861,7 @@ format_tcp_cfg (u8 *s, va_list *args)
   s = format (s, "tx pacing: %s\n",
 	      tm_cfg.enable_tx_pacing ? "enabled" : "disabled");
   s = format (s, "tso: %s\n", tm_cfg.allow_tso ? "allowed" : "disallowed");
+  s = format (s, "gro: %s\n", tm_cfg.enable_gro ? "enabled" : "disabled");
   s = format (s, "checksum offload: %s\n",
 	      tm_cfg.csum_offload ? "enabled" : "disabled");
   s = format (s, "congestion control algorithm: %s\n",
@@ -979,6 +980,32 @@ VLIB_CLI_COMMAND (clear_tcp_stats_command, static) =
   .function = clear_tcp_stats_fn,
 };
 
+static clib_error_t *
+tcp_gro_enable_disable_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				   vlib_cli_command_t *cmd)
+{
+  u8 is_enable = 1;
+
+  if (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "on"))
+	is_enable = 1;
+      else if (unformat (input, "off"))
+	is_enable = 0;
+      else
+	return clib_error_return (0, "unknown input `%U'", format_unformat_error, input);
+    }
+
+  tcp_cfg.enable_gro = is_enable;
+  return 0;
+}
+
+VLIB_CLI_COMMAND (tcp_gro_enable_disable_command, static) = {
+  .path = "set tcp gro",
+  .short_help = "set tcp gro [on|off]",
+  .function = tcp_gro_enable_disable_command_fn,
+};
+
 uword
 unformat_tcp_cc_algo (unformat_input_t * input, va_list * va)
 {
@@ -1073,6 +1100,10 @@ tcp_config_fn (vlib_main_t * vm, unformat_input_t * input)
 	tcp_cfg.enable_tx_pacing = 0;
       else if (unformat (input, "tso"))
 	tcp_cfg.allow_tso = 1;
+      else if (unformat (input, "gro"))
+	tcp_cfg.enable_gro = 1;
+      else if (unformat (input, "no-gro"))
+	tcp_cfg.enable_gro = 0;
       else if (unformat (input, "no-csum-offload"))
 	tcp_cfg.csum_offload = 0;
       else if (unformat (input, "max-gso-size %u", &max_gso_size))
