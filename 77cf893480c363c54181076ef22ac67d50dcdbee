@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8760b18c_89ca9db8",
+        "filename": "test/test_sfdp_l4_lifecycle.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 90,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-05-11T13:42:25Z",
+      "side": 1,
+      "message": "why not use wait_no_sessions()?",
+      "revId": "77cf893480c363c54181076ef22ac67d50dcdbee",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "35f83fb2_bddef3c2",
+        "filename": "test/test_sfdp_l4_lifecycle.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 345,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-05-11T13:42:25Z",
+      "side": 1,
+      "message": "is this from initiator as this comment, or from responder as name/docstring implies?",
+      "revId": "77cf893480c363c54181076ef22ac67d50dcdbee",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0d5ce2ac_a140d225",
+        "filename": "test/test_sfdp_l4_lifecycle.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 504,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-05-11T13:42:25Z",
+      "side": 1,
+      "message": "TestSfdpL4LifecycleIp6",
+      "revId": "77cf893480c363c54181076ef22ac67d50dcdbee",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "25a722e4_fab5ffc2",
+        "filename": "test/test_sfdp_l4_lifecycle.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 505,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-05-11T13:42:25Z",
+      "side": 1,
+      "message": "Looks like it is missing RST/FIN tests contrary to IPv4?",
+      "revId": "77cf893480c363c54181076ef22ac67d50dcdbee",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
