@@ -59,6 +59,9 @@ openssl_ctx_free (tls_ctx_t * ctx)
 {
   openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
 
+  if (!oc->ssl)
+    return;
+
   /* Cleanup ssl ctx unless migrated */
   if (!(ctx->flags & TLS_CONN_F_MIGRATED))
     {
@@ -74,6 +77,9 @@ openssl_ctx_free (tls_ctx_t * ctx)
 	tls_async_evts_free_list (ctx);
 
       SSL_free (oc->ssl);
+      oc->ssl = 0;
+      oc->rbio = 0;
+      oc->wbio = 0;
       vec_free (ctx->srv_hostname);
     }
 
