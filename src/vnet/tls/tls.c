@@ -239,6 +239,13 @@ tls_notify_app_connected (tls_ctx_t * ctx, session_error_t err)
 
   if (err)
     {
+      /* Failed DTLS connects are freed from half-open cleanup. */
+      if (ctx->tls_type == TRANSPORT_PROTO_DTLS &&
+	  ctx->tls_session_handle != SESSION_INVALID_HANDLE)
+	{
+	  app_session = session_get_from_handle (ctx->tls_session_handle);
+	  app_session->opaque = SESSION_INVALID_INDEX;
+	}
       ctx->flags |= TLS_CONN_F_NO_APP_SESSION;
       goto send_reply;
     }
@@ -520,7 +527,11 @@ tls_app_session_cleanup (session_t * s, session_cleanup_ntf_t ntf)
       return;
     }
 
+  if (s->opaque == SESSION_INVALID_INDEX)
+    return;
+
   ctx = tls_ctx_get (s->opaque);
+  s->opaque = SESSION_INVALID_INDEX;
   if (!(ctx->flags & TLS_CONN_F_NO_APP_SESSION))
     session_transport_delete_notify (&ctx->connection);
   tls_ctx_free (ctx);
@@ -1287,6 +1298,9 @@ dtls_connect (transport_endpoint_cfg_t *tep)
   ctx->parent_app_api_context = sep->opaque;
   ctx->tcp_is_ip4 = sep->is_ip4;
   ctx->ckpair_index = ccfg->ckpair_index;
+  ctx->ca_trust_index = ccfg->ca_trust_index;
+  ctx->tls_profile_index = ccfg->tls_profile_index;
+  ctx->verify_cfg = ccfg->verify_cfg;
   ctx->crypto_owner_app_wrk_index = ccfg->owner_app_wrk_index != ENDPOINT_INVALID_INDEX ?
 				      ccfg->owner_app_wrk_index :
 				      sep->app_wrk_index;
