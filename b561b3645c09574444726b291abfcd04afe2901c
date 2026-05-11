@@ -33,6 +33,24 @@
       "message": "what happens if packet is malformed and it underflows?",
       "revId": "b561b3645c09574444726b291abfcd04afe2901c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "338bd0fb_c0b6dcb9",
+        "filename": "src/plugins/sfdp_services/base/tcp-check/node.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 102,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-05-11T15:03:30Z",
+      "side": 1,
+      "message": "If a packet has malformed headers and the computed tcp_payload_len underflows, it would not cause a major issue (i.e. crash) as it is not used in any pointer arithmetic.\n\nHowever, it will lead to the session associated with the packet entering an invalid state since the sequence number used for the FIN is invalid and will most probably not match when checking the ack number in the reverse direction FIN+ACK e.g.\n\n```c\ntcp_session-\u003efin_num[SFDP_FLOW_FORWARD] \u003d seqnum + tcp_payload_len + 1;\n...                                                                                                                     \ntcp_session-\u003efin_num[SFDP_FLOW_REVERSE] \u003d seqnum + tcp_payload_len + 1;\n```  \n\nIn the recent commit, I have added a clamp on the computed tcp_payload_len value to zero in case of underflow. However, (1) this does not catch malformed cases if no underflow ends up occurring, (2) the clamping could potentially be another vector of attack (?), since an attacker knowing the clamping behavior can close sessions using malformed packets.\n\nAre we better leaving the code with underflow as-is without clamping ?",
+      "parentUuid": "22d3f630_a1f036e1",
+      "revId": "b561b3645c09574444726b291abfcd04afe2901c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
