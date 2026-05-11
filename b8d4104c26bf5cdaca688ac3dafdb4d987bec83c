@@ -34,6 +34,24 @@
       "parentUuid": "2a8fc7ca_ffc71a66",
       "revId": "b8d4104c26bf5cdaca688ac3dafdb4d987bec83c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "17ec14ca_be9dd335",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1408,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2026-05-11T16:10:27Z",
+      "side": 1,
+      "message": "Same idea is in vcl_session_accept_handler, https://github.com/FDio/vpp/blob/master/src/vcl/vppcom.c#L432",
+      "parentUuid": "2b308ba8_32cc8f0e",
+      "revId": "b8d4104c26bf5cdaca688ac3dafdb4d987bec83c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
