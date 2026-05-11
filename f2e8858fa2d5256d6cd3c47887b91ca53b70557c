@@ -1,0 +1,106 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "450daa8b_55695dbf",
+        "filename": "src/plugins/rdma/device.c",
+        "patchSetId": 25
+      },
+      "lineNbr": 1048,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-05-11T10:20:51Z",
+      "side": 1,
+      "message": "this should be defined at the top level and we should have nested block",
+      "revId": "f2e8858fa2d5256d6cd3c47887b91ca53b70557c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "167702ec_a6f9b76f",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 25
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-05-11T10:20:51Z",
+      "side": 1,
+      "message": "won\u0027t that break on regular (non-TSO) send?",
+      "revId": "f2e8858fa2d5256d6cd3c47887b91ca53b70557c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "aed596fa_0a7fa7a4",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 25
+      },
+      "lineNbr": 83,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-05-11T10:20:51Z",
+      "side": 1,
+      "message": "why this change? This should not happen? Do we leak buffer in the error case?",
+      "revId": "f2e8858fa2d5256d6cd3c47887b91ca53b70557c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a097a9ae_36eb433f",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 25
+      },
+      "lineNbr": 267,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-05-11T10:20:51Z",
+      "side": 1,
+      "message": "isnt lkey already big-endian here?",
+      "revId": "f2e8858fa2d5256d6cd3c47887b91ca53b70557c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4d150c96_5df63874",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 25
+      },
+      "lineNbr": 304,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-05-11T10:20:51Z",
+      "side": 1,
+      "message": "can we make all this in its own function to help readability?",
+      "revId": "f2e8858fa2d5256d6cd3c47887b91ca53b70557c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "074f0f22_a8cb9d71",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 25
+      },
+      "lineNbr": 704,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-05-11T10:20:51Z",
+      "side": 1,
+      "message": "do we leak buffers in this case?",
+      "revId": "f2e8858fa2d5256d6cd3c47887b91ca53b70557c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
