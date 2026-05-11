@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "b561b3645c09574444726b291abfcd04afe2901c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "22d3f630_a1f036e1",
+        "filename": "src/plugins/sfdp_services/base/tcp-check/node.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 102,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-05-11T13:47:07Z",
+      "side": 1,
+      "message": "what happens if packet is malformed and it underflows?",
+      "revId": "b561b3645c09574444726b291abfcd04afe2901c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
