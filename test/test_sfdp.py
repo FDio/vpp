@@ -11,7 +11,7 @@ from vpp_papi import VppEnum
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP, TCP, ICMP
-from scapy.layers.inet6 import IPv6
+from scapy.layers.inet6 import IPv6, ICMPv6EchoRequest
 
 
 class BaseSfdpTest(VppTestCase):
@@ -84,37 +84,6 @@ class BaseSfdpTest(VppTestCase):
                 detail_output,
                 "cli output does not show expected destination IP",
             )
-
-
-@unittest.skipIf(
-    "sfdp_services" in config.excluded_plugins,
-    "SFDP_Services plugin is required to run SFDP tests",
-)
-class TestSfdp(BaseSfdpTest):
-    """SFDP Infrastructure tests"""
-
-    @classmethod
-    def setUpClass(cls):
-        super(TestSfdp, cls).setUpClass()
-        try:
-            cls.create_pg_interfaces(range(4))
-            for i in cls.pg_interfaces:
-                i.config_ip4()
-                i.config_ip6()
-                i.resolve_arp()
-                i.resolve_ndp()
-                i.admin_up()
-        except Exception:
-            super(TestSfdp, cls).tearDownClass()
-            raise
-
-    @classmethod
-    def tearDownClass(cls):
-        for i in cls.pg_interfaces:
-            i.unconfig_ip4()
-            i.unconfig_ip6()
-            i.admin_down()
-        super(TestSfdp, cls).tearDownClass()
 
     def _configure_sfdp(self, enable_ip4=True, enable_ip6=False):
         """Base SFDP Configuration"""
@@ -270,6 +239,37 @@ class TestSfdp(BaseSfdpTest):
             tenant_id=self.tenant_id_ip6,
             is_del=True,
         )
+
+
+@unittest.skipIf(
+    "sfdp_services" in config.excluded_plugins,
+    "SFDP_Services plugin is required to run SFDP tests",
+)
+class TestSfdp(BaseSfdpTest):
+    """SFDP Infrastructure tests"""
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestSfdp, cls).setUpClass()
+        try:
+            cls.create_pg_interfaces(range(4))
+            for i in cls.pg_interfaces:
+                i.config_ip4()
+                i.config_ip6()
+                i.resolve_arp()
+                i.resolve_ndp()
+                i.admin_up()
+        except Exception:
+            super(TestSfdp, cls).tearDownClass()
+            raise
+
+    @classmethod
+    def tearDownClass(cls):
+        for i in cls.pg_interfaces:
+            i.unconfig_ip4()
+            i.unconfig_ip6()
+            i.admin_down()
+        super(TestSfdp, cls).tearDownClass()
 
     def test_sfdp_api_configuration(self):
         """Test SFDP configuration"""
@@ -837,6 +837,127 @@ class TestSfdp(BaseSfdpTest):
         # Delete tenants
         self.vapi.sfdp_tenant_add_del(tenant_id=1, is_del=True)
         self.vapi.sfdp_tenant_add_del(tenant_id=2, is_del=True)
+
+
+@unittest.skipIf(
+    "sfdp_services" in config.excluded_plugins,
+    "SFDP_Services plugin is required to run SFDP tests",
+)
+class TestSfdpLookupGuard(BaseSfdpTest):
+    """SFDP lookup guard: bit-shift bounds and slow-path normalization"""
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestSfdpLookupGuard, cls).setUpClass()
+        try:
+            cls.create_pg_interfaces(range(4))
+            for i in cls.pg_interfaces:
+                i.config_ip4()
+                i.config_ip6()
+                i.resolve_arp()
+                i.resolve_ndp()
+                i.admin_up()
+        except Exception:
+            super(TestSfdpLookupGuard, cls).tearDownClass()
+            raise
+
+    @classmethod
+    def tearDownClass(cls):
+        for i in cls.pg_interfaces:
+            i.unconfig_ip4()
+            i.unconfig_ip6()
+            i.admin_down()
+        super(TestSfdpLookupGuard, cls).tearDownClass()
+
+    def test_icmpv6_out_of_range_type_no_session(self):
+        """ICMPv6 type>=192 (t128 shift >= 64) must not create a session"""
+        self._configure_sfdp(enable_ip4=False, enable_ip6=True)
+
+        pkt_icmp6_oor = (
+            Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+            / IPv6(src=self.pg0.remote_ip6, dst=self.pg1.remote_ip6)
+            / ICMPv6EchoRequest(type=200)
+        )
+        self.send_and_assert_no_replies(self.pg0, pkt_icmp6_oor)
+
+        self.assertEqual(
+            len(self.vapi.sfdp_session_dump()),
+            0,
+            "ICMPv6 type=200 must not create a session",
+        )
+
+        self._cleanup_sfdp(disable_ip4=False, disable_ip6=True)
+
+    def test_tcp4_slowpath_creates_session(self):
+        """TCP IPv4 in slow-path vector (batched with unknown-proto) creates a session
+
+        Sending a TCP packet after an unknown-protocol packet forces SFDP to
+        re-process the tail of the vector via the slow-path, exercising the
+        norm masking for non-ICMP protocols.
+        """
+        self._configure_sfdp(enable_ip4=True, enable_ip6=False)
+
+        pkt_unknown = (
+            Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+            / IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4, proto=253)
+            / Raw(b"\x00" * 4)
+        )
+        pkt_tcp4 = self.create_tcp_packet(
+            src_mac=self.pg0.remote_mac,
+            dst_mac=self.pg0.local_mac,
+            src_ip=self.pg0.remote_ip4,
+            dst_ip=self.pg1.remote_ip4,
+            sport=10001,
+            dport=80,
+            flags="S",
+        )
+        self.pg0.add_stream([pkt_unknown, pkt_tcp4])
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        sessions = self.vapi.sfdp_session_dump()
+        self.assertEqual(len(sessions), 1, "TCP IPv4 slow-path session must be created")
+        self.verify_basic_session_state(
+            sessions[0],
+            6,
+            VppEnum.vl_api_sfdp_session_state_t.SFDP_API_SESSION_STATE_FSOL,
+            VppEnum.vl_api_sfdp_session_type_t.SFDP_API_SESSION_TYPE_IP4,
+        )
+
+        self._cleanup_sfdp(disable_ip4=True, disable_ip6=False)
+
+    def test_tcp6_slowpath_creates_session(self):
+        """TCP IPv6 in slow-path vector (batched with unknown-proto) creates a session"""
+        self._configure_sfdp(enable_ip4=False, enable_ip6=True)
+
+        pkt_unknown6 = (
+            Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+            / IPv6(src=self.pg0.remote_ip6, dst=self.pg1.remote_ip6, nh=253)
+            / Raw(b"\x00" * 4)
+        )
+        pkt_tcp6 = self.create_tcp6_packet(
+            src_mac=self.pg0.remote_mac,
+            dst_mac=self.pg0.local_mac,
+            src_ip=self.pg0.remote_ip6,
+            dst_ip=self.pg1.remote_ip6,
+            sport=10002,
+            dport=80,
+            flags="S",
+        )
+        self.pg0.add_stream([pkt_unknown6, pkt_tcp6])
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        sessions = self.vapi.sfdp_session_dump()
+        self.assertEqual(len(sessions), 1, "TCP IPv6 slow-path session must be created")
+        self.verify_basic_session_state(
+            sessions[0],
+            6,
+            VppEnum.vl_api_sfdp_session_state_t.SFDP_API_SESSION_STATE_FSOL,
+            VppEnum.vl_api_sfdp_session_type_t.SFDP_API_SESSION_TYPE_IP6,
+        )
+
+        self._cleanup_sfdp(disable_ip4=False, disable_ip6=True)
 
 
 @unittest.skipIf(
