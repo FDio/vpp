@@ -232,7 +232,7 @@ cryptodev_frame_linked_algs_enqueue_internal (vlib_main_t *vm,
 		    cryptodev_mark_frame_fill_err (frame, ring->frames[*enq].frame_elts_errs_mask,
 						   ring->frames[*enq].enq_elts_head, max_to_enq,
 						   VNET_CRYPTO_OP_STATUS_FAIL_ENGINE_ERR);
-		  goto error_exit;
+		  abort ();
 		}
 	    }
 	  else if (ad->alg_type == VNET_CRYPTO_ALG_T_AUTH &&
@@ -246,7 +246,7 @@ cryptodev_frame_linked_algs_enqueue_internal (vlib_main_t *vm,
 		    cryptodev_mark_frame_fill_err (frame, ring->frames[*enq].frame_elts_errs_mask,
 						   ring->frames[*enq].enq_elts_head, max_to_enq,
 						   VNET_CRYPTO_OP_STATUS_FAIL_ENGINE_ERR);
-		  goto error_exit;
+		  abort ();
 		}
 	      key_sess = cryptodev_session_get (key, vm->numa_node, sess_op_type);
 	    }
@@ -399,7 +399,7 @@ cryptodev_aead_enqueue_internal (vlib_main_t *vm,
 		    cryptodev_mark_frame_fill_err (frame, ring->frames[*enq].frame_elts_errs_mask,
 						   ring->frames[*enq].enq_elts_head, max_to_enq,
 						   VNET_CRYPTO_OP_STATUS_FAIL_ENGINE_ERR);
-		  goto error_exit;
+		  abort ();
 		}
 	    }
 	  else if (PREDICT_FALSE (rte_cryptodev_sym_session_opaque_data_get (cryptodev_session_get (
@@ -412,7 +412,7 @@ cryptodev_aead_enqueue_internal (vlib_main_t *vm,
 		    cryptodev_mark_frame_fill_err (frame, ring->frames[*enq].frame_elts_errs_mask,
 						   ring->frames[*enq].enq_elts_head, max_to_enq,
 						   VNET_CRYPTO_OP_STATUS_FAIL_ENGINE_ERR);
-		  goto error_exit;
+		  abort ();
 		}
 	    }
 
@@ -754,7 +754,7 @@ cryptodev_register_cop_hdl (vlib_main_t *vm, u32 eidx)
 	  error = clib_error_return (
 	    0, "Failed to create cryptodev op pool %s", name);
 
-	  goto error_exit;
+	  abort ();
 	}
     }
   ref_cnt = cryptodev_register_async_algs (vm, eidx, cryptodev_cop_get_enq_fn, "cop");
