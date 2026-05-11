@@ -2938,6 +2938,8 @@ http2_app_close_callback (http_ctx_t *hc, u32 req_index, clib_thread_index_t thr
       if (is_parent)
 	{
 	  HTTP_DBG (1, "app closed parent, closing connection");
+	  if (clib_llist_elt_is_linked (hc, sched_list))
+	    clib_llist_remove (http_worker_get (hc->c_thread_index)->ctx_pool, sched_list, hc);
 	  http_shutdown_transport (hc);
 	}
     }
@@ -3370,11 +3372,12 @@ http2_transport_close_callback (http_ctx_t *hc)
 		      n_open_streams++;
 		    }
 		}));
+  /* we can't send anymore */
+  if (clib_llist_elt_is_linked (hc, sched_list))
+    clib_llist_remove (wrk->ctx_pool, sched_list, hc);
   if (n_open_streams == 0)
     {
       HTTP_DBG (1, "no open stream disconnecting");
-      if (clib_llist_elt_is_linked (hc, sched_list))
-	clib_llist_remove (wrk->ctx_pool, sched_list, hc);
       http_disconnect_transport (hc);
       /* Notify app that transport for parent req is closing to avoid
        * potentially deleting the connection in ready state on transport
