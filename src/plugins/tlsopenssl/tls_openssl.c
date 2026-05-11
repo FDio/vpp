@@ -62,18 +62,25 @@ openssl_ctx_free (tls_ctx_t * ctx)
   /* Cleanup ssl ctx unless migrated */
   if (!(ctx->flags & TLS_CONN_F_MIGRATED))
     {
-      if (SSL_is_init_finished (oc->ssl) &&
-	  !(ctx->flags & TLS_CONN_F_PASSIVE_CLOSE))
+      if (oc->ssl)
 	{
-	  int rv = SSL_shutdown (oc->ssl);
-	  if (rv < 0)
-	    (void) SSL_get_error (oc->ssl, rv);
+	  if (SSL_is_init_finished (oc->ssl) &&
+	      !(ctx->flags & TLS_CONN_F_PASSIVE_CLOSE))
+	    {
+	      int rv = SSL_shutdown (oc->ssl);
+	      if (rv < 0)
+		(void) SSL_get_error (oc->ssl, rv);
+	    }
+
+	  SSL_free (oc->ssl);
+	  oc->ssl = 0;
+	  oc->rbio = 0;
+	  oc->wbio = 0;
 	}
 
       if (openssl_main.async)
 	tls_async_evts_free_list (ctx);
 
-      SSL_free (oc->ssl);
       vec_free (ctx->srv_hostname);
     }
 
