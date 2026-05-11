@@ -1,0 +1,61 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9d6ae080_66126bb4",
+        "filename": "src/plugins/hs_apps/proxy_lite.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 811,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-05-11T10:07:37Z",
+      "side": 1,
+      "message": "this is deprecated should be tcp://ip:port",
+      "range": {
+        "startLine": 811,
+        "startChar": 40,
+        "endLine": 811,
+        "endChar": 53
+      },
+      "revId": "d8f9986bb412769fc49d4be7ddce4123d18be6e8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "14a6094f_9f5ded82",
+        "filename": "src/plugins/hsi/hsi_tracker.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 1410,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-05-11T10:07:37Z",
+      "side": 1,
+      "message": "maybe some macro/constant for offsets?",
+      "revId": "d8f9986bb412769fc49d4be7ddce4123d18be6e8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c8dd4b0f_a8e94078",
+        "filename": "test/hs-test/hsi_test.go",
+        "patchSetId": 10
+      },
+      "lineNbr": 121,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-05-11T10:07:37Z",
+      "side": 1,
+      "message": "can we do this directly in golang? you can register Control function in net.Dialer and do syscall.SetsockoptInt there",
+      "revId": "d8f9986bb412769fc49d4be7ddce4123d18be6e8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
