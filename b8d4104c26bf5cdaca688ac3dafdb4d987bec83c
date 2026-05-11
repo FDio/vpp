@@ -16,6 +16,24 @@
       "message": "not sure I follow, why do we need this?",
       "revId": "b8d4104c26bf5cdaca688ac3dafdb4d987bec83c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2b308ba8_32cc8f0e",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1408,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2026-05-11T15:12:06Z",
+      "side": 1,
+      "message": "We have 3 choices.\n1. Pass NULL to vcl_send_session_accepted_reply() and crash.\n2. Skip the reply and leave VPP with a pending accepted session that the app will never accept.\n3. Attach the correct queue from the accepted message and send the refused reply.\n\nWe were doing 1 and crash. Now we are doing 3. Do you prefer doing 2 or something else?",
+      "parentUuid": "2a8fc7ca_ffc71a66",
+      "revId": "b8d4104c26bf5cdaca688ac3dafdb4d987bec83c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
