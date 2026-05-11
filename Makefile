@@ -414,8 +414,8 @@ endif
 ifeq ($(filter ubuntu debian linuxmint,$(OS_ID)),$(OS_ID))
 	@MISSING=$$(apt-get install -y -qq -s $(DEB_DEPENDS) | grep "^Inst ") ; \
 	if [ -n "$$MISSING" ] ; then \
-	  echo "\nPlease install missing packages: \n$$MISSING\n" ; \
-	  echo "by executing \"make install-dep\"\n" ; \
+	  printf "\nPlease install missing packages: \n$$MISSING\n" ; \
+	  printf "by executing \"make install-dep\"\n" ; \
 	  exit 1 ; \
 	fi ; \
 	exit 0
