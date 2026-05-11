@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "509c12ae_3db90d28",
+        "filename": "test/test_sfdp.py",
+        "patchSetId": 9
+      },
+      "lineNbr": 843,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-05-11T13:47:30Z",
+      "side": 1,
+      "message": "Can\u0027t this test description be much simplified ? Currently it goes much in-depth and re-describes the changes in the patch.\n\nAlso, running the tests currently gives the following truncated description:\n```\n\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\nSFDP Infrastructure tests [main thread only]\n\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\nTest SFDP configuration                                             1.17 OK\nTest SFDP configuration through CLI                                 0.97 OK\nNormalization: TCP/UDP create sessions; ICMPv6 type\u003e\u003d192 does not   1.19 OK\n...\n```",
+      "revId": "e1d9aed2bdc2b5303b1187a28f61f6fa5c82ce56",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "222b18a2_2f03b691",
+        "filename": "test/test_sfdp.py",
+        "patchSetId": 9
+      },
+      "lineNbr": 864,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-05-11T13:47:30Z",
+      "side": 1,
+      "message": "I think that it is redundant here to verify that we can properly create UDP/TCP sessions with IP4/IP6 \u0026 this is already verified in other tests.\n\nRather, I think that (1) we should only keep the section testing the edge case with \u0027pkt_icmp6_oor`, (2) we should add additional test cases where UDP/TCP session packets go through slow-path (i.e. they are batched in VPP with ICMP packets or packets with unknown protocols) which should exert the \u0027else\u0027 block that was removed here and verify that its removal does not lead to a regression.",
+      "revId": "e1d9aed2bdc2b5303b1187a28f61f6fa5c82ce56",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
