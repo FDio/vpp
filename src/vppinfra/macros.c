@@ -103,6 +103,8 @@ clib_macro_eval (clib_macro_main_t * mm, i8 * s, i32 complain, u16 level,
 	  /* fallthrough */
 
 	default:
+	  if (s[0] == '\0')
+	    break;
 	  vec_add1 (rv, *s);
 	  s++;
 	  break;
