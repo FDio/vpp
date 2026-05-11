@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "479d3cac_4b581059",
+        "filename": "src/plugins/cnat/cnat_api.c",
+        "patchSetId": 36
+      },
+      "lineNbr": 409,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-05-11T12:49:46Z",
+      "side": 1,
+      "message": "this comment still mentions ret_fib_index which is now gone",
+      "revId": "0e99f8e309ecb169d0e2a5c19a062095118454ad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "27bd69e1_6194ae37",
+        "filename": "src/plugins/cnat/cnat_inline.h",
+        "patchSetId": 36
+      },
+      "lineNbr": 178,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-05-11T12:49:46Z",
+      "side": 1,
+      "message": "I think that you can\u0027t take ts-\u003ets_scope_id[VLIB_RX] automatically here, it depends on FWD vs RETURN, just like you did in `cnat_get_rsession_from_ts`.\nAnd same goes for cnat_session_free__.",
+      "revId": "0e99f8e309ecb169d0e2a5c19a062095118454ad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2601d690_2e004146",
+        "filename": "src/plugins/cnat/cnat_session.c",
+        "patchSetId": 36
+      },
+      "lineNbr": 136,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-05-11T12:49:46Z",
+      "side": 1,
+      "message": "I think we should keep `scope:%u` in the same place where `fib:%d` was, for readibility. And add it to `format_cnat_timestamp` as well to have the scopes when doing `show cnat timestamp`.",
+      "revId": "0e99f8e309ecb169d0e2a5c19a062095118454ad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "221bcf65_a2ea2610",
+        "filename": "src/plugins/cnat/cnat_snat_policy.h",
+        "patchSetId": 36
+      },
+      "lineNbr": 96,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-05-11T12:49:46Z",
+      "side": 1,
+      "message": "I think we should remove any mention of usecases that are between () here in the comment",
+      "revId": "0e99f8e309ecb169d0e2a5c19a062095118454ad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
