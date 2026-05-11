@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "6f84b7a9_08b1d325",
+        "filename": "test/test_sfdp_l4_lifecycle.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 90,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-05-11T14:16:31Z",
+      "side": 1,
+      "message": "Good catch. We\u0027d send the signal to kill all sessions between tests, but did not actually verify if no session was present anymore after.",
+      "parentUuid": "8760b18c_89ca9db8",
+      "revId": "77cf893480c363c54181076ef22ac67d50dcdbee",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "35f83fb2_bddef3c2",
@@ -31,6 +49,24 @@
       "writtenOn": "2026-05-11T13:42:25Z",
       "side": 1,
       "message": "is this from initiator as this comment, or from responder as name/docstring implies?",
+      "revId": "77cf893480c363c54181076ef22ac67d50dcdbee",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b41cb789_05213058",
+        "filename": "test/test_sfdp_l4_lifecycle.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 345,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-05-11T14:16:31Z",
+      "side": 1,
+      "message": "Thanks. The comment is wrong, it is from responder as name/docstring implies.\n\nFYI the difference between initiator and responder in both respective tests is the MACs and src/dst IPs used for the RST packet (initiator IP is `self.pg0.remote_ip4` and responder IP is `self.pg1.remove_ip4`).",
+      "parentUuid": "35f83fb2_bddef3c2",
       "revId": "77cf893480c363c54181076ef22ac67d50dcdbee",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -52,6 +88,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "fe8ce556_bcdfd5a1",
+        "filename": "test/test_sfdp_l4_lifecycle.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 504,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-05-11T14:16:31Z",
+      "side": 1,
+      "message": "Ack, thanks.",
+      "parentUuid": "0d5ce2ac_a140d225",
+      "revId": "77cf893480c363c54181076ef22ac67d50dcdbee",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "25a722e4_fab5ffc2",
@@ -65,6 +119,24 @@
       "writtenOn": "2026-05-11T13:42:25Z",
       "side": 1,
       "message": "Looks like it is missing RST/FIN tests contrary to IPv4?",
+      "revId": "77cf893480c363c54181076ef22ac67d50dcdbee",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "dbcbfaa4_e50a2298",
+        "filename": "test/test_sfdp_l4_lifecycle.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 505,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-05-11T14:16:31Z",
+      "side": 1,
+      "message": "I thought I\u0027d omit those tests for IP6 as it would lead to more duplication, but more tests never hurt.\n\nAdded additional test cases for RST/FIN for IPv6.",
+      "parentUuid": "25a722e4_fab5ffc2",
       "revId": "77cf893480c363c54181076ef22ac67d50dcdbee",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
