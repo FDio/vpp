@@ -14,7 +14,7 @@ var (
 
 func init() {
 	RegisterTlsTests(TlsAlpMatchTest, TlsAlpnOverlapMatchTest, TlsAlpnServerPriorityMatchTest, TlsAlpnMismatchTest,
-		TlsAlpnEmptyServerListTest, TlsAlpnEmptyClientListTest, TlsCrlRejectThenAllowTest,
+		TlsAlpnEmptyServerListTest, TlsAlpnEmptyClientListTest, TlsCrlRejectThenAllowTest, DTlsCrlRejectThenAllowTest,
 		TlsPicotlsAlpnEmptyServerListTest, TlsPicotlsAlpnEmptyClientListTest)
 }
 
@@ -145,4 +145,40 @@ func tlsAlpnEmptyClientListTest(s *TlsSuite, engine tlsTestEngine) {
 	AssertNotContains(o, "timeout")
 	// no alpn negotiation
 	AssertContains(o, "ALPN selected: none")
+}
+
+func DTlsCrlRejectThenAllowTest(s *TlsSuite) {
+	serverVpp := s.Containers.ServerVpp.VppInstance
+	clientVpp := s.Containers.ClientVpp.VppInstance
+	serverAddress := s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1
+	a := s.CreateTlsCrlTestArtifacts("dtls")
+
+	Log(clientVpp.Vppctl("ping " + s.Interfaces.Server.Ip4AddressString() + " repeat 5"))
+
+	Log(serverVpp.Vppctl("test tls server cert " + a.ServerCert +
+		" key " + a.ServerKey +
+		" uri dtls://" + serverAddress))
+
+	uri := "dtls://" + serverAddress
+
+	o := clientVpp.Vppctl("test tls client verify peer ca-cert " + a.CaCert +
+		" crl " + a.Crl +
+		" uri " + uri)
+	Log(o)
+	AssertContains(o, "connect error failed tls handshake")
+
+	o = serverVpp.Vppctl("show test tls server")
+	Log(o)
+	AssertContains(o, "accepted connections 0")
+
+	o = clientVpp.Vppctl("test tls client verify peer ca-cert " + a.CaCert +
+		" uri " + uri)
+	Log(o)
+	AssertNotContains(o, "connect failed")
+	AssertNotContains(o, "timeout")
+	AssertNotContains(o, "failed tls handshake")
+
+	o = serverVpp.Vppctl("show test tls server")
+	Log(o)
+	AssertContains(o, "accepted connections 1")
 }
