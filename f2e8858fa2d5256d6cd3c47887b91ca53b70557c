@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "81d37535_a3a84fc6",
+        "filename": "src/plugins/rdma/device.c",
+        "patchSetId": 25
+      },
+      "lineNbr": 1048,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-05-11T15:56:34Z",
+      "side": 1,
+      "message": "Done.",
+      "parentUuid": "450daa8b_55695dbf",
+      "revId": "f2e8858fa2d5256d6cd3c47887b91ca53b70557c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "167702ec_a6f9b76f",
@@ -31,6 +49,24 @@
       "writtenOn": "2026-05-11T10:20:51Z",
       "side": 1,
       "message": "won\u0027t that break on regular (non-TSO) send?",
+      "revId": "f2e8858fa2d5256d6cd3c47887b91ca53b70557c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "35adce6e_6a11b670",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 25
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-05-11T15:56:34Z",
+      "side": 1,
+      "message": "No. RDMA_TXQ_INVALID_BUF (~0) is only ever written to extra WQEBBs of multi-WQEBB TSO WQEs — ring slots that do not own a buffer index. The non-TSO send_regular: path always stores a real bi[] value; vlib buffer indices are pool offsets that can never reach ~0. A clarifying comment has been added.",
+      "parentUuid": "167702ec_a6f9b76f",
       "revId": "f2e8858fa2d5256d6cd3c47887b91ca53b70557c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -52,6 +88,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "4cea2a86_2fb3fab1",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 25
+      },
+      "lineNbr": 83,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-05-11T15:56:34Z",
+      "side": 1,
+      "message": "No buffers are leaked. comp_tail is read from wqe-\u003ectrl.imm, which was written by the driver at WQE post time. If the bounds check fails, either the CQE wqe_counter or ctrl.imm is corrupted, so we cannot trust comp_tail to determine which range to free. Skipping the free and leaving txq-\u003ehead unchanged is intentional: those buffers will be reclaimed on the next valid completion that advances head past them. A comment now documents this reasoning.",
+      "parentUuid": "aed596fa_0a7fa7a4",
+      "revId": "f2e8858fa2d5256d6cd3c47887b91ca53b70557c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "a097a9ae_36eb433f",
@@ -65,6 +119,24 @@
       "writtenOn": "2026-05-11T10:20:51Z",
       "side": 1,
       "message": "isnt lkey already big-endian here?",
+      "revId": "f2e8858fa2d5256d6cd3c47887b91ca53b70557c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "021f1e86_061a5606",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 25
+      },
+      "lineNbr": 267,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-05-11T15:56:34Z",
+      "side": 1,
+      "message": "No. rdma_mlx5_wqe_init_tso() receives rd-\u003elkey in host-endian (see call site: rdma_mlx5_wqe_init_tso(..., rd-\u003elkey)) and the clib_host_to_net_u32() at line 267 is correct.\n\nThe confusion comes from the local variable also named lkey rdma_device_output_tx_mlx5_chained (line 290: const u32 lkey \u003d clib_host_to_net_u32(rd-\u003elkey); ), which *is* already big-endian. That variable has been renamed to lkey_be in this patchset to make the distinction explicit.",
+      "parentUuid": "a097a9ae_36eb433f",
       "revId": "f2e8858fa2d5256d6cd3c47887b91ca53b70557c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -86,6 +158,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "56793826_8d6c9052",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 25
+      },
+      "lineNbr": 304,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-05-11T15:56:34Z",
+      "side": 1,
+      "message": "Done. The chained TSO payload append logic has been extracted into a new static inline helper rdma_mlx5_tso_append_chain().",
+      "parentUuid": "4d150c96_5df63874",
+      "revId": "f2e8858fa2d5256d6cd3c47887b91ca53b70557c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "074f0f22_a8cb9d71",
@@ -99,6 +189,24 @@
       "writtenOn": "2026-05-11T10:20:51Z",
       "side": 1,
       "message": "do we leak buffers in this case?",
+      "revId": "f2e8858fa2d5256d6cd3c47887b91ca53b70557c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b14fe6c4_e39fa3a3",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 25
+      },
+      "lineNbr": 704,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-05-11T15:56:34Z",
+      "side": 1,
+      "message": "Yes, fixed. This is the IBV slow path where a packet chain exceeds the 64-entry SGE limit. n_posted is not incremented so the buffer never reaches rdma_device_output_free. Added vlib_buffer_free_one() on the head buffer before the break.",
+      "parentUuid": "074f0f22_a8cb9d71",
       "revId": "f2e8858fa2d5256d6cd3c47887b91ca53b70557c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
