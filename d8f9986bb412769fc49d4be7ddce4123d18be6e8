@@ -24,6 +24,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "08925a35_9478973c",
+        "filename": "src/plugins/hs_apps/proxy_lite.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 811,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-05-11T19:13:58Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9d6ae080_66126bb4",
+      "range": {
+        "startLine": 811,
+        "startChar": 40,
+        "endLine": 811,
+        "endChar": 53
+      },
+      "revId": "d8f9986bb412769fc49d4be7ddce4123d18be6e8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "14a6094f_9f5ded82",
@@ -37,6 +61,24 @@
       "writtenOn": "2026-05-11T10:07:37Z",
       "side": 1,
       "message": "maybe some macro/constant for offsets?",
+      "revId": "d8f9986bb412769fc49d4be7ddce4123d18be6e8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d9bd4124_7c8217f5",
+        "filename": "src/plugins/hsi/hsi_tracker.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 1410,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-05-11T19:13:58Z",
+      "side": 1,
+      "message": "Copied from existing parser, I think, so will have to cleanup both at one point ..",
+      "parentUuid": "14a6094f_9f5ded82",
       "revId": "d8f9986bb412769fc49d4be7ddce4123d18be6e8",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
