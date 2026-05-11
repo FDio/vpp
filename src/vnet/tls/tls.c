@@ -1287,6 +1287,9 @@ dtls_connect (transport_endpoint_cfg_t *tep)
   ctx->parent_app_api_context = sep->opaque;
   ctx->tcp_is_ip4 = sep->is_ip4;
   ctx->ckpair_index = ccfg->ckpair_index;
+  ctx->ca_trust_index = ccfg->ca_trust_index;
+  ctx->tls_profile_index = ccfg->tls_profile_index;
+  ctx->verify_cfg = ccfg->verify_cfg;
   ctx->crypto_owner_app_wrk_index = ccfg->owner_app_wrk_index != ENDPOINT_INVALID_INDEX ?
 				      ccfg->owner_app_wrk_index :
 				      sep->app_wrk_index;
