@@ -164,6 +164,9 @@ func (s *MasqueSuite) SetupTest(serverExtraArgs ...string) {
 
 func (s *MasqueSuite) TeardownTest() {
 	defer s.HstSuite.TeardownTest()
+	if s.Containers.VppClient.VppInstance == nil || s.Containers.VppServer.VppInstance == nil {
+		return
+	}
 	// delete route
 	_, ipNet, err := net.ParseCIDR(s.Interfaces.Server.Host.Ip4Address)
 	AssertNil(err)
