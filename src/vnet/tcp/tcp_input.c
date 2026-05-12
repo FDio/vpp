@@ -2875,6 +2875,13 @@ tcp_input_dispatch_buffer (tcp_main_t *tm, tcp_connection_t *tc, vlib_buffer_t *
   tcp_header_t *pth = tcp_buffer_hdr (pb);
   u32 popts_len = (tcp_doff (pth) << 2) - sizeof (tcp_header_t);
 
+  /* Pure ACK (no payload): never chain it, reset the GRO candidate. */
+  if (vnet_buffer (b)->tcp.data_len == 0)
+    {
+      tc->gro_b = 0;
+      return;
+    }
+
   if (vnet_buffer (pb)->tcp.seq_end != vnet_buffer (b)->tcp.seq_number ||
       vnet_buffer (pb)->tcp.ack_number != vnet_buffer (b)->tcp.ack_number ||
       (opts_len != popts_len ||
