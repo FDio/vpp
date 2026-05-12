@@ -1763,7 +1763,7 @@ tcp46_syn_sent_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	}
 
       /* Half-open completed or cancelled recently but the connection
-       * was't removed yet by the owning thread */
+       * wasn't removed yet by the owning thread */
       if (PREDICT_FALSE (tc->flags & TCP_CONN_HALF_OPEN_DONE))
 	{
 	  error = TCP_ERROR_SPURIOUS_SYN_ACK;
@@ -2821,13 +2821,271 @@ tcp_input_dispatch_buffer (tcp_main_t *tm, tcp_connection_t *tc, vlib_buffer_t *
     }
 }
 
+#define TCP_INPUT_GRO_MIN_PACKET_SIZE 256
+
+typedef struct
+{
+  ip4_header_t *ip4;
+  ip6_header_t *ip6;
+  tcp_header_t *tcp;
+  u32 fib_index;
+  u32 rx_sw_if_index;
+  u32 seq_number;
+  u32 seq_end;
+  u32 data_len;
+  u32 ip_len;
+  u16 hdr_len;
+  u16 tcp_opts_len;
+} tcp_input_gro_pkt_t;
+
+static_always_inline u8
+tcp_input_gro_parse_ip4 (vlib_buffer_t *b, tcp_input_gro_pkt_t *p)
+{
+  ip4_header_t *ip4;
+  tcp_header_t *tcp;
+  u32 ip_len, ip_hdr_bytes, tcp_hdr_bytes;
+  u8 tcp_flags;
+
+  if (PREDICT_FALSE ((b->flags & (VNET_BUFFER_F_GSO | VLIB_BUFFER_NEXT_PRESENT)) ||
+		     b->current_length <= TCP_INPUT_GRO_MIN_PACKET_SIZE))
+    return 0;
+
+  if (PREDICT_FALSE (b->current_length < sizeof (*ip4)))
+    return 0;
+
+  ip4 = vlib_buffer_get_current (b);
+  if (PREDICT_FALSE ((ip4->ip_version_and_header_length >> 4) != 4 ||
+		     ip4->protocol != IP_PROTOCOL_TCP || ip4_get_fragment_more (ip4) ||
+		     ip4_get_fragment_offset (ip4)))
+    return 0;
+
+  ip_hdr_bytes = ip4_header_bytes (ip4);
+  ip_len = clib_net_to_host_u16 (ip4->length);
+  if (PREDICT_FALSE (ip_hdr_bytes < sizeof (*ip4) || ip_len < ip_hdr_bytes + sizeof (*tcp) ||
+		     ip_len > b->current_length || ip_len >= TCP_MAX_GSO_SZ))
+    return 0;
+
+  tcp = ip4_next_header (ip4);
+  tcp_hdr_bytes = tcp_header_bytes (tcp);
+  if (PREDICT_FALSE (tcp_hdr_bytes < sizeof (*tcp) || ip_len < ip_hdr_bytes + tcp_hdr_bytes))
+    return 0;
+
+  tcp_flags = tcp->flags;
+  if (PREDICT_FALSE ((tcp_flags & TCP_FLAG_ACK) == 0 ||
+		     (tcp_flags & ~(TCP_FLAG_ACK | TCP_FLAG_PSH)) != 0))
+    return 0;
+
+  p->data_len = ip_len - ip_hdr_bytes - tcp_hdr_bytes;
+  if (PREDICT_FALSE (p->data_len == 0))
+    return 0;
+
+  if (PREDICT_FALSE (b->current_length > ip_len))
+    b->current_length = ip_len;
+
+  p->ip4 = ip4;
+  p->ip6 = 0;
+  p->tcp = tcp;
+  p->fib_index = vnet_buffer (b)->ip.fib_index;
+  p->rx_sw_if_index = vnet_buffer (b)->ip.rx_sw_if_index;
+  p->seq_number = clib_net_to_host_u32 (tcp->seq_number);
+  p->seq_end = p->seq_number + p->data_len;
+  p->ip_len = ip_len;
+  p->hdr_len = ip_hdr_bytes + tcp_hdr_bytes;
+  p->tcp_opts_len = tcp_hdr_bytes - sizeof (*tcp);
+
+  return 1;
+}
+
+static_always_inline u8
+tcp_input_gro_parse_ip6 (vlib_buffer_t *b, tcp_input_gro_pkt_t *p)
+{
+  ip6_header_t *ip6;
+  tcp_header_t *tcp;
+  u32 payload_len, ip_len, tcp_hdr_bytes;
+  u8 tcp_flags;
+
+  if (PREDICT_FALSE ((b->flags & (VNET_BUFFER_F_GSO | VLIB_BUFFER_NEXT_PRESENT)) ||
+		     b->current_length <= TCP_INPUT_GRO_MIN_PACKET_SIZE))
+    return 0;
+
+  if (PREDICT_FALSE (b->current_length < sizeof (*ip6)))
+    return 0;
+
+  ip6 = vlib_buffer_get_current (b);
+  if (PREDICT_FALSE ((clib_net_to_host_u32 (ip6->ip_version_traffic_class_and_flow_label) >> 28) !=
+		       6 ||
+		     ip6->protocol != IP_PROTOCOL_TCP))
+    return 0;
+
+  payload_len = clib_net_to_host_u16 (ip6->payload_length);
+  ip_len = sizeof (*ip6) + payload_len;
+  if (PREDICT_FALSE (payload_len < sizeof (*tcp) || ip_len > b->current_length ||
+		     ip_len >= TCP_MAX_GSO_SZ))
+    return 0;
+
+  tcp = ip6_next_header (ip6);
+  tcp_hdr_bytes = tcp_header_bytes (tcp);
+  if (PREDICT_FALSE (tcp_hdr_bytes < sizeof (*tcp) || payload_len < tcp_hdr_bytes))
+    return 0;
+
+  tcp_flags = tcp->flags;
+  if (PREDICT_FALSE ((tcp_flags & TCP_FLAG_ACK) == 0 ||
+		     (tcp_flags & ~(TCP_FLAG_ACK | TCP_FLAG_PSH)) != 0))
+    return 0;
+
+  p->data_len = payload_len - tcp_hdr_bytes;
+  if (PREDICT_FALSE (p->data_len == 0))
+    return 0;
+
+  if (PREDICT_FALSE (b->current_length > ip_len))
+    b->current_length = ip_len;
+
+  p->ip4 = 0;
+  p->ip6 = ip6;
+  p->tcp = tcp;
+  p->fib_index = vnet_buffer (b)->ip.fib_index;
+  p->rx_sw_if_index = vnet_buffer (b)->ip.rx_sw_if_index;
+  p->seq_number = clib_net_to_host_u32 (tcp->seq_number);
+  p->seq_end = p->seq_number + p->data_len;
+  p->ip_len = ip_len;
+  p->hdr_len = sizeof (*ip6) + tcp_hdr_bytes;
+  p->tcp_opts_len = tcp_hdr_bytes - sizeof (*tcp);
+
+  return 1;
+}
+
+static_always_inline u8
+tcp_input_gro_parse (vlib_buffer_t *b, tcp_input_gro_pkt_t *p, u8 is_ip4)
+{
+  return is_ip4 ? tcp_input_gro_parse_ip4 (b, p) : tcp_input_gro_parse_ip6 (b, p);
+}
+
+static_always_inline u8
+tcp_input_gro_match (tcp_input_gro_pkt_t *h, tcp_input_gro_pkt_t *p, u8 is_ip4)
+{
+  if (PREDICT_FALSE (h->fib_index != p->fib_index || h->rx_sw_if_index != p->rx_sw_if_index ||
+		     h->tcp->src_port != p->tcp->src_port || h->tcp->dst_port != p->tcp->dst_port ||
+		     h->tcp->ack_number != p->tcp->ack_number ||
+		     h->tcp_opts_len != p->tcp_opts_len || h->seq_end != p->seq_number ||
+		     h->hdr_len + h->data_len + p->data_len >= TCP_MAX_GSO_SZ))
+    return 0;
+
+  if (is_ip4)
+    {
+      if (PREDICT_FALSE (h->ip4->src_address.as_u32 != p->ip4->src_address.as_u32 ||
+			 h->ip4->dst_address.as_u32 != p->ip4->dst_address.as_u32 ||
+			 h->ip4->tos != p->ip4->tos || h->ip4->ttl != p->ip4->ttl ||
+			 h->ip4->flags_and_fragment_offset != p->ip4->flags_and_fragment_offset))
+	return 0;
+    }
+  else
+    {
+      if (PREDICT_FALSE (!ip6_address_is_equal (&h->ip6->src_address, &p->ip6->src_address) ||
+			 !ip6_address_is_equal (&h->ip6->dst_address, &p->ip6->dst_address) ||
+			 h->ip6->ip_version_traffic_class_and_flow_label !=
+			   p->ip6->ip_version_traffic_class_and_flow_label ||
+			 h->ip6->hop_limit != p->ip6->hop_limit))
+	return 0;
+    }
+
+  if (PREDICT_FALSE (h->tcp_opts_len && clib_memcmp ((const u8 *) (h->tcp + 1),
+						     (const u8 *) (p->tcp + 1), h->tcp_opts_len)))
+    return 0;
+
+  return 1;
+}
+
+static_always_inline void
+tcp_input_gro_merge (vlib_buffer_t *hb, vlib_buffer_t *tail, vlib_buffer_t *b, u32 bi,
+		     tcp_input_gro_pkt_t *h, tcp_input_gro_pkt_t *p)
+{
+  if (PREDICT_FALSE ((hb->flags & VLIB_BUFFER_NEXT_PRESENT) == 0))
+    hb->total_length_not_including_first_buffer = 0;
+
+  vlib_buffer_advance (b, p->hdr_len);
+  if (PREDICT_FALSE (b->current_length > p->data_len))
+    b->current_length = p->data_len;
+
+  tail->next_buffer = bi;
+  tail->flags |= VLIB_BUFFER_NEXT_PRESENT;
+  hb->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
+  hb->total_length_not_including_first_buffer += p->data_len;
+
+  h->data_len += p->data_len;
+  h->seq_end = p->seq_end;
+  h->ip_len = h->hdr_len + h->data_len;
+  h->tcp->flags |= p->tcp->flags;
+  h->tcp->window = p->tcp->window;
+}
+
+static_always_inline void
+tcp_input_gro_fixup (tcp_input_gro_pkt_t *h, u8 is_ip4)
+{
+  if (is_ip4)
+    {
+      h->ip4->length = clib_host_to_net_u16 (h->ip_len);
+      h->ip4->checksum = 0;
+      h->ip4->checksum = ip4_header_checksum (h->ip4);
+    }
+  else
+    {
+      h->ip6->payload_length = clib_host_to_net_u16 (h->ip_len - sizeof (*h->ip6));
+    }
+}
+
+static_always_inline u32
+tcp_input_gro_inline (vlib_main_t *vm, u32 *from, u32 n_from, u32 *to, u8 is_ip4)
+{
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE];
+  u32 i = 0, n_to = 0;
+
+  vlib_get_buffers (vm, from, bufs, n_from);
+
+  while (i < n_from)
+    {
+      tcp_input_gro_pkt_t head_pkt;
+      vlib_buffer_t *head_b, *tail;
+      u32 head = i, n_merged = 0;
+
+      i++;
+      head_b = bufs[head];
+      tail = head_b;
+
+      if (PREDICT_TRUE (tcp_input_gro_parse (head_b, &head_pkt, is_ip4)))
+	{
+	  while (i < n_from)
+	    {
+	      tcp_input_gro_pkt_t pkt;
+
+	      if (PREDICT_FALSE (!tcp_input_gro_parse (bufs[i], &pkt, is_ip4) ||
+				 !tcp_input_gro_match (&head_pkt, &pkt, is_ip4)))
+		break;
+
+	      tcp_input_gro_merge (head_b, tail, bufs[i], from[i], &head_pkt, &pkt);
+	      tail = bufs[i];
+	      n_merged++;
+	      i++;
+	    }
+
+	  if (PREDICT_FALSE (n_merged))
+	    tcp_input_gro_fixup (&head_pkt, is_ip4);
+	}
+
+      to[n_to++] = from[head];
+    }
+
+  return n_to;
+}
+
 always_inline uword
 tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		    vlib_frame_t * frame, int is_ip4, u8 is_nolookup)
 {
-  u32 n_left_from, *from, thread_index = vm->thread_index;
+  u32 n_left_from, n_vectors, *from, thread_index = vm->thread_index;
   tcp_main_t *tm = vnet_get_tcp_main ();
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
+  u32 n_input_vectors;
+  u32 gro_from[VLIB_FRAME_SIZE];
   u16 nexts[VLIB_FRAME_SIZE], *next;
   tcp_error_counters_t err_counters = { 0 };
 
@@ -2835,6 +3093,21 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
+
+  n_input_vectors = n_left_from;
+  if (PREDICT_FALSE (tcp_cfg.enable_tcp_input_gro && n_left_from > 1 &&
+		     (node->flags & VLIB_NODE_FLAG_TRACE) == 0))
+    {
+      u32 n_gro_input = n_left_from;
+
+      n_left_from = tcp_input_gro_inline (vm, from, n_left_from, gro_from, is_ip4);
+      if (PREDICT_FALSE (n_gro_input > n_left_from))
+	vlib_node_increment_counter (vm, node->node_index, TCP_ERROR_INPUT_GRO_COALESCED,
+				     n_gro_input - n_left_from);
+      from = gro_from;
+    }
+
+  n_vectors = n_left_from;
   vlib_get_buffers (vm, from, bufs, n_left_from);
 
   b = bufs;
@@ -2931,11 +3204,11 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
     }
 
   if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
-    tcp_input_trace_frame (vm, node, bufs, nexts, frame->n_vectors, is_ip4);
+    tcp_input_trace_frame (vm, node, bufs, nexts, n_vectors, is_ip4);
 
   tcp_store_err_counters (vm, &err_counters, node->node_index);
-  vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
-  return frame->n_vectors;
+  vlib_buffer_enqueue_to_next (vm, node, from, nexts, n_vectors);
+  return n_input_vectors;
 }
 
 VLIB_NODE_FN (tcp4_input_nolookup_node) (vlib_main_t * vm,
