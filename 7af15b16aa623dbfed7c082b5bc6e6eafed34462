@@ -1,0 +1,40 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e3ef5281_57f09d20",
+        "filename": "test/test_sfdp.py",
+        "patchSetId": 10
+      },
+      "lineNbr": 843,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-05-12T09:43:03Z",
+      "side": 1,
+      "message": "Done: replaced the single verbose test with a dedicated class TestSfdpLookupGuard containing three focused tests with short one-line descriptions.",
+      "parentUuid": "509c12ae_3db90d28",
+      "revId": "7af15b16aa623dbfed7c082b5bc6e6eafed34462",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d4135949_43dea024",
+        "filename": "test/test_sfdp.py",
+        "patchSetId": 10
+      },
+      "lineNbr": 864,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-05-12T09:43:03Z",
+      "side": 1,
+      "message": "Done: (1) removed the redundant TCP/UDP session-creation checks; (2) kept the ICMPv6 type\u003d200 out-of-range case (test_icmpv6_out_of_range_type_no_session); (3) added test_tcp4_slowpath_creates_session and test_tcp6_slowpath_creates_session which batch a TCP packet with an unknown-protocol packet (proto\u003d253) to force the slow-path code path.",
+      "parentUuid": "222b18a2_2f03b691",
+      "revId": "7af15b16aa623dbfed7c082b5bc6e6eafed34462",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
