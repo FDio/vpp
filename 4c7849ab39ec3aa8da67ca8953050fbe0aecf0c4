@@ -16,6 +16,24 @@
       "message": "can we verify that vcl_test_server is no in default namespace using \"show app\" cli command?",
       "revId": "4c7849ab39ec3aa8da67ca8953050fbe0aecf0c4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c997f359_144f5ef5",
+        "filename": "test/hs-test/app_namespace_test.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 3325
+      },
+      "writtenOn": "2026-05-12T14:09:17Z",
+      "side": 1,
+      "message": "Done. Added a check after vcl_test_server attaches which uses \"show app ns id default api-clients\".\n\nVerified with:\nmake test TEST\u003dAppNsVclEchoTcpTest\nmake test TEST\u003dAppNsVclEchoUdpTest",
+      "parentUuid": "5720016f_2d58fe5f",
+      "revId": "4c7849ab39ec3aa8da67ca8953050fbe0aecf0c4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
