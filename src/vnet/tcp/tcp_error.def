@@ -15,6 +15,7 @@
 tcp_error (NONE, none, INFO, "no error")
 tcp_error (WRONG_THREAD, wrong_thread, ERROR, "Wrong worker thread")
 tcp_error (FILTERED, filtered, INFO, "Packets filtered")
+tcp_error (INPUT_GRO_COALESCED, input_gro_coalesced, INFO, "Packets coalesced by TCP input GRO")
 tcp_error (LENGTH, length, ERROR, "inconsistent ip/tcp lengths")
 tcp_error (NO_LISTENER, no_listener, ERROR, "no listener for dst port")
 tcp_error (LOOKUP_DROPS, lookup_drops, ERROR, "lookup drops")
