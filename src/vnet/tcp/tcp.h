@@ -159,6 +159,9 @@ typedef struct tcp_configuration_
   /** Set if csum offloading is enabled */
   u8 csum_offload;
 
+  /** Enable opportunistic GRO at tcp-input */
+  u8 enable_tcp_input_gro;
+
   /** Default congestion control algorithm type */
   tcp_cc_algorithm_type_e cc_algo;
 
@@ -196,7 +199,7 @@ typedef struct tcp_configuration_
   /** Number of preallocated connections */
   u32 preallocated_connections;
 
-  /** Maxium allowed GSO packet size */
+  /** Maximum allowed GSO packet size */
   u32 max_gso_size;
 
   /** Vectors of src addresses. Optional unless one needs > 63K active-opens */
