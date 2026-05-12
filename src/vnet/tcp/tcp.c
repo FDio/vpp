@@ -1678,6 +1678,7 @@ tcp_configuration_init (void)
   tcp_cfg.enable_tx_pacing = 1;
   tcp_cfg.allow_tso = 0;
   tcp_cfg.csum_offload = 1;
+  tcp_cfg.enable_tcp_input_gro = 0;
   tcp_cfg.cc_algo = TCP_CC_CUBIC;
   tcp_cfg.rwnd_min_update_ack = 1;
   tcp_cfg.max_gso_size = TCP_MAX_GSO_SZ;
