@@ -22,7 +22,7 @@ STASH_SAVED=0
 # [KinD only] sets VPP's mtu. Only works if kind network is configured to use MTU=9000
 export CALICO_NETWORK_CONFIG=${CALICO_NETWORK_CONFIG:-"mtu: 9000"}
 # used for Calico images
-export TIGERA_VERSION="${TIGERA_VERSION:-"v3.31.0"}"
+export TIGERA_VERSION="${TIGERA_VERSION:-"v3.32.0"}"
 export KIND_CALICO_VERSION=$TIGERA_VERSION
 export TIGERA_OPERATOR_VERSION=$KIND_CALICO_VERSION
 export DOCKER_BUILD_PROXY=$HTTP_PROXY
@@ -76,10 +76,10 @@ help() {
     override the version with: BASE=[(remote or local branch) | (commit hash)], e.g. BASE=origin/master.
     To test changes made in the vpp-dataplane repo, use RESTORE_CV=false"
   echo "'rebuild-master-cluster' stops CalicoVPP pods, rebuilds VPP and restarts CalicoVPP pods. Cluster keeps running."
-  echo "'release-cluster' starts up a KinD cluster and uses latest CalicoVPP release (e.g. v3.29),
+  echo "'release-cluster' starts up a KinD cluster and uses latest CalicoVPP release (e.g. v3.32.0),
     or you can override versions by using env variables 'CALICOVPP_VERSION' and 'TIGERA_VERSION':
-    CALICOVPP_VERSION: latest | v[x].[y].[z] (default=latest)
-    TIGERA_VERSION:    master | v[x].[y].[z] (default="release-v3.31")"
+    CALICOVPP_VERSION: latest | v[x].[y].[z] (default="v3.32.0")
+    TIGERA_VERSION:    master | v[x].[y].[z] (default="v3.32.0")"
 
   echo -e "\nTo shut down the cluster, use 'kind delete cluster'"
 }
@@ -203,7 +203,7 @@ rebuild_master() {
 }
 
 setup_release() {
-  export CALICOVPP_VERSION="${CALICOVPP_VERSION:-"latest"}"
+  export CALICOVPP_VERSION="${CALICOVPP_VERSION:-"v3.32.0"}"
   echo "CALICOVPP_VERSION=$CALICOVPP_VERSION" > kubernetes/.vars
   envsubst < kubernetes/kind-calicovpp-config-template.yaml > kubernetes/kind-calicovpp-config.yaml
   echo "CALICOVPP_VERSION=$CALICOVPP_VERSION"
