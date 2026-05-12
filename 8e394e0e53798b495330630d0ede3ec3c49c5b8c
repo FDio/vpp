@@ -91,6 +91,42 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "d37e9b80_984a4629",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 8
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3312
+      },
+      "writtenOn": "2026-05-12T12:04:28Z",
+      "side": 1,
+      "message": "Hi Neale, it is a catch-call to receive/decap IPinIP traffic from any remote nodes, no need to used together with P2MP.",
+      "parentUuid": "04ca3c5e_edb5c5cf",
+      "revId": "8e394e0e53798b495330630d0ede3ec3c49c5b8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c7629e64_e4df20ca",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 8
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3312
+      },
+      "writtenOn": "2026-05-12T12:04:28Z",
+      "side": 1,
+      "message": "Yes, I\u0027ve added a logic in ipip_update_adj to check if it is mp2p tunnel, if so, drop the packets.",
+      "parentUuid": "16cb185f_9c9deb29",
+      "revId": "8e394e0e53798b495330630d0ede3ec3c49c5b8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "a598d93f_074b0bd5",
         "filename": "test/test_ipip.py",
         "patchSetId": 8
