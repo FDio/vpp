@@ -181,7 +181,10 @@ cryptodev_frame_linked_algs_enqueue_internal (vlib_main_t *vm,
 	    {
 	      status = cryptodev_session_create (vm, ctx, 0, md->icv_len);
 	      if (PREDICT_FALSE (status < 0))
-		goto error_exit;
+		{
+		  abort ();
+		  goto error_exit;
+		}
 	      key_sess = cryptodev_session_get (key, vm->numa_node, sess_op_type);
 	    }
 	  else if (ad->alg_type == VNET_CRYPTO_ALG_T_AUTH &&
@@ -191,7 +194,10 @@ cryptodev_frame_linked_algs_enqueue_internal (vlib_main_t *vm,
 	      cryptodev_sess_handler (vm, ctx);
 	      status = cryptodev_session_create (vm, ctx, 0, md->icv_len);
 	      if (PREDICT_FALSE (status < 0))
-		goto error_exit;
+		{
+		  abort ();
+		  goto error_exit;
+		}
 	      key_sess = cryptodev_session_get (key, vm->numa_node, sess_op_type);
 	    }
 
@@ -203,7 +209,10 @@ cryptodev_frame_linked_algs_enqueue_internal (vlib_main_t *vm,
 	    cet->cryptodev_id, cet->cryptodev_q, cet->ctx,
 	    RTE_CRYPTO_OP_WITH_SESSION, sess_ctx, is_update);
 	  if (PREDICT_FALSE (status < 0))
-	    goto error_exit;
+	    {
+	      abort ();
+	      goto error_exit;
+	    }
 
 	  last_key_index = key_index;
 	  is_update = 1;
@@ -237,13 +246,19 @@ cryptodev_frame_linked_algs_enqueue_internal (vlib_main_t *vm,
 				 max_end - min_ofs);
 	  if (cryptodev_frame_build_sgl (vm, cmt->iova_mode, vec, &n_seg, b[0],
 					 max_end - min_ofs - vec->len) < 0)
-	    goto error_exit;
+	    {
+	      abort ();
+	      goto error_exit;
+	    }
 	}
 
       status = rte_cryptodev_raw_enqueue (cet->ctx, vec, n_seg, cofs, &iv_vec,
 					  &digest_vec, 0, (void *) frame);
       if (PREDICT_FALSE (status < 0))
-	goto error_exit;
+	{
+	  abort ();
+	  goto error_exit;
+	}
 
       ring->frames[*enq].enq_elts_head += 1;
       b++;
@@ -253,7 +268,10 @@ cryptodev_frame_linked_algs_enqueue_internal (vlib_main_t *vm,
 
   status = rte_cryptodev_raw_enqueue_done (cet->ctx, max_to_enq);
   if (PREDICT_FALSE (status < 0))
-    goto error_exit;
+    {
+      abort ();
+      goto error_exit;
+    }
 
   cet->inflight += max_to_enq;
   cryptodev_cache_ring_update_enq_head (ring, frame);
@@ -355,7 +373,10 @@ cryptodev_raw_aead_enqueue_internal (vlib_main_t *vm,
 	    {
 	      status = cryptodev_session_create (vm, ctx, aad_len, md->icv_len);
 	      if (PREDICT_FALSE (status < 0))
-		goto error_exit;
+		{
+		  abort ();
+		  goto error_exit;
+		}
 	    }
 
 	  if (!is_gmac &&
@@ -365,7 +386,10 @@ cryptodev_raw_aead_enqueue_internal (vlib_main_t *vm,
 	      cryptodev_sess_handler (vm, ctx);
 	      status = cryptodev_session_create (vm, ctx, aad_len, md->icv_len);
 	      if (PREDICT_FALSE (status < 0))
-		goto error_exit;
+		{
+		  abort ();
+		  goto error_exit;
+		}
 	    }
 
 	  /* Keep a valid session for ctx reset on the local error path. */
@@ -376,7 +400,10 @@ cryptodev_raw_aead_enqueue_internal (vlib_main_t *vm,
 	    cet->cryptodev_id, cet->cryptodev_q, cet->ctx,
 	    RTE_CRYPTO_OP_WITH_SESSION, sess_ctx, is_update);
 	  if (PREDICT_FALSE (status < 0))
-	    goto error_exit;
+	    {
+	      abort ();
+	      goto error_exit;
+	    }
 
 	  last_key_index = key_index;
 	  is_update = 1;
@@ -439,7 +466,10 @@ cryptodev_raw_aead_enqueue_internal (vlib_main_t *vm,
 	      u32 len;
 
 	      if (n_seg >= CRYPTODEV_MAX_N_SGL)
-		goto error_exit;
+		{
+		  abort ();
+		  goto error_exit;
+		}
 
 	      lb = vlib_get_buffer (vm, lb->next_buffer);
 	      len = clib_min (lb->current_length, size);
@@ -455,7 +485,10 @@ cryptodev_raw_aead_enqueue_internal (vlib_main_t *vm,
 	    }
 
 	  if (size)
-	    goto error_exit;
+	    {
+	      abort ();
+	      goto error_exit;
+	    }
 	}
       else if (PREDICT_FALSE (md->cipher_data_len == 0))
 	{
@@ -482,7 +515,10 @@ cryptodev_raw_aead_enqueue_internal (vlib_main_t *vm,
 	  status = cryptodev_frame_build_sgl (vm, cmt->iova_mode, vec, &n_seg, b[0],
 					      md->cipher_data_len - vec[0].len);
 	  if (status < 0)
-	    goto error_exit;
+	    {
+	      abort ();
+	      goto error_exit;
+	    }
 	}
       else
 	{
@@ -498,7 +534,10 @@ cryptodev_raw_aead_enqueue_internal (vlib_main_t *vm,
 	rte_cryptodev_raw_enqueue (cet->ctx, vec, n_seg, cofs, is_gmac ? 0 : &iv_vec, &digest_vec,
 				   is_gmac ? &iv_vec : &aad_vec, (void *) frame);
       if (PREDICT_FALSE (status < 0))
-	goto error_exit;
+	{
+	  abort ();
+	  goto error_exit;
+	}
 
       ring->frames[*enq].enq_elts_head += 1;
       ctxs++;
@@ -508,7 +547,10 @@ cryptodev_raw_aead_enqueue_internal (vlib_main_t *vm,
 
   status = rte_cryptodev_raw_enqueue_done (cet->ctx, max_to_enq);
   if (PREDICT_FALSE (status < 0))
-    goto error_exit;
+    {
+      abort ();
+      goto error_exit;
+    }
 
   cet->inflight += max_to_enq;
   cryptodev_cache_ring_update_enq_head (ring, frame);

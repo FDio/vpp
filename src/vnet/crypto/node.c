@@ -123,6 +123,7 @@ crypto_dispatch_frame (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_crypto_t
 	      ct->nexts[i + n_cache] = CRYPTO_DISPATCH_NEXT_ERR_DROP;
 	      vlib_node_increment_counter (vm, node->node_index,
 					   VNET_CRYPTO_ASYNC_ERROR_FAIL_ENGINE_ERR, 1);
+	      abort ();
 	    }
 	  else if (uword_bitmap_is_bit_set (cf->bad_hmac_bitmap, i))
 	    {
@@ -150,7 +151,10 @@ crypto_dispatch_frame (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_crypto_t
 	  u8 status = VNET_CRYPTO_OP_STATUS_COMPLETED;
 	  vlib_buffer_t *b = vlib_get_buffer (vm, cf->buffer_indices[i]);
 	  if (uword_bitmap_is_bit_set (cf->engine_error_bitmap, i))
-	    status = VNET_CRYPTO_OP_STATUS_FAIL_ENGINE_ERR;
+	    {
+	      status = VNET_CRYPTO_OP_STATUS_FAIL_ENGINE_ERR;
+	      abort ();
+	    }
 	  else if (uword_bitmap_is_bit_set (cf->bad_hmac_bitmap, i))
 	    status = VNET_CRYPTO_OP_STATUS_FAIL_BAD_HMAC;
 	  if (b->flags & VLIB_BUFFER_IS_TRACED)
@@ -298,7 +302,10 @@ VLIB_NODE_FN (crypto_enq_node)
 
       engine = vnet_crypto_ctx_get_engine (f->ctxs[0], VNET_CRYPTO_HANDLER_TYPE_ASYNC);
       if (engine == VNET_CRYPTO_ENGINE_ID_NONE)
-	engine = cm->active_op_engine_index[f->alg][f->type][VNET_CRYPTO_HANDLER_TYPE_ASYNC];
+	{
+	  engine = cm->active_op_engine_index[f->alg][f->type][VNET_CRYPTO_HANDLER_TYPE_ASYNC];
+	  abort ();
+	}
       if (engine != VNET_CRYPTO_ENGINE_ID_NONE)
 	{
 	  vnet_crypto_engine_t *e = vec_elt_at_index (cm->engines, engine);
@@ -317,6 +324,7 @@ VLIB_NODE_FN (crypto_enq_node)
 	  vnet_crypto_async_complete_frame (vm, f);
 	  vlib_node_set_interrupt_pending (vm, cm->crypto_node_index);
 	  ret = -1;
+	  abort ();
 	}
       else
 	{
@@ -339,8 +347,11 @@ VLIB_NODE_FN (crypto_enq_node)
 	}
 
       if (ret < 0)
-	vlib_node_increment_counter (vm, node->node_index, VNET_CRYPTO_ASYNC_ERROR_FAIL_ENGINE_ERR,
-				     f->n_elts);
+	{
+	  vlib_node_increment_counter (vm, node->node_index,
+				       VNET_CRYPTO_ASYNC_ERROR_FAIL_ENGINE_ERR, f->n_elts);
+	  abort ();
+	}
     }
 
   return frame->n_vectors;

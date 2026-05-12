@@ -515,6 +515,7 @@ vlib_crypto_async_frame_set_engine_error (vnet_crypto_async_frame_t *f, u32 elt_
 {
   uword_bitmap_set_bits_at_index (f->engine_error_bitmap, elt_index, 1);
   ;
+  abort ();
 }
 
 typedef struct
