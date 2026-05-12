@@ -863,6 +863,7 @@ format_tcp_cfg (u8 *s, va_list *args)
   s = format (s, "tso: %s\n", tm_cfg.allow_tso ? "allowed" : "disallowed");
   s = format (s, "checksum offload: %s\n",
 	      tm_cfg.csum_offload ? "enabled" : "disabled");
+  s = format (s, "tcp input gro: %s\n", tm_cfg.enable_tcp_input_gro ? "enabled" : "disabled");
   s = format (s, "congestion control algorithm: %s\n",
 	      tcp_cc_algo_get (tm_cfg.cc_algo)->name);
   s = format (s, "min rwnd update ack: %u\n", tm_cfg.rwnd_min_update_ack);
@@ -912,6 +913,28 @@ VLIB_CLI_COMMAND (show_tcp_cfg_command, static) = {
   .path = "show tcp config",
   .short_help = "show tcp config",
   .function = show_tcp_cfg_fn,
+};
+
+static clib_error_t *
+set_tcp_input_gro_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
+{
+  if (unformat (input, "on") || unformat (input, "enable"))
+    tcp_cfg.enable_tcp_input_gro = 1;
+  else if (unformat (input, "off") || unformat (input, "disable"))
+    tcp_cfg.enable_tcp_input_gro = 0;
+  else
+    return clib_error_return (0, "expected on|off");
+
+  if (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    return clib_error_return (0, "unknown input `%U'", format_unformat_error, input);
+
+  return 0;
+}
+
+VLIB_CLI_COMMAND (set_tcp_input_gro_command, static) = {
+  .path = "set tcp input-gro",
+  .short_help = "set tcp input-gro on|off",
+  .function = set_tcp_input_gro_fn,
 };
 
 static clib_error_t *
@@ -1075,6 +1098,10 @@ tcp_config_fn (vlib_main_t * vm, unformat_input_t * input)
 	tcp_cfg.allow_tso = 1;
       else if (unformat (input, "no-csum-offload"))
 	tcp_cfg.csum_offload = 0;
+      else if (unformat (input, "input-gro"))
+	tcp_cfg.enable_tcp_input_gro = 1;
+      else if (unformat (input, "no-input-gro"))
+	tcp_cfg.enable_tcp_input_gro = 0;
       else if (unformat (input, "max-gso-size %u", &max_gso_size))
 	tcp_cfg.max_gso_size = clib_min (max_gso_size, TCP_MAX_GSO_SZ);
       else if (unformat (input, "cc-algo %U", unformat_tcp_cc_algo,
