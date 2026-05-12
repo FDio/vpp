@@ -34,6 +34,24 @@
       "parentUuid": "5720016f_2d58fe5f",
       "revId": "4c7849ab39ec3aa8da67ca8953050fbe0aecf0c4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2809457b_72f087c9",
+        "filename": "test/hs-test/app_namespace_test.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-05-12T16:37:23Z",
+      "side": 1,
+      "message": "\"show app ns id default api-clients\" do not display app name only index\ne.g. when vcl server is in default namespace\nvpp# show app ns id default api-clients\nsocket: /run/vpp/app_ns_sockets/default\n   app index   wrk index   fd\n          -1          -1   36\n           3           0   33\nvpp# show app ns id default\nApplication namespace [0]\nid:        default\nsecret:    0\nSocket:    /run/vpp/app_ns_sockets/default\nListener                      Application\n[T] 0.0.0.0:22000             vcl_test_server\n[T] 0.0.0.0:22001             vcl_test_server",
+      "parentUuid": "c997f359_144f5ef5",
+      "revId": "4c7849ab39ec3aa8da67ca8953050fbe0aecf0c4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
