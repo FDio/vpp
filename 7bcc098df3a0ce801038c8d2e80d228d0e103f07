@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "48f82f70_1fb94265",
+        "filename": "test/hs-test/proxy_test.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 1347,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-05-12T16:22:54Z",
+      "side": 1,
+      "message": "can we send data from server to client after it read all to be sure tunnel is only half-closed? because there is bug in h2 https://gerrit.fd.io/r/c/vpp/+/45774 and test do not catch it always (you need to run it with REPEAT\u003d10)",
+      "revId": "7bcc098df3a0ce801038c8d2e80d228d0e103f07",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
