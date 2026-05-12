@@ -1,0 +1,27 @@
+---
+volumes:
+  - volume: &vpp1-vol
+      host-dir: "$HST_VOLUME_DIR/vpp1"
+  - volume: &vpp2-vol
+      host-dir: "$HST_VOLUME_DIR/vpp2"
+  - volume: &vpp3-vol
+      host-dir: "$HST_VOLUME_DIR/vpp3"
+
+containers:
+  - name: "vpp1"
+    volumes:
+      - <<: *vpp1-vol
+        container-dir: "/tmp/vpp"
+        is-default-work-dir: true
+
+  - name: "vpp2"
+    volumes:
+      - <<: *vpp2-vol
+        container-dir: "/tmp/vpp"
+        is-default-work-dir: true
+
+  - name: "vpp3"
+    volumes:
+      - <<: *vpp3-vol
+        container-dir: "/tmp/vpp"
+        is-default-work-dir: true

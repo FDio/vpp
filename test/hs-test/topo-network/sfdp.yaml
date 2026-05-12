@@ -1,0 +1,81 @@
+---
+# Three-VPP service chain topology:
+#
+#  netns "cln"   VPP1           VPP2           VPP3    netns "srv"
+#  10.x.1.1 --+-- 10.x.1.2   10.x.3.1 -- 10.x.3.2   10.x.4.1 -- 10.x.4.2
+#                             10.x.4.1 -- 10.x.4.2   10.x.2.2 --+-- 10.x.2.1
+#
+# hclnvpp1:  client-netns <--> VPP1 (network 1)
+# hv1v2:     VPP1 side of hop-1 inter-VPP link (network 3)
+# hv2v1:     VPP2 side of hop-1 inter-VPP link (network 3)
+# hv2v3:     VPP2 side of hop-2 inter-VPP link (network 4)
+# hv3v2:     VPP3 side of hop-2 inter-VPP link (network 4)
+# hsrvvpp3:  VPP3 <--> server-netns (network 2)
+#
+# Netem can be applied independently on hv1v2 (hop 1) or hv2v3 (hop 2).
+extra-config:
+  - configured-by-host: true
+devices:
+  - name: "cln"
+    type: "netns"
+
+  - name: "srv"
+    type: "netns"
+
+  - name: "hclnvpp1"
+    type: "veth"
+    host:
+      name: "cln"
+      netns: "cln"
+      ip4:
+        network: 1
+
+  - name: "hv1v2"
+    type: "veth"
+    host:
+      name: "vpp1side"
+      ip4:
+        network: 3
+
+  - name: "hv2v1"
+    type: "veth"
+    host:
+      name: "vpp2sidea"
+      ip4:
+        network: 3
+
+  - name: "hv2v3"
+    type: "veth"
+    host:
+      name: "vpp2sideb"
+      ip4:
+        network: 4
+
+  - name: "hv3v2"
+    type: "veth"
+    host:
+      name: "vpp3side"
+      ip4:
+        network: 4
+
+  - name: "hsrvvpp3"
+    type: "veth"
+    host:
+      name: "srv"
+      netns: "srv"
+      ip4:
+        network: 2
+
+  # Bridge connecting VPP1's vpp1side <--> VPP2's vpp2sidea (hop-1)
+  - name: "brhop1"
+    type: "bridge"
+    interfaces:
+      - vpp1side
+      - vpp2sidea
+
+  # Bridge connecting VPP2's vpp2sideb <--> VPP3's vpp3side (hop-2)
+  - name: "brhop2"
+    type: "bridge"
+    interfaces:
+      - vpp2sideb
+      - vpp3side
