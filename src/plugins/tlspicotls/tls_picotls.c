@@ -8,6 +8,37 @@ picotls_main_t picotls_main;
 
 #define MAX_QUEUE 12000
 #define PTLS_MAX_PLAINTEXT_RECORD_SIZE 16384
+#define PTLS_MAX_ENCRYPTED_RECORD_SIZE	     (PTLS_MAX_PLAINTEXT_RECORD_SIZE + 256)
+#define PTLS_INVALID_RECORD_LEN		     ((u32) ~0)
+#define PTLS_NEED_RECORD_DATA		     ((u32) ~1)
+#define PTLS_TLS_RECORD_HEADER_SIZE	     5
+#define PTLS_TLS_RECORD_TYPE_OFFSET	     0
+#define PTLS_TLS_RECORD_VERSION_MAJOR_OFFSET 1
+#define PTLS_TLS_RECORD_VERSION_MINOR_OFFSET 2
+#define PTLS_TLS_RECORD_LENGTH_HIGH_OFFSET   3
+#define PTLS_TLS_RECORD_LENGTH_LOW_OFFSET    4
+#define PTLS_TLS_RECORD_TYPE_MIN	     20
+#define PTLS_TLS_RECORD_TYPE_MAX	     23
+#define PTLS_TLS_RECORD_VERSION_MAJOR	     0x03
+/*
+ * TLS record header, RFC 8446 section 5.1:
+ *
+ *   byte:  0        1        2        3        4
+ *         +--------+--------+--------+--------+--------+
+ *         |        | legacy | leagcy |        |        |
+ *         |        | record | record |        |        |
+ *         | type   | version| version| length | length |
+ *         |        | major  | minor  | high   | low    |
+ *         +--------+--------+--------+--------+--------+
+ *
+ * length is a 16-bit network-order field that covers the encrypted record
+ * payload only; the full record is 5 + length bytes.
+ */
+#define PTLS_TLS_RECORD_INVALID(h, l)                                                              \
+  ((h)[PTLS_TLS_RECORD_TYPE_OFFSET] < PTLS_TLS_RECORD_TYPE_MIN ||                                  \
+   (h)[PTLS_TLS_RECORD_TYPE_OFFSET] > PTLS_TLS_RECORD_TYPE_MAX ||                                  \
+   (h)[PTLS_TLS_RECORD_VERSION_MAJOR_OFFSET] != PTLS_TLS_RECORD_VERSION_MAJOR ||                   \
+   (l) > PTLS_MAX_ENCRYPTED_RECORD_SIZE)
 
 static ptls_key_exchange_algorithm_t *default_key_exchange[] = {
 #ifdef PTLS_OPENSSL_HAVE_X25519
@@ -273,6 +304,9 @@ picotls_do_handshake (picotls_ctx_t *ptls_ctx, session_t *tcp_session)
       if (!rv)
 	break;
 
+      if (PREDICT_FALSE (!deq_now))
+	break;
+
       if (deq_now < fs[i].len)
 	{
 	  fs[i].data += deq_now;
@@ -323,19 +357,88 @@ ptls_copy_buf_to_fs (ptls_buffer_t *buf, u32 to_copy, svm_fifo_seg_t *fs,
   return to_copy;
 }
 
-static u32
-ptls_tcp_to_app_write (picotls_ctx_t *ptls_ctx, svm_fifo_t *app_rx_fifo,
-		       svm_fifo_t *tcp_rx_fifo)
+static inline void
+ptls_copy_fs_data (u8 *dst, svm_fifo_seg_t *fs, u32 fs_idx, u32 max_fs, u32 len)
+{
+  u32 to_copy;
+
+  while (len && fs_idx < max_fs)
+    {
+      to_copy = clib_min (fs[fs_idx].len, len);
+      clib_memcpy_fast (dst, fs[fs_idx].data, to_copy);
+      dst += to_copy;
+      len -= to_copy;
+      fs_idx++;
+    }
+
+  ASSERT (len == 0);
+}
+
+static inline u32
+ptls_tcp_rx_record_len (svm_fifo_seg_t *fs, u32 fs_idx, u32 max_fs, u32 avail)
+{
+  u32 len, rec_len;
+  u8 hdr[PTLS_TLS_RECORD_HEADER_SIZE], *p;
+
+  if (avail < sizeof (hdr))
+    return PTLS_NEED_RECORD_DATA;
+
+  if (fs[fs_idx].len >= sizeof (hdr))
+    p = fs[fs_idx].data;
+  else
+    {
+      ptls_copy_fs_data (hdr, fs, fs_idx, max_fs, sizeof (hdr));
+      p = hdr;
+    }
+
+  len = ((u32) p[PTLS_TLS_RECORD_LENGTH_HIGH_OFFSET] << 8) + p[PTLS_TLS_RECORD_LENGTH_LOW_OFFSET];
+  if (PREDICT_FALSE (PTLS_TLS_RECORD_INVALID (p, len)))
+    {
+      TLS_DBG (1, "invalid tls record type %u version 0x%02x%02x len %u",
+	       p[PTLS_TLS_RECORD_TYPE_OFFSET], p[PTLS_TLS_RECORD_VERSION_MAJOR_OFFSET],
+	       p[PTLS_TLS_RECORD_VERSION_MINOR_OFFSET], len);
+      return PTLS_INVALID_RECORD_LEN;
+    }
+
+  rec_len = sizeof (hdr) + len;
+  if (PREDICT_FALSE (rec_len > avail))
+    return PTLS_NEED_RECORD_DATA;
+
+  return rec_len;
+}
+
+static inline void
+ptls_tcp_rx_advance_fs (svm_fifo_seg_t *fs, u32 *fs_idx, u32 max_fs, u32 len)
+{
+  u32 idx = *fs_idx, advance;
+
+  while (len && idx < max_fs)
+    {
+      advance = clib_min (fs[idx].len, len);
+      fs[idx].data += advance;
+      fs[idx].len -= advance;
+      len -= advance;
+      if (!fs[idx].len)
+	idx++;
+    }
+
+  *fs_idx = idx;
+}
+
+static int
+ptls_tcp_to_app_write (picotls_ctx_t *ptls_ctx, svm_fifo_t *app_rx_fifo, svm_fifo_t *tcp_rx_fifo,
+		       u8 *rx_blocked)
 {
   u32 ai = 0, thread_index, min_buf_len, to_copy, left, wrote = 0;
   ptls_buffer_t *buf = &ptls_ctx->read_buffer;
-  int ret, i = 0, read = 0, tcp_len, n_fs_app;
-  u32 n_segs = 4, max_len = 1 << 16;
+  int ret, read = 0, tcp_len, n_fs_app;
+  u32 i = 0, n_segs = 4, max_len = 1 << 16, rec_len;
   svm_fifo_seg_t tcp_fs[n_segs], app_fs[n_segs];
   picotls_main_t *pm = &picotls_main;
   uword deq_now;
-  u8 is_nocopy;
+  u8 is_nocopy, *input;
 
+  *rx_blocked = 0;
   thread_index = ptls_ctx->ctx.c_thread_index;
 
   n_fs_app = svm_fifo_provision_chunks (app_rx_fifo, app_fs, n_segs, max_len);
@@ -361,14 +464,45 @@ ptls_tcp_to_app_write (picotls_ctx_t *ptls_ctx, svm_fifo_t *app_rx_fifo,
 
   while (ai < n_fs_app && read < tcp_len)
     {
-      deq_now = clib_min (tcp_fs[i].len, tcp_len - read);
+      rec_len = ptls_tcp_rx_record_len (tcp_fs, i, n_segs, tcp_len - read);
+      if (PREDICT_FALSE (rec_len == PTLS_INVALID_RECORD_LEN))
+	return -1;
+
+      if (PREDICT_FALSE (rec_len == PTLS_NEED_RECORD_DATA))
+	{
+	  *rx_blocked = 1;
+	  break;
+	}
+
+      /* ptls_receive() consumes one complete encrypted TLS record from a
+       * contiguous input buffer. The TCP fifo may expose that record as
+       * one segment, or split it across fifo chunks. Use the fifo segment
+       * directly when possible; otherwise assemble just this record into
+       * per-thread scratch space before handing it to picotls. */
+      if (tcp_fs[i].len >= rec_len)
+	input = tcp_fs[i].data;
+      else
+	{
+	  /* rx_bufs is used below as the plaintext output buffer. Reuse
+	   * tx_bufs here for the temporary encrypted input record. */
+	  vec_validate (pm->tx_bufs[thread_index], rec_len - 1);
+	  input = pm->tx_bufs[thread_index];
+	  ptls_copy_fs_data (input, tcp_fs, i, n_segs, rec_len);
+	}
+
+      deq_now = rec_len;
       min_buf_len = deq_now + (16 << 10);
       is_nocopy = app_fs[ai].len < min_buf_len ? 0 : 1;
       if (is_nocopy)
 	{
 	  ptls_buffer_init (buf, app_fs[ai].data, app_fs[ai].len);
-	  ret = ptls_receive (ptls_ctx->tls, buf, tcp_fs[i].data, &deq_now);
+	  ret = ptls_receive (ptls_ctx->tls, buf, input, &deq_now);
 	  assert (ret == 0 || ret == PTLS_ERROR_IN_PROGRESS);
+
+	  /* A full TLS record was supplied, so zero input consumption means
+	   * picotls made no progress. Waiting for more TCP data would stall. */
+	  if (PREDICT_FALSE (!deq_now))
+	    return -1;
 
 	  wrote += buf->off;
 	  if (buf->off == app_fs[ai].len)
@@ -385,8 +519,13 @@ ptls_tcp_to_app_write (picotls_ctx_t *ptls_ctx, svm_fifo_t *app_rx_fifo,
 	{
 	  vec_validate (pm->rx_bufs[thread_index], min_buf_len);
 	  ptls_buffer_init (buf, pm->rx_bufs[thread_index], min_buf_len);
-	  ret = ptls_receive (ptls_ctx->tls, buf, tcp_fs[i].data, &deq_now);
+	  ret = ptls_receive (ptls_ctx->tls, buf, input, &deq_now);
 	  assert (ret == 0 || ret == PTLS_ERROR_IN_PROGRESS);
+
+	  /* A full TLS record was supplied, so zero input consumption means
+	   * picotls made no progress. Waiting for more TCP data would stall. */
+	  if (PREDICT_FALSE (!deq_now))
+	    return -1;
 
 	  left = ptls_copy_buf_to_fs (buf, buf->off, app_fs, &ai, n_fs_app);
 	  if (!left)
@@ -401,15 +540,8 @@ ptls_tcp_to_app_write (picotls_ctx_t *ptls_ctx, svm_fifo_t *app_rx_fifo,
 	    }
 	}
 
-      assert (deq_now <= tcp_fs[i].len);
       read += deq_now;
-      if (deq_now < tcp_fs[i].len)
-	{
-	  tcp_fs[i].data += deq_now;
-	  tcp_fs[i].len -= deq_now;
-	}
-      else
-	i++;
+      ptls_tcp_rx_advance_fs (tcp_fs, &i, n_segs, deq_now);
     }
 
 do_checks:
@@ -437,6 +569,7 @@ picotls_ctx_read (tls_ctx_t *ctx, session_t *tcp_session)
   picotls_ctx_t *ptls_ctx = (picotls_ctx_t *) ctx;
   svm_fifo_t *tcp_rx_fifo;
   session_t *app_session;
+  u8 rx_blocked;
   int wrote;
 
   if (PREDICT_FALSE (!ptls_handshake_is_complete (ptls_ctx->tls)))
@@ -481,12 +614,17 @@ picotls_ctx_read (tls_ctx_t *ctx, session_t *tcp_session)
 
   tcp_rx_fifo = tcp_session->rx_fifo;
   app_session = session_get_from_handle (ctx->app_session_handle);
-  wrote = ptls_tcp_to_app_write (ptls_ctx, app_session->rx_fifo, tcp_rx_fifo);
+  wrote = ptls_tcp_to_app_write (ptls_ctx, app_session->rx_fifo, tcp_rx_fifo, &rx_blocked);
+  if (PREDICT_FALSE (wrote < 0))
+    {
+      tls_disconnect_transport (ctx);
+      return -1;
+    }
 
   if (wrote)
     tls_notify_app_enqueue (ctx, app_session);
 
-  if (ptls_ctx->read_buffer_offset || svm_fifo_max_dequeue (tcp_rx_fifo))
+  if (ptls_ctx->read_buffer_offset || (!rx_blocked && svm_fifo_max_dequeue (tcp_rx_fifo)))
     tls_add_vpp_q_builtin_rx_evt (tcp_session);
 
   return wrote;
@@ -558,8 +696,8 @@ ptls_app_to_tcp_write (picotls_ctx_t *ptls_ctx, session_t *app_session,
       if (app_fs[i].len < min_chunk && min_chunk < left)
 	{
 	  app_buf_len = app_fs[i].len + app_fs[i + 1].len;
-	  app_buf = pm->rx_bufs[thread_index];
 	  vec_validate (pm->rx_bufs[thread_index], app_buf_len);
+	  app_buf = pm->rx_bufs[thread_index];
 	  clib_memcpy_fast (pm->rx_bufs[thread_index], app_fs[i].data,
 			    app_fs[i].len);
 	  clib_memcpy_fast (pm->rx_bufs[thread_index] + app_fs[i].len,
@@ -582,16 +720,35 @@ ptls_app_to_tcp_write (picotls_ctx_t *ptls_ctx, session_t *app_session,
 				      max_enq, &is_nocopy);
       if (is_nocopy)
 	{
+	  /* Try to have picotls encrypt directly into the TCP fifo chunk. Save
+	   * the original base so we can detect if picotls had to grow the
+	   * ptls_buffer_t and moved the ciphertext elsewhere. */
+	  u8 *tcp_buf = tcp_fs[ti].data;
+
 	  ptls_buffer_init (buf, tcp_fs[ti].data, tcp_fs[ti].len);
 	  rv = ptls_send (ptls_ctx->tls, buf, app_buf, deq_len);
 
 	  assert (rv == 0);
 	  wrote += buf->off;
 
-	  tcp_fs[ti].len -= buf->off;
-	  tcp_fs[ti].data += buf->off;
-	  if (!tcp_fs[ti].len)
-	    ti += 1;
+	  if (PREDICT_FALSE (buf->base != tcp_buf))
+	    {
+	      /* The zero-copy attempt fell back to a picotls allocation, for
+	       * example when the provided TCP fifo chunk is exactly full. Copy
+	       * the encrypted record back to the fifo segments and release the
+	       * temporary buffer. */
+	      ASSERT (buf->is_allocated);
+	      left = ptls_copy_buf_to_fs (buf, buf->off, tcp_fs, &ti, n_tcp_segs);
+	      ASSERT (left == 0);
+	      ptls_buffer_dispose (buf);
+	    }
+	  else
+	    {
+	      tcp_fs[ti].len -= buf->off;
+	      tcp_fs[ti].data += buf->off;
+	      if (!tcp_fs[ti].len)
+		ti += 1;
+	    }
 	}
       else
 	{
@@ -604,6 +761,8 @@ ptls_app_to_tcp_write (picotls_ctx_t *ptls_ctx, session_t *app_session,
 
 	  left = ptls_copy_buf_to_fs (buf, buf->off, tcp_fs, &ti, n_tcp_segs);
 	  assert (left == 0);
+	  if (PREDICT_FALSE (buf->is_allocated))
+	    ptls_buffer_dispose (buf);
 	}
 
       read += deq_len;

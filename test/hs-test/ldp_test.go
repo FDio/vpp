@@ -12,10 +12,12 @@ import (
 
 func init() {
 	RegisterSoloLdpTests(LdpIperfUdpTest, LdpIperfUdpVppInterruptModeTest, RedisBenchmarkTest,
-		LdpIperfTlsTcpTest, LdpIperfTcpTest, LdpIperfTcpReorderTest, LdpIperfReverseTcpReorderTest,
+		LdpIperfTlsTcpTest, LdpIperfPicotlsTlsTcpTest, LdpIperfTcpTest, LdpIperfTcpReorderTest, LdpIperfReverseTcpReorderTest,
 		LdpIperfUdpReorderTest, LdpIperfReverseUdpReorderTest)
 	RegisterLdpMWTests(LdpIperfUdpMWTest)
 }
+
+const ldpTlsEnginePicotls = 2
 
 func LdpIperfUdpMWTest(s *LdpSuite) {
 	s.CpusPerVppContainer = 3
@@ -66,6 +68,18 @@ func LdpIperfReverseUdpReorderTest(s *LdpSuite) {
 }
 
 func LdpIperfTlsTcpTest(s *LdpSuite) {
+	ldpIperfTlsTcp(s, 0)
+}
+
+func LdpIperfPicotlsTlsTcpTest(s *LdpSuite) {
+	ldpIperfTlsTcp(s, ldpTlsEnginePicotls)
+}
+
+func ldpIperfTlsTcp(s *LdpSuite, tlsEngine uint32) {
+	if tlsEngine != 0 {
+		s.CreateVclConfig(s.Containers.ServerApp, tlsEngine)
+		s.CreateVclConfig(s.Containers.ClientApp, tlsEngine)
+	}
 	for _, c := range s.StartedContainers {
 		defer delete(c.EnvVars, "LDP_TRANSPARENT_TLS")
 		defer delete(c.EnvVars, "LDP_TLS_CERT_FILE")

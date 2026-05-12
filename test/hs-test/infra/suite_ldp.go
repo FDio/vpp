@@ -152,20 +152,23 @@ func (s *LdpSuite) SetupAppContainers() {
 	s.Containers.ServerApp.Run()
 }
 
-func (s *LdpSuite) CreateVclConfig(container *Container) {
+func (s *LdpSuite) CreateVclConfig(container *Container, tlsEngine ...uint32) {
 	var vclConf Stanza
 	vclFileName := container.GetHostWorkDir() + "/vcl.conf"
 
 	appSocketApi := fmt.Sprintf("app-socket-api %s/var/run/app_ns_sockets/default",
 		container.GetContainerWorkDir())
-	err := vclConf.
+	vclStanza := vclConf.
 		NewStanza("vcl").
 		Append("rx-fifo-size 4000000").
 		Append("tx-fifo-size 4000000").
 		Append("app-scope-local").
 		Append("app-scope-global").
-		Append("use-mq-eventfd").
-		Append(appSocketApi).Close().
+		Append("use-mq-eventfd")
+	if len(tlsEngine) > 0 && tlsEngine[0] != 0 {
+		vclStanza.Append(fmt.Sprintf("tls-engine %d", tlsEngine[0]))
+	}
+	err := vclStanza.Append(appSocketApi).Close().
 		SaveToFile(vclFileName)
 	AssertNil(err, fmt.Sprint(err))
 }

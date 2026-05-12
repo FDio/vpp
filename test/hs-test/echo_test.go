@@ -10,6 +10,7 @@ import (
 func init() {
 	RegisterEchoTests(EchoBuiltinTest, EchoBuiltinBandwidthTest, EchoBuiltinEchoBytesTest, EchoBuiltinRoundtripTest,
 		EchoBuiltinUdpLossTest, EchoBuiltinPeriodicReportTest, EchoBuiltinPeriodicReportTotalTest, TlsSingleConnectionTest,
+		TlsPicotlsSingleConnectionTest,
 		EchoBuiltinPeriodicReportUDPTest, EchoBuiltinUdpTest, EchoBuiltinHttpTest, EchoBuiltinHttpsTest, EchoBuiltinHttp2Test,
 		EchoBuiltinHttp3Test, EchoBuiltinHttpTestBytesTest, EchoBuiltinHttp2ConnectTcpTest, EchoBuiltinHttp3ConnectTcpTest,
 		EchoBuiltinHttp2ConnectUdpTest, EchoBuiltinHttp3ConnectUdpTest, EchoBuiltinHttp2ConnectUdpBackpressureTest)
@@ -320,14 +321,23 @@ func tcpWithLossAndNoLoss(s tcpWithLossInterface, clientVpp *VppInstance,
 }
 
 func TlsSingleConnectionTest(s *EchoSuite) {
-	serverVpp := s.Containers.ServerVpp.VppInstance
+	tlsSingleConnectionTest(s, tlsTestEngine{})
+}
 
-	serverVpp.Vppctl("test echo server " +
-		" uri tls://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1)
+func TlsPicotlsSingleConnectionTest(s *EchoSuite) {
+	tlsSingleConnectionTest(s, tlsEnginePicotls)
+}
+
+func tlsSingleConnectionTest(s *EchoSuite, engine tlsTestEngine) {
+	serverVpp := s.Containers.ServerVpp.VppInstance
+	serverAddress := s.Interfaces.Server.Ip4AddressString()
+	port := s.Ports.Port1
+
+	serverVpp.Vppctl(tlsCmd("test echo server uri tls://"+serverAddress+"/"+port, engine))
 
 	clientVpp := s.Containers.ClientVpp.VppInstance
 
-	o := clientVpp.Vppctl("test echo client uri tls://%s:%s verbose run-time 5", s.Interfaces.Server.Ip4AddressString(), s.Ports.Port1)
+	o := clientVpp.Vppctl(tlsCmd("test echo client uri tls://"+serverAddress+":"+port+" verbose run-time 5", engine))
 
 	Log(o)
 	throughput, err := ParseEchoClientTransfer(o)
