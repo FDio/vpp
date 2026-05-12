@@ -581,7 +581,7 @@ http2_sched_dispatch_data (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissions)
 static void
 http2_sched_dispatch_tunnel (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissions)
 {
-  u32 max_write, max_read, n_segs = 2, n_read, n_written = 0;
+  u32 max_write, max_read, to_deq, n_segs = 2, n_read, n_written = 0;
   svm_fifo_seg_t segs[n_segs + 1];
   u8 fh[HTTP2_FRAME_HEADER_SIZE];
   u8 flags = 0;
@@ -617,11 +617,11 @@ http2_sched_dispatch_tunnel (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissions)
   max_write = clib_min (max_write, hc->peer_window);
   max_write = clib_min (max_write, hc->peer_settings.max_frame_size);
 
-  if ((req->req_flags & HTTP_REQ_F_APP_CLOSED) && (max_write >= max_read))
-    flags = HTTP2_FRAME_FLAG_END_STREAM;
+  to_deq = clib_min (max_write, max_read);
+  n_read = http_io_as_read_segs (req, segs + 1, &n_segs, to_deq);
 
-  max_read = clib_min (max_write, max_read);
-  n_read = http_io_as_read_segs (req, segs + 1, &n_segs, max_read);
+  if ((req->req_flags & HTTP_REQ_F_APP_CLOSED) && !(max_read - n_read))
+    flags = HTTP2_FRAME_FLAG_END_STREAM;
 
   http2_frame_write_data_header (n_read, req->stream_id, flags, fh);
   segs[0].len = HTTP2_FRAME_HEADER_SIZE;
