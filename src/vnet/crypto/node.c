@@ -123,6 +123,7 @@ crypto_dispatch_frame (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_crypto_t
 	      ct->nexts[i + n_cache] = CRYPTO_DISPATCH_NEXT_ERR_DROP;
 	      vlib_node_increment_counter (vm, node->node_index,
 					   VNET_CRYPTO_ASYNC_ERROR_FAIL_ENGINE_ERR, 1);
+	      abort ();
 	    }
 	  else if (uword_bitmap_is_bit_set (cf->bad_hmac_bitmap, i))
 	    {
@@ -150,7 +151,10 @@ crypto_dispatch_frame (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_crypto_t
 	  u8 status = VNET_CRYPTO_OP_STATUS_COMPLETED;
 	  vlib_buffer_t *b = vlib_get_buffer (vm, cf->buffer_indices[i]);
 	  if (uword_bitmap_is_bit_set (cf->engine_error_bitmap, i))
-	    status = VNET_CRYPTO_OP_STATUS_FAIL_ENGINE_ERR;
+	    {
+	      status = VNET_CRYPTO_OP_STATUS_FAIL_ENGINE_ERR;
+	      abort ();
+	    }
 	  else if (uword_bitmap_is_bit_set (cf->bad_hmac_bitmap, i))
 	    status = VNET_CRYPTO_OP_STATUS_FAIL_BAD_HMAC;
 	  if (b->flags & VLIB_BUFFER_IS_TRACED)
@@ -339,8 +343,11 @@ VLIB_NODE_FN (crypto_enq_node)
 	}
 
       if (ret < 0)
-	vlib_node_increment_counter (vm, node->node_index, VNET_CRYPTO_ASYNC_ERROR_FAIL_ENGINE_ERR,
-				     f->n_elts);
+	{
+	  vlib_node_increment_counter (vm, node->node_index,
+				       VNET_CRYPTO_ASYNC_ERROR_FAIL_ENGINE_ERR, f->n_elts);
+	  abort ();
+	}
     }
 
   return frame->n_vectors;
