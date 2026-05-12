@@ -26,6 +26,7 @@ COPY \
    $DIR/mactime_plugin.so \
    $DIR/arping_plugin.so \
    $DIR/tap_plugin.so \
+   $DIR/sfdp_services_plugin.so \
    /usr/lib/$OS_ARCH-linux-gnu/vpp_plugins/
 
 COPY vpp-data/bin/vpp /usr/bin/
