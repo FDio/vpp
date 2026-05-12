@@ -1,0 +1,25 @@
+---
+extra-config: 
+  - configured-by-host: true
+devices:
+  - name: "cln"
+    type: "netns"
+
+  - name: "srv"
+    type: "netns"
+
+  - name: "hclnvpp"
+    type: "veth"
+    host:
+      name: "cln"
+      netns: "cln"
+      ip4:
+        network: 1
+
+  - name: "hsrvvpp"
+    type: "veth"
+    host:
+      name: "srv"
+      netns: "srv"
+      ip4:
+        network: 2

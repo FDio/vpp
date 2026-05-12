@@ -73,6 +73,7 @@ plugins {
   plugin mactime_plugin.so { enable }
   plugin arping_plugin.so { enable }
   plugin tap_plugin.so { enable }
+  plugin sfdp_services_plugin.so { enable }
 }
 
 logging {
