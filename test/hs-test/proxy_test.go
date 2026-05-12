@@ -44,7 +44,8 @@ func init() {
 		VppConnectProxyHttp3DownloadTcpMWTest, VppConnectProxyHttp3UploadTcpMWTest,
 		VppConnectProxyHttp3Draft03MWTest, VppConnectProxyHttp3IperfTcpMWTest, VppConnectProxyHttp3TargetUnreachableMWTest,
 		VppConnectProxyHttp3ServerClosedTcpMWTest, VppConnectProxyHttp3StressMWTest, VppConnectProxyHttp3DownloadUdpMWTest,
-		VppConnectProxyHttp3UploadUdpMWTest, VppConnectProxyHttp3IperfUdpMWTest)
+		VppConnectProxyHttp3UploadUdpMWTest, VppConnectProxyHttp3IperfUdpMWTest, VppConnectProxyHttp2FinDrainTcpMWTest,
+		VppConnectProxyHttp3FinDrainTcpMWTest)
 }
 
 func VppProxyHttpGetTcpMWTest(s *VppProxySuite) {
@@ -1285,4 +1286,384 @@ func VppConnectProxyHttp3IperfUdpMWTest(s *MasqueSuite) {
 	s.CpusPerVppContainer = 3
 	s.SetupTest("http3")
 	vppConnectProxyIperfUdp(s, "http3")
+}
+
+func connectProxyFinDrainPayload() []byte {
+	// Larger than the 512k proxy FIFO to force FIN with queued tunnel data.
+	const payloadSize = 4 * 1024 * 1024
+
+	pattern := []byte("0123456789abcdef")
+	return bytes.Repeat(pattern, payloadSize/len(pattern))
+}
+
+func runFinDrainTcpServer(
+	listenAddr string,
+	timeout time.Duration,
+	handleConn func(*net.TCPConn) error,
+) (chan error, chan struct{}) {
+	done := make(chan error, 1)
+	ready := make(chan struct{})
+
+	go func() {
+		listener, err := net.Listen("tcp", listenAddr)
+		if err != nil {
+			done <- fmt.Errorf("listen %s failed: %w", listenAddr, err)
+			close(ready)
+			return
+		}
+		defer listener.Close()
+		close(ready)
+
+		tcpListener := listener.(*net.TCPListener)
+		if err := tcpListener.SetDeadline(time.Now().Add(timeout)); err != nil {
+			done <- fmt.Errorf("set listener deadline failed: %w", err)
+			return
+		}
+
+		conn, err := tcpListener.AcceptTCP()
+		if err != nil {
+			done <- fmt.Errorf("accept failed: %w", err)
+			return
+		}
+		defer conn.Close()
+
+		done <- handleConn(conn)
+	}()
+
+	return done, ready
+}
+
+func runFinDrainTcpServerForClientHalfClose(
+	listenAddr string,
+	payload []byte,
+	reply []byte,
+	timeout time.Duration,
+	readDelay time.Duration,
+) (chan error, chan struct{}) {
+	return runFinDrainTcpServer(listenAddr, timeout, func(conn *net.TCPConn) error {
+		if err := conn.SetReadDeadline(time.Now().Add(timeout)); err != nil {
+			return fmt.Errorf("set read deadline failed: %w", err)
+		}
+
+		if readDelay > 0 {
+			time.Sleep(readDelay)
+		}
+
+		got, err := io.ReadAll(conn)
+		if err != nil {
+			return fmt.Errorf("server read failed: %w", err)
+		}
+
+		if !bytes.Equal(got, payload) {
+			return fmt.Errorf(
+				"payload mismatch: got len=%d, expected len=%d",
+				len(got), len(payload),
+			)
+		}
+
+		if len(reply) > 0 {
+			if err := conn.SetWriteDeadline(time.Now().Add(timeout)); err != nil {
+				return fmt.Errorf("set write deadline failed: %w", err)
+			}
+
+			if _, err := conn.Write(reply); err != nil {
+				return fmt.Errorf("server write response failed: %w", err)
+			}
+		}
+
+		return nil
+	})
+}
+
+func runFinDrainTcpServerForServerHalfClose(
+	listenAddr string,
+	payload []byte,
+	reply []byte,
+	timeout time.Duration,
+	writeDelay time.Duration,
+) (chan error, chan struct{}) {
+	return runFinDrainTcpServer(listenAddr, timeout, func(conn *net.TCPConn) error {
+		if writeDelay > 0 {
+			time.Sleep(writeDelay)
+		}
+
+		if err := conn.SetWriteDeadline(time.Now().Add(timeout)); err != nil {
+			return fmt.Errorf("set write deadline failed: %w", err)
+		}
+
+		if _, err := io.Copy(conn, bytes.NewReader(payload)); err != nil {
+			return fmt.Errorf("server write payload failed: %w", err)
+		}
+
+		if err := conn.CloseWrite(); err != nil {
+			return fmt.Errorf("server half-close failed: %w", err)
+		}
+
+		if err := conn.SetReadDeadline(time.Now().Add(timeout)); err != nil {
+			return fmt.Errorf("set read deadline failed: %w", err)
+		}
+
+		got, err := io.ReadAll(conn)
+		if err != nil {
+			return fmt.Errorf("server read after half-close failed: %w", err)
+		}
+
+		if !bytes.Equal(got, reply) {
+			return fmt.Errorf(
+				"post-half-close payload mismatch: got len=%d, expected len=%d",
+				len(got), len(reply),
+			)
+		}
+
+		return nil
+	})
+}
+
+func runFinDrainTcpClient(
+	netns string,
+	address string,
+	input []byte,
+	args []string,
+	python string,
+) ([]byte, error) {
+	host, port, err := net.SplitHostPort(address)
+	if err != nil {
+		return nil, fmt.Errorf("split client address %s failed: %w", address, err)
+	}
+
+	cmdArgs := []string{"netns", "exec", netns, "python3", "-c", python, host, port}
+	cmdArgs = append(cmdArgs, args...)
+	cmd := exec.Command("ip", cmdArgs...)
+	cmd.Stdin = bytes.NewReader(input)
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("client in netns %s failed: %w\n%s", netns, err, string(output))
+	}
+
+	return output, nil
+}
+
+func runFinDrainTcpClientHalfClose(
+	netns string,
+	address string,
+	payload []byte,
+	expectedReply []byte,
+	timeout time.Duration,
+) error {
+	responseLen := strconv.Itoa(len(expectedReply))
+
+	python := `
+import socket
+import sys
+
+host = sys.argv[1]
+port = int(sys.argv[2])
+timeout = float(sys.argv[3])
+response_len = int(sys.argv[4])
+data = sys.stdin.buffer.read()
+
+s = socket.create_connection((host, port), timeout)
+s.settimeout(timeout)
+s.sendall(data)
+s.shutdown(socket.SHUT_WR)
+
+out = bytearray()
+while len(out) < response_len:
+    chunk = s.recv(response_len - len(out))
+    if not chunk:
+        break
+    out.extend(chunk)
+
+s.close()
+sys.stdout.buffer.write(out)
+`
+
+	output, err := runFinDrainTcpClient(
+		netns,
+		address,
+		payload,
+		[]string{strconv.Itoa(int(timeout.Seconds())), responseLen},
+		python,
+	)
+	if err != nil {
+		return err
+	}
+
+	if !bytes.Equal(output, expectedReply) {
+		return fmt.Errorf(
+			"client output mismatch: got len=%d, expected len=%d",
+			len(output), len(expectedReply),
+		)
+	}
+
+	return nil
+}
+
+func runFinDrainTcpClientForServerHalfClose(
+	netns string,
+	address string,
+	reply []byte,
+	expectedPayload []byte,
+	timeout time.Duration,
+	readDelay time.Duration,
+) error {
+	readDelaySeconds := strconv.FormatFloat(readDelay.Seconds(), 'f', -1, 64)
+
+	python := `
+import socket
+import sys
+import time
+
+host = sys.argv[1]
+port = int(sys.argv[2])
+timeout = float(sys.argv[3])
+read_delay = float(sys.argv[4])
+data = sys.stdin.buffer.read()
+
+s = socket.create_connection((host, port), timeout)
+s.settimeout(timeout)
+
+if read_delay > 0:
+    time.sleep(read_delay)
+
+out = bytearray()
+while True:
+    chunk = s.recv(65536)
+    if not chunk:
+        break
+    out.extend(chunk)
+
+if data:
+    s.sendall(data)
+    s.shutdown(socket.SHUT_WR)
+
+s.close()
+sys.stdout.buffer.write(out)
+`
+
+	output, err := runFinDrainTcpClient(
+		netns,
+		address,
+		reply,
+		[]string{strconv.Itoa(int(timeout.Seconds())), readDelaySeconds},
+		python,
+	)
+	if err != nil {
+		return err
+	}
+
+	if !bytes.Equal(output, expectedPayload) {
+		return fmt.Errorf(
+			"client output mismatch: got len=%d, expected len=%d",
+			len(output), len(expectedPayload),
+		)
+	}
+
+	return nil
+}
+
+func runFinDrainTcpExchange(
+	s *MasqueSuite,
+	isHttp3 bool,
+	timeout time.Duration,
+	serverDone chan error,
+	serverReady chan struct{},
+	runClient func() error,
+	exchange string,
+) {
+	<-serverReady
+
+	select {
+	case err := <-serverDone:
+		AssertNil(err, "server setup failed")
+	default:
+	}
+
+	AssertNil(runClient())
+
+	select {
+	case err := <-serverDone:
+		AssertNil(err, fmt.Sprintf("server failed during %s", exchange))
+	case <-time.After(timeout):
+		AssertFail("timed out waiting for TCP server to complete %s", exchange)
+	}
+
+	vppConnectProxyClientCheckCleanup(s)
+	vppConnectProxyServerCheckCleanup(s, isHttp3)
+}
+
+func vppConnectProxyClientFinDrainTcp(s *MasqueSuite, targetAddr string, isHttp3 bool, payload []byte) {
+	timeout := 30 * time.Second
+	serverResponse := []byte("fin-drain-response")
+
+	// Delay reads so client FIN can arrive while tunnel data is still queued.
+	serverDone, serverReady := runFinDrainTcpServerForClientHalfClose(
+		targetAddr,
+		payload,
+		serverResponse,
+		timeout,
+		500*time.Millisecond,
+	)
+
+	runFinDrainTcpExchange(s, isHttp3, timeout, serverDone, serverReady, func() error {
+		return runFinDrainTcpClientHalfClose(
+			s.NetNamespaces.Client,
+			targetAddr,
+			payload,
+			serverResponse,
+			timeout,
+		)
+	}, "client-side FIN-drain exchange")
+}
+
+func vppConnectProxyServerFinDrainTcp(s *MasqueSuite, targetAddr string, isHttp3 bool, payload []byte) {
+	timeout := 30 * time.Second
+	clientResponse := []byte("fin-drain-client-response")
+
+	// Let CONNECT response open the HTTP stream before TCP server sends FIN.
+	serverDone, serverReady := runFinDrainTcpServerForServerHalfClose(
+		targetAddr,
+		payload,
+		clientResponse,
+		timeout,
+		500*time.Millisecond,
+	)
+
+	runFinDrainTcpExchange(s, isHttp3, timeout, serverDone, serverReady, func() error {
+		return runFinDrainTcpClientForServerHalfClose(
+			s.NetNamespaces.Client,
+			targetAddr,
+			clientResponse,
+			payload,
+			timeout,
+			time.Second,
+		)
+	}, "server-side FIN-drain exchange")
+}
+
+func vppConnectProxyFinDrainTcp(s *MasqueSuite, isHttp3 bool) {
+	if isHttp3 {
+		s.ProxyClientConnect("tcp", s.Ports.Nginx, "http3")
+	} else {
+		s.ProxyClientConnect("tcp", s.Ports.Nginx)
+	}
+
+	targetAddr := net.JoinHostPort(s.NginxAddr(), s.Ports.Nginx)
+	payload := connectProxyFinDrainPayload()
+	vppConnectProxyClientFinDrainTcp(s, targetAddr, isHttp3, payload)
+	vppConnectProxyServerFinDrainTcp(s, targetAddr, isHttp3, payload)
+}
+
+func VppConnectProxyHttp2FinDrainTcpMWTest(s *MasqueSuite) {
+	s.CpusPerVppContainer = 3
+	s.SetupTest()
+	vppConnectProxyFinDrainTcp(s, false)
+}
+
+func VppConnectProxyHttp3FinDrainTcpMWTest(s *MasqueSuite) {
+	s.Skip("bug")
+	s.CpusPerVppContainer = 3
+	s.SetupTest("http3")
+	vppConnectProxyFinDrainTcp(s, true)
 }
