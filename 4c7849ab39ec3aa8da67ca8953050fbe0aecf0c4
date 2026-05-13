@@ -70,6 +70,24 @@
       "parentUuid": "2809457b_72f087c9",
       "revId": "4c7849ab39ec3aa8da67ca8953050fbe0aecf0c4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "08bf9b5c_dd4be09a",
+        "filename": "test/hs-test/app_namespace_test.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-05-13T08:49:58Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "8009040f_5faabcb5",
+      "revId": "4c7849ab39ec3aa8da67ca8953050fbe0aecf0c4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
