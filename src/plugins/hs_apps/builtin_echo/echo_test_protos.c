@@ -90,6 +90,11 @@ et_server_stream_rx_inline (echo_test_session_t *es, session_t *s, u8 *rx_buf, u
   actual_transfer = app_recv_stream ((app_session_t *) es, rx_buf, max_transfer);
   ASSERT (actual_transfer == max_transfer);
   es->bytes_received += actual_transfer;
+  if (svm_fifo_needs_deq_ntf (rx_fifo, actual_transfer))
+    {
+      svm_fifo_clear_deq_ntf (rx_fifo);
+      session_program_transport_io_evt (s->handle, SESSION_IO_EVT_RX);
+    }
 
   if (test_bytes)
     {
