@@ -98,7 +98,10 @@ cnat_writeback_new_flow (vlib_buffer_t *b, ip_address_family_t af, u16 *next)
   cnat_main_t *cm = &cnat_main;
 
   if (vnet_buffer2 (b)->session.flags & CNAT_BUFFER_SESSION_FLAG_NO_RETURN)
-    return;
+    {
+      vnet_buffer2 (b)->session.state = CNAT_LOOKUP_IS_DONE;
+      return;
+    }
 
   ts = cnat_timestamp_get_if_exists (b->flow_id);
   if (ts == NULL)
