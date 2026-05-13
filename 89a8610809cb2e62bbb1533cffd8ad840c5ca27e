@@ -33,6 +33,74 @@
       "message": "recheck",
       "revId": "89a8610809cb2e62bbb1533cffd8ad840c5ca27e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d18ca9d2_e7289b58",
+        "filename": "src/plugins/cnat/cnat_feature_hook.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 12,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-05-13T14:03:43Z",
+      "side": 1,
+      "message": "you should use __clib_export instead (incl for the other occurrences below)",
+      "revId": "89a8610809cb2e62bbb1533cffd8ad840c5ca27e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cf0aa88b_996ef62f",
+        "filename": "src/plugins/cnat/cnat_feature_hook.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-05-13T14:03:43Z",
+      "side": 1,
+      "message": "input and output add_del looks almost identical apart from the chain itself - can it be refactored using a single private function that can be called from the public ones with the right chain to avoid duplication?",
+      "revId": "89a8610809cb2e62bbb1533cffd8ad840c5ca27e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e2a33607_8ec2f75f",
+        "filename": "src/plugins/cnat/cnat_inline.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 95,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-05-13T14:03:43Z",
+      "side": 1,
+      "message": "is it a separate bugfix or a new behavior? If the former it might be better to have a separate commit?",
+      "revId": "89a8610809cb2e62bbb1533cffd8ad840c5ca27e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0ed6bf1a_5d763c82",
+        "filename": "src/plugins/cnat/cnat_types.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 354,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-05-13T14:03:43Z",
+      "side": 1,
+      "message": "why isn\u0027t it part of cnat_lazy_init()? I think if it is the case then we do not need a separate init flag?",
+      "revId": "89a8610809cb2e62bbb1533cffd8ad840c5ca27e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
