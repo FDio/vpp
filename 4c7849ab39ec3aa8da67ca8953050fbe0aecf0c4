@@ -52,6 +52,24 @@
       "parentUuid": "c997f359_144f5ef5",
       "revId": "4c7849ab39ec3aa8da67ca8953050fbe0aecf0c4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8009040f_5faabcb5",
+        "filename": "test/hs-test/app_namespace_test.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 3325
+      },
+      "writtenOn": "2026-05-13T06:17:26Z",
+      "side": 1,
+      "message": "Sorry, didn\u0027t realize it doesn\u0027t display app name, should have logged that. Updated to use \"show app ns id default\".\n\nI verified that the default namespace output doesn\u0027t list `vcl_test_server`:\n\nApplication namespace [0]\nid:        default\nsecret:    0\nSocket:    /tmp/server/var/run/app_ns_sockets/default\nListener                      Application",
+      "parentUuid": "2809457b_72f087c9",
+      "revId": "4c7849ab39ec3aa8da67ca8953050fbe0aecf0c4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
