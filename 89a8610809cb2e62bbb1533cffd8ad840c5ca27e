@@ -105,6 +105,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "bcb7b3ba_c870c311",
+        "filename": "src/plugins/cnat/cnat_inline.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 95,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-05-13T15:24:05Z",
+      "side": 1,
+      "message": "This is a new behavior. Now svc_chain always returns a non-NULL pointer for every state, and cnat_set_rw_next_node is called unconditionally. We want to have a sentinel that means \"do not touch next\", and use it even when the rewrites are not re-initialized inside the nodes.\nExample: in cnat_node_feature.c:180.",
+      "parentUuid": "e2a33607_8ec2f75f",
+      "revId": "89a8610809cb2e62bbb1533cffd8ad840c5ca27e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "0ed6bf1a_5d763c82",
         "filename": "src/plugins/cnat/cnat_types.c",
         "patchSetId": 5
@@ -116,6 +134,24 @@
       "writtenOn": "2026-05-13T14:03:43Z",
       "side": 1,
       "message": "why isn\u0027t it part of cnat_lazy_init()? I think if it is the case then we do not need a separate init flag?",
+      "revId": "89a8610809cb2e62bbb1533cffd8ad840c5ca27e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cf4d624b_6c6db8ca",
+        "filename": "src/plugins/cnat/cnat_types.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 354,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-05-13T15:24:05Z",
+      "side": 1,
+      "message": "The purpose was to avoid polluting the slow_path vecs for cnat users who don\u0027t use `cnat-input-ip4` and `cnat-output-ip4` mode, so I made it feature arc specific. `cnat_lazy_init ()` is more generic.",
+      "parentUuid": "0ed6bf1a_5d763c82",
       "revId": "89a8610809cb2e62bbb1533cffd8ad840c5ca27e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
