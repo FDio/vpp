@@ -665,10 +665,94 @@ et_tls_connect (vnet_connect_args_t *args, echo_test_cfg_t *cfg)
   return rv;
 }
 
+always_inline int
+et_tls_server_rx_inline (echo_test_session_t *es, session_t *s, u8 *rx_buf, u8 test_bytes)
+{
+  u32 max_dequeue, max_enqueue, max_transfer;
+  int actual_transfer;
+  clib_thread_index_t thread_index = s->thread_index;
+  svm_fifo_t *tx_fifo, *rx_fifo;
+
+  rx_fifo = s->rx_fifo;
+  tx_fifo = s->tx_fifo;
+
+  ASSERT (rx_fifo->master_thread_index == thread_index);
+  ASSERT (tx_fifo->master_thread_index == thread_index);
+
+  max_enqueue = svm_fifo_max_enqueue_prod (tx_fifo);
+  max_dequeue = svm_fifo_max_dequeue_cons (rx_fifo);
+  if (PREDICT_FALSE (max_dequeue == 0))
+    return 0;
+
+  /* Number of bytes we're going to copy */
+  max_transfer = clib_min (max_dequeue, max_enqueue);
+
+  /* No space in tx fifo */
+  if (PREDICT_FALSE (max_transfer == 0))
+    {
+    rx_event:
+      /* Program self-tap to retry */
+      if (svm_fifo_set_event (rx_fifo))
+	{
+	  /* NOTE: session_enqueue_notify() do not work with tls */
+	  if (session_program_transport_io_evt (s->handle, SESSION_IO_EVT_BUILTIN_RX))
+	    et_err ("failed to enqueue self-tap");
+
+#if CLIB_DEBUG > 0
+	  if (es->rx_retries == 500000)
+	    {
+	      et_err ("session stuck: %U", format_session, s, 2);
+	    }
+	  if (es->rx_retries < 500001)
+	    es->rx_retries++;
+#endif
+	}
+
+      return 0;
+    }
+
+  ASSERT (vec_len (rx_buf) >= max_transfer);
+  actual_transfer = app_recv_stream ((app_session_t *) es, rx_buf, max_transfer);
+  ASSERT (actual_transfer == max_transfer);
+  es->bytes_received += actual_transfer;
+  if (svm_fifo_needs_deq_ntf (rx_fifo, actual_transfer))
+    {
+      svm_fifo_clear_deq_ntf (rx_fifo);
+      session_program_transport_io_evt (s->handle, SESSION_IO_EVT_RX);
+    }
+
+  if (test_bytes)
+    {
+      et_test_bytes (rx_buf, actual_transfer, es->byte_index);
+      es->byte_index += actual_transfer;
+    }
+
+  /* Echo back */
+  actual_transfer = app_send_stream ((app_session_t *) es, rx_buf, max_transfer, 0);
+  es->bytes_sent += clib_max (actual_transfer, 0);
+
+  if (PREDICT_FALSE (svm_fifo_max_dequeue_cons (rx_fifo)))
+    goto rx_event;
+
+  return 0;
+}
+
+static int
+et_tls_server_rx (echo_test_session_t *es, session_t *s, u8 *rx_buf)
+{
+  return et_tls_server_rx_inline (es, s, rx_buf, 0);
+}
+
+static int
+et_tls_server_rx_test_bytes (echo_test_session_t *es, session_t *s, u8 *rx_buf)
+{
+  return et_tls_server_rx_inline (es, s, rx_buf, 1);
+}
+
 static echo_test_proto_vft_t echo_test_tls = {
   .listen = et_tls_listen,
-  .server_rx = et_server_stream_rx,
-  .server_rx_test_bytes = et_server_stream_rx_test_bytes,
+  .server_rx = et_tls_server_rx,
+  .server_rx_test_bytes = et_tls_server_rx_test_bytes,
   .server_rx_no_echo = et_server_stream_rx_no_echo,
   .connect = et_tls_connect,
   .connected = et_connected,
