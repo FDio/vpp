@@ -175,7 +175,9 @@ func Http3ClientFailedConnectMWTest(s *Http3Suite) {
 	cmd := fmt.Sprintf("http client http3 timeout 5 uri %s", uri)
 	o := vpp.Vppctl(cmd)
 	Log(o)
-	AssertContains(o, "timeout")
+	// depends who win race and timeout first, both outcomes are valid
+	connectFailed := strings.Contains(o, "timeout") || strings.Contains(o, "failed to connect")
+	AssertEqual(connectFailed, true)
 	// short wait for cleanup
 	time.Sleep(1 * time.Second)
 	o = vpp.Vppctl("show session verbose 2")
