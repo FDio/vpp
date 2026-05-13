@@ -184,7 +184,54 @@ proxy_session_close_ao (proxy_session_t *ps)
 }
 
 static void
-proxy_try_close_session (session_t * s, int is_active_open)
+proxy_session_shutdown_po (proxy_session_t *ps)
+{
+  vnet_shutdown_args_t _a = {}, *a = &_a;
+  proxy_main_t *pm = &proxy_main;
+  session_error_t rv;
+
+  ASSERT (!vlib_num_workers () || CLIB_SPINLOCK_IS_LOCKED (&pm->sessions_lock));
+  ASSERT (ps->po.session_handle != SESSION_INVALID_HANDLE);
+
+  a->handle = ps->po.session_handle;
+  a->app_index = pm->server_app_index;
+
+  rv = vnet_shutdown_session (a);
+  if (rv)
+    clib_warning ("proxy session %u po shutdown returned: %U", ps->ps_index, format_session_error,
+		  rv);
+}
+
+static void
+proxy_session_shutdown_ao (proxy_session_t *ps)
+{
+  vnet_shutdown_args_t _a = {}, *a = &_a;
+  proxy_main_t *pm = &proxy_main;
+  session_error_t rv;
+
+  ASSERT (!vlib_num_workers () || CLIB_SPINLOCK_IS_LOCKED (&pm->sessions_lock));
+  ASSERT (ps->ao.session_handle != SESSION_INVALID_HANDLE);
+
+  a->handle = ps->ao.session_handle;
+  a->app_index = pm->active_open_app_index;
+
+  rv = vnet_shutdown_session (a);
+  if (rv)
+    clib_warning ("proxy session %u ao shutdown returned: %U", ps->ps_index, format_session_error,
+		  rv);
+}
+
+static_always_inline int
+proxy_session_can_shutdown (session_t *s)
+{
+  if (s->flags & SESSION_F_APP_CLOSED)
+    return 0;
+
+  return s->session_state < SESSION_STATE_TRANSPORT_CLOSING;
+}
+
+static void
+proxy_try_close_session (session_t *s, int is_active_open)
 {
   proxy_main_t *pm = &proxy_main;
   proxy_session_side_ctx_t *sc;
@@ -203,6 +250,20 @@ proxy_try_close_session (session_t * s, int is_active_open)
 
   if (is_active_open)
     {
+      if (ps->po.is_http && ps->po.session_handle != SESSION_INVALID_HANDLE &&
+	  !ps->po_disconnected && session_get_transport_proto (s) == TRANSPORT_PROTO_TCP)
+	{
+	  session_t *po_s = session_get_from_handle (ps->po.session_handle);
+
+	  /* Propagate CONNECT TCP FIN as half-close, not full close. */
+	  if (proxy_session_can_shutdown (po_s))
+	    {
+	      proxy_session_shutdown_po (ps);
+	      clib_spinlock_unlock_if_init (&pm->sessions_lock);
+	      return;
+	    }
+	}
+
       proxy_session_close_ao (ps);
 
       if (!ps->po_disconnected)
@@ -213,6 +274,21 @@ proxy_try_close_session (session_t * s, int is_active_open)
     }
   else
     {
+      if (ps->po.is_http && ps->ao.session_handle != SESSION_INVALID_HANDLE &&
+	  !ps->ao_disconnected && !ps->active_open_establishing)
+	{
+	  session_t *ao_s = session_get_from_handle (ps->ao.session_handle);
+
+	  /* Propagate CONNECT TCP FIN as half-close, not full close. */
+	  if (session_get_transport_proto (ao_s) == TRANSPORT_PROTO_TCP &&
+	      proxy_session_can_shutdown (ao_s))
+	    {
+	      proxy_session_shutdown_ao (ps);
+	      clib_spinlock_unlock_if_init (&pm->sessions_lock);
+	      return;
+	    }
+	}
+
       proxy_session_close_po (ps);
 
       if (!ps->ao_disconnected && !ps->active_open_establishing)
@@ -1115,11 +1191,11 @@ active_open_disconnect_callback (session_t * s)
 }
 
 static int
-active_open_rx_callback (session_t * s)
+active_open_rx_callback (session_t *s)
 {
   svm_fifo_t *proxy_tx_fifo;
 
-  if (s->session_state >= SESSION_STATE_APP_CLOSED)
+  if (s->flags & SESSION_F_APP_CLOSED)
     return -1;
 
   proxy_tx_fifo = s->rx_fifo;
