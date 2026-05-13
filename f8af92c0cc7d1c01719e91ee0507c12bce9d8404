@@ -1,0 +1,112 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b630808c_c4183eec",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 28
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-05-13T21:45:14Z",
+      "side": 1,
+      "message": "Done. The completion path now updates the queue directly with `txq-\u003ehead \u003d comp_tail` after freeing the completed range.",
+      "parentUuid": "b1c5763d_fd1d7f0f",
+      "revId": "f8af92c0cc7d1c01719e91ee0507c12bce9d8404",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "55577af8_dab04fa7",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 28
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-05-13T21:45:14Z",
+      "side": 1,
+      "message": "Done. I replaced the one-by-one free helper with span-based freeing: RDMA_TXQ_INVALID_BUF entries are skipped, and each contiguous range of real buffer indices is freed with vlib_buffer_free(). For the non-TSO case, where there are no sentinel WQEBBs, this preserves the fast contiguous free behavior instead of freeing every buffer individually.",
+      "parentUuid": "7efd3819_e3b25f9c",
+      "revId": "f8af92c0cc7d1c01719e91ee0507c12bce9d8404",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "524ac0e2_24efaec4",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 28
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-05-13T21:45:14Z",
+      "side": 1,
+      "message": "Fixed with a slightly different indexing model. The slow path now receives `bi`, tracks `n_processed` separately from `n_posted`, and frees `bi[n_processed]` when the packet chain exceeds the 64-SGE limit. `n_posted` only counts WRs that were actually posted.",
+      "parentUuid": "a4151c28_e4dd8478",
+      "revId": "f8af92c0cc7d1c01719e91ee0507c12bce9d8404",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "eb9f909b_e2cdec4f",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 28
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-05-13T21:45:14Z",
+      "side": 1,
+      "message": "Done. The ibverbs fast path now matches the DV flavor: when it sees a chained packet or GSO packet, it immediately returns through `rdma_device_output_tx_ibverb_slow()` instead of posting a prefix and then breaking to the slow path.",
+      "parentUuid": "7ee4653b_b253cd27",
+      "revId": "f8af92c0cc7d1c01719e91ee0507c12bce9d8404",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "71a828a7_fa6e89be",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 28
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-05-13T21:45:14Z",
+      "side": 1,
+      "message": "Done. The TSO block is now in `rdma_mlx5_try_tso()`, and the GSO test in the main loop is guarded with `PREDICT_FALSE`.",
+      "parentUuid": "89e826e0_0340463d",
+      "revId": "f8af92c0cc7d1c01719e91ee0507c12bce9d8404",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e170964b_66da9566",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 28
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-05-13T21:45:14Z",
+      "side": 1,
+      "message": "Fixed. The TSO append helper no longer frees or owns the head buffer. The caller marks txq-\u003ebufs only after the TSO WQE is fully built; on append failure it marks the head slot invalid and frees the packet once, so there is no double-free.",
+      "parentUuid": "fd390481_461fd54a",
+      "revId": "f8af92c0cc7d1c01719e91ee0507c12bce9d8404",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
