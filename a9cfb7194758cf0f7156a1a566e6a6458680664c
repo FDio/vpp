@@ -1,0 +1,106 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7efd3819_e3b25f9c",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 27
+      },
+      "lineNbr": 44,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-05-13T16:50:18Z",
+      "side": 1,
+      "message": "I am a bit worried that it is going to be much slower than vlib_buffer_free_from_ring() as it frees buffer 1-by-1 now. Can we either call vlib_buffer_free_from_ring() if we know there is no TSO (so non-TSO remains fast) or similar?",
+      "revId": "a9cfb7194758cf0f7156a1a566e6a6458680664c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b1c5763d_fd1d7f0f",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 27
+      },
+      "lineNbr": 96,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-05-13T16:50:18Z",
+      "side": 1,
+      "message": "I think `txq-\u003ehead \u003d comp_tail` would be cleaner",
+      "revId": "a9cfb7194758cf0f7156a1a566e6a6458680664c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "fd390481_461fd54a",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 27
+      },
+      "lineNbr": 319,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-05-13T16:50:18Z",
+      "side": 1,
+      "message": "won\u0027t it trigger a double-free as `txq-\u003ebufs[tail \u0026 mask] \u003d bi` was already set by the caller?",
+      "revId": "a9cfb7194758cf0f7156a1a566e6a6458680664c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "89e826e0_0340463d",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 27
+      },
+      "lineNbr": 375,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-05-13T16:50:18Z",
+      "side": 1,
+      "message": "I think this whole block should go in its own function, and the test itself should probably be marked as PREDICT_FALSE",
+      "revId": "a9cfb7194758cf0f7156a1a566e6a6458680664c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a4151c28_e4dd8478",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 27
+      },
+      "lineNbr": 719,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-05-13T16:50:18Z",
+      "side": 1,
+      "message": "should it be `vlib_buffer_free_one(vm, b[n_posted])`?",
+      "revId": "a9cfb7194758cf0f7156a1a566e6a6458680664c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7ee4653b_b253cd27",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 27
+      },
+      "lineNbr": 756,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-05-13T16:50:18Z",
+      "side": 1,
+      "message": "why not use the same form as in dv flavor, just return calling the slow function instead of breaking?",
+      "revId": "a9cfb7194758cf0f7156a1a566e6a6458680664c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
