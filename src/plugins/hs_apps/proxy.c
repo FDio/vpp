@@ -184,7 +184,26 @@ proxy_session_close_ao (proxy_session_t *ps)
 }
 
 static void
-proxy_try_close_session (session_t * s, int is_active_open)
+proxy_session_shutdown_ao (proxy_session_t *ps)
+{
+  vnet_shutdown_args_t _a = {}, *a = &_a;
+  proxy_main_t *pm = &proxy_main;
+  session_error_t rv;
+
+  ASSERT (!vlib_num_workers () || CLIB_SPINLOCK_IS_LOCKED (&pm->sessions_lock));
+  ASSERT (ps->ao.session_handle != SESSION_INVALID_HANDLE);
+
+  a->handle = ps->ao.session_handle;
+  a->app_index = pm->active_open_app_index;
+
+  rv = vnet_shutdown_session (a);
+  if (rv)
+    clib_warning ("proxy session %u ao shutdown returned: %U", ps->ps_index, format_session_error,
+		  rv);
+}
+
+static void
+proxy_try_close_session (session_t *s, int is_active_open)
 {
   proxy_main_t *pm = &proxy_main;
   proxy_session_side_ctx_t *sc;
@@ -213,6 +232,19 @@ proxy_try_close_session (session_t * s, int is_active_open)
     }
   else
     {
+      /*
+       * Propagate FIN as a shutdown to the active-open side instead of
+       * disconnecting it immediately. The target may still send final bytes
+       * after receiving EOF, and the HTTP tunnel side must stay valid long
+       * enough for AO rx/close callbacks to drain them.
+       */
+      if (ps->po.is_http && ps->ao.session_handle != SESSION_INVALID_HANDLE &&
+	  !ps->ao_disconnected && !ps->active_open_establishing)
+	{
+	  proxy_session_shutdown_ao (ps);
+	  clib_spinlock_unlock_if_init (&pm->sessions_lock);
+	  return;
+	}
       proxy_session_close_po (ps);
 
       if (!ps->ao_disconnected && !ps->active_open_establishing)
@@ -1115,19 +1147,26 @@ active_open_disconnect_callback (session_t * s)
 }
 
 static int
-active_open_rx_callback (session_t * s)
+active_open_rx_callback (session_t *s)
 {
   svm_fifo_t *proxy_tx_fifo;
-
-  if (s->session_state >= SESSION_STATE_APP_CLOSED)
-    return -1;
+  u32 max_deq;
 
   proxy_tx_fifo = s->rx_fifo;
+  max_deq = svm_fifo_max_dequeue (proxy_tx_fifo);
+
+  /*
+   * Do not stop only because the app side is closed. The peer may have sent
+   * final payload with FIN and the proxy must still drain it toward the
+   * paired side.
+   */
+  if (s->session_state >= SESSION_STATE_TRANSPORT_CLOSED && !max_deq)
+    return -1;
 
   /*
    * Send event for server tx fifo
    */
-  if (svm_fifo_max_dequeue (proxy_tx_fifo))
+  if (max_deq)
     if (svm_fifo_set_event (proxy_tx_fifo))
       session_program_tx_io_evt (proxy_tx_fifo->vpp_sh, SESSION_IO_EVT_TX);
 
