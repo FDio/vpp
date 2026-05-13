@@ -55,6 +55,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "9d3554f6_a9390301",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 13
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1863
+      },
+      "writtenOn": "2026-05-13T06:49:25Z",
+      "side": 1,
+      "message": "Added the FEATURE.yaml file.\n\nCLI commands will be added in follow-up patches. For now, the APIs can be used via vppctl with binary-api commands, for example:\n\"binary-api tm_sys_node_add sw_if_idx 2 ...\"",
+      "parentUuid": "db724d3e_bb63ab72",
+      "revId": "5df859cdda4cbe16ca00b72309d3efb964cb574f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "47af9eb4_97ff8e09",
         "filename": "src/vnet/tm/tm.api",
         "patchSetId": 13
@@ -66,6 +84,24 @@
       "writtenOn": "2026-03-25T13:58:20Z",
       "side": 1,
       "message": "Most of the APIs look like the ID that was passed in with the request (node_id in this case) is passed back in the reply. That seems unnecessary. The context field exists to match a reply to a corresponding request that was sent.\n\nOr is there some other use for node_id in the reply? Will it ever be different than the value of node_id from the request? If you\u0027re just passing back a value verbatim that was provided in the request, its not needed. You could probably eliminate the reply definition and declare the request as \"autoreply\" in any similar cases.",
+      "revId": "5df859cdda4cbe16ca00b72309d3efb964cb574f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f1b664ee_8ff0ebe9",
+        "filename": "src/vnet/tm/tm.api",
+        "patchSetId": 13
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 1863
+      },
+      "writtenOn": "2026-05-13T06:49:25Z",
+      "side": 1,
+      "message": "Removed the reply field and converted the APIs to use the autoreply mechanism.",
+      "parentUuid": "47af9eb4_97ff8e09",
       "revId": "5df859cdda4cbe16ca00b72309d3efb964cb574f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -101,6 +137,24 @@
       "side": 1,
       "message": "Yes, I am updating the patch to propagate the callback return values and also to handle the NULL callbacks properly. Will post an updated version shortly.",
       "parentUuid": "8ef4164f_0b59c4d9",
+      "revId": "5df859cdda4cbe16ca00b72309d3efb964cb574f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "90268f84_ba9872da",
+        "filename": "src/vnet/tm/tm.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 74,
+      "author": {
+        "id": 1863
+      },
+      "writtenOn": "2026-05-13T06:49:25Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5ac0385d_29c4f610",
       "revId": "5df859cdda4cbe16ca00b72309d3efb964cb574f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
