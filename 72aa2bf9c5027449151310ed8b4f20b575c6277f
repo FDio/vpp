@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "a4266016_dc03c0aa",
+        "filename": "src/plugins/sfdp_services/base/tcp-check/node.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 153,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2026-05-14T12:27:33Z",
+      "side": 1,
+      "message": "Comment expanded in code (and in commit message).",
+      "parentUuid": "072a09f7_5d63fcb9",
+      "revId": "72aa2bf9c5027449151310ed8b4f20b575c6277f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "e90bd952_7225f5f7",
@@ -48,6 +66,24 @@
       "writtenOn": "2026-05-11T15:29:08Z",
       "side": 1,
       "message": "nit: since we now always set `nsf[0] \u003d SFDP_TCP_CHECK_SESSION_FLAG_REMOVING;` if `remove_session` is true below, could this line be removed ?\n\nWe now set the flag twice in case an RST packet is seen in the reverse direction. This also seem to not match what we currently do for RST packets in the forward direction (which predates this patch) i.e.\n\n```c\n   if (flags \u0026 SFDP_TCP_CHECK_TCP_FLAGS_RST)\n\t{\n\t  /* Reason to kill the connection */\n\t  remove_session \u003d 1;\n\t  goto out;\n\t}\n```",
+      "revId": "72aa2bf9c5027449151310ed8b4f20b575c6277f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d7df52d3_c184af5a",
+        "filename": "src/plugins/sfdp_services/base/tcp-check/node.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 192,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2026-05-14T12:27:33Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "e90bd952_7225f5f7",
       "revId": "72aa2bf9c5027449151310ed8b4f20b575c6277f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
