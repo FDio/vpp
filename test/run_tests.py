@@ -1038,7 +1038,7 @@ class AllResults(dict):
                         print_test_ids.append(failed_test_id)
 
         if print_test_ids and write_failed_file:
-            with open(os.path.join(config.failed_dir, "failed_tests"), "w") as f:
+            with open(os.path.join(config.failed_dir, "failed_tests.log"), "w") as f:
                 print(",".join(print_test_ids), file=f)
 
         if self.testsuites_cut_short:
