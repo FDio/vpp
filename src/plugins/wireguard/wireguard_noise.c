@@ -375,10 +375,10 @@ noise_remote_begin_session (vlib_main_t * vm, noise_remote_t * r)
     }
 
   kp.kp_valid = 1;
-  kp.send_ctx = vnet_crypto_ctx_create (VNET_CRYPTO_ALG_CHACHA20_POLY1305);
+  kp.send_ctx = vnet_crypto_ctx_create (VNET_CRYPTO_ALG_CHACHA20_POLY1305_ICV16_AAD0);
   if (kp.send_ctx)
     vnet_crypto_ctx_set_cipher_key (kp.send_ctx, key_send, NOISE_SYMMETRIC_KEY_LEN);
-  kp.recv_ctx = vnet_crypto_ctx_create (VNET_CRYPTO_ALG_CHACHA20_POLY1305);
+  kp.recv_ctx = vnet_crypto_ctx_create (VNET_CRYPTO_ALG_CHACHA20_POLY1305_ICV16_AAD0);
   if (kp.recv_ctx)
     vnet_crypto_ctx_set_cipher_key (kp.recv_ctx, key_recv, NOISE_SYMMETRIC_KEY_LEN);
   kp.kp_local_index = hs->hs_local_index;
