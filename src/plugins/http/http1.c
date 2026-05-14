@@ -249,8 +249,8 @@ http1_parse_target (http_ctx_t *req, u8 *rx_buf)
 static int
 http1_parse_request_line (http_ctx_t *hc, http_ctx_t *req, u8 *rx_buf, http_status_code_t *ec)
 {
-  int i;
-  u32 next_line_offset, method_offset, target_len;
+  int i, target_len;
+  u32 next_line_offset, method_offset;
 
   /* request-line = method SP request-target SP HTTP-version CRLF */
   i = http_v_find_index (rx_buf, 8, 0, "\r\n");
@@ -368,6 +368,12 @@ http1_parse_request_line (http_ctx_t *hc, http_ctx_t *req, u8 *rx_buf, http_stat
   if (target_len < 1)
     {
       clib_warning ("request-target not present");
+      *ec = HTTP_STATUS_BAD_REQUEST;
+      return -1;
+    }
+  if (target_len > UINT16_MAX)
+    {
+      clib_warning ("request-target too long");
       *ec = HTTP_STATUS_BAD_REQUEST;
       return -1;
     }
