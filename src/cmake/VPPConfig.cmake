@@ -34,8 +34,16 @@ if (compiler_flag_no_address_of_packed_member)
   add_definitions(-Wno-address-of-packed-member)
 endif()
 
-set(VPP_RUNTIME_DIR "bin" CACHE STRING "Relative runtime directory path")
-set(VPP_LIBRARY_DIR "lib" CACHE STRING "Relative library directory path")
+if(NOT DEFINED VPP_PLATFORM AND NOT "@VPP_PLATFORM@" STREQUAL "")
+  set(VPP_PLATFORM "@VPP_PLATFORM@" CACHE STRING "VPP target platform")
+endif()
+
+if(NOT DEFINED VPP_RUNTIME_DIR)
+  set(VPP_RUNTIME_DIR "@VPP_RUNTIME_DIR@" CACHE STRING "Relative runtime directory path")
+endif()
+if(NOT DEFINED VPP_LIBRARY_DIR OR VPP_LIBRARY_DIR STREQUAL "lib")
+  set(VPP_LIBRARY_DIR "@VPP_LIBRARY_DIR@" CACHE STRING "Relative library directory path")
+endif()
 set(VPP_BINARY_DIR ${CMAKE_BINARY_DIR}/CMakeFiles)
 
 include(${CMAKE_CURRENT_LIST_DIR}/cpu.cmake)
