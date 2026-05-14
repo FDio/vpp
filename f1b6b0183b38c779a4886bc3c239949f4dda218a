@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bfcd542f_0cda632f",
+        "filename": "src/drivers/iavf/rx_node.c",
+        "patchSetId": 19
+      },
+      "lineNbr": 203,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-05-14T08:45:21Z",
+      "side": 1,
+      "message": "this looks wrong, in local variable \"flags\" we already have default flags, so there is no need to read b-\u003eflags again. It should be just:\n\nb-\u003eflags \u003d flags;",
+      "range": {
+        "startLine": 197,
+        "startChar": 0,
+        "endLine": 203,
+        "endChar": 45
+      },
+      "revId": "f1b6b0183b38c779a4886bc3c239949f4dda218a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
