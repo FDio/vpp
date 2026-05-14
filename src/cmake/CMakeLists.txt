@@ -11,6 +11,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+configure_file(
+  VPPConfig.cmake
+  ${CMAKE_CURRENT_BINARY_DIR}/VPPConfig.cmake
+  @ONLY
+)
+
 install(
   FILES
   api.cmake
@@ -20,7 +26,7 @@ install(
   library.cmake
   pack.cmake
   plugin.cmake
-  VPPConfig.cmake
+  ${CMAKE_CURRENT_BINARY_DIR}/VPPConfig.cmake
 
   DESTINATION
   ${VPP_LIBRARY_DIR}/cmake/vpp
