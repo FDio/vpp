@@ -83,19 +83,26 @@ class BaseSfdpTest(VppTestCase):
     def sessions(self):
         return list(self.vapi.sfdp_session_dump())
 
-    def wait_no_sessions(self, timeout=5.0, tick=0.02):
+    def wait_no_sessions(self, timeout=5.0, tick=0.02, should_fail=False):
         steps = int(timeout / tick) + 1
         for _ in range(steps):
             if len(self.sessions()) == 0:
-                return
+                break
             self.virtual_sleep(tick)
-        remaining = self.sessions()
-        self.assertEqual(
-            len(remaining),
-            0,
-            f"Sessions still present after {timeout}s: "
-            f"{[(s.session_idx, s.state) for s in remaining]}",
-        )
+        len_remaining = len(self.sessions())
+        if should_fail:
+            self.assertNotEqual(
+                len_remaining,
+                0,
+                f"Sessions not present after {timeout}s:",
+            )
+        else:
+            self.assertEqual(
+                len_remaining,
+                0,
+                f"Sessions still present after {timeout}s: "
+                f"{[(s.session_idx, s.state) for s in remaining]}",
+            )
 
     def verify_basic_session_state(
         self,
