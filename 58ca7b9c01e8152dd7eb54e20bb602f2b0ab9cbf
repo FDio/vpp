@@ -20,6 +20,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "e31638b2_7218a7de",
+        "filename": "src/vnet/buffer.h",
+        "patchSetId": 15
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 1863
+      },
+      "writtenOn": "2026-05-14T14:52:36Z",
+      "side": 1,
+      "message": "Agreed. Removed the TM buffer flag.\n\nTM now registers a flow_id range at init; driver does range check in TX path. buffer.h flag bits restored.",
+      "parentUuid": "4c187658_77225c20",
+      "revId": "58ca7b9c01e8152dd7eb54e20bb602f2b0ab9cbf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "0e74f556_00fe1a05",
         "filename": "src/vnet/tm/tm.h",
         "patchSetId": 15
@@ -37,6 +55,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "d9115607_ad764b0f",
+        "filename": "src/vnet/tm/tm.h",
+        "patchSetId": 15
+      },
+      "lineNbr": 52,
+      "author": {
+        "id": 1863
+      },
+      "writtenOn": "2026-05-14T14:52:36Z",
+      "side": 1,
+      "message": "Done. Updated all occurrences.",
+      "parentUuid": "0e74f556_00fe1a05",
+      "revId": "58ca7b9c01e8152dd7eb54e20bb602f2b0ab9cbf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "bb689fc9_98bedc8e",
         "filename": "src/vnet/tm/tm.h",
         "patchSetId": 15
@@ -48,6 +84,24 @@
       "writtenOn": "2026-05-14T08:22:31Z",
       "side": 1,
       "message": "please use u32",
+      "revId": "58ca7b9c01e8152dd7eb54e20bb602f2b0ab9cbf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5b96b618_42ccee20",
+        "filename": "src/vnet/tm/tm.h",
+        "patchSetId": 15
+      },
+      "lineNbr": 155,
+      "author": {
+        "id": 1863
+      },
+      "writtenOn": "2026-05-14T14:52:36Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "bb689fc9_98bedc8e",
       "revId": "58ca7b9c01e8152dd7eb54e20bb602f2b0ab9cbf",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
