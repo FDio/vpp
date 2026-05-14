@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "352897b9_677f6d0d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-05-14T18:42:51Z",
+      "side": 1,
+      "message": "I\u0027m not sure .log fits the contents. It\u0027s not a log, it\u0027s a list of failed test passable as TEST\u003d argument verbatim.\n\nI think a .txt extension would make more sense. What do you think?",
+      "revId": "ef6dccbfc71768f12361a647168f53b15de5b872",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
