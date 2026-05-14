@@ -128,19 +128,20 @@ http1_send_error (http_ctx_t *hc, http_status_code_t ec, transport_send_params_t
   http_io_ts_after_write (hc, 0);
 }
 
-static int
-http1_read_message (http_ctx_t *hc, u8 *rx_buf)
+static u8 *
+http1_read_message (http_ctx_t *hc)
 {
   u32 max_deq;
+  u8 *rx_buf;
 
   max_deq = http_io_ts_max_read (hc);
   if (PREDICT_FALSE (max_deq == 0))
-    return -1;
+    return 0;
 
-  vec_validate (rx_buf, max_deq - 1);
+  rx_buf = http_get_rx_buf_len (hc, max_deq);
   http_io_ts_read (hc, rx_buf, max_deq, 1);
 
-  return 0;
+  return rx_buf;
 }
 
 static int
@@ -852,11 +853,10 @@ http1_req_state_wait_transport_reply (http_ctx_t *hc, http_ctx_t *req, transport
   http_status_code_t ec;
   u8 *rx_buf;
 
-  rx_buf = http_get_rx_buf (hc);
-  rv = http1_read_message (hc, rx_buf);
+  rx_buf = http1_read_message (hc);
 
   /* Nothing yet, wait for data or timer expire */
-  if (rv)
+  if (!rx_buf)
     {
       HTTP_DBG (1, "no data to deq");
       return HTTP_SM_STOP;
@@ -946,11 +946,10 @@ http1_req_state_wait_transport_method (http_ctx_t *hc, http_ctx_t *req, transpor
   u64 max_deq;
   u8 *rx_buf;
 
-  rx_buf = http_get_rx_buf (hc);
-  rv = http1_read_message (hc, rx_buf);
+  rx_buf = http1_read_message (hc);
 
   /* Nothing yet, wait for data or timer expire */
-  if (rv)
+  if (!rx_buf)
     return HTTP_SM_STOP;
 
   if (vec_len (rx_buf) < 8)
@@ -1288,7 +1287,6 @@ http1_req_state_udp_tunnel_draft03_rx (http_ctx_t *hc, http_ctx_t *req, transpor
 static http_sm_result_t
 http1_req_state_wait_app_reply (http_ctx_t *hc, http_ctx_t *req, transport_send_params_t *sp)
 {
-  u8 *response;
   u32 max_enq;
   http_status_code_t sc;
   http_msg_t msg;
@@ -1317,19 +1315,18 @@ http1_req_state_wait_app_reply (http_ctx_t *hc, http_ctx_t *req, transport_send_
       return HTTP_SM_ERROR;
     }
 
-  response = http_get_tx_buf (hc);
+  vec_reset_length (http_tx_buf (hc));
   /*
    * Add "protocol layer" headers:
    * - current time
    * - server name
    * - data length
    */
-  response =
-    format (response, response_template, http_status_code_str[msg.code],
-	    /* Date */
-	    format_http_time_now, hc,
-	    /* Server */
-	    hc->app_name);
+  http_tx_buf (hc) = format (http_tx_buf (hc), response_template, http_status_code_str[msg.code],
+			     /* Date */
+			     format_http_time_now, hc,
+			     /* Server */
+			     hc->app_name);
 
   /* RFC9110 8.6: A server MUST NOT send Content-Length header field in a
    * 2xx (Successful) response to CONNECT or with a status code of 101
@@ -1343,8 +1340,8 @@ http1_req_state_wait_app_reply (http_ctx_t *hc, http_ctx_t *req, transport_send_
 		     HTTP_REQ_STATE_TUNNEL;
       if (req->upgrade_proto > HTTP_UPGRADE_PROTO_NA)
 	{
-	  response = format (response, connection_upgrade_template,
-			     http1_upgrade_proto_str[req->upgrade_proto]);
+	  http_tx_buf (hc) = format (http_tx_buf (hc), connection_upgrade_template,
+				     http1_upgrade_proto_str[req->upgrade_proto]);
 	  if (req->upgrade_proto == HTTP_UPGRADE_PROTO_CONNECT_UDP &&
 	      (hc->flags & HTTP_CONN_F_UDP_TUNNEL_DGRAM))
 	    next_state = HTTP_REQ_STATE_UDP_TUNNEL;
@@ -1356,26 +1353,26 @@ http1_req_state_wait_app_reply (http_ctx_t *hc, http_ctx_t *req, transport_send_
       req->capsule_ctx_rx.len = 0;
     }
   else
-    response = format (response, content_len_template, msg.data.body_len);
+    http_tx_buf (hc) = format (http_tx_buf (hc), content_len_template, msg.data.body_len);
 
   /* Add headers from app (if any) */
   if (msg.data.headers_len)
     {
       HTTP_DBG (0, "got headers from app, len %d", msg.data.headers_len);
-      http1_write_app_headers (req, &msg, &response);
+      http1_write_app_headers (req, &msg, &http_tx_buf (hc));
     }
   /* Add empty line after headers */
-  response = format (response, "\r\n");
-  HTTP_DBG (3, "%v", response);
+  http_tx_buf (hc) = format (http_tx_buf (hc), "\r\n");
+  HTTP_DBG (3, "%v", http_tx_buf (hc));
 
   max_enq = http_io_ts_max_write (hc, sp);
-  if (max_enq < vec_len (response))
+  if (max_enq < vec_len (http_tx_buf (hc)))
     {
       clib_warning ("sending status-line and headers failed!");
       sc = HTTP_STATUS_INTERNAL_ERROR;
       goto error;
     }
-  http_io_ts_write (hc, response, vec_len (response), sp);
+  http_io_ts_write (hc, http_tx_buf (hc), vec_len (http_tx_buf (hc)), sp);
 
   if (msg.data.body_len)
     {
@@ -1408,7 +1405,7 @@ static http_sm_result_t
 http1_req_state_wait_app_method (http_ctx_t *hc, http_ctx_t *req, transport_send_params_t *sp)
 {
   http_msg_t msg;
-  u8 *request = 0, *target;
+  u8 *target;
   u32 max_enq;
   http_sm_result_t sm_result = HTTP_SM_ERROR;
   http_req_state_t next_state;
@@ -1430,7 +1427,7 @@ http1_req_state_wait_app_method (http_ctx_t *hc, http_ctx_t *req, transport_send
   /* read request target */
   target = http_get_app_target (req, &msg);
 
-  request = http_get_tx_buf (hc);
+  vec_reset_length (http_tx_buf (hc));
   /* currently we support only GET and POST method */
   if (msg.method_type == HTTP_REQ_GET)
     {
@@ -1444,13 +1441,13 @@ http1_req_state_wait_app_method (http_ctx_t *hc, http_ctx_t *req, transport_send
        * - host
        * - user agent
        */
-      request = format (request, get_request_template,
-			/* target */
-			format_http_bytes, target, msg.data.target_path_len,
-			/* Host */
-			hc->host,
-			/* User-Agent */
-			hc->app_name);
+      http_tx_buf (hc) = format (http_tx_buf (hc), get_request_template,
+				 /* target */
+				 format_http_bytes, target, msg.data.target_path_len,
+				 /* Host */
+				 hc->host,
+				 /* User-Agent */
+				 hc->app_name);
 
       next_state = HTTP_REQ_STATE_WAIT_TRANSPORT_REPLY;
       sm_result = HTTP_SM_STOP;
@@ -1468,15 +1465,15 @@ http1_req_state_wait_app_method (http_ctx_t *hc, http_ctx_t *req, transport_send
        * - user agent
        * - content length
        */
-      request = format (request, post_request_template,
-			/* target */
-			format_http_bytes, target, msg.data.target_path_len,
-			/* Host */
-			hc->host,
-			/* User-Agent */
-			hc->app_name,
-			/* Content-Length */
-			msg.data.body_len);
+      http_tx_buf (hc) = format (http_tx_buf (hc), post_request_template,
+				 /* target */
+				 format_http_bytes, target, msg.data.target_path_len,
+				 /* Host */
+				 hc->host,
+				 /* User-Agent */
+				 hc->app_name,
+				 /* Content-Length */
+				 msg.data.body_len);
 
       next_state = HTTP_REQ_STATE_APP_IO_MORE_DATA;
       sm_result = HTTP_SM_CONTINUE;
@@ -1489,14 +1486,13 @@ http1_req_state_wait_app_method (http_ctx_t *hc, http_ctx_t *req, transport_send
 	  /*
 	   * Streaming PUT with chunked transfer encoding
 	   */
-	  request =
-	    format (request, put_chunked_request_template,
-		    /* target */
-		    format_http_bytes, target, msg.data.target_path_len,
-		    /* Host */
-		    hc->host,
-		    /* User-Agent */
-		    hc->app_name);
+	  http_tx_buf (hc) = format (http_tx_buf (hc), put_chunked_request_template,
+				     /* target */
+				     format_http_bytes, target, msg.data.target_path_len,
+				     /* Host */
+				     hc->host,
+				     /* User-Agent */
+				     hc->app_name);
 
 	  /* For streaming, we need a different state */
 	  next_state = HTTP_REQ_STATE_APP_IO_MORE_STREAMING_DATA;
@@ -1512,16 +1508,15 @@ http1_req_state_wait_app_method (http_ctx_t *hc, http_ctx_t *req, transport_send
 	  /*
 	   * Regular PUT with Content-Length
 	   */
-	  request =
-	    format (request, put_request_template,
-		    /* target */
-		    format_http_bytes, target, msg.data.target_path_len,
-		    /* Host */
-		    hc->host,
-		    /* User-Agent */
-		    hc->app_name,
-		    /* Content-Length */
-		    msg.data.body_len);
+	  http_tx_buf (hc) = format (http_tx_buf (hc), put_request_template,
+				     /* target */
+				     format_http_bytes, target, msg.data.target_path_len,
+				     /* Host */
+				     hc->host,
+				     /* User-Agent */
+				     hc->app_name,
+				     /* Content-Length */
+				     msg.data.body_len);
 
 	  next_state = HTTP_REQ_STATE_APP_IO_MORE_DATA;
 	  sm_result = HTTP_SM_CONTINUE;
@@ -1538,20 +1533,20 @@ http1_req_state_wait_app_method (http_ctx_t *hc, http_ctx_t *req, transport_send
   if (msg.data.headers_len)
     {
       HTTP_DBG (0, "got headers from app, len %d", msg.data.headers_len);
-      http1_write_app_headers (req, &msg, &request);
+      http1_write_app_headers (req, &msg, &http_tx_buf (hc));
     }
   /* Add empty line after headers */
-  request = format (request, "\r\n");
-  HTTP_DBG (3, "%v", request);
+  http_tx_buf (hc) = format (http_tx_buf (hc), "\r\n");
+  HTTP_DBG (3, "%v", http_tx_buf (hc));
 
   max_enq = http_io_ts_max_write (hc, sp);
-  if (max_enq < vec_len (request))
+  if (max_enq < vec_len (http_tx_buf (hc)))
     {
       clib_warning ("sending request-line and headers failed!");
       sm_result = HTTP_SM_ERROR;
       goto error;
     }
-  http_io_ts_write (hc, request, vec_len (request), sp);
+  http_io_ts_write (hc, http_tx_buf (hc), vec_len (http_tx_buf (hc)), sp);
 
   if (next_state != HTTP_REQ_STATE_WAIT_TRANSPORT_REPLY)
     http_req_tx_buffer_init (req, &msg);
@@ -1730,7 +1725,7 @@ http1_req_state_udp_tunnel_tx_inline (http_ctx_t *hc, http_ctx_t *req, transport
 
   HTTP_DBG (1, "udp tunnel received data from target");
 
-  buf = http_get_tx_buf (hc);
+  buf = http_tx_buf (hc);
   to_deq = http_io_as_max_read (req);
 
   while (to_deq > sizeof (hdr))

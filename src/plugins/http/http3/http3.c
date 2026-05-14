@@ -217,7 +217,7 @@ http3_conn_init (u32 parent_index, clib_thread_index_t thread_index, http_ctx_t 
 {
   http_main_t *hm = &http_main;
   http_ctx_t *ctrl_stream;
-  u8 *buf, *p;
+  u8 *p;
   u32 hc_index = hc->hc_hc_index;
 
   /* open control stream */
@@ -238,13 +238,13 @@ http3_conn_init (u32 parent_index, clib_thread_index_t thread_index, http_ctx_t 
     clib_min (hc->settings.max_field_section_size, hc->hc_app_rx_fifo_size - sizeof (http_msg_t));
   http_stats_ctrl_streams_opened_inc (thread_index);
 
-  buf = http_get_tx_buf (ctrl_stream);
+  vec_reset_length (http_tx_buf (ctrl_stream));
   /* write stream type first */
-  p = http_encode_varint (buf, HTTP3_STREAM_TYPE_CONTROL);
-  vec_set_len (buf, (p - buf));
+  p = http_encode_varint (http_tx_buf (ctrl_stream), HTTP3_STREAM_TYPE_CONTROL);
+  vec_set_len (http_tx_buf (ctrl_stream), (p - http_tx_buf (ctrl_stream)));
   /* write settings frame */
-  http3_frame_settings_write (&hm->h3_settings, &buf);
-  http_io_ts_write (ctrl_stream, buf, vec_len (buf), 0);
+  http3_frame_settings_write (&hm->h3_settings, &http_tx_buf (ctrl_stream));
+  http_io_ts_write (ctrl_stream, http_tx_buf (ctrl_stream), vec_len (http_tx_buf (ctrl_stream)), 0);
   http_io_ts_after_write (ctrl_stream, 1);
   return 0;
 }
@@ -253,14 +253,13 @@ static_always_inline void
 http3_send_goaway (http_ctx_t *hc)
 {
   http_ctx_t *ctrl_stream;
-  u8 *buf;
   /* for client set to 0 since we don't support push for server use max stream id */
   u64 stream_or_push_id = hc->flags & HTTP_CONN_F_IS_SERVER ? HTTP3_SERVER_MAX_STREAM_ID : 0;
 
   ctrl_stream = http_ctx_get_w_thread (hc->our_ctrl_stream_index, hc->c_thread_index);
-  buf = http_get_tx_buf (ctrl_stream);
-  http3_frame_goaway_write (stream_or_push_id, &buf);
-  http_io_ts_write (ctrl_stream, buf, vec_len (buf), 0);
+  vec_reset_length (http_tx_buf (ctrl_stream));
+  http3_frame_goaway_write (stream_or_push_id, &http_tx_buf (ctrl_stream));
+  http_io_ts_write (ctrl_stream, http_tx_buf (ctrl_stream), vec_len (http_tx_buf (ctrl_stream)), 0);
   http_io_ts_after_write (ctrl_stream, 1);
 }
 
@@ -363,7 +362,7 @@ http3_req_state_wait_app_reply (http_ctx_t *stream, http_ctx_t *req, transport_s
 {
   http_msg_t msg;
   hpack_response_control_data_t control_data;
-  u8 *response, *date, *app_headers = 0;
+  u8 *date, *app_headers = 0;
   u32 headers_len, n_written;
   u8 fh_buf[HTTP3_FRAME_HEADER_MAX_LEN];
   u8 fh_len;
@@ -373,7 +372,7 @@ http3_req_state_wait_app_reply (http_ctx_t *stream, http_ctx_t *req, transport_s
   http_get_app_msg (req, &msg);
   ASSERT (msg.type == HTTP_MSG_REPLY);
 
-  response = http_get_tx_buf (stream);
+  vec_reset_length (http_tx_buf (stream));
   date = format (0, "%U", format_http_time_now, stream);
 
   control_data.content_len = msg.data.body_len;
@@ -416,14 +415,14 @@ http3_req_state_wait_app_reply (http_ctx_t *stream, http_ctx_t *req, transport_s
     app_headers = http_get_app_header_list (req, &msg);
 
   qpack_serialize_response (app_headers, msg.data.headers_len, &control_data,
-			    &response);
+			    &http_tx_buf (stream));
   vec_free (date);
-  headers_len = vec_len (response);
+  headers_len = vec_len (http_tx_buf (stream));
 
   fh_len =
     http3_frame_header_write (HTTP3_FRAME_TYPE_HEADERS, headers_len, fh_buf);
 
-  svm_fifo_seg_t segs[2] = { { fh_buf, fh_len }, { response, headers_len } };
+  svm_fifo_seg_t segs[2] = { { fh_buf, fh_len }, { http_tx_buf (stream), headers_len } };
   n_written = http_io_ts_write_segs (stream, segs, 2, 0);
   *n_sent += n_written;
   ASSERT (n_written == (fh_len + headers_len));
@@ -453,7 +452,7 @@ http3_req_state_wait_app_method (http_ctx_t *stream, http_ctx_t *req, transport_
 {
   http_msg_t msg;
   hpack_request_control_data_t control_data;
-  u8 *request, *app_headers = 0;
+  u8 *app_headers = 0;
   u32 headers_len, n_written;
   u8 fh_buf[HTTP3_FRAME_HEADER_MAX_LEN];
   u8 fh_len;
@@ -462,7 +461,7 @@ http3_req_state_wait_app_method (http_ctx_t *stream, http_ctx_t *req, transport_
   http_get_app_msg (req, &msg);
   ASSERT (msg.type == HTTP_MSG_REQUEST);
 
-  request = http_get_tx_buf (stream);
+  vec_reset_length (http_tx_buf (stream));
 
   control_data.method = msg.method_type;
   control_data.parsed_bitmap = HPACK_PSEUDO_HEADER_AUTHORITY_PARSED;
@@ -528,15 +527,14 @@ http3_req_state_wait_app_method (http_ctx_t *stream, http_ctx_t *req, transport_
   if (msg.data.headers_len)
     app_headers = http_get_app_header_list (req, &msg);
 
-  qpack_serialize_request (app_headers, msg.data.headers_len, &control_data,
-			   &request);
+  qpack_serialize_request (app_headers, msg.data.headers_len, &control_data, &http_tx_buf (stream));
 
-  headers_len = vec_len (request);
+  headers_len = vec_len (http_tx_buf (stream));
 
   fh_len =
     http3_frame_header_write (HTTP3_FRAME_TYPE_HEADERS, headers_len, fh_buf);
 
-  svm_fifo_seg_t segs[2] = { { fh_buf, fh_len }, { request, headers_len } };
+  svm_fifo_seg_t segs[2] = { { fh_buf, fh_len }, { http_tx_buf (stream), headers_len } };
   n_written = http_io_ts_write_segs (stream, segs, 2, 0);
   ASSERT (n_written == (fh_len + headers_len));
 
@@ -744,7 +742,6 @@ http3_stream_resp_not_implemented (http_ctx_t *stream, http_ctx_t *req)
   u8 fh_buf[HTTP3_FRAME_HEADER_MAX_LEN];
   u8 fh_len;
   u32 headers_len, n_written;
-  u8 *response = http_get_tx_buf (stream);
   u8 *date = format (0, "%U", format_http_time_now, stream);
   hpack_response_control_data_t control_data = {
     .content_len = 0,
@@ -755,11 +752,12 @@ http3_stream_resp_not_implemented (http_ctx_t *stream, http_ctx_t *req)
     .sc = HTTP_STATUS_NOT_IMPLEMENTED,
   };
 
-  qpack_serialize_response (0, 0, &control_data, &response);
+  vec_reset_length (http_tx_buf (stream));
+  qpack_serialize_response (0, 0, &control_data, &http_tx_buf (stream));
   vec_free (date);
-  headers_len = vec_len (response);
+  headers_len = vec_len (http_tx_buf (stream));
   fh_len = http3_frame_header_write (HTTP3_FRAME_TYPE_HEADERS, headers_len, fh_buf);
-  svm_fifo_seg_t segs[2] = { { fh_buf, fh_len }, { response, headers_len } };
+  svm_fifo_seg_t segs[2] = { { fh_buf, fh_len }, { http_tx_buf (stream), headers_len } };
   n_written = http_io_ts_write_segs (stream, segs, 2, 0);
   ASSERT (n_written == (fh_len + headers_len));
   http3_stream_close (stream, req);
@@ -797,13 +795,13 @@ static void
 http3_send_431 (http_ctx_t *stream, http_ctx_t *req)
 {
   hpack_response_control_data_t control_data;
-  u8 *response, *date;
+  u8 *date;
   u8 fh_buf[HTTP3_FRAME_HEADER_MAX_LEN];
   u8 fh_len;
   u32 headers_len;
 
   ASSERT (stream->flags & HTTP_CONN_F_IS_SERVER);
-  response = http_get_tx_buf (stream);
+  vec_reset_length (http_tx_buf (stream));
   date = format (0, "%U", format_http_time_now, stream);
   control_data.content_len = HPACK_ENCODER_SKIP_CONTENT_LEN;
   control_data.server_name = stream->app_name;
@@ -811,11 +809,11 @@ http3_send_431 (http_ctx_t *stream, http_ctx_t *req)
   control_data.date = date;
   control_data.date_len = vec_len (date);
   control_data.sc = HTTP_STATUS_REQUEST_HEADER_FIELDS_TOO_LARGE;
-  qpack_serialize_response (0, 0, &control_data, &response);
+  qpack_serialize_response (0, 0, &control_data, &http_tx_buf (stream));
   vec_free (date);
-  headers_len = vec_len (response);
+  headers_len = vec_len (http_tx_buf (stream));
   fh_len = http3_frame_header_write (HTTP3_FRAME_TYPE_HEADERS, headers_len, fh_buf);
-  svm_fifo_seg_t segs[2] = { { fh_buf, fh_len }, { response, headers_len } };
+  svm_fifo_seg_t segs[2] = { { fh_buf, fh_len }, { http_tx_buf (stream), headers_len } };
   http_io_ts_write_segs (stream, segs, 2, 0);
   http_io_ts_after_write (stream, 0);
   http_stats_responses_sent_inc (stream->c_thread_index);
@@ -840,6 +838,14 @@ http3_req_state_wait_transport_method (http_ctx_t *stream, http_ctx_t *req,
   u8 *rx_buf, *p;
   http_sm_result_t res = HTTP_SM_STOP;
 
+  if (req->fh.length == 0)
+    {
+      HTTP_DBG (1, "empty headers frame");
+      *n_deq = 0;
+      http3_stream_terminate (stream, req, HTTP3_ERROR_MESSAGE_ERROR);
+      return HTTP_SM_STOP;
+    }
+
   if (http_io_ts_max_read (stream) < req->fh.length)
     {
       HTTP_DBG (1, "headers frame incomplete");
@@ -851,8 +857,7 @@ http3_req_state_wait_transport_method (http_ctx_t *stream, http_ctx_t *req,
 
   http_stats_requests_received_inc (stream->c_thread_index);
 
-  rx_buf = http_get_rx_buf (stream);
-  vec_validate (rx_buf, req->fh.length - 1);
+  rx_buf = http_get_rx_buf_len (stream, req->fh.length);
   http_io_ts_read (stream, rx_buf, req->fh.length, 0);
   *n_deq = req->fh.length;
 
@@ -1062,6 +1067,14 @@ http3_req_state_wait_transport_reply (http_ctx_t *stream, http_ctx_t *req,
   u8 *rx_buf;
   http_sm_result_t res = HTTP_SM_STOP;
 
+  if (req->fh.length == 0)
+    {
+      HTTP_DBG (1, "empty headers frame");
+      *n_deq = 0;
+      http3_stream_terminate (stream, req, HTTP3_ERROR_MESSAGE_ERROR);
+      return HTTP_SM_STOP;
+    }
+
   if (http_io_ts_max_read (stream) < req->fh.length)
     {
       HTTP_DBG (1, "headers frame incomplete");
@@ -1072,8 +1085,7 @@ http3_req_state_wait_transport_reply (http_ctx_t *stream, http_ctx_t *req,
 
   http_stats_responses_received_inc (stream->c_thread_index);
 
-  rx_buf = http_get_rx_buf (stream);
-  vec_validate (rx_buf, req->fh.length - 1);
+  rx_buf = http_get_rx_buf_len (stream, req->fh.length);
   http_io_ts_read (stream, rx_buf, req->fh.length, 0);
   *n_deq = req->fh.length;
 
@@ -1301,6 +1313,14 @@ http3_req_state_udp_tunnel_rx_inline (http_ctx_t *stream, http_ctx_t *req,
   u32 dgram_size;
   session_dgram_hdr_t hdr;
 
+  if (req->fh.length == 0)
+    {
+      HTTP_DBG (1, "empty data frame");
+      *n_deq = 0;
+      http3_stream_terminate (stream, req, HTTP3_ERROR_MESSAGE_ERROR);
+      return HTTP_SM_STOP;
+    }
+
   if (http_io_ts_max_read (stream) < req->fh.length)
     {
       HTTP_DBG (1, "data frame incomplete");
@@ -1309,8 +1329,7 @@ http3_req_state_udp_tunnel_rx_inline (http_ctx_t *stream, http_ctx_t *req,
       return HTTP_SM_ERROR;
     }
 
-  rx_buf = http_get_rx_buf (stream);
-  vec_validate (rx_buf, req->fh.length - 1);
+  rx_buf = http_get_rx_buf_len (stream, req->fh.length);
   http_io_ts_read (stream, rx_buf, req->fh.length, 1);
   rv = http_decap_udp_payload_datagram (rx_buf, req->fh.length, &payload_offset, &payload_len,
 					is_draft03);
