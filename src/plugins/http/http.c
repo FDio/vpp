@@ -466,8 +466,8 @@ http_get_app_header_list (http_ctx_t *req, http_msg_t *msg)
     }
   else
     {
+      vec_validate (hm->app_header_lists[as->thread_index], msg->data.headers_len - 1);
       app_headers = hm->app_header_lists[as->thread_index];
-      vec_validate (app_headers, msg->data.headers_len - 1);
       rv = svm_fifo_dequeue (as->tx_fifo, msg->data.headers_len, app_headers);
       ASSERT (rv == msg->data.headers_len);
     }
@@ -505,21 +505,21 @@ http_get_app_target (http_ctx_t *req, http_msg_t *msg)
 }
 
 u8 *
-http_get_tx_buf (http_ctx_t *hc)
-{
-  http_main_t *hm = &http_main;
-  u8 *buf = hm->tx_bufs[hc->c_thread_index];
-  vec_reset_length (buf);
-  return buf;
-}
-
-u8 *
 http_get_rx_buf (http_ctx_t *hc)
 {
   http_main_t *hm = &http_main;
-  u8 *buf = hm->rx_bufs[hc->c_thread_index];
-  vec_reset_length (buf);
-  return buf;
+  vec_reset_length (hm->rx_bufs[hc->c_thread_index]);
+  return hm->rx_bufs[hc->c_thread_index];
+}
+
+u8 *
+http_get_rx_buf_len (http_ctx_t *hc, u32 len)
+{
+  http_main_t *hm = &http_main;
+  /* reset vector length first so correct length is set always */
+  vec_reset_length (hm->rx_bufs[hc->c_thread_index]);
+  vec_validate (hm->rx_bufs[hc->c_thread_index], len - 1);
+  return hm->rx_bufs[hc->c_thread_index];
 }
 
 void

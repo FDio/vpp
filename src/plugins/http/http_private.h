@@ -639,16 +639,7 @@ http_status_code_t http_sc_by_u16 (u16 status_code);
  */
 u8 *http_get_app_header_list (http_ctx_t *req, http_msg_t *msg);
 
-/**
- * Get pre-allocated TX buffer/vector.
- *
- * @param hc HTTP connection.
- *
- * @return Pointer to the vector.
- *
- * @note Vector length is reset to zero, use as temporary storage.
- */
-u8 *http_get_tx_buf (http_ctx_t *hc);
+#define http_tx_buf(_hc) (http_main.tx_bufs[(_hc)->c_thread_index])
 
 /**
  * Get pre-allocated RX buffer/vector.
@@ -658,8 +649,22 @@ u8 *http_get_tx_buf (http_ctx_t *hc);
  * @return Pointer to the vector.
  *
  * @note Vector length is reset to zero, use as temporary storage.
+ * @warning Do not resize vector.
+ *
  */
 u8 *http_get_rx_buf (http_ctx_t *hc);
+
+/**
+ * Get pre-allocated RX buffer/vector and make sure it is long enough.
+ *
+ * @param hc  HTTP connection.
+ * @param len Expected buffer length.
+ *
+ * @return Pointer to the vector.
+ *
+ * @warning Do not resize vector.
+ */
+u8 *http_get_rx_buf_len (http_ctx_t *hc, u32 len);
 
 /**
  * Read request target path sent by app.

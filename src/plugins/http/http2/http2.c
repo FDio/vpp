@@ -39,11 +39,11 @@ static void http2_update_time_callback (f64 now, u8 thread_index);
 always_inline void
 http2_send_client_preface (http_ctx_t *hc)
 {
-  u8 *response, *p;
+  u8 *p;
   http2_settings_entry_t *setting, *settings_list = 0;
 
-  response = http_get_tx_buf (hc);
-  vec_add2 (response, p, http2_conn_preface.len);
+  vec_reset_length (http_tx_buf (hc));
+  vec_add2 (http_tx_buf (hc), p, http2_conn_preface.len);
   clib_memcpy_fast (p, http2_conn_preface.base, http2_conn_preface.len);
 
 #define _(v, label, member, min, max, default_value, err_code, server, client)                     \
@@ -56,10 +56,10 @@ http2_send_client_preface (http_ctx_t *hc)
   foreach_http2_settings
 #undef _
 
-    http2_frame_write_settings (settings_list, &response);
+    http2_frame_write_settings (settings_list, &http_tx_buf (hc));
   /* send also connection window update */
-  http2_frame_write_window_update (hc->our_window - HTTP2_INITIAL_WIN_SIZE, 0, &response);
-  http_io_ts_write (hc, response, vec_len (response), 0);
+  http2_frame_write_window_update (hc->our_window - HTTP2_INITIAL_WIN_SIZE, 0, &http_tx_buf (hc));
+  http_io_ts_write (hc, http_tx_buf (hc), vec_len (http_tx_buf (hc)), 0);
   http_io_ts_after_write (hc, 1);
   vec_free (settings_list);
 }
@@ -310,7 +310,6 @@ static void
 http2_connection_error (http_ctx_t *hc, http2_error_t error, transport_send_params_t *sp)
 {
   http_worker_t *wrk = http_worker_get (hc->c_thread_index);
-  u8 *response;
   u32 req_index, stream_id;
   http_ctx_t *req;
   app_worker_t *app_wrk;
@@ -320,9 +319,9 @@ http2_connection_error (http_ctx_t *hc, http2_error_t error, transport_send_para
   /* check if we have enough space in fifo, otherwise just close connection */
   if (http_io_ts_max_write (hc, 0) >= (HTTP2_FRAME_HEADER_SIZE + HTTP2_GOAWAY_MIN_SIZE))
     {
-      response = http_get_tx_buf (hc);
-      http2_frame_write_goaway (error, hc->last_processed_stream_id, &response);
-      http_io_ts_write (hc, response, vec_len (response), sp);
+      vec_reset_length (http_tx_buf (hc));
+      http2_frame_write_goaway (error, hc->last_processed_stream_id, &http_tx_buf (hc));
+      http_io_ts_write (hc, http_tx_buf (hc), vec_len (http_tx_buf (hc)), sp);
       http_io_ts_after_write (hc, 1);
     }
 
@@ -370,7 +369,6 @@ static void
 http2_send_stream_error (http_ctx_t *hc, u32 stream_id, http2_error_t error,
 			 transport_send_params_t *sp)
 {
-  u8 *response;
   http2_rst_stream_t *rst_stream;
 
   /* check if we have enough space in fifo */
@@ -386,21 +384,18 @@ http2_send_stream_error (http_ctx_t *hc, u32 stream_id, http2_error_t error,
 
   HTTP_DBG (1, "hc [%u]%x streamId %u error %U", hc->c_thread_index,
 	    hc->hc_hc_index, stream_id, format_http2_error, error);
-  response = http_get_tx_buf (hc);
-  http2_frame_write_rst_stream (error, stream_id, &response);
-  http_io_ts_write (hc, response, vec_len (response), sp);
+  vec_reset_length (http_tx_buf (hc));
+  http2_frame_write_rst_stream (error, stream_id, &http_tx_buf (hc));
+  http_io_ts_write (hc, http_tx_buf (hc), vec_len (http_tx_buf (hc)), sp);
   http_io_ts_after_write (hc, 1);
 }
 
 always_inline void
 http2_tunnel_send_close (http_ctx_t *hc, http_ctx_t *req)
 {
-  u8 *response;
-
-  response = http_get_tx_buf (hc);
-  http2_frame_write_data_header (0, req->stream_id,
-				 HTTP2_FRAME_FLAG_END_STREAM, response);
-  http_io_ts_write (hc, response, HTTP2_FRAME_HEADER_SIZE, 0);
+  u8 fh[HTTP2_FRAME_HEADER_SIZE];
+  http2_frame_write_data_header (0, req->stream_id, HTTP2_FRAME_FLAG_END_STREAM, fh);
+  http_io_ts_write (hc, fh, HTTP2_FRAME_HEADER_SIZE, 0);
   http_io_ts_after_write (hc, 1);
 }
 
@@ -444,11 +439,9 @@ http2_stream_close (http_ctx_t *req, http_ctx_t *hc)
 always_inline void
 http2_send_window_update (http_ctx_t *hc, u32 increment, u32 stream_id)
 {
-  u8 *tx_buf;
-
-  tx_buf = http_get_tx_buf (hc);
-  http2_frame_write_window_update (increment, stream_id, &tx_buf);
-  http_io_ts_write (hc, tx_buf, vec_len (tx_buf), 0);
+  vec_reset_length (http_tx_buf (hc));
+  http2_frame_write_window_update (increment, stream_id, &http_tx_buf (hc));
+  http_io_ts_write (hc, http_tx_buf (hc), vec_len (http_tx_buf (hc)), 0);
   http_io_ts_after_write (hc, 1);
 }
 
@@ -475,7 +468,6 @@ http2_req_get_win_increment (http_ctx_t *req, http_ctx_t *hc)
 always_inline void
 http2_send_server_preface (http_ctx_t *hc)
 {
-  u8 *response;
   http2_settings_entry_t *setting, *settings_list = 0;
 
 #define _(v, label, member, min, max, default_value, err_code, server, client)                     \
@@ -488,11 +480,11 @@ http2_send_server_preface (http_ctx_t *hc)
   foreach_http2_settings
 #undef _
 
-    response = http_get_tx_buf (hc);
-  http2_frame_write_settings (settings_list, &response);
+    vec_reset_length (http_tx_buf (hc));
+  http2_frame_write_settings (settings_list, &http_tx_buf (hc));
   /* send also connection window update */
-  http2_frame_write_window_update (hc->our_window - HTTP2_INITIAL_WIN_SIZE, 0, &response);
-  http_io_ts_write (hc, response, vec_len (response), 0);
+  http2_frame_write_window_update (hc->our_window - HTTP2_INITIAL_WIN_SIZE, 0, &http_tx_buf (hc));
+  http_io_ts_write (hc, http_tx_buf (hc), vec_len (http_tx_buf (hc)), 0);
   http_io_ts_after_write (hc, 1);
   vec_free (settings_list);
 }
@@ -883,14 +875,14 @@ static void
 http_sched_dispatch_431 (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissions,
 			 clib_llist_index_t *next_ri)
 {
-  u8 *response, *date;
+  u8 *date;
   u32 headers_len;
   hpack_response_control_data_t control_data;
   u8 fh[HTTP2_FRAME_HEADER_SIZE];
 
   *n_emissions += HTTP2_SCHED_WEIGHT_HEADERS_PTR;
   *next_ri = clib_llist_next_index (req, stream_sched_list);
-  response = http_get_tx_buf (hc);
+  vec_reset_length (http_tx_buf (hc));
   date = format (0, "%U", format_http_time_now, hc);
   control_data.content_len = HPACK_ENCODER_SKIP_CONTENT_LEN;
   control_data.server_name = hc->app_name;
@@ -898,12 +890,12 @@ http_sched_dispatch_431 (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissions,
   control_data.date = date;
   control_data.date_len = vec_len (date);
   control_data.sc = HTTP_STATUS_REQUEST_HEADER_FIELDS_TOO_LARGE;
-  hpack_serialize_response (0, 0, &control_data, &response);
+  hpack_serialize_response (0, 0, &control_data, &http_tx_buf (hc));
   vec_free (date);
-  headers_len = vec_len (response);
+  headers_len = vec_len (http_tx_buf (hc));
   http2_frame_write_headers_header (headers_len, req->stream_id,
 				    HTTP2_FRAME_FLAG_END_HEADERS | HTTP2_FRAME_FLAG_END_STREAM, fh);
-  svm_fifo_seg_t segs[2] = { { fh, HTTP2_FRAME_HEADER_SIZE }, { response, headers_len } };
+  svm_fifo_seg_t segs[2] = { { fh, HTTP2_FRAME_HEADER_SIZE }, { http_tx_buf (hc), headers_len } };
   http_io_ts_write_segs (hc, segs, 2, 0);
   http_stats_responses_sent_inc (hc->c_thread_index);
   /* notify app that nothing will happen and free request */
@@ -919,7 +911,7 @@ http2_sched_dispatch_resp_headers (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissi
 {
   http_worker_t *wrk = http_worker_get (hc->c_thread_index);
   http_msg_t msg;
-  u8 *response, *date, *app_headers = 0;
+  u8 *date, *app_headers = 0;
   u8 fh[HTTP2_FRAME_HEADER_SIZE];
   hpack_response_control_data_t control_data;
   u8 flags = 0;
@@ -932,7 +924,7 @@ http2_sched_dispatch_resp_headers (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissi
 		    HTTP2_SCHED_WEIGHT_HEADERS_PTR :
 		    HTTP2_SCHED_WEIGHT_HEADERS_INLINE;
 
-  response = http_get_tx_buf (hc);
+  vec_reset_length (http_tx_buf (hc));
   date = format (0, "%U", format_http_time_now, hc);
 
   control_data.content_len = msg.data.body_len;
@@ -969,10 +961,9 @@ http2_sched_dispatch_resp_headers (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissi
       app_headers = http_get_app_header_list (req, &msg);
     }
 
-  hpack_serialize_response (app_headers, msg.data.headers_len, &control_data,
-			    &response);
+  hpack_serialize_response (app_headers, msg.data.headers_len, &control_data, &http_tx_buf (hc));
   vec_free (date);
-  headers_len = vec_len (response);
+  headers_len = vec_len (http_tx_buf (hc));
 
   max_write = http_io_ts_max_write (hc, 0);
   max_write -= HTTP2_FRAME_HEADER_SIZE;
@@ -1037,19 +1028,18 @@ http2_sched_dispatch_resp_headers (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissi
       HTTP_DBG (1, "response headers need to be fragmented");
       *next_ri = clib_llist_entry_index (wrk->ctx_pool, req);
       headers_len = max_write;
-      headers_left = vec_len (response) - headers_len;
+      headers_left = vec_len (http_tx_buf (hc)) - headers_len;
       req->dispatch_headers_cb = http2_sched_dispatch_continuation;
       /* move unsend portion of headers to connection ctx */
       ASSERT (hc->unsent_headers == 0);
       vec_validate (hc->unsent_headers, headers_left - 1);
-      clib_memcpy_fast (hc->unsent_headers, response + headers_len, headers_left);
+      clib_memcpy_fast (hc->unsent_headers, http_tx_buf (hc) + headers_len, headers_left);
       hc->unsent_headers_offset = 0;
       *n_emissions += HTTP2_SCHED_WEIGHT_HEADERS_CONTINUATION;
     }
 
   http2_frame_write_headers_header (headers_len, stream_id, flags, fh);
-  svm_fifo_seg_t segs[2] = { { fh, HTTP2_FRAME_HEADER_SIZE },
-			     { response, headers_len } };
+  svm_fifo_seg_t segs[2] = { { fh, HTTP2_FRAME_HEADER_SIZE }, { http_tx_buf (hc), headers_len } };
   n_written = http_io_ts_write_segs (hc, segs, 2, 0);
   ASSERT (n_written == (HTTP2_FRAME_HEADER_SIZE + headers_len));
   http_stats_responses_sent_inc (hc->c_thread_index);
@@ -1061,7 +1051,7 @@ http2_sched_dispatch_req_headers (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissio
 {
   http_worker_t *wrk = http_worker_get (hc->c_thread_index);
   http_msg_t msg;
-  u8 *request, *app_headers = 0;
+  u8 *app_headers = 0;
   u8 fh[HTTP2_FRAME_HEADER_SIZE];
   hpack_request_control_data_t control_data;
   u8 flags = 0;
@@ -1076,7 +1066,7 @@ http2_sched_dispatch_req_headers (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissio
 		    HTTP2_SCHED_WEIGHT_HEADERS_PTR :
 		    HTTP2_SCHED_WEIGHT_HEADERS_INLINE;
 
-  request = http_get_tx_buf (hc);
+  vec_reset_length (http_tx_buf (hc));
 
   control_data.method = msg.method_type;
   control_data.parsed_bitmap = HPACK_PSEUDO_HEADER_AUTHORITY_PARSED;
@@ -1180,9 +1170,8 @@ http2_sched_dispatch_req_headers (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissio
       flags |= (req->req_flags & HTTP_REQ_F_IS_TUNNEL) ? 0 : HTTP2_FRAME_FLAG_END_STREAM;
     }
 
-  hpack_serialize_request (app_headers, msg.data.headers_len, &control_data,
-			   &request);
-  headers_len = vec_len (request);
+  hpack_serialize_request (app_headers, msg.data.headers_len, &control_data, &http_tx_buf (hc));
+  headers_len = vec_len (http_tx_buf (hc));
 
   max_write = http_io_ts_max_write (hc, 0);
   max_write -= HTTP2_FRAME_HEADER_SIZE;
@@ -1216,19 +1205,18 @@ http2_sched_dispatch_req_headers (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissio
       HTTP_DBG (1, "response headers need to be fragmented");
       *next_ri = clib_llist_entry_index (wrk->ctx_pool, req);
       headers_len = max_write;
-      headers_left = vec_len (request) - headers_len;
+      headers_left = vec_len (http_tx_buf (hc)) - headers_len;
       req->dispatch_headers_cb = http2_sched_dispatch_continuation;
       /* move unsend portion of headers to connection ctx */
       ASSERT (hc->unsent_headers == 0);
       vec_validate (hc->unsent_headers, headers_left - 1);
-      clib_memcpy_fast (hc->unsent_headers, request + headers_len, headers_left);
+      clib_memcpy_fast (hc->unsent_headers, http_tx_buf (hc) + headers_len, headers_left);
       hc->unsent_headers_offset = 0;
       *n_emissions += HTTP2_SCHED_WEIGHT_HEADERS_CONTINUATION;
     }
 
   http2_frame_write_headers_header (headers_len, req->stream_id, flags, fh);
-  svm_fifo_seg_t segs[2] = { { fh, HTTP2_FRAME_HEADER_SIZE },
-			     { request, headers_len } };
+  svm_fifo_seg_t segs[2] = { { fh, HTTP2_FRAME_HEADER_SIZE }, { http_tx_buf (hc), headers_len } };
   n_written = http_io_ts_write_segs (hc, segs, 2, 0);
   ASSERT (n_written == (HTTP2_FRAME_HEADER_SIZE + headers_len));
   http_stats_requests_sent_inc (hc->c_thread_index);
@@ -2228,8 +2216,7 @@ http2_handle_headers_frame (http_ctx_t *hc, http2_frame_header_t *fh)
 	}
     }
 
-  rx_buf = http_get_rx_buf (hc);
-  vec_validate (rx_buf, fh->length - 1);
+  rx_buf = http_get_rx_buf_len (hc, fh->length);
   http_io_ts_read (hc, rx_buf, fh->length, 0);
 
   rv = http2_frame_read_headers (&req->payload, &req->payload_len, rx_buf,
@@ -2369,8 +2356,7 @@ http2_handle_data_frame (http_ctx_t *hc, http2_frame_header_t *fh)
       return HTTP2_ERROR_NO_ERROR;
     }
 
-  rx_buf = http_get_rx_buf (hc);
-  vec_validate (rx_buf, fh->length - 1);
+  rx_buf = http_get_rx_buf_len (hc, fh->length);
   http_io_ts_read (hc, rx_buf, fh->length, 0);
 
   rv = http2_frame_read_data (&req->payload, &req->payload_len, rx_buf,
@@ -2401,8 +2387,7 @@ http2_handle_window_update_frame (http_ctx_t *hc, http2_frame_header_t *fh)
       return HTTP2_ERROR_FRAME_SIZE_ERROR;
     }
 
-  rx_buf = http_get_rx_buf (hc);
-  vec_validate (rx_buf, fh->length - 1);
+  rx_buf = http_get_rx_buf_len (hc, fh->length);
   http_io_ts_read (hc, rx_buf, fh->length, 0);
 
   rv = http2_frame_read_window_update (&win_increment, rx_buf, fh->length);
@@ -2487,8 +2472,7 @@ http2_handle_settings_frame (http_ctx_t *hc, http2_frame_header_t *fh)
       if (fh->length < sizeof (http2_settings_entry_t))
 	return HTTP2_ERROR_FRAME_SIZE_ERROR;
 
-      rx_buf = http_get_rx_buf (hc);
-      vec_validate (rx_buf, fh->length - 1);
+      rx_buf = http_get_rx_buf_len (hc, fh->length);
       http_io_ts_read (hc, rx_buf, fh->length, 0);
 
       new_settings = hc->peer_settings;
@@ -2559,7 +2543,6 @@ http2_handle_rst_stream_frame (http_ctx_t *hc, http2_frame_header_t *fh)
     return HTTP2_ERROR_PROTOCOL_ERROR;
 
   rx_buf = http_get_rx_buf (hc);
-  vec_validate (rx_buf, fh->length - 1);
   http_io_ts_read (hc, rx_buf, fh->length, 0);
 
   rv = http2_frame_read_rst_stream (&error_code, rx_buf, fh->length);
@@ -2610,8 +2593,7 @@ http2_handle_goaway_frame (http_ctx_t *hc, http2_frame_header_t *fh)
   if (fh->stream_id != 0)
     return HTTP2_ERROR_PROTOCOL_ERROR;
 
-  rx_buf = http_get_rx_buf (hc);
-  vec_validate (rx_buf, fh->length - 1);
+  rx_buf = http_get_rx_buf_len (hc, fh->length);
   http_io_ts_read (hc, rx_buf, fh->length, 0);
 
   rv =
@@ -2671,7 +2653,6 @@ http2_handle_ping_frame (http_ctx_t *hc, http2_frame_header_t *fh)
     return HTTP2_ERROR_PROTOCOL_ERROR;
 
   rx_buf = http_get_rx_buf (hc);
-  vec_validate (rx_buf, fh->length - 1);
   http_io_ts_read (hc, rx_buf, fh->length, 0);
 
   /* RFC9113 6.7: The endpoint MUST NOT respond to PING frames with ACK */
@@ -3424,7 +3405,6 @@ http2_transport_conn_reschedule_callback (http_ctx_t *hc)
   http_worker_t *wrk = http_worker_get (hc->c_thread_index);
   http_ctx_t *req;
   u32 max_write, need_write, increment, *stream_id = 0;
-  u8 *tx_buf;
   http2_rst_stream_t *rst_stream;
 
   HTTP_DBG (1, "hc [%u]%x", hc->c_thread_index, hc->hc_hc_index);
@@ -3438,13 +3418,14 @@ http2_transport_conn_reschedule_callback (http_ctx_t *hc)
       need_write = vec_len (hc->pending_rst_stream) * HTTP2_RST_STREAM_FRAME_SIZE;
       if (max_write >= need_write)
 	{
-	  tx_buf = http_get_tx_buf (hc);
+	  vec_reset_length (http_tx_buf (hc));
 	  vec_foreach (rst_stream, hc->pending_rst_stream)
 	    {
-	      http2_frame_write_rst_stream (rst_stream->error, rst_stream->stream_id, &tx_buf);
+	      http2_frame_write_rst_stream (rst_stream->error, rst_stream->stream_id,
+					    &http_tx_buf (hc));
 	    }
 	  vec_reset_length (hc->pending_rst_stream);
-	  http_io_ts_write (hc, tx_buf, vec_len (tx_buf), 0);
+	  http_io_ts_write (hc, http_tx_buf (hc), vec_len (http_tx_buf (hc)), 0);
 	  http_io_ts_after_write (hc, 1);
 	  max_write -= need_write;
 	}
@@ -3456,7 +3437,7 @@ http2_transport_conn_reschedule_callback (http_ctx_t *hc)
       need_write = vec_len (hc->pending_win_updates) * HTTP2_WINDOW_UPDATE_FRAME_SIZE;
       if (max_write >= need_write)
 	{
-	  tx_buf = http_get_tx_buf (hc);
+	  vec_reset_length (http_tx_buf (hc));
 	  vec_foreach (stream_id, hc->pending_win_updates)
 	    {
 	      req = http2_conn_get_req (hc, *stream_id);
@@ -3467,11 +3448,10 @@ http2_transport_conn_reschedule_callback (http_ctx_t *hc)
 	      if (!increment)
 		continue;
 	      req->our_stream_window += increment;
-	      http2_frame_write_window_update (increment, req->stream_id,
-					       &tx_buf);
+	      http2_frame_write_window_update (increment, req->stream_id, &http_tx_buf (hc));
 	    }
 	  vec_reset_length (hc->pending_win_updates);
-	  http_io_ts_write (hc, tx_buf, vec_len (tx_buf), 0);
+	  http_io_ts_write (hc, http_tx_buf (hc), vec_len (http_tx_buf (hc)), 0);
 	  http_io_ts_after_write (hc, 1);
 	  max_write -= need_write;
 	}
