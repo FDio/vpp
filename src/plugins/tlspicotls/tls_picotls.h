@@ -30,10 +30,22 @@ typedef struct tls_ctx_picotls_
   int read_buffer_offset;
 } picotls_ctx_t;
 
+typedef struct picotls_on_client_hello_
+{
+  ptls_on_client_hello_t super;
+  u8 *alpn_list;
+} picotls_on_client_hello_t;
+
+int picotls_alpn_list_to_iovecs (u8 *alpn_list, ptls_iovec_t **iovecs);
+int picotls_select_alpn_proto (u8 *server_alpn_list, ptls_iovec_t *client_alpn_list,
+			       size_t client_alpn_count, u8 **selected_proto,
+			       u8 *selected_proto_len);
+
 typedef struct tls_listen_ctx_picotls_
 {
   u32 ptls_lctx_index;
   ptls_context_t *ptls_ctx;
+  picotls_on_client_hello_t client_hello_ctx;
 } picotls_listen_ctx_t;
 
 typedef struct picotls_main_

@@ -24,6 +24,42 @@ static ptls_key_exchange_algorithm_t *default_key_exchange[] = {
 #endif
 };
 
+static int
+picotls_on_client_hello (ptls_on_client_hello_t *self, ptls_t *tls,
+			 ptls_on_client_hello_parameters_t *params)
+{
+  picotls_on_client_hello_t *ch_ctx = (picotls_on_client_hello_t *) self;
+  u8 *server_proto, server_proto_len;
+  int rv;
+
+  if (!params->negotiated_protocols.count || !ch_ctx->alpn_list)
+    return 0;
+
+  rv = picotls_select_alpn_proto (ch_ctx->alpn_list, params->negotiated_protocols.list,
+				  params->negotiated_protocols.count, &server_proto,
+				  &server_proto_len);
+  if (rv == 1)
+    return ptls_set_negotiated_protocol (tls, (char *) server_proto, server_proto_len);
+
+  return PTLS_ALERT_NO_APPLICATION_PROTOCOL;
+}
+
+static void
+picotls_update_alpn_selected (tls_ctx_t *ctx, ptls_t *tls)
+{
+  const char *proto;
+
+  if (!ctx->alpn_list)
+    return;
+
+  proto = ptls_get_negotiated_protocol (tls);
+  if (proto)
+    {
+      tls_alpn_proto_id_t id = { .base = (u8 *) proto, .len = strlen (proto) };
+      ctx->alpn_selected = tls_alpn_proto_by_str (&id);
+    }
+}
+
 static u32
 picotls_ctx_alloc_w_thread (clib_thread_index_t thread_id)
 {
@@ -161,6 +197,12 @@ picotls_start_listen (tls_ctx_t * lctx)
   ptls_ctx->random_bytes = ptls_openssl_random_bytes;
   ptls_ctx->cipher_suites = ptls_vpp_crypto_cipher_suites;
   ptls_ctx->get_time = &ptls_get_time;
+  if (lctx->alpn_list)
+    {
+      ptls_lctx->client_hello_ctx.super.cb = picotls_on_client_hello;
+      ptls_lctx->client_hello_ctx.alpn_list = lctx->alpn_list;
+      ptls_ctx->on_client_hello = &ptls_lctx->client_hello_ctx.super;
+    }
 
   lctx->tls_ssl_ctx = ptls_lctx_idx;
 
@@ -458,6 +500,7 @@ picotls_ctx_read (tls_ctx_t *ctx, session_t *tcp_session)
 
       if (!(ctx->flags & TLS_CONN_F_HS_DONE))
 	{
+	  picotls_update_alpn_selected (ctx, ptls_ctx->tls);
 	  if (ptls_is_server (ptls_ctx->tls))
 	    {
 	      if (tls_notify_app_accept (ctx))
@@ -709,9 +752,11 @@ picotls_ctx_init_client (tls_ctx_t *ctx)
   picotls_main_t *pm = &picotls_main;
   ptls_context_t *client_ptls_ctx = pm->client_ptls_ctx;
   ptls_handshake_properties_t hsprop = { { { { NULL } } } };
-
+  ptls_iovec_t *alpn_list = 0;
+  int alpn_count;
   session_t *tls_session = session_get_from_handle (ctx->tls_session_handle);
   ptls_buffer_t hs_buf;
+  int rv = 0;
 
   ptls_ctx->tls = ptls_new (client_ptls_ctx, 0);
   if (ptls_ctx->tls == NULL)
@@ -722,19 +767,39 @@ picotls_ctx_init_client (tls_ctx_t *ctx)
 
   ptls_ctx->rx_len = 0;
   ptls_ctx->rx_offset = 0;
+  alpn_count = picotls_alpn_list_to_iovecs (ctx->alpn_list, &alpn_list);
+  if (alpn_count < 0)
+    {
+      TLS_DBG (1, "Malformed alpn list");
+      ptls_free (ptls_ctx->tls);
+      ptls_ctx->tls = 0;
+      return -1;
+    }
+  hsprop.client.negotiated_protocols.count = alpn_count;
+  hsprop.client.negotiated_protocols.list = alpn_list;
 
   ptls_buffer_init (&hs_buf, "", 0);
   if (ptls_handshake (ptls_ctx->tls, &hs_buf, NULL, NULL, &hsprop) !=
       PTLS_ERROR_IN_PROGRESS)
     {
       TLS_DBG (1, "Failed to initialize tls connection");
+      rv = -1;
+      goto done;
     }
 
   picotls_try_handshake_write (ptls_ctx, tls_session, &hs_buf);
 
+done:
   ptls_buffer_dispose (&hs_buf);
+  vec_free (alpn_list);
 
-  return 0;
+  if (rv)
+    {
+      ptls_free (ptls_ctx->tls);
+      ptls_ctx->tls = 0;
+    }
+
+  return rv;
 }
 
 tls_ctx_t *

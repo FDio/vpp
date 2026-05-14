@@ -15,6 +15,8 @@ var (
 func init() {
 	RegisterTlsTests(TlsAlpMatchTest, TlsAlpnOverlapMatchTest, TlsAlpnServerPriorityMatchTest, TlsAlpnMismatchTest,
 		TlsAlpnEmptyServerListTest, TlsAlpnEmptyClientListTest, TlsCrlRejectThenAllowTest,
+		TlsPicotlsAlpMatchTest, TlsPicotlsAlpnOverlapMatchTest,
+		TlsPicotlsAlpnServerPriorityMatchTest, TlsPicotlsAlpnMismatchTest,
 		TlsPicotlsAlpnEmptyServerListTest, TlsPicotlsAlpnEmptyClientListTest)
 }
 
@@ -54,11 +56,19 @@ func TlsCrlRejectThenAllowTest(s *TlsSuite) {
 }
 
 func TlsAlpMatchTest(s *TlsSuite) {
+	tlsAlpMatchTest(s, tlsTestEngine{})
+}
+
+func TlsPicotlsAlpMatchTest(s *TlsSuite) {
+	tlsAlpMatchTest(s, tlsEnginePicotls)
+}
+
+func tlsAlpMatchTest(s *TlsSuite, engine tlsTestEngine) {
 	serverAddress := s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1
-	Log(s.Containers.ServerVpp.VppInstance.Vppctl("test tls server alpn-proto1 2 uri tls://" + serverAddress))
+	Log(s.Containers.ServerVpp.VppInstance.Vppctl(tlsCmd("test tls server alpn-proto1 2 uri tls://"+serverAddress, engine)))
 
 	uri := "tls://" + serverAddress
-	o := s.Containers.ClientVpp.VppInstance.Vppctl("test tls client alpn-proto1 2 uri " + uri)
+	o := s.Containers.ClientVpp.VppInstance.Vppctl(tlsCmd("test tls client alpn-proto1 2 uri "+uri, engine))
 	Log(o)
 	AssertNotContains(o, "connect failed")
 	AssertNotContains(o, "timeout")
@@ -67,11 +77,19 @@ func TlsAlpMatchTest(s *TlsSuite) {
 }
 
 func TlsAlpnOverlapMatchTest(s *TlsSuite) {
+	tlsAlpnOverlapMatchTest(s, tlsTestEngine{})
+}
+
+func TlsPicotlsAlpnOverlapMatchTest(s *TlsSuite) {
+	tlsAlpnOverlapMatchTest(s, tlsEnginePicotls)
+}
+
+func tlsAlpnOverlapMatchTest(s *TlsSuite, engine tlsTestEngine) {
 	serverAddress := s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1
-	Log(s.Containers.ServerVpp.VppInstance.Vppctl("test tls server alpn-proto1 2 alpn-proto2 1 uri tls://" + serverAddress))
+	Log(s.Containers.ServerVpp.VppInstance.Vppctl(tlsCmd("test tls server alpn-proto1 2 alpn-proto2 1 uri tls://"+serverAddress, engine)))
 
 	uri := "tls://" + serverAddress
-	o := s.Containers.ClientVpp.VppInstance.Vppctl("test tls client alpn-proto1 3 alpn-proto2 2 uri " + uri)
+	o := s.Containers.ClientVpp.VppInstance.Vppctl(tlsCmd("test tls client alpn-proto1 3 alpn-proto2 2 uri "+uri, engine))
 	Log(o)
 	AssertNotContains(o, "connect failed")
 	AssertNotContains(o, "timeout")
@@ -80,11 +98,19 @@ func TlsAlpnOverlapMatchTest(s *TlsSuite) {
 }
 
 func TlsAlpnServerPriorityMatchTest(s *TlsSuite) {
+	tlsAlpnServerPriorityMatchTest(s, tlsTestEngine{})
+}
+
+func TlsPicotlsAlpnServerPriorityMatchTest(s *TlsSuite) {
+	tlsAlpnServerPriorityMatchTest(s, tlsEnginePicotls)
+}
+
+func tlsAlpnServerPriorityMatchTest(s *TlsSuite, engine tlsTestEngine) {
 	serverAddress := s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1
-	Log(s.Containers.ServerVpp.VppInstance.Vppctl("test tls server alpn-proto1 2 alpn-proto2 1 uri tls://" + serverAddress))
+	Log(s.Containers.ServerVpp.VppInstance.Vppctl(tlsCmd("test tls server alpn-proto1 2 alpn-proto2 1 uri tls://"+serverAddress, engine)))
 
 	uri := "tls://" + serverAddress
-	o := s.Containers.ClientVpp.VppInstance.Vppctl("test tls client alpn-proto1 1 alpn-proto2 2 uri " + uri)
+	o := s.Containers.ClientVpp.VppInstance.Vppctl(tlsCmd("test tls client alpn-proto1 1 alpn-proto2 2 uri "+uri, engine))
 	Log(o)
 	AssertNotContains(o, "connect failed")
 	AssertNotContains(o, "timeout")
@@ -93,11 +119,19 @@ func TlsAlpnServerPriorityMatchTest(s *TlsSuite) {
 }
 
 func TlsAlpnMismatchTest(s *TlsSuite) {
+	tlsAlpnMismatchTest(s, tlsTestEngine{})
+}
+
+func TlsPicotlsAlpnMismatchTest(s *TlsSuite) {
+	tlsAlpnMismatchTest(s, tlsEnginePicotls)
+}
+
+func tlsAlpnMismatchTest(s *TlsSuite, engine tlsTestEngine) {
 	serverAddress := s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1
-	Log(s.Containers.ServerVpp.VppInstance.Vppctl("test tls server alpn-proto1 2 alpn-proto2 1 uri tls://" + serverAddress))
+	Log(s.Containers.ServerVpp.VppInstance.Vppctl(tlsCmd("test tls server alpn-proto1 2 alpn-proto2 1 uri tls://"+serverAddress, engine)))
 
 	uri := "tls://" + serverAddress
-	o := s.Containers.ClientVpp.VppInstance.Vppctl("test tls client alpn-proto1 3 alpn-proto2 4 uri " + uri)
+	o := s.Containers.ClientVpp.VppInstance.Vppctl(tlsCmd("test tls client alpn-proto1 3 alpn-proto2 4 uri "+uri, engine))
 	Log(o)
 	AssertNotContains(o, "timeout")
 	AssertNotContains(o, "ALPN selected")

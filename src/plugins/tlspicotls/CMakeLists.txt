@@ -35,9 +35,19 @@ if(QUICLY_INCLUDE_DIR AND PICOTLS_INCLUDE_DIR AND PICOTLS_LINK_LIBRARIES)
     add_vpp_plugin(tlspicotls
         SOURCES
         tls_picotls.c
+        tls_picotls_alpn.c
         pico_vpp_crypto.c
         certs.c
 
+        LINK_LIBRARIES ${PICOTLS_LINK_LIBRARIES} ${OPENSSL_LIBRARIES}
+    )
+    add_vpp_plugin(tlspicotls_unittest
+        SOURCES
+        tls_picotls_alpn.c
+        tls_picotls_test.c
+
+        COMPONENT
+        vpp-plugin-devtools
         LINK_LIBRARIES ${PICOTLS_LINK_LIBRARIES} ${OPENSSL_LIBRARIES}
     )
     message (STATUS "Found picotls in ${PICOTLS_INCLUDE_DIR} and ${PICOTLS_CORE_LIBRARY}")
