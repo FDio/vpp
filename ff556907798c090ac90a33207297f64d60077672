@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1372386c_88b81e17",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2026-05-14T10:17:25Z",
+      "side": 1,
+      "message": "The following run confirms this fixes the wireguard+qat test without affecting other CSIT crypto related tests: https://github.com/FDio/csit/actions/runs/25851649174/job/75959406722",
+      "revId": "ff556907798c090ac90a33207297f64d60077672",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
