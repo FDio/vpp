@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4c187658_77225c20",
+        "filename": "src/vnet/buffer.h",
+        "patchSetId": 15
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-05-14T08:22:31Z",
+      "side": 1,
+      "message": "instead of adding new buffer flag you should register flow_id range with vnet_flow_get_range() and then you can simply do range check to identify if flow_id contains valid data for you",
+      "revId": "58ca7b9c01e8152dd7eb54e20bb602f2b0ab9cbf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0e74f556_00fe1a05",
+        "filename": "src/vnet/tm/tm.h",
+        "patchSetId": 15
+      },
+      "lineNbr": 52,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-05-14T08:22:31Z",
+      "side": 1,
+      "message": "please prefix all stricts an functions with vnet_\ntm_ -\u003e vnet_tm_",
+      "revId": "58ca7b9c01e8152dd7eb54e20bb602f2b0ab9cbf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bb689fc9_98bedc8e",
+        "filename": "src/vnet/tm/tm.h",
+        "patchSetId": 15
+      },
+      "lineNbr": 155,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-05-14T08:22:31Z",
+      "side": 1,
+      "message": "please use u32",
+      "revId": "58ca7b9c01e8152dd7eb54e20bb602f2b0ab9cbf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
