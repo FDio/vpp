@@ -1,0 +1,22 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "58d35b80_8d794294",
+        "filename": "src/drivers/iavf/rx_node.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-05-14T11:00:57Z",
+      "side": 1,
+      "message": "Done in PS20. b-\u003eflags is now assigned directly from the local `flags` variable. The validate calls are also moved before iavf_rx_attach_tail() so that b-\u003eflags still holds the template value when the assignment runs.",
+      "parentUuid": "bfcd542f_0cda632f",
+      "revId": "d301b9c841db8a4b61ad281c9ad35699265c62f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
