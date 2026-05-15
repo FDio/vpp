@@ -436,7 +436,6 @@ quic_udp_session_connected_callback (u32 quic_app_index, u32 ctx_index,
    * connects instantly. */
   struct sockaddr_in6 sa6;
   struct sockaddr *sa = (struct sockaddr *) &sa6;
-  socklen_t salen;
   transport_connection_t *tc;
   app_worker_t *app_wrk;
   quic_ctx_t *ctx;
@@ -469,7 +468,7 @@ quic_udp_session_connected_callback (u32 quic_app_index, u32 ctx_index,
   /* Init QUIC lib connection
    * Generate required sockaddr & salen */
   tc = session_get_transport (udp_session);
-  quic_build_sockaddr (sa, &salen, &tc->rmt_ip, tc->rmt_port, tc->is_ip4);
+  quic_build_sockaddr (sa, &tc->rmt_ip, tc->rmt_port, tc->is_ip4);
 
   ret = quic_eng_connect (ctx, ctx_index, thread_index, sa);
   quic_eng_send_packets (ctx);

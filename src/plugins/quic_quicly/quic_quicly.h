@@ -29,18 +29,20 @@
 
 typedef struct quic_quicly_rx_packet_ctx_
 {
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
 #define _(type, name) type name;
   foreach_quic_rx_pkt_ctx_field
 #undef _
-    quicly_decoded_packet_t packet;
-  u8 data[QUIC_MAX_PACKET_SIZE];
+    session_dgram_hdr_t ph;
   union
   {
     struct sockaddr sa;
     struct sockaddr_in6 sa6;
   };
-  socklen_t salen;
-  session_dgram_hdr_t ph;
+  CLIB_CACHE_LINE_ALIGN_MARK (quicly_data);
+  quicly_decoded_packet_t packet;
+  CLIB_CACHE_LINE_ALIGN_MARK (packet_data);
+  u8 data[QUIC_MAX_PACKET_SIZE];
 } quic_quicly_rx_packet_ctx_t;
 
 /* single-entry session cache */
