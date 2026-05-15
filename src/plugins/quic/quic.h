@@ -126,14 +126,13 @@ typedef enum quic_ctx_conn_state_ : u8
   QUIC_CONN_STATE_CLOSED,
 } quic_ctx_conn_state_t;
 
-typedef enum quic_packet_type_
+typedef enum quic_packet_type_ : u8
 {
   QUIC_PACKET_TYPE_NONE,
   QUIC_PACKET_TYPE_RECEIVE,
-  QUIC_PACKET_TYPE_MIGRATE,
   QUIC_PACKET_TYPE_ACCEPT,
   QUIC_PACKET_TYPE_RESET,
-  QUIC_PACKET_TYPE_DROP,
+  QUIC_PACKET_TYPE_SKIP,
 } quic_packet_type_t;
 
 typedef enum quic_ctx_flags_
@@ -242,10 +241,10 @@ typedef struct quic_stats_
   u64 rtt_variance;
 } quic_stats_t;
 
-#define foreach_quic_rx_pkt_ctx_field                                         \
-  _ (u32, ctx_index)                                                          \
-  _ (u32, thread_index)                                                       \
-  _ (u8, ptype)
+#define foreach_quic_rx_pkt_ctx_field                                                              \
+  _ (u32, ctx_index)                                                                               \
+  _ (u32, thread_index)                                                                            \
+  _ (quic_packet_type_t, ptype)
 
 typedef struct quic_rx_packet_ctx_
 {
