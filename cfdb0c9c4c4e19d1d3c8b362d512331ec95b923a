@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1c44fbf9_a8752211",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2026-05-15T14:14:54Z",
+      "side": 1,
+      "message": "Please integrate as a \"proper\" vppapigen plugin. Like C, JSON, ...\nPlease also test the stubs with other IDEs, like VS Code to see if there is a general approach.",
+      "revId": "cfdb0c9c4c4e19d1d3c8b362d512331ec95b923a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
