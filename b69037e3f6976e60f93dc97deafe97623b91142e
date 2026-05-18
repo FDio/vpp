@@ -1,0 +1,259 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6bc5f486_0c20211c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 37
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-05-18T13:13:45Z",
+      "side": 1,
+      "message": "thanks for the updates, a few comments inline",
+      "revId": "b69037e3f6976e60f93dc97deafe97623b91142e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6e04fefc_38172734",
+        "filename": "src/plugins/cnat/cnat.api",
+        "patchSetId": 37
+      },
+      "lineNbr": 167,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-05-18T13:13:45Z",
+      "side": 1,
+      "message": "VPP API rules prevents us from mutating the syntax of existing messages in place.\nLet\u0027s keep the `fib_index` in these messages and use it as a scope id instead.\nWe\u0027ll probably also want to introduce `_v3` message with the proper syntax",
+      "revId": "b69037e3f6976e60f93dc97deafe97623b91142e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "11c6017f_abe79c33",
+        "filename": "src/plugins/cnat/cnat_inline.h",
+        "patchSetId": 37
+      },
+      "lineNbr": 68,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-05-18T13:13:45Z",
+      "side": 1,
+      "message": "Let\u0027s rename this `sessions_per_scope_id` instead of `sessions_per_vrf`\nimho we should also move this comment to `cnat_types.h` to explain that this\nbudget is a limit per `scope_id` and that limits are initialized for a usecase\nwhere `scope_id\u003dvrf_id` but for other usecase it is up to the consumer to extend\nthe range",
+      "revId": "b69037e3f6976e60f93dc97deafe97623b91142e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1c803cce_d77d9db2",
+        "filename": "src/plugins/cnat/cnat_inline.h",
+        "patchSetId": 37
+      },
+      "lineNbr": 134,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-05-18T13:13:45Z",
+      "side": 1,
+      "message": "Let\u0027s also skip this comment as it\u0027s unlikely that we\u0027ll keep updating it",
+      "revId": "b69037e3f6976e60f93dc97deafe97623b91142e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9bd90b51_71df20d4",
+        "filename": "src/plugins/cnat/cnat_inline.h",
+        "patchSetId": 37
+      },
+      "lineNbr": 140,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-05-18T13:13:45Z",
+      "side": 1,
+      "message": "Let\u0027s also initialize the return scope_id here \n````\nts-\u003ets_scope_id[VLIB_TX] \u003d ~0;\n````",
+      "revId": "b69037e3f6976e60f93dc97deafe97623b91142e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b18bbc9b_07060fb0",
+        "filename": "src/plugins/cnat/cnat_inline.h",
+        "patchSetId": 37
+      },
+      "lineNbr": 212,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-05-18T13:13:45Z",
+      "side": 1,
+      "message": "I think we can skip this comment, here we are just passing `scope_id` along",
+      "revId": "b69037e3f6976e60f93dc97deafe97623b91142e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d641dee2_5129e7e5",
+        "filename": "src/plugins/cnat/cnat_inline.h",
+        "patchSetId": 37
+      },
+      "lineNbr": 256,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-05-18T13:13:45Z",
+      "side": 1,
+      "message": "Let\u0027s remove the \"RX/TX/foward/reverse\" part of the comment as it is a bit confusing",
+      "revId": "b69037e3f6976e60f93dc97deafe97623b91142e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0ed83201_86381ec9",
+        "filename": "src/plugins/cnat/cnat_node_feature.c",
+        "patchSetId": 37
+      },
+      "lineNbr": 322,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-05-18T13:13:45Z",
+      "side": 1,
+      "message": "Shouldn\u0027t we be using `ts-\u003ets_scope_id[VLIB_RX]` here ?",
+      "revId": "b69037e3f6976e60f93dc97deafe97623b91142e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f156fd80_c4f45c57",
+        "filename": "src/plugins/cnat/cnat_node_lookup.c",
+        "patchSetId": 37
+      },
+      "lineNbr": 112,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-05-18T13:13:45Z",
+      "side": 1,
+      "message": "`0` is an allowed `scope_id` we should do \n````\nts-\u003ets_scope_id[TX] \u003d ts-\u003ets_scope_id[TX] !\u003d ~0 ? ts-\u003ets_scope_id[TX] : ts-\u003ets_scope_id[RX]\n````",
+      "revId": "b69037e3f6976e60f93dc97deafe97623b91142e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "fbeb493a_ce912268",
+        "filename": "src/plugins/cnat/cnat_node_snat.c",
+        "patchSetId": 37
+      },
+      "lineNbr": 136,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-05-18T13:13:45Z",
+      "side": 1,
+      "message": "I think this should be renamed `cc-\u003ecc_snat_scope_id`",
+      "revId": "b69037e3f6976e60f93dc97deafe97623b91142e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9476aab5_2a3f1395",
+        "filename": "src/plugins/cnat/cnat_node_snat.c",
+        "patchSetId": 37
+      },
+      "lineNbr": 142,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-05-18T13:13:45Z",
+      "side": 1,
+      "message": "And here we should use `ts-\u003ets_scope_id[VLIB_RX]`",
+      "revId": "b69037e3f6976e60f93dc97deafe97623b91142e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "17ff9f88_fcb8658e",
+        "filename": "src/plugins/cnat/cnat_session.c",
+        "patchSetId": 37
+      },
+      "lineNbr": 291,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-05-18T13:13:45Z",
+      "side": 1,
+      "message": "Can\u0027t we get the `scope_id` from the session ?\ni.e. `session-\u003ekey.cs_scope_id` ?",
+      "revId": "b69037e3f6976e60f93dc97deafe97623b91142e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "be4c96dd_45d1be89",
+        "filename": "src/plugins/cnat/cnat_snat_policy.c",
+        "patchSetId": 37
+      },
+      "lineNbr": 502,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-05-18T13:13:45Z",
+      "side": 1,
+      "message": "I think we need to keep using a `cpe-\u003ecc_fib_index` for client",
+      "revId": "b69037e3f6976e60f93dc97deafe97623b91142e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c746e35a_b92636f0",
+        "filename": "src/plugins/cnat/cnat_snat_policy.c",
+        "patchSetId": 37
+      },
+      "lineNbr": 514,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-05-18T13:13:45Z",
+      "side": 1,
+      "message": "Same thing here, it should be `cpe-\u003ecc_fib_index`",
+      "revId": "b69037e3f6976e60f93dc97deafe97623b91142e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "08ab7f86_526b6c8b",
+        "filename": "src/plugins/cnat/cnat_snat_policy.c",
+        "patchSetId": 37
+      },
+      "lineNbr": 545,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-05-18T13:13:45Z",
+      "side": 1,
+      "message": "I think we should also replace `fwd_fib_index` by `fwd_scope_id`",
+      "revId": "b69037e3f6976e60f93dc97deafe97623b91142e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
