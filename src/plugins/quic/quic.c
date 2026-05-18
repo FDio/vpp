@@ -634,7 +634,8 @@ quic_udp_session_tx_callback (session_t *udp_session)
 {
   quic_ctx_t *ctx;
   ctx = quic_ctx_get (udp_session->opaque, udp_session->thread_index);
-  return quic_eng_send_packets (ctx);
+  quic_eng_send_packets (ctx);
+  return 0;
 }
 
 always_inline void
