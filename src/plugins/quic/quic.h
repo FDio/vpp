@@ -126,7 +126,7 @@ typedef enum quic_ctx_conn_state_ : u8
   QUIC_CONN_STATE_CLOSED,
 } quic_ctx_conn_state_t;
 
-typedef enum quic_packet_type_
+typedef enum quic_packet_type_ : u8
 {
   QUIC_PACKET_TYPE_NONE,
   QUIC_PACKET_TYPE_RECEIVE,
@@ -242,18 +242,10 @@ typedef struct quic_stats_
   u64 rtt_variance;
 } quic_stats_t;
 
-#define foreach_quic_rx_pkt_ctx_field                                         \
-  _ (u32, ctx_index)                                                          \
-  _ (u32, thread_index)                                                       \
-  _ (u8, ptype)
-
-typedef struct quic_rx_packet_ctx_
-{
-#define _(type, name) type name;
-  foreach_quic_rx_pkt_ctx_field
-#undef _
-    u8 padding[1024 * 128]; /* FIXME: remove hardcoded size */
-} quic_rx_packet_ctx_t;
+#define foreach_quic_rx_pkt_ctx_field                                                              \
+  _ (u32, ctx_index)                                                                               \
+  _ (clib_thread_index_t, thread_index)                                                            \
+  _ (quic_packet_type_t, ptype)
 
 typedef struct crypto_ctx_
 {
@@ -361,8 +353,7 @@ quic_ctx_is_conn (quic_ctx_t *ctx)
 }
 
 static_always_inline void
-quic_build_sockaddr (struct sockaddr *sa, socklen_t *salen,
-		     ip46_address_t *addr, u16 port, u8 is_ip4)
+quic_build_sockaddr (struct sockaddr *sa, ip46_address_t *addr, u16 port, u8 is_ip4)
 {
   if (is_ip4)
     {
@@ -370,7 +361,6 @@ quic_build_sockaddr (struct sockaddr *sa, socklen_t *salen,
       sa4->sin_family = AF_INET;
       sa4->sin_port = port;
       sa4->sin_addr.s_addr = addr->ip4.as_u32;
-      *salen = sizeof (struct sockaddr_in);
     }
   else
     {
@@ -378,7 +368,6 @@ quic_build_sockaddr (struct sockaddr *sa, socklen_t *salen,
       sa6->sin6_family = AF_INET6;
       sa6->sin6_port = port;
       clib_memcpy (&sa6->sin6_addr, &addr->ip6, 16);
-      *salen = sizeof (struct sockaddr_in6);
     }
 }
 
