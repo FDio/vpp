@@ -125,11 +125,11 @@ quic_eng_stream_tx (quic_ctx_t *ctx, session_t *stream_session)
   return (quic_engine_vfts[qm->engine_type].stream_tx (ctx, stream_session));
 }
 
-static_always_inline int
+static_always_inline void
 quic_eng_send_packets (void *conn)
 {
   quic_main_t *qm = &quic_main;
-  return (quic_engine_vfts[qm->engine_type].send_packets (conn));
+  quic_engine_vfts[qm->engine_type].send_packets (conn);
 }
 
 static_always_inline u8 *
