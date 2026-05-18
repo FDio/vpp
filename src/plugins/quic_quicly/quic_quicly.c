@@ -234,39 +234,23 @@ quic_quicly_reschedule_ctx (quic_ctx_t *ctx)
     next_timeout);
 }
 
-static int
-quic_quicly_send_datagram (session_t *udp_session, struct iovec *packet,
-			   ip46_address_t *rmt_ip, u16 rmt_port)
+static void
+quic_quicly_send_datagram (session_t *udp_session, struct iovec *packet)
 {
   u32 max_enqueue, len;
   session_dgram_hdr_t hdr;
   svm_fifo_t *f;
-  transport_connection_t *tc;
   int ret;
 
   len = packet->iov_len;
   f = udp_session->tx_fifo;
-  tc = session_get_transport (udp_session);
   max_enqueue = svm_fifo_max_enqueue (f);
   ASSERT (max_enqueue >= SESSION_CONN_HDR_LEN + len);
 
   /*  Build packet header for fifo */
   hdr.data_length = len;
   hdr.data_offset = 0;
-  hdr.is_ip4 = tc->is_ip4;
-  clib_memcpy (&hdr.lcl_ip, &tc->lcl_ip, sizeof (ip46_address_t));
-  hdr.lcl_port = tc->lcl_port;
   hdr.gso_size = 0;
-
-  hdr.rmt_port = rmt_port;
-  if (hdr.is_ip4)
-    {
-      hdr.rmt_ip.ip4.as_u32 = rmt_ip->ip4.as_u32;
-    }
-  else
-    {
-      clib_memcpy_fast (&hdr.rmt_ip.ip6, &rmt_ip->ip6, sizeof (rmt_ip->ip6));
-    }
 
   svm_fifo_seg_t segs[2] = { { (u8 *) &hdr, sizeof (hdr) },
 			     { packet->iov_base, len } };
@@ -275,8 +259,6 @@ quic_quicly_send_datagram (session_t *udp_session, struct iovec *packet,
   ASSERT (ret > 0);
 
   quic_increment_counter (quic_quicly_main.qm, QUIC_ERROR_TX_PACKETS, 1);
-
-  return 0;
 }
 
 static_always_inline void
@@ -293,26 +275,7 @@ quic_quicly_set_udp_tx_evt (session_t *udp_session)
     }
 }
 
-static_always_inline void
-quic_quicly_addr_to_ip46_addr (quicly_address_t *quicly_addr,
-			       ip46_address_t *ip46_addr, u16 *ip46_port)
-{
-  if (quicly_addr->sa.sa_family == AF_INET)
-    {
-      struct sockaddr_in *sa4 = (struct sockaddr_in *) &quicly_addr->sa;
-      *ip46_port = sa4->sin_port;
-      ip46_addr->ip4.as_u32 = sa4->sin_addr.s_addr;
-    }
-  else
-    {
-      QUIC_ASSERT (quicly_addr->sa.sa_family == AF_INET6);
-      struct sockaddr_in6 *sa6 = (struct sockaddr_in6 *) &quicly_addr->sa;
-      *ip46_port = sa6->sin6_port;
-      clib_memcpy_fast (&ip46_addr->ip6, &sa6->sin6_addr, 16);
-    }
-}
-
-static int
+static void
 quic_quicly_send_packets (quic_ctx_t *ctx)
 {
   quic_quicly_main_t *qqm = &quic_quicly_main;
@@ -321,7 +284,7 @@ quic_quicly_send_packets (quic_ctx_t *ctx)
   quicly_conn_t *conn;
   size_t num_packets, i, max_packets;
   u32 n_sent = 0, buf_size;
-  int err = 0;
+  quicly_error_t err;
   quicly_address_t quicly_rmt_ip, quicly_lcl_ip;
   u8 *buf = qqm->tx_bufs[ctx->c_thread_index];
 
@@ -339,10 +302,13 @@ quic_quicly_send_packets (quic_ctx_t *ctx)
 
   udp_session = session_get_from_handle_if_valid (ctx->udp_session_handle);
   if (PREDICT_FALSE (!udp_session))
-    goto quicly_error;
+    {
+      quic_quicly_connection_closed (ctx);
+      return;
+    }
 
   if (PREDICT_FALSE (udp_session->session_state == SESSION_STATE_TRANSPORT_DELETED))
-    return 0;
+    return;
 
   conn = ctx->conn;
   ASSERT (conn);
@@ -353,7 +319,7 @@ quic_quicly_send_packets (quic_ctx_t *ctx)
     {
       svm_fifo_add_want_deq_ntf (udp_session->tx_fifo,
 				 SVM_FIFO_WANT_DEQ_NOTIF);
-      return 0;
+      return;
     }
 
   /* Shrink buf_size if we have less dgrams than QUIC_QUICLY_SEND_PACKET_VEC_SIZE */
@@ -364,7 +330,7 @@ quic_quicly_send_packets (quic_ctx_t *ctx)
     {
       quic_worker_ctx_t *wc = quic_wrk_ctx_get (quic_quicly_main.qm, ctx->c_thread_index);
       quic_update_timer (wc, ctx, wc->time_now + 1);
-      return 0;
+      return;
     }
 
   num_packets = max_packets;
@@ -376,14 +342,9 @@ quic_quicly_send_packets (quic_ctx_t *ctx)
 	    packets, buf, sizeof (buf));
   if (num_packets > 0)
     {
-      quic_quicly_addr_to_ip46_addr (&quicly_rmt_ip, &ctx->rmt_ip,
-				     &ctx->rmt_port);
       for (i = 0; i < num_packets; i++)
-	{
-	  if ((err = quic_quicly_send_datagram (udp_session, &packets[i],
-						&ctx->rmt_ip, ctx->rmt_port)))
-	    goto quicly_error;
-	}
+	quic_quicly_send_datagram (udp_session, &packets[i]);
+
       n_sent += num_packets;
     }
 
@@ -395,15 +356,13 @@ quic_quicly_send_packets (quic_ctx_t *ctx)
 
   quic_quicly_reschedule_ctx (ctx);
 
-  return n_sent;
+  return;
 
 quicly_error:
 
-  if (err && err != QUICLY_ERROR_PACKET_IGNORED &&
-      err != QUICLY_ERROR_FREE_CONNECTION)
-    QUIC_ERR ("Quic error '%U'.", quic_quicly_format_err, err);
+  QUIC_DBG (2, "connection closed, ctx_index %u, thread_index %u, reason '%U'", ctx->c_c_index,
+	    ctx->c_thread_index, quic_quicly_format_err, err);
   quic_quicly_connection_closed (ctx);
-  return 0;
 }
 
 static_always_inline void
@@ -1069,7 +1028,6 @@ quic_quicly_reset_connection (session_handle_t udp_session_handle,
    * CID, ... */
   QUIC_DBG (2, "Sending stateless reset");
   quic_quicly_main_t *qqm = &quic_quicly_main;
-  int rv;
   session_t *udp_session;
   quicly_context_t *quicly_ctx;
   if (pctx->packet.cid.dest.plaintext.node_id != 0 ||
@@ -1092,9 +1050,9 @@ quic_quicly_reset_connection (session_handle_t udp_session_handle,
   packet.iov_len = payload_len;
   packet.iov_base = payload;
 
-  rv = quic_quicly_send_datagram (udp_session, &packet, &pctx->ph.rmt_ip, pctx->ph.rmt_port);
+  quic_quicly_send_datagram (udp_session, &packet);
   quic_quicly_set_udp_tx_evt (udp_session);
-  return rv;
+  return 0;
 }
 
 static_always_inline quic_ctx_t *
