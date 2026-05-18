@@ -16,6 +16,24 @@
       "message": "can we send data from server to client after it read all to be sure tunnel is only half-closed? because there is bug in h2 https://gerrit.fd.io/r/c/vpp/+/45774 and test do not catch it always (you need to run it with REPEAT\u003d10)",
       "revId": "7bcc098df3a0ce801038c8d2e80d228d0e103f07",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f4559fa0_5b98ae4e",
+        "filename": "test/hs-test/proxy_test.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 1347,
+      "author": {
+        "id": 3325
+      },
+      "writtenOn": "2026-05-18T15:58:49Z",
+      "side": 1,
+      "message": "Done. Did this for HTTP/2, wasn\u0027t able to make it work for HTTP/3 test, maybe there is some separate HTTP/3 close problem.",
+      "parentUuid": "48f82f70_1fb94265",
+      "revId": "7bcc098df3a0ce801038c8d2e80d228d0e103f07",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
