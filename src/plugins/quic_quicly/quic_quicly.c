@@ -235,38 +235,22 @@ quic_quicly_reschedule_ctx (quic_ctx_t *ctx)
 }
 
 static int
-quic_quicly_send_datagram (session_t *udp_session, struct iovec *packet,
-			   ip46_address_t *rmt_ip, u16 rmt_port)
+quic_quicly_send_datagram (session_t *udp_session, struct iovec *packet)
 {
   u32 max_enqueue, len;
   session_dgram_hdr_t hdr;
   svm_fifo_t *f;
-  transport_connection_t *tc;
   int ret;
 
   len = packet->iov_len;
   f = udp_session->tx_fifo;
-  tc = session_get_transport (udp_session);
   max_enqueue = svm_fifo_max_enqueue (f);
   ASSERT (max_enqueue >= SESSION_CONN_HDR_LEN + len);
 
   /*  Build packet header for fifo */
   hdr.data_length = len;
   hdr.data_offset = 0;
-  hdr.is_ip4 = tc->is_ip4;
-  clib_memcpy (&hdr.lcl_ip, &tc->lcl_ip, sizeof (ip46_address_t));
-  hdr.lcl_port = tc->lcl_port;
   hdr.gso_size = 0;
-
-  hdr.rmt_port = rmt_port;
-  if (hdr.is_ip4)
-    {
-      hdr.rmt_ip.ip4.as_u32 = rmt_ip->ip4.as_u32;
-    }
-  else
-    {
-      clib_memcpy_fast (&hdr.rmt_ip.ip6, &rmt_ip->ip6, sizeof (rmt_ip->ip6));
-    }
 
   svm_fifo_seg_t segs[2] = { { (u8 *) &hdr, sizeof (hdr) },
 			     { packet->iov_base, len } };
@@ -380,8 +364,7 @@ quic_quicly_send_packets (quic_ctx_t *ctx)
 				     &ctx->rmt_port);
       for (i = 0; i < num_packets; i++)
 	{
-	  if ((err = quic_quicly_send_datagram (udp_session, &packets[i],
-						&ctx->rmt_ip, ctx->rmt_port)))
+	  if ((err = quic_quicly_send_datagram (udp_session, &packets[i])))
 	    goto quicly_error;
 	}
       n_sent += num_packets;
@@ -1092,7 +1075,7 @@ quic_quicly_reset_connection (session_handle_t udp_session_handle,
   packet.iov_len = payload_len;
   packet.iov_base = payload;
 
-  rv = quic_quicly_send_datagram (udp_session, &packet, &pctx->ph.rmt_ip, pctx->ph.rmt_port);
+  rv = quic_quicly_send_datagram (udp_session, &packet);
   quic_quicly_set_udp_tx_evt (udp_session);
   return rv;
 }
