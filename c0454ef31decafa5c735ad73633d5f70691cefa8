@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9e6cbe5e_b7a7efd9",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2026-05-18T13:48:32Z",
+      "side": 1,
+      "message": "Claude assisted comments:\n\n1. flowprobe_sampling_data_callback sequence number: Options Data Records count toward the IPFIX session sequence number per RFC 7011 section 3.1, but stream-\u003esequence_number is never advanced here. Collectors will see gaps.\n\n2. Template registration error handling: n_sampling_interfaces is incremented before flowprobe_template_add_del. On failure (or VALUE_EXIST returning an unset opt_template_id) the counter and sampling_options_template_id end up inconsistent. Increment and stash only on success.\n\n3. rewrite_size \"+ 2\" magic constant: replace with\n     sizeof(ip4_ipfix_template_packet_t)\n       - sizeof(ipfix_template_header_t)\n       + sizeof(ipfix_options_template_header_t)\n       + total_field_count * sizeof(ipfix_field_specifier_t);\n   The \"+ 2\" silently rots if either header struct grows.\n\n4. No MTU bound on Options Data set: flowprobe_sampling_data_callback packs 14 bytes per sampling interface into one buffer with no length check. Bound by path MTU or split across buffers.\n\n5. CLI uses %d for unsigned counters: \"spacing %d\" / \"length %d\" on u32 accepts negatives and reinterprets. Use %u.\n\n6. Misleading null checks in fast path: in node.c, \"params \u0026\u0026\" and \"state\" can never be NULL (they are addresses of vec elements). Drop them, or replace with an ASSERT on vec_len.\n\n7. Unrelated changes folded in: promoting flowprobe_node_fn to static inline and the stateless_entry-always-allocate refactor are not part of count-based sampling; consider splitting.\n\n8. Argument order: flowprobe_interface_add_del_feature(..., sampling_spacing, sampling_length, is_add) buries is_add behind the new params. Pass a flowprobe_sampling_params_t * (NULL for v1) instead.\n\n9. Test gaps: no coverage for disable -\u003e Options Template torn down; multi-worker sampling; sequence-number monotonicity across Options Data exports.",
+      "revId": "c0454ef31decafa5c735ad73633d5f70691cefa8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
