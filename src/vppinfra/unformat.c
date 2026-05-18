@@ -379,6 +379,51 @@ unformat_line_input (unformat_input_t * i, va_list * va)
 #define UNFORMAT_INTEGER_SIGNED		1
 #define UNFORMAT_INTEGER_UNSIGNED	0
 
+/* True if the parsed value fits the destination without truncation.
+   For signed formats @value is the value before unary minus. */
+static int
+unformat_integer_value_ok (uword value, uword sign, uword is_signed, uword data_bytes)
+{
+  if (is_signed == UNFORMAT_INTEGER_UNSIGNED)
+    {
+      switch (data_bytes)
+	{
+	case 1:
+	  return value <= CLIB_U8_MAX;
+	case 2:
+	  return value <= CLIB_U16_MAX;
+	case 4:
+	  return value <= CLIB_U32_MAX;
+	case 8:
+	  return value <= CLIB_U64_MAX;
+	default:
+	  return 0;
+	}
+    }
+
+  switch (data_bytes)
+    {
+    case 1:
+      if (!sign)
+	return value <= CLIB_I8_MAX;
+      return value <= (uword) CLIB_I8_MAX + 1;
+    case 2:
+      if (!sign)
+	return value <= CLIB_I16_MAX;
+      return value <= (uword) CLIB_I16_MAX + 1;
+    case 4:
+      if (!sign)
+	return value <= CLIB_I32_MAX;
+      return value <= (uword) CLIB_I32_MAX + 1;
+    case 8:
+      if (!sign)
+	return value <= CLIB_I64_MAX;
+      return value <= (uword) CLIB_I64_MAX + 1;
+    default:
+      return 0;
+    }
+}
+
 static uword
 unformat_integer (unformat_input_t * input,
 		  va_list * va, uword base, uword is_signed, uword data_bytes)
@@ -464,35 +509,40 @@ unformat_integer (unformat_input_t * input,
     }
 
 done:
-  if (sign)
-    value = -value;
-
   if (n_digits > 0)
     {
-      void *v = va_arg (*va, void *);
-
       if (data_bytes == ~0)
 	data_bytes = sizeof (int);
 
-      switch (data_bytes)
-	{
-	case 1:
-	  *(u8 *) v = value;
-	  break;
-	case 2:
-	  *(u16 *) v = value;
-	  break;
-	case 4:
-	  *(u32 *) v = value;
-	  break;
-	case 8:
-	  *(u64 *) v = value;
-	  break;
-	default:
-	  goto error;
-	}
+      if (!unformat_integer_value_ok (value, sign, is_signed, data_bytes))
+	goto error;
 
-      return 1;
+      if (sign)
+	value = -value;
+
+      {
+	void *v = va_arg (*va, void *);
+
+	switch (data_bytes)
+	  {
+	  case 1:
+	    *(u8 *) v = value;
+	    break;
+	  case 2:
+	    *(u16 *) v = value;
+	    break;
+	  case 4:
+	    *(u32 *) v = value;
+	    break;
+	  case 8:
+	    *(u64 *) v = value;
+	    break;
+	  default:
+	    goto error;
+	  }
+
+	return 1;
+      }
     }
 
 error:
