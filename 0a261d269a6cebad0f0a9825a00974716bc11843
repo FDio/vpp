@@ -86,6 +86,24 @@
       "parentUuid": "53ce938d_63ada9fc",
       "revId": "0a261d269a6cebad0f0a9825a00974716bc11843",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "fc764a07_b6c110f0",
+        "filename": "src/plugins/sfdp_services/base/tcp-check/node.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 205,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-05-18T20:58:05Z",
+      "side": 1,
+      "message": "Not sure if we should accept SYN packets here and always reset session state  (i.e. having the ability to always reset a session in established state with a single SYN packet is not ideal).\n\nSince the use-case we want to support here are potential SYN re-transmits (i.e. SYN sent by initiator is received by VPP, but dropped before reaching receiver \u0026 re-transmitted) and receiving new SYNs when we are in TIME_WAIT state, shouldn\u0027t we only limit accepting SYN packets while the 3-way handshake is incomplete or in TIME_WAIT state ?\n\ni.e. if (sf[0] \u003d\u003d 0 || sf[0] \u0026 SFDP_TCP_CHECK_SESSION_FLAG_WAIT_FOR_RESP_SYN || sf[0] \u0026 SFDP_TCP_CHECK_SESSION_FLAG_WAIT_FOR_RESP_ACK_TO_SYN || sf[0] \u0026 SFDP_TCP_CHECK_SESSION_FLAG_TIME_WAIT )",
+      "parentUuid": "7a0bffbf_748e755f",
+      "revId": "0a261d269a6cebad0f0a9825a00974716bc11843",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
