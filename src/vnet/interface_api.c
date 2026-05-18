@@ -524,6 +524,30 @@ mfib_table_bind (fib_protocol_t fproto, u32 sw_if_index, u32 mfib_index)
 {
   u32 table_id;
 
+  if (mfib_index == ~0)
+    {
+      /*
+       * Target table has no MFIB: still drop the interface's prior MFIB
+       * lock and clear the slot to avoid leaking MFIB_SOURCE_INTERFACE and
+       * leaving multicast forwarding on the old table).
+       */
+      if (FIB_PROTOCOL_IP6 == fproto)
+	{
+	  if (0 != ip6_main.mfib_index_by_sw_if_index[sw_if_index])
+	    mfib_table_unlock (ip6_main.mfib_index_by_sw_if_index[sw_if_index], FIB_PROTOCOL_IP6,
+			       MFIB_SOURCE_INTERFACE);
+	  ip6_main.mfib_index_by_sw_if_index[sw_if_index] = 0;
+	}
+      else
+	{
+	  if (0 != ip4_main.mfib_index_by_sw_if_index[sw_if_index])
+	    mfib_table_unlock (ip4_main.mfib_index_by_sw_if_index[sw_if_index], FIB_PROTOCOL_IP4,
+			       MFIB_SOURCE_INTERFACE);
+	  ip4_main.mfib_index_by_sw_if_index[sw_if_index] = 0;
+	}
+      return;
+    }
+
   table_id = mfib_table_get_table_id (mfib_index, fproto);
   ASSERT (table_id != ~0);
 
@@ -593,8 +617,7 @@ ip_table_bind (fib_protocol_t fproto, u32 sw_if_index, u32 table_id)
   /* clang-format on */
 
   fib_table_bind (fproto, sw_if_index, fib_index);
-  if (mfib_index != ~0)
-    mfib_table_bind (fproto, sw_if_index, mfib_index);
+  mfib_table_bind (fproto, sw_if_index, mfib_index);
 
   return (0);
 }
