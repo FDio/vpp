@@ -36,6 +36,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "405aab85_e11cd7ac",
+        "filename": "src/plugins/cnat/cnat_api.c",
+        "patchSetId": 36
+      },
+      "lineNbr": 409,
+      "author": {
+        "id": 3301
+      },
+      "writtenOn": "2026-05-18T14:08:07Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "479d3cac_4b581059",
+      "revId": "0e99f8e309ecb169d0e2a5c19a062095118454ad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "27bd69e1_6194ae37",
@@ -64,6 +82,24 @@
         "id": 1698
       },
       "writtenOn": "2026-05-18T11:53:02Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "27bd69e1_6194ae37",
+      "revId": "0e99f8e309ecb169d0e2a5c19a062095118454ad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "25d5720f_2a18fb4d",
+        "filename": "src/plugins/cnat/cnat_inline.h",
+        "patchSetId": 36
+      },
+      "lineNbr": 178,
+      "author": {
+        "id": 3301
+      },
+      "writtenOn": "2026-05-18T14:08:07Z",
       "side": 1,
       "message": "Done",
       "parentUuid": "27bd69e1_6194ae37",
@@ -106,6 +142,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "174d5b77_59ee744c",
+        "filename": "src/plugins/cnat/cnat_session.c",
+        "patchSetId": 36
+      },
+      "lineNbr": 136,
+      "author": {
+        "id": 3301
+      },
+      "writtenOn": "2026-05-18T14:08:07Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "2601d690_2e004146",
+      "revId": "0e99f8e309ecb169d0e2a5c19a062095118454ad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "221bcf65_a2ea2610",
@@ -134,6 +188,24 @@
         "id": 1698
       },
       "writtenOn": "2026-05-18T11:53:02Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "221bcf65_a2ea2610",
+      "revId": "0e99f8e309ecb169d0e2a5c19a062095118454ad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1a38a754_499ba63b",
+        "filename": "src/plugins/cnat/cnat_snat_policy.h",
+        "patchSetId": 36
+      },
+      "lineNbr": 96,
+      "author": {
+        "id": 3301
+      },
+      "writtenOn": "2026-05-18T14:08:07Z",
       "side": 1,
       "message": "Done",
       "parentUuid": "221bcf65_a2ea2610",

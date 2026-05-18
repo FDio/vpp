@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "5d3edba4_1ff38eae",
+        "filename": "src/plugins/cnat/cnat.api",
+        "patchSetId": 37
+      },
+      "lineNbr": 167,
+      "author": {
+        "id": 3301
+      },
+      "writtenOn": "2026-05-18T14:08:07Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "6e04fefc_38172734",
+      "revId": "b69037e3f6976e60f93dc97deafe97623b91142e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "11c6017f_abe79c33",
@@ -48,6 +66,24 @@
       "writtenOn": "2026-05-18T13:13:45Z",
       "side": 1,
       "message": "Let\u0027s rename this `sessions_per_scope_id` instead of `sessions_per_vrf`\nimho we should also move this comment to `cnat_types.h` to explain that this\nbudget is a limit per `scope_id` and that limits are initialized for a usecase\nwhere `scope_id\u003dvrf_id` but for other usecase it is up to the consumer to extend\nthe range",
+      "revId": "b69037e3f6976e60f93dc97deafe97623b91142e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "fcf065aa_16d356a2",
+        "filename": "src/plugins/cnat/cnat_inline.h",
+        "patchSetId": 37
+      },
+      "lineNbr": 68,
+      "author": {
+        "id": 3301
+      },
+      "writtenOn": "2026-05-18T14:08:07Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "11c6017f_abe79c33",
       "revId": "b69037e3f6976e60f93dc97deafe97623b91142e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -69,6 +105,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "21530a3c_f2ed3e5e",
+        "filename": "src/plugins/cnat/cnat_inline.h",
+        "patchSetId": 37
+      },
+      "lineNbr": 134,
+      "author": {
+        "id": 3301
+      },
+      "writtenOn": "2026-05-18T14:08:07Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "1c803cce_d77d9db2",
+      "revId": "b69037e3f6976e60f93dc97deafe97623b91142e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "9bd90b51_71df20d4",
@@ -82,6 +136,24 @@
       "writtenOn": "2026-05-18T13:13:45Z",
       "side": 1,
       "message": "Let\u0027s also initialize the return scope_id here \n````\nts-\u003ets_scope_id[VLIB_TX] \u003d ~0;\n````",
+      "revId": "b69037e3f6976e60f93dc97deafe97623b91142e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "bf35a3ea_4b47b077",
+        "filename": "src/plugins/cnat/cnat_inline.h",
+        "patchSetId": 37
+      },
+      "lineNbr": 140,
+      "author": {
+        "id": 3301
+      },
+      "writtenOn": "2026-05-18T14:08:07Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9bd90b51_71df20d4",
       "revId": "b69037e3f6976e60f93dc97deafe97623b91142e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -103,6 +175,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "5aaf0966_ba1c5e56",
+        "filename": "src/plugins/cnat/cnat_inline.h",
+        "patchSetId": 37
+      },
+      "lineNbr": 212,
+      "author": {
+        "id": 3301
+      },
+      "writtenOn": "2026-05-18T14:08:07Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b18bbc9b_07060fb0",
+      "revId": "b69037e3f6976e60f93dc97deafe97623b91142e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "d641dee2_5129e7e5",
@@ -116,6 +206,24 @@
       "writtenOn": "2026-05-18T13:13:45Z",
       "side": 1,
       "message": "Let\u0027s remove the \"RX/TX/foward/reverse\" part of the comment as it is a bit confusing",
+      "revId": "b69037e3f6976e60f93dc97deafe97623b91142e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7df8a9b5_1485f8c4",
+        "filename": "src/plugins/cnat/cnat_inline.h",
+        "patchSetId": 37
+      },
+      "lineNbr": 256,
+      "author": {
+        "id": 3301
+      },
+      "writtenOn": "2026-05-18T14:08:07Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d641dee2_5129e7e5",
       "revId": "b69037e3f6976e60f93dc97deafe97623b91142e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -137,6 +245,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "07d70154_4fec54d4",
+        "filename": "src/plugins/cnat/cnat_node_feature.c",
+        "patchSetId": 37
+      },
+      "lineNbr": 322,
+      "author": {
+        "id": 3301
+      },
+      "writtenOn": "2026-05-18T14:08:07Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "0ed83201_86381ec9",
+      "revId": "b69037e3f6976e60f93dc97deafe97623b91142e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "f156fd80_c4f45c57",
@@ -150,6 +276,24 @@
       "writtenOn": "2026-05-18T13:13:45Z",
       "side": 1,
       "message": "`0` is an allowed `scope_id` we should do \n````\nts-\u003ets_scope_id[TX] \u003d ts-\u003ets_scope_id[TX] !\u003d ~0 ? ts-\u003ets_scope_id[TX] : ts-\u003ets_scope_id[RX]\n````",
+      "revId": "b69037e3f6976e60f93dc97deafe97623b91142e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f151aae5_15a35c65",
+        "filename": "src/plugins/cnat/cnat_node_lookup.c",
+        "patchSetId": 37
+      },
+      "lineNbr": 112,
+      "author": {
+        "id": 3301
+      },
+      "writtenOn": "2026-05-18T14:08:07Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "f156fd80_c4f45c57",
       "revId": "b69037e3f6976e60f93dc97deafe97623b91142e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -171,6 +315,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "28bfd235_3b3b6dfe",
+        "filename": "src/plugins/cnat/cnat_node_snat.c",
+        "patchSetId": 37
+      },
+      "lineNbr": 136,
+      "author": {
+        "id": 3301
+      },
+      "writtenOn": "2026-05-18T14:08:07Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "fbeb493a_ce912268",
+      "revId": "b69037e3f6976e60f93dc97deafe97623b91142e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "9476aab5_2a3f1395",
@@ -184,6 +346,24 @@
       "writtenOn": "2026-05-18T13:13:45Z",
       "side": 1,
       "message": "And here we should use `ts-\u003ets_scope_id[VLIB_RX]`",
+      "revId": "b69037e3f6976e60f93dc97deafe97623b91142e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "30234aac_50aba787",
+        "filename": "src/plugins/cnat/cnat_node_snat.c",
+        "patchSetId": 37
+      },
+      "lineNbr": 142,
+      "author": {
+        "id": 3301
+      },
+      "writtenOn": "2026-05-18T14:08:07Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9476aab5_2a3f1395",
       "revId": "b69037e3f6976e60f93dc97deafe97623b91142e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -223,6 +403,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "ccdc293a_d00e5288",
+        "filename": "src/plugins/cnat/cnat_session.c",
+        "patchSetId": 37
+      },
+      "lineNbr": 291,
+      "author": {
+        "id": 3301
+      },
+      "writtenOn": "2026-05-18T14:08:07Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "17ff9f88_fcb8658e",
+      "revId": "b69037e3f6976e60f93dc97deafe97623b91142e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "be4c96dd_45d1be89",
@@ -236,6 +434,24 @@
       "writtenOn": "2026-05-18T13:13:45Z",
       "side": 1,
       "message": "I think we need to keep using a `cpe-\u003ecc_fib_index` for client",
+      "revId": "b69037e3f6976e60f93dc97deafe97623b91142e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "95ff714d_54e9bd4b",
+        "filename": "src/plugins/cnat/cnat_snat_policy.c",
+        "patchSetId": 37
+      },
+      "lineNbr": 502,
+      "author": {
+        "id": 3301
+      },
+      "writtenOn": "2026-05-18T14:08:07Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "be4c96dd_45d1be89",
       "revId": "b69037e3f6976e60f93dc97deafe97623b91142e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -257,6 +473,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "a84c26b7_818ba670",
+        "filename": "src/plugins/cnat/cnat_snat_policy.c",
+        "patchSetId": 37
+      },
+      "lineNbr": 514,
+      "author": {
+        "id": 3301
+      },
+      "writtenOn": "2026-05-18T14:08:07Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c746e35a_b92636f0",
+      "revId": "b69037e3f6976e60f93dc97deafe97623b91142e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "08ab7f86_526b6c8b",
@@ -270,6 +504,24 @@
       "writtenOn": "2026-05-18T13:13:45Z",
       "side": 1,
       "message": "I think we should also replace `fwd_fib_index` by `fwd_scope_id`",
+      "revId": "b69037e3f6976e60f93dc97deafe97623b91142e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e7e6bc53_211b6d7b",
+        "filename": "src/plugins/cnat/cnat_snat_policy.c",
+        "patchSetId": 37
+      },
+      "lineNbr": 545,
+      "author": {
+        "id": 3301
+      },
+      "writtenOn": "2026-05-18T14:08:07Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "08ab7f86_526b6c8b",
       "revId": "b69037e3f6976e60f93dc97deafe97623b91142e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
