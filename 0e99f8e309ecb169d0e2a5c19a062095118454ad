@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "b0f1f2b2_dc67f25b",
+        "filename": "src/plugins/cnat/cnat_api.c",
+        "patchSetId": 36
+      },
+      "lineNbr": 409,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-05-18T11:53:02Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "479d3cac_4b581059",
+      "revId": "0e99f8e309ecb169d0e2a5c19a062095118454ad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "27bd69e1_6194ae37",
@@ -31,6 +49,24 @@
       "writtenOn": "2026-05-11T12:49:46Z",
       "side": 1,
       "message": "I think that you can\u0027t take ts-\u003ets_scope_id[VLIB_RX] automatically here, it depends on FWD vs RETURN, just like you did in `cnat_get_rsession_from_ts`.\nAnd same goes for cnat_session_free__.",
+      "revId": "0e99f8e309ecb169d0e2a5c19a062095118454ad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "cc688b97_e7377331",
+        "filename": "src/plugins/cnat/cnat_inline.h",
+        "patchSetId": 36
+      },
+      "lineNbr": 178,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-05-18T11:53:02Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "27bd69e1_6194ae37",
       "revId": "0e99f8e309ecb169d0e2a5c19a062095118454ad",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -52,6 +88,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "d7cf0106_5b3dba84",
+        "filename": "src/plugins/cnat/cnat_session.c",
+        "patchSetId": 36
+      },
+      "lineNbr": 136,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-05-18T11:53:02Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "2601d690_2e004146",
+      "revId": "0e99f8e309ecb169d0e2a5c19a062095118454ad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "221bcf65_a2ea2610",
@@ -65,6 +119,24 @@
       "writtenOn": "2026-05-11T12:49:46Z",
       "side": 1,
       "message": "I think we should remove any mention of usecases that are between () here in the comment",
+      "revId": "0e99f8e309ecb169d0e2a5c19a062095118454ad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2a6747d6_d328d236",
+        "filename": "src/plugins/cnat/cnat_snat_policy.h",
+        "patchSetId": 36
+      },
+      "lineNbr": 96,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-05-18T11:53:02Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "221bcf65_a2ea2610",
       "revId": "0e99f8e309ecb169d0e2a5c19a062095118454ad",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
