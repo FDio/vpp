@@ -16,6 +16,24 @@
       "message": "I think we just need to use \"s-\u003eflags \u0026 SESSION_F_APP_CLOSED\" which is not set on half-close. we should not program tx evt on passive open when session is closed. this is zero copy proxy,fifos are shared, and with multiworker setup each side can be on different worker",
       "revId": "2044332c908702fbe2ca7b370f75dbd7c2ae6dad",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a9967012_d5ef5023",
+        "filename": "src/plugins/hs_apps/proxy.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1122,
+      "author": {
+        "id": 3325
+      },
+      "writtenOn": "2026-05-18T09:56:36Z",
+      "side": 0,
+      "message": "Done. active_open_rx_callback now continues while data is still available after app close, and schedules the paired HTTP transport RX event on the correct worker so final target data can drain back to the client.",
+      "parentUuid": "cd32dc32_27b88e73",
+      "revId": "2044332c908702fbe2ca7b370f75dbd7c2ae6dad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }

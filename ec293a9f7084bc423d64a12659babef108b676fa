@@ -20,6 +20,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "7a484c90_65c9c38c",
+        "filename": "src/plugins/hs_apps/proxy.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 223,
+      "author": {
+        "id": 3325
+      },
+      "writtenOn": "2026-05-18T09:56:36Z",
+      "side": 1,
+      "message": "Done. The close handling now preserves half-close semantics in both directions: passive-open close shuts down the active-open side, and active-open close shuts down the passive-open side for HTTP CONNECT TCP tunnels.",
+      "parentUuid": "b770862f_dc235e06",
+      "revId": "ec293a9f7084bc423d64a12659babef108b676fa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "99088d80_b93d76ab",
         "filename": "src/plugins/hs_apps/proxy.c",
         "patchSetId": 1
@@ -31,6 +49,24 @@
       "writtenOn": "2026-05-13T15:10:34Z",
       "side": 1,
       "message": "udp don\u0027t have half-close",
+      "revId": "ec293a9f7084bc423d64a12659babef108b676fa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "acada185_6976e93d",
+        "filename": "src/plugins/hs_apps/proxy.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 241,
+      "author": {
+        "id": 3325
+      },
+      "writtenOn": "2026-05-18T09:56:36Z",
+      "side": 1,
+      "message": "Done. The half-close path is now restricted to HTTP CONNECT TCP tunnels. UDP tunnel sessions continue to use the existing close behavior.",
+      "parentUuid": "99088d80_b93d76ab",
       "revId": "ec293a9f7084bc423d64a12659babef108b676fa",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
