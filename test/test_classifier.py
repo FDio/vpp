@@ -35,8 +35,9 @@ class TestClassifierIP(TestClassifier):
 
         Test scenario for basic IP ACL with source IP
             - Create IPv4 stream for pg0 -> pg1 interface.
-            - Create iACL with source IP address.
+            - Create iACL with source IP address of pg0 remote IP address.
             - Send and verify received packets on pg1 interface.
+            - Verify that the input ACL hits error counter is incremented.
         """
 
         # Basic iACL testing with source IP
@@ -51,6 +52,9 @@ class TestClassifierIP(TestClassifier):
         self.input_acl_set_interface(self.pg0, self.acl_tbl_idx.get(key))
         self.acl_active_table = key
 
+        err_path = "/err/ip4-inacl/input ACL hits"
+        pre = self.statistics.get_err_counter(err_path)
+
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
@@ -60,6 +64,58 @@ class TestClassifierIP(TestClassifier):
         self.pg2.assert_nothing_captured(remark="packets forwarded")
         self.pg3.assert_nothing_captured(remark="packets forwarded")
 
+        post = self.statistics.get_err_counter(err_path)
+        self.assertEqual(
+            post,
+            pre + len(pkts),
+            "Source IP iACL must increment input ACL hits error counter",
+        )
+
+    def test_iacl_src_ip_miss(self):
+        """Source IP iACL miss test
+
+        Test scenario for basic IP ACL with source IP miss
+            - Create iACL with source IP address of pg1 remote IP address.
+            - Send and verify received packets on pg1 interface.
+            - Verify that the input ACL misses error counter is incremented.
+        """
+        pkts = self.create_stream(self.pg0, self.pg1, self.pg_if_packet_sizes)
+        self.pg0.add_stream(pkts)
+
+        key = "ip_src"
+        self.create_classify_table(key, self.build_ip_mask(src_ip="ffffffff"))
+        self.create_classify_session(
+            self.acl_tbl_idx.get(key), self.build_ip_match(src_ip=self.pg1.remote_ip4)
+        )
+        self.input_acl_set_interface(self.pg0, self.acl_tbl_idx.get(key))
+        self.acl_active_table = key
+
+        acl_err_path = "/err/ip4-inacl/input ACL misses"
+        acl_pre = self.statistics.get_err_counter(acl_err_path)
+        input_err_path = "/err/ip4-input/inacl_table_miss"
+        input_pre = self.statistics.get_err_counter(input_err_path)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        self.pg0.assert_nothing_captured(remark="packets forwarded")
+        self.pg1.assert_nothing_captured(remark="packets forwarded")
+        self.pg2.assert_nothing_captured(remark="packets forwarded")
+        self.pg3.assert_nothing_captured(remark="packets forwarded")
+
+        acl_post = self.statistics.get_err_counter(acl_err_path)
+        input_post = self.statistics.get_err_counter(input_err_path)
+        self.assertEqual(
+            acl_post,
+            acl_pre + len(pkts),
+            "Source IP iACL must increment input ACL misses error counter",
+        )
+        self.assertEqual(
+            input_post,
+            input_pre + len(pkts),
+            "Source IP iACL must increment input ACL table-miss error counter",
+        )
+
     def test_iacl_dst_ip(self):
         """Destination IP iACL test
 
@@ -67,6 +123,7 @@ class TestClassifierIP(TestClassifier):
             - Create IPv4 stream for pg0 -> pg1 interface.
             - Create iACL with destination IP address.
             - Send and verify received packets on pg1 interface.
+            - Verify that the input ACL hits error counter is incremented.
         """
 
         # Basic iACL testing with destination IP
@@ -81,6 +138,9 @@ class TestClassifierIP(TestClassifier):
         self.input_acl_set_interface(self.pg0, self.acl_tbl_idx.get(key))
         self.acl_active_table = key
 
+        err_path = "/err/ip4-inacl/input ACL hits"
+        pre = self.statistics.get_err_counter(err_path)
+
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
@@ -89,6 +149,58 @@ class TestClassifierIP(TestClassifier):
         self.pg0.assert_nothing_captured(remark="packets forwarded")
         self.pg2.assert_nothing_captured(remark="packets forwarded")
         self.pg3.assert_nothing_captured(remark="packets forwarded")
+
+        post = self.statistics.get_err_counter(err_path)
+        self.assertEqual(
+            post,
+            pre + len(pkts),
+            "Destination IP iACL must increment input ACL hits error counter",
+        )
+
+    def test_iacl_dst_ip_miss(self):
+        """Destination IP iACL miss test
+
+        Test scenario for basic IP ACL with destination IP miss
+            - Create iACL with destination IP address of pg2 remote IP address.
+            - Send and verify received packets on pg1 interface.
+            - Verify that the input ACL misses error counter is incremented.
+        """
+        pkts = self.create_stream(self.pg0, self.pg1, self.pg_if_packet_sizes)
+        self.pg0.add_stream(pkts)
+
+        key = "ip_dst"
+        self.create_classify_table(key, self.build_ip_mask(dst_ip="ffffffff"))
+        self.create_classify_session(
+            self.acl_tbl_idx.get(key), self.build_ip_match(dst_ip=self.pg2.remote_ip4)
+        )
+        self.input_acl_set_interface(self.pg0, self.acl_tbl_idx.get(key))
+        self.acl_active_table = key
+
+        acl_err_path = "/err/ip4-inacl/input ACL misses"
+        acl_pre = self.statistics.get_err_counter(acl_err_path)
+        input_err_path = "/err/ip4-input/inacl_table_miss"
+        input_pre = self.statistics.get_err_counter(input_err_path)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        self.pg0.assert_nothing_captured(remark="packets forwarded")
+        self.pg1.assert_nothing_captured(remark="packets forwarded")
+        self.pg2.assert_nothing_captured(remark="packets forwarded")
+        self.pg3.assert_nothing_captured(remark="packets forwarded")
+
+        acl_post = self.statistics.get_err_counter(acl_err_path)
+        input_post = self.statistics.get_err_counter(input_err_path)
+        self.assertEqual(
+            acl_post,
+            acl_pre + len(pkts),
+            "Source IP iACL must increment input ACL misses error counter",
+        )
+        self.assertEqual(
+            input_post,
+            input_pre + len(pkts),
+            "Source IP iACL must increment input ACL table-miss error counter",
+        )
 
     def test_iacl_src_dst_ip(self):
         """Source and destination IP iACL test
@@ -114,14 +226,23 @@ class TestClassifierIP(TestClassifier):
         self.input_acl_set_interface(self.pg0, self.acl_tbl_idx.get(key))
         self.acl_active_table = key
 
+        err_path = "/err/ip4-inacl/input ACL hits"
+        pre = self.statistics.get_err_counter(err_path)
+
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
         pkts = self.pg1.get_capture(len(pkts))
-        self.verify_capture(self.pg1, pkts)
         self.pg0.assert_nothing_captured(remark="packets forwarded")
         self.pg2.assert_nothing_captured(remark="packets forwarded")
         self.pg3.assert_nothing_captured(remark="packets forwarded")
+
+        post = self.statistics.get_err_counter(err_path)
+        self.assertEqual(
+            post,
+            pre + len(pkts),
+            "Source and destination IP iACL must increment input ACL hits error counter",
+        )
 
 
 class TestClassifierUDP(TestClassifier):
