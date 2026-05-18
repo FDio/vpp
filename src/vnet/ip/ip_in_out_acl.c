@@ -711,7 +711,7 @@ ip_in_out_acl_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *
 
 #define ip_in_out_acl_inline_trace__(do_trace)                                                     \
   ip_in_out_acl_inline_trace (vm, node, frame, bufs, nexts, frame->n_vectors, &hits, &misses,      \
-			      &chain_hits, error_deny, error_miss, error_none, tables,             \
+			      &chain_hits, error_none, error_deny, error_miss, tables,             \
 			      table_index_by_sw_if_index, fib_index_by_sw_if_index, cm, way,       \
 			      is_output, do_trace)
 
