@@ -55,8 +55,8 @@ test_format_main (unformat_input_t * input)
   ret |= expectation ("10%a", "%d%%%c", 10, 'a');
   ret |= expectation ("123456789abcdef0", "%016Lx", 0x123456789abcdef0LL);
   ret |= expectation ("00000123", "%08x", 0x123);
-  ret |= expectation ("             23           23    2.3037e1",
-		      "%40U", format_test1, 23, 23.0367);
+  ret |=
+    expectation ("             23    23.036700    2.3036e1", "%40U", format_test1, 23, 23.0367);
   ret |= expectation ("left      ", "%-10s", "left");
   ret |= expectation ("  center  ", "%=10s", "center");
   ret |= expectation ("     right", "%+10s", "right");
@@ -70,6 +70,94 @@ test_format_main (unformat_input_t * input)
   ret |= expectation ("foo bar", "%S", "foo_bar");
   vec_free (food);
   vec_free (test_vec);
+  return ret;
+}
+
+/* Integer unformat accumulates in uword then stores to u8/u16/u32/u64.
+   Values wider than the destination must be rejected (no silent truncation). */
+static int
+test_unformat_integer_width (void)
+{
+  int ret = 0;
+  unformat_input_t in;
+  u32 u, a0, a1, a2, a3;
+
+#if uword_bits == 64
+#define U64_2_32 "4294967296"
+  unformat_init_cstring (&in, U64_2_32);
+  u = 0xdeadbeef;
+  if (unformat (&in, "%u", &u))
+    {
+      fformat (stdout, "FAIL: %%u " U64_2_32 " must be rejected (got u=%u)\n", u);
+      ret = 1;
+    }
+  unformat_free (&in);
+
+  unformat_init_cstring (&in, U64_2_32);
+  u = 0xdeadbeef;
+  if (unformat (&in, "%d", &u))
+    {
+      fformat (stdout, "FAIL: %%d " U64_2_32 " must be rejected\n");
+      ret = 1;
+    }
+  unformat_free (&in);
+
+  unformat_init_cstring (&in, "4294967297");
+  u = 0xdeadbeef;
+  if (unformat (&in, "%d", &u))
+    {
+      fformat (stdout, "FAIL: %%d 4294967297 must be rejected\n");
+      ret = 1;
+    }
+  unformat_free (&in);
+
+  unformat_init_cstring (&in, U64_2_32 ".0.0.1");
+  a0 = a1 = a2 = a3 = 111;
+  if (unformat (&in, "%d.%d.%d.%d", &a0, &a1, &a2, &a3))
+    {
+      fformat (stdout, "FAIL: first octet " U64_2_32 " must not parse as u32 octet\n");
+      ret = 1;
+    }
+  unformat_free (&in);
+#undef U64_2_32
+#endif /* uword_bits == 64 */
+
+  unformat_init_cstring (&in, "4294967295");
+  u = 0;
+  if (!unformat (&in, "%u", &u) || u != 4294967295u)
+    {
+      fformat (stdout, "FAIL: %%u UINT32_MAX decimal\n");
+      ret = 1;
+    }
+  unformat_free (&in);
+
+  unformat_init_cstring (&in, "4294967295");
+  u = 0;
+  if (unformat (&in, "%d", &u))
+    {
+      fformat (stdout, "FAIL: %%d 4294967295 must be rejected for int store\n");
+      ret = 1;
+    }
+  unformat_free (&in);
+
+  unformat_init_cstring (&in, "2147483647");
+  u = 0;
+  if (!unformat (&in, "%d", &u) || u != 2147483647u)
+    {
+      fformat (stdout, "FAIL: %%d INT32_MAX\n");
+      ret = 1;
+    }
+  unformat_free (&in);
+
+  unformat_init_cstring (&in, "2147483648");
+  u = 0;
+  if (unformat (&in, "%d", &u))
+    {
+      fformat (stdout, "FAIL: %%d 2147483648 must be rejected\n");
+      ret = 1;
+    }
+  unformat_free (&in);
+
   return ret;
 }
 
@@ -147,6 +235,7 @@ int
 main (int argc, char *argv[])
 {
   unformat_input_t i;
+  int ret;
 
   clib_mem_init (0, 3ULL << 30);
 
@@ -156,6 +245,10 @@ main (int argc, char *argv[])
   if (unformat (&i, "unformat"))
     return test_unformat_main (&i);
   else
-    return test_format_main (&i);
+    {
+      ret = test_format_main (&i);
+      ret |= test_unformat_integer_width ();
+      return ret;
+    }
 }
 #endif
