@@ -936,7 +936,7 @@ void
 ip_table_create (fib_protocol_t fproto, u32 table_id, u8 is_api,
 		 u8 create_mfib, const u8 *name)
 {
-  u32 fib_index, mfib_index;
+  u32 fib_index;
   vnet_main_t *vnm = vnet_get_main ();
 
   /*
@@ -964,15 +964,13 @@ ip_table_create (fib_protocol_t fproto, u32 table_id, u8 is_api,
       if (create_mfib)
 	{
 	  /* same for mfib, if needs be */
-	  mfib_index = mfib_table_find (fproto, table_id);
 	  mfib_table_find_or_create_and_lock_w_name (
 	    fproto, table_id, (is_api ? MFIB_SOURCE_API : MFIB_SOURCE_CLI),
 	    name);
 	}
-      else
-	mfib_index = 0;
 
-      if ((~0 == fib_index) || (~0 == mfib_index))
+      /* Only fire add callbacks for a newly created table */
+      if (~0 == fib_index)
 	call_elf_section_ip_table_callbacks (vnm, table_id, 1 /* is_add */ ,
 					     vnm->ip_table_add_del_functions);
     }
