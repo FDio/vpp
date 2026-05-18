@@ -392,29 +392,35 @@ uword
 unformat_sfdp_service (unformat_input_t *input, va_list *args)
 {
   sfdp_service_main_t *sm = &sfdp_service_main;
+  u32 scope_index = va_arg (*args, u32);
   u8 *result = va_arg (*args, u8 *);
-  int i;
-  for (u32 scope_index = 0; scope_index < sm->n_scopes; scope_index++)
-    for (i = 0; i < vec_len (sm->services_per_scope_index[scope_index]); i++)
-      {
-	sfdp_service_registration_t *reg =
-	  vec_elt_at_index (sm->services_per_scope_index[scope_index], i)[0];
-	if (unformat (input, reg->node_name))
-	  {
-	    *result = reg->index_in_bitmap[0];
-	    return 1;
-	  }
-      }
+
+  /* return nothing if scope index is invalid */
+  if (scope_index >= sm->n_scopes)
+    return 0;
+
+  for (int i = 0; i < vec_len (sm->services_per_scope_index[scope_index]); i++)
+    {
+      sfdp_service_registration_t *reg =
+	vec_elt_at_index (sm->services_per_scope_index[scope_index], i)[0];
+      if (unformat (input, reg->node_name))
+	{
+	  *result = reg->index_in_bitmap[0];
+	  return 1;
+	}
+    }
   return 0;
 }
 
 uword
 unformat_sfdp_service_bitmap (unformat_input_t *input, va_list *args)
 {
+  u32 scope_index = va_arg (*args, u32);
   sfdp_bitmap_t *result = va_arg (*args, sfdp_bitmap_t *);
   u8 i = UINT8_MAX;
   sfdp_bitmap_t bitmap = 0;
-  while (unformat_user (input, unformat_sfdp_service, &i))
+
+  while (unformat_user (input, unformat_sfdp_service, scope_index, &i))
     bitmap |= 1ULL << i;
   if (i != UINT8_MAX)
     {

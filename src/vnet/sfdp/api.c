@@ -34,19 +34,29 @@ vl_api_sfdp_tenant_add_del_t_handler (vl_api_sfdp_tenant_add_del_t *mp)
 static void
 vl_api_sfdp_set_services_t_handler (vl_api_sfdp_set_services_t *mp)
 {
+  sfdp_service_main_t *sm = &sfdp_service_main;
   sfdp_main_t *sfdp = &sfdp_main;
   u32 tenant_id = clib_net_to_host_u32 (mp->tenant_id);
+  u32 scope_index = clib_net_to_host_u32 (mp->scope_index);
   sfdp_bitmap_t bitmap = 0;
   u8 idx = 0;
   u8 dir = sfdp_api_direction (mp->dir);
   int rv;
+
+  /* check if scope_index is valid */
+  if (scope_index >= sm->n_scopes)
+    {
+      rv = VNET_API_ERROR_INVALID_VALUE;
+      goto fail;
+    }
+
   for (uword i = 0; i < mp->n_services; i++)
     {
       char *cstring = (char *) mp->services[i].data;
       unformat_input_t tmp;
       unformat_init_string (&tmp, cstring,
 			    strnlen (cstring, sizeof (mp->services[0].data)));
-      rv = unformat_user (&tmp, unformat_sfdp_service, &idx);
+      rv = unformat_user (&tmp, unformat_sfdp_service, scope_index, &idx);
       unformat_free (&tmp);
       if (!rv)
 	{

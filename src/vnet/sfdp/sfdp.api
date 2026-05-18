@@ -30,6 +30,7 @@ autoreply define sfdp_set_services
   u32 context;
 
   u32 tenant_id;
+  u32 scope_index [default=0];
   vl_api_sfdp_session_direction_t dir;
   u8 n_services;
   vl_api_sfdp_service_name_t services[n_services];

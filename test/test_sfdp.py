@@ -345,6 +345,25 @@ class TestSfdp(BaseSfdpTest):
         self.assertEqual(len(tenants), 1, "There should only be one tenant")
         self.assertTrue(tenant_found, "Tenant with id 100 should exist")
 
+        # Reject tenant service chain with invalid scope index
+        with self.vapi.assert_negative_api_retval():
+            for direction in [
+                VppEnum.vl_api_sfdp_session_direction_t.SFDP_API_FORWARD,
+                VppEnum.vl_api_sfdp_session_direction_t.SFDP_API_REVERSE,
+            ]:
+                reply = self.vapi.sfdp_set_services(
+                    tenant_id=100,
+                    scope_index=0xFFFFFFFF,
+                    dir=VppEnum.vl_api_sfdp_session_direction_t.SFDP_API_FORWARD,
+                    n_services=1,
+                    services=[{"data": "sfdp-drop"}],
+                )
+                self.assertEqual(
+                    reply.retval,
+                    -7,
+                    "sfdp_set_services must fail for invalid scope index",
+                )
+
         # Test service configuration for forward direction
         forward_services = ["sfdp-l4-lifecycle", "sfdp-drop"]
         reply = self.vapi.sfdp_set_services(
@@ -438,6 +457,16 @@ class TestSfdp(BaseSfdpTest):
 
         self.assertTrue(tenant_found, "Tenant with id 200 should exist")
         self.assertEqual(len(tenants), 1, "There should only be one tenant")
+
+        # Reject tenant service chain with invalid scope index
+        r = self.vapi.cli_return_response(
+            "set sfdp services tenant 200 scope 999 sfdp-drop forward"
+        )
+        self.assertEqual(
+            r.retval,
+            -1,
+            "Should fail when attempting to configure tenant with invalid scope index",
+        )
 
         # Test service configuration via CLI
         forward_services = ["sfdp-l4-lifecycle", "ip4-lookup"]

@@ -66,10 +66,12 @@ static clib_error_t *
 sfdp_set_services_command_fn (vlib_main_t *vm, unformat_input_t *input,
 			      vlib_cli_command_t *cmd)
 {
+  sfdp_service_main_t *sm = &sfdp_service_main;
   unformat_input_t line_input_, *line_input = &line_input_;
   clib_error_t *err = 0;
   sfdp_main_t *sfdp = &sfdp_main;
   u32 tenant_id = ~0;
+  u32 scope_index = 0;
   sfdp_bitmap_t bitmap = 0;
   u8 direction = ~0;
 
@@ -79,8 +81,9 @@ sfdp_set_services_command_fn (vlib_main_t *vm, unformat_input_t *input,
     {
       if (unformat (line_input, "tenant %d", &tenant_id))
 	;
-      else if (unformat_user (line_input, unformat_sfdp_service_bitmap,
-			      &bitmap))
+      else if (unformat (line_input, "scope %d", &scope_index))
+	;
+      else if (unformat_user (line_input, unformat_sfdp_service_bitmap, scope_index, &bitmap))
 	;
       else if (unformat (line_input, "forward"))
 	direction = SFDP_FLOW_FORWARD;
@@ -100,6 +103,12 @@ sfdp_set_services_command_fn (vlib_main_t *vm, unformat_input_t *input,
   if (direction == (u8) ~0)
     {
       err = clib_error_return (0, "missing direction");
+      goto done;
+    }
+  if (scope_index >= sm->n_scopes)
+    {
+      err = clib_error_return (0, "scope index %d does not exist (max %d)", scope_index,
+			       sm->n_scopes - 1);
       goto done;
     }
   sfdp_set_services (sfdp, tenant_id, bitmap, direction);
@@ -539,7 +548,7 @@ VLIB_CLI_COMMAND (sfdp_tenant_add_del_command, static) = {
 VLIB_CLI_COMMAND (sfdp_set_services_command, static) = {
   .path = "set sfdp services",
   .short_help = "set sfdp services tenant <tenant-id>"
-		" [SERVICE_NAME]+ <forward|reverse>",
+		" [scope <scope-index>] [SERVICE_NAME]+ <forward|reverse>",
   .function = sfdp_set_services_command_fn,
 };
 
