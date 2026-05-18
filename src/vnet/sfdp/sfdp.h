@@ -856,8 +856,8 @@ int sfdp_create_session_with_scope_index (vlib_main_t *vm, vlib_buffer_t *b,
 
 clib_error_t *sfdp_tenant_add_del (sfdp_main_t *sfdp, u32 tenant_id,
 				   u32 context_id, u8 is_del);
-clib_error_t *sfdp_set_services (sfdp_main_t *sfdp, u32 tenant_id,
-				 sfdp_bitmap_t bitmap, u8 direction);
+clib_error_t *sfdp_set_services (sfdp_main_t *sfdp, u32 tenant_id, sfdp_bitmap_t bitmap,
+				 u8 direction, u32 scope_index);
 clib_error_t *sfdp_set_timeout (sfdp_main_t *sfdp, u32 tenant_id,
 				u32 timeout_idx, u32 timeout_val);
 

@@ -111,7 +111,7 @@ sfdp_set_services_command_fn (vlib_main_t *vm, unformat_input_t *input,
 			       sm->n_scopes - 1);
       goto done;
     }
-  sfdp_set_services (sfdp, tenant_id, bitmap, direction);
+  err = sfdp_set_services (sfdp, tenant_id, bitmap, direction, scope_index);
 done:
   unformat_free (line_input);
   return err;

@@ -65,7 +65,7 @@ vl_api_sfdp_set_services_t_handler (vl_api_sfdp_set_services_t *mp)
 	}
       bitmap |= (1ULL << idx);
     }
-  clib_error_t *err = sfdp_set_services (sfdp, tenant_id, bitmap, dir);
+  clib_error_t *err = sfdp_set_services (sfdp, tenant_id, bitmap, dir, scope_index);
   vl_api_sfdp_set_services_reply_t *rmp;
   rv = err ? -1 : 0;
 fail:

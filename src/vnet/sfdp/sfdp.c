@@ -282,12 +282,28 @@ sfdp_tenant_add_del (sfdp_main_t *sfdp, u32 tenant_id, u32 context_id,
 }
 
 clib_error_t *
-sfdp_set_services (sfdp_main_t *sfdp, u32 tenant_id, sfdp_bitmap_t bitmap,
-		   u8 direction)
+sfdp_set_services (sfdp_main_t *sfdp, u32 tenant_id, sfdp_bitmap_t bitmap, u8 direction,
+		   u32 scope_index)
 {
   sfdp_init_main_if_needed (sfdp);
+  sfdp_service_main_t *sm = &sfdp_service_main;
   clib_bihash_kv_8_8_t kv = { .key = tenant_id, .value = 0 };
   sfdp_tenant_t *tenant;
+
+  /* Reject service chains with no terminal service. */
+  sfdp_service_registration_t **reg;
+  u8 has_terminal = 0;
+  vec_foreach (reg, sm->services_per_scope_index[scope_index])
+    {
+      if ((*reg)->is_terminal && (bitmap & *(*reg)->service_mask))
+	{
+	  has_terminal = 1;
+	  break;
+	}
+    }
+  if (!has_terminal)
+    return clib_error_return (0, "service chain for tenant %d has no terminal service", tenant_id);
+
   if (clib_bihash_search_inline_8_8 (&sfdp->tenant_idx_by_id, &kv))
     return clib_error_return (
       0, "Can't assign service map: tenant id %d not found", tenant_id);

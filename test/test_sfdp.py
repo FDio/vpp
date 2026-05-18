@@ -364,6 +364,24 @@ class TestSfdp(BaseSfdpTest):
                     "sfdp_set_services must fail for invalid scope index",
                 )
 
+        # Reject tenant service chain with no terminal service
+        with self.vapi.assert_negative_api_retval():
+            for direction in [
+                VppEnum.vl_api_sfdp_session_direction_t.SFDP_API_FORWARD,
+                VppEnum.vl_api_sfdp_session_direction_t.SFDP_API_REVERSE,
+            ]:
+                reply = self.vapi.sfdp_set_services(
+                    tenant_id=100,
+                    dir=direction,
+                    n_services=1,
+                    services=[{"data": "sfdp-l4-lifecycle"}],
+                )
+                self.assertEqual(
+                    reply.retval,
+                    -1,
+                    "sfdp_set_services must fail when no terminal service is present",
+                )
+
         # Test service configuration for forward direction
         forward_services = ["sfdp-l4-lifecycle", "sfdp-drop"]
         reply = self.vapi.sfdp_set_services(
@@ -466,6 +484,16 @@ class TestSfdp(BaseSfdpTest):
             r.retval,
             -1,
             "Should fail when attempting to configure tenant with invalid scope index",
+        )
+
+        # Reject tenant service chain with no terminal service
+        r = self.vapi.cli_return_response(
+            "set sfdp services tenant 200 sfdp-l4-lifecycle forward"
+        )
+        self.assertEqual(
+            r.retval,
+            -1,
+            "Should fail when attempting to configure tenant without terminal service",
         )
 
         # Test service configuration via CLI
