@@ -212,6 +212,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "ddf9d9b1_69799bcc",
+        "filename": "src/plugins/cnat/cnat_session.c",
+        "patchSetId": 33
+      },
+      "lineNbr": 285,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-05-18T13:29:38Z",
+      "side": 1,
+      "message": "nevermind see comment below",
+      "parentUuid": "3d36a28b_dda68425",
+      "revId": "0cac84aec91495ad679809420e5d77e386585496",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "3c63cbe9_2c8003ac",
         "filename": "src/plugins/cnat/cnat_session.h",
         "patchSetId": 33

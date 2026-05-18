@@ -207,6 +207,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "18d98722_258b4318",
+        "filename": "src/plugins/cnat/cnat_session.c",
+        "patchSetId": 37
+      },
+      "lineNbr": 291,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-05-18T13:29:38Z",
+      "side": 1,
+      "message": "Actually nevermind, it should actually be `fib_index` of the client, which we can store in the timestamp in a new field, and use it to replace the `CNAT_SESSION_FLAG_HAS_CLIENT` flag",
+      "parentUuid": "17ff9f88_fcb8658e",
+      "revId": "b69037e3f6976e60f93dc97deafe97623b91142e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "be4c96dd_45d1be89",
         "filename": "src/plugins/cnat/cnat_snat_policy.c",
         "patchSetId": 37
