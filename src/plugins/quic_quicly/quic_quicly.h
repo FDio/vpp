@@ -33,15 +33,13 @@ typedef struct quic_quicly_rx_packet_ctx_
   foreach_quic_rx_pkt_ctx_field
 #undef _
     quicly_decoded_packet_t packet;
-  u8 data[QUIC_MAX_PACKET_SIZE];
-  union
-  {
-    struct sockaddr sa;
-    struct sockaddr_in6 sa6;
-  };
-  socklen_t salen;
-  session_dgram_hdr_t ph;
 } quic_quicly_rx_packet_ctx_t;
+
+typedef struct quic_quicly_rx_dgram_ctx_
+{
+  session_dgram_pre_hdr_t ph; /* only pre-header dgram because the session is connected */
+  u8 data[QUIC_MAX_PACKET_SIZE];
+} quic_quicly_rx_dgram_ctx_t;
 
 /* single-entry session cache */
 typedef struct quic_quicly_session_cache_
@@ -61,6 +59,7 @@ typedef struct quic_quicly_main_
   quic_quicly_session_cache_t session_cache;
   quicly_cid_plaintext_t *next_cid;
   quic_quicly_rx_packet_ctx_t **rx_packets;
+  quic_quicly_rx_dgram_ctx_t **rx_dgrams;
   struct iovec **tx_packets;
   u8 **tx_bufs;
 } quic_quicly_main_t;
