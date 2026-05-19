@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5cd8227e_b09296c6",
+        "filename": "test/hs-test/proxy_test.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 1502,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-05-19T07:38:56Z",
+      "side": 1,
+      "message": "could you please add tests for half-close initiated from server side?",
+      "revId": "55aa4dc122025370b9641f7c9b603b3eddd2a28a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
