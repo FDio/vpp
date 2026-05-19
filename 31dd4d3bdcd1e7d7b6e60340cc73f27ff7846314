@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "35940bbf_1c1eb7c0",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 19
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2026-05-19T13:45:17Z",
+      "side": 1,
+      "message": "Ooops, whron git command. 45856 is not ready for squashing here yet.",
+      "revId": "31dd4d3bdcd1e7d7b6e60340cc73f27ff7846314",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
