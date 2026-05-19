@@ -219,12 +219,25 @@ vnet_dev_api_create_port_if (vlib_main_t *vm,
     }
 
   if (args->flags.e & VNET_DEV_PORT_F_QUEUE_PER_THREAD)
+    args->rx_queue_assignment = VNET_DEV_RX_QUEUE_ASSIGNMENT_QUEUE_PER_THREAD;
+
+  switch (args->rx_queue_assignment)
     {
+    case VNET_DEV_RX_QUEUE_ASSIGNMENT_ROUND_ROBIN:
+      break;
+    case VNET_DEV_RX_QUEUE_ASSIGNMENT_QUEUE_PER_THREAD:
       if (args->num_rx_queues)
 	return VNET_DEV_ERR_INVALID_NUM_RX_QUEUES;
       if (args->num_tx_queues)
 	return VNET_DEV_ERR_INVALID_NUM_TX_QUEUES;
       args->num_rx_queues = args->num_tx_queues = n_threads;
+      break;
+    case VNET_DEV_RX_QUEUE_ASSIGNMENT_MAIN_THREAD_ONLY:
+      if (args->num_rx_queues && args->num_rx_queues != 1)
+	return VNET_DEV_ERR_INVALID_NUM_RX_QUEUES;
+      break;
+    default:
+      return VNET_DEV_ERR_INVALID_ARG;
     }
 
   if (args->num_rx_queues)
@@ -268,7 +281,7 @@ vnet_dev_api_create_port_if (vlib_main_t *vm,
   clib_memcpy (a.name, args->intf_name, sizeof (a.name));
   a.default_is_intr_mode = default_is_intr_mode;
   a.consistent_qp = (args->flags.n & VNET_DEV_PORT_F_CONSISTENT_QP) != 0;
-  a.queue_per_thread = (args->flags.n & VNET_DEV_PORT_F_QUEUE_PER_THREAD) != 0;
+  a.rx_queue_assignment = args->rx_queue_assignment;
 
   rv = vnet_dev_process_call_port_op_with_ptr (vm, port,
 					       vnet_dev_port_if_create, &a);

@@ -656,14 +656,20 @@ vnet_dev_port_if_create (vlib_main_t *vm, vnet_dev_port_t *port, void *ptr)
       clib_thread_index_t ti = 0;
       if (n_threads > 1)
 	{
-	  if (!a->queue_per_thread)
+	  switch (a->rx_queue_assignment)
 	    {
+	    case VNET_DEV_RX_QUEUE_ASSIGNMENT_ROUND_ROBIN:
 	      ti = dm->next_rx_queue_thread++;
 	      if (dm->next_rx_queue_thread >= n_threads)
 		dm->next_rx_queue_thread = 1;
+	      break;
+	    case VNET_DEV_RX_QUEUE_ASSIGNMENT_QUEUE_PER_THREAD:
+	      ti = i;
+	      break;
+	    case VNET_DEV_RX_QUEUE_ASSIGNMENT_MAIN_THREAD_ONLY:
+	      ti = 0;
+	      break;
 	    }
-	  else
-	    ti = i;
 	}
       if ((rv = vnet_dev_rx_queue_alloc (vm, port, ifs->rxq_sz, i, ti)) !=
 	  VNET_DEV_OK)

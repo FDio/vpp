@@ -46,6 +46,7 @@ typedef struct
   u16 tx_queue_size;
   vnet_dev_port_id_t port_id;
   vnet_dev_port_flags_t flags;
+  vnet_dev_rx_queue_assignment_t rx_queue_assignment;
   u8 *args;
 
   /* return */

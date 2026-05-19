@@ -369,6 +369,23 @@ unformat_vnet_dev_port_flags (unformat_input_t *input, va_list *args)
   return 1;
 }
 
+uword
+unformat_vnet_dev_rx_queue_assignment (unformat_input_t *input, va_list *args)
+{
+  vnet_dev_rx_queue_assignment_t *a = va_arg (*args, vnet_dev_rx_queue_assignment_t *);
+
+  if (unformat (input, "round-robin"))
+    *a = VNET_DEV_RX_QUEUE_ASSIGNMENT_ROUND_ROBIN;
+  else if (unformat (input, "queue-per-thread"))
+    *a = VNET_DEV_RX_QUEUE_ASSIGNMENT_QUEUE_PER_THREAD;
+  else if (unformat (input, "main-thread-only"))
+    *a = VNET_DEV_RX_QUEUE_ASSIGNMENT_MAIN_THREAD_ONLY;
+  else
+    return 0;
+
+  return 1;
+}
+
 static u8 *
 format_flags (u8 *s, u64 val, char *flag_names[], u64 flag_values[],
 	      u32 n_flags)
