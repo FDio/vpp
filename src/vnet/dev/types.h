@@ -70,4 +70,11 @@ typedef union
   u32 n;
 } vnet_dev_port_flags_t;
 
+typedef enum
+{
+  VNET_DEV_RX_QUEUE_ASSIGNMENT_ROUND_ROBIN = 0,
+  VNET_DEV_RX_QUEUE_ASSIGNMENT_QUEUE_PER_THREAD,
+  VNET_DEV_RX_QUEUE_ASSIGNMENT_MAIN_THREAD_ONLY,
+} vnet_dev_rx_queue_assignment_t;
+
 #endif /* _VNET_DEV_TYPES_H_ */

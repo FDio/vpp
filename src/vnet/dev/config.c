@@ -48,6 +48,9 @@ vnet_dev_config_one_interface (vlib_main_t *vm, unformat_input_t *input,
       else if (unformat (input, "rss-key %U", unformat_vnet_dev_rss_key,
 			 &args->rss_key_args.rss_key))
 	;
+      else if (unformat (input, "rx-queue-assignment %U", unformat_vnet_dev_rx_queue_assignment,
+			 &args->intf.rx_queue_assignment))
+	;
       else if (unformat (input, "flags %U", unformat_vnet_dev_port_flags,
 			 &args->intf.flags))
 	;

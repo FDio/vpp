@@ -153,6 +153,9 @@ device_create_if_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
 	a.num_rx_queues = n;
       else if (!a.num_tx_queues && unformat (input, "num-tx-queues %u", &n))
 	a.num_tx_queues = n;
+      else if (unformat (input, "rx-queue-assignment %U", unformat_vnet_dev_rx_queue_assignment,
+			 &a.rx_queue_assignment))
+	;
       else if (!a.rx_queue_size && unformat (input, "rx-queues-size %u", &n))
 	a.rx_queue_size = n;
       else if (!a.tx_queue_size && unformat (input, "tx-queues-size %u", &n))
@@ -182,6 +185,7 @@ device_create_if_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
 VLIB_CLI_COMMAND (device_create_if_cmd, static) = {
   .path = "device create-interface",
   .short_help = "device create-interface <device-id> [port <port-id>] "
+		"[rx-queue-assignment <mode>] "
 		"[args <iface-args>]",
   .function = device_create_if_cmd_fn,
   .is_mp_safe = 1,

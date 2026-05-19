@@ -648,7 +648,7 @@ typedef struct
   u16 txq_sz;
   u8 default_is_intr_mode : 1;
   u8 consistent_qp : 1;
-  u8 queue_per_thread : 1;
+  vnet_dev_rx_queue_assignment_t rx_queue_assignment;
 
   /* return */
   u32 sw_if_index;
@@ -784,6 +784,7 @@ format_function_t format_vnet_dev_flow;
 unformat_function_t unformat_vnet_dev_vector;
 unformat_function_t unformat_vnet_dev_flags;
 unformat_function_t unformat_vnet_dev_port_flags;
+unformat_function_t unformat_vnet_dev_rx_queue_assignment;
 unformat_function_t unformat_vnet_dev_rss_key;
 
 typedef struct
