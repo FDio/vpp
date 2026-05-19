@@ -51,6 +51,24 @@
       "parentUuid": "22d3f630_a1f036e1",
       "revId": "b561b3645c09574444726b291abfcd04afe2901c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "33e7b313_1c9fe3bc",
+        "filename": "src/plugins/sfdp_services/base/tcp-check/node.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 102,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-05-19T12:41:56Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "338bd0fb_c0b6dcb9",
+      "revId": "b561b3645c09574444726b291abfcd04afe2901c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
