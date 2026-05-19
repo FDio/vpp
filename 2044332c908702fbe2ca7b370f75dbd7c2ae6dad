@@ -34,6 +34,24 @@
       "parentUuid": "cd32dc32_27b88e73",
       "revId": "2044332c908702fbe2ca7b370f75dbd7c2ae6dad",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "047a7662_ba7d9838",
+        "filename": "src/plugins/hs_apps/proxy.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1122,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-05-19T08:06:26Z",
+      "side": 0,
+      "message": "Done",
+      "parentUuid": "a9967012_d5ef5023",
+      "revId": "2044332c908702fbe2ca7b370f75dbd7c2ae6dad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
