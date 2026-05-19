@@ -34,6 +34,24 @@
       "parentUuid": "48f82f70_1fb94265",
       "revId": "7bcc098df3a0ce801038c8d2e80d228d0e103f07",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cbd6dfdc_6725c9f9",
+        "filename": "test/hs-test/proxy_test.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 1347,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-05-19T07:36:03Z",
+      "side": 1,
+      "message": "can we have both test same and not run h3 test? you need to add following in first line of test:\ns.Skip(\"bug\")",
+      "parentUuid": "f4559fa0_5b98ae4e",
+      "revId": "7bcc098df3a0ce801038c8d2e80d228d0e103f07",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
