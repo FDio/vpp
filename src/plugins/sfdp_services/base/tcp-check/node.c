@@ -98,6 +98,7 @@ update_state_one_pkt (sfdp_tw_t *tw, sfdp_tenant_t *tenant,
   u16 tcp_hdr_len = tcp_header_bytes (tcph);
   u32 next_timeout = 0;
   u8 remove_session = 0;
+  u8 time_wait = 0;
 
   if (session->type == SFDP_SESSION_TYPE_IP4)
     {
@@ -138,14 +139,21 @@ update_state_one_pkt (sfdp_tw_t *tw, sfdp_tenant_t *tenant,
 	goto out;
       if (flags & SFDP_TCP_CHECK_TCP_FLAGS_SYN)
 	{
-	  /* New session, must be a SYN otherwise bad */
-	  if (sf[0] == 0)
-	    nsf[0] = SFDP_TCP_CHECK_SESSION_FLAG_WAIT_FOR_RESP_SYN |
-		     SFDP_TCP_CHECK_SESSION_FLAG_WAIT_FOR_RESP_ACK_TO_SYN;
+	  if (sf[0] == 0 || sf[0] & SFDP_TCP_CHECK_SESSION_FLAG_WAIT_FOR_RESP_SYN ||
+	      sf[0] & SFDP_TCP_CHECK_SESSION_FLAG_WAIT_FOR_RESP_ACK_TO_SYN ||
+	      sf[0] & SFDP_TCP_CHECK_SESSION_FLAG_TIME_WAIT)
+	    {
+	      /* Allowed states, either expected or at least not DoSed by SYN flood attack. */
+	      nsf[0] = SFDP_TCP_CHECK_SESSION_FLAG_WAIT_FOR_RESP_SYN |
+		       SFDP_TCP_CHECK_SESSION_FLAG_WAIT_FOR_RESP_ACK_TO_SYN;
+	    }
 	  else
 	    {
-	      remove_session = 1;
-	      goto out;
+	      /* Likely a SYN flood. Drop this packet without altering session state. */
+	      sfdp_buffer (b[0])->service_bitmap = SFDP_SERVICE_MASK (drop);
+	      sfdp_next (b[0], to_next);
+	      /* TODO: Add a separate session counter for this drop decision? */
+	      return;
 	    }
 	}
       if (flags & SFDP_TCP_CHECK_TCP_FLAGS_ACK)
@@ -157,23 +165,32 @@ update_state_one_pkt (sfdp_tw_t *tw, sfdp_tenant_t *tenant,
 	  if (sf[0] & SFDP_TCP_CHECK_SESSION_FLAG_SEEN_FIN_RESP &&
 	      acknum == tcp_session->fin_num[SFDP_FLOW_REVERSE])
 	    nsf[0] |= SFDP_TCP_CHECK_SESSION_FLAG_SEEN_ACK_TO_FIN_INIT;
+	  /* TODO: The two ifs above assume the packet will not get dropped after VPP. */
 	  /* Or regular ACK */
 	}
       if (flags & SFDP_TCP_CHECK_TCP_FLAGS_FIN)
 	{
-	  /*If we were up, we are not anymore */
+	  /* If we were established or time-wait, we are not anymore */
 	  nsf[0] &= ~SFDP_TCP_CHECK_SESSION_FLAG_ESTABLISHED;
+	  nsf[0] &= ~SFDP_TCP_CHECK_SESSION_FLAG_TIME_WAIT;
 	  /*Seen our FIN, wait for the other FIN and for an ACK*/
 	  /*Account for tcp_payload_len, in case our FIN packets contain data payload*/
 	  tcp_session->fin_num[SFDP_FLOW_FORWARD] = seqnum + tcp_payload_len + 1;
 	  nsf[0] |= SFDP_TCP_CHECK_SESSION_FLAG_SEEN_FIN_INIT;
+	  nsf[0] &= ~SFDP_TCP_CHECK_SESSION_FLAG_SEEN_ACK_TO_FIN_INIT;
+	  /* TODO: This branch assumes the packet will not get dropped after VPP. */
 	}
       if (flags & SFDP_TCP_CHECK_TCP_FLAGS_RST)
 	{
 	  /* Reason to kill the connection */
 	  remove_session = 1;
 	  goto out;
+	  /* Currently, in-flight packets from responder create bad sessions.
+	     This is usually not an issue in production as initiator reacts with another RST.
+	     In CSIT tests this could be an issue if TRex destroys initiator at the end of trial,
+	     so TODO: Add a new lingering state just to improve CSIT test reliability. */
 	}
+      /* TODO: Are all possibilities covered? */
     }
   if (dir == SFDP_FLOW_REVERSE)
     {
@@ -182,8 +199,19 @@ update_state_one_pkt (sfdp_tw_t *tw, sfdp_tenant_t *tenant,
       if (flags & SFDP_TCP_CHECK_TCP_FLAGS_SYN)
 	{
 	  if (sf[0] & SFDP_TCP_CHECK_SESSION_FLAG_WAIT_FOR_RESP_SYN)
-	    nsf[0] ^= SFDP_TCP_CHECK_SESSION_FLAG_WAIT_FOR_RESP_SYN |
-		      SFDP_TCP_CHECK_SESSION_FLAG_WAIT_FOR_INIT_ACK_TO_SYN;
+	    {
+	      /* Not clearing SFDP_TCP_CHECK_SESSION_FLAG_WAIT_FOR_RESP_SYN flag as we are not sure
+	       * this packet will not get RX dropped on the initiator side.
+	       */
+	      nsf[0] |= SFDP_TCP_CHECK_SESSION_FLAG_WAIT_FOR_INIT_ACK_TO_SYN;
+	    }
+	  else
+	    {
+	      /* Unexpected, must be a SYN flood. Do not drop but do not change state flags either.
+	       */
+	      goto send;
+	      return;
+	    }
 	}
       if (flags & SFDP_TCP_CHECK_TCP_FLAGS_ACK)
 	{
@@ -195,23 +223,28 @@ update_state_one_pkt (sfdp_tw_t *tw, sfdp_tenant_t *tenant,
 	      acknum == tcp_session->fin_num[SFDP_FLOW_FORWARD])
 	    nsf[0] |= SFDP_TCP_CHECK_SESSION_FLAG_SEEN_ACK_TO_FIN_RESP;
 	  /* Or regular ACK */
+	  /* TODO: The two ifs above assume the packet will not get dropped after VPP. */
 	}
       if (flags & SFDP_TCP_CHECK_TCP_FLAGS_FIN)
 	{
-	  /*If we were up, we are not anymore */
+	  /* If we were established or time-wait, we are not anymore */
 	  nsf[0] &= ~SFDP_TCP_CHECK_SESSION_FLAG_ESTABLISHED;
+	  nsf[0] &= ~SFDP_TCP_CHECK_SESSION_FLAG_TIME_WAIT;
 	  /* Seen our FIN, wait for the other FIN and for an ACK */
 	  /*Account for tcp_payload_len, in case our FIN packets contain data payload*/
 	  tcp_session->fin_num[SFDP_FLOW_REVERSE] = seqnum + tcp_payload_len + 1;
 	  nsf[0] |= SFDP_TCP_CHECK_SESSION_FLAG_SEEN_FIN_RESP;
+	  nsf[0] &= ~SFDP_TCP_CHECK_SESSION_FLAG_SEEN_ACK_TO_FIN_RESP;
+	  /* TODO: This branch assumes the packet will not get dropped after VPP. */
 	}
       if (flags & SFDP_TCP_CHECK_TCP_FLAGS_RST)
 	{
 	  /* Reason to kill the connection */
-	  nsf[0] = SFDP_TCP_CHECK_SESSION_FLAG_REMOVING;
 	  remove_session = 1;
 	  goto out;
+	  /* TODO: See the TODO in the initiator RST conditional branch. */
 	}
+      /* TODO: Are all possibilities covered? */
     }
   /* If all flags are cleared connection is established! */
   if (nsf[0] == 0)
@@ -224,22 +257,31 @@ update_state_one_pkt (sfdp_tw_t *tw, sfdp_tenant_t *tenant,
   if ((nsf[0] & (SFDP_TCP_CHECK_SESSION_FLAG_SEEN_ACK_TO_FIN_INIT)) &&
       (nsf[0] & SFDP_TCP_CHECK_SESSION_FLAG_SEEN_ACK_TO_FIN_RESP))
     {
-      nsf[0] = SFDP_TCP_CHECK_SESSION_FLAG_REMOVING;
-      remove_session = 1;
+      nsf[0] = SFDP_TCP_CHECK_SESSION_FLAG_TIME_WAIT;
+      session->state = SFDP_SESSION_STATE_TIME_WAIT;
+      time_wait = 1;
+      /* TODO: Possible improvement: early cleanup when session table gets full. */
     }
 out:
   tcp_session->flags = nsf[0];
   if (remove_session)
-    next_timeout = 0;
+    {
+      nsf[0] = SFDP_TCP_CHECK_SESSION_FLAG_REMOVING;
+      next_timeout = 0;
+    }
+  else if (time_wait)
+    next_timeout = tenant->timeouts[SFDP_TIMEOUT_TIME_WAIT];
   else if (nsf[0] & SFDP_TCP_CHECK_SESSION_FLAG_ESTABLISHED)
     next_timeout = tenant->timeouts[SFDP_TIMEOUT_TCP_ESTABLISHED];
   else if (nsf[0] & SFDP_TCP_CHECK_SESSION_FLAG_BLOCKED)
     next_timeout = tenant->timeouts[SFDP_TIMEOUT_SECURITY];
   else
     next_timeout = tenant->timeouts[SFDP_TIMEOUT_EMBRYONIC];
+  /* TODO: Should FIN_WAIT_! and FIN_WAIT_2 states have a different timeout?. */
 
   sfdp_session_timer_update_maybe_past (tw, SFDP_SESSION_TIMER (session),
 					current_time, next_timeout);
+send:
   sfdp_next (b[0], to_next);
   return;
 }
@@ -325,9 +367,7 @@ VLIB_REGISTER_NODE (sfdp_tcp_check_node) = {
   .error_strings = sfdp_tcp_check_error_strings
 };
 
-SFDP_SERVICE_DEFINE (tcp_check) = {
-  .node_name = "sfdp-tcp-check",
-  .runs_before = SFDP_SERVICES (0),
-  .runs_after = SFDP_SERVICES ("sfdp-drop", "sfdp-l4-lifecycle"),
-  .is_terminal = 0
-};
+SFDP_SERVICE_DEFINE (tcp_check) = { .node_name = "sfdp-tcp-check",
+				    .runs_after = SFDP_SERVICES ("sfdp-l4-lifecycle"),
+				    .runs_before = SFDP_SERVICES ("sfdp-drop"),
+				    .is_terminal = 0 };
