@@ -52,6 +52,24 @@
       "parentUuid": "f4559fa0_5b98ae4e",
       "revId": "7bcc098df3a0ce801038c8d2e80d228d0e103f07",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "27bd7777_b8173e0e",
+        "filename": "test/hs-test/proxy_test.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 1347,
+      "author": {
+        "id": 3325
+      },
+      "writtenOn": "2026-05-19T10:04:45Z",
+      "side": 1,
+      "message": "Done in Patchset 3. I refactored the FIN-drain test so HTTP/2 and HTTP/3 share the same test path. HTTP/3 is now skipped with s.Skip(\"bug\") as the first line.",
+      "parentUuid": "cbd6dfdc_6725c9f9",
+      "revId": "7bcc098df3a0ce801038c8d2e80d228d0e103f07",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
