@@ -213,7 +213,7 @@ oct_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
     }
   cp->npc_initialized = 1;
 
-  if ((rrv = roc_nix_switch_hdr_set (nix, cp->switch_header_type, 0, 0, 0)))
+  if ((rrv = roc_nix_switch_hdr_set (nix, cp->switch_header_type, 0, 0, 0, 0)))
     {
       oct_port_deinit (vm, port);
       return oct_roc_err (dev, rrv, "roc_nix_switch_hdr_set() failed");
@@ -277,6 +277,9 @@ oct_port_deinit (vlib_main_t *vm, vnet_dev_port_t *port)
     oct_rxq_deinit (vm, q);
   foreach_vnet_dev_port_tx_queue (q, port)
     oct_txq_deinit (vm, q);
+
+  /* Disable switch hdr pkind */
+  roc_nix_switch_hdr_set (nix, 0, 0, 0, 0, 0);
 
   if (cp->npc_initialized)
     {
