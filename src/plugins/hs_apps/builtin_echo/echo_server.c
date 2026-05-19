@@ -441,11 +441,12 @@ echo_server_attach (u8 *appns_id, u64 appns_flags, u64 appns_secret)
   a->options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] =
     esm->cfg.prealloc_fifos ? esm->cfg.prealloc_fifos : 1;
 
-  a->options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
+  a->options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN | appns_flags;
+  if (appns_flags & APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE)
+    a->options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_MEMFD_FOR_BUILTIN;
   if (appns_id)
     {
       a->namespace_id = appns_id;
-      a->options[APP_OPTIONS_FLAGS] |= appns_flags;
       a->options[APP_OPTIONS_NAMESPACE_SECRET] = appns_secret;
     }
 

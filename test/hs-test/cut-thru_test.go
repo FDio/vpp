@@ -11,12 +11,92 @@ import (
 )
 
 func init() {
+	RegisterNoTopoTests(BuiltinEchoVclClientCutThruTest)
 	RegisterNoTopoSoloTests(RedisCutThruTest, LdpIperfTcpCutThruTest, LdpIperfUdpCutThruTest)
-	RegisterNoTopoMWTests(RedisCutThruMWTest, LdpIperfTcpCutThruMWTest, LdpIperfUdpCutThruMWTest)
+	RegisterNoTopoMWTests(RedisCutThruMWTest, LdpIperfTcpCutThruMWTest, LdpIperfUdpCutThruMWTest,
+		BuiltinEchoVclClientCutThruMWTest)
 }
 
 func RedisCutThruTest(s *NoTopoSuite) {
 	redisCutThru(s)
+}
+
+func BuiltinEchoVclClientCutThruTest(s *NoTopoSuite) {
+	builtinEchoVclClientCutThru(s)
+}
+
+func BuiltinEchoVclClientCutThruMWTest(s *NoTopoSuite) {
+	s.CpusPerVppContainer = 3
+	s.CpusPerContainer = 3
+	s.SetupTest()
+	builtinEchoVclClientCutThru(s)
+}
+
+func createSmallFifoVclConfig(container *Container) {
+	var vclConf Stanza
+	vclFileName := container.GetHostWorkDir() + "/vcl.conf"
+	appSocketApi := fmt.Sprintf("app-socket-api %s/var/run/app_ns_sockets/default",
+		container.GetContainerWorkDir())
+
+	err := vclConf.
+		NewStanza("vcl").
+		Append("rx-fifo-size 16384").
+		Append("tx-fifo-size 16384").
+		Append("app-scope-local").
+		Append("app-scope-global").
+		Append("use-mq-eventfd").
+		Append(appSocketApi).Close().
+		SaveToFile(vclFileName)
+	AssertNil(err, fmt.Sprint(err))
+}
+
+func removeStaleWorkDirVolumes(container *Container, containerWorkDir string) {
+	for name, volume := range container.Volumes {
+		if volume.IsDefaultWorkDir || volume.ContainerDir == containerWorkDir {
+			delete(container.Volumes, name)
+		}
+	}
+}
+
+func builtinEchoVclClientCutThru(s *NoTopoSuite) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	createSmallFifoVclConfig(s.Containers.Vpp)
+	clientApp := s.Containers.ClientApp
+	removeStaleWorkDirVolumes(clientApp, s.Containers.Vpp.GetContainerWorkDir())
+	clientApp.AddEnvVar("VCL_DEBUG", "0")
+	clientApp.AddEnvVar("VCL_CONFIG", s.Containers.Vpp.GetContainerWorkDir()+"/vcl.conf")
+	clientApp.AddEnvVar("VCL_APP_SCOPE_LOCAL", "true")
+	clientApp.AddEnvVar("VCL_APP_SCOPE_GLOBAL", "true")
+	defer delete(clientApp.EnvVars, "VCL_DEBUG")
+	defer delete(clientApp.EnvVars, "VCL_CONFIG")
+	defer delete(clientApp.EnvVars, "VCL_APP_SCOPE_LOCAL")
+	defer delete(clientApp.EnvVars, "VCL_APP_SCOPE_GLOBAL")
+
+	clientApp.Run()
+
+	serverAddress := "0.0.0.0"
+	clientAddress := "127.0.0.1"
+	vpp := s.Containers.Vpp.VppInstance
+	o := vpp.Vppctl("test echo server local-scope uri tcp://%s/%s fifo-size 16k",
+		serverAddress, s.Ports.CutThru)
+	Log(o)
+	AssertNotContains(o, "failed")
+
+	o = vpp.Vppctl("show session verbose proto ct")
+	Log(o)
+	AssertContains(o, "[CT:T]")
+
+	cmd := fmt.Sprintf("vcl_test_client -X -B -p tcp -s 1 -N 4 -T 8192 %s %s",
+		clientAddress, s.Ports.CutThru)
+	o, stderr, err := clientApp.ExecLineBuffered(ctx, true, cmd)
+	Log(o)
+	Log(stderr)
+	AssertNil(ctx.Err(), o+stderr)
+	AssertNil(err, o+stderr)
+	AssertContains(o+stderr, "CLIENT RESULTS")
+	AssertNotContains(o+stderr, "failed")
 }
 
 // redis-benchmark (client) core dumps when --threads > 1
