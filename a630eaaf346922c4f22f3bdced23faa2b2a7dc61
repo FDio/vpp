@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "f2abacf1_03652640",
+        "filename": "src/plugins/sfdp_services/base/tcp-check/node.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 124,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2026-05-19T11:28:31Z",
+      "side": 1,
+      "message": "In CSIT tests, SYN either means retransmit (due to RX loss on receiver side) on the \"same session\", or a new client instance (after the old one is suddenly destroyed at the end of a trial) that happens to use the same 5-tuple deserving a \"new session\". In production, I suspect the important occurrences could come from SYN flood DDoS attacks, but I have no idea what is the appropriate reaction in SFDP code when that happens.\nIn other words, I think my current TODO comment is correctly formulated as a question, because I do not have the answer.",
+      "parentUuid": "30234cb8_d948f75e",
+      "revId": "a630eaaf346922c4f22f3bdced23faa2b2a7dc61",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "7549dae2_b9ca25d9",
@@ -31,6 +49,24 @@
       "writtenOn": "2026-05-18T20:58:05Z",
       "side": 1,
       "message": "Could you please clarify this comment ?",
+      "revId": "a630eaaf346922c4f22f3bdced23faa2b2a7dc61",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5572d574_fc370114",
+        "filename": "src/plugins/sfdp_services/base/tcp-check/node.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 196,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2026-05-19T11:28:31Z",
+      "side": 1,
+      "message": "Simplified by referring to the initiator case.",
+      "parentUuid": "7549dae2_b9ca25d9",
       "revId": "a630eaaf346922c4f22f3bdced23faa2b2a7dc61",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -52,6 +88,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "c4073aac_9d5f29ed",
+        "filename": "src/plugins/sfdp_services/base/tcp-check/node.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 214,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2026-05-19T11:28:31Z",
+      "side": 1,
+      "message": "I rephrased that comment as \"possible improvement\" as I am not sure it would be worth the effort (both coding+verifying and CPU in production).",
+      "parentUuid": "d65d3b40_984a763a",
+      "revId": "a630eaaf346922c4f22f3bdced23faa2b2a7dc61",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "fa064ec4_b43285c9",
@@ -65,6 +119,24 @@
       "writtenOn": "2026-05-18T20:58:05Z",
       "side": 1,
       "message": "I assume you mean adding additional timeouts associated with FIN-WAIT states (FIN_WAIT_1, FIN_WAIT_2..). Is there a particular gain from tracking these endpoint states here / updating timeouts ?",
+      "revId": "a630eaaf346922c4f22f3bdced23faa2b2a7dc61",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "bcbc0e1f_643e286b",
+        "filename": "src/plugins/sfdp_services/base/tcp-check/node.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 231,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2026-05-19T11:28:31Z",
+      "side": 1,
+      "message": "If I see correctly, the two half-closed states will set embryonic timeout. I clarified my comment in #17.",
+      "parentUuid": "fa064ec4_b43285c9",
       "revId": "a630eaaf346922c4f22f3bdced23faa2b2a7dc61",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -86,6 +158,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "e64764fa_6c47ac93",
+        "filename": "src/plugins/sfdp_services/base/tcp-check/node.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 232,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2026-05-19T11:28:31Z",
+      "side": 1,
+      "message": "I agree, it supports it. Comment deleted in #17.\nThis change is primarily focused on fixing CSIT test behavior, not on improving make test coverage.",
+      "parentUuid": "4ed4ce4a_c8e1817a",
+      "revId": "a630eaaf346922c4f22f3bdced23faa2b2a7dc61",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "d55ff55e_965aafe9",
@@ -99,6 +189,24 @@
       "writtenOn": "2026-05-18T20:58:05Z",
       "side": 1,
       "message": "To keep the logic in wait_no_sessions() simple, can we simply use the following to verify that a session still exist after a certain time period ?\n\n```\n# Check that sessions still exists before time_wait period\nself.virtual_sleep(8)\nsessions \u003d self.sessions()\nself.assertEqual(len(sessions), 1, \"Expected one session\")\n\n# Verify that session has expired after time_wait period has passed\nself.wait_no_sessions(timeout\u003d7)\n```",
+      "revId": "a630eaaf346922c4f22f3bdced23faa2b2a7dc61",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0b6c9143_35220865",
+        "filename": "test/test_sfdp_l4_lifecycle.py",
+        "patchSetId": 16
+      },
+      "lineNbr": 433,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2026-05-19T11:28:31Z",
+      "side": 1,
+      "message": "The point of should_fail\u003dTrue is to make test fail if the session is deleted too early, as that is the mechanism breaking CSIT tests (by allowing a responder packet to open a session in wrong direction).\nConversely, verifying the session lives long enough makes sure CSIT is not affected, without applying the more complicated and less general check of new reverse session appearing.",
+      "parentUuid": "d55ff55e_965aafe9",
       "revId": "a630eaaf346922c4f22f3bdced23faa2b2a7dc61",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -120,6 +228,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "b622916b_7b935d4c",
+        "filename": "test/test_sfdp_l4_lifecycle.py",
+        "patchSetId": 16
+      },
+      "lineNbr": 499,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2026-05-19T11:28:31Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "a42f48a9_cbea2d72",
+      "revId": "a630eaaf346922c4f22f3bdced23faa2b2a7dc61",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "b45d6b01_1937fb0a",
@@ -137,6 +263,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "83bde545_0e3615b5",
+        "filename": "test/test_sfdp_l4_lifecycle.py",
+        "patchSetId": 16
+      },
+      "lineNbr": 717,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2026-05-19T11:28:31Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b45d6b01_1937fb0a",
+      "revId": "a630eaaf346922c4f22f3bdced23faa2b2a7dc61",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "1793c44e_70993e2d",
@@ -150,6 +294,24 @@
       "writtenOn": "2026-05-18T20:58:05Z",
       "side": 1,
       "message": "Same comment as above.",
+      "revId": "a630eaaf346922c4f22f3bdced23faa2b2a7dc61",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3c1f5ea9_2bb7f23c",
+        "filename": "test/test_sfdp_l4_lifecycle.py",
+        "patchSetId": 16
+      },
+      "lineNbr": 779,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2026-05-19T11:28:31Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "1793c44e_70993e2d",
       "revId": "a630eaaf346922c4f22f3bdced23faa2b2a7dc61",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }

@@ -104,6 +104,24 @@
       "parentUuid": "7a0bffbf_748e755f",
       "revId": "0a261d269a6cebad0f0a9825a00974716bc11843",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4fd722ee_c7c8d0b9",
+        "filename": "src/plugins/sfdp_services/base/tcp-check/node.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 205,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2026-05-19T11:28:31Z",
+      "side": 1,
+      "message": "\u003e having the ability to always reset a session in established state with a single SYN packet is not ideal\n\nDo you mean SYN flood DDoS attacks, or new valid client instances? In CSIT the latter can happen (after trial ends and old client instances are destroyed regardless of their TCP state), never the former.\n\nSadly, tcp-check is not a sophisticated firewall with DoS detection, so any decision here will have undesired consequences in some situations. Perhaps we can offer a per-tenant configuration knob, but it is too late to add such features in 2606 cycle.",
+      "parentUuid": "fc764a07_b6c110f0",
+      "revId": "0a261d269a6cebad0f0a9825a00974716bc11843",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
