@@ -26,6 +26,30 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "e3d3a9fc_4fe44c69",
+        "filename": "src/plugins/hs_apps/proxy.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 253,
+      "author": {
+        "id": 3325
+      },
+      "writtenOn": "2026-05-19T11:15:25Z",
+      "side": 1,
+      "message": "Done in Patchset 4, replaced the handle check with ASSERT.",
+      "parentUuid": "83bc5dec_86019686",
+      "range": {
+        "startLine": 253,
+        "startChar": 28,
+        "endLine": 253,
+        "endChar": 75
+      },
+      "revId": "24656aa4607ce979b8d8a1e38b3adb186ea2e97d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "37a764f9_af48f029",
         "filename": "src/plugins/hs_apps/proxy.c",
         "patchSetId": 3
@@ -37,6 +61,30 @@
       "writtenOn": "2026-05-19T08:06:26Z",
       "side": 1,
       "message": "can we hide this inside proxy_session_can_shutdown? e.g. second parameter ao_tp",
+      "range": {
+        "startLine": 254,
+        "startChar": 27,
+        "endLine": 254,
+        "endChar": 81
+      },
+      "revId": "24656aa4607ce979b8d8a1e38b3adb186ea2e97d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9f66a38c_a93633ce",
+        "filename": "src/plugins/hs_apps/proxy.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 254,
+      "author": {
+        "id": 3325
+      },
+      "writtenOn": "2026-05-19T11:15:25Z",
+      "side": 1,
+      "message": "Done in Patchset 4, moved the TCP transport check into proxy_session_can_shutdown() and pass ao_tp as the second parameter.",
+      "parentUuid": "37a764f9_af48f029",
       "range": {
         "startLine": 254,
         "startChar": 27,
