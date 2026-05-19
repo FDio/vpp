@@ -69,6 +69,7 @@ class TestSfdpL4LifecycleBase(BaseSfdpTest):
         self.set_timeout(0, 10)  # SFDP_TIMEOUT_EMBRYONIC       = 10s
         self.set_timeout(1, 10)  # SFDP_TIMEOUT_ESTABLISHED     = 10s
         self.set_timeout(2, 10)  # SFDP_TIMEOUT_TCP_ESTABLISHED = 10s
+        self.set_timeout(4, 10)  # SFDP_TIMEOUT_TIME_WAIT = 10s
 
         # Enable sfdp on pg0/pg1 interfaces
         self.vapi.sfdp_interface_input_set(
@@ -427,8 +428,10 @@ class TestSfdpL4LifecycleIp4(TestSfdpL4LifecycleBase):
             self.pg1,
         )
 
-        # Session should be expired during next execution of sfdp-expire
-        self.wait_no_sessions()
+        # Session should not expire before time-wait timeout=10s.
+        self.verify_session_stays(timeout=8)
+        # Session should expire after that timeut.
+        self.wait_no_sessions(timeout=7)
 
     def test_tcp_fin_ack_responder_closes(self):
         """TCP - responder initializes connection teardown with FIN"""
@@ -493,8 +496,10 @@ class TestSfdpL4LifecycleIp4(TestSfdpL4LifecycleBase):
             self.pg0,
         )
 
-        # Session should be expired during next execution of sfdp-expire
-        self.wait_no_sessions()
+        # Session should not expire before time-wait timeout=10s.
+        self.verify_session_stays(timeout=8)
+        # Session should expire after that timeut.
+        self.wait_no_sessions(timeout=7)
 
     def test_tcp_fin_with_payload_initiator_closes(self):
         """TCP - initiator FIN/ACK with payload"""
@@ -781,7 +786,10 @@ class TestSfdpL4LifecycleIp6(TestSfdpL4LifecycleBase):
             ),
             self.pg1,
         )
-        self.wait_no_sessions()
+        # Session should not expire before time-wait timeout=10s.
+        self.verify_session_stays(timeout=8)
+        # Session should expire after that timeut.
+        self.wait_no_sessions(timeout=7)
 
     def test_tcp_fin_ack_responder_closes(self):
         """TCP - responder initializes connection teardown with FIN"""
@@ -840,7 +848,10 @@ class TestSfdpL4LifecycleIp6(TestSfdpL4LifecycleBase):
             ),
             self.pg0,
         )
-        self.wait_no_sessions()
+        # Session should not expire before time-wait timeout=10s.
+        self.verify_session_stays(timeout=8)
+        # Session should expire after that timeut.
+        self.wait_no_sessions(timeout=7)
 
 
 if __name__ == "__main__":
