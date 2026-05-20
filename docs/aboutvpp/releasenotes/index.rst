@@ -8,6 +8,4 @@ Release notes
 
     v26.02
     v25.10
-    v25.06
-    v25.02
     past
