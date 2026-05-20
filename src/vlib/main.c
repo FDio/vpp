@@ -1546,7 +1546,7 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
       else
 	vlib_file_poll (vm);
 
-      for (vlib_node_type_t nt = 0; nt < VLIB_N_NODE_TYPE; nt++)
+      for (vlib_node_type_t nt = VLIB_NODE_TYPE_SCHED; nt <= VLIB_NODE_TYPE_INPUT; nt++)
 	{
 	  if (node_type_attrs[nt].can_be_polled)
 	    vec_foreach (n, nm->nodes_by_type[nt])
