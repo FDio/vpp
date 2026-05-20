@@ -10,28 +10,77 @@
 
 #include <vnet/ip/ip_flow_hash.h>
 #include <vnet/ip/ip4_packet.h>
+#include <vnet/ip/ip_inner_aware_hash.h>
 #include <vnet/tcp/tcp_packet.h>
 #include <vnet/udp/udp_packet.h>
 
 #define IP_DF 0x4000		/* don't fragment */
 
 /* Compute flow hash.  We'll use it to select which adjacency to use for this
-   flow.  And other things. */
+   flow.  And other things.
+
+   If IP_FLOW_HASH_PEEK_INNER is set in flow_hash_config and the outer
+   protocol is an IP-in-IP encapsulation (4 = IPv4-in-IPv4, 41 = IPv6-in-
+   IPv4) or GRE / NVGRE (47), walk into the inner header and compute the
+   hash from inner src/dst/proto plus inner L4 sport/dport.  This matches
+   the default ECMP behavior of merchant-silicon ASICs which hash on inner
+   fields for transit tunnel traffic.  See src/vnet/ip/ip_inner_aware_hash.h
+   for the shared helpers used here, in ip6_inlines.h, and in
+   src/vnet/hash/hash_eth.c.  */
 always_inline u32
 ip4_compute_flow_hash (const ip4_header_t * ip,
 		       flow_hash_config_t flow_hash_config)
 {
-  tcp_header_t *tcp = (void *) (ip + 1);
-  udp_header_t *udp = (void *) (ip + 1);
-  gtpv1u_header_t *gtpu = (void *) (udp + 1);
+  const tcp_header_t *tcp;
+  const udp_header_t *udp;
+  const gtpv1u_header_t *gtpu;
   u32 a, b, c, t1, t2;
-  uword is_udp = ip->protocol == IP_PROTOCOL_UDP;
-  uword is_tcp_udp = (ip->protocol == IP_PROTOCOL_TCP || is_udp);
+  u32 src_addr_u32, dst_addr_u32;
+  u8 hash_protocol;
+  ip_inner_hdr_t inner = { .valid = 0 };
 
-  t1 = (flow_hash_config & IP_FLOW_HASH_SRC_ADDR)
-    ? ip->src_address.data_u32 : 0;
-  t2 = (flow_hash_config & IP_FLOW_HASH_DST_ADDR)
-    ? ip->dst_address.data_u32 : 0;
+  if (PREDICT_FALSE ((flow_hash_config & IP_FLOW_HASH_PEEK_INNER) && !ip4_is_fragment (ip)))
+    {
+      u32 total_len = clib_net_to_host_u16 (ip->length);
+      u32 ihl = ip4_header_bytes (ip);
+      if (PREDICT_TRUE (total_len >= ihl))
+	{
+	  u32 remaining = total_len - ihl;
+	  ip_inner_resolve (ip->protocol, (const u8 *) ip + ihl, remaining, &inner);
+	}
+    }
+
+  if (PREDICT_FALSE (inner.valid))
+    {
+      if (inner.is_v6)
+	{
+	  src_addr_u32 = ip6_addr_fold_u32 (&inner.ip.v6->src_address);
+	  dst_addr_u32 = ip6_addr_fold_u32 (&inner.ip.v6->dst_address);
+	}
+      else
+	{
+	  src_addr_u32 = inner.ip.v4->src_address.data_u32;
+	  dst_addr_u32 = inner.ip.v4->dst_address.data_u32;
+	}
+      hash_protocol = inner.protocol;
+      tcp = (const tcp_header_t *) inner.l4;
+      udp = (const udp_header_t *) inner.l4;
+    }
+  else
+    {
+      src_addr_u32 = ip->src_address.data_u32;
+      dst_addr_u32 = ip->dst_address.data_u32;
+      hash_protocol = ip->protocol;
+      tcp = (const tcp_header_t *) (ip + 1);
+      udp = (const udp_header_t *) (ip + 1);
+    }
+  gtpu = (const gtpv1u_header_t *) (udp + 1);
+
+  uword is_udp = hash_protocol == IP_PROTOCOL_UDP;
+  uword is_tcp_udp = (hash_protocol == IP_PROTOCOL_TCP || is_udp);
+
+  t1 = (flow_hash_config & IP_FLOW_HASH_SRC_ADDR) ? src_addr_u32 : 0;
+  t2 = (flow_hash_config & IP_FLOW_HASH_DST_ADDR) ? dst_addr_u32 : 0;
 
   a = (flow_hash_config & IP_FLOW_HASH_REVERSE_SRC_DST) ? t2 : t1;
   b = (flow_hash_config & IP_FLOW_HASH_REVERSE_SRC_DST) ? t1 : t2;
@@ -58,7 +107,7 @@ ip4_compute_flow_hash (const ip4_header_t * ip,
 	}
     }
 
-  b ^= (flow_hash_config & IP_FLOW_HASH_PROTO) ? ip->protocol : 0;
+  b ^= (flow_hash_config & IP_FLOW_HASH_PROTO) ? hash_protocol : 0;
   c = (flow_hash_config & IP_FLOW_HASH_REVERSE_SRC_DST) ?
     (t1 << 16) | t2 : (t2 << 16) | t1;
   if (PREDICT_TRUE (is_udp) &&
