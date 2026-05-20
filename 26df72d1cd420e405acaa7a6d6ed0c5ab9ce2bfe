@@ -16,6 +16,24 @@
       "message": "why do we need this?",
       "revId": "26df72d1cd420e405acaa7a6d6ed0c5ab9ce2bfe",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d61f44c0_b116c9ee",
+        "filename": "test/hs-test/infra/suite_masque.go",
+        "patchSetId": 4
+      },
+      "lineNbr": 167,
+      "author": {
+        "id": 3325
+      },
+      "writtenOn": "2026-05-20T08:25:21Z",
+      "side": 1,
+      "message": "This is needed for s.Skip(\"bug\") on the first line in the HTTP/3 test.\nBecause the skip happens before SetupTest(), the MASQUE route is never\nadded, but AfterEach still runs TeardownTest(). Without this condition,\nteardown tries to delete a non-existent route and logs an AfterEach\nfailure.\n\nExample without condition:\n```\n[* TEST BEGIN]: proxy_test.go/VppConnectProxyHttp3FinDrainTcpMWTest\n  [SKIPPED] in [It] - /home/...../vpp/test/hs-test/infra/suite_base.go:209\n  /usr/sbin/ip netns exec 1client-ns059 ip route del 10.10.4.0/24 via 10.10.1.1\n  Error: FIB table does not exist.\n\n  [* TEST TEARDOWN]\n  [FAILED] in [AfterEach] - /home/...../vpp/test/hs-test/infra/suite_masque.go:178\n  [* SUITE TEARDOWN]\n.\n.\n.\n[SKIPPED] bug\n  In [It] at: /home/...../vpp/test/hs-test/infra/suite_base.go:209\n\n  Full Stack Trace\n    ....\n\n  There were additional failures detected.  To view them in detail run ginkgo -vv\n```\n\nSame example with condition:\n```\n[* TEST BEGIN]: proxy_test.go/VppConnectProxyHttp3FinDrainTcpMWTest\n  [SKIPPED] in [It] - /home/...../vpp/test/hs-test/infra/suite_base.go:209\n  [* TEST TEARDOWN]\n  [* SUITE TEARDOWN]\n.\n.\n.\n[SKIPPED] bug\n  In [It] at: /home/.../vpp/test/hs-test/infra/suite_base.go:209\n\n  Full Stack Trace\n    ...\n\n```\n\nThe final result of the skipped test is SUCCESS in both cases.",
+      "parentUuid": "1645310b_d4811966",
+      "revId": "26df72d1cd420e405acaa7a6d6ed0c5ab9ce2bfe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
