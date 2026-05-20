@@ -34,6 +34,24 @@
       "parentUuid": "1645310b_d4811966",
       "revId": "26df72d1cd420e405acaa7a6d6ed0c5ab9ce2bfe",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1f4a7d73_d27e9190",
+        "filename": "test/hs-test/infra/suite_masque.go",
+        "patchSetId": 4
+      },
+      "lineNbr": 167,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-05-20T08:31:32Z",
+      "side": 1,
+      "message": "my bad I forget it\u0027s multi worker test",
+      "parentUuid": "d61f44c0_b116c9ee",
+      "revId": "26df72d1cd420e405acaa7a6d6ed0c5ab9ce2bfe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
