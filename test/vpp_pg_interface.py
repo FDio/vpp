@@ -122,6 +122,8 @@ class VppPGInterface(VppInterface):
             self.pg_index,
             self.get_cap_name(worker),
         )
+        if self.maxframe is not None:
+            input_cli += " maxframe %u" % (self.maxframe)
         if nb_replays is not None:
             return "%s limit %d" % (input_cli, nb_replays)
         if worker is not None:
@@ -163,6 +165,7 @@ class VppPGInterface(VppInterface):
         self._gso_enabled = gso
         self._gso_size = gso_size
         self._coalesce_enabled = 0
+        self._maxframe: int | None = None
         self._out_file = "pg%u_out.pcap" % self.pg_index
         self._out_path = self.test.tempdir + "/" + self._out_file
         self._cap_name = "pcap%u-sw_if_index-%s" % (self.pg_index, self.sw_if_index)
@@ -244,6 +247,19 @@ class VppPGInterface(VppInterface):
         """Disable packet coalesce on this packet-generator interface"""
         self._coalesce_enabled = 0
         self.test.vapi.pg_interface_enable_disable_coalesce(self.sw_if_index, 0)
+
+    @property
+    def maxframe(self):
+        return self._maxframe
+
+    @maxframe.setter
+    def maxframe(self, value: int | None) -> None:
+        if value is not None:
+            if not isinstance(value, int):
+                raise TypeError("expected int or None")
+            if value < 0:
+                raise ValueError(f"invalid maxframe value '{value}', must be >= 0")
+        self._maxframe = value
 
     def add_stream(self, pkts, nb_replays=None, worker=None):
         """
