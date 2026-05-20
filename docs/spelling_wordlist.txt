@@ -517,6 +517,7 @@ Init
 initiatehost
 inline
 inlines
+inners
 insmod
 instantiation
 Instantiation
@@ -833,6 +834,7 @@ optimised
 os
 osi
 outacl
+outers
 packagecloud
 papi
 parallelize
