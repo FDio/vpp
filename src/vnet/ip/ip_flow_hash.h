@@ -20,16 +20,17 @@
   _ (reverse, IP_FLOW_HASH_REVERSE_SRC_DST)                                   \
   _ (symmetric, IP_FLOW_HASH_SYMMETRIC)
 
-#define foreach_flow_hash_bit                                                 \
-  _ (src, 0, IP_FLOW_HASH_SRC_ADDR)                                           \
-  _ (dst, 1, IP_FLOW_HASH_DST_ADDR)                                           \
-  _ (sport, 2, IP_FLOW_HASH_SRC_PORT)                                         \
-  _ (dport, 3, IP_FLOW_HASH_DST_PORT)                                         \
-  _ (proto, 4, IP_FLOW_HASH_PROTO)                                            \
-  _ (reverse, 5, IP_FLOW_HASH_REVERSE_SRC_DST)                                \
-  _ (symmetric, 6, IP_FLOW_HASH_SYMMETRIC)                                    \
-  _ (flowlabel, 7, IP_FLOW_HASH_FL)                                           \
-  _ (gtpv1teid, 8, IP_FLOW_HASH_GTPV1_TEID)
+#define foreach_flow_hash_bit                                                                      \
+  _ (src, 0, IP_FLOW_HASH_SRC_ADDR)                                                                \
+  _ (dst, 1, IP_FLOW_HASH_DST_ADDR)                                                                \
+  _ (sport, 2, IP_FLOW_HASH_SRC_PORT)                                                              \
+  _ (dport, 3, IP_FLOW_HASH_DST_PORT)                                                              \
+  _ (proto, 4, IP_FLOW_HASH_PROTO)                                                                 \
+  _ (reverse, 5, IP_FLOW_HASH_REVERSE_SRC_DST)                                                     \
+  _ (symmetric, 6, IP_FLOW_HASH_SYMMETRIC)                                                         \
+  _ (flowlabel, 7, IP_FLOW_HASH_FL)                                                                \
+  _ (gtpv1teid, 8, IP_FLOW_HASH_GTPV1_TEID)                                                        \
+  _ (peek_inner, 9, IP_FLOW_HASH_PEEK_INNER)
 
 typedef struct
 {
