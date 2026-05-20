@@ -10,9 +10,17 @@
 
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/ip/ip6_hop_by_hop_packet.h>
+#include <vnet/ip/ip_inner_aware_hash.h>
 
 /* Compute flow hash.  We'll use it to select which Sponge to use for this
-   flow.  And other things. */
+   flow.  And other things.
+
+   If IP_FLOW_HASH_PEEK_INNER is set in flow_hash_config and the (post-
+   extension-header) IPv6 next-header is an IP-in-IP encapsulation (4 =
+   IPv4-in-IPv6, 41 = IPv6-in-IPv6) or GRE / NVGRE (47), walk into the
+   inner header and compute the hash from inner src/dst/proto plus inner
+   L4 sport/dport.  See src/vnet/ip/ip_inner_aware_hash.h for the shared
+   helpers used here and in ip4_inlines.h / src/vnet/hash/hash_eth.c.  */
 always_inline u32
 ip6_compute_flow_hash (const ip6_header_t * ip,
 		       flow_hash_config_t flow_hash_config)
@@ -26,6 +34,9 @@ ip6_compute_flow_hash (const ip6_header_t * ip,
   uword is_tcp_udp = 0;
   u8 protocol = ip->protocol;
   uword is_udp = protocol == IP_PROTOCOL_UDP;
+  uword peek_inner = (flow_hash_config & IP_FLOW_HASH_PEEK_INNER) != 0;
+  uword outer_fragmented = 0;
+  ip_inner_hdr_t inner = { .valid = 0 };
 
   if (PREDICT_TRUE ((protocol == IP_PROTOCOL_TCP) || is_udp))
     {
@@ -34,29 +45,85 @@ ip6_compute_flow_hash (const ip6_header_t * ip,
     }
   else
     {
-      const void *cur = ip + 1;
-      if (protocol == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS)
+      const u8 *cur = (const u8 *) (ip + 1);
+      u32 walked = 0;
+      u32 payload_length = clib_net_to_host_u16 (ip->payload_length);
+      if (protocol == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS &&
+	  payload_length >= sizeof (ip6_hop_by_hop_header_t))
 	{
-	  const ip6_hop_by_hop_header_t *hbh = cur;
-	  protocol = hbh->protocol;
-	  cur += (hbh->length + 1) * 8;
+	  const ip6_hop_by_hop_header_t *hbh = (const ip6_hop_by_hop_header_t *) cur;
+	  u32 hbh_len = ((u32) hbh->length + 1) * 8;
+	  if (payload_length >= walked + hbh_len)
+	    {
+	      protocol = hbh->protocol;
+	      cur += hbh_len;
+	      walked += hbh_len;
+	    }
 	}
       if (protocol == IP_PROTOCOL_IPV6_FRAGMENTATION)
 	{
-	  const ip6_fragment_ext_header_t *frag = cur;
-	  protocol = frag->protocol;
+	  if (payload_length >= walked + sizeof (ip6_fragment_ext_header_t))
+	    {
+	      const ip6_fragment_ext_header_t *frag = (const ip6_fragment_ext_header_t *) cur;
+	      protocol = frag->protocol;
+	      cur += sizeof (ip6_fragment_ext_header_t);
+	      walked += sizeof (ip6_fragment_ext_header_t);
+	    }
+	  outer_fragmented = 1;
 	}
-      else if (protocol == IP_PROTOCOL_TCP || protocol == IP_PROTOCOL_UDP)
+      /* Fragmentation invariant: a packet that carries a Fragment ext
+       header IS itself one fragment of the original L4 datagram --
+       never a complete L4 message.  Only fragment-0 carries the real
+       TCP/UDP src/dst ports; later fragments carry arbitrary
+       inner-payload bytes at the same buffer offset.  Hashing those
+       bytes as ports would send fragments of the same flow down
+       different paths and break reassembly at the destination.
+       Thus we must NOT read tcp->src/dst when outer_fragmented is
+       set.  This restores upstream pre-patch behaviour.  */
+      else if (!outer_fragmented && (protocol == IP_PROTOCOL_TCP || protocol == IP_PROTOCOL_UDP))
 	{
 	  is_tcp_udp = 1;
-	  tcp = cur;
+	  is_udp = (protocol == IP_PROTOCOL_UDP);
+	  tcp = (const tcp_header_t *) cur;
+	}
+      else if (PREDICT_FALSE (peek_inner && !outer_fragmented && payload_length >= walked))
+	{
+	  u32 remaining = payload_length - walked;
+	  ip_inner_resolve (protocol, cur, remaining, &inner);
+	  if (PREDICT_FALSE (inner.valid))
+	    {
+	      protocol = inner.protocol;
+	      is_udp = protocol == IP_PROTOCOL_UDP;
+	      udp = (const udp_header_t *) inner.l4;
+	      gtpu = (const gtpv1u_header_t *) (udp + 1);
+	      if ((protocol == IP_PROTOCOL_TCP) || is_udp)
+		{
+		  is_tcp_udp = 1;
+		  tcp = (const tcp_header_t *) inner.l4;
+		}
+	    }
 	}
     }
 
-  t1 = (ip->src_address.as_u64[0] ^ ip->src_address.as_u64[1]);
+  if (PREDICT_FALSE (inner.valid))
+    {
+      if (inner.is_v6)
+	{
+	  t1 = inner.ip.v6->src_address.as_u64[0] ^ inner.ip.v6->src_address.as_u64[1];
+	  t2 = inner.ip.v6->dst_address.as_u64[0] ^ inner.ip.v6->dst_address.as_u64[1];
+	}
+      else
+	{
+	  t1 = inner.ip.v4->src_address.data_u32;
+	  t2 = inner.ip.v4->dst_address.data_u32;
+	}
+    }
+  else
+    {
+      t1 = ip->src_address.as_u64[0] ^ ip->src_address.as_u64[1];
+      t2 = ip->dst_address.as_u64[0] ^ ip->dst_address.as_u64[1];
+    }
   t1 = (flow_hash_config & IP_FLOW_HASH_SRC_ADDR) ? t1 : 0;
-
-  t2 = (ip->dst_address.as_u64[0] ^ ip->dst_address.as_u64[1]);
   t2 = (flow_hash_config & IP_FLOW_HASH_DST_ADDR) ? t2 : 0;
 
   a = (flow_hash_config & IP_FLOW_HASH_REVERSE_SRC_DST) ? t2 : t1;

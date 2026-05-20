@@ -17,4 +17,4 @@ Core Architecture
     bihash
     buildsystem/index
     multi_thread
-
+    inner_aware_hash
