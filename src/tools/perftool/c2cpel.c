@@ -81,27 +81,33 @@ void convert_clib_file(char *clib_file)
         brief_event_name = format (0, "%s", t->format);
 
         for (j = 0; j < vec_len (brief_event_name); j++) {
-            if (brief_event_name[j] == ' ' ||
-                brief_event_name[j] == '%' ||
-                brief_event_name[j] == '(') {
-                brief_event_name[j] = 0;
-                break;
-            }
-        }
-        /* Throw away that much of the formatted event */
-        vec_delete (s, j+1, 0);
+	    if (brief_event_name[j] == ' ' || brief_event_name[j] == '(')
+	      {
+		brief_event_name[j] = 0;
+		j++;
+		break;
+	      }
+	    /* special handling otherwise we skip first character */
+	    if (brief_event_name[j] == '%')
+	      {
+		brief_event_name[j] = 0;
+		break;
+	      }
+	  }
+	/* Throw away that much of the formatted event */
+	vec_delete (s, j, 0);
 
-        ep->event_id = find_or_add_event(brief_event_name, "%s");
+	ep->event_id = find_or_add_event (brief_event_name, "%s");
 
-        track_name = format (0, "%U%c", format_elog_track_name, em, e, 0);
+	track_name = format (0, "%U%c", format_elog_track_name, em, e, 0);
 
-        ep->track_id = find_or_add_track (track_name);
+	ep->track_id = find_or_add_track (track_name);
 
-        ep->datum = find_or_add_strtab(s);
+	ep->datum = find_or_add_strtab (s);
 
-        vec_free (track_name);
-        vec_free(brief_event_name);
-        vec_free(s);
+	vec_free (track_name);
+	vec_free (brief_event_name);
+	vec_free (s);
     }
 }
 
@@ -145,7 +151,7 @@ int main (int argc, char **argv)
     char *outputfile = 0;
     FILE *ofp;
 
-    clib_mem_init_thread_safe (0, 256 << 20);
+    clib_mem_init (0, 256 << 20);
 
     if (argc < 3)
         goto usage;
