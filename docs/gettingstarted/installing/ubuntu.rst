@@ -55,11 +55,11 @@ https://packagecloud.io/fdio/release
 VPP stable release Branch Repo
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Stable release branches are named "stable/YYMM" (e.g. stable/2206) and the associated
-packagecloud repositories are named "YYMM" (e.g 2206).  For example, the URL to
-the VPP 22.06 stable release branch package repository is:
+Stable release branches are named "stable/YYMM" (e.g. stable/2606) and the associated
+packagecloud repositories are named "YYMM" (e.g 2606).  For example, the URL to
+the VPP 26.06 stable release branch package repository is:
 
-https://packagecloud.io/fdio/2206
+https://packagecloud.io/fdio/2606
 
 
 Install the Mandatory Packages
