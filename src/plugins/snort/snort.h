@@ -351,12 +351,6 @@ snort_get_instance_by_index (u32 instance_index)
   return pool_elt_at_index (sm->instances, instance_index);
 }
 
-static_always_inline daq_vpp_pkt_metadata_t *
-snort_get_buffer_metadata (vlib_buffer_t *b)
-{
-  return vnet_buffer_get_opaque (b);
-}
-
 #define log_debug(fmt, ...)                                                   \
   vlib_log_debug (snort_log.class, "%s: " fmt, __func__, __VA_ARGS__)
 #define log_err(fmt, ...) vlib_log_err (snort_log.class, fmt, __VA_ARGS__)

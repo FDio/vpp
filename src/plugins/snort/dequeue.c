@@ -26,7 +26,6 @@ snort_deq_node_inject (vlib_main_t *vm, vlib_node_runtime_t *node,
       daq_vpp_empty_buf_desc_t *desc = &qp->empty_buf_ring[last_tail & mask];
       u32 ref_desc_index = desc->ref_buffer_desc_index;
       snort_qpair_entry_t *ref_qpe = qp->entries + ref_desc_index;
-      daq_vpp_desc_t *ref_d = qp->hdr->descs + ref_desc_index;
       vlib_buffer_t *b, *ref_b;
       u32 bi, ref_bi;
 
@@ -39,8 +38,6 @@ snort_deq_node_inject (vlib_main_t *vm, vlib_node_runtime_t *node,
       /* set the buffer metadata */
       ref_bi = ref_qpe->buffer_index;
       ref_b = vlib_get_buffer (vm, ref_bi);
-
-      *snort_get_buffer_metadata (b) = ref_d->metadata;
 
       b->current_config_index = ref_b->current_config_index;
 
@@ -162,7 +159,6 @@ more:
       n_verdicsts[verdict]++;
       qpe->buffer_index = ~0;
       b = vlib_get_buffer (vm, bi);
-      *snort_get_buffer_metadata (b) = d->metadata;
 
       /* put descriptor back to freelist */
       qpe->freelist_next = next_free;

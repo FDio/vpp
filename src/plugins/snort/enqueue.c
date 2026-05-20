@@ -124,6 +124,9 @@ snort_enq_prepare_descs (vlib_main_t *vm, vlib_buffer_t **b, daq_vpp_desc_t *d, 
   u8 bpi[4];
   u8 off[4] = { 0, 0, 0, 0 };
   u8 *p[4];
+  daq_vpp_pkt_metadata_t metadata = {
+    .flags = use_rewrite_length_offset ? 0 : DAQ_VPP_PKT_FLAG_PRE_ROUTING,
+  };
 
   for (; n_left >= 8; b += 4, d += 4, iph += 4, n_left -= 4)
     {
@@ -172,10 +175,10 @@ snort_enq_prepare_descs (vlib_main_t *vm, vlib_buffer_t **b, daq_vpp_desc_t *d, 
 	  iph[3] = p[3];
 	}
 
-      d[0].metadata = *snort_get_buffer_metadata (b[0]);
-      d[1].metadata = *snort_get_buffer_metadata (b[1]);
-      d[2].metadata = *snort_get_buffer_metadata (b[2]);
-      d[3].metadata = *snort_get_buffer_metadata (b[3]);
+      d[0].metadata = metadata;
+      d[1].metadata = metadata;
+      d[2].metadata = metadata;
+      d[3].metadata = metadata;
     }
 
   for (; n_left; b++, d++, iph++, n_left--)
@@ -193,7 +196,7 @@ snort_enq_prepare_descs (vlib_main_t *vm, vlib_buffer_t **b, daq_vpp_desc_t *d, 
       if (with_hash)
 	iph[0] = p[0];
 
-      d[0].metadata = *snort_get_buffer_metadata (b[0]);
+      d[0].metadata = metadata;
     }
 }
 
@@ -340,9 +343,6 @@ snort_arc_input (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame
   u32 *buffer_indices = vlib_frame_vector_args (frame), *bi = buffer_indices;
   u32 n_pkts = frame->n_vectors, n_left = n_pkts, n_total_left = n_pkts;
   u16 instance_indices[VLIB_FRAME_SIZE], *ii = instance_indices;
-  daq_vpp_pkt_metadata_t metadata = {
-    .flags = is_output ? 0 : DAQ_VPP_PKT_FLAG_PRE_ROUTING,
-  };
   u8 dir = is_output ? VLIB_TX : VLIB_RX;
 
   for (; n_left >= 8; n_left -= 4, bi += 4, ii += 4)
@@ -359,13 +359,9 @@ snort_arc_input (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame
       b3 = vlib_get_buffer (vm, bi[3]);
 
       ii[0] = instance_by_interface[vnet_buffer (b0)->sw_if_index[dir]];
-      *snort_get_buffer_metadata (b0) = metadata;
       ii[1] = instance_by_interface[vnet_buffer (b1)->sw_if_index[dir]];
-      *snort_get_buffer_metadata (b1) = metadata;
       ii[2] = instance_by_interface[vnet_buffer (b2)->sw_if_index[dir]];
-      *snort_get_buffer_metadata (b2) = metadata;
       ii[3] = instance_by_interface[vnet_buffer (b3)->sw_if_index[dir]];
-      *snort_get_buffer_metadata (b3) = metadata;
     }
 
   for (; n_left; n_left -= 1, bi += 1, ii += 1)
@@ -374,7 +370,6 @@ snort_arc_input (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame
 
       b0 = vlib_get_buffer (vm, bi[0]);
       ii[0] = instance_by_interface[vnet_buffer (b0)->sw_if_index[dir]];
-      *snort_get_buffer_metadata (b0) = metadata;
     }
 
   if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
