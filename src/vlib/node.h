@@ -39,20 +39,20 @@ typedef enum
   /* An internal node on the call graph (could be output). */
   VLIB_NODE_TYPE_INTERNAL,
 
-  /* Nodes which input data into the processing graph.
-     Input nodes are called for each iteration of main loop. */
-  VLIB_NODE_TYPE_INPUT,
+  /* Nodes to by called by per-thread timing wheel. */
+  VLIB_NODE_TYPE_SCHED,
 
   /* Nodes to be called before all input nodes.
      Used, for example, to clean out driver TX rings before
      processing input. */
   VLIB_NODE_TYPE_PRE_INPUT,
 
+  /* Nodes which input data into the processing graph.
+     Input nodes are called for each iteration of main loop. */
+  VLIB_NODE_TYPE_INPUT,
+
   /* "Process" nodes which can be suspended and later resumed. */
   VLIB_NODE_TYPE_PROCESS,
-
-  /* Nodes to by called by per-thread timing wheel. */
-  VLIB_NODE_TYPE_SCHED,
 
   VLIB_N_NODE_TYPE,
 } vlib_node_type_t;
