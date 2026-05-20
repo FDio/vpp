@@ -483,7 +483,7 @@ bond_create_if (vlib_main_t * vm, bond_create_if_args_t * args)
       args->error = clib_error_return (0, "Invalid mode");
       return;
     }
-  if (args->lb > BOND_LB_L23)
+  if (args->lb > BOND_LB_L23 && args->lb != BOND_LB_L34_INNER)
     {
       args->rv = VNET_API_ERROR_INVALID_ARGUMENT;
       args->error = clib_error_return (0, "Invalid load-balance");
@@ -506,6 +506,9 @@ bond_create_if (vlib_main_t * vm, bond_create_if_args_t * args)
   else if (bif->lb == BOND_LB_L23)
     bif->hash_func = vnet_hash_function_from_name ("hash-eth-l23",
 						   VNET_HASH_FN_TYPE_ETHERNET);
+  else if (bif->lb == BOND_LB_L34_INNER)
+    bif->hash_func =
+      vnet_hash_function_from_name ("hash-eth-l34-inner", VNET_HASH_FN_TYPE_ETHERNET);
 
   // Adjust requested interface id
   if (bif->id == ~0)
@@ -636,8 +639,8 @@ bond_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 VLIB_CLI_COMMAND (bond_create_command, static) = {
   .path = "create bond",
   .short_help = "create bond mode {round-robin | active-backup | broadcast | "
-    "{lacp | xor} [load-balance { l2 | l23 | l34 } [numa-only]]} "
-    "[hw-addr <mac-address>] [id <if-id>] [gso]",
+		"{lacp | xor} [load-balance {l2 | l23 | l34 | l34-inner} [numa-only]]} "
+		"[hw-addr <mac-address>] [id <if-id>] [gso]",
   .function = bond_create_command_fn,
 };
 
