@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "081bb75a_ecf5517e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1737
+      },
+      "writtenOn": "2026-05-20T08:49:59Z",
+      "side": 1,
+      "message": "Node type dispatching via node_type_attrs hurts overall performance",
+      "revId": "a93b40ae841032a89b46c3e4546a47fd2d39947d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
