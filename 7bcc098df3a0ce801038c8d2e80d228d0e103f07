@@ -70,6 +70,24 @@
       "parentUuid": "cbd6dfdc_6725c9f9",
       "revId": "7bcc098df3a0ce801038c8d2e80d228d0e103f07",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "75b20f11_f37465b4",
+        "filename": "test/hs-test/proxy_test.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 1347,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-05-20T07:50:54Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "27bd7777_b8173e0e",
+      "revId": "7bcc098df3a0ce801038c8d2e80d228d0e103f07",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }

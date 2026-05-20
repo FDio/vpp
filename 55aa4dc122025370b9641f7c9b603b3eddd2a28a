@@ -34,6 +34,24 @@
       "parentUuid": "5cd8227e_b09296c6",
       "revId": "55aa4dc122025370b9641f7c9b603b3eddd2a28a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8c611e48_424b30eb",
+        "filename": "test/hs-test/proxy_test.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 1502,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-05-20T07:50:54Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "caaaebf5_4da58101",
+      "revId": "55aa4dc122025370b9641f7c9b603b3eddd2a28a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
