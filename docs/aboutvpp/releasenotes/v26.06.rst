@@ -1,0 +1,4 @@
+Release notes for VPP 26.06
+===========================
+
+<placeholder for VPP 26.06 release notes>
