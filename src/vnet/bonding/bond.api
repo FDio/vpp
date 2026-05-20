@@ -19,7 +19,7 @@
     the bonding device driver
 */
 
-option version = "2.1.0";
+option version = "2.1.1";
 
 import "vnet/interface_types.api";
 import "vnet/ethernet/ethernet_types.api";
@@ -41,6 +41,7 @@ enum bond_lb_algo
  BOND_API_LB_ALGO_RR = 3,
  BOND_API_LB_ALGO_BC = 4,
  BOND_API_LB_ALGO_AB = 5,
+ BOND_API_LB_ALGO_L34_INNER = 6 [backwards_compatible],
 };
 
 /** \brief Initialize a new bond interface with the given paramters
@@ -50,7 +51,7 @@ enum bond_lb_algo
     @param use_custom_mac - if set, mac_address is valid
     @param mac_address - mac addr to assign to the interface if use_custom_mac is set
     @param mode - mode, required (1=round-robin, 2=active-backup, 3=xor, 4=broadcast, 5=lacp)
-    @param lb - load balance, optional (0=l2, 1=l34, 2=l23) valid for xor and lacp modes. Otherwise ignored
+    @param lb - load balance, optional (0=l2, 1=l34, 2=l23, 6=l34-inner) valid for xor and lacp modes. Otherwise ignored
     @param numa_only - if numa_only is set, pkts will be transmitted by LAG members on local numa node only if have at least one, otherwise it works as usual.
 */
 define bond_create
@@ -82,7 +83,7 @@ define bond_create_reply
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param mode - mode, required (1=round-robin, 2=active-backup, 3=xor, 4=broadcast, 5=lacp)
-    @param lb - load balance, optional (0=l2, 1=l34, 2=l23) valid for xor and lacp modes. Otherwise ignored (default=l2)
+    @param lb - load balance, optional (0=l2, 1=l34, 2=l23, 6=l34-inner) valid for xor and lacp modes. Otherwise ignored (default=l2)
     @param numa_only - if numa_only is set, pkts will be transmitted by LAG members on local numa node only if have at least one, otherwise it works as usual.
     @param enable_gso - enable gso support (default 0)
     @param use_custom_mac - if set, mac_address is valid

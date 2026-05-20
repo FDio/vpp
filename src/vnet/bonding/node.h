@@ -40,20 +40,32 @@ typedef enum
 #undef _
 } bond_mode_t;
 
-/* configurable load-balances */
-#define foreach_bond_lb	  \
-  _ (2, L23, "l23", l23)  \
-  _ (1, L34 , "l34", l34) \
+/* Configurable load-balances.
+ *
+ * NOTE: order matters here because this list drives
+ * unformat_bond_load_balance() below.  VPP's unformat() does greedy
+ * prefix matching and returns on the first match, so any algorithm
+ * name that is a strict prefix of another (e.g. "l34" is a prefix of
+ * "l34-inner") MUST appear AFTER the longer name in this list.
+ * Otherwise typing "lb l34-inner" on the CLI would match "l34" first,
+ * consume only those three characters, leave "-inner" unparsed, and
+ * silently select the wrong algorithm.
+ */
+#define foreach_bond_lb                                                                            \
+  _ (6, L34_INNER, "l34-inner", l34_inner)                                                         \
+  _ (2, L23, "l23", l23)                                                                           \
+  _ (1, L34, "l34", l34)                                                                           \
   _ (0, L2, "l2", l2)
 
 /* load-balance functions implemented in bond-output */
-#define foreach_bond_lb_algo			 \
-  _ (0, L2, "l2", l2)                            \
-  _ (1, L34 , "l34", l34)                        \
-  _ (2, L23, "l23", l23)                         \
-  _ (3, RR, "round-robin", round_robin)          \
-  _ (4, BC, "broadcast", broadcast)              \
-  _ (5, AB, "active-backup", active_backup)
+#define foreach_bond_lb_algo                                                                       \
+  _ (0, L2, "l2", l2)                                                                              \
+  _ (1, L34, "l34", l34)                                                                           \
+  _ (2, L23, "l23", l23)                                                                           \
+  _ (3, RR, "round-robin", round_robin)                                                            \
+  _ (4, BC, "broadcast", broadcast)                                                                \
+  _ (5, AB, "active-backup", active_backup)                                                        \
+  _ (6, L34_INNER, "l34-inner", l34_inner)
 
 typedef enum
 {
