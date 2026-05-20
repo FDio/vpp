@@ -10,6 +10,7 @@
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/ip/ip6_hop_by_hop_packet.h>
+#include <vnet/ip/ip_inner_aware_hash.h>
 #include <vnet/tcp/tcp_packet.h>
 #include <vppinfra/lb_hash_hash.h>
 #include <vnet/hash/hash.h>
@@ -174,6 +175,26 @@ hash_eth_l23 (void **p, u32 *hash, u32 n_packets)
     }
 }
 
+/* Compute an inner-aware lb_hash for IPinIP / IPv6inIP / GRE / NVGRE.
+ * Used by the hash-eth-l34 registered hash function when an inner header
+ * is observed. */
+static_always_inline u32
+hash_eth_inner_lb_hash (const ip_inner_hdr_t *inner)
+{
+  const tcp_header_t *tcp = (const tcp_header_t *) inner->l4;
+  uword is_tcp_udp = (inner->protocol == IP_PROTOCOL_TCP) || (inner->protocol == IP_PROTOCOL_UDP);
+  u32 t1 = is_tcp_udp ? clib_mem_unaligned (&tcp->src, u16) : 0;
+  u32 t2 = is_tcp_udp ? clib_mem_unaligned (&tcp->dst, u16) : 0;
+  u32 a = t1 ^ t2;
+
+  if (inner->is_v6)
+    return lb_hash_hash (clib_mem_unaligned (&inner->ip.v6->src_address.as_uword[0], uword),
+			 clib_mem_unaligned (&inner->ip.v6->src_address.as_uword[1], uword),
+			 clib_mem_unaligned (&inner->ip.v6->dst_address.as_uword[0], uword),
+			 clib_mem_unaligned (&inner->ip.v6->dst_address.as_uword[1], uword), a);
+  return lb_hash_hash_2_tuples (clib_mem_unaligned (&inner->ip.v4->address_pair, u64), a);
+}
+
 static_always_inline u32
 hash_eth_l34_inline (void **p)
 {
@@ -201,6 +222,17 @@ hash_eth_l34_inline (void **p)
     {
       u32 a, t1, t2;
       tcp_header_t *tcp = (void *) (ip4 + 1);
+      ip_inner_hdr_t inner = { .valid = 0 };
+
+      if (!PREDICT_FALSE (ip4_is_fragment (ip4)))
+	{
+	  u32 total_len = clib_net_to_host_u16 (ip4->length);
+	  u32 ihl = ip4_header_bytes (ip4);
+	  if (total_len >= ihl)
+	    ip_inner_resolve (ip4->protocol, (const u8 *) ip4 + ihl, total_len - ihl, &inner);
+	}
+      if (PREDICT_FALSE (inner.valid))
+	return hash_eth_inner_lb_hash (&inner);
 
       is_tcp_udp = (ip4->protocol == IP_PROTOCOL_TCP) ||
 		   (ip4->protocol == IP_PROTOCOL_UDP);
@@ -218,6 +250,16 @@ hash_eth_l34_inline (void **p)
       u32 t1, t2;
       ip6_header_t *ip6 = (ip6_header_t *) (eth + 1);
       tcp_header_t *tcp = (void *) (ip6 + 1);
+      ip_inner_hdr_t inner = { .valid = 0 };
+
+      /* Inner dive uses payload_length to bound the read.  Outer IPv6
+       * extension headers are intentionally not chased here (transit
+       * tunnels typically use IP_IN_IP / IPV6 / GRE next-header values,
+       * not extension headers); a future enhancement could walk them. */
+      u32 payload_length = clib_net_to_host_u16 (ip6->payload_length);
+      ip_inner_resolve (ip6->protocol, (const u8 *) (ip6 + 1), payload_length, &inner);
+      if (PREDICT_FALSE (inner.valid))
+	return hash_eth_inner_lb_hash (&inner);
 
       is_tcp_udp = 0;
       if (PREDICT_TRUE ((ip6->protocol == IP_PROTOCOL_TCP) ||
@@ -299,7 +341,7 @@ VNET_REGISTER_HASH_FUNCTION (hash_eth_l23, static) = {
 
 VNET_REGISTER_HASH_FUNCTION (hash_eth_l34, static) = {
   .name = "hash-eth-l34",
-  .description = "Hash ethernet L34 headers",
+  .description = "Hash ethernet L34 headers, peek into IPinIP/GRE/NVGRE inner",
   .priority = 50,
   .function[VNET_HASH_FN_TYPE_ETHERNET] = hash_eth_l34,
 };
