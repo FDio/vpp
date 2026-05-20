@@ -145,7 +145,7 @@ int main (int argc, char **argv)
     char *outputfile = 0;
     FILE *ofp;
 
-    clib_mem_init_thread_safe (0, 256 << 20);
+    clib_mem_init (0, 256 << 20);
 
     if (argc < 3)
         goto usage;
