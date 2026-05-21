@@ -162,7 +162,8 @@ typedef struct
   _ (TS_DESCHED, "ts-descheduled")                                                                 \
   _ (EXPECT_PEER_SETTINGS, "expect-peer-settings")                                                 \
   _ (UDP_TUNNEL_DGRAM, "udp-tunnel-dgram")                                                         \
-  _ (CONNECT_UDP_DRAFT03, "connect-udp-draft03")
+  _ (CONNECT_UDP_DRAFT03, "connect-udp-draft03")                                                   \
+  _ (TUNNEL_RX_CLOSED, "tunnel-rx-closed")
 
 typedef enum http_conn_flags_bit_
 {

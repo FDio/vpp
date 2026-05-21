@@ -1651,7 +1651,9 @@ func vppConnectProxyFinDrainTcp(s *MasqueSuite, isHttp3 bool) {
 
 	targetAddr := net.JoinHostPort(s.NginxAddr(), s.Ports.Nginx)
 	payload := connectProxyFinDrainPayload()
+	Log("client half close")
 	vppConnectProxyClientFinDrainTcp(s, targetAddr, isHttp3, payload)
+	Log("server half close")
 	vppConnectProxyServerFinDrainTcp(s, targetAddr, isHttp3, payload)
 }
 
@@ -1662,7 +1664,6 @@ func VppConnectProxyHttp2FinDrainTcpMWTest(s *MasqueSuite) {
 }
 
 func VppConnectProxyHttp3FinDrainTcpMWTest(s *MasqueSuite) {
-	s.Skip("bug")
 	s.CpusPerVppContainer = 3
 	s.SetupTest("http3")
 	vppConnectProxyFinDrainTcp(s, true)

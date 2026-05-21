@@ -160,6 +160,7 @@ proxy_session_close_po (proxy_session_t *ps)
   ASSERT (!vlib_num_workers () ||
 	  CLIB_SPINLOCK_IS_LOCKED (&pm->sessions_lock));
 
+  PROXY_DBG ("ps %u po close", ps->ps_index);
   a->handle = ps->po.session_handle;
   a->app_index = pm->server_app_index;
   vnet_disconnect_session (a);
@@ -176,6 +177,7 @@ proxy_session_close_ao (proxy_session_t *ps)
   ASSERT (!vlib_num_workers () ||
 	  CLIB_SPINLOCK_IS_LOCKED (&pm->sessions_lock));
 
+  PROXY_DBG ("ps %u ao close", ps->ps_index);
   a->handle = ps->ao.session_handle;
   a->app_index = pm->active_open_app_index;
   vnet_disconnect_session (a);
@@ -193,6 +195,7 @@ proxy_session_shutdown_po (proxy_session_t *ps)
   ASSERT (!vlib_num_workers () || CLIB_SPINLOCK_IS_LOCKED (&pm->sessions_lock));
   ASSERT (ps->po.session_handle != SESSION_INVALID_HANDLE);
 
+  PROXY_DBG ("ps %u po shutdown", ps->ps_index);
   a->handle = ps->po.session_handle;
   a->app_index = pm->server_app_index;
 
@@ -212,6 +215,7 @@ proxy_session_shutdown_ao (proxy_session_t *ps)
   ASSERT (!vlib_num_workers () || CLIB_SPINLOCK_IS_LOCKED (&pm->sessions_lock));
   ASSERT (ps->ao.session_handle != SESSION_INVALID_HANDLE);
 
+  PROXY_DBG ("ps %u ao shutdown", ps->ps_index);
   a->handle = ps->ao.session_handle;
   a->app_index = pm->active_open_app_index;
 
