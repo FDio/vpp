@@ -146,6 +146,29 @@ const char mime_printable[][mime_printable_max_len] = {
 static hc_main_t hc_main;
 static hc_stats_t hc_stats;
 
+static inline bool
+hc_req_method_has_body (http_req_method_t method)
+{
+  return (method == HTTP_REQ_POST || method == HTTP_REQ_PUT);
+}
+
+static inline http_msg_data_type_t
+hc_msg_data_type (hc_main_t *hcm)
+{
+  if (hcm->req_method == HTTP_REQ_PUT)
+    return HTTP_MSG_DATA_STREAMING;
+
+  return hcm->use_ptr ? HTTP_MSG_DATA_PTR : HTTP_MSG_DATA_INLINE;
+}
+
+static inline void
+hc_msg_set_offsets (http_msg_t *msg)
+{
+  msg->data.target_path_offset = 0;
+  msg->data.headers_offset = msg->data.target_path_len;
+  msg->data.body_offset = msg->data.headers_offset + msg->data.headers_len;
+}
+
 static inline hc_worker_t *
 hc_worker_get (clib_thread_index_t thread_index)
 {
@@ -192,16 +215,14 @@ hc_request (session_t *s, hc_worker_t *wrk, hc_session_t *hc_session)
 	{ (u8 *) &headers, sizeof (headers) },
 	{ (u8 *) &body, sizeof (body) },
       };
+      u32 expected = sizeof (wrk->msg) + sizeof (target) + sizeof (headers);
 
-      n_segs = (hcm->req_method == HTTP_REQ_GET) ? 3 : 4;
+      n_segs = hc_req_method_has_body (hcm->req_method) ? 4 : 3;
       rv = svm_fifo_enqueue_segments (s->tx_fifo, segs, n_segs,
 				      0 /* allow partial */);
-      if (hcm->req_method == HTTP_REQ_POST)
-	ASSERT (rv == (sizeof (wrk->msg) + sizeof (target) + sizeof (headers) +
-		       sizeof (body)));
-      else
-	ASSERT (rv ==
-		(sizeof (wrk->msg) + sizeof (target) + sizeof (headers)));
+      if (hc_req_method_has_body (hcm->req_method))
+	expected += sizeof (body);
+      ASSERT (rv == expected);
       goto done;
     }
 
@@ -215,7 +236,7 @@ hc_request (session_t *s, hc_worker_t *wrk, hc_session_t *hc_session)
   rv = svm_fifo_enqueue (s->tx_fifo, wrk->req_headers.tail_offset,
 			 wrk->headers_buf);
   ASSERT (rv == wrk->req_headers.tail_offset);
-  if (hcm->req_method == HTTP_REQ_POST)
+  if (hc_req_method_has_body (hcm->req_method))
     {
       to_send = vec_len (hcm->data);
       n_enq = clib_min (svm_fifo_size (s->tx_fifo), to_send);
@@ -429,7 +450,7 @@ hc_session_connected_callback (u32 app_index, u32 ho_index, session_t *s,
   if (!wrk->has_common_headers)
     {
       wrk->has_common_headers = true;
-      if (hcm->req_method == HTTP_REQ_POST)
+      if (hc_req_method_has_body (hcm->req_method))
 	{
 	  if (hcm->is_file)
 	    http_add_header (
@@ -450,7 +471,7 @@ hc_session_connected_callback (u32 app_index, u32 ho_index, session_t *s,
 				vec_len (header->value));
 
       wrk->msg.method_type = hcm->req_method;
-      if (hcm->req_method == HTTP_REQ_POST)
+      if (hc_req_method_has_body (hcm->req_method))
 	wrk->msg.data.body_len = vec_len (hcm->data);
       else
 	wrk->msg.data.body_len = 0;
@@ -464,18 +485,9 @@ hc_session_connected_callback (u32 app_index, u32 ho_index, session_t *s,
       wrk->msg.data.len = wrk->msg.data.target_path_len +
 			  wrk->msg.data.headers_len + wrk->msg.data.body_len;
 
-      if (hcm->use_ptr)
-	{
-	  wrk->msg.data.type = HTTP_MSG_DATA_PTR;
-	}
-      else
-	{
-	  wrk->msg.data.type = HTTP_MSG_DATA_INLINE;
-	  wrk->msg.data.target_path_offset = 0;
-	  wrk->msg.data.headers_offset = wrk->msg.data.target_path_len;
-	  wrk->msg.data.body_offset =
-	    wrk->msg.data.headers_offset + wrk->msg.data.headers_len;
-	}
+      wrk->msg.data.type = hc_msg_data_type (hcm);
+      if (wrk->msg.data.type != HTTP_MSG_DATA_PTR)
+	hc_msg_set_offsets (&wrk->msg);
     }
 
   hc_session->stats.start = vlib_time_now (wrk->vlib_main);
@@ -656,16 +668,9 @@ hc_redirect (session_t *s, hc_worker_t *wrk, hc_session_t *hc_session,
       wrk->msg.data.len = wrk->msg.data.target_path_len +
 			  wrk->msg.data.headers_len + wrk->msg.data.body_len;
 
-      if (hcm->use_ptr)
-	wrk->msg.data.type = HTTP_MSG_DATA_PTR;
-      else
-	{
-	  wrk->msg.data.type = HTTP_MSG_DATA_INLINE;
-	  wrk->msg.data.target_path_offset = 0;
-	  wrk->msg.data.headers_offset = wrk->msg.data.target_path_len;
-	  wrk->msg.data.body_offset =
-	    wrk->msg.data.headers_offset + wrk->msg.data.headers_len;
-	}
+      wrk->msg.data.type = hc_msg_data_type (hcm);
+      if (wrk->msg.data.type != HTTP_MSG_DATA_PTR)
+	hc_msg_set_offsets (&wrk->msg);
 
       send_err = hc_request (s, wrk, hc_session);
       if (send_err)
@@ -1308,6 +1313,8 @@ hc_command_fn (vlib_main_t *vm, unformat_input_t *input,
   hcm->was_transport_closed = false;
   hcm->verbose = false;
   hcm->http_version = HTTP_VERSION_NA;
+  hcm->is_file = 0;
+  hcm->use_ptr = 0;
   hcm->allow_redirect = false;
   hcm->max_redirects = 10;
   hcm->redirect_count = 0;
@@ -1329,6 +1336,8 @@ hc_command_fn (vlib_main_t *vm, unformat_input_t *input,
     {
       if (unformat (line_input, "post"))
 	hcm->req_method = HTTP_REQ_POST;
+      else if (unformat (line_input, "put"))
+	hcm->req_method = HTTP_REQ_PUT;
       else if (unformat (line_input, "uri %s", &hcm->uri))
 	;
       else if (unformat (line_input, "data %v", &hcm->data))
@@ -1420,7 +1429,23 @@ hc_command_fn (vlib_main_t *vm, unformat_input_t *input,
       goto done;
     }
 
-  if (!hcm->data && hcm->req_method == HTTP_REQ_POST)
+  if (hcm->req_method == HTTP_REQ_PUT)
+    {
+      if (hcm->http_version != HTTP_VERSION_NA && hcm->http_version != HTTP_VERSION_1)
+	{
+	  err = clib_error_return (0, "put is only supported with http1");
+	  goto done;
+	}
+      hcm->http_version = HTTP_VERSION_1;
+
+      if (hcm->use_ptr)
+	{
+	  err = clib_error_return (0, "use-ptr is not supported with put");
+	  goto done;
+	}
+    }
+
+  if (!hcm->data && hc_req_method_has_body (hcm->req_method))
     {
       if (path)
 	{
@@ -1528,15 +1553,14 @@ done:
 
 VLIB_CLI_COMMAND (hc_command, static) = {
   .path = "http client",
-  .short_help =
-    "[post] uri http://<ip-addr>/<origin-form> "
-    "[data <form-urlencoded> | file <file-path>] [use-ptr] "
-    "[save-to <filename>] [header <Key:Value>] [verbose] "
-    "[timeout <seconds> (default = 10)] [repeat <count> | duration <seconds>] "
-    "[sessions <# of sessions>] [appns <app-ns> secret <appns-secret>] "
-    "[fifo-size <nM|G>] [private-segment-size <nM|G>] [prealloc-fifos <n>] "
-    "[max-body-size <nM|G>] [http1|http2|http3] [redirect] [max-redirects <n> "
-    "(default 10)]",
+  .short_help = "[post|put] uri http://<ip-addr>/<origin-form> "
+		"[data <form-urlencoded> | file <file-path>] [use-ptr] "
+		"[save-to <filename>] [header <Key:Value>] [verbose] "
+		"[timeout <seconds> (default = 10)] [repeat <count> | duration <seconds>] "
+		"[sessions <# of sessions>] [appns <app-ns> secret <appns-secret>] "
+		"[fifo-size <nM|G>] [private-segment-size <nM|G>] [prealloc-fifos <n>] "
+		"[max-body-size <nM|G>] [http1|http2|http3] [redirect] [max-redirects <n> "
+		"(default 10)]",
   .function = hc_command_fn,
   .is_mp_safe = 1,
 };

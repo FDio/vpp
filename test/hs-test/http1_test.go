@@ -34,7 +34,7 @@ func init() {
 		HttpIgnoreH2UpgradeTest, HttpInvalidAuthorityFormUriTest, HttpHeaderErrorConnectionDropTest,
 		HttpClientInvalidHeaderNameTest, HttpTimerSessionDisable, HttpClientBodySizeTest,
 		HttpCliSmallRxFifoReplyTest, HttpContentLengthLongerBodyTest,
-		HttpClientNoPrintTest, HttpClientChunkedDownloadTest, HttpClientPostRejectedTest,
+		HttpClientNoPrintTest, HttpClientChunkedDownloadTest, HttpClientPutStreamingTest, HttpClientPostRejectedTest,
 		HttpClientRedirect302Test, HttpClientRedirect308Test, HttpSendGetAndCloseTest, HttpClientRedirectLimitTest, HttpClientRedirectGetMemLeakTest,
 		HttpClientRedirectPostMemLeakTest, HttpGetTpsTest, HttpPostTpsTest, HttpGetTpsInterruptModeTest, HttpPostTpsInterruptModeTest,
 		HttpPostTpsTlsTest, HttpGetTpsTlsTest)
@@ -404,6 +404,41 @@ func HttpClientChunkedDownloadTest(s *Http1Suite) {
 	file_contents, err := vpp.Container.Exec(false, "cat /tmp/response.txt")
 	AssertNil(err)
 	AssertContains(file_contents, response)
+}
+
+func HttpClientPutStreamingTest(s *Http1Suite) {
+	serverAddress := s.HostAddr() + ":" + s.Ports.Http
+	vpp := s.Containers.Vpp.VppInstance
+	fileName := "/tmp/test_put_streaming.txt"
+	body := strings.Repeat("0123456789abcdef", 8*1024)
+
+	AssertNil(vpp.Container.CreateFile(fileName, body))
+
+	server := ghttp.NewUnstartedServer()
+	l, err := net.Listen("tcp", serverAddress)
+	AssertNil(err, fmt.Sprint(err))
+	server.HTTPTestServer.Listener = l
+	server.AppendHandlers(
+		ghttp.CombineHandlers(
+			s.LogHttpReq(false),
+			ghttp.VerifyRequest("PUT", "/test"),
+			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				AssertEqual([]string{"chunked"}, r.TransferEncoding)
+				AssertEqual(int64(-1), r.ContentLength)
+				data, err := io.ReadAll(r.Body)
+				AssertNil(err, fmt.Sprint(err))
+				AssertEqual(body, string(data))
+				w.WriteHeader(http.StatusCreated)
+			}),
+		))
+	server.Start()
+	defer server.Close()
+
+	uri := "http://" + serverAddress + "/test"
+	o := vpp.Vppctl("http client put verbose fifo-size 32k uri " + uri + " file " + fileName)
+
+	Log(o)
+	AssertContains(o, "201 Created")
 }
 
 func HttpClientBodySizeTest(s *Http1Suite) {
