@@ -26,6 +26,30 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "43576368_b0ad23e7",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 165,
+      "author": {
+        "id": 3325
+      },
+      "writtenOn": "2026-05-21T15:13:14Z",
+      "side": 1,
+      "message": "Done in Patchset 3, renamed the helper to hc_msg_set_offsets.",
+      "parentUuid": "661dbe83_84983219",
+      "range": {
+        "startLine": 165,
+        "startChar": 0,
+        "endLine": 165,
+        "endChar": 23
+      },
+      "revId": "ee839707e44b9c0cc1ddcb5e98d6fc4d9277f4d3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "351fa46a_22d583e5",
         "filename": "src/plugins/hs_apps/http_client.c",
         "patchSetId": 1
@@ -37,6 +61,24 @@
       "writtenOn": "2026-05-21T14:06:58Z",
       "side": 1,
       "message": "since put with HTTP_MSG_DATA_STREAMING can be used only with h1:\n1) check version provided in cli\n2) for https force h1 only in alpn (set hcm-\u003ehttp_version\u003dHTTP_VERSION_1)",
+      "revId": "ee839707e44b9c0cc1ddcb5e98d6fc4d9277f4d3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "46cadb57_4c92c286",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1435,
+      "author": {
+        "id": 3325
+      },
+      "writtenOn": "2026-05-21T15:13:14Z",
+      "side": 1,
+      "message": "Done in Patchset 3, PUT now rejects explicit http2/http3 and forces HTTP_VERSION_1 so HTTPS uses H1 ALPN.",
+      "parentUuid": "351fa46a_22d583e5",
       "revId": "ee839707e44b9c0cc1ddcb5e98d6fc4d9277f4d3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
