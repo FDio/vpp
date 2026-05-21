@@ -315,7 +315,7 @@ http3_stream_app_close_tunnel (http_ctx_t *req, http_ctx_t *stream, u8 is_shutdo
   /* Wait for all data to be written to ts */
   if (http_io_as_max_read (req))
     {
-      HTTP_DBG (1, "wait for all data to be written to ts");
+      HTTP_DBG (1, "wait for all data to be written to ts, %U", format_http_conn_state, stream);
       stream->state = HTTP_CONN_STATE_APP_CLOSED;
       return;
     }
@@ -339,7 +339,13 @@ http3_stream_app_close_tunnel (http_ctx_t *req, http_ctx_t *stream, u8 is_shutdo
 	  return;
 	}
       HTTP_DBG (1, "nothing more to send, closing tunnel");
-      http_half_close_transport_stream (stream);
+      if (stream->flags & HTTP_CONN_F_TUNNEL_RX_CLOSED)
+	{
+	  http_stats_app_streams_closed_inc (stream->c_thread_index);
+	  http_close_transport_stream (stream);
+	}
+      else
+	http_half_close_transport_stream (stream);
       break;
     case HTTP_CONN_STATE_TRANSPORT_CLOSED:
       HTTP_DBG (1, "app confirmed tunnel close");
@@ -2293,6 +2299,7 @@ http3_transport_stream_close_callback (http_ctx_t *stream)
 	      else
 		{
 		  HTTP_DBG (1, "peer want to close tunnel");
+		  stream->flags |= HTTP_CONN_F_TUNNEL_RX_CLOSED;
 		  session_transport_closing_notify (&req->connection);
 		}
 	      return;
