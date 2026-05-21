@@ -835,18 +835,28 @@ func (vpp *VppInstance) GetMemoryTrace() ([]VppMemTrace, error) {
 	return trace, nil
 }
 
-// memTracesSuppressCli filter out CLI related samples
-func memTracesSuppressCli(traces []VppMemTrace) []VppMemTrace {
-	var filtered []VppMemTrace
-	for i := range traces {
-		isCli := false
-		for j := 0; j < len(traces[i].Traceback); j++ {
-			if strings.Contains(traces[i].Traceback[j], "unix_cli") {
-				isCli = true
-				break
+var defaultMemLeakReportNoiseFrames = []string{
+	"unix_cli",
+	"vlib_buffer_validate_alloc_free",
+	"tw_timer_expire_timers_internal",
+}
+
+func memTraceContainsAnyFrame(trace VppMemTrace, tracebackFrames []string) bool {
+	for i := 0; i < len(trace.Traceback); i++ {
+		for j := 0; j < len(tracebackFrames); j++ {
+			if strings.Contains(trace.Traceback[i], tracebackFrames[j]) {
+				return true
 			}
 		}
-		if !isCli {
+	}
+	return false
+}
+
+// memTracesSuppressReportNoise filters out expected allocations unrelated to the code under test.
+func memTracesSuppressReportNoise(traces []VppMemTrace) []VppMemTrace {
+	var filtered []VppMemTrace
+	for i := range traces {
+		if !memTraceContainsAnyFrame(traces[i], defaultMemLeakReportNoiseFrames) {
 			filtered = append(filtered, traces[i])
 		}
 	}
@@ -857,8 +867,8 @@ func memTracesSuppressCli(traces []VppMemTrace) []VppMemTrace {
 func (vpp *VppInstance) MemLeakCheck(first, second []VppMemTrace) {
 	totalBytes := 0
 	totalCounts := 0
-	trace1 := memTracesSuppressCli(first)
-	trace2 := memTracesSuppressCli(second)
+	trace1 := memTracesSuppressReportNoise(first)
+	trace2 := memTracesSuppressReportNoise(second)
 	report := ""
 	for i := range trace2 {
 		match := false
