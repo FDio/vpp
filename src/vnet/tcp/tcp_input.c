@@ -2392,6 +2392,10 @@ tcp46_rcv_process_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  tcp_timer_set (&wrk->timer_wheel, tc, TCP_TIMER_WAITCLOSE,
 			 tcp_cfg.timewait_time);
 	  tcp_program_ack (tc);
+	  /* if closing with unread data flush events otherwise event might be in wrong order and
+	   * app will not receive notification, this can if app shutdown the connection */
+	  if (transport_max_rx_dequeue (&tc->connection))
+	    session_main_flush_enqueue_events (TRANSPORT_PROTO_TCP, thread_index);
 	  session_transport_closed_notify (&tc->connection);
 	  break;
 	case TCP_STATE_TIME_WAIT:
