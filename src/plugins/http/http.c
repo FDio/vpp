@@ -902,7 +902,12 @@ http_ts_rx_callback (session_t *ts)
   /* pool might grow, regrab connection */
   hc = http_ctx_get_w_thread (hc_handle.conn_index, thread_index);
   if (hc->state == HTTP_CONN_STATE_TRANSPORT_CLOSED)
-    http_vfts[hc->version].transport_close_callback (hc);
+    {
+      if (http_ctx_is_stream (hc))
+	http_vfts[hc->version].transport_stream_close_callback (hc);
+      else
+	http_vfts[hc->version].transport_close_callback (hc);
+    }
   return 0;
 }
 
@@ -1612,6 +1617,13 @@ http_app_rx_evt_cb (transport_connection_t *tc)
   hc = http_ctx_get_w_thread (req->hr_hc_index, req->c_thread_index);
   http_vfts[hr_handle.version].app_rx_evt_callback (hc, hr_handle.req_index,
 						    req->c_thread_index);
+  if (hc->state == HTTP_CONN_STATE_TRANSPORT_CLOSED)
+    {
+      if (http_ctx_is_stream (hc))
+	http_vfts[hc->version].transport_stream_close_callback (hc);
+      else
+	http_vfts[hc->version].transport_close_callback (hc);
+    }
 
   return 0;
 }
