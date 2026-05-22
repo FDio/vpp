@@ -143,10 +143,13 @@ class VppTransport:
         except (IOError, self.parent.VPPApiError):
             pass
         self.connected = False
+        # Signal the listening thread to terminate before closing the socket,
+        # so it wakes via the queue and takes the clean exit path instead of
+        # tripping over a closed socket fd in select().
+        if self.sque is not None:
+            self.sque.put(True)
         if self.socket is not None:
             self.socket.close()
-        if self.sque is not None:
-            self.sque.put(True)  # Terminate listening thread
         if self.message_thread is not None and self.message_thread.is_alive():
             # Allow additional connect() calls.
             self.message_thread.join()
