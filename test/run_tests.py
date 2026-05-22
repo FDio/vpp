@@ -3,6 +3,7 @@
 import sys
 import shutil
 import os
+import json
 import fnmatch
 import unittest
 import time
@@ -57,6 +58,12 @@ if CryptographyDeprecationWarning:
 # that child process is stuck (e.g. waiting for event from vpp) and kill
 # the child
 core_timeout = 3
+
+# Per-suite wall-times persisted across runs so the longest suites can be
+# scheduled first. Kept in the tmp dir - missing or stale data only makes
+# the schedule less optimal, never wrong.
+test_timings_file = os.path.join(config.tmp_dir, "vpp_test_timings.json")
+test_timings = {}
 
 
 class StreamQueue(Queue):
@@ -205,6 +212,7 @@ class TestCaseWrapper(object):
             ),
         )
         self.child.start()
+        self.start_time = time.time()
         self.last_test_temp_dir = None
         self.last_test_vpp_binary = None
         self._last_test = None
@@ -368,11 +376,49 @@ def handle_cores(failed_testcases):
                 check_and_handle_core(vpp_binary, tempdir, test)
 
 
+def get_suite_key(testcase_suite):
+    """Stable identity of a test suite for timing lookups: module.class."""
+    tc = testcase_suite._tests[0]
+    return f"{tc.__class__.__module__}.{tc.__class__.__name__}"
+
+
+def load_test_timings():
+    """Load persisted per-suite wall-times; empty dict if unavailable."""
+    try:
+        with open(test_timings_file) as f:
+            return {k: float(v) for k, v in json.load(f).items()}
+    except (OSError, ValueError, AttributeError):
+        return {}
+
+
+def save_test_timings(timings):
+    """Persist per-suite wall-times atomically; failure is non-fatal."""
+    try:
+        tmp = f"{test_timings_file}.{os.getpid()}.tmp"
+        with open(tmp, "w") as f:
+            json.dump(timings, f, indent=0, sort_keys=True)
+        os.replace(tmp, test_timings_file)
+    except OSError:
+        pass
+
+
+def record_suite_timing(wrapped_testcase_suite):
+    """Update a finished suite's timing estimate (averaged with the old value)."""
+    key = get_suite_key(wrapped_testcase_suite.testcase_suite)
+    elapsed = time.time() - wrapped_testcase_suite.start_time
+    old = test_timings.get(key)
+    test_timings[key] = elapsed if old is None else 0.5 * old + 0.5 * elapsed
+
+
 def process_finished_testsuite(
     wrapped_testcase_suite, finished_testcase_suites, failed_wrapped_testcases, results
 ):
     results.append(wrapped_testcase_suite.result)
     finished_testcase_suites.add(wrapped_testcase_suite)
+    # Record timings only for clean runs - a failure can cut a suite
+    # short, which would skew its estimate for the next run.
+    if wrapped_testcase_suite.was_successful():
+        record_suite_timing(wrapped_testcase_suite)
     stop_run = False
     if config.failfast and not wrapped_testcase_suite.was_successful():
         stop_run = True
@@ -390,6 +436,19 @@ def process_finished_testsuite(
 
 
 def run_forked(testcase_suites):
+    # Schedule the longest-running suites first so the long pole starts
+    # early. Suites with no recorded wall-time - new ones, or a missing
+    # timings file - are treated as long too, and ties fall back to
+    # widest-first ordering so a wide suite is not left stuck behind
+    # narrow ones.
+    unknown_cost = max(test_timings.values(), default=0)
+
+    def suite_sort_key(suite):
+        cost = test_timings.get(get_suite_key(suite), unknown_cost)
+        return (cost, suite.cpus_used)
+
+    testcase_suites = sorted(testcase_suites, key=suite_sort_key, reverse=True)
+
     wrapped_testcase_suites = set()
     solo_testcase_suites = []
 
@@ -431,21 +490,29 @@ def run_forked(testcase_suites):
             suite.cpus_used <= len(free_cpus) or suite.cpus_used > max_vpp_cpus
         )
 
-    while free_cpus and testcase_suites:
-        a_suite = testcase_suites[0]
-        if a_suite.is_tagged_run_solo:
-            a_suite = testcase_suites.pop(0)
-            solo_testcase_suites.append(a_suite)
-            continue
-        if can_run_suite(a_suite):
-            a_suite = testcase_suites.pop(0)
-            run_suite(a_suite)
-        else:
-            break
+    def schedule_suites():
+        # Start every pending suite that currently fits. The whole queue is
+        # scanned - not just its head - so that a suite which is too wide to
+        # run right now does not block narrower suites queued behind it.
+        i = 0
+        while i < len(testcase_suites):
+            a_suite = testcase_suites[i]
+            if a_suite.is_tagged_run_solo:
+                testcase_suites.pop(i)
+                solo_testcase_suites.append(a_suite)
+                continue
+            if not free_cpus or tests_running >= max_concurrent_tests:
+                break
+            if can_run_suite(a_suite):
+                testcase_suites.pop(i)
+                run_suite(a_suite)
+                continue
+            i += 1
+        # a run-solo suite may only start when nothing else is running
+        if tests_running == 0 and solo_testcase_suites:
+            run_suite(solo_testcase_suites.pop(0))
 
-    if tests_running == 0 and solo_testcase_suites:
-        a_suite = solo_testcase_suites.pop(0)
-        run_suite(a_suite)
+    schedule_suites()
 
     read_from_testcases = threading.Event()
     read_from_testcases.set()
@@ -579,21 +646,11 @@ def run_forked(testcase_suites):
                 if stop_run:
                     while testcase_suites:
                         results.append(TestResult(testcase_suites.pop(0)))
-                elif testcase_suites:
-                    a_suite = testcase_suites[0]
-                    while a_suite and a_suite.is_tagged_run_solo:
-                        testcase_suites.pop(0)
-                        solo_testcase_suites.append(a_suite)
-                        if testcase_suites:
-                            a_suite = testcase_suites[0]
-                        else:
-                            a_suite = None
-                    if a_suite and can_run_suite(a_suite):
-                        testcase_suites.pop(0)
-                        run_suite(a_suite)
-                if solo_testcase_suites and tests_running == 0:
-                    a_suite = solo_testcase_suites.pop(0)
-                    run_suite(a_suite)
+
+            # Top up the pool with every suite that now fits - not just one
+            # per finished suite - so that freed CPUs do not sit idle.
+            if not stop_run:
+                schedule_suites()
             time.sleep(0.1)
     except Exception:
         for wrapped_testcase_suite in wrapped_testcase_suites:
@@ -1019,6 +1076,7 @@ if __name__ == "__main__":
         )
 
     descriptions = True
+    test_timings = load_test_timings()
 
     print("Running tests using custom test runner.")
     filters = [(parse_test_filter(f)) for f in config.filter.split(",")]
@@ -1153,4 +1211,5 @@ if __name__ == "__main__":
                 print("Test run was successful")
             else:
                 print("%s attempt(s) left." % attempts)
+        save_test_timings(test_timings)
         sys.exit(exit_code)
