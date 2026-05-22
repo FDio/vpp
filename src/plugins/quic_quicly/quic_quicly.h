@@ -27,17 +27,25 @@
   (QUICLY_LONG_HEADER_BIT | QUICLY_QUIC_BIT | 0x30)
 #define QUICLY_PACKET_TYPE_BITMASK 0xf0
 
+typedef enum quic_quicly_rx_state_
+{
+  QUIC_QUICLY_RX_STATE_ACCEPT = 0,
+  QUIC_QUICLY_RX_STATE_READY,
+  QUIC_QUICLY_RX_STATE_HANDSHAKE,
+  QUIC_QUICLY_RX_STATE_READY_VPP_CRYPTO,
+  QUIC_QUICLY_RX_STATE_HANDSHAKE_VPP_CRYPTO,
+  QUIC_QUICLY_RX_N_STATES,
+} quic_quicly_rx_state_t;
+
 typedef struct quic_quicly_rx_packet_ctx_
 {
-#define _(type, name) type name;
-  foreach_quic_rx_pkt_ctx_field
-#undef _
-    quicly_decoded_packet_t packet;
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  quicly_decoded_packet_t packet;
 } quic_quicly_rx_packet_ctx_t;
 
 typedef struct quic_quicly_rx_dgram_ctx_
 {
-  session_dgram_pre_hdr_t ph; /* only pre-header dgram because the session is connected */
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   u8 data[QUIC_MAX_PACKET_SIZE];
 } quic_quicly_rx_dgram_ctx_t;
 
@@ -52,10 +60,6 @@ typedef struct quic_quicly_session_cache_
 typedef struct quic_quicly_main_
 {
   quic_main_t *qm;
-  clib_bihash_16_8_t connection_hash; /**< quic connection id -> conn handle */
-  /* to handle packets that do not use the server generated CID, src CID ->
-   * conn handle, NOTE: we use only connected UDP for now */
-  clib_bihash_24_8_t conn_accepting_hash;
   quic_quicly_session_cache_t session_cache;
   quicly_cid_plaintext_t *next_cid;
   quic_quicly_rx_packet_ctx_t **rx_packets;
@@ -66,7 +70,6 @@ typedef struct quic_quicly_main_
 
 extern quic_quicly_main_t quic_quicly_main;
 extern quic_ctx_t *quic_quicly_get_conn_ctx (void *conn);
-void quic_quicly_try_establish (quic_ctx_t *ctx);
 
 static_always_inline quic_ctx_t *
 quic_quicly_get_quic_ctx (u32 ctx_index, u32 thread_index)
