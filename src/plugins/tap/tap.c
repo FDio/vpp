@@ -475,8 +475,9 @@ tap_create_if (vlib_main_t *vm, tap_create_if_args_t *args)
   tif->is_tun = is_tun;
   tif->dev_instance = tif - tm->interfaces;
   tif->id = args->id;
-  u16 n_txqs = clib_max (args->num_tx_queues, thm->n_vlib_mains);
+  u16 n_txqs = args->num_tx_queues ? args->num_tx_queues : thm->n_vlib_mains;
   u16 n_rxqs = clib_max (args->num_rx_queues, 1);
+  u8 multiqueue = n_rxqs > 1 || n_txqs > 1;
 
   if (args->if_name)
     CLIB_SWAP (args->if_name, tif->name);
@@ -543,7 +544,7 @@ tap_create_if (vlib_main_t *vm, tap_create_if_args_t *args)
 
   if ((tap_features & IFF_MULTI_QUEUE) == 0)
     {
-      if (n_rxqs > 1)
+      if (multiqueue)
 	{
 	  args->rv = VNET_API_ERROR_SYSCALL_ERROR_2;
 	  args->error = clib_error_return (0, "multiqueue not supported");
@@ -551,7 +552,7 @@ tap_create_if (vlib_main_t *vm, tap_create_if_args_t *args)
 	}
       n_rxqs = n_txqs = 1;
     }
-  else
+  else if (multiqueue)
     ifr.ifr_flags |= IFF_MULTI_QUEUE;
 
   hdrsz = sizeof (vnet_virtio_net_hdr_v1_t);
