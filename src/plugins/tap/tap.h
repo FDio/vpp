@@ -34,13 +34,17 @@ typedef struct
 {
   u32 id;
   u32 auto_id_offset;
-  u8 mac_addr_set;
   mac_address_t mac_addr;
   u16 num_rx_queues;
   u16 num_tx_queues;
   u16 rx_ring_sz;
   u16 tx_ring_sz;
   tap_flag_t tap_flags;
+  u8 mac_addr_set : 1;
+  u8 no_multiqueue : 1;
+  u8 host_ip4_gw_set : 1;
+  u8 host_ip6_gw_set : 1;
+  u8 host_mtu_set : 1;
   u8 *host_namespace;
   u8 *if_name;
   u8 *host_if_name;
@@ -49,12 +53,9 @@ typedef struct
   ip4_address_t host_ip4_addr;
   u8 host_ip4_prefix_len;
   ip4_address_t host_ip4_gw;
-  u8 host_ip4_gw_set;
   ip6_address_t host_ip6_addr;
   u8 host_ip6_prefix_len;
   ip6_address_t host_ip6_gw;
-  u8 host_ip6_gw_set;
-  u8 host_mtu_set;
   u32 host_mtu_size;
 
   /* return */
