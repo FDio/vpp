@@ -32,6 +32,9 @@ format_vrrp_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   vrrp_trace_t *t = va_arg (*args, vrrp_trace_t *);
+  size_t max_addrs;
+  size_t addr_len;
+  size_t n_addrs;
   int i;
 
   s = format (s, "VRRP: sw_if_index %d IPv%d\n",
@@ -39,7 +42,11 @@ format_vrrp_trace (u8 * s, va_list * args)
   s = format (s, "    %U\n", format_vrrp_packet_hdr, &t->vrrp);
   s = format (s, "    addresses: ");
 
-  for (i = 0; i < t->vrrp.n_addrs; i++)
+  addr_len = (t->is_ipv6 ? 16 : 4);
+  max_addrs = sizeof (t->addrs) / addr_len;
+  n_addrs = clib_min ((size_t) t->vrrp.n_addrs, max_addrs);
+
+  for (i = 0; i < n_addrs; i++)
     {
       if (t->is_ipv6)
 	s = format (s, "%U ", format_ip6_address,
@@ -48,6 +55,9 @@ format_vrrp_trace (u8 * s, va_list * args)
 	s = format (s, "%U ", format_ip4_address,
 		    (ip4_address_t *) (t->addrs + i * 4));
     }
+
+  if (n_addrs < t->vrrp.n_addrs)
+    s = format (s, "...");
 
   return s;
 }
@@ -673,12 +683,23 @@ vrrp_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	{
 	  vrrp_trace_t *t = vlib_add_trace (vm, node, b0, sizeof (*t));
 	  size_t addr_len = (is_ipv6 ? 16 : 4);
+	  size_t max_addrs = sizeof (t->addrs) / addr_len;
+	  size_t n_addrs = clib_min ((size_t) vrrp0->n_addrs, max_addrs);
+
+	  if (b0->current_length <= sizeof (*vrrp0))
+	    n_addrs = 0;
+	  else
+	    {
+	      size_t avail = b0->current_length - sizeof (*vrrp0);
+	      size_t max_from_pkt = avail / addr_len;
+	      n_addrs = clib_min (n_addrs, max_from_pkt);
+	    }
 
 	  t->sw_if_index = vnet_buffer(b0)->sw_if_index[VLIB_RX];
 	  t->is_ipv6 = is_ipv6;
 	  clib_memcpy_fast (&t->vrrp, vrrp0, sizeof (*vrrp0));
 	  clib_memcpy_fast (t->addrs, (void *) (vrrp0 + 1),
-			    (size_t) vrrp0->n_addrs * addr_len);
+			    n_addrs * addr_len);
 	}
 
       /* always drop, never forward or reply here */
