@@ -186,28 +186,26 @@ typedef struct quic_ctx_
   u32 ckpair_index;
   u32 tls_profile_index; /**< TLS profile index, ~0 = use defaults */
   crypto_engine_type_t crypto_engine;
+  tls_alpn_proto_t alpn_selected;
   tls_verify_cfg_t verify_cfg;
+  /* 2-byte hole */
   u32 ca_trust_index;
   u32 crypto_context_index;
   u8 alpn_protos[4];
   u32 connection_timeout;
   u32 max_streams_bidi;
   u32 max_streams_uni;
-  tls_alpn_proto_t alpn_selected;
   quic_ctx_flags_t flags;
-
+  int key_phase_ingress;
   struct
   {
     void *hp_ctx;
     void *aead_ctx;
   } ingress_keys;
-  int key_phase_ingress;
   void *peer_cert; /* X509 * stored as void * to avoid including openssl headers */
-  ip46_address_t rmt_ip;
-  u16 rmt_port;
-  ip46_address_t lcl_ip;
-  u16 lcl_port;
   quic_app_err_code_t app_err_code;
+  u64 opaque; /* engine can store something here */
+  /* 16-byte left to next cache line */
 } quic_ctx_t;
 
 /* Make sure our custom fields don't overlap with the fields we use in
