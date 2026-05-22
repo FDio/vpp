@@ -884,6 +884,50 @@ class TestVRRP4(VppTestCase):
         self.assertEqual(rx[VRRPv3].ipcount, 1)
         self.assertEqual(rx[VRRPv3].addrlist, [vip])
 
+    def test_vrrp4_oversized_addrlist(self):
+        """IPv4 VRRP packet with oversized addrlist"""
+
+        prio = 255
+        intvl = self._default_adv
+        vr = VppVRRPVirtualRouter(
+            self, self.pg0, 100, prio=prio, intvl=intvl, flags=self._default_flags
+        )
+
+        vr.add_vpp_config()
+        vr.start_stop(is_start=1)
+        self.logger.info(self.vapi.cli("show vrrp vr"))
+
+        self.pg_start()
+
+        addrs = ["0.0.0.%d" % (i % 250) for i in range(255)]
+        vrrp = VRRPv3(
+            vrid=255,
+            priority=100,
+            ipcount=255,
+            adv=self._default_adv,
+            addrlist=addrs,
+        )
+        pkt = (
+            Ether(dst=vr.virtual_mac(), src=self.pg0.remote_mac)
+            / IP(
+                src=self.pg0.remote_ip4,
+                dst="224.0.0.18",
+                proto=IPPROTO_VRRP,
+                ttl=255,
+                id=0,
+            )
+            / vrrp
+        )
+
+        self.send_and_assert_no_replies(self.pg0, [pkt], timeout=0.5)
+        trace_out = self.vapi.cli("show trace")
+        self.assertIn("VRRP:", trace_out)
+
+        vr.start_stop(is_start=0)
+
+        vr.remove_vpp_config()
+        self._vrs = []
+
 
 @unittest.skipIf("vrrp" in config.excluded_plugins, "Exclude VRRP plugin tests")
 class TestVRRP6(VppTestCase):
