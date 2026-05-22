@@ -42,9 +42,12 @@ class VppTransport:
         while True:
             try:
                 rlist, _, _ = select.select([self.socket, self.sque._reader], [], [])
-            except (socket.error, ValueError):
-                # Terminate thread
-                logging.error("select failed")
+            except (socket.error, ValueError) as e:
+                # A failure here is expected once disconnect() has closed the
+                # socket fd under the thread - stay silent in that case. If we
+                # still believe we are connected it is a genuine error.
+                if self.connected:
+                    logger.error("select failed: %r", e)
                 self.q.put(None)
                 return
 
