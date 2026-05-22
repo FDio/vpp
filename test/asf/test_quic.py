@@ -230,6 +230,10 @@ class QUICEchoExtTestCase(QUICTestCase):
     app = "vpp_echo"
     evt_q_len = 16384
     vpp_worker_count = 1
+    # Reserve dedicated CPUs for the spawned server + client helpers.
+    # They run concurrently with VPP and would starve it if forced to
+    # share a core with VPP main or workers.
+    helper_count = 2
     server_fifo_size = "1M"
     client_fifo_size = "4M"
     extra_vpp_config = [
@@ -302,7 +306,12 @@ class QUICEchoExtTestCase(QUICTestCase):
     def server(self, *args):
         _args = self.server_echo_test_args + list(args)
         self.worker_server = QUICAppWorker(
-            self.app, _args, self.logger, self.server_appns, self
+            self.app,
+            _args,
+            self.logger,
+            self.server_appns,
+            self,
+            cpus=self.helper_affinity(),
         )
         self.worker_server.start()
         self.sleep(self.pre_test_sleep)
@@ -310,7 +319,12 @@ class QUICEchoExtTestCase(QUICTestCase):
     def client(self, *args):
         _args = self.client_echo_test_args + list(args)
         self.worker_client = QUICAppWorker(
-            self.app, _args, self.logger, self.client_appns, self
+            self.app,
+            _args,
+            self.logger,
+            self.client_appns,
+            self,
+            cpus=self.helper_affinity(),
         )
         self.worker_client.start()
         timeout = None if self.debug_all else self.timeout

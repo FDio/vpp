@@ -1101,7 +1101,7 @@ class TestIPv4MWReassembly(VppTestCase):
     def setUpClass(cls):
         super().setUpClass()
 
-        cls.create_pg_interfaces(range(cls.vpp_worker_count + 1))
+        cls.create_pg_interfaces(range(cls.get_vpp_worker_count() + 1))
         cls.src_if = cls.pg0
         cls.send_ifs = cls.pg_interfaces[:-1]
         cls.dst_if = cls.pg_interfaces[-1]
@@ -1234,7 +1234,7 @@ class TestIPv4MWReassembly(VppTestCase):
             )
 
     def send_packets(self, packets):
-        for counter in range(self.vpp_worker_count):
+        for counter in range(self.get_vpp_worker_count()):
             if 0 == len(packets[counter]):
                 continue
             send_if = self.send_ifs[counter]
@@ -1253,19 +1253,19 @@ class TestIPv4MWReassembly(VppTestCase):
         # in first wave we send fragments which don't start at offset 0
         # then we send fragments with offset 0 on a different thread
         # then the rest of packets on a random thread
-        first_packets = [[] for n in range(self.vpp_worker_count)]
-        second_packets = [[] for n in range(self.vpp_worker_count)]
-        rest_of_packets = [[] for n in range(self.vpp_worker_count)]
+        first_packets = [[] for n in range(self.get_vpp_worker_count())]
+        second_packets = [[] for n in range(self.get_vpp_worker_count())]
+        rest_of_packets = [[] for n in range(self.get_vpp_worker_count())]
         for _, p in self.pkt_infos:
-            wi = randrange(self.vpp_worker_count)
+            wi = randrange(self.get_vpp_worker_count())
             second_packets[wi].append(p[0])
             if len(p) <= 1:
                 continue
             wi2 = wi
             while wi2 == wi:
-                wi2 = randrange(self.vpp_worker_count)
+                wi2 = randrange(self.get_vpp_worker_count())
             first_packets[wi2].append(p[1])
-            wi3 = randrange(self.vpp_worker_count)
+            wi3 = randrange(self.get_vpp_worker_count())
             rest_of_packets[wi3].extend(p[2:])
 
         self.pg_enable_capture()
@@ -2048,7 +2048,7 @@ class TestIPv6MWReassembly(VppTestCase):
     def setUpClass(cls):
         super().setUpClass()
 
-        cls.create_pg_interfaces(range(cls.vpp_worker_count + 1))
+        cls.create_pg_interfaces(range(cls.get_vpp_worker_count() + 1))
         cls.src_if = cls.pg0
         cls.send_ifs = cls.pg_interfaces[:-1]
         cls.dst_if = cls.pg_interfaces[-1]
@@ -2183,7 +2183,7 @@ class TestIPv6MWReassembly(VppTestCase):
             )
 
     def send_packets(self, packets):
-        for counter in range(self.vpp_worker_count):
+        for counter in range(self.get_vpp_worker_count()):
             if 0 == len(packets[counter]):
                 continue
             send_if = self.send_ifs[counter]
@@ -2202,19 +2202,19 @@ class TestIPv6MWReassembly(VppTestCase):
         # in first wave we send fragments which don't start at offset 0
         # then we send fragments with offset 0 on a different thread
         # then the rest of packets on a random thread
-        first_packets = [[] for n in range(self.vpp_worker_count)]
-        second_packets = [[] for n in range(self.vpp_worker_count)]
-        rest_of_packets = [[] for n in range(self.vpp_worker_count)]
+        first_packets = [[] for n in range(self.get_vpp_worker_count())]
+        second_packets = [[] for n in range(self.get_vpp_worker_count())]
+        rest_of_packets = [[] for n in range(self.get_vpp_worker_count())]
         for _, p in self.pkt_infos:
-            wi = randrange(self.vpp_worker_count)
+            wi = randrange(self.get_vpp_worker_count())
             second_packets[wi].append(p[0])
             if len(p) <= 1:
                 continue
             wi2 = wi
             while wi2 == wi:
-                wi2 = randrange(self.vpp_worker_count)
+                wi2 = randrange(self.get_vpp_worker_count())
             first_packets[wi2].append(p[1])
-            wi3 = randrange(self.vpp_worker_count)
+            wi3 = randrange(self.get_vpp_worker_count())
             rest_of_packets[wi3].extend(p[2:])
 
         self.pg_enable_capture()

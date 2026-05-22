@@ -42,7 +42,7 @@ class StatsClientTestCase(VppTestCase):
         self.assertEqual(self.statistics.set_errors(), {})
         self.assertEqual(
             self.statistics.get_counter("/err/ethernet-input/no error"),
-            [0] * (1 + self.vpp_worker_count),
+            [0] * (1 + self.get_vpp_worker_count()),
         )
 
     def test_client_fd_leak(self):
@@ -123,7 +123,7 @@ class StatsClientTestCase(VppTestCase):
         rx_packets = 0
         tx_bytes = 0
         tx_packets = 0
-        for i in range(1 + self.vpp_worker_count):
+        for i in range(1 + self.get_vpp_worker_count()):
             rx_bytes += rx[i]["bytes"] - rx_before_sending[i]["bytes"]
             rx_packets += rx[i]["packets"] - rx_before_sending[i]["packets"]
             tx_bytes += tx[i]["bytes"] - tx_before_sending[i]["bytes"]
