@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+import socket
+import struct
 import unittest
 
 from scapy.layers.l2 import Ether
@@ -1019,6 +1021,55 @@ class TestIgmp(VppTestCase):
         self.vapi.igmp_enable_disable(self.pg0.sw_if_index, 0, IGMP_MODE.HOST)
         self.vapi.igmp_enable_disable(self.pg2.sw_if_index, 0, IGMP_MODE.ROUTER)
         self.assertFalse(find_mroute(self, "239.1.1.1", "0.0.0.0", 32))
+
+    def test_igmpv3_report_aux_data(self):
+        """Two-group IGMPv3 report with aux data"""
+
+        # Craft aux so a mis-positioned "group 2" has n_src=0 (minimize inner reads).
+        fake_type = 2  # mode_is_exclude
+        fake_n_aux = 0
+        fake_n_src = 0
+        fake_group = socket.inet_aton("239.1.1.99")
+        aux = struct.pack("!BBH", fake_type, fake_n_aux, fake_n_src) + fake_group
+
+        group1 = (
+            IGMPv3gr(rtype=2, auxdlen=len(aux) // 4, maddr="239.1.1.1", srcaddrs=[])
+            / aux
+        )
+        group2 = IGMPv3gr(rtype=2, maddr="239.1.1.1")
+        pkt = (
+            Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+            / IP(
+                src=self.pg0.remote_ip4,
+                dst="224.0.0.22",
+                proto=2,
+                ttl=1,
+                tos=0xC0,
+                options=[
+                    IPOption(
+                        copy_flag=1,
+                        optclass="control",
+                        option="router_alert",
+                        length=4,
+                    )
+                ],
+            )
+            / IGMPv3()
+            / IGMPv3mr(records=[group1, group2])
+        )
+        self.vapi.cli("test igmp timers query 1 src 3 leave 1")
+        self.vapi.igmp_enable_disable(self.pg0.sw_if_index, 1, IGMP_MODE.ROUTER)
+
+        self.send_and_assert_no_replies(
+            self.pg0,
+            pkt,
+            remark="IGMPv3 report with aux data and two group records",
+        )
+
+        # Spoofed second group (239.1.1.99) must not be learned from aux mis-parse.
+        dump = self.vapi.igmp_dump(self.pg0.sw_if_index)
+        for s in dump:
+            self.assertNotEqual(str(s.gaddr), "239.1.1.99")
 
 
 if __name__ == "__main__":
