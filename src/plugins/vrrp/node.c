@@ -673,12 +673,23 @@ vrrp_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	{
 	  vrrp_trace_t *t = vlib_add_trace (vm, node, b0, sizeof (*t));
 	  size_t addr_len = (is_ipv6 ? 16 : 4);
+	  size_t max_addrs = sizeof (t->addrs) / addr_len;
+	  size_t n_addrs = clib_min ((size_t) vrrp0->n_addrs, max_addrs);
+
+	  if (b0->current_length <= sizeof (*vrrp0))
+	    n_addrs = 0;
+	  else
+	    {
+	      size_t avail = b0->current_length - sizeof (*vrrp0);
+	      size_t max_from_pkt = avail / addr_len;
+	      n_addrs = clib_min (n_addrs, max_from_pkt);
+	    }
 
 	  t->sw_if_index = vnet_buffer(b0)->sw_if_index[VLIB_RX];
 	  t->is_ipv6 = is_ipv6;
 	  clib_memcpy_fast (&t->vrrp, vrrp0, sizeof (*vrrp0));
-	  clib_memcpy_fast (t->addrs, (void *) (vrrp0 + 1),
-			    (size_t) vrrp0->n_addrs * addr_len);
+	  t->vrrp.n_addrs = (u8) n_addrs;
+	  clib_memcpy_fast (t->addrs, (void *) (vrrp0 + 1), n_addrs * addr_len);
 	}
 
       /* always drop, never forward or reply here */
