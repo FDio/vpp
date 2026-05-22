@@ -437,7 +437,8 @@ cnat_snat_policy_add_pfx (cnat_snat_policy_entry_t *cpe, ip_prefix_t *pfx, const
 			  u8 is_src)
 {
   /* All packets destined to this prefix won't be source-NAT-ed */
-  ASSERT (cpe);
+  if (!cpe)
+    return VNET_API_ERROR_FEATURE_DISABLED;
 
   cnat_snat_policy_entry_init (cpe);
 
@@ -462,7 +463,8 @@ cnat_snat_policy_add_pfx (cnat_snat_policy_entry_t *cpe, ip_prefix_t *pfx, const
 __clib_export int
 cnat_snat_policy_del_pfx (cnat_snat_policy_entry_t *cpe, ip_prefix_t *pfx, u8 is_src)
 {
-  ASSERT (cpe);
+  if (!cpe)
+    return VNET_API_ERROR_FEATURE_DISABLED;
 
   /*
    * Make the del path re-entrant: if the entry has never been
