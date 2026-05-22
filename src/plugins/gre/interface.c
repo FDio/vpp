@@ -274,7 +274,7 @@ gre_teib_entry_added (const teib_entry_t *ne)
   u32 t_idx;
 
   sw_if_index = teib_entry_get_sw_if_index (ne);
-  if (vec_len (gm->tunnel_index_by_sw_if_index) < sw_if_index)
+  if (vec_len (gm->tunnel_index_by_sw_if_index) <= sw_if_index)
     return;
 
   t_idx = gm->tunnel_index_by_sw_if_index[sw_if_index];
@@ -314,7 +314,7 @@ gre_teib_entry_deleted (const teib_entry_t *ne)
   u32 t_idx;
 
   sw_if_index = teib_entry_get_sw_if_index (ne);
-  if (vec_len (gm->tunnel_index_by_sw_if_index) < sw_if_index)
+  if (vec_len (gm->tunnel_index_by_sw_if_index) <= sw_if_index)
     return;
 
   t_idx = gm->tunnel_index_by_sw_if_index[sw_if_index];
