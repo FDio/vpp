@@ -19,3 +19,5 @@ vulnerability are also listed.
 
 .. _NVD CVSS 3.x Severity and Metrics:
    https://nvd.nist.gov/vuln/detail/CVE-2022-46397
+
+- `VRRP VPP Plugin: Heap Buffer Overflow in Packet Trace Path <https://github.com/FDio/vpp/security/advisories/GHSA-rc9p-89wj-mx7h>`_
