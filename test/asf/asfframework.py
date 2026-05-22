@@ -269,17 +269,40 @@ class DummyVpp:
 
 
 class CPUInterface(ABC):
-    cpus = []
+    # Per-suite declarations. Override in subclasses as class attributes.
+    vpp_worker_count = 0
+    helper_count = 0
+
+    cpus = []  # [main, worker0, worker1, ...]
+    helper_cpus = []  # [helper0, helper1, ...]
     skipped_due_to_cpu_lack = False
 
     @classmethod
-    @abstractmethod
+    def get_vpp_worker_count(cls):
+        return cls.vpp_worker_count
+
+    @classmethod
+    def get_helper_count(cls):
+        return cls.helper_count
+
+    @classmethod
     def get_cpus_required(cls):
-        pass
+        return 1 + cls.get_vpp_worker_count() + cls.get_helper_count()
 
     @classmethod
     def assign_cpus(cls, cpus):
-        cls.cpus = cpus
+        n = 1 + cls.get_vpp_worker_count()
+        cls.cpus = cpus[:n]
+        cls.helper_cpus = cpus[n:]
+
+    @classmethod
+    def helper_affinity(cls):
+        # CPU mask to apply to a spawned helper process. Returns the
+        # full helper-CPU pool so the OS can load-balance the helper's
+        # internal threads across it; the pool excludes VPP main and
+        # worker CPUs, so VPP is never starved. Returns None when no
+        # helper CPUs were reserved - the helper then runs on any CPU.
+        return list(cls.helper_cpus) if cls.helper_cpus else None
 
 
 @use_running
@@ -348,16 +371,14 @@ class VppAsfTestCase(CPUInterface, unittest.TestCase):
 
     @classmethod
     def get_vpp_worker_count(cls):
-        if not hasattr(cls, "vpp_worker_count"):
-            if cls.has_tag(TestCaseTag.FIXME_VPP_WORKERS):
-                cls.vpp_worker_count = 0
-            else:
-                cls.vpp_worker_count = config.vpp_worker_count
-        return cls.vpp_worker_count
-
-    @classmethod
-    def get_cpus_required(cls):
-        return 1 + cls.get_vpp_worker_count()
+        # A class-level override (vpp_worker_count = N) wins. Otherwise
+        # take the global config default, unless the test is tagged as
+        # incompatible with workers.
+        if "vpp_worker_count" in cls.__dict__:
+            return cls.__dict__["vpp_worker_count"]
+        if cls.has_tag(TestCaseTag.FIXME_VPP_WORKERS):
+            return 0
+        return config.vpp_worker_count
 
     @classmethod
     def setUpConstants(cls):
@@ -657,6 +678,12 @@ class VppAsfTestCase(CPUInterface, unittest.TestCase):
         )
         cls.logger.debug("Random seed is %s", config.rnd_seed)
         cls.setUpConstants()
+        # Pin this driver process onto its VPP main-thread CPU. The two
+        # never run at once - a test either drives the API or moves
+        # packets - so they share the core efficiently; VPP worker
+        # threads and helper processes keep their own dedicated CPUs.
+        if cls.cpus:
+            os.sched_setaffinity(0, {cls.cpus[0]})
         cls.verbose = 0
         cls.vpp_dead = False
         cls.registry = VppObjectRegistry()
@@ -1584,10 +1611,11 @@ class VppTestRunner(unittest.TextTestRunner):
 
 
 class Worker(Thread):
-    def __init__(self, executable_args, logger, env=None, *args, **kwargs):
+    def __init__(self, executable_args, logger, env=None, cpus=None, *args, **kwargs):
         super(Worker, self).__init__(*args, **kwargs)
         self.logger = logger
         self.args = executable_args
+        self.cpus = cpus
         if hasattr(self, "testcase") and self.testcase.debug_all:
             if self.testcase.debug_gdbserver:
                 self.args = [
@@ -1675,11 +1703,27 @@ class Worker(Thread):
         env = os.environ.copy()
         env.update(self.env)
         env["CK_LOG_FILE_NAME"] = "-"
+        cpus = self.cpus
+
+        def _preexec():
+            os.setpgrp()
+            # The driver pins itself to its VPP main core (see
+            # setUpClass) and the child would inherit that pin. Helpers
+            # run concurrently with VPP main, not in alternation, so
+            # sharing that core would starve VPP. If the caller passed a
+            # helper-CPU mask, pin to it (excludes VPP cores; lets the
+            # OS load-balance the helper's threads within the mask).
+            # Otherwise unpin so the child can run on any CPU.
+            if cpus:
+                os.sched_setaffinity(0, set(cpus))
+            else:
+                os.sched_setaffinity(0, range(os.cpu_count()))
+
         self.process = subprocess.Popen(
             ["stdbuf", "-o0", "-e0"] + self.args,
             shell=False,
             env=env,
-            preexec_fn=os.setpgrp,
+            preexec_fn=_preexec,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
