@@ -69,6 +69,10 @@ class VCLTestCase(VppAsfTestCase):
     """VCL Test Class"""
 
     session_startup = ["poll-main", "use-app-socket-api"]
+    # Reserve dedicated CPUs for spawned helper processes (server +
+    # client). Helpers run concurrently with VPP, so they must not
+    # share a core with VPP main or workers.
+    helper_count = 2
 
     @classmethod
     def setUpClass(cls):
@@ -134,14 +138,24 @@ class VCLTestCase(VppAsfTestCase):
 
         self.update_vcl_app_env("", "", self.sapi_server_sock)
         worker_server = VCLAppWorker(
-            server_app, server_args, self.logger, self.vcl_app_env, "server"
+            server_app,
+            server_args,
+            self.logger,
+            self.vcl_app_env,
+            "server",
+            cpus=self.helper_affinity(),
         )
         worker_server.start()
         self.sleep(self.pre_test_sleep)
 
         self.update_vcl_app_env("", "", self.sapi_client_sock)
         worker_client = VCLAppWorker(
-            client_app, client_args, self.logger, self.vcl_app_env, "client"
+            client_app,
+            client_args,
+            self.logger,
+            self.vcl_app_env,
+            "client",
+            cpus=self.helper_affinity(),
         )
         worker_client.start()
         worker_client.join(self.timeout)
@@ -276,14 +290,24 @@ class VCLTestCase(VppAsfTestCase):
 
         self.update_vcl_app_env("1", "1234", self.sapi_server_sock)
         worker_server = VCLAppWorker(
-            server_app, server_args, self.logger, self.vcl_app_env, "server"
+            server_app,
+            server_args,
+            self.logger,
+            self.vcl_app_env,
+            "server",
+            cpus=self.helper_affinity(),
         )
         worker_server.start()
         self.sleep(self.pre_test_sleep)
 
         self.update_vcl_app_env("2", "5678", self.sapi_client_sock)
         worker_client = VCLAppWorker(
-            client_app, client_args, self.logger, self.vcl_app_env, "client"
+            client_app,
+            client_args,
+            self.logger,
+            self.vcl_app_env,
+            "client",
+            cpus=self.helper_affinity(),
         )
         worker_client.start()
         worker_client.join(self.timeout)
@@ -681,7 +705,12 @@ class VCLProgrammaticConfig(VCLTestCase):
         ]
 
         worker_cfg_test = VCLAppWorker(
-            "vcl_cfg_test", server_args, self.logger, None, "server"
+            "vcl_cfg_test",
+            server_args,
+            self.logger,
+            None,
+            "server",
+            cpus=self.helper_affinity(),
         )
         worker_cfg_test.start()
         self.sleep(0.5)
@@ -743,13 +772,23 @@ class VCLThruHostStackCLUDPBinds(VCLTestCase):
         }
 
         worker_server1 = VCLAppWorker(
-            "vcl_test_cl_udp", server1_args, self.logger, self.vcl_app_env, "server1"
+            "vcl_test_cl_udp",
+            server1_args,
+            self.logger,
+            self.vcl_app_env,
+            "server1",
+            cpus=self.helper_affinity(),
         )
         worker_server1.start()
         self.sleep(0.5)
 
         worker_server2 = VCLAppWorker(
-            "vcl_test_cl_udp", server2_args, self.logger, self.vcl_app_env, "server2"
+            "vcl_test_cl_udp",
+            server2_args,
+            self.logger,
+            self.vcl_app_env,
+            "server2",
+            cpus=self.helper_affinity(),
         )
         worker_server2.start()
         self.sleep(0.5)
