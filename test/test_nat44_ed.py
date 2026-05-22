@@ -2372,7 +2372,7 @@ class TestNAT44ED(VppTestCase):
     def test_dynamic_edge_ports(self):
         """NAT44ED dynamic translation test: edge ports"""
 
-        worker_count = self.vpp_worker_count or 1
+        worker_count = self.get_vpp_worker_count() or 1
         port_offset = 1024
         port_per_thread = (65536 - port_offset) // worker_count
         port_count = port_per_thread * worker_count
@@ -2630,7 +2630,7 @@ class TestNAT44EDMW(TestNAT44ED):
         ic1 = self.statistics["/nat44-ed/in2out/slowpath/icmp"]
         dc1 = self.statistics["/nat44-ed/in2out/slowpath/drops"]
 
-        i2o_pkts = [[] for x in range(0, self.vpp_worker_count)]
+        i2o_pkts = [[] for x in range(0, self.get_vpp_worker_count())]
 
         for i in range(pkt_count):
             p = (
@@ -2638,23 +2638,23 @@ class TestNAT44EDMW(TestNAT44ED):
                 / IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4)
                 / TCP(sport=tcp_port_offset + i, dport=20)
             )
-            i2o_pkts[p[TCP].sport % self.vpp_worker_count].append(p)
+            i2o_pkts[p[TCP].sport % self.get_vpp_worker_count()].append(p)
 
             p = (
                 Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
                 / IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4)
                 / UDP(sport=udp_port_offset + i, dport=20)
             )
-            i2o_pkts[p[UDP].sport % self.vpp_worker_count].append(p)
+            i2o_pkts[p[UDP].sport % self.get_vpp_worker_count()].append(p)
 
             p = (
                 Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
                 / IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4)
                 / ICMP(id=icmp_id_offset + i, type="echo-request")
             )
-            i2o_pkts[p[ICMP].id % self.vpp_worker_count].append(p)
+            i2o_pkts[p[ICMP].id % self.get_vpp_worker_count()].append(p)
 
-        for i in range(0, self.vpp_worker_count):
+        for i in range(0, self.get_vpp_worker_count()):
             if len(i2o_pkts[i]) > 0:
                 self.pg0.add_stream(i2o_pkts[i], worker=i)
 
@@ -2697,30 +2697,30 @@ class TestNAT44EDMW(TestNAT44ED):
         recvd_udp_ports = list(recvd_udp_ports)
         recvd_icmp_ids = list(recvd_icmp_ids)
 
-        o2i_pkts = [[] for x in range(0, self.vpp_worker_count)]
+        o2i_pkts = [[] for x in range(0, self.get_vpp_worker_count())]
         for i in range(pkt_count):
             p = (
                 Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac)
                 / IP(src=self.pg1.remote_ip4, dst=self.nat_addr)
                 / TCP(dport=choice(recvd_tcp_ports), sport=20)
             )
-            o2i_pkts[p[TCP].dport % self.vpp_worker_count].append(p)
+            o2i_pkts[p[TCP].dport % self.get_vpp_worker_count()].append(p)
 
             p = (
                 Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac)
                 / IP(src=self.pg1.remote_ip4, dst=self.nat_addr)
                 / UDP(dport=choice(recvd_udp_ports), sport=20)
             )
-            o2i_pkts[p[UDP].dport % self.vpp_worker_count].append(p)
+            o2i_pkts[p[UDP].dport % self.get_vpp_worker_count()].append(p)
 
             p = (
                 Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac)
                 / IP(src=self.pg1.remote_ip4, dst=self.nat_addr)
                 / ICMP(id=choice(recvd_icmp_ids), type="echo-reply")
             )
-            o2i_pkts[p[ICMP].id % self.vpp_worker_count].append(p)
+            o2i_pkts[p[ICMP].id % self.get_vpp_worker_count()].append(p)
 
-        for i in range(0, self.vpp_worker_count):
+        for i in range(0, self.get_vpp_worker_count()):
             if len(o2i_pkts[i]) > 0:
                 self.pg1.add_stream(o2i_pkts[i], worker=i)
 
