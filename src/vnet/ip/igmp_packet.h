@@ -55,8 +55,14 @@ igmp_header_get_max_resp_time (const igmp_header_t * header)
     qqi = header->code;
   else
     {
-      u8 mant = header->code << 4;
-      u8 exp = (header->code & 0x7) << 1;
+      /*
+       *  0 1 2 3 4 5 6 7
+       * +-+-+-+-+-+-+-+-+
+       * |1| exp | mant  |
+       * +-+-+-+-+-+-+-+-+
+       */
+      u8 mant = header->code & 0xf;
+      u8 exp = (header->code >> 4) & 0x7;
 
       qqi = ((mant | 0x10) << (exp + 3));
     }
@@ -131,17 +137,8 @@ typedef struct
 always_inline u32
 igmp_membership_group_v3_length (const igmp_membership_group_v3_t * g)
 {
-  return (sizeof (*g) +
-	  (sizeof (ip4_address_t) *
-	   clib_net_to_host_u16 (g->n_src_addresses)));
-}
-
-always_inline igmp_membership_group_v3_t *
-igmp_membership_group_v3_next (igmp_membership_group_v3_t * g)
-{
-  return ((void *) g
-	  + g->n_src_addresses * sizeof (g->src_addresses[0])
-	  + g->n_aux_u32s * sizeof (u32));
+  return (sizeof (*g) + (sizeof (ip4_address_t) * clib_net_to_host_u16 (g->n_src_addresses))) +
+	 g->n_aux_u32s * sizeof (u32);
 }
 
 typedef struct
