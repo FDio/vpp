@@ -15,7 +15,7 @@ import warnings
 from multiprocessing import Process, Pipe, get_context
 from multiprocessing.queues import Queue
 from multiprocessing.managers import BaseManager
-from config import config, num_cpus, available_cpus, max_vpp_cpus
+from config import config, num_cpus, num_physical_cpus, available_cpus, max_vpp_cpus
 from vpp_papi import VPPApiJSONFiles
 from asfframework import (
     VppTestRunner,
@@ -1054,10 +1054,10 @@ if __name__ == "__main__":
             max_concurrent_tests = 1
             print("Interactive mode required, running tests consecutively.")
         else:
-            max_concurrent_tests = num_cpus
+            max_concurrent_tests = num_physical_cpus
             print(
                 f"Running at most {max_concurrent_tests} python test "
-                "processes concurrently."
+                "processes concurrently (one per physical core)."
             )
     else:
         max_concurrent_tests = test_jobs
