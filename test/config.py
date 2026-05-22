@@ -489,6 +489,28 @@ if config.failed_dir is None:
 available_cpus = psutil.Process().cpu_affinity()
 num_cpus = len(available_cpus)
 
+
+def _num_physical_cpus(cpus):
+    """Count the distinct physical cores backing the given logical CPUs.
+
+    Falls back to the logical CPU count when topology is unavailable.
+    """
+    cores = set()
+    for cpu in cpus:
+        topo = f"/sys/devices/system/cpu/cpu{cpu}/topology"
+        try:
+            with open(f"{topo}/physical_package_id") as f:
+                package = f.read()
+            with open(f"{topo}/core_id") as f:
+                core = f.read()
+        except OSError:
+            return len(cpus)
+        cores.add((package, core))
+    return len(cores)
+
+
+num_physical_cpus = _num_physical_cpus(available_cpus)
+
 if config.max_vpp_cpus == "auto":
     max_vpp_cpus = num_cpus
 elif config.max_vpp_cpus > 0:
