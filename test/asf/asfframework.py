@@ -658,6 +658,12 @@ class VppAsfTestCase(CPUInterface, unittest.TestCase):
         )
         cls.logger.debug("Random seed is %s", config.rnd_seed)
         cls.setUpConstants()
+        # Pin this driver process onto the VPP main-thread CPU. The two
+        # never run at once - a test either drives the API or moves
+        # packets - so they share the core efficiently; VPP worker
+        # threads keep their own dedicated CPUs.
+        if cls.cpus:
+            os.sched_setaffinity(0, {cls.cpus[0]})
         cls.verbose = 0
         cls.vpp_dead = False
         cls.registry = VppObjectRegistry()
