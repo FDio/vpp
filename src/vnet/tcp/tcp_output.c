@@ -1134,9 +1134,9 @@ tcp_prepare_segment (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
   else
     {
       u32 chain_bi = ~0, n_bufs_per_seg, n_bufs;
-      u16 n_peeked, len_to_deq;
+      u16 len_to_deq;
       vlib_buffer_t *chain_b, *prev_b;
-      int i;
+      int i, n_peeked;
 
       /* Make sure we have enough buffers */
       n_bufs_per_seg = ceil ((double) seg_size / bytes_per_buffer);
@@ -1153,16 +1153,20 @@ tcp_prepare_segment (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 
       *b = vlib_get_buffer (vm, wrk->tx_buffers[--n_bufs]);
       data = tcp_init_buffer (vm, *b);
+      len_to_deq = bytes_per_buffer - TRANSPORT_MAX_HDRS_LEN;
       n_bytes = session_tx_fifo_peek_bytes (&tc->connection, data, offset,
-					    bytes_per_buffer -
-					    TRANSPORT_MAX_HDRS_LEN);
+					    len_to_deq);
+      ASSERT (n_bytes > 0);
       b[0]->current_length = n_bytes;
       b[0]->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
       b[0]->total_length_not_including_first_buffer = 0;
       max_deq_bytes -= n_bytes;
+      /* Stop chaining if the fifo cannot fill the current buffer. */
+      if (PREDICT_FALSE (n_bytes < len_to_deq))
+	max_deq_bytes = 0;
 
       chain_b = *b;
-      for (i = 1; i < n_bufs_per_seg; i++)
+      for (i = 1; i < n_bufs_per_seg && max_deq_bytes; i++)
 	{
 	  prev_b = chain_b;
 	  len_to_deq = clib_min (max_deq_bytes, bytes_per_buffer);
@@ -1173,7 +1177,7 @@ tcp_prepare_segment (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 	  n_peeked = session_tx_fifo_peek_bytes (&tc->connection, data,
 						 offset + n_bytes,
 						 len_to_deq);
-	  ASSERT (n_peeked == len_to_deq);
+	  ASSERT (n_peeked > 0);
 	  n_bytes += n_peeked;
 	  chain_b->current_length = n_peeked;
 	  chain_b->next_buffer = 0;
@@ -1184,16 +1188,15 @@ tcp_prepare_segment (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 
 	  max_deq_bytes -= n_peeked;
 	  b[0]->total_length_not_including_first_buffer += n_peeked;
+	  if (PREDICT_FALSE (n_peeked < len_to_deq))
+	    break;
 	}
 
       tcp_push_hdr_i (tc, *b, tc->snd_una + offset, /* compute opts */ 0,
 		      /* burst */ 0, /* update_snd_nxt */ 0);
 
       if (PREDICT_FALSE (n_bufs))
-	{
-	  clib_warning ("not all buffers consumed");
-	  vlib_buffer_free (vm, wrk->tx_buffers, n_bufs);
-	}
+	vlib_buffer_free (vm, wrk->tx_buffers, n_bufs);
     }
 
   ASSERT (n_bytes > 0);
