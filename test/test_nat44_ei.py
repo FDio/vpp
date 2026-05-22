@@ -1978,7 +1978,7 @@ class TestNAT44EI(MethodHolder):
         if_idx = self.pg0.sw_if_index
         self.assertEqual(
             after[:, if_idx].sum() - cnt[:, if_idx].sum(),
-            2 + (1 if self.vpp_worker_count > 0 else 0),
+            2 + (1 if self.get_vpp_worker_count() > 0 else 0),
         )
 
     def test_hairpinning2(self):
@@ -2273,7 +2273,7 @@ class TestNAT44EI(MethodHolder):
         if_idx = self.pg0.sw_if_index
         self.assertEqual(
             after[:, if_idx].sum() - cnt[:, if_idx].sum(),
-            2 + (1 if self.vpp_worker_count > 0 else 0),
+            2 + (1 if self.get_vpp_worker_count() > 0 else 0),
         )
 
     def test_interface_addr(self):
@@ -2505,7 +2505,7 @@ class TestNAT44EI(MethodHolder):
         )
 
         max_sessions_per_thread = self.max_translations
-        max_sessions = max(1, self.vpp_worker_count) * max_sessions_per_thread
+        max_sessions = max(1, self.get_vpp_worker_count()) * max_sessions_per_thread
 
         pkts = []
         for i in range(0, max_sessions):
@@ -3226,7 +3226,7 @@ class TestNAT44EI(MethodHolder):
             self.logger.error(ppp("Unexpected or invalid packet:", p))
             raise
 
-        if self.vpp_worker_count > 1:
+        if self.get_vpp_worker_count() > 1:
             node = "nat44-ei-handoff-classify"
         else:
             node = "nat44-ei-classify"
@@ -3755,14 +3755,14 @@ class TestNAT44EI(MethodHolder):
 
         # first choose a thread index which is correct for IP
         thread_index = get_nat44_ei_in2out_worker_index(
-            self.pg0.remote_ip4, self.vpp_worker_count
+            self.pg0.remote_ip4, self.get_vpp_worker_count()
         )
 
         # now pick a port which is correct for given thread
-        port_per_thread = int((0xFFFF - 1024) / max(1, self.vpp_worker_count))
+        port_per_thread = int((0xFFFF - 1024) / max(1, self.get_vpp_worker_count()))
         self.tcp_port_out = 1024 + random.randint(1, port_per_thread)
         self.udp_port_out = 1024 + random.randint(1, port_per_thread)
-        if self.vpp_worker_count > 0:
+        if self.get_vpp_worker_count() > 0:
             self.tcp_port_out += port_per_thread * (thread_index - 1)
             self.udp_port_out += port_per_thread * (thread_index - 1)
 

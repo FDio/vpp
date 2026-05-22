@@ -96,11 +96,11 @@ class TestNAT44EDOutput(VppTestCase):
         )
 
         thread_index = get_nat44_ed_in2out_worker_index(
-            local_host, self.vpp_worker_count
+            local_host, self.get_vpp_worker_count()
         )
-        port_per_thread = int((0xFFFF - 1024) / max(1, self.vpp_worker_count))
+        port_per_thread = int((0xFFFF - 1024) / max(1, self.get_vpp_worker_count()))
         local_sport = 1024 + random.randint(1, port_per_thread)
-        if self.vpp_worker_count > 0:
+        if self.get_vpp_worker_count() > 0:
             local_sport += port_per_thread * (thread_index - 1)
 
         remote_dport = 10000
