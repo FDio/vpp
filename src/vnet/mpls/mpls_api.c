@@ -254,9 +254,8 @@ vl_api_mpls_tunnel_add_del_t_handler (vl_api_mpls_tunnel_add_del_t * mp)
 	vnet_mpls_tunnel_del (tunnel_sw_if_index);
     }
 
-  vec_free (rpaths);
-
 out:
+  vec_free (rpaths);
   REPLY_MACRO2(VL_API_MPLS_TUNNEL_ADD_DEL_REPLY,
   ({
     rmp->sw_if_index = ntohl(tunnel_sw_if_index);
