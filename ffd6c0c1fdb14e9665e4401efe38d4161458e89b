@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "db3409d2_4410a74f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-05-22T00:55:38Z",
+      "side": 1,
+      "message": "why this needs to be special vnet feature and not just simple interface API?",
+      "revId": "ffd6c0c1fdb14e9665e4401efe38d4161458e89b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
