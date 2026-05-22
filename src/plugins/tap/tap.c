@@ -477,6 +477,10 @@ tap_create_if (vlib_main_t *vm, tap_create_if_args_t *args)
   tif->id = args->id;
   u16 n_txqs = clib_max (args->num_tx_queues, thm->n_vlib_mains);
   u16 n_rxqs = clib_max (args->num_rx_queues, 1);
+  u8 single_queue = args->num_rx_queues == 1 && args->num_tx_queues == 1;
+
+  if (single_queue)
+    n_rxqs = n_txqs = 1;
 
   if (args->if_name)
     CLIB_SWAP (args->if_name, tif->name);
@@ -541,9 +545,9 @@ tap_create_if (vlib_main_t *vm, tap_create_if_args_t *args)
       goto error;
     }
 
-  if ((tap_features & IFF_MULTI_QUEUE) == 0)
+  if ((tap_features & IFF_MULTI_QUEUE) == 0 || single_queue)
     {
-      if (n_rxqs > 1)
+      if (!single_queue && n_rxqs > 1)
 	{
 	  args->rv = VNET_API_ERROR_SYSCALL_ERROR_2;
 	  args->error = clib_error_return (0, "multiqueue not supported");
