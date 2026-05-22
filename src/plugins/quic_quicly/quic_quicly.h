@@ -29,15 +29,14 @@
 
 typedef struct quic_quicly_rx_packet_ctx_
 {
-#define _(type, name) type name;
-  foreach_quic_rx_pkt_ctx_field
-#undef _
-    quicly_decoded_packet_t packet;
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  quic_packet_type_t ptype;
+  quicly_decoded_packet_t packet;
 } quic_quicly_rx_packet_ctx_t;
 
 typedef struct quic_quicly_rx_dgram_ctx_
 {
-  session_dgram_pre_hdr_t ph; /* only pre-header dgram because the session is connected */
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   u8 data[QUIC_MAX_PACKET_SIZE];
 } quic_quicly_rx_dgram_ctx_t;
 
@@ -52,10 +51,6 @@ typedef struct quic_quicly_session_cache_
 typedef struct quic_quicly_main_
 {
   quic_main_t *qm;
-  clib_bihash_16_8_t connection_hash; /**< quic connection id -> conn handle */
-  /* to handle packets that do not use the server generated CID, src CID ->
-   * conn handle, NOTE: we use only connected UDP for now */
-  clib_bihash_24_8_t conn_accepting_hash;
   quic_quicly_session_cache_t session_cache;
   quicly_cid_plaintext_t *next_cid;
   quic_quicly_rx_packet_ctx_t **rx_packets;
