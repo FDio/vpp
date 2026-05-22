@@ -425,7 +425,10 @@ vl_api_cnat_set_snat_policy_t_handler (vl_api_cnat_set_snat_policy_t *mp)
   cnat_snat_policy_type_t policy = (cnat_snat_policy_type_t) mp->policy;
 
   cnat_snat_policy_entry_t *cpe = cnat_snat_policy_entry_get_default ();
-  rv = cnat_set_snat_policy (cpe, policy);
+  if (!cpe)
+    rv = VNET_API_ERROR_FEATURE_DISABLED;
+  else
+    rv = cnat_set_snat_policy (cpe, policy);
 
   REPLY_MACRO (VL_API_CNAT_SET_SNAT_POLICY_REPLY);
 }
