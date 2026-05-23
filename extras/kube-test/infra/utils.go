@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -167,6 +168,61 @@ func LogJsonIperfOutput(result IPerfResult) {
 			result.End.Udp.LostPercent)
 	}
 	Log("*******************************************\n")
+}
+
+// calicoVPPAgentImage determines the correct agent image based on CalicoVPP version.
+// Returns "calicovpp/vpp" for master/kt-master/≥v3.33, "calicovpp/agent" for older versions.
+func calicoVPPAgentImage(version string) string {
+	normalizedVersion := strings.TrimPrefix(strings.TrimPrefix(version, "release/"), "v")
+	if normalizedVersion == "" || normalizedVersion == "master" || normalizedVersion == "kt-master" {
+		return "calicovpp/vpp"
+	}
+
+	versionParts := strings.Split(normalizedVersion, ".")
+	if len(versionParts) < 2 {
+		return "calicovpp/vpp"
+	}
+	major, errMajor := strconv.Atoi(versionParts[0])
+	minor, errMinor := strconv.Atoi(versionParts[1])
+	if errMajor != nil || errMinor != nil {
+		return "calicovpp/vpp"
+	}
+
+	if major > 3 || (major == 3 && minor >= 33) {
+		return "calicovpp/vpp"
+	}
+	return "calicovpp/agent"
+}
+
+// PrepareBaremetalConfig reads the baremetal template, replaces the image name
+// based on version, and adds command override if using unified image.
+func PrepareBaremetalConfig(templatePath, outputPath string) error {
+	version := os.Getenv("CALICOVPP_VERSION")
+	if version == "" {
+		return fmt.Errorf("CALICOVPP_VERSION not set")
+	}
+
+	// Read template
+	content, err := os.ReadFile(templatePath)
+	if err != nil {
+		return err
+	}
+
+	contentStr := string(content)
+	agentImage := calicoVPPAgentImage(version)
+
+	// Replace image name
+	contentStr = strings.ReplaceAll(contentStr, "calicovpp/agent", agentImage)
+
+	// If using unified image, add command override after imagePullPolicy
+	if agentImage == "calicovpp/vpp" {
+		contentStr = strings.ReplaceAll(contentStr,
+			"imagePullPolicy: IfNotPresent",
+			"imagePullPolicy: IfNotPresent\n        command: [\"/bin/calico-vpp-agent\"]")
+	}
+
+	// Write to temp file for envsubst
+	return os.WriteFile(outputPath, []byte(contentStr), 0644)
 }
 
 func handleExistingVarsFile(fileValues map[string]string) error {

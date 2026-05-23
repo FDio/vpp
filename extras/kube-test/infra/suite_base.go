@@ -208,7 +208,9 @@ func (s *BaseSuite) ReconfigureAndRestart(CALICO_NETWORK_CONFIG string, ADDITION
 			AssertNil(err)
 		}
 		godotenv.Load("kubernetes/.vars")
-		s.Envsubst("kubernetes/baremetal-calicovpp-config-template.yaml", "kubernetes/baremetal-calicovpp-config.yaml")
+		// PrepareBaremetalConfig does runtime image/command replacement based on version
+		AssertNil(PrepareBaremetalConfig("kubernetes/baremetal-calicovpp-config-template.yaml", "kubernetes/baremetal-calicovpp-config-prepared.yaml"))
+		s.Envsubst("kubernetes/baremetal-calicovpp-config-prepared.yaml", "kubernetes/baremetal-calicovpp-config.yaml")
 
 		cmd := exec.Command("kubectl", "apply", "-f", "kubernetes/baremetal-calicovpp-config.yaml")
 		Log(cmd.String())
