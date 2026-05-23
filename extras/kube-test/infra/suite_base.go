@@ -200,10 +200,10 @@ func (s *BaseSuite) ReconfigureAndRestart(CALICO_NETWORK_CONFIG string, ADDITION
 
 		if err == nil {
 			Log("File '%s' exists. Checking env vars", EnvVarsFile)
-			handleExistingVarsFile(fileValues)
+			AssertNil(handleExistingVarsFile(fileValues))
 		} else if os.IsNotExist(err) {
 			Log("'%s' not found. Checking env vars", EnvVarsFile)
-			handleNewVarsFile()
+			AssertNil(handleNewVarsFile())
 		} else {
 			AssertNil(err)
 		}

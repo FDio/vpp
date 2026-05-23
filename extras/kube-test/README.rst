@@ -22,12 +22,18 @@ Running tests
 
 [KinD only] Run ``make test-kind`` to run all tests. Running with ``VERBOSE=true`` is highly recommended. For more options, run ``make help`` .
 
-[Bare-metal only] When running tests for the first time, you must set ``KIND_WRK1``, ``KIND_WRK2``, ``CALICOVPP_VERSION`` and ``CALICOVPP_INTERFACE``
-variables first.
+[Bare-metal only] When running tests for the first time, you must set ``KIND_WRK1``, ``KIND_WRK2``, ``CALICOVPP_VERSION``,
+``CALICOVPP_INTERFACE`` and ``CALICOVPP_AGENT_IMAGE`` variables first.
+``CALICOVPP_AGENT_IMAGE`` selects the image that runs the calico-vpp-agent binary:
+
+* ``calicovpp/vpp`` for CalicoVPP ``master`` and ``>= v3.33`` (unified image)
+* ``calicovpp/agent`` for CalicoVPP ``<= v3.32`` (legacy split image)
+
 For example, let's assume that the first node's hostname is ``vpp_node1`` and the second one is ``vpp_node2``.
-We want to test master images, so the version is ``kt-master``, and the cluster uses interface ``ens3f0np0``.
+We want to test master images, so the version is ``kt-master``, the agent image is ``calicovpp/vpp``,
+and the cluster uses interface ``ens3f0np0``.
 The final command will look like this:
-``make test-bm VERBOSE=true KUBE_WRK1=vpp_node1 KUBE_WRK2=vpp_node2 CALICOVPP_VERSION=kt-master CALICOVPP_INTERFACE=ens3f0np0``
+``make test-bm VERBOSE=true KUBE_WRK1=vpp_node1 KUBE_WRK2=vpp_node2 CALICOVPP_VERSION=kt-master CALICOVPP_AGENT_IMAGE=calicovpp/vpp CALICOVPP_INTERFACE=ens3f0np0``
 After the first run, you can run tests with just ``make test-bm VERBOSE=true``. The variables are written to ``kubernetes/.vars`` and
 ``kubernetes/pod-definitions.yaml``
 

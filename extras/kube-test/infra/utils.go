@@ -170,7 +170,7 @@ func LogJsonIperfOutput(result IPerfResult) {
 }
 
 func handleExistingVarsFile(fileValues map[string]string) error {
-	varsToWatch := []string{"CALICOVPP_VERSION", "CALICOVPP_INTERFACE"}
+	varsToWatch := []string{"CALICOVPP_VERSION", "CALICOVPP_INTERFACE", "CALICOVPP_AGENT_IMAGE"}
 	needsWrite := false
 
 	for _, key := range varsToWatch {
@@ -182,6 +182,15 @@ func handleExistingVarsFile(fileValues map[string]string) error {
 				needsWrite = true
 			}
 		}
+	}
+
+	// Migration: a pre-existing .vars from before CalicoVPP unify-image support may not
+	// contain CALICOVPP_AGENT_IMAGE. Refuse upfront with an actionable message instead.
+	if _, ok := fileValues["CALICOVPP_AGENT_IMAGE"]; !ok {
+		return fmt.Errorf("'%s' is missing required CALICOVPP_AGENT_IMAGE. "+
+			"Set it in the env once and re-run "+
+			"(CALICOVPP_AGENT_IMAGE=calicovpp/vpp for CalicoVPP master/>=v3.33, "+
+			"calicovpp/agent for <=v3.32); it will be persisted to %s", EnvVarsFile, EnvVarsFile)
 	}
 
 	if needsWrite {
@@ -198,11 +207,19 @@ func handleExistingVarsFile(fileValues map[string]string) error {
 func handleNewVarsFile() error {
 	iface := os.Getenv("CALICOVPP_INTERFACE")
 	version := os.Getenv("CALICOVPP_VERSION")
+	// CALICOVPP_AGENT_IMAGE selects the image that runs the calico-vpp-agent
+	// binary in the "agent" container of the baremetal manifest:
+	//   - calicovpp/vpp   (unified image, CalicoVPP master / >= v3.33)
+	//   - calicovpp/agent (legacy split image, CalicoVPP <= v3.32)
+	// VPP does not infer this from CALICOVPP_VERSION; the user provides this
+	// explicitly so VPP stays free of CalicoVPP internal repo layout knowledge.
+	agentImage := os.Getenv("CALICOVPP_AGENT_IMAGE")
 
-	if iface != "" && version != "" {
+	if iface != "" && version != "" && agentImage != "" {
 		newFileValues := map[string]string{
-			"CALICOVPP_INTERFACE": iface,
-			"CALICOVPP_VERSION":   version,
+			"CALICOVPP_INTERFACE":   iface,
+			"CALICOVPP_VERSION":     version,
+			"CALICOVPP_AGENT_IMAGE": agentImage,
 		}
 
 		Log("\nCreating '%s' from environment variables\n", EnvVarsFile)
@@ -211,7 +228,10 @@ func handleNewVarsFile() error {
 		}
 	} else {
 		return fmt.Errorf("Error: '%s' not found and env vars are not set. "+
-			"To create it, please set both CALICOVPP_INTERFACE and CALICOVPP_VERSION env vars", EnvVarsFile)
+			"To create it, please set CALICOVPP_INTERFACE, CALICOVPP_VERSION "+
+			"and CALICOVPP_AGENT_IMAGE env vars "+
+			"(CALICOVPP_AGENT_IMAGE=calicovpp/vpp for CalicoVPP master/>=v3.33, "+
+			"calicovpp/agent for <=v3.32)", EnvVarsFile)
 	}
 	return nil
 }
