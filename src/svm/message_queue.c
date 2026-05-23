@@ -610,8 +610,9 @@ svm_msg_q_timedwait (svm_msg_q_t *mq, double timeout)
 	  return 0;
 	}
 
-      ts.tv_sec = unix_time_now () + (u32) timeout;
-      ts.tv_nsec = (timeout - (u32) timeout) * 1e9;
+      f64 then = unix_time_now () + timeout;
+      ts.tv_sec = (time_t) then;
+      ts.tv_nsec = (then - (time_t) then) * 1e9;
       rv = pthread_cond_timedwait (&sq->condvar, &sq->mutex, &ts);
 
       pthread_mutex_unlock (&sq->mutex);
