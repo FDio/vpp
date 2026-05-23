@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -169,9 +170,32 @@ func LogJsonIperfOutput(result IPerfResult) {
 	Log("*******************************************\n")
 }
 
+func calicoVPPAgentImage(version string) string {
+	normalizedVersion := strings.TrimPrefix(strings.TrimPrefix(version, "release/"), "v")
+	if normalizedVersion == "" || normalizedVersion == "master" || normalizedVersion == "kt-master" {
+		return "calicovpp/vpp"
+	}
+
+	versionParts := strings.Split(normalizedVersion, ".")
+	if len(versionParts) < 2 {
+		return "calicovpp/vpp"
+	}
+	major, errMajor := strconv.Atoi(versionParts[0])
+	minor, errMinor := strconv.Atoi(versionParts[1])
+	if errMajor != nil || errMinor != nil {
+		return "calicovpp/vpp"
+	}
+
+	if major > 3 || (major == 3 && minor >= 33) {
+		return "calicovpp/vpp"
+	}
+	return "calicovpp/agent"
+}
+
 func handleExistingVarsFile(fileValues map[string]string) error {
-	varsToWatch := []string{"CALICOVPP_VERSION", "CALICOVPP_INTERFACE"}
+	varsToWatch := []string{"CALICOVPP_VERSION", "CALICOVPP_INTERFACE", "CALICOVPP_AGENT_IMAGE"}
 	needsWrite := false
+	versionChanged := false
 
 	for _, key := range varsToWatch {
 		envValue := os.Getenv(key)
@@ -180,6 +204,27 @@ func handleExistingVarsFile(fileValues map[string]string) error {
 				Log("Updating '%s'. New value: '%s'", key, envValue)
 				fileValues[key] = envValue
 				needsWrite = true
+				if key == "CALICOVPP_VERSION" {
+					versionChanged = true
+				}
+			}
+		}
+	}
+
+	fileAgentImage, hasAgentImage := fileValues["CALICOVPP_AGENT_IMAGE"]
+	if os.Getenv("CALICOVPP_AGENT_IMAGE") == "" && (!hasAgentImage || fileAgentImage == "" || versionChanged) {
+		version := fileValues["CALICOVPP_VERSION"]
+		if version == "" {
+			version = os.Getenv("CALICOVPP_VERSION")
+		}
+		agentImage := calicoVPPAgentImage(version)
+		if fileAgentImage != agentImage {
+			fileValues["CALICOVPP_AGENT_IMAGE"] = agentImage
+			needsWrite = true
+			if hasAgentImage && fileAgentImage != "" {
+				Log("Updating 'CALICOVPP_AGENT_IMAGE'. New value: '%s'", agentImage)
+			} else {
+				Log("Setting missing 'CALICOVPP_AGENT_IMAGE' to '%s'", agentImage)
 			}
 		}
 	}
@@ -198,11 +243,16 @@ func handleExistingVarsFile(fileValues map[string]string) error {
 func handleNewVarsFile() error {
 	iface := os.Getenv("CALICOVPP_INTERFACE")
 	version := os.Getenv("CALICOVPP_VERSION")
+	agentImage := os.Getenv("CALICOVPP_AGENT_IMAGE")
+	if agentImage == "" {
+		agentImage = calicoVPPAgentImage(version)
+	}
 
 	if iface != "" && version != "" {
 		newFileValues := map[string]string{
-			"CALICOVPP_INTERFACE": iface,
-			"CALICOVPP_VERSION":   version,
+			"CALICOVPP_INTERFACE":   iface,
+			"CALICOVPP_VERSION":     version,
+			"CALICOVPP_AGENT_IMAGE": agentImage,
 		}
 
 		Log("\nCreating '%s' from environment variables\n", EnvVarsFile)
