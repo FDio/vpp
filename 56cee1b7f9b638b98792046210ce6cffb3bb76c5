@@ -16,6 +16,24 @@
       "message": "@Rob, Please restore the original commit message and merge the change in Patchset 1 into this gerrit change.",
       "revId": "56cee1b7f9b638b98792046210ce6cffb3bb76c5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "248a1cf6_024228a4",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2429
+      },
+      "writtenOn": "2026-05-23T08:08:27Z",
+      "side": 1,
+      "message": "Done. I\u0027ve retained my authorship and Signed-Off-By line - hope that\u0027s OK.",
+      "parentUuid": "c05112fc_f068c5c2",
+      "revId": "56cee1b7f9b638b98792046210ce6cffb3bb76c5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
