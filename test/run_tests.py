@@ -2,6 +2,7 @@
 
 import sys
 import shutil
+import logging
 import os
 import json
 import fnmatch
@@ -301,6 +302,27 @@ def stdouterr_reader_wrapper(
 
 
 def handle_failed_suite(logger, last_test_temp_dir, vpp_pid, vpp_binary):
+    # Mirror everything we log here into the per-test log.txt so the failed
+    # suite directory contains the full post-mortem (symlink note, core
+    # location, decoded backtrace) without requiring the controller stdout.
+    tee_handler = None
+    if last_test_temp_dir:
+        log_txt = os.path.join(last_test_temp_dir, "log.txt")
+        if os.path.isfile(log_txt):
+            tee_handler = logging.FileHandler(log_txt)
+            tee_handler.setFormatter(
+                logging.Formatter("%(asctime)s,%(msecs)03d %(message)s", "%H:%M:%S")
+            )
+            logger.addHandler(tee_handler)
+    try:
+        _handle_failed_suite(logger, last_test_temp_dir, vpp_pid, vpp_binary)
+    finally:
+        if tee_handler is not None:
+            logger.removeHandler(tee_handler)
+            tee_handler.close()
+
+
+def _handle_failed_suite(logger, last_test_temp_dir, vpp_pid, vpp_binary):
     if last_test_temp_dir:
         # Need to create link in case of a timeout or core dump without failure
         lttd = os.path.basename(last_test_temp_dir)
