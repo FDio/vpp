@@ -25,7 +25,7 @@ from asfframework import (
 )
 from framework import VppTestCase
 from test_result_code import TestResultCode
-from debug import spawn_gdb
+from debug import spawn_gdb, log_core_backtrace
 from log import (
     get_parallel_logger,
     double_line_delim,
@@ -334,6 +334,7 @@ def handle_failed_suite(logger, last_test_temp_dir, vpp_pid, vpp_binary):
             except Exception as e:
                 logger.exception("Unexpected error running `file' utility on core-file")
             logger.error(f"gdb {vpp_binary} {core_path}")
+            log_core_backtrace(logger, vpp_binary, core_path)
 
     if vpp_pid:
         # Copy api post mortem
