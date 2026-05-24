@@ -1,7 +1,10 @@
 """test framework utilities"""
 
+import glob
 import ipaddress
 import logging
+import os
+import re
 import socket
 from socket import AF_INET6
 import os.path
@@ -151,7 +154,16 @@ def ip6_normalize(ip6):
 
 
 def get_core_path(tempdir):
-    return "%s/%s" % (tempdir, get_core_pattern())
+    pattern = get_core_pattern()
+    # Pattern may contain kernel %-specifiers (%p pid, %t time, ...) whose
+    # values aren't known here, so glob them to find an actual core.
+    glob_pat = re.sub(r"%[a-zA-Z]", "*", pattern)
+    matches = glob.glob(os.path.join(tempdir, glob_pat))
+    if matches:
+        return max(matches, key=os.path.getmtime)
+    # No core on disk yet — return the expected location with %-specifiers
+    # left intact so log messages still show what the kernel would write.
+    return os.path.join(tempdir, pattern)
 
 
 def is_core_present(tempdir):
@@ -162,10 +174,13 @@ def get_core_pattern():
     if platform.uname().system == "FreeBSD":
         import sysctl
 
-        corefmt = sysctl.filter("kern.corefile")[0].value
-    elif platform.uname().system == "Linux":
-        with open("/proc/sys/kernel/core_pattern", "r") as f:
-            corefmt = f.read().strip()
+        return sysctl.filter("kern.corefile")[0].value
+    with open("/proc/sys/kernel/core_pattern", "r") as f:
+        corefmt = f.read().strip()
+    with open("/proc/sys/kernel/core_uses_pid", "r") as f:
+        uses_pid = f.read().strip() == "1"
+    if uses_pid and "%p" not in corefmt:
+        corefmt += ".%p"
     return corefmt
 
 
