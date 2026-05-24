@@ -163,6 +163,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "a40127d2_aa79baf2",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 8
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2026-05-24T02:18:14Z",
+      "side": 1,
+      "message": "so these interfaces are only for uni-directional traffic?",
+      "parentUuid": "8bacaf28_7bee4f64",
+      "revId": "8e394e0e53798b495330630d0ede3ec3c49c5b8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "a598d93f_074b0bd5",
         "filename": "test/test_ipip.py",
         "patchSetId": 8
