@@ -13,6 +13,7 @@ import asfframework
 from config import config
 from log import RED, single_line_delim, double_line_delim
 from util import check_core_path, get_core_path
+from debug import log_core_backtrace
 
 _TRACE_COMPOUND = (
     ast.For,
@@ -182,6 +183,7 @@ class PollHook(Hook):
                 "%s",
                 e,
             )
+        log_core_backtrace(self.logger, config.vpp, core_path)
 
     def poll_vpp(self):
         """
