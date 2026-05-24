@@ -181,6 +181,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "df7f1ea9_c92bf441",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 8
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2026-05-24T23:37:06Z",
+      "side": 1,
+      "message": "what\u0027s the networking use case for a tunnel with this behaviour?\n\nthe end points sending traffic to be decapsulated need to be configured with presumably a P2P tunnel, in order for them to use the correct outer IP encapsulation, but the receiving device does not get configured with the endpoints so that it can accept only from those? \nHow is traffic returned to these endpoints?",
+      "parentUuid": "a40127d2_aa79baf2",
+      "revId": "8e394e0e53798b495330630d0ede3ec3c49c5b8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "a598d93f_074b0bd5",
         "filename": "test/test_ipip.py",
         "patchSetId": 8
