@@ -72,7 +72,9 @@ vpe_api_main_t vpe_api_main;
   _ (COLLECT_DETAILED_INTERFACE_STATS, collect_detailed_interface_stats)                           \
   _ (SW_INTERFACE_SET_IP_DIRECTED_BROADCAST, sw_interface_set_ip_directed_broadcast)               \
   _ (SW_INTERFACE_ADDRESS_REPLACE_BEGIN, sw_interface_address_replace_begin)                       \
-  _ (SW_INTERFACE_ADDRESS_REPLACE_END, sw_interface_address_replace_end)
+  _ (SW_INTERFACE_ADDRESS_REPLACE_END, sw_interface_address_replace_end)                           \
+  _ (SW_INTERFACE_SET_LINK_SPEED, sw_interface_set_link_speed)                                     \
+  _ (SW_INTERFACE_GET_SPEED_CAPA, sw_interface_get_speed_capa)
 
 static void
 vl_api_sw_interface_set_flags_t_handler (vl_api_sw_interface_set_flags_t * mp)
@@ -1703,6 +1705,68 @@ vl_api_pcap_trace_off_t_handler (vl_api_pcap_trace_off_t *mp)
   rv = vnet_pcap_dispatch_trace_configure (&capture_args);
 
   REPLY_MACRO (VL_API_PCAP_TRACE_OFF_REPLY);
+}
+
+static void
+vl_api_sw_interface_set_link_speed_t_handler (
+  vl_api_sw_interface_set_link_speed_t *mp)
+{
+  vl_api_sw_interface_set_link_speed_reply_t *rmp;
+  vnet_main_t *vnm = vnet_get_main ();
+  int rv = 0;
+  u32 sw_if_index, link_speed;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  sw_if_index = ntohl (mp->sw_if_index);
+  link_speed = ntohl (mp->link_speed);
+
+  vnet_sw_interface_t *swif = vnet_get_sw_interface (vnm, sw_if_index);
+  clib_error_t *err =
+    vnet_hw_interface_change_link_speed (vnm, swif->hw_if_index, link_speed);
+  if (err)
+    {
+      rv = -1;
+      clib_error_report (err);
+    }
+
+  BAD_SW_IF_INDEX_LABEL;
+  REPLY_MACRO (VL_API_SW_INTERFACE_SET_LINK_SPEED_REPLY);
+}
+
+static void
+vl_api_sw_interface_get_speed_capa_t_handler (
+  vl_api_sw_interface_get_speed_capa_t *mp)
+{
+  vl_api_sw_interface_get_speed_capa_reply_t *rmp;
+  vnet_main_t *vnm = vnet_get_main ();
+  int rv = 0;
+  u32 sw_if_index;
+  u32 speeds[15];
+  u32 count = 0;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  sw_if_index = ntohl (mp->sw_if_index);
+
+  vnet_sw_interface_t *swif = vnet_get_sw_interface (vnm, sw_if_index);
+  vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, swif->hw_if_index);
+
+#define _(name, bit, mbps)                                                    \
+  if (hw->supported_link_speeds & bit)                                        \
+    speeds[count++] = htonl ((u32) mbps * 1000);
+  foreach_vnet_hw_if_speed
+#undef _
+
+    BAD_SW_IF_INDEX_LABEL;
+  /* clang-format off */
+  REPLY_MACRO3 (VL_API_SW_INTERFACE_GET_SPEED_CAPA_REPLY,
+		count * sizeof (u32),
+  ({
+    rmp->count = htonl (count);
+    clib_memcpy_fast (rmp->speeds, speeds, count * sizeof (u32));
+  }));
+  /* clang-format on */
 }
 
 /*
