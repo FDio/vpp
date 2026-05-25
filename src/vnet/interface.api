@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-option version = "3.2.4";
+option version = "3.2.5";
 
 import "vnet/interface_types.api";
 import "vnet/ethernet/ethernet_types.api";
@@ -820,6 +820,46 @@ define sw_interface_get_default_rx_mode_reply
   u32 context;
   i32 retval;
   vl_api_rx_mode_t mode;
+};
+
+/** \brief Set interface link speed (override)
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - index of the interface
+    @param link_speed - link speed in Kbps (0 means unknown / auto)
+*/
+autoreply define sw_interface_set_link_speed
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+  u32 link_speed;
+};
+
+/** \brief Get interface speed capabilities
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - index of the interface
+*/
+define sw_interface_get_speed_capa
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+};
+
+/** \brief Reply for sw_interface_get_speed_capa
+    @param context - sender context, to match reply w/ request
+    @param retval - return value
+    @param count - number of supported speeds
+    @param speeds - supported speeds in Kbps
+*/
+define sw_interface_get_speed_capa_reply
+{
+  u32 context;
+  i32 retval;
+  u32 count;
+  u32 speeds[count];
 };
 
 /*

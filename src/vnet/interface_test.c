@@ -1353,6 +1353,73 @@ api_pcap_trace_off (vat_main_t *vam)
   return -1;
 }
 
+static int
+api_sw_interface_set_link_speed (vat_main_t *vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_sw_interface_set_link_speed_t *mp;
+  u32 sw_if_index = ~0;
+  u32 link_speed = 0;
+  int ret;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "sw_if_index %d", &sw_if_index))
+	;
+      else if (unformat (i, "link_speed %u", &link_speed))
+	;
+      else
+	break;
+    }
+
+  M (SW_INTERFACE_SET_LINK_SPEED, mp);
+  mp->sw_if_index = ntohl (sw_if_index);
+  mp->link_speed = ntohl (link_speed);
+
+  S (mp);
+  W (ret);
+  return ret;
+}
+
+static int
+api_sw_interface_get_speed_capa (vat_main_t *vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_sw_interface_get_speed_capa_t *mp;
+  u32 sw_if_index = ~0;
+  int ret;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "sw_if_index %d", &sw_if_index))
+	;
+      else
+	break;
+    }
+
+  M (SW_INTERFACE_GET_SPEED_CAPA, mp);
+  mp->sw_if_index = ntohl (sw_if_index);
+
+  S (mp);
+  W (ret);
+  return ret;
+}
+
+static void
+vl_api_sw_interface_get_speed_capa_reply_t_handler (
+  vl_api_sw_interface_get_speed_capa_reply_t *mp)
+{
+  vat_main_t *vam = interface_test_main.vat_main;
+  u32 count = ntohl (mp->count);
+
+  for (u32 j = 0; j < count; j++)
+    fformat (vam->ofp, "%u ", ntohl (mp->speeds[j]));
+  fformat (vam->ofp, "\n");
+
+  vam->retval = ntohl (mp->retval);
+  vam->result_ready = 1;
+}
+
 #include <vnet/interface.api_test.c>
 
 /*

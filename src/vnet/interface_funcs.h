@@ -348,6 +348,31 @@ vnet_hw_interface_set_link_speed (vnet_main_t * vnm, u32 hw_if_index,
   hw->link_speed = link_speed;
 }
 
+/* Request link speed change via driver callback.
+ * Validates against supported speeds and calls device class callback.
+ * Does NOT directly modify hw->link_speed — only the driver does that.
+ * Returns clib_error_t * so CLI can display the driver's error message. */
+always_inline clib_error_t *
+vnet_hw_interface_change_link_speed (vnet_main_t *vnm, u32 hw_if_index,
+				     u32 link_speed_kbps)
+{
+  vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
+  vnet_device_class_t *dc = vnet_get_device_class (vnm, hw->dev_class_index);
+
+  if (!dc->set_link_speed_function)
+    return clib_error_return (0, "driver does not support setting link speed");
+
+  vnet_hw_if_speed_t speed = vnet_hw_if_speed_from_kbps (link_speed_kbps);
+  if (speed == VNET_HW_IF_SPEED_UNKNOWN)
+    return clib_error_return (0, "invalid speed %u Kbps", link_speed_kbps);
+
+  if (hw->supported_link_speeds && !(hw->supported_link_speeds & speed))
+    return clib_error_return (0, "speed %u Kbps not supported by interface",
+			     link_speed_kbps);
+
+  return dc->set_link_speed_function (vnm, hw_if_index, speed);
+}
+
 /* Change interface flags (e.g. up, down, enable, disable). */
 clib_error_t *vnet_hw_interface_set_flags (vnet_main_t * vnm, u32 hw_if_index,
 					   vnet_hw_interface_flags_t flags);
