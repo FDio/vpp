@@ -199,6 +199,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "184d2cf2_81d15ee3",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 8
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3312
+      },
+      "writtenOn": "2026-05-25T05:51:23Z",
+      "side": 1,
+      "message": "The traffic is not bi-directional, this tunnel is only used as decapsulation purpose - decap IPinIP traffic destinated to this local device with any source IP.\n\nThis PR is needed by SONiC-VPP project, which is a kvm-based virtual SONiC environment that uses VPP as dataplane. And this new mode is to simulatethe SONiC IPinIP dataplane forwardin behavior.",
+      "parentUuid": "df7f1ea9_c92bf441",
+      "revId": "8e394e0e53798b495330630d0ede3ec3c49c5b8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "a598d93f_074b0bd5",
         "filename": "test/test_ipip.py",
         "patchSetId": 8
