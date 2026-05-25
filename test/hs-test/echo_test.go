@@ -571,7 +571,7 @@ func EchoBuiltinHttp2CpsMWTest(s *EchoSuite) {
 
 func EchoBuiltinHttp3CpsMWTest(s *EchoSuite) {
 	var quicConfig Stanza
-	quicConfig.NewStanza("quic").Append("conn-timeout 60000").Close()
+	quicConfig.NewStanza("quic").Append("conn-timeout 60000").Append("fifo-size 32k").Close()
 	var memoryConfig Stanza
 	memoryConfig.NewStanza("memory").Append("main-heap-size 2G").Close()
 	s.CpusPerVppContainer = 3
