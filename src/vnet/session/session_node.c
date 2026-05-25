@@ -1361,7 +1361,7 @@ session_tx_set_dequeue_params (vlib_main_t * vm, session_tx_context_t * ctx,
 	      ctx->sp.snd_mss = clib_min (ctx->sp.snd_mss, len);
 	      offset = ctx->hdr.data_length + sizeof (session_dgram_hdr_t);
 	      first_dgram_len = len;
-	      max_offset = clib_min (ctx->max_dequeue, 16 << 10);
+	      max_offset = clib_min (ctx->max_dequeue, 32 << 10);
 
 	      while (offset < max_offset)
 		{
