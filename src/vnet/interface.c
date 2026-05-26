@@ -1551,9 +1551,11 @@ vnet_rename_interface (vnet_main_t * vnm, u32 hw_if_index, char *new_name)
   hash_unset_mem (im->hw_interface_by_name, old_name);
   hash_set_mem (im->hw_interface_by_name, hw->name, hw_if_index);
 
+  vlib_worker_thread_barrier_sync (vm);
   /* rename tx/output nodes */
   vlib_node_rename (vm, hw->tx_node_index, "%v-tx", hw->name);
   vlib_node_rename (vm, hw->output_node_index, "%v-output", hw->name);
+  vlib_worker_thread_barrier_release (vm);
 
   /* free the old name vector */
   vec_free (old_name);

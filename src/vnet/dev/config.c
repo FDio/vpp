@@ -271,7 +271,9 @@ done:
   vec_free (dm->process_nodes_waiting_for_startup_conf);
 
   vlib_node_set_state (vm, rt->node_index, VLIB_NODE_STATE_DISABLED);
+  vlib_worker_thread_barrier_sync (vm);
   vlib_node_rename (vm, rt->node_index, "deleted-%u", rt->node_index);
+  vlib_worker_thread_barrier_release (vm);
   vec_add1 (dm->free_process_node_indices, rt->node_index);
   return 0;
 }
