@@ -308,7 +308,7 @@ format_vlib_node_state (u8 * s, va_list * va)
   if (n->type == VLIB_NODE_TYPE_PROCESS)
     {
       char *state_str[] = {
-#define _(n, s) [VLIB_PROCESS_STATE_##n] = #s,
+#define _(n, s) [VLIB_PROCESS_STATE_##n] = s,
 	foreach_vlib_process_state
       };
       vlib_process_t *p = vlib_get_process_from_node (vm, n);

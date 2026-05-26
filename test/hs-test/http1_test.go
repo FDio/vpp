@@ -1246,15 +1246,15 @@ func HttpTimerSessionDisable(s *Http1Suite) {
 	Log(vpp.Vppctl("http static server www-root " + wwwRootPath + " uri tcp://" + serverAddress))
 	time.Sleep(250 * time.Millisecond)
 	resp := vpp.Vppctl("show node http-timer-process")
-	AssertContains(resp, "node http-timer-process, type process, state \"any wait\"")
+	AssertContains(resp, "node http-timer-process, type process, state any wait")
 	vpp.Vppctl("session disable")
 	time.Sleep(1 * time.Second)
 	resp = vpp.Vppctl("show node http-timer-process")
-	AssertContains(resp, "node http-timer-process, type process, state \"not started\"")
+	AssertContains(resp, "node http-timer-process, type process, state not started")
 	vpp.Vppctl("session enable")
 	time.Sleep(100 * time.Millisecond)
 	resp = vpp.Vppctl("show node http-timer-process")
-	AssertContains(resp, "node http-timer-process, type process, state \"any wait\"")
+	AssertContains(resp, "node http-timer-process, type process, state any wait")
 }
 
 func HttpRequestLineTest(s *Http1Suite) {
