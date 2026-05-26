@@ -16,6 +16,24 @@
       "message": "Is an explicit flag needed? Would it be simpler to infer that IFF_MULTI_QUEUE is not needed if num_rx_queues and num_tx_queues are set to 1?\n\nIt\u0027s just a thought. If there is some reason an explicit flag is needed or preferred, that\u0027s fine. It just seems like the decision on whether to use multiqueue could be made using the existing num_rx_queues/num_tx_queues fields.\n\nIf the flag is needed, can an equivalent API flag be added?",
       "revId": "9a7700103cbe615acffbf529af13c01afa210407",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "73a9e9a5_7d074966",
+        "filename": "src/plugins/tap/tap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 481,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2026-05-26T20:03:20Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3d6e1475_b731e1d9",
+      "revId": "9a7700103cbe615acffbf529af13c01afa210407",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
