@@ -50,6 +50,40 @@ vnet_dev_port_set_max_frame_size (vnet_main_t *vnm, vnet_hw_interface_t *hw,
   return 0;
 }
 
+clib_error_t *
+vnet_dev_port_set_link_speed (struct vnet_main_t *vnm, u32 hw_if_index, vnet_hw_if_speed_t speed)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
+  vnet_dev_instance_t *di = vnet_dev_get_dev_instance (hw->dev_instance);
+  vnet_dev_port_t *p;
+  vnet_dev_rv_t rv;
+
+  vnet_dev_port_cfg_change_req_t req = {
+    .type = VNET_DEV_PORT_CFG_SET_LINK_SPEED,
+    .link_speed = vnet_hw_if_speed_to_kbps (speed),
+  };
+
+  p = di->port;
+
+  if (!di->is_primary_if)
+    return vnet_dev_port_err (vm, p, VNET_DEV_ERR_NOT_PRIMARY_INTERFACE, "");
+
+  log_debug (p->dev, "speed %u kbps", req.link_speed);
+
+  rv = vnet_dev_port_cfg_change_req_validate (vm, p, &req);
+  if (rv == VNET_DEV_ERR_NO_CHANGE)
+    return 0;
+
+  if (rv != VNET_DEV_OK)
+    return vnet_dev_port_err (vm, p, rv, "requested link speed is not valid for port");
+
+  if ((rv = vnet_dev_process_port_cfg_change_req (vm, p, &req)) != VNET_DEV_OK)
+    return vnet_dev_port_err (vm, p, rv, "device failed to change link speed");
+
+  return 0;
+}
+
 u32
 vnet_dev_port_eth_flag_change (vnet_main_t *vnm, vnet_hw_interface_t *hw,
 			       u32 flags)

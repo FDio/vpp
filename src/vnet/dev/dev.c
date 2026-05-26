@@ -529,6 +529,7 @@ vnet_dev_main_init (vlib_main_t *vm)
 	.flow_ops_function = vnet_dev_flow_ops_fn,
 	.format_flow = format_vnet_dev_flow,
 	.set_rss_queues_function = vnet_dev_interface_set_rss_queues,
+	.set_link_speed_function = vnet_dev_port_set_link_speed,
       };
       driver->dev_class_index = vnet_register_device_class (vm, dev_class);
 
