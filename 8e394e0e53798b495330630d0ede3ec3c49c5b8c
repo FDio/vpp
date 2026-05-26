@@ -217,6 +217,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "39bbb596_0cfc78c7",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 8
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2026-05-26T01:11:28Z",
+      "side": 1,
+      "message": "yeah, you said in the original commit message that these are for the SONiC project, but I was asking about the networking use case for tunnels that behave this way.\n\nOne could view your requirements as a new tunnel type, or you could model then as properties (uni-directionality and promiscuity) of the current types. I want to understand why the networking use case requires them so we can best determine the fit. For example, perhaps there is a use case for uni-directionality and promiscuity on their own and we wouldn\u0027t want to introduce new type for that too.",
+      "parentUuid": "184d2cf2_81d15ee3",
+      "revId": "8e394e0e53798b495330630d0ede3ec3c49c5b8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "a598d93f_074b0bd5",
         "filename": "test/test_ipip.py",
         "patchSetId": 8
