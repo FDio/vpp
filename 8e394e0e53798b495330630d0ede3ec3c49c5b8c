@@ -235,6 +235,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "2c3c4d9f_2ab40f1b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 8
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3312
+      },
+      "writtenOn": "2026-05-26T06:15:12Z",
+      "side": 1,
+      "message": "The primary use case is data-center fabric path / switch health probing. The pattern is widely used in DC fabrics for per-link liveness and drop localization.\n\nA prober in the fabric crafts an IPinIP packet. The outer DIP is set to the loopback address of a destination T0 it wants to probe; the inner DIP is set back to the prober\u0027s own IP. The outer header is also chosen to force a specific ECMP hash so the packet is steered down one particular fabric link under test. The packet is routed across the fabric and arrives at the destination T0, where it hits the T0\u0027s IPinIP decapsulation rule on its loopback. The T0 strips the outer header and routes the inner packet (whose DIP is the prober) back via normal underlay forwarding. If the probe returns, that one path and that one destination T0 are healthy; by sweeping the outer header, the prober lights up each link individually and uses the results to localize drops to a specific link or switch.\n\nSo the requirement to SONiC is literally \"terminate IPinIP whose outer-dst matches this loopback, regardless of outer-src, with no forwarding adjacency tied to the tunnel object.\" That is the shape this PR introduces, and SONiC has modeled it in SAI for years as a P2MP termination entry with no src_ip key and no companion encap binding.",
+      "parentUuid": "39bbb596_0cfc78c7",
+      "revId": "8e394e0e53798b495330630d0ede3ec3c49c5b8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "a598d93f_074b0bd5",
         "filename": "test/test_ipip.py",
         "patchSetId": 8
