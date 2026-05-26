@@ -1196,7 +1196,12 @@ http_connect_connection (session_endpoint_cfg_t *sep)
   HTTP_DBG (1, "hc ho_index %x", ho_hc_index);
 
   if ((error = vnet_connect (cargs)))
-    return error;
+    {
+      vec_free (ho_hc->app_name);
+      vec_free (ho_hc->host);
+      http_ctx_free (ho_hc);
+      return error;
+    }
 
   ho_hc->hc_tc_session_handle = cargs->sh;
   props = application_segment_manager_properties (app);

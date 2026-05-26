@@ -398,12 +398,17 @@ hcc_attach ()
 static int
 hcc_connect_rpc (void *rpc_args)
 {
+  hcc_main_t *hcm = &hcc_main;
   vnet_connect_args_t *a = rpc_args;
   int rv;
 
   rv = vnet_connect (a);
   if (rv)
-    clib_warning ("connect returned: %U", format_session_error, rv);
+    {
+      clib_warning ("connect returned: %U", format_session_error, rv);
+      hcc_ho_session_free (a->api_context);
+      vlib_process_signal_event_mt (hcm->vlib_main, hcm->cli_node_index, HCC_CONNECT_FAILED, 0);
+    }
 
   session_endpoint_free_ext_cfgs (&a->sep_ext);
   vec_free (a);
