@@ -7,6 +7,14 @@
 #include <vnet/fib/fib_entry.h>
 #include <vnet/fib/ip4_fib.h>
 
+/**
+ * When set, the class E drop route (240.0.0.0/4) installed by
+ * ip4_fib_hash_load_specials() is not installed, allowing
+ * control-plane routes in that range to take effect.
+ * Enabled via the startup config: ip { no-class-e-drop }
+ */
+static int ip4_fib_no_class_e_drop;
+
 /*
  * A table of prefixes to be added to tables and the sources for them
  */
@@ -89,6 +97,13 @@ static const ip4_fib_table_special_prefix_t ip4_specials[] = {
     }
 };
 
+static_always_inline int
+ip4_fib_special_is_class_e (const ip4_fib_table_special_prefix_t *s)
+{
+    return (s->ift_prefix.fp_addr.ip4.data_u32 == 0xf0000000 &&
+	    s->ift_prefix.fp_len == 4);
+}
+
 void
 ip4_fib_hash_load_specials (u32 fib_index)
 {
@@ -99,6 +114,10 @@ ip4_fib_hash_load_specials (u32 fib_index)
 
     for (ii = 0; ii < ARRAY_LEN(ip4_specials); ii++)
     {
+	/* skip class E drop route (240.0.0.0/4) if configured */
+	if (ip4_fib_no_class_e_drop && ip4_fib_special_is_class_e(&ip4_specials[ii]))
+	    continue;
+
 	fib_prefix_t prefix = ip4_specials[ii].ift_prefix;
 
 	prefix.fp_addr.ip4.data_u32 =
@@ -122,6 +141,10 @@ ip4_fib_hash_flush_specials (u32 fib_index)
      */
     for (ii = ARRAY_LEN(ip4_specials) - 1; ii >= 0; ii--)
     {
+	/* skip class E if it was never added */
+	if (ip4_fib_no_class_e_drop && ip4_fib_special_is_class_e(&ip4_specials[ii]))
+	    continue;
+
 	fib_prefix_t prefix = ip4_specials[ii].ift_prefix;
 
 	prefix.fp_addr.ip4.data_u32 =
@@ -622,6 +645,8 @@ ip_config (vlib_main_t * vm, unformat_input_t * input)
     {
 	if (unformat (input, "default-table-name %s", &default_name))
 	    ;
+	else if (unformat (input, "no-class-e-drop"))
+	    ip4_fib_no_class_e_drop = 1;
 	else
 	    return clib_error_return (0, "unknown input '%U'",
 				      format_unformat_error, input);
