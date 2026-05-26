@@ -2540,7 +2540,6 @@ VLIB_CLI_COMMAND (cmd_set_if_name, static) = {
   .path = "set interface name",
   .short_help = "set interface name <interface-name> <new-interface-name>",
   .function = set_interface_name,
-  .is_mp_safe = 1,
 };
 
 static clib_error_t *
