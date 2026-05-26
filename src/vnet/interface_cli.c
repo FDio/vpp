@@ -2828,3 +2828,60 @@ VLIB_CLI_COMMAND (cmd_show_interface_transceiver, static) = {
 		"[eeprom] [verbose]",
   .function = show_interface_transceiver,
 };
+
+static clib_error_t *
+set_interface_link_speed (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  u32 hw_if_index = ~0;
+  u32 speed_kbps = 0;
+
+  if (!unformat_user (input, unformat_vnet_hw_interface, vnm, &hw_if_index))
+    return clib_error_return (0, "unknown interface `%U'", format_unformat_error, input);
+
+  if (!unformat (input, "%u", &speed_kbps))
+    return clib_error_return (0, "expected speed in Kbps");
+
+  return vnet_hw_interface_change_link_speed (vnm, hw_if_index, speed_kbps);
+}
+
+VLIB_CLI_COMMAND (cmd_set_interface_link_speed, static) = {
+  .path = "set interface link-speed",
+  .short_help = "set interface link-speed <interface> <speed-kbps>",
+  .function = set_interface_link_speed,
+};
+
+static clib_error_t *
+show_interface_link_speed_capa (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  u32 hw_if_index = ~0;
+
+  if (!unformat_user (input, unformat_vnet_hw_interface, vnm, &hw_if_index))
+    return clib_error_return (0, "unknown interface `%U'", format_unformat_error, input);
+
+  vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
+
+  if (hw->supported_link_speeds == 0)
+    {
+      vlib_cli_output (vm, "no speed capabilities reported for %U", format_vnet_hw_if_index_name,
+		       vnm, hw_if_index);
+      return 0;
+    }
+
+  vlib_cli_output (vm, "Supported speeds for %U:", format_vnet_hw_if_index_name, vnm, hw_if_index);
+
+#define _(name, bit, mbps)                                                                         \
+  if (hw->supported_link_speeds & bit)                                                             \
+    vlib_cli_output (vm, "  %u Kbps", (u32) mbps * 1000);
+  foreach_vnet_hw_if_speed
+#undef _
+
+    return 0;
+}
+
+VLIB_CLI_COMMAND (cmd_show_interface_link_speed_capa, static) = {
+  .path = "show interface link-speed-capa",
+  .short_help = "show interface link-speed-capa <interface>",
+  .function = show_interface_link_speed_capa,
+};
