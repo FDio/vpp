@@ -160,7 +160,8 @@ typedef struct
   _ (DEL_RX_FLOW)                                                             \
   _ (GET_RX_FLOW_COUNTER)                                                     \
   _ (RESET_RX_FLOW_COUNTER)                                                   \
-  _ (SET_RSS_KEY)
+  _ (SET_RSS_KEY)                                                             \
+  _ (SET_LINK_SPEED)
 
 typedef enum
 {
@@ -183,6 +184,7 @@ typedef struct vnet_dev_port_cfg_change_req
     u16 max_rx_frame_size;
     vnet_dev_queue_id_t queue_id;
     vnet_dev_rss_key_t rss_key;
+    u32 link_speed;
     struct
     {
       u32 flow_index;
@@ -624,6 +626,8 @@ int vnet_dev_flow_err (vlib_main_t *, vnet_dev_rv_t);
 /* handlers.c */
 clib_error_t *vnet_dev_port_set_max_frame_size (vnet_main_t *,
 						vnet_hw_interface_t *, u32);
+clib_error_t *vnet_dev_port_set_link_speed (struct vnet_main_t *, u32,
+					    vnet_hw_if_speed_t);
 u32 vnet_dev_port_eth_flag_change (vnet_main_t *, vnet_hw_interface_t *, u32);
 clib_error_t *vnet_dev_port_mac_change (vnet_hw_interface_t *, const u8 *,
 					const u8 *);

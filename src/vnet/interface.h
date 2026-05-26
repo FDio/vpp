@@ -96,6 +96,58 @@ typedef clib_error_t *(
 				 struct vnet_hw_interface_t *hi,
 				 vnet_interface_eeprom_t **eeprom);
 
+/* Speed bitmap enum for interface link speeds */
+#define foreach_vnet_hw_if_speed \
+  _ (UNKNOWN, 0x0000, 0)        \
+  _ (10M,     0x0001, 10)       \
+  _ (100M,    0x0002, 100)      \
+  _ (1G,      0x0004, 1000)     \
+  _ (2_5G,    0x0008, 2500)     \
+  _ (5G,      0x0010, 5000)     \
+  _ (10G,     0x0020, 10000)    \
+  _ (20G,     0x0040, 20000)    \
+  _ (25G,     0x0080, 25000)    \
+  _ (40G,     0x0100, 40000)    \
+  _ (50G,     0x0200, 50000)    \
+  _ (56G,     0x0400, 56000)    \
+  _ (100G,    0x0800, 100000)   \
+  _ (200G,    0x1000, 200000)   \
+  _ (400G,    0x2000, 400000)   \
+  _ (800G,    0x4000, 800000)
+
+typedef enum
+{
+#define _(name, bit, mbps) VNET_HW_IF_SPEED_##name = bit,
+  foreach_vnet_hw_if_speed
+#undef _
+} vnet_hw_if_speed_t;
+
+/* Interface set link speed callback. */
+typedef clib_error_t *(
+  vnet_interface_set_link_speed_function_t)
+  (struct vnet_main_t *vnm, u32 hw_if_index, vnet_hw_if_speed_t speed);
+
+/* Kbps -> single speed enum bit (returns UNKNOWN if no match) */
+always_inline vnet_hw_if_speed_t
+vnet_hw_if_speed_from_kbps (u32 speed_kbps)
+{
+  u32 speed_mbps = speed_kbps / 1000;
+#define _(name, bit, mbps) if (speed_mbps == mbps) return bit;
+  foreach_vnet_hw_if_speed
+#undef _
+  return VNET_HW_IF_SPEED_UNKNOWN;
+}
+
+/* Single speed enum bit -> Kbps */
+always_inline u32
+vnet_hw_if_speed_to_kbps (vnet_hw_if_speed_t speed)
+{
+#define _(name, bit, mbps) if (speed == bit) return mbps * 1000;
+  foreach_vnet_hw_if_speed
+#undef _
+  return 0;
+}
+
 typedef enum
 {
   VNET_FLOW_DEV_OP_ADD_FLOW,
@@ -306,6 +358,12 @@ typedef struct _vnet_device_class
 
   /* Function to read EEPROM data from physical network device */
   vnet_interface_eeprom_read_t *eeprom_read_function;
+
+  /* Function to set link speed on the physical device.
+   * Receives the speed as a bitmap enum value.
+   * The driver is responsible for calling vnet_hw_interface_set_link_speed()
+   * when the PHY settles at the new speed. */
+  vnet_interface_set_link_speed_function_t *set_link_speed_function;
 
   vnet_tm_system_t *vnet_tm_sys_impl;
 } vnet_device_class_t;
@@ -713,6 +771,9 @@ typedef struct vnet_hw_interface_t
 
   /* link speed in kbps */
   u32 link_speed;
+
+  /* bitmask of supported link speeds (vnet_hw_if_speed_t) */
+  u32 supported_link_speeds;
 
   /* Next index in interface-output node for this interface
      used by node function vnet_per_buffer_interface_output() */
