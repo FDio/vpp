@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ac717017_ddbfaf2e",
+        "filename": "src/plugins/vrrp/node.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 691,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2026-05-26T22:26:15Z",
+      "side": 1,
+      "message": "Overwriting the value of `t-\u003evrrp.n_addrs` will change what gets printed in the line of trace output that displays the contents of the fixed fields so it will not reflect what was received in the packet. I think it could be confusing to a user if they know advertisements are being sent by a peer with some number of virtual IP addresses but the trace output says the received packet had less than that.\n\nInstead of modifying the value of `t-\u003evrrp.n_addrs` here, there should be a separate field `u8 n_addrs` added to vrrp_trace_t to indicate the number of addresses populated in the addrs field and that new field should be set here.\n\nThen format_vrrp_trace() can look at both t-\u003evrrp.n_addrs and t-\u003en_addrs (e.g. `for (i \u003d 0; i \u003c t-\u003evrrp.n_addrs \u0026\u0026 i \u003c t-\u003en_addrs; i++) { ... }`when deciding how many addresses to format.",
+      "revId": "06b4430db212df4ba390a5f7a78871509c3e6d8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
