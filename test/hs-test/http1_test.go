@@ -21,7 +21,8 @@ import (
 )
 
 func init() {
-	RegisterVethTests(HttpCliTest, HttpCliConnectErrorTest, HttpCliTlsTest)
+	RegisterVethTests(HttpCliTest, HttpCliConnectErrorTest, HttpCliConnectNoRouteTest,
+		HttpCliListenTcpPortInUseTest, HttpCliTlsTest)
 	RegisterSoloVethTests(HttpClientGetMemLeakTest)
 	RegisterHttp1Tests(HeaderServerTest, HttpPersistentConnectionTest, HttpPipeliningTest,
 		HttpCliMethodNotAllowedTest, HttpAbsoluteFormUriTest, HttpCliBadRequestTest,
@@ -32,6 +33,7 @@ func init() {
 		HttpRequestLineTest, HttpClientGetTimeout, HttpConnTimeoutTest, HttpClientGetRepeatTest, HttpClientPostRepeatTest,
 		HttpIgnoreH2UpgradeTest, HttpInvalidAuthorityFormUriTest, HttpHeaderErrorConnectionDropTest,
 		HttpClientInvalidHeaderNameTest, HttpTimerSessionDisable, HttpClientBodySizeTest,
+		HttpCliSmallRxFifoReplyTest, HttpContentLengthLongerBodyTest,
 		HttpClientNoPrintTest, HttpClientChunkedDownloadTest, HttpClientPostRejectedTest,
 		HttpClientRedirect302Test, HttpClientRedirect308Test, HttpSendGetAndCloseTest, HttpClientRedirectLimitTest, HttpClientRedirectGetMemLeakTest,
 		HttpClientRedirectPostMemLeakTest, HttpGetTpsTest, HttpPostTpsTest, HttpGetTpsInterruptModeTest, HttpPostTpsInterruptModeTest,
@@ -305,6 +307,30 @@ func HttpCliConnectErrorTest(s *VethsSuite) {
 	AssertContains(o, "failed to connect")
 }
 
+func HttpCliConnectNoRouteTest(s *VethsSuite) {
+	uri := "http://198.51.100.1/no/route"
+
+	o := s.Containers.ClientVpp.VppInstance.Vppctl("http cli client uri " + uri)
+
+	Log(o)
+	AssertContains(o, "failed to connect")
+}
+
+func HttpCliListenTcpPortInUseTest(s *VethsSuite) {
+	serverAddress := s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1
+	conflictAddress := s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port2
+	serverVpp := s.Containers.ServerVpp.VppInstance
+
+	serverVpp.Vppctl("http cli server uri http://" + serverAddress)
+	serverVpp.Vppctl("test echo server uri tcp://" +
+		s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port2)
+
+	o := serverVpp.Vppctl("http cli server listener add uri http://" + conflictAddress)
+
+	Log(o)
+	AssertContains(o, "failed to start listening")
+}
+
 func HttpClientTest(s *Http1Suite) {
 	serverAddress := s.HostAddr() + ":" + s.Ports.Http
 	server := ghttp.NewUnstartedServer()
@@ -328,6 +354,31 @@ func HttpClientTest(s *Http1Suite) {
 	Log(o)
 	AssertContains(o, "<html>", "<html> not found in the result!")
 	AssertContains(o, "</html>", "</html> not found in the result!")
+}
+
+func HttpCliSmallRxFifoReplyTest(s *Http1Suite) {
+	serverAddress := s.HostAddr() + ":" + s.Ports.Http
+	vpp := s.Containers.Vpp.VppInstance
+
+	server := ghttp.NewUnstartedServer()
+	l, err := net.Listen("tcp", serverAddress)
+	AssertNil(err, fmt.Sprint(err))
+	server.HTTPTestServer.Listener = l
+	server.AppendHandlers(
+		ghttp.CombineHandlers(
+			s.LogHttpReq(false),
+			ghttp.VerifyRequest("GET", "/test"),
+			ghttp.RespondWith(http.StatusOK, "ok",
+				http.Header{"X-Large-Header": {strings.Repeat("a", 6000)}}),
+		))
+	server.Start()
+	defer server.Close()
+
+	uri := "http://" + serverAddress + "/test"
+	o := vpp.Vppctl("http cli client fifo-size 1 uri " + uri)
+
+	Log(o)
+	AssertContains(o, "transport closed")
 }
 
 func HttpClientChunkedDownloadTest(s *Http1Suite) {
@@ -1375,6 +1426,49 @@ func HttpContentLengthTest(s *Http1Suite) {
 		"POST /interface_stats.json HTTP/1.1\r\nHost: example.com\r\nContent-Length:\t\t4\r\n\r\n"+ifName)
 	AssertNil(err, fmt.Sprint(err))
 	validatePostInterfaceStats(s, resp)
+}
+
+func HttpContentLengthLongerBodyTest(s *Http1Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	serverAddress := s.VppAddr() + ":" + s.Ports.Http
+	Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + " url-handlers debug max-body-size 12"))
+
+	conn, err := net.DialTimeout("tcp", serverAddress, time.Second*30)
+	AssertNil(err, fmt.Sprint(err))
+	defer conn.Close()
+	err = conn.SetDeadline(time.Now().Add(time.Second * 10))
+	AssertNil(err, fmt.Sprint(err))
+
+	request := "POST /interface_stats.json HTTP/1.1\r\nHost: example.com\r\nContent-Length: 4\r\n\r\n"
+	_, err = conn.Write([]byte(request))
+	AssertNil(err, fmt.Sprint(err))
+
+	requestSeen := false
+	lastStats := ""
+	for i := 0; i < 30; i++ {
+		lastStats = vpp.Vppctl("show http stats")
+		if strings.Contains(lastStats, "1 requests received") {
+			requestSeen = true
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	AssertEqual(true, requestSeen, lastStats)
+
+	_, err = conn.Write([]byte(s.VppIfName() + strings.Repeat("x", 512)))
+	AssertNil(err, fmt.Sprint(err))
+
+	protocolError := false
+	for i := 0; i < 30; i++ {
+		lastStats = vpp.Vppctl("show http stats")
+		if strings.Contains(lastStats, "1 connections protocol error") {
+			Log(lastStats)
+			protocolError = true
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	AssertEqual(true, protocolError, lastStats)
 }
 
 func HttpHeaderErrorConnectionDropTest(s *Http1Suite) {

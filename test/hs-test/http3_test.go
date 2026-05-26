@@ -19,11 +19,15 @@ import (
 func init() {
 	RegisterH3Tests(Http3GetTest, Http3DownloadTest, Http3PostTest, Http3UploadTest, Http3ClientGetRepeatTest,
 		Http3ClientGetMultiplexingTest, Http3PeerResetStream, Http3ClientRequestIncompleteTest,
-		Http3MissingPseudoHeaderTest, Http3PseudoHeaderAfterRegularTest, Http3ReservedFrameTest,
-		Http3DataFrameOnCtrlStreamTest, Http3GoawayOnReqStreamTest, Http3SecondSettingsFrameTest,
-		Http3ReservedSettingsTest, Http3MissingSettingsTest, Http3SecondCtrlStreamTest, Http3CtrlStreamClosedTest,
+		Http3MissingPseudoHeaderTest, Http3MissingSchemePseudoHeaderTest, Http3MissingPathPseudoHeaderTest,
+		Http3MissingAuthorityPseudoHeaderTest, Http3ConnectWithSchemePathPseudoHeadersTest,
+		Http3PseudoHeaderAfterRegularTest, Http3ReservedFrameTest, Http3DataFrameOnCtrlStreamTest,
+		Http3GoawayOnReqStreamTest, Http3SecondSettingsFrameTest,
+		Http3ReservedSettingsTest, Http3MissingSettingsTest, Http3SecondCtrlStreamTest,
+		Http3SecondQpackDecoderStreamTest, Http3SecondQpackEncoderStreamTest, Http3CtrlStreamClosedTest,
 		Http3QpackDecompressionFailedTest, Http3ClientOpenPushStreamTest, Http3DataBeforeHeadersTest,
-		Http3StaticGetTest, Http3MaxHeaderListSizeTest)
+		Http3LongerDataThanContentLengthTest, Http3HalfClosedBeforeAllDataTest, Http3StaticGetTest,
+		Http3MaxHeaderListSizeTest)
 	RegisterH3MWTests(Http3ClientFailedConnectMWTest)
 	RegisterVethTests(Http3CliTest, Http3ClientPostTest, Http3ClientPostPtrTest)
 }
@@ -386,13 +390,60 @@ func Http3ClientRequestIncompleteTest(s *Http3Suite) {
 }
 
 func Http3MissingPseudoHeaderTest(s *Http3Suite) {
-	// metod pseudo header is missing
+	// method pseudo header is missing
 	// server should reset stream with H3_MESSAGE_ERROR
 	http3SenInvalidReqExpectStreamError(
 		s,
 		[]byte{
 			0x01, 0x0D, 0x00, 0x00, 0xD7, 0x50, 0x01, 0x61,
 			0xC1, 0x23, 0x61, 0x62, 0x63, 0x01, 0x5A,
+		},
+		http3.ErrCodeMessageError)
+}
+
+func Http3MissingSchemePseudoHeaderTest(s *Http3Suite) {
+	// scheme pseudo header is missing
+	// server should reset stream with H3_MESSAGE_ERROR
+	http3SenInvalidReqExpectStreamError(
+		s,
+		[]byte{
+			0x01, 0x07, 0x00, 0x00, 0xD1, 0x50, 0x01, 0x61,
+			0xC1,
+		},
+		http3.ErrCodeMessageError)
+}
+
+func Http3MissingPathPseudoHeaderTest(s *Http3Suite) {
+	// path pseudo header is missing
+	// server should reset stream with H3_MESSAGE_ERROR
+	http3SenInvalidReqExpectStreamError(
+		s,
+		[]byte{
+			0x01, 0x07, 0x00, 0x00, 0xD1, 0xD7, 0x50, 0x01,
+			0x61,
+		},
+		http3.ErrCodeMessageError)
+}
+
+func Http3MissingAuthorityPseudoHeaderTest(s *Http3Suite) {
+	// authority pseudo header is missing
+	// server should reset stream with H3_MESSAGE_ERROR
+	http3SenInvalidReqExpectStreamError(
+		s,
+		[]byte{
+			0x01, 0x05, 0x00, 0x00, 0xD1, 0xD7, 0xC1,
+		},
+		http3.ErrCodeMessageError)
+}
+
+func Http3ConnectWithSchemePathPseudoHeadersTest(s *Http3Suite) {
+	// plain CONNECT request must omit scheme and path pseudo headers
+	// server should reset stream with H3_MESSAGE_ERROR
+	http3SenInvalidReqExpectStreamError(
+		s,
+		[]byte{
+			0x01, 0x08, 0x00, 0x00, 0xCF, 0xD7, 0xC1, 0x50,
+			0x01, 0x61,
 		},
 		http3.ErrCodeMessageError)
 }
@@ -412,6 +463,48 @@ func Http3PseudoHeaderAfterRegularTest(s *Http3Suite) {
 
 func Http3DataBeforeHeadersTest(s *Http3Suite) {
 	http3SendReqExpectConnError(s, []byte{0x00, 0x01, 0xEE}, http3.ErrCodeFrameUnexpected)
+}
+
+func Http3LongerDataThanContentLengthTest(s *Http3Suite) {
+	// content-length is 4, but DATA frame has 5 bytes
+	http3SendReqExpectConnError(
+		s,
+		[]byte{
+			0x01, 0x0B, 0x00, 0x00, 0xD4, 0xD7, 0xC1, 0x50,
+			0x01, 0x61, 0x54, 0x01, 0x34, 0x00, 0x05, 0x78,
+			0x78, 0x78, 0x78, 0x78,
+		},
+		http3.ErrCodeGeneralProtocolError)
+}
+
+func Http3HalfClosedBeforeAllDataTest(s *Http3Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	serverAddress := s.VppAddr() + ":" + s.Ports.Port1
+	Log(vpp.Vppctl("http tps no-zc h3 uri https://" + serverAddress))
+
+	conn := H3ClientConnect(serverAddress)
+	defer conn.CloseWithError(0, "")
+	stream, err := conn.OpenStream()
+	AssertNil(err)
+	// content-length is 5, but DATA frame has 4 bytes and then FIN
+	_, err = stream.Write([]byte{
+		0x01, 0x0B, 0x00, 0x00, 0xD4, 0xD7, 0xC1, 0x50,
+		0x01, 0x61, 0x54, 0x01, 0x35, 0x00, 0x04, 0x78,
+		0x78, 0x78, 0x78,
+	})
+	AssertNil(err)
+	AssertNil(stream.Close())
+
+	stream.SetReadDeadline(time.Now().Add(time.Second))
+	_, err = stream.Read([]byte{0})
+	AssertNotNil(err, "expected stream reset")
+	Log(err)
+	expectedErr := quic.StreamError{
+		StreamID:  stream.StreamID(),
+		ErrorCode: quic.StreamErrorCode(http3.ErrCodeRequestIncomplete),
+		Remote:    true,
+	}
+	AssertMatchError(err, &expectedErr, "expected error code "+http3.ErrCodeRequestIncomplete.String())
 }
 
 func http3SendCtrlExpectConnError(s *Http3Suite, p []byte, expectedErrorCode http3.ErrCode) {
@@ -522,6 +615,18 @@ func Http3ClientOpenPushStreamTest(s *Http3Suite) {
 }
 
 func Http3SecondCtrlStreamTest(s *Http3Suite) {
+	http3SecondUniStreamExpectConnError(s, 0x00)
+}
+
+func Http3SecondQpackDecoderStreamTest(s *Http3Suite) {
+	http3SecondUniStreamExpectConnError(s, 0x03)
+}
+
+func Http3SecondQpackEncoderStreamTest(s *Http3Suite) {
+	http3SecondUniStreamExpectConnError(s, 0x02)
+}
+
+func http3SecondUniStreamExpectConnError(s *Http3Suite, streamType byte) {
 	vpp := s.Containers.Vpp.VppInstance
 	serverAddress := s.VppAddr() + ":" + s.Ports.Port1
 	Log(vpp.Vppctl("http tps no-zc h3 uri https://" + serverAddress))
@@ -529,10 +634,12 @@ func Http3SecondCtrlStreamTest(s *Http3Suite) {
 	conn := H3ClientConnect(serverAddress)
 	stream1, err := conn.OpenUniStream()
 	AssertNil(err)
-	stream1.Write([]byte{0x00})
+	_, err = stream1.Write([]byte{streamType})
+	AssertNil(err)
 	stream2, err := conn.OpenUniStream()
 	AssertNil(err)
-	stream2.Write([]byte{0x00})
+	_, err = stream2.Write([]byte{streamType})
+	AssertNil(err)
 	select {
 	case <-conn.Context().Done():
 		err := context.Cause(conn.Context())
