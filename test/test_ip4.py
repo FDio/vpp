@@ -3681,5 +3681,138 @@ class TestIP4InterfaceRx(VppTestCase):
         self.send_and_expect(self.pg0, pkts_dst, self.pg2)
 
 
+class TestIPv4NoClassEDrop(VppTestCase):
+    """Verify that 'ip { no-class-e-drop }' removes the 240.0.0.0/4 drop route
+    while keeping all other special routes intact."""
+
+    extra_vpp_config = ["ip", "{", "no-class-e-drop", "}"]
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestIPv4NoClassEDrop, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestIPv4NoClassEDrop, cls).tearDownClass()
+
+    def setUp(self):
+        super(TestIPv4NoClassEDrop, self).setUp()
+        self.create_pg_interfaces(range(2))
+        for i in self.pg_interfaces:
+            i.admin_up()
+            i.config_ip4()
+            i.resolve_arp()
+
+    def tearDown(self):
+        for i in self.pg_interfaces:
+            i.unconfig_ip4()
+            i.admin_down()
+        super(TestIPv4NoClassEDrop, self).tearDown()
+
+    def test_class_e_route_absent(self):
+        """240.0.0.0/4 drop route should NOT be present"""
+        self.assertFalse(
+            find_route(self, "240.0.0.0", 4),
+            "240.0.0.0/4 should not exist when no-class-e-drop is set",
+        )
+
+    def test_other_specials_present(self):
+        """Other special routes must still be installed"""
+        self.assertTrue(find_route(self, "0.0.0.0", 0), "0.0.0.0/0 should exist")
+        self.assertTrue(find_route(self, "0.0.0.0", 32), "0.0.0.0/32 should exist")
+        self.assertTrue(
+            find_route(self, "224.0.0.0", 4), "224.0.0.0/4 mcast drop should exist"
+        )
+        self.assertTrue(
+            find_route(self, "255.255.255.255", 32),
+            "255.255.255.255/32 should exist",
+        )
+
+    def test_class_e_absent_in_new_vrf(self):
+        """240.0.0.0/4 should also be absent in a newly created VRF"""
+        tbl = VppIpTable(self, 10)
+        tbl.add_vpp_config()
+        self.assertFalse(
+            find_route(self, "240.0.0.0", 4, table_id=10),
+            "240.0.0.0/4 should not exist in VRF 10",
+        )
+        self.assertTrue(
+            find_route(self, "0.0.0.0", 0, table_id=10),
+            "0.0.0.0/0 should exist in VRF 10",
+        )
+        tbl.remove_vpp_config()
+
+    def test_class_e_packet_forwarded(self):
+        """Class-E destination should follow default route when no-class-e-drop is set"""
+        VppIpRoute(
+            self,
+            "0.0.0.0",
+            0,
+            [VppRoutePath(self.pg1.remote_ip4, self.pg1.sw_if_index)],
+        ).add_vpp_config()
+
+        pkt = (
+            Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+            / IP(src=self.pg0.remote_ip4, dst="240.1.1.1")
+            / UDP(sport=1234, dport=1234)
+            / Raw(b"\xa5" * 100)
+        )
+
+        rx = self.send_and_expect(self.pg0, [pkt], self.pg1)
+        self.assertEqual(rx[0][IP].dst, "240.1.1.1")
+
+
+class TestIPv4ClassEDropDefault(VppTestCase):
+    """Verify the default behavior: 240.0.0.0/4 IS present when
+    no-class-e-drop is NOT configured."""
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestIPv4ClassEDropDefault, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestIPv4ClassEDropDefault, cls).tearDownClass()
+
+    def setUp(self):
+        super(TestIPv4ClassEDropDefault, self).setUp()
+        self.create_pg_interfaces(range(2))
+        for i in self.pg_interfaces:
+            i.admin_up()
+            i.config_ip4()
+            i.resolve_arp()
+
+    def tearDown(self):
+        for i in self.pg_interfaces:
+            i.unconfig_ip4()
+            i.admin_down()
+        super(TestIPv4ClassEDropDefault, self).tearDown()
+
+    def test_class_e_route_present(self):
+        """240.0.0.0/4 drop route should be present by default"""
+        self.assertTrue(
+            find_route(self, "240.0.0.0", 4),
+            "240.0.0.0/4 should exist by default",
+        )
+
+    def test_class_e_packet_dropped(self):
+        """Class-E destination should be dropped when no-class-e-drop is not set"""
+        VppIpRoute(
+            self,
+            "0.0.0.0",
+            0,
+            [VppRoutePath(self.pg1.remote_ip4, self.pg1.sw_if_index)],
+        ).add_vpp_config()
+
+        pkt = (
+            Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+            / IP(src=self.pg0.remote_ip4, dst="240.1.1.1")
+            / UDP(sport=1234, dport=1234)
+            / Raw(b"\xa5" * 100)
+        )
+
+        self.send_and_assert_no_replies(self.pg0, [pkt], "class-e default drop")
+
+
 if __name__ == "__main__":
     unittest.main(testRunner=VppTestRunner)
