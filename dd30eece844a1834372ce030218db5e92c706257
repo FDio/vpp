@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ce69c3d8_5a414c04",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-05-26T15:07:34Z",
+      "side": 1,
+      "message": "Looks neat, thanks !\nOverall looks good, just wondering if we can reduce the dependency VPP has towards the calico-vpp repository",
+      "revId": "dd30eece844a1834372ce030218db5e92c706257",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4aba1a47_c0345e58",
+        "filename": "extras/kube-test/kubernetes/baremetal-calicovpp-config-template.yaml",
+        "patchSetId": 6
+      },
+      "lineNbr": 156,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-05-26T15:07:34Z",
+      "side": 1,
+      "message": "Maybe as a way to not have to parametrize this (and maintain a yaml templating mechanism) we could apply one of the manifests here [0]. If none of them match, maybe let\u0027s add a custom \u0027kubetest\u0027 one\n\n[0] https://github.com/projectcalico/vpp-dataplane/tree/master/yaml/generated",
+      "revId": "dd30eece844a1834372ce030218db5e92c706257",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "afec3f7f_81e31105",
+        "filename": "extras/kube-test/script/calicovpp-layout.sh",
+        "patchSetId": 6
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-05-26T15:07:34Z",
+      "side": 1,
+      "message": "imho we can also remove the need to introspect `VPP_BUILD_REL_PATH` by relying on the `VPP_BUILD_DIR` parameter to the `make vpp` directive. We could inject our own (vpp repo based) `VPP_BUILD_DIR` and not rely on CalicoVPP\u0027s directory structure",
+      "revId": "dd30eece844a1834372ce030218db5e92c706257",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8e0986c1_50d9cc9d",
+        "filename": "extras/kube-test/script/quick-import.sh",
+        "patchSetId": 6
+      },
+      "lineNbr": 75,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-05-26T15:07:34Z",
+      "side": 1,
+      "message": "Can we make a patch in calico-vpp that moves the `vpp` directive to the top level ? That way we would not need to find `CALICOVPP_MAKE_DIR` and could just call `make -C $CALICOVPP_DIR vpp ...`",
+      "revId": "dd30eece844a1834372ce030218db5e92c706257",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
