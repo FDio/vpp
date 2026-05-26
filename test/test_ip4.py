@@ -3681,5 +3681,75 @@ class TestIP4InterfaceRx(VppTestCase):
         self.send_and_expect(self.pg0, pkts_dst, self.pg2)
 
 
+class TestIPv4NoClassEDrop(VppTestCase):
+    """Verify that 'ip { no-class-e-drop }' removes the 240.0.0.0/4 drop route
+    while keeping all other special routes intact."""
+
+    extra_vpp_config = ["ip", "{", "no-class-e-drop", "}"]
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestIPv4NoClassEDrop, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestIPv4NoClassEDrop, cls).tearDownClass()
+
+    def test_class_e_route_absent(self):
+        """240.0.0.0/4 drop route should NOT be present"""
+        self.assertFalse(
+            find_route(self, "240.0.0.0", 4),
+            "240.0.0.0/4 should not exist when no-class-e-drop is set",
+        )
+
+    def test_other_specials_present(self):
+        """Other special routes must still be installed"""
+        self.assertTrue(find_route(self, "0.0.0.0", 0), "0.0.0.0/0 should exist")
+        self.assertTrue(find_route(self, "0.0.0.0", 32), "0.0.0.0/32 should exist")
+        self.assertTrue(
+            find_route(self, "224.0.0.0", 4), "224.0.0.0/4 mcast drop should exist"
+        )
+        self.assertTrue(
+            find_route(self, "255.255.255.255", 32),
+            "255.255.255.255/32 should exist",
+        )
+
+    def test_class_e_absent_in_new_vrf(self):
+        """240.0.0.0/4 should also be absent in a newly created VRF"""
+        tbl = VppIpTable(self, 10)
+        tbl.add_vpp_config()
+        try:
+            self.assertFalse(
+                find_route(self, "240.0.0.0", 4, table_id=10),
+                "240.0.0.0/4 should not exist in VRF 10",
+            )
+            self.assertTrue(
+                find_route(self, "0.0.0.0", 0, table_id=10),
+                "0.0.0.0/0 should exist in VRF 10",
+            )
+        finally:
+            tbl.remove_vpp_config()
+
+
+class TestIPv4ClassEDropDefault(VppTestCase):
+    """Verify the default behavior: 240.0.0.0/4 IS present when
+    no-class-e-drop is NOT configured."""
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestIPv4ClassEDropDefault, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestIPv4ClassEDropDefault, cls).tearDownClass()
+
+    def test_class_e_route_present(self):
+        """240.0.0.0/4 drop route should be present by default"""
+        self.assertTrue(
+            find_route(self, "240.0.0.0", 4),
+            "240.0.0.0/4 should exist by default",
+        )
+
+
 if __name__ == "__main__":
     unittest.main(testRunner=VppTestRunner)
