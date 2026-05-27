@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "30ed7c84_c0d67a34",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-05-27T17:12:05Z",
+      "side": 1,
+      "message": "can you please explain what this patch fixes in more details?",
+      "revId": "be54770a8ab3489f27f09d47a5a1e783be186cdf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
