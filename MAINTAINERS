@@ -245,6 +245,13 @@ M:      Mohsin Kazmi <mohsin.kazmi14@gmail.com>
 F:      src/plugins/sfdp_services
 F:      src/plugins/sfdp_services/snort
 
+Plugin StateFul Data Plane Services Samples
+I:      sfdp_services_sample
+M:      Mohammed Hawari <mohammed@hawari.fr>
+M:      Hadi Rayan Al-Sandid <halsandi@cisco.com>
+M:      Guillaume Solignac <gsoligna@cisco.com>
+F:      src/plugins/sfdp_services_sample
+
 Plugin - Policer
 I:	policer
 M:	Neale Ranns <neale@graphiant.com>
