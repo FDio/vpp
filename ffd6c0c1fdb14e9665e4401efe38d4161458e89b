@@ -16,6 +16,23 @@
       "message": "why this needs to be special vnet feature and not just simple interface API?",
       "revId": "ffd6c0c1fdb14e9665e4401efe38d4161458e89b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "08d21f26_4310a496",
+        "filename": "src/vnet/pfc/pfc.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 34,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-05-27T11:42:07Z",
+      "side": 1,
+      "message": "pfc_sys_impl is dereferenced without a NULL check. If a caller invokes this on an interface whose driver has not called pfc_system_register() (e.g. a virtual interface or a NIC without PFC support), this will crash. Suggest returning -ENOTSUP if pfc_sys_impl or the function pointer is NULL.",
+      "revId": "ffd6c0c1fdb14e9665e4401efe38d4161458e89b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
