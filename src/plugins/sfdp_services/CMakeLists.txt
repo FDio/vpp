@@ -16,8 +16,6 @@ add_vpp_plugin(sfdp_services
 
   base/l4-lifecycle/node.c
 
-  base/sample/node.c
-
   base/nat/nat.c
   base/nat/cli.c
   base/nat/api.c
@@ -55,7 +53,6 @@ add_vpp_plugin(sfdp_services
   base/tcp-check/node.c
   base/l4-lifecycle/node.c
   base/interface_input/node.c
-  base/sample/node.c
   acl/node.c
   geneve/geneve_input/node.c
   geneve/geneve_output/node.c

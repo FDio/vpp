@@ -7,5 +7,5 @@
 
 VLIB_PLUGIN_REGISTER () = {
   .version = VPP_BUILD_VER,
-  .description = "SFDP Sample Services Plugin",
+  .description = "SFDP Services Plugin",
 };
