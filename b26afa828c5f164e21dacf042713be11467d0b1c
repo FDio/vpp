@@ -16,6 +16,74 @@
       "message": "recheck",
       "revId": "b26afa828c5f164e21dacf042713be11467d0b1c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "af945ffb_1bd815af",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2026-05-27T23:12:14Z",
+      "side": 1,
+      "message": "dare I Ask :) what\u0027s your use case for Class E?\n\nDo you want the automatic class-E to be absent or the ability to over-ride it with the API?",
+      "revId": "b26afa828c5f164e21dacf042713be11467d0b1c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d433f44d_99215686",
+        "filename": "src/vnet/fib/ip4_fib.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 12,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2026-05-27T23:12:14Z",
+      "side": 1,
+      "message": "This should say \u0027is not installed\u0027 rather then \u0027is immediately removed\u0027.",
+      "revId": "b26afa828c5f164e21dacf042713be11467d0b1c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4ceb367c_b2d31382",
+        "filename": "test/test_ip4.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 3715,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2026-05-27T23:12:14Z",
+      "side": 1,
+      "message": "please add a test with packets to a class E Address to show that they follow the default route. And likewise in the negative test, that they don\u0027t follow the default route.",
+      "revId": "b26afa828c5f164e21dacf042713be11467d0b1c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "43005608_8b5a7a24",
+        "filename": "test/test_ip4.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 3721,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2026-05-27T23:12:14Z",
+      "side": 1,
+      "message": "you don\u0027t need this try/finally.",
+      "revId": "b26afa828c5f164e21dacf042713be11467d0b1c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
