@@ -16,6 +16,24 @@
       "message": "it should be disabled by default",
       "revId": "ece93490d4f7eb5ec5e281af81b361804028baaf",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "180ec5ad_d0e9eff2",
+        "filename": "src/plugins/sfdp_services_sample/plugin.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 8,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-05-27T12:28:40Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "67c2200b_e2195bd8",
+      "revId": "ece93490d4f7eb5ec5e281af81b361804028baaf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
