@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2dbf0237_93c54ef9",
+        "filename": "src/plugins/cnat/cnat_snat_policy.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 466,
+      "author": {
+        "id": 660
+      },
+      "writtenOn": "2026-05-27T10:36:37Z",
+      "side": 1,
+      "message": "Returning 0, ie, SUCCESS, might cause confusion on the lines of:\n\ncnat_snat_policy_del_pfx returned 0, ie, it succeeded which means SNAT is initialized/configured so how come cnat_snat_policy_add_pfx is returning error? Which among the two functions\u0027 return value should I trust?\n\nSo, my suggestion would be to stay consistent and return what cnat_snat_policy_add_pfx would return.",
+      "revId": "15968d4e79e55a9336f48dd2d777a280c592ae41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
