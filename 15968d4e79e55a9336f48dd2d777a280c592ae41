@@ -16,6 +16,24 @@
       "message": "Returning 0, ie, SUCCESS, might cause confusion on the lines of:\n\ncnat_snat_policy_del_pfx returned 0, ie, it succeeded which means SNAT is initialized/configured so how come cnat_snat_policy_add_pfx is returning error? Which among the two functions\u0027 return value should I trust?\n\nSo, my suggestion would be to stay consistent and return what cnat_snat_policy_add_pfx would return.",
       "revId": "15968d4e79e55a9336f48dd2d777a280c592ae41",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f1972234_36485298",
+        "filename": "src/plugins/cnat/cnat_snat_policy.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 466,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-05-27T22:12:17Z",
+      "side": 1,
+      "message": "I have updated `cnat_snat_policy_del_pfx()` to return `VNET_API_ERROR_FEATURE_DISABLED` when `cpe` is `NULL`, matching the behavior of `cnat_snat_policy_add_pfx()`. Both functions now consistently signal that SNAT is not configured.",
+      "parentUuid": "2dbf0237_93c54ef9",
+      "revId": "15968d4e79e55a9336f48dd2d777a280c592ae41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
