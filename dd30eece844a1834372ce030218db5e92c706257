@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "4b44d1ab_62c052c0",
+        "filename": "extras/kube-test/kubernetes/baremetal-calicovpp-config-template.yaml",
+        "patchSetId": 6
+      },
+      "lineNbr": 156,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-05-27T00:23:00Z",
+      "side": 1,
+      "message": "Ack. Addressed this in https://github.com/projectcalico/vpp-dataplane/pull/1027 by creating a new custom `calico-vpp-kubetest.yaml` in [0].\n\nThe parameterization still exists because `setup_release` flow must still support old releases (`v3.29` to `v3.32`). Those tags do not contain the newly generated `calico-vpp-kubetest.yaml`, so `release-cluster` still uses kube-test’s local template for backward compatibility.\n\n- `setup_master`/`rebuild_master` -\u003e `yaml/generated/calico-vpp-kubetest.yaml` from CalicoVPP\n- `setup_release` -\u003e `extra/kube-test/kubernetes/baremetal-calicovpp-config-template.yaml` from VPP kube-test.",
+      "parentUuid": "4aba1a47_c0345e58",
+      "revId": "dd30eece844a1834372ce030218db5e92c706257",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "afec3f7f_81e31105",
@@ -52,6 +70,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "b52cde8b_26987b85",
+        "filename": "extras/kube-test/script/calicovpp-layout.sh",
+        "patchSetId": 6
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-05-27T00:23:00Z",
+      "side": 1,
+      "message": "Ack. Removed this and the `calicovpp-layout.sh` helper script since they are no longer needed.",
+      "parentUuid": "afec3f7f_81e31105",
+      "revId": "dd30eece844a1834372ce030218db5e92c706257",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "8e0986c1_50d9cc9d",
@@ -65,6 +101,24 @@
       "writtenOn": "2026-05-26T15:07:34Z",
       "side": 1,
       "message": "Can we make a patch in calico-vpp that moves the `vpp` directive to the top level ? That way we would not need to find `CALICOVPP_MAKE_DIR` and could just call `make -C $CALICOVPP_DIR vpp ...`",
+      "revId": "dd30eece844a1834372ce030218db5e92c706257",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e57b642e_9282e5b5",
+        "filename": "extras/kube-test/script/quick-import.sh",
+        "patchSetId": 6
+      },
+      "lineNbr": 75,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-05-27T00:23:00Z",
+      "side": 1,
+      "message": "Ack. Addressed this in https://github.com/projectcalico/vpp-dataplane/pull/1027 by adding a top-level `make vpp` directive.",
+      "parentUuid": "8e0986c1_50d9cc9d",
       "revId": "dd30eece844a1834372ce030218db5e92c706257",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
