@@ -16,8 +16,10 @@ from scapy.contrib.lldp import (
     LLDPDU,
 )
 from scapy.contrib.isis import ISIS_CommonHdr, ISIS_L1_LAN_Hello
+from scapy.data import IP_PROTOS
 
 from util import reassemble4
+from host_interface import HostInterface
 from vpp_object import VppObject
 from framework import VppTestCase
 from asfframework import (
@@ -50,6 +52,7 @@ from vpp_qemu_utils import (
     set_interface_up,
     set_interface_down,
     get_interface_addresses,
+    get_interface_info,
     interface_exists,
     is_interface_up,
     get_interface_mtu,
@@ -1634,3 +1637,100 @@ class TestLinuxCPPairManagement(TestLinuxCPNetNSBase):
             self.vapi.cli(f"lcp delete {pg.name}")
         finally:
             self.vapi.cli("lcp lcp-auto-subint off")
+
+
+@unittest.skipIf(config.skip_netns_tests, "netns not available or disabled from cli")
+@unittest.skipIf("linux-cp" in config.excluded_plugins, "Exclude linux-cp plugin tests")
+class TestLinuxCPOSPFMcast(TestLinuxCPNetNSBase):
+    """Linux CP OSPF multicast bi-directional traffic"""
+
+    ospf_ip_proto = IP_PROTOS.ospf
+    ospf_mcast_ip4 = "224.0.0.5"
+    ospf_mcast_mac = "01:00:5e:00:00:05"
+    ospf_host_ip4 = "172.16.1.10"
+    ospf_router_ip4 = "172.16.1.1"
+
+    extra_vpp_plugin_config = [
+        "plugin linux_cp_plugin.so { enable }",
+        "plugin linux_nl_plugin.so { enable }",
+    ]
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.create_pg_interfaces(range(1))
+        cls.phy = cls.pg_interfaces[0]
+        cls.phy.admin_up()
+        cls.vapi.lcp_itf_pair_add_del_v3(
+            is_add=True,
+            sw_if_index=cls.phy.sw_if_index,
+            host_if_name="hospf",
+            host_if_type=0,
+            netns=cls.ns_name,
+        )
+        cls.logger.info("lcp:\n%s", cls.vapi.cli("show lcp"))
+        cls.hospf_mac = get_interface_info(cls.ns_name, "hospf")["address"]
+        add_namespace_address(cls.ns_name, "hospf", cls.ospf_host_ip4 + "/24")
+        set_interface_up(cls.ns_name, "hospf")
+        for _ in range(20):
+            if any(
+                str(a.prefix) == cls.ospf_host_ip4 + "/24"
+                for a in cls.vapi.ip_address_dump(cls.phy.sw_if_index, is_ipv6=False)
+            ):
+                break
+            time.sleep(0.1)
+        cls.host_if = HostInterface(cls, cls.ns_name, "hospf")
+
+    def tearDown(self):
+        self.host_if.disable_capture()
+        super().tearDown()
+
+    def _is_non_ospf_pkt(self, p):
+        return not (p.haslayer(IP) and p[IP].proto == self.ospf_ip_proto)
+
+    def _mcast_ospf_pkt(self, src_mac, src_ip):
+        return (
+            Ether(src=src_mac, dst=self.ospf_mcast_mac)
+            / IP(src=src_ip, dst=self.ospf_mcast_ip4, proto=self.ospf_ip_proto, ttl=64)
+            / Raw(b"\x02" + b"\x00" * 23)
+        )
+
+    def test_ospf_mcast_host_to_phy(self):
+        """OSPF multicast host-to-phy"""
+        self.logger.info("MFIB:\n%s", self.vapi.cli("show ip mfib"))
+
+        pkt = self._mcast_ospf_pkt(self.hospf_mac, self.ospf_host_ip4)
+
+        self.host_if.add_stream([pkt])
+        self.phy.enable_capture()
+        self.host_if.start()
+
+        captured = self.phy.get_capture(
+            expected_count=1,
+            timeout=2,
+            filter_out_fn=self._is_non_ospf_pkt,
+        )
+        rx = captured[0]
+        self.assertEqual(rx[Ether].dst, self.ospf_mcast_mac)
+        self.assertEqual(rx[IP].dst, self.ospf_mcast_ip4)
+        self.assertEqual(rx[IP].proto, self.ospf_ip_proto)
+
+    def test_ospf_mcast_phy_to_host(self):
+        """OSPF multicast phy-to-host"""
+        self.logger.info("MFIB:\n%s", self.vapi.cli("show ip mfib"))
+
+        pkt = self._mcast_ospf_pkt(self.phy.remote_mac, self.ospf_router_ip4)
+
+        self.host_if.enable_capture()
+        self.phy.add_stream([pkt])
+        self.pg_start(trace=False)
+
+        captured = self.host_if.get_capture(
+            expected_count=1,
+            timeout=5,
+            filter_out_fn=self._is_non_ospf_pkt,
+        )
+        rx = captured[0]
+        self.assertEqual(rx[Ether].dst, self.ospf_mcast_mac)
+        self.assertEqual(rx[IP].dst, self.ospf_mcast_ip4)
+        self.assertEqual(rx[IP].proto, self.ospf_ip_proto)
