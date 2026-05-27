@@ -543,12 +543,10 @@ do {									\
        (i) < (e); (i) = pool_get_next_index ((v), (i)))
 
 /* works only for pool of pointers, e is declared inside macro */
-#define pool_foreach_pointer(e, p)                                            \
-  if (p)                                                                      \
-    for (typeof ((p)[0]) *_t = (p) + pool_get_first_index (p), (e) = *_t,     \
-			 *_end = vec_end (p);                                 \
-	 _t < _end; _t = (p) + pool_get_next_index (p, _t - (p)),             \
-			 (e) = _t < _end ? *_t : (e))
+#define pool_foreach_pointer(e, p)                                                                 \
+  if (pool_elts (p))                                                                               \
+    for (typeof ((p)[0]) *_t = (p) + pool_get_first_index (p), (e) = *_t, *_end = vec_end (p);     \
+	 _t < _end; _t = (p) + pool_get_next_index (p, _t - (p)), (e) = _t < _end ? *_t : (e))
 
 /**
  * @brief Remove all elements from a pool in a safe way
