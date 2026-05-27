@@ -62,6 +62,8 @@ typedef struct
   clib_file_t **file_pool;
   clib_file_t **pending_free;
 
+  volatile u8 has_pending_free;
+
   u8 lock;
 
   void (*file_update) (clib_file_t * file,
@@ -118,6 +120,7 @@ clib_file_del (clib_file_main_t *fm, clib_file_t *f)
     close ((int) f->file_descriptor);
   f->active = 0;
   vec_add1 (fm->pending_free, f);
+  fm->has_pending_free = 1;
   pool_put_index (fm->file_pool, f->index);
   CLIB_SPINLOCK_UNLOCK (fm->lock);
 }
@@ -136,7 +139,7 @@ clib_file_free_deleted (clib_file_main_t *fm, clib_thread_index_t thread_index)
 {
   u32 n_keep = 0;
 
-  if (vec_len (fm->pending_free) == 0)
+  if (!fm->has_pending_free)
     return;
 
   CLIB_SPINLOCK_LOCK (fm->lock);
@@ -151,6 +154,7 @@ clib_file_free_deleted (clib_file_main_t *fm, clib_thread_index_t thread_index)
 	fm->pending_free[n_keep++] = f;
     }
   vec_set_len (fm->pending_free, n_keep);
+  fm->has_pending_free = vec_len (fm->pending_free) > 0;
   CLIB_SPINLOCK_UNLOCK (fm->lock);
 }
 
