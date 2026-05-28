@@ -1100,13 +1100,15 @@ hc_get_event (vlib_main_t *vm)
   hc_main_t *hcm = &hc_main;
   uword event_type, *event_data = 0;
   clib_error_t *err = NULL;
-  u64 event_timeout;
+  f64 event_timeout;
   hc_worker_t *wrk;
   hc_session_t *hc_session;
 
-  event_timeout = hcm->timeout ? hcm->timeout : 10;
+  /* set event timeout 1 second longer than http timeout to prevent race and get more accurate error
+   * (failed connect or transport closed) */
+  event_timeout = hcm->timeout + 1.;
   if (event_timeout == hcm->duration)
-    event_timeout += 5;
+    event_timeout += 5.;
   vlib_process_wait_for_event_or_clock (vm, event_timeout);
   event_type = vlib_process_get_events (vm, &event_data);
   hc_get_req_stats (vm);
