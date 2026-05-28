@@ -271,6 +271,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "c63524bf_f49a8336",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 8
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3312
+      },
+      "writtenOn": "2026-05-28T04:25:04Z",
+      "side": 1,
+      "message": "Yes, it is ok that the prober is sproofing the IPinIP ourter source IP.\nFor the second question, in most cases, the IPinIP probe packets dest IP address is the probed network device Loopback address.",
+      "parentUuid": "80edb5d5_1ffc68ef",
+      "revId": "8e394e0e53798b495330630d0ede3ec3c49c5b8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "a598d93f_074b0bd5",
         "filename": "test/test_ipip.py",
         "patchSetId": 8
