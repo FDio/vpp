@@ -868,69 +868,73 @@ done:
 static void
 vlib_fuse_read (vlib_main_t *vm, vlib_fuse_handle_t h)
 {
+  int msgs_left = 64;
   static u8 __clib_aligned (4096)
   buf[VLIB_FUSE_MAX_WRITE + 4096]; /* 3 pages */
   struct fuse_in_header *in = (struct fuse_in_header *) buf;
   void *payload = buf + sizeof (*in);
-  ssize_t n = read (h->fd, buf, sizeof (buf));
 
-  if (n <= 0)
+  while (msgs_left--)
     {
-      if (n < 0)
-	log_err ("failed to read from '/dev/fuse' fd [errno: %d]", errno);
-      return;
-    }
+      ssize_t n = read (h->fd, buf, sizeof (buf));
 
-  switch (in->opcode)
-    {
-    case FUSE_LOOKUP:
-      vlib_fuse_reply_lookup (h, in, payload);
-      break;
-    case FUSE_SETATTR:
-      vlib_fuse_reply_setattr (h, in, payload);
-      break;
-    case FUSE_GETATTR:
-      vlib_fuse_reply_getattr (h, in);
-      break;
-    case FUSE_INIT:
-      vlib_fuse_reply_init (h, in, payload);
-      break;
-    case FUSE_READDIR:
-      vlib_fuse_reply_readdir (h, in, payload);
-      break;
+      if (n <= 0)
+	{
+	  if (n < 0)
+	    log_err ("failed to read from '/dev/fuse' fd [errno: %d]", errno);
+	  return;
+	}
+
+      switch (in->opcode)
+	{
+	case FUSE_LOOKUP:
+	  vlib_fuse_reply_lookup (h, in, payload);
+	  break;
+	case FUSE_SETATTR:
+	  vlib_fuse_reply_setattr (h, in, payload);
+	  break;
+	case FUSE_GETATTR:
+	  vlib_fuse_reply_getattr (h, in);
+	  break;
+	case FUSE_INIT:
+	  vlib_fuse_reply_init (h, in, payload);
+	  break;
+	case FUSE_READDIR:
+	  vlib_fuse_reply_readdir (h, in, payload);
+	  break;
 #ifndef FUSE_NO_OPENDIR_SUPPORT
-    case FUSE_OPENDIR:
-      vlib_fuse_reply_opendir (h, in);
-      break;
-    case FUSE_RELEASEDIR:
-      vlib_fuse_reply_releasedir (h, in);
-      break;
+	case FUSE_OPENDIR:
+	  vlib_fuse_reply_opendir (h, in);
+	  break;
+	case FUSE_RELEASEDIR:
+	  vlib_fuse_reply_releasedir (h, in);
+	  break;
 #endif
-    case FUSE_OPEN:
-      vlib_fuse_reply_open (vm, h, in);
-      break;
-    case FUSE_READ:
-      vlib_fuse_reply_read (vm, h, in, payload);
-      break;
-    case FUSE_WRITE:
-      vlib_fuse_reply_write (vm, h, in, payload);
-      break;
-    case FUSE_FLUSH:
-      vlib_fuse_reply_flush (vm, h, in, payload);
-      break;
-    case FUSE_RELEASE:
-      vlib_fuse_reply_release (vm, h, in, payload);
-      break;
-    case FUSE_FORGET:
-    case FUSE_BATCH_FORGET:
-      log_debug ("FUSE_FORGET[%u]: opcode %u no reply", in->unique,
-		 in->opcode);
-      /* kernel does not expect a reply */
-      break;
-    default:
-      log_warn ("unsupported fuse opcode %u received", in->opcode);
-      vlib_fuse_reply_errno (h, in, ENOSYS);
-      break;
+	case FUSE_OPEN:
+	  vlib_fuse_reply_open (vm, h, in);
+	  break;
+	case FUSE_READ:
+	  vlib_fuse_reply_read (vm, h, in, payload);
+	  break;
+	case FUSE_WRITE:
+	  vlib_fuse_reply_write (vm, h, in, payload);
+	  break;
+	case FUSE_FLUSH:
+	  vlib_fuse_reply_flush (vm, h, in, payload);
+	  break;
+	case FUSE_RELEASE:
+	  vlib_fuse_reply_release (vm, h, in, payload);
+	  break;
+	case FUSE_FORGET:
+	case FUSE_BATCH_FORGET:
+	  log_debug ("FUSE_FORGET[%u]: opcode %u no reply", in->unique, in->opcode);
+	  /* kernel does not expect a reply */
+	  break;
+	default:
+	  log_warn ("unsupported fuse opcode %u received", in->opcode);
+	  vlib_fuse_reply_errno (h, in, ENOSYS);
+	  break;
+	}
     }
 }
 
