@@ -1,0 +1,106 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "dbf397b4_d18dd283",
+        "filename": "src/plugins/tracepath/tracepath.c",
+        "patchSetId": 19
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2026-05-28T23:12:21Z",
+      "side": 1,
+      "message": "using `vec_foreach` or `vec_foreach_index` is preferred over a `for` loop using `vec_len`.\nhere and elsewhere too.",
+      "revId": "b2a168b4882f27f7f465095cba2c867a3f8bd90a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9bfc4202_1afd9bbf",
+        "filename": "src/plugins/tracepath/tracepath.c",
+        "patchSetId": 19
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2026-05-28T23:12:21Z",
+      "side": 1,
+      "message": "there\u0027s `format_bitmap_list` if you\u0027d rather not write your own.",
+      "revId": "b2a168b4882f27f7f465095cba2c867a3f8bd90a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8f1bf314_14a64f5c",
+        "filename": "src/plugins/tracepath/tracepath.c",
+        "patchSetId": 19
+      },
+      "lineNbr": 152,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2026-05-28T23:12:21Z",
+      "side": 1,
+      "message": "if you passed the `thread_index` and `path_id_table` into `trace_paths_collect`, you could do this accounting there. That way you\u0027d only need the one hash table, and not create/delete one hash-table per-worker.",
+      "revId": "b2a168b4882f27f7f465095cba2c867a3f8bd90a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "fcdfeb9d_79a9d52e",
+        "filename": "src/plugins/tracepath/tracepath.c",
+        "patchSetId": 19
+      },
+      "lineNbr": 242,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2026-05-28T23:12:21Z",
+      "side": 1,
+      "message": "is the ID useful info for the user?",
+      "revId": "b2a168b4882f27f7f465095cba2c867a3f8bd90a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "fd973f23_7360c287",
+        "filename": "src/plugins/tracepath/tracepath.c",
+        "patchSetId": 19
+      },
+      "lineNbr": 249,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2026-05-28T23:12:21Z",
+      "side": 1,
+      "message": "feel free to ignore this comment, but I\u0027d say this message is redundant given the one above said how many it was showing.",
+      "revId": "b2a168b4882f27f7f465095cba2c867a3f8bd90a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "04e5fc98_34ee4d6d",
+        "filename": "src/plugins/tracepath/tracepath.c",
+        "patchSetId": 19
+      },
+      "lineNbr": 284,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2026-05-28T23:12:21Z",
+      "side": 1,
+      "message": "this seems like a lot of work to do with the barrier held.",
+      "revId": "b2a168b4882f27f7f465095cba2c867a3f8bd90a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
