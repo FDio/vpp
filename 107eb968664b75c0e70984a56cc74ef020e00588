@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "74620a38_74e0ac5e",
+        "filename": "src/plugins/quic_quicly/quic_quicly.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 303,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-05-28T07:50:48Z",
+      "side": 1,
+      "message": "For future optimizations: do we actually hit this path where udp connection is cleaned up entirely while quic tries to send?",
+      "revId": "107eb968664b75c0e70984a56cc74ef020e00588",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
