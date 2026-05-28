@@ -11,7 +11,8 @@ def discover_tests(directory, callback):
     for _f in os.listdir(directory):
         f = "%s/%s" % (directory, _f)
         if os.path.isdir(f):
-            discover_tests(f, callback)
+            if not _f.startswith("hs-test"):
+                discover_tests(f, callback)
             continue
         if not os.path.isfile(f):
             continue
