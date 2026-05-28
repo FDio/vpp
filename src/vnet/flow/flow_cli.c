@@ -180,6 +180,9 @@ show_flow_entry (vlib_main_t * vm, unformat_input_t * input,
   vnet_device_class_t *dev_class;
   vnet_flow_t *f;
   u32 index = ~0;
+  u32 total = pool_elts (fm->global_flow_pool);
+  u32 max = 20;
+  u32 n_shown = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     goto no_args;
@@ -187,6 +190,8 @@ show_flow_entry (vlib_main_t * vm, unformat_input_t * input,
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (line_input, "index %u", &index))
+	;
+      else if (unformat (line_input, "max %u", &max))
 	;
       else
 	return clib_error_return (0, "parse error: '%U'",
@@ -224,21 +229,27 @@ show_flow_entry (vlib_main_t * vm, unformat_input_t * input,
 no_args:
   pool_foreach (f, fm->global_flow_pool)
     {
+      if (n_shown >= max)
+	break;
       vlib_cli_output (vm, "%U\n", format_flow, f);
       if (f->type == VNET_FLOW_TYPE_GENERIC)
 	{
 	  vlib_cli_output (vm, "%s: %s", "spec", f->generic_pattern->spec);
 	  vlib_cli_output (vm, "%s: %s", "mask", f->generic_pattern->mask);
 	}
+      n_shown++;
     }
 
+  vlib_cli_output (vm, "Displayed %u flows (%u total flows)", n_shown, total);
+  if (total > max)
+    vlib_cli_output (vm, "Use 'max <N>' to see more flows");
   return 0;
 }
 
 VLIB_CLI_COMMAND (show_flow_entry_command, static) = {
-    .path = "show flow entry",
-    .short_help = "show flow entry [index <index>]",
-    .function = show_flow_entry,
+  .path = "show flow entry",
+  .short_help = "show flow entry [index <index>] [max <count>]",
+  .function = show_flow_entry,
 };
 
 static clib_error_t *
