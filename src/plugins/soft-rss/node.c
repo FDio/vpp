@@ -13,21 +13,22 @@
 #include <vnet/ethernet/packet.h>
 #include <soft-rss/soft_rss.h>
 
-#define foreach_soft_rss_error _ (NOT_ENABLED, "soft-rss not enabled")
+#define foreach_soft_rss_error                                                                     \
+  _ (NOT_ENABLED, not_enabled, ERROR, "soft-rss not enabled")                                      \
+  _ (HANDOFF_QUEUE_FULL, handoff_queue_full, ERROR, "handoff queue full")
 
 typedef enum
 {
-#define _(sym, str) SOFT_RSS_ERROR_##sym,
+#define _(sym, name, sev, desc) SOFT_RSS_ERROR_##sym,
   foreach_soft_rss_error
 #undef _
     SOFT_RSS_N_ERROR,
 } soft_rss_error_t;
 
-static char *soft_rss_error_strings[] = {
-#define _(sym, str) str,
-  foreach_soft_rss_error
+#define _(sym, name, sev, desc)                                                                    \
+  { .name = #name, .desc = desc, .severity = VL_COUNTER_SEVERITY_##sev },
+static vlib_error_desc_t soft_rss_error_counters[] = { foreach_soft_rss_error };
 #undef _
-};
 
 static_always_inline void
 vlan_advance (u8 **data)
@@ -272,8 +273,11 @@ soft_rss_one_interface (vlib_main_t *vm, vlib_node_runtime_t *node,
     thread_indices[i] = reta[hashes[i] & reta_mask];
 #endif
 
-  vlib_buffer_enqueue_to_thread (vm, node, soft_rss_main.frame_queue_index, buffer_indices,
-				 thread_indices, n_pkts, 0);
+  u32 n_enq = vlib_buffer_enqueue_to_thread (vm, node, soft_rss_main.frame_queue_index,
+					     buffer_indices, thread_indices, n_pkts, 0);
+  if (n_enq != n_pkts)
+    vlib_node_increment_counter (vm, node->node_index, SOFT_RSS_ERROR_HANDOFF_QUEUE_FULL,
+				 n_pkts - n_enq);
 }
 
 VLIB_NODE_FN (soft_rss_node)
@@ -364,8 +368,8 @@ VLIB_REGISTER_NODE (soft_rss_node) = {
   .vector_size = sizeof (u32),
   .format_trace = format_soft_rss_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
-  .n_errors = ARRAY_LEN (soft_rss_error_strings),
-  .error_strings = soft_rss_error_strings,
+  .n_errors = SOFT_RSS_N_ERROR,
+  .error_counters = soft_rss_error_counters,
 };
 
 VLIB_NODE_FN (soft_rss_handoff_node)
