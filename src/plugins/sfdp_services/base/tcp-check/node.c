@@ -49,10 +49,9 @@ format_sfdp_tcp_check_trace (u8 *s, va_list *args)
 
 SFDP_SERVICE_DECLARE (drop)
 static_always_inline void
-update_state_one_pkt (sfdp_tw_t *tw, sfdp_tenant_t *tenant,
-		      sfdp_tcp_check_session_state_t *tcp_session,
-		      sfdp_session_t *session, f64 current_time, u8 dir,
-		      u16 *to_next, vlib_buffer_t **b, u32 *sf, u32 *nsf)
+update_state_one_pkt (sfdp_tw_t *tw, sfdp_tenant_t *tenant, u8 fsol_non_syn_security,
+		      sfdp_tcp_check_session_state_t *tcp_session, sfdp_session_t *session,
+		      f64 current_time, u8 dir, u16 *to_next, vlib_buffer_t **b, u32 *sf, u32 *nsf)
 {
   /* Parse the packet */
   /* TODO: !!! Broken with IP options !!! */
@@ -124,11 +123,22 @@ update_state_one_pkt (sfdp_tw_t *tw, sfdp_tenant_t *tenant,
       tcp_session->as_u64_0 = 0;
       if (flags != SFDP_TCP_CHECK_TCP_FLAGS_SYN)
 	{
-	  /* Abnormal, put the session in blocked state */
-	  session->bitmaps[SFDP_FLOW_FORWARD] = SFDP_SERVICE_MASK (drop);
-	  session->bitmaps[SFDP_FLOW_REVERSE] = SFDP_SERVICE_MASK (drop);
-	  sfdp_buffer (b[0])->service_bitmap = SFDP_SERVICE_MASK (drop);
-	  tcp_session->flags = SFDP_TCP_CHECK_SESSION_FLAG_BLOCKED;
+	  if (fsol_non_syn_security)
+	    {
+	      /* Abnormal, put the session in blocked state */
+	      session->bitmaps[SFDP_FLOW_FORWARD] = SFDP_SERVICE_MASK (drop);
+	      session->bitmaps[SFDP_FLOW_REVERSE] = SFDP_SERVICE_MASK (drop);
+	      sfdp_buffer (b[0])->service_bitmap = SFDP_SERVICE_MASK (drop);
+	      tcp_session->flags = SFDP_TCP_CHECK_SESSION_FLAG_BLOCKED;
+	      sf[0] = nsf[0] = SFDP_TCP_CHECK_SESSION_FLAG_BLOCKED;
+	    }
+	  else
+	    {
+	      /* Abnormal, tag session for removal */
+	      sf[0] = nsf[0] = SFDP_TCP_CHECK_SESSION_FLAG_REMOVING;
+	      remove_session = 1;
+	    }
+	  goto out;
 	}
     }
   nsf[0] = (sf[0] = tcp_session->flags);
@@ -136,6 +146,11 @@ update_state_one_pkt (sfdp_tw_t *tw, sfdp_tenant_t *tenant,
     {
       if (sf[0] & SFDP_TCP_CHECK_SESSION_FLAG_BLOCKED)
 	goto out;
+      if (sf[0] & SFDP_TCP_CHECK_SESSION_FLAG_REMOVING)
+	{
+	  remove_session = 1;
+	  goto out;
+	}
       if (flags & SFDP_TCP_CHECK_TCP_FLAGS_SYN)
 	{
 	  /* New session, must be a SYN otherwise bad */
@@ -178,7 +193,14 @@ update_state_one_pkt (sfdp_tw_t *tw, sfdp_tenant_t *tenant,
   if (dir == SFDP_FLOW_REVERSE)
     {
       if (sf[0] & SFDP_TCP_CHECK_SESSION_FLAG_BLOCKED)
-	goto out;
+	{
+	  goto out;
+	}
+      if (sf[0] & SFDP_TCP_CHECK_SESSION_FLAG_REMOVING)
+	{
+	  remove_session = 1;
+	  goto out;
+	}
       if (flags & SFDP_TCP_CHECK_TCP_FLAGS_SYN)
 	{
 	  if (sf[0] & SFDP_TCP_CHECK_SESSION_FLAG_WAIT_FOR_RESP_SYN)
@@ -276,11 +298,11 @@ VLIB_NODE_FN (sfdp_tcp_check_node)
       tcp_session = vec_elt_at_index (vtcm->state, session_idx);
       tenant = sfdp_tenant_at_index (sfdp, sfdp_buffer (b[0])->tenant_index);
       if (sfdp_direction_from_flow_index (b[0]->flow_id) == SFDP_FLOW_FORWARD)
-	update_state_one_pkt (tw, tenant, tcp_session, session, current_time,
-			      SFDP_FLOW_FORWARD, to_next, b, sf, nsf);
+	update_state_one_pkt (tw, tenant, vtcm->fsol_non_syn_security, tcp_session, session,
+			      current_time, SFDP_FLOW_FORWARD, to_next, b, sf, nsf);
       else
-	update_state_one_pkt (tw, tenant, tcp_session, session, current_time,
-			      SFDP_FLOW_REVERSE, to_next, b, sf, nsf);
+	update_state_one_pkt (tw, tenant, vtcm->fsol_non_syn_security, tcp_session, session,
+			      current_time, SFDP_FLOW_REVERSE, to_next, b, sf, nsf);
       n_left -= 1;
       b += 1;
       to_next += 1;
