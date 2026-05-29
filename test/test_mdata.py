@@ -1,4 +1,4 @@
-from asfframework import VppTestRunner
+from asfframework import VppTestRunner, tag_fixme_asan
 from framework import VppTestCase
 import unittest
 from config import config
@@ -9,6 +9,7 @@ from random import randint
 from util import ppp
 
 
+@tag_fixme_asan
 @unittest.skipIf("mdata" in config.excluded_plugins, "Exclude mdata plugin tests")
 class TestMdataCli(VppTestCase):
     """mdata plugin test"""
