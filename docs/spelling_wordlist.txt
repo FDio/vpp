@@ -395,6 +395,7 @@ formatter
 Fortville
 frontend
 fs
+fsol
 fusermount
 Gbe
 GbE
