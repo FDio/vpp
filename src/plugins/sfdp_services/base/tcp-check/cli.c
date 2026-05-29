@@ -65,3 +65,32 @@ VLIB_CLI_COMMAND (show_sfdp_tcp_check_sessions_command, static) = {
   .short_help = "show sfdp tcp session-table [tenant <tenant-id>]",
   .function = sfdp_tcp_check_show_sessions_command_fn,
 };
+
+static clib_error_t *
+sfdp_tcp_set_fsol_non_syn_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				      vlib_cli_command_t *cmd)
+{
+  unformat_input_t line_input_, *line_input = &line_input_;
+  sfdp_tcp_check_main_t *vtcm = &sfdp_tcp;
+  clib_error_t *err = 0;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return clib_error_return (0, "missing argument");
+
+  if (unformat (line_input, "security"))
+    vtcm->fsol_non_syn_security = 1;
+  else if (unformat (line_input, "remove"))
+    vtcm->fsol_non_syn_security = 0;
+  else
+    err = clib_error_return (0, "expected 'security' or 'remove', got '%U'", format_unformat_error,
+			     line_input);
+
+  unformat_free (line_input);
+  return err;
+}
+
+VLIB_CLI_COMMAND (sfdp_tcp_set_fsol_non_syn_command, static) = {
+  .path = "set sfdp tcp-check fsol-non-syn",
+  .short_help = "set sfdp tcp-check fsol-non-syn <security|remove>",
+  .function = sfdp_tcp_set_fsol_non_syn_command_fn,
+};
