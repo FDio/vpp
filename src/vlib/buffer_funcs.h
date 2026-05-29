@@ -596,6 +596,14 @@ vlib_buffer_alloc_from_pool (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
   n_buffers -= n_left;
 
 done:
+#ifdef CLIB_SANITIZE_ADDR
+  for (u32 i = 0; i < n_buffers; i++)
+    {
+      vlib_buffer_t *b = vlib_buffer_ptr_from_index (bm->buffer_mem_start, buffers[i], 0);
+      clib_mem_unpoison ((u8 *) b - bm->ext_hdr_size, bp->alloc_size);
+    }
+#endif
+
   /* Verify that buffers are known free. */
   if (CLIB_DEBUG > 0)
     vlib_buffer_validate_alloc_free (vm, buffers, n_buffers,
@@ -714,6 +722,14 @@ vlib_buffer_pool_put (vlib_main_t * vm, u8 buffer_pool_index,
 				     VLIB_BUFFER_KNOWN_ALLOCATED);
   if (PREDICT_FALSE (bm->free_callback_fn != 0))
     bm->free_callback_fn (vm, buffer_pool_index, buffers, n_buffers);
+
+#ifdef CLIB_SANITIZE_ADDR
+  for (u32 i = 0; i < n_buffers; i++)
+    {
+      vlib_buffer_t *b = vlib_buffer_ptr_from_index (bm->buffer_mem_start, buffers[i], 0);
+      clib_mem_poison ((u8 *) b - bm->ext_hdr_size, bp->alloc_size);
+    }
+#endif
 
   n_cached = bpt->n_cached;
   n_empty = VLIB_BUFFER_POOL_PER_THREAD_CACHE_SZ - n_cached;
