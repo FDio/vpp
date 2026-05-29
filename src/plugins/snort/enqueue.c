@@ -220,7 +220,7 @@ clib_array_hash_to_index_u32 (u32 *src, u32 n_indices, u32 n_elts)
       clib_array_mask_u32 (src, n_indices - 1, n_elts);
       return;
     }
-  for (u32 i = 0; i < n_indices - 1; i++)
+  for (u32 i = 0; i < n_elts; i++)
     src[i] = ((u64) src[i] * n_indices) >> 32;
 }
 
