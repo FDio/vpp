@@ -15,38 +15,18 @@
 #include <vnet/ip/ip6_inlines.h>
 
 always_inline cnat_timestamp_t *
-cnat_timestamp_get_if_exists (u32 index)
-{
-  cnat_timestamp_mpool_t *ctm = &cnat_timestamps;
-  u32 log2_pool_sz = ctm->log2_pool_sz;
-  u32 pidx = index >> log2_pool_sz;
-  cnat_timestamp_t *ts = 0;
-
-  index = index & ((1 << log2_pool_sz) - 1);
-
-  clib_rwlock_reader_lock (&ctm->ts_lock);
-  if (!pool_is_free_index (vec_elt (ctm->ts_pools, pidx), index))
-    ts = pool_elt_at_index (vec_elt (ctm->ts_pools, pidx), index);
-  clib_rwlock_reader_unlock (&ctm->ts_lock);
-
-  return ts;
-}
-
-always_inline cnat_timestamp_t *
 cnat_timestamp_get (u32 index)
 {
   cnat_timestamp_mpool_t *ctm = &cnat_timestamps;
   u32 log2_pool_sz = ctm->log2_pool_sz;
   u32 pidx = index >> log2_pool_sz;
-  cnat_timestamp_t *ts;
 
   index = index & ((1 << log2_pool_sz) - 1);
 
-  clib_rwlock_reader_lock (&ctm->ts_lock);
-  ts = pool_elt_at_index (vec_elt (ctm->ts_pools, pidx), index);
-  clib_rwlock_reader_unlock (&ctm->ts_lock);
-
-  return ts;
+  /* ts_pools is preallocated to pool_max at init and the pool slot at pidx is
+   * guaranteed initialised by a prior cnat_timestamp_alloc call, so no lock
+   * is needed here. */
+  return vec_elt (ctm->ts_pools, pidx) + index;
 }
 
 always_inline index_t
@@ -66,16 +46,11 @@ cnat_timestamp_alloc (u32 fib_index, bool is_v6)
     goto err;
 
   pidx = clib_bitmap_first_set (ctm->ts_free);
-  if (PREDICT_FALSE (pidx >= vec_len (ctm->ts_pools)))
-    {
-      pidx = vec_len (ctm->ts_pools);
-      if (pidx >= ctm->pool_max)
-	goto err; /* too many sessions... */
-      /* add a new pool */
-      vec_validate (ctm->ts_pools, pidx);
-      pool_init_fixed (vec_elt (ctm->ts_pools, pidx), pool_sz);
-      ctm->ts_free = clib_bitmap_set (ctm->ts_free, pidx, 1);
-    }
+  if (PREDICT_FALSE (pidx >= ctm->pool_max))
+    goto err; /* too many sessions... */
+  /* lazily initialize this pool slot on first use */
+  if (PREDICT_FALSE (!vec_elt (ctm->ts_pools, pidx)))
+    pool_init_fixed (vec_elt (ctm->ts_pools, pidx), pool_sz);
 
   pool = vec_elt (ctm->ts_pools, pidx);
   pool_get (pool, ts);

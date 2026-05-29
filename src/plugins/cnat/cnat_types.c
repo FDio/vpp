@@ -239,6 +239,15 @@ cnat_lazy_init (void)
   vec_add1 (ip6_main.table_bind_callbacks, cb6);
 
   clib_rwlock_init (&ctm->ts_lock);
+  /* Preallocate the outer ts_pools vector to its maximum size so it is never
+   * reallocated after init. This makes vec_elt(ctm->ts_pools, pidx) safe to
+   * call without holding ts_lock. Individual pool slots start NULL and are
+   * initialised on first use inside cnat_timestamp_alloc (writer-locked). */
+  vec_validate_init_empty (ctm->ts_pools, ctm->pool_max - 1, NULL);
+  /* Mark all slots as available. cnat_timestamp_alloc uses this bitmap to
+   * find the next slot with free space; NULL means not yet initialised. */
+  for (u32 i = 0; i < ctm->pool_max; i++)
+    ctm->ts_free = clib_bitmap_set (ctm->ts_free, i, 1);
   cnat_ep_trk_t *eptrk;
   /* Reserve index 0 as CNAT_EP_TRK_INVALID_INDEX, mirroring the timestamp
    * pool convention. cnat_load_balance returns 0 on miss, callers check

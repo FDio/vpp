@@ -100,12 +100,7 @@ cnat_writeback_new_flow (vlib_buffer_t *b, ip_address_family_t af, u16 *next)
   if (vnet_buffer2 (b)->session.flags & CNAT_BUFFER_SESSION_FLAG_NO_RETURN)
     return;
 
-  ts = cnat_timestamp_get_if_exists (b->flow_id);
-  if (ts == NULL)
-    {
-      *next = 0; // TODO: DROP, probably needs improvement
-      return;
-    }
+  ts = cnat_timestamp_get (b->flow_id);
 
   clib_memset_u8 (&session->key, 0, sizeof (session->key));
 
