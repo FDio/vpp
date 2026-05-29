@@ -2693,7 +2693,6 @@ class TestIPLPM(VppTestCase):
         rx = self.send_and_expect(self.pg0, p_24 * NUM_PKTS, self.pg1)
 
 
-@tag_fixme_vpp_workers
 class TestIPv4Frag(VppTestCase):
     """IPv4 fragmentation"""
 
