@@ -496,6 +496,43 @@ class TestSfdpL4LifecycleIp4(TestSfdpL4LifecycleBase):
         # Session should be expired during next execution of sfdp-expire
         self.wait_no_sessions()
 
+    def test_tcp_fsol_non_syn_pkt(self):
+        """TCP - verify session with first non-SYN pkt are invalidated"""
+        # Create SFDP session by sending initial non-SYN packet
+        self.send_and_expect(
+            self.pg0,
+            self.create_tcp_packet(
+                self.pg0.remote_mac,
+                self.pg0.local_mac,
+                self.pg0.remote_ip4,
+                self.pg1.remote_ip4,
+                sport=20010,
+                dport=80,
+                flags="A",
+                seq=1000,
+                ack=1,
+            ),
+            self.pg1,
+        )
+        # Send SYN as second session packet
+        self.send_and_expect(
+            self.pg0,
+            self.create_tcp_packet(
+                self.pg0.remote_mac,
+                self.pg0.local_mac,
+                self.pg0.remote_ip4,
+                self.pg1.remote_ip4,
+                sport=20010,
+                dport=80,
+                flags="S",
+                seq=1000,
+            ),
+            self.pg1,
+        )
+
+        # Session should be removed before initial embryonic timeout
+        self.wait_no_sessions()
+
     def test_tcp_fin_with_payload_initiator_closes(self):
         """TCP - initiator FIN/ACK with payload"""
 
@@ -840,6 +877,42 @@ class TestSfdpL4LifecycleIp6(TestSfdpL4LifecycleBase):
             ),
             self.pg0,
         )
+        self.wait_no_sessions()
+
+    def test_tcp_fsol_non_syn_pkt(self):
+        """TCP - verify session with first non-SYN pkt are invalidated"""
+        # Create SFDP session by sending initial non-SYN packet
+        self.send_and_expect(
+            self.pg0,
+            self.create_tcp6_packet(
+                self.pg0.remote_mac,
+                self.pg0.local_mac,
+                self.pg0.remote_ip6,
+                self.pg1.remote_ip6,
+                sport=30010,
+                dport=80,
+                flags="A",
+                seq=1000,
+                ack=1,
+            ),
+            self.pg1,
+        )
+        # Send SYN as second session packet
+        self.send_and_expect(
+            self.pg0,
+            self.create_tcp6_packet(
+                self.pg0.remote_mac,
+                self.pg0.local_mac,
+                self.pg0.remote_ip6,
+                self.pg1.remote_ip6,
+                sport=30010,
+                dport=80,
+                flags="S",
+                seq=1000,
+            ),
+            self.pg1,
+        )
+        # Session should be removed before initial embryonic timeout
         self.wait_no_sessions()
 
 

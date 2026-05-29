@@ -122,20 +122,23 @@ update_state_one_pkt (sfdp_tw_t *tw, sfdp_tenant_t *tenant,
       tcp_session->version = session->session_version;
       tcp_session->flags = 0;
       tcp_session->as_u64_0 = 0;
+      /* If the first packet associated with a new session is not a SYN
+	 set the session for automatic expiry */
       if (flags != SFDP_TCP_CHECK_TCP_FLAGS_SYN)
 	{
-	  /* Abnormal, put the session in blocked state */
-	  session->bitmaps[SFDP_FLOW_FORWARD] = SFDP_SERVICE_MASK (drop);
-	  session->bitmaps[SFDP_FLOW_REVERSE] = SFDP_SERVICE_MASK (drop);
-	  sfdp_buffer (b[0])->service_bitmap = SFDP_SERVICE_MASK (drop);
-	  tcp_session->flags = SFDP_TCP_CHECK_SESSION_FLAG_BLOCKED;
+	  sf[0] = nsf[0] = SFDP_TCP_CHECK_SESSION_FLAG_REMOVING;
+	  remove_session = 1;
+	  goto out;
 	}
     }
   nsf[0] = (sf[0] = tcp_session->flags);
   if (dir == SFDP_FLOW_FORWARD)
     {
-      if (sf[0] & SFDP_TCP_CHECK_SESSION_FLAG_BLOCKED)
-	goto out;
+      if (sf[0] & SFDP_TCP_CHECK_SESSION_FLAG_REMOVING)
+	{
+	  remove_session = 1;
+	  goto out;
+	}
       if (flags & SFDP_TCP_CHECK_TCP_FLAGS_SYN)
 	{
 	  /* New session, must be a SYN otherwise bad */
@@ -177,8 +180,11 @@ update_state_one_pkt (sfdp_tw_t *tw, sfdp_tenant_t *tenant,
     }
   if (dir == SFDP_FLOW_REVERSE)
     {
-      if (sf[0] & SFDP_TCP_CHECK_SESSION_FLAG_BLOCKED)
-	goto out;
+      if (sf[0] & SFDP_TCP_CHECK_SESSION_FLAG_REMOVING)
+	{
+	  remove_session = 1;
+	  goto out;
+	}
       if (flags & SFDP_TCP_CHECK_TCP_FLAGS_SYN)
 	{
 	  if (sf[0] & SFDP_TCP_CHECK_SESSION_FLAG_WAIT_FOR_RESP_SYN)
@@ -233,8 +239,6 @@ out:
     next_timeout = 0;
   else if (nsf[0] & SFDP_TCP_CHECK_SESSION_FLAG_ESTABLISHED)
     next_timeout = tenant->timeouts[SFDP_TIMEOUT_TCP_ESTABLISHED];
-  else if (nsf[0] & SFDP_TCP_CHECK_SESSION_FLAG_BLOCKED)
-    next_timeout = tenant->timeouts[SFDP_TIMEOUT_SECURITY];
   else
     next_timeout = tenant->timeouts[SFDP_TIMEOUT_EMBRYONIC];
 
