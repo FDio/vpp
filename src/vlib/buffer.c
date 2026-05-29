@@ -599,6 +599,8 @@ vlib_buffer_pool_create (vlib_main_t *vm, u32 data_size, u32 physmem_map_index,
 	}
     }
 
+  clib_mem_poison (uword_to_pointer (bp->start, void *), bp->size);
+
   bp->n_buffers = bp->n_avail;
 
   return bp->index;
