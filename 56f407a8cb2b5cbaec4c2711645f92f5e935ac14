@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "67ff740b_1df9bfd7",
+        "filename": "src/plugins/sfdp_services/base/tcp-check/node.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 142,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-05-29T11:51:05Z",
+      "side": 1,
+      "message": "When handling a forward SYN associated with the current active SFDP session (i.e. SYN re-transmission during 3-way handshake), I am fine with a session re-use.\n\nHowever, if a SFDP session is in TIME_WAIT state and we receive a forward SYN associated with a newer session, then re-using the same SFDP session slot would not be correct. Re-using the slot would mean re-using the older session\u0027s slot and its identifiers (session_id, session_version, etc), which can be used by different SFDP services to identify between specific sessions, even multiple sessions that might have existed on the same 5-tuple at different point in time.\n\nRather than re-using the session slot in this case, I think we should mark the older session for deletion and create a new session entry associated with the new SYN.",
+      "revId": "56f407a8cb2b5cbaec4c2711645f92f5e935ac14",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}

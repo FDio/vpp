@@ -16,6 +16,23 @@
       "message": "Comment-only edits, should not need reverification.",
       "revId": "25b81329e3381559f22392da7848a5acf2a5bd26",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c05db18c_28cb35a3",
+        "filename": "test/test_sfdp_l4_lifecycle.py",
+        "patchSetId": 17
+      },
+      "lineNbr": 72,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-05-29T11:51:05Z",
+      "side": 1,
+      "message": "I think there should be an additional test case where: a session is in TIME_WAIT state, and then processes a SYN packet, and we verify that the new session is established (if that\u0027s what is expected in this patch).",
+      "revId": "25b81329e3381559f22392da7848a5acf2a5bd26",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
