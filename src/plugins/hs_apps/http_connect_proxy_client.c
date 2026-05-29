@@ -1317,7 +1317,7 @@ hcpc_http_rx_callback (session_t *s)
 {
   hcpc_main_t *hcpcm = &hcpc_main;
   hcpc_session_t *ps;
-  svm_fifo_t *listener_tx_fifo;
+  svm_fifo_t *intercept_tx_fifo;
   session_handle_t sh;
 
   HCPC_DBG ("session [%u]", s->opaque);
@@ -1364,6 +1364,11 @@ hcpc_http_rx_callback (session_t *s)
 					  ps->opaque);
 	}
 
+      /* check if we have some data to send and send event for http tx fifo */
+      if (svm_fifo_max_dequeue (s->tx_fifo))
+	if (svm_fifo_set_event (s->tx_fifo))
+	  session_program_tx_io_evt (ps->http.session_handle, SESSION_IO_EVT_TX);
+
       clib_spinlock_unlock_if_init (&hcpcm->sessions_lock);
 
       return 0;
@@ -1378,11 +1383,11 @@ hcpc_http_rx_callback (session_t *s)
   clib_spinlock_unlock_if_init (&hcpcm->sessions_lock);
 
   /* send event for intercept tx fifo */
-  listener_tx_fifo = s->rx_fifo;
-  if (!svm_fifo_max_dequeue (listener_tx_fifo))
+  intercept_tx_fifo = s->rx_fifo;
+  if (!svm_fifo_max_dequeue (intercept_tx_fifo))
     return 0;
 
-  if (svm_fifo_set_event (listener_tx_fifo))
+  if (svm_fifo_set_event (intercept_tx_fifo))
     session_program_tx_io_evt (sh, SESSION_IO_EVT_TX);
 
   return 0;
