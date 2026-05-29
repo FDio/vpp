@@ -7,6 +7,7 @@ object abstractions for ARP and ND
 from ipaddress import ip_address
 from vpp_object import VppObject
 from vpp_papi import VppEnum
+from vpp_papi.vpp_stats import StatsTuple
 
 try:
     text_type = unicode
@@ -83,5 +84,5 @@ class VppNeighbor(VppObject):
         return "%d:%s" % (self.sw_if_index, self.nbr_addr)
 
     def get_stats(self):
-        c = self._test.statistics["/net/adjacency"]
-        return c[0][self.stats_index]
+        c = self._test.statistics.get_counter("/net/adjacency")[:, self.stats_index]
+        return StatsTuple((c.sum_packets(), c.sum_octets()))
