@@ -99,6 +99,32 @@ vlib_buffer_validate (vlib_main_t * vm, vlib_buffer_t * b)
 	  (bp->data_size + sizeof (vlib_buffer_t)));
 }
 
+/** \brief Poison the memory for the buffer
+
+    @param vm - (vlib_main_t *) vlib main data structure pointer
+    @param bp - (vlib_buffer_pool_t *) buffer pool pointer
+    @param b - (vlib_buffer_t *) buffer pointer
+*/
+always_inline void
+vlib_buffer_poison (vlib_main_t *vm, vlib_buffer_pool_t *bp, vlib_buffer_t *b)
+{
+  vlib_buffer_main_t *bm = vm->buffer_main;
+  clib_mem_poison ((u8 *) b - bm->ext_hdr_size, bp->alloc_size);
+}
+
+/** \brief Unpoison the memory for the buffer
+
+    @param vm - (vlib_main_t *) vlib main data structure pointer
+    @param bp - (vlib_buffer_pool_t *) buffer pool pointer
+    @param b - (vlib_buffer_t *) buffer pointer
+*/
+always_inline void
+vlib_buffer_unpoison (vlib_main_t *vm, vlib_buffer_pool_t *bp, vlib_buffer_t *b)
+{
+  vlib_buffer_main_t *bm = vm->buffer_main;
+  clib_mem_unpoison ((u8 *) b - bm->ext_hdr_size, bp->alloc_size);
+}
+
 always_inline void *
 vlib_buffer_ptr_from_index (uword buffer_mem_start, u32 buffer_index,
 			    uword offset)
@@ -625,6 +651,14 @@ vlib_buffer_alloc_from_pool (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
   n_buffers -= n_left;
 
 done:
+#ifdef CLIB_SANITIZE_ADDR
+  for (u32 i = 0; i < n_buffers; i++)
+    {
+      vlib_buffer_t *b = vlib_buffer_ptr_from_index (bm->buffer_mem_start, buffers[i], 0);
+      vlib_buffer_unpoison (vm, bp, b);
+    }
+#endif
+
   /* Verify that buffers are known free. */
   if (CLIB_DEBUG > 0)
     vlib_buffer_validate_alloc_free (vm, buffers, n_buffers,
@@ -743,6 +777,14 @@ vlib_buffer_pool_put (vlib_main_t * vm, u8 buffer_pool_index,
 				     VLIB_BUFFER_KNOWN_ALLOCATED);
   if (PREDICT_FALSE (bm->free_callback_fn != 0))
     bm->free_callback_fn (vm, buffer_pool_index, buffers, n_buffers);
+
+#ifdef CLIB_SANITIZE_ADDR
+  for (u32 i = 0; i < n_buffers; i++)
+    {
+      vlib_buffer_t *b = vlib_buffer_ptr_from_index (bm->buffer_mem_start, buffers[i], 0);
+      vlib_buffer_poison (vm, bp, b);
+    }
+#endif
 
   n_cached = bpt->n_cached;
   n_empty = VLIB_BUFFER_POOL_PER_THREAD_CACHE_SZ - n_cached;

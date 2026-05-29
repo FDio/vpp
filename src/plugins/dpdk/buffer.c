@@ -94,7 +94,9 @@ dpdk_buffer_pool_init (vlib_main_t * vm, vlib_buffer_pool_t * bp)
   for (i = 0; i < bp->n_buffers; i++)
     {
       struct rte_mempool_objhdr *hdr;
-      vlib_buffer_t *b = vlib_get_buffer (vm, bp->buffers[i]);
+      vlib_buffer_t *b = vlib_buffer_ptr_from_index (buffer_mem_start, bp->buffers[i], 0);
+      vlib_buffer_unpoison (vm, bp, b);
+      vlib_buffer_validate (vm, b);
       struct rte_mbuf *mb = rte_mbuf_from_vlib_buffer (b);
       hdr = (struct rte_mempool_objhdr *) RTE_PTR_SUB (mb, sizeof (*hdr));
       hdr->mp = mp;
@@ -123,6 +125,10 @@ dpdk_buffer_pool_init (vlib_main_t * vm, vlib_buffer_pool_t * bp)
       vlib_buffer_t *b;
       b = vlib_buffer_ptr_from_index (buffer_mem_start, bp->buffers[i], 0);
       b->template = bp->buffer_template;
+
+      /* only re-poison if still in the global free list */
+      if (i < bp->n_avail)
+	vlib_buffer_poison (vm, bp, b);
     }
 
   /* map DMA pages if at least one physical device exists */
