@@ -15,38 +15,20 @@
 #include <vnet/ip/ip6_inlines.h>
 
 always_inline cnat_timestamp_t *
-cnat_timestamp_get_if_exists (u32 index)
-{
-  cnat_timestamp_mpool_t *ctm = &cnat_timestamps;
-  u32 log2_pool_sz = ctm->log2_pool_sz;
-  u32 pidx = index >> log2_pool_sz;
-  cnat_timestamp_t *ts = 0;
-
-  index = index & ((1 << log2_pool_sz) - 1);
-
-  clib_rwlock_reader_lock (&ctm->ts_lock);
-  if (!pool_is_free_index (vec_elt (ctm->ts_pools, pidx), index))
-    ts = pool_elt_at_index (vec_elt (ctm->ts_pools, pidx), index);
-  clib_rwlock_reader_unlock (&ctm->ts_lock);
-
-  return ts;
-}
-
-always_inline cnat_timestamp_t *
 cnat_timestamp_get (u32 index)
 {
   cnat_timestamp_mpool_t *ctm = &cnat_timestamps;
   u32 log2_pool_sz = ctm->log2_pool_sz;
   u32 pidx = index >> log2_pool_sz;
-  cnat_timestamp_t *ts;
 
   index = index & ((1 << log2_pool_sz) - 1);
 
-  clib_rwlock_reader_lock (&ctm->ts_lock);
-  ts = pool_elt_at_index (vec_elt (ctm->ts_pools, pidx), index);
-  clib_rwlock_reader_unlock (&ctm->ts_lock);
-
-  return ts;
+  /* ts_pools is preallocated to pool_max at init and the pool slot at pidx is
+   * guaranteed initialised by a prior cnat_timestamp_alloc call before the
+   * bihash entry was written, so no lock is needed here. The acquire ensures
+   * pool contents written before the store-release in alloc are visible. */
+  cnat_timestamp_t *pool = __atomic_load_n (&vec_elt (ctm->ts_pools, pidx), __ATOMIC_ACQUIRE);
+  return pool_elt_at_index (pool, index);
 }
 
 always_inline index_t
@@ -60,21 +42,21 @@ cnat_timestamp_alloc (u32 fib_index, bool is_v6)
   u32 index;
   u32 pidx;
 
-  clib_rwlock_writer_lock (&ctm->ts_lock);
+  clib_spinlock_lock (&ctm->ts_lock);
   int *sessions_per_vrf = is_v6 ? ctm->sessions_per_vrf_ip6 : ctm->sessions_per_vrf_ip4;
   if (PREDICT_FALSE (vec_elt (sessions_per_vrf, fib_index) <= 0))
     goto err;
 
   pidx = clib_bitmap_first_set (ctm->ts_free);
-  if (PREDICT_FALSE (pidx >= vec_len (ctm->ts_pools)))
+  if (PREDICT_FALSE (pidx >= ctm->pool_max))
+    goto err; /* too many sessions... */
+  /* lazily initialize this pool slot on first use; store-release so that pool
+   * contents are visible to any thread that later loads this pointer */
+  if (PREDICT_FALSE (!vec_elt (ctm->ts_pools, pidx)))
     {
-      pidx = vec_len (ctm->ts_pools);
-      if (pidx >= ctm->pool_max)
-	goto err; /* too many sessions... */
-      /* add a new pool */
-      vec_validate (ctm->ts_pools, pidx);
-      pool_init_fixed (vec_elt (ctm->ts_pools, pidx), pool_sz);
-      ctm->ts_free = clib_bitmap_set (ctm->ts_free, pidx, 1);
+      cnat_timestamp_t *new_pool = NULL;
+      pool_init_fixed (new_pool, pool_sz);
+      __atomic_store_n (&vec_elt (ctm->ts_pools, pidx), new_pool, __ATOMIC_RELEASE);
     }
 
   pool = vec_elt (ctm->ts_pools, pidx);
@@ -86,7 +68,7 @@ cnat_timestamp_alloc (u32 fib_index, bool is_v6)
 
   vec_elt (sessions_per_vrf, fib_index)--;
 
-  clib_rwlock_writer_unlock (&ctm->ts_lock);
+  clib_spinlock_unlock (&ctm->ts_lock);
 
   clib_memset_u8 (ts, 0, sizeof (*ts));
 
@@ -94,7 +76,7 @@ cnat_timestamp_alloc (u32 fib_index, bool is_v6)
   return index + (pidx << log2_pool_sz);
 
 err:
-  clib_rwlock_writer_unlock (&ctm->ts_lock);
+  clib_spinlock_unlock (&ctm->ts_lock);
   return INDEX_INVALID;
 }
 
@@ -109,12 +91,12 @@ cnat_timestamp_destroy (u32 index, bool is_v6)
 
   index = index & ((1 << log2_pool_sz) - 1);
 
-  clib_rwlock_writer_lock (&ctm->ts_lock);
+  clib_spinlock_lock (&ctm->ts_lock);
   pool = vec_elt (ctm->ts_pools, pidx);
   ts = pool_elt_at_index (pool, index);
   pool_put (pool, ts);
   ctm->ts_free = clib_bitmap_set (ctm->ts_free, pidx, 1);
-  clib_rwlock_writer_unlock (&ctm->ts_lock);
+  clib_spinlock_unlock (&ctm->ts_lock);
 }
 
 always_inline index_t

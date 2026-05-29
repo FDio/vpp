@@ -295,8 +295,8 @@ STATIC_ASSERT (VLIB_N_DIR *CNAT_N_LOCATIONS <= 8, "Too many locations");
 
 typedef struct cnat_timestamp_mpool_t_
 {
-  /* ts creation lock */
-  clib_rwlock_t ts_lock;
+  /* ts creation lock (writers only) */
+  clib_spinlock_t ts_lock;
   /* vector of timestamps fixed size pools */
   cnat_timestamp_t **ts_pools;
   /* Bitmap of pools with free space */

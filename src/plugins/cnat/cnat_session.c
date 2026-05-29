@@ -293,9 +293,9 @@ cnat_session_free__ (cnat_session_t *session)
   if (!(session->value.cs_flags & CNAT_SESSION_IS_RETURN))
     {
       int *sessions_per_vrf = is_v6 ? ctm->sessions_per_vrf_ip6 : ctm->sessions_per_vrf_ip4;
-      clib_rwlock_writer_lock (&ctm->ts_lock);
+      clib_spinlock_lock (&ctm->ts_lock);
       vec_elt (sessions_per_vrf, session->key.fib_index)++;
-      clib_rwlock_writer_unlock (&ctm->ts_lock);
+      clib_spinlock_unlock (&ctm->ts_lock);
     }
   cnat_timestamp_free (session->value.cs_session_index, is_v6);
 }
