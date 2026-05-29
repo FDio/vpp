@@ -50,6 +50,23 @@
       "message": "Adding more reviewers...\n\nHi guys,\n\nWould you mind reviewing this patch?\n\nThanks!\n-Matt",
       "revId": "a8a6a9dba5b1207588ddef37f8abc108236eecec",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "accabd7f_6ba66ae4",
+        "filename": "src/vnet/mfib/mfib_itf.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 158,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-05-29T08:47:32Z",
+      "side": 1,
+      "message": "why not update vnet_hw_interface_add_del_mac_address() so that it uses clib_error_return_code() instead of clib_error_return(), so we can check the error code instead?",
+      "revId": "a8a6a9dba5b1207588ddef37f8abc108236eecec",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
