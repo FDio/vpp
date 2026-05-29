@@ -496,6 +496,91 @@ class TestSfdpL4LifecycleIp4(TestSfdpL4LifecycleBase):
         # Session should be expired during next execution of sfdp-expire
         self.wait_no_sessions()
 
+    def test_tcp_fsol_non_syn_pkt_security(self):
+        """TCP - verify session with first non-SYN pkt is set to state 'security'"""
+        self.vapi.cli("set sfdp tcp-check fsol-non-syn security")
+        # First non-SYN packet must be dropped
+        self.send_and_assert_no_replies(
+            self.pg0,
+            self.create_tcp_packet(
+                self.pg0.remote_mac,
+                self.pg0.local_mac,
+                self.pg0.remote_ip4,
+                self.pg1.remote_ip4,
+                sport=20011,
+                dport=80,
+                flags="A",
+                seq=1000,
+                ack=1,
+            ),
+        )
+        # Session must still be present (blocked, not removed)
+        self.assertEqual(len(self.sessions()), 1)
+
+        # Subsequent packet is also dropped (session bitmaps locked to drop)
+        self.send_and_assert_no_replies(
+            self.pg0,
+            self.create_tcp_packet(
+                self.pg0.remote_mac,
+                self.pg0.local_mac,
+                self.pg0.remote_ip4,
+                self.pg1.remote_ip4,
+                sport=20011,
+                dport=80,
+                flags="S",
+                seq=1000,
+            ),
+        )
+
+        # Session should expire at security timeout (30s), well after initial embryonic timeout (10s)
+        self.virtual_sleep(20)
+        self.assertEqual(len(self.sessions()), 1)  # Session still present after 20s
+
+        self.virtual_sleep(11)
+        self.wait_no_sessions()  # Session must not be present after 30s
+
+        # Cleanup
+        self.vapi.cli("set sfdp tcp-check fsol-non-syn remove")
+
+    def test_tcp_fsol_non_syn_pkt_remove(self):
+        """TCP - verify session with first non-SYN pkt is tagged for removal (default)"""
+        # Change default action if fsol is non-syn, to remove the session from
+        # SFDP without dropping traffic
+        # Create SFDP session by sending initial non-SYN packet
+        self.send_and_expect(
+            self.pg0,
+            self.create_tcp_packet(
+                self.pg0.remote_mac,
+                self.pg0.local_mac,
+                self.pg0.remote_ip4,
+                self.pg1.remote_ip4,
+                sport=20010,
+                dport=80,
+                flags="A",
+                seq=1000,
+                ack=1,
+            ),
+            self.pg1,
+        )
+        # Send SYN as second session packet
+        self.send_and_expect(
+            self.pg0,
+            self.create_tcp_packet(
+                self.pg0.remote_mac,
+                self.pg0.local_mac,
+                self.pg0.remote_ip4,
+                self.pg1.remote_ip4,
+                sport=20010,
+                dport=80,
+                flags="S",
+                seq=1000,
+            ),
+            self.pg1,
+        )
+
+        # Session should be removed before initial embryonic timeout
+        self.wait_no_sessions()
+
     def test_tcp_fin_with_payload_initiator_closes(self):
         """TCP - initiator FIN/ACK with payload"""
 
@@ -840,6 +925,90 @@ class TestSfdpL4LifecycleIp6(TestSfdpL4LifecycleBase):
             ),
             self.pg0,
         )
+        self.wait_no_sessions()
+
+    def test_tcp_fsol_non_syn_pkt_security(self):
+        """TCP - verify session with first non-SYN pkt is set to state 'security'"""
+        # First non-SYN packet must be dropped
+        self.vapi.cli("set sfdp tcp-check fsol-non-syn security")
+        self.send_and_assert_no_replies(
+            self.pg0,
+            self.create_tcp6_packet(
+                self.pg0.remote_mac,
+                self.pg0.local_mac,
+                self.pg0.remote_ip6,
+                self.pg1.remote_ip6,
+                sport=30011,
+                dport=80,
+                flags="A",
+                seq=1000,
+                ack=1,
+            ),
+        )
+        # Session must still be present (blocked, not removed)
+        self.assertEqual(len(self.sessions()), 1)
+
+        # Subsequent packet is also dropped (session bitmaps locked to drop)
+        self.send_and_assert_no_replies(
+            self.pg0,
+            self.create_tcp6_packet(
+                self.pg0.remote_mac,
+                self.pg0.local_mac,
+                self.pg0.remote_ip6,
+                self.pg1.remote_ip6,
+                sport=30011,
+                dport=80,
+                flags="S",
+                seq=1000,
+            ),
+        )
+
+        # Session should expire at security timeout (30s), well after initial embryonic timeout (10s)
+        self.virtual_sleep(20)
+        self.assertEqual(len(self.sessions()), 1)  # Session still present after 20s
+
+        self.virtual_sleep(11)
+        self.wait_no_sessions()  # Session must not be present after 30s
+
+        # Cleanup
+        self.vapi.cli("set sfdp tcp-check fsol-non-syn remove")
+
+    def test_tcp_fsol_non_syn_pkt_remove(self):
+        """TCP - verify session with first non-SYN pkt is tagged for removal (default)"""
+        # Change default action if fsol is non-syn, to remove the session from
+        # SFDP without dropping traffic
+        # Create SFDP session by sending initial non-SYN packet
+        self.send_and_expect(
+            self.pg0,
+            self.create_tcp6_packet(
+                self.pg0.remote_mac,
+                self.pg0.local_mac,
+                self.pg0.remote_ip6,
+                self.pg1.remote_ip6,
+                sport=30010,
+                dport=80,
+                flags="A",
+                seq=1000,
+                ack=1,
+            ),
+            self.pg1,
+        )
+        # Send SYN as second session packet
+        self.send_and_expect(
+            self.pg0,
+            self.create_tcp6_packet(
+                self.pg0.remote_mac,
+                self.pg0.local_mac,
+                self.pg0.remote_ip6,
+                self.pg1.remote_ip6,
+                sport=30010,
+                dport=80,
+                flags="S",
+                seq=1000,
+            ),
+            self.pg1,
+        )
+        # Session should be removed before initial embryonic timeout
         self.wait_no_sessions()
 
 

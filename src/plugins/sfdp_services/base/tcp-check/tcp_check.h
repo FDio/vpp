@@ -56,6 +56,7 @@ typedef struct
 {
   sfdp_tcp_check_session_state_t *state; /* vec indexed by session-index */
   u16 msg_id_base;
+  u8 fsol_non_syn_security;
 } sfdp_tcp_check_main_t;
 
 extern sfdp_tcp_check_main_t sfdp_tcp;

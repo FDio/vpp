@@ -11,6 +11,8 @@ sfdp_tcp_check_init (vlib_main_t *vm)
 {
   sfdp_tcp_check_main_t *vtcm = &sfdp_tcp;
   vec_validate (vtcm->state, sfdp_num_sessions ());
+  /* By default, tag session for removal if fsol packet is not SYN */
+  vtcm->fsol_non_syn_security = 0;
   return 0;
 };
 
