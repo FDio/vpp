@@ -1443,12 +1443,12 @@ static_always_inline void
 vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
 {
   vlib_node_main_t *nm = &vm->node_main;
-  vlib_thread_main_t *tm = vlib_get_thread_main ();
   uword i;
   u64 cpu_time_now;
   f64 now;
-  vlib_frame_queue_main_t *fqm;
-  u32 frame_queue_check_counter = 0;
+  vlib_handoff_queues_dequeue_fn_t *handoff_queues_dequeue =
+    (vlib_handoff_queues_dequeue_fn_t *) clib_march_select_fn_ptr (
+      vlib_handoff_queues_dequeue_fn_march_fn_registrations);
   u32 *expired_timers = 0;
 
   /* Initialize pending node vector. */
@@ -1497,7 +1497,6 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
   while (1)
     {
       vlib_node_runtime_t *n;
-      uword check_frame_queues;
 
       if (PREDICT_FALSE (_vec_len (vm->pending_rpc_requests) > 0))
 	{
@@ -1510,30 +1509,8 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
       if (!is_main)
 	vlib_worker_thread_barrier_check ();
 
-      check_frame_queues = __atomic_exchange_n (&vm->check_frame_queues, 0, __ATOMIC_RELAXED);
-
-      if (PREDICT_FALSE (check_frame_queues + frame_queue_check_counter))
-	{
-	  u32 processed = 0;
-	  vlib_frame_queue_dequeue_fn_t *fn;
-
-	  if (check_frame_queues)
-	    {
-	      frame_queue_check_counter = 100;
-	    }
-
-	  vec_foreach (fqm, tm->frame_queue_mains)
-	    {
-	      fn = fqm->frame_queue_dequeue_fn;
-	      processed += (fn) (vm, fqm);
-	    }
-
-	  /* No handoff queue work found? */
-	  if (processed)
-	    frame_queue_check_counter = 100;
-	  else
-	    frame_queue_check_counter--;
-	}
+      if (PREDICT_FALSE (__atomic_load_n (&vm->handoff_queue_pending_bmp, __ATOMIC_RELAXED)))
+	handoff_queues_dequeue (vm);
 
       if (PREDICT_FALSE (vec_len (vm->worker_thread_main_loop_callbacks)))
 	clib_call_callbacks (vm->worker_thread_main_loop_callbacks, vm,
