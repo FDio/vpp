@@ -94,6 +94,8 @@ add_vpp_library(vlib
   error.c
   file.c
   format.c
+  handoff.c
+  handoff_cli.c
   handoff_trace.c
   init.c
   log.c
@@ -129,6 +131,7 @@ add_vpp_library(vlib
 
   MULTIARCH_SOURCES
   buffer_funcs.c
+  handoff.c
   drop.c
   punt_node.c
   node_init.c
@@ -147,6 +150,7 @@ add_vpp_library(vlib
   file.h
   format_funcs.h
   global_funcs.h
+  handoff.h
   init.h
   log.h
   main.h
