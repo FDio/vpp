@@ -22,8 +22,8 @@
 
 #include <nat/lib/lib.h>
 
-/* default number of worker handoff frame queue elements */
-#define NAT_FQ_NELTS_DEFAULT 64
+/* Default worker handoff queue size. */
+#define NAT_HQ_SIZE_DEFAULT VLIB_HANDOFF_QUEUE_DEFAULT_SIZE
 
 /* number of attempts to get a port for ED overloading algorithm, if rolling
  * a dice this many times doesn't produce a free port, it's treated
@@ -547,7 +547,7 @@ typedef struct snat_main_s
   /* Randomize port allocation order */
   u32 random_seed;
 
-  /* Worker handoff frame-queue index */
+  /* Worker handoff queue index */
   u32 fq_in2out_index;
   u32 fq_in2out_output_index;
   u32 fq_out2in_index;
@@ -621,8 +621,8 @@ typedef struct snat_main_s
   fib_source_t fib_src_hi;
   fib_source_t fib_src_low;
 
-  /* number of worker handoff frame queue elements */
-  u32 frame_queue_nelts;
+  /* Worker handoff queue size. */
+  u32 handoff_queue_size;
 
   /* nat44 plugin enabled */
   u8 enabled;
@@ -918,7 +918,7 @@ void nat44_addresses_free (snat_address_t **addresses);
 
 void nat44_ed_sessions_clear ();
 
-int nat44_ed_set_frame_queue_nelts (u32 frame_queue_nelts);
+int nat44_ed_set_handoff_queue_size (u32 handoff_queue_size);
 
 void nat_6t_l3_l4_csum_calc (nat_6t_flow_t *f);
 

@@ -5828,14 +5828,17 @@ ikev2_lazy_init (ikev2_main_t *km)
   if (!km->dns_resolve_name_ptr)
     log_err ("cannot load symbols from dns plugin");
 
-  km->handoff_ip4_fq_index =
-    vlib_frame_queue_main_init (ikev2_node_ip4.index, 0);
+  km->handoff_ip4_fq_index = vlib_handoff_alloc_queues (&(vlib_handoff_alloc_queues_args_t){
+    .node_index = ikev2_node_ip4.index,
+  });
 
-  km->handoff_ip4_natt_fq_index =
-    vlib_frame_queue_main_init (ikev2_node_ip4_natt.index, 0);
+  km->handoff_ip4_natt_fq_index = vlib_handoff_alloc_queues (&(vlib_handoff_alloc_queues_args_t){
+    .node_index = ikev2_node_ip4_natt.index,
+  });
 
-  km->handoff_ip6_fq_index =
-    vlib_frame_queue_main_init (ikev2_node_ip6.index, 0);
+  km->handoff_ip6_fq_index = vlib_handoff_alloc_queues (&(vlib_handoff_alloc_queues_args_t){
+    .node_index = ikev2_node_ip6.index,
+  });
 
   /* wake up ikev2 process */
   vlib_process_signal_event (vlib_get_first_main (),
