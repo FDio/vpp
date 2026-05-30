@@ -7,6 +7,7 @@
 #define included_vlib_threads_h
 
 #include <vlib/main.h>
+#include <vlib/handoff.h>
 #include <vppinfra/callback.h>
 #ifdef __linux__
 #include <linux/sched.h>
@@ -32,7 +33,6 @@ typedef struct vlib_thread_registration_
   int fixed_count;
   u32 count;
   int no_data_structure_clone;
-  u32 frame_queue_nelts;
 
   /* All threads of this type run on pthreads */
   int use_pthreads;
@@ -42,21 +42,6 @@ typedef struct vlib_thread_registration_
 
 #define VLIB_LOG2_THREAD_STACK_SIZE (21)
 #define VLIB_THREAD_STACK_SIZE (1<<VLIB_LOG2_THREAD_STACK_SIZE)
-
-typedef struct
-{
-  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-  volatile u32 valid;
-  u32 maybe_trace : 1;
-  u32 n_vectors;
-  u32 offset;
-  STRUCT_MARK (end_of_reset);
-
-  CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
-  u32 buffer_index[VLIB_FRAME_SIZE];
-  u32 aux_data[VLIB_FRAME_SIZE];
-}
-vlib_frame_queue_elt_t;
 
 typedef struct
 {
@@ -96,43 +81,6 @@ extern vlib_worker_thread_t *vlib_worker_threads;
 
 typedef struct
 {
-  /* static data */
-  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-  vlib_frame_queue_elt_t *elts;
-  u64 vector_threshold;
-  u32 nelts;
-
-  /* modified by enqueue side  */
-  CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
-  volatile u64 tail;
-
-  /* modified by dequeue side  */
-  CLIB_CACHE_LINE_ALIGN_MARK (cacheline2);
-  volatile u64 head;
-}
-vlib_frame_queue_t;
-
-struct vlib_frame_queue_main_t_;
-typedef u32 (vlib_frame_queue_dequeue_fn_t) (
-  vlib_main_t *vm, struct vlib_frame_queue_main_t_ *fqm);
-typedef struct vlib_frame_queue_main_t_
-{
-  u32 node_index;
-  u32 frame_queue_nelts;
-
-  vlib_frame_queue_t **vlib_frame_queues;
-
-  vlib_frame_queue_dequeue_fn_t *frame_queue_dequeue_fn;
-} vlib_frame_queue_main_t;
-
-typedef struct
-{
-  u32 node_index;
-  u32 queue_size;
-} vlib_handoff_alloc_queues_args_t;
-
-typedef struct
-{
   uword node_index;
   uword type_opaque;
   uword data;
@@ -147,7 +95,6 @@ void vlib_create_worker_threads (vlib_main_t * vm, int n,
 				 void (*thread_function) (void *));
 
 void vlib_worker_thread_init (vlib_worker_thread_t * w);
-u32 vlib_handoff_alloc_queues (vlib_handoff_alloc_queues_args_t *a);
 
 /* Check for a barrier sync request every 30ms */
 #define BARRIER_SYNC_DELAY (0.030000)
@@ -284,9 +231,6 @@ typedef struct
 
   /* Bitmap of available CPU sockets (NUMA nodes) */
   uword *cpu_socket_bitmap;
-
-  /* Worker handoff queues */
-  vlib_frame_queue_main_t *frame_queue_mains;
 
   /* worker thread initialization barrier */
   volatile u32 worker_thread_release;
