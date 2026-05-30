@@ -466,14 +466,17 @@ nat44_ei_init (vlib_main_t *vm)
   nat_dpo_module_init ();
   nat_ha_init (vm, nm->num_workers, num_threads);
 
-  nm->hairpinning_fq_index =
-    vlib_frame_queue_main_init (nat44_ei_hairpinning_node.index, 0);
+  nm->hairpinning_fq_index = vlib_handoff_alloc_queues (&(vlib_handoff_alloc_queues_args_t){
+    .node_index = nat44_ei_hairpinning_node.index,
+  });
   nm->in2out_hairpinning_finish_ip4_lookup_node_fq_index =
-    vlib_frame_queue_main_init (
-      nat44_ei_in2out_hairpinning_finish_ip4_lookup_node.index, 0);
+    vlib_handoff_alloc_queues (&(vlib_handoff_alloc_queues_args_t){
+      .node_index = nat44_ei_in2out_hairpinning_finish_ip4_lookup_node.index,
+    });
   nm->in2out_hairpinning_finish_interface_output_node_fq_index =
-    vlib_frame_queue_main_init (
-      nat44_ei_in2out_hairpinning_finish_interface_output_node.index, 0);
+    vlib_handoff_alloc_queues (&(vlib_handoff_alloc_queues_args_t){
+      .node_index = nat44_ei_in2out_hairpinning_finish_interface_output_node.index,
+    });
   return nat44_ei_api_hookup (vm);
 }
 
@@ -497,8 +500,8 @@ nat44_ei_plugin_enable (nat44_ei_config_t c)
 
   nm->rconfig = c;
 
-  if (!nm->frame_queue_nelts)
-    nm->frame_queue_nelts = NAT_FQ_NELTS_DEFAULT;
+  if (!nm->handoff_queue_size)
+    nm->handoff_queue_size = NAT_HQ_SIZE_DEFAULT;
 
   nm->translations = c.sessions;
   nm->translation_buckets = nat_calc_bihash_buckets (c.sessions);
@@ -538,18 +541,25 @@ nat44_ei_plugin_enable (nat44_ei_config_t c)
     {
       if (nm->fq_in2out_index == ~0)
 	{
-	  nm->fq_in2out_index = vlib_frame_queue_main_init (
-	    nm->in2out_node_index, nm->frame_queue_nelts);
+	  nm->fq_in2out_index = vlib_handoff_alloc_queues (&(vlib_handoff_alloc_queues_args_t){
+	    .node_index = nm->in2out_node_index,
+	    .queue_size = nm->handoff_queue_size,
+	  });
 	}
       if (nm->fq_out2in_index == ~0)
 	{
-	  nm->fq_out2in_index = vlib_frame_queue_main_init (
-	    nm->out2in_node_index, nm->frame_queue_nelts);
+	  nm->fq_out2in_index = vlib_handoff_alloc_queues (&(vlib_handoff_alloc_queues_args_t){
+	    .node_index = nm->out2in_node_index,
+	    .queue_size = nm->handoff_queue_size,
+	  });
 	}
       if (nm->fq_in2out_output_index == ~0)
 	{
-	  nm->fq_in2out_output_index = vlib_frame_queue_main_init (
-	    nm->in2out_output_node_index, nm->frame_queue_nelts);
+	  nm->fq_in2out_output_index =
+	    vlib_handoff_alloc_queues (&(vlib_handoff_alloc_queues_args_t){
+	      .node_index = nm->in2out_output_node_index,
+	      .queue_size = nm->handoff_queue_size,
+	    });
 	}
     }
 
@@ -3273,11 +3283,16 @@ nat44_ei_ip4_add_del_interface_address_cb (ip4_main_t *im, uword opaque,
 }
 
 int
-nat44_ei_set_frame_queue_nelts (u32 frame_queue_nelts)
+nat44_ei_set_handoff_queue_size (u32 handoff_queue_size)
 {
-  fail_if_enabled ();
   nat44_ei_main_t *nm = &nat44_ei_main;
-  nm->frame_queue_nelts = frame_queue_nelts;
+
+  fail_if_enabled ();
+
+  if (handoff_queue_size == 0 || (handoff_queue_size & (handoff_queue_size - 1)))
+    return VNET_API_ERROR_INVALID_VALUE;
+
+  nm->handoff_queue_size = handoff_queue_size;
   return 0;
 }
 

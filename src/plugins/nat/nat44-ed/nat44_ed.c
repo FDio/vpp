@@ -2129,23 +2129,28 @@ snat_set_workers (uword * bitmap)
 }
 
 int
-nat44_ed_set_frame_queue_nelts (u32 frame_queue_nelts)
+nat44_ed_set_handoff_queue_size (u32 handoff_queue_size)
 {
-  fail_if_enabled ();
   snat_main_t *sm = &snat_main;
+
+  fail_if_enabled ();
+
+  if (handoff_queue_size == 0 || (handoff_queue_size & (handoff_queue_size - 1)))
+    return VNET_API_ERROR_INVALID_VALUE;
 
   if ((sm->fq_in2out_index != ~0) || (sm->fq_out2in_index != ~0) ||
       (sm->fq_in2out_output_index != ~0))
     {
-      // frame queu nelts can be set only before first
-      // call to nat44_plugin_enable after that it
-      // doesn't make sense
+      /*
+       * Frame queue size can be set only before first call to
+       * nat44_plugin_enable.
+       */
       nat_log_err ("Frame queue was already initialized. "
 		   "Change is not possible");
       return 1;
     }
 
-  sm->frame_queue_nelts = frame_queue_nelts;
+  sm->handoff_queue_size = handoff_queue_size;
   return 0;
 }
 
@@ -2334,7 +2339,7 @@ nat_init (vlib_main_t * vm)
   // convenience
   sm->ip4_main = &ip4_main;
 
-  // frame queue indices used for handoff
+  /* Handoff queue indices. */
   sm->fq_out2in_index = ~0;
   sm->fq_in2out_index = ~0;
   sm->fq_in2out_output_index = ~0;
@@ -2452,9 +2457,9 @@ nat44_plugin_enable (nat44_config_t c)
 
   vlib_zero_simple_counter (&sm->total_sessions, 0);
 
-  if (!sm->frame_queue_nelts)
+  if (!sm->handoff_queue_size)
     {
-      sm->frame_queue_nelts = NAT_FQ_NELTS_DEFAULT;
+      sm->handoff_queue_size = NAT_HQ_SIZE_DEFAULT;
     }
 
   if (sm->num_workers > 1)
@@ -2465,20 +2470,27 @@ nat44_plugin_enable (nat44_config_t c)
       if (sm->fq_in2out_index == ~0)
 	{
 	  node = vlib_get_node_by_name (vm, (u8 *) "nat44-ed-in2out");
-	  sm->fq_in2out_index =
-	    vlib_frame_queue_main_init (node->index, sm->frame_queue_nelts);
+	  sm->fq_in2out_index = vlib_handoff_alloc_queues (&(vlib_handoff_alloc_queues_args_t){
+	    .node_index = node->index,
+	    .queue_size = sm->handoff_queue_size,
+	  });
 	}
       if (sm->fq_out2in_index == ~0)
 	{
 	  node = vlib_get_node_by_name (vm, (u8 *) "nat44-ed-out2in");
-	  sm->fq_out2in_index =
-	    vlib_frame_queue_main_init (node->index, sm->frame_queue_nelts);
+	  sm->fq_out2in_index = vlib_handoff_alloc_queues (&(vlib_handoff_alloc_queues_args_t){
+	    .node_index = node->index,
+	    .queue_size = sm->handoff_queue_size,
+	  });
 	}
       if (sm->fq_in2out_output_index == ~0)
 	{
 	  node = vlib_get_node_by_name (vm, (u8 *) "nat44-ed-in2out-output");
 	  sm->fq_in2out_output_index =
-	    vlib_frame_queue_main_init (node->index, sm->frame_queue_nelts);
+	    vlib_handoff_alloc_queues (&(vlib_handoff_alloc_queues_args_t){
+	      .node_index = node->index,
+	      .queue_size = sm->handoff_queue_size,
+	    });
 	}
     }
 

@@ -1218,15 +1218,21 @@ ip6_sv_reass_init_function (vlib_main_t *vm)
   if ((error = vlib_call_init_function (vm, ip_main_init)))
     return error;
 
-  rm->fq_index = vlib_frame_queue_main_init (ip6_sv_reass_node.index, 0);
-  rm->fq_feature_index =
-    vlib_frame_queue_main_init (ip6_sv_reass_node_feature.index, 0);
-  rm->fq_multicast_feature_index =
-    vlib_frame_queue_main_init (ip6_sv_reass_mcast_node_feature.index, 0);
-  rm->fq_output_feature_index =
-    vlib_frame_queue_main_init (ip6_sv_reass_node_output_feature.index, 0);
-  rm->fq_custom_context_index =
-    vlib_frame_queue_main_init (ip6_sv_reass_custom_context_node.index, 0);
+  rm->fq_index = vlib_handoff_alloc_queues (&(vlib_handoff_alloc_queues_args_t){
+    .node_index = ip6_sv_reass_node.index,
+  });
+  rm->fq_feature_index = vlib_handoff_alloc_queues (&(vlib_handoff_alloc_queues_args_t){
+    .node_index = ip6_sv_reass_node_feature.index,
+  });
+  rm->fq_multicast_feature_index = vlib_handoff_alloc_queues (&(vlib_handoff_alloc_queues_args_t){
+    .node_index = ip6_sv_reass_mcast_node_feature.index,
+  });
+  rm->fq_output_feature_index = vlib_handoff_alloc_queues (&(vlib_handoff_alloc_queues_args_t){
+    .node_index = ip6_sv_reass_node_output_feature.index,
+  });
+  rm->fq_custom_context_index = vlib_handoff_alloc_queues (&(vlib_handoff_alloc_queues_args_t){
+    .node_index = ip6_sv_reass_custom_context_node.index,
+  });
 
   rm->feature_use_refcount_per_intf = NULL;
 

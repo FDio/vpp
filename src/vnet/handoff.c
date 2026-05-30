@@ -195,7 +195,10 @@ interface_handoff_enable_disable (vlib_main_t *vm, u32 sw_if_index,
   if (hm->frame_queue_index == ~0)
     {
       vlib_node_t *n = vlib_get_node_by_name (vm, (u8 *) "ethernet-input");
-      hm->frame_queue_index = vlib_frame_queue_main_init (n->index, fq_nelts);
+      hm->frame_queue_index = vlib_handoff_alloc_queues (&(vlib_handoff_alloc_queues_args_t){
+	.node_index = n->index,
+	.queue_size = fq_nelts,
+      });
     }
 
   vec_validate (hm->if_data, sw_if_index);
