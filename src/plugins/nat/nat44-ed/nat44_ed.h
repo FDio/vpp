@@ -22,8 +22,8 @@
 
 #include <nat/lib/lib.h>
 
-/* Default worker handoff queue size. */
-#define NAT_HQ_SIZE_DEFAULT VLIB_HANDOFF_QUEUE_DEFAULT_SIZE
+/* Default NAT handoff queue size in buffer indices. */
+#define NAT_HQ_SIZE_DEFAULT 8192
 
 /* number of attempts to get a port for ED overloading algorithm, if rolling
  * a dice this many times doesn't produce a free port, it's treated
