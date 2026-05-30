@@ -28,8 +28,8 @@
 #include <nat/lib/lib.h>
 #include <nat/lib/nat_proto.h>
 
-/* default number of worker handoff frame queue elements */
-#define NAT_FQ_NELTS_DEFAULT 64
+/* Default worker handoff queue size. */
+#define NAT_HQ_SIZE_DEFAULT VLIB_HANDOFF_QUEUE_DEFAULT_SIZE
 
 /* External address and port allocation modes */
 #define foreach_nat44_ei_addr_and_port_alloc_alg                              \
@@ -445,8 +445,8 @@ typedef struct nat44_ei_main_s
    * dynamic mapping enabled or conneciton tracking */
   u8 pat;
 
-  /* number of worker handoff frame queue elements */
-  u32 frame_queue_nelts;
+  /* Worker handoff queue size. */
+  u32 handoff_queue_size;
 
   /* nat44 plugin enabled */
   u8 enabled;
@@ -609,7 +609,7 @@ void nat44_ei_delete_session (nat44_ei_main_t *nm, nat44_ei_session_t *ses,
 int nat44_i2o_is_idle_session_cb (clib_bihash_kv_8_8_t *kv, void *arg);
 int nat44_o2i_is_idle_session_cb (clib_bihash_kv_8_8_t *kv, void *arg);
 
-int nat44_ei_set_frame_queue_nelts (u32 frame_queue_nelts);
+int nat44_ei_set_handoff_queue_size (u32 handoff_queue_size);
 
 always_inline bool
 nat44_ei_is_session_static (nat44_ei_session_t *s)
