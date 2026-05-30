@@ -592,11 +592,13 @@ nat64_interface_add_del (u32 sw_if_index, u8 is_inside, u8 is_add)
       feature_name =
 	is_inside ? "nat64-in2out-handoff" : "nat64-out2in-handoff";
       if (nm->fq_in2out_index == ~0)
-	nm->fq_in2out_index =
-	  vlib_frame_queue_main_init (nat64_in2out_node.index, 0);
+	nm->fq_in2out_index = vlib_handoff_alloc_queues (&(vlib_handoff_alloc_queues_args_t) {
+	  .node_index = nat64_in2out_node.index,
+	});
       if (nm->fq_out2in_index == ~0)
-	nm->fq_out2in_index =
-	  vlib_frame_queue_main_init (nat64_out2in_node.index, 0);
+	nm->fq_out2in_index = vlib_handoff_alloc_queues (&(vlib_handoff_alloc_queues_args_t) {
+	  .node_index = nat64_out2in_node.index,
+	});
     }
   else
     feature_name = is_inside ? "nat64-in2out" : "nat64-out2in";

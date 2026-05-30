@@ -523,7 +523,7 @@ Forwarding
 Additional Configuration Commands
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-   | set nat frame-queue-nelts ``number``
+   | set nat handoff-queue-size ``number``
    | set nat workers ``workers-list``
    | nat44 del session in|out ``addr``:``port`` tcp|udp|icmp [vrf
      ``id``] [external-host ``addr``:``port``]

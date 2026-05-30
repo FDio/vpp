@@ -130,8 +130,9 @@ soft_rss_config (vlib_main_t __clib_unused *vm,
     return clib_error_return (0, "not supported: more than 256 vlib threads");
 
   if (sm->frame_queue_index == CLIB_U32_MAX)
-    sm->frame_queue_index =
-      vlib_frame_queue_main_init (soft_rss_handoff_node.index, 0);
+    sm->frame_queue_index = vlib_handoff_alloc_queues (&(vlib_handoff_alloc_queues_args_t) {
+      .node_index = soft_rss_handoff_node.index,
+    });
 
   vec_validate (sm->rt_by_sw_if_index, hi->sw_if_index);
   rt = sm->rt_by_sw_if_index[hi->sw_if_index];
