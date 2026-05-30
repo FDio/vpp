@@ -50,6 +50,7 @@ typedef struct
 } vlib_node_runtime_perf_callback_args_t;
 
 struct vlib_node_runtime_perf_callback_data_t;
+struct vlib_handoff_queue_main_t_;
 
 typedef void (*vlib_node_runtime_perf_callback_fp_t)
   (struct vlib_node_runtime_perf_callback_data_t * data,
@@ -224,8 +225,11 @@ typedef struct vlib_main_t
   void (**volatile barrier_perf_callbacks_tmp)
     (struct vlib_main_t *, u64 t, int leave);
 
-  /* Need to check the frame queues */
-  u8 check_frame_queues;
+  /* Need to check handoff queues. */
+  u8 check_handoff_queues;
+
+  /* Worker handoff queues. */
+  struct vlib_handoff_queue_main_t_ *handoff_queue_mains;
 
   /* RPC requests, main thread only */
   uword *pending_rpc_requests;
