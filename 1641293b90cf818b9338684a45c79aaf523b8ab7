@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "21e9c022_6a72648b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2026-05-30T11:26:13Z",
+      "side": 1,
+      "message": "Hi Matthew,\nAs promised some time ago, I finally made a new test for ospf/multicast traffic in lcp. I also tested with my original patch that introduces regression - test fails with that patch. Do you mind to take a look?",
+      "revId": "1641293b90cf818b9338684a45c79aaf523b8ab7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
