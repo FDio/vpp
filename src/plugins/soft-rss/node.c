@@ -275,7 +275,7 @@ soft_rss_one_interface (vlib_main_t *vm, vlib_node_runtime_t *node,
 #endif
 
   u32 n_enq = vlib_buffer_enqueue_to_thread (vm, node, soft_rss_main.frame_queue_index,
-					     buffer_indices, thread_indices, n_pkts, 0);
+					     buffer_indices, thread_indices, n_pkts, 1);
   if (n_enq != n_pkts)
     vlib_node_increment_counter (vm, node->node_index, SOFT_RSS_ERROR_HANDOFF_QUEUE_FULL,
 				 n_pkts - n_enq);

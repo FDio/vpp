@@ -392,6 +392,8 @@ typedef struct vlib_node_t
 
 /* Max number of vector elements to process at once per node. */
 #define VLIB_FRAME_SIZE 256
+/* Default worker handoff queue size. */
+#define VLIB_HANDOFF_QUEUE_DEFAULT_SIZE (4 * VLIB_FRAME_SIZE)
 /* Number of extra elements allocated at the end of vecttor. */
 #define VLIB_FRAME_SIZE_EXTRA 4
 /* Frame data alignment */
@@ -810,7 +812,5 @@ vlib_error_get_code (vlib_node_main_t * nm, vlib_error_t e)
   u32 error_code = e - n->error_heap_index;
   return error_code;
 }
-
-#define FRAME_QUEUE_MAX_NELTS 64
 
 #endif /* included_vlib_node_h */
