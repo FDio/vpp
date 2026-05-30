@@ -100,7 +100,6 @@ typedef struct
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   vlib_frame_queue_elt_t *elts;
   u64 vector_threshold;
-  u64 trace;
   u32 nelts;
 
   /* modified by enqueue side  */
@@ -123,9 +122,6 @@ typedef struct vlib_frame_queue_main_t_
 
   vlib_frame_queue_t **vlib_frame_queues;
 
-  /* for frame queue tracing */
-  frame_queue_trace_t *frame_queue_traces;
-  frame_queue_nelt_counter_t *frame_queue_histogram;
   vlib_frame_queue_dequeue_fn_t *frame_queue_dequeue_fn;
 } vlib_frame_queue_main_t;
 

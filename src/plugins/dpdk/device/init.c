@@ -1735,8 +1735,6 @@ dpdk_init (vlib_main_t * vm)
   STATIC_ASSERT (offsetof (dpdk_device_t, cacheline1) ==
 		 CLIB_CACHE_LINE_BYTES,
 		 "Data in cache line 0 is bigger than cache line size");
-  STATIC_ASSERT (offsetof (frame_queue_trace_t, cacheline0) == 0,
-		 "Cache line marker must be 1st element in frame_queue_trace_t");
 
   dpdk_cli_reference ();
 
