@@ -202,7 +202,9 @@ sfdp_service_init_nodes_for_scope (vlib_main_t *vm, u32 scope_index)
 
   /* Last node index is handoff node */
   sfdp->frame_queue_index_per_scope[scope_index] =
-    vlib_frame_queue_main_init (node_index, 0);
+    vlib_handoff_alloc_queues (&(vlib_handoff_alloc_queues_args_t){
+      .node_index = node_index,
+    });
 
   /* Same work for all parser nodes */
   while (preg)

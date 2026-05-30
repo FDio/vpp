@@ -1436,16 +1436,26 @@ esp_encrypt_init (vlib_main_t *vm)
 {
   ipsec_main_t *im = &ipsec_main;
 
-  im->esp4_enc_fq_index = vlib_frame_queue_main_init (esp4_encrypt_node.index,
-						      im->handoff_queue_size);
-  im->esp6_enc_fq_index = vlib_frame_queue_main_init (esp6_encrypt_node.index,
-						      im->handoff_queue_size);
-  im->esp4_enc_tun_fq_index = vlib_frame_queue_main_init (
-    esp4_encrypt_tun_node.index, im->handoff_queue_size);
-  im->esp6_enc_tun_fq_index = vlib_frame_queue_main_init (
-    esp6_encrypt_tun_node.index, im->handoff_queue_size);
-  im->esp_mpls_enc_tun_fq_index = vlib_frame_queue_main_init (
-    esp_mpls_encrypt_tun_node.index, im->handoff_queue_size);
+  im->esp4_enc_fq_index = vlib_handoff_alloc_queues (&(vlib_handoff_alloc_queues_args_t){
+    .node_index = esp4_encrypt_node.index,
+    .queue_size = im->handoff_queue_size,
+  });
+  im->esp6_enc_fq_index = vlib_handoff_alloc_queues (&(vlib_handoff_alloc_queues_args_t){
+    .node_index = esp6_encrypt_node.index,
+    .queue_size = im->handoff_queue_size,
+  });
+  im->esp4_enc_tun_fq_index = vlib_handoff_alloc_queues (&(vlib_handoff_alloc_queues_args_t){
+    .node_index = esp4_encrypt_tun_node.index,
+    .queue_size = im->handoff_queue_size,
+  });
+  im->esp6_enc_tun_fq_index = vlib_handoff_alloc_queues (&(vlib_handoff_alloc_queues_args_t){
+    .node_index = esp6_encrypt_tun_node.index,
+    .queue_size = im->handoff_queue_size,
+  });
+  im->esp_mpls_enc_tun_fq_index = vlib_handoff_alloc_queues (&(vlib_handoff_alloc_queues_args_t){
+    .node_index = esp_mpls_encrypt_tun_node.index,
+    .queue_size = im->handoff_queue_size,
+  });
 
   return 0;
 }

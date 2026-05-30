@@ -60,12 +60,18 @@ wg_init (vlib_main_t * vm)
 
   wmp->vlib_main = vm;
 
-  wmp->in4_fq_index = vlib_frame_queue_main_init (wg4_input_node.index, 0);
-  wmp->in6_fq_index = vlib_frame_queue_main_init (wg6_input_node.index, 0);
-  wmp->out4_fq_index =
-    vlib_frame_queue_main_init (wg4_output_tun_node.index, 0);
-  wmp->out6_fq_index =
-    vlib_frame_queue_main_init (wg6_output_tun_node.index, 0);
+  wmp->in4_fq_index = vlib_handoff_alloc_queues (&(vlib_handoff_alloc_queues_args_t){
+    .node_index = wg4_input_node.index,
+  });
+  wmp->in6_fq_index = vlib_handoff_alloc_queues (&(vlib_handoff_alloc_queues_args_t){
+    .node_index = wg6_input_node.index,
+  });
+  wmp->out4_fq_index = vlib_handoff_alloc_queues (&(vlib_handoff_alloc_queues_args_t){
+    .node_index = wg4_output_tun_node.index,
+  });
+  wmp->out6_fq_index = vlib_handoff_alloc_queues (&(vlib_handoff_alloc_queues_args_t){
+    .node_index = wg6_output_tun_node.index,
+  });
 
   vlib_thread_main_t *tm = vlib_get_thread_main ();
 
