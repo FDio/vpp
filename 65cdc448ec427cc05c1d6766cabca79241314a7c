@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "efa98ed8_c1005c31",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-05-30T12:23:57Z",
+      "side": 1,
+      "message": "patch train 2/8\nprev is https://gerrit.fd.io/r/c/vpp/+/45918\nnext is https://gerrit.fd.io/r/c/vpp/+/45920",
+      "revId": "65cdc448ec427cc05c1d6766cabca79241314a7c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
