@@ -66,8 +66,8 @@ vl_api_nat44_ed_set_fq_options_t_handler (vl_api_nat44_ed_set_fq_options_t *mp)
   snat_main_t *sm = &snat_main;
   vl_api_nat44_ed_set_fq_options_reply_t *rmp;
   int rv = 0;
-  u32 frame_queue_nelts = ntohl (mp->frame_queue_nelts);
-  rv = nat44_ed_set_frame_queue_nelts (frame_queue_nelts);
+  u32 handoff_queue_size = ntohl (mp->frame_queue_nelts);
+  rv = nat44_ed_set_handoff_queue_size (handoff_queue_size);
   REPLY_MACRO (VL_API_NAT44_ED_SET_FQ_OPTIONS_REPLY);
 }
 
@@ -81,7 +81,7 @@ vl_api_nat44_ed_show_fq_options_t_handler (
   /* clang-format off */
   REPLY_MACRO2_ZERO (VL_API_NAT44_ED_SHOW_FQ_OPTIONS_REPLY,
   ({
-    rmp->frame_queue_nelts = htonl (sm->frame_queue_nelts);
+    rmp->frame_queue_nelts = htonl (sm->handoff_queue_size);
   }));
   /* clang-format on */
 }

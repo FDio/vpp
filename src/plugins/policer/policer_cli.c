@@ -787,15 +787,23 @@ policer_init (vlib_main_t *vm)
   pm->vnet_main = vnet_get_main ();
   pm->log_class = vlib_log_register_class ("policer", 0);
 
-  pm->fq_index[VLIB_RX] = vlib_frame_queue_main_init (policer_input_node.index, 0);
-  pm->fq_index[VLIB_TX] = vlib_frame_queue_main_init (policer_output_node.index, 0);
+  pm->fq_index[VLIB_RX] = vlib_handoff_alloc_queues (&(vlib_handoff_alloc_queues_args_t) {
+    .node_index = policer_input_node.index,
+  });
+  pm->fq_index[VLIB_TX] = vlib_handoff_alloc_queues (&(vlib_handoff_alloc_queues_args_t) {
+    .node_index = policer_output_node.index,
+  });
 
   pm->policer_config_by_name = hash_create_string (0, sizeof (uword));
   pm->policer_index_by_name = hash_create_string (0, sizeof (uword));
   pm->tsc_hz = get_tsc_hz ();
 
-  ip4_punt_policer_cfg.fq_index = vlib_frame_queue_main_init (ip4_punt_policer_node.index, 0);
-  ip6_punt_policer_cfg.fq_index = vlib_frame_queue_main_init (ip6_punt_policer_node.index, 0);
+  ip4_punt_policer_cfg.fq_index = vlib_handoff_alloc_queues (&(vlib_handoff_alloc_queues_args_t) {
+    .node_index = ip4_punt_policer_node.index,
+  });
+  ip6_punt_policer_cfg.fq_index = vlib_handoff_alloc_queues (&(vlib_handoff_alloc_queues_args_t) {
+    .node_index = ip6_punt_policer_node.index,
+  });
 
   /* Initialize L2 input feature bitmap next nodes */
   feat_bitmap_init_next_nodes (vm, policer_l2_input_node.index, L2INPUT_N_FEAT,

@@ -1663,7 +1663,7 @@ extern clib_march_fn_registration
 extern clib_march_fn_registration
   *vlib_frame_queue_dequeue_fn_march_fn_registrations;
 u32
-vlib_frame_queue_main_init (u32 node_index, u32 frame_queue_nelts)
+vlib_handoff_alloc_queues (vlib_handoff_alloc_queues_args_t *a)
 {
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   vlib_main_t *vm = vlib_get_main ();
@@ -1671,6 +1671,7 @@ vlib_frame_queue_main_init (u32 node_index, u32 frame_queue_nelts)
   vlib_frame_queue_t *fq;
   vlib_node_t *node;
   int i;
+  u32 frame_queue_nelts = a->queue_size;
   u32 num_threads;
 
   if (frame_queue_nelts == 0)
@@ -1681,7 +1682,7 @@ vlib_frame_queue_main_init (u32 node_index, u32 frame_queue_nelts)
 
   vec_add2 (tm->frame_queue_mains, fqm, 1);
 
-  node = vlib_get_node (vm, fqm->node_index);
+  node = vlib_get_node (vm, a->node_index);
   ASSERT (node);
   if (node->aux_offset)
     {
@@ -1694,7 +1695,7 @@ vlib_frame_queue_main_init (u32 node_index, u32 frame_queue_nelts)
 	CLIB_MARCH_FN_VOID_POINTER (vlib_frame_queue_dequeue_fn);
     }
 
-  fqm->node_index = node_index;
+  fqm->node_index = a->node_index;
   fqm->frame_queue_nelts = frame_queue_nelts;
 
   vec_validate (fqm->vlib_frame_queues, tm->n_vlib_mains - 1);
