@@ -140,9 +140,13 @@ sfdp_init_main_if_needed (sfdp_main_t *sfdp)
 			sfdp_ip4_num_buckets (), sfdp_ip4_mem_size ());
 
   sfdp->icmp4_error_frame_queue_index =
-    vlib_frame_queue_main_init (sfdp_lookup_ip4_icmp_node.index, 0);
+    vlib_handoff_alloc_queues (&(vlib_handoff_alloc_queues_args_t){
+      .node_index = sfdp_lookup_ip4_icmp_node.index,
+    });
   sfdp->icmp6_error_frame_queue_index =
-    vlib_frame_queue_main_init (sfdp_lookup_ip6_icmp_node.index, 0);
+    vlib_handoff_alloc_queues (&(vlib_handoff_alloc_queues_args_t){
+      .node_index = sfdp_lookup_ip6_icmp_node.index,
+    });
 
   /* User timer as default if no other has been registered yet. */
   if (!sfdp->expiry_callbacks.expire_or_evict_sessions)

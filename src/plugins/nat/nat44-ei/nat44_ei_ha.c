@@ -154,7 +154,7 @@ typedef struct nat_ha_main_s
   u32 ha_worker_node_index;
   u32 ha_node_index;
 
-  /* worker handoff frame-queue index */
+  /* Worker handoff queue index. */
   u32 fq_index;
 } nat_ha_main_t;
 
@@ -502,7 +502,9 @@ nat_ha_set_listener (vlib_main_t *vm, ip4_address_t *addr, u16 port,
       if (ha->num_workers > 1)
 	{
 	  if (ha->fq_index == ~0)
-	    ha->fq_index = vlib_frame_queue_main_init (ha->ha_node_index, 0);
+	    ha->fq_index = vlib_handoff_alloc_queues (&(vlib_handoff_alloc_queues_args_t){
+	      .node_index = ha->ha_node_index,
+	    });
 	  udp_register_dst_port (vm, port, ha->ha_handoff_node_index, 1);
 	}
       else

@@ -447,10 +447,14 @@ ah_decrypt_init (vlib_main_t *vm)
 {
   ipsec_main_t *im = &ipsec_main;
 
-  im->ah4_dec_fq_index = vlib_frame_queue_main_init (ah4_decrypt_node.index,
-						     im->handoff_queue_size);
-  im->ah6_dec_fq_index = vlib_frame_queue_main_init (ah6_decrypt_node.index,
-						     im->handoff_queue_size);
+  im->ah4_dec_fq_index = vlib_handoff_alloc_queues (&(vlib_handoff_alloc_queues_args_t){
+    .node_index = ah4_decrypt_node.index,
+    .queue_size = im->handoff_queue_size,
+  });
+  im->ah6_dec_fq_index = vlib_handoff_alloc_queues (&(vlib_handoff_alloc_queues_args_t){
+    .node_index = ah6_decrypt_node.index,
+    .queue_size = im->handoff_queue_size,
+  });
 
   return 0;
 }
