@@ -131,6 +131,12 @@ typedef struct vlib_frame_queue_main_t_
 
 typedef struct
 {
+  u32 node_index;
+  u32 queue_size;
+} vlib_handoff_alloc_queues_args_t;
+
+typedef struct
+{
   uword node_index;
   uword type_opaque;
   uword data;
@@ -145,7 +151,7 @@ void vlib_create_worker_threads (vlib_main_t * vm, int n,
 				 void (*thread_function) (void *));
 
 void vlib_worker_thread_init (vlib_worker_thread_t * w);
-u32 vlib_frame_queue_main_init (u32 node_index, u32 frame_queue_nelts);
+u32 vlib_handoff_alloc_queues (vlib_handoff_alloc_queues_args_t *a);
 
 /* Check for a barrier sync request every 30ms */
 #define BARRIER_SYNC_DELAY (0.030000)

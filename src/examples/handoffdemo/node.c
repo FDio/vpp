@@ -208,8 +208,10 @@ handoffdemo_node_init (vlib_main_t * vm)
 {
   handoffdemo_main_t *hmp = &handoffdemo_main;
 
-  hmp->frame_queue_index = vlib_frame_queue_main_init
-    (handoffdemo_node_2.index, 16);
+  hmp->frame_queue_index = vlib_handoff_alloc_queues (&(vlib_handoff_alloc_queues_args_t) {
+    .node_index = handoffdemo_node_2.index,
+    .queue_size = 16,
+  });
 
   return 0;
 }

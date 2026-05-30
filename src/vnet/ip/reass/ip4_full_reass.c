@@ -1601,13 +1601,18 @@ ip4_full_reass_init_function (vlib_main_t * vm)
   nbuckets = ip4_full_reass_get_nbuckets ();
   clib_bihash_init_16_8 (&rm->hash, "ip4-dr", nbuckets, nbuckets * 1024);
 
-  rm->fq_index = vlib_frame_queue_main_init (ip4_full_reass_node.index, 0);
-  rm->fq_local_index =
-    vlib_frame_queue_main_init (ip4_local_full_reass_node.index, 0);
-  rm->fq_feature_index =
-    vlib_frame_queue_main_init (ip4_full_reass_node_feature.index, 0);
-  rm->fq_custom_index =
-    vlib_frame_queue_main_init (ip4_full_reass_node_custom.index, 0);
+  rm->fq_index = vlib_handoff_alloc_queues (&(vlib_handoff_alloc_queues_args_t) {
+    .node_index = ip4_full_reass_node.index,
+  });
+  rm->fq_local_index = vlib_handoff_alloc_queues (&(vlib_handoff_alloc_queues_args_t) {
+    .node_index = ip4_local_full_reass_node.index,
+  });
+  rm->fq_feature_index = vlib_handoff_alloc_queues (&(vlib_handoff_alloc_queues_args_t) {
+    .node_index = ip4_full_reass_node_feature.index,
+  });
+  rm->fq_custom_index = vlib_handoff_alloc_queues (&(vlib_handoff_alloc_queues_args_t) {
+    .node_index = ip4_full_reass_node_custom.index,
+  });
 
   rm->feature_use_refcount_per_intf = NULL;
   rm->is_local_reass_enabled = 1;

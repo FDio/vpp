@@ -1797,19 +1797,19 @@ nat_show_timeouts_command_fn (vlib_main_t * vm,
 }
 
 static clib_error_t *
-set_frame_queue_nelts_command_fn (vlib_main_t *vm, unformat_input_t *input,
-				  vlib_cli_command_t *cmd)
+set_handoff_queue_size_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				   vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error = 0;
-  u32 frame_queue_nelts = 0;
+  u32 handoff_queue_size = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return clib_error_return (0, NAT44_ED_EXPECTED_ARGUMENT);
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "%u", &frame_queue_nelts))
+      if (unformat (line_input, "%u", &handoff_queue_size))
 	;
       else
 	{
@@ -1818,14 +1818,14 @@ set_frame_queue_nelts_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	  goto done;
 	}
     }
-  if (!frame_queue_nelts)
+  if (!handoff_queue_size)
     {
-      error = clib_error_return (0, "frame_queue_nelts cannot be zero");
+      error = clib_error_return (0, "handoff_queue_size cannot be zero");
       goto done;
     }
-  if (nat44_ed_set_frame_queue_nelts (frame_queue_nelts) != 0)
+  if (nat44_ed_set_handoff_queue_size (handoff_queue_size) != 0)
     {
-      error = clib_error_return (0, "snat_set_frame_queue_nelts failed");
+      error = clib_error_return (0, "snat_set_handoff_queue_size failed");
       goto done;
     }
 done:
@@ -1940,14 +1940,14 @@ VLIB_CLI_COMMAND (nat_show_timeouts_command, static) = {
 
 /*?
  * @cliexpar
- * @cliexstart{set nat frame-queue-nelts}
- * Set number of worker handoff frame queue elements.
+ * @cliexstart{set nat handoff-queue-size}
+ * Set worker handoff queue size.
  * @cliexend
 ?*/
-VLIB_CLI_COMMAND (set_frame_queue_nelts_command, static) = {
-  .path = "set nat frame-queue-nelts",
-  .function = set_frame_queue_nelts_command_fn,
-  .short_help = "set nat frame-queue-nelts <number>",
+VLIB_CLI_COMMAND (set_handoff_queue_size_command, static) = {
+  .path = "set nat handoff-queue-size",
+  .function = set_handoff_queue_size_command_fn,
+  .short_help = "set nat handoff-queue-size <number>",
 };
 
 /*?
