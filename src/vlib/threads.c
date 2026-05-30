@@ -340,11 +340,6 @@ vlib_thread_init (vlib_main_t * vm)
       tr->first_index = first_index;
       first_index += tr->count;
       n_vlib_mains += (tr->no_data_structure_clone == 0) ? tr->count : 0;
-      if (n_vlib_mains >= FRAME_QUEUE_MAX_NELTS)
-	return clib_error_return (0,
-				  "configured amount of workers %u is"
-				  " greater than VPP_MAX_WORKERS (%u)",
-				  n_vlib_mains, FRAME_QUEUE_MAX_NELTS);
 
       /* construct coremask */
       if (tr->use_pthreads || !tr->count)
@@ -416,26 +411,6 @@ vlib_thread_init (vlib_main_t * vm)
 			CLIB_CACHE_LINE_BYTES);
   vec_validate (vlib_thread_stacks, vec_len (vlib_worker_threads) - 1);
   return 0;
-}
-
-vlib_frame_queue_t *
-vlib_frame_queue_alloc (int nelts)
-{
-  vlib_frame_queue_t *fq;
-
-  fq = clib_mem_alloc_aligned (sizeof (*fq), CLIB_CACHE_LINE_BYTES);
-  clib_memset (fq, 0, sizeof (*fq));
-  fq->nelts = nelts;
-  fq->vector_threshold = 2 * VLIB_FRAME_SIZE;
-  vec_validate_aligned (fq->elts, nelts - 1, CLIB_CACHE_LINE_BYTES);
-
-  if (nelts & (nelts - 1))
-    {
-      fformat (stderr, "FATAL: nelts MUST be a power of 2\n");
-      abort ();
-    }
-
-  return (fq);
 }
 
 void vl_msg_api_handler_no_free (void *) __attribute__ ((weak));
@@ -1656,57 +1631,6 @@ vlib_worker_flush_pending_rpc_requests (vlib_main_t *vm)
   vec_append (vm_global->pending_rpc_requests, vm->pending_rpc_requests);
   vec_reset_length (vm->pending_rpc_requests);
   clib_spinlock_unlock_if_init (&vm_global->pending_rpc_lock);
-}
-
-extern clib_march_fn_registration
-  *vlib_frame_queue_dequeue_with_aux_fn_march_fn_registrations;
-extern clib_march_fn_registration
-  *vlib_frame_queue_dequeue_fn_march_fn_registrations;
-u32
-vlib_handoff_alloc_queues (vlib_handoff_alloc_queues_args_t *a)
-{
-  vlib_thread_main_t *tm = vlib_get_thread_main ();
-  vlib_main_t *vm = vlib_get_main ();
-  vlib_frame_queue_main_t *fqm;
-  vlib_frame_queue_t *fq;
-  vlib_node_t *node;
-  int i;
-  u32 frame_queue_nelts = a->queue_size;
-  u32 num_threads;
-
-  if (frame_queue_nelts == 0)
-    frame_queue_nelts = FRAME_QUEUE_MAX_NELTS;
-
-  num_threads = 1 /* main thread */  + tm->n_threads;
-  ASSERT (frame_queue_nelts >= 8 + num_threads);
-
-  vec_add2 (tm->frame_queue_mains, fqm, 1);
-
-  node = vlib_get_node (vm, a->node_index);
-  ASSERT (node);
-  if (node->aux_offset)
-    {
-      fqm->frame_queue_dequeue_fn =
-	CLIB_MARCH_FN_VOID_POINTER (vlib_frame_queue_dequeue_with_aux_fn);
-    }
-  else
-    {
-      fqm->frame_queue_dequeue_fn =
-	CLIB_MARCH_FN_VOID_POINTER (vlib_frame_queue_dequeue_fn);
-    }
-
-  fqm->node_index = a->node_index;
-  fqm->frame_queue_nelts = frame_queue_nelts;
-
-  vec_validate (fqm->vlib_frame_queues, tm->n_vlib_mains - 1);
-  vec_set_len (fqm->vlib_frame_queues, 0);
-  for (i = 0; i < tm->n_vlib_mains; i++)
-    {
-      fq = vlib_frame_queue_alloc (frame_queue_nelts);
-      vec_add1 (fqm->vlib_frame_queues, fq);
-    }
-
-  return (fqm - tm->frame_queue_mains);
 }
 
 void

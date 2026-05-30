@@ -160,9 +160,21 @@ vlib_file_poll (vlib_main_t *vm)
 	clib_interrupt_is_any_pending (nm->node_interrupts[nt]))
       goto epoll;
 
+  if (vm->file_poll_no_sleep_epolls)
+    {
+      vm->file_poll_no_sleep_epolls--;
+      goto skip_loops;
+    }
+
   /* at this point we know that thread is going to sleep, so let's annonce
    * to other threads that they need to wakeup us if they need our attention */
-  __atomic_store_n (&vm->thread_sleeps, 1, __ATOMIC_RELAXED);
+  __atomic_store_n (&vm->thread_sleeps, 1, __ATOMIC_SEQ_CST);
+
+  if (__atomic_load_n (&vm->handoff_queue_pending_bmp, __ATOMIC_SEQ_CST))
+    {
+      __atomic_store_n (&vm->thread_sleeps, 0, __ATOMIC_RELAXED);
+      goto epoll;
+    }
 
   ticks = vlib_tw_timer_first_expires_in_ticks (vm);
 
