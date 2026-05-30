@@ -642,43 +642,6 @@ vlib_frame_queue_dequeue_inline (vlib_main_t *vm, vlib_frame_queue_main_t *fqm,
 
   if (PREDICT_FALSE (fqm->node_index == ~0))
     return 0;
-  /*
-   * Gather trace data for frame queues
-   */
-  if (PREDICT_FALSE (fq->trace))
-    {
-      frame_queue_trace_t *fqt;
-      frame_queue_nelt_counter_t *fqh;
-      u32 elix;
-
-      fqt = &fqm->frame_queue_traces[thread_id];
-
-      fqt->nelts = fq->nelts;
-      fqt->head = fq->head;
-      fqt->tail = fq->tail;
-      fqt->threshold = fq->vector_threshold;
-      fqt->n_in_use = fqt->tail - fqt->head;
-      if (fqt->n_in_use >= fqt->nelts)
-	{
-	  // if beyond max then use max
-	  fqt->n_in_use = fqt->nelts - 1;
-	}
-
-      /* Record the number of elements in use in the histogram */
-      fqh = &fqm->frame_queue_histogram[thread_id];
-      fqh->count[fqt->n_in_use]++;
-
-      /* Record a snapshot of the elements in use */
-      for (elix = 0; elix < fqt->nelts; elix++)
-	{
-	  elt = fq->elts + ((fq->head + 1 + elix) & (mask));
-	  if (1 || elt->valid)
-	    {
-	      fqt->n_vectors[elix] = elt->n_vectors;
-	    }
-	}
-      fqt->written = 1;
-    }
 
   while (1)
     {
