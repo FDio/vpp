@@ -107,18 +107,17 @@ def pump_output(testclass):
     # catch and ignore pump thread exception when running tests
     # against a running vpp
     try:
+        stdout_fd = testclass.vpp.stdout.fileno()
+        stderr_fd = testclass.vpp.stderr.fileno()
+        wakeup_fd = testclass.pump_thread_wakeup_pipe[0]
+        poller = select.poll()
+        poller.register(stdout_fd, select.POLLIN)
+        poller.register(stderr_fd, select.POLLIN)
+        poller.register(wakeup_fd, select.POLLIN)
         while not testclass.pump_thread_stop_flag.is_set():
-            readable = select.select(
-                [
-                    testclass.vpp.stdout.fileno(),
-                    testclass.vpp.stderr.fileno(),
-                    testclass.pump_thread_wakeup_pipe[0],
-                ],
-                [],
-                [],
-            )[0]
-            if testclass.vpp.stdout.fileno() in readable:
-                read = os.read(testclass.vpp.stdout.fileno(), 102400)
+            readable = {fd for fd, _ in poller.poll()}
+            if stdout_fd in readable:
+                read = os.read(stdout_fd, 102400)
                 if len(read) > 0:
                     split = read.decode("ascii", errors="backslashreplace").splitlines(
                         True
@@ -134,8 +133,8 @@ def pump_output(testclass):
                     if not config.cache_vpp_output:
                         for line in split[:limit]:
                             testclass.logger.info("VPP STDOUT: %s" % line.rstrip("\n"))
-            if testclass.vpp.stderr.fileno() in readable:
-                read = os.read(testclass.vpp.stderr.fileno(), 102400)
+            if stderr_fd in readable:
+                read = os.read(stderr_fd, 102400)
                 if len(read) > 0:
                     split = read.decode("ascii", errors="backslashreplace").splitlines(
                         True
