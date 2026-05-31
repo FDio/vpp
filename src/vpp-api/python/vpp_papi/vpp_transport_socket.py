@@ -39,22 +39,37 @@ class VppTransport:
         self.socket = None
 
     def msg_thread_func(self):
+        poller = select.poll()
+        sock_fd = self.socket.fileno()
+        sque_fd = self.sque._reader.fileno()
+        poller.register(sock_fd, select.POLLIN)
+        poller.register(sque_fd, select.POLLIN)
+        # POLLNVAL/POLLERR mean the socket fd has gone away - expected once
+        # disconnect() has closed it under the thread.
+        sock_gone = select.POLLERR | select.POLLNVAL
         while True:
             try:
-                rlist, _, _ = select.select([self.socket, self.sque._reader], [], [])
-            except (socket.error, ValueError):
-                # Terminate thread
-                logging.error("select failed")
+                events = poller.poll()
+            except (OSError, ValueError) as e:
+                if self.connected:
+                    logger.error("poll failed: %r", e)
                 self.q.put(None)
                 return
 
-            for r in rlist:
-                if r == self.sque._reader:
+            for fd, event in events:
+                if fd == sque_fd:
                     # Terminate
                     self.q.put(None)
                     return
 
-                elif r == self.socket:
+                elif fd == sock_fd:
+                    if event & sock_gone:
+                        # Stay silent if disconnect() already closed the
+                        # socket; otherwise it is a genuine error.
+                        if self.connected:
+                            logger.error("socket poll error: %#x", event)
+                        self.q.put(None)
+                        return
                     try:
                         msg = self._read()
                         if not msg:
@@ -70,7 +85,7 @@ class VppTransport:
                     else:
                         self.parent.msg_handler_async(msg)
                 else:
-                    raise VppTransportSocketIOError(2, "Unknown response from select")
+                    raise VppTransportSocketIOError(2, "Unknown response from poll")
 
     def connect(self, name, pfx, msg_handler, rx_qlen, do_async=False):
         # TODO: Reorder the actions and add "roll-backs",
