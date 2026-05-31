@@ -603,8 +603,8 @@ sfdp_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   if (n_remote)
     {
       u32 n_remote_enq;
-      n_remote_enq = vlib_buffer_enqueue_to_thread (
-	vm, node, fqi, to_remote, thread_indices, n_remote, 1);
+      n_remote_enq =
+	vlib_buffer_enqueue_to_thread (vm, node, fqi, to_remote, thread_indices, n_remote);
       vlib_node_increment_counter (vm, node->node_index,
 				   SFDP_LOOKUP_ERROR_REMOTE, n_remote_enq);
       vlib_node_increment_counter (vm, node->node_index,

@@ -1513,11 +1513,11 @@ ip6_sv_reassembly_handoff_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       b += 1;
     }
   if (a.custom_context)
-    n_enq = vlib_buffer_enqueue_to_thread_with_aux (
-      vm, node, fq_index, from, context, thread_indices, frame->n_vectors, 1);
+    n_enq = vlib_buffer_enqueue_to_thread_with_aux (vm, node, fq_index, from, context,
+						    thread_indices, frame->n_vectors);
   else
-    n_enq = vlib_buffer_enqueue_to_thread (
-      vm, node, fq_index, from, thread_indices, frame->n_vectors, 1);
+    n_enq =
+      vlib_buffer_enqueue_to_thread (vm, node, fq_index, from, thread_indices, frame->n_vectors);
 
   if (n_enq < frame->n_vectors)
     vlib_node_increment_counter (

@@ -145,8 +145,8 @@ VLIB_NODE_FN (worker_handoff_node) (vlib_main_t * vm,
     worker_handoff_trace_frame (vm, node, bufs, thread_indices,
 				frame->n_vectors);
 
-  n_enq = vlib_buffer_enqueue_to_thread (vm, node, hm->frame_queue_index, from,
-					 thread_indices, frame->n_vectors, 1);
+  n_enq = vlib_buffer_enqueue_to_thread (vm, node, hm->frame_queue_index, from, thread_indices,
+					 frame->n_vectors);
 
   if (n_enq < frame->n_vectors)
     vlib_node_increment_counter (vm, node->node_index,

@@ -328,11 +328,8 @@ sfdp_lookup_icmp_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
   if (hbi - handoff_buffer_indices)
     vlib_buffer_enqueue_to_thread (
-      vm, node,
-      is_ipv6 ? sfdp->icmp6_error_frame_queue_index :
-		sfdp->icmp4_error_frame_queue_index,
-      handoff_buffer_indices, handoff_thread_indices,
-      hbi - handoff_buffer_indices, 1);
+      vm, node, is_ipv6 ? sfdp->icmp6_error_frame_queue_index : sfdp->icmp4_error_frame_queue_index,
+      handoff_buffer_indices, handoff_thread_indices, hbi - handoff_buffer_indices);
 
   if (node->flags & VLIB_NODE_FLAG_TRACE)
     {

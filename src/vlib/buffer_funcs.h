@@ -42,19 +42,19 @@ typedef void (vlib_buffer_enqueue_to_single_next_with_aux64_and_scalar_fn_t) (
   vlib_main_t *vm, vlib_node_runtime_t *node, u32 *buffers, u64 *aux_data, void *scalar_data,
   u16 scalar_size, u16 next_index, u32 count);
 
-typedef u32 (vlib_buffer_enqueue_to_thread_fn_t) (
-  vlib_main_t *vm, vlib_node_runtime_t *node, u32 frame_queue_index,
-  u32 *buffer_indices, u16 *thread_indices, u32 n_packets,
-  int drop_on_congestion);
+typedef u32 (vlib_buffer_enqueue_to_thread_fn_t) (vlib_main_t *vm, vlib_node_runtime_t *node,
+						  u32 frame_queue_index, u32 *buffer_indices,
+						  u16 *thread_indices, u32 n_packets);
 typedef u32 (vlib_buffer_enqueue_to_single_thread_fn_t) (vlib_main_t *vm, vlib_node_runtime_t *node,
 							 u32 frame_queue_index, u32 *buffer_indices,
 							 clib_thread_index_t thread_index,
 							 u32 n_packets);
 
-typedef u32 (vlib_buffer_enqueue_to_thread_with_aux_fn_t) (
-  vlib_main_t *vm, vlib_node_runtime_t *node, u32 frame_queue_index,
-  u32 *buffer_indices, u32 *aux, u16 *thread_indices, u32 n_packets,
-  int drop_on_congestion);
+typedef u32 (vlib_buffer_enqueue_to_thread_with_aux_fn_t) (vlib_main_t *vm,
+							   vlib_node_runtime_t *node,
+							   u32 frame_queue_index,
+							   u32 *buffer_indices, u32 *aux,
+							   u16 *thread_indices, u32 n_packets);
 
 typedef struct
 {

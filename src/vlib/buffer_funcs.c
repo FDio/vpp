@@ -359,12 +359,10 @@ CLIB_MULTIARCH_FN (vlib_buffer_enqueue_to_single_next_with_aux64_and_scalar_fn)
 CLIB_MARCH_FN_REGISTRATION (vlib_buffer_enqueue_to_single_next_with_aux64_and_scalar_fn);
 
 static_always_inline u32
-vlib_buffer_enqueue_to_thread_inline (vlib_main_t *vm,
-				      vlib_node_runtime_t *node,
-				      vlib_frame_queue_main_t *fqm,
-				      u32 *buffer_indices, u16 *thread_indices,
-				      u32 n_packets, int drop_on_congestion,
-				      int with_aux, u32 *aux_data)
+vlib_buffer_enqueue_to_thread_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+				      vlib_frame_queue_main_t *fqm, u32 *buffer_indices,
+				      u16 *thread_indices, u32 n_packets, int with_aux,
+				      u32 *aux_data)
 {
   u32 drop_list[VLIB_FRAME_SIZE], n_drop = 0;
   vlib_frame_bitmap_t mask, used_elts = {};
@@ -389,21 +387,7 @@ retry:
   head = __atomic_load_n (&fq->head, __ATOMIC_ACQUIRE);
 
   if (new_tail >= head + nelts)
-    {
-      if (drop_on_congestion)
-	hf = 0;
-      else
-	{
-	  /* Wait until a ring slot is available */
-	  while (new_tail >= head + nelts)
-	    {
-	      vlib_worker_thread_barrier_check ();
-	      head = __atomic_load_n (&fq->head, __ATOMIC_ACQUIRE);
-	    }
-
-	  goto retry;
-	}
-    }
+    hf = 0;
   else if (!__atomic_compare_exchange_n (&fq->tail, &tail, new_tail, 0 /* weak */, __ATOMIC_RELAXED,
 					 __ATOMIC_RELAXED))
     goto retry;
@@ -451,7 +435,7 @@ retry:
       goto more;
     }
 
-  if (drop_on_congestion && n_drop)
+  if (n_drop)
     vlib_buffer_free (vm, drop_list, n_drop);
 
   return n_packets - n_drop;
@@ -531,9 +515,8 @@ vlib_buffer_enqueue_to_single_thread_inline (vlib_main_t *vm, vlib_node_runtime_
 
 u32 __clib_section (".vlib_buffer_enqueue_to_thread_fn")
 CLIB_MULTIARCH_FN (vlib_buffer_enqueue_to_thread_fn)
-(vlib_main_t *vm, vlib_node_runtime_t *node, u32 frame_queue_index,
- u32 *buffer_indices, u16 *thread_indices, u32 n_packets,
- int drop_on_congestion)
+(vlib_main_t *vm, vlib_node_runtime_t *node, u32 frame_queue_index, u32 *buffer_indices,
+ u16 *thread_indices, u32 n_packets)
 {
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   vlib_frame_queue_main_t *fqm;
@@ -543,9 +526,8 @@ CLIB_MULTIARCH_FN (vlib_buffer_enqueue_to_thread_fn)
 
   while (n_packets >= VLIB_FRAME_SIZE)
     {
-      n_enq += vlib_buffer_enqueue_to_thread_inline (
-	vm, node, fqm, buffer_indices, thread_indices, VLIB_FRAME_SIZE,
-	drop_on_congestion, 0 /* with_aux */, NULL);
+      n_enq += vlib_buffer_enqueue_to_thread_inline (vm, node, fqm, buffer_indices, thread_indices,
+						     VLIB_FRAME_SIZE, 0 /* with_aux */, NULL);
       buffer_indices += VLIB_FRAME_SIZE;
       thread_indices += VLIB_FRAME_SIZE;
       n_packets -= VLIB_FRAME_SIZE;
@@ -554,9 +536,8 @@ CLIB_MULTIARCH_FN (vlib_buffer_enqueue_to_thread_fn)
   if (n_packets == 0)
     return n_enq;
 
-  n_enq += vlib_buffer_enqueue_to_thread_inline (
-    vm, node, fqm, buffer_indices, thread_indices, n_packets,
-    drop_on_congestion, 0 /* with_aux */, NULL);
+  n_enq += vlib_buffer_enqueue_to_thread_inline (vm, node, fqm, buffer_indices, thread_indices,
+						 n_packets, 0 /* with_aux */, NULL);
 
   return n_enq;
 }
@@ -591,9 +572,8 @@ CLIB_MULTIARCH_FN (vlib_buffer_enqueue_to_single_thread_fn)
 
 u32 __clib_section (".vlib_buffer_enqueue_to_thread_with_aux_fn")
 CLIB_MULTIARCH_FN (vlib_buffer_enqueue_to_thread_with_aux_fn)
-(vlib_main_t *vm, vlib_node_runtime_t *node, u32 frame_queue_index,
- u32 *buffer_indices, u32 *aux, u16 *thread_indices, u32 n_packets,
- int drop_on_congestion)
+(vlib_main_t *vm, vlib_node_runtime_t *node, u32 frame_queue_index, u32 *buffer_indices, u32 *aux,
+ u16 *thread_indices, u32 n_packets)
 {
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   vlib_frame_queue_main_t *fqm;
@@ -603,9 +583,8 @@ CLIB_MULTIARCH_FN (vlib_buffer_enqueue_to_thread_with_aux_fn)
 
   while (n_packets >= VLIB_FRAME_SIZE)
     {
-      n_enq += vlib_buffer_enqueue_to_thread_inline (
-	vm, node, fqm, buffer_indices, thread_indices, VLIB_FRAME_SIZE,
-	drop_on_congestion, 1 /* with_aux */, aux);
+      n_enq += vlib_buffer_enqueue_to_thread_inline (vm, node, fqm, buffer_indices, thread_indices,
+						     VLIB_FRAME_SIZE, 1 /* with_aux */, aux);
       buffer_indices += VLIB_FRAME_SIZE;
       thread_indices += VLIB_FRAME_SIZE;
       n_packets -= VLIB_FRAME_SIZE;
@@ -614,9 +593,8 @@ CLIB_MULTIARCH_FN (vlib_buffer_enqueue_to_thread_with_aux_fn)
   if (n_packets == 0)
     return n_enq;
 
-  n_enq += vlib_buffer_enqueue_to_thread_inline (
-    vm, node, fqm, buffer_indices, thread_indices, n_packets,
-    drop_on_congestion, 1 /* with_aux */, aux);
+  n_enq += vlib_buffer_enqueue_to_thread_inline (vm, node, fqm, buffer_indices, thread_indices,
+						 n_packets, 1 /* with_aux */, aux);
 
   return n_enq;
 }
