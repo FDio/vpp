@@ -1936,8 +1936,8 @@ ip4_full_reass_handoff_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       ti += 1;
       b += 1;
     }
-  n_enq = vlib_buffer_enqueue_to_thread (vm, node, fq_index, from,
-					 thread_indices, frame->n_vectors, 1);
+  n_enq =
+    vlib_buffer_enqueue_to_thread (vm, node, fq_index, from, thread_indices, frame->n_vectors);
 
   if (n_enq < frame->n_vectors)
     vlib_node_increment_counter (vm, node->node_index,
