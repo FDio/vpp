@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a1533ed5_2ec562d2",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2026-06-01T11:58:18Z",
+      "side": 1,
+      "message": "Good enough for v26.06 RC2.\nLooking at some small loss trials in the test [1] I suspect there might still be some corner cases that affect the measured performance (one trial with high load and losses creates an inconsistent tracking state, subsequent low load trial unfairly faces packet loss while tracking stabilizes, subsequent trials are fine but the test treats the unfair trial as an upper bound for performance), but at least the test does not fail due to unrecoverable state.\n\n[1] https://logs.fd.io/vex-yul-rot-jenkins-1/csit-vpp-bisect-2n-emr/26749963920/csit_latest/log.html.gz#s1-s1-s1-s2-s2-t1-k2-k14-k16",
+      "revId": "e1f0c90caa4956740179292e6bff2b5dfa32b559",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
