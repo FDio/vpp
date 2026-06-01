@@ -98,6 +98,8 @@ class TestResult(dict):
         for trc in list(TestResultCode):
             self[trc] = []
         self.crashed = False
+        # set when the suite was asked to wind down early under FAILFAST
+        self.cut_short = False
         self.testcase_suite = testcase_suite
         self.testcases = [testcase for testcase in testcase_suite]
         self.testcases_by_id = testcases_by_id
@@ -447,14 +449,30 @@ def record_suite_timing(wrapped_testcase_suite):
     test_timings[key] = elapsed if old is None else 0.5 * old + 0.5 * elapsed
 
 
+def request_graceful_stop(running_wrapped_testcase_suites):
+    """Ask each still-running suite to stop after its current test (FAILFAST)."""
+    for wrapped_testcase_suite in running_wrapped_testcase_suites:
+        wrapped_testcase_suite.result.cut_short = True
+        try:
+            os.kill(wrapped_testcase_suite.child.pid, signal.SIGUSR1)
+        except OSError:
+            # already gone
+            pass
+
+
 def process_finished_testsuite(
-    wrapped_testcase_suite, finished_testcase_suites, failed_wrapped_testcases, results
+    wrapped_testcase_suite,
+    finished_testcase_suites,
+    failed_wrapped_testcases,
+    results,
+    cut_short=False,
 ):
     results.append(wrapped_testcase_suite.result)
     finished_testcase_suites.add(wrapped_testcase_suite)
-    # Record timings only for clean runs - a failure can cut a suite
-    # short, which would skew its estimate for the next run.
-    if wrapped_testcase_suite.was_successful():
+    # Record timings only for clean, complete runs - a failure or a FAILFAST
+    # wind-down can cut a suite short, which would skew its estimate for the
+    # next run.
+    if wrapped_testcase_suite.was_successful() and not cut_short:
         record_suite_timing(wrapped_testcase_suite)
     stop_run = False
     if config.failfast and not wrapped_testcase_suite.was_successful():
@@ -561,6 +579,7 @@ def run_forked(testcase_suites):
 
     failed_wrapped_testcases = set()
     stop_run = False
+    stop_signalled = False
 
     try:
         while wrapped_testcase_suites or testcase_suites:
@@ -590,6 +609,7 @@ def run_forked(testcase_suites):
                             finished_testcase_suites,
                             failed_wrapped_testcases,
                             results,
+                            cut_short=stop_run,
                         )
                         or stop_run
                     )
@@ -659,9 +679,23 @@ def run_forked(testcase_suites):
                             finished_testcase_suites,
                             failed_wrapped_testcases,
                             results,
+                            cut_short=stop_run,
                         )
                         or stop_run
                     )
+
+            # FAILFAST: a suite just failed - ask the suites still running in
+            # parallel to wind down after their current test, rather than
+            # letting them run to completion (or killing them mid-test).
+            if stop_run and not stop_signalled:
+                stop_signalled = True
+                running = wrapped_testcase_suites - finished_testcase_suites
+                if running:
+                    print(
+                        "FAILFAST: a test suite failed - asking %d running "
+                        "suite(s) to stop after their current test" % len(running)
+                    )
+                    request_graceful_stop(running)
 
             for finished_testcase in finished_testcase_suites:
                 # Somewhat surprisingly, the join below may
@@ -878,6 +912,7 @@ class AllResults(dict):
             self[trc] = 0
         self.rerun = []
         self.testsuites_no_tests_run = []
+        self.testsuites_cut_short = []
 
     def add_results(self, result):
         self.results_per_suite.append(result)
@@ -897,6 +932,15 @@ class AllResults(dict):
                 retval = 1
         elif not result.was_successful():
             retval = 1
+
+        # a suite that ran some - but not all - of its tests because FAILFAST
+        # asked it to wind down early
+        if (
+            result.cut_short
+            and len(result[TestResultCode.TEST_RUN])
+            < result.testcase_suite.countTestCases()
+        ):
+            self.testsuites_cut_short.append(result.testcase_suite)
 
         if retval != 0:
             self.rerun.append(result.testcase_suite)
@@ -990,6 +1034,15 @@ class AllResults(dict):
         if print_test_ids and write_failed_file:
             with open(os.path.join(config.failed_dir, "failed_tests"), "w") as f:
                 print(",".join(print_test_ids), file=f)
+
+        if self.testsuites_cut_short:
+            print("TESTCASES CUT SHORT BY FAILFAST:")
+            tc_classes = set()
+            for testsuite in self.testsuites_cut_short:
+                for testcase in testsuite:
+                    tc_classes.add(get_testcase_doc_name(testcase))
+            for tc_class in sorted(tc_classes):
+                print("  {}".format(colorize(tc_class, YELLOW)))
 
         if self.testsuites_no_tests_run:
             print("TESTCASES WHERE NO TESTS WERE SUCCESSFULLY EXECUTED:")
