@@ -1112,6 +1112,35 @@ hss_create (vlib_main_t *vm)
   return 0;
 }
 
+int
+hss_destroy (vlib_main_t *vm)
+{
+  hss_main_t *hsm = &hss_main;
+  hss_listener_t *l;
+  int ret;
+
+  pool_foreach (l, hsm->listeners)
+    {
+      ret = hss_listener_del (l);
+      if (ret != 0)
+	{
+	  clib_warning ("failed to delete a listener: %d", ret);
+	  return -1;
+	}
+    }
+
+  vnet_app_detach_args_t _da = {}, *da = &_da;
+  da->app_index = hsm->app_index;
+  if (vnet_application_detach (da))
+    {
+      clib_warning ("failed to detach http_static app");
+      return -1;
+    }
+  hsm->app_index = ~0;
+
+  return 0;
+}
+
 static clib_error_t *
 hss_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
 		       vlib_cli_command_t *cmd)
@@ -1409,6 +1438,37 @@ VLIB_CLI_COMMAND (hss_add_del_listener_command, static) = {
 		"[max-req-body-size <nn>] [rx-buff-thresh <nn>] [keepalive-timeout <nn>]\n"
 		"[ptr-thresh <nn>] [http1-only] [http3]\n",
   .function = hss_add_del_listener_command_fn,
+};
+
+static clib_error_t *
+hss_disable_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
+{
+  hss_main_t *hsm = &hss_main;
+  clib_error_t *error = 0;
+  int rv;
+
+  if (!hsm->is_init)
+    return clib_error_return (0, "Static server not initialized");
+
+  rv = hss_destroy (vm);
+  if (rv != 0)
+    {
+      error = clib_error_return (0, "hss_destroy returned %d", rv);
+    }
+
+  return error;
+}
+
+/*?
+ * Destroy http server
+ *
+ * @cliexpar
+ * Disable an http server.
+?*/
+VLIB_CLI_COMMAND (hss_destroy_command, static) = {
+  .path = "http static server disable",
+  .short_help = "http static server disable\n",
+  .function = hss_disable_command_fn,
 };
 
 static u8 *
