@@ -16,6 +16,24 @@
       "message": "s/name_build_type/build_type/g",
       "revId": "28af1c2e8307183bd4c7411d861f17505cb6fdeb",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "52a4ebe9_efdacf99",
+        "filename": ".github/workflows/vpp-merge-maketest.yml",
+        "patchSetId": 5
+      },
+      "lineNbr": 173,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-06-01T17:31:28Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "36823ddd_557e71ef",
+      "revId": "28af1c2e8307183bd4c7411d861f17505cb6fdeb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
