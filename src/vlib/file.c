@@ -114,6 +114,7 @@ vlib_file_poll (vlib_main_t *vm)
   int is_main = (vm->thread_index == 0);
   int timeout_ms = 0, max_timeout_ms = 10;
   u32 ticks;
+  u8 slept = 0;
 
   /*
    * If we've been asked for a fixed-sleep between main loop polls,
@@ -173,6 +174,9 @@ vlib_file_poll (vlib_main_t *vm)
   else
     timeout_ms = max_timeout_ms;
 
+  vm->sleep_count++;
+  slept = 1;
+
   goto epoll;
 
 skip_loops:
@@ -197,6 +201,8 @@ epoll:
 
   vm->epoll_waits += 1;
   vm->epoll_files_ready += n_fds_ready;
+  if (slept && n_fds_ready > 0)
+    vm->sleep_fd_event_count++;
 
   for (e = epoll_events; e < epoll_events + n_fds_ready; e++)
     {
