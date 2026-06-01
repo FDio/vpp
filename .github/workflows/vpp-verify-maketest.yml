@@ -98,7 +98,7 @@ permissions:
 jobs:
   verify-maketest:
     # yamllint disable-line rule:line-length
-    name: ${{ inputs.GERRIT_CHANGE_NUMBER }}/${{ inputs.GERRIT_PATCHSET_NUMBER}}__${{ inputs.GERRIT_BRANCH }}__${{ inputs.FDIO_NAMESPACE }}
+    name: ${{ inputs.GERRIT_CHANGE_NUMBER }}/${{ inputs.GERRIT_PATCHSET_NUMBER }}_${{ matrix.os }}_${{ matrix.executor_arch }}_${{ matrix.build_type }}
     runs-on:
       - self-hosted
       - nomad
