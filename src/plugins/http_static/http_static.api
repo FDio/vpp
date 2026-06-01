@@ -81,3 +81,11 @@ autoreply define http_static_enable_v5 {
     /* The bind URI */
     string uri[256];
 };
+
+autoreply define http_static_disable_v5 {
+    /* Client identifier, set from api_main.my_client_index */
+    u32 client_index;
+
+    /* Arbitrary context, so client can match reply to request */
+    u32 context;
+};

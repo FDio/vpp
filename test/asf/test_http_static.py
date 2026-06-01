@@ -110,6 +110,44 @@ class TestHttpStaticVapi(VppAsfTestCase):
         )
         self.assertIn(b"Hello world2", process.stdout)
 
+        self.vapi.http_static_disable_v5()
+        self.temp2.seek(0)
+        process = subprocess.run(
+            [
+                "ip",
+                "netns",
+                "exec",
+                self.ns_name,
+                "curl",
+                "--noproxy",
+                "10.10.1.2",
+                f"10.10.1.2/{self.temp2.name[5:]}",
+            ],
+            capture_output=True,
+        )
+        self.assertNotIn(b"Hello world2", process.stdout)
+
+        # Now enable again
+        self.vapi.http_static_enable_v5(
+            www_root="/tmp",
+            uri="tcp://0.0.0.0/80",
+        )
+        self.temp2.seek(0)
+        process = subprocess.run(
+            [
+                "ip",
+                "netns",
+                "exec",
+                self.ns_name,
+                "curl",
+                "--noproxy",
+                "10.10.1.2",
+                f"10.10.1.2/{self.temp2.name[5:]}",
+            ],
+            capture_output=True,
+        )
+        self.assertIn(b"Hello world2", process.stdout)
+
 
 @unittest.skipIf(
     "http_static" in config.excluded_plugins, "Exclude HTTP Static Server plugin tests"
