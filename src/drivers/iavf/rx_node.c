@@ -424,6 +424,41 @@ no_more_desc:
       iavf_process_flow_offload (port, rtd, n_rx_packets);
     }
 
+  /* enqueue the packets to the next nodes */
+  if (PREDICT_FALSE (with_flows && (or_qw1 & mask_flm.as_u64)))
+    {
+      /* release next node's frame vector, in this case we use
+	 vlib_buffer_enqueue_to_next to place the packets
+       */
+      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+
+      /* enqueue buffers to the next node */
+      vlib_buffer_enqueue_to_next (vm, node, to_next, rtd->next, n_rx_packets);
+    }
+  else
+    {
+      if (PREDICT_TRUE (next_index == VNET_DEV_ETH_RX_PORT_NEXT_ETH_INPUT))
+	{
+	  vlib_next_frame_t *nf;
+	  vlib_frame_t *f;
+	  ethernet_input_frame_t *ef;
+	  nf = vlib_node_runtime_get_next_frame (vm, node, next_index);
+	  f = vlib_get_frame (vm, nf->frame);
+	  f->flags = ETH_INPUT_FRAME_F_SINGLE_SW_IF_IDX;
+
+	  ef = vlib_frame_scalar_args (f);
+	  ef->sw_if_index = sw_if_index;
+	  ef->hw_if_index = hw_if_index;
+
+	  if ((or_qw1 & mask_ipe.as_u64) == 0)
+	    f->flags |= ETH_INPUT_FRAME_F_IP4_CKSUM_OK;
+	  vlib_frame_no_append (f);
+	}
+
+      n_left_to_next -= n_rx_packets;
+      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+    }
+
   /* packet trace if enabled */
   if (PREDICT_FALSE ((n_trace = vlib_get_trace_count (vm, node))))
     {
@@ -460,41 +495,6 @@ no_more_desc:
 	  next_indices++;
 	}
       vlib_set_trace_count (vm, node, n_trace);
-    }
-
-  /* enqueu the packets to the next nodes */
-  if (PREDICT_FALSE (with_flows && (or_qw1 & mask_flm.as_u64)))
-    {
-      /* release next node's frame vector, in this case we use
-	 vlib_buffer_enqueue_to_next to place the packets
-       */
-      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
-
-      /* enqueue buffers to the next node */
-      vlib_buffer_enqueue_to_next (vm, node, to_next, rtd->next, n_rx_packets);
-    }
-  else
-    {
-      if (PREDICT_TRUE (next_index == VNET_DEV_ETH_RX_PORT_NEXT_ETH_INPUT))
-	{
-	  vlib_next_frame_t *nf;
-	  vlib_frame_t *f;
-	  ethernet_input_frame_t *ef;
-	  nf = vlib_node_runtime_get_next_frame (vm, node, next_index);
-	  f = vlib_get_frame (vm, nf->frame);
-	  f->flags = ETH_INPUT_FRAME_F_SINGLE_SW_IF_IDX;
-
-	  ef = vlib_frame_scalar_args (f);
-	  ef->sw_if_index = sw_if_index;
-	  ef->hw_if_index = hw_if_index;
-
-	  if ((or_qw1 & mask_ipe.as_u64) == 0)
-	    f->flags |= ETH_INPUT_FRAME_F_IP4_CKSUM_OK;
-	  vlib_frame_no_append (f);
-	}
-
-      n_left_to_next -= n_rx_packets;
-      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
 
   vlib_increment_combined_counter (

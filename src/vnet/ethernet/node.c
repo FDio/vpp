@@ -1129,6 +1129,22 @@ ethernet_input_trace (vlib_main_t * vm, vlib_node_runtime_t * node,
 {
   vnet_main_t *vnm = vnet_get_main ();
   u32 *from, n_left;
+
+#if CLIB_DEBUG > 0
+  if ((node->flags & VLIB_NODE_FLAG_TRACE) == 0)
+    {
+      u32 *p = vlib_frame_vector_args (from_frame);
+      u32 n = from_frame->n_vectors;
+
+      while (n--)
+        {
+          vlib_buffer_t *b = vlib_get_buffer (vm, p[0]);
+          ASSERT ((b->flags & VLIB_BUFFER_IS_TRACED) == 0);
+          p++;
+        }
+    }
+#endif
+
   if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
     {
       from = vlib_frame_vector_args (from_frame);
