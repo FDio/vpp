@@ -12,7 +12,13 @@ import scapy.compat
 import asfframework
 from config import config
 from log import RED, single_line_delim, double_line_delim
-from util import check_core_path, get_core_path
+from util import (
+    check_core_path,
+    died_with_core_signal,
+    extract_coredumpctl_core,
+    get_core_path,
+    uses_coredumpctl,
+)
 from debug import log_core_backtrace
 
 _TRACE_COMPOUND = (
@@ -197,10 +203,18 @@ class PollHook(Hook):
         self.test.vpp.poll()
         if self.test.vpp.returncode is not None:
             self.test.vpp_dead = True
+            rv = self.test.vpp.returncode
+            # On systemd-coredump hosts the kernel writes no core to tempdir;
+            # pull it out of systemd storage so the file-based detection and
+            # gdb decoding below behave exactly as on a plain-file host.
+            if uses_coredumpctl() and died_with_core_signal(rv):
+                extract_coredumpctl_core(
+                    self.logger, self.test.tempdir, self.test.vpp.pid
+                )
             core_path = get_core_path(self.test.tempdir)
             if os.path.isfile(core_path):
                 self.on_crash(core_path)
-            raise asfframework.VppDiedError(rv=self.test.vpp.returncode)
+            raise asfframework.VppDiedError(rv=rv)
 
     def before_api(self, api_name, api_args):
         """

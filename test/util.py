@@ -5,7 +5,11 @@ import ipaddress
 import logging
 import os
 import re
+import shutil
+import signal
 import socket
+import subprocess
+import time
 from socket import AF_INET6
 import os.path
 import platform
@@ -155,15 +159,24 @@ def ip6_normalize(ip6):
 
 def get_core_path(tempdir):
     pattern = get_core_pattern()
-    # Pattern may contain kernel %-specifiers (%p pid, %t time, ...) whose
-    # values aren't known here, so glob them to find an actual core.
-    glob_pat = re.sub(r"%[a-zA-Z]", "*", pattern)
+    if pattern.startswith("|"):
+        # The kernel pipes the core to a handler (e.g. systemd-coredump)
+        # instead of writing it to tempdir. When we've pulled it back out of
+        # the handler's storage (see extract_coredumpctl_core) it lands here
+        # as core.<pid>; otherwise there's nothing on disk to find.
+        glob_pat = "core.*"
+        fallback = "core"
+    else:
+        # Pattern may contain kernel %-specifiers (%p pid, %t time, ...) whose
+        # values aren't known here, so glob them to find an actual core.
+        glob_pat = re.sub(r"%[a-zA-Z]", "*", pattern)
+        fallback = pattern
     matches = glob.glob(os.path.join(tempdir, glob_pat))
     if matches:
         return max(matches, key=os.path.getmtime)
-    # No core on disk yet — return the expected location with %-specifiers
-    # left intact so log messages still show what the kernel would write.
-    return os.path.join(tempdir, pattern)
+    # No core on disk yet — return the expected location so log messages still
+    # show where one would be.
+    return os.path.join(tempdir, fallback)
 
 
 def is_core_present(tempdir):
@@ -177,6 +190,10 @@ def get_core_pattern():
         return sysctl.filter("kern.corefile")[0].value
     with open("/proc/sys/kernel/core_pattern", "r") as f:
         corefmt = f.read().strip()
+    if corefmt.startswith("|"):
+        # A pipe handler owns the core; core_uses_pid doesn't apply and the
+        # value is a command line, not a filename to massage.
+        return corefmt
     with open("/proc/sys/kernel/core_uses_pid", "r") as f:
         uses_pid = f.read().strip() == "1"
     if uses_pid and "%p" not in corefmt:
@@ -184,19 +201,153 @@ def get_core_pattern():
     return corefmt
 
 
+def uses_coredumpctl():
+    """True if the kernel pipes cores to systemd-coredump."""
+    pattern = get_core_pattern()
+    return pattern.startswith("|") and "systemd-coredump" in pattern
+
+
+# Signals whose default action dumps core; a VPP process exiting with one of
+# these (Popen.returncode == -signum) crashed and should have produced a core.
+_CORE_SIGNALS = frozenset(
+    {
+        signal.SIGQUIT,
+        signal.SIGILL,
+        signal.SIGABRT,
+        signal.SIGFPE,
+        signal.SIGSEGV,
+        getattr(signal, "SIGBUS", signal.SIGSEGV),
+        getattr(signal, "SIGSYS", signal.SIGSEGV),
+        getattr(signal, "SIGTRAP", signal.SIGSEGV),
+    }
+)
+
+
+def died_with_core_signal(returncode):
+    """Whether a Popen.returncode reflects death by a core-dumping signal."""
+    return returncode is not None and returncode < 0 and -returncode in _CORE_SIGNALS
+
+
+def extract_coredumpctl_core(logger, tempdir, vpp_pid, timeout=30, wait=True):
+    """Materialize a systemd-coredump-managed core into tempdir.
+
+    With core_pattern piping to systemd-coredump the kernel writes nothing to
+    tempdir, so the framework's file-based detection and gdb decoding find
+    nothing. Use coredumpctl to dump the (decompressed) core for vpp_pid into
+    tempdir/core.<pid> so the rest of the machinery treats it like any other
+    on-disk core. Returns the path on success, else None.
+
+    When wait is True the caller knows a crash happened (e.g. VPP died from a
+    core-dumping signal) but systemd-coredump records the dump asynchronously,
+    so we retry up to timeout for the entry to appear and treat its continued
+    absence as an error. When wait is False the caller is only speculating a
+    core might exist (e.g. a suite winding down under FAILFAST), so "no such
+    coredump" is the expected, quiet outcome rather than a failure.
+    """
+    if vpp_pid is None:
+        return None
+    coredumpctl = shutil.which("coredumpctl")
+    if coredumpctl is None:
+        logger.error(
+            "Cannot retrieve core for pid %s: core_pattern pipes to "
+            "systemd-coredump but coredumpctl is not on PATH.",
+            vpp_pid,
+        )
+        return None
+    cmd = [coredumpctl, "dump", str(vpp_pid), "--output"]
+    # Reading the journal / coredump storage needs root; the runner is
+    # typically unprivileged (as it is for the gdb attach helpers), so reach
+    # for passwordless sudo. -n fails fast with a clear error instead of
+    # blocking on a password prompt in a non-interactive run.
+    sudo = None
+    if os.geteuid() != 0:
+        sudo = shutil.which("sudo")
+        if sudo is not None:
+            cmd = [sudo, "-n"] + cmd
+    out_path = os.path.join(tempdir, "core.%d" % vpp_pid)
+    if os.path.isfile(out_path):
+        return out_path
+    deadline = time.monotonic() + timeout
+    last_err = ""
+    while True:
+        proc = subprocess.run(
+            cmd + [out_path],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+        )
+        if proc.returncode == 0 and os.path.isfile(out_path):
+            if sudo is not None:
+                # coredumpctl wrote the dump as root (mode 0600); hand it back
+                # to the runner so the downstream gdb/file/gzip and tempdir
+                # cleanup can read and remove it.
+                subprocess.run(
+                    [
+                        sudo,
+                        "-n",
+                        "chown",
+                        "%d:%d" % (os.getuid(), os.getgid()),
+                        out_path,
+                    ],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+            logger.error(
+                "Extracted core for pid %s from systemd-coredump to %s",
+                vpp_pid,
+                out_path,
+            )
+            return out_path
+        last_err = proc.stderr.decode(errors="replace").strip()
+        # "No match found" just means systemd-coredump has no entry for this
+        # pid - either it hasn't recorded the crash yet (keep waiting) or
+        # there was no crash at all (the common case when wait is False).
+        no_core = "no match" in last_err.lower() or "no coredump" in last_err.lower()
+        if not no_core:
+            # A real failure (missing privileges, sudo password required, a
+            # broken dump): worth reporting, and retrying won't fix it.
+            logger.error(
+                "coredumpctl could not dump core for pid %s: %s", vpp_pid, last_err
+            )
+            break
+        if not wait or time.monotonic() >= deadline:
+            if wait:
+                logger.error(
+                    "Gave up after %ds waiting for systemd-coredump to record "
+                    "a core for pid %s.",
+                    timeout,
+                    vpp_pid,
+                )
+            else:
+                logger.debug("No systemd-coredump entry for pid %s", vpp_pid)
+            break
+        time.sleep(1)
+    # Don't leave a half-written dump behind to confuse detection.
+    if os.path.isfile(out_path):
+        try:
+            os.remove(out_path)
+        except OSError:
+            pass
+    return None
+
+
 def check_core_path(logger, core_path):
     corefmt = get_core_pattern()
-    if corefmt.startswith("|"):
-        logger.error(
-            "WARNING: redirecting the core dump through a"
-            " filter may result in truncated dumps."
-        )
-        logger.error(
-            "   You may want to check the filter settings"
-            " or uninstall it and edit the"
-            " /proc/sys/kernel/core_pattern accordingly."
-        )
-        logger.error("   current core pattern is: %s" % corefmt)
+    if not corefmt.startswith("|"):
+        return
+    if "systemd-coredump" in corefmt:
+        # Handled by extract_coredumpctl_core(); nothing to warn about.
+        logger.error("   core dumps are routed through systemd-coredump")
+        return
+    logger.error(
+        "WARNING: redirecting the core dump through a"
+        " filter may result in truncated dumps."
+    )
+    logger.error(
+        "   You may want to check the filter settings"
+        " or uninstall it and edit the"
+        " /proc/sys/kernel/core_pattern accordingly."
+    )
+    logger.error("   current core pattern is: %s" % corefmt)
 
 
 class NumericConstant:

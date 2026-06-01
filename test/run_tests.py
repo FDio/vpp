@@ -40,7 +40,13 @@ from log import (
 from discover_tests import discover_tests
 import sanity_run_vpp
 from subprocess import check_output, CalledProcessError
-from util import check_core_path, get_core_path, is_core_present
+from util import (
+    check_core_path,
+    extract_coredumpctl_core,
+    get_core_path,
+    is_core_present,
+    uses_coredumpctl,
+)
 
 try:
     from cryptography.utils import CryptographyDeprecationWarning
@@ -335,7 +341,17 @@ def _handle_failed_suite(logger, last_test_temp_dir, vpp_pid, vpp_binary):
             "Symlink to failed testcase directory: %s -> %s" % (link_path, lttd)
         )
 
-        # Report core existence
+        # Report core existence. On systemd-coredump hosts the in-test
+        # PollHook normally materializes core.<pid> already; this pulls it out
+        # of systemd storage as a fallback for when the child died before it
+        # could (so we still get a decoded backtrace post-mortem).
+        if uses_coredumpctl() and not is_core_present(last_test_temp_dir):
+            # Single shot, no waiting: a suite reaches here for any failure
+            # (including a clean FAILFAST winddown), so most of the time there
+            # is no core and we must not stall polling systemd for one.
+            extract_coredumpctl_core(
+                logger, last_test_temp_dir, vpp_pid, wait=False
+            )
         core_path = get_core_path(last_test_temp_dir)
         if os.path.exists(core_path):
             logger.error(
