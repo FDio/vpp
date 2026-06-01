@@ -8,6 +8,7 @@
 #include <vppinfra/bitmap.h>
 #include <vppinfra/unix.h>
 #include <vppinfra/format.h>
+#include <vppinfra/format_table.h>
 #include <vlib/vlib.h>
 
 #include <vlib/threads.h>
@@ -36,53 +37,40 @@ static clib_error_t *
 show_threads_fn (vlib_main_t * vm,
 		 unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  const vlib_thread_main_t *tm = vlib_get_thread_main ();
+  vlib_main_t *thread_vm;
   vlib_worker_thread_t *w;
+  table_t table = {};
+  int col;
   int i;
-  u8 *line = NULL;
 
-  line = format (line, "%-7s%-20s%-12s%-8s%-25s%-7s%-7s%-7s%-10s", "ID",
-		 "Name", "Type", "LWP", "Sched Policy (Priority)", "lcore",
-		 "Core", "Socket", "State");
-  if (tm->cpu_translate)
-    line = format (line, "%-15s", "Relative Core");
-  vlib_cli_output (vm, "%v", line);
-  vec_free (line);
+  table_add_hdr_row (&table, 11, "ID", "Name", "LWP", "CPU", "Sched", "Loops", "Epolls", "Sleeps",
+		     "FdWakeups", "WakeReq", "Wakeups");
 
 #if !defined(__powerpc64__)
   for (i = 0; i < vec_len (vlib_worker_threads); i++)
     {
       w = vlib_worker_threads + i;
+      thread_vm = vlib_get_main_by_index (i);
 
-      line = format (line, "%-7d%-20s%-12s%-8d",
-		     i,
-		     w->name ? w->name : (u8 *) "",
-		     w->registration ? w->registration->name : "", w->lwp);
-
-      line = format (line, "%-25U", format_sched_policy_and_priority, w->lwp);
-
-      int cpu_id = w->cpu_id;
-      if (cpu_id > -1 && tm->main_lcore != ~0)
-	{
-	  int core_id = w->core_id;
-	  int numa_id = w->numa_id;
-	  line = format (line, "%-7u%-7u%-17u%", cpu_id, core_id, numa_id);
-	  if (tm->cpu_translate)
-	    {
-	      int cpu_translate_core_id =
-		os_translate_cpu_from_affinity_bitmap (cpu_id);
-	      line = format (line, "%-7u", cpu_translate_core_id);
-	    }
-	}
-      else
-	{
-	  line = format (line, "%-7s%-7s%-7s%", "n/a", "n/a", "n/a");
-	}
-
-      vlib_cli_output (vm, "%v", line);
-      vec_free (line);
+      col = 0;
+      table_format_cell (&table, i, col++, "%d", i);
+      table_format_cell (&table, i, col, "%s", w->name ? w->name : (u8 *) "");
+      table_set_cell_align (&table, i, col++, TTAA_LEFT);
+      table_format_cell (&table, i, col++, "%d", w->lwp);
+      table_format_cell (&table, i, col++, "%d", w->cpu_id);
+      table_format_cell (&table, i, col, "%U", format_sched_policy_and_priority, w->lwp);
+      table_set_cell_align (&table, i, col++, TTAA_LEFT);
+      table_format_cell (&table, i, col++, "%u", thread_vm->main_loop_count);
+      table_format_cell (&table, i, col++, "%llu", thread_vm->epoll_waits);
+      table_format_cell (&table, i, col++, "%llu", thread_vm->sleep_count);
+      table_format_cell (&table, i, col++, "%llu", thread_vm->sleep_fd_event_count);
+      table_format_cell (&table, i, col++, "%llu", thread_vm->wakeup_request_count);
+      table_format_cell (&table, i, col++, "%llu", thread_vm->wakeup_count);
     }
 #endif
+
+  vlib_cli_output (vm, "%U", format_table, &table);
+  table_free (&table);
 
   return 0;
 }

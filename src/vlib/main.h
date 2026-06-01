@@ -183,6 +183,10 @@ typedef struct vlib_main_t
   u32 file_poll_skip_loops;
   u64 epoll_files_ready;
   u64 epoll_waits;
+  u64 sleep_count;
+  u64 sleep_fd_event_count;
+  u64 wakeup_request_count;
+  u64 wakeup_count;
   u8 wakeup_pending;
   u8 thread_sleeps;
 

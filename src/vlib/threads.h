@@ -514,8 +514,14 @@ vlib_thread_wakeup (clib_thread_index_t thread_index)
   u64 val = 1;
 
   if (__atomic_load_n (&vm->thread_sleeps, __ATOMIC_RELAXED))
-    if (__atomic_exchange_n (&vm->wakeup_pending, 1, __ATOMIC_RELAXED) == 0)
-      rv = write (vm->wakeup_fd, &val, sizeof (u64));
+    {
+      __atomic_fetch_add (&vm->wakeup_request_count, 1, __ATOMIC_RELAXED);
+      if (__atomic_exchange_n (&vm->wakeup_pending, 1, __ATOMIC_RELAXED) == 0)
+	{
+	  __atomic_fetch_add (&vm->wakeup_count, 1, __ATOMIC_RELAXED);
+	  rv = write (vm->wakeup_fd, &val, sizeof (u64));
+	}
+    }
 }
 
 #endif /* included_vlib_threads_h */
