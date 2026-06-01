@@ -29,6 +29,22 @@ http_static_test_main_t http_static_test_main;
 #include <vlibapi/vat_helper_macros.h>
 
 static int
+api_http_static_disable (vat_main_t *vam)
+{
+  vl_api_http_static_disable_t *mp;
+  int ret;
+
+  M (HTTP_STATIC_DISABLE, mp);
+  /* send it... */
+  S (mp);
+
+  /* Wait for a reply... */
+  W (ret);
+
+  return ret;
+}
+
+static int
 api_http_static_enable_v4 (vat_main_t *vam)
 {
   unformat_input_t *line_input = vam->input;
