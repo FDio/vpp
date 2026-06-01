@@ -1,0 +1,31 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2026 Cisco and/or its affiliates.
+ */
+
+option version = "0.0.1";
+
+typedef trace_path_node {
+  string name[64];
+};
+
+define tracepath_dump {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Details for one unique trace path
+    @param path_id - unique hash identifier for this path
+    @param n_pkts - total packet count across all threads
+    @param thread_bitmap - bitmask of threads that observed this path
+    @param n_nodes - number of graph nodes in the path
+    @param nodes - the ordered list of graph node names
+*/
+define tracepath_details {
+  u32 context;
+  u64 path_id;
+  u32 n_pkts;
+  u64 thread_bitmap;
+  u32 n_nodes;
+  vl_api_trace_path_node_t nodes[n_nodes];
+};

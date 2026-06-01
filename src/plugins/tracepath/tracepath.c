@@ -131,7 +131,7 @@ trace_paths_collect (vlib_main_t *vm)
   return paths;
 }
 
-static trace_path_t *
+trace_path_t *
 trace_paths_collect_all (void)
 {
   trace_path_t *merged_paths = 0;

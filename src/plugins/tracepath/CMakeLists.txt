@@ -4,7 +4,11 @@
 add_vpp_plugin(tracepath
   SOURCES
   tracepath.c
+  tracepath_api.c
   plugin.c
+
+  API_FILES
+  tracepath.api
 
   INSTALL_HEADERS
   tracepath.h

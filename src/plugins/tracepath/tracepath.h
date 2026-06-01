@@ -18,4 +18,6 @@ typedef struct
   u32 n_pkts;
 } trace_path_t;
 
+trace_path_t *trace_paths_collect_all (void);
+
 #endif /* _TRACEPATH_H_ */
