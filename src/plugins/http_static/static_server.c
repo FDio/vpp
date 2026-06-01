@@ -1112,6 +1112,35 @@ hss_create (vlib_main_t *vm)
   return 0;
 }
 
+int
+hss_destroy (vlib_main_t *vm)
+{
+  hss_main_t *hsm = &hss_main;
+  hss_listener_t *l;
+  int ret;
+
+  pool_foreach (l, hsm->listeners)
+    {
+      ret = hss_listener_del (l);
+      if (ret != 0)
+	{
+	  clib_warning ("failed to delete a listener: %d", ret);
+	  return -1;
+	}
+    }
+
+  vnet_app_detach_args_t _da = {}, *da = &_da;
+  da->app_index = hsm->app_index;
+  if (vnet_application_detach (da))
+    {
+      clib_warning ("failed to detach http_static app");
+      return -1;
+    }
+  hsm->app_index = ~0;
+
+  return 0;
+}
+
 static clib_error_t *
 hss_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
 		       vlib_cli_command_t *cmd)

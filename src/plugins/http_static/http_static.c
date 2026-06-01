@@ -138,6 +138,18 @@ vl_api_http_static_enable_v5_t_handler (vl_api_http_static_enable_v5_t *mp)
   REPLY_MACRO (VL_API_HTTP_STATIC_ENABLE_V5_REPLY);
 }
 
+static void
+vl_api_http_static_disable_v5_t_handler (vl_api_http_static_disable_v5_t *mp)
+{
+  hss_main_t *hsm = &hss_main;
+  vl_api_http_static_disable_v5_reply_t *rmp;
+  int rv;
+
+  rv = hss_destroy (hsm->vlib_main);
+
+  REPLY_MACRO (VL_API_HTTP_STATIC_DISABLE_V5_REPLY);
+}
+
 #include <http_static/http_static.api.c>
 static clib_error_t *
 hss_api_init (vlib_main_t *vm)
