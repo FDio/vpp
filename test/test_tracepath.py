@@ -28,7 +28,7 @@ class TestTracePath(VppTestCase):
         super().tearDownClass()
 
     def test_tracepath(self):
-        """Test tracepath CLIs"""
+        """Test tracepath on main thread"""
         # Send forwarded t
         n_fwd, n_drop = 5, 7
 
@@ -64,7 +64,7 @@ class TestTracePath(VppTestCase):
             n_rx=n_fwd,
         )
 
-        # Display trace paths
+        # CLI Output verification
         out = self.vapi.cli("show trace paths")
         self.assertEqual(out.count("Count:"), 2)
         self.assertIn(f"Count: {n_drop}", out)
@@ -82,6 +82,49 @@ class TestTracePath(VppTestCase):
         self.assertIn("ip4-rewrite", out)
         self.assertNotIn("ip4-drop", out)
 
+        # API Output verification
+        fwd_nodes = [
+            "pg-input",
+            "ethernet-input",
+            "ip4-input",
+            "ip4-lookup",
+            "ip4-rewrite",
+            "pg1-output",
+            "pg1-tx",
+        ]
+        drop_nodes = [
+            "pg-input",
+            "ethernet-input",
+            "ip4-input",
+            "ip4-lookup",
+            "ip4-drop",
+            "error-drop",
+            "drop",
+        ]
+        paths = self.vapi.tracepath_dump()
+
+        # Two unique paths, sorted by packet count descending: drop first, fwd second
+        self.assertEqual(len(paths), 2)
+        drop_path = paths[0]
+        fwd_path = paths[1]
+
+        self.assertEqual(drop_path.n_pkts, n_drop)
+        self.assertEqual(fwd_path.n_pkts, n_fwd)
+
+        # Exact node count and sequence for each path
+        self.assertEqual(drop_path.n_nodes, len(drop_nodes))
+        self.assertEqual(fwd_path.n_nodes, len(fwd_nodes))
+
+        drop_names = [n.name for n in drop_path.nodes]
+        fwd_names = [n.name for n in fwd_path.nodes]
+        self.assertEqual(drop_names, drop_nodes)
+        self.assertEqual(fwd_names, fwd_nodes)
+
+        # Seen on main thread only (thread_index 0 = bit 0)
+        self.assertEqual(drop_path.thread_bitmap, 1)
+        self.assertEqual(fwd_path.thread_bitmap, 1)
+
+        # Cleanup
         drop_route.remove_vpp_config()
 
 
@@ -137,6 +180,8 @@ class TestTracePathMultiThread(VppTestCase):
 
         # drop path traffic (worker 0)
         self.pg_send(self.pg0, [drop_pkt] * n_pkts, trace=False)
+
+        # Verify CLI output
         out = self.vapi.cli("show trace paths")
 
         # Two unique paths: forwarding and drop
@@ -154,6 +199,50 @@ class TestTracePathMultiThread(VppTestCase):
         # No comma, used to delimit between worker threads
         self.assertIn("Threads: [1]", drop_line)
 
+        # Verify API Output
+        fwd_nodes = [
+            "pg-input",
+            "ethernet-input",
+            "ip4-input",
+            "ip4-lookup",
+            "ip4-rewrite",
+            "pg1-output",
+            "pg1-tx",
+        ]
+        drop_nodes = [
+            "pg-input",
+            "ethernet-input",
+            "ip4-input",
+            "ip4-lookup",
+            "ip4-drop",
+            "error-drop",
+            "drop",
+        ]
+
+        paths = self.vapi.tracepath_dump()
+
+        # Two unique paths, sorted by packet count descending:
+        self.assertEqual(len(paths), 2)
+        fwd_path = paths[0]
+        drop_path = paths[1]
+
+        self.assertEqual(fwd_path.n_pkts, n_pkts * 2)
+        self.assertEqual(drop_path.n_pkts, n_pkts)
+
+        # Exact node sequences
+        self.assertEqual(fwd_path.n_nodes, len(fwd_nodes))
+        self.assertEqual(drop_path.n_nodes, len(drop_nodes))
+        fwd_names = [n.name for n in fwd_path.nodes]
+        drop_names = [n.name for n in drop_path.nodes]
+        self.assertEqual(fwd_names, fwd_nodes)
+        self.assertEqual(drop_names, drop_nodes)
+
+        # fwd seen on workers 0+1 (thread_index 1 and 2)
+        self.assertEqual(fwd_path.thread_bitmap, 0b110)
+        # drop seen on worker 0 only (thread_index 1)
+        self.assertEqual(drop_path.thread_bitmap, 0b010)
+
+        # Cleanup
         drop_route.remove_vpp_config()
 
 
