@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f8aea235_df4041bb",
+        "filename": "src/vnet/flow/flow_cli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 193,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2026-06-01T15:20:32Z",
+      "side": 1,
+      "message": "in sfdp cli the limit is 20, could we stick to the same logic/number\nhttps://elixir.bootlin.com/vpp/v26.02/source/src/vnet/sfdp/cli.c#L311",
+      "revId": "00e1873f3b53af7b60423d551e31ada7e43032ae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
