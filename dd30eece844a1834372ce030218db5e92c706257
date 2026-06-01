@@ -53,6 +53,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "3e0c99cb_b7b2b03e",
+        "filename": "extras/kube-test/kubernetes/baremetal-calicovpp-config-template.yaml",
+        "patchSetId": 6
+      },
+      "lineNbr": 156,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-06-01T07:20:47Z",
+      "side": 1,
+      "message": "Updated the patch to adapt `kube-test` to delegate repo layout knowledge to `vpp-dataplane` codebase allowing `kube-test` to work with both new layout (`master`/\u003e\u003d`v3.33`) and old layout (\u003c\u003d`v3.32`) without internal knowledge of CalicoVPP\u0027s directory structure or image names.\nThis should help achieve a clean separation as `vpp-dataplane` repo now owns layout details whereas `kube-test` calls generic make targets without internal knowledge.",
+      "parentUuid": "4b44d1ab_62c052c0",
+      "revId": "dd30eece844a1834372ce030218db5e92c706257",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "afec3f7f_81e31105",
