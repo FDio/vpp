@@ -152,7 +152,7 @@ jobs:
             echo
             echo "| Field | Value |"
             echo "| --- | --- |"
-            echo "| Gerrit change | ${{ inputs.GERRIT_CHANGE_URL }} |"
+            echo "| Gerrit change | ${{ inputs.GERRIT_CHANGE_URL }}/${{ inputs.GERRIT_PATCHSET_NUMBER }} |"
             echo "| Branch | ${{ inputs.GERRIT_BRANCH }} |"
             echo "| Namespace | ${{ inputs.FDIO_NAMESPACE }} |"
             echo "| OS | ${{ matrix.os }} |"

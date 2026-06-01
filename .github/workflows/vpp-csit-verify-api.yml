@@ -129,7 +129,7 @@ jobs:
             echo
             echo "| Field | Value |"
             echo "| --- | --- |"
-            echo "| Gerrit change | ${{ inputs.GERRIT_CHANGE_URL }} |"
+            echo "| Gerrit change | ${{ inputs.GERRIT_CHANGE_URL }}/${{ inputs.GERRIT_PATCHSET_NUMBER }} |"
             echo "| Branch | ${{ inputs.GERRIT_BRANCH }} |"
             echo "| Namespace | ${{ github.event.inputs.FDIO_NAMESPACE || 'prod' }} |"
             echo "| OS | ${{ matrix.os }} |"
