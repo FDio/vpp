@@ -88,7 +88,7 @@ class TestTracePath(VppTestCase):
 class TestTracePathMultiThread(VppTestCase):
     """Tracepath plugin multi-thread tests"""
 
-    vpp_worker_count = 2
+    vpp_worker_count = 4
 
     @classmethod
     def setUpClass(cls):
@@ -129,10 +129,13 @@ class TestTracePathMultiThread(VppTestCase):
         drop_route.add_vpp_config()
 
         # Send traffic & do not clear traces after first send_and_expect call
-        # fwd path traffic (workers 0, 1)
+        # fwd path traffic (workers 0, 1, 3)
         self.send_and_expect(self.pg0, [fwd_pkt] * n_pkts, self.pg1, worker=0)
         self.send_and_expect(
             self.pg0, [fwd_pkt] * n_pkts, self.pg1, worker=1, trace=False
+        )
+        self.send_and_expect(
+            self.pg0, [fwd_pkt] * n_pkts, self.pg1, worker=3, trace=False
         )
 
         # drop path traffic (worker 0)
@@ -142,11 +145,11 @@ class TestTracePathMultiThread(VppTestCase):
         # Two unique paths: forwarding and drop
         self.assertEqual(out.count("Count:"), 2)
 
-        # Fwd path seen on workers 0,1
-        self.assertIn(f"Count: {n_pkts * 2}", out)
-        fwd_line = next(l for l in out.splitlines() if f"Count: {n_pkts * 2}" in l)
+        # Fwd path seen on workers 0,1,3
+        self.assertIn(f"Count: {n_pkts * 3}", out)
+        fwd_line = next(l for l in out.splitlines() if f"Count: {n_pkts * 3}" in l)
         # check comma is present, which is used
-        self.assertIn("Threads: [1, 2]", fwd_line)
+        self.assertIn("Threads: [1-2, 4]", fwd_line)
 
         # Drop path seen on worker 0 only
         self.assertIn(f"Count: {n_pkts}", out)

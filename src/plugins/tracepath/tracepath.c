@@ -21,7 +21,7 @@ format_trace_path (u8 *s, va_list *va)
   u32 i;
   vlib_node_t *node;
 
-  for (i = 0; i < vec_len (p->path_indices); i++)
+  vec_foreach_index (i, p->path_indices)
     {
       if (i > 0)
 	s = format (s, " -> ");
@@ -30,25 +30,6 @@ format_trace_path (u8 *s, va_list *va)
       s = format (s, "%v", node->name);
     }
 
-  return s;
-}
-
-static u8 *
-format_thread_list (u8 *s, va_list *va)
-{
-  clib_bitmap_t *bitmap = va_arg (*va, clib_bitmap_t *);
-  uword i;
-  u8 first = 1;
-
-  s = format (s, "[");
-  clib_bitmap_foreach (i, bitmap)
-    {
-      if (!first)
-	s = format (s, ", ");
-      s = format (s, "%d", i);
-      first = 0;
-    }
-  s = format (s, "]");
   return s;
 }
 
@@ -93,15 +74,13 @@ trace_path_from_header (vlib_trace_header_t *h)
   return path;
 }
 
-static trace_path_t *
-trace_paths_collect (vlib_main_t *vm)
+static void
+trace_paths_collect (vlib_main_t *vm, u32 thread_index, uword **path_id_table, trace_path_t **paths)
 {
   vlib_trace_main_t *tm = &vm->trace_main;
   vlib_trace_header_t **h;
-  trace_path_t *paths = 0;
-  uword *path_id_table = 0;
 
-  /* Iterate over all valid traces */
+  /* Iterate over all valid traces, merging directly into caller's accumulators */
   pool_foreach (h, tm->trace_buffer_pool)
     {
       trace_path_t new_path = trace_path_from_header (h[0]);
@@ -109,26 +88,22 @@ trace_paths_collect (vlib_main_t *vm)
       if (!new_path.path_indices)
 	continue;
 
-      uword *p = hash_get (path_id_table, new_path.path_id);
+      uword *p = hash_get (*path_id_table, new_path.path_id);
       if (p)
 	{
-	  /* if path already exists in hash table, increment packet count
-	   *  and free path_indices vector */
-	  vec_elt_at_index (paths, p[0])->n_pkts++;
+	  trace_path_t *mp = vec_elt_at_index (*paths, p[0]);
+	  mp->n_pkts++;
+	  mp->thread_bitmap = clib_bitmap_set (mp->thread_bitmap, thread_index, 1);
 	  vec_free (new_path.path_indices);
 	}
       else
 	{
-	  u32 idx = vec_len (paths);
-	  vec_add1 (paths, new_path);
-	  hash_set (path_id_table, new_path.path_id, idx);
+	  u32 idx = vec_len (*paths);
+	  new_path.thread_bitmap = clib_bitmap_set (0, thread_index, 1);
+	  vec_add1 (*paths, new_path);
+	  hash_set (*path_id_table, new_path.path_id, idx);
 	}
     }
-
-  hash_free (path_id_table);
-
-  /* return paths entries, each with an initialized path_indices vector */
-  return paths;
 }
 
 static trace_path_t *
@@ -138,34 +113,9 @@ trace_paths_collect_all (void)
   uword *path_id_table = 0;
   u32 thread_index = 0;
 
-  /* Collect and merge paths from all threads */
   foreach_vlib_main ()
     {
-      trace_path_t *thread_paths = trace_paths_collect (this_vlib_main);
-      trace_path_t *p;
-      vec_foreach (p, thread_paths)
-	{
-	  uword *existing = hash_get (path_id_table, p->path_id);
-	  if (existing)
-	    {
-	      trace_path_t *mp = vec_elt_at_index (merged_paths, existing[0]);
-	      mp->thread_bitmap = clib_bitmap_set (mp->thread_bitmap, thread_index, 1);
-	      mp->n_pkts += p->n_pkts;
-
-	      /* free path_indices vector */
-	      vec_free (p->path_indices);
-	    }
-	  else
-	    {
-	      u32 idx = vec_len (merged_paths);
-	      trace_path_t mp = *p;
-	      mp.thread_bitmap = clib_bitmap_set (0 /* alloc new */, thread_index, 1);
-	      vec_add1 (merged_paths, mp);
-	      hash_set (path_id_table, p->path_id, idx);
-	    }
-	}
-
-      vec_free (thread_paths);
+      trace_paths_collect (this_vlib_main, thread_index, &path_id_table, &merged_paths);
       thread_index++;
     }
 
@@ -239,8 +189,9 @@ show_trace_paths_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_
 	{
 	  if (i >= display_count)
 	    break;
-	  s = format (s, "  [%d] Count: %d  ID: 0x%016lx  Length: %2d  Threads: %U\n", i, p->n_pkts,
-		      p->path_id, vec_len (p->path_indices), format_thread_list, p->thread_bitmap);
+	  s =
+	    format (s, "  [%d] Count: %d  ID: 0x%016lx  Length: %2d  Threads: [%U]\n", i, p->n_pkts,
+		    p->path_id, vec_len (p->path_indices), format_bitmap_list, p->thread_bitmap);
 	  s = format (s, "      Path: %U\n\n", format_trace_path, vm, p);
 	  i++;
 	}
@@ -327,7 +278,8 @@ show_trace_path_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t
 
       vlib_cli_output (vm, "\n==================== Path [%d] ====================\n", idx);
       s = format (s, "Path: %U\n", format_trace_path, vm, p);
-      s = format (s, "Threads: %U  Count: %d\n\n", format_thread_list, p->thread_bitmap, p->n_pkts);
+      s =
+	format (s, "Threads: [%U]  Count: %d\n\n", format_bitmap_list, p->thread_bitmap, p->n_pkts);
       vlib_cli_output (vm, "%v", s);
       vec_reset_length (s);
 
