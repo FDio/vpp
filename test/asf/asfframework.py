@@ -1540,6 +1540,14 @@ class VppTestResult(unittest.TestResult):
 
         self.send_result_through_pipe(test, TestResultCode.TEST_RUN)
 
+        if graceful_stop_requested and not self.shouldStop:
+            now = time.time()
+            self.stream.writeln(
+                "%s,%03d Asked to stop (FAILFAST) - winding down after this test"
+                % (time.strftime("%H:%M:%S", time.localtime(now)), int(now % 1 * 1000))
+            )
+            self.stop()
+
     def printErrors(self):
         """
         Print errors from running the test case
@@ -1569,6 +1577,16 @@ class VppTestResult(unittest.TestResult):
             self.stream.writeln("%s: %s" % (flavour, self.getDescription(test)))
             self.stream.writeln(single_line_delim)
             self.stream.writeln("%s" % err)
+
+
+# Set when the parent process asks this child (via SIGUSR1) to wind down after
+# the test currently in flight.
+graceful_stop_requested = False
+
+
+def _request_graceful_stop(signum, frame):
+    global graceful_stop_requested
+    graceful_stop_requested = True
 
 
 class VppTestRunner(unittest.TextTestRunner):
@@ -1616,6 +1634,8 @@ class VppTestRunner(unittest.TextTestRunner):
 
         """
         faulthandler.enable()  # emit stack trace to stderr if killed by signal
+        # the parent uses SIGUSR1 to ask us to stop after the current test
+        signal.signal(signal.SIGUSR1, _request_graceful_stop)
 
         result = super(VppTestRunner, self).run(test)
         if not self.print_summary:
