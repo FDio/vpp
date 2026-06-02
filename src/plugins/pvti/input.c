@@ -202,8 +202,7 @@ pvti_input_node_common (vlib_main_t *vm, vlib_node_runtime_t *node,
 
 		  vlib_buffer_t *rb0 =
 		    vlib_get_buffer (vm, rx_stream0->rx_bi0);
-		  u16 allowed_length =
-		    PVTI_RX_MAX_LENGTH - rb0->current_length;
+		  u16 allowed_length = PVTI_RX_MAX_LENGTH - rb0->current_length - rb0->current_data;
 		  if (allowed_length > chunk_payload_length)
 		    {
 		      // simple case - there is space in the buffer to fit
