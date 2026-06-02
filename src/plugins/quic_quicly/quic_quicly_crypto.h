@@ -77,6 +77,8 @@ typedef struct quic_quicly_crypto_main_
   clib_bihash_40_8_t crypto_ctx_hash;
   uword *available_crypto_engines; /**< Bitmap for registered engines */
   u8 vnet_crypto_enabled;
+  quicly_cid_encryptor_t *(*new_cid_encryptor) (ptls_iovec_t key);
+  void (*free_cid_encryptor) (quicly_cid_encryptor_t *self);
 } quic_quicly_crypto_main_t;
 
 extern quic_quicly_crypto_main_t quic_quicly_crypto_main;
