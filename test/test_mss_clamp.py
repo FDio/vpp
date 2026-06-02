@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 
+import socket
+import struct
 import unittest
 
 from framework import VppTestCase
 from asfframework import VppTestRunner
 
-from scapy.layers.inet import IP, TCP
+from scapy.layers.inet import IP, TCP, checksum
 from scapy.layers.inet6 import IPv6
 from scapy.layers.l2 import Ether
 from scapy.packet import Raw
@@ -97,6 +99,42 @@ class TestMSSClamp(VppTestCase):
         for rx in rxs:
             self.verify_pkt(rx, expected_mss)
 
+    def send_and_expect_ip4_syn_invalid_doff(self, src_pg, dst_pg):
+        # IPv4 TCP SYN packet with an invalid data offset
+        # from a host on src_pg to a host on dst_pg.
+        p = (
+            Ether(dst=src_pg.local_mac, src=src_pg.remote_mac)
+            / IP(src=src_pg.remote_ip4, dst=dst_pg.remote_ip4)
+            / TCP(
+                sport=1234,
+                dport=1234,
+                flags="S",
+                dataofs=0,
+                options=[("MSS", (1460)), ("EOL", None)],
+            )
+        )
+
+        self.send_and_expect(src_pg, p, dst_pg)
+
+    def send_and_expect_ip6_syn_invalid_doff(self, src_pg, dst_pg):
+        #
+        # IPv6 TCP SYN packet with an invalid data offset
+        # from a host on src_pg to a host on dst_pg.
+        #
+        p = (
+            Ether(dst=src_pg.local_mac, src=src_pg.remote_mac)
+            / IPv6(src=src_pg.remote_ip6, dst=dst_pg.remote_ip6, nh=6)
+            / TCP(
+                sport=1234,
+                dport=1234,
+                flags="S",
+                dataofs=0,
+                options=[("MSS", (1460)), ("EOL", None)],
+            )
+        )
+
+        self.send_and_expect(src_pg, p, dst_pg)
+
     def test_tcp_mss_clamping_ip4_tx(self):
         """IP4 TCP MSS Clamping TX"""
 
@@ -124,6 +162,19 @@ class TestMSSClamp(VppTestCase):
         # Send syn packets with small enough MSS values and verify they are
         # unchanged.
         self.send_and_verify_ip4(self.pg0, self.pg1, 1400, 1400)
+
+        stats = self.statistics.get_counter("/err/tcp-mss-clamping-ip4-out/clamped")
+        self.assertEqual(sum(stats), 65)
+
+        # Send malformed SYN and verify that the MSS clamp success counter is not incremented.
+        self.send_and_expect_ip4_syn_invalid_doff(self.pg0, self.pg1)
+
+        stats = self.statistics.get_counter("/err/tcp-mss-clamping-ip4-out/clamped")
+        self.assertEqual(
+            sum(stats),
+            65,
+            "malformed SYN must not increment MSS clamp success counter",
+        )
 
         # enable the the feature only in TX direction
         # and change the max MSS value
@@ -190,6 +241,19 @@ class TestMSSClamp(VppTestCase):
         # unchanged.
         self.send_and_verify_ip4(self.pg1, self.pg0, 1400, 1400)
 
+        stats = self.statistics.get_counter("/err/tcp-mss-clamping-ip4-in/clamped")
+        self.assertEqual(sum(stats), 65)
+
+        # Send malformed SYN and verify that the MSS clamp success counter is not incremented.
+        self.send_and_expect_ip4_syn_invalid_doff(self.pg1, self.pg0)
+
+        stats = self.statistics.get_counter("/err/tcp-mss-clamping-ip4-in/clamped")
+        self.assertEqual(
+            sum(stats),
+            65,
+            "malformed SYN must not increment MSS clamp success counter",
+        )
+
         # enable the the feature only in RX direction
         # and change the max MSS value
         self.vapi.mss_clamp_enable_disable(
@@ -255,6 +319,19 @@ class TestMSSClamp(VppTestCase):
         # unchanged.
         self.send_and_verify_ip6(self.pg0, self.pg1, 1400, 1400)
 
+        stats = self.statistics.get_counter("/err/tcp-mss-clamping-ip6-out/clamped")
+        self.assertEqual(sum(stats), 65)
+
+        # Send malformed SYN and verify that the MSS clamp success counter is not incremented.
+        self.send_and_expect_ip6_syn_invalid_doff(self.pg0, self.pg1)
+
+        stats = self.statistics.get_counter("/err/tcp-mss-clamping-ip6-out/clamped")
+        self.assertEqual(
+            sum(stats),
+            65,
+            "malformed SYN must not increment MSS clamp success counter",
+        )
+
         # enable the the feature only in TX direction
         # and change the max MSS value
         self.vapi.mss_clamp_enable_disable(
@@ -319,6 +396,19 @@ class TestMSSClamp(VppTestCase):
         # Send syn packets with small enough MSS values and verify they are
         # unchanged.
         self.send_and_verify_ip6(self.pg1, self.pg0, 1400, 1400)
+
+        stats = self.statistics.get_counter("/err/tcp-mss-clamping-ip6-in/clamped")
+        self.assertEqual(sum(stats), 65)
+
+        # Send malformed SYN and verify that the MSS clamp success counter is not incremented.
+        self.send_and_expect_ip6_syn_invalid_doff(self.pg1, self.pg0)
+
+        stats = self.statistics.get_counter("/err/tcp-mss-clamping-ip6-in/clamped")
+        self.assertEqual(
+            sum(stats),
+            65,
+            "malformed SYN must not increment MSS clamp success counter",
+        )
 
         # enable the the feature only in RX direction
         # and change the max MSS value

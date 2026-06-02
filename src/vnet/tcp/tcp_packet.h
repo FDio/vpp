@@ -286,6 +286,10 @@ tcp_options_parse (tcp_header_t * th, tcp_options_t * to, u8 is_syn)
   int j;
   sack_block_t b;
 
+  /* broken options */
+  if (tcp_doff (th) << 2 < sizeof (tcp_header_t))
+    return -1;
+
   opts_len = (tcp_doff (th) << 2) - sizeof (tcp_header_t);
   data = (const u8 *) (th + 1);
 
