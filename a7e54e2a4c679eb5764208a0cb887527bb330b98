@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e4ef703b_2262587e",
+        "filename": "src/vnet/sfdp/lookup/node.c",
+        "patchSetId": 32
+      },
+      "lineNbr": 604,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2026-06-02T09:10:38Z",
+      "side": 1,
+      "message": "IIRC I did a ipv6 fix previously here",
+      "revId": "a7e54e2a4c679eb5764208a0cb887527bb330b98",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cfb32800_ce6e0919",
+        "filename": "src/vnet/sfdp/lookup/node.c",
+        "patchSetId": 32
+      },
+      "lineNbr": 761,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2026-06-02T09:10:38Z",
+      "side": 1,
+      "message": "and here",
+      "revId": "a7e54e2a4c679eb5764208a0cb887527bb330b98",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "714cb7c8_623fd8da",
+        "filename": "src/vnet/sfdp/lookup/node.c",
+        "patchSetId": 32
+      },
+      "lineNbr": 798,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2026-06-02T09:10:38Z",
+      "side": 1,
+      "message": "is_ipv6",
+      "revId": "a7e54e2a4c679eb5764208a0cb887527bb330b98",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
