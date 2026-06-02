@@ -16,6 +16,23 @@
       "message": "have you considered changing:\n\nvnet_flow_t *global_flow_pool;\n\nto\n\nvnet_flow_t **global_flow_pool;",
       "revId": "82824a857106be33a3d3024ef274b8997df4f6a4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "22b8f521_2698538b",
+        "filename": "src/vnet/flow/flow.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 276,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2026-06-02T07:22:28Z",
+      "side": 1,
+      "message": "if !template this section should be under lock, isn\u0027t it ?",
+      "revId": "82824a857106be33a3d3024ef274b8997df4f6a4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
