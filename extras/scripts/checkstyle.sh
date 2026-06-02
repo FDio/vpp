@@ -153,8 +153,35 @@ fi
 
 out=$(mktemp)
 
-cat ${in} | ${CLANG_FORMAT_DIFF} ${CLANG_FORMAT_DIFF_ARGS} > ${out}
+# Behavior of clang-format-diff changed starting with version 18.
+# Formerly it always returned 0 unless there was an error running
+# clang-format
+# Now it returns 1 if clang-format generates different code than
+# the code on the filesystem that's being inspected.
+# So we need to prevent the script from exiting when it returns 1 due to the
+# earlier invocation of 'set -e'. And we need to disambiguate between when
+# formatting changes are required and other errors when 1 is returned.
+diff_rv=0
+format_diff=0
+cat ${in} | ${CLANG_FORMAT_DIFF} ${CLANG_FORMAT_DIFF_ARGS} > ${out} || diff_rv=$?
+if [ ${diff_rv} -eq 1 ] && grep -c '(before formatting)' ${out} ; then
+    # clang-format-diff-like output found
+    format_diff=1
+fi
+
 rm ${in}
+
+if [[ ${diff_rv} -ne 0 && ${format_diff} -eq 0 ]]; then
+    if [ -f ${out} ]; then
+        cat ${out}
+	rm ${out}
+    fi
+    echo "*******************************************************************"
+    echo "* CHECKSTYLE FAILED"
+    echo "* ${CLANG_FORMAT_DIFF} exited with status ${diff_rv}"
+    echo "*******************************************************************"
+    exit ${diff_rv}
+fi
 
 line_count=$(cat ${out} | wc -l)
 
