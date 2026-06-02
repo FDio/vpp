@@ -112,6 +112,8 @@ send_lldp (u32 index, vl_api_registration_t *rp, u32 context)
   vl_api_lldp_details_t *rmp = 0;
   vnet_main_t *vnm = &vnet_main;
   lldp_main_t *lm = &lldp_main;
+  vlib_main_t *vm = vlib_get_main ();
+  f64 now = vlib_time_now (vm);
   const lldp_intf_t *n = vec_elt_at_index (lm->intfs, index);
   const vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, n->hw_if_index);
 
@@ -120,14 +122,55 @@ send_lldp (u32 index, vl_api_registration_t *rp, u32 context)
       rmp->sw_if_index = hw->sw_if_index;
       rmp->last_heard = n->last_heard;
       rmp->last_sent = n->last_sent;
+
+      rmp->last_heard_age = 0.0;
+      if (rmp->last_heard)
+	{
+	  rmp->last_heard_age = now - n->last_heard;
+	}
+      rmp->last_sent_age = 0.0;
+      if (rmp->last_sent)
+	{
+	  rmp->last_sent_age = now - n->last_sent;
+	}
+
+      rmp->active = 0;
+      if (n->last_heard)
+	{
+	  rmp->active = (now < (n->last_heard + n->ttl));
+	}
+
       rmp->ttl = n->ttl;
       rmp->port_id_subtype = (vl_api_port_id_subtype_t) n->port_id_subtype;
       rmp->chassis_id_subtype =
 	(vl_api_chassis_id_subtype_t) n->chassis_id_subtype;
       rmp->chassis_id_len = vec_len (n->chassis_id);
-      clib_memcpy (&rmp->chassis_id, n->chassis_id, rmp->chassis_id_len);
+      clib_memcpy (&rmp->chassis_id, n->chassis_id,
+		   clib_min (vec_len (n->chassis_id), rmp->chassis_id_len));
       rmp->port_id_len = vec_len (n->port_id);
-      clib_memcpy (&rmp->port_id, n->port_id, rmp->port_id_len);
+      clib_memcpy (&rmp->port_id, n->port_id, clib_min (vec_len (n->port_id), rmp->port_id_len));
+
+      clib_memcpy (&rmp->system_name, lm->sys_name,
+		   clib_min (vec_len (lm->sys_name), sizeof (rmp->system_name)));
+
+      rmp->tx_hold = lm->msg_tx_hold;
+      rmp->tx_interval = lm->msg_tx_interval;
+
+      clib_memset (rmp->mgmt_ip4, 0, sizeof (rmp->mgmt_ip4));
+      clib_memset (rmp->mgmt_ip6, 0, sizeof (rmp->mgmt_ip6));
+      clib_memset (rmp->mgmt_oid, 0, sizeof (rmp->mgmt_oid));
+      clib_memset (rmp->port_desc, 0, sizeof (rmp->port_desc));
+
+      clib_memcpy (rmp->mgmt_ip4, n->mgmt_ip4,
+		   clib_min (vec_len ((char *) n->mgmt_ip4), sizeof (rmp->mgmt_ip4)));
+
+      ip6_address_encode ((const ip6_address_t *) n->mgmt_ip6, rmp->mgmt_ip6);
+
+      clib_memcpy (rmp->mgmt_oid, n->mgmt_oid,
+		   clib_min (vec_len ((char *) n->mgmt_oid), sizeof (rmp->mgmt_oid)));
+
+      clib_memcpy (rmp->port_desc, n->port_desc,
+		   clib_min (vec_len ((char *) n->port_desc), sizeof (rmp->port_desc)));
     }));
 }
 

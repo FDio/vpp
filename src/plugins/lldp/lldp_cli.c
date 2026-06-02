@@ -606,28 +606,42 @@ format_lldp_intfs_detail (u8 * s, vlib_main_t * vm, const lldp_main_t * lm)
 		      "Last packet sent: %U\n",
 		      format_time_ago, n->last_sent, now);
 	}
-	else if (now < n->last_heard + n->ttl)
-	{
-	  s = format (s,
-		      "Interface/peer state: active\n"
-		      "Peer chassis ID: %U\nRemote port ID: %U\n"
-		      "Last packet sent: %U\nLast packet received: %U\n",
-		      format_lldp_chassis_id, n->chassis_id_subtype, n->chassis_id,
-		      vec_len (n->chassis_id), 1, format_lldp_port_id, n->port_id_subtype,
-		      n->port_id, vec_len (n->port_id), 1, format_time_ago, n->last_sent, now,
-		      format_time_ago, n->last_heard, now);
-	}
+
 	else
 	{
-	  s = format (s,
-		      "Interface/peer state: inactive(timeout)\n"
-		      "Last known peer chassis ID: %U\n"
-		      "Last known peer port ID: %U\nLast packet sent: %U\n"
-		      "Last packet received: %U\n",
-		      format_lldp_chassis_id, n->chassis_id_subtype, n->chassis_id,
-		      vec_len (n->chassis_id), 1, format_lldp_port_id, n->port_id_subtype,
-		      n->port_id, vec_len (n->port_id), 1, format_time_ago, n->last_sent, now,
-		      format_time_ago, n->last_heard, now);
+	  bool active = 0;
+
+	  if (n->last_heard)
+	    {
+	      if (now < n->last_heard + n->ttl)
+		{
+		  active = 1;
+		}
+	    }
+
+	  if (active)
+	    {
+	      s = format (s,
+			  "Interface/peer state: active\n"
+			  "Peer chassis ID: %U\nRemote port ID: %U\n"
+			  "Last packet sent: %U\nLast packet received: %U\n",
+			  format_lldp_chassis_id, n->chassis_id_subtype, n->chassis_id,
+			  vec_len (n->chassis_id), 1, format_lldp_port_id, n->port_id_subtype,
+			  n->port_id, vec_len (n->port_id), 1, format_time_ago, n->last_sent, now,
+			  format_time_ago, n->last_heard, now);
+	    }
+	  else
+	    {
+	      s = format (s,
+			  "Interface/peer state: inactive(timeout)\n"
+			  "Last known peer chassis ID: %U\n"
+			  "Last known peer port ID: %U\nLast packet sent: %U\n"
+			  "Last packet received: %U\n",
+			  format_lldp_chassis_id, n->chassis_id_subtype, n->chassis_id,
+			  vec_len (n->chassis_id), 1, format_lldp_port_id, n->port_id_subtype,
+			  n->port_id, vec_len (n->port_id), 1, format_time_ago, n->last_sent, now,
+			  format_time_ago, n->last_heard, now);
+	    }
 	}
     }
   return s;
@@ -661,21 +675,31 @@ format_lldp_intfs (u8 * s, va_list * va)
         /* Interface shutdown */
         if (!(sw->flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP))
           continue;
-        if (now < n->last_heard + n->ttl)
-          {
-            s = format(s, "%-25v %-25U %-25U %=15U %=15U %=10s\n", hw->name,
-                       format_lldp_chassis_id, n->chassis_id_subtype,
-                       n->chassis_id, vec_len(n->chassis_id), 0,
-                       format_lldp_port_id, n->port_id_subtype, n->port_id,
-                       vec_len(n->port_id), 0, format_time_ago, n->last_heard,
-                       now, format_time_ago, n->last_sent, now, "active");
-          }
-        else
-          {
-            s = format(s, "%-25v %-25s %-25s %=15U %=15U %=10s\n", hw->name,
-                       "", "", format_time_ago, n->last_heard, now,
-                       format_time_ago, n->last_sent, now, "inactive");
-          }
+
+	bool active = 0;
+
+	if (n->last_heard)
+	  {
+	    if (now < n->last_heard + n->ttl)
+	      {
+		active = 1;
+	      }
+	  }
+
+	if (active)
+	  {
+	    s = format (s, "%-25v %-25U %-25U %=15U %=15U %=10s\n", hw->name,
+			format_lldp_chassis_id, n->chassis_id_subtype, n->chassis_id,
+			vec_len (n->chassis_id), 0, format_lldp_port_id, n->port_id_subtype,
+			n->port_id, vec_len (n->port_id), 0, format_time_ago, n->last_heard, now,
+			format_time_ago, n->last_sent, now, "active");
+	  }
+	else
+	  {
+	    s =
+	      format (s, "%-25v %-25s %-25s %=15U %=15U %=10s\n", hw->name, "", "", format_time_ago,
+		      n->last_heard, now, format_time_ago, n->last_sent, now, "inactive");
+	  }
       }
   return s;
 }
