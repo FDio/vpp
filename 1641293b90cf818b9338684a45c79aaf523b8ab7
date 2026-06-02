@@ -16,6 +16,40 @@
       "message": "Hi Matthew,\nAs promised some time ago, I finally made a new test for ospf/multicast traffic in lcp. I also tested with my original patch that introduces regression - test fails with that patch. Do you mind to take a look?",
       "revId": "1641293b90cf818b9338684a45c79aaf523b8ab7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "48cadf63_06f0be16",
+        "filename": "test/test_linux_cp.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 1698,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-06-02T18:43:08Z",
+      "side": 1,
+      "message": "This is quite ugly. Why don\u0027t we have a VppInterface sub-class handling this?\nThen one could use the usual send_and_expect or the more modern send_and_expect_multi with all the goodies like pcap naming, rotation, logging, timeouts etc?",
+      "revId": "1641293b90cf818b9338684a45c79aaf523b8ab7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0bb84b27_c5e2b335",
+        "filename": "test/test_linux_cp.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 1731,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-06-02T18:43:08Z",
+      "side": 1,
+      "message": "Same here.",
+      "revId": "1641293b90cf818b9338684a45c79aaf523b8ab7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
