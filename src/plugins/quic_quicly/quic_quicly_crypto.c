@@ -5,6 +5,7 @@
 #include <quic_quicly/quic_quicly.h>
 #include <quic_quicly/quic_quicly_error.h>
 #include <quic_quicly/quic_quicly_crypto.h>
+#include <quic_quicly/quic_quicly_cid_enc.h>
 #include <vnet/session/application.h>
 #include <vnet/session/application_crypto.h>
 #include <vnet/session/session.h>
@@ -662,8 +663,12 @@ quic_quicly_crypto_context_init_data (quic_quicly_crypto_ctx_t *crctx, quic_ctx_
 
   clib_memcpy (crctx->cid_key, app_cctx->quic_iv, QUIC_IV_LEN);
   key_vec = ptls_iovec_init (crctx->cid_key, QUIC_IV_LEN);
+#if defined(__AES__)
+  quicly_ctx->cid_encryptor = quic_quicly_new_cid_encryptor (key_vec);
+#else
   quicly_ctx->cid_encryptor = quicly_new_default_cid_encryptor (
     &ptls_openssl_quiclb, &ptls_openssl_aes128ecb, &ptls_openssl_sha256, key_vec);
+#endif
 
   ckpair = app_cert_key_pair_get_if_valid (crctx->ctx.ckpair_index);
   if (!ckpair || !ckpair->key || !ckpair->cert)

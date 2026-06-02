@@ -35,16 +35,28 @@ if(QUICLY_INCLUDE_DIR AND QUICLY_LINK_LIBRARIES)
       include_directories (${PICOTLS_INCLUDE_DIR})
     endif()
 
+    message(STATUS "Found quicly ${EXPECTED_QUICLY_VERSION} in ${QUICLY_INCLUDE_DIR}")
+
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "amd64.*|x86_64.*|AMD64.*")
+      list(APPEND ARCH_QUIC_QUICLY_SOURCES quic_quicly_cid_enc.c)
+      message(STATUS "-- building quic_quicly CID encryptor")
+    endif()
+
     add_vpp_plugin(quic_quicly
       SOURCES
       quic_quicly.c
       quic_quicly_error.c
       quic_quicly_crypto.c
       ptls_certs.c
+      ${ARCH_QUIC_QUICLY_SOURCES}
 
       LINK_LIBRARIES ${QUICLY_LINK_LIBRARIES} ${OPENSSL_LIBRARIES}
     )
-    message(STATUS "Found quicly ${EXPECTED_QUICLY_VERSION} in ${QUICLY_INCLUDE_DIR}")
+
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "amd64.*|x86_64.*|AMD64.*")
+      target_compile_options(quic_quicly_plugin PRIVATE "-maes")
+    endif()
+
   else()
     message(STATUS "-- quicly ${EXPECTED_QUICLY_VERSION} not found - quic_quicly plugin disabled")
   endif()
