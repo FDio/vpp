@@ -5,6 +5,7 @@
 #include <quic_quicly/quic_quicly.h>
 #include <quic_quicly/quic_quicly_error.h>
 #include <quic_quicly/quic_quicly_crypto.h>
+#include <quic_quicly/quic_quicly_cid_enc.h>
 #include <vnet/session/application.h>
 #include <vnet/session/application_crypto.h>
 #include <vnet/session/session.h>
@@ -47,6 +48,13 @@ quic_quicly_register_cipher_suite (crypto_engine_type_t type, ptls_cipher_suite_
   return rv;
 }
 
+quicly_cid_encryptor_t *
+quic_quicly_default_new_cid_encryptor (ptls_iovec_t key)
+{
+  return quicly_new_default_cid_encryptor (&ptls_openssl_quiclb, &ptls_openssl_aes128ecb,
+					   &ptls_openssl_sha256, key);
+}
+
 void
 quic_quicly_crypto_init (quic_quicly_main_t *qqm)
 {
@@ -64,6 +72,25 @@ quic_quicly_crypto_init (quic_quicly_main_t *qqm)
 
   clib_bihash_init_40_8 (&qqcm->crypto_ctx_hash, "quic (quicly engine) crypto ctx", 64, 128 << 10);
   quic_quicly_register_cipher_suite (CRYPTO_ENGINE_PICOTLS, ptls_openssl_cipher_suites);
+
+#if defined(__AES__) || defined(__ARM_FEATURE_CRYPTO)
+  if (clib_cpu_supports_aes ())
+    {
+      QUIC_DBG (2, "using quic_quicly cid encryptor");
+      qqcm->new_cid_encryptor = quic_quicly_new_cid_encryptor;
+      qqcm->free_cid_encryptor = quic_quicly_free_cid_encryptor;
+    }
+  else
+    {
+      QUIC_DBG (2, "using quicly_default cid encryptor");
+      qqcm->new_cid_encryptor = quic_quicly_default_new_cid_encryptor;
+      qqcm->free_cid_encryptor = quicly_free_default_cid_encryptor;
+    }
+#else
+  QUIC_DBG (2, "using quicly_default cid encryptor");
+  qqcm->new_cid_encryptor = quic_quicly_default_new_cid_encryptor;
+  qqcm->free_cid_encryptor = quicly_free_default_cid_encryptor;
+#endif
 
   if (qm->enable_vnet_crypto)
     {
@@ -169,6 +196,11 @@ quic_quicly_crypto_context_free_if_needed (quic_quicly_crypto_ctx_t *crctx)
     {
       ptls_openssl_dispose_verify_certificate (&crctx->verify_cert.super);
       crctx->ptls_ctx.verify_certificate = NULL;
+    }
+  if (crctx->quicly_ctx.cid_encryptor)
+    {
+      qqcm->free_cid_encryptor (crctx->quicly_ctx.cid_encryptor);
+      crctx->quicly_ctx.cid_encryptor = NULL;
     }
   if (CLIB_DEBUG)
     memset (crctx, 0xfe, sizeof (*crctx));
@@ -662,8 +694,7 @@ quic_quicly_crypto_context_init_data (quic_quicly_crypto_ctx_t *crctx, quic_ctx_
 
   clib_memcpy (crctx->cid_key, app_cctx->quic_iv, QUIC_IV_LEN);
   key_vec = ptls_iovec_init (crctx->cid_key, QUIC_IV_LEN);
-  quicly_ctx->cid_encryptor = quicly_new_default_cid_encryptor (
-    &ptls_openssl_quiclb, &ptls_openssl_aes128ecb, &ptls_openssl_sha256, key_vec);
+  quicly_ctx->cid_encryptor = qqcm->new_cid_encryptor (key_vec);
 
   ckpair = app_cert_key_pair_get_if_valid (crctx->ctx.ckpair_index);
   if (!ckpair || !ckpair->key || !ckpair->cert)
