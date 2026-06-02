@@ -370,6 +370,7 @@ ip6_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u16 mtu,
   u16 len, max, rem, ip_frag_id;
   u8 *org_from_packet;
   u16 head_bytes;
+  u8 headroom_bytes;
 
   from_b = vlib_get_buffer (vm, from_bi);
 
@@ -386,9 +387,10 @@ ip6_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u16 mtu,
 
   head_bytes =
     (sizeof (ip6_header_t) + sizeof (ip6_frag_hdr_t) + l2unfragmentablesize);
+  headroom_bytes = clib_max (0, from_b->current_data);
   rem = clib_net_to_host_u16 (ip6->payload_length);
-  max = (clib_min (mtu, vlib_buffer_get_default_data_size (vm)) - head_bytes) &
-	~0x7;
+  max =
+    (clib_min (mtu, vlib_buffer_get_default_data_size (vm) - headroom_bytes) - head_bytes) & ~0x7;
 
   if (rem >
       (vlib_buffer_length_in_chain (vm, from_b) - sizeof (ip6_header_t)))
@@ -432,7 +434,7 @@ ip6_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u16 mtu,
 
       /* Make sure we have as much space for headers as the original and copy
        * ip6 header */
-      to_data = vlib_buffer_make_headroom (to_b, org_from_b->current_data);
+      to_data = vlib_buffer_make_headroom (to_b, headroom_bytes);
       clib_memcpy_fast (to_data, org_from_packet,
 			l2unfragmentablesize + sizeof (ip6_header_t));
       to_ip6 = vlib_buffer_get_current (to_b) + l2unfragmentablesize;
