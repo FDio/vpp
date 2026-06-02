@@ -45,20 +45,27 @@ typedef enum
 
 /*
  * fixup the maximum segment size if it's a syn packet
+ * @param tcp0 - the tcp header
+ * @param max_mss0 - the maximum mss
+ * @param remaining_length - the remaining length of the buffer from the tcp header onwards
  * return 1 if the mss was changed otherwise 0
  */
 always_inline u32
-mssc_mss_fixup (vlib_buffer_t *b0, tcp_header_t *tcp0, u16 max_mss0)
+mssc_mss_fixup (tcp_header_t *tcp0, u16 max_mss0, u32 remaining_length)
 {
   ip_csum_t sum0;
 
   if (PREDICT_FALSE (tcp_syn (tcp0)))
     {
-      u8 opt_len, opts_len, kind;
+      u8 opt_len, kind;
+      i8 opts_len;
       const u8 *data;
       u16 mss0, new_mss0;
 
       opts_len = (tcp_doff (tcp0) << 2) - sizeof (tcp_header_t);
+      if (opts_len > remaining_length)
+	return 0;
+
       data = (const u8 *) (tcp0 + 1);
 
       for (; opts_len > 0; opts_len -= opt_len, data += opt_len)
@@ -85,7 +92,7 @@ mssc_mss_fixup (vlib_buffer_t *b0, tcp_header_t *tcp0, u16 max_mss0)
 		return 0;
 	    }
 
-	  if (kind == TCP_OPTION_MSS)
+	  if (kind == TCP_OPTION_MSS && opt_len == TCP_OPTION_LEN_MSS)
 	    {
 	      mss0 = *(u16 *) (data + 2);
 	      if (clib_net_to_host_u16 (mss0) > max_mss0)
@@ -157,15 +164,17 @@ mssc_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame,
 	  ip4_header_t *ip0 = (ip4_header_t *) h0;
 	  ip4_header_t *ip1 = (ip4_header_t *) h1;
 
-	  if (IP_PROTOCOL_TCP == ip0->protocol)
+	  if (IP_PROTOCOL_TCP == ip0->protocol &&
+	      b[0]->current_length >= sizeof (*ip0) + sizeof (tcp_header_t))
 	    {
-	      clamped0 = mssc_mss_fixup (b[0], ip4_next_header (ip0),
-					 cm->max_mss4[sw_if_index0]);
+	      clamped0 = mssc_mss_fixup (ip4_next_header (ip0), cm->max_mss4[sw_if_index0],
+					 b[0]->current_length - sizeof (*ip0));
 	    }
-	  if (IP_PROTOCOL_TCP == ip1->protocol)
+	  if (IP_PROTOCOL_TCP == ip1->protocol &&
+	      b[1]->current_length >= sizeof (*ip1) + sizeof (tcp_header_t))
 	    {
-	      clamped1 = mssc_mss_fixup (b[1], ip4_next_header (ip1),
-					 cm->max_mss4[sw_if_index1]);
+	      clamped1 = mssc_mss_fixup (ip4_next_header (ip1), cm->max_mss4[sw_if_index0],
+					 b[1]->current_length - sizeof (*ip1));
 	    }
 	}
       else if (FIB_PROTOCOL_IP6 == fproto)
@@ -176,11 +185,13 @@ mssc_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame,
 	    ip6_ext_header_find (vm, b[0], ip0, IP_PROTOCOL_TCP, NULL);
 	  tcp_header_t *tcp1 =
 	    ip6_ext_header_find (vm, b[1], ip1, IP_PROTOCOL_TCP, NULL);
+	  u32 remaining_length0 = vlib_bytes_left_in_buffer (b[0], tcp0);
+	  u32 remaining_length1 = vlib_bytes_left_in_buffer (b[1], tcp1);
 
-	  if (tcp0)
-	    clamped0 = mssc_mss_fixup (b[0], tcp0, cm->max_mss6[sw_if_index0]);
-	  if (tcp1)
-	    clamped1 = mssc_mss_fixup (b[1], tcp1, cm->max_mss6[sw_if_index1]);
+	  if (tcp0 && remaining_length0 >= sizeof (tcp_header_t))
+	    clamped0 = mssc_mss_fixup (tcp0, cm->max_mss6[sw_if_index0], remaining_length0);
+	  if (tcp1 && remaining_length1 >= sizeof (tcp_header_t))
+	    clamped1 = mssc_mss_fixup (tcp1, cm->max_mss6[sw_if_index1], remaining_length1);
 	}
 
       pkts_clamped += clamped0 + clamped1;
@@ -234,10 +245,11 @@ mssc_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame,
 	{
 	  ip4_header_t *ip0 = (ip4_header_t *) h0;
 
-	  if (IP_PROTOCOL_TCP == ip0->protocol)
+	  if (IP_PROTOCOL_TCP == ip0->protocol &&
+	      b[0]->current_length >= sizeof (*ip0) + sizeof (tcp_header_t))
 	    {
-	      clamped0 = mssc_mss_fixup (b[0], ip4_next_header (ip0),
-					 cm->max_mss4[sw_if_index0]);
+	      clamped0 = mssc_mss_fixup (ip4_next_header (ip0), cm->max_mss4[sw_if_index0],
+					 b[0]->current_length - sizeof (*ip0));
 	    }
 	}
       else if (FIB_PROTOCOL_IP6 == fproto)
@@ -245,9 +257,10 @@ mssc_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame,
 	  ip6_header_t *ip0 = (ip6_header_t *) h0;
 	  tcp_header_t *tcp0 =
 	    ip6_ext_header_find (vm, b[0], ip0, IP_PROTOCOL_TCP, NULL);
+	  u32 remaining_length0 = vlib_bytes_left_in_buffer (b[0], tcp0);
 
-	  if (tcp0)
-	    clamped0 = mssc_mss_fixup (b[0], tcp0, cm->max_mss6[sw_if_index0]);
+	  if (tcp0 && remaining_length0 >= sizeof (tcp_header_t))
+	    clamped0 = mssc_mss_fixup (tcp0, cm->max_mss6[sw_if_index0], remaining_length0);
 	}
 
       pkts_clamped += clamped0;
