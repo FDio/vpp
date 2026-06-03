@@ -201,9 +201,9 @@ typedef struct app_crypto_ctx_
   app_tls_profile_t *tls_profiles;
   /** Preferred tls engine */
   u8 tls_engine;
-  /** quic initialization vector */
-  char quic_iv[17];
-  u8 quic_iv_set;
+  /** quic cid encryptor key */
+  char quic_cid_key[16];
+  u8 quic_cid_key_set;
 } app_crypto_ctx_t;
 
 void app_crypto_ctx_init (app_crypto_ctx_t *crypto_ctx);
