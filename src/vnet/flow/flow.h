@@ -421,6 +421,7 @@ typedef struct
   /* per-thread caches for lock-free fast-path flow alloc/free */
   vnet_flow_per_thread_data_t *per_thread_data; /* vec[n_vlib_mains] */
   u32 flow_cache_size;				/* batch refill/drain size (configurable) */
+  u32 flow_global_pool_size;			/* global pool size, used for pre-initialization */
 
   /* flow ids allocated */
   u32 flows_used;
