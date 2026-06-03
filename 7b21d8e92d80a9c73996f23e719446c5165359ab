@@ -1,0 +1,124 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "53f77c26_9a078af4",
+        "filename": "src/plugins/hs_apps/proxy_lite.c",
+        "patchSetId": 29
+      },
+      "lineNbr": 151,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-06-03T14:28:27Z",
+      "side": 1,
+      "message": "maybe assert to be sure it\u0027s called under session lock?",
+      "revId": "7b21d8e92d80a9c73996f23e719446c5165359ab",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "568eb725_1f37d9d5",
+        "filename": "src/plugins/hs_apps/proxy_lite.c",
+        "patchSetId": 29
+      },
+      "lineNbr": 174,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-06-03T14:28:27Z",
+      "side": 1,
+      "message": "maybe assert to be sure it\u0027s called under session lock?",
+      "revId": "7b21d8e92d80a9c73996f23e719446c5165359ab",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "104c38d9_ebdda5c1",
+        "filename": "src/plugins/hs_apps/proxy_lite.c",
+        "patchSetId": 29
+      },
+      "lineNbr": 824,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-06-03T14:28:27Z",
+      "side": 1,
+      "message": "you should do this under lock",
+      "range": {
+        "startLine": 816,
+        "startChar": 0,
+        "endLine": 824,
+        "endChar": 31
+      },
+      "revId": "7b21d8e92d80a9c73996f23e719446c5165359ab",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a4c9e9d9_c1378e89",
+        "filename": "src/plugins/hsi/hsi_tracker_private.h",
+        "patchSetId": 29
+      },
+      "lineNbr": 39,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-06-03T14:28:27Z",
+      "side": 1,
+      "message": "hsi_tracker_flags_t?",
+      "range": {
+        "startLine": 39,
+        "startChar": 2,
+        "endLine": 39,
+        "endChar": 5
+      },
+      "revId": "7b21d8e92d80a9c73996f23e719446c5165359ab",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a47289cf_cd331f37",
+        "filename": "src/plugins/hsi/hsi_tracker_private.h",
+        "patchSetId": 29
+      },
+      "lineNbr": 182,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-06-03T14:28:27Z",
+      "side": 1,
+      "message": "hsi_tcp_drain_flags_t?",
+      "range": {
+        "startLine": 182,
+        "startChar": 2,
+        "endLine": 182,
+        "endChar": 4
+      },
+      "revId": "7b21d8e92d80a9c73996f23e719446c5165359ab",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6c10ac96_4e44587f",
+        "filename": "test/hs-test/infra/tcpharness/packet.go",
+        "patchSetId": 29
+      },
+      "lineNbr": 458,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-06-03T14:28:27Z",
+      "side": 1,
+      "message": "should be fine since we run little endian machines only, maybe you can do something safe with https://golang.google.cn/pkg/encoding/binary/ it has NativeEndian",
+      "revId": "7b21d8e92d80a9c73996f23e719446c5165359ab",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
