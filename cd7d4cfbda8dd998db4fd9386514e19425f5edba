@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9b8b5dbc_ae5dbac4",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-06-03T12:22:11Z",
+      "side": 1,
+      "message": "Thanks for the patch. I was apparently clueless when writing this in my very early vpp days :)",
+      "revId": "cd7d4cfbda8dd998db4fd9386514e19425f5edba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c6cf1794_54e5ab06",
+        "filename": "test/test_lldp.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 137,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-06-03T12:22:11Z",
+      "side": 1,
+      "message": "is there a reason not to have this exact?\n\ni.e. \n\nassert pre + 1 \u003d\u003d post, \"truncated system name TLV must increment bad TLV error counter\"",
+      "revId": "cd7d4cfbda8dd998db4fd9386514e19425f5edba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
