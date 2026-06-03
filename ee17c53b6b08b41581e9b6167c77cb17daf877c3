@@ -16,6 +16,24 @@
       "message": "Thanks for the report, but instead of an extra test, let\u0027s just refuse to parse options if doff (not options) is broken https://gerrit.fd.io/r/c/vpp/+/45960",
       "revId": "ee17c53b6b08b41581e9b6167c77cb17daf877c3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6e05f175_a946aaab",
+        "filename": "src/vnet/tcp/tcp_packet.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 290,
+      "author": {
+        "id": 2429
+      },
+      "writtenOn": "2026-06-03T14:51:28Z",
+      "side": 1,
+      "message": "Yes, good suggestion. I\u0027ll remove this change from this gerrit and make a similar change to the mss_clamp code.",
+      "parentUuid": "3c209c1e_232fe254",
+      "revId": "ee17c53b6b08b41581e9b6167c77cb17daf877c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
