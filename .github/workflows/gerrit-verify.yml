@@ -113,7 +113,7 @@ jobs:
     name: Checkstyle
     needs:
       - start-verify
-    uses: fdio/vpp/.github/workflows/vpp-verify-checkstyle.yml@6ed6c1d7b5a269ceb674447051ffe756d50a34c2
+    uses: fdio/vpp/.github/workflows/vpp-verify-checkstyle.yml@aea0a31a2b6bba3b9e47feccae473f4206f85704
     with:
       FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
       GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
@@ -134,7 +134,7 @@ jobs:
       - start-verify
       - verify-checkstyle
     if: ${{ needs.verify-checkstyle.result == 'success' }}
-    uses: fdio/vpp/.github/workflows/vpp-verify-maketest.yml@6ed6c1d7b5a269ceb674447051ffe756d50a34c2
+    uses: fdio/vpp/.github/workflows/vpp-verify-maketest.yml@e5c8759e531c155d1aa983fcb0fe84fd1f004c88
     with:
       FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
       GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
@@ -152,7 +152,7 @@ jobs:
       - start-verify
       - verify-checkstyle
     if: ${{ needs.verify-checkstyle.result == 'success' }}
-    uses: fdio/vpp/.github/workflows/vpp-verify-gcc.yml@6ed6c1d7b5a269ceb674447051ffe756d50a34c2
+    uses: fdio/vpp/.github/workflows/vpp-verify-gcc.yml@e5c8759e531c155d1aa983fcb0fe84fd1f004c88
     with:
       FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
       GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
@@ -173,7 +173,7 @@ jobs:
       - start-verify
       - verify-checkstyle
     if: ${{ needs.verify-checkstyle.result == 'success' }}
-    uses: fdio/vpp/.github/workflows/vpp-csit-verify-api.yml@6ed6c1d7b5a269ceb674447051ffe756d50a34c2
+    uses: fdio/vpp/.github/workflows/vpp-csit-verify-api.yml@e5c8759e531c155d1aa983fcb0fe84fd1f004c88
     with:
       FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
       GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
@@ -191,7 +191,7 @@ jobs:
       - start-verify
       - verify-checkstyle
     if: ${{ needs.verify-checkstyle.result == 'success' }}
-    uses: fdio/vpp/.github/workflows/vpp-verify-arm-drivers.yml@6ed6c1d7b5a269ceb674447051ffe756d50a34c2
+    uses: fdio/vpp/.github/workflows/vpp-verify-arm-drivers.yml@e5c8759e531c155d1aa983fcb0fe84fd1f004c88
     with:
       FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
       GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
@@ -209,7 +209,7 @@ jobs:
       - start-verify
       - verify-checkstyle
     if: ${{ needs.verify-checkstyle.result == 'success' }}
-    uses: fdio/vpp/.github/workflows/vpp-verify-hst.yml@6ed6c1d7b5a269ceb674447051ffe756d50a34c2
+    uses: fdio/vpp/.github/workflows/vpp-verify-hst.yml@e5c8759e531c155d1aa983fcb0fe84fd1f004c88
     with:
       FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
       GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
