@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"strings"
 	"sync"
 	"time"
 
@@ -38,6 +39,13 @@ var KubeConfig *rest.Config
 const (
 	LogDir      string = "/tmp/kube-test/"
 	EnvVarsFile string = "kubernetes/.vars"
+
+	// ComponentRolloutTimeout bounds how long we wait for a single component's
+	// rollout to be observed as complete. It should be long enough for a worst
+	// case CalicoVPP / DaemonSet rollout (multiple node restarts in sequence
+	// with readiness probe delays) but short enough to fail fast when a pod is
+	// genuinely stuck (e.g. networking lost after a dataplane restart).
+	ComponentRolloutTimeout = 5 * time.Minute
 )
 
 type BaseSuite struct {
@@ -119,6 +127,28 @@ func (s *BaseSuite) Envsubst(inputPath string, outputPath string) {
 	AssertNil(os.WriteFile(outputPath, o, 0644))
 }
 
+// rolloutStatus runs `kubectl rollout status` for a single resource with a
+// bounded per-call timeout. Both the kubectl process and the underlying
+// rollout-status watch are bounded so we cannot hang past ComponentRolloutTimeout.
+// kubectl's own `--timeout` flag stops the rollout watch on the server side,
+// and exec.CommandContext kills the kubectl subprocess if it does not exit on
+// its own (e.g. apiserver is unreachable). Without these bounds a single bad
+// rollout would block the entire ginkgo spec until the SpecTimeout fires.
+func rolloutStatus(namespace, resource string, timeout time.Duration) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "kubectl",
+		"-n", namespace,
+		"rollout", "status", resource,
+		fmt.Sprintf("--timeout=%s", timeout.String()),
+	)
+	Log(cmd.String())
+	output, err := cmd.CombinedOutput()
+	Log(string(output))
+	return string(output), err
+}
+
 func (s *BaseSuite) WaitForComponents() {
 	Log("Waiting for components.")
 
@@ -139,12 +169,8 @@ func (s *BaseSuite) WaitForComponents() {
 			defer GinkgoRecover()
 			defer wg.Done()
 
-			cmd := exec.Command("kubectl", "-n", c.namespace, "rollout", "status", fmt.Sprintf("%s/%s", c.resourceType, c.resourceName))
-			Log(cmd.String())
-
-			output, err := cmd.CombinedOutput()
-			Log(string(output))
-			AssertNil(err)
+			_, err := rolloutStatus(c.namespace, fmt.Sprintf("%s/%s", c.resourceType, c.resourceName), ComponentRolloutTimeout)
+			AssertNil(err, "rollout status for %s/%s in namespace %s failed or timed out", c.resourceType, c.resourceName, c.namespace)
 		}(check)
 	}
 
@@ -153,19 +179,14 @@ func (s *BaseSuite) WaitForComponents() {
 		defer GinkgoRecover()
 		defer wg.Done()
 
-		cmd := exec.Command("kubectl", "-n", "calico-apiserver", "rollout", "status", "deployment/calico-apiserver")
-		Log(cmd.String())
-		output, err := cmd.CombinedOutput()
-		Log(string(output))
-
-		if err != nil {
+		// calico-apiserver lives in either calico-apiserver or calico-system depending on the
+		// operator version; try the former first, fall back to the latter only if "not found".
+		output, err := rolloutStatus("calico-apiserver", "deployment/calico-apiserver", ComponentRolloutTimeout)
+		if err != nil && strings.Contains(output, "NotFound") {
 			Log("trying calico-system namespace")
-			cmd = exec.Command("kubectl", "-n", "calico-system", "rollout", "status", "deployment/calico-apiserver")
-			Log(cmd.String())
-			output, err = cmd.CombinedOutput()
-			Log(string(output))
+			_, err = rolloutStatus("calico-system", "deployment/calico-apiserver", ComponentRolloutTimeout)
 		}
-		AssertNil(err)
+		AssertNil(err, "rollout status for calico-apiserver failed or timed out")
 	}()
 
 	wg.Wait()
