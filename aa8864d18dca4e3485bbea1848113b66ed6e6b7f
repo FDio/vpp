@@ -16,6 +16,24 @@
       "message": "@Dave, the CI is failing because of lack of \"Type: fix\" in the commit message. I\u0027m presuming I should add that back?",
       "revId": "aa8864d18dca4e3485bbea1848113b66ed6e6b7f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4bdb6f0e_0c2f815d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-06-03T12:28:46Z",
+      "side": 1,
+      "message": "That is correct.  I will fix it.",
+      "parentUuid": "58b4edba_fc95e06e",
+      "revId": "aa8864d18dca4e3485bbea1848113b66ed6e6b7f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
