@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "58b4edba_fc95e06e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2429
+      },
+      "writtenOn": "2026-06-03T08:27:38Z",
+      "side": 1,
+      "message": "@Dave, the CI is failing because of lack of \"Type: fix\" in the commit message. I\u0027m presuming I should add that back?",
+      "revId": "aa8864d18dca4e3485bbea1848113b66ed6e6b7f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
