@@ -61,6 +61,115 @@ ec_session_get (echo_test_worker_t *wrk, u32 ec_index)
   return pool_elt_at_index (wrk->sessions, ec_index);
 }
 
+static inline void
+ec_session_accumulate_stats (ec_main_t *ecm, echo_test_worker_t *wrk, echo_test_session_t *es)
+{
+  wrk->bytes_sent += es->bytes_sent;
+  wrk->bytes_received += es->bytes_received;
+  wrk->dgrams_sent += es->dgrams_sent;
+  wrk->dgrams_received += es->dgrams_received;
+
+  if (ecm->cfg.proto == ET_PROTO_TCP)
+    echo_update_rtt_stats_tcp (es, &ecm->stats.rtt_stats);
+  else if (ecm->cfg.proto == ET_PROTO_UDP)
+    echo_update_rtt_stats_udp (es, &ecm->stats.rtt_stats);
+}
+
+static void
+ec_vec_del_session_index (u32 **session_indices, u32 session_index)
+{
+  u32 i;
+
+  vec_foreach_index (i, *session_indices)
+    {
+      if ((*session_indices)[i] == session_index)
+	{
+	  vec_delete (*session_indices, 1, i);
+	  return;
+	}
+    }
+}
+
+static void
+ec_worker_del_session_index (echo_test_worker_t *wrk, u32 session_index)
+{
+  ec_vec_del_session_index (&wrk->conn_indices, session_index);
+  ec_vec_del_session_index (&wrk->conns_this_batch, session_index);
+}
+
+static void
+ec_session_peer_close (session_t *s, u8 is_reset)
+{
+  ec_main_t *ecm = &ec_main;
+  echo_test_session_t *es;
+  echo_test_worker_t *wrk;
+  u32 session_index;
+  u8 was_running, was_starting, session_failed;
+
+  session_index = s->opaque;
+  wrk = ec_worker_get (s->thread_index);
+
+  if (pool_is_free_index (wrk->sessions, session_index))
+    return;
+
+  es = ec_session_get (wrk, session_index);
+  if (es->vpp_session_handle != session_handle (s))
+    return;
+
+  was_starting = ecm->run_test == EC_STARTING;
+  was_running = ecm->run_test == EC_RUNNING;
+
+  if (!was_starting)
+    {
+      ec_worker_del_session_index (wrk, session_index);
+      ec_session_accumulate_stats (ecm, wrk, es);
+    }
+
+  session_failed = was_running || (!was_starting && (es->bytes_to_send || es->bytes_to_receive));
+  if (session_failed)
+    {
+      ecm->test_failed = 1;
+      ecm->run_test = EC_EXITING;
+      clib_atomic_fetch_add (&ecm->failed_session_closes, 1);
+      if (is_reset)
+	clib_atomic_fetch_add (&ecm->reset_count, 1);
+      else
+	clib_atomic_fetch_add (&ecm->disconnect_count, 1);
+    }
+
+  es->bytes_to_send = 0;
+  es->bytes_to_receive = 0;
+  es->vpp_session_handle = SESSION_INVALID_HANDLE;
+
+  if (was_running)
+    {
+      clib_atomic_sub_fetch (&ecm->ready_connections, 1);
+      signal_evt_to_cli (EC_CLI_TEST_DONE);
+    }
+}
+
+static void
+ec_ctrl_session_peer_close (session_t *s, u8 is_reset)
+{
+  ec_main_t *ecm = &ec_main;
+  u8 was_starting = ecm->run_test == EC_STARTING;
+
+  if (s->opaque == HS_CTRL_HANDLE || session_handle (s) == ecm->ctrl_session_handle)
+    ecm->ctrl_session_handle = SESSION_INVALID_HANDLE;
+
+  if (was_starting || ecm->run_test == EC_RUNNING)
+    {
+      ecm->test_failed = 1;
+      ecm->run_test = EC_EXITING;
+      clib_atomic_fetch_add (&ecm->failed_session_closes, 1);
+      if (is_reset)
+	clib_atomic_fetch_add (&ecm->reset_count, 1);
+      else
+	clib_atomic_fetch_add (&ecm->disconnect_count, 1);
+      signal_evt_to_cli (was_starting ? EC_CLI_CONNECTS_FAILED : EC_CLI_TEST_DONE);
+    }
+}
+
 always_inline void
 echo_client_tx_data (echo_test_session_t *es, u8 run_time, u8 paced, u8 test_bytes)
 {
@@ -251,37 +360,25 @@ ec_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 
       if (PREDICT_FALSE (delete_session == 1) || ecm->end_test)
 	{
-	  wrk->bytes_sent += es->bytes_sent;
-	  wrk->bytes_received += es->bytes_received;
-	  wrk->dgrams_sent += es->dgrams_sent;
-	  wrk->dgrams_received += es->dgrams_received;
+	  ec_session_accumulate_stats (ecm, wrk, es);
 	  s = session_get_from_handle_if_valid (es->vpp_session_handle);
+	  es->vpp_session_handle = SESSION_INVALID_HANDLE;
 
 	  if (s)
 	    {
-	      if (ecm->cfg.proto == ET_PROTO_TCP)
-		echo_update_rtt_stats_tcp (es, &ecm->stats.rtt_stats);
-	      else if (ecm->cfg.proto == ET_PROTO_UDP)
-		echo_update_rtt_stats_udp (es, &ecm->stats.rtt_stats);
-
 	      vnet_disconnect_args_t _a, *a = &_a;
 	      a->handle = session_handle (s);
 	      a->app_index = ecm->app_index;
 	      vnet_disconnect_session (a);
-
-	      vec_delete (conns_this_batch, 1, i);
-	      i--;
-	      n_active_conn = clib_atomic_sub_fetch (&ecm->ready_connections, 1);
-	      /* Kick the debug CLI process */
-	      if (n_active_conn == 0)
-		{
-		  signal_evt_to_cli (EC_CLI_TEST_DONE);
-		}
 	    }
-	  else
+
+	  vec_delete (conns_this_batch, 1, i);
+	  i--;
+	  n_active_conn = clib_atomic_sub_fetch (&ecm->ready_connections, 1);
+	  /* Kick the debug CLI process */
+	  if (n_active_conn == 0)
 	    {
-	      ec_err ("session AWOL?");
-	      vec_delete (conns_this_batch, 1, i);
+	      signal_evt_to_cli (EC_CLI_TEST_DONE);
 	    }
 	}
     }
@@ -318,6 +415,9 @@ ec_reset_runtime_config (ec_main_t *ecm)
   ecm->run_test = EC_STARTING;
   ecm->end_test = false;
   ecm->ready_connections = 0;
+  ecm->failed_session_closes = 0;
+  ecm->reset_count = 0;
+  ecm->disconnect_count = 0;
   ecm->connect_conn_index = 0;
   ecm->barrier_acq_needed = 0;
   ecm->prealloc_sessions = 0;
@@ -587,9 +687,19 @@ ec_session_reset_callback (session_t *s)
   ec_main_t *ecm = &ec_main;
   vnet_disconnect_args_t _a = { 0 }, *a = &_a;
 
+  if (PREDICT_FALSE (s->opaque == HS_CTRL_HANDLE || session_handle (s) == ecm->ctrl_session_handle))
+    {
+      ec_dbg ("ctrl session reset");
+      ec_ctrl_session_peer_close (s, 1 /* is_reset */);
+      goto disconnect;
+    }
+
   if (s->session_state == SESSION_STATE_READY)
     ec_err ("Reset active connection %U", format_session, s, 2);
 
+  ec_session_peer_close (s, 1 /* is_reset */);
+
+disconnect:
   a->handle = session_handle (s);
   a->app_index = ecm->app_index;
   vnet_disconnect_session (a);
@@ -608,11 +718,13 @@ ec_session_disconnect_callback (session_t *s)
   ec_main_t *ecm = &ec_main;
   vnet_disconnect_args_t _a = { 0 }, *a = &_a;
 
-  if (session_handle (s) == ecm->ctrl_session_handle)
+  if (s->opaque == HS_CTRL_HANDLE || session_handle (s) == ecm->ctrl_session_handle)
     {
       ec_dbg ("ctrl session disconnect");
-      ecm->ctrl_session_handle = SESSION_INVALID_HANDLE;
+      ec_ctrl_session_peer_close (s, 0 /* is_reset */);
     }
+  else
+    ec_session_peer_close (s, 0 /* is_reset */);
 
   a->handle = session_handle (s);
   a->app_index = ecm->app_index;
@@ -903,6 +1015,9 @@ ec_ctrl_session_disconnect ()
   vnet_disconnect_args_t _a, *a = &_a;
   session_error_t err;
 
+  if (ecm->ctrl_session_handle == SESSION_INVALID_HANDLE)
+    return;
+
   a->handle = ecm->ctrl_session_handle;
   a->app_index = ecm->app_index;
   err = vnet_disconnect_session (a);
@@ -1069,6 +1184,14 @@ ec_run (vlib_main_t *vm)
       goto stop_test;
 
     case EC_CLI_CONNECTS_DONE:
+      if (clib_atomic_load_relax_n (&ecm->failed_session_closes))
+	{
+	  error = clib_error_return (
+	    0, "failed: session closed while connecting (%u reset, %u disconnected)",
+	    clib_atomic_load_relax_n (&ecm->reset_count),
+	    clib_atomic_load_relax_n (&ecm->disconnect_count));
+	  goto stop_test;
+	}
       ecm->ready_connections = ecm->expected_connections;
       if (ecm->throughput)
 	ec_calc_tput (ecm);
@@ -1083,8 +1206,22 @@ ec_run (vlib_main_t *vm)
       break;
 
     case EC_CLI_CONNECTS_FAILED:
-      error = clib_error_return (0, "failed: connect failed (%u sessions connected)",
-				 ecm->ready_connections);
+      {
+	u32 close_count = clib_atomic_load_relax_n (&ecm->failed_session_closes);
+	if (close_count)
+	  {
+	    u32 reset_count = clib_atomic_load_relax_n (&ecm->reset_count);
+	    u32 disconnect_count = clib_atomic_load_relax_n (&ecm->disconnect_count);
+	    error = clib_error_return (
+	      0,
+	      "failed: connect failed (%u sessions connected, %u session close events "
+	      "while connecting: %u reset, %u disconnected)",
+	      ecm->ready_connections, close_count, reset_count, disconnect_count);
+	  }
+	else
+	  error = clib_error_return (0, "failed: connect failed (%u sessions connected)",
+				     ecm->ready_connections);
+      }
       goto stop_test;
 
     default:
@@ -1170,6 +1307,16 @@ ec_run (vlib_main_t *vm)
     }
   while (!main_loop_done);
 
+  if (clib_atomic_load_relax_n (&ecm->failed_session_closes))
+    {
+      error = clib_error_return (
+	0, "failed: %u session close events before test completion (%u reset, %u disconnected)",
+	clib_atomic_load_relax_n (&ecm->failed_session_closes),
+	clib_atomic_load_relax_n (&ecm->reset_count),
+	clib_atomic_load_relax_n (&ecm->disconnect_count));
+      goto stop_test;
+    }
+
   delta = ecm->stats.test_end_time - ecm->stats.test_start_time;
   if (delta < FLT_EPSILON)
     {
@@ -1193,6 +1340,12 @@ ec_run (vlib_main_t *vm)
 
 stop_test:
   ecm->run_test = EC_EXITING;
+
+  if (clib_atomic_load_relax_n (&ecm->failed_session_closes))
+    {
+      ec_ctrl_session_disconnect ();
+      return error;
+    }
 
   vlib_process_wait_for_event_or_clock (vm, ECHO_TEST_DELAY_DISCONNECT);
   /* no signals are expected - just wait for clock */
