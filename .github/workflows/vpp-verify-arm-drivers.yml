@@ -131,23 +131,6 @@ jobs:
       TUI_LINE: "*******************************************************************"
 
     steps:
-      - name: Job Details
-        run: |
-          {
-            echo "### ARM Drivers"
-            echo
-            echo "| Field | Value |"
-            echo "| --- | --- |"
-            echo "| Gerrit change | ${{ inputs.GERRIT_CHANGE_URL }}/${{ inputs.GERRIT_PATCHSET_NUMBER }} |"
-            echo "| Branch | ${{ inputs.GERRIT_BRANCH }} |"
-            echo "| Namespace | ${{ inputs.FDIO_NAMESPACE }} |"
-            echo "| OS | ${{ matrix.os }} |"
-            echo "| Arch | ${{ matrix.executor_arch }} |"
-            echo "| Build | ${{ matrix.build_type }} |"
-            echo "| Class | ${{ matrix.class }} |"
-            echo "| Logs | $LOG_NAME |"
-          } >> "$GITHUB_STEP_SUMMARY"
-
       - name: Actions Checkout
         uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98  # v6.0.2
 
