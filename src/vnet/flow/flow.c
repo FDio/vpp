@@ -23,6 +23,8 @@ vnet_flow_config (vlib_main_t *vm, unformat_input_t *input)
     {
       if (unformat (input, "per-thread-cache-size %u", &fm->flow_cache_size))
 	;
+      else if (unformat (input, "global-pool-size %u", &fm->flow_global_pool_size))
+	;
       else
 	return clib_error_return (0, "unknown flow config: `%U`", format_unformat_error, input);
     }
@@ -42,6 +44,10 @@ vnet_flow_init (vlib_main_t *vm)
   /* default if no flow{} stanza in startup.conf */
   if (fm->flow_cache_size == 0)
     fm->flow_cache_size = FLOW_CACHE_DEFAULT_SIZE;
+
+  /* default is to not pre-init global_flow_pool */
+  if (fm->flow_global_pool_size)
+    pool_alloc_aligned (fm->global_flow_pool, fm->flow_global_pool_size, CLIB_CACHE_LINE_BYTES);
 
   if (vlib_num_workers ())
     {
