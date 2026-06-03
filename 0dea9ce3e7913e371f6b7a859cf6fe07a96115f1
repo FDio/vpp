@@ -1,0 +1,95 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9dec637f_8cd9ba89",
+        "filename": "src/plugins/hs_apps/builtin_echo/echo_client.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 138,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-06-03T19:55:30Z",
+      "side": 1,
+      "message": "this can be merged with if on line 122",
+      "revId": "0dea9ce3e7913e371f6b7a859cf6fe07a96115f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d0a57c2d_3891acda",
+        "filename": "src/plugins/hs_apps/builtin_echo/echo_client.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 376,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-06-03T19:55:30Z",
+      "side": 1,
+      "message": "this is same in both branches, we probably don\u0027t need else brach",
+      "revId": "0dea9ce3e7913e371f6b7a859cf6fe07a96115f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "54ea080a_749e3091",
+        "filename": "src/plugins/hs_apps/builtin_echo/echo_client.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1218,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-06-03T19:55:30Z",
+      "side": 1,
+      "message": "this is probably masking failed connect error message in this case",
+      "range": {
+        "startLine": 1213,
+        "startChar": 0,
+        "endLine": 1218,
+        "endChar": 10
+      },
+      "revId": "0dea9ce3e7913e371f6b7a859cf6fe07a96115f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "05ce9e4e_d104f181",
+        "filename": "test/hs-test/echo_test.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 171,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-06-03T19:55:30Z",
+      "side": 1,
+      "message": "did you get something different than Mbps here? because this is paced (throughput 16m)",
+      "revId": "0dea9ce3e7913e371f6b7a859cf6fe07a96115f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3c88afd7_77f4be3f",
+        "filename": "test/hs-test/echo_test.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 181,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-06-03T19:55:30Z",
+      "side": 1,
+      "message": "this can happen? or was it only last interval?",
+      "revId": "0dea9ce3e7913e371f6b7a859cf6fe07a96115f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
