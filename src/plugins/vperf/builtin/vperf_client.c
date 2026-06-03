@@ -61,6 +61,116 @@ vp_client_session_get (vp_test_worker_t *wrk, u32 vp_client_index)
   return pool_elt_at_index (wrk->sessions, vp_client_index);
 }
 
+static inline void
+vp_client_session_accumulate_stats (vp_client_main_t *vpcm, vp_test_worker_t *wrk,
+				    vp_test_session_t *es)
+{
+  wrk->bytes_sent += es->bytes_sent;
+  wrk->bytes_received += es->bytes_received;
+  wrk->dgrams_sent += es->dgrams_sent;
+  wrk->dgrams_received += es->dgrams_received;
+
+  if (vpcm->cfg.proto == VP_PROTO_TCP)
+    vp_update_rtt_stats_tcp (es, &vpcm->stats.rtt_stats);
+  else if (vpcm->cfg.proto == VP_PROTO_UDP)
+    vp_update_rtt_stats_udp (es, &vpcm->stats.rtt_stats);
+}
+
+static void
+vp_client_vec_del_session_index (u32 **session_indices, u32 session_index)
+{
+  u32 i;
+
+  vec_foreach_index (i, *session_indices)
+    {
+      if ((*session_indices)[i] == session_index)
+	{
+	  vec_delete (*session_indices, 1, i);
+	  return;
+	}
+    }
+}
+
+static void
+vp_client_worker_del_session_index (vp_test_worker_t *wrk, u32 session_index)
+{
+  vp_client_vec_del_session_index (&wrk->conn_indices, session_index);
+  vp_client_vec_del_session_index (&wrk->conns_this_batch, session_index);
+}
+
+static void
+vp_client_session_peer_close (session_t *s, u8 is_reset)
+{
+  vp_client_main_t *vpcm = &vp_client_main;
+  vp_test_session_t *es;
+  vp_test_worker_t *wrk;
+  u32 session_index;
+  u8 was_running, was_starting, session_failed;
+
+  session_index = s->opaque;
+  wrk = vp_client_worker_get (s->thread_index);
+
+  if (pool_is_free_index (wrk->sessions, session_index))
+    return;
+
+  es = vp_client_session_get (wrk, session_index);
+  if (es->vpp_session_handle != session_handle (s))
+    return;
+
+  was_starting = vpcm->run_test == VP_CLIENT_STARTING;
+  was_running = vpcm->run_test == VP_CLIENT_RUNNING;
+
+  if (!was_starting)
+    {
+      vp_client_worker_del_session_index (wrk, session_index);
+      vp_client_session_accumulate_stats (vpcm, wrk, es);
+    }
+
+  session_failed = was_running || (!was_starting && (es->bytes_to_send || es->bytes_to_receive));
+  if (session_failed)
+    {
+      vpcm->test_failed = 1;
+      vpcm->run_test = VP_CLIENT_EXITING;
+      clib_atomic_fetch_add (&vpcm->failed_session_closes, 1);
+      if (is_reset)
+	clib_atomic_fetch_add (&vpcm->reset_count, 1);
+      else
+	clib_atomic_fetch_add (&vpcm->disconnect_count, 1);
+    }
+
+  es->bytes_to_send = 0;
+  es->bytes_to_receive = 0;
+  es->vpp_session_handle = SESSION_INVALID_HANDLE;
+
+  if (was_running)
+    {
+      clib_atomic_sub_fetch (&vpcm->ready_connections, 1);
+      signal_evt_to_cli (VP_CLIENT_CLI_TEST_DONE);
+    }
+}
+
+static void
+vp_client_ctrl_session_peer_close (session_t *s, u8 is_reset)
+{
+  vp_client_main_t *vpcm = &vp_client_main;
+  u8 was_starting = vpcm->run_test == VP_CLIENT_STARTING;
+
+  if (s->opaque == VPERF_CTRL_HANDLE || session_handle (s) == vpcm->ctrl_session_handle)
+    vpcm->ctrl_session_handle = SESSION_INVALID_HANDLE;
+
+  if (was_starting || vpcm->run_test == VP_CLIENT_RUNNING)
+    {
+      vpcm->test_failed = 1;
+      vpcm->run_test = VP_CLIENT_EXITING;
+      clib_atomic_fetch_add (&vpcm->failed_session_closes, 1);
+      if (is_reset)
+	clib_atomic_fetch_add (&vpcm->reset_count, 1);
+      else
+	clib_atomic_fetch_add (&vpcm->disconnect_count, 1);
+      signal_evt_to_cli (was_starting ? VP_CLIENT_CLI_CONNECTS_FAILED : VP_CLIENT_CLI_TEST_DONE);
+    }
+}
+
 always_inline void
 vp_client_tx_data (vp_test_session_t *es, u8 run_time, u8 paced, u8 test_bytes)
 {
@@ -251,37 +361,25 @@ vp_client_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *fra
 
       if (PREDICT_FALSE (delete_session == 1) || vpcm->end_test)
 	{
-	  wrk->bytes_sent += es->bytes_sent;
-	  wrk->bytes_received += es->bytes_received;
-	  wrk->dgrams_sent += es->dgrams_sent;
-	  wrk->dgrams_received += es->dgrams_received;
+	  vp_client_session_accumulate_stats (vpcm, wrk, es);
 	  s = session_get_from_handle_if_valid (es->vpp_session_handle);
+	  es->vpp_session_handle = SESSION_INVALID_HANDLE;
 
 	  if (s)
 	    {
-	      if (vpcm->cfg.proto == VP_PROTO_TCP)
-		vp_update_rtt_stats_tcp (es, &vpcm->stats.rtt_stats);
-	      else if (vpcm->cfg.proto == VP_PROTO_UDP)
-		vp_update_rtt_stats_udp (es, &vpcm->stats.rtt_stats);
-
 	      vnet_disconnect_args_t _a, *a = &_a;
 	      a->handle = session_handle (s);
 	      a->app_index = vpcm->app_index;
 	      vnet_disconnect_session (a);
-
-	      vec_delete (conns_this_batch, 1, i);
-	      i--;
-	      n_active_conn = clib_atomic_sub_fetch (&vpcm->ready_connections, 1);
-	      /* Kick the debug CLI process */
-	      if (n_active_conn == 0)
-		{
-		  signal_evt_to_cli (VP_CLIENT_CLI_TEST_DONE);
-		}
 	    }
-	  else
+
+	  vec_delete (conns_this_batch, 1, i);
+	  i--;
+	  n_active_conn = clib_atomic_sub_fetch (&vpcm->ready_connections, 1);
+	  /* Kick the debug CLI process */
+	  if (n_active_conn == 0)
 	    {
-	      vp_client_err ("session AWOL?");
-	      vec_delete (conns_this_batch, 1, i);
+	      signal_evt_to_cli (VP_CLIENT_CLI_TEST_DONE);
 	    }
 	}
     }
@@ -318,6 +416,9 @@ vp_client_reset_runtime_config (vp_client_main_t *vpcm)
   vpcm->run_test = VP_CLIENT_STARTING;
   vpcm->end_test = false;
   vpcm->ready_connections = 0;
+  vpcm->failed_session_closes = 0;
+  vpcm->reset_count = 0;
+  vpcm->disconnect_count = 0;
   vpcm->connect_conn_index = 0;
   vpcm->barrier_acq_needed = 0;
   vpcm->prealloc_sessions = 0;
@@ -588,9 +689,20 @@ vp_client_session_reset_callback (session_t *s)
   vp_client_main_t *vpcm = &vp_client_main;
   vnet_disconnect_args_t _a = { 0 }, *a = &_a;
 
+  if (PREDICT_FALSE (s->opaque == VPERF_CTRL_HANDLE ||
+		     session_handle (s) == vpcm->ctrl_session_handle))
+    {
+      vp_client_dbg ("ctrl session reset");
+      vp_client_ctrl_session_peer_close (s, 1 /* is_reset */);
+      goto disconnect;
+    }
+
   if (s->session_state == SESSION_STATE_READY)
     vp_client_err ("Reset active connection %U", format_session, s, 2);
 
+  vp_client_session_peer_close (s, 1 /* is_reset */);
+
+disconnect:
   a->handle = session_handle (s);
   a->app_index = vpcm->app_index;
   vnet_disconnect_session (a);
@@ -609,11 +721,13 @@ vp_client_session_disconnect_callback (session_t *s)
   vp_client_main_t *vpcm = &vp_client_main;
   vnet_disconnect_args_t _a = { 0 }, *a = &_a;
 
-  if (session_handle (s) == vpcm->ctrl_session_handle)
+  if (s->opaque == VPERF_CTRL_HANDLE || session_handle (s) == vpcm->ctrl_session_handle)
     {
       vp_client_dbg ("ctrl session disconnect");
-      vpcm->ctrl_session_handle = SESSION_INVALID_HANDLE;
+      vp_client_ctrl_session_peer_close (s, 0 /* is_reset */);
     }
+  else
+    vp_client_session_peer_close (s, 0 /* is_reset */);
 
   a->handle = session_handle (s);
   a->app_index = vpcm->app_index;
@@ -904,6 +1018,9 @@ vp_client_ctrl_session_disconnect ()
   vnet_disconnect_args_t _a, *a = &_a;
   session_error_t err;
 
+  if (vpcm->ctrl_session_handle == SESSION_INVALID_HANDLE)
+    return;
+
   a->handle = vpcm->ctrl_session_handle;
   a->app_index = vpcm->app_index;
   err = vnet_disconnect_session (a);
@@ -1070,6 +1187,14 @@ vp_client_run (vlib_main_t *vm)
       goto stop_test;
 
     case VP_CLIENT_CLI_CONNECTS_DONE:
+      if (clib_atomic_load_relax_n (&vpcm->failed_session_closes))
+	{
+	  error = clib_error_return (
+	    0, "failed: session closed while connecting (%u reset, %u disconnected)",
+	    clib_atomic_load_relax_n (&vpcm->reset_count),
+	    clib_atomic_load_relax_n (&vpcm->disconnect_count));
+	  goto stop_test;
+	}
       vpcm->ready_connections = vpcm->expected_connections;
       if (vpcm->throughput)
 	vp_client_calc_tput (vpcm);
@@ -1084,8 +1209,22 @@ vp_client_run (vlib_main_t *vm)
       break;
 
     case VP_CLIENT_CLI_CONNECTS_FAILED:
-      error = clib_error_return (0, "failed: connect failed (%u sessions connected)",
-				 vpcm->ready_connections);
+      {
+	u32 close_count = clib_atomic_load_relax_n (&vpcm->failed_session_closes);
+	if (close_count)
+	  {
+	    u32 reset_count = clib_atomic_load_relax_n (&vpcm->reset_count);
+	    u32 disconnect_count = clib_atomic_load_relax_n (&vpcm->disconnect_count);
+	    error = clib_error_return (
+	      0,
+	      "failed: connect failed (%u sessions connected, %u session close events "
+	      "while connecting: %u reset, %u disconnected)",
+	      vpcm->ready_connections, close_count, reset_count, disconnect_count);
+	  }
+	else
+	  error = clib_error_return (0, "failed: connect failed (%u sessions connected)",
+				     vpcm->ready_connections);
+      }
       goto stop_test;
 
     default:
@@ -1171,6 +1310,16 @@ vp_client_run (vlib_main_t *vm)
     }
   while (!main_loop_done);
 
+  if (clib_atomic_load_relax_n (&vpcm->failed_session_closes))
+    {
+      error = clib_error_return (
+	0, "failed: %u session close events before test completion (%u reset, %u disconnected)",
+	clib_atomic_load_relax_n (&vpcm->failed_session_closes),
+	clib_atomic_load_relax_n (&vpcm->reset_count),
+	clib_atomic_load_relax_n (&vpcm->disconnect_count));
+      goto stop_test;
+    }
+
   delta = vpcm->stats.test_end_time - vpcm->stats.test_start_time;
   if (delta < FLT_EPSILON)
     {
@@ -1194,6 +1343,12 @@ vp_client_run (vlib_main_t *vm)
 
 stop_test:
   vpcm->run_test = VP_CLIENT_EXITING;
+
+  if (clib_atomic_load_relax_n (&vpcm->failed_session_closes))
+    {
+      vp_client_ctrl_session_disconnect ();
+      return error;
+    }
 
   vlib_process_wait_for_event_or_clock (vm, VP_TEST_DELAY_DISCONNECT);
   /* no signals are expected - just wait for clock */

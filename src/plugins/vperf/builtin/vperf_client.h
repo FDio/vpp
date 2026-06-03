@@ -20,6 +20,9 @@ typedef struct
   u8 *connect_test_data;   /**< Pre-computed test data */
 
   volatile u32 ready_connections;
+  volatile u32 failed_session_closes;
+  volatile u32 reset_count;
+  volatile u32 disconnect_count;
   volatile int run_test;  /**< Signal start of test */
   volatile bool end_test; /**< Signal end of test */
 
