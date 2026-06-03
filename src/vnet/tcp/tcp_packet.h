@@ -282,7 +282,8 @@ always_inline int
 tcp_options_parse (tcp_header_t * th, tcp_options_t * to, u8 is_syn)
 {
   const u8 *data;
-  u8 opt_len, opts_len, kind;
+  u8 opt_len, kind;
+  i8 opts_len;
   int j;
   sack_block_t b;
 
