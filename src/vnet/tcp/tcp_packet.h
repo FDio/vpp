@@ -287,7 +287,7 @@ tcp_options_parse (tcp_header_t * th, tcp_options_t * to, u8 is_syn)
   int j;
   sack_block_t b;
 
-  opts_len = (tcp_doff (th) << 2) - sizeof (tcp_header_t);
+  opts_len = (tcp_doff (th) << 2) - (int) sizeof (tcp_header_t);
   data = (const u8 *) (th + 1);
 
   /* Zero out all flags but those set in SYN */
