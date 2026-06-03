@@ -13,7 +13,6 @@ static const iavf_rx_desc_qw1_t mask_eop = { .eop = 1 };
 static const iavf_rx_desc_qw1_t mask_flm = { .flm = 1 };
 static const iavf_rx_desc_qw1_t mask_dd = { .dd = 1 };
 static const iavf_rx_desc_qw1_t mask_ipe = { .ipe = 1 };
-static const iavf_rx_desc_qw1_t mask_dd_eop = { .dd = 1, .eop = 1 };
 static const iavf_rx_desc_qw1_t mask_l3l4p = { .l3l4p = 1 };
 static const iavf_rx_desc_qw1_t mask_l4e = { .l4e = 1 };
 
@@ -300,15 +299,6 @@ iavf_device_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   u16 size = rxq->size;
   u16 mask = size - 1;
   iavf_rx_desc_t *d, *descs = arq->descs;
-#ifdef CLIB_HAVE_VEC256
-  u64x4 q1x4, or_q1x4 = { 0 };
-  u32x4 fdidx4;
-  u64x4 dd_eop_mask4 = u64x4_splat (mask_dd_eop.as_u64);
-#elif defined(CLIB_HAVE_VEC128)
-  u32x4 q1x4_lo, q1x4_hi, or_q1x4 = { 0 };
-  u32x4 fdidx4;
-  u32x4 dd_eop_mask4 = u32x4_splat (mask_dd_eop.as_u64);
-#endif
   int single_next = 1;
 
   /* is there anything on the ring */
@@ -324,71 +314,6 @@ iavf_device_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
   while (n_rx_packets < IAVF_RX_VECTOR_SZ)
     {
-      if (next + 11 < size)
-	{
-	  int stride = 8;
-	  clib_prefetch_load ((void *) (descs + (next + stride)));
-	  clib_prefetch_load ((void *) (descs + (next + stride + 1)));
-	  clib_prefetch_load ((void *) (descs + (next + stride + 2)));
-	  clib_prefetch_load ((void *) (descs + (next + stride + 3)));
-	}
-
-#ifdef CLIB_HAVE_VEC256
-      if (n_rx_packets >= IAVF_RX_VECTOR_SZ - 4 || next >= size - 4)
-	goto one_by_one;
-
-      q1x4 = u64x4_gather ((void *) &d[0].qword[1], (void *) &d[1].qword[1],
-			   (void *) &d[2].qword[1], (void *) &d[3].qword[1]);
-
-      /* not all packets are ready or at least one of them is chained */
-      if (!u64x4_is_equal (q1x4 & dd_eop_mask4, dd_eop_mask4))
-	goto one_by_one;
-
-      or_q1x4 |= q1x4;
-
-      u64x4_store_unaligned (q1x4, rtd->qw1s + n_rx_packets);
-#elif defined(CLIB_HAVE_VEC128)
-      if (n_rx_packets >= IAVF_RX_VECTOR_SZ - 4 || next >= size - 4)
-	goto one_by_one;
-
-      q1x4_lo =
-	u32x4_gather ((void *) &d[0].qword[1], (void *) &d[1].qword[1],
-		      (void *) &d[2].qword[1], (void *) &d[3].qword[1]);
-
-      /* not all packets are ready or at least one of them is chained */
-      if (!u32x4_is_equal (q1x4_lo & dd_eop_mask4, dd_eop_mask4))
-	goto one_by_one;
-
-      q1x4_hi = u32x4_gather (
-	(void *) &d[0].qword[1] + 4, (void *) &d[1].qword[1] + 4,
-	(void *) &d[2].qword[1] + 4, (void *) &d[3].qword[1] + 4);
-
-      or_q1x4 |= q1x4_lo;
-      rtd->qw1s[n_rx_packets + 0] = (u64) q1x4_hi[0] << 32 | (u64) q1x4_lo[0];
-      rtd->qw1s[n_rx_packets + 1] = (u64) q1x4_hi[1] << 32 | (u64) q1x4_lo[1];
-      rtd->qw1s[n_rx_packets + 2] = (u64) q1x4_hi[2] << 32 | (u64) q1x4_lo[2];
-      rtd->qw1s[n_rx_packets + 3] = (u64) q1x4_hi[3] << 32 | (u64) q1x4_lo[3];
-#endif
-#if defined(CLIB_HAVE_VEC256) || defined(CLIB_HAVE_VEC128)
-
-      if (with_flows)
-	{
-	  fdidx4 = u32x4_gather (
-	    (void *) &d[0].fdid_flex_hi, (void *) &d[1].fdid_flex_hi,
-	    (void *) &d[2].fdid_flex_hi, (void *) &d[3].fdid_flex_hi);
-	  u32x4_store_unaligned (fdidx4, rtd->flow_ids + n_rx_packets);
-	}
-
-      vlib_buffer_copy_indices (bi, arq->buffer_indices + next, 4);
-
-      /* next */
-      next = (next + 4) & mask;
-      d = descs + next;
-      n_rx_packets += 4;
-      bi += 4;
-      continue;
-    one_by_one:
-#endif
       clib_prefetch_load ((void *) (descs + ((next + 8) & mask)));
 
       if (iavf_rxd_is_not_dd (d))
@@ -440,10 +365,6 @@ no_more_desc:
 
   arq->next = next;
   arq->n_enqueued -= n_rx_packets + n_tail_desc;
-
-#if defined(CLIB_HAVE_VEC256) || defined(CLIB_HAVE_VEC128)
-  or_qw1 |= or_q1x4[0] | or_q1x4[1] | or_q1x4[2] | or_q1x4[3];
-#endif
 
   vlib_get_buffers (vm, to_next, rtd->bufs, n_rx_packets);
 
