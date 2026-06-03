@@ -992,12 +992,8 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
 
       if (!ctx)
 	{
-	  clib_mem_free (irt);
-	  clib_mem_free (ort);
-	  im->inb_sa_runtimes[sa_index] = 0;
-	  im->outb_sa_runtimes[sa_index] = 0;
-	  fib_node_unlock (&sa->node);
-	  return VNET_API_ERROR_KEY_LENGTH;
+	  rv = VNET_API_ERROR_KEY_LENGTH;
+	  goto fail;
 	}
 
       sa->ctx = ctx;
@@ -1015,15 +1011,7 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
       rv = tunnel_resolve (&sa->tunnel, FIB_NODE_TYPE_IPSEC_SA, sa_index);
 
       if (rv)
-	{
-	  vnet_crypto_ctx_destroy (vm, sa->ctx);
-	  clib_mem_free (irt);
-	  clib_mem_free (ort);
-	  im->inb_sa_runtimes[sa_index] = 0;
-	  im->outb_sa_runtimes[sa_index] = 0;
-	  fib_node_unlock (&sa->node);
-	  return rv;
-	}
+	goto fail;
       ipsec_sa_stack (sa);
 
       /* generate header templates */
@@ -1063,6 +1051,19 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
   ipsec_sa_init_runtime (sa, m);
 
   return (0);
+
+fail:
+  if (sa->ctx)
+    vnet_crypto_ctx_destroy (vm, sa->ctx);
+  clib_mem_free (irt);
+  clib_mem_free (ort);
+  im->inb_sa_runtimes[sa_index] = 0;
+  im->outb_sa_runtimes[sa_index] = 0;
+  fib_node_unlock (&sa->node);
+  tunnel_unresolve (&sa->tunnel);
+  hash_unset (im->sa_index_by_sa_id, sa->id);
+  pool_put (im->sa_pool, sa);
+  return rv;
 }
 
 static void
