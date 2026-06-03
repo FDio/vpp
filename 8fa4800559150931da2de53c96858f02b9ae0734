@@ -1,0 +1,208 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c4835447_a44eb800",
+        "filename": "src/plugins/lldp/lldp.api",
+        "patchSetId": 3
+      },
+      "lineNbr": 102,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-06-03T10:35:19Z",
+      "side": 1,
+      "message": "I\u0027m trying to understand what\u0027s the purpose of this enum.\nIs there an expectation for the future to have a different state from active/inactive?\nIf no, then this could be a boolean flag.\nIf yes - what would that be? ADMIN_DOWN maybe? I think CLI already prints something like that, maybe we could return it here too in a consistent way?",
+      "revId": "8fa4800559150931da2de53c96858f02b9ae0734",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ec692c23_6d725b8e",
+        "filename": "src/plugins/lldp/lldp_api.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 137,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-06-03T10:35:19Z",
+      "side": 1,
+      "message": "if n-\u003elast_heard is zero, then even though no packet was ever received, status is active until ttl expires, which I think is incorrect",
+      "revId": "8fa4800559150931da2de53c96858f02b9ae0734",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a65dce19_5f1f6c98",
+        "filename": "src/plugins/lldp/lldp_api.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 147,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-06-03T10:35:19Z",
+      "side": 1,
+      "message": "this needs a clib_min(vec_len(lm-\u003esys_name), sizeof(rmp-\u003esystem_name)) clamp otherwise it could overflow. you could clamp the other calls too - they have the same issue (chassis_id, port_id)",
+      "revId": "8fa4800559150931da2de53c96858f02b9ae0734",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "410174d9_750261b2",
+        "filename": "src/plugins/lldp/lldp_api.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 157,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-06-03T10:35:19Z",
+      "side": 1,
+      "message": "strlen in VPP code is an immediate smell\n\nI\u0027m looking at how ngmt_ip4 and others are allocated and those seem to be vectors.\n\nso a vec_len here is appropriate, strlen is not\n\nsame issue also below",
+      "revId": "8fa4800559150931da2de53c96858f02b9ae0734",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d14959ea_58b35789",
+        "filename": "test/test_lldp.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 177,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-06-03T10:35:19Z",
+      "side": 1,
+      "message": "No need to redefine these, as they are accessible via VppEnum once api is connected to VPP.",
+      "revId": "8fa4800559150931da2de53c96858f02b9ae0734",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8aed3ffe_c4a2049f",
+        "filename": "test/test_lldp.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 243,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-06-03T10:35:19Z",
+      "side": 1,
+      "message": "we can use self.pg0.sw_if_index directly",
+      "revId": "8fa4800559150931da2de53c96858f02b9ae0734",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "954b5ebe_9e52f511",
+        "filename": "test/test_lldp.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 325,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-06-03T10:35:19Z",
+      "side": 1,
+      "message": "self.pg0.sw_if_index I presume",
+      "revId": "8fa4800559150931da2de53c96858f02b9ae0734",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7959bd17_7e8c207a",
+        "filename": "test/test_lldp.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 333,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-06-03T10:35:19Z",
+      "side": 1,
+      "message": "self.pg1.sw_if_index I presume",
+      "revId": "8fa4800559150931da2de53c96858f02b9ae0734",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0f1e7ddb_a2313b85",
+        "filename": "test/test_lldp.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 346,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-06-03T10:35:19Z",
+      "side": 1,
+      "message": "Adding a\n        self.virtual_sleep(15)\nhere reduces runtime from atrocious ~15s to tolerable ~.14s",
+      "revId": "8fa4800559150931da2de53c96858f02b9ae0734",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "43411703_d4ec6ee8",
+        "filename": "test/test_lldp.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 347,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-06-03T10:35:19Z",
+      "side": 1,
+      "message": "recvd0 and recvd1 are not accessed at all - what\u0027s the point of waiting for these?",
+      "revId": "8fa4800559150931da2de53c96858f02b9ae0734",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e84b2b3e_026dfc52",
+        "filename": "test/test_lldp.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 416,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-06-03T10:35:19Z",
+      "side": 1,
+      "message": "if d.sw_if_index \u003d\u003d self.pg0.sw_if_index:",
+      "revId": "8fa4800559150931da2de53c96858f02b9ae0734",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3737a3e7_04964fda",
+        "filename": "test/test_lldp.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 429,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-06-03T10:35:19Z",
+      "side": 1,
+      "message": "we could also add another self.virtual_sleep (\u003ettl) here,\ndo another dump verbatim and validate STATUS_INACTIVE",
+      "revId": "8fa4800559150931da2de53c96858f02b9ae0734",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
