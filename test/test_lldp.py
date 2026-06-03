@@ -1,8 +1,10 @@
 from asfframework import VppTestRunner
 from framework import VppTestCase
 import unittest
+from struct import pack
 from config import config
 from scapy.layers.l2 import Ether
+from scapy.packet import Raw
 from scapy.contrib.lldp import (
     LLDPDUChassisID,
     LLDPDUPortID,
@@ -94,6 +96,49 @@ class TestLldpCli(VppTestCase):
         self.vapi.cli("set interface lldp pg0 disable")
         reply = self.vapi.cli("show lldp")
         self.assertNotIn("pg0", reply)
+
+    def test_lldp_truncated_optional_tlv_bounds(self):
+        """Optional TLV length must not exceed the buffer"""
+
+        def lldp_tlv(typ, length, payload):
+            b1 = (typ << 1) | ((length >> 8) & 1)
+            b2 = length & 0xFF
+            return bytes([b1, b2]) + payload
+
+        # VLIB_BUFFER_DEFAULT_DATA_SIZE is 2048, so fill up to just before that so the last TLV
+        # claims to finish beyond the end of the buffer.
+        filler_tlvs = lldp_tlv(127, 0, b"") * 1004
+        trunc_sys_name = lldp_tlv(5, 0x1FF, b"\x00")  # claims 511 value octets, sends 1
+        lldp_payload = (
+            lldp_tlv(1, 7, bytes([4]) + bytes.fromhex("010203040506"))
+            + lldp_tlv(2, 7, bytes([3]) + bytes.fromhex("0708090a0b0c"))
+            + lldp_tlv(3, 2, pack(">H", 120))
+            + filler_tlvs
+            + trunc_sys_name
+        )
+        pkt = Ether(
+            src="ff:ff:ff:ff:00:00",
+            dst="01:80:C2:00:00:03",
+            type=0x88CC,
+        ) / Raw(load=lldp_payload)
+
+        self.vapi.cli("set lldp system-name VPP tx-hold 4 tx-interval 10")
+        self.vapi.cli(
+            f"set interface lldp pg0 port-desc vtf:pg0 mgmt-ip4 {self.pg0.local_ip4}"
+        )
+
+        err_path = "/err/lldp-input/lldp packets with bad TLVs"
+        pre = self.statistics.get_err_counter(err_path)
+
+        self.pg0.add_stream([pkt])
+        self.pg_start()
+
+        post = self.statistics.get_err_counter(err_path)
+        self.assertGreater(
+            post,
+            pre,
+            "truncated system name TLV must increment bad TLV error counter",
+        )
 
 
 @unittest.skipIf("lldp" in config.excluded_plugins, "Exclude lldp plugin tests")
