@@ -108,16 +108,17 @@ lldp_tlv_set_length (lldp_tlv_t * tlv, u16 length)
 lldp_main_t lldp_main;
 
 static int
-lldp_packet_scan (u32 hw_if_index, const lldp_tlv_t * pkt)
+lldp_packet_scan (u32 hw_if_index, const lldp_tlv_t *pkt, u32 pkt_len)
 {
   const lldp_tlv_t *tlv = pkt;
 
-#define TLV_VIOLATES_PKT_BOUNDARY(pkt, tlv)                               \
-  (((((u8 *)tlv) + sizeof (lldp_tlv_t)) > ((u8 *)pkt + vec_len (pkt))) || \
-   ((((u8 *)tlv) + lldp_tlv_get_length (tlv)) > ((u8 *)pkt + vec_len (pkt))))
+#define TLV_VIOLATES_PKT_BOUNDARY(pkt, pkt_len, tlv)                                               \
+  (((((u8 *) (tlv)) + sizeof (lldp_tlv_t)) > ((u8 *) (pkt) + (pkt_len))) ||                        \
+   ((((u8 *) (tlv)) + STRUCT_SIZE_OF (lldp_tlv_t, head) + lldp_tlv_get_length (tlv)) >             \
+    ((u8 *) (pkt) + (pkt_len))))
 
   /* first tlv is always chassis id, followed by port id and ttl tlvs */
-  if (TLV_VIOLATES_PKT_BOUNDARY (pkt, tlv) ||
+  if (TLV_VIOLATES_PKT_BOUNDARY (pkt, pkt_len, tlv) ||
       LLDP_TLV_NAME (chassis_id) != lldp_tlv_get_code (tlv))
     {
       return LLDP_ERROR_BAD_TLV;
@@ -138,7 +139,7 @@ lldp_packet_scan (u32 hw_if_index, const lldp_tlv_t * pkt)
 
   tlv = (lldp_tlv_t *) ((u8 *) tlv + STRUCT_SIZE_OF (lldp_tlv_t, head) + l);
 
-  if (TLV_VIOLATES_PKT_BOUNDARY (pkt, tlv) ||
+  if (TLV_VIOLATES_PKT_BOUNDARY (pkt, pkt_len, tlv) ||
       LLDP_TLV_NAME (port_id) != lldp_tlv_get_code (tlv))
     {
       return LLDP_ERROR_BAD_TLV;
@@ -158,7 +159,7 @@ lldp_packet_scan (u32 hw_if_index, const lldp_tlv_t * pkt)
 
   tlv = (lldp_tlv_t *) ((u8 *) tlv + STRUCT_SIZE_OF (lldp_tlv_t, head) + l);
 
-  if (TLV_VIOLATES_PKT_BOUNDARY (pkt, tlv) ||
+  if (TLV_VIOLATES_PKT_BOUNDARY (pkt, pkt_len, tlv) ||
       LLDP_TLV_NAME (ttl) != lldp_tlv_get_code (tlv))
     {
       return LLDP_ERROR_BAD_TLV;
@@ -170,7 +171,7 @@ lldp_packet_scan (u32 hw_if_index, const lldp_tlv_t * pkt)
     }
   u16 ttl = ntohs (((lldp_ttl_tlv_t *) tlv)->ttl);
   tlv = (lldp_tlv_t *) ((u8 *) tlv + STRUCT_SIZE_OF (lldp_tlv_t, head) + l);
-  while (!TLV_VIOLATES_PKT_BOUNDARY (pkt, tlv) &&
+  while (!TLV_VIOLATES_PKT_BOUNDARY (pkt, pkt_len, tlv) &&
 	 LLDP_TLV_NAME (pdu_end) != lldp_tlv_get_code (tlv))
     {
       switch (lldp_tlv_get_code (tlv))
@@ -188,9 +189,8 @@ lldp_packet_scan (u32 hw_if_index, const lldp_tlv_t * pkt)
 			    lldp_tlv_get_length (tlv));
     }
   /* last tlv is pdu_end */
-  if (TLV_VIOLATES_PKT_BOUNDARY (pkt, tlv) ||
-      LLDP_TLV_NAME (pdu_end) != lldp_tlv_get_code (tlv) ||
-      0 != lldp_tlv_get_length (tlv))
+  if (TLV_VIOLATES_PKT_BOUNDARY (pkt, pkt_len, tlv) ||
+      LLDP_TLV_NAME (pdu_end) != lldp_tlv_get_code (tlv) || 0 != lldp_tlv_get_length (tlv))
     {
       return LLDP_ERROR_BAD_TLV;
     }
@@ -256,8 +256,8 @@ lldp_input (vlib_main_t * vm, vlib_buffer_t * b0, u32 bi0)
     }
 
   /* Actually scan the packet */
-  e = lldp_packet_scan (sw_interface->hw_if_index,
-			vlib_buffer_get_current (b0));
+  e = lldp_packet_scan (sw_interface->hw_if_index, vlib_buffer_get_current (b0),
+			vlib_buffer_length_in_chain (vm, b0));
 
   return e;
 }
