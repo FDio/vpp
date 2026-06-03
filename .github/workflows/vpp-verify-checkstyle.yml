@@ -145,23 +145,6 @@ jobs:
       TUI_LINE: "*******************************************************************"
 
     steps:
-      - name: Job Details
-        run: |
-          {
-            echo "### Checkstyle"
-            echo
-            echo "| Field | Value |"
-            echo "| --- | --- |"
-            echo "| Gerrit change | ${{ inputs.GERRIT_CHANGE_URL }}/${{ inputs.GERRIT_PATCHSET_NUMBER }} |"
-            echo "| Branch | ${{ inputs.GERRIT_BRANCH }} |"
-            echo "| Namespace | ${{ inputs.FDIO_NAMESPACE }} |"
-            echo "| OS | ${{ matrix.os }} |"
-            echo "| Arch | ${{ matrix.executor_arch }} |"
-            echo "| Build | ${{ matrix.build_type }} |"
-            echo "| Class | ${{ matrix.class }} |"
-            echo "| Logs | $LOG_NAME |"
-          } >> "$GITHUB_STEP_SUMMARY"
-
       - name: Setup Environment
         id: setup-executor-env
         # yamllint disable-line rule:line-length

@@ -79,6 +79,23 @@ jobs:
           echo "Gerrit Change: ${{ inputs.GERRIT_CHANGE_URL }}"
           echo "Gerrit Event Type: ${{ inputs.GERRIT_EVENT_TYPE }}"
 
+      - name: Job Details
+        run: |
+          {
+            echo "### Gerrit Merge Handler"
+            echo
+            echo "| Field | Value |"
+            echo "| --- | --- |"
+            echo "| Gerrit change | ${{ inputs.GERRIT_CHANGE_URL }}/${{ inputs.GERRIT_PATCHSET_NUMBER }} |"
+            echo "| Branch | ${{ inputs.GERRIT_BRANCH }} |"
+            echo "| Namespace | ${{ inputs.FDIO_NAMESPACE }} |"
+            echo "| OS | ${{ matrix.os }} |"
+            echo "| Arch | ${{ matrix.executor_arch }} |"
+            echo "| Build | ${{ matrix.build_type }} |"
+            echo "| Class | ${{ matrix.class }} |"
+            echo "| Logs | $LOG_NAME |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Clear Gerrit Vote
         # yamllint disable-line rule:line-length
         uses: lfreleng-actions/gerrit-review-action@537251ec667665b386f70b330b05446e3fc29087 # v0.9
