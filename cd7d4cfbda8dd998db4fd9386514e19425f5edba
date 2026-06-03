@@ -33,6 +33,24 @@
       "message": "is there a reason not to have this exact?\n\ni.e. \n\nassert pre + 1 \u003d\u003d post, \"truncated system name TLV must increment bad TLV error counter\"",
       "revId": "cd7d4cfbda8dd998db4fd9386514e19425f5edba",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "163a4c01_73e9a0b0",
+        "filename": "test/test_lldp.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 137,
+      "author": {
+        "id": 2429
+      },
+      "writtenOn": "2026-06-03T15:04:52Z",
+      "side": 1,
+      "message": "Good point. No reason at all, so I\u0027ll make that change.",
+      "parentUuid": "c6cf1794_54e5ab06",
+      "revId": "cd7d4cfbda8dd998db4fd9386514e19425f5edba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
