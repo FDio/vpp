@@ -55,6 +55,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "3778f5a3_bea455e6",
+        "filename": "test/test_linux_cp.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 1698,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-06-03T13:40:46Z",
+      "side": 1,
+      "message": "Actually, looking at this again I realize I confused vpp-owned interface with host interface. VppInterface is then definitely not a good place for this.\n\nI\u0027ve researched netns support in Python and Scapy and it doesn\u0027t seem to be there. Pulling in a dependency like python-netns for one test feels like an overkill.\n\nBut still, this might be reusable.\n\nMaybe we could create a host_interface.py hosting a HostInterface (phy naming could work too - what\u0027s your preference?).\n\nI think the usual pg_ family of functions could be supported too:\n\npg_enable_capture() - is basically your sniffer thread. I\u0027m not sure scapy can put output to stdout, but if yes, then that combined with a dedicated pump thread putting the results into a deque would avoid a potentially messy tmp pcap file (we only use pcaps with vpp because there is no other way).\npg_get_capture() - gets the contents of deque as array of packets\nwait_for_packet() - straightforward\npg_add_stream() - stores files in object\npg_start() - is basically your injector.\n\ndouble-pg_enable_capture is a noop\nsniffer thread is killed in pg_disable_capture() in test function and/or tearDown().\n\nThis would make it act more like usual stuff making it better understandable for folks extending the tests.\n\nWhat do you think?",
+      "parentUuid": "de937248_5ab0ca0a",
+      "revId": "1641293b90cf818b9338684a45c79aaf523b8ab7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "0bb84b27_c5e2b335",
         "filename": "test/test_linux_cp.py",
         "patchSetId": 3
