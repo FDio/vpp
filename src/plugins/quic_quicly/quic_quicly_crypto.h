@@ -13,7 +13,7 @@
 #include <quic_quicly/quic_quicly.h>
 #include <vnet/session/session.h>
 
-#define QUIC_IV_LEN 17
+#define QUIC_CID_KEY_LEN 16
 
 struct aead_crypto_context_t
 {
@@ -56,7 +56,7 @@ typedef struct quic_quicly_crypto_ctx_
 {
   quic_crypto_context_t ctx; /* first */
   quicly_context_t quicly_ctx;
-  char cid_key[QUIC_IV_LEN];
+  char cid_key[QUIC_CID_KEY_LEN];
   ptls_context_t ptls_ctx;
   tls_verify_cfg_t verify_cfg;
   u32 ca_trust_index;

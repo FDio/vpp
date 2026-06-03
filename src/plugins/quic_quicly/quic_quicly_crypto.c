@@ -653,15 +653,14 @@ quic_quicly_crypto_context_init_data (quic_quicly_crypto_ctx_t *crctx, quic_ctx_
 
   quicly_ctx->transport_params.max_udp_payload_size = QUIC_MAX_PACKET_SIZE;
   app_cctx = app_crypto_ctx_get (app);
-  if (!app->crypto_ctx.quic_iv_set)
+  if (!app->crypto_ctx.quic_cid_key_set)
     {
-      ptls_openssl_random_bytes (app_cctx->quic_iv, QUIC_IV_LEN - 1);
-      app_cctx->quic_iv[QUIC_IV_LEN - 1] = 0;
-      app_cctx->quic_iv_set = 1;
+      ptls_openssl_random_bytes (app_cctx->quic_cid_key, QUIC_CID_KEY_LEN);
+      app_cctx->quic_cid_key_set = 1;
     }
 
-  clib_memcpy (crctx->cid_key, app_cctx->quic_iv, QUIC_IV_LEN);
-  key_vec = ptls_iovec_init (crctx->cid_key, QUIC_IV_LEN);
+  clib_memcpy (crctx->cid_key, app_cctx->quic_cid_key, QUIC_CID_KEY_LEN);
+  key_vec = ptls_iovec_init (crctx->cid_key, QUIC_CID_KEY_LEN);
   quicly_ctx->cid_encryptor = quicly_new_default_cid_encryptor (
     &ptls_openssl_aes128ecb, &ptls_openssl_aes128ecb, &ptls_openssl_sha256, key_vec);
 
