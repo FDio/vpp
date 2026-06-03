@@ -325,7 +325,7 @@ http3_stream_app_close_tunnel (http_ctx_t *req, http_ctx_t *stream, u8 is_shutdo
     case HTTP_CONN_STATE_ESTABLISHED:
     case HTTP_CONN_STATE_APP_CLOSED: /* postponed cleanup */
       HTTP_DBG (1, "app want to close tunnel");
-      if (!is_shutdown && http_io_ts_max_read (stream))
+      if (!(req->req_flags & HTTP_REQ_F_SHUTDOWN_TUNNEL) && http_io_ts_max_read (stream))
 	{
 	  if (req->req_flags & HTTP_REQ_F_IS_PARENT)
 	    {
