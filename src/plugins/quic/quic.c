@@ -783,6 +783,21 @@ quic_app_enable (quic_main_t *qm, u8 is_en)
   return 0;
 }
 
+static void
+quic_expired_timers_dispatch (u32 *expired_timers)
+{
+  int i;
+#if QUIC_DEBUG >= 4
+  int64_t time_now = quic_wrk_ctx_get (&quic_main, vlib_get_thread_index ())->time_now;
+#endif
+
+  for (i = 0; i < vec_len (expired_timers); i++)
+    {
+      QUIC_DBG (4, "Timer expired for conn index %u at %ld", expired_timers[i], time_now);
+      quic_eng_connection_timer_expired (expired_timers[i]);
+    }
+}
+
 static clib_error_t *
 quic_enable (vlib_main_t *vm, u8 is_en)
 {
@@ -821,6 +836,8 @@ quic_enable (vlib_main_t *vm, u8 is_en)
       pool_program_safe_realloc ((void **) &qwc->ctx_pool,
 				 QUIC_CTX_POOL_PER_THREAD_SIZE,
 				 CLIB_CACHE_LINE_BYTES);
+      quic_timer_initialize_wheel (&qwc->timer_wheel, quic_expired_timers_dispatch,
+				   vlib_time_now (vm));
     }
 
   QUIC_DBG (1, "Initializing quic engine to %s",

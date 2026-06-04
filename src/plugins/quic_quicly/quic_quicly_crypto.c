@@ -10,7 +10,6 @@
 #include <vnet/session/application_crypto.h>
 #include <vnet/session/session.h>
 
-#include <quic/quic_timer.h>
 #include <quicly.h>
 #include <picotls/openssl.h>
 #include <openssl/err.h>

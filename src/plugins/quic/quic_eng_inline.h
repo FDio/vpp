@@ -184,4 +184,11 @@ quic_eng_ctx_attribute (quic_ctx_t *ctx, u8 is_get, transport_endpt_attr_t *attr
   return quic_engine_vfts[qm->engine_type].ctx_attribute (ctx, is_get, attr);
 }
 
+static_always_inline void
+quic_eng_connection_timer_expired (u32 conn_index)
+{
+  quic_main_t *qm = &quic_main;
+  quic_engine_vfts[qm->engine_type].conn_timer_expired (conn_index);
+}
+
 #endif /* __included_quic_eng_inline_h__ */

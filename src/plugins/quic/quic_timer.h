@@ -7,8 +7,17 @@
 
 #include <quic/quic.h>
 
-#define QUIC_TSTAMP_RESOLUTION	  0.001	      /* QUIC tick resolution (1ms) */
+#define QUIC_TIMER_INTERVAL	  0.001	      /* QUIC tick resolution (1ms) */
 #define QUIC_DEFAULT_CONN_TIMEOUT (30 * 1000) /* 30 seconds */
+
+static_always_inline void
+quic_timer_initialize_wheel (tw_timer_wheel_1t_3w_1024sl_ov_t *tw, void (*expired_timer_cb) (u32 *),
+			     f64 now)
+{
+  ASSERT (tw->timers == 0);
+  tw_timer_wheel_init_1t_3w_1024sl_ov (tw, expired_timer_cb, QUIC_TIMER_INTERVAL, ~0);
+  tw->last_run_time = now;
+}
 
 static_always_inline void
 quic_update_time (f64 now, u8 thread_index)
