@@ -671,6 +671,7 @@ quic_quicly_crypto_context_init_data (quic_quicly_crypto_ctx_t *crctx, quic_ctx_
   quicly_ctx->transport_params.max_streams_uni = ctx->max_streams_uni;
   quicly_ctx->transport_params.max_streams_bidi = ctx->max_streams_bidi;
   quicly_ctx->transport_params.max_idle_timeout = ctx->connection_timeout;
+  quicly_ctx->transport_params.disable_active_migration = 1;
 
   quicly_ctx->init_cc = (qm->default_quic_cc == QUIC_CC_CUBIC) ?
 			  &quicly_cc_cubic_init :
