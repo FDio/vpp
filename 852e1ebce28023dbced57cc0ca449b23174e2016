@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ed953e2a_2871e9f7",
+        "filename": "src/vnet/tcp/tcp_output.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 1180,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-04T17:43:46Z",
+      "side": 1,
+      "message": "If we move `--n_bufs` from above to line 1183, and instead make `chain_bi \u003d wrk-\u003etx_buffers[n_bufs - 1]`, we can remove this line and just break. We should be able to replace this line with n_bufs++ even without these changes.",
+      "revId": "852e1ebce28023dbced57cc0ca449b23174e2016",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
