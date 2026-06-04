@@ -95,7 +95,7 @@ jobs:
 
       - name: Clear Gerrit vote
         # yamllint disable-line rule:line-length
-        uses: lfreleng-actions/gerrit-review-action@537251ec667665b386f70b330b05446e3fc29087 # v0.9
+        uses: lfreleng-actions/gerrit-review-action@a5de1d5bf17c2603ae81544dc2a455017b454ec8 # 1.1.1
         with:
           host: ${{ vars.GERRIT_SERVER }}
           username: ${{ vars.GERRIT_SSH_REQUIRED_USER }}
@@ -207,7 +207,7 @@ jobs:
     steps:
       - uses: technote-space/workflow-conclusion-action@45ce8e0eb155657ab8ccf346ade734257fd196a5  # v3.0.3 archived Nov 16, 2023
       - name: Set vote
-        uses: lfit/gerrit-review-action@3a1b27891502e0786a3e2e5a2d0cb0bff1f30c25  # v1.0.0
+        uses: lfit/gerrit-review-action@a5de1d5bf17c2603ae81544dc2a455017b454ec8 # 1.1.1
         with:
           host: ${{ vars.GERRIT_SERVER }}
           username: ${{ vars.GERRIT_SSH_REQUIRED_USER }}
