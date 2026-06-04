@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cd853b0c_a16f8257",
+        "filename": "src/vnet/tcp/tcp_output.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 1165,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-04T17:07:14Z",
+      "side": 1,
+      "message": "Probably can be moved inside the if",
+      "revId": "e381ed84398830da770cdbb474da7e9470e4629d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "48b0930c_a6e28d51",
+        "filename": "src/vnet/tcp/tcp_output.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 1167,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-04T17:07:14Z",
+      "side": 1,
+      "message": "Isn\u0027t the max_deq_bytes test covered by n_bufs_per_seg test, given that `n_bufs_per_seg \u003d seg_size / bytes_per_buffer`?",
+      "revId": "e381ed84398830da770cdbb474da7e9470e4629d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6b6a770d_7789d6dd",
+        "filename": "src/vnet/tcp/tcp_output.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 1178,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-04T17:07:14Z",
+      "side": 1,
+      "message": "We could be in a situation where we peek exactly a full buffer in one run, try again to peek something more in the next run and we get SVM_FIFO_EEMPTY. So if peeked \u003c 0, we should break loop here and n_bufs might need updating, given that it\u0027s already decremented. Alternatively, we could decrement it only on success.",
+      "revId": "e381ed84398830da770cdbb474da7e9470e4629d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
