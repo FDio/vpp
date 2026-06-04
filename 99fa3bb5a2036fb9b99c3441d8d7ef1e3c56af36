@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "556c0aa1_d728d49f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-04T13:40:51Z",
+      "side": 1,
+      "message": "Looks much better now. Quick comment",
+      "revId": "99fa3bb5a2036fb9b99c3441d8d7ef1e3c56af36",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0ce7d51a_7d4a0789",
+        "filename": "src/vnet/tcp/tcp_output.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 1164,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-04T13:40:51Z",
+      "side": 1,
+      "message": "I guess these checks are the issue. So this could be an `if (n_bytes \u003d\u003d len_to_deq) { do the for} `. Then in the for `if (n_peeked !\u003d len_to_deq) break;`",
+      "revId": "99fa3bb5a2036fb9b99c3441d8d7ef1e3c56af36",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
