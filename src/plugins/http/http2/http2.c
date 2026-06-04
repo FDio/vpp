@@ -2247,6 +2247,14 @@ http2_handle_continuation_frame (http_ctx_t *hc, http2_frame_header_t *fh)
       return HTTP2_ERROR_PROTOCOL_ERROR;
     }
 
+  /* limit how much we can buffer, max_header_list_size should be fine even for compressed headers,
+   * worst case we fail during decompression */
+  if ((vec_len (hc->unparsed_headers) + fh->length) > hc->settings.max_header_list_size)
+    {
+      vec_free (hc->unparsed_headers);
+      return HTTP2_ERROR_INTERNAL_ERROR;
+    }
+
   vec_add2 (hc->unparsed_headers, p, fh->length);
   http_io_ts_read (hc, p, fh->length, 0);
 
