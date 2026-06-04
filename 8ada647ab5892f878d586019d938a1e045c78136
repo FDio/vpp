@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a191bc7b_1b1cd62a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 8
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-06-04T08:28:07Z",
+      "side": 1,
+      "message": "lgtm overall, just a small comment inline",
+      "revId": "8ada647ab5892f878d586019d938a1e045c78136",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a9cfca92_b0939f33",
+        "filename": "extras/kube-test/infra/utils.go",
+        "patchSetId": 8
+      },
+      "lineNbr": 221,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-06-04T08:28:07Z",
+      "side": 1,
+      "message": "I am not sure to understand why we need to replace the command running in the `calicovpp/vpp` container for images post refactoring",
+      "revId": "8ada647ab5892f878d586019d938a1e045c78136",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
