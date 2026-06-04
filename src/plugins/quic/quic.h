@@ -413,6 +413,7 @@ typedef struct quic_engine_vft_
   void (*proto_on_reset) (u32 ctx_index, clib_thread_index_t thread_index);
   void (*transport_closed) (quic_ctx_t *ctx);
   int (*ctx_attribute) (quic_ctx_t *ctx, u8 is_get, transport_endpt_attr_t *attr);
+  void (*conn_timer_expired) (u32 conn_index);
 } quic_engine_vft_t;
 
 extern quic_engine_vft_t *quic_engine_vfts;

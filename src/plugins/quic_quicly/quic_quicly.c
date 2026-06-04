@@ -326,7 +326,7 @@ conn_close:
   quic_quicly_connection_closed (ctx);
 }
 
-static_always_inline void
+static void
 quic_quicly_timer_expired (u32 conn_index)
 {
   quic_ctx_t *ctx;
@@ -334,21 +334,6 @@ quic_quicly_timer_expired (u32 conn_index)
   ctx = quic_quicly_get_quic_ctx (conn_index, vlib_get_thread_index ());
   ctx->timer_handle = QUIC_TIMER_HANDLE_INVALID;
   quic_quicly_send_packets (ctx);
-}
-
-static void
-quic_quicly_expired_timers_dispatch (u32 *expired_timers)
-{
-  int i;
-#if QUIC_DEBUG >= 1
-  int64_t time_now =
-    quic_wrk_ctx_get (quic_quicly_main.qm, vlib_get_thread_index ())->time_now;
-#endif
-  for (i = 0; i < vec_len (expired_timers); i++)
-    {
-      QUIC_DBG (4, "Timer expired for conn %u at %ld", i, time_now);
-      quic_quicly_timer_expired (expired_timers[i]);
-    }
 }
 
 static_always_inline session_t *
@@ -1758,7 +1743,6 @@ quic_quicly_engine_init (quic_main_t *qm)
 {
   quic_quicly_main_t *qqm = &quic_quicly_main;
   quicly_cid_plaintext_t *next_cid;
-  tw_timer_wheel_1t_3w_1024sl_ov_t *tw;
   u32 i;
 
   QUIC_DBG (2, "Quic engine init: quicly");
@@ -1776,17 +1760,8 @@ quic_quicly_engine_init (quic_main_t *qm)
   next_cid = qqm->next_cid;
   quic_quicly_crypto_init (qqm);
 
-  /* TODO: Review comment from Florin
-   * Should we move this to quic timers and have quic framework call it?
-   * If we have dependencies issues, at least move it to quic framework.
-   */
   for (i = 0; i < qm->num_threads; i++)
     {
-      tw = &quic_wrk_ctx_get (qm, i)->timer_wheel;
-      tw_timer_wheel_init_1t_3w_1024sl_ov (tw,
-					   quic_quicly_expired_timers_dispatch,
-					   1e-3 /* timer period 1ms */, ~0);
-      tw->last_run_time = vlib_time_now (vlib_get_main ());
       next_cid[i].thread_id = i;
       vec_validate (qqm->rx_packets[i], QUIC_QUICLY_RCV_MAX_PACKETS - 1);
       vec_validate (qqm->rx_dgrams[i], QUIC_QUICLY_RCV_MAX_DGRAMS - 1);
@@ -2020,6 +1995,7 @@ const static quic_engine_vft_t quic_quicly_engine_vft = {
   .proto_on_reset = quic_quicly_on_app_reset,
   .transport_closed = quic_quicly_transport_closed,
   .ctx_attribute = quic_quicly_ctx_attribute,
+  .conn_timer_expired = quic_quicly_timer_expired,
 };
 
 static clib_error_t *
