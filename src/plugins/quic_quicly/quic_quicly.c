@@ -82,6 +82,7 @@ quic_quicly_connection_delete (quic_ctx_t *ctx)
     &quic_wrk_ctx_get (qm, ctx->c_thread_index)->timer_wheel, ctx);
   QUIC_DBG (4, "Stopped timer for ctx %u", ctx->c_c_index);
 
+  quic_increment_counter (qm, QUIC_ERROR_CLOSED_CONNECTION, 1);
   quic_disconnect_transport (ctx, qm->app_index);
   quicly_free (ctx->conn);
   if (ctx->c_s_index != QUIC_SESSION_INVALID && !(ctx->flags & QUIC_F_NO_APP_SESSION))
@@ -1177,9 +1178,6 @@ quic_quicly_on_app_closed (u32 ctx_index, clib_thread_index_t thread_index)
       quicly_conn_t *conn = ctx->conn;
       /* Start connection closing. Keep sending packets until quicly_send
 	 returns QUICLY_ERROR_FREE_CONNECTION */
-
-      quic_increment_counter (quic_quicly_main.qm,
-			      QUIC_ERROR_CLOSED_CONNECTION, 1);
       quicly_close (
 	conn, QUICLY_ERROR_FROM_APPLICATION_ERROR_CODE (ctx->app_err_code),
 	"shutting down");
@@ -1336,6 +1334,7 @@ quic_quicly_accept_connection (quic_ctx_t *ctx, quic_quicly_rx_packet_ctx_t *pct
   /* Save ctx handle in quicly connection */
   quic_quicly_store_conn_ctx (conn, ctx);
   ctx->conn = conn;
+  quic_increment_counter (qm, QUIC_ERROR_ACCEPTED_CONNECTION, 1);
 
   QUIC_DBG (2, "Accept connection: ctx_index %u, thread %u", ctx->c_c_index, ctx->c_thread_index);
 
@@ -1463,6 +1462,7 @@ quic_quicly_connect (quic_ctx_t *ctx, u32 ctx_index,
   quic_quicly_store_conn_ctx (ctx->conn, ctx);
   ASSERT (ret == 0);
 
+  quic_increment_counter (qqm->qm, QUIC_ERROR_OPENED_CONNECTION, 1);
   return 0;
 }
 
@@ -1646,6 +1646,7 @@ quic_quicly_receive_a_packet (quic_ctx_t *ctx, quic_quicly_rx_packet_ctx_t *pctx
 	  quic_quicly_main_t *qqm = &quic_quicly_main;
 	  quic_main_t *qm = qqm->qm;
 	  ctx->conn_state = QUIC_CONN_STATE_CLOSED;
+	  quic_increment_counter (qm, QUIC_ERROR_CLOSED_CONNECTION, 1);
 	  quic_disconnect_transport (ctx, qm->app_index);
 	}
       return QUIC_QUICLY_RX_ERROR_CRITICAL;

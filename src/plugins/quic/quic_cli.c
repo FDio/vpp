@@ -439,6 +439,8 @@ quic_show_aggregated_stats (vlib_main_t *vm)
     }
   vlib_cli_output (vm, "-------- Connections --------");
   vlib_cli_output (vm, "Current:         %u", nconn);
+  vlib_cli_output (vm, "Accepted:        %d",
+		   quic_get_counter_value (QUIC_ERROR_ACCEPTED_CONNECTION));
   vlib_cli_output (vm, "Opened:          %d",
 		   quic_get_counter_value (QUIC_ERROR_OPENED_CONNECTION));
   vlib_cli_output (vm, "Closed:          %d",
@@ -453,10 +455,6 @@ quic_show_aggregated_stats (vlib_main_t *vm)
   vlib_cli_output (vm, "RX Total:        %d",
 		   quic_get_counter_value (QUIC_ERROR_RX_PACKETS));
   vlib_cli_output (vm, "RX 0RTT:         %d",
-		   quic_get_counter_value (QUIC_ERROR_ZERO_RTT_RX_PACKETS));
-  vlib_cli_output (vm, "RX 1RTT:         %d",
-		   quic_get_counter_value (QUIC_ERROR_ONE_RTT_RX_PACKETS));
-  vlib_cli_output (vm, "TX Total:        %d",
 		   quic_get_counter_value (QUIC_ERROR_TX_PACKETS));
   vlib_cli_output (vm, "----------- Stats -----------");
   vlib_cli_output (vm, "Min      RTT     %f",
@@ -481,6 +479,9 @@ quic_show_connections_command_fn (vlib_main_t *vm, unformat_input_t *input,
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error = 0;
   quic_main_t *qm = &quic_main;
+  u32 num_threads, i;
+  vlib_thread_main_t *vtm = vlib_get_thread_main ();
+  quic_worker_ctx_t *wrk;
 
   session_cli_return_if_not_enabled ();
   if (qm->engine_type == QUIC_ENGINE_NONE)
@@ -502,6 +503,16 @@ quic_show_connections_command_fn (vlib_main_t *vm, unformat_input_t *input,
     qm->default_crypto_engine == CRYPTO_ENGINE_PICOTLS ?
       "picotls" :
       (qm->default_crypto_engine == CRYPTO_ENGINE_VPP ? "vpp" : "none"));
+
+  num_threads = 1 /* main thread */ + vtm->n_threads;
+
+  for (i = 0; i < num_threads; i++)
+    {
+      wrk = quic_wrk_ctx_get (qm, i);
+      vlib_cli_output (vm, "Thread %u: ctx pool %lu/%lu", i, pool_elts (wrk->ctx_pool),
+		       pool_len (wrk->ctx_pool));
+    }
+
   if (!unformat_user (input, unformat_line_input, line_input))
     {
       quic_show_aggregated_stats (vm);
