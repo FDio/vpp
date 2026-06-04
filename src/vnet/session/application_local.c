@@ -988,7 +988,9 @@ int
 ct_session_tx (session_t * s)
 {
   ct_connection_t *ct, *peer_ct;
+  u32 want_deq_ntf;
   session_t *peer_s;
+  svm_fifo_t *df;
 
   if (!ct_session_can_tx (s))
     return 0;
@@ -999,10 +1001,20 @@ ct_session_tx (session_t * s)
   peer_s = session_get (peer_ct->c_s_index, peer_ct->c_thread_index);
   if (peer_s->session_state >= SESSION_STATE_TRANSPORT_CLOSING)
     return 0;
-  peer_s->flags |= SESSION_F_RX_EVT;
   /* Propagate dequeue ntf request along with enqueue notify */
-  if (s->tx_fifo->signals->want_deq_ntf)
-    peer_s->rx_fifo->signals->want_deq_ntf = s->tx_fifo->signals->want_deq_ntf;
+  want_deq_ntf = svm_fifo_get_want_deq_ntf (s->tx_fifo);
+  if (want_deq_ntf)
+    {
+      svm_fifo_add_want_deq_ntf (peer_s->rx_fifo, want_deq_ntf);
+      df = (ct->flags & CT_CONN_F_CLIENT) ? ct->client_tx_fifo : s->tx_fifo;
+      /* All data drained while tx notification was propagating */
+      if (svm_fifo_is_empty (df))
+	{
+	  svm_fifo_del_want_deq_ntf (peer_s->rx_fifo, want_deq_ntf);
+	  session_dequeue_notify (s);
+	}
+    }
+  peer_s->flags |= SESSION_F_RX_EVT;
   return session_enqueue_notify (peer_s);
 }
 
