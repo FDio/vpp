@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "eef9cd0b_b85badb1",
+        "filename": "src/plugins/linux-cp/lcp_router.c",
+        "patchSetId": 15
+      },
+      "lineNbr": 784,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2026-06-04T13:35:35Z",
+      "side": 1,
+      "message": "The only error code that ip_neighbor_del() returns is VNET_API_ERROR_NO_SUCH_ENTRY, so the `else if (rv)` will never evaluate true. You should just leave the `if (rv)` and have it call LCP_ROUTER_DBG() instead of LCP_ROUTER_ERROR().",
+      "revId": "1f82d9906b814bb1ee2a98e28c9d702f99dd6243",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
