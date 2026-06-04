@@ -20,6 +20,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "574ef4a9_f63888e8",
+        "filename": "src/plugins/hs_apps/builtin_echo/echo_client.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 138,
+      "author": {
+        "id": 3325
+      },
+      "writtenOn": "2026-06-04T06:34:54Z",
+      "side": 1,
+      "message": "Done, merged with the existing if.",
+      "parentUuid": "9dec637f_8cd9ba89",
+      "revId": "0dea9ce3e7913e371f6b7a859cf6fe07a96115f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "d0a57c2d_3891acda",
         "filename": "src/plugins/hs_apps/builtin_echo/echo_client.c",
         "patchSetId": 2
@@ -31,6 +49,24 @@
       "writtenOn": "2026-06-03T19:55:30Z",
       "side": 1,
       "message": "this is same in both branches, we probably don\u0027t need else brach",
+      "revId": "0dea9ce3e7913e371f6b7a859cf6fe07a96115f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2464e679_2b4db19d",
+        "filename": "src/plugins/hs_apps/builtin_echo/echo_client.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 376,
+      "author": {
+        "id": 3325
+      },
+      "writtenOn": "2026-06-04T06:34:54Z",
+      "side": 1,
+      "message": "Done, assigning SESSION_INVALID_HANDLE once before the if.",
+      "parentUuid": "d0a57c2d_3891acda",
       "revId": "0dea9ce3e7913e371f6b7a859cf6fe07a96115f1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -60,6 +96,30 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "80abcd56_33d02db6",
+        "filename": "src/plugins/hs_apps/builtin_echo/echo_client.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1218,
+      "author": {
+        "id": 3325
+      },
+      "writtenOn": "2026-06-04T06:34:54Z",
+      "side": 1,
+      "message": "Done,  I changed it so we still report connect failed, with the close/reset counts added on the side.",
+      "parentUuid": "54ea080a_749e3091",
+      "range": {
+        "startLine": 1213,
+        "startChar": 0,
+        "endLine": 1218,
+        "endChar": 10
+      },
+      "revId": "0dea9ce3e7913e371f6b7a859cf6fe07a96115f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "05ce9e4e_d104f181",
         "filename": "test/hs-test/echo_test.go",
         "patchSetId": 2
@@ -77,6 +137,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "1a67fd6f_243ec44b",
+        "filename": "test/hs-test/echo_test.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 171,
+      "author": {
+        "id": 3325
+      },
+      "writtenOn": "2026-06-04T06:34:54Z",
+      "side": 1,
+      "message": "It is the Transmitted column. Renamed the variable to make that clearer.",
+      "parentUuid": "05ce9e4e_d104f181",
+      "revId": "0dea9ce3e7913e371f6b7a859cf6fe07a96115f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "3c88afd7_77f4be3f",
         "filename": "test/hs-test/echo_test.go",
         "patchSetId": 2
@@ -88,6 +166,24 @@
       "writtenOn": "2026-06-03T19:55:30Z",
       "side": 1,
       "message": "this can happen? or was it only last interval?",
+      "revId": "0dea9ce3e7913e371f6b7a859cf6fe07a96115f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4dfdfede_babdd4a7",
+        "filename": "test/hs-test/echo_test.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 181,
+      "author": {
+        "id": 3325
+      },
+      "writtenOn": "2026-06-04T06:34:54Z",
+      "side": 1,
+      "message": "Looks like only the last report can drift a bit, so I kept the first ones exact and added tolerance only to the final one.",
+      "parentUuid": "3c88afd7_77f4be3f",
       "revId": "0dea9ce3e7913e371f6b7a859cf6fe07a96115f1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }

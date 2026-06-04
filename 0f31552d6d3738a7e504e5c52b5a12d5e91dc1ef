@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8df1074d_f209503a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3325
+      },
+      "writtenOn": "2026-06-04T06:34:54Z",
+      "side": 1,
+      "message": "Also adjusted the new regression to clear a ready client data session directly, so it exercises the client close path without depending on server-stop timing.",
+      "revId": "0f31552d6d3738a7e504e5c52b5a12d5e91dc1ef",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
